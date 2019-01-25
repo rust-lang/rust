@@ -105,7 +105,7 @@ use lint;
 use errors::Applicability;
 use util::nodemap::{NodeMap, HirIdMap, HirIdSet};
 
-use std::collections::VecDeque;
+use std::collections::{BTreeMap, VecDeque};
 use std::{fmt, u32};
 use std::io::prelude::*;
 use std::io;
@@ -1446,7 +1446,7 @@ fn check_local<'a, 'tcx>(this: &mut Liveness<'a, 'tcx>, local: &'tcx hir::Local)
         None => {
             this.pat_bindings(&local.pat, |this, ln, var, sp, id| {
                 let span = local.pat.simple_ident().map_or(sp, |ident| ident.span);
-                this.warn_about_unused(span, id, ln, var);
+                this.warn_about_unused(vec![span], id, ln, var);
             })
         }
     }
@@ -1455,12 +1455,29 @@ fn check_local<'a, 'tcx>(this: &mut Liveness<'a, 'tcx>, local: &'tcx hir::Local)
 }
 
 fn check_arm<'a, 'tcx>(this: &mut Liveness<'a, 'tcx>, arm: &'tcx hir::Arm) {
-    // only consider the first pattern; any later patterns must have
-    // the same bindings, and we also consider the first pattern to be
-    // the "authoritative" set of ids
-    this.arm_pats_bindings(arm.pats.first().map(|p| &**p), |this, ln, var, sp, id| {
-        this.warn_about_unused(sp, id, ln, var);
-    });
+    // Only consider the variable from the first pattern; any later patterns must have
+    // the same bindings, and we also consider the first pattern to be the "authoritative" set of
+    // ids. However, we should take the spans of variables with the same name from the later
+    // patterns so the suggestions to prefix with underscores will apply to those too.
+    let mut vars: BTreeMap<String, (LiveNode, Variable, HirId, Vec<Span>)> = Default::default();
+
+    for pat in &arm.pats {
+        this.arm_pats_bindings(Some(&*pat), |this, ln, var, sp, id| {
+            let name = this.ir.variable_name(var);
+            vars.entry(name)
+                .and_modify(|(.., spans)| {
+                    spans.push(sp);
+                })
+                .or_insert_with(|| {
+                    (ln, var, id, vec![sp])
+                });
+        });
+    }
+
+    for (_, (ln, var, id, spans)) in vars {
+        this.warn_about_unused(spans, id, ln, var);
+    }
+
     intravisit::walk_arm(this, arm);
 }
 
@@ -1551,7 +1568,7 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
                 let var = self.variable(hir_id, sp);
                 // Ignore unused self.
                 if ident.name != keywords::SelfLower.name() {
-                    if !self.warn_about_unused(sp, hir_id, entry_ln, var) {
+                    if !self.warn_about_unused(vec![sp], hir_id, entry_ln, var) {
                         if self.live_on_entry(entry_ln, var).is_none() {
                             self.report_dead_assign(hir_id, sp, var, true);
                         }
@@ -1563,14 +1580,14 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
 
     fn warn_about_unused_or_dead_vars_in_pat(&mut self, pat: &hir::Pat) {
         self.pat_bindings(pat, |this, ln, var, sp, id| {
-            if !this.warn_about_unused(sp, id, ln, var) {
+            if !this.warn_about_unused(vec![sp], id, ln, var) {
                 this.warn_about_dead_assign(sp, id, ln, var);
             }
         })
     }
 
     fn warn_about_unused(&self,
-                         sp: Span,
+                         spans: Vec<Span>,
                          hir_id: HirId,
                          ln: LiveNode,
                          var: Variable)
@@ -1587,33 +1604,36 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
                     self.assigned_on_exit(ln, var).is_some()
                 };
 
-                let suggest_underscore_msg = format!("consider using `_{}` instead", name);
-
                 if is_assigned {
-                    self.ir.tcx
-                        .lint_hir_note(lint::builtin::UNUSED_VARIABLES, hir_id, sp,
-                                       &format!("variable `{}` is assigned to, but never used",
-                                                name),
-                                       &suggest_underscore_msg);
+                    self.ir.tcx.lint_hir_note(
+                        lint::builtin::UNUSED_VARIABLES,
+                        hir_id,
+                        spans.clone(),
+                        &format!("variable `{}` is assigned to, but never used", name),
+                        &format!("consider using `_{}` instead", name),
+                    );
                 } else if name != "self" {
-                    let msg = format!("unused variable: `{}`", name);
-                    let mut err = self.ir.tcx
-                        .struct_span_lint_hir(lint::builtin::UNUSED_VARIABLES, hir_id, sp, &msg);
+                    let mut err = self.ir.tcx.struct_span_lint_hir(
+                        lint::builtin::UNUSED_VARIABLES,
+                        hir_id,
+                        spans.clone(),
+                        &format!("unused variable: `{}`", name),
+                    );
+
                     if self.ir.variable_is_shorthand(var) {
-                        err.span_suggestion(
-                            sp,
+                        err.multipart_suggestion(
                             "try ignoring the field",
-                            format!("{}: _", name),
-                            Applicability::MachineApplicable,
+                            spans.iter().map(|span| (*span, format!("{}: _", name))).collect(),
+                            Applicability::MachineApplicable
                         );
                     } else {
-                        err.span_suggestion_short(
-                            sp,
-                            &suggest_underscore_msg,
-                            format!("_{}", name),
+                        err.multipart_suggestion(
+                            "consider prefixing with an underscore",
+                            spans.iter().map(|span| (*span, format!("_{}", name))).collect(),
                             Applicability::MachineApplicable,
                         );
                     }
+
                     err.emit()
                 }
             }
@@ -1623,11 +1643,7 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
         }
     }
 
-    fn warn_about_dead_assign(&self,
-                              sp: Span,
-                              hir_id: HirId,
-                              ln: LiveNode,
-                              var: Variable) {
+    fn warn_about_dead_assign(&self, sp: Span, hir_id: HirId, ln: LiveNode, var: Variable) {
         if self.live_on_exit(ln, var).is_none() {
             self.report_dead_assign(hir_id, sp, var, false);
         }

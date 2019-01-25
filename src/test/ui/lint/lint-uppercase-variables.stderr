@@ -8,7 +8,7 @@ warning: unused variable: `Foo`
   --> $DIR/lint-uppercase-variables.rs:22:9
    |
 LL |         Foo => {}
-   |         ^^^ help: consider using `_Foo` instead
+   |         ^^^ help: consider prefixing with an underscore: `_Foo`
    |
 note: lint level defined here
   --> $DIR/lint-uppercase-variables.rs:1:9

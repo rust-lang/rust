@@ -1,0 +1,60 @@
+error: unused variable: `x`
+  --> $DIR/issue-56685.rs:14:14
+   |
+LL |         E::A(x) | E::B(x) => {}
+   |              ^         ^
+   |
+note: lint level defined here
+  --> $DIR/issue-56685.rs:2:9
+   |
+LL | #![deny(unused_variables)]
+   |         ^^^^^^^^^^^^^^^^
+help: consider prefixing with an underscore
+   |
+LL |         E::A(_x) | E::B(_x) => {}
+   |              ^^         ^^
+
+error: unused variable: `x`
+  --> $DIR/issue-56685.rs:25:14
+   |
+LL |         F::A(x, y) | F::B(x, y) => { y },
+   |              ^            ^
+help: consider prefixing with an underscore
+   |
+LL |         F::A(_x, y) | F::B(_x, y) => { y },
+   |              ^^            ^^
+
+error: unused variable: `a`
+  --> $DIR/issue-56685.rs:27:14
+   |
+LL |         F::C(a, b) => { 3 }
+   |              ^ help: consider prefixing with an underscore: `_a`
+
+error: unused variable: `b`
+  --> $DIR/issue-56685.rs:27:17
+   |
+LL |         F::C(a, b) => { 3 }
+   |                 ^ help: consider prefixing with an underscore: `_b`
+
+error: unused variable: `x`
+  --> $DIR/issue-56685.rs:32:25
+   |
+LL |     let _ = if let F::A(x, y) | F::B(x, y) = F::A(1, 2) {
+   |                         ^            ^
+help: consider prefixing with an underscore
+   |
+LL |     let _ = if let F::A(_x, y) | F::B(_x, y) = F::A(1, 2) {
+   |                         ^^            ^^
+
+error: unused variable: `x`
+  --> $DIR/issue-56685.rs:39:20
+   |
+LL |     while let F::A(x, y) | F::B(x, y) = F::A(1, 2) {
+   |                    ^            ^
+help: consider prefixing with an underscore
+   |
+LL |     while let F::A(_x, y) | F::B(_x, y) = F::A(1, 2) {
+   |                    ^^            ^^
+
+error: aborting due to 6 previous errors
+
