@@ -18,7 +18,6 @@ pub struct HirInterner {
     fns: LocationIntener<ItemLoc<ast::FnDef>, FunctionId>,
     structs: LocationIntener<ItemLoc<ast::StructDef>, StructId>,
     enums: LocationIntener<ItemLoc<ast::EnumDef>, EnumId>,
-    enum_variants: LocationIntener<ItemLoc<ast::EnumVariant>, EnumVariantId>,
     consts: LocationIntener<ItemLoc<ast::ConstDef>, ConstId>,
     statics: LocationIntener<ItemLoc<ast::StaticDef>, StaticId>,
     traits: LocationIntener<ItemLoc<ast::TraitDef>, TraitId>,
@@ -31,7 +30,6 @@ impl HirInterner {
             + self.fns.len()
             + self.structs.len()
             + self.enums.len()
-            + self.enum_variants.len()
             + self.consts.len()
             + self.statics.len()
             + self.traits.len()
@@ -262,15 +260,6 @@ impl AstItemDef<ast::EnumDef> for EnumId {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub struct EnumVariantId(RawId);
-impl_arena_id!(EnumVariantId);
-impl AstItemDef<ast::EnumVariant> for EnumVariantId {
-    fn interner(interner: &HirInterner) -> &LocationIntener<ItemLoc<ast::EnumVariant>, Self> {
-        &interner.enum_variants
-    }
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct ConstId(RawId);
 impl_arena_id!(ConstId);
 impl AstItemDef<ast::ConstDef> for ConstId {
@@ -342,9 +331,7 @@ impl SourceFileItems {
         // change parent's id. This means that, say, adding a new function to a
         // trait does not chage ids of top-level items, which helps caching.
         bfs(source_file.syntax(), |it| {
-            if let Some(enum_variant) = ast::EnumVariant::cast(it) {
-                self.alloc(enum_variant.syntax().to_owned());
-            } else if let Some(module_item) = ast::ModuleItem::cast(it) {
+            if let Some(module_item) = ast::ModuleItem::cast(it) {
                 self.alloc(module_item.syntax().to_owned());
             } else if let Some(macro_call) = ast::MacroCall::cast(it) {
                 self.alloc(macro_call.syntax().to_owned());

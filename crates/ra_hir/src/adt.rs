@@ -3,11 +3,14 @@
 
 use std::sync::Arc;
 
-use ra_syntax::ast::{self, NameOwner, StructFlavor};
+use ra_syntax::{
+    TreeArc,
+    ast::{self, NameOwner, StructFlavor}
+};
 
 use crate::{
     Name, AsName, Struct, Enum, EnumVariant, Crate,
-    HirDatabase,
+    HirDatabase, HirFileId,
     type_ref::TypeRef,
     ids::LocationCtx,
 };
@@ -55,6 +58,24 @@ impl StructData {
     }
 }
 
+fn variants(enum_def: &ast::EnumDef) -> impl Iterator<Item = &ast::EnumVariant> {
+    enum_def
+        .variant_list()
+        .into_iter()
+        .flat_map(|it| it.variants())
+}
+
+impl EnumVariant {
+    pub fn source_impl(&self, db: &impl HirDatabase) -> (HirFileId, TreeArc<ast::EnumVariant>) {
+        let (file_id, enum_def) = self.parent.source(db);
+        let var = variants(&*enum_def)
+            .nth(self.idx as usize)
+            .unwrap()
+            .to_owned();
+        (file_id, var)
+    }
+}
+
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct EnumData {
     pub(crate) name: Option<Name>,
@@ -68,22 +89,19 @@ impl EnumData {
     }
 
     pub(crate) fn enum_data_query(db: &impl HirDatabase, e: Enum) -> Arc<EnumData> {
-        let (file_id, enum_def) = e.source(db);
-        let module = e.module(db);
-        let ctx = LocationCtx::new(db, module, file_id);
-        let variants = if let Some(vl) = enum_def.variant_list() {
-            vl.variants()
-                .filter_map(|variant_def| {
-                    let name = variant_def.name()?.as_name();
-                    let var = EnumVariant {
-                        id: ctx.to_def(variant_def),
-                    };
-                    Some((name, var))
-                })
-                .collect()
-        } else {
-            Vec::new()
-        };
+        let (_file_id, enum_def) = e.source(db);
+        let variants = variants(&*enum_def)
+            .enumerate()
+            .filter_map(|(idx, variant_def)| {
+                let name = variant_def.name()?.as_name();
+                let var = EnumVariant {
+                    parent: e,
+                    idx: idx as u32,
+                };
+                Some((name, var))
+            })
+            .collect();
+
         Arc::new(EnumData::new(&*enum_def, variants))
     }
 }
