@@ -1,5 +1,5 @@
 ---
-created: "2019-01-22T14:45:01.959724300+00:00"
+created: "2019-01-24T18:04:00.090162+00:00"
 creator: insta@0.4.0
 expression: structure
 source: "crates\\ra_ide_api_light\\src\\structure.rs"
@@ -10,7 +10,8 @@ source: "crates\\ra_ide_api_light\\src\\structure.rs"
         label: "Foo",
         navigation_range: [8; 11),
         node_range: [1; 26),
-        kind: STRUCT_DEF
+        kind: STRUCT_DEF,
+        detail: None
     },
     StructureNode {
         parent: Some(
@@ -19,64 +20,107 @@ source: "crates\\ra_ide_api_light\\src\\structure.rs"
         label: "x",
         navigation_range: [18; 19),
         node_range: [18; 24),
-        kind: NAMED_FIELD_DEF
+        kind: NAMED_FIELD_DEF,
+        detail: Some(
+            "i32"
+        )
     },
     StructureNode {
         parent: None,
         label: "m",
         navigation_range: [32; 33),
-        node_range: [28; 53),
-        kind: MODULE
+        node_range: [28; 158),
+        kind: MODULE,
+        detail: None
     },
     StructureNode {
         parent: Some(
             2
         ),
-        label: "bar",
-        navigation_range: [43; 46),
-        node_range: [40; 51),
-        kind: FN_DEF
+        label: "bar1",
+        navigation_range: [43; 47),
+        node_range: [40; 52),
+        kind: FN_DEF,
+        detail: Some(
+            "fn()"
+        )
+    },
+    StructureNode {
+        parent: Some(
+            2
+        ),
+        label: "bar2",
+        navigation_range: [60; 64),
+        node_range: [57; 81),
+        kind: FN_DEF,
+        detail: Some(
+            "fn<T>(t: T) -> T"
+        )
+    },
+    StructureNode {
+        parent: Some(
+            2
+        ),
+        label: "bar3",
+        navigation_range: [89; 93),
+        node_range: [86; 156),
+        kind: FN_DEF,
+        detail: Some(
+            "fn<A, B>(a: A, b: B) -> Vec< u32 >"
+        )
     },
     StructureNode {
         parent: None,
         label: "E",
-        navigation_range: [60; 61),
-        node_range: [55; 75),
-        kind: ENUM_DEF
+        navigation_range: [165; 166),
+        node_range: [160; 180),
+        kind: ENUM_DEF,
+        detail: None
     },
     StructureNode {
         parent: None,
         label: "T",
-        navigation_range: [81; 82),
-        node_range: [76; 88),
-        kind: TYPE_DEF
+        navigation_range: [186; 187),
+        node_range: [181; 193),
+        kind: TYPE_DEF,
+        detail: Some(
+            "()"
+        )
     },
     StructureNode {
         parent: None,
         label: "S",
-        navigation_range: [96; 97),
-        node_range: [89; 108),
-        kind: STATIC_DEF
+        navigation_range: [201; 202),
+        node_range: [194; 213),
+        kind: STATIC_DEF,
+        detail: Some(
+            "i32"
+        )
     },
     StructureNode {
         parent: None,
         label: "C",
-        navigation_range: [115; 116),
-        node_range: [109; 127),
-        kind: CONST_DEF
+        navigation_range: [220; 221),
+        node_range: [214; 232),
+        kind: CONST_DEF,
+        detail: Some(
+            "i32"
+        )
     },
     StructureNode {
         parent: None,
         label: "impl E",
-        navigation_range: [134; 135),
-        node_range: [129; 138),
-        kind: IMPL_BLOCK
+        navigation_range: [239; 240),
+        node_range: [234; 243),
+        kind: IMPL_BLOCK,
+        detail: None
     },
     StructureNode {
         parent: None,
         label: "impl fmt::Debug for E",
-        navigation_range: [160; 161),
-        node_range: [140; 164),
-        kind: IMPL_BLOCK
+        navigation_range: [265; 266),
+        node_range: [245; 269),
+        kind: IMPL_BLOCK,
+        detail: None
     }
 ]

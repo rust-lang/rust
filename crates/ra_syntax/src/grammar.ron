@@ -289,27 +289,36 @@ Grammar(
             collections: [["impl_items", "ImplItem"]],
             traits: [ "FnDefOwner", "ModuleItemOwner" ],
         ),
-        "ConstDef": ( traits: [
-            "VisibilityOwner",
-            "NameOwner",
-            "TypeParamsOwner",
-            "AttrsOwner",
-            "DocCommentsOwner"
-        ] ),
-        "StaticDef": ( traits: [
-            "VisibilityOwner",
-            "NameOwner",
-            "TypeParamsOwner",
-            "AttrsOwner",
-            "DocCommentsOwner"
-        ] ),
-        "TypeDef": ( traits: [
-            "VisibilityOwner",
-            "NameOwner",
-            "TypeParamsOwner",
-            "AttrsOwner",
-            "DocCommentsOwner"
-        ] ),
+        "ConstDef": (
+            traits: [
+                "VisibilityOwner",
+                "NameOwner",
+                "TypeParamsOwner",
+                "AttrsOwner",
+                "DocCommentsOwner"
+            ],
+            options: ["TypeRef"]
+        ),
+        "StaticDef": (
+            traits: [
+                "VisibilityOwner",
+                "NameOwner",
+                "TypeParamsOwner",
+                "AttrsOwner",
+                "DocCommentsOwner"
+            ],
+            options: ["TypeRef"]
+        ),
+        "TypeDef": (
+            traits: [
+                "VisibilityOwner",
+                "NameOwner",
+                "TypeParamsOwner",
+                "AttrsOwner",
+                "DocCommentsOwner"
+            ],
+            options: ["TypeRef"]
+        ),
         "ImplBlock": (options: ["ItemList"]),
 
         "ParenType": (options: ["TypeRef"]),
