@@ -37,7 +37,7 @@ impl LintPass for Pass {
 
 impl EarlyLintPass for Pass {
     fn check_crate(&mut self, cx: &EarlyContext<'_>, _: &Crate) {
-        let metadata = if let Ok(metadata) = cargo_metadata::metadata(None) {
+        let metadata = if let Ok(metadata) = cargo_metadata::MetadataCommand::new().no_deps().exec() {
             metadata
         } else {
             span_lint(cx, WILDCARD_DEPENDENCIES, DUMMY_SP, "could not read cargo metadata");
