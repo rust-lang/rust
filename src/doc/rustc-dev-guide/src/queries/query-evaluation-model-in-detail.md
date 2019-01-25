@@ -123,23 +123,24 @@ fn type_check_crate_provider(tcx, _key: ()) {
 }
 ```
 
-We see that the `type_check_crate` query accesses input data (`tcx.hir_map`)
-and invokes other queries (`type_check_item`). The `type_check_item`
+We see that the `type_check_crate` query accesses input data
+(`tcx.hir_map.list_of_items()`) and invokes other queries
+(`type_check_item`). The `type_check_item`
 invocations will themselves access input data and/or invoke other queries,
 so that in the end the DAG of query invocations will be built up backwards
 from the node that was initially executed:
 
-```
-                                                                    (1)
- hir_map <--------------------------------------------------- type_check_crate()
-   ^                                                                |
-   |      (4)           (3)                    (2)                  |
-   +-- Hir(foo) <--- type_of(foo) <--- type_check_item(foo) <-------+
-   |                                       |                        |
-   |                     +-----------------+                        |
-   |                     |                                          |
-   |     (6)             v (5)                 (7)                  |
-   +-- Hir(bar) <--- type_of(bar) <--- type_check_item(bar) <-------+
+```ignore
+         (2)                                                 (1)
+  list_of_all_hir_items <----------------------------- type_check_crate()
+                                                               |
+    (5)             (4)                  (3)                   |
+  Hir(foo) <--- type_of(foo) <--- type_check_item(foo) <-------+
+                                      |                        |
+                    +-----------------+                        |
+                    |                                          |
+    (7)             v  (6)                  (8)                |
+  Hir(bar) <--- type_of(bar) <--- type_check_item(bar) <-------+
 
 // (x) denotes invocation order
 ```
