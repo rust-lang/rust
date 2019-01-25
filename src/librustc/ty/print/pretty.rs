@@ -19,20 +19,19 @@ use std::ops::{Deref, DerefMut};
 // `pretty` is a separate module only for organization.
 use super::*;
 
-macro_rules! print_inner {
-    (write ($($data:expr),+)) => {
+macro_rules! p {
+    (@write($($data:expr),+)) => {
         write!(scoped_cx!(), $($data),+)?
     };
-    ($kind:ident ($data:expr)) => {
-        scoped_cx!() = $data.$kind(scoped_cx!())?
+    (@print($x:expr)) => {
+        scoped_cx!() = $x.print(scoped_cx!())?
     };
-}
-macro_rules! p {
-    ($($kind:ident $data:tt),+) => {
-        {
-            $(print_inner!($kind $data));+
-        }
+    (@$method:ident($($arg:expr),*)) => {
+        scoped_cx!() = scoped_cx!().$method($($arg),*)?
     };
+    ($($kind:ident $data:tt),+) => {{
+        $(p!(@$kind $data);)+
+    }};
 }
 macro_rules! define_scoped_cx {
     ($cx:ident) => {
@@ -470,9 +469,8 @@ pub trait PrettyPrinter<'gcx: 'tcx, 'tcx>:
             }
             ty::FnDef(def_id, substs) => {
                 let sig = self.tcx().fn_sig(def_id).subst(self.tcx(), substs);
-                p!(print(sig), write(" {{"));
-                self = self.print_value_path(def_id, Some(substs))?;
-                p!(write("}}"))
+                p!(print(sig),
+                   write(" {{"), print_value_path(def_id, Some(substs)), write("}}"));
             }
             ty::FnPtr(ref bare_fn) => {
                 p!(print(bare_fn))
@@ -494,7 +492,7 @@ pub trait PrettyPrinter<'gcx: 'tcx, 'tcx>:
                 }
             }
             ty::Adt(def, substs) => {
-                self = self.print_def_path(def.did, Some(substs))?;
+                p!(print_def_path(def.did, Some(substs)));
             }
             ty::Dynamic(data, r) => {
                 let print_r = self.region_should_not_be_omitted(r);
@@ -507,7 +505,7 @@ pub trait PrettyPrinter<'gcx: 'tcx, 'tcx>:
                 }
             }
             ty::Foreign(def_id) => {
-                self = self.print_def_path(def_id, None)?;
+                p!(print_def_path(def_id, None));
             }
             ty::Projection(ref data) => p!(print(data)),
             ty::UnnormalizedProjection(ref data) => {
@@ -608,7 +606,7 @@ pub trait PrettyPrinter<'gcx: 'tcx, 'tcx>:
                 p!(write(" "), print(witness), write("]"))
             },
             ty::GeneratorWitness(types) => {
-                self = self.in_binder(&types)?;
+                p!(in_binder(&types));
             }
             ty::Closure(did, substs) => {
                 let upvar_tys = substs.upvar_tys(did, self.tcx());
@@ -693,7 +691,7 @@ pub trait PrettyPrinter<'gcx: 'tcx, 'tcx>:
         let mut first = true;
 
         if let Some(principal) = predicates.principal() {
-            self = self.print_def_path(principal.def_id, None)?;
+            p!(print_def_path(principal.def_id, None));
 
             let mut resugared = false;
 
@@ -703,7 +701,7 @@ pub trait PrettyPrinter<'gcx: 'tcx, 'tcx>:
                 if let ty::Tuple(ref args) = principal.substs.type_at(0).sty {
                     let mut projections = predicates.projection_bounds();
                     if let (Some(proj), None) = (projections.next(), projections.next()) {
-                        self = self.pretty_fn_sig(args, false, proj.ty)?;
+                        p!(pretty_fn_sig(args, false, proj.ty));
                         resugared = true;
                     }
                 }
@@ -742,13 +740,13 @@ pub trait PrettyPrinter<'gcx: 'tcx, 'tcx>:
                     let args = arg0.into_iter().chain(args);
                     let projections = projection0.into_iter().chain(projections);
 
-                    self = self.generic_delimiters(|mut cx| {
+                    p!(generic_delimiters(|mut cx| {
                         cx = cx.comma_sep(args)?;
                         if arg0.is_some() && projection0.is_some() {
                             write!(cx, ", ")?;
                         }
                         cx.comma_sep(projections)
-                    })?;
+                    }));
                 }
             }
             first = false;
@@ -776,7 +774,7 @@ pub trait PrettyPrinter<'gcx: 'tcx, 'tcx>:
             }
             first = false;
 
-            self = self.print_def_path(def_id, None)?;
+            p!(print_def_path(def_id, None));
         }
 
         Ok(self)
@@ -1478,7 +1476,7 @@ define_print_and_forward_display! {
             ty::ExistentialPredicate::Trait(x) => p!(print(x)),
             ty::ExistentialPredicate::Projection(x) => p!(print(x)),
             ty::ExistentialPredicate::AutoTrait(def_id) => {
-                cx = cx.print_def_path(def_id, None)?;
+                p!(print_def_path(def_id, None));
             }
         }
     }
@@ -1492,8 +1490,7 @@ define_print_and_forward_display! {
             p!(write("extern {} ", self.abi));
         }
 
-        p!(write("fn"));
-        cx = cx.pretty_fn_sig(self.inputs(), self.c_variadic, self.output())?;
+        p!(write("fn"), pretty_fn_sig(self.inputs(), self.c_variadic, self.output()));
     }
 
     ty::InferTy {
@@ -1512,7 +1509,7 @@ define_print_and_forward_display! {
     }
 
     ty::TraitRef<'tcx> {
-        cx = cx.print_def_path(self.def_id, Some(self.substs))?;
+        p!(print_def_path(self.def_id, Some(self.substs)));
     }
 
     ConstValue<'tcx> {
@@ -1556,7 +1553,7 @@ define_print_and_forward_display! {
     }
 
     ty::ProjectionTy<'tcx> {
-        cx = cx.print_def_path(self.item_def_id, Some(self.substs))?;
+        p!(print_def_path(self.item_def_id, Some(self.substs)));
     }
 
     ty::ClosureKind {
@@ -1576,19 +1573,19 @@ define_print_and_forward_display! {
             ty::Predicate::Projection(ref predicate) => p!(print(predicate)),
             ty::Predicate::WellFormed(ty) => p!(print(ty), write(" well-formed")),
             ty::Predicate::ObjectSafe(trait_def_id) => {
-                p!(write("the trait `"));
-                cx = cx.print_def_path(trait_def_id, None)?;
-                p!(write("` is object-safe"))
+                p!(write("the trait `"),
+                   print_def_path(trait_def_id, None),
+                   write("` is object-safe"))
             }
             ty::Predicate::ClosureKind(closure_def_id, _closure_substs, kind) => {
-                p!(write("the closure `"));
-                cx = cx.print_value_path(closure_def_id, None)?;
-                p!(write("` implements the trait `{}`", kind))
+                p!(write("the closure `"),
+                   print_value_path(closure_def_id, None),
+                   write("` implements the trait `{}`", kind))
             }
             ty::Predicate::ConstEvaluatable(def_id, substs) => {
-                p!(write("the constant `"));
-                cx = cx.print_value_path(def_id, Some(substs))?;
-                p!(write("` can be evaluated"))
+                p!(write("the constant `"),
+                   print_value_path(def_id, Some(substs)),
+                   write("` can be evaluated"))
             }
         }
     }
