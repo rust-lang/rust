@@ -111,9 +111,9 @@ pub(crate) struct EnumVariantId(RawId);
 impl_arena_id!(EnumVariantId);
 
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub struct EnumVariantData {
+pub(crate) struct EnumVariantData {
     pub(crate) name: Option<Name>,
-    pub(crate) variant_data: Arc<VariantData>,
+    variant_data: Arc<VariantData>,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
@@ -129,7 +129,7 @@ pub struct StructFieldData {
 
 /// Fields of an enum variant or struct
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub struct VariantData(VariantDataInner);
+pub(crate) struct VariantData(VariantDataInner);
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 enum VariantDataInner {
@@ -175,11 +175,4 @@ impl VariantData {
         };
         VariantData(inner)
     }
-
-    // pub(crate) fn get_field_type_ref(&self, field_name: &Name) -> Option<&TypeRef> {
-    //     self.fields()
-    //         .iter()
-    //         .find(|f| f.name == *field_name)
-    //         .map(|f| &f.type_ref)
-    // }
 }
