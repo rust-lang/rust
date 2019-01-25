@@ -59,7 +59,7 @@ impl ModuleScope {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Resolution {
     /// None for unresolved
-    pub def_id: PerNs<ModuleDef>,
+    pub def: PerNs<ModuleDef>,
     /// ident by which this is imported into local scope.
     pub import: Option<ImportId>,
 }
@@ -211,11 +211,11 @@ where
                 let krate = Crate::new(crate_id);
                 for dep in krate.dependencies(self.db) {
                     if let Some(module) = dep.krate.root_module(self.db) {
-                        let def_id = module.into();
+                        let def = module.into();
                         self.add_module_item(
                             &mut module_items,
                             dep.name.clone(),
-                            PerNs::types(def_id),
+                            PerNs::types(def),
                         );
                     }
                 }
@@ -227,7 +227,7 @@ where
                     module_items.items.insert(
                         segment.name.clone(),
                         Resolution {
-                            def_id: PerNs::none(),
+                            def: PerNs::none(),
                             import: Some(import_id),
                         },
                     );
@@ -235,11 +235,8 @@ where
             }
         }
         // Populate explicitly declared items, except modules
-        for (name, &def_id) in input.declarations.iter() {
-            let resolution = Resolution {
-                def_id,
-                import: None,
-            };
+        for (name, &def) in input.declarations.iter() {
+            let resolution = Resolution { def, import: None };
             module_items.items.insert(name.clone(), resolution);
         }
 
@@ -255,16 +252,8 @@ where
         self.result.per_module.insert(module_id, module_items);
     }
 
-    fn add_module_item(
-        &self,
-        module_items: &mut ModuleScope,
-        name: Name,
-        def_id: PerNs<ModuleDef>,
-    ) {
-        let resolution = Resolution {
-            def_id,
-            import: None,
-        };
+    fn add_module_item(&self, module_items: &mut ModuleScope, name: Name, def: PerNs<ModuleDef>) {
+        let resolution = Resolution { def, import: None };
         module_items.items.insert(name, resolution);
     }
 
@@ -295,7 +284,7 @@ where
             krate: self.krate,
             module_id,
         };
-        let (def_id, reached_fixedpoint) =
+        let (def, reached_fixedpoint) =
             self.result
                 .resolve_path_fp(self.db, original_module, &import.path);
 
@@ -303,7 +292,7 @@ where
             let last_segment = import.path.segments.last().unwrap();
             self.update(module_id, |items| {
                 let res = Resolution {
-                    def_id,
+                    def,
                     import: Some(import_id),
                 };
                 items.items.insert(last_segment.name.clone(), res);
@@ -312,7 +301,7 @@ where
                 "resolved import {:?} ({:?}) cross-source root to {:?}",
                 last_segment.name,
                 import,
-                def_id,
+                def,
             );
         }
         reached_fixedpoint
@@ -388,12 +377,12 @@ impl ItemMap {
                             kind: PathKind::Crate,
                         };
                         log::debug!("resolving {:?} in other crate", path);
-                        let def_id = module.resolve_path(db, &path);
-                        return (def_id, ReachedFixedPoint::Yes);
+                        let def = module.resolve_path(db, &path);
+                        return (def, ReachedFixedPoint::Yes);
                     }
 
                     match self.per_module[&module.module_id].items.get(&segment.name) {
-                        Some(res) if !res.def_id.is_none() => res.def_id,
+                        Some(res) if !res.def.is_none() => res.def,
                         _ => {
                             log::debug!("path segment {:?} not found", segment.name);
                             return (PerNs::none(), ReachedFixedPoint::No);

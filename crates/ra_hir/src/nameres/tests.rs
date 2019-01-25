@@ -37,8 +37,8 @@ fn check_module_item_map(map: &ItemMap, module_id: ModuleId, expected: &str) {
 
     fn dump_resolution(resolution: &Resolution) -> &'static str {
         match (
-            resolution.def_id.types.is_some(),
-            resolution.def_id.values.is_some(),
+            resolution.def.types.is_some(),
+            resolution.def.values.is_some(),
         ) {
             (true, true) => "t v",
             (true, false) => "t",
