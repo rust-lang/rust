@@ -28,7 +28,7 @@ pub(super) fn struct_def(p: &mut Parser, kind: SyntaxKind) {
         }
         L_CURLY => named_field_def_list(p),
         L_PAREN if kind == STRUCT_KW => {
-            pos_field_list(p);
+            pos_field_def_list(p);
             // test tuple_struct_where
             // struct Test<T>(T) where T: Clone;
             // struct Test<T>(T);
@@ -74,7 +74,7 @@ pub(crate) fn enum_variant_list(p: &mut Parser) {
             name(p);
             match p.current() {
                 L_CURLY => named_field_def_list(p),
-                L_PAREN => pos_field_list(p),
+                L_PAREN => pos_field_def_list(p),
                 EQ => {
                     p.bump();
                     expressions::expr(p);
@@ -132,7 +132,7 @@ pub(crate) fn named_field_def_list(p: &mut Parser) {
     }
 }
 
-fn pos_field_list(p: &mut Parser) {
+fn pos_field_def_list(p: &mut Parser) {
     assert!(p.at(L_PAREN));
     let m = p.start();
     if !p.expect(L_PAREN) {
@@ -157,12 +157,12 @@ fn pos_field_list(p: &mut Parser) {
             break;
         }
         types::type_(p);
-        m.complete(p, POS_FIELD);
+        m.complete(p, POS_FIELD_DEF);
 
         if !p.at(R_PAREN) {
             p.expect(COMMA);
         }
     }
     p.expect(R_PAREN);
-    m.complete(p, POS_FIELD_LIST);
+    m.complete(p, POS_FIELD_DEF_LIST);
 }

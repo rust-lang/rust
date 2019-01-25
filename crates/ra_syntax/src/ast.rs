@@ -407,7 +407,7 @@ impl<'a, N: AstNode + 'a> Iterator for AstChildren<'a, N> {
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum StructFlavor<'a> {
-    Tuple(&'a PosFieldList),
+    Tuple(&'a PosFieldDefList),
     Named(&'a NamedFieldDefList),
     Unit,
 }
@@ -416,7 +416,7 @@ impl StructFlavor<'_> {
     fn from_node<N: AstNode>(node: &N) -> StructFlavor {
         if let Some(nfdl) = child_opt::<_, NamedFieldDefList>(node) {
             StructFlavor::Named(nfdl)
-        } else if let Some(pfl) = child_opt::<_, PosFieldList>(node) {
+        } else if let Some(pfl) = child_opt::<_, PosFieldDefList>(node) {
             StructFlavor::Tuple(pfl)
         } else {
             StructFlavor::Unit

@@ -193,7 +193,7 @@ pub struct StructField {
 #[derive(Debug)]
 pub enum FieldSource {
     Named(TreeArc<ast::NamedFieldDef>),
-    Pos(TreeArc<ast::PosField>),
+    Pos(TreeArc<ast::PosFieldDef>),
 }
 
 impl StructField {

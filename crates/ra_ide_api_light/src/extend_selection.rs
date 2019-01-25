@@ -9,9 +9,9 @@ pub fn extend_selection(root: &SyntaxNode, range: TextRange) -> Option<TextRange
     let list_kinds = [
         FIELD_PAT_LIST,
         MATCH_ARM_LIST,
-        NAMED_FIELD_LIST,
         NAMED_FIELD_DEF_LIST,
-        POS_FIELD_LIST,
+        POS_FIELD_DEF_LIST,
+        NAMED_FIELD_LIST,
         ENUM_VARIANT_LIST,
         USE_TREE_LIST,
         TYPE_PARAM_LIST,
