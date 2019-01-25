@@ -66,6 +66,22 @@ mod tests {
     }
 
     #[test]
+    fn completes_mod_with_docs() {
+        check_reference_completion(
+            "mod_with_docs",
+            r"
+            use self::my<|>;
+
+            /// Some simple
+            /// docs describing `mod my`.
+            mod my {
+                struct Bar;
+            }
+            ",
+        );
+    }
+
+    #[test]
     fn completes_use_item_starting_with_self() {
         check_reference_completion(
             "use_item_starting_with_self",

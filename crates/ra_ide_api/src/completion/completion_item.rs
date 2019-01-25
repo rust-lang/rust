@@ -215,7 +215,7 @@ impl Builder {
             Some(it) => it,
         };
         let (kind, docs) = match def {
-            hir::ModuleDef::Module(_) => (CompletionItemKind::Module, None),
+            hir::ModuleDef::Module(it) => (CompletionItemKind::Module, it.docs(ctx.db)),
             hir::ModuleDef::Function(func) => return self.from_function(ctx, func),
             hir::ModuleDef::Struct(it) => (CompletionItemKind::Struct, it.docs(ctx.db)),
             hir::ModuleDef::Enum(it) => (CompletionItemKind::Enum, it.docs(ctx.db)),
