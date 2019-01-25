@@ -198,19 +198,38 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
                 let place = &self.move_data.move_paths[mpi].place;
 
                 let ty = place.ty(self.mir, self.infcx.tcx).to_ty(self.infcx.tcx);
-                let note_msg = match self.describe_place_with_options(
-                    place,
-                    IncludingDowncast(true),
-                ) {
-                    Some(name) => format!("`{}`", name),
+                let opt_name = self.describe_place_with_options(place, IncludingDowncast(true));
+                let note_msg = match opt_name {
+                    Some(ref name) => format!("`{}`", name),
                     None => "value".to_owned(),
                 };
-
-                err.note(&format!(
-                    "move occurs because {} has type `{}`, \
-                     which does not implement the `Copy` trait",
-                    note_msg, ty
-                ));
+                if let ty::TyKind::Param(param_ty) = ty.sty {
+                    let tcx = self.infcx.tcx;
+                    let generics = tcx.generics_of(self.mir_def_id);
+                    let def_id = generics.type_param(&param_ty, tcx).def_id;
+                    if let Some(sp) = tcx.hir().span_if_local(def_id) {
+                        err.span_label(
+                            sp,
+                            "consider adding a `Copy` constraint to this type argument",
+                        );
+                    }
+                }
+                if let Place::Local(local) = place {
+                    let decl = &self.mir.local_decls[*local];
+                    err.span_label(
+                        decl.source_info.span,
+                        format!(
+                            "move occurs because {} has type `{}`, \
+                                which does not implement the `Copy` trait",
+                            note_msg, ty,
+                    ));
+                } else {
+                    err.note(&format!(
+                        "move occurs because {} has type `{}`, \
+                         which does not implement the `Copy` trait",
+                        note_msg, ty
+                    ));
+                }
             }
 
             if let Some((_, mut old_err)) = self.move_error_reported

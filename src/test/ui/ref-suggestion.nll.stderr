@@ -1,22 +1,22 @@
 error[E0382]: use of moved value: `x`
   --> $DIR/ref-suggestion.rs:4:5
    |
+LL |     let x = vec![1];
+   |         - move occurs because `x` has type `std::vec::Vec<i32>`, which does not implement the `Copy` trait
 LL |     let y = x;
    |             - value moved here
 LL |     x; //~ ERROR use of moved value
    |     ^ value used here after move
-   |
-   = note: move occurs because `x` has type `std::vec::Vec<i32>`, which does not implement the `Copy` trait
 
 error[E0382]: use of moved value: `x`
   --> $DIR/ref-suggestion.rs:8:5
    |
+LL |     let x = vec![1];
+   |         - move occurs because `x` has type `std::vec::Vec<i32>`, which does not implement the `Copy` trait
 LL |     let mut y = x;
    |                 - value moved here
 LL |     x; //~ ERROR use of moved value
    |     ^ value used here after move
-   |
-   = note: move occurs because `x` has type `std::vec::Vec<i32>`, which does not implement the `Copy` trait
 
 error[E0382]: use of moved value: `x`
   --> $DIR/ref-suggestion.rs:16:5

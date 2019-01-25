@@ -1,12 +1,12 @@
 error[E0382]: use of moved value: `self`
   --> $DIR/use-after-move-self-based-on-type.rs:12:16
    |
+LL |     pub fn foo(self) -> isize {
+   |                ---- move occurs because `self` has type `S`, which does not implement the `Copy` trait
 LL |         self.bar();
    |         ---- value moved here
 LL |         return self.x;  //~ ERROR use of moved value: `self.x`
    |                ^^^^^^ value used here after move
-   |
-   = note: move occurs because `self` has type `S`, which does not implement the `Copy` trait
 
 error: aborting due to previous error
 

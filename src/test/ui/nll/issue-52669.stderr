@@ -1,12 +1,13 @@
 error[E0382]: borrow of moved value: `a.b`
   --> $DIR/issue-52669.rs:15:5
    |
+LL | fn bar(mut a: A) -> B {
+   |        ----- move occurs because `a` has type `A`, which does not implement the `Copy` trait
+LL |     a.b = B;
 LL |     foo(a);
    |         - value moved here
 LL |     a.b.clone()
    |     ^^^ value borrowed here after move
-   |
-   = note: move occurs because `a` has type `A`, which does not implement the `Copy` trait
 
 error: aborting due to previous error
 

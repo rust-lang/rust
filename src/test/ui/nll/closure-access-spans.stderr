@@ -59,50 +59,50 @@ LL |     r.use_ref();
 error[E0382]: borrow of moved value: `x`
   --> $DIR/closure-access-spans.rs:37:5
    |
+LL | fn closure_imm_capture_moved(mut x: String) {
+   |                              ----- move occurs because `x` has type `std::string::String`, which does not implement the `Copy` trait
 LL |     let r = x;
    |             - value moved here
 LL |     || x.len(); //~ ERROR
    |     ^^ - borrow occurs due to use in closure
    |     |
    |     value borrowed here after move
-   |
-   = note: move occurs because `x` has type `std::string::String`, which does not implement the `Copy` trait
 
 error[E0382]: borrow of moved value: `x`
   --> $DIR/closure-access-spans.rs:42:5
    |
+LL | fn closure_mut_capture_moved(mut x: String) {
+   |                              ----- move occurs because `x` has type `std::string::String`, which does not implement the `Copy` trait
 LL |     let r = x;
    |             - value moved here
 LL |     || x = String::new(); //~ ERROR
    |     ^^ - borrow occurs due to use in closure
    |     |
    |     value borrowed here after move
-   |
-   = note: move occurs because `x` has type `std::string::String`, which does not implement the `Copy` trait
 
 error[E0382]: borrow of moved value: `x`
   --> $DIR/closure-access-spans.rs:47:5
    |
+LL | fn closure_unique_capture_moved(x: &mut String) {
+   |                                 - move occurs because `x` has type `&mut std::string::String`, which does not implement the `Copy` trait
 LL |     let r = x;
    |             - value moved here
 LL |     || *x = String::new(); //~ ERROR
    |     ^^  - borrow occurs due to use in closure
    |     |
    |     value borrowed here after move
-   |
-   = note: move occurs because `x` has type `&mut std::string::String`, which does not implement the `Copy` trait
 
 error[E0382]: use of moved value: `x`
   --> $DIR/closure-access-spans.rs:52:5
    |
+LL | fn closure_move_capture_moved(x: &mut String) {
+   |                               - move occurs because `x` has type `&mut std::string::String`, which does not implement the `Copy` trait
 LL |     let r = x;
    |             - value moved here
 LL |     || x; //~ ERROR
    |     ^^ - use occurs due to use in closure
    |     |
    |     value used here after move
-   |
-   = note: move occurs because `x` has type `&mut std::string::String`, which does not implement the `Copy` trait
 
 error: aborting due to 9 previous errors
 

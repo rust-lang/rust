@@ -1,8 +1,8 @@
 error[E0382]: use of moved value: `b`
-  --> $DIR/borrowck-consume-upcast-box.rs:10:13
+  --> $DIR/borrowck-consume-unsize-vec.rs:8:13
    |
-LL | fn foo(b: Box<Foo+Send>) {
-   |        - move occurs because `b` has type `std::boxed::Box<dyn Foo + std::marker::Send>`, which does not implement the `Copy` trait
+LL | fn foo(b: Box<[i32;5]>) {
+   |        - move occurs because `b` has type `std::boxed::Box<[i32; 5]>`, which does not implement the `Copy` trait
 LL |     consume(b);
    |             - value moved here
 LL |     consume(b); //~ ERROR use of moved value

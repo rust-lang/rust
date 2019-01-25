@@ -1,13 +1,14 @@
 error[E0382]: use of moved value: `x`
   --> $DIR/borrowck-asm.rs:27:17
    |
+LL |         let x = &mut 0isize;
+   |             - move occurs because `x` has type `&mut isize`, which does not implement the `Copy` trait
+LL |         unsafe {
 LL |             asm!("nop" : : "r"(x));
    |                                - value moved here
 LL |         }
 LL |         let z = x;  //[ast]~ ERROR use of moved value: `x`
    |                 ^ value used here after move
-   |
-   = note: move occurs because `x` has type `&mut isize`, which does not implement the `Copy` trait
 
 error[E0503]: cannot use `x` because it was mutably borrowed
   --> $DIR/borrowck-asm.rs:35:32
@@ -66,12 +67,13 @@ LL |         let z = y;
 error[E0382]: use of moved value: `x`
   --> $DIR/borrowck-asm.rs:86:40
    |
+LL |         let x = &mut 2;
+   |             - move occurs because `x` has type `&mut i32`, which does not implement the `Copy` trait
+LL |         unsafe {
 LL |             asm!("nop" : : "r"(x), "r"(x) );    //[ast]~ ERROR use of moved value
    |                                -       ^ value used here after move
    |                                |
    |                                value moved here
-   |
-   = note: move occurs because `x` has type `&mut i32`, which does not implement the `Copy` trait
 
 error: aborting due to 7 previous errors
 

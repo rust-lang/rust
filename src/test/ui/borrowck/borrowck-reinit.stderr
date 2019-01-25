@@ -11,12 +11,13 @@ LL |     let _ = (1,x); //~ ERROR use of moved value: `x` (Ast)
 error[E0382]: use of moved value: `x` (Mir)
   --> $DIR/borrowck-reinit.rs:8:16
    |
+LL |     let mut x = Box::new(0);
+   |         ----- move occurs because `x` has type `std::boxed::Box<i32>`, which does not implement the `Copy` trait
+...
 LL |     drop(x);
    |          - value moved here
 LL |     let _ = (1,x); //~ ERROR use of moved value: `x` (Ast)
    |                ^ value used here after move
-   |
-   = note: move occurs because `x` has type `std::boxed::Box<i32>`, which does not implement the `Copy` trait
 
 error: aborting due to 2 previous errors
 

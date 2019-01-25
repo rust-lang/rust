@@ -1,24 +1,28 @@
 error[E0382]: use of moved value: `x`
   --> $DIR/binop-move-semantics.rs:8:5
    |
+LL | fn double_move<T: Add<Output=()>>(x: T) {
+   |                -                  - move occurs because `x` has type `T`, which does not implement the `Copy` trait
+   |                |
+   |                consider adding a `Copy` constraint to this type argument
 LL |     x
    |     - value moved here
 LL |     +
 LL |     x;  //~ ERROR: use of moved value
    |     ^ value used here after move
-   |
-   = note: move occurs because `x` has type `T`, which does not implement the `Copy` trait
 
 error[E0382]: borrow of moved value: `x`
   --> $DIR/binop-move-semantics.rs:14:5
    |
+LL | fn move_then_borrow<T: Add<Output=()> + Clone>(x: T) {
+   |                     -                          - move occurs because `x` has type `T`, which does not implement the `Copy` trait
+   |                     |
+   |                     consider adding a `Copy` constraint to this type argument
 LL |     x
    |     - value moved here
 LL |     +
 LL |     x.clone();  //~ ERROR: use of moved value
    |     ^ value borrowed here after move
-   |
-   = note: move occurs because `x` has type `T`, which does not implement the `Copy` trait
 
 error[E0505]: cannot move out of `x` because it is borrowed
   --> $DIR/binop-move-semantics.rs:21:5
