@@ -15,6 +15,7 @@ use ptr;
 use ops::{Deref, DerefMut};
 
 #[stable(feature = "rust1", since = "1.0.0")]
+#[doc(inline)]
 pub use intrinsics::transmute;
 
 /// Takes ownership and "forgets" about the value **without running its destructor**.
