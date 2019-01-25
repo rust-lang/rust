@@ -75,27 +75,31 @@ fn test_vfs_works() -> std::io::Result<()> {
     }
 
     fs::write(&dir.path().join("a/b/baz.rs"), "quux").unwrap();
-    // 2 tasks per change, HandleChange and then LoadChange
-    process_tasks(&mut vfs, 2);
+    process_tasks(&mut vfs, 1);
     assert_match!(
         vfs.commit_changes().as_slice(),
         [VfsChange::ChangeFile { text, .. }],
         assert_eq!(text.as_str(), "quux")
     );
 
-    vfs.change_file_overlay(&dir.path().join("a/b/baz.rs"), "m".to_string());
+    vfs.add_file_overlay(&dir.path().join("a/b/baz.rs"), "m".to_string());
     assert_match!(
         vfs.commit_changes().as_slice(),
         [VfsChange::ChangeFile { text, .. }],
         assert_eq!(text.as_str(), "m")
     );
 
+    // changing file on disk while overlayed doesn't generate a VfsChange
+    fs::write(&dir.path().join("a/b/baz.rs"), "corge").unwrap();
+    process_tasks(&mut vfs, 1);
+    assert_match!(vfs.commit_changes().as_slice(), []);
+
     // removing overlay restores data on disk
     vfs.remove_file_overlay(&dir.path().join("a/b/baz.rs"));
     assert_match!(
         vfs.commit_changes().as_slice(),
         [VfsChange::ChangeFile { text, .. }],
-        assert_eq!(text.as_str(), "quux")
+        assert_eq!(text.as_str(), "corge")
     );
 
     vfs.add_file_overlay(&dir.path().join("a/b/spam.rs"), "spam".to_string());
@@ -117,7 +121,7 @@ fn test_vfs_works() -> std::io::Result<()> {
 
     fs::create_dir_all(dir.path().join("a/sub1/sub2")).unwrap();
     fs::write(dir.path().join("a/sub1/sub2/new.rs"), "new hello").unwrap();
-    process_tasks(&mut vfs, 3);
+    process_tasks(&mut vfs, 1);
     assert_match!(
         vfs.commit_changes().as_slice(),
         [VfsChange::AddFile { text, path, .. }],
@@ -132,7 +136,7 @@ fn test_vfs_works() -> std::io::Result<()> {
         &dir.path().join("a/sub1/sub2/new1.rs"),
     )
     .unwrap();
-    process_tasks(&mut vfs, 4);
+    process_tasks(&mut vfs, 2);
     assert_match!(
         vfs.commit_changes().as_slice(),
         [VfsChange::RemoveFile {
@@ -150,17 +154,16 @@ fn test_vfs_works() -> std::io::Result<()> {
     );
 
     fs::remove_file(&dir.path().join("a/sub1/sub2/new1.rs")).unwrap();
-    process_tasks(&mut vfs, 2);
+    process_tasks(&mut vfs, 1);
     assert_match!(
         vfs.commit_changes().as_slice(),
         [VfsChange::RemoveFile { path, .. }],
         assert_eq!(path, "sub1/sub2/new1.rs")
     );
 
-    fs::create_dir_all(dir.path().join("a/target")).unwrap();
     // should be ignored
+    fs::create_dir_all(dir.path().join("a/target")).unwrap();
     fs::write(&dir.path().join("a/target/new.rs"), "ignore me").unwrap();
-    process_tasks(&mut vfs, 1); // 1 task because no LoadChange will happen, just HandleChange for dir creation
 
     assert_match!(
         vfs.task_receiver().try_recv(),
