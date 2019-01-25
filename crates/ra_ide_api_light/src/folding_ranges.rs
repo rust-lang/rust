@@ -9,6 +9,7 @@ use ra_syntax::{
 pub enum FoldKind {
     Comment,
     Imports,
+    Mods,
     Block,
 }
 
@@ -22,6 +23,7 @@ pub fn folding_ranges(file: &SourceFile) -> Vec<Fold> {
     let mut res = vec![];
     let mut visited_comments = FxHashSet::default();
     let mut visited_imports = FxHashSet::default();
+    let mut visited_mods = FxHashSet::default();
 
     for node in file.syntax().descendants() {
         // Fold items that span multiple lines
@@ -53,6 +55,18 @@ pub fn folding_ranges(file: &SourceFile) -> Vec<Fold> {
                 })
             }
         }
+
+        // Fold groups of mods
+        if node.kind() == MODULE && !has_visibility(&node) && !visited_mods.contains(&node) {
+            if let Some(range) =
+                contiguous_range_for_group_unless(node, has_visibility, &mut visited_mods)
+            {
+                res.push(Fold {
+                    range,
+                    kind: FoldKind::Mods,
+                })
+            }
+        }
     }
 
     res
@@ -66,6 +80,10 @@ fn fold_kind(kind: SyntaxKind) -> Option<FoldKind> {
         | BLOCK | ENUM_VARIANT_LIST | TOKEN_TREE => Some(FoldKind::Block),
         _ => None,
     }
+}
+
+fn has_visibility(node: &SyntaxNode) -> bool {
+    return node.descendants().any(|n| n.kind() == VISIBILITY);
 }
 
 fn has_newline(node: &SyntaxNode) -> bool {
@@ -88,6 +106,14 @@ fn contiguous_range_for_group<'a>(
     first: &'a SyntaxNode,
     visited: &mut FxHashSet<&'a SyntaxNode>,
 ) -> Option<TextRange> {
+    contiguous_range_for_group_unless(first, |_| false, visited)
+}
+
+fn contiguous_range_for_group_unless<'a>(
+    first: &'a SyntaxNode,
+    unless: impl Fn(&'a SyntaxNode) -> bool,
+    visited: &mut FxHashSet<&'a SyntaxNode>,
+) -> Option<TextRange> {
     visited.insert(first);
 
     let mut last = first;
@@ -103,7 +129,7 @@ fn contiguous_range_for_group<'a>(
         }
 
         // Stop if we find a node that doesn't belong to the group
-        if node.kind() != first.kind() {
+        if node.kind() != first.kind() || unless(node) {
             break;
         }
 
@@ -241,6 +267,38 @@ fn main() <fold>{
 }</fold>"#;
 
         let folds = &[FoldKind::Imports, FoldKind::Block, FoldKind::Block];
+        do_check(text, folds);
+    }
+
+    #[test]
+    fn test_fold_mods() {
+        let text = r#"
+
+pub mod foo;
+<fold>mod after_pub;
+mod after_pub_next;</fold>
+
+<fold>mod before_pub;
+mod before_pub_next;</fold>
+pub mod bar;
+
+mod not_folding_single;
+pub mod foobar;
+pub not_folding_single_next;
+
+<fold>#[cfg(test)]
+mod with_attribute;
+mod with_attribute_next;</fold>
+
+fn main() <fold>{
+}</fold>"#;
+
+        let folds = &[
+            FoldKind::Mods,
+            FoldKind::Mods,
+            FoldKind::Mods,
+            FoldKind::Block,
+        ];
         do_check(text, folds);
     }
 
