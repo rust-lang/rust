@@ -205,16 +205,25 @@ fn main_loop_inner(
                         Some(req) => req,
                         None => return Ok(()),
                     };
-                    match on_request(state, pending_requests, pool, &task_sender, req)? {
-                        None => (),
-                        Some(req) => {
-                            log::error!("unknown request: {:?}", req);
-                            let resp = RawResponse::err(
-                                req.id,
-                                ErrorCode::MethodNotFound as i32,
-                                "unknown request".to_string(),
-                            );
+                    match req.cast::<req::CollectGarbage>() {
+                        Ok((id, ())) => {
+                            state.collect_garbadge();
+                            let resp = RawResponse::ok::<req::CollectGarbage>(id, &());
                             msg_sender.send(RawMessage::Response(resp)).unwrap()
+                        }
+                        Err(req) => {
+                            match on_request(state, pending_requests, pool, &task_sender, req)? {
+                                None => (),
+                                Some(req) => {
+                                    log::error!("unknown request: {:?}", req);
+                                    let resp = RawResponse::err(
+                                        req.id,
+                                        ErrorCode::MethodNotFound as i32,
+                                        "unknown request".to_string(),
+                                    );
+                                    msg_sender.send(RawMessage::Response(resp)).unwrap()
+                                }
+                            }
                         }
                     }
                 }

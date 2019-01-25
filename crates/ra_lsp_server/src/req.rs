@@ -19,6 +19,14 @@ impl Request for AnalyzerStatus {
     const METHOD: &'static str = "ra/analyzerStatus";
 }
 
+pub enum CollectGarbage {}
+
+impl Request for CollectGarbage {
+    type Params = ();
+    type Result = ();
+    const METHOD: &'static str = "ra/collectGarbage";
+}
+
 pub enum SyntaxTree {}
 
 impl Request for SyntaxTree {

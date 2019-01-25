@@ -98,6 +98,10 @@
             {
                 "command": "ra-lsp.analyzerStatus",
                 "title": "Status of rust-analyzer (debug)"
+            },
+            {
+                "command": "ra-lsp.collectGarbage",
+                "title": "Run rust-analyzer's GC"
             }
         ],
         "keybindings": [

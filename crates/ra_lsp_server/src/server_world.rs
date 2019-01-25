@@ -231,6 +231,10 @@ impl ServerWorldState {
             vfs: Arc::clone(&self.vfs),
         }
     }
+
+    pub fn collect_garbadge(&mut self) {
+        self.analysis_host.collect_garbage()
+    }
 }
 
 impl ServerWorld {

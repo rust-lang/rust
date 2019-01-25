@@ -72,12 +72,13 @@ impl db::RootDatabase {
         self.set_source_root(root_id, Arc::new(source_root));
     }
 
-    #[allow(unused)]
     /// Ideally, we should call this function from time to time to collect heavy
     /// syntax trees. However, if we actually do that, everything is recomputed
     /// for some reason. Needs investigation.
-    fn gc_syntax_trees(&mut self) {
+    pub(crate) fn collect_garbage(&mut self) {
         self.query(ra_db::SourceFileQuery)
+            .sweep(salsa::SweepStrategy::default().discard_values());
+        self.query(hir::db::HirSourceFileQuery)
             .sweep(salsa::SweepStrategy::default().discard_values());
         self.query(hir::db::FileItemsQuery)
             .sweep(salsa::SweepStrategy::default().discard_values());
