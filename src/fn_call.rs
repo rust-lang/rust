@@ -73,10 +73,6 @@ pub trait EvalContextExt<'a, 'mir, 'tcx: 'a+'mir>: crate::MiriEvalContextExt<'a,
 
         let tcx = &{this.tcx.tcx};
 
-        // All these functions take raw pointers, so if we access memory directly
-        // (as opposed to through a place), we have to remember to erase any tag
-        // that might still hang around!
-
         match &link_name[..] {
             "malloc" => {
                 let size = this.read_scalar(args[0])?.to_usize(this)?;
