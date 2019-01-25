@@ -62,7 +62,8 @@ impl RootFilter {
 
     pub(crate) fn entry_filter<'a>(&'a self) -> impl FnMut(&DirEntry) -> bool + 'a {
         move |entry: &DirEntry| {
-            if entry.path().is_dir() && self.excluded_dirs.iter().any(|it| it == entry.path()) {
+            if entry.file_type().is_dir() && self.excluded_dirs.iter().any(|it| it == entry.path())
+            {
                 // do not walk nested roots
                 false
             } else {

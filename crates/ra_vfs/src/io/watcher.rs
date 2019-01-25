@@ -65,7 +65,7 @@ impl Watcher {
         {
             match res {
                 Ok(entry) => {
-                    if entry.path().is_dir() {
+                    if entry.file_type().is_dir() {
                         watch_one(self.watcher.as_ref(), entry.path());
                     }
                 }
@@ -172,11 +172,11 @@ impl WatcherWorker {
         let filter = &self.roots[root];
         for res in WalkDir::new(dir)
             .into_iter()
-            .filter_entry(|entry| filter.can_contain(entry.path()).is_some())
+            .filter_entry(filter.entry_filter())
         {
             match res {
                 Ok(entry) => {
-                    if entry.path().is_dir() {
+                    if entry.file_type().is_dir() {
                         watch_one(self.watcher.as_ref(), entry.path());
                     } else {
                         // emit only for files otherwise we will cause watch_recursive to be called again with a dir that we are already watching

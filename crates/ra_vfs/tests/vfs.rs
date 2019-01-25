@@ -1,12 +1,16 @@
-use std::{collections::HashSet, fs};
+use std::{collections::HashSet, fs, time::Duration};
 
-use flexi_logger::Logger;
+// use flexi_logger::Logger;
+use crossbeam_channel::RecvTimeoutError;
 use ra_vfs::{Vfs, VfsChange};
 use tempfile::tempdir;
 
 fn process_tasks(vfs: &mut Vfs, num_tasks: u32) {
     for _ in 0..num_tasks {
-        let task = vfs.task_receiver().recv().unwrap();
+        let task = vfs
+            .task_receiver()
+            .recv_timeout(Duration::from_secs(3))
+            .unwrap();
         log::debug!("{:?}", task);
         vfs.handle_task(task);
     }
@@ -14,7 +18,7 @@ fn process_tasks(vfs: &mut Vfs, num_tasks: u32) {
 
 macro_rules! assert_match {
     ($x:expr, $pat:pat) => {
-        assert_match!($x, $pat, assert!(true))
+        assert_match!($x, $pat, ())
     };
     ($x:expr, $pat:pat, $assert:expr) => {
         match $x {
@@ -26,7 +30,7 @@ macro_rules! assert_match {
 
 #[test]
 fn test_vfs_works() -> std::io::Result<()> {
-    Logger::with_str("vfs=debug,ra_vfs=debug").start().unwrap();
+    // Logger::with_str("vfs=debug,ra_vfs=debug").start().unwrap();
 
     let files = [
         ("a/foo.rs", "hello"),
@@ -166,8 +170,8 @@ fn test_vfs_works() -> std::io::Result<()> {
     fs::write(&dir.path().join("a/target/new.rs"), "ignore me").unwrap();
 
     assert_match!(
-        vfs.task_receiver().try_recv(),
-        Err(crossbeam_channel::TryRecvError::Empty)
+        vfs.task_receiver().recv_timeout(Duration::from_millis(300)), // slightly more than watcher debounce delay
+        Err(RecvTimeoutError::Timeout)
     );
 
     vfs.shutdown().unwrap();
