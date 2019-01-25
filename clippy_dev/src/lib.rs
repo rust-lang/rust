@@ -82,6 +82,7 @@ pub fn gen_lint_group_list(lints: Vec<Lint>) -> Vec<String> {
             }
         })
         .sorted()
+        .collect::<Vec<String>>()
 }
 
 /// Generates the `pub mod module_name` list in `clippy_lints/src/lib.rs`.
@@ -98,6 +99,7 @@ pub fn gen_modules_list(lints: Vec<Lint>) -> Vec<String> {
         .unique()
         .map(|module| format!("pub mod {};", module))
         .sorted()
+        .collect::<Vec<String>>()
 }
 
 /// Generates the list of lint links at the bottom of the README
@@ -118,17 +120,20 @@ pub fn gen_changelog_lint_list(lints: Vec<Lint>) -> Vec<String> {
 
 /// Generates the `register_removed` code in `./clippy_lints/src/lib.rs`.
 pub fn gen_deprecated(lints: &[Lint]) -> Vec<String> {
-    itertools::flatten(lints.iter().filter_map(|l| {
-        l.clone().deprecation.and_then(|depr_text| {
-            Some(vec![
-                "    store.register_removed(".to_string(),
-                format!("        \"{}\",", l.name),
-                format!("        \"{}\",", depr_text),
-                "    );".to_string(),
-            ])
+    lints
+        .iter()
+        .filter_map(|l| {
+            l.clone().deprecation.and_then(|depr_text| {
+                Some(vec![
+                    "    store.register_removed(".to_string(),
+                    format!("        \"{}\",", l.name),
+                    format!("        \"{}\",", depr_text),
+                    "    );".to_string(),
+                ])
+            })
         })
-    }))
-    .collect()
+        .flatten()
+        .collect::<Vec<String>>()
 }
 
 /// Gathers all files in `src/clippy_lints` and gathers all lints inside
