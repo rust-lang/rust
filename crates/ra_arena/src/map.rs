@@ -29,6 +29,10 @@ impl<ID: ArenaId, T> ArenaMap<ID, T> {
         self.v.get(Self::to_idx(id)).and_then(|it| it.as_ref())
     }
 
+    pub fn get_mut(&mut self, id: ID) -> Option<&mut T> {
+        self.v.get_mut(Self::to_idx(id)).and_then(|it| it.as_mut())
+    }
+
     pub fn values(&self) -> impl Iterator<Item = &T> {
         self.v.iter().filter_map(|o| o.as_ref())
     }

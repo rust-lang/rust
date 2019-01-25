@@ -2,10 +2,10 @@ use ra_db::FileId;
 use ra_syntax::{ast, SyntaxNode, TreeArc};
 
 use crate::{
-    Module, ModuleSource, Problem, ModuleDef,
-    Crate, Name, Path, PathKind, PerNs,
+    Module, ModuleSource, Problem,
+    Crate, Name,
     module_tree::ModuleId,
-    nameres::{ModuleScope, lower::ImportId},
+    nameres::{lower::ImportId},
     db::HirDatabase,
 };
 
@@ -88,74 +88,6 @@ impl Module {
         let module_tree = db.module_tree(self.krate);
         let parent_id = self.module_id.parent(&module_tree)?;
         Some(self.with_module_id(parent_id))
-    }
-
-    /// Returns a `ModuleScope`: a set of items, visible in this module.
-    pub(crate) fn scope_impl(&self, db: &impl HirDatabase) -> ModuleScope {
-        let item_map = db.item_map(self.krate);
-        item_map.per_module[&self.module_id].clone()
-    }
-
-    pub(crate) fn resolve_path_impl(&self, db: &impl HirDatabase, path: &Path) -> PerNs<ModuleDef> {
-        let mut curr_per_ns: PerNs<ModuleDef> = PerNs::types(match path.kind {
-            PathKind::Crate => self.crate_root(db).into(),
-            PathKind::Self_ | PathKind::Plain => self.clone().into(),
-            PathKind::Super => {
-                if let Some(p) = self.parent(db) {
-                    p.into()
-                } else {
-                    return PerNs::none();
-                }
-            }
-            PathKind::Abs => {
-                // TODO: absolute use is not supported
-                return PerNs::none();
-            }
-        });
-
-        for segment in path.segments.iter() {
-            let curr = match curr_per_ns.as_ref().take_types() {
-                Some(r) => r,
-                None => {
-                    // we still have path segments left, but the path so far
-                    // didn't resolve in the types namespace => no resolution
-                    // (don't break here because curr_per_ns might contain
-                    // something in the value namespace, and it would be wrong
-                    // to return that)
-                    return PerNs::none();
-                }
-            };
-            // resolve segment in curr
-
-            curr_per_ns = match curr {
-                ModuleDef::Module(m) => {
-                    let scope = m.scope(db);
-                    match scope.get(&segment.name) {
-                        Some(r) => r.def_id.clone(),
-                        None => PerNs::none(),
-                    }
-                }
-                ModuleDef::Enum(e) => {
-                    // enum variant
-                    let matching_variant = e
-                        .variants(db)
-                        .into_iter()
-                        .find(|(n, _variant)| n == &segment.name);
-
-                    match matching_variant {
-                        Some((_n, variant)) => PerNs::both(variant.into(), (*e).into()),
-                        None => PerNs::none(),
-                    }
-                }
-                _ => {
-                    // could be an inherent method call in UFCS form
-                    // (`Struct::method`), or some other kind of associated
-                    // item... Which we currently don't handle (TODO)
-                    PerNs::none()
-                }
-            };
-        }
-        curr_per_ns
     }
 
     pub(crate) fn problems_impl(

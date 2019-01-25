@@ -20,7 +20,7 @@ fn item_map(fixture: &str) -> (Arc<ItemMap>, ModuleId) {
 }
 
 fn check_module_item_map(map: &ItemMap, module_id: ModuleId, expected: &str) {
-    let mut lines = map.per_module[&module_id]
+    let mut lines = map[module_id]
         .items
         .iter()
         .map(|(name, res)| format!("{}: {}", name, dump_resolution(res)))
@@ -37,8 +37,8 @@ fn check_module_item_map(map: &ItemMap, module_id: ModuleId, expected: &str) {
 
     fn dump_resolution(resolution: &Resolution) -> &'static str {
         match (
-            resolution.def_id.types.is_some(),
-            resolution.def_id.values.is_some(),
+            resolution.def.types.is_some(),
+            resolution.def.values.is_some(),
         ) {
             (true, true) => "t v",
             (true, false) => "t",
@@ -211,6 +211,27 @@ fn item_map_using_self() {
         "
             Baz: t v
             foo: t
+        ",
+    );
+}
+
+#[test]
+fn item_map_enum_importing() {
+    covers!(item_map_enum_importing);
+    let (item_map, module_id) = item_map(
+        "
+        //- /lib.rs
+        enum E { V }
+        use self::E::V;
+        <|>
+        ",
+    );
+    check_module_item_map(
+        &item_map,
+        module_id,
+        "
+        E: t
+        V: t v
         ",
     );
 }

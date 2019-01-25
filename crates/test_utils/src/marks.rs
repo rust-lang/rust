@@ -46,11 +46,13 @@ macro_rules! covers {
 }
 
 #[macro_export]
-macro_rules! mark {
-    ($ident:ident) => {
+macro_rules! marks {
+    ($($ident:ident)*) => {
+        $(
         #[allow(bad_style)]
         pub(crate) static $ident: std::sync::atomic::AtomicUsize =
             std::sync::atomic::AtomicUsize::new(0);
+        )*
     };
 }
 

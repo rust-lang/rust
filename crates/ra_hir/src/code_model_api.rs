@@ -165,11 +165,11 @@ impl Module {
 
     /// Returns a `ModuleScope`: a set of items, visible in this module.
     pub fn scope(&self, db: &impl HirDatabase) -> ModuleScope {
-        self.scope_impl(db)
+        db.item_map(self.krate)[self.module_id].clone()
     }
 
     pub fn resolve_path(&self, db: &impl HirDatabase, path: &Path) -> PerNs<ModuleDef> {
-        self.resolve_path_impl(db, path)
+        db.item_map(self.krate).resolve_path(db, *self, path)
     }
 
     pub fn problems(&self, db: &impl HirDatabase) -> Vec<(TreeArc<SyntaxNode>, Problem)> {

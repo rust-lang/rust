@@ -209,10 +209,7 @@ impl Builder {
         ctx: &CompletionContext,
         resolution: &hir::Resolution,
     ) -> Builder {
-        let def = resolution
-            .def_id
-            .take_types()
-            .or(resolution.def_id.take_values());
+        let def = resolution.def.take_types().or(resolution.def.take_values());
         let def = match def {
             None => return self,
             Some(it) => it,

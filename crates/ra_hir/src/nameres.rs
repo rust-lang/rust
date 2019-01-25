@@ -19,6 +19,8 @@ pub(crate) mod lower;
 use std::sync::Arc;
 
 use ra_db::CrateId;
+use ra_arena::map::ArenaMap;
+use test_utils::tested_by;
 use rustc_hash::{FxHashMap, FxHashSet};
 
 use crate::{
@@ -27,16 +29,21 @@ use crate::{
     HirDatabase, Crate,
     Name,
     module_tree::{ModuleId, ModuleTree},
-//FIXME: deglobify
-    nameres::lower::*,
+    nameres::lower::{ImportId, LoweredModule, ImportData},
 };
 
 /// `ItemMap` is the result of name resolution. It contains, for each
 /// module, the set of visible items.
-// FIXME: currenty we compute item map per source-root. We should do it per crate instead.
 #[derive(Default, Debug, PartialEq, Eq)]
 pub struct ItemMap {
-    pub per_module: FxHashMap<ModuleId, ModuleScope>,
+    per_module: ArenaMap<ModuleId, ModuleScope>,
+}
+
+impl std::ops::Index<ModuleId> for ItemMap {
+    type Output = ModuleScope;
+    fn index(&self, id: ModuleId) -> &ModuleScope {
+        &self.per_module[id]
+    }
 }
 
 #[derive(Debug, Default, PartialEq, Eq, Clone)]
@@ -58,7 +65,7 @@ impl ModuleScope {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Resolution {
     /// None for unresolved
-    pub def_id: PerNs<ModuleDef>,
+    pub def: PerNs<ModuleDef>,
     /// ident by which this is imported into local scope.
     pub import: Option<ImportId>,
 }
@@ -210,11 +217,11 @@ where
                 let krate = Crate::new(crate_id);
                 for dep in krate.dependencies(self.db) {
                     if let Some(module) = dep.krate.root_module(self.db) {
-                        let def_id = module.into();
+                        let def = module.into();
                         self.add_module_item(
                             &mut module_items,
                             dep.name.clone(),
-                            PerNs::types(def_id),
+                            PerNs::types(def),
                         );
                     }
                 }
@@ -226,7 +233,7 @@ where
                     module_items.items.insert(
                         segment.name.clone(),
                         Resolution {
-                            def_id: PerNs::none(),
+                            def: PerNs::none(),
                             import: Some(import_id),
                         },
                     );
@@ -234,11 +241,8 @@ where
             }
         }
         // Populate explicitly declared items, except modules
-        for (name, &def_id) in input.declarations.iter() {
-            let resolution = Resolution {
-                def_id,
-                import: None,
-            };
+        for (name, &def) in input.declarations.iter() {
+            let resolution = Resolution { def, import: None };
             module_items.items.insert(name.clone(), resolution);
         }
 
@@ -254,16 +258,8 @@ where
         self.result.per_module.insert(module_id, module_items);
     }
 
-    fn add_module_item(
-        &self,
-        module_items: &mut ModuleScope,
-        name: Name,
-        def_id: PerNs<ModuleDef>,
-    ) {
-        let resolution = Resolution {
-            def_id,
-            import: None,
-        };
+    fn add_module_item(&self, module_items: &mut ModuleScope, name: Name, def: PerNs<ModuleDef>) {
+        let resolution = Resolution { def, import: None };
         module_items.items.insert(name, resolution);
     }
 
@@ -273,7 +269,7 @@ where
                 // already done
                 continue;
             }
-            if self.resolve_import(module_id, import_id, import_data) {
+            if self.resolve_import(module_id, import_id, import_data) == ReachedFixedPoint::Yes {
                 log::debug!("import {:?} resolved (or definite error)", import_id);
                 self.processed_imports.insert((module_id, import_id));
             }
@@ -285,116 +281,146 @@ where
         module_id: ModuleId,
         import_id: ImportId,
         import: &ImportData,
-    ) -> bool {
+    ) -> ReachedFixedPoint {
         log::debug!("resolving import: {:?}", import);
         if import.is_glob {
-            return false;
+            return ReachedFixedPoint::Yes;
         };
-
-        let mut curr: ModuleId = match import.path.kind {
-            PathKind::Plain | PathKind::Self_ => module_id,
-            PathKind::Super => {
-                match module_id.parent(&self.module_tree) {
-                    Some(it) => it,
-                    None => {
-                        // TODO: error
-                        log::debug!("super path in root module");
-                        return true; // this can't suddenly resolve if we just resolve some other imports
-                    }
-                }
-            }
-            PathKind::Crate => module_id.crate_root(&self.module_tree),
-            PathKind::Abs => {
-                // TODO: absolute use is not supported for now
-                return false;
-            }
+        let original_module = Module {
+            krate: self.krate,
+            module_id,
         };
+        let (def, reached_fixedpoint) =
+            self.result
+                .resolve_path_fp(self.db, original_module, &import.path);
 
-        for (i, segment) in import.path.segments.iter().enumerate() {
-            let is_last = i == import.path.segments.len() - 1;
-
-            let def_id = match self.result.per_module[&curr].items.get(&segment.name) {
-                Some(res) if !res.def_id.is_none() => res.def_id,
-                _ => {
-                    log::debug!("path segment {:?} not found", segment.name);
-                    return false;
-                }
-            };
-
-            if !is_last {
-                let type_def_id = if let Some(d) = def_id.take(Namespace::Types) {
-                    d
-                } else {
-                    log::debug!(
-                        "path segment {:?} resolved to value only, but is not last",
-                        segment.name
-                    );
-                    return false;
+        if reached_fixedpoint == ReachedFixedPoint::Yes {
+            let last_segment = import.path.segments.last().unwrap();
+            self.update(module_id, |items| {
+                let res = Resolution {
+                    def,
+                    import: Some(import_id),
                 };
-                curr = match type_def_id {
-                    ModuleDef::Module(module) => {
-                        if module.krate == self.krate {
-                            module.module_id
-                        } else {
-                            let path = Path {
-                                segments: import.path.segments[i + 1..].iter().cloned().collect(),
-                                kind: PathKind::Crate,
-                            };
-                            log::debug!("resolving {:?} in other source root", path);
-                            let def_id = module.resolve_path(self.db, &path);
-                            if !def_id.is_none() {
-                                let last_segment = path.segments.last().unwrap();
-                                self.update(module_id, |items| {
-                                    let res = Resolution {
-                                        def_id,
-                                        import: Some(import_id),
-                                    };
-                                    items.items.insert(last_segment.name.clone(), res);
-                                });
-                                log::debug!(
-                                    "resolved import {:?} ({:?}) cross-source root to {:?}",
-                                    last_segment.name,
-                                    import,
-                                    def_id,
-                                );
-                                return true;
-                            } else {
-                                log::debug!("rest of path did not resolve in other source root");
-                                return true;
-                            }
-                        }
-                    }
-                    _ => {
-                        log::debug!(
-                            "path segment {:?} resolved to non-module {:?}, but is not last",
-                            segment.name,
-                            type_def_id,
-                        );
-                        return true; // this resolved to a non-module, so the path won't ever resolve
-                    }
-                }
-            } else {
-                log::debug!(
-                    "resolved import {:?} ({:?}) within source root to {:?}",
-                    segment.name,
-                    import,
-                    def_id,
-                );
-                self.update(module_id, |items| {
-                    let res = Resolution {
-                        def_id,
-                        import: Some(import_id),
-                    };
-                    items.items.insert(segment.name.clone(), res);
-                })
-            }
+                items.items.insert(last_segment.name.clone(), res);
+            });
+            log::debug!(
+                "resolved import {:?} ({:?}) cross-source root to {:?}",
+                last_segment.name,
+                import,
+                def,
+            );
         }
-        true
+        reached_fixedpoint
     }
 
     fn update(&mut self, module_id: ModuleId, f: impl FnOnce(&mut ModuleScope)) {
-        let module_items = self.result.per_module.get_mut(&module_id).unwrap();
+        let module_items = self.result.per_module.get_mut(module_id).unwrap();
         f(module_items)
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum ReachedFixedPoint {
+    Yes,
+    No,
+}
+
+impl ItemMap {
+    pub(crate) fn resolve_path(
+        &self,
+        db: &impl HirDatabase,
+        original_module: Module,
+        path: &Path,
+    ) -> PerNs<ModuleDef> {
+        self.resolve_path_fp(db, original_module, path).0
+    }
+
+    // Returns Yes if we are sure that additions to `ItemMap` wouldn't change
+    // the result.
+    fn resolve_path_fp(
+        &self,
+        db: &impl HirDatabase,
+        original_module: Module,
+        path: &Path,
+    ) -> (PerNs<ModuleDef>, ReachedFixedPoint) {
+        let mut curr_per_ns: PerNs<ModuleDef> = PerNs::types(match path.kind {
+            PathKind::Crate => original_module.crate_root(db).into(),
+            PathKind::Self_ | PathKind::Plain => original_module.into(),
+            PathKind::Super => {
+                if let Some(p) = original_module.parent(db) {
+                    p.into()
+                } else {
+                    log::debug!("super path in root module");
+                    return (PerNs::none(), ReachedFixedPoint::Yes);
+                }
+            }
+            PathKind::Abs => {
+                // TODO: absolute use is not supported
+                return (PerNs::none(), ReachedFixedPoint::Yes);
+            }
+        });
+
+        for (i, segment) in path.segments.iter().enumerate() {
+            let curr = match curr_per_ns.as_ref().take_types() {
+                Some(r) => r,
+                None => {
+                    // we still have path segments left, but the path so far
+                    // didn't resolve in the types namespace => no resolution
+                    // (don't break here because curr_per_ns might contain
+                    // something in the value namespace, and it would be wrong
+                    // to return that)
+                    return (PerNs::none(), ReachedFixedPoint::No);
+                }
+            };
+            // resolve segment in curr
+
+            curr_per_ns = match curr {
+                ModuleDef::Module(module) => {
+                    if module.krate != original_module.krate {
+                        let path = Path {
+                            segments: path.segments[i..].iter().cloned().collect(),
+                            kind: PathKind::Crate,
+                        };
+                        log::debug!("resolving {:?} in other crate", path);
+                        let def = module.resolve_path(db, &path);
+                        return (def, ReachedFixedPoint::Yes);
+                    }
+
+                    match self[module.module_id].items.get(&segment.name) {
+                        Some(res) if !res.def.is_none() => res.def,
+                        _ => {
+                            log::debug!("path segment {:?} not found", segment.name);
+                            return (PerNs::none(), ReachedFixedPoint::No);
+                        }
+                    }
+                }
+                ModuleDef::Enum(e) => {
+                    // enum variant
+                    tested_by!(item_map_enum_importing);
+                    let matching_variant = e
+                        .variants(db)
+                        .into_iter()
+                        .find(|(n, _variant)| n == &segment.name);
+
+                    match matching_variant {
+                        Some((_n, variant)) => PerNs::both(variant.into(), (*e).into()),
+                        None => PerNs::none(),
+                    }
+                }
+                _ => {
+                    // could be an inherent method call in UFCS form
+                    // (`Struct::method`), or some other kind of associated
+                    // item... Which we currently don't handle (TODO)
+                    log::debug!(
+                        "path segment {:?} resolved to non-module {:?}, but is not last",
+                        segment.name,
+                        curr,
+                    );
+                    return (PerNs::none(), ReachedFixedPoint::Yes);
+                }
+            };
+        }
+        (curr_per_ns, ReachedFixedPoint::Yes)
     }
 }
 
