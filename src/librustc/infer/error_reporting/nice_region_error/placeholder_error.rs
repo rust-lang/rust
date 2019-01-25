@@ -206,6 +206,15 @@ impl NiceRegionError<'me, 'gcx, 'tcx> {
         expected_substs: &'tcx Substs<'tcx>,
         actual_substs: &'tcx Substs<'tcx>,
     ) -> ErrorReported {
+        debug!("try_report_placeholders_trait(\
+                vid={:?}, \
+                sub_placeholder={:?}, \
+                sup_placeholder={:?}, \
+                trait_def_id={:?}, \
+                expected_substs={:?}, \
+                actual_substs={:?})",
+               vid, sub_placeholder, sup_placeholder, trait_def_id, expected_substs, actual_substs);
+
         let mut err = self.tcx().sess.struct_span_err(
             cause.span(&self.tcx()),
             &format!(
@@ -275,6 +284,12 @@ impl NiceRegionError<'me, 'gcx, 'tcx> {
         let self_ty_has_vid = self
             .tcx()
             .any_free_region_meets(&actual_trait_ref.self_ty(), |r| Some(r) == vid);
+
+        debug!("try_report_placeholders_trait: actual_has_vid={:?}", actual_has_vid);
+        debug!("try_report_placeholders_trait: expected_has_vid={:?}", expected_has_vid);
+        debug!("try_report_placeholders_trait: has_sub={:?}", has_sub);
+        debug!("try_report_placeholders_trait: has_sup={:?}", has_sup);
+        debug!("try_report_placeholders_trait: self_ty_has_vid={:?}", self_ty_has_vid);
 
         RegionHighlightMode::maybe_highlighting_region(sub_placeholder, has_sub, || {
             RegionHighlightMode::maybe_highlighting_region(sup_placeholder, has_sup, || {
