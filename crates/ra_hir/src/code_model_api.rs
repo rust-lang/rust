@@ -15,7 +15,7 @@ use crate::{
     generics::GenericParams,
     docs::{Documentation, Docs, docs_from_ast},
     module_tree::ModuleId,
-    ids::{FunctionId, StructId, EnumId, EnumVariantId, AstItemDef, ConstId, StaticId, TraitId, TypeId},
+    ids::{FunctionId, StructId, EnumId, AstItemDef, ConstId, StaticId, TraitId, TypeId},
 };
 
 /// hir::Crate describes a single crate. It's the main interface with which
@@ -269,18 +269,19 @@ impl Docs for Enum {
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct EnumVariant {
-    pub(crate) id: EnumVariantId,
+    pub(crate) parent: Enum,
+    pub(crate) idx: u32,
 }
 
 impl EnumVariant {
     pub fn source(&self, db: &impl HirDatabase) -> (HirFileId, TreeArc<ast::EnumVariant>) {
-        self.id.source(db)
+        self.source_impl(db)
     }
     pub fn module(&self, db: &impl HirDatabase) -> Module {
-        self.id.module(db)
+        self.parent.module(db)
     }
-    pub fn parent_enum(&self, db: &impl HirDatabase) -> Enum {
-        db.enum_variant_data(*self).parent_enum.clone()
+    pub fn parent_enum(&self, _db: &impl HirDatabase) -> Enum {
+        self.parent
     }
 
     pub fn name(&self, db: &impl HirDatabase) -> Option<Name> {
