@@ -879,7 +879,7 @@ fn debug_dump<'a, 'b, 'tcx, I>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                                                    .unwrap_or("<no hash>");
 
                 debug!(" - {} [{:?}] [{}]",
-                       mono_item.to_string(tcx),
+                       mono_item.to_string(tcx, true),
                        linkage,
                        symbol_hash);
             }
@@ -971,7 +971,7 @@ fn collect_and_partition_mono_items<'a, 'tcx>(
         let mut item_keys: Vec<_> = items
             .iter()
             .map(|i| {
-                let mut output = i.to_string(tcx);
+                let mut output = i.to_string(tcx, false);
                 output.push_str(" @@");
                 let mut empty = Vec::new();
                 let cgus = item_to_cgus.get_mut(i).unwrap_or(&mut empty);
