@@ -6,9 +6,10 @@ authors = ["Aleksey Kladov <aleksey.kladov@gmail.com>"]
 
 [dependencies]
 relative-path = "0.4.0"
-salsa = "0.10.0-alpha3"
+salsa = "0.10.0-alpha4"
 rustc-hash = "1.0"
 parking_lot = "0.7.0"
+
 ra_arena = { path = "../ra_arena" }
 ra_syntax = { path = "../ra_syntax" }
 test_utils = { path = "../test_utils" }

@@ -18,7 +18,7 @@ use crate::{
     generics::{GenericParams, GenericDef},
 };
 
-#[salsa::query_group]
+#[salsa::query_group(HirDatabaseStorage)]
 pub trait HirDatabase: SyntaxDatabase + AsRef<HirInterner> {
     #[salsa::invoke(HirFileId::hir_source_file)]
     fn hir_source_file(&self, file_id: HirFileId) -> TreeArc<SourceFile>;

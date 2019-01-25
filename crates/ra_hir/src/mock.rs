@@ -2,7 +2,7 @@ use std::{sync::Arc, panic};
 
 use parking_lot::Mutex;
 use ra_db::{
-    BaseDatabase, FilePosition, FileId, CrateGraph, SourceRoot, SourceRootId, FilesDatabase,
+    BaseDatabase, FilePosition, FileId, CrateGraph, SourceRoot, SourceRootId, FilesDatabase, salsa,
 };
 use relative_path::RelativePathBuf;
 use test_utils::{parse_fixture, CURSOR_MARKER, extract_offset};
@@ -11,7 +11,11 @@ use crate::{db, HirInterner};
 
 pub const WORKSPACE: SourceRootId = SourceRootId(0);
 
-#[salsa::database(ra_db::FilesDatabase, ra_db::SyntaxDatabase, db::HirDatabase)]
+#[salsa::database(
+    ra_db::FilesDatabaseStorage,
+    ra_db::SyntaxDatabaseStorage,
+    db::HirDatabaseStorage
+)]
 #[derive(Debug)]
 pub(crate) struct MockDatabase {
     events: Mutex<Option<Vec<salsa::Event<MockDatabase>>>>,

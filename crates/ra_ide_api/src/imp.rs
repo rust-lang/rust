@@ -5,7 +5,7 @@ use hir::{
 };
 use ra_db::{
     FilesDatabase, SourceRoot, SourceRootId, SyntaxDatabase,
-    salsa::Database,
+    salsa::{Database, SweepStrategy},
 };
 use ra_ide_api_light::{self, assists, LocalEdit, Severity};
 use ra_syntax::{
@@ -77,13 +77,13 @@ impl db::RootDatabase {
     /// for some reason. Needs investigation.
     pub(crate) fn collect_garbage(&mut self) {
         self.query(ra_db::SourceFileQuery)
-            .sweep(salsa::SweepStrategy::default().discard_values());
+            .sweep(SweepStrategy::default().discard_values());
         self.query(hir::db::HirSourceFileQuery)
-            .sweep(salsa::SweepStrategy::default().discard_values());
+            .sweep(SweepStrategy::default().discard_values());
         self.query(hir::db::FileItemsQuery)
-            .sweep(salsa::SweepStrategy::default().discard_values());
+            .sweep(SweepStrategy::default().discard_values());
         self.query(hir::db::FileItemQuery)
-            .sweep(salsa::SweepStrategy::default().discard_values());
+            .sweep(SweepStrategy::default().discard_values());
     }
 }
 

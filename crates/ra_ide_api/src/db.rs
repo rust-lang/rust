@@ -8,11 +8,11 @@ use ra_db::{
 use crate::{symbol_index, LineIndex};
 
 #[salsa::database(
-    ra_db::FilesDatabase,
-    ra_db::SyntaxDatabase,
-    LineIndexDatabase,
-    symbol_index::SymbolsDatabase,
-    hir::db::HirDatabase
+    ra_db::FilesDatabaseStorage,
+    ra_db::SyntaxDatabaseStorage,
+    LineIndexDatabaseStorage,
+    symbol_index::SymbolsDatabaseStorage,
+    hir::db::HirDatabaseStorage
 )]
 #[derive(Debug)]
 pub(crate) struct RootDatabase {
@@ -62,7 +62,7 @@ impl AsRef<hir::HirInterner> for RootDatabase {
     }
 }
 
-#[salsa::query_group]
+#[salsa::query_group(LineIndexDatabaseStorage)]
 pub(crate) trait LineIndexDatabase: ra_db::FilesDatabase + BaseDatabase {
     fn line_index(&self, file_id: FileId) -> Arc<LineIndex>;
 }
