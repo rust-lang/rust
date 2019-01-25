@@ -561,6 +561,8 @@ impl<'cx, 'gcx, 'tcx> WritebackCx<'cx, 'gcx, 'tcx> {
                 if def_id == defin_ty_def_id {
                     // Concrete type resolved to the existential type itself
                     // Force a cycle error
+                    // FIXME(oli-obk): we could just not insert it into `concrete_existential_types`
+                    // which simply would make this use not a defining use.
                     self.tcx().at(span).type_of(defin_ty_def_id);
                 }
             }
