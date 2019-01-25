@@ -118,7 +118,7 @@ pub struct EnumVariantData {
 
 /// A single field of an enum variant or struct
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub struct StructField {
+pub struct StructFieldData {
     pub(crate) name: Name,
     pub(crate) type_ref: TypeRef,
 }
@@ -126,13 +126,13 @@ pub struct StructField {
 /// Fields of an enum variant or struct
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum VariantData {
-    Struct(Vec<StructField>),
-    Tuple(Vec<StructField>),
+    Struct(Vec<StructFieldData>),
+    Tuple(Vec<StructFieldData>),
     Unit,
 }
 
 impl VariantData {
-    pub fn fields(&self) -> &[StructField] {
+    pub fn fields(&self) -> &[StructFieldData] {
         match self {
             VariantData::Struct(fields) | VariantData::Tuple(fields) => fields,
             _ => &[],
@@ -168,7 +168,7 @@ impl VariantData {
                 let fields = fl
                     .fields()
                     .enumerate()
-                    .map(|(i, fd)| StructField {
+                    .map(|(i, fd)| StructFieldData {
                         name: Name::tuple_field_name(i),
                         type_ref: TypeRef::from_ast_opt(fd.type_ref()),
                     })
@@ -178,7 +178,7 @@ impl VariantData {
             StructFlavor::Named(fl) => {
                 let fields = fl
                     .fields()
-                    .map(|fd| StructField {
+                    .map(|fd| StructFieldData {
                         name: fd.name().map(|n| n.as_name()).unwrap_or_else(Name::missing),
                         type_ref: TypeRef::from_ast_opt(fd.type_ref()),
                     })
