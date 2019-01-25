@@ -2064,6 +2064,8 @@ fn rewrite_fn_base(
     } && !fd.inputs.is_empty();
 
     let mut args_last_line_contains_comment = false;
+    let mut no_args_and_over_max_width = false;
+
     if put_args_in_block {
         arg_indent = indent.block_indent(context.config);
         result.push_str(&arg_indent.to_string_with_newline(context.config));
@@ -2083,10 +2085,12 @@ fn rewrite_fn_base(
             .lines()
             .last()
             .map_or(false, |last_line| last_line.contains("//"));
+        result.push(')');
+
         if closing_paren_overflow_max_width || args_last_line_contains_comment {
             result.push_str(&indent.to_string_with_newline(context.config));
+            no_args_and_over_max_width = true;
         }
-        result.push(')');
     }
 
     // Return type.
@@ -2126,7 +2130,9 @@ fn rewrite_fn_base(
             result.push_str(&indent.to_string_with_newline(context.config));
             indent
         } else {
-            result.push(' ');
+            if arg_str.len() != 0 || !no_args_and_over_max_width {
+                result.push(' ');
+            }
             Indent::new(indent.block_indent, last_line_width(&result))
         };
 

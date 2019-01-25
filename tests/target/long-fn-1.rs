@@ -15,14 +15,14 @@ impl Foo {
 
 // #1843
 #[allow(non_snake_case)]
-pub extern "C" fn Java_com_exonum_binding_storage_indices_ValueSetIndexProxy_nativeContainsByHash(
-) -> bool {
+pub extern "C" fn Java_com_exonum_binding_storage_indices_ValueSetIndexProxy_nativeContainsByHash()
+-> bool {
     false
 }
 
 // #3009
 impl Something {
-    fn my_function_name_is_way_to_long_but_used_as_a_case_study_or_an_example_its_fine(
-    ) -> Result<(), String> {
+    fn my_function_name_is_way_to_long_but_used_as_a_case_study_or_an_example_its_fine()
+    -> Result<(), String> {
     }
 }
