@@ -34,7 +34,6 @@ use crate::{
 
 /// `ItemMap` is the result of name resolution. It contains, for each
 /// module, the set of visible items.
-// FIXME: currenty we compute item map per source-root. We should do it per crate instead.
 #[derive(Default, Debug, PartialEq, Eq)]
 pub struct ItemMap {
     per_module: ArenaMap<ModuleId, ModuleScope>,
