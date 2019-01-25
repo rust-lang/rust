@@ -6,7 +6,7 @@ use ra_db::{
 use crate::db::RootDatabase;
 
 pub(crate) fn status(db: &RootDatabase) -> String {
-    let n_parsed_files = db.query(SourceFileQuery).keys::<Vec<_>>().len();
+    let n_parsed_files = db.query(SourceFileQuery).entries::<Vec<_>>().len();
     let n_defs = {
         let interner: &hir::HirInterner = db.as_ref();
         interner.len()

@@ -12,6 +12,7 @@ use crate::{db, HirInterner};
 
 pub const WORKSPACE: SourceRootId = SourceRootId(0);
 
+#[salsa::database(ra_db::FilesDatabase, ra_db::SyntaxDatabase, db::HirDatabase)]
 #[derive(Debug)]
 pub(crate) struct MockDatabase {
     events: Mutex<Option<Vec<salsa::Event<MockDatabase>>>>,
@@ -181,8 +182,7 @@ impl MockDatabase {
     pub(crate) fn log(&self, f: impl FnOnce()) -> Vec<salsa::Event<MockDatabase>> {
         *self.events.lock() = Some(Vec::new());
         f();
-        let events = self.events.lock().take().unwrap();
-        events
+        self.events.lock().take().unwrap()
     }
 
     pub(crate) fn log_executed(&self, f: impl FnOnce()) -> Vec<String> {
@@ -192,51 +192,11 @@ impl MockDatabase {
             .filter_map(|e| match e.kind {
                 // This pretty horrible, but `Debug` is the only way to inspect
                 // QueryDescriptor at the moment.
-                salsa::EventKind::WillExecute { descriptor } => Some(format!("{:?}", descriptor)),
+                salsa::EventKind::WillExecute { database_key } => {
+                    Some(format!("{:?}", database_key))
+                }
                 _ => None,
             })
             .collect()
-    }
-}
-
-salsa::database_storage! {
-    pub(crate) struct MockDatabaseStorage for MockDatabase {
-        impl ra_db::FilesDatabase {
-            fn file_text() for ra_db::FileTextQuery;
-            fn file_relative_path() for ra_db::FileRelativePathQuery;
-            fn file_source_root() for ra_db::FileSourceRootQuery;
-            fn source_root() for ra_db::SourceRootQuery;
-            fn source_root_crates() for ra_db::SourceRootCratesQuery;
-            fn local_roots() for ra_db::LocalRootsQuery;
-            fn library_roots() for ra_db::LibraryRootsQuery;
-            fn crate_graph() for ra_db::CrateGraphQuery;
-        }
-        impl ra_db::SyntaxDatabase {
-            fn source_file() for ra_db::SourceFileQuery;
-        }
-        impl db::HirDatabase {
-            fn hir_source_file() for db::HirSourceFileQuery;
-            fn expand_macro_invocation() for db::ExpandMacroInvocationQuery;
-            fn module_tree() for db::ModuleTreeQuery;
-            fn fn_scopes() for db::FnScopesQuery;
-            fn file_items() for db::FileItemsQuery;
-            fn file_item() for db::FileItemQuery;
-            fn lower_module() for db::LowerModuleQuery;
-            fn lower_module_module() for db::LowerModuleModuleQuery;
-            fn lower_module_source_map() for db::LowerModuleSourceMapQuery;
-            fn item_map() for db::ItemMapQuery;
-            fn submodules() for db::SubmodulesQuery;
-            fn infer() for db::InferQuery;
-            fn type_for_def() for db::TypeForDefQuery;
-            fn type_for_field() for db::TypeForFieldQuery;
-            fn struct_data() for db::StructDataQuery;
-            fn enum_data() for db::EnumDataQuery;
-            fn impls_in_module() for db::ImplsInModuleQuery;
-            fn impls_in_crate() for db::ImplsInCrateQuery;
-            fn body_hir() for db::BodyHirQuery;
-            fn body_syntax_mapping() for db::BodySyntaxMappingQuery;
-            fn fn_signature() for db::FnSignatureQuery;
-            fn generic_params() for db::GenericParamsQuery;
-        }
     }
 }
