@@ -1,4 +1,4 @@
-use hir::{Ty, AdtDef};
+use hir::{Ty, AdtDef, Docs};
 
 use crate::completion::{CompletionContext, Completions, CompletionItem, CompletionItemKind};
 use crate::completion::completion_item::CompletionKind;
@@ -38,6 +38,7 @@ fn complete_fields(acc: &mut Completions, ctx: &CompletionContext, receiver: Ty)
                             )
                             .kind(CompletionItemKind::Field)
                             .detail(field.ty(ctx.db).subst(substs).to_string())
+                            .set_documentation(field.docs(ctx.db))
                             .add_to(acc);
                         }
                     }
@@ -107,7 +108,10 @@ mod tests {
         check_ref_completion(
             "struct_field_completion_self",
             r"
-            struct A { the_field: (u32,) }
+            struct A {
+                /// This is the_field
+                the_field: (u32,)
+            }
             impl A {
                 fn foo(self) {
                     self.<|>

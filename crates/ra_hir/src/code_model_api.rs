@@ -216,6 +216,15 @@ impl StructField {
     }
 }
 
+impl Docs for StructField {
+    fn docs(&self, db: &impl HirDatabase) -> Option<Documentation> {
+        match self.source(db).1 {
+            FieldSource::Named(named) => docs_from_ast(&*named),
+            FieldSource::Pos(..) => return None,
+        }
+    }
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct Struct {
     pub(crate) id: StructId,

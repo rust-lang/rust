@@ -2248,6 +2248,7 @@ impl ToOwned for NamedFieldDef {
 impl ast::VisibilityOwner for NamedFieldDef {}
 impl ast::NameOwner for NamedFieldDef {}
 impl ast::AttrsOwner for NamedFieldDef {}
+impl ast::DocCommentsOwner for NamedFieldDef {}
 impl NamedFieldDef {
     pub fn type_ref(&self) -> Option<&TypeRef> {
         super::child_opt(self)

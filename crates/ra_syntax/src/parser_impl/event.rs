@@ -250,7 +250,7 @@ fn n_attached_trivias<'a>(
 ) -> usize {
     match kind {
         CONST_DEF | TYPE_DEF | STRUCT_DEF | ENUM_DEF | ENUM_VARIANT | FN_DEF | TRAIT_DEF
-        | MODULE => {
+        | MODULE | NAMED_FIELD_DEF => {
             let mut res = 0;
             for (i, (kind, text)) in trivias.enumerate() {
                 match kind {
