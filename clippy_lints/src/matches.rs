@@ -238,7 +238,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for MatchPass {
             check_match_bool(cx, ex, arms, expr);
             check_overlapping_arms(cx, ex, arms);
             check_wild_err_arm(cx, ex, arms);
-            check_wild_arm(cx, ex, arms);
+            check_wild_match(cx, arms);
             check_match_as_ref(cx, ex, arms, expr);
         }
         if let ExprKind::Match(ref ex, ref arms, _) = expr.node {
@@ -463,7 +463,7 @@ fn check_wild_err_arm(cx: &LateContext<'_, '_>, ex: &Expr, arms: &[Arm]) {
     }
 }
 
-fn check_wild_arm(cx: &LateContext<'_, '_>, ex: &Expr, arms: &[Arm]) {
+fn check_wild_match(cx: &LateContext<'_, '_>, arms: &[Arm]) {
     for arm in arms {
         if is_wild(&arm.pats[0]) {
             span_note_and_lint(cx,
