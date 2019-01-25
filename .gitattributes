@@ -2,3 +2,4 @@
 
 * text=auto eol=lf
 *.rs rust
+*.fixed linguist-language=Rust
