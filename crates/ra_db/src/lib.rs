@@ -63,7 +63,7 @@ pub struct FileRange {
     pub range: TextRange,
 }
 
-#[salsa::query_group]
+#[salsa::query_group(FilesDatabaseStorage)]
 pub trait FilesDatabase: salsa::Database {
     /// Text of the file.
     #[salsa::input]
@@ -102,7 +102,7 @@ fn source_root_crates(db: &impl FilesDatabase, id: SourceRootId) -> Arc<Vec<Crat
     Arc::new(res)
 }
 
-#[salsa::query_group]
+#[salsa::query_group(SyntaxDatabaseStorage)]
 pub trait SyntaxDatabase: FilesDatabase + BaseDatabase {
     fn source_file(&self, file_id: FileId) -> TreeArc<SourceFile>;
 }

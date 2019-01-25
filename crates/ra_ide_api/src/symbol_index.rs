@@ -44,7 +44,7 @@ use crate::{
     db::RootDatabase,
 };
 
-#[salsa::query_group]
+#[salsa::query_group(SymbolsDatabaseStorage)]
 pub(crate) trait SymbolsDatabase: hir::db::HirDatabase {
     fn file_symbols(&self, file_id: FileId) -> Arc<SymbolIndex>;
     #[salsa::input]
