@@ -3,6 +3,7 @@
 
 use std::sync::Arc;
 
+use ra_arena::{RawId, Arena, impl_arena_id};
 use ra_syntax::{
     TreeArc,
     ast::{self, NameOwner, StructFlavor}
@@ -12,7 +13,6 @@ use crate::{
     Name, AsName, Struct, Enum, EnumVariant, Crate,
     HirDatabase, HirFileId,
     type_ref::TypeRef,
-    ids::LocationCtx,
 };
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
@@ -66,43 +66,47 @@ fn variants(enum_def: &ast::EnumDef) -> impl Iterator<Item = &ast::EnumVariant> 
 }
 
 impl EnumVariant {
-    pub fn source_impl(&self, db: &impl HirDatabase) -> (HirFileId, TreeArc<ast::EnumVariant>) {
+    pub(crate) fn source_impl(
+        &self,
+        db: &impl HirDatabase,
+    ) -> (HirFileId, TreeArc<ast::EnumVariant>) {
         let (file_id, enum_def) = self.parent.source(db);
         let var = variants(&*enum_def)
-            .nth(self.idx as usize)
+            .zip(db.enum_data(self.parent).variants.iter())
+            .find(|(_syntax, (id, _))| *id == self.id)
             .unwrap()
+            .0
             .to_owned();
         (file_id, var)
     }
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub(crate) struct EnumVariantId(RawId);
+impl_arena_id!(EnumVariantId);
+
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct EnumData {
     pub(crate) name: Option<Name>,
-    pub(crate) variants: Vec<(Name, EnumVariant)>,
+    pub(crate) variants: Arena<EnumVariantId, EnumVariantData>,
 }
 
 impl EnumData {
-    fn new(enum_def: &ast::EnumDef, variants: Vec<(Name, EnumVariant)>) -> Self {
-        let name = enum_def.name().map(|n| n.as_name());
-        EnumData { name, variants }
-    }
-
     pub(crate) fn enum_data_query(db: &impl HirDatabase, e: Enum) -> Arc<EnumData> {
         let (_file_id, enum_def) = e.source(db);
-        let variants = variants(&*enum_def)
-            .enumerate()
-            .filter_map(|(idx, variant_def)| {
-                let name = variant_def.name()?.as_name();
-                let var = EnumVariant {
-                    parent: e,
-                    idx: idx as u32,
-                };
-                Some((name, var))
-            })
-            .collect();
+        let mut res = EnumData {
+            name: enum_def.name().map(|n| n.as_name()),
+            variants: Arena::default(),
+        };
+        for var in variants(&*enum_def) {
+            let data = EnumVariantData {
+                name: var.name().map(|it| it.as_name()),
+                variant_data: Arc::new(VariantData::new(var.flavor())),
+            };
+            res.variants.alloc(data);
+        }
 
-        Arc::new(EnumData::new(&*enum_def, variants))
+        Arc::new(res)
     }
 }
 
@@ -110,33 +114,6 @@ impl EnumData {
 pub struct EnumVariantData {
     pub(crate) name: Option<Name>,
     pub(crate) variant_data: Arc<VariantData>,
-    pub(crate) parent_enum: Enum,
-}
-
-impl EnumVariantData {
-    fn new(variant_def: &ast::EnumVariant, parent_enum: Enum) -> EnumVariantData {
-        let name = variant_def.name().map(|n| n.as_name());
-        let variant_data = VariantData::new(variant_def.flavor());
-        let variant_data = Arc::new(variant_data);
-        EnumVariantData {
-            name,
-            variant_data,
-            parent_enum,
-        }
-    }
-
-    pub(crate) fn enum_variant_data_query(
-        db: &impl HirDatabase,
-        var: EnumVariant,
-    ) -> Arc<EnumVariantData> {
-        let (file_id, variant_def) = var.source(db);
-        let enum_def = variant_def.parent_enum();
-        let ctx = LocationCtx::new(db, var.module(db), file_id);
-        let e = Enum {
-            id: ctx.to_def(enum_def),
-        };
-        Arc::new(EnumVariantData::new(&*variant_def, e))
-    }
 }
 
 /// A single field of an enum variant or struct

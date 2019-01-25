@@ -27,18 +27,18 @@ pub(super) fn complete_path(acc: &mut Completions, ctx: &CompletionContext) {
             }
         }
         hir::ModuleDef::Enum(e) => {
-            e.variants(ctx.db)
-                .into_iter()
-                .for_each(|(variant_name, variant)| {
+            e.variants(ctx.db).into_iter().for_each(|variant| {
+                if let Some(name) = variant.name(ctx.db) {
                     CompletionItem::new(
                         CompletionKind::Reference,
                         ctx.source_range(),
-                        variant_name.to_string(),
+                        name.to_string(),
                     )
                     .kind(CompletionItemKind::EnumVariant)
                     .set_documentation(variant.docs(ctx.db))
                     .add_to(acc)
-                });
+                }
+            });
         }
         _ => return,
     };

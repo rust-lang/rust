@@ -397,13 +397,8 @@ impl ItemMap {
                 ModuleDef::Enum(e) => {
                     // enum variant
                     tested_by!(item_map_enum_importing);
-                    let matching_variant = e
-                        .variants(db)
-                        .into_iter()
-                        .find(|(n, _variant)| n == &segment.name);
-
-                    match matching_variant {
-                        Some((_n, variant)) => PerNs::both(variant.into(), (*e).into()),
+                    match e.variant(db, &segment.name) {
+                        Some(variant) => PerNs::both(variant.into(), (*e).into()),
                         None => PerNs::none(),
                     }
                 }

@@ -11,7 +11,7 @@ use crate::{
     db::HirDatabase,
     expr::BodySyntaxMapping,
     ty::{InferenceResult, VariantDef},
-    adt::VariantData,
+    adt::{VariantData, EnumVariantId},
     generics::GenericParams,
     docs::{Documentation, Docs, docs_from_ast},
     module_tree::ModuleId,
@@ -252,8 +252,20 @@ impl Enum {
         db.enum_data(*self).name.clone()
     }
 
-    pub fn variants(&self, db: &impl HirDatabase) -> Vec<(Name, EnumVariant)> {
-        db.enum_data(*self).variants.clone()
+    pub fn variants(&self, db: &impl HirDatabase) -> Vec<EnumVariant> {
+        db.enum_data(*self)
+            .variants
+            .iter()
+            .map(|(id, _)| EnumVariant { parent: *self, id })
+            .collect()
+    }
+
+    pub fn variant(&self, db: &impl HirDatabase, name: &Name) -> Option<EnumVariant> {
+        db.enum_data(*self)
+            .variants
+            .iter()
+            .find(|(_id, data)| data.name.as_ref() == Some(name))
+            .map(|(id, _)| EnumVariant { parent: *self, id })
     }
 
     pub fn generic_params(&self, db: &impl HirDatabase) -> Arc<GenericParams> {
@@ -270,7 +282,7 @@ impl Docs for Enum {
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct EnumVariant {
     pub(crate) parent: Enum,
-    pub(crate) idx: u32,
+    pub(crate) id: EnumVariantId,
 }
 
 impl EnumVariant {
@@ -285,11 +297,13 @@ impl EnumVariant {
     }
 
     pub fn name(&self, db: &impl HirDatabase) -> Option<Name> {
-        db.enum_variant_data(*self).name.clone()
+        db.enum_data(self.parent).variants[self.id].name.clone()
     }
 
     pub fn variant_data(&self, db: &impl HirDatabase) -> Arc<VariantData> {
-        db.enum_variant_data(*self).variant_data.clone()
+        db.enum_data(self.parent).variants[self.id]
+            .variant_data
+            .clone()
     }
 
     pub fn fields(&self, db: &impl HirDatabase) -> Vec<StructField> {
