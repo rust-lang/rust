@@ -305,7 +305,8 @@ impl<'a, 'tcx> Inliner<'a, 'tcx> {
                     work_list.push(target);
                     // If the location doesn't actually need dropping, treat it like
                     // a regular goto.
-                    let ty = location.ty(callee_mir, tcx).subst(tcx, callsite.substs);
+                    let neo_location = tcx.as_new_place(location);
+                    let ty = neo_location.ty(callee_mir, tcx).subst(tcx, callsite.substs);
                     let ty = ty.to_ty(tcx);
                     if ty.needs_drop(tcx, param_env) {
                         cost += CALL_PENALTY;
@@ -549,7 +550,8 @@ impl<'a, 'tcx> Inliner<'a, 'tcx> {
             assert!(args.next().is_none());
 
             let tuple = Place::Local(tuple);
-            let tuple_tys = if let ty::Tuple(s) = tuple.ty(caller_mir, tcx).to_ty(tcx).sty {
+            let neo_tuple = tcx.as_new_place(&tuple);
+            let tuple_tys = if let ty::Tuple(s) = neo_tuple.ty(caller_mir, tcx).to_ty(tcx).sty {
                 s
             } else {
                 bug!("Closure arguments are not passed as a tuple");

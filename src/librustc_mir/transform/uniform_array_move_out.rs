@@ -69,7 +69,8 @@ impl<'a, 'tcx> Visitor<'tcx> for UniformArrayMoveOutVisitor<'a, 'tcx> {
                                                      from_end: false} = proj.elem {
                     // no need to transformation
                 } else {
-                    let place_ty = proj.base.ty(self.mir, self.tcx).to_ty(self.tcx);
+                    let neo_base = self.tcx.as_new_place(&proj.base);
+                    let place_ty = neo_base.ty(self.mir, self.tcx).to_ty(self.tcx);
                     if let ty::Array(item_ty, const_size) = place_ty.sty {
                         if let Some(size) = const_size.assert_usize(self.tcx) {
                             assert!(size <= u32::max_value() as u64,
@@ -191,7 +192,8 @@ impl MirPass for RestoreSubsliceArrayMoveOut {
 
                         let opt_src_place = items.first().and_then(|x| *x).map(|x| x.2);
                         let opt_size = opt_src_place.and_then(|src_place| {
-                            let src_ty = src_place.ty(mir, tcx).to_ty(tcx);
+                            let neo_place = tcx.as_new_place(src_place);
+                            let src_ty = neo_place.ty(mir, tcx).to_ty(tcx);
                             if let ty::Array(_, ref size_o) = src_ty.sty {
                                 size_o.assert_usize(tcx)
                             } else {

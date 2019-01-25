@@ -122,7 +122,8 @@ impl<'l, 'b, 'tcx, D> DropCtxt<'l, 'b, 'tcx, D>
     where D: DropElaborator<'b, 'tcx>
 {
     fn place_ty(&self, place: &Place<'tcx>) -> Ty<'tcx> {
-        place.ty(self.elaborator.mir(), self.tcx()).to_ty(self.tcx())
+        let neo_place = self.tcx().as_new_place(place);
+        neo_place.ty(self.elaborator.mir(), self.tcx()).to_ty(self.tcx())
     }
 
     fn tcx(&self) -> TyCtxt<'b, 'tcx, 'tcx> {

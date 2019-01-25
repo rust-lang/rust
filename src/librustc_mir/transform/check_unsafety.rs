@@ -226,7 +226,8 @@ impl<'a, 'tcx> Visitor<'tcx> for UnsafetyChecker<'a, 'tcx> {
                         }], &[]);
                     }
                 }
-                let is_borrow_of_interior_mut = context.is_borrow() && !base
+                let neo_base = self.tcx.as_new_place(base);
+                let is_borrow_of_interior_mut = context.is_borrow() && !neo_base
                     .ty(self.mir, self.tcx)
                     .to_ty(self.tcx)
                     .is_freeze(self.tcx, self.param_env, self.source_info.span);
@@ -250,7 +251,8 @@ impl<'a, 'tcx> Visitor<'tcx> for UnsafetyChecker<'a, 'tcx> {
                         self.source_info = self.mir.local_decls[local].source_info;
                     }
                 }
-                let base_ty = base.ty(self.mir, self.tcx).to_ty(self.tcx);
+                let neo_base = self.tcx.as_new_place(base);
+                let base_ty = neo_base.ty(self.mir, self.tcx).to_ty(self.tcx);
                 match base_ty.sty {
                     ty::RawPtr(..) => {
                         self.require_unsafe("dereference of raw pointer",
@@ -419,7 +421,8 @@ impl<'a, 'tcx> UnsafetyChecker<'a, 'tcx> {
         }) = place {
             match *elem {
                 ProjectionElem::Field(..) => {
-                    let ty = base.ty(&self.mir.local_decls, self.tcx).to_ty(self.tcx);
+                    let neo_base = self.tcx.as_new_place(base);
+                    let ty = neo_base.ty(&self.mir.local_decls, self.tcx).to_ty(self.tcx);
                     match ty.sty {
                         ty::Adt(def, _) => match self.tcx.layout_scalar_valid_range(def.did) {
                             (Bound::Unbounded, Bound::Unbounded) => {},

@@ -449,7 +449,8 @@ impl<'a, 'tcx> Visitor<'tcx> for Qualifier<'a, 'tcx, 'tcx> {
                                 // just make sure this doesn't get promoted
                                 this.add(Qualif::NOT_CONST);
                             }
-                            let base_ty = proj.base.ty(this.mir, this.tcx).to_ty(this.tcx);
+                            let neo_base = this.tcx.as_new_place(&proj.base);
+                            let base_ty = neo_base.ty(this.mir, this.tcx).to_ty(this.tcx);
                             match this.mode {
                                 Mode::Fn => {},
                                 _ => {
@@ -473,7 +474,8 @@ impl<'a, 'tcx> Visitor<'tcx> for Qualifier<'a, 'tcx, 'tcx> {
                         ProjectionElem::Subslice {..} |
                         ProjectionElem::Field(..) |
                         ProjectionElem::Index(_) => {
-                            let base_ty = proj.base.ty(this.mir, this.tcx).to_ty(this.tcx);
+                            let neo_base = this.tcx.as_new_place(&proj.base);
+                            let base_ty = neo_base.ty(this.mir, this.tcx).to_ty(this.tcx);
                             if let Some(def) = base_ty.ty_adt_def() {
                                 if def.is_union() {
                                     match this.mode {
@@ -496,7 +498,8 @@ impl<'a, 'tcx> Visitor<'tcx> for Qualifier<'a, 'tcx, 'tcx> {
                                 }
                             }
 
-                            let ty = place.ty(this.mir, this.tcx).to_ty(this.tcx);
+                            let neo_place = this.tcx.as_new_place(place);
+                            let ty = neo_place.ty(this.mir, this.tcx).to_ty(this.tcx);
                             this.qualif.restrict(ty, this.tcx, this.param_env);
                         }
 
@@ -551,7 +554,8 @@ impl<'a, 'tcx> Visitor<'tcx> for Qualifier<'a, 'tcx, 'tcx> {
             let mut is_reborrow = false;
             if let Place::Projection(ref proj) = *place {
                 if let ProjectionElem::Deref = proj.elem {
-                    let base_ty = proj.base.ty(self.mir, self.tcx).to_ty(self.tcx);
+                    let neo_base = self.tcx.as_new_place(&proj.base);
+                    let base_ty = neo_base.ty(self.mir, self.tcx).to_ty(self.tcx);
                     if let ty::Ref(..) = base_ty.sty {
                         is_reborrow = true;
                     }
@@ -592,7 +596,8 @@ impl<'a, 'tcx> Visitor<'tcx> for Qualifier<'a, 'tcx, 'tcx> {
             Rvalue::Len(_) => {}
 
             Rvalue::Ref(_, kind, ref place) => {
-                let ty = place.ty(self.mir, self.tcx).to_ty(self.tcx);
+                let neo_place = self.tcx.as_new_place(place);
+                let ty = neo_place.ty(self.mir, self.tcx).to_ty(self.tcx);
 
                 // Default to forbidding the borrow and/or its promotion,
                 // due to the potential for direct or interior mutability,
@@ -1015,7 +1020,8 @@ impl<'a, 'tcx> Visitor<'tcx> for Qualifier<'a, 'tcx, 'tcx> {
                 } else {
                     // Be conservative about the returned value of a const fn.
                     let tcx = self.tcx;
-                    let ty = dest.ty(self.mir, tcx).to_ty(tcx);
+                    let neo_place = tcx.as_new_place(dest);
+                    let ty = neo_place.ty(self.mir, tcx).to_ty(tcx);
                     if is_const_fn && !is_promotable_const_fn && self.mode == Mode::Fn {
                         self.qualif = Qualif::NOT_PROMOTABLE;
                     } else {
@@ -1044,7 +1050,8 @@ impl<'a, 'tcx> Visitor<'tcx> for Qualifier<'a, 'tcx, 'tcx> {
 
                 if let Some(span) = needs_drop {
                     // Double-check the type being dropped, to minimize false positives.
-                    let ty = place.ty(self.mir, self.tcx).to_ty(self.tcx);
+                    let neo_place = self.tcx.as_new_place(place);
+                    let ty = neo_place.ty(self.mir, self.tcx).to_ty(self.tcx);
                     if ty.needs_drop(self.tcx, self.param_env) {
                         struct_span_err!(self.tcx.sess, span, E0493,
                                          "destructors cannot be evaluated at compile-time")

@@ -302,9 +302,10 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                 );
 
                 let ty_source_info = self.source_info(user_ty_span);
+                let neo_place = self.hir.tcx().as_new_place(&place);
                 let user_ty = box pat_ascription_ty.user_ty(
                     &mut self.canonical_user_type_annotations,
-                    place.ty(&self.local_decls, self.hir.tcx()).to_ty(self.hir.tcx()),
+                    neo_place.ty(&self.local_decls, self.hir.tcx()).to_ty(self.hir.tcx()),
                     ty_source_info.span,
                 );
                 self.cfg.push(
@@ -1342,9 +1343,10 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                 ascription.user_ty,
             );
 
+            let neo_place = self.hir.tcx().as_new_place(&ascription.source);
             let user_ty = box ascription.user_ty.clone().user_ty(
                 &mut self.canonical_user_type_annotations,
-                ascription.source.ty(&self.local_decls, self.hir.tcx()).to_ty(self.hir.tcx()),
+                neo_place.ty(&self.local_decls, self.hir.tcx()).to_ty(self.hir.tcx()),
                 source_info.span
             );
             self.cfg.push(

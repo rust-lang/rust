@@ -165,7 +165,8 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
         // Then, the block may have an optional trailing expression which is a “return” value
         // of the block, which is stored into `destination`.
         let tcx = this.hir.tcx();
-        let destination_ty = destination.ty(&this.local_decls, tcx).to_ty(tcx);
+        let neo_place = tcx.as_new_place(destination);
+        let destination_ty = neo_place.ty(&this.local_decls, tcx).to_ty(tcx);
         if let Some(expr) = expr {
             let tail_result_is_ignored = destination_ty.is_unit() ||
                 this.block_context.currently_ignores_tail_results();

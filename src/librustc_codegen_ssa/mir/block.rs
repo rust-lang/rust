@@ -287,7 +287,8 @@ impl<'a, 'tcx: 'a, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
             }
 
             mir::TerminatorKind::Drop { ref location, target, unwind } => {
-                let ty = location.ty(self.mir, bx.tcx()).to_ty(bx.tcx());
+                let neo_location = bx.tcx().as_new_place(location);
+                let ty = neo_location.ty(self.mir, bx.tcx()).to_ty(bx.tcx());
                 let ty = self.monomorphize(&ty);
                 let drop_fn = monomorphize::resolve_drop_in_place(bx.tcx(), ty);
 

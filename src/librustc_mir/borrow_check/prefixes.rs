@@ -132,7 +132,8 @@ impl<'cx, 'gcx, 'tcx> Iterator for Prefixes<'cx, 'gcx, 'tcx> {
             // derefs, except we stop at the deref of a shared
             // reference.
 
-            let ty = proj.base.ty(self.mir, self.tcx).to_ty(self.tcx);
+            let neo_base = self.tcx.as_new_place(&proj.base);
+            let ty = neo_base.ty(self.mir, self.tcx).to_ty(self.tcx);
             match ty.sty {
                 ty::RawPtr(_) |
                 ty::Ref(

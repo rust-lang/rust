@@ -490,7 +490,8 @@ impl<'a, 'tcx: 'a, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
 
     pub fn monomorphized_place_ty(&self, place: &mir::Place<'tcx>) -> Ty<'tcx> {
         let tcx = self.cx.tcx();
-        let place_ty = place.ty(self.mir, tcx);
+        let neo_place = tcx.as_new_place(place);
+        let place_ty = neo_place.ty(self.mir, tcx);
         self.monomorphize(&place_ty.to_ty(tcx))
     }
 }

@@ -61,8 +61,9 @@ impl<'a, 'gcx, 'tcx> MirBorrowckCtxt<'a, 'gcx, 'tcx> {
                 base,
                 elem: ProjectionElem::Field(upvar_index, _),
             }) => {
+                let neo_base = self.infcx.tcx.as_new_place(base);
                 debug_assert!(is_closure_or_generator(
-                    base.ty(self.mir, self.infcx.tcx).to_ty(self.infcx.tcx)
+                    neo_base.ty(self.mir, self.infcx.tcx).to_ty(self.infcx.tcx)
                 ));
 
                 item_msg = format!("`{}`", access_place_desc.unwrap());
@@ -82,8 +83,9 @@ impl<'a, 'gcx, 'tcx> MirBorrowckCtxt<'a, 'gcx, 'tcx> {
                 if *base == Place::Local(Local::new(1)) && !self.mir.upvar_decls.is_empty() {
                     item_msg = format!("`{}`", access_place_desc.unwrap());
                     debug_assert!(self.mir.local_decls[Local::new(1)].ty.is_region_ptr());
+                    let neo_the_place_err = self.infcx.tcx.as_new_place(the_place_err);
                     debug_assert!(is_closure_or_generator(
-                        the_place_err.ty(self.mir, self.infcx.tcx).to_ty(self.infcx.tcx)
+                        neo_the_place_err.ty(self.mir, self.infcx.tcx).to_ty(self.infcx.tcx)
                     ));
                     let neo_place = self.infcx.tcx.as_new_place(access_place);
                     reason = if neo_place.is_upvar_field_projection(self.mir,
@@ -107,12 +109,16 @@ impl<'a, 'gcx, 'tcx> MirBorrowckCtxt<'a, 'gcx, 'tcx> {
                     item_msg = format!("`{}`", access_place_desc.unwrap());
                     reason = ", as it is immutable for the pattern guard".to_string();
                 } else {
-                    let pointer_type =
-                        if base.ty(self.mir, self.infcx.tcx).to_ty(self.infcx.tcx).is_region_ptr() {
-                            "`&` reference"
-                        } else {
-                            "`*const` pointer"
-                        };
+                    let neo_base = self.infcx.tcx.as_new_place(base);
+                    let pointer_type = if neo_base
+                        .ty(self.mir, self.infcx.tcx)
+                        .to_ty(self.infcx.tcx)
+                        .is_region_ptr()
+                    {
+                        "`&` reference"
+                    } else {
+                        "`*const` pointer"
+                    };
                     if let Some(desc) = access_place_desc {
                         item_msg = format!("`{}`", desc);
                         reason = match error_access {
@@ -227,9 +233,10 @@ impl<'a, 'gcx, 'tcx> MirBorrowckCtxt<'a, 'gcx, 'tcx> {
             }) => {
                 err.span_label(span, format!("cannot {ACT}", ACT = act));
 
+                let neo_base = self.infcx.tcx.as_new_place(base);
                 if let Some((span, message)) = annotate_struct_field(
                     self.infcx.tcx,
-                    base.ty(self.mir, self.infcx.tcx).to_ty(self.infcx.tcx),
+                    neo_base.ty(self.mir, self.infcx.tcx).to_ty(self.infcx.tcx),
                     field,
                 ) {
                     err.span_suggestion(
@@ -299,8 +306,9 @@ impl<'a, 'gcx, 'tcx> MirBorrowckCtxt<'a, 'gcx, 'tcx> {
                 base,
                 elem: ProjectionElem::Field(upvar_index, _),
             }) => {
+                let neo_base = self.infcx.tcx.as_new_place(base);
                 debug_assert!(is_closure_or_generator(
-                    base.ty(self.mir, self.infcx.tcx).to_ty(self.infcx.tcx)
+                    neo_base.ty(self.mir, self.infcx.tcx).to_ty(self.infcx.tcx)
                 ));
 
                 err.span_label(span, format!("cannot {ACT}", ACT = act));

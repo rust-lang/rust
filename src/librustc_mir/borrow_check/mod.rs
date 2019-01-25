@@ -629,7 +629,8 @@ impl<'cx, 'gcx, 'tcx> DataflowResultsConsumer<'cx, 'tcx> for MirBorrowckCtxt<'cx
                 let gcx = self.infcx.tcx.global_tcx();
 
                 // Compute the type with accurate region information.
-                let drop_place_ty = drop_place.ty(self.mir, self.infcx.tcx);
+                let neo_drop_place = self.infcx.tcx.as_new_place(drop_place);
+                let drop_place_ty = neo_drop_place.ty(self.mir, self.infcx.tcx);
 
                 // Erase the regions.
                 let drop_place_ty = self.infcx.tcx.erase_regions(&drop_place_ty)
@@ -1661,7 +1662,8 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
                             // assigning to `P.f` requires `P` itself
                             // be already initialized
                             let tcx = self.infcx.tcx;
-                            match base.ty(self.mir, tcx).to_ty(tcx).sty {
+                            let neo_base = tcx.as_new_place(base);
+                            match neo_base.ty(self.mir, tcx).to_ty(tcx).sty {
                                 ty::Adt(def, _) if def.has_dtor(tcx) => {
                                     self.check_if_path_or_subpath_is_moved(
                                         context, InitializationRequiringAction::Assignment,
@@ -1766,7 +1768,8 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
                 // no move out from an earlier location) then this is an attempt at initialization
                 // of the union - we should error in that case.
                 let tcx = this.infcx.tcx;
-                if let ty::TyKind::Adt(def, _) = base.ty(this.mir, tcx).to_ty(tcx).sty {
+                let neo_base = tcx.as_new_place(base);
+                if let ty::TyKind::Adt(def, _) = neo_base.ty(this.mir, tcx).to_ty(tcx).sty {
                     if def.is_union() {
                         if this.move_data.path_map[mpi].iter().any(|moi| {
                             this.move_data.moves[*moi].source.is_predecessor_of(
@@ -2032,7 +2035,8 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
             Place::Projection(ref proj) => {
                 match proj.elem {
                     ProjectionElem::Deref => {
-                        let base_ty = proj.base.ty(self.mir, self.infcx.tcx).to_ty(self.infcx.tcx);
+                        let neo_base = self.infcx.tcx.as_new_place(&proj.base);
+                        let base_ty = neo_base.ty(self.mir, self.infcx.tcx).to_ty(self.infcx.tcx);
 
                         // Check the kind of deref to decide
                         match base_ty.sty {

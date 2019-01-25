@@ -155,57 +155,6 @@ EnumTypeFoldableImpl! {
     }
 }
 
-impl<'tcx> Place<'tcx> {
-    pub fn ty<'a, 'gcx, D>(&self, local_decls: &D, tcx: TyCtxt<'a, 'gcx, 'tcx>) -> PlaceTy<'tcx>
-        where D: HasLocalDecls<'tcx>
-    {
-        match *self {
-            Place::Local(index) =>
-                PlaceTy::Ty { ty: local_decls.local_decls()[index].ty },
-            Place::Promoted(ref data) => PlaceTy::Ty { ty: data.1 },
-            Place::Static(ref data) =>
-                PlaceTy::Ty { ty: data.ty },
-            Place::Projection(ref proj) =>
-                proj.base.ty(local_decls, tcx).projection_ty(tcx, &proj.elem),
-        }
-    }
-
-    // If this is a field projection, and the field is being projected from a closure type,
-    // then returns the index of the field being projected. Note that this closure will always
-    // be `self` in the current MIR, because that is the only time we directly access the fields
-    // of a closure type.
-    //pub fn is_upvar_field_projection<'cx, 'gcx>(&self, mir: &'cx Mir<'tcx>,
-    //                                            tcx: &TyCtxt<'cx, 'gcx, 'tcx>) -> Option<Field> {
-    //    let (place, by_ref) = if let Place::Projection(ref proj) = self {
-    //        if let ProjectionElem::Deref = proj.elem {
-    //            (&proj.base, true)
-    //        } else {
-    //            (self, false)
-    //        }
-    //    } else {
-    //        (self, false)
-    //    };
-
-    //    match place {
-    //        Place::Projection(ref proj) => match proj.elem {
-    //            ProjectionElem::Field(field, _ty) => {
-    //                let base_ty = proj.base.ty(mir, *tcx).to_ty(*tcx);
-
-    //                if (base_ty.is_closure() || base_ty.is_generator()) &&
-    //                    (!by_ref || mir.upvar_decls[field.index()].by_ref)
-    //                {
-    //                    Some(field)
-    //                } else {
-    //                    None
-    //                }
-    //            },
-    //            _ => None,
-    //        }
-    //        _ => None,
-    //    }
-    //}
-}
-
 impl<'tcx> PlaceBase<'tcx> {
     pub fn ty(&self, local_decls: &impl HasLocalDecls<'tcx>) -> Ty<'tcx> {
         match self {
@@ -376,7 +325,8 @@ impl<'tcx> Rvalue<'tcx> {
                 tcx.mk_array(operand.ty(local_decls, tcx), count)
             }
             Rvalue::Ref(reg, bk, ref place) => {
-                let place_ty = place.ty(local_decls, tcx).to_ty(tcx);
+                let neo_place = tcx.as_new_place(place);
+                let place_ty = neo_place.ty(local_decls, tcx).to_ty(tcx);
                 tcx.mk_ref(reg,
                     ty::TypeAndMut {
                         ty: place_ty,
@@ -402,7 +352,8 @@ impl<'tcx> Rvalue<'tcx> {
                 operand.ty(local_decls, tcx)
             }
             Rvalue::Discriminant(ref place) => {
-                let ty = place.ty(local_decls, tcx).to_ty(tcx);
+                let neo_place = tcx.as_new_place(place);
+                let ty = neo_place.ty(local_decls, tcx).to_ty(tcx);
                 if let ty::Adt(adt_def, _) = ty.sty {
                     adt_def.repr.discr_type().to_ty(tcx)
                 } else {
@@ -451,7 +402,10 @@ impl<'tcx> Operand<'tcx> {
     {
         match self {
             &Operand::Copy(ref l) |
-            &Operand::Move(ref l) => l.ty(local_decls, tcx).to_ty(tcx),
+            &Operand::Move(ref l) => {
+                let neo_place = tcx.as_new_place(l);
+                neo_place.ty(local_decls, tcx).to_ty(tcx)
+            }
             &Operand::Constant(ref c) => c.ty,
         }
     }

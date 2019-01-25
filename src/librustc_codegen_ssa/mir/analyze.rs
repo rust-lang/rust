@@ -166,7 +166,8 @@ impl<'mir, 'a: 'mir, 'tcx: 'a, Bx: BuilderMethods<'a, 'tcx>> Visitor<'tcx>
                 _ => false
             };
             if is_consume {
-                let base_ty = proj.base.ty(self.fx.mir, cx.tcx());
+                let neo_base = cx.tcx().as_new_place(&proj.base);
+                let base_ty = neo_base.ty(self.fx.mir, cx.tcx());
                 let base_ty = self.fx.monomorphize(&base_ty);
 
                 // ZSTs don't require any actual memory access.
@@ -245,7 +246,8 @@ impl<'mir, 'a: 'mir, 'tcx: 'a, Bx: BuilderMethods<'a, 'tcx>> Visitor<'tcx>
             }
 
             PlaceContext::MutatingUse(MutatingUseContext::Drop) => {
-                let ty = mir::Place::Local(local).ty(self.fx.mir, self.fx.cx.tcx());
+                let neo_place = self.fx.cx.tcx().as_new_place(&mir::Place::Local(local));
+                let ty = neo_place.ty(self.fx.mir, self.fx.cx.tcx());
                 let ty = self.fx.monomorphize(&ty.to_ty(self.fx.cx.tcx()));
 
                 // Only need the place if we're actually dropping it.

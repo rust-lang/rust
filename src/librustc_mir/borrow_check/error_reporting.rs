@@ -182,7 +182,8 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
                 );
             }
 
-            let ty = used_place.ty(self.mir, self.infcx.tcx).to_ty(self.infcx.tcx);
+            let neo_place = self.infcx.tcx.as_new_place(used_place);
+            let ty = neo_place.ty(self.mir, self.infcx.tcx).to_ty(self.infcx.tcx);
             let needs_note = match ty.sty {
                 ty::Closure(id, _) => {
                     let tables = self.infcx.tcx.typeck_tables_of(id);
@@ -197,11 +198,14 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
             if needs_note {
                 let mpi = self.move_data.moves[move_out_indices[0]].path;
                 let place = &self.move_data.move_paths[mpi].place;
+                let neo_place = self.infcx.tcx.as_new_place(place);
 
-                let ty = place.ty(self.mir, self.infcx.tcx).to_ty(self.infcx.tcx);
-                let opt_name = self.describe_place_with_options(place, IncludingDowncast(true));
-                let note_msg = match opt_name {
-                    Some(ref name) => format!("`{}`", name),
+                let ty = neo_place.ty(self.mir, self.infcx.tcx).to_ty(self.infcx.tcx);
+                let note_msg = match self.describe_place_with_options(
+                    place,
+                    IncludingDowncast(true),
+                ) {
+                    Some(name) => format!("`{}`", name),
                     None => "value".to_owned(),
                 };
                 if let ty::TyKind::Param(param_ty) = ty.sty {
@@ -574,7 +578,8 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
         // Define a small closure that we can use to check if the type of a place
         // is a union.
         let is_union = |place: &Place<'tcx>| -> bool {
-            place.ty(self.mir, self.infcx.tcx)
+            let neo_place = self.infcx.tcx.as_new_place(place);
+            neo_place.ty(self.mir, self.infcx.tcx)
                 .to_ty(self.infcx.tcx)
                 .ty_adt_def()
                 .map(|adt| adt.is_union())
@@ -624,7 +629,8 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
 
                             // Also compute the name of the union type, eg. `Foo` so we
                             // can add a helpful note with it.
-                            let ty = base.ty(self.mir, self.infcx.tcx).to_ty(self.infcx.tcx);
+                            let neo_base = self.infcx.tcx.as_new_place(base);
+                            let ty = neo_base.ty(self.mir, self.infcx.tcx).to_ty(self.infcx.tcx);
 
                             return Some((desc_base, desc_first, desc_second, ty.to_string()));
                         },

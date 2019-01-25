@@ -171,10 +171,11 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                         place: &Place<'tcx>,
                         test: &Test<'tcx>)
                         -> Vec<BasicBlock> {
+        let neo_place = self.hir.tcx().as_new_place(place);
         debug!("perform_test({:?}, {:?}: {:?}, {:?})",
                block,
                place,
-               place.ty(&self.local_decls, self.hir.tcx()),
+               neo_place.ty(&self.local_decls, self.hir.tcx()),
                test);
         let source_info = self.source_info(test.span);
         match test.kind {

@@ -106,7 +106,8 @@ fn add_move_for_packed_drop<'a, 'tcx>(
     };
 
     let source_info = terminator.source_info;
-    let ty = location.ty(mir, tcx).to_ty(tcx);
+    let neo_location = tcx.as_new_place(location);
+    let ty = neo_location.ty(mir, tcx).to_ty(tcx);
     let temp = patch.new_temp(ty, terminator.source_info.span);
 
     let storage_dead_block = patch.new_block(BasicBlockData {

@@ -553,7 +553,8 @@ impl<'a, 'b, 'gcx, 'tcx> TypeVerifier<'a, 'b, 'gcx, 'tcx> {
                 }
             }
             ProjectionElem::Index(i) => {
-                let index_ty = Place::Local(i).ty(self.mir, tcx).to_ty(tcx);
+                let neo_place = tcx.as_new_place(&Place::Local(i));
+                let index_ty = neo_place.ty(self.mir, tcx).to_ty(tcx);
                 if index_ty != tcx.types.usize {
                     PlaceTy::Ty {
                         ty: span_mirbug_and_err!(self, i, "index by non-usize {:?}", i),
@@ -1257,7 +1258,8 @@ impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
                     _ => ConstraintCategory::Assignment,
                 };
 
-                let place_ty = place.ty(mir, tcx).to_ty(tcx);
+                let neo_place = tcx.as_new_place(place);
+                let place_ty = neo_place.ty(mir, tcx).to_ty(tcx);
                 let rv_ty = rv.ty(mir, tcx);
                 if let Err(terr) =
                     self.sub_types_or_anon(rv_ty, place_ty, location.to_locations(), category)
@@ -1309,7 +1311,8 @@ impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
                 ref place,
                 variant_index,
             } => {
-                let place_type = place.ty(mir, tcx).to_ty(tcx);
+                let neo_place = tcx.as_new_place(place);
+                let place_type = neo_place.ty(mir, tcx).to_ty(tcx);
                 let adt = match place_type.sty {
                     TyKind::Adt(adt, _) if adt.is_enum() => adt,
                     _ => {
@@ -1331,7 +1334,8 @@ impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
                 };
             }
             StatementKind::AscribeUserType(ref place, variance, box ref projection) => {
-                let place_ty = place.ty(mir, tcx).to_ty(tcx);
+                let neo_place = tcx.as_new_place(place);
+                let place_ty = neo_place.ty(mir, tcx).to_ty(tcx);
                 if let Err(terr) = self.relate_type_and_user_type(
                     place_ty,
                     variance,
@@ -1387,7 +1391,8 @@ impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
                 target: _,
                 unwind: _,
             } => {
-                let place_ty = location.ty(mir, tcx).to_ty(tcx);
+                let neo_place = tcx.as_new_place(location);
+                let place_ty = neo_place.ty(mir, tcx).to_ty(tcx);
                 let rv_ty = value.ty(mir, tcx);
 
                 let locations = term_location.to_locations();
@@ -1535,7 +1540,8 @@ impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
         let tcx = self.tcx();
         match *destination {
             Some((ref dest, _target_block)) => {
-                let dest_ty = dest.ty(mir, tcx).to_ty(tcx);
+                let neo_place = tcx.as_new_place(dest);
+                let dest_ty = neo_place.ty(mir, tcx).to_ty(tcx);
                 let category = match *dest {
                     Place::Local(RETURN_PLACE) => {
                         if let Some(BorrowCheckContext {
@@ -2137,7 +2143,8 @@ impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
             match *elem {
                 ProjectionElem::Deref => {
                     let tcx = self.infcx.tcx;
-                    let base_ty = base.ty(self.mir, tcx).to_ty(tcx);
+                    let neo_base = tcx.as_new_place(base);
+                    let base_ty = neo_base.ty(self.mir, tcx).to_ty(tcx);
 
                     debug!("add_reborrow_constraint - base_ty = {:?}", base_ty);
                     match base_ty.sty {
