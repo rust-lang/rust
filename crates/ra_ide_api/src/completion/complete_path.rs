@@ -1,3 +1,5 @@
+use join_to_string::join;
+
 use crate::{
     completion::{CompletionItem, CompletionItemKind, Completions, CompletionKind, CompletionContext},
 };
@@ -29,6 +31,15 @@ pub(super) fn complete_path(acc: &mut Completions, ctx: &CompletionContext) {
         hir::ModuleDef::Enum(e) => {
             e.variants(ctx.db).into_iter().for_each(|variant| {
                 if let Some(name) = variant.name(ctx.db) {
+                    let detail_types = variant
+                        .fields(ctx.db)
+                        .into_iter()
+                        .map(|field| field.ty(ctx.db));
+                    let detail = join(detail_types)
+                        .separator(", ")
+                        .surround_with("(", ")")
+                        .to_string();
+
                     CompletionItem::new(
                         CompletionKind::Reference,
                         ctx.source_range(),
@@ -36,6 +47,7 @@ pub(super) fn complete_path(acc: &mut Completions, ctx: &CompletionContext) {
                     )
                     .kind(CompletionItemKind::EnumVariant)
                     .set_documentation(variant.docs(ctx.db))
+                    .set_detail(Some(detail))
                     .add_to(acc)
                 }
             });
@@ -116,7 +128,7 @@ mod tests {
     #[test]
     fn completes_enum_variant() {
         check_reference_completion(
-            "reference_completion",
+            "enum_variant",
             "
             //- /lib.rs
             /// An enum
@@ -125,6 +137,27 @@ mod tests {
                 Foo,
                 /// Bar Variant with i32
                 Bar(i32)
+            }
+            fn foo() { let _ = E::<|> }
+            ",
+        );
+    }
+
+    #[test]
+    fn completes_enum_variant_with_details() {
+        check_reference_completion(
+            "enum_variant_with_details",
+            "
+            //- /lib.rs
+            struct S { field: u32 }
+            /// An enum
+            enum E {
+                /// Foo Variant (empty)
+                Foo,
+                /// Bar Variant with i32 and u32
+                Bar(i32, u32),
+                ///
+                S(S),
             }
             fn foo() { let _ = E::<|> }
             ",

@@ -1,8 +1,8 @@
 ---
-created: "2019-01-23T23:49:43.278245900+00:00"
-creator: insta@0.5.1
+created: "2019-01-25T16:44:04.640545300+00:00"
+creator: insta@0.5.2
 expression: kind_completions
-source: "crates\\ra_ide_api\\src\\completion\\completion_item.rs"
+source: crates/ra_ide_api/src/completion/completion_item.rs
 ---
 [
     CompletionItem {
@@ -11,7 +11,9 @@ source: "crates\\ra_ide_api\\src\\completion\\completion_item.rs"
         kind: Some(
             EnumVariant
         ),
-        detail: None,
+        detail: Some(
+            "()"
+        ),
         documentation: Some(
             Documentation(
                 "Foo Variant"
@@ -29,7 +31,9 @@ source: "crates\\ra_ide_api\\src\\completion\\completion_item.rs"
         kind: Some(
             EnumVariant
         ),
-        detail: None,
+        detail: Some(
+            "(i32)"
+        ),
         documentation: Some(
             Documentation(
                 "Bar Variant with i32"
