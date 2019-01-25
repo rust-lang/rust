@@ -763,7 +763,7 @@ function's return type and the value being returned.
 "##,
 
 E0070: r##"
-The left-hand side of an assignment operator must be a place expression. An
+The left-hand side of an assignment operator must be a place expression. A
 place expression represents a memory location and can be a variable (with
 optional namespacing), a dereference, an indexing expression or a field
 reference.
