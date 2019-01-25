@@ -634,8 +634,8 @@ fn write_user_type_annotations(mir: &Mir, w: &mut dyn Write) -> io::Result<()> {
     if !mir.user_type_annotations.is_empty() {
         writeln!(w, "| User Type Annotations")?;
     }
-    for (index, (span, annotation)) in mir.user_type_annotations.iter_enumerated() {
-        writeln!(w, "| {:?}: {:?} at {:?}", index.index(), annotation, span)?;
+    for (index, annotation) in mir.user_type_annotations.iter_enumerated() {
+        writeln!(w, "| {:?}: {:?} at {:?}", index.index(), annotation.user_ty, annotation.span)?;
     }
     if !mir.user_type_annotations.is_empty() {
         writeln!(w, "|")?;

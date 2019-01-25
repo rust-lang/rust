@@ -35,10 +35,10 @@ use rustc::traits::query::type_op::custom::CustomTypeOp;
 use rustc::traits::query::{Fallible, NoSolution};
 use rustc::traits::{ObligationCause, PredicateObligations};
 use rustc::ty::fold::TypeFoldable;
-use rustc::ty::subst::{Subst, Substs, UnpackedKind};
+use rustc::ty::subst::{Subst, Substs, UnpackedKind, UserSubsts};
 use rustc::ty::{
-    self, RegionVid, ToPolyTraitRef, Ty, TyCtxt, TyKind, UserTypeAnnotation,
-    UserTypeAnnotationIndex,
+    self, RegionVid, ToPolyTraitRef, Ty, TyCtxt, TyKind, UserType,
+    CanonicalUserTypeAnnotation, UserTypeAnnotationIndex,
 };
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_data_structures::indexed_vec::{IndexVec, Idx};
@@ -283,7 +283,7 @@ impl<'a, 'b, 'gcx, 'tcx> Visitor<'tcx> for TypeVerifier<'a, 'b, 'gcx, 'tcx> {
                 location.to_locations(),
                 ConstraintCategory::Boring,
             ) {
-                let annotation = self.cx.instantiated_type_annotations[&annotation_index];
+                let annotation = &self.mir.user_type_annotations[annotation_index];
                 span_mirbug!(
                     self,
                     constant,
@@ -292,6 +292,39 @@ impl<'a, 'b, 'gcx, 'tcx> Visitor<'tcx> for TypeVerifier<'a, 'b, 'gcx, 'tcx> {
                     constant.ty,
                     terr,
                 );
+            }
+        } else {
+            match *constant.literal {
+                ty::LazyConst::Unevaluated(def_id, substs) => {
+                    if let Err(terr) = self.cx.fully_perform_op(
+                        location.to_locations(),
+                        ConstraintCategory::Boring,
+                        self.cx.param_env.and(type_op::ascribe_user_type::AscribeUserType::new(
+                            constant.ty, def_id, UserSubsts { substs, user_self_ty: None },
+                        )),
+                    ) {
+                        span_mirbug!(
+                            self,
+                            constant,
+                            "bad constant type {:?} ({:?})",
+                            constant,
+                            terr
+                        );
+                    }
+                }
+                ty::LazyConst::Evaluated(lit) => {
+                    if let ty::FnDef(def_id, substs) = lit.ty.sty {
+                        let tcx = self.tcx();
+
+                        let instantiated_predicates = tcx
+                            .predicates_of(def_id)
+                            .instantiate(tcx, substs);
+                        self.cx.normalize_and_prove_instantiated_predicates(
+                            instantiated_predicates,
+                            location.to_locations(),
+                        );
+                    }
+                }
             }
         }
     }
@@ -374,8 +407,9 @@ impl<'a, 'b, 'gcx, 'tcx> TypeVerifier<'a, 'b, 'gcx, 'tcx> {
         }
     }
 
-    /// Checks that the constant's `ty` field matches up with what
-    /// would be expected from its literal.
+    /// Checks that the constant's `ty` field matches up with what would be
+    /// expected from its literal. Unevaluated constants and well-formed
+    /// constraints are checked by `visit_constant`.
     fn sanitize_constant(&mut self, constant: &Constant<'tcx>, location: Location) {
         debug!(
             "sanitize_constant(constant={:?}, location={:?})",
@@ -386,35 +420,6 @@ impl<'a, 'b, 'gcx, 'tcx> TypeVerifier<'a, 'b, 'gcx, 'tcx> {
             ty::LazyConst::Evaluated(lit) => lit,
             ty::LazyConst::Unevaluated(..) => return,
         };
-
-        // FIXME(#46702) -- We need some way to get the predicates
-        // associated with the "pre-evaluated" form of the
-        // constant. For example, consider that the constant
-        // may have associated constant projections (`<Foo as
-        // Trait<'a, 'b>>::SOME_CONST`) that impose
-        // constraints on `'a` and `'b`. These constraints
-        // would be lost if we just look at the normalized
-        // value.
-        if let ty::FnDef(def_id, substs) = literal.ty.sty {
-            let tcx = self.tcx();
-            let type_checker = &mut self.cx;
-
-            // FIXME -- For now, use the substitutions from
-            // `value.ty` rather than `value.val`. The
-            // renumberer will rewrite them to independent
-            // sets of regions; in principle, we ought to
-            // derive the type of the `value.val` from "first
-            // principles" and equate with value.ty, but as we
-            // are transitioning to the miri-based system, we
-            // don't have a handy function for that, so for
-            // now we just ignore `value.val` regions.
-
-            let instantiated_predicates = tcx.predicates_of(def_id).instantiate(tcx, substs);
-            type_checker.normalize_and_prove_instantiated_predicates(
-                instantiated_predicates,
-                location.to_locations(),
-            );
-        }
 
         debug!("sanitize_constant: expected_ty={:?}", literal.ty);
 
@@ -740,15 +745,6 @@ struct TypeChecker<'a, 'gcx: 'tcx, 'tcx: 'a> {
     reported_errors: FxHashSet<(Ty<'tcx>, Span)>,
     borrowck_context: Option<&'a mut BorrowCheckContext<'a, 'tcx>>,
     universal_region_relations: Option<&'a UniversalRegionRelations<'tcx>>,
-    /// For each user-type annotation (identified by a UserTypeAnnotationIndex), we create
-    /// an "instantiated" version at the beginning of type check, which replaces each
-    /// canonical variable with a fresh inference variable. These instantiated versions are
-    /// stored either in this field or in user_substs, depending on the kind of user-type
-    /// annotation. They are then referenced by the code which has the job of enforcing these
-    /// annotations. Part of the reason for this setup is that it allows us to enforce basic
-    /// WF criteria on the types even if the code that referenced them is dead
-    /// code (see #54943).
-    instantiated_type_annotations: FxHashMap<UserTypeAnnotationIndex, UserTypeAnnotation<'tcx>>,
 }
 
 struct BorrowCheckContext<'a, 'tcx: 'a> {
@@ -905,36 +901,69 @@ impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
             borrowck_context,
             reported_errors: Default::default(),
             universal_region_relations,
-            instantiated_type_annotations: Default::default(),
         };
-        checker.instantiate_user_type_annotations();
+        checker.check_user_type_annotations();
         checker
     }
 
-    /// Instantiate canonical types from user type annotations in the `Mir` into the
-    /// `TypeChecker`. Used when relating user type annotations and when checking if
-    /// annotations are well-formed.
-    fn instantiate_user_type_annotations(&mut self) {
+    /// Equate the inferred type and the annotated type for user type annotations
+    fn check_user_type_annotations(&mut self) {
         debug!(
-            "instantiate_user_type_annotations: user_type_annotations={:?}",
+            "check_user_type_annotations: user_type_annotations={:?}",
              self.mir.user_type_annotations
         );
-        for annotation_index in self.mir.user_type_annotations.indices() {
-            let (span, canonical_annotation) = &self.mir.user_type_annotations[annotation_index];
-            let (mut annotation, _) = self.infcx.instantiate_canonical_with_fresh_inference_vars(
-                *span, &canonical_annotation
+        for user_annotation in &self.mir.user_type_annotations {
+            let CanonicalUserTypeAnnotation { span, ref user_ty, inferred_ty } = *user_annotation;
+            let (annotation, _) = self.infcx.instantiate_canonical_with_fresh_inference_vars(
+                span, user_ty
             );
             match annotation {
-                UserTypeAnnotation::Ty(ref mut ty) =>
-                    *ty = self.normalize(ty, Locations::All(*span)),
-                _ => {},
+                UserType::Ty(mut ty) => {
+                    ty = self.normalize(ty, Locations::All(span));
+
+                    if let Err(terr) = self.eq_types(
+                        ty,
+                        inferred_ty,
+                        Locations::All(span),
+                        ConstraintCategory::BoringNoLocation,
+                    ) {
+                        span_mirbug!(
+                            self,
+                            user_annotation,
+                            "bad user type ({:?} = {:?}): {:?}",
+                            ty,
+                            inferred_ty,
+                            terr
+                        );
+                    }
+
+                    self.prove_predicate(
+                        ty::Predicate::WellFormed(inferred_ty),
+                        Locations::All(span),
+                        ConstraintCategory::TypeAnnotation,
+                    );
+                },
+                UserType::TypeOf(def_id, user_substs) => {
+                    if let Err(terr) = self.fully_perform_op(
+                        Locations::All(span),
+                        ConstraintCategory::BoringNoLocation,
+                        self.param_env.and(type_op::ascribe_user_type::AscribeUserType::new(
+                            inferred_ty, def_id, user_substs,
+                        )),
+                    ) {
+                        span_mirbug!(
+                            self,
+                            user_annotation,
+                            "bad user type AscribeUserType({:?}, {:?} {:?}): {:?}",
+                            inferred_ty,
+                            def_id,
+                            user_substs,
+                            terr
+                        );
+                    }
+                },
             }
-            self.instantiated_type_annotations.insert(annotation_index, annotation);
         }
-        debug!(
-            "instantiate_user_type_annotations: instantiated_type_annotations={:?}",
-            self.instantiated_type_annotations,
-        );
     }
 
     /// Given some operation `op` that manipulates types, proves
@@ -1066,58 +1095,23 @@ impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
             a, v, user_ty, locations,
         );
 
-        let type_annotation = self.instantiated_type_annotations[&user_ty.base];
-        match type_annotation {
-            UserTypeAnnotation::Ty(ty) => {
-                // The `TypeRelating` code assumes that "unresolved inference
-                // variables" appear in the "a" side, so flip `Contravariant`
-                // ambient variance to get the right relationship.
-                let v1 = ty::Contravariant.xform(v);
-                let tcx = self.infcx.tcx;
+        let annotated_type = self.mir.user_type_annotations[user_ty.base].inferred_ty;
+        let mut curr_projected_ty = PlaceTy::from_ty(annotated_type);
 
-                // We need to follow any provided projetions into the type.
-                //
-                // if we hit a ty var as we descend, then just skip the
-                // attempt to relate the mir local with any type.
-                #[derive(Debug)] struct HitTyVar;
-                let mut curr_projected_ty: Result<PlaceTy, HitTyVar>;
+        let tcx = self.infcx.tcx;
 
-                curr_projected_ty = Ok(PlaceTy::from_ty(ty));
-                for proj in &user_ty.projs {
-                    let projected_ty = if let Ok(projected_ty) = curr_projected_ty {
-                        projected_ty
-                    } else {
-                        break;
-                    };
-                    curr_projected_ty = projected_ty.projection_ty_core(
-                        tcx, proj, |this, field, &()| {
-                            if this.to_ty(tcx).is_ty_var() {
-                                Err(HitTyVar)
-                            } else {
-                                let ty = this.field_ty(tcx, field);
-                                Ok(self.normalize(ty, locations))
-                            }
-                        });
-                }
-                debug!("user_ty base: {:?} freshened: {:?} projs: {:?} yields: {:?}",
-                       user_ty.base, ty, user_ty.projs, curr_projected_ty);
-
-                if let Ok(projected_ty) = curr_projected_ty {
-                    let ty = projected_ty.to_ty(tcx);
-                    self.relate_types(ty, v1, a, locations, category)?;
-                }
-            }
-            UserTypeAnnotation::TypeOf(def_id, user_substs) => {
-                let projs = self.infcx.tcx.intern_projs(&user_ty.projs);
-                self.fully_perform_op(
-                    locations,
-                    category,
-                    self.param_env.and(type_op::ascribe_user_type::AscribeUserType::new(
-                        a, v, def_id, user_substs, projs,
-                    )),
-                )?;
-            }
+        for proj in &user_ty.projs {
+            let projected_ty = curr_projected_ty.projection_ty_core(tcx, proj, |this, field, &()| {
+                let ty = this.field_ty(tcx, field);
+                self.normalize(ty, locations)
+            });
+            curr_projected_ty = projected_ty;
         }
+        debug!("user_ty base: {:?} freshened: {:?} projs: {:?} yields: {:?}",
+                user_ty.base, annotated_type, user_ty.projs, curr_projected_ty);
+
+        let ty = curr_projected_ty.to_ty(tcx);
+        self.relate_types(a, v, ty, locations, category)?;
 
         Ok(())
     }
@@ -1286,7 +1280,7 @@ impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
                         location.to_locations(),
                         ConstraintCategory::Boring,
                     ) {
-                        let annotation = self.instantiated_type_annotations[&annotation_index];
+                        let annotation = &mir.user_type_annotations[annotation_index];
                         span_mirbug!(
                             self,
                             stmt,
@@ -1345,7 +1339,7 @@ impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
                     Locations::All(stmt.source_info.span),
                     ConstraintCategory::TypeAnnotation,
                 ) {
-                    let annotation = self.instantiated_type_annotations[&projection.base];
+                    let annotation = &mir.user_type_annotations[projection.base];
                     span_mirbug!(
                         self,
                         stmt,

@@ -1,0 +1,13 @@
+error: lifetime may not live long enough
+  --> $DIR/regions-outlives-projection-container-wc.rs:37:12
+   |
+LL | fn with_assoc<'a,'b>() {
+   |               -- -- lifetime `'b` defined here
+   |               |
+   |               lifetime `'a` defined here
+...
+LL |     let _: &'a WithAssoc<TheType<'b>> = loop { };
+   |            ^^^^^^^^^^^^^^^^^^^^^^^^^^ type annotation requires that `'b` must outlive `'a`
+
+error: aborting due to previous error
+

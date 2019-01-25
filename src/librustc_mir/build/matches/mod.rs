@@ -9,7 +9,7 @@ use build::{BlockAnd, BlockAndExtension, Builder};
 use build::{GuardFrame, GuardFrameLocal, LocalsForNode};
 use hair::*;
 use rustc::mir::*;
-use rustc::ty::{self, Ty};
+use rustc::ty::{self, CanonicalUserTypeAnnotation, Ty};
 use rustc::ty::layout::VariantIdx;
 use rustc_data_structures::bit_set::BitSet;
 use rustc_data_structures::fx::FxHashMap;
@@ -303,7 +303,9 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
 
                 let ty_source_info = self.source_info(user_ty_span);
                 let user_ty = box pat_ascription_ty.user_ty(
-                    &mut self.canonical_user_type_annotations, ty_source_info.span
+                    &mut self.canonical_user_type_annotations,
+                    place.ty(&self.local_decls, self.hir.tcx()).to_ty(self.hir.tcx()),
+                    ty_source_info.span,
                 );
                 self.cfg.push(
                     block,
@@ -570,10 +572,14 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                 //
                 // Note that the variance doesn't apply here, as we are tracking the effect
                 // of `user_ty` on any bindings contained with subpattern.
-                let annotation = (user_ty_span, user_ty.base);
+                let annotation = CanonicalUserTypeAnnotation {
+                    span: user_ty_span,
+                    user_ty: user_ty.user_ty,
+                    inferred_ty: subpattern.ty,
+                };
                 let projection = UserTypeProjection {
                     base: self.canonical_user_type_annotations.push(annotation),
-                    projs: user_ty.projs.clone(),
+                    projs: Vec::new(),
                 };
                 let subpattern_user_ty = pattern_user_ty.push_projection(&projection, user_ty_span);
                 self.visit_bindings(subpattern, subpattern_user_ty, f)
@@ -1337,7 +1343,9 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
             );
 
             let user_ty = box ascription.user_ty.clone().user_ty(
-                &mut self.canonical_user_type_annotations, source_info.span
+                &mut self.canonical_user_type_annotations,
+                ascription.source.ty(&self.local_decls, self.hir.tcx()).to_ty(self.hir.tcx()),
+                source_info.span
             );
             self.cfg.push(
                 block,

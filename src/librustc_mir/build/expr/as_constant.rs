@@ -3,6 +3,7 @@
 use build::Builder;
 use hair::*;
 use rustc::mir::*;
+use rustc::ty::CanonicalUserTypeAnnotation;
 
 impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
     /// Compile `expr`, yielding a compile-time constant. Assumes that
@@ -30,8 +31,12 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                 value,
             } => this.as_constant(value),
             ExprKind::Literal { literal, user_ty } => {
-                let user_ty = user_ty.map(|ty| {
-                    this.canonical_user_type_annotations.push((span, ty))
+                let user_ty = user_ty.map(|user_ty| {
+                    this.canonical_user_type_annotations.push(CanonicalUserTypeAnnotation {
+                        span,
+                        user_ty,
+                        inferred_ty: ty,
+                    })
                 });
                 Constant {
                     span,

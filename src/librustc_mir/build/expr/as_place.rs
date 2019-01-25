@@ -6,7 +6,7 @@ use build::{BlockAnd, BlockAndExtension, Builder};
 use hair::*;
 use rustc::mir::interpret::EvalErrorKind::BoundsCheck;
 use rustc::mir::*;
-use rustc::ty::Variance;
+use rustc::ty::{CanonicalUserTypeAnnotation, Variance};
 
 use rustc_data_structures::indexed_vec::Idx;
 
@@ -134,7 +134,11 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                 let place = unpack!(block = this.as_place(block, source));
                 if let Some(user_ty) = user_ty {
                     let annotation_index = this.canonical_user_type_annotations.push(
-                        (source_info.span, user_ty)
+                        CanonicalUserTypeAnnotation {
+                            span: source_info.span,
+                            user_ty,
+                            inferred_ty: expr.ty,
+                        }
                     );
                     this.cfg.push(
                         block,
@@ -157,7 +161,11 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                 );
                 if let Some(user_ty) = user_ty {
                     let annotation_index = this.canonical_user_type_annotations.push(
-                        (source_info.span, user_ty)
+                        CanonicalUserTypeAnnotation {
+                            span: source_info.span,
+                            user_ty,
+                            inferred_ty: expr.ty,
+                        }
                     );
                     this.cfg.push(
                         block,

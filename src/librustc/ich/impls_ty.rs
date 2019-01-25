@@ -1240,16 +1240,22 @@ impl_stable_hash_for!(
     }
 );
 
-impl<'a, 'gcx> HashStable<StableHashingContext<'a>> for ty::UserTypeAnnotation<'gcx> {
+impl_stable_hash_for!(
+    struct ty::CanonicalUserTypeAnnotation<'tcx> {
+        user_ty, span, inferred_ty
+    }
+);
+
+impl<'a, 'gcx> HashStable<StableHashingContext<'a>> for ty::UserType<'gcx> {
     fn hash_stable<W: StableHasherResult>(&self,
                                           hcx: &mut StableHashingContext<'a>,
                                           hasher: &mut StableHasher<W>) {
         mem::discriminant(self).hash_stable(hcx, hasher);
         match *self {
-            ty::UserTypeAnnotation::Ty(ref ty) => {
+            ty::UserType::Ty(ref ty) => {
                 ty.hash_stable(hcx, hasher);
             }
-            ty::UserTypeAnnotation::TypeOf(ref def_id, ref substs) => {
+            ty::UserType::TypeOf(ref def_id, ref substs) => {
                 def_id.hash_stable(hcx, hasher);
                 substs.hash_stable(hcx, hasher);
             }

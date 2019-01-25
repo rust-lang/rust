@@ -404,7 +404,7 @@ impl<'cx, 'gcx, 'tcx> WritebackCx<'cx, 'gcx, 'tcx> {
                 .user_provided_types_mut()
                 .insert(hir_id, c_ty.clone());
 
-            if let ty::UserTypeAnnotation::TypeOf(_, user_substs) = c_ty.value {
+            if let ty::UserType::TypeOf(_, user_substs) = c_ty.value {
                 if self.rustc_dump_user_substs {
                     // This is a unit-testing mechanism.
                     let node_id = self.tcx().hir().hir_to_node_id(hir_id);

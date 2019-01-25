@@ -7,7 +7,7 @@ use rustc::infer::InferCtxt;
 use rustc::mir::visit::TyContext;
 use rustc::mir::visit::Visitor;
 use rustc::mir::{BasicBlock, BasicBlockData, Location, Mir, Place, Rvalue};
-use rustc::mir::{Statement, Terminator};
+use rustc::mir::{SourceInfo, Statement, Terminator};
 use rustc::mir::UserTypeProjection;
 use rustc::ty::fold::TypeFoldable;
 use rustc::ty::subst::Substs;
@@ -66,11 +66,12 @@ impl<'cg, 'cx, 'gcx, 'tcx> Visitor<'tcx> for ConstraintGeneration<'cg, 'cx, 'gcx
     /// call. Make them live at the location where they appear.
     fn visit_ty(&mut self, ty: &ty::Ty<'tcx>, ty_context: TyContext) {
         match ty_context {
-            TyContext::ReturnTy(source_info)
-            | TyContext::YieldTy(source_info)
-            | TyContext::LocalDecl { source_info, .. } => {
+            TyContext::ReturnTy(SourceInfo { span, .. })
+            | TyContext::YieldTy(SourceInfo { span, .. })
+            | TyContext::UserTy(span)
+            | TyContext::LocalDecl { source_info: SourceInfo { span, .. }, .. } => {
                 span_bug!(
-                    source_info.span,
+                    span,
                     "should not be visiting outside of the CFG: {:?}",
                     ty_context
                 );

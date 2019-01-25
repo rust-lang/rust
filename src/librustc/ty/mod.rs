@@ -73,8 +73,8 @@ pub use self::binding::BindingMode::*;
 pub use self::context::{TyCtxt, FreeRegionInfo, GlobalArenas, AllArenas, tls, keep_local};
 pub use self::context::{Lift, TypeckTables, CtxtInterners};
 pub use self::context::{
-    UserTypeAnnotationIndex, UserTypeAnnotation, CanonicalUserTypeAnnotation,
-    CanonicalUserTypeAnnotations,
+    UserTypeAnnotationIndex, UserType, CanonicalUserType,
+    CanonicalUserTypeAnnotation, CanonicalUserTypeAnnotations,
 };
 
 pub use self::instance::{Instance, InstanceDef};

@@ -2,8 +2,6 @@ use rustc::infer::at::ToTrace;
 use rustc::infer::canonical::{Canonical, QueryResponse};
 use rustc::infer::InferCtxt;
 use rustc::hir::def_id::DefId;
-use rustc::mir::ProjectionKind;
-use rustc::mir::tcx::PlaceTy;
 use rustc::traits::query::type_op::ascribe_user_type::AscribeUserType;
 use rustc::traits::query::type_op::eq::Eq;
 use rustc::traits::query::type_op::normalize::Normalize;
@@ -44,17 +42,16 @@ fn type_op_ascribe_user_type<'tcx>(
     tcx.infer_ctxt()
         .enter_canonical_trait_query(&canonicalized, |infcx, fulfill_cx, key| {
             let (
-                param_env, AscribeUserType { mir_ty, variance, def_id, user_substs, projs }
+                param_env, AscribeUserType { mir_ty, def_id, user_substs }
             ) = key.into_parts();
 
             debug!(
-                "type_op_ascribe_user_type: mir_ty={:?} variance={:?} def_id={:?} \
-                 user_substs={:?} projs={:?}",
-                mir_ty, variance, def_id, user_substs, projs
+                "type_op_ascribe_user_type: mir_ty={:?} def_id={:?} user_substs={:?}",
+                mir_ty, def_id, user_substs
             );
 
             let mut cx = AscribeUserTypeCx { infcx, param_env, fulfill_cx };
-            cx.relate_mir_and_user_ty(mir_ty, variance, def_id, user_substs, projs)?;
+            cx.relate_mir_and_user_ty(mir_ty, def_id, user_substs)?;
 
             Ok(())
         })
@@ -112,10 +109,8 @@ impl AscribeUserTypeCx<'me, 'gcx, 'tcx> {
     fn relate_mir_and_user_ty(
         &mut self,
         mir_ty: Ty<'tcx>,
-        variance: Variance,
         def_id: DefId,
         user_substs: UserSubsts<'tcx>,
-        projs: &[ProjectionKind<'tcx>],
     ) -> Result<(), NoSolution> {
         let UserSubsts {
             user_self_ty,
@@ -128,35 +123,7 @@ impl AscribeUserTypeCx<'me, 'gcx, 'tcx> {
         debug!("relate_type_and_user_type: ty of def-id is {:?}", ty);
         let ty = self.normalize(ty);
 
-        // We need to follow any provided projetions into the type.
-        //
-        // if we hit a ty var as we descend, then just skip the
-        // attempt to relate the mir local with any type.
-
-        struct HitTyVar;
-        let mut curr_projected_ty: Result<PlaceTy, HitTyVar>;
-        curr_projected_ty = Ok(PlaceTy::from_ty(ty));
-        for proj in projs {
-            let projected_ty = if let Ok(projected_ty) = curr_projected_ty {
-                projected_ty
-            } else {
-                break;
-            };
-            curr_projected_ty = projected_ty.projection_ty_core(
-                tcx, proj, |this, field, &()| {
-                    if this.to_ty(tcx).is_ty_var() {
-                        Err(HitTyVar)
-                    } else {
-                        let ty = this.field_ty(tcx, field);
-                        Ok(self.normalize(ty))
-                    }
-                });
-        }
-
-        if let Ok(projected_ty) = curr_projected_ty {
-            let ty = projected_ty.to_ty(tcx);
-            self.relate(mir_ty, variance, ty)?;
-        }
+        self.relate(mir_ty, Variance::Invariant, ty)?;
 
         // Prove the predicates coming along with `def_id`.
         //

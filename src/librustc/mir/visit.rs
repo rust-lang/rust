@@ -1,7 +1,6 @@
 use hir::def_id::DefId;
-use infer::canonical::Canonical;
 use ty::subst::Substs;
-use ty::{ClosureSubsts, GeneratorSubsts, Region, Ty};
+use ty::{CanonicalUserTypeAnnotation, ClosureSubsts, GeneratorSubsts, Region, Ty};
 use mir::*;
 use syntax_pos::Span;
 
@@ -221,7 +220,7 @@ macro_rules! make_mir_visitor {
             fn visit_user_type_annotation(
                 &mut self,
                 index: UserTypeAnnotationIndex,
-                ty: & $($mutability)* Canonical<'tcx, UserTypeAnnotation<'tcx>>,
+                ty: & $($mutability)* CanonicalUserTypeAnnotation<'tcx>,
             ) {
                 self.super_user_type_annotation(index, ty);
             }
@@ -309,12 +308,15 @@ macro_rules! make_mir_visitor {
                     self.visit_local_decl(local, & $($mutability)* mir.local_decls[local]);
                 }
 
-                for index in mir.user_type_annotations.indices() {
-                    let (span, annotation) = & $($mutability)* mir.user_type_annotations[index];
+                macro_rules! type_annotations {
+                    (mut) => (mir.user_type_annotations.iter_enumerated_mut());
+                    () => (mir.user_type_annotations.iter_enumerated());
+                };
+
+                for (index, annotation) in type_annotations!($($mutability)*) {
                     self.visit_user_type_annotation(
                         index, annotation
                     );
-                    self.visit_span(span);
                 }
 
                 self.visit_span(&$($mutability)* mir.span);
@@ -882,8 +884,10 @@ macro_rules! make_mir_visitor {
             fn super_user_type_annotation(
                 &mut self,
                 _index: UserTypeAnnotationIndex,
-                _ty: & $($mutability)* Canonical<'tcx, UserTypeAnnotation<'tcx>>,
+                ty: & $($mutability)* CanonicalUserTypeAnnotation<'tcx>,
             ) {
+                self.visit_span(& $($mutability)* ty.span);
+                self.visit_ty(& $($mutability)* ty.inferred_ty, TyContext::UserTy(ty.span));
             }
 
             fn super_ty(&mut self, _ty: & $($mutability)* Ty<'tcx>) {
@@ -963,6 +967,9 @@ pub enum TyContext {
         /// The source location where this local variable was declared.
         source_info: SourceInfo,
     },
+
+    /// The inferred type of a user type annotation.
+    UserTy(Span),
 
     /// The return type of the function.
     ReturnTy(SourceInfo),

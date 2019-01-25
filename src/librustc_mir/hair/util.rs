@@ -1,5 +1,5 @@
 use rustc::hir;
-use rustc::ty::{self, CanonicalUserTypeAnnotation, TyCtxt, UserTypeAnnotation};
+use rustc::ty::{self, CanonicalUserType, TyCtxt, UserType};
 
 crate trait UserAnnotatedTyHelpers<'gcx: 'tcx, 'tcx> {
     fn tcx(&self) -> TyCtxt<'_, 'gcx, 'tcx>;
@@ -12,13 +12,13 @@ crate trait UserAnnotatedTyHelpers<'gcx: 'tcx, 'tcx> {
     fn user_substs_applied_to_ty_of_hir_id(
         &self,
         hir_id: hir::HirId,
-    ) -> Option<CanonicalUserTypeAnnotation<'tcx>> {
+    ) -> Option<CanonicalUserType<'tcx>> {
         let user_provided_types = self.tables().user_provided_types();
         let mut user_ty = *user_provided_types.get(hir_id)?;
         debug!("user_subts_applied_to_ty_of_hir_id: user_ty={:?}", user_ty);
         match &self.tables().node_id_to_type(hir_id).sty {
             ty::Adt(adt_def, ..) => {
-                if let UserTypeAnnotation::TypeOf(ref mut did, _) = &mut user_ty.value {
+                if let UserType::TypeOf(ref mut did, _) = &mut user_ty.value {
                     *did = adt_def.did;
                 }
                 Some(user_ty)

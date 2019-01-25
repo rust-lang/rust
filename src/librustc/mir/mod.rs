@@ -31,7 +31,7 @@ use ty::subst::{Subst, Substs};
 use ty::layout::VariantIdx;
 use ty::{
     self, AdtDef, CanonicalUserTypeAnnotations, ClosureSubsts, GeneratorSubsts, Region, Ty, TyCtxt,
-    UserTypeAnnotationIndex, UserTypeAnnotation,
+    UserTypeAnnotationIndex,
 };
 use util::ppaux;
 

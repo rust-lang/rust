@@ -12,10 +12,10 @@ use hair::util::UserAnnotatedTyHelpers;
 use hair::constant::*;
 
 use rustc::mir::{fmt_const_val, Field, BorrowKind, Mutability};
-use rustc::mir::{ProjectionElem, UserTypeProjection};
+use rustc::mir::{UserTypeProjection};
 use rustc::mir::interpret::{Scalar, GlobalId, ConstValue, sign_extend};
-use rustc::ty::{self, Region, TyCtxt, AdtDef, Ty, Lift};
-use rustc::ty::{CanonicalUserTypeAnnotation, CanonicalUserTypeAnnotations, UserTypeAnnotation};
+use rustc::ty::{self, Region, TyCtxt, AdtDef, Ty, Lift, UserType};
+use rustc::ty::{CanonicalUserType, CanonicalUserTypeAnnotation, CanonicalUserTypeAnnotations};
 use rustc::ty::subst::{Substs, Kind};
 use rustc::ty::layout::VariantIdx;
 use rustc::hir::{self, PatKind, RangeEnd};
@@ -60,26 +60,29 @@ pub struct Pattern<'tcx> {
 
 #[derive(Clone, Debug)]
 pub struct PatternTypeProjection<'tcx> {
-    pub base: CanonicalUserTypeAnnotation<'tcx>,
-    pub projs: Vec<ProjectionElem<'tcx, (), ()>>,
+    pub user_ty: CanonicalUserType<'tcx>,
 }
 
 impl<'tcx> PatternTypeProjection<'tcx> {
-    pub(crate) fn from_user_type(user_annotation: CanonicalUserTypeAnnotation<'tcx>) -> Self {
+    pub(crate) fn from_user_type(user_annotation: CanonicalUserType<'tcx>) -> Self {
         Self {
-            base: user_annotation,
-            projs: Vec::new(),
+            user_ty: user_annotation,
         }
     }
 
     pub(crate) fn user_ty(
         self,
         annotations: &mut CanonicalUserTypeAnnotations<'tcx>,
+        inferred_ty: Ty<'tcx>,
         span: Span,
     ) -> UserTypeProjection<'tcx> {
         UserTypeProjection {
-            base: annotations.push((span, self.base)),
-            projs: self.projs
+            base: annotations.push(CanonicalUserTypeAnnotation {
+                span,
+                user_ty: self.user_ty,
+                inferred_ty,
+            }),
+            projs: Vec::new(),
         }
     }
 }
@@ -1040,7 +1043,7 @@ macro_rules! CloneImpls {
 CloneImpls!{ <'tcx>
     Span, Field, Mutability, ast::Name, ast::NodeId, usize, ty::Const<'tcx>,
     Region<'tcx>, Ty<'tcx>, BindingMode, &'tcx AdtDef,
-    &'tcx Substs<'tcx>, &'tcx Kind<'tcx>, UserTypeAnnotation<'tcx>,
+    &'tcx Substs<'tcx>, &'tcx Kind<'tcx>, UserType<'tcx>,
     UserTypeProjection<'tcx>, PatternTypeProjection<'tcx>
 }
 

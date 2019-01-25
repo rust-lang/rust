@@ -103,8 +103,8 @@ use rustc::middle::region;
 use rustc::mir::interpret::{ConstValue, GlobalId};
 use rustc::traits::{self, ObligationCause, ObligationCauseCode, TraitEngine};
 use rustc::ty::{
-    self, AdtKind, CanonicalUserTypeAnnotation, Ty, TyCtxt, GenericParamDefKind, Visibility,
-    ToPolyTraitRef, ToPredicate, RegionKind, UserTypeAnnotation
+    self, AdtKind, CanonicalUserType, Ty, TyCtxt, GenericParamDefKind, Visibility,
+    ToPolyTraitRef, ToPredicate, RegionKind, UserType
 };
 use rustc::ty::adjustment::{Adjust, Adjustment, AllowTwoPhase, AutoBorrow, AutoBorrowMutability};
 use rustc::ty::fold::TypeFoldable;
@@ -985,7 +985,7 @@ impl<'a, 'gcx, 'tcx> Visitor<'gcx> for GatherLocalsVisitor<'a, 'gcx, 'tcx> {
                 };
 
                 let c_ty = self.fcx.inh.infcx.canonicalize_user_type_annotation(
-                    &UserTypeAnnotation::Ty(revealed_ty)
+                    &UserType::Ty(revealed_ty)
                 );
                 debug!("visit_local: ty.hir_id={:?} o_ty={:?} revealed_ty={:?} c_ty={:?}",
                        ty.hir_id, o_ty, revealed_ty, c_ty);
@@ -2194,7 +2194,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                         user_self_ty: None, // not relevant here
                     };
 
-                    self.infcx.canonicalize_user_type_annotation(&UserTypeAnnotation::TypeOf(
+                    self.infcx.canonicalize_user_type_annotation(&UserType::TypeOf(
                         method.def_id,
                         user_substs,
                     ))
@@ -2239,7 +2239,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
 
         if !substs.is_noop() {
             let canonicalized = self.infcx.canonicalize_user_type_annotation(
-                &UserTypeAnnotation::TypeOf(def_id, UserSubsts {
+                &UserType::TypeOf(def_id, UserSubsts {
                     substs,
                     user_self_ty,
                 })
@@ -2252,7 +2252,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
     pub fn write_user_type_annotation(
         &self,
         hir_id: hir::HirId,
-        canonical_user_type_annotation: CanonicalUserTypeAnnotation<'tcx>,
+        canonical_user_type_annotation: CanonicalUserType<'tcx>,
     ) {
         debug!(
             "write_user_type_annotation: hir_id={:?} canonical_user_type_annotation={:?} tag={}",
@@ -2437,10 +2437,11 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         // types that involve projections, since those can resolve to
         // `'static` bounds (modulo #54940, which hopefully will be
         // fixed by the time you see this comment, dear reader,
-        // although I have my doubts). Other sorts of things are
-        // already sufficiently enforced with erased regions. =)
-        if ty.has_free_regions() || ty.has_projections() {
-            let c_ty = self.infcx.canonicalize_response(&UserTypeAnnotation::Ty(ty));
+        // although I have my doubts). Also pass in types with inference
+        // types, because they may be repeated. Other sorts of things
+        // are already sufficiently enforced with erased regions. =)
+        if ty.has_free_regions() || ty.has_projections() || ty.has_infer_types() {
+            let c_ty = self.infcx.canonicalize_response(&UserType::Ty(ty));
             debug!("to_ty_saving_user_provided_ty: c_ty={:?}", c_ty);
             self.tables.borrow_mut().user_provided_types_mut().insert(ast_ty.hir_id, c_ty);
         }
