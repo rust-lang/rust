@@ -1,0 +1,107 @@
+error: type parameters must be declared prior to associated type bindings
+  --> $DIR/suggest-move-types.rs:28:26
+   |
+LL | struct A<T, M: One<A=(), T>> { //~ ERROR type parameters must be declared
+   |                          ^ must be declared prior to associated type bindings
+help: move the type parameter prior to the first associated type binding
+   |
+LL | struct A<T, M: One<T, A=()>> { //~ ERROR type parameters must be declared
+   |                    ^^    --
+
+error: generic arguments must declare lifetimes, types and associated type bindings in that order
+  --> $DIR/suggest-move-types.rs:34:46
+   |
+LL | struct Al<'a, T, M: OneWithLifetime<A=(), T, 'a>> {
+   |                                           ^  ^^ must be declared prior to type parameters
+   |                                           |
+   |                                           must be declared prior to associated type bindings
+help: move the parameters
+   |
+LL | struct Al<'a, T, M: OneWithLifetime<'a, T, A=()>> {
+   |                                     ^^^ ^^    --
+
+error: type parameters must be declared prior to associated type bindings
+  --> $DIR/suggest-move-types.rs:40:46
+   |
+LL | struct B<T, U, V, M: Three<A=(), B=(), C=(), T, U, V>> { //~ ERROR type parameters must be declared
+   |                                              ^  ^  ^ must be declared prior to associated type bindings
+   |                                              |  |
+   |                                              |  must be declared prior to associated type bindings
+   |                                              must be declared prior to associated type bindings
+help: move the type parameters prior to the first associated type binding
+   |
+LL | struct B<T, U, V, M: Three<T, U, V, A=(), B=(), C=()>> { //~ ERROR type parameters must be declared
+   |                            ^^ ^^ ^^                --
+
+error: generic arguments must declare lifetimes, types and associated type bindings in that order
+  --> $DIR/suggest-move-types.rs:47:80
+   |
+LL | struct Bl<'a, 'b, 'c, T, U, V, M: ThreeWithLifetime<A=(), B=(), C=(), T, U, V, 'a, 'b, 'c>> {
+   |                                                                       ^  ^  ^  ^^  ^^  ^^ must be declared prior to type parameters
+   |                                                                       |  |  |  |   |
+   |                                                                       |  |  |  |   must be declared prior to type parameters
+   |                                                                       |  |  |  must be declared prior to type parameters
+   |                                                                       |  |  must be declared prior to associated type bindings
+   |                                                                       |  must be declared prior to associated type bindings
+   |                                                                       must be declared prior to associated type bindings
+help: move the parameters
+   |
+LL | struct Bl<'a, 'b, 'c, T, U, V, M: ThreeWithLifetime<'a, 'b, 'c, T, U, V, A=(), B=(), C=()>> {
+   |                                                     ^^^ ^^^ ^^^ ^^ ^^ ^^                --
+
+error: type parameters must be declared prior to associated type bindings
+  --> $DIR/suggest-move-types.rs:55:49
+   |
+LL | struct C<T, U, V, M: Three<T, A=(), B=(), C=(), U, V>> { //~ ERROR type parameters must be declared
+   |                                                 ^  ^ must be declared prior to associated type bindings
+   |                                                 |
+   |                                                 must be declared prior to associated type bindings
+help: move the type parameters prior to the first associated type binding
+   |
+LL | struct C<T, U, V, M: Three<T, U, V, A=(), B=(), C=()>> { //~ ERROR type parameters must be declared
+   |                               ^^ ^^                --
+
+error: generic arguments must declare lifetimes, types and associated type bindings in that order
+  --> $DIR/suggest-move-types.rs:62:56
+   |
+LL | struct Cl<'a, 'b, 'c, T, U, V, M: ThreeWithLifetime<T, 'a, A=(), B=(), C=(), U, 'b, V, 'c>> {
+   |                                                        ^^                    ^  ^^  ^  ^^ must be declared prior to type parameters
+   |                                                        |                     |  |   |
+   |                                                        |                     |  |   must be declared prior to associated type bindings
+   |                                                        |                     |  must be declared prior to type parameters
+   |                                                        |                     must be declared prior to associated type bindings
+   |                                                        must be declared prior to type parameters
+help: move the parameters
+   |
+LL | struct Cl<'a, 'b, 'c, T, U, V, M: ThreeWithLifetime<'a, 'b, 'c, T, U, V, A=(), B=(), C=()>> {
+   |                                                     ^^^ ^^^ ^^^ -- ^^ ^^                --
+
+error: type parameters must be declared prior to associated type bindings
+  --> $DIR/suggest-move-types.rs:70:43
+   |
+LL | struct D<T, U, V, M: Three<T, A=(), B=(), U, C=(), V>> { //~ ERROR type parameters must be declared
+   |                                           ^        ^ must be declared prior to associated type bindings
+   |                                           |
+   |                                           must be declared prior to associated type bindings
+help: move the type parameters prior to the first associated type binding
+   |
+LL | struct D<T, U, V, M: Three<T, U, V, A=(), B=(), C=()>> { //~ ERROR type parameters must be declared
+   |                               ^^ ^^          --    --
+
+error: generic arguments must declare lifetimes, types and associated type bindings in that order
+  --> $DIR/suggest-move-types.rs:77:56
+   |
+LL | struct Dl<'a, 'b, 'c, T, U, V, M: ThreeWithLifetime<T, 'a, A=(), B=(), U, 'b, C=(), V, 'c>> {
+   |                                                        ^^              ^  ^^        ^  ^^ must be declared prior to type parameters
+   |                                                        |               |  |         |
+   |                                                        |               |  |         must be declared prior to associated type bindings
+   |                                                        |               |  must be declared prior to type parameters
+   |                                                        |               must be declared prior to associated type bindings
+   |                                                        must be declared prior to type parameters
+help: move the parameters
+   |
+LL | struct Dl<'a, 'b, 'c, T, U, V, M: ThreeWithLifetime<'a, 'b, 'c, T, U, V, A=(), B=(), C=()>> {
+   |                                                     ^^^ ^^^ ^^^ -- ^^ ^^          --    --
+
+error: aborting due to 8 previous errors
+
