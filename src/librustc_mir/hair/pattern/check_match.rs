@@ -313,7 +313,7 @@ fn check_for_bindings_named_same_as_variants(cx: &MatchVisitor, pat: &Pat) {
                             "pattern binding `{}` is named the same as one \
                             of the variants of the type `{}`",
                             ident, ty_path);
-                        err.span_suggestion_with_applicability(
+                        err.span_suggestion(
                             p.span,
                             "to match on the variant, qualify the path",
                             format!("{}::{}", ty_path, ident),

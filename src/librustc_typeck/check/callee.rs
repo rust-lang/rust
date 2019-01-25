@@ -269,7 +269,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                     );
 
                     if let Some(ref path) = unit_variant {
-                        err.span_suggestion_with_applicability(
+                        err.span_suggestion(
                             call_expr.span,
                             &format!(
                                 "`{}` is a unit variant, you need to write it \
@@ -294,7 +294,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                                 self.tcx.sess.source_map().is_multiline(call_expr.span);
                             if call_is_multiline {
                                 let span = self.tcx.sess.source_map().next_point(callee.span);
-                                err.span_suggestion_with_applicability(
+                                err.span_suggestion(
                                     span,
                                     "try adding a semicolon",
                                     ";".to_owned(),

@@ -143,7 +143,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for TypeLimits {
                                                              OVERFLOWING_LITERALS,
                                                              parent_expr.span,
                                                              "only u8 can be cast into char");
-                                        err.span_suggestion_with_applicability(
+                                        err.span_suggestion(
                                             parent_expr.span,
                                             &"use a char literal instead",
                                             format!("'\\u{{{:X}}}'", lit_val),
@@ -401,7 +401,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for TypeLimits {
             {
                 if let Some(pos) = repr_str.chars().position(|c| c == 'i' || c == 'u') {
                     let (sans_suffix, _) = repr_str.split_at(pos);
-                    err.span_suggestion_with_applicability(
+                    err.span_suggestion(
                         expr.span,
                         &format!("consider using `{}` instead", sugg_ty),
                         format!("{}{}", sans_suffix, sugg_ty),

@@ -1526,14 +1526,14 @@ impl<'a, 'tcx> LifetimeContext<'a, 'tcx> {
             // place ("start at" because the latter includes trailing
             // whitespace), then this is an in-band lifetime
             if decl_span.shrink_to_lo() == use_span.shrink_to_lo() {
-                err.span_suggestion_with_applicability(
+                err.span_suggestion(
                     use_span,
                     "elide the single-use lifetime",
                     String::new(),
                     Applicability::MachineApplicable,
                 );
             } else {
-                err.multipart_suggestion_with_applicability(
+                err.multipart_suggestion(
                     "elide the single-use lifetime",
                     vec![(decl_span, String::new()), (use_span, String::new())],
                     Applicability::MachineApplicable,
@@ -1644,7 +1644,7 @@ impl<'a, 'tcx> LifetimeContext<'a, 'tcx> {
                             if let Some(generics) = self.tcx.hir().get_generics(parent_def_id) {
                                 let unused_lt_span = self.lifetime_deletion_span(name, generics);
                                 if let Some(span) = unused_lt_span {
-                                    err.span_suggestion_with_applicability(
+                                    err.span_suggestion(
                                         span,
                                         "elide the unused lifetime",
                                         String::new(),
@@ -2350,7 +2350,7 @@ impl<'a, 'tcx> LifetimeContext<'a, 'tcx> {
                 } else {
                     (format!("{} + 'static", snippet), Applicability::MaybeIncorrect)
                 };
-                db.span_suggestion_with_applicability(span, msg, sugg, applicability);
+                db.span_suggestion(span, msg, sugg, applicability);
                 false
             }
             Err(_) => {

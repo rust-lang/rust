@@ -990,7 +990,7 @@ https://doc.rust-lang.org/reference/types.html#trait-objects");
                     let suggested_name =
                         find_best_match_for_name(input, &ident.as_str(), None);
                     if let Some(suggested_name) = suggested_name {
-                        err.span_suggestion_with_applicability(
+                        err.span_suggestion(
                             *span,
                             "did you mean",
                             suggested_name.to_string(),

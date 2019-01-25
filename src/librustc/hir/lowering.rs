@@ -1829,7 +1829,7 @@ impl<'a> LoweringContext<'a> {
                         if let Ok(snippet) = self.sess.source_map().span_to_snippet(data.span) {
                             // Do not suggest going from `Trait()` to `Trait<>`
                             if data.inputs.len() > 0 {
-                                err.span_suggestion_with_applicability(
+                                err.span_suggestion(
                                     data.span,
                                     "use angle brackets instead",
                                     format!("<{}>", &snippet[1..snippet.len() - 1]),

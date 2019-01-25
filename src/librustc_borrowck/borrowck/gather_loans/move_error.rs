@@ -70,7 +70,7 @@ fn report_move_errors<'a, 'tcx>(bccx: &BorrowckCtxt<'a, 'tcx>, errors: &[MoveErr
                 let initializer =
                     e.init.as_ref().expect("should have an initializer to get an error");
                 if let Ok(snippet) = bccx.tcx.sess.source_map().span_to_snippet(initializer.span) {
-                    err.span_suggestion_with_applicability(
+                    err.span_suggestion(
                         initializer.span,
                         "consider using a reference instead",
                         format!("&{}", snippet),

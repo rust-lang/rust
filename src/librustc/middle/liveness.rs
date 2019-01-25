@@ -1600,12 +1600,16 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
                     let mut err = self.ir.tcx
                         .struct_span_lint_hir(lint::builtin::UNUSED_VARIABLES, hir_id, sp, &msg);
                     if self.ir.variable_is_shorthand(var) {
-                        err.span_suggestion_with_applicability(sp, "try ignoring the field",
-                                                               format!("{}: _", name),
-                                                               Applicability::MachineApplicable);
+                        err.span_suggestion(
+                            sp,
+                            "try ignoring the field",
+                            format!("{}: _", name),
+                            Applicability::MachineApplicable,
+                        );
                     } else {
-                        err.span_suggestion_short_with_applicability(
-                            sp, &suggest_underscore_msg,
+                        err.span_suggestion_short(
+                            sp,
+                            &suggest_underscore_msg,
                             format!("_{}", name),
                             Applicability::MachineApplicable,
                         );

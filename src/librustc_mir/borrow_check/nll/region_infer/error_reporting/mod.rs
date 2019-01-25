@@ -626,7 +626,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
                             "'_".to_string()
                         };
 
-                        diag.span_suggestion_with_applicability(
+                        diag.span_suggestion(
                             span,
                             &format!(
                                 "to allow this impl Trait to capture borrowed data with lifetime \

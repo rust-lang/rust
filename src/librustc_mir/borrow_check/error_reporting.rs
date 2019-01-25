@@ -1139,7 +1139,7 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
             Err(_) => "move |<args>| <body>".to_string()
         };
 
-        err.span_suggestion_with_applicability(
+        err.span_suggestion(
             args_span,
             &format!("to force the closure to take ownership of {} (and any \
                       other referenced variables), use the `move` keyword",
@@ -1428,7 +1428,7 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
         if let Some(decl) = local_decl {
             if let Some(name) = decl.name {
                 if decl.can_be_made_mutable() {
-                    err.span_suggestion_with_applicability(
+                    err.span_suggestion(
                         decl.source_info.span,
                         "make this binding mutable",
                         format!("mut {}", name),

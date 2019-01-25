@@ -62,7 +62,7 @@ impl<'a, 'tcx, 'rcx> SyntaxChecker<'a, 'tcx, 'rcx> {
 
                 if code_block.syntax.is_none() && code_block.is_fenced {
                     let sp = sp.from_inner_byte_pos(0, 3);
-                    diag.span_suggestion_with_applicability(
+                    diag.span_suggestion(
                         sp,
                         "mark blocks that do not contain Rust code as text",
                         String::from("```text"),

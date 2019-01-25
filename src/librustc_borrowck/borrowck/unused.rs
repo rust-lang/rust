@@ -78,11 +78,12 @@ impl<'a, 'tcx> UnusedMutCx<'a, 'tcx> {
                                      hir_id,
                                      span,
                                      "variable does not need to be mutable")
-                .span_suggestion_short_with_applicability(
+                .span_suggestion_short(
                     mut_span,
                     "remove this `mut`",
                     String::new(),
-                    Applicability::MachineApplicable)
+                    Applicability::MachineApplicable,
+                )
                 .emit();
         }
     }

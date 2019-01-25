@@ -247,7 +247,7 @@ fn resolve_struct_error<'sess, 'a>(resolver: &'sess Resolver,
             let sugg_msg = "try using a local type parameter instead";
             if let Some((sugg_span, new_snippet)) = cm.generate_local_type_param_snippet(span) {
                 // Suggest the modification to the user
-                err.span_suggestion_with_applicability(
+                err.span_suggestion(
                     sugg_span,
                     sugg_msg,
                     new_snippet,
@@ -3175,7 +3175,7 @@ impl<'a> Resolver<'a> {
             // Emit help message for fake-self from other languages like `this`(javascript)
             if ["this", "my"].contains(&&*item_str.as_str())
                 && this.self_value_is_available(path[0].ident.span, span) {
-                err.span_suggestion_with_applicability(
+                err.span_suggestion(
                     span,
                     "did you mean",
                     "self".to_string(),
@@ -3239,7 +3239,7 @@ impl<'a> Resolver<'a> {
                     };
                     let msg = format!("{}try using the variant's enum", preamble);
 
-                    err.span_suggestions_with_applicability(
+                    err.span_suggestions(
                         span,
                         &msg,
                         enum_candidates.into_iter()
@@ -3262,7 +3262,7 @@ impl<'a> Resolver<'a> {
                     let self_is_available = this.self_value_is_available(path[0].ident.span, span);
                     match candidate {
                         AssocSuggestion::Field => {
-                            err.span_suggestion_with_applicability(
+                            err.span_suggestion(
                                 span,
                                 "try",
                                 format!("self.{}", path_str),
@@ -3275,7 +3275,7 @@ impl<'a> Resolver<'a> {
                             }
                         }
                         AssocSuggestion::MethodWithSelf if self_is_available => {
-                            err.span_suggestion_with_applicability(
+                            err.span_suggestion(
                                 span,
                                 "try",
                                 format!("self.{}", path_str),
@@ -3283,7 +3283,7 @@ impl<'a> Resolver<'a> {
                             );
                         }
                         AssocSuggestion::MethodWithSelf | AssocSuggestion::AssocItem => {
-                            err.span_suggestion_with_applicability(
+                            err.span_suggestion(
                                 span,
                                 "try",
                                 format!("Self::{}", path_str),
@@ -3304,7 +3304,7 @@ impl<'a> Resolver<'a> {
                     "{} {} with a similar name exists",
                     suggestion.article, suggestion.kind
                 );
-                err.span_suggestion_with_applicability(
+                err.span_suggestion(
                     ident_span,
                     &msg,
                     suggestion.candidate.to_string(),
@@ -3318,7 +3318,7 @@ impl<'a> Resolver<'a> {
             if let Some(def) = def {
                 match (def, source) {
                     (Def::Macro(..), _) => {
-                        err.span_suggestion_with_applicability(
+                        err.span_suggestion(
                             span,
                             "use `!` to invoke the macro",
                             format!("{}!", path_str),
@@ -3335,7 +3335,7 @@ impl<'a> Resolver<'a> {
                     }
                     (Def::Mod(..), PathSource::Expr(Some(parent))) => match parent.node {
                         ExprKind::Field(_, ident) => {
-                            err.span_suggestion_with_applicability(
+                            err.span_suggestion(
                                 parent.span,
                                 "use the path separator to refer to an item",
                                 format!("{}::{}", path_str, ident),
@@ -3345,7 +3345,7 @@ impl<'a> Resolver<'a> {
                         }
                         ExprKind::MethodCall(ref segment, ..) => {
                             let span = parent.span.with_hi(segment.ident.span.hi());
-                            err.span_suggestion_with_applicability(
+                            err.span_suggestion(
                                 span,
                                 "use the path separator to refer to an item",
                                 format!("{}::{}", path_str, segment.ident),
@@ -3428,7 +3428,7 @@ impl<'a> Resolver<'a> {
                                 PathSource::Expr(Some(parent)) => {
                                     match parent.node {
                                         ExprKind::MethodCall(ref path_assignment, _)  => {
-                                            err.span_suggestion_with_applicability(
+                                            err.span_suggestion(
                                                 sm.start_point(parent.span)
                                                   .to(path_assignment.ident.span),
                                                 "use `::` to access an associated function",
@@ -3451,7 +3451,7 @@ impl<'a> Resolver<'a> {
                                 },
                                 PathSource::Expr(None) if followed_by_brace == true => {
                                     if let Some((sp, snippet)) = closing_brace {
-                                        err.span_suggestion_with_applicability(
+                                        err.span_suggestion(
                                             sp,
                                             "surround the struct literal with parenthesis",
                                             format!("({})", snippet),
@@ -3589,7 +3589,7 @@ impl<'a> Resolver<'a> {
                         err.span_label(base_span,
                                        "expecting a type here because of type ascription");
                         if line_sp != line_base_sp {
-                            err.span_suggestion_short_with_applicability(
+                            err.span_suggestion_short(
                                 sp,
                                 "did you mean to use `;` here instead?",
                                 ";".to_string(),
@@ -4866,7 +4866,7 @@ impl<'a> Resolver<'a> {
                 } else if ident.span.rust_2018() {
                     let msg = "relative paths are not supported in visibilities on 2018 edition";
                     self.session.struct_span_err(ident.span, msg)
-                        .span_suggestion_with_applicability(
+                        .span_suggestion(
                             path.span,
                             "try",
                             format!("crate::{}", path),
@@ -5179,7 +5179,7 @@ impl<'a> Resolver<'a> {
 
             let rename_msg = "you can use `as` to change the binding name of the import";
             if let Some(suggestion) = suggestion {
-                err.span_suggestion_with_applicability(
+                err.span_suggestion(
                     binding_span,
                     rename_msg,
                     suggestion,
@@ -5302,7 +5302,7 @@ fn show_candidates(err: &mut DiagnosticBuilder,
             *candidate = format!("use {};\n{}", candidate, additional_newline);
         }
 
-        err.span_suggestions_with_applicability(
+        err.span_suggestions(
             span,
             &msg,
             path_strings.into_iter(),

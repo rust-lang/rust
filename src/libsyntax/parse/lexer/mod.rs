@@ -949,7 +949,7 @@ impl<'a> StringReader<'a> {
                                     }
                                     if i != 0 {
                                         suggestion.push('}');
-                                        err.span_suggestion_with_applicability(
+                                        err.span_suggestion(
                                             self.mk_sp(start, self.pos),
                                             "format of unicode escape sequences uses braces",
                                             suggestion,
@@ -1427,7 +1427,7 @@ impl<'a> StringReader<'a> {
                             self.sess.span_diagnostic
                                 .struct_span_err(span,
                                                  "character literal may only contain one codepoint")
-                                .span_suggestion_with_applicability(
+                                .span_suggestion(
                                     span,
                                     "if you meant to write a `str` literal, use double quotes",
                                     format!("\"{}\"", &self.src[start..end]),

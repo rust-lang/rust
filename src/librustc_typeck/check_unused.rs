@@ -136,7 +136,7 @@ fn unused_crates_lint<'tcx>(tcx: TyCtxt<'_, 'tcx, 'tcx>) {
                     .fold(span, |acc, attr_span| acc.to(attr_span));
 
                 tcx.struct_span_lint_node(lint, id, span, msg)
-                    .span_suggestion_short_with_applicability(
+                    .span_suggestion_short(
                         span_with_attrs,
                         "remove it",
                         String::new(),
@@ -178,7 +178,7 @@ fn unused_crates_lint<'tcx>(tcx: TyCtxt<'_, 'tcx, 'tcx>) {
         };
         let replacement = visibility_qualified(&item.vis, base_replacement);
         tcx.struct_span_lint_node(lint, id, extern_crate.span, msg)
-            .span_suggestion_short_with_applicability(
+            .span_suggestion_short(
                 extern_crate.span,
                 &help,
                 replacement,

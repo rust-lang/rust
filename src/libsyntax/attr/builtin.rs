@@ -42,7 +42,7 @@ fn handle_errors(sess: &ParseSess, span: Span, error: AttrError) {
             let mut err = struct_span_err!(diag, span, E0565, "{}", msg);
             if is_bytestr {
                 if let Ok(lint_str) = sess.source_map().span_to_snippet(span) {
-                    err.span_suggestion_with_applicability(
+                    err.span_suggestion(
                         span,
                         "consider removing the prefix",
                         format!("{}", &lint_str[1..]),
@@ -794,7 +794,7 @@ pub fn find_repr_attrs(sess: &ParseSess, attr: &Attribute) -> Vec<ReprAttr> {
                                     "incorrect `repr(align)` attribute format");
                                 match value.node {
                                     ast::LitKind::Int(int, ast::LitIntType::Unsuffixed) => {
-                                        err.span_suggestion_with_applicability(
+                                        err.span_suggestion(
                                             item.span,
                                             "use parentheses instead",
                                             format!("align({})", int),
@@ -802,7 +802,7 @@ pub fn find_repr_attrs(sess: &ParseSess, attr: &Attribute) -> Vec<ReprAttr> {
                                         );
                                     }
                                     ast::LitKind::Str(s, _) => {
-                                        err.span_suggestion_with_applicability(
+                                        err.span_suggestion(
                                             item.span,
                                             "use parentheses instead",
                                             format!("align({})", s),

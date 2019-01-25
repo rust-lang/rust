@@ -435,7 +435,7 @@ impl Session {
                 }
                 DiagnosticBuilderMethod::SpanSuggestion(suggestion) => {
                     let span = span_maybe.expect("span_suggestion_* needs a span");
-                    diag_builder.span_suggestion_with_applicability(
+                    diag_builder.span_suggestion(
                         span,
                         message,
                         suggestion,

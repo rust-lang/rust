@@ -237,7 +237,7 @@ impl<'a> AstValidator<'a> {
             );
 
             if let Ok(snippet) = self.session.source_map().span_to_snippet(span) {
-                err.span_suggestion_with_applicability(
+                err.span_suggestion(
                     span, "consider adding parentheses", format!("({})", snippet),
                     Applicability::MachineApplicable,
                 );
@@ -290,7 +290,7 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
                 );
                 match val.node {
                     ExprKind::Lit(ref v) if v.node.is_numeric() => {
-                        err.span_suggestion_with_applicability(
+                        err.span_suggestion(
                             place.span.between(val.span),
                             "if you meant to write a comparison against a negative value, add a \
                              space in between `<` and `-`",
