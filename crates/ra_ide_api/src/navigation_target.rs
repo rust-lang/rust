@@ -3,7 +3,7 @@ use ra_syntax::{
     SyntaxNode, AstNode, SmolStr, TextRange, ast,
     SyntaxKind::{self, NAME},
 };
-use hir::{ModuleSource};
+use hir::{ModuleSource, FieldSource};
 
 use crate::{FileSymbol, db::RootDatabase};
 
@@ -99,6 +99,17 @@ impl NavigationTarget {
     pub(crate) fn from_function(db: &RootDatabase, func: hir::Function) -> NavigationTarget {
         let (file_id, fn_def) = func.source(db);
         NavigationTarget::from_named(file_id.original_file(db), &*fn_def)
+    }
+
+    pub(crate) fn from_field(db: &RootDatabase, field: hir::StructField) -> NavigationTarget {
+        let (file_id, field) = field.source(db);
+        let file_id = file_id.original_file(db);
+        match field {
+            FieldSource::Named(it) => NavigationTarget::from_named(file_id, &*it),
+            FieldSource::Pos(it) => {
+                NavigationTarget::from_syntax(file_id, "".into(), None, it.syntax())
+            }
+        }
     }
 
     // TODO once Def::Item is gone, this should be able to always return a NavigationTarget
