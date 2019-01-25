@@ -169,7 +169,7 @@ impl Module {
     }
 
     pub fn resolve_path(&self, db: &impl HirDatabase, path: &Path) -> PerNs<ModuleDef> {
-        self.resolve_path_impl(db, path)
+        db.item_map(self.krate).resolve_path(db, *self, path)
     }
 
     pub fn problems(&self, db: &impl HirDatabase) -> Vec<(TreeArc<SyntaxNode>, Problem)> {

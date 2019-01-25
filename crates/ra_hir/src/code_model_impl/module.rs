@@ -96,11 +96,6 @@ impl Module {
         item_map.per_module[&self.module_id].clone()
     }
 
-    pub(crate) fn resolve_path_impl(&self, db: &impl HirDatabase, path: &Path) -> PerNs<ModuleDef> {
-        let item_map = db.item_map(self.krate);
-        item_map.resolve_path(db, *self, path)
-    }
-
     pub(crate) fn problems_impl(
         &self,
         db: &impl HirDatabase,
