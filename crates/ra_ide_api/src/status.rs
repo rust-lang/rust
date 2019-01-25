@@ -94,17 +94,12 @@ impl FromIterator<TableEntry<FileId, TreeArc<SourceFile>>> for SyntaxTreeStats {
 #[derive(Default)]
 struct LibrarySymbolsStats {
     total: usize,
-    fst_size: Bytes,
-    symbols_size: Bytes,
+    size: Bytes,
 }
 
 impl fmt::Display for LibrarySymbolsStats {
     fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
-        write!(
-            fmt,
-            "{} ({} + {}) symbols",
-            self.total, self.fst_size, self.symbols_size
-        )
+        write!(fmt, "{} ({}) symbols", self.total, self.size,)
     }
 }
 
@@ -117,8 +112,7 @@ impl FromIterator<TableEntry<SourceRootId, Arc<SymbolIndex>>> for LibrarySymbols
         for entry in iter {
             let value = entry.value.unwrap();
             res.total += value.len();
-            res.fst_size += value.fst_size();
-            res.symbols_size += value.symbols_size();
+            res.size += value.memory_size();
         }
         res
     }
