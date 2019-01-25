@@ -23,6 +23,7 @@ use std::{
     cmp::Ordering,
     hash::{Hash, Hasher},
     sync::Arc,
+    mem,
 };
 
 use fst::{self, Streamer};
@@ -134,6 +135,14 @@ impl SymbolIndex {
 
     pub(crate) fn len(&self) -> usize {
         self.symbols.len()
+    }
+
+    pub(crate) fn fst_size(&self) -> usize {
+        self.map.as_fst().size()
+    }
+
+    pub(crate) fn symbols_size(&self) -> usize {
+        self.symbols.len() * mem::size_of::<FileSymbol>()
     }
 
     pub(crate) fn for_files(
