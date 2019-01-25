@@ -532,6 +532,19 @@ fn test() {
     );
 }
 
+#[test]
+fn bug_651() {
+    check_inference(
+        "bug_651",
+        r#"
+fn quux() {
+    let y = 92;
+    1 + y;
+}
+"#,
+    );
+}
+
 fn infer(content: &str) -> String {
     let (db, _, file_id) = MockDatabase::with_single_file(content);
     let source_file = db.source_file(file_id);

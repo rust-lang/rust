@@ -1,0 +1,13 @@
+---
+created: "2019-01-25T20:31:47.275112244+00:00"
+creator: insta@0.5.2
+expression: "&result"
+source: crates/ra_hir/src/ty/tests.rs
+---
+[11; 41) '{     ...+ y; }': ()
+[21; 22) 'y': i32
+[25; 27) '92': i32
+[33; 34) '1': i32
+[33; 38) '1 + y': i32
+[37; 38) 'y': i32
+
