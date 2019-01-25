@@ -195,6 +195,7 @@ impl Step for Llvm {
             cfg.define("LLVM_ENABLE_PROJECTS", "clang;lldb");
             // For the time being, disable code signing.
             cfg.define("LLDB_CODESIGN_IDENTITY", "");
+            cfg.define("LLDB_NO_DEBUGSERVER", "ON");
         } else {
             // LLDB requires libxml2; but otherwise we want it to be disabled.
             // See https://github.com/rust-lang/rust/pull/50104
