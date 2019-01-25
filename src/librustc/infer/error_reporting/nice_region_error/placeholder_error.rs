@@ -96,6 +96,30 @@ impl NiceRegionError<'me, 'gcx, 'tcx> {
                 ))
             }
 
+            Some(RegionResolutionError::SubSupConflict(
+                vid,
+                _,
+                _,
+                _,
+                SubregionOrigin::Subtype(TypeTrace {
+                    cause,
+                    values: ValuePairs::TraitRefs(ExpectedFound { expected, found }),
+                }),
+                sup_placeholder @ ty::RePlaceholder(_),
+            ))
+                if expected.def_id == found.def_id =>
+            {
+                Some(self.try_report_placeholders_trait(
+                    Some(self.tcx().mk_region(ty::ReVar(*vid))),
+                    cause,
+                    None,
+                    Some(*sup_placeholder),
+                    expected.def_id,
+                    expected.substs,
+                    found.substs,
+                ))
+            }
+
             Some(RegionResolutionError::ConcreteFailure(
                 SubregionOrigin::Subtype(TypeTrace {
                     cause,
