@@ -2851,68 +2851,68 @@ impl PointerType {
     }
 }
 
-// PosField
+// PosFieldDef
 #[derive(Debug, PartialEq, Eq, Hash)]
 #[repr(transparent)]
-pub struct PosField {
+pub struct PosFieldDef {
     pub(crate) syntax: SyntaxNode,
 }
-unsafe impl TransparentNewType for PosField {
+unsafe impl TransparentNewType for PosFieldDef {
     type Repr = rowan::SyntaxNode<RaTypes>;
 }
 
-impl AstNode for PosField {
+impl AstNode for PosFieldDef {
     fn cast(syntax: &SyntaxNode) -> Option<&Self> {
         match syntax.kind() {
-            POS_FIELD => Some(PosField::from_repr(syntax.into_repr())),
+            POS_FIELD_DEF => Some(PosFieldDef::from_repr(syntax.into_repr())),
             _ => None,
         }
     }
     fn syntax(&self) -> &SyntaxNode { &self.syntax }
 }
 
-impl ToOwned for PosField {
-    type Owned = TreeArc<PosField>;
-    fn to_owned(&self) -> TreeArc<PosField> { TreeArc::cast(self.syntax.to_owned()) }
+impl ToOwned for PosFieldDef {
+    type Owned = TreeArc<PosFieldDef>;
+    fn to_owned(&self) -> TreeArc<PosFieldDef> { TreeArc::cast(self.syntax.to_owned()) }
 }
 
 
-impl ast::VisibilityOwner for PosField {}
-impl ast::AttrsOwner for PosField {}
-impl PosField {
+impl ast::VisibilityOwner for PosFieldDef {}
+impl ast::AttrsOwner for PosFieldDef {}
+impl PosFieldDef {
     pub fn type_ref(&self) -> Option<&TypeRef> {
         super::child_opt(self)
     }
 }
 
-// PosFieldList
+// PosFieldDefList
 #[derive(Debug, PartialEq, Eq, Hash)]
 #[repr(transparent)]
-pub struct PosFieldList {
+pub struct PosFieldDefList {
     pub(crate) syntax: SyntaxNode,
 }
-unsafe impl TransparentNewType for PosFieldList {
+unsafe impl TransparentNewType for PosFieldDefList {
     type Repr = rowan::SyntaxNode<RaTypes>;
 }
 
-impl AstNode for PosFieldList {
+impl AstNode for PosFieldDefList {
     fn cast(syntax: &SyntaxNode) -> Option<&Self> {
         match syntax.kind() {
-            POS_FIELD_LIST => Some(PosFieldList::from_repr(syntax.into_repr())),
+            POS_FIELD_DEF_LIST => Some(PosFieldDefList::from_repr(syntax.into_repr())),
             _ => None,
         }
     }
     fn syntax(&self) -> &SyntaxNode { &self.syntax }
 }
 
-impl ToOwned for PosFieldList {
-    type Owned = TreeArc<PosFieldList>;
-    fn to_owned(&self) -> TreeArc<PosFieldList> { TreeArc::cast(self.syntax.to_owned()) }
+impl ToOwned for PosFieldDefList {
+    type Owned = TreeArc<PosFieldDefList>;
+    fn to_owned(&self) -> TreeArc<PosFieldDefList> { TreeArc::cast(self.syntax.to_owned()) }
 }
 
 
-impl PosFieldList {
-    pub fn fields(&self) -> impl Iterator<Item = &PosField> {
+impl PosFieldDefList {
+    pub fn fields(&self) -> impl Iterator<Item = &PosFieldDef> {
         super::children(self)
     }
 }
