@@ -296,6 +296,46 @@ fn foo() {
     }
 
     #[test]
+    fn indents_middle_of_chain_call() {
+        type_dot(
+            r"
+            fn source_impl() {
+                let var = enum_defvariant_list().unwrap()
+                <|>
+                    .nth(92)
+                    .unwrap();
+            }
+            ",
+            r"
+            fn source_impl() {
+                let var = enum_defvariant_list().unwrap()
+                    .
+                    .nth(92)
+                    .unwrap();
+            }
+            ",
+        );
+        type_dot(
+            r"
+            fn source_impl() {
+                let var = enum_defvariant_list().unwrap()
+                    <|>
+                    .nth(92)
+                    .unwrap();
+            }
+            ",
+            r"
+            fn source_impl() {
+                let var = enum_defvariant_list().unwrap()
+                    .
+                    .nth(92)
+                    .unwrap();
+            }
+            ",
+        );
+    }
+
+    #[test]
     fn dont_indent_freestanding_dot() {
         type_dot(
             r"
