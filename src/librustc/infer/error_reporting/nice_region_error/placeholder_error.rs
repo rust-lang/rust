@@ -34,19 +34,15 @@ impl NiceRegionError<'me, 'gcx, 'tcx> {
                 sub_placeholder @ ty::RePlaceholder(_),
                 _,
                 sup_placeholder @ ty::RePlaceholder(_),
-            ))
-                if expected.def_id == found.def_id =>
-            {
-                Some(self.try_report_placeholders_trait(
-                    Some(self.tcx().mk_region(ty::ReVar(*vid))),
-                    cause,
-                    Some(sub_placeholder),
-                    Some(sup_placeholder),
-                    expected.def_id,
-                    expected.substs,
-                    found.substs,
-                ))
-            }
+            )) if expected.def_id == found.def_id => Some(self.try_report_placeholders_trait(
+                Some(self.tcx().mk_region(ty::ReVar(*vid))),
+                cause,
+                Some(sub_placeholder),
+                Some(sup_placeholder),
+                expected.def_id,
+                expected.substs,
+                found.substs,
+            )),
 
             Some(RegionResolutionError::SubSupConflict(
                 vid,
@@ -58,19 +54,15 @@ impl NiceRegionError<'me, 'gcx, 'tcx> {
                 sub_placeholder @ ty::RePlaceholder(_),
                 _,
                 _,
-            ))
-                if expected.def_id == found.def_id =>
-            {
-                Some(self.try_report_placeholders_trait(
-                    Some(self.tcx().mk_region(ty::ReVar(*vid))),
-                    cause,
-                    Some(sub_placeholder),
-                    None,
-                    expected.def_id,
-                    expected.substs,
-                    found.substs,
-                ))
-            }
+            )) if expected.def_id == found.def_id => Some(self.try_report_placeholders_trait(
+                Some(self.tcx().mk_region(ty::ReVar(*vid))),
+                cause,
+                Some(sub_placeholder),
+                None,
+                expected.def_id,
+                expected.substs,
+                found.substs,
+            )),
 
             Some(RegionResolutionError::SubSupConflict(
                 vid,
@@ -82,19 +74,15 @@ impl NiceRegionError<'me, 'gcx, 'tcx> {
                 _,
                 _,
                 sup_placeholder @ ty::RePlaceholder(_),
-            ))
-                if expected.def_id == found.def_id =>
-            {
-                Some(self.try_report_placeholders_trait(
-                    Some(self.tcx().mk_region(ty::ReVar(*vid))),
-                    cause,
-                    None,
-                    Some(*sup_placeholder),
-                    expected.def_id,
-                    expected.substs,
-                    found.substs,
-                ))
-            }
+            )) if expected.def_id == found.def_id => Some(self.try_report_placeholders_trait(
+                Some(self.tcx().mk_region(ty::ReVar(*vid))),
+                cause,
+                None,
+                Some(*sup_placeholder),
+                expected.def_id,
+                expected.substs,
+                found.substs,
+            )),
 
             Some(RegionResolutionError::SubSupConflict(
                 vid,
@@ -106,19 +94,15 @@ impl NiceRegionError<'me, 'gcx, 'tcx> {
                     values: ValuePairs::TraitRefs(ExpectedFound { expected, found }),
                 }),
                 sup_placeholder @ ty::RePlaceholder(_),
-            ))
-                if expected.def_id == found.def_id =>
-            {
-                Some(self.try_report_placeholders_trait(
-                    Some(self.tcx().mk_region(ty::ReVar(*vid))),
-                    cause,
-                    None,
-                    Some(*sup_placeholder),
-                    expected.def_id,
-                    expected.substs,
-                    found.substs,
-                ))
-            }
+            )) if expected.def_id == found.def_id => Some(self.try_report_placeholders_trait(
+                Some(self.tcx().mk_region(ty::ReVar(*vid))),
+                cause,
+                None,
+                Some(*sup_placeholder),
+                expected.def_id,
+                expected.substs,
+                found.substs,
+            )),
 
             Some(RegionResolutionError::ConcreteFailure(
                 SubregionOrigin::Subtype(TypeTrace {
@@ -127,19 +111,15 @@ impl NiceRegionError<'me, 'gcx, 'tcx> {
                 }),
                 sub_region @ ty::RePlaceholder(_),
                 sup_region @ ty::RePlaceholder(_),
-            ))
-                if expected.def_id == found.def_id =>
-            {
-                Some(self.try_report_placeholders_trait(
-                    None,
-                    cause,
-                    Some(*sub_region),
-                    Some(*sup_region),
-                    expected.def_id,
-                    expected.substs,
-                    found.substs,
-                ))
-            }
+            )) if expected.def_id == found.def_id => Some(self.try_report_placeholders_trait(
+                None,
+                cause,
+                Some(*sub_region),
+                Some(*sup_region),
+                expected.def_id,
+                expected.substs,
+                found.substs,
+            )),
 
             Some(RegionResolutionError::ConcreteFailure(
                 SubregionOrigin::Subtype(TypeTrace {
@@ -148,19 +128,15 @@ impl NiceRegionError<'me, 'gcx, 'tcx> {
                 }),
                 sub_region @ ty::RePlaceholder(_),
                 sup_region,
-            ))
-                if expected.def_id == found.def_id =>
-            {
-                Some(self.try_report_placeholders_trait(
-                    Some(sup_region),
-                    cause,
-                    Some(*sub_region),
-                    None,
-                    expected.def_id,
-                    expected.substs,
-                    found.substs,
-                ))
-            }
+            )) if expected.def_id == found.def_id => Some(self.try_report_placeholders_trait(
+                Some(sup_region),
+                cause,
+                Some(*sub_region),
+                None,
+                expected.def_id,
+                expected.substs,
+                found.substs,
+            )),
 
             Some(RegionResolutionError::ConcreteFailure(
                 SubregionOrigin::Subtype(TypeTrace {
@@ -169,19 +145,15 @@ impl NiceRegionError<'me, 'gcx, 'tcx> {
                 }),
                 sub_region,
                 sup_region @ ty::RePlaceholder(_),
-            ))
-                if expected.def_id == found.def_id =>
-            {
-                Some(self.try_report_placeholders_trait(
-                    Some(sub_region),
-                    cause,
-                    None,
-                    Some(*sup_region),
-                    expected.def_id,
-                    expected.substs,
-                    found.substs,
-                ))
-            }
+            )) if expected.def_id == found.def_id => Some(self.try_report_placeholders_trait(
+                Some(sub_region),
+                cause,
+                None,
+                Some(*sup_region),
+                expected.def_id,
+                expected.substs,
+                found.substs,
+            )),
 
             _ => None,
         }
@@ -206,14 +178,16 @@ impl NiceRegionError<'me, 'gcx, 'tcx> {
         expected_substs: &'tcx Substs<'tcx>,
         actual_substs: &'tcx Substs<'tcx>,
     ) -> ErrorReported {
-        debug!("try_report_placeholders_trait(\
-                vid={:?}, \
-                sub_placeholder={:?}, \
-                sup_placeholder={:?}, \
-                trait_def_id={:?}, \
-                expected_substs={:?}, \
-                actual_substs={:?})",
-               vid, sub_placeholder, sup_placeholder, trait_def_id, expected_substs, actual_substs);
+        debug!(
+            "try_report_placeholders_trait(\
+             vid={:?}, \
+             sub_placeholder={:?}, \
+             sup_placeholder={:?}, \
+             trait_def_id={:?}, \
+             expected_substs={:?}, \
+             actual_substs={:?})",
+            vid, sub_placeholder, sup_placeholder, trait_def_id, expected_substs, actual_substs
+        );
 
         let mut err = self.tcx().sess.struct_span_err(
             cause.span(&self.tcx()),
@@ -233,18 +207,14 @@ impl NiceRegionError<'me, 'gcx, 'tcx> {
             _ => (),
         }
 
-        let expected_trait_ref = self.infcx.resolve_type_vars_if_possible(
-            &ty::TraitRef {
-                def_id: trait_def_id,
-                substs: expected_substs,
-            }
-        );
-        let actual_trait_ref = self.infcx.resolve_type_vars_if_possible(
-            &ty::TraitRef {
-                def_id: trait_def_id,
-                substs: actual_substs,
-            }
-        );
+        let expected_trait_ref = self.infcx.resolve_type_vars_if_possible(&ty::TraitRef {
+            def_id: trait_def_id,
+            substs: expected_substs,
+        });
+        let actual_trait_ref = self.infcx.resolve_type_vars_if_possible(&ty::TraitRef {
+            def_id: trait_def_id,
+            substs: actual_substs,
+        });
 
         // Search the expected and actual trait references to see (a)
         // whether the sub/sup placeholders appear in them (sometimes
@@ -285,11 +255,20 @@ impl NiceRegionError<'me, 'gcx, 'tcx> {
             .tcx()
             .any_free_region_meets(&actual_trait_ref.self_ty(), |r| Some(r) == vid);
 
-        debug!("try_report_placeholders_trait: actual_has_vid={:?}", actual_has_vid);
-        debug!("try_report_placeholders_trait: expected_has_vid={:?}", expected_has_vid);
+        debug!(
+            "try_report_placeholders_trait: actual_has_vid={:?}",
+            actual_has_vid
+        );
+        debug!(
+            "try_report_placeholders_trait: expected_has_vid={:?}",
+            expected_has_vid
+        );
         debug!("try_report_placeholders_trait: has_sub={:?}", has_sub);
         debug!("try_report_placeholders_trait: has_sup={:?}", has_sup);
-        debug!("try_report_placeholders_trait: self_ty_has_vid={:?}", self_ty_has_vid);
+        debug!(
+            "try_report_placeholders_trait: self_ty_has_vid={:?}",
+            self_ty_has_vid
+        );
 
         RegionHighlightMode::maybe_highlighting_region(sub_placeholder, has_sub, || {
             RegionHighlightMode::maybe_highlighting_region(sup_placeholder, has_sup, || {
@@ -297,7 +276,7 @@ impl NiceRegionError<'me, 'gcx, 'tcx> {
                     (Some(n1), Some(n2)) => {
                         err.note(&format!(
                             "`{}` would have to be implemented for the type `{}`, \
-                            for any two lifetimes `'{}` and `'{}`",
+                             for any two lifetimes `'{}` and `'{}`",
                             expected_trait_ref,
                             expected_trait_ref.self_ty(),
                             std::cmp::min(n1, n2),
@@ -307,32 +286,46 @@ impl NiceRegionError<'me, 'gcx, 'tcx> {
                     (Some(n), _) | (_, Some(n)) => {
                         err.note(&format!(
                             "`{}` would have to be implemented for the type `{}`, \
-                            for any lifetime `'{}`",
+                             for any lifetime `'{}`",
                             expected_trait_ref,
                             expected_trait_ref.self_ty(),
                             n,
                         ));
                     }
-                    (None, None) => {
-                        err.note(&format!(
-                            "`{}` would have to be implemented for the type `{}`",
-                            expected_trait_ref,
-                            expected_trait_ref.self_ty(),
-                        ));
-                    }
+                    (None, None) => RegionHighlightMode::maybe_highlighting_region(
+                        vid,
+                        expected_has_vid,
+                        || {
+                            if let Some(n) = expected_has_vid {
+                                err.note(&format!(
+                                    "`{}` would have to be implemented for the type `{}`, \
+                                     for some specific lifetime `'{}`",
+                                    expected_trait_ref,
+                                    expected_trait_ref.self_ty(),
+                                    n,
+                                ));
+                            } else {
+                                err.note(&format!(
+                                    "`{}` would have to be implemented for the type `{}`",
+                                    expected_trait_ref,
+                                    expected_trait_ref.self_ty(),
+                                ));
+                            }
+                        },
+                    ),
                 }
             })
         });
 
         RegionHighlightMode::maybe_highlighting_region(
             vid,
-            actual_has_vid.or(expected_has_vid),
+            actual_has_vid,
             || match actual_has_vid {
                 Some(n) => {
                     if self_ty_has_vid {
                         err.note(&format!(
                             "but `{}` is actually implemented for the type `{}`, \
-                            for the specific lifetime `'{}`",
+                             for the specific lifetime `'{}`",
                             actual_trait_ref,
                             actual_trait_ref.self_ty(),
                             n
@@ -340,7 +333,7 @@ impl NiceRegionError<'me, 'gcx, 'tcx> {
                     } else {
                         err.note(&format!(
                             "but `{}` is actually implemented for the type `{}`, \
-                            for some lifetime `'{}`",
+                             for some lifetime `'{}`",
                             actual_trait_ref,
                             actual_trait_ref.self_ty(),
                             n
@@ -355,7 +348,7 @@ impl NiceRegionError<'me, 'gcx, 'tcx> {
                         actual_trait_ref.self_ty(),
                     ));
                 }
-            }
+            },
         );
 
         err.emit();
