@@ -8,12 +8,12 @@ use crate::{
     SourceFileItems, SourceItemId, Crate, Module, HirInterner,
     query_definitions,
     Function, FnSignature, FnScopes,
-    Struct, Enum, EnumVariant,
+    Struct, Enum,
     macros::MacroExpansion,
     module_tree::ModuleTree,
     nameres::{ItemMap, lower::{LoweredModule, ImportSourceMap}},
     ty::{InferenceResult, Ty, method_resolution::CrateImplBlocks, TypableDef, VariantDef},
-    adt::{StructData, EnumData, EnumVariantData},
+    adt::{StructData, EnumData},
     impl_block::ModuleImplBlocks,
     generics::{GenericParams, GenericDef},
 };
@@ -34,9 +34,6 @@ pub trait HirDatabase: SyntaxDatabase + AsRef<HirInterner> {
 
     #[salsa::invoke(crate::adt::EnumData::enum_data_query)]
     fn enum_data(&self, e: Enum) -> Arc<EnumData>;
-
-    #[salsa::invoke(crate::adt::EnumVariantData::enum_variant_data_query)]
-    fn enum_variant_data(&self, var: EnumVariant) -> Arc<EnumVariantData>;
 
     #[salsa::invoke(crate::ty::infer)]
     fn infer(&self, func: Function) -> Arc<InferenceResult>;
