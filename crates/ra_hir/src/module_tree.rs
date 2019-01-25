@@ -1,6 +1,5 @@
 use std::sync::Arc;
 
-use rustc_hash::{FxHashMap, FxHashSet};
 use arrayvec::ArrayVec;
 use relative_path::RelativePathBuf;
 use ra_db::{FileId, SourceRoot, CrateId};
@@ -147,28 +146,21 @@ impl ModuleTree {
         let file_id = crate_graph.crate_root(crate_id);
         let source_root_id = db.file_source_root(file_id);
 
-        let mut roots = FxHashMap::default();
-        let mut visited = FxHashSet::default();
-
         let source_root = db.source_root(source_root_id);
         let source = SourceItemId {
             file_id: file_id.into(),
             item_id: None,
         };
-        let module_id = self.init_subtree(db, &source_root, &mut visited, &mut roots, None, source);
-        roots.insert(file_id, module_id);
+        self.init_subtree(db, &source_root, None, source);
     }
 
     fn init_subtree(
         &mut self,
         db: &impl HirDatabase,
         source_root: &SourceRoot,
-        visited: &mut FxHashSet<SourceItemId>,
-        roots: &mut FxHashMap<FileId, ModuleId>,
         parent: Option<LinkId>,
         source: SourceItemId,
     ) -> ModuleId {
-        visited.insert(source);
         let id = self.alloc_mod(ModuleData {
             source,
             parent,
@@ -187,28 +179,21 @@ impl ModuleTree {
                 let (points_to, problem) = resolve_submodule(db, source.file_id, &sub.name);
                 let points_to = points_to
                     .into_iter()
-                    .map(|file_id| match roots.remove(&file_id) {
-                        Some(module_id) => {
-                            self.mods[module_id].parent = Some(link);
-                            module_id
-                        }
-                        None => self.init_subtree(
+                    .map(|file_id| {
+                        self.init_subtree(
                             db,
                             source_root,
-                            visited,
-                            roots,
                             Some(link),
                             SourceItemId {
                                 file_id: file_id.into(),
                                 item_id: None,
                             },
-                        ),
+                        )
                     })
                     .collect::<Vec<_>>();
                 (points_to, problem)
             } else {
-                let points_to =
-                    self.init_subtree(db, source_root, visited, roots, Some(link), sub.source);
+                let points_to = self.init_subtree(db, source_root, Some(link), sub.source);
                 (vec![points_to], None)
             };
 

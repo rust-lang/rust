@@ -137,12 +137,8 @@ impl SymbolIndex {
         self.symbols.len()
     }
 
-    pub(crate) fn fst_size(&self) -> usize {
-        self.map.as_fst().size()
-    }
-
-    pub(crate) fn symbols_size(&self) -> usize {
-        self.symbols.len() * mem::size_of::<FileSymbol>()
+    pub(crate) fn memory_size(&self) -> usize {
+        self.map.as_fst().size() * self.symbols.len() * mem::size_of::<FileSymbol>()
     }
 
     pub(crate) fn for_files(
