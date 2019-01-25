@@ -97,9 +97,7 @@ pub(crate) fn reference_definition(
         {
             let resolved = module.resolve_path(db, &path);
             if let Some(def_id) = resolved.take_types().or(resolved.take_values()) {
-                if let Some(target) = NavigationTarget::from_def(db, def_id) {
-                    return Exact(target);
-                }
+                return Exact(NavigationTarget::from_def(db, def_id));
             }
         }
     }
