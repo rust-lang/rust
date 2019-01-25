@@ -38,7 +38,7 @@ impl NiceRegionError<'me, 'gcx, 'tcx> {
                 if expected.def_id == found.def_id =>
             {
                 Some(self.try_report_placeholders_trait(
-                    Some(self.tcx.mk_region(ty::ReVar(*vid))),
+                    Some(self.tcx().mk_region(ty::ReVar(*vid))),
                     cause,
                     Some(sub_placeholder),
                     Some(sup_placeholder),
@@ -62,7 +62,7 @@ impl NiceRegionError<'me, 'gcx, 'tcx> {
                 if expected.def_id == found.def_id =>
             {
                 Some(self.try_report_placeholders_trait(
-                    Some(self.tcx.mk_region(ty::ReVar(*vid))),
+                    Some(self.tcx().mk_region(ty::ReVar(*vid))),
                     cause,
                     Some(sub_placeholder),
                     None,
@@ -86,7 +86,7 @@ impl NiceRegionError<'me, 'gcx, 'tcx> {
                 if expected.def_id == found.def_id =>
             {
                 Some(self.try_report_placeholders_trait(
-                    Some(self.tcx.mk_region(ty::ReVar(*vid))),
+                    Some(self.tcx().mk_region(ty::ReVar(*vid))),
                     cause,
                     None,
                     Some(*sup_placeholder),
@@ -182,11 +182,11 @@ impl NiceRegionError<'me, 'gcx, 'tcx> {
         expected_substs: &'tcx Substs<'tcx>,
         actual_substs: &'tcx Substs<'tcx>,
     ) -> ErrorReported {
-        let mut err = self.tcx.sess.struct_span_err(
-            cause.span(&self.tcx),
+        let mut err = self.tcx().sess.struct_span_err(
+            cause.span(&self.tcx()),
             &format!(
                 "implementation of `{}` is not general enough",
-                self.tcx.item_path_str(trait_def_id),
+                self.tcx().item_path_str(trait_def_id),
             ),
         );
 
@@ -194,7 +194,7 @@ impl NiceRegionError<'me, 'gcx, 'tcx> {
             ObligationCauseCode::ItemObligation(def_id) => {
                 err.note(&format!(
                     "Due to a where-clause on `{}`,",
-                    self.tcx.item_path_str(def_id),
+                    self.tcx().item_path_str(def_id),
                 ));
             }
             _ => (),
@@ -220,7 +220,7 @@ impl NiceRegionError<'me, 'gcx, 'tcx> {
         let mut has_sup = None;
         let mut has_vid = None;
 
-        self.tcx.for_each_free_region(&expected_trait_ref, |r| {
+        self.tcx().for_each_free_region(&expected_trait_ref, |r| {
             if Some(r) == sub_placeholder && has_sub.is_none() {
                 has_sub = Some(counter);
                 counter += 1;
@@ -230,7 +230,7 @@ impl NiceRegionError<'me, 'gcx, 'tcx> {
             }
         });
 
-        self.tcx.for_each_free_region(&actual_trait_ref, |r| {
+        self.tcx().for_each_free_region(&actual_trait_ref, |r| {
             if Some(r) == vid && has_vid.is_none() {
                 has_vid = Some(counter);
                 counter += 1;
@@ -238,7 +238,7 @@ impl NiceRegionError<'me, 'gcx, 'tcx> {
         });
 
         let self_ty_has_vid = self
-            .tcx
+            .tcx()
             .any_free_region_meets(&actual_trait_ref.self_ty(), |r| Some(r) == vid);
 
         RegionHighlightMode::maybe_highlighting_region(sub_placeholder, has_sub, || {
