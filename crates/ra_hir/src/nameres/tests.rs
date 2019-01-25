@@ -20,7 +20,7 @@ fn item_map(fixture: &str) -> (Arc<ItemMap>, ModuleId) {
 }
 
 fn check_module_item_map(map: &ItemMap, module_id: ModuleId, expected: &str) {
-    let mut lines = map.per_module[&module_id]
+    let mut lines = map[module_id]
         .items
         .iter()
         .map(|(name, res)| format!("{}: {}", name, dump_resolution(res)))

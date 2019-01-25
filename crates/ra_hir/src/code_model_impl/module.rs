@@ -2,10 +2,10 @@ use ra_db::FileId;
 use ra_syntax::{ast, SyntaxNode, TreeArc};
 
 use crate::{
-    Module, ModuleSource, Problem, ModuleDef,
-    Crate, Name, Path, PerNs,
+    Module, ModuleSource, Problem,
+    Crate, Name,
     module_tree::ModuleId,
-    nameres::{ModuleScope, lower::ImportId},
+    nameres::{lower::ImportId},
     db::HirDatabase,
 };
 
@@ -88,12 +88,6 @@ impl Module {
         let module_tree = db.module_tree(self.krate);
         let parent_id = self.module_id.parent(&module_tree)?;
         Some(self.with_module_id(parent_id))
-    }
-
-    /// Returns a `ModuleScope`: a set of items, visible in this module.
-    pub(crate) fn scope_impl(&self, db: &impl HirDatabase) -> ModuleScope {
-        let item_map = db.item_map(self.krate);
-        item_map.per_module[&self.module_id].clone()
     }
 
     pub(crate) fn problems_impl(

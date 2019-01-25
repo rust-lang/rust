@@ -19,6 +19,7 @@ pub(crate) mod lower;
 use std::sync::Arc;
 
 use ra_db::CrateId;
+use ra_arena::map::ArenaMap;
 use test_utils::tested_by;
 use rustc_hash::{FxHashMap, FxHashSet};
 
@@ -37,7 +38,14 @@ use crate::{
 // FIXME: currenty we compute item map per source-root. We should do it per crate instead.
 #[derive(Default, Debug, PartialEq, Eq)]
 pub struct ItemMap {
-    pub per_module: FxHashMap<ModuleId, ModuleScope>,
+    per_module: ArenaMap<ModuleId, ModuleScope>,
+}
+
+impl std::ops::Index<ModuleId> for ItemMap {
+    type Output = ModuleScope;
+    fn index(&self, id: ModuleId) -> &ModuleScope {
+        &self.per_module[id]
+    }
 }
 
 #[derive(Debug, Default, PartialEq, Eq, Clone)]
@@ -308,7 +316,7 @@ where
     }
 
     fn update(&mut self, module_id: ModuleId, f: impl FnOnce(&mut ModuleScope)) {
-        let module_items = self.result.per_module.get_mut(&module_id).unwrap();
+        let module_items = self.result.per_module.get_mut(module_id).unwrap();
         f(module_items)
     }
 }
@@ -380,7 +388,7 @@ impl ItemMap {
                         return (def, ReachedFixedPoint::Yes);
                     }
 
-                    match self.per_module[&module.module_id].items.get(&segment.name) {
+                    match self[module.module_id].items.get(&segment.name) {
                         Some(res) if !res.def.is_none() => res.def,
                         _ => {
                             log::debug!("path segment {:?} not found", segment.name);
