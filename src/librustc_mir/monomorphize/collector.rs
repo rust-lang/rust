@@ -355,7 +355,7 @@ fn collect_items_rec<'a, 'tcx: 'a>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         // We've been here already, no need to search again.
         return;
     }
-    debug!("BEGIN collect_items_rec({})", starting_point.to_string(tcx));
+    debug!("BEGIN collect_items_rec({})", starting_point.to_string(tcx, true));
 
     let mut neighbors = Vec::new();
     let recursion_depth_reset;
@@ -409,7 +409,7 @@ fn collect_items_rec<'a, 'tcx: 'a>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         recursion_depths.insert(def_id, depth);
     }
 
-    debug!("END collect_items_rec({})", starting_point.to_string(tcx));
+    debug!("END collect_items_rec({})", starting_point.to_string(tcx, true));
 }
 
 fn record_accesses<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,

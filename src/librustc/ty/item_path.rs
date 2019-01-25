@@ -210,12 +210,12 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
 
             let visible_parent = visible_parent_map.get(&cur_def).cloned();
             let actual_parent = self.parent(cur_def);
-            debug!(
-                "try_push_visible_item_path: visible_parent={:?} actual_parent={:?}",
-                visible_parent, actual_parent,
-            );
 
             let data = cur_def_key.disambiguated_data.data;
+            debug!(
+                "try_push_visible_item_path: data={:?} visible_parent={:?} actual_parent={:?}",
+                data, visible_parent, actual_parent,
+            );
             let symbol = match data {
                 // In order to output a path that could actually be imported (valid and visible),
                 // we need to handle re-exports correctly.
@@ -248,16 +248,16 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
                 // the children of the visible parent (as was done when computing
                 // `visible_parent_map`), looking for the specific child we currently have and then
                 // have access to the re-exported name.
-                DefPathData::Module(module_name) if visible_parent != actual_parent => {
-                    let mut name: Option<ast::Ident> = None;
-                    if let Some(visible_parent) = visible_parent {
-                        for child in self.item_children(visible_parent).iter() {
-                            if child.def.def_id() == cur_def {
-                                name = Some(child.ident);
-                            }
-                        }
-                    }
-                    name.map(|n| n.as_str()).unwrap_or(module_name.as_str())
+                DefPathData::Module(actual_name) |
+                DefPathData::TypeNs(actual_name) if visible_parent != actual_parent => {
+                    visible_parent
+                        .and_then(|parent| {
+                            self.item_children(parent)
+                                .iter()
+                                .find(|child| child.def.def_id() == cur_def)
+                                .map(|child| child.ident.as_str())
+                        })
+                        .unwrap_or_else(|| actual_name.as_str())
                 },
                 _ => {
                     data.get_opt_name().map(|n| n.as_str()).unwrap_or_else(|| {

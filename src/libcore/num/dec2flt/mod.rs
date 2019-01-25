@@ -112,10 +112,34 @@ macro_rules! from_str_float_impl {
             /// * '2.5E10', or equivalently, '2.5e10'
             /// * '2.5E-10'
             /// * '5.'
-            /// * '.5', or, equivalently,  '0.5'
+            /// * '.5', or, equivalently, '0.5'
             /// * 'inf', '-inf', 'NaN'
             ///
             /// Leading and trailing whitespace represent an error.
+            ///
+            /// # Grammar
+            ///
+            /// All strings that adhere to the following [EBNF] grammar
+            /// will result in an [`Ok`] being returned:
+            ///
+            /// ```txt
+            /// Float  ::= Sign? ( 'inf' | 'NaN' | Number )
+            /// Number ::= ( Digit+ |
+            ///              Digit+ '.' Digit* |
+            ///              Digit* '.' Digit+ ) Exp?
+            /// Exp    ::= [eE] Sign? Digit+
+            /// Sign   ::= [+-]
+            /// Digit  ::= [0-9]
+            /// ```
+            ///
+            /// [EBNF]: https://www.w3.org/TR/REC-xml/#sec-notation
+            ///
+            /// # Known bugs
+            ///
+            /// In some situations, some strings that should create a valid float
+            /// instead return an error. See [issue #31407] for details.
+            ///
+            /// [issue #31407]: https://github.com/rust-lang/rust/issues/31407
             ///
             /// # Arguments
             ///

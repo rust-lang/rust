@@ -14,21 +14,21 @@ error[E0382]: assign to part of moved value: `s`
   --> $DIR/issue-21232-partial-init-and-use.rs:113:5
    |
 LL |     let mut s: S<B> = S::new(); drop(s);
-   |                                      - value moved here
+   |         -----                        - value moved here
+   |         |
+   |         move occurs because `s` has type `S<std::boxed::Box<u32>>`, which does not implement the `Copy` trait
 LL |     s.x = 10; s.y = Box::new(20);
    |     ^^^^^^^^ value partially assigned here after move
-   |
-   = note: move occurs because `s` has type `S<std::boxed::Box<u32>>`, which does not implement the `Copy` trait
 
 error[E0382]: assign to part of moved value: `t`
   --> $DIR/issue-21232-partial-init-and-use.rs:120:5
    |
 LL |     let mut t: T = (0, Box::new(0)); drop(t);
-   |                                           - value moved here
+   |         -----                             - value moved here
+   |         |
+   |         move occurs because `t` has type `(u32, std::boxed::Box<u32>)`, which does not implement the `Copy` trait
 LL |     t.0 = 10; t.1 = Box::new(20);
    |     ^^^^^^^^ value partially assigned here after move
-   |
-   = note: move occurs because `t` has type `(u32, std::boxed::Box<u32>)`, which does not implement the `Copy` trait
 
 error[E0381]: assign to part of possibly uninitialized variable: `s`
   --> $DIR/issue-21232-partial-init-and-use.rs:127:5
@@ -46,21 +46,21 @@ error[E0382]: assign to part of moved value: `s`
   --> $DIR/issue-21232-partial-init-and-use.rs:141:5
    |
 LL |     let mut s: S<B> = S::new(); drop(s);
-   |                                      - value moved here
+   |         -----                        - value moved here
+   |         |
+   |         move occurs because `s` has type `S<std::boxed::Box<u32>>`, which does not implement the `Copy` trait
 LL |     s.x = 10;
    |     ^^^^^^^^ value partially assigned here after move
-   |
-   = note: move occurs because `s` has type `S<std::boxed::Box<u32>>`, which does not implement the `Copy` trait
 
 error[E0382]: assign to part of moved value: `t`
   --> $DIR/issue-21232-partial-init-and-use.rs:148:5
    |
 LL |     let mut t: T = (0, Box::new(0)); drop(t);
-   |                                           - value moved here
+   |         -----                             - value moved here
+   |         |
+   |         move occurs because `t` has type `(u32, std::boxed::Box<u32>)`, which does not implement the `Copy` trait
 LL |     t.0 = 10;
    |     ^^^^^^^^ value partially assigned here after move
-   |
-   = note: move occurs because `t` has type `(u32, std::boxed::Box<u32>)`, which does not implement the `Copy` trait
 
 error[E0381]: assign to part of possibly uninitialized variable: `s`
   --> $DIR/issue-21232-partial-init-and-use.rs:155:5
@@ -153,22 +153,24 @@ LL |     q.r.f.0 = 10;
 error[E0382]: assign to part of moved value: `c`
   --> $DIR/issue-21232-partial-init-and-use.rs:259:13
    |
+LL |     let mut c = (1, "".to_owned());
+   |         ----- move occurs because `c` has type `(i32, std::string::String)`, which does not implement the `Copy` trait
+LL |     match c {
 LL |         c2 => {
    |         -- value moved here
 LL |             c.0 = 2; //~ ERROR assign to part of moved value
    |             ^^^^^^^ value partially assigned here after move
-   |
-   = note: move occurs because `c` has type `(i32, std::string::String)`, which does not implement the `Copy` trait
 
 error[E0382]: assign to part of moved value: `c`
   --> $DIR/issue-21232-partial-init-and-use.rs:269:13
    |
+LL |     let mut c = (1, (1, "".to_owned()));
+   |         ----- move occurs because `c` has type `(i32, (i32, std::string::String))`, which does not implement the `Copy` trait
+LL |     match c {
 LL |         c2 => {
    |         -- value moved here
 LL |             (c.1).0 = 2; //~ ERROR assign to part of moved value
    |             ^^^^^^^^^^^ value partially assigned here after move
-   |
-   = note: move occurs because `c` has type `(i32, (i32, std::string::String))`, which does not implement the `Copy` trait
 
 error[E0382]: assign to part of moved value: `c.1`
   --> $DIR/issue-21232-partial-init-and-use.rs:277:13

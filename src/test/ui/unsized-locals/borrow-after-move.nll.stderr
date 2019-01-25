@@ -12,13 +12,13 @@ LL |         println!("{}", &x);
 error[E0382]: borrow of moved value: `y`
   --> $DIR/borrow-after-move.rs:22:24
    |
+LL |         let y = *x;
+   |             - move occurs because `y` has type `str`, which does not implement the `Copy` trait
 LL |         drop_unsized(y);
    |                      - value moved here
 ...
 LL |         println!("{}", &y);
    |                        ^^ value borrowed here after move
-   |
-   = note: move occurs because `y` has type `str`, which does not implement the `Copy` trait
 
 error[E0382]: borrow of moved value: `x`
   --> $DIR/borrow-after-move.rs:30:24
@@ -34,13 +34,13 @@ LL |         println!("{}", &x);
 error[E0382]: borrow of moved value: `y`
   --> $DIR/borrow-after-move.rs:32:24
    |
+LL |         let y = *x;
+   |             - move occurs because `y` has type `str`, which does not implement the `Copy` trait
 LL |         y.foo();
    |         - value moved here
 ...
 LL |         println!("{}", &y);
    |                        ^^ value borrowed here after move
-   |
-   = note: move occurs because `y` has type `str`, which does not implement the `Copy` trait
 
 error[E0382]: borrow of moved value: `x`
   --> $DIR/borrow-after-move.rs:39:24

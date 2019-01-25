@@ -13,12 +13,12 @@ LL |     use_borrow(a);
 error[E0382]: use of moved value: `u`
   --> $DIR/union-borrow-move-parent-sibling.rs:22:13
    |
+LL |     let u = U { x: ((Vec::new(), Vec::new()), Vec::new()) };
+   |         - move occurs because `u` has type `U`, which does not implement the `Copy` trait
 LL |     let a = u.x.0;
    |             ----- value moved here
 LL |     let b = u.y; //~ ERROR use of moved value: `u.y`
    |             ^^^ value used here after move
-   |
-   = note: move occurs because `u` has type `U`, which does not implement the `Copy` trait
 
 error[E0502]: cannot borrow `u` (via `u.y`) as immutable because it is also borrowed as mutable (via `u.x.0.0`)
   --> $DIR/union-borrow-move-parent-sibling.rs:28:13
@@ -35,12 +35,12 @@ LL |     use_borrow(a);
 error[E0382]: use of moved value: `u`
   --> $DIR/union-borrow-move-parent-sibling.rs:35:13
    |
+LL |     let u = U { x: ((Vec::new(), Vec::new()), Vec::new()) };
+   |         - move occurs because `u` has type `U`, which does not implement the `Copy` trait
 LL |     let a = (u.x.0).0;
    |             --------- value moved here
 LL |     let b = u.y; //~ ERROR use of moved value: `u.y`
    |             ^^^ value used here after move
-   |
-   = note: move occurs because `u` has type `U`, which does not implement the `Copy` trait
 
 error[E0502]: cannot borrow `u` (via `u.x`) as immutable because it is also borrowed as mutable (via `*u.y`)
   --> $DIR/union-borrow-move-parent-sibling.rs:41:13
@@ -57,12 +57,12 @@ LL |     use_borrow(a);
 error[E0382]: use of moved value: `u`
   --> $DIR/union-borrow-move-parent-sibling.rs:48:13
    |
+LL |     let u = U { x: ((Vec::new(), Vec::new()), Vec::new()) };
+   |         - move occurs because `u` has type `U`, which does not implement the `Copy` trait
 LL |     let a = *u.y;
    |             ---- value moved here
 LL |     let b = u.x; //~ ERROR use of moved value: `u.x`
    |             ^^^ value used here after move
-   |
-   = note: move occurs because `u` has type `U`, which does not implement the `Copy` trait
 
 error: aborting due to 6 previous errors
 
