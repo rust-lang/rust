@@ -80,11 +80,11 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
         }
 
         let mut s = String::new();
-        let mut printer = ty::print::FmtPrinter::new(&mut s, Namespace::TypeNS);
+        let mut printer = ty::print::FmtPrinter::new(self.tcx, &mut s, Namespace::TypeNS);
         if let Some(highlight) = highlight {
             printer.region_highlight_mode = highlight;
         }
-        let _ = ty.print(ty::print::PrintCx::new(self.tcx, printer));
+        let _ = ty.print(printer);
         s
     }
 

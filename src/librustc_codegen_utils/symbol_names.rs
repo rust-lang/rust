@@ -92,7 +92,7 @@ use rustc::hir::Node;
 use rustc::hir::CodegenFnAttrFlags;
 use rustc::hir::map::definitions::DefPathData;
 use rustc::ich::NodeIdHashingMode;
-use rustc::ty::print::{PrettyPrinter, PrintCx, Printer, Print};
+use rustc::ty::print::{PrettyPrinter, Printer, Print};
 use rustc::ty::query::Providers;
 use rustc::ty::subst::{Kind, SubstsRef, UnpackedKind};
 use rustc::ty::{self, Ty, TyCtxt, TypeFoldable};
@@ -223,10 +223,11 @@ fn get_symbol_hash<'a, 'tcx>(
 }
 
 fn def_symbol_name<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: DefId) -> ty::SymbolName {
-    PrintCx::new(tcx, SymbolPath::new(tcx))
-        .print_def_path(def_id, None)
-        .unwrap()
-        .into_interned()
+    SymbolPrinter {
+        tcx,
+        path: SymbolPath::new(),
+        keep_within_component: false,
+    }.print_def_path(def_id, None).unwrap().path.into_interned()
 }
 
 fn symbol_name<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, instance: Instance<'tcx>) -> ty::SymbolName {
@@ -318,13 +319,17 @@ fn compute_symbol_name<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, instance: Instance
 
     let hash = get_symbol_hash(tcx, def_id, instance, instance_ty, substs);
 
-    let mut buf = SymbolPath::from_interned(tcx.def_symbol_name(def_id), tcx);
+    let mut printer = SymbolPrinter {
+        tcx,
+        path: SymbolPath::from_interned(tcx.def_symbol_name(def_id)),
+        keep_within_component: false,
+    };
 
     if instance.is_vtable_shim() {
-        let _ = buf.write_str("{{vtable-shim}}");
+        let _ = printer.write_str("{{vtable-shim}}");
     }
 
-    buf.finish(hash)
+    printer.path.finish(hash)
 }
 
 // Follow C++ namespace-mangling style, see
@@ -344,33 +349,22 @@ fn compute_symbol_name<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, instance: Instance
 struct SymbolPath {
     result: String,
     temp_buf: String,
-    strict_naming: bool,
-
-    // When `true`, `finalize_pending_component` isn't used.
-    // This is needed when recursing into `path_qualified`,
-    // or `path_generic_args`, as any nested paths are
-    // logically within one component.
-    keep_within_component: bool,
 }
 
 impl SymbolPath {
-    fn new(tcx: TyCtxt<'_, '_, '_>) -> Self {
+    fn new() -> Self {
         let mut result = SymbolPath {
             result: String::with_capacity(64),
             temp_buf: String::with_capacity(16),
-            strict_naming: tcx.has_strict_asm_symbol_naming(),
-            keep_within_component: false,
         };
         result.result.push_str("_ZN"); // _Z == Begin name-sequence, N == nested
         result
     }
 
-    fn from_interned(symbol: ty::SymbolName, tcx: TyCtxt<'_, '_, '_>) -> Self {
+    fn from_interned(symbol: ty::SymbolName) -> Self {
         let mut result = SymbolPath {
             result: String::with_capacity(64),
             temp_buf: String::with_capacity(16),
-            strict_naming: tcx.has_strict_asm_symbol_naming(),
-            keep_within_component: false,
         };
         result.result.push_str(&symbol.as_str());
         result
@@ -398,11 +392,22 @@ impl SymbolPath {
     }
 }
 
+struct SymbolPrinter<'a, 'tcx> {
+    tcx: TyCtxt<'a, 'tcx, 'tcx>,
+    path: SymbolPath,
+
+    // When `true`, `finalize_pending_component` isn't used.
+    // This is needed when recursing into `path_qualified`,
+    // or `path_generic_args`, as any nested paths are
+    // logically within one component.
+    keep_within_component: bool,
+}
+
 // HACK(eddyb) this relies on using the `fmt` interface to get
 // `PrettyPrinter` aka pretty printing of e.g. types in paths,
 // symbol names should have their own printing machinery.
 
-impl Printer for SymbolPath {
+impl Printer<'tcx, 'tcx> for SymbolPrinter<'_, 'tcx> {
     type Error = fmt::Error;
 
     type Path = Self;
@@ -410,15 +415,19 @@ impl Printer for SymbolPath {
     type Type = Self;
     type DynExistential = Self;
 
+    fn tcx(&'a self) -> TyCtxt<'a, 'tcx, 'tcx> {
+        self.tcx
+    }
+
     fn print_region(
-        self: PrintCx<'_, '_, '_, Self>,
+        self,
         _region: ty::Region<'_>,
     ) -> Result<Self::Region, Self::Error> {
-        self.ok()
+        Ok(self)
     }
 
     fn print_type(
-        self: PrintCx<'_, '_, 'tcx, Self>,
+        self,
         ty: Ty<'tcx>,
     ) -> Result<Self::Type, Self::Error> {
         match ty.sty {
@@ -436,7 +445,7 @@ impl Printer for SymbolPath {
     }
 
     fn print_dyn_existential(
-        mut self: PrintCx<'_, '_, 'tcx, Self>,
+        mut self,
         predicates: &'tcx ty::List<ty::ExistentialPredicate<'tcx>>,
     ) -> Result<Self::DynExistential, Self::Error> {
         let mut first = false;
@@ -445,20 +454,20 @@ impl Printer for SymbolPath {
                 write!(self, "+")?;
             }
             first = false;
-            self = PrintCx::new(self.tcx, p.print(self)?);
+            self = p.print(self)?;
         }
-        self.ok()
+        Ok(self)
     }
 
     fn path_crate(
-        mut self: PrintCx<'_, '_, '_, Self>,
+        mut self,
         cnum: CrateNum,
     ) -> Result<Self::Path, Self::Error> {
         self.write_str(&self.tcx.original_crate_name(cnum).as_str())?;
-        self.ok()
+        Ok(self)
     }
     fn path_qualified(
-        self: PrintCx<'_, '_, 'tcx, Self>,
+        self,
         self_ty: Ty<'tcx>,
         trait_ref: Option<ty::TraitRef<'tcx>>,
     ) -> Result<Self::Path, Self::Error> {
@@ -480,11 +489,9 @@ impl Printer for SymbolPath {
         }
     }
 
-    fn path_append_impl<'gcx, 'tcx>(
-        self: PrintCx<'_, 'gcx, 'tcx, Self>,
-        print_prefix: impl FnOnce(
-            PrintCx<'_, 'gcx, 'tcx, Self>,
-        ) -> Result<Self::Path, Self::Error>,
+    fn path_append_impl(
+        self,
+        print_prefix: impl FnOnce(Self) -> Result<Self::Path, Self::Error>,
         self_ty: Ty<'tcx>,
         trait_ref: Option<ty::TraitRef<'tcx>>,
     ) -> Result<Self::Path, Self::Error> {
@@ -494,33 +501,29 @@ impl Printer for SymbolPath {
             trait_ref,
         )
     }
-    fn path_append<'gcx, 'tcx>(
-        self: PrintCx<'_, 'gcx, 'tcx, Self>,
-        print_prefix: impl FnOnce(
-            PrintCx<'_, 'gcx, 'tcx, Self>,
-        ) -> Result<Self::Path, Self::Error>,
+    fn path_append(
+        mut self,
+        print_prefix: impl FnOnce(Self) -> Result<Self::Path, Self::Error>,
         text: &str,
     ) -> Result<Self::Path, Self::Error> {
-        let mut path = print_prefix(self)?;
+        self = print_prefix(self)?;
 
-        if path.keep_within_component {
+        if self.keep_within_component {
             // HACK(eddyb) print the path similarly to how `FmtPrinter` prints it.
-            path.write_str("::")?;
+            self.write_str("::")?;
         } else {
-            path.finalize_pending_component();
+            self.path.finalize_pending_component();
         }
 
-        path.write_str(text)?;
-        Ok(path)
+        self.write_str(text)?;
+        Ok(self)
     }
-    fn path_generic_args<'gcx, 'tcx>(
-        mut self: PrintCx<'_, 'gcx, 'tcx, Self>,
-        print_prefix: impl FnOnce(
-            PrintCx<'_, 'gcx, 'tcx, Self>,
-        ) -> Result<Self::Path, Self::Error>,
+    fn path_generic_args(
+        mut self,
+        print_prefix: impl FnOnce(Self) -> Result<Self::Path, Self::Error>,
         args: &[Kind<'tcx>],
     )  -> Result<Self::Path, Self::Error> {
-        self = PrintCx::new(self.tcx, print_prefix(self)?);
+        self = print_prefix(self)?;
 
         let args = args.iter().cloned().filter(|arg| {
             match arg.unpack() {
@@ -532,52 +535,52 @@ impl Printer for SymbolPath {
         if args.clone().next().is_some() {
             self.generic_delimiters(|cx| cx.comma_sep(args))
         } else {
-            self.ok()
+            Ok(self)
         }
     }
 }
 
-impl PrettyPrinter for SymbolPath {
+impl PrettyPrinter<'tcx, 'tcx> for SymbolPrinter<'_, 'tcx> {
     fn region_should_not_be_omitted(
-        self: &PrintCx<'_, '_, '_, Self>,
+        &self,
         _region: ty::Region<'_>,
     ) -> bool {
         false
     }
     fn comma_sep<T>(
-        mut self: PrintCx<'_, '_, 'tcx, Self>,
+        mut self,
         mut elems: impl Iterator<Item = T>,
     ) -> Result<Self, Self::Error>
-        where T: Print<'tcx, Self, Output = Self, Error = Self::Error>
+        where T: Print<'tcx, 'tcx, Self, Output = Self, Error = Self::Error>
     {
         if let Some(first) = elems.next() {
-            self = PrintCx::new(self.tcx, first.print(self)?);
+            self = first.print(self)?;
             for elem in elems {
                 self.write_str(",")?;
-                self = PrintCx::new(self.tcx, elem.print(self)?);
+                self = elem.print(self)?;
             }
         }
-        self.ok()
+        Ok(self)
     }
 
-    fn generic_delimiters<'gcx, 'tcx>(
-        mut self: PrintCx<'_, 'gcx, 'tcx, Self>,
-        f: impl FnOnce(PrintCx<'_, 'gcx, 'tcx, Self>) -> Result<Self, Self::Error>,
+    fn generic_delimiters(
+        mut self,
+        f: impl FnOnce(Self) -> Result<Self, Self::Error>,
     ) -> Result<Self, Self::Error> {
         write!(self, "<")?;
 
         let kept_within_component =
             mem::replace(&mut self.keep_within_component, true);
-        let mut path = f(self)?;
-        path.keep_within_component = kept_within_component;
+        self = f(self)?;
+        self.keep_within_component = kept_within_component;
 
-        write!(path, ">")?;
+        write!(self, ">")?;
 
-        Ok(path)
+        Ok(self)
     }
 }
 
-impl fmt::Write for SymbolPath {
+impl fmt::Write for SymbolPrinter<'_, '_> {
     fn write_str(&mut self, s: &str) -> fmt::Result {
         // Name sanitation. LLVM will happily accept identifiers with weird names, but
         // gas doesn't!
@@ -586,45 +589,45 @@ impl fmt::Write for SymbolPath {
         // are replaced with '$' there.
 
         for c in s.chars() {
-            if self.temp_buf.is_empty() {
+            if self.path.temp_buf.is_empty() {
                 match c {
                     'a'..='z' | 'A'..='Z' | '_' => {}
                     _ => {
                         // Underscore-qualify anything that didn't start as an ident.
-                        self.temp_buf.push('_');
+                        self.path.temp_buf.push('_');
                     }
                 }
             }
             match c {
                 // Escape these with $ sequences
-                '@' => self.temp_buf.push_str("$SP$"),
-                '*' => self.temp_buf.push_str("$BP$"),
-                '&' => self.temp_buf.push_str("$RF$"),
-                '<' => self.temp_buf.push_str("$LT$"),
-                '>' => self.temp_buf.push_str("$GT$"),
-                '(' => self.temp_buf.push_str("$LP$"),
-                ')' => self.temp_buf.push_str("$RP$"),
-                ',' => self.temp_buf.push_str("$C$"),
+                '@' => self.path.temp_buf.push_str("$SP$"),
+                '*' => self.path.temp_buf.push_str("$BP$"),
+                '&' => self.path.temp_buf.push_str("$RF$"),
+                '<' => self.path.temp_buf.push_str("$LT$"),
+                '>' => self.path.temp_buf.push_str("$GT$"),
+                '(' => self.path.temp_buf.push_str("$LP$"),
+                ')' => self.path.temp_buf.push_str("$RP$"),
+                ',' => self.path.temp_buf.push_str("$C$"),
 
-                '-' | ':' | '.' if self.strict_naming => {
+                '-' | ':' | '.' if self.tcx.has_strict_asm_symbol_naming() => {
                     // NVPTX doesn't support these characters in symbol names.
-                    self.temp_buf.push('$')
+                    self.path.temp_buf.push('$')
                 }
 
                 // '.' doesn't occur in types and functions, so reuse it
                 // for ':' and '-'
-                '-' | ':' => self.temp_buf.push('.'),
+                '-' | ':' => self.path.temp_buf.push('.'),
 
                 // These are legal symbols
-                'a'..='z' | 'A'..='Z' | '0'..='9' | '_' | '.' | '$' => self.temp_buf.push(c),
+                'a'..='z' | 'A'..='Z' | '0'..='9' | '_' | '.' | '$' => self.path.temp_buf.push(c),
 
                 _ => {
-                    self.temp_buf.push('$');
+                    self.path.temp_buf.push('$');
                     for c in c.escape_unicode().skip(1) {
                         match c {
                             '{' => {}
-                            '}' => self.temp_buf.push('$'),
-                            c => self.temp_buf.push(c),
+                            '}' => self.path.temp_buf.push('$'),
+                            c => self.path.temp_buf.push(c),
                         }
                     }
                 }

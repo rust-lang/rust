@@ -8,7 +8,7 @@ use crate::mir::ProjectionKind;
 use crate::mir::interpret::ConstValue;
 use crate::ty::{self, Lift, Ty, TyCtxt, ConstVid, InferConst};
 use crate::ty::fold::{TypeFoldable, TypeFolder, TypeVisitor};
-use crate::ty::print::{FmtPrinter, PrintCx, Printer};
+use crate::ty::print::{FmtPrinter, Printer};
 use rustc_data_structures::indexed_vec::{IndexVec, Idx};
 use smallvec::SmallVec;
 use crate::mir::interpret;
@@ -34,8 +34,9 @@ impl fmt::Debug for ty::GenericParamDef {
 
 impl fmt::Debug for ty::TraitDef {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        PrintCx::with_tls_tcx(FmtPrinter::new(f, Namespace::TypeNS), |cx| {
-            cx.print_def_path(self.def_id, None)?;
+        ty::tls::with(|tcx| {
+            FmtPrinter::new(tcx, f, Namespace::TypeNS)
+                .print_def_path(self.def_id, None)?;
             Ok(())
         })
     }
@@ -43,8 +44,9 @@ impl fmt::Debug for ty::TraitDef {
 
 impl fmt::Debug for ty::AdtDef {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        PrintCx::with_tls_tcx(FmtPrinter::new(f, Namespace::TypeNS), |cx| {
-            cx.print_def_path(self.did, None)?;
+        ty::tls::with(|tcx| {
+            FmtPrinter::new(tcx, f, Namespace::TypeNS)
+                .print_def_path(self.did, None)?;
             Ok(())
         })
     }
@@ -333,6 +335,7 @@ CloneTypeFoldableAndLiftImpls! {
 ///////////////////////////////////////////////////////////////////////////
 // Lift implementations
 
+// FIXME(eddyb) replace all the uses of `Option::map` with `?`.
 impl<'tcx, A: Lift<'tcx>, B: Lift<'tcx>> Lift<'tcx> for (A, B) {
     type Lifted = (A::Lifted, B::Lifted);
     fn lift_to_tcx<'a, 'gcx>(&self, tcx: TyCtxt<'a, 'gcx, 'tcx>) -> Option<Self::Lifted> {
@@ -426,6 +429,23 @@ impl<'a, 'tcx> Lift<'tcx> for ty::ExistentialTraitRef<'a> {
             def_id: self.def_id,
             substs,
         })
+    }
+}
+
+impl<'a, 'tcx> Lift<'tcx> for ty::ExistentialPredicate<'a> {
+    type Lifted = ty::ExistentialPredicate<'tcx>;
+    fn lift_to_tcx<'b, 'gcx>(&self, tcx: TyCtxt<'b, 'gcx, 'tcx>) -> Option<Self::Lifted> {
+        match self {
+            ty::ExistentialPredicate::Trait(x) => {
+                tcx.lift(x).map(ty::ExistentialPredicate::Trait)
+            }
+            ty::ExistentialPredicate::Projection(x) => {
+                tcx.lift(x).map(ty::ExistentialPredicate::Projection)
+            }
+            ty::ExistentialPredicate::AutoTrait(def_id) => {
+                Some(ty::ExistentialPredicate::AutoTrait(*def_id))
+            }
+        }
     }
 }
 

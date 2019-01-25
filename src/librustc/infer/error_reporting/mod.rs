@@ -445,14 +445,16 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
         sp: Span,
     ) {
         use hir::def_id::CrateNum;
-        use ty::print::{PrintCx, Printer};
+        use ty::print::Printer;
         use ty::subst::Kind;
 
-        struct AbsolutePathPrinter;
+        struct AbsolutePathPrinter<'a, 'gcx, 'tcx> {
+            tcx: TyCtxt<'a, 'gcx, 'tcx>,
+        }
 
         struct NonTrivialPath;
 
-        impl Printer for AbsolutePathPrinter {
+        impl<'gcx, 'tcx> Printer<'gcx, 'tcx> for AbsolutePathPrinter<'_, 'gcx, 'tcx> {
             type Error = NonTrivialPath;
 
             type Path = Vec<String>;
@@ -460,67 +462,65 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
             type Type = !;
             type DynExistential = !;
 
+            fn tcx<'a>(&'a self) -> TyCtxt<'a, 'gcx, 'tcx> {
+                self.tcx
+            }
+
             fn print_region(
-                self: PrintCx<'_, '_, '_, Self>,
+                self,
                 _region: ty::Region<'_>,
             ) -> Result<Self::Region, Self::Error> {
                 Err(NonTrivialPath)
             }
 
-            fn print_type<'tcx>(
-                self: PrintCx<'_, '_, 'tcx, Self>,
+            fn print_type(
+                self,
                 _ty: Ty<'tcx>,
             ) -> Result<Self::Type, Self::Error> {
                 Err(NonTrivialPath)
             }
 
-            fn print_dyn_existential<'tcx>(
-                self: PrintCx<'_, '_, 'tcx, Self>,
+            fn print_dyn_existential(
+                self,
                 _predicates: &'tcx ty::List<ty::ExistentialPredicate<'tcx>>,
             ) -> Result<Self::DynExistential, Self::Error> {
                 Err(NonTrivialPath)
             }
 
             fn path_crate(
-                self: PrintCx<'_, '_, '_, Self>,
+                self,
                 cnum: CrateNum,
             ) -> Result<Self::Path, Self::Error> {
                 Ok(vec![self.tcx.original_crate_name(cnum).to_string()])
             }
-            fn path_qualified<'tcx>(
-                self: PrintCx<'_, '_, 'tcx, Self>,
+            fn path_qualified(
+                self,
                 _self_ty: Ty<'tcx>,
                 _trait_ref: Option<ty::TraitRef<'tcx>>,
             ) -> Result<Self::Path, Self::Error> {
                 Err(NonTrivialPath)
             }
 
-            fn path_append_impl<'gcx, 'tcx>(
-                self: PrintCx<'_, 'gcx, 'tcx, Self>,
-                _print_prefix: impl FnOnce(
-                    PrintCx<'_, 'gcx, 'tcx, Self>,
-                ) -> Result<Self::Path, Self::Error>,
+            fn path_append_impl(
+                self,
+                _print_prefix: impl FnOnce(Self) -> Result<Self::Path, Self::Error>,
                 _self_ty: Ty<'tcx>,
                 _trait_ref: Option<ty::TraitRef<'tcx>>,
             ) -> Result<Self::Path, Self::Error> {
                 Err(NonTrivialPath)
             }
-            fn path_append<'gcx, 'tcx>(
-                self: PrintCx<'_, 'gcx, 'tcx, Self>,
-                print_prefix: impl FnOnce(
-                    PrintCx<'_, 'gcx, 'tcx, Self>,
-                ) -> Result<Self::Path, Self::Error>,
+            fn path_append(
+                self,
+                print_prefix: impl FnOnce(Self) -> Result<Self::Path, Self::Error>,
                 text: &str,
             ) -> Result<Self::Path, Self::Error> {
                 let mut path = print_prefix(self)?;
                 path.push(text.to_string());
                 Ok(path)
             }
-            fn path_generic_args<'gcx, 'tcx>(
-                self: PrintCx<'_, 'gcx, 'tcx, Self>,
-                print_prefix: impl FnOnce(
-                    PrintCx<'_, 'gcx, 'tcx, Self>,
-                ) -> Result<Self::Path, Self::Error>,
+            fn path_generic_args(
+                self,
+                print_prefix: impl FnOnce(Self) -> Result<Self::Path, Self::Error>,
                 _args: &[Kind<'tcx>],
             ) -> Result<Self::Path, Self::Error> {
                 print_prefix(self)
@@ -532,7 +532,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
             // module we could have false positives
             if !(did1.is_local() || did2.is_local()) && did1.krate != did2.krate {
                 let abs_path = |def_id| {
-                    PrintCx::new(self.tcx, AbsolutePathPrinter)
+                    AbsolutePathPrinter { tcx: self.tcx }
                         .print_def_path(def_id, None)
                 };
 

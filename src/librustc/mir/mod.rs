@@ -34,7 +34,7 @@ use crate::ty::{
     self, AdtDef, CanonicalUserTypeAnnotations, ClosureSubsts, GeneratorSubsts, Region, Ty, TyCtxt,
     UserTypeAnnotationIndex,
 };
-use crate::ty::print::{FmtPrinter, Printer, PrintCx};
+use crate::ty::print::{FmtPrinter, Printer};
 
 pub use crate::mir::interpret::AssertMessage;
 
@@ -2407,9 +2407,10 @@ impl<'tcx> Debug for Rvalue<'tcx> {
                         let variant_def = &adt_def.variants[variant];
 
                         let f = &mut *fmt;
-                        PrintCx::with_tls_tcx(FmtPrinter::new(f, Namespace::ValueNS), |cx| {
-                            let substs = cx.tcx.lift(&substs).expect("could not lift for printing");
-                            cx.print_def_path(variant_def.did, Some(substs))?;
+                        ty::tls::with(|tcx| {
+                            let substs = tcx.lift(&substs).expect("could not lift for printing");
+                            FmtPrinter::new(tcx, f, Namespace::ValueNS)
+                                .print_def_path(variant_def.did, Some(substs))?;
                             Ok(())
                         })?;
 
