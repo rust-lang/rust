@@ -27,7 +27,7 @@ use rustc::infer::canonical::QueryRegionConstraint;
 use rustc::infer::outlives::env::RegionBoundPairs;
 use rustc::infer::{InferCtxt, InferOk, LateBoundRegionConversionTime, NLLRegionVariableOrigin};
 use rustc::mir::interpret::EvalErrorKind::BoundsCheck;
-use rustc::mir::tcx::PlaceTy;
+use rustc::mir::tcx::{PlaceTy, HitTyVar};
 use rustc::mir::visit::{PlaceContext, Visitor, MutatingUseContext, NonMutatingUseContext};
 use rustc::mir::*;
 use rustc::traits::query::type_op;
@@ -1079,7 +1079,6 @@ impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
                 //
                 // if we hit a ty var as we descend, then just skip the
                 // attempt to relate the mir local with any type.
-                #[derive(Debug)] struct HitTyVar;
                 let mut curr_projected_ty: Result<PlaceTy, HitTyVar>;
 
                 curr_projected_ty = Ok(PlaceTy::from_ty(ty));

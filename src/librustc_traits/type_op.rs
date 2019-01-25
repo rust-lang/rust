@@ -3,7 +3,7 @@ use rustc::infer::canonical::{Canonical, QueryResponse};
 use rustc::infer::InferCtxt;
 use rustc::hir::def_id::DefId;
 use rustc::mir::ProjectionKind;
-use rustc::mir::tcx::PlaceTy;
+use rustc::mir::tcx::{PlaceTy, HitTyVar};
 use rustc::traits::query::type_op::ascribe_user_type::AscribeUserType;
 use rustc::traits::query::type_op::eq::Eq;
 use rustc::traits::query::type_op::normalize::Normalize;
@@ -133,7 +133,6 @@ impl AscribeUserTypeCx<'me, 'gcx, 'tcx> {
         // if we hit a ty var as we descend, then just skip the
         // attempt to relate the mir local with any type.
 
-        struct HitTyVar;
         let mut curr_projected_ty: Result<PlaceTy, HitTyVar>;
         curr_projected_ty = Ok(PlaceTy::from_ty(ty));
         for proj in projs {

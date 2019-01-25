@@ -25,6 +25,9 @@ static_assert!(PLACE_TY_IS_3_PTRS_LARGE:
     mem::size_of::<PlaceTy<'_>>() <= 24
 );
 
+#[derive(Debug)]
+pub struct HitTyVar;
+
 impl<'a, 'gcx, 'tcx> PlaceTy<'tcx> {
     pub fn from_ty(ty: Ty<'tcx>) -> PlaceTy<'tcx> {
         PlaceTy::Ty { ty }
@@ -75,7 +78,7 @@ impl<'a, 'gcx, 'tcx> PlaceTy<'tcx> {
                          elem: &PlaceElem<'tcx>)
                          -> PlaceTy<'tcx>
     {
-        self.projection_ty_core(tcx, elem, |_, _, ty| -> Result<Ty<'tcx>, ()> { Ok(ty) })
+        self.projection_ty_core(tcx, elem, |_, _, ty| -> Result<Ty<'tcx>, HitTyVar> { Ok(ty) })
             .unwrap()
     }
 
@@ -84,14 +87,14 @@ impl<'a, 'gcx, 'tcx> PlaceTy<'tcx> {
     /// `Ty` or downcast variant corresponding to that projection.
     /// The `handle_field` callback must map a `Field` to its `Ty`,
     /// (which should be trivial when `T` = `Ty`).
-    pub fn projection_ty_core<V, T, E>(
+    pub fn projection_ty_core<V, T>(
         self,
         tcx: TyCtxt<'a, 'gcx, 'tcx>,
         elem: &ProjectionElem<'tcx, V, T>,
-        mut handle_field: impl FnMut(&Self, &Field, &T) -> Result<Ty<'tcx>, E>)
-        -> Result<PlaceTy<'tcx>, E>
-    where
-        V: ::std::fmt::Debug, T: ::std::fmt::Debug
+        mut handle_field: impl FnMut(&Self, &Field, &T) -> Result<Ty<'tcx>, HitTyVar>,
+    ) -> Result<PlaceTy<'tcx>, HitTyVar>
+        where
+            V: ::std::fmt::Debug, T: ::std::fmt::Debug
     {
         let answer = match *elem {
             ProjectionElem::Deref => {
@@ -135,8 +138,16 @@ impl<'a, 'gcx, 'tcx> PlaceTy<'tcx> {
                                             substs,
                                             variant_index: index }
                     }
-                    _ => {
-                        bug!("cannot downcast non-ADT type: `{:?}`", self)
+                    ty::Infer(..) => {  // #57866
+                        return Err(HitTyVar);
+                    }
+                    ref sty => {
+                        bug!(
+                            "cannot downcast non-ADT type: `{:?}`, `{:?}`, `{:?}`",
+                            self,
+                            sty,
+                            adt_def1,
+                        );
                     }
                 },
             ProjectionElem::Field(ref f, ref fty) =>
