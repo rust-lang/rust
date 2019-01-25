@@ -4,22 +4,6 @@
 //  = note: expected type `Trait`
 //             found type `Trait`
 
-// from issue #57362
-trait Trait {
-    fn f(self);
-}
-
-impl<T> Trait for fn(&T) {
-    fn f(self) {
-        println!("f");
-    }
-}
-
-fn f() {
-    let a: fn(_) = |_: &u8| {};
-    a.f(); //~ ERROR not general enough
-}
-
 // extracted from a similar issue: #57642
 trait X {
     type G;
