@@ -713,7 +713,7 @@ dependencies = [
 
 [[package]]
 name = "dlmalloc"
-version = "0.1.1"
+version = "0.1.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 dependencies = [
  "compiler_builtins 0.1.5 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -1969,7 +1969,7 @@ name = "rand_chacha"
 version = "0.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 dependencies = [
- "rand_core 0.3.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "rand_core 0.2.2 (registry+https://github.com/rust-lang/crates.io-index)",
  "rustc_version 0.2.3 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
 
@@ -1991,7 +1991,7 @@ name = "rand_hc"
 version = "0.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 dependencies = [
- "rand_core 0.3.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "rand_core 0.2.2 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
 
 [[package]]
@@ -2016,7 +2016,7 @@ name = "rand_xorshift"
 version = "0.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 dependencies = [
- "rand_core 0.3.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "rand_core 0.2.2 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
 
 [[package]]
@@ -3073,7 +3073,7 @@ dependencies = [
  "cc 1.0.28 (registry+https://github.com/rust-lang/crates.io-index)",
  "compiler_builtins 0.1.5 (registry+https://github.com/rust-lang/crates.io-index)",
  "core 0.0.0",
- "dlmalloc 0.1.1 (registry+https://github.com/rust-lang/crates.io-index)",
+ "dlmalloc 0.1.2 (registry+https://github.com/rust-lang/crates.io-index)",
  "fortanix-sgx-abi 0.3.2 (registry+https://github.com/rust-lang/crates.io-index)",
  "libc 0.2.46 (registry+https://github.com/rust-lang/crates.io-index)",
  "panic_abort 0.0.0",
@@ -3816,7 +3816,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 "checksum diff 0.1.11 (registry+https://github.com/rust-lang/crates.io-index)" = "3c2b69f912779fbb121ceb775d74d51e915af17aaebc38d28a592843a2dd0a3a"
 "checksum difference 2.0.0 (registry+https://github.com/rust-lang/crates.io-index)" = "524cbf6897b527295dff137cec09ecf3a05f4fddffd7dfcd1585403449e74198"
 "checksum directories 1.0.2 (registry+https://github.com/rust-lang/crates.io-index)" = "72d337a64190607d4fcca2cb78982c5dd57f4916e19696b48a575fa746b6cb0f"
-"checksum dlmalloc 0.1.1 (registry+https://github.com/rust-lang/crates.io-index)" = "4c46c65de42b063004b31c67a98abe071089b289ff0919c660ed7ff4f59317f8"
+"checksum dlmalloc 0.1.2 (registry+https://github.com/rust-lang/crates.io-index)" = "d56ad71b31043818d0ee10a7fb9664882f8e45849c81647585e6a3124f185517"
 "checksum either 1.5.0 (registry+https://github.com/rust-lang/crates.io-index)" = "3be565ca5c557d7f59e7cfcf1844f9e3033650c929c6566f511e8005f205c1d0"
 "checksum elasticlunr-rs 2.3.4 (registry+https://github.com/rust-lang/crates.io-index)" = "a99a310cd1f9770e7bf8e48810c7bcbb0e078c8fb23a8c7bcf0da4c2bf61a455"
 "checksum ena 0.11.0 (registry+https://github.com/rust-lang/crates.io-index)" = "f56c93cc076508c549d9bb747f79aa9b4eb098be7b8cad8830c3137ef52d1e00"
