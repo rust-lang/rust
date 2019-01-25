@@ -340,19 +340,22 @@ impl<'a, 'mir, 'tcx> interpret::Machine<'a, 'mir, 'tcx>
         ret: Option<mir::BasicBlock>,
     ) -> EvalResult<'tcx, Option<&'mir mir::Mir<'tcx>>> {
         debug!("eval_fn_call: {:?}", instance);
-        // Execution might have wandered off into other crates, so we cannot to a stability-
-        // sensitive check here.  But we can at least rule out functions that are not const
-        // at all.
-        if !ecx.tcx.is_const_fn_raw(instance.def_id()) {
-            // Some functions we support even if they are non-const -- but avoid testing
-            // that for const fn!  We certainly do *not* want to actually call the fn
-            // though, so be sure we return here.
-            return if ecx.hook_fn(instance, args, dest)? {
-                ecx.goto_block(ret)?; // fully evaluated and done
-                Ok(None)
-            } else {
-                err!(MachineError(format!("calling non-const function `{}`", instance)))
-            };
+        // Only check non-glue functions
+        if let ty::InstanceDef::Item(def_id) = instance.def {
+            // Execution might have wandered off into other crates, so we cannot to a stability-
+            // sensitive check here.  But we can at least rule out functions that are not const
+            // at all.
+            if !ecx.tcx.is_const_fn_raw(def_id) {
+                // Some functions we support even if they are non-const -- but avoid testing
+                // that for const fn!  We certainly do *not* want to actually call the fn
+                // though, so be sure we return here.
+                return if ecx.hook_fn(instance, args, dest)? {
+                    ecx.goto_block(ret)?; // fully evaluated and done
+                    Ok(None)
+                } else {
+                    err!(MachineError(format!("calling non-const function `{}`", instance)))
+                };
+            }
         }
         // This is a const fn. Call it.
         Ok(Some(match ecx.load_mir(instance.def) {
