@@ -329,9 +329,8 @@ impl ItemMap {
         self.resolve_path_fp(db, original_module, path).0
     }
 
-    // returns true if we are sure that additions to `ItemMap` wouldn't change
-    // the result. That is, if we've reached fixed point at this particular
-    // import.
+    // Returns Yes if we are sure that additions to `ItemMap` wouldn't change
+    // the result.
     fn resolve_path_fp(
         &self,
         db: &impl HirDatabase,
