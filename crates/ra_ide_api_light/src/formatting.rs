@@ -7,9 +7,22 @@ use ra_syntax::{
 
 /// If the node is on the beginning of the line, calculate indent.
 pub(crate) fn leading_indent(node: &SyntaxNode) -> Option<&str> {
-    let prev = prev_leaf(node)?;
-    let ws_text = ast::Whitespace::cast(prev)?.text();
-    ws_text.rfind('\n').map(|pos| &ws_text[pos + 1..])
+    for leaf in prev_leaves(node) {
+        if let Some(ws) = ast::Whitespace::cast(leaf) {
+            let ws_text = ws.text();
+            if let Some(pos) = ws_text.rfind('\n') {
+                return Some(&ws_text[pos + 1..]);
+            }
+        }
+        if leaf.leaf_text().unwrap().contains('\n') {
+            break;
+        }
+    }
+    None
+}
+
+fn prev_leaves(node: &SyntaxNode) -> impl Iterator<Item = &SyntaxNode> {
+    generate(prev_leaf(node), |&node| prev_leaf(node))
 }
 
 fn prev_leaf(node: &SyntaxNode) -> Option<&SyntaxNode> {
