@@ -190,7 +190,12 @@ where
             self.populate_module(module_id, Arc::clone(items));
         }
 
+        let mut iter = 0;
         loop {
+            iter += 1;
+            if iter > 1000 {
+                panic!("failed to reach fixedpoint after 1000 iters")
+            }
             let processed_imports_count = self.processed_imports.len();
             for &module_id in self.input.keys() {
                 self.db.check_canceled();
