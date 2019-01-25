@@ -388,7 +388,7 @@ pub use crate::code_model_impl::function::ScopeEntryWithSyntax;
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct FnSignature {
     pub(crate) name: Name,
-    pub(crate) params: Vec<TypeRef>,
+    pub(crate) args: Vec<TypeRef>,
     pub(crate) ret_type: TypeRef,
     /// True if the first param is `self`. This is relevant to decide whether this
     /// can be called as a method.
@@ -400,8 +400,8 @@ impl FnSignature {
         &self.name
     }
 
-    pub fn params(&self) -> &[TypeRef] {
-        &self.params
+    pub fn args(&self) -> &[TypeRef] {
+        &self.args
     }
 
     pub fn ret_type(&self) -> &TypeRef {

@@ -49,7 +49,8 @@ impl GenericParams {
         Arc::new(generics)
     }
 
-    fn fill(&mut self, node: &impl TypeParamsOwner) {
+    // FIXME: probably shouldnt be pub(crate)
+    pub(crate) fn fill(&mut self, node: &impl TypeParamsOwner) {
         if let Some(params) = node.type_param_list() {
             self.fill_params(params)
         }

@@ -240,7 +240,7 @@ impl Builder {
         if ctx.use_item_syntax.is_none() && !ctx.is_call {
             tested_by!(inserts_parens_for_function_calls);
             let sig = function.signature(ctx.db);
-            if sig.params().is_empty() || sig.has_self_param() && sig.params().len() == 1 {
+            if sig.args().is_empty() || sig.has_self_param() && sig.args().len() == 1 {
                 self.insert_text = Some(format!("{}()$0", self.label));
             } else {
                 self.insert_text = Some(format!("{}($0)", self.label));

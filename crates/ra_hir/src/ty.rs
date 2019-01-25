@@ -209,6 +209,18 @@ pub enum Ty {
     /// `&'a mut T` or `&'a T`.
     Ref(Arc<Ty>, Mutability),
 
+    /// The anonymous type of a function declaration/definition. Each
+    /// function has a unique type, which is output (for a function
+    /// named `foo` returning an `i32`) as `fn() -> i32 {foo}`.
+    ///
+    /// For example the type of `bar` here:
+    ///
+    /// ```rust
+    /// fn foo() -> i32 { 1 }
+    /// let bar = foo; // bar: fn() -> i32 {foo}
+    /// ```
+    FnDef(Function, Substs),
+
     /// A pointer to a function.  Written as `fn() -> i32`.
     ///
     /// For example the type of `bar` here:
@@ -485,7 +497,7 @@ impl Ty {
                 }
                 sig_mut.output.walk_mut(f);
             }
-            Ty::Adt { substs, .. } => {
+            Ty::FnDef(_, substs) | Ty::Adt { substs, .. } => {
                 // Without an Arc::make_mut_slice, we can't avoid the clone here:
                 let mut v: Vec<_> = substs.0.iter().cloned().collect();
                 for t in &mut v {
@@ -524,6 +536,7 @@ impl Ty {
                 name,
                 substs,
             },
+            Ty::FnDef(func, _) => Ty::FnDef(func, substs),
             _ => self,
         }
     }
@@ -579,6 +592,7 @@ impl fmt::Display for Ty {
                         .to_fmt(f)
                 }
             }
+            Ty::FnDef(_func, _substs) => write!(f, "FNDEF-IMPLEMENT-ME"),
             Ty::FnPtr(sig) => {
                 join(sig.input.iter())
                     .surround_with("fn(", ")")
@@ -608,12 +622,18 @@ impl fmt::Display for Ty {
 /// Compute the declared type of a function. This should not need to look at the
 /// function body.
 fn type_for_fn(db: &impl HirDatabase, f: Function) -> Ty {
+    let generics = f.generic_params(db);
+    let substs = make_substs(&generics);
+    Ty::FnDef(f.into(), substs)
+}
+
+fn get_func_sig(db: &impl HirDatabase, f: Function) -> FnSig {
     let signature = f.signature(db);
     let module = f.module(db);
     let impl_block = f.impl_block(db);
     let generics = f.generic_params(db);
     let input = signature
-        .params()
+        .args()
         .iter()
         .map(|tr| Ty::from_hir(db, &module, impl_block.as_ref(), &generics, tr))
         .collect::<Vec<_>>();
@@ -624,8 +644,7 @@ fn type_for_fn(db: &impl HirDatabase, f: Function) -> Ty {
         &generics,
         signature.ret_type(),
     );
-    let sig = FnSig { input, output };
-    Ty::FnPtr(Arc::new(sig))
+    FnSig { input, output }
 }
 
 fn make_substs(generics: &GenericParams) -> Substs {
@@ -1142,7 +1161,13 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
                 let ty = self.insert_type_vars(ty.apply_substs(substs));
                 (ty, Some(var.into()))
             }
-            TypableDef::Enum(_) | TypableDef::Function(_) => (Ty::Unknown, None),
+            TypableDef::Function(func) => {
+                let ty = type_for_fn(self.db, func);
+                let ty = self.insert_type_vars(ty.apply_substs(substs));
+                // FIXME: is this right?
+                (ty, None)
+            }
+            TypableDef::Enum(_) => (Ty::Unknown, None),
         }
     }
 
@@ -1331,12 +1356,27 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
             }
             Expr::Call { callee, args } => {
                 let callee_ty = self.infer_expr(*callee, &Expectation::none());
+                // FIXME: so manu unnecessary clones
                 let (param_tys, ret_ty) = match &callee_ty {
-                    Ty::FnPtr(sig) => (&sig.input[..], sig.output.clone()),
+                    Ty::FnPtr(sig) => (sig.input.clone(), sig.output.clone()),
+                    Ty::FnDef(func, substs) => {
+                        let fn_sig = func.signature(self.db);
+                        // TODO: get input and return types from the fn_sig.
+                        // it contains typerefs which we can make into proper tys
+
+                        let sig = get_func_sig(self.db, *func);
+                        (
+                            sig.input
+                                .iter()
+                                .map(|ty| ty.clone().subst(&substs))
+                                .collect(),
+                            sig.output.clone().subst(&substs),
+                        )
+                    }
                     _ => {
                         // not callable
                         // TODO report an error?
-                        (&[][..], Ty::Unknown)
+                        (Vec::new(), Ty::Unknown)
                     }
                 };
                 for (i, arg) in args.iter().enumerate() {
@@ -1604,15 +1644,12 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
 
     fn collect_fn_signature(&mut self, signature: &FnSignature) {
         let body = Arc::clone(&self.body); // avoid borrow checker problem
-        for (type_ref, pat) in signature.params().iter().zip(body.params()) {
+        for (type_ref, pat) in signature.args().iter().zip(body.params()) {
             let ty = self.make_ty(type_ref);
 
             self.infer_pat(*pat, &ty);
         }
-        self.return_ty = {
-            let ty = self.make_ty(signature.ret_type());
-            ty
-        };
+        self.return_ty = self.make_ty(signature.ret_type());
     }
 
     fn infer_body(&mut self) {
