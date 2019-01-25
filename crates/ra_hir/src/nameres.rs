@@ -297,7 +297,7 @@ where
         };
         let (def_id, reached_fixedpoint) =
             self.result
-                .resolve_path(self.db, original_module, &import.path);
+                .resolve_path_fp(self.db, original_module, &import.path);
 
         if reached_fixedpoint == ReachedFixedPoint::Yes {
             let last_segment = import.path.segments.last().unwrap();
@@ -331,10 +331,19 @@ enum ReachedFixedPoint {
 }
 
 impl ItemMap {
+    pub(crate) fn resolve_path(
+        &self,
+        db: &impl HirDatabase,
+        original_module: Module,
+        path: &Path,
+    ) -> PerNs<ModuleDef> {
+        self.resolve_path_fp(db, original_module, path).0
+    }
+
     // returns true if we are sure that additions to `ItemMap` wouldn't change
     // the result. That is, if we've reached fixed point at this particular
     // import.
-    fn resolve_path(
+    fn resolve_path_fp(
         &self,
         db: &impl HirDatabase,
         original_module: Module,
