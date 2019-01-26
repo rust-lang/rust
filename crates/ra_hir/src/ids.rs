@@ -367,10 +367,6 @@ impl SourceFileItems {
             self.arena.iter().map(|(_id, i)| i).collect::<Vec<_>>(),
         );
     }
-    pub fn id_of_parse(&self) -> SourceFileItemId {
-        let (id, _syntax) = self.arena.iter().next().unwrap();
-        id
-    }
 }
 
 impl std::ops::Index<SourceFileItemId> for SourceFileItems {
