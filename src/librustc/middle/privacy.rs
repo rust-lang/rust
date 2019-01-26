@@ -11,16 +11,16 @@ use syntax::ast::NodeId;
 // Accessibility levels, sorted in ascending order
 #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord)]
 pub enum AccessLevel {
-    // Superset of Reachable used to mark impl Trait items.
+    /// Superset of `AccessLevel::Reachable` used to mark impl Trait items.
     ReachableFromImplTrait,
-    // Exported items + items participating in various kinds of public interfaces,
-    // but not directly nameable. For example, if function `fn f() -> T {...}` is
-    // public, then type `T` is reachable. Its values can be obtained by other crates
-    // even if the type itself is not nameable.
+    /// Exported items + items participating in various kinds of public interfaces,
+    /// but not directly nameable. For example, if function `fn f() -> T {...}` is
+    /// public, then type `T` is reachable. Its values can be obtained by other crates
+    /// even if the type itself is not nameable.
     Reachable,
-    // Public items + items accessible to other crates with help of `pub use` re-exports
+    /// Public items + items accessible to other crates with help of `pub use` re-exports
     Exported,
-    // Items accessible to other crates directly, without help of re-exports
+    /// Items accessible to other crates directly, without help of re-exports
     Public,
 }
 
@@ -31,12 +31,17 @@ pub struct AccessLevels<Id = NodeId> {
 }
 
 impl<Id: Hash + Eq> AccessLevels<Id> {
+    /// See `AccessLevel::Reachable`.
     pub fn is_reachable(&self, id: Id) -> bool {
         self.map.get(&id) >= Some(&AccessLevel::Reachable)
     }
+
+    /// See `AccessLevel::Exported`.
     pub fn is_exported(&self, id: Id) -> bool {
         self.map.get(&id) >= Some(&AccessLevel::Exported)
     }
+
+    /// See `AccessLevel::Public`.
     pub fn is_public(&self, id: Id) -> bool {
         self.map.get(&id) >= Some(&AccessLevel::Public)
     }
