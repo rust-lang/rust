@@ -30,11 +30,12 @@ pub(crate) fn status(db: &RootDatabase) -> String {
         interner.len()
     };
     format!(
-        "{}\n{}\n{}\nn_defs {}\nGC {:?} seconds ago",
+        "{}\n{}\n{}\nn_defs {}\n\njemalloc: {}\nGC {:?} seconds ago",
         files_stats,
         symbols_stats,
         syntax_tree_stats,
         n_defs,
+        MemoryStats::current(),
         db.last_gc.elapsed().as_secs(),
     )
 }
@@ -123,6 +124,31 @@ impl FromIterator<TableEntry<SourceRootId, Arc<SymbolIndex>>> for LibrarySymbols
             res.size += value.memory_size();
         }
         res
+    }
+}
+
+struct MemoryStats {
+    allocated: Bytes,
+    resident: Bytes,
+}
+
+impl MemoryStats {
+    fn current() -> MemoryStats {
+        jemalloc_ctl::epoch().unwrap();
+        MemoryStats {
+            allocated: Bytes(jemalloc_ctl::stats::allocated().unwrap()),
+            resident: Bytes(jemalloc_ctl::stats::resident().unwrap()),
+        }
+    }
+}
+
+impl fmt::Display for MemoryStats {
+    fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
+        write!(
+            fmt,
+            "{} allocated {} resident",
+            self.allocated, self.resident,
+        )
     }
 }
 

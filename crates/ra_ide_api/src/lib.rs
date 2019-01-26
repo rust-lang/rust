@@ -59,6 +59,11 @@ pub use ra_db::{
     Canceled, CrateGraph, CrateId, FileId, FilePosition, FileRange, SourceRootId
 };
 
+// We use jemalloc mainly to get heap usage statistics, actual performance
+// differnece is not measures.
+#[global_allocator]
+static ALLOC: jemallocator::Jemalloc = jemallocator::Jemalloc;
+
 pub type Cancelable<T> = Result<T, Canceled>;
 
 #[derive(Default)]
