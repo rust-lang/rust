@@ -83,7 +83,11 @@ fn fold_kind(kind: SyntaxKind) -> Option<FoldKind> {
 }
 
 fn has_visibility(node: &SyntaxNode) -> bool {
-    return node.descendants().any(|n| n.kind() == VISIBILITY);
+    use ast::VisibilityOwner;
+
+    return ast::Module::cast(node)
+        .and_then(|m| m.visibility())
+        .is_some();
 }
 
 fn has_newline(node: &SyntaxNode) -> bool {
