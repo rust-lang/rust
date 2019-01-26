@@ -23,7 +23,7 @@ use crate::builder::{Builder, RunConfig, ShouldRun, Step};
 use crate::compile;
 use crate::tool::{self, Tool};
 use crate::cache::{INTERNER, Interned};
-use time;
+use time::{self, Timespec};
 
 pub fn pkgname(builder: &Builder, component: &str) -> String {
     if component == "cargo" {
@@ -528,7 +528,19 @@ impl Step for Rustc {
             t!(fs::create_dir_all(image.join("share/man/man1")));
             let man_src = builder.src.join("src/doc/man");
             let man_dst = image.join("share/man/man1");
-            let month_year = t!(time::strftime("%B %Y", &time::now()));
+
+            // Reproducible builds: If SOURCE_DATE_EPOCH is set, use that as the time.
+            let time = env::var("SOURCE_DATE_EPOCH")
+                .map(|timestamp| {
+                    let epoch = timestamp.parse().map_err(|err| {
+                        format!("could not parse SOURCE_DATE_EPOCH: {}", err)
+                    }).unwrap();
+
+                    time::at(Timespec::new(epoch, 0))
+                })
+                .unwrap_or_else(|_| time::now());
+
+            let month_year = t!(time::strftime("%B %Y", &time));
             // don't use our `bootstrap::util::{copy, cp_r}`, because those try
             // to hardlink, and we don't want to edit the source templates
             for file_entry in builder.read_dir(&man_src) {
