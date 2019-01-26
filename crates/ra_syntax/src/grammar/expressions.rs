@@ -54,6 +54,7 @@ pub(crate) fn block(p: &mut Parser) {
             _ => {
                 // test block_items
                 // fn a() { fn b() {} }
+                let has_attrs = p.at(POUND);
                 let m = p.start();
                 match items::maybe_item(p, items::ItemFlavor::Mod) {
                     items::MaybeItem::Item(kind) => {
@@ -66,30 +67,39 @@ pub(crate) fn block(p: &mut Parser) {
                     // test pub_expr
                     // fn foo() { pub 92; } //FIXME
                     items::MaybeItem::None => {
-                        let is_blocklike = expressions::expr_stmt(p) == BlockLike::Block;
-                        if p.at(R_CURLY) {
+                        if has_attrs {
                             m.abandon(p);
-                        } else {
-                            // test no_semi_after_block
-                            // fn foo() {
-                            //     if true {}
-                            //     loop {}
-                            //     match () {}
-                            //     while true {}
-                            //     for _ in () {}
-                            //     {}
-                            //     {}
-                            //     macro_rules! test {
-                            //          () => {}
-                            //     }
-                            //     test!{}
-                            // }
-                            if is_blocklike {
-                                p.eat(SEMI);
+                            if p.at(LET_KW) {
+                                let_stmt(p);
                             } else {
-                                p.expect(SEMI);
+                                p.error("expected a let statement");
                             }
-                            m.complete(p, EXPR_STMT);
+                        } else {
+                            let is_blocklike = expressions::expr_stmt(p) == BlockLike::Block;
+                            if p.at(R_CURLY) {
+                                m.abandon(p);
+                            } else {
+                                // test no_semi_after_block
+                                // fn foo() {
+                                //     if true {}
+                                //     loop {}
+                                //     match () {}
+                                //     while true {}
+                                //     for _ in () {}
+                                //     {}
+                                //     {}
+                                //     macro_rules! test {
+                                //          () => {}
+                                //     }
+                                //     test!{}
+                                // }
+                                if is_blocklike {
+                                    p.eat(SEMI);
+                                } else {
+                                    p.expect(SEMI);
+                                }
+                                m.complete(p, EXPR_STMT);
+                            }
                         }
                     }
                 }
