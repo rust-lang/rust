@@ -695,7 +695,7 @@ impl<'a, 'tcx> ItemLikeVisitor<'tcx> for CheckItemTypesVisitor<'a, 'tcx> {
 pub fn check_wf_new<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>) -> Result<(), ErrorReported> {
     tcx.sess.track_errors(|| {
         let mut visit = wfcheck::CheckTypeWellFormedVisitor::new(tcx);
-        tcx.hir().krate().visit_all_item_likes(&mut visit.as_deep_visitor());
+        tcx.hir().krate().visit_all_item_likes(&mut visit);
     })
 }
 
