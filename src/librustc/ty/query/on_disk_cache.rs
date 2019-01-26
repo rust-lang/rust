@@ -230,7 +230,7 @@ impl<'sess> OnDiskCache<'sess> {
                 assert!(cache.active.is_empty());
                 for (key, entry) in cache.results.iter() {
                     use ty::query::config::QueryDescription;
-                    if const_eval::cache_on_disk(key.clone()) {
+                    if const_eval::cache_on_disk(tcx, key.clone()) {
                         if let Ok(ref value) = entry.value {
                             let dep_node = SerializedDepNodeIndex::new(entry.index.index());
 
@@ -1086,7 +1086,7 @@ fn encode_query_results<'enc, 'a, 'tcx, Q, E>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     let map = Q::query_cache(tcx).borrow();
     assert!(map.active.is_empty());
     for (key, entry) in map.results.iter() {
-        if Q::cache_on_disk(key.clone()) {
+        if Q::cache_on_disk(tcx, key.clone()) {
             let dep_node = SerializedDepNodeIndex::new(entry.index.index());
 
             // Record position of the cache entry

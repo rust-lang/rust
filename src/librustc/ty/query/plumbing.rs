@@ -434,7 +434,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
         debug_assert!(self.dep_graph.is_green(dep_node));
 
         // First we try to load the result from the on-disk cache
-        let result = if Q::cache_on_disk(key.clone()) &&
+        let result = if Q::cache_on_disk(self.global_tcx(), key.clone()) &&
                         self.sess.opts.debugging_opts.incremental_queries {
             let result = Q::try_load_from_disk(self.global_tcx(), prev_dep_node_index);
 
@@ -1443,7 +1443,7 @@ macro_rules! impl_load_from_cache {
                 match self.kind {
                     $(DepKind::$dep_kind => {
                         let def_id = self.extract_def_id(tcx).unwrap();
-                        queries::$query_name::cache_on_disk(def_id)
+                        queries::$query_name::cache_on_disk(tcx.global_tcx(), def_id)
                     })*
                     _ => false
                 }
