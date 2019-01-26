@@ -86,12 +86,9 @@ impl HirFileId {
         }
     }
 
-    pub(crate) fn hir_source_file(
-        db: &impl HirDatabase,
-        file_id: HirFileId,
-    ) -> TreeArc<SourceFile> {
+    pub(crate) fn hir_parse(db: &impl HirDatabase, file_id: HirFileId) -> TreeArc<SourceFile> {
         match file_id.0 {
-            HirFileIdRepr::File(file_id) => db.source_file(file_id),
+            HirFileIdRepr::File(file_id) => db.parse(file_id),
             HirFileIdRepr::Macro(m) => {
                 if let Some(exp) = db.expand_macro_invocation(m) {
                     return exp.file();
@@ -370,7 +367,7 @@ impl SourceFileItems {
             self.arena.iter().map(|(_id, i)| i).collect::<Vec<_>>(),
         );
     }
-    pub fn id_of_source_file(&self) -> SourceFileItemId {
+    pub fn id_of_parse(&self) -> SourceFileItemId {
         let (id, _syntax) = self.arena.iter().next().unwrap();
         id
     }

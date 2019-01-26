@@ -76,9 +76,9 @@ impl db::RootDatabase {
     /// syntax trees. However, if we actually do that, everything is recomputed
     /// for some reason. Needs investigation.
     pub(crate) fn collect_garbage(&mut self) {
-        self.query(ra_db::SourceFileQuery)
+        self.query(ra_db::ParseQuery)
             .sweep(SweepStrategy::default().discard_values());
-        self.query(hir::db::HirSourceFileQuery)
+        self.query(hir::db::HirParseQuery)
             .sweep(SweepStrategy::default().discard_values());
         self.query(hir::db::FileItemsQuery)
             .sweep(SweepStrategy::default().discard_values());
@@ -102,7 +102,7 @@ impl db::RootDatabase {
     }
 
     pub(crate) fn find_all_refs(&self, position: FilePosition) -> Vec<(FileId, TextRange)> {
-        let file = self.source_file(position.file_id);
+        let file = self.parse(position.file_id);
         // Find the binding associated with the offset
         let (binding, descr) = match find_binding(self, &file, position) {
             None => return Vec::new(),
@@ -150,7 +150,7 @@ impl db::RootDatabase {
     }
 
     pub(crate) fn diagnostics(&self, file_id: FileId) -> Vec<Diagnostic> {
-        let syntax = self.source_file(file_id);
+        let syntax = self.parse(file_id);
 
         let mut res = ra_ide_api_light::diagnostics(&syntax)
             .into_iter()
@@ -214,7 +214,7 @@ impl db::RootDatabase {
     }
 
     pub(crate) fn assists(&self, frange: FileRange) -> Vec<SourceChange> {
-        let file = self.source_file(frange.file_id);
+        let file = self.parse(frange.file_id);
         assists::assists(&file, frange.range)
             .into_iter()
             .map(|local_edit| SourceChange::from_local_edit(frange.file_id, local_edit))

@@ -10,7 +10,7 @@ use crate::{
 };
 
 pub(crate) fn extend_selection(db: &RootDatabase, frange: FileRange) -> TextRange {
-    let source_file = db.source_file(frange.file_id);
+    let source_file = db.parse(frange.file_id);
     if let Some(range) = extend_selection_in_macro(db, &source_file, frange) {
         return range;
     }

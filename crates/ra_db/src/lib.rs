@@ -71,7 +71,7 @@ pub trait SourceDatabase: salsa::Database + CheckCanceled {
     #[salsa::input]
     fn file_text(&self, file_id: FileId) -> Arc<String>;
     // Parses the file into the syntax tree.
-    fn source_file(&self, file_id: FileId) -> TreeArc<SourceFile>;
+    fn parse(&self, file_id: FileId) -> TreeArc<SourceFile>;
     /// Path to a file, relative to the root of its source root.
     #[salsa::input]
     fn file_relative_path(&self, file_id: FileId) -> RelativePathBuf;
@@ -98,7 +98,7 @@ fn source_root_crates(db: &impl SourceDatabase, id: SourceRootId) -> Arc<Vec<Cra
     Arc::new(res)
 }
 
-fn source_file(db: &impl SourceDatabase, file_id: FileId) -> TreeArc<SourceFile> {
+fn parse(db: &impl SourceDatabase, file_id: FileId) -> TreeArc<SourceFile> {
     let text = db.file_text(file_id);
     SourceFile::parse(&*text)
 }

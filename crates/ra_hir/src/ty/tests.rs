@@ -547,7 +547,7 @@ fn quux() {
 
 fn infer(content: &str) -> String {
     let (db, _, file_id) = MockDatabase::with_single_file(content);
-    let source_file = db.source_file(file_id);
+    let source_file = db.parse(file_id);
     let mut acc = String::new();
     for fn_def in source_file
         .syntax()

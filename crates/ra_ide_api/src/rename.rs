@@ -25,7 +25,7 @@ pub(crate) fn rename(
     position: FilePosition,
     new_name: &str,
 ) -> Option<SourceChange> {
-    let source_file = db.source_file(position.file_id);
+    let source_file = db.parse(position.file_id);
     let syntax = source_file.syntax();
 
     if let Some((ast_name, ast_module)) = find_name_and_module_at_offset(syntax, position) {

@@ -7,7 +7,7 @@ use crate::{
 };
 
 pub(crate) fn highlight(db: &RootDatabase, file_id: FileId) -> Vec<HighlightedRange> {
-    let source_file = db.source_file(file_id);
+    let source_file = db.parse(file_id);
     let mut res = ra_ide_api_light::highlight(source_file.syntax());
     for macro_call in source_file
         .syntax()

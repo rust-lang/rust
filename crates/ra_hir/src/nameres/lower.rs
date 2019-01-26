@@ -129,7 +129,7 @@ impl LoweredModule {
                     let id = loc.id(db);
                     let file_id = HirFileId::from(id);
                     //FIXME: expand recursively
-                    for item in db.hir_source_file(file_id).items() {
+                    for item in db.hir_parse(file_id).items() {
                         self.add_def_id(source_map, db, module, file_id, item);
                     }
                 }
