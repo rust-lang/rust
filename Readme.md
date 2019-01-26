@@ -7,29 +7,29 @@
 ```bash
 $ git clone https://github.com/bjorn3/rustc_codegen_cranelift.git
 $ cd rustc_codegen_cranelift
-$ rustup override set nightly # This uses unstable api's which will never be stabilized
-$ cargo install xargo         # Used for building the sysroot
-$ cargo install hyperfine     # Used for benchmarking in build.sh
-$ cargo build
+$ ./prepare.sh # downloads and patches sysroot src and installs hyperfine for benchmarking
+$ ./test.sh
 ```
 
 ## Usage
 
+`$cg_clif_dir` is the directory you cloned this repo into in the following instruction.
+
+### Rustc
+
 ```bash
-$ rustc -Zcodegen-backend=$(pwd)/target/debug/librustc_codegen_cranelift.so my_crate.rs
+$ rustc -Cpanic=abort -Zcodegen-backend=$cg_clif_dir/target/debug/librustc_codegen_cranelift.so my_crate.rs
 ```
 
-## Build sysroot and test
+### Cargo
 
 ```bash
-$ rustup component add rust-src # Make sure the sysroot source is available
-$ ./prepare_libcore.sh          # Patch the sysroot source for some not yet supported things
-$ ./build.sh
+$ RUSTFLAGS="-Cpanic=abort -Zcodegen-backend=$cg_clif_dir/target/debug/librustc_codegen_cranelift.dylib --sysroot $cg_clif_dir/build_sysroot/sysroot" cargo run
 ```
 
 ## Not yet supported
 
-* Good non-rust abi support ([non scalars are not yet supported for the "C" abi](https://github.com/bjorn3/rustc_codegen_cranelift/issues/10))
+* Good non-rust abi support ([scalar pair and vector are passed by-ref](https://github.com/bjorn3/rustc_codegen_cranelift/issues/10))
 * Checked binops ([some missing instructions in cranelift](https://github.com/CraneStation/cranelift/issues/460))
 * Inline assembly ([no cranelift support](https://github.com/CraneStation/cranelift/issues/444))
 * Varargs ([no cranelift support](https://github.com/CraneStation/cranelift/issues/212))
