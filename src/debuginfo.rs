@@ -316,9 +316,8 @@ impl<'a, 'b, 'tcx: 'b> FunctionDebugContext<'a, 'tcx> {
         source_info_set: &indexmap::IndexSet<SourceInfo>,
     ) {
         let unit = self.debug_context.units.get_mut(self.debug_context.unit_id);
-        // FIXME: add to appropriate scope intead of root
         let entry = unit.get_mut(self.entry_id);
-        entry.set(gimli::DW_AT_high_pc, AttributeValue::Data8(code_size as u64));
+        entry.set(gimli::DW_AT_high_pc, AttributeValue::Udata(code_size as u64));
 
         self.debug_context.unit_range_list.0.push(Range {
             begin: Address::Relative {
