@@ -713,8 +713,7 @@ pub fn replace<T>(dest: &mut T, mut src: T) -> T {
 
 /// Disposes of a value.
 ///
-/// While this does call the argument's implementation of [`Drop`][drop],
-/// it will not release any borrows, as borrows are based on lexical scope.
+/// This does call the argument's implementation of [`Drop`][drop].
 ///
 /// This effectively does nothing for types which implement `Copy`, e.g.
 /// integers. Such values are copied and _then_ moved into the function, so the
@@ -739,32 +738,6 @@ pub fn replace<T>(dest: &mut T, mut src: T) -> T {
 /// let v = vec![1, 2, 3];
 ///
 /// drop(v); // explicitly drop the vector
-/// ```
-///
-/// Borrows are based on lexical scope, so this produces an error:
-///
-/// ```compile_fail,E0502
-/// let mut v = vec![1, 2, 3];
-/// let x = &v[0];
-///
-/// drop(x); // explicitly drop the reference, but the borrow still exists
-///
-/// v.push(4); // error: cannot borrow `v` as mutable because it is also
-///            // borrowed as immutable
-/// ```
-///
-/// An inner scope is needed to fix this:
-///
-/// ```
-/// let mut v = vec![1, 2, 3];
-///
-/// {
-///     let x = &v[0];
-///
-///     drop(x); // this is now redundant, as `x` is going out of scope anyway
-/// }
-///
-/// v.push(4); // no problems
 /// ```
 ///
 /// Since [`RefCell`] enforces the borrow rules at runtime, `drop` can
