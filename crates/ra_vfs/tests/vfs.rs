@@ -165,6 +165,18 @@ fn test_vfs_works() -> std::io::Result<()> {
         assert_eq!(path, "sub1/sub2/new1.rs")
     );
 
+    {
+        vfs.add_file_overlay(&dir.path().join("a/memfile.rs"), "memfile".to_string());
+        assert_match!(
+            vfs.commit_changes().as_slice(),
+            [VfsChange::AddFile { text, .. }],
+            assert_eq!(text.as_str(), "memfile")
+        );
+        fs::write(&dir.path().join("a/memfile.rs"), "ignore me").unwrap();
+        process_tasks(&mut vfs, 1);
+        assert_match!(vfs.commit_changes().as_slice(), []);
+    }
+
     // should be ignored
     fs::create_dir_all(dir.path().join("a/target")).unwrap();
     fs::write(&dir.path().join("a/target/new.rs"), "ignore me").unwrap();
