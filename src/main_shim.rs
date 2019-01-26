@@ -9,9 +9,9 @@ pub fn maybe_create_entry_wrapper<'a, 'tcx: 'a>(
     use rustc::middle::lang_items::StartFnLangItem;
     use rustc::session::config::EntryFnType;
 
-    let (main_def_id, use_start_lang_item) = match *tcx.sess.entry_fn.borrow() {
-        Some((id, _, entry_ty)) => (
-            tcx.hir().local_def_id(id),
+    let (main_def_id, use_start_lang_item) = match tcx.entry_fn(LOCAL_CRATE) {
+        Some((def_id, entry_ty)) => (
+            def_id,
             match entry_ty {
                 EntryFnType::Main => true,
                 EntryFnType::Start => false,
