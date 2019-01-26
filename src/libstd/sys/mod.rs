@@ -54,6 +54,7 @@ cfg_if! {
 cfg_if! {
     if #[cfg(any(unix, target_os = "redox"))] {
         // On unix we'll document what's already available
+        #[stable(feature = "rust1", since = "1.0.0")]
         pub use self::ext as unix_ext;
     } else if #[cfg(any(target_os = "cloudabi",
                         target_arch = "wasm32",
@@ -77,6 +78,7 @@ cfg_if! {
     if #[cfg(windows)] {
         // On windows we'll just be documenting what's already available
         #[allow(missing_docs)]
+        #[stable(feature = "rust1", since = "1.0.0")]
         pub use self::ext as windows_ext;
     } else if #[cfg(any(target_os = "cloudabi",
                         target_arch = "wasm32",

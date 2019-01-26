@@ -437,6 +437,43 @@ impl<'a, 'tcx> EmbargoVisitor<'a, 'tcx> {
             ev: self,
         }
     }
+
+
+    /// Given the path segments of a `ItemKind::Use`, then we need
+    /// to update the visibility of the intermediate use so that it isn't linted
+    /// by `unreachable_pub`.
+    ///
+    /// This isn't trivial as `path.def` has the `DefId` of the eventual target
+    /// of the use statement not of the next intermediate use statement.
+    ///
+    /// To do this, consider the last two segments of the path to our intermediate
+    /// use statement. We expect the penultimate segment to be a module and the
+    /// last segment to be the name of the item we are exporting. We can then
+    /// look at the items contained in the module for the use statement with that
+    /// name and update that item's visibility.
+    ///
+    /// FIXME: This solution won't work with glob imports and doesn't respect
+    /// namespaces. See <https://github.com/rust-lang/rust/pull/57922#discussion_r251234202>.
+    fn update_visibility_of_intermediate_use_statements(&mut self, segments: &[hir::PathSegment]) {
+        if let Some([module, segment]) = segments.rchunks_exact(2).next() {
+            if let Some(item) = module.def
+                .and_then(|def| def.mod_def_id())
+                .and_then(|def_id| self.tcx.hir().as_local_node_id(def_id))
+                .map(|module_node_id| self.tcx.hir().expect_item(module_node_id))
+             {
+                if let hir::ItemKind::Mod(m) = &item.node {
+                    for item_id in m.item_ids.as_ref() {
+                        let item = self.tcx.hir().expect_item(item_id.id);
+                        let def_id = self.tcx.hir().local_def_id(item_id.id);
+                        if !self.tcx.hygienic_eq(segment.ident, item.ident, def_id) { continue; }
+                        if let hir::ItemKind::Use(..) = item.node {
+                            self.update(item.id, Some(AccessLevel::Exported));
+                        }
+                    }
+                }
+            }
+        }
+    }
 }
 
 impl<'a, 'tcx> Visitor<'tcx> for EmbargoVisitor<'a, 'tcx> {
@@ -523,8 +560,14 @@ impl<'a, 'tcx> Visitor<'tcx> for EmbargoVisitor<'a, 'tcx> {
             hir::ItemKind::ExternCrate(..) => {}
             // All nested items are checked by `visit_item`.
             hir::ItemKind::Mod(..) => {}
-            // Re-exports are handled in `visit_mod`.
-            hir::ItemKind::Use(..) => {}
+            // Re-exports are handled in `visit_mod`. However, in order to avoid looping over
+            // all of the items of a mod in `visit_mod` looking for use statements, we handle
+            // making sure that intermediate use statements have their visibilities updated here.
+            hir::ItemKind::Use(ref path, _) => {
+                if item_level.is_some() {
+                    self.update_visibility_of_intermediate_use_statements(path.segments.as_ref());
+                }
+            }
             // The interface is empty.
             hir::ItemKind::GlobalAsm(..) => {}
             hir::ItemKind::Existential(..) => {
