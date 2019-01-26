@@ -17,7 +17,7 @@ use crate::{
     SourceChange,
     SourceFileEdit,
 };
-use ra_db::FilesDatabase;
+use ra_db::SourceDatabase;
 use relative_path::RelativePath;
 
 pub(crate) fn rename(

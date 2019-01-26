@@ -3,7 +3,7 @@ use ra_syntax::{
     TextRange, SyntaxNode,
     ast::{self, AstNode, NameOwner, ModuleItemOwner},
 };
-use ra_db::FilesDatabase;
+use ra_db::SourceDatabase;
 
 use crate::{db::RootDatabase, FileId};
 

@@ -1,6 +1,6 @@
 use std::sync::Arc;
 
-use ra_db::{CrateGraph, SourceRootId, FilesDatabase};
+use ra_db::{CrateGraph, SourceRootId, SourceDatabase};
 use relative_path::RelativePath;
 use test_utils::{assert_eq_text, covers};
 

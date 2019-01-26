@@ -63,8 +63,10 @@ pub struct FileRange {
     pub range: TextRange,
 }
 
-#[salsa::query_group(FilesDatabaseStorage)]
-pub trait FilesDatabase: salsa::Database + CheckCanceled {
+/// Database which stores all significant input facts: source code and project
+/// model. Everything else in rust-analyzer is derived from these queries.
+#[salsa::query_group(SourceDatabaseStorage)]
+pub trait SourceDatabase: salsa::Database + CheckCanceled {
     /// Text of the file.
     #[salsa::input]
     fn file_text(&self, file_id: FileId) -> Arc<String>;
@@ -85,7 +87,7 @@ pub trait FilesDatabase: salsa::Database + CheckCanceled {
     fn crate_graph(&self) -> Arc<CrateGraph>;
 }
 
-fn source_root_crates(db: &impl FilesDatabase, id: SourceRootId) -> Arc<Vec<CrateId>> {
+fn source_root_crates(db: &impl SourceDatabase, id: SourceRootId) -> Arc<Vec<CrateId>> {
     let root = db.source_root(id);
     let graph = db.crate_graph();
     let res = root
@@ -96,7 +98,7 @@ fn source_root_crates(db: &impl FilesDatabase, id: SourceRootId) -> Arc<Vec<Crat
     Arc::new(res)
 }
 
-fn source_file(db: &impl FilesDatabase, file_id: FileId) -> TreeArc<SourceFile> {
+fn source_file(db: &impl SourceDatabase, file_id: FileId) -> TreeArc<SourceFile> {
     let text = db.file_text(file_id);
     SourceFile::parse(&*text)
 }

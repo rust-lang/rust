@@ -34,7 +34,7 @@ use ra_syntax::{
     ast::{self, NameOwner},
 };
 use ra_db::{
-    SourceRootId, FilesDatabase,
+    SourceRootId, SourceDatabase,
     salsa::{self, ParallelDatabase},
 };
 use rayon::prelude::*;

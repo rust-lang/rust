@@ -1,7 +1,7 @@
 use std::sync::Arc;
 
 use ra_syntax::{SyntaxNode, TreeArc, SourceFile};
-use ra_db::{FilesDatabase, CrateId, salsa};
+use ra_db::{SourceDatabase, CrateId, salsa};
 
 use crate::{
     MacroCallId, HirFileId,
@@ -19,7 +19,7 @@ use crate::{
 };
 
 #[salsa::query_group(HirDatabaseStorage)]
-pub trait HirDatabase: FilesDatabase + AsRef<HirInterner> {
+pub trait HirDatabase: SourceDatabase + AsRef<HirInterner> {
     #[salsa::invoke(HirFileId::hir_source_file)]
     fn hir_source_file(&self, file_id: HirFileId) -> TreeArc<SourceFile>;
 
