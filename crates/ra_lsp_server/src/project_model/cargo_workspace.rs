@@ -117,9 +117,13 @@ impl Target {
 
 impl CargoWorkspace {
     pub fn from_cargo_metadata(cargo_toml: &Path) -> Result<CargoWorkspace> {
-        let meta = MetadataCommand::new()
-            .manifest_path(cargo_toml)
-            .features(CargoOpt::AllFeatures)
+        let mut meta = MetadataCommand::new();
+        meta.manifest_path(cargo_toml)
+            .features(CargoOpt::AllFeatures);
+        if let Some(parent) = cargo_toml.parent() {
+            meta.current_dir(parent);
+        }
+        let meta = meta
             .exec()
             .map_err(|e| format_err!("cargo metadata failed: {}", e))?;
         let mut pkg_by_id = FxHashMap::default();
