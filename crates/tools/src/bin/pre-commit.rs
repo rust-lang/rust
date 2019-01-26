@@ -1,9 +1,8 @@
-use std::{
-    process::{Command},
-};
+use std::process::Command;
+
+use failure::bail;
 
 use tools::{Result, run_rustfmt, run, project_root};
-use failure::bail;
 
 fn main() -> tools::Result<()> {
     run_rustfmt(tools::Overwrite)?;

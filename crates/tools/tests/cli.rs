@@ -1,11 +1,19 @@
-extern crate tools;
-
-use tools::{generate, run_rustfmt, Verify};
+use tools::{generate, gen_tests, run_rustfmt, Verify};
 
 #[test]
-fn verify_template_generation() {
+fn generated_grammar_is_fresh() {
     if let Err(error) = generate(Verify) {
         panic!("{}. Please update it by running `cargo gen-syntax`", error);
+    }
+}
+
+#[test]
+fn generated_tests_are_fresh() {
+    if let Err(error) = gen_tests(Verify) {
+        panic!(
+            "{}. Please update tests by running `cargo gen-tests`",
+            error
+        );
     }
 }
 
