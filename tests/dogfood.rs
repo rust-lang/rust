@@ -1,6 +1,6 @@
 #[test]
 fn dogfood() {
-    if option_env!("RUSTC_TEST_SUITE").is_some() || cfg!(windows) {
+    if option_env!("RUSTC_TEST_SUITE").is_some() {
         return;
     }
     let root_dir = std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR"));
@@ -30,7 +30,7 @@ fn dogfood() {
 
 #[test]
 fn dogfood_tests() {
-    if option_env!("RUSTC_TEST_SUITE").is_some() || cfg!(windows) {
+    if option_env!("RUSTC_TEST_SUITE").is_some() {
         return;
     }
     let root_dir = std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR"));

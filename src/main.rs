@@ -97,6 +97,12 @@ where
         })
         .map(|p| ("CARGO_TARGET_DIR", p));
 
+    // Run the dogfood tests directly on nightly cargo. This is required due
+    // to a bug in rustup.rs when running cargo on custom toolchains. See issue #3118.
+    if std::env::var_os("CLIPPY_DOGFOOD").is_some() && cfg!(windows) {
+        args.insert(0, "+nightly".to_string());
+    }
+
     let exit_status = std::process::Command::new("cargo")
         .args(&args)
         .env("RUSTC_WRAPPER", path)
