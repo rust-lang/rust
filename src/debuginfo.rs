@@ -200,127 +200,37 @@ impl<'a, 'tcx: 'a> DebugContext<'tcx> {
             )
             .unwrap();
 
-        artifact
-            .declare_with(
-                SectionId::DebugAbbrev.name(),
-                Decl::DebugSection,
-                debug_abbrev.0.writer.into_vec(),
-            )
-            .unwrap();
-        artifact
-            .declare_with(
-                SectionId::DebugInfo.name(),
-                Decl::DebugSection,
-                debug_info.0.writer.into_vec(),
-            )
-            .unwrap();
-        artifact
-            .declare_with(
-                SectionId::DebugStr.name(),
-                Decl::DebugSection,
-                debug_str.0.writer.into_vec(),
-            )
-            .unwrap();
-        artifact
-            .declare_with(
-                SectionId::DebugLine.name(),
-                Decl::DebugSection,
-                debug_line.0.writer.into_vec(),
-            )
-            .unwrap();
+        macro decl_section($section:ident = $name:ident) {
+            artifact
+                .declare_with(
+                    SectionId::$section.name(),
+                    Decl::DebugSection,
+                    $name.0.writer.into_vec(),
+                )
+                .unwrap();
+        }
+
+        decl_section!(DebugAbbrev = debug_abbrev);
+        decl_section!(DebugInfo = debug_info);
+        decl_section!(DebugStr = debug_str);
+        decl_section!(DebugLine = debug_line);
 
         let debug_ranges_not_empty = !debug_ranges.0.writer.slice().is_empty();
         if debug_ranges_not_empty {
-            artifact
-                .declare_with(
-                    SectionId::DebugRanges.name(),
-                    Decl::DebugSection,
-                    debug_ranges.0.writer.into_vec(),
-                )
-                .unwrap();
+            decl_section!(DebugRanges = debug_ranges);
         }
 
         let debug_rnglists_not_empty = !debug_rnglists.0.writer.slice().is_empty();
         if debug_rnglists_not_empty {
-            artifact
-                .declare_with(
-                    SectionId::DebugRngLists.name(),
-                    Decl::DebugSection,
-                    debug_rnglists.0.writer.into_vec(),
-                )
-                .unwrap();
+            decl_section!(DebugRngLists = debug_rnglists);
         }
 
-        for reloc in debug_abbrev.0.relocs {
-            artifact
-                .link_with(
-                    faerie::Link {
-                        from: SectionId::DebugAbbrev.name(),
-                        to: &reloc.name,
-                        at: u64::from(reloc.offset),
-                    },
-                    faerie::Reloc::Debug {
-                        size: reloc.size,
-                        addend: reloc.addend as i32,
-                    },
-                )
-                .expect("faerie relocation error");
-        }
-
-        for reloc in debug_info.0.relocs {
-            artifact
-                .link_with(
-                    faerie::Link {
-                        from: SectionId::DebugInfo.name(),
-                        to: &reloc.name,
-                        at: u64::from(reloc.offset),
-                    },
-                    faerie::Reloc::Debug {
-                        size: reloc.size,
-                        addend: reloc.addend as i32,
-                    },
-                )
-                .expect("faerie relocation error");
-        }
-
-        for reloc in debug_str.0.relocs {
-            artifact
-                .link_with(
-                    faerie::Link {
-                        from: SectionId::DebugStr.name(),
-                        to: &reloc.name,
-                        at: u64::from(reloc.offset),
-                    },
-                    faerie::Reloc::Debug {
-                        size: reloc.size,
-                        addend: reloc.addend as i32,
-                    },
-                )
-                .expect("faerie relocation error");
-        }
-
-        for reloc in debug_line.0.relocs {
-            artifact
-                .link_with(
-                    faerie::Link {
-                        from: SectionId::DebugLine.name(),
-                        to: &reloc.name,
-                        at: u64::from(reloc.offset),
-                    },
-                    faerie::Reloc::Debug {
-                        size: reloc.size,
-                        addend: reloc.addend as i32,
-                    },
-                )
-                .expect("faerie relocation error");
-        }
-
-        if debug_ranges_not_empty {
-            for reloc in debug_ranges.0.relocs {
+        macro sect_relocs($section:ident = $name:ident) {
+            for reloc in $name.0.relocs {
                 artifact
                     .link_with(
                         faerie::Link {
-                            from: SectionId::DebugRanges.name(),
+                            from: SectionId::$section.name(),
                             to: &reloc.name,
                             at: u64::from(reloc.offset),
                         },
@@ -331,24 +241,19 @@ impl<'a, 'tcx: 'a> DebugContext<'tcx> {
                     )
                     .expect("faerie relocation error");
             }
+        }
+
+        sect_relocs!(DebugAbbrev = debug_abbrev);
+        sect_relocs!(DebugInfo = debug_info);
+        sect_relocs!(DebugStr = debug_str);
+        sect_relocs!(DebugLine = debug_line);
+
+        if debug_ranges_not_empty {
+            sect_relocs!(DebugRanges = debug_ranges);
         }
 
         if debug_rnglists_not_empty {
-            for reloc in debug_rnglists.0.relocs {
-                artifact
-                    .link_with(
-                        faerie::Link {
-                            from: SectionId::DebugRngLists.name(),
-                            to: &reloc.name,
-                            at: u64::from(reloc.offset),
-                        },
-                        faerie::Reloc::Debug {
-                            size: reloc.size,
-                            addend: reloc.addend as i32,
-                        },
-                    )
-                    .expect("faerie relocation error");
-            }
+            sect_relocs!(DebugRngLists = debug_rnglists);
         }
     }
 
