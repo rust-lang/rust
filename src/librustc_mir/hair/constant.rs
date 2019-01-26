@@ -35,7 +35,7 @@ crate fn lit_to_const<'a, 'gcx, 'tcx>(
         LitKind::Str(ref s, _) => {
             let s = s.as_str();
             let id = tcx.allocate_bytes(s.as_bytes());
-            ConstValue::new_slice(Scalar::Ptr(id.into()), s.len() as u64, &tcx)
+            ConstValue::new_slice(Scalar::Ptr(id.into()), s.len() as u64)
         },
         LitKind::Err(ref s) => {
             let s = s.as_str();
