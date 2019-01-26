@@ -562,6 +562,33 @@ fn quux() {
     );
 }
 
+#[test]
+fn recursive_vars() {
+    check_inference(
+        "recursive_vars",
+        r#"
+fn test() {
+    let y = unknown;
+    [y, &y];
+}
+"#,
+    );
+}
+
+#[test]
+fn recursive_vars_2() {
+    check_inference(
+        "recursive_vars_2",
+        r#"
+fn test() {
+    let x = unknown;
+    let y = unknown;
+    [(x, y), (&y, &x)];
+}
+"#,
+    );
+}
+
 fn infer(content: &str) -> String {
     let (db, _, file_id) = MockDatabase::with_single_file(content);
     let source_file = db.parse(file_id);
