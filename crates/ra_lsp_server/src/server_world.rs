@@ -232,7 +232,11 @@ impl ServerWorldState {
         }
     }
 
-    pub fn collect_garbadge(&mut self) {
+    pub fn maybe_collect_garbage(&mut self) {
+        self.analysis_host.maybe_collect_garbage()
+    }
+
+    pub fn collect_garbage(&mut self) {
         self.analysis_host.collect_garbage()
     }
 }

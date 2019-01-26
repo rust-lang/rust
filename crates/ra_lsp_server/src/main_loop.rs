@@ -172,6 +172,7 @@ fn main_loop_inner(
 
     let (libdata_sender, libdata_receiver) = unbounded();
     loop {
+        state.maybe_collect_garbage();
         log::trace!("selecting");
         let event = select! {
             recv(msg_receiver) -> msg => match msg {
@@ -207,7 +208,7 @@ fn main_loop_inner(
                     };
                     match req.cast::<req::CollectGarbage>() {
                         Ok((id, ())) => {
-                            state.collect_garbadge();
+                            state.collect_garbage();
                             let resp = RawResponse::ok::<req::CollectGarbage>(id, &());
                             msg_sender.send(RawMessage::Response(resp)).unwrap()
                         }

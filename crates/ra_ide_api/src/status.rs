@@ -15,9 +15,13 @@ use crate::{
     symbol_index::{SymbolIndex, LibrarySymbolsQuery},
 };
 
+pub(crate) fn syntax_tree_stats(db: &RootDatabase) -> SyntaxTreeStats {
+    db.query(ParseQuery).entries::<SyntaxTreeStats>()
+}
+
 pub(crate) fn status(db: &RootDatabase) -> String {
     let files_stats = db.query(FileTextQuery).entries::<FilesStats>();
-    let syntax_tree_stats = db.query(ParseQuery).entries::<SyntaxTreeStats>();
+    let syntax_tree_stats = syntax_tree_stats(db);
     let symbols_stats = db
         .query(LibrarySymbolsQuery)
         .entries::<LibrarySymbolsStats>();
@@ -26,8 +30,12 @@ pub(crate) fn status(db: &RootDatabase) -> String {
         interner.len()
     };
     format!(
-        "{}\n{}\n{}\nn_defs {}\n",
-        files_stats, symbols_stats, syntax_tree_stats, n_defs
+        "{}\n{}\n{}\nn_defs {}\nGC {:?} seconds ago",
+        files_stats,
+        symbols_stats,
+        syntax_tree_stats,
+        n_defs,
+        db.last_gc.elapsed().as_secs(),
     )
 }
 
@@ -58,9 +66,9 @@ impl FromIterator<TableEntry<FileId, Arc<String>>> for FilesStats {
 }
 
 #[derive(Default)]
-struct SyntaxTreeStats {
+pub(crate) struct SyntaxTreeStats {
     total: usize,
-    retained: usize,
+    pub(crate) retained: usize,
     retained_size: Bytes,
 }
 
