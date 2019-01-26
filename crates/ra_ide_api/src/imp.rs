@@ -91,9 +91,6 @@ impl db::RootDatabase {
         }
     }
 
-    /// Ideally, we should call this function from time to time to collect heavy
-    /// syntax trees. However, if we actually do that, everything is recomputed
-    /// for some reason. Needs investigation.
     pub(crate) fn collect_garbage(&mut self) {
         self.last_gc = time::Instant::now();
 
