@@ -11,7 +11,7 @@ use gimli::write::{
     RangeList, RangeListTable, Result, SectionId, StringTable, UnitEntryId, UnitId, UnitTable,
     Writer, FileId,
 };
-use gimli::{Endianity, Format, RunTimeEndian};
+use gimli::{Encoding, Format, RunTimeEndian};
 
 use faerie::*;
 
@@ -43,10 +43,8 @@ struct DebugReloc {
 }
 
 pub struct DebugContext<'tcx> {
+    encoding: Encoding,
     endian: RunTimeEndian,
-    format: Format,
-    version: u16,
-    address_size: u8,
 
     symbols: indexmap::IndexSet<String>,
 
@@ -64,9 +62,13 @@ pub struct DebugContext<'tcx> {
 
 impl<'a, 'tcx: 'a> DebugContext<'tcx> {
     pub fn new(tcx: TyCtxt, address_size: u8) -> Self {
-        // TODO: this should be configurable
-        let version = 3; // macOS doesn't seem to support DWARF > 3
-        let format = Format::Dwarf32;
+        let encoding = Encoding {
+            format: Format::Dwarf32,
+            // TODO: this should be configurable
+            // macOS doesn't seem to support DWARF > 3
+            version: 3,
+            address_size,
+        };
 
         // FIXME: how to get version when building out of tree?
         // Normally this would use option_env!("CFG_VERSION").
@@ -83,9 +85,7 @@ impl<'a, 'tcx: 'a> DebugContext<'tcx> {
         let range_lists = RangeListTable::default();
 
         let global_line_program = line_programs.add(LineProgram::new(
-            version,
-            address_size,
-            format,
+            encoding,
             1,
             1,
             -5,
@@ -95,7 +95,7 @@ impl<'a, 'tcx: 'a> DebugContext<'tcx> {
             None,
         ));
 
-        let unit_id = units.add(CompilationUnit::new(version, address_size, format));
+        let unit_id = units.add(CompilationUnit::new(encoding));
         {
             let name = strings.add(&*name);
             let comp_dir = strings.add(&*comp_dir);
@@ -124,10 +124,8 @@ impl<'a, 'tcx: 'a> DebugContext<'tcx> {
         }
 
         DebugContext {
+            encoding,
             endian: target_endian(tcx),
-            format,
-            version,
-            address_size,
 
             symbols: indexmap::IndexSet::new(),
 
@@ -189,9 +187,7 @@ impl<'a, 'tcx: 'a> DebugContext<'tcx> {
             .write(
                 &mut debug_ranges,
                 &mut debug_rnglists,
-                self.format,
-                self.version,
-                self.address_size,
+                self.encoding
             )
             .unwrap();
         self.units
@@ -417,9 +413,7 @@ impl<'a, 'b, 'tcx: 'b> FunctionDebugContext<'a, 'tcx> {
         let unit = self.debug_context.units.get_mut(self.debug_context.unit_id);
         // FIXME: add to appropriate scope intead of root
         let entry = unit.get_mut(self.entry_id);
-        let mut size_array = [0; 8];
-        target_endian(tcx).write_u64(&mut size_array, code_size as u64);
-        entry.set(gimli::DW_AT_high_pc, AttributeValue::Data8(size_array));
+        entry.set(gimli::DW_AT_high_pc, AttributeValue::Data8(code_size as u64));
 
         self.debug_context.unit_range_list.0.push(Range {
             begin: Address::Relative {
