@@ -1,10 +1,10 @@
 #![allow(stable_features)]
 
 #![feature(extended_compare_and_swap)]
-use std::sync::atomic::{AtomicIsize, ATOMIC_ISIZE_INIT};
+use std::sync::atomic::AtomicIsize;
 use std::sync::atomic::Ordering::*;
 
-static ATOMIC: AtomicIsize = ATOMIC_ISIZE_INIT;
+static ATOMIC: AtomicIsize = AtomicIsize::new(0);
 
 fn main() {
     // Make sure codegen can emit all the intrinsics correctly

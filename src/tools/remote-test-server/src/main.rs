@@ -20,7 +20,7 @@ use std::os::unix::prelude::*;
 use std::path::{Path, PathBuf};
 use std::process::{Command, Stdio};
 use std::str;
-use std::sync::atomic::{AtomicUsize, ATOMIC_USIZE_INIT, Ordering};
+use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::{Arc, Mutex};
 use std::thread;
 
@@ -31,7 +31,7 @@ macro_rules! t {
     })
 }
 
-static TEST: AtomicUsize = ATOMIC_USIZE_INIT;
+static TEST: AtomicUsize = AtomicUsize::new(0);
 
 struct Config {
     pub remote: bool,

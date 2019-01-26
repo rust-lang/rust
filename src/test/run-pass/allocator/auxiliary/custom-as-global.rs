@@ -4,12 +4,12 @@
 
 extern crate custom;
 
-use std::sync::atomic::{ATOMIC_USIZE_INIT, Ordering};
+use std::sync::atomic::{AtomicUsize, Ordering};
 
 use custom::A;
 
 #[global_allocator]
-static ALLOCATOR: A = A(ATOMIC_USIZE_INIT);
+static ALLOCATOR: A = A(AtomicUsize::new(0));
 
 pub fn get() -> usize {
     ALLOCATOR.0.load(Ordering::SeqCst)

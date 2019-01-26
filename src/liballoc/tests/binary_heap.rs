@@ -2,7 +2,7 @@ use std::cmp;
 use std::collections::BinaryHeap;
 use std::collections::binary_heap::{Drain, PeekMut};
 use std::panic::{self, AssertUnwindSafe};
-use std::sync::atomic::{AtomicUsize, ATOMIC_USIZE_INIT, Ordering};
+use std::sync::atomic::{AtomicUsize, Ordering};
 
 use rand::{thread_rng, seq::SliceRandom};
 
@@ -283,7 +283,7 @@ fn assert_covariance() {
 // Destructors must be called exactly once per element.
 #[test]
 fn panic_safe() {
-    static DROP_COUNTER: AtomicUsize = ATOMIC_USIZE_INIT;
+    static DROP_COUNTER: AtomicUsize = AtomicUsize::new(0);
 
     #[derive(Eq, PartialEq, Ord, Clone, Debug)]
     struct PanicOrd<T>(T, bool);

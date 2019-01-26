@@ -8,9 +8,9 @@
 extern crate helper;
 
 use std::alloc::{self, Global, Alloc, System, Layout};
-use std::sync::atomic::{AtomicUsize, Ordering, ATOMIC_USIZE_INIT};
+use std::sync::atomic::{AtomicUsize, Ordering};
 
-static HITS: AtomicUsize = ATOMIC_USIZE_INIT;
+static HITS: AtomicUsize = AtomicUsize::new(0);
 
 struct A;
 

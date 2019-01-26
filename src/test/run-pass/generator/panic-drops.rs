@@ -6,9 +6,9 @@
 
 use std::ops::Generator;
 use std::panic;
-use std::sync::atomic::{AtomicUsize, ATOMIC_USIZE_INIT, Ordering};
+use std::sync::atomic::{AtomicUsize, Ordering};
 
-static A: AtomicUsize = ATOMIC_USIZE_INIT;
+static A: AtomicUsize = AtomicUsize::new(0);
 
 struct B;
 
