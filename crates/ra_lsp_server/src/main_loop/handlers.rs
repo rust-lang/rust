@@ -369,6 +369,7 @@ pub fn handle_folding_range(
                 let kind = match fold.kind {
                     FoldKind::Comment => Some(FoldingRangeKind::Comment),
                     FoldKind::Imports => Some(FoldingRangeKind::Imports),
+                    FoldKind::Mods => None,
                     FoldKind::Block => None,
                 };
                 let range = fold.range.conv_with(&line_index);
