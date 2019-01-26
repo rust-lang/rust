@@ -1,3 +1,4 @@
+use errors::DiagnosticBuilder;
 use hir::def_id::DefId;
 use infer::error_reporting::nice_region_error::NiceRegionError;
 use infer::lexical_region_resolve::RegionResolutionError;
@@ -259,7 +260,7 @@ impl NiceRegionError<'me, 'gcx, 'tcx> {
             .tcx()
             .any_free_region_meets(&expected_trait_ref.self_ty(), |r| Some(r) == vid);
 
-        let self_ty_has_vid = actual_self_ty_has_vid || expected_self_ty_has_vid;
+        let any_self_ty_has_vid = actual_self_ty_has_vid || expected_self_ty_has_vid;
 
         debug!(
             "try_report_placeholders_trait: actual_has_vid={:?}",
@@ -280,6 +281,43 @@ impl NiceRegionError<'me, 'gcx, 'tcx> {
             expected_self_ty_has_vid
         );
 
+        self.explain_actual_impl_that_was_found(
+            &mut err,
+            sub_placeholder,
+            sup_placeholder,
+            has_sub,
+            has_sup,
+            expected_trait_ref,
+            actual_trait_ref,
+            vid,
+            expected_has_vid,
+            actual_has_vid,
+            any_self_ty_has_vid,
+        );
+
+        err.emit();
+        ErrorReported
+    }
+
+    /// Add notes with details about the expected and actual trait refs, with attention to cases
+    /// when placeholder regions are involved: either the trait or the self type containing
+    /// them needs to be mentioned the closest to the placeholders.
+    /// This makes the error messages read better, however at the cost of some complexity
+    /// due to the number of combinations we have to deal with.
+    fn explain_actual_impl_that_was_found(
+        &self,
+        err: &mut DiagnosticBuilder<'_>,
+        sub_placeholder: Option<ty::Region<'tcx>>,
+        sup_placeholder: Option<ty::Region<'tcx>>,
+        has_sub: Option<usize>,
+        has_sup: Option<usize>,
+        expected_trait_ref: ty::TraitRef<'_>,
+        actual_trait_ref: ty::TraitRef<'_>,
+        vid: Option<ty::Region<'tcx>>,
+        expected_has_vid: Option<usize>,
+        actual_has_vid: Option<usize>,
+        any_self_ty_has_vid: bool,
+    ) {
         // The weird thing here with the `maybe_highlighting_region` calls and the
         // the match inside is meant to be like this:
         //
@@ -299,7 +337,7 @@ impl NiceRegionError<'me, 'gcx, 'tcx> {
             RegionHighlightMode::maybe_highlighting_region(sup_placeholder, has_sup, || {
                 match (has_sub, has_sup) {
                     (Some(n1), Some(n2)) => {
-                        if self_ty_has_vid {
+                        if any_self_ty_has_vid {
                             err.note(&format!(
                                 "`{}` would have to be implemented for the type `{}`, \
                                  for any two lifetimes `'{}` and `'{}`",
@@ -320,7 +358,7 @@ impl NiceRegionError<'me, 'gcx, 'tcx> {
                         }
                     }
                     (Some(n), _) | (_, Some(n)) => {
-                        if self_ty_has_vid {
+                        if any_self_ty_has_vid {
                             err.note(&format!(
                                 "`{}` would have to be implemented for the type `{}`, \
                                  for any lifetime `'{}`",
@@ -350,7 +388,7 @@ impl NiceRegionError<'me, 'gcx, 'tcx> {
                                     n,
                                 ));
                             } else {
-                                if self_ty_has_vid {
+                                if any_self_ty_has_vid {
                                     err.note(&format!(
                                         "`{}` would have to be implemented for the type `{}`",
                                         expected_trait_ref,
@@ -375,7 +413,7 @@ impl NiceRegionError<'me, 'gcx, 'tcx> {
             actual_has_vid,
             || match actual_has_vid {
                 Some(n) => {
-                    if self_ty_has_vid {
+                    if any_self_ty_has_vid {
                         err.note(&format!(
                             "but `{}` is actually implemented for the type `{}`, \
                              for the specific lifetime `'{}`",
@@ -402,8 +440,5 @@ impl NiceRegionError<'me, 'gcx, 'tcx> {
                 }
             },
         );
-
-        err.emit();
-        ErrorReported
     }
 }
