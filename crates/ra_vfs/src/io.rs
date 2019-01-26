@@ -9,7 +9,6 @@ use crossbeam_channel::{Receiver, Sender, unbounded, RecvError, select};
 use relative_path::RelativePathBuf;
 use thread_worker::WorkerHandle;
 use walkdir::WalkDir;
-use parking_lot::Mutex;
 use notify::{DebouncedEvent, RecommendedWatcher, RecursiveMode, Watcher as _Watcher};
 
 use crate::{RootConfig, Roots, VfsRoot};
@@ -83,9 +82,9 @@ impl Worker {
                 let watcher = notify::watcher(notify_sender, WATCHER_DELAY)
                     .map_err(|e| log::error!("failed to spawn notify {}", e))
                     .ok();
-                let ctx = WatcherCtx {
+                let mut ctx = WatcherCtx {
                     roots,
-                    watcher: Arc::new(Mutex::new(watcher)),
+                    watcher,
                     sender: output_sender,
                 };
                 let thread = thread::spawn(move || {
@@ -101,18 +100,18 @@ impl Worker {
                         // closed, we should shutdown everything.
                         recv(input_receiver) -> t => match t {
                             Err(RecvError) => break,
-                            Ok(Task::AddRoot { root, config }) => watch_root(&ctx, root, Arc::clone(&config)),
+                            Ok(Task::AddRoot { root, config }) => watch_root(&mut ctx, root, Arc::clone(&config)),
                         },
                         // Watcher send us changes. If **this** channel is
                         // closed, the watcher has died, which indicates a bug
                         // -- escalate!
                         recv(watcher_receiver) -> event => match event {
                             Err(RecvError) => panic!("watcher is dead"),
-                            Ok((path, change)) => WatcherCtx::handle_change(&ctx, path, change).unwrap(),
+                            Ok((path, change)) => WatcherCtx::handle_change(&mut ctx, path, change).unwrap(),
                         },
                     }
                 }
-                drop(ctx.watcher.lock().take());
+                drop(ctx.watcher.take());
                 drop(ctx);
                 let res2 = thread.join();
                 match &res2 {
@@ -142,10 +141,9 @@ impl Worker {
     }
 }
 
-fn watch_root(woker: &WatcherCtx, root: VfsRoot, config: Arc<RootConfig>) {
-    let mut guard = woker.watcher.lock();
+fn watch_root(woker: &mut WatcherCtx, root: VfsRoot, config: Arc<RootConfig>) {
     log::debug!("loading {} ...", config.root.as_path().display());
-    let files = watch_recursive(guard.as_mut(), config.root.as_path(), &*config)
+    let files = watch_recursive(woker.watcher.as_mut(), config.root.as_path(), &*config)
         .into_iter()
         .filter_map(|path| {
             let abs_path = path.to_path(&config.root);
@@ -160,10 +158,9 @@ fn watch_root(woker: &WatcherCtx, root: VfsRoot, config: Arc<RootConfig>) {
     log::debug!("... loaded {}", config.root.as_path().display());
 }
 
-#[derive(Clone)]
 struct WatcherCtx {
     roots: Arc<Roots>,
-    watcher: Arc<Mutex<Option<RecommendedWatcher>>>,
+    watcher: Option<RecommendedWatcher>,
     sender: Sender<TaskResult>,
 }
 
@@ -198,7 +195,7 @@ fn convert_notify_event(event: DebouncedEvent, sender: &Sender<(PathBuf, ChangeK
 }
 
 impl WatcherCtx {
-    fn handle_change(&self, path: PathBuf, kind: ChangeKind) -> Result<()> {
+    fn handle_change(&mut self, path: PathBuf, kind: ChangeKind) -> Result<()> {
         let (root, rel_path) = match self.roots.find(&path) {
             None => return Ok(()),
             Some(it) => it,
@@ -208,8 +205,7 @@ impl WatcherCtx {
             ChangeKind::Create => {
                 let mut paths = Vec::new();
                 if path.is_dir() {
-                    let mut guard = self.watcher.lock();
-                    paths.extend(watch_recursive(guard.as_mut(), &path, &config));
+                    paths.extend(watch_recursive(self.watcher.as_mut(), &path, &config));
                 } else {
                     paths.push(rel_path);
                 }
