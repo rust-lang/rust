@@ -13,7 +13,7 @@ use util::ppaux::RegionHighlightMode;
 
 impl NiceRegionError<'me, 'gcx, 'tcx> {
     /// When given a `ConcreteFailure` for a function with arguments containing a named region and
-    /// an anonymous region, emit an descriptive diagnostic error.
+    /// an anonymous region, emit a descriptive diagnostic error.
     pub(super) fn try_report_placeholder_conflict(&self) -> Option<ErrorReported> {
         match &self.error {
             ///////////////////////////////////////////////////////////////////////////
