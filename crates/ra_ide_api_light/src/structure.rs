@@ -103,6 +103,7 @@ fn structure_node(node: &SyntaxNode) -> Option<StructureNode> {
         .visit(decl::<ast::StructDef>)
         .visit(|nfd: &ast::NamedFieldDef| decl_with_type_ref(nfd, nfd.type_ref()))
         .visit(decl::<ast::EnumDef>)
+        .visit(decl::<ast::EnumVariant>)
         .visit(decl::<ast::TraitDef>)
         .visit(decl::<ast::Module>)
         .visit(|td: &ast::TypeDef| decl_with_type_ref(td, td.type_ref()))
