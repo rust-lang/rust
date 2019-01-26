@@ -25,7 +25,7 @@
 #![feature(asm)]
 #![cfg_attr(stage0, feature(cfg_target_vendor))]
 #![feature(fnbox)]
-#![cfg_attr(any(unix, target_os = "cloudabi"), feature(libc))]
+#![cfg_attr(any(unix, target_os = "cloudabi"), feature(libc, rustc_private))]
 #![feature(nll)]
 #![feature(set_stdio)]
 #![feature(panic_unwind)]
