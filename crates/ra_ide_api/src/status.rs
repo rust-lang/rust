@@ -30,7 +30,7 @@ pub(crate) fn status(db: &RootDatabase) -> String {
         interner.len()
     };
     format!(
-        "{}\n{}\n{}\nn_defs {}\n\njemalloc: {}\nGC {:?} seconds ago",
+        "{}\n{}\n{}\n{} defs\n\nmemory:\n{}\ngc {:?} seconds ago",
         files_stats,
         symbols_stats,
         syntax_tree_stats,
