@@ -1,8 +1,9 @@
 use rustc_hash::FxHashSet;
 
 use ra_syntax::{
-    ast, AstNode, Direction, SourceFile, SyntaxNode, TextRange,
+    AstNode, Direction, SourceFile, SyntaxNode, TextRange,
     SyntaxKind::{self, *},
+    ast::{self, VisibilityOwner},
 };
 
 #[derive(Debug, PartialEq, Eq)]
@@ -28,7 +29,7 @@ pub fn folding_ranges(file: &SourceFile) -> Vec<Fold> {
     for node in file.syntax().descendants() {
         // Fold items that span multiple lines
         if let Some(kind) = fold_kind(node.kind()) {
-            if has_newline(node) {
+            if node.text().contains('\n') {
                 res.push(Fold {
                     range: node.range(),
                     kind,
@@ -83,27 +84,9 @@ fn fold_kind(kind: SyntaxKind) -> Option<FoldKind> {
 }
 
 fn has_visibility(node: &SyntaxNode) -> bool {
-    use ast::VisibilityOwner;
-
-    return ast::Module::cast(node)
+    ast::Module::cast(node)
         .and_then(|m| m.visibility())
-        .is_some();
-}
-
-fn has_newline(node: &SyntaxNode) -> bool {
-    for descendant in node.descendants() {
-        if let Some(ws) = ast::Whitespace::cast(descendant) {
-            if ws.has_newlines() {
-                return true;
-            }
-        } else if let Some(comment) = ast::Comment::cast(descendant) {
-            if comment.has_newlines() {
-                return true;
-            }
-        }
-    }
-
-    false
+        .is_some()
 }
 
 fn contiguous_range_for_group<'a>(
