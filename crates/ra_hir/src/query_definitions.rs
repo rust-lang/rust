@@ -4,9 +4,7 @@ use std::{
 };
 
 use rustc_hash::FxHashMap;
-use ra_syntax::{
-    AstNode, SyntaxNode, TreeArc,
-};
+use ra_syntax::{SyntaxNode, TreeArc};
 use ra_db::{CrateId};
 
 use crate::{
@@ -33,12 +31,9 @@ pub(super) fn file_item(
     source_item_id: SourceItemId,
 ) -> TreeArc<SyntaxNode> {
     let source_file = db.hir_parse(source_item_id.file_id);
-    match source_item_id.item_id {
-        Some(id) => db.file_items(source_item_id.file_id)[id]
-            .to_node(&source_file)
-            .to_owned(),
-        None => source_file.syntax().to_owned(),
-    }
+    db.file_items(source_item_id.file_id)[source_item_id.item_id]
+        .to_node(&source_file)
+        .to_owned()
 }
 
 pub(super) fn item_map(db: &impl HirDatabase, crate_id: CrateId) -> Arc<ItemMap> {

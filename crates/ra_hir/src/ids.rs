@@ -203,7 +203,7 @@ pub(crate) trait AstItemDef<N: AstNode>: ArenaId + Clone {
         let items = ctx.db.file_items(ctx.file_id);
         let raw = SourceItemId {
             file_id: ctx.file_id,
-            item_id: Some(items.id_of(ctx.file_id, ast.syntax())),
+            item_id: items.id_of(ctx.file_id, ast.syntax()),
         };
         let loc = ItemLoc {
             module: ctx.module,
@@ -301,8 +301,7 @@ impl_arena_id!(SourceFileItemId);
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct SourceItemId {
     pub(crate) file_id: HirFileId,
-    /// None for the whole file.
-    pub(crate) item_id: Option<SourceFileItemId>,
+    pub(crate) item_id: SourceFileItemId,
 }
 
 /// Maps items' `SyntaxNode`s to `SourceFileItemId`s and back.

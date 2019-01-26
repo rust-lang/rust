@@ -16,6 +16,7 @@ use crate::{
     adt::{StructData, EnumData},
     impl_block::ModuleImplBlocks,
     generics::{GenericParams, GenericDef},
+    ids::SourceFileItemId,
 };
 
 #[salsa::query_group(HirDatabaseStorage)]
@@ -51,7 +52,11 @@ pub trait HirDatabase: SourceDatabase + AsRef<HirInterner> {
     fn file_item(&self, source_item_id: SourceItemId) -> TreeArc<SyntaxNode>;
 
     #[salsa::invoke(crate::module_tree::Submodule::submodules_query)]
-    fn submodules(&self, source: SourceItemId) -> Arc<Vec<crate::module_tree::Submodule>>;
+    fn submodules(
+        &self,
+        file_id: HirFileId,
+        delc_id: Option<SourceFileItemId>,
+    ) -> Arc<Vec<crate::module_tree::Submodule>>;
 
     #[salsa::invoke(crate::nameres::lower::LoweredModule::lower_module_query)]
     fn lower_module(&self, module: Module) -> (Arc<LoweredModule>, Arc<ImportSourceMap>);
