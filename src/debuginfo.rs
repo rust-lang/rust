@@ -2,13 +2,14 @@ extern crate gimli;
 
 use crate::prelude::*;
 
+use std::path::Path;
 use std::marker::PhantomData;
 
 use gimli::write::{
     Address, AttributeValue, CompilationUnit, DebugAbbrev, DebugInfo, DebugLine, DebugRanges,
     DebugRngLists, DebugStr, EndianVec, LineProgram, LineProgramId, LineProgramTable, Range,
     RangeList, RangeListTable, Result, SectionId, StringTable, UnitEntryId, UnitId, UnitTable,
-    Writer,
+    Writer, FileId,
 };
 use gimli::{Endianity, Format, RunTimeEndian};
 
@@ -21,6 +22,17 @@ fn target_endian(tcx: TyCtxt) -> RunTimeEndian {
         Endian::Big => RunTimeEndian::Big,
         Endian::Little => RunTimeEndian::Little,
     }
+}
+
+fn line_program_add_file<P: AsRef<Path>>(line_program: &mut LineProgram, file: P) -> FileId {
+    let file = file.as_ref();
+    let dir_id =
+        line_program.add_directory(file.parent().unwrap().to_str().unwrap().as_bytes());
+    line_program.add_file(
+        file.file_name().unwrap().to_str().unwrap().as_bytes(),
+        dir_id,
+        None,
+    )
 }
 
 struct DebugReloc {
@@ -53,7 +65,7 @@ pub struct DebugContext<'tcx> {
 impl<'a, 'tcx: 'a> DebugContext<'tcx> {
     pub fn new(tcx: TyCtxt, address_size: u8) -> Self {
         // TODO: this should be configurable
-        let version = 4;
+        let version = 3; // macOS doesn't seem to support DWARF > 3
         let format = Format::Dwarf32;
 
         // FIXME: how to get version when building out of tree?
@@ -71,7 +83,7 @@ impl<'a, 'tcx: 'a> DebugContext<'tcx> {
         let range_lists = RangeListTable::default();
 
         let global_line_program = line_programs.add(LineProgram::new(
-            3, // FIXME https://github.com/gimli-rs/gimli/issues/363
+            version,
             address_size,
             format,
             1,
@@ -135,11 +147,13 @@ impl<'a, 'tcx: 'a> DebugContext<'tcx> {
     fn emit_location(&mut self, tcx: TyCtxt<'a, 'tcx, 'tcx>, entry_id: UnitEntryId, span: Span) {
         let loc = tcx.sess.source_map().lookup_char_pos(span.lo());
 
+        let line_program = self.line_programs.get_mut(self.global_line_program);
+        let file_id = line_program_add_file(line_program, loc.file.name.to_string());
+
         let unit = self.units.get_mut(self.unit_id);
         let entry = unit.get_mut(entry_id);
 
-        let file_id = self.strings.add(loc.file.name.to_string());
-        entry.set(gimli::DW_AT_decl_file, AttributeValue::StringRef(file_id));
+        entry.set(gimli::DW_AT_decl_file, AttributeValue::FileIndex(file_id));
         entry.set(
             gimli::DW_AT_decl_line,
             AttributeValue::Udata(loc.line as u64),
@@ -218,20 +232,28 @@ impl<'a, 'tcx: 'a> DebugContext<'tcx> {
                 debug_line.0.writer.into_vec(),
             )
             .unwrap();
-        artifact
-            .declare_with(
-                SectionId::DebugRanges.name(),
-                Decl::DebugSection,
-                debug_ranges.0.writer.into_vec(),
-            )
-            .unwrap();
-        artifact
-            .declare_with(
-                SectionId::DebugRngLists.name(),
-                Decl::DebugSection,
-                debug_rnglists.0.writer.into_vec(),
-            )
-            .unwrap();
+
+        let debug_ranges_not_empty = !debug_ranges.0.writer.slice().is_empty();
+        if debug_ranges_not_empty {
+            artifact
+                .declare_with(
+                    SectionId::DebugRanges.name(),
+                    Decl::DebugSection,
+                    debug_ranges.0.writer.into_vec(),
+                )
+                .unwrap();
+        }
+
+        let debug_rnglists_not_empty = !debug_rnglists.0.writer.slice().is_empty();
+        if debug_rnglists_not_empty {
+            artifact
+                .declare_with(
+                    SectionId::DebugRngLists.name(),
+                    Decl::DebugSection,
+                    debug_rnglists.0.writer.into_vec(),
+                )
+                .unwrap();
+        }
 
         for reloc in debug_abbrev.0.relocs {
             artifact
@@ -297,36 +319,40 @@ impl<'a, 'tcx: 'a> DebugContext<'tcx> {
                 .expect("faerie relocation error");
         }
 
-        for reloc in debug_ranges.0.relocs {
-            artifact
-                .link_with(
-                    faerie::Link {
-                        from: SectionId::DebugRanges.name(),
-                        to: &reloc.name,
-                        at: u64::from(reloc.offset),
-                    },
-                    faerie::Reloc::Debug {
-                        size: reloc.size,
-                        addend: reloc.addend as i32,
-                    },
-                )
-                .expect("faerie relocation error");
+        if debug_ranges_not_empty {
+            for reloc in debug_ranges.0.relocs {
+                artifact
+                    .link_with(
+                        faerie::Link {
+                            from: SectionId::DebugRanges.name(),
+                            to: &reloc.name,
+                            at: u64::from(reloc.offset),
+                        },
+                        faerie::Reloc::Debug {
+                            size: reloc.size,
+                            addend: reloc.addend as i32,
+                        },
+                    )
+                    .expect("faerie relocation error");
+            }
         }
 
-        for reloc in debug_rnglists.0.relocs {
-            artifact
-                .link_with(
-                    faerie::Link {
-                        from: SectionId::DebugRngLists.name(),
-                        to: &reloc.name,
-                        at: u64::from(reloc.offset),
-                    },
-                    faerie::Reloc::Debug {
-                        size: reloc.size,
-                        addend: reloc.addend as i32,
-                    },
-                )
-                .expect("faerie relocation error");
+        if debug_rnglists_not_empty {
+            for reloc in debug_rnglists.0.relocs {
+                artifact
+                    .link_with(
+                        faerie::Link {
+                            from: SectionId::DebugRngLists.name(),
+                            to: &reloc.name,
+                            at: u64::from(reloc.offset),
+                        },
+                        faerie::Reloc::Debug {
+                            size: reloc.size,
+                            addend: reloc.addend as i32,
+                        },
+                    )
+                    .expect("faerie relocation error");
+            }
         }
     }
 
@@ -423,15 +449,7 @@ impl<'a, 'b, 'tcx: 'b> FunctionDebugContext<'a, 'tcx> {
 
         let create_row_for_span = |line_program: &mut LineProgram, span: Span| {
             let loc = tcx.sess.source_map().lookup_char_pos(span.lo());
-            let file = loc.file.name.to_string();
-            let file = ::std::path::Path::new(&file);
-            let dir_id =
-                line_program.add_directory(file.parent().unwrap().to_str().unwrap().as_bytes());
-            let file_id = line_program.add_file(
-                file.file_name().unwrap().to_str().unwrap().as_bytes(),
-                dir_id,
-                None,
-            );
+            let file_id = line_program_add_file(line_program, loc.file.name.to_string());
 
             /*println!(
                 "srcloc {:>04X} {}:{}:{}",
