@@ -1,4 +1,4 @@
-// compile-flags:--generate-redirect-pages
+// compile-flags:-Z unstable-options --generate-redirect-pages
 
 // @has structfields/Foo.t.html
 // @has - struct.Foo.html

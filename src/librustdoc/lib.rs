@@ -348,7 +348,7 @@ fn opts() -> Vec<RustcOptGroup> {
                        "Directory to persist doctest executables into",
                        "PATH")
         }),
-        stable("generate-redirect-pages", |o| {
+        unstable("generate-redirect-pages", |o| {
             o.optflag("",
                       "generate-redirect-pages",
                       "Generate extra pages to support legacy URLs and tool links")
