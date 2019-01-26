@@ -38,7 +38,7 @@ mod types;
 mod unused;
 
 use rustc::lint;
-use rustc::lint::{LateContext, LateLintPass, LintPass, LintArray};
+use rustc::lint::{EarlyContext, LateContext, LateLintPass, EarlyLintPass, LintPass, LintArray};
 use rustc::lint::builtin::{
     BARE_TRAIT_OBJECTS,
     ABSOLUTE_PATHS_NOT_STARTING_WITH_CRATE,
@@ -70,57 +70,68 @@ use unused::*;
 /// Useful for other parts of the compiler.
 pub use builtin::SoftLints;
 
+macro_rules! pre_expansion_lint_passes {
+    ($macro:path, $args:tt) => (
+        $macro!($args, [
+            KeywordIdents: KeywordIdents,
+        ]);
+    )
+}
+
+macro_rules! early_lint_passes {
+    ($macro:path, $args:tt) => (
+        $macro!($args, [
+            UnusedParens: UnusedParens,
+            UnusedImportBraces: UnusedImportBraces,
+            UnsafeCode: UnsafeCode,
+            AnonymousParameters: AnonymousParameters,
+            UnusedDocComment: UnusedDocComment,
+            EllipsisInclusiveRangePatterns: EllipsisInclusiveRangePatterns,
+            NonCamelCaseTypes: NonCamelCaseTypes,
+            DeprecatedAttr: DeprecatedAttr::new(),
+        ]);
+    )
+}
+
+macro_rules! declare_combined_early_pass {
+    ([$name:ident], $passes:tt) => (
+        early_lint_methods!(declare_combined_early_lint_pass, [pub $name, $passes]);
+    )
+}
+
+pre_expansion_lint_passes!(declare_combined_early_pass, [BuiltinCombinedPreExpansionLintPass]);
+early_lint_passes!(declare_combined_early_pass, [BuiltinCombinedEarlyLintPass]);
+
 /// Tell the `LintStore` about all the built-in lints (the ones
 /// defined in this crate and the ones defined in
 /// `rustc::lint::builtin`).
 pub fn register_builtins(store: &mut lint::LintStore, sess: Option<&Session>) {
-    macro_rules! add_early_builtin {
-        ($sess:ident, $($name:ident),*,) => (
-            {$(
-                store.register_early_pass($sess, false, box $name);
-            )*}
-        )
-    }
-
-    macro_rules! add_pre_expansion_builtin {
-        ($sess:ident, $($name:ident),*,) => (
-            {$(
-                store.register_pre_expansion_pass($sess, box $name);
-            )*}
-        )
-    }
-
-    macro_rules! add_early_builtin_with_new {
-        ($sess:ident, $($name:ident),*,) => (
-            {$(
-                store.register_early_pass($sess, false, box $name::new());
-            )*}
-        )
-    }
-
     macro_rules! add_lint_group {
         ($sess:ident, $name:expr, $($lint:ident),*) => (
             store.register_group($sess, false, $name, None, vec![$(LintId::of($lint)),*]);
         )
     }
 
-    add_pre_expansion_builtin!(sess,
-        KeywordIdents,
-    );
+    macro_rules! register_passes {
+        ([$method:ident], [$($passes:ident: $constructor:expr,)*]) => (
+            $(
+                store.$method(sess, false, false, box $constructor);
+            )*
+        )
+    }
 
-    add_early_builtin!(sess,
-                       UnusedParens,
-                       UnusedImportBraces,
-                       UnsafeCode,
-                       AnonymousParameters,
-                       UnusedDocComment,
-                       EllipsisInclusiveRangePatterns,
-                       NonCamelCaseTypes,
-                       );
-
-    add_early_builtin_with_new!(sess,
-                                DeprecatedAttr,
-                                );
+    if sess.map(|sess| sess.opts.debugging_opts.no_interleave_lints).unwrap_or(false) {
+        pre_expansion_lint_passes!(register_passes, [register_pre_expansion_pass]);
+        early_lint_passes!(register_passes, [register_early_pass]);
+    } else {
+        store.register_pre_expansion_pass(
+            sess,
+            false,
+            true,
+            box BuiltinCombinedPreExpansionLintPass::new()
+        );
+        store.register_early_pass(sess, false, true, box BuiltinCombinedEarlyLintPass::new());
+    }
 
     late_lint_methods!(declare_combined_late_lint_pass, [BuiltinCombinedLateLintPass, [
         HardwiredLints: HardwiredLints,

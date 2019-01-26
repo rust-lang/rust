@@ -380,6 +380,10 @@ declare_lint! {
 pub struct HardwiredLints;
 
 impl LintPass for HardwiredLints {
+    fn name(&self) -> &'static str {
+        "HardwiredLints"
+    }
+
     fn get_lints(&self) -> LintArray {
         lint_array!(
             ILLEGAL_FLOATING_POINT_LITERAL_PATTERN,
