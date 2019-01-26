@@ -1,7 +1,8 @@
 // run-rustfix
 
-#[warn(clippy::cast_lossless)]
-#[allow(clippy::no_effect, clippy::unnecessary_operation)]
+#![allow(clippy::no_effect, clippy::unnecessary_operation, dead_code)]
+#![warn(clippy::cast_lossless)]
+
 fn main() {
     // Test clippy::cast_lossless with casts to integer types
     i16::from(1i8);
@@ -22,4 +23,11 @@ fn main() {
     i64::from(1i32);
     i64::from(1u32);
     u64::from(1u32);
+}
+
+// The lint would suggest using `f64::from(input)` here but the `XX::from` function is not const,
+// so we skip the lint if the expression is in a const fn.
+// See #3656
+const fn abc(input: u16) -> u32 {
+    input as u32
 }

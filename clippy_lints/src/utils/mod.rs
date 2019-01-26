@@ -82,6 +82,10 @@ pub fn in_constant(cx: &LateContext<'_, '_>, id: NodeId) -> bool {
             node: ItemKind::Static(..),
             ..
         }) => true,
+        Node::Item(&Item {
+            node: ItemKind::Fn(_, header, ..),
+            ..
+        }) => header.constness == Constness::Const,
         _ => false,
     }
 }
