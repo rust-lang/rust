@@ -5,6 +5,7 @@
 # marked as an executable file in git.
 
 # See http://unix.stackexchange.com/questions/82598
+# Duplicated in docker/dist-various-2/shared.sh
 function retry {
   echo "Attempting with retry:" "$@"
   local n=1
