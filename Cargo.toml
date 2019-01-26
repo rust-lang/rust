@@ -23,10 +23,13 @@ target-lexicon = "0.2.0"
 #goblin = "0.0.17"
 ar = "0.6.1"
 bitflags = "1.0.3"
-byteorder = "1.2.6"
+byteorder = "1.2.7"
 libc = "0.2.45"
 tempfile = "3.0.4"
 env_logger = "0.6"
+gimli = { git = "https://github.com/gimli-rs/gimli.git" }
+faerie = "0.7.1"
+indexmap = "1.0.2"
 
 # Uncomment to use local checkout of cranelift
 #[patch."https://github.com/CraneStation/cranelift.git"]
@@ -34,6 +37,9 @@ env_logger = "0.6"
 #cranelift-module = { path = "../cranelift/lib/module" }
 #cranelift-simplejit = { path = "../cranelift/lib/simplejit" }
 #cranelift-faerie = { path = "../cranelift/lib/faerie" }
+
+#[patch."https://github.com/gimli-rs/gimli.git"]
+#gimli = { path = "../" }
 
 [profile.dev.overrides."*"]
 opt-level = 3

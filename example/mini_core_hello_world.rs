@@ -115,7 +115,18 @@ struct Unique<T: ?Sized> {
 
 impl<T: ?Sized, U: ?Sized> CoerceUnsized<Unique<U>> for Unique<T> where T: Unsize<U> {}
 
+fn take_f32(f: f32) {}
+fn take_unique(u: Unique<()>) {}
+
 fn main() {
+    take_unique(Unique {
+        pointer: 0 as *const (),
+        _marker: PhantomData,
+    });
+    take_f32(0.1);
+
+    //return;
+
     unsafe {
         let hello: &[u8] = b"Hello\0" as &[u8; 6];
         let ptr: *const u8 = hello as *const [u8] as *const u8;

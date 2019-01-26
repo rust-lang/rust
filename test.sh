@@ -10,16 +10,16 @@ rm -r target/out || true
 mkdir -p target/out/clif
 
 echo "[BUILD] mini_core"
-$RUSTC example/mini_core.rs --crate-name mini_core --crate-type lib
+$RUSTC example/mini_core.rs --crate-name mini_core --crate-type lib -g
 
 echo "[BUILD] example"
-$RUSTC example/example.rs --crate-type lib
+$RUSTC example/example.rs --crate-type lib -g
 
 echo "[JIT] mini_core_hello_world"
 SHOULD_RUN=1 $RUSTC --crate-type bin example/mini_core_hello_world.rs --cfg jit
 
 echo "[AOT] mini_core_hello_world"
-$RUSTC example/mini_core_hello_world.rs --crate-name mini_core_hello_world --crate-type bin
+$RUSTC example/mini_core_hello_world.rs --crate-name mini_core_hello_world --crate-type bin -g
 sh -c ./target/out/mini_core_hello_world || true
 
 echo "[BUILD] sysroot"
@@ -31,7 +31,7 @@ time ./build_sysroot/build_sysroot.sh
 #./target/out/alloc_example
 
 echo "[BUILD] mod_bench"
-$RUSTC --sysroot ./build_sysroot/sysroot example/mod_bench.rs --crate-type bin
+$RUSTC --sysroot ./build_sysroot/sysroot example/mod_bench.rs --crate-type bin -g
 
 echo "[BUILD] sysroot in release mode"
 ./build_sysroot/build_sysroot.sh --release
