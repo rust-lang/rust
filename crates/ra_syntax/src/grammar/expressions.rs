@@ -423,7 +423,7 @@ fn path_expr(p: &mut Parser, r: Restrictions) -> (CompletedMarker, BlockLike) {
     match p.current() {
         L_CURLY if !r.forbid_structs => {
             named_field_list(p);
-            (m.complete(p, STRUCT_LIT), BlockLike::Block)
+            (m.complete(p, STRUCT_LIT), BlockLike::NotBlock)
         }
         EXCL => {
             let block_like = items::macro_call_after_excl(p);
