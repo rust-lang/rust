@@ -68,6 +68,10 @@ impl LintPass for Derive {
     fn get_lints(&self) -> LintArray {
         lint_array!(EXPL_IMPL_CLONE_ON_COPY, DERIVE_HASH_XOR_EQ)
     }
+
+    fn name(&self) -> &'static str {
+        "Derive"
+    }
 }
 
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Derive {

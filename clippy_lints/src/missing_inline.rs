@@ -83,6 +83,10 @@ impl LintPass for MissingInline {
     fn get_lints(&self) -> LintArray {
         lint_array![MISSING_INLINE_IN_PUBLIC_ITEMS]
     }
+
+    fn name(&self) -> &'static str {
+        "MissingInline"
+    }
 }
 
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for MissingInline {

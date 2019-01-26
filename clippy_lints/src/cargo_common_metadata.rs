@@ -62,6 +62,10 @@ impl LintPass for Pass {
     fn get_lints(&self) -> LintArray {
         lint_array!(CARGO_COMMON_METADATA)
     }
+
+    fn name(&self) -> &'static str {
+        "CargoCommonMetadata"
+    }
 }
 
 impl EarlyLintPass for Pass {

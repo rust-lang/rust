@@ -78,6 +78,10 @@ impl LintPass for CollapsibleIf {
     fn get_lints(&self) -> LintArray {
         lint_array!(COLLAPSIBLE_IF)
     }
+
+    fn name(&self) -> &'static str {
+        "CollapsibleIf"
+    }
 }
 
 impl EarlyLintPass for CollapsibleIf {

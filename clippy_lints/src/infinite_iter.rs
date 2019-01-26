@@ -45,6 +45,10 @@ impl LintPass for Pass {
     fn get_lints(&self) -> LintArray {
         lint_array!(INFINITE_ITER, MAYBE_INFINITE_ITER)
     }
+
+    fn name(&self) -> &'static str {
+        "InfiniteIter"
+    }
 }
 
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Pass {

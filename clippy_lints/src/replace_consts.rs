@@ -35,6 +35,10 @@ impl LintPass for ReplaceConsts {
     fn get_lints(&self) -> LintArray {
         lint_array!(REPLACE_CONSTS)
     }
+
+    fn name(&self) -> &'static str {
+        "ReplaceConsts"
+    }
 }
 
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for ReplaceConsts {

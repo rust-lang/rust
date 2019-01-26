@@ -180,6 +180,10 @@ impl LintPass for ReturnPass {
     fn get_lints(&self) -> LintArray {
         lint_array!(NEEDLESS_RETURN, LET_AND_RETURN, UNUSED_UNIT)
     }
+
+    fn name(&self) -> &'static str {
+        "Return"
+    }
 }
 
 impl EarlyLintPass for ReturnPass {

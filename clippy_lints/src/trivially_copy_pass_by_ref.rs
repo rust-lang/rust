@@ -142,6 +142,10 @@ impl LintPass for TriviallyCopyPassByRef {
     fn get_lints(&self) -> LintArray {
         lint_array![TRIVIALLY_COPY_PASS_BY_REF]
     }
+
+    fn name(&self) -> &'static str {
+        "TrivallyCopyPassByRef"
+    }
 }
 
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for TriviallyCopyPassByRef {

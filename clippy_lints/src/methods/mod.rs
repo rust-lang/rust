@@ -814,6 +814,10 @@ impl LintPass for Pass {
             INTO_ITER_ON_REF,
         )
     }
+
+    fn name(&self) -> &'static str {
+        "Methods"
+    }
 }
 
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Pass {

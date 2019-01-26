@@ -32,6 +32,10 @@ impl LintPass for Pass {
     fn get_lints(&self) -> LintArray {
         lint_array!(USELESS_VEC)
     }
+
+    fn name(&self) -> &'static str {
+        "UselessVec"
+    }
 }
 
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Pass {

@@ -39,6 +39,10 @@ impl LintPass for NeedlessBorrow {
     fn get_lints(&self) -> LintArray {
         lint_array!(NEEDLESS_BORROW)
     }
+
+    fn name(&self) -> &'static str {
+        "NeedlessBorrow"
+    }
 }
 
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for NeedlessBorrow {

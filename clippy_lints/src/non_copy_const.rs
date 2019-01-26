@@ -147,6 +147,10 @@ impl LintPass for NonCopyConst {
     fn get_lints(&self) -> LintArray {
         lint_array!(DECLARE_INTERIOR_MUTABLE_CONST, BORROW_INTERIOR_MUTABLE_CONST)
     }
+
+    fn name(&self) -> &'static str {
+        "NonCopyConst"
+    }
 }
 
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for NonCopyConst {

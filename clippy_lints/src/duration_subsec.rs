@@ -36,6 +36,10 @@ impl LintPass for DurationSubsec {
     fn get_lints(&self) -> LintArray {
         lint_array!(DURATION_SUBSEC)
     }
+
+    fn name(&self) -> &'static str {
+        "DurationSubsec"
+    }
 }
 
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for DurationSubsec {

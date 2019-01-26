@@ -97,6 +97,10 @@ impl LintPass for Pass {
             RANGE_MINUS_ONE
         )
     }
+
+    fn name(&self) -> &'static str {
+        "Ranges"
+    }
 }
 
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Pass {

@@ -73,6 +73,10 @@ impl LintPass for RedundantClone {
     fn get_lints(&self) -> LintArray {
         lint_array!(REDUNDANT_CLONE)
     }
+
+    fn name(&self) -> &'static str {
+        "RedundantClone"
+    }
 }
 
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for RedundantClone {

@@ -28,6 +28,10 @@ impl LintPass for Pass {
     fn get_lints(&self) -> LintArray {
         lint_array!(ZERO_DIVIDED_BY_ZERO)
     }
+
+    fn name(&self) -> &'static str {
+        "ZeroDiv"
+    }
 }
 
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Pass {

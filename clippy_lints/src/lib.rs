@@ -212,15 +212,22 @@ pub fn register_pre_expansion_lints(
     store: &mut rustc::lint::LintStore,
     conf: &Conf,
 ) {
-    store.register_pre_expansion_pass(Some(session), box write::Pass);
-    store.register_pre_expansion_pass(Some(session), box redundant_field_names::RedundantFieldNames);
+    store.register_pre_expansion_pass(Some(session), true, false, box write::Pass);
     store.register_pre_expansion_pass(
         Some(session),
+        true,
+        false,
+        box redundant_field_names::RedundantFieldNames,
+    );
+    store.register_pre_expansion_pass(
+        Some(session),
+        true,
+        false,
         box non_expressive_names::NonExpressiveNames {
             single_char_binding_names_threshold: conf.single_char_binding_names_threshold,
         },
     );
-    store.register_pre_expansion_pass(Some(session), box attrs::CfgAttrPass);
+    store.register_pre_expansion_pass(Some(session), true, false, box attrs::CfgAttrPass);
 }
 
 pub fn read_conf(reg: &rustc_plugin::Registry<'_>) -> Conf {

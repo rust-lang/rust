@@ -38,6 +38,10 @@ impl LintPass for RedundantFieldNames {
     fn get_lints(&self) -> LintArray {
         lint_array!(REDUNDANT_FIELD_NAMES)
     }
+
+    fn name(&self) -> &'static str {
+        "RedundantFieldNames"
+    }
 }
 
 impl EarlyLintPass for RedundantFieldNames {

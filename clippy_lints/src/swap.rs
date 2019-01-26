@@ -57,6 +57,10 @@ impl LintPass for Swap {
     fn get_lints(&self) -> LintArray {
         lint_array![MANUAL_SWAP, ALMOST_SWAPPED]
     }
+
+    fn name(&self) -> &'static str {
+        "Swap"
+    }
 }
 
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Swap {

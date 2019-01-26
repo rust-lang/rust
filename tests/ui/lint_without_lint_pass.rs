@@ -25,6 +25,10 @@ impl lint::LintPass for Pass {
     fn get_lints(&self) -> lint::LintArray {
         lint_array!(TEST_LINT_REGISTERED)
     }
+
+    fn name(&self) -> &'static str {
+        "TEST_LINT"
+    }
 }
 
 fn main() {}

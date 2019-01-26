@@ -60,6 +60,10 @@ impl LintPass for LetIfSeq {
     fn get_lints(&self) -> LintArray {
         lint_array!(USELESS_LET_IF_SEQ)
     }
+
+    fn name(&self) -> &'static str {
+        "LetIfSeq"
+    }
 }
 
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for LetIfSeq {

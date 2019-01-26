@@ -41,6 +41,10 @@ impl LintPass for Pass {
     fn get_lints(&self) -> LintArray {
         lint_array!(IF_LET_SOME_RESULT)
     }
+
+    fn name(&self) -> &'static str {
+        "OkIfLet"
+    }
 }
 
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Pass {

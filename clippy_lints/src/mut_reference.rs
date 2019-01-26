@@ -30,6 +30,10 @@ impl LintPass for UnnecessaryMutPassed {
     fn get_lints(&self) -> LintArray {
         lint_array!(UNNECESSARY_MUT_PASSED)
     }
+
+    fn name(&self) -> &'static str {
+        "UnneccessaryMutPassed"
+    }
 }
 
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for UnnecessaryMutPassed {

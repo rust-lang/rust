@@ -32,6 +32,10 @@ impl LintPass for StaticConst {
     fn get_lints(&self) -> LintArray {
         lint_array!(CONST_STATIC_LIFETIME)
     }
+
+    fn name(&self) -> &'static str {
+        "StaticConst"
+    }
 }
 
 impl StaticConst {

@@ -30,6 +30,10 @@ impl LintPass for EmptyEnum {
     fn get_lints(&self) -> LintArray {
         lint_array!(EMPTY_ENUM)
     }
+
+    fn name(&self) -> &'static str {
+        "EmptyEnum"
+    }
 }
 
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for EmptyEnum {

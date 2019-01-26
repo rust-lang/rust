@@ -346,6 +346,10 @@ impl LintPass for LiteralDigitGrouping {
             MISTYPED_LITERAL_SUFFIXES,
         )
     }
+
+    fn name(&self) -> &'static str {
+        "LiteralDigitGrouping"
+    }
 }
 
 impl EarlyLintPass for LiteralDigitGrouping {
@@ -492,6 +496,10 @@ pub struct LiteralRepresentation {
 impl LintPass for LiteralRepresentation {
     fn get_lints(&self) -> LintArray {
         lint_array!(DECIMAL_LITERAL_REPRESENTATION)
+    }
+
+    fn name(&self) -> &'static str {
+        "DecimalLiteralRepresentation"
     }
 }
 

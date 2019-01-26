@@ -36,6 +36,10 @@ impl LintPass for EtaPass {
     fn get_lints(&self) -> LintArray {
         lint_array!(REDUNDANT_CLOSURE)
     }
+
+    fn name(&self) -> &'static str {
+        "EtaReduction"
+    }
 }
 
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for EtaPass {

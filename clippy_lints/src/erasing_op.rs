@@ -32,6 +32,10 @@ impl LintPass for ErasingOp {
     fn get_lints(&self) -> LintArray {
         lint_array!(ERASING_OP)
     }
+
+    fn name(&self) -> &'static str {
+        "ErasingOp"
+    }
 }
 
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for ErasingOp {

@@ -32,6 +32,10 @@ impl LintPass for UnsafeNameRemoval {
     fn get_lints(&self) -> LintArray {
         lint_array!(UNSAFE_REMOVED_FROM_NAME)
     }
+
+    fn name(&self) -> &'static str {
+        "UnsafeNameRemoval"
+    }
 }
 
 impl EarlyLintPass for UnsafeNameRemoval {

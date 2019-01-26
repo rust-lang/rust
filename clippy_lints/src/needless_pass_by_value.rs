@@ -56,6 +56,10 @@ impl LintPass for NeedlessPassByValue {
     fn get_lints(&self) -> LintArray {
         lint_array![NEEDLESS_PASS_BY_VALUE]
     }
+
+    fn name(&self) -> &'static str {
+        "NeedlessPassByValue"
+    }
 }
 
 macro_rules! need {

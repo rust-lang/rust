@@ -34,6 +34,10 @@ impl LintPass for FallibleImplFrom {
     fn get_lints(&self) -> LintArray {
         lint_array!(FALLIBLE_IMPL_FROM)
     }
+
+    fn name(&self) -> &'static str {
+        "FallibleImpleFrom"
+    }
 }
 
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for FallibleImplFrom {

@@ -41,6 +41,10 @@ impl LintPass for ExcessivePrecision {
     fn get_lints(&self) -> LintArray {
         lint_array!(EXCESSIVE_PRECISION)
     }
+
+    fn name(&self) -> &'static str {
+        "ExcessivePrecision"
+    }
 }
 
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for ExcessivePrecision {

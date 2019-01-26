@@ -34,6 +34,10 @@ impl LintPass for IdentityConversion {
     fn get_lints(&self) -> LintArray {
         lint_array!(IDENTITY_CONVERSION)
     }
+
+    fn name(&self) -> &'static str {
+        "IdentityConversion"
+    }
 }
 
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for IdentityConversion {

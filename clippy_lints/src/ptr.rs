@@ -102,6 +102,10 @@ impl LintPass for PointerPass {
     fn get_lints(&self) -> LintArray {
         lint_array!(PTR_ARG, CMP_NULL, MUT_FROM_REF)
     }
+
+    fn name(&self) -> &'static str {
+        "Ptr"
+    }
 }
 
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for PointerPass {

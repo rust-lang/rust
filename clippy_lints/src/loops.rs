@@ -465,6 +465,10 @@ impl LintPass for Pass {
             WHILE_IMMUTABLE_CONDITION,
         )
     }
+
+    fn name(&self) -> &'static str {
+        "Loops"
+    }
 }
 
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Pass {

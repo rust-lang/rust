@@ -30,6 +30,10 @@ impl LintPass for MutMut {
     fn get_lints(&self) -> LintArray {
         lint_array!(MUT_MUT)
     }
+
+    fn name(&self) -> &'static str {
+        "MutMut"
+    }
 }
 
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for MutMut {

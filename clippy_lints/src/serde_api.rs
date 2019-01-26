@@ -25,6 +25,10 @@ impl LintPass for Serde {
     fn get_lints(&self) -> LintArray {
         lint_array!(SERDE_API_MISUSE)
     }
+
+    fn name(&self) -> &'static str {
+        "SerdeAPI"
+    }
 }
 
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Serde {

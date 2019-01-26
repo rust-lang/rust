@@ -58,6 +58,10 @@ impl LintPass for NeedlessBorrowedRef {
     fn get_lints(&self) -> LintArray {
         lint_array!(NEEDLESS_BORROWED_REFERENCE)
     }
+
+    fn name(&self) -> &'static str {
+        "NeedlessBorrowedRef"
+    }
 }
 
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for NeedlessBorrowedRef {

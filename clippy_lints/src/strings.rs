@@ -79,6 +79,10 @@ impl LintPass for StringAdd {
     fn get_lints(&self) -> LintArray {
         lint_array!(STRING_ADD, STRING_ADD_ASSIGN)
     }
+
+    fn name(&self) -> &'static str {
+        "StringAdd"
+    }
 }
 
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for StringAdd {
@@ -150,6 +154,10 @@ pub struct StringLitAsBytes;
 impl LintPass for StringLitAsBytes {
     fn get_lints(&self) -> LintArray {
         lint_array!(STRING_LIT_AS_BYTES)
+    }
+
+    fn name(&self) -> &'static str {
+        "StringLiteralAsBytes"
     }
 }
 

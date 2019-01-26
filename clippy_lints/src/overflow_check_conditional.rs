@@ -28,6 +28,10 @@ impl LintPass for OverflowCheckConditional {
     fn get_lints(&self) -> LintArray {
         lint_array!(OVERFLOW_CHECK_CONDITIONAL)
     }
+
+    fn name(&self) -> &'static str {
+        "OverflowCheckConditional"
+    }
 }
 
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for OverflowCheckConditional {

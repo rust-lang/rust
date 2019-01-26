@@ -74,6 +74,10 @@ impl LintPass for Functions {
     fn get_lints(&self) -> LintArray {
         lint_array!(TOO_MANY_ARGUMENTS, NOT_UNSAFE_PTR_ARG_DEREF)
     }
+
+    fn name(&self) -> &'static str {
+        "Functions"
+    }
 }
 
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Functions {

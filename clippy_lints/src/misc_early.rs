@@ -187,6 +187,10 @@ impl LintPass for MiscEarly {
             BUILTIN_TYPE_SHADOW
         )
     }
+
+    fn name(&self) -> &'static str {
+        "MiscEarlyLints"
+    }
 }
 
 // Used to find `return` statements or equivalents e.g. `?`

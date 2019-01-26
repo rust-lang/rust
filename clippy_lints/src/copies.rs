@@ -110,6 +110,10 @@ impl LintPass for CopyAndPaste {
     fn get_lints(&self) -> LintArray {
         lint_array![IFS_SAME_COND, IF_SAME_THEN_ELSE, MATCH_SAME_ARMS]
     }
+
+    fn name(&self) -> &'static str {
+        "CopyAndPaste"
+    }
 }
 
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for CopyAndPaste {

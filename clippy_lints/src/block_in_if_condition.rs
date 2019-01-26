@@ -49,6 +49,10 @@ impl LintPass for BlockInIfCondition {
     fn get_lints(&self) -> LintArray {
         lint_array!(BLOCK_IN_IF_CONDITION_EXPR, BLOCK_IN_IF_CONDITION_STMT)
     }
+
+    fn name(&self) -> &'static str {
+        "BlockInIfCondition"
+    }
 }
 
 struct ExVisitor<'a, 'tcx: 'a> {

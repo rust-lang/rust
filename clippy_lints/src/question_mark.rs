@@ -41,6 +41,10 @@ impl LintPass for Pass {
     fn get_lints(&self) -> LintArray {
         lint_array!(QUESTION_MARK)
     }
+
+    fn name(&self) -> &'static str {
+        "QuestionMark"
+    }
 }
 
 impl Pass {

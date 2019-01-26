@@ -36,6 +36,10 @@ impl LintPass for UnusedIoAmount {
     fn get_lints(&self) -> LintArray {
         lint_array!(UNUSED_IO_AMOUNT)
     }
+
+    fn name(&self) -> &'static str {
+        "UnusedIoAmount"
+    }
 }
 
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for UnusedIoAmount {

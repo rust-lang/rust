@@ -81,6 +81,10 @@ impl LintPass for Pass {
     fn get_lints(&self) -> LintArray {
         lint_array!(OPTION_MAP_UNIT_FN, RESULT_MAP_UNIT_FN)
     }
+
+    fn name(&self) -> &'static str {
+        "MapUnit"
+    }
 }
 
 fn is_unit_type(ty: ty::Ty<'_>) -> bool {

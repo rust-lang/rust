@@ -219,6 +219,10 @@ impl LintPass for Transmute {
             TRANSMUTE_INT_TO_FLOAT,
         )
     }
+
+    fn name(&self) -> &'static str {
+        "Transmute"
+    }
 }
 
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Transmute {

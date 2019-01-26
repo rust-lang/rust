@@ -242,6 +242,10 @@ impl LintPass for Pass {
             FLOAT_CMP_CONST
         )
     }
+
+    fn name(&self) -> &'static str {
+        "MiscLints"
+    }
 }
 
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Pass {

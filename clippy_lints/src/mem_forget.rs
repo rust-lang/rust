@@ -27,6 +27,10 @@ impl LintPass for MemForget {
     fn get_lints(&self) -> LintArray {
         lint_array![MEM_FORGET]
     }
+
+    fn name(&self) -> &'static str {
+        "MemForget"
+    }
 }
 
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for MemForget {

@@ -46,6 +46,10 @@ impl lint::LintPass for Pass {
     fn get_lints(&self) -> lint::LintArray {
         lint_array!(PTR_OFFSET_WITH_CAST)
     }
+
+    fn name(&self) -> &'static str {
+        "PtrOffsetWithCast"
+    }
 }
 
 impl<'a, 'tcx> lint::LateLintPass<'a, 'tcx> for Pass {

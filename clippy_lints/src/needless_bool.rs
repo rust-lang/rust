@@ -61,6 +61,10 @@ impl LintPass for NeedlessBool {
     fn get_lints(&self) -> LintArray {
         lint_array!(NEEDLESS_BOOL)
     }
+
+    fn name(&self) -> &'static str {
+        "NeedlessBool"
+    }
 }
 
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for NeedlessBool {
@@ -140,6 +144,10 @@ pub struct BoolComparison;
 impl LintPass for BoolComparison {
     fn get_lints(&self) -> LintArray {
         lint_array!(BOOL_COMPARISON)
+    }
+
+    fn name(&self) -> &'static str {
+        "BoolComparison"
     }
 }
 

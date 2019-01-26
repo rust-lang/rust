@@ -49,6 +49,10 @@ impl LintPass for Pass {
     fn get_lints(&self) -> LintArray {
         lint_array!(REDUNDANT_PATTERN_MATCHING)
     }
+
+    fn name(&self) -> &'static str {
+        "RedundantPatternMatching"
+    }
 }
 
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Pass {

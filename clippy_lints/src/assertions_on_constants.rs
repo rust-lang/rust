@@ -34,6 +34,10 @@ impl LintPass for AssertionsOnConstants {
     fn get_lints(&self) -> LintArray {
         lint_array![ASSERTIONS_ON_CONSTANTS]
     }
+
+    fn name(&self) -> &'static str {
+        "AssertionsOnConstants"
+    }
 }
 
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for AssertionsOnConstants {

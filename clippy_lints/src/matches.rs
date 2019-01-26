@@ -202,6 +202,10 @@ impl LintPass for MatchPass {
             MATCH_AS_REF
         )
     }
+
+    fn name(&self) -> &'static str {
+        "Matches"
+    }
 }
 
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for MatchPass {

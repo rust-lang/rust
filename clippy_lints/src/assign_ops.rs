@@ -57,6 +57,10 @@ impl LintPass for AssignOps {
     fn get_lints(&self) -> LintArray {
         lint_array!(ASSIGN_OP_PATTERN, MISREFACTORED_ASSIGN_OP)
     }
+
+    fn name(&self) -> &'static str {
+        "AssignOps"
+    }
 }
 
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for AssignOps {

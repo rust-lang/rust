@@ -77,6 +77,10 @@ impl LintPass for LenZero {
     fn get_lints(&self) -> LintArray {
         lint_array!(LEN_ZERO, LEN_WITHOUT_IS_EMPTY)
     }
+
+    fn name(&self) -> &'static str {
+        "LenZero"
+    }
 }
 
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for LenZero {

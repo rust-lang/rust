@@ -37,6 +37,9 @@ impl LintPass for BlackListedName {
     fn get_lints(&self) -> LintArray {
         lint_array!(BLACKLISTED_NAME)
     }
+    fn name(&self) -> &'static str {
+        "BlacklistedName"
+    }
 }
 
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for BlackListedName {

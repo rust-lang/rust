@@ -91,6 +91,10 @@ impl LintPass for IndexingSlicing {
     fn get_lints(&self) -> LintArray {
         lint_array!(INDEXING_SLICING, OUT_OF_BOUNDS_INDEXING)
     }
+
+    fn name(&self) -> &'static str {
+        "IndexSlicing"
+    }
 }
 
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for IndexingSlicing {

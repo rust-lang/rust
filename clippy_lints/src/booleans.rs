@@ -58,6 +58,10 @@ impl LintPass for NonminimalBool {
     fn get_lints(&self) -> LintArray {
         lint_array!(NONMINIMAL_BOOL, LOGIC_BUG)
     }
+
+    fn name(&self) -> &'static str {
+        "NonminimalBool"
+    }
 }
 
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for NonminimalBool {

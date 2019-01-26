@@ -48,6 +48,10 @@ impl LintPass for NoNegCompOpForPartialOrd {
     fn get_lints(&self) -> LintArray {
         lint_array!(NEG_CMP_OP_ON_PARTIAL_ORD)
     }
+
+    fn name(&self) -> &'static str {
+        "NoNegCompOpForPartialOrd"
+    }
 }
 
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for NoNegCompOpForPartialOrd {

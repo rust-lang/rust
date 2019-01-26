@@ -46,6 +46,10 @@ impl LintPass for LargeEnumVariant {
     fn get_lints(&self) -> LintArray {
         lint_array!(LARGE_ENUM_VARIANT)
     }
+
+    fn name(&self) -> &'static str {
+        "LargeEnumVariant"
+    }
 }
 
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for LargeEnumVariant {

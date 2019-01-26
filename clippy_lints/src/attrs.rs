@@ -199,6 +199,10 @@ impl LintPass for AttrPass {
             UNKNOWN_CLIPPY_LINTS,
         )
     }
+
+    fn name(&self) -> &'static str {
+        "Attributes"
+    }
 }
 
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for AttrPass {
@@ -499,6 +503,10 @@ pub struct CfgAttrPass;
 impl LintPass for CfgAttrPass {
     fn get_lints(&self) -> LintArray {
         lint_array!(DEPRECATED_CFG_ATTR,)
+    }
+
+    fn name(&self) -> &'static str {
+        "DeprecatedCfgAttribute"
     }
 }
 

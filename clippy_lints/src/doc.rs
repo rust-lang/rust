@@ -48,6 +48,10 @@ impl LintPass for Doc {
     fn get_lints(&self) -> LintArray {
         lint_array![DOC_MARKDOWN]
     }
+
+    fn name(&self) -> &'static str {
+        "DocMarkdown"
+    }
 }
 
 impl EarlyLintPass for Doc {

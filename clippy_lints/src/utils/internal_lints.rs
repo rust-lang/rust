@@ -98,6 +98,10 @@ impl LintPass for Clippy {
     fn get_lints(&self) -> LintArray {
         lint_array!(CLIPPY_LINTS_INTERNAL)
     }
+
+    fn name(&self) -> &'static str {
+        "ClippyLintsInternal"
+    }
 }
 
 impl EarlyLintPass for Clippy {
@@ -138,6 +142,9 @@ pub struct LintWithoutLintPass {
 impl LintPass for LintWithoutLintPass {
     fn get_lints(&self) -> LintArray {
         lint_array!(LINT_WITHOUT_LINT_PASS)
+    }
+    fn name(&self) -> &'static str {
+        "LintWithoutLintPass"
     }
 }
 
@@ -248,6 +255,10 @@ impl LintPass for DefaultHashTypes {
     fn get_lints(&self) -> LintArray {
         lint_array!(DEFAULT_HASH_TYPES)
     }
+
+    fn name(&self) -> &'static str {
+        "DefaultHashType"
+    }
 }
 
 impl EarlyLintPass for DefaultHashTypes {
@@ -292,6 +303,10 @@ impl CompilerLintFunctions {
 impl LintPass for CompilerLintFunctions {
     fn get_lints(&self) -> LintArray {
         lint_array!(COMPILER_LINT_FUNCTIONS)
+    }
+
+    fn name(&self) -> &'static str {
+        "CompileLintFunctions"
     }
 }
 

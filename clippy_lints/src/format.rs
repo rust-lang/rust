@@ -40,6 +40,10 @@ impl LintPass for Pass {
     fn get_lints(&self) -> LintArray {
         lint_array![USELESS_FORMAT]
     }
+
+    fn name(&self) -> &'static str {
+        "UselessFormat"
+    }
 }
 
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Pass {

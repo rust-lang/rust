@@ -44,6 +44,10 @@ impl LintPass for HashMapLint {
     fn get_lints(&self) -> LintArray {
         lint_array!(MAP_ENTRY)
     }
+
+    fn name(&self) -> &'static str {
+        "HashMap"
+    }
 }
 
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for HashMapLint {

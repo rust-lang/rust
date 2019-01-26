@@ -93,6 +93,10 @@ impl LintPass for NewWithoutDefault {
     fn get_lints(&self) -> LintArray {
         lint_array!(NEW_WITHOUT_DEFAULT)
     }
+
+    fn name(&self) -> &'static str {
+        "NewWithoutDefault"
+    }
 }
 
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for NewWithoutDefault {

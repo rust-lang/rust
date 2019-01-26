@@ -112,6 +112,10 @@ impl LintPass for Pass {
     fn get_lints(&self) -> LintArray {
         lint_array!(DROP_REF, FORGET_REF, DROP_COPY, FORGET_COPY)
     }
+
+    fn name(&self) -> &'static str {
+        "DropForgetRef"
+    }
 }
 
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Pass {

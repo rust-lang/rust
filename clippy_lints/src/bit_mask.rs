@@ -108,6 +108,9 @@ impl LintPass for BitMask {
     fn get_lints(&self) -> LintArray {
         lint_array!(BAD_BIT_MASK, INEFFECTIVE_BIT_MASK, VERBOSE_BIT_MASK)
     }
+    fn name(&self) -> &'static str {
+        "BitMask"
+    }
 }
 
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for BitMask {

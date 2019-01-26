@@ -52,6 +52,10 @@ impl LintPass for EqOp {
     fn get_lints(&self) -> LintArray {
         lint_array!(EQ_OP, OP_REF)
     }
+
+    fn name(&self) -> &'static str {
+        "EqOp"
+    }
 }
 
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for EqOp {

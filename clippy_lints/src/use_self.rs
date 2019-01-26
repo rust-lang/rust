@@ -51,6 +51,10 @@ impl LintPass for UseSelf {
     fn get_lints(&self) -> LintArray {
         lint_array!(USE_SELF)
     }
+
+    fn name(&self) -> &'static str {
+        "UseSelf"
+    }
 }
 
 const SEGMENTS_MSG: &str = "segments should be composed of at least 1 element";

@@ -57,6 +57,10 @@ impl LintPass for SuspiciousImpl {
     fn get_lints(&self) -> LintArray {
         lint_array![SUSPICIOUS_ARITHMETIC_IMPL, SUSPICIOUS_OP_ASSIGN_IMPL]
     }
+
+    fn name(&self) -> &'static str {
+        "SuspiciousImpl"
+    }
 }
 
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for SuspiciousImpl {

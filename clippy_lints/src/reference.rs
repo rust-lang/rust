@@ -30,6 +30,10 @@ impl LintPass for Pass {
     fn get_lints(&self) -> LintArray {
         lint_array!(DEREF_ADDROF)
     }
+
+    fn name(&self) -> &'static str {
+        "DerefAddrOf"
+    }
 }
 
 fn without_parens(mut e: &Expr) -> &Expr {
@@ -83,6 +87,10 @@ pub struct DerefPass;
 impl LintPass for DerefPass {
     fn get_lints(&self) -> LintArray {
         lint_array!(REF_IN_DEREF)
+    }
+
+    fn name(&self) -> &'static str {
+        "RefInDeref"
     }
 }
 

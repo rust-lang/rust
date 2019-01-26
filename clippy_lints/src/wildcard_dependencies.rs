@@ -33,6 +33,10 @@ impl LintPass for Pass {
     fn get_lints(&self) -> LintArray {
         lint_array!(WILDCARD_DEPENDENCIES)
     }
+
+    fn name(&self) -> &'static str {
+        "WildcardDependencies"
+    }
 }
 
 impl EarlyLintPass for Pass {

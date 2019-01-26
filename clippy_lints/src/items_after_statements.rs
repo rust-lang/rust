@@ -40,6 +40,10 @@ impl LintPass for ItemsAfterStatements {
     fn get_lints(&self) -> LintArray {
         lint_array!(ITEMS_AFTER_STATEMENTS)
     }
+
+    fn name(&self) -> &'static str {
+        "ItemsAfterStatements"
+    }
 }
 
 impl EarlyLintPass for ItemsAfterStatements {

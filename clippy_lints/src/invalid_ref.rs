@@ -32,6 +32,10 @@ impl LintPass for InvalidRef {
     fn get_lints(&self) -> LintArray {
         lint_array!(INVALID_REF)
     }
+
+    fn name(&self) -> &'static str {
+        "InvalidRef"
+    }
 }
 
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for InvalidRef {

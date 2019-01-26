@@ -36,6 +36,10 @@ impl LintPass for IntPlusOne {
     fn get_lints(&self) -> LintArray {
         lint_array!(INT_PLUS_ONE)
     }
+
+    fn name(&self) -> &'static str {
+        "IntPlusOne"
+    }
 }
 
 // cases:

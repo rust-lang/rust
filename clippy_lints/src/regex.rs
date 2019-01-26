@@ -76,6 +76,10 @@ impl LintPass for Pass {
     fn get_lints(&self) -> LintArray {
         lint_array!(INVALID_REGEX, REGEX_MACRO, TRIVIAL_REGEX)
     }
+
+    fn name(&self) -> &'static str {
+        "Regex"
+    }
 }
 
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Pass {
