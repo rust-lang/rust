@@ -172,6 +172,7 @@ impl ModuleTree {
         file_id: HirFileId,
         decl_id: Option<SourceFileItemId>,
     ) -> ModuleId {
+        let is_root = parent.is_none();
         let id = self.alloc_mod(ModuleData {
             file_id,
             decl_id,
@@ -295,6 +296,7 @@ fn resolve_submodule(
     db: &impl HirDatabase,
     file_id: HirFileId,
     name: &Name,
+    is_root: bool,
 ) -> (Vec<FileId>, Option<Problem>) {
     // FIXME: handle submodules of inline modules properly
     let file_id = file_id.original_file(db);
@@ -303,7 +305,7 @@ fn resolve_submodule(
     let root = RelativePathBuf::default();
     let dir_path = path.parent().unwrap_or(&root);
     let mod_name = path.file_stem().unwrap_or("unknown");
-    let is_dir_owner = mod_name == "mod" || mod_name == "lib" || mod_name == "main";
+    let is_dir_owner = is_root || mod_name == "mod";
 
     let file_mod = dir_path.join(format!("{}.rs", name));
     let dir_mod = dir_path.join(format!("{}/mod.rs", name));
