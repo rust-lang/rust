@@ -32,9 +32,12 @@ pub(super) fn file_item(
     db: &impl HirDatabase,
     source_item_id: SourceItemId,
 ) -> TreeArc<SyntaxNode> {
+    let source_file = db.hir_parse(source_item_id.file_id);
     match source_item_id.item_id {
-        Some(id) => db.file_items(source_item_id.file_id)[id].to_owned(),
-        None => db.hir_parse(source_item_id.file_id).syntax().to_owned(),
+        Some(id) => db.file_items(source_item_id.file_id)[id]
+            .to_node(&source_file)
+            .to_owned(),
+        None => source_file.syntax().to_owned(),
     }
 }
 
