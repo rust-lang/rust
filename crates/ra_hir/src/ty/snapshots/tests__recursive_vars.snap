@@ -1,0 +1,14 @@
+---
+created: "2019-01-26T22:42:22.329980185+00:00"
+creator: insta@0.5.2
+expression: "&result"
+source: crates/ra_hir/src/ty/tests.rs
+---
+[11; 48) '{     ...&y]; }': ()
+[21; 22) 'y': &[unknown]
+[25; 32) 'unknown': &[unknown]
+[38; 45) '[y, &y]': [&&[unknown]]
+[39; 40) 'y': &[unknown]
+[42; 44) '&y': &&[unknown]
+[43; 44) 'y': &[unknown]
+

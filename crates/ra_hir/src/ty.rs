@@ -29,6 +29,8 @@ use ra_arena::map::ArenaMap;
 use join_to_string::join;
 use rustc_hash::FxHashMap;
 
+use test_utils::tested_by;
+
 use crate::{
     Module, Function, Struct, StructField, Enum, EnumVariant, Path, Name, ImplBlock,
     FnSignature, FnScopes, ModuleDef, AdtDef,
@@ -862,14 +864,15 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
     }
 
     fn resolve_all(mut self) -> InferenceResult {
+        let mut tv_stack = Vec::new();
         let mut expr_types = mem::replace(&mut self.type_of_expr, ArenaMap::default());
         for ty in expr_types.values_mut() {
-            let resolved = self.resolve_ty_completely(mem::replace(ty, Ty::Unknown));
+            let resolved = self.resolve_ty_completely(&mut tv_stack, mem::replace(ty, Ty::Unknown));
             *ty = resolved;
         }
         let mut pat_types = mem::replace(&mut self.type_of_pat, ArenaMap::default());
         for ty in pat_types.values_mut() {
-            let resolved = self.resolve_ty_completely(mem::replace(ty, Ty::Unknown));
+            let resolved = self.resolve_ty_completely(&mut tv_stack, mem::replace(ty, Ty::Unknown));
             *ty = resolved;
         }
         InferenceResult {
@@ -1014,13 +1017,21 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
     /// by their known types. All types returned by the infer_* functions should
     /// be resolved as far as possible, i.e. contain no type variables with
     /// known type.
-    fn resolve_ty_as_possible(&mut self, ty: Ty) -> Ty {
+    fn resolve_ty_as_possible(&mut self, tv_stack: &mut Vec<TypeVarId>, ty: Ty) -> Ty {
         ty.fold(&mut |ty| match ty {
             Ty::Infer(tv) => {
                 let inner = tv.to_inner();
+                if tv_stack.contains(&inner) {
+                    tested_by!(type_var_cycles_resolve_as_possible);
+                    // recursive type
+                    return tv.fallback_value();
+                }
                 if let Some(known_ty) = self.var_unification_table.probe_value(inner).known() {
                     // known_ty may contain other variables that are known by now
-                    self.resolve_ty_as_possible(known_ty.clone())
+                    tv_stack.push(inner);
+                    let result = self.resolve_ty_as_possible(tv_stack, known_ty.clone());
+                    tv_stack.pop();
+                    result
                 } else {
                     ty
                 }
@@ -1049,13 +1060,21 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
 
     /// Resolves the type completely; type variables without known type are
     /// replaced by Ty::Unknown.
-    fn resolve_ty_completely(&mut self, ty: Ty) -> Ty {
+    fn resolve_ty_completely(&mut self, tv_stack: &mut Vec<TypeVarId>, ty: Ty) -> Ty {
         ty.fold(&mut |ty| match ty {
             Ty::Infer(tv) => {
                 let inner = tv.to_inner();
+                if tv_stack.contains(&inner) {
+                    tested_by!(type_var_cycles_resolve_completely);
+                    // recursive type
+                    return tv.fallback_value();
+                }
                 if let Some(known_ty) = self.var_unification_table.probe_value(inner).known() {
                     // known_ty may contain other variables that are known by now
-                    self.resolve_ty_completely(known_ty.clone())
+                    tv_stack.push(inner);
+                    let result = self.resolve_ty_completely(tv_stack, known_ty.clone());
+                    tv_stack.pop();
+                    result
                 } else {
                     tv.fallback_value()
                 }
@@ -1070,7 +1089,7 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
             let name = path.as_ident().cloned().unwrap_or_else(Name::self_param);
             if let Some(scope_entry) = self.scopes.resolve_local_name(expr, name) {
                 let ty = self.type_of_pat.get(scope_entry.pat())?;
-                let ty = self.resolve_ty_as_possible(ty.clone());
+                let ty = self.resolve_ty_as_possible(&mut vec![], ty.clone());
                 return Some(ty);
             };
         };
@@ -1239,7 +1258,7 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
         // use a new type variable if we got Ty::Unknown here
         let ty = self.insert_type_vars_shallow(ty);
         self.unify(&ty, expected);
-        let ty = self.resolve_ty_as_possible(ty);
+        let ty = self.resolve_ty_as_possible(&mut vec![], ty);
         self.write_pat_ty(pat, ty.clone());
         ty
     }
@@ -1538,7 +1557,7 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
         // use a new type variable if we got Ty::Unknown here
         let ty = self.insert_type_vars_shallow(ty);
         self.unify(&ty, &expected.ty);
-        let ty = self.resolve_ty_as_possible(ty);
+        let ty = self.resolve_ty_as_possible(&mut vec![], ty);
         self.write_expr_ty(tgt_expr, ty.clone());
         ty
     }
