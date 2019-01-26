@@ -3,6 +3,7 @@ use std::fmt::Write;
 
 use ra_db::{SourceDatabase, salsa::Database};
 use ra_syntax::ast::{self, AstNode};
+use test_utils::covers;
 
 use crate::{
     source_binder,
@@ -564,6 +565,8 @@ fn quux() {
 
 #[test]
 fn recursive_vars() {
+    covers!(type_var_cycles_resolve_completely);
+    covers!(type_var_cycles_resolve_as_possible);
     check_inference(
         "recursive_vars",
         r#"
@@ -577,6 +580,8 @@ fn test() {
 
 #[test]
 fn recursive_vars_2() {
+    covers!(type_var_cycles_resolve_completely);
+    covers!(type_var_cycles_resolve_as_possible);
     check_inference(
         "recursive_vars_2",
         r#"

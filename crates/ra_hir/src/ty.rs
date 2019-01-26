@@ -29,6 +29,8 @@ use ra_arena::map::ArenaMap;
 use join_to_string::join;
 use rustc_hash::FxHashMap;
 
+use test_utils::tested_by;
+
 use crate::{
     Module, Function, Struct, StructField, Enum, EnumVariant, Path, Name, ImplBlock,
     FnSignature, FnScopes, ModuleDef, AdtDef,
@@ -1020,6 +1022,7 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
             Ty::Infer(tv) => {
                 let inner = tv.to_inner();
                 if tv_stack.contains(&inner) {
+                    tested_by!(type_var_cycles_resolve_as_possible);
                     // recursive type
                     return tv.fallback_value();
                 }
@@ -1062,6 +1065,7 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
             Ty::Infer(tv) => {
                 let inner = tv.to_inner();
                 if tv_stack.contains(&inner) {
+                    tested_by!(type_var_cycles_resolve_completely);
                     // recursive type
                     return tv.fallback_value();
                 }
