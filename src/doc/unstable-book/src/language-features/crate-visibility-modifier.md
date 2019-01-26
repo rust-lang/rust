@@ -1,8 +1,8 @@
 # `crate_visibility_modifier`
 
-The tracking issue for this feature is: [#45388]
+The tracking issue for this feature is: [#53120]
 
-[#45388]: https://github.com/rust-lang/rust/issues/45388
+[#53120]: https://github.com/rust-lang/rust/issues/53120
 
 -----
 
