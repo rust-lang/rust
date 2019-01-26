@@ -1148,6 +1148,48 @@ fn lint_or_fun_call(cx: &LateContext<'_, '_>, expr: &hir::Expr, method_span: Spa
 
 /// Checks for the `EXPECT_FUN_CALL` lint.
 fn lint_expect_fun_call(cx: &LateContext<'_, '_>, expr: &hir::Expr, method_span: Span, name: &str, args: &[hir::Expr]) {
+    // Strip `&`, `as_ref()` and `as_str()` off `arg` until we're left with either a `String` or
+    // `&str`
+    fn get_arg_root<'a>(cx: &LateContext<'_, '_>, arg: &'a hir::Expr) -> &'a hir::Expr {
+        let mut arg_root = arg;
+        loop {
+            arg_root = match &arg_root.node {
+                hir::ExprKind::AddrOf(_, expr) => expr,
+                hir::ExprKind::MethodCall(method_name, _, call_args) => {
+                    if call_args.len() == 1
+                        && (method_name.ident.name == "as_str" || method_name.ident.name == "as_ref")
+                        && {
+                            let arg_type = cx.tables.expr_ty(&call_args[0]);
+                            let base_type = walk_ptrs_ty(arg_type);
+                            base_type.sty == ty::Str || match_type(cx, base_type, &paths::STRING)
+                        }
+                    {
+                        &call_args[0]
+                    } else {
+                        break;
+                    }
+                },
+                _ => break,
+            };
+        }
+        arg_root
+    }
+
+    // Only `&'static str` or `String` can be used directly in the `panic!`. Other types should be
+    // converted to string.
+    fn requires_to_string(cx: &LateContext<'_, '_>, arg: &hir::Expr) -> bool {
+        let arg_ty = cx.tables.expr_ty(arg);
+        if match_type(cx, arg_ty, &paths::STRING) {
+            return false;
+        }
+        if let ty::Ref(ty::ReStatic, ty, ..) = arg_ty.sty {
+            if ty.sty == ty::Str {
+                return false;
+            }
+        };
+        true
+    }
+
     fn generate_format_arg_snippet(
         cx: &LateContext<'_, '_>,
         a: &hir::Expr,
@@ -1195,29 +1237,7 @@ fn lint_expect_fun_call(cx: &LateContext<'_, '_>, expr: &hir::Expr, method_span:
         return;
     };
 
-    // Strip off `&`, `as_ref()` and `as_str()` until we're left with either a `String` or `&str`
-    // which we call `arg_root`.
-    let mut arg_root = &args[1];
-    loop {
-        arg_root = match &arg_root.node {
-            hir::ExprKind::AddrOf(_, expr) => expr,
-            hir::ExprKind::MethodCall(method_name, _, call_args) => {
-                if call_args.len() == 1
-                    && (method_name.ident.name == "as_str" || method_name.ident.name == "as_ref")
-                    && {
-                        let arg_type = cx.tables.expr_ty(&call_args[0]);
-                        let base_type = walk_ptrs_ty(arg_type);
-                        base_type.sty == ty::Str || match_type(cx, base_type, &paths::STRING)
-                    }
-                {
-                    &call_args[0]
-                } else {
-                    break;
-                }
-            },
-            _ => break,
-        };
-    }
+    let arg_root = get_arg_root(cx, &args[1]);
 
     let span_replace_word = method_span.with_hi(expr.span.hi());
 
@@ -1230,7 +1250,6 @@ fn lint_expect_fun_call(cx: &LateContext<'_, '_>, expr: &hir::Expr, method_span:
                 let fmt_spec = &format_args[0];
                 let fmt_args = &format_args[1];
 
-                let mut applicability = Applicability::MachineApplicable;
                 let mut args = vec![snippet(cx, fmt_spec.span, "..").into_owned()];
 
                 args.extend(generate_format_arg_snippet(cx, fmt_args, &mut applicability));
@@ -1252,18 +1271,8 @@ fn lint_expect_fun_call(cx: &LateContext<'_, '_>, expr: &hir::Expr, method_span:
         }
     }
 
-    // If root_arg is `&'static str` or `String` we can use it directly in the `panic!` call otherwise
-    // we must use `to_string` to convert it.
     let mut arg_root_snippet: Cow<'_, _> = snippet_with_applicability(cx, arg_root.span, "..", &mut applicability);
-    let arg_root_ty = cx.tables.expr_ty(arg_root);
-    let mut requires_conv = !match_type(cx, arg_root_ty, &paths::STRING);
-    if let ty::Ref(ty::ReStatic, ty, ..) = arg_root_ty.sty {
-        if ty.sty == ty::Str {
-            requires_conv = false;
-        }
-    };
-
-    if requires_conv {
+    if requires_to_string(cx, arg_root) {
         arg_root_snippet.to_mut().push_str(".to_string()");
     }
 
