@@ -29,7 +29,7 @@ fn type_with_bounds_cond(p: &mut Parser, allow_bounds: bool) {
         DYN_KW => dyn_trait_type(p),
         // Some path types are not allowed to have bounds (no plus)
         L_ANGLE => path_type_(p, allow_bounds),
-        _ if paths::is_path_start(p) => path_type_(p, allow_bounds),
+        _ if paths::is_path_start(p) => path_or_macro_type_(p, allow_bounds),
         _ => {
             p.err_recover("expected type", TYPE_RECOVERY_SET);
         }
@@ -241,6 +241,28 @@ fn dyn_trait_type(p: &mut Parser) {
 // type D = super::Foo;
 pub(super) fn path_type(p: &mut Parser) {
     path_type_(p, true)
+}
+
+// test macro_call_type
+// type A = foo!();
+// type B = crate::foo!();
+fn path_or_macro_type_(p: &mut Parser, allow_bounds: bool) {
+    assert!(paths::is_path_start(p) || p.at(L_ANGLE));
+    let m = p.start();
+    paths::type_path(p);
+
+    let kind = if p.at(EXCL) {
+        items::macro_call_after_excl(p);
+        MACRO_CALL
+    } else {
+        PATH_TYPE
+    };
+
+    if allow_bounds && p.eat(PLUS) {
+        type_params::bounds_without_colon(p);
+    }
+
+    m.complete(p, kind);
 }
 
 pub(super) fn path_type_(p: &mut Parser, allow_bounds: bool) {
