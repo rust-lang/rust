@@ -78,7 +78,7 @@ impl FileEntry {
     fn parse_ids(&mut self, file: &Path, contents: &str, errors: &mut bool) {
         if self.ids.is_empty() {
             with_attrs_in_source(contents, " id", |fragment, i, _| {
-                let frag = fragment.trim_left_matches("#").to_owned();
+                let frag = fragment.trim_start_matches("#").to_owned();
                 let encoded = small_url_encode(&frag);
                 if !self.ids.insert(frag) {
                     *errors = true;
@@ -343,7 +343,7 @@ fn with_attrs_in_source<F: FnMut(&str, usize, &str)>(contents: &str, attr: &str,
                 Some(i) => i,
                 None => continue,
             };
-            if rest[..pos_equals].trim_left_matches(" ") != "" {
+            if rest[..pos_equals].trim_start_matches(" ") != "" {
                 continue;
             }
 
@@ -355,7 +355,7 @@ fn with_attrs_in_source<F: FnMut(&str, usize, &str)>(contents: &str, attr: &str,
             };
             let quote_delim = rest.as_bytes()[pos_quote] as char;
 
-            if rest[..pos_quote].trim_left_matches(" ") != "" {
+            if rest[..pos_quote].trim_start_matches(" ") != "" {
                 continue;
             }
             let rest = &rest[pos_quote + 1..];
