@@ -18,94 +18,78 @@ mod io;
 use std::{
     cmp::Reverse,
     fmt, fs, mem,
-    ops::{Deref, DerefMut},
     path::{Path, PathBuf},
     sync::Arc,
     thread,
 };
 
 use crossbeam_channel::Receiver;
-use ra_arena::{impl_arena_id, Arena, RawId};
+use ra_arena::{impl_arena_id, Arena, RawId, map::ArenaMap};
 use relative_path::{Component, RelativePath, RelativePathBuf};
 use rustc_hash::{FxHashMap, FxHashSet};
-use walkdir::DirEntry;
 
 pub use crate::io::TaskResult as VfsTask;
 use io::{TaskResult, Worker};
-
-/// `RootFilter` is a predicate that checks if a file can belong to a root. If
-/// several filters match a file (nested dirs), the most nested one wins.
-pub(crate) struct RootFilter {
-    root: PathBuf,
-    filter: fn(&Path, &RelativePath) -> bool,
-    excluded_dirs: Vec<PathBuf>,
-}
-
-impl RootFilter {
-    fn new(root: PathBuf, excluded_dirs: Vec<PathBuf>) -> RootFilter {
-        RootFilter {
-            root,
-            filter: default_filter,
-            excluded_dirs,
-        }
-    }
-    /// Check if this root can contain `path`. NB: even if this returns
-    /// true, the `path` might actually be conained in some nested root.
-    pub(crate) fn can_contain(&self, path: &Path) -> Option<RelativePathBuf> {
-        let rel_path = path.strip_prefix(&self.root).ok()?;
-        let rel_path = RelativePathBuf::from_path(rel_path).ok()?;
-        if !(self.filter)(path, rel_path.as_relative_path()) {
-            return None;
-        }
-        Some(rel_path)
-    }
-
-    pub(crate) fn entry_filter<'a>(&'a self) -> impl FnMut(&DirEntry) -> bool + 'a {
-        move |entry: &DirEntry| {
-            if entry.file_type().is_dir() && self.excluded_dirs.iter().any(|it| it == entry.path())
-            {
-                // do not walk nested roots
-                false
-            } else {
-                self.can_contain(entry.path()).is_some()
-            }
-        }
-    }
-}
-
-pub(crate) fn default_filter(path: &Path, rel_path: &RelativePath) -> bool {
-    if path.is_dir() {
-        for (i, c) in rel_path.components().enumerate() {
-            if let Component::Normal(c) = c {
-                // TODO hardcoded for now
-                if (i == 0 && c == "target") || c == ".git" || c == "node_modules" {
-                    return false;
-                }
-            }
-        }
-        true
-    } else {
-        rel_path.extension() == Some("rs")
-    }
-}
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct VfsRoot(pub RawId);
 impl_arena_id!(VfsRoot);
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
-pub struct VfsFile(pub RawId);
-impl_arena_id!(VfsFile);
-
-struct VfsFileData {
-    root: VfsRoot,
-    path: RelativePathBuf,
-    is_overlayed: bool,
-    text: Arc<String>,
+/// Describes the contents of a single source root.
+///
+/// `RootConfig` can be thought of as a glob pattern like `src/**.rs` whihc
+/// specifes the source root or as a function whihc takes a `PathBuf` and
+/// returns `true` iff path belongs to the source root
+pub(crate) struct RootConfig {
+    root: PathBuf,
+    excluded_dirs: Vec<PathBuf>,
 }
 
 pub(crate) struct Roots {
-    roots: Arena<VfsRoot, Arc<RootFilter>>,
+    roots: Arena<VfsRoot, Arc<RootConfig>>,
+}
+
+impl std::ops::Deref for Roots {
+    type Target = Arena<VfsRoot, Arc<RootConfig>>;
+    fn deref(&self) -> &Self::Target {
+        &self.roots
+    }
+}
+
+impl RootConfig {
+    fn new(root: PathBuf, excluded_dirs: Vec<PathBuf>) -> RootConfig {
+        RootConfig {
+            root,
+            excluded_dirs,
+        }
+    }
+    /// Cheks if root contains a path and returns a root-relative path.
+    pub(crate) fn contains(&self, path: &Path) -> Option<RelativePathBuf> {
+        // First, check excluded dirs
+        if self.excluded_dirs.iter().any(|it| path.starts_with(it)) {
+            return None;
+        }
+        let rel_path = path.strip_prefix(&self.root).ok()?;
+        let rel_path = RelativePathBuf::from_path(rel_path).ok()?;
+
+        // Ignore some common directories.
+        //
+        // FIXME: don't hard-code, specify at source-root creation time using
+        // gitignore
+        for (i, c) in rel_path.components().enumerate() {
+            if let Component::Normal(c) = c {
+                if (i == 0 && c == "target") || c == ".git" || c == "node_modules" {
+                    return None;
+                }
+            }
+        }
+
+        if path.is_file() && rel_path.extension() != Some("rs") {
+            return None;
+        }
+
+        Some(rel_path)
+    }
 }
 
 impl Roots {
@@ -120,59 +104,61 @@ impl Roots {
                 .map(|it| it.clone())
                 .collect::<Vec<_>>();
 
-            let root_filter = Arc::new(RootFilter::new(path.clone(), nested_roots));
+            let config = Arc::new(RootConfig::new(path.clone(), nested_roots));
 
-            roots.alloc(root_filter.clone());
+            roots.alloc(config.clone());
         }
         Roots { roots }
     }
     pub(crate) fn find(&self, path: &Path) -> Option<(VfsRoot, RelativePathBuf)> {
         self.roots
             .iter()
-            .find_map(|(root, data)| data.can_contain(path).map(|it| (root, it)))
+            .find_map(|(root, data)| data.contains(path).map(|it| (root, it)))
     }
 }
 
-impl Deref for Roots {
-    type Target = Arena<VfsRoot, Arc<RootFilter>>;
-    fn deref(&self) -> &Self::Target {
-        &self.roots
-    }
-}
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub struct VfsFile(pub RawId);
+impl_arena_id!(VfsFile);
 
-impl DerefMut for Roots {
-    fn deref_mut(&mut self) -> &mut Self::Target {
-        &mut self.roots
-    }
+struct VfsFileData {
+    root: VfsRoot,
+    path: RelativePathBuf,
+    is_overlayed: bool,
+    text: Arc<String>,
 }
 
 pub struct Vfs {
     roots: Arc<Roots>,
     files: Arena<VfsFile, VfsFileData>,
-    root2files: FxHashMap<VfsRoot, FxHashSet<VfsFile>>,
+    root2files: ArenaMap<VfsRoot, FxHashSet<VfsFile>>,
     pending_changes: Vec<VfsChange>,
     worker: Worker,
 }
 
 impl fmt::Debug for Vfs {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        f.write_str("Vfs { ... }")
+        f.debug_struct("Vfs")
+            .field("n_roots", &self.roots.len())
+            .field("n_files", &self.files.len())
+            .field("n_pending_changes", &self.pending_changes.len())
+            .finish()
     }
 }
 
 impl Vfs {
     pub fn new(roots: Vec<PathBuf>) -> (Vfs, Vec<VfsRoot>) {
         let roots = Arc::new(Roots::new(roots));
-        let worker = io::Worker::start(roots.clone());
-        let mut root2files = FxHashMap::default();
+        let worker = io::Worker::start(Arc::clone(&roots));
+        let mut root2files = ArenaMap::default();
 
-        for (root, filter) in roots.iter() {
+        for (root, config) in roots.iter() {
             root2files.insert(root, Default::default());
             worker
                 .sender()
                 .send(io::Task::AddRoot {
                     root,
-                    filter: filter.clone(),
+                    config: Arc::clone(config),
                 })
                 .unwrap();
         }
@@ -242,7 +228,7 @@ impl Vfs {
                 let mut cur_files = Vec::new();
                 // While we were scanning the root in the backgound, a file might have
                 // been open in the editor, so we need to account for that.
-                let exising = self.root2files[&root]
+                let exising = self.root2files[root]
                     .iter()
                     .map(|&file| (self.files[file].path.clone(), file))
                     .collect::<FxHashMap<_, _>>();
@@ -384,7 +370,7 @@ impl Vfs {
             is_overlayed,
         };
         let file = self.files.alloc(data);
-        self.root2files.get_mut(&root).unwrap().insert(file);
+        self.root2files.get_mut(root).unwrap().insert(file);
         file
     }
 
@@ -399,7 +385,7 @@ impl Vfs {
         self.files[file].text = Default::default();
         self.files[file].path = Default::default();
         let root = self.files[file].root;
-        let removed = self.root2files.get_mut(&root).unwrap().remove(&file);
+        let removed = self.root2files.get_mut(root).unwrap().remove(&file);
         assert!(removed);
     }
 
@@ -410,7 +396,7 @@ impl Vfs {
     }
 
     fn find_file(&self, root: VfsRoot, path: &RelativePath) -> Option<VfsFile> {
-        self.root2files[&root]
+        self.root2files[root]
             .iter()
             .map(|&it| it)
             .find(|&file| self.files[file].path == path)
