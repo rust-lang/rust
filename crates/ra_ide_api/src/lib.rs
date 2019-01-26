@@ -34,7 +34,7 @@ use std::{fmt, sync::Arc};
 use ra_syntax::{SourceFile, TreeArc, TextRange, TextUnit};
 use ra_text_edit::TextEdit;
 use ra_db::{
-    SyntaxDatabase, FilesDatabase, BaseDatabase,
+    SourceDatabase, CheckCanceled,
     salsa::{self, ParallelDatabase},
 };
 use rayon::prelude::*;

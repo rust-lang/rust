@@ -1,7 +1,7 @@
 use std::sync::Arc;
 use std::fmt::Write;
 
-use ra_db::{SyntaxDatabase, salsa::Database};
+use ra_db::{SourceDatabase, salsa::Database};
 use ra_syntax::ast::{self, AstNode};
 
 use crate::{

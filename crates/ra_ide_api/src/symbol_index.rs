@@ -34,7 +34,7 @@ use ra_syntax::{
     ast::{self, NameOwner},
 };
 use ra_db::{
-    SourceRootId, FilesDatabase,
+    SourceRootId, SourceDatabase,
     salsa::{self, ParallelDatabase},
 };
 use rayon::prelude::*;
@@ -49,6 +49,14 @@ pub(crate) trait SymbolsDatabase: hir::db::HirDatabase {
     fn file_symbols(&self, file_id: FileId) -> Arc<SymbolIndex>;
     #[salsa::input]
     fn library_symbols(&self, id: SourceRootId) -> Arc<SymbolIndex>;
+    /// The set of "local" (that is, from the current workspace) roots.
+    /// Files in local roots are assumed to change frequently.
+    #[salsa::input]
+    fn local_roots(&self) -> Arc<Vec<SourceRootId>>;
+    /// The set of roots for crates.io libraries.
+    /// Files in libraries are assumed to never change.
+    #[salsa::input]
+    fn library_roots(&self) -> Arc<Vec<SourceRootId>>;
 }
 
 fn file_symbols(db: &impl SymbolsDatabase, file_id: FileId) -> Arc<SymbolIndex> {

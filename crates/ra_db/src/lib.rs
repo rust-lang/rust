@@ -20,7 +20,7 @@ pub use crate::{
     loc2id::LocationIntener,
 };
 
-pub trait BaseDatabase: salsa::Database + panic::RefUnwindSafe {
+pub trait CheckCanceled: salsa::Database + panic::RefUnwindSafe {
     /// Aborts current query if there are pending changes.
     ///
     /// rust-analyzer needs to be able to answer semantic questions about the
@@ -63,11 +63,15 @@ pub struct FileRange {
     pub range: TextRange,
 }
 
-#[salsa::query_group(FilesDatabaseStorage)]
-pub trait FilesDatabase: salsa::Database {
+/// Database which stores all significant input facts: source code and project
+/// model. Everything else in rust-analyzer is derived from these queries.
+#[salsa::query_group(SourceDatabaseStorage)]
+pub trait SourceDatabase: salsa::Database + CheckCanceled {
     /// Text of the file.
     #[salsa::input]
     fn file_text(&self, file_id: FileId) -> Arc<String>;
+    // Parses the file into the syntax tree.
+    fn source_file(&self, file_id: FileId) -> TreeArc<SourceFile>;
     /// Path to a file, relative to the root of its source root.
     #[salsa::input]
     fn file_relative_path(&self, file_id: FileId) -> RelativePathBuf;
@@ -78,20 +82,12 @@ pub trait FilesDatabase: salsa::Database {
     #[salsa::input]
     fn source_root(&self, id: SourceRootId) -> Arc<SourceRoot>;
     fn source_root_crates(&self, id: SourceRootId) -> Arc<Vec<CrateId>>;
-    /// The set of "local" (that is, from the current workspace) roots.
-    /// Files in local roots are assumed to change frequently.
-    #[salsa::input]
-    fn local_roots(&self) -> Arc<Vec<SourceRootId>>;
-    /// The set of roots for crates.io libraries.
-    /// Files in libraries are assumed to never change.
-    #[salsa::input]
-    fn library_roots(&self) -> Arc<Vec<SourceRootId>>;
     /// The crate graph.
     #[salsa::input]
     fn crate_graph(&self) -> Arc<CrateGraph>;
 }
 
-fn source_root_crates(db: &impl FilesDatabase, id: SourceRootId) -> Arc<Vec<CrateId>> {
+fn source_root_crates(db: &impl SourceDatabase, id: SourceRootId) -> Arc<Vec<CrateId>> {
     let root = db.source_root(id);
     let graph = db.crate_graph();
     let res = root
@@ -102,12 +98,7 @@ fn source_root_crates(db: &impl FilesDatabase, id: SourceRootId) -> Arc<Vec<Crat
     Arc::new(res)
 }
 
-#[salsa::query_group(SyntaxDatabaseStorage)]
-pub trait SyntaxDatabase: FilesDatabase + BaseDatabase {
-    fn source_file(&self, file_id: FileId) -> TreeArc<SourceFile>;
-}
-
-fn source_file(db: &impl SyntaxDatabase, file_id: FileId) -> TreeArc<SourceFile> {
+fn source_file(db: &impl SourceDatabase, file_id: FileId) -> TreeArc<SourceFile> {
     let text = db.file_text(file_id);
     SourceFile::parse(&*text)
 }

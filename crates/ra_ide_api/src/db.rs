@@ -1,15 +1,14 @@
 use std::sync::Arc;
 
 use ra_db::{
-    BaseDatabase, FileId, Canceled,
-    salsa::{self, Database},
+    CheckCanceled, FileId, Canceled, SourceDatabase,
+    salsa,
 };
 
-use crate::{symbol_index, LineIndex};
+use crate::{LineIndex, symbol_index::{self, SymbolsDatabase}};
 
 #[salsa::database(
-    ra_db::FilesDatabaseStorage,
-    ra_db::SyntaxDatabaseStorage,
+    ra_db::SourceDatabaseStorage,
     LineIndexDatabaseStorage,
     symbol_index::SymbolsDatabaseStorage,
     hir::db::HirDatabaseStorage
@@ -35,12 +34,9 @@ impl Default for RootDatabase {
             runtime: salsa::Runtime::default(),
             interner: Default::default(),
         };
-        db.query_mut(ra_db::CrateGraphQuery)
-            .set((), Default::default());
-        db.query_mut(ra_db::LocalRootsQuery)
-            .set((), Default::default());
-        db.query_mut(ra_db::LibraryRootsQuery)
-            .set((), Default::default());
+        db.set_crate_graph(Default::default());
+        db.set_local_roots(Default::default());
+        db.set_library_roots(Default::default());
         db
     }
 }
@@ -54,7 +50,7 @@ impl salsa::ParallelDatabase for RootDatabase {
     }
 }
 
-impl BaseDatabase for RootDatabase {}
+impl CheckCanceled for RootDatabase {}
 
 impl AsRef<hir::HirInterner> for RootDatabase {
     fn as_ref(&self) -> &hir::HirInterner {
@@ -63,11 +59,11 @@ impl AsRef<hir::HirInterner> for RootDatabase {
 }
 
 #[salsa::query_group(LineIndexDatabaseStorage)]
-pub(crate) trait LineIndexDatabase: ra_db::FilesDatabase + BaseDatabase {
+pub(crate) trait LineIndexDatabase: ra_db::SourceDatabase + CheckCanceled {
     fn line_index(&self, file_id: FileId) -> Arc<LineIndex>;
 }
 
-fn line_index(db: &impl ra_db::FilesDatabase, file_id: FileId) -> Arc<LineIndex> {
+fn line_index(db: &impl ra_db::SourceDatabase, file_id: FileId) -> Arc<LineIndex> {
     let text = db.file_text(file_id);
     Arc::new(LineIndex::new(&*text))
 }

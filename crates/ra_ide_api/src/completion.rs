@@ -9,7 +9,7 @@ mod complete_path;
 mod complete_scope;
 mod complete_postfix;
 
-use ra_db::SyntaxDatabase;
+use ra_db::SourceDatabase;
 
 use crate::{
     db,
