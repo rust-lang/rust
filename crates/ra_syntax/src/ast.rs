@@ -123,8 +123,7 @@ pub trait DocCommentsOwner: AstNode {
             .map(|comment| {
                 let prefix_len = comment.prefix().len();
 
-                // Strip leading and trailing whitespace
-                let line = comment.text().as_str().trim();
+                let line = comment.text().as_str();
 
                 // Determine if the prefix or prefix + 1 char is stripped
                 let pos = if line
