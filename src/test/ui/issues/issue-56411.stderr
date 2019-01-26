@@ -1,0 +1,31 @@
+error[E0255]: the name `issue_56411_aux` is defined multiple times
+  --> $DIR/issue-56411.rs:5:21
+   |
+LL |             mod $name;
+   |             ---------- previous definition of the module `issue_56411_aux` here
+LL |             pub use self::$name;
+   |                     ^^^^^^^^^^^
+   |                     |
+   |                     `issue_56411_aux` reimported here
+   |                     you can use `as` to change the binding name of the import
+...
+LL | import!(issue_56411_aux);
+   | ------------------------- in this macro invocation
+   |
+   = note: `issue_56411_aux` must be defined only once in the type namespace of this module
+
+error[E0365]: `issue_56411_aux` is private, and cannot be re-exported
+  --> $DIR/issue-56411.rs:5:21
+   |
+LL |             pub use self::$name;
+   |                     ^^^^^^^^^^^ re-export of private `issue_56411_aux`
+...
+LL | import!(issue_56411_aux);
+   | ------------------------- in this macro invocation
+   |
+   = note: consider declaring type or module `issue_56411_aux` with `pub`
+
+error: aborting due to 2 previous errors
+
+Some errors occurred: E0255, E0365.
+For more information about an error, try `rustc --explain E0255`.

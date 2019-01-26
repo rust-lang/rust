@@ -1,11 +1,11 @@
 error: `extern crate self;` requires renaming
-  --> $DIR/extern-crate-self-fail.rs:3:1
+  --> $DIR/extern-crate-self-fail.rs:1:1
    |
 LL | extern crate self; //~ ERROR `extern crate self;` requires renaming
    | ^^^^^^^^^^^^^^^^^^ help: try: `extern crate self as name;`
 
 error: `macro_use` is not supported on `extern crate self`
-  --> $DIR/extern-crate-self-fail.rs:5:1
+  --> $DIR/extern-crate-self-fail.rs:3:1
    |
 LL | #[macro_use] //~ ERROR `macro_use` is not supported on `extern crate self`
    | ^^^^^^^^^^^^
