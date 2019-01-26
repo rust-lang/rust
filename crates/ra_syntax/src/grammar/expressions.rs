@@ -45,7 +45,10 @@ pub(crate) fn block(p: &mut Parser) {
 
     while !p.at(EOF) && !p.at(R_CURLY) {
         match p.current() {
-            LET_KW => let_stmt(p),
+            LET_KW => {
+                let m = p.start();
+                let_stmt(p, m)
+            }
             // test nocontentexpr
             // fn foo(){
             //     ;;;some_expr();;;;{;;;};;;;Ok(())
@@ -54,8 +57,9 @@ pub(crate) fn block(p: &mut Parser) {
             _ => {
                 // test block_items
                 // fn a() { fn b() {} }
-                let has_attrs = p.at(POUND);
                 let m = p.start();
+                let has_attrs = p.at(POUND);
+                attributes::outer_attributes(p);
                 match items::maybe_item(p, items::ItemFlavor::Mod) {
                     items::MaybeItem::Item(kind) => {
                         m.complete(p, kind);
@@ -68,10 +72,10 @@ pub(crate) fn block(p: &mut Parser) {
                     // fn foo() { pub 92; } //FIXME
                     items::MaybeItem::None => {
                         if has_attrs {
-                            m.abandon(p);
                             if p.at(LET_KW) {
-                                let_stmt(p);
+                                let_stmt(p, m);
                             } else {
+                                m.abandon(p);
                                 p.error("expected a let statement");
                             }
                         } else {
@@ -116,9 +120,8 @@ pub(crate) fn block(p: &mut Parser) {
     //     let c = 92;
     //     let d: i32 = 92;
     // }
-    fn let_stmt(p: &mut Parser) {
+    fn let_stmt(p: &mut Parser, m: Marker) {
         assert!(p.at(LET_KW));
-        let m = p.start();
         p.bump();
         patterns::pattern(p);
         if p.at(COLON) {

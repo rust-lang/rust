@@ -36,6 +36,7 @@ pub(super) const ITEM_RECOVERY_SET: TokenSet = token_set![
 
 pub(super) fn item_or_macro(p: &mut Parser, stop_on_r_curly: bool, flavor: ItemFlavor) {
     let m = p.start();
+    attributes::outer_attributes(p);
     match maybe_item(p, flavor) {
         MaybeItem::Item(kind) => {
             m.complete(p, kind);
@@ -79,7 +80,6 @@ pub(super) enum MaybeItem {
 }
 
 pub(super) fn maybe_item(p: &mut Parser, flavor: ItemFlavor) -> MaybeItem {
-    attributes::outer_attributes(p);
     opt_visibility(p);
     if let Some(kind) = items_without_modifiers(p) {
         return MaybeItem::Item(kind);
