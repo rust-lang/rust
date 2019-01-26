@@ -243,6 +243,12 @@ pub struct Parser<'a> {
     desugar_doc_comments: bool,
     /// Whether we should configure out of line modules as we parse.
     pub cfg_mods: bool,
+    /// This field is used to keep track of how many left angle brackets we have seen. This is
+    /// required in order to detect extra leading left angle brackets (`<` characters) and error
+    /// appropriately.
+    ///
+    /// See the comments in the `parse_path_segment` function for more details.
+    crate unmatched_angle_bracket_count: u32,
 }
 
 
@@ -564,6 +570,7 @@ impl<'a> Parser<'a> {
             },
             desugar_doc_comments,
             cfg_mods: true,
+            unmatched_angle_bracket_count: 0,
         };
 
         let tok = parser.next_tok();
@@ -1028,7 +1035,7 @@ impl<'a> Parser<'a> {
     /// starting token.
     fn eat_lt(&mut self) -> bool {
         self.expected_tokens.push(TokenType::Token(token::Lt));
-        match self.token {
+        let ate = match self.token {
             token::Lt => {
                 self.bump();
                 true
@@ -1039,7 +1046,15 @@ impl<'a> Parser<'a> {
                 true
             }
             _ => false,
+        };
+
+        if ate {
+            // See doc comment for `unmatched_angle_bracket_count`.
+            self.unmatched_angle_bracket_count += 1;
+            debug!("eat_lt: (increment) count={:?}", self.unmatched_angle_bracket_count);
         }
+
+        ate
     }
 
     fn expect_lt(&mut self) -> PResult<'a, ()> {
@@ -1055,24 +1070,35 @@ impl<'a> Parser<'a> {
     /// signal an error.
     fn expect_gt(&mut self) -> PResult<'a, ()> {
         self.expected_tokens.push(TokenType::Token(token::Gt));
-        match self.token {
+        let ate = match self.token {
             token::Gt => {
                 self.bump();
-                Ok(())
+                Some(())
             }
             token::BinOp(token::Shr) => {
                 let span = self.span.with_lo(self.span.lo() + BytePos(1));
-                Ok(self.bump_with(token::Gt, span))
+                Some(self.bump_with(token::Gt, span))
             }
             token::BinOpEq(token::Shr) => {
                 let span = self.span.with_lo(self.span.lo() + BytePos(1));
-                Ok(self.bump_with(token::Ge, span))
+                Some(self.bump_with(token::Ge, span))
             }
             token::Ge => {
                 let span = self.span.with_lo(self.span.lo() + BytePos(1));
-                Ok(self.bump_with(token::Eq, span))
+                Some(self.bump_with(token::Eq, span))
             }
-            _ => self.unexpected()
+            _ => None,
+        };
+
+        match ate {
+            Some(x) => {
+                // See doc comment for `unmatched_angle_bracket_count`.
+                self.unmatched_angle_bracket_count -= 1;
+                debug!("expect_gt: (decrement) count={:?}", self.unmatched_angle_bracket_count);
+
+                Ok(x)
+            },
+            None => self.unexpected(),
         }
     }
 
@@ -2115,7 +2141,11 @@ impl<'a> Parser<'a> {
             path_span = self.span.to(self.span);
         }
 
+        // See doc comment for `unmatched_angle_bracket_count`.
         self.expect(&token::Gt)?;
+        self.unmatched_angle_bracket_count -= 1;
+        debug!("parse_qpath: (decrement) count={:?}", self.unmatched_angle_bracket_count);
+
         self.expect(&token::ModSep)?;
 
         let qself = QSelf { ty, path_span, position: path.segments.len() };
@@ -2238,9 +2268,15 @@ impl<'a> Parser<'a> {
             }
             let lo = self.span;
 
+            // We use `style == PathStyle::Expr` to check if this is in a recursion or not. If
+            // it isn't, then we reset the unmatched angle bracket count as we're about to start
+            // parsing a new path.
+            if style == PathStyle::Expr { self.unmatched_angle_bracket_count = 0; }
+
             let args = if self.eat_lt() {
                 // `<'a, T, A = U>`
-                let (args, bindings) = self.parse_generic_args()?;
+                let (args, bindings) =
+                    self.parse_generic_args_with_leaning_angle_bracket_recovery(style, lo)?;
                 self.expect_gt()?;
                 let span = lo.to(self.prev_span);
                 AngleBracketedArgs { args, bindings, span }.into()
@@ -5535,6 +5571,152 @@ impl<'a> Parser<'a> {
             })
         } else {
             Ok(ast::Generics::default())
+        }
+    }
+
+    /// Parse generic args (within a path segment) with recovery for extra leading angle brackets.
+    /// For the purposes of understanding the parsing logic of generic arguments, this function
+    /// can be thought of being the same as just calling `self.parse_generic_args()` if the source
+    /// had the correct amount of leading angle brackets.
+    ///
+    /// ```ignore (diagnostics)
+    /// bar::<<<<T as Foo>::Output>();
+    ///      ^^ help: remove extra angle brackets
+    /// ```
+    fn parse_generic_args_with_leaning_angle_bracket_recovery(
+        &mut self,
+        style: PathStyle,
+        lo: Span,
+    ) -> PResult<'a, (Vec<GenericArg>, Vec<TypeBinding>)> {
+        // We need to detect whether there are extra leading left angle brackets and produce an
+        // appropriate error and suggestion. This cannot be implemented by looking ahead at
+        // upcoming tokens for a matching `>` character - if there are unmatched `<` tokens
+        // then there won't be matching `>` tokens to find.
+        //
+        // To explain how this detection works, consider the following example:
+        //
+        // ```ignore (diagnostics)
+        // bar::<<<<T as Foo>::Output>();
+        //      ^^ help: remove extra angle brackets
+        // ```
+        //
+        // Parsing of the left angle brackets starts in this function. We start by parsing the
+        // `<` token (incrementing the counter of unmatched angle brackets on `Parser` via
+        // `eat_lt`):
+        //
+        // *Upcoming tokens:* `<<<<T as Foo>::Output>;`
+        // *Unmatched count:* 1
+        // *`parse_path_segment` calls deep:* 0
+        //
+        // This has the effect of recursing as this function is called if a `<` character
+        // is found within the expected generic arguments:
+        //
+        // *Upcoming tokens:* `<<<T as Foo>::Output>;`
+        // *Unmatched count:* 2
+        // *`parse_path_segment` calls deep:* 1
+        //
+        // Eventually we will have recursed until having consumed all of the `<` tokens and
+        // this will be reflected in the count:
+        //
+        // *Upcoming tokens:* `T as Foo>::Output>;`
+        // *Unmatched count:* 4
+        // `parse_path_segment` calls deep:* 3
+        //
+        // The parser will continue until reaching the first `>` - this will decrement the
+        // unmatched angle bracket count and return to the parent invocation of this function
+        // having succeeded in parsing:
+        //
+        // *Upcoming tokens:* `::Output>;`
+        // *Unmatched count:* 3
+        // *`parse_path_segment` calls deep:* 2
+        //
+        // This will continue until the next `>` character which will also return successfully
+        // to the parent invocation of this function and decrement the count:
+        //
+        // *Upcoming tokens:* `;`
+        // *Unmatched count:* 2
+        // *`parse_path_segment` calls deep:* 1
+        //
+        // At this point, this function will expect to find another matching `>` character but
+        // won't be able to and will return an error. This will continue all the way up the
+        // call stack until the first invocation:
+        //
+        // *Upcoming tokens:* `;`
+        // *Unmatched count:* 2
+        // *`parse_path_segment` calls deep:* 0
+        //
+        // In doing this, we have managed to work out how many unmatched leading left angle
+        // brackets there are, but we cannot recover as the unmatched angle brackets have
+        // already been consumed. To remedy this, we keep a snapshot of the parser state
+        // before we do the above. We can then inspect whether we ended up with a parsing error
+        // and unmatched left angle brackets and if so, restore the parser state before we
+        // consumed any `<` characters to emit an error and consume the erroneous tokens to
+        // recover by attempting to parse again.
+        //
+        // In practice, the recursion of this function is indirect and there will be other
+        // locations that consume some `<` characters - as long as we update the count when
+        // this happens, it isn't an issue.
+
+        let is_first_invocation = style == PathStyle::Expr;
+        // Take a snapshot before attempting to parse - we can restore this later.
+        let snapshot = if is_first_invocation {
+            Some(self.clone())
+        } else {
+            None
+        };
+
+        debug!("parse_generic_args_with_leading_angle_bracket_recovery: (snapshotting)");
+        match self.parse_generic_args() {
+            Ok(value) => Ok(value),
+            Err(ref mut e) if is_first_invocation && self.unmatched_angle_bracket_count > 0 => {
+                // Cancel error from being unable to find `>`. We know the error
+                // must have been this due to a non-zero unmatched angle bracket
+                // count.
+                e.cancel();
+
+                // Swap `self` with our backup of the parser state before attempting to parse
+                // generic arguments.
+                let snapshot = mem::replace(self, snapshot.unwrap());
+
+                debug!(
+                    "parse_generic_args_with_leading_angle_bracket_recovery: (snapshot failure) \
+                     snapshot.count={:?}",
+                    snapshot.unmatched_angle_bracket_count,
+                );
+
+                // Eat the unmatched angle brackets.
+                for _ in 0..snapshot.unmatched_angle_bracket_count {
+                    self.eat_lt();
+                }
+
+                // Make a span over ${unmatched angle bracket count} characters.
+                let span = lo.with_hi(
+                    lo.lo() + BytePos(snapshot.unmatched_angle_bracket_count)
+                );
+                let plural = snapshot.unmatched_angle_bracket_count > 1;
+                self.diagnostic()
+                    .struct_span_err(
+                        span,
+                        &format!(
+                            "unmatched angle bracket{}",
+                            if plural { "s" } else { "" }
+                        ),
+                    )
+                    .span_suggestion_with_applicability(
+                        span,
+                        &format!(
+                            "remove extra angle bracket{}",
+                            if plural { "s" } else { "" }
+                        ),
+                        String::new(),
+                        Applicability::MachineApplicable,
+                    )
+                    .emit();
+
+                // Try again without unmatched angle bracket characters.
+                self.parse_generic_args()
+            },
+            Err(e) => Err(e),
         }
     }
 
