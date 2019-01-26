@@ -1399,6 +1399,8 @@ options! {DebuggingOptions, DebuggingSetter, basic_debugging_options,
     merge_functions: Option<MergeFunctions> = (None, parse_merge_functions, [TRACKED],
         "control the operation of the MergeFunctions LLVM pass, taking
          the same values as the target option of the same name"),
+    attr_tool: Vec<String> = (Vec::new(), parse_string_push, [TRACKED],
+        "add a tool name for resolving tool attributes `#[tool::anything]`"),
 }
 
 pub fn default_lib_output() -> CrateType {

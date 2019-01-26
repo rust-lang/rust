@@ -1,7 +1,7 @@
 use {AmbiguityError, AmbiguityKind, AmbiguityErrorMisc};
 use {CrateLint, Resolver, ResolutionError, ScopeSet, Weak};
 use {Module, ModuleKind, NameBinding, NameBindingKind, PathResult, Segment, ToNameBinding};
-use {is_known_tool, resolve_error};
+use resolve_error;
 use ModuleOrUniformRoot;
 use Namespace::*;
 use build_reduced_graph::{BuildReducedGraphVisitor, IsMacroExport};
@@ -655,7 +655,7 @@ impl<'a> Resolver<'a> {
                     }
                 }
                 WhereToResolve::ToolPrelude => {
-                    if use_prelude && is_known_tool(ident.name) {
+                    if use_prelude && self.attr_tools.contains(&ident.name) {
                         let binding = (Def::ToolMod, ty::Visibility::Public,
                                        DUMMY_SP, Mark::root()).to_name_binding(self.arenas);
                         Ok((binding, Flags::PRELUDE))

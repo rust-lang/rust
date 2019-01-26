@@ -85,10 +85,6 @@ mod check_unused;
 mod build_reduced_graph;
 mod resolve_imports;
 
-fn is_known_tool(name: Name) -> bool {
-    ["clippy", "rustfmt"].contains(&&*name.as_str())
-}
-
 enum Weak {
     Yes,
     No,
@@ -1477,6 +1473,7 @@ pub struct Resolver<'a> {
 
     prelude: Option<Module<'a>>,
     pub extern_prelude: FxHashMap<Ident, ExternPreludeEntry<'a>>,
+    attr_tools: FxHashSet<Name>,
 
     /// n.b. This is used only for better diagnostics, not name resolution itself.
     has_self: FxHashSet<DefId>,
@@ -1823,6 +1820,11 @@ impl<'a> Resolver<'a> {
             }
         }
 
+        let mut attr_tools: FxHashSet<Name> =
+            session.opts.debugging_opts.attr_tool.iter().map(|tool| Symbol::intern(tool)).collect();
+        attr_tools.insert(Symbol::intern("rustfmt"));
+        attr_tools.insert(Symbol::intern("clippy"));
+
         let mut invocations = FxHashMap::default();
         invocations.insert(Mark::root(),
                            arenas.alloc_invocation_data(InvocationData::root(graph_root)));
@@ -1842,6 +1844,7 @@ impl<'a> Resolver<'a> {
             graph_root,
             prelude: None,
             extern_prelude,
+            attr_tools,
 
             has_self: FxHashSet::default(),
             field_names: FxHashMap::default(),
@@ -2119,7 +2122,7 @@ impl<'a> Resolver<'a> {
                     return Some(LexicalScopeBinding::Item(binding));
                 }
             }
-            if ns == TypeNS && is_known_tool(ident.name) {
+            if ns == TypeNS && self.attr_tools.contains(&ident.name) {
                 let binding = (Def::ToolMod, ty::Visibility::Public,
                                DUMMY_SP, Mark::root()).to_name_binding(self.arenas);
                 return Some(LexicalScopeBinding::Item(binding));
