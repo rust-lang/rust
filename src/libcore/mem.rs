@@ -489,7 +489,6 @@ pub const fn needs_drop<T>() -> bool {
 /// assert_eq!(0, x);
 /// ```
 #[inline]
-#[rustc_deprecated(since = "2.0.0", reason = "use `mem::MaybeUninit::zeroed` instead")]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub unsafe fn zeroed<T>() -> T {
     #[cfg(not(stage0))]
