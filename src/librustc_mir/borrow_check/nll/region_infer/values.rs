@@ -116,14 +116,14 @@ impl RegionValueElements {
     }
 }
 
-/// A single integer representing a `Location` in the MIR control-flow
-/// graph. Constructed efficiently from `RegionValueElements`.
 newtype_index! {
+    /// A single integer representing a `Location` in the MIR control-flow
+    /// graph. Constructed efficiently from `RegionValueElements`.
     pub struct PointIndex { DEBUG_FORMAT = "PointIndex({})" }
 }
 
-/// A single integer representing a `ty::Placeholder`.
 newtype_index! {
+    /// A single integer representing a `ty::Placeholder`.
     pub struct PlaceholderIndex { DEBUG_FORMAT = "PlaceholderIndex({})" }
 }
 
