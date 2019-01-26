@@ -264,7 +264,9 @@ impl Vfs {
                 self.pending_changes.push(change);
             }
             TaskResult::AddSingleFile { root, path, text } => {
-                self.do_add_file(root, path, text, false);
+                if self.find_file(root, &path).is_none() {
+                    self.do_add_file(root, path, text, false);
+                }
             }
             TaskResult::ChangeSingleFile { root, path, text } => {
                 if let Some(file) = self.find_file(root, &path) {
