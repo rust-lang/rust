@@ -7,23 +7,15 @@ extern crate rustc_plugin;
 extern crate syntax;
 
 use rustc_plugin::Registry;
-use syntax::attr;
-use syntax::ext::base::*;
-use syntax::feature_gate::AttributeType::Whitelisted;
-use syntax::symbol::Symbol;
-
 use rustc::hir;
 use rustc::hir::intravisit;
-use rustc::hir::map as hir_map;
 use hir::Node;
 use rustc::lint::{LateContext, LintPass, LintArray, LateLintPass, LintContext};
-use rustc::ty;
 use syntax::{ast, source_map};
 
 #[plugin_registrar]
 pub fn plugin_registrar(reg: &mut Registry) {
     reg.register_late_lint_pass(box MissingWhitelistedAttrPass);
-    reg.register_attribute("whitelisted_attr".to_string(), Whitelisted);
 }
 
 declare_lint!(MISSING_WHITELISTED_ATTR, Deny,
@@ -55,7 +47,10 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for MissingWhitelistedAttrPass {
             _ => cx.tcx.hir().expect_item(cx.tcx.hir().get_parent(id)),
         };
 
-        if !attr::contains_name(&item.attrs, "whitelisted_attr") {
+        if item.attrs.iter().all(|attr| {
+            attr.path.segments.last().map(|seg| seg.ident.name.to_string()) !=
+            Some("whitelisted_attr".to_owned())
+        }) {
             cx.span_lint(MISSING_WHITELISTED_ATTR, span,
                          "Missing 'whitelisted_attr' attribute");
         }

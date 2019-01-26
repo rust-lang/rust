@@ -1286,7 +1286,6 @@ impl GatedCfg {
 struct Context<'a> {
     features: &'a Features,
     parse_sess: &'a ParseSess,
-    plugin_attributes: &'a [(String, AttributeType)],
 }
 
 macro_rules! gate_feature_fn {
@@ -1334,15 +1333,7 @@ impl<'a> Context<'a> {
                 return;
             }
         }
-        for &(ref n, ref ty) in self.plugin_attributes {
-            if attr.path == &**n {
-                // Plugins can't gate attributes, so we don't check for it
-                // unlike the code above; we only use this loop to
-                // short-circuit to avoid the checks below.
-                debug!("check_attribute: {:?} is registered by a plugin, {:?}", attr.path, ty);
-                return;
-            }
-        }
+
         if !attr::is_known(attr) {
             if name.starts_with("rustc_") {
                 let msg = "unless otherwise specified, attributes with the prefix `rustc_` \
@@ -1361,8 +1352,7 @@ impl<'a> Context<'a> {
 }
 
 pub fn check_attribute(attr: &ast::Attribute, parse_sess: &ParseSess, features: &Features) {
-    let cx = Context { features: features, parse_sess: parse_sess, plugin_attributes: &[] };
-    cx.check_attribute(attr, true);
+    Context { features, parse_sess }.check_attribute(attr, true);
 }
 
 fn find_lang_feature_issue(feature: &str) -> Option<u32> {
@@ -2101,17 +2091,11 @@ pub fn get_features(span_handler: &Handler, krate_attrs: &[ast::Attribute],
 }
 
 pub fn check_crate(krate: &ast::Crate,
-                   sess: &ParseSess,
+                   parse_sess: &ParseSess,
                    features: &Features,
-                   plugin_attributes: &[(String, AttributeType)],
                    unstable: UnstableFeatures) {
-    maybe_stage_features(&sess.span_diagnostic, krate, unstable);
-    let ctx = Context {
-        features,
-        parse_sess: sess,
-        plugin_attributes,
-    };
-
+    maybe_stage_features(&parse_sess.span_diagnostic, krate, unstable);
+    let ctx = Context { features, parse_sess };
     let visitor = &mut PostExpansionVisitor { context: &ctx };
     visit::walk_crate(visitor, krate);
 }

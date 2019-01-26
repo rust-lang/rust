@@ -1,6 +1,6 @@
-// aux-build:attr_plugin_test.rs
+// aux-build:basic_plugin.rs
 
-#![plugin(attr_plugin_test)]
+#![plugin(basic_plugin)]
 //~^ ERROR compiler plugins are experimental and possibly buggy
 
 fn main() {}

@@ -877,7 +877,6 @@ where
         late_lint_passes,
         lint_groups,
         llvm_passes,
-        attributes,
         ..
     } = registry;
 
@@ -895,7 +894,6 @@ where
         }
 
         *sess.plugin_llvm_passes.borrow_mut() = llvm_passes;
-        *sess.plugin_attributes.borrow_mut() = attributes.clone();
     })?;
 
     // Lint plugins are registered; now we can process command line flags.
@@ -1079,7 +1077,6 @@ where
             &krate,
             &sess.parse_sess,
             &sess.features_untracked(),
-            &attributes,
             sess.opts.unstable_features,
         );
     });

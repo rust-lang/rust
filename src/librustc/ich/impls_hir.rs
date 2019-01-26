@@ -1016,7 +1016,6 @@ impl_stable_hash_for!(enum hir::def::NonMacroAttrKind {
     Builtin,
     Tool,
     DeriveHelper,
-    LegacyPluginHelper,
     Custom,
 });
 

@@ -451,9 +451,6 @@ impl<'a> Resolver<'a> {
         // 4b. Standard library prelude is currently implemented as `macro-use` (closed, controlled)
         // 5. Language prelude: builtin macros (closed, controlled, except for legacy plugins).
         // 6. Language prelude: builtin attributes (closed, controlled).
-        // 4-6. Legacy plugin helpers (open, not controlled). Similar to derive helpers,
-        //    but introduced by legacy plugins using `register_attribute`. Priority is somewhere
-        //    in prelude, not sure where exactly (creates ambiguities with any other prelude names).
 
         enum WhereToResolve<'a> {
             DeriveHelpers,
@@ -463,7 +460,6 @@ impl<'a> Resolver<'a> {
             MacroUsePrelude,
             BuiltinMacros,
             BuiltinAttrs,
-            LegacyPluginHelpers,
             ExternPrelude,
             ToolPrelude,
             StdLibPrelude,
@@ -630,18 +626,6 @@ impl<'a> Resolver<'a> {
                         Err(Determinacy::Determined)
                     }
                 }
-                WhereToResolve::LegacyPluginHelpers => {
-                    if (use_prelude || rust_2015) &&
-                       self.session.plugin_attributes.borrow().iter()
-                                                     .any(|(name, _)| ident.name == &**name) {
-                        let binding = (Def::NonMacroAttr(NonMacroAttrKind::LegacyPluginHelper),
-                                       ty::Visibility::Public, DUMMY_SP, Mark::root())
-                                       .to_name_binding(self.arenas);
-                        Ok((binding, Flags::PRELUDE))
-                    } else {
-                        Err(Determinacy::Determined)
-                    }
-                }
                 WhereToResolve::ExternPrelude => {
                     if use_prelude || is_absolute_path {
                         match self.extern_prelude_get(ident, !record_used) {
@@ -704,8 +688,6 @@ impl<'a> Resolver<'a> {
                         if def != innermost_def {
                             let builtin = Def::NonMacroAttr(NonMacroAttrKind::Builtin);
                             let derive_helper = Def::NonMacroAttr(NonMacroAttrKind::DeriveHelper);
-                            let legacy_helper =
-                                Def::NonMacroAttr(NonMacroAttrKind::LegacyPluginHelper);
 
                             let ambiguity_error_kind = if is_import {
                                 Some(AmbiguityKind::Import)
@@ -715,11 +697,6 @@ impl<'a> Resolver<'a> {
                                 Some(AmbiguityKind::BuiltinAttr)
                             } else if innermost_def == derive_helper || def == derive_helper {
                                 Some(AmbiguityKind::DeriveHelper)
-                            } else if innermost_def == legacy_helper &&
-                                      flags.contains(Flags::PRELUDE) ||
-                                      def == legacy_helper &&
-                                      innermost_flags.contains(Flags::PRELUDE) {
-                                Some(AmbiguityKind::LegacyHelperVsPrelude)
                             } else if innermost_flags.contains(Flags::MACRO_RULES) &&
                                       flags.contains(Flags::MODULE) &&
                                       !self.disambiguate_legacy_vs_modern(innermost_binding,
@@ -807,8 +784,7 @@ impl<'a> Resolver<'a> {
                 }
                 WhereToResolve::MacroUsePrelude => WhereToResolve::BuiltinMacros,
                 WhereToResolve::BuiltinMacros => WhereToResolve::BuiltinAttrs,
-                WhereToResolve::BuiltinAttrs => WhereToResolve::LegacyPluginHelpers,
-                WhereToResolve::LegacyPluginHelpers => break, // nowhere else to search
+                WhereToResolve::BuiltinAttrs => break, // nowhere else to search
                 WhereToResolve::ExternPrelude if is_absolute_path => break,
                 WhereToResolve::ExternPrelude => WhereToResolve::ToolPrelude,
                 WhereToResolve::ToolPrelude => WhereToResolve::StdLibPrelude,

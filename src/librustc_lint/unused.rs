@@ -254,29 +254,14 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for UnusedAttributes {
             }
         }
 
-        let plugin_attributes = cx.sess().plugin_attributes.borrow_mut();
-        for &(ref name, ty) in plugin_attributes.iter() {
-            if ty == AttributeType::Whitelisted && attr.check_name(&name) {
-                debug!("{:?} (plugin attr) is whitelisted with ty {:?}", name, ty);
-                break;
-            }
-        }
-
         let name = attr.name();
         if !attr::is_used(attr) {
             debug!("Emitting warning for: {:?}", attr);
             cx.span_lint(UNUSED_ATTRIBUTES, attr.span, "unused attribute");
             // Is it a builtin attribute that must be used at the crate level?
-            let known_crate = BUILTIN_ATTRIBUTES.iter()
-                .find(|&&(builtin, ty, ..)| name == builtin && ty == AttributeType::CrateLevel)
-                .is_some();
-
-            // Has a plugin registered this attribute as one that must be used at
-            // the crate level?
-            let plugin_crate = plugin_attributes.iter()
-                .find(|&&(ref x, t)| name == &**x && AttributeType::CrateLevel == t)
-                .is_some();
-            if known_crate || plugin_crate {
+            if BUILTIN_ATTRIBUTES.iter().any(|(builtin, ty, ..)| {
+                &name == builtin && ty == &AttributeType::CrateLevel
+            }) {
                 let msg = match attr.style {
                     ast::AttrStyle::Outer => {
                         "crate-level attribute should be an inner attribute: add an exclamation \
