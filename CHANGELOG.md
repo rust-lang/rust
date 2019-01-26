@@ -10,8 +10,8 @@ All notable changes to this project will be documented in this file.
 
 [2e26fdc2...b2601be](https://github.com/rust-lang/rust-clippy/compare/2e26fdc2...b2601be)
 
-* New lints: [`slow_vector_initialization`], [`unsafe_vector_initialization`],
-  [`mem_discriminant_non_enum`], [`redundant_clone`], [`wildcard_dependencies`],
+* New lints: [`slow_vector_initialization`], [`mem_discriminant_non_enum`],
+  [`redundant_clone`], [`wildcard_dependencies`],
   [`into_iter_on_ref`], [`into_iter_on_array`], [`deprecated_cfg_attr`],
   [`mem_discriminant_non_enum`], [`cargo_common_metadata`]
 * Add support for `u128` and `i128` to integer related lints
