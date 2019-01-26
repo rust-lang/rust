@@ -251,9 +251,15 @@ impl NiceRegionError<'me, 'gcx, 'tcx> {
             }
         });
 
-        let self_ty_has_vid = self
+        let actual_self_ty_has_vid = self
             .tcx()
             .any_free_region_meets(&actual_trait_ref.self_ty(), |r| Some(r) == vid);
+
+        let expected_self_ty_has_vid = self
+            .tcx()
+            .any_free_region_meets(&expected_trait_ref.self_ty(), |r| Some(r) == vid);
+
+        let self_ty_has_vid = actual_self_ty_has_vid || expected_self_ty_has_vid;
 
         debug!(
             "try_report_placeholders_trait: actual_has_vid={:?}",
@@ -266,8 +272,12 @@ impl NiceRegionError<'me, 'gcx, 'tcx> {
         debug!("try_report_placeholders_trait: has_sub={:?}", has_sub);
         debug!("try_report_placeholders_trait: has_sup={:?}", has_sup);
         debug!(
-            "try_report_placeholders_trait: self_ty_has_vid={:?}",
-            self_ty_has_vid
+            "try_report_placeholders_trait: actual_self_ty_has_vid={:?}",
+            actual_self_ty_has_vid
+        );
+        debug!(
+            "try_report_placeholders_trait: expected_self_ty_has_vid={:?}",
+            expected_self_ty_has_vid
         );
 
         // The weird thing here with the `maybe_highlighting_region` calls and the
@@ -289,23 +299,43 @@ impl NiceRegionError<'me, 'gcx, 'tcx> {
             RegionHighlightMode::maybe_highlighting_region(sup_placeholder, has_sup, || {
                 match (has_sub, has_sup) {
                     (Some(n1), Some(n2)) => {
-                        err.note(&format!(
-                            "`{}` would have to be implemented for the type `{}`, \
-                             for any two lifetimes `'{}` and `'{}`",
-                            expected_trait_ref,
-                            expected_trait_ref.self_ty(),
-                            std::cmp::min(n1, n2),
-                            std::cmp::max(n1, n2),
-                        ));
+                        if self_ty_has_vid {
+                            err.note(&format!(
+                                "`{}` would have to be implemented for the type `{}`, \
+                                 for any two lifetimes `'{}` and `'{}`",
+                                expected_trait_ref,
+                                expected_trait_ref.self_ty(),
+                                std::cmp::min(n1, n2),
+                                std::cmp::max(n1, n2),
+                            ));
+                        } else {
+                            err.note(&format!(
+                                "`{}` must implement `{}`, \
+                                 for any two lifetimes `'{}` and `'{}`",
+                                expected_trait_ref.self_ty(),
+                                expected_trait_ref,
+                                std::cmp::min(n1, n2),
+                                std::cmp::max(n1, n2),
+                            ));
+                        }
                     }
                     (Some(n), _) | (_, Some(n)) => {
-                        err.note(&format!(
-                            "`{}` would have to be implemented for the type `{}`, \
-                             for any lifetime `'{}`",
-                            expected_trait_ref,
-                            expected_trait_ref.self_ty(),
-                            n,
-                        ));
+                        if self_ty_has_vid {
+                            err.note(&format!(
+                                "`{}` would have to be implemented for the type `{}`, \
+                                 for any lifetime `'{}`",
+                                expected_trait_ref,
+                                expected_trait_ref.self_ty(),
+                                n,
+                            ));
+                        } else {
+                            err.note(&format!(
+                                "`{}` must implement `{}`, for any lifetime `'{}`",
+                                expected_trait_ref.self_ty(),
+                                expected_trait_ref,
+                                n,
+                            ));
+                        }
                     }
                     (None, None) => RegionHighlightMode::maybe_highlighting_region(
                         vid,
@@ -320,11 +350,19 @@ impl NiceRegionError<'me, 'gcx, 'tcx> {
                                     n,
                                 ));
                             } else {
-                                err.note(&format!(
-                                    "`{}` would have to be implemented for the type `{}`",
-                                    expected_trait_ref,
-                                    expected_trait_ref.self_ty(),
-                                ));
+                                if self_ty_has_vid {
+                                    err.note(&format!(
+                                        "`{}` would have to be implemented for the type `{}`",
+                                        expected_trait_ref,
+                                        expected_trait_ref.self_ty(),
+                                    ));
+                                } else {
+                                    err.note(&format!(
+                                        "`{}` must implement `{}`",
+                                        expected_trait_ref.self_ty(),
+                                        expected_trait_ref,
+                                    ));
+                                }
                             }
                         },
                     ),
@@ -347,10 +385,9 @@ impl NiceRegionError<'me, 'gcx, 'tcx> {
                         ));
                     } else {
                         err.note(&format!(
-                            "but `{}` is actually implemented for the type `{}`, \
-                             for some lifetime `'{}`",
-                            actual_trait_ref,
+                            "but `{}` actually implements `{}`, for some lifetime `'{}`",
                             actual_trait_ref.self_ty(),
+                            actual_trait_ref,
                             n
                         ));
                     }

@@ -5,8 +5,8 @@ LL |     foo_hrtb_bar_not(&mut t); //~ ERROR not general enough
    |     ^^^^^^^^^^^^^^^^
    |
    = note: Due to a where-clause on `foo_hrtb_bar_not`,
-   = note: `Foo<&'0 isize>` would have to be implemented for the type `&mut T`, for any lifetime `'0`
-   = note: but `Foo<&'1 isize>` is actually implemented for the type `&mut T`, for some lifetime `'1`
+   = note: `&mut T` must implement `Foo<&'0 isize>`, for any lifetime `'0`
+   = note: but `&mut T` actually implements `Foo<&'1 isize>`, for some lifetime `'1`
 
 error: aborting due to previous error
 

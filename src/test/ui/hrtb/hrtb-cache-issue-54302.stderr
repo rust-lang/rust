@@ -4,8 +4,8 @@ error: implementation of `Deserialize` is not general enough
 LL |     assert_deserialize_owned::<&'static str>(); //~ ERROR
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-   = note: `Deserialize<'0>` would have to be implemented for the type `&'static str`, for any lifetime `'0`
-   = note: but `Deserialize<'1>` is actually implemented for the type `&str`, for some lifetime `'1`
+   = note: `&'static str` must implement `Deserialize<'0>`, for any lifetime `'0`
+   = note: but `&str` actually implements `Deserialize<'1>`, for some lifetime `'1`
 
 error: aborting due to previous error
 
