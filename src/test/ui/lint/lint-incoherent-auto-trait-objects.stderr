@@ -1,3 +1,21 @@
+warning: duplicate auto trait `Send` found in type parameter bounds
+  --> $DIR/lint-incoherent-auto-trait-objects.rs:7:18
+   |
+LL | impl Foo for dyn Send + Send {}
+   |                  ^^^^   ^^^^ subsequent use of auto trait
+   |                  |
+   |                  first use of auto trait
+   |
+   = note: #[warn(duplicate_auto_traits_in_bounds)] on by default
+
+warning: duplicate auto trait `Send` found in type parameter bounds
+  --> $DIR/lint-incoherent-auto-trait-objects.rs:18:18
+   |
+LL | impl Foo for dyn Send + Sync + Send {}
+   |                  ^^^^          ^^^^ subsequent use of auto trait
+   |                  |
+   |                  first use of auto trait
+
 error: conflicting implementations of trait `Foo` for type `(dyn std::marker::Send + 'static)`: (E0119)
   --> $DIR/lint-incoherent-auto-trait-objects.rs:7:1
    |

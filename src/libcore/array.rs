@@ -9,6 +9,8 @@
                       integer constants",
             issue = "27778")]
 
+#![cfg_attr(not(stage0), allow(duplicate_bounds))]
+
 use borrow::{Borrow, BorrowMut};
 use cmp::Ordering;
 use convert::TryFrom;

@@ -22,12 +22,11 @@ use middle::lang_items::SizedTraitLangItem;
 use middle::resolve_lifetime as rl;
 use middle::weak_lang_items;
 use rustc::mir::mono::Linkage;
+use rustc::ty::{self, AdtKind, Binder, Predicate, ToPolyTraitRef, Ty, TyCtxt};
 use rustc::ty::query::Providers;
 use rustc::ty::query::queries;
 use rustc::ty::subst::Substs;
-use rustc::ty::util::Discr;
-use rustc::ty::util::IntTypeExt;
-use rustc::ty::{self, AdtKind, ToPolyTraitRef, Ty, TyCtxt};
+use rustc::ty::util::{Discr, IntTypeExt};
 use rustc::ty::{ReprOptions, ToPredicate};
 use rustc::util::captures::Captures;
 use rustc::util::nodemap::FxHashMap;
@@ -50,8 +49,64 @@ use rustc::hir::GenericParamKind;
 use rustc::hir::{self, CodegenFnAttrFlags, CodegenFnAttrs, Unsafety};
 
 use std::iter;
+use std::ops::Range;
 
 struct OnlySelfBounds(bool);
+
+#[derive(Debug, PartialEq, Eq, PartialOrd, Ord)]
+pub enum LintedBoundVar<'tcx> {
+    DefId(DefId),
+    SelfTy,
+    Ty(Binder<Ty<'tcx>>),
+    Region(Binder<ty::Region<'tcx>>),
+}
+
+#[derive(Debug, PartialEq, Eq, PartialOrd, Ord)]
+pub enum LintedBoundValue<'tcx> {
+    DefId(DefId),
+    Ty(Binder<Ty<'tcx>>),
+    Region(Binder<ty::Region<'tcx>>),
+}
+
+pub fn lint_duplicate_bounds<'a, 'gcx, 'tcx>(
+    tcx: TyCtxt<'a, 'gcx, 'tcx>,
+    node_id: ast::NodeId,
+    bounds: impl IntoIterator<Item = (LintedBoundVar<'tcx>, LintedBoundValue<'tcx>, Span)>,
+) {
+    let mut bounds: Vec<_> = bounds.into_iter().collect();
+    bounds.sort_unstable();
+
+    let emit_lint = |range: Range<usize>| {
+        let bound_name = tcx.sess.source_map()
+                            .span_to_snippet(bounds[range.start].2).unwrap();
+        let mut err = tcx.struct_span_lint_node(
+            lint::builtin::DUPLICATE_BOUNDS,
+            node_id,
+            bounds[range.clone()].iter().map(|(_, _, sp)| *sp).collect::<Vec<_>>(),
+            &format!("duplicate bound `{}` found",
+                     bound_name));
+        debug!("zzz: 1: {:?} / {:?}", bounds[range.start].0, bounds[range.start].1);
+        err.span_label(bounds[range.start].2, "first use of bound");
+        for i in (range.start + 1)..range.end {
+            debug!("zzz: 2: {:?} / {:?}", bounds[i].0, bounds[i].1);
+            err.span_label(bounds[i].2, "subsequent use of bound");
+        }
+        err.emit();
+    };
+
+    let mut seq_start = 0;
+    for i in 1..bounds.len() {
+        if (&bounds[i].0, &bounds[i].1) != (&bounds[i - 1].0, &bounds[i - 1].1) {
+            if i - seq_start > 1 {
+                emit_lint(seq_start..i);
+            }
+            seq_start = i;
+        }
+    }
+    if bounds.len() - seq_start > 1 {
+        emit_lint(seq_start..bounds.len());
+    }
+}
 
 ///////////////////////////////////////////////////////////////////////////
 // Main entry point
@@ -336,7 +391,7 @@ impl<'a, 'tcx> ItemCtxt<'a, 'tcx> {
         param_id: ast::NodeId,
         ty: Ty<'tcx>,
         only_self_bounds: OnlySelfBounds,
-    ) -> Vec<(ty::Predicate<'tcx>, Span)> {
+    ) -> Vec<(Predicate<'tcx>, Span)> {
         let from_ty_params = ast_generics
             .params
             .iter()
@@ -726,7 +781,7 @@ fn super_predicates_of<'a, 'tcx>(
     // which will, in turn, reach indirect supertraits.
     for &(pred, span) in &superbounds {
         debug!("superbound: {:?}", pred);
-        if let ty::Predicate::Trait(bound) = pred {
+        if let Predicate::Trait(bound) = pred {
             tcx.at(span).super_predicates_of(bound.def_id());
         }
     }
@@ -1672,8 +1727,8 @@ fn explicit_predicates_of<'a, 'tcx>(
     /// Preserving the order of insertion is important here so as not to break
     /// compile-fail UI tests.
     struct UniquePredicates<'tcx> {
-        predicates: Vec<(ty::Predicate<'tcx>, Span)>,
-        uniques: FxHashSet<(ty::Predicate<'tcx>, Span)>,
+        predicates: Vec<(Predicate<'tcx>, Span)>,
+        uniques: FxHashSet<(Predicate<'tcx>, Span)>,
     }
 
     impl<'tcx> UniquePredicates<'tcx> {
@@ -1684,13 +1739,13 @@ fn explicit_predicates_of<'a, 'tcx>(
             }
         }
 
-        fn push(&mut self, value: (ty::Predicate<'tcx>, Span)) {
+        fn push(&mut self, value: (Predicate<'tcx>, Span)) {
             if self.uniques.insert(value) {
                 self.predicates.push(value);
             }
         }
 
-        fn extend<I: IntoIterator<Item = (ty::Predicate<'tcx>, Span)>>(&mut self, iter: I) {
+        fn extend<I: IntoIterator<Item = (Predicate<'tcx>, Span)>>(&mut self, iter: I) {
             for value in iter {
                 self.push(value);
             }
@@ -1884,7 +1939,7 @@ fn explicit_predicates_of<'a, 'tcx>(
                         let span = bound_pred.bounded_ty.span;
                         let predicate = ty::OutlivesPredicate(ty, tcx.mk_region(ty::ReEmpty));
                         predicates.push(
-                            (ty::Predicate::TypeOutlives(ty::Binder::dummy(predicate)), span)
+                            (Predicate::TypeOutlives(ty::Binder::dummy(predicate)), span)
                         );
                     }
                 }
@@ -1910,7 +1965,7 @@ fn explicit_predicates_of<'a, 'tcx>(
                         &hir::GenericBound::Outlives(ref lifetime) => {
                             let region = AstConv::ast_region_to_region(&icx, lifetime, None);
                             let pred = ty::Binder::bind(ty::OutlivesPredicate(ty, region));
-                            predicates.push((ty::Predicate::TypeOutlives(pred), lifetime.span))
+                            predicates.push((Predicate::TypeOutlives(pred), lifetime.span))
                         }
                     }
                 }
@@ -1927,7 +1982,7 @@ fn explicit_predicates_of<'a, 'tcx>(
                     };
                     let pred = ty::Binder::bind(ty::OutlivesPredicate(r1, r2));
 
-                    (ty::Predicate::RegionOutlives(pred), span)
+                    (Predicate::RegionOutlives(pred), span)
                 }))
             }
 
@@ -1982,6 +2037,26 @@ fn explicit_predicates_of<'a, 'tcx>(
             &mut ctp::parameters_for_impl(self_ty, trait_ref),
         );
     }
+
+    // Lint duplicate bounds.
+    let bounds = predicates.iter().filter_map(|(pred, sp)| {
+        match pred {
+            Predicate::Trait(ref pred) =>
+                Some((LintedBoundVar::Ty(pred.self_ty()),
+                      LintedBoundValue::DefId(pred.def_id()), *sp)),
+            Predicate::RegionOutlives(ref pred) =>
+                Some((LintedBoundVar::Region(pred.var()),
+                      LintedBoundValue::Region(pred.value()), *sp)),
+            Predicate::TypeOutlives(ref pred) =>
+                Some((LintedBoundVar::Ty(pred.var()),
+                      LintedBoundValue::Region(pred.value()), *sp)),
+            Predicate::Projection(ref pred) =>
+                Some((LintedBoundVar::DefId(pred.item_def_id()),
+                      LintedBoundValue::Ty(pred.ty()), *sp)),
+            _ => None,
+        }
+    });
+    lint_duplicate_bounds(tcx, node_id, bounds);
 
     let result = Lrc::new(ty::GenericPredicates {
         parent: generics.parent,
@@ -2062,7 +2137,7 @@ fn predicates_from_bound<'tcx>(
     astconv: &dyn AstConv<'tcx, 'tcx>,
     param_ty: Ty<'tcx>,
     bound: &hir::GenericBound,
-) -> Vec<(ty::Predicate<'tcx>, Span)> {
+) -> Vec<(Predicate<'tcx>, Span)> {
     match *bound {
         hir::GenericBound::Trait(ref tr, hir::TraitBoundModifier::None) => {
             let mut projections = Vec::new();
@@ -2076,7 +2151,7 @@ fn predicates_from_bound<'tcx>(
         hir::GenericBound::Outlives(ref lifetime) => {
             let region = astconv.ast_region_to_region(lifetime, None);
             let pred = ty::Binder::bind(ty::OutlivesPredicate(param_ty, region));
-            vec![(ty::Predicate::TypeOutlives(pred), lifetime.span)]
+            vec![(Predicate::TypeOutlives(pred), lifetime.span)]
         }
         hir::GenericBound::Trait(_, hir::TraitBoundModifier::Maybe) => vec![],
     }

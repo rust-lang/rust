@@ -1,11 +1,37 @@
-error[E0592]: duplicate definitions with name `test`
-  --> $DIR/trait-object-auto-dedup-in-impl.rs:14:5
+warning: duplicate auto trait `Send` found in type parameter bounds
+  --> $DIR/trait-object-auto-dedup-in-impl.rs:13:22
    |
-LL |     fn test(&self) { println!("one"); } //~ ERROR duplicate definitions with name `test`
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ duplicate definitions for `test`
+LL | type Send2 = Trait + Send + Send;
+   |                      ^^^^   ^^^^ subsequent use of auto trait
+   |                      |
+   |                      first use of auto trait
+   |
+   = note: #[warn(duplicate_auto_traits_in_bounds)] on by default
+
+warning: duplicate auto trait `Send` found in type parameter bounds
+  --> $DIR/trait-object-auto-dedup-in-impl.rs:25:14
+   |
+LL | impl Trait + Send + Send {
+   |              ^^^^   ^^^^ subsequent use of auto trait
+   |              |
+   |              first use of auto trait
+   |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #56522 <https://github.com/rust-lang/rust/issues/56522>
+
+error[E0592]: duplicate definitions with name `test`
+  --> $DIR/trait-object-auto-dedup-in-impl.rs:20:5
+   |
+LL | /     fn test(&self) {
+LL | |     //~^ ERROR duplicate definitions with name `test`
+LL | |         println!("one");
+LL | |     }
+   | |_____^ duplicate definitions for `test`
 ...
-LL |     fn test(&self) { println!("two"); }
-   |     ----------------------------------- other definition for `test`
+LL | /     fn test(&self) {
+LL | |         println!("two");
+LL | |     }
+   | |_____- other definition for `test`
 
 error: aborting due to previous error
 

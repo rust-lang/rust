@@ -47,7 +47,7 @@ use rustc::hir::{self, GenericParamKind, PatKind};
 
 use nonstandard_style::{MethodLateContext, method_context};
 
-// hardwired lints from librustc
+// Hardwired lints from librustc.
 pub use lint::builtin::*;
 
 declare_lint! {

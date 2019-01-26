@@ -32,6 +32,7 @@ use std::collections::BTreeSet;
 use std::iter;
 use std::slice;
 
+use crate::collect::{lint_duplicate_bounds, LintedBoundVar, LintedBoundValue};
 use super::{check_type_alias_enum_variants_enabled};
 use rustc_data_structures::fx::FxHashSet;
 
@@ -940,6 +941,7 @@ impl<'o, 'gcx: 'tcx, 'tcx> dyn AstConv<'gcx, 'tcx> + 'o {
     }
 
     fn conv_object_ty_poly_trait_ref(&self,
+        node_id: ast::NodeId,
         span: Span,
         trait_bounds: &[hir::PolyTraitRef],
         lifetime: &hir::Lifetime)
@@ -978,6 +980,15 @@ impl<'o, 'gcx: 'tcx, 'tcx> dyn AstConv<'gcx, 'tcx> + 'o {
                 "only auto traits can be used as additional traits in a trait object")
                 .span_label(span, "non-auto additional trait")
                 .emit();
+        }
+
+        // Lint duplicate bounds.
+        {
+            let bounds = trait_bounds.iter().filter_map(|b| {
+                let trait_did = b.trait_ref.trait_def_id();
+                Some((LintedBoundVar::SelfTy, LintedBoundValue::DefId(trait_did), b.span))
+            });
+            lint_duplicate_bounds(tcx, node_id, bounds);
         }
 
         // Check that there are no gross object safety violations;
@@ -1767,7 +1778,7 @@ impl<'o, 'gcx: 'tcx, 'tcx> dyn AstConv<'gcx, 'tcx> + 'o {
                 tcx.mk_fn_ptr(self.ty_of_fn(bf.unsafety, bf.abi, &bf.decl))
             }
             hir::TyKind::TraitObject(ref bounds, ref lifetime) => {
-                self.conv_object_ty_poly_trait_ref(ast_ty.span, bounds, lifetime)
+                self.conv_object_ty_poly_trait_ref(ast_ty.id, ast_ty.span, bounds, lifetime)
             }
             hir::TyKind::Path(hir::QPath::Resolved(ref maybe_qself, ref path)) => {
                 debug!("ast_ty_to_ty: maybe_qself={:?} path={:?}", maybe_qself, path);

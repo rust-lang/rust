@@ -1,3 +1,4 @@
+use errors::DiagnosticBuilder;
 use hir;
 use hir::def_id::DefId;
 use traits::specialize::specialization_graph::NodeItem;

@@ -1212,17 +1212,31 @@ impl<'tcx> PolyTraitPredicate<'tcx> {
         // ok to skip binder since trait def-id does not care about regions
         self.skip_binder().def_id()
     }
+
+    pub fn self_ty(&self) -> Binder<Ty<'tcx>> {
+        self.map_bound(|p| p.self_ty())
+    }
 }
 
 #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Debug, RustcEncodable, RustcDecodable)]
-pub struct OutlivesPredicate<A,B>(pub A, pub B); // `A: B`
-pub type PolyOutlivesPredicate<A,B> = ty::Binder<OutlivesPredicate<A,B>>;
+pub struct OutlivesPredicate<A, B>(pub A, pub B); // `A: B`
+pub type PolyOutlivesPredicate<A, B> = ty::Binder<OutlivesPredicate<A, B>>;
 pub type RegionOutlivesPredicate<'tcx> = OutlivesPredicate<ty::Region<'tcx>,
                                                            ty::Region<'tcx>>;
 pub type TypeOutlivesPredicate<'tcx> = OutlivesPredicate<Ty<'tcx>,
                                                          ty::Region<'tcx>>;
 pub type PolyRegionOutlivesPredicate<'tcx> = ty::Binder<RegionOutlivesPredicate<'tcx>>;
 pub type PolyTypeOutlivesPredicate<'tcx> = ty::Binder<TypeOutlivesPredicate<'tcx>>;
+
+impl<A: Copy, B: Copy> PolyOutlivesPredicate<A, B> {
+    pub fn var(&self) -> Binder<A> {
+        self.map_bound(|pred| pred.0)
+    }
+
+    pub fn value(&self) -> Binder<B> {
+        self.map_bound(|pred| pred.1)
+    }
+}
 
 #[derive(Clone, Copy, PartialEq, Eq, Hash, Debug, RustcEncodable, RustcDecodable)]
 pub struct SubtypePredicate<'tcx> {
@@ -1265,11 +1279,11 @@ impl<'tcx> PolyProjectionPredicate<'tcx> {
         // This is because here `self` has a `Binder` and so does our
         // return value, so we are preserving the number of binding
         // levels.
-        self.map_bound(|predicate| predicate.projection_ty.trait_ref(tcx))
+        self.map_bound(|pred| pred.projection_ty.trait_ref(tcx))
     }
 
     pub fn ty(&self) -> Binder<Ty<'tcx>> {
-        self.map_bound(|predicate| predicate.ty)
+        self.map_bound(|pred| pred.ty)
     }
 
     /// The `DefId` of the `TraitItem` for the associated type.

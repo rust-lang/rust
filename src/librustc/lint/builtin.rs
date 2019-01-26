@@ -346,6 +346,19 @@ declare_lint! {
     "outlives requirements can be inferred"
 }
 
+declare_lint! {
+    pub DEPRECATED_IN_FUTURE,
+    Allow,
+    "detects use of items that will be deprecated in a future version",
+    report_in_external_macro: true
+}
+
+declare_lint! {
+    pub DUPLICATE_BOUNDS,
+    Warn,
+    "detects duplicate bounds on type parameters, lifetime parameters, and projections"
+}
+
 /// Some lints that are buffered from `libsyntax`. See `syntax::early_buffered_lints`.
 pub mod parser {
     declare_lint! {
@@ -440,6 +453,8 @@ impl LintPass for HardwiredLints {
             parser::ILL_FORMED_ATTRIBUTE_INPUT,
             DEPRECATED_IN_FUTURE,
             AMBIGUOUS_ASSOCIATED_ITEMS,
+            DUPLICATE_BOUNDS,
+            parser::QUESTION_MARK_MACRO_SEP,
         )
     }
 }
