@@ -27,10 +27,5 @@ pub trait Docs {
 }
 
 pub(crate) fn docs_from_ast(node: &impl ast::DocCommentsOwner) -> Option<Documentation> {
-    let comments = node.doc_comment_text();
-    if comments.is_empty() {
-        None
-    } else {
-        Some(Documentation::new(&comments))
-    }
+    node.doc_comment_text().map(|it| Documentation::new(&it))
 }

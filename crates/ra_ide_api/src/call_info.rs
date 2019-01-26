@@ -120,8 +120,7 @@ impl CallInfo {
         };
 
         let mut doc = None;
-        let docs = node.doc_comment_text();
-        if !docs.is_empty() {
+        if let Some(docs) = node.doc_comment_text() {
             // Massage markdown
             let mut processed_lines = Vec::new();
             let mut in_code_block = false;

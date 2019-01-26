@@ -117,8 +117,9 @@ pub trait DocCommentsOwner: AstNode {
     /// Returns the textual content of a doc comment block as a single string.
     /// That is, strips leading `///` (+ optional 1 character of whitespace)
     /// and joins lines.
-    fn doc_comment_text(&self) -> std::string::String {
-        self.doc_comments()
+    fn doc_comment_text(&self) -> Option<std::string::String> {
+        let docs = self
+            .doc_comments()
             .filter(|comment| comment.is_doc_comment())
             .map(|comment| {
                 let prefix_len = comment.prefix().len();
@@ -139,7 +140,13 @@ pub trait DocCommentsOwner: AstNode {
 
                 line[pos..].to_owned()
             })
-            .join("\n")
+            .join("\n");
+
+        if docs.is_empty() {
+            None
+        } else {
+            Some(docs)
+        }
     }
 }
 
@@ -700,6 +707,18 @@ impl BindPat {
 }
 
 #[test]
+fn test_doc_comment_none() {
+    let file = SourceFile::parse(
+        r#"
+        // non-doc
+        mod foo {}
+        "#,
+    );
+    let module = file.syntax().descendants().find_map(Module::cast).unwrap();
+    assert!(module.doc_comment_text().is_none());
+}
+
+#[test]
 fn test_doc_comment_of_items() {
     let file = SourceFile::parse(
         r#"
@@ -709,7 +728,7 @@ fn test_doc_comment_of_items() {
         "#,
     );
     let module = file.syntax().descendants().find_map(Module::cast).unwrap();
-    assert_eq!("doc", module.doc_comment_text());
+    assert_eq!("doc", module.doc_comment_text().unwrap());
 }
 
 #[test]
@@ -728,6 +747,6 @@ fn test_doc_comment_preserves_indents() {
     let module = file.syntax().descendants().find_map(Module::cast).unwrap();
     assert_eq!(
         "doc1\n```\nfn foo() {\n    // ...\n}\n```",
-        module.doc_comment_text()
+        module.doc_comment_text().unwrap()
     );
 }

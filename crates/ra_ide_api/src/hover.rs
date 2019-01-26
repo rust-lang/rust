@@ -100,12 +100,7 @@ impl NavigationTarget {
     fn docs(&self, db: &RootDatabase) -> Option<String> {
         let node = self.node(db)?;
         fn doc_comments<N: ast::DocCommentsOwner>(node: &N) -> Option<String> {
-            let comments = node.doc_comment_text();
-            if comments.is_empty() {
-                None
-            } else {
-                Some(comments)
-            }
+            node.doc_comment_text()
         }
 
         visitor()
