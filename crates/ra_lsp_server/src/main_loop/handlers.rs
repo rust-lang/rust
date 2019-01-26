@@ -520,10 +520,17 @@ pub fn handle_formatting(
     let end_position = TextUnit::of_str(&file).conv_with(&file_line_index);
 
     use std::process;
-    let mut rustfmt = process::Command::new("rustfmt")
+    let mut rustfmt = process::Command::new("rustfmt");
+    rustfmt
         .stdin(process::Stdio::piped())
-        .stdout(process::Stdio::piped())
-        .spawn()?;
+        .stdout(process::Stdio::piped());
+
+    if let Ok(path) = params.text_document.uri.to_file_path() {
+        if let Some(parent) = path.parent() {
+            rustfmt.current_dir(parent);
+        }
+    }
+    let mut rustfmt = rustfmt.spawn()?;
 
     rustfmt.stdin.as_mut().unwrap().write_all(file.as_bytes())?;
 
@@ -531,7 +538,9 @@ pub fn handle_formatting(
     let captured_stdout = String::from_utf8(output.stdout)?;
     if !output.status.success() {
         failure::bail!(
-            "rustfmt exited with error code {}: {}.",
+            r#"rustfmt exited with:
+            Status: {}
+            stdout: {}"#,
             output.status,
             captured_stdout,
         );
