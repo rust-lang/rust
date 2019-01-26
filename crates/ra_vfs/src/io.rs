@@ -1,11 +1,11 @@
 use std::{
     fs,
+    thread,
     path::{Path, PathBuf},
     sync::{mpsc, Arc},
-    thread,
     time::Duration,
 };
-use crossbeam_channel::{Receiver, Sender, SendError};
+use crossbeam_channel::{Receiver, Sender};
 use relative_path::RelativePathBuf;
 use thread_worker::WorkerHandle;
 use walkdir::WalkDir;
@@ -13,6 +13,8 @@ use parking_lot::Mutex;
 use notify::{DebouncedEvent, RecommendedWatcher, RecursiveMode, Watcher as _Watcher};
 
 use crate::{RootConfig, Roots, VfsRoot};
+
+type Result<T> = std::result::Result<T, crossbeam_channel::SendError<TaskResult>>;
 
 pub(crate) enum Task {
     AddRoot {
@@ -112,11 +114,7 @@ impl Worker {
     }
 }
 
-fn watch_root(
-    woker: &WatcherCtx,
-    root: VfsRoot,
-    config: Arc<RootConfig>,
-) -> Result<(), SendError<TaskResult>> {
+fn watch_root(woker: &WatcherCtx, root: VfsRoot, config: Arc<RootConfig>) -> Result<()> {
     let mut guard = woker.watcher.lock();
     log::debug!("loading {} ...", config.root.as_path().display());
     let files = watch_recursive(guard.as_mut(), config.root.as_path(), &*config)
@@ -142,7 +140,7 @@ struct WatcherCtx {
 }
 
 impl WatcherCtx {
-    fn handle_debounced_event(&self, ev: DebouncedEvent) -> Result<(), SendError<TaskResult>> {
+    fn handle_debounced_event(&self, ev: DebouncedEvent) -> Result<()> {
         match ev {
             DebouncedEvent::NoticeWrite(_)
             | DebouncedEvent::NoticeRemove(_)
@@ -173,7 +171,7 @@ impl WatcherCtx {
         Ok(())
     }
 
-    fn handle_change(&self, path: PathBuf, kind: ChangeKind) -> Result<(), SendError<TaskResult>> {
+    fn handle_change(&self, path: PathBuf, kind: ChangeKind) -> Result<()> {
         let (root, rel_path) = match self.roots.find(&path) {
             None => return Ok(()),
             Some(it) => it,
