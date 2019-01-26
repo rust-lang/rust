@@ -5134,60 +5134,59 @@ impl<'a> Resolver<'a> {
         );
 
         // See https://github.com/rust-lang/rust/issues/32354
-        if old_binding.is_import() || new_binding.is_import() {
-            let binding = if new_binding.is_import() && !new_binding.span.is_dummy() {
-                new_binding
+        let directive = match (&new_binding.kind, &old_binding.kind) {
+            (NameBindingKind::Import { directive, .. }, _) if !new_binding.span.is_dummy() =>
+                Some((directive, new_binding.span)),
+            (_, NameBindingKind::Import { directive, .. }) if !old_binding.span.is_dummy() =>
+                Some((directive, old_binding.span)),
+            _ => None,
+        };
+        if let Some((directive, binding_span)) = directive {
+            let suggested_name = if name.as_str().chars().next().unwrap().is_uppercase() {
+                format!("Other{}", name)
             } else {
-                old_binding
+                format!("other_{}", name)
             };
 
-            let cm = self.session.source_map();
+            let mut suggestion = None;
+            match directive.subclass {
+                ImportDirectiveSubclass::SingleImport { type_ns_only: true, .. } =>
+                    suggestion = Some(format!("self as {}", suggested_name)),
+                ImportDirectiveSubclass::SingleImport { source, .. } => {
+                    if let Some(pos) = source.span.hi().0.checked_sub(binding_span.lo().0)
+                                                         .map(|pos| pos as usize) {
+                        if let Ok(snippet) = self.session.source_map()
+                                                         .span_to_snippet(binding_span) {
+                            if pos <= snippet.len() {
+                                suggestion = Some(format!(
+                                    "{} as {}{}",
+                                    &snippet[..pos],
+                                    suggested_name,
+                                    if snippet.ends_with(";") { ";" } else { "" }
+                                ))
+                            }
+                        }
+                    }
+                }
+                ImportDirectiveSubclass::ExternCrate { source, target, .. } =>
+                    suggestion = Some(format!(
+                        "extern crate {} as {};",
+                        source.unwrap_or(target.name),
+                        suggested_name,
+                    )),
+                _ => unreachable!(),
+            }
+
             let rename_msg = "you can use `as` to change the binding name of the import";
-
-            if let (
-                Ok(snippet),
-                NameBindingKind::Import { directive, ..},
-                _dummy @ false,
-            ) = (
-                cm.span_to_snippet(binding.span),
-                binding.kind.clone(),
-                binding.span.is_dummy(),
-            ) {
-                let suggested_name = if name.as_str().chars().next().unwrap().is_uppercase() {
-                    format!("Other{}", name)
-                } else {
-                    format!("other_{}", name)
-                };
-
+            if let Some(suggestion) = suggestion {
                 err.span_suggestion_with_applicability(
-                    binding.span,
-                    &rename_msg,
-                    match directive.subclass {
-                        ImportDirectiveSubclass::SingleImport { type_ns_only: true, .. } =>
-                            format!("self as {}", suggested_name),
-                        ImportDirectiveSubclass::SingleImport { source, .. } =>
-                            format!(
-                                "{} as {}{}",
-                                &snippet[..((source.span.hi().0 - binding.span.lo().0) as usize)],
-                                suggested_name,
-                                if snippet.ends_with(";") {
-                                    ";"
-                                } else {
-                                    ""
-                                }
-                            ),
-                        ImportDirectiveSubclass::ExternCrate { source, target, .. } =>
-                            format!(
-                                "extern crate {} as {};",
-                                source.unwrap_or(target.name),
-                                suggested_name,
-                            ),
-                        _ => unreachable!(),
-                    },
+                    binding_span,
+                    rename_msg,
+                    suggestion,
                     Applicability::MaybeIncorrect,
                 );
             } else {
-                err.span_label(binding.span, rename_msg);
+                err.span_label(binding_span, rename_msg);
             }
         }
 
