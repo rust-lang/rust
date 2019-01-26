@@ -13,18 +13,14 @@ use ra_syntax::{
 };
 
 use crate::{
-    HirDatabase, Function, SourceItemId, ModuleDef,
-    AsName, Module,
-    ids::LocationCtx,
+    HirDatabase, Function, ModuleDef,
+    AsName, Module, HirFileId,
+    ids::{LocationCtx, SourceFileItemId},
 };
 
 /// Locates the module by `FileId`. Picks topmost module in the file.
 pub fn module_from_file_id(db: &impl HirDatabase, file_id: FileId) -> Option<Module> {
-    let module_source = SourceItemId {
-        file_id: file_id.into(),
-        item_id: None,
-    };
-    module_from_source(db, module_source)
+    module_from_source(db, file_id.into(), None)
 }
 
 /// Locates the child module by `mod child;` declaration.
@@ -59,11 +55,7 @@ fn module_from_inline(
     let file_id = file_id.into();
     let file_items = db.file_items(file_id);
     let item_id = file_items.id_of(file_id, module.syntax());
-    let source = SourceItemId {
-        file_id,
-        item_id: Some(item_id),
-    };
-    module_from_source(db, source)
+    module_from_source(db, file_id, Some(item_id))
 }
 
 /// Locates the module by child syntax element within the module
@@ -83,13 +75,17 @@ pub fn module_from_child_node(
     }
 }
 
-fn module_from_source(db: &impl HirDatabase, source: SourceItemId) -> Option<Module> {
-    let source_root_id = db.file_source_root(source.file_id.as_original_file());
+fn module_from_source(
+    db: &impl HirDatabase,
+    file_id: HirFileId,
+    decl_id: Option<SourceFileItemId>,
+) -> Option<Module> {
+    let source_root_id = db.file_source_root(file_id.as_original_file());
     db.source_root_crates(source_root_id)
         .iter()
         .find_map(|&krate| {
             let module_tree = db.module_tree(krate);
-            let module_id = module_tree.find_module_by_source(source)?;
+            let module_id = module_tree.find_module_by_source(file_id, decl_id)?;
             Some(Module { krate, module_id })
         })
 }

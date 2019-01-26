@@ -25,9 +25,10 @@ impl Module {
 
     pub(crate) fn definition_source_impl(&self, db: &impl HirDatabase) -> (FileId, ModuleSource) {
         let module_tree = db.module_tree(self.krate);
-        let source = self.module_id.source(&module_tree);
-        let module_source = ModuleSource::from_source_item_id(db, source);
-        let file_id = source.file_id.as_original_file();
+        let file_id = self.module_id.file_id(&module_tree);
+        let decl_id = self.module_id.decl_id(&module_tree);
+        let module_source = ModuleSource::new(db, file_id, decl_id);
+        let file_id = file_id.as_original_file();
         (file_id, module_source)
     }
 
@@ -39,8 +40,7 @@ impl Module {
         let link = self.module_id.parent_link(&module_tree)?;
         let file_id = link
             .owner(&module_tree)
-            .source(&module_tree)
-            .file_id
+            .file_id(&module_tree)
             .as_original_file();
         let src = link.source(&module_tree, db);
         Some((file_id, src))

@@ -4,7 +4,7 @@ use std::{
 };
 
 use ra_db::{LocationIntener, FileId};
-use ra_syntax::{TreeArc, SyntaxNode, SourceFile, AstNode, ast};
+use ra_syntax::{TreeArc, SyntaxNode, SourceFile, AstNode, SyntaxNodePtr, ast};
 use ra_arena::{Arena, RawId, ArenaId, impl_arena_id};
 
 use crate::{
@@ -203,7 +203,7 @@ pub(crate) trait AstItemDef<N: AstNode>: ArenaId + Clone {
         let items = ctx.db.file_items(ctx.file_id);
         let raw = SourceItemId {
             file_id: ctx.file_id,
-            item_id: Some(items.id_of(ctx.file_id, ast.syntax())),
+            item_id: items.id_of(ctx.file_id, ast.syntax()),
         };
         let loc = ItemLoc {
             module: ctx.module,
@@ -301,15 +301,14 @@ impl_arena_id!(SourceFileItemId);
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct SourceItemId {
     pub(crate) file_id: HirFileId,
-    /// None for the whole file.
-    pub(crate) item_id: Option<SourceFileItemId>,
+    pub(crate) item_id: SourceFileItemId,
 }
 
 /// Maps items' `SyntaxNode`s to `SourceFileItemId`s and back.
 #[derive(Debug, PartialEq, Eq)]
 pub struct SourceFileItems {
     file_id: HirFileId,
-    arena: Arena<SourceFileItemId, TreeArc<SyntaxNode>>,
+    arena: Arena<SourceFileItemId, SyntaxNodePtr>,
 }
 
 impl SourceFileItems {
@@ -329,15 +328,15 @@ impl SourceFileItems {
         // trait does not chage ids of top-level items, which helps caching.
         bfs(source_file.syntax(), |it| {
             if let Some(module_item) = ast::ModuleItem::cast(it) {
-                self.alloc(module_item.syntax().to_owned());
+                self.alloc(module_item.syntax());
             } else if let Some(macro_call) = ast::MacroCall::cast(it) {
-                self.alloc(macro_call.syntax().to_owned());
+                self.alloc(macro_call.syntax());
             }
         })
     }
 
-    fn alloc(&mut self, item: TreeArc<SyntaxNode>) -> SourceFileItemId {
-        self.arena.alloc(item)
+    fn alloc(&mut self, item: &SyntaxNode) -> SourceFileItemId {
+        self.arena.alloc(SyntaxNodePtr::new(item))
     }
     pub(crate) fn id_of(&self, file_id: HirFileId, item: &SyntaxNode) -> SourceFileItemId {
         assert_eq!(
@@ -348,17 +347,8 @@ impl SourceFileItems {
         self.id_of_unchecked(item)
     }
     pub(crate) fn id_of_unchecked(&self, item: &SyntaxNode) -> SourceFileItemId {
-        if let Some((id, _)) = self.arena.iter().find(|(_id, i)| *i == item) {
-            return id;
-        }
-        // This should not happen. Let's try to give a sensible diagnostics.
-        if let Some((id, i)) = self.arena.iter().find(|(_id, i)| i.range() == item.range()) {
-            // FIXME(#288): whyyy are we getting here?
-            log::error!(
-                "unequal syntax nodes with the same range:\n{:?}\n{:?}",
-                item,
-                i
-            );
+        let ptr = SyntaxNodePtr::new(item);
+        if let Some((id, _)) = self.arena.iter().find(|(_id, i)| **i == ptr) {
             return id;
         }
         panic!(
@@ -367,15 +357,11 @@ impl SourceFileItems {
             self.arena.iter().map(|(_id, i)| i).collect::<Vec<_>>(),
         );
     }
-    pub fn id_of_parse(&self) -> SourceFileItemId {
-        let (id, _syntax) = self.arena.iter().next().unwrap();
-        id
-    }
 }
 
 impl std::ops::Index<SourceFileItemId> for SourceFileItems {
-    type Output = SyntaxNode;
-    fn index(&self, idx: SourceFileItemId) -> &SyntaxNode {
+    type Output = SyntaxNodePtr;
+    fn index(&self, idx: SourceFileItemId) -> &SyntaxNodePtr {
         &self.arena[idx]
     }
 }

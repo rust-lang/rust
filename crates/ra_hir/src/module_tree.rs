@@ -11,21 +11,28 @@ use ra_syntax::{
 use ra_arena::{Arena, RawId, impl_arena_id};
 use test_utils::tested_by;
 
-use crate::{Name, AsName, HirDatabase, SourceItemId, HirFileId, Problem, SourceFileItems, ModuleSource};
+use crate::{
+    Name, AsName, HirDatabase, SourceItemId, HirFileId, Problem, SourceFileItems, ModuleSource,
+    ids::SourceFileItemId,
+};
 
 impl ModuleSource {
-    pub(crate) fn from_source_item_id(
+    pub(crate) fn new(
         db: &impl HirDatabase,
-        source_item_id: SourceItemId,
+        file_id: HirFileId,
+        decl_id: Option<SourceFileItemId>,
     ) -> ModuleSource {
-        let module_syntax = db.file_item(source_item_id);
-        if let Some(source_file) = ast::SourceFile::cast(&module_syntax) {
-            ModuleSource::SourceFile(source_file.to_owned())
-        } else if let Some(module) = ast::Module::cast(&module_syntax) {
-            assert!(module.item_list().is_some(), "expected inline module");
-            ModuleSource::Module(module.to_owned())
-        } else {
-            panic!("expected file or inline module")
+        match decl_id {
+            Some(item_id) => {
+                let module = db.file_item(SourceItemId { file_id, item_id });
+                let module = ast::Module::cast(&*module).unwrap();
+                assert!(module.item_list().is_some(), "expected inline module");
+                ModuleSource::Module(module.to_owned())
+            }
+            None => {
+                let source_file = db.hir_parse(file_id);
+                ModuleSource::SourceFile(source_file)
+            }
         }
     }
 }
@@ -34,18 +41,18 @@ impl ModuleSource {
 pub struct Submodule {
     name: Name,
     is_declaration: bool,
-    source: SourceItemId,
+    decl_id: SourceFileItemId,
 }
 
 impl Submodule {
     pub(crate) fn submodules_query(
         db: &impl HirDatabase,
-        source: SourceItemId,
+        file_id: HirFileId,
+        decl_id: Option<SourceFileItemId>,
     ) -> Arc<Vec<Submodule>> {
         db.check_canceled();
-        let file_id = source.file_id;
         let file_items = db.file_items(file_id);
-        let module_source = ModuleSource::from_source_item_id(db, source);
+        let module_source = ModuleSource::new(db, file_id, decl_id);
         let submodules = match module_source {
             ModuleSource::SourceFile(source_file) => {
                 collect_submodules(file_id, &file_items, &*source_file)
@@ -54,6 +61,7 @@ impl Submodule {
                 collect_submodules(file_id, &file_items, module.item_list().unwrap())
             }
         };
+
         return Arc::new(submodules);
 
         fn collect_submodules(
@@ -75,10 +83,7 @@ impl Submodule {
                     let sub = Submodule {
                         name,
                         is_declaration: module.has_semi(),
-                        source: SourceItemId {
-                            file_id,
-                            item_id: Some(file_items.id_of(file_id, module.syntax())),
-                        },
+                        decl_id: file_items.id_of(file_id, module.syntax()),
                     };
                     Some(sub)
                 })
@@ -110,7 +115,9 @@ pub struct ModuleTree {
 
 #[derive(Debug, PartialEq, Eq, Hash)]
 pub struct ModuleData {
-    source: SourceItemId,
+    file_id: HirFileId,
+    /// Points to `ast::Module`, `None` for the whole file.
+    decl_id: Option<SourceFileItemId>,
     parent: Option<LinkId>,
     children: Vec<LinkId>,
 }
@@ -136,8 +143,15 @@ impl ModuleTree {
         self.mods.iter().map(|(id, _)| id)
     }
 
-    pub(crate) fn find_module_by_source(&self, source: SourceItemId) -> Option<ModuleId> {
-        let (res, _) = self.mods.iter().find(|(_, m)| m.source == source)?;
+    pub(crate) fn find_module_by_source(
+        &self,
+        file_id: HirFileId,
+        decl_id: Option<SourceFileItemId>,
+    ) -> Option<ModuleId> {
+        let (res, _) = self
+            .mods
+            .iter()
+            .find(|(_, m)| (m.file_id, m.decl_id) == (file_id, decl_id))?;
         Some(res)
     }
 
@@ -147,11 +161,7 @@ impl ModuleTree {
         let source_root_id = db.file_source_root(file_id);
 
         let source_root = db.source_root(source_root_id);
-        let source = SourceItemId {
-            file_id: file_id.into(),
-            item_id: None,
-        };
-        self.init_subtree(db, &source_root, None, source);
+        self.init_subtree(db, &source_root, None, file_id.into(), None);
     }
 
     fn init_subtree(
@@ -159,16 +169,21 @@ impl ModuleTree {
         db: &impl HirDatabase,
         source_root: &SourceRoot,
         parent: Option<LinkId>,
-        source: SourceItemId,
+        file_id: HirFileId,
+        decl_id: Option<SourceFileItemId>,
     ) -> ModuleId {
         let id = self.alloc_mod(ModuleData {
-            source,
+            file_id,
+            decl_id,
             parent,
             children: Vec::new(),
         });
-        for sub in db.submodules(source).iter() {
+        for sub in db.submodules(file_id, decl_id).iter() {
             let link = self.alloc_link(LinkData {
-                source: sub.source,
+                source: SourceItemId {
+                    file_id,
+                    item_id: sub.decl_id,
+                },
                 name: sub.name.clone(),
                 owner: id,
                 points_to: Vec::new(),
@@ -176,24 +191,17 @@ impl ModuleTree {
             });
 
             let (points_to, problem) = if sub.is_declaration {
-                let (points_to, problem) = resolve_submodule(db, source.file_id, &sub.name);
+                let (points_to, problem) = resolve_submodule(db, file_id, &sub.name);
                 let points_to = points_to
                     .into_iter()
                     .map(|file_id| {
-                        self.init_subtree(
-                            db,
-                            source_root,
-                            Some(link),
-                            SourceItemId {
-                                file_id: file_id.into(),
-                                item_id: None,
-                            },
-                        )
+                        self.init_subtree(db, source_root, Some(link), file_id.into(), None)
                     })
                     .collect::<Vec<_>>();
                 (points_to, problem)
             } else {
-                let points_to = self.init_subtree(db, source_root, Some(link), sub.source);
+                let points_to =
+                    self.init_subtree(db, source_root, Some(link), file_id, Some(sub.decl_id));
                 (vec![points_to], None)
             };
 
@@ -216,8 +224,11 @@ impl ModuleTree {
 }
 
 impl ModuleId {
-    pub(crate) fn source(self, tree: &ModuleTree) -> SourceItemId {
-        tree.mods[self].source
+    pub(crate) fn file_id(self, tree: &ModuleTree) -> HirFileId {
+        tree.mods[self].file_id
+    }
+    pub(crate) fn decl_id(self, tree: &ModuleTree) -> Option<SourceFileItemId> {
+        tree.mods[self].decl_id
     }
     pub(crate) fn parent_link(self, tree: &ModuleTree) -> Option<LinkId> {
         tree.mods[self].parent

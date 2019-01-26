@@ -215,7 +215,7 @@ where
         // Populate extern crates prelude
         {
             let root_id = module_id.crate_root(&self.module_tree);
-            let file_id = root_id.source(&self.module_tree).file_id;
+            let file_id = root_id.file_id(&self.module_tree);
             let crate_graph = self.db.crate_graph();
             if let Some(crate_id) = crate_graph.crate_id_for_crate_root(file_id.as_original_file())
             {

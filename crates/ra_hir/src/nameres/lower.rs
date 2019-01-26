@@ -121,10 +121,7 @@ impl LoweredModule {
                     let item_id = file_items.id_of_unchecked(macro_call.syntax());
                     let loc = MacroCallLoc {
                         module,
-                        source_item_id: SourceItemId {
-                            file_id,
-                            item_id: Some(item_id),
-                        },
+                        source_item_id: SourceItemId { file_id, item_id },
                     };
                     let id = loc.id(db);
                     let file_id = HirFileId::from(id);
