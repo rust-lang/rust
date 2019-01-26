@@ -40,7 +40,7 @@ impl Origin {
     pub fn should_emit_errors(self, mode: BorrowckMode) -> bool {
         match self {
             Origin::Ast => mode.use_ast(),
-            Origin::Mir => mode.use_mir(),
+            Origin::Mir => true,
         }
     }
 }

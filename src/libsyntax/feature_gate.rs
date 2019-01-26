@@ -445,9 +445,7 @@ declare_features! (
     (active, custom_inner_attributes, "1.30.0", Some(54726), None),
 
     // Allow mixing of bind-by-move in patterns and references to
-    // those identifiers in guards, *if* we are using MIR-borrowck
-    // (aka NLL). Essentially this means you need to be using the
-    // 2018 edition or later.
+    // those identifiers in guards.
     (active, bind_by_move_pattern_guards, "1.30.0", Some(15287), None),
 
     // Allows `impl Trait` in bindings (`let`, `const`, `static`).

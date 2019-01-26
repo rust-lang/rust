@@ -565,7 +565,7 @@ fn check_legality_of_move_bindings(
             let mut err = struct_span_err!(cx.tcx.sess, p.span, E0008,
                                            "cannot bind by-move into a pattern guard");
             err.span_label(p.span, "moves value into pattern guard");
-            if cx.tcx.sess.opts.unstable_features.is_nightly_build() && cx.tcx.use_mir_borrowck() {
+            if cx.tcx.sess.opts.unstable_features.is_nightly_build() {
                 err.help("add #![feature(bind_by_move_pattern_guards)] to the \
                           crate attributes to enable");
             }
@@ -649,9 +649,7 @@ impl<'a, 'tcx> Delegate<'tcx> for MutationChecker<'a, 'tcx> {
                 let mut err = struct_span_err!(self.cx.tcx.sess, span, E0301,
                           "cannot mutably borrow in a pattern guard");
                 err.span_label(span, "borrowed mutably in pattern guard");
-                if self.cx.tcx.sess.opts.unstable_features.is_nightly_build() &&
-                    self.cx.tcx.use_mir_borrowck()
-                {
+                if self.cx.tcx.sess.opts.unstable_features.is_nightly_build() {
                     err.help("add #![feature(bind_by_move_pattern_guards)] to the \
                               crate attributes to enable");
                 }

@@ -112,11 +112,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
             }
             ExprKind::SelfRef => block.and(Place::Base(PlaceBase::Local(Local::new(1)))),
             ExprKind::VarRef { id } => {
-                let place = if this.is_bound_var_in_guard(id) && this
-                    .hir
-                    .tcx()
-                    .all_pat_vars_are_implicit_refs_within_guards()
-                {
+                let place = if this.is_bound_var_in_guard(id) {
                     let index = this.var_local_id(id, RefWithinGuard);
                     Place::Base(PlaceBase::Local(index)).deref()
                 } else {

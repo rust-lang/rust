@@ -70,7 +70,6 @@ use rustc_macros::HashStable;
 use syntax::ast;
 use syntax::attr;
 use syntax::source_map::MultiSpan;
-use syntax::edition::Edition;
 use syntax::feature_gate;
 use syntax::symbol::{Symbol, keywords, InternedString};
 use syntax_pos::Span;
@@ -1496,33 +1495,19 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
     /// because that method has a narrower effect that can be toggled
     /// off via a separate `-Z` flag, at least for the short term.
     pub fn allow_bind_by_move_patterns_with_guards(self) -> bool {
-        self.features().bind_by_move_pattern_guards && self.use_mir_borrowck()
+        self.features().bind_by_move_pattern_guards
     }
 
     /// If true, we should use a naive AST walk to determine if match
     /// guard could perform bad mutations (or mutable-borrows).
     pub fn check_for_mutation_in_guard_via_ast_walk(self) -> bool {
-        // If someone requests the feature, then be a little more
-        // careful and ensure that MIR-borrowck is enabled (which can
-        // happen via edition selection, via `feature(nll)`, or via an
-        // appropriate `-Z` flag) before disabling the mutation check.
-        if self.allow_bind_by_move_patterns_with_guards() {
-            return false;
-        }
-
-        return true;
+        !self.allow_bind_by_move_patterns_with_guards()
     }
 
     /// If true, we should use the AST-based borrowck (we may *also* use
     /// the MIR-based borrowck).
     pub fn use_ast_borrowck(self) -> bool {
         self.borrowck_mode().use_ast()
-    }
-
-    /// If true, we should use the MIR-based borrowck (we may *also* use
-    /// the AST-based borrowck).
-    pub fn use_mir_borrowck(self) -> bool {
-        self.borrowck_mode().use_mir()
     }
 
     /// If true, we should use the MIR-based borrow check, but also
@@ -1541,23 +1526,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
     /// statements (which simulate the maximal effect of executing the
     /// patterns in a match arm).
     pub fn emit_read_for_match(&self) -> bool {
-        self.use_mir_borrowck() && !self.sess.opts.debugging_opts.nll_dont_emit_read_for_match
-    }
-
-    /// If true, pattern variables for use in guards on match arms
-    /// will be bound as references to the data, and occurrences of
-    /// those variables in the guard expression will implicitly
-    /// dereference those bindings. (See rust-lang/rust#27282.)
-    pub fn all_pat_vars_are_implicit_refs_within_guards(self) -> bool {
-        self.borrowck_mode().use_mir()
-    }
-
-    /// If true, we should enable two-phase borrows checks. This is
-    /// done with either: `-Ztwo-phase-borrows`, `#![feature(nll)]`,
-    /// or by opting into an edition after 2015.
-    pub fn two_phase_borrows(self) -> bool {
-        self.sess.rust_2018() || self.features().nll ||
-        self.sess.opts.debugging_opts.two_phase_borrows
+        !self.sess.opts.debugging_opts.nll_dont_emit_read_for_match
     }
 
     /// What mode(s) of borrowck should we run? AST? MIR? both?
@@ -1565,14 +1534,10 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
     pub fn borrowck_mode(&self) -> BorrowckMode {
         // Here are the main constraints we need to deal with:
         //
-        // 1. An opts.borrowck_mode of `BorrowckMode::Ast` is
+        // 1. An opts.borrowck_mode of `BorrowckMode::Migrate` is
         //    synonymous with no `-Z borrowck=...` flag at all.
-        //    (This is arguably a historical accident.)
         //
-        // 2. `BorrowckMode::Migrate` is the limited migration to
-        //    NLL that we are deploying with the 2018 edition.
-        //
-        // 3. We want to allow developers on the Nightly channel
+        // 2. We want to allow developers on the Nightly channel
         //    to opt back into the "hard error" mode for NLL,
         //    (which they can do via specifying `#![feature(nll)]`
         //    explicitly in their crate).
@@ -1585,24 +1550,13 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
         //   a user's attempt to specify `-Z borrowck=compare`, which
         //   we arguably do not need anymore and should remove.)
         //
-        // * Otherwise, if no `-Z borrowck=...` flag was given (or
-        //   if `borrowck=ast` was specified), then use the default
-        //   as required by the edition.
+        // * Otherwise, if no `-Z borrowck=...` then use migrate mode
         //
         // * Otherwise, use the behavior requested via `-Z borrowck=...`
 
         if self.features().nll { return BorrowckMode::Mir; }
 
-        match self.sess.opts.borrowck_mode {
-            mode @ BorrowckMode::Mir |
-            mode @ BorrowckMode::Compare |
-            mode @ BorrowckMode::Migrate => mode,
-
-            BorrowckMode::Ast => match self.sess.edition() {
-                Edition::Edition2015 => BorrowckMode::Ast,
-                Edition::Edition2018 => BorrowckMode::Migrate,
-            },
-        }
+        self.sess.opts.borrowck_mode
     }
 
     #[inline]

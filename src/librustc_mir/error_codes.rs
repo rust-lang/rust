@@ -877,12 +877,14 @@ https://doc.rust-lang.org/book/ch04-00-understanding-ownership.html
 "##,
 
 E0383: r##"
+#### Note: this error code is no longer emitted by the compiler.
+
 This error occurs when an attempt is made to partially reinitialize a
 structure that is currently uninitialized.
 
 For example, this can happen when a drop has taken place:
 
-```compile_fail,E0383
+```compile_fail
 struct Foo {
     a: u32,
 }
@@ -966,10 +968,12 @@ y.set(2);
 "##,*/
 
 E0387: r##"
+#### Note: this error code is no longer emitted by the compiler.
+
 This error occurs when an attempt is made to mutate or mutably reference data
 that a closure has captured immutably. Examples of this error are shown below:
 
-```compile_fail,E0387
+```compile_fail
 // Accepts a function or a closure that captures its environment immutably.
 // Closures passed to foo will not be able to mutate their closed-over state.
 fn foo<F: Fn()>(f: F) { }
@@ -1026,13 +1030,15 @@ E0388 was removed and is no longer issued.
 "##,
 
 E0389: r##"
+#### Note: this error code is no longer emitted by the compiler.
+
 An attempt was made to mutate data using a non-mutable reference. This
 commonly occurs when attempting to assign to a non-mutable reference of a
 mutable reference (`&(&mut T)`).
 
 Example of erroneous code:
 
-```compile_fail,E0389
+```compile_fail
 struct FancyNum {
     num: u8,
 }
@@ -1202,6 +1208,7 @@ A variable was borrowed as mutable more than once. Erroneous code example:
 let mut i = 0;
 let mut x = &mut i;
 let mut a = &mut i;
+x;
 // error: cannot borrow `i` as mutable more than once at a time
 ```
 
@@ -1220,35 +1227,33 @@ let mut i = 0;
 let a = &i; // ok!
 let b = &i; // still ok!
 let c = &i; // still ok!
+b;
+a;
 ```
 "##,
 
 E0500: r##"
-A borrowed variable was used in another closure. Example of erroneous code:
+A borrowed variable was used by a closure. Example of erroneous code:
 
-```compile_fail
+```compile_fail,E0500
 fn you_know_nothing(jon_snow: &mut i32) {
-    let nights_watch = || {
-        *jon_snow = 2;
-    };
+    let nights_watch = &jon_snow;
     let starks = || {
         *jon_snow = 3; // error: closure requires unique access to `jon_snow`
                        //        but it is already borrowed
     };
+    println!("{}", nights_watch);
 }
 ```
 
-In here, `jon_snow` is already borrowed by the `nights_watch` closure, so it
+In here, `jon_snow` is already borrowed by the `nights_watch` reference, so it
 cannot be borrowed by the `starks` closure at the same time. To fix this issue,
-you can put the closure in its own scope:
+you can create the closure after the borrow has ended:
 
 ```
 fn you_know_nothing(jon_snow: &mut i32) {
-    {
-        let nights_watch = || {
-            *jon_snow = 2;
-        };
-    } // At this point, `jon_snow` is free.
+    let nights_watch = &jon_snow;
+    println!("{}", nights_watch);
     let starks = || {
         *jon_snow = 3;
     };
@@ -1261,12 +1266,10 @@ closures:
 ```
 fn you_know_nothing(jon_snow: &mut i32) {
     let mut jon_copy = jon_snow.clone();
-    let nights_watch = || {
-        jon_copy = 2;
-    };
     let starks = || {
         *jon_snow = 3;
     };
+    println!("{}", jon_copy);
 }
 ```
 "##,
@@ -1293,26 +1296,28 @@ fn outside_closure(x: &mut i32) {
 }
 
 fn foo(a: &mut i32) {
-    let bar = || {
+    let mut bar = || {
         inside_closure(a)
     };
     outside_closure(a); // error: cannot borrow `*a` as mutable because previous
                         //        closure requires unique access.
+    bar();
 }
 ```
 
-To fix this error, you can place the closure in its own scope:
+To fix this error, you can finish using the closure before using the captured
+variable:
 
 ```
 fn inside_closure(x: &mut i32) {}
 fn outside_closure(x: &mut i32) {}
 
 fn foo(a: &mut i32) {
-    {
-        let bar = || {
-            inside_closure(a)
-        };
-    } // borrow on `a` ends.
+    let mut bar = || {
+        inside_closure(a)
+    };
+    bar();
+    // borrow on `a` ends.
     outside_closure(a); // ok!
 }
 ```
@@ -1324,7 +1329,7 @@ fn inside_closure(x: &mut i32) {}
 fn outside_closure(x: &mut i32) {}
 
 fn foo(a: &mut i32) {
-    let bar = |s: &mut i32| {
+    let mut bar = |s: &mut i32| {
         inside_closure(s)
     };
     outside_closure(a);
@@ -1340,9 +1345,10 @@ fn outside_closure(x: &mut i32) {}
 
 fn foo(a: &mut i32) {
     outside_closure(a);
-    let bar = || {
+    let mut bar = || {
         inside_closure(a)
     };
+    bar();
 }
 ```
 "##,
@@ -1359,6 +1365,7 @@ fn foo(a: &mut i32) {
     let ref y = a; // a is borrowed as immutable.
     bar(a); // error: cannot borrow `*a` as mutable because `a` is also borrowed
             //        as immutable
+    println!("{}", y);
 }
 ```
 
@@ -1370,6 +1377,7 @@ fn bar(x: &mut i32) {}
 fn foo(a: &mut i32) {
     bar(a);
     let ref y = a; // ok!
+    println!("{}", y);
 }
 ```
 
@@ -1385,11 +1393,11 @@ Example of erroneous code:
 ```compile_fail,E0503
 fn main() {
     let mut value = 3;
-    // Create a mutable borrow of `value`. This borrow
-    // lives until the end of this function.
-    let _borrow = &mut value;
+    // Create a mutable borrow of `value`.
+    let borrow = &mut value;
     let _sum = value + 1; // error: cannot use `value` because
                           //        it was mutably borrowed
+    println!("{}", borrow);
 }
 ```
 
@@ -1397,16 +1405,14 @@ In this example, `value` is mutably borrowed by `borrow` and cannot be
 used to calculate `sum`. This is not possible because this would violate
 Rust's mutability rules.
 
-You can fix this error by limiting the scope of the borrow:
+You can fix this error by finishing using the borrow before the next use of
+the value:
 
 ```
 fn main() {
     let mut value = 3;
-    // By creating a new block, you can limit the scope
-    // of the reference.
-    {
-        let _borrow = &mut value; // Use `_borrow` inside this block.
-    }
+    let borrow = &mut value;
+    println!("{}", borrow);
     // The block has ended and with it the borrow.
     // You can now use `value` again.
     let _sum = value + 1;
@@ -1422,10 +1428,11 @@ fn main() {
     let value_cloned = value.clone();
     // The mutable borrow is a reference to `value` and
     // not to `value_cloned`...
-    let _borrow = &mut value;
+    let borrow = &mut value;
     // ... which means we can still use `value_cloned`,
     let _sum = value_cloned + 1;
     // even though the borrow only ends here.
+    println!("{}", borrow);
 }
 ```
 
@@ -1434,12 +1441,14 @@ http://doc.rust-lang.org/book/ch04-02-references-and-borrowing.html
 "##,
 
 E0504: r##"
+#### Note: this error code is no longer emitted by the compiler.
+
 This error occurs when an attempt is made to move a borrowed variable into a
 closure.
 
 Example of erroneous code:
 
-```compile_fail,E0504
+```compile_fail
 struct FancyNum {
     num: u8,
 }
@@ -1577,9 +1586,10 @@ fn eat(val: &Value) {}
 
 fn main() {
     let x = Value{};
-    let _ref_to_val: &Value = &x;
+
+    let ref_to_val: &Value = &x;
     eat(&x); // pass by reference, if it's possible
-    borrow(_ref_to_val);
+    borrow(ref_to_val);
 }
 ```
 
@@ -1594,11 +1604,11 @@ fn eat(val: Value) {}
 
 fn main() {
     let x = Value{};
-    {
-        let _ref_to_val: &Value = &x;
-        borrow(_ref_to_val);
-    }
-    eat(x); // release borrow and then move it.
+
+    let ref_to_val: &Value = &x;
+    borrow(ref_to_val);
+    // ref_to_val is no longer used.
+    eat(x);
 }
 ```
 
@@ -1614,9 +1624,9 @@ fn eat(val: Value) {}
 
 fn main() {
     let x = Value{};
-    let _ref_to_val: &Value = &x;
+    let ref_to_val: &Value = &x;
     eat(x); // it will be copied here.
-    borrow(_ref_to_val);
+    borrow(ref_to_val);
 }
 ```
 
@@ -2053,11 +2063,13 @@ fn get_owned_iterator() -> IntoIter<i32> {
 "##,
 
 E0595: r##"
+#### Note: this error code is no longer emitted by the compiler.
+
 Closures cannot mutate immutable captured variables.
 
 Erroneous code example:
 
-```compile_fail,E0595
+```compile_fail,E0594
 let x = 3; // error: closure cannot assign to immutable local variable `x`
 let mut c = || { x += 1 };
 ```
@@ -2090,8 +2102,7 @@ let y = &mut x; // ok!
 "##,
 
 E0597: r##"
-This error occurs because a borrow was made inside a variable which has a
-greater lifetime than the borrowed one.
+This error occurs because a value was dropped while it was still borrowed
 
 Example of erroneous code:
 
@@ -2101,23 +2112,28 @@ struct Foo<'a> {
 }
 
 let mut x = Foo { x: None };
-let y = 0;
-x.x = Some(&y); // error: `y` does not live long enough
+{
+    let y = 0;
+    x.x = Some(&y); // error: `y` does not live long enough
+}
+println!("{:?}", x.x);
 ```
 
-In here, `x` is created before `y` and therefore has a greater lifetime. Always
-keep in mind that values in a scope are dropped in the opposite order they are
-created. So to fix the previous example, just make the `y` lifetime greater than
-the `x`'s one:
+In here, `y` is dropped at the end of the inner scope, but it is borrowed by
+`x` until the `println`. To fix the previous example, just remove the scope
+so that `y` isn't dropped until after the println
 
 ```
 struct Foo<'a> {
     x: Option<&'a u32>,
 }
 
-let y = 0;
 let mut x = Foo { x: None };
+
+let y = 0;
 x.x = Some(&y);
+
+println!("{:?}", x.x);
 ```
 "##,
 

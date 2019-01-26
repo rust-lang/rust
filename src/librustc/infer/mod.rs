@@ -92,8 +92,8 @@ impl SuppressRegionErrors {
     /// enabled.
     pub fn when_nll_is_enabled(tcx: TyCtxt<'_, '_, '_>) -> Self {
         match tcx.borrowck_mode() {
-            // If we're on AST or Migrate mode, report AST region errors
-            BorrowckMode::Ast | BorrowckMode::Migrate => SuppressRegionErrors { suppressed: false },
+            // If we're on Migrate mode, report AST region errors
+            BorrowckMode::Migrate => SuppressRegionErrors { suppressed: false },
 
             // If we're on MIR or Compare mode, don't report AST region errors as they should
             // be reported by NLL

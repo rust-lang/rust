@@ -1425,26 +1425,22 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
         //      the reference that we create for the arm.
         //    * So we eagerly create the reference for the arm and then take a
         //      reference to that.
-        let tcx = self.hir.tcx();
-        let autoref = tcx.all_pat_vars_are_implicit_refs_within_guards();
         if let Some(guard) = guard {
-            if autoref {
-                self.bind_matched_candidate_for_guard(
-                    block,
-                    &candidate.bindings,
-                );
-                let guard_frame = GuardFrame {
-                    locals: candidate
-                        .bindings
-                        .iter()
-                        .map(|b| GuardFrameLocal::new(b.var_id, b.binding_mode))
-                        .collect(),
-                };
-                debug!("Entering guard building context: {:?}", guard_frame);
-                self.guard_context.push(guard_frame);
-            } else {
-                self.bind_matched_candidate_for_arm_body(block, &candidate.bindings);
-            }
+            let tcx = self.hir.tcx();
+
+            self.bind_matched_candidate_for_guard(
+                block,
+                &candidate.bindings,
+            );
+            let guard_frame = GuardFrame {
+                locals: candidate
+                    .bindings
+                    .iter()
+                    .map(|b| GuardFrameLocal::new(b.var_id, b.binding_mode))
+                    .collect(),
+            };
+            debug!("Entering guard building context: {:?}", guard_frame);
+            self.guard_context.push(guard_frame);
 
             let re_erased = tcx.types.re_erased;
             let scrutinee_source_info = self.source_info(scrutinee_span);
@@ -1470,13 +1466,11 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
             let source_info = self.source_info(guard.span);
             let guard_end = self.source_info(tcx.sess.source_map().end_point(guard.span));
             let cond = unpack!(block = self.as_local_operand(block, guard));
-            if autoref {
-                let guard_frame = self.guard_context.pop().unwrap();
-                debug!(
-                    "Exiting guard building context with locals: {:?}",
-                    guard_frame
-                );
-            }
+            let guard_frame = self.guard_context.pop().unwrap();
+            debug!(
+                "Exiting guard building context with locals: {:?}",
+                guard_frame
+            );
 
             for &(_, temp) in fake_borrows {
                 self.cfg.push(block, Statement {
@@ -1526,28 +1520,26 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                 ),
             );
 
-            if autoref {
-                let by_value_bindings = candidate.bindings.iter().filter(|binding| {
-                    if let BindingMode::ByValue = binding.binding_mode { true } else { false }
-                });
-                // Read all of the by reference bindings to ensure that the
-                // place they refer to can't be modified by the guard.
-                for binding in by_value_bindings.clone() {
-                    let local_id = self.var_local_id(binding.var_id, RefWithinGuard);
+            let by_value_bindings = candidate.bindings.iter().filter(|binding| {
+                if let BindingMode::ByValue = binding.binding_mode { true } else { false }
+            });
+            // Read all of the by reference bindings to ensure that the
+            // place they refer to can't be modified by the guard.
+            for binding in by_value_bindings.clone() {
+                let local_id = self.var_local_id(binding.var_id, RefWithinGuard);
                     let place = Place::Base(PlaceBase::Local(local_id));
-                    self.cfg.push(
-                        block,
-                        Statement {
-                            source_info: guard_end,
-                            kind: StatementKind::FakeRead(FakeReadCause::ForGuardBinding, place),
-                        },
-                    );
-                }
-                self.bind_matched_candidate_for_arm_body(
-                    post_guard_block,
-                    by_value_bindings,
+                self.cfg.push(
+                    block,
+                    Statement {
+                        source_info: guard_end,
+                        kind: StatementKind::FakeRead(FakeReadCause::ForGuardBinding, place),
+                    },
                 );
             }
+            self.bind_matched_candidate_for_arm_body(
+                post_guard_block,
+                by_value_bindings,
+            );
 
             self.cfg.terminate(
                 post_guard_block,
@@ -1604,8 +1596,6 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
         }
     }
 
-    // Only called when all_pat_vars_are_implicit_refs_within_guards,
-    // and thus all code/comments assume we are in that context.
     fn bind_matched_candidate_for_guard(
         &mut self,
         block: BasicBlock,
@@ -1739,7 +1729,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
             }))),
         };
         let for_arm_body = self.local_decls.push(local.clone());
-        let locals = if has_guard.0 && tcx.all_pat_vars_are_implicit_refs_within_guards() {
+        let locals = if has_guard.0 {
             let ref_for_guard = self.local_decls.push(LocalDecl::<'tcx> {
                 // This variable isn't mutated but has a name, so has to be
                 // immutable to avoid the unused mut lint.
