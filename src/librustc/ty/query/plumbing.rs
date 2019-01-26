@@ -1260,6 +1260,7 @@ pub fn force_from_dep_node<'a, 'gcx, 'lcx>(tcx: TyCtxt<'a, 'gcx, 'lcx>,
         DepKind::CheckModPrivacy => { force!(check_mod_privacy, def_id!()); }
         DepKind::CheckModIntrinsics => { force!(check_mod_intrinsics, def_id!()); }
         DepKind::CheckModLiveness => { force!(check_mod_liveness, def_id!()); }
+        DepKind::CheckModImplWf => { force!(check_mod_impl_wf, def_id!()); }
         DepKind::CollectModItemTypes => { force!(collect_mod_item_types, def_id!()); }
         DepKind::Reachability => { force!(reachable_set, LOCAL_CRATE); }
         DepKind::MirKeys => { force!(mir_keys, LOCAL_CRATE); }

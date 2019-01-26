@@ -479,6 +479,7 @@ define_dep_nodes!( <'tcx>
     [] CheckModPrivacy(DefId),
     [] CheckModIntrinsics(DefId),
     [] CheckModLiveness(DefId),
+    [] CheckModImplWf(DefId),
     [] CollectModItemTypes(DefId),
 
     [] Reachability,

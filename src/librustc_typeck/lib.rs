@@ -318,6 +318,7 @@ pub fn provide(providers: &mut Providers) {
     check::provide(providers);
     variance::provide(providers);
     outlives::provide(providers);
+    impl_wf_check::provide(providers);
 }
 
 pub fn check_crate<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>)

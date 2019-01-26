@@ -13,6 +13,7 @@ use rustc::hir;
 use rustc::hir::itemlikevisit::ItemLikeVisitor;
 use rustc::hir::def_id::DefId;
 use rustc::ty::{self, TyCtxt};
+use rustc::ty::query::Providers;
 use rustc::util::nodemap::{FxHashMap, FxHashSet};
 use std::collections::hash_map::Entry::{Occupied, Vacant};
 
@@ -52,7 +53,23 @@ pub fn impl_wf_check<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>) {
     // We will tag this as part of the WF check -- logically, it is,
     // but it's one that we must perform earlier than the rest of
     // WfCheck.
-    tcx.hir().krate().visit_all_item_likes(&mut ImplWfCheck { tcx });
+    for &module in tcx.hir().krate().modules.keys() {
+        tcx.ensure().check_mod_impl_wf(tcx.hir().local_def_id(module));
+    }
+}
+
+fn check_mod_impl_wf<'tcx>(tcx: TyCtxt<'_, 'tcx, 'tcx>, module_def_id: DefId) {
+    tcx.hir().visit_item_likes_in_module(
+        module_def_id,
+        &mut ImplWfCheck { tcx }
+    );
+}
+
+pub fn provide(providers: &mut Providers<'_>) {
+    *providers = Providers {
+        check_mod_impl_wf,
+        ..*providers
+    };
 }
 
 struct ImplWfCheck<'a, 'tcx: 'a> {

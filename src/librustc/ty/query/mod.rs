@@ -270,6 +270,8 @@ define_queries! { <'tcx>
 
         [] fn check_mod_liveness: CheckModLiveness(DefId) -> (),
 
+        [] fn check_mod_impl_wf: CheckModImplWf(DefId) -> (),
+
         [] fn collect_mod_item_types: CollectModItemTypes(DefId) -> (),
 
         /// Caches CoerceUnsized kinds for impls on custom types.
