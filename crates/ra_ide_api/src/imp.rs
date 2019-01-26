@@ -4,7 +4,7 @@ use hir::{
     self, Problem, source_binder
 };
 use ra_db::{
-    FilesDatabase, SourceRoot, SourceRootId, SyntaxDatabase,
+    FilesDatabase, SourceRoot, SourceRootId,
     salsa::{Database, SweepStrategy},
 };
 use ra_ide_api_light::{self, assists, LocalEdit, Severity};

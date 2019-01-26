@@ -20,7 +20,7 @@ pub use crate::{
     loc2id::LocationIntener,
 };
 
-pub trait BaseDatabase: salsa::Database + panic::RefUnwindSafe {
+pub trait CheckCanceled: salsa::Database + panic::RefUnwindSafe {
     /// Aborts current query if there are pending changes.
     ///
     /// rust-analyzer needs to be able to answer semantic questions about the
@@ -64,10 +64,12 @@ pub struct FileRange {
 }
 
 #[salsa::query_group(FilesDatabaseStorage)]
-pub trait FilesDatabase: salsa::Database {
+pub trait FilesDatabase: salsa::Database + CheckCanceled {
     /// Text of the file.
     #[salsa::input]
     fn file_text(&self, file_id: FileId) -> Arc<String>;
+    // Parses the file into the syntax tree.
+    fn source_file(&self, file_id: FileId) -> TreeArc<SourceFile>;
     /// Path to a file, relative to the root of its source root.
     #[salsa::input]
     fn file_relative_path(&self, file_id: FileId) -> RelativePathBuf;
@@ -102,12 +104,7 @@ fn source_root_crates(db: &impl FilesDatabase, id: SourceRootId) -> Arc<Vec<Crat
     Arc::new(res)
 }
 
-#[salsa::query_group(SyntaxDatabaseStorage)]
-pub trait SyntaxDatabase: FilesDatabase + BaseDatabase {
-    fn source_file(&self, file_id: FileId) -> TreeArc<SourceFile>;
-}
-
-fn source_file(db: &impl SyntaxDatabase, file_id: FileId) -> TreeArc<SourceFile> {
+fn source_file(db: &impl FilesDatabase, file_id: FileId) -> TreeArc<SourceFile> {
     let text = db.file_text(file_id);
     SourceFile::parse(&*text)
 }

@@ -1,4 +1,4 @@
-use ra_db::{FileId, SyntaxDatabase};
+use ra_db::{FileId, FilesDatabase};
 use ra_syntax::{
     AstNode, ast,
     algo::find_node_at_offset,

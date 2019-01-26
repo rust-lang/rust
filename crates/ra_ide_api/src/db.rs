@@ -1,7 +1,7 @@
 use std::sync::Arc;
 
 use ra_db::{
-    BaseDatabase, FileId, Canceled,
+    CheckCanceled, FileId, Canceled,
     salsa::{self, Database},
 };
 
@@ -9,7 +9,6 @@ use crate::{symbol_index, LineIndex};
 
 #[salsa::database(
     ra_db::FilesDatabaseStorage,
-    ra_db::SyntaxDatabaseStorage,
     LineIndexDatabaseStorage,
     symbol_index::SymbolsDatabaseStorage,
     hir::db::HirDatabaseStorage
@@ -54,7 +53,7 @@ impl salsa::ParallelDatabase for RootDatabase {
     }
 }
 
-impl BaseDatabase for RootDatabase {}
+impl CheckCanceled for RootDatabase {}
 
 impl AsRef<hir::HirInterner> for RootDatabase {
     fn as_ref(&self) -> &hir::HirInterner {
@@ -63,7 +62,7 @@ impl AsRef<hir::HirInterner> for RootDatabase {
 }
 
 #[salsa::query_group(LineIndexDatabaseStorage)]
-pub(crate) trait LineIndexDatabase: ra_db::FilesDatabase + BaseDatabase {
+pub(crate) trait LineIndexDatabase: ra_db::FilesDatabase + CheckCanceled {
     fn line_index(&self, file_id: FileId) -> Arc<LineIndex>;
 }
 

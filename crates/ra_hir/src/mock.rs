@@ -2,7 +2,7 @@ use std::{sync::Arc, panic};
 
 use parking_lot::Mutex;
 use ra_db::{
-    BaseDatabase, FilePosition, FileId, CrateGraph, SourceRoot, SourceRootId, FilesDatabase, salsa,
+    CheckCanceled, FilePosition, FileId, CrateGraph, SourceRoot, SourceRootId, FilesDatabase, salsa,
 };
 use relative_path::RelativePathBuf;
 use test_utils::{parse_fixture, CURSOR_MARKER, extract_offset};
@@ -11,11 +11,7 @@ use crate::{db, HirInterner};
 
 pub const WORKSPACE: SourceRootId = SourceRootId(0);
 
-#[salsa::database(
-    ra_db::FilesDatabaseStorage,
-    ra_db::SyntaxDatabaseStorage,
-    db::HirDatabaseStorage
-)]
+#[salsa::database(ra_db::FilesDatabaseStorage, db::HirDatabaseStorage)]
 #[derive(Debug)]
 pub(crate) struct MockDatabase {
     events: Mutex<Option<Vec<salsa::Event<MockDatabase>>>>,
@@ -161,7 +157,7 @@ impl salsa::ParallelDatabase for MockDatabase {
     }
 }
 
-impl BaseDatabase for MockDatabase {}
+impl CheckCanceled for MockDatabase {}
 
 impl AsRef<HirInterner> for MockDatabase {
     fn as_ref(&self) -> &HirInterner {

@@ -1,5 +1,5 @@
 use ra_syntax::{ast, AstNode,};
-use ra_db::SyntaxDatabase;
+use ra_db::FilesDatabase;
 
 use crate::{
     FileId, HighlightedRange,

@@ -1,4 +1,4 @@
-use ra_db::SyntaxDatabase;
+use ra_db::FilesDatabase;
 use ra_syntax::{
     SyntaxNode, AstNode, SourceFile,
     ast, algo::find_covering_node,

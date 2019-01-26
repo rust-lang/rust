@@ -1,4 +1,4 @@
-use ra_db::SyntaxDatabase;
+use ra_db::FilesDatabase;
 use ra_syntax::{
     AstNode, SyntaxNode, TextUnit, TextRange,
     SyntaxKind::FN_DEF,
