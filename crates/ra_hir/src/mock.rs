@@ -140,8 +140,6 @@ impl Default for MockDatabase {
             file_counter: 0,
         };
         db.set_crate_graph(Default::default());
-        db.set_local_roots(Default::default());
-        db.set_library_roots(Default::default());
         db
     }
 }

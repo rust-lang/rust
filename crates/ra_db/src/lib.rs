@@ -80,14 +80,6 @@ pub trait FilesDatabase: salsa::Database + CheckCanceled {
     #[salsa::input]
     fn source_root(&self, id: SourceRootId) -> Arc<SourceRoot>;
     fn source_root_crates(&self, id: SourceRootId) -> Arc<Vec<CrateId>>;
-    /// The set of "local" (that is, from the current workspace) roots.
-    /// Files in local roots are assumed to change frequently.
-    #[salsa::input]
-    fn local_roots(&self) -> Arc<Vec<SourceRootId>>;
-    /// The set of roots for crates.io libraries.
-    /// Files in libraries are assumed to never change.
-    #[salsa::input]
-    fn library_roots(&self) -> Arc<Vec<SourceRootId>>;
     /// The crate graph.
     #[salsa::input]
     fn crate_graph(&self) -> Arc<CrateGraph>;

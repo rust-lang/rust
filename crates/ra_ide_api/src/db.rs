@@ -1,11 +1,11 @@
 use std::sync::Arc;
 
 use ra_db::{
-    CheckCanceled, FileId, Canceled,
-    salsa::{self, Database},
+    CheckCanceled, FileId, Canceled, FilesDatabase,
+    salsa,
 };
 
-use crate::{symbol_index, LineIndex};
+use crate::{LineIndex, symbol_index::{self, SymbolsDatabase}};
 
 #[salsa::database(
     ra_db::FilesDatabaseStorage,
@@ -34,12 +34,9 @@ impl Default for RootDatabase {
             runtime: salsa::Runtime::default(),
             interner: Default::default(),
         };
-        db.query_mut(ra_db::CrateGraphQuery)
-            .set((), Default::default());
-        db.query_mut(ra_db::LocalRootsQuery)
-            .set((), Default::default());
-        db.query_mut(ra_db::LibraryRootsQuery)
-            .set((), Default::default());
+        db.set_crate_graph(Default::default());
+        db.set_local_roots(Default::default());
+        db.set_library_roots(Default::default());
         db
     }
 }
