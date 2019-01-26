@@ -538,7 +538,7 @@ pub fn handle_formatting(
     let captured_stdout = String::from_utf8(output.stdout)?;
     if !output.status.success() {
         return Err(LspError::new(
-            gen_lsp_server::ErrorCode::ParseError as i32,
+            -32900,
             format!(
                 r#"rustfmt exited with:
             Status: {}
