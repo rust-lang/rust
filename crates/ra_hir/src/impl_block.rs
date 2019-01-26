@@ -7,13 +7,13 @@ use ra_syntax::{
 ast::{self, AstNode}};
 
 use crate::{
-    Const, Type,
-    Function, HirFileId,
-    HirDatabase,
-    PersistentHirDatabase,
+    Const, Type, Function, HirFileId,
+    HirDatabase, PersistentHirDatabase,
+    ModuleDef, Trait, Resolution,
     type_ref::TypeRef,
     ids::LocationCtx,
     resolve::Resolver,
+    ty::Ty,
 };
 
 use crate::code_model_api::{Module, ModuleSource};
@@ -75,12 +75,29 @@ impl ImplBlock {
         self.module_impl_blocks.module.clone()
     }
 
-    pub fn target_trait(&self) -> Option<&TypeRef> {
+    pub fn target_trait_ref(&self) -> Option<&TypeRef> {
         self.impl_data().target_trait()
     }
 
     pub fn target_type(&self) -> &TypeRef {
         self.impl_data().target_type()
+    }
+
+    pub fn target_ty(&self, db: &impl HirDatabase) -> Ty {
+        Ty::from_hir(db, &self.resolver(db), self.target_type())
+    }
+
+    pub fn target_trait(&self, db: &impl HirDatabase) -> Option<Trait> {
+        if let Some(TypeRef::Path(path)) = self.target_trait_ref() {
+            let resolver = self.resolver(db);
+            if let Some(Resolution::Def {
+                def: ModuleDef::Trait(tr),
+            }) = resolver.resolve_path(db, path).take_types()
+            {
+                return Some(tr);
+            }
+        }
+        None
     }
 
     pub fn items(&self) -> &[ImplItem] {

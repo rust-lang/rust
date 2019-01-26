@@ -75,9 +75,6 @@ impl Body {
 #[allow(dead_code)]
 pub fn resolver_for_expr(body: Arc<Body>, db: &impl HirDatabase, expr_id: ExprId) -> Resolver {
     let mut r = body.owner.resolver(db);
-    if !body.params.is_empty() {
-        r = r.push_function_params(Arc::clone(&body));
-    }
     let scopes = db.expr_scopes(body.owner);
     let scope_chain = scopes.scope_chain_for(expr_id).collect::<Vec<_>>();
     for scope in scope_chain.into_iter().rev() {

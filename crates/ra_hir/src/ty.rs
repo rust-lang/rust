@@ -33,15 +33,16 @@ use rustc_hash::FxHashMap;
 use test_utils::tested_by;
 
 use crate::{
-    Module, Function, Struct, StructField, Enum, EnumVariant, Path, Name, ImplBlock,
-    FnSignature, ExprScopes, ModuleDef, AdtDef,
+    Function, Struct, StructField, Enum, EnumVariant, Path, Name,
+    FnSignature, ModuleDef, AdtDef,
     HirDatabase,
     type_ref::{TypeRef, Mutability},
     name::KnownName,
-    expr::{Body, Expr, BindingAnnotation, Literal, ExprId, Pat, PatId, UnaryOp, BinaryOp, Statement, FieldPat},
+    expr::{Body, Expr, BindingAnnotation, Literal, ExprId, Pat, PatId, UnaryOp, BinaryOp, Statement, FieldPat, self},
     generics::GenericParams,
     path::GenericArg,
     adt::VariantDef,
+    resolve::{Resolver, Resolution},
 };
 
 /// The ID of a type variable.
@@ -300,47 +301,38 @@ pub struct FnSig {
 }
 
 impl Ty {
-    pub(crate) fn from_hir(
-        db: &impl HirDatabase,
-        // TODO: the next three parameters basically describe the scope for name
-        // resolution; this should be refactored into something like a general
-        // resolver architecture
-        module: &Module,
-        impl_block: Option<&ImplBlock>,
-        generics: &GenericParams,
-        type_ref: &TypeRef,
-    ) -> Self {
+    pub(crate) fn from_hir(db: &impl HirDatabase, resolver: &Resolver, type_ref: &TypeRef) -> Self {
         match type_ref {
             TypeRef::Never => Ty::Never,
             TypeRef::Tuple(inner) => {
                 let inner_tys = inner
                     .iter()
-                    .map(|tr| Ty::from_hir(db, module, impl_block, generics, tr))
+                    .map(|tr| Ty::from_hir(db, resolver, tr))
                     .collect::<Vec<_>>();
                 Ty::Tuple(inner_tys.into())
             }
-            TypeRef::Path(path) => Ty::from_hir_path(db, module, impl_block, generics, path),
+            TypeRef::Path(path) => Ty::from_hir_path(db, resolver, path),
             TypeRef::RawPtr(inner, mutability) => {
-                let inner_ty = Ty::from_hir(db, module, impl_block, generics, inner);
+                let inner_ty = Ty::from_hir(db, resolver, inner);
                 Ty::RawPtr(Arc::new(inner_ty), *mutability)
             }
             TypeRef::Array(inner) => {
-                let inner_ty = Ty::from_hir(db, module, impl_block, generics, inner);
+                let inner_ty = Ty::from_hir(db, resolver, inner);
                 Ty::Array(Arc::new(inner_ty))
             }
             TypeRef::Slice(inner) => {
-                let inner_ty = Ty::from_hir(db, module, impl_block, generics, inner);
+                let inner_ty = Ty::from_hir(db, resolver, inner);
                 Ty::Slice(Arc::new(inner_ty))
             }
             TypeRef::Reference(inner, mutability) => {
-                let inner_ty = Ty::from_hir(db, module, impl_block, generics, inner);
+                let inner_ty = Ty::from_hir(db, resolver, inner);
                 Ty::Ref(Arc::new(inner_ty), *mutability)
             }
             TypeRef::Placeholder => Ty::Unknown,
             TypeRef::Fn(params) => {
                 let mut inner_tys = params
                     .iter()
-                    .map(|tr| Ty::from_hir(db, module, impl_block, generics, tr))
+                    .map(|tr| Ty::from_hir(db, resolver, tr))
                     .collect::<Vec<_>>();
                 let return_ty = inner_tys
                     .pop()
@@ -355,40 +347,13 @@ impl Ty {
         }
     }
 
-    pub(crate) fn from_hir_opt(
-        db: &impl HirDatabase,
-        module: &Module,
-        impl_block: Option<&ImplBlock>,
-        generics: &GenericParams,
-        type_ref: Option<&TypeRef>,
-    ) -> Self {
-        type_ref.map_or(Ty::Unknown, |t| {
-            Ty::from_hir(db, module, impl_block, generics, t)
-        })
-    }
-
-    pub(crate) fn from_hir_path(
-        db: &impl HirDatabase,
-        module: &Module,
-        impl_block: Option<&ImplBlock>,
-        generics: &GenericParams,
-        path: &Path,
-    ) -> Self {
+    pub(crate) fn from_hir_path(db: &impl HirDatabase, resolver: &Resolver, path: &Path) -> Self {
         if let Some(name) = path.as_ident() {
+            // TODO handle primitive type names in resolver as well?
             if let Some(int_ty) = primitive::UncertainIntTy::from_name(name) {
                 return Ty::Int(int_ty);
             } else if let Some(float_ty) = primitive::UncertainFloatTy::from_name(name) {
                 return Ty::Float(float_ty);
-            } else if name.as_known_name() == Some(KnownName::SelfType) {
-                // TODO pass the impl block's generics?
-                let generics = &GenericParams::default();
-                return Ty::from_hir_opt(
-                    db,
-                    module,
-                    None,
-                    generics,
-                    impl_block.map(|i| i.target_type()),
-                );
             } else if let Some(known) = name.as_known_name() {
                 match known {
                     KnownName::Bool => return Ty::Bool,
@@ -396,25 +361,40 @@ impl Ty {
                     KnownName::Str => return Ty::Str,
                     _ => {}
                 }
-            } else if let Some(generic_param) = generics.find_by_name(&name) {
-                return Ty::Param {
-                    idx: generic_param.idx,
-                    name: generic_param.name.clone(),
-                };
             }
         }
 
-        // Resolve in module (in type namespace)
-        let typable: TypableDef = match module
-            .resolve_path(db, path)
-            .take_types()
-            .and_then(|it| it.into())
-        {
+        // Resolve the path (in type namespace)
+        let resolution = resolver.resolve_path(db, path).take_types();
+
+        let def = match resolution {
+            Some(Resolution::Def { def, .. }) => def,
+            Some(Resolution::LocalBinding { .. }) => {
+                // this should never happen
+                panic!("path resolved to local binding in type ns");
+            }
+            Some(Resolution::GenericParam { idx }) => {
+                return Ty::Param {
+                    idx,
+                    // TODO: maybe return name in resolution?
+                    name: path
+                        .as_ident()
+                        .expect("generic param should be single-segment path")
+                        .clone(),
+                };
+            }
+            Some(Resolution::SelfType(impl_block)) => {
+                return impl_block.target_ty(db);
+            }
+            None => return Ty::Unknown,
+        };
+
+        let typable: TypableDef = match def.into() {
             None => return Ty::Unknown,
             Some(it) => it,
         };
         let ty = db.type_for_def(typable);
-        let substs = Ty::substs_from_path(db, module, impl_block, generics, path, typable);
+        let substs = Ty::substs_from_path(db, resolver, path, typable);
         ty.apply_substs(substs)
     }
 
@@ -422,10 +402,7 @@ impl Ty {
     /// `create_substs_for_ast_path` and `def_to_ty` in rustc.
     fn substs_from_path(
         db: &impl HirDatabase,
-        // the scope of the segment...
-        module: &Module,
-        impl_block: Option<&ImplBlock>,
-        outer_generics: &GenericParams,
+        resolver: &Resolver,
         path: &Path,
         resolved: TypableDef,
     ) -> Substs {
@@ -462,7 +439,7 @@ impl Ty {
             for arg in generic_args.args.iter().take(param_count) {
                 match arg {
                     GenericArg::Type(type_ref) => {
-                        let ty = Ty::from_hir(db, module, impl_block, outer_generics, type_ref);
+                        let ty = Ty::from_hir(db, resolver, type_ref);
                         substs.push(ty);
                     }
                 }
@@ -666,24 +643,17 @@ impl fmt::Display for Ty {
 /// function body.
 fn type_for_fn(db: &impl HirDatabase, def: Function) -> Ty {
     let signature = def.signature(db);
-    let module = def.module(db);
-    let impl_block = def.impl_block(db);
+    let resolver = def.resolver(db);
     let generics = def.generic_params(db);
+    let name = def.name(db);
     let input = signature
         .params()
         .iter()
-        .map(|tr| Ty::from_hir(db, &module, impl_block.as_ref(), &generics, tr))
+        .map(|tr| Ty::from_hir(db, &resolver, tr))
         .collect::<Vec<_>>();
-    let output = Ty::from_hir(
-        db,
-        &module,
-        impl_block.as_ref(),
-        &generics,
-        signature.ret_type(),
-    );
+    let output = Ty::from_hir(db, &resolver, signature.ret_type());
     let sig = Arc::new(FnSig { input, output });
     let substs = make_substs(&generics);
-    let name = def.name(db);
     Ty::FnDef {
         def,
         sig,
@@ -764,13 +734,13 @@ pub(super) fn type_for_def(db: &impl HirDatabase, def: TypableDef) -> Ty {
 
 pub(super) fn type_for_field(db: &impl HirDatabase, field: StructField) -> Ty {
     let parent_def = field.parent_def(db);
-    let (generics, module) = match parent_def {
-        VariantDef::Struct(it) => (it.generic_params(db), it.module(db)),
-        VariantDef::EnumVariant(it) => (it.parent_enum(db).generic_params(db), it.module(db)),
+    let resolver = match parent_def {
+        VariantDef::Struct(it) => it.resolver(db),
+        VariantDef::EnumVariant(it) => it.parent_enum(db).resolver(db),
     };
     let var_data = parent_def.variant_data(db);
     let type_ref = &var_data.fields().unwrap()[field.id].type_ref;
-    Ty::from_hir(db, &module, None, &generics, type_ref)
+    Ty::from_hir(db, &resolver, type_ref)
 }
 
 /// The result of type inference: A mapping from expressions and patterns to types.
@@ -814,9 +784,7 @@ impl Index<PatId> for InferenceResult {
 struct InferenceContext<'a, D: HirDatabase> {
     db: &'a D,
     body: Arc<Body>,
-    scopes: Arc<ExprScopes>,
-    module: Module,
-    impl_block: Option<ImplBlock>,
+    resolver: Resolver,
     var_unification_table: InPlaceUnificationTable<TypeVarId>,
     method_resolutions: FxHashMap<ExprId, Function>,
     field_resolutions: FxHashMap<ExprId, StructField>,
@@ -905,13 +873,7 @@ fn binary_op_rhs_expectation(op: BinaryOp, lhs_ty: Ty) -> Ty {
 }
 
 impl<'a, D: HirDatabase> InferenceContext<'a, D> {
-    fn new(
-        db: &'a D,
-        body: Arc<Body>,
-        scopes: Arc<ExprScopes>,
-        module: Module,
-        impl_block: Option<ImplBlock>,
-    ) -> Self {
+    fn new(db: &'a D, body: Arc<Body>, resolver: Resolver) -> Self {
         InferenceContext {
             method_resolutions: FxHashMap::default(),
             field_resolutions: FxHashMap::default(),
@@ -921,9 +883,7 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
             return_ty: Ty::Unknown, // set in collect_fn_signature
             db,
             body,
-            scopes,
-            module,
-            impl_block,
+            resolver,
         }
     }
 
@@ -940,8 +900,8 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
             *ty = resolved;
         }
         InferenceResult {
-            method_resolutions: mem::replace(&mut self.method_resolutions, Default::default()),
-            field_resolutions: mem::replace(&mut self.field_resolutions, Default::default()),
+            method_resolutions: self.method_resolutions,
+            field_resolutions: self.field_resolutions,
             type_of_expr: expr_types,
             type_of_pat: pat_types,
         }
@@ -964,13 +924,10 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
     }
 
     fn make_ty(&mut self, type_ref: &TypeRef) -> Ty {
-        // TODO provide generics of function
-        let generics = GenericParams::default();
         let ty = Ty::from_hir(
             self.db,
-            &self.module,
-            self.impl_block.as_ref(),
-            &generics,
+            // TODO use right resolver for block
+            &self.resolver,
             type_ref,
         );
         let ty = self.insert_type_vars(ty);
@@ -1147,38 +1104,31 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
         })
     }
 
-    fn infer_path_expr(&mut self, expr: ExprId, path: &Path) -> Option<Ty> {
-        if path.is_ident() || path.is_self() {
-            // resolve locally
-            let name = path.as_ident().cloned().unwrap_or_else(Name::self_param);
-            if let Some(scope_entry) = self.scopes.resolve_local_name(expr, name) {
-                let ty = self.type_of_pat.get(scope_entry.pat())?;
+    fn infer_path_expr(&mut self, resolver: &Resolver, path: &Path) -> Option<Ty> {
+        let resolved = resolver.resolve_path(self.db, &path).take_values()?;
+        match resolved {
+            Resolution::Def { def, .. } => {
+                let typable: Option<TypableDef> = def.into();
+                let typable = typable?;
+                let substs = Ty::substs_from_path(self.db, &self.resolver, path, typable);
+                let ty = self.db.type_for_def(typable).apply_substs(substs);
+                let ty = self.insert_type_vars(ty);
+                Some(ty)
+            }
+            Resolution::LocalBinding { pat } => {
+                let ty = self.type_of_pat.get(pat)?;
                 let ty = self.resolve_ty_as_possible(&mut vec![], ty.clone());
-                return Some(ty);
-            };
-        };
-
-        // resolve in module
-        let typable: Option<TypableDef> = self
-            .module
-            .resolve_path(self.db, &path)
-            .take_values()?
-            .into();
-        let typable = typable?;
-        let ty = self.db.type_for_def(typable);
-        let generics = GenericParams::default();
-        let substs = Ty::substs_from_path(
-            self.db,
-            &self.module,
-            self.impl_block.as_ref(),
-            &generics,
-            path,
-            typable,
-        );
-        let ty = ty.apply_substs(substs);
-        let ty = self.insert_type_vars(ty);
-
-        Some(ty)
+                Some(ty)
+            }
+            Resolution::GenericParam { .. } => {
+                // generic params can't refer to values... yet
+                None
+            }
+            Resolution::SelfType(_) => {
+                log::error!("path expr {:?} resolved to Self type in values ns", path);
+                None
+            }
+        }
     }
 
     fn resolve_variant(&mut self, path: Option<&Path>) -> (Ty, Option<VariantDef>) {
@@ -1186,26 +1136,30 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
             Some(path) => path,
             None => return (Ty::Unknown, None),
         };
-        let typable: Option<TypableDef> = self
-            .module
-            .resolve_path(self.db, &path)
-            .take_types()
-            .and_then(|it| it.into());
+        let resolver = &self.resolver;
+        let typable: Option<TypableDef> = match resolver.resolve_path(self.db, &path).take_types() {
+            Some(Resolution::Def { def, .. }) => def.into(),
+            Some(Resolution::LocalBinding { .. }) => {
+                // this cannot happen
+                log::error!("path resolved to local binding in type ns");
+                return (Ty::Unknown, None);
+            }
+            Some(Resolution::GenericParam { .. }) => {
+                // generic params can't be used in struct literals
+                return (Ty::Unknown, None);
+            }
+            Some(Resolution::SelfType(..)) => {
+                // TODO this is allowed in an impl for a struct, handle this
+                return (Ty::Unknown, None);
+            }
+            None => return (Ty::Unknown, None),
+        };
         let def = match typable {
             None => return (Ty::Unknown, None),
             Some(it) => it,
         };
         // TODO remove the duplication between here and `Ty::from_path`?
-        // TODO provide generics of function
-        let generics = GenericParams::default();
-        let substs = Ty::substs_from_path(
-            self.db,
-            &self.module,
-            self.impl_block.as_ref(),
-            &generics,
-            path,
-            def,
-        );
+        let substs = Ty::substs_from_path(self.db, resolver, path, def);
         match def {
             TypableDef::Struct(s) => {
                 let ty = type_for_struct(self.db, s);
@@ -1303,12 +1257,12 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
                 path: ref p,
                 args: ref fields,
             } => self.infer_struct_pat(p.as_ref(), fields, expected),
-            Pat::Path(path) => self
-                .module
-                .resolve_path(self.db, &path)
-                .take_values()
-                .and_then(|module_def| module_def.into())
-                .map_or(Ty::Unknown, |resolved| self.db.type_for_def(resolved)),
+            Pat::Path(path) => {
+                // TODO use correct resolver for the surrounding expression
+                let resolver = self.resolver.clone();
+                self.infer_path_expr(&resolver, &path)
+                    .unwrap_or(Ty::Unknown)
+            }
             Pat::Bind {
                 mode,
                 name: _name,
@@ -1496,7 +1450,11 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
 
                 expected.ty
             }
-            Expr::Path(p) => self.infer_path_expr(tgt_expr, p).unwrap_or(Ty::Unknown),
+            Expr::Path(p) => {
+                // TODO this could be more efficient...
+                let resolver = expr::resolver_for_expr(self.body.clone(), self.db, tgt_expr);
+                self.infer_path_expr(&resolver, p).unwrap_or(Ty::Unknown)
+            }
             Expr::Continue => Ty::Never,
             Expr::Break { expr } => {
                 if let Some(expr) = expr {
@@ -1730,10 +1688,8 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
 pub fn infer(db: &impl HirDatabase, func: Function) -> Arc<InferenceResult> {
     db.check_canceled();
     let body = func.body(db);
-    let scopes = db.expr_scopes(func);
-    let module = func.module(db);
-    let impl_block = func.impl_block(db);
-    let mut ctx = InferenceContext::new(db, body, scopes, module, impl_block);
+    let resolver = func.resolver(db);
+    let mut ctx = InferenceContext::new(db, body, resolver);
 
     let signature = func.signature(db);
     ctx.collect_fn_signature(&signature);

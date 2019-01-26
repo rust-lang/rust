@@ -7,12 +7,10 @@ use std::sync::Arc;
 use rustc_hash::FxHashMap;
 
 use crate::{
-    HirDatabase, module_tree::ModuleId, Module, ModuleDef, Crate, Name, Function, Trait,
+    HirDatabase, module_tree::ModuleId, Module, Crate, Name, Function, Trait,
     ids::TraitId,
     impl_block::{ImplId, ImplBlock, ImplItem},
-    generics::GenericParams,
     ty::{AdtDef, Ty},
-    type_ref::TypeRef,
 };
 
 /// This is used as a key for indexing impls.
@@ -85,17 +83,10 @@ impl CrateImplBlocks {
     fn collect_recursive(&mut self, db: &impl HirDatabase, module: &Module) {
         let module_impl_blocks = db.impls_in_module(module.clone());
 
-        for (impl_id, impl_data) in module_impl_blocks.impls.iter() {
+        for (impl_id, _) in module_impl_blocks.impls.iter() {
             let impl_block = ImplBlock::from_id(Arc::clone(&module_impl_blocks), impl_id);
-            // TODO provide generics of impl
-            let generics = GenericParams::default();
-            let target_ty = Ty::from_hir(
-                db,
-                &module,
-                Some(&impl_block),
-                &generics,
-                impl_data.target_type(),
-            );
+
+            let target_ty = impl_block.target_ty(db);
 
             if let Some(target_ty_fp) = TyFingerprint::for_impl(&target_ty) {
                 self.impls
@@ -104,14 +95,11 @@ impl CrateImplBlocks {
                     .push((module.module_id, impl_id));
             }
 
-            if let Some(TypeRef::Path(path)) = impl_data.target_trait() {
-                let perns = module.resolve_path(db, path);
-                if let Some(ModuleDef::Trait(tr)) = perns.take_types() {
-                    self.impls_by_trait
-                        .entry(tr.id)
-                        .or_insert_with(Vec::new)
-                        .push((module.module_id, impl_id));
-                }
+            if let Some(tr) = impl_block.target_trait(db) {
+                self.impls_by_trait
+                    .entry(tr.id)
+                    .or_insert_with(Vec::new)
+                    .push((module.module_id, impl_id));
             }
         }
 

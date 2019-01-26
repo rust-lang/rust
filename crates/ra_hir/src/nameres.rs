@@ -24,8 +24,9 @@ use rustc_hash::{FxHashMap, FxHashSet};
 
 use crate::{
     Module, ModuleDef,
-    Path, PathKind, Crate,
-    Name, PersistentHirDatabase,
+    Path, PathKind, PersistentHirDatabase,
+    Crate,
+    Name,
     module_tree::{ModuleId, ModuleTree},
     nameres::lower::{ImportId, LoweredModule, ImportData},
 };
@@ -46,7 +47,7 @@ impl std::ops::Index<ModuleId> for ItemMap {
 
 #[derive(Debug, Default, PartialEq, Eq, Clone)]
 pub struct ModuleScope {
-    items: FxHashMap<Name, Resolution>,
+    pub(crate) items: FxHashMap<Name, Resolution>,
 }
 
 impl ModuleScope {
@@ -113,6 +114,10 @@ impl<T> PerNs<T> {
         self.types.is_none() && self.values.is_none()
     }
 
+    pub fn is_both(&self) -> bool {
+        self.types.is_some() && self.values.is_some()
+    }
+
     pub fn take(self, namespace: Namespace) -> Option<T> {
         match namespace {
             Namespace::Types => self.types,
@@ -136,6 +141,13 @@ impl<T> PerNs<T> {
         PerNs {
             types: self.types.as_ref(),
             values: self.values.as_ref(),
+        }
+    }
+
+    pub fn combine(self, other: PerNs<T>) -> PerNs<T> {
+        PerNs {
+            types: self.types.or(other.types),
+            values: self.values.or(other.values),
         }
     }
 
@@ -402,10 +414,11 @@ impl ItemMap {
                     if module.krate != original_module.krate {
                         let path = Path {
                             segments: path.segments[i..].iter().cloned().collect(),
-                            kind: PathKind::Crate,
+                            kind: PathKind::Self_,
                         };
                         log::debug!("resolving {:?} in other crate", path);
-                        let def = module.resolve_path(db, &path);
+                        let item_map = db.item_map(module.krate);
+                        let def = item_map.resolve_path(db, *module, &path);
                         return (def, ReachedFixedPoint::Yes);
                     }
 

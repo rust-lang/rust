@@ -5,7 +5,7 @@ use ra_db::{CrateId, FileId};
 use ra_syntax::{ast::self, TreeArc, SyntaxNode};
 
 use crate::{
-    Name, Path, PerNs, ScopesWithSyntaxMapping, Ty, HirFileId,
+    Name, ScopesWithSyntaxMapping, Ty, HirFileId,
     type_ref::TypeRef,
     nameres::{ModuleScope, lower::ImportId},
     HirDatabase, PersistentHirDatabase,
@@ -175,18 +175,13 @@ impl Module {
         db.item_map(self.krate)[self.module_id].clone()
     }
 
-    pub fn resolve_path(&self, db: &impl PersistentHirDatabase, path: &Path) -> PerNs<ModuleDef> {
-        // TODO replace by Resolver::resolve_path
-        db.item_map(self.krate).resolve_path(db, *self, path)
-    }
-
     pub fn problems(&self, db: &impl HirDatabase) -> Vec<(TreeArc<SyntaxNode>, Problem)> {
         self.problems_impl(db)
     }
 
     pub fn resolver(&self, db: &impl HirDatabase) -> Resolver {
         let item_map = db.item_map(self.krate);
-        Resolver::default().push_module_scope(item_map, self.module_id)
+        Resolver::default().push_module_scope(item_map, *self)
     }
 }
 
@@ -289,6 +284,21 @@ impl Struct {
     pub fn ty(&self, db: &impl HirDatabase) -> Ty {
         db.type_for_def((*self).into())
     }
+
+    // TODO move to a more general type
+    /// Builds a resolver for type references inside this struct.
+    pub fn resolver(&self, db: &impl HirDatabase) -> Resolver {
+        // take the outer scope...
+        let r = self.module(db).resolver(db);
+        // ...and add generic params, if present
+        let p = self.generic_params(db);
+        let r = if !p.params.is_empty() {
+            r.push_generic_params_scope(p)
+        } else {
+            r
+        };
+        r
+    }
 }
 
 impl Docs for Struct {
@@ -337,6 +347,21 @@ impl Enum {
 
     pub fn ty(&self, db: &impl HirDatabase) -> Ty {
         db.type_for_def((*self).into())
+    }
+
+    // TODO move to a more general type
+    /// Builds a resolver for type references inside this struct.
+    pub fn resolver(&self, db: &impl HirDatabase) -> Resolver {
+        // take the outer scope...
+        let r = self.module(db).resolver(db);
+        // ...and add generic params, if present
+        let p = self.generic_params(db);
+        let r = if !p.params.is_empty() {
+            r.push_generic_params_scope(p)
+        } else {
+            r
+        };
+        r
     }
 }
 

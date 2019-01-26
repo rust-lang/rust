@@ -5,11 +5,12 @@ use relative_path::RelativePath;
 use test_utils::{assert_eq_text, covers};
 
 use crate::{
-    ItemMap, Resolution,
+    ItemMap,
     PersistentHirDatabase,
     mock::MockDatabase,
     module_tree::ModuleId,
 };
+use super::Resolution;
 
 fn item_map(fixture: &str) -> (Arc<ItemMap>, ModuleId) {
     let (db, pos) = MockDatabase::with_position(fixture);
