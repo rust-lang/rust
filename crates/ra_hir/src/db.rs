@@ -20,8 +20,8 @@ use crate::{
 
 #[salsa::query_group(HirDatabaseStorage)]
 pub trait HirDatabase: SourceDatabase + AsRef<HirInterner> {
-    #[salsa::invoke(HirFileId::hir_source_file)]
-    fn hir_source_file(&self, file_id: HirFileId) -> TreeArc<SourceFile>;
+    #[salsa::invoke(HirFileId::hir_parse)]
+    fn hir_parse(&self, file_id: HirFileId) -> TreeArc<SourceFile>;
 
     #[salsa::invoke(crate::macros::expand_macro_invocation)]
     fn expand_macro_invocation(&self, invoc: MacroCallId) -> Option<Arc<MacroExpansion>>;

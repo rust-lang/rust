@@ -6,7 +6,7 @@ use std::{
 
 use ra_syntax::{AstNode, TreeArc, SourceFile};
 use ra_db::{
-    SourceFileQuery, FileTextQuery, SourceRootId,
+    ParseQuery, FileTextQuery, SourceRootId,
     salsa::{Database, debug::{DebugQueryTable, TableEntry}},
 };
 
@@ -17,7 +17,7 @@ use crate::{
 
 pub(crate) fn status(db: &RootDatabase) -> String {
     let files_stats = db.query(FileTextQuery).entries::<FilesStats>();
-    let syntax_tree_stats = db.query(SourceFileQuery).entries::<SyntaxTreeStats>();
+    let syntax_tree_stats = db.query(ParseQuery).entries::<SyntaxTreeStats>();
     let symbols_stats = db
         .query(LibrarySymbolsQuery)
         .entries::<LibrarySymbolsStats>();

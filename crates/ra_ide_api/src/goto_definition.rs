@@ -11,7 +11,7 @@ pub(crate) fn goto_definition(
     db: &RootDatabase,
     position: FilePosition,
 ) -> Option<RangeInfo<Vec<NavigationTarget>>> {
-    let file = db.source_file(position.file_id);
+    let file = db.parse(position.file_id);
     let syntax = file.syntax();
     if let Some(name_ref) = find_node_at_offset::<ast::NameRef>(syntax, position.offset) {
         let navs = reference_definition(db, position.file_id, name_ref).to_vec();

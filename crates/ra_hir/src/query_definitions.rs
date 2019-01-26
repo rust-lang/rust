@@ -23,7 +23,7 @@ pub(super) fn fn_scopes(db: &impl HirDatabase, func: Function) -> Arc<FnScopes> 
 }
 
 pub(super) fn file_items(db: &impl HirDatabase, file_id: HirFileId) -> Arc<SourceFileItems> {
-    let source_file = db.hir_source_file(file_id);
+    let source_file = db.hir_parse(file_id);
     let res = SourceFileItems::new(file_id, &source_file);
     Arc::new(res)
 }
@@ -34,10 +34,7 @@ pub(super) fn file_item(
 ) -> TreeArc<SyntaxNode> {
     match source_item_id.item_id {
         Some(id) => db.file_items(source_item_id.file_id)[id].to_owned(),
-        None => db
-            .hir_source_file(source_item_id.file_id)
-            .syntax()
-            .to_owned(),
+        None => db.hir_parse(source_item_id.file_id).syntax().to_owned(),
     }
 }
 

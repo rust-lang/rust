@@ -22,7 +22,7 @@ pub enum RunnableKind {
 }
 
 pub(crate) fn runnables(db: &RootDatabase, file_id: FileId) -> Vec<Runnable> {
-    let source_file = db.source_file(file_id);
+    let source_file = db.parse(file_id);
     source_file
         .syntax()
         .descendants()

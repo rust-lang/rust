@@ -7,7 +7,7 @@ use ra_syntax::{
 use crate::{db::RootDatabase, RangeInfo, FilePosition, FileRange, NavigationTarget};
 
 pub(crate) fn hover(db: &RootDatabase, position: FilePosition) -> Option<RangeInfo<String>> {
-    let file = db.source_file(position.file_id);
+    let file = db.parse(position.file_id);
     let mut res = Vec::new();
 
     let mut range = None;
@@ -53,7 +53,7 @@ pub(crate) fn hover(db: &RootDatabase, position: FilePosition) -> Option<RangeIn
 }
 
 pub(crate) fn type_of(db: &RootDatabase, frange: FileRange) -> Option<String> {
-    let file = db.source_file(frange.file_id);
+    let file = db.parse(frange.file_id);
     let syntax = file.syntax();
     let leaf_node = find_covering_node(syntax, frange.range);
     // if we picked identifier, expand to pattern/expression
@@ -88,7 +88,7 @@ fn doc_text_for(db: &RootDatabase, nav: NavigationTarget) -> Option<String> {
 
 impl NavigationTarget {
     fn node(&self, db: &RootDatabase) -> Option<TreeArc<SyntaxNode>> {
-        let source_file = db.source_file(self.file_id());
+        let source_file = db.parse(self.file_id());
         let source_file = source_file.syntax();
         let node = source_file
             .descendants()
