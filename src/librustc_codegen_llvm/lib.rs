@@ -72,7 +72,7 @@ use rustc::dep_graph::DepGraph;
 use rustc::middle::allocator::AllocatorKind;
 use rustc::middle::cstore::{EncodedMetadata, MetadataLoader};
 use rustc::session::{Session, CompileIncomplete};
-use rustc::session::config::{OutputFilenames, OutputType, PrintRequest};
+use rustc::session::config::{OutputFilenames, OutputType, PrintRequest, OptLevel};
 use rustc::ty::{self, TyCtxt};
 use rustc::util::time_graph;
 use rustc::util::profiling::ProfileCategory;
@@ -121,8 +121,8 @@ mod va_arg;
 pub struct LlvmCodegenBackend(());
 
 impl ExtraBackendMethods for LlvmCodegenBackend {
-    fn new_metadata(&self, sess: &Session, mod_name: &str) -> ModuleLlvm {
-        ModuleLlvm::new(sess, mod_name)
+    fn new_metadata(&self, tcx: TyCtxt, mod_name: &str) -> ModuleLlvm {
+        ModuleLlvm::new(tcx, mod_name)
     }
     fn write_metadata<'b, 'gcx>(
         &self,
@@ -144,10 +144,11 @@ impl ExtraBackendMethods for LlvmCodegenBackend {
     fn target_machine_factory(
         &self,
         sess: &Session,
+        optlvl: OptLevel,
         find_features: bool
     ) -> Arc<dyn Fn() ->
         Result<&'static mut llvm::TargetMachine, String> + Send + Sync> {
-        back::write::target_machine_factory(sess, find_features)
+        back::write::target_machine_factory(sess, optlvl, find_features)
     }
     fn target_cpu<'b>(&self, sess: &'b Session) -> &'b str {
         llvm_util::target_cpu(sess)
@@ -363,15 +364,15 @@ unsafe impl Send for ModuleLlvm { }
 unsafe impl Sync for ModuleLlvm { }
 
 impl ModuleLlvm {
-    fn new(sess: &Session, mod_name: &str) -> Self {
+    fn new(tcx: TyCtxt, mod_name: &str) -> Self {
         unsafe {
-            let llcx = llvm::LLVMRustContextCreate(sess.fewer_names());
-            let llmod_raw = context::create_module(sess, llcx, mod_name) as *const _;
+            let llcx = llvm::LLVMRustContextCreate(tcx.sess.fewer_names());
+            let llmod_raw = context::create_module(tcx, llcx, mod_name) as *const _;
 
             ModuleLlvm {
                 llmod_raw,
                 llcx,
-                tm: create_target_machine(sess, false),
+                tm: create_target_machine(tcx, false),
             }
         }
     }

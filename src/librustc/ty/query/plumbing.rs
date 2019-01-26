@@ -1410,6 +1410,9 @@ pub fn force_from_dep_node<'a, 'gcx, 'lcx>(tcx: TyCtxt<'a, 'gcx, 'lcx>,
         DepKind::UpstreamMonomorphizationsFor => {
             force!(upstream_monomorphizations_for, def_id!());
         }
+        DepKind::BackendOptimizationLevel => {
+            force!(backend_optimization_level, krate!());
+        }
     }
 
     true

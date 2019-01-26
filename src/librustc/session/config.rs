@@ -58,6 +58,8 @@ pub enum OptLevel {
     SizeMin,    // -Oz
 }
 
+impl_stable_hash_via_hash!(OptLevel);
+
 /// This is what the `LtoCli` values get mapped to after resolving defaults and
 /// and taking other command line options into account.
 #[derive(Clone, Copy, PartialEq, Hash, Debug)]

@@ -22,7 +22,7 @@ use mir::mono::CodegenUnit;
 use mir;
 use mir::interpret::GlobalId;
 use session::{CompileResult, CrateDisambiguator};
-use session::config::{EntryFnType, OutputFilenames};
+use session::config::{EntryFnType, OutputFilenames, OptLevel};
 use traits::{self, Vtable};
 use traits::query::{
     CanonicalPredicateGoal, CanonicalProjectionGoal,
@@ -573,6 +573,7 @@ define_queries! { <'tcx>
             -> (Arc<DefIdSet>, Arc<Vec<Arc<CodegenUnit<'tcx>>>>),
         [] fn is_codegened_item: IsCodegenedItem(DefId) -> bool,
         [] fn codegen_unit: CodegenUnit(InternedString) -> Arc<CodegenUnit<'tcx>>,
+        [] fn backend_optimization_level: BackendOptimizationLevel(CrateNum) -> OptLevel,
     },
 
     Other {

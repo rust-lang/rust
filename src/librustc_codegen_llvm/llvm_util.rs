@@ -1,5 +1,5 @@
 use syntax_pos::symbol::Symbol;
-use back::write::create_target_machine;
+use back::write::create_informational_target_machine;
 use llvm;
 use rustc::session::Session;
 use rustc::session::config::PrintRequest;
@@ -223,7 +223,7 @@ pub fn to_llvm_feature<'a>(sess: &Session, s: &'a str) -> &'a str {
 }
 
 pub fn target_features(sess: &Session) -> Vec<Symbol> {
-    let target_machine = create_target_machine(sess, true);
+    let target_machine = create_informational_target_machine(sess, true);
     target_feature_whitelist(sess)
         .iter()
         .filter_map(|&(feature, gate)| {
@@ -276,7 +276,7 @@ pub fn print_passes() {
 
 pub(crate) fn print(req: PrintRequest, sess: &Session) {
     require_inited();
-    let tm = create_target_machine(sess, true);
+    let tm = create_informational_target_machine(sess, true);
     unsafe {
         match req {
             PrintRequest::TargetCPUs => llvm::LLVMRustPrintTargetCPUs(tm),

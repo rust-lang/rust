@@ -65,19 +65,8 @@ fn declare_raw_fn(
         }
     }
 
-    match cx.tcx.sess.opts.cg.opt_level.as_ref().map(String::as_ref) {
-        Some("s") => {
-            llvm::Attribute::OptimizeForSize.apply_llfn(Function, llfn);
-        },
-        Some("z") => {
-            llvm::Attribute::MinSize.apply_llfn(Function, llfn);
-            llvm::Attribute::OptimizeForSize.apply_llfn(Function, llfn);
-        },
-        _ => {},
-    }
-
+    attributes::default_optimisation_attrs(cx.tcx.sess, llfn);
     attributes::non_lazy_bind(cx.sess(), llfn);
-
     llfn
 }
 

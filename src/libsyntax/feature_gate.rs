@@ -461,6 +461,9 @@ declare_features! (
 
     // Re-Rebalance coherence
     (active, re_rebalance_coherence, "1.32.0", Some(55437), None),
+
+    // #[optimize(X)]
+    (active, optimize_attribute, "1.34.0", Some(54882), None),
 );
 
 declare_features! (
@@ -1221,6 +1224,12 @@ pub const BUILTIN_ATTRIBUTES: &[(&str, AttributeType, AttributeTemplate, Attribu
                            "alloc_error_handler",
                            "#[alloc_error_handler] is an unstable feature",
                            cfg_fn!(alloc_error_handler))),
+
+    // RFC 2412
+    ("optimize", Whitelisted, template!(List: "size|speed"), Gated(Stability::Unstable,
+                               "optimize_attribute",
+                               "#[optimize] attribute is an unstable feature",
+                               cfg_fn!(optimize_attribute))),
 
     // Crate level attributes
     ("crate_name", CrateLevel, template!(NameValueStr: "name"), Ungated),

@@ -4,8 +4,8 @@ mod builtin;
 
 pub use self::builtin::{
     cfg_matches, contains_feature_attr, eval_condition, find_crate_name, find_deprecation,
-    find_repr_attrs, find_stability, find_unwind_attr, Deprecation, InlineAttr, IntType, ReprAttr,
-    RustcDeprecation, Stability, StabilityLevel, UnwindAttr,
+    find_repr_attrs, find_stability, find_unwind_attr, Deprecation, InlineAttr, OptimizeAttr,
+    IntType, ReprAttr, RustcDeprecation, Stability, StabilityLevel, UnwindAttr,
 };
 pub use self::IntType::*;
 pub use self::ReprAttr::*;

@@ -4719,4 +4719,5 @@ register_diagnostics! {
     E0645, // trait aliases not finished
     E0698, // type inside generator must be known in this context
     E0719, // duplicate values for associated type binding
+    E0722, // Malformed #[optimize] attribute
 }

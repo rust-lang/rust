@@ -36,7 +36,7 @@ use rustc_target::spec::abi;
 
 use syntax::ast;
 use syntax::ast::{Ident, MetaItemKind};
-use syntax::attr::{InlineAttr, list_contains_name, mark_used};
+use syntax::attr::{InlineAttr, OptimizeAttr, list_contains_name, mark_used};
 use syntax::source_map::Spanned;
 use syntax::feature_gate;
 use syntax::symbol::{keywords, Symbol};
@@ -2286,49 +2286,6 @@ fn codegen_fn_attrs<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, id: DefId) -> Codegen
             codegen_fn_attrs.flags |= CodegenFnAttrFlags::USED;
         } else if attr.check_name("thread_local") {
             codegen_fn_attrs.flags |= CodegenFnAttrFlags::THREAD_LOCAL;
-        } else if attr.check_name("inline") {
-            codegen_fn_attrs.inline = attrs.iter().fold(InlineAttr::None, |ia, attr| {
-                if attr.path != "inline" {
-                    return ia;
-                }
-                let meta = match attr.meta() {
-                    Some(meta) => meta.node,
-                    None => return ia,
-                };
-                match meta {
-                    MetaItemKind::Word => {
-                        mark_used(attr);
-                        InlineAttr::Hint
-                    }
-                    MetaItemKind::List(ref items) => {
-                        mark_used(attr);
-                        inline_span = Some(attr.span);
-                        if items.len() != 1 {
-                            span_err!(
-                                tcx.sess.diagnostic(),
-                                attr.span,
-                                E0534,
-                                "expected one argument"
-                            );
-                            InlineAttr::None
-                        } else if list_contains_name(&items[..], "always") {
-                            InlineAttr::Always
-                        } else if list_contains_name(&items[..], "never") {
-                            InlineAttr::Never
-                        } else {
-                            span_err!(
-                                tcx.sess.diagnostic(),
-                                items[0].span,
-                                E0535,
-                                "invalid argument"
-                            );
-
-                            InlineAttr::None
-                        }
-                    }
-                    _ => ia,
-                }
-            });
         } else if attr.check_name("export_name") {
             if let Some(s) = attr.value_str() {
                 if s.as_str().contains("\0") {
@@ -2377,6 +2334,76 @@ fn codegen_fn_attrs<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, id: DefId) -> Codegen
             codegen_fn_attrs.link_name = attr.value_str();
         }
     }
+
+    codegen_fn_attrs.inline = attrs.iter().fold(InlineAttr::None, |ia, attr| {
+        if attr.path != "inline" {
+            return ia;
+        }
+        match attr.meta().map(|i| i.node) {
+            Some(MetaItemKind::Word) => {
+                mark_used(attr);
+                InlineAttr::Hint
+            }
+            Some(MetaItemKind::List(ref items)) => {
+                mark_used(attr);
+                inline_span = Some(attr.span);
+                if items.len() != 1 {
+                    span_err!(
+                        tcx.sess.diagnostic(),
+                        attr.span,
+                        E0534,
+                        "expected one argument"
+                    );
+                    InlineAttr::None
+                } else if list_contains_name(&items[..], "always") {
+                    InlineAttr::Always
+                } else if list_contains_name(&items[..], "never") {
+                    InlineAttr::Never
+                } else {
+                    span_err!(
+                        tcx.sess.diagnostic(),
+                        items[0].span,
+                        E0535,
+                        "invalid argument"
+                    );
+
+                    InlineAttr::None
+                }
+            }
+            Some(MetaItemKind::NameValue(_)) => ia,
+            None => ia,
+        }
+    });
+
+    codegen_fn_attrs.optimize = attrs.iter().fold(OptimizeAttr::None, |ia, attr| {
+        if attr.path != "optimize" {
+            return ia;
+        }
+        let err = |sp, s| span_err!(tcx.sess.diagnostic(), sp, E0722, "{}", s);
+        match attr.meta().map(|i| i.node) {
+            Some(MetaItemKind::Word) => {
+                err(attr.span, "expected one argument");
+                ia
+            }
+            Some(MetaItemKind::List(ref items)) => {
+                mark_used(attr);
+                inline_span = Some(attr.span);
+                if items.len() != 1 {
+                    err(attr.span, "expected one argument");
+                    OptimizeAttr::None
+                } else if list_contains_name(&items[..], "size") {
+                    OptimizeAttr::Size
+                } else if list_contains_name(&items[..], "speed") {
+                    OptimizeAttr::Speed
+                } else {
+                    err(items[0].span, "invalid argument");
+                    OptimizeAttr::None
+                }
+            }
+            Some(MetaItemKind::NameValue(_)) => ia,
+            None => ia,
+        }
+    });
 
     // If a function uses #[target_feature] it can't be inlined into general
     // purpose functions as they wouldn't have the right target features
