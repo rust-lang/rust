@@ -1157,6 +1157,32 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
         let typable = typable?;
         let ty = self.db.type_for_def(typable);
         let ty = self.insert_type_vars(ty);
+
+        // try to get generic parameters from the path and add them to the
+        // function type substitutions
+        if let Ty::FnDef { ref def, .. } = ty {
+            let last_seg_bindings = path
+                .segments
+                .last()
+                .and_then(|segment| segment.args_and_bindings.as_ref());
+            if let Some(generic_args) = last_seg_bindings {
+                let generic_params = def.generic_params(self.db);
+                if generic_args.args.len() == generic_params.params.len() {
+                    let substs = Ty::substs_from_path(
+                        self.db,
+                        &self.module,
+                        self.impl_block.as_ref(),
+                        &generic_params,
+                        path,
+                        (*def).into(),
+                    );
+                    return Some(ty.apply_substs(substs));
+                } else {
+                    // ERROR: incorrect number of type params
+                }
+            }
+        }
+
         Some(ty)
     }
 
@@ -1387,9 +1413,7 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
                 let callee_ty = self.infer_expr(*callee, &Expectation::none());
                 let (param_tys, ret_ty) = match &callee_ty {
                     Ty::FnPtr(sig) => (sig.input.clone(), sig.output.clone()),
-                    Ty::FnDef {
-                        def, substs, sig, ..
-                    } => {
+                    Ty::FnDef { substs, sig, .. } => {
                         let ret_ty = sig.output.clone().subst(&substs);
                         let param_tys = sig
                             .input
@@ -1437,9 +1461,7 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
                             (Ty::Unknown, Vec::new(), sig.output.clone())
                         }
                     }
-                    Ty::FnDef {
-                        def, substs, sig, ..
-                    } => {
+                    Ty::FnDef { substs, sig, .. } => {
                         let ret_ty = sig.output.clone().subst(&substs);
 
                         if sig.input.len() > 0 {

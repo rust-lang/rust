@@ -1,5 +1,5 @@
 ---
-created: "2019-01-26T17:46:03.963745056+00:00"
+created: "2019-01-26T18:16:16.568375+00:00"
 creator: insta@0.5.2
 expression: "&result"
 source: crates/ra_hir/src/ty/tests.rs
@@ -10,7 +10,7 @@ source: crates/ra_hir/src/ty/tests.rs
 [44; 45) 'x': &[unknown]
 [56; 65) '{     x }': &[unknown]
 [62; 63) 'x': &[unknown]
-[77; 138) '{     ...(z); }': ()
+[77; 197) '{     ...(1); }': ()
 [87; 88) 'y': u32
 [91; 96) '10u32': u32
 [102; 104) 'id': fn id<u32>(T) -> T
@@ -20,4 +20,7 @@ source: crates/ra_hir/src/ty/tests.rs
 [127; 132) 'clone': fn clone<bool>(&T) -> T
 [127; 135) 'clone(z)': bool
 [133; 134) 'z': &bool
+[173; 191) 'id::<i...tring>': fn id<i32>(T) -> T
+[173; 194) 'id::<i...ng>(1)': i32
+[192; 193) '1': i32
 

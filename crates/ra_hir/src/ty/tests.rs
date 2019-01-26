@@ -611,6 +611,9 @@ fn test() {
     let y = 10u32;
     id(y);
     let x: bool = clone(z);
+
+    // bad turbofish - ignore!
+    id::<i128, String>(1);
 }
 "#,
     );
