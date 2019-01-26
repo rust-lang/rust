@@ -123,9 +123,7 @@ fn watch_root(
         .into_iter()
         .filter_map(|path| {
             let abs_path = path.to_path(&config.root);
-            let text = fs::read_to_string(abs_path)
-                .map_err(|e| log::warn!("watcher error: {}", e))
-                .ok()?;
+            let text = read_to_string(&abs_path)?;
             Some((path, text))
         })
         .collect();
@@ -194,9 +192,7 @@ impl WatcherCtx {
                     .into_iter()
                     .filter_map(|rel_path| {
                         let abs_path = rel_path.to_path(&config.root);
-                        let text = fs::read_to_string(&abs_path)
-                            .map_err(|e| log::warn!("watcher failed {}", e))
-                            .ok()?;
+                        let text = read_to_string(&abs_path)?;
                         Some((rel_path, text))
                     })
                     .try_for_each(|(path, text)| {
@@ -204,14 +200,15 @@ impl WatcherCtx {
                             .send(TaskResult::AddSingleFile { root, path, text })
                     })?
             }
-            ChangeKind::Write => match fs::read_to_string(&path) {
-                Err(e) => log::warn!("watcher failed {}", e),
-                Ok(text) => self.sender.send(TaskResult::ChangeSingleFile {
-                    root,
-                    path: rel_path,
-                    text,
-                })?,
-            },
+            ChangeKind::Write => {
+                if let Some(text) = read_to_string(&path) {
+                    self.sender.send(TaskResult::ChangeSingleFile {
+                        root,
+                        path: rel_path,
+                        text,
+                    })?;
+                }
+            }
             ChangeKind::Remove => self.sender.send(TaskResult::RemoveSingleFile {
                 root,
                 path: rel_path,
@@ -249,4 +246,10 @@ fn watch_one(watcher: &mut RecommendedWatcher, dir: &Path) {
         Ok(()) => log::debug!("watching \"{}\"", dir.display()),
         Err(e) => log::warn!("could not watch \"{}\": {}", dir.display(), e),
     }
+}
+
+fn read_to_string(path: &Path) -> Option<String> {
+    fs::read_to_string(&path)
+        .map_err(|e| log::warn!("failed to read file {}", e))
+        .ok()
 }
