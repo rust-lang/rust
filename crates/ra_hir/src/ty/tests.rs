@@ -285,6 +285,23 @@ fn test() {
 }
 
 #[test]
+fn infer_in_elseif() {
+    check_inference(
+        "infer_in_elseif",
+        r#"
+struct Foo { field: i32 }
+fn main(foo: Foo) {
+    if true {
+
+    } else if false {
+        foo.field
+    }
+}
+"#,
+    )
+}
+
+#[test]
 fn infer_inherent_method() {
     check_inference(
         "infer_inherent_method",

@@ -11,7 +11,10 @@ pub fn replace_if_let_with_match(ctx: AssistCtx) -> Option<Assist> {
     let pat = cond.pat()?;
     let expr = cond.expr()?;
     let then_block = if_expr.then_branch()?;
-    let else_block = if_expr.else_branch()?;
+    let else_block = match if_expr.else_branch()? {
+        ast::ElseBranchFlavor::Block(it) => it,
+        ast::ElseBranchFlavor::IfExpr(_) => return None,
+    };
 
     ctx.build("replace with match", |edit| {
         let match_expr = build_match_expr(expr, pat, then_block, else_block);

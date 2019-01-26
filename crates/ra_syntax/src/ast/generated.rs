@@ -660,6 +660,50 @@ impl ToOwned for DynTraitType {
 
 impl DynTraitType {}
 
+// ElseBranch
+#[derive(Debug, PartialEq, Eq, Hash)]
+#[repr(transparent)]
+pub struct ElseBranch {
+    pub(crate) syntax: SyntaxNode,
+}
+unsafe impl TransparentNewType for ElseBranch {
+    type Repr = rowan::SyntaxNode<RaTypes>;
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum ElseBranchKind<'a> {
+    Block(&'a Block),
+    IfExpr(&'a IfExpr),
+}
+
+impl AstNode for ElseBranch {
+    fn cast(syntax: &SyntaxNode) -> Option<&Self> {
+        match syntax.kind() {
+            | BLOCK
+            | IF_EXPR => Some(ElseBranch::from_repr(syntax.into_repr())),
+            _ => None,
+        }
+    }
+    fn syntax(&self) -> &SyntaxNode { &self.syntax }
+}
+
+impl ToOwned for ElseBranch {
+    type Owned = TreeArc<ElseBranch>;
+    fn to_owned(&self) -> TreeArc<ElseBranch> { TreeArc::cast(self.syntax.to_owned()) }
+}
+
+impl ElseBranch {
+    pub fn kind(&self) -> ElseBranchKind {
+        match self.syntax.kind() {
+            BLOCK => ElseBranchKind::Block(Block::cast(&self.syntax).unwrap()),
+            IF_EXPR => ElseBranchKind::IfExpr(IfExpr::cast(&self.syntax).unwrap()),
+            _ => unreachable!(),
+        }
+    }
+}
+
+impl ElseBranch {}
+
 // EnumDef
 #[derive(Debug, PartialEq, Eq, Hash)]
 #[repr(transparent)]

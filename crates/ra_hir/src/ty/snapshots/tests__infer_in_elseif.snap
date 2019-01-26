@@ -1,0 +1,17 @@
+---
+created: "2019-01-26T21:36:52.714121185+00:00"
+creator: insta@0.5.2
+expression: "&result"
+source: crates/ra_hir/src/ty/tests.rs
+---
+[35; 38) 'foo': Foo
+[45; 109) '{     ...   } }': ()
+[51; 107) 'if tru...     }': ()
+[54; 58) 'true': bool
+[59; 67) '{      }': ()
+[73; 107) 'if fal...     }': i32
+[76; 81) 'false': bool
+[82; 107) '{     ...     }': i32
+[92; 95) 'foo': Foo
+[92; 101) 'foo.field': i32
+
