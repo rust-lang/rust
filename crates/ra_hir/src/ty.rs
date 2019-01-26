@@ -34,7 +34,7 @@ use test_utils::tested_by;
 
 use crate::{
     Module, Function, Struct, StructField, Enum, EnumVariant, Path, Name, ImplBlock,
-    FnScopes, ModuleDef, AdtDef,
+    FnSignature, FnScopes, ModuleDef, AdtDef,
     db::HirDatabase,
     type_ref::{TypeRef, Mutability},
     name::KnownName,
@@ -225,6 +225,8 @@ pub enum Ty {
         def: Function,
         /// For display
         name: Name,
+        /// Parameters and return type
+        sig: Arc<FnSig>,
         /// Substitutions for the generic parameters of the type
         substs: Substs,
     },
@@ -544,7 +546,12 @@ impl Ty {
                 name,
                 substs,
             },
-            Ty::FnDef { def, name, .. } => Ty::FnDef { def, name, substs },
+            Ty::FnDef { def, name, sig, .. } => Ty::FnDef {
+                def,
+                name,
+                sig,
+                substs,
+            },
             _ => self,
         }
     }
@@ -607,7 +614,9 @@ impl fmt::Display for Ty {
                     .to_fmt(f)?;
                 write!(f, " -> {}", sig.output)
             }
-            Ty::FnDef { name, substs, .. } => {
+            Ty::FnDef {
+                name, substs, sig, ..
+            } => {
                 // don't have access to the param types here :-(
                 // we could store them in the def, but not sure if it
                 // is worth it
@@ -618,7 +627,11 @@ impl fmt::Display for Ty {
                         .separator(", ")
                         .to_fmt(f)?;
                 }
-                Ok(())
+                join(sig.input.iter())
+                    .surround_with("(", ")")
+                    .separator(", ")
+                    .to_fmt(f)?;
+                write!(f, " -> {}", sig.output)
             }
             Ty::Adt { name, substs, .. } => {
                 write!(f, "{}", name)?;
@@ -641,12 +654,29 @@ impl fmt::Display for Ty {
 
 /// Compute the declared type of a function. This should not need to look at the
 /// function body.
-fn type_for_fn(db: &impl HirDatabase, f: Function) -> Ty {
-    let generics = f.generic_params(db);
+fn type_for_fn(db: &impl HirDatabase, def: Function) -> Ty {
+    let signature = def.signature(db);
+    let module = def.module(db);
+    let impl_block = def.impl_block(db);
+    let generics = def.generic_params(db);
+    let input = signature
+        .params()
+        .iter()
+        .map(|tr| Ty::from_hir(db, &module, impl_block.as_ref(), &generics, tr))
+        .collect::<Vec<_>>();
+    let output = Ty::from_hir(
+        db,
+        &module,
+        impl_block.as_ref(),
+        &generics,
+        signature.ret_type(),
+    );
+    let sig = Arc::new(FnSig { input, output });
     let substs = make_substs(&generics);
-    let name = f.name(db);
+    let name = def.name(db);
     Ty::FnDef {
-        def: f.into(),
+        def,
+        sig,
         name,
         substs,
     }
@@ -923,7 +953,9 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
         self.type_of_pat.insert(pat, ty);
     }
 
-    fn make_ty(&mut self, type_ref: &TypeRef, generics: &GenericParams) -> Ty {
+    fn make_ty(&mut self, type_ref: &TypeRef) -> Ty {
+        // TODO provide generics of function
+        let generics = GenericParams::default();
         let ty = Ty::from_hir(
             self.db,
             &self.module,
@@ -1337,7 +1369,7 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
 
                 for (arg_pat, arg_type) in args.iter().zip(arg_types.iter()) {
                     let expected = if let Some(type_ref) = arg_type {
-                        let ty = self.make_ty(type_ref, &GenericParams::default());
+                        let ty = self.make_ty(type_ref);
                         ty
                     } else {
                         Ty::Unknown
@@ -1355,16 +1387,14 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
                 let callee_ty = self.infer_expr(*callee, &Expectation::none());
                 let (param_tys, ret_ty) = match &callee_ty {
                     Ty::FnPtr(sig) => (sig.input.clone(), sig.output.clone()),
-                    Ty::FnDef { def, substs, .. } => {
-                        let fn_sig = def.signature(self.db);
-                        let generic_params = def.generic_params(self.db);
-                        let ret_ty = self
-                            .make_ty(fn_sig.ret_type(), &generic_params)
-                            .subst(&substs);
-                        let param_tys = fn_sig
-                            .params()
+                    Ty::FnDef {
+                        def, substs, sig, ..
+                    } => {
+                        let ret_ty = sig.output.clone().subst(&substs);
+                        let param_tys = sig
+                            .input
                             .iter()
-                            .map(|type_ref| self.make_ty(type_ref, &generic_params).subst(&substs))
+                            .map(|ty| ty.clone().subst(&substs))
                             .collect();
                         (param_tys, ret_ty)
                     }
@@ -1407,17 +1437,13 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
                             (Ty::Unknown, Vec::new(), sig.output.clone())
                         }
                     }
-                    Ty::FnDef { def, substs, .. } => {
-                        let fn_sig = def.signature(self.db);
-                        let generic_params = def.generic_params(self.db);
-                        let ret_ty = self
-                            .make_ty(fn_sig.ret_type(), &generic_params)
-                            .subst(&substs);
+                    Ty::FnDef {
+                        def, substs, sig, ..
+                    } => {
+                        let ret_ty = sig.output.clone().subst(&substs);
 
-                        if fn_sig.params().len() > 0 {
-                            let mut arg_iter = fn_sig.params().iter().map(|type_ref| {
-                                self.make_ty(type_ref, &generic_params).subst(&substs)
-                            });
+                        if sig.input.len() > 0 {
+                            let mut arg_iter = sig.input.iter().map(|ty| ty.clone().subst(&substs));
                             let receiver_ty = arg_iter.next().unwrap();
                             (receiver_ty, arg_iter.collect(), ret_ty)
                         } else {
@@ -1515,7 +1541,7 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
             }
             Expr::Cast { expr, type_ref } => {
                 let _inner_ty = self.infer_expr(*expr, &Expectation::none());
-                let cast_ty = self.make_ty(type_ref, &GenericParams::default());
+                let cast_ty = self.make_ty(type_ref);
                 // TODO check the cast...
                 cast_ty
             }
@@ -1629,7 +1655,7 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
                 } => {
                     let decl_ty = type_ref
                         .as_ref()
-                        .map(|tr| self.make_ty(tr, &GenericParams::default()))
+                        .map(|tr| self.make_ty(tr))
                         .unwrap_or(Ty::Unknown);
                     let decl_ty = self.insert_type_vars(decl_ty);
                     let ty = if let Some(expr) = initializer {
@@ -1654,16 +1680,14 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
         ty
     }
 
-    fn collect_fn_signature(&mut self, func: Function) {
+    fn collect_fn_signature(&mut self, signature: &FnSignature) {
         let body = Arc::clone(&self.body); // avoid borrow checker problem
-        let signature = func.signature(self.db);
-        let generics = func.generic_params(self.db);
         for (type_ref, pat) in signature.params().iter().zip(body.params()) {
-            let ty = self.make_ty(type_ref, &generics);
+            let ty = self.make_ty(type_ref);
 
             self.infer_pat(*pat, &ty);
         }
-        self.return_ty = self.make_ty(signature.ret_type(), &generics);
+        self.return_ty = self.make_ty(signature.ret_type());
     }
 
     fn infer_body(&mut self) {
@@ -1682,7 +1706,9 @@ pub fn infer(db: &impl HirDatabase, func: Function) -> Arc<InferenceResult> {
     let impl_block = func.impl_block(db);
     let mut ctx = InferenceContext::new(db, body, scopes, module, impl_block);
 
-    ctx.collect_fn_signature(func);
+    let signature = func.signature(db);
+    ctx.collect_fn_signature(&signature);
+
     ctx.infer_body();
 
     Arc::new(ctx.resolve_all())
