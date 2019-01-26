@@ -788,7 +788,24 @@ fn copy_src_dirs(builder: &Builder, src_dirs: &[&str], exclude_dirs: &[&str], ds
         if spath.ends_with("~") || spath.ends_with(".pyc") {
             return false
         }
-        if (spath.contains("llvm/test") || spath.contains("llvm\\test")) &&
+
+        const LLVM_PROJECTS: &[&str] = &[
+            "llvm-project/clang", "llvm-project\\clang",
+            "llvm-project/lld", "llvm-project\\lld",
+            "llvm-project/lldb", "llvm-project\\lldb",
+            "llvm-project/llvm", "llvm-project\\llvm",
+        ];
+        if spath.contains("llvm-project") && !spath.ends_with("llvm-project")
+            && !LLVM_PROJECTS.iter().any(|path| spath.contains(path))
+        {
+            return false;
+        }
+
+        const LLVM_TEST: &[&str] = &[
+            "llvm-project/llvm/test", "llvm-project\\llvm\\test",
+            "llvm-emscripten/test", "llvm-emscripten\\test",
+        ];
+        if LLVM_TEST.iter().any(|path| spath.contains(path)) &&
             (spath.ends_with(".ll") ||
              spath.ends_with(".td") ||
              spath.ends_with(".s")) {
@@ -2076,7 +2093,7 @@ impl Step for LlvmTools {
         }
 
         builder.info(&format!("Dist LlvmTools stage{} ({})", stage, target));
-        let src = builder.src.join("src/llvm");
+        let src = builder.src.join("src/llvm-project/llvm");
         let name = pkgname(builder, "llvm-tools");
 
         let tmp = tmpdir(builder);
@@ -2135,7 +2152,7 @@ impl Step for Lldb {
     const DEFAULT: bool = true;
 
     fn should_run(run: ShouldRun) -> ShouldRun {
-        run.path("src/tools/lldb")
+        run.path("src/llvm-project/lldb").path("src/tools/lldb")
     }
 
     fn make_run(run: RunConfig) {
@@ -2160,7 +2177,7 @@ impl Step for Lldb {
         }
 
         builder.info(&format!("Dist Lldb ({})", target));
-        let src = builder.src.join("src/tools/lldb");
+        let src = builder.src.join("src/llvm-project/lldb");
         let name = pkgname(builder, "lldb");
 
         let tmp = tmpdir(builder);

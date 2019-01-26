@@ -36,7 +36,10 @@ impl Step for Llvm {
     const ONLY_HOSTS: bool = true;
 
     fn should_run(run: ShouldRun) -> ShouldRun {
-        run.path("src/llvm").path("src/llvm-emscripten")
+        run.path("src/llvm-project")
+            .path("src/llvm-project/llvm")
+            .path("src/llvm")
+            .path("src/llvm-emscripten")
     }
 
     fn make_run(run: RunConfig) {
@@ -97,7 +100,7 @@ impl Step for Llvm {
         t!(fs::create_dir_all(&out_dir));
 
         // http://llvm.org/docs/CMake.html
-        let root = if self.emscripten { "src/llvm-emscripten" } else { "src/llvm" };
+        let root = if self.emscripten { "src/llvm-emscripten" } else { "src/llvm-project/llvm" };
         let mut cfg = cmake::Config::new(builder.src.join(root));
 
         let profile = match (builder.config.llvm_optimize, builder.config.llvm_release_debuginfo) {
@@ -189,10 +192,10 @@ impl Step for Llvm {
         }
 
         if want_lldb {
-            cfg.define("LLVM_EXTERNAL_CLANG_SOURCE_DIR", builder.src.join("src/tools/clang"));
-            cfg.define("LLVM_EXTERNAL_LLDB_SOURCE_DIR", builder.src.join("src/tools/lldb"));
+            cfg.define("LLVM_ENABLE_PROJECTS", "clang;lldb");
             // For the time being, disable code signing.
             cfg.define("LLDB_CODESIGN_IDENTITY", "");
+            cfg.define("LLDB_NO_DEBUGSERVER", "ON");
         } else {
             // LLDB requires libxml2; but otherwise we want it to be disabled.
             // See https://github.com/rust-lang/rust/pull/50104
@@ -411,7 +414,7 @@ impl Step for Lld {
     const ONLY_HOSTS: bool = true;
 
     fn should_run(run: ShouldRun) -> ShouldRun {
-        run.path("src/tools/lld")
+        run.path("src/llvm-project/lld").path("src/tools/lld")
     }
 
     fn make_run(run: RunConfig) {
@@ -441,7 +444,7 @@ impl Step for Lld {
         let _time = util::timeit(&builder);
         t!(fs::create_dir_all(&out_dir));
 
-        let mut cfg = cmake::Config::new(builder.src.join("src/tools/lld"));
+        let mut cfg = cmake::Config::new(builder.src.join("src/llvm-project/lld"));
         configure_cmake(builder, target, &mut cfg);
 
         // This is an awful, awful hack. Discovered when we migrated to using

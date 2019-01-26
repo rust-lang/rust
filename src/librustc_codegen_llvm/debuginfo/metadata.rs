@@ -13,7 +13,7 @@ use value::Value;
 
 use llvm;
 use llvm::debuginfo::{DIArray, DIType, DIFile, DIScope, DIDescriptor,
-                      DICompositeType, DILexicalBlock, DIFlags};
+                      DICompositeType, DILexicalBlock, DIFlags, DebugEmissionKind};
 use llvm_util;
 
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
@@ -846,6 +846,7 @@ pub fn compile_unit_metadata(tcx: TyCtxt,
     let producer = CString::new(producer).unwrap();
     let flags = "\0";
     let split_name = "\0";
+    let kind = DebugEmissionKind::from_generic(tcx.sess.opts.debuginfo);
 
     unsafe {
         let file_metadata = llvm::LLVMRustDIBuilderCreateFile(
@@ -859,7 +860,8 @@ pub fn compile_unit_metadata(tcx: TyCtxt,
             tcx.sess.opts.optimize != config::OptLevel::No,
             flags.as_ptr() as *const _,
             0,
-            split_name.as_ptr() as *const _);
+            split_name.as_ptr() as *const _,
+            kind);
 
         if tcx.sess.opts.debugging_opts.profile {
             let cu_desc_metadata = llvm::LLVMRustMetadataAsValue(debug_context.llcontext,

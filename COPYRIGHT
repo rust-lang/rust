@@ -23,7 +23,7 @@ The Rust Project includes packages written by third parties.
 The following third party packages are included, and carry
 their own copyright notices and license terms:
 
-* LLVM. Code for this package is found in src/llvm.
+* LLVM. Code for this package is found in src/llvm-project.
 
     Copyright (c) 2003-2013 University of Illinois at
     Urbana-Champaign.  All rights reserved.
@@ -73,8 +73,8 @@ their own copyright notices and license terms:
     OTHER DEALINGS WITH THE SOFTWARE.
 
 * Additional libraries included in LLVM carry separate
-  BSD-compatible licenses. See src/llvm/LICENSE.txt for
-  details.
+  BSD-compatible licenses. See src/llvm-project/llvm/LICENSE.TXT
+  for details.
 
 * compiler-rt, in src/compiler-rt is dual licensed under
   LLVM's license and MIT:

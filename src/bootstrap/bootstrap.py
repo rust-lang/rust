@@ -701,20 +701,12 @@ class RustBuild(object):
         filtered_submodules = []
         submodules_names = []
         for module in submodules:
-            if module.endswith("llvm"):
-                if self.get_toml('llvm-config'):
+            if module.endswith("llvm-project"):
+                if self.get_toml('llvm-config') and self.get_toml('lld') != 'true':
                     continue
             if module.endswith("llvm-emscripten"):
                 backends = self.get_toml('codegen-backends')
                 if backends is None or not 'emscripten' in backends:
-                    continue
-            if module.endswith("lld"):
-                config = self.get_toml('lld')
-                if config is None or config == 'false':
-                    continue
-            if module.endswith("lldb") or module.endswith("clang"):
-                config = self.get_toml('lldb')
-                if config is None or config == 'false':
                     continue
             check = self.check_submodule(module, slow_submodules)
             filtered_submodules.append((module, check))

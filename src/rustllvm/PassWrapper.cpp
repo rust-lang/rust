@@ -789,7 +789,7 @@ struct LLVMRustThinLTOData {
   StringMap<GVSummaryMapTy> ModuleToDefinedGVSummaries;
 
 #if LLVM_VERSION_GE(7, 0)
-  LLVMRustThinLTOData() : Index(/* isPerformingAnalysis = */ false) {}
+  LLVMRustThinLTOData() : Index(/* HaveGVs = */ false) {}
 #endif
 };
 
@@ -865,7 +865,12 @@ LLVMRustCreateThinLTOData(LLVMRustThinLTOModule *modules,
   auto deadIsPrevailing = [&](GlobalValue::GUID G) {
     return PrevailingType::Unknown;
   };
+#if LLVM_VERSION_GE(8, 0)
+  computeDeadSymbolsWithConstProp(Ret->Index, Ret->GUIDPreservedSymbols,
+                                  deadIsPrevailing, /* ImportEnabled = */ true);
+#else
   computeDeadSymbols(Ret->Index, Ret->GUIDPreservedSymbols, deadIsPrevailing);
+#endif
 #else
   computeDeadSymbols(Ret->Index, Ret->GUIDPreservedSymbols);
 #endif

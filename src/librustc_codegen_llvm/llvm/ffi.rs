@@ -2,7 +2,7 @@ use super::debuginfo::{
     DIBuilder, DIDescriptor, DIFile, DILexicalBlock, DISubprogram, DIType,
     DIBasicType, DIDerivedType, DICompositeType, DIScope, DIVariable,
     DIGlobalVariableExpression, DIArray, DISubrange, DITemplateTypeParameter, DIEnumerator,
-    DINameSpace, DIFlags,
+    DINameSpace, DIFlags, DISPFlags, DebugEmissionKind,
 };
 
 use libc::{c_uint, c_int, size_t, c_char};
@@ -589,6 +589,40 @@ pub mod debuginfo {
             const FlagBitField            = (1 << 19);
             const FlagNoReturn            = (1 << 20);
             const FlagMainSubprogram      = (1 << 21);
+        }
+    }
+
+    // These values **must** match with LLVMRustDISPFlags!!
+    bitflags! {
+        #[repr(C)]
+        #[derive(Default)]
+        pub struct DISPFlags: ::libc::uint32_t {
+            const SPFlagZero              = 0;
+            const SPFlagVirtual           = 1;
+            const SPFlagPureVirtual       = 2;
+            const SPFlagLocalToUnit       = (1 << 2);
+            const SPFlagDefinition        = (1 << 3);
+            const SPFlagOptimized         = (1 << 4);
+        }
+    }
+
+    /// LLVMRustDebugEmissionKind
+    #[derive(Copy, Clone)]
+    #[repr(C)]
+    pub enum DebugEmissionKind {
+        NoDebug,
+        FullDebug,
+        LineTablesOnly,
+    }
+
+    impl DebugEmissionKind {
+        pub fn from_generic(kind: rustc::session::config::DebugInfo) -> Self {
+            use rustc::session::config::DebugInfo;
+            match kind {
+                DebugInfo::None => DebugEmissionKind::NoDebug,
+                DebugInfo::Limited => DebugEmissionKind::LineTablesOnly,
+                DebugInfo::Full => DebugEmissionKind::FullDebug,
+            }
         }
     }
 }
@@ -1367,7 +1401,8 @@ extern "C" {
                                               isOptimized: bool,
                                               Flags: *const c_char,
                                               RuntimeVer: c_uint,
-                                              SplitName: *const c_char)
+                                              SplitName: *const c_char,
+                                              kind: DebugEmissionKind)
                                               -> &'a DIDescriptor;
 
     pub fn LLVMRustDIBuilderCreateFile(Builder: &DIBuilder<'a>,
@@ -1387,11 +1422,9 @@ extern "C" {
                                            File: &'a DIFile,
                                            LineNo: c_uint,
                                            Ty: &'a DIType,
-                                           isLocalToUnit: bool,
-                                           isDefinition: bool,
                                            ScopeLine: c_uint,
                                            Flags: DIFlags,
-                                           isOptimized: bool,
+                                           SPFlags: DISPFlags,
                                            Fn: &'a Value,
                                            TParam: &'a DIArray,
                                            Decl: Option<&'a DIDescriptor>)
@@ -1529,7 +1562,7 @@ extern "C" {
                                                   AlignInBits: u32,
                                                   Elements: &'a DIArray,
                                                   ClassType: &'a DIType,
-                                                  IsFixed: bool)
+                                                  IsScoped: bool)
                                                   -> &'a DIType;
 
     pub fn LLVMRustDIBuilderCreateUnionType(Builder: &DIBuilder<'a>,
