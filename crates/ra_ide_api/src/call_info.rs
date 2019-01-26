@@ -1,3 +1,4 @@
+use test_utils::tested_by;
 use ra_db::SourceDatabase;
 use ra_syntax::{
     AstNode, SyntaxNode, TextUnit, TextRange,
@@ -41,7 +42,12 @@ pub(crate) fn call_info(db: &RootDatabase, position: FilePosition) -> Option<Cal
         // where offset is in that list (or beyond).
         // Revisit this after we get documentation comments in.
         if let Some(ref arg_list) = calling_node.arg_list() {
-            let start = arg_list.syntax().range().start();
+            let arg_list_range = arg_list.syntax().range();
+            if !arg_list_range.contains_inclusive(position.offset) {
+                tested_by!(call_info_bad_offset);
+                return None;
+            }
+            let start = arg_list_range.start();
 
             let range_search = TextRange::from_to(start, position.offset);
             let mut commas: usize = arg_list
@@ -172,9 +178,11 @@ fn param_list(node: &ast::FnDef) -> Vec<String> {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
+    use test_utils::covers;
 
     use crate::mock_analysis::single_file_with_position;
+
+    use super::*;
 
     fn call_info(text: &str) -> CallInfo {
         let (analysis, position) = single_file_with_position(text);
@@ -417,4 +425,14 @@ By default this method stops actor's `Context`."#
         );
     }
 
+    #[test]
+    fn call_info_bad_offset() {
+        covers!(call_info_bad_offset);
+        let (analysis, position) = single_file_with_position(
+            r#"fn foo(x: u32, y: u32) -> u32 {x + y}
+               fn bar() { foo <|> (3, ); }"#,
+        );
+        let call_info = analysis.call_info(position).unwrap();
+        assert!(call_info.is_none());
+    }
 }
