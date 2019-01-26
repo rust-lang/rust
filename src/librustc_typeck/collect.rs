@@ -23,7 +23,6 @@ use middle::resolve_lifetime as rl;
 use middle::weak_lang_items;
 use rustc::mir::mono::Linkage;
 use rustc::ty::query::Providers;
-use rustc::ty::query::queries;
 use rustc::ty::subst::Substs;
 use rustc::ty::util::Discr;
 use rustc::ty::util::IntTypeExt;
@@ -58,7 +57,7 @@ struct OnlySelfBounds(bool);
 
 pub fn collect_item_types<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>) {
     for &module in tcx.hir().krate().modules.keys() {
-        queries::collect_mod_item_types::ensure(tcx, tcx.hir().local_def_id(module));
+        tcx.ensure().collect_mod_item_types(tcx.hir().local_def_id(module));
     }
 }
 

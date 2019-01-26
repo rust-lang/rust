@@ -2,7 +2,7 @@ use hir::def::Def;
 use hir::def_id::DefId;
 use ty::{self, Ty, TyCtxt};
 use ty::layout::{LayoutError, Pointer, SizeSkeleton, VariantIdx};
-use ty::query::{Providers, queries};
+use ty::query::Providers;
 
 use rustc_target::spec::abi::Abi::RustIntrinsic;
 use rustc_data_structures::indexed_vec::Idx;
@@ -12,7 +12,7 @@ use hir;
 
 pub fn check_crate<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>) {
     for &module in tcx.hir().krate().modules.keys() {
-        queries::check_mod_intrinsics::ensure(tcx, tcx.hir().local_def_id(module));
+        tcx.ensure().check_mod_intrinsics(tcx.hir().local_def_id(module));
     }
 }
 

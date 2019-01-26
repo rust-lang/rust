@@ -3,7 +3,6 @@ use self::Context::*;
 use rustc::session::Session;
 
 use rustc::ty::query::Providers;
-use rustc::ty::query::queries;
 use rustc::ty::TyCtxt;
 use rustc::hir::def_id::DefId;
 use rustc::hir::map::Map;
@@ -48,7 +47,7 @@ struct CheckLoopVisitor<'a, 'hir: 'a> {
 
 pub fn check_crate<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>) {
     for &module in tcx.hir().krate().modules.keys() {
-        queries::check_mod_loops::ensure(tcx, tcx.hir().local_def_id(module));
+        tcx.ensure().check_mod_loops(tcx.hir().local_def_id(module));
     }
 }
 

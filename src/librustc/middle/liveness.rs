@@ -100,7 +100,7 @@ use self::VarKind::*;
 use hir::def::*;
 use hir::Node;
 use ty::{self, TyCtxt};
-use ty::query::{Providers, queries};
+use ty::query::Providers;
 use lint;
 use errors::Applicability;
 use util::nodemap::{NodeMap, HirIdMap, HirIdSet};
@@ -187,7 +187,7 @@ fn check_mod_liveness<'tcx>(tcx: TyCtxt<'_, 'tcx, 'tcx>, module_def_id: DefId) {
 
 pub fn check_crate<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>) {
     for &module in tcx.hir().krate().modules.keys() {
-        queries::check_mod_liveness::ensure(tcx, tcx.hir().local_def_id(module));
+        tcx.ensure().check_mod_liveness(tcx.hir().local_def_id(module));
     }
     tcx.sess.abort_if_errors();
 }

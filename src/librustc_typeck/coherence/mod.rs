@@ -137,15 +137,15 @@ fn coherent_trait<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: DefId) {
 
 pub fn check_coherence<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>) {
     for &trait_def_id in tcx.hir().krate().trait_impls.keys() {
-        ty::query::queries::coherent_trait::ensure(tcx, trait_def_id);
+        tcx.ensure().coherent_trait(trait_def_id);
     }
 
     unsafety::check(tcx);
     orphan::check(tcx);
 
     // these queries are executed for side-effects (error reporting):
-    ty::query::queries::crate_inherent_impls::ensure(tcx, LOCAL_CRATE);
-    ty::query::queries::crate_inherent_impls_overlap_check::ensure(tcx, LOCAL_CRATE);
+    tcx.ensure().crate_inherent_impls(LOCAL_CRATE);
+    tcx.ensure().crate_inherent_impls_overlap_check(LOCAL_CRATE);
 }
 
 /// Overlap: No two impls for the same trait are implemented for the

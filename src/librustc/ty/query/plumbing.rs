@@ -969,20 +969,20 @@ macro_rules! define_queries_inner {
             fn handle_cycle_error(tcx: TyCtxt<'_, 'tcx, '_>) -> Self::Value {
                 handle_cycle_error!([$($modifiers)*][tcx])
             }
+        })*
+
+        #[derive(Copy, Clone)]
+        pub struct TyCtxtEnsure<'a, 'gcx: 'a+'tcx, 'tcx: 'a> {
+            pub tcx: TyCtxt<'a, 'gcx, 'tcx>,
         }
 
-        impl<'a, $tcx, 'lcx> queries::$name<$tcx> {
-            /// Ensure that either this query has all green inputs or been executed.
-            /// Executing query::ensure(D) is considered a read of the dep-node D.
-            ///
-            /// This function is particularly useful when executing passes for their
-            /// side-effects -- e.g., in order to report errors for erroneous programs.
-            ///
-            /// Note: The optimization is only available during incr. comp.
-            pub fn ensure(tcx: TyCtxt<'a, $tcx, 'lcx>, key: $K) -> () {
-                tcx.ensure_query::<queries::$name<'_>>(key);
-            }
-        })*
+        impl<'a, $tcx, 'lcx> TyCtxtEnsure<'a, $tcx, 'lcx> {
+            $($(#[$attr])*
+            #[inline(always)]
+            pub fn $name(self, key: $K) {
+                self.tcx.ensure_query::<queries::$name<'_>>(key)
+            })*
+        }
 
         #[derive(Copy, Clone)]
         pub struct TyCtxtAt<'a, 'gcx: 'a+'tcx, 'tcx: 'a> {
@@ -999,6 +999,15 @@ macro_rules! define_queries_inner {
         }
 
         impl<'a, $tcx, 'lcx> TyCtxt<'a, $tcx, 'lcx> {
+            /// Return a transparent wrapper for `TyCtxt` which ensures queries
+            /// are executed instead of returing their result
+            #[inline(always)]
+            pub fn ensure(self) -> TyCtxtEnsure<'a, $tcx, 'lcx> {
+                TyCtxtEnsure {
+                    tcx: self,
+                }
+            }
+
             /// Return a transparent wrapper for `TyCtxt` which uses
             /// `span` as the location of queries performed through it.
             #[inline(always)]

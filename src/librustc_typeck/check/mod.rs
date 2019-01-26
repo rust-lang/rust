@@ -109,7 +109,6 @@ use rustc::ty::{
 use rustc::ty::adjustment::{Adjust, Adjustment, AllowTwoPhase, AutoBorrow, AutoBorrowMutability};
 use rustc::ty::fold::TypeFoldable;
 use rustc::ty::query::Providers;
-use rustc::ty::query::queries;
 use rustc::ty::subst::{UnpackedKind, Subst, Substs, UserSelfTy, UserSubsts};
 use rustc::ty::util::{Representability, IntTypeExt, Discr};
 use rustc::ty::layout::VariantIdx;
@@ -703,7 +702,7 @@ pub fn check_wf_new<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>) -> Result<(), ErrorRe
 pub fn check_item_types<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>) -> Result<(), ErrorReported> {
     tcx.sess.track_errors(|| {
         for &module in tcx.hir().krate().modules.keys() {
-            queries::check_mod_item_types::ensure(tcx, tcx.hir().local_def_id(module));
+            tcx.ensure().check_mod_item_types(tcx.hir().local_def_id(module));
         }
     })
 }
@@ -722,7 +721,7 @@ fn typeck_item_bodies<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, crate_num: CrateNum
     debug_assert!(crate_num == LOCAL_CRATE);
     Ok(tcx.sess.track_errors(|| {
         tcx.par_body_owners(|body_owner_def_id| {
-            ty::query::queries::typeck_tables_of::ensure(tcx, body_owner_def_id);
+            tcx.ensure().typeck_tables_of(body_owner_def_id);
         });
     })?)
 }
