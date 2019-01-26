@@ -498,7 +498,13 @@ impl ExprCollector {
                     let then_branch = self.collect_block_opt(e.then_branch());
                     let else_branch = e
                         .else_branch()
-                        .map(|e| self.collect_block(e))
+                        .map(|b| match b {
+                            ast::ElseBranchFlavor::Block(it) => self.collect_block(it),
+                            ast::ElseBranchFlavor::IfExpr(elif) => {
+                                let expr: &ast::Expr = ast::Expr::cast(elif.syntax()).unwrap();
+                                self.collect_expr(expr)
+                            }
+                        })
                         .unwrap_or_else(|| self.empty_block());
                     let placeholder_pat = self.pats.alloc(Pat::Missing);
                     let arms = vec![
@@ -521,7 +527,13 @@ impl ExprCollector {
                 } else {
                     let condition = self.collect_expr_opt(e.condition().and_then(|c| c.expr()));
                     let then_branch = self.collect_block_opt(e.then_branch());
-                    let else_branch = e.else_branch().map(|e| self.collect_block(e));
+                    let else_branch = e.else_branch().map(|b| match b {
+                        ast::ElseBranchFlavor::Block(it) => self.collect_block(it),
+                        ast::ElseBranchFlavor::IfExpr(elif) => {
+                            let expr: &ast::Expr = ast::Expr::cast(elif.syntax()).unwrap();
+                            self.collect_expr(expr)
+                        }
+                    });
                     self.alloc_expr(
                         Expr::If {
                             condition,
