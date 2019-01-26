@@ -1873,9 +1873,11 @@ pub mod tls {
         rayon_core::tlv::get()
     }
 
-    /// A thread local variable which stores a pointer to the current ImplicitCtxt
     #[cfg(not(parallel_queries))]
-    thread_local!(static TLV: Cell<usize> = Cell::new(0));
+    thread_local! {
+        /// A thread local variable which stores a pointer to the current ImplicitCtxt.
+        static TLV: Cell<usize> = Cell::new(0);
+    }
 
     /// Sets TLV to `value` during the call to `f`.
     /// It is restored to its previous value after.
@@ -1992,10 +1994,15 @@ pub mod tls {
         })
     }
 
-    /// Stores a pointer to the GlobalCtxt if one is available.
-    /// This is used to access the GlobalCtxt in the deadlock handler
-    /// given to Rayon.
-    scoped_thread_local!(pub static GCX_PTR: Lock<usize>);
+    scoped_thread_local! {
+        // FIXME: This should be a doc comment, but the macro does not allow attributes:
+        // https://github.com/alexcrichton/scoped-tls/pull/8
+        //
+        // Stores a pointer to the GlobalCtxt if one is available.
+        // This is used to access the GlobalCtxt in the deadlock handler
+        // given to Rayon.
+        pub static GCX_PTR: Lock<usize>
+    }
 
     /// Creates a TyCtxt and ImplicitCtxt based on the GCX_PTR thread local.
     /// This is used in the deadlock handler.
