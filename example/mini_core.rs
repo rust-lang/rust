@@ -51,6 +51,7 @@ unsafe impl Copy for isize {}
 unsafe impl Copy for char {}
 unsafe impl<'a, T: ?Sized> Copy for &'a T {}
 unsafe impl<T: ?Sized> Copy for *const T {}
+unsafe impl<T: ?Sized> Copy for *mut T {}
 
 #[lang = "sync"]
 pub unsafe trait Sync {}
@@ -118,6 +119,14 @@ impl Add for u8 {
     }
 }
 
+impl Add for usize {
+    type Output = Self;
+
+    fn add(self, rhs: Self) -> Self {
+        self + rhs
+    }
+}
+
 #[lang = "sub"]
 pub trait Sub<RHS = Self> {
     type Output;
@@ -168,6 +177,33 @@ impl PartialEq for u8 {
         (*self) == (*other)
     }
     fn ne(&self, other: &u8) -> bool {
+        (*self) != (*other)
+    }
+}
+
+impl PartialEq for u16 {
+    fn eq(&self, other: &u16) -> bool {
+        (*self) == (*other)
+    }
+    fn ne(&self, other: &u16) -> bool {
+        (*self) != (*other)
+    }
+}
+
+impl PartialEq for u32 {
+    fn eq(&self, other: &u32) -> bool {
+        (*self) == (*other)
+    }
+    fn ne(&self, other: &u32) -> bool {
+        (*self) != (*other)
+    }
+}
+
+impl PartialEq for usize {
+    fn eq(&self, other: &usize) -> bool {
+        (*self) == (*other)
+    }
+    fn ne(&self, other: &usize) -> bool {
         (*self) != (*other)
     }
 }
@@ -230,7 +266,7 @@ pub trait FnMut<Args>: FnOnce<Args> {
 }
 
 #[lang = "panic"]
-pub fn panic(_expr_file_line_col: &(&'static str, &'static str, u32, u32)) -> ! {
+pub fn panic(&(_msg, _file, _line, _col): &(&'static str, &'static str, u32, u32)) -> ! {
     unsafe {
         intrinsics::abort();
     }
@@ -254,11 +290,12 @@ pub struct Box<T: ?Sized>(*mut T);
 
 impl<T: ?Sized + Unsize<U>, U: ?Sized> CoerceUnsized<Box<U>> for Box<T> {}
 
-static mut MY_TINY_HEAP: [u8; 16] = [0xff; 16];
-
 #[lang = "exchange_malloc"]
+// Make it available to jited mini_core_hello_world
+// FIXME remove next line when jit supports linking rlibs
+#[inline(always)]
 unsafe fn allocate(size: usize, _align: usize) -> *mut u8 {
-    &mut MY_TINY_HEAP as *mut [u8; 16] as *mut u8
+    libc::malloc(size)
 }
 
 #[lang = "drop"]
@@ -278,6 +315,17 @@ pub mod intrinsics {
         pub fn uninit<T>() -> T;
         pub fn ctlz_nonzero<T>(x: T) -> T;
         pub fn needs_drop<T>() -> bool;
+    }
+}
+
+pub mod libc {
+    #[link(name = "c")]
+    extern "C" {
+        pub fn puts(s: *const u8);
+        pub fn malloc(size: usize) -> *mut u8;
+        pub fn memcpy(dst: *mut u8, src: *const u8, size: usize);
+        pub fn memmove(dst: *mut u8, src: *const u8, size: usize);
+        pub fn strncpy(dst: *mut u8, src: *const u8, size: usize);
     }
 }
 
