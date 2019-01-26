@@ -537,13 +537,16 @@ pub fn handle_formatting(
     let output = rustfmt.wait_with_output()?;
     let captured_stdout = String::from_utf8(output.stdout)?;
     if !output.status.success() {
-        failure::bail!(
-            r#"rustfmt exited with:
+        return Err(LspError::new(
+            gen_lsp_server::ErrorCode::ParseError as i32,
+            format!(
+                r#"rustfmt exited with:
             Status: {}
             stdout: {}"#,
-            output.status,
-            captured_stdout,
-        );
+                output.status, captured_stdout,
+            ),
+        )
+        .into());
     }
 
     Ok(Some(vec![TextEdit {
