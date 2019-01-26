@@ -15,7 +15,7 @@ use syntax::ast::{self, Ident};
 use syntax::attr;
 use syntax::errors::DiagnosticBuilder;
 use syntax::ext::base::{self, Determinacy};
-use syntax::ext::base::{Annotatable, MacroKind, SyntaxExtension};
+use syntax::ext::base::{MacroKind, SyntaxExtension};
 use syntax::ext::expand::{AstFragment, Invocation, InvocationKind};
 use syntax::ext::hygiene::{self, Mark};
 use syntax::ext::tt::macro_rules;
@@ -127,9 +127,9 @@ impl<'a> base::Resolver for Resolver<'a> {
         mark
     }
 
-    fn resolve_dollar_crates(&mut self, annotatable: &Annotatable) {
-        pub struct ResolveDollarCrates<'a, 'b: 'a> {
-            pub resolver: &'a mut Resolver<'b>,
+    fn resolve_dollar_crates(&mut self, fragment: &AstFragment) {
+        struct ResolveDollarCrates<'a, 'b: 'a> {
+            resolver: &'a mut Resolver<'b>
         }
         impl<'a> Visitor<'a> for ResolveDollarCrates<'a, '_> {
             fn visit_ident(&mut self, ident: Ident) {
@@ -144,7 +144,7 @@ impl<'a> base::Resolver for Resolver<'a> {
             fn visit_mac(&mut self, _: &ast::Mac) {}
         }
 
-        annotatable.visit_with(&mut ResolveDollarCrates { resolver: self });
+        fragment.visit_with(&mut ResolveDollarCrates { resolver: self });
     }
 
     fn visit_ast_fragment_with_placeholders(&mut self, mark: Mark, fragment: &AstFragment,

@@ -443,6 +443,9 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
     /// prepares data for resolving paths of macro invocations.
     fn collect_invocations(&mut self, fragment: AstFragment, derives: &[Mark])
                            -> (AstFragment, Vec<Invocation>) {
+        // Resolve `$crate`s in the fragment for pretty-printing.
+        self.cx.resolver.resolve_dollar_crates(&fragment);
+
         let (fragment_with_placeholders, invocations) = {
             let mut collector = InvocationCollector {
                 cfg: StripUnconfigured {
@@ -574,8 +577,6 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
                 Some(invoc.fragment_kind.expect_from_annotatables(items))
             }
             AttrProcMacro(ref mac, ..) => {
-                // Resolve `$crate`s in case we have to go though stringification.
-                self.cx.resolver.resolve_dollar_crates(&item);
                 self.gate_proc_macro_attr_item(attr.span, &item);
                 let item_tok = TokenTree::Token(DUMMY_SP, Token::interpolated(match item {
                     Annotatable::Item(item) => token::NtItem(item),
@@ -917,8 +918,6 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
 
         match *ext {
             ProcMacroDerive(ref ext, ..) => {
-                // Resolve `$crate`s in case we have to go though stringification.
-                self.cx.resolver.resolve_dollar_crates(&item);
                 invoc.expansion_data.mark.set_expn_info(expn_info);
                 let span = span.with_ctxt(self.cx.backtrace());
                 let dummy = ast::MetaItem { // FIXME(jseyfried) avoid this
