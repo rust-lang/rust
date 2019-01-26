@@ -13,14 +13,6 @@ unsafe extern "C" fn my_puts(s: *const u8) {
     puts(s);
 }
 
-// TODO remove when jit supports linking rlibs
-#[cfg(jit)]
-extern "C" fn panic<T>(_: T) -> ! {
-    unsafe {
-        intrinsics::abort();
-    }
-}
-
 #[lang = "termination"]
 trait Termination {
     fn report(self) -> i32;
