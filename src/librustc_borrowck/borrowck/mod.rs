@@ -57,7 +57,7 @@ pub type LoanDataFlow<'a, 'tcx> = DataFlowContext<'a, 'tcx, LoanDataFlowOperator
 
 pub fn check_crate<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>) {
     tcx.par_body_owners(|body_owner_def_id| {
-        tcx.borrowck(body_owner_def_id);
+        tcx.ensure().borrowck(body_owner_def_id);
     });
 }
 
