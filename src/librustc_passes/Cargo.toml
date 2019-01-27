@@ -14,5 +14,6 @@ rustc = { path = "../librustc" }
 rustc_mir = { path = "../librustc_mir"}
 rustc_data_structures = { path = "../librustc_data_structures" }
 syntax = { path = "../libsyntax" }
+syntax_ext = { path = "../libsyntax_ext" }
 syntax_pos = { path = "../libsyntax_pos" }
 rustc_errors = { path = "../librustc_errors" }

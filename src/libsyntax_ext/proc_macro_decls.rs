@@ -48,6 +48,7 @@ pub fn modify(sess: &ParseSess,
               resolver: &mut dyn (::syntax::ext::base::Resolver),
               mut krate: ast::Crate,
               is_proc_macro_crate: bool,
+              has_proc_macro_decls: bool,
               is_test_crate: bool,
               num_crate_types: usize,
               handler: &errors::Handler) -> ast::Crate {
@@ -64,7 +65,9 @@ pub fn modify(sess: &ParseSess,
             is_proc_macro_crate,
             is_test_crate,
         };
-        visit::walk_crate(&mut collect, &krate);
+        if has_proc_macro_decls || is_proc_macro_crate {
+            visit::walk_crate(&mut collect, &krate);
+        }
         (collect.derives, collect.attr_macros, collect.bang_macros)
     };
 
@@ -85,7 +88,7 @@ pub fn modify(sess: &ParseSess,
     krate
 }
 
-fn is_proc_macro_attr(attr: &ast::Attribute) -> bool {
+pub fn is_proc_macro_attr(attr: &ast::Attribute) -> bool {
     PROC_MACRO_KINDS.iter().any(|kind| attr.check_name(kind))
 }
 

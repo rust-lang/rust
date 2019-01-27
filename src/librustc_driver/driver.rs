@@ -1017,6 +1017,10 @@ where
         krate = ReplaceBodyWithLoop::new(sess).fold_crate(krate);
     }
 
+    let (has_proc_macro_decls, has_global_allocator) = time(sess, "AST validation", || {
+        ast_validation::check_crate(sess, &krate)
+    });
+
     // If we're in rustdoc we're always compiling as an rlib, but that'll trip a
     // bunch of checks in the `modify` function below. For now just skip this
     // step entirely if we're rustdoc as it's not too useful anyway.
@@ -1031,6 +1035,7 @@ where
                 &mut resolver,
                 krate,
                 is_proc_macro_crate,
+                has_proc_macro_decls,
                 is_test_crate,
                 num_crate_types,
                 sess.diagnostic(),
@@ -1038,16 +1043,18 @@ where
         });
     }
 
-    // Expand global allocators, which are treated as an in-tree proc macro
-    krate = time(sess, "creating allocators", || {
-        allocator::expand::modify(
-            &sess.parse_sess,
-            &mut resolver,
-            krate,
-            crate_name.to_string(),
-            sess.diagnostic(),
-        )
-    });
+    if has_global_allocator {
+        // Expand global allocators, which are treated as an in-tree proc macro
+        krate = time(sess, "creating allocators", || {
+            allocator::expand::modify(
+                &sess.parse_sess,
+                &mut resolver,
+                krate,
+                crate_name.to_string(),
+                sess.diagnostic(),
+            )
+        });
+    }
 
     // Done with macro expansion!
 
@@ -1064,10 +1071,6 @@ where
     if sess.opts.debugging_opts.ast_json {
         println!("{}", json::as_json(&krate));
     }
-
-    time(sess, "AST validation", || {
-        ast_validation::check_crate(sess, &krate)
-    });
 
     time(sess, "name resolution", || {
         resolver.resolve_crate(&krate);
