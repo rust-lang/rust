@@ -135,7 +135,7 @@ use std::cell::{RefCell, Cell};
 use std::collections::{HashSet, HashMap};
 use std::env;
 use std::fs::{self, OpenOptions, File};
-use std::io::{self, Seek, SeekFrom, Write, Read};
+use std::io::{Seek, SeekFrom, Write, Read};
 use std::path::{PathBuf, Path};
 use std::process::{self, Command};
 use std::slice;
@@ -1263,9 +1263,15 @@ impl Build {
             if !src.exists() {
                 panic!("Error: File \"{}\" not found!", src.display());
             }
-            let mut s = t!(fs::File::open(&src));
-            let mut d = t!(fs::File::create(&dst));
-            io::copy(&mut s, &mut d).expect("failed to copy");
+            let metadata = t!(src.symlink_metadata());
+            if let Err(e) = fs::copy(&src, &dst) {
+                panic!("failed to copy `{}` to `{}`: {}", src.display(),
+                       dst.display(), e)
+            }
+            t!(fs::set_permissions(&dst, metadata.permissions()));
+            let atime = FileTime::from_last_access_time(&metadata);
+            let mtime = FileTime::from_last_modification_time(&metadata);
+            t!(filetime::set_file_times(&dst, atime, mtime));
         }
         chmod(&dst, perms);
     }
