@@ -6,7 +6,7 @@ error: unused variable: `unused`
   --> $DIR/lint-renamed-cmdline.rs:8:17
    |
 LL | fn main() { let unused = (); }
-   |                 ^^^^^^ help: consider using `_unused` instead
+   |                 ^^^^^^ help: consider prefixing with an underscore: `_unused`
    |
 note: lint level defined here
   --> $DIR/lint-renamed-cmdline.rs:7:8

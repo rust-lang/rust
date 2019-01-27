@@ -15,7 +15,7 @@ error: unused variable: `x`
   --> $DIR/liveness-unused.rs:8:7
    |
 LL | fn f1(x: isize) {
-   |       ^ help: consider using `_x` instead
+   |       ^ help: consider prefixing with an underscore: `_x`
    |
 note: lint level defined here
   --> $DIR/liveness-unused.rs:2:9
@@ -27,19 +27,19 @@ error: unused variable: `x`
   --> $DIR/liveness-unused.rs:12:8
    |
 LL | fn f1b(x: &mut isize) {
-   |        ^ help: consider using `_x` instead
+   |        ^ help: consider prefixing with an underscore: `_x`
 
 error: unused variable: `x`
   --> $DIR/liveness-unused.rs:20:9
    |
 LL |     let x: isize;
-   |         ^ help: consider using `_x` instead
+   |         ^ help: consider prefixing with an underscore: `_x`
 
 error: unused variable: `x`
   --> $DIR/liveness-unused.rs:25:9
    |
 LL |     let x = 3;
-   |         ^ help: consider using `_x` instead
+   |         ^ help: consider prefixing with an underscore: `_x`
 
 error: variable `x` is assigned to, but never used
   --> $DIR/liveness-unused.rs:30:13
@@ -74,25 +74,25 @@ error: unused variable: `i`
   --> $DIR/liveness-unused.rs:59:12
    |
 LL |       Some(i) => {
-   |            ^ help: consider using `_i` instead
+   |            ^ help: consider prefixing with an underscore: `_i`
 
 error: unused variable: `x`
   --> $DIR/liveness-unused.rs:79:9
    |
 LL |     for x in 1..10 { }
-   |         ^ help: consider using `_x` instead
+   |         ^ help: consider prefixing with an underscore: `_x`
 
 error: unused variable: `x`
   --> $DIR/liveness-unused.rs:84:10
    |
 LL |     for (x, _) in [1, 2, 3].iter().enumerate() { }
-   |          ^ help: consider using `_x` instead
+   |          ^ help: consider prefixing with an underscore: `_x`
 
 error: unused variable: `x`
   --> $DIR/liveness-unused.rs:89:13
    |
 LL |     for (_, x) in [1, 2, 3].iter().enumerate() {
-   |             ^ help: consider using `_x` instead
+   |             ^ help: consider prefixing with an underscore: `_x`
 
 error: variable `x` is assigned to, but never used
   --> $DIR/liveness-unused.rs:112:9
