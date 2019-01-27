@@ -17,14 +17,14 @@ pub fn find_leaf_at_offset(node: &SyntaxNode, offset: TextUnit) -> LeafAtOffset<
 }
 
 /// Finds a node of specific Ast type at offset. Note that this is slightly
-/// impercise: if the cursor is strictly betwen two nodes of the desired type,
+/// imprecise: if the cursor is strictly between two nodes of the desired type,
 /// as in
 ///
 /// ```no-run
 /// struct Foo {}|struct Bar;
 /// ```
 ///
-/// then the left node will be silently prefered.
+/// then the left node will be silently preferred.
 pub fn find_node_at_offset<N: AstNode>(syntax: &SyntaxNode, offset: TextUnit) -> Option<&N> {
     find_leaf_at_offset(syntax, offset).find_map(|leaf| leaf.ancestors().find_map(N::cast))
 }
