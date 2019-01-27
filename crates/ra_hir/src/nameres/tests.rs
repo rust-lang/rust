@@ -26,7 +26,7 @@ fn item_map_custom_crate_root(fixture: &str, root: &str) -> (Arc<ItemMap>, Modul
     crate_graph.add_crate_root(db.file_id(root));
     db.set_crate_graph(Arc::new(crate_graph));
 
-    let module = crate::source_binder::module_from_position(&db, dbg!(pos)).unwrap();
+    let module = crate::source_binder::module_from_position(&db, pos).unwrap();
     let krate = module.krate(&db).unwrap();
     let module_id = module.module_id;
     (db.item_map(krate.crate_id), module_id)
