@@ -2,7 +2,6 @@
 mod cancellation;
 mod input;
 mod loc2id;
-pub mod mock;
 
 use std::{
     panic, sync::Arc,
