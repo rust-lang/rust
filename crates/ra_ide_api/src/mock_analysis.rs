@@ -2,7 +2,6 @@ use std::sync::Arc;
 
 use relative_path::RelativePathBuf;
 use test_utils::{extract_offset, extract_range, parse_fixture, CURSOR_MARKER};
-use ra_db::mock::FileMap;
 
 use crate::{Analysis, AnalysisChange, AnalysisHost, CrateGraph, FileId, FilePosition, FileRange, SourceRootId};
 
@@ -83,15 +82,14 @@ impl MockAnalysis {
     }
     pub fn analysis_host(self) -> AnalysisHost {
         let mut host = AnalysisHost::default();
-        let mut file_map = FileMap::default();
         let source_root = SourceRootId(0);
         let mut change = AnalysisChange::new();
         change.add_root(source_root, true);
         let mut crate_graph = CrateGraph::default();
-        for (path, contents) in self.files.into_iter() {
+        for (i, (path, contents)) in self.files.into_iter().enumerate() {
             assert!(path.starts_with('/'));
             let path = RelativePathBuf::from_path(&path[1..]).unwrap();
-            let file_id = file_map.add(path.clone());
+            let file_id = FileId(i as u32 + 1);
             if path == "/lib.rs" || path == "/main.rs" {
                 crate_graph.add_crate_root(file_id);
             }
