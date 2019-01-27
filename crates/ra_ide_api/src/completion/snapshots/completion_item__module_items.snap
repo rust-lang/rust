@@ -1,25 +1,21 @@
 ---
-created: "2019-01-23T07:42:59.657718+00:00"
-creator: insta@0.4.0
+created: "2019-01-27T19:56:59.953151082+00:00"
+creator: insta@0.5.2
 expression: kind_completions
 source: crates/ra_ide_api/src/completion/completion_item.rs
 ---
 [
     CompletionItem {
         completion_kind: Reference,
-        label: "quux",
+        label: "Baz",
         kind: Some(
-            Function
+            Enum
         ),
-        detail: Some(
-            "fn quux()"
-        ),
+        detail: None,
         documentation: None,
         lookup: None,
-        insert_text: Some(
-            "quux()$0"
-        ),
-        insert_text_format: Snippet,
+        insert_text: None,
+        insert_text_format: PlainText,
         source_range: [89; 89),
         text_edit: None
     },
@@ -39,15 +35,19 @@ source: crates/ra_ide_api/src/completion/completion_item.rs
     },
     CompletionItem {
         completion_kind: Reference,
-        label: "Baz",
+        label: "quux",
         kind: Some(
-            Enum
+            Function
         ),
-        detail: None,
+        detail: Some(
+            "fn quux()"
+        ),
         documentation: None,
         lookup: None,
-        insert_text: None,
-        insert_text_format: PlainText,
+        insert_text: Some(
+            "quux()$0"
+        ),
+        insert_text_format: Snippet,
         source_range: [89; 89),
         text_edit: None
     }

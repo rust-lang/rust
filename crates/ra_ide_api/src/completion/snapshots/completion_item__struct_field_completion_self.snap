@@ -1,10 +1,28 @@
 ---
-created: "2019-01-25T19:27:09.519688600+00:00"
+created: "2019-01-27T19:56:59.909689544+00:00"
 creator: insta@0.5.2
 expression: kind_completions
 source: crates/ra_ide_api/src/completion/completion_item.rs
 ---
 [
+    CompletionItem {
+        completion_kind: Reference,
+        label: "foo",
+        kind: Some(
+            Method
+        ),
+        detail: Some(
+            "fn foo(self)"
+        ),
+        documentation: None,
+        lookup: None,
+        insert_text: Some(
+            "foo()$0"
+        ),
+        insert_text_format: Snippet,
+        source_range: [187; 187),
+        text_edit: None
+    },
     CompletionItem {
         completion_kind: Reference,
         label: "the_field",
@@ -22,24 +40,6 @@ source: crates/ra_ide_api/src/completion/completion_item.rs
         lookup: None,
         insert_text: None,
         insert_text_format: PlainText,
-        source_range: [187; 187),
-        text_edit: None
-    },
-    CompletionItem {
-        completion_kind: Reference,
-        label: "foo",
-        kind: Some(
-            Method
-        ),
-        detail: Some(
-            "fn foo(self)"
-        ),
-        documentation: None,
-        lookup: None,
-        insert_text: Some(
-            "foo()$0"
-        ),
-        insert_text_format: Snippet,
         source_range: [187; 187),
         text_edit: None
     }
