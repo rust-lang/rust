@@ -24,7 +24,7 @@ use comment::{
     combine_strs_with_missing_comments, contains_comment, recover_comment_removed,
     recover_missing_comment_in_span, rewrite_missing_comment, FindUncommented,
 };
-use config::{BraceStyle, Config, Density, IndentStyle};
+use config::{BraceStyle, Config, Density, IndentStyle, Version};
 use expr::{
     format_expr, is_empty_block, is_simple_block_stmt, rewrite_assign_rhs, rewrite_assign_rhs_with,
     ExprType, RhsTactics,
@@ -2085,11 +2085,18 @@ fn rewrite_fn_base(
             .lines()
             .last()
             .map_or(false, |last_line| last_line.contains("//"));
-        result.push(')');
 
-        if closing_paren_overflow_max_width || args_last_line_contains_comment {
-            result.push_str(&indent.to_string_with_newline(context.config));
-            no_args_and_over_max_width = true;
+        if context.config.version() == Version::Two {
+            result.push(')');
+            if closing_paren_overflow_max_width || args_last_line_contains_comment {
+                result.push_str(&indent.to_string_with_newline(context.config));
+                no_args_and_over_max_width = true;
+            }
+        } else {
+            if closing_paren_overflow_max_width || args_last_line_contains_comment {
+                result.push_str(&indent.to_string_with_newline(context.config));
+            }
+            result.push(')');
         }
     }
 
@@ -2130,9 +2137,14 @@ fn rewrite_fn_base(
             result.push_str(&indent.to_string_with_newline(context.config));
             indent
         } else {
-            if arg_str.len() != 0 || !no_args_and_over_max_width {
+            if context.config.version() == Version::Two {
+                if arg_str.len() != 0 || !no_args_and_over_max_width {
+                    result.push(' ');
+                }
+            } else {
                 result.push(' ');
             }
+
             Indent::new(indent.block_indent, last_line_width(&result))
         };
 
