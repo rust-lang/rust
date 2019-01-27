@@ -25,6 +25,31 @@ export CARGO_TARGET_DIR=`pwd`/target/
 ./util/dev update_lints --check
 cargo +nightly fmt --all -- --check
 
+# Check running clippy-driver without cargo
+(
+  export LD_LIBRARY_PATH=$(rustc --print sysroot)/lib
+
+  # Check sysroot handling
+  sysroot=$(./target/debug/clippy-driver --print sysroot)
+  test $sysroot = $(rustc --print sysroot)
+
+  sysroot=$(./target/debug/clippy-driver --sysroot /tmp --print sysroot)
+  test $sysroot = /tmp
+
+  sysroot=$(SYSROOT=/tmp ./target/debug/clippy-driver --print sysroot)
+  test $sysroot = /tmp
+
+  # Make sure this isn't set - clippy-driver should cope without it
+  unset CARGO_MANIFEST_DIR
+
+  # Run a lint and make sure it produces the expected output. It's also expected to exit with code 1
+  # XXX How to match the clippy invocation in compile-test.rs?
+  ! ./target/debug/clippy-driver -Dwarnings -Aunused -Zui-testing --emit metadata --crate-type bin tests/ui/cstring.rs 2> cstring.stderr
+  diff <(sed -e 's,tests/ui,$DIR,' -e '/= help/d' cstring.stderr) tests/ui/cstring.stderr
+
+  # TODO: CLIPPY_CONF_DIR / CARGO_MANIFEST_DIR
+)
+
 # make sure tests are formatted
 
 # some lints are sensitive to formatting, exclude some files
