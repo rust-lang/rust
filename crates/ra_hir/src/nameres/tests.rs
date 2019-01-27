@@ -19,11 +19,12 @@ fn item_map(fixture: &str) -> (Arc<ItemMap>, ModuleId) {
     (db.item_map(krate.crate_id), module_id)
 }
 
-fn item_map_custom_crate_root(fixture: &str, root: &str) -> (Arc<ItemMap>, ModuleId) {
+/// Sets the crate root to the file of the cursor marker
+fn item_map_custom_crate_root(fixture: &str) -> (Arc<ItemMap>, ModuleId) {
     let (mut db, pos) = MockDatabase::with_position(fixture);
 
     let mut crate_graph = CrateGraph::default();
-    crate_graph.add_crate_root(db.file_id(root));
+    crate_graph.add_crate_root(pos.file_id);
     db.set_crate_graph(Arc::new(crate_graph));
 
     let module = crate::source_binder::module_from_position(&db, pos).unwrap();
@@ -152,14 +153,11 @@ fn module_resolution_works_for_non_standard_filenames() {
         "
         //- /my_library.rs
         mod foo;
-
         use self::foo::Bar;
         <|>
-
         //- /foo/mod.rs
         pub struct Bar;
     ",
-        "/my_library.rs",
     );
     check_module_item_map(
         &item_map,
