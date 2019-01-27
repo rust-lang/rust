@@ -197,7 +197,7 @@ declare_clippy_lint! {
 /// ```rust
 /// match x {
 ///     A => {},
-///     _ => {}
+///     _ => {},
 /// }
 /// ```
 declare_clippy_lint! {
@@ -466,12 +466,14 @@ fn check_wild_err_arm(cx: &LateContext<'_, '_>, ex: &Expr, arms: &[Arm]) {
 fn check_wild_match(cx: &LateContext<'_, '_>, arms: &[Arm]) {
     for arm in arms {
         if is_wild(&arm.pats[0]) {
-            span_note_and_lint(cx,
+            span_note_and_lint(
+                cx,
                 WILDCARD_MATCH_ARM,
                 arm.pats[0].span,
                 "wildcard match will miss any future added variants.",
                 arm.pats[0].span,
-                "to resolve, match each variant explicitly");
+                "to resolve, match each variant explicitly",
+            );
         }
     }
 }
