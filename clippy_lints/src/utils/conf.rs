@@ -163,8 +163,13 @@ pub fn lookup_conf_file() -> io::Result<Option<path::PathBuf>> {
     /// Possible filename to search for.
     const CONFIG_FILE_NAMES: [&str; 2] = [".clippy.toml", "clippy.toml"];
 
-    let mut current = path::PathBuf::from(env::var("CARGO_MANIFEST_DIR").expect("CARGO_MANIFEST_DIR not set"));
-
+    // Start looking for a config file in CLIPPY_CONF_DIR, or failing that, CARGO_MANIFEST_DIR.
+    // If neither of those exist, use ".".
+    let mut current = path::PathBuf::from(
+        env::var("CLIPPY_CONF_DIR")
+            .or_else(|_| env::var("CARGO_MANIFEST_DIR"))
+            .unwrap_or_else(|_| ".".to_string()),
+    );
     loop {
         for config_file_name in &CONFIG_FILE_NAMES {
             let config_file = current.join(config_file_name);
