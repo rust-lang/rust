@@ -1,9 +1,9 @@
+use insta::assert_debug_snapshot_matches;
 use ra_ide_api::{
-    AnalysisChange,
-    CrateGraph, FileId, mock_analysis::{MockAnalysis, single_file, single_file_with_position}, Query,
+    mock_analysis::{single_file, single_file_with_position, MockAnalysis},
+    AnalysisChange, CrateGraph, FileId, Query,
 };
 use ra_syntax::TextRange;
-use insta::assert_debug_snapshot_matches;
 
 #[test]
 fn test_unresolved_module_diagnostic() {
@@ -26,12 +26,12 @@ fn test_resolve_crate_root() {
         "
         //- /bar.rs
         mod foo;
-        //- /bar/foo.rs
-        // emtpy <|>
+        //- /foo.rs
+        // empty <|>
     ",
     );
     let root_file = mock.id_of("/bar.rs");
-    let mod_file = mock.id_of("/bar/foo.rs");
+    let mod_file = mock.id_of("/foo.rs");
     let mut host = mock.analysis_host();
     assert!(host.analysis().crate_for(mod_file).unwrap().is_empty());
 
