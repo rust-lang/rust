@@ -78,6 +78,13 @@ pub(crate) fn impl_item_list(p: &mut Parser) {
     assert!(p.at(L_CURLY));
     let m = p.start();
     p.bump();
+    // test impl_inner_attributes
+    // enum F{}
+    // impl F {
+    //      //! This is a doc comment
+    //      #![doc("This is also a doc comment")]
+    // }
+    attributes::inner_attributes(p);
 
     while !p.at(EOF) && !p.at(R_CURLY) {
         if p.at(L_CURLY) {
