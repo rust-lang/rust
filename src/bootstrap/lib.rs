@@ -423,7 +423,7 @@ impl Build {
             Command::new(&build.initial_rustc).arg("--version").arg("--verbose"));
         let local_release = local_version_verbose
             .lines().filter(|x| x.starts_with("release:"))
-            .next().unwrap().trim_left_matches("release:").trim();
+            .next().unwrap().trim_start_matches("release:").trim();
         let my_version = channel::CFG_RELEASE_NUM;
         if local_release.split('.').take(2).eq(my_version.split('.').take(2)) {
             build.verbose(&format!("auto-detected local-rebuild {}", local_release));

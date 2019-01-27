@@ -24,6 +24,8 @@ fn main() {
         return;
     }
 
+    build_helper::restore_library_path();
+
     let target = env::var("TARGET").expect("TARGET was not set");
     let llvm_config = env::var_os("LLVM_CONFIG")
         .map(PathBuf::from)

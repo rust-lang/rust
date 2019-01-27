@@ -2413,12 +2413,11 @@ pub fn fence(order: Ordering) {
 ///
 /// ```
 /// use std::sync::atomic::{AtomicBool, AtomicUsize};
-/// use std::sync::atomic::{ATOMIC_BOOL_INIT, ATOMIC_USIZE_INIT};
 /// use std::sync::atomic::Ordering;
 /// use std::sync::atomic::compiler_fence;
 ///
-/// static IMPORTANT_VARIABLE: AtomicUsize = ATOMIC_USIZE_INIT;
-/// static IS_READY: AtomicBool = ATOMIC_BOOL_INIT;
+/// static IMPORTANT_VARIABLE: AtomicUsize = AtomicUsize::new(0);
+/// static IS_READY: AtomicBool = AtomicBool::new(false);
 ///
 /// fn main() {
 ///     IMPORTANT_VARIABLE.store(42, Ordering::Relaxed);

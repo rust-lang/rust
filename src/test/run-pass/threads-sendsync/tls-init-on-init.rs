@@ -6,13 +6,13 @@
 #![feature(thread_local_try_with)]
 
 use std::thread;
-use std::sync::atomic::{AtomicUsize, Ordering, ATOMIC_USIZE_INIT};
+use std::sync::atomic::{AtomicUsize, Ordering};
 
 struct Foo { cnt: usize }
 
 thread_local!(static FOO: Foo = Foo::init());
 
-static CNT: AtomicUsize = ATOMIC_USIZE_INIT;
+static CNT: AtomicUsize = AtomicUsize::new(0);
 
 impl Foo {
     fn init() -> Foo {

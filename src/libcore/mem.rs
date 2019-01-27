@@ -491,7 +491,6 @@ pub const fn needs_drop<T>() -> bool {
 #[inline]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub unsafe fn zeroed<T>() -> T {
-    #[cfg(not(stage0))]
     intrinsics::panic_if_uninhabited::<T>();
     intrinsics::init()
 }
@@ -625,7 +624,6 @@ pub unsafe fn zeroed<T>() -> T {
 #[rustc_deprecated(since = "2.0.0", reason = "use `mem::MaybeUninit::uninitialized` instead")]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub unsafe fn uninitialized<T>() -> T {
-    #[cfg(not(stage0))]
     intrinsics::panic_if_uninhabited::<T>();
     intrinsics::uninit()
 }
@@ -1104,7 +1102,6 @@ impl<T> MaybeUninit<T> {
     #[unstable(feature = "maybe_uninit", issue = "53491")]
     #[inline(always)]
     pub unsafe fn into_inner(self) -> T {
-        #[cfg(not(stage0))]
         intrinsics::panic_if_uninhabited::<T>();
         ManuallyDrop::into_inner(self.value)
     }

@@ -10,7 +10,7 @@
 #![feature(thread_local)]
 
 #[thread_local]
-static mut X: ::std::sync::atomic::AtomicUsize = ::std::sync::atomic::ATOMIC_USIZE_INIT;
+static mut X: ::std::sync::atomic::AtomicUsize = ::std::sync::atomic::AtomicUsize::new(0);
 
 fn main() {
     unsafe {

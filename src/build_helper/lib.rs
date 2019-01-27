@@ -23,6 +23,25 @@ macro_rules! t {
     };
 }
 
+// Because Cargo adds the compiler's dylib path to our library search path, llvm-config may
+// break: the dylib path for the compiler, as of this writing, contains a copy of the LLVM
+// shared library, which means that when our freshly built llvm-config goes to load it's
+// associated LLVM, it actually loads the compiler's LLVM. In particular when building the first
+// compiler (i.e., in stage 0) that's a problem, as the compiler's LLVM is likely different from
+// the one we want to use. As such, we restore the environment to what bootstrap saw. This isn't
+// perfect -- we might actually want to see something from Cargo's added library paths -- but
+// for now it works.
+pub fn restore_library_path() {
+    println!("cargo:rerun-if-env-changed=REAL_LIBRARY_PATH_VAR");
+    println!("cargo:rerun-if-env-changed=REAL_LIBRARY_PATH");
+    let key = env::var_os("REAL_LIBRARY_PATH_VAR").expect("REAL_LIBRARY_PATH_VAR");
+    if let Some(env) = env::var_os("REAL_LIBRARY_PATH") {
+        env::set_var(&key, &env);
+    } else {
+        env::remove_var(&key);
+    }
+}
+
 pub fn run(cmd: &mut Command) {
     println!("running: {:?}", cmd);
     run_silent(cmd);

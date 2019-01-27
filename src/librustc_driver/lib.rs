@@ -91,7 +91,7 @@ use std::panic;
 use std::path::{PathBuf, Path};
 use std::process::{self, Command, Stdio};
 use std::str;
-use std::sync::atomic::{AtomicBool, ATOMIC_BOOL_INIT, Ordering};
+use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Once, ONCE_INIT};
 use std::thread;
 
@@ -254,7 +254,7 @@ fn get_codegen_sysroot(backend_name: &str) -> fn() -> Box<dyn CodegenBackend> {
     // general this assertion never trips due to the once guard in `get_codegen_backend`,
     // but there's a few manual calls to this function in this file we protect
     // against.
-    static LOADED: AtomicBool = ATOMIC_BOOL_INIT;
+    static LOADED: AtomicBool = AtomicBool::new(false);
     assert!(!LOADED.fetch_or(true, Ordering::SeqCst),
             "cannot load the default codegen backend twice");
 

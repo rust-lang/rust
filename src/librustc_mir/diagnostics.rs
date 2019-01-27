@@ -1127,9 +1127,9 @@ A borrow of a constant containing interior mutability was attempted. Erroneous
 code example:
 
 ```compile_fail,E0492
-use std::sync::atomic::{AtomicUsize, ATOMIC_USIZE_INIT};
+use std::sync::atomic::AtomicUsize;
 
-const A: AtomicUsize = ATOMIC_USIZE_INIT;
+const A: AtomicUsize = AtomicUsize::new(0);
 static B: &'static AtomicUsize = &A;
 // error: cannot borrow a constant which may contain interior mutability,
 //        create a static instead
@@ -1145,9 +1145,9 @@ explicitly a single memory location, which can be mutated at will.
 So, in order to solve this error, either use statics which are `Sync`:
 
 ```
-use std::sync::atomic::{AtomicUsize, ATOMIC_USIZE_INIT};
+use std::sync::atomic::AtomicUsize;
 
-static A: AtomicUsize = ATOMIC_USIZE_INIT;
+static A: AtomicUsize = AtomicUsize::new(0);
 static B: &'static AtomicUsize = &A; // ok!
 ```
 

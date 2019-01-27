@@ -188,7 +188,7 @@ pub fn collect_lang_features(base_src_path: &Path, bad: &mut bool) -> Features {
             }
 
             let mut parts = line.split(',');
-            let level = match parts.next().map(|l| l.trim().trim_left_matches('(')) {
+            let level = match parts.next().map(|l| l.trim().trim_start_matches('(')) {
                 Some("active") => Status::Unstable,
                 Some("removed") => Status::Removed,
                 Some("accepted") => Status::Stable,

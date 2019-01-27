@@ -5,7 +5,7 @@ use std::mem;
 use std::panic;
 use std::rc::Rc;
 use std::sync::atomic::Ordering::Relaxed;
-use std::sync::atomic::{ATOMIC_USIZE_INIT, AtomicUsize};
+use std::sync::atomic::AtomicUsize;
 use std::thread;
 
 use rand::{Rng, RngCore, thread_rng, seq::SliceRandom};
@@ -1500,7 +1500,7 @@ static DROP_COUNTS: [AtomicUsize; MAX_LEN] = [
     AtomicUsize::new(0), AtomicUsize::new(0), AtomicUsize::new(0), AtomicUsize::new(0),
 ];
 
-static VERSIONS: AtomicUsize = ATOMIC_USIZE_INIT;
+static VERSIONS: AtomicUsize = AtomicUsize::new(0);
 
 #[derive(Clone, Eq)]
 struct DropCounter {

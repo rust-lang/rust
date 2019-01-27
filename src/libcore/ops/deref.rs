@@ -171,7 +171,7 @@ impl<T: ?Sized> DerefMut for &mut T {
 /// Indicates that a struct can be used as a method receiver, without the
 /// `arbitrary_self_types` feature. This is implemented by stdlib pointer types like `Box<T>`,
 /// `Rc<T>`, `&T`, and `Pin<P>`.
-#[cfg_attr(not(stage0), lang = "receiver")]
+#[lang = "receiver"]
 #[unstable(feature = "receiver_trait", issue = "0")]
 #[doc(hidden)]
 pub trait Receiver {
