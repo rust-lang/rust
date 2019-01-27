@@ -16,7 +16,7 @@ use syntax::{
         hygiene::{self, Mark, SyntaxContext},
     },
     fold::Folder,
-    visit_mut::{self, MutVisitor},
+    visit_mut::{self, MutVisitor, Action},
     parse::ParseSess,
     ptr::P,
     symbol::Symbol
@@ -56,34 +56,34 @@ struct ExpandAllocatorDirectives<'a> {
 }
 
 impl<'a> MutVisitor for ExpandAllocatorDirectives<'a> {
-    fn visit_item(&mut self, item: &mut P<Item>) -> Option<Vec<P<Item>>> {
+    fn visit_item(&mut self, item: &mut P<Item>) -> Action<P<Item>> {
         debug!("in submodule {}", self.in_submod);
 
         let name = if attr::contains_name(&item.attrs, "global_allocator") {
             "global_allocator"
         } else {
             visit_mut::walk_item(self, item);
-            return None;
+            return Action::Reuse;
         };
         match item.node {
             ItemKind::Static(..) => {}
             _ => {
                 self.handler
                     .span_err(item.span, "allocators must be statics");
-                return None;
+                return Action::Reuse;
             }
         }
 
         if self.in_submod > 0 {
             self.handler
                 .span_err(item.span, "`global_allocator` cannot be used in submodules");
-            return None;
+            return Action::Reuse;
         }
 
         if self.found {
             self.handler
                 .span_err(item.span, "cannot define more than one #[global_allocator]");
-            return None;
+            return Action::Reuse;
         }
         self.found = true;
 
@@ -144,7 +144,7 @@ impl<'a> MutVisitor for ExpandAllocatorDirectives<'a> {
         let module = f.cx.monotonic_expander().fold_item(module).pop().unwrap();
 
         // Return the item and new submodule
-        Some(vec![item.clone(), module])
+        Action::Add(vec![module])
     }
 
     // If we enter a submodule, take note.

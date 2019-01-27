@@ -19,6 +19,28 @@ use syntax_pos::Span;
 use parse::token::Token;
 use tokenstream::{TokenTree, TokenStream};
 
+pub enum Action<T> {
+    Reuse,
+    Remove,
+    Add(Vec<T>),
+    Replace(Vec<T>),
+}
+
+impl<T> Action<T> {
+    pub fn map<R>(self, mut f: impl FnMut(T) -> R) -> Action<R> {
+        match self {
+            Action::Reuse => Action::Reuse,
+            Action::Remove => Action::Remove,
+            Action::Add(list) => {
+                Action::Add(list.into_iter().map(|item| f(item)).collect())
+            }
+            Action::Replace(list) => {
+                Action::Replace(list.into_iter().map(|item| f(item)).collect())
+            }
+        }
+    }
+}
+
 pub enum FnKind<'a> {
     /// fn foo() or extern "Abi" fn foo()
     ItemFn(Ident, FnHeader, &'a mut Visibility, &'a mut Block),
@@ -62,13 +84,13 @@ pub trait MutVisitor: Sized {
     }
     fn visit_foreign_item(&mut self, i: &mut ForeignItem) { walk_foreign_item(self, i) }
     fn visit_global_asm(&mut self, ga: &mut GlobalAsm) { walk_global_asm(self, ga) }
-    fn visit_item(&mut self, i: &mut P<Item>) -> Option<Vec<P<Item>>> {
+    fn visit_item(&mut self, i: &mut P<Item>) -> Action<P<Item>> {
         walk_item(self, i);
-        None
+        Action::Reuse
     }
     fn visit_local(&mut self, l: &mut Local) { walk_local(self, l) }
     fn visit_block(&mut self, b: &mut Block) { walk_block(self, b) }
-    fn visit_stmt(&mut self, s: &mut Stmt) -> Option<Vec<Stmt>> {
+    fn visit_stmt(&mut self, s: &mut Stmt) -> Action<Stmt> {
         walk_stmt(self, s)
     }
     fn visit_arm(&mut self, a: &mut Arm) { walk_arm(self, a) }
@@ -173,15 +195,27 @@ macro_rules! walk_list_mut {
                 break;
             }
 
-            if let Some(replacement) = $visitor.$method(&mut $list[i], $(, $extra_args)*) {
-                $list.remove(i);
-                let rlen = replacement.len();
-                for (j, r) in replacement.into_iter().enumerate() {
-                    $list.insert(i + j, r);
+            match $visitor.$method(&mut $list[i], $(, $extra_args)*) {
+                Action::Reuse => i += 1,
+                Action::Remove => {
+                    $list.remove(i);
                 }
-                i += rlen;
-            } else {
-                i += 1;
+                Action::Add(list) => {
+                    i += 1;
+                    let rlen = list.len();
+                    for (j, r) in list.into_iter().enumerate() {
+                        $list.insert(i + j, r);
+                    }
+                    i += rlen;
+                }
+                Action::Replace(list) => {
+                    $list.remove(i);
+                    let rlen = list.len();
+                    for (j, r) in list.into_iter().enumerate() {
+                        $list.insert(i + j, r);
+                    }
+                    i += rlen;
+                }
             }
         }
     }
@@ -650,26 +684,24 @@ pub fn walk_block<V: MutVisitor>(visitor: &mut V, block: &mut Block) {
     walk_list_mut!(visitor, visit_stmt, &mut block.stmts);
 }
 
-pub fn walk_stmt<V: MutVisitor>(visitor: &mut V, statement: &mut Stmt) -> Option<Vec<Stmt>> {
+pub fn walk_stmt<V: MutVisitor>(visitor: &mut V, statement: &mut Stmt) -> Action<Stmt> {
     match statement.node {
         StmtKind::Local(ref mut local) => {
             visitor.visit_local(local);
-            None
+            Action::Reuse
         },
         StmtKind::Item(ref mut item) => {
-            visitor.visit_item(item).map(|replacement| {
-                replacement.into_iter().map(|item| {
-                    Stmt {
-                        id: visitor.new_id(statement.id),
-                        node: StmtKind::Item(item),
-                        span: visitor.new_span(statement.span),
-                    }
-                }).collect()
+            visitor.visit_item(item).map(|item| {
+                Stmt {
+                    id: visitor.new_id(statement.id),
+                    node: StmtKind::Item(item),
+                    span: visitor.new_span(statement.span),
+                }
             })
         },
         StmtKind::Expr(ref mut expression) | StmtKind::Semi(ref mut expression) => {
             visitor.visit_expr(expression);
-            None
+            Action::Reuse
         }
         StmtKind::Mac(ref mut mac) => {
             let (ref mut mac, _, ref mut attrs) = **mac;
@@ -677,7 +709,7 @@ pub fn walk_stmt<V: MutVisitor>(visitor: &mut V, statement: &mut Stmt) -> Option
             for attr in attrs.iter_mut() {
                 visitor.visit_attribute(attr);
             }
-            None
+            Action::Reuse
         }
     }
 }
@@ -893,7 +925,7 @@ pub fn walk_attribute<V: MutVisitor>(visitor: &mut V, attr: &mut Attribute) {
 pub fn walk_tt<V: MutVisitor>(visitor: &mut V, tt: TokenTree) {
     match tt {
         TokenTree::Token(_, tok) => visitor.visit_token(tok),
-        TokenTree::Delimited(_, _, tts) => visitor.visit_tts(tts.stream()),
+        TokenTree::Delimited(_, _, tts) => visitor.visit_tts(tts),
     }
 }
 
