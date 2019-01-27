@@ -39,7 +39,6 @@ macro_rules! forward {
     ) => {
         $(#[$attrs])*
         pub fn $n(&self, $($name: $ty),*) -> &Self {
-            #[allow(deprecated)]
             self.diagnostic.$n($($name),*);
             self
         }
@@ -52,7 +51,6 @@ macro_rules! forward {
     ) => {
         $(#[$attrs])*
         pub fn $n(&mut self, $($name: $ty),*) -> &mut Self {
-            #[allow(deprecated)]
             self.diagnostic.$n($($name),*);
             self
         }
@@ -70,7 +68,6 @@ macro_rules! forward {
     ) => {
         $(#[$attrs])*
         pub fn $n<S: Into<MultiSpan>>(&mut self, $($name: $ty),*) -> &mut Self {
-            #[allow(deprecated)]
             self.diagnostic.$n($($name),*);
             self
         }
@@ -190,53 +187,16 @@ impl<'a> DiagnosticBuilder<'a> {
                                                   msg: &str,
                                                   ) -> &mut Self);
 
-    forward!(
-        #[deprecated(note = "Use `span_suggestion_short_with_applicability`")]
-        pub fn span_suggestion_short(
-            &mut self,
-            sp: Span,
-            msg: &str,
-            suggestion: String,
-        ) -> &mut Self
-    );
-
-    forward!(
-        #[deprecated(note = "Use `multipart_suggestion_with_applicability`")]
-        pub fn multipart_suggestion(
-            &mut self,
-            msg: &str,
-            suggestion: Vec<(Span, String)>,
-        ) -> &mut Self
-    );
-
-    forward!(
-        #[deprecated(note = "Use `span_suggestion_with_applicability`")]
-        pub fn span_suggestion(
-            &mut self,
-            sp: Span,
-            msg: &str,
-            suggestion: String,
-        ) -> &mut Self
-    );
-
-    forward!(
-        #[deprecated(note = "Use `span_suggestions_with_applicability`")]
-        pub fn span_suggestions(&mut self,
-            sp: Span,
-            msg: &str,
-            suggestions: Vec<String>,
-        ) -> &mut Self
-    );
-
-    pub fn multipart_suggestion_with_applicability(&mut self,
-                                              msg: &str,
-                                              suggestion: Vec<(Span, String)>,
-                                              applicability: Applicability,
-                                              ) -> &mut Self {
+    pub fn multipart_suggestion(
+        &mut self,
+        msg: &str,
+        suggestion: Vec<(Span, String)>,
+        applicability: Applicability,
+    ) -> &mut Self {
         if !self.allow_suggestions {
             return self
         }
-        self.diagnostic.multipart_suggestion_with_applicability(
+        self.diagnostic.multipart_suggestion(
             msg,
             suggestion,
             applicability,
@@ -244,16 +204,17 @@ impl<'a> DiagnosticBuilder<'a> {
         self
     }
 
-    pub fn span_suggestion_with_applicability(&mut self,
-                                              sp: Span,
-                                              msg: &str,
-                                              suggestion: String,
-                                              applicability: Applicability)
-                                              -> &mut Self {
+    pub fn span_suggestion(
+        &mut self,
+        sp: Span,
+        msg: &str,
+        suggestion: String,
+        applicability: Applicability,
+    ) -> &mut Self {
         if !self.allow_suggestions {
             return self
         }
-        self.diagnostic.span_suggestion_with_applicability(
+        self.diagnostic.span_suggestion(
             sp,
             msg,
             suggestion,
@@ -262,16 +223,17 @@ impl<'a> DiagnosticBuilder<'a> {
         self
     }
 
-    pub fn span_suggestions_with_applicability(&mut self,
-                                               sp: Span,
-                                               msg: &str,
-                                               suggestions: impl Iterator<Item = String>,
-                                               applicability: Applicability)
-                                               -> &mut Self {
+    pub fn span_suggestions(
+        &mut self,
+        sp: Span,
+        msg: &str,
+        suggestions: impl Iterator<Item = String>,
+        applicability: Applicability,
+    ) -> &mut Self {
         if !self.allow_suggestions {
             return self
         }
-        self.diagnostic.span_suggestions_with_applicability(
+        self.diagnostic.span_suggestions(
             sp,
             msg,
             suggestions,
@@ -280,16 +242,17 @@ impl<'a> DiagnosticBuilder<'a> {
         self
     }
 
-    pub fn span_suggestion_short_with_applicability(&mut self,
-                                                    sp: Span,
-                                                    msg: &str,
-                                                    suggestion: String,
-                                                    applicability: Applicability)
-                                                    -> &mut Self {
+    pub fn span_suggestion_short(
+        &mut self,
+        sp: Span,
+        msg: &str,
+        suggestion: String,
+        applicability: Applicability,
+    ) -> &mut Self {
         if !self.allow_suggestions {
             return self
         }
-        self.diagnostic.span_suggestion_short_with_applicability(
+        self.diagnostic.span_suggestion_short(
             sp,
             msg,
             suggestion,

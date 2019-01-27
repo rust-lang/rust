@@ -221,7 +221,7 @@ fn generic_extension<'cx>(cx: &'cx mut ExtCtxt,
                     if comma_span.is_dummy() {
                         err.note("you might be missing a comma");
                     } else {
-                        err.span_suggestion_short_with_applicability(
+                        err.span_suggestion_short(
                             comma_span,
                             "missing comma here",
                             ", ".to_string(),

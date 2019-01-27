@@ -499,7 +499,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
                 if let Some(ty::error::ExpectedFound { found, .. }) = exp_found {
                     if ty.is_box() && ty.boxed_ty() == found {
                         if let Ok(snippet) = self.tcx.sess.source_map().span_to_snippet(span) {
-                            err.span_suggestion_with_applicability(
+                            err.span_suggestion(
                                 span,
                                 "consider dereferencing the boxed value",
                                 format!("*{}", snippet),
@@ -532,7 +532,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
                 err.span_label(then, "expected because of this");
                 outer.map(|sp| err.span_label(sp, "if and else have incompatible types"));
                 if let Some(sp) = semicolon {
-                    err.span_suggestion_short_with_applicability(
+                    err.span_suggestion_short(
                         sp,
                         "consider removing this semicolon",
                         String::new(),
@@ -1084,7 +1084,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
                                 self.tcx.sess.source_map().span_to_snippet(span),
                                 show_suggestion,
                             ) {
-                                diag.span_suggestion_with_applicability(
+                                diag.span_suggestion(
                                     span,
                                     msg,
                                     format!("{}.as_ref()", snippet),
@@ -1273,7 +1273,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
                     let tail = if has_lifetimes { " + " } else { "" };
                     format!("{}: {}{}", bound_kind, sub, tail)
                 };
-                err.span_suggestion_short_with_applicability(
+                err.span_suggestion_short(
                     sp,
                     &consider,
                     suggestion,

@@ -213,7 +213,7 @@ impl<'a, 'gcx, 'tcx> CastCheck<'tcx> {
                                        fcx.ty_to_string(self.expr_ty),
                                        cast_ty));
                 if let Ok(snippet) = fcx.sess().source_map().span_to_snippet(self.expr.span) {
-                    err.span_suggestion_with_applicability(
+                    err.span_suggestion(
                         self.expr.span,
                         "dereference the expression",
                         format!("*{}", snippet),
@@ -263,7 +263,7 @@ impl<'a, 'gcx, 'tcx> CastCheck<'tcx> {
                 if self.expr_ty.is_numeric() {
                     match fcx.tcx.sess.source_map().span_to_snippet(self.expr.span) {
                         Ok(snippet) => {
-                            err.span_suggestion_with_applicability(
+                            err.span_suggestion(
                                 self.span,
                                 "compare with zero instead",
                                 format!("{} != 0", snippet),
@@ -314,7 +314,7 @@ impl<'a, 'gcx, 'tcx> CastCheck<'tcx> {
                 err.note("The type information given here is insufficient to check whether \
                           the pointer cast is valid");
                 if unknown_cast_to {
-                    err.span_suggestion_short_with_applicability(
+                    err.span_suggestion_short(
                         self.cast_span,
                         "consider giving more type information",
                         String::new(),
@@ -345,7 +345,7 @@ impl<'a, 'gcx, 'tcx> CastCheck<'tcx> {
                 if self.cast_ty.is_trait() {
                     match fcx.tcx.sess.source_map().span_to_snippet(self.cast_span) {
                         Ok(s) => {
-                            err.span_suggestion_with_applicability(
+                            err.span_suggestion(
                                 self.cast_span,
                                 "try casting to a reference instead",
                                 format!("&{}{}", mtstr, s),
@@ -367,7 +367,7 @@ impl<'a, 'gcx, 'tcx> CastCheck<'tcx> {
             ty::Adt(def, ..) if def.is_box() => {
                 match fcx.tcx.sess.source_map().span_to_snippet(self.cast_span) {
                     Ok(s) => {
-                        err.span_suggestion_with_applicability(
+                        err.span_suggestion(
                             self.cast_span,
                             "try casting to a `Box` instead",
                             format!("Box<{}>", s),

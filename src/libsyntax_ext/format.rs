@@ -763,7 +763,7 @@ pub fn expand_preparsed_format_args(ecx: &mut ExtCtxt,
                     0 => "{}".to_string(),
                     _ => format!("{}{{}}", "{} ".repeat(args.len())),
                 };
-                err.span_suggestion_with_applicability(
+                err.span_suggestion(
                     fmt_sp.shrink_to_lo(),
                     "you might be missing a string literal to format with",
                     format!("\"{}\", ", sugg_fmt),
@@ -1080,7 +1080,7 @@ pub fn expand_preparsed_format_args(ecx: &mut ExtCtxt,
                         ));
                     }
                     if suggestions.len() > 0 {
-                        diag.multipart_suggestion_with_applicability(
+                        diag.multipart_suggestion(
                             "format specifiers use curly braces",
                             suggestions,
                             Applicability::MachineApplicable,

@@ -157,7 +157,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
             (format!("{}()", method_name), Applicability::MaybeIncorrect)
         };
 
-        err.span_suggestion_with_applicability(method_name.span, msg, suggestion, applicability);
+        err.span_suggestion(method_name.span, msg, suggestion, applicability);
     }
 
     /// Performs method lookup. If lookup is successful, it will return the callee

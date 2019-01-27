@@ -53,7 +53,7 @@ impl<'a, 'gcx, 'tcx> NiceRegionError<'a, 'gcx, 'tcx> {
                         _ => "'_".to_owned(),
                     };
                     if let Ok(snippet) = self.tcx.sess.source_map().span_to_snippet(return_sp) {
-                        err.span_suggestion_with_applicability(
+                        err.span_suggestion(
                             return_sp,
                             &format!(
                                 "you can add a constraint to the return type to make it last \

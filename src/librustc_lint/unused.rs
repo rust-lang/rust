@@ -366,12 +366,12 @@ impl UnusedParens {
                     _ => false,
                 }
             }).to_owned();
-        err.span_suggestion_short_with_applicability(
-                span,
-                "remove these parentheses",
-                parens_removed,
-                Applicability::MachineApplicable
-            );
+        err.span_suggestion_short(
+            span,
+            "remove these parentheses",
+            parens_removed,
+            Applicability::MachineApplicable,
+        );
         err.emit();
     }
 }

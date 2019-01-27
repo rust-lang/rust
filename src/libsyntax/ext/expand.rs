@@ -361,7 +361,7 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
                             let trait_list = traits.iter()
                                 .map(|t| t.to_string()).collect::<Vec<_>>();
                             let suggestion = format!("#[derive({})]", trait_list.join(", "));
-                            err.span_suggestion_with_applicability(
+                            err.span_suggestion(
                                 span, "try an outer attribute", suggestion,
                                 // We don't 𝑘𝑛𝑜𝑤 that the following item is an ADT
                                 Applicability::MaybeIncorrect
@@ -1043,7 +1043,7 @@ impl<'a> Parser<'a> {
             let semi_full_span = semi_span.to(self.sess.source_map().next_point(semi_span));
             match self.sess.source_map().span_to_snippet(semi_full_span) {
                 Ok(ref snippet) if &snippet[..] != ";" && kind_name == "expression" => {
-                    err.span_suggestion_with_applicability(
+                    err.span_suggestion(
                         semi_span,
                         "you might be missing a semicolon here",
                         ";".to_owned(),
@@ -1574,7 +1574,7 @@ impl<'a, 'b> Folder for InvocationCollector<'a, 'b> {
                         _ => (String::from("<path>"), Applicability::HasPlaceholders),
                     };
 
-                    err.span_suggestion_with_applicability(
+                    err.span_suggestion(
                         it.span,
                         "provide a file path with `=`",
                         format!("include = \"{}\"", path),

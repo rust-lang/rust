@@ -102,7 +102,7 @@ impl<'a, 'gcx, 'tcx> NiceRegionError<'a, 'gcx, 'tcx> {
             E0621,
             "explicit lifetime required in {}",
             error_var
-        ).span_suggestion_with_applicability(
+        ).span_suggestion(
             new_ty_span,
             &format!("add explicit lifetime `{}` to {}", named, span_label_var),
             new_ty.to_string(),

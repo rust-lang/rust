@@ -1021,14 +1021,14 @@ impl<'a> Resolver<'a> {
         if let Some(suggestion) = suggestion {
             if suggestion != name {
                 if let MacroKind::Bang = kind {
-                    err.span_suggestion_with_applicability(
+                    err.span_suggestion(
                         span,
                         "you could try the macro",
                         suggestion.to_string(),
                         Applicability::MaybeIncorrect
                     );
                 } else {
-                    err.span_suggestion_with_applicability(
+                    err.span_suggestion(
                         span,
                         "try",
                         suggestion.to_string(),

@@ -2903,7 +2903,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                 let sugg_span = tcx.sess.source_map().end_point(expr_sp);
                 // remove closing `)` from the span
                 let sugg_span = sugg_span.shrink_to_lo();
-                err.span_suggestion_with_applicability(
+                err.span_suggestion(
                     sugg_span,
                     "expected the unit value `()`; create it with empty parentheses",
                     String::from("()"),
@@ -3170,7 +3170,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                     self.tcx.sess.source_map().span_to_snippet(lhs.span),
                     self.tcx.sess.source_map().span_to_snippet(rhs.span))
                 {
-                    err.span_suggestion_with_applicability(
+                    err.span_suggestion(
                         expr.span,
                         msg,
                         format!("{} == {}", left, right),
@@ -3587,7 +3587,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                         if let Some(suggested_field_name) =
                             Self::suggest_field_name(def.non_enum_variant(),
                                                      &field.as_str(), vec![]) {
-                                err.span_suggestion_with_applicability(
+                                err.span_suggestion(
                                     field.span,
                                     "a field with a similar name exists",
                                     suggested_field_name.to_string(),
@@ -3618,7 +3618,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                             } else {
                                 Applicability::MaybeIncorrect
                             };
-                            err.span_suggestion_with_applicability(
+                            err.span_suggestion(
                                 expr.span, help, suggestion, applicability
                             );
                         }
@@ -3629,7 +3629,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                             .unwrap_or_else(|_| self.tcx.hir().node_to_pretty_string(base.id));
                         let msg = format!("`{}` is a raw pointer; try dereferencing it", base);
                         let suggestion = format!("(*{}).{}", base, field);
-                        err.span_suggestion_with_applicability(
+                        err.span_suggestion(
                             expr.span,
                             &msg,
                             suggestion,
@@ -3719,12 +3719,12 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         if let Some(field_name) = Self::suggest_field_name(variant,
                                                            &field.ident.as_str(),
                                                            skip_fields.collect()) {
-            err.span_suggestion_with_applicability(
-                    field.ident.span,
-                    "a field with a similar name exists",
-                    field_name.to_string(),
-                    Applicability::MaybeIncorrect,
-                );
+            err.span_suggestion(
+                field.ident.span,
+                "a field with a similar name exists",
+                field_name.to_string(),
+                Applicability::MaybeIncorrect,
+            );
         } else {
             match ty.sty {
                 ty::Adt(adt, ..) => {
@@ -4670,11 +4670,12 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                                             ast::LitIntType::Unsuffixed) = lit.node {
                                         let snip = tcx.sess.source_map().span_to_snippet(base.span);
                                         if let Ok(snip) = snip {
-                                            err.span_suggestion_with_applicability(
+                                            err.span_suggestion(
                                                 expr.span,
                                                 "to access tuple elements, use",
                                                 format!("{}.{}", snip, i),
-                                                Applicability::MachineApplicable);
+                                                Applicability::MachineApplicable,
+                                            );
                                             needs_note = false;
                                         }
                                     }
@@ -5106,7 +5107,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         found: Ty<'tcx>,
     ) {
         if let Some((sp, msg, suggestion)) = self.check_ref(expr, found, expected) {
-            err.span_suggestion_with_applicability(
+            err.span_suggestion(
                 sp,
                 msg,
                 suggestion,
@@ -5133,7 +5134,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                         }
                     }).peekable();
                 if suggestions.peek().is_some() {
-                    err.span_suggestions_with_applicability(
+                    err.span_suggestions(
                         expr.span,
                         "try using a conversion method",
                         suggestions,
@@ -5172,7 +5173,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                 ExprKind::Match(..) |
                 ExprKind::Block(..) => {
                     let sp = self.tcx.sess.source_map().next_point(cause_span);
-                    err.span_suggestion_with_applicability(
+                    err.span_suggestion(
                         sp,
                         "try adding a semicolon",
                         ";".to_string(),
@@ -5206,7 +5207,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         // haven't set a return type at all (and aren't `fn main()` or an impl).
         match (&fn_decl.output, found.is_suggestable(), can_suggest, expected.is_unit()) {
             (&hir::FunctionRetTy::DefaultReturn(span), true, true, true) => {
-                err.span_suggestion_with_applicability(
+                err.span_suggestion(
                     span,
                     "try adding a return type",
                     format!("-> {} ", self.resolve_type_vars_with_obligations(found)),
@@ -5260,7 +5261,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         err: &mut DiagnosticBuilder,
     ) {
         if let Some(span_semi) = self.could_remove_semicolon(blk, expected_ty) {
-            err.span_suggestion_with_applicability(
+            err.span_suggestion(
                 span_semi,
                 "consider removing this semicolon",
                 String::new(),
@@ -5436,7 +5437,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                                 },
                                 AdtKind::Struct |
                                 AdtKind::Union => {
-                                    err.span_suggestion_with_applicability(
+                                    err.span_suggestion(
                                         span,
                                         "use curly brackets",
                                         String::from("Self { /* fields */ }"),

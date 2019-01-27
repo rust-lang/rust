@@ -78,7 +78,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for WhileTrue {
                         let msg = "denote infinite loops with `loop { ... }`";
                         let condition_span = cx.tcx.sess.source_map().def_span(e.span);
                         let mut err = cx.struct_span_lint(WHILE_TRUE, condition_span, msg);
-                        err.span_suggestion_short_with_applicability(
+                        err.span_suggestion_short(
                             condition_span,
                             "use `loop`",
                             "loop".to_owned(),
@@ -199,7 +199,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for NonShorthandFieldPatterns {
                                      &format!("the `{}:` in this pattern is redundant", ident));
                         let subspan = cx.tcx.sess.source_map().span_through_char(fieldpat.span,
                                                                                  ':');
-                        err.span_suggestion_short_with_applicability(
+                        err.span_suggestion_short(
                             subspan,
                             "remove this",
                             ident.to_string(),
@@ -704,7 +704,7 @@ impl EarlyLintPass for AnonymousParameters {
                                     arg.pat.span,
                                     "anonymous parameters are deprecated and will be \
                                      removed in the next edition."
-                                ).span_suggestion_with_applicability(
+                                ).span_suggestion(
                                     arg.pat.span,
                                     "Try naming the parameter or explicitly \
                                     ignoring it",
@@ -759,7 +759,7 @@ impl EarlyLintPass for DeprecatedAttr {
                     let msg = format!("use of deprecated attribute `{}`: {}. See {}",
                                       name, reason, link);
                     let mut err = cx.struct_span_lint(DEPRECATED, attr.span, &msg);
-                    err.span_suggestion_short_with_applicability(
+                    err.span_suggestion_short(
                         attr.span,
                         suggestion.unwrap_or("remove this attribute"),
                         String::new(),
@@ -906,7 +906,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for InvalidNoMangleItems {
                                                                   it.span,
                                                                   "functions generic over \
                                                                    types must be mangled");
-                                err.span_suggestion_short_with_applicability(
+                                err.span_suggestion_short(
                                     no_mangle_attr.span,
                                     "remove this attribute",
                                     String::new(),
@@ -934,7 +934,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for InvalidNoMangleItems {
                         .unwrap_or(0) as u32;
                     // `const` is 5 chars
                     let const_span = it.span.with_hi(BytePos(it.span.lo().0 + start + 5));
-                    err.span_suggestion_with_applicability(
+                    err.span_suggestion(
                         const_span,
                         "try a static value",
                         "pub static".to_owned(),
@@ -1116,10 +1116,12 @@ impl UnreachablePub {
                     "pub(crate)"
                 }.to_owned();
 
-                err.span_suggestion_with_applicability(vis.span,
-                                                       "consider restricting its visibility",
-                                                       replacement,
-                                                       applicability);
+                err.span_suggestion(
+                    vis.span,
+                    "consider restricting its visibility",
+                    replacement,
+                    applicability,
+                );
                 if exportable {
                     err.help("or consider exporting it for use by other crates");
                 }
@@ -1452,7 +1454,7 @@ impl EarlyLintPass for EllipsisInclusiveRangePatterns {
             if parenthesise {
                 *visit_subpats = false;
                 let mut err = cx.struct_span_lint(ELLIPSIS_INCLUSIVE_RANGE_PATTERNS, pat.span, msg);
-                err.span_suggestion_with_applicability(
+                err.span_suggestion(
                     pat.span,
                     suggestion,
                     format!("&({}..={})", expr_to_string(&start), expr_to_string(&end)),
@@ -1461,7 +1463,7 @@ impl EarlyLintPass for EllipsisInclusiveRangePatterns {
                 err.emit();
             } else {
                 let mut err = cx.struct_span_lint(ELLIPSIS_INCLUSIVE_RANGE_PATTERNS, join, msg);
-                err.span_suggestion_short_with_applicability(
+                err.span_suggestion_short(
                     join,
                     suggestion,
                     "..=".to_owned(),
@@ -1613,7 +1615,7 @@ impl EarlyLintPass for KeywordIdents {
                         E0721,
                         "`await` is a keyword in the {} edition", cur_edition,
                     );
-                    err.span_suggestion_with_applicability(
+                    err.span_suggestion(
                         ident.span,
                         "you can use a raw identifier to stay compatible",
                         "r#await".to_string(),
@@ -1637,7 +1639,7 @@ impl EarlyLintPass for KeywordIdents {
                      ident.as_str(),
                      next_edition),
         );
-        lint.span_suggestion_with_applicability(
+        lint.span_suggestion(
             ident.span,
             "you can use a raw identifier to stay compatible",
             format!("r#{}", ident.as_str()),
@@ -1865,7 +1867,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for ExplicitOutlivesRequirements {
                     lint_spans.clone(),
                     "outlives requirements can be inferred"
                 );
-                err.multipart_suggestion_with_applicability(
+                err.multipart_suggestion(
                     if bound_count == 1 {
                         "remove this bound"
                     } else {

@@ -237,15 +237,12 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                                 let snippet = tcx.sess.source_map().span_to_snippet(lit.span)
                                     .unwrap_or_else(|_| "<numeric literal>".to_owned());
 
-                                err.span_suggestion_with_applicability(
-                                                    lit.span,
-                                                    &format!("you must specify a concrete type for \
-                                                              this numeric value, like `{}`",
-                                                             concrete_type),
-                                                    format!("{}_{}",
-                                                            snippet,
-                                                            concrete_type),
-                                                    Applicability::MaybeIncorrect,
+                                err.span_suggestion(
+                                    lit.span,
+                                    &format!("you must specify a concrete type for \
+                                              this numeric value, like `{}`", concrete_type),
+                                    format!("{}_{}", snippet, concrete_type),
+                                    Applicability::MaybeIncorrect,
                                 );
                             }
                             ExprKind::Path(ref qpath) => {
@@ -271,7 +268,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                                                 ty,
                                                 ..
                                             })) => {
-                                                err.span_suggestion_with_applicability(
+                                                err.span_suggestion(
                                                     // account for `let x: _ = 42;`
                                                     //                  ^^^^
                                                     span.to(ty.as_ref().map(|ty| ty.span)
@@ -304,7 +301,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                         );
                         if let Some(suggestion) = suggestion {
                             // enum variant
-                            err.span_suggestion_with_applicability(
+                            err.span_suggestion(
                                 item_name.span,
                                 "did you mean",
                                 suggestion.to_string(),
@@ -404,7 +401,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                 }
                 if static_sources.len() == 1 {
                     if let SelfSource::MethodCall(expr) = source {
-                        err.span_suggestion_with_applicability(expr.span.to(span),
+                        err.span_suggestion(expr.span.to(span),
                                             "use associated function syntax instead",
                                             format!("{}::{}",
                                                     self.ty_to_string(actual),
@@ -445,7 +442,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                 }
 
                 if let Some(lev_candidate) = lev_candidate {
-                    err.span_suggestion_with_applicability(
+                    err.span_suggestion(
                         span,
                         "did you mean",
                         lev_candidate.ident.to_string(),
@@ -522,12 +519,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                 )
             });
 
-            err.span_suggestions_with_applicability(
-                                                    span,
-                                                    &msg,
-                                                    path_strings,
-                                                    Applicability::MaybeIncorrect,
-            );
+            err.span_suggestions(span, &msg, path_strings, Applicability::MaybeIncorrect);
         } else {
             let limit = if candidates.len() == 5 { 5 } else { 4 };
             for (i, trait_did) in candidates.iter().take(limit).enumerate() {

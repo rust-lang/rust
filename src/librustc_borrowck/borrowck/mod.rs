@@ -850,7 +850,7 @@ impl<'a, 'tcx> BorrowckCtxt<'a, 'tcx> {
                                         }) = cmt.cat {
                                             db.note(fn_closure_msg);
                                         } else {
-                                            db.span_suggestion_with_applicability(
+                                            db.span_suggestion(
                                                 sp,
                                                 msg,
                                                 suggestion,
@@ -858,7 +858,7 @@ impl<'a, 'tcx> BorrowckCtxt<'a, 'tcx> {
                                             );
                                         }
                                     } else {
-                                        db.span_suggestion_with_applicability(
+                                        db.span_suggestion(
                                             sp,
                                             msg,
                                             suggestion,
@@ -1229,7 +1229,7 @@ impl<'a, 'tcx> BorrowckCtxt<'a, 'tcx> {
                         let let_span = self.tcx.hir().span(node_id);
                         let suggestion = suggest_ref_mut(self.tcx, let_span);
                         if let Some(replace_str) = suggestion {
-                            db.span_suggestion_with_applicability(
+                            db.span_suggestion(
                                 let_span,
                                 "use a mutable reference instead",
                                 replace_str,
@@ -1291,7 +1291,7 @@ impl<'a, 'tcx> BorrowckCtxt<'a, 'tcx> {
                 )) = ty.map(|t| &t.node)
                 {
                     let borrow_expr_id = self.tcx.hir().get_parent_node(borrowed_node_id);
-                    db.span_suggestion_with_applicability(
+                    db.span_suggestion(
                         self.tcx.hir().span(borrow_expr_id),
                         "consider removing the `&mut`, as it is an \
                         immutable binding to a mutable reference",
@@ -1299,7 +1299,7 @@ impl<'a, 'tcx> BorrowckCtxt<'a, 'tcx> {
                         Applicability::MachineApplicable,
                     );
                 } else {
-                    db.span_suggestion_with_applicability(
+                    db.span_suggestion(
                         let_span,
                         "make this binding mutable",
                         format!("mut {}", snippet),
@@ -1326,7 +1326,7 @@ impl<'a, 'tcx> BorrowckCtxt<'a, 'tcx> {
                                                   &cmt_path_or_string,
                                                   capture_span,
                                                   Origin::Ast)
-            .span_suggestion_with_applicability(
+            .span_suggestion(
                  err.span,
                  &format!("to force the closure to take ownership of {} \
                            (and any other referenced variables), \

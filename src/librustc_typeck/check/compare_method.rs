@@ -316,7 +316,7 @@ fn compare_predicate_entailment<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                 if let Some(trait_err_span) = trait_err_span {
                     if let Ok(trait_err_str) = tcx.sess.source_map()
                                                        .span_to_snippet(trait_err_span) {
-                        diag.span_suggestion_with_applicability(
+                        diag.span_suggestion(
                             impl_err_span,
                             "consider change the type to match the mutability in trait",
                             trait_err_str,
@@ -784,7 +784,7 @@ fn compare_synthetic_generics<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                             .span_to_snippet(trait_m.generics.span)
                             .ok()?;
 
-                        err.multipart_suggestion_with_applicability(
+                        err.multipart_suggestion(
                             "try changing the `impl Trait` argument to a generic parameter",
                             vec![
                                 // replace `impl Trait` with `T`
@@ -855,7 +855,7 @@ fn compare_synthetic_generics<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                             .span_to_snippet(bounds)
                             .ok()?;
 
-                        err.multipart_suggestion_with_applicability(
+                        err.multipart_suggestion(
                             "try removing the generic parameter and using `impl Trait` instead",
                             vec![
                                 // delete generic parameters

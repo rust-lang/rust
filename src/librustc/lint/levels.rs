@@ -324,7 +324,7 @@ impl<'a> LintLevelsBuilder<'a> {
                                     Some(li.span.into()),
                                     &msg,
                                 );
-                                err.span_suggestion_with_applicability(
+                                err.span_suggestion(
                                     li.span,
                                     "change it to",
                                     new_lint_name.to_string(),
@@ -362,7 +362,7 @@ impl<'a> LintLevelsBuilder<'a> {
                                                               Some(li.span.into()),
                                                               &msg);
                         if let Some(new_name) = renamed {
-                            err.span_suggestion_with_applicability(
+                            err.span_suggestion(
                                 li.span,
                                 "use the new name",
                                 new_name,
@@ -386,7 +386,7 @@ impl<'a> LintLevelsBuilder<'a> {
                                                 &msg);
 
                         if let Some(suggestion) = suggestion {
-                            db.span_suggestion_with_applicability(
+                            db.span_suggestion(
                                 li.span,
                                 "did you mean",
                                 suggestion.to_string(),

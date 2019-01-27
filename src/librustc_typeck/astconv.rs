@@ -1096,7 +1096,7 @@ impl<'o, 'gcx: 'tcx, 'tcx> dyn AstConv<'gcx, 'tcx> + 'o {
             if !suggestions.is_empty() {
                 let msg = format!("if you meant to specify the associated {}, write",
                     if suggestions.len() == 1 { "type" } else { "types" });
-                err.multipart_suggestion_with_applicability(
+                err.multipart_suggestion(
                     &msg,
                     suggestions,
                     Applicability::MaybeIncorrect,
@@ -1172,7 +1172,7 @@ impl<'o, 'gcx: 'tcx, 'tcx> dyn AstConv<'gcx, 'tcx> + 'o {
                                         trait_str: &str,
                                         name: &str) {
         struct_span_err!(self.tcx().sess, span, E0223, "ambiguous associated type")
-            .span_suggestion_with_applicability(
+            .span_suggestion(
                 span,
                 "use fully-qualified syntax",
                 format!("<{} as {}>::{}", type_str, trait_str, name),
@@ -1353,7 +1353,7 @@ impl<'o, 'gcx: 'tcx, 'tcx> dyn AstConv<'gcx, 'tcx> + 'o {
                         &assoc_ident.as_str(),
                         None,
                     ) {
-                        err.span_suggestion_with_applicability(
+                        err.span_suggestion(
                             span,
                             "did you mean",
                             format!("{}::{}", qself_ty, suggested_name),
@@ -1407,7 +1407,7 @@ impl<'o, 'gcx: 'tcx, 'tcx> dyn AstConv<'gcx, 'tcx> + 'o {
             could_refer_to(variant_def, "");
             could_refer_to(def, " also");
 
-            err.span_suggestion_with_applicability(
+            err.span_suggestion(
                 span,
                 "use fully-qualified syntax",
                 format!("<{} as {}>::{}", qself_ty, "Trait", assoc_ident),

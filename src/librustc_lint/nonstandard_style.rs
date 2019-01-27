@@ -93,7 +93,7 @@ impl NonCamelCaseTypes {
 
             let msg = format!("{} `{}` should have a camel case name", sort, name);
             cx.struct_span_lint(NON_CAMEL_CASE_TYPES, ident.span, &msg)
-                .span_suggestion_with_applicability(
+                .span_suggestion(
                     ident.span,
                     "convert the identifier to camel case",
                     c,
@@ -223,7 +223,7 @@ impl NonSnakeCase {
             // We have a valid span in almost all cases, but we don't have one when linting a crate
             // name provided via the command line.
             if !ident.span.is_dummy() {
-                err.span_suggestion_with_applicability(
+                err.span_suggestion(
                     ident.span,
                     "convert the identifier to snake case",
                     sc,
@@ -377,7 +377,7 @@ impl NonUpperCaseGlobals {
 
             let msg = format!("{} `{}` should have an upper case name", sort, name);
             cx.struct_span_lint(NON_UPPER_CASE_GLOBALS, ident.span, &msg)
-                .span_suggestion_with_applicability(
+                .span_suggestion(
                     ident.span,
                     "convert the identifier to upper case",
                     uc,

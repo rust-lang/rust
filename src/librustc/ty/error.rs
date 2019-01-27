@@ -237,7 +237,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
                 {
                     if let Ok(snippet) = self.sess.source_map().span_to_snippet(sp) {
                         if snippet.chars().all(|c| c.is_digit(10) || c == '-' || c == '_') {
-                            db.span_suggestion_with_applicability(
+                            db.span_suggestion(
                                 sp,
                                 "use a float literal",
                                 format!("{}.0", snippet),

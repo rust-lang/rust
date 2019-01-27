@@ -368,14 +368,14 @@ impl<'a, 'gcx, 'tcx> MirBorrowckCtxt<'a, 'gcx, 'tcx> {
                     // expressions `a[b]`, which roughly desugar to
                     // `*Index::index(&a, b)` or
                     // `*IndexMut::index_mut(&mut a, b)`.
-                    err.span_suggestion_with_applicability(
+                    err.span_suggestion(
                         span,
                         "consider removing the `*`",
                         snippet[1..].to_owned(),
                         Applicability::Unspecified,
                     );
                 } else {
-                    err.span_suggestion_with_applicability(
+                    err.span_suggestion(
                         span,
                         "consider borrowing here",
                         format!("&{}", snippet),
@@ -439,7 +439,7 @@ impl<'a, 'gcx, 'tcx> MirBorrowckCtxt<'a, 'gcx, 'tcx> {
         suggestions.sort_unstable_by_key(|&(span, _, _)| span);
         suggestions.dedup_by_key(|&mut (span, _, _)| span);
         for (span, to_remove, suggestion) in suggestions {
-            err.span_suggestion_with_applicability(
+            err.span_suggestion(
                 span,
                 &format!("consider removing the `{}`", to_remove),
                 suggestion,

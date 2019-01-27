@@ -231,7 +231,7 @@ impl<'a, 'gcx, 'tcx> MirBorrowckCtxt<'a, 'gcx, 'tcx> {
                     base.ty(self.mir, self.infcx.tcx).to_ty(self.infcx.tcx),
                     field,
                 ) {
-                    err.span_suggestion_with_applicability(
+                    err.span_suggestion(
                         span,
                         "consider changing this to be mutable",
                         message,
@@ -285,7 +285,7 @@ impl<'a, 'gcx, 'tcx> MirBorrowckCtxt<'a, 'gcx, 'tcx> {
                 assert_eq!(local_decl.mutability, Mutability::Not);
 
                 err.span_label(span, format!("cannot {ACT}", ACT = act));
-                err.span_suggestion_with_applicability(
+                err.span_suggestion(
                     local_decl.source_info.span,
                     "consider changing this to be mutable",
                     format!("mut {}", local_decl.name.unwrap()),
@@ -316,7 +316,7 @@ impl<'a, 'gcx, 'tcx> MirBorrowckCtxt<'a, 'gcx, 'tcx> {
                         _,
                     ) = pat.node
                     {
-                        err.span_suggestion_with_applicability(
+                        err.span_suggestion(
                             upvar_ident.span,
                             "consider changing this to be mutable",
                             format!("mut {}", upvar_ident.name),
@@ -410,7 +410,7 @@ impl<'a, 'gcx, 'tcx> MirBorrowckCtxt<'a, 'gcx, 'tcx> {
                 };
 
                 if let Some((err_help_span, suggested_code)) = suggestion {
-                    err.span_suggestion_with_applicability(
+                    err.span_suggestion(
                         err_help_span,
                         &format!("consider changing this to be a mutable {}", pointer_desc),
                         suggested_code,

@@ -307,7 +307,7 @@ fn do_mir_borrowck<'a, 'gcx, 'tcx>(
                 span,
                 "variable does not need to be mutable",
             )
-            .span_suggestion_short_with_applicability(
+            .span_suggestion_short(
                 mut_span,
                 "remove this `mut`",
                 String::new(),
