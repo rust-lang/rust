@@ -338,6 +338,10 @@ impl UseTree {
 
         match a.kind {
             UseTreeKind::Glob => {
+                // in case of a global path and the glob starts at the root, e.g., "::*"
+                if a.prefix.segments.len() == 1 && leading_modsep {
+                    result.path.push(UseSegment::Ident("".to_owned(), None));
+                }
                 result.path.push(UseSegment::Glob);
             }
             UseTreeKind::Nested(ref list) => {
@@ -356,6 +360,11 @@ impl UseTree {
                     false,
                 )
                 .collect();
+                // in case of a global path and the nested list starts at the root,
+                // e.g., "::{foo, bar}"
+                if a.prefix.segments.len() == 1 && leading_modsep {
+                    result.path.push(UseSegment::Ident("".to_owned(), None));
+                }
                 result.path.push(UseSegment::List(
                     list.iter()
                         .zip(items.into_iter())
