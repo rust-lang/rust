@@ -10,7 +10,7 @@
 
 //! Reorder items.
 //!
-//! `mod`, `extern crate` and `use` declarations are reorderd in alphabetical
+//! `mod`, `extern crate` and `use` declarations are reordered in alphabetical
 //! order. Trait items are reordered in pre-determined order (associated types
 //! and constants comes before methods).
 
@@ -28,7 +28,7 @@ use rewrite::{Rewrite, RewriteContext};
 use shape::Shape;
 use source_map::LineRangeUtils;
 use spanned::Spanned;
-use utils::mk_sp;
+use utils::{contains_skip, mk_sp};
 use visitor::FmtVisitor;
 
 use std::cmp::{Ord, Ordering};
@@ -186,7 +186,9 @@ enum ReorderableItemKind {
 impl ReorderableItemKind {
     fn from(item: &ast::Item) -> Self {
         match item.node {
-            _ if contains_macro_use_attr(item) => ReorderableItemKind::Other,
+            _ if contains_macro_use_attr(item) | contains_skip(&item.attrs) => {
+                ReorderableItemKind::Other
+            }
             ast::ItemKind::ExternCrate(..) => ReorderableItemKind::ExternCrate,
             ast::ItemKind::Mod(..) if is_mod_decl(item) => ReorderableItemKind::Mod,
             ast::ItemKind::Use(..) => ReorderableItemKind::Use,

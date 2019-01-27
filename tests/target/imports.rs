@@ -123,3 +123,7 @@ use imports_with_attr;
 
 // #2888
 use std::f64::consts::{E, PI, SQRT_2};
+
+// #3273
+#[rustfmt::skip]
+use std::fmt::{self, {Display, Formatter}};
