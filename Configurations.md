@@ -1,6 +1,6 @@
 # Configuring Rustfmt
 
-Rustfmt is designed to be very configurable. You can create a TOML file called `rustfmt.toml` or `.rustfmt.toml`, place it in the project or any other parent directory and it will apply the options in that file.
+Rustfmt is designed to be very configurable. You can create a TOML file called `rustfmt.toml` or `.rustfmt.toml`, place it in the project or any other parent directory and it will apply the options in that file. If none of these directories contain such a file, both your home directory and a directory called `rustfmt` in your [global config directory](https://docs.rs/dirs/1.0.4/dirs/fn.config_dir.html) (e.g. `.config/rustfmt/`) are checked as well.
 
 A possible content of `rustfmt.toml` or `.rustfmt.toml` might look like this:
 
