@@ -109,8 +109,6 @@ impl Resolver {
         self.scopes.iter().rev().find_map(|scope| match scope {
             Scope::ModuleScope(m) => Some((&*m.item_map, m.module.clone())),
 
-            Scope::ModuleScopeRef(m) => Some((m.item_map, m.module.clone())),
-
             _ => None,
         })
     }
@@ -197,13 +195,13 @@ impl Scope {
     fn collect_names(&self, f: &mut FnMut(Name, PerNs<Resolution>)) {
         match self {
             Scope::ModuleScope(m) => {
-                m.item_map[m.module.module_id]
-                    .entries()
-                    .for_each(|(name, res)| {
-                        f(name.clone(), res.def.map(|def| Resolution::Def { def }));
-                    })
-            }
-            Scope::ModuleScopeRef(m) => {
+                // TODO: should we provide `self` here?
+                // f(
+                //     Name::self_param(),
+                //     PerNs::types(Resolution::Def {
+                //         def: m.module.into(),
+                //     }),
+                // );
                 m.item_map[m.module.module_id]
                     .entries()
                     .for_each(|(name, res)| {

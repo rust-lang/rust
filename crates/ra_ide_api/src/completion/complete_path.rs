@@ -1,10 +1,10 @@
 use join_to_string::join;
 
+use hir::{Docs, Resolution};
+
 use crate::{
     completion::{CompletionItem, CompletionItemKind, Completions, CompletionKind, CompletionContext},
 };
-
-use hir::Docs;
 
 pub(super) fn complete_path(acc: &mut Completions, ctx: &CompletionContext) {
     let path = match &ctx.path_prefix {
@@ -15,7 +15,7 @@ pub(super) fn complete_path(acc: &mut Completions, ctx: &CompletionContext) {
         Some(Resolution::Def { def }) => def,
         _ => return,
     };
-    match def_id {
+    match def {
         hir::ModuleDef::Module(module) => {
             let module_scope = module.scope(ctx.db);
             for (name, res) in module_scope.entries() {

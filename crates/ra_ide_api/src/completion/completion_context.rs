@@ -16,7 +16,7 @@ pub(crate) struct CompletionContext<'a> {
     pub(super) db: &'a db::RootDatabase,
     pub(super) offset: TextUnit,
     pub(super) leaf: &'a SyntaxNode,
-    pub(super) resolver: Resolver<'static>,
+    pub(super) resolver: Resolver,
     pub(super) module: Option<hir::Module>,
     pub(super) function: Option<hir::Function>,
     pub(super) function_syntax: Option<&'a ast::FnDef>,

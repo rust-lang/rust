@@ -203,7 +203,7 @@ pub fn macro_symbols(db: &impl HirDatabase, file_id: FileId) -> Vec<(SmolStr, Te
     res
 }
 
-pub fn resolver_for_position(db: &impl HirDatabase, position: FilePosition) -> Resolver<'static> {
+pub fn resolver_for_position(db: &impl HirDatabase, position: FilePosition) -> Resolver {
     let file = db.parse(position.file_id);
     find_leaf_at_offset(file.syntax(), position.offset)
         .find_map(|node| {
@@ -230,11 +230,7 @@ pub fn resolver_for_position(db: &impl HirDatabase, position: FilePosition) -> R
         .unwrap_or_default()
 }
 
-pub fn resolver_for_node(
-    db: &impl HirDatabase,
-    file_id: FileId,
-    node: &SyntaxNode,
-) -> Resolver<'static> {
+pub fn resolver_for_node(db: &impl HirDatabase, file_id: FileId, node: &SyntaxNode) -> Resolver {
     node.ancestors()
         .find_map(|node| {
             if ast::Expr::cast(node).is_some() || ast::Block::cast(node).is_some() {

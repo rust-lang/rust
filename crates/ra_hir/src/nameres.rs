@@ -25,8 +25,7 @@ use rustc_hash::{FxHashMap, FxHashSet};
 use crate::{
     Module, ModuleDef,
     Path, PathKind, PersistentHirDatabase,
-    Crate,
-    Name,
+    Crate, Name,
     module_tree::{ModuleId, ModuleTree},
     nameres::lower::{ImportId, LoweredModule, ImportData},
 };

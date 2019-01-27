@@ -4,6 +4,7 @@ use ra_syntax::{
     algo::find_node_at_offset,
 };
 use test_utils::tested_by;
+use hir::Resolution;
 
 use crate::{FilePosition, NavigationTarget, db::RootDatabase, RangeInfo};
 
