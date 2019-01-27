@@ -61,10 +61,8 @@ where
 {
     let mut args = vec!["check".to_owned()];
 
-    let mut found_dashes = false;
     for arg in old_args.by_ref() {
-        found_dashes |= arg == "--";
-        if found_dashes {
+        if arg == "--" {
             break;
         }
         args.push(arg);
@@ -82,11 +80,7 @@ where
     let target_dir = std::env::var_os("CLIPPY_DOGFOOD")
         .map(|_| {
             std::env::var_os("CARGO_MANIFEST_DIR").map_or_else(
-                || {
-                    let mut fallback = std::ffi::OsString::new();
-                    fallback.push("clippy_dogfood");
-                    fallback
-                },
+                || std::ffi::OsString::from("clippy_dogfood"),
                 |d| {
                     std::path::PathBuf::from(d)
                         .join("target")
