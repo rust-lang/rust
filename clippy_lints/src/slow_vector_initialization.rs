@@ -11,8 +11,8 @@ use syntax_pos::symbol::Symbol;
 
 /// **What it does:** Checks slow zero-filled vector initialization
 ///
-/// **Why is this bad?** This structures are non-idiomatic and less efficient than simply using
-/// `vec![len; 0]`.
+/// **Why is this bad?** These structures are non-idiomatic and less efficient than simply using
+/// `vec![0; len]`.
 ///
 /// **Known problems:** None.
 ///
