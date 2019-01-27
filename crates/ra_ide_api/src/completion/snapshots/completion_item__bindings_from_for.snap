@@ -1,24 +1,10 @@
 ---
-created: "2019-01-23T07:42:59.656273+00:00"
-creator: insta@0.4.0
+created: "2019-01-27T19:56:59.944446814+00:00"
+creator: insta@0.5.2
 expression: kind_completions
 source: crates/ra_ide_api/src/completion/completion_item.rs
 ---
 [
-    CompletionItem {
-        completion_kind: Reference,
-        label: "x",
-        kind: Some(
-            Binding
-        ),
-        detail: None,
-        documentation: None,
-        lookup: None,
-        insert_text: None,
-        insert_text_format: PlainText,
-        source_range: [83; 83),
-        text_edit: None
-    },
     CompletionItem {
         completion_kind: Reference,
         label: "quux",
@@ -34,6 +20,20 @@ source: crates/ra_ide_api/src/completion/completion_item.rs
             "quux()$0"
         ),
         insert_text_format: Snippet,
+        source_range: [83; 83),
+        text_edit: None
+    },
+    CompletionItem {
+        completion_kind: Reference,
+        label: "x",
+        kind: Some(
+            Binding
+        ),
+        detail: None,
+        documentation: None,
+        lookup: None,
+        insert_text: None,
+        insert_text_format: PlainText,
         source_range: [83; 83),
         text_edit: None
     }

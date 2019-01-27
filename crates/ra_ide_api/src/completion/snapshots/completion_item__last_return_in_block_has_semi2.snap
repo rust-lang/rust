@@ -1,6 +1,6 @@
 ---
-created: "2019-01-23T05:27:32.302452+00:00"
-creator: insta@0.4.0
+created: "2019-01-27T20:00:15.604282112+00:00"
+creator: insta@0.5.2
 expression: kind_completions
 source: crates/ra_ide_api/src/completion/completion_item.rs
 ---
@@ -16,38 +16,6 @@ source: crates/ra_ide_api/src/completion/completion_item.rs
         lookup: None,
         insert_text: Some(
             "if $0 {}"
-        ),
-        insert_text_format: Snippet,
-        source_range: [83; 83),
-        text_edit: None
-    },
-    CompletionItem {
-        completion_kind: Keyword,
-        label: "match",
-        kind: Some(
-            Keyword
-        ),
-        detail: None,
-        documentation: None,
-        lookup: None,
-        insert_text: Some(
-            "match $0 {}"
-        ),
-        insert_text_format: Snippet,
-        source_range: [83; 83),
-        text_edit: None
-    },
-    CompletionItem {
-        completion_kind: Keyword,
-        label: "while",
-        kind: Some(
-            Keyword
-        ),
-        detail: None,
-        documentation: None,
-        lookup: None,
-        insert_text: Some(
-            "while $0 {}"
         ),
         insert_text_format: Snippet,
         source_range: [83; 83),
@@ -71,6 +39,22 @@ source: crates/ra_ide_api/src/completion/completion_item.rs
     },
     CompletionItem {
         completion_kind: Keyword,
+        label: "match",
+        kind: Some(
+            Keyword
+        ),
+        detail: None,
+        documentation: None,
+        lookup: None,
+        insert_text: Some(
+            "match $0 {}"
+        ),
+        insert_text_format: Snippet,
+        source_range: [83; 83),
+        text_edit: None
+    },
+    CompletionItem {
+        completion_kind: Keyword,
         label: "return",
         kind: Some(
             Keyword
@@ -80,6 +64,22 @@ source: crates/ra_ide_api/src/completion/completion_item.rs
         lookup: None,
         insert_text: Some(
             "return $0;"
+        ),
+        insert_text_format: Snippet,
+        source_range: [83; 83),
+        text_edit: None
+    },
+    CompletionItem {
+        completion_kind: Keyword,
+        label: "while",
+        kind: Some(
+            Keyword
+        ),
+        detail: None,
+        documentation: None,
+        lookup: None,
+        insert_text: Some(
+            "while $0 {}"
         ),
         insert_text_format: Snippet,
         source_range: [83; 83),
