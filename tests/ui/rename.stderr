@@ -20,5 +20,17 @@ error: lint `clippy::new_without_default_derive` has been renamed to `clippy::ne
 LL | #[warn(clippy::new_without_default_derive)]
    |        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use the new name: `clippy::new_without_default`
 
-error: aborting due to 3 previous errors
+error: unknown lint: `stutter`
+  --> $DIR/rename.rs:1:10
+   |
+LL | #![allow(stutter)]
+   |          ^^^^^^^
+
+error: lint `clippy::stutter` has been renamed to `clippy::module_name_repetitions`
+  --> $DIR/rename.rs:3:8
+   |
+LL | #[warn(clippy::stutter)]
+   |        ^^^^^^^^^^^^^^^ help: use the new name: `clippy::module_name_repetitions`
+
+error: aborting due to 5 previous errors
 
