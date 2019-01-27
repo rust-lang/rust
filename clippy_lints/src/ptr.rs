@@ -210,12 +210,7 @@ fn check_fn(cx: &LateContext<'_, '_>, decl: &FnDecl, fn_id: NodeId, opt_body_id:
                         arg.span,
                         "writing `&String` instead of `&str` involves a new object where a slice will do.",
                         |db| {
-                            db.span_suggestion(
-                                arg.span,
-                                "change this to",
-                                "&str".into(),
-                                Applicability::Unspecified,
-                            );
+                            db.span_suggestion(arg.span, "change this to", "&str".into(), Applicability::Unspecified);
                             for (clonespan, suggestion) in spans {
                                 db.span_suggestion_short(
                                     clonespan,
