@@ -555,10 +555,10 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> 
                     MemPlace::from_ptr(Pointer::new(id, offset), alloc.align)
                 ).with_default_tag())
             },
-            ConstValue::ScalarPair(a, b) =>
+            ConstValue::Slice(a, b) =>
                 Ok(Operand::Immediate(Immediate::ScalarPair(
                     a.into(),
-                    b.into(),
+                    Scalar::from_uint(b, self.tcx.data_layout.pointer_size).into(),
                 )).with_default_tag()),
             ConstValue::Scalar(x) =>
                 Ok(Operand::Immediate(Immediate::Scalar(x.into())).with_default_tag()),
