@@ -192,7 +192,7 @@ impl ModuleTree {
             });
 
             let (points_to, problem) = if sub.is_declaration {
-                let (points_to, problem) = resolve_submodule(db, file_id, &sub.name);
+                let (points_to, problem) = resolve_submodule(db, file_id, &sub.name, is_root);
                 let points_to = points_to
                     .into_iter()
                     .map(|file_id| {
