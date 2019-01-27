@@ -1,0 +1,10 @@
+error[E0521]: borrowed data escapes outside of function
+  --> $DIR/issue-16683.rs:4:9
+   |
+LL |     fn b(&self) {
+   |          ----- `self` is a reference that is only valid in the function body
+LL |         self.a();
+   |         ^^^^^^^^ `self` escapes the function body here
+
+error: aborting due to previous error
+

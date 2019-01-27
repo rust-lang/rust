@@ -1,0 +1,12 @@
+error[E0308]: mismatched types
+  --> $DIR/regions-lifetime-bounds-on-fns.rs:20:43
+   |
+LL |     let _: fn(&mut &isize, &mut &isize) = a;
+   |                                           ^ expected concrete lifetime, found bound lifetime parameter
+   |
+   = note: expected type `for<'r, 's, 't0, 't1> fn(&'r mut &'s isize, &'t0 mut &'t1 isize)`
+              found type `for<'r, 's> fn(&'r mut &isize, &'s mut &isize) {a::<'_, '_>}`
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0308`.

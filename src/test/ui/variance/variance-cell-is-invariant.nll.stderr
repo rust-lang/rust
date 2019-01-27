@@ -1,0 +1,13 @@
+error: lifetime may not live long enough
+  --> $DIR/variance-cell-is-invariant.rs:14:12
+   |
+LL | fn use_<'short,'long>(c: Foo<'short>,
+   |         ------ ----- lifetime `'long` defined here
+   |         |
+   |         lifetime `'short` defined here
+...
+LL |     let _: Foo<'long> = c;
+   |            ^^^^^^^^^^ type annotation requires that `'short` must outlive `'long`
+
+error: aborting due to previous error
+

@@ -1912,8 +1912,7 @@ impl<'test> TestCx<'test> {
 
         match self.config.compare_mode {
             Some(CompareMode::Nll) => {
-                // FIXME(#56993) use -Zborrowck=mir
-                rustc.args(&["-Zborrowck=migrate"]);
+                rustc.args(&["-Zborrowck=mir"]);
             }
             Some(CompareMode::Polonius) => {
                 rustc.args(&["-Zpolonius", "-Zborrowck=mir"]);

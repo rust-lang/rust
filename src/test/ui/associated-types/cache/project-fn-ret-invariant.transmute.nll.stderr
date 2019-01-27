@@ -1,0 +1,11 @@
+error: lifetime may not live long enough
+  --> $DIR/project-fn-ret-invariant.rs:48:4
+   |
+LL | fn baz<'a,'b>(x: Type<'a>) -> Type<'static> {
+   |        -- lifetime `'a` defined here
+...
+LL |    bar(foo, x)
+   |    ^^^^^^^^^^^ returning this value requires that `'a` must outlive `'static`
+
+error: aborting due to previous error
+

@@ -1,0 +1,11 @@
+error: lifetime may not live long enough
+  --> $DIR/regions-variance-invariant-use-covariant.rs:17:12
+   |
+LL | fn use_<'b>(c: Invariant<'b>) {
+   |         -- lifetime `'b` defined here
+...
+LL |     let _: Invariant<'static> = c;
+   |            ^^^^^^^^^^^^^^^^^^ type annotation requires that `'b` must outlive `'static`
+
+error: aborting due to previous error
+

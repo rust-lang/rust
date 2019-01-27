@@ -1,0 +1,24 @@
+error: lifetime may not live long enough
+  --> $DIR/variance-covariant-arg-trait-match.rs:14:5
+   |
+LL | fn get_min_from_max<'min, 'max, G>()
+   |                     ----  ---- lifetime `'max` defined here
+   |                     |
+   |                     lifetime `'min` defined here
+...
+LL |     impls_get::<G,&'min i32>()
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^ requires that `'min` must outlive `'max`
+
+error: lifetime may not live long enough
+  --> $DIR/variance-covariant-arg-trait-match.rs:20:5
+   |
+LL | fn get_max_from_min<'min, 'max, G>()
+   |                     ----  ---- lifetime `'max` defined here
+   |                     |
+   |                     lifetime `'min` defined here
+...
+LL |     impls_get::<G,&'max i32>()
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^ requires that `'min` must outlive `'max`
+
+error: aborting due to 2 previous errors
+

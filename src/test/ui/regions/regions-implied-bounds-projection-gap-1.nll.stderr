@@ -1,0 +1,11 @@
+error[E0309]: the parameter type `T` may not live long enough
+  --> $DIR/regions-implied-bounds-projection-gap-1.rs:16:5
+   |
+LL |     wf::<&'x T>();
+   |     ^^^^^^^^^^^
+   |
+   = help: consider adding an explicit lifetime bound `T: 'x`...
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0309`.

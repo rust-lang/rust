@@ -1,0 +1,106 @@
+error: lifetime may not live long enough
+  --> $DIR/variance-btree-invariant-types.rs:4:5
+   |
+LL | fn iter_cov_key<'a, 'new>(v: IterMut<'a, &'static (), ()>) -> IterMut<'a, &'new (), ()> {
+   |                     ---- lifetime `'new` defined here
+LL |     v
+   |     ^ returning this value requires that `'new` must outlive `'static`
+
+error: lifetime may not live long enough
+  --> $DIR/variance-btree-invariant-types.rs:7:5
+   |
+LL | fn iter_cov_val<'a, 'new>(v: IterMut<'a, (), &'static ()>) -> IterMut<'a, (), &'new ()> {
+   |                     ---- lifetime `'new` defined here
+LL |     v
+   |     ^ returning this value requires that `'new` must outlive `'static`
+
+error: lifetime may not live long enough
+  --> $DIR/variance-btree-invariant-types.rs:10:5
+   |
+LL | fn iter_contra_key<'a, 'new>(v: IterMut<'a, &'new (), ()>) -> IterMut<'a, &'static (), ()> {
+   |                        ---- lifetime `'new` defined here
+LL |     v
+   |     ^ returning this value requires that `'new` must outlive `'static`
+
+error: lifetime may not live long enough
+  --> $DIR/variance-btree-invariant-types.rs:13:5
+   |
+LL | fn iter_contra_val<'a, 'new>(v: IterMut<'a, (), &'new ()>) -> IterMut<'a, (), &'static ()> {
+   |                        ---- lifetime `'new` defined here
+LL |     v
+   |     ^ returning this value requires that `'new` must outlive `'static`
+
+error: lifetime may not live long enough
+  --> $DIR/variance-btree-invariant-types.rs:18:5
+   |
+LL | fn occ_cov_key<'a, 'new>(v: OccupiedEntry<'a, &'static (), ()>)
+   |                    ---- lifetime `'new` defined here
+LL |                          -> OccupiedEntry<'a, &'new (), ()> {
+LL |     v
+   |     ^ returning this value requires that `'new` must outlive `'static`
+
+error: lifetime may not live long enough
+  --> $DIR/variance-btree-invariant-types.rs:22:5
+   |
+LL | fn occ_cov_val<'a, 'new>(v: OccupiedEntry<'a, (), &'static ()>)
+   |                    ---- lifetime `'new` defined here
+LL |                          -> OccupiedEntry<'a, (), &'new ()> {
+LL |     v
+   |     ^ returning this value requires that `'new` must outlive `'static`
+
+error: lifetime may not live long enough
+  --> $DIR/variance-btree-invariant-types.rs:26:5
+   |
+LL | fn occ_contra_key<'a, 'new>(v: OccupiedEntry<'a, &'new (), ()>)
+   |                       ---- lifetime `'new` defined here
+LL |                             -> OccupiedEntry<'a, &'static (), ()> {
+LL |     v
+   |     ^ returning this value requires that `'new` must outlive `'static`
+
+error: lifetime may not live long enough
+  --> $DIR/variance-btree-invariant-types.rs:30:5
+   |
+LL | fn occ_contra_val<'a, 'new>(v: OccupiedEntry<'a, (), &'new ()>)
+   |                       ---- lifetime `'new` defined here
+LL |                             -> OccupiedEntry<'a, (), &'static ()> {
+LL |     v
+   |     ^ returning this value requires that `'new` must outlive `'static`
+
+error: lifetime may not live long enough
+  --> $DIR/variance-btree-invariant-types.rs:35:5
+   |
+LL | fn vac_cov_key<'a, 'new>(v: VacantEntry<'a, &'static (), ()>)
+   |                    ---- lifetime `'new` defined here
+LL |                          -> VacantEntry<'a, &'new (), ()> {
+LL |     v
+   |     ^ returning this value requires that `'new` must outlive `'static`
+
+error: lifetime may not live long enough
+  --> $DIR/variance-btree-invariant-types.rs:39:5
+   |
+LL | fn vac_cov_val<'a, 'new>(v: VacantEntry<'a, (), &'static ()>)
+   |                    ---- lifetime `'new` defined here
+LL |                          -> VacantEntry<'a, (), &'new ()> {
+LL |     v
+   |     ^ returning this value requires that `'new` must outlive `'static`
+
+error: lifetime may not live long enough
+  --> $DIR/variance-btree-invariant-types.rs:43:5
+   |
+LL | fn vac_contra_key<'a, 'new>(v: VacantEntry<'a, &'new (), ()>)
+   |                       ---- lifetime `'new` defined here
+LL |                             -> VacantEntry<'a, &'static (), ()> {
+LL |     v
+   |     ^ returning this value requires that `'new` must outlive `'static`
+
+error: lifetime may not live long enough
+  --> $DIR/variance-btree-invariant-types.rs:47:5
+   |
+LL | fn vac_contra_val<'a, 'new>(v: VacantEntry<'a, (), &'new ()>)
+   |                       ---- lifetime `'new` defined here
+LL |                             -> VacantEntry<'a, (), &'static ()> {
+LL |     v
+   |     ^ returning this value requires that `'new` must outlive `'static`
+
+error: aborting due to 12 previous errors
+

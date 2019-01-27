@@ -1,0 +1,48 @@
+error[E0502]: cannot borrow `*map` as mutable because it is also borrowed as immutable
+  --> $DIR/get_default.rs:21:17
+   |
+LL | fn ok(map: &mut Map) -> &String {
+   |            - let's call the lifetime of this reference `'1`
+LL |     loop {
+LL |         match map.get() {
+   |               --- immutable borrow occurs here
+LL |             Some(v) => {
+LL |                 return v;
+   |                        - returning this value requires that `*map` is borrowed for `'1`
+...
+LL |                 map.set(String::new()); // Ideally, this would not error.
+   |                 ^^^ mutable borrow occurs here
+
+error[E0502]: cannot borrow `*map` as mutable because it is also borrowed as immutable
+  --> $DIR/get_default.rs:32:17
+   |
+LL | fn err(map: &mut Map) -> &String {
+   |             - let's call the lifetime of this reference `'1`
+LL |     loop {
+LL |         match map.get() {
+   |               --- immutable borrow occurs here
+LL |             Some(v) => {
+LL |                 map.set(String::new()); // Both AST and MIR error here
+   |                 ^^^ mutable borrow occurs here
+LL |
+LL |                 return v;
+   |                        - returning this value requires that `*map` is borrowed for `'1`
+
+error[E0502]: cannot borrow `*map` as mutable because it is also borrowed as immutable
+  --> $DIR/get_default.rs:37:17
+   |
+LL | fn err(map: &mut Map) -> &String {
+   |             - let's call the lifetime of this reference `'1`
+LL |     loop {
+LL |         match map.get() {
+   |               --- immutable borrow occurs here
+...
+LL |                 return v;
+   |                        - returning this value requires that `*map` is borrowed for `'1`
+...
+LL |                 map.set(String::new()); // Ideally, just AST would error here
+   |                 ^^^ mutable borrow occurs here
+
+error: aborting due to 3 previous errors
+
+For more information about this error, try `rustc --explain E0502`.
