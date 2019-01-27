@@ -1,12 +1,11 @@
 use cmp::Ordering;
 use ops::Try;
 
-use super::LoopState;
-use super::{Chain, Cycle, Copied, Cloned, Enumerate, Filter, FilterMap, Fuse};
-use super::{Flatten, FlatMap, flatten_compat};
-use super::{Inspect, Map, Peekable, Scan, Skip, SkipWhile, StepBy, Take, TakeWhile, Rev};
-use super::{Zip, Sum, Product};
-use super::{ChainState, FromIterator, ZipImpl};
+use super::super::LoopState;
+use super::super::{Chain, Cycle, Copied, Cloned, Enumerate, Filter, FilterMap, Fuse};
+use super::super::{Flatten, FlatMap};
+use super::super::{Inspect, Map, Peekable, Scan, Skip, SkipWhile, StepBy, Take, TakeWhile, Rev};
+use super::super::{Zip, Sum, Product, FromIterator};
 
 fn _assert_is_object_safe(_: &dyn Iterator<Item=()>) {}
 
@@ -367,8 +366,7 @@ pub trait Iterator {
     #[inline]
     #[stable(feature = "iterator_step_by", since = "1.28.0")]
     fn step_by(self, step: usize) -> StepBy<Self> where Self: Sized {
-        assert!(step != 0);
-        StepBy{iter: self, step: step - 1, first_take: true}
+        StepBy::new(self, step)
     }
 
     /// Takes two iterators and creates a new iterator over both in sequence.
@@ -425,7 +423,7 @@ pub trait Iterator {
     fn chain<U>(self, other: U) -> Chain<Self, U::IntoIter> where
         Self: Sized, U: IntoIterator<Item=Self::Item>,
     {
-        Chain{a: self, b: other.into_iter(), state: ChainState::Both}
+        Chain::new(self, other.into_iter())
     }
 
     /// 'Zips up' two iterators into a single iterator of pairs.
@@ -560,7 +558,7 @@ pub trait Iterator {
     fn map<B, F>(self, f: F) -> Map<Self, F> where
         Self: Sized, F: FnMut(Self::Item) -> B,
     {
-        Map { iter: self, f }
+        Map::new(self, f)
     }
 
     /// Calls a closure on each element of an iterator.
@@ -671,7 +669,7 @@ pub trait Iterator {
     fn filter<P>(self, predicate: P) -> Filter<Self, P> where
         Self: Sized, P: FnMut(&Self::Item) -> bool,
     {
-        Filter {iter: self, predicate }
+        Filter::new(self, predicate)
     }
 
     /// Creates an iterator that both filters and maps.
@@ -728,7 +726,7 @@ pub trait Iterator {
     fn filter_map<B, F>(self, f: F) -> FilterMap<Self, F> where
         Self: Sized, F: FnMut(Self::Item) -> Option<B>,
     {
-        FilterMap { iter: self, f }
+        FilterMap::new(self, f)
     }
 
     /// Creates an iterator which gives the current iteration count as well as
@@ -772,7 +770,7 @@ pub trait Iterator {
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
     fn enumerate(self) -> Enumerate<Self> where Self: Sized {
-        Enumerate { iter: self, count: 0 }
+        Enumerate::new(self)
     }
 
     /// Creates an iterator which can use `peek` to look at the next element of
@@ -818,7 +816,7 @@ pub trait Iterator {
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
     fn peekable(self) -> Peekable<Self> where Self: Sized {
-        Peekable{iter: self, peeked: None}
+        Peekable::new(self)
     }
 
     /// Creates an iterator that [`skip`]s elements based on a predicate.
@@ -881,7 +879,7 @@ pub trait Iterator {
     fn skip_while<P>(self, predicate: P) -> SkipWhile<Self, P> where
         Self: Sized, P: FnMut(&Self::Item) -> bool,
     {
-        SkipWhile { iter: self, flag: false, predicate }
+        SkipWhile::new(self, predicate)
     }
 
     /// Creates an iterator that yields elements based on a predicate.
@@ -961,7 +959,7 @@ pub trait Iterator {
     fn take_while<P>(self, predicate: P) -> TakeWhile<Self, P> where
         Self: Sized, P: FnMut(&Self::Item) -> bool,
     {
-        TakeWhile { iter: self, flag: false, predicate }
+        TakeWhile::new(self, predicate)
     }
 
     /// Creates an iterator that skips the first `n` elements.
@@ -983,7 +981,7 @@ pub trait Iterator {
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
     fn skip(self, n: usize) -> Skip<Self> where Self: Sized {
-        Skip { iter: self, n }
+        Skip::new(self, n)
     }
 
     /// Creates an iterator that yields its first `n` elements.
@@ -1015,7 +1013,7 @@ pub trait Iterator {
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
     fn take(self, n: usize) -> Take<Self> where Self: Sized, {
-        Take { iter: self, n }
+        Take::new(self, n)
     }
 
     /// An iterator adaptor similar to [`fold`] that holds internal state and
@@ -1060,7 +1058,7 @@ pub trait Iterator {
     fn scan<St, B, F>(self, initial_state: St, f: F) -> Scan<Self, St, F>
         where Self: Sized, F: FnMut(&mut St, Self::Item) -> Option<B>,
     {
-        Scan { iter: self, f, state: initial_state }
+        Scan::new(self, initial_state, f)
     }
 
     /// Creates an iterator that works like map, but flattens nested structure.
@@ -1098,7 +1096,7 @@ pub trait Iterator {
     fn flat_map<U, F>(self, f: F) -> FlatMap<Self, U, F>
         where Self: Sized, U: IntoIterator, F: FnMut(Self::Item) -> U,
     {
-        FlatMap { inner: flatten_compat(self.map(f)) }
+        FlatMap::new(self, f)
     }
 
     /// Creates an iterator that flattens nested structure.
@@ -1166,7 +1164,7 @@ pub trait Iterator {
     #[stable(feature = "iterator_flatten", since = "1.29.0")]
     fn flatten(self) -> Flatten<Self>
     where Self: Sized, Self::Item: IntoIterator {
-        Flatten { inner: flatten_compat(self) }
+        Flatten::new(self)
     }
 
     /// Creates an iterator which ends after the first [`None`].
@@ -1226,7 +1224,7 @@ pub trait Iterator {
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
     fn fuse(self) -> Fuse<Self> where Self: Sized {
-        Fuse{iter: self, done: false}
+        Fuse::new(self)
     }
 
     /// Do something with each element of an iterator, passing the value on.
@@ -1309,7 +1307,7 @@ pub trait Iterator {
     fn inspect<F>(self, f: F) -> Inspect<Self, F> where
         Self: Sized, F: FnMut(&Self::Item),
     {
-        Inspect { iter: self, f }
+        Inspect::new(self, f)
     }
 
     /// Borrows an iterator, rather than consuming it.
@@ -2183,7 +2181,7 @@ pub trait Iterator {
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
     fn rev(self) -> Rev<Self> where Self: Sized + DoubleEndedIterator {
-        Rev{iter: self}
+        Rev::new(self)
     }
 
     /// Converts an iterator of pairs into a pair of containers.
@@ -2251,7 +2249,7 @@ pub trait Iterator {
     fn copied<'a, T: 'a>(self) -> Copied<Self>
         where Self: Sized + Iterator<Item=&'a T>, T: Copy
     {
-        Copied { it: self }
+        Copied::new(self)
     }
 
     /// Creates an iterator which [`clone`]s all of its elements.
@@ -2280,7 +2278,7 @@ pub trait Iterator {
     fn cloned<'a, T: 'a>(self) -> Cloned<Self>
         where Self: Sized + Iterator<Item=&'a T>, T: Clone
     {
-        Cloned { it: self }
+        Cloned::new(self)
     }
 
     /// Repeats an iterator endlessly.
@@ -2311,7 +2309,7 @@ pub trait Iterator {
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
     fn cycle(self) -> Cycle<Self> where Self: Sized + Clone {
-        Cycle{orig: self.clone(), iter: self}
+        Cycle::new(self)
     }
 
     /// Sums the elements of an iterator.

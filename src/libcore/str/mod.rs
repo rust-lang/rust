@@ -9,8 +9,7 @@ use self::pattern::{Searcher, ReverseSearcher, DoubleEndedSearcher};
 
 use char;
 use fmt;
-use iter::{Map, Cloned, FusedIterator, TrustedLen, Filter};
-use iter_private::TrustedRandomAccess;
+use iter::{Map, Cloned, FusedIterator, TrustedLen, TrustedRandomAccess, Filter};
 use slice::{self, SliceIndex, Split as SliceSplit};
 use mem;
 
