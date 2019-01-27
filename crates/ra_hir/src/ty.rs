@@ -470,12 +470,12 @@ impl Ty {
         }
         // add placeholders for args that were not provided
         // TODO: handle defaults
-        for _ in segment
+        let supplied_params = segment
             .args_and_bindings
             .as_ref()
             .map(|ga| ga.args.len())
-            .unwrap_or(0)..def_generics.params.len()
-        {
+            .unwrap_or(0);
+        for _ in supplied_params..def_generics.params.len() {
             substs.push(Ty::Unknown);
         }
         assert_eq!(substs.len(), def_generics.params.len());
@@ -507,7 +507,20 @@ impl Ty {
                 }
                 sig_mut.output.walk_mut(f);
             }
-            Ty::FnDef { substs, .. } | Ty::Adt { substs, .. } => {
+            Ty::FnDef { substs, sig, .. } => {
+                let sig_mut = Arc::make_mut(sig);
+                for input in &mut sig_mut.input {
+                    input.walk_mut(f);
+                }
+                sig_mut.output.walk_mut(f);
+                // Without an Arc::make_mut_slice, we can't avoid the clone here:
+                let mut v: Vec<_> = substs.0.iter().cloned().collect();
+                for t in &mut v {
+                    t.walk_mut(f);
+                }
+                substs.0 = v.into();
+            }
+            Ty::Adt { substs, .. } => {
                 // Without an Arc::make_mut_slice, we can't avoid the clone here:
                 let mut v: Vec<_> = substs.0.iter().cloned().collect();
                 for t in &mut v {
@@ -579,7 +592,7 @@ impl Ty {
     /// or function); so if `self` is `Option<u32>`, this returns the `u32`.
     fn substs(&self) -> Option<Substs> {
         match self {
-            Ty::Adt { substs, .. } => Some(substs.clone()),
+            Ty::Adt { substs, .. } | Ty::FnDef { substs, .. } => Some(substs.clone()),
             _ => None,
         }
     }
@@ -617,9 +630,6 @@ impl fmt::Display for Ty {
             Ty::FnDef {
                 name, substs, sig, ..
             } => {
-                // don't have access to the param types here :-(
-                // we could store them in the def, but not sure if it
-                // is worth it
                 write!(f, "fn {}", name)?;
                 if substs.0.len() > 0 {
                     join(substs.0.iter())
@@ -1156,32 +1166,17 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
             .into();
         let typable = typable?;
         let ty = self.db.type_for_def(typable);
+        let generics = GenericParams::default();
+        let substs = Ty::substs_from_path(
+            self.db,
+            &self.module,
+            self.impl_block.as_ref(),
+            &generics,
+            path,
+            typable,
+        );
+        let ty = ty.apply_substs(substs);
         let ty = self.insert_type_vars(ty);
-
-        // try to get generic parameters from the path and add them to the
-        // function type substitutions
-        if let Ty::FnDef { ref def, .. } = ty {
-            let last_seg_bindings = path
-                .segments
-                .last()
-                .and_then(|segment| segment.args_and_bindings.as_ref());
-            if let Some(generic_args) = last_seg_bindings {
-                let generic_params = def.generic_params(self.db);
-                if generic_args.args.len() == generic_params.params.len() {
-                    let substs = Ty::substs_from_path(
-                        self.db,
-                        &self.module,
-                        self.impl_block.as_ref(),
-                        &generic_params,
-                        path,
-                        (*def).into(),
-                    );
-                    return Some(ty.apply_substs(substs));
-                } else {
-                    // ERROR: incorrect number of type params
-                }
-            }
-        }
 
         Some(ty)
     }
@@ -1408,8 +1403,6 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
                 Ty::Unknown
             }
             Expr::Call { callee, args } => {
-                // TODO: we should use turbofish hints like this:
-                // f::<u32>(x)
                 let callee_ty = self.infer_expr(*callee, &Expectation::none());
                 let (param_tys, ret_ty) = match &callee_ty {
                     Ty::FnPtr(sig) => (sig.input.clone(), sig.output.clone()),

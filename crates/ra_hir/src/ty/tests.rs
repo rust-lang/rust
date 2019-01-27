@@ -597,7 +597,7 @@ fn test() {
 #[test]
 fn infer_type_param() {
     check_inference(
-        "generic_fn",
+        "infer_type_param",
         r#"
 fn id<T>(x: T) -> T {
     x
@@ -611,9 +611,7 @@ fn test() {
     let y = 10u32;
     id(y);
     let x: bool = clone(z);
-
-    // bad turbofish - ignore!
-    id::<i128, String>(1);
+    id::<i128>(1);
 }
 "#,
     );
