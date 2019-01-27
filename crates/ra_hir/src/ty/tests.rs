@@ -594,6 +594,29 @@ fn test() {
     );
 }
 
+#[test]
+fn infer_type_param() {
+    check_inference(
+        "infer_type_param",
+        r#"
+fn id<T>(x: T) -> T {
+    x
+}
+
+fn clone<T>(x: &T) -> T {
+    x
+}
+
+fn test() {
+    let y = 10u32;
+    id(y);
+    let x: bool = clone(z);
+    id::<i128>(1);
+}
+"#,
+    );
+}
+
 fn infer(content: &str) -> String {
     let (db, _, file_id) = MockDatabase::with_single_file(content);
     let source_file = db.parse(file_id);

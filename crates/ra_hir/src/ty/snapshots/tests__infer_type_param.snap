@@ -1,0 +1,26 @@
+---
+created: "2019-01-27T16:54:18.368427685+00:00"
+creator: insta@0.5.2
+expression: "&result"
+source: crates/ra_hir/src/ty/tests.rs
+---
+[10; 11) 'x': [unknown]
+[21; 30) '{     x }': [unknown]
+[27; 28) 'x': [unknown]
+[44; 45) 'x': &[unknown]
+[56; 65) '{     x }': &[unknown]
+[62; 63) 'x': &[unknown]
+[77; 157) '{     ...(1); }': ()
+[87; 88) 'y': u32
+[91; 96) '10u32': u32
+[102; 104) 'id': fn id<u32>(T) -> T
+[102; 107) 'id(y)': u32
+[105; 106) 'y': u32
+[117; 118) 'x': bool
+[127; 132) 'clone': fn clone<bool>(&T) -> T
+[127; 135) 'clone(z)': bool
+[133; 134) 'z': &bool
+[141; 151) 'id::<i128>': fn id<i128>(T) -> T
+[141; 154) 'id::<i128>(1)': i128
+[152; 153) '1': i128
+

@@ -1,8 +1,8 @@
 ---
-created: "2019-01-22T14:44:59.880187500+00:00"
-creator: insta@0.4.0
+created: "2019-01-26T17:46:03.853259898+00:00"
+creator: insta@0.5.2
 expression: "&result"
-source: "crates\\ra_hir\\src\\ty\\tests.rs"
+source: crates/ra_hir/src/ty/tests.rs
 ---
 [6; 7) 'x': bool
 [22; 34) '{     0i32 }': i32
@@ -28,7 +28,7 @@ source: "crates\\ra_hir\\src\\ty\\tests.rs"
 [174; 196) 'minus_...ONST_2': bool
 [189; 196) 'CONST_2': isize
 [206; 207) 'c': i32
-[210; 211) 'f': fn(bool) -> i32
+[210; 211) 'f': fn f(bool) -> i32
 [210; 219) 'f(z || y)': i32
 [210; 223) 'f(z || y) + 5': i32
 [212; 213) 'z': bool
