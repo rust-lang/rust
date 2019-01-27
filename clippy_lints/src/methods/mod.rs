@@ -1313,13 +1313,13 @@ fn lint_clone_on_copy(cx: &LateContext<'_, '_>, expr: &hir::Expr, arg: &hir::Exp
                         let refs: String = iter::repeat('&').take(n + 1).collect();
                         let derefs: String = iter::repeat('*').take(n).collect();
                         let explicit = format!("{}{}::clone({})", refs, ty, snip);
-                        db.span_suggestion_with_applicability(
+                        db.span_suggestion(
                             expr.span,
                             "try dereferencing it",
                             format!("{}({}{}).clone()", refs, derefs, snip.deref()),
                             Applicability::MaybeIncorrect,
                         );
-                        db.span_suggestion_with_applicability(
+                        db.span_suggestion(
                             expr.span,
                             "or try being explicit about what type to clone",
                             explicit,
@@ -1379,7 +1379,7 @@ fn lint_clone_on_copy(cx: &LateContext<'_, '_>, expr: &hir::Expr, arg: &hir::Exp
         }
         span_lint_and_then(cx, CLONE_ON_COPY, expr.span, "using `clone` on a `Copy` type", |db| {
             if let Some((text, snip)) = snip {
-                db.span_suggestion_with_applicability(expr.span, text, snip, Applicability::Unspecified);
+                db.span_suggestion(expr.span, text, snip, Applicability::Unspecified);
             }
         });
     }
@@ -1810,7 +1810,7 @@ fn lint_map_flatten<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, expr: &'tcx hir::Expr,
         let func_snippet = snippet(cx, map_args[1].span, "..");
         let hint = format!("{0}.flat_map({1})", self_snippet, func_snippet);
         span_lint_and_then(cx, MAP_FLATTEN, expr.span, msg, |db| {
-            db.span_suggestion_with_applicability(
+            db.span_suggestion(
                 expr.span,
                 "try using flat_map instead",
                 hint,
@@ -1897,7 +1897,7 @@ fn lint_map_or_none<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, expr: &'tcx hir::Expr,
             let map_or_func_snippet = snippet(cx, map_or_args[2].span, "..");
             let hint = format!("{0}.and_then({1})", map_or_self_snippet, map_or_func_snippet);
             span_lint_and_then(cx, OPTION_MAP_OR_NONE, expr.span, msg, |db| {
-                db.span_suggestion_with_applicability(
+                db.span_suggestion(
                     expr.span,
                     "try using and_then instead",
                     hint,

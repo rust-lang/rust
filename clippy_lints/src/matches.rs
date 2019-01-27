@@ -375,7 +375,7 @@ fn check_match_bool(cx: &LateContext<'_, '_>, ex: &Expr, arms: &[Arm], expr: &Ex
                         };
 
                         if let Some(sugg) = sugg {
-                            db.span_suggestion_with_applicability(
+                            db.span_suggestion(
                                 expr.span,
                                 "consider using an if/else expression",
                                 sugg,

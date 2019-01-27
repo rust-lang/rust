@@ -179,7 +179,7 @@ impl Pass {
         let len_expr = Sugg::hir(cx, vec_alloc.len_expr, "len");
 
         span_lint_and_then(cx, lint, slow_fill.span, msg, |db| {
-            db.span_suggestion_with_applicability(
+            db.span_suggestion(
                 vec_alloc.allocation_expr.span,
                 "consider replace allocation with",
                 format!("vec![0; {}]", len_expr),

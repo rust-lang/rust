@@ -1304,7 +1304,7 @@ fn check_for_loop_reverse_range<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, arg: &'tcx
                         expr.span,
                         "this range is empty so this for loop will never run",
                         |db| {
-                            db.span_suggestion_with_applicability(
+                            db.span_suggestion(
                                 arg.span,
                                 "consider using the following if you are attempting to iterate over this \
                                  range in reverse",
@@ -2408,7 +2408,7 @@ fn check_needless_collect<'a, 'tcx>(expr: &'tcx Expr, cx: &LateContext<'a, 'tcx>
                 if method.ident.name == "len" {
                     let span = shorten_needless_collect_span(expr);
                     span_lint_and_then(cx, NEEDLESS_COLLECT, span, NEEDLESS_COLLECT_MSG, |db| {
-                        db.span_suggestion_with_applicability(
+                        db.span_suggestion(
                             span,
                             "replace with",
                             ".count()".to_string(),
@@ -2419,7 +2419,7 @@ fn check_needless_collect<'a, 'tcx>(expr: &'tcx Expr, cx: &LateContext<'a, 'tcx>
                 if method.ident.name == "is_empty" {
                     let span = shorten_needless_collect_span(expr);
                     span_lint_and_then(cx, NEEDLESS_COLLECT, span, NEEDLESS_COLLECT_MSG, |db| {
-                        db.span_suggestion_with_applicability(
+                        db.span_suggestion(
                             span,
                             "replace with",
                             ".next().is_none()".to_string(),
@@ -2431,7 +2431,7 @@ fn check_needless_collect<'a, 'tcx>(expr: &'tcx Expr, cx: &LateContext<'a, 'tcx>
                     let contains_arg = snippet(cx, args[1].span, "??");
                     let span = shorten_needless_collect_span(expr);
                     span_lint_and_then(cx, NEEDLESS_COLLECT, span, NEEDLESS_COLLECT_MSG, |db| {
-                        db.span_suggestion_with_applicability(
+                        db.span_suggestion(
                             span,
                             "replace with",
                             format!(

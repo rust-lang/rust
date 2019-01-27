@@ -101,7 +101,7 @@ fn check_closure(cx: &LateContext<'_, '_>, expr: &Expr) {
             }
             span_lint_and_then(cx, REDUNDANT_CLOSURE, expr.span, "redundant closure found", |db| {
                 if let Some(snippet) = snippet_opt(cx, caller.span) {
-                    db.span_suggestion_with_applicability(
+                    db.span_suggestion(
                         expr.span,
                         "remove closure as shown",
                         snippet,

@@ -92,7 +92,7 @@ impl Pass {
                         expr.span,
                         "this block may be rewritten with the `?` operator",
                         |db| {
-                            db.span_suggestion_with_applicability(
+                            db.span_suggestion(
                                 expr.span,
                                 "replace_it_with",
                                 replacement_str,

@@ -207,7 +207,7 @@ fn lint_match_arms(cx: &LateContext<'_, '_>, expr: &Expr) {
                 |db| {
                     db.span_note(i.body.span, "same as this");
 
-                    // Note: this does not use `span_suggestion_with_applicability` on purpose:
+                    // Note: this does not use `span_suggestion` on purpose:
                     // there is no clean way
                     // to remove the other arm. Building a span and suggest to replace it to ""
                     // makes an even more confusing error message. Also in order not to make up a

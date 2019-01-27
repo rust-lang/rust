@@ -74,7 +74,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for MemDiscriminant {
                             }
 
                             let derefs: String = iter::repeat('*').take(derefs_needed).collect();
-                            db.span_suggestion_with_applicability(
+                            db.span_suggestion(
                                 param.span,
                                 "try dereferencing",
                                 format!("{}{}", derefs, snippet(cx, cur_expr.span, "<param>")),

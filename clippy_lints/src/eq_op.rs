@@ -126,7 +126,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for EqOp {
                         {
                             span_lint_and_then(cx, OP_REF, e.span, "needlessly taken reference of left operand", |db| {
                                 let lsnip = snippet(cx, l.span, "...").to_string();
-                                db.span_suggestion_with_applicability(
+                                db.span_suggestion(
                                     left.span,
                                     "use the left value directly",
                                     lsnip,
@@ -144,7 +144,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for EqOp {
                                 "needlessly taken reference of right operand",
                                 |db| {
                                     let rsnip = snippet(cx, r.span, "...").to_string();
-                                    db.span_suggestion_with_applicability(
+                                    db.span_suggestion(
                                         right.span,
                                         "use the right value directly",
                                         rsnip,
@@ -163,7 +163,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for EqOp {
                         {
                             span_lint_and_then(cx, OP_REF, e.span, "needlessly taken reference of left operand", |db| {
                                 let lsnip = snippet(cx, l.span, "...").to_string();
-                                db.span_suggestion_with_applicability(
+                                db.span_suggestion(
                                     left.span,
                                     "use the left value directly",
                                     lsnip,
@@ -181,7 +181,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for EqOp {
                         {
                             span_lint_and_then(cx, OP_REF, e.span, "taken reference of right operand", |db| {
                                 let rsnip = snippet(cx, r.span, "...").to_string();
-                                db.span_suggestion_with_applicability(
+                                db.span_suggestion(
                                     right.span,
                                     "use the right value directly",
                                     rsnip,

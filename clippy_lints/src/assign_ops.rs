@@ -83,7 +83,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for AssignOps {
                                         let r = &sugg::Sugg::hir(cx, rhs, "..");
                                         let long =
                                             format!("{} = {}", snip_a, sugg::make_binop(higher::binop(op.node), a, r));
-                                        db.span_suggestion_with_applicability(
+                                        db.span_suggestion(
                                             expr.span,
                                             &format!(
                                                 "Did you mean {} = {} {} {} or {}? Consider replacing it with",
@@ -96,7 +96,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for AssignOps {
                                             format!("{} {}= {}", snip_a, op.node.as_str(), snip_r),
                                             Applicability::MachineApplicable,
                                         );
-                                        db.span_suggestion_with_applicability(
+                                        db.span_suggestion(
                                             expr.span,
                                             "or",
                                             long,
@@ -183,7 +183,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for AssignOps {
                                     if let (Some(snip_a), Some(snip_r)) =
                                         (snippet_opt(cx, assignee.span), snippet_opt(cx, rhs.span))
                                     {
-                                        db.span_suggestion_with_applicability(
+                                        db.span_suggestion(
                                             expr.span,
                                             "replace it with",
                                             format!("{} {}= {}", snip_a, op.node.as_str(), snip_r),

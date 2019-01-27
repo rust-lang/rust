@@ -162,7 +162,7 @@ impl IntPlusOne {
             block.span,
             "Unnecessary `>= y + 1` or `x - 1 >=`",
             |db| {
-                db.span_suggestion_with_applicability(
+                db.span_suggestion(
                     block.span,
                     "change `>= y + 1` to `> y` as shown",
                     recommendation,

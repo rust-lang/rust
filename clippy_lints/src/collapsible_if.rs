@@ -154,7 +154,7 @@ fn check_collapsible_no_if_let(cx: &EarlyContext<'_>, expr: &ast::Expr, check: &
             span_lint_and_then(cx, COLLAPSIBLE_IF, expr.span, "this if statement can be collapsed", |db| {
                 let lhs = Sugg::ast(cx, check, "..");
                 let rhs = Sugg::ast(cx, check_inner, "..");
-                db.span_suggestion_with_applicability(
+                db.span_suggestion(
                     expr.span,
                     "try",
                     format!(

@@ -547,7 +547,7 @@ impl<'a, 'b, 'c, T: LintContext<'c>> DiagnosticBuilderExt<'c, T> for rustc_error
         if let Some(indent) = indentation(cx, item) {
             let span = item.with_hi(item.lo());
 
-            self.span_suggestion_with_applicability(span, msg, format!("{}\n{}", attr, indent), applicability);
+            self.span_suggestion(span, msg, format!("{}\n{}", attr, indent), applicability);
         }
     }
 
@@ -568,7 +568,7 @@ impl<'a, 'b, 'c, T: LintContext<'c>> DiagnosticBuilderExt<'c, T> for rustc_error
                 })
                 .collect::<String>();
 
-            self.span_suggestion_with_applicability(span, msg, format!("{}\n{}", new_item, indent), applicability);
+            self.span_suggestion(span, msg, format!("{}\n{}", new_item, indent), applicability);
         }
     }
 
@@ -586,7 +586,7 @@ impl<'a, 'b, 'c, T: LintContext<'c>> DiagnosticBuilderExt<'c, T> for rustc_error
             }
         }
 
-        self.span_suggestion_with_applicability(remove_span, msg, String::new(), applicability);
+        self.span_suggestion(remove_span, msg, String::new(), applicability);
     }
 }
 

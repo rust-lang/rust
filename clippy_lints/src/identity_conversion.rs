@@ -71,7 +71,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for IdentityConversion {
                         let sugg = snippet_with_macro_callsite(cx, args[0].span, "<expr>").to_string();
 
                         span_lint_and_then(cx, IDENTITY_CONVERSION, e.span, "identical conversion", |db| {
-                            db.span_suggestion_with_applicability(
+                            db.span_suggestion(
                                 e.span,
                                 "consider removing `.into()`",
                                 sugg,
@@ -86,7 +86,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for IdentityConversion {
                     if same_tys(cx, a, b) {
                         let sugg = snippet(cx, args[0].span, "<expr>").into_owned();
                         span_lint_and_then(cx, IDENTITY_CONVERSION, e.span, "identical conversion", |db| {
-                            db.span_suggestion_with_applicability(
+                            db.span_suggestion(
                                 e.span,
                                 "consider removing `.into_iter()`",
                                 sugg,
@@ -108,7 +108,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for IdentityConversion {
                                 let sugg_msg =
                                     format!("consider removing `{}()`", snippet(cx, path.span, "From::from"));
                                 span_lint_and_then(cx, IDENTITY_CONVERSION, e.span, "identical conversion", |db| {
-                                    db.span_suggestion_with_applicability(
+                                    db.span_suggestion(
                                         e.span,
                                         &sugg_msg,
                                         sugg,

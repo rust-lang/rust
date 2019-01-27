@@ -39,7 +39,7 @@ impl Pass {
     fn lint(cx: &LateContext<'_, '_>, outer_span: syntax_pos::Span, inner_span: syntax_pos::Span, msg: &str) {
         span_lint_and_then(cx, IMPLICIT_RETURN, outer_span, "missing return statement", |db| {
             if let Some(snippet) = snippet_opt(cx, inner_span) {
-                db.span_suggestion_with_applicability(
+                db.span_suggestion(
                     outer_span,
                     msg,
                     format!("return {}", snippet),

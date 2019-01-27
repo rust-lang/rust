@@ -124,7 +124,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for LetIfSeq {
                                        span,
                                        "`if _ { .. } else { .. }` is an expression",
                                        |db| {
-                                           db.span_suggestion_with_applicability(
+                                           db.span_suggestion(
                                                 span,
                                                 "it is more idiomatic to write",
                                                 sug,

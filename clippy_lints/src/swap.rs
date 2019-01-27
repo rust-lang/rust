@@ -142,7 +142,7 @@ fn check_manual_swap(cx: &LateContext<'_, '_>, block: &Block) {
                                    &format!("this looks like you are swapping{} manually", what),
                                    |db| {
                                        if !sugg.is_empty() {
-                                           db.span_suggestion_with_applicability(
+                                           db.span_suggestion(
                                                span,
                                                "try",
                                                sugg,
@@ -191,7 +191,7 @@ fn check_suspicious_swap(cx: &LateContext<'_, '_>, block: &Block) {
                                    &format!("this looks like you are trying to swap{}", what),
                                    |db| {
                                        if !what.is_empty() {
-                                           db.span_suggestion_with_applicability(
+                                           db.span_suggestion(
                                                span,
                                                "try",
                                                format!(

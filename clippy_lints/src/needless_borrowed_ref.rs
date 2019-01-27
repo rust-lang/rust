@@ -82,7 +82,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for NeedlessBorrowedRef {
                                    "this pattern takes a reference on something that is being de-referenced",
                                    |db| {
                                        let hint = snippet(cx, spanned_name.span, "..").into_owned();
-                                       db.span_suggestion_with_applicability(
+                                       db.span_suggestion(
                                            pat.span,
                                            "try removing the `&ref` part and just keep",
                                            hint,

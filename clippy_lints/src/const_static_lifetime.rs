@@ -66,7 +66,7 @@ impl StaticConst {
                                     lifetime.ident.span,
                                     "Constants have by default a `'static` lifetime",
                                     |db| {
-                                        db.span_suggestion_with_applicability(
+                                        db.span_suggestion(
                                             ty.span,
                                             "consider removing `'static`",
                                             sugg,

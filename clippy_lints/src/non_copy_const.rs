@@ -122,7 +122,7 @@ fn verify_ty_bound<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, ty: ty::Ty<'tcx>, sourc
         match source {
             Source::Item { .. } => {
                 let const_kw_span = span.from_inner_byte_pos(0, 5);
-                db.span_suggestion_with_applicability(
+                db.span_suggestion(
                     const_kw_span,
                     "make this a static item",
                     "static".to_string(),

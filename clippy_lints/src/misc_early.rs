@@ -343,7 +343,7 @@ impl EarlyLintPass for MiscEarly {
                                 |db| {
                                     if decl.inputs.is_empty() {
                                         let hint = snippet(cx, block.span, "..").into_owned();
-                                        db.span_suggestion_with_applicability(
+                                        db.span_suggestion(
                                             expr.span,
                                             "Try doing something like: ",
                                             hint,
@@ -438,13 +438,13 @@ impl MiscEarly {
                                         lit.span,
                                         "this is a decimal constant",
                                         |db| {
-                        db.span_suggestion_with_applicability(
+                        db.span_suggestion(
                             lit.span,
                             "if you mean to use a decimal constant, remove the `0` to remove confusion",
                             src.trim_start_matches(|c| c == '_' || c == '0').to_string(),
                             Applicability::MaybeIncorrect,
                         );
-                        db.span_suggestion_with_applicability(
+                        db.span_suggestion(
                             lit.span,
                             "if you mean to use an octal constant, use `0o`",
                             format!("0o{}", src.trim_start_matches(|c| c == '_' || c == '0')),

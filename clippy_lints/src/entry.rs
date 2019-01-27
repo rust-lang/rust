@@ -149,7 +149,7 @@ impl<'a, 'tcx, 'b> Visitor<'tcx> for InsertVisitor<'a, 'tcx, 'b> {
                                            snippet(self.cx, params[1].span, ".."),
                                            snippet(self.cx, params[2].span, ".."));
 
-                        db.span_suggestion_with_applicability(
+                        db.span_suggestion(
                             self.span,
                             "consider using",
                             help,
@@ -161,7 +161,7 @@ impl<'a, 'tcx, 'b> Visitor<'tcx> for InsertVisitor<'a, 'tcx, 'b> {
                                            snippet(self.cx, self.map.span, "map"),
                                            snippet(self.cx, params[1].span, ".."));
 
-                        db.span_suggestion_with_applicability(
+                        db.span_suggestion(
                             self.span,
                             "consider using",
                             help,
