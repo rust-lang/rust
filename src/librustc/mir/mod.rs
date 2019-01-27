@@ -2110,30 +2110,6 @@ impl<'tcx> Place<'tcx> {
     pub fn elem(self, elem: PlaceElem<'tcx>) -> Place<'tcx> {
         Place::Projection(Box::new(PlaceProjection { base: self, elem }))
     }
-
-    /// Find the innermost `Local` from this `Place`, *if* it is either a local itself or
-    /// a single deref of a local.
-    ///
-    /// FIXME: can we safely swap the semantics of `fn base_local` below in here instead?
-    pub fn local(&self) -> Option<Local> {
-        match self {
-            Place::Local(local) |
-            Place::Projection(box Projection {
-                base: Place::Local(local),
-                elem: ProjectionElem::Deref,
-            }) => Some(*local),
-            _ => None,
-        }
-    }
-
-    /// Find the innermost `Local` from this `Place`.
-    pub fn base_local(&self) -> Option<Local> {
-        match self {
-            Place::Local(local) => Some(*local),
-            Place::Projection(box Projection { base, elem: _ }) => base.base_local(),
-            Place::Promoted(..) | Place::Static(..) => None,
-        }
-    }
 }
 
 impl<'tcx> NeoPlace<'tcx> {
@@ -2182,6 +2158,15 @@ impl<'tcx> NeoPlace<'tcx> {
 
     pub fn index(self, tcx: TyCtxt<'_, '_, 'tcx>, index: Local) -> Self {
         self.elem(tcx, ProjectionElem::Index(index))
+    }
+
+    /// Find the innermost `Local` from this `Place`.
+    pub fn base_local(&self) -> Option<Local> {
+        if let PlaceBase::Local(local) = self.base {
+            Some(local)
+        } else {
+            None
+        }
     }
 
     pub fn constant_index(

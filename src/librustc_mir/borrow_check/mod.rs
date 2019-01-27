@@ -1680,7 +1680,8 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
                                 ty::Adt(..) | ty::Tuple(..) => {
                                     check_parent_of_field(self, context, base, span, flow_state);
 
-                                    if let Some(local) = place.base_local() {
+                                    let neo_place = tcx.as_new_place(place);
+                                    if let Some(local) = neo_place.base_local() {
                                         // rust-lang/rust#21232,
                                         // #54499, #54986: during
                                         // period where we reject
@@ -1814,7 +1815,8 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
         // partial initialization, do not complain about mutability
         // errors except for actual mutation (as opposed to an attempt
         // to do a partial initialization).
-        let previously_initialized = if let Some(local) = place.base_local() {
+        let neo_place = self.infcx.tcx.as_new_place(place);
+        let previously_initialized = if let Some(local) = neo_place.base_local() {
             self.is_local_ever_initialized(local, flow_state).is_some()
         } else {
             true

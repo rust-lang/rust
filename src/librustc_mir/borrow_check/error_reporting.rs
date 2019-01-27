@@ -579,7 +579,8 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
         // is a union.
         let is_union = |place: &Place<'tcx>| -> bool {
             let neo_place = self.infcx.tcx.as_new_place(place);
-            neo_place.ty(self.mir, self.infcx.tcx)
+            neo_place
+                .ty(self.mir, self.infcx.tcx)
                 .to_ty(self.infcx.tcx)
                 .ty_adt_def()
                 .map(|adt| adt.is_union())
@@ -1481,15 +1482,22 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
         diag: &mut DiagnosticBuilder<'_>,
     ) {
         debug!("add_moved_or_invoked_closure_note: location={:?} place={:?}", location, place);
-        let mut target = place.local();
+        let neo_place = self.infcx.tcx.as_new_place(place);
+        let mut target = neo_place.base_local();
         for stmt in &self.mir[location.block].statements[location.statement_index..] {
             debug!("add_moved_or_invoked_closure_note: stmt={:?} target={:?}", stmt, target);
             if let StatementKind::Assign(into, box Rvalue::Use(from)) = &stmt.kind {
                 debug!("add_fnonce_closure_note: into={:?} from={:?}", into, from);
                 match from {
-                    Operand::Copy(ref place) |
-                    Operand::Move(ref place) if target == place.local() =>
-                        target = into.local(),
+                    Operand::Copy(ref place) | Operand::Move(ref place)
+                        if {
+                            let neo_place = self.infcx.tcx.as_new_place(place);
+                            target == neo_place.base_local()
+                        } =>
+                    {
+                        let neo_into = self.infcx.tcx.as_new_place(into);
+                        target = neo_into.base_local();
+                    }
                     _ => {},
                 }
             }
@@ -1512,9 +1520,14 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
             debug!("add_moved_or_invoked_closure_note: id={:?}", id);
             if self.infcx.tcx.parent(id) == self.infcx.tcx.lang_items().fn_once_trait() {
                 let closure = match args.first() {
-                    Some(Operand::Copy(ref place)) |
-                    Some(Operand::Move(ref place)) if target == place.local() =>
-                        place.local().unwrap(),
+                    Some(Operand::Copy(ref place)) | Some(Operand::Move(ref place))
+                        if {
+                            let neo_place = self.infcx.tcx.as_new_place(place);
+                            target == neo_place.base_local()
+                        } =>
+                    {
+                        neo_place.base_local().unwrap()
+                    }
                     _ => return,
                 };
 
@@ -1949,7 +1962,8 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
                             );
 
                             // Find the local from the operand.
-                            let assigned_from_local = match assigned_from.local() {
+                            let neo_assigned_from = self.infcx.tcx.as_new_place(assigned_from);
+                            let assigned_from_local = match neo_assigned_from.base_local() {
                                 Some(local) => local,
                                 None => continue,
                             };
@@ -2005,7 +2019,8 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
                     );
 
                     // Find the local from the rvalue.
-                    let assigned_from_local = match assigned_from.local() {
+                    let neo_assigned_from = self.infcx.tcx.as_new_place(assigned_from);
+                    let assigned_from_local = match neo_assigned_from.base_local() {
                         Some(local) => local,
                         None => continue,
                     };
@@ -2068,7 +2083,8 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
                         assigned_from,
                     );
 
-                    if let Some(assigned_from_local) = assigned_from.local() {
+                    let neo_assigned_from = self.infcx.tcx.as_new_place(assigned_from);
+                    if let Some(assigned_from_local) = neo_assigned_from.base_local() {
                         debug!(
                             "annotate_argument_and_return_for_borrow: assigned_from_local={:?}",
                             assigned_from_local,
