@@ -81,6 +81,15 @@ pub struct PerNs<T> {
     pub values: Option<T>,
 }
 
+impl<T> Default for PerNs<T> {
+    fn default() -> Self {
+        PerNs {
+            types: None,
+            values: None,
+        }
+    }
+}
+
 impl<T> PerNs<T> {
     pub fn none() -> PerNs<T> {
         PerNs {

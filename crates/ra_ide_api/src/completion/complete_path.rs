@@ -7,13 +7,13 @@ use crate::{
 use hir::Docs;
 
 pub(super) fn complete_path(acc: &mut Completions, ctx: &CompletionContext) {
-    let (path, module) = match (&ctx.path_prefix, &ctx.module) {
-        (Some(path), Some(module)) => (path.clone(), module),
+    let path = match &ctx.path_prefix {
+        Some(path) => path.clone(),
         _ => return,
     };
-    let def_id = match module.resolve_path(ctx.db, &path).take_types() {
-        Some(it) => it,
-        None => return,
+    let def = match ctx.resolver.resolve_path(ctx.db, &path).take_types() {
+        Some(Resolution::Def { def }) => def,
+        _ => return,
     };
     match def_id {
         hir::ModuleDef::Module(module) => {
@@ -24,7 +24,7 @@ pub(super) fn complete_path(acc: &mut Completions, ctx: &CompletionContext) {
                     ctx.source_range(),
                     name.to_string(),
                 )
-                .from_resolution(ctx, res)
+                .from_resolution(ctx, &res.def.map(|def| hir::Resolution::Def { def }))
                 .add_to(acc);
             }
         }

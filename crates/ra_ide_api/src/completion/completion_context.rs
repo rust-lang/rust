@@ -5,7 +5,7 @@ use ra_syntax::{
     algo::{find_leaf_at_offset, find_covering_node, find_node_at_offset},
     SyntaxKind::*,
 };
-use hir::source_binder;
+use hir::{source_binder, Resolver};
 
 use crate::{db, FilePosition};
 
@@ -16,6 +16,7 @@ pub(crate) struct CompletionContext<'a> {
     pub(super) db: &'a db::RootDatabase,
     pub(super) offset: TextUnit,
     pub(super) leaf: &'a SyntaxNode,
+    pub(super) resolver: Resolver<'static>,
     pub(super) module: Option<hir::Module>,
     pub(super) function: Option<hir::Function>,
     pub(super) function_syntax: Option<&'a ast::FnDef>,
@@ -42,12 +43,14 @@ impl<'a> CompletionContext<'a> {
         original_file: &'a SourceFile,
         position: FilePosition,
     ) -> Option<CompletionContext<'a>> {
+        let resolver = source_binder::resolver_for_position(db, position);
         let module = source_binder::module_from_position(db, position);
         let leaf = find_leaf_at_offset(original_file.syntax(), position.offset).left_biased()?;
         let mut ctx = CompletionContext {
             db,
             leaf,
             offset: position.offset,
+            resolver,
             module,
             function: None,
             function_syntax: None,

@@ -62,25 +62,11 @@ impl ExprScopes {
         &self.scopes[scope].entries
     }
 
-    pub fn scope_chain_for<'a>(&'a self, expr: ExprId) -> impl Iterator<Item = ScopeId> + 'a {
-        generate(self.scope_for(expr), move |&scope| {
-            self.scopes[scope].parent
-        })
-    }
-
-    pub fn resolve_local_name<'a>(
+    pub fn scope_chain_for<'a>(
         &'a self,
-        context_expr: ExprId,
-        name: Name,
-    ) -> Option<&'a ScopeEntry> {
-        // TODO replace by Resolver::resolve_name
-        let mut shadowed = FxHashSet::default();
-        let ret = self
-            .scope_chain_for(context_expr)
-            .flat_map(|scope| self.entries(scope).iter())
-            .filter(|entry| shadowed.insert(entry.name()))
-            .find(|entry| entry.name() == &name);
-        ret
+        scope: Option<ScopeId>,
+    ) -> impl Iterator<Item = ScopeId> + 'a {
+        generate(scope, move |&scope| self.scopes[scope].parent)
     }
 
     fn root_scope(&mut self) -> ScopeId {
@@ -123,7 +109,7 @@ impl ExprScopes {
         self.scope_for.insert(node, scope);
     }
 
-    fn scope_for(&self, expr: ExprId) -> Option<ScopeId> {
+    pub fn scope_for(&self, expr: ExprId) -> Option<ScopeId> {
         self.scope_for.get(&expr).map(|&scope| scope)
     }
 }
@@ -151,18 +137,14 @@ impl ScopeEntryWithSyntax {
 }
 
 impl ScopesWithSyntaxMapping {
-    pub fn scope_chain<'a>(&'a self, node: &SyntaxNode) -> impl Iterator<Item = ScopeId> + 'a {
+    fn scope_chain<'a>(&'a self, node: &SyntaxNode) -> impl Iterator<Item = ScopeId> + 'a {
         generate(self.scope_for(node), move |&scope| {
             self.scopes.scopes[scope].parent
         })
     }
 
-    pub fn scope_chain_for_offset<'a>(
-        &'a self,
-        offset: TextUnit,
-    ) -> impl Iterator<Item = ScopeId> + 'a {
-        let scope = self
-            .scopes
+    pub fn scope_for_offset<'a>(&'a self, offset: TextUnit) -> Option<ScopeId> {
+        self.scopes
             .scope_for
             .iter()
             .filter_map(|(id, scope)| Some((self.syntax_mapping.expr_syntax(*id)?, scope)))
@@ -173,9 +155,7 @@ impl ScopesWithSyntaxMapping {
                     ptr.range().len(),
                 )
             })
-            .map(|(ptr, scope)| self.adjust(ptr, *scope, offset));
-
-        generate(scope, move |&scope| self.scopes.scopes[scope].parent)
+            .map(|(ptr, scope)| self.adjust(ptr, *scope, offset))
     }
 
     // XXX: during completion, cursor might be outside of any particular

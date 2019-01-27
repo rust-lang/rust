@@ -89,8 +89,20 @@ impl Resolver {
         }
     }
 
-    pub fn all_names(&self) -> FxHashMap<Name, Resolution> {
-        unimplemented!()
+    pub fn all_names(&self) -> FxHashMap<Name, PerNs<Resolution>> {
+        let mut names = FxHashMap::default();
+        for scope in &self.scopes {
+            scope.collect_names(&mut |name, res| {
+                let current: &mut PerNs<Resolution> = names.entry(name).or_default();
+                if current.types.is_none() {
+                    current.types = res.types;
+                }
+                if current.values.is_none() {
+                    current.values = res.values;
+                }
+            });
+        }
+        names
     }
 
     fn module(&self) -> Option<(&ItemMap, Module)> {
@@ -172,6 +184,47 @@ impl Scope {
                     Some(e) => PerNs::values(Resolution::LocalBinding { pat: e.pat() }),
                     None => PerNs::none(),
                 }
+            }
+        }
+    }
+
+    fn collect_names(&self, f: &mut FnMut(Name, PerNs<Resolution>)) {
+        match self {
+            Scope::ModuleScope(m) => {
+                m.item_map[m.module.module_id]
+                    .entries()
+                    .for_each(|(name, res)| {
+                        f(name.clone(), res.def.map(|def| Resolution::Def { def }));
+                    })
+            }
+            Scope::ModuleScopeRef(m) => {
+                m.item_map[m.module.module_id]
+                    .entries()
+                    .for_each(|(name, res)| {
+                        f(name.clone(), res.def.map(|def| Resolution::Def { def }));
+                    })
+            }
+            Scope::GenericParams(gp) => {
+                for param in &gp.params {
+                    f(
+                        param.name.clone(),
+                        PerNs::types(Resolution::GenericParam { idx: param.idx }),
+                    )
+                }
+            }
+            Scope::ImplBlockScope(i) => {
+                f(
+                    Name::self_type(),
+                    PerNs::types(Resolution::SelfType(i.clone())),
+                );
+            }
+            Scope::ExprScope(e) => {
+                e.expr_scopes.entries(e.scope_id).iter().for_each(|e| {
+                    f(
+                        e.name().clone(),
+                        PerNs::values(Resolution::LocalBinding { pat: e.pat() }),
+                    );
+                });
             }
         }
     }

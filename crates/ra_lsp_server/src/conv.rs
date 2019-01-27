@@ -70,6 +70,7 @@ impl Conv for CompletionItemKind {
             CompletionItemKind::Const => Constant,
             CompletionItemKind::Static => Value,
             CompletionItemKind::Method => Method,
+            CompletionItemKind::TypeParam => TypeParameter,
         }
     }
 }

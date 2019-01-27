@@ -9,13 +9,14 @@ use ra_db::{FileId, FilePosition};
 use ra_syntax::{
     SmolStr, TextRange, SyntaxNode,
     ast::{self, AstNode, NameOwner},
-    algo::find_node_at_offset,
+    algo::{find_node_at_offset, find_leaf_at_offset},
 };
 
 use crate::{
     HirDatabase, Function, ModuleDef, Struct, Enum,
     AsName, Module, HirFileId, Crate, Trait, Resolver,
     ids::{LocationCtx, SourceFileItemId},
+    expr
 };
 
 /// Locates the module by `FileId`. Picks topmost module in the file.
@@ -202,7 +203,29 @@ pub fn macro_symbols(db: &impl HirDatabase, file_id: FileId) -> Vec<(SmolStr, Te
     res
 }
 
-#[allow(unused_variables)]
-pub fn resolver_for_position(db: &impl HirDatabase, position: FilePosition) -> Resolver {
-    unimplemented!()
+pub fn resolver_for_position(db: &impl HirDatabase, position: FilePosition) -> Resolver<'static> {
+    let file = db.parse(position.file_id);
+    find_leaf_at_offset(file.syntax(), position.offset)
+        .find_map(|node| {
+            node.ancestors().find_map(|node| {
+                if ast::Expr::cast(node).is_some() || ast::Block::cast(node).is_some() {
+                    if let Some(func) = function_from_child_node(db, position.file_id, node) {
+                        let scopes = func.scopes(db);
+                        let scope = scopes.scope_for_offset(position.offset);
+                        Some(expr::resolver_for_scope(func.body(db), db, scope))
+                    } else {
+                        // TODO const/static/array length
+                        None
+                    }
+                } else if let Some(module) = ast::Module::cast(node) {
+                    Some(module_from_declaration(db, position.file_id, module)?.resolver(db))
+                } else if let Some(_) = ast::SourceFile::cast(node) {
+                    Some(module_from_source(db, position.file_id.into(), None)?.resolver(db))
+                } else {
+                    // TODO add missing cases
+                    None
+                }
+            })
+        })
+        .unwrap_or_default()
 }
