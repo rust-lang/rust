@@ -19,6 +19,19 @@ fn item_map(fixture: &str) -> (Arc<ItemMap>, ModuleId) {
     (db.item_map(krate.crate_id), module_id)
 }
 
+fn item_map_custom_crate_root(fixture: &str, root: &str) -> (Arc<ItemMap>, ModuleId) {
+    let (mut db, pos) = MockDatabase::with_position(fixture);
+
+    let mut crate_graph = CrateGraph::default();
+    crate_graph.add_crate_root(db.file_id(root));
+    db.set_crate_graph(Arc::new(crate_graph));
+
+    let module = crate::source_binder::module_from_position(&db, dbg!(pos)).unwrap();
+    let krate = module.krate(&db).unwrap();
+    let module_id = module.module_id;
+    (db.item_map(krate.crate_id), module_id)
+}
+
 fn check_module_item_map(map: &ItemMap, module_id: ModuleId, expected: &str) {
     let mut lines = map[module_id]
         .items
@@ -128,6 +141,31 @@ fn re_exports() {
         module_id,
         "
             Baz: t v
+            foo: t
+        ",
+    );
+}
+
+#[test]
+fn module_resolution_works_for_non_standard_filenames() {
+    let (item_map, module_id) = item_map_custom_crate_root(
+        "
+        //- /my_library.rs
+        mod foo;
+
+        use self::foo::Bar;
+        <|>
+
+        //- /foo/mod.rs
+        pub struct Bar;
+    ",
+        "/my_library.rs",
+    );
+    check_module_item_map(
+        &item_map,
+        module_id,
+        "
+            Bar: t v
             foo: t
         ",
     );

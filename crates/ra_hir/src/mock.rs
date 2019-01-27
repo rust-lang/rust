@@ -2,7 +2,8 @@ use std::{sync::Arc, panic};
 
 use parking_lot::Mutex;
 use ra_db::{
-    CheckCanceled, FilePosition, FileId, CrateGraph, SourceRoot, SourceRootId, SourceDatabase, salsa,
+    mock::FileMap, CheckCanceled, CrateGraph, FileId, FilePosition, SourceDatabase,
+    SourceRoot, SourceRootId, salsa
 };
 use relative_path::RelativePathBuf;
 use test_utils::{parse_fixture, CURSOR_MARKER, extract_offset};
@@ -17,7 +18,7 @@ pub(crate) struct MockDatabase {
     events: Mutex<Option<Vec<salsa::Event<MockDatabase>>>>,
     runtime: salsa::Runtime<MockDatabase>,
     interner: Arc<HirInterner>,
-    file_counter: u32,
+    file_map: Arc<FileMap>,
 }
 
 impl panic::RefUnwindSafe for MockDatabase {}
@@ -41,6 +42,10 @@ impl MockDatabase {
         let (db, _, position) = MockDatabase::from_fixture(fixture);
         let position = position.expect("expected a marker ( <|> )");
         (db, position)
+    }
+
+    pub(crate) fn file_id(&self, file: &str) -> FileId {
+        self.file_map.file_id(file)
     }
 
     fn from_fixture(fixture: &str) -> (MockDatabase, SourceRoot, Option<FilePosition>) {
@@ -89,8 +94,7 @@ impl MockDatabase {
         let is_crate_root = path == "/lib.rs" || path == "/main.rs";
 
         let path = RelativePathBuf::from_path(&path[1..]).unwrap();
-        let file_id = FileId(self.file_counter);
-        self.file_counter += 1;
+        let file_id = Arc::make_mut(&mut self.file_map).add(path.clone());
         let text = Arc::new(text.to_string());
         self.set_file_text(file_id, text);
         self.set_file_relative_path(file_id, path.clone());
@@ -137,7 +141,7 @@ impl Default for MockDatabase {
             events: Default::default(),
             runtime: salsa::Runtime::default(),
             interner: Default::default(),
-            file_counter: 0,
+            file_map: Default::default(),
         };
         db.set_crate_graph(Default::default());
         db
@@ -150,7 +154,7 @@ impl salsa::ParallelDatabase for MockDatabase {
             events: Default::default(),
             runtime: self.runtime.snapshot(self),
             interner: Arc::clone(&self.interner),
-            file_counter: self.file_counter,
+            file_map: Arc::clone(&self.file_map),
         })
     }
 }
