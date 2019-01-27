@@ -96,19 +96,17 @@ impl db::RootDatabase {
 
         let sweep = SweepStrategy::default()
             .discard_values()
-            .discard_all_revisions();
+            .sweep_all_revisions();
 
-        self.query(ra_db::ParseQuery).sweep(sweep.clone());
+        self.query(ra_db::ParseQuery).sweep(sweep);
 
-        self.query(hir::db::HirParseQuery).sweep(sweep.clone());
-        self.query(hir::db::FileItemsQuery).sweep(sweep.clone());
-        self.query(hir::db::FileItemQuery).sweep(sweep.clone());
+        self.query(hir::db::HirParseQuery).sweep(sweep);
+        self.query(hir::db::FileItemsQuery).sweep(sweep);
+        self.query(hir::db::FileItemQuery).sweep(sweep);
 
-        self.query(hir::db::LowerModuleQuery).sweep(sweep.clone());
-        self.query(hir::db::LowerModuleSourceMapQuery)
-            .sweep(sweep.clone());
-        self.query(hir::db::BodySyntaxMappingQuery)
-            .sweep(sweep.clone());
+        self.query(hir::db::LowerModuleQuery).sweep(sweep);
+        self.query(hir::db::LowerModuleSourceMapQuery).sweep(sweep);
+        self.query(hir::db::BodySyntaxMappingQuery).sweep(sweep);
     }
 }
 
