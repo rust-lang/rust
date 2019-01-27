@@ -135,7 +135,7 @@ impl ReturnPass {
         }
         span_lint_and_then(cx, NEEDLESS_RETURN, ret_span, "unneeded return statement", |db| {
             if let Some(snippet) = snippet_opt(cx, inner_span) {
-                db.span_suggestion_with_applicability(
+                db.span_suggestion(
                     ret_span,
                     "remove `return` as shown",
                     snippet,
@@ -180,6 +180,10 @@ impl LintPass for ReturnPass {
     fn get_lints(&self) -> LintArray {
         lint_array!(NEEDLESS_RETURN, LET_AND_RETURN, UNUSED_UNIT)
     }
+
+    fn name(&self) -> &'static str {
+        "Return"
+    }
 }
 
 impl EarlyLintPass for ReturnPass {
@@ -207,7 +211,7 @@ impl EarlyLintPass for ReturnPass {
                     (ty.span, Applicability::MaybeIncorrect)
                 };
                 span_lint_and_then(cx, UNUSED_UNIT, rspan, "unneeded unit return type", |db| {
-                    db.span_suggestion_with_applicability(
+                    db.span_suggestion(
                         rspan,
                         "remove the `-> ()`",
                         String::new(),
@@ -227,7 +231,7 @@ impl EarlyLintPass for ReturnPass {
             then {
                 let sp = expr.span;
                 span_lint_and_then(cx, UNUSED_UNIT, sp, "unneeded unit expression", |db| {
-                    db.span_suggestion_with_applicability(
+                    db.span_suggestion(
                         sp,
                         "remove the final `()`",
                         String::new(),
@@ -243,7 +247,7 @@ impl EarlyLintPass for ReturnPass {
             ast::ExprKind::Ret(Some(ref expr)) | ast::ExprKind::Break(_, Some(ref expr)) => {
                 if is_unit_expr(expr) && !in_macro(expr.span) {
                     span_lint_and_then(cx, UNUSED_UNIT, expr.span, "unneeded `()`", |db| {
-                        db.span_suggestion_with_applicability(
+                        db.span_suggestion(
                             expr.span,
                             "remove the `()`",
                             String::new(),

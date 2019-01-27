@@ -40,6 +40,10 @@ impl LintPass for Pass {
     fn get_lints(&self) -> LintArray {
         lint_array![USELESS_FORMAT]
     }
+
+    fn name(&self) -> &'static str {
+        "UselessFormat"
+    }
 }
 
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Pass {
@@ -79,7 +83,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Pass {
                             };
 
                             span_lint_and_then(cx, USELESS_FORMAT, span, "useless use of `format!`", |db| {
-                                db.span_suggestion_with_applicability(
+                                db.span_suggestion(
                                     expr.span,
                                     message,
                                     sugg,
@@ -95,7 +99,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Pass {
                         if tup.is_empty() {
                             let sugg = format!("{}.to_string()", snippet(cx, expr.span, "<expr>").into_owned());
                             span_lint_and_then(cx, USELESS_FORMAT, span, "useless use of `format!`", |db| {
-                                db.span_suggestion_with_applicability(
+                                db.span_suggestion(
                                     span,
                                     "consider using .to_string()",
                                     sugg,

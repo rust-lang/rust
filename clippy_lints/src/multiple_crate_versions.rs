@@ -37,6 +37,10 @@ impl LintPass for Pass {
     fn get_lints(&self) -> LintArray {
         lint_array!(MULTIPLE_CRATE_VERSIONS)
     }
+
+    fn name(&self) -> &'static str {
+        "MultipleCrateVersions"
+    }
 }
 
 impl EarlyLintPass for Pass {

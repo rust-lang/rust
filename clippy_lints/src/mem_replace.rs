@@ -36,6 +36,10 @@ impl LintPass for MemReplace {
     fn get_lints(&self) -> LintArray {
         lint_array![MEM_REPLACE_OPTION_WITH_NONE]
     }
+
+    fn name(&self) -> &'static str {
+        "MemReplace"
+    }
 }
 
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for MemReplace {

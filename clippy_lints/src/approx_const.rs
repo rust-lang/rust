@@ -60,6 +60,10 @@ impl LintPass for Pass {
     fn get_lints(&self) -> LintArray {
         lint_array!(APPROX_CONSTANT)
     }
+
+    fn name(&self) -> &'static str {
+        "ApproxConstant"
+    }
 }
 
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Pass {

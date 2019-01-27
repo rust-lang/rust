@@ -175,6 +175,10 @@ impl LintPass for Pass {
             WRITE_LITERAL
         )
     }
+
+    fn name(&self) -> &'static str {
+        "Write"
+    }
 }
 
 impl EarlyLintPass for Pass {

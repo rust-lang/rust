@@ -37,6 +37,10 @@ impl LintPass for Pass {
     fn get_lints(&self) -> LintArray {
         lint_array!(DOUBLE_COMPARISONS)
     }
+
+    fn name(&self) -> &'static str {
+        "DoubleComparisons"
+    }
 }
 
 impl<'a, 'tcx> Pass {

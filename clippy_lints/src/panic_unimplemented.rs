@@ -48,6 +48,10 @@ impl LintPass for Pass {
     fn get_lints(&self) -> LintArray {
         lint_array!(PANIC_PARAMS, UNIMPLEMENTED)
     }
+
+    fn name(&self) -> &'static str {
+        "PanicUnimplemented"
+    }
 }
 
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Pass {

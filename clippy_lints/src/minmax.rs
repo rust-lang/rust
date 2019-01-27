@@ -31,6 +31,10 @@ impl LintPass for MinMaxPass {
     fn get_lints(&self) -> LintArray {
         lint_array!(MIN_MAX)
     }
+
+    fn name(&self) -> &'static str {
+        "MinMax"
+    }
 }
 
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for MinMaxPass {

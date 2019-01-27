@@ -30,6 +30,10 @@ impl LintPass for IdentityOp {
     fn get_lints(&self) -> LintArray {
         lint_array!(IDENTITY_OP)
     }
+
+    fn name(&self) -> &'static str {
+        "IdentityOp"
+    }
 }
 
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for IdentityOp {

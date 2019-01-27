@@ -44,6 +44,10 @@ impl LintPass for HashMapLint {
     fn get_lints(&self) -> LintArray {
         lint_array!(MAP_ENTRY)
     }
+
+    fn name(&self) -> &'static str {
+        "HashMap"
+    }
 }
 
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for HashMapLint {
@@ -145,7 +149,7 @@ impl<'a, 'tcx, 'b> Visitor<'tcx> for InsertVisitor<'a, 'tcx, 'b> {
                                            snippet(self.cx, params[1].span, ".."),
                                            snippet(self.cx, params[2].span, ".."));
 
-                        db.span_suggestion_with_applicability(
+                        db.span_suggestion(
                             self.span,
                             "consider using",
                             help,
@@ -157,7 +161,7 @@ impl<'a, 'tcx, 'b> Visitor<'tcx> for InsertVisitor<'a, 'tcx, 'b> {
                                            snippet(self.cx, self.map.span, "map"),
                                            snippet(self.cx, params[1].span, ".."));
 
-                        db.span_suggestion_with_applicability(
+                        db.span_suggestion(
                             self.span,
                             "consider using",
                             help,

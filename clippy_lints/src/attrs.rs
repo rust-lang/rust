@@ -199,6 +199,10 @@ impl LintPass for AttrPass {
             UNKNOWN_CLIPPY_LINTS,
         )
     }
+
+    fn name(&self) -> &'static str {
+        "Attributes"
+    }
 }
 
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for AttrPass {
@@ -269,7 +273,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for AttrPass {
                                             "useless lint attribute",
                                             |db| {
                                                 sugg = sugg.replacen("#[", "#![", 1);
-                                                db.span_suggestion_with_applicability(
+                                                db.span_suggestion(
                                                     line_span,
                                                     "if you just forgot a `!`, use",
                                                     sugg,
@@ -332,7 +336,7 @@ fn check_clippy_lint_names(cx: &LateContext<'_, '_>, items: &[NestedMetaItem]) {
                                 // https://github.com/rust-lang/rust/pull/56992
                                 CheckLintNameResult::NoLint(None) => (),
                                 _ => {
-                                    db.span_suggestion_with_applicability(
+                                    db.span_suggestion(
                                         lint.span,
                                         "lowercase the lint name",
                                         name_lower,
@@ -499,6 +503,10 @@ pub struct CfgAttrPass;
 impl LintPass for CfgAttrPass {
     fn get_lints(&self) -> LintArray {
         lint_array!(DEPRECATED_CFG_ATTR,)
+    }
+
+    fn name(&self) -> &'static str {
+        "DeprecatedCfgAttribute"
     }
 }
 

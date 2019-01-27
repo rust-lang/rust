@@ -100,6 +100,10 @@ impl LintPass for Pass {
     fn get_lints(&self) -> LintArray {
         lint_array!(NO_EFFECT, UNNECESSARY_OPERATION)
     }
+
+    fn name(&self) -> &'static str {
+        "NoEffect"
+    }
 }
 
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Pass {

@@ -202,6 +202,10 @@ impl LintPass for MatchPass {
             MATCH_AS_REF
         )
     }
+
+    fn name(&self) -> &'static str {
+        "Matches"
+    }
 }
 
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for MatchPass {
@@ -371,7 +375,7 @@ fn check_match_bool(cx: &LateContext<'_, '_>, ex: &Expr, arms: &[Arm], expr: &Ex
                         };
 
                         if let Some(sugg) = sugg {
-                            db.span_suggestion_with_applicability(
+                            db.span_suggestion(
                                 expr.span,
                                 "consider using an if/else expression",
                                 sugg,

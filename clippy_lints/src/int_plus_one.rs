@@ -36,6 +36,10 @@ impl LintPass for IntPlusOne {
     fn get_lints(&self) -> LintArray {
         lint_array!(INT_PLUS_ONE)
     }
+
+    fn name(&self) -> &'static str {
+        "IntPlusOne"
+    }
 }
 
 // cases:
@@ -158,7 +162,7 @@ impl IntPlusOne {
             block.span,
             "Unnecessary `>= y + 1` or `x - 1 >=`",
             |db| {
-                db.span_suggestion_with_applicability(
+                db.span_suggestion(
                     block.span,
                     "change `>= y + 1` to `> y` as shown",
                     recommendation,

@@ -102,6 +102,10 @@ impl LintPass for PointerPass {
     fn get_lints(&self) -> LintArray {
         lint_array!(PTR_ARG, CMP_NULL, MUT_FROM_REF)
     }
+
+    fn name(&self) -> &'static str {
+        "Ptr"
+    }
 }
 
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for PointerPass {
@@ -178,7 +182,7 @@ fn check_fn(cx: &LateContext<'_, '_>, decl: &FnDecl, fn_id: NodeId, opt_body_id:
                          with non-Vec-based slices.",
                         |db| {
                             if let Some(ref snippet) = ty_snippet {
-                                db.span_suggestion_with_applicability(
+                                db.span_suggestion(
                                     arg.span,
                                     "change this to",
                                     format!("&[{}]", snippet),
@@ -186,7 +190,7 @@ fn check_fn(cx: &LateContext<'_, '_>, decl: &FnDecl, fn_id: NodeId, opt_body_id:
                                 );
                             }
                             for (clonespan, suggestion) in spans {
-                                db.span_suggestion_with_applicability(
+                                db.span_suggestion(
                                     clonespan,
                                     &snippet_opt(cx, clonespan).map_or("change the call to".into(), |x| {
                                         Cow::Owned(format!("change `{}` to", x))
@@ -206,14 +210,9 @@ fn check_fn(cx: &LateContext<'_, '_>, decl: &FnDecl, fn_id: NodeId, opt_body_id:
                         arg.span,
                         "writing `&String` instead of `&str` involves a new object where a slice will do.",
                         |db| {
-                            db.span_suggestion_with_applicability(
-                                arg.span,
-                                "change this to",
-                                "&str".into(),
-                                Applicability::Unspecified,
-                            );
+                            db.span_suggestion(arg.span, "change this to", "&str".into(), Applicability::Unspecified);
                             for (clonespan, suggestion) in spans {
-                                db.span_suggestion_short_with_applicability(
+                                db.span_suggestion_short(
                                     clonespan,
                                     &snippet_opt(cx, clonespan).map_or("change the call to".into(), |x| {
                                         Cow::Owned(format!("change `{}` to", x))
@@ -246,7 +245,7 @@ fn check_fn(cx: &LateContext<'_, '_>, decl: &FnDecl, fn_id: NodeId, opt_body_id:
                                 arg.span,
                                 "using a reference to `Cow` is not recommended.",
                                 |db| {
-                                    db.span_suggestion_with_applicability(
+                                    db.span_suggestion(
                                         arg.span,
                                         "change this to",
                                         "&".to_owned() + &r,

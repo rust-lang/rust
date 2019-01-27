@@ -30,5 +30,11 @@ error: lint `misaligned_transmute` has been removed: `this lint has been split i
 LL | #[warn(misaligned_transmute)]
    |        ^^^^^^^^^^^^^^^^^^^^
 
-error: aborting due to 5 previous errors
+error: lint `str_to_string` has been removed: `using `str::to_string` is common even today and specialization will likely happen soon`
+  --> $DIR/deprecated.rs:1:8
+   |
+LL | #[warn(str_to_string)]
+   |        ^^^^^^^^^^^^^
+
+error: aborting due to 6 previous errors
 

@@ -124,6 +124,10 @@ impl LintPass for EnumVariantNames {
             MODULE_INCEPTION
         )
     }
+
+    fn name(&self) -> &'static str {
+        "EnumVariantNames"
+    }
 }
 
 fn var2str(var: &Variant) -> LocalInternedString {

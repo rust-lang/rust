@@ -89,6 +89,10 @@ impl LintPass for Formatting {
             POSSIBLE_MISSING_COMMA
         )
     }
+
+    fn name(&self) -> &'static str {
+        "Formatting"
+    }
 }
 
 impl EarlyLintPass for Formatting {

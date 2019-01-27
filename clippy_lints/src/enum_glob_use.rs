@@ -32,6 +32,10 @@ impl LintPass for EnumGlobUse {
     fn get_lints(&self) -> LintArray {
         lint_array!(ENUM_GLOB_USE)
     }
+
+    fn name(&self) -> &'static str {
+        "EnumGlobUse"
+    }
 }
 
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for EnumGlobUse {

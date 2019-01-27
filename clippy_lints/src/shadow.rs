@@ -82,6 +82,10 @@ impl LintPass for Pass {
     fn get_lints(&self) -> LintArray {
         lint_array!(SHADOW_SAME, SHADOW_REUSE, SHADOW_UNRELATED)
     }
+
+    fn name(&self) -> &'static str {
+        "Shadow"
+    }
 }
 
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Pass {

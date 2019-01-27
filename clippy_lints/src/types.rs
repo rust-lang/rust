@@ -168,6 +168,10 @@ impl LintPass for TypePass {
     fn get_lints(&self) -> LintArray {
         lint_array!(BOX_VEC, VEC_BOX, OPTION_OPTION, LINKEDLIST, BORROWED_BOX)
     }
+
+    fn name(&self) -> &'static str {
+        "Types"
+    }
 }
 
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for TypePass {
@@ -467,6 +471,10 @@ impl LintPass for LetPass {
     fn get_lints(&self) -> LintArray {
         lint_array!(LET_UNIT_VALUE)
     }
+
+    fn name(&self) -> &'static str {
+        "LetUnitValue"
+    }
 }
 
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for LetPass {
@@ -531,6 +539,10 @@ impl LintPass for UnitCmp {
     fn get_lints(&self) -> LintArray {
         lint_array!(UNIT_CMP)
     }
+
+    fn name(&self) -> &'static str {
+        "UnicCmp"
+    }
 }
 
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for UnitCmp {
@@ -585,6 +597,10 @@ pub struct UnitArg;
 impl LintPass for UnitArg {
     fn get_lints(&self) -> LintArray {
         lint_array!(UNIT_ARG)
+    }
+
+    fn name(&self) -> &'static str {
+        "UnitArg"
     }
 }
 
@@ -1073,6 +1089,10 @@ impl LintPass for CastPass {
             FN_TO_NUMERIC_CAST_WITH_TRUNCATION,
         )
     }
+
+    fn name(&self) -> &'static str {
+        "Casts"
+    }
 }
 
 // Check if the given type is either `core::ffi::c_void` or
@@ -1278,6 +1298,10 @@ impl LintPass for TypeComplexityPass {
     fn get_lints(&self) -> LintArray {
         lint_array!(TYPE_COMPLEXITY)
     }
+
+    fn name(&self) -> &'static str {
+        "TypeComplexityPass"
+    }
 }
 
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for TypeComplexityPass {
@@ -1442,6 +1466,10 @@ impl LintPass for CharLitAsU8 {
     fn get_lints(&self) -> LintArray {
         lint_array!(CHAR_LIT_AS_U8)
     }
+
+    fn name(&self) -> &'static str {
+        "CharLiteralAsU8"
+    }
 }
 
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for CharLitAsU8 {
@@ -1499,6 +1527,10 @@ pub struct AbsurdExtremeComparisons;
 impl LintPass for AbsurdExtremeComparisons {
     fn get_lints(&self) -> LintArray {
         lint_array!(ABSURD_EXTREME_COMPARISONS)
+    }
+
+    fn name(&self) -> &'static str {
+        "AbsurdExtremeComparisons"
     }
 }
 
@@ -1674,6 +1706,10 @@ pub struct InvalidUpcastComparisons;
 impl LintPass for InvalidUpcastComparisons {
     fn get_lints(&self) -> LintArray {
         lint_array!(INVALID_UPCAST_COMPARISONS)
+    }
+
+    fn name(&self) -> &'static str {
+        "InvalidUpcastComparisons"
     }
 }
 
@@ -1917,6 +1953,10 @@ pub struct ImplicitHasher;
 impl LintPass for ImplicitHasher {
     fn get_lints(&self) -> LintArray {
         lint_array!(IMPLICIT_HASHER)
+    }
+
+    fn name(&self) -> &'static str {
+        "ImplicitHasher"
     }
 }
 
@@ -2264,6 +2304,10 @@ pub struct RefToMut;
 impl LintPass for RefToMut {
     fn get_lints(&self) -> LintArray {
         lint_array!(CAST_REF_TO_MUT)
+    }
+
+    fn name(&self) -> &'static str {
+        "RefToMut"
     }
 }
 

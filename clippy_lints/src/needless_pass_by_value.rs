@@ -56,6 +56,10 @@ impl LintPass for NeedlessPassByValue {
     fn get_lints(&self) -> LintArray {
         lint_array![NEEDLESS_PASS_BY_VALUE]
     }
+
+    fn name(&self) -> &'static str {
+        "NeedlessPassByValue"
+    }
 }
 
 macro_rules! need {
@@ -233,7 +237,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for NeedlessPassByValue {
                                 }).unwrap());
                             then {
                                 let slice_ty = format!("&[{}]", snippet(cx, elem_ty.span, "_"));
-                                db.span_suggestion_with_applicability(
+                                db.span_suggestion(
                                     input.span,
                                     "consider changing the type to",
                                     slice_ty,
@@ -241,7 +245,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for NeedlessPassByValue {
                                 );
 
                                 for (span, suggestion) in clone_spans {
-                                    db.span_suggestion_with_applicability(
+                                    db.span_suggestion(
                                         span,
                                         &snippet_opt(cx, span)
                                             .map_or(
@@ -262,7 +266,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for NeedlessPassByValue {
                         if match_type(cx, ty, &paths::STRING) {
                             if let Some(clone_spans) =
                                 get_spans(cx, Some(body.id()), idx, &[("clone", ".to_string()"), ("as_str", "")]) {
-                                db.span_suggestion_with_applicability(
+                                db.span_suggestion(
                                     input.span,
                                     "consider changing the type to",
                                     "&str".to_string(),
@@ -270,7 +274,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for NeedlessPassByValue {
                                 );
 
                                 for (span, suggestion) in clone_spans {
-                                    db.span_suggestion_with_applicability(
+                                    db.span_suggestion(
                                         span,
                                         &snippet_opt(cx, span)
                                             .map_or(

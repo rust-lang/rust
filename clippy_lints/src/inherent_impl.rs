@@ -56,6 +56,10 @@ impl LintPass for Pass {
     fn get_lints(&self) -> LintArray {
         lint_array!(MULTIPLE_INHERENT_IMPL)
     }
+
+    fn name(&self) -> &'static str {
+        "MultipleInherientImpl"
+    }
 }
 
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Pass {

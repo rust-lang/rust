@@ -219,6 +219,10 @@ impl LintPass for Transmute {
             TRANSMUTE_INT_TO_FLOAT,
         )
     }
+
+    fn name(&self) -> &'static str {
+        "Transmute"
+    }
 }
 
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Transmute {
@@ -256,12 +260,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Transmute {
                                             arg.as_ty(cx.tcx.mk_ptr(rty_and_mut)).as_ty(to_ty)
                                         };
 
-                                        db.span_suggestion_with_applicability(
-                                            e.span,
-                                            "try",
-                                            sugg.to_string(),
-                                            Applicability::Unspecified,
-                                        );
+                                        db.span_suggestion(e.span, "try", sugg.to_string(), Applicability::Unspecified);
                                     }
                                 },
                             ),
@@ -272,7 +271,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Transmute {
                                 "transmute from an integer to a pointer",
                                 |db| {
                                     if let Some(arg) = sugg::Sugg::hir_opt(cx, &args[0]) {
-                                        db.span_suggestion_with_applicability(
+                                        db.span_suggestion(
                                             e.span,
                                             "try",
                                             arg.as_ty(&to_ty.to_string()).to_string(),
@@ -331,7 +330,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Transmute {
                                         arg.as_ty(&format!("{} {}", cast, get_type_snippet(cx, qpath, to_ref_ty)))
                                     };
 
-                                    db.span_suggestion_with_applicability(
+                                    db.span_suggestion(
                                         e.span,
                                         "try",
                                         sugg::make_unop(deref, arg).to_string(),
@@ -352,7 +351,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Transmute {
                                         } else {
                                             arg
                                         };
-                                        db.span_suggestion_with_applicability(
+                                        db.span_suggestion(
                                             e.span,
                                             "consider using",
                                             format!("std::char::from_u32({}).unwrap()", arg.to_string()),
@@ -379,7 +378,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Transmute {
                                             e.span,
                                             &format!("transmute from a `{}` to a `{}`", from_ty, to_ty),
                                             |db| {
-                                                db.span_suggestion_with_applicability(
+                                                db.span_suggestion(
                                                     e.span,
                                                     "consider using",
                                                     format!(
@@ -412,7 +411,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Transmute {
                                                     } else {
                                                         sugg_paren.addr_deref()
                                                     };
-                                                    db.span_suggestion_with_applicability(
+                                                    db.span_suggestion(
                                                         e.span,
                                                         "try",
                                                         sugg.to_string(),
@@ -432,12 +431,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Transmute {
                                 |db| {
                                     if let Some(arg) = sugg::Sugg::hir_opt(cx, &args[0]) {
                                         let sugg = arg.as_ty(cx.tcx.mk_ptr(to_ty));
-                                        db.span_suggestion_with_applicability(
-                                            e.span,
-                                            "try",
-                                            sugg.to_string(),
-                                            Applicability::Unspecified,
-                                        );
+                                        db.span_suggestion(e.span, "try", sugg.to_string(), Applicability::Unspecified);
                                     }
                                 },
                             ),
@@ -450,7 +444,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Transmute {
                                     |db| {
                                         let arg = sugg::Sugg::hir(cx, &args[0], "..");
                                         let zero = sugg::Sugg::NonParen(Cow::from("0"));
-                                        db.span_suggestion_with_applicability(
+                                        db.span_suggestion(
                                             e.span,
                                             "consider using",
                                             sugg::make_binop(ast::BinOpKind::Ne, &arg, &zero).to_string(),
@@ -474,7 +468,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Transmute {
                                     } else {
                                         arg
                                     };
-                                    db.span_suggestion_with_applicability(
+                                    db.span_suggestion(
                                         e.span,
                                         "consider using",
                                         format!("{}::from_bits({})", to_ty, arg.to_string()),

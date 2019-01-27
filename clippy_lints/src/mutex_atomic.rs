@@ -53,6 +53,10 @@ impl LintPass for MutexAtomic {
     fn get_lints(&self) -> LintArray {
         lint_array!(MUTEX_ATOMIC, MUTEX_INTEGER)
     }
+
+    fn name(&self) -> &'static str {
+        "Mutex"
+    }
 }
 
 pub struct MutexAtomic;

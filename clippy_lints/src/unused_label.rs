@@ -39,6 +39,10 @@ impl LintPass for UnusedLabel {
     fn get_lints(&self) -> LintArray {
         lint_array!(UNUSED_LABEL)
     }
+
+    fn name(&self) -> &'static str {
+        "UnusedLable"
+    }
 }
 
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for UnusedLabel {

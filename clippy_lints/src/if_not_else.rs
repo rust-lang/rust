@@ -44,6 +44,10 @@ impl LintPass for IfNotElse {
     fn get_lints(&self) -> LintArray {
         lint_array!(IF_NOT_ELSE)
     }
+
+    fn name(&self) -> &'static str {
+        "IfNotElse"
+    }
 }
 
 impl EarlyLintPass for IfNotElse {

@@ -58,6 +58,10 @@ impl LintPass for NonminimalBool {
     fn get_lints(&self) -> LintArray {
         lint_array!(NONMINIMAL_BOOL, LOGIC_BUG)
     }
+
+    fn name(&self) -> &'static str {
+        "NonminimalBool"
+    }
 }
 
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for NonminimalBool {
@@ -389,7 +393,7 @@ impl<'a, 'tcx> NonminimalBoolVisitor<'a, 'tcx> {
                                     "this expression can be optimized out by applying boolean operations to the \
                                      outer expression",
                                 );
-                                db.span_suggestion_with_applicability(
+                                db.span_suggestion(
                                     e.span,
                                     "it would look like the following",
                                     suggest(self.cx, suggestion, &h2q.terminals).0,
@@ -419,7 +423,7 @@ impl<'a, 'tcx> NonminimalBoolVisitor<'a, 'tcx> {
                     e.span,
                     "this boolean expression can be simplified",
                     |db| {
-                        db.span_suggestions_with_applicability(
+                        db.span_suggestions(
                             e.span,
                             "try",
                             suggestions.into_iter(),

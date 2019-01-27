@@ -31,6 +31,10 @@ impl LintPass for Pass {
     fn get_lints(&self) -> LintArray {
         lint_array!(EXPLICIT_WRITE)
     }
+
+    fn name(&self) -> &'static str {
+        "ExplicitWrite"
+    }
 }
 
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Pass {

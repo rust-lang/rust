@@ -35,6 +35,10 @@ impl LintPass for Pass {
     fn get_lints(&self) -> LintArray {
         lint_array!(DEEP_CODE_INSPECTION)
     }
+
+    fn name(&self) -> &'static str {
+        "DeepCodeInspector"
+    }
 }
 
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Pass {

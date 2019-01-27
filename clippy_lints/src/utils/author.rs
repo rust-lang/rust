@@ -53,6 +53,10 @@ impl LintPass for Pass {
     fn get_lints(&self) -> LintArray {
         lint_array!(LINT_AUTHOR)
     }
+
+    fn name(&self) -> &'static str {
+        "Author"
+    }
 }
 
 fn prelude() {

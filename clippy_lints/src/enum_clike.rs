@@ -40,6 +40,10 @@ impl LintPass for UnportableVariant {
     fn get_lints(&self) -> LintArray {
         lint_array!(ENUM_CLIKE_UNPORTABLE_VARIANT)
     }
+
+    fn name(&self) -> &'static str {
+        "UnportableVariant"
+    }
 }
 
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for UnportableVariant {

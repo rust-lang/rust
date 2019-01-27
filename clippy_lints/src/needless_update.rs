@@ -33,6 +33,10 @@ impl LintPass for Pass {
     fn get_lints(&self) -> LintArray {
         lint_array!(NEEDLESS_UPDATE)
     }
+
+    fn name(&self) -> &'static str {
+        "NeedUpdate"
+    }
 }
 
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Pass {

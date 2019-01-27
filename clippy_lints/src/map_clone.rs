@@ -46,6 +46,10 @@ impl LintPass for Pass {
     fn get_lints(&self) -> LintArray {
         lint_array!(MAP_CLONE)
     }
+
+    fn name(&self) -> &'static str {
+        "MapClone"
+    }
 }
 
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Pass {

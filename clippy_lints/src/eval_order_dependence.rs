@@ -61,6 +61,10 @@ impl LintPass for EvalOrderDependence {
     fn get_lints(&self) -> LintArray {
         lint_array!(EVAL_ORDER_DEPENDENCE, DIVERGING_SUB_EXPRESSION)
     }
+
+    fn name(&self) -> &'static str {
+        "EvalOrderDependence"
+    }
 }
 
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for EvalOrderDependence {

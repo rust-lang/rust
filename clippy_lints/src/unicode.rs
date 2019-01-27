@@ -65,6 +65,10 @@ impl LintPass for Unicode {
     fn get_lints(&self) -> LintArray {
         lint_array!(ZERO_WIDTH_SPACE, NON_ASCII_LITERAL, UNICODE_NOT_NFC)
     }
+
+    fn name(&self) -> &'static str {
+        "Unicode"
+    }
 }
 
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Unicode {

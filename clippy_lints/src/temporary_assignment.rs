@@ -44,6 +44,10 @@ impl LintPass for Pass {
     fn get_lints(&self) -> LintArray {
         lint_array!(TEMPORARY_ASSIGNMENT)
     }
+
+    fn name(&self) -> &'static str {
+        "TemporaryAssignment"
+    }
 }
 
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Pass {

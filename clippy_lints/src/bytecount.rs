@@ -38,6 +38,10 @@ impl LintPass for ByteCount {
     fn get_lints(&self) -> LintArray {
         lint_array!(NAIVE_BYTECOUNT)
     }
+
+    fn name(&self) -> &'static str {
+        "ByteCount"
+    }
 }
 
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for ByteCount {

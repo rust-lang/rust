@@ -71,6 +71,10 @@ impl LintPass for NonExpressiveNames {
     fn get_lints(&self) -> LintArray {
         lint_array!(SIMILAR_NAMES, MANY_SINGLE_CHAR_NAMES, JUST_UNDERSCORES_AND_DIGITS)
     }
+
+    fn name(&self) -> &'static str {
+        "NoneExpressiveNames"
+    }
 }
 
 struct ExistingName {

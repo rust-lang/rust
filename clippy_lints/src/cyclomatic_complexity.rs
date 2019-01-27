@@ -42,6 +42,10 @@ impl LintPass for CyclomaticComplexity {
     fn get_lints(&self) -> LintArray {
         lint_array!(CYCLOMATIC_COMPLEXITY)
     }
+
+    fn name(&self) -> &'static str {
+        "CyclomaticComplexity"
+    }
 }
 
 impl CyclomaticComplexity {

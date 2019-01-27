@@ -52,6 +52,10 @@ impl LintPass for Arithmetic {
     fn get_lints(&self) -> LintArray {
         lint_array!(INTEGER_ARITHMETIC, FLOAT_ARITHMETIC)
     }
+
+    fn name(&self) -> &'static str {
+        "Arithmetic"
+    }
 }
 
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Arithmetic {

@@ -35,6 +35,10 @@ impl LintPass for CopyIterator {
     fn get_lints(&self) -> LintArray {
         lint_array![COPY_ITERATOR]
     }
+
+    fn name(&self) -> &'static str {
+        "CopyIterator"
+    }
 }
 
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for CopyIterator {

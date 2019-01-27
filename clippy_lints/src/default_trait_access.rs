@@ -35,6 +35,10 @@ impl LintPass for DefaultTraitAccess {
     fn get_lints(&self) -> LintArray {
         lint_array!(DEFAULT_TRAIT_ACCESS)
     }
+
+    fn name(&self) -> &'static str {
+        "DefaultTraitAccess"
+    }
 }
 
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for DefaultTraitAccess {

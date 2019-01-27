@@ -35,6 +35,10 @@ impl LintPass for Precedence {
     fn get_lints(&self) -> LintArray {
         lint_array!(PRECEDENCE)
     }
+
+    fn name(&self) -> &'static str {
+        "Precedence"
+    }
 }
 
 impl EarlyLintPass for Precedence {

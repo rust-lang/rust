@@ -31,6 +31,10 @@ impl LintPass for MemDiscriminant {
     fn get_lints(&self) -> LintArray {
         lint_array![MEM_DISCRIMINANT_NON_ENUM]
     }
+
+    fn name(&self) -> &'static str {
+        "MemDiscriminant"
+    }
 }
 
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for MemDiscriminant {
@@ -70,7 +74,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for MemDiscriminant {
                             }
 
                             let derefs: String = iter::repeat('*').take(derefs_needed).collect();
-                            db.span_suggestion_with_applicability(
+                            db.span_suggestion(
                                 param.span,
                                 "try dereferencing",
                                 format!("{}{}", derefs, snippet(cx, cur_expr.span, "<param>")),

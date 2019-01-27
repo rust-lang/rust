@@ -46,6 +46,10 @@ impl LintPass for ElseIfWithoutElse {
     fn get_lints(&self) -> LintArray {
         lint_array!(ELSE_IF_WITHOUT_ELSE)
     }
+
+    fn name(&self) -> &'static str {
+        "ElseIfWithoutElse"
+    }
 }
 
 impl EarlyLintPass for ElseIfWithoutElse {

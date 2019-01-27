@@ -30,6 +30,10 @@ impl LintPass for NegMultiply {
     fn get_lints(&self) -> LintArray {
         lint_array!(NEG_MULTIPLY)
     }
+
+    fn name(&self) -> &'static str {
+        "NegMultiply"
+    }
 }
 
 #[allow(clippy::match_same_arms)]

@@ -107,6 +107,10 @@ impl LintPass for NeedlessContinue {
     fn get_lints(&self) -> LintArray {
         lint_array!(NEEDLESS_CONTINUE)
     }
+
+    fn name(&self) -> &'static str {
+        "NeedlessContinue"
+    }
 }
 
 impl EarlyLintPass for NeedlessContinue {

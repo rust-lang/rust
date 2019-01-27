@@ -242,6 +242,10 @@ impl LintPass for Pass {
             FLOAT_CMP_CONST
         )
     }
+
+    fn name(&self) -> &'static str {
+        "MiscLints"
+    }
 }
 
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Pass {
@@ -298,7 +302,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Pass {
                         l.pat.span,
                         "`ref` on an entire `let` pattern is discouraged, take a reference with `&` instead",
                         |db| {
-                            db.span_suggestion_with_applicability(
+                            db.span_suggestion(
                                 s.span,
                                 "try",
                                 format!(
@@ -326,7 +330,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Pass {
                     "boolean short circuit operator in statement may be clearer using an explicit test",
                     |db| {
                         let sugg = if binop.node == BinOpKind::Or { !sugg } else { sugg };
-                        db.span_suggestion_with_applicability(
+                        db.span_suggestion(
                             s.span,
                             "replace it with",
                             format!(
@@ -383,7 +387,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Pass {
                         let lhs = Sugg::hir(cx, left, "..");
                         let rhs = Sugg::hir(cx, right, "..");
 
-                        db.span_suggestion_with_applicability(
+                        db.span_suggestion(
                             expr.span,
                             "consider comparing them within some error",
                             format!("({}).abs() < error", lhs - rhs),
@@ -564,7 +568,7 @@ fn check_to_owned(cx: &LateContext<'_, '_>, expr: &Expr, other: &Expr) {
                 snip.to_string()
             };
 
-            db.span_suggestion_with_applicability(
+            db.span_suggestion(
                 lint_span,
                 "try",
                 try_hint,

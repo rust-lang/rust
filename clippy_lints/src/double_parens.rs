@@ -29,6 +29,10 @@ impl LintPass for DoubleParens {
     fn get_lints(&self) -> LintArray {
         lint_array!(DOUBLE_PARENS)
     }
+
+    fn name(&self) -> &'static str {
+        "DoubleParens"
+    }
 }
 
 impl EarlyLintPass for DoubleParens {

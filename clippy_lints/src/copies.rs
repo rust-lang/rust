@@ -110,6 +110,10 @@ impl LintPass for CopyAndPaste {
     fn get_lints(&self) -> LintArray {
         lint_array![IFS_SAME_COND, IF_SAME_THEN_ELSE, MATCH_SAME_ARMS]
     }
+
+    fn name(&self) -> &'static str {
+        "CopyAndPaste"
+    }
 }
 
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for CopyAndPaste {
@@ -203,7 +207,7 @@ fn lint_match_arms(cx: &LateContext<'_, '_>, expr: &Expr) {
                 |db| {
                     db.span_note(i.body.span, "same as this");
 
-                    // Note: this does not use `span_suggestion_with_applicability` on purpose:
+                    // Note: this does not use `span_suggestion` on purpose:
                     // there is no clean way
                     // to remove the other arm. Building a span and suggest to replace it to ""
                     // makes an even more confusing error message. Also in order not to make up a

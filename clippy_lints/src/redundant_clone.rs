@@ -73,6 +73,10 @@ impl LintPass for RedundantClone {
     fn get_lints(&self) -> LintArray {
         lint_array!(REDUNDANT_CLONE)
     }
+
+    fn name(&self) -> &'static str {
+        "RedundantClone"
+    }
 }
 
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for RedundantClone {
@@ -198,7 +202,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for RedundantClone {
                         );
 
                         span_lint_node_and_then(cx, REDUNDANT_CLONE, node, sugg_span, "redundant clone", |db| {
-                            db.span_suggestion_with_applicability(
+                            db.span_suggestion(
                                 sugg_span,
                                 "remove this",
                                 String::new(),

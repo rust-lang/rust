@@ -184,6 +184,10 @@ impl<'a> LintPass for Pass {
     fn get_lints(&self) -> LintArray {
         lint_array!(PANICKING_UNWRAP, UNNECESSARY_UNWRAP)
     }
+
+    fn name(&self) -> &'static str {
+        "Unwrap"
+    }
 }
 
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Pass {

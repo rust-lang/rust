@@ -30,6 +30,10 @@ impl LintPass for NonSensical {
     fn get_lints(&self) -> LintArray {
         lint_array!(NONSENSICAL_OPEN_OPTIONS)
     }
+
+    fn name(&self) -> &'static str {
+        "OpenOptions"
+    }
 }
 
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for NonSensical {

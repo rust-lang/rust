@@ -61,6 +61,10 @@ impl LintPass for LifetimePass {
     fn get_lints(&self) -> LintArray {
         lint_array!(NEEDLESS_LIFETIMES, EXTRA_UNUSED_LIFETIMES)
     }
+
+    fn name(&self) -> &'static str {
+        "LifeTimes"
+    }
 }
 
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for LifetimePass {

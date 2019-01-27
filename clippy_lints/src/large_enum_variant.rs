@@ -46,6 +46,10 @@ impl LintPass for LargeEnumVariant {
     fn get_lints(&self) -> LintArray {
         lint_array!(LARGE_ENUM_VARIANT)
     }
+
+    fn name(&self) -> &'static str {
+        "LargeEnumVariant"
+    }
 }
 
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for LargeEnumVariant {
@@ -96,7 +100,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for LargeEnumVariant {
                                     VariantData::Unit(_) => unreachable!(),
                                 };
                                 if let Some(snip) = snippet_opt(cx, span) {
-                                    db.span_suggestion_with_applicability(
+                                    db.span_suggestion(
                                         span,
                                         "consider boxing the large fields to reduce the total size of the \
                                          enum",

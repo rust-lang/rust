@@ -49,6 +49,10 @@ impl LintPass for Pass {
     fn get_lints(&self) -> LintArray {
         lint_array!(REDUNDANT_PATTERN_MATCHING)
     }
+
+    fn name(&self) -> &'static str {
+        "RedundantPatternMatching"
+    }
 }
 
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Pass {
@@ -94,7 +98,7 @@ fn find_sugg_for_if_let<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, expr: &'tcx Expr, 
             &format!("redundant pattern matching, consider using `{}`", good_method),
             |db| {
                 let span = expr.span.to(op.span);
-                db.span_suggestion_with_applicability(
+                db.span_suggestion(
                     span,
                     "try this",
                     format!("if {}.{}", snippet(cx, op.span, "_"), good_method),
@@ -159,7 +163,7 @@ fn find_sugg_for_match<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, expr: &'tcx Expr, o
                 &format!("redundant pattern matching, consider using `{}`", good_method),
                 |db| {
                     let span = expr.span.to(op.span);
-                    db.span_suggestion_with_applicability(
+                    db.span_suggestion(
                         span,
                         "try this",
                         format!("{}.{}", snippet(cx, op.span, "_"), good_method),

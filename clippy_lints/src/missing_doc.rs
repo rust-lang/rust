@@ -90,6 +90,10 @@ impl LintPass for MissingDoc {
     fn get_lints(&self) -> LintArray {
         lint_array![MISSING_DOCS_IN_PRIVATE_ITEMS]
     }
+
+    fn name(&self) -> &'static str {
+        "MissingDoc"
+    }
 }
 
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for MissingDoc {
