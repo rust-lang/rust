@@ -5,7 +5,7 @@ RUN apt-get install -y --no-install-recommends \
     g++ make file curl ca-certificates python git \
     cmake sudo gdb
 
-# TODO(denzp): setup `ptx-linker` CI for auttomatic binary releases.
+# FIXME: setup `ptx-linker` CI for automatic binary releases.
 RUN curl -sL https://github.com/denzp/rust-ptx-linker/releases/download/v0.9.0-alpha/rust-ptx-linker.linux64.tar.gz | \
     tar -xzvC /usr/bin
 

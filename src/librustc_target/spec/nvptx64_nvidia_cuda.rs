@@ -22,9 +22,9 @@ pub fn target() -> TargetResult {
             linker: Some("rust-ptx-linker".to_string()),
 
             // With `ptx-linker` approach, it can be later overriden via link flags.
-            cpu: "sm_20".to_string(),
+            cpu: "sm_30".to_string(),
 
-            // TODO(denzp): create tests for the atomics.
+            // FIXME: create tests for the atomics.
             max_atomic_width: Some(64),
 
             // Unwinding on CUDA is neither feasible nor useful.
@@ -51,7 +51,7 @@ pub fn target() -> TargetResult {
             // This behavior is not supported by PTX ISA.
             merge_functions: MergeFunctions::Disabled,
 
-            // TODO(denzp): enable compilation tests for the target and
+            // FIXME: enable compilation tests for the target and
             // create the tests for this.
             abi_blacklist: vec![
                 Abi::Cdecl,

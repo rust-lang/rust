@@ -3,7 +3,7 @@
 #![feature(abi_ptx)]
 
 // Verify the default CUDA arch.
-// CHECK: .target sm_20
+// CHECK: .target sm_30
 // CHECK: .address_size 64
 
 // Verify function name doesn't contain unacceaptable characters.
