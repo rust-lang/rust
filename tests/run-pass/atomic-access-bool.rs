@@ -8,10 +8,9 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use std::sync::atomic::{AtomicBool, ATOMIC_BOOL_INIT};
-use std::sync::atomic::Ordering::*;
+use std::sync::atomic::{AtomicBool, Ordering::*};
 
-static mut ATOMIC: AtomicBool = ATOMIC_BOOL_INIT;
+static mut ATOMIC: AtomicBool = AtomicBool::new(false);
 
 fn main() {
     unsafe {
