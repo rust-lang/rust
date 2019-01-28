@@ -600,7 +600,7 @@ impl<'a> CrateLoader<'a> {
             *(sym as *const &[ProcMacro])
         };
 
-        let mut extensions: Vec<_> = decls.iter().map(|&decl| {
+        let extensions = decls.iter().map(|&decl| {
             match decl {
                 ProcMacro::CustomDerive { trait_name, attributes, client } => {
                     let attrs = attributes.iter().cloned().map(Symbol::intern).collect::<Vec<_>>();
@@ -627,17 +627,13 @@ impl<'a> CrateLoader<'a> {
                     })
                 }
             }
-        }).map(|(name, ext)| (name, Lrc::new(ext))).collect();
+        }).map(|(name, ext)| (Symbol::intern(name), Lrc::new(ext))).collect();
 
         // Intentionally leak the dynamic library. We can't ever unload it
         // since the library can make things that will live arbitrarily long.
         mem::forget(lib);
 
-        // Sort by macro name to ensure this is ordered the same way on
-        // both host and target proc macro crates
-        extensions.sort_by_key(|ext| ext.0);
-
-        extensions.into_iter().map(|(name, ext)| (Symbol::intern(name), ext)).collect()
+        extensions
     }
 
     /// Look for a plugin registrar. Returns library path, crate
