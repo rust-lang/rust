@@ -35,7 +35,7 @@ o("debug", "rust.debug", "enables debugging environment; does not affect optimiz
 o("docs", "build.docs", "build standard library documentation")
 o("compiler-docs", "build.compiler-docs", "build compiler documentation")
 o("optimize-tests", "rust.optimize-tests", "build tests with optimizations")
-o("experimental-parallel-queries", "rust.experimental-parallel-queries", "build rustc with experimental parallelization")
+o("parallel-compiler", "rust.parallel-compiler", "build a multi-threaded rustc")
 o("test-miri", "rust.test-miri", "run miri's test suite")
 o("debuginfo-tests", "rust.debuginfo-tests", "build tests with debugger metadata")
 o("verbose-tests", "rust.verbose-tests", "enable verbose output when running tests")
