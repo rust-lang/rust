@@ -490,7 +490,11 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
             } else {
                 None
             },
-
+            proc_macro_stability: if is_proc_macro {
+                tcx.lookup_stability(DefId::local(CRATE_DEF_INDEX)).map(|stab| stab.clone())
+            } else {
+                None
+            },
             compiler_builtins: attr::contains_name(&attrs, "compiler_builtins"),
             needs_allocator: attr::contains_name(&attrs, "needs_allocator"),
             needs_panic_runtime: attr::contains_name(&attrs, "needs_panic_runtime"),
