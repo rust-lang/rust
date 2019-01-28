@@ -11,6 +11,7 @@ mod flatten;
 mod zip;
 
 pub use self::chain::Chain;
+#[stable(feature = "rust1", since = "1.0.0")]
 pub use self::flatten::{FlatMap, Flatten};
 pub use self::zip::Zip;
 pub(crate) use self::zip::TrustedRandomAccess;
