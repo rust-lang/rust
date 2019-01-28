@@ -1,6 +1,6 @@
 use ra_syntax::{
     ast::{self, AstNode},
-    SyntaxKind::WHITESPACE,
+    SyntaxKind::WHITESPACE, SyntaxKind::MATCH_ARM, SyntaxKind::LAMBDA_EXPR,
     SyntaxNode, TextUnit,
 };
 
@@ -10,7 +10,7 @@ pub fn introduce_variable<'a>(ctx: AssistCtx) -> Option<Assist> {
     let node = ctx.covering_node();
     let expr = node.ancestors().filter_map(ast::Expr::cast).next()?;
 
-    let anchor_stmt = anchor_stmt(expr)?;
+    let (anchor_stmt, wrap_in_block) = anchor_stmt(expr)?;
     let indent = anchor_stmt.prev_sibling()?;
     if indent.kind() != WHITESPACE {
         return None;
@@ -18,7 +18,14 @@ pub fn introduce_variable<'a>(ctx: AssistCtx) -> Option<Assist> {
     ctx.build("introduce variable", move |edit| {
         let mut buf = String::new();
 
-        buf.push_str("let var_name = ");
+        let cursor_offset = if wrap_in_block {
+            buf.push_str("{ let var_name = ");
+            TextUnit::of_str("{ let ")
+        } else {
+            buf.push_str("let var_name = ");
+            TextUnit::of_str("let ")
+        };
+
         expr.syntax().text().push_to(&mut buf);
         let full_stmt = ast::ExprStmt::cast(anchor_stmt);
         let is_full_stmt = if let Some(expr_stmt) = full_stmt {
@@ -36,28 +43,44 @@ pub fn introduce_variable<'a>(ctx: AssistCtx) -> Option<Assist> {
             indent.text().push_to(&mut buf);
             edit.replace(expr.syntax().range(), "var_name".to_string());
             edit.insert(anchor_stmt.range().start(), buf);
+            if wrap_in_block {
+                edit.insert(anchor_stmt.range().end(), " }");
+            }
         }
-        edit.set_cursor(anchor_stmt.range().start() + TextUnit::of_str("let "));
+        edit.set_cursor(anchor_stmt.range().start() + cursor_offset);
     })
 }
 
-/// Statement or last in the block expression, which will follow
-/// the freshly introduced var.
-fn anchor_stmt(expr: &ast::Expr) -> Option<&SyntaxNode> {
-    expr.syntax().ancestors().find(|&node| {
+/// Returns the syntax node which will follow the freshly introduced var
+/// and a boolean indicating whether we have to wrap it within a { } block
+/// to produce correct code.
+/// It can be a statement, the last in a block expression or a wanna be block
+/// expression like a lamba or match arm.
+fn anchor_stmt(expr: &ast::Expr) -> Option<(&SyntaxNode, bool)> {
+    expr.syntax().ancestors().find_map(|node| {
         if ast::Stmt::cast(node).is_some() {
-            return true;
+            return Some((node, false));
         }
+
         if let Some(expr) = node
             .parent()
             .and_then(ast::Block::cast)
             .and_then(|it| it.expr())
         {
             if expr.syntax() == node {
-                return true;
+                return Some((node, false));
             }
         }
-        false
+
+        if let Some(parent) = node.parent() {
+            if parent.kind() == MATCH_ARM
+                || parent.kind() == LAMBDA_EXPR
+            {
+                return Some((node, true));
+            }
+        }
+
+        None
     })
 }
 
@@ -159,6 +182,97 @@ fn foo() {
     let <|>var_name = { let x = 0; x };
     something_else();
 }",
+        );
+    }
+
+    #[test]
+    fn test_introduce_var_in_match_arm_no_block() {
+        check_assist_range(
+            introduce_variable,
+            "
+fn main() {
+    let x = true;
+    let tuple = match x {
+        true => (<|>2 + 2<|>, true)
+        _ => (0, false)
+    };
+}
+",
+            "
+fn main() {
+    let x = true;
+    let tuple = match x {
+        true => { let <|>var_name = 2 + 2; (var_name, true) }
+        _ => (0, false)
+    };
+}
+",
+        );
+    }
+
+    #[test]
+    fn test_introduce_var_in_match_arm_with_block() {
+        check_assist_range(
+            introduce_variable,
+            "
+fn main() {
+    let x = true;
+    let tuple = match x {
+        true => {
+            let y = 1;
+            (<|>2 + y<|>, true)
+        }
+        _ => (0, false)
+    };
+}
+",
+            "
+fn main() {
+    let x = true;
+    let tuple = match x {
+        true => {
+            let y = 1;
+            let <|>var_name = 2 + y;
+            (var_name, true)
+        }
+        _ => (0, false)
+    };
+}
+",
+        );
+    }
+
+    #[test]
+    fn test_introduce_var_in_closure_no_block() {
+        check_assist_range(
+            introduce_variable,
+            "
+fn main() {
+    let lambda = |x: u32| <|>x * 2<|>;
+}
+",
+            "
+fn main() {
+    let lambda = |x: u32| { let <|>var_name = x * 2; var_name };
+}
+",
+        );
+    }
+
+    #[test]
+    fn test_introduce_var_in_closure_with_block() {
+        check_assist_range(
+            introduce_variable,
+            "
+fn main() {
+    let lambda = |x: u32| { <|>x * 2<|> };
+}
+",
+            "
+fn main() {
+    let lambda = |x: u32| { let <|>var_name = x * 2; var_name };
+}
+",
         );
     }
 }
