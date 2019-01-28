@@ -25,6 +25,7 @@ mod call_info;
 mod syntax_highlighting;
 mod parent_module;
 mod rename;
+mod impls;
 
 #[cfg(test)]
 mod marks;
@@ -413,6 +414,13 @@ impl Analysis {
         position: FilePosition,
     ) -> Cancelable<Option<RangeInfo<Vec<NavigationTarget>>>> {
         self.with_db(|db| goto_definition::goto_definition(db, position))
+    }
+
+    pub fn goto_implementation(
+        &self,
+        position: FilePosition,
+    ) -> Cancelable<Option<RangeInfo<Vec<NavigationTarget>>>> {
+        self.with_db(|db| impls::goto_implementation(db, position))
     }
 
     /// Finds all usages of the reference at point.

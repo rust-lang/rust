@@ -8,7 +8,7 @@ pub use lsp_types::{
     CompletionParams, CompletionResponse, DocumentOnTypeFormattingParams, DocumentSymbolParams,
     DocumentSymbolResponse, ExecuteCommandParams, Hover, InitializeResult,
     PublishDiagnosticsParams, ReferenceParams, SignatureHelp, TextDocumentEdit,
-    TextDocumentPositionParams, TextEdit, WorkspaceEdit, WorkspaceSymbolParams,
+    TextDocumentPositionParams, TextEdit, WorkspaceEdit, WorkspaceSymbolParams
 };
 
 pub enum AnalyzerStatus {}

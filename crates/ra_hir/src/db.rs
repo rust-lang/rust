@@ -14,7 +14,7 @@ use crate::{
     nameres::{ItemMap, lower::{LoweredModule, ImportSourceMap}},
     ty::{InferenceResult, Ty, method_resolution::CrateImplBlocks, TypableDef},
     adt::{StructData, EnumData},
-    impl_block::ModuleImplBlocks,
+    impl_block::{ModuleImplBlocks, ImplSourceMap},
     generics::{GenericParams, GenericDef},
     ids::SourceFileItemId,
 };
@@ -73,8 +73,17 @@ pub trait HirDatabase: SourceDatabase + AsRef<HirInterner> {
     #[salsa::invoke(crate::module_tree::ModuleTree::module_tree_query)]
     fn module_tree(&self, crate_id: CrateId) -> Arc<ModuleTree>;
 
+    #[salsa::invoke(crate::impl_block::impls_in_module_with_source_map_query)]
+    fn impls_in_module_with_source_map(
+        &self,
+        module: Module,
+    ) -> (Arc<ModuleImplBlocks>, Arc<ImplSourceMap>);
+
     #[salsa::invoke(crate::impl_block::impls_in_module)]
     fn impls_in_module(&self, module: Module) -> Arc<ModuleImplBlocks>;
+
+    #[salsa::invoke(crate::impl_block::impls_in_module_source_map_query)]
+    fn impls_in_module_source_map(&self, module: Module) -> Arc<ImplSourceMap>;
 
     #[salsa::invoke(crate::ty::method_resolution::CrateImplBlocks::impls_in_crate_query)]
     fn impls_in_crate(&self, krate: Crate) -> Arc<CrateImplBlocks>;

@@ -305,6 +305,7 @@ fn on_request(
         .on::<req::DocumentSymbolRequest>(handlers::handle_document_symbol)?
         .on::<req::WorkspaceSymbol>(handlers::handle_workspace_symbol)?
         .on::<req::GotoDefinition>(handlers::handle_goto_definition)?
+        .on::<req::GotoImplementation>(handlers::handle_goto_implementation)?
         .on::<req::ParentModule>(handlers::handle_parent_module)?
         .on::<req::Runnables>(handlers::handle_runnables)?
         .on::<req::DecorationsRequest>(handlers::handle_decorations)?

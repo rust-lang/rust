@@ -1,8 +1,10 @@
 use std::sync::Arc;
 use rustc_hash::FxHashMap;
 
-use ra_arena::{Arena, RawId, impl_arena_id};
-use ra_syntax::ast::{self, AstNode};
+use ra_arena::{Arena, RawId, impl_arena_id, map::ArenaMap};
+use ra_syntax::{
+    AstPtr, SourceFile, TreeArc,
+ast::{self, AstNode}};
 
 use crate::{
     Const, Type,
@@ -13,6 +15,26 @@ use crate::{
 };
 
 use crate::code_model_api::{Module, ModuleSource};
+
+#[derive(Debug, Default, PartialEq, Eq)]
+pub struct ImplSourceMap {
+    map: ArenaMap<ImplId, AstPtr<ast::ImplBlock>>,
+}
+
+impl ImplSourceMap {
+    fn insert(&mut self, impl_id: ImplId, impl_block: &ast::ImplBlock) {
+        self.map.insert(impl_id, AstPtr::new(impl_block))
+    }
+
+    pub fn get(&self, source: &ModuleSource, impl_id: ImplId) -> TreeArc<ast::ImplBlock> {
+        let file = match source {
+            ModuleSource::SourceFile(file) => &*file,
+            ModuleSource::Module(m) => m.syntax().ancestors().find_map(SourceFile::cast).unwrap(),
+        };
+
+        self.map[impl_id].to_node(file).to_owned()
+    }
+}
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ImplBlock {
@@ -37,6 +59,10 @@ impl ImplBlock {
             module_impl_blocks,
             impl_id,
         }
+    }
+
+    pub fn id(&self) -> ImplId {
+        self.impl_id
     }
 
     fn impl_data(&self) -> &ImplData {
@@ -148,7 +174,7 @@ impl ModuleImplBlocks {
         }
     }
 
-    fn collect(&mut self, db: &impl HirDatabase, module: Module) {
+    fn collect(&mut self, db: &impl HirDatabase, module: Module, source_map: &mut ImplSourceMap) {
         let (file_id, module_source) = module.definition_source(db);
         let file_id: HirFileId = file_id.into();
         let node = match &module_source {
@@ -165,12 +191,31 @@ impl ModuleImplBlocks {
             for &impl_item in &self.impls[id].items {
                 self.impls_by_def.insert(impl_item, id);
             }
+
+            source_map.insert(id, impl_block_ast);
         }
     }
 }
 
-pub(crate) fn impls_in_module(db: &impl HirDatabase, module: Module) -> Arc<ModuleImplBlocks> {
+pub(crate) fn impls_in_module_with_source_map_query(
+    db: &impl HirDatabase,
+    module: Module,
+) -> (Arc<ModuleImplBlocks>, Arc<ImplSourceMap>) {
+    let mut source_map = ImplSourceMap::default();
+
     let mut result = ModuleImplBlocks::new();
-    result.collect(db, module);
-    Arc::new(result)
+    result.collect(db, module, &mut source_map);
+
+    (Arc::new(result), Arc::new(source_map))
+}
+
+pub(crate) fn impls_in_module(db: &impl HirDatabase, module: Module) -> Arc<ModuleImplBlocks> {
+    db.impls_in_module_with_source_map(module).0
+}
+
+pub(crate) fn impls_in_module_source_map_query(
+    db: &impl HirDatabase,
+    module: Module,
+) -> Arc<ImplSourceMap> {
+    db.impls_in_module_with_source_map(module).1
 }

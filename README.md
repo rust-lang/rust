@@ -120,7 +120,7 @@ and trait selection) to the existing rustc.
 - [ ] [textDocument/declaration](https://microsoft.github.io/language-server-protocol/specification#textDocument_declaration)
 - [x] [textDocument/definition](https://microsoft.github.io/language-server-protocol/specification#textDocument_definition)
 - [ ] [textDocument/typeDefinition](https://microsoft.github.io/language-server-protocol/specification#textDocument_typeDefinition)
-- [ ] [textDocument/implementation](https://microsoft.github.io/language-server-protocol/specification#textDocument_implementation)
+- [x] [textDocument/implementation](https://microsoft.github.io/language-server-protocol/specification#textDocument_implementation)
 - [x] [textDocument/references](https://microsoft.github.io/language-server-protocol/specification#textDocument_references)
 - [x] [textDocument/documentHighlight](https://microsoft.github.io/language-server-protocol/specification#textDocument_documentHighlight)
 - [x] [textDocument/documentSymbol](https://microsoft.github.io/language-server-protocol/specification#textDocument_documentSymbol)

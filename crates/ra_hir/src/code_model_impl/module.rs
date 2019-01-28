@@ -5,6 +5,7 @@ use crate::{
     Module, ModuleSource, Problem,
     Crate, Name,
     module_tree::ModuleId,
+    impl_block::ImplId,
     nameres::{lower::ImportId},
     db::HirDatabase,
 };
@@ -51,9 +52,19 @@ impl Module {
         db: &impl HirDatabase,
         import: ImportId,
     ) -> TreeArc<ast::PathSegment> {
-        let source_map = db.lower_module_source_map(self.clone());
+        let source_map = db.lower_module_source_map(*self);
         let (_, source) = self.definition_source(db);
         source_map.get(&source, import)
+    }
+
+    pub(crate) fn impl_source_impl(
+        &self,
+        db: &impl HirDatabase,
+        impl_id: ImplId,
+    ) -> TreeArc<ast::ImplBlock> {
+        let source_map = db.impls_in_module_source_map(*self);
+        let (_, source) = self.definition_source(db);
+        source_map.get(&source, impl_id)
     }
 
     pub(crate) fn krate_impl(&self, _db: &impl HirDatabase) -> Option<Crate> {
