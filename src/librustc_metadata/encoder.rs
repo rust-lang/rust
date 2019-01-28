@@ -471,12 +471,6 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
         let has_global_allocator = *tcx.sess.has_global_allocator.get();
         let has_panic_handler = *tcx.sess.has_panic_handler.try_get().unwrap_or(&false);
 
-        let proc_macro_stability = if is_proc_macro {
-            tcx.lookup_stability(DefId::local(CRATE_DEF_INDEX)).map(|stab| self.lazy(stab))
-        } else {
-            None
-        };
-    
         let root = self.lazy(&CrateRoot {
             name: tcx.crate_name(LOCAL_CRATE),
             extra_filename: tcx.sess.opts.cg.extra_filename.clone(),
@@ -495,7 +489,11 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
             } else {
                 None
             },
-            proc_macro_stability,
+            proc_macro_stability: if is_proc_macro {
+                tcx.lookup_stability(DefId::local(CRATE_DEF_INDEX)).map(|stab| stab.clone())
+            } else {
+                None
+            },
             compiler_builtins: attr::contains_name(&attrs, "compiler_builtins"),
             needs_allocator: attr::contains_name(&attrs, "needs_allocator"),
             needs_panic_runtime: attr::contains_name(&attrs, "needs_panic_runtime"),
