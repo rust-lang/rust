@@ -61,6 +61,7 @@ pub use ra_db::{
 
 // We use jemalloc mainly to get heap usage statistics, actual performance
 // differnece is not measures.
+#[cfg(feature = "jemalloc")]
 #[global_allocator]
 static ALLOC: jemallocator::Jemalloc = jemallocator::Jemalloc;
 
