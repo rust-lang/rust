@@ -272,6 +272,7 @@ impl ToOwned for Block {
 }
 
 
+impl ast::AttrsOwner for Block {}
 impl Block {
     pub fn statements(&self) -> impl Iterator<Item = &Stmt> {
         super::children(self)

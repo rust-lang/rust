@@ -2,6 +2,7 @@ mod byte;
 mod byte_string;
 mod char;
 mod string;
+mod block;
 
 use crate::{
     SourceFile, yellow::SyntaxError, AstNode,
@@ -17,6 +18,7 @@ pub(crate) fn validate(file: &SourceFile) -> Vec<SyntaxError> {
             .visit::<ast::ByteString, _>(self::byte_string::validate_byte_string_node)
             .visit::<ast::Char, _>(self::char::validate_char_node)
             .visit::<ast::String, _>(self::string::validate_string_node)
+            .visit::<ast::Block, _>(self::block::validate_block_node)
             .accept(node);
     }
     errors

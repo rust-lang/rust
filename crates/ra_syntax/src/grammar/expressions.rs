@@ -42,6 +42,8 @@ pub(crate) fn block(p: &mut Parser) {
     }
     let m = p.start();
     p.bump();
+    // This is checked by a validator
+    attributes::inner_attributes(p);
 
     while !p.at(EOF) && !p.at(R_CURLY) {
         match p.current() {

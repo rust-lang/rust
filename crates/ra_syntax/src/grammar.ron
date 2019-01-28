@@ -571,6 +571,9 @@ Grammar(
             options: [ "Expr" ],
             collections: [
                 ["statements", "Stmt"],
+            ],
+            traits: [
+                "AttrsOwner",
             ]
         ),
         "ParamList": (
