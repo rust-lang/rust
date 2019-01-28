@@ -1,4 +1,7 @@
-use std::sync::Arc;
+use std::{
+    sync::Arc,
+    time,
+};
 
 use hir::{
     self, Problem, source_binder
@@ -19,12 +22,14 @@ use crate::{
     CrateId, db, Diagnostic, FileId, FilePosition, FileRange, FileSystemEdit,
     Query, RootChange, SourceChange, SourceFileEdit,
     symbol_index::{FileSymbol, SymbolsDatabase},
+    status::syntax_tree_stats
 };
+
+const GC_COOLDOWN: time::Duration = time::Duration::from_millis(100);
 
 impl db::RootDatabase {
     pub(crate) fn apply_change(&mut self, change: AnalysisChange) {
         log::info!("apply_change {:?}", change);
-        // self.gc_syntax_trees();
         if !change.new_roots.is_empty() {
             let mut local_roots = Vec::clone(&self.local_roots());
             for (root_id, is_local) in change.new_roots {
@@ -72,18 +77,36 @@ impl db::RootDatabase {
         self.set_source_root(root_id, Arc::new(source_root));
     }
 
-    /// Ideally, we should call this function from time to time to collect heavy
-    /// syntax trees. However, if we actually do that, everything is recomputed
-    /// for some reason. Needs investigation.
+    pub(crate) fn maybe_collect_garbage(&mut self) {
+        if self.last_gc_check.elapsed() > GC_COOLDOWN {
+            self.last_gc_check = time::Instant::now();
+            let retained_trees = syntax_tree_stats(self).retained;
+            if retained_trees > 100 {
+                log::info!(
+                    "automatic garbadge collection, {} retained trees",
+                    retained_trees
+                );
+                self.collect_garbage();
+            }
+        }
+    }
+
     pub(crate) fn collect_garbage(&mut self) {
-        self.query(ra_db::ParseQuery)
-            .sweep(SweepStrategy::default().discard_values());
-        self.query(hir::db::HirParseQuery)
-            .sweep(SweepStrategy::default().discard_values());
-        self.query(hir::db::FileItemsQuery)
-            .sweep(SweepStrategy::default().discard_values());
-        self.query(hir::db::FileItemQuery)
-            .sweep(SweepStrategy::default().discard_values());
+        self.last_gc = time::Instant::now();
+
+        let sweep = SweepStrategy::default()
+            .discard_values()
+            .sweep_all_revisions();
+
+        self.query(ra_db::ParseQuery).sweep(sweep);
+
+        self.query(hir::db::HirParseQuery).sweep(sweep);
+        self.query(hir::db::FileItemsQuery).sweep(sweep);
+        self.query(hir::db::FileItemQuery).sweep(sweep);
+
+        self.query(hir::db::LowerModuleQuery).sweep(sweep);
+        self.query(hir::db::LowerModuleSourceMapQuery).sweep(sweep);
+        self.query(hir::db::BodySyntaxMappingQuery).sweep(sweep);
     }
 }
 

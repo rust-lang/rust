@@ -1,4 +1,7 @@
-use std::sync::Arc;
+use std::{
+    sync::Arc,
+    time,
+};
 
 use ra_db::{
     CheckCanceled, FileId, Canceled, SourceDatabase,
@@ -17,6 +20,8 @@ use crate::{LineIndex, symbol_index::{self, SymbolsDatabase}};
 pub(crate) struct RootDatabase {
     runtime: salsa::Runtime<RootDatabase>,
     interner: Arc<hir::HirInterner>,
+    pub(crate) last_gc: time::Instant,
+    pub(crate) last_gc_check: time::Instant,
 }
 
 impl salsa::Database for RootDatabase {
@@ -33,6 +38,8 @@ impl Default for RootDatabase {
         let mut db = RootDatabase {
             runtime: salsa::Runtime::default(),
             interner: Default::default(),
+            last_gc: time::Instant::now(),
+            last_gc_check: time::Instant::now(),
         };
         db.set_crate_graph(Default::default());
         db.set_local_roots(Default::default());
@@ -46,6 +53,8 @@ impl salsa::ParallelDatabase for RootDatabase {
         salsa::Snapshot::new(RootDatabase {
             runtime: self.runtime.snapshot(self),
             interner: Arc::clone(&self.interner),
+            last_gc: self.last_gc.clone(),
+            last_gc_check: self.last_gc_check.clone(),
         })
     }
 }

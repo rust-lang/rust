@@ -59,6 +59,11 @@ pub use ra_db::{
     Canceled, CrateGraph, CrateId, FileId, FilePosition, FileRange, SourceRootId
 };
 
+// We use jemalloc mainly to get heap usage statistics, actual performance
+// differnece is not measures.
+#[global_allocator]
+static ALLOC: jemallocator::Jemalloc = jemallocator::Jemalloc;
+
 pub type Cancelable<T> = Result<T, Canceled>;
 
 #[derive(Default)]
@@ -284,6 +289,10 @@ impl AnalysisHost {
     /// outstanding snapshots, they will be canceled.
     pub fn apply_change(&mut self, change: AnalysisChange) {
         self.db.apply_change(change)
+    }
+
+    pub fn maybe_collect_garbage(&mut self) {
+        self.db.maybe_collect_garbage();
     }
 
     pub fn collect_garbage(&mut self) {
