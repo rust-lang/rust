@@ -1767,7 +1767,7 @@ macro_rules! nop_list_lift {
         impl<'a, 'tcx> Lift<'tcx> for &'a List<$ty> {
             type Lifted = &'tcx List<$lifted>;
             fn lift_to_tcx<'b, 'gcx>(&self, tcx: TyCtxt<'b, 'gcx, 'tcx>) -> Option<Self::Lifted> {
-                        if self.is_empty() {
+                if self.is_empty() {
                     return Some(List::empty());
                 }
                 if tcx.interners.arena.in_arena(*self as *const _) {

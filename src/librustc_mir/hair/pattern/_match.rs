@@ -221,13 +221,16 @@ impl<'a, 'tcx> LiteralExpander<'a, 'tcx> {
             // unsize array to slice if pattern is array but match value or other patterns are slice
             (ConstValue::Scalar(Scalar::Ptr(p)), ty::Array(t, n), ty::Slice(u)) => {
                 assert_eq!(t, u);
-                ConstValue::ScalarPair(
+                ConstValue::Slice(
                     Scalar::Ptr(p),
-                    n.map_evaluated(|val| val.val.try_to_scalar()).unwrap(),
+                    n.map_evaluated(|val| val.val.try_to_scalar())
+                        .unwrap()
+                        .to_usize(&self.tcx)
+                        .unwrap(),
                 )
             },
             // fat pointers stay the same
-            (ConstValue::ScalarPair(..), _, _) => val,
+            (ConstValue::Slice(..), _, _) => val,
             // FIXME(oli-obk): this is reachable for `const FOO: &&&u32 = &&&42;` being used
             _ => bug!("cannot deref {:#?}, {} -> {}", val, crty, rty),
         }
@@ -788,9 +791,9 @@ fn max_slice_length<'p, 'a: 'p, 'tcx: 'a, I>(
                         max_fixed_len,
                         n.unwrap_usize(cx.tcx),
                     ),
-                    (ConstValue::ScalarPair(_, n), ty::Slice(_)) => max_fixed_len = cmp::max(
+                    (ConstValue::Slice(_, n), ty::Slice(_)) => max_fixed_len = cmp::max(
                         max_fixed_len,
-                        n.to_usize(&cx.tcx).unwrap(),
+                        n,
                     ),
                     _ => {},
                 }
@@ -1432,7 +1435,7 @@ fn slice_pat_covered_by_const<'tcx>(
             alloc.get_bytes(&tcx, ptr, Size::from_bytes(n)).unwrap()
         },
         // a slice fat pointer to a zero length slice
-        (ConstValue::ScalarPair(Scalar::Bits { .. }, n), ty::Slice(t)) => {
+        (ConstValue::Slice(Scalar::Bits { .. }, 0), ty::Slice(t)) => {
             if *t != tcx.types.u8 {
                 // FIXME(oli-obk): can't mix const patterns with slice patterns and get
                 // any sort of exhaustiveness/unreachable check yet
@@ -1440,11 +1443,10 @@ fn slice_pat_covered_by_const<'tcx>(
                 // are definitely unreachable.
                 return Ok(false);
             }
-            assert_eq!(n.to_usize(&tcx).unwrap(), 0);
             &[]
         },
         //
-        (ConstValue::ScalarPair(Scalar::Ptr(ptr), n), ty::Slice(t)) => {
+        (ConstValue::Slice(Scalar::Ptr(ptr), n), ty::Slice(t)) => {
             if *t != tcx.types.u8 {
                 // FIXME(oli-obk): can't mix const patterns with slice patterns and get
                 // any sort of exhaustiveness/unreachable check yet
@@ -1452,7 +1454,6 @@ fn slice_pat_covered_by_const<'tcx>(
                 // are definitely unreachable.
                 return Ok(false);
             }
-            let n = n.to_usize(&tcx).unwrap();
             tcx.alloc_map
                 .lock()
                 .unwrap_memory(ptr.alloc_id)
@@ -1784,12 +1785,12 @@ fn specialize<'p, 'a: 'p, 'tcx: 'a>(
                         },
                         ty::TyKind::Slice(t) => {
                             match value.val {
-                                ConstValue::ScalarPair(ptr, n) => (
+                                ConstValue::Slice(ptr, n) => (
                                     ptr.to_ptr().ok().map(|ptr| (
                                         ptr,
                                         cx.tcx.alloc_map.lock().unwrap_memory(ptr.alloc_id),
                                     )),
-                                    n.to_bits(cx.tcx.data_layout.pointer_size).unwrap() as u64,
+                                    n,
                                     t,
                                 ),
                                 _ => span_bug!(
