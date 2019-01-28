@@ -537,11 +537,8 @@ impl<'a> Resolver<'a> {
                  primary_binding: &'a NameBinding<'a>, secondary_binding: &'a NameBinding<'a>)
                  -> &'a NameBinding<'a> {
         self.arenas.alloc_name_binding(NameBinding {
-            kind: primary_binding.kind.clone(),
             ambiguity: Some((secondary_binding, kind)),
-            vis: primary_binding.vis,
-            span: primary_binding.span,
-            expansion: primary_binding.expansion,
+            ..primary_binding.clone()
         })
     }
 
