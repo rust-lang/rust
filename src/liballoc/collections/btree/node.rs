@@ -650,7 +650,7 @@ impl<'a, K: 'a, V: 'a, Type> NodeRef<marker::Mut<'a>, K, V, Type> {
         } else {
             unsafe {
                 slice::from_raw_parts_mut(
-                    MaybeUninit::first_mut_ptr(&mut (*self.as_leaf_mut()).keys),
+                    MaybeUninit::first_ptr_mut(&mut (*self.as_leaf_mut()).keys),
                     self.len()
                 )
             }
@@ -661,7 +661,7 @@ impl<'a, K: 'a, V: 'a, Type> NodeRef<marker::Mut<'a>, K, V, Type> {
         debug_assert!(!self.is_shared_root());
         unsafe {
             slice::from_raw_parts_mut(
-                MaybeUninit::first_mut_ptr(&mut (*self.as_leaf_mut()).vals),
+                MaybeUninit::first_ptr_mut(&mut (*self.as_leaf_mut()).vals),
                 self.len()
             )
         }
@@ -749,7 +749,7 @@ impl<'a, K, V> NodeRef<marker::Mut<'a>, K, V, marker::Internal> {
             slice_insert(self.vals_mut(), 0, val);
             slice_insert(
                 slice::from_raw_parts_mut(
-                    MaybeUninit::first_mut_ptr(&mut self.as_internal_mut().edges),
+                    MaybeUninit::first_ptr_mut(&mut self.as_internal_mut().edges),
                     self.len()+1
                 ),
                 0,
@@ -808,7 +808,7 @@ impl<'a, K, V> NodeRef<marker::Mut<'a>, K, V, marker::LeafOrInternal> {
                 ForceResult::Internal(mut internal) => {
                     let edge = slice_remove(
                         slice::from_raw_parts_mut(
-                            MaybeUninit::first_mut_ptr(&mut internal.as_internal_mut().edges),
+                            MaybeUninit::first_ptr_mut(&mut internal.as_internal_mut().edges),
                             old_len+1
                         ),
                         0
@@ -1087,7 +1087,7 @@ impl<'a, K, V> Handle<NodeRef<marker::Mut<'a>, K, V, marker::Internal>, marker::
 
             slice_insert(
                 slice::from_raw_parts_mut(
-                    MaybeUninit::first_mut_ptr(&mut self.node.as_internal_mut().edges),
+                    MaybeUninit::first_ptr_mut(&mut self.node.as_internal_mut().edges),
                     self.node.len()
                 ),
                 self.idx + 1,

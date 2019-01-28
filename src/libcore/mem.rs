@@ -1159,7 +1159,7 @@ impl<T> MaybeUninit<T> {
     /// Get a mutable pointer to the first element of the array.
     #[unstable(feature = "maybe_uninit", issue = "53491")]
     #[inline(always)]
-    pub fn first_mut_ptr(this: &mut [MaybeUninit<T>]) -> *mut T {
+    pub fn first_ptr_mut(this: &mut [MaybeUninit<T>]) -> *mut T {
         this as *mut [MaybeUninit<T>] as *mut T
     }
 }

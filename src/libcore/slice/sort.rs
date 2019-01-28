@@ -262,8 +262,8 @@ fn partition_in_blocks<T, F>(v: &mut [T], pivot: &T, is_less: &mut F) -> usize
 
         if start_l == end_l {
             // Trace `block_l` elements from the left side.
-            start_l = MaybeUninit::first_mut_ptr(&mut offsets_l);
-            end_l = MaybeUninit::first_mut_ptr(&mut offsets_l);
+            start_l = MaybeUninit::first_ptr_mut(&mut offsets_l);
+            end_l = MaybeUninit::first_ptr_mut(&mut offsets_l);
             let mut elem = l;
 
             for i in 0..block_l {
@@ -278,8 +278,8 @@ fn partition_in_blocks<T, F>(v: &mut [T], pivot: &T, is_less: &mut F) -> usize
 
         if start_r == end_r {
             // Trace `block_r` elements from the right side.
-            start_r = MaybeUninit::first_mut_ptr(&mut offsets_r);
-            end_r = MaybeUninit::first_mut_ptr(&mut offsets_r);
+            start_r = MaybeUninit::first_ptr_mut(&mut offsets_r);
+            end_r = MaybeUninit::first_ptr_mut(&mut offsets_r);
             let mut elem = r;
 
             for i in 0..block_r {

@@ -200,7 +200,7 @@ macro_rules! impl_Display {
             };
             let mut buf = uninitialized_array![u8; 39];
             let mut curr = buf.len() as isize;
-            let buf_ptr = MaybeUninit::first_mut_ptr(&mut buf);
+            let buf_ptr = MaybeUninit::first_ptr_mut(&mut buf);
             let lut_ptr = DEC_DIGITS_LUT.as_ptr();
 
             unsafe {
