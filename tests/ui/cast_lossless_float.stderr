@@ -1,5 +1,5 @@
 error: casting i8 to f32 may become silently lossy if types change
-  --> $DIR/cast_lossless_float.rs:7:5
+  --> $DIR/cast_lossless_float.rs:8:5
    |
 LL |     1i8 as f32;
    |     ^^^^^^^^^^ help: try: `f32::from(1i8)`
@@ -7,55 +7,55 @@ LL |     1i8 as f32;
    = note: `-D clippy::cast-lossless` implied by `-D warnings`
 
 error: casting i8 to f64 may become silently lossy if types change
-  --> $DIR/cast_lossless_float.rs:8:5
+  --> $DIR/cast_lossless_float.rs:9:5
    |
 LL |     1i8 as f64;
    |     ^^^^^^^^^^ help: try: `f64::from(1i8)`
 
 error: casting u8 to f32 may become silently lossy if types change
-  --> $DIR/cast_lossless_float.rs:9:5
+  --> $DIR/cast_lossless_float.rs:10:5
    |
 LL |     1u8 as f32;
    |     ^^^^^^^^^^ help: try: `f32::from(1u8)`
 
 error: casting u8 to f64 may become silently lossy if types change
-  --> $DIR/cast_lossless_float.rs:10:5
+  --> $DIR/cast_lossless_float.rs:11:5
    |
 LL |     1u8 as f64;
    |     ^^^^^^^^^^ help: try: `f64::from(1u8)`
 
 error: casting i16 to f32 may become silently lossy if types change
-  --> $DIR/cast_lossless_float.rs:11:5
+  --> $DIR/cast_lossless_float.rs:12:5
    |
 LL |     1i16 as f32;
    |     ^^^^^^^^^^^ help: try: `f32::from(1i16)`
 
 error: casting i16 to f64 may become silently lossy if types change
-  --> $DIR/cast_lossless_float.rs:12:5
+  --> $DIR/cast_lossless_float.rs:13:5
    |
 LL |     1i16 as f64;
    |     ^^^^^^^^^^^ help: try: `f64::from(1i16)`
 
 error: casting u16 to f32 may become silently lossy if types change
-  --> $DIR/cast_lossless_float.rs:13:5
+  --> $DIR/cast_lossless_float.rs:14:5
    |
 LL |     1u16 as f32;
    |     ^^^^^^^^^^^ help: try: `f32::from(1u16)`
 
 error: casting u16 to f64 may become silently lossy if types change
-  --> $DIR/cast_lossless_float.rs:14:5
+  --> $DIR/cast_lossless_float.rs:15:5
    |
 LL |     1u16 as f64;
    |     ^^^^^^^^^^^ help: try: `f64::from(1u16)`
 
 error: casting i32 to f64 may become silently lossy if types change
-  --> $DIR/cast_lossless_float.rs:15:5
+  --> $DIR/cast_lossless_float.rs:16:5
    |
 LL |     1i32 as f64;
    |     ^^^^^^^^^^^ help: try: `f64::from(1i32)`
 
 error: casting u32 to f64 may become silently lossy if types change
-  --> $DIR/cast_lossless_float.rs:16:5
+  --> $DIR/cast_lossless_float.rs:17:5
    |
 LL |     1u32 as f64;
    |     ^^^^^^^^^^^ help: try: `f64::from(1u32)`
