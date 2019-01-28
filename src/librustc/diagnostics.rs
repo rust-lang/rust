@@ -363,7 +363,7 @@ struct Foo1 { x: &bool }
 struct Foo2<'a> { x: &'a bool } // correct
 
 impl Foo2 {}
-  // ^ expected lifetime parameter
+  // ^^^^ expected lifetime parameter
 impl<'a> Foo2<'a> {} // correct
 
 struct Bar1 { x: Foo2 }
@@ -770,39 +770,39 @@ struct Foo {
 These can be fixed by declaring lifetime parameters:
 
 ```
-fn foo<'a>(x: &'a str) {}
-
 struct Foo<'a> {
     x: &'a str,
 }
+
+fn foo<'a>(x: &'a str) {}
 ```
 
 Impl blocks declare lifetime parameters separately. You need to add lifetime
 parameters to an impl block if you're implementing a type that has a lifetime
 parameter of its own.
 For example:
-    
+
 ```compile_fail,E0261
+struct Foo<'a> {
+    x: &'a str,
+}
+
 // error,  use of undeclared lifetime name `'a`
 impl Foo<'a> {
     fn foo<'a>(x: &'a str) {}
 }
-    
+```
+
+This is fixed by declaring the impl block like this:
+
+```
 struct Foo<'a> {
     x: &'a str,
 }
-```
 
-This is fixed by declaring impl block like this:
-
-```
 // correct
 impl<'a> Foo<'a> {
     fn foo(x: &'a str) {}
-}
-    
-struct Foo<'a> {
-    x: &'a str,
 }
 ```
 "##,
