@@ -85,6 +85,37 @@ impl<'a, 'gcx, 'tcx> Deref for ProbeContext<'a, 'gcx, 'tcx> {
 
 #[derive(Debug)]
 struct Candidate<'tcx> {
+    // Candidates are (I'm not quite sure, but they are mostly) basically
+    // some metadata on top of a `ty::AssociatedItem` (without substs).
+    //
+    // However, method probing wants to be able to evaluate the predicates
+    // for a function with the substs applied - for example, if a function
+    // has `where Self: Sized`, we don't want to consider it unless `Self`
+    // is actually `Sized`, and similarly, return-type suggestions want
+    // to consider the "actual" return type.
+    //
+    // The way this is handled is through `xform_self_ty`. It contains
+    // the receiver type of this candidate, but `xform_self_ty`,
+    // `xform_ret_ty` and `kind` (which contains the predicates) have the
+    // generic parameters of this candidate substituted with the *same set*
+    // of inference variables, which acts as some weird sort of "query".
+    //
+    // When we check out a candidate, we require `xform_self_ty` to be
+    // a subtype of the passed-in self-type, and this equates the type
+    // variables in the rest of the fields.
+    //
+    // For example, if we have this candidate:
+    // ```
+    //    trait Foo {
+    //        fn foo(&self) where Self: Sized;
+    //    }
+    // ```
+    //
+    // Then `xform_self_ty` will be `&'erased ?X` and `kind` will contain
+    // the predicate `?X: Sized`, so if we are evaluating `Foo` for a
+    // the receiver `&T`, we'll do the subtyping which will make `?X`
+    // get the right value, then when we evaluate the predicate we'll check
+    // if `T: Sized`.
     xform_self_ty: Ty<'tcx>,
     xform_ret_ty: Option<Ty<'tcx>>,
     item: ty::AssociatedItem,
