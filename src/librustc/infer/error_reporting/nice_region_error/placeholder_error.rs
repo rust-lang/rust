@@ -416,14 +416,14 @@ impl NiceRegionError<'me, 'gcx, 'tcx> {
                     if any_self_ty_has_vid {
                         err.note(&format!(
                             "but `{}` is actually implemented for the type `{}`, \
-                             for the specific lifetime `'{}`",
+                             for some specific lifetime `'{}`",
                             actual_trait_ref,
                             actual_trait_ref.self_ty(),
                             n
                         ));
                     } else {
                         err.note(&format!(
-                            "but `{}` actually implements `{}`, for some lifetime `'{}`",
+                            "but `{}` actually implements `{}`, for some specific lifetime `'{}`",
                             actual_trait_ref.self_ty(),
                             actual_trait_ref,
                             n

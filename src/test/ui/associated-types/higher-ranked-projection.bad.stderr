@@ -6,7 +6,7 @@ LL |     foo(());
    |
    = note: Due to a where-clause on `foo`,
    = note: `Mirror` would have to be implemented for the type `&'0 ()`, for any lifetime `'0`
-   = note: but `Mirror` is actually implemented for the type `&'1 ()`, for the specific lifetime `'1`
+   = note: but `Mirror` is actually implemented for the type `&'1 ()`, for some specific lifetime `'1`
 
 error: aborting due to previous error
 

@@ -5,7 +5,7 @@ LL |     let x = <fn (&())>::make_g(); //~ ERROR not general enough
    |             ^^^^^^^^^^^^^^^^^^
    |
    = note: `X` would have to be implemented for the type `for<'r> fn(&'r ())`
-   = note: but `X` is actually implemented for the type `fn(&'0 ())`, for the specific lifetime `'0`
+   = note: but `X` is actually implemented for the type `fn(&'0 ())`, for some specific lifetime `'0`
 
 error: aborting due to previous error
 
