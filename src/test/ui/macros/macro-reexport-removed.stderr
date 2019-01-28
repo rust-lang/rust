@@ -14,7 +14,7 @@ error[E0658]: The attribute `macro_reexport` is currently unknown to the compile
   --> $DIR/macro-reexport-removed.rs:5:3
    |
 LL | #[macro_reexport(macro_one)] //~ ERROR attribute `macro_reexport` is currently unknown
-   |   ^^^^^^^^^^^^^^
+   |   ^^^^^^^^^^^^^^ help: a built-in attribute with a similar name exists: `macro_export`
    |
    = help: add #![feature(custom_attribute)] to the crate attributes to enable
 
