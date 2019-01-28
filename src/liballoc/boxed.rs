@@ -873,13 +873,22 @@ impl<T: ?Sized> AsMut<T> for Box<T> {
 impl<T: ?Sized> Unpin for Box<T> { }
 
 #[unstable(feature = "generator_trait", issue = "43122")]
-impl<T> Generator for Box<T>
-    where T: Generator + ?Sized
-{
-    type Yield = T::Yield;
-    type Return = T::Return;
-    unsafe fn resume(&mut self) -> GeneratorState<Self::Yield, Self::Return> {
-        (**self).resume()
+impl<G: ?Sized + Generator + Unpin> Generator for Box<G> {
+    type Yield = G::Yield;
+    type Return = G::Return;
+
+    fn resume(mut self: Pin<&mut Self>) -> GeneratorState<Self::Yield, Self::Return> {
+        G::resume(Pin::new(&mut *self))
+    }
+}
+
+#[unstable(feature = "generator_trait", issue = "43122")]
+impl<G: ?Sized + Generator> Generator for Pin<Box<G>> {
+    type Yield = G::Yield;
+    type Return = G::Return;
+
+    fn resume(mut self: Pin<&mut Self>) -> GeneratorState<Self::Yield, Self::Return> {
+        G::resume((*self).as_mut())
     }
 }
 

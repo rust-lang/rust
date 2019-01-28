@@ -6,6 +6,7 @@
 #![feature(generators, generator_trait)]
 
 use std::ops::{GeneratorState, Generator};
+use std::pin::Pin;
 use std::thread;
 
 #[test]
@@ -16,7 +17,7 @@ fn simple() {
         }
     };
 
-    match unsafe { foo.resume() } {
+    match Pin::new(&mut foo).resume() {
         GeneratorState::Complete(()) => {}
         s => panic!("bad state: {:?}", s),
     }
@@ -32,7 +33,7 @@ fn return_capture() {
         a
     };
 
-    match unsafe { foo.resume() } {
+    match Pin::new(&mut foo).resume() {
         GeneratorState::Complete(ref s) if *s == "foo" => {}
         s => panic!("bad state: {:?}", s),
     }
@@ -44,11 +45,11 @@ fn simple_yield() {
         yield;
     };
 
-    match unsafe { foo.resume() } {
+    match Pin::new(&mut foo).resume() {
         GeneratorState::Yielded(()) => {}
         s => panic!("bad state: {:?}", s),
     }
-    match unsafe { foo.resume() } {
+    match Pin::new(&mut foo).resume() {
         GeneratorState::Complete(()) => {}
         s => panic!("bad state: {:?}", s),
     }
@@ -61,11 +62,11 @@ fn yield_capture() {
         yield b;
     };
 
-    match unsafe { foo.resume() } {
+    match Pin::new(&mut foo).resume() {
         GeneratorState::Yielded(ref s) if *s == "foo" => {}
         s => panic!("bad state: {:?}", s),
     }
-    match unsafe { foo.resume() } {
+    match Pin::new(&mut foo).resume() {
         GeneratorState::Complete(()) => {}
         s => panic!("bad state: {:?}", s),
     }
@@ -78,11 +79,11 @@ fn simple_yield_value() {
         return String::from("foo")
     };
 
-    match unsafe { foo.resume() } {
+    match Pin::new(&mut foo).resume() {
         GeneratorState::Yielded(ref s) if *s == "bar" => {}
         s => panic!("bad state: {:?}", s),
     }
-    match unsafe { foo.resume() } {
+    match Pin::new(&mut foo).resume() {
         GeneratorState::Complete(ref s) if *s == "foo" => {}
         s => panic!("bad state: {:?}", s),
     }
@@ -96,11 +97,11 @@ fn return_after_yield() {
         return a
     };
 
-    match unsafe { foo.resume() } {
+    match Pin::new(&mut foo).resume() {
         GeneratorState::Yielded(()) => {}
         s => panic!("bad state: {:?}", s),
     }
-    match unsafe { foo.resume() } {
+    match Pin::new(&mut foo).resume() {
         GeneratorState::Complete(ref s) if *s == "foo" => {}
         s => panic!("bad state: {:?}", s),
     }
@@ -148,11 +149,11 @@ fn send_and_sync() {
 fn send_over_threads() {
     let mut foo = || { yield };
     thread::spawn(move || {
-        match unsafe { foo.resume() } {
+        match Pin::new(&mut foo).resume() {
             GeneratorState::Yielded(()) => {}
             s => panic!("bad state: {:?}", s),
         }
-        match unsafe { foo.resume() } {
+        match Pin::new(&mut foo).resume() {
             GeneratorState::Complete(()) => {}
             s => panic!("bad state: {:?}", s),
         }
@@ -161,11 +162,11 @@ fn send_over_threads() {
     let a = String::from("a");
     let mut foo = || { yield a };
     thread::spawn(move || {
-        match unsafe { foo.resume() } {
+        match Pin::new(&mut foo).resume() {
             GeneratorState::Yielded(ref s) if *s == "a" => {}
             s => panic!("bad state: {:?}", s),
         }
-        match unsafe { foo.resume() } {
+        match Pin::new(&mut foo).resume() {
             GeneratorState::Complete(()) => {}
             s => panic!("bad state: {:?}", s),
         }

@@ -5,6 +5,7 @@
 #![feature(generators, generator_trait)]
 
 use std::ops::{GeneratorState, Generator};
+use std::pin::Pin;
 use std::panic;
 
 fn main() {
@@ -15,12 +16,12 @@ fn main() {
         yield;
     };
 
-    match unsafe { foo.resume() } {
+    match Pin::new(&mut foo).resume() {
         GeneratorState::Complete(()) => {}
         s => panic!("bad state: {:?}", s),
     }
 
-    match panic::catch_unwind(move || unsafe { foo.resume() }) {
+    match panic::catch_unwind(move || Pin::new(&mut foo).resume()) {
         Ok(_) => panic!("generator successfully resumed"),
         Err(_) => {}
     }

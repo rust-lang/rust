@@ -3,11 +3,12 @@
 #![feature(generators, generator_trait)]
 
 use std::ops::Generator;
+use std::pin::Pin;
 
 fn main() {
     let b = |_| 3;
     let mut a = || {
         b(yield);
     };
-    unsafe { a.resume() };
+    Pin::new(&mut a).resume();
 }

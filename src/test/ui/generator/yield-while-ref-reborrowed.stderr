@@ -1,5 +1,5 @@
 error[E0501]: cannot borrow `x` as immutable because previous closure requires unique access
-  --> $DIR/yield-while-ref-reborrowed.rs:35:20
+  --> $DIR/yield-while-ref-reborrowed.rs:36:20
    |
 LL |     let mut b = || {
    |                 -- closure construction occurs here
@@ -8,7 +8,7 @@ LL |         let a = &mut *x;
 ...
 LL |     println!("{}", x); //~ ERROR
    |                    ^ borrow occurs here
-LL |     b.resume();
+LL |     Pin::new(&mut b).resume();
 LL | }
    | - borrow from closure ends here
 

@@ -76,6 +76,11 @@ impl<'a, 'tcx> Instance<'tcx> {
                 let env_region = ty::ReLateBound(ty::INNERMOST, ty::BrEnv);
                 let env_ty = tcx.mk_mut_ref(tcx.mk_region(env_region), ty);
 
+                let pin_did = tcx.lang_items().pin_type().unwrap();
+                let pin_adt_ref = tcx.adt_def(pin_did);
+                let pin_substs = tcx.intern_substs(&[env_ty.into()]);
+                let env_ty = tcx.mk_adt(pin_adt_ref, pin_substs);
+
                 sig.map_bound(|sig| {
                     let state_did = tcx.lang_items().gen_state().unwrap();
                     let state_adt_ref = tcx.adt_def(state_did);

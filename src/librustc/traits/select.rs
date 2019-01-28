@@ -2017,6 +2017,24 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
                     // the auto impl might apply, we don't know
                     candidates.ambiguous = true;
                 }
+                ty::Generator(_, _, movability)
+                    if self.tcx().lang_items().unpin_trait() == Some(def_id) =>
+                {
+                    match movability {
+                        hir::GeneratorMovability::Static => {
+                            // Immovable generators are never `Unpin`, so
+                            // suppress the normal auto-impl candidate for it.
+                        }
+                        hir::GeneratorMovability::Movable => {
+                            // Movable generators are always `Unpin`, so add an
+                            // unconditional builtin candidate.
+                            candidates.vec.push(BuiltinCandidate {
+                                has_nested: false,
+                            });
+                        }
+                    }
+                }
+
                 _ => candidates.vec.push(AutoImplCandidate(def_id.clone())),
             }
         }

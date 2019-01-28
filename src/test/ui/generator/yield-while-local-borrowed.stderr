@@ -1,5 +1,5 @@
 error[E0626]: borrow may still be in use when generator yields (Ast)
-  --> $DIR/yield-while-local-borrowed.rs:14:22
+  --> $DIR/yield-while-local-borrowed.rs:15:22
    |
 LL |         let a = &mut 3;
    |                      ^
@@ -8,7 +8,7 @@ LL |         yield();
    |         ------- possible yield occurs here
 
 error[E0626]: borrow may still be in use when generator yields (Ast)
-  --> $DIR/yield-while-local-borrowed.rs:42:22
+  --> $DIR/yield-while-local-borrowed.rs:43:22
    |
 LL |             let b = &a;
    |                      ^
@@ -17,7 +17,7 @@ LL |             yield();
    |             ------- possible yield occurs here
 
 error[E0626]: borrow may still be in use when generator yields (Mir)
-  --> $DIR/yield-while-local-borrowed.rs:14:17
+  --> $DIR/yield-while-local-borrowed.rs:15:17
    |
 LL |         let a = &mut 3;
    |                 ^^^^^^
@@ -26,7 +26,7 @@ LL |         yield();
    |         ------- possible yield occurs here
 
 error[E0626]: borrow may still be in use when generator yields (Mir)
-  --> $DIR/yield-while-local-borrowed.rs:42:21
+  --> $DIR/yield-while-local-borrowed.rs:43:21
    |
 LL |             let b = &a;
    |                     ^^

@@ -7,7 +7,8 @@
 extern crate xcrate_reachable as foo;
 
 use std::ops::Generator;
+use std::pin::Pin;
 
 fn main() {
-    unsafe { foo::foo().resume(); }
+    Pin::new(&mut foo::foo()).resume();
 }
