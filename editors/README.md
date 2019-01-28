@@ -26,7 +26,7 @@ They are more experimental in nature and work only with VS Code.
 ### Syntax highlighting
 
 It overrides built-in highlighting, and works only with a specific theme
-(zenburn). `ra-lsp.highlightingOn` setting can be used to disable it.
+(zenburn). `rust-analyzer.highlightingOn` setting can be used to disable it.
 
 ### Go to symbol in workspace <kbd>ctrl+t</kbd>
 

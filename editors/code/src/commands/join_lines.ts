@@ -22,7 +22,7 @@ export async function handle() {
         textDocument: { uri: editor.document.uri.toString() }
     };
     const change = await Server.client.sendRequest<SourceChange>(
-        'm/joinLines',
+        'rust-analyzer/joinLines',
         request
     );
     await applySourceChange(change);

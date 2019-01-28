@@ -42,8 +42,12 @@ export class Server {
             log: (messageOrDataObject: string | any, data?: string) => {
                 if (typeof messageOrDataObject === 'string') {
                     if (
-                        messageOrDataObject.includes('m/publishDecorations') ||
-                        messageOrDataObject.includes('m/decorationsRequest')
+                        messageOrDataObject.includes(
+                            'rust-analyzer/publishDecorations'
+                        ) ||
+                        messageOrDataObject.includes(
+                            'rust-analyzer/decorationsRequest'
+                        )
                     ) {
                         // Don't log publish decorations requests
                     } else {

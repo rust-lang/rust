@@ -581,7 +581,7 @@ pub fn handle_code_action(
         let edit = source_edit.try_conv_with(&world)?;
         let cmd = Command {
             title,
-            command: "ra-lsp.applySourceChange".to_string(),
+            command: "rust-analyzer.applySourceChange".to_string(),
             arguments: Some(vec![to_value(edit).unwrap()]),
         };
         res.push(cmd);
@@ -623,7 +623,7 @@ pub fn handle_code_lens(
                 range,
                 command: Some(Command {
                     title: title.into(),
-                    command: "ra-lsp.run-single".into(),
+                    command: "rust-analyzer.runSingle".into(),
                     arguments: Some(vec![to_value(r).unwrap()]),
                 }),
                 data: None,

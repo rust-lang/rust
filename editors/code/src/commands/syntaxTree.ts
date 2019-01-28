@@ -3,7 +3,7 @@ import { TextDocumentIdentifier } from 'vscode-languageclient';
 
 import { Server } from '../server';
 
-export const syntaxTreeUri = vscode.Uri.parse('ra-lsp://syntaxtree');
+export const syntaxTreeUri = vscode.Uri.parse('rust-analyzer://syntaxtree');
 
 export class TextDocumentContentProvider
     implements vscode.TextDocumentContentProvider {
@@ -21,7 +21,7 @@ export class TextDocumentContentProvider
             textDocument: { uri: editor.document.uri.toString() }
         };
         return Server.client.sendRequest<SyntaxTreeResult>(
-            'm/syntaxTree',
+            'rust-analyzer/syntaxTree',
             request
         );
     }

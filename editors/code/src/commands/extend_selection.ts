@@ -24,7 +24,7 @@ export async function handle() {
         textDocument: { uri: editor.document.uri.toString() }
     };
     const response = await Server.client.sendRequest<ExtendSelectionResult>(
-        'm/extendSelection',
+        'rust-analyzer/extendSelection',
         request
     );
     editor.selections = response.selections.map((range: Range) => {

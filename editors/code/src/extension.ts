@@ -46,31 +46,41 @@ export function activate(context: vscode.ExtensionContext) {
 
     // Commands are requests from vscode to the language server
     registerCommand(
-        'ra-lsp.analyzerStatus',
+        'rust-analyzer.analyzerStatus',
         commands.analyzerStatus.makeCommand(context)
     );
-    registerCommand('ra-lsp.collectGarbage', () =>
-        Server.client.sendRequest<null>('ra/collectGarbage', null)
+    registerCommand('rust-analyzer.collectGarbage', () =>
+        Server.client.sendRequest<null>('rust-analyzer/collectGarbage', null)
     );
-    registerCommand('ra-lsp.syntaxTree', commands.syntaxTree.handle);
-    registerCommand('ra-lsp.extendSelection', commands.extendSelection.handle);
-    registerCommand('ra-lsp.matchingBrace', commands.matchingBrace.handle);
-    registerCommand('ra-lsp.joinLines', commands.joinLines.handle);
-    registerCommand('ra-lsp.parentModule', commands.parentModule.handle);
-    registerCommand('ra-lsp.run', commands.runnables.handle);
+    registerCommand('rust-analyzer.syntaxTree', commands.syntaxTree.handle);
     registerCommand(
-        'ra-lsp.applySourceChange',
+        'rust-analyzer.extendSelection',
+        commands.extendSelection.handle
+    );
+    registerCommand(
+        'rust-analyzer.matchingBrace',
+        commands.matchingBrace.handle
+    );
+    registerCommand('rust-analyzer.joinLines', commands.joinLines.handle);
+    registerCommand('rust-analyzer.parentModule', commands.parentModule.handle);
+    registerCommand('rust-analyzer.run', commands.runnables.handle);
+    // Unlike the above this does not send requests to the language server
+    registerCommand('rust-analyzer.runSingle', commands.runnables.handleSingle);
+    registerCommand(
+        'rust-analyzer.applySourceChange',
         commands.applySourceChange.handle
     );
     overrideCommand('type', commands.onEnter.handle);
 
-    // Unlike the above this does not send requests to the language server
-    registerCommand('ra-lsp.run-single', commands.runnables.handleSingle);
-
     // Notifications are events triggered by the language server
     const allNotifications: Iterable<
         [string, lc.GenericNotificationHandler]
-    > = [['m/publishDecorations', notifications.publishDecorations.handle]];
+    > = [
+        [
+            'rust-analyzer/publishDecorations',
+            notifications.publishDecorations.handle
+        ]
+    ];
 
     // The events below are plain old javascript events, triggered and handled by vscode
     vscode.window.onDidChangeActiveTextEditor(
@@ -80,7 +90,7 @@ export function activate(context: vscode.ExtensionContext) {
     const textDocumentContentProvider = new TextDocumentContentProvider();
     disposeOnDeactivation(
         vscode.workspace.registerTextDocumentContentProvider(
-            'ra-lsp',
+            'rust-analyzer',
             textDocumentContentProvider
         )
     );

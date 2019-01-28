@@ -22,7 +22,7 @@ export async function handle(event: { text: string }): Promise<boolean> {
         )
     };
     const change = await Server.client.sendRequest<undefined | SourceChange>(
-        'm/onEnter',
+        'rust-analyzer/onEnter',
         request
     );
     if (!change) {
