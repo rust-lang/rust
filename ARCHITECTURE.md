@@ -184,7 +184,10 @@ To see logs from the language server, set `RUST_LOG=info` env variable. To see
 all communication between the server and the client, use
 `RUST_LOG=gen_lsp_server=debug` (this will print quite a bit of stuff).
 
-There's `Status of rust-analyzer` command which prints common high-level debug info.
+There's `rust-analyzer: status` command which prints common high-level debug
+info. In particular, it prints info about memory usage of various data
+structures, and, if compiled with jemalloc support (`cargo install --features
+jemalloc`), the summary statistic about the heap.
 
 To run tests, just `cargo test`.
 

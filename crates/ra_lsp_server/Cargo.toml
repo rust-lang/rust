@@ -34,3 +34,6 @@ ra_vfs = { path = "../ra_vfs" }
 [dev-dependencies]
 tempfile = "3"
 test_utils = { path = "../test_utils" }
+
+[features]
+jemalloc = [ "ra_ide_api/jemalloc" ]

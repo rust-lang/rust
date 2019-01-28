@@ -133,11 +133,20 @@ struct MemoryStats {
 }
 
 impl MemoryStats {
+    #[cfg(feature = "jemalloc")]
     fn current() -> MemoryStats {
         jemalloc_ctl::epoch().unwrap();
         MemoryStats {
             allocated: Bytes(jemalloc_ctl::stats::allocated().unwrap()),
             resident: Bytes(jemalloc_ctl::stats::resident().unwrap()),
+        }
+    }
+
+    #[cfg(not(feature = "jemalloc"))]
+    fn current() -> MemoryStats {
+        MemoryStats {
+            allocated: Bytes(0),
+            resident: Bytes(0),
         }
     }
 }
