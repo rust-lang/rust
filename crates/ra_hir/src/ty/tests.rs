@@ -166,10 +166,15 @@ fn test(x: SomeType) {
     let d: i128 = -a;
     let e = -100;
     let f = !!!true;
+    let g = !42;
+    let h = !10u32;
+    let j = !a;
     -3.14;
+    !3;
     -x;
     !x;
     -"hello";
+    !"hello";
 }
 "#,
     );
