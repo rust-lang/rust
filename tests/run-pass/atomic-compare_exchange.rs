@@ -8,10 +8,9 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use std::sync::atomic::{AtomicIsize, ATOMIC_ISIZE_INIT};
-use std::sync::atomic::Ordering::*;
+use std::sync::atomic::{AtomicIsize, Ordering::*};
 
-static ATOMIC: AtomicIsize = ATOMIC_ISIZE_INIT;
+static ATOMIC: AtomicIsize = AtomicIsize::new(0);
 
 fn main() {
     // Make sure trans can emit all the intrinsics correctly
