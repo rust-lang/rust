@@ -1,4 +1,5 @@
-fn foo() { //~ NOTE un-closed delimiter
+fn foo() {
+  //~^ NOTE un-closed delimiter
   match Some(10) {
   //~^ NOTE this delimiter might not be properly closed...
       Some(y) => { panic!(); }

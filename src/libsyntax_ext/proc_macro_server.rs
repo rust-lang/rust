@@ -413,7 +413,7 @@ impl server::TokenStream for Rustc<'_> {
             src.to_string(),
             self.sess,
             Some(self.call_site),
-        )
+        ).0
     }
     fn to_string(&mut self, stream: &Self::TokenStream) -> String {
         stream.to_string()
