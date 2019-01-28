@@ -70,6 +70,7 @@ extern crate core;
 extern crate fmt_macros;
 extern crate getopts;
 extern crate graphviz;
+extern crate num_cpus;
 #[macro_use] extern crate lazy_static;
 #[macro_use] extern crate scoped_tls;
 #[cfg(windows)]

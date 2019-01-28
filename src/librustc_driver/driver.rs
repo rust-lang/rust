@@ -56,7 +56,7 @@ use proc_macro_decls;
 use profile;
 use super::Compilation;
 
-#[cfg(not(parallel_queries))]
+#[cfg(not(parallel_compiler))]
 pub fn spawn_thread_pool<F: FnOnce(config::Options) -> R + sync::Send, R: sync::Send>(
     opts: config::Options,
     f: F
@@ -66,7 +66,7 @@ pub fn spawn_thread_pool<F: FnOnce(config::Options) -> R + sync::Send, R: sync::
     })
 }
 
-#[cfg(parallel_queries)]
+#[cfg(parallel_compiler)]
 pub fn spawn_thread_pool<F: FnOnce(config::Options) -> R + sync::Send, R: sync::Send>(
     opts: config::Options,
     f: F
@@ -78,7 +78,7 @@ pub fn spawn_thread_pool<F: FnOnce(config::Options) -> R + sync::Send, R: sync::
     let gcx_ptr = &Lock::new(0);
 
     let config = ThreadPoolBuilder::new()
-        .num_threads(Session::query_threads_from_opts(&opts))
+        .num_threads(Session::threads_from_opts(&opts))
         .deadlock_handler(|| unsafe { ty::query::handle_deadlock() })
         .stack_size(::STACK_SIZE);
 

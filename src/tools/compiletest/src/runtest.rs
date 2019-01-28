@@ -1727,6 +1727,9 @@ impl<'test> TestCx<'test> {
         // FIXME Why is -L here?
         rustc.arg(input_file); //.arg("-L").arg(&self.config.build_base);
 
+        // Use a single thread for efficiency and a deterministic error message order
+        rustc.arg("-Zthreads=1");
+
         // Optionally prevent default --target if specified in test compile-flags.
         let custom_target = self
             .props

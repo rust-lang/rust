@@ -1,21 +1,21 @@
-//! This module defines types which are thread safe if cfg!(parallel_queries) is true.
+//! This module defines types which are thread safe if cfg!(parallel_compiler) is true.
 //!
 //! `Lrc` is an alias of either Rc or Arc.
 //!
 //! `Lock` is a mutex.
-//! It internally uses `parking_lot::Mutex` if cfg!(parallel_queries) is true,
+//! It internally uses `parking_lot::Mutex` if cfg!(parallel_compiler) is true,
 //! `RefCell` otherwise.
 //!
 //! `RwLock` is a read-write lock.
-//! It internally uses `parking_lot::RwLock` if cfg!(parallel_queries) is true,
+//! It internally uses `parking_lot::RwLock` if cfg!(parallel_compiler) is true,
 //! `RefCell` otherwise.
 //!
-//! `MTLock` is a mutex which disappears if cfg!(parallel_queries) is false.
+//! `MTLock` is a mutex which disappears if cfg!(parallel_compiler) is false.
 //!
-//! `MTRef` is a immutable reference if cfg!(parallel_queries), and an mutable reference otherwise.
+//! `MTRef` is a immutable reference if cfg!(parallel_compiler), and an mutable reference otherwise.
 //!
 //! `rustc_erase_owner!` erases a OwningRef owner into Erased or Erased + Send + Sync
-//! depending on the value of cfg!(parallel_queries).
+//! depending on the value of cfg!(parallel_compiler).
 
 use std::collections::HashMap;
 use std::hash::{Hash, BuildHasher};
@@ -50,7 +50,7 @@ pub use std::sync::atomic::Ordering::SeqCst;
 pub use std::sync::atomic::Ordering;
 
 cfg_if! {
-    if #[cfg(not(parallel_queries))] {
+    if #[cfg(not(parallel_compiler))] {
         pub auto trait Send {}
         pub auto trait Sync {}
 
@@ -461,19 +461,19 @@ impl<T> Lock<T> {
         self.0.get_mut()
     }
 
-    #[cfg(parallel_queries)]
+    #[cfg(parallel_compiler)]
     #[inline(always)]
     pub fn try_lock(&self) -> Option<LockGuard<T>> {
         self.0.try_lock()
     }
 
-    #[cfg(not(parallel_queries))]
+    #[cfg(not(parallel_compiler))]
     #[inline(always)]
     pub fn try_lock(&self) -> Option<LockGuard<T>> {
         self.0.try_borrow_mut().ok()
     }
 
-    #[cfg(parallel_queries)]
+    #[cfg(parallel_compiler)]
     #[inline(always)]
     pub fn lock(&self) -> LockGuard<T> {
         if ERROR_CHECKING {
@@ -483,7 +483,7 @@ impl<T> Lock<T> {
         }
     }
 
-    #[cfg(not(parallel_queries))]
+    #[cfg(not(parallel_compiler))]
     #[inline(always)]
     pub fn lock(&self) -> LockGuard<T> {
         self.0.borrow_mut()
@@ -539,13 +539,13 @@ impl<T> RwLock<T> {
         self.0.get_mut()
     }
 
-    #[cfg(not(parallel_queries))]
+    #[cfg(not(parallel_compiler))]
     #[inline(always)]
     pub fn read(&self) -> ReadGuard<T> {
         self.0.borrow()
     }
 
-    #[cfg(parallel_queries)]
+    #[cfg(parallel_compiler)]
     #[inline(always)]
     pub fn read(&self) -> ReadGuard<T> {
         if ERROR_CHECKING {
@@ -560,25 +560,25 @@ impl<T> RwLock<T> {
         f(&*self.read())
     }
 
-    #[cfg(not(parallel_queries))]
+    #[cfg(not(parallel_compiler))]
     #[inline(always)]
     pub fn try_write(&self) -> Result<WriteGuard<T>, ()> {
         self.0.try_borrow_mut().map_err(|_| ())
     }
 
-    #[cfg(parallel_queries)]
+    #[cfg(parallel_compiler)]
     #[inline(always)]
     pub fn try_write(&self) -> Result<WriteGuard<T>, ()> {
         self.0.try_write().ok_or(())
     }
 
-    #[cfg(not(parallel_queries))]
+    #[cfg(not(parallel_compiler))]
     #[inline(always)]
     pub fn write(&self) -> WriteGuard<T> {
         self.0.borrow_mut()
     }
 
-    #[cfg(parallel_queries)]
+    #[cfg(parallel_compiler)]
     #[inline(always)]
     pub fn write(&self) -> WriteGuard<T> {
         if ERROR_CHECKING {
@@ -616,27 +616,27 @@ impl<T: Clone> Clone for RwLock<T> {
 /// It will panic if it is used on multiple threads.
 #[derive(Copy, Clone, Hash, Debug, Eq, PartialEq)]
 pub struct OneThread<T> {
-    #[cfg(parallel_queries)]
+    #[cfg(parallel_compiler)]
     thread: thread::ThreadId,
     inner: T,
 }
 
-#[cfg(parallel_queries)]
+#[cfg(parallel_compiler)]
 unsafe impl<T> std::marker::Sync for OneThread<T> {}
-#[cfg(parallel_queries)]
+#[cfg(parallel_compiler)]
 unsafe impl<T> std::marker::Send for OneThread<T> {}
 
 impl<T> OneThread<T> {
     #[inline(always)]
     fn check(&self) {
-        #[cfg(parallel_queries)]
+        #[cfg(parallel_compiler)]
         assert_eq!(thread::current().id(), self.thread);
     }
 
     #[inline(always)]
     pub fn new(inner: T) -> Self {
         OneThread {
-            #[cfg(parallel_queries)]
+            #[cfg(parallel_compiler)]
             thread: thread::current().id(),
             inner,
         }

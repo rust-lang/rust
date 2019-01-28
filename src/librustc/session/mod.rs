@@ -877,7 +877,7 @@ impl Session {
         let mut ret = true;
         if let Some(ref c) = self.optimization_fuel_crate {
             if c == crate_name {
-                assert_eq!(self.query_threads(), 1);
+                assert_eq!(self.threads(), 1);
                 let mut fuel = self.optimization_fuel.lock();
                 ret = fuel.remaining != 0;
                 if fuel.remaining == 0 && !fuel.out_of_fuel {
@@ -890,7 +890,7 @@ impl Session {
         }
         if let Some(ref c) = self.print_fuel_crate {
             if c == crate_name {
-                assert_eq!(self.query_threads(), 1);
+                assert_eq!(self.threads(), 1);
                 self.print_fuel.fetch_add(1, SeqCst);
             }
         }
@@ -899,14 +899,14 @@ impl Session {
 
     /// Returns the number of query threads that should be used for this
     /// compilation
-    pub fn query_threads_from_opts(opts: &config::Options) -> usize {
-        opts.debugging_opts.query_threads.unwrap_or(1)
+    pub fn threads_from_opts(opts: &config::Options) -> usize {
+        opts.debugging_opts.threads.unwrap_or(::num_cpus::get())
     }
 
     /// Returns the number of query threads that should be used for this
     /// compilation
-    pub fn query_threads(&self) -> usize {
-        Self::query_threads_from_opts(&self.opts)
+    pub fn threads(&self) -> usize {
+        Self::threads_from_opts(&self.opts)
     }
 
     /// Returns the number of codegen units that should be used for this

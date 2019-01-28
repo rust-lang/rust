@@ -580,7 +580,7 @@ impl DepGraph {
     ) -> Option<DepNodeIndex> {
         debug!("try_mark_previous_green({:?}) - BEGIN", dep_node);
 
-        #[cfg(not(parallel_queries))]
+        #[cfg(not(parallel_compiler))]
         {
             debug_assert!(!data.current.borrow().node_to_node_index.contains_key(dep_node));
             debug_assert!(data.colors.get(prev_dep_node_index).is_none());
@@ -743,7 +743,7 @@ impl DepGraph {
 
         // ... and finally storing a "Green" entry in the color map.
         // Multiple threads can all write the same color here
-        #[cfg(not(parallel_queries))]
+        #[cfg(not(parallel_compiler))]
         debug_assert!(data.colors.get(prev_dep_node_index).is_none(),
                       "DepGraph::try_mark_previous_green() - Duplicate DepNodeColor \
                       insertion for {:?}", dep_node);
@@ -766,7 +766,7 @@ impl DepGraph {
         did_allocation: bool,
         diagnostics: Vec<Diagnostic>,
     ) {
-        if did_allocation || !cfg!(parallel_queries) {
+        if did_allocation || !cfg!(parallel_compiler) {
             // Only the thread which did the allocation emits the error messages
             let handle = tcx.sess.diagnostic();
 
@@ -778,7 +778,7 @@ impl DepGraph {
                 DiagnosticBuilder::new_diagnostic(handle, diagnostic).emit();
             }
 
-            #[cfg(parallel_queries)]
+            #[cfg(parallel_compiler)]
             {
                 // Mark the diagnostics and emitted and wake up waiters
                 data.emitted_diagnostics.lock().insert(dep_node_index);
