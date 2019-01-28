@@ -1,4 +1,4 @@
-FROM ubuntu:16.04
+FROM ubuntu:18.10
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
   g++ \
@@ -17,7 +17,9 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
   cmake \
   sudo \
   gdb \
-  xz-utils
+  xz-utils \
+  lld \
+  clang
 
 COPY scripts/sccache.sh /scripts/
 RUN sh /scripts/sccache.sh
@@ -30,7 +32,11 @@ ENV RUST_CONFIGURE_ARGS \
       --enable-debug \
       --enable-lld \
       --enable-lldb \
-      --enable-optimize
+      --enable-optimize \
+      --set target.x86_64-unknown-linux-gnu.linker=clang \
+      --set target.x86_64-unknown-linux-gnu.cc=clang \
+      --set target.x86_64-unknown-linux-gnu.cxx=clang++
+
 ENV SCRIPT \
   python2.7 ../x.py build && \
   python2.7 ../x.py test src/test/run-make-fulldeps --test-args clang
