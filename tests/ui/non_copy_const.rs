@@ -4,7 +4,7 @@
 use std::borrow::Cow;
 use std::cell::Cell;
 use std::fmt::Display;
-use std::sync::atomic::{AtomicUsize, Ordering, ATOMIC_USIZE_INIT};
+use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::Once;
 
 const ATOMIC: AtomicUsize = AtomicUsize::new(5); //~ ERROR interior mutable
@@ -94,9 +94,6 @@ impl<T: Trait2 + Trait<u32>, U: Trait2> Local<T, U> {
 fn main() {
     ATOMIC.store(1, Ordering::SeqCst); //~ ERROR interior mutability
     assert_eq!(ATOMIC.load(Ordering::SeqCst), 5); //~ ERROR interior mutability
-
-    ATOMIC_USIZE_INIT.store(2, Ordering::SeqCst); //~ ERROR interior mutability
-    assert_eq!(ATOMIC_USIZE_INIT.load(Ordering::SeqCst), 0); //~ ERROR interior mutability
 
     let _once = ONCE_INIT;
     let _once_ref = &ONCE_INIT; //~ ERROR interior mutability
