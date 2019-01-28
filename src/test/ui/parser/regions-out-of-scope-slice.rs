@@ -1,8 +1,6 @@
-// blk region isn't supported in the front-end
+// This basically tests the parser's recovery on `'blk` in the wrong place.
 
 fn foo(cond: bool) {
-    // Here we will infer a type that uses the
-    // region of the if stmt then block, but in the scope:
     let mut x;
 
     if cond {
