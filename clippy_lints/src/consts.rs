@@ -441,7 +441,7 @@ pub fn miri_to_const<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, result: &ty::Const<'
             // FIXME: implement other conversion
             _ => None,
         },
-        ConstValue::ScalarPair(Scalar::Ptr(ptr), Scalar::Bits { bits: n, .. }) => match result.ty.sty {
+        ConstValue::Slice(Scalar::Ptr(ptr), n) => match result.ty.sty {
             ty::Ref(_, tam, _) => match tam.sty {
                 ty::Str => {
                     let alloc = tcx.alloc_map.lock().unwrap_memory(ptr.alloc_id);
