@@ -330,19 +330,20 @@ def children_of_node(boxed_node, height, want_values):
         leaf = node_ptr['data']
     else:
         leaf = node_ptr.dereference()
-    keys = leaf['keys']['value']['value']
+    keys = leaf['keys']
     if want_values:
-        values = leaf['vals']['value']['value']
+        values = leaf['vals']
     length = int(leaf['len'])
     for i in xrange(0, length + 1):
         if height > 0:
-            for child in children_of_node(node_ptr['edges'][i], height - 1, want_values):
+            child_ptr = node_ptr['edges'][i]['value']['value']
+            for child in children_of_node(child_ptr, height - 1, want_values):
                 yield child
         if i < length:
             if want_values:
-                yield (keys[i], values[i])
+                yield (keys[i]['value']['value'], values[i]['value']['value'])
             else:
-                yield keys[i]
+                yield keys[i]['value']['value']
 
 class RustStdBTreeSetPrinter(object):
     def __init__(self, val):

@@ -1,5 +1,3 @@
-#![allow(deprecated)]
-
 //! Single-threaded reference-counting pointers. 'Rc' stands for 'Reference
 //! Counted'.
 //!

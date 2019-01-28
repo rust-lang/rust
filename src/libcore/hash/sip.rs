@@ -1,6 +1,6 @@
 //! An implementation of SipHash.
 
-#![allow(deprecated)]
+#![allow(deprecated)] // the types in this module are deprecated
 
 use marker::PhantomData;
 use ptr;
