@@ -20,7 +20,7 @@ export async function handle() {
         })
     };
     const response = await Server.client.sendRequest<Position[]>(
-        'm/findMatchingBrace',
+        'rust-analyzer/findMatchingBrace',
         request
     );
     editor.selections = editor.selections.map((sel, idx) => {

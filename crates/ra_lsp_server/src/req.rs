@@ -16,7 +16,7 @@ pub enum AnalyzerStatus {}
 impl Request for AnalyzerStatus {
     type Params = ();
     type Result = String;
-    const METHOD: &'static str = "ra/analyzerStatus";
+    const METHOD: &'static str = "rust-analyzer/analyzerStatus";
 }
 
 pub enum CollectGarbage {}
@@ -24,7 +24,7 @@ pub enum CollectGarbage {}
 impl Request for CollectGarbage {
     type Params = ();
     type Result = ();
-    const METHOD: &'static str = "ra/collectGarbage";
+    const METHOD: &'static str = "rust-analyzer/collectGarbage";
 }
 
 pub enum SyntaxTree {}
@@ -32,7 +32,7 @@ pub enum SyntaxTree {}
 impl Request for SyntaxTree {
     type Params = SyntaxTreeParams;
     type Result = String;
-    const METHOD: &'static str = "m/syntaxTree";
+    const METHOD: &'static str = "rust-analyzer/syntaxTree";
 }
 
 #[derive(Deserialize, Debug)]
@@ -46,7 +46,7 @@ pub enum ExtendSelection {}
 impl Request for ExtendSelection {
     type Params = ExtendSelectionParams;
     type Result = ExtendSelectionResult;
-    const METHOD: &'static str = "m/extendSelection";
+    const METHOD: &'static str = "rust-analyzer/extendSelection";
 }
 
 #[derive(Deserialize, Debug)]
@@ -67,7 +67,7 @@ pub enum FindMatchingBrace {}
 impl Request for FindMatchingBrace {
     type Params = FindMatchingBraceParams;
     type Result = Vec<Position>;
-    const METHOD: &'static str = "m/findMatchingBrace";
+    const METHOD: &'static str = "rust-analyzer/findMatchingBrace";
 }
 
 #[derive(Deserialize, Debug)]
@@ -82,14 +82,14 @@ pub enum DecorationsRequest {}
 impl Request for DecorationsRequest {
     type Params = TextDocumentIdentifier;
     type Result = Vec<Decoration>;
-    const METHOD: &'static str = "m/decorationsRequest";
+    const METHOD: &'static str = "rust-analyzer/decorationsRequest";
 }
 
 pub enum PublishDecorations {}
 
 impl Notification for PublishDecorations {
     type Params = PublishDecorationsParams;
-    const METHOD: &'static str = "m/publishDecorations";
+    const METHOD: &'static str = "rust-analyzer/publishDecorations";
 }
 
 #[derive(Serialize, Debug)]
@@ -112,7 +112,7 @@ pub enum ParentModule {}
 impl Request for ParentModule {
     type Params = TextDocumentPositionParams;
     type Result = Vec<Location>;
-    const METHOD: &'static str = "m/parentModule";
+    const METHOD: &'static str = "rust-analyzer/parentModule";
 }
 
 pub enum JoinLines {}
@@ -120,7 +120,7 @@ pub enum JoinLines {}
 impl Request for JoinLines {
     type Params = JoinLinesParams;
     type Result = SourceChange;
-    const METHOD: &'static str = "m/joinLines";
+    const METHOD: &'static str = "rust-analyzer/joinLines";
 }
 
 #[derive(Deserialize, Debug)]
@@ -135,7 +135,7 @@ pub enum OnEnter {}
 impl Request for OnEnter {
     type Params = TextDocumentPositionParams;
     type Result = Option<SourceChange>;
-    const METHOD: &'static str = "m/onEnter";
+    const METHOD: &'static str = "rust-analyzer/onEnter";
 }
 
 pub enum Runnables {}
@@ -143,7 +143,7 @@ pub enum Runnables {}
 impl Request for Runnables {
     type Params = RunnablesParams;
     type Result = Vec<Runnable>;
-    const METHOD: &'static str = "m/runnables";
+    const METHOD: &'static str = "rust-analyzer/runnables";
 }
 
 #[derive(Serialize, Deserialize, Debug)]

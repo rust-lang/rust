@@ -16,7 +16,7 @@ export async function handle(editor: TextEditor | undefined) {
         uri: editor.document.uri.toString()
     };
     const decorations = await Server.client.sendRequest<Decoration[]>(
-        'm/decorationsRequest',
+        'rust-analyzer/decorationsRequest',
         params
     );
     Server.highlighter.setHighlights(editor, decorations);

@@ -72,61 +72,61 @@
         ],
         "commands": [
             {
-                "command": "ra-lsp.syntaxTree",
-                "title": "Show Rust syntax tree"
+                "command": "rust-analyzer.syntaxTree",
+                "title": "rust-analyzer: syntax tree"
             },
             {
-                "command": "ra-lsp.extendSelection",
-                "title": "Rust Extend Selection"
+                "command": "rust-analyzer.extendSelection",
+                "title": "rust-analyzer: extend selection"
             },
             {
-                "command": "ra-lsp.matchingBrace",
-                "title": "Rust Matching Brace"
+                "command": "rust-analyzer.matchingBrace",
+                "title": "rust-analyzer: matching brace"
             },
             {
-                "command": "ra-lsp.parentModule",
-                "title": "Rust Parent Module"
+                "command": "rust-analyzer.parentModule",
+                "title": "rust-analyzer: parent module"
             },
             {
-                "command": "ra-lsp.joinLines",
-                "title": "Rust Join Lines"
+                "command": "rust-analyzer.joinLines",
+                "title": "rust-analyzer: join lines"
             },
             {
-                "command": "ra-lsp.run",
-                "title": "Rust Run"
+                "command": "rust-analyzer.run",
+                "title": "rust-analyzer: run"
             },
             {
-                "command": "ra-lsp.analyzerStatus",
-                "title": "Status of rust-analyzer (debug)"
+                "command": "rust-analyzer.analyzerStatus",
+                "title": "rust-analyzer: status"
             },
             {
-                "command": "ra-lsp.collectGarbage",
-                "title": "Run rust-analyzer's GC"
+                "command": "rust-analyzer.collectGarbage",
+                "title": "rust-analyzer: run gc"
             }
         ],
         "keybindings": [
             {
-                "command": "ra-lsp.parentModule",
+                "command": "rust-analyzer.parentModule",
                 "key": "ctrl+u",
                 "when": "editorTextFocus && editorLangId == rust"
             },
             {
-                "command": "ra-lsp.matchingBrace",
+                "command": "rust-analyzer.matchingBrace",
                 "key": "ctrl+shift+m",
                 "when": "editorTextFocus && editorLangId == rust"
             },
             {
-                "command": "ra-lsp.extendSelection",
+                "command": "rust-analyzer.extendSelection",
                 "key": "shift+alt+right",
                 "when": "editorTextFocus && editorLangId == rust"
             },
             {
-                "command": "ra-lsp.joinLines",
+                "command": "rust-analyzer.joinLines",
                 "key": "ctrl+shift+j",
                 "when": "editorTextFocus && editorLangId == rust"
             },
             {
-                "command": "ra-lsp.run",
+                "command": "rust-analyzer.run",
                 "key": "ctrl+r",
                 "when": "editorTextFocus && editorLangId == rust"
             }
@@ -135,19 +135,19 @@
             "type": "object",
             "title": "Rust Analyzer",
             "properties": {
-                "ra-lsp.highlightingOn": {
+                "rust-analyzer.highlightingOn": {
                     "type": "boolean",
                     "default": true,
                     "description": "Highlight Rust code (overrides built-in syntax highlighting)"
                 },
-                "ra-lsp.raLspServerPath": {
+                "rust-analyzer.raLspServerPath": {
                     "type": [
                         "string"
                     ],
                     "default": "ra_lsp_server",
                     "description": "Path to ra_lsp_server executable"
                 },
-                "ra-lsp.trace.server": {
+                "rust-analyzer.trace.server": {
                     "type": "string",
                     "scope": "window",
                     "enum": [
@@ -156,7 +156,7 @@
                         "verbose"
                     ],
                     "default": "off",
-                    "description": "Trace requests to the ra-lsp server"
+                    "description": "Trace requests to the ra_lsp_server"
                 }
             }
         },

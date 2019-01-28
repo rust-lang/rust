@@ -15,7 +15,7 @@ export async function handle() {
         )
     };
     const response = await Server.client.sendRequest<lc.Location[]>(
-        'm/parentModule',
+        'rust-analyzer/parentModule',
         request
     );
     const loc = response[0];

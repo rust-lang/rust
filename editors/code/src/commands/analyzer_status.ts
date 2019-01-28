@@ -1,7 +1,7 @@
 import * as vscode from 'vscode';
 import { Server } from '../server';
 
-const statusUri = vscode.Uri.parse('ra-lsp-status://status');
+const statusUri = vscode.Uri.parse('rust-analyzer-status://status');
 
 export class TextDocumentContentProvider
     implements vscode.TextDocumentContentProvider {
@@ -15,7 +15,10 @@ export class TextDocumentContentProvider
         if (editor == null) {
             return '';
         }
-        return Server.client.sendRequest<string>('ra/analyzerStatus', null);
+        return Server.client.sendRequest<string>(
+            'rust-analyzer/analyzerStatus',
+            null
+        );
     }
 
     get onDidChange(): vscode.Event<vscode.Uri> {
@@ -31,7 +34,7 @@ export function makeCommand(context: vscode.ExtensionContext) {
     const textDocumentContentProvider = new TextDocumentContentProvider();
     context.subscriptions.push(
         vscode.workspace.registerTextDocumentContentProvider(
-            'ra-lsp-status',
+            'rust-analyzer-status',
             textDocumentContentProvider
         )
     );

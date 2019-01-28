@@ -246,7 +246,7 @@ fn main() {}
                   "label": "create module"
                 }
               ],
-              "command": "ra-lsp.applySourceChange",
+              "command": "rust-analyzer.applySourceChange",
               "title": "create module"
             }
         ]),

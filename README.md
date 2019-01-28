@@ -125,13 +125,13 @@ and trait selection) to the existing rustc.
 - [x] [textDocument/documentHighlight](https://microsoft.github.io/language-server-protocol/specification#textDocument_documentHighlight)
 - [x] [textDocument/documentSymbol](https://microsoft.github.io/language-server-protocol/specification#textDocument_documentSymbol)
 - [x] [textDocument/codeAction](https://microsoft.github.io/language-server-protocol/specification#textDocument_codeAction)
- - ra_lsp.syntaxTree
- - ra_lsp.extendSelection
- - ra_lsp.matchingBrace
- - ra_lsp.parentModule
- - ra_lsp.joinLines
- - ra_lsp.run
- - ra_lsp.analyzerStatus
+ - rust-analyzer.syntaxTree
+ - rust-analyzer.extendSelection
+ - rust-analyzer.matchingBrace
+ - rust-analyzer.parentModule
+ - rust-analyzer.joinLines
+ - rust-analyzer.run
+ - rust-analyzer.analyzerStatus
 - [x] [textDocument/codeLens](https://microsoft.github.io/language-server-protocol/specification#textDocument_codeLens)
 - [ ] [textDocument/documentLink](https://microsoft.github.io/language-server-protocol/specification#codeLens_resolve)
 - [ ] [documentLink/resolve](https://microsoft.github.io/language-server-protocol/specification#documentLink_resolve)

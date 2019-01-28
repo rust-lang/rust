@@ -83,7 +83,7 @@ export async function handle() {
         )
     };
     const runnables = await Server.client.sendRequest<Runnable[]>(
-        'm/runnables',
+        'rust-analyzer/runnables',
         params
     );
     const items: RunnableQuickPick[] = [];

@@ -16,7 +16,7 @@ export class Config {
     }
 
     public userConfigChanged() {
-        const config = vscode.workspace.getConfiguration('ra-lsp');
+        const config = vscode.workspace.getConfiguration('rust-analyzer');
         if (config.has('highlightingOn')) {
             this.highlightingOn = config.get('highlightingOn') as boolean;
         }
