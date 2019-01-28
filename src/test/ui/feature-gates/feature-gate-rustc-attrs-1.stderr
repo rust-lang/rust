@@ -14,13 +14,6 @@ LL | #[rustc_error] //~ ERROR the `#[rustc_error]` attribute is just used for ru
    |
    = help: add #![feature(rustc_attrs)] to the crate attributes to enable
 
-error[E0208]: []
-  --> $DIR/feature-gate-rustc-attrs-1.rs:8:1
-   |
-LL | fn main() {} //~ ERROR []
-   | ^^^^^^^^^^^^
+error: aborting due to 2 previous errors
 
-error: aborting due to 3 previous errors
-
-Some errors occurred: E0208, E0658.
-For more information about an error, try `rustc --explain E0208`.
+For more information about this error, try `rustc --explain E0658`.
