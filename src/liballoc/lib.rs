@@ -64,8 +64,8 @@
 #![needs_allocator]
 
 #![warn(deprecated_in_future)]
-#![deny(intra_doc_link_resolution_failure)]
-#![deny(missing_debug_implementations)]
+#![warn(intra_doc_link_resolution_failure)]
+#![warn(missing_debug_implementations)]
 
 #![cfg_attr(not(test), feature(fn_traits))]
 #![cfg_attr(not(test), feature(generator_trait))]
