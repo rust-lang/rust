@@ -1,11 +1,11 @@
 ---
-created: "2019-01-22T14:45:00.059676600+00:00"
-creator: insta@0.4.0
+created: "2019-01-28T14:51:16.185273502+00:00"
+creator: insta@0.5.2
 expression: "&result"
-source: "crates\\ra_hir\\src\\ty\\tests.rs"
+source: crates/ra_hir/src/ty/tests.rs
 ---
 [27; 28) 'x': SomeType
-[40; 197) '{     ...lo"; }': ()
+[40; 272) '{     ...lo"; }': ()
 [50; 51) 'b': bool
 [54; 59) 'false': bool
 [69; 70) 'c': bool
@@ -24,12 +24,25 @@ source: "crates\\ra_hir\\src\\ty\\tests.rs"
 [147; 153) '!!true': bool
 [148; 153) '!true': bool
 [149; 153) 'true': bool
-[159; 164) '-3.14': f64
-[160; 164) '3.14': f64
-[170; 172) '-x': [unknown]
-[171; 172) 'x': SomeType
-[178; 180) '!x': [unknown]
-[179; 180) 'x': SomeType
-[186; 194) '-"hello"': [unknown]
-[187; 194) '"hello"': &str
+[163; 164) 'g': i32
+[167; 170) '!42': i32
+[168; 170) '42': i32
+[180; 181) 'h': u32
+[184; 190) '!10u32': u32
+[185; 190) '10u32': u32
+[200; 201) 'j': i128
+[204; 206) '!a': i128
+[205; 206) 'a': i128
+[212; 217) '-3.14': f64
+[213; 217) '3.14': f64
+[223; 225) '!3': i32
+[224; 225) '3': i32
+[231; 233) '-x': [unknown]
+[232; 233) 'x': SomeType
+[239; 241) '!x': [unknown]
+[240; 241) 'x': SomeType
+[247; 255) '-"hello"': [unknown]
+[248; 255) '"hello"': &str
+[261; 269) '!"hello"': [unknown]
+[262; 269) '"hello"': &str
 

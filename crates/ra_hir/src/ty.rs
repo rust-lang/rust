@@ -1588,9 +1588,17 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
                             _ => Ty::Unknown,
                         }
                     }
-                    UnaryOp::Not if inner_ty == Ty::Bool => Ty::Bool,
-                    // TODO: resolve ops::Not trait for inner_ty
-                    UnaryOp::Not => Ty::Unknown,
+                    UnaryOp::Not => {
+                        match inner_ty {
+                            Ty::Bool
+                            | Ty::Int(primitive::UncertainIntTy::Unknown)
+                            | Ty::Int(primitive::UncertainIntTy::Signed(..))
+                            | Ty::Int(primitive::UncertainIntTy::Unsigned(..))
+                            | Ty::Infer(InferTy::IntVar(..)) => inner_ty,
+                            // TODO: resolve ops::Not trait for inner_ty
+                            _ => Ty::Unknown,
+                        }
+                    }
                 }
             }
             Expr::BinaryOp { lhs, rhs, op } => match op {
