@@ -69,21 +69,6 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for ReplaceConsts {
 const REPLACEMENTS: &[(&[&str], &str)] = &[
     // Once
     (&["core", "sync", "ONCE_INIT"], "Once::new()"),
-    // Atomic
-    (
-        &["core", "sync", "atomic", "ATOMIC_BOOL_INIT"],
-        "AtomicBool::new(false)",
-    ),
-    (&["core", "sync", "atomic", "ATOMIC_ISIZE_INIT"], "AtomicIsize::new(0)"),
-    (&["core", "sync", "atomic", "ATOMIC_I8_INIT"], "AtomicI8::new(0)"),
-    (&["core", "sync", "atomic", "ATOMIC_I16_INIT"], "AtomicI16::new(0)"),
-    (&["core", "sync", "atomic", "ATOMIC_I32_INIT"], "AtomicI32::new(0)"),
-    (&["core", "sync", "atomic", "ATOMIC_I64_INIT"], "AtomicI64::new(0)"),
-    (&["core", "sync", "atomic", "ATOMIC_USIZE_INIT"], "AtomicUsize::new(0)"),
-    (&["core", "sync", "atomic", "ATOMIC_U8_INIT"], "AtomicU8::new(0)"),
-    (&["core", "sync", "atomic", "ATOMIC_U16_INIT"], "AtomicU16::new(0)"),
-    (&["core", "sync", "atomic", "ATOMIC_U32_INIT"], "AtomicU32::new(0)"),
-    (&["core", "sync", "atomic", "ATOMIC_U64_INIT"], "AtomicU64::new(0)"),
     // Min
     (&["core", "isize", "MIN"], "isize::min_value()"),
     (&["core", "i8", "MIN"], "i8::min_value()"),

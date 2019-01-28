@@ -10,18 +10,6 @@ use std::sync::{Once, ONCE_INIT};
 fn bad() {
     // Once
     { let foo = ONCE_INIT; };
-    // Atomic
-    { let foo = AtomicBool::new(false); };
-    { let foo = AtomicIsize::new(0); };
-    { let foo = AtomicI8::new(0); };
-    { let foo = AtomicI16::new(0); };
-    { let foo = AtomicI32::new(0); };
-    { let foo = AtomicI64::new(0); };
-    { let foo = AtomicUsize::new(0); };
-    { let foo = AtomicU8::new(0); };
-    { let foo = AtomicU16::new(0); };
-    { let foo = AtomicU32::new(0); };
-    { let foo = AtomicU64::new(0); };
     // Min
     { let foo = isize::min_value(); };
     { let foo = i8::min_value(); };

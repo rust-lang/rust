@@ -10,6 +10,7 @@ use rustc::{bug, span_bug};
 use rustc_data_structures::sync::Lrc;
 use std::cmp::Ordering::{self, Equal};
 use std::cmp::PartialOrd;
+use std::convert::TryFrom;
 use std::convert::TryInto;
 use std::hash::{Hash, Hasher};
 use syntax::ast::{FloatTy, LitKind};
@@ -441,12 +442,12 @@ pub fn miri_to_const<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, result: &ty::Const<'
             // FIXME: implement other conversion
             _ => None,
         },
-        ConstValue::ScalarPair(Scalar::Ptr(ptr), Scalar::Bits { bits: n, .. }) => match result.ty.sty {
+        ConstValue::Slice(Scalar::Ptr(ptr), n) => match result.ty.sty {
             ty::Ref(_, tam, _) => match tam.sty {
                 ty::Str => {
                     let alloc = tcx.alloc_map.lock().unwrap_memory(ptr.alloc_id);
                     let offset = ptr.offset.bytes().try_into().expect("too-large pointer offset");
-                    let n = n as usize;
+                    let n = usize::try_from(n).unwrap();
                     String::from_utf8(alloc.bytes[offset..(offset + n)].to_owned())
                         .ok()
                         .map(Constant::Str)
