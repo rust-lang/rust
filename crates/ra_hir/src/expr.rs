@@ -215,7 +215,7 @@ pub use ra_syntax::ast::BinOp as BinaryOp;
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub struct MatchArm {
     pub pats: Vec<PatId>,
-    // guard: Option<ExprId>, // TODO
+    pub guard: Option<ExprId>,
     pub expr: ExprId,
 }
 
@@ -511,10 +511,12 @@ impl ExprCollector {
                         MatchArm {
                             pats: vec![pat],
                             expr: then_branch,
+                            guard: None,
                         },
                         MatchArm {
                             pats: vec![placeholder_pat],
                             expr: else_branch,
+                            guard: None,
                         },
                     ];
                     self.alloc_expr(
@@ -613,6 +615,10 @@ impl ExprCollector {
                         .map(|arm| MatchArm {
                             pats: arm.pats().map(|p| self.collect_pat(p)).collect(),
                             expr: self.collect_expr_opt(arm.expr()),
+                            guard: arm.guard().map(|guard| {
+                                let e = guard.expr().expect("every guard should have an expr");
+                                self.collect_expr(e)
+                            }),
                         })
                         .collect()
                 } else {

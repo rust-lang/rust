@@ -421,7 +421,8 @@ fn test() {
 
     match e {
         E::A { x } => x,
-        E::B => 1,
+        E::B if foo => 1,
+        E::B => 10,
     };
 
     let ref d @ E::A { .. } = e;

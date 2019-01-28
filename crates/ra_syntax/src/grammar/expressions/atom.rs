@@ -360,13 +360,27 @@ fn match_arm(p: &mut Parser) -> BlockLike {
     while p.eat(PIPE) {
         patterns::pattern(p);
     }
-    if p.eat(IF_KW) {
-        expr(p);
+    if p.at(IF_KW) {
+        match_guard(p);
     }
     p.expect(FAT_ARROW);
     let ret = expr_stmt(p);
     m.complete(p, MATCH_ARM);
     ret
+}
+
+// test match_guard
+// fn foo() {
+//     match () {
+//         _ if foo => (),
+//     }
+// }
+fn match_guard(p: &mut Parser) -> CompletedMarker {
+    assert!(p.at(IF_KW));
+    let m = p.start();
+    p.bump();
+    expr(p);
+    m.complete(p, MATCH_GUARD)
 }
 
 // test block_expr

@@ -1395,7 +1395,9 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
                     for &pat in &arm.pats {
                         let _pat_ty = self.infer_pat(pat, &input_ty);
                     }
-                    // TODO type the guard
+                    if let Some(guard_expr) = arm.guard {
+                        self.infer_expr(guard_expr, &Expectation::has_type(Ty::Bool));
+                    }
                     self.infer_expr(arm.expr, &expected);
                 }
 
@@ -1468,9 +1470,17 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
                 cast_ty
             }
             Expr::Ref { expr, mutability } => {
-                // TODO pass the expectation down
-                let inner_ty = self.infer_expr(*expr, &Expectation::none());
+                let expectation = if let Ty::Ref(ref subty, expected_mutability) = expected.ty {
+                    if expected_mutability == Mutability::Mut && *mutability == Mutability::Shared {
+                        // TODO: throw type error - expected mut reference but found shared ref,
+                        // which cannot be coerced
+                    }
+                    Expectation::has_type((**subty).clone())
+                } else {
+                    Expectation::none()
+                };
                 // TODO reference coercions etc.
+                let inner_ty = self.infer_expr(*expr, &expectation);
                 Ty::Ref(Arc::new(inner_ty), *mutability)
             }
             Expr::UnaryOp { expr, op } => {
