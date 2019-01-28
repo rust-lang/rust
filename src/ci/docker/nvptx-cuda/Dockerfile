@@ -6,7 +6,7 @@ RUN apt-get install -y --no-install-recommends \
     cmake sudo gdb
 
 # FIXME: setup `ptx-linker` CI for automatic binary releases.
-RUN curl -sL https://github.com/denzp/rust-ptx-linker/releases/download/v0.9.0-alpha/rust-ptx-linker.linux64.tar.gz | \
+RUN curl -sL https://github.com/denzp/rust-ptx-linker/releases/download/v0.9.0-alpha.1/rust-ptx-linker.linux64.tar.gz | \
     tar -xzvC /usr/bin
 
 COPY scripts/sccache.sh /scripts/

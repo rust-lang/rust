@@ -13,7 +13,7 @@ use rustc::hir::def_id::{LOCAL_CRATE, CrateNum};
 use rustc::middle::dependency_format::Linkage;
 use rustc::session::Session;
 use rustc::session::config::{self, CrateType, OptLevel, DebugInfo,
-                             CrossLangLto};
+                             CrossLangLto, Lto};
 use rustc::ty::TyCtxt;
 use rustc_target::spec::{LinkerFlavor, LldFlavor};
 use serialize::{json, Encoder};
@@ -1118,14 +1118,13 @@ impl<'a> Linker for PtxLinker<'a> {
     }
 
     fn optimize(&mut self) {
-        self.cmd.arg(match self.sess.opts.optimize {
-            OptLevel::No => "-O0",
-            OptLevel::Less => "-O1",
-            OptLevel::Default => "-O2",
-            OptLevel::Aggressive => "-O3",
-            OptLevel::Size => "-Os",
-            OptLevel::SizeMin => "-Os"
-        });
+        match self.sess.lto() {
+            Lto::Thin | Lto::Fat | Lto::ThinLocal => {
+                self.cmd.arg("-Olto");
+            },
+
+            Lto::No => { },
+        };
     }
 
     fn output_filename(&mut self, path: &Path) {
