@@ -1149,14 +1149,14 @@ impl<T> MaybeUninit<T> {
         unsafe { &mut *self.value as *mut T }
     }
 
-    /// Get a pointer to the first contained values.
+    /// Get a pointer to the first element of the array.
     #[unstable(feature = "maybe_uninit", issue = "53491")]
     #[inline(always)]
     pub fn first_ptr(this: &[MaybeUninit<T>]) -> *const T {
         this as *const [MaybeUninit<T>] as *const T
     }
 
-    /// Get a mutable pointer to the first contained values.
+    /// Get a mutable pointer to the first element of the array.
     #[unstable(feature = "maybe_uninit", issue = "53491")]
     #[inline(always)]
     pub fn first_mut_ptr(this: &mut [MaybeUninit<T>]) -> *mut T {
