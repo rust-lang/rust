@@ -12,6 +12,7 @@ use std::cmp::Ordering::{self, Equal};
 use std::cmp::PartialOrd;
 use std::convert::TryInto;
 use std::hash::{Hash, Hasher};
+use std::convert::TryFrom;
 use syntax::ast::{FloatTy, LitKind};
 use syntax::ptr::P;
 use syntax_pos::symbol::Symbol;
@@ -446,7 +447,7 @@ pub fn miri_to_const<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, result: &ty::Const<'
                 ty::Str => {
                     let alloc = tcx.alloc_map.lock().unwrap_memory(ptr.alloc_id);
                     let offset = ptr.offset.bytes().try_into().expect("too-large pointer offset");
-                    let n = n as usize;
+                    let n = usize::try_from(n).unwrap();
                     String::from_utf8(alloc.bytes[offset..(offset + n)].to_owned())
                         .ok()
                         .map(Constant::Str)
