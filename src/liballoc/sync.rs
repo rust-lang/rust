@@ -1122,7 +1122,7 @@ impl<T: ?Sized> Weak<T> {
     /// If `self` was created using [`Weak::new`], this will return 0.
     ///
     /// [`Weak::new`]: #method.new
-    #[unstable(feature = "weak_counts", issue = "0")]
+    #[unstable(feature = "weak_counts", issue = "57977")]
     pub fn strong_count(&self) -> usize {
         if let Some(inner) = self.inner() {
             inner.strong.load(SeqCst)
@@ -1145,7 +1145,7 @@ impl<T: ?Sized> Weak<T> {
     /// `Weak`s pointing to the same value.
     ///
     /// [`Weak::new`]: #method.new
-    #[unstable(feature = "weak_counts", issue = "0")]
+    #[unstable(feature = "weak_counts", issue = "57977")]
     pub fn weak_count(&self) -> Option<usize> {
         // Due to the implicit weak pointer added when any strong pointers are
         // around, we cannot implement `weak_count` correctly since it

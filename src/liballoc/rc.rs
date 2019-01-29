@@ -1289,7 +1289,7 @@ impl<T: ?Sized> Weak<T> {
     /// If `self` was created using [`Weak::new`], this will return 0.
     ///
     /// [`Weak::new`]: #method.new
-    #[unstable(feature = "weak_counts", issue = "0")]
+    #[unstable(feature = "weak_counts", issue = "57977")]
     pub fn strong_count(&self) -> usize {
         if let Some(inner) = self.inner() {
             inner.strong()
@@ -1305,7 +1305,7 @@ impl<T: ?Sized> Weak<T> {
     /// value.
     ///
     /// [`Weak::new`]: #method.new
-    #[unstable(feature = "weak_counts", issue = "0")]
+    #[unstable(feature = "weak_counts", issue = "57977")]
     pub fn weak_count(&self) -> Option<usize> {
         self.inner().map(|inner| {
             if inner.strong() > 0 {
