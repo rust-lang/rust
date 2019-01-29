@@ -1917,7 +1917,7 @@ pub fn build_session_options_and_crate_config(
     let crate_types = parse_crate_types_from_list(unparsed_crate_types)
         .unwrap_or_else(|e| early_error(error_format, &e[..]));
 
-    
+
     let (lint_opts, describe_lints, lint_cap) = get_cmd_lint_options(matches, error_format);
 
     let mut debugging_opts = build_debugging_options(matches, error_format);

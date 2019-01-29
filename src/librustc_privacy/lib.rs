@@ -1762,9 +1762,10 @@ fn privacy_access_levels<'tcx>(
         queries::check_mod_privacy::ensure(tcx, tcx.hir().local_def_id(module));
     }
 
-    let public_crates: Option<FxHashSet<CrateNum>> = tcx.sess.opts.extern_public.as_ref().map(|s| s.iter().flat_map(|c| {
-        tcx.crates().iter().find(|&&krate| &tcx.crate_name(krate) == c).cloned()
-    }).collect());
+    let public_crates: Option<FxHashSet<CrateNum>> = tcx.sess.opts.extern_public.as_ref()
+        .map(|s| s.iter().flat_map(|c| {
+            tcx.crates().iter().find(|&&krate| &tcx.crate_name(krate) == c).cloned()
+        }).collect());
 
 
     // Build up a set of all exported items in the AST. This is a set of all
