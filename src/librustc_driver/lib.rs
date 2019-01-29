@@ -30,6 +30,7 @@ extern crate rustc;
 extern crate rustc_allocator;
 extern crate rustc_target;
 extern crate rustc_borrowck;
+#[macro_use]
 extern crate rustc_data_structures;
 extern crate rustc_errors as errors;
 extern crate rustc_passes;

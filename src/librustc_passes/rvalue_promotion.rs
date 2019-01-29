@@ -44,7 +44,6 @@ pub fn check_crate<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>) {
         let def_id = tcx.hir().body_owner_def_id(body_id);
         tcx.const_is_rvalue_promotable_to_static(def_id);
     }
-    tcx.sess.abort_if_errors();
 }
 
 fn const_is_rvalue_promotable_to_static<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,

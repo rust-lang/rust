@@ -1,4 +1,3 @@
-#![feature(associated_consts)]
 #![feature(decl_macro)]
 #![allow(private_in_public)]
 
@@ -15,6 +14,7 @@ mod m {
     pub struct PubTupleStruct(u8);
     impl PubTupleStruct { fn method() {} }
 
+    #[derive(Clone, Copy)]
     struct Priv;
     pub type Alias = Priv;
     pub struct Pub<T = Alias>(pub T);
