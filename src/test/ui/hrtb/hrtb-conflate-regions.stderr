@@ -5,8 +5,8 @@ LL | fn b() { want_foo2::<SomeStruct>(); } //~ ERROR
    |          ^^^^^^^^^^^^^^^^^^^^^^^
    |
    = note: Due to a where-clause on `want_foo2`,
-   = note: `SomeStruct` must implement `Foo<(&'0 isize, &'1 isize)>` for any two lifetimes `'0` and `'1`
-   = note: but `SomeStruct` only implements `Foo<(&'2 isize, &'2 isize)>` for some lifetime `'2`
+   = note: `SomeStruct` must implement `Foo<(&'0 isize, &'1 isize)>`, for any two lifetimes `'0` and `'1`
+   = note: but `SomeStruct` actually implements `Foo<(&'2 isize, &'2 isize)>`, for some specific lifetime `'2`
 
 error: aborting due to previous error
 

@@ -41,8 +41,8 @@ LL |     tuple_one::<Tuple>();
    |     ^^^^^^^^^^^^^^^^^^
    |
    = note: Due to a where-clause on `tuple_one`,
-   = note: `Tuple` must implement `TheTrait<(&'0 isize, &'1 isize)>` for any two lifetimes `'0` and `'1`
-   = note: but `Tuple` only implements `TheTrait<(&'2 isize, &'2 isize)>` for some lifetime `'2`
+   = note: `Tuple` must implement `TheTrait<(&'0 isize, &'1 isize)>`, for any two lifetimes `'0` and `'1`
+   = note: but `Tuple` actually implements `TheTrait<(&'2 isize, &'2 isize)>`, for some specific lifetime `'2`
 
 error: implementation of `TheTrait` is not general enough
   --> $DIR/associated-types-eq-hr.rs:96:5
@@ -51,8 +51,8 @@ LL |     tuple_two::<Tuple>();
    |     ^^^^^^^^^^^^^^^^^^
    |
    = note: Due to a where-clause on `tuple_two`,
-   = note: `Tuple` must implement `TheTrait<(&'0 isize, &'1 isize)>` for any two lifetimes `'0` and `'1`
-   = note: but `Tuple` only implements `TheTrait<(&'2 isize, &'2 isize)>` for some lifetime `'2`
+   = note: `Tuple` must implement `TheTrait<(&'0 isize, &'1 isize)>`, for any two lifetimes `'0` and `'1`
+   = note: but `Tuple` actually implements `TheTrait<(&'2 isize, &'2 isize)>`, for some specific lifetime `'2`
 
 error: implementation of `TheTrait` is not general enough
   --> $DIR/associated-types-eq-hr.rs:105:5
@@ -61,8 +61,8 @@ LL |     tuple_four::<Tuple>();
    |     ^^^^^^^^^^^^^^^^^^^
    |
    = note: Due to a where-clause on `tuple_four`,
-   = note: `Tuple` must implement `TheTrait<(&'0 isize, &'1 isize)>` for any two lifetimes `'0` and `'1`
-   = note: but `Tuple` only implements `TheTrait<(&'2 isize, &'2 isize)>` for some lifetime `'2`
+   = note: `Tuple` must implement `TheTrait<(&'0 isize, &'1 isize)>`, for any two lifetimes `'0` and `'1`
+   = note: but `Tuple` actually implements `TheTrait<(&'2 isize, &'2 isize)>`, for some specific lifetime `'2`
 
 error: aborting due to 5 previous errors
 

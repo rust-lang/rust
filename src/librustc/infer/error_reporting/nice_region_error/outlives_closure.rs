@@ -47,7 +47,7 @@ impl<'a, 'gcx, 'tcx> NiceRegionError<'a, 'gcx, 'tcx> {
             // closure, provide a specific message pointing this out.
             if let (&SubregionOrigin::BindingTypeIsNotValidAtDecl(ref external_span),
                     &RegionKind::ReFree(ref free_region)) = (&sub_origin, sup_region) {
-                let hir = &self.tcx.hir();
+                let hir = &self.tcx().hir();
                 if let Some(node_id) = hir.as_local_node_id(free_region.scope) {
                     if let Node::Expr(Expr {
                         node: Closure(_, _, _, closure_span, None),
@@ -55,7 +55,7 @@ impl<'a, 'gcx, 'tcx> NiceRegionError<'a, 'gcx, 'tcx> {
                     }) = hir.get(node_id) {
                         let sup_sp = sup_origin.span();
                         let origin_sp = origin.span();
-                        let mut err = self.tcx.sess.struct_span_err(
+                        let mut err = self.tcx().sess.struct_span_err(
                             sup_sp,
                             "borrowed data cannot be stored outside of its closure");
                         err.span_label(sup_sp, "cannot be stored outside of its closure");

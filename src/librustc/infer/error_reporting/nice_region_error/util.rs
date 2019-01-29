@@ -44,13 +44,13 @@ impl<'a, 'gcx, 'tcx> NiceRegionError<'a, 'gcx, 'tcx> {
         let (id, bound_region) = match *anon_region {
             ty::ReFree(ref free_region) => (free_region.scope, free_region.bound_region),
             ty::ReEarlyBound(ref ebr) => (
-                self.tcx.parent_def_id(ebr.def_id).unwrap(),
+                self.tcx().parent_def_id(ebr.def_id).unwrap(),
                 ty::BoundRegion::BrNamed(ebr.def_id, ebr.name),
             ),
             _ => return None, // not a free region
         };
 
-        let hir = &self.tcx.hir();
+        let hir = &self.tcx().hir();
         if let Some(node_id) = hir.as_local_node_id(id) {
             if let Some(body_id) = hir.maybe_body_owned_by(node_id) {
                 let body = hir.body(body_id);
@@ -66,7 +66,7 @@ impl<'a, 'gcx, 'tcx> NiceRegionError<'a, 'gcx, 'tcx> {
                             let arg_ty_span = hir.span(hir.hir_to_node_id(ty_hir_id));
                             let ty = tables.node_id_to_type_opt(arg.hir_id)?;
                             let mut found_anon_region = false;
-                            let new_arg_ty = self.tcx.fold_regions(&ty, &mut false, |r, _| {
+                            let new_arg_ty = self.tcx().fold_regions(&ty, &mut false, |r, _| {
                                 if *r == *anon_region {
                                     found_anon_region = true;
                                     replace_region
@@ -108,10 +108,10 @@ impl<'a, 'gcx, 'tcx> NiceRegionError<'a, 'gcx, 'tcx> {
         br: ty::BoundRegion,
         decl: &hir::FnDecl,
     ) -> Option<Span> {
-        let ret_ty = self.tcx.type_of(scope_def_id);
+        let ret_ty = self.tcx().type_of(scope_def_id);
         if let ty::FnDef(_, _) = ret_ty.sty {
-            let sig = ret_ty.fn_sig(self.tcx);
-            let late_bound_regions = self.tcx
+            let sig = ret_ty.fn_sig(self.tcx());
+            let late_bound_regions = self.tcx()
                 .collect_referenced_late_bound_regions(&sig.output());
             if late_bound_regions.iter().any(|r| *r == br) {
                 return Some(decl.output.span());
@@ -126,7 +126,7 @@ impl<'a, 'gcx, 'tcx> NiceRegionError<'a, 'gcx, 'tcx> {
     // enable E0621 for it.
     pub(super) fn is_self_anon(&self, is_first: bool, scope_def_id: DefId) -> bool {
         is_first
-            && self.tcx
+            && self.tcx()
                    .opt_associated_item(scope_def_id)
                    .map(|i| i.method_has_self_argument) == Some(true)
     }

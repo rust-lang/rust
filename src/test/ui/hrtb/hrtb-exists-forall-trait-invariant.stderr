@@ -6,7 +6,7 @@ LL |     foo::<()>(); //~ ERROR not general enough
    |
    = note: Due to a where-clause on `foo`,
    = note: `()` must implement `Trait<for<'b> fn(std::cell::Cell<&'b u32>)>`
-   = note: but `()` only implements `Trait<fn(std::cell::Cell<&'0 u32>)>` for some lifetime `'0`
+   = note: but `()` actually implements `Trait<fn(std::cell::Cell<&'0 u32>)>`, for some specific lifetime `'0`
 
 error: aborting due to previous error
 

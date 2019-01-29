@@ -4,8 +4,8 @@ error: implementation of `Foo` is not general enough
 LL |     assert_foo(gen);
    |     ^^^^^^^^^^
    |
-   = note: `&'0 OnlyFooIfStaticRef` must implement `Foo` for any lifetime `'0`
-   = note: but `&'1 OnlyFooIfStaticRef` only implements `Foo` for the lifetime `'1`
+   = note: `Foo` would have to be implemented for the type `&'0 OnlyFooIfStaticRef`, for any lifetime `'0`
+   = note: but `Foo` is actually implemented for the type `&'1 OnlyFooIfStaticRef`, for some specific lifetime `'1`
 
 error: implementation of `Foo` is not general enough
   --> $DIR/auto-trait-regions.rs:48:5
@@ -13,8 +13,8 @@ error: implementation of `Foo` is not general enough
 LL |     assert_foo(gen);
    |     ^^^^^^^^^^
    |
-   = note: `A<'0, '1>` must implement `Foo` for any two lifetimes `'0` and `'1`
-   = note: but `A<'_, '2>` only implements `Foo` for the lifetime `'2`
+   = note: `Foo` would have to be implemented for the type `A<'0, '1>`, for any two lifetimes `'0` and `'1`
+   = note: but `Foo` is actually implemented for the type `A<'_, '2>`, for some specific lifetime `'2`
 
 error: aborting due to 2 previous errors
 

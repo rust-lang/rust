@@ -243,7 +243,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         // Check if we can use one of the "nice region errors".
         if let (Some(f), Some(o)) = (self.to_error_region(fr), self.to_error_region(outlived_fr)) {
             let tables = infcx.tcx.typeck_tables_of(mir_def_id);
-            let nice = NiceRegionError::new_from_span(infcx.tcx, span, o, f, Some(tables));
+            let nice = NiceRegionError::new_from_span(infcx, span, o, f, Some(tables));
             if let Some(_error_reported) = nice.try_report_from_nll() {
                 return;
             }

@@ -1,0 +1,11 @@
+error: implementation of `Trait` is not general enough
+  --> $DIR/issue-57362-1.rs:20:7
+   |
+LL |     a.f(); //~ ERROR not general enough
+   |       ^
+   |
+   = note: `Trait` would have to be implemented for the type `fn(&'0 u8)`, for some specific lifetime `'0`
+   = note: but `Trait` is actually implemented for the type `for<'r> fn(&'r u8)`
+
+error: aborting due to previous error
+
