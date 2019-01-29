@@ -414,7 +414,7 @@ top_level_options!(
 
         // The list of crates to consider public for
         // checking leaked private dependency types in public interfaces
-        extern_public: Vec<String> [TRACKED],
+        extern_public: Option<Vec<String>> [TRACKED],
     }
 );
 
@@ -610,7 +610,7 @@ impl Default for Options {
             cli_forced_thinlto_off: false,
             remap_path_prefix: Vec::new(),
             edition: DEFAULT_EDITION,
-            extern_public: vec![]
+            extern_public: None
         }
     }
 }
@@ -1917,21 +1917,7 @@ pub fn build_session_options_and_crate_config(
     let crate_types = parse_crate_types_from_list(unparsed_crate_types)
         .unwrap_or_else(|e| early_error(error_format, &e[..]));
 
-    if matches.opt_present("extern-public") && !nightly_options::is_nightly_build() {
-        early_error(
-            ErrorOutputType::default(),
-            "'--extern-public' is unstable and only \
-            available for nightly builds of rustc."
-        )
-    }
-
-    let mut extern_public: Vec<String> = matches.opt_strs("extern-public").
-        iter().cloned().collect();
-
-    // FIXME - come up with a better way of handling this
-    extern_public.push("core".to_string());
-    extern_public.push("std".to_string());
-
+    
     let (lint_opts, describe_lints, lint_cap) = get_cmd_lint_options(matches, error_format);
 
     let mut debugging_opts = build_debugging_options(matches, error_format);
@@ -1949,6 +1935,24 @@ pub fn build_session_options_and_crate_config(
             "options `-Z pgo-gen` and `-Z pgo-use` are exclusive",
         );
     }
+
+    if matches.opt_present("extern-public") && !debugging_opts.unstable_options {
+        early_error(
+            ErrorOutputType::default(),
+            "'--extern-public' is unstable and only \
+            available for nightly builds of rustc."
+        )
+    }
+
+    let mut extern_public: Option<Vec<String>> = matches.opt_str("extern-public").
+        map(|s| s.split(',').map(|c| (*c).to_string()).collect());
+
+    // FIXME - come up with a better way of handling this
+    if let Some(p) = extern_public.as_mut() {
+        p.push("core".to_string());
+        p.push("std".to_string());
+    }
+
 
     let mut output_types = BTreeMap::new();
     if !debugging_opts.parse_only {
@@ -2488,6 +2492,7 @@ mod dep_tracking {
     impl_dep_tracking_hash_via_hash!(Option<usize>);
     impl_dep_tracking_hash_via_hash!(Option<String>);
     impl_dep_tracking_hash_via_hash!(Option<(String, u64)>);
+    impl_dep_tracking_hash_via_hash!(Option<Vec<String>>);
     impl_dep_tracking_hash_via_hash!(Option<MergeFunctions>);
     impl_dep_tracking_hash_via_hash!(Option<PanicStrategy>);
     impl_dep_tracking_hash_via_hash!(Option<RelroLevel>);

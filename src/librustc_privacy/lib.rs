@@ -1460,7 +1460,7 @@ struct SearchInterfaceForPrivateItemsVisitor<'a, 'tcx: 'a> {
     has_pub_restricted: bool,
     has_old_errors: bool,
     in_assoc_ty: bool,
-    public_crates: FxHashSet<CrateNum>
+    public_crates: Option<FxHashSet<CrateNum>>
 }
 
 impl<'a, 'tcx: 'a> SearchInterfaceForPrivateItemsVisitor<'a, 'tcx> {
@@ -1538,13 +1538,13 @@ impl<'a, 'tcx: 'a> SearchInterfaceForPrivateItemsVisitor<'a, 'tcx> {
     /// 1. It's contained within a public type
     /// 2. It does not come from a crate marked as public
     fn leaks_private_dep(&self, item_id: DefId) -> bool {
-        // Never do any leak checking if the feature is not enabled
-        if !self.tcx.features().public_private_dependencies {
+        // Don't do any leak checking if no public crates were specified
+        if self.public_crates.is_none() {
             return false
         }
         let ret = self.required_visibility == ty::Visibility::Public &&
             !item_id.is_local() &&
-            !self.public_crates.contains(&item_id.krate);
+            !self.public_crates.as_ref().unwrap().contains(&item_id.krate);
 
 
         debug!("leaks_private_dep(item_id={:?})={}", item_id, ret);
@@ -1563,7 +1563,7 @@ struct PrivateItemsInPublicInterfacesVisitor<'a, 'tcx: 'a> {
     tcx: TyCtxt<'a, 'tcx, 'tcx>,
     has_pub_restricted: bool,
     old_error_set: &'a NodeSet,
-    public_crates: FxHashSet<CrateNum>
+    public_crates: Option<FxHashSet<CrateNum>>
 }
 
 impl<'a, 'tcx> PrivateItemsInPublicInterfacesVisitor<'a, 'tcx> {
@@ -1762,9 +1762,9 @@ fn privacy_access_levels<'tcx>(
         queries::check_mod_privacy::ensure(tcx, tcx.hir().local_def_id(module));
     }
 
-    let public_crates: FxHashSet<CrateNum> = tcx.sess.opts.extern_public.iter().flat_map(|c| {
+    let public_crates: Option<FxHashSet<CrateNum>> = tcx.sess.opts.extern_public.as_ref().map(|s| s.iter().flat_map(|c| {
         tcx.crates().iter().find(|&&krate| &tcx.crate_name(krate) == c).cloned()
-    }).collect();
+    }).collect());
 
 
     // Build up a set of all exported items in the AST. This is a set of all
