@@ -4,7 +4,7 @@ error: concrete type differs from previous defining existential type use
 LL | / fn bar() -> Foo { //~ ERROR concrete type differs from previous
 LL | |     42i32
 LL | | }
-   | |_^
+   | |_^ expected `&'static str`, got `i32`
    |
 note: previous use here
   --> $DIR/different_defining_uses.rs:8:1

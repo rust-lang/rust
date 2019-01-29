@@ -4,7 +4,7 @@ error: concrete type differs from previous defining existential type use
 LL | / fn my_iter2<T>(t: T) -> MyIter<T> { //~ ERROR concrete type differs from previous
 LL | |     Some(t).into_iter()
 LL | | }
-   | |_^
+   | |_^ expected `std::iter::Once<T>`, got `std::option::IntoIter<T>`
    |
 note: previous use here
   --> $DIR/generic_different_defining_uses.rs:7:1

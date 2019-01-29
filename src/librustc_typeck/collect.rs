@@ -1355,10 +1355,9 @@ fn find_existential_constraints<'a, 'tcx>(
                 let mut index_map: FxHashMap<ty::ParamTy, usize> = FxHashMap::default();
                 // skip binder is ok, since we only use this to find generic parameters and their
                 // positions.
-                for subst in substs.iter() {
+                for (idx, subst) in substs.iter().enumerate() {
                     if let UnpackedKind::Type(ty) = subst.unpack() {
                         if let ty::Param(p) = ty.sty {
-                            let idx = index_map.len();
                             if index_map.insert(p, idx).is_some() {
                                 // there was already an entry for `p`, meaning a generic parameter
                                 // was used twice
@@ -1391,19 +1390,23 @@ fn find_existential_constraints<'a, 'tcx>(
                 }).collect();
                 if let Some((prev_span, prev_ty, ref prev_indices)) = self.found {
                     let mut ty = concrete_type.walk().fuse();
-                    let mut prev_ty = prev_ty.walk().fuse();
-                    let iter_eq = (&mut ty).zip(&mut prev_ty).all(|(t, p)| match (&t.sty, &p.sty) {
+                    let mut p_ty = prev_ty.walk().fuse();
+                    let iter_eq = (&mut ty).zip(&mut p_ty).all(|(t, p)| match (&t.sty, &p.sty) {
                         // type parameters are equal to any other type parameter for the purpose of
                         // concrete type equality, as it is possible to obtain the same type just
                         // by passing matching parameters to a function.
                         (ty::Param(_), ty::Param(_)) => true,
                         _ => t == p,
                     });
-                    if !iter_eq || ty.next().is_some() || prev_ty.next().is_some() {
+                    if !iter_eq || ty.next().is_some() || p_ty.next().is_some() {
                         // found different concrete types for the existential type
                         let mut err = self.tcx.sess.struct_span_err(
                             span,
                             "concrete type differs from previous defining existential type use",
+                        );
+                        err.span_label(
+                            span,
+                            format!("expected `{}`, got `{}`", prev_ty, concrete_type),
                         );
                         err.span_note(prev_span, "previous use here");
                         err.emit();
@@ -1413,6 +1416,23 @@ fn find_existential_constraints<'a, 'tcx>(
                             span,
                             "concrete type's generic parameters differ from previous defining use",
                         );
+                        use std::fmt::Write;
+                        let mut s = String::new();
+                        write!(s, "expected [").unwrap();
+                        let list = |s: &mut String, indices: &Vec<usize>| {
+                            let mut indices = indices.iter().cloned();
+                            if let Some(first) = indices.next() {
+                                write!(s, "`{}`", substs[first]).unwrap();
+                                for i in indices {
+                                    write!(s, ", `{}`", substs[i]).unwrap();
+                                }
+                            }
+                        };
+                        list(&mut s, prev_indices);
+                        write!(s, "], got [").unwrap();
+                        list(&mut s, &indices);
+                        write!(s, "]").unwrap();
+                        err.span_label(span, s);
                         err.span_note(prev_span, "previous use here");
                         err.emit();
                     }

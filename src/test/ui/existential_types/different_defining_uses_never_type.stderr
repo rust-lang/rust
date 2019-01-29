@@ -4,7 +4,7 @@ error: concrete type differs from previous defining existential type use
 LL | / fn bar() -> Foo { //~ ERROR concrete type differs from previous
 LL | |     panic!()
 LL | | }
-   | |_^
+   | |_^ expected `&'static str`, got `()`
    |
 note: previous use here
   --> $DIR/different_defining_uses_never_type.rs:8:1
@@ -20,7 +20,7 @@ error: concrete type differs from previous defining existential type use
 LL | / fn boo() -> Foo { //~ ERROR concrete type differs from previous
 LL | |     loop {}
 LL | | }
-   | |_^
+   | |_^ expected `&'static str`, got `()`
    |
 note: previous use here
   --> $DIR/different_defining_uses_never_type.rs:8:1

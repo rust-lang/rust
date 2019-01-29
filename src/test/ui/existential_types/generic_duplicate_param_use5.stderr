@@ -5,7 +5,7 @@ LL | / fn three<T: Debug, U: Debug>(t: T, u: U) -> Two<T, U> {
 LL | | //~^ concrete type differs from previous
 LL | |     (u, t)
 LL | | }
-   | |_^
+   | |_^ expected `(T, U)`, got `(U, T)`
    |
 note: previous use here
   --> $DIR/generic_duplicate_param_use5.rs:10:1
