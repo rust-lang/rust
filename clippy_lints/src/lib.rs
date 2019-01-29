@@ -499,6 +499,7 @@ pub fn register_plugins(reg: &mut rustc_plugin::Registry<'_>, conf: &Conf) {
         indexing_slicing::INDEXING_SLICING,
         inherent_impl::MULTIPLE_INHERENT_IMPL,
         literal_representation::DECIMAL_LITERAL_REPRESENTATION,
+        matches::WILDCARD_ENUM_MATCH_ARM,
         mem_forget::MEM_FORGET,
         methods::CLONE_ON_REF_PTR,
         methods::OPTION_UNWRAP_USED,
