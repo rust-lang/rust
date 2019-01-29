@@ -2,7 +2,7 @@ error[E0658]: The attribute `marco_use` is currently unknown to the compiler and
   --> $DIR/issue-49074.rs:3:3
    |
 LL | #[marco_use] // typo
-   |   ^^^^^^^^^
+   |   ^^^^^^^^^ help: a built-in attribute with a similar name exists: `macro_use`
    |
    = help: add #![feature(custom_attribute)] to the crate attributes to enable
 

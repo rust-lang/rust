@@ -58,11 +58,12 @@
        issue_tracker_base_url = "https://github.com/rust-lang/rust/issues/",
        test(no_crate_inject, attr(deny(warnings))),
        test(attr(allow(dead_code, deprecated, unused_variables, unused_mut))))]
-
 #![no_core]
-#![deny(missing_docs)]
-#![deny(intra_doc_link_resolution_failure)]
-#![deny(missing_debug_implementations)]
+
+#![warn(deprecated_in_future)]
+#![warn(missing_docs)]
+#![warn(intra_doc_link_resolution_failure)]
+#![warn(missing_debug_implementations)]
 
 #![feature(allow_internal_unstable)]
 #![feature(arbitrary_self_types)]
@@ -122,6 +123,7 @@
 #![feature(structural_match)]
 #![feature(abi_unadjusted)]
 #![feature(adx_target_feature)]
+#![feature(maybe_uninit)]
 
 #[prelude_import]
 #[allow(unused)]

@@ -15,11 +15,13 @@ use syntax::ast::{self, Ident};
 use syntax::attr;
 use syntax::errors::DiagnosticBuilder;
 use syntax::ext::base::{self, Determinacy};
-use syntax::ext::base::{Annotatable, MacroKind, SyntaxExtension};
+use syntax::ext::base::{MacroKind, SyntaxExtension};
 use syntax::ext::expand::{AstFragment, Invocation, InvocationKind};
 use syntax::ext::hygiene::{self, Mark};
 use syntax::ext::tt::macro_rules;
-use syntax::feature_gate::{feature_err, is_builtin_attr_name, GateIssue};
+use syntax::feature_gate::{
+    feature_err, is_builtin_attr_name, AttributeGate, GateIssue, Stability, BUILTIN_ATTRIBUTES,
+};
 use syntax::symbol::{Symbol, keywords};
 use syntax::visit::Visitor;
 use syntax::util::lev_distance::find_best_match_for_name;
@@ -127,9 +129,9 @@ impl<'a> base::Resolver for Resolver<'a> {
         mark
     }
 
-    fn resolve_dollar_crates(&mut self, annotatable: &Annotatable) {
-        pub struct ResolveDollarCrates<'a, 'b: 'a> {
-            pub resolver: &'a mut Resolver<'b>,
+    fn resolve_dollar_crates(&mut self, fragment: &AstFragment) {
+        struct ResolveDollarCrates<'a, 'b: 'a> {
+            resolver: &'a mut Resolver<'b>
         }
         impl<'a> Visitor<'a> for ResolveDollarCrates<'a, '_> {
             fn visit_ident(&mut self, ident: Ident) {
@@ -144,7 +146,7 @@ impl<'a> base::Resolver for Resolver<'a> {
             fn visit_mac(&mut self, _: &ast::Mac) {}
         }
 
-        annotatable.visit_with(&mut ResolveDollarCrates { resolver: self });
+        fragment.visit_with(&mut ResolveDollarCrates { resolver: self });
     }
 
     fn visit_ast_fragment_with_placeholders(&mut self, mark: Mark, fragment: &AstFragment,
@@ -310,15 +312,18 @@ impl<'a> Resolver<'a> {
                             if !features.rustc_attrs {
                                 let msg = "unless otherwise specified, attributes with the prefix \
                                            `rustc_` are reserved for internal compiler diagnostics";
-                                feature_err(&self.session.parse_sess, "rustc_attrs", path.span,
-                                            GateIssue::Language, &msg).emit();
+                                self.report_unknown_attribute(path.span, &name, msg, "rustc_attrs");
                             }
                         } else if !features.custom_attribute {
                             let msg = format!("The attribute `{}` is currently unknown to the \
                                                compiler and may have meaning added to it in the \
                                                future", path);
-                            feature_err(&self.session.parse_sess, "custom_attribute", path.span,
-                                        GateIssue::Language, &msg).emit();
+                            self.report_unknown_attribute(
+                                path.span,
+                                &name,
+                                &msg,
+                                "custom_attribute",
+                            );
                         }
                     }
                 } else {
@@ -337,6 +342,61 @@ impl<'a> Resolver<'a> {
         }
 
         Ok((def, self.get_macro(def)))
+    }
+
+    fn report_unknown_attribute(&self, span: Span, name: &str, msg: &str, feature: &str) {
+        let mut err = feature_err(
+            &self.session.parse_sess,
+            feature,
+            span,
+            GateIssue::Language,
+            &msg,
+        );
+
+        let features = self.session.features_untracked();
+
+        let attr_candidates = BUILTIN_ATTRIBUTES
+            .iter()
+            .filter_map(|(name, _, _, gate)| {
+                if name.starts_with("rustc_") && !features.rustc_attrs {
+                    return None;
+                }
+
+                match gate {
+                    AttributeGate::Gated(Stability::Unstable, ..)
+                        if self.session.opts.unstable_features.is_nightly_build() =>
+                    {
+                        Some(name)
+                    }
+                    AttributeGate::Gated(Stability::Deprecated(..), ..) => Some(name),
+                    AttributeGate::Ungated => Some(name),
+                    _ => None,
+                }
+            })
+            .map(|name| Symbol::intern(name))
+            .chain(
+                // Add built-in macro attributes as well.
+                self.builtin_macros.iter().filter_map(|(name, binding)| {
+                    match binding.macro_kind() {
+                        Some(MacroKind::Attr) => Some(*name),
+                        _ => None,
+                    }
+                }),
+            )
+            .collect::<Vec<_>>();
+
+        let lev_suggestion = find_best_match_for_name(attr_candidates.iter(), &name, None);
+
+        if let Some(suggestion) = lev_suggestion {
+            err.span_suggestion(
+                span,
+                "a built-in attribute with a similar name exists",
+                suggestion.to_string(),
+                Applicability::MaybeIncorrect,
+            );
+        }
+
+        err.emit();
     }
 
     pub fn resolve_macro_to_def_inner(
