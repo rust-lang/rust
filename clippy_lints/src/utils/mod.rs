@@ -3,7 +3,7 @@ use if_chain::if_chain;
 use matches::matches;
 use rustc::hir;
 use rustc::hir::def::Def;
-use rustc::hir::def_id::{DefId, CRATE_DEF_INDEX};
+use rustc::hir::def_id::{DefId, CRATE_DEF_INDEX, LOCAL_CRATE};
 use rustc::hir::intravisit::{NestedVisitorMap, Visitor};
 use rustc::hir::Node;
 use rustc::hir::*;
@@ -348,6 +348,14 @@ pub fn method_chain_args<'a>(expr: &'a Expr, methods: &[&str]) -> Option<Vec<&'a
     }
     matched.reverse(); // reverse `matched`, so that it is in the same order as `methods`
     Some(matched)
+}
+
+/// Returns true if the provided `def_id` is an entrypoint to a program
+pub fn is_entrypoint_fn(cx: &LateContext<'_, '_>, def_id: DefId) -> bool {
+    if let Some((entry_fn_def_id, _)) = cx.tcx.entry_fn(LOCAL_CRATE) {
+        return def_id == entry_fn_def_id;
+    }
+    false
 }
 
 /// Get the name of the item the expression is in, if available.
