@@ -1938,16 +1938,21 @@ impl NeoPlace<'tcx> {
         }
     }
 
-    pub fn into_tree(self) -> NeoPlaceTree<'tcx> {
-        match self.elems.split_last() {
-            None => NeoPlaceTree::Base(self.base),
-            Some((last_element, other_elements)) => {
-                NeoPlaceTree::Projected(Projection {
-                    base: NeoPlace { base: self.base, elems: other_elements },
-                    elem: *last_element,
-                })
-            }
+    pub fn into_tree(self) -> Place<'tcx> {
+        let mut result = match self.base {
+            PlaceBase::Local(local) => { Place::Local(local) }
+            PlaceBase::Static(_static) => { Place::Static(_static) }
+            PlaceBase::Promoted(promoted) => { Place::Promoted(promoted) }
+        };
+
+        for elem in self.elems {
+            result = Place::Projection(Box::new(Projection {
+                base: result,
+                elem: *elem
+            }));
         }
+
+        result
     }
 }
 

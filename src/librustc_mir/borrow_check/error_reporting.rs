@@ -9,7 +9,7 @@ use rustc::mir::{
     self, AggregateKind, BindingForm, BorrowKind, ClearCrossCrate, Constant,
     ConstraintCategory, Field, Local, LocalDecl, LocalKind, Location, Operand,
     Place, PlaceProjection, ProjectionElem, Rvalue, Statement, StatementKind,
-    TerminatorKind, VarBindingForm, NeoPlace, NeoPlaceTree, PlaceBase,
+    TerminatorKind, VarBindingForm, NeoPlace, PlaceBase,
 };
 use rustc::mir::tcx::PlaceTy;
 use rustc::ty::{self, DefIdTree};
@@ -1611,16 +1611,16 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
         including_downcast: &IncludingDowncast,
     ) -> Result<(), ()> {
         match place.clone().into_tree() {
-            NeoPlaceTree::Base(PlaceBase::Promoted(_)) => {
+            Place::Promoted(_) => {
                 buf.push_str("promoted");
             }
-            NeoPlaceTree::Base(PlaceBase::Local(local)) => {
+            Place::Local(local) => {
                 self.append_local_to_string(local, buf)?;
             }
-            NeoPlaceTree::Base(PlaceBase::Static(ref static_)) => {
+            Place::Static(ref static_) => {
                 buf.push_str(&self.infcx.tcx.item_name(static_.def_id).to_string());
             }
-            NeoPlaceTree::Projected(proj) => {
+            Place::Projection(proj) => {
                 match proj.elem {
                     ProjectionElem::Deref => {
                         let upvar_field_projection =
@@ -1634,19 +1634,21 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
                                 buf.push_str(&format!("*{}", &name));
                             }
                         } else {
+                            let neo_place = self.infcx.tcx.as_new_place(&proj.base);
+
                             if autoderef {
                                 self.append_place_to_string(
-                                    &proj.base,
+                                    &neo_place,
                                     buf,
                                     autoderef,
                                     &including_downcast,
                                 )?;
-                            } else if let Some(local) = proj.base.as_local() {
+                            } else if let Some(local) = neo_place.as_local() {
                                 if let Some(ClearCrossCrate::Set(BindingForm::RefForGuard)) =
                                     self.mir.local_decls[local].is_user_variable
                                 {
                                     self.append_place_to_string(
-                                        &proj.base,
+                                        &neo_place,
                                         buf,
                                         autoderef,
                                         &including_downcast,
@@ -1654,7 +1656,7 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
                                 } else {
                                     buf.push_str(&"*");
                                     self.append_place_to_string(
-                                        &proj.base,
+                                        &neo_place,
                                         buf,
                                         autoderef,
                                         &including_downcast,
@@ -1663,7 +1665,7 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
                             } else {
                                 buf.push_str(&"*");
                                 self.append_place_to_string(
-                                    &proj.base,
+                                    &neo_place,
                                     buf,
                                     autoderef,
                                     &including_downcast,
@@ -1672,8 +1674,9 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
                         }
                     }
                     ProjectionElem::Downcast(..) => {
+                        let neo_place = self.infcx.tcx.as_new_place(&proj.base);
                         self.append_place_to_string(
-                            &proj.base,
+                            &neo_place,
                             buf,
                             autoderef,
                             &including_downcast,
@@ -1691,9 +1694,10 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
                             let name = self.mir.upvar_decls[var_index].debug_name.to_string();
                             buf.push_str(&name);
                         } else {
-                            let field_name = self.describe_field(&proj.base, field);
+                            let neo_place = self.infcx.tcx.as_new_place(&proj.base);
+                            let field_name = self.describe_field(&neo_place, field);
                             self.append_place_to_string(
-                                &proj.base,
+                                &neo_place,
                                 buf,
                                 autoderef,
                                 &including_downcast,
@@ -1704,8 +1708,9 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
                     ProjectionElem::Index(index) => {
                         autoderef = true;
 
+                        let neo_place = self.infcx.tcx.as_new_place(&proj.base);
                         self.append_place_to_string(
-                            &proj.base,
+                            &neo_place,
                             buf,
                             autoderef,
                             &including_downcast,
@@ -1718,11 +1723,12 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
                     }
                     ProjectionElem::ConstantIndex { .. } | ProjectionElem::Subslice { .. } => {
                         autoderef = true;
+                        let neo_place = self.infcx.tcx.as_new_place(&proj.base);
                         // Since it isn't possible to borrow an element on a particular index and
                         // then use another while the borrow is held, don't output indices details
                         // to avoid confusing the end-user
                         self.append_place_to_string(
-                            &proj.base,
+                            &neo_place,
                             buf,
                             autoderef,
                             &including_downcast,
@@ -1752,16 +1758,19 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
     /// End-user visible description of the `field`nth field of `base`
     fn describe_field(&self, base: &NeoPlace<'tcx>, field: Field) -> String {
         match base.clone().into_tree() {
-            NeoPlaceTree::Base(PlaceBase::Local(local)) => {
+            Place::Local(local) => {
                 let local = &self.mir.local_decls[local];
                 self.describe_field_from_ty(&local.ty, field)
             }
-            NeoPlaceTree::Base(PlaceBase::Promoted(ref prom)) =>
+            Place::Promoted(ref prom) =>
                 self.describe_field_from_ty(&prom.1, field),
-            NeoPlaceTree::Base(PlaceBase::Static(ref static_)) =>
+            Place::Static(ref static_) =>
                 self.describe_field_from_ty(&static_.ty, field),
-            NeoPlaceTree::Projected(ref proj) => match proj.elem {
-                ProjectionElem::Deref => self.describe_field(&proj.base, field),
+            Place::Projection(ref proj) => match proj.elem {
+                ProjectionElem::Deref => {
+                    let neo_place = self.infcx.tcx.as_new_place(&proj.base);
+                    self.describe_field(&neo_place, field)
+                }
                 ProjectionElem::Downcast(def, variant_index) =>
                     def.variants[variant_index].fields[field.index()].ident.to_string(),
                 ProjectionElem::Field(_, field_type) => {
@@ -1770,7 +1779,8 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
                 ProjectionElem::Index(..)
                 | ProjectionElem::ConstantIndex { .. }
                 | ProjectionElem::Subslice { .. } => {
-                    self.describe_field(&proj.base, field)
+                    let neo_place = self.infcx.tcx.as_new_place(&proj.base);
+                    self.describe_field(&neo_place, field)
                 }
             },
         }
