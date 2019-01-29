@@ -1028,7 +1028,7 @@ All notable changes to this project will be documented in this file.
 [`while_let_loop`]: https://rust-lang.github.io/rust-clippy/master/index.html#while_let_loop
 [`while_let_on_iterator`]: https://rust-lang.github.io/rust-clippy/master/index.html#while_let_on_iterator
 [`wildcard_dependencies`]: https://rust-lang.github.io/rust-clippy/master/index.html#wildcard_dependencies
-[`wildcard_match_arm`]: https://rust-lang.github.io/rust-clippy/master/index.html#wildcard_match_arm
+[`wildcard_enum_match_arm`]: https://rust-lang.github.io/rust-clippy/master/index.html#wildcard_enum_match_arm
 [`write_literal`]: https://rust-lang.github.io/rust-clippy/master/index.html#write_literal
 [`write_with_newline`]: https://rust-lang.github.io/rust-clippy/master/index.html#write_with_newline
 [`writeln_empty_string`]: https://rust-lang.github.io/rust-clippy/master/index.html#writeln_empty_string

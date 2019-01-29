@@ -1,4 +1,4 @@
-#![deny(clippy::wildcard_match_arm)]
+#![deny(clippy::wildcard_enum_match_arm)]
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 enum Color {
@@ -32,5 +32,11 @@ fn main() {
         Color::Cyan => {},
         c if c.is_monochrome() => {},
         Color::Rgb(_, _, _) => {},
+    };
+    let x: u8 = unimplemented!();
+    match x {
+        0 => {},
+        140 => {},
+        _ => {},
     };
 }

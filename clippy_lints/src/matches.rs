@@ -187,9 +187,9 @@ declare_clippy_lint! {
     "a match on an Option value instead of using `as_ref()` or `as_mut`"
 }
 
-/// **What it does:** Checks for wildcard matches using `_`.
+/// **What it does:** Checks for wildcard enum matches using `_`.
 ///
-/// **Why is this bad?** New variants added by library updates can be missed.
+/// **Why is this bad?** New enum variants added by library updates can be missed.
 ///
 /// **Known problems:** None.
 ///
@@ -201,9 +201,9 @@ declare_clippy_lint! {
 /// }
 /// ```
 declare_clippy_lint! {
-    pub WILDCARD_MATCH_ARM,
+    pub WILDCARD_ENUM_MATCH_ARM,
     restriction,
-    "a wildcard match arm using `_`"
+    "a wildcard enum match arm using `_`"
 }
 
 #[allow(missing_copy_implementations)]
@@ -219,7 +219,7 @@ impl LintPass for MatchPass {
             MATCH_OVERLAPPING_ARM,
             MATCH_WILD_ERR_ARM,
             MATCH_AS_REF,
-            WILDCARD_MATCH_ARM
+            WILDCARD_ENUM_MATCH_ARM
         )
     }
 
@@ -238,7 +238,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for MatchPass {
             check_match_bool(cx, ex, arms, expr);
             check_overlapping_arms(cx, ex, arms);
             check_wild_err_arm(cx, ex, arms);
-            check_wild_match(cx, arms);
+            check_wild_enum_match(cx, ex, arms);
             check_match_as_ref(cx, ex, arms, expr);
         }
         if let ExprKind::Match(ref ex, ref arms, _) = expr.node {
@@ -463,17 +463,19 @@ fn check_wild_err_arm(cx: &LateContext<'_, '_>, ex: &Expr, arms: &[Arm]) {
     }
 }
 
-fn check_wild_match(cx: &LateContext<'_, '_>, arms: &[Arm]) {
-    for arm in arms {
-        if is_wild(&arm.pats[0]) {
-            span_note_and_lint(
-                cx,
-                WILDCARD_MATCH_ARM,
-                arm.pats[0].span,
-                "wildcard match will miss any future added variants.",
-                arm.pats[0].span,
-                "to resolve, match each variant explicitly",
-            );
+fn check_wild_enum_match(cx: &LateContext<'_, '_>, ex: &Expr, arms: &[Arm]) {
+    if cx.tables.expr_ty(ex).is_enum() {
+        for arm in arms {
+            if is_wild(&arm.pats[0]) {
+                span_note_and_lint(
+                    cx,
+                    WILDCARD_ENUM_MATCH_ARM,
+                    arm.pats[0].span,
+                    "wildcard match will miss any future added variants.",
+                    arm.pats[0].span,
+                    "to resolve, match each variant explicitly",
+                );
+            }
         }
     }
 }
