@@ -191,7 +191,7 @@ declare_clippy_lint! {
 ///
 /// **Why is this bad?** New enum variants added by library updates can be missed.
 ///
-/// **Known problems:** None.
+/// **Known problems:** Nested wildcards a la `Foo(_)` are currently not detected.
 ///
 /// **Example:**
 /// ```rust
