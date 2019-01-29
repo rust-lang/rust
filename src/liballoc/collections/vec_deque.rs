@@ -12,7 +12,7 @@ use core::fmt;
 use core::iter::{repeat_with, FromIterator, FusedIterator};
 use core::mem;
 use core::ops::Bound::{Excluded, Included, Unbounded};
-use core::ops::{Index, IndexMut, RangeBounds};
+use core::ops::{Index, IndexMut, RangeBounds, Try};
 use core::ptr;
 use core::ptr::NonNull;
 use core::slice;
@@ -2171,6 +2171,14 @@ impl<'a, T> Iterator for Iter<'a, T> {
         let (front, back) = RingSlices::ring_slices(self.ring, self.head, self.tail);
         accum = front.iter().fold(accum, &mut f);
         back.iter().fold(accum, &mut f)
+    }
+
+    fn try_fold<B, F, R>(&mut self, init: B, mut f: F) -> R where
+        Self: Sized, F: FnMut(B, Self::Item) -> R, R: Try<Ok=B>
+    {
+        let (front, back) = RingSlices::ring_slices(self.ring, self.head, self.tail);
+        let accum = front.iter().try_fold(init, &mut f)?;
+        back.iter().try_fold(accum, &mut f)
     }
 }
 
