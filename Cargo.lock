@@ -2024,6 +2024,11 @@ dependencies = [
 ]
 
 [[package]]
+name = "punycode"
+version = "0.4.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+
+[[package]]
 name = "quick-error"
 version = "1.2.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2687,6 +2692,7 @@ version = "0.0.0"
 dependencies = [
  "flate2 1.0.6 (registry+https://github.com/rust-lang/crates.io-index)",
  "log 0.4.6 (registry+https://github.com/rust-lang/crates.io-index)",
+ "punycode 0.4.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "rustc 0.0.0",
  "rustc-demangle 0.1.15 (registry+https://github.com/rust-lang/crates.io-index)",
  "rustc_data_structures 0.0.0",
@@ -4277,6 +4283,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 "checksum proptest 0.9.2 (registry+https://github.com/rust-lang/crates.io-index)" = "24f5844db2f839e97e3021980975f6ebf8691d9b9b2ca67ed3feb38dc3edb52c"
 "checksum pulldown-cmark 0.1.2 (registry+https://github.com/rust-lang/crates.io-index)" = "d6fdf85cda6cadfae5428a54661d431330b312bc767ddbc57adbedc24da66e32"
 "checksum pulldown-cmark 0.5.2 (registry+https://github.com/rust-lang/crates.io-index)" = "051e60ace841b3bfecd402fe5051c06cb3bec4a6e6fdd060a37aa8eb829a1db3"
+"checksum punycode 0.4.0 (registry+https://github.com/rust-lang/crates.io-index)" = "6ddd112cca70a4d30883b2d21568a1d376ff8be4758649f64f973c6845128ad3"
 "checksum quick-error 1.2.2 (registry+https://github.com/rust-lang/crates.io-index)" = "9274b940887ce9addde99c4eee6b5c44cc494b182b97e73dc8ffdcb3397fd3f0"
 "checksum quine-mc_cluskey 0.2.4 (registry+https://github.com/rust-lang/crates.io-index)" = "07589615d719a60c8dd8a4622e7946465dfef20d1a428f969e3443e7386d5f45"
 "checksum quote 0.3.15 (registry+https://github.com/rust-lang/crates.io-index)" = "7a6e920b65c65f10b2ae65c831a81a073a89edd28c7cce89475bff467ab4167a"

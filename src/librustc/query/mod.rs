@@ -624,6 +624,10 @@ rustc_queries! {
             fatal_cycle
             desc { "test whether a crate has #![no_builtins]" }
         }
+        query symbol_mangling_version(_: CrateNum) -> SymbolManglingVersion {
+            fatal_cycle
+            desc { "query a crate's symbol mangling version" }
+        }
 
         query extern_crate(_: DefId) -> Option<&'tcx ExternCrate> {
             eval_always

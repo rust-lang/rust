@@ -498,6 +498,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
             panic_runtime: attr::contains_name(&attrs, sym::panic_runtime),
             profiler_runtime: attr::contains_name(&attrs, sym::profiler_runtime),
             sanitizer_runtime: attr::contains_name(&attrs, sym::sanitizer_runtime),
+            symbol_mangling_version: tcx.sess.opts.debugging_opts.symbol_mangling_version,
 
             crate_deps,
             dylib_dependency_formats,
