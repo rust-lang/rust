@@ -3,7 +3,6 @@
 
 // run-pass
 
-#![feature(public_private_dependencies)]
 #![deny(exported_private_dependencies)]
 
 pub struct PublicType {
