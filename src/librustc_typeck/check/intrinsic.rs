@@ -68,6 +68,7 @@ pub fn intrisic_operation_unsafety(intrinsic: &str) -> hir::Unsafety {
         "size_of" | "min_align_of" | "needs_drop" |
         "add_with_overflow" | "sub_with_overflow" | "mul_with_overflow" |
         "overflowing_add" | "overflowing_sub" | "overflowing_mul" |
+        "saturating_add" | "saturating_sub" |
         "rotate_left" | "rotate_right" |
         "ctpop" | "ctlz" | "cttz" | "bswap" | "bitreverse"
         => hir::Unsafety::Normal,
@@ -306,6 +307,8 @@ pub fn check_intrinsic_type<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                 (1, vec![param(0), param(0)], param(0)),
 
             "overflowing_add" | "overflowing_sub" | "overflowing_mul" =>
+                (1, vec![param(0), param(0)], param(0)),
+            "saturating_add" | "saturating_sub" =>
                 (1, vec![param(0), param(0)], param(0)),
             "fadd_fast" | "fsub_fast" | "fmul_fast" | "fdiv_fast" | "frem_fast" =>
                 (1, vec![param(0), param(0)], param(0)),
