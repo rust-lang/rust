@@ -1,5 +1,5 @@
 error: wildcard match will miss any future added variants.
-  --> $DIR/wildcard_match_arm.rs:26:3
+  --> $DIR/wildcard_match_arm.rs:26:9
    |
 LL |         _ => eprintln!("Not red"),
    |         ^
