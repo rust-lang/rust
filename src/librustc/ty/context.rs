@@ -1823,10 +1823,10 @@ pub mod tls {
     use rustc_data_structures::thin_vec::ThinVec;
     use dep_graph::TaskDeps;
 
-    #[cfg(not(parallel_queries))]
+    #[cfg(not(parallel_compiler))]
     use std::cell::Cell;
 
-    #[cfg(parallel_queries)]
+    #[cfg(parallel_compiler)]
     use rayon_core;
 
     /// This is the implicit state of rustc. It contains the current
@@ -1859,7 +1859,7 @@ pub mod tls {
     /// Sets Rayon's thread local variable which is preserved for Rayon jobs
     /// to `value` during the call to `f`. It is restored to its previous value after.
     /// This is used to set the pointer to the new ImplicitCtxt.
-    #[cfg(parallel_queries)]
+    #[cfg(parallel_compiler)]
     #[inline]
     fn set_tlv<F: FnOnce() -> R, R>(value: usize, f: F) -> R {
         rayon_core::tlv::with(value, f)
@@ -1867,20 +1867,20 @@ pub mod tls {
 
     /// Gets Rayon's thread local variable which is preserved for Rayon jobs.
     /// This is used to get the pointer to the current ImplicitCtxt.
-    #[cfg(parallel_queries)]
+    #[cfg(parallel_compiler)]
     #[inline]
     fn get_tlv() -> usize {
         rayon_core::tlv::get()
     }
 
     /// A thread local variable which stores a pointer to the current ImplicitCtxt
-    #[cfg(not(parallel_queries))]
+    #[cfg(not(parallel_compiler))]
     thread_local!(static TLV: Cell<usize> = Cell::new(0));
 
     /// Sets TLV to `value` during the call to `f`.
     /// It is restored to its previous value after.
     /// This is used to set the pointer to the new ImplicitCtxt.
-    #[cfg(not(parallel_queries))]
+    #[cfg(not(parallel_compiler))]
     #[inline]
     fn set_tlv<F: FnOnce() -> R, R>(value: usize, f: F) -> R {
         let old = get_tlv();
@@ -1890,7 +1890,7 @@ pub mod tls {
     }
 
     /// This is used to get the pointer to the current ImplicitCtxt.
-    #[cfg(not(parallel_queries))]
+    #[cfg(not(parallel_compiler))]
     fn get_tlv() -> usize {
         TLV.with(|tlv| tlv.get())
     }

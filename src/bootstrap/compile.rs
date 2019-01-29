@@ -554,8 +554,8 @@ pub fn rustc_cargo_env(builder: &Builder, cargo: &mut Command) {
     if let Some(ref s) = builder.config.rustc_default_linker {
         cargo.env("CFG_DEFAULT_LINKER", s);
     }
-    if builder.config.rustc_parallel_queries {
-        cargo.env("RUSTC_PARALLEL_QUERIES", "1");
+    if builder.config.rustc_parallel {
+        cargo.env("RUSTC_PARALLEL_COMPILER", "1");
     }
     if builder.config.rust_verify_llvm_ir {
         cargo.env("RUSTC_VERIFY_LLVM_IR", "1");

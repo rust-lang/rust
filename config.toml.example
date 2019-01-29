@@ -317,8 +317,8 @@
 # Whether to always use incremental compilation when building rustc
 #incremental = false
 
-# Build rustc with experimental parallelization
-#experimental-parallel-queries = false
+# Build a multi-threaded rustc
+#parallel-compiler = false
 
 # The default linker that will be hard-coded into the generated compiler for
 # targets that don't specify linker explicitly in their target specifications.

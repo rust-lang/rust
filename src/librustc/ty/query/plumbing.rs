@@ -153,12 +153,12 @@ impl<'a, 'tcx, Q: QueryDescription<'tcx>> JobOwner<'a, 'tcx, Q> {
 
             // If we are single-threaded we know that we have cycle error,
             // so we just turn the errror
-            #[cfg(not(parallel_queries))]
+            #[cfg(not(parallel_compiler))]
             return job.cycle_error(tcx, span);
 
             // With parallel queries we might just have to wait on some other
             // thread
-            #[cfg(parallel_queries)]
+            #[cfg(parallel_compiler)]
             {
                 if let Err(cycle) = job.await(tcx, span) {
                     return TryGetJob::JobCompleted(Err(cycle));
@@ -695,7 +695,7 @@ macro_rules! define_queries_inner {
         [$($modifiers:tt)*] fn $name:ident: $node:ident($K:ty) -> $V:ty,)*) => {
 
         use std::mem;
-        #[cfg(parallel_queries)]
+        #[cfg(parallel_compiler)]
         use ty::query::job::QueryResult;
         use rustc_data_structures::sync::Lock;
         use {
@@ -736,7 +736,7 @@ macro_rules! define_queries_inner {
                 });
             }
 
-            #[cfg(parallel_queries)]
+            #[cfg(parallel_compiler)]
             pub fn collect_active_jobs(&self) -> Vec<Lrc<QueryJob<$tcx>>> {
                 let mut jobs = Vec::new();
 

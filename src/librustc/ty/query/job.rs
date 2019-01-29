@@ -8,7 +8,7 @@ use syntax_pos::Span;
 use ty::tls;
 use ty::query::Query;
 use ty::query::plumbing::CycleError;
-#[cfg(not(parallel_queries))]
+#[cfg(not(parallel_compiler))]
 use ty::query::{
     plumbing::TryGetJob,
     config::QueryDescription,
@@ -17,7 +17,7 @@ use ty::context::TyCtxt;
 use std::process;
 use std::{fmt, ptr};
 
-#[cfg(parallel_queries)]
+#[cfg(parallel_compiler)]
 use {
     rayon_core,
     parking_lot::{Mutex, Condvar},
@@ -54,7 +54,7 @@ pub struct QueryJob<'tcx> {
     pub parent: Option<Lrc<QueryJob<'tcx>>>,
 
     /// The latch which is used to wait on this job
-    #[cfg(parallel_queries)]
+    #[cfg(parallel_compiler)]
     latch: QueryLatch<'tcx>,
 }
 
@@ -64,7 +64,7 @@ impl<'tcx> QueryJob<'tcx> {
         QueryJob {
             info,
             parent,
-            #[cfg(parallel_queries)]
+            #[cfg(parallel_compiler)]
             latch: QueryLatch::new(),
         }
     }
@@ -73,7 +73,7 @@ impl<'tcx> QueryJob<'tcx> {
     ///
     /// For single threaded rustc there's no concurrent jobs running, so if we are waiting for any
     /// query that means that there is a query cycle, thus this always running a cycle error.
-    #[cfg(not(parallel_queries))]
+    #[cfg(not(parallel_compiler))]
     #[inline(never)]
     #[cold]
     pub(super) fn cycle_error<'lcx, 'a, D: QueryDescription<'tcx>>(
@@ -88,7 +88,7 @@ impl<'tcx> QueryJob<'tcx> {
     ///
     /// For single threaded rustc there's no concurrent jobs running, so if we are waiting for any
     /// query that means that there is a query cycle, thus this always running a cycle error.
-    #[cfg(parallel_queries)]
+    #[cfg(parallel_compiler)]
     pub(super) fn await<'lcx>(
         &self,
         tcx: TyCtxt<'_, 'tcx, 'lcx>,
@@ -113,7 +113,7 @@ impl<'tcx> QueryJob<'tcx> {
         })
     }
 
-    #[cfg(not(parallel_queries))]
+    #[cfg(not(parallel_compiler))]
     fn find_cycle_in_stack<'lcx>(
         &self,
         tcx: TyCtxt<'_, 'tcx, 'lcx>,
@@ -152,7 +152,7 @@ impl<'tcx> QueryJob<'tcx> {
     /// This does nothing for single threaded rustc,
     /// as there are no concurrent jobs which could be waiting on us
     pub fn signal_complete(&self) {
-        #[cfg(parallel_queries)]
+        #[cfg(parallel_compiler)]
         self.latch.set();
     }
 
@@ -161,7 +161,7 @@ impl<'tcx> QueryJob<'tcx> {
     }
 }
 
-#[cfg(parallel_queries)]
+#[cfg(parallel_compiler)]
 struct QueryWaiter<'tcx> {
     query: Option<Lrc<QueryJob<'tcx>>>,
     condvar: Condvar,
@@ -169,7 +169,7 @@ struct QueryWaiter<'tcx> {
     cycle: Lock<Option<CycleError<'tcx>>>,
 }
 
-#[cfg(parallel_queries)]
+#[cfg(parallel_compiler)]
 impl<'tcx> QueryWaiter<'tcx> {
     fn notify(&self, registry: &rayon_core::Registry) {
         rayon_core::mark_unblocked(registry);
@@ -177,18 +177,18 @@ impl<'tcx> QueryWaiter<'tcx> {
     }
 }
 
-#[cfg(parallel_queries)]
+#[cfg(parallel_compiler)]
 struct QueryLatchInfo<'tcx> {
     complete: bool,
     waiters: Vec<Lrc<QueryWaiter<'tcx>>>,
 }
 
-#[cfg(parallel_queries)]
+#[cfg(parallel_compiler)]
 struct QueryLatch<'tcx> {
     info: Mutex<QueryLatchInfo<'tcx>>,
 }
 
-#[cfg(parallel_queries)]
+#[cfg(parallel_compiler)]
 impl<'tcx> QueryLatch<'tcx> {
     fn new() -> Self {
         QueryLatch {
@@ -242,7 +242,7 @@ impl<'tcx> QueryLatch<'tcx> {
 }
 
 /// A resumable waiter of a query. The usize is the index into waiters in the query's latch
-#[cfg(parallel_queries)]
+#[cfg(parallel_compiler)]
 type Waiter<'tcx> = (Lrc<QueryJob<'tcx>>, usize);
 
 /// Visits all the non-resumable and resumable waiters of a query.
@@ -254,7 +254,7 @@ type Waiter<'tcx> = (Lrc<QueryJob<'tcx>>, usize);
 /// For visits of resumable waiters it returns Some(Some(Waiter)) which has the
 /// required information to resume the waiter.
 /// If all `visit` calls returns None, this function also returns None.
-#[cfg(parallel_queries)]
+#[cfg(parallel_compiler)]
 fn visit_waiters<'tcx, F>(query: Lrc<QueryJob<'tcx>>, mut visit: F) -> Option<Option<Waiter<'tcx>>>
 where
     F: FnMut(Span, Lrc<QueryJob<'tcx>>) -> Option<Option<Waiter<'tcx>>>
@@ -282,7 +282,7 @@ where
 /// `span` is the reason for the `query` to execute. This is initially DUMMY_SP.
 /// If a cycle is detected, this initial value is replaced with the span causing
 /// the cycle.
-#[cfg(parallel_queries)]
+#[cfg(parallel_compiler)]
 fn cycle_check<'tcx>(query: Lrc<QueryJob<'tcx>>,
                      span: Span,
                      stack: &mut Vec<(Span, Lrc<QueryJob<'tcx>>)>,
@@ -321,7 +321,7 @@ fn cycle_check<'tcx>(query: Lrc<QueryJob<'tcx>>,
 /// Finds out if there's a path to the compiler root (aka. code which isn't in a query)
 /// from `query` without going through any of the queries in `visited`.
 /// This is achieved with a depth first search.
-#[cfg(parallel_queries)]
+#[cfg(parallel_compiler)]
 fn connected_to_root<'tcx>(
     query: Lrc<QueryJob<'tcx>>,
     visited: &mut FxHashSet<*const QueryJob<'tcx>>
@@ -346,7 +346,7 @@ fn connected_to_root<'tcx>(
 }
 
 // Deterministically pick an query from a list
-#[cfg(parallel_queries)]
+#[cfg(parallel_compiler)]
 fn pick_query<'a, 'tcx, T, F: Fn(&T) -> (Span, Lrc<QueryJob<'tcx>>)>(
     tcx: TyCtxt<'_, 'tcx, '_>,
     queries: &'a [T],
@@ -372,7 +372,7 @@ fn pick_query<'a, 'tcx, T, F: Fn(&T) -> (Span, Lrc<QueryJob<'tcx>>)>(
 /// the function return true.
 /// If a cycle was not found, the starting query is removed from `jobs` and
 /// the function returns false.
-#[cfg(parallel_queries)]
+#[cfg(parallel_compiler)]
 fn remove_cycle<'tcx>(
     jobs: &mut Vec<Lrc<QueryJob<'tcx>>>,
     wakelist: &mut Vec<Lrc<QueryWaiter<'tcx>>>,
@@ -475,7 +475,7 @@ fn remove_cycle<'tcx>(
 /// Creates a new thread and forwards information in thread locals to it.
 /// The new thread runs the deadlock handler.
 /// Must only be called when a deadlock is about to happen.
-#[cfg(parallel_queries)]
+#[cfg(parallel_compiler)]
 pub unsafe fn handle_deadlock() {
     use syntax;
     use syntax_pos;
@@ -514,7 +514,7 @@ pub unsafe fn handle_deadlock() {
 /// uses a query latch and then resuming that waiter.
 /// There may be multiple cycles involved in a deadlock, so this searches
 /// all active queries for cycles before finally resuming all the waiters at once.
-#[cfg(parallel_queries)]
+#[cfg(parallel_compiler)]
 fn deadlock(tcx: TyCtxt<'_, '_, '_>, registry: &rayon_core::Registry) {
     let on_panic = OnDrop(|| {
         eprintln!("deadlock handler panicked, aborting process");
