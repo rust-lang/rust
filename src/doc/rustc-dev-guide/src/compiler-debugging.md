@@ -358,4 +358,23 @@ create a minimal working example with Godbolt. Go to
 
 ## Narrowing (Bisecting) Regressions
 
-The [cargo-bisect-rustc](https://github.com/rust-lang-nursery/cargo-bisect-rustc) tool can be used as a quick and easy way to find exactly which PR caused a change in `rustc` behavior. It automatically downloads `rustc` PR artifacts and tests them against a project you provide until it finds the regression. You can then look at the PR to get more context on *why* it was changed.  See [this tutorial](https://github.com/rust-lang-nursery/cargo-bisect-rustc/blob/master/TUTORIAL.md) on how to use it.
+The [cargo-bisect-rustc][bisect] tool can be used as a quick and easy way to
+find exactly which PR caused a change in `rustc` behavior. It automatically
+downloads `rustc` PR artifacts and tests them against a project you provide
+until it finds the regression. You can then look at the PR to get more context
+on *why* it was changed.  See [this tutorial][bisect-tutorial] on how to use
+it.
+
+[bisect]: https://github.com/rust-lang-nursery/cargo-bisect-rustc
+[bisect-tutorial]: https://github.com/rust-lang-nursery/cargo-bisect-rustc/blob/master/TUTORIAL.md
+
+## Downloading Artifacts from Rust's CI
+
+The [rustup-toolchain-install-master][rtim] tool by kennytm can be used to
+download the artifacts produced by Rust's CI for a specific SHA1 -- this
+basically corresponds to the successful landing of some PR -- and then sets
+them up for your local use. This also works for artifacts produced by `@bors
+try`. This is helpful when you want to examine the resulting build of a PR
+without doing the build yourself.
+
+[rtim]: https://github.com/kennytm/rustup-toolchain-install-master
