@@ -1051,29 +1051,24 @@ impl<'a> Builder<'a> {
                 }
             };
             let cc = ccacheify(&self.cc(target));
-            cargo.env(format!("CC_{}", target), &cc).env("CC", &cc);
+            cargo.env(format!("CC_{}", target), &cc);
 
             let cflags = self.cflags(target, GitRepo::Rustc).join(" ");
             cargo
-                .env(format!("CFLAGS_{}", target), cflags.clone())
-                .env("CFLAGS", cflags.clone());
+                .env(format!("CFLAGS_{}", target), cflags.clone());
 
             if let Some(ar) = self.ar(target) {
                 let ranlib = format!("{} s", ar.display());
                 cargo
                     .env(format!("AR_{}", target), ar)
-                    .env("AR", ar)
-                    .env(format!("RANLIB_{}", target), ranlib.clone())
-                    .env("RANLIB", ranlib);
+                    .env(format!("RANLIB_{}", target), ranlib);
             }
 
             if let Ok(cxx) = self.cxx(target) {
                 let cxx = ccacheify(&cxx);
                 cargo
                     .env(format!("CXX_{}", target), &cxx)
-                    .env("CXX", &cxx)
-                    .env(format!("CXXFLAGS_{}", target), cflags.clone())
-                    .env("CXXFLAGS", cflags);
+                    .env(format!("CXXFLAGS_{}", target), cflags);
             }
         }
 
