@@ -26,7 +26,7 @@ pub struct OpaqueTypeDecl<'tcx> {
     ///
     /// winds up desugared to:
     ///
-    ///     abstract type Foo<'x, T>: Trait<'x>
+    ///     abstract type Foo<'x, X>: Trait<'x>
     ///     fn foo<'a, 'b, T>() -> Foo<'a, T>
     ///
     /// then `substs` would be `['a, T]`.

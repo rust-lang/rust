@@ -1,0 +1,11 @@
+error: defining existential type use restricts existential type by using the generic parameter `T` twice
+  --> $DIR/generic_duplicate_param_use2.rs:10:1
+   |
+LL | / fn one<T: Debug>(t: T) -> Two<T, T> {
+LL | | //~^ defining existential type use restricts existential type
+LL | |     t
+LL | | }
+   | |_^
+
+error: aborting due to previous error
+

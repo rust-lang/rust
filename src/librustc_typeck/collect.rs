@@ -23,9 +23,10 @@ use middle::resolve_lifetime as rl;
 use middle::weak_lang_items;
 use rustc::mir::mono::Linkage;
 use rustc::ty::query::Providers;
-use rustc::ty::subst::Substs;
+use rustc::ty::subst::{Subst, Substs};
 use rustc::ty::util::Discr;
 use rustc::ty::util::IntTypeExt;
+use rustc::ty::subst::UnpackedKind;
 use rustc::ty::{self, AdtKind, ToPolyTraitRef, Ty, TyCtxt};
 use rustc::ty::{ReprOptions, ToPredicate};
 use rustc::util::captures::Captures;
@@ -1193,7 +1194,7 @@ fn type_of<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: DefId) -> Ty<'tcx> {
                     tcx.typeck_tables_of(owner)
                         .concrete_existential_types
                         .get(&def_id)
-                        .cloned()
+                        .map(|opaque| opaque.concrete_type)
                         .unwrap_or_else(|| {
                             // This can occur if some error in the
                             // owner fn prevented us from populating
@@ -1325,7 +1326,13 @@ fn find_existential_constraints<'a, 'tcx>(
     struct ConstraintLocator<'a, 'tcx: 'a> {
         tcx: TyCtxt<'a, 'tcx, 'tcx>,
         def_id: DefId,
-        found: Option<(Span, ty::Ty<'tcx>)>,
+        // First found type span, actual type, mapping from the existential type's generic
+        // parameters to the concrete type's generic parameters
+        //
+        // The mapping is an index for each use site of a generic parameter in the concrete type
+        //
+        // The indices index into the generic parameters on the existential type.
+        found: Option<(Span, ty::Ty<'tcx>, Vec<usize>)>,
     }
 
     impl<'a, 'tcx> ConstraintLocator<'a, 'tcx> {
@@ -1340,13 +1347,50 @@ fn find_existential_constraints<'a, 'tcx>(
                 .tcx
                 .typeck_tables_of(def_id)
                 .concrete_existential_types
-                .get(&self.def_id)
-                .cloned();
-            if let Some(ty) = ty {
+                .get(&self.def_id);
+            if let Some(ty::ResolvedOpaqueTy { concrete_type, substs }) = ty {
                 // FIXME(oli-obk): trace the actual span from inference to improve errors
                 let span = self.tcx.def_span(def_id);
-                if let Some((prev_span, prev_ty)) = self.found {
-                    let mut ty = ty.walk().fuse();
+                // used to quickly look up the position of a generic parameter
+                let mut index_map: FxHashMap<ty::ParamTy, usize> = FxHashMap::default();
+                // skip binder is ok, since we only use this to find generic parameters and their
+                // positions.
+                for subst in substs.iter() {
+                    if let UnpackedKind::Type(ty) = subst.unpack() {
+                        if let ty::Param(p) = ty.sty {
+                            let idx = index_map.len();
+                            if index_map.insert(p, idx).is_some() {
+                                // there was already an entry for `p`, meaning a generic parameter
+                                // was used twice
+                                self.tcx.sess.span_err(
+                                    span,
+                                    &format!("defining existential type use restricts existential \
+                                    type by using the generic parameter `{}` twice", p.name),
+                                );
+                                return;
+                            }
+                        } else {
+                            self.tcx.sess.delay_span_bug(
+                                span,
+                                &format!(
+                                    "non-defining exist ty use in defining scope: {:?}, {:?}",
+                                    concrete_type, substs,
+                                ),
+                            );
+                        }
+                    }
+                }
+                // compute the index within the existential type for each generic parameter used in
+                // the concrete type
+                let indices = concrete_type
+                    .subst(self.tcx, substs)
+                    .walk()
+                    .filter_map(|t| match &t.sty {
+                    ty::Param(p) => Some(*index_map.get(p).unwrap()),
+                    _ => None,
+                }).collect();
+                if let Some((prev_span, prev_ty, ref prev_indices)) = self.found {
+                    let mut ty = concrete_type.walk().fuse();
                     let mut prev_ty = prev_ty.walk().fuse();
                     let iter_eq = (&mut ty).zip(&mut prev_ty).all(|(t, p)| match (&t.sty, &p.sty) {
                         // type parameters are equal to any other type parameter for the purpose of
@@ -1359,13 +1403,21 @@ fn find_existential_constraints<'a, 'tcx>(
                         // found different concrete types for the existential type
                         let mut err = self.tcx.sess.struct_span_err(
                             span,
-                            "defining existential type use differs from previous",
+                            "concrete type differs from previous defining existential type use",
+                        );
+                        err.span_note(prev_span, "previous use here");
+                        err.emit();
+                    } else if indices != *prev_indices {
+                        // found "same" concrete types, but the generic parameter order differs
+                        let mut err = self.tcx.sess.struct_span_err(
+                            span,
+                            "concrete type's generic parameters differ from previous defining use",
                         );
                         err.span_note(prev_span, "previous use here");
                         err.emit();
                     }
                 } else {
-                    self.found = Some((span, ty));
+                    self.found = Some((span, concrete_type, indices));
                 }
             }
         }
@@ -1424,7 +1476,7 @@ fn find_existential_constraints<'a, 'tcx>(
     }
 
     match locator.found {
-        Some((_, ty)) => ty,
+        Some((_, ty, _)) => ty,
         None => {
             let span = tcx.def_span(def_id);
             tcx.sess.span_err(span, "could not find defining uses");
