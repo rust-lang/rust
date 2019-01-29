@@ -1,6 +1,7 @@
 use core::cell::Cell;
 use core::iter::*;
 use core::{i8, i16, isize};
+use core::sync::atomic::{AtomicUsize, Ordering};
 use core::usize;
 
 #[test]
@@ -1303,6 +1304,24 @@ fn test_cloned_side_effects() {
         for _ in iter {}
     }
     assert_eq!(count, 2);
+}
+
+#[test]
+fn test_cloned_side_effects_with_incorrect_clone_implementation() {
+    #[derive(Copy)]
+    struct X;
+
+    static CALL_COUNT: AtomicUsize = AtomicUsize::new(0);
+
+    impl Clone for X {
+        fn clone(&self) -> X {
+            CALL_COUNT.store(CALL_COUNT.load(Ordering::Relaxed) + 1, Ordering::Relaxed);
+            X
+        }
+    }
+
+    for _ in [X; 3].iter().cloned().zip(&[1]) {}
+    assert_eq!(CALL_COUNT.load(Ordering::Relaxed), 2);
 }
 
 #[test]
