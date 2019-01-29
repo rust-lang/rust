@@ -1146,12 +1146,12 @@ impl<T: ?Sized> Weak<T> {
     ///
     /// [`Weak::new`]: #method.new
     #[unstable(feature = "weak_counts", issue = "0")]
-    pub fn weak_count(&self) -> usize {
+    pub fn weak_count(&self) -> Option<usize> {
         // Due to the implicit weak pointer added when any strong pointers are
         // around, we cannot implement `weak_count` correctly since it
         // necessarily requires accessing the strong count and weak count in an
         // unsynchronized fashion. So this version is a bit racy.
-        if let Some(inner) = self.inner() {
+        self.inner().map(|inner| {
             let strong = inner.strong.load(SeqCst);
             let weak = inner.weak.load(SeqCst);
             if strong == 0 {
@@ -1169,9 +1169,7 @@ impl<T: ?Sized> Weak<T> {
                 // pointer), we guard against that specifically.
                 cmp::max(1, weak - 1)
             }
-        } else {
-            0
-        }
+        })
     }
 
     /// Return `None` when the pointer is dangling and there is no allocated `ArcInner`,
@@ -1695,28 +1693,28 @@ mod tests {
 
     #[test]
     fn weak_counts() {
-        assert_eq!(Weak::weak_count(&Weak::<u64>::new()), 0);
+        assert_eq!(Weak::weak_count(&Weak::<u64>::new()), None);
         assert_eq!(Weak::strong_count(&Weak::<u64>::new()), 0);
 
         let a = Arc::new(0);
         let w = Arc::downgrade(&a);
         assert_eq!(Weak::strong_count(&w), 1);
-        assert_eq!(Weak::weak_count(&w), 1);
+        assert_eq!(Weak::weak_count(&w), Some(1));
         let w2 = w.clone();
         assert_eq!(Weak::strong_count(&w), 1);
-        assert_eq!(Weak::weak_count(&w), 2);
+        assert_eq!(Weak::weak_count(&w), Some(2));
         assert_eq!(Weak::strong_count(&w2), 1);
-        assert_eq!(Weak::weak_count(&w2), 2);
+        assert_eq!(Weak::weak_count(&w2), Some(2));
         drop(w);
         assert_eq!(Weak::strong_count(&w2), 1);
-        assert_eq!(Weak::weak_count(&w2), 1);
+        assert_eq!(Weak::weak_count(&w2), Some(1));
         let a2 = a.clone();
         assert_eq!(Weak::strong_count(&w2), 2);
-        assert_eq!(Weak::weak_count(&w2), 1);
+        assert_eq!(Weak::weak_count(&w2), Some(1));
         drop(a2);
         drop(a);
         assert_eq!(Weak::strong_count(&w2), 0);
-        assert_eq!(Weak::weak_count(&w2), 1);
+        assert_eq!(Weak::weak_count(&w2), Some(1));
         drop(w2);
     }
 
