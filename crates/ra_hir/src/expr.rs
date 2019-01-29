@@ -69,6 +69,10 @@ impl Body {
     pub fn owner(&self) -> Function {
         self.owner
     }
+
+    pub fn syntax_mapping(&self, db: &impl HirDatabase) -> Arc<BodySyntaxMapping> {
+        db.body_syntax_mapping(self.owner)
+    }
 }
 
 // needs arbitrary_self_types to be a method... or maybe move to the def?

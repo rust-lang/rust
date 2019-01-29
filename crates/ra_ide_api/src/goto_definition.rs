@@ -48,14 +48,7 @@ pub(crate) fn reference_definition(
     if let Some(function) =
         hir::source_binder::function_from_child_node(db, file_id, name_ref.syntax())
     {
-        let scope = function.scopes(db);
-        // First try to resolve the symbol locally
-        if let Some(entry) = scope.resolve_local_name(name_ref) {
-            let nav = NavigationTarget::from_scope_entry(file_id, &entry);
-            return Exact(nav);
-        };
-
-        // Next check if it is a method
+        // Check if it is a method
         if let Some(method_call) = name_ref
             .syntax()
             .parent()
@@ -86,19 +79,37 @@ pub(crate) fn reference_definition(
             };
         }
     }
-    // Then try module name resolution
-    if let Some(module) = hir::source_binder::module_from_child_node(db, file_id, name_ref.syntax())
+    // Try name resolution
+    let resolver = hir::source_binder::resolver_for_node(db, file_id, name_ref.syntax());
+    if let Some(path) = name_ref
+        .syntax()
+        .ancestors()
+        .find_map(ast::Path::cast)
+        .and_then(hir::Path::from_ast)
     {
-        if let Some(path) = name_ref
-            .syntax()
-            .ancestors()
-            .find_map(ast::Path::cast)
-            .and_then(hir::Path::from_ast)
-        {
-            let resolved = module.resolve_path(db, &path);
-            if let Some(def_id) = resolved.take_types().or(resolved.take_values()) {
-                return Exact(NavigationTarget::from_def(db, def_id));
+        let resolved = resolver.resolve_path(db, &path);
+        match resolved.clone().take_types().or(resolved.take_values()) {
+            Some(Resolution::Def { def }) => return Exact(NavigationTarget::from_def(db, def)),
+            Some(Resolution::LocalBinding { pat }) => {
+                let body = resolver.body().expect("no body for local binding");
+                let syntax_mapping = body.syntax_mapping(db);
+                let ptr = syntax_mapping
+                    .pat_syntax(pat)
+                    .expect("pattern not found in syntax mapping");
+                let name = path
+                    .as_ident()
+                    .cloned()
+                    .expect("local binding from a multi-segment path");
+                let nav = NavigationTarget::from_scope_entry(file_id, name, ptr);
+                return Exact(nav);
             }
+            Some(Resolution::GenericParam { .. }) => {
+                // TODO go to the generic param def
+            }
+            Some(Resolution::SelfType(_impl_block)) => {
+                // TODO go to the implemented type
+            }
+            None => {}
         }
     }
     // If that fails try the index based approach.

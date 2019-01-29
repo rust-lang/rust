@@ -58,6 +58,10 @@ impl ExprScopes {
         scopes
     }
 
+    pub fn body(&self) -> Arc<Body> {
+        self.body.clone()
+    }
+
     pub fn entries(&self, scope: ScopeId) -> &[ScopeEntry] {
         &self.scopes[scope].entries
     }
@@ -220,7 +224,7 @@ impl ScopesWithSyntaxMapping {
             .collect()
     }
 
-    fn scope_for(&self, node: &SyntaxNode) -> Option<ScopeId> {
+    pub fn scope_for(&self, node: &SyntaxNode) -> Option<ScopeId> {
         node.ancestors()
             .map(SyntaxNodePtr::new)
             .filter_map(|ptr| self.syntax_mapping.syntax_expr(ptr))

@@ -1,9 +1,9 @@
 use ra_db::FileId;
 use ra_syntax::{
-    SyntaxNode, AstNode, SmolStr, TextRange, ast,
+    SyntaxNode, SyntaxNodePtr, AstNode, SmolStr, TextRange, ast,
     SyntaxKind::{self, NAME},
 };
-use hir::{ModuleSource, FieldSource};
+use hir::{ModuleSource, FieldSource, Name};
 
 use crate::{FileSymbol, db::RootDatabase};
 
@@ -58,12 +58,13 @@ impl NavigationTarget {
 
     pub(crate) fn from_scope_entry(
         file_id: FileId,
-        entry: &hir::ScopeEntryWithSyntax,
+        name: Name,
+        ptr: SyntaxNodePtr,
     ) -> NavigationTarget {
         NavigationTarget {
             file_id,
-            name: entry.name().to_string().into(),
-            full_range: entry.ptr().range(),
+            name: name.to_string().into(),
+            full_range: ptr.range(),
             focus_range: None,
             kind: NAME,
         }

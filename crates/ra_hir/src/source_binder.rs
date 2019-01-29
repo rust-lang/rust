@@ -229,3 +229,31 @@ pub fn resolver_for_position(db: &impl HirDatabase, position: FilePosition) -> R
         })
         .unwrap_or_default()
 }
+
+pub fn resolver_for_node(
+    db: &impl HirDatabase,
+    file_id: FileId,
+    node: &SyntaxNode,
+) -> Resolver<'static> {
+    node.ancestors()
+        .find_map(|node| {
+            if ast::Expr::cast(node).is_some() || ast::Block::cast(node).is_some() {
+                if let Some(func) = function_from_child_node(db, file_id, node) {
+                    let scopes = func.scopes(db);
+                    let scope = scopes.scope_for(&node);
+                    Some(expr::resolver_for_scope(func.body(db), db, scope))
+                } else {
+                    // TODO const/static/array length
+                    None
+                }
+            } else if let Some(module) = ast::Module::cast(node) {
+                Some(module_from_declaration(db, file_id, module)?.resolver(db))
+            } else if let Some(_) = ast::SourceFile::cast(node) {
+                Some(module_from_source(db, file_id.into(), None)?.resolver(db))
+            } else {
+                // TODO add missing cases
+                None
+            }
+        })
+        .unwrap_or_default()
+}

@@ -9,7 +9,7 @@ use crate::{
     name::{Name, KnownName},
     nameres::{PerNs, ItemMap},
     generics::GenericParams,
-    expr::{scope::{ExprScopes, ScopeId}, PatId},
+    expr::{scope::{ExprScopes, ScopeId}, PatId, Body},
     impl_block::ImplBlock,
     path::Path,
 };
@@ -106,15 +106,21 @@ impl Resolver {
     }
 
     fn module(&self) -> Option<(&ItemMap, Module)> {
-        for scope in self.scopes.iter().rev() {
-            match scope {
-                Scope::ModuleScope(m) => {
-                    return Some((&m.item_map, m.module.clone()));
-                }
-                _ => {}
-            }
-        }
-        None
+        self.scopes.iter().rev().find_map(|scope| match scope {
+            Scope::ModuleScope(m) => Some((&*m.item_map, m.module.clone())),
+
+            Scope::ModuleScopeRef(m) => Some((m.item_map, m.module.clone())),
+
+            _ => None,
+        })
+    }
+
+    /// The body from which any `LocalBinding` resolutions in this resolver come.
+    pub fn body(&self) -> Option<Arc<Body>> {
+        self.scopes.iter().rev().find_map(|scope| match scope {
+            Scope::ExprScope(expr_scope) => Some(expr_scope.expr_scopes.body()),
+            _ => None,
+        })
     }
 }
 
