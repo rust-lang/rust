@@ -221,11 +221,12 @@ pub mod alloc;
 mod tuple;
 mod unit;
 
-// Pull in the `coresimd` crate directly into libcore. This is where all the
-// architecture-specific (and vendor-specific) intrinsics are defined. AKA
-// things like SIMD and such. Note that the actual source for all this lies in a
-// different repository, rust-lang-nursery/stdsimd. That's why the setup here is
-// a bit wonky.
+// Pull in the `core_arch` crate directly into libcore. The contents of
+// `core_arch` are in a different repository: rust-lang-nursery/stdsimd.
+//
+// `core_arch` depends on libcore, but the contents of this module are
+// set up in such a way that directly pulling it here works such that the
+// crate uses the this crate as its libcore.
 #[allow(unused_macros)]
 macro_rules! test_v16 { ($item:item) => {}; }
 #[allow(unused_macros)]
@@ -240,10 +241,10 @@ macro_rules! test_v256 { ($item:item) => {}; }
 macro_rules! test_v512 { ($item:item) => {}; }
 #[allow(unused_macros)]
 macro_rules! vector_impl { ($([$f:ident, $($args:tt)*]),*) => { $($f!($($args)*);)* } }
-#[path = "../stdsimd/coresimd/mod.rs"]
+#[path = "../stdsimd/crates/core_arch/src/mod.rs"]
 #[allow(missing_docs, missing_debug_implementations, dead_code, unused_imports)]
 #[unstable(feature = "stdsimd", issue = "48556")]
-mod coresimd;
+mod core_arch;
 
 #[stable(feature = "simd_arch", since = "1.27.0")]
-pub use coresimd::arch;
+pub use core_arch::arch;
