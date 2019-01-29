@@ -44,7 +44,9 @@
         "vscode": "^1.1.26"
     },
     "activationEvents": [
-        "onLanguage:rust"
+        "onLanguage:rust",
+        "onCommand:rust-analyzer.analyzerStatus",
+        "onCommand:rust-analyzer.collectGarbage"
     ],
     "main": "./out/extension",
     "contributes": {
