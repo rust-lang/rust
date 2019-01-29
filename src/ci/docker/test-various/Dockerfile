@@ -14,7 +14,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
   xz-utils
 
 # FIXME: build the `ptx-linker` instead.
-RUN curl -sL https://github.com/denzp/rust-ptx-linker/releases/download/v0.9.0-alpha.1/rust-ptx-linker.linux64.tar.gz | \
+RUN curl -sL https://github.com/denzp/rust-ptx-linker/releases/download/v0.9.0-alpha.2/rust-ptx-linker.linux64.tar.gz | \
   tar -xzvC /usr/bin
 
 RUN curl -sL https://nodejs.org/dist/v9.2.0/node-v9.2.0-linux-x64.tar.xz | \

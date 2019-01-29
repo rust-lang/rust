@@ -1132,6 +1132,12 @@ impl<'a> Linker for PtxLinker<'a> {
     }
 
     fn finalize(&mut self) -> Command {
+        // Provide the linker with fallback to internal `target-cpu`.
+        self.cmd.arg("--fallback-arch").arg(match self.sess.opts.cg.target_cpu {
+            Some(ref s) => s,
+            None => &self.sess.target.target.options.cpu
+        });
+
         ::std::mem::replace(&mut self.cmd, Command::new(""))
     }
 

@@ -5,7 +5,7 @@
 extern crate dep;
 
 // Verify the default CUDA arch.
-// CHECK: .target sm_20
+// CHECK: .target sm_30
 // CHECK: .address_size 64
 
 // Make sure declarations are there.
