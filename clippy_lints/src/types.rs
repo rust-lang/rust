@@ -609,36 +609,43 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for UnitArg {
         if in_macro(expr.span) {
             return;
         }
+
+        // apparently stuff in the desugaring of `?` can trigger this
+        // so check for that here
+        // only the calls to `Try::from_error` is marked as desugared,
+        // so we need to check both the current Expr and its parent.
+        if is_questionmark_desugar_marked_call(expr) {
+            return;
+        }
+        if_chain! {
+            let map = &cx.tcx.hir();
+            let opt_parent_node = map.find(map.get_parent_node(expr.id));
+            if let Some(hir::Node::Expr(parent_expr)) = opt_parent_node;
+            if is_questionmark_desugar_marked_call(parent_expr);
+            then {
+                return;
+            }
+        }
+
         match expr.node {
             ExprKind::Call(_, ref args) | ExprKind::MethodCall(_, _, ref args) => {
                 for arg in args {
                     if is_unit(cx.tables.expr_ty(arg)) && !is_unit_literal(arg) {
-                        let map = &cx.tcx.hir();
-                        // apparently stuff in the desugaring of `?` can trigger this
-                        // so check for that here
-                        // only the calls to `Try::from_error` is marked as desugared,
-                        // so we need to check both the current Expr and its parent.
-                        if !is_questionmark_desugar_marked_call(expr) {
-                            if_chain! {
-                                let opt_parent_node = map.find(map.get_parent_node(expr.id));
-                                if let Some(hir::Node::Expr(parent_expr)) = opt_parent_node;
-                                if is_questionmark_desugar_marked_call(parent_expr);
-                                then {}
-                                else {
-                                    // `expr` and `parent_expr` where _both_ not from
-                                    // desugaring `?`, so lint
-                                    span_lint_and_sugg(
-                                        cx,
-                                        UNIT_ARG,
-                                        arg.span,
-                                        "passing a unit value to a function",
-                                        "if you intended to pass a unit value, use a unit literal instead",
-                                        "()".to_string(),
-                                        Applicability::MachineApplicable,
-                                    );
-                                }
+                        if let ExprKind::Match(.., match_source) = &arg.node {
+                            if *match_source == MatchSource::TryDesugar {
+                                continue;
                             }
                         }
+
+                        span_lint_and_sugg(
+                            cx,
+                            UNIT_ARG,
+                            arg.span,
+                            "passing a unit value to a function",
+                            "if you intended to pass a unit value, use a unit literal instead",
+                            "()".to_string(),
+                            Applicability::MachineApplicable,
+                        );
                     }
                 }
             },
