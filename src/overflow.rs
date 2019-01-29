@@ -11,6 +11,7 @@
 //! Rewrite a list some items with overflow.
 
 use config::lists::*;
+use config::Version;
 use syntax::parse::token::DelimToken;
 use syntax::source_map::Span;
 use syntax::{ast, ptr};
@@ -466,6 +467,13 @@ impl<'a> Context<'a> {
                 {
                     self.context.force_one_line_chain.replace(true);
                 }
+                Some(OverflowableItem::MacroArg(MacroArg::Expr(expr)))
+                    if !combine_arg_with_callee
+                        && is_method_call(expr)
+                        && self.context.config.version() == Version::Two =>
+                {
+                    self.context.force_one_line_chain.replace(true);
+                }
                 _ => (),
             }
             let result = last_item_shape(
@@ -632,8 +640,6 @@ impl<'a> Context<'a> {
             _ => (self.prefix, self.suffix),
         };
 
-        // 2 = `()`
-        let fits_one_line = items_str.len() + 2 <= shape.width;
         let extend_width = if items_str.is_empty() {
             2
         } else {
@@ -652,10 +658,16 @@ impl<'a> Context<'a> {
         );
         result.push_str(self.ident);
         result.push_str(prefix);
-        if !self.context.use_block_indent()
-            || (self.context.inside_macro() && !items_str.contains('\n') && fits_one_line)
-            || (is_extendable && extend_width <= shape.width)
-        {
+        let force_single_line = if self.context.config.version() == Version::Two {
+            !self.context.use_block_indent() || (is_extendable && extend_width <= shape.width)
+        } else {
+            // 2 = `()`
+            let fits_one_line = items_str.len() + 2 <= shape.width;
+            !self.context.use_block_indent()
+                || (self.context.inside_macro() && !items_str.contains('\n') && fits_one_line)
+                || (is_extendable && extend_width <= shape.width)
+        };
+        if force_single_line {
             result.push_str(items_str);
         } else {
             if !items_str.is_empty() {
