@@ -10,7 +10,6 @@
 
 use std::cell::RefCell;
 
-use syntax::attr::HasAttrs;
 use syntax::parse::ParseSess;
 use syntax::source_map::{self, BytePos, Pos, SourceMap, Span};
 use syntax::{ast, visit};
@@ -152,32 +151,11 @@ impl<'b, 'a: 'b> FmtVisitor<'a> {
         self.push_str("{");
 
         if let Some(first_stmt) = b.stmts.first() {
-            let attr_lo = inner_attrs
+            let hi = inner_attrs
                 .and_then(|attrs| inner_attributes(attrs).first().map(|attr| attr.span.lo()))
-                .or_else(|| {
-                    // Attributes for an item in a statement position
-                    // do not belong to the statement. (rust-lang/rust#34459)
-                    if let ast::StmtKind::Item(ref item) = first_stmt.node {
-                        item.attrs.first()
-                    } else {
-                        first_stmt.attrs().first()
-                    }
-                    .and_then(|attr| {
-                        // Some stmts can have embedded attributes.
-                        // e.g. `match { #![attr] ... }`
-                        let attr_lo = attr.span.lo();
-                        if attr_lo < first_stmt.span.lo() {
-                            Some(attr_lo)
-                        } else {
-                            None
-                        }
-                    })
-                });
+                .unwrap_or(first_stmt.span().lo());
 
-            let snippet = self.snippet(mk_sp(
-                self.last_pos,
-                attr_lo.unwrap_or_else(|| first_stmt.span.lo()),
-            ));
+            let snippet = self.snippet(mk_sp(self.last_pos, hi));
             let len = CommentCodeSlices::new(snippet)
                 .nth(0)
                 .and_then(|(kind, _, s)| {
