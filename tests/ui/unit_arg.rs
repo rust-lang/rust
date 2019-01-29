@@ -54,6 +54,17 @@ fn question_mark() -> Result<(), ()> {
     Ok(())
 }
 
+#[allow(dead_code)]
+mod issue_2945 {
+    fn unit_fn() -> Result<(), i32> {
+        Ok(())
+    }
+
+    fn fallible() -> Result<(), i32> {
+        Ok(unit_fn()?)
+    }
+}
+
 fn main() {
     bad();
     ok();
