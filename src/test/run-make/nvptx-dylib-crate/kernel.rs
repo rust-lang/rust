@@ -12,7 +12,6 @@ extern crate dep;
 // CHECK: .func (.param .b32 func_retval0) wrapping_external_fn
 // CHECK: .func (.param .b32 func_retval0) panicking_external_fn
 // CHECK: .func [[PANIC_HANDLER:_ZN4core9panicking5panic[a-zA-Z0-9]+]]
-// CHECK: .func [[PANIC_FMT:_ZN4core9panicking9panic_fmt[a-zA-Z0-9]+]]
 
 // CHECK-LABEL: .visible .entry top_kernel(
 #[no_mangle]
@@ -47,15 +46,8 @@ pub unsafe extern "ptx-kernel" fn top_kernel(a: *const u32, b: *mut u32) {
 // CHECK:   [[PANIC_HANDLER]]
 // CHECK: }
 
-// Verify whether panic handler is present.
-// CHECK: .func [[PANIC_HANDLER]]()
-// CHECK: {
-// CHECK:   call.uni
-// CHECK:   [[PANIC_FMT]]
-// CHECK: }
-
-// And finally, check the dummy panic formatter.
-// CHECK: .func [[PANIC_FMT]]()
+// Verify whether out dummy panic formatter has a correct body.
+// CHECK: .func [[PANIC_FMT:_ZN4core9panicking9panic_fmt[a-zA-Z0-9]+]]()
 // CHECK: {
 // CHECK:   trap;
 // CHECK: }
