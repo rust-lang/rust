@@ -127,6 +127,7 @@ exec docker \
   --env TRAVIS_BRANCH \
   --env TOOLSTATE_REPO_ACCESS_TOKEN \
   --env CI_JOB_NAME="${CI_JOB_NAME-$IMAGE}" \
+  --volume "/home/john/dev/cargo/target/release:/cargobin" \
   --volume "$HOME/.cargo:/cargo" \
   --volume "$HOME/rustsrc:$HOME/rustsrc" \
   --init \

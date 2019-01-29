@@ -43,6 +43,7 @@ o("ccache", "llvm.ccache", "invoke gcc/clang via ccache to reuse object files be
 o("sccache", None, "invoke gcc/clang via sccache to reuse object files between builds")
 o("local-rust", None, "use an installed rustc rather than downloading a snapshot")
 v("local-rust-root", None, "set prefix for local rust binary")
+v("local-cargo", None, "set prefix for local rust binary")
 o("local-rebuild", "build.local-rebuild", "assume local-rust matches the current version, for rebuilds; implies local-rust, and is implied if local-rust already matches the current version")
 o("llvm-static-stdcpp", "llvm.static-libstdcpp", "statically link to libstdc++ for LLVM")
 o("llvm-link-shared", "llvm.link-shared", "prefer shared linking to LLVM (llvm-config --link-shared)")
@@ -320,6 +321,8 @@ for key in known_args:
     elif option.name == 'local-rust-root':
         set('build.rustc', value + '/bin/rustc')
         set('build.cargo', value + '/bin/cargo')
+    elif option.name == 'local-cargo':
+        set('build.cargo', value)
     elif option.name == 'llvm-root':
         set('target.{}.llvm-config'.format(build()), value + '/bin/llvm-config')
     elif option.name == 'llvm-config':
