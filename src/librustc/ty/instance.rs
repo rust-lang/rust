@@ -179,7 +179,7 @@ impl<'tcx> fmt::Display for Instance<'tcx> {
         ty::tls::with(|tcx| {
             let substs = tcx.lift(&self.substs).expect("could not lift for printing");
             FmtPrinter::new(tcx, &mut *f, Namespace::ValueNS)
-                .print_def_path(self.def_id(), Some(substs))?;
+                .print_def_path(self.def_id(), substs)?;
             Ok(())
         })?;
 

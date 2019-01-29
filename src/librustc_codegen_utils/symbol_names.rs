@@ -227,7 +227,7 @@ fn def_symbol_name<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: DefId) -> ty::
         tcx,
         path: SymbolPath::new(),
         keep_within_component: false,
-    }.print_def_path(def_id, None).unwrap().path.into_interned()
+    }.print_def_path(def_id, &[]).unwrap().path.into_interned()
 }
 
 fn symbol_name<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, instance: Instance<'tcx>) -> ty::SymbolName {
@@ -438,7 +438,7 @@ impl Printer<'tcx, 'tcx> for SymbolPrinter<'_, 'tcx> {
             ty::UnnormalizedProjection(ty::ProjectionTy { item_def_id: def_id, substs }) |
             ty::Closure(def_id, ty::ClosureSubsts { substs }) |
             ty::Generator(def_id, ty::GeneratorSubsts { substs }, _) => {
-                self.print_def_path(def_id, Some(substs))
+                self.print_def_path(def_id, substs)
             }
             _ => self.pretty_print_type(ty),
         }

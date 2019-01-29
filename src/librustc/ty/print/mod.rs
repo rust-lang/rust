@@ -1,7 +1,7 @@
 use crate::hir::map::DefPathData;
 use crate::hir::def_id::{CrateNum, DefId};
 use crate::ty::{self, DefIdTree, Ty, TyCtxt};
-use crate::ty::subst::{Kind, Subst, SubstsRef};
+use crate::ty::subst::{Kind, Subst};
 
 use rustc_data_structures::fx::FxHashSet;
 
@@ -29,14 +29,14 @@ pub trait Printer<'gcx: 'tcx, 'tcx>: Sized {
     fn print_def_path(
         self,
         def_id: DefId,
-        substs: Option<SubstsRef<'tcx>>,
+        substs: &'tcx [Kind<'tcx>],
     ) -> Result<Self::Path, Self::Error> {
         self.default_print_def_path(def_id, substs)
     }
     fn print_impl_path(
         self,
         impl_def_id: DefId,
-        substs: Option<SubstsRef<'tcx>>,
+        substs: &'tcx [Kind<'tcx>],
         self_ty: Ty<'tcx>,
         trait_ref: Option<ty::TraitRef<'tcx>>,
     ) -> Result<Self::Path, Self::Error> {
@@ -90,7 +90,7 @@ pub trait Printer<'gcx: 'tcx, 'tcx>: Sized {
     fn default_print_def_path(
         self,
         def_id: DefId,
-        substs: Option<SubstsRef<'tcx>>,
+        substs: &'tcx [Kind<'tcx>],
     ) -> Result<Self::Path, Self::Error> {
         debug!("default_print_def_path: def_id={:?}, substs={:?}", def_id, substs);
         let key = self.tcx().def_key(def_id);
@@ -103,61 +103,61 @@ pub trait Printer<'gcx: 'tcx, 'tcx>: Sized {
             }
 
             DefPathData::Impl => {
+                let generics = self.tcx().generics_of(def_id);
                 let mut self_ty = self.tcx().type_of(def_id);
-                if let Some(substs) = substs {
-                    self_ty = self_ty.subst(self.tcx(), substs);
-                }
-
                 let mut impl_trait_ref = self.tcx().impl_trait_ref(def_id);
-                if let Some(substs) = substs {
+                if substs.len() >= generics.count() {
+                    self_ty = self_ty.subst(self.tcx(), substs);
                     impl_trait_ref = impl_trait_ref.subst(self.tcx(), substs);
                 }
                 self.print_impl_path(def_id, substs, self_ty, impl_trait_ref)
             }
 
             _ => {
-                let generics = substs.map(|_| self.tcx().generics_of(def_id));
-                let generics_parent = generics.as_ref().and_then(|g| g.parent);
                 let parent_def_id = DefId { index: key.parent.unwrap(), ..def_id };
-                let print_parent_path = |cx: Self| {
-                    if let Some(generics_parent_def_id) = generics_parent {
-                        assert_eq!(parent_def_id, generics_parent_def_id);
 
-                        // FIXME(eddyb) try to move this into the parent's printing
-                        // logic, instead of doing it when printing the child.
-                        let parent_generics = cx.tcx().generics_of(parent_def_id);
-                        let parent_has_own_self =
-                            parent_generics.has_self && parent_generics.parent_count == 0;
-                        if let (Some(substs), true) = (substs, parent_has_own_self) {
-                            let trait_ref = ty::TraitRef::new(parent_def_id, substs);
-                            cx.path_qualified(trait_ref.self_ty(), Some(trait_ref))
-                        } else {
-                            cx.print_def_path(parent_def_id, substs)
-                        }
-                    } else {
-                        cx.print_def_path(parent_def_id, None)
-                    }
-                };
-                let print_path = |cx: Self| {
+                let mut parent_substs = substs;
+                let mut trait_qualify_parent = false;
+                if !substs.is_empty() {
+                    let generics = self.tcx().generics_of(def_id);
+                    parent_substs = &substs[..generics.parent_count.min(substs.len())];
+
                     match key.disambiguated_data.data {
-                        // Skip `::{{constructor}}` on tuple/unit structs.
-                        DefPathData::StructCtor => print_parent_path(cx),
+                        // Closures' own generics are only captures, don't print them.
+                        DefPathData::ClosureExpr => {}
 
-                        _ => {
-                            cx.path_append(
-                                print_parent_path,
-                                &key.disambiguated_data.data.as_interned_str().as_str(),
-                            )
+                        // If we have any generic arguments to print, we do that
+                        // on top of the same path, but without its own generics.
+                        _ => if !generics.params.is_empty() && substs.len() >= generics.count() {
+                            let args = self.generic_args_to_print(generics, substs);
+                            return self.path_generic_args(
+                                |cx| cx.print_def_path(def_id, parent_substs),
+                                args,
+                            );
                         }
                     }
-                };
 
-                if let (Some(generics), Some(substs)) = (generics, substs) {
-                    let args = self.generic_args_to_print(generics, substs);
-                    self.path_generic_args(print_path, args)
-                } else {
-                    print_path(self)
+                    // FIXME(eddyb) try to move this into the parent's printing
+                    // logic, instead of doing it when printing the child.
+                    trait_qualify_parent =
+                        generics.has_self &&
+                        generics.parent == Some(parent_def_id) &&
+                        parent_substs.len() == generics.parent_count &&
+                        self.tcx().generics_of(parent_def_id).parent_count == 0;
                 }
+
+                self.path_append(
+                    |cx: Self| if trait_qualify_parent {
+                        let trait_ref = ty::TraitRef::new(
+                            parent_def_id,
+                            cx.tcx().intern_substs(parent_substs),
+                        );
+                        cx.path_qualified(trait_ref.self_ty(), Some(trait_ref))
+                    } else {
+                        cx.print_def_path(parent_def_id, parent_substs)
+                    },
+                    &key.disambiguated_data.data.as_interned_str().as_str(),
+                )
             }
         }
     }
@@ -165,7 +165,7 @@ pub trait Printer<'gcx: 'tcx, 'tcx>: Sized {
     fn generic_args_to_print(
         &self,
         generics: &'tcx ty::Generics,
-        substs: SubstsRef<'tcx>,
+        substs: &'tcx [Kind<'tcx>],
     ) -> &'tcx [Kind<'tcx>] {
         let mut own_params = generics.parent_count..generics.count();
 
@@ -193,7 +193,7 @@ pub trait Printer<'gcx: 'tcx, 'tcx>: Sized {
     fn default_print_impl_path(
         self,
         impl_def_id: DefId,
-        _substs: Option<SubstsRef<'tcx>>,
+        _substs: &'tcx [Kind<'tcx>],
         self_ty: Ty<'tcx>,
         impl_trait_ref: Option<ty::TraitRef<'tcx>>,
     ) -> Result<Self::Path, Self::Error> {
@@ -220,7 +220,7 @@ pub trait Printer<'gcx: 'tcx, 'tcx>: Sized {
             // trait-type, then fallback to a format that identifies
             // the module more clearly.
             self.path_append_impl(
-                |cx| cx.print_def_path(parent_def_id, None),
+                |cx| cx.print_def_path(parent_def_id, &[]),
                 self_ty,
                 impl_trait_ref,
             )

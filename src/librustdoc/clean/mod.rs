@@ -4322,7 +4322,7 @@ pub fn get_path_for_type(
     }
 
     let names = AbsolutePathPrinter { tcx: tcx.global_tcx() }
-        .print_def_path(def_id, None)
+        .print_def_path(def_id, &[])
         .unwrap();
 
     hir::Path {

@@ -36,7 +36,7 @@ impl fmt::Debug for ty::TraitDef {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         ty::tls::with(|tcx| {
             FmtPrinter::new(tcx, f, Namespace::TypeNS)
-                .print_def_path(self.def_id, None)?;
+                .print_def_path(self.def_id, &[])?;
             Ok(())
         })
     }
@@ -46,7 +46,7 @@ impl fmt::Debug for ty::AdtDef {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         ty::tls::with(|tcx| {
             FmtPrinter::new(tcx, f, Namespace::TypeNS)
-                .print_def_path(self.did, None)?;
+                .print_def_path(self.did, &[])?;
             Ok(())
         })
     }
