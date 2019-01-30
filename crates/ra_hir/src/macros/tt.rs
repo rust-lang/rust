@@ -1,36 +1,36 @@
 use ra_syntax::SmolStr;
 
-enum TokenTree {
+pub(crate) enum TokenTree {
     Leaf(Leaf),
     Subtree(Subtree),
 }
 
-enum Leaf {
+pub(crate) enum Leaf {
     Literal(Literal),
     Punct(Punct),
     Ident(Ident),
 }
 
-struct Subtree {
+pub(crate) struct Subtree {
     delimiter: Delimiter,
     token_trees: Vec<TokenTree>,
 }
 
-enum Delimiter {
+pub(crate) enum Delimiter {
     Parenthesis,
     Brace,
     Bracket,
     None,
 }
 
-struct Literal {
+pub(crate) struct Literal {
     text: SmolStr,
 }
 
-struct Punct {
+pub(crate) struct Punct {
     char: char,
 }
 
-struct Ident {
+pub(crate) struct Ident {
     text: SmolStr,
 }

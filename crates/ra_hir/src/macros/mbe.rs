@@ -1,5 +1,7 @@
 use ra_syntax::SmolStr;
 
+use crate::macros::tt;
+
 struct MacroRules {
     rules: Vec<Rule>,
 }
@@ -47,4 +49,8 @@ struct Ident {
 
 struct Var {
     text: SmolStr,
+}
+
+fn parse(tt: tt::TokenTree) -> MacroRules {
+    MacroRules { rules: Vec::new() }
 }

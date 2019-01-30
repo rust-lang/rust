@@ -200,3 +200,7 @@ pub(crate) fn expand_macro_invocation(
     let (def, input) = MacroDef::from_call(macro_call)?;
     def.expand(input).map(Arc::new)
 }
+
+fn macro_call_to_tt(call: &ast::MacroCall) -> Option<tt::TokenTree> {
+    None
+}
