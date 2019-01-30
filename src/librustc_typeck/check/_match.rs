@@ -784,7 +784,8 @@ https://doc.rust-lang.org/reference/types.html#trait-objects");
                 report_unexpected_variant_def(tcx, &def, pat.span, qpath);
                 return tcx.types.err;
             }
-            Def::VariantCtor(_, CtorKind::Fictive) => {
+            Def::VariantCtor(_, CtorKind::Fictive) |
+            Def::VariantCtor(_, CtorKind::Fn) => {
                 report_unexpected_variant_def(tcx, &def, pat.span, qpath);
                 return tcx.types.err;
             }
