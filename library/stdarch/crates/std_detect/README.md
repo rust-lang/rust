@@ -1,7 +1,7 @@
 `std::detect` - Rust's standard library run-time CPU feature detection
 =======
 
-[![Travis-CI Status]][travis] [![Appveyor Status]][appveyor] [![Latest Version]][crates.io] [![docs]][docs.rs]
+[![Travis-CI Status]][travis] [![Appveyor Status]][appveyor] [![std_detect_crate_badge]][std_detect_crate_link] [![std_detect_docs_badge]][std_detect_docs_link]
 
 
 The private `std::detect` module implements run-time feature detection in Rust's
@@ -63,7 +63,7 @@ shall be dual licensed as above, without any additional terms or conditions.
 [Travis-CI Status]: https://travis-ci.com/rust-lang-nursery/stdsimd.svg?branch=master
 [appveyor]: https://ci.appveyor.com/project/rust-lang-libs/stdsimd/branch/master
 [Appveyor Status]: https://ci.appveyor.com/api/projects/status/ix74qhmilpibn00x/branch/master?svg=true
-[Latest Version]: https://img.shields.io/crates/v/std_detect.svg
-[crates.io]: https://crates.io/crates/std_detect
-[docs]: https://docs.rs/std_detect/badge.svg
-[docs.rs]: https://docs.rs/std_detect/
+[std_detect_crate_badge]: https://img.shields.io/crates/v/std_detect.svg
+[std_detect_crate_link]: https://crates.io/crates/std_detect
+[std_detect_docs_badge]: https://docs.rs/std_detect/badge.svg
+[std_detect_docs_link]: https://docs.rs/std_detect/

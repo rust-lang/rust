@@ -1,15 +1,20 @@
 stdsimd - Rust's standard library SIMD components
 =======
 
-[![Travis-CI Status]][travis] [![Appveyor Status]][appveyor] [![Latest Version]][crates.io] [![docs]][docs.rs]
+[![Travis-CI Status]][travis] [![Appveyor Status]][appveyor] 
 
 # Crates
 
 This repository contains two main crates:
 
-* [`core_arch`](crates/core_arch/README.md) implements `core::arch` - Rust's
+* [![core_arch_crate_badge]][core_arch_crate_link]
+  [![core_arch_docs_badge]][core_arch_docs_link]
+  [`core_arch`](crates/core_arch/README.md) implements `core::arch` - Rust's
   core library architecture-specific intrinsics, and
-* [`std_detect`](crates/std_detect/README.md) implements `std::detect` - Rust's
+  
+* [![std_detect_crate_badge]][std_detect_crate_link]
+  [![std_detect_docs_badge]][std_detect_docs_link]
+  [`std_detect`](crates/std_detect/README.md) implements `std::detect` - Rust's
   standard library run-time CPU feature detection.
 
 The `std::simd` component now lives in the
@@ -28,7 +33,11 @@ To do a release of the `core_arch` and `std_detect` crates,
 [Travis-CI Status]: https://travis-ci.com/rust-lang-nursery/stdsimd.svg?branch=master
 [appveyor]: https://ci.appveyor.com/project/rust-lang-libs/stdsimd/branch/master
 [Appveyor Status]: https://ci.appveyor.com/api/projects/status/ix74qhmilpibn00x/branch/master?svg=true
-[Latest Version]: https://img.shields.io/crates/v/stdsimd.svg
-[crates.io]: https://crates.io/crates/stdsimd
-[docs]: https://docs.rs/stdsimd/badge.svg
-[docs.rs]: https://docs.rs/stdsimd/
+[core_arch_crate_badge]: https://img.shields.io/crates/v/core_arch.svg
+[core_arch_crate_link]: https://crates.io/crates/core_arch
+[core_arch_docs_badge]: https://docs.rs/core_arch/badge.svg
+[core_arch_docs_link]: https://docs.rs/core_arch/
+[std_detect_crate_badge]: https://img.shields.io/crates/v/std_detect.svg
+[std_detect_crate_link]: https://crates.io/crates/std_detect
+[std_detect_docs_badge]: https://docs.rs/std_detect/badge.svg
+[std_detect_docs_link]: https://docs.rs/std_detect/
