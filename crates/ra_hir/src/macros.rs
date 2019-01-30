@@ -1,5 +1,7 @@
 #[allow(unused)]
 mod tt;
+#[allow(unused)]
+mod mbe;
 
 /// Machinery for macro expansion.
 ///
