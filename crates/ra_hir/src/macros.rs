@@ -1,3 +1,6 @@
+#[allow(unused)]
+mod token_tree;
+
 /// Machinery for macro expansion.
 ///
 /// One of the more complicated things about macros is managing the source code
