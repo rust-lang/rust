@@ -1,5 +1,4 @@
 #![doc(include = "core_arch_docs.md")]
-
 #![cfg_attr(stdsimd_strict, deny(warnings))]
 #![allow(dead_code)]
 #![allow(unused_features)]

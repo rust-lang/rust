@@ -34,14 +34,6 @@ types! {
     ///
     /// ```
     /// # #![feature(stdsimd, mmx_target_feature)]
-    /// # #![cfg_attr(not(dox), no_std)]
-    /// # #[cfg(not(dox))]
-    /// # extern crate std as real_std;
-    /// # #[cfg(not(dox))]
-    /// # extern crate core_arch as std;
-    /// # #[cfg(not(dox))]
-    /// # #[macro_use(is_x86_feature_detected)]
-    /// # extern crate std_detect;
     /// #[cfg(target_arch = "x86")]
     /// use std::arch::x86::*;
     /// #[cfg(target_arch = "x86_64")]
@@ -85,15 +77,6 @@ types! {
     /// # Examples
     ///
     /// ```
-    /// # #![cfg_attr(not(dox), feature(stdsimd))]
-    /// # #![cfg_attr(not(dox), no_std)]
-    /// # #[cfg(not(dox))]
-    /// # extern crate std as real_std;
-    /// # #[cfg(not(dox))]
-    /// # extern crate core_arch as std;
-    /// # #[cfg(not(dox))]
-    /// # #[macro_use(is_x86_feature_detected)]
-    /// # extern crate std_detect;
     /// #[cfg(target_arch = "x86")]
     /// use std::arch::x86::*;
     /// #[cfg(target_arch = "x86_64")]
@@ -131,15 +114,6 @@ types! {
     /// # Examples
     ///
     /// ```
-    /// # #![cfg_attr(not(dox), feature(stdsimd))]
-    /// # #![cfg_attr(not(dox), no_std)]
-    /// # #[cfg(not(dox))]
-    /// # extern crate std as real_std;
-    /// # #[cfg(not(dox))]
-    /// # extern crate core_arch as std;
-    /// # #[cfg(not(dox))]
-    /// # #[macro_use(is_x86_feature_detected)]
-    /// # extern crate std_detect;
     /// #[cfg(target_arch = "x86")]
     /// use std::arch::x86::*;
     /// #[cfg(target_arch = "x86_64")]
@@ -177,15 +151,6 @@ types! {
     /// # Examples
     ///
     /// ```
-    /// # #![cfg_attr(not(dox), feature(stdsimd))]
-    /// # #![cfg_attr(not(dox), no_std)]
-    /// # #[cfg(not(dox))]
-    /// # extern crate std as real_std;
-    /// # #[cfg(not(dox))]
-    /// # extern crate core_arch as std;
-    /// # #[cfg(not(dox))]
-    /// # #[macro_use(is_x86_feature_detected)]
-    /// # extern crate std_detect;
     /// #[cfg(target_arch = "x86")]
     /// use std::arch::x86::*;
     /// #[cfg(target_arch = "x86_64")]
@@ -227,15 +192,6 @@ types! {
     /// # Examples
     ///
     /// ```
-    /// # #![cfg_attr(not(dox), feature(stdsimd))]
-    /// # #![cfg_attr(not(dox), no_std)]
-    /// # #[cfg(not(dox))]
-    /// # extern crate std as real_std;
-    /// # #[cfg(not(dox))]
-    /// # extern crate core_arch as std;
-    /// # #[cfg(not(dox))]
-    /// # #[macro_use(is_x86_feature_detected)]
-    /// # extern crate std_detect;
     /// #[cfg(target_arch = "x86")]
     /// use std::arch::x86::*;
     /// #[cfg(target_arch = "x86_64")]
@@ -273,15 +229,6 @@ types! {
     /// # Examples
     ///
     /// ```
-    /// # #![cfg_attr(not(dox), feature(stdsimd))]
-    /// # #![cfg_attr(not(dox), no_std)]
-    /// # #[cfg(not(dox))]
-    /// # extern crate std as real_std;
-    /// # #[cfg(not(dox))]
-    /// # extern crate core_arch as std;
-    /// # #[cfg(not(dox))]
-    /// # #[macro_use(is_x86_feature_detected)]
-    /// # extern crate std_detect;
     /// #[cfg(target_arch = "x86")]
     /// use std::arch::x86::*;
     /// #[cfg(target_arch = "x86_64")]
@@ -319,15 +266,6 @@ types! {
     /// # Examples
     ///
     /// ```
-    /// # #![cfg_attr(not(dox), feature(stdsimd))]
-    /// # #![cfg_attr(not(dox), no_std)]
-    /// # #[cfg(not(dox))]
-    /// # extern crate std as real_std;
-    /// # #[cfg(not(dox))]
-    /// # extern crate core_arch as std;
-    /// # #[cfg(not(dox))]
-    /// # #[macro_use(is_x86_feature_detected)]
-    /// # extern crate std_detect;
     /// #[cfg(target_arch = "x86")]
     /// use std::arch::x86::*;
     /// #[cfg(target_arch = "x86_64")]

@@ -48,11 +48,11 @@ pub(crate) fn disassemble_myself() -> HashMap<String, Vec<Function>> {
             let mut parts = line.split_whitespace().skip(3);
             let offset = parts.next()
                 .unwrap()
-                .trim_right_matches(")")
+                .trim_end_matches(")")
                 .parse::<usize>()
                 .unwrap();
             for (i, name) in parts.enumerate() {
-                let name = name.trim_right_matches(")");
+                let name = name.trim_end_matches(")");
                 for f in ret.get_mut(name).expect("ret.get_mut(name) failed") {
                     f.addr = Some(i + offset);
                 }

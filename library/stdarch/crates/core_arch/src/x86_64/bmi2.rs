@@ -20,7 +20,7 @@ use stdsimd_test::assert_instr;
 ///
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mulx_u64)
 #[inline]
-#[cfg_attr(test, assert_instr(mulx))]
+#[cfg_attr(test, assert_instr(mul))]
 #[target_feature(enable = "bmi2")]
 #[cfg(not(target_arch = "x86"))] // calls an intrinsic
 #[stable(feature = "simd_x86", since = "1.27.0")]

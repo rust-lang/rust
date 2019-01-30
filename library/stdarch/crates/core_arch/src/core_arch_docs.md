@@ -251,16 +251,6 @@ Next up let's take a look at an example of manually using intrinsics. Here
 we'll be using SSE4.1 features to implement hex encoding.
 
 ```
-# #![cfg_attr(not(dox),feature(stdsimd))]
-# #![cfg_attr(not(dox), no_std)]
-# #[cfg(not(dox))]
-# extern crate std as real_std;
-# #[cfg(not(dox))]
-# extern crate core_arch as std;
-# #[cfg(not(dox))]
-# #[macro_use(is_x86_feature_detected)]
-# extern crate std_detect;
-
 fn main() {
     let mut dst = [0; 32];
     hex_encode(b"\x01\x02\x03", &mut dst);

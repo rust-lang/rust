@@ -59,10 +59,16 @@ struct Instruction {
 
 fn normalize(symbol: &str) -> String {
     let symbol = rustc_demangle::demangle(symbol).to_string();
-    match symbol.rfind("::h") {
+    let mut ret = match symbol.rfind("::h") {
         Some(i) => symbol[..i].to_string(),
         None => symbol.to_string(),
+    };
+    // Normalize to no leading underscore to handle platforms that may
+    // inject extra ones in symbol names
+    while ret.starts_with("_") {
+        ret.remove(0);
     }
+    return ret;
 }
 
 /// Main entry point for this crate, called by the `#[assert_instr]` macro.

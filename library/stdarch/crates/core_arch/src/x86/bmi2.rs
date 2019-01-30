@@ -22,7 +22,7 @@ use stdsimd_test::assert_instr;
 #[inline]
 // LLVM BUG (should be mulxl): https://bugs.llvm.org/show_bug.cgi?id=34232
 #[cfg_attr(all(test, target_arch = "x86_64"), assert_instr(imul))]
-#[cfg_attr(all(test, target_arch = "x86"), assert_instr(mulx))]
+#[cfg_attr(all(test, target_arch = "x86"), assert_instr(mul))]
 #[target_feature(enable = "bmi2")]
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _mulx_u32(a: u32, b: u32, hi: &mut u32) -> u32 {

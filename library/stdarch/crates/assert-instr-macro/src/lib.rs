@@ -49,7 +49,7 @@ pub fn assert_instr(
         .replace(':', "_")
         .replace(|c: char| c.is_whitespace(), "");
     let assert_name = syn::Ident::new(&format!("assert_{}_{}", name, instr_str), name.span());
-    let shim_name = syn::Ident::new(&format!("{}_shim", name), name.span());
+    let shim_name = syn::Ident::new(&format!("{}_shim_{}", name, instr_str), name.span());
     let mut inputs = Vec::new();
     let mut input_vals = Vec::new();
     let ret = &func.decl.output;
@@ -99,6 +99,7 @@ pub fn assert_instr(
     let shim_name_str = format!("{}{}", shim_name, assert_name);
     let to_test = quote! {
         #attrs
+        #[no_mangle]
         unsafe extern #abi fn #shim_name(#(#inputs),*) #ret {
             // The compiler in optimized mode by default runs a pass called
             // "mergefunc" where it'll merge functions that look identical.

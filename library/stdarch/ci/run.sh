@@ -104,8 +104,7 @@ case ${TARGET} in
         # proposal, but hopefully that's coming soon! For now just test that we
         # can codegen with no LLVM faults, and we'll remove `--no-run` at a
         # later date.
-        export RUSTFLAGS="${RUSTFLAGS} -C target-feature=+simd128"
-        export RUSTFLAGS="${RUSTFLAGS} -Cllvm-args=-wasm-enable-unimplemented-simd"
+        export RUSTFLAGS="${RUSTFLAGS} -C target-feature=+simd128,+unimplemented-simd128"
         cargo_test "--release --no-run"
         ;;
     *)

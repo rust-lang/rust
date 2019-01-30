@@ -237,7 +237,7 @@ pub fn i8x16_splat(a: i8) -> v128 {
 #[rustc_args_required_const(1)]
 pub unsafe fn i8x16_extract_lane(a: v128, imm: usize) -> i8 {
     #[cfg(test)]
-    #[assert_instr(i16x8.extract_lane_s)]
+    #[assert_instr(i8x16.extract_lane_s)]
     fn extract_lane_s(a: v128) -> i32 {
         unsafe { i8x16_extract_lane(a, 0) as i32 }
     }
