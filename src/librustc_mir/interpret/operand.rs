@@ -457,7 +457,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> 
     }
 
     /// This is used by [priroda](https://github.com/oli-obk/priroda) to get an OpTy from a local
-    fn access_local(
+    pub fn access_local(
         &self,
         frame: &super::Frame<'mir, 'tcx, M::PointerTag, M::FrameExtra>,
         local: mir::Local,
