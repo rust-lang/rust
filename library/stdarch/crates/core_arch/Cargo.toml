@@ -1,6 +1,6 @@
 [package]
 name = "core_arch"
-version = "0.1.0"
+version = "0.1.1"
 authors = [
     "Alex Crichton <alex@alexcrichton.com>",
     "Andrew Gallant <jamslam@gmail.com>",
@@ -24,7 +24,7 @@ maintenance = { status = "experimental" }
 
 [dev-dependencies]
 stdsimd-test = { version = "0.*", path = "../stdsimd-test" }
-std_detect = { version = "0.1.0", path = "../std_detect" }
+std_detect = { version = "0.1.1", path = "../std_detect" }
 
 [target.wasm32-unknown-unknown.dev-dependencies]
 wasm-bindgen-test = "=0.2.19"
