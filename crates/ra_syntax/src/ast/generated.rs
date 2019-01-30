@@ -1981,7 +1981,11 @@ impl ToOwned for MatchGuard {
 }
 
 
-impl MatchGuard {}
+impl MatchGuard {
+    pub fn expr(&self) -> Option<&Expr> {
+        super::child_opt(self)
+    }
+}
 
 // MethodCallExpr
 #[derive(Debug, PartialEq, Eq, Hash)]

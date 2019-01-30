@@ -371,6 +371,7 @@ fn test(x: &str, y: isize) {
 
     let b = [a, ["b"]];
     let x: [u8; 0] = [];
+    let z: &[u8] = &[1, 2, 3];
 }
 "#,
     );
@@ -426,7 +427,8 @@ fn test() {
 
     match e {
         E::A { x } => x,
-        E::B => 1,
+        E::B if foo => 1,
+        E::B => 10,
     };
 
     let ref d @ E::A { .. } = e;

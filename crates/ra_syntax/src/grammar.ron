@@ -418,7 +418,7 @@ Grammar(
             ],
             collections: [ [ "pats", "Pat" ] ]
         ),
-        "MatchGuard": (),
+        "MatchGuard": (options: ["Expr"]),
         "StructLit": (options: ["Path", "NamedFieldList", ["spread", "Expr"]]),
         "NamedFieldList": (collections: [ ["fields", "NamedField"] ]),
         "NamedField": (options: ["NameRef", "Expr"]),
