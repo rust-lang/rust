@@ -1433,3 +1433,41 @@ fn test_rotate_right_random() {
         }
     }
 }
+
+#[test]
+fn test_try_fold_empty() {
+    assert_eq!(Some(0), VecDeque::<u32>::new().iter().try_fold(0, |_, _| None));
+}
+
+#[test]
+fn test_try_fold_none() {
+    let v: VecDeque<u32> = (0..12).collect();
+    assert_eq!(None, v.into_iter().try_fold(0, |a, b|
+        if b < 11 { Some(a + b) } else { None }));
+}
+
+#[test]
+fn test_try_fold_ok() {
+    let v: VecDeque<u32> = (0..12).collect();
+    assert_eq!(Ok::<_, ()>(66), v.into_iter().try_fold(0, |a, b| Ok(a + b)));
+}
+
+#[test]
+fn test_try_fold_unit() {
+    let v: VecDeque<()> = std::iter::repeat(()).take(42).collect();
+    assert_eq!(Some(()), v.into_iter().try_fold((), |(), ()| Some(())));
+}
+
+#[test]
+fn test_try_fold_rotated() {
+    let mut v: VecDeque<_> = (0..12).collect();
+    for n in 0..30 {
+        if n & 1 == 0 {
+            let r = v[n];
+            v.rotate_left(n ^ r);
+        } else {
+            v.rotate_right(n % 11);
+        }
+        assert_eq!(Ok::<_, ()>(66), v.into_iter().try_fold(0, |a, b| Ok(a + b)));
+    }
+}
