@@ -1,0 +1,10 @@
+error: `dbg!` macro is intended as a debugging tool. ensure to avoid having uses of it in version control
+  --> $DIR/dbg_macro.rs:2:5
+   |
+LL |     dbg!(42);
+   |     ^^^^^^^^
+   |
+   = note: `-D clippy::dbg-macro` implied by `-D warnings`
+
+error: aborting due to previous error
+

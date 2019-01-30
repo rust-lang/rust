@@ -94,6 +94,7 @@ pub mod const_static_lifetime;
 pub mod copies;
 pub mod copy_iterator;
 pub mod cyclomatic_complexity;
+pub mod dbg_macro;
 pub mod default_trait_access;
 pub mod derive;
 pub mod doc;
@@ -231,6 +232,7 @@ pub fn register_pre_expansion_lints(
         },
     );
     store.register_pre_expansion_pass(Some(session), true, false, box attrs::CfgAttrPass);
+    store.register_pre_expansion_pass(Some(session), true, false, box dbg_macro::Pass);
 }
 
 pub fn read_conf(reg: &rustc_plugin::Registry<'_>) -> Conf {
@@ -589,6 +591,7 @@ pub fn register_plugins(reg: &mut rustc_plugin::Registry<'_>, conf: &Conf) {
         copies::IFS_SAME_COND,
         copies::IF_SAME_THEN_ELSE,
         cyclomatic_complexity::CYCLOMATIC_COMPLEXITY,
+        dbg_macro::DBG_MACRO,
         derive::DERIVE_HASH_XOR_EQ,
         double_comparison::DOUBLE_COMPARISONS,
         double_parens::DOUBLE_PARENS,
@@ -800,6 +803,7 @@ pub fn register_plugins(reg: &mut rustc_plugin::Registry<'_>, conf: &Conf) {
         block_in_if_condition::BLOCK_IN_IF_CONDITION_STMT,
         collapsible_if::COLLAPSIBLE_IF,
         const_static_lifetime::CONST_STATIC_LIFETIME,
+        dbg_macro::DBG_MACRO,
         enum_variants::ENUM_VARIANT_NAMES,
         enum_variants::MODULE_INCEPTION,
         eq_op::OP_REF,
