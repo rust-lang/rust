@@ -66,7 +66,7 @@ IMAGE_BASE:
     globvar EH_FRM_HDR_SIZE 8
 
 .Lreentry_panic_msg:
-    .asciz "Re-entered panicked enclave!"
+    .asciz "Re-entered aborted enclave!"
 .Lreentry_panic_msg_end:
 
 .Lusercall_panic_msg:
@@ -80,7 +80,7 @@ IMAGE_BASE:
     .org .+48 /*  reserved bits */
 
 .data
-.Lpanicked:
+.Laborted:
     .byte 0
 
 /*  TCS local storage section */
@@ -134,6 +134,9 @@ sgx_entry:
     jz .Lskip_debug_init
     mov %r10,%gs:tcsls_debug_panic_buf_ptr
 .Lskip_debug_init:
+/*  check for abort */
+    bt $0,.Laborted(%rip)
+    jc .Lreentry_panic
 /*  check if returning from usercall */
     mov %gs:tcsls_last_rsp,%r11
     test %r11,%r11
@@ -164,9 +167,6 @@ sgx_entry:
     mov %r14,%r8
     mov %r15,%r9
 .Lskip_init:
-/*  check for panic */
-    bt $0,.Lpanicked(%rip)
-    jc .Lreentry_panic
 /*  call into main entry point */
     load_tcsls_flag_secondary_bool cx /* RCX = entry() argument: secondary: bool */
     call entry /* RDI, RSI, RDX, R8, R9 passed in from userspace */
@@ -237,18 +237,18 @@ sgx_entry:
     stmxcsr (%rsp)
 .endm
 
-.global panic_exit
-panic_exit:
+.global usercall_exit
+usercall_exit:
 /* save registers in DEBUG mode, so that debugger can reconstruct the stack */
     testb $0xff,DEBUG(%rip)
     jz .Lskip_save_registers
     push_callee_saved_registers
     movq %rsp,%gs:tcsls_panic_last_rsp
 .Lskip_save_registers:
-/* set panicked bit */
-    movb $1,.Lpanicked(%rip)
+/* set aborted bit */
+    movb $1,.Laborted(%rip)
 /* call usercall exit(true) */
-    mov $1,%esi   /*  RSI = usercall() argument: panic = true */
+    /* NOP: mov %rsi,%rsi */ /*  RSI = usercall() argument: panic */
     xor %rdx,%rdx /*  RDX cleared */
     movq $usercall_nr_exit,%rdi /*  RDI = usercall exit */
     jmp .Lexit

@@ -1303,12 +1303,12 @@ fn type_of<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: DefId) -> Ty<'tcx> {
             }
         },
 
-        Node::GenericParam(param) => match param.kind {
+        Node::GenericParam(param) => match &param.kind {
             hir::GenericParamKind::Type {
                 default: Some(ref ty),
                 ..
             } => icx.to_ty(ty),
-            _ => bug!("unexpected non-type NodeGenericParam"),
+            x => bug!("unexpected non-type Node::GenericParam: {:?}", x),
         },
 
         x => {
@@ -2205,6 +2205,7 @@ fn from_target_feature(
                 Some("wasm_target_feature") => rust_features.wasm_target_feature,
                 Some("cmpxchg16b_target_feature") => rust_features.cmpxchg16b_target_feature,
                 Some("adx_target_feature") => rust_features.adx_target_feature,
+                Some("movbe_target_feature") => rust_features.movbe_target_feature,
                 Some(name) => bug!("unknown target feature gate {}", name),
                 None => true,
             };

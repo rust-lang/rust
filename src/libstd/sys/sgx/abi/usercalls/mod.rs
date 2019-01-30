@@ -119,7 +119,7 @@ pub unsafe fn launch_thread() -> IoResult<()> {
 /// Usercall `exit`. See the ABI documentation for more information.
 #[unstable(feature = "sgx_platform", issue = "56975")]
 pub fn exit(panic: bool) -> ! {
-    unsafe { raw::exit(panic) }
+    unsafe { super::panic::usercall_exit(panic) }
 }
 
 /// Usercall `wait`. See the ABI documentation for more information.

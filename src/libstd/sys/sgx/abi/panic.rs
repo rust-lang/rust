@@ -1,12 +1,18 @@
+use super::usercalls::alloc::UserRef;
+use cmp;
 use io::{self, Write};
-use slice::from_raw_parts_mut;
+use mem;
 
 extern "C" {
     fn take_debug_panic_buf_ptr() -> *mut u8;
     static DEBUG: u8;
 }
 
-pub(crate) struct SgxPanicOutput(Option<&'static mut [u8]>);
+pub(crate) struct SgxPanicOutput(Option<&'static mut UserRef<[u8]>>);
+
+fn empty_user_slice() -> &'static mut UserRef<[u8]> {
+    unsafe { UserRef::from_raw_parts_mut(1 as *mut u8, 0) }
+}
 
 impl SgxPanicOutput {
     pub(crate) fn new() -> Option<Self> {
@@ -17,32 +23,36 @@ impl SgxPanicOutput {
         }
     }
 
-    fn init(&mut self) -> &mut &'static mut [u8] {
+    fn init(&mut self) -> &mut &'static mut UserRef<[u8]> {
         self.0.get_or_insert_with(|| unsafe {
             let ptr = take_debug_panic_buf_ptr();
             if ptr.is_null() {
-                &mut []
+                empty_user_slice()
             } else {
-                from_raw_parts_mut(ptr, 1024)
+                UserRef::from_raw_parts_mut(ptr, 1024)
             }
         })
     }
 }
 
 impl Write for SgxPanicOutput {
-    fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
-        self.init().write(buf)
+    fn write(&mut self, src: &[u8]) -> io::Result<usize> {
+        let dst = mem::replace(self.init(), empty_user_slice());
+        let written = cmp::min(src.len(), dst.len());
+        dst[..written].copy_from_enclave(&src[..written]);
+        self.0 = Some(&mut dst[written..]);
+        Ok(written)
     }
 
     fn flush(&mut self) -> io::Result<()> {
-        self.init().flush()
+        Ok(())
     }
 }
 
 #[no_mangle]
 pub extern "C" fn panic_msg(msg: &str) -> ! {
     let _ = SgxPanicOutput::new().map(|mut out| out.write(msg.as_bytes()));
-    unsafe { panic_exit(); }
+    unsafe { usercall_exit(true); }
 }
 
-extern "C" { pub fn panic_exit() -> !; }
+extern "C" { pub fn usercall_exit(panic: bool) -> !; }
