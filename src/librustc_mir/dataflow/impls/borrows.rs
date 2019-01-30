@@ -215,8 +215,8 @@ impl<'a, 'gcx, 'tcx> Borrows<'a, 'gcx, 'tcx> {
             if places_conflict::places_conflict(
                 self.tcx,
                 self.mir,
-                place,
                 &borrow_data.borrowed_place,
+                place,
                 places_conflict::PlaceConflictBias::NoOverlap,
             ) {
                 debug!(
