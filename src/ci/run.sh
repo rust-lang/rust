@@ -88,6 +88,10 @@ if [ "$RUN_CHECK_WITH_PARALLEL_QUERIES" != "" ]; then
   rm -rf build
 fi
 
+#sh -x -c "curl https://sh.rustup.rs -sSf | sh -s -- -y"
+
+#sh -x -c "cd /cargobin; /cargo/bin/cargo build --release"
+
 travis_fold start configure
 travis_time_start
 $SRC/configure $RUST_CONFIGURE_ARGS

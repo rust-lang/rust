@@ -1,9 +1,9 @@
 ifdef VERBOSE
 Q :=
-BOOTSTRAP_ARGS := -v
+BOOTSTRAP_ARGS := -vv
 else
 Q := @
-BOOTSTRAP_ARGS :=
+BOOTSTRAP_ARGS := -vv
 endif
 
 ifdef EXCLUDE_CARGO
@@ -12,11 +12,11 @@ else
 AUX_ARGS := src/tools/cargo src/tools/cargotest
 endif
 
-BOOTSTRAP := $(CFG_PYTHON) $(CFG_SRC_DIR)src/bootstrap/bootstrap.py
+BOOTSTRAP := $(CFG_PYTHON) $(CFG_SRC_DIR)src/bootstrap/bootstrap.py -vv
 
 all:
-	$(Q)$(BOOTSTRAP) build $(BOOTSTRAP_ARGS)
-	$(Q)$(BOOTSTRAP) doc $(BOOTSTRAP_ARGS)
+	$(Q)$(BOOTSTRAP) build -vv $(BOOTSTRAP_ARGS)
+	$(Q)$(BOOTSTRAP) doc -vv $(BOOTSTRAP_ARGS)
 
 help:
 	$(Q)echo 'Welcome to the rustbuild build system!'

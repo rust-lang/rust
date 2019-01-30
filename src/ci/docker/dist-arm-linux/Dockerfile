@@ -32,5 +32,5 @@ ENV CC_arm_unknown_linux_gnueabi=arm-unknown-linux-gnueabi-gcc \
 
 ENV HOSTS=arm-unknown-linux-gnueabi
 
-ENV RUST_CONFIGURE_ARGS --enable-extended --disable-docs --local-cargo=/cargobin/cargo
-ENV SCRIPT python2.7 ../x.py dist --host $HOSTS --target $HOSTS
+ENV RUST_CONFIGURE_ARGS --enable-extended --disable-docs --local-cargo=/cargobin/target/release/cargo
+ENV SCRIPT python2.7 ../x.py dist -vv --host $HOSTS --target $HOSTS
