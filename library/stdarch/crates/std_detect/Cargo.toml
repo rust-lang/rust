@@ -6,7 +6,7 @@ authors = [
     "Andrew Gallant <jamslam@gmail.com>",
     "Gonzalo Brito Gadeschi <gonzalobg88@gmail.com>",
 ]
-description = "SIMD support in Rust's standard library."
+description = "Run-time CPU feature detection of Rust's standard library."
 documentation = "https://docs.rs/std_detect"
 homepage = "https://github.com/rust-lang-nursery/stdsimd"
 repository = "https://github.com/rust-lang-nursery/stdsimd"

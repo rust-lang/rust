@@ -6,7 +6,7 @@ authors = [
     "Andrew Gallant <jamslam@gmail.com>",
     "Gonzalo Brito Gadeschi <gonzalobg88@gmail.com>",
 ]
-description = "SIMD support in Rust's core library."
+description = "Architecture-specific module of Rust's core library."
 documentation = "https://docs.rs/core_arch"
 homepage = "https://github.com/rust-lang-nursery/stdsimd"
 repository = "https://github.com/rust-lang-nursery/stdsimd"
