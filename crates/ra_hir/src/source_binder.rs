@@ -13,7 +13,7 @@ use ra_syntax::{
 };
 
 use crate::{
-    HirDatabase, Function, ModuleDef,
+    HirDatabase, Function, ModuleDef, Struct, Enum,
     AsName, Module, HirFileId,
     ids::{LocationCtx, SourceFileItemId},
 };
@@ -126,6 +126,28 @@ pub fn function_from_child_node(
 ) -> Option<Function> {
     let fn_def = node.ancestors().find_map(ast::FnDef::cast)?;
     function_from_source(db, file_id, fn_def)
+}
+
+pub fn struct_from_module(
+    db: &impl HirDatabase,
+    module: Module,
+    struct_def: &ast::StructDef,
+) -> Struct {
+    let (file_id, _) = module.definition_source(db);
+    let file_id = file_id.into();
+    let ctx = LocationCtx::new(db, module, file_id);
+    Struct {
+        id: ctx.to_def(struct_def),
+    }
+}
+
+pub fn enum_from_module(db: &impl HirDatabase, module: Module, enum_def: &ast::EnumDef) -> Enum {
+    let (file_id, _) = module.definition_source(db);
+    let file_id = file_id.into();
+    let ctx = LocationCtx::new(db, module, file_id);
+    Enum {
+        id: ctx.to_def(enum_def),
+    }
 }
 
 pub fn macro_symbols(db: &impl HirDatabase, file_id: FileId) -> Vec<(SmolStr, TextRange)> {

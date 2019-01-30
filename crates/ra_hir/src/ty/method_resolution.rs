@@ -44,7 +44,7 @@ impl CrateImplBlocks {
         &'a self,
         db: &'a impl HirDatabase,
         ty: &Ty,
-    ) -> impl Iterator<Item = ImplBlock> + 'a {
+    ) -> impl Iterator<Item = (Module, ImplBlock)> + 'a {
         let fingerprint = TyFingerprint::for_impl(ty);
         fingerprint
             .and_then(|f| self.impls.get(&f))
@@ -56,7 +56,7 @@ impl CrateImplBlocks {
                     module_id: *module_id,
                 };
                 let module_impl_blocks = db.impls_in_module(module);
-                ImplBlock::from_id(module_impl_blocks, *impl_id)
+                (module, ImplBlock::from_id(module_impl_blocks, *impl_id))
             })
     }
 
@@ -152,7 +152,7 @@ impl Ty {
             };
             let impls = db.impls_in_crate(krate);
 
-            for impl_block in impls.lookup_impl_blocks(db, &derefed_ty) {
+            for (_, impl_block) in impls.lookup_impl_blocks(db, &derefed_ty) {
                 for item in impl_block.items() {
                     match item {
                         ImplItem::Method(f) => {

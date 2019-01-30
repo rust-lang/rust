@@ -10,12 +10,13 @@ use crate::{
     nameres::{ModuleScope, lower::ImportId},
     db::HirDatabase,
     expr::BodySyntaxMapping,
-    ty::InferenceResult,
+    ty::{InferenceResult},
     adt::{EnumVariantId, StructFieldId, VariantDef},
     generics::GenericParams,
     docs::{Documentation, Docs, docs_from_ast},
     module_tree::ModuleId,
     ids::{FunctionId, StructId, EnumId, AstItemDef, ConstId, StaticId, TraitId, TypeId},
+    impl_block::ImplId,
 };
 
 /// hir::Crate describes a single crate. It's the main interface with which
@@ -124,6 +125,11 @@ impl Module {
         import: ImportId,
     ) -> TreeArc<ast::PathSegment> {
         self.import_source_impl(db, import)
+    }
+
+    /// Returns the syntax of the impl block in this module
+    pub fn impl_source(&self, db: &impl HirDatabase, impl_id: ImplId) -> TreeArc<ast::ImplBlock> {
+        self.impl_source_impl(db, impl_id)
     }
 
     /// Returns the crate this module is part of.
@@ -272,6 +278,10 @@ impl Struct {
     pub fn generic_params(&self, db: &impl HirDatabase) -> Arc<GenericParams> {
         db.generic_params((*self).into())
     }
+
+    pub fn ty(&self, db: &impl HirDatabase) -> Ty {
+        db.type_for_def((*self).into())
+    }
 }
 
 impl Docs for Struct {
@@ -316,6 +326,10 @@ impl Enum {
 
     pub fn generic_params(&self, db: &impl HirDatabase) -> Arc<GenericParams> {
         db.generic_params((*self).into())
+    }
+
+    pub fn ty(&self, db: &impl HirDatabase) -> Ty {
+        db.type_for_def((*self).into())
     }
 }
 

@@ -147,6 +147,16 @@ impl NavigationTarget {
         }
     }
 
+    pub(crate) fn from_impl_block(
+        db: &RootDatabase,
+        module: hir::Module,
+        impl_block: &hir::ImplBlock,
+    ) -> NavigationTarget {
+        let (file_id, _) = module.definition_source(db);
+        let node = module.impl_source(db, impl_block.id());
+        NavigationTarget::from_syntax(file_id, "impl".into(), None, node.syntax())
+    }
+
     #[cfg(test)]
     pub(crate) fn assert_match(&self, expected: &str) {
         let actual = self.debug_render();

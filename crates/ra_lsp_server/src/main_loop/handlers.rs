@@ -229,6 +229,26 @@ pub fn handle_goto_definition(
     Ok(Some(req::GotoDefinitionResponse::Link(res)))
 }
 
+pub fn handle_goto_implementation(
+    world: ServerWorld,
+    params: req::TextDocumentPositionParams,
+) -> Result<Option<req::GotoImplementationResponse>> {
+    let position = params.try_conv_with(&world)?;
+    let line_index = world.analysis().file_line_index(position.file_id);
+    let nav_info = match world.analysis().goto_implementation(position)? {
+        None => return Ok(None),
+        Some(it) => it,
+    };
+    let nav_range = nav_info.range;
+    let res = nav_info
+        .info
+        .into_iter()
+        .map(|nav| RangeInfo::new(nav_range, nav))
+        .map(|nav| to_location_link(&nav, &world, &line_index))
+        .collect::<Result<Vec<_>>>()?;
+    Ok(Some(req::GotoDefinitionResponse::Link(res)))
+}
+
 pub fn handle_parent_module(
     world: ServerWorld,
     params: req::TextDocumentPositionParams,
