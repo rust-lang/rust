@@ -7,7 +7,7 @@
 
 use std::hash::{Hash, Hasher};
 
-use rustc::ich::StableHashingContextProvider;
+use rustc::ich::{StableHashingContextProvider, StableHashingContext};
 use rustc::mir;
 use rustc::mir::interpret::{
     AllocId, Pointer, Scalar,
@@ -19,12 +19,12 @@ use rustc::ty::{self, TyCtxt};
 use rustc::ty::layout::Align;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_data_structures::indexed_vec::IndexVec;
-use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
+use rustc_data_structures::stable_hasher::{HashStable, StableHasher, StableHasherResult};
 use syntax::ast::Mutability;
 use syntax::source_map::Span;
 
 use super::eval_context::{LocalValue, StackPopCleanup};
-use super::{Frame, Memory, Operand, MemPlace, Place, Immediate, ScalarMaybeUndef};
+use super::{Frame, Memory, Operand, MemPlace, Place, Immediate, ScalarMaybeUndef, LocalState};
 use const_eval::CompileTimeInterpreter;
 
 #[derive(Default)]
@@ -250,11 +250,11 @@ impl_snapshot_for!(enum Operand {
     Indirect(m),
 });
 
-impl_stable_hash_for!(enum ::interpret::LocalValue {
+impl_stable_hash_for!(enum ::interpret::LocalState {
     Dead,
     Live(x),
 });
-impl_snapshot_for!(enum LocalValue {
+impl_snapshot_for!(enum LocalState {
     Live(v),
     Dead,
 });
@@ -309,7 +309,7 @@ struct FrameSnapshot<'a, 'tcx: 'a> {
     span: &'a Span,
     return_to_block: &'a StackPopCleanup,
     return_place: Option<Place<(), AllocIdSnapshot<'a>>>,
-    locals: IndexVec<mir::Local, LocalValue<(), AllocIdSnapshot<'a>>>,
+    locals: IndexVec<mir::Local, LocalState<(), AllocIdSnapshot<'a>>>,
     block: &'a mir::BasicBlock,
     stmt: usize,
 }
@@ -321,7 +321,6 @@ impl_stable_hash_for!(impl<'mir, 'tcx: 'mir> for struct Frame<'mir, 'tcx> {
     return_to_block,
     return_place -> (return_place.as_ref().map(|r| &**r)),
     locals,
-    local_layouts -> _,
     block,
     stmt,
     extra,
@@ -340,7 +339,6 @@ impl<'a, 'mir, 'tcx, Ctx> Snapshot<'a, Ctx> for &'a Frame<'mir, 'tcx>
             return_to_block,
             return_place,
             locals,
-            local_layouts: _,
             block,
             stmt,
             extra: _,
@@ -355,6 +353,27 @@ impl<'a, 'mir, 'tcx, Ctx> Snapshot<'a, Ctx> for &'a Frame<'mir, 'tcx>
             return_place: return_place.map(|r| r.snapshot(ctx)),
             locals: locals.iter().map(|local| local.snapshot(ctx)).collect(),
         }
+    }
+}
+
+impl<'a, 'tcx, Ctx> Snapshot<'a, Ctx> for &'a LocalValue<'tcx>
+    where Ctx: SnapshotContext<'a>,
+{
+    type Item = LocalState<(), AllocIdSnapshot<'a>>;
+
+    fn snapshot(&self, ctx: &'a Ctx) -> Self::Item {
+        self.state.snapshot(ctx)
+    }
+}
+
+
+impl<'a, 'gcx> HashStable<StableHashingContext<'a>> for LocalValue<'gcx> {
+    fn hash_stable<W: StableHasherResult>(
+        &self,
+        hcx: &mut StableHashingContext<'a>,
+        hasher: &mut StableHasher<W>,
+    ) {
+        self.state.hash_stable(hcx, hasher);
     }
 }
 
