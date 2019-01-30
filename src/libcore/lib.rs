@@ -124,6 +124,7 @@
 #![feature(abi_unadjusted)]
 #![feature(adx_target_feature)]
 #![feature(maybe_uninit)]
+#![feature(unrestricted_attribute_tokens)]
 
 #[prelude_import]
 #[allow(unused)]

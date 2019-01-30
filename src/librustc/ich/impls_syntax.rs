@@ -147,7 +147,7 @@ for ::syntax::attr::StabilityLevel {
     }
 }
 
-impl_stable_hash_for!(struct ::syntax::attr::RustcDeprecation { since, reason });
+impl_stable_hash_for!(struct ::syntax::attr::RustcDeprecation { since, reason, suggestion });
 
 
 impl_stable_hash_for!(enum ::syntax::attr::IntType {
