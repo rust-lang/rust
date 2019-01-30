@@ -366,6 +366,7 @@ fn test(x: &str, y: isize) {
 
     let b = [a, ["b"]];
     let x: [u8; 0] = [];
+    let z: &[u8] = &[1, 2, 3];
 }
 "#,
     );

@@ -615,10 +615,10 @@ impl ExprCollector {
                         .map(|arm| MatchArm {
                             pats: arm.pats().map(|p| self.collect_pat(p)).collect(),
                             expr: self.collect_expr_opt(arm.expr()),
-                            guard: arm.guard().map(|guard| {
-                                let e = guard.expr().expect("every guard should have an expr");
-                                self.collect_expr(e)
-                            }),
+                            guard: arm
+                                .guard()
+                                .and_then(|guard| guard.expr())
+                                .map(|e| self.collect_expr(e)),
                         })
                         .collect()
                 } else {
