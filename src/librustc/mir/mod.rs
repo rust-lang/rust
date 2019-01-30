@@ -1907,14 +1907,13 @@ pub enum Place<'tcx> {
 }
 
 /// A new Place repr
-#[derive(Clone, Debug, PartialEq, Eq, Hash)]
+#[derive(Clone, Debug, PartialEq, Eq, Hash, RustcEncodable)]
 pub struct NeoPlace<'tcx> {
     pub base: PlaceBase<'tcx>,
     pub elems: &'tcx [PlaceElem<'tcx>],
 }
 
-// FIXME
-// impl<'tcx> serialize::UseSpecializedDecodable for &'tcx List<PlaceElem<'tcx>> {}
+impl serialize::UseSpecializedDecodable for NeoPlace<'tcx> {}
 
 impl NeoPlace<'tcx> {
     /// Return `Some` if this place has no projections -- else return `None`.

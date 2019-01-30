@@ -14,6 +14,7 @@ use std::hash::Hash;
 use std::intrinsics;
 use ty::{self, Ty, TyCtxt};
 use ty::subst::Substs;
+use mir;
 use mir::interpret::Allocation;
 
 /// The shorthand encoding uses an enum's variant index `usize`
@@ -264,6 +265,20 @@ pub fn decode_allocation<'a, 'tcx, D>(decoder: &mut D)
     Ok(decoder.tcx().intern_const_alloc(Decodable::decode(decoder)?))
 }
 
+#[inline]
+pub fn decode_neo_place<'a, 'tcx, D>(decoder: &mut D)
+    -> Result<mir::NeoPlace<'tcx>, D::Error>
+    where D: TyDecoder<'a, 'tcx>,
+          'tcx: 'a,
+{
+    let base: mir::PlaceBase<'tcx> = Decodable::decode(decoder)?;
+    let len = decoder.read_usize()?;
+    let interned: Vec<mir::PlaceElem<'tcx>> = (0..len).map(|_| Decodable::decode(decoder))
+        .collect::<Result<_, _>>()?;
+    let elems: &'tcx [mir::PlaceElem<'tcx>] = decoder.tcx().mk_place_elems(interned.into_iter());
+    Ok(mir::NeoPlace { base, elems })
+}
+
 #[macro_export]
 macro_rules! __impl_decoder_methods {
     ($($name:ident -> $ty:ty;)*) => {
@@ -402,6 +417,15 @@ macro_rules! implement_ty_decoder {
                     &mut self
                 ) -> Result<&'tcx $crate::mir::interpret::Allocation, Self::Error> {
                     decode_allocation(self)
+                }
+            }
+
+            impl<$($typaram),*> SpecializedDecoder<$crate::mir::NeoPlace<'tcx>>
+            for $DecoderName<$($typaram),*> {
+                fn specialized_decode(
+                    &mut self
+                ) -> Result<$crate::mir::NeoPlace<'tcx>, Self::Error> {
+                    decode_neo_place(self)
                 }
             }
         }
