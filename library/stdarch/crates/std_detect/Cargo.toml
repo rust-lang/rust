@@ -27,6 +27,5 @@ libc = "0.2"
 cfg-if = "0.1"
 
 [dev-dependencies]
-core_arch = { version = "0.1.1", path = "../core_arch" }
 auxv = "0.3.3"
 cupid = "0.6.0"
