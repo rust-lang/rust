@@ -39,5 +39,11 @@ pub trait MyPubTrait {
 //~^^^ ERROR trait `priv_dep::OtherTrait` from private dependency 'priv_dep' in public interface
 //~| WARNING this was previously accepted
 
+pub struct AllowedPrivType {
+    #[allow(exported_private_dependencies)]
+    pub allowed: OtherType
+}
+
+
 
 fn main() {}
