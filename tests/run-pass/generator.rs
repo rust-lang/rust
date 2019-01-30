@@ -11,12 +11,15 @@
 #![feature(generators, generator_trait)]
 
 use std::ops::{GeneratorState, Generator};
+use std::pin::Pin;
 
 fn finish<T>(mut amt: usize, mut t: T) -> T::Return
     where T: Generator<Yield = usize>
 {
+    // We are not moving the `t` around until it gets dropped, so this is okay.
+    let mut t = unsafe { Pin::new_unchecked(&mut t) };
     loop {
-        match unsafe { t.resume() } {
+        match t.as_mut().resume() {
             GeneratorState::Yielded(y) => amt -= y,
             GeneratorState::Complete(ret) => {
                 assert_eq!(amt, 0);
