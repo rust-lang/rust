@@ -83,45 +83,10 @@ extern crate wasm_bindgen_test;
 #[path = "mod.rs"]
 mod core_arch;
 
-pub use core_arch::arch;
+pub use core_arch::arch::*;
 
 #[allow(unused_imports)]
-use _core::clone;
-#[allow(unused_imports)]
-use _core::cmp;
-#[allow(unused_imports)]
-use _core::convert;
-#[allow(unused_imports)]
-use _core::default;
-#[allow(unused_imports)]
-use _core::fmt;
-#[allow(unused_imports)]
-use _core::hash;
-#[allow(unused_imports)]
-use _core::intrinsics;
-#[allow(unused_imports)]
-use _core::iter;
-#[allow(unused_imports)]
-use _core::marker;
-#[allow(unused_imports)]
-use _core::mem;
-#[allow(unused_imports)]
-use _core::num;
-#[allow(unused_imports)]
-use _core::ops;
-#[allow(unused_imports)]
-use _core::option;
-#[allow(unused_imports)]
-use _core::prelude;
-#[allow(unused_imports)]
-use _core::ptr;
-#[allow(unused_imports)]
-use _core::result;
-#[allow(unused_imports)]
-use _core::slice;
-#[allow(unused_imports)]
-use _core::sync;
-#[allow(unused_imports)]
-use _core::u128;
-#[allow(unused_imports)]
-use _core::u8;
+use _core::{
+    clone, cmp, convert, default, fmt, hash, intrinsics, iter, marker, mem, num, ops, option,
+    prelude, ptr, result, slice, sync, u128, u8,
+};

@@ -42,9 +42,9 @@ use std::io::{self, Read};
 use std::str;
 
 #[cfg(target_arch = "x86")]
-use core_arch::arch::x86::*;
+use core_arch::x86::*;
 #[cfg(target_arch = "x86_64")]
-use core_arch::arch::x86_64::*;
+use core_arch::x86_64::*;
 
 fn main() {
     let mut input = Vec::new();

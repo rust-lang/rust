@@ -32,3 +32,6 @@ wasm-bindgen-test = "=0.2.19"
 [features]
 # Internal-usage only: denies all warnings.
 strict = []
+
+[package.metadata.docs.rs]
+rustdoc-args = [ "--cfg dox" ]
