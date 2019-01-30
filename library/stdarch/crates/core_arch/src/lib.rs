@@ -1,4 +1,4 @@
-//! Architecture-specific intrinsics.
+#![doc(include = "core_arch_docs.md")]
 
 #![cfg_attr(stdsimd_strict, deny(warnings))]
 #![allow(dead_code)]
@@ -32,7 +32,8 @@
     powerpc_target_feature,
     wasm_target_feature,
     abi_unadjusted,
-    adx_target_feature
+    adx_target_feature,
+    external_doc
 )]
 #![cfg_attr(test, feature(test, abi_vectorcall, untagged_unions))]
 #![cfg_attr(
