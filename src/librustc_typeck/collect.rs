@@ -1303,12 +1303,12 @@ fn type_of<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: DefId) -> Ty<'tcx> {
             }
         },
 
-        Node::GenericParam(param) => match param.kind {
+        Node::GenericParam(param) => match &param.kind {
             hir::GenericParamKind::Type {
                 default: Some(ref ty),
                 ..
             } => icx.to_ty(ty),
-            _ => bug!("unexpected non-type NodeGenericParam"),
+            x => bug!("unexpected non-type Node::GenericParam: {:?}", x),
         },
 
         x => {
