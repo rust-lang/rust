@@ -2,8 +2,9 @@ extern crate gimli;
 
 use crate::prelude::*;
 
-use std::path::Path;
 use std::marker::PhantomData;
+
+use syntax::source_map::FileName;
 
 use gimli::write::{
     Address, AttributeValue, CompilationUnit, DebugAbbrev, DebugInfo, DebugLine, DebugRanges,
@@ -24,15 +25,28 @@ fn target_endian(tcx: TyCtxt) -> RunTimeEndian {
     }
 }
 
-fn line_program_add_file<P: AsRef<Path>>(line_program: &mut LineProgram, file: P) -> FileId {
-    let file = file.as_ref();
-    let dir_id =
-        line_program.add_directory(file.parent().unwrap().to_str().unwrap().as_bytes());
-    line_program.add_file(
-        file.file_name().unwrap().to_str().unwrap().as_bytes(),
-        dir_id,
-        None,
-    )
+fn line_program_add_file(line_program: &mut LineProgram, file: &FileName) -> FileId {
+    match file {
+        FileName::Real(path) => {
+            let dir_id =
+                line_program.add_directory(path.parent().unwrap().to_str().unwrap().as_bytes());
+            line_program.add_file(
+                path.file_name().unwrap().to_str().unwrap().as_bytes(),
+                dir_id,
+                None,
+            )
+        }
+        // FIXME give more appropriate file names
+        _ => {
+            let dir_id = line_program.default_directory();
+            line_program.add_file(
+                file.to_string().as_bytes(),
+                dir_id,
+                None,
+            )
+        }
+    }
+    
 }
 
 struct DebugReloc {
@@ -146,7 +160,7 @@ impl<'a, 'tcx: 'a> DebugContext<'tcx> {
         let loc = tcx.sess.source_map().lookup_char_pos(span.lo());
 
         let line_program = self.line_programs.get_mut(self.global_line_program);
-        let file_id = line_program_add_file(line_program, loc.file.name.to_string());
+        let file_id = line_program_add_file(line_program, &loc.file.name);
 
         let unit = self.units.get_mut(self.unit_id);
         let entry = unit.get_mut(entry_id);
@@ -347,7 +361,7 @@ impl<'a, 'b, 'tcx: 'b> FunctionDebugContext<'a, 'tcx> {
 
         let create_row_for_span = |line_program: &mut LineProgram, span: Span| {
             let loc = tcx.sess.source_map().lookup_char_pos(span.lo());
-            let file_id = line_program_add_file(line_program, loc.file.name.to_string());
+            let file_id = line_program_add_file(line_program, &loc.file.name);
 
             /*println!(
                 "srcloc {:>04X} {}:{}:{}",
