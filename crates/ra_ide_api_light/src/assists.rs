@@ -197,6 +197,14 @@ fn check_assist(assist: fn(AssistCtx) -> Option<Assist>, before: &str, after: &s
 }
 
 #[cfg(test)]
+fn check_assist_not_applicable(assist: fn(AssistCtx) -> Option<Assist>, text: &str) {
+    crate::test_utils::check_action_not_applicable(text, |file, off| {
+        let range = TextRange::offset_len(off, 0.into());
+        AssistCtx::new(file, range).apply(assist)
+    })
+}
+
+#[cfg(test)]
 fn check_assist_range(assist: fn(AssistCtx) -> Option<Assist>, before: &str, after: &str) {
     crate::test_utils::check_action_range(before, after, |file, range| {
         AssistCtx::new(file, range).apply(assist)

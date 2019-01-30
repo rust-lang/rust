@@ -1,15 +1,18 @@
 use ra_syntax::{
     ast::{self, AstNode},
-    SyntaxKind::WHITESPACE, SyntaxKind::MATCH_ARM, SyntaxKind::LAMBDA_EXPR,
-    SyntaxNode, TextUnit,
+    SyntaxKind::{
+        WHITESPACE, MATCH_ARM, LAMBDA_EXPR, PATH_EXPR, BREAK_EXPR, LOOP_EXPR, RETURN_EXPR, COMMENT
+    }, SyntaxNode, TextUnit,
 };
 
 use crate::assists::{AssistCtx, Assist};
 
 pub fn introduce_variable<'a>(ctx: AssistCtx) -> Option<Assist> {
     let node = ctx.covering_node();
-    let expr = node.ancestors().filter_map(ast::Expr::cast).next()?;
-
+    if !valid_covering_node(node) {
+        return None;
+    }
+    let expr = node.ancestors().filter_map(valid_target_expr).next()?;
     let (anchor_stmt, wrap_in_block) = anchor_stmt(expr)?;
     let indent = anchor_stmt.prev_sibling()?;
     if indent.kind() != WHITESPACE {
@@ -51,6 +54,21 @@ pub fn introduce_variable<'a>(ctx: AssistCtx) -> Option<Assist> {
     })
 }
 
+fn valid_covering_node(node: &SyntaxNode) -> bool {
+    node.kind() != COMMENT
+}
+/// Check wether the node is a valid expression which can be extracted to a variable.
+/// In general that's true for any expression, but in some cases that would produce invalid code.
+fn valid_target_expr(node: &SyntaxNode) -> Option<&ast::Expr> {
+    return match node.kind() {
+        PATH_EXPR => None,
+        BREAK_EXPR => ast::BreakExpr::cast(node).and_then(|e| e.expr()),
+        RETURN_EXPR => ast::ReturnExpr::cast(node).and_then(|e| e.expr()),
+        LOOP_EXPR => ast::ReturnExpr::cast(node).and_then(|e| e.expr()),
+        _ => ast::Expr::cast(node),
+    };
+}
+
 /// Returns the syntax node which will follow the freshly introduced var
 /// and a boolean indicating whether we have to wrap it within a { } block
 /// to produce correct code.
@@ -73,9 +91,7 @@ fn anchor_stmt(expr: &ast::Expr) -> Option<(&SyntaxNode, bool)> {
         }
 
         if let Some(parent) = node.parent() {
-            if parent.kind() == MATCH_ARM
-                || parent.kind() == LAMBDA_EXPR
-            {
+            if parent.kind() == MATCH_ARM || parent.kind() == LAMBDA_EXPR {
                 return Some((node, true));
             }
         }
@@ -87,7 +103,7 @@ fn anchor_stmt(expr: &ast::Expr) -> Option<(&SyntaxNode, bool)> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::assists::check_assist_range;
+    use crate::assists::{ check_assist, check_assist_not_applicable, check_assist_range };
 
     #[test]
     fn test_introduce_var_simple() {
@@ -271,6 +287,143 @@ fn main() {
             "
 fn main() {
     let lambda = |x: u32| { let <|>var_name = x * 2; var_name };
+}
+",
+        );
+    }
+
+    #[test]
+    fn test_introduce_var_path_simple() {
+        check_assist(
+            introduce_variable,
+            "
+fn main() {
+    let o = S<|>ome(true);
+}
+",
+            "
+fn main() {
+    let <|>var_name = Some(true);
+    let o = var_name;
+}
+",
+        );
+    }
+
+    #[test]
+    fn test_introduce_var_path_method() {
+        check_assist(
+            introduce_variable,
+            "
+fn main() {
+    let v = b<|>ar.foo();
+}
+",
+            "
+fn main() {
+    let <|>var_name = bar.foo();
+    let v = var_name;
+}
+",
+        );
+    }
+
+    #[test]
+    fn test_introduce_var_return() {
+        check_assist(
+            introduce_variable,
+            "
+fn foo() -> u32 {
+    r<|>eturn 2 + 2;
+}
+",
+            "
+fn foo() -> u32 {
+    let <|>var_name = 2 + 2;
+    return var_name;
+}
+",
+        );
+    }
+
+    #[test]
+    fn test_introduce_var_break() {
+        check_assist(
+            introduce_variable,
+            "
+fn main() {
+    let result = loop {
+        b<|>reak 2 + 2;
+    };
+}
+",
+            "
+fn main() {
+    let result = loop {
+        let <|>var_name = 2 + 2;
+        break var_name;
+    };
+}
+",
+        );
+    }
+
+    #[test]
+    fn test_introduce_var_for_cast() {
+        check_assist(
+            introduce_variable,
+            "
+fn main() {
+    let v = 0f32 a<|>s u32;
+}
+",
+            "
+fn main() {
+    let <|>var_name = 0f32 as u32;
+    let v = var_name;
+}
+",
+        );
+    }
+
+    #[test]
+    fn test_introduce_var_for_return_not_applicable() {
+        check_assist_not_applicable(
+            introduce_variable,
+            "
+fn foo() {
+    r<|>eturn;
+}
+",
+        );
+    }
+
+    #[test]
+    fn test_introduce_var_for_break_not_applicable() {
+        check_assist_not_applicable(
+            introduce_variable,
+            "
+fn main() {
+    loop {
+        b<|>reak;
+    };
+}
+",
+        );
+    }
+
+    #[test]
+    fn test_introduce_var_in_comment_not_applicable() {
+        check_assist_not_applicable(
+            introduce_variable,
+            "
+fn main() {
+    let x = true;
+    let tuple = match x {
+        // c<|>omment
+        true => (2 + 2, true)
+        _ => (0, false)
+    };
 }
 ",
         );

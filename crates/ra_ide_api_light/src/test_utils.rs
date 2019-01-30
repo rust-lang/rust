@@ -23,6 +23,18 @@ pub fn check_action<F: Fn(&SourceFile, TextUnit) -> Option<LocalEdit>>(
     assert_eq_text!(after, &actual);
 }
 
+pub fn check_action_not_applicable<F: Fn(&SourceFile, TextUnit) -> Option<LocalEdit>>(
+    text: &str,
+    f: F,
+) {
+    let (text_cursor_pos, text) = extract_offset(text);
+    let file = SourceFile::parse(&text);
+    assert!(
+        f(&file, text_cursor_pos).is_none(),
+        "code action is applicable but it shouldn't"
+    );
+}
+
 pub fn check_action_range<F: Fn(&SourceFile, TextRange) -> Option<LocalEdit>>(
     before: &str,
     after: &str,
