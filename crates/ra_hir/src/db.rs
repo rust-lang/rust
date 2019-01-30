@@ -1,7 +1,7 @@
 use std::sync::Arc;
 
 use ra_syntax::{SyntaxNode, TreeArc, SourceFile};
-use ra_db::{SourceDatabase, CrateId, salsa};
+use ra_db::{SourceDatabase, salsa};
 
 use crate::{
     MacroCallId, HirFileId,
@@ -67,11 +67,11 @@ pub trait HirDatabase: SourceDatabase + AsRef<HirInterner> {
     #[salsa::invoke(crate::nameres::lower::LoweredModule::lower_module_source_map_query)]
     fn lower_module_source_map(&self, module: Module) -> Arc<ImportSourceMap>;
 
-    #[salsa::invoke(query_definitions::item_map)]
-    fn item_map(&self, crate_id: CrateId) -> Arc<ItemMap>;
+    #[salsa::invoke(crate::nameres::ItemMap::item_map_query)]
+    fn item_map(&self, krate: Crate) -> Arc<ItemMap>;
 
     #[salsa::invoke(crate::module_tree::ModuleTree::module_tree_query)]
-    fn module_tree(&self, crate_id: CrateId) -> Arc<ModuleTree>;
+    fn module_tree(&self, krate: Crate) -> Arc<ModuleTree>;
 
     #[salsa::invoke(crate::impl_block::impls_in_module_with_source_map_query)]
     fn impls_in_module_with_source_map(

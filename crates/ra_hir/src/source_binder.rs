@@ -14,7 +14,7 @@ use ra_syntax::{
 
 use crate::{
     HirDatabase, Function, ModuleDef, Struct, Enum,
-    AsName, Module, HirFileId,
+    AsName, Module, HirFileId, Crate,
     ids::{LocationCtx, SourceFileItemId},
 };
 
@@ -83,7 +83,8 @@ fn module_from_source(
     let source_root_id = db.file_source_root(file_id.as_original_file());
     db.source_root_crates(source_root_id)
         .iter()
-        .find_map(|&krate| {
+        .map(|&crate_id| Crate { crate_id })
+        .find_map(|krate| {
             let module_tree = db.module_tree(krate);
             let module_id = module_tree.find_module_by_source(file_id, decl_id)?;
             Some(Module { krate, module_id })

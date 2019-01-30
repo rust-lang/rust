@@ -3,7 +3,7 @@ use ra_syntax::{ast, SyntaxNode, TreeArc};
 
 use crate::{
     Module, ModuleSource, Problem,
-    Crate, Name,
+    Name,
     module_tree::ModuleId,
     impl_block::ImplId,
     nameres::{lower::ImportId},
@@ -65,10 +65,6 @@ impl Module {
         let source_map = db.impls_in_module_source_map(*self);
         let (_, source) = self.definition_source(db);
         source_map.get(&source, impl_id)
-    }
-
-    pub(crate) fn krate_impl(&self, _db: &impl HirDatabase) -> Option<Crate> {
-        Some(Crate::new(self.krate))
     }
 
     pub(crate) fn crate_root_impl(&self, db: &impl HirDatabase) -> Module {

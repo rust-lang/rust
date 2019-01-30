@@ -52,7 +52,7 @@ pub enum Def {
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct Module {
-    pub(crate) krate: CrateId,
+    pub(crate) krate: Crate,
     pub(crate) module_id: ModuleId,
 }
 
@@ -133,8 +133,8 @@ impl Module {
     }
 
     /// Returns the crate this module is part of.
-    pub fn krate(&self, db: &impl HirDatabase) -> Option<Crate> {
-        self.krate_impl(db)
+    pub fn krate(&self, _db: &impl HirDatabase) -> Option<Crate> {
+        Some(self.krate)
     }
 
     /// Topmost parent of this module. Every module has a `crate_root`, but some

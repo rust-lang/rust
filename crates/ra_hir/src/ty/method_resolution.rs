@@ -52,7 +52,7 @@ impl CrateImplBlocks {
             .flat_map(|i| i.iter())
             .map(move |(module_id, impl_id)| {
                 let module = Module {
-                    krate: self.krate.crate_id,
+                    krate: self.krate,
                     module_id: *module_id,
                 };
                 let module_impl_blocks = db.impls_in_module(module);

@@ -16,9 +16,8 @@
 //! structure itself is modified.
 pub(crate) mod lower;
 
-use std::sync::Arc;
+use std::{time, sync::Arc};
 
-use ra_db::CrateId;
 use ra_arena::map::ArenaMap;
 use test_utils::tested_by;
 use rustc_hash::{FxHashMap, FxHashSet};
@@ -156,10 +155,10 @@ impl<T> PerNs<T> {
     }
 }
 
-pub(crate) struct Resolver<'a, DB> {
+struct Resolver<'a, DB> {
     db: &'a DB,
     input: &'a FxHashMap<ModuleId, Arc<LoweredModule>>,
-    krate: CrateId,
+    krate: Crate,
     module_tree: Arc<ModuleTree>,
     processed_imports: FxHashSet<(ModuleId, ImportId)>,
     result: ItemMap,
@@ -169,10 +168,10 @@ impl<'a, DB> Resolver<'a, DB>
 where
     DB: HirDatabase,
 {
-    pub(crate) fn new(
+    fn new(
         db: &'a DB,
         input: &'a FxHashMap<ModuleId, Arc<LoweredModule>>,
-        krate: CrateId,
+        krate: Crate,
     ) -> Resolver<'a, DB> {
         let module_tree = db.module_tree(krate);
         Resolver {
@@ -219,7 +218,7 @@ where
             let crate_graph = self.db.crate_graph();
             if let Some(crate_id) = crate_graph.crate_id_for_crate_root(file_id.as_original_file())
             {
-                let krate = Crate::new(crate_id);
+                let krate = Crate { crate_id };
                 for dep in krate.dependencies(self.db) {
                     if let Some(module) = dep.krate.root_module(self.db) {
                         let def = module.into();
@@ -331,6 +330,26 @@ enum ReachedFixedPoint {
 }
 
 impl ItemMap {
+    pub(crate) fn item_map_query(db: &impl HirDatabase, krate: Crate) -> Arc<ItemMap> {
+        let start = time::Instant::now();
+        let module_tree = db.module_tree(krate);
+        let input = module_tree
+            .modules()
+            .map(|module_id| {
+                (
+                    module_id,
+                    db.lower_module_module(Module { krate, module_id }),
+                )
+            })
+            .collect::<FxHashMap<_, _>>();
+
+        let resolver = Resolver::new(db, &input, krate);
+        let res = resolver.resolve();
+        let elapsed = start.elapsed();
+        log::info!("item_map: {:?}", elapsed);
+        Arc::new(res)
+    }
+
     pub(crate) fn resolve_path(
         &self,
         db: &impl HirDatabase,
