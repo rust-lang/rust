@@ -4381,8 +4381,13 @@ impl<'a> Parser<'a> {
             if let Ok(seq_snippet) = self.sess.source_map().span_to_snippet(seq_span) {
                 err.span_suggestion(
                     seq_span,
-                    "try adding parentheses",
+                    "try adding parentheses to match on a tuple..",
                     format!("({})", seq_snippet),
+                    Applicability::MachineApplicable
+                ).span_suggestion(
+                    seq_span,
+                    "..or a vertical bar to match on multiple alternatives",
+                    format!("{}", seq_snippet.replace(",", " |")),
                     Applicability::MachineApplicable
                 );
             }
