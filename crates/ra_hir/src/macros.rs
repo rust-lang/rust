@@ -1,5 +1,5 @@
 #[allow(unused)]
-mod token_tree;
+mod tt;
 
 /// Machinery for macro expansion.
 ///
