@@ -118,7 +118,8 @@ export async function handleSingle(runnable: Runnable) {
     task.group = vscode.TaskGroup.Build;
     task.presentationOptions = {
         reveal: vscode.TaskRevealKind.Always,
-        panel: vscode.TaskPanelKind.Dedicated
+        panel: vscode.TaskPanelKind.Dedicated,
+        clear: true
     };
 
     return vscode.tasks.executeTask(task);
