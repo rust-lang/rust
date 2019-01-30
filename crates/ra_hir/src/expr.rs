@@ -16,6 +16,10 @@ use crate::{
 };
 use crate::ty::primitive::{UintTy, UncertainIntTy, UncertainFloatTy};
 
+pub use self::scope::{ExprScopes, ScopesWithSyntaxMapping, ScopeEntryWithSyntax};
+
+mod scope;
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct ExprId(RawId);
 impl_arena_id!(ExprId);

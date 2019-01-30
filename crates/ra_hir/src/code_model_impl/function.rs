@@ -1,5 +1,3 @@
-mod scope;
-
 use std::sync::Arc;
 
 use ra_syntax::ast::{self, NameOwner};
@@ -10,8 +8,6 @@ use crate::{
     expr::Body,
     impl_block::ImplBlock,
 };
-
-pub use self::scope::{FnScopes, ScopesWithSyntaxMapping, ScopeEntryWithSyntax};
 
 impl Function {
     pub(crate) fn body(&self, db: &impl HirDatabase) -> Arc<Body> {

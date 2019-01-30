@@ -57,9 +57,9 @@ pub use self::{
     nameres::{ItemMap, PerNs, Namespace, Resolution},
     ty::Ty,
     impl_block::{ImplBlock, ImplItem},
-    code_model_impl::function::{FnScopes, ScopesWithSyntaxMapping},
     docs::{Docs, Documentation},
     adt::AdtDef,
+    expr::{ExprScopes, ScopesWithSyntaxMapping},
 };
 
 pub use self::code_model_api::{

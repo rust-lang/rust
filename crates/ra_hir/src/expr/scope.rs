@@ -9,14 +9,18 @@ use ra_syntax::{
 };
 use ra_arena::{Arena, RawId, impl_arena_id};
 
-use crate::{Name, AsName, expr::{PatId, ExprId, Pat, Expr, Body, Statement, BodySyntaxMapping}};
+use crate::{
+    Name, AsName, Function,
+    expr::{PatId, ExprId, Pat, Expr, Body, Statement, BodySyntaxMapping},
+    db::HirDatabase,
+};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct ScopeId(RawId);
 impl_arena_id!(ScopeId);
 
 #[derive(Debug, PartialEq, Eq)]
-pub struct FnScopes {
+pub struct ExprScopes {
     body: Arc<Body>,
     scopes: Arena<ScopeId, ScopeData>,
     scope_for: FxHashMap<ExprId, ScopeId>,
@@ -34,9 +38,16 @@ pub struct ScopeData {
     entries: Vec<ScopeEntry>,
 }
 
-impl FnScopes {
-    pub(crate) fn new(body: Arc<Body>) -> FnScopes {
-        let mut scopes = FnScopes {
+impl ExprScopes {
+    // TODO: This should take something more general than Function
+    pub(crate) fn expr_scopes_query(db: &impl HirDatabase, function: Function) -> Arc<ExprScopes> {
+        let body = db.body_hir(function);
+        let res = ExprScopes::new(body);
+        Arc::new(res)
+    }
+
+    fn new(body: Arc<Body>) -> ExprScopes {
+        let mut scopes = ExprScopes {
             body: body.clone(),
             scopes: Arena::default(),
             scope_for: FxHashMap::default(),
@@ -119,7 +130,7 @@ impl FnScopes {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ScopesWithSyntaxMapping {
     pub syntax_mapping: Arc<BodySyntaxMapping>,
-    pub scopes: Arc<FnScopes>,
+    pub scopes: Arc<ExprScopes>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -249,7 +260,7 @@ fn compute_block_scopes(
     statements: &[Statement],
     tail: Option<ExprId>,
     body: &Body,
-    scopes: &mut FnScopes,
+    scopes: &mut ExprScopes,
     mut scope: ScopeId,
 ) {
     for stmt in statements {
@@ -275,7 +286,7 @@ fn compute_block_scopes(
     }
 }
 
-fn compute_expr_scopes(expr: ExprId, body: &Body, scopes: &mut FnScopes, scope: ScopeId) {
+fn compute_expr_scopes(expr: ExprId, body: &Body, scopes: &mut ExprScopes, scope: ScopeId) {
     scopes.set_scope(expr, scope);
     match &body[expr] {
         Expr::Block { statements, tail } => {
@@ -344,7 +355,7 @@ mod tests {
         let marker: &ast::PathExpr = find_node_at_offset(file.syntax(), off).unwrap();
         let fn_def: &ast::FnDef = find_node_at_offset(file.syntax(), off).unwrap();
         let body_hir = expr::collect_fn_body_syntax(fn_def);
-        let scopes = FnScopes::new(Arc::clone(body_hir.body()));
+        let scopes = ExprScopes::new(Arc::clone(body_hir.body()));
         let scopes = ScopesWithSyntaxMapping {
             scopes: Arc::new(scopes),
             syntax_mapping: Arc::new(body_hir),
@@ -444,7 +455,7 @@ mod tests {
         let name_ref: &ast::NameRef = find_node_at_offset(file.syntax(), off).unwrap();
 
         let body_hir = expr::collect_fn_body_syntax(fn_def);
-        let scopes = FnScopes::new(Arc::clone(body_hir.body()));
+        let scopes = ExprScopes::new(Arc::clone(body_hir.body()));
         let scopes = ScopesWithSyntaxMapping {
             scopes: Arc::new(scopes),
             syntax_mapping: Arc::new(body_hir),

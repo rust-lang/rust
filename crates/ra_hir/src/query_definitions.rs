@@ -1,18 +1,13 @@
 use std::sync::Arc;
 
-use ra_syntax::{SyntaxNode, TreeArc};
+use ra_syntax::{
+    SyntaxNode, TreeArc,
+};
 
 use crate::{
     SourceFileItems, SourceItemId, HirFileId,
-    Function, FnScopes,
     db::HirDatabase,
 };
-
-pub(super) fn fn_scopes(db: &impl HirDatabase, func: Function) -> Arc<FnScopes> {
-    let body = db.body_hir(func);
-    let res = FnScopes::new(body);
-    Arc::new(res)
-}
 
 pub(super) fn file_items(db: &impl HirDatabase, file_id: HirFileId) -> Arc<SourceFileItems> {
     let source_file = db.hir_parse(file_id);

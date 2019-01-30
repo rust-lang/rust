@@ -396,7 +396,7 @@ pub struct Function {
     pub(crate) id: FunctionId,
 }
 
-pub use crate::code_model_impl::function::ScopeEntryWithSyntax;
+pub use crate::expr::ScopeEntryWithSyntax;
 
 /// The declared signature of a function.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -447,7 +447,7 @@ impl Function {
     }
 
     pub fn scopes(&self, db: &impl HirDatabase) -> ScopesWithSyntaxMapping {
-        let scopes = db.fn_scopes(*self);
+        let scopes = db.expr_scopes(*self);
         let syntax_mapping = db.body_syntax_mapping(*self);
         ScopesWithSyntaxMapping {
             scopes,

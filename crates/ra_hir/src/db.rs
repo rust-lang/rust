@@ -7,7 +7,7 @@ use crate::{
     MacroCallId, HirFileId,
     SourceFileItems, SourceItemId, Crate, Module, HirInterner,
     query_definitions,
-    Function, FnSignature, FnScopes,
+    Function, FnSignature, ExprScopes,
     Struct, Enum, StructField,
     macros::MacroExpansion,
     module_tree::ModuleTree,
@@ -27,8 +27,8 @@ pub trait HirDatabase: SourceDatabase + AsRef<HirInterner> {
     #[salsa::invoke(crate::macros::expand_macro_invocation)]
     fn expand_macro_invocation(&self, invoc: MacroCallId) -> Option<Arc<MacroExpansion>>;
 
-    #[salsa::invoke(query_definitions::fn_scopes)]
-    fn fn_scopes(&self, func: Function) -> Arc<FnScopes>;
+    #[salsa::invoke(ExprScopes::expr_scopes_query)]
+    fn expr_scopes(&self, func: Function) -> Arc<ExprScopes>;
 
     #[salsa::invoke(crate::adt::StructData::struct_data_query)]
     fn struct_data(&self, s: Struct) -> Arc<StructData>;
