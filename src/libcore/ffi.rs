@@ -47,7 +47,7 @@ impl fmt::Debug for c_void {
 /// Basic implementation of a `va_list`.
 #[cfg(any(all(not(target_arch = "aarch64"), not(target_arch = "powerpc"),
               not(target_arch = "x86_64")),
-          all(target_arch = "aarch4", target_os = "ios"),
+          all(target_arch = "aarch64", target_os = "ios"),
           windows))]
 #[unstable(feature = "c_variadic",
            reason = "the `c_variadic` feature has not been properly tested on \
@@ -67,7 +67,7 @@ impl fmt::Debug for VaListImpl {
 }
 
 /// AArch64 ABI implementation of a `va_list`. See the
-/// [Aarch64 Procedure Call Standard] for more details.
+/// [AArch64 Procedure Call Standard] for more details.
 ///
 /// [AArch64 Procedure Call Standard]:
 /// http://infocenter.arm.com/help/topic/com.arm.doc.ihi0055b/IHI0055B_aapcs64.pdf
@@ -193,7 +193,7 @@ impl<'a> VaList<'a> {
             where F: for<'copy> FnOnce(VaList<'copy>) -> R {
         #[cfg(any(all(not(target_arch = "aarch64"), not(target_arch = "powerpc"),
                       not(target_arch = "x86_64")),
-                  all(target_arch = "aarch4", target_os = "ios"),
+                  all(target_arch = "aarch64", target_os = "ios"),
                   windows))]
         let mut ap = va_copy(self);
         #[cfg(all(any(target_arch = "aarch64", target_arch = "powerpc", target_arch = "x86_64"),
