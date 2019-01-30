@@ -47,6 +47,17 @@ impl HasAttrs for Annotatable {
         }
     }
 
+    fn attrs_mut(&mut self) -> Option<&mut Vec<Attribute>> {
+        match *self {
+            Annotatable::Item(ref mut item) => item.attrs.attrs_mut(),
+            Annotatable::TraitItem(ref mut trait_item) => trait_item.attrs.attrs_mut(),
+            Annotatable::ImplItem(ref mut impl_item) => impl_item.attrs.attrs_mut(),
+            Annotatable::ForeignItem(ref mut foreign_item) => foreign_item.attrs.attrs_mut(),
+            Annotatable::Stmt(ref mut stmt) => stmt.attrs_mut(),
+            Annotatable::Expr(ref mut expr) => expr.attrs.attrs_mut(),
+        }
+    }
+
     fn map_attrs<F: FnOnce(Vec<Attribute>) -> Vec<Attribute>>(self, f: F) -> Self {
         match self {
             Annotatable::Item(item) => Annotatable::Item(item.map_attrs(f)),

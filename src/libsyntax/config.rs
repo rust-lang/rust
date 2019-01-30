@@ -6,13 +6,14 @@ use feature_gate::{
     get_features,
     GateIssue,
 };
-use {fold, attr};
+use attr;
 use ast;
 use source_map::Spanned;
 use edition::Edition;
 use parse::{token, ParseSess};
 use smallvec::SmallVec;
 use errors::Applicability;
+use visit_mut::{self, Action};
 
 use ptr::P;
 
@@ -64,8 +65,26 @@ macro_rules! configure {
 }
 
 impl<'a> StripUnconfigured<'a> {
-    pub fn configure<T: HasAttrs>(&mut self, node: T) -> Option<T> {
-        let node = self.process_cfg_attrs(node);
+    pub fn keep_then<T: HasAttrs, R>(
+        &mut self,
+        node: &mut T,
+        then: impl FnOnce(&mut Self, &mut T)
+    ) -> Action<R> {
+        if likely!(self.keep(node)) {
+            then(self, node);
+            Action::Reuse
+        } else {
+            Action::Remove
+        }
+    }
+
+    pub fn keep<T: HasAttrs>(&mut self, node: &mut T) -> bool {
+        self.process_cfg_attrs(node);
+        self.in_cfg(node.attrs())
+    }
+
+    pub fn configure<T: HasAttrs>(&mut self, mut node: T) -> Option<T> {
+        self.process_cfg_attrs(&mut node);
         if self.in_cfg(node.attrs()) { Some(node) } else { None }
     }
 
@@ -75,10 +94,23 @@ impl<'a> StripUnconfigured<'a> {
     /// Gives compiler warnigns if any `cfg_attr` does not contain any
     /// attributes and is in the original source code. Gives compiler errors if
     /// the syntax of any `cfg_attr` is incorrect.
-    pub fn process_cfg_attrs<T: HasAttrs>(&mut self, node: T) -> T {
-        node.map_attrs(|attrs| {
-            attrs.into_iter().flat_map(|attr| self.process_cfg_attr(attr)).collect()
-        })
+    pub fn process_cfg_attrs<T: HasAttrs>(&mut self, node: &mut T) {
+        let attrs = if let Some(attrs) = node.attrs_mut() {
+            attrs
+        } else {
+            // No attributes so nothing to do
+            return;
+        };
+        if likely!(attrs.is_empty()) {
+            return;
+        }
+        if likely!(!attrs.iter().any(|attr| attr.check_name("cfg_attr"))) {
+            return;
+        }
+        let new_attrs: Vec<_> = attrs.drain(..).flat_map(|attr| {
+            self.process_cfg_attr(attr)
+        }).collect();
+        *attrs = new_attrs;
     }
 
     /// Parse and expand a single `cfg_attr` attribute into a list of attributes
@@ -88,9 +120,9 @@ impl<'a> StripUnconfigured<'a> {
     /// Gives a compiler warning when the `cfg_attr` contains no attributes and
     /// is in the original source file. Gives a compiler error if the syntax of
     /// the attribute is incorrect
-    fn process_cfg_attr(&mut self, attr: ast::Attribute) -> Vec<ast::Attribute> {
+    fn process_cfg_attr(&mut self, attr: ast::Attribute) -> SmallVec<[ast::Attribute; 1]> {
         if !attr.check_name("cfg_attr") {
-            return vec![attr];
+            return smallvec![attr];
         }
 
         let (cfg_predicate, expanded_attrs) = match attr.parse(self.sess, |parser| {
@@ -100,7 +132,7 @@ impl<'a> StripUnconfigured<'a> {
             parser.expect(&token::Comma)?;
 
             // Presumably, the majority of the time there will only be one attr.
-            let mut expanded_attrs = Vec::with_capacity(1);
+            let mut expanded_attrs: SmallVec<[_; 1]> = SmallVec::new();
 
             while !parser.check(&token::CloseDelim(token::Paren)) {
                 let lo = parser.span.lo();
@@ -115,7 +147,7 @@ impl<'a> StripUnconfigured<'a> {
             Ok(result) => result,
             Err(mut e) => {
                 e.emit();
-                return Vec::new();
+                return SmallVec::new();
             }
         };
 
@@ -141,7 +173,7 @@ impl<'a> StripUnconfigured<'a> {
             }))
             .collect()
         } else {
-            Vec::new()
+            SmallVec::new()
         }
     }
 
@@ -286,7 +318,7 @@ impl<'a> StripUnconfigured<'a> {
         }
     }
 
-    pub fn configure_expr(&mut self, expr: P<ast::Expr>) -> P<ast::Expr> {
+    pub fn configure_expr(&mut self, expr: &mut ast::Expr)  {
         self.visit_expr_attrs(expr.attrs());
 
         // If an expr is valid to cfg away it will have been removed by the
@@ -300,7 +332,6 @@ impl<'a> StripUnconfigured<'a> {
             let msg = "removing an expression is not supported in this position";
             self.sess.span_diagnostic.span_err(attr.span, msg);
         }
-
         self.process_cfg_attrs(expr)
     }
 
@@ -343,57 +374,81 @@ impl<'a> StripUnconfigured<'a> {
     }
 }
 
-impl<'a> fold::Folder for StripUnconfigured<'a> {
-    fn fold_foreign_mod(&mut self, foreign_mod: ast::ForeignMod) -> ast::ForeignMod {
-        let foreign_mod = self.configure_foreign_mod(foreign_mod);
-        fold::noop_fold_foreign_mod(foreign_mod, self)
+impl<'a> visit_mut::MutVisitor for StripUnconfigured<'a> {
+    fn visit_foreign_item(&mut self, i: &mut ast::ForeignItem) -> Action<ast::ForeignItem> {
+        self.keep_then(i, |this, i| visit_mut::walk_foreign_item(this, i))
     }
 
-    fn fold_item_kind(&mut self, item: ast::ItemKind) -> ast::ItemKind {
-        let item = self.configure_item_kind(item);
-        fold::noop_fold_item_kind(item, self)
-    }
-
-    fn fold_expr(&mut self, expr: P<ast::Expr>) -> P<ast::Expr> {
-        let mut expr = self.configure_expr(expr).into_inner();
-        expr.node = self.configure_expr_kind(expr.node);
-        P(fold::noop_fold_expr(expr, self))
-    }
-
-    fn fold_opt_expr(&mut self, expr: P<ast::Expr>) -> Option<P<ast::Expr>> {
-        let mut expr = configure!(self, expr).into_inner();
-        expr.node = self.configure_expr_kind(expr.node);
-        Some(P(fold::noop_fold_expr(expr, self)))
-    }
-
-    fn fold_stmt(&mut self, stmt: ast::Stmt) -> SmallVec<[ast::Stmt; 1]> {
-        match self.configure_stmt(stmt) {
-            Some(stmt) => fold::noop_fold_stmt(stmt, self),
-            None => return SmallVec::new(),
+    fn visit_variant(
+        &mut self,
+        v: &mut ast::Variant,
+        g: &mut ast::Generics,
+        item_id: ast::NodeId
+    ) -> Action<ast::Variant> {
+        if likely!(self.keep(v)) {
+            visit_mut::walk_variant(self, v, g, item_id);
+            Action::Reuse
+        } else {
+            Action::Remove
         }
     }
 
-    fn fold_item(&mut self, item: P<ast::Item>) -> SmallVec<[P<ast::Item>; 1]> {
-        fold::noop_fold_item(configure!(self, item), self)
+    fn visit_struct_field(&mut self, s: &mut ast::StructField) -> Action<ast::StructField> {
+        self.keep_then(s, |this, s| visit_mut::walk_struct_field(this, s))
     }
 
-    fn fold_impl_item(&mut self, item: ast::ImplItem) -> SmallVec<[ast::ImplItem; 1]>
-    {
-        fold::noop_fold_impl_item(configure!(self, item), self)
+    fn visit_arm(&mut self, a: &mut ast::Arm) -> Action<ast::Arm> {
+        self.keep_then(a, |this, a| visit_mut::walk_arm(this, a))
     }
 
-    fn fold_trait_item(&mut self, item: ast::TraitItem) -> SmallVec<[ast::TraitItem; 1]> {
-        fold::noop_fold_trait_item(configure!(self, item), self)
+    fn visit_field(&mut self, field: &mut ast::Field) -> Action<ast::Field> {
+        self.keep_then(field, |this, field| visit_mut::walk_field(this, field))
     }
 
-    fn fold_mac(&mut self, mac: ast::Mac) -> ast::Mac {
+    fn visit_opt_expr(&mut self, ex: &mut ast::Expr) -> bool {
+        if likely!(self.keep(ex)) {
+            visit_mut::walk_expr(self, ex);
+            true
+        } else {
+            false
+        }
+    }
+
+    fn visit_expr(&mut self, ex: &mut ast::Expr) {
+        self.configure_expr(ex);
+        visit_mut::walk_expr(self, ex)
+    }
+
+    fn visit_stmt(&mut self, s: &mut ast::Stmt) -> Action<ast::Stmt> {
+        if likely!(self.keep(s)) {
+            visit_mut::walk_stmt(self, s)
+        } else {
+            Action::Remove
+        }
+    }
+
+    fn visit_item(&mut self, i: &mut P<ast::Item>) -> Action<P<ast::Item>> {
+        self.keep_then(i, |this, i| visit_mut::walk_item(this, i))
+    }
+
+    fn visit_trait_item(&mut self, i: &mut ast::TraitItem) -> Action<ast::TraitItem> {
+        self.keep_then(i, |this, i| visit_mut::walk_trait_item(this, i))
+    }
+
+    fn visit_impl_item(&mut self, ii: &mut ast::ImplItem) -> Action<ast::ImplItem> {
+        self.keep_then(ii, |this, ii| visit_mut::walk_impl_item(this, ii))
+    }
+
+    fn visit_mac(&mut self, _mac: &mut ast::Mac) {
         // Don't configure interpolated AST (cf. issue #34171).
         // Interpolated AST will get configured once the surrounding tokens are parsed.
-        mac
     }
 
-    fn fold_pat(&mut self, pattern: P<ast::Pat>) -> P<ast::Pat> {
-        fold::noop_fold_pat(self.configure_pat(pattern), self)
+    fn visit_field_pat(
+        &mut self,
+        p: &mut Spanned<ast::FieldPat>
+    ) -> Action<Spanned<ast::FieldPat>> {
+        self.keep_then(p, |this, p| visit_mut::walk_field_pat(this, p))
     }
 }
 

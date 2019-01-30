@@ -15,6 +15,7 @@
 
 use ast::*;
 use ptr::P;
+use source_map::Spanned;
 use syntax_pos::Span;
 use parse::token::Token;
 use tokenstream::{TokenTree, TokenStream};
@@ -37,6 +38,13 @@ impl<T> Action<T> {
             Action::Replace(list) => {
                 Action::Replace(list.into_iter().map(|item| f(item)).collect())
             }
+        }
+    }
+
+    pub fn assert_reuse(self) {
+        if let Action::Reuse = self {
+        } else {
+            panic!()
         }
     }
 }
@@ -82,7 +90,10 @@ pub trait MutVisitor: Sized {
     fn visit_mod(&mut self, m: &mut Mod, _s: Span, _attrs: &[Attribute], _n: NodeId) {
         walk_mod(self, m);
     }
-    fn visit_foreign_item(&mut self, i: &mut ForeignItem) { walk_foreign_item(self, i) }
+    fn visit_foreign_item(&mut self, i: &mut ForeignItem) -> Action<ForeignItem> {
+        walk_foreign_item(self, i);
+        Action::Reuse
+    }
     fn visit_global_asm(&mut self, ga: &mut GlobalAsm) { walk_global_asm(self, ga) }
     fn visit_item(&mut self, i: &mut P<Item>) -> Action<P<Item>> {
         walk_item(self, i);
@@ -93,11 +104,26 @@ pub trait MutVisitor: Sized {
     fn visit_stmt(&mut self, s: &mut Stmt) -> Action<Stmt> {
         walk_stmt(self, s)
     }
-    fn visit_arm(&mut self, a: &mut Arm) { walk_arm(self, a) }
+    fn visit_arm(&mut self, a: &mut Arm) -> Action<Arm> {
+        walk_arm(self, a);
+        Action::Reuse
+    }
+    fn visit_field_pat(&mut self, p: &mut Spanned<FieldPat>) -> Action<Spanned<FieldPat>> {
+        walk_field_pat(self, p);
+        Action::Reuse
+    }
     fn visit_pat(&mut self, p: &mut Pat) { walk_pat(self, p) }
     fn visit_anon_const(&mut self, c: &mut AnonConst) { walk_anon_const(self, c) }
+    fn visit_field(&mut self, field: &mut Field) -> Action<Field> {
+        walk_field(self, field);
+        Action::Reuse
+    }
+    /// Returns true if the expression should be kept
+    fn visit_opt_expr(&mut self, ex: &mut Expr) -> bool {
+        self.visit_expr(ex);
+        true
+    }
     fn visit_expr(&mut self, ex: &mut Expr) { walk_expr(self, ex) }
-    fn visit_expr_post(&mut self, _ex: &mut Expr) { }
     fn visit_ty(&mut self, t: &mut Ty) { walk_ty(self, t) }
     fn visit_generic_param(&mut self, param: &mut GenericParam) {
         walk_generic_param(self, param)
@@ -109,8 +135,14 @@ pub trait MutVisitor: Sized {
     fn visit_fn(&mut self, fk: FnKind<'_>, fd: &mut FnDecl, s: Span, _: NodeId) {
         walk_fn(self, fk, fd, s)
     }
-    fn visit_trait_item(&mut self, ti: &mut TraitItem) { walk_trait_item(self, ti) }
-    fn visit_impl_item(&mut self, ii: &mut ImplItem) { walk_impl_item(self, ii) }
+    fn visit_trait_item(&mut self, ti: &mut TraitItem) -> Action<TraitItem> {
+        walk_trait_item(self, ti);
+        Action::Reuse
+    }
+    fn visit_impl_item(&mut self, ii: &mut ImplItem) -> Action<ImplItem> {
+        walk_impl_item(self, ii);
+        Action::Reuse
+    }
     fn visit_trait_ref(&mut self, t: &mut TraitRef) { walk_trait_ref(self, t) }
     fn visit_param_bound(&mut self, bounds: &mut GenericBound) {
         walk_param_bound(self, bounds)
@@ -118,17 +150,32 @@ pub trait MutVisitor: Sized {
     fn visit_poly_trait_ref(&mut self, t: &mut PolyTraitRef, m: &mut TraitBoundModifier) {
         walk_poly_trait_ref(self, t, m)
     }
-    fn visit_variant_data(&mut self, s: &mut VariantData, _: Ident,
-                          _: &mut Generics, _: NodeId, _: Span) {
-        walk_struct_def(self, s)
+    fn visit_variant_data(
+        &mut self,
+        s: &mut VariantData,
+        _: Ident,
+        _: &mut Generics,
+        _: NodeId,
+        _: Span
+    ) {
+        walk_variant_data(self, s)
     }
-    fn visit_struct_field(&mut self, s: &mut StructField) { walk_struct_field(self, s) }
+    fn visit_struct_field(&mut self, s: &mut StructField) -> Action<StructField> {
+        walk_struct_field(self, s);
+        Action::Reuse
+    }
     fn visit_enum_def(&mut self, enum_definition: &mut EnumDef,
                       generics: &mut Generics, item_id: NodeId, _: Span) {
         walk_enum_def(self, enum_definition, generics, item_id)
     }
-    fn visit_variant(&mut self, v: &mut Variant, g: &mut Generics, item_id: NodeId) {
-        walk_variant(self, v, g, item_id)
+    fn visit_variant(
+        &mut self,
+        v: &mut Variant,
+        g: &mut Generics,
+        item_id: NodeId
+    ) -> Action<Variant> {
+        walk_variant(self, v, g, item_id);
+        Action::Reuse
     }
     fn visit_label(&mut self, label: &mut Label) {
         walk_label(self, label)
@@ -187,15 +234,16 @@ pub trait MutVisitor: Sized {
     }
 }
 
+#[macro_export]
 macro_rules! walk_list_mut {
-    ($visitor: expr, $method: ident, $list: expr $(, $extra_args: expr),*) => {
+    ($visitor: expr, $method: ident, $list: expr $(, $extra_args: expr)*) => {
         let mut i = 0;
         loop {
             if i == $list.len() {
                 break;
             }
 
-            match $visitor.$method(&mut $list[i], $(, $extra_args)*) {
+            match $visitor.$method(&mut $list[i] $(, $extra_args)*) {
                 Action::Reuse => i += 1,
                 Action::Remove => {
                     $list.remove(i);
@@ -293,7 +341,7 @@ pub fn walk_item<V: MutVisitor>(visitor: &mut V, item: &mut Item) {
             visitor.visit_mod(module, item.span, &mut item.attrs, item.id)
         }
         ItemKind::ForeignMod(ref mut foreign_module) => {
-            walk_list!(visitor, visit_foreign_item, &mut foreign_module.items);
+            walk_list_mut!(visitor, visit_foreign_item, &mut foreign_module.items);
         }
         ItemKind::GlobalAsm(ref mut ga) => visitor.visit_global_asm(ga),
         ItemKind::Ty(ref mut typ, ref mut type_parameters) => {
@@ -316,7 +364,7 @@ pub fn walk_item<V: MutVisitor>(visitor: &mut V, item: &mut Item) {
             visitor.visit_generics(type_parameters);
             walk_list!(visitor, visit_trait_ref, opt_trait_reference);
             visitor.visit_ty(typ);
-            walk_list!(visitor, visit_impl_item, impl_items);
+            walk_list_mut!(visitor, visit_impl_item, impl_items);
         }
         ItemKind::Struct(ref mut struct_definition, ref mut generics) |
         ItemKind::Union(ref mut struct_definition, ref mut generics) => {
@@ -327,7 +375,7 @@ pub fn walk_item<V: MutVisitor>(visitor: &mut V, item: &mut Item) {
         ItemKind::Trait(.., ref mut generics, ref mut bounds, ref mut methods) => {
             visitor.visit_generics(generics);
             walk_list!(visitor, visit_param_bound, bounds);
-            walk_list!(visitor, visit_trait_item, methods);
+            walk_list_mut!(visitor, visit_trait_item, methods);
         }
         ItemKind::TraitAlias(ref mut generics, ref mut bounds) => {
             visitor.visit_generics(generics);
@@ -343,7 +391,7 @@ pub fn walk_enum_def<V: MutVisitor>(visitor: &mut V,
                                  enum_definition: &mut EnumDef,
                                  generics: &mut Generics,
                                  item_id: NodeId) {
-    walk_list!(visitor, visit_variant, &mut enum_definition.variants, generics, item_id);
+    walk_list_mut!(visitor, visit_variant, &mut enum_definition.variants, generics, item_id);
 }
 
 pub fn walk_variant<V>(visitor: &mut V,
@@ -461,6 +509,12 @@ pub fn walk_assoc_type_binding<V: MutVisitor>(visitor: &mut V,
     visitor.visit_ty(&mut type_binding.ty);
 }
 
+pub fn walk_field_pat<V: MutVisitor>(visitor: &mut V, field: &mut Spanned<FieldPat>) {
+    walk_list!(visitor, visit_attribute, field.node.attrs.iter_mut());
+    visitor.visit_ident(field.node.ident);
+    visitor.visit_pat(&mut field.node.pat)
+}
+
 pub fn walk_pat<V: MutVisitor>(visitor: &mut V, pattern: &mut Pat) {
     match pattern.node {
         PatKind::TupleStruct(ref mut path, ref mut children, _) => {
@@ -475,11 +529,7 @@ pub fn walk_pat<V: MutVisitor>(visitor: &mut V, pattern: &mut Pat) {
         }
         PatKind::Struct(ref mut path, ref mut fields, _) => {
             visitor.visit_path(path, pattern.id);
-            for field in fields {
-                walk_list!(visitor, visit_attribute, field.node.attrs.iter_mut());
-                visitor.visit_ident(field.node.ident);
-                visitor.visit_pat(&mut field.node.pat)
-            }
+            walk_list_mut!(visitor, visit_field_pat, fields);
         }
         PatKind::Tuple(ref mut tuple_elements, _) => {
             walk_list!(visitor, visit_pat, tuple_elements);
@@ -667,8 +717,14 @@ pub fn walk_impl_item<V: MutVisitor>(visitor: &mut V, impl_item: &mut ImplItem) 
     }
 }
 
-pub fn walk_struct_def<V: MutVisitor>(visitor: &mut V, struct_definition: &mut VariantData) {
-    walk_list!(visitor, visit_struct_field, struct_definition.fields_mut());
+pub fn walk_variant_data<V: MutVisitor>(visitor: &mut V, variant_data: &mut VariantData) {
+    match *variant_data {
+        VariantData::Struct(ref mut fields, _) |
+        VariantData::Tuple(ref mut fields, _) => {
+            walk_list_mut!(visitor, visit_struct_field, fields);
+        }
+        VariantData::Unit(_) => {}
+    }
 }
 
 pub fn walk_struct_field<V: MutVisitor>(visitor: &mut V, struct_field: &mut StructField) {
@@ -700,8 +756,11 @@ pub fn walk_stmt<V: MutVisitor>(visitor: &mut V, statement: &mut Stmt) -> Action
             })
         },
         StmtKind::Expr(ref mut expression) | StmtKind::Semi(ref mut expression) => {
-            visitor.visit_expr(expression);
-            Action::Reuse
+            if visitor.visit_opt_expr(expression) {
+                Action::Reuse
+            } else {
+                Action::Remove
+            }
         }
         StmtKind::Mac(ref mut mac) => {
             let (ref mut mac, _, ref mut attrs) = **mac;
@@ -720,6 +779,12 @@ pub fn walk_mac<V: MutVisitor>(_: &mut V, _: &Mac) {
 
 pub fn walk_anon_const<V: MutVisitor>(visitor: &mut V, constant: &mut AnonConst) {
     visitor.visit_expr(&mut constant.value);
+}
+
+pub fn walk_field<V: MutVisitor>(visitor: &mut V, field: &mut Field) {
+    walk_list!(visitor, visit_attribute, field.attrs.iter_mut());
+    visitor.visit_ident(field.ident);
+    visitor.visit_expr(&mut field.expr)
 }
 
 pub fn walk_expr<V: MutVisitor>(visitor: &mut V, expression: &mut Expr) {
@@ -743,11 +808,7 @@ pub fn walk_expr<V: MutVisitor>(visitor: &mut V, expression: &mut Expr) {
         }
         ExprKind::Struct(ref mut path, ref mut fields, ref mut optional_base) => {
             visitor.visit_path(path, expression.id);
-            for field in fields {
-                walk_list!(visitor, visit_attribute, field.attrs.iter_mut());
-                visitor.visit_ident(field.ident);
-                visitor.visit_expr(&mut field.expr)
-            }
+            walk_list_mut!(visitor, visit_field, fields);
             walk_list!(visitor, visit_expr, optional_base);
         }
         ExprKind::Tup(ref mut subexpressions) => {
@@ -823,7 +884,7 @@ pub fn walk_expr<V: MutVisitor>(visitor: &mut V, expression: &mut Expr) {
         }
         ExprKind::Match(ref mut subexpression, ref mut arms) => {
             visitor.visit_expr(subexpression);
-            walk_list!(visitor, visit_arm, arms);
+            walk_list_mut!(visitor, visit_arm, arms);
         }
         ExprKind::Closure(_, _, _, ref mut function_declaration, ref mut body, _decl_span) => {
             visitor.visit_fn(FnKind::Closure(body),
@@ -897,8 +958,6 @@ pub fn walk_expr<V: MutVisitor>(visitor: &mut V, expression: &mut Expr) {
         }
         ExprKind::Err => {}
     }
-
-    visitor.visit_expr_post(expression)
 }
 
 pub fn walk_arm<V: MutVisitor>(visitor: &mut V, arm: &mut Arm) {

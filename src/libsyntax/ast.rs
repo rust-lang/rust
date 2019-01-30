@@ -2114,13 +2114,6 @@ impl VariantData {
             _ => &[],
         }
     }
-    pub fn fields_mut(&mut self) -> &mut [StructField] {
-        match *self {
-            VariantData::Struct(ref mut fields, _) |
-            VariantData::Tuple(ref mut fields, _) => fields,
-            _ => &mut [],
-        }
-    }
     pub fn id(&self) -> NodeId {
         match *self {
             VariantData::Struct(_, id) | VariantData::Tuple(_, id) | VariantData::Unit(id) => id,

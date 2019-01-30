@@ -22,6 +22,7 @@ use syntax_pos::{Span, DUMMY_SP, FileName};
 use syntax_pos::hygiene::ExpnFormat;
 use tokenstream::{TokenStream, TokenTree};
 use visit::{self, Visitor};
+use visit_mut::MutVisitor;
 
 use rustc_data_structures::fx::FxHashMap;
 use std::fs;
@@ -474,27 +475,31 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
             features: self.cx.ecfg.features,
         };
         // Since the item itself has already been configured by the InvocationCollector,
-        // we know that fold result vector will contain exactly one element
+        // we know that visit action will reuse the item
         match item {
-            Annotatable::Item(item) => {
-                Annotatable::Item(cfg.fold_item(item).pop().unwrap())
+            Annotatable::Item(mut item) => {
+                cfg.visit_item(&mut item).assert_reuse();
+                Annotatable::Item(item)
             }
-            Annotatable::TraitItem(item) => {
-                Annotatable::TraitItem(item.map(|item| cfg.fold_trait_item(item).pop().unwrap()))
+            Annotatable::TraitItem(mut item) => {
+                cfg.visit_trait_item(&mut item).assert_reuse();
+                Annotatable::TraitItem(item)
             }
-            Annotatable::ImplItem(item) => {
-                Annotatable::ImplItem(item.map(|item| cfg.fold_impl_item(item).pop().unwrap()))
+            Annotatable::ImplItem(mut item) => {
+                cfg.visit_impl_item(&mut item).assert_reuse();
+                Annotatable::ImplItem(item)
             }
-            Annotatable::ForeignItem(item) => {
-                Annotatable::ForeignItem(
-                    item.map(|item| cfg.fold_foreign_item(item).pop().unwrap())
-                )
+            Annotatable::ForeignItem(mut item) => {
+                cfg.visit_foreign_item(&mut item).assert_reuse();
+                Annotatable::ForeignItem(item)
             }
-            Annotatable::Stmt(stmt) => {
-                Annotatable::Stmt(stmt.map(|stmt| cfg.fold_stmt(stmt).pop().unwrap()))
+            Annotatable::Stmt(mut stmt) => {
+                cfg.visit_stmt(&mut stmt).assert_reuse();
+                Annotatable::Stmt(stmt)
             }
-            Annotatable::Expr(expr) => {
-                Annotatable::Expr(cfg.fold_expr(expr))
+            Annotatable::Expr(mut expr) => {
+                cfg.visit_expr(&mut expr);
+                Annotatable::Expr(expr)
             }
         }
     }
@@ -1175,8 +1180,8 @@ impl<'a, 'b> InvocationCollector<'a, 'b> {
 }
 
 impl<'a, 'b> Folder for InvocationCollector<'a, 'b> {
-    fn fold_expr(&mut self, expr: P<ast::Expr>) -> P<ast::Expr> {
-        let expr = self.cfg.configure_expr(expr);
+    fn fold_expr(&mut self, mut expr: P<ast::Expr>) -> P<ast::Expr> {
+        self.cfg.configure_expr(&mut expr);
         expr.map(|mut expr| {
             expr.node = self.cfg.configure_expr_kind(expr.node);
 

@@ -8,6 +8,14 @@ impl<T> ThinVec<T> {
     pub fn new() -> Self {
         ThinVec(None)
     }
+
+    #[inline]
+    pub fn as_vec(&mut self) -> Option<&mut Vec<T>> {
+        match *self {
+            ThinVec(None) => None,
+            ThinVec(Some(ref mut vec)) => Some(vec),
+        }
+    }
 }
 
 impl<T> From<Vec<T>> for ThinVec<T> {

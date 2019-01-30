@@ -695,11 +695,17 @@ impl LitKind {
 
 pub trait HasAttrs: Sized {
     fn attrs(&self) -> &[ast::Attribute];
+    fn attrs_mut(&mut self) -> Option<&mut Vec<ast::Attribute>>;
     fn map_attrs<F: FnOnce(Vec<ast::Attribute>) -> Vec<ast::Attribute>>(self, f: F) -> Self;
 }
 
 impl<T: HasAttrs> HasAttrs for Spanned<T> {
-    fn attrs(&self) -> &[ast::Attribute] { self.node.attrs() }
+    fn attrs(&self) -> &[ast::Attribute] {
+        self.node.attrs()
+    }
+    fn attrs_mut(&mut self) -> Option<&mut Vec<ast::Attribute>> {
+        self.node.attrs_mut()
+    }
     fn map_attrs<F: FnOnce(Vec<ast::Attribute>) -> Vec<ast::Attribute>>(self, f: F) -> Self {
         respan(self.span, self.node.map_attrs(f))
     }
@@ -708,6 +714,9 @@ impl<T: HasAttrs> HasAttrs for Spanned<T> {
 impl HasAttrs for Vec<Attribute> {
     fn attrs(&self) -> &[Attribute] {
         self
+    }
+    fn attrs_mut(&mut self) -> Option<&mut Vec<ast::Attribute>> {
+        Some(self)
     }
     fn map_attrs<F: FnOnce(Vec<Attribute>) -> Vec<Attribute>>(self, f: F) -> Self {
         f(self)
@@ -718,6 +727,9 @@ impl HasAttrs for ThinVec<Attribute> {
     fn attrs(&self) -> &[Attribute] {
         self
     }
+    fn attrs_mut(&mut self) -> Option<&mut Vec<ast::Attribute>> {
+        self.as_vec()
+    }
     fn map_attrs<F: FnOnce(Vec<Attribute>) -> Vec<Attribute>>(self, f: F) -> Self {
         f(self.into()).into()
     }
@@ -726,6 +738,9 @@ impl HasAttrs for ThinVec<Attribute> {
 impl<T: HasAttrs + 'static> HasAttrs for P<T> {
     fn attrs(&self) -> &[Attribute] {
         (**self).attrs()
+    }
+    fn attrs_mut(&mut self) -> Option<&mut Vec<ast::Attribute>> {
+        (**self).attrs_mut()
     }
     fn map_attrs<F: FnOnce(Vec<Attribute>) -> Vec<Attribute>>(self, f: F) -> Self {
         self.map(|t| t.map_attrs(f))
@@ -745,6 +760,18 @@ impl HasAttrs for StmtKind {
         }
     }
 
+    fn attrs_mut(&mut self) -> Option<&mut Vec<ast::Attribute>> {
+        match *self {
+            StmtKind::Local(ref mut local) => local.attrs_mut(),
+            StmtKind::Item(..) => None,
+            StmtKind::Expr(ref mut expr) | StmtKind::Semi(ref mut expr) => expr.attrs_mut(),
+            StmtKind::Mac(ref mut mac) => {
+                let (_, _, ref mut attrs) = **mac;
+                attrs.attrs_mut()
+            }
+        }
+    }
+
     fn map_attrs<F: FnOnce(Vec<Attribute>) -> Vec<Attribute>>(self, f: F) -> Self {
         match self {
             StmtKind::Local(local) => StmtKind::Local(local.map_attrs(f)),
@@ -760,6 +787,9 @@ impl HasAttrs for StmtKind {
 
 impl HasAttrs for Stmt {
     fn attrs(&self) -> &[ast::Attribute] { self.node.attrs() }
+    fn attrs_mut(&mut self) -> Option<&mut Vec<ast::Attribute>> {
+        self.node.attrs_mut()
+    }
     fn map_attrs<F: FnOnce(Vec<ast::Attribute>) -> Vec<ast::Attribute>>(self, f: F) -> Self {
         Stmt { id: self.id, node: self.node.map_attrs(f), span: self.span }
     }
@@ -768,6 +798,10 @@ impl HasAttrs for Stmt {
 impl HasAttrs for GenericParam {
     fn attrs(&self) -> &[ast::Attribute] {
         &self.attrs
+    }
+
+    fn attrs_mut(&mut self) -> Option<&mut Vec<ast::Attribute>> {
+        self.attrs.attrs_mut()
     }
 
     fn map_attrs<F: FnOnce(Vec<Attribute>) -> Vec<Attribute>>(mut self, f: F) -> Self {
@@ -781,6 +815,10 @@ macro_rules! derive_has_attrs {
         impl HasAttrs for $ty {
             fn attrs(&self) -> &[Attribute] {
                 &self.attrs
+            }
+
+            fn attrs_mut(&mut self) -> Option<&mut Vec<ast::Attribute>> {
+                self.attrs.attrs_mut()
             }
 
             fn map_attrs<F>(mut self, f: F) -> Self
