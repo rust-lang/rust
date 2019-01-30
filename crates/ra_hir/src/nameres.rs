@@ -16,7 +16,7 @@
 //! structure itself is modified.
 pub(crate) mod lower;
 
-use std::sync::Arc;
+use std::{time, sync::Arc};
 
 use ra_db::CrateId;
 use ra_arena::map::ArenaMap;
@@ -156,7 +156,7 @@ impl<T> PerNs<T> {
     }
 }
 
-pub(crate) struct Resolver<'a, DB> {
+struct Resolver<'a, DB> {
     db: &'a DB,
     input: &'a FxHashMap<ModuleId, Arc<LoweredModule>>,
     krate: CrateId,
@@ -169,7 +169,7 @@ impl<'a, DB> Resolver<'a, DB>
 where
     DB: HirDatabase,
 {
-    pub(crate) fn new(
+    fn new(
         db: &'a DB,
         input: &'a FxHashMap<ModuleId, Arc<LoweredModule>>,
         krate: CrateId,
@@ -331,6 +331,29 @@ enum ReachedFixedPoint {
 }
 
 impl ItemMap {
+    pub(crate) fn item_map_query(db: &impl HirDatabase, crate_id: CrateId) -> Arc<ItemMap> {
+        let start = time::Instant::now();
+        let module_tree = db.module_tree(crate_id);
+        let input = module_tree
+            .modules()
+            .map(|module_id| {
+                (
+                    module_id,
+                    db.lower_module_module(Module {
+                        krate: crate_id,
+                        module_id,
+                    }),
+                )
+            })
+            .collect::<FxHashMap<_, _>>();
+
+        let resolver = Resolver::new(db, &input, crate_id);
+        let res = resolver.resolve();
+        let elapsed = start.elapsed();
+        log::info!("item_map: {:?}", elapsed);
+        Arc::new(res)
+    }
+
     pub(crate) fn resolve_path(
         &self,
         db: &impl HirDatabase,

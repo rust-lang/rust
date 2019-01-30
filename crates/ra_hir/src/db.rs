@@ -67,7 +67,7 @@ pub trait HirDatabase: SourceDatabase + AsRef<HirInterner> {
     #[salsa::invoke(crate::nameres::lower::LoweredModule::lower_module_source_map_query)]
     fn lower_module_source_map(&self, module: Module) -> Arc<ImportSourceMap>;
 
-    #[salsa::invoke(query_definitions::item_map)]
+    #[salsa::invoke(crate::nameres::ItemMap::item_map_query)]
     fn item_map(&self, crate_id: CrateId) -> Arc<ItemMap>;
 
     #[salsa::invoke(crate::module_tree::ModuleTree::module_tree_query)]
