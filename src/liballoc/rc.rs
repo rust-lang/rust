@@ -433,6 +433,27 @@ impl<T: ?Sized> Rc<T> {
         }
     }
 
+    /// Consumes the `Rc`, returning the wrapped pointer as `NonNull<T>`.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(rc_into_raw_non_null)]
+    ///
+    /// use std::rc::Rc;
+    ///
+    /// let x = Rc::new(10);
+    /// let ptr = Rc::into_raw_non_null(x);
+    /// let deref = unsafe { *ptr.as_ref() };
+    /// assert_eq!(deref, 10);
+    /// ```
+    #[unstable(feature = "rc_into_raw_non_null", issue = "47336")]
+    #[inline]
+    pub fn into_raw_non_null(this: Self) -> NonNull<T> {
+        // safe because Rc guarantees its pointer is non-null
+        unsafe { NonNull::new_unchecked(Rc::into_raw(this) as *mut _) }
+    }
+
     /// Creates a new [`Weak`][weak] pointer to this value.
     ///
     /// [weak]: struct.Weak.html
