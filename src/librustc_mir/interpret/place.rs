@@ -624,7 +624,7 @@ where
                     // their layout on return.
                     PlaceTy {
                         place: *return_place,
-                        layout: self.layout_of_local(self.frame(), mir::RETURN_PLACE)?,
+                        layout: self.layout_of(self.monomorphize(self.frame().mir.return_ty())?)?,
                     },
                 None => return err!(InvalidNullPointerUsage),
             },
@@ -633,7 +633,7 @@ where
                     frame: self.cur_frame(),
                     local,
                 },
-                layout: self.layout_of_local(self.frame(), local)?,
+                layout: self.layout_of_local(self.frame(), local, None)?,
             },
 
             Projection(ref proj) => {
@@ -901,7 +901,7 @@ where
                         // We need the layout of the local.  We can NOT use the layout we got,
                         // that might e.g., be an inner field of a struct with `Scalar` layout,
                         // that has different alignment than the outer field.
-                        let local_layout = self.layout_of_local(&self.stack[frame], local)?;
+                        let local_layout = self.layout_of_local(&self.stack[frame], local, None)?;
                         let ptr = self.allocate(local_layout, MemoryKind::Stack);
                         // We don't have to validate as we can assume the local
                         // was already valid for its type.

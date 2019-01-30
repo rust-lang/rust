@@ -76,8 +76,7 @@ pub struct Frame<'mir, 'tcx: 'mir, Tag=(), Extra=()> {
     /// The locals are stored as `Option<Value>`s.
     /// `None` represents a local that is currently dead, while a live local
     /// can either directly contain `Scalar` or refer to some part of an `Allocation`.
-    pub locals: IndexVec<mir::Local, LocalValue<Tag>>,
-    pub local_layouts: IndexVec<mir::Local, Cell<Option<TyLayout<'tcx>>>>,
+    pub locals: IndexVec<mir::Local, LocalState<'tcx, Tag>>,
 
     ////////////////////////////////////////////////////////////////////////////////
     // Current position within the function
@@ -106,7 +105,15 @@ pub enum StackPopCleanup {
     None { cleanup: bool },
 }
 
-// State of a local variable
+/// State of a local variable including a memoized layout
+#[derive(Clone, PartialEq, Eq)]
+pub struct LocalState<'tcx, Tag=(), Id=AllocId> {
+    pub state: LocalValue<Tag, Id>,
+    /// Don't modify if `Some`, this is only used to prevent computing the layout twice
+    pub layout: Cell<Option<TyLayout<'tcx>>>,
+}
+
+/// State of a local variable
 #[derive(Copy, Clone, PartialEq, Eq, Hash)]
 pub enum LocalValue<Tag=(), Id=AllocId> {
     Dead,
@@ -117,16 +124,16 @@ pub enum LocalValue<Tag=(), Id=AllocId> {
     Live(Operand<Tag, Id>),
 }
 
-impl<'tcx, Tag> LocalValue<Tag> {
+impl<'tcx, Tag> LocalState<'tcx, Tag> {
     pub fn access(&self) -> EvalResult<'tcx, &Operand<Tag>> {
-        match self {
+        match self.state {
             LocalValue::Dead => err!(DeadLocal),
             LocalValue::Live(ref val) => Ok(val),
         }
     }
 
     pub fn access_mut(&mut self) -> EvalResult<'tcx, &mut Operand<Tag>> {
-        match self {
+        match self.state {
             LocalValue::Dead => err!(DeadLocal),
             LocalValue::Live(ref mut val) => Ok(val),
         }
@@ -310,17 +317,21 @@ impl<'a, 'mir, 'tcx: 'mir, M: Machine<'a, 'mir, 'tcx>> EvalContext<'a, 'mir, 'tc
     pub fn layout_of_local(
         &self,
         frame: &Frame<'mir, 'tcx, M::PointerTag, M::FrameExtra>,
-        local: mir::Local
+        local: mir::Local,
+        layout: Option<TyLayout<'tcx>>,
     ) -> EvalResult<'tcx, TyLayout<'tcx>> {
-        let cell = &frame.local_layouts[local];
-        if cell.get().is_none() {
-            let local_ty = frame.mir.local_decls[local].ty;
-            let local_ty = self.monomorphize_with_substs(local_ty, frame.instance.substs);
-            let layout = self.layout_of(local_ty)?;
-            cell.set(Some(layout));
+        match frame.locals[local].layout.get() {
+            None => {
+                let layout = ::interpret::operand::from_known_layout(layout, || {
+                    let local_ty = frame.mir.local_decls[local].ty;
+                    let local_ty = self.monomorphize_with_substs(local_ty, frame.instance.substs);
+                    self.layout_of(local_ty)
+                })?;
+                frame.locals[local].layout.set(Some(layout));
+                Ok(layout)
+            }
+            Some(layout) => Ok(layout),
         }
-
-        Ok(cell.get().unwrap())
     }
 
     pub fn str_to_immediate(&mut self, s: &str) -> EvalResult<'tcx, Immediate<M::PointerTag>> {
@@ -454,7 +465,6 @@ impl<'a, 'mir, 'tcx: 'mir, M: Machine<'a, 'mir, 'tcx>> EvalContext<'a, 'mir, 'tc
             // empty local array, we fill it in below, after we are inside the stack frame and
             // all methods actually know about the frame
             locals: IndexVec::new(),
-            local_layouts: IndexVec::from_elem_n(Default::default(), mir.local_decls.len()),
             span,
             instance,
             stmt: 0,
@@ -466,12 +476,16 @@ impl<'a, 'mir, 'tcx: 'mir, M: Machine<'a, 'mir, 'tcx>> EvalContext<'a, 'mir, 'tc
             // We put some marker immediate into the locals that we later want to initialize.
             // This can be anything except for LocalValue::Dead -- because *that* is the
             // value we use for things that we know are initially dead.
-            let dummy =
-                LocalValue::Live(Operand::Immediate(Immediate::Scalar(ScalarMaybeUndef::Undef)));
+            let dummy = LocalState {
+                state: LocalValue::Live(Operand::Immediate(Immediate::Scalar(
+                    ScalarMaybeUndef::Undef,
+                ))),
+                layout: Cell::new(None),
+            };
             let mut locals = IndexVec::from_elem(dummy, &mir.local_decls);
             // Return place is handled specially by the `eval_place` functions, and the
             // entry in `locals` should never be used. Make it dead, to be sure.
-            locals[mir::RETURN_PLACE] = LocalValue::Dead;
+            locals[mir::RETURN_PLACE].state = LocalValue::Dead;
             // Now mark those locals as dead that we do not want to initialize
             match self.tcx.describe_def(instance.def_id()) {
                 // statics and constants don't have `Storage*` statements, no need to look for them
@@ -484,7 +498,7 @@ impl<'a, 'mir, 'tcx: 'mir, M: Machine<'a, 'mir, 'tcx>> EvalContext<'a, 'mir, 'tc
                             match stmt.kind {
                                 StorageLive(local) |
                                 StorageDead(local) => {
-                                    locals[local] = LocalValue::Dead;
+                                    locals[local].state = LocalValue::Dead;
                                 }
                                 _ => {}
                             }
@@ -494,11 +508,13 @@ impl<'a, 'mir, 'tcx: 'mir, M: Machine<'a, 'mir, 'tcx>> EvalContext<'a, 'mir, 'tc
             }
             // Finally, properly initialize all those that still have the dummy value
             for (idx, local) in locals.iter_enumerated_mut() {
-                match *local {
+                match local.state {
                     LocalValue::Live(_) => {
-                        // This needs to be peoperly initialized.
-                        let layout = self.layout_of_local(self.frame(), idx)?;
-                        *local = LocalValue::Live(self.uninit_operand(layout)?);
+                        // This needs to be properly initialized.
+                        let ty = self.monomorphize(mir.local_decls[idx].ty)?;
+                        let layout = self.layout_of(ty)?;
+                        local.state = LocalValue::Live(self.uninit_operand(layout)?);
+                        local.layout = Cell::new(Some(layout));
                     }
                     LocalValue::Dead => {
                         // Nothing to do
@@ -543,7 +559,7 @@ impl<'a, 'mir, 'tcx: 'mir, M: Machine<'a, 'mir, 'tcx>> EvalContext<'a, 'mir, 'tc
         }
         // Deallocate all locals that are backed by an allocation.
         for local in frame.locals {
-            self.deallocate_local(local)?;
+            self.deallocate_local(local.state)?;
         }
         // Validate the return value. Do this after deallocating so that we catch dangling
         // references.
@@ -591,10 +607,10 @@ impl<'a, 'mir, 'tcx: 'mir, M: Machine<'a, 'mir, 'tcx>> EvalContext<'a, 'mir, 'tc
         assert!(local != mir::RETURN_PLACE, "Cannot make return place live");
         trace!("{:?} is now live", local);
 
-        let layout = self.layout_of_local(self.frame(), local)?;
+        let layout = self.layout_of_local(self.frame(), local, None)?;
         let init = LocalValue::Live(self.uninit_operand(layout)?);
         // StorageLive *always* kills the value that's currently stored
-        Ok(mem::replace(&mut self.frame_mut().locals[local], init))
+        Ok(mem::replace(&mut self.frame_mut().locals[local].state, init))
     }
 
     /// Returns the old value of the local.
@@ -603,7 +619,7 @@ impl<'a, 'mir, 'tcx: 'mir, M: Machine<'a, 'mir, 'tcx>> EvalContext<'a, 'mir, 'tc
         assert!(local != mir::RETURN_PLACE, "Cannot make return place dead");
         trace!("{:?} is now dead", local);
 
-        mem::replace(&mut self.frame_mut().locals[local], LocalValue::Dead)
+        mem::replace(&mut self.frame_mut().locals[local].state, LocalValue::Dead)
     }
 
     pub(super) fn deallocate_local(
