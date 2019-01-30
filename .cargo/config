@@ -5,6 +5,8 @@ gen-syntax   = "run --package tools --bin tools -- gen-syntax"
 gen-tests    = "run --package tools --bin tools -- gen-tests"
 # Installs ra_lsp_server
 install-lsp = "install --path crates/ra_lsp_server --force"
+# Installs ra_lsp_server with the jemalloc feature
+jinstall-lsp = "install --path crates/ra_lsp_server --force --features jemalloc"
 # Installs the visual studio code extension
 install-code = "run --package tools --bin tools -- install-code"
 # Formats the full repository or installs the git hook to do it automatically.

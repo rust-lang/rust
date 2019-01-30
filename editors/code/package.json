@@ -44,7 +44,9 @@
         "vscode": "^1.1.26"
     },
     "activationEvents": [
-        "onLanguage:rust"
+        "onLanguage:rust",
+        "onCommand:rust-analyzer.analyzerStatus",
+        "onCommand:rust-analyzer.collectGarbage"
     ],
     "main": "./out/extension",
     "contributes": {
@@ -73,35 +75,43 @@
         "commands": [
             {
                 "command": "rust-analyzer.syntaxTree",
-                "title": "rust-analyzer: syntax tree"
+                "title": "Show syntax tree for current file",
+                "category": "Rust Analyzer"
             },
             {
                 "command": "rust-analyzer.extendSelection",
-                "title": "rust-analyzer: extend selection"
+                "title": "Extend selection",
+                "category": "Rust Analyzer"
             },
             {
                 "command": "rust-analyzer.matchingBrace",
-                "title": "rust-analyzer: matching brace"
+                "title": "Find matching brace",
+                "category": "Rust Analyzer"
             },
             {
                 "command": "rust-analyzer.parentModule",
-                "title": "rust-analyzer: parent module"
+                "title": "Locate parent module",
+                "category": "Rust Analyzer"
             },
             {
                 "command": "rust-analyzer.joinLines",
-                "title": "rust-analyzer: join lines"
+                "title": "Join lines",
+                "category": "Rust Analyzer"
             },
             {
                 "command": "rust-analyzer.run",
-                "title": "rust-analyzer: run"
+                "title": "Run",
+                "category": "Rust Analyzer"
             },
             {
                 "command": "rust-analyzer.analyzerStatus",
-                "title": "rust-analyzer: status"
+                "title": "Status",
+                "category": "Rust Analyzer"
             },
             {
                 "command": "rust-analyzer.collectGarbage",
-                "title": "rust-analyzer: run gc"
+                "title": "Run garbage collection",
+                "category": "Rust Analyzer"
             }
         ],
         "keybindings": [

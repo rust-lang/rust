@@ -178,7 +178,7 @@ VS Code plugin
 
 To try out VS Code extensions, run `cargo install-code`.  This installs both the
 `ra_lsp_server` binary and the VS Code extension. To install only the binary, use
-`cargo install --path crates/ra_lsp_server --force`
+`cargo install-lsp` (shorthand for `cargo install --path crates/ra_lsp_server --force`)
 
 To see logs from the language server, set `RUST_LOG=info` env variable. To see
 all communication between the server and the client, use
@@ -186,12 +186,12 @@ all communication between the server and the client, use
 
 There's `rust-analyzer: status` command which prints common high-level debug
 info. In particular, it prints info about memory usage of various data
-structures, and, if compiled with jemalloc support (`cargo install --features
-jemalloc`), the summary statistic about the heap.
+structures, and, if compiled with jemalloc support (`cargo jinstall-lsp` or 
+`cargo install --path crates/ra_lsp_server --force --features jemalloc`), includes
+ statistic about the heap.
 
 To run tests, just `cargo test`.
 
 To work on the VS Code extension, launch code inside `editors/code` and use `F5` to
 launch/debug. To automatically apply formatter and linter suggestions, use `npm
 run fix`.
-
