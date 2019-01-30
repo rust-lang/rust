@@ -1,6 +1,6 @@
 [package]
 name = "core_arch"
-version = "0.1.2"
+version = "0.1.3"
 authors = [
     "Alex Crichton <alex@alexcrichton.com>",
     "Andrew Gallant <jamslam@gmail.com>",
@@ -34,4 +34,4 @@ wasm-bindgen-test = "=0.2.19"
 strict = []
 
 [package.metadata.docs.rs]
-rustdoc-args = [ "--cfg dox" ]
+rustdoc-args = [ "--cfg", "dox" ]
