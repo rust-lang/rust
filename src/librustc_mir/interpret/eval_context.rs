@@ -317,13 +317,16 @@ impl<'a, 'mir, 'tcx: 'mir, M: Machine<'a, 'mir, 'tcx>> EvalContext<'a, 'mir, 'tc
     pub fn layout_of_local(
         &self,
         frame: &Frame<'mir, 'tcx, M::PointerTag, M::FrameExtra>,
-        local: mir::Local
+        local: mir::Local,
+        layout: Option<TyLayout<'tcx>>,
     ) -> EvalResult<'tcx, TyLayout<'tcx>> {
         let cell = &frame.locals[local].layout;
         if cell.get().is_none() {
+            let layout = ::interpret::operand::from_known_layout(layout, || {
             let local_ty = frame.mir.local_decls[local].ty;
             let local_ty = self.monomorphize_with_substs(local_ty, frame.instance.substs);
-            let layout = self.layout_of(local_ty)?;
+                self.layout_of(local_ty)
+            })?;
             cell.set(Some(layout));
         }
 
@@ -507,7 +510,7 @@ impl<'a, 'mir, 'tcx: 'mir, M: Machine<'a, 'mir, 'tcx>> EvalContext<'a, 'mir, 'tc
                 match local.state {
                     LocalState::Live(_) => {
                         // This needs to be peoperly initialized.
-                        let layout = self.layout_of_local(self.frame(), idx)?;
+                        let layout = self.layout_of_local(self.frame(), idx, None)?;
                         local.state = LocalState::Live(self.uninit_operand(layout)?);
                     }
                     LocalState::Dead => {
@@ -601,7 +604,7 @@ impl<'a, 'mir, 'tcx: 'mir, M: Machine<'a, 'mir, 'tcx>> EvalContext<'a, 'mir, 'tc
         assert!(local != mir::RETURN_PLACE, "Cannot make return place live");
         trace!("{:?} is now live", local);
 
-        let layout = self.layout_of_local(self.frame(), local)?;
+        let layout = self.layout_of_local(self.frame(), local, None)?;
         let init = LocalState::Live(self.uninit_operand(layout)?);
         // StorageLive *always* kills the value that's currently stored
         Ok(mem::replace(&mut self.frame_mut().locals[local].state, init))
