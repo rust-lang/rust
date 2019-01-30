@@ -6,7 +6,7 @@ authors = [
     "Andrew Gallant <jamslam@gmail.com>",
     "Gonzalo Brito Gadeschi <gonzalobg88@gmail.com>",
 ]
-description = "Architecture-specific module of Rust's core library."
+description = "`core::arch` - Rust's core library architecture-specific intrinsics."
 documentation = "https://docs.rs/core_arch"
 homepage = "https://github.com/rust-lang-nursery/stdsimd"
 repository = "https://github.com/rust-lang-nursery/stdsimd"
@@ -24,7 +24,7 @@ maintenance = { status = "experimental" }
 
 [dev-dependencies]
 stdsimd-test = { version = "0.*", path = "../stdsimd-test" }
-std_detect = { version = "0.1.1", path = "../std_detect" }
+std_detect = { version = "0.*", path = "../std_detect" }
 
 [target.wasm32-unknown-unknown.dev-dependencies]
 wasm-bindgen-test = "=0.2.19"

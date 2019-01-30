@@ -5,10 +5,12 @@ stdsimd - Rust's standard library SIMD components
 
 # Crates
 
-View the README's of:
+This repository contains two main crates:
 
-* [`core_arch`](crates/core_arch/README.md)
-* [`std_detect`](crates/std_detect/README.md)
+* [`core_arch`](crates/core_arch/README.md) implements `core::arch` - Rust's
+  core library architecture-specific intrinsics, and
+* [`std_detect`](crates/std_detect/README.md) implements `std::detect` - Rust's
+  standard library run-time CPU feature detection.
 
 The `std::simd` component now lives in the
 [`packed_simd`](https://github.com/rust-lang-nursery/packed_simd) crate.
@@ -17,6 +19,7 @@ The `std::simd` component now lives in the
 
 To do a release of the `core_arch` and `std_detect` crates, 
 
+* bump up the version appropriately,
 * comment out the `dev-dependencies` in their `Cargo.toml` files (due to
   https://github.com/rust-lang/cargo/issues/4242),
 * publish the crates.

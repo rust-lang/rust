@@ -1,4 +1,4 @@
-`std_detect` - Rust's standard library `std::detect` module
+`std::detect` - Rust's standard library run-time CPU feature detection
 =======
 
 [![Travis-CI Status]][travis] [![Appveyor Status]][appveyor] [![Latest Version]][crates.io] [![docs]][docs.rs]
@@ -59,8 +59,8 @@ Unless you explicitly state otherwise, any contribution intentionally submitted
 for inclusion in `std_detect` by you, as defined in the Apache-2.0 license,
 shall be dual licensed as above, without any additional terms or conditions.
 
-[travis]: https://travis-ci.org/rust-lang-nursery/stdsimd
-[Travis-CI Status]: https://travis-ci.org/rust-lang-nursery/stdsimd.svg?branch=master
+[travis]: https://travis-ci.com/rust-lang-nursery/stdsimd
+[Travis-CI Status]: https://travis-ci.com/rust-lang-nursery/stdsimd.svg?branch=master
 [appveyor]: https://ci.appveyor.com/project/rust-lang-libs/stdsimd/branch/master
 [Appveyor Status]: https://ci.appveyor.com/api/projects/status/ix74qhmilpibn00x/branch/master?svg=true
 [Latest Version]: https://img.shields.io/crates/v/std_detect.svg
