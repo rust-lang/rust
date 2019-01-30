@@ -53,7 +53,7 @@ For example, in the following code:
 ```rust
 /// Does the thing.
 pub fn do_the_thing(_: SomeType) {
-	println!("Let's do the thing!");
+    println!("Let's do the thing!");
 }
 
 /// Token you use to [`do_the_thing`].
@@ -66,15 +66,15 @@ target out also works:
 
 ```rust
 pub mod some_module {
-	/// Token you use to do the thing.
-	pub struct SomeStruct;
+    /// Token you use to do the thing.
+    pub struct SomeStruct;
 }
 
 /// Does the thing. Requires one [`SomeStruct`] for the thing to work.
 ///
 /// [`SomeStruct`]: some_module::SomeStruct
 pub fn do_the_thing(_: some_module::SomeStruct) {
-	println!("Let's do the thing!");
+    println!("Let's do the thing!");
 }
 ```
 
