@@ -362,7 +362,8 @@ impl<'a, 'tcx, Ctx> Snapshot<'a, Ctx> for &'a LocalState<'tcx>
     type Item = LocalValue<(), AllocIdSnapshot<'a>>;
 
     fn snapshot(&self, ctx: &'a Ctx) -> Self::Item {
-        self.state.snapshot(ctx)
+        let LocalState { state, layout: _ } = self;
+        state.snapshot(ctx)
     }
 }
 
