@@ -20,7 +20,7 @@ pub fn target() -> TargetResult {
             // https://gcc.gnu.org/bugzilla/show_bug.cgi?id=86005
             max_atomic_width: None, //Some(32),
             atomic_cas: false,
-            features: "+m,+c".to_string(),
+            features: "+m,+a,+f,+d,+c".to_string(),
             executables: true,
             panic_strategy: PanicStrategy::Abort,
             relocation_model: "static".to_string(),
