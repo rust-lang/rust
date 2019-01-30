@@ -317,8 +317,7 @@ fn invoke_rustdoc(builder: &Builder, compiler: Compiler, target: Interned<String
         .arg("-o").arg(&out)
         .arg(&path)
         .arg("--markdown-css")
-        .arg("../rust.css")
-        .arg("--generate-redirect-pages");
+        .arg("../rust.css");
 
     builder.run(&mut cmd);
 }
@@ -557,7 +556,9 @@ impl Step for Test {
         let mut cargo = builder.cargo(compiler, Mode::Test, target, "doc");
         compile::test_cargo(builder, &compiler, target, &mut cargo);
 
-        cargo.arg("--no-deps").arg("-p").arg("test");
+        cargo.arg("--no-deps")
+             .arg("-p").arg("test")
+             .env("RUSTDOC_GENERATE_REDIRECT_PAGES", "1");
 
         builder.run(&mut cargo);
         builder.cp_r(&my_out, &out);
@@ -626,9 +627,9 @@ impl Step for WhitelistedRustc {
         // We don't want to build docs for internal compiler dependencies in this
         // step (there is another step for that). Therefore, we whitelist the crates
         // for which docs must be built.
-        cargo.arg("--no-deps");
         for krate in &["proc_macro"] {
-            cargo.arg("-p").arg(krate);
+            cargo.arg("-p").arg(krate)
+                 .env("RUSTDOC_GENERATE_REDIRECT_PAGES", "1");
         }
 
         builder.run(&mut cargo);
