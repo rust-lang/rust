@@ -22,6 +22,7 @@
 // gate-test-wasm_target_feature
 // gate-test-adx_target_feature
 // gate-test-cmpxchg16b_target_feature
+// gate-test-movbe_target_feature
 // min-llvm-version 6.0
 
 #[target_feature(enable = "avx512bw")]
