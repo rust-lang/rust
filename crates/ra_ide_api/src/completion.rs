@@ -10,6 +10,7 @@ mod complete_scope;
 mod complete_postfix;
 
 use ra_db::SourceDatabase;
+use ra_syntax::ast::{self, AstNode};
 
 use crate::{
     db,
@@ -60,4 +61,22 @@ pub(crate) fn completions(db: &db::RootDatabase, position: FilePosition) -> Opti
     complete_dot::complete_dot(&mut acc, &ctx);
     complete_postfix::complete_postfix(&mut acc, &ctx);
     Some(acc)
+}
+
+pub fn function_label(node: &ast::FnDef) -> Option<String> {
+    let label: String = if let Some(body) = node.body() {
+        let body_range = body.syntax().range();
+        let label: String = node
+            .syntax()
+            .children()
+            .filter(|child| !child.range().is_subrange(&body_range)) // Filter out body
+            .filter(|child| ast::Comment::cast(child).is_none()) // Filter out comments
+            .map(|node| node.text().to_string())
+            .collect();
+        label
+    } else {
+        node.syntax().text().to_string()
+    };
+
+    Some(label.trim().to_owned())
 }

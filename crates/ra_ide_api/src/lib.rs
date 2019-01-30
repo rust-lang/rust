@@ -58,6 +58,7 @@ pub use ra_ide_api_light::{
 pub use ra_db::{
     Canceled, CrateGraph, CrateId, FileId, FilePosition, FileRange, SourceRootId
 };
+pub use hir::Documentation;
 
 // We use jemalloc mainly to get heap usage statistics, actual performance
 // differnece is not measures.
@@ -266,7 +267,7 @@ impl<T> RangeInfo<T> {
 #[derive(Debug)]
 pub struct CallInfo {
     pub label: String,
-    pub doc: Option<String>,
+    pub doc: Option<Documentation>,
     pub parameters: Vec<String>,
     pub active_parameter: Option<usize>,
 }

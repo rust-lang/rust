@@ -87,13 +87,6 @@ impl ConvWith for CompletionItem {
             None
         };
 
-        let documentation = self.documentation().map(|value| {
-            Documentation::MarkupContent(MarkupContent {
-                kind: MarkupKind::Markdown,
-                value: value.to_string(),
-            })
-        });
-
         let mut res = lsp_types::CompletionItem {
             label: self.label().to_string(),
             detail: self.detail().map(|it| it.to_string()),
@@ -101,7 +94,7 @@ impl ConvWith for CompletionItem {
             kind: self.kind().map(|it| it.conv()),
             text_edit: Some(text_edit),
             additional_text_edits,
-            documentation: documentation,
+            documentation: self.documentation().map(|it| it.conv()),
             ..Default::default()
         };
         res.insert_text_format = Some(match self.insert_text_format() {
@@ -157,6 +150,16 @@ impl ConvWith for Range {
             self.start.conv_with(line_index),
             self.end.conv_with(line_index),
         )
+    }
+}
+
+impl Conv for ra_ide_api::Documentation {
+    type Output = lsp_types::Documentation;
+    fn conv(self) -> Documentation {
+        Documentation::MarkupContent(MarkupContent {
+            kind: MarkupKind::Markdown,
+            value: crate::markdown::sanitize_markdown(self).into(),
+        })
     }
 }
 

@@ -3,9 +3,10 @@ use ra_db::SourceDatabase;
 use ra_syntax::{
     AstNode, SyntaxNode, TextUnit, TextRange,
     SyntaxKind::FN_DEF,
-    ast::{self, ArgListOwner, DocCommentsOwner},
+    ast::{self, ArgListOwner},
     algo::find_node_at_offset,
 };
+use hir::Docs;
 
 use crate::{FilePosition, CallInfo, db::RootDatabase};
 
@@ -26,7 +27,9 @@ pub(crate) fn call_info(db: &RootDatabase, position: FilePosition) -> Option<Cal
     let fn_file = db.parse(symbol.file_id);
     let fn_def = symbol.ptr.to_node(&fn_file);
     let fn_def = ast::FnDef::cast(fn_def).unwrap();
-    let mut call_info = CallInfo::new(fn_def)?;
+    let function = hir::source_binder::function_from_source(db, symbol.file_id, fn_def)?;
+
+    let mut call_info = CallInfo::new(db, function, fn_def)?;
     // If we have a calling expression let's find which argument we are on
     let num_params = call_info.parameters.len();
     let has_self = fn_def.param_list().and_then(|l| l.self_param()).is_some();
@@ -110,46 +113,13 @@ impl<'a> FnCallNode<'a> {
 }
 
 impl CallInfo {
-    fn new(node: &ast::FnDef) -> Option<Self> {
-        let label: String = if let Some(body) = node.body() {
-            let body_range = body.syntax().range();
-            let label: String = node
-                .syntax()
-                .children()
-                .filter(|child| !child.range().is_subrange(&body_range)) // Filter out body
-                .filter(|child| ast::Comment::cast(child).is_none()) // Filter out doc comments
-                .map(|node| node.text().to_string())
-                .collect();
-            label
-        } else {
-            node.syntax().text().to_string()
-        };
-
-        let mut doc = None;
-        if let Some(docs) = node.doc_comment_text() {
-            // Massage markdown
-            let mut processed_lines = Vec::new();
-            let mut in_code_block = false;
-            for line in docs.lines() {
-                if line.starts_with("```") {
-                    in_code_block = !in_code_block;
-                }
-
-                let line = if in_code_block && line.starts_with("```") && !line.contains("rust") {
-                    "```rust".into()
-                } else {
-                    line.to_string()
-                };
-
-                processed_lines.push(line);
-            }
-
-            doc = Some(processed_lines.join("\n"));
-        }
+    fn new(db: &RootDatabase, function: hir::Function, node: &ast::FnDef) -> Option<Self> {
+        let label = crate::completion::function_label(node)?;
+        let doc = function.docs(db);
 
         Some(CallInfo {
             parameters: param_list(node),
-            label: label.trim().to_owned(),
+            label,
             doc,
             active_parameter: None,
         })
@@ -284,7 +254,7 @@ fn bar() {
         assert_eq!(info.parameters, vec!["j".to_string()]);
         assert_eq!(info.active_parameter, Some(0));
         assert_eq!(info.label, "fn foo(j: u32) -> u32".to_string());
-        assert_eq!(info.doc, Some("test".into()));
+        assert_eq!(info.doc.map(|it| it.into()), Some("test".to_string()));
     }
 
     #[test]
@@ -313,18 +283,18 @@ pub fn do() {
         assert_eq!(info.active_parameter, Some(0));
         assert_eq!(info.label, "pub fn add_one(x: i32) -> i32".to_string());
         assert_eq!(
-            info.doc,
+            info.doc.map(|it| it.into()),
             Some(
                 r#"Adds one to the number given.
 
 # Examples
 
-```rust
+```
 let five = 5;
 
 assert_eq!(6, my_crate::add_one(5));
 ```"#
-                    .into()
+                    .to_string()
             )
         );
     }
@@ -359,18 +329,18 @@ pub fn do_it() {
         assert_eq!(info.active_parameter, Some(0));
         assert_eq!(info.label, "pub fn add_one(x: i32) -> i32".to_string());
         assert_eq!(
-            info.doc,
+            info.doc.map(|it| it.into()),
             Some(
                 r#"Adds one to the number given.
 
 # Examples
 
-```rust
+```
 let five = 5;
 
 assert_eq!(6, my_crate::add_one(5));
 ```"#
-                    .into()
+                    .to_string()
             )
         );
     }
@@ -414,12 +384,12 @@ pub fn foo() {
         );
         assert_eq!(info.active_parameter, Some(1));
         assert_eq!(
-            info.doc,
+            info.doc.map(|it| it.into()),
             Some(
                 r#"Method is called when writer finishes.
 
 By default this method stops actor's `Context`."#
-                    .into()
+                    .to_string()
             )
         );
     }

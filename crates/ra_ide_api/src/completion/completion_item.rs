@@ -1,12 +1,12 @@
 use hir::{Docs, Documentation};
-use ra_syntax::{
-    ast::{self, AstNode},
-    TextRange,
-};
+use ra_syntax::TextRange;
 use ra_text_edit::TextEdit;
 use test_utils::tested_by;
 
-use crate::completion::completion_context::CompletionContext;
+use crate::completion::{
+    completion_context::CompletionContext,
+    function_label,
+};
 
 /// `CompletionItem` describes a single completion variant in the editor pop-up.
 /// It is basically a POD with various properties. To construct a
@@ -97,8 +97,8 @@ impl CompletionItem {
         self.detail.as_ref().map(|it| it.as_str())
     }
     /// A doc-comment
-    pub fn documentation(&self) -> Option<&str> {
-        self.documentation.as_ref().map(|it| it.contents())
+    pub fn documentation(&self) -> Option<Documentation> {
+        self.documentation.clone()
     }
     /// What string is used for filtering.
     pub fn lookup(&self) -> &str {
@@ -252,7 +252,7 @@ impl Builder {
             self.documentation = Some(docs);
         }
 
-        if let Some(label) = function_label(ctx, function) {
+        if let Some(label) = function_item_label(ctx, function) {
             self.detail = Some(label);
         }
 
@@ -292,24 +292,9 @@ impl Into<Vec<CompletionItem>> for Completions {
     }
 }
 
-fn function_label(ctx: &CompletionContext, function: hir::Function) -> Option<String> {
+fn function_item_label(ctx: &CompletionContext, function: hir::Function) -> Option<String> {
     let node = function.source(ctx.db).1;
-
-    let label: String = if let Some(body) = node.body() {
-        let body_range = body.syntax().range();
-        let label: String = node
-            .syntax()
-            .children()
-            .filter(|child| !child.range().is_subrange(&body_range)) // Filter out body
-            .filter(|child| ast::Comment::cast(child).is_none()) // Filter out comments
-            .map(|node| node.text().to_string())
-            .collect();
-        label
-    } else {
-        node.syntax().text().to_string()
-    };
-
-    Some(label.trim().to_owned())
+    function_label(&node)
 }
 
 #[cfg(test)]

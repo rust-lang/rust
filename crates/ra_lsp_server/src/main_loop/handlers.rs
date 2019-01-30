@@ -1,7 +1,7 @@
 use gen_lsp_server::ErrorCode;
 use lsp_types::{
     CodeActionResponse, CodeLens, Command, Diagnostic, DiagnosticSeverity,
-    DocumentFormattingParams, DocumentHighlight, DocumentSymbol, Documentation, FoldingRange,
+    DocumentFormattingParams, DocumentHighlight, DocumentSymbol, FoldingRange,
     FoldingRangeKind, FoldingRangeParams, Hover, HoverContents, Location, MarkupContent,
     MarkupKind, ParameterInformation, ParameterLabel, Position, PrepareRenameResponse, Range,
     RenameParams, SignatureInformation, SymbolInformation, TextDocumentIdentifier, TextEdit,
@@ -401,12 +401,9 @@ pub fn handle_signature_help(
                 documentation: None,
             })
             .collect();
-        let documentation = call_info.doc.map(|value| {
-            Documentation::MarkupContent(MarkupContent {
-                kind: MarkupKind::Markdown,
-                value,
-            })
-        });
+
+        let documentation = call_info.doc.map(|it| it.conv());
+
         let sig_info = SignatureInformation {
             label: call_info.label,
             documentation,
