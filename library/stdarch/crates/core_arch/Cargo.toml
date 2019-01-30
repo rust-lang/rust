@@ -1,6 +1,6 @@
 [package]
 name = "core_arch"
-version = "0.1.1"
+version = "0.1.2"
 authors = [
     "Alex Crichton <alex@alexcrichton.com>",
     "Andrew Gallant <jamslam@gmail.com>",
