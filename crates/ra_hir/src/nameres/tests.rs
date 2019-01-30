@@ -16,7 +16,7 @@ fn item_map(fixture: &str) -> (Arc<ItemMap>, ModuleId) {
     let module = crate::source_binder::module_from_position(&db, pos).unwrap();
     let krate = module.krate(&db).unwrap();
     let module_id = module.module_id;
-    (db.item_map(krate.crate_id), module_id)
+    (db.item_map(krate), module_id)
 }
 
 /// Sets the crate root to the file of the cursor marker
@@ -30,7 +30,7 @@ fn item_map_custom_crate_root(fixture: &str) -> (Arc<ItemMap>, ModuleId) {
     let module = crate::source_binder::module_from_position(&db, pos).unwrap();
     let krate = module.krate(&db).unwrap();
     let module_id = module.module_id;
-    (db.item_map(krate.crate_id), module_id)
+    (db.item_map(krate), module_id)
 }
 
 fn check_module_item_map(map: &ItemMap, module_id: ModuleId, expected: &str) {
@@ -297,7 +297,7 @@ fn item_map_across_crates() {
 
     let module = crate::source_binder::module_from_file_id(&db, main_id).unwrap();
     let krate = module.krate(&db).unwrap();
-    let item_map = db.item_map(krate.crate_id);
+    let item_map = db.item_map(krate);
 
     check_module_item_map(
         &item_map,
@@ -349,7 +349,7 @@ fn import_across_source_roots() {
 
     let module = crate::source_binder::module_from_file_id(&db, main_id).unwrap();
     let krate = module.krate(&db).unwrap();
-    let item_map = db.item_map(krate.crate_id);
+    let item_map = db.item_map(krate);
 
     check_module_item_map(
         &item_map,
@@ -391,7 +391,7 @@ fn reexport_across_crates() {
 
     let module = crate::source_binder::module_from_file_id(&db, main_id).unwrap();
     let krate = module.krate(&db).unwrap();
-    let item_map = db.item_map(krate.crate_id);
+    let item_map = db.item_map(krate);
 
     check_module_item_map(
         &item_map,
@@ -409,7 +409,7 @@ fn check_item_map_is_not_recomputed(initial: &str, file_change: &str) {
     let krate = module.krate(&db).unwrap();
     {
         let events = db.log_executed(|| {
-            db.item_map(krate.crate_id);
+            db.item_map(krate);
         });
         assert!(format!("{:?}", events).contains("item_map"))
     }
@@ -417,7 +417,7 @@ fn check_item_map_is_not_recomputed(initial: &str, file_change: &str) {
 
     {
         let events = db.log_executed(|| {
-            db.item_map(krate.crate_id);
+            db.item_map(krate);
         });
         assert!(
             !format!("{:?}", events).contains("item_map"),

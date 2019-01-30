@@ -2,7 +2,7 @@ use std::sync::Arc;
 
 use arrayvec::ArrayVec;
 use relative_path::RelativePathBuf;
-use ra_db::{FileId, SourceRoot, CrateId};
+use ra_db::{FileId, SourceRoot};
 use ra_syntax::{
     SyntaxNode, TreeArc,
     algo::generate,
@@ -13,6 +13,7 @@ use test_utils::tested_by;
 
 use crate::{
     Name, AsName, HirDatabase, SourceItemId, HirFileId, Problem, SourceFileItems, ModuleSource,
+    Crate,
     ids::SourceFileItemId,
 };
 
@@ -132,10 +133,10 @@ struct LinkData {
 }
 
 impl ModuleTree {
-    pub(crate) fn module_tree_query(db: &impl HirDatabase, crate_id: CrateId) -> Arc<ModuleTree> {
+    pub(crate) fn module_tree_query(db: &impl HirDatabase, krate: Crate) -> Arc<ModuleTree> {
         db.check_canceled();
         let mut res = ModuleTree::default();
-        res.init_crate(db, crate_id);
+        res.init_crate(db, krate);
         Arc::new(res)
     }
 
@@ -155,9 +156,9 @@ impl ModuleTree {
         Some(res)
     }
 
-    fn init_crate(&mut self, db: &impl HirDatabase, crate_id: CrateId) {
+    fn init_crate(&mut self, db: &impl HirDatabase, krate: Crate) {
         let crate_graph = db.crate_graph();
-        let file_id = crate_graph.crate_root(crate_id);
+        let file_id = crate_graph.crate_root(krate.crate_id);
         let source_root_id = db.file_source_root(file_id);
 
         let source_root = db.source_root(source_root_id);
