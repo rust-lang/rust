@@ -14,7 +14,7 @@ pub struct RawConst<'tcx> {
 }
 
 /// Represents a constant value in Rust. Scalar and ScalarPair are optimizations which
-/// matches the LocalValue optimizations for easy conversions between Value and ConstValue.
+/// matches the LocalState optimizations for easy conversions between Value and ConstValue.
 #[derive(Copy, Clone, Debug, Eq, PartialEq, PartialOrd, Ord, RustcEncodable, RustcDecodable, Hash)]
 pub enum ConstValue<'tcx> {
     /// Used only for types with layout::abi::Scalar ABI and ZSTs

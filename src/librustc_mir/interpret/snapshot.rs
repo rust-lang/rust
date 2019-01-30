@@ -23,8 +23,8 @@ use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
 use syntax::ast::Mutability;
 use syntax::source_map::Span;
 
-use super::eval_context::{LocalValue, StackPopCleanup};
-use super::{Frame, Memory, Operand, MemPlace, Place, Immediate, ScalarMaybeUndef, LocalState};
+use super::eval_context::{LocalState, StackPopCleanup};
+use super::{Frame, Memory, Operand, MemPlace, Place, Immediate, ScalarMaybeUndef, LocalValue};
 use const_eval::CompileTimeInterpreter;
 
 #[derive(Default)]
@@ -250,11 +250,11 @@ impl_snapshot_for!(enum Operand {
     Indirect(m),
 });
 
-impl_stable_hash_for!(enum ::interpret::LocalState {
+impl_stable_hash_for!(enum ::interpret::LocalValue {
     Dead,
     Live(x),
 });
-impl_snapshot_for!(enum LocalState {
+impl_snapshot_for!(enum LocalValue {
     Live(v),
     Dead,
 });
@@ -309,7 +309,7 @@ struct FrameSnapshot<'a, 'tcx: 'a> {
     span: &'a Span,
     return_to_block: &'a StackPopCleanup,
     return_place: Option<Place<(), AllocIdSnapshot<'a>>>,
-    locals: IndexVec<mir::Local, LocalState<(), AllocIdSnapshot<'a>>>,
+    locals: IndexVec<mir::Local, LocalValue<(), AllocIdSnapshot<'a>>>,
     block: &'a mir::BasicBlock,
     stmt: usize,
 }
@@ -356,17 +356,17 @@ impl<'a, 'mir, 'tcx, Ctx> Snapshot<'a, Ctx> for &'a Frame<'mir, 'tcx>
     }
 }
 
-impl<'a, 'tcx, Ctx> Snapshot<'a, Ctx> for &'a LocalValue<'tcx>
+impl<'a, 'tcx, Ctx> Snapshot<'a, Ctx> for &'a LocalState<'tcx>
     where Ctx: SnapshotContext<'a>,
 {
-    type Item = LocalState<(), AllocIdSnapshot<'a>>;
+    type Item = LocalValue<(), AllocIdSnapshot<'a>>;
 
     fn snapshot(&self, ctx: &'a Ctx) -> Self::Item {
         self.state.snapshot(ctx)
     }
 }
 
-impl_stable_hash_for!(struct LocalValue<'tcx> {
+impl_stable_hash_for!(struct LocalState<'tcx> {
     state,
     layout -> _,
 });

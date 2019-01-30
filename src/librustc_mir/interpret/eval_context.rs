@@ -76,7 +76,7 @@ pub struct Frame<'mir, 'tcx: 'mir, Tag=(), Extra=()> {
     /// The locals are stored as `Option<Value>`s.
     /// `None` represents a local that is currently dead, while a live local
     /// can either directly contain `Scalar` or refer to some part of an `Allocation`.
-    pub locals: IndexVec<mir::Local, LocalValue<'tcx, Tag>>,
+    pub locals: IndexVec<mir::Local, LocalState<'tcx, Tag>>,
 
     ////////////////////////////////////////////////////////////////////////////////
     // Current position within the function
@@ -107,15 +107,15 @@ pub enum StackPopCleanup {
 
 /// State of a local variable including a memoized layout
 #[derive(Clone, PartialEq, Eq)]
-pub struct LocalValue<'tcx, Tag=(), Id=AllocId> {
-    pub state: LocalState<Tag, Id>,
+pub struct LocalState<'tcx, Tag=(), Id=AllocId> {
+    pub state: LocalValue<Tag, Id>,
     /// Don't modify if `Some`, this is only used to prevent computing the layout twice
     pub layout: Cell<Option<TyLayout<'tcx>>>,
 }
 
 /// State of a local variable
 #[derive(Copy, Clone, PartialEq, Eq, Hash)]
-pub enum LocalState<Tag=(), Id=AllocId> {
+pub enum LocalValue<Tag=(), Id=AllocId> {
     Dead,
     // Mostly for convenience, we re-use the `Operand` type here.
     // This is an optimization over just always having a pointer here;
@@ -124,18 +124,18 @@ pub enum LocalState<Tag=(), Id=AllocId> {
     Live(Operand<Tag, Id>),
 }
 
-impl<'tcx, Tag> LocalValue<'tcx, Tag> {
+impl<'tcx, Tag> LocalState<'tcx, Tag> {
     pub fn access(&self) -> EvalResult<'tcx, &Operand<Tag>> {
         match self.state {
-            LocalState::Dead => err!(DeadLocal),
-            LocalState::Live(ref val) => Ok(val),
+            LocalValue::Dead => err!(DeadLocal),
+            LocalValue::Live(ref val) => Ok(val),
         }
     }
 
     pub fn access_mut(&mut self) -> EvalResult<'tcx, &mut Operand<Tag>> {
         match self.state {
-            LocalState::Dead => err!(DeadLocal),
-            LocalState::Live(ref mut val) => Ok(val),
+            LocalValue::Dead => err!(DeadLocal),
+            LocalValue::Live(ref mut val) => Ok(val),
         }
     }
 }
@@ -474,10 +474,10 @@ impl<'a, 'mir, 'tcx: 'mir, M: Machine<'a, 'mir, 'tcx>> EvalContext<'a, 'mir, 'tc
         // don't allocate at all for trivial constants
         if mir.local_decls.len() > 1 {
             // We put some marker immediate into the locals that we later want to initialize.
-            // This can be anything except for LocalState::Dead -- because *that* is the
+            // This can be anything except for LocalValue::Dead -- because *that* is the
             // value we use for things that we know are initially dead.
-            let dummy = LocalValue {
-                state: LocalState::Live(Operand::Immediate(Immediate::Scalar(
+            let dummy = LocalState {
+                state: LocalValue::Live(Operand::Immediate(Immediate::Scalar(
                     ScalarMaybeUndef::Undef,
                 ))),
                 layout: Cell::new(None),
@@ -485,7 +485,7 @@ impl<'a, 'mir, 'tcx: 'mir, M: Machine<'a, 'mir, 'tcx>> EvalContext<'a, 'mir, 'tc
             let mut locals = IndexVec::from_elem(dummy, &mir.local_decls);
             // Return place is handled specially by the `eval_place` functions, and the
             // entry in `locals` should never be used. Make it dead, to be sure.
-            locals[mir::RETURN_PLACE].state = LocalState::Dead;
+            locals[mir::RETURN_PLACE].state = LocalValue::Dead;
             // Now mark those locals as dead that we do not want to initialize
             match self.tcx.describe_def(instance.def_id()) {
                 // statics and constants don't have `Storage*` statements, no need to look for them
@@ -498,7 +498,7 @@ impl<'a, 'mir, 'tcx: 'mir, M: Machine<'a, 'mir, 'tcx>> EvalContext<'a, 'mir, 'tc
                             match stmt.kind {
                                 StorageLive(local) |
                                 StorageDead(local) => {
-                                    locals[local].state = LocalState::Dead;
+                                    locals[local].state = LocalValue::Dead;
                                 }
                                 _ => {}
                             }
@@ -509,14 +509,14 @@ impl<'a, 'mir, 'tcx: 'mir, M: Machine<'a, 'mir, 'tcx>> EvalContext<'a, 'mir, 'tc
             // Finally, properly initialize all those that still have the dummy value
             for (idx, local) in locals.iter_enumerated_mut() {
                 match local.state {
-                    LocalState::Live(_) => {
+                    LocalValue::Live(_) => {
                         // This needs to be properly initialized.
                         let ty = self.monomorphize(mir.local_decls[idx].ty)?;
                         let layout = self.layout_of(ty)?;
-                        local.state = LocalState::Live(self.uninit_operand(layout)?);
+                        local.state = LocalValue::Live(self.uninit_operand(layout)?);
                         local.layout = Cell::new(Some(layout));
                     }
-                    LocalState::Dead => {
+                    LocalValue::Dead => {
                         // Nothing to do
                     }
                 }
@@ -603,31 +603,31 @@ impl<'a, 'mir, 'tcx: 'mir, M: Machine<'a, 'mir, 'tcx>> EvalContext<'a, 'mir, 'tc
     pub fn storage_live(
         &mut self,
         local: mir::Local
-    ) -> EvalResult<'tcx, LocalState<M::PointerTag>> {
+    ) -> EvalResult<'tcx, LocalValue<M::PointerTag>> {
         assert!(local != mir::RETURN_PLACE, "Cannot make return place live");
         trace!("{:?} is now live", local);
 
         let layout = self.layout_of_local(self.frame(), local, None)?;
-        let init = LocalState::Live(self.uninit_operand(layout)?);
+        let init = LocalValue::Live(self.uninit_operand(layout)?);
         // StorageLive *always* kills the value that's currently stored
         Ok(mem::replace(&mut self.frame_mut().locals[local].state, init))
     }
 
     /// Returns the old value of the local.
     /// Remember to deallocate that!
-    pub fn storage_dead(&mut self, local: mir::Local) -> LocalState<M::PointerTag> {
+    pub fn storage_dead(&mut self, local: mir::Local) -> LocalValue<M::PointerTag> {
         assert!(local != mir::RETURN_PLACE, "Cannot make return place dead");
         trace!("{:?} is now dead", local);
 
-        mem::replace(&mut self.frame_mut().locals[local].state, LocalState::Dead)
+        mem::replace(&mut self.frame_mut().locals[local].state, LocalValue::Dead)
     }
 
     pub(super) fn deallocate_local(
         &mut self,
-        local: LocalState<M::PointerTag>,
+        local: LocalValue<M::PointerTag>,
     ) -> EvalResult<'tcx> {
         // FIXME: should we tell the user that there was a local which was never written to?
-        if let LocalState::Live(Operand::Indirect(MemPlace { ptr, .. })) = local {
+        if let LocalValue::Live(Operand::Indirect(MemPlace { ptr, .. })) = local {
             trace!("deallocating local");
             let ptr = ptr.to_ptr()?;
             self.memory.dump_alloc(ptr.alloc_id);
