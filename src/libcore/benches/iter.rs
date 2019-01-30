@@ -306,3 +306,8 @@ fn bench_skip_then_zip(b: &mut Bencher) {
         assert_eq!(s, 2009900);
     });
 }
+
+#[bench]
+fn bench_collect_to_result(b: &mut Bencher) {
+    b.iter(|| (0..100).map(|e| Ok(e)).collect::<Result<Vec<usize>, ()>>())
+}

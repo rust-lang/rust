@@ -146,7 +146,7 @@
 #![stable(feature = "rust1", since = "1.0.0")]
 
 use core::ops::{Deref, DerefMut};
-use core::iter::{FromIterator, FusedIterator};
+use core::iter::{FromIterator, FusedIterator, OptimisticCollect};
 use core::mem::{swap, size_of, ManuallyDrop};
 use core::ptr;
 use core::fmt;
@@ -1168,9 +1168,7 @@ impl<T: Ord> SpecExtend<BinaryHeap<T>> for BinaryHeap<T> {
 impl<T: Ord> BinaryHeap<T> {
     fn extend_desugared<I: IntoIterator<Item = T>>(&mut self, iter: I) {
         let iterator = iter.into_iter();
-        let (lower, _) = iterator.size_hint();
-
-        self.reserve(lower);
+        self.reserve(iterator.optimistic_collect_count());
 
         for elem in iterator {
             self.push(elem);

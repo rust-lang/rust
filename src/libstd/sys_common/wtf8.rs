@@ -21,7 +21,7 @@ use borrow::Cow;
 use char;
 use fmt;
 use hash::{Hash, Hasher};
-use iter::FromIterator;
+use iter::{FromIterator, OptimisticCollect};
 use mem;
 use ops;
 use rc::Rc;
@@ -385,9 +385,8 @@ impl FromIterator<CodePoint> for Wtf8Buf {
 impl Extend<CodePoint> for Wtf8Buf {
     fn extend<T: IntoIterator<Item=CodePoint>>(&mut self, iter: T) {
         let iterator = iter.into_iter();
-        let (low, _high) = iterator.size_hint();
         // Lower bound of one byte per code point (ASCII only)
-        self.bytes.reserve(low);
+        self.bytes.reserve(iterator.optimistic_collect_count());
         for code_point in iterator {
             self.push(code_point);
         }

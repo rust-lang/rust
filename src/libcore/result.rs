@@ -231,7 +231,7 @@
 #![stable(feature = "rust1", since = "1.0.0")]
 
 use fmt;
-use iter::{FromIterator, FusedIterator, TrustedLen};
+use iter::{FromIterator, FusedIterator, TrustedLen, OptimisticCollect};
 use ops::{self, Deref};
 
 /// `Result` is a type that represents either success ([`Ok`]) or failure ([`Err`]).
@@ -1230,6 +1230,17 @@ impl<A, E, V: FromIterator<A>> FromIterator<Result<A, E>> for Result<V, E> {
             fn size_hint(&self) -> (usize, Option<usize>) {
                 let (_min, max) = self.iter.size_hint();
                 (0, max)
+            }
+        }
+
+        impl<T, E, Iter: Iterator<Item = Result<T, E>>> OptimisticCollect for Adapter<Iter, E> {
+            #[inline]
+            fn optimistic_collect_count(&self) -> usize {
+                if self.err.is_some() {
+                    0
+                } else {
+                    self.iter.optimistic_collect_count()
+                }
             }
         }
 

@@ -114,6 +114,7 @@
 #![feature(maybe_uninit)]
 #![feature(alloc_layout_extra)]
 #![feature(try_trait)]
+#![feature(optimistic_collect)]
 
 // Allow testing this library
 

@@ -9,7 +9,7 @@
 
 use core::cmp::Ordering;
 use core::fmt;
-use core::iter::{repeat_with, FromIterator, FusedIterator};
+use core::iter::{repeat_with, FromIterator, FusedIterator, OptimisticCollect};
 use core::mem;
 use core::ops::Bound::{Excluded, Included, Unbounded};
 use core::ops::{Index, IndexMut, RangeBounds, Try};
@@ -2597,8 +2597,7 @@ impl<A> IndexMut<usize> for VecDeque<A> {
 impl<A> FromIterator<A> for VecDeque<A> {
     fn from_iter<T: IntoIterator<Item = A>>(iter: T) -> VecDeque<A> {
         let iterator = iter.into_iter();
-        let (lower, _) = iterator.size_hint();
-        let mut deq = VecDeque::with_capacity(lower);
+        let mut deq = VecDeque::with_capacity(iterator.optimistic_collect_count());
         deq.extend(iterator);
         deq
     }

@@ -49,7 +49,7 @@
 use core::char::{decode_utf16, REPLACEMENT_CHARACTER};
 use core::fmt;
 use core::hash;
-use core::iter::{FromIterator, FusedIterator};
+use core::iter::{FromIterator, FusedIterator, OptimisticCollect};
 use core::ops::Bound::{Excluded, Included, Unbounded};
 use core::ops::{self, Add, AddAssign, Index, IndexMut, RangeBounds};
 use core::ptr;
@@ -1760,8 +1760,7 @@ impl<'a> FromIterator<Cow<'a, str>> for String {
 impl Extend<char> for String {
     fn extend<I: IntoIterator<Item = char>>(&mut self, iter: I) {
         let iterator = iter.into_iter();
-        let (lower_bound, _) = iterator.size_hint();
-        self.reserve(lower_bound);
+        self.reserve(iterator.optimistic_collect_count());
         iterator.for_each(move |c| self.push(c));
     }
 }

@@ -60,7 +60,7 @@ use core::cmp::{self, Ordering};
 use core::fmt;
 use core::hash::{self, Hash};
 use core::intrinsics::{arith_offset, assume};
-use core::iter::{FromIterator, FusedIterator, TrustedLen};
+use core::iter::{FromIterator, FusedIterator, TrustedLen, OptimisticCollect};
 use core::marker::PhantomData;
 use core::mem;
 use core::ops::Bound::{Excluded, Included, Unbounded};
@@ -1813,8 +1813,8 @@ impl<T, I> SpecExtend<T, I> for Vec<T>
         let mut vector = match iterator.next() {
             None => return Vec::new(),
             Some(element) => {
-                let (lower, _) = iterator.size_hint();
-                let mut vector = Vec::with_capacity(lower.saturating_add(1));
+                let mut vector = Vec::with_capacity(
+                    iterator.optimistic_collect_count().saturating_add(1));
                 unsafe {
                     ptr::write(vector.get_unchecked_mut(0), element);
                     vector.set_len(1);
@@ -1933,8 +1933,7 @@ impl<T> Vec<T> {
         while let Some(element) = iterator.next() {
             let len = self.len();
             if len == self.capacity() {
-                let (lower, _) = iterator.size_hint();
-                self.reserve(lower.saturating_add(1));
+                self.reserve(iterator.optimistic_collect_count().saturating_add(1));
             }
             unsafe {
                 ptr::write(self.get_unchecked_mut(len), element);
@@ -2589,9 +2588,9 @@ impl<'a, I: Iterator> Drop for Splice<'a, I> {
 
             // There may be more elements. Use the lower bound as an estimate.
             // FIXME: Is the upper bound a better guess? Or something else?
-            let (lower_bound, _upper_bound) = self.replace_with.size_hint();
-            if lower_bound > 0  {
-                self.drain.move_tail(lower_bound);
+            let optimistic_collect_count = self.replace_with.optimistic_collect_count();
+            if optimistic_collect_count > 0  {
+                self.drain.move_tail(optimistic_collect_count);
                 if !self.drain.fill(&mut self.replace_with) {
                     return
                 }

@@ -135,7 +135,7 @@
 
 #![stable(feature = "rust1", since = "1.0.0")]
 
-use iter::{FromIterator, FusedIterator, TrustedLen};
+use iter::{FromIterator, FusedIterator, TrustedLen, OptimisticCollect};
 use {hint, mem, ops::{self, Deref}};
 use pin::Pin;
 
@@ -1352,6 +1352,17 @@ impl<A, V: FromIterator<A>> FromIterator<Option<A>> for Option<V> {
                 } else {
                     let (_, upper) = self.iter.size_hint();
                     (0, upper)
+                }
+            }
+        }
+
+        impl<T, Iter: Iterator<Item = Option<T>>> OptimisticCollect for Adapter<Iter> {
+            #[inline]
+            fn optimistic_collect_count(&self) -> usize {
+                if self.found_none {
+                    0
+                } else {
+                    self.iter.optimistic_collect_count()
                 }
             }
         }

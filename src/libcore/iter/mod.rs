@@ -337,6 +337,8 @@ pub use self::traits::{ExactSizeIterator, Sum, Product};
 pub use self::traits::FusedIterator;
 #[unstable(feature = "trusted_len", issue = "37572")]
 pub use self::traits::TrustedLen;
+#[unstable(feature = "optimistic_collect", issue = "00000")]
+pub use self::traits::OptimisticCollect;
 
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use self::adapters::{Rev, Cycle, Chain, Zip, Map, Filter, FilterMap, Enumerate};
