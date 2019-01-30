@@ -90,9 +90,8 @@ impl ImplBlock {
     pub fn target_trait(&self, db: &impl HirDatabase) -> Option<Trait> {
         if let Some(TypeRef::Path(path)) = self.target_trait_ref() {
             let resolver = self.resolver(db);
-            if let Some(Resolution::Def {
-                def: ModuleDef::Trait(tr),
-            }) = resolver.resolve_path(db, path).take_types()
+            if let Some(Resolution::Def(ModuleDef::Trait(tr))) =
+                resolver.resolve_path(db, path).take_types()
             {
                 return Some(tr);
             }
@@ -106,7 +105,7 @@ impl ImplBlock {
 
     pub fn resolver(&self, db: &impl HirDatabase) -> Resolver {
         let r = self.module().resolver(db);
-        // FIXME: add generics
+        // TODO: add generics
         let r = r.push_impl_block_scope(self.clone());
         r
     }

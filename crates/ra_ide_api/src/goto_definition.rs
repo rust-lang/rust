@@ -90,8 +90,8 @@ pub(crate) fn reference_definition(
     {
         let resolved = resolver.resolve_path(db, &path);
         match resolved.clone().take_types().or(resolved.take_values()) {
-            Some(Resolution::Def { def }) => return Exact(NavigationTarget::from_def(db, def)),
-            Some(Resolution::LocalBinding { pat }) => {
+            Some(Resolution::Def(def)) => return Exact(NavigationTarget::from_def(db, def)),
+            Some(Resolution::LocalBinding(pat)) => {
                 let body = resolver.body().expect("no body for local binding");
                 let syntax_mapping = body.syntax_mapping(db);
                 let ptr = syntax_mapping
@@ -104,7 +104,7 @@ pub(crate) fn reference_definition(
                 let nav = NavigationTarget::from_scope_entry(file_id, name, ptr);
                 return Exact(nav);
             }
-            Some(Resolution::GenericParam { .. }) => {
+            Some(Resolution::GenericParam(..)) => {
                 // TODO go to the generic param def
             }
             Some(Resolution::SelfType(_impl_block)) => {

@@ -223,22 +223,18 @@ impl Builder {
             Some(it) => it,
         };
         let (kind, docs) = match def {
-            Resolution::Def { def: Module(it) } => (CompletionItemKind::Module, it.docs(ctx.db)),
-            Resolution::Def {
-                def: Function(func),
-            } => return self.from_function(ctx, *func),
-            Resolution::Def { def: Struct(it) } => (CompletionItemKind::Struct, it.docs(ctx.db)),
-            Resolution::Def { def: Enum(it) } => (CompletionItemKind::Enum, it.docs(ctx.db)),
-            Resolution::Def {
-                def: EnumVariant(it),
-            } => (CompletionItemKind::EnumVariant, it.docs(ctx.db)),
-            Resolution::Def { def: Const(it) } => (CompletionItemKind::Const, it.docs(ctx.db)),
-            Resolution::Def { def: Static(it) } => (CompletionItemKind::Static, it.docs(ctx.db)),
-            Resolution::Def { def: Trait(it) } => (CompletionItemKind::Trait, it.docs(ctx.db)),
-            Resolution::Def { def: Type(it) } => (CompletionItemKind::TypeAlias, it.docs(ctx.db)),
-            Resolution::GenericParam { .. } => (CompletionItemKind::TypeParam, None),
-            Resolution::LocalBinding { .. } => (CompletionItemKind::Binding, None),
-            Resolution::SelfType { .. } => (
+            Resolution::Def(Module(it)) => (CompletionItemKind::Module, it.docs(ctx.db)),
+            Resolution::Def(Function(func)) => return self.from_function(ctx, *func),
+            Resolution::Def(Struct(it)) => (CompletionItemKind::Struct, it.docs(ctx.db)),
+            Resolution::Def(Enum(it)) => (CompletionItemKind::Enum, it.docs(ctx.db)),
+            Resolution::Def(EnumVariant(it)) => (CompletionItemKind::EnumVariant, it.docs(ctx.db)),
+            Resolution::Def(Const(it)) => (CompletionItemKind::Const, it.docs(ctx.db)),
+            Resolution::Def(Static(it)) => (CompletionItemKind::Static, it.docs(ctx.db)),
+            Resolution::Def(Trait(it)) => (CompletionItemKind::Trait, it.docs(ctx.db)),
+            Resolution::Def(Type(it)) => (CompletionItemKind::TypeAlias, it.docs(ctx.db)),
+            Resolution::GenericParam(..) => (CompletionItemKind::TypeParam, None),
+            Resolution::LocalBinding(..) => (CompletionItemKind::Binding, None),
+            Resolution::SelfType(..) => (
                 CompletionItemKind::TypeParam, // (does this need its own kind?)
                 None,
             ),

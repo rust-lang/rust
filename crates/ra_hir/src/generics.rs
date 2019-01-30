@@ -12,6 +12,7 @@ use crate::{db::PersistentHirDatabase, Name, AsName, Function, Struct, Enum, Tra
 /// Data about a generic parameter (to a function, struct, impl, ...).
 #[derive(Clone, PartialEq, Eq, Debug)]
 pub struct GenericParam {
+    // TODO: give generic params proper IDs
     pub(crate) idx: u32,
     pub(crate) name: Name,
 }

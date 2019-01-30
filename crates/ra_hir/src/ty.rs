@@ -368,12 +368,12 @@ impl Ty {
         let resolution = resolver.resolve_path(db, path).take_types();
 
         let def = match resolution {
-            Some(Resolution::Def { def, .. }) => def,
-            Some(Resolution::LocalBinding { .. }) => {
+            Some(Resolution::Def(def)) => def,
+            Some(Resolution::LocalBinding(..)) => {
                 // this should never happen
                 panic!("path resolved to local binding in type ns");
             }
-            Some(Resolution::GenericParam { idx }) => {
+            Some(Resolution::GenericParam(idx)) => {
                 return Ty::Param {
                     idx,
                     // TODO: maybe return name in resolution?
@@ -1107,7 +1107,7 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
     fn infer_path_expr(&mut self, resolver: &Resolver, path: &Path) -> Option<Ty> {
         let resolved = resolver.resolve_path(self.db, &path).take_values()?;
         match resolved {
-            Resolution::Def { def, .. } => {
+            Resolution::Def(def) => {
                 let typable: Option<TypableDef> = def.into();
                 let typable = typable?;
                 let substs = Ty::substs_from_path(self.db, &self.resolver, path, typable);
@@ -1115,12 +1115,12 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
                 let ty = self.insert_type_vars(ty);
                 Some(ty)
             }
-            Resolution::LocalBinding { pat } => {
+            Resolution::LocalBinding(pat) => {
                 let ty = self.type_of_pat.get(pat)?;
                 let ty = self.resolve_ty_as_possible(&mut vec![], ty.clone());
                 Some(ty)
             }
-            Resolution::GenericParam { .. } => {
+            Resolution::GenericParam(..) => {
                 // generic params can't refer to values... yet
                 None
             }
@@ -1138,13 +1138,13 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
         };
         let resolver = &self.resolver;
         let typable: Option<TypableDef> = match resolver.resolve_path(self.db, &path).take_types() {
-            Some(Resolution::Def { def, .. }) => def.into(),
-            Some(Resolution::LocalBinding { .. }) => {
+            Some(Resolution::Def(def)) => def.into(),
+            Some(Resolution::LocalBinding(..)) => {
                 // this cannot happen
                 log::error!("path resolved to local binding in type ns");
                 return (Ty::Unknown, None);
             }
-            Some(Resolution::GenericParam { .. }) => {
+            Some(Resolution::GenericParam(..)) => {
                 // generic params can't be used in struct literals
                 return (Ty::Unknown, None);
             }

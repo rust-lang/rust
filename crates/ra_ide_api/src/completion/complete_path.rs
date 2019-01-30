@@ -12,7 +12,7 @@ pub(super) fn complete_path(acc: &mut Completions, ctx: &CompletionContext) {
         _ => return,
     };
     let def = match ctx.resolver.resolve_path(ctx.db, &path).take_types() {
-        Some(Resolution::Def { def }) => def,
+        Some(Resolution::Def(def)) => def,
         _ => return,
     };
     match def {
@@ -24,7 +24,7 @@ pub(super) fn complete_path(acc: &mut Completions, ctx: &CompletionContext) {
                     ctx.source_range(),
                     name.to_string(),
                 )
-                .from_resolution(ctx, &res.def.map(|def| hir::Resolution::Def { def }))
+                .from_resolution(ctx, &res.def.map(hir::Resolution::Def))
                 .add_to(acc);
             }
         }

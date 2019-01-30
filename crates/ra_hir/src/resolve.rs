@@ -48,17 +48,11 @@ pub(crate) enum Scope {
 pub enum Resolution {
     // FIXME make these tuple variants
     /// An item
-    Def {
-        def: ModuleDef,
-    },
+    Def(ModuleDef),
     /// A local binding (only value namespace)
-    LocalBinding {
-        pat: PatId,
-    },
+    LocalBinding(PatId),
     /// A generic parameter
-    GenericParam {
-        idx: u32,
-    },
+    GenericParam(u32),
     SelfType(ImplBlock),
 }
 
@@ -85,7 +79,7 @@ impl Resolver {
                 _ => return PerNs::none(),
             };
             let module_res = item_map.resolve_path(db, module, path);
-            module_res.map(|def| Resolution::Def { def })
+            module_res.map(|def| Resolution::Def(def))
         }
     }
 
@@ -157,18 +151,16 @@ impl Scope {
         match self {
             Scope::ModuleScope(m) => {
                 if let Some(KnownName::SelfParam) = name.as_known_name() {
-                    PerNs::types(Resolution::Def {
-                        def: m.module.into(),
-                    })
+                    PerNs::types(Resolution::Def(m.module.into()))
                 } else {
                     match m.item_map[m.module.module_id].get(name) {
-                        Some(res) => res.def.map(|def| Resolution::Def { def }),
+                        Some(res) => res.def.map(Resolution::Def),
                         None => PerNs::none(),
                     }
                 }
             }
             Scope::GenericParams(gp) => match gp.find_by_name(name) {
-                Some(gp) => PerNs::types(Resolution::GenericParam { idx: gp.idx }),
+                Some(gp) => PerNs::types(Resolution::GenericParam(gp.idx)),
                 None => PerNs::none(),
             },
             Scope::ImplBlockScope(i) => {
@@ -185,7 +177,7 @@ impl Scope {
                     .iter()
                     .find(|entry| entry.name() == name);
                 match entry {
-                    Some(e) => PerNs::values(Resolution::LocalBinding { pat: e.pat() }),
+                    Some(e) => PerNs::values(Resolution::LocalBinding(e.pat())),
                     None => PerNs::none(),
                 }
             }
@@ -205,14 +197,14 @@ impl Scope {
                 m.item_map[m.module.module_id]
                     .entries()
                     .for_each(|(name, res)| {
-                        f(name.clone(), res.def.map(|def| Resolution::Def { def }));
+                        f(name.clone(), res.def.map(Resolution::Def));
                     })
             }
             Scope::GenericParams(gp) => {
                 for param in &gp.params {
                     f(
                         param.name.clone(),
-                        PerNs::types(Resolution::GenericParam { idx: param.idx }),
+                        PerNs::types(Resolution::GenericParam(param.idx)),
                     )
                 }
             }
@@ -226,7 +218,7 @@ impl Scope {
                 e.expr_scopes.entries(e.scope_id).iter().for_each(|e| {
                     f(
                         e.name().clone(),
-                        PerNs::values(Resolution::LocalBinding { pat: e.pat() }),
+                        PerNs::values(Resolution::LocalBinding(e.pat())),
                     );
                 });
             }
