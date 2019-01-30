@@ -7,7 +7,7 @@
 
 use std::hash::{Hash, Hasher};
 
-use rustc::ich::{StableHashingContextProvider, StableHashingContext};
+use rustc::ich::StableHashingContextProvider;
 use rustc::mir;
 use rustc::mir::interpret::{
     AllocId, Pointer, Scalar,
@@ -19,7 +19,7 @@ use rustc::ty::{self, TyCtxt};
 use rustc::ty::layout::Align;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_data_structures::indexed_vec::IndexVec;
-use rustc_data_structures::stable_hasher::{HashStable, StableHasher, StableHasherResult};
+use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
 use syntax::ast::Mutability;
 use syntax::source_map::Span;
 
@@ -366,16 +366,10 @@ impl<'a, 'tcx, Ctx> Snapshot<'a, Ctx> for &'a LocalValue<'tcx>
     }
 }
 
-
-impl<'a, 'gcx> HashStable<StableHashingContext<'a>> for LocalValue<'gcx> {
-    fn hash_stable<W: StableHasherResult>(
-        &self,
-        hcx: &mut StableHashingContext<'a>,
-        hasher: &mut StableHasher<W>,
-    ) {
-        self.state.hash_stable(hcx, hasher);
-    }
-}
+impl_stable_hash_for!(struct LocalValue<'tcx> {
+    state,
+    layout -> _,
+});
 
 impl<'a, 'b, 'mir, 'tcx: 'a+'mir> SnapshotContext<'b>
     for Memory<'a, 'mir, 'tcx, CompileTimeInterpreter<'a, 'mir, 'tcx>>
