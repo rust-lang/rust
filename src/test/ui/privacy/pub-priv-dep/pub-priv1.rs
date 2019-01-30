@@ -20,7 +20,6 @@ struct PrivateType {
 pub struct PublicType {
     pub field: OtherType,
     //~^ ERROR type `priv_dep::OtherType` from private dependency 'priv_dep' in public interface
-    //~| WARNING this was previously accepted
     priv_field: OtherType, // Private field - this is fine
     pub other_field: PubType // Type from public dependency - this is fine
 }
@@ -28,7 +27,6 @@ pub struct PublicType {
 impl PublicType {
     pub fn pub_fn(param: OtherType) {}
     //~^ ERROR type `priv_dep::OtherType` from private dependency 'priv_dep' in public interface
-    //~| WARNING this was previously accepted
 
     fn priv_fn(param: OtherType) {}
 }
@@ -37,7 +35,6 @@ pub trait MyPubTrait {
     type Foo: OtherTrait;
 }
 //~^^^ ERROR trait `priv_dep::OtherTrait` from private dependency 'priv_dep' in public interface
-//~| WARNING this was previously accepted
 
 pub struct AllowedPrivType {
     #[allow(exported_private_dependencies)]

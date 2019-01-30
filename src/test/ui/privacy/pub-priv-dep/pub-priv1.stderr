@@ -9,28 +9,20 @@ note: lint level defined here
    |
 LL | #![deny(exported_private_dependencies)]
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
-   = note: for more information, see issue #44663 <https://github.com/rust-lang/rust/issues/44663>
 
 error: type `priv_dep::OtherType` from private dependency 'priv_dep' in public interface
-  --> $DIR/pub-priv1.rs:29:5
+  --> $DIR/pub-priv1.rs:28:5
    |
 LL |     pub fn pub_fn(param: OtherType) {}
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-   |
-   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
-   = note: for more information, see issue #44663 <https://github.com/rust-lang/rust/issues/44663>
 
 error: trait `priv_dep::OtherTrait` from private dependency 'priv_dep' in public interface
-  --> $DIR/pub-priv1.rs:36:1
+  --> $DIR/pub-priv1.rs:34:1
    |
 LL | / pub trait MyPubTrait {
 LL | |     type Foo: OtherTrait;
 LL | | }
    | |_^
-   |
-   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
-   = note: for more information, see issue #44663 <https://github.com/rust-lang/rust/issues/44663>
 
 error: aborting due to 3 previous errors
 
