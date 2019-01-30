@@ -14,9 +14,8 @@ pub(crate) fn goto_implementation(
     let file = db.parse(position.file_id);
     let syntax = file.syntax();
 
-    let krate_id = db.crate_for(position.file_id).pop()?;
-    let krate = hir::Crate { crate_id: krate_id };
     let module = source_binder::module_from_position(db, position)?;
+    let krate = module.krate(db)?;
 
     let node = find_node_at_offset::<ast::NominalDef>(syntax, position.offset)?;
     let ty = match node.kind() {

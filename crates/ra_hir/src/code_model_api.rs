@@ -24,7 +24,7 @@ use crate::{
 /// root module.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct Crate {
-    pub crate_id: CrateId,
+    pub(crate) crate_id: CrateId,
 }
 
 #[derive(Debug)]
