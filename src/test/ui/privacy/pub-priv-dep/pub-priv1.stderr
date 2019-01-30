@@ -1,11 +1,11 @@
 error: type `priv_dep::OtherType` from private dependency 'priv_dep' in public interface
-  --> $DIR/pub-priv1.rs:22:5
+  --> $DIR/pub-priv1.rs:21:5
    |
 LL |     pub field: OtherType,
    |     ^^^^^^^^^^^^^^^^^^^^
    |
 note: lint level defined here
-  --> $DIR/pub-priv1.rs:5:9
+  --> $DIR/pub-priv1.rs:4:9
    |
 LL | #![deny(exported_private_dependencies)]
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -13,7 +13,7 @@ LL | #![deny(exported_private_dependencies)]
    = note: for more information, see issue #44663 <https://github.com/rust-lang/rust/issues/44663>
 
 error: type `priv_dep::OtherType` from private dependency 'priv_dep' in public interface
-  --> $DIR/pub-priv1.rs:30:5
+  --> $DIR/pub-priv1.rs:29:5
    |
 LL |     pub fn pub_fn(param: OtherType) {}
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -22,7 +22,7 @@ LL |     pub fn pub_fn(param: OtherType) {}
    = note: for more information, see issue #44663 <https://github.com/rust-lang/rust/issues/44663>
 
 error: trait `priv_dep::OtherTrait` from private dependency 'priv_dep' in public interface
-  --> $DIR/pub-priv1.rs:37:1
+  --> $DIR/pub-priv1.rs:36:1
    |
 LL | / pub trait MyPubTrait {
 LL | |     type Foo: OtherTrait;

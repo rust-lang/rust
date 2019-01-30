@@ -412,9 +412,9 @@ top_level_options!(
 
         edition: Edition [TRACKED],
 
-        // The list of crates to consider public for
+        // The list of crates to consider private when
         // checking leaked private dependency types in public interfaces
-        extern_public: Option<Vec<String>> [TRACKED],
+        extern_private: Vec<String> [TRACKED],
     }
 );
 
@@ -610,7 +610,7 @@ impl Default for Options {
             cli_forced_thinlto_off: false,
             remap_path_prefix: Vec::new(),
             edition: DEFAULT_EDITION,
-            extern_public: None
+            extern_private: Vec::new()
         }
     }
 }
@@ -1736,6 +1736,12 @@ pub fn rustc_optgroups() -> Vec<RustcOptGroup> {
             "Specify where an external rust library is located",
             "NAME=PATH",
         ),
+        opt::multi_s(
+            "",
+            "extern-private",
+            "Specify where an extern rust library is located, marking it as a private dependency",
+            "NAME=PATH",
+        ),
         opt::opt_s("", "sysroot", "Override the system root", "PATH"),
         opt::multi("Z", "", "Set internal debugging options", "FLAG"),
         opt::opt_s(
@@ -1936,22 +1942,7 @@ pub fn build_session_options_and_crate_config(
         );
     }
 
-    if matches.opt_present("extern-public") && !debugging_opts.unstable_options {
-        early_error(
-            ErrorOutputType::default(),
-            "'--extern-public' is unstable and only \
-            available for nightly builds of rustc."
-        )
-    }
 
-    let mut extern_public: Option<Vec<String>> = matches.opt_str("extern-public").
-        map(|s| s.split(',').map(|c| (*c).to_string()).collect());
-
-    // FIXME - come up with a better way of handling this
-    if let Some(p) = extern_public.as_mut() {
-        p.push("core".to_string());
-        p.push("std".to_string());
-    }
 
 
     let mut output_types = BTreeMap::new();
@@ -2249,8 +2240,18 @@ pub fn build_session_options_and_crate_config(
         );
     }
 
+    if matches.opt_present("extern-private") && !debugging_opts.unstable_options {
+        early_error(
+            ErrorOutputType::default(),
+            "'--extern-private' is unstable and only \
+            available for nightly builds of rustc."
+        )
+    }
+
+    let extern_private = matches.opt_strs("extern-private");
+
     let mut externs: BTreeMap<_, BTreeSet<_>> = BTreeMap::new();
-    for arg in &matches.opt_strs("extern") {
+    for arg in matches.opt_strs("extern").into_iter().chain(matches.opt_strs("extern-private")) {
         let mut parts = arg.splitn(2, '=');
         let name = parts.next().unwrap_or_else(||
             early_error(error_format, "--extern value must not be empty"));
@@ -2318,7 +2319,7 @@ pub fn build_session_options_and_crate_config(
             cli_forced_thinlto_off: disable_thinlto,
             remap_path_prefix,
             edition,
-            extern_public
+            extern_private
         },
         cfg,
     )

@@ -1,7 +1,6 @@
  // aux-build:priv_dep.rs
  // aux-build:pub_dep.rs
- // compile-flags: --extern-public=pub_dep
-#![feature(public_private_dependencies)]
+ // compile-flags: --extern-private priv_dep
 #![deny(exported_private_dependencies)]
 
 // This crate is a private dependency
