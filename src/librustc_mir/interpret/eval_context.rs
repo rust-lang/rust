@@ -323,8 +323,8 @@ impl<'a, 'mir, 'tcx: 'mir, M: Machine<'a, 'mir, 'tcx>> EvalContext<'a, 'mir, 'tc
         let cell = &frame.locals[local].layout;
         if cell.get().is_none() {
             let layout = ::interpret::operand::from_known_layout(layout, || {
-            let local_ty = frame.mir.local_decls[local].ty;
-            let local_ty = self.monomorphize_with_substs(local_ty, frame.instance.substs);
+                let local_ty = frame.mir.local_decls[local].ty;
+                let local_ty = self.monomorphize_with_substs(local_ty, frame.instance.substs);
                 self.layout_of(local_ty)
             })?;
             cell.set(Some(layout));
