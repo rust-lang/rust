@@ -15,7 +15,7 @@ completeness            |  completeness is a technical term in type theory. Comp
 control-flow graph      |  a representation of the control-flow of a program; see [the background chapter for more](./background.html#cfg)
 CTFE                    |  Compile-Time Function Evaluation. This is the ability of the compiler to evaluate `const fn`s at compile time. This is part of the compiler's constant evaluation system. ([see more](../const-eval.html))
 cx                      |  we tend to use "cx" as an abbreviation for context. See also `tcx`, `infcx`, etc.
-DAG                     |  a directed acyclic graph is used during compilation to keep track of dependencies between queries. ([see more](../incremental-compilation.html))
+DAG                     |  a directed acyclic graph is used during compilation to keep track of dependencies between queries. ([see more](../queries/incremental-compilation.html))
 data-flow analysis      |  a static analysis that figures out what properties are true at each point in the control-flow of a program; see [the background chapter for more](./background.html#dataflow)
 DefId                   |  an index identifying a definition (see `librustc/hir/def_id.rs`). Uniquely identifies a `DefPath`.
 Double pointer          |  a pointer with additional metadata. See "fat pointer" for more.

@@ -139,7 +139,7 @@ crate (through `crate_variances`), but since most changes will not result in a
 change to the actual results from variance inference, the `variances_of` query
 will wind up being considered green after it is re-evaluated.
 
-[rga]: ./incremental-compilation.html
+[rga]: ./queries/incremental-compilation.html
 
 <a name="addendum"></a>
 
