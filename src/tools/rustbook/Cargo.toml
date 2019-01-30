@@ -3,11 +3,19 @@ authors = ["The Rust Project Developers"]
 name = "rustbook"
 version = "0.1.0"
 license = "MIT/Apache-2.0"
+edition = "2018"
 
 [dependencies]
 clap = "2.25.0"
 
-[dependencies.mdbook]
+[dependencies.mdbook_2]
+package = "mdbook"
+version = "0.2.3"
+default-features = false
+features = ["search"]
+
+[dependencies.mdbook_1]
+package = "mdbook"
 version = "0.1.7"
 default-features = false
 features = ["search"]
