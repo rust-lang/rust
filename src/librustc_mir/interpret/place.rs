@@ -624,7 +624,7 @@ where
                     // their layout on return.
                     PlaceTy {
                         place: *return_place,
-                        layout: self.layout_of_local(self.frame(), mir::RETURN_PLACE, None)?,
+                        layout: self.layout_of(self.frame().mir.return_ty())?,
                     },
                 None => return err!(InvalidNullPointerUsage),
             },
