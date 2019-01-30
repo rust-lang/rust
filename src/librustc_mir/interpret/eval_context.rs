@@ -509,9 +509,10 @@ impl<'a, 'mir, 'tcx: 'mir, M: Machine<'a, 'mir, 'tcx>> EvalContext<'a, 'mir, 'tc
             for (idx, local) in locals.iter_enumerated_mut() {
                 match local.state {
                     LocalState::Live(_) => {
-                        // This needs to be peoperly initialized.
-                        let layout = self.layout_of_local(self.frame(), idx, None)?;
+                        // This needs to be properly initialized.
+                        let layout = self.layout_of(mir.local_decls[idx].ty)?;
                         local.state = LocalState::Live(self.uninit_operand(layout)?);
+                        local.layout = Cell::new(Some(layout));
                     }
                     LocalState::Dead => {
                         // Nothing to do
