@@ -624,7 +624,7 @@ where
                     // their layout on return.
                     PlaceTy {
                         place: *return_place,
-                        layout: self.layout_of(self.frame().mir.return_ty())?,
+                        layout: self.layout_of(self.monomorphize(self.frame().mir.return_ty())?)?,
                     },
                 None => return err!(InvalidNullPointerUsage),
             },

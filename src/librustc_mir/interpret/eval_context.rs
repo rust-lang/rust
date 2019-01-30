@@ -510,7 +510,8 @@ impl<'a, 'mir, 'tcx: 'mir, M: Machine<'a, 'mir, 'tcx>> EvalContext<'a, 'mir, 'tc
                 match local.state {
                     LocalState::Live(_) => {
                         // This needs to be properly initialized.
-                        let layout = self.layout_of(mir.local_decls[idx].ty)?;
+                        let ty = self.monomorphize(mir.local_decls[idx].ty)?;
+                        let layout = self.layout_of(ty)?;
                         local.state = LocalState::Live(self.uninit_operand(layout)?);
                         local.layout = Cell::new(Some(layout));
                     }
