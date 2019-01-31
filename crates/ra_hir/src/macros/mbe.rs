@@ -2,21 +2,25 @@ use ra_syntax::SmolStr;
 
 use crate::macros::tt;
 
-struct MacroRules {
+#[derive(Debug)]
+pub(crate) struct MacroRules {
     rules: Vec<Rule>,
 }
 
+#[derive(Debug)]
 struct Rule {
     lhs: TokenTree,
     rhs: TokenTree,
 }
 
+#[derive(Debug)]
 enum TokenTree {
     Leaf(Leaf),
     Subtree(Subtree),
     Repeat(Repeat),
 }
 
+#[derive(Debug)]
 enum Leaf {
     Literal(Literal),
     Punct(Punct),
@@ -24,11 +28,13 @@ enum Leaf {
     Var(Var),
 }
 
+#[derive(Debug)]
 struct Subtree {
     delimiter: Delimiter,
     token_trees: Vec<TokenTree>,
 }
 
+#[derive(Debug)]
 enum Delimiter {
     Parenthesis,
     Brace,
@@ -36,33 +42,39 @@ enum Delimiter {
     None,
 }
 
+#[derive(Debug)]
 struct Repeat {
     subtree: Subtree,
     kind: RepeatKind,
 }
 
+#[derive(Debug)]
 enum RepeatKind {
     ZeroOrMore,
     OneOrMore,
     ZeroOrOne,
 }
 
+#[derive(Debug)]
 struct Literal {
     text: SmolStr,
 }
 
+#[derive(Debug)]
 struct Punct {
     char: char,
 }
 
+#[derive(Debug)]
 struct Ident {
     text: SmolStr,
 }
 
+#[derive(Debug)]
 struct Var {
     text: SmolStr,
 }
 
-fn parse(tt: tt::TokenTree) -> MacroRules {
+pub(crate) fn parse(tt: &tt::Subtree) -> MacroRules {
     MacroRules { rules: Vec::new() }
 }

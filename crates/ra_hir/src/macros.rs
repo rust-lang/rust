@@ -250,3 +250,29 @@ fn convert_tt(tt: &SyntaxNode) -> Option<tt::Subtree> {
     };
     Some(res)
 }
+
+#[test]
+fn test_convert_tt() {
+    let text = r#"
+macro_rules! impl_froms {
+    ($e:ident: $($v:ident), *) => {
+        $(
+            impl From<$v> for $e {
+                fn from(it: $v) -> $e {
+                    $e::$v(it)
+                }
+            }
+        )*
+    }
+}
+"#;
+    let source_file = ast::SourceFile::parse(text);
+    let maco_call = source_file
+        .syntax()
+        .descendants()
+        .find_map(ast::MacroCall::cast)
+        .unwrap();
+    let tt = macro_call_to_tt(maco_call).unwrap();
+    let tt = mbe::parse(&tt);
+    dbg!(tt);
+}
