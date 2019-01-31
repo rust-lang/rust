@@ -101,6 +101,10 @@
 # that your host compiler ships with libc++.
 #use-libcxx = true
 
+# The value specified here will be passed as `-DLLVM_USE_LINKER` to CMake.
+#use-linker = "lld"
+
+
 # =============================================================================
 # General build configuration options
 # =============================================================================

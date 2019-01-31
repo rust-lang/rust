@@ -234,6 +234,10 @@ impl Step for Llvm {
             cfg.define("LLVM_VERSION_SUFFIX", suffix);
         }
 
+        if let Some(ref linker) = builder.config.llvm_use_linker {
+            cfg.define("LLVM_USE_LINKER", linker);
+        }
+
         if let Some(ref python) = builder.config.python {
             cfg.define("PYTHON_EXECUTABLE", python);
         }

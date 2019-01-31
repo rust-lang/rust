@@ -2633,6 +2633,10 @@ impl<'test> TestCx<'test> {
             cmd.env("RUSTC_LINKER", linker);
         }
 
+        if let Some(ref clang) = self.config.run_clang_based_tests_with {
+            cmd.env("CLANG", clang);
+        }
+
         // We don't want RUSTFLAGS set from the outside to interfere with
         // compiler flags set in the test cases:
         cmd.env_remove("RUSTFLAGS");

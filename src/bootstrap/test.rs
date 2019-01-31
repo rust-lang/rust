@@ -1088,9 +1088,7 @@ impl Step for Compiletest {
         };
         let lldb_exe = if builder.config.lldb_enabled && !target.contains("emscripten") {
             // Test against the lldb that was just built.
-            builder.llvm_out(target)
-                .join("bin")
-                .join("lldb")
+            builder.llvm_out(target).join("bin").join("lldb")
         } else {
             PathBuf::from("lldb")
         };
@@ -1104,6 +1102,26 @@ impl Step for Compiletest {
             let lldb_python_dir = run(Command::new(&lldb_exe).arg("-P")).ok();
             if let Some(ref dir) = lldb_python_dir {
                 cmd.arg("--lldb-python-dir").arg(dir);
+            }
+        }
+
+        if let Some(var) = env::var_os("RUSTBUILD_FORCE_CLANG_BASED_TESTS") {
+            match &var.to_string_lossy().to_lowercase()[..] {
+                "1" | "yes" | "on" => {
+                    assert!(builder.config.lldb_enabled,
+                        "RUSTBUILD_FORCE_CLANG_BASED_TESTS needs Clang/LLDB to \
+                         be built.");
+                    let clang_exe = builder.llvm_out(target).join("bin").join("clang");
+                    cmd.arg("--run-clang-based-tests-with").arg(clang_exe);
+                }
+                "0" | "no" | "off" => {
+                    // Nothing to do.
+                }
+                other => {
+                    // Let's make sure typos don't get unnoticed
+                    panic!("Unrecognized option '{}' set in \
+                            RUSTBUILD_FORCE_CLANG_BASED_TESTS", other);
+                }
             }
         }
 

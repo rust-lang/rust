@@ -110,6 +110,12 @@ pub fn parse_config(args: Vec<String>) -> Config {
         )
         .optopt(
             "",
+            "run-clang-based-tests-with",
+            "path to Clang executable",
+            "PATH",
+        )
+        .optopt(
+            "",
             "llvm-filecheck",
             "path to LLVM's FileCheck binary",
             "DIR",
@@ -298,6 +304,7 @@ pub fn parse_config(args: Vec<String>) -> Config {
         docck_python: matches.opt_str("docck-python").unwrap(),
         valgrind_path: matches.opt_str("valgrind-path"),
         force_valgrind: matches.opt_present("force-valgrind"),
+        run_clang_based_tests_with: matches.opt_str("run-clang-based-tests-with"),
         llvm_filecheck: matches.opt_str("llvm-filecheck").map(|s| PathBuf::from(&s)),
         src_base,
         build_base: opt_path(matches, "build-base"),

@@ -144,6 +144,10 @@ pub struct Config {
     /// (or, alternatively, to silently run them like regular run-pass tests).
     pub force_valgrind: bool,
 
+    /// The path to the Clang executable to run Clang-based tests with. If
+    /// `None` then these tests will be ignored.
+    pub run_clang_based_tests_with: Option<String>,
+
     /// The directory containing the tests to run
     pub src_base: PathBuf,
 
