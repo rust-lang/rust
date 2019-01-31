@@ -86,14 +86,17 @@ pub(crate) fn parse(tt: &tt::Subtree) -> Option<MacroRules> {
 
 fn parse_rule(p: &mut RulesParser) -> Option<Rule> {
     let lhs = parse_subtree(p.eat_subtree()?)?;
-    p.eat_punct('=');
-    p.eat_punct('>');
+    p.eat_punct('=')?;
+    p.eat_punct('>')?;
     let rhs = parse_subtree(p.eat_subtree()?)?;
     Some(Rule { lhs, rhs })
 }
 
 fn parse_subtree(tt: &tt::Subtree) -> Option<Subtree> {
-    None
+    Some(Subtree {
+        token_trees: Vec::new(),
+        delimiter: Delimiter::None,
+    })
 }
 
 struct RulesParser<'a> {

@@ -221,27 +221,32 @@ fn convert_tt(tt: &SyntaxNode) -> Option<tt::Subtree> {
         if child == first_child || child == last_child || child.kind().is_trivia() {
             continue;
         }
-        let child: tt::TokenTree = if child.kind() == TOKEN_TREE {
-            convert_tt(child)?.into()
-        } else if child.kind().is_keyword() || child.kind() == IDENT {
-            let text = child.leaf_text().unwrap().clone();
-            tt::Leaf::from(tt::Ident { text }).into()
-        } else if child.kind().is_punct() {
-            // FIXME: multibyte tokens
-            tt::Leaf::from(tt::Punct {
-                char: child.text().char_at(0)?,
-            })
-            .into()
-        } else if child.kind().is_literal() {
-            tt::Leaf::from(tt::Literal {
-                text: child.leaf_text().unwrap().clone(),
-            })
-            .into()
+        if child.kind().is_punct() {
+            let leaves = child
+                .leaf_text()
+                .unwrap()
+                .chars()
+                .map(|char| tt::Punct { char })
+                .map(tt::Leaf::from)
+                .map(tt::TokenTree::from);
+            token_trees.extend(leaves);
         } else {
-            log::error!("unknown kind: {:?}", child);
-            return None;
-        };
-        token_trees.push(child)
+            let child: tt::TokenTree = if child.kind() == TOKEN_TREE {
+                convert_tt(child)?.into()
+            } else if child.kind().is_keyword() || child.kind() == IDENT {
+                let text = child.leaf_text().unwrap().clone();
+                tt::Leaf::from(tt::Ident { text }).into()
+            } else if child.kind().is_literal() {
+                tt::Leaf::from(tt::Literal {
+                    text: child.leaf_text().unwrap().clone(),
+                })
+                .into()
+            } else {
+                log::error!("unknown kind: {:?}", child);
+                return None;
+            };
+            token_trees.push(child)
+        }
     }
 
     let res = tt::Subtree {
