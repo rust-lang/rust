@@ -71,6 +71,10 @@ accomplishing various tasks.
   </form>
 </div>
 
+## The Edition Guide
+
+[The Edition Guide](edition-guide/index.html) describes the Rust editions.
+
 ## The Rustc Book
 
 [The Rustc Book](rustc/index.html) describes the Rust compiler, `rustc`.
