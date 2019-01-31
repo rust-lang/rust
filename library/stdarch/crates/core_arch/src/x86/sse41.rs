@@ -709,13 +709,6 @@ pub unsafe fn _mm_ceil_ss(a: __m128, b: __m128) -> __m128 {
 /// Rounding is done according to the rounding parameter, which can be one of:
 ///
 /// ```
-/// #![feature(stdsimd)]
-/// # #![cfg_attr(not(dox), no_std)]
-/// # #[cfg(not(dox))]
-/// # extern crate std as real_std;
-/// # #[cfg(not(dox))]
-/// # extern crate std_detect as std;
-///
 /// #[cfg(target_arch = "x86")]
 /// use std::arch::x86::*;
 /// #[cfg(target_arch = "x86_64")]
@@ -761,14 +754,6 @@ pub unsafe fn _mm_round_pd(a: __m128d, rounding: i32) -> __m128d {
 /// Rounding is done according to the rounding parameter, which can be one of:
 ///
 /// ```
-/// #![feature(stdsimd)]
-///
-/// # #![cfg_attr(not(dox), no_std)]
-/// # #[cfg(not(dox))]
-/// # extern crate std as real_std;
-/// # #[cfg(not(dox))]
-/// # extern crate std_detect as std;
-///
 /// #[cfg(target_arch = "x86")]
 /// use std::arch::x86::*;
 /// #[cfg(target_arch = "x86_64")]
@@ -816,13 +801,6 @@ pub unsafe fn _mm_round_ps(a: __m128, rounding: i32) -> __m128 {
 /// Rounding is done according to the rounding parameter, which can be one of:
 ///
 /// ```
-/// #![feature(stdsimd)]
-/// # #![cfg_attr(not(dox), no_std)]
-/// # #[cfg(not(dox))]
-/// # extern crate std as real_std;
-/// # #[cfg(not(dox))]
-/// # extern crate std_detect as std;
-///
 /// #[cfg(target_arch = "x86")]
 /// use std::arch::x86::*;
 /// #[cfg(target_arch = "x86_64")]
@@ -870,13 +848,6 @@ pub unsafe fn _mm_round_sd(a: __m128d, b: __m128d, rounding: i32) -> __m128d {
 /// Rounding is done according to the rounding parameter, which can be one of:
 ///
 /// ```
-/// #![feature(stdsimd)]
-/// # #![cfg_attr(not(dox), no_std)]
-/// # #[cfg(not(dox))]
-/// # extern crate std as real_std;
-/// # #[cfg(not(dox))]
-/// # extern crate std_detect as std;
-///
 /// #[cfg(target_arch = "x86")]
 /// use std::arch::x86::*;
 /// #[cfg(target_arch = "x86_64")]

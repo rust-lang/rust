@@ -118,16 +118,6 @@ pub unsafe fn _mm_cmpistrm(a: __m128i, b: __m128i, imm8: i32) -> __m128i {
 /// Find a substring using [`_SIDD_CMP_EQUAL_ORDERED`]
 ///
 /// ```
-/// # #![feature(stdsimd)]
-/// # #![cfg_attr(not(dox), no_std)]
-/// # #[cfg(not(dox))]
-/// # #[macro_use]
-/// # extern crate std as real_std;
-/// # #[cfg(not(dox))]
-/// # #[macro_use]
-/// # extern crate std_detect as std;
-/// # #[cfg(not(dox))]
-/// # use real_std::prelude::v1::*;
 /// #[cfg(target_arch = "x86")]
 /// use std::arch::x86::*;
 /// #[cfg(target_arch = "x86_64")]
@@ -165,14 +155,6 @@ pub unsafe fn _mm_cmpistrm(a: __m128i, b: __m128i, imm8: i32) -> __m128i {
 /// one or more of a given set of characters in the haystack.
 ///
 /// ```
-/// # #![feature(stdsimd)]
-/// # #![cfg_attr(not(dox), no_std)]
-/// # #[cfg(not(dox))]
-/// # #[macro_use]
-/// # extern crate std as real_std;
-/// # #[cfg(not(dox))]
-/// # #[macro_use]
-/// # extern crate std_detect as std;
 /// #[cfg(target_arch = "x86")]
 /// use std::arch::x86::*;
 /// #[cfg(target_arch = "x86_64")]
@@ -209,14 +191,6 @@ pub unsafe fn _mm_cmpistrm(a: __m128i, b: __m128i, imm8: i32) -> __m128i {
 /// range of characters.
 ///
 /// ```
-/// # #![feature(stdsimd)]
-/// # #![cfg_attr(not(dox), no_std)]
-/// # #[cfg(not(dox))]
-/// # #[macro_use]
-/// # extern crate std as real_std;
-/// # #[cfg(not(dox))]
-/// # #[macro_use]
-/// # extern crate std_detect as std;
 /// #[cfg(target_arch = "x86")]
 /// use std::arch::x86::*;
 /// #[cfg(target_arch = "x86_64")]
@@ -253,14 +227,6 @@ pub unsafe fn _mm_cmpistrm(a: __m128i, b: __m128i, imm8: i32) -> __m128i {
 /// Working with 16-bit characters.
 ///
 /// ```
-/// # #![feature(stdsimd)]
-/// # #![cfg_attr(not(dox), no_std)]
-/// # #[cfg(not(dox))]
-/// # #[macro_use]
-/// # extern crate std as real_std;
-/// # #[cfg(not(dox))]
-/// # #[macro_use]
-/// # extern crate std_detect as std;
 /// #[cfg(target_arch = "x86")]
 /// use std::arch::x86::*;
 /// #[cfg(target_arch = "x86_64")]
@@ -482,14 +448,6 @@ pub unsafe fn _mm_cmpestrm(a: __m128i, la: i32, b: __m128i, lb: i32, imm8: i32) 
 /// # Examples
 ///
 /// ```
-/// # #![feature(stdsimd)]
-/// # #![cfg_attr(not(dox), no_std)]
-/// # #[cfg(not(dox))]
-/// # #[macro_use]
-/// # extern crate std as real_std;
-/// # #[cfg(not(dox))]
-/// # #[macro_use]
-/// # extern crate std_detect as std;
 /// #[cfg(target_arch = "x86")]
 /// use std::arch::x86::*;
 /// #[cfg(target_arch = "x86_64")]
