@@ -1022,7 +1022,6 @@ dependencies = [
 name = "ra_macros"
 version = "0.1.0"
 dependencies = [
- "join_to_string 0.1.3 (registry+https://github.com/rust-lang/crates.io-index)",
  "rustc-hash 1.0.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "smol_str 0.1.9 (registry+https://github.com/rust-lang/crates.io-index)",
 ]

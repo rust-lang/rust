@@ -28,16 +28,14 @@ fn parse_subtree(tt: &tt::Subtree) -> Option<mbe::Subtree> {
     while let Some(tt) = p.eat() {
         let child: mbe::TokenTree = match tt {
             tt::TokenTree::Leaf(leaf) => match leaf {
-                tt::Leaf::Punct(tt::Punct { char: '$' }) => {
+                tt::Leaf::Punct(tt::Punct { char: '$', .. }) => {
                     if p.at_ident().is_some() {
                         mbe::Leaf::from(parse_var(&mut p)?).into()
                     } else {
                         parse_repeat(&mut p)?.into()
                     }
                 }
-                tt::Leaf::Punct(tt::Punct { char }) => {
-                    mbe::Leaf::from(mbe::Punct { char: *char }).into()
-                }
+                tt::Leaf::Punct(punct) => mbe::Leaf::from(*punct).into(),
                 tt::Leaf::Ident(tt::Ident { text }) => {
                     mbe::Leaf::from(mbe::Ident { text: text.clone() }).into()
                 }
@@ -78,7 +76,7 @@ fn parse_repeat(p: &mut TtCursor) -> Option<mbe::Repeat> {
     let sep = p.eat_punct()?;
     let (separator, rep) = match sep.char {
         '*' | '+' | '?' => (None, sep.char),
-        char => (Some(mbe::Punct { char }), p.eat_punct()?.char),
+        char => (Some(char), p.eat_punct()?.char),
     };
 
     let kind = match rep {

@@ -1,7 +1,6 @@
 use std::fmt;
 
 use smol_str::SmolStr;
-use join_to_string::join;
 
 #[derive(Debug, Clone)]
 pub enum TokenTree {
@@ -37,9 +36,16 @@ pub struct Literal {
     pub text: SmolStr,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct Punct {
     pub char: char,
+    pub spacing: Spacing,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Spacing {
+    Alone,
+    Joint,
 }
 
 #[derive(Debug, Clone)]
@@ -64,10 +70,23 @@ impl fmt::Display for Subtree {
             Delimiter::Bracket => ("[", "]"),
             Delimiter::None => ("", ""),
         };
-        join(self.token_trees.iter())
-            .separator(" ")
-            .surround_with(l, r)
-            .to_fmt(f)
+        f.write_str(l)?;
+        let mut needs_space = false;
+        for tt in self.token_trees.iter() {
+            if needs_space {
+                f.write_str(" ")?;
+            }
+            needs_space = true;
+            match tt {
+                TokenTree::Leaf(Leaf::Punct(p)) => {
+                    needs_space = p.spacing == Spacing::Alone;
+                    fmt::Display::fmt(p, f)?
+                }
+                tt => fmt::Display::fmt(tt, f)?,
+            }
+        }
+        f.write_str(r)?;
+        Ok(())
     }
 }
 

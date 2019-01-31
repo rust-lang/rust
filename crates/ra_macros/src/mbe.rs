@@ -45,7 +45,7 @@ pub(crate) struct Subtree {
 pub(crate) struct Repeat {
     pub(crate) subtree: Subtree,
     pub(crate) kind: RepeatKind,
-    pub(crate) separator: Option<Punct>,
+    pub(crate) separator: Option<char>,
 }
 
 #[derive(Debug)]

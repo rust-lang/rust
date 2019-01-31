@@ -7,4 +7,3 @@ authors = ["Aleksey Kladov <aleksey.kladov@gmail.com>"]
 [dependencies]
 rustc-hash = "1.0.0"
 smol_str = "0.1.9"
-join_to_string = "0.1.3"

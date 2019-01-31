@@ -28,7 +28,7 @@ impl<'a> TtCursor<'a> {
 
     pub(crate) fn at_char(&self, char: char) -> bool {
         match self.at_punct() {
-            Some(tt::Punct { char: c }) if *c == char => true,
+            Some(tt::Punct { char: c, .. }) if *c == char => true,
             _ => false,
         }
     }

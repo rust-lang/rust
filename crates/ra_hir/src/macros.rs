@@ -218,14 +218,28 @@ fn convert_tt(tt: &SyntaxNode) -> Option<tt::Subtree> {
             continue;
         }
         if child.kind().is_punct() {
-            let leaves = child
-                .leaf_text()
-                .unwrap()
-                .chars()
-                .map(|char| tt::Punct { char })
-                .map(tt::Leaf::from)
-                .map(tt::TokenTree::from);
-            token_trees.extend(leaves);
+            let mut prev = None;
+            for char in child.leaf_text().unwrap().chars() {
+                if let Some(char) = prev {
+                    token_trees.push(
+                        tt::Leaf::from(tt::Punct {
+                            char,
+                            spacing: tt::Spacing::Joint,
+                        })
+                        .into(),
+                    );
+                }
+                prev = Some(char)
+            }
+            if let Some(char) = prev {
+                token_trees.push(
+                    tt::Leaf::from(tt::Punct {
+                        char,
+                        spacing: tt::Spacing::Alone,
+                    })
+                    .into(),
+                );
+            }
         } else {
             let child: tt::TokenTree = if child.kind() == TOKEN_TREE {
                 convert_tt(child)?.into()
@@ -254,7 +268,7 @@ fn convert_tt(tt: &SyntaxNode) -> Option<tt::Subtree> {
 
 #[test]
 fn test_convert_tt() {
-    let macro_defenition = r#"
+    let macro_definition = r#"
 macro_rules! impl_froms {
     ($e:ident: $($v:ident),*) => {
         $(
@@ -272,8 +286,8 @@ macro_rules! impl_froms {
 impl_froms!(TokenTree: Leaf, Subtree);
 "#;
 
-    let source_file = ast::SourceFile::parse(macro_defenition);
-    let macro_defenition = source_file
+    let source_file = ast::SourceFile::parse(macro_definition);
+    let macro_definition = source_file
         .syntax()
         .descendants()
         .find_map(ast::MacroCall::cast)
@@ -286,13 +300,13 @@ impl_froms!(TokenTree: Leaf, Subtree);
         .find_map(ast::MacroCall::cast)
         .unwrap();
 
-    let defenition_tt = macro_call_to_tt(macro_defenition).unwrap();
+    let definition_tt = macro_call_to_tt(macro_definition).unwrap();
     let invocation_tt = macro_call_to_tt(macro_invocation).unwrap();
-    let mbe = mbe::parse(&defenition_tt).unwrap();
+    let mbe = mbe::parse(&definition_tt).unwrap();
     let expansion = mbe::exapnd(&mbe, &invocation_tt).unwrap();
     assert_eq!(
         expansion.to_string(),
-        "{(impl From < Leaf > for TokenTree {fn from (it : Leaf) - > TokenTree {TokenTree : : Leaf (it)}}) \
-          (impl From < Subtree > for TokenTree {fn from (it : Subtree) - > TokenTree {TokenTree : : Subtree (it)}})}"
+        "{(impl From < Leaf > for TokenTree {fn from (it : Leaf) -> TokenTree {TokenTree :: Leaf (it)}}) \
+          (impl From < Subtree > for TokenTree {fn from (it : Subtree) -> TokenTree {TokenTree :: Subtree (it)}})}"
     )
 }
