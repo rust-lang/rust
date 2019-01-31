@@ -1,6 +1,6 @@
 use smol_str::SmolStr;
 
-use crate::tt::Delimiter;
+pub(crate) use crate::tt::{Delimiter, Punct};
 
 pub use crate::{
     mbe_parser::parse,
@@ -58,11 +58,6 @@ pub(crate) enum RepeatKind {
 #[derive(Debug)]
 pub(crate) struct Literal {
     pub(crate) text: SmolStr,
-}
-
-#[derive(Debug)]
-pub(crate) struct Punct {
-    pub(crate) char: char,
 }
 
 #[derive(Debug)]

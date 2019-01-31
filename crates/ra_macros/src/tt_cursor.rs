@@ -1,5 +1,6 @@
 use crate::tt;
 
+#[derive(Clone)]
 pub(crate) struct TtCursor<'a> {
     subtree: &'a tt::Subtree,
     pos: usize,

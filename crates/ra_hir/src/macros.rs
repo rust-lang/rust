@@ -254,7 +254,7 @@ fn convert_tt(tt: &SyntaxNode) -> Option<tt::Subtree> {
 
 #[test]
 fn test_convert_tt() {
-    let text = r#"
+    let macro_defenition = r#"
 macro_rules! impl_froms {
     ($e:ident: $($v:ident),*) => {
         $(
@@ -267,13 +267,32 @@ macro_rules! impl_froms {
     }
 }
 "#;
-    let source_file = ast::SourceFile::parse(text);
-    let maco_call = source_file
+
+    let macro_invocation = r#"
+impl_froms!(TokenTree: Leaf, Subtree);
+"#;
+
+    let source_file = ast::SourceFile::parse(macro_defenition);
+    let macro_defenition = source_file
         .syntax()
         .descendants()
         .find_map(ast::MacroCall::cast)
         .unwrap();
-    let tt = macro_call_to_tt(maco_call).unwrap();
-    let tt = mbe::parse(&tt);
-    assert!(tt.is_some());
+
+    let source_file = ast::SourceFile::parse(macro_invocation);
+    let macro_invocation = source_file
+        .syntax()
+        .descendants()
+        .find_map(ast::MacroCall::cast)
+        .unwrap();
+
+    let defenition_tt = macro_call_to_tt(macro_defenition).unwrap();
+    let invocation_tt = macro_call_to_tt(macro_invocation).unwrap();
+    let mbe = mbe::parse(&defenition_tt).unwrap();
+    let expansion = mbe::exapnd(&mbe, &invocation_tt).unwrap();
+    assert_eq!(
+        expansion.to_string(),
+        "{(impl From < Leaf > for TokenTree {fn from (it : Leaf) - > TokenTree {TokenTree : : Leaf (it)}}) \
+          (impl From < Subtree > for TokenTree {fn from (it : Subtree) - > TokenTree {TokenTree : : Subtree (it)}})}"
+    )
 }

@@ -84,7 +84,7 @@ fn parse_repeat(p: &mut TtCursor) -> Option<mbe::Repeat> {
     let kind = match rep {
         '*' => mbe::RepeatKind::ZeroOrMore,
         '+' => mbe::RepeatKind::OneOrMore,
-        '?' => mbe::RepeatKind::ZeroOrMore,
+        '?' => mbe::RepeatKind::ZeroOrOne,
         _ => return None,
     };
     p.bump();
