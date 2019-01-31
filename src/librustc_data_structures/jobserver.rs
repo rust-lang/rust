@@ -4,7 +4,7 @@ use std::sync::{Condvar, Arc, Mutex};
 use std::mem;
 
 #[derive(Default)]
-pub struct LockedProxyData {
+struct LockedProxyData {
     /// The number of free thread tokens, this may include the implicit token given to the process
     free: usize,
 
@@ -72,12 +72,15 @@ impl LockedProxyData {
 }
 
 #[derive(Default)]
-pub struct ProxyData {
+struct ProxyData {
     lock: Mutex<LockedProxyData>,
     cond_var: Condvar,
 }
 
-pub struct Proxy {
+/// A helper type which makes managing jobserver tokens easier.
+/// It also allows you to treat the implicit token given to the process
+/// in the same manner as requested tokens.
+struct Proxy {
     thread: Mutex<HelperThread>,
     data: Arc<ProxyData>,
 }
@@ -131,11 +134,11 @@ pub fn release_thread() {
 }
 
 impl Proxy {
-    pub fn release_token(&self) {
+    fn release_token(&self) {
         self.data.lock.lock().unwrap().release_token(&self.data.cond_var);
     }
 
-    pub fn acquire_token(&self) {
+    fn acquire_token(&self) {
         let mut data = self.data.lock.lock().unwrap();
         data.waiters += 1;
         if data.take_token(&self.thread) {
