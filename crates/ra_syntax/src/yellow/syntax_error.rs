@@ -94,6 +94,7 @@ pub enum SyntaxErrorKind {
     UnicodeEscapeOutOfRange,
     UnclosedString,
     InvalidSuffix,
+    InvalidBlockAttr,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -136,6 +137,9 @@ impl fmt::Display for SyntaxErrorKind {
             UnicodeEscapeOutOfRange => write!(f, "Unicode escape code should be at most 0x10FFFF"),
             UnclosedString => write!(f, "Unclosed string literal"),
             InvalidSuffix => write!(f, "Invalid literal suffix"),
+            InvalidBlockAttr => {
+                write!(f, "A block in this position cannot accept inner attributes")
+            }
             ParseError(msg) => write!(f, "{}", msg.0),
         }
     }
