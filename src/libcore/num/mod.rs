@@ -883,10 +883,15 @@ $EndFeature, "
             #[stable(feature = "rust1", since = "1.0.0")]
             #[inline]
             pub fn saturating_add(self, rhs: Self) -> Self {
+                #[cfg(stage0)]
                 match self.checked_add(rhs) {
                     Some(x) => x,
                     None if rhs >= 0 => Self::max_value(),
                     None => Self::min_value(),
+                }
+                #[cfg(not(stage0))]
+                {
+                    intrinsics::saturating_add(self, rhs)
                 }
             }
         }
@@ -908,10 +913,15 @@ $EndFeature, "
             #[stable(feature = "rust1", since = "1.0.0")]
             #[inline]
             pub fn saturating_sub(self, rhs: Self) -> Self {
+                #[cfg(stage0)]
                 match self.checked_sub(rhs) {
                     Some(x) => x,
                     None if rhs >= 0 => Self::min_value(),
                     None => Self::max_value(),
+                }
+                #[cfg(not(stage0))]
+                {
+                    intrinsics::saturating_sub(self, rhs)
                 }
             }
         }
@@ -2744,9 +2754,14 @@ assert_eq!(200u8.saturating_add(127), 255);", $EndFeature, "
             #[stable(feature = "rust1", since = "1.0.0")]
             #[inline]
             pub fn saturating_add(self, rhs: Self) -> Self {
+                #[cfg(stage0)]
                 match self.checked_add(rhs) {
                     Some(x) => x,
                     None => Self::max_value(),
+                }
+                #[cfg(not(stage0))]
+                {
+                    intrinsics::saturating_add(self, rhs)
                 }
             }
         }
@@ -2766,9 +2781,14 @@ assert_eq!(13", stringify!($SelfT), ".saturating_sub(127), 0);", $EndFeature, "
             #[stable(feature = "rust1", since = "1.0.0")]
             #[inline]
             pub fn saturating_sub(self, rhs: Self) -> Self {
+                #[cfg(stage0)]
                 match self.checked_sub(rhs) {
                     Some(x) => x,
                     None => Self::min_value(),
+                }
+                #[cfg(not(stage0))]
+                {
+                    intrinsics::saturating_sub(self, rhs)
                 }
             }
         }

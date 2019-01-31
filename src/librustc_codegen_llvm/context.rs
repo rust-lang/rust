@@ -757,6 +757,30 @@ impl CodegenCx<'b, 'tcx> {
         ifn!("llvm.umul.with.overflow.i64", fn(t_i64, t_i64) -> mk_struct!{t_i64, i1});
         ifn!("llvm.umul.with.overflow.i128", fn(t_i128, t_i128) -> mk_struct!{t_i128, i1});
 
+        ifn!("llvm.sadd.sat.i8", fn(t_i8, t_i8) -> t_i8);
+        ifn!("llvm.sadd.sat.i16", fn(t_i16, t_i16) -> t_i16);
+        ifn!("llvm.sadd.sat.i32", fn(t_i32, t_i32) -> t_i32);
+        ifn!("llvm.sadd.sat.i64", fn(t_i64, t_i64) -> t_i64);
+        ifn!("llvm.sadd.sat.i128", fn(t_i128, t_i128) -> t_i128);
+
+        ifn!("llvm.uadd.sat.i8", fn(t_i8, t_i8) -> t_i8);
+        ifn!("llvm.uadd.sat.i16", fn(t_i16, t_i16) -> t_i16);
+        ifn!("llvm.uadd.sat.i32", fn(t_i32, t_i32) -> t_i32);
+        ifn!("llvm.uadd.sat.i64", fn(t_i64, t_i64) -> t_i64);
+        ifn!("llvm.uadd.sat.i128", fn(t_i128, t_i128) -> t_i128);
+
+        ifn!("llvm.ssub.sat.i8", fn(t_i8, t_i8) -> t_i8);
+        ifn!("llvm.ssub.sat.i16", fn(t_i16, t_i16) -> t_i16);
+        ifn!("llvm.ssub.sat.i32", fn(t_i32, t_i32) -> t_i32);
+        ifn!("llvm.ssub.sat.i64", fn(t_i64, t_i64) -> t_i64);
+        ifn!("llvm.ssub.sat.i128", fn(t_i128, t_i128) -> t_i128);
+
+        ifn!("llvm.usub.sat.i8", fn(t_i8, t_i8) -> t_i8);
+        ifn!("llvm.usub.sat.i16", fn(t_i16, t_i16) -> t_i16);
+        ifn!("llvm.usub.sat.i32", fn(t_i32, t_i32) -> t_i32);
+        ifn!("llvm.usub.sat.i64", fn(t_i64, t_i64) -> t_i64);
+        ifn!("llvm.usub.sat.i128", fn(t_i128, t_i128) -> t_i128);
+
         ifn!("llvm.lifetime.start", fn(t_i64,i8p) -> void);
         ifn!("llvm.lifetime.end", fn(t_i64, i8p) -> void);
 
