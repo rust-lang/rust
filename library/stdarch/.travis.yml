@@ -98,6 +98,10 @@ matrix:
         - shellcheck --version
         - shellcheck ci/*.sh
 
+  allow_failures:
+    # FIXME: https://github.com/rust-lang-nursery/stdsimd/issues/669
+    - name: "powerpc-unknown-linux-gnu - no assert_instr"
+
 install: travis_retry rustup target add $TARGET
 script:
   - cargo generate-lockfile
