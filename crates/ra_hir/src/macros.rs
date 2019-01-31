@@ -260,7 +260,7 @@ fn convert_tt(tt: &SyntaxNode) -> Option<tt::Subtree> {
 fn test_convert_tt() {
     let text = r#"
 macro_rules! impl_froms {
-    ($e:ident: $($v:ident), *) => {
+    ($e:ident: $($v:ident),*) => {
         $(
             impl From<$v> for $e {
                 fn from(it: $v) -> $e {
@@ -279,5 +279,5 @@ macro_rules! impl_froms {
         .unwrap();
     let tt = macro_call_to_tt(maco_call).unwrap();
     let tt = mbe::parse(&tt);
-    dbg!(tt);
+    assert!(tt.is_some());
 }

@@ -21,7 +21,7 @@ pub(crate) struct Subtree {
     pub(crate) token_trees: Vec<TokenTree>,
 }
 
-#[derive(Debug)]
+#[derive(Clone, Copy, Debug)]
 pub(crate) enum Delimiter {
     Parenthesis,
     Brace,
