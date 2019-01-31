@@ -33,6 +33,9 @@ fn test() {
     // We can move `b` because it's Copy.
     drop(b);
 
+    // Without parameters works as expected.
+    let _: () = dbg!();
+
     // Test that we can borrow and that successive applications is still identity.
     let a = NoCopy(1337);
     let b: &NoCopy = dbg!(dbg!(&a));
@@ -69,17 +72,19 @@ fn validate_stderr(stderr: Vec<String>) {
         "    y: 24",
         "}",
 
-        ":38] &a = NoCopy(",
+        ":37]",
+
+        ":41] &a = NoCopy(",
         "    1337",
         ")",
 
-        ":38] dbg!(& a) = NoCopy(",
+        ":41] dbg!(& a) = NoCopy(",
         "    1337",
         ")",
-        ":43] f(&42) = 42",
+        ":46] f(&42) = 42",
 
         "before",
-        ":48] { foo += 1; eprintln!(\"before\"); 7331 } = 7331",
+        ":51] { foo += 1; eprintln!(\"before\"); 7331 } = 7331",
     ]);
 }
 
