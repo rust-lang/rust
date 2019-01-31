@@ -4544,6 +4544,9 @@ macro_rules! try_from_unbounded {
         impl TryFrom<$source> for $target {
             type Error = TryFromIntError;
 
+            /// Try to create the target type from the source type.
+            /// This particular variant will never fail, but is included
+            /// for completeness's sake.
             #[inline]
             fn try_from(value: $source) -> Result<Self, Self::Error> {
                 Ok(value as $target)
@@ -4559,6 +4562,10 @@ macro_rules! try_from_lower_bounded {
         impl TryFrom<$source> for $target {
             type Error = TryFromIntError;
 
+            /// Try to create a target number type from a
+            /// source type that has `source::MIN > dest::MIN`.
+            /// Will return an error if `source` is less than 
+            /// `dest::MIN`.
             #[inline]
             fn try_from(u: $source) -> Result<$target, TryFromIntError> {
                 if u >= 0 {
@@ -4578,6 +4585,10 @@ macro_rules! try_from_upper_bounded {
         impl TryFrom<$source> for $target {
             type Error = TryFromIntError;
 
+            /// Try to create a target number type from a
+            /// source type that has `source::MAX > dest::MAX`.
+            /// Will return an error if `source` is greater than 
+            /// `dest::MAX`.
             #[inline]
             fn try_from(u: $source) -> Result<$target, TryFromIntError> {
                 if u > (<$target>::max_value() as $source) {
@@ -4597,6 +4608,11 @@ macro_rules! try_from_both_bounded {
         impl TryFrom<$source> for $target {
             type Error = TryFromIntError;
 
+            /// Try to "narrow" a number from the source type
+            /// to the target type.  Will return an error if 
+            /// the source value is either larger than the 
+            /// `MAX` value for the target type or smaller 
+            /// than the `MIN` value for it.
             #[inline]
             fn try_from(u: $source) -> Result<$target, TryFromIntError> {
                 let min = <$target>::min_value() as $source;
