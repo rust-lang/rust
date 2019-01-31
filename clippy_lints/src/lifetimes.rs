@@ -1,5 +1,3 @@
-use crate::reexport::*;
-use crate::utils::{last_path_segment, span_lint};
 use matches::matches;
 use rustc::hir::def::Def;
 use rustc::hir::intravisit::*;
@@ -10,6 +8,9 @@ use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use syntax::source_map::Span;
 use syntax::symbol::keywords;
 
+use crate::reexport::*;
+use crate::utils::{last_path_segment, span_lint};
+
 declare_clippy_lint! {
     /// **What it does:** Checks for lifetime annotations which can be removed by
     /// relying on lifetime elision.
@@ -19,7 +20,7 @@ declare_clippy_lint! {
     /// them leads to more readable code.
     ///
     /// **Known problems:** Potential false negatives: we bail out if the function
-    /// has a `where` clause where lifetimes are mentioned.
+    /// has a where-clause where lifetimes are mentioned.
     ///
     /// **Example:**
     /// ```rust
@@ -384,7 +385,7 @@ impl<'a, 'tcx> Visitor<'tcx> for RefVisitor<'a, 'tcx> {
     }
 }
 
-/// Are any lifetimes mentioned in the `where` clause? If yes, we don't try to
+/// Are any lifetimes mentioned in the where-clause? If yes, we don't try to
 /// reason about elision.
 fn has_where_lifetimes<'a, 'tcx: 'a>(cx: &LateContext<'a, 'tcx>, where_clause: &'tcx WhereClause) -> bool {
     for predicate in &where_clause.predicates {

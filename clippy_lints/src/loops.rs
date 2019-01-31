@@ -727,7 +727,7 @@ fn never_loop_expr(expr: &Expr, main_loop_id: HirId) -> NeverLoopResult {
         ExprKind::Continue(d) => {
             let id = d
                 .target_id
-                .expect("target id can only be missing in the presence of compilation errors");
+                .expect("target ID can only be missing in the presence of compilation errors");
             if id == main_loop_id {
                 NeverLoopResult::MayContinueMainLoop
             } else {
@@ -953,7 +953,7 @@ fn get_indexed_assignments<'a, 'tcx>(
     }
 }
 
-/// Check for for loops that sequentially copy items from one slice-like
+/// Checks for for loops that sequentially copy items from one slice-like
 /// object to another.
 fn detect_manual_memcpy<'a, 'tcx>(
     cx: &LateContext<'a, 'tcx>,
@@ -1065,7 +1065,7 @@ fn detect_manual_memcpy<'a, 'tcx>(
     }
 }
 
-/// Check for looping over a range and then indexing a sequence with it.
+/// Checks for looping over a range and then indexing a sequence with it.
 /// The iteratee must be a range literal.
 #[allow(clippy::too_many_lines)]
 fn check_for_loop_range<'a, 'tcx>(
@@ -1413,7 +1413,7 @@ fn check_for_loop_arg(cx: &LateContext<'_, '_>, pat: &Pat, arg: &Expr, expr: &Ex
     }
 }
 
-/// Check for `for` loops over `Option`s and `Results`
+/// Checks for `for` loops over `Option`s and `Results`
 fn check_arg_type(cx: &LateContext<'_, '_>, pat: &Pat, arg: &Expr) {
     let ty = cx.tables.expr_ty(arg);
     if match_type(cx, ty, &paths::OPTION) {
@@ -1507,7 +1507,7 @@ fn check_for_loop_explicit_counter<'a, 'tcx>(
     }
 }
 
-/// Check for the `FOR_KV_MAP` lint.
+/// Checks for the `FOR_KV_MAP` lint.
 fn check_for_loop_over_map_kv<'a, 'tcx>(
     cx: &LateContext<'a, 'tcx>,
     pat: &'tcx Pat,
@@ -1673,7 +1673,7 @@ fn check_for_mutation(
     delegate.mutation_span()
 }
 
-/// Return true if the pattern is a `PatWild` or an ident prefixed with `'_'`.
+/// Returns `true` if the pattern is a `PatWild` or an ident prefixed with `'_'`.
 fn pat_is_wild<'tcx>(pat: &'tcx PatKind, body: &'tcx Expr) -> bool {
     match *pat {
         PatKind::Wild => true,
@@ -1967,7 +1967,7 @@ impl<'a, 'tcx> Visitor<'tcx> for VarUsedAfterLoopVisitor<'a, 'tcx> {
     }
 }
 
-/// Return true if the type of expr is one that provides `IntoIterator` impls
+/// Returns `true` if the type of expr is one that provides `IntoIterator` impls
 /// for `&T` and `&mut T`, such as `Vec`.
 #[rustfmt::skip]
 fn is_ref_iterable_type(cx: &LateContext<'_, '_>, e: &Expr) -> bool {
@@ -2022,7 +2022,7 @@ fn extract_first_expr(block: &Block) -> Option<&Expr> {
     }
 }
 
-/// Return true if expr contains a single break expr without destination label
+/// Returns `true` if expr contains a single break expr without destination label
 /// and
 /// passed expression. The expression may be within a block.
 fn is_simple_break_expr(expr: &Expr) -> bool {
@@ -2102,7 +2102,7 @@ impl<'a, 'tcx> Visitor<'tcx> for IncrementVisitor<'a, 'tcx> {
     }
 }
 
-/// Check whether a variable is initialized to zero at the start of a loop.
+/// Checks whether a variable is initialized to zero at the start of a loop.
 struct InitializeVisitor<'a, 'tcx: 'a> {
     cx: &'a LateContext<'a, 'tcx>, // context reference
     end_expr: &'tcx Expr,          // the for loop. Stop scanning here.
@@ -2336,7 +2336,7 @@ fn path_name(e: &Expr) -> Option<Name> {
 
 fn check_infinite_loop<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, cond: &'tcx Expr, expr: &'tcx Expr) {
     if constant(cx, cx.tables, cond).is_some() {
-        // A pure constant condition (e.g. while false) is not linted.
+        // A pure constant condition (e.g., while false) is not linted.
         return;
     }
 

@@ -21,27 +21,27 @@ use syntax_pos::symbol::Symbol;
 /// A `LitKind`-like enum to fold constant `Expr`s into.
 #[derive(Debug, Clone)]
 pub enum Constant {
-    /// a String "abc"
+    /// A `String` (e.g., "abc").
     Str(String),
-    /// a Binary String b"abc"
+    /// A binary string (e.g., `b"abc"`).
     Binary(Lrc<Vec<u8>>),
-    /// a single char 'a'
+    /// A single `char` (e.g., `'a'`).
     Char(char),
-    /// an integer's bit representation
+    /// An integer's bit representation.
     Int(u128),
-    /// an f32
+    /// An `f32`.
     F32(f32),
-    /// an f64
+    /// An `f64`.
     F64(f64),
-    /// true or false
+    /// `true` or `false`.
     Bool(bool),
-    /// an array of constants
+    /// An array of constants.
     Vec(Vec<Constant>),
-    /// also an array, but with only one constant, repeated N times
+    /// Also an array, but with only one constant, repeated N times.
     Repeat(Box<Constant>, u64),
-    /// a tuple of constants
+    /// A tuple of constants.
     Tuple(Vec<Constant>),
-    /// a literal with syntax error
+    /// A literal with syntax error.
     Err(Symbol),
 }
 
@@ -53,15 +53,15 @@ impl PartialEq for Constant {
             (&Constant::Char(l), &Constant::Char(r)) => l == r,
             (&Constant::Int(l), &Constant::Int(r)) => l == r,
             (&Constant::F64(l), &Constant::F64(r)) => {
-                // we want `Fw32 == FwAny` and `FwAny == Fw64`, by transitivity we must have
-                // `Fw32 == Fw64` so don’t compare them
-                // to_bits is required to catch non-matching 0.0, -0.0, and NaNs
+                // We want `Fw32 == FwAny` and `FwAny == Fw64`, and by transitivity we must have
+                // `Fw32 == Fw64`, so don’t compare them.
+                // `to_bits` is required to catch non-matching 0.0, -0.0, and NaNs.
                 l.to_bits() == r.to_bits()
             },
             (&Constant::F32(l), &Constant::F32(r)) => {
-                // we want `Fw32 == FwAny` and `FwAny == Fw64`, by transitivity we must have
-                // `Fw32 == Fw64` so don’t compare them
-                // to_bits is required to catch non-matching 0.0, -0.0, and NaNs
+                // We want `Fw32 == FwAny` and `FwAny == Fw64`, and by transitivity we must have
+                // `Fw32 == Fw64`, so don’t compare them.
+                // `to_bits` is required to catch non-matching 0.0, -0.0, and NaNs.
                 f64::from(l).to_bits() == f64::from(r).to_bits()
             },
             (&Constant::Bool(l), &Constant::Bool(r)) => l == r,
@@ -69,7 +69,8 @@ impl PartialEq for Constant {
                 l == r
             },
             (&Constant::Repeat(ref lv, ref ls), &Constant::Repeat(ref rv, ref rs)) => ls == rs && lv == rv,
-            _ => false, // TODO: Are there inter-type equalities?
+            // TODO: are there inter-type equalities?
+            _ => false,
         }
     }
 }
@@ -142,12 +143,13 @@ impl Constant {
                     x => x,
                 }
             },
-            _ => None, // TODO: Are there any useful inter-type orderings?
+            // TODO: are there any useful inter-type orderings?
+            _ => None,
         }
     }
 }
 
-/// parse a `LitKind` to a `Constant`
+/// Parses a `LitKind` to a `Constant`.
 pub fn lit_to_constant<'tcx>(lit: &LitKind, ty: Ty<'tcx>) -> Constant {
     use syntax::ast::*;
 

@@ -20,6 +20,6 @@ fn main() {
 
     let ref mut z = 1 + 2;
 
-    let (ref x, _) = (1, 2); // okay, not top level
+    let (ref x, _) = (1, 2); // ok, not top level
     println!("The answer is {}.", x);
 }

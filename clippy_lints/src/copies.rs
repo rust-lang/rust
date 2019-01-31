@@ -239,9 +239,9 @@ fn lint_match_arms(cx: &LateContext<'_, '_>, expr: &Expr) {
     }
 }
 
-/// Return the list of condition expressions and the list of blocks in a
+/// Returns the list of condition expressions and the list of blocks in a
 /// sequence of `if/else`.
-/// Eg. would return `([a, b], [c, d, e])` for the expression
+/// E.g., this returns `([a, b], [c, d, e])` for the expression
 /// `if a { c } else if b { d } else { e }`.
 fn if_sequence(mut expr: &Expr) -> (SmallVec<[&Expr; 1]>, SmallVec<[&Block; 1]>) {
     let mut conds = SmallVec::new();
@@ -272,7 +272,7 @@ fn if_sequence(mut expr: &Expr) -> (SmallVec<[&Expr; 1]>, SmallVec<[&Block; 1]>)
     (conds, blocks)
 }
 
-/// Return the list of bindings in a pattern.
+/// Returns the list of bindings in a pattern.
 fn bindings<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, pat: &Pat) -> FxHashMap<LocalInternedString, Ty<'tcx>> {
     fn bindings_impl<'a, 'tcx>(
         cx: &LateContext<'a, 'tcx>,

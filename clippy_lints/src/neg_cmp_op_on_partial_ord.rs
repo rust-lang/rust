@@ -8,7 +8,7 @@ use crate::utils::{self, paths, span_lint};
 declare_clippy_lint! {
     /// **What it does:**
     /// Checks for the usage of negated comparison operators on types which only implement
-    /// `PartialOrd` (e.g. `f64`).
+    /// `PartialOrd` (e.g., `f64`).
     ///
     /// **Why is this bad?**
     /// These operators make it easy to forget that the underlying types actually allow not only three

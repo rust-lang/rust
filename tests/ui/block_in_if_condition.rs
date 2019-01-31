@@ -49,7 +49,7 @@ fn pred_test() {
     let v = 3;
     let sky = "blue";
     // this is a sneaky case, where the block isn't directly in the condition, but is actually
-    // inside a closure that the condition is using.  same principle applies.  add some extra
+    , andadd some extra
     // expressions to make sure linter isn't confused by them.
     if v == 3
         && sky == "blue"

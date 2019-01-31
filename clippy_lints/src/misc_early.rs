@@ -194,7 +194,7 @@ impl LintPass for MiscEarly {
     }
 }
 
-// Used to find `return` statements or equivalents e.g. `?`
+// Used to find `return` statements or equivalents e.g., `?`
 struct ReturnVisitor {
     found_return: bool,
 }

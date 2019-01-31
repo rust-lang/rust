@@ -1,13 +1,14 @@
-use crate::utils::{get_trait_def_id, higher, implements_trait, match_qpath, match_type, paths, span_lint};
 use rustc::hir::*;
 use rustc::lint::{LateContext, LateLintPass, LintArray, LintPass};
 use rustc::{declare_tool_lint, lint_array};
+
+use crate::utils::{get_trait_def_id, higher, implements_trait, match_qpath, match_type, paths, span_lint};
 
 declare_clippy_lint! {
     /// **What it does:** Checks for iteration that is guaranteed to be infinite.
     ///
     /// **Why is this bad?** While there may be places where this is acceptable
-    /// (e.g. in event streams), in most cases this is simply an error.
+    /// (e.g., in event streams), in most cases this is simply an error.
     ///
     /// **Known problems:** None.
     ///
@@ -26,7 +27,7 @@ declare_clippy_lint! {
     /// **What it does:** Checks for iteration that may be infinite.
     ///
     /// **Why is this bad?** While there may be places where this is acceptable
-    /// (e.g. in event streams), in most cases this is simply an error.
+    /// (e.g., in event streams), in most cases this is simply an error.
     ///
     /// **Known problems:** The code may have a condition to stop iteration, but
     /// this lint is not clever enough to analyze it.
@@ -122,8 +123,8 @@ use self::Heuristic::{All, Always, Any, First};
 /// a slice of (method name, number of args, heuristic, bounds) tuples
 /// that will be used to determine whether the method in question
 /// returns an infinite or possibly infinite iterator. The finiteness
-/// is an upper bound, e.g. some methods can return a possibly
-/// infinite iterator at worst, e.g. `take_while`.
+/// is an upper bound, e.g., some methods can return a possibly
+/// infinite iterator at worst, e.g., `take_while`.
 static HEURISTICS: &[(&str, usize, Heuristic, Finiteness)] = &[
     ("zip", 2, All, Infinite),
     ("chain", 2, Any, Infinite),

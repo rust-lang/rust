@@ -10,7 +10,7 @@ use std::{env, fmt, fs, io, path};
 use syntax::{ast, source_map};
 use toml;
 
-/// Get the configuration file from arguments.
+/// Gets the configuration file from arguments.
 pub fn file_from_args(
     args: &[source_map::Spanned<ast::NestedMetaItemKind>],
 ) -> Result<Option<path::PathBuf>, (&'static str, source_map::Span)> {

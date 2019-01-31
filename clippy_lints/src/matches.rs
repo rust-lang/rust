@@ -35,7 +35,7 @@ declare_clippy_lint! {
     /// ```
     pub SINGLE_MATCH,
     style,
-    "a match statement with a single nontrivial arm (i.e. where the other arm is `_ => {}`) instead of `if let`"
+    "a match statement with a single nontrivial arm (i.e., where the other arm is `_ => {}`) instead of `if let`"
 }
 
 declare_clippy_lint! {
@@ -335,7 +335,7 @@ fn check_single_match_opt_like(
 
     let path = match arms[1].pats[0].node {
         PatKind::TupleStruct(ref path, ref inner, _) => {
-            // contains any non wildcard patterns? e.g. Err(err)
+            // contains any non wildcard patterns? e.g., Err(err)
             if !inner.iter().all(is_wild) {
                 return;
             }
@@ -639,7 +639,7 @@ fn check_match_as_ref(cx: &LateContext<'_, '_>, ex: &Expr, arms: &[Arm], expr: &
     }
 }
 
-/// Get all arms that are unbounded `PatRange`s.
+/// Gets all arms that are unbounded `PatRange`s.
 fn all_ranges<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, arms: &'tcx [Arm]) -> Vec<SpannedRange<Constant>> {
     arms.iter()
         .flat_map(|arm| {
@@ -687,7 +687,7 @@ pub struct SpannedRange<T> {
 
 type TypedRanges = Vec<SpannedRange<u128>>;
 
-/// Get all `Int` ranges or all `Uint` ranges. Mixed types are an error anyway
+/// Gets all `Int` ranges or all `Uint` ranges. Mixed types are an error anyway
 /// and other types than
 /// `Uint` and `Int` probably don't make sense.
 fn type_ranges(ranges: &[SpannedRange<Constant>]) -> TypedRanges {

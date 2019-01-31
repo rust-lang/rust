@@ -20,7 +20,7 @@ declare_clippy_lint! {
     /// ```
     pub BLOCK_IN_IF_CONDITION_EXPR,
     style,
-    "braces that can be eliminated in conditions, e.g. `if { true } ...`"
+    "braces that can be eliminated in conditions, e.g., `if { true } ...`"
 }
 
 declare_clippy_lint! {
@@ -39,7 +39,7 @@ declare_clippy_lint! {
     /// ```
     pub BLOCK_IN_IF_CONDITION_STMT,
     style,
-    "complex blocks in conditions, e.g. `if { let x = true; x } ...`"
+    "complex blocks in conditions, e.g., `if { let x = true; x } ...`"
 }
 
 #[derive(Copy, Clone)]

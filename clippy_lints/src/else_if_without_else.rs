@@ -1,4 +1,4 @@
-//! lint on if expressions with an else if, but without a final else branch
+//! Lint on if expressions with an else if, but without a final else branch.
 
 use rustc::lint::{in_external_macro, EarlyContext, EarlyLintPass, LintArray, LintContext, LintPass};
 use rustc::{declare_tool_lint, lint_array};
@@ -10,7 +10,7 @@ declare_clippy_lint! {
     /// **What it does:** Checks for usage of if expressions with an `else if` branch,
     /// but without a final `else` branch.
     ///
-    /// **Why is this bad?** Some coding guidelines require this (e.g. MISRA-C:2004 Rule 14.10).
+    /// **Why is this bad?** Some coding guidelines require this (e.g., MISRA-C:2004 Rule 14.10).
     ///
     /// **Known problems:** None.
     ///
@@ -31,7 +31,7 @@ declare_clippy_lint! {
     /// } else if x.is_negative() {
     ///     b();
     /// } else {
-    ///     // we don't care about zero
+    ///     // We don't care about zero.
     /// }
     /// ```
     pub ELSE_IF_WITHOUT_ELSE,

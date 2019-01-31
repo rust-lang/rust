@@ -13,7 +13,7 @@ fn ref_pats() {
             &None => println!("none"),
         }
         match v {
-            // this doesn't trigger, we have a different pattern
+            // This doesn't trigger; we have a different pattern.
             &Some(v) => println!("some"),
             other => println!("other"),
         }
@@ -23,13 +23,13 @@ fn ref_pats() {
         &(v, 1) => println!("{}", v),
         _ => println!("none"),
     }
-    // special case: using & both in expr and pats
+    // Special case: using `&` both in expr and pats.
     let w = Some(0);
     match &w {
         &Some(v) => println!("{:?}", v),
         &None => println!("none"),
     }
-    // false positive: only wildcard pattern
+    // False positive: only wildcard pattern.
     let w = Some(0);
     match w {
         _ => println!("none"),
@@ -69,14 +69,14 @@ fn match_wild_err_arm() {
         },
     }
 
-    // allowed when not with `panic!` block
+    // Allowed when not with `panic!` block.
     match x {
         Ok(3) => println!("ok"),
         Ok(_) => println!("ok"),
         Err(_) => println!("err"),
     }
 
-    // allowed when used with `unreachable!`
+    // Allowed when used with `unreachable!`.
     match x {
         Ok(3) => println!("ok"),
         Ok(_) => println!("ok"),
@@ -97,14 +97,14 @@ fn match_wild_err_arm() {
         },
     }
 
-    // no warning because of the guard
+    // No warning because of the guard.
     match x {
         Ok(x) if x * x == 64 => println!("ok"),
         Ok(_) => println!("ok"),
         Err(_) => println!("err"),
     }
 
-    // this used to be a false positive, see #1996
+    // This used to be a false positive; see issue #1996.
     match x {
         Ok(3) => println!("ok"),
         Ok(x) if x * x == 64 => println!("ok 64"),
@@ -118,14 +118,14 @@ fn match_wild_err_arm() {
         _ => println!("err"),
     }
 
-    // no warning because of the different types for x
+    // No warning; different types for `x`.
     match (x, Some(1.0f64)) {
         (Ok(x), Some(_)) => println!("ok {}", x),
         (Ok(_), Some(x)) => println!("ok {}", x),
         _ => println!("err"),
     }
 
-    // because of a bug, no warning was generated for this case before #2251
+    // Because of a bug, no warning was generated for this case before #2251.
     match x {
         Ok(_tmp) => println!("ok"),
         Ok(3) => println!("ok"),

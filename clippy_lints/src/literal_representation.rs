@@ -112,7 +112,7 @@ pub(super) enum Radix {
 }
 
 impl Radix {
-    /// Return a reasonable digit group size for this radix.
+    /// Returns a reasonable digit group size for this radix.
     crate fn suggest_grouping(&self) -> usize {
         match *self {
             Radix::Binary | Radix::Hexadecimal => 4,

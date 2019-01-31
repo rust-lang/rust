@@ -1,10 +1,11 @@
-use crate::utils::SpanlessEq;
-use crate::utils::{get_parent_expr, is_allowed, match_type, paths, span_lint, span_lint_and_sugg, walk_ptrs_ty};
 use rustc::hir::*;
 use rustc::lint::{LateContext, LateLintPass, LintArray, LintPass};
 use rustc::{declare_tool_lint, lint_array};
 use rustc_errors::Applicability;
 use syntax::source_map::Spanned;
+
+use crate::utils::SpanlessEq;
+use crate::utils::{get_parent_expr, is_allowed, match_type, paths, span_lint, span_lint_and_sugg, walk_ptrs_ty};
 
 declare_clippy_lint! {
     /// **What it does:** Checks for string appends of the form `x = x + y` (without
@@ -35,7 +36,7 @@ declare_clippy_lint! {
     /// `Add` implementation is asymmetric (the other operand need not be `String`,
     /// but `x` does), while addition as mathematically defined is symmetric, also
     /// the `String::push_str(_)` function is a perfectly good replacement.
-    /// Therefore some dislike it and wish not to have it in their code.
+    /// Therefore, some dislike it and wish not to have it in their code.
     ///
     /// That said, other people think that string addition, having a long tradition
     /// in other languages is actually fine, which is why we decided to make this
@@ -58,7 +59,7 @@ declare_clippy_lint! {
     /// **What it does:** Checks for the `as_bytes` method called on string literals
     /// that contain only ASCII characters.
     ///
-    /// **Why is this bad?** Byte string literals (e.g. `b"foo"`) can be used
+    /// **Why is this bad?** Byte string literals (e.g., `b"foo"`) can be used
     /// instead. They are shorter but less discoverable than `as_bytes()`.
     ///
     /// **Known Problems:** None.

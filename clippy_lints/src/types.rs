@@ -1,12 +1,9 @@
 #![allow(clippy::default_hash_types)]
 
-use crate::consts::{constant, Constant};
-use crate::utils::paths;
-use crate::utils::{
-    clip, comparisons, differing_macro_contexts, higher, in_constant, in_macro, int_bits, last_path_segment,
-    match_def_path, match_path, multispan_sugg, same_tys, sext, snippet, snippet_opt, snippet_with_applicability,
-    span_help_and_lint, span_lint, span_lint_and_sugg, span_lint_and_then, unsext, AbsolutePathBuffer,
-};
+use std::borrow::Cow;
+use std::cmp::Ordering;
+use std::collections::BTreeMap;
+
 use if_chain::if_chain;
 use rustc::hir;
 use rustc::hir::intravisit::{walk_body, walk_expr, walk_ty, FnKind, NestedVisitorMap, Visitor};
@@ -18,12 +15,17 @@ use rustc::{declare_tool_lint, lint_array};
 use rustc_errors::Applicability;
 use rustc_target::spec::abi::Abi;
 use rustc_typeck::hir_ty_to_ty;
-use std::borrow::Cow;
-use std::cmp::Ordering;
-use std::collections::BTreeMap;
 use syntax::ast::{FloatTy, IntTy, UintTy};
 use syntax::errors::DiagnosticBuilder;
 use syntax::source_map::Span;
+
+use crate::consts::{constant, Constant};
+use crate::utils::paths;
+use crate::utils::{
+    clip, comparisons, differing_macro_contexts, higher, in_constant, in_macro, int_bits, last_path_segment,
+    match_def_path, match_path, multispan_sugg, same_tys, sext, snippet, snippet_opt, snippet_with_applicability,
+    span_help_and_lint, span_lint, span_lint_and_sugg, span_lint_and_then, unsext, AbsolutePathBuffer,
+};
 
 /// Handles all the linting of funky types
 pub struct TypePass;
@@ -174,7 +176,7 @@ impl LintPass for TypePass {
 
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for TypePass {
     fn check_fn(&mut self, cx: &LateContext<'_, '_>, _: FnKind<'_>, decl: &FnDecl, _: &Body, _: Span, id: HirId) {
-        // skip trait implementations, see #605
+        // Skip trait implementations; see issue #605.
         if let Some(hir::Node::Item(item)) = cx.tcx.hir().find_by_hir_id(cx.tcx.hir().get_parent_item(id)) {
             if let ItemKind::Impl(_, _, _, _, Some(..), _, _) = item.node {
                 return;
@@ -213,7 +215,7 @@ fn check_fn_decl(cx: &LateContext<'_, '_>, decl: &FnDecl) {
     }
 }
 
-/// Check if `qpath` has last segment with type parameter matching `path`
+/// Checks if `qpath` has last segment with type parameter matching `path`
 fn match_type_parameter(cx: &LateContext<'_, '_>, qpath: &QPath, path: &[&str]) -> bool {
     let last = last_path_segment(qpath);
     if_chain! {
@@ -389,7 +391,7 @@ fn check_ty_rptr(cx: &LateContext<'_, '_>, hir_ty: &hir::Ty, is_local: bool, lt:
                 });
                 then {
                     if is_any_trait(inner) {
-                        // Ignore `Box<Any>` types, see #1884 for details.
+                        // Ignore `Box<Any>` types; see issue #1884 for details.
                         return;
                     }
 
@@ -698,7 +700,7 @@ declare_clippy_lint! {
     /// ```
     pub CAST_PRECISION_LOSS,
     pedantic,
-    "casts that cause loss of precision, e.g. `x as f32` where `x: u64`"
+    "casts that cause loss of precision, e.g., `x as f32` where `x: u64`"
 }
 
 declare_clippy_lint! {
@@ -719,7 +721,7 @@ declare_clippy_lint! {
     /// ```
     pub CAST_SIGN_LOSS,
     pedantic,
-    "casts from signed types to unsigned types, e.g. `x as u32` where `x: i32`"
+    "casts from signed types to unsigned types, e.g., `x as u32` where `x: i32`"
 }
 
 declare_clippy_lint! {
@@ -741,13 +743,13 @@ declare_clippy_lint! {
     /// ```
     pub CAST_POSSIBLE_TRUNCATION,
     pedantic,
-    "casts that may cause truncation of the value, e.g. `x as u8` where `x: u32`, or `x as i32` where `x: f32`"
+    "casts that may cause truncation of the value, e.g., `x as u8` where `x: u32`, or `x as i32` where `x: f32`"
 }
 
 declare_clippy_lint! {
     /// **What it does:** Checks for casts from an unsigned type to a signed type of
     /// the same size. Performing such a cast is a 'no-op' for the compiler,
-    /// i.e. nothing is changed at the bit level, and the binary representation of
+    /// i.e., nothing is changed at the bit level, and the binary representation of
     /// the value is reinterpreted. This can cause wrapping if the value is too big
     /// for the target signed type. However, the cast works as defined, so this lint
     /// is `Allow` by default.
@@ -764,7 +766,7 @@ declare_clippy_lint! {
     /// ```
     pub CAST_POSSIBLE_WRAP,
     pedantic,
-    "casts that may cause wrapping around the value, e.g. `x as i32` where `x: u32` and `x > i32::MAX`"
+    "casts that may cause wrapping around the value, e.g., `x as i32` where `x: u32` and `x > i32::MAX`"
 }
 
 declare_clippy_lint! {
@@ -796,7 +798,7 @@ declare_clippy_lint! {
     /// ```
     pub CAST_LOSSLESS,
     complexity,
-    "casts using `as` that are known to be lossless, e.g. `x as u64` where `x: u8`"
+    "casts using `as` that are known to be lossless, e.g., `x as u64` where `x: u8`"
 }
 
 declare_clippy_lint! {
@@ -812,7 +814,7 @@ declare_clippy_lint! {
     /// ```
     pub UNNECESSARY_CAST,
     complexity,
-    "cast to the same type, e.g. `x as i32` where `x: i32`"
+    "cast to the same type, e.g., `x as i32` where `x: i32`"
 }
 
 declare_clippy_lint! {
@@ -1528,14 +1530,14 @@ declare_clippy_lint! {
     /// `max < x` are probably mistakes.
     ///
     /// **Known problems:** For `usize` the size of the current compile target will
-    /// be assumed (e.g. 64 bits on 64 bit systems). This means code that uses such
+    /// be assumed (e.g., 64 bits on 64 bit systems). This means code that uses such
     /// a comparison to detect target pointer width will trigger this lint. One can
     /// use `mem::sizeof` and compare its value or conditional compilation
     /// attributes
     /// like `#[cfg(target_pointer_width = "64")] ..` instead.
     ///
     /// **Example:**
-    /// ```ignore
+    /// ```rust
     /// vec.len() <= 0
     /// 100 > std::i32::MAX
     /// ```

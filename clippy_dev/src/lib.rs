@@ -191,7 +191,7 @@ pub struct FileChange {
     pub new_lines: String,
 }
 
-/// Replace a region in a file delimited by two lines matching regexes.
+/// Replaces a region in a file delimited by two lines matching regexes.
 ///
 /// `path` is the relative path to the file on which you want to perform the replacement.
 ///
@@ -225,7 +225,7 @@ where
     file_change
 }
 
-/// Replace a region in a text delimited by two lines matching regexes.
+/// Replaces a region in a text delimited by two lines matching regexes.
 ///
 /// * `text` is the input text on which you want to perform the replacement
 /// * `start` is a `&str` that describes the delimiter line before the region you want to replace.

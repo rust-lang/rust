@@ -24,7 +24,7 @@ declare_clippy_lint! {
     /// ```
     pub EQ_OP,
     correctness,
-    "equal operands on both sides of a comparison or bitwise combination (e.g. `x == x`)"
+    "equal operands on both sides of a comparison or bitwise combination (e.g., `x == x`)"
 }
 
 declare_clippy_lint! {

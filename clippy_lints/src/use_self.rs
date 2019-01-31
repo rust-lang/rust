@@ -1,4 +1,3 @@
-use crate::utils::span_lint_and_sugg;
 use if_chain::if_chain;
 use rustc::hir::def::{CtorKind, Def};
 use rustc::hir::intravisit::{walk_item, walk_path, walk_ty, NestedVisitorMap, Visitor};
@@ -8,6 +7,8 @@ use rustc::ty;
 use rustc::{declare_tool_lint, lint_array};
 use rustc_errors::Applicability;
 use syntax_pos::symbol::keywords::SelfUpper;
+
+use crate::utils::span_lint_and_sugg;
 
 declare_clippy_lint! {
     /// **What it does:** Checks for unnecessary repetition of structure name when a
@@ -60,9 +61,9 @@ impl LintPass for UseSelf {
 const SEGMENTS_MSG: &str = "segments should be composed of at least 1 element";
 
 fn span_use_self_lint(cx: &LateContext<'_, '_>, path: &Path) {
-    // path segments only include actual path, no methods or fields
+    // Path segments only include actual path, no methods or fields.
     let last_path_span = path.segments.last().expect(SEGMENTS_MSG).ident.span;
-    // only take path up to the end of last_path_span
+    // Only take path up to the end of last_path_span.
     let span = path.span.with_hi(last_path_span.hi());
 
     span_lint_and_sugg(
@@ -149,7 +150,7 @@ fn check_trait_method_impl_decl<'a, 'tcx: 'a>(
 
     // `impl_decl_ty` (of type `hir::Ty`) represents the type declared in the signature.
     // `impl_ty` (of type `ty:TyS`) is the concrete type that the compiler has determined for
-    // that declaration.  We use `impl_decl_ty` to see if the type was declared as `Self`
+    // that declaration. We use `impl_decl_ty` to see if the type was declared as `Self`
     // and use `impl_ty` to check its concrete type.
     for (impl_decl_ty, (impl_ty, trait_ty)) in impl_decl.inputs.iter().chain(output_ty).zip(
         impl_method_sig
