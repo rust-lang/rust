@@ -1,6 +1,6 @@
 use smol_str::SmolStr;
 
-use crate::tt::{self, Delimiter};
+use crate::tt::Delimiter;
 
 pub use crate::{
     mbe_parser::parse,
