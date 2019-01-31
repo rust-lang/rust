@@ -2,7 +2,10 @@ use smol_str::SmolStr;
 
 use crate::tt::{self, Delimiter};
 
-pub use crate::mbe_parser::parse;
+pub use crate::{
+    mbe_parser::parse,
+    mbe_expander::exapnd,
+};
 
 #[derive(Debug)]
 pub struct MacroRules {
