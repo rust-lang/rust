@@ -7,7 +7,6 @@
 #![feature(box_syntax)]
 #![feature(nll)]
 #![feature(set_stdio)]
-#![feature(slice_sort_by_cached_key)]
 #![feature(test)]
 #![feature(vec_remove_item)]
 #![feature(ptr_offset_from)]

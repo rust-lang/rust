@@ -312,7 +312,6 @@ impl<T> [T] {
     /// # Examples
     ///
     /// ```
-    /// #![feature(slice_sort_by_cached_key)]
     /// let mut v = [-5i32, 4, 32, -3, 2];
     ///
     /// v.sort_by_cached_key(|k| k.to_string());
@@ -320,7 +319,7 @@ impl<T> [T] {
     /// ```
     ///
     /// [pdqsort]: https://github.com/orlp/pdqsort
-    #[unstable(feature = "slice_sort_by_cached_key", issue = "34447")]
+    #[stable(feature = "slice_sort_by_cached_key", since = "1.34.0")]
     #[inline]
     pub fn sort_by_cached_key<K, F>(&mut self, f: F)
         where F: FnMut(&T) -> K, K: Ord
