@@ -1,58 +1,59 @@
-use crate::{self as mbe, tt_cursor::TtCursor};
+use crate::tt_cursor::TtCursor;
 
 /// This module parses a raw `tt::TokenStream` into macro-by-example token
 /// stream. This is a *mostly* identify function, expect for handling of
 /// `$var:tt_kind` and `$(repeat),*` constructs.
 
-pub fn parse(tt: &tt::Subtree) -> Option<mbe::MacroRules> {
+pub fn parse(tt: &tt::Subtree) -> Option<crate::MacroRules> {
     let mut parser = TtCursor::new(tt);
     let mut rules = Vec::new();
     while !parser.is_eof() {
         rules.push(parse_rule(&mut parser)?)
     }
-    Some(mbe::MacroRules { rules })
+    Some(crate::MacroRules { rules })
 }
 
-fn parse_rule(p: &mut TtCursor) -> Option<mbe::Rule> {
+fn parse_rule(p: &mut TtCursor) -> Option<crate::Rule> {
     let lhs = parse_subtree(p.eat_subtree()?)?;
     p.expect_char('=')?;
     p.expect_char('>')?;
-    let rhs = parse_subtree(p.eat_subtree()?)?;
-    Some(mbe::Rule { lhs, rhs })
+    let mut rhs = parse_subtree(p.eat_subtree()?)?;
+    rhs.delimiter = crate::Delimiter::None;
+    Some(crate::Rule { lhs, rhs })
 }
 
-fn parse_subtree(tt: &tt::Subtree) -> Option<mbe::Subtree> {
+fn parse_subtree(tt: &tt::Subtree) -> Option<crate::Subtree> {
     let mut token_trees = Vec::new();
     let mut p = TtCursor::new(tt);
     while let Some(tt) = p.eat() {
-        let child: mbe::TokenTree = match tt {
+        let child: crate::TokenTree = match tt {
             tt::TokenTree::Leaf(leaf) => match leaf {
                 tt::Leaf::Punct(tt::Punct { char: '$', .. }) => {
                     if p.at_ident().is_some() {
-                        mbe::Leaf::from(parse_var(&mut p)?).into()
+                        crate::Leaf::from(parse_var(&mut p)?).into()
                     } else {
                         parse_repeat(&mut p)?.into()
                     }
                 }
-                tt::Leaf::Punct(punct) => mbe::Leaf::from(*punct).into(),
+                tt::Leaf::Punct(punct) => crate::Leaf::from(*punct).into(),
                 tt::Leaf::Ident(tt::Ident { text }) => {
-                    mbe::Leaf::from(mbe::Ident { text: text.clone() }).into()
+                    crate::Leaf::from(crate::Ident { text: text.clone() }).into()
                 }
                 tt::Leaf::Literal(tt::Literal { text }) => {
-                    mbe::Leaf::from(mbe::Literal { text: text.clone() }).into()
+                    crate::Leaf::from(crate::Literal { text: text.clone() }).into()
                 }
             },
             tt::TokenTree::Subtree(subtree) => parse_subtree(&subtree)?.into(),
         };
         token_trees.push(child);
     }
-    Some(mbe::Subtree {
+    Some(crate::Subtree {
         token_trees,
         delimiter: tt.delimiter,
     })
 }
 
-fn parse_var(p: &mut TtCursor) -> Option<mbe::Var> {
+fn parse_var(p: &mut TtCursor) -> Option<crate::Var> {
     let ident = p.eat_ident().unwrap();
     let text = ident.text.clone();
     let kind = if p.at_char(':') {
@@ -66,12 +67,13 @@ fn parse_var(p: &mut TtCursor) -> Option<mbe::Var> {
     } else {
         None
     };
-    Some(mbe::Var { text, kind })
+    Some(crate::Var { text, kind })
 }
 
-fn parse_repeat(p: &mut TtCursor) -> Option<mbe::Repeat> {
+fn parse_repeat(p: &mut TtCursor) -> Option<crate::Repeat> {
     let subtree = p.eat_subtree().unwrap();
-    let subtree = parse_subtree(subtree)?;
+    let mut subtree = parse_subtree(subtree)?;
+    subtree.delimiter = crate::Delimiter::None;
     let sep = p.eat_punct()?;
     let (separator, rep) = match sep.char {
         '*' | '+' | '?' => (None, sep.char),
@@ -79,13 +81,13 @@ fn parse_repeat(p: &mut TtCursor) -> Option<mbe::Repeat> {
     };
 
     let kind = match rep {
-        '*' => mbe::RepeatKind::ZeroOrMore,
-        '+' => mbe::RepeatKind::OneOrMore,
-        '?' => mbe::RepeatKind::ZeroOrOne,
+        '*' => crate::RepeatKind::ZeroOrMore,
+        '+' => crate::RepeatKind::OneOrMore,
+        '?' => crate::RepeatKind::ZeroOrOne,
         _ => return None,
     };
     p.bump();
-    Some(mbe::Repeat {
+    Some(crate::Repeat {
         subtree,
         kind,
         separator,

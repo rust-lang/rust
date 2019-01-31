@@ -107,7 +107,7 @@ impl_froms!(TokenTree: Leaf, Subtree);
     let expansion = crate::exapnd(&mbe, &invocation_tt).unwrap();
     assert_eq!(
         expansion.to_string(),
-        "{(impl From < Leaf > for TokenTree {fn from (it : Leaf) -> TokenTree {TokenTree :: Leaf (it)}}) \
-          (impl From < Subtree > for TokenTree {fn from (it : Subtree) -> TokenTree {TokenTree :: Subtree (it)}})}"
+        "impl From < Leaf > for TokenTree {fn from (it : Leaf) -> TokenTree {TokenTree :: Leaf (it)}} \
+         impl From < Subtree > for TokenTree {fn from (it : Subtree) -> TokenTree {TokenTree :: Subtree (it)}}"
     )
 }

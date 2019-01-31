@@ -1,13 +1,13 @@
 use rustc_hash::FxHashMap;
 use ra_syntax::SmolStr;
 
-use crate::{self as mbe, tt_cursor::TtCursor};
+use crate::tt_cursor::TtCursor;
 
-pub fn exapnd(rules: &mbe::MacroRules, input: &tt::Subtree) -> Option<tt::Subtree> {
+pub fn exapnd(rules: &crate::MacroRules, input: &tt::Subtree) -> Option<tt::Subtree> {
     rules.rules.iter().find_map(|it| expand_rule(it, input))
 }
 
-fn expand_rule(rule: &mbe::Rule, input: &tt::Subtree) -> Option<tt::Subtree> {
+fn expand_rule(rule: &crate::Rule, input: &tt::Subtree) -> Option<tt::Subtree> {
     let mut input = TtCursor::new(input);
     let bindings = match_lhs(&rule.lhs, &mut input)?;
     expand_subtree(&rule.rhs, &bindings, &mut Vec::new())
@@ -52,12 +52,12 @@ impl Bindings {
     }
 }
 
-fn match_lhs(pattern: &mbe::Subtree, input: &mut TtCursor) -> Option<Bindings> {
+fn match_lhs(pattern: &crate::Subtree, input: &mut TtCursor) -> Option<Bindings> {
     let mut res = Bindings::default();
     for pat in pattern.token_trees.iter() {
         match pat {
-            mbe::TokenTree::Leaf(leaf) => match leaf {
-                mbe::Leaf::Var(mbe::Var { text, kind }) => {
+            crate::TokenTree::Leaf(leaf) => match leaf {
+                crate::Leaf::Var(crate::Var { text, kind }) => {
                     let kind = kind.clone()?;
                     match kind.as_str() {
                         "ident" => {
@@ -70,14 +70,14 @@ fn match_lhs(pattern: &mbe::Subtree, input: &mut TtCursor) -> Option<Bindings> {
                         _ => return None,
                     }
                 }
-                mbe::Leaf::Punct(punct) => {
+                crate::Leaf::Punct(punct) => {
                     if input.eat_punct()? != punct {
                         return None;
                     }
                 }
                 _ => return None,
             },
-            mbe::TokenTree::Repeat(mbe::Repeat {
+            crate::TokenTree::Repeat(crate::Repeat {
                 subtree,
                 kind: _,
                 separator,
@@ -114,7 +114,7 @@ impl_froms! (Foo: Bar, Baz)
 */
 
 fn expand_subtree(
-    template: &mbe::Subtree,
+    template: &crate::Subtree,
     bindings: &Bindings,
     nesting: &mut Vec<usize>,
 ) -> Option<tt::Subtree> {
@@ -131,13 +131,13 @@ fn expand_subtree(
 }
 
 fn expand_tt(
-    template: &mbe::TokenTree,
+    template: &crate::TokenTree,
     bindings: &Bindings,
     nesting: &mut Vec<usize>,
 ) -> Option<tt::TokenTree> {
     let res: tt::TokenTree = match template {
-        mbe::TokenTree::Subtree(subtree) => expand_subtree(subtree, bindings, nesting)?.into(),
-        mbe::TokenTree::Repeat(repeat) => {
+        crate::TokenTree::Subtree(subtree) => expand_subtree(subtree, bindings, nesting)?.into(),
+        crate::TokenTree::Repeat(repeat) => {
             let mut token_trees = Vec::new();
             nesting.push(0);
             while let Some(t) = expand_subtree(&repeat.subtree, bindings, nesting) {
@@ -152,14 +152,14 @@ fn expand_tt(
             }
             .into()
         }
-        mbe::TokenTree::Leaf(leaf) => match leaf {
-            mbe::Leaf::Ident(ident) => tt::Leaf::from(tt::Ident {
+        crate::TokenTree::Leaf(leaf) => match leaf {
+            crate::Leaf::Ident(ident) => tt::Leaf::from(tt::Ident {
                 text: ident.text.clone(),
             })
             .into(),
-            mbe::Leaf::Punct(punct) => tt::Leaf::from(punct.clone()).into(),
-            mbe::Leaf::Var(v) => bindings.get(&v.text, nesting)?.clone(),
-            mbe::Leaf::Literal(l) => tt::Leaf::from(tt::Literal {
+            crate::Leaf::Punct(punct) => tt::Leaf::from(punct.clone()).into(),
+            crate::Leaf::Var(v) => bindings.get(&v.text, nesting)?.clone(),
+            crate::Leaf::Literal(l) => tt::Leaf::from(tt::Literal {
                 text: l.text.clone(),
             })
             .into(),
