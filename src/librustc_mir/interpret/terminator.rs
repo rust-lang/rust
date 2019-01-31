@@ -309,7 +309,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> 
                         mir.spread_arg,
                         mir.args_iter()
                             .map(|local|
-                                (local, self.layout_of_local(self.frame(), local).unwrap().ty)
+                                (local, self.layout_of_local(self.frame(), local, None).unwrap().ty)
                             )
                             .collect::<Vec<_>>()
                     );
@@ -383,7 +383,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> 
                         }
                     } else {
                         let callee_layout =
-                            self.layout_of_local(self.frame(), mir::RETURN_PLACE)?;
+                            self.layout_of_local(self.frame(), mir::RETURN_PLACE, None)?;
                         if !callee_layout.abi.is_uninhabited() {
                             return err!(FunctionRetMismatch(
                                 self.tcx.types.never, callee_layout.ty
