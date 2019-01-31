@@ -36,6 +36,7 @@ pub enum SyntaxKind {
     SLASH,
     CARET,
     PERCENT,
+    UNDERSCORE,
     DOT,
     DOTDOT,
     DOTDOTDOT,
@@ -103,19 +104,18 @@ pub enum SyntaxKind {
     AUTO_KW,
     DEFAULT_KW,
     UNION_KW,
-    ERROR,
-    IDENT,
-    UNDERSCORE,
-    WHITESPACE,
     INT_NUMBER,
     FLOAT_NUMBER,
-    LIFETIME,
     CHAR,
     BYTE,
     STRING,
     RAW_STRING,
     BYTE_STRING,
     RAW_BYTE_STRING,
+    ERROR,
+    IDENT,
+    WHITESPACE,
+    LIFETIME,
     COMMENT,
     SHEBANG,
     SOURCE_FILE,
@@ -275,6 +275,79 @@ impl SyntaxKind {
         }
     }
 
+    pub fn is_punct(self) -> bool {
+        match self {
+            | SEMI
+            | COMMA
+            | L_PAREN
+            | R_PAREN
+            | L_CURLY
+            | R_CURLY
+            | L_BRACK
+            | R_BRACK
+            | L_ANGLE
+            | R_ANGLE
+            | AT
+            | POUND
+            | TILDE
+            | QUESTION
+            | DOLLAR
+            | AMP
+            | PIPE
+            | PLUS
+            | STAR
+            | SLASH
+            | CARET
+            | PERCENT
+            | UNDERSCORE
+            | DOT
+            | DOTDOT
+            | DOTDOTDOT
+            | DOTDOTEQ
+            | COLON
+            | COLONCOLON
+            | EQ
+            | EQEQ
+            | FAT_ARROW
+            | EXCL
+            | NEQ
+            | MINUS
+            | THIN_ARROW
+            | LTEQ
+            | GTEQ
+            | PLUSEQ
+            | MINUSEQ
+            | PIPEEQ
+            | AMPEQ
+            | CARETEQ
+            | SLASHEQ
+            | STAREQ
+            | PERCENTEQ
+            | AMPAMP
+            | PIPEPIPE
+            | SHL
+            | SHR
+            | SHLEQ
+            | SHREQ
+                => true,
+            _ => false
+        }
+    }
+    pub fn is_literal(self) -> bool {
+        match self {
+            | INT_NUMBER
+            | FLOAT_NUMBER
+            | CHAR
+            | BYTE
+            | STRING
+            | RAW_STRING
+            | BYTE_STRING
+            | RAW_BYTE_STRING
+                => true,
+            _ => false
+        }
+    }
+
     pub(crate) fn info(self) -> &'static SyntaxInfo {
         match self {
             SEMI => &SyntaxInfo { name: "SEMI" },
@@ -299,6 +372,7 @@ impl SyntaxKind {
             SLASH => &SyntaxInfo { name: "SLASH" },
             CARET => &SyntaxInfo { name: "CARET" },
             PERCENT => &SyntaxInfo { name: "PERCENT" },
+            UNDERSCORE => &SyntaxInfo { name: "UNDERSCORE" },
             DOT => &SyntaxInfo { name: "DOT" },
             DOTDOT => &SyntaxInfo { name: "DOTDOT" },
             DOTDOTDOT => &SyntaxInfo { name: "DOTDOTDOT" },
@@ -366,19 +440,18 @@ impl SyntaxKind {
             AUTO_KW => &SyntaxInfo { name: "AUTO_KW" },
             DEFAULT_KW => &SyntaxInfo { name: "DEFAULT_KW" },
             UNION_KW => &SyntaxInfo { name: "UNION_KW" },
-            ERROR => &SyntaxInfo { name: "ERROR" },
-            IDENT => &SyntaxInfo { name: "IDENT" },
-            UNDERSCORE => &SyntaxInfo { name: "UNDERSCORE" },
-            WHITESPACE => &SyntaxInfo { name: "WHITESPACE" },
             INT_NUMBER => &SyntaxInfo { name: "INT_NUMBER" },
             FLOAT_NUMBER => &SyntaxInfo { name: "FLOAT_NUMBER" },
-            LIFETIME => &SyntaxInfo { name: "LIFETIME" },
             CHAR => &SyntaxInfo { name: "CHAR" },
             BYTE => &SyntaxInfo { name: "BYTE" },
             STRING => &SyntaxInfo { name: "STRING" },
             RAW_STRING => &SyntaxInfo { name: "RAW_STRING" },
             BYTE_STRING => &SyntaxInfo { name: "BYTE_STRING" },
             RAW_BYTE_STRING => &SyntaxInfo { name: "RAW_BYTE_STRING" },
+            ERROR => &SyntaxInfo { name: "ERROR" },
+            IDENT => &SyntaxInfo { name: "IDENT" },
+            WHITESPACE => &SyntaxInfo { name: "WHITESPACE" },
+            LIFETIME => &SyntaxInfo { name: "LIFETIME" },
             COMMENT => &SyntaxInfo { name: "COMMENT" },
             SHEBANG => &SyntaxInfo { name: "SHEBANG" },
             SOURCE_FILE => &SyntaxInfo { name: "SOURCE_FILE" },
@@ -559,6 +632,7 @@ impl SyntaxKind {
             '/' => SLASH,
             '^' => CARET,
             '%' => PERCENT,
+            '_' => UNDERSCORE,
             _ => return None,
         };
         Some(tok)

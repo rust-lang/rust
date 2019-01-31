@@ -23,7 +23,7 @@ pub enum SyntaxKind {
 {% for kw in concat(a=keywords, b=contextual_keywords) %}
     {{kw | upper}}_KW,
 {%- endfor -%}
-{% for t in concat(a=tokens, b=nodes) %}
+{% for t in concat(a=literals, b=tokens, c=nodes) %}
     {{t}},
 {%- endfor %}
 }
@@ -40,6 +40,25 @@ impl SyntaxKind {
         }
     }
 
+    pub fn is_punct(self) -> bool {
+        match self {
+{%- for t in concat(a=single_byte_tokens, b=multi_byte_tokens) %}
+            | {{t.1}}
+{%- endfor %}
+                => true,
+            _ => false
+        }
+    }
+    pub fn is_literal(self) -> bool {
+        match self {
+{%- for t in literals %}
+            | {{t}}
+{%- endfor %}
+                => true,
+            _ => false
+        }
+    }
+
     pub(crate) fn info(self) -> &'static SyntaxInfo {
         match self {
 {%- for t in concat(a=single_byte_tokens, b=multi_byte_tokens) %}
@@ -48,7 +67,7 @@ impl SyntaxKind {
 {% for kw in concat(a=keywords, b=contextual_keywords) %}
             {{kw | upper}}_KW => &SyntaxInfo { name: "{{kw | upper}}_KW" },
 {%- endfor -%}
-{% for t in concat(a=tokens, b=nodes) %}
+{% for t in concat(a=literals, b=tokens, c=nodes) %}
             {{t}} => &SyntaxInfo { name: "{{t}}" },
 {%- endfor %}
             TOMBSTONE => &SyntaxInfo { name: "TOMBSTONE" },

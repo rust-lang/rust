@@ -24,6 +24,7 @@ Grammar(
         ["/", "SLASH"],
         ["^", "CARET"],
         ["%", "PERCENT"],
+        ["_", "UNDERSCORE"],
     ],
     // Tokens for which the longest match must be chosen (e.g. `..` is a DOTDOT, but `.` is a DOT)
     multi_byte_tokens: [
@@ -99,20 +100,21 @@ Grammar(
         "default",
         "union",
     ],
-    tokens: [
-        "ERROR",
-        "IDENT",
-        "UNDERSCORE",
-        "WHITESPACE",
+    literals: [
         "INT_NUMBER",
         "FLOAT_NUMBER",
-        "LIFETIME",
         "CHAR",
         "BYTE",
         "STRING",
         "RAW_STRING",
         "BYTE_STRING",
         "RAW_BYTE_STRING",
+    ],
+    tokens: [
+        "ERROR",
+        "IDENT",
+        "WHITESPACE",
+        "LIFETIME",
         "COMMENT",
         "SHEBANG",
     ],
