@@ -1,8 +1,3 @@
-#[allow(unused)]
-mod tt;
-#[allow(unused)]
-mod mbe;
-
 /// Machinery for macro expansion.
 ///
 /// One of the more complicated things about macros is managing the source code
@@ -19,6 +14,7 @@ use ra_syntax::{
     SyntaxKind::*,
     ast::{self, NameOwner},
 };
+use ra_macros::{tt, mbe};
 
 use crate::{HirDatabase, MacroCallId};
 

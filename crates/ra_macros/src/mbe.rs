@@ -1,9 +1,9 @@
-use ra_syntax::SmolStr;
+use smol_str::SmolStr;
 
-use crate::macros::tt::{self, Delimiter};
+use crate::tt::{self, Delimiter};
 
 #[derive(Debug)]
-pub(crate) struct MacroRules {
+pub struct MacroRules {
     rules: Vec<Rule>,
 }
 
@@ -71,7 +71,7 @@ struct Var {
     kind: Option<SmolStr>,
 }
 
-pub(crate) fn parse(tt: &tt::Subtree) -> Option<MacroRules> {
+pub fn parse(tt: &tt::Subtree) -> Option<MacroRules> {
     let mut parser = RulesParser::new(tt);
     let mut rules = Vec::new();
     while !parser.is_eof() {
@@ -140,7 +140,7 @@ fn parse_var(p: &mut RulesParser) -> Option<Var> {
 fn parse_repeat(p: &mut RulesParser) -> Option<Repeat> {
     let subtree = p.eat_subtree().unwrap();
     let subtree = parse_subtree(subtree)?;
-    let mut sep = p.eat_punct()?;
+    let sep = p.eat_punct()?;
     let (separator, rep) = match sep.char {
         '*' | '+' | '?' => (None, sep.char),
         char => (Some(Punct { char }), p.eat_punct()?.char),
