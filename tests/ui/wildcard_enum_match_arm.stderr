@@ -1,15 +1,28 @@
 error: wildcard match will miss any future added variants.
-  --> $DIR/wildcard_enum_match_arm.rs:26:9
+  --> $DIR/wildcard_enum_match_arm.rs:13:9
    |
-LL |         _ => eprintln!("Not red"),
-   |         ^
+LL |         _ => "Could be",
+   |         ^ help: try this: `Maybe::Probably(..) | Maybe::None`
    |
-note: lint level defined here
-  --> $DIR/wildcard_enum_match_arm.rs:1:9
-   |
-LL | #![deny(clippy::wildcard_enum_match_arm)]
-   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-   = note: to resolve, match each variant explicitly
+   = note: `-D clippy::wildcard-enum-match-arm` implied by `-D warnings`
 
-error: aborting due to previous error
+error: wildcard match will miss any future added variants.
+  --> $DIR/wildcard_enum_match_arm.rs:20:9
+   |
+LL |         _other => "Could be",
+   |         ^^^^^^ help: try this: `_other @ Maybe::Some(..) | _other @ Maybe::Probably(..)`
+
+error: wildcard match will miss any future added variants.
+  --> $DIR/wildcard_enum_match_arm.rs:27:9
+   |
+LL |         n => format!("{:?}", n),
+   |         ^ help: try this: `n @ Maybe::Probably(..) | n @ Maybe::None`
+
+error: wildcard match will miss any future added variants.
+  --> $DIR/wildcard_enum_match_arm.rs:41:9
+   |
+LL |         _ => "Who knows",
+   |         ^ help: try this: `Maybe::Some(..) | Maybe::Probably(..) | Maybe::None`
+
+error: aborting due to 4 previous errors
 
