@@ -73,6 +73,18 @@ use minifier;
 /// A pair of name and its optional document.
 pub type NameDoc = (String, Option<String>);
 
+pub struct SlashChecker<'a>(pub &'a str);
+
+impl<'a> Display for SlashChecker<'a> {
+    fn fmt(&self, f: &mut Formatter) -> fmt::Result {
+        if !self.0.ends_with("/") && !self.0.is_empty() {
+            write!(f, "{}/", self.0)
+        } else {
+            write!(f, "{}", self.0)
+        }
+    }
+}
+
 /// Major driving force in all rustdoc rendering. This contains information
 /// about where in the tree-like hierarchy rendering is occurring and controls
 /// how the current page is being rendered.
@@ -1140,7 +1152,8 @@ themePicker.onblur = handleThemeButtonsBlur;
                                   krates
                                     .iter()
                                     .map(|s| {
-                                        format!("<li><a href=\"{}/index.html\">{}</li>", s, s)
+                                        format!("<li><a href=\"{}index.html\">{}</li>",
+                                                SlashChecker(s), s)
                                     })
                                     .collect::<String>());
             try_err!(layout::render(&mut w, &cx.shared.layout,
@@ -2074,8 +2087,7 @@ impl Context {
         let mut themes = self.shared.themes.clone();
         let sidebar = "<p class='location'>Settings</p><div class='sidebar-elems'></div>";
         themes.push(PathBuf::from("settings.css"));
-        let mut layout = self.shared.layout.clone();
-        layout.krate = String::new();
+        let layout = self.shared.layout.clone();
         try_err!(layout::render(&mut w, &layout,
                                 &page, &sidebar, &settings,
                                 self.shared.css_file_extension.is_some(),
@@ -2454,7 +2466,7 @@ impl<'a> fmt::Display for Item<'a> {
 
 fn item_path(ty: ItemType, name: &str) -> String {
     match ty {
-        ItemType::Module => format!("{}/index.html", name),
+        ItemType::Module => format!("{}index.html", SlashChecker(name)),
         _ => format!("{}.{}.html", ty.css_class(), name),
     }
 }
