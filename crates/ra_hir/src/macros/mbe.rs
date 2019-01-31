@@ -14,6 +14,7 @@ struct Rule {
 enum TokenTree {
     Leaf(Leaf),
     Subtree(Subtree),
+    Repeat(Repeat),
 }
 
 enum Leaf {
@@ -33,6 +34,17 @@ enum Delimiter {
     Brace,
     Bracket,
     None,
+}
+
+struct Repeat {
+    subtree: Subtree,
+    kind: RepeatKind,
+}
+
+enum RepeatKind {
+    ZeroOrMore,
+    OneOrMore,
+    ZeroOrOne,
 }
 
 struct Literal {
