@@ -34,7 +34,15 @@ fn main() {
     (1u8 + 1u8) as u16;
     // Test clippy::cast_sign_loss
     1i32 as u32;
+    -1i32 as u32;
     1isize as usize;
+    -1isize as usize;
+    0i8 as u8;
+    i8::max_value() as u8;
+    i16::max_value() as u16;
+    i32::max_value() as u32;
+    i64::max_value() as u64;
+    i128::max_value() as u128;
     // Extra checks for *size
     // Test cast_unnecessary
     1i32 as i32;

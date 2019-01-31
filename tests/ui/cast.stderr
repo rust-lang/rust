@@ -70,12 +70,6 @@ error: casting i32 to i8 may truncate the value
 LL |     1i32 as i8;
    |     ^^^^^^^^^^
 
-error: casting i32 to u8 may lose the sign of the value
-  --> $DIR/cast.rs:22:5
-   |
-LL |     1i32 as u8;
-   |     ^^^^^^^^^^
-
 error: casting i32 to u8 may truncate the value
   --> $DIR/cast.rs:22:5
    |
@@ -147,19 +141,19 @@ LL |     (1u8 + 1u8) as u16;
    |     ^^^^^^^^^^^^^^^^^^ help: try: `u16::from(1u8 + 1u8)`
 
 error: casting i32 to u32 may lose the sign of the value
-  --> $DIR/cast.rs:36:5
-   |
-LL |     1i32 as u32;
-   |     ^^^^^^^^^^^
-
-error: casting isize to usize may lose the sign of the value
   --> $DIR/cast.rs:37:5
    |
-LL |     1isize as usize;
-   |     ^^^^^^^^^^^^^^^
+LL |     -1i32 as u32;
+   |     ^^^^^^^^^^^^
+
+error: casting isize to usize may lose the sign of the value
+  --> $DIR/cast.rs:39:5
+   |
+LL |     -1isize as usize;
+   |     ^^^^^^^^^^^^^^^^
 
 error: casting to the same type is unnecessary (`i32` -> `i32`)
-  --> $DIR/cast.rs:40:5
+  --> $DIR/cast.rs:48:5
    |
 LL |     1i32 as i32;
    |     ^^^^^^^^^^^
@@ -167,16 +161,16 @@ LL |     1i32 as i32;
    = note: `-D clippy::unnecessary-cast` implied by `-D warnings`
 
 error: casting to the same type is unnecessary (`f32` -> `f32`)
-  --> $DIR/cast.rs:41:5
+  --> $DIR/cast.rs:49:5
    |
 LL |     1f32 as f32;
    |     ^^^^^^^^^^^
 
 error: casting to the same type is unnecessary (`bool` -> `bool`)
-  --> $DIR/cast.rs:42:5
+  --> $DIR/cast.rs:50:5
    |
 LL |     false as bool;
    |     ^^^^^^^^^^^^^
 
-error: aborting due to 28 previous errors
+error: aborting due to 27 previous errors
 

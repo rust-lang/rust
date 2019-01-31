@@ -130,6 +130,12 @@ pub fn match_def_path(tcx: TyCtxt<'_, '_, '_>, def_id: DefId, path: &[&str]) -> 
     apb.names.len() == path.len() && apb.names.into_iter().zip(path.iter()).all(|(a, &b)| *a == *b)
 }
 
+pub fn get_def_path(tcx: TyCtxt<'_, '_, '_>, def_id: DefId) -> Vec<&'static str> {
+    let mut apb = AbsolutePathBuffer { names: vec![] };
+    tcx.push_item_path(&mut apb, def_id, false);
+    apb.names.iter().map(|n| n.get()).collect()
+}
+
 /// Check if type is struct, enum or union type with given def path.
 pub fn match_type(cx: &LateContext<'_, '_>, ty: Ty<'_>, path: &[&str]) -> bool {
     match ty.sty {

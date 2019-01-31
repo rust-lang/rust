@@ -4,8 +4,8 @@ use crate::consts::{constant, Constant};
 use crate::reexport::*;
 use crate::utils::paths;
 use crate::utils::{
-    clip, comparisons, differing_macro_contexts, higher, in_constant, in_macro, int_bits, last_path_segment,
-    match_def_path, match_path, multispan_sugg, opt_def_id, same_tys, sext, snippet, snippet_opt,
+    clip, comparisons, differing_macro_contexts, get_def_path, higher, in_constant, in_macro, int_bits,
+    last_path_segment, match_def_path, match_path, multispan_sugg, opt_def_id, same_tys, sext, snippet, snippet_opt,
     snippet_with_applicability, span_help_and_lint, span_lint, span_lint_and_sugg, span_lint_and_then, unsext,
     AbsolutePathBuffer,
 };
@@ -1001,6 +1001,48 @@ enum ArchSuffix {
     None,
 }
 
+fn check_loss_of_sign(cx: &LateContext<'_, '_>, expr: &Expr, op: &Expr, cast_from: Ty<'_>, cast_to: Ty<'_>) {
+    if !cast_from.is_signed() || cast_to.is_signed() {
+        return;
+    }
+
+    // don't lint for positive constants
+    let const_val = constant(cx, &cx.tables, op);
+    if_chain! {
+        if let Some((const_val, _)) = const_val;
+        if let Constant::Int(n) = const_val;
+        if let ty::Int(ity) = cast_from.sty;
+        if sext(cx.tcx, n, ity) >= 0;
+        then {
+            return
+        }
+    }
+
+    // don't lint for max_value const fns
+    if_chain! {
+        if let ExprKind::Call(callee, args) = &op.node;
+        if args.is_empty();
+        if let ExprKind::Path(qpath) = &callee.node;
+        let def = cx.tables.qpath_def(qpath, callee.hir_id);
+        if let Some(def_id) = def.opt_def_id();
+        let def_path = get_def_path(cx.tcx, def_id);
+        if let &["core", "num", impl_ty, "max_value"] = &def_path[..];
+        then {
+           if let "<impl i8>" | "<impl i16>" | "<impl i32>" |
+                  "<impl i64>" | "<impl i128>" = impl_ty {
+               return;
+           }
+        }
+    }
+
+    span_lint(
+        cx,
+        CAST_SIGN_LOSS,
+        expr.span,
+        &format!("casting {} to {} may lose the sign of the value", cast_from, cast_to),
+    );
+}
+
 fn check_truncation_and_wrapping(cx: &LateContext<'_, '_>, expr: &Expr, cast_from: Ty<'_>, cast_to: Ty<'_>) {
     let arch_64_suffix = " on targets with 64-bit wide pointers";
     let arch_32_suffix = " on targets with 32-bit wide pointers";
@@ -1176,14 +1218,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for CastPass {
                         }
                     },
                     (true, true) => {
-                        if cast_from.is_signed() && !cast_to.is_signed() {
-                            span_lint(
-                                cx,
-                                CAST_SIGN_LOSS,
-                                expr.span,
-                                &format!("casting {} to {} may lose the sign of the value", cast_from, cast_to),
-                            );
-                        }
+                        check_loss_of_sign(cx, expr, ex, cast_from, cast_to);
                         check_truncation_and_wrapping(cx, expr, cast_from, cast_to);
                         check_lossless(cx, expr, ex, cast_from, cast_to);
                     },
