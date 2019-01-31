@@ -990,7 +990,7 @@ fn analysis<'tcx>(
                 });
             }, {
                 time(sess, "lint checking", || {
-                    lint::check_crate(tcx, rustc_lint::BuiltinCombinedLateLintPass::new());
+                    lint::check_crate(tcx, || rustc_lint::BuiltinCombinedLateLintPass::new());
                 });
             });
         }, {

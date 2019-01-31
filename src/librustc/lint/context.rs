@@ -17,7 +17,7 @@
 use self::TargetLint::*;
 
 use std::slice;
-use rustc_data_structures::sync::ReadGuard;
+use rustc_data_structures::sync::{ReadGuard, Lock, join};
 use crate::lint::{EarlyLintPass, LateLintPass, EarlyLintPassObject, LateLintPassObject};
 use crate::lint::{LintArray, Level, Lint, LintId, LintPass, LintBuffer};
 use crate::lint::builtin::BuiltinLintDiagnostics;
@@ -55,8 +55,8 @@ pub struct LintStore {
     /// This is only `None` while performing a lint pass.
     pre_expansion_passes: Option<Vec<EarlyLintPassObject>>,
     early_passes: Option<Vec<EarlyLintPassObject>>,
-    late_passes: Option<Vec<LateLintPassObject>>,
-    late_module_passes: Option<Vec<LateLintPassObject>>,
+    late_passes: Lock<Option<Vec<LateLintPassObject>>>,
+    late_module_passes: Lock<Option<Vec<LateLintPassObject>>>,
 
     /// Lints indexed by name.
     by_name: FxHashMap<String, TargetLint>,
@@ -67,14 +67,6 @@ pub struct LintStore {
     /// Extra info for future incompatibility lints, describing the
     /// issue or RFC that caused the incompatibility.
     future_incompatible: FxHashMap<LintId, FutureIncompatibleInfo>,
-}
-
-pub struct LintSession<'a, PassObject> {
-    /// Reference to the store of registered lints.
-    lints: ReadGuard<'a, LintStore>,
-
-    /// Trait objects for each lint pass.
-    passes: Option<Vec<PassObject>>,
 }
 
 /// Lints that are buffered up early on in the `Session` before the
@@ -151,8 +143,8 @@ impl LintStore {
             lints: vec![],
             pre_expansion_passes: Some(vec![]),
             early_passes: Some(vec![]),
-            late_passes: Some(vec![]),
-            late_module_passes: Some(vec![]),
+            late_passes: Lock::new(Some(vec![])),
+            late_module_passes: Lock::new(Some(vec![])),
             by_name: Default::default(),
             future_incompatible: Default::default(),
             lint_groups: Default::default(),
@@ -208,9 +200,9 @@ impl LintStore {
         self.push_pass(sess, from_plugin, &pass);
         if !register_only {
             if per_module {
-                self.late_module_passes.as_mut().unwrap().push(pass);
+                self.late_module_passes.lock().as_mut().unwrap().push(pass);
             } else {
-                self.late_passes.as_mut().unwrap().push(pass);
+                self.late_passes.lock().as_mut().unwrap().push(pass);
             }
         }
     }
@@ -529,7 +521,7 @@ pub struct LateContext<'a, 'tcx: 'a> {
     pub access_levels: &'a AccessLevels,
 
     /// The store of registered lints and the lint levels.
-    lint_sess: LintSession<'tcx, LateLintPassObject>,
+    lint_store: ReadGuard<'a, LintStore>,
 
     last_node_with_lint_attrs: hir::HirId,
 
@@ -557,7 +549,7 @@ pub struct EarlyContext<'a> {
     builder: LintLevelsBuilder<'a>,
 
     /// The store of registered lints and the lint levels.
-    lint_sess: LintSession<'a, EarlyLintPassObject>,
+    lint_store: ReadGuard<'a, LintStore>,
 
     buffered: LintBuffer,
 }
@@ -578,8 +570,6 @@ pub trait LintContext<'tcx>: Sized {
 
     fn sess(&self) -> &Session;
     fn lints(&self) -> &LintStore;
-    fn lint_sess(&self) -> &LintSession<'tcx, Self::PassObject>;
-    fn lint_sess_mut(&mut self) -> &mut LintSession<'tcx, Self::PassObject>;
 
     fn lookup_and_emit<S: Into<MultiSpan>>(&self,
                                            lint: &'static Lint,
@@ -654,10 +644,7 @@ impl<'a> EarlyContext<'a> {
         EarlyContext {
             sess,
             krate,
-            lint_sess: LintSession {
-                lints: sess.lint_store.borrow(),
-                passes: None,
-            },
+            lint_store: sess.lint_store.borrow(),
             builder: LintLevelSets::builder(sess),
             buffered,
         }
@@ -721,15 +708,7 @@ impl<'a, 'tcx> LintContext<'tcx> for LateContext<'a, 'tcx> {
     }
 
     fn lints(&self) -> &LintStore {
-        &*self.lint_sess.lints
-    }
-
-    fn lint_sess(&self) -> &LintSession<'tcx, Self::PassObject> {
-        &self.lint_sess
-    }
-
-    fn lint_sess_mut(&mut self) -> &mut LintSession<'tcx, Self::PassObject> {
-        &mut self.lint_sess
+        &*self.lint_store
     }
 
     fn lookup<S: Into<MultiSpan>>(&self,
@@ -757,15 +736,7 @@ impl<'a> LintContext<'a> for EarlyContext<'a> {
     }
 
     fn lints(&self) -> &LintStore {
-        &*self.lint_sess.lints
-    }
-
-    fn lint_sess(&self) -> &LintSession<'a, Self::PassObject> {
-        &self.lint_sess
-    }
-
-    fn lint_sess_mut(&mut self) -> &mut LintSession<'a, Self::PassObject> {
-        &mut self.lint_sess
+        &*self.lint_store
     }
 
     fn lookup<S: Into<MultiSpan>>(&self,
@@ -1269,17 +1240,12 @@ fn late_lint_mod_pass<'tcx, T: for<'a> LateLintPass<'a, 'tcx>>(
 ) {
     let access_levels = &tcx.privacy_access_levels(LOCAL_CRATE);
 
-    let store = &tcx.sess.lint_store;
-
     let context = LateContext {
         tcx,
         tables: &ty::TypeckTables::empty(None),
         param_env: ty::ParamEnv::empty(),
         access_levels,
-        lint_sess: LintSession {
-            lints: store.borrow(),
-            passes: None,
-        },
+        lint_store: tcx.sess.lint_store.borrow(),
         last_node_with_lint_attrs: tcx.hir().as_local_hir_id(module_def_id).unwrap(),
         generics: None,
         only_module: true,
@@ -1304,18 +1270,21 @@ pub fn late_lint_mod<'tcx, T: for<'a> LateLintPass<'a, 'tcx>>(
     module_def_id: DefId,
     builtin_lints: T,
 ) {
-    assert!(!tcx.sess.opts.debugging_opts.no_interleave_lints);
+    if tcx.sess.opts.debugging_opts.no_interleave_lints {
+        // These passes runs in late_lint_crate with -Z no_interleave_lints
+        return;
+    }
 
     late_lint_mod_pass(tcx, module_def_id, builtin_lints);
 
-    let mut passes = tcx.sess.lint_store.borrow_mut().late_module_passes.take().unwrap();
+    let mut passes = tcx.sess.lint_store.borrow().late_module_passes.lock().take().unwrap();
 
     if !passes.is_empty() {
         late_lint_mod_pass(tcx, module_def_id, LateLintPassObjects { lints: &mut passes[..] });
     }
 
     // Put the passes back in the session.
-    tcx.sess.lint_store.borrow_mut().late_module_passes = Some(passes);
+    *tcx.sess.lint_store.borrow().late_module_passes.lock() = Some(passes);
 }
 
 fn late_lint_pass_crate<'tcx, T: for<'a> LateLintPass<'a, 'tcx>>(
@@ -1331,10 +1300,7 @@ fn late_lint_pass_crate<'tcx, T: for<'a> LateLintPass<'a, 'tcx>>(
         tables: &ty::TypeckTables::empty(None),
         param_env: ty::ParamEnv::empty(),
         access_levels,
-        lint_sess: LintSession {
-            passes: None,
-            lints: tcx.sess.lint_store.borrow(),
-        },
+        lint_store: tcx.sess.lint_store.borrow(),
         last_node_with_lint_attrs: hir::CRATE_HIR_ID,
         generics: None,
         only_module: false,
@@ -1361,7 +1327,7 @@ fn late_lint_crate<'tcx, T: for<'a> LateLintPass<'a, 'tcx>>(
     tcx: TyCtxt<'_, 'tcx, 'tcx>,
     builtin_lints: T
 ) {
-    let mut passes = tcx.sess.lint_store.borrow_mut().late_passes.take().unwrap();
+    let mut passes = tcx.sess.lint_store.borrow().late_passes.lock().take().unwrap();
 
     if !tcx.sess.opts.debugging_opts.no_interleave_lints {
         if !passes.is_empty() {
@@ -1376,8 +1342,8 @@ fn late_lint_crate<'tcx, T: for<'a> LateLintPass<'a, 'tcx>>(
             });
         }
 
-        let mut passes = tcx.sess.lint_store.borrow_mut().late_module_passes.take().unwrap();
-            
+        let mut passes = tcx.sess.lint_store.borrow().late_module_passes.lock().take().unwrap();
+
         for pass in &mut passes {
             time(tcx.sess, &format!("running late module lint: {}", pass.name()), || {
                 late_lint_pass_crate(tcx, LateLintPassObjects { lints: slice::from_mut(pass) });
@@ -1385,25 +1351,31 @@ fn late_lint_crate<'tcx, T: for<'a> LateLintPass<'a, 'tcx>>(
         }
 
         // Put the passes back in the session.
-        tcx.sess.lint_store.borrow_mut().late_module_passes = Some(passes);
+        *tcx.sess.lint_store.borrow().late_module_passes.lock() = Some(passes);
     }
 
     // Put the passes back in the session.
-    tcx.sess.lint_store.borrow_mut().late_passes = Some(passes);
+    *tcx.sess.lint_store.borrow().late_passes.lock() = Some(passes);
 }
 
 /// Performs lint checking on a crate.
 pub fn check_crate<'tcx, T: for<'a> LateLintPass<'a, 'tcx>>(
     tcx: TyCtxt<'_, 'tcx, 'tcx>,
-    builtin_lints: T,
+    builtin_lints: impl FnOnce() -> T + Send,
 ) {
-    // Run per-module lints
-    for &module in tcx.hir().krate().modules.keys() {
-        tcx.ensure().lint_mod(tcx.hir().local_def_id(module));
-    }
-
-    // Run whole crate non-incremental lints
-    late_lint_crate(tcx, builtin_lints);
+    join(|| {
+        time(tcx.sess, "crate lints", || {
+            // Run whole crate non-incremental lints
+            late_lint_crate(tcx, builtin_lints());
+        });
+    }, || {
+        time(tcx.sess, "module lints", || {
+            // Run per-module lints
+            for &module in tcx.hir().krate().modules.keys() {
+                tcx.ensure().lint_mod(tcx.hir().local_def_id(module));
+            }
+        });
+    });
 }
 
 struct EarlyLintPassObjects<'a> {
