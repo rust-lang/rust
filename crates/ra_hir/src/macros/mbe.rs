@@ -85,16 +85,15 @@ pub(crate) fn parse(tt: &tt::Subtree) -> Option<MacroRules> {
 }
 
 fn parse_rule(p: &mut RulesParser) -> Option<Rule> {
-    let lhs = match p.current()? {
-        tt::TokenTree::Subtree(sub) => parse_subtree(sub)?,
-        _ => return None,
-    };
-    let rhs = unimplemented!();
+    let lhs = parse_subtree(p.eat_subtree()?)?;
+    p.eat_punct('=');
+    p.eat_punct('>');
+    let rhs = parse_subtree(p.eat_subtree()?)?;
     Some(Rule { lhs, rhs })
 }
 
 fn parse_subtree(tt: &tt::Subtree) -> Option<Subtree> {
-    unimplemented!()
+    None
 }
 
 struct RulesParser<'a> {
@@ -117,5 +116,23 @@ impl<'a> RulesParser<'a> {
 
     fn bump(&mut self) {
         self.pos += 1;
+    }
+    fn eat_subtree(&mut self) -> Option<&'a tt::Subtree> {
+        match self.current()? {
+            tt::TokenTree::Subtree(sub) => {
+                self.bump();
+                Some(sub)
+            }
+            _ => return None,
+        }
+    }
+    fn eat_punct(&mut self, char: char) -> Option<()> {
+        match self.current()? {
+            tt::TokenTree::Leaf(tt::Leaf::Punct(tt::Punct { char: c })) if *c == char => {
+                self.bump();
+                Some(())
+            }
+            _ => None,
+        }
     }
 }
