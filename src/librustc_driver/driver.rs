@@ -17,6 +17,7 @@ use rustc_allocator as allocator;
 use rustc_borrowck as borrowck;
 use rustc_codegen_utils::codegen_backend::CodegenBackend;
 use rustc_data_structures::sync::{self, Lock};
+#[cfg(parallel_compiler)]
 use rustc_data_structures::jobserver;
 use rustc_incremental;
 use rustc_metadata::creader::CrateLoader;
