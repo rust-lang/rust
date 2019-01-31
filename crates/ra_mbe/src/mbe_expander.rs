@@ -1,7 +1,7 @@
 use rustc_hash::FxHashMap;
 use smol_str::SmolStr;
 
-use crate::{mbe, tt, tt_cursor::TtCursor};
+use crate::{self as mbe, tt_cursor::TtCursor};
 
 pub fn exapnd(rules: &mbe::MacroRules, input: &tt::Subtree) -> Option<tt::Subtree> {
     rules.rules.iter().find_map(|it| expand_rule(it, input))

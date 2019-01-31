@@ -16,7 +16,8 @@ join_to_string = "0.1.3"
 ra_syntax = { path = "../ra_syntax" }
 ra_arena = { path = "../ra_arena" }
 ra_db = { path = "../ra_db" }
-ra_macros = { path = "../ra_macros" }
+mbe = { path = "../ra_mbe", package = "ra_mbe" }
+tt = { path = "../ra_tt", package = "ra_tt" }
 test_utils = { path = "../test_utils" }
 
 [dev-dependencies]

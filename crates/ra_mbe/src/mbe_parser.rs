@@ -1,5 +1,4 @@
-use crate::{tt, mbe};
-use crate::tt_cursor::TtCursor;
+use crate::{self as mbe, tt_cursor::TtCursor};
 
 /// This module parses a raw `tt::TokenStream` into macro-by-example token
 /// stream. This is a *mostly* identify function, expect for handling of
@@ -43,7 +42,7 @@ fn parse_subtree(tt: &tt::Subtree) -> Option<mbe::Subtree> {
                     mbe::Leaf::from(mbe::Literal { text: text.clone() }).into()
                 }
             },
-            tt::TokenTree::Subtree(subtree) => parse_subtree(subtree)?.into(),
+            tt::TokenTree::Subtree(subtree) => parse_subtree(&subtree)?.into(),
         };
         token_trees.push(child);
     }

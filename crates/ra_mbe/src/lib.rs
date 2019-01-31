@@ -1,6 +1,22 @@
+macro_rules! impl_froms {
+    ($e:ident: $($v:ident), *) => {
+        $(
+            impl From<$v> for $e {
+                fn from(it: $v) -> $e {
+                    $e::$v(it)
+                }
+            }
+        )*
+    }
+}
+
+mod tt_cursor;
+mod mbe_parser;
+mod mbe_expander;
+
 use smol_str::SmolStr;
 
-pub(crate) use crate::tt::{Delimiter, Punct};
+pub use tt::{Delimiter, Punct};
 
 pub use crate::{
     mbe_parser::parse,

@@ -14,7 +14,6 @@ use ra_syntax::{
     SyntaxKind::*,
     ast::{self, NameOwner},
 };
-use ra_macros::{tt, mbe};
 
 use crate::{HirDatabase, MacroCallId};
 

@@ -1,0 +1,10 @@
+[package]
+edition = "2018"
+name = "ra_mbe"
+version = "0.1.0"
+authors = ["Aleksey Kladov <aleksey.kladov@gmail.com>"]
+
+[dependencies]
+tt = { path = "../ra_tt", package = "ra_tt" }
+rustc-hash = "1.0.0"
+smol_str = "0.1.9"

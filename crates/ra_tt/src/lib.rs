@@ -1,3 +1,15 @@
+macro_rules! impl_froms {
+    ($e:ident: $($v:ident), *) => {
+        $(
+            impl From<$v> for $e {
+                fn from(it: $v) -> $e {
+                    $e::$v(it)
+                }
+            }
+        )*
+    }
+}
+
 use std::fmt;
 
 use smol_str::SmolStr;
