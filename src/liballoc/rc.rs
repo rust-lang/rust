@@ -1305,6 +1305,38 @@ impl<T: ?Sized> Weak<T> {
         }
     }
 
+    /// Gets the number of strong (`Rc`) pointers pointing to this value.
+    ///
+    /// If `self` was created using [`Weak::new`], this will return 0.
+    ///
+    /// [`Weak::new`]: #method.new
+    #[unstable(feature = "weak_counts", issue = "57977")]
+    pub fn strong_count(&self) -> usize {
+        if let Some(inner) = self.inner() {
+            inner.strong()
+        } else {
+            0
+        }
+    }
+
+    /// Gets the number of `Weak` pointers pointing to this value.
+    ///
+    /// If `self` was created using [`Weak::new`], this will return `None`. If
+    /// not, the returned value is at least 1, since `self` still points to the
+    /// value.
+    ///
+    /// [`Weak::new`]: #method.new
+    #[unstable(feature = "weak_counts", issue = "57977")]
+    pub fn weak_count(&self) -> Option<usize> {
+        self.inner().map(|inner| {
+            if inner.strong() > 0 {
+                inner.weak() - 1  // subtract the implicit weak ptr
+            } else {
+                inner.weak()
+            }
+        })
+    }
+
     /// Return `None` when the pointer is dangling and there is no allocated `RcBox`,
     /// i.e., this `Weak` was created by `Weak::new`
     #[inline]
@@ -1641,6 +1673,33 @@ mod tests {
         assert!(Rc::strong_count(&a) == 2);
         assert!(Rc::weak_count(&a) == 0);
         drop(c);
+    }
+
+    #[test]
+    fn weak_counts() {
+        assert_eq!(Weak::weak_count(&Weak::<u64>::new()), None);
+        assert_eq!(Weak::strong_count(&Weak::<u64>::new()), 0);
+
+        let a = Rc::new(0);
+        let w = Rc::downgrade(&a);
+        assert_eq!(Weak::strong_count(&w), 1);
+        assert_eq!(Weak::weak_count(&w), Some(1));
+        let w2 = w.clone();
+        assert_eq!(Weak::strong_count(&w), 1);
+        assert_eq!(Weak::weak_count(&w), Some(2));
+        assert_eq!(Weak::strong_count(&w2), 1);
+        assert_eq!(Weak::weak_count(&w2), Some(2));
+        drop(w);
+        assert_eq!(Weak::strong_count(&w2), 1);
+        assert_eq!(Weak::weak_count(&w2), Some(1));
+        let a2 = a.clone();
+        assert_eq!(Weak::strong_count(&w2), 2);
+        assert_eq!(Weak::weak_count(&w2), Some(1));
+        drop(a2);
+        drop(a);
+        assert_eq!(Weak::strong_count(&w2), 0);
+        assert_eq!(Weak::weak_count(&w2), Some(1));
+        drop(w2);
     }
 
     #[test]

@@ -11,7 +11,7 @@ use core::sync::atomic;
 use core::sync::atomic::Ordering::{Acquire, Relaxed, Release, SeqCst};
 use core::borrow;
 use core::fmt;
-use core::cmp::Ordering;
+use core::cmp::{self, Ordering};
 use core::intrinsics::abort;
 use core::mem::{self, align_of_val, size_of_val};
 use core::ops::{Deref, Receiver};
@@ -1138,6 +1138,61 @@ impl<T: ?Sized> Weak<T> {
         }
     }
 
+    /// Gets the number of strong (`Arc`) pointers pointing to this value.
+    ///
+    /// If `self` was created using [`Weak::new`], this will return 0.
+    ///
+    /// [`Weak::new`]: #method.new
+    #[unstable(feature = "weak_counts", issue = "57977")]
+    pub fn strong_count(&self) -> usize {
+        if let Some(inner) = self.inner() {
+            inner.strong.load(SeqCst)
+        } else {
+            0
+        }
+    }
+
+    /// Gets an approximation of the number of `Weak` pointers pointing to this
+    /// value.
+    ///
+    /// If `self` was created using [`Weak::new`], this will return 0. If not,
+    /// the returned value is at least 1, since `self` still points to the
+    /// value.
+    ///
+    /// # Accuracy
+    ///
+    /// Due to implementation details, the returned value can be off by 1 in
+    /// either direction when other threads are manipulating any `Arc`s or
+    /// `Weak`s pointing to the same value.
+    ///
+    /// [`Weak::new`]: #method.new
+    #[unstable(feature = "weak_counts", issue = "57977")]
+    pub fn weak_count(&self) -> Option<usize> {
+        // Due to the implicit weak pointer added when any strong pointers are
+        // around, we cannot implement `weak_count` correctly since it
+        // necessarily requires accessing the strong count and weak count in an
+        // unsynchronized fashion. So this version is a bit racy.
+        self.inner().map(|inner| {
+            let strong = inner.strong.load(SeqCst);
+            let weak = inner.weak.load(SeqCst);
+            if strong == 0 {
+                // If the last `Arc` has *just* been dropped, it might not yet
+                // have removed the implicit weak count, so the value we get
+                // here might be 1 too high.
+                weak
+            } else {
+                // As long as there's still at least 1 `Arc` around, subtract
+                // the implicit weak pointer.
+                // Note that the last `Arc` might get dropped between the 2
+                // loads we do above, removing the implicit weak pointer. This
+                // means that the value might be 1 too low here. In order to not
+                // return 0 here (which would happen if we're the only weak
+                // pointer), we guard against that specifically.
+                cmp::max(1, weak - 1)
+            }
+        })
+    }
+
     /// Return `None` when the pointer is dangling and there is no allocated `ArcInner`,
     /// i.e., this `Weak` was created by `Weak::new`
     #[inline]
@@ -1655,6 +1710,33 @@ mod tests {
         assert!(Arc::get_mut(&mut x).is_some());
         let _w = Arc::downgrade(&x);
         assert!(Arc::get_mut(&mut x).is_none());
+    }
+
+    #[test]
+    fn weak_counts() {
+        assert_eq!(Weak::weak_count(&Weak::<u64>::new()), None);
+        assert_eq!(Weak::strong_count(&Weak::<u64>::new()), 0);
+
+        let a = Arc::new(0);
+        let w = Arc::downgrade(&a);
+        assert_eq!(Weak::strong_count(&w), 1);
+        assert_eq!(Weak::weak_count(&w), Some(1));
+        let w2 = w.clone();
+        assert_eq!(Weak::strong_count(&w), 1);
+        assert_eq!(Weak::weak_count(&w), Some(2));
+        assert_eq!(Weak::strong_count(&w2), 1);
+        assert_eq!(Weak::weak_count(&w2), Some(2));
+        drop(w);
+        assert_eq!(Weak::strong_count(&w2), 1);
+        assert_eq!(Weak::weak_count(&w2), Some(1));
+        let a2 = a.clone();
+        assert_eq!(Weak::strong_count(&w2), 2);
+        assert_eq!(Weak::weak_count(&w2), Some(1));
+        drop(a2);
+        drop(a);
+        assert_eq!(Weak::strong_count(&w2), 0);
+        assert_eq!(Weak::weak_count(&w2), Some(1));
+        drop(w2);
     }
 
     #[test]
