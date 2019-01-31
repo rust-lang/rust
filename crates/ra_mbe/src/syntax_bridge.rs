@@ -1,8 +1,7 @@
 use ra_syntax::{ast, AstNode, SyntaxNode, SyntaxKind::*};
 
-pub fn macro_call_to_tt(call: &ast::MacroCall) -> Option<tt::Subtree> {
-    let tt = call.token_tree()?;
-    convert_tt(tt.syntax())
+pub fn ast_to_token_tree(ast: &ast::TokenTree) -> Option<tt::Subtree> {
+    convert_tt(ast.syntax())
 }
 
 fn convert_tt(tt: &SyntaxNode) -> Option<tt::Subtree> {
@@ -65,49 +64,4 @@ fn convert_tt(tt: &SyntaxNode) -> Option<tt::Subtree> {
         token_trees,
     };
     Some(res)
-}
-
-#[test]
-fn test_convert_tt() {
-    let macro_definition = r#"
-macro_rules! impl_froms {
-    ($e:ident: $($v:ident),*) => {
-        $(
-            impl From<$v> for $e {
-                fn from(it: $v) -> $e {
-                    $e::$v(it)
-                }
-            }
-        )*
-    }
-}
-"#;
-
-    let macro_invocation = r#"
-impl_froms!(TokenTree: Leaf, Subtree);
-"#;
-
-    let source_file = ast::SourceFile::parse(macro_definition);
-    let macro_definition = source_file
-        .syntax()
-        .descendants()
-        .find_map(ast::MacroCall::cast)
-        .unwrap();
-
-    let source_file = ast::SourceFile::parse(macro_invocation);
-    let macro_invocation = source_file
-        .syntax()
-        .descendants()
-        .find_map(ast::MacroCall::cast)
-        .unwrap();
-
-    let definition_tt = macro_call_to_tt(macro_definition).unwrap();
-    let invocation_tt = macro_call_to_tt(macro_invocation).unwrap();
-    let mbe = crate::parse(&definition_tt).unwrap();
-    let expansion = crate::exapnd(&mbe, &invocation_tt).unwrap();
-    assert_eq!(
-        expansion.to_string(),
-        "impl From < Leaf > for TokenTree {fn from (it : Leaf) -> TokenTree {TokenTree :: Leaf (it)}} \
-         impl From < Subtree > for TokenTree {fn from (it : Subtree) -> TokenTree {TokenTree :: Subtree (it)}}"
-    )
 }

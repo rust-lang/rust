@@ -1,10 +1,9 @@
-use crate::tt_cursor::TtCursor;
-
 /// This module parses a raw `tt::TokenStream` into macro-by-example token
 /// stream. This is a *mostly* identify function, expect for handling of
 /// `$var:tt_kind` and `$(repeat),*` constructs.
+use crate::tt_cursor::TtCursor;
 
-pub fn parse(tt: &tt::Subtree) -> Option<crate::MacroRules> {
+pub(crate) fn parse(tt: &tt::Subtree) -> Option<crate::MacroRules> {
     let mut parser = TtCursor::new(tt);
     let mut rules = Vec::new();
     while !parser.is_eof() {
