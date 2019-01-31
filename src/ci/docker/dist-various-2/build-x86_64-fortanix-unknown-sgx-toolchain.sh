@@ -12,8 +12,7 @@ target="x86_64-fortanix-unknown-sgx"
 url="https://github.com/fortanix/llvm-project/archive/${1}.tar.gz"
 repo_name="llvm-project"
 
-install_prereq()
-{
+install_prereq() {
     apt-get update
     apt-get install -y --no-install-recommends \
             build-essential \
@@ -22,36 +21,32 @@ install_prereq()
             git
 }
 
-# Clone Fortanix's port of llvm-project to build libunwind that would link with this target.
-# The below method to download a single commit from llvm-project is based on fetch_submodule
-# from init_repo.sh
-fetch_llvm_commit()
-{
-    cached="download-${repo_name}.tar.gz"
-    curl -f -sSL -o ${cached} ${url}
-    tar -xvzf ${cached}
-    mkdir "./${repo_name}" && tar -xf ${cached} -C ${repo_name} --strip-components 1
-}
-
-build_unwind()
-{
+build_unwind() {
+    set -x
     dir_name="${target}_temp"
-    rm -rf "./${dir_name}"
+    rm -rf ${dir_name}
     mkdir -p ${dir_name}
-    cd ${dir_name}
+    pushd ${dir_name}
 
-    retry fetch_llvm_commit
+    # Clone Fortanix's fork of llvm-project which has a port of libunwind
+    fetch_github_commit_archive "$repo_name" "$url"
     cd "${repo_name}/libunwind"
 
     # Build libunwind
     mkdir -p build
     cd build
-    cmake -DCMAKE_BUILD_TYPE="RELEASE" -DRUST_SGX=1 -G "Unix Makefiles" -DLLVM_PATH=../../llvm/ ../
+    cmake -DCMAKE_BUILD_TYPE="RELEASE" -DRUST_SGX=1 -G "Unix Makefiles" \
+        -DLLVM_ENABLE_WARNINGS=1 -DLIBUNWIND_ENABLE_WERROR=1 -DLIBUNWIND_ENABLE_PEDANTIC=0 \
+        -DLLVM_PATH=../../llvm/ ../
     make unwind_static
     install -D "lib/libunwind.a" "/${target}/lib/libunwind.a"
+
+    popd
     rm -rf ${dir_name}
+
+    { set +x; } 2>/dev/null
 }
 
 set -x
 hide_output install_prereq
-hide_output build_unwind
+build_unwind

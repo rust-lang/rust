@@ -34,11 +34,12 @@ if grep -q RUST_RELEASE_CHANNEL=beta src/ci/run.sh; then
   git fetch origin --unshallow beta master
 fi
 
-function fetch_submodule {
+# Duplicated in docker/dist-various-2/shared.sh
+function fetch_github_commit_archive {
     local module=$1
     local cached="download-${module//\//-}.tar.gz"
     retry sh -c "rm -f $cached && \
-        curl -sSL -o $cached $2"
+        curl -f -sSL -o $cached $2"
     mkdir $module
     touch "$module/.git"
     tar -C $module --strip-components=1 -xf $cached
@@ -58,7 +59,7 @@ for i in ${!modules[@]}; do
         git rm $module
         url=${urls[$i]}
         url=${url/\.git/}
-        fetch_submodule $module "$url/archive/$commit.tar.gz" &
+        fetch_github_commit_archive $module "$url/archive/$commit.tar.gz" &
         continue
     else
         use_git="$use_git $module"
