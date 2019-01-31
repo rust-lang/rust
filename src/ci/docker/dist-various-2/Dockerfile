@@ -32,7 +32,7 @@ RUN /tmp/build-solaris-toolchain.sh sparcv9 sparcv9 solaris-sparc
 COPY dist-various-2/build-x86_64-fortanix-unknown-sgx-toolchain.sh /tmp/
 # We pass the commit id of the port of LLVM's libunwind to the build script.
 # Any update to the commit id here, should cause the container image to be re-built from this point on.
-RUN /tmp/build-x86_64-fortanix-unknown-sgx-toolchain.sh "75628849f538a62712353ac6e4c9e789da90923e"
+RUN /tmp/build-x86_64-fortanix-unknown-sgx-toolchain.sh "53b586346f2c7870e20b170decdc30729d97c42b"
 
 COPY scripts/sccache.sh /scripts/
 RUN sh /scripts/sccache.sh

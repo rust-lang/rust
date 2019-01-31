@@ -49,4 +49,4 @@ build_unwind() {
 
 set -x
 hide_output install_prereq
-hide_output build_unwind
+build_unwind
