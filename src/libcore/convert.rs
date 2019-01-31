@@ -366,6 +366,11 @@ pub trait From<T>: Sized {
 /// provides an equivalent `TryInto` implementation for free, thanks to a
 /// blanket implementation in the standard library. For more information on this,
 /// see the documentation for [`Into`].
+/// 
+/// # Implementing `TryInto`
+/// 
+/// This suffers the same restrictions and reasoning as implementing
+/// [`Into`], see there for details.
 ///
 /// [`TryFrom`]: trait.TryFrom.html
 /// [`Into`]: trait.Into.html
@@ -380,7 +385,44 @@ pub trait TryInto<T>: Sized {
     fn try_into(self) -> Result<T, Self::Error>;
 }
 
-/// Attempt to construct `Self` via a conversion.
+/// Simple and safe type conversions that may fail in a controlled
+/// way under some circumstances. It is the reciprocal of [`TryInto`].
+/// 
+/// This is useful when you are doing a type conversion that may 
+/// trivially succeed but may also need special handling.
+/// For example, there is no way to convert an `i64` into an `i32`
+/// using the [`From`] trait, because an `i64` may contain a value
+/// that an `i32` cannot represent and so the conversion would lose data.
+/// This might be handled by truncating the `i64` to an `i32` (essentially
+/// giving the `i64`'s value modulo `i32::MAX`) or by simply returning 
+/// `i32::MAX`, or by some other method.  The `From` trait is intended 
+/// for lossless conversions, so the `TryFrom` trait informs the 
+/// programmer when a type conversion could go bad and lets them
+/// decide how to handle it.
+/// 
+/// # Generic Implementations
+///
+/// - `TryFrom<T> for U` implies [`TryInto<U>`]` for T`
+/// - [`try_from`] is reflexive, which means that `TryFrom<T> for T` 
+/// is implemented
+/// 
+/// # Examples
+///
+/// As described, [`i32`] implements `TryFrom<i64>`:
+///
+/// ```
+/// let big_number = 1_000_000_000_000i64;
+/// // Silently truncates `big_number`, requires detecting
+/// // and handling the truncation after the fact.
+/// let smaller_number = big_number as i32;
+/// assert_eq!(smaller_number, -727379968);
+/// 
+/// let try_smaller_number = i32::try_from(big_number);
+/// assert!(try_smaller_number.is_err());
+/// 
+/// let try_successful_smaller_number = i32::try_from(3);
+/// assert!(try_successful_smaller_number.is_ok());
+/// ```
 #[stable(feature = "try_from", since = "1.34.0")]
 pub trait TryFrom<T>: Sized {
     /// The type returned in the event of a conversion error.
