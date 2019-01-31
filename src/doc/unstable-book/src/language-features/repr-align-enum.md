@@ -24,3 +24,19 @@ fn main() {
     assert_eq!(std::mem::align_of::<Aligned>(), 8);
 }
 ```
+
+This is equivalent to using an aligned wrapper struct everywhere:
+
+```rust
+#[repr(align(8))]
+struct Aligned(Unaligned);
+
+enum Unaligned {
+    Foo,
+    Bar { value: u32 },
+}
+
+fn main() {
+    assert_eq!(std::mem::align_of::<Aligned>(), 8);
+}
+```
