@@ -607,9 +607,6 @@ impl<'a> Context<'a> {
             tactic
         } else if !self.context.use_block_indent() {
             SeparatorTactic::Never
-        } else if tactic == DefinitiveListTactic::Mixed {
-            // We are using mixed layout because everything did not fit within a single line.
-            SeparatorTactic::Always
         } else {
             self.context.config.trailing_comma()
         };
