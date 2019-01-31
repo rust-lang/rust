@@ -1538,13 +1538,8 @@ impl<'a, 'tcx: 'a> SearchInterfaceForPrivateItemsVisitor<'a, 'tcx> {
     /// 1. It's contained within a public type
     /// 2. It comes from a private crate
     fn leaks_private_dep(&self, item_id: DefId) -> bool {
-        // Don't do any leak checking if no private crates were specified
-        if self.private_crates.is_empty() {
-            return false
-        }
         let ret = self.required_visibility == ty::Visibility::Public &&
             self.private_crates.contains(&item_id.krate);
-
 
         debug!("leaks_private_dep(item_id={:?})={}", item_id, ret);
         return ret;

@@ -1653,13 +1653,6 @@ pub fn rustc_short_optgroups() -> Vec<RustcOptGroup> {
                                     for the compiler to emit",
             "[bin|lib|rlib|dylib|cdylib|staticlib|proc-macro]",
         ),
-        opt::multi_s(
-            "",
-            "extern-public",
-            "Comma separated list of crates to consider 'public'
-                                     for linting purposes",
-            "CRATES",
-        ),
         opt::opt_s(
             "",
             "crate-name",
@@ -1941,9 +1934,6 @@ pub fn build_session_options_and_crate_config(
             "options `-Z pgo-gen` and `-Z pgo-use` are exclusive",
         );
     }
-
-
-
 
     let mut output_types = BTreeMap::new();
     if !debugging_opts.parse_only {
