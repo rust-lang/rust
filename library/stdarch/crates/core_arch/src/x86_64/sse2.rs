@@ -15,7 +15,7 @@ extern "C" {
     fn cvttsd2si64(a: __m128d) -> i64;
 }
 
-/// Convert the lower double-precision (64-bit) floating-point element in a to
+/// Converts the lower double-precision (64-bit) floating-point element in a to
 /// a 64-bit integer.
 ///
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_cvtsd_si64)
@@ -38,7 +38,7 @@ pub unsafe fn _mm_cvtsd_si64x(a: __m128d) -> i64 {
     _mm_cvtsd_si64(a)
 }
 
-/// Convert the lower double-precision (64-bit) floating-point element in `a`
+/// Converts the lower double-precision (64-bit) floating-point element in `a`
 /// to a 64-bit integer with truncation.
 ///
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_cvttsd_si64)
@@ -74,7 +74,7 @@ pub unsafe fn _mm_stream_si64(mem_addr: *mut i64, a: i64) {
     intrinsics::nontemporal_store(mem_addr, a);
 }
 
-/// Return a vector whose lowest element is `a` and all higher elements are
+/// Returns a vector whose lowest element is `a` and all higher elements are
 /// `0`.
 ///
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_cvtsi64_si128)
@@ -86,7 +86,7 @@ pub unsafe fn _mm_cvtsi64_si128(a: i64) -> __m128i {
     _mm_set_epi64x(0, a)
 }
 
-/// Return a vector whose lowest element is `a` and all higher elements are
+/// Returns a vector whose lowest element is `a` and all higher elements are
 /// `0`.
 ///
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_cvtsi64x_si128)
@@ -98,7 +98,7 @@ pub unsafe fn _mm_cvtsi64x_si128(a: i64) -> __m128i {
     _mm_cvtsi64_si128(a)
 }
 
-/// Return the lowest element of `a`.
+/// Returns the lowest element of `a`.
 ///
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_cvtsi128_si64)
 #[inline]
@@ -109,7 +109,7 @@ pub unsafe fn _mm_cvtsi128_si64(a: __m128i) -> i64 {
     simd_extract(a.as_i64x2(), 0)
 }
 
-/// Return the lowest element of `a`.
+/// Returns the lowest element of `a`.
 ///
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_cvtsi128_si64x)
 #[inline]
@@ -120,7 +120,7 @@ pub unsafe fn _mm_cvtsi128_si64x(a: __m128i) -> i64 {
     _mm_cvtsi128_si64(a)
 }
 
-/// Return `a` with its lower element replaced by `b` after converting it to
+/// Returns `a` with its lower element replaced by `b` after converting it to
 /// an `f64`.
 ///
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_cvtsi64_sd)
@@ -132,7 +132,7 @@ pub unsafe fn _mm_cvtsi64_sd(a: __m128d, b: i64) -> __m128d {
     simd_insert(a, 0, b as f64)
 }
 
-/// Return `a` with its lower element replaced by `b` after converting it to
+/// Returns `a` with its lower element replaced by `b` after converting it to
 /// an `f64`.
 ///
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_cvtsi64x_sd)

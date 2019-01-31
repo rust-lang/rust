@@ -21,7 +21,7 @@
 use core_arch::simd_llvm::*;
 use core_arch::x86::*;
 
-/// Extract a 64-bit integer from `a`, selected with `imm8`.
+/// Extracts a 64-bit integer from `a`, selected with `imm8`.
 ///
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm256_extract_epi64)
 #[inline]

@@ -23,7 +23,7 @@ extern "C" {
 #[cfg(test)]
 use stdsimd_test::assert_instr;
 
-/// Perform an intermediate calculation for the next four SHA1 message values
+/// Performs an intermediate calculation for the next four SHA1 message values
 /// (unsigned 32-bit integers) using previous message values from `a` and `b`,
 /// and returning the result.
 ///
@@ -36,7 +36,7 @@ pub unsafe fn _mm_sha1msg1_epu32(a: __m128i, b: __m128i) -> __m128i {
     mem::transmute(sha1msg1(a.as_i32x4(), b.as_i32x4()))
 }
 
-/// Perform the final calculation for the next four SHA1 message values
+/// Performs the final calculation for the next four SHA1 message values
 /// (unsigned 32-bit integers) using the intermediate result in `a` and the
 /// previous message values in `b`, and returns the result.
 ///
@@ -62,7 +62,7 @@ pub unsafe fn _mm_sha1nexte_epu32(a: __m128i, b: __m128i) -> __m128i {
     mem::transmute(sha1nexte(a.as_i32x4(), b.as_i32x4()))
 }
 
-/// Perform four rounds of SHA1 operation using an initial SHA1 state (A,B,C,D)
+/// Performs four rounds of SHA1 operation using an initial SHA1 state (A,B,C,D)
 /// from `a` and some pre-computed sum of the next 4 round message values
 /// (unsigned 32-bit integers), and state variable E from `b`, and return the
 /// updated SHA1 state (A,B,C,D). `func` contains the logic functions and round
@@ -86,7 +86,7 @@ pub unsafe fn _mm_sha1rnds4_epu32(a: __m128i, b: __m128i, func: i32) -> __m128i 
     mem::transmute(ret)
 }
 
-/// Perform an intermediate calculation for the next four SHA256 message values
+/// Performs an intermediate calculation for the next four SHA256 message values
 /// (unsigned 32-bit integers) using previous message values from `a` and `b`,
 /// and return the result.
 ///
@@ -99,7 +99,7 @@ pub unsafe fn _mm_sha256msg1_epu32(a: __m128i, b: __m128i) -> __m128i {
     mem::transmute(sha256msg1(a.as_i32x4(), b.as_i32x4()))
 }
 
-/// Perform the final calculation for the next four SHA256 message values
+/// Performs the final calculation for the next four SHA256 message values
 /// (unsigned 32-bit integers) using previous message values from `a` and `b`,
 /// and return the result.
 ///
@@ -112,7 +112,7 @@ pub unsafe fn _mm_sha256msg2_epu32(a: __m128i, b: __m128i) -> __m128i {
     mem::transmute(sha256msg2(a.as_i32x4(), b.as_i32x4()))
 }
 
-/// Perform 2 rounds of SHA256 operation using an initial SHA256 state
+/// Performs 2 rounds of SHA256 operation using an initial SHA256 state
 /// (C,D,G,H) from `a`, an initial SHA256 state (A,B,E,F) from `b`, and a
 /// pre-computed sum of the next 2 round message values (unsigned 32-bit
 /// integers) and the corresponding round constants from `k`, and store the

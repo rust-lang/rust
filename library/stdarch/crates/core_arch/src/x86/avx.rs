@@ -23,7 +23,7 @@ use ptr;
 #[cfg(test)]
 use stdsimd_test::assert_instr;
 
-/// Add packed double-precision (64-bit) floating-point elements
+/// Adds packed double-precision (64-bit) floating-point elements
 /// in `a` and `b`.
 ///
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm256_add_pd)
@@ -35,7 +35,7 @@ pub unsafe fn _mm256_add_pd(a: __m256d, b: __m256d) -> __m256d {
     simd_add(a, b)
 }
 
-/// Add packed single-precision (32-bit) floating-point elements in `a` and
+/// Adds packed single-precision (32-bit) floating-point elements in `a` and
 /// `b`.
 ///
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm256_add_ps)
@@ -47,9 +47,8 @@ pub unsafe fn _mm256_add_ps(a: __m256, b: __m256) -> __m256 {
     simd_add(a, b)
 }
 
-/// Compute the bitwise AND of a packed double-precision (64-bit)
-/// floating-point elements
-/// in `a` and `b`.
+/// Computes the bitwise AND of a packed double-precision (64-bit)
+/// floating-point elements in `a` and `b`.
 ///
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm256_and_pd)
 #[inline]
@@ -64,7 +63,7 @@ pub unsafe fn _mm256_and_pd(a: __m256d, b: __m256d) -> __m256d {
     mem::transmute(simd_and(a, b))
 }
 
-/// Compute the bitwise AND of packed single-precision (32-bit) floating-point
+/// Computes the bitwise AND of packed single-precision (32-bit) floating-point
 /// elements in `a` and `b`.
 ///
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm256_and_ps)
@@ -78,14 +77,14 @@ pub unsafe fn _mm256_and_ps(a: __m256, b: __m256) -> __m256 {
     mem::transmute(simd_and(a, b))
 }
 
-/// Compute the bitwise OR packed double-precision (64-bit) floating-point
+/// Computes the bitwise OR packed double-precision (64-bit) floating-point
 /// elements in `a` and `b`.
 ///
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm256_or_pd)
 #[inline]
 #[target_feature(enable = "avx")]
-// FIXME: Should be 'vorpd' instuction.
-// See https://github.com/rust-lang-nursery/stdsimd/issues/71
+// FIXME: should be `vorpd` instuction.
+// See <https://github.com/rust-lang-nursery/stdsimd/issues/71>.
 #[cfg_attr(test, assert_instr(vorps))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _mm256_or_pd(a: __m256d, b: __m256d) -> __m256d {
@@ -94,7 +93,7 @@ pub unsafe fn _mm256_or_pd(a: __m256d, b: __m256d) -> __m256d {
     mem::transmute(simd_or(a, b))
 }
 
-/// Compute the bitwise OR packed single-precision (32-bit) floating-point
+/// Computes the bitwise OR packed single-precision (32-bit) floating-point
 /// elements in `a` and `b`.
 ///
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm256_or_ps)
@@ -108,7 +107,7 @@ pub unsafe fn _mm256_or_ps(a: __m256, b: __m256) -> __m256 {
     mem::transmute(simd_or(a, b))
 }
 
-/// Shuffle double-precision (64-bit) floating-point elements within 128-bit
+/// Shuffles double-precision (64-bit) floating-point elements within 128-bit
 /// lanes using the control in `imm8`.
 ///
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm256_shuffle_pd)
@@ -154,7 +153,7 @@ pub unsafe fn _mm256_shuffle_pd(a: __m256d, b: __m256d, imm8: i32) -> __m256d {
     }
 }
 
-/// Shuffle single-precision (32-bit) floating-point elements in `a` within
+/// Shuffles single-precision (32-bit) floating-point elements in `a` within
 /// 128-bit lanes using the control in `imm8`.
 ///
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm256_shuffle_ps)
@@ -217,14 +216,13 @@ pub unsafe fn _mm256_shuffle_ps(a: __m256, b: __m256, imm8: i32) -> __m256 {
     }
 }
 
-/// Compute the bitwise NOT of packed double-precision (64-bit) floating-point
-/// elements in `a`
-/// and then AND with `b`.
+/// Computes the bitwise NOT of packed double-precision (64-bit) floating-point
+/// elements in `a`, and then AND with `b`.
 ///
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm256_andnot_pd)
 #[inline]
 #[target_feature(enable = "avx")]
-// FIXME: Should be 'vandnpd' instruction.
+// FIXME: should be `vandnpd` instruction.
 #[cfg_attr(test, assert_instr(vandnps))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _mm256_andnot_pd(a: __m256d, b: __m256d) -> __m256d {
@@ -233,7 +231,7 @@ pub unsafe fn _mm256_andnot_pd(a: __m256d, b: __m256d) -> __m256d {
     mem::transmute(simd_and(simd_xor(u64x4::splat(!(0_u64)), a), b))
 }
 
-/// Compute the bitwise NOT of packed single-precision (32-bit) floating-point
+/// Computes the bitwise NOT of packed single-precision (32-bit) floating-point
 /// elements in `a`
 /// and then AND with `b`.
 ///
@@ -248,8 +246,8 @@ pub unsafe fn _mm256_andnot_ps(a: __m256, b: __m256) -> __m256 {
     mem::transmute(simd_and(simd_xor(u32x8::splat(!(0_u32)), a), b))
 }
 
-/// Compare packed double-precision (64-bit) floating-point elements
-/// in `a` and `b`, and return packed maximum values
+/// Compares packed double-precision (64-bit) floating-point elements
+/// in `a` and `b`, and returns packed maximum values
 ///
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm256_max_pd)
 #[inline]
@@ -260,8 +258,8 @@ pub unsafe fn _mm256_max_pd(a: __m256d, b: __m256d) -> __m256d {
     maxpd256(a, b)
 }
 
-/// Compare packed single-precision (32-bit) floating-point elements in `a`
-/// and `b`, and return packed maximum values
+/// Compares packed single-precision (32-bit) floating-point elements in `a`
+/// and `b`, and returns packed maximum values
 ///
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm256_max_ps)
 #[inline]
@@ -272,8 +270,8 @@ pub unsafe fn _mm256_max_ps(a: __m256, b: __m256) -> __m256 {
     maxps256(a, b)
 }
 
-/// Compare packed double-precision (64-bit) floating-point elements
-/// in `a` and `b`, and return packed minimum values
+/// Compares packed double-precision (64-bit) floating-point elements
+/// in `a` and `b`, and returns packed minimum values
 ///
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm256_min_pd)
 #[inline]
@@ -284,8 +282,8 @@ pub unsafe fn _mm256_min_pd(a: __m256d, b: __m256d) -> __m256d {
     minpd256(a, b)
 }
 
-/// Compare packed single-precision (32-bit) floating-point elements in `a`
-/// and `b`, and return packed minimum values
+/// Compares packed single-precision (32-bit) floating-point elements in `a`
+/// and `b`, and returns packed minimum values
 ///
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm256_min_ps)
 #[inline]
@@ -296,7 +294,7 @@ pub unsafe fn _mm256_min_ps(a: __m256, b: __m256) -> __m256 {
     minps256(a, b)
 }
 
-/// Multiply packed double-precision (64-bit) floating-point elements
+/// Multiplies packed double-precision (64-bit) floating-point elements
 /// in `a` and `b`.
 ///
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm256_mul_pd)
@@ -308,7 +306,7 @@ pub unsafe fn _mm256_mul_pd(a: __m256d, b: __m256d) -> __m256d {
     simd_mul(a, b)
 }
 
-/// Multiply packed single-precision (32-bit) floating-point elements in `a` and
+/// Multiplies packed single-precision (32-bit) floating-point elements in `a` and
 /// `b`.
 ///
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm256_mul_ps)
@@ -320,7 +318,7 @@ pub unsafe fn _mm256_mul_ps(a: __m256, b: __m256) -> __m256 {
     simd_mul(a, b)
 }
 
-/// Alternatively add and subtract packed double-precision (64-bit)
+/// Alternatively adds and subtracts packed double-precision (64-bit)
 /// floating-point elements in `a` to/from packed elements in `b`.
 ///
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm256_addsub_pd)
@@ -332,7 +330,7 @@ pub unsafe fn _mm256_addsub_pd(a: __m256d, b: __m256d) -> __m256d {
     addsubpd256(a, b)
 }
 
-/// Alternatively add and subtract packed single-precision (32-bit)
+/// Alternatively adds and subtracts packed single-precision (32-bit)
 /// floating-point elements in `a` to/from packed elements in `b`.
 ///
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm256_addsub_ps)
@@ -344,7 +342,7 @@ pub unsafe fn _mm256_addsub_ps(a: __m256, b: __m256) -> __m256 {
     addsubps256(a, b)
 }
 
-/// Subtract packed double-precision (64-bit) floating-point elements in `b`
+/// Subtracts packed double-precision (64-bit) floating-point elements in `b`
 /// from packed elements in `a`.
 ///
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm256_sub_pd)
@@ -356,7 +354,7 @@ pub unsafe fn _mm256_sub_pd(a: __m256d, b: __m256d) -> __m256d {
     simd_sub(a, b)
 }
 
-/// Subtract packed single-precision (32-bit) floating-point elements in `b`
+/// Subtracts packed single-precision (32-bit) floating-point elements in `b`
 /// from packed elements in `a`.
 ///
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm256_sub_ps)
@@ -368,7 +366,7 @@ pub unsafe fn _mm256_sub_ps(a: __m256, b: __m256) -> __m256 {
     simd_sub(a, b)
 }
 
-/// Compute the division of each of the 8 packed 32-bit floating-point elements
+/// Computes the division of each of the 8 packed 32-bit floating-point elements
 /// in `a` by the corresponding packed elements in `b`.
 ///
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm256_div_ps)
@@ -380,7 +378,7 @@ pub unsafe fn _mm256_div_ps(a: __m256, b: __m256) -> __m256 {
     simd_div(a, b)
 }
 
-/// Compute the division of each of the 4 packed 64-bit floating-point elements
+/// Computes the division of each of the 4 packed 64-bit floating-point elements
 /// in `a` by the corresponding packed elements in `b`.
 ///
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm256_div_pd)
@@ -392,7 +390,7 @@ pub unsafe fn _mm256_div_pd(a: __m256d, b: __m256d) -> __m256d {
     simd_div(a, b)
 }
 
-/// Round packed double-precision (64-bit) floating point elements in `a`
+/// Rounds packed double-precision (64-bit) floating point elements in `a`
 /// according to the flag `b`. The value of `b` may be as follows:
 ///
 /// - `0x00`: Round to the nearest whole number.
@@ -419,7 +417,7 @@ pub unsafe fn _mm256_round_pd(a: __m256d, b: i32) -> __m256d {
     constify_imm8!(b, call)
 }
 
-/// Round packed double-precision (64-bit) floating point elements in `a`
+/// Rounds packed double-precision (64-bit) floating point elements in `a`
 /// toward positive infinity.
 ///
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm256_ceil_pd)
@@ -431,7 +429,7 @@ pub unsafe fn _mm256_ceil_pd(a: __m256d) -> __m256d {
     roundpd256(a, 0x02)
 }
 
-/// Round packed double-precision (64-bit) floating point elements in `a`
+/// Rounds packed double-precision (64-bit) floating point elements in `a`
 /// toward negative infinity.
 ///
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm256_floor_pd)
@@ -443,7 +441,7 @@ pub unsafe fn _mm256_floor_pd(a: __m256d) -> __m256d {
     roundpd256(a, 0x01)
 }
 
-/// Round packed single-precision (32-bit) floating point elements in `a`
+/// Rounds packed single-precision (32-bit) floating point elements in `a`
 /// according to the flag `b`. The value of `b` may be as follows:
 ///
 /// - `0x00`: Round to the nearest whole number.
@@ -470,7 +468,7 @@ pub unsafe fn _mm256_round_ps(a: __m256, b: i32) -> __m256 {
     constify_imm8!(b, call)
 }
 
-/// Round packed single-precision (32-bit) floating point elements in `a`
+/// Rounds packed single-precision (32-bit) floating point elements in `a`
 /// toward positive infinity.
 ///
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm256_ceil_ps)
@@ -482,7 +480,7 @@ pub unsafe fn _mm256_ceil_ps(a: __m256) -> __m256 {
     roundps256(a, 0x02)
 }
 
-/// Round packed single-precision (32-bit) floating point elements in `a`
+/// Rounds packed single-precision (32-bit) floating point elements in `a`
 /// toward negative infinity.
 ///
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm256_floor_ps)
@@ -494,7 +492,7 @@ pub unsafe fn _mm256_floor_ps(a: __m256) -> __m256 {
     roundps256(a, 0x01)
 }
 
-/// Return the square root of packed single-precision (32-bit) floating point
+/// Returns the square root of packed single-precision (32-bit) floating point
 /// elements in `a`.
 ///
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm256_sqrt_ps)
@@ -506,7 +504,7 @@ pub unsafe fn _mm256_sqrt_ps(a: __m256) -> __m256 {
     sqrtps256(a)
 }
 
-/// Return the square root of packed double-precision (64-bit) floating point
+/// Returns the square root of packed double-precision (64-bit) floating point
 /// elements in `a`.
 ///
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm256_sqrt_pd)
@@ -518,7 +516,7 @@ pub unsafe fn _mm256_sqrt_pd(a: __m256d) -> __m256d {
     sqrtpd256(a)
 }
 
-/// Blend packed double-precision (64-bit) floating-point elements from
+/// Blends packed double-precision (64-bit) floating-point elements from
 /// `a` and `b` using control mask `imm8`.
 ///
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm256_blend_pd)
@@ -567,7 +565,7 @@ pub unsafe fn _mm256_blend_pd(a: __m256d, b: __m256d, imm8: i32) -> __m256d {
     }
 }
 
-/// Blend packed single-precision (32-bit) floating-point elements from
+/// Blends packed single-precision (32-bit) floating-point elements from
 /// `a` and `b` using control mask `imm8`.
 ///
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm256_blend_ps)
@@ -630,7 +628,7 @@ pub unsafe fn _mm256_blend_ps(a: __m256, b: __m256, imm8: i32) -> __m256 {
     }
 }
 
-/// Blend packed double-precision (64-bit) floating-point elements from
+/// Blends packed double-precision (64-bit) floating-point elements from
 /// `a` and `b` using `c` as a mask.
 ///
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm256_blendv_pd)
@@ -642,7 +640,7 @@ pub unsafe fn _mm256_blendv_pd(a: __m256d, b: __m256d, c: __m256d) -> __m256d {
     vblendvpd(a, b, c)
 }
 
-/// Blend packed single-precision (32-bit) floating-point elements from
+/// Blends packed single-precision (32-bit) floating-point elements from
 /// `a` and `b` using `c` as a mask.
 ///
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm256_blendv_ps)
@@ -654,7 +652,7 @@ pub unsafe fn _mm256_blendv_ps(a: __m256, b: __m256, c: __m256) -> __m256 {
     vblendvps(a, b, c)
 }
 
-/// Conditionally multiply the packed single-precision (32-bit) floating-point
+/// Conditionally multiplies the packed single-precision (32-bit) floating-point
 /// elements in `a` and `b` using the high 4 bits in `imm8`,
 /// sum the four products, and conditionally return the sum
 ///  using the low 4 bits of `imm8`.
@@ -732,7 +730,7 @@ pub unsafe fn _mm256_hsub_ps(a: __m256, b: __m256) -> __m256 {
     vhsubps(a, b)
 }
 
-/// Compute the bitwise XOR of packed double-precision (64-bit) floating-point
+/// Computes the bitwise XOR of packed double-precision (64-bit) floating-point
 /// elements in `a` and `b`.
 ///
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm256_xor_pd)
@@ -747,7 +745,7 @@ pub unsafe fn _mm256_xor_pd(a: __m256d, b: __m256d) -> __m256d {
     mem::transmute(simd_xor(a, b))
 }
 
-/// Compute the bitwise XOR of packed single-precision (32-bit) floating-point
+/// Computes the bitwise XOR of packed single-precision (32-bit) floating-point
 /// elements in `a` and `b`.
 ///
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm256_xor_ps)
@@ -858,7 +856,7 @@ pub const _CMP_GT_OQ: i32 = 0x1e;
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub const _CMP_TRUE_US: i32 = 0x1f;
 
-/// Compare packed double-precision (64-bit) floating-point
+/// Compares packed double-precision (64-bit) floating-point
 /// elements in `a` and `b` based on the comparison operand
 /// specified by `imm8`.
 ///
@@ -877,7 +875,7 @@ pub unsafe fn _mm_cmp_pd(a: __m128d, b: __m128d, imm8: i32) -> __m128d {
     constify_imm6!(imm8, call)
 }
 
-/// Compare packed double-precision (64-bit) floating-point
+/// Compares packed double-precision (64-bit) floating-point
 /// elements in `a` and `b` based on the comparison operand
 /// specified by `imm8`.
 ///
@@ -896,7 +894,7 @@ pub unsafe fn _mm256_cmp_pd(a: __m256d, b: __m256d, imm8: i32) -> __m256d {
     constify_imm6!(imm8, call)
 }
 
-/// Compare packed single-precision (32-bit) floating-point
+/// Compares packed single-precision (32-bit) floating-point
 /// elements in `a` and `b` based on the comparison operand
 /// specified by `imm8`.
 ///
@@ -915,7 +913,7 @@ pub unsafe fn _mm_cmp_ps(a: __m128, b: __m128, imm8: i32) -> __m128 {
     constify_imm6!(imm8, call)
 }
 
-/// Compare packed single-precision (32-bit) floating-point
+/// Compares packed single-precision (32-bit) floating-point
 /// elements in `a` and `b` based on the comparison operand
 /// specified by `imm8`.
 ///
@@ -934,10 +932,10 @@ pub unsafe fn _mm256_cmp_ps(a: __m256, b: __m256, imm8: i32) -> __m256 {
     constify_imm6!(imm8, call)
 }
 
-/// Compare the lower double-precision (64-bit) floating-point element in
+/// Compares the lower double-precision (64-bit) floating-point element in
 /// `a` and `b` based on the comparison operand specified by `imm8`,
 /// store the result in the lower element of returned vector,
-/// and copy the upper element from `a` to the upper element of returned
+/// and copies the upper element from `a` to the upper element of returned
 /// vector.
 ///
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_cmp_sd)
@@ -955,10 +953,10 @@ pub unsafe fn _mm_cmp_sd(a: __m128d, b: __m128d, imm8: i32) -> __m128d {
     constify_imm6!(imm8, call)
 }
 
-/// Compare the lower single-precision (32-bit) floating-point element in
+/// Compares the lower single-precision (32-bit) floating-point element in
 /// `a` and `b` based on the comparison operand specified by `imm8`,
 /// store the result in the lower element of returned vector,
-/// and copy the upper 3 packed elements from `a` to the upper elements of
+/// and copies the upper 3 packed elements from `a` to the upper elements of
 /// returned vector.
 ///
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_cmp_ss)
@@ -976,7 +974,7 @@ pub unsafe fn _mm_cmp_ss(a: __m128, b: __m128, imm8: i32) -> __m128 {
     constify_imm6!(imm8, call)
 }
 
-/// Convert packed 32-bit integers in `a` to packed double-precision (64-bit)
+/// Converts packed 32-bit integers in `a` to packed double-precision (64-bit)
 /// floating-point elements.
 ///
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm256_cvtepi32_pd)
@@ -988,7 +986,7 @@ pub unsafe fn _mm256_cvtepi32_pd(a: __m128i) -> __m256d {
     simd_cast(a.as_i32x4())
 }
 
-/// Convert packed 32-bit integers in `a` to packed single-precision (32-bit)
+/// Converts packed 32-bit integers in `a` to packed single-precision (32-bit)
 /// floating-point elements.
 ///
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm256_cvtepi32_ps)
@@ -1000,7 +998,7 @@ pub unsafe fn _mm256_cvtepi32_ps(a: __m256i) -> __m256 {
     vcvtdq2ps(a.as_i32x8())
 }
 
-/// Convert packed double-precision (64-bit) floating-point elements in `a`
+/// Converts packed double-precision (64-bit) floating-point elements in `a`
 /// to packed single-precision (32-bit) floating-point elements.
 ///
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm256_cvtpd_ps)
@@ -1012,7 +1010,7 @@ pub unsafe fn _mm256_cvtpd_ps(a: __m256d) -> __m128 {
     vcvtpd2ps(a)
 }
 
-/// Convert packed single-precision (32-bit) floating-point elements in `a`
+/// Converts packed single-precision (32-bit) floating-point elements in `a`
 /// to packed 32-bit integers.
 ///
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm256_cvtps_epi32)
@@ -1024,7 +1022,7 @@ pub unsafe fn _mm256_cvtps_epi32(a: __m256) -> __m256i {
     mem::transmute(vcvtps2dq(a))
 }
 
-/// Convert packed single-precision (32-bit) floating-point elements in `a`
+/// Converts packed single-precision (32-bit) floating-point elements in `a`
 /// to packed double-precision (64-bit) floating-point elements.
 ///
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm256_cvtps_pd)
@@ -1036,7 +1034,7 @@ pub unsafe fn _mm256_cvtps_pd(a: __m128) -> __m256d {
     simd_cast(a)
 }
 
-/// Convert packed double-precision (64-bit) floating-point elements in `a`
+/// Converts packed double-precision (64-bit) floating-point elements in `a`
 /// to packed 32-bit integers with truncation.
 ///
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm256_cvttpd_epi32)
@@ -1048,7 +1046,7 @@ pub unsafe fn _mm256_cvttpd_epi32(a: __m256d) -> __m128i {
     mem::transmute(vcvttpd2dq(a))
 }
 
-/// Convert packed double-precision (64-bit) floating-point elements in `a`
+/// Converts packed double-precision (64-bit) floating-point elements in `a`
 /// to packed 32-bit integers.
 ///
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm256_cvtpd_epi32)
@@ -1060,7 +1058,7 @@ pub unsafe fn _mm256_cvtpd_epi32(a: __m256d) -> __m128i {
     mem::transmute(vcvtpd2dq(a))
 }
 
-/// Convert packed single-precision (32-bit) floating-point elements in `a`
+/// Converts packed single-precision (32-bit) floating-point elements in `a`
 /// to packed 32-bit integers with truncation.
 ///
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm256_cvttps_epi32)
@@ -1072,7 +1070,7 @@ pub unsafe fn _mm256_cvttps_epi32(a: __m256) -> __m256i {
     mem::transmute(vcvttps2dq(a))
 }
 
-/// Extract 128 bits (composed of 4 packed single-precision (32-bit)
+/// Extracts 128 bits (composed of 4 packed single-precision (32-bit)
 /// floating-point elements) from `a`, selected with `imm8`.
 ///
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm256_extractf128_ps)
@@ -1091,7 +1089,7 @@ pub unsafe fn _mm256_extractf128_ps(a: __m256, imm8: i32) -> __m128 {
     }
 }
 
-/// Extract 128 bits (composed of 2 packed double-precision (64-bit)
+/// Extracts 128 bits (composed of 2 packed double-precision (64-bit)
 /// floating-point elements) from `a`, selected with `imm8`.
 ///
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm256_extractf128_pd)
@@ -1110,7 +1108,7 @@ pub unsafe fn _mm256_extractf128_pd(a: __m256d, imm8: i32) -> __m128d {
     }
 }
 
-/// Extract 128 bits (composed of integer data) from `a`, selected with `imm8`.
+/// Extracts 128 bits (composed of integer data) from `a`, selected with `imm8`.
 ///
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm256_extractf128_si256)
 #[inline]
@@ -1130,7 +1128,7 @@ pub unsafe fn _mm256_extractf128_si256(a: __m256i, imm8: i32) -> __m128i {
     mem::transmute(dst)
 }
 
-/// Zero the contents of all XMM or YMM registers.
+/// Zeroes the contents of all XMM or YMM registers.
 ///
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm256_zeroall)
 #[inline]
@@ -1141,7 +1139,7 @@ pub unsafe fn _mm256_zeroall() {
     vzeroall()
 }
 
-/// Zero the upper 128 bits of all YMM registers;
+/// Zeroes the upper 128 bits of all YMM registers;
 /// the lower 128-bits of the registers are unmodified.
 ///
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm256_zeroupper)
@@ -1153,7 +1151,7 @@ pub unsafe fn _mm256_zeroupper() {
     vzeroupper()
 }
 
-/// Shuffle single-precision (32-bit) floating-point elements in `a`
+/// Shuffles single-precision (32-bit) floating-point elements in `a`
 /// within 128-bit lanes using the control in `b`.
 ///
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm256_permutevar_ps)
@@ -1165,7 +1163,7 @@ pub unsafe fn _mm256_permutevar_ps(a: __m256, b: __m256i) -> __m256 {
     vpermilps256(a, b.as_i32x8())
 }
 
-/// Shuffle single-precision (32-bit) floating-point elements in `a`
+/// Shuffles single-precision (32-bit) floating-point elements in `a`
 /// using the control in `b`.
 ///
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_permutevar_ps)
@@ -1177,7 +1175,7 @@ pub unsafe fn _mm_permutevar_ps(a: __m128, b: __m128i) -> __m128 {
     vpermilps(a, b.as_i32x4())
 }
 
-/// Shuffle single-precision (32-bit) floating-point elements in `a`
+/// Shuffles single-precision (32-bit) floating-point elements in `a`
 /// within 128-bit lanes using the control in `imm8`.
 ///
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm256_permute_ps)
@@ -1235,7 +1233,7 @@ pub unsafe fn _mm256_permute_ps(a: __m256, imm8: i32) -> __m256 {
     }
 }
 
-/// Shuffle single-precision (32-bit) floating-point elements in `a`
+/// Shuffles single-precision (32-bit) floating-point elements in `a`
 /// using the control in `imm8`.
 ///
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_permute_ps)
@@ -1289,7 +1287,7 @@ pub unsafe fn _mm_permute_ps(a: __m128, imm8: i32) -> __m128 {
     }
 }
 
-/// Shuffle double-precision (64-bit) floating-point elements in `a`
+/// Shuffles double-precision (64-bit) floating-point elements in `a`
 /// within 256-bit lanes using the control in `b`.
 ///
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm256_permutevar_pd)
@@ -1301,7 +1299,7 @@ pub unsafe fn _mm256_permutevar_pd(a: __m256d, b: __m256i) -> __m256d {
     vpermilpd256(a, b.as_i64x4())
 }
 
-/// Shuffle double-precision (64-bit) floating-point elements in `a`
+/// Shuffles double-precision (64-bit) floating-point elements in `a`
 /// using the control in `b`.
 ///
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_permutevar_pd)
@@ -1313,7 +1311,7 @@ pub unsafe fn _mm_permutevar_pd(a: __m128d, b: __m128i) -> __m128d {
     vpermilpd(a, b.as_i64x2())
 }
 
-/// Shuffle double-precision (64-bit) floating-point elements in `a`
+/// Shuffles double-precision (64-bit) floating-point elements in `a`
 /// within 128-bit lanes using the control in `imm8`.
 ///
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm256_permute_pd)
@@ -1359,7 +1357,7 @@ pub unsafe fn _mm256_permute_pd(a: __m256d, imm8: i32) -> __m256d {
     }
 }
 
-/// Shuffle double-precision (64-bit) floating-point elements in `a`
+/// Shuffles double-precision (64-bit) floating-point elements in `a`
 /// using the control in `imm8`.
 ///
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_permute_pd)
@@ -1389,7 +1387,7 @@ pub unsafe fn _mm_permute_pd(a: __m128d, imm8: i32) -> __m128d {
     }
 }
 
-/// Shuffle 256-bits (composed of 8 packed single-precision (32-bit)
+/// Shuffles 256 bits (composed of 8 packed single-precision (32-bit)
 /// floating-point elements) selected by `imm8` from `a` and `b`.
 ///
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm256_permute2f128_ps)
@@ -1407,7 +1405,7 @@ pub unsafe fn _mm256_permute2f128_ps(a: __m256, b: __m256, imm8: i32) -> __m256 
     constify_imm8!(imm8, call)
 }
 
-/// Shuffle 256-bits (composed of 4 packed double-precision (64-bit)
+/// Shuffles 256 bits (composed of 4 packed double-precision (64-bit)
 /// floating-point elements) selected by `imm8` from `a` and `b`.
 ///
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm256_permute2f128_pd)
@@ -1425,7 +1423,7 @@ pub unsafe fn _mm256_permute2f128_pd(a: __m256d, b: __m256d, imm8: i32) -> __m25
     constify_imm8!(imm8, call)
 }
 
-/// Shuffle 258-bits (composed of integer data) selected by `imm8`
+/// Shuffles 258-bits (composed of integer data) selected by `imm8`
 /// from `a` and `b`.
 ///
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm256_permute2f128_si256)
@@ -1446,7 +1444,7 @@ pub unsafe fn _mm256_permute2f128_si256(a: __m256i, b: __m256i, imm8: i32) -> __
     mem::transmute(r)
 }
 
-/// Broadcast a single-precision (32-bit) floating-point element from memory
+/// Broadcasts a single-precision (32-bit) floating-point element from memory
 /// to all elements of the returned vector.
 ///
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm256_broadcast_ss)
@@ -1459,7 +1457,7 @@ pub unsafe fn _mm256_broadcast_ss(f: &f32) -> __m256 {
     _mm256_set1_ps(*f)
 }
 
-/// Broadcast a single-precision (32-bit) floating-point element from memory
+/// Broadcasts a single-precision (32-bit) floating-point element from memory
 /// to all elements of the returned vector.
 ///
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_broadcast_ss)
@@ -1472,7 +1470,7 @@ pub unsafe fn _mm_broadcast_ss(f: &f32) -> __m128 {
     _mm_set1_ps(*f)
 }
 
-/// Broadcast a double-precision (64-bit) floating-point element from memory
+/// Broadcasts a double-precision (64-bit) floating-point element from memory
 /// to all elements of the returned vector.
 ///
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm256_broadcast_sd)
@@ -1485,7 +1483,7 @@ pub unsafe fn _mm256_broadcast_sd(f: &f64) -> __m256d {
     _mm256_set1_pd(*f)
 }
 
-/// Broadcast 128 bits from memory (composed of 4 packed single-precision
+/// Broadcasts 128 bits from memory (composed of 4 packed single-precision
 /// (32-bit) floating-point elements) to all elements of the returned vector.
 ///
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm256_broadcast_ps)
@@ -1497,7 +1495,7 @@ pub unsafe fn _mm256_broadcast_ps(a: &__m128) -> __m256 {
     vbroadcastf128ps256(a)
 }
 
-/// Broadcast 128 bits from memory (composed of 2 packed double-precision
+/// Broadcasts 128 bits from memory (composed of 2 packed double-precision
 /// (64-bit) floating-point elements) to all elements of the returned vector.
 ///
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm256_broadcast_pd)
@@ -1509,7 +1507,7 @@ pub unsafe fn _mm256_broadcast_pd(a: &__m128d) -> __m256d {
     vbroadcastf128pd256(a)
 }
 
-/// Copy `a` to result, then insert 128 bits (composed of 4 packed
+/// Copies `a` to result, then inserts 128 bits (composed of 4 packed
 /// single-precision (32-bit) floating-point elements) from `b` into result
 /// at the location specified by `imm8`.
 ///
@@ -1530,7 +1528,7 @@ pub unsafe fn _mm256_insertf128_ps(a: __m256, b: __m128, imm8: i32) -> __m256 {
     }
 }
 
-/// Copy `a` to result, then insert 128 bits (composed of 2 packed
+/// Copies `a` to result, then inserts 128 bits (composed of 2 packed
 /// double-precision (64-bit) floating-point elements) from `b` into result
 /// at the location specified by `imm8`.
 ///
@@ -1550,7 +1548,7 @@ pub unsafe fn _mm256_insertf128_pd(a: __m256d, b: __m128d, imm8: i32) -> __m256d
     }
 }
 
-/// Copy `a` to result, then insert 128 bits from `b` into result
+/// Copies `a` to result, then inserts 128 bits from `b` into result
 /// at the location specified by `imm8`.
 ///
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm256_insertf128_si256)
@@ -1571,7 +1569,7 @@ pub unsafe fn _mm256_insertf128_si256(a: __m256i, b: __m128i, imm8: i32) -> __m2
     mem::transmute(dst)
 }
 
-/// Copy `a` to result, and insert the 8-bit integer `i` into result
+/// Copies `a` to result, and inserts the 8-bit integer `i` into result
 /// at the location specified by `index`.
 ///
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm256_insert_epi8)
@@ -1584,7 +1582,7 @@ pub unsafe fn _mm256_insert_epi8(a: __m256i, i: i8, index: i32) -> __m256i {
     mem::transmute(simd_insert(a.as_i8x32(), (index as u32) & 31, i))
 }
 
-/// Copy `a` to result, and insert the 16-bit integer `i` into result
+/// Copies `a` to result, and inserts the 16-bit integer `i` into result
 /// at the location specified by `index`.
 ///
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm256_insert_epi16)
@@ -1597,7 +1595,7 @@ pub unsafe fn _mm256_insert_epi16(a: __m256i, i: i16, index: i32) -> __m256i {
     mem::transmute(simd_insert(a.as_i16x16(), (index as u32) & 15, i))
 }
 
-/// Copy `a` to result, and insert the 32-bit integer `i` into result
+/// Copies `a` to result, and inserts the 32-bit integer `i` into result
 /// at the location specified by `index`.
 ///
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm256_insert_epi32)
@@ -1610,7 +1608,7 @@ pub unsafe fn _mm256_insert_epi32(a: __m256i, i: i32, index: i32) -> __m256i {
     mem::transmute(simd_insert(a.as_i32x8(), (index as u32) & 7, i))
 }
 
-/// Load 256-bits (composed of 4 packed double-precision (64-bit)
+/// Loads 256-bits (composed of 4 packed double-precision (64-bit)
 /// floating-point elements) from memory into result.
 /// `mem_addr` must be aligned on a 32-byte boundary or a
 /// general-protection exception may be generated.
@@ -1625,7 +1623,7 @@ pub unsafe fn _mm256_load_pd(mem_addr: *const f64) -> __m256d {
     *(mem_addr as *const __m256d)
 }
 
-/// Store 256-bits (composed of 4 packed double-precision (64-bit)
+/// Stores 256-bits (composed of 4 packed double-precision (64-bit)
 /// floating-point elements) from `a` into memory.
 /// `mem_addr` must be aligned on a 32-byte boundary or a
 /// general-protection exception may be generated.
@@ -1640,7 +1638,7 @@ pub unsafe fn _mm256_store_pd(mem_addr: *const f64, a: __m256d) {
     *(mem_addr as *mut __m256d) = a;
 }
 
-/// Load 256-bits (composed of 8 packed single-precision (32-bit)
+/// Loads 256-bits (composed of 8 packed single-precision (32-bit)
 /// floating-point elements) from memory into result.
 /// `mem_addr` must be aligned on a 32-byte boundary or a
 /// general-protection exception may be generated.
@@ -1655,7 +1653,7 @@ pub unsafe fn _mm256_load_ps(mem_addr: *const f32) -> __m256 {
     *(mem_addr as *const __m256)
 }
 
-/// Store 256-bits (composed of 8 packed single-precision (32-bit)
+/// Stores 256-bits (composed of 8 packed single-precision (32-bit)
 /// floating-point elements) from `a` into memory.
 /// `mem_addr` must be aligned on a 32-byte boundary or a
 /// general-protection exception may be generated.
@@ -1670,7 +1668,7 @@ pub unsafe fn _mm256_store_ps(mem_addr: *const f32, a: __m256) {
     *(mem_addr as *mut __m256) = a;
 }
 
-/// Load 256-bits (composed of 4 packed double-precision (64-bit)
+/// Loads 256-bits (composed of 4 packed double-precision (64-bit)
 /// floating-point elements) from memory into result.
 /// `mem_addr` does not need to be aligned on any particular boundary.
 ///
@@ -1689,7 +1687,7 @@ pub unsafe fn _mm256_loadu_pd(mem_addr: *const f64) -> __m256d {
     dst
 }
 
-/// Store 256-bits (composed of 4 packed double-precision (64-bit)
+/// Stores 256-bits (composed of 4 packed double-precision (64-bit)
 /// floating-point elements) from `a` into memory.
 /// `mem_addr` does not need to be aligned on any particular boundary.
 ///
@@ -1702,7 +1700,7 @@ pub unsafe fn _mm256_storeu_pd(mem_addr: *mut f64, a: __m256d) {
     storeupd256(mem_addr, a);
 }
 
-/// Load 256-bits (composed of 8 packed single-precision (32-bit)
+/// Loads 256-bits (composed of 8 packed single-precision (32-bit)
 /// floating-point elements) from memory into result.
 /// `mem_addr` does not need to be aligned on any particular boundary.
 ///
@@ -1721,7 +1719,7 @@ pub unsafe fn _mm256_loadu_ps(mem_addr: *const f32) -> __m256 {
     dst
 }
 
-/// Store 256-bits (composed of 8 packed single-precision (32-bit)
+/// Stores 256-bits (composed of 8 packed single-precision (32-bit)
 /// floating-point elements) from `a` into memory.
 /// `mem_addr` does not need to be aligned on any particular boundary.
 ///
@@ -1734,7 +1732,7 @@ pub unsafe fn _mm256_storeu_ps(mem_addr: *mut f32, a: __m256) {
     storeups256(mem_addr, a);
 }
 
-/// Load 256-bits of integer data from memory into result.
+/// Loads 256-bits of integer data from memory into result.
 /// `mem_addr` must be aligned on a 32-byte boundary or a
 /// general-protection exception may be generated.
 ///
@@ -1747,7 +1745,7 @@ pub unsafe fn _mm256_load_si256(mem_addr: *const __m256i) -> __m256i {
     *mem_addr
 }
 
-/// Store 256-bits of integer data from `a` into memory.
+/// Stores 256-bits of integer data from `a` into memory.
 /// `mem_addr` must be aligned on a 32-byte boundary or a
 /// general-protection exception may be generated.
 ///
@@ -1760,7 +1758,7 @@ pub unsafe fn _mm256_store_si256(mem_addr: *mut __m256i, a: __m256i) {
     *mem_addr = a;
 }
 
-/// Load 256-bits of integer data from memory into result.
+/// Loads 256-bits of integer data from memory into result.
 /// `mem_addr` does not need to be aligned on any particular boundary.
 ///
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm256_loadu_si256)
@@ -1778,7 +1776,7 @@ pub unsafe fn _mm256_loadu_si256(mem_addr: *const __m256i) -> __m256i {
     dst
 }
 
-/// Store 256-bits of integer data from `a` into memory.
+/// Stores 256-bits of integer data from `a` into memory.
 /// 	`mem_addr` does not need to be aligned on any particular boundary.
 ///
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm256_storeu_si256)
@@ -1790,7 +1788,7 @@ pub unsafe fn _mm256_storeu_si256(mem_addr: *mut __m256i, a: __m256i) {
     storeudq256(mem_addr as *mut i8, a.as_i8x32());
 }
 
-/// Load packed double-precision (64-bit) floating-point elements from memory
+/// Loads packed double-precision (64-bit) floating-point elements from memory
 /// into result using `mask` (elements are zeroed out when the high bit of the
 /// corresponding element is not set).
 ///
@@ -1803,7 +1801,7 @@ pub unsafe fn _mm256_maskload_pd(mem_addr: *const f64, mask: __m256i) -> __m256d
     maskloadpd256(mem_addr as *const i8, mask.as_i64x4())
 }
 
-/// Store packed double-precision (64-bit) floating-point elements from `a`
+/// Stores packed double-precision (64-bit) floating-point elements from `a`
 /// into memory using `mask`.
 ///
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm256_maskstore_pd)
@@ -1815,7 +1813,7 @@ pub unsafe fn _mm256_maskstore_pd(mem_addr: *mut f64, mask: __m256i, a: __m256d)
     maskstorepd256(mem_addr as *mut i8, mask.as_i64x4(), a);
 }
 
-/// Load packed double-precision (64-bit) floating-point elements from memory
+/// Loads packed double-precision (64-bit) floating-point elements from memory
 /// into result using `mask` (elements are zeroed out when the high bit of the
 /// corresponding element is not set).
 ///
@@ -1828,7 +1826,7 @@ pub unsafe fn _mm_maskload_pd(mem_addr: *const f64, mask: __m128i) -> __m128d {
     maskloadpd(mem_addr as *const i8, mask.as_i64x2())
 }
 
-/// Store packed double-precision (64-bit) floating-point elements from `a`
+/// Stores packed double-precision (64-bit) floating-point elements from `a`
 /// into memory using `mask`.
 ///
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_maskstore_pd)
@@ -1840,7 +1838,7 @@ pub unsafe fn _mm_maskstore_pd(mem_addr: *mut f64, mask: __m128i, a: __m128d) {
     maskstorepd(mem_addr as *mut i8, mask.as_i64x2(), a);
 }
 
-/// Load packed single-precision (32-bit) floating-point elements from memory
+/// Loads packed single-precision (32-bit) floating-point elements from memory
 /// into result using `mask` (elements are zeroed out when the high bit of the
 /// corresponding element is not set).
 ///
@@ -1853,7 +1851,7 @@ pub unsafe fn _mm256_maskload_ps(mem_addr: *const f32, mask: __m256i) -> __m256 
     maskloadps256(mem_addr as *const i8, mask.as_i32x8())
 }
 
-/// Store packed single-precision (32-bit) floating-point elements from `a`
+/// Stores packed single-precision (32-bit) floating-point elements from `a`
 /// into memory using `mask`.
 ///
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm256_maskstore_ps)
@@ -1865,7 +1863,7 @@ pub unsafe fn _mm256_maskstore_ps(mem_addr: *mut f32, mask: __m256i, a: __m256) 
     maskstoreps256(mem_addr as *mut i8, mask.as_i32x8(), a);
 }
 
-/// Load packed single-precision (32-bit) floating-point elements from memory
+/// Loads packed single-precision (32-bit) floating-point elements from memory
 /// into result using `mask` (elements are zeroed out when the high bit of the
 /// corresponding element is not set).
 ///
@@ -1878,7 +1876,7 @@ pub unsafe fn _mm_maskload_ps(mem_addr: *const f32, mask: __m128i) -> __m128 {
     maskloadps(mem_addr as *const i8, mask.as_i32x4())
 }
 
-/// Store packed single-precision (32-bit) floating-point elements from `a`
+/// Stores packed single-precision (32-bit) floating-point elements from `a`
 /// into memory using `mask`.
 ///
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_maskstore_ps)
@@ -1891,7 +1889,7 @@ pub unsafe fn _mm_maskstore_ps(mem_addr: *mut f32, mask: __m128i, a: __m128) {
 }
 
 /// Duplicate odd-indexed single-precision (32-bit) floating-point elements
-/// from `a`, and return the results.
+/// from `a`, and returns the results.
 ///
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm256_movehdup_ps)
 #[inline]
@@ -1903,7 +1901,7 @@ pub unsafe fn _mm256_movehdup_ps(a: __m256) -> __m256 {
 }
 
 /// Duplicate even-indexed single-precision (32-bit) floating-point elements
-/// from `a`, and return the results.
+/// from `a`, and returns the results.
 ///
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm256_moveldup_ps)
 #[inline]
@@ -1915,7 +1913,7 @@ pub unsafe fn _mm256_moveldup_ps(a: __m256) -> __m256 {
 }
 
 /// Duplicate even-indexed double-precision (64-bit) floating-point elements
-/// from "a", and return the results.
+/// from "a", and returns the results.
 ///
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm256_movedup_pd)
 #[inline]
@@ -1926,7 +1924,7 @@ pub unsafe fn _mm256_movedup_pd(a: __m256d) -> __m256d {
     simd_shuffle4(a, a, [0, 0, 2, 2])
 }
 
-/// Load 256-bits of integer data from unaligned memory into result.
+/// Loads 256-bits of integer data from unaligned memory into result.
 /// This intrinsic may perform better than `_mm256_loadu_si256` when the
 /// data crosses a cache line boundary.
 ///
@@ -1981,8 +1979,8 @@ pub unsafe fn _mm256_stream_ps(mem_addr: *mut f32, a: __m256) {
     intrinsics::nontemporal_store(mem_addr as *mut __m256, a);
 }
 
-/// Compute the approximate reciprocal of packed single-precision (32-bit)
-/// floating-point elements in `a`, and return the results. The maximum
+/// Computes the approximate reciprocal of packed single-precision (32-bit)
+/// floating-point elements in `a`, and returns the results. The maximum
 /// relative error for this approximation is less than 1.5*2^-12.
 ///
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm256_rcp_ps)
@@ -1994,8 +1992,8 @@ pub unsafe fn _mm256_rcp_ps(a: __m256) -> __m256 {
     vrcpps(a)
 }
 
-/// Compute the approximate reciprocal square root of packed single-precision
-/// (32-bit) floating-point elements in `a`, and return the results.
+/// Computes the approximate reciprocal square root of packed single-precision
+/// (32-bit) floating-point elements in `a`, and returns the results.
 /// The maximum relative error for this approximation is less than 1.5*2^-12.
 ///
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm256_rsqrt_ps)
@@ -2007,7 +2005,7 @@ pub unsafe fn _mm256_rsqrt_ps(a: __m256) -> __m256 {
     vrsqrtps(a)
 }
 
-/// Unpack and interleave double-precision (64-bit) floating-point elements
+/// Unpacks and interleave double-precision (64-bit) floating-point elements
 /// from the high half of each 128-bit lane in `a` and `b`.
 ///
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm256_unpackhi_pd)
@@ -2019,7 +2017,7 @@ pub unsafe fn _mm256_unpackhi_pd(a: __m256d, b: __m256d) -> __m256d {
     simd_shuffle4(a, b, [1, 5, 3, 7])
 }
 
-/// Unpack and interleave single-precision (32-bit) floating-point elements
+/// Unpacks and interleave single-precision (32-bit) floating-point elements
 /// from the high half of each 128-bit lane in `a` and `b`.
 ///
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm256_unpackhi_ps)
@@ -2031,7 +2029,7 @@ pub unsafe fn _mm256_unpackhi_ps(a: __m256, b: __m256) -> __m256 {
     simd_shuffle8(a, b, [2, 10, 3, 11, 6, 14, 7, 15])
 }
 
-/// Unpack and interleave double-precision (64-bit) floating-point elements
+/// Unpacks and interleave double-precision (64-bit) floating-point elements
 /// from the low half of each 128-bit lane in `a` and `b`.
 ///
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm256_unpacklo_pd)
@@ -2043,7 +2041,7 @@ pub unsafe fn _mm256_unpacklo_pd(a: __m256d, b: __m256d) -> __m256d {
     simd_shuffle4(a, b, [0, 4, 2, 6])
 }
 
-/// Unpack and interleave single-precision (32-bit) floating-point elements
+/// Unpacks and interleave single-precision (32-bit) floating-point elements
 /// from the low half of each 128-bit lane in `a` and `b`.
 ///
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm256_unpacklo_ps)
@@ -2055,9 +2053,9 @@ pub unsafe fn _mm256_unpacklo_ps(a: __m256, b: __m256) -> __m256 {
     simd_shuffle8(a, b, [0, 8, 1, 9, 4, 12, 5, 13])
 }
 
-/// Compute the bitwise AND of 256 bits (representing integer data) in `a` and
+/// Computes the bitwise AND of 256 bits (representing integer data) in `a` and
 /// `b`, and set `ZF` to 1 if the result is zero, otherwise set `ZF` to 0.
-/// Compute the bitwise NOT of `a` and then AND with `b`, and set `CF` to 1 if
+/// Computes the bitwise NOT of `a` and then AND with `b`, and set `CF` to 1 if
 /// the result is zero, otherwise set `CF` to 0. Return the `ZF` value.
 ///
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm256_testz_si256)
@@ -2069,9 +2067,9 @@ pub unsafe fn _mm256_testz_si256(a: __m256i, b: __m256i) -> i32 {
     ptestz256(a.as_i64x4(), b.as_i64x4())
 }
 
-/// Compute the bitwise AND of 256 bits (representing integer data) in `a` and
+/// Computes the bitwise AND of 256 bits (representing integer data) in `a` and
 /// `b`, and set `ZF` to 1 if the result is zero, otherwise set `ZF` to 0.
-/// Compute the bitwise NOT of `a` and then AND with `b`, and set `CF` to 1 if
+/// Computes the bitwise NOT of `a` and then AND with `b`, and set `CF` to 1 if
 /// the result is zero, otherwise set `CF` to 0. Return the `CF` value.
 ///
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm256_testc_si256)
@@ -2083,9 +2081,9 @@ pub unsafe fn _mm256_testc_si256(a: __m256i, b: __m256i) -> i32 {
     ptestc256(a.as_i64x4(), b.as_i64x4())
 }
 
-/// Compute the bitwise AND of 256 bits (representing integer data) in `a` and
+/// Computes the bitwise AND of 256 bits (representing integer data) in `a` and
 /// `b`, and set `ZF` to 1 if the result is zero, otherwise set `ZF` to 0.
-/// Compute the bitwise NOT of `a` and then AND with `b`, and set `CF` to 1 if
+/// Computes the bitwise NOT of `a` and then AND with `b`, and set `CF` to 1 if
 /// the result is zero, otherwise set `CF` to 0. Return 1 if both the `ZF` and
 /// `CF` values are zero, otherwise return 0.
 ///
@@ -2098,7 +2096,7 @@ pub unsafe fn _mm256_testnzc_si256(a: __m256i, b: __m256i) -> i32 {
     ptestnzc256(a.as_i64x4(), b.as_i64x4())
 }
 
-/// Compute the bitwise AND of 256 bits (representing double-precision (64-bit)
+/// Computes the bitwise AND of 256 bits (representing double-precision (64-bit)
 /// floating-point elements) in `a` and `b`, producing an intermediate 256-bit
 /// value, and set `ZF` to 1 if the sign bit of each 64-bit element in the
 /// intermediate value is zero, otherwise set `ZF` to 0. Compute the bitwise
@@ -2115,7 +2113,7 @@ pub unsafe fn _mm256_testz_pd(a: __m256d, b: __m256d) -> i32 {
     vtestzpd256(a, b)
 }
 
-/// Compute the bitwise AND of 256 bits (representing double-precision (64-bit)
+/// Computes the bitwise AND of 256 bits (representing double-precision (64-bit)
 /// floating-point elements) in `a` and `b`, producing an intermediate 256-bit
 /// value, and set `ZF` to 1 if the sign bit of each 64-bit element in the
 /// intermediate value is zero, otherwise set `ZF` to 0. Compute the bitwise
@@ -2132,7 +2130,7 @@ pub unsafe fn _mm256_testc_pd(a: __m256d, b: __m256d) -> i32 {
     vtestcpd256(a, b)
 }
 
-/// Compute the bitwise AND of 256 bits (representing double-precision (64-bit)
+/// Computes the bitwise AND of 256 bits (representing double-precision (64-bit)
 /// floating-point elements) in `a` and `b`, producing an intermediate 256-bit
 /// value, and set `ZF` to 1 if the sign bit of each 64-bit element in the
 /// intermediate value is zero, otherwise set `ZF` to 0. Compute the bitwise
@@ -2150,7 +2148,7 @@ pub unsafe fn _mm256_testnzc_pd(a: __m256d, b: __m256d) -> i32 {
     vtestnzcpd256(a, b)
 }
 
-/// Compute the bitwise AND of 128 bits (representing double-precision (64-bit)
+/// Computes the bitwise AND of 128 bits (representing double-precision (64-bit)
 /// floating-point elements) in `a` and `b`, producing an intermediate 128-bit
 /// value, and set `ZF` to 1 if the sign bit of each 64-bit element in the
 /// intermediate value is zero, otherwise set `ZF` to 0. Compute the bitwise
@@ -2167,7 +2165,7 @@ pub unsafe fn _mm_testz_pd(a: __m128d, b: __m128d) -> i32 {
     vtestzpd(a, b)
 }
 
-/// Compute the bitwise AND of 128 bits (representing double-precision (64-bit)
+/// Computes the bitwise AND of 128 bits (representing double-precision (64-bit)
 /// floating-point elements) in `a` and `b`, producing an intermediate 128-bit
 /// value, and set `ZF` to 1 if the sign bit of each 64-bit element in the
 /// intermediate value is zero, otherwise set `ZF` to 0. Compute the bitwise
@@ -2184,7 +2182,7 @@ pub unsafe fn _mm_testc_pd(a: __m128d, b: __m128d) -> i32 {
     vtestcpd(a, b)
 }
 
-/// Compute the bitwise AND of 128 bits (representing double-precision (64-bit)
+/// Computes the bitwise AND of 128 bits (representing double-precision (64-bit)
 /// floating-point elements) in `a` and `b`, producing an intermediate 128-bit
 /// value, and set `ZF` to 1 if the sign bit of each 64-bit element in the
 /// intermediate value is zero, otherwise set `ZF` to 0. Compute the bitwise
@@ -2202,7 +2200,7 @@ pub unsafe fn _mm_testnzc_pd(a: __m128d, b: __m128d) -> i32 {
     vtestnzcpd(a, b)
 }
 
-/// Compute the bitwise AND of 256 bits (representing single-precision (32-bit)
+/// Computes the bitwise AND of 256 bits (representing single-precision (32-bit)
 /// floating-point elements) in `a` and `b`, producing an intermediate 256-bit
 /// value, and set `ZF` to 1 if the sign bit of each 32-bit element in the
 /// intermediate value is zero, otherwise set `ZF` to 0. Compute the bitwise
@@ -2219,7 +2217,7 @@ pub unsafe fn _mm256_testz_ps(a: __m256, b: __m256) -> i32 {
     vtestzps256(a, b)
 }
 
-/// Compute the bitwise AND of 256 bits (representing single-precision (32-bit)
+/// Computes the bitwise AND of 256 bits (representing single-precision (32-bit)
 /// floating-point elements) in `a` and `b`, producing an intermediate 256-bit
 /// value, and set `ZF` to 1 if the sign bit of each 32-bit element in the
 /// intermediate value is zero, otherwise set `ZF` to 0. Compute the bitwise
@@ -2236,7 +2234,7 @@ pub unsafe fn _mm256_testc_ps(a: __m256, b: __m256) -> i32 {
     vtestcps256(a, b)
 }
 
-/// Compute the bitwise AND of 256 bits (representing single-precision (32-bit)
+/// Computes the bitwise AND of 256 bits (representing single-precision (32-bit)
 /// floating-point elements) in `a` and `b`, producing an intermediate 256-bit
 /// value, and set `ZF` to 1 if the sign bit of each 32-bit element in the
 /// intermediate value is zero, otherwise set `ZF` to 0. Compute the bitwise
@@ -2254,7 +2252,7 @@ pub unsafe fn _mm256_testnzc_ps(a: __m256, b: __m256) -> i32 {
     vtestnzcps256(a, b)
 }
 
-/// Compute the bitwise AND of 128 bits (representing single-precision (32-bit)
+/// Computes the bitwise AND of 128 bits (representing single-precision (32-bit)
 /// floating-point elements) in `a` and `b`, producing an intermediate 128-bit
 /// value, and set `ZF` to 1 if the sign bit of each 32-bit element in the
 /// intermediate value is zero, otherwise set `ZF` to 0. Compute the bitwise
@@ -2271,7 +2269,7 @@ pub unsafe fn _mm_testz_ps(a: __m128, b: __m128) -> i32 {
     vtestzps(a, b)
 }
 
-/// Compute the bitwise AND of 128 bits (representing single-precision (32-bit)
+/// Computes the bitwise AND of 128 bits (representing single-precision (32-bit)
 /// floating-point elements) in `a` and `b`, producing an intermediate 128-bit
 /// value, and set `ZF` to 1 if the sign bit of each 32-bit element in the
 /// intermediate value is zero, otherwise set `ZF` to 0. Compute the bitwise
@@ -2288,7 +2286,7 @@ pub unsafe fn _mm_testc_ps(a: __m128, b: __m128) -> i32 {
     vtestcps(a, b)
 }
 
-/// Compute the bitwise AND of 128 bits (representing single-precision (32-bit)
+/// Computes the bitwise AND of 128 bits (representing single-precision (32-bit)
 /// floating-point elements) in `a` and `b`, producing an intermediate 128-bit
 /// value, and set `ZF` to 1 if the sign bit of each 32-bit element in the
 /// intermediate value is zero, otherwise set `ZF` to 0. Compute the bitwise
@@ -2306,7 +2304,7 @@ pub unsafe fn _mm_testnzc_ps(a: __m128, b: __m128) -> i32 {
     vtestnzcps(a, b)
 }
 
-/// Set each bit of the returned mask based on the most significant bit of the
+/// Sets each bit of the returned mask based on the most significant bit of the
 /// corresponding packed double-precision (64-bit) floating-point element in
 /// `a`.
 ///
@@ -2319,7 +2317,7 @@ pub unsafe fn _mm256_movemask_pd(a: __m256d) -> i32 {
     movmskpd256(a)
 }
 
-/// Set each bit of the returned mask based on the most significant bit of the
+/// Sets each bit of the returned mask based on the most significant bit of the
 /// corresponding packed single-precision (32-bit) floating-point element in
 /// `a`.
 ///
@@ -2332,7 +2330,7 @@ pub unsafe fn _mm256_movemask_ps(a: __m256) -> i32 {
     movmskps256(a)
 }
 
-/// Return vector of type __m256d with all elements set to zero.
+/// Returns vector of type __m256d with all elements set to zero.
 ///
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm256_setzero_pd)
 #[inline]
@@ -2343,7 +2341,7 @@ pub unsafe fn _mm256_setzero_pd() -> __m256d {
     _mm256_set1_pd(0.0)
 }
 
-/// Return vector of type __m256 with all elements set to zero.
+/// Returns vector of type __m256 with all elements set to zero.
 ///
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm256_setzero_ps)
 #[inline]
@@ -2354,7 +2352,7 @@ pub unsafe fn _mm256_setzero_ps() -> __m256 {
     _mm256_set1_ps(0.0)
 }
 
-/// Return vector of type __m256i with all elements set to zero.
+/// Returns vector of type __m256i with all elements set to zero.
 ///
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm256_setzero_si256)
 #[inline]
@@ -2365,7 +2363,7 @@ pub unsafe fn _mm256_setzero_si256() -> __m256i {
     _mm256_set1_epi8(0)
 }
 
-/// Set packed double-precision (64-bit) floating-point elements in returned
+/// Sets packed double-precision (64-bit) floating-point elements in returned
 /// vector with the supplied values.
 ///
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm256_set_pd)
@@ -2378,7 +2376,7 @@ pub unsafe fn _mm256_set_pd(a: f64, b: f64, c: f64, d: f64) -> __m256d {
     _mm256_setr_pd(d, c, b, a)
 }
 
-/// Set packed single-precision (32-bit) floating-point elements in returned
+/// Sets packed single-precision (32-bit) floating-point elements in returned
 /// vector with the supplied values.
 ///
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm256_set_ps)
@@ -2399,7 +2397,7 @@ pub unsafe fn _mm256_set_ps(
     _mm256_setr_ps(h, g, f, e, d, c, b, a)
 }
 
-/// Set packed 8-bit integers in returned vector with the supplied values in
+/// Sets packed 8-bit integers in returned vector with the supplied values in
 /// reverse order.
 ///
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm256_set_epi8)
@@ -2450,7 +2448,7 @@ pub unsafe fn _mm256_set_epi8(
     )
 }
 
-/// Set packed 16-bit integers in returned vector with the supplied values.
+/// Sets packed 16-bit integers in returned vector with the supplied values.
 ///
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm256_set_epi16)
 #[inline]
@@ -2484,7 +2482,7 @@ pub unsafe fn _mm256_set_epi16(
     )
 }
 
-/// Set packed 32-bit integers in returned vector with the supplied values.
+/// Sets packed 32-bit integers in returned vector with the supplied values.
 ///
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm256_set_epi32)
 #[inline]
@@ -2504,7 +2502,7 @@ pub unsafe fn _mm256_set_epi32(
     _mm256_setr_epi32(e7, e6, e5, e4, e3, e2, e1, e0)
 }
 
-/// Set packed 64-bit integers in returned vector with the supplied values.
+/// Sets packed 64-bit integers in returned vector with the supplied values.
 ///
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm256_set_epi64x)
 #[inline]
@@ -2515,7 +2513,7 @@ pub unsafe fn _mm256_set_epi64x(a: i64, b: i64, c: i64, d: i64) -> __m256i {
     _mm256_setr_epi64x(d, c, b, a)
 }
 
-/// Set packed double-precision (64-bit) floating-point elements in returned
+/// Sets packed double-precision (64-bit) floating-point elements in returned
 /// vector with the supplied values in reverse order.
 ///
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm256_setr_pd)
@@ -2527,7 +2525,7 @@ pub unsafe fn _mm256_setr_pd(a: f64, b: f64, c: f64, d: f64) -> __m256d {
     __m256d(a, b, c, d)
 }
 
-/// Set packed single-precision (32-bit) floating-point elements in returned
+/// Sets packed single-precision (32-bit) floating-point elements in returned
 /// vector with the supplied values in reverse order.
 ///
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm256_setr_ps)
@@ -2548,7 +2546,7 @@ pub unsafe fn _mm256_setr_ps(
     __m256(a, b, c, d, e, f, g, h)
 }
 
-/// Set packed 8-bit integers in returned vector with the supplied values in
+/// Sets packed 8-bit integers in returned vector with the supplied values in
 /// reverse order.
 ///
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm256_setr_epi8)
@@ -2599,7 +2597,7 @@ pub unsafe fn _mm256_setr_epi8(
     ))
 }
 
-/// Set packed 16-bit integers in returned vector with the supplied values in
+/// Sets packed 16-bit integers in returned vector with the supplied values in
 /// reverse order.
 ///
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm256_setr_epi16)
@@ -2634,7 +2632,7 @@ pub unsafe fn _mm256_setr_epi16(
     ))
 }
 
-/// Set packed 32-bit integers in returned vector with the supplied values in
+/// Sets packed 32-bit integers in returned vector with the supplied values in
 /// reverse order.
 ///
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm256_setr_epi32)
@@ -2655,7 +2653,7 @@ pub unsafe fn _mm256_setr_epi32(
     mem::transmute(i32x8::new(e0, e1, e2, e3, e4, e5, e6, e7))
 }
 
-/// Set packed 64-bit integers in returned vector with the supplied values in
+/// Sets packed 64-bit integers in returned vector with the supplied values in
 /// reverse order.
 ///
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm256_setr_epi64x)
@@ -2667,7 +2665,7 @@ pub unsafe fn _mm256_setr_epi64x(a: i64, b: i64, c: i64, d: i64) -> __m256i {
     mem::transmute(i64x4::new(a, b, c, d))
 }
 
-/// Broadcast double-precision (64-bit) floating-point value `a` to all
+/// Broadcasts double-precision (64-bit) floating-point value `a` to all
 /// elements of returned vector.
 ///
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm256_set1_pd)
@@ -2679,7 +2677,7 @@ pub unsafe fn _mm256_set1_pd(a: f64) -> __m256d {
     _mm256_setr_pd(a, a, a, a)
 }
 
-/// Broadcast single-precision (32-bit) floating-point value `a` to all
+/// Broadcasts single-precision (32-bit) floating-point value `a` to all
 /// elements of returned vector.
 ///
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm256_set1_ps)
@@ -2691,7 +2689,7 @@ pub unsafe fn _mm256_set1_ps(a: f32) -> __m256 {
     _mm256_setr_ps(a, a, a, a, a, a, a, a)
 }
 
-/// Broadcast 8-bit integer `a` to all elements of returned vector.
+/// Broadcasts 8-bit integer `a` to all elements of returned vector.
 /// This intrinsic may generate the `vpbroadcastb`.
 ///
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm256_set1_epi8)
@@ -2711,7 +2709,7 @@ pub unsafe fn _mm256_set1_epi8(a: i8) -> __m256i {
     )
 }
 
-/// Broadcast 16-bit integer `a` to all all elements of returned vector.
+/// Broadcasts 16-bit integer `a` to all all elements of returned vector.
 /// This intrinsic may generate the `vpbroadcastw`.
 ///
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm256_set1_epi16)
@@ -2725,7 +2723,7 @@ pub unsafe fn _mm256_set1_epi16(a: i16) -> __m256i {
     _mm256_setr_epi16(a, a, a, a, a, a, a, a, a, a, a, a, a, a, a, a)
 }
 
-/// Broadcast 32-bit integer `a` to all elements of returned vector.
+/// Broadcasts 32-bit integer `a` to all elements of returned vector.
 /// This intrinsic may generate the `vpbroadcastd`.
 ///
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm256_set1_epi32)
@@ -2737,7 +2735,7 @@ pub unsafe fn _mm256_set1_epi32(a: i32) -> __m256i {
     _mm256_setr_epi32(a, a, a, a, a, a, a, a)
 }
 
-/// Broadcast 64-bit integer `a` to all elements of returned vector.
+/// Broadcasts 64-bit integer `a` to all elements of returned vector.
 /// This intrinsic may generate the `vpbroadcastq`.
 ///
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm256_set1_epi64x)
@@ -2950,7 +2948,7 @@ pub unsafe fn _mm256_zextpd128_pd256(a: __m128d) -> __m256d {
     simd_shuffle4(a, _mm_setzero_pd(), [0, 1, 2, 3])
 }
 
-/// Return vector of type `__m256` with undefined elements.
+/// Returns vector of type `__m256` with undefined elements.
 ///
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm256_undefined_ps)
 #[inline]
@@ -2962,7 +2960,7 @@ pub unsafe fn _mm256_undefined_ps() -> __m256 {
     mem::MaybeUninit::<__m256>::uninitialized().into_initialized()
 }
 
-/// Return vector of type `__m256d` with undefined elements.
+/// Returns vector of type `__m256d` with undefined elements.
 ///
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm256_undefined_pd)
 #[inline]
@@ -2974,7 +2972,7 @@ pub unsafe fn _mm256_undefined_pd() -> __m256d {
     mem::MaybeUninit::<__m256d>::uninitialized().into_initialized()
 }
 
-/// Return vector of type __m256i with undefined elements.
+/// Returns vector of type __m256i with undefined elements.
 ///
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm256_undefined_si256)
 #[inline]
@@ -2986,7 +2984,7 @@ pub unsafe fn _mm256_undefined_si256() -> __m256i {
     mem::MaybeUninit::<__m256i>::uninitialized().into_initialized()
 }
 
-/// Set packed __m256 returned vector with the supplied values.
+/// Sets packed __m256 returned vector with the supplied values.
 ///
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm256_set_m128)
 #[inline]
@@ -2997,7 +2995,7 @@ pub unsafe fn _mm256_set_m128(hi: __m128, lo: __m128) -> __m256 {
     simd_shuffle8(lo, hi, [0, 1, 2, 3, 4, 5, 6, 7])
 }
 
-/// Set packed __m256d returned vector with the supplied values.
+/// Sets packed __m256d returned vector with the supplied values.
 ///
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm256_set_m128d)
 #[inline]
@@ -3010,7 +3008,7 @@ pub unsafe fn _mm256_set_m128d(hi: __m128d, lo: __m128d) -> __m256d {
     mem::transmute(_mm256_set_m128(hi, lo))
 }
 
-/// Set packed __m256i returned vector with the supplied values.
+/// Sets packed __m256i returned vector with the supplied values.
 ///
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm256_set_m128i)
 #[inline]
@@ -3023,7 +3021,7 @@ pub unsafe fn _mm256_set_m128i(hi: __m128i, lo: __m128i) -> __m256i {
     mem::transmute(_mm256_set_m128(hi, lo))
 }
 
-/// Set packed __m256 returned vector with the supplied values.
+/// Sets packed __m256 returned vector with the supplied values.
 ///
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm256_setr_m128)
 #[inline]
@@ -3034,7 +3032,7 @@ pub unsafe fn _mm256_setr_m128(lo: __m128, hi: __m128) -> __m256 {
     _mm256_set_m128(hi, lo)
 }
 
-/// Set packed __m256d returned vector with the supplied values.
+/// Sets packed __m256d returned vector with the supplied values.
 ///
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm256_setr_m128d)
 #[inline]
@@ -3045,7 +3043,7 @@ pub unsafe fn _mm256_setr_m128d(lo: __m128d, hi: __m128d) -> __m256d {
     _mm256_set_m128d(hi, lo)
 }
 
-/// Set packed __m256i returned vector with the supplied values.
+/// Sets packed __m256i returned vector with the supplied values.
 ///
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm256_setr_m128i)
 #[inline]
@@ -3056,7 +3054,7 @@ pub unsafe fn _mm256_setr_m128i(lo: __m128i, hi: __m128i) -> __m256i {
     _mm256_set_m128i(hi, lo)
 }
 
-/// Load two 128-bit values (composed of 4 packed single-precision (32-bit)
+/// Loads two 128-bit values (composed of 4 packed single-precision (32-bit)
 /// floating-point elements) from memory, and combine them into a 256-bit
 /// value.
 /// `hiaddr` and `loaddr` do not need to be aligned on any particular boundary.
@@ -3071,7 +3069,7 @@ pub unsafe fn _mm256_loadu2_m128(hiaddr: *const f32, loaddr: *const f32) -> __m2
     _mm256_insertf128_ps(a, _mm_loadu_ps(hiaddr), 1)
 }
 
-/// Load two 128-bit values (composed of 2 packed double-precision (64-bit)
+/// Loads two 128-bit values (composed of 2 packed double-precision (64-bit)
 /// floating-point elements) from memory, and combine them into a 256-bit
 /// value.
 /// `hiaddr` and `loaddr` do not need to be aligned on any particular boundary.
@@ -3086,7 +3084,7 @@ pub unsafe fn _mm256_loadu2_m128d(hiaddr: *const f64, loaddr: *const f64) -> __m
     _mm256_insertf128_pd(a, _mm_loadu_pd(hiaddr), 1)
 }
 
-/// Load two 128-bit values (composed of integer data) from memory, and combine
+/// Loads two 128-bit values (composed of integer data) from memory, and combine
 /// them into a 256-bit value.
 /// `hiaddr` and `loaddr` do not need to be aligned on any particular boundary.
 ///
@@ -3100,7 +3098,7 @@ pub unsafe fn _mm256_loadu2_m128i(hiaddr: *const __m128i, loaddr: *const __m128i
     _mm256_insertf128_si256(a, _mm_loadu_si128(hiaddr), 1)
 }
 
-/// Store the high and low 128-bit halves (each composed of 4 packed
+/// Stores the high and low 128-bit halves (each composed of 4 packed
 /// single-precision (32-bit) floating-point elements) from `a` into memory two
 /// different 128-bit locations.
 /// `hiaddr` and `loaddr` do not need to be aligned on any particular boundary.
@@ -3117,7 +3115,7 @@ pub unsafe fn _mm256_storeu2_m128(hiaddr: *mut f32, loaddr: *mut f32, a: __m256)
     _mm_storeu_ps(hiaddr, hi);
 }
 
-/// Store the high and low 128-bit halves (each composed of 2 packed
+/// Stores the high and low 128-bit halves (each composed of 2 packed
 /// double-precision (64-bit) floating-point elements) from `a` into memory two
 /// different 128-bit locations.
 /// `hiaddr` and `loaddr` do not need to be aligned on any particular boundary.
@@ -3134,7 +3132,7 @@ pub unsafe fn _mm256_storeu2_m128d(hiaddr: *mut f64, loaddr: *mut f64, a: __m256
     _mm_storeu_pd(hiaddr, hi);
 }
 
-/// Store the high and low 128-bit halves (each composed of integer data) from
+/// Stores the high and low 128-bit halves (each composed of integer data) from
 /// `a` into memory two different 128-bit locations.
 /// `hiaddr` and `loaddr` do not need to be aligned on any particular boundary.
 ///

@@ -21,7 +21,7 @@ extern "C" {
     fn xrstors64(p: *const u8, hi: u32, lo: u32) -> ();
 }
 
-/// Perform a full or partial save of the enabled processor states to memory at
+/// Performs a full or partial save of the enabled processor states to memory at
 /// `mem_addr`.
 ///
 /// State is saved based on bits `[62:0]` in `save_mask` and XCR0.
@@ -39,7 +39,7 @@ pub unsafe fn _xsave64(mem_addr: *mut u8, save_mask: u64) {
     xsave64(mem_addr, (save_mask >> 32) as u32, save_mask as u32);
 }
 
-/// Perform a full or partial restore of the enabled processor states using
+/// Performs a full or partial restore of the enabled processor states using
 /// the state information stored in memory at `mem_addr`.
 ///
 /// State is restored based on bits `[62:0]` in `rs_mask`, `XCR0`, and
@@ -55,7 +55,7 @@ pub unsafe fn _xrstor64(mem_addr: *const u8, rs_mask: u64) {
     xrstor64(mem_addr, (rs_mask >> 32) as u32, rs_mask as u32);
 }
 
-/// Perform a full or partial save of the enabled processor states to memory at
+/// Performs a full or partial save of the enabled processor states to memory at
 /// `mem_addr`.
 ///
 /// State is saved based on bits `[62:0]` in `save_mask` and `XCR0`.
@@ -72,7 +72,7 @@ pub unsafe fn _xsaveopt64(mem_addr: *mut u8, save_mask: u64) {
     xsaveopt64(mem_addr, (save_mask >> 32) as u32, save_mask as u32);
 }
 
-/// Perform a full or partial save of the enabled processor states to memory
+/// Performs a full or partial save of the enabled processor states to memory
 /// at `mem_addr`.
 ///
 /// `xsavec` differs from `xsave` in that it uses compaction and that it may
@@ -88,7 +88,7 @@ pub unsafe fn _xsavec64(mem_addr: *mut u8, save_mask: u64) {
     xsavec64(mem_addr, (save_mask >> 32) as u32, save_mask as u32);
 }
 
-/// Perform a full or partial save of the enabled processor states to memory at
+/// Performs a full or partial save of the enabled processor states to memory at
 /// `mem_addr`
 ///
 /// `xsaves` differs from xsave in that it can save state components
@@ -105,7 +105,7 @@ pub unsafe fn _xsaves64(mem_addr: *mut u8, save_mask: u64) {
     xsaves64(mem_addr, (save_mask >> 32) as u32, save_mask as u32);
 }
 
-/// Perform a full or partial restore of the enabled processor states using the
+/// Performs a full or partial restore of the enabled processor states using the
 /// state information stored in memory at `mem_addr`.
 ///
 /// `xrstors` differs from `xrstor` in that it can restore state components

@@ -30,7 +30,7 @@ pub unsafe fn _mulx_u64(a: u64, b: u64, hi: &mut u64) -> u64 {
     result as u64
 }
 
-/// Zero higher bits of `a` >= `index`.
+/// Zeroes higher bits of `a` >= `index`.
 ///
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_bzhi_u64)
 #[inline]

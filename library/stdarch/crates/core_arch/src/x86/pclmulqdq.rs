@@ -16,7 +16,7 @@ extern "C" {
     fn pclmulqdq(a: __m128i, round_key: __m128i, imm8: u8) -> __m128i;
 }
 
-/// Perform a carry-less multiplication of two 64-bit polynomials over the
+/// Performs a carry-less multiplication of two 64-bit polynomials over the
 /// finite field GF(2^k).
 ///
 /// The immediate byte is used for determining which halves of `a` and `b`

@@ -25,7 +25,7 @@ pub unsafe fn _mm_setzero_si64() -> __m64 {
     mem::transmute(0_i64)
 }
 
-/// Add packed 8-bit integers in `a` and `b`.
+/// Adds packed 8-bit integers in `a` and `b`.
 #[inline]
 #[target_feature(enable = "mmx")]
 #[cfg_attr(test, assert_instr(paddb))]
@@ -33,7 +33,7 @@ pub unsafe fn _mm_add_pi8(a: __m64, b: __m64) -> __m64 {
     paddb(a, b)
 }
 
-/// Add packed 8-bit integers in `a` and `b`.
+/// Adds packed 8-bit integers in `a` and `b`.
 #[inline]
 #[target_feature(enable = "mmx")]
 #[cfg_attr(test, assert_instr(paddb))]
@@ -41,7 +41,7 @@ pub unsafe fn _m_paddb(a: __m64, b: __m64) -> __m64 {
     _mm_add_pi8(a, b)
 }
 
-/// Add packed 16-bit integers in `a` and `b`.
+/// Adds packed 16-bit integers in `a` and `b`.
 #[inline]
 #[target_feature(enable = "mmx")]
 #[cfg_attr(test, assert_instr(paddw))]
@@ -49,7 +49,7 @@ pub unsafe fn _mm_add_pi16(a: __m64, b: __m64) -> __m64 {
     paddw(a, b)
 }
 
-/// Add packed 16-bit integers in `a` and `b`.
+/// Adds packed 16-bit integers in `a` and `b`.
 #[inline]
 #[target_feature(enable = "mmx")]
 #[cfg_attr(test, assert_instr(paddw))]
@@ -57,7 +57,7 @@ pub unsafe fn _m_paddw(a: __m64, b: __m64) -> __m64 {
     _mm_add_pi16(a, b)
 }
 
-/// Add packed 32-bit integers in `a` and `b`.
+/// Adds packed 32-bit integers in `a` and `b`.
 #[inline]
 #[target_feature(enable = "mmx")]
 #[cfg_attr(test, assert_instr(paddd))]
@@ -65,7 +65,7 @@ pub unsafe fn _mm_add_pi32(a: __m64, b: __m64) -> __m64 {
     paddd(a, b)
 }
 
-/// Add packed 32-bit integers in `a` and `b`.
+/// Adds packed 32-bit integers in `a` and `b`.
 #[inline]
 #[target_feature(enable = "mmx")]
 #[cfg_attr(test, assert_instr(paddd))]
@@ -73,7 +73,7 @@ pub unsafe fn _m_paddd(a: __m64, b: __m64) -> __m64 {
     _mm_add_pi32(a, b)
 }
 
-/// Add packed 8-bit integers in `a` and `b` using saturation.
+/// Adds packed 8-bit integers in `a` and `b` using saturation.
 #[inline]
 #[target_feature(enable = "mmx")]
 #[cfg_attr(test, assert_instr(paddsb))]
@@ -81,7 +81,7 @@ pub unsafe fn _mm_adds_pi8(a: __m64, b: __m64) -> __m64 {
     paddsb(a, b)
 }
 
-/// Add packed 8-bit integers in `a` and `b` using saturation.
+/// Adds packed 8-bit integers in `a` and `b` using saturation.
 #[inline]
 #[target_feature(enable = "mmx")]
 #[cfg_attr(test, assert_instr(paddsb))]
@@ -89,7 +89,7 @@ pub unsafe fn _m_paddsb(a: __m64, b: __m64) -> __m64 {
     _mm_adds_pi8(a, b)
 }
 
-/// Add packed 16-bit integers in `a` and `b` using saturation.
+/// Adds packed 16-bit integers in `a` and `b` using saturation.
 #[inline]
 #[target_feature(enable = "mmx")]
 #[cfg_attr(test, assert_instr(paddsw))]
@@ -97,7 +97,7 @@ pub unsafe fn _mm_adds_pi16(a: __m64, b: __m64) -> __m64 {
     paddsw(a, b)
 }
 
-/// Add packed 16-bit integers in `a` and `b` using saturation.
+/// Adds packed 16-bit integers in `a` and `b` using saturation.
 #[inline]
 #[target_feature(enable = "mmx")]
 #[cfg_attr(test, assert_instr(paddsw))]
@@ -105,7 +105,7 @@ pub unsafe fn _m_paddsw(a: __m64, b: __m64) -> __m64 {
     _mm_adds_pi16(a, b)
 }
 
-/// Add packed unsigned 8-bit integers in `a` and `b` using saturation.
+/// Adds packed unsigned 8-bit integers in `a` and `b` using saturation.
 #[inline]
 #[target_feature(enable = "mmx")]
 #[cfg_attr(test, assert_instr(paddusb))]
@@ -113,7 +113,7 @@ pub unsafe fn _mm_adds_pu8(a: __m64, b: __m64) -> __m64 {
     paddusb(a, b)
 }
 
-/// Add packed unsigned 8-bit integers in `a` and `b` using saturation.
+/// Adds packed unsigned 8-bit integers in `a` and `b` using saturation.
 #[inline]
 #[target_feature(enable = "mmx")]
 #[cfg_attr(test, assert_instr(paddusb))]
@@ -121,7 +121,7 @@ pub unsafe fn _m_paddusb(a: __m64, b: __m64) -> __m64 {
     _mm_adds_pu8(a, b)
 }
 
-/// Add packed unsigned 16-bit integers in `a` and `b` using saturation.
+/// Adds packed unsigned 16-bit integers in `a` and `b` using saturation.
 #[inline]
 #[target_feature(enable = "mmx")]
 #[cfg_attr(test, assert_instr(paddusw))]
@@ -129,7 +129,7 @@ pub unsafe fn _mm_adds_pu16(a: __m64, b: __m64) -> __m64 {
     paddusw(a, b)
 }
 
-/// Add packed unsigned 16-bit integers in `a` and `b` using saturation.
+/// Adds packed unsigned 16-bit integers in `a` and `b` using saturation.
 #[inline]
 #[target_feature(enable = "mmx")]
 #[cfg_attr(test, assert_instr(paddusw))]
@@ -257,7 +257,7 @@ pub unsafe fn _m_psubusw(a: __m64, b: __m64) -> __m64 {
     _mm_subs_pu16(a, b)
 }
 
-/// Convert packed 16-bit integers from `a` and `b` to packed 8-bit integers
+/// Converts packed 16-bit integers from `a` and `b` to packed 8-bit integers
 /// using signed saturation.
 ///
 /// Positive values greater than 0x7F are saturated to 0x7F. Negative values
@@ -269,7 +269,7 @@ pub unsafe fn _mm_packs_pi16(a: __m64, b: __m64) -> __m64 {
     packsswb(a, b)
 }
 
-/// Convert packed 32-bit integers from `a` and `b` to packed 16-bit integers
+/// Converts packed 32-bit integers from `a` and `b` to packed 16-bit integers
 /// using signed saturation.
 ///
 /// Positive values greater than 0x7F are saturated to 0x7F. Negative values
@@ -362,49 +362,49 @@ pub unsafe fn _mm_unpacklo_pi32(a: __m64, b: __m64) -> __m64 {
     punpckldq(a, b)
 }
 
-/// Set packed 16-bit integers in dst with the supplied values.
+/// Sets packed 16-bit integers in dst with the supplied values.
 #[inline]
 #[target_feature(enable = "mmx")]
 pub unsafe fn _mm_set_pi16(e3: i16, e2: i16, e1: i16, e0: i16) -> __m64 {
     _mm_setr_pi16(e0, e1, e2, e3)
 }
 
-/// Set packed 32-bit integers in dst with the supplied values.
+/// Sets packed 32-bit integers in dst with the supplied values.
 #[inline]
 #[target_feature(enable = "mmx")]
 pub unsafe fn _mm_set_pi32(e1: i32, e0: i32) -> __m64 {
     _mm_setr_pi32(e0, e1)
 }
 
-/// Set packed 8-bit integers in dst with the supplied values.
+/// Sets packed 8-bit integers in dst with the supplied values.
 #[inline]
 #[target_feature(enable = "mmx")]
 pub unsafe fn _mm_set_pi8(e7: i8, e6: i8, e5: i8, e4: i8, e3: i8, e2: i8, e1: i8, e0: i8) -> __m64 {
     _mm_setr_pi8(e0, e1, e2, e3, e4, e5, e6, e7)
 }
 
-/// Broadcast 16-bit integer a to all all elements of dst.
+/// Broadcasts 16-bit integer a to all all elements of dst.
 #[inline]
 #[target_feature(enable = "mmx")]
 pub unsafe fn _mm_set1_pi16(a: i16) -> __m64 {
     _mm_setr_pi16(a, a, a, a)
 }
 
-/// Broadcast 32-bit integer a to all all elements of dst.
+/// Broadcasts 32-bit integer a to all all elements of dst.
 #[inline]
 #[target_feature(enable = "mmx")]
 pub unsafe fn _mm_set1_pi32(a: i32) -> __m64 {
     _mm_setr_pi32(a, a)
 }
 
-/// Broadcast 8-bit integer a to all all elements of dst.
+/// Broadcasts 8-bit integer a to all all elements of dst.
 #[inline]
 #[target_feature(enable = "mmx")]
 pub unsafe fn _mm_set1_pi8(a: i8) -> __m64 {
     _mm_setr_pi8(a, a, a, a, a, a, a, a)
 }
 
-/// Set packed 16-bit integers in dst with the supplied values in reverse
+/// Sets packed 16-bit integers in dst with the supplied values in reverse
 /// order.
 #[inline]
 #[target_feature(enable = "mmx")]
@@ -412,7 +412,7 @@ pub unsafe fn _mm_setr_pi16(e0: i16, e1: i16, e2: i16, e3: i16) -> __m64 {
     mem::transmute(i16x4::new(e0, e1, e2, e3))
 }
 
-/// Set packed 32-bit integers in dst with the supplied values in reverse
+/// Sets packed 32-bit integers in dst with the supplied values in reverse
 /// order.
 #[inline]
 #[target_feature(enable = "mmx")]
@@ -420,7 +420,7 @@ pub unsafe fn _mm_setr_pi32(e0: i32, e1: i32) -> __m64 {
     mem::transmute(i32x2::new(e0, e1))
 }
 
-/// Set packed 8-bit integers in dst with the supplied values in reverse order.
+/// Sets packed 8-bit integers in dst with the supplied values in reverse order.
 #[inline]
 #[target_feature(enable = "mmx")]
 pub unsafe fn _mm_setr_pi8(
@@ -456,7 +456,7 @@ pub unsafe fn _m_empty() {
     emms()
 }
 
-/// Copy 32-bit integer `a` to the lower elements of the return value, and zero
+/// Copies 32-bit integer `a` to the lower elements of the return value, and zero
 /// the upper element of the return value.
 #[inline]
 #[target_feature(enable = "mmx")]

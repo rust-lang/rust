@@ -21,7 +21,7 @@ pub unsafe fn _mm512_abs_epi32(a: __m512i) -> __m512i {
     mem::transmute(simd_select(cmp, a, sub))
 }
 
-/// Compute the absolute value of packed 32-bit integers in `a`, and store the
+/// Computes the absolute value of packed 32-bit integers in `a`, and store the
 /// unsigned results in `dst` using writemask `k` (elements are copied from
 /// `src` when the corresponding mask bit is not set).
 ///
@@ -34,7 +34,7 @@ pub unsafe fn _mm512_mask_abs_epi32(src: __m512i, k: __mmask16, a: __m512i) -> _
     mem::transmute(simd_select_bitmask(k, abs, src.as_i32x16()))
 }
 
-/// Compute the absolute value of packed 32-bit integers in `a`, and store the
+/// Computes the absolute value of packed 32-bit integers in `a`, and store the
 /// unsigned results in `dst` using zeromask `k` (elements are zeroed out when
 /// the corresponding mask bit is not set).
 ///
@@ -48,7 +48,7 @@ pub unsafe fn _mm512_maskz_abs_epi32(k: __mmask16, a: __m512i) -> __m512i {
     mem::transmute(simd_select_bitmask(k, abs, zero))
 }
 
-/// Return vector of type `__m512i` with all elements set to zero.
+/// Returns vector of type `__m512i` with all elements set to zero.
 ///
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#avx512techs=AVX512F&expand=33,34,4990&text=_mm512_setzero_si512)
 #[inline]
@@ -59,7 +59,7 @@ pub unsafe fn _mm512_setzero_si512() -> __m512i {
     mem::zeroed()
 }
 
-/// Set packed 32-bit integers in `dst` with the supplied values in reverse
+/// Sets packed 32-bit integers in `dst` with the supplied values in reverse
 /// order.
 #[inline]
 #[target_feature(enable = "avx512f")]

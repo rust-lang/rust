@@ -17,7 +17,7 @@ use core_arch::simd_llvm::*;
 use core_arch::x86::*;
 use mem;
 
-/// Copy `a` to result, and insert the 64-bit integer `i` into result
+/// Copies `a` to result, and insert the 64-bit integer `i` into result
 /// at the location specified by `index`.
 ///
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm256_insert_epi64)

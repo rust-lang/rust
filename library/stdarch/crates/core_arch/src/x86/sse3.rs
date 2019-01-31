@@ -31,7 +31,7 @@ pub unsafe fn _mm_addsub_pd(a: __m128d, b: __m128d) -> __m128d {
     addsubpd(a, b)
 }
 
-/// Horizontally add adjacent pairs of double-precision (64-bit)
+/// Horizontally adds adjacent pairs of double-precision (64-bit)
 /// floating-point elements in `a` and `b`, and pack the results.
 ///
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_hadd_pd)
@@ -43,7 +43,7 @@ pub unsafe fn _mm_hadd_pd(a: __m128d, b: __m128d) -> __m128d {
     haddpd(a, b)
 }
 
-/// Horizontally add adjacent pairs of single-precision (32-bit)
+/// Horizontally adds adjacent pairs of single-precision (32-bit)
 /// floating-point elements in `a` and `b`, and pack the results.
 ///
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_hadd_ps)
@@ -67,7 +67,7 @@ pub unsafe fn _mm_hsub_pd(a: __m128d, b: __m128d) -> __m128d {
     hsubpd(a, b)
 }
 
-/// Horizontally add adjacent pairs of single-precision (32-bit)
+/// Horizontally adds adjacent pairs of single-precision (32-bit)
 /// floating-point elements in `a` and `b`, and pack the results.
 ///
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_hsub_ps)
@@ -79,7 +79,7 @@ pub unsafe fn _mm_hsub_ps(a: __m128, b: __m128) -> __m128 {
     hsubps(a, b)
 }
 
-/// Load 128-bits of integer data from unaligned memory.
+/// Loads 128-bits of integer data from unaligned memory.
 /// This intrinsic may perform better than `_mm_loadu_si128`
 /// when the data crosses a cache line boundary.
 ///
@@ -104,7 +104,7 @@ pub unsafe fn _mm_movedup_pd(a: __m128d) -> __m128d {
     simd_shuffle2(a, a, [0, 0])
 }
 
-/// Load a double-precision (64-bit) floating-point element from memory
+/// Loads a double-precision (64-bit) floating-point element from memory
 /// into both elements of return vector.
 ///
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_loaddup_pd)

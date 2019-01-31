@@ -6,9 +6,8 @@
 //! whether a feature is available (bit is set) or unavaiable (bit is cleared).
 //!
 //! The enum `Feature` is used to map bit positions to feature names, and the
-//! the `__crate::detect::check_for!` macro is used to map string literals (e.g.
-//! "avx") to these bit positions (e.g. `Feature::avx`).
-//!
+//! the `__crate::detect::check_for!` macro is used to map string literals (e.g.,
+//! "avx") to these bit positions (e.g., `Feature::avx`).
 //!
 //! The run-time feature detection is performed by the
 //! `__crate::detect::check_for(Feature) -> bool` function. On its first call,
@@ -20,7 +19,7 @@
 /// x86/x86-64 platforms.
 ///
 /// This macro is provided in the standard library and will detect at runtime
-/// whether the specified CPU feature is detected. This does *not* resolve at
+/// whether the specified CPU feature is detected. This does **not** resolve at
 /// compile time unless the specified feature is already enabled for the entire
 /// crate. Runtime detection currently relies mostly on the `cpuid` instruction.
 ///

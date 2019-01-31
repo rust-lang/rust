@@ -39,13 +39,13 @@ pub const _SIDD_CMP_EQUAL_ORDERED: i32 = 0b0000_1100;
 /// Do not negate results *(Default)*
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub const _SIDD_POSITIVE_POLARITY: i32 = 0b0000_0000;
-/// Negate results
+/// Negates results
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub const _SIDD_NEGATIVE_POLARITY: i32 = 0b0001_0000;
 /// Do not negate results before the end of the string
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub const _SIDD_MASKED_POSITIVE_POLARITY: i32 = 0b0010_0000;
-/// Negate results only before the end of the string
+/// Negates results only before the end of the string
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub const _SIDD_MASKED_NEGATIVE_POLARITY: i32 = 0b0011_0000;
 
@@ -63,7 +63,7 @@ pub const _SIDD_BIT_MASK: i32 = 0b0000_0000;
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub const _SIDD_UNIT_MASK: i32 = 0b0100_0000;
 
-/// Compare packed strings with implicit lengths in `a` and `b` using the
+/// Compares packed strings with implicit lengths in `a` and `b` using the
 /// control in `imm8`, and return the generated mask.
 ///
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_cmpistrm)
@@ -83,7 +83,7 @@ pub unsafe fn _mm_cmpistrm(a: __m128i, b: __m128i, imm8: i32) -> __m128i {
     mem::transmute(constify_imm8!(imm8, call))
 }
 
-/// Compare packed strings with implicit lengths in `a` and `b` using the
+/// Compares packed strings with implicit lengths in `a` and `b` using the
 /// control in `imm8` and return the generated index. Similar to
 /// [`_mm_cmpestri`] with the exception that [`_mm_cmpestri`] requires the
 /// lengths of `a` and `b` to be explicitly specified.
@@ -115,7 +115,7 @@ pub unsafe fn _mm_cmpistrm(a: __m128i, b: __m128i, imm8: i32) -> __m128i {
 ///
 /// # Examples
 ///
-/// Find a substring using [`_SIDD_CMP_EQUAL_ORDERED`]
+/// Finds a substring using [`_SIDD_CMP_EQUAL_ORDERED`]
 ///
 /// ```
 /// #[cfg(target_arch = "x86")]
@@ -187,7 +187,7 @@ pub unsafe fn _mm_cmpistrm(a: __m128i, b: __m128i, imm8: i32) -> __m128i {
 /// # }
 /// ```
 ///
-/// Find the index of the first character in the haystack that is within a
+/// Finds the index of the first character in the haystack that is within a
 /// range of characters.
 ///
 /// ```
@@ -291,7 +291,7 @@ pub unsafe fn _mm_cmpistri(a: __m128i, b: __m128i, imm8: i32) -> i32 {
     constify_imm8!(imm8, call)
 }
 
-/// Compare packed strings with implicit lengths in `a` and `b` using the
+/// Compares packed strings with implicit lengths in `a` and `b` using the
 /// control in `imm8`, and return `1` if any character in `b` was null.
 /// and `0` otherwise.
 ///
@@ -312,7 +312,7 @@ pub unsafe fn _mm_cmpistrz(a: __m128i, b: __m128i, imm8: i32) -> i32 {
     constify_imm8!(imm8, call)
 }
 
-/// Compare packed strings with implicit lengths in `a` and `b` using the
+/// Compares packed strings with implicit lengths in `a` and `b` using the
 /// control in `imm8`, and return `1` if the resulting mask was non-zero,
 /// and `0` otherwise.
 ///
@@ -333,7 +333,7 @@ pub unsafe fn _mm_cmpistrc(a: __m128i, b: __m128i, imm8: i32) -> i32 {
     constify_imm8!(imm8, call)
 }
 
-/// Compare packed strings with implicit lengths in `a` and `b` using the
+/// Compares packed strings with implicit lengths in `a` and `b` using the
 /// control in `imm8`, and returns `1` if any character in `a` was null,
 /// and `0` otherwise.
 ///
@@ -354,7 +354,7 @@ pub unsafe fn _mm_cmpistrs(a: __m128i, b: __m128i, imm8: i32) -> i32 {
     constify_imm8!(imm8, call)
 }
 
-/// Compare packed strings with implicit lengths in `a` and `b` using the
+/// Compares packed strings with implicit lengths in `a` and `b` using the
 /// control in `imm8`, and return bit `0` of the resulting bit mask.
 ///
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_cmpistro)
@@ -374,7 +374,7 @@ pub unsafe fn _mm_cmpistro(a: __m128i, b: __m128i, imm8: i32) -> i32 {
     constify_imm8!(imm8, call)
 }
 
-/// Compare packed strings with implicit lengths in `a` and `b` using the
+/// Compares packed strings with implicit lengths in `a` and `b` using the
 /// control in `imm8`, and return `1` if `b` did not contain a null
 /// character and the resulting mask was zero, and `0` otherwise.
 ///
@@ -395,7 +395,7 @@ pub unsafe fn _mm_cmpistra(a: __m128i, b: __m128i, imm8: i32) -> i32 {
     constify_imm8!(imm8, call)
 }
 
-/// Compare packed strings in `a` and `b` with lengths `la` and `lb`
+/// Compares packed strings in `a` and `b` with lengths `la` and `lb`
 /// using the control in `imm8`, and return the generated mask.
 ///
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_cmpestrm)
@@ -415,7 +415,7 @@ pub unsafe fn _mm_cmpestrm(a: __m128i, la: i32, b: __m128i, lb: i32, imm8: i32) 
     mem::transmute(constify_imm8!(imm8, call))
 }
 
-/// Compare packed strings `a` and `b` with lengths `la` and `lb` using the
+/// Compares packed strings `a` and `b` with lengths `la` and `lb` using the
 /// control in `imm8` and return the generated index. Similar to
 /// [`_mm_cmpistri`] with the exception that [`_mm_cmpistri`] implicitly
 /// determines the length of `a` and `b`.
@@ -510,7 +510,7 @@ pub unsafe fn _mm_cmpestri(a: __m128i, la: i32, b: __m128i, lb: i32, imm8: i32) 
     constify_imm8!(imm8, call)
 }
 
-/// Compare packed strings in `a` and `b` with lengths `la` and `lb`
+/// Compares packed strings in `a` and `b` with lengths `la` and `lb`
 /// using the control in `imm8`, and return `1` if any character in
 /// `b` was null, and `0` otherwise.
 ///
@@ -531,7 +531,7 @@ pub unsafe fn _mm_cmpestrz(a: __m128i, la: i32, b: __m128i, lb: i32, imm8: i32) 
     constify_imm8!(imm8, call)
 }
 
-/// Compare packed strings in `a` and `b` with lengths `la` and `lb`
+/// Compares packed strings in `a` and `b` with lengths `la` and `lb`
 /// using the control in `imm8`, and return `1` if the resulting mask
 /// was non-zero, and `0` otherwise.
 ///
@@ -552,7 +552,7 @@ pub unsafe fn _mm_cmpestrc(a: __m128i, la: i32, b: __m128i, lb: i32, imm8: i32) 
     constify_imm8!(imm8, call)
 }
 
-/// Compare packed strings in `a` and `b` with lengths `la` and `lb`
+/// Compares packed strings in `a` and `b` with lengths `la` and `lb`
 /// using the control in `imm8`, and return `1` if any character in
 /// a was null, and `0` otherwise.
 ///
@@ -573,7 +573,7 @@ pub unsafe fn _mm_cmpestrs(a: __m128i, la: i32, b: __m128i, lb: i32, imm8: i32) 
     constify_imm8!(imm8, call)
 }
 
-/// Compare packed strings in `a` and `b` with lengths `la` and `lb`
+/// Compares packed strings in `a` and `b` with lengths `la` and `lb`
 /// using the control in `imm8`, and return bit `0` of the resulting
 /// bit mask.
 ///
@@ -594,7 +594,7 @@ pub unsafe fn _mm_cmpestro(a: __m128i, la: i32, b: __m128i, lb: i32, imm8: i32) 
     constify_imm8!(imm8, call)
 }
 
-/// Compare packed strings in `a` and `b` with lengths `la` and `lb`
+/// Compares packed strings in `a` and `b` with lengths `la` and `lb`
 /// using the control in `imm8`, and return `1` if `b` did not
 /// contain a null character and the resulting mask was zero, and `0`
 /// otherwise.
@@ -652,7 +652,7 @@ pub unsafe fn _mm_crc32_u32(crc: u32, v: u32) -> u32 {
     crc32_32_32(crc, v)
 }
 
-/// Compare packed 64-bit integers in `a` and `b` for greater-than,
+/// Compares packed 64-bit integers in `a` and `b` for greater-than,
 /// return the results.
 ///
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_cmpgt_epi64)

@@ -3,7 +3,7 @@ use sync::atomic::Ordering;
 #[cfg(test)]
 use stdsimd_test::assert_instr;
 
-/// Compare and exchange 16 bytes (128 bits) of data atomically.
+/// Compares and exchange 16 bytes (128 bits) of data atomically.
 ///
 /// This intrinsic corresponds to the `cmpxchg16b` instruction on `x86_64`
 /// processors. It performs an atomic compare-and-swap, updating the `ptr`

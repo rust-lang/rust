@@ -147,7 +147,7 @@ impl Cache {
     }
 }
 
-/// Test the `bit` of the storage. If the storage has not been initialized,
+/// Tests the `bit` of the storage. If the storage has not been initialized,
 /// initializes it with the result of `f()`.
 ///
 /// On its first invocation, it detects the CPU features and caches them in the

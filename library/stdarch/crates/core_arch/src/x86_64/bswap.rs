@@ -5,7 +5,7 @@
 #[cfg(test)]
 use stdsimd_test::assert_instr;
 
-/// Return an integer with the reversed byte order of x
+/// Returns an integer with the reversed byte order of x
 ///
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_bswap64)
 #[inline]

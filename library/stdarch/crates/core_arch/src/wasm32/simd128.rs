@@ -18,8 +18,9 @@ use stdsimd_test::assert_instr;
 use wasm_bindgen_test::wasm_bindgen_test;
 
 types! {
-    /// WASM-specific 128-bit wide SIMD vector type
-    pub struct v128(i32, i32, i32, i32); // NB: internals here are arbitrary
+    /// WASM-specific 128-bit wide SIMD vector type.
+    // N.B., internals here are arbitrary.
+    pub struct v128(i32, i32, i32, i32);
 }
 
 #[allow(non_camel_case_types)]
@@ -144,21 +145,21 @@ extern "C" {
     fn llvm_bitselect(a: i8x16, b: i8x16, c: i8x16) -> i8x16;
 }
 
-/// Load a `v128` vector from the given heap address.
+/// Loads a `v128` vector from the given heap address.
 #[inline]
 #[cfg_attr(test, assert_instr(v128.load))]
 pub unsafe fn v128_load(m: *const v128) -> v128 {
     ptr::read(m)
 }
 
-/// Store a `v128` vector to the given heap address.
+/// Stores a `v128` vector to the given heap address.
 #[inline]
 #[cfg_attr(test, assert_instr(v128.store))]
 pub unsafe fn v128_store(m: *mut v128, a: v128) {
     ptr::write(m, a)
 }
 
-/// Materialize a constant SIMD value from the immediate operands.
+/// Materializes a constant SIMD value from the immediate operands.
 ///
 /// The `v128.const` instruction is encoded with 16 immediate bytes
 /// `imm` which provide the bits of the vector directly.
@@ -215,18 +216,18 @@ pub const fn v128_const(
     }
 }
 
-/// Create vector with identical lanes
+/// Creates a vector with identical lanes.
 ///
-/// Construct a vector with `x` replicated to all 16 lanes.
+/// Constructs a vector with `x` replicated to all 16 lanes.
 #[inline]
 #[cfg_attr(test, assert_instr(i8x16.splat))]
 pub fn i8x16_splat(a: i8) -> v128 {
     unsafe { mem::transmute(i8x16::splat(a)) }
 }
 
-/// Extract lane from a 128-bit vector interpreted as 16 packed i8 numbers.
+/// Extracts a lane from a 128-bit vector interpreted as 16 packed i8 numbers.
 ///
-/// Extract the scalar value of lane specified in the immediate mode operand
+/// Extracts the scalar value of lane specified in the immediate mode operand
 /// `imm` from `a`.
 ///
 /// # Unsafety
@@ -249,9 +250,9 @@ pub unsafe fn i8x16_extract_lane(a: v128, imm: usize) -> i8 {
     simd_extract(a.as_i8x16(), imm as u32)
 }
 
-/// Replace a lane from a 128-bit vector interpreted as 16 packed i8 numbers.
+/// Replaces a lane from a 128-bit vector interpreted as 16 packed i8 numbers.
 ///
-/// Replace the scalar value of lane specified in the immediate mode operand
+/// Replaces the scalar value of lane specified in the immediate mode operand
 /// `imm` with `a`.
 ///
 /// # Unsafety
@@ -265,7 +266,7 @@ pub unsafe fn i8x16_replace_lane(a: v128, imm: usize, val: i8) -> v128 {
     mem::transmute(simd_insert(a.as_i8x16(), imm as u32, val))
 }
 
-/// Create vector with identical lanes
+/// Creates a vector with identical lanes.
 ///
 /// Construct a vector with `x` replicated to all 8 lanes.
 #[inline]
@@ -274,9 +275,9 @@ pub fn i16x8_splat(a: i16) -> v128 {
     unsafe { mem::transmute(i16x8::splat(a)) }
 }
 
-/// Extract lane from a 128-bit vector interpreted as 8 packed i16 numbers.
+/// Extracts a lane from a 128-bit vector interpreted as 8 packed i16 numbers.
 ///
-/// Extract the scalar value of lane specified in the immediate mode operand
+/// Extracts a the scalar value of lane specified in the immediate mode operand
 /// `imm` from `a`.
 ///
 /// # Unsafety
@@ -299,9 +300,9 @@ pub unsafe fn i16x8_extract_lane(a: v128, imm: usize) -> i16 {
     simd_extract(a.as_i16x8(), imm as u32)
 }
 
-/// Replace a lane from a 128-bit vector interpreted as 8 packed i16 numbers.
+/// Replaces a lane from a 128-bit vector interpreted as 8 packed i16 numbers.
 ///
-/// Replace the scalar value of lane specified in the immediate mode operand
+/// Replaces the scalar value of lane specified in the immediate mode operand
 /// `imm` with `a`.
 ///
 /// # Unsafety
@@ -315,18 +316,18 @@ pub unsafe fn i16x8_replace_lane(a: v128, imm: usize, val: i16) -> v128 {
     mem::transmute(simd_insert(a.as_i16x8(), imm as u32, val))
 }
 
-/// Create vector with identical lanes
+/// Creates a vector with identical lanes.
 ///
-/// Construct a vector with `x` replicated to all 4 lanes.
+/// Constructs a vector with `x` replicated to all 4 lanes.
 #[inline]
 #[cfg_attr(test, assert_instr(i8x16.splat))]
 pub fn i32x4_splat(a: i32) -> v128 {
     unsafe { mem::transmute(i32x4::splat(a)) }
 }
 
-/// Extract lane from a 128-bit vector interpreted as 4 packed i32 numbers.
+/// Extracts a lane from a 128-bit vector interpreted as 4 packed i32 numbers.
 ///
-/// Extract the scalar value of lane specified in the immediate mode operand
+/// Extracts the scalar value of lane specified in the immediate mode operand
 /// `imm` from `a`.
 ///
 /// # Unsafety
@@ -340,9 +341,9 @@ pub unsafe fn i32x4_extract_lane(a: v128, imm: usize) -> i32 {
     simd_extract(a.as_i32x4(), imm as u32)
 }
 
-/// Replace a lane from a 128-bit vector interpreted as 4 packed i32 numbers.
+/// Replaces a lane from a 128-bit vector interpreted as 4 packed i32 numbers.
 ///
-/// Replace the scalar value of lane specified in the immediate mode operand
+/// Replaces the scalar value of lane specified in the immediate mode operand
 /// `imm` with `a`.
 ///
 /// # Unsafety
@@ -356,7 +357,7 @@ pub unsafe fn i32x4_replace_lane(a: v128, imm: usize, val: i32) -> v128 {
     mem::transmute(simd_insert(a.as_i32x4(), imm as u32, val))
 }
 
-/// Create vector with identical lanes
+/// Creates a vector with identical lanes.
 ///
 /// Construct a vector with `x` replicated to all 2 lanes.
 #[inline]
@@ -365,9 +366,9 @@ pub fn i64x2_splat(a: i64) -> v128 {
     unsafe { mem::transmute(i64x2::splat(a)) }
 }
 
-/// Extract lane from a 128-bit vector interpreted as 2 packed i64 numbers.
+/// Extracts a lane from a 128-bit vector interpreted as 2 packed i64 numbers.
 ///
-/// Extract the scalar value of lane specified in the immediate mode operand
+/// Extracts the scalar value of lane specified in the immediate mode operand
 /// `imm` from `a`.
 ///
 /// # Unsafety
@@ -381,9 +382,9 @@ pub unsafe fn i64x2_extract_lane(a: v128, imm: usize) -> i64 {
     simd_extract(a.as_i64x2(), imm as u32)
 }
 
-/// Replace a lane from a 128-bit vector interpreted as 2 packed i64 numbers.
+/// Replaces a lane from a 128-bit vector interpreted as 2 packed i64 numbers.
 ///
-/// Replace the scalar value of lane specified in the immediate mode operand
+/// Replaces the scalar value of lane specified in the immediate mode operand
 /// `imm` with `a`.
 ///
 /// # Unsafety
@@ -397,18 +398,18 @@ pub unsafe fn i64x2_replace_lane(a: v128, imm: usize, val: i64) -> v128 {
     mem::transmute(simd_insert(a.as_i64x2(), imm as u32, val))
 }
 
-/// Create vector with identical lanes
+/// Creates a vector with identical lanes.
 ///
-/// Construct a vector with `x` replicated to all 4 lanes.
+/// Constructs a vector with `x` replicated to all 4 lanes.
 #[inline]
 #[cfg_attr(test, assert_instr(i8x16.splat))]
 pub fn f32x4_splat(a: f32) -> v128 {
     unsafe { mem::transmute(f32x4::splat(a)) }
 }
 
-/// Extract lane from a 128-bit vector interpreted as 4 packed f32 numbers.
+/// Extracts a lane from a 128-bit vector interpreted as 4 packed f32 numbers.
 ///
-/// Extract the scalar value of lane specified in the immediate mode operand
+/// Extracts the scalar value of lane specified in the immediate mode operand
 /// `imm` from `a`.
 ///
 /// # Unsafety
@@ -422,9 +423,9 @@ pub unsafe fn f32x4_extract_lane(a: v128, imm: usize) -> f32 {
     simd_extract(a.as_f32x4(), imm as u32)
 }
 
-/// Replace a lane from a 128-bit vector interpreted as 4 packed f32 numbers.
+/// Replaces a lane from a 128-bit vector interpreted as 4 packed f32 numbers.
 ///
-/// Replace the scalar value of lane specified in the immediate mode operand
+/// Replaces the scalar value of lane specified in the immediate mode operand
 /// `imm` with `a`.
 ///
 /// # Unsafety
@@ -438,18 +439,18 @@ pub unsafe fn f32x4_replace_lane(a: v128, imm: usize, val: f32) -> v128 {
     mem::transmute(simd_insert(a.as_f32x4(), imm as u32, val))
 }
 
-/// Create vector with identical lanes
+/// Creates a vector with identical lanes.
 ///
-/// Construct a vector with `x` replicated to all 2 lanes.
+/// Constructs a vector with `x` replicated to all 2 lanes.
 #[inline]
 #[cfg_attr(test, assert_instr(i8x16.splat))]
 pub fn f64x2_splat(a: f64) -> v128 {
     unsafe { mem::transmute(f64x2::splat(a)) }
 }
 
-/// Extract lane from a 128-bit vector interpreted as 2 packed f64 numbers.
+/// Extracts lane from a 128-bit vector interpreted as 2 packed f64 numbers.
 ///
-/// Extract the scalar value of lane specified in the immediate mode operand
+/// Extracts the scalar value of lane specified in the immediate mode operand
 /// `imm` from `a`.
 ///
 /// # Unsafety
@@ -463,9 +464,9 @@ pub unsafe fn f64x2_extract_lane(a: v128, imm: usize) -> f64 {
     simd_extract(a.as_f64x2(), imm as u32)
 }
 
-/// Replace a lane from a 128-bit vector interpreted as 2 packed f64 numbers.
+/// Replaces a lane from a 128-bit vector interpreted as 2 packed f64 numbers.
 ///
-/// Replace the scalar value of lane specified in the immediate mode operand
+/// Replaces the scalar value of lane specified in the immediate mode operand
 /// `imm` with `a`.
 ///
 /// # Unsafety

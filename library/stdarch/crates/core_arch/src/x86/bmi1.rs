@@ -50,7 +50,7 @@ pub unsafe fn _andn_u32(a: u32, b: u32) -> u32 {
     !a & b
 }
 
-/// Extract lowest set isolated bit.
+/// Extracts lowest set isolated bit.
 ///
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_blsi_u32)
 #[inline]
@@ -61,7 +61,7 @@ pub unsafe fn _blsi_u32(x: u32) -> u32 {
     x & x.wrapping_neg()
 }
 
-/// Get mask up to lowest set bit.
+/// Gets mask up to lowest set bit.
 ///
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_blsmsk_u32)
 #[inline]

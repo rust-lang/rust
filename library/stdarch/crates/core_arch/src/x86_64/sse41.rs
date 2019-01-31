@@ -7,7 +7,7 @@ use mem;
 #[cfg(test)]
 use stdsimd_test::assert_instr;
 
-/// Extract an 64-bit integer from `a` selected with `imm8`
+/// Extracts an 64-bit integer from `a` selected with `imm8`
 ///
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_extract_epi64)
 #[inline]
@@ -20,7 +20,7 @@ pub unsafe fn _mm_extract_epi64(a: __m128i, imm8: i32) -> i64 {
     simd_extract(a.as_i64x2(), imm8)
 }
 
-/// Return a copy of `a` with the 64-bit integer from `i` inserted at a
+/// Returns a copy of `a` with the 64-bit integer from `i` inserted at a
 /// location specified by `imm8`.
 ///
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_insert_epi64)

@@ -16,7 +16,7 @@ extern "unadjusted" {
 use stdsimd_test::assert_instr;
 
 /// Read a hardware generated 64-bit random value and store the result in val.
-/// Return 1 if a random value was generated, and 0 otherwise.
+/// Returns 1 if a random value was generated, and 0 otherwise.
 ///
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_rdrand64_step)
 #[inline]

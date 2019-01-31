@@ -20,7 +20,7 @@ extern "unadjusted" {
 use stdsimd_test::assert_instr;
 
 /// Read a hardware generated 16-bit random value and store the result in val.
-/// Return 1 if a random value was generated, and 0 otherwise.
+/// Returns 1 if a random value was generated, and 0 otherwise.
 ///
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_rdrand16_step)
 #[inline]
@@ -34,7 +34,7 @@ pub unsafe fn _rdrand16_step(val: &mut u16) -> i32 {
 }
 
 /// Read a hardware generated 32-bit random value and store the result in val.
-/// Return 1 if a random value was generated, and 0 otherwise.
+/// Returns 1 if a random value was generated, and 0 otherwise.
 ///
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_rdrand32_step)
 #[inline]

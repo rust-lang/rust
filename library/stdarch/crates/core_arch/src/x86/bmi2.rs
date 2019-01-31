@@ -31,7 +31,7 @@ pub unsafe fn _mulx_u32(a: u32, b: u32, hi: &mut u32) -> u32 {
     result as u32
 }
 
-/// Zero higher bits of `a` >= `index`.
+/// Zeroes higher bits of `a` >= `index`.
 ///
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_bzhi_u32)
 #[inline]
