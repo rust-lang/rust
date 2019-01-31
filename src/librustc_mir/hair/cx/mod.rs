@@ -6,7 +6,7 @@ use crate::hair::*;
 use crate::hair::util::UserAnnotatedTyHelpers;
 
 use rustc_data_structures::indexed_vec::Idx;
-use rustc::hir::def_id::{DefId, LOCAL_CRATE};
+use rustc::hir::def_id::DefId;
 use rustc::hir::Node;
 use rustc::middle::region;
 use rustc::infer::InferCtxt;
@@ -76,11 +76,10 @@ impl<'a, 'gcx, 'tcx> Cx<'a, 'gcx, 'tcx> {
         // Constants always need overflow checks.
         check_overflow |= constness == hir::Constness::Const;
 
-        let lint_level = lint_level_for_hir_id(tcx, src_id);
         Cx {
             tcx,
             infcx,
-            root_lint_level: lint_level,
+            root_lint_level: src_id,
             param_env: tcx.param_env(src_def_id),
             identity_substs: InternalSubsts::identity_for_item(tcx.global_tcx(), src_def_id),
             region_scope_tree: tcx.region_scope_tree(src_def_id),
@@ -197,18 +196,6 @@ impl<'a, 'gcx, 'tcx> Cx<'a, 'gcx, 'tcx> {
         ty.needs_drop(self.tcx.global_tcx(), param_env)
     }
 
-    fn lint_level_of(&self, hir_id: hir::HirId) -> LintLevel {
-        let has_lint_level = self.tcx.dep_graph.with_ignore(|| {
-            self.tcx.lint_levels(LOCAL_CRATE).lint_level_set(hir_id).is_some()
-        });
-
-        if has_lint_level {
-            LintLevel::Explicit(hir_id)
-        } else {
-            LintLevel::Inherited
-        }
-    }
-
     pub fn tcx(&self) -> TyCtxt<'a, 'gcx, 'tcx> {
         self.tcx
     }
@@ -234,30 +221,6 @@ impl UserAnnotatedTyHelpers<'gcx, 'tcx> for Cx<'_, 'gcx, 'tcx> {
     fn tables(&self) -> &ty::TypeckTables<'tcx> {
         self.tables()
     }
-}
-
-fn lint_level_for_hir_id(tcx: TyCtxt<'_, '_, '_>, mut id: hir::HirId) -> hir::HirId {
-    // Right now we insert a `with_ignore` node in the dep graph here to
-    // ignore the fact that `lint_levels` below depends on the entire crate.
-    // For now this'll prevent false positives of recompiling too much when
-    // anything changes.
-    //
-    // Once red/green incremental compilation lands we should be able to
-    // remove this because while the crate changes often the lint level map
-    // will change rarely.
-    tcx.dep_graph.with_ignore(|| {
-        let sets = tcx.lint_levels(LOCAL_CRATE);
-        loop {
-            if sets.lint_level_set(id).is_some() {
-                return id
-            }
-            let next = tcx.hir().get_parent_node_by_hir_id(id);
-            if next == id {
-                bug!("lint traversal reached the root of the crate");
-            }
-            id = next;
-        }
-    })
 }
 
 mod block;
