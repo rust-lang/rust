@@ -109,6 +109,13 @@ mod tests {
 
     use super::*;
 
+    // Good first issue (although a slightly chellegning one):
+    //
+    // * Pick a random test from here
+    //   https://github.com/intellij-rust/intellij-rust/blob/c4e9feee4ad46e7953b1948c112533360b6087bb/src/test/kotlin/org/rust/lang/core/macros/RsMacroExpansionTest.kt
+    // * Port the test to rust and add it to this module
+    // * Make it pass :-)
+
     #[test]
     fn test_convert_tt() {
         let macro_definition = r#"
