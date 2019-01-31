@@ -1023,9 +1023,9 @@ dependencies = [
 name = "ra_mbe"
 version = "0.1.0"
 dependencies = [
+ "ra_syntax 0.1.0",
  "ra_tt 0.1.0",
  "rustc-hash 1.0.1 (registry+https://github.com/rust-lang/crates.io-index)",
- "smol_str 0.1.9 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
 
 [[package]]
@@ -1058,7 +1058,6 @@ dependencies = [
 name = "ra_tt"
 version = "0.1.0"
 dependencies = [
- "rustc-hash 1.0.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "smol_str 0.1.9 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
 

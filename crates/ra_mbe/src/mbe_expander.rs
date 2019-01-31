@@ -1,5 +1,5 @@
 use rustc_hash::FxHashMap;
-use smol_str::SmolStr;
+use ra_syntax::SmolStr;
 
 use crate::{self as mbe, tt_cursor::TtCursor};
 

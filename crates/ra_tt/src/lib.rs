@@ -1,3 +1,7 @@
+/// `tt` crate defines a `TokenTree` datastructure: this is the interface (both
+/// input and output) of macros. It closely mirrors `proc_macro` crate's
+/// `TokenTree`.
+
 macro_rules! impl_froms {
     ($e:ident: $($v:ident), *) => {
         $(
