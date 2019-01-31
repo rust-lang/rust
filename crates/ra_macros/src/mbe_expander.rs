@@ -8,7 +8,7 @@ pub fn exapnd(rules: &mbe::MacroRules, input: &tt::Subtree) -> Option<tt::Subtre
 }
 
 fn expand_rule(rule: &mbe::Rule, input: &tt::Subtree) -> Option<tt::Subtree> {
-    let bidings = match_lhs(&rule.lhs, input)?;
+    let bindings = match_lhs(&rule.lhs, input)?;
     expand_rhs(&rule.rhs, &bindings)
 }
 
@@ -17,10 +17,10 @@ struct Bindings {
     inner: FxHashMap<SmolStr, tt::TokenTree>,
 }
 
-fn match_lhs(pattern: &mbe::TokenTree, input: &tt::Subtree) -> Option<Bindings> {
+fn match_lhs(pattern: &mbe::Subtree, input: &tt::Subtree) -> Option<Bindings> {
     Some(Bindings::default())
 }
 
-fn expand_rhs(template: &mbe::TokenTree, bindings: &Bindings) -> Option<tt::Subtree> {
+fn expand_rhs(template: &mbe::Subtree, bindings: &Bindings) -> Option<tt::Subtree> {
     None
 }
