@@ -618,7 +618,7 @@ pub fn handle_code_lens(
 
     for runnable in world.analysis().runnables(file_id)? {
         let title = match &runnable.kind {
-            RunnableKind::Test { name: _ } | RunnableKind::TestMod { path: _ } => Some("Run Test"),
+            RunnableKind::Test { name: _ } | RunnableKind::TestMod { path: _ } => Some("▶️Run Test"),
             RunnableKind::Bench { name: _ } => Some("Run Bench"),
             _ => None,
         };
