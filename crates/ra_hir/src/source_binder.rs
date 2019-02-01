@@ -14,7 +14,7 @@ use ra_syntax::{
 
 use crate::{
     HirDatabase, Function, ModuleDef, Struct, Enum,
-    AsName, Module, HirFileId, Crate,
+    AsName, Module, HirFileId, Crate, Trait,
     ids::{LocationCtx, SourceFileItemId},
 };
 
@@ -148,6 +148,19 @@ pub fn enum_from_module(db: &impl HirDatabase, module: Module, enum_def: &ast::E
     let ctx = LocationCtx::new(db, module, file_id);
     Enum {
         id: ctx.to_def(enum_def),
+    }
+}
+
+pub fn trait_from_module(
+    db: &impl HirDatabase,
+    module: Module,
+    trait_def: &ast::TraitDef,
+) -> Trait {
+    let (file_id, _) = module.definition_source(db);
+    let file_id = file_id.into();
+    let ctx = LocationCtx::new(db, module, file_id);
+    Trait {
+        id: ctx.to_def(trait_def),
     }
 }
 
