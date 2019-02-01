@@ -1,16 +1,17 @@
 /// The expansion from a test function to the appropriate test struct for libtest.
 /// Ideally, this code would be in libtest but for efficiency and error messages it lives here.
 
+use std::iter;
+
+use syntax_pos::{DUMMY_SP, Span};
+use syntax::attr;
+use syntax::ast;
 use syntax::ext::base::*;
 use syntax::ext::build::AstBuilder;
 use syntax::ext::hygiene::{self, Mark, SyntaxContext};
-use syntax::attr;
-use syntax::ast;
 use syntax::print::pprust;
-use syntax::symbol::Symbol;
-use syntax_pos::{DUMMY_SP, Span};
 use syntax::source_map::{ExpnInfo, MacroAttribute};
-use std::iter;
+use syntax::symbol::Symbol;
 
 pub fn expand_test(
     cx: &mut ExtCtxt<'_>,

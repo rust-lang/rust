@@ -1,12 +1,12 @@
 //! See docs in build/expr/mod.rs
 
-use crate::build::expr::category::{Category, RvalueFunc};
-use crate::build::{BlockAnd, BlockAndExtension, BlockFrame, Builder};
-use crate::hair::*;
+use rustc_target::spec::abi::Abi;
 use rustc::mir::*;
 use rustc::ty;
 
-use rustc_target::spec::abi::Abi;
+use crate::build::expr::category::{Category, RvalueFunc};
+use crate::build::{BlockAnd, BlockAndExtension, BlockFrame, Builder};
+use crate::hair::*;
 
 impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
     /// Compile `expr`, storing the result into `destination`, which

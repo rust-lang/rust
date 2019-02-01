@@ -1,12 +1,11 @@
+use rustc_apfloat::Float;
+use rustc_apfloat::ieee::{Double, Single};
 use rustc::mir;
+use rustc::mir::interpret::{EvalResult, Scalar};
 use rustc::ty::{self, layout::{Size, TyLayout}};
 use syntax::ast::FloatTy;
-use rustc_apfloat::ieee::{Double, Single};
-use rustc_apfloat::Float;
-use rustc::mir::interpret::{EvalResult, Scalar};
 
 use super::{EvalContext, PlaceTy, Immediate, Machine, ImmTy};
-
 
 impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> {
     /// Applies the binary operation `op` to the two operands and writes a tuple of the result

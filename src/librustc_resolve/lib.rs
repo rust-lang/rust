@@ -10,61 +10,6 @@
 
 #![deny(rust_2018_idioms)]
 
-pub use rustc::hir::def::{Namespace, PerNS};
-
-use GenericParameters::*;
-use RibKind::*;
-
-use rustc::hir::map::{Definitions, DefCollector};
-use rustc::hir::{self, PrimTy, Bool, Char, Float, Int, Uint, Str};
-use rustc::middle::cstore::CrateStore;
-use rustc::session::Session;
-use rustc::lint;
-use rustc::hir::def::*;
-use rustc::hir::def::Namespace::*;
-use rustc::hir::def_id::{CRATE_DEF_INDEX, LOCAL_CRATE, DefId};
-use rustc::hir::{Freevar, FreevarMap, TraitCandidate, TraitMap, GlobMap};
-use rustc::ty::{self, DefIdTree};
-use rustc::util::nodemap::{NodeMap, NodeSet, FxHashMap, FxHashSet, DefIdMap};
-use rustc::{bug, span_bug};
-
-use rustc_metadata::creader::CrateLoader;
-use rustc_metadata::cstore::CStore;
-
-use syntax::source_map::SourceMap;
-use syntax::ext::hygiene::{Mark, Transparency, SyntaxContext};
-use syntax::ast::{self, Name, NodeId, Ident, FloatTy, IntTy, UintTy};
-use syntax::ext::base::SyntaxExtension;
-use syntax::ext::base::Determinacy::{self, Determined, Undetermined};
-use syntax::ext::base::MacroKind;
-use syntax::symbol::{Symbol, keywords};
-use syntax::util::lev_distance::find_best_match_for_name;
-
-use syntax::visit::{self, FnKind, Visitor};
-use syntax::attr;
-use syntax::ast::{CRATE_NODE_ID, Arm, IsAsync, BindingMode, Block, Crate, Expr, ExprKind};
-use syntax::ast::{FnDecl, ForeignItem, ForeignItemKind, GenericParamKind, Generics};
-use syntax::ast::{Item, ItemKind, ImplItem, ImplItemKind};
-use syntax::ast::{Label, Local, Mutability, Pat, PatKind, Path};
-use syntax::ast::{QSelf, TraitItemKind, TraitRef, Ty, TyKind};
-use syntax::ptr::P;
-use syntax::{span_err, struct_span_err, unwrap_or, walk_list};
-
-use syntax_pos::{BytePos, Span, DUMMY_SP, MultiSpan};
-use errors::{Applicability, DiagnosticBuilder, DiagnosticId};
-
-use log::debug;
-
-use std::cell::{Cell, RefCell};
-use std::{cmp, fmt, iter, mem, ptr};
-use std::collections::BTreeSet;
-use std::mem::replace;
-use rustc_data_structures::ptr_key::PtrKey;
-use rustc_data_structures::sync::Lrc;
-
-use resolve_imports::{ImportDirective, ImportDirectiveSubclass, NameResolution, ImportResolver};
-use macros::{InvocationData, LegacyBinding, ParentScope};
-
 // N.B., this module needs to be declared first so diagnostics are
 // registered before they are used.
 mod diagnostics;
@@ -73,6 +18,55 @@ mod macros;
 mod check_unused;
 mod build_reduced_graph;
 mod resolve_imports;
+
+use std::{cmp, fmt, iter, mem, ptr};
+use std::cell::{Cell, RefCell};
+use std::collections::BTreeSet;
+use std::mem::replace;
+
+use errors::{Applicability, DiagnosticBuilder, DiagnosticId};
+use log::debug;
+use rustc_data_structures::ptr_key::PtrKey;
+use rustc_data_structures::sync::Lrc;
+use rustc_metadata::creader::CrateLoader;
+use rustc_metadata::cstore::CStore;
+use rustc::{bug, span_bug};
+pub use rustc::hir::def::{Namespace, PerNS};
+use rustc::hir::map::{Definitions, DefCollector};
+use rustc::hir::{self, PrimTy, Bool, Char, Float, Int, Uint, Str};
+use rustc::hir::def::*;
+use rustc::hir::def::Namespace::*;
+use rustc::hir::def_id::{CRATE_DEF_INDEX, LOCAL_CRATE, DefId};
+use rustc::hir::{Freevar, FreevarMap, TraitCandidate, TraitMap, GlobMap};
+use rustc::lint;
+use rustc::middle::cstore::CrateStore;
+use rustc::session::Session;
+use rustc::ty::{self, DefIdTree};
+use rustc::util::nodemap::{NodeMap, NodeSet, FxHashMap, FxHashSet, DefIdMap};
+use syntax_pos::{BytePos, Span, DUMMY_SP, MultiSpan};
+use syntax::{span_err, struct_span_err, unwrap_or, walk_list};
+use syntax::util::lev_distance::find_best_match_for_name;
+use syntax::visit::{self, FnKind, Visitor};
+use syntax::attr;
+use syntax::ast::{self, Name, NodeId, Ident, FloatTy, IntTy, UintTy};
+use syntax::ast::{CRATE_NODE_ID, Arm, IsAsync, BindingMode, Block, Crate, Expr, ExprKind};
+use syntax::ast::{FnDecl, ForeignItem, ForeignItemKind, GenericParamKind, Generics};
+use syntax::ast::{Item, ItemKind, ImplItem, ImplItemKind};
+use syntax::ast::{Label, Local, Mutability, Pat, PatKind, Path};
+use syntax::ast::{QSelf, TraitItemKind, TraitRef, Ty, TyKind};
+use syntax::ext::base::Determinacy::{self, Determined, Undetermined};
+use syntax::ext::base::MacroKind;
+use syntax::ext::base::SyntaxExtension;
+use syntax::ext::hygiene::{Mark, Transparency, SyntaxContext};
+use syntax::ptr::P;
+use syntax::source_map::SourceMap;
+use syntax::symbol::{Symbol, keywords};
+
+use crate::resolve_imports::{NameResolution, ImportDirective, ImportDirectiveSubclass,
+                             ImportResolver};
+use crate::macros::{InvocationData, LegacyBinding, ParentScope};
+use self::GenericParameters::*;
+use self::RibKind::*;
 
 fn is_known_tool(name: Name) -> bool {
     ["clippy", "rustfmt"].contains(&&*name.as_str())

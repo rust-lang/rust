@@ -2,23 +2,16 @@
 //!
 //! [rustc guide]: https://rust-lang.github.io/rustc-guide/hir.html
 
-pub use self::BlockCheckMode::*;
-pub use self::CaptureClause::*;
-pub use self::FunctionRetTy::*;
-pub use self::Mutability::*;
-pub use self::PrimTy::*;
-pub use self::UnOp::*;
-pub use self::UnsafeSource::*;
-
-use crate::hir::def::Def;
-use crate::hir::def_id::{DefId, DefIndex, LocalDefId, CRATE_DEF_INDEX};
-use crate::util::nodemap::{NodeMap, FxHashSet};
-use crate::mir::mono::Linkage;
+use std::collections::{BTreeSet, BTreeMap};
+use std::fmt;
 
 use errors::FatalError;
+use rustc_data_structures::sync::{ParallelIterator, par_iter, Send, Sync};
+use rustc_data_structures::thin_vec::ThinVec;
+use rustc_target::spec::abi::Abi;
+use serialize::{self, Encoder, Encodable, Decoder, Decodable};
 use syntax_pos::{Span, DUMMY_SP, symbol::InternedString};
 use syntax::source_map::Spanned;
-use rustc_target::spec::abi::Abi;
 use syntax::ast::{self, CrateSugar, Ident, Name, NodeId, DUMMY_NODE_ID, AsmDialect};
 use syntax::ast::{Attribute, Label, Lit, StrStyle, FloatTy, IntTy, UintTy};
 use syntax::attr::{InlineAttr, OptimizeAttr};
@@ -27,15 +20,20 @@ use syntax::ptr::P;
 use syntax::symbol::{Symbol, keywords};
 use syntax::tokenstream::TokenStream;
 use syntax::util::parser::ExprPrecedence;
+
+use crate::hir::def::Def;
+use crate::hir::def_id::{DefId, DefIndex, LocalDefId, CRATE_DEF_INDEX};
+use crate::mir::mono::Linkage;
 use crate::ty::AdtKind;
 use crate::ty::query::Providers;
-
-use rustc_data_structures::sync::{ParallelIterator, par_iter, Send, Sync};
-use rustc_data_structures::thin_vec::ThinVec;
-
-use serialize::{self, Encoder, Encodable, Decoder, Decodable};
-use std::collections::{BTreeSet, BTreeMap};
-use std::fmt;
+use crate::util::nodemap::{NodeMap, FxHashSet};
+pub use self::BlockCheckMode::*;
+pub use self::CaptureClause::*;
+pub use self::FunctionRetTy::*;
+pub use self::Mutability::*;
+pub use self::PrimTy::*;
+pub use self::UnOp::*;
+pub use self::UnsafeSource::*;
 
 /// HIR doesn't commit to a concrete storage type and has its own alias for a vector.
 /// It can be `Vec`, `P<[T]>` or potentially `Box<[T]>`, or some other container with similar

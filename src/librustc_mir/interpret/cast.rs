@@ -1,13 +1,12 @@
-use rustc::ty::{self, Ty, TypeAndMut};
-use rustc::ty::layout::{self, TyLayout, Size};
-use syntax::ast::{FloatTy, IntTy, UintTy};
-
+use rustc_apfloat::Float;
 use rustc_apfloat::ieee::{Single, Double};
 use rustc::mir::interpret::{
     Scalar, EvalResult, Pointer, PointerArithmetic, EvalErrorKind, truncate
 };
 use rustc::mir::CastKind;
-use rustc_apfloat::Float;
+use rustc::ty::{self, Ty, TypeAndMut};
+use rustc::ty::layout::{self, TyLayout, Size};
+use syntax::ast::{FloatTy, IntTy, UintTy};
 
 use super::{EvalContext, Machine, PlaceTy, OpTy, ImmTy, Immediate};
 

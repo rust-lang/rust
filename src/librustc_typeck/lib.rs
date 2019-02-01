@@ -77,10 +77,12 @@ This API is completely unstable and subject to change.
 
 #![allow(elided_lifetimes_in_paths)] // WIP
 
-#[macro_use] extern crate log;
-#[macro_use] extern crate syntax;
-
-#[macro_use] extern crate rustc;
+#[macro_use]
+extern crate log;
+#[macro_use]
+extern crate rustc;
+#[macro_use]
+extern crate syntax;
 
 // N.B., this module needs to be declared first so diagnostics are
 // registered before they are used.
@@ -97,6 +99,8 @@ mod impl_wf_check;
 mod namespace;
 mod outlives;
 mod variance;
+
+use std::iter;
 
 use rustc_target::spec::abi::Abi;
 use rustc::hir::{self, Node};
@@ -115,8 +119,6 @@ use rustc::util;
 use rustc::util::profiling::ProfileCategory;
 use syntax_pos::Span;
 use util::common::time;
-
-use std::iter;
 
 pub struct TypeAndSubsts<'tcx> {
     substs: &'tcx Substs<'tcx>,

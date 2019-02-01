@@ -2,6 +2,20 @@
 //! generate the actual methods on tcx which find and execute the provider,
 //! manage the caches, and so forth.
 
+use std::mem;
+use std::ptr;
+use std::collections::hash_map::Entry;
+
+use errors::{Diagnostic, DiagnosticBuilder, FatalError, Level};
+use rustc_data_structures::fx::{FxHashMap};
+use rustc_data_structures::sync::{Lrc, Lock};
+use rustc_data_structures::thin_vec::ThinVec;
+#[cfg(not(parallel_compiler))]
+use rustc_data_structures::cold_path;
+
+use syntax_pos::Span;
+use syntax::source_map::DUMMY_SP;
+
 use crate::dep_graph::{DepNodeIndex, DepNode, DepKind, SerializedDepNodeIndex};
 use crate::ty::tls;
 use crate::ty::{TyCtxt};
@@ -9,23 +23,7 @@ use crate::ty::query::Query;
 use crate::ty::query::config::{QueryConfig, QueryDescription};
 use crate::ty::query::job::{QueryJob, QueryResult, QueryInfo};
 use crate::ty::item_path;
-
 use crate::util::common::{profq_msg, ProfileQueriesMsg, QueryMsg};
-
-use errors::DiagnosticBuilder;
-use errors::Level;
-use errors::Diagnostic;
-use errors::FatalError;
-use rustc_data_structures::fx::{FxHashMap};
-use rustc_data_structures::sync::{Lrc, Lock};
-use rustc_data_structures::thin_vec::ThinVec;
-#[cfg(not(parallel_compiler))]
-use rustc_data_structures::cold_path;
-use std::mem;
-use std::ptr;
-use std::collections::hash_map::Entry;
-use syntax_pos::Span;
-use syntax::source_map::DUMMY_SP;
 
 pub struct QueryCache<'tcx, D: QueryConfig<'tcx> + ?Sized> {
     pub(super) results: FxHashMap<D::Key, QueryValue<D::Value>>,

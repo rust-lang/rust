@@ -1,8 +1,6 @@
 //! Support code for rustdoc and external tools . You really don't
 //! want to be using this unless you need to.
 
-use super::*;
-
 use std::collections::hash_map::Entry;
 use std::collections::VecDeque;
 
@@ -12,6 +10,8 @@ use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 
 use crate::ty::fold::TypeFolder;
 use crate::ty::{Region, RegionVid};
+
+use super::*;
 
 // FIXME(twk): this is obviously not nice to duplicate like that
 #[derive(Eq, PartialEq, Hash, Copy, Clone, Debug)]

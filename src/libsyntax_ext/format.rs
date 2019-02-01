@@ -1,11 +1,10 @@
-use ArgumentType::*;
-use Position::*;
+use std::borrow::Cow;
+use std::collections::hash_map::Entry;
 
+use errors::{Applicability, DiagnosticBuilder};
 use fmt_macros as parse;
-
-use errors::DiagnosticBuilder;
-use errors::Applicability;
-
+use rustc_data_structures::fx::{FxHashMap, FxHashSet};
+use syntax_pos::{MultiSpan, Span, DUMMY_SP};
 use syntax::ast;
 use syntax::ext::base::{self, *};
 use syntax::ext::build::AstBuilder;
@@ -14,11 +13,9 @@ use syntax::parse::token;
 use syntax::ptr::P;
 use syntax::symbol::Symbol;
 use syntax::tokenstream;
-use syntax_pos::{MultiSpan, Span, DUMMY_SP};
 
-use rustc_data_structures::fx::{FxHashMap, FxHashSet};
-use std::borrow::Cow;
-use std::collections::hash_map::Entry;
+use ArgumentType::*;
+use Position::*;
 
 #[derive(PartialEq)]
 enum ArgumentType {

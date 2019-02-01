@@ -1,3 +1,18 @@
+use std::mem;
+
+use errors::Diagnostic;
+use rustc_data_structures::fx::FxHashMap;
+use rustc_data_structures::thin_vec::ThinVec;
+use rustc_data_structures::sync::{Lrc, Lock, HashMapExt, Once};
+use rustc_data_structures::indexed_vec::{IndexVec, Idx};
+use rustc_serialize::{Decodable, Decoder, Encodable, Encoder, opaque,
+                      SpecializedDecoder, SpecializedEncoder,
+                      UseSpecializedDecodable, UseSpecializedEncodable};
+use syntax_pos::{BytePos, Span, DUMMY_SP, SourceFile};
+use syntax_pos::hygiene::{Mark, SyntaxContext, ExpnInfo};
+use syntax::ast::NodeId;
+use syntax::source_map::{SourceMap, StableSourceFileId};
+
 use crate::dep_graph::{DepNodeIndex, SerializedDepNodeIndex};
 use crate::hir;
 use crate::hir::def_id::{CrateNum, DefIndex, DefId, LocalDefId, LOCAL_CRATE};
@@ -5,25 +20,11 @@ use crate::hir::map::definitions::DefPathHash;
 use crate::ich::{CachingSourceMapView, Fingerprint};
 use crate::mir::{self, interpret};
 use crate::mir::interpret::{AllocDecodingSession, AllocDecodingState};
-use crate::rustc_serialize::{Decodable, Decoder, Encodable, Encoder, opaque,
-                      SpecializedDecoder, SpecializedEncoder,
-                      UseSpecializedDecodable, UseSpecializedEncodable};
 use crate::session::{CrateDisambiguator, Session};
 use crate::ty;
 use crate::ty::codec::{self as ty_codec, TyDecoder, TyEncoder};
 use crate::ty::context::TyCtxt;
 use crate::util::common::time;
-
-use errors::Diagnostic;
-use rustc_data_structures::fx::FxHashMap;
-use rustc_data_structures::thin_vec::ThinVec;
-use rustc_data_structures::sync::{Lrc, Lock, HashMapExt, Once};
-use rustc_data_structures::indexed_vec::{IndexVec, Idx};
-use std::mem;
-use syntax::ast::NodeId;
-use syntax::source_map::{SourceMap, StableSourceFileId};
-use syntax_pos::{BytePos, Span, DUMMY_SP, SourceFile};
-use syntax_pos::hygiene::{Mark, SyntaxContext, ExpnInfo};
 
 const TAG_FILE_FOOTER: u128 = 0xC0FFEE_C0FFEE_C0FFEE_C0FFEE_C0FFEE;
 

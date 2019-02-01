@@ -15,23 +15,22 @@ use std::fs;
 use std::path::Path;
 use std::sync::{mpsc, Arc};
 
-use rustc_data_structures::owning_ref::OwningRef;
 use flate2::Compression;
 use flate2::write::DeflateEncoder;
+use rustc_data_structures::owning_ref::OwningRef;
+pub use rustc_data_structures::sync::MetadataRef;
 
-use syntax::symbol::Symbol;
+use rustc_target::spec::Target;
+use rustc::dep_graph::DepGraph;
 use rustc::hir::def_id::LOCAL_CRATE;
+use rustc::middle::cstore::{EncodedMetadata, MetadataLoader};
 use rustc::session::{Session, CompileIncomplete};
 use rustc::session::config::{CrateType, OutputFilenames, PrintRequest};
 use rustc::ty::TyCtxt;
 use rustc::ty::query::Providers;
-use rustc::middle::cstore::EncodedMetadata;
-use rustc::middle::cstore::MetadataLoader;
-use rustc::dep_graph::DepGraph;
-use rustc_target::spec::Target;
-use crate::link::out_filename;
+use syntax::symbol::Symbol;
 
-pub use rustc_data_structures::sync::MetadataRef;
+use crate::link::out_filename;
 
 pub trait CodegenBackend {
     fn init(&self, _sess: &Session) {}

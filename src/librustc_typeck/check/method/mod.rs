@@ -6,12 +6,6 @@ mod confirm;
 pub mod probe;
 mod suggest;
 
-pub use self::MethodError::*;
-pub use self::CandidateSource::*;
-pub use self::suggest::{SelfSource, TraitInfo};
-
-use crate::check::FnCtxt;
-use crate::namespace::Namespace;
 use errors::{Applicability, DiagnosticBuilder};
 use rustc_data_structures::sync::Lrc;
 use rustc::hir;
@@ -27,7 +21,12 @@ use syntax::ast;
 use syntax_pos::Span;
 
 use crate::{check_type_alias_enum_variants_enabled};
+use crate::check::FnCtxt;
+use crate::namespace::Namespace;
+pub use self::MethodError::*;
+pub use self::CandidateSource::*;
 use self::probe::{IsSuggestion, ProbeScope};
+pub use self::suggest::{SelfSource, TraitInfo};
 
 pub fn provide(providers: &mut ty::query::Providers<'_>) {
     suggest::provide(providers);

@@ -1,20 +1,17 @@
-use crate::{AmbiguityError, AmbiguityKind, AmbiguityErrorMisc};
-use crate::{CrateLint, Resolver, ResolutionError, ScopeSet, Weak};
-use crate::{Module, ModuleKind, NameBinding, NameBindingKind, PathResult, Segment, ToNameBinding};
-use crate::{is_known_tool, resolve_error};
-use crate::ModuleOrUniformRoot;
-use crate::Namespace::*;
-use crate::build_reduced_graph::{BuildReducedGraphVisitor, IsMacroExport};
-use crate::resolve_imports::ImportResolver;
+use std::cell::Cell;
+use std::{mem, ptr};
+
+use errors::{Applicability, DiagnosticBuilder};
+use rustc_data_structures::sync::Lrc;
+use rustc::{ty, lint};
+use rustc::{bug, span_bug};
 use rustc::hir::def_id::{DefId, CRATE_DEF_INDEX, DefIndex,
                          CrateNum, DefIndexAddressSpace};
 use rustc::hir::def::{Def, NonMacroAttrKind};
 use rustc::hir::map::{self, DefCollector};
-use rustc::{ty, lint};
-use rustc::{bug, span_bug};
+use syntax_pos::{Span, DUMMY_SP};
 use syntax::ast::{self, Ident};
 use syntax::attr;
-use syntax::errors::DiagnosticBuilder;
 use syntax::ext::base::{self, Determinacy};
 use syntax::ext::base::{MacroKind, SyntaxExtension};
 use syntax::ext::expand::{AstFragment, Invocation, InvocationKind};
@@ -26,12 +23,15 @@ use syntax::feature_gate::{
 use syntax::symbol::{Symbol, keywords};
 use syntax::visit::Visitor;
 use syntax::util::lev_distance::find_best_match_for_name;
-use syntax_pos::{Span, DUMMY_SP};
-use errors::Applicability;
 
-use std::cell::Cell;
-use std::{mem, ptr};
-use rustc_data_structures::sync::Lrc;
+use crate::{AmbiguityError, AmbiguityKind, AmbiguityErrorMisc};
+use crate::{CrateLint, Resolver, ResolutionError, ScopeSet, Weak};
+use crate::{Module, ModuleKind, NameBinding, NameBindingKind, PathResult, Segment, ToNameBinding};
+use crate::{is_known_tool, resolve_error};
+use crate::ModuleOrUniformRoot;
+use crate::Namespace::*;
+use crate::build_reduced_graph::{BuildReducedGraphVisitor, IsMacroExport};
+use crate::resolve_imports::ImportResolver;
 
 #[derive(Clone, Debug)]
 pub struct InvocationData<'a> {

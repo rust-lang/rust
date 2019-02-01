@@ -50,23 +50,25 @@
 //! sort of a minor point so I've opted to leave it for later -- after all,
 //! we may want to adjust precisely when coercions occur.
 
-use crate::check::{FnCtxt, Needs};
+use std::ops::Deref;
+
 use errors::DiagnosticBuilder;
 use rustc::hir;
 use rustc::hir::def_id::DefId;
 use rustc::infer::{Coercion, InferResult, InferOk};
 use rustc::infer::type_variable::TypeVariableOrigin;
 use rustc::traits::{self, ObligationCause, ObligationCauseCode};
-use rustc::ty::adjustment::{Adjustment, Adjust, AllowTwoPhase, AutoBorrow, AutoBorrowMutability};
 use rustc::ty::{self, TypeAndMut, Ty, ClosureSubsts};
-use rustc::ty::fold::TypeFoldable;
+use rustc::ty::adjustment::{Adjustment, Adjust, AllowTwoPhase, AutoBorrow, AutoBorrowMutability};
 use rustc::ty::error::TypeError;
+use rustc::ty::fold::TypeFoldable;
 use rustc::ty::relate::RelateResult;
 use smallvec::{smallvec, SmallVec};
-use std::ops::Deref;
 use syntax::feature_gate;
 use syntax::ptr::P;
 use syntax_pos;
+
+use crate::check::{FnCtxt, Needs};
 
 struct Coerce<'a, 'gcx: 'a + 'tcx, 'tcx: 'a> {
     fcx: &'a FnCtxt<'a, 'gcx, 'tcx>,

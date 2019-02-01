@@ -1,11 +1,3 @@
-use crate::infer::InferCtxt;
-use crate::infer::lexical_region_resolve::RegionResolutionError;
-use crate::infer::lexical_region_resolve::RegionResolutionError::*;
-use crate::ty::{self, TyCtxt};
-use crate::util::common::ErrorReported;
-use errors::DiagnosticBuilder;
-use syntax::source_map::Span;
-
 mod different_lifetimes;
 mod find_anon_type;
 mod named_anon_conflict;
@@ -13,6 +5,15 @@ mod placeholder_error;
 mod outlives_closure;
 mod static_impl_trait;
 mod util;
+
+use errors::DiagnosticBuilder;
+use syntax::source_map::Span;
+
+use crate::infer::InferCtxt;
+use crate::infer::lexical_region_resolve::RegionResolutionError;
+use crate::infer::lexical_region_resolve::RegionResolutionError::*;
+use crate::ty::{self, TyCtxt};
+use crate::util::common::ErrorReported;
 
 impl<'cx, 'gcx, 'tcx> InferCtxt<'cx, 'gcx, 'tcx> {
     pub fn try_report_nice_region_error(&self, error: &RegionResolutionError<'tcx>) -> bool {

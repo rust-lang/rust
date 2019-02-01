@@ -1,22 +1,22 @@
-use super::symbol_export;
-use super::command::Command;
-use super::archive;
-
-use rustc_data_structures::fx::FxHashMap;
 use std::ffi::{OsStr, OsString};
 use std::fs::{self, File};
 use std::io::prelude::*;
 use std::io::{self, BufWriter};
 use std::path::{Path, PathBuf};
 
+use rustc_data_structures::fx::FxHashMap;
+use rustc_target::spec::{LinkerFlavor, LldFlavor};
 use rustc::hir::def_id::{LOCAL_CRATE, CrateNum};
 use rustc::middle::dependency_format::Linkage;
 use rustc::session::Session;
 use rustc::session::config::{self, CrateType, OptLevel, DebugInfo,
                              LinkerPluginLto, Lto};
 use rustc::ty::TyCtxt;
-use rustc_target::spec::{LinkerFlavor, LldFlavor};
 use serialize::{json, Encoder};
+
+use super::symbol_export;
+use super::command::Command;
+use super::archive;
 
 /// For all the linkers we support, and information they might
 /// need out of the shared crate context before we get rid of it.

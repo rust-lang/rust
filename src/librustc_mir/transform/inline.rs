@@ -1,23 +1,22 @@
 //! Inlining pass for MIR functions.
 
-use rustc::hir::CodegenFnAttrFlags;
-use rustc::hir::def_id::DefId;
+use std::collections::VecDeque;
+use std::iter;
 
 use rustc_data_structures::bit_set::BitSet;
 use rustc_data_structures::indexed_vec::{Idx, IndexVec};
 
+use syntax::attr;
+use rustc_target::spec::abi::Abi;
+use rustc::hir::CodegenFnAttrFlags;
+use rustc::hir::def_id::DefId;
 use rustc::mir::*;
 use rustc::mir::visit::*;
 use rustc::ty::{self, Instance, InstanceDef, ParamEnv, Ty, TyCtxt};
 use rustc::ty::subst::{Subst,Substs};
 
-use std::collections::VecDeque;
-use std::iter;
 use crate::transform::{MirPass, MirSource};
 use super::simplify::{remove_dead_blocks, CfgSimplifier};
-
-use syntax::attr;
-use rustc_target::spec::abi::Abi;
 
 const DEFAULT_THRESHOLD: usize = 50;
 const HINT_THRESHOLD: usize = 100;

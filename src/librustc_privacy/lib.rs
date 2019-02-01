@@ -29,8 +29,10 @@ use syntax::attr;
 use syntax::symbol::keywords;
 use syntax_pos::Span;
 
-use std::{cmp, fmt, mem};
+use std::cmp;
+use std::fmt;
 use std::marker::PhantomData;
+use std::mem;
 
 mod diagnostics;
 

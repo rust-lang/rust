@@ -1,16 +1,14 @@
-use rustc::mir::interpret::{ConstValue, ErrorHandled};
+use std::fmt;
+
 use rustc::mir;
+use rustc::mir::interpret::{ConstValue, ErrorHandled};
 use rustc::ty;
 use rustc::ty::layout::{self, Align, LayoutOf, TyLayout};
 
 use crate::base;
 use crate::MemFlags;
 use crate::glue;
-
 use crate::traits::*;
-
-use std::fmt;
-
 use super::{FunctionCx, LocalRef};
 use super::place::PlaceRef;
 

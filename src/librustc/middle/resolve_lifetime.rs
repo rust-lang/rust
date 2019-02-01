@@ -5,28 +5,28 @@
 //! used between functions, and they operate in a purely top-down
 //! way. Therefore, we break lifetime name resolution into a separate pass.
 
-use crate::hir::def::Def;
-use crate::hir::def_id::{CrateNum, DefId, LocalDefId, LOCAL_CRATE};
-use crate::hir::map::Map;
-use crate::hir::{GenericArg, GenericParam, ItemLocalId, LifetimeName, Node, ParamName};
-use crate::ty::{self, DefIdTree, GenericParamDefKind, TyCtxt};
-
-use crate::rustc::lint;
-use crate::session::Session;
-use crate::util::nodemap::{DefIdMap, FxHashMap, FxHashSet, NodeMap, NodeSet};
-use errors::{Applicability, DiagnosticBuilder};
-use rustc_data_structures::sync::Lrc;
 use std::borrow::Cow;
 use std::cell::Cell;
 use std::mem::replace;
+
+use errors::{Applicability, DiagnosticBuilder};
+use rustc_data_structures::sync::Lrc;
+use syntax_pos::Span;
 use syntax::ast;
 use syntax::attr;
 use syntax::ptr::P;
 use syntax::symbol::keywords;
-use syntax_pos::Span;
 
+use crate::hir::{self, GenericArg, GenericParam, GenericParamKind, ItemLocalId, LifetimeName,
+                 LifetimeParamKind, Node, ParamName};
+use crate::hir::def::Def;
+use crate::hir::def_id::{CrateNum, DefId, LocalDefId, LOCAL_CRATE};
 use crate::hir::intravisit::{self, NestedVisitorMap, Visitor};
-use crate::hir::{self, GenericParamKind, LifetimeParamKind};
+use crate::hir::map::Map;
+use crate::rustc::lint;
+use crate::session::Session;
+use crate::ty::{self, DefIdTree, GenericParamDefKind, TyCtxt};
+use crate::util::nodemap::{DefIdMap, FxHashMap, FxHashSet, NodeMap, NodeSet};
 
 /// The origin of a named lifetime definition.
 ///

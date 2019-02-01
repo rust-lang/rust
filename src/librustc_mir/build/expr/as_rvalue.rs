@@ -2,15 +2,15 @@
 
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::indexed_vec::Idx;
-
-use crate::build::expr::category::{Category, RvalueFunc};
-use crate::build::{BlockAnd, BlockAndExtension, Builder};
-use crate::hair::*;
 use rustc::middle::region;
 use rustc::mir::interpret::EvalErrorKind;
 use rustc::mir::*;
 use rustc::ty::{self, CanonicalUserTypeAnnotation, Ty, UpvarSubsts};
 use syntax_pos::Span;
+
+use crate::build::expr::category::{Category, RvalueFunc};
+use crate::build::{BlockAnd, BlockAndExtension, Builder};
+use crate::hair::*;
 
 impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
     /// See comment on `as_local_operand`

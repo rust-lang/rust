@@ -1,4 +1,13 @@
-pub use SyntaxExtension::*;
+use std::iter;
+use std::path::PathBuf;
+use std::rc::Rc;
+use std::default::Default;
+
+use errors::{DiagnosticBuilder, DiagnosticId};
+use rustc_data_structures::fx::FxHashMap;
+use rustc_data_structures::sync::{self, Lrc};
+use smallvec::{smallvec, SmallVec};
+use syntax_pos::{Span, MultiSpan, DUMMY_SP};
 
 use crate::ast::{self, Attribute, Name, PatKind, MetaItem};
 use crate::attr::HasAttrs;
@@ -13,18 +22,7 @@ use crate::ptr::P;
 use crate::symbol::{keywords, Ident, Symbol};
 use crate::ThinVec;
 use crate::tokenstream::{self, TokenStream};
-
-use errors::{DiagnosticBuilder, DiagnosticId};
-use smallvec::{smallvec, SmallVec};
-use syntax_pos::{Span, MultiSpan, DUMMY_SP};
-
-use rustc_data_structures::fx::FxHashMap;
-use rustc_data_structures::sync::{self, Lrc};
-use std::iter;
-use std::path::PathBuf;
-use std::rc::Rc;
-use std::default::Default;
-
+pub use self::SyntaxExtension::*;
 
 #[derive(Debug,Clone)]
 pub enum Annotatable {

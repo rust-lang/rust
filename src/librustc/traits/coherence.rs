@@ -4,17 +4,16 @@
 //! [trait-resolution]: https://rust-lang.github.io/rustc-guide/traits/resolution.html
 //! [trait-specialization]: https://rust-lang.github.io/rustc-guide/traits/specialization.html
 
-use crate::infer::CombinedSnapshot;
-use crate::hir::def_id::{DefId, LOCAL_CRATE};
 use syntax_pos::DUMMY_SP;
+
+use crate::infer::{CombinedSnapshot, InferOk};
+use crate::hir::def_id::{DefId, LOCAL_CRATE};
 use crate::traits::{self, Normalized, SelectionContext, Obligation, ObligationCause};
 use crate::traits::IntercrateMode;
 use crate::traits::select::IntercrateAmbiguityCause;
 use crate::ty::{self, Ty, TyCtxt};
 use crate::ty::fold::TypeFoldable;
 use crate::ty::subst::Subst;
-
-use crate::infer::{InferOk};
 
 /// Represents whether to do the orphan check relative to this crate or to some remote crate.
 #[derive(Copy, Clone, Debug)]

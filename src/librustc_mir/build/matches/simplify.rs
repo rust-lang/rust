@@ -12,15 +12,16 @@
 //! sort of test; for example, testing which variant an enum is, or
 //! testing a value against a constant.
 
-use crate::build::Builder;
-use crate::build::matches::{Ascription, Binding, MatchPair, Candidate};
-use crate::hair::{self, *};
+use std::mem;
+
+use rustc::hir::RangeEnd;
 use rustc::ty;
 use rustc::ty::layout::{Integer, IntegerExt, Size};
 use syntax::attr::{SignedInt, UnsignedInt};
-use rustc::hir::RangeEnd;
 
-use std::mem;
+use crate::build::Builder;
+use crate::build::matches::{Ascription, Binding, MatchPair, Candidate};
+use crate::hair::{self, *};
 
 impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
     pub fn simplify_candidate<'pat>(&mut self,

@@ -1,9 +1,6 @@
 // Rust JSON serialization library.
 // Original version copyright (c) 2011 Google Inc.
 
-#![forbid(non_camel_case_types)]
-#![allow(missing_docs)]
-
 //! JSON parsing and serialization.
 //!
 //! # What is JSON?
@@ -182,12 +179,8 @@
 //! }
 //! ```
 
-use self::JsonEvent::*;
-use self::ErrorCode::*;
-use self::ParserError::*;
-use self::DecoderError::*;
-use self::ParserState::*;
-use self::InternalStackElement::*;
+#![forbid(non_camel_case_types)]
+#![allow(missing_docs)]
 
 use std::borrow::Cow;
 use std::collections::{HashMap, BTreeMap};
@@ -201,6 +194,12 @@ use std::string;
 use std::{char, f64, fmt, str};
 
 use crate::Encodable;
+use self::JsonEvent::*;
+use self::ErrorCode::*;
+use self::ParserError::*;
+use self::DecoderError::*;
+use self::ParserState::*;
+use self::InternalStackElement::*;
 
 /// Represents a JSON value.
 #[derive(Clone, PartialEq, PartialOrd, Debug)]

@@ -13,36 +13,32 @@
 //!   but one `llvm::Type` corresponds to many `Ty`s; for instance, `tup(int, int,
 //!   int)` and `rec(x=int, y=int, z=int)` will have the same `llvm::Type`.
 
-use super::ModuleLlvm;
-use rustc_codegen_ssa::{ModuleCodegen, ModuleKind};
-use rustc_codegen_ssa::base::maybe_create_entry_wrapper;
-use super::LlvmCodegenBackend;
+use std::ffi::CString;
+use std::time::Instant;
 
-use llvm;
-use metadata;
-use rustc::dep_graph;
-use rustc::mir::mono::{Linkage, Visibility, Stats};
-use rustc::middle::cstore::{EncodedMetadata};
-use rustc::ty::TyCtxt;
-use rustc::middle::exported_symbols;
-use rustc::session::config::{self, DebugInfo};
 use builder::Builder;
 use common;
 use context::CodegenCx;
+use llvm;
+use metadata;
 use monomorphize::partitioning::CodegenUnitExt;
-use rustc_codegen_ssa::mono_item::MonoItemExt;
-use rustc_data_structures::small_c_str::SmallCStr;
-
-use rustc_codegen_ssa::traits::*;
+use rustc_codegen_ssa::{ModuleCodegen, ModuleKind};
 use rustc_codegen_ssa::back::write::submit_codegened_module_to_llvm;
-
-use std::ffi::CString;
-use std::time::Instant;
-use syntax_pos::symbol::InternedString;
+use rustc_codegen_ssa::base::maybe_create_entry_wrapper;
+use rustc_codegen_ssa::mono_item::MonoItemExt;
+use rustc_codegen_ssa::traits::*;
+use rustc_data_structures::small_c_str::SmallCStr;
+use rustc::dep_graph;
 use rustc::hir::CodegenFnAttrs;
-
+use rustc::mir::mono::{Linkage, Visibility, Stats};
+use rustc::middle::cstore::{EncodedMetadata};
+use rustc::middle::exported_symbols;
+use rustc::session::config::{self, DebugInfo};
+use rustc::ty::TyCtxt;
+use syntax_pos::symbol::InternedString;
 use value::Value;
 
+use crate::{LlvmCodegenBackend, ModuleLlvm};
 
 pub fn write_metadata<'a, 'gcx>(
     tcx: TyCtxt<'a, 'gcx, 'gcx>,

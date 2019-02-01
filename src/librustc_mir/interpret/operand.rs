@@ -4,18 +4,18 @@
 use std::convert::TryInto;
 
 use rustc::{mir, ty};
-use rustc::ty::layout::{self, Size, LayoutOf, TyLayout, HasDataLayout, IntegerExt, VariantIdx};
-
+pub use rustc::mir::interpret::ScalarMaybeUndef;
 use rustc::mir::interpret::{
     GlobalId, AllocId, InboundsCheck,
     ConstValue, Pointer, Scalar,
     EvalResult, EvalErrorKind,
 };
+use rustc::ty::layout::{self, Size, LayoutOf, TyLayout, HasDataLayout, IntegerExt, VariantIdx};
+
 use super::{
     EvalContext, Machine, AllocMap, Allocation, AllocationExtra,
     MemPlace, MPlaceTy, PlaceTy, Place, MemoryKind,
 };
-pub use rustc::mir::interpret::ScalarMaybeUndef;
 
 /// A `Value` represents a single immediate self-contained Rust value.
 ///

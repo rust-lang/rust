@@ -18,9 +18,6 @@
 //! example) requires more effort. See `emit_lint` and `GatherNodeLevels`
 //! in `context.rs`.
 
-pub use self::Level::*;
-pub use self::LintSource::*;
-
 use rustc_data_structures::sync::{self, Lrc};
 
 use crate::hir::def_id::{CrateNum, LOCAL_CRATE};
@@ -44,6 +41,9 @@ use syntax_pos::Span;
 pub use crate::lint::context::{LateContext, EarlyContext, LintContext, LintStore,
                         check_crate, check_ast_crate, CheckLintNameResult,
                         FutureIncompatibleInfo, BufferedEarlyLint};
+
+pub use self::Level::*;
+pub use self::LintSource::*;
 
 /// Specification of a single lint.
 #[derive(Copy, Clone, Debug)]

@@ -2,11 +2,20 @@
 //!
 //! [rustc guide]: https://rust-lang.github.io/rustc-guide/mir/index.html
 
-use crate::hir::def::CtorKind;
-use crate::hir::def_id::DefId;
-use crate::hir::{self, HirId, InlineAsm};
-use crate::mir::interpret::{ConstValue, EvalErrorKind, Scalar};
-use crate::mir::visit::MirVisitable;
+mod cache;
+pub mod interpret;
+pub mod mono;
+pub mod tcx;
+pub mod traversal;
+pub mod visit;
+
+use std::borrow::Cow;
+use std::fmt::{self, Debug, Formatter, Write};
+use std::ops::{Index, IndexMut};
+use std::slice;
+use std::vec::IntoIter;
+use std::{iter, mem, option, u32};
+
 use rustc_apfloat::ieee::{Double, Single};
 use rustc_apfloat::Float;
 use rustc_data_structures::fx::FxHashSet;
@@ -15,17 +24,18 @@ use rustc_data_structures::graph::{self, GraphPredecessors, GraphSuccessors};
 use rustc_data_structures::indexed_vec::{Idx, IndexVec};
 use rustc_data_structures::sync::Lrc;
 use rustc_data_structures::sync::MappedReadGuard;
-use crate::rustc_serialize::{self as serialize};
+use rustc_serialize::{self as serialize};
 use smallvec::SmallVec;
-use std::borrow::Cow;
-use std::fmt::{self, Debug, Formatter, Write};
-use std::ops::{Index, IndexMut};
-use std::slice;
-use std::vec::IntoIter;
-use std::{iter, mem, option, u32};
+use syntax_pos::{Span, DUMMY_SP};
 use syntax::ast::{self, Name};
 use syntax::symbol::InternedString;
-use syntax_pos::{Span, DUMMY_SP};
+
+use crate::hir::def::CtorKind;
+use crate::hir::def_id::DefId;
+use crate::hir::{self, HirId, InlineAsm};
+use crate::mir::interpret::{ConstValue, EvalErrorKind, Scalar};
+pub use crate::mir::interpret::AssertMessage;
+use crate::mir::visit::MirVisitable;
 use crate::ty::fold::{TypeFoldable, TypeFolder, TypeVisitor};
 use crate::ty::subst::{Subst, Substs};
 use crate::ty::layout::VariantIdx;
@@ -34,15 +44,6 @@ use crate::ty::{
     UserTypeAnnotationIndex,
 };
 use crate::util::ppaux;
-
-pub use crate::mir::interpret::AssertMessage;
-
-mod cache;
-pub mod interpret;
-pub mod mono;
-pub mod tcx;
-pub mod traversal;
-pub mod visit;
 
 /// Types for locals
 type LocalDecls<'tcx> = IndexVec<Local, LocalDecl<'tcx>>;

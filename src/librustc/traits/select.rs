@@ -2,13 +2,26 @@
 //!
 //! [rustc guide]: https://rust-lang.github.io/rustc-guide/traits/resolution.html#selection
 
-use self::EvaluationResult::*;
-use self::SelectionCandidate::*;
+use std::cmp;
+use std::fmt::{self, Display};
+use std::iter;
+use std::rc::Rc;
 
-use super::coherence::{self, Conflict};
-use super::project;
-use super::project::{normalize_with_depth, Normalized, ProjectionCacheKey};
-use super::util;
+use rustc_data_structures::bit_set::GrowableBitSet;
+use rustc_data_structures::sync::Lock;
+use rustc_target::spec::abi::Abi;
+
+use crate::dep_graph::{DepKind, DepNodeIndex};
+use crate::hir;
+use crate::hir::def_id::DefId;
+use crate::infer::{InferCtxt, InferOk, TypeFreshener};
+use crate::middle::lang_items;
+use crate::mir::interpret::GlobalId;
+use crate::ty::fast_reject;
+use crate::ty::relate::TypeRelation;
+use crate::ty::subst::{Subst, Substs};
+use crate::ty::{self, ToPolyTraitRef, ToPredicate, Ty, TyCtxt, TypeFoldable};
+use crate::util::nodemap::{FxHashMap, FxHashSet};
 use super::DerivedObligationCause;
 use super::Selection;
 use super::SelectionResult;
@@ -26,26 +39,12 @@ use super::{
     VtableAutoImplData, VtableBuiltinData, VtableClosureData, VtableFnPointerData,
     VtableGeneratorData, VtableImplData, VtableObjectData, VtableTraitAliasData,
 };
-
-use crate::dep_graph::{DepKind, DepNodeIndex};
-use crate::hir::def_id::DefId;
-use crate::infer::{InferCtxt, InferOk, TypeFreshener};
-use crate::middle::lang_items;
-use crate::mir::interpret::GlobalId;
-use crate::ty::fast_reject;
-use crate::ty::relate::TypeRelation;
-use crate::ty::subst::{Subst, Substs};
-use crate::ty::{self, ToPolyTraitRef, ToPredicate, Ty, TyCtxt, TypeFoldable};
-
-use crate::hir;
-use rustc_data_structures::bit_set::GrowableBitSet;
-use rustc_data_structures::sync::Lock;
-use rustc_target::spec::abi::Abi;
-use std::cmp;
-use std::fmt::{self, Display};
-use std::iter;
-use std::rc::Rc;
-use crate::util::nodemap::{FxHashMap, FxHashSet};
+use super::coherence::{self, Conflict};
+use super::project;
+use super::project::{normalize_with_depth, Normalized, ProjectionCacheKey};
+use super::util;
+use self::EvaluationResult::*;
+use self::SelectionCandidate::*;
 
 pub struct SelectionContext<'cx, 'gcx: 'cx + 'tcx, 'tcx: 'cx> {
     infcx: &'cx InferCtxt<'cx, 'gcx, 'tcx>,

@@ -1,24 +1,24 @@
+use std::env;
+use std::collections::hash_map::Entry;
+use std::hash::Hash;
+
 use errors::{Diagnostic, DiagnosticBuilder};
-use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
+use parking_lot::{Mutex, Condvar};
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_data_structures::indexed_vec::{Idx, IndexVec};
-use smallvec::SmallVec;
+use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
 use rustc_data_structures::sync::{Lrc, Lock, AtomicU32, Ordering};
-use std::env;
-use std::hash::Hash;
-use std::collections::hash_map::Entry;
-use crate::ty::{self, TyCtxt};
-use crate::util::common::{ProfileQueriesMsg, profq_msg};
-use parking_lot::{Mutex, Condvar};
+use smallvec::SmallVec;
 
 use crate::ich::{StableHashingContext, StableHashingContextProvider, Fingerprint};
-
+use crate::ty::{self, TyCtxt};
+use crate::util::common::{ProfileQueriesMsg, profq_msg};
 use super::debug::EdgeFilter;
 use super::dep_node::{DepNode, DepKind, WorkProductId};
+use super::prev::PreviousDepGraph;
 use super::query::DepGraphQuery;
 use super::safe::DepGraphSafe;
 use super::serialized::{SerializedDepGraph, SerializedDepNodeIndex};
-use super::prev::PreviousDepGraph;
 
 #[derive(Clone)]
 pub struct DepGraph {

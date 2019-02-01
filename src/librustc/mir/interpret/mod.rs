@@ -10,34 +10,32 @@ mod value;
 mod allocation;
 mod pointer;
 
-pub use self::error::{
-    EvalError, EvalResult, EvalErrorKind, AssertMessage, ConstEvalErr, struct_error,
-    FrameInfo, ConstEvalRawResult, ConstEvalResult, ErrorHandled,
-};
+use std::fmt;
+use std::io;
+use std::num::NonZeroU32;
+use std::sync::atomic::{AtomicU32, Ordering};
 
-pub use self::value::{Scalar, ScalarMaybeUndef, RawConst, ConstValue};
+use byteorder::{WriteBytesExt, ReadBytesExt, LittleEndian, BigEndian};
+use rustc_data_structures::fx::FxHashMap;
+use rustc_data_structures::sync::{Lock as Mutex, HashMapExt};
+use rustc_data_structures::tiny_list::TinyList;
+use rustc_serialize::{Encoder, Decodable, Encodable};
 
+use crate::mir;
+use crate::hir::def_id::DefId;
+use crate::ty::{self, TyCtxt, Instance, subst::UnpackedKind};
+use crate::ty::codec::TyDecoder;
+use crate::ty::layout::{self, Size};
 pub use self::allocation::{
     InboundsCheck, Allocation, AllocationExtra,
     Relocations, UndefMask,
 };
-
+pub use self::error::{
+    EvalError, EvalResult, EvalErrorKind, AssertMessage, ConstEvalErr, struct_error,
+    FrameInfo, ConstEvalRawResult, ConstEvalResult, ErrorHandled,
+};
 pub use self::pointer::{Pointer, PointerArithmetic};
-
-use std::fmt;
-use crate::mir;
-use crate::hir::def_id::DefId;
-use crate::ty::{self, TyCtxt, Instance, subst::UnpackedKind};
-use crate::ty::layout::{self, Size};
-use std::io;
-use crate::rustc_serialize::{Encoder, Decodable, Encodable};
-use rustc_data_structures::fx::FxHashMap;
-use rustc_data_structures::sync::{Lock as Mutex, HashMapExt};
-use rustc_data_structures::tiny_list::TinyList;
-use byteorder::{WriteBytesExt, ReadBytesExt, LittleEndian, BigEndian};
-use crate::ty::codec::TyDecoder;
-use std::sync::atomic::{AtomicU32, Ordering};
-use std::num::NonZeroU32;
+pub use self::value::{Scalar, ScalarMaybeUndef, RawConst, ConstValue};
 
 /// Uniquely identifies a specific constant or static.
 #[derive(Copy, Clone, Debug, Eq, PartialEq, Hash, RustcEncodable, RustcDecodable)]
@@ -53,8 +51,8 @@ pub struct GlobalId<'tcx> {
 #[derive(Copy, Clone, Eq, Hash, Ord, PartialEq, PartialOrd, Debug)]
 pub struct AllocId(pub u64);
 
-impl crate::rustc_serialize::UseSpecializedEncodable for AllocId {}
-impl crate::rustc_serialize::UseSpecializedDecodable for AllocId {}
+impl rustc_serialize::UseSpecializedEncodable for AllocId {}
+impl rustc_serialize::UseSpecializedDecodable for AllocId {}
 
 #[derive(RustcDecodable, RustcEncodable)]
 enum AllocDiscriminant {

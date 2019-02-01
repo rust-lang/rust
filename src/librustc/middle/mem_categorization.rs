@@ -50,37 +50,34 @@
 
 #![allow(non_camel_case_types)]
 
-pub use self::PointerKind::*;
-pub use self::InteriorKind::*;
-pub use self::MutabilityCategory::*;
-pub use self::AliasableReason::*;
-pub use self::Note::*;
+use std::borrow::Cow;
+use std::fmt;
+use std::hash::{Hash, Hasher};
+use std::rc::Rc;
 
-use self::Aliasability::*;
+use rustc_data_structures::indexed_vec::Idx;
+use rustc_data_structures::sync::Lrc;
+use syntax_pos::Span;
+use syntax::ast::{self, Name};
 
-use crate::middle::region;
-use crate::hir::def_id::{DefId, LocalDefId};
-use crate::hir::Node;
-use crate::infer::InferCtxt;
+use crate::hir::{self, Node};
+use crate::hir::{MutImmutable, MutMutable, PatKind};
+use crate::hir::pat_util::EnumerateAndAdjustIterator;
 use crate::hir::def::{Def, CtorKind};
+use crate::hir::def_id::{DefId, LocalDefId};
+use crate::infer::InferCtxt;
+use crate::middle::region;
 use crate::ty::adjustment;
 use crate::ty::{self, Ty, TyCtxt};
 use crate::ty::fold::TypeFoldable;
 use crate::ty::layout::VariantIdx;
-
-use crate::hir::{MutImmutable, MutMutable, PatKind};
-use crate::hir::pat_util::EnumerateAndAdjustIterator;
-use crate::hir;
-use syntax::ast::{self, Name};
-use syntax_pos::Span;
-
-use std::borrow::Cow;
-use std::fmt;
-use std::hash::{Hash, Hasher};
-use rustc_data_structures::sync::Lrc;
-use rustc_data_structures::indexed_vec::Idx;
-use std::rc::Rc;
 use crate::util::nodemap::ItemLocalSet;
+use self::Aliasability::*;
+pub use self::AliasableReason::*;
+pub use self::InteriorKind::*;
+pub use self::MutabilityCategory::*;
+pub use self::Note::*;
+pub use self::PointerKind::*;
 
 #[derive(Clone, Debug, PartialEq)]
 pub enum Categorization<'tcx> {

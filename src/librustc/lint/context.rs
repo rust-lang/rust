@@ -14,32 +14,32 @@
 //! upon. As the ast is traversed, this keeps track of the current lint level
 //! for all lint attributes.
 
-use self::TargetLint::*;
-
+use std::default::Default as StdDefault;
 use std::slice;
+
+use errors::DiagnosticBuilder;
 use rustc_data_structures::sync::ReadGuard;
+use rustc_serialize::{Decoder, Decodable, Encoder, Encodable};
+use syntax_pos::{MultiSpan, Span, symbol::{LocalInternedString, Symbol}};
+use syntax::ast;
+use syntax::edition;
+use syntax::util::lev_distance::find_best_match_for_name;
+use syntax::visit as ast_visit;
+
+use crate::hir;
+use crate::hir::def_id::LOCAL_CRATE;
+use crate::hir::intravisit as hir_visit;
 use crate::lint::{EarlyLintPass, EarlyLintPassObject, LateLintPassObject};
 use crate::lint::{LintArray, Level, Lint, LintId, LintPass, LintBuffer};
 use crate::lint::builtin::BuiltinLintDiagnostics;
 use crate::lint::levels::{LintLevelSets, LintLevelsBuilder};
 use crate::middle::privacy::AccessLevels;
-use crate::rustc_serialize::{Decoder, Decodable, Encoder, Encodable};
 use crate::session::{config, early_error, Session};
 use crate::ty::{self, TyCtxt, Ty};
 use crate::ty::layout::{LayoutError, LayoutOf, TyLayout};
 use crate::util::nodemap::FxHashMap;
 use crate::util::common::time;
-
-use std::default::Default as StdDefault;
-use syntax::ast;
-use syntax::edition;
-use syntax_pos::{MultiSpan, Span, symbol::{LocalInternedString, Symbol}};
-use errors::DiagnosticBuilder;
-use crate::hir;
-use crate::hir::def_id::LOCAL_CRATE;
-use crate::hir::intravisit as hir_visit;
-use syntax::util::lev_distance::find_best_match_for_name;
-use syntax::visit as ast_visit;
+use self::TargetLint::*;
 
 /// Information about the registered lints.
 ///

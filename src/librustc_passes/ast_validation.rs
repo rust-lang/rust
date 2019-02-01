@@ -7,21 +7,22 @@
 // or type checking or some other kind of complex analysis.
 
 use std::mem;
-use syntax::print::pprust;
-use rustc::lint;
-use rustc::session::Session;
-use rustc_data_structures::fx::FxHashMap;
-use syntax::ast::*;
-use syntax::attr;
-use syntax::source_map::Spanned;
-use syntax::symbol::keywords;
-use syntax::ptr::P;
-use syntax::visit::{self, Visitor};
-use syntax::{span_err, struct_span_err, walk_list};
-use syntax_ext::proc_macro_decls::is_proc_macro_attr;
-use syntax_pos::Span;
+
 use errors::Applicability;
 use log::debug;
+use syntax_ext::proc_macro_decls::is_proc_macro_attr;
+use syntax_pos::Span;
+use syntax::{span_err, struct_span_err, walk_list};
+use syntax::ast::*;
+use syntax::attr;
+use syntax::print::pprust;
+use syntax::ptr::P;
+use syntax::source_map::Spanned;
+use syntax::symbol::keywords;
+use syntax::visit::{self, Visitor};
+use rustc_data_structures::fx::FxHashMap;
+use rustc::lint;
+use rustc::session::Session;
 
 struct AstValidator<'a> {
     session: &'a Session,

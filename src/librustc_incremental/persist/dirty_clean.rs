@@ -15,6 +15,8 @@
 
 use std::iter::FromIterator;
 use std::vec::Vec;
+
+use rustc_data_structures::fx::FxHashSet;
 use rustc::dep_graph::{DepNode, label_strs};
 use rustc::hir;
 use rustc::hir::{ItemKind as HirItem, ImplItemKind, TraitItemKind};
@@ -23,10 +25,9 @@ use rustc::hir::def_id::DefId;
 use rustc::hir::itemlikevisit::ItemLikeVisitor;
 use rustc::hir::intravisit;
 use rustc::ich::{ATTR_DIRTY, ATTR_CLEAN};
-use syntax::ast::{self, Attribute, NestedMetaItem};
-use rustc_data_structures::fx::FxHashSet;
-use syntax_pos::Span;
 use rustc::ty::TyCtxt;
+use syntax_pos::Span;
+use syntax::ast::{self, Attribute, NestedMetaItem};
 
 const EXCEPT: &str = "except";
 const LABEL: &str = "label";

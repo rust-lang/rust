@@ -21,17 +21,16 @@
 //! If you define a new `LateLintPass`, you will also need to add it to the
 //! `late_lint_methods!` invocation in `lib.rs`.
 
+// Hardwired lints from librustc.
+use log::debug;
+use rustc::hir::{self, GenericParamKind, Node, PatKind};
 use rustc::hir::def::Def;
 use rustc::hir::def_id::{DefId, LOCAL_CRATE};
+use rustc::lint::{LateContext, LintContext, LintArray};
+use rustc::lint::{LintPass, LateLintPass, EarlyLintPass, EarlyContext};
+pub use rustc::lint::builtin::*;
 use rustc::ty::{self, Ty};
-use rustc::{lint, util};
-use hir::Node;
-use util::nodemap::NodeSet;
-use lint::{LateContext, LintContext, LintArray};
-use lint::{LintPass, LateLintPass, EarlyLintPass, EarlyContext};
-
-use rustc::util::nodemap::FxHashSet;
-
+use rustc::util::nodemap::{FxHashSet, NodeSet};
 use syntax::tokenstream::{TokenTree, TokenStream};
 use syntax::ast;
 use syntax::ptr::P;
@@ -48,14 +47,7 @@ use syntax::print::pprust::expr_to_string;
 use syntax::visit::FnKind;
 use syntax::struct_span_err;
 
-use rustc::hir::{self, GenericParamKind, PatKind};
-
 use crate::nonstandard_style::{MethodLateContext, method_context};
-
-use log::debug;
-
-// Hardwired lints from librustc.
-pub use lint::builtin::*;
 
 declare_lint! {
     WHILE_TRUE,

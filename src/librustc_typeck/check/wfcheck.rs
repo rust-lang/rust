@@ -1,21 +1,19 @@
-use crate::check::{Inherited, FnCtxt};
-use crate::constrained_type_params::{identify_constrained_type_params, Parameter};
-
-use crate::hir::def_id::DefId;
+use errors::{DiagnosticBuilder, DiagnosticId};
+use rustc::hir;
+use rustc::hir::def_id::DefId;
+use rustc::hir::itemlikevisit::ItemLikeVisitor;
+use rustc::infer::opaque_types::may_define_existential_type;
+use rustc::middle::lang_items;
 use rustc::traits::{self, ObligationCauseCode};
 use rustc::ty::{self, Lift, Ty, TyCtxt, TyKind, GenericParamDefKind, TypeFoldable, ToPredicate};
 use rustc::ty::subst::{Subst, Substs};
 use rustc::util::nodemap::{FxHashSet, FxHashMap};
-use rustc::middle::lang_items;
-use rustc::infer::opaque_types::may_define_existential_type;
-
+use syntax_pos::Span;
 use syntax::ast;
 use syntax::feature_gate::{self, GateIssue};
-use syntax_pos::Span;
-use errors::{DiagnosticBuilder, DiagnosticId};
 
-use rustc::hir::itemlikevisit::ItemLikeVisitor;
-use rustc::hir;
+use crate::check::{Inherited, FnCtxt};
+use crate::constrained_type_params::{identify_constrained_type_params, Parameter};
 
 /// Helper type of a temporary returned by `.for_item(...)`.
 /// Necessary because we can't write the following bound:

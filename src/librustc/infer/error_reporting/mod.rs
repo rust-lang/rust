@@ -45,27 +45,26 @@
 //! ported to this system, and which relies on string concatenation at the
 //! time of error detection.
 
-use super::lexical_region_resolve::RegionResolutionError;
-use super::region_constraints::GenericKind;
-use super::{InferCtxt, RegionVariableOrigin, SubregionOrigin, TypeTrace, ValuePairs};
-use crate::infer::{self, SuppressRegionErrors};
+mod note;
+mod need_type_info;
+pub mod nice_region_error;
+
+use std::{cmp, fmt};
+
+use errors::{Applicability, DiagnosticBuilder, DiagnosticStyledString};
+use syntax_pos::{Pos, Span};
 
 use crate::hir;
 use crate::hir::def_id::DefId;
 use crate::hir::Node;
+use crate::infer::{self, SuppressRegionErrors};
 use crate::middle::region;
 use crate::traits::{ObligationCause, ObligationCauseCode};
 use crate::ty::error::TypeError;
 use crate::ty::{self, subst::Subst, Region, Ty, TyCtxt, TyKind, TypeFoldable};
-use errors::{Applicability, DiagnosticBuilder, DiagnosticStyledString};
-use std::{cmp, fmt};
-use syntax_pos::{Pos, Span};
-
-mod note;
-
-mod need_type_info;
-
-pub mod nice_region_error;
+use super::{InferCtxt, RegionVariableOrigin, SubregionOrigin, TypeTrace, ValuePairs};
+use super::lexical_region_resolve::RegionResolutionError;
+use super::region_constraints::GenericKind;
 
 impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
     pub fn note_and_explain_region(

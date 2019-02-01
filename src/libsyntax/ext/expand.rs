@@ -1,3 +1,16 @@
+use std::fs;
+use std::io::ErrorKind;
+use std::ops::DerefMut;
+use std::path::PathBuf;
+use std::rc::Rc;
+use std::{iter, mem};
+
+use errors::{Applicability, FatalError};
+use rustc_data_structures::fx::FxHashMap;
+use smallvec::{smallvec, SmallVec};
+use syntax_pos::{Span, DUMMY_SP, FileName};
+use syntax_pos::hygiene::ExpnFormat;
+
 use crate::ast::{self, Block, Ident, LitKind, NodeId, PatKind, Path};
 use crate::ast::{MacStmtStyle, StmtKind, ItemKind};
 use crate::attr::{self, HasAttrs};
@@ -16,21 +29,8 @@ use crate::ptr::P;
 use crate::symbol::Symbol;
 use crate::symbol::keywords;
 use crate::tokenstream::{TokenStream, TokenTree};
-use crate::visit::{self, Visitor};
 use crate::util::map_in_place::MapInPlace;
-
-use errors::{Applicability, FatalError};
-use smallvec::{smallvec, SmallVec};
-use syntax_pos::{Span, DUMMY_SP, FileName};
-use syntax_pos::hygiene::ExpnFormat;
-
-use rustc_data_structures::fx::FxHashMap;
-use std::fs;
-use std::io::ErrorKind;
-use std::{iter, mem};
-use std::ops::DerefMut;
-use std::rc::Rc;
-use std::path::PathBuf;
+use crate::visit::{self, Visitor};
 
 macro_rules! ast_fragments {
     (

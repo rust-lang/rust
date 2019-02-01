@@ -19,30 +19,29 @@ pub mod codegen;
 mod util;
 pub mod query;
 
+use std::fmt::Debug;
+use std::rc::Rc;
+
 use chalk_engine;
+use rustc_data_structures::sync::Lrc;
+use syntax_pos::{Span, DUMMY_SP};
+use syntax::ast;
+
 use crate::hir;
 use crate::hir::def_id::DefId;
 use crate::infer::{InferCtxt, SuppressRegionErrors};
 use crate::infer::outlives::env::OutlivesEnvironment;
 use crate::middle::region;
 use crate::mir::interpret::ErrorHandled;
-use rustc_data_structures::sync::Lrc;
-use syntax::ast;
-use syntax_pos::{Span, DUMMY_SP};
 use crate::ty::subst::Substs;
 use crate::ty::{self, AdtKind, List, Ty, TyCtxt, GenericParamDefKind, ToPredicate};
 use crate::ty::error::{ExpectedFound, TypeError};
 use crate::ty::fold::{TypeFolder, TypeFoldable, TypeVisitor};
 use crate::util::common::ErrorReported;
-
-use std::fmt::Debug;
-use std::rc::Rc;
-
 pub use self::SelectionError::*;
 pub use self::FulfillmentErrorCode::*;
 pub use self::Vtable::*;
 pub use self::ObligationCauseCode::*;
-
 pub use self::coherence::{add_placeholder_note, orphan_check, overlapping_impls};
 pub use self::coherence::{OrphanCheckErr, OverlapResult};
 pub use self::fulfill::{FulfillmentContext, PendingPredicateObligation};

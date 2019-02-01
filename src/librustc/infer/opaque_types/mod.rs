@@ -1,10 +1,11 @@
+use rustc_data_structures::fx::FxHashMap;
+use syntax::ast;
+
 use crate::hir::def_id::DefId;
 use crate::hir;
 use crate::hir::Node;
 use crate::infer::{self, InferCtxt, InferOk, TypeVariableOrigin};
 use crate::infer::outlives::free_region_map::FreeRegionRelations;
-use rustc_data_structures::fx::FxHashMap;
-use syntax::ast;
 use crate::traits::{self, PredicateObligation};
 use crate::ty::{self, Ty, TyCtxt, GenericParamDefKind};
 use crate::ty::fold::{BottomUpFolder, TypeFoldable, TypeFolder};

@@ -1,21 +1,18 @@
 //! Check properties that are required by built-in traits and set
 //! up data structures required by type-checking/codegen.
 
+use rustc::hir::{self, ItemKind, Node};
+use rustc::hir::def_id::DefId;
+use rustc::infer;
 use rustc::infer::SuppressRegionErrors;
 use rustc::infer::outlives::env::OutlivesEnvironment;
 use rustc::middle::region;
 use rustc::middle::lang_items::UnsizeTraitLangItem;
-
 use rustc::traits::{self, TraitEngine, ObligationCause};
 use rustc::ty::{self, Ty, TyCtxt};
 use rustc::ty::TypeFoldable;
 use rustc::ty::adjustment::CoerceUnsizedInfo;
 use rustc::ty::util::CopyImplementationError;
-use rustc::infer;
-
-use rustc::hir::def_id::DefId;
-use hir::Node;
-use rustc::hir::{self, ItemKind};
 
 pub fn check_trait<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, trait_def_id: DefId) {
     Checker { tcx, trait_def_id }

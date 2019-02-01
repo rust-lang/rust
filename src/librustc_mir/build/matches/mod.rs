@@ -4,28 +4,28 @@
 //! This main module includes the high-level algorithm, while the submodules contain
 //! the details.
 
-use crate::build::scope::{CachedBlock, DropKind};
-use crate::build::ForGuard::{self, OutsideGuard, RefWithinGuard, ValWithinGuard};
-use crate::build::{BlockAnd, BlockAndExtension, Builder};
-use crate::build::{GuardFrame, GuardFrameLocal, LocalsForNode};
-use crate::hair::{self, *};
-use rustc::mir::*;
-use rustc::ty::{self, CanonicalUserTypeAnnotation, Ty};
-use rustc::ty::layout::VariantIdx;
-use rustc_data_structures::bit_set::BitSet;
-use rustc_data_structures::fx::FxHashMap;
-use syntax::ast::{Name, NodeId};
-use syntax_pos::Span;
-
-// helper functions, broken out by category:
+// Helper functions, organised by category.
 mod simplify;
 mod test;
 mod util;
 
 use std::convert::TryFrom;
 
-/// ArmHasGuard is isomorphic to a boolean flag. It indicates whether
-/// a match arm has a guard expression attached to it.
+use rustc_data_structures::bit_set::BitSet;
+use rustc_data_structures::fx::FxHashMap;
+use rustc::mir::*;
+use rustc::ty::{self, CanonicalUserTypeAnnotation, Ty};
+use rustc::ty::layout::VariantIdx;
+use syntax_pos::Span;
+use syntax::ast::{Name, NodeId};
+
+use crate::build::scope::{CachedBlock, DropKind};
+use crate::build::ForGuard::{self, OutsideGuard, RefWithinGuard, ValWithinGuard};
+use crate::build::{BlockAnd, BlockAndExtension, Builder};
+use crate::build::{GuardFrame, GuardFrameLocal, LocalsForNode};
+use crate::hair::{self, *};
+
+/// Indicates whether a match arm has a guard expression attached to it.
 #[derive(Copy, Clone, Debug)]
 pub(crate) struct ArmHasGuard(pub bool);
 

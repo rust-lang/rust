@@ -6,12 +6,14 @@
 // The functionality in here is shared between persisting to crate metadata and
 // persisting to incr. comp. caches.
 
-use crate::hir::def_id::{DefId, CrateNum};
-use crate::infer::canonical::{CanonicalVarInfo, CanonicalVarInfos};
-use rustc_data_structures::fx::FxHashMap;
-use crate::rustc_serialize::{Decodable, Decoder, Encoder, Encodable, opaque};
 use std::hash::Hash;
 use std::intrinsics;
+
+use rustc_data_structures::fx::FxHashMap;
+use rustc_serialize::{Decodable, Decoder, Encoder, Encodable, opaque};
+
+use crate::hir::def_id::{DefId, CrateNum};
+use crate::infer::canonical::{CanonicalVarInfo, CanonicalVarInfos};
 use crate::ty::{self, Ty, TyCtxt};
 use crate::ty::subst::Substs;
 use crate::mir::interpret::Allocation;
@@ -277,14 +279,15 @@ macro_rules! __impl_decoder_methods {
 macro_rules! implement_ty_decoder {
     ($DecoderName:ident <$($typaram:tt),*>) => {
         mod __ty_decoder_impl {
-            use super::$DecoderName;
+            use std::borrow::Cow;
+            use rustc_serialize::{Decoder, SpecializedDecoder};
+
             use $crate::infer::canonical::CanonicalVarInfos;
             use $crate::ty;
             use $crate::ty::codec::*;
             use $crate::ty::subst::Substs;
             use $crate::hir::def_id::{CrateNum};
-            use crate::rustc_serialize::{Decoder, SpecializedDecoder};
-            use std::borrow::Cow;
+            use super::$DecoderName;
 
             impl<$($typaram ),*> Decoder for $DecoderName<$($typaram),*> {
                 type Error = String;

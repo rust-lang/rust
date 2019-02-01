@@ -1,10 +1,11 @@
 //! Helper functions corresponding to lifetime errors due to anonymous regions.
 
+use syntax_pos::Span;
+
 use crate::hir;
+use crate::hir::def_id::DefId;
 use crate::infer::error_reporting::nice_region_error::NiceRegionError;
 use crate::ty::{self, Region, Ty};
-use crate::hir::def_id::DefId;
-use syntax_pos::Span;
 
 // Contains the information about the anonymous region we are searching for.
 #[derive(Debug)]

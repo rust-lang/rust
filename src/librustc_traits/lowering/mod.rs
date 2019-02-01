@@ -1,5 +1,7 @@
 mod environment;
 
+use std::iter;
+
 use rustc::hir::def_id::DefId;
 use rustc::hir::intravisit::{self, NestedVisitorMap, Visitor};
 use rustc::hir::map::definitions::DefPathData;
@@ -20,8 +22,6 @@ use rustc::ty::query::Providers;
 use rustc::ty::{self, List, TyCtxt};
 use rustc::ty::subst::{Subst, Substs};
 use syntax::ast;
-
-use std::iter;
 
 crate fn provide(p: &mut Providers<'_>) {
     *p = Providers {

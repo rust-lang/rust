@@ -30,6 +30,31 @@
 //! get confused if the spans from leaf AST nodes occur in multiple places
 //! in the HIR, especially for multiple identifiers.
 
+use std::collections::{BTreeSet, BTreeMap};
+use std::fmt::Debug;
+use std::mem;
+
+use errors::Applicability;
+use rustc_data_structures::fx::FxHashSet;
+use rustc_data_structures::indexed_vec::IndexVec;
+use rustc_data_structures::thin_vec::ThinVec;
+use rustc_data_structures::sync::Lrc;
+use smallvec::SmallVec;
+use syntax_pos::{Span, MultiSpan};
+use syntax::attr;
+use syntax::ast;
+use syntax::ast::*;
+use syntax::errors;
+use syntax::ext::hygiene::{Mark, SyntaxContext};
+use syntax::print::pprust;
+use syntax::ptr::P;
+use syntax::source_map::{self, respan, CompilerDesugaringKind, Spanned};
+use syntax::std_inject;
+use syntax::symbol::{keywords, Symbol};
+use syntax::tokenstream::{TokenStream, TokenTree};
+use syntax::parse::token::Token;
+use syntax::visit::{self, Visitor};
+
 use crate::dep_graph::DepGraph;
 use crate::hir::{self, ParamName};
 use crate::hir::HirVec;
@@ -44,30 +69,6 @@ use crate::session::Session;
 use crate::session::config::nightly_options;
 use crate::util::common::FN_OUTPUT_NAME;
 use crate::util::nodemap::{DefIdMap, NodeMap};
-use errors::Applicability;
-use rustc_data_structures::fx::FxHashSet;
-use rustc_data_structures::indexed_vec::IndexVec;
-use rustc_data_structures::thin_vec::ThinVec;
-use rustc_data_structures::sync::Lrc;
-
-use std::collections::{BTreeSet, BTreeMap};
-use std::fmt::Debug;
-use std::mem;
-use smallvec::SmallVec;
-use syntax::attr;
-use syntax::ast;
-use syntax::ast::*;
-use syntax::errors;
-use syntax::ext::hygiene::{Mark, SyntaxContext};
-use syntax::print::pprust;
-use syntax::ptr::P;
-use syntax::source_map::{self, respan, CompilerDesugaringKind, Spanned};
-use syntax::std_inject;
-use syntax::symbol::{keywords, Symbol};
-use syntax::tokenstream::{TokenStream, TokenTree};
-use syntax::parse::token::Token;
-use syntax::visit::{self, Visitor};
-use syntax_pos::{Span, MultiSpan};
 
 const HIR_ID_COUNTER_LOCKED: u32 = 0xFFFFFFFF;
 

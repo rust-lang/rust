@@ -21,12 +21,8 @@
 //! is also useful to track which value is the "expected" value in
 //! terms of error reporting.
 
-use super::equate::Equate;
-use super::glb::Glb;
-use super::{InferCtxt, MiscVariable, TypeTrace};
-use super::lub::Lub;
-use super::sub::Sub;
-use super::type_variable::TypeVariableValue;
+use syntax_pos::Span;
+use syntax::ast;
 
 use crate::hir::def_id::DefId;
 use crate::ty::{IntType, UintType};
@@ -35,9 +31,12 @@ use crate::ty::error::TypeError;
 use crate::ty::relate::{self, Relate, RelateResult, TypeRelation};
 use crate::ty::subst::Substs;
 use crate::traits::{Obligation, PredicateObligations};
-
-use syntax::ast;
-use syntax_pos::Span;
+use super::{InferCtxt, MiscVariable, TypeTrace};
+use super::equate::Equate;
+use super::glb::Glb;
+use super::lub::Lub;
+use super::sub::Sub;
+use super::type_variable::TypeVariableValue;
 
 #[derive(Clone)]
 pub struct CombineFields<'infcx, 'gcx: 'infcx+'tcx, 'tcx: 'infcx> {

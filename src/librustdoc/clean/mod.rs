@@ -1,39 +1,14 @@
 //! This module contains the "cleaned" pieces of the AST, and the functions
 //! that clean them.
 
-pub mod inline;
-pub mod cfg;
-mod simplify;
 mod auto_trait;
 mod blanket_impl;
+pub mod cfg;
 pub mod def_ctor;
+pub mod inline;
+mod simplify;
 
-use rustc_data_structures::indexed_vec::{IndexVec, Idx};
-use rustc_data_structures::sync::Lrc;
-use rustc_target::spec::abi::Abi;
-use rustc_typeck::hir_ty_to_ty;
-use rustc::infer::region_constraints::{RegionConstraintData, Constraint};
-use rustc::middle::resolve_lifetime as rl;
-use rustc::middle::lang_items;
-use rustc::middle::stability;
-use rustc::mir::interpret::GlobalId;
-use rustc::hir::{self, GenericArg, HirVec};
-use rustc::hir::def::{self, Def, CtorKind};
-use rustc::hir::def_id::{CrateNum, DefId, CRATE_DEF_INDEX, LOCAL_CRATE};
-use rustc::ty::subst::Substs;
-use rustc::ty::{self, TyCtxt, Region, RegionVid, Ty, AdtKind};
-use rustc::ty::fold::TypeFolder;
-use rustc::ty::layout::VariantIdx;
-use rustc::util::nodemap::{FxHashMap, FxHashSet};
-use syntax::ast::{self, AttrStyle, Ident};
-use syntax::attr;
-use syntax::ext::base::MacroKind;
-use syntax::source_map::{dummy_spanned, Spanned};
-use syntax::ptr::P;
-use syntax::symbol::keywords::{self, Keyword};
-use syntax::symbol::InternedString;
-use syntax_pos::{self, DUMMY_SP, Pos, FileName};
-
+use std::u32;
 use std::collections::hash_map::Entry;
 use std::fmt;
 use std::hash::{Hash, Hasher};
@@ -44,25 +19,48 @@ use std::rc::Rc;
 use std::str::FromStr;
 use std::cell::RefCell;
 use std::sync::Arc;
-use std::u32;
 
 use parking_lot::ReentrantMutex;
-
-use core::{self, DocContext};
-use doctree;
-use visit_ast;
 use html::render::{cache, ExternalLocation};
 use html::item_type::ItemType;
+use rustc_data_structures::indexed_vec::{IndexVec, Idx};
+use rustc_data_structures::sync::Lrc;
+use rustc_target::spec::abi::Abi;
+use rustc_typeck::hir_ty_to_ty;
+use rustc::hir::{self, GenericArg, HirVec};
+use rustc::hir::def::{self, Def, CtorKind};
+use rustc::hir::def_id::{CrateNum, DefId, CRATE_DEF_INDEX, LOCAL_CRATE};
+use rustc::infer::region_constraints::{RegionConstraintData, Constraint};
+use rustc::middle::resolve_lifetime as rl;
+use rustc::middle::lang_items;
+use rustc::middle::stability;
+use rustc::mir::interpret::GlobalId;
+use rustc::ty::subst::Substs;
+use rustc::ty::{self, TyCtxt, Region, RegionVid, Ty, AdtKind};
+use rustc::ty::fold::TypeFolder;
+use rustc::ty::layout::VariantIdx;
+use rustc::util::nodemap::{FxHashMap, FxHashSet};
+use syntax_pos::{self, DUMMY_SP, Pos, FileName};
+use syntax::ast::{self, AttrStyle, Ident};
+use syntax::attr;
+use syntax::ext::base::MacroKind;
+use syntax::ptr::P;
+use syntax::source_map::{dummy_spanned, Spanned};
+use syntax::symbol::keywords::{self, Keyword};
+use syntax::symbol::InternedString;
 
+use crate::core::{self, DocContext};
+use crate::doctree;
+use crate::visit_ast;
 use self::cfg::Cfg;
 use self::auto_trait::AutoTraitFinder;
 use self::blanket_impl::BlanketImplFinder;
 
-pub use self::Type::*;
-pub use self::Mutability::*;
-pub use self::ItemEnum::*;
-pub use self::SelfTy::*;
 pub use self::FunctionRetTy::*;
+pub use self::ItemEnum::*;
+pub use self::Mutability::*;
+pub use self::SelfTy::*;
+pub use self::Type::*;
 pub use self::Visibility::{Public, Inherited};
 
 thread_local!(pub static MAX_DEF_ID: RefCell<FxHashMap<CrateNum, DefId>> = Default::default());

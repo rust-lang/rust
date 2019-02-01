@@ -1,21 +1,18 @@
 use std::{fmt, env};
 
+use backtrace::Backtrace;
+use errors::DiagnosticBuilder;
+use rustc_target::spec::abi::Abi;
+use syntax_pos::{Pos, Span};
+use syntax::ast;
+use syntax::symbol::Symbol;
+
 use crate::hir::map::definitions::DefPathData;
 use crate::mir;
 use crate::ty::{self, Ty, layout};
 use crate::ty::layout::{Size, Align, LayoutError};
-use rustc_target::spec::abi::Abi;
-
-use super::{RawConst, Pointer, InboundsCheck, ScalarMaybeUndef};
-
-use backtrace::Backtrace;
-
 use crate::ty::query::TyCtxtAt;
-use errors::DiagnosticBuilder;
-
-use syntax_pos::{Pos, Span};
-use syntax::ast;
-use syntax::symbol::Symbol;
+use super::{RawConst, Pointer, InboundsCheck, ScalarMaybeUndef};
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
 pub enum ErrorHandled {

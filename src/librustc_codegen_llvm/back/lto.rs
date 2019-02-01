@@ -1,12 +1,19 @@
+use std::ffi::{CStr, CString};
+use std::ptr;
+use std::slice;
+use std::sync::Arc;
+
 use back::bytecode::{DecodedBytecode, RLIB_BYTECODE_EXTENSION};
+use back::write::{self, DiagnosticHandlers, with_llvm_pmb, save_temp_bitcode, to_llvm_opt_settings};
+use errors::{FatalError, Handler};
+use libc;
+use llvm::{self, True, False};
+use llvm::archive_ro::ArchiveRO;
+use rustc_codegen_ssa::{ModuleCodegen, ModuleKind};
 use rustc_codegen_ssa::back::symbol_export;
 use rustc_codegen_ssa::back::write::{ModuleConfig, CodegenContext, FatLTOInput};
 use rustc_codegen_ssa::back::lto::{SerializedModule, LtoModuleCodegen, ThinShared, ThinModule};
 use rustc_codegen_ssa::traits::*;
-use back::write::{self, DiagnosticHandlers, with_llvm_pmb, save_temp_bitcode, to_llvm_opt_settings};
-use errors::{FatalError, Handler};
-use llvm::archive_ro::ArchiveRO;
-use llvm::{self, True, False};
 use rustc::dep_graph::WorkProduct;
 use rustc::dep_graph::cgu_reuse_tracker::CguReuse;
 use rustc::hir::def_id::LOCAL_CRATE;
@@ -15,15 +22,8 @@ use rustc::session::config::{self, Lto};
 use rustc::util::common::time_ext;
 use rustc_data_structures::fx::FxHashMap;
 use time_graph::Timeline;
-use {ModuleLlvm, LlvmCodegenBackend};
-use rustc_codegen_ssa::{ModuleCodegen, ModuleKind};
 
-use libc;
-
-use std::ffi::{CStr, CString};
-use std::ptr;
-use std::slice;
-use std::sync::Arc;
+use crate::{LlvmCodegenBackend, ModuleLlvm};
 
 pub fn crate_type_allows_lto(crate_type: config::CrateType) -> bool {
     match crate_type {

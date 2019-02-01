@@ -1,46 +1,5 @@
 //! See the Book for more information.
 
-pub use self::freshen::TypeFreshener;
-pub use self::LateBoundRegionConversionTime::*;
-pub use self::RegionVariableOrigin::*;
-pub use self::SubregionOrigin::*;
-pub use self::ValuePairs::*;
-pub use crate::ty::IntVarValue;
-
-use crate::hir;
-use crate::hir::def_id::DefId;
-use crate::infer::canonical::{Canonical, CanonicalVarValues};
-use crate::middle::free_region::RegionRelations;
-use crate::middle::lang_items;
-use crate::middle::region;
-use crate::session::config::BorrowckMode;
-use crate::traits::{self, ObligationCause, PredicateObligations, TraitEngine};
-use crate::ty::error::{ExpectedFound, TypeError, UnconstrainedNumeric};
-use crate::ty::fold::TypeFoldable;
-use crate::ty::relate::RelateResult;
-use crate::ty::subst::{Kind, Substs};
-use crate::ty::{self, GenericParamDefKind, Ty, TyCtxt, CtxtInterners};
-use crate::ty::{FloatVid, IntVid, TyVid};
-use crate::util::nodemap::FxHashMap;
-
-use arena::SyncDroplessArena;
-use errors::DiagnosticBuilder;
-use rustc_data_structures::unify as ut;
-use std::cell::{Cell, Ref, RefCell, RefMut};
-use std::collections::BTreeMap;
-use std::fmt;
-use syntax::ast;
-use syntax_pos::symbol::InternedString;
-use syntax_pos::Span;
-
-use self::combine::CombineFields;
-use self::lexical_region_resolve::LexicalRegionResolutions;
-use self::outlives::env::OutlivesEnvironment;
-use self::region_constraints::{GenericKind, RegionConstraintData, VarInfos, VerifyBound};
-use self::region_constraints::{RegionConstraintCollector, RegionSnapshot};
-use self::type_variable::TypeVariableOrigin;
-use self::unify_key::ToType;
-
 pub mod at;
 pub mod canonical;
 mod combine;
@@ -61,6 +20,46 @@ pub mod resolve;
 mod sub;
 pub mod type_variable;
 pub mod unify_key;
+
+use std::cell::{Cell, Ref, RefCell, RefMut};
+use std::collections::BTreeMap;
+use std::fmt;
+
+use arena::SyncDroplessArena;
+use errors::DiagnosticBuilder;
+use rustc_data_structures::unify as ut;
+use syntax_pos::{self, Span};
+use syntax_pos::symbol::InternedString;
+use syntax::ast;
+
+use crate::hir;
+use crate::hir::def_id::DefId;
+use crate::infer::canonical::{Canonical, CanonicalVarValues};
+use crate::middle::free_region::RegionRelations;
+use crate::middle::lang_items;
+use crate::middle::region;
+use crate::session::config::BorrowckMode;
+use crate::traits::{self, ObligationCause, PredicateObligations, TraitEngine};
+use crate::ty::{self, GenericParamDefKind, Ty, TyCtxt, CtxtInterners};
+use crate::ty::{FloatVid, IntVid, TyVid};
+pub use crate::ty::IntVarValue;
+use crate::ty::error::{ExpectedFound, TypeError, UnconstrainedNumeric};
+use crate::ty::fold::TypeFoldable;
+use crate::ty::relate::RelateResult;
+use crate::ty::subst::{Kind, Substs};
+use crate::util::nodemap::FxHashMap;
+pub use self::LateBoundRegionConversionTime::*;
+pub use self::RegionVariableOrigin::*;
+pub use self::SubregionOrigin::*;
+pub use self::ValuePairs::*;
+pub use self::freshen::TypeFreshener;
+use self::combine::CombineFields;
+use self::lexical_region_resolve::LexicalRegionResolutions;
+use self::outlives::env::OutlivesEnvironment;
+use self::region_constraints::{GenericKind, RegionConstraintData, VarInfos, VerifyBound};
+use self::region_constraints::{RegionConstraintCollector, RegionSnapshot};
+use self::type_variable::TypeVariableOrigin;
+use self::unify_key::ToType;
 
 #[must_use]
 #[derive(Debug)]

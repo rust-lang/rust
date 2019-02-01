@@ -1,17 +1,15 @@
 use rustc_data_structures::indexed_vec::IndexVec;
+use rustc_data_structures::stable_hasher::{HashStable, StableHasher, StableHasherResult};
 use rustc_data_structures::sync::{RwLock, MappedReadGuard, ReadGuard};
-use rustc_data_structures::stable_hasher::{HashStable, StableHasher,
-                                           StableHasherResult};
+use rustc_serialize as serialize;
+
 use crate::ich::StableHashingContext;
 use crate::mir::{Mir, BasicBlock};
-
-use crate::rustc_serialize as serialize;
 
 #[derive(Clone, Debug)]
 pub struct Cache {
     predecessors: RwLock<Option<IndexVec<BasicBlock, Vec<BasicBlock>>>>
 }
-
 
 impl serialize::Encodable for Cache {
     fn encode<S: serialize::Encoder>(&self, s: &mut S) -> Result<(), S::Error> {

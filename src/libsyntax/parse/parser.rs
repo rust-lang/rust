@@ -1,3 +1,14 @@
+use std::borrow::Cow;
+use std::cmp;
+use std::mem;
+use std::path::{self, Path, PathBuf};
+use std::slice;
+
+use errors::{Applicability, DiagnosticBuilder, DiagnosticId};
+use log::{debug, trace};
+use rustc_target::spec::abi::{self, Abi};
+use syntax_pos::{self, Span, MultiSpan, BytePos, FileName};
+
 use crate::ast::{AngleBracketedArgs, ParenthesizedArgs, AttrStyle, BareFnTy};
 use crate::ast::{GenericBound, TraitBoundModifier};
 use crate::ast::Unsafety;
@@ -45,17 +56,6 @@ use crate::parse::PResult;
 use crate::ThinVec;
 use crate::tokenstream::{self, DelimSpan, TokenTree, TokenStream, TreeAndJoint};
 use crate::symbol::{Symbol, keywords};
-
-use errors::{Applicability, DiagnosticBuilder, DiagnosticId};
-use rustc_target::spec::abi::{self, Abi};
-use syntax_pos::{Span, MultiSpan, BytePos, FileName};
-use log::{debug, trace};
-
-use std::borrow::Cow;
-use std::cmp;
-use std::mem;
-use std::path::{self, Path, PathBuf};
-use std::slice;
 
 #[derive(Debug)]
 /// Whether the type alias or associated type is a concrete type or an existential type

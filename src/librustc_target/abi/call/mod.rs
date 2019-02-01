@@ -1,7 +1,3 @@
-use crate::abi::{self, Abi, Align, FieldPlacement, Size};
-use crate::abi::{HasDataLayout, LayoutOf, TyLayout, TyLayoutMethods};
-use crate::spec::{self, HasTargetSpec};
-
 mod aarch64;
 mod amdgpu;
 mod arm;
@@ -22,6 +18,10 @@ mod x86;
 mod x86_64;
 mod x86_win64;
 mod wasm32;
+
+use crate::abi::{self, Abi, Align, FieldPlacement, Size};
+use crate::abi::{HasDataLayout, LayoutOf, TyLayout, TyLayoutMethods};
+use crate::spec::{self, HasTargetSpec};
 
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
 pub enum PassMode {

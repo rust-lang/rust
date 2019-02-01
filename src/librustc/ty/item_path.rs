@@ -1,12 +1,13 @@
-use crate::hir::map::DefPathData;
-use crate::hir::def_id::{CrateNum, DefId, CRATE_DEF_INDEX, LOCAL_CRATE};
-use crate::ty::{self, DefIdTree, Ty, TyCtxt};
-use crate::middle::cstore::{ExternCrate, ExternCrateSource};
+use std::cell::Cell;
+use std::fmt::Debug;
+
 use syntax::ast;
 use syntax::symbol::{keywords, LocalInternedString, Symbol};
 
-use std::cell::Cell;
-use std::fmt::Debug;
+use crate::hir::map::DefPathData;
+use crate::hir::def_id::{CrateNum, DefId, CRATE_DEF_INDEX, LOCAL_CRATE};
+use crate::middle::cstore::{ExternCrate, ExternCrateSource};
+use crate::ty::{self, DefIdTree, Ty, TyCtxt};
 
 thread_local! {
     static FORCE_ABSOLUTE: Cell<bool> = Cell::new(false);

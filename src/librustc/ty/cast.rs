@@ -1,9 +1,9 @@
 // Helpers for handling cast expressions, used in both
 // typeck and codegen.
 
-use crate::ty::{self, Ty};
-
 use syntax::ast;
+
+use crate::ty::{self, Ty};
 
 /// Types that are represented as ints.
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]

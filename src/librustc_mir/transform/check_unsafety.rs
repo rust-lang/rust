@@ -1,21 +1,19 @@
+use std::ops::Bound;
+
 use rustc_data_structures::fx::FxHashSet;
 use rustc_data_structures::indexed_vec::IndexVec;
 use rustc_data_structures::sync::Lrc;
-
-use rustc::ty::query::Providers;
-use rustc::ty::{self, TyCtxt};
-use rustc::ty::cast::CastTy;
 use rustc::hir;
 use rustc::hir::Node;
 use rustc::hir::def_id::DefId;
 use rustc::lint::builtin::{SAFE_EXTERN_STATICS, SAFE_PACKED_BORROWS, UNUSED_UNSAFE};
 use rustc::mir::*;
 use rustc::mir::visit::{PlaceContext, Visitor, MutatingUseContext};
-
+use rustc::ty::{self, TyCtxt};
+use rustc::ty::cast::CastTy;
+use rustc::ty::query::Providers;
 use syntax::ast;
 use syntax::symbol::Symbol;
-
-use std::ops::Bound;
 
 use crate::util;
 

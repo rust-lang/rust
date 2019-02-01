@@ -1,25 +1,26 @@
-use crate::borrow_check::nll::constraints::OutlivesConstraint;
-use crate::borrow_check::nll::region_infer::RegionInferenceContext;
-use crate::borrow_check::nll::type_check::Locations;
-use crate::borrow_check::nll::universal_regions::DefiningTy;
-use crate::borrow_check::nll::ConstraintDescription;
-use crate::util::borrowck_errors::{BorrowckErrors, Origin};
+mod region_name;
+mod var_name;
+
+use std::collections::VecDeque;
+
+use rustc_data_structures::indexed_vec::IndexVec;
+use rustc_errors::{Diagnostic, DiagnosticBuilder};
 use rustc::hir::def_id::DefId;
 use rustc::infer::error_reporting::nice_region_error::NiceRegionError;
 use rustc::infer::InferCtxt;
 use rustc::infer::NLLRegionVariableOrigin;
 use rustc::mir::{ConstraintCategory, Location, Mir};
 use rustc::ty::{self, RegionVid};
-use rustc_data_structures::indexed_vec::IndexVec;
-use rustc_errors::{Diagnostic, DiagnosticBuilder};
-use std::collections::VecDeque;
+use syntax_pos::Span;
 use syntax::errors::Applicability;
 use syntax::symbol::keywords;
-use syntax_pos::Span;
 
-mod region_name;
-mod var_name;
-
+use crate::borrow_check::nll::constraints::OutlivesConstraint;
+use crate::borrow_check::nll::region_infer::RegionInferenceContext;
+use crate::borrow_check::nll::type_check::Locations;
+use crate::borrow_check::nll::universal_regions::DefiningTy;
+use crate::borrow_check::nll::ConstraintDescription;
+use crate::util::borrowck_errors::{BorrowckErrors, Origin};
 crate use self::region_name::{RegionName, RegionNameSource};
 
 impl ConstraintDescription for ConstraintCategory {

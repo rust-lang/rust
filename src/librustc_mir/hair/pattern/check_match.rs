@@ -1,32 +1,29 @@
-use super::_match::{MatchCheckCtxt, Matrix, expand_pattern, is_useful};
-use super::_match::Usefulness::*;
-use super::_match::WitnessPreference::*;
+use std::slice;
 
-use super::{Pattern, PatternContext, PatternError, PatternKind};
-
+use rustc_errors::{Applicability, DiagnosticBuilder};
+use rustc::hir::def::*;
+use rustc::hir::def_id::DefId;
+use rustc::hir::intravisit::{self, Visitor, NestedVisitorMap};
+use rustc::hir::{self, Pat, PatKind};
+use rustc::lint;
+use rustc::middle::expr_use_visitor as euv;
 use rustc::middle::expr_use_visitor::{ConsumeMode, Delegate, ExprUseVisitor};
 use rustc::middle::expr_use_visitor::{LoanCause, MutateMode};
-use rustc::middle::expr_use_visitor as euv;
 use rustc::middle::mem_categorization::cmt_;
 use rustc::middle::region;
 use rustc::session::Session;
 use rustc::ty::{self, Ty, TyCtxt};
 use rustc::ty::subst::Substs;
-use rustc::lint;
-use rustc_errors::{Applicability, DiagnosticBuilder};
 use rustc::util::common::ErrorReported;
-
-use rustc::hir::def::*;
-use rustc::hir::def_id::DefId;
-use rustc::hir::intravisit::{self, Visitor, NestedVisitorMap};
-use rustc::hir::{self, Pat, PatKind};
-
 use smallvec::smallvec;
-use std::slice;
-
+use syntax_pos::{Span, DUMMY_SP, MultiSpan};
 use syntax::ast;
 use syntax::ptr::P;
-use syntax_pos::{Span, DUMMY_SP, MultiSpan};
+
+use super::{Pattern, PatternContext, PatternError, PatternKind};
+use super::_match::{MatchCheckCtxt, Matrix, expand_pattern, is_useful};
+use super::_match::Usefulness::*;
+use super::_match::WitnessPreference::*;
 
 pub fn check_crate<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>) {
     for def_id in tcx.body_owners() {

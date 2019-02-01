@@ -3,32 +3,23 @@
 //! Here we build the "reduced graph": the graph of the module tree without
 //! any imports resolved.
 
-use crate::macros::{InvocationData, ParentScope, LegacyScope};
-use crate::resolve_imports::ImportDirective;
-use crate::resolve_imports::ImportDirectiveSubclass::{self, GlobImport, SingleImport};
-use crate::{Module, ModuleData, ModuleKind, NameBinding, NameBindingKind, Segment, ToNameBinding};
-use crate::{ModuleOrUniformRoot, PerNS, Resolver, ResolverArenas, ExternPreludeEntry};
-use crate::Namespace::{self, TypeNS, ValueNS, MacroNS};
-use crate::{resolve_error, resolve_struct_error, ResolutionError};
+use std::cell::Cell;
+use std::ptr;
 
+use errors::Applicability;
+use log::debug;
+use rustc_data_structures::sync::Lrc;
+use rustc_metadata::cstore::LoadedMacro;
 use rustc::bug;
 use rustc::hir::def::*;
 use rustc::hir::def_id::{CrateNum, CRATE_DEF_INDEX, LOCAL_CRATE, DefId};
-use rustc::ty;
 use rustc::middle::cstore::CrateStore;
-use rustc_metadata::cstore::LoadedMacro;
-
-use std::cell::Cell;
-use std::ptr;
-use rustc_data_structures::sync::Lrc;
-
-use errors::Applicability;
-
+use rustc::ty;
+use syntax_pos::{Span, DUMMY_SP};
 use syntax::ast::{Name, Ident};
-use syntax::attr;
-
 use syntax::ast::{self, Block, ForeignItem, ForeignItemKind, Item, ItemKind, NodeId};
 use syntax::ast::{MetaItemKind, Mutability, StmtKind, TraitItem, TraitItemKind, Variant};
+use syntax::attr;
 use syntax::ext::base::{MacroKind, SyntaxExtension};
 use syntax::ext::base::Determinacy::Undetermined;
 use syntax::ext::hygiene::Mark;
@@ -40,9 +31,13 @@ use syntax::std_inject::injected_crate_name;
 use syntax::symbol::keywords;
 use syntax::visit::{self, Visitor};
 
-use syntax_pos::{Span, DUMMY_SP};
-
-use log::debug;
+use crate::{Module, ModuleData, ModuleKind, NameBinding, NameBindingKind, Segment, ToNameBinding};
+use crate::{ModuleOrUniformRoot, PerNS, Resolver, ResolverArenas, ExternPreludeEntry};
+use crate::Namespace::{self, TypeNS, ValueNS, MacroNS};
+use crate::{resolve_error, resolve_struct_error, ResolutionError};
+use crate::macros::{InvocationData, ParentScope, LegacyScope};
+use crate::resolve_imports::ImportDirective;
+use crate::resolve_imports::ImportDirectiveSubclass::{self, GlobImport, SingleImport};
 
 impl<'a> ToNameBinding<'a> for (Module<'a>, ty::Visibility, Span, Mark) {
     fn to_name_binding(self, arenas: &'a ResolverArenas<'a>) -> &'a NameBinding<'a> {

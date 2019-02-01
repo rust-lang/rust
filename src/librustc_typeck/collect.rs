@@ -1,6 +1,6 @@
 //! "Collection" is the process of determining the type and other external
 //! details of each item in Rust. Collection is specifically concerned
-//! with *interprocedural* things -- for example, for a function
+//! with *interprocedural* things; for example, for a function
 //! definition, collection will figure out the type and signature of the
 //! function, but it will not visit the *body* of the function in any way,
 //! nor examine type annotations on local variables (that's the job of
@@ -14,6 +14,30 @@
 //! At present, however, we do run collection across all items in the
 //! crate as a kind of pass. This should eventually be factored away.
 
+use std::iter;
+
+use rustc_data_structures::sync::Lrc;
+use rustc_target::spec::abi;
+use rustc::hir::{GenericParamKind, Node};
+use rustc::hir::def::{CtorKind, Def};
+use rustc::hir::def_id::{DefId, LOCAL_CRATE};
+use rustc::hir::intravisit::{self, NestedVisitorMap, Visitor};
+use rustc::hir::{self, CodegenFnAttrFlags, CodegenFnAttrs, Unsafety};
+use rustc::mir::mono::Linkage;
+use rustc::ty::{self, AdtKind, ReprOptions, ToPolyTraitRef, ToPredicate, Ty, TyCtxt};
+use rustc::ty::query::Providers;
+use rustc::ty::subst::Substs;
+use rustc::ty::util::{Discr, IntTypeExt};
+use rustc::util::captures::Captures;
+use rustc::util::nodemap::FxHashMap;
+use syntax_pos::{Span, DUMMY_SP};
+use syntax::ast;
+use syntax::ast::{Ident, MetaItemKind};
+use syntax::attr::{InlineAttr, OptimizeAttr, list_contains_name, mark_used};
+use syntax::source_map::Spanned;
+use syntax::feature_gate;
+use syntax::symbol::{keywords, Symbol};
+
 use crate::astconv::{AstConv, Bounds};
 use crate::constrained_type_params as ctp;
 use crate::check::intrinsic::intrisic_operation_unsafety;
@@ -21,34 +45,6 @@ use crate::lint;
 use crate::middle::lang_items::SizedTraitLangItem;
 use crate::middle::resolve_lifetime as rl;
 use crate::middle::weak_lang_items;
-use rustc::mir::mono::Linkage;
-use rustc::ty::query::Providers;
-use rustc::ty::subst::Substs;
-use rustc::ty::util::Discr;
-use rustc::ty::util::IntTypeExt;
-use rustc::ty::{self, AdtKind, ToPolyTraitRef, Ty, TyCtxt};
-use rustc::ty::{ReprOptions, ToPredicate};
-use rustc::util::captures::Captures;
-use rustc::util::nodemap::FxHashMap;
-use rustc_data_structures::sync::Lrc;
-use rustc_target::spec::abi;
-
-use syntax::ast;
-use syntax::ast::{Ident, MetaItemKind};
-use syntax::attr::{InlineAttr, OptimizeAttr, list_contains_name, mark_used};
-use syntax::source_map::Spanned;
-use syntax::feature_gate;
-use syntax::symbol::{keywords, Symbol};
-use syntax_pos::{Span, DUMMY_SP};
-
-use rustc::hir::def::{CtorKind, Def};
-use rustc::hir::Node;
-use rustc::hir::def_id::{DefId, LOCAL_CRATE};
-use rustc::hir::intravisit::{self, NestedVisitorMap, Visitor};
-use rustc::hir::GenericParamKind;
-use rustc::hir::{self, CodegenFnAttrFlags, CodegenFnAttrs, Unsafety};
-
-use std::iter;
 
 struct OnlySelfBounds(bool);
 

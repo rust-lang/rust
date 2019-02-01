@@ -1,36 +1,34 @@
 //! The main parser interface.
 
-use crate::ast::{self, CrateConfig, NodeId};
-use crate::early_buffered_lints::{BufferedEarlyLint, BufferedEarlyLintId};
-use crate::source_map::{SourceMap, FilePathMapping};
-use crate::feature_gate::UnstableFeatures;
-use crate::parse::parser::Parser;
-use crate::symbol::Symbol;
-use crate::tokenstream::{TokenStream, TokenTree};
-use crate::diagnostics::plugin::ErrorMap;
-use crate::print::pprust::token_to_string;
+pub mod attr;
+pub mod classify;
+pub mod lexer;
+#[macro_use]
+pub mod parser;
+pub mod token;
 
-use errors::{FatalError, Level, Handler, ColorConfig, Diagnostic, DiagnosticBuilder};
-use rustc_data_structures::sync::{Lrc, Lock};
-use syntax_pos::{Span, SourceFile, FileName, MultiSpan};
-use log::debug;
-
-use rustc_data_structures::fx::FxHashSet;
 use std::borrow::Cow;
 use std::iter;
 use std::path::{Path, PathBuf};
 use std::str;
 
+use errors::{FatalError, Level, Handler, ColorConfig, Diagnostic, DiagnosticBuilder};
+use log::debug;
+use rustc_data_structures::fx::FxHashSet;
+use rustc_data_structures::sync::{Lrc, Lock};
+use syntax_pos::{Span, SourceFile, FileName, MultiSpan};
+
+use crate::ast::{self, CrateConfig, NodeId};
+use crate::diagnostics::plugin::ErrorMap;
+use crate::early_buffered_lints::{BufferedEarlyLint, BufferedEarlyLintId};
+use crate::feature_gate::UnstableFeatures;
+use crate::parse::parser::Parser;
+use crate::print::pprust::token_to_string;
+use crate::source_map::{SourceMap, FilePathMapping};
+use crate::symbol::Symbol;
+use crate::tokenstream::{TokenStream, TokenTree};
+
 pub type PResult<'a, T> = Result<T, DiagnosticBuilder<'a>>;
-
-#[macro_use]
-pub mod parser;
-
-pub mod lexer;
-pub mod token;
-pub mod attr;
-
-pub mod classify;
 
 /// Info about a parsing session.
 pub struct ParseSess {

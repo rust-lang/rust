@@ -1,21 +1,19 @@
-use rustc::middle::lang_items;
-use rustc::ty::{self, Ty, TypeFoldable};
-use rustc::ty::layout::{self, LayoutOf, HasTyCtxt};
-use rustc::mir;
-use rustc::mir::interpret::EvalErrorKind;
+use rustc_mir::monomorphize;
 use rustc_target::abi::call::{ArgType, FnType, PassMode};
 use rustc_target::spec::abi::Abi;
-use rustc_mir::monomorphize;
-use crate::base;
+use rustc::middle::lang_items;
+use rustc::mir;
+use rustc::mir::interpret::EvalErrorKind;
+use rustc::ty::{self, Ty, TypeFoldable};
+use rustc::ty::layout::{self, LayoutOf, HasTyCtxt};
+use syntax_pos::Pos;
+use syntax::symbol::Symbol;
+
 use crate::MemFlags;
+use crate::base;
 use crate::common::{self, IntPredicate};
 use crate::meth;
-
 use crate::traits::*;
-
-use syntax::symbol::Symbol;
-use syntax_pos::Pos;
-
 use super::{FunctionCx, LocalRef};
 use super::place::PlaceRef;
 use super::operand::OperandRef;

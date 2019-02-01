@@ -1,20 +1,50 @@
 //! Type context book-keeping.
 
+use std::any::Any;
+use std::borrow::Borrow;
+use std::cmp::Ordering;
+use std::collections::hash_map::{self, Entry};
+use std::hash::{Hash, Hasher};
+use std::iter;
+use std::fmt;
+use std::marker::PhantomData;
+use std::mem;
+use std::ops::{Deref, Bound};
+use std::ptr;
+use std::sync::mpsc;
+use std::sync::Arc;
+
+use arena::{TypedArena, SyncDroplessArena};
+use errors::DiagnosticBuilder;
+use rustc_data_structures::indexed_vec::{Idx, IndexVec};
+use rustc_data_structures::interner::HashInterner;
+use rustc_data_structures::stable_hasher::{HashStable, hash_stable_hashmap,
+                                           StableHasher, StableHasherResult,
+                                           StableVec};
+use rustc_data_structures::sync::{self, Lrc, Lock, WorkerLocal};
+use rustc_target::spec::abi;
+use smallvec::SmallVec;
+use syntax_pos::Span;
+use syntax::ast::{self, NodeId};
+use syntax::attr;
+use syntax::source_map::MultiSpan;
+use syntax::edition::Edition;
+use syntax::feature_gate;
+use syntax::symbol::{Symbol, keywords, InternedString};
+
 use crate::dep_graph::DepGraph;
 use crate::dep_graph::{self, DepNode, DepConstructor};
-use crate::session::Session;
-use crate::session::config::{BorrowckMode, OutputFilenames};
-use crate::session::config::CrateType;
-use crate::middle;
+use crate::hir;
 use crate::hir::{TraitCandidate, HirId, ItemKind, ItemLocalId, Node};
 use crate::hir::def::{Def, Export};
 use crate::hir::def_id::{CrateNum, DefId, DefIndex, LOCAL_CRATE};
 use crate::hir::map as hir_map;
 use crate::hir::map::DefPathHash;
-use crate::lint::{self, Lint};
 use crate::ich::{StableHashingContext, NodeIdHashingMode};
 use crate::infer::canonical::{Canonical, CanonicalVarInfo, CanonicalVarInfos};
 use crate::infer::outlives::free_region_map::FreeRegionMap;
+use crate::lint::{self, Lint};
+use crate::middle;
 use crate::middle::cstore::CrateStoreDyn;
 use crate::middle::cstore::EncodedMetadata;
 use crate::middle::lang_items;
@@ -22,58 +52,28 @@ use crate::middle::resolve_lifetime::{self, ObjectLifetimeDefault};
 use crate::middle::stability;
 use crate::mir::{self, Mir, interpret, ProjectionKind};
 use crate::mir::interpret::Allocation;
-use crate::ty::subst::{Kind, Substs, Subst};
-use crate::ty::ReprOptions;
+use crate::session::Session;
+use crate::session::config::{BorrowckMode, OutputFilenames};
+use crate::session::config::CrateType;
 use crate::traits;
 use crate::traits::{Clause, Clauses, GoalKind, Goal, Goals};
 use crate::ty::{self, Ty, TypeAndMut};
+use crate::ty::{BoundVar, BindingMode};
 use crate::ty::{TyS, TyKind, List};
 use crate::ty::{AdtKind, AdtDef, ClosureSubsts, GeneratorSubsts, Region, Const, LazyConst};
 use crate::ty::{PolyFnSig, InferTy, ParamTy, ProjectionTy, ExistentialPredicate, Predicate};
-use crate::ty::RegionKind;
 use crate::ty::{TyVar, TyVid, IntVar, IntVid, FloatVar, FloatVid};
-use crate::ty::TyKind::*;
+use crate::ty::CanonicalPolyFnSig;
 use crate::ty::GenericParamDefKind;
+use crate::ty::RegionKind;
+use crate::ty::ReprOptions;
+use crate::ty::TyKind::*;
 use crate::ty::layout::{LayoutDetails, TargetDataLayout, VariantIdx};
 use crate::ty::query;
 use crate::ty::steal::Steal;
-use crate::ty::subst::{UserSubsts, UnpackedKind};
-use crate::ty::{BoundVar, BindingMode};
-use crate::ty::CanonicalPolyFnSig;
+use crate::ty::subst::{Kind, Substs, Subst, UserSubsts, UnpackedKind};
 use crate::util::nodemap::{DefIdMap, DefIdSet, ItemLocalMap};
 use crate::util::nodemap::{FxHashMap, FxHashSet};
-use errors::DiagnosticBuilder;
-use rustc_data_structures::interner::HashInterner;
-use smallvec::SmallVec;
-use rustc_data_structures::stable_hasher::{HashStable, hash_stable_hashmap,
-                                           StableHasher, StableHasherResult,
-                                           StableVec};
-use arena::{TypedArena, SyncDroplessArena};
-use rustc_data_structures::indexed_vec::{Idx, IndexVec};
-use rustc_data_structures::sync::{self, Lrc, Lock, WorkerLocal};
-use std::any::Any;
-use std::borrow::Borrow;
-use std::cmp::Ordering;
-use std::collections::hash_map::{self, Entry};
-use std::hash::{Hash, Hasher};
-use std::fmt;
-use std::mem;
-use std::ops::{Deref, Bound};
-use std::ptr;
-use std::iter;
-use std::sync::mpsc;
-use std::sync::Arc;
-use std::marker::PhantomData;
-use rustc_target::spec::abi;
-use syntax::ast::{self, NodeId};
-use syntax::attr;
-use syntax::source_map::MultiSpan;
-use syntax::edition::Edition;
-use syntax::feature_gate;
-use syntax::symbol::{Symbol, keywords, InternedString};
-use syntax_pos::Span;
-
-use crate::hir;
 
 pub struct AllArenas<'tcx> {
     pub global: WorkerLocal<GlobalArenas<'tcx>>,

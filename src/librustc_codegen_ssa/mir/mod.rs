@@ -1,3 +1,11 @@
+mod analyze;
+mod block;
+pub mod constant;
+pub mod place;
+pub mod operand;
+mod rvalue;
+mod statement;
+
 use libc::c_uint;
 use rustc::ty::{self, Ty, TypeFoldable, UpvarSubsts};
 use rustc::ty::layout::{TyLayout, HasTyCtxt};
@@ -643,11 +651,3 @@ fn arg_local_refs<'a, 'tcx: 'a, Bx: BuilderMethods<'a, 'tcx>>(
         }
     }).collect()
 }
-
-mod analyze;
-mod block;
-pub mod constant;
-pub mod place;
-pub mod operand;
-mod rvalue;
-mod statement;

@@ -29,10 +29,11 @@ pub use errors;
 use rustc_data_structures::sync::Lock;
 use rustc_data_structures::bit_set::GrowableBitSet;
 pub use rustc_data_structures::thin_vec::ThinVec;
-use ast::AttrId;
 
-// A variant of 'try!' that panics on an Err. This is used as a crutch on the
-// way towards a non-panic!-prone parser. It should be used for fatal parsing
+use crate::ast::AttrId;
+
+// A variant of `try!` that panics on an `Err`. This is used as a crutch on the
+// way towards a parser not prone to `panic!`. It should be used for fatal parsing
 // errors; eventually we plan to convert all code using panictry to just use
 // normal try.
 macro_rules! panictry {

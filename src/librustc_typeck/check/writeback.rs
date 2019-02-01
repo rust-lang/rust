@@ -2,8 +2,10 @@
 // unresolved type variables and replaces "ty_var" types with their
 // substitutions.
 
-use crate::check::FnCtxt;
+use std::mem;
+
 use errors::DiagnosticBuilder;
+use rustc_data_structures::sync::Lrc;
 use rustc::hir;
 use rustc::hir::def_id::{DefId, DefIndex};
 use rustc::hir::intravisit::{self, NestedVisitorMap, Visitor};
@@ -13,10 +15,10 @@ use rustc::ty::fold::{BottomUpFolder, TypeFoldable, TypeFolder};
 use rustc::ty::subst::UnpackedKind;
 use rustc::ty::{self, Ty, TyCtxt};
 use rustc::util::nodemap::DefIdSet;
-use rustc_data_structures::sync::Lrc;
-use std::mem;
-use syntax::ast;
 use syntax_pos::Span;
+use syntax::ast;
+
+use crate::check::FnCtxt;
 
 ///////////////////////////////////////////////////////////////////////////
 // Entry point
