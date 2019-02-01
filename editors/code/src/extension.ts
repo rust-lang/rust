@@ -70,6 +70,18 @@ export function activate(context: vscode.ExtensionContext) {
         'rust-analyzer.applySourceChange',
         commands.applySourceChange.handle
     );
+    registerCommand(
+        'rust-analyzer.showReferences',
+        (uri: string, position: lc.Position, locations: lc.Location[]) => {
+            vscode.commands.executeCommand(
+                'editor.action.showReferences',
+                vscode.Uri.parse(uri),
+                Server.client.protocol2CodeConverter.asPosition(position),
+                locations.map(Server.client.protocol2CodeConverter.asLocation)
+            );
+        }
+    );
+
     overrideCommand('type', commands.onEnter.handle);
 
     // Notifications are events triggered by the language server
