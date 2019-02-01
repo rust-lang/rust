@@ -6,7 +6,7 @@ use test_utils::{assert_eq_text, covers};
 
 use crate::{
     ItemMap, Resolution,
-    db::HirDatabase,
+    PersistentHirDatabase,
     mock::MockDatabase,
     module_tree::ModuleId,
 };

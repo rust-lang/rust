@@ -13,13 +13,14 @@ use test_utils::tested_by;
 
 use crate::{
     Name, AsName, HirDatabase, SourceItemId, HirFileId, Problem, SourceFileItems, ModuleSource,
+    PersistentHirDatabase,
     Crate,
     ids::SourceFileItemId,
 };
 
 impl ModuleSource {
     pub(crate) fn new(
-        db: &impl HirDatabase,
+        db: &impl PersistentHirDatabase,
         file_id: HirFileId,
         decl_id: Option<SourceFileItemId>,
     ) -> ModuleSource {
@@ -47,7 +48,7 @@ pub struct Submodule {
 
 impl Submodule {
     pub(crate) fn submodules_query(
-        db: &impl HirDatabase,
+        db: &impl PersistentHirDatabase,
         file_id: HirFileId,
         decl_id: Option<SourceFileItemId>,
     ) -> Arc<Vec<Submodule>> {
@@ -133,7 +134,10 @@ struct LinkData {
 }
 
 impl ModuleTree {
-    pub(crate) fn module_tree_query(db: &impl HirDatabase, krate: Crate) -> Arc<ModuleTree> {
+    pub(crate) fn module_tree_query(
+        db: &impl PersistentHirDatabase,
+        krate: Crate,
+    ) -> Arc<ModuleTree> {
         db.check_canceled();
         let mut res = ModuleTree::default();
         res.init_crate(db, krate);
@@ -156,7 +160,7 @@ impl ModuleTree {
         Some(res)
     }
 
-    fn init_crate(&mut self, db: &impl HirDatabase, krate: Crate) {
+    fn init_crate(&mut self, db: &impl PersistentHirDatabase, krate: Crate) {
         let crate_graph = db.crate_graph();
         let file_id = crate_graph.crate_root(krate.crate_id);
         let source_root_id = db.file_source_root(file_id);
@@ -167,7 +171,7 @@ impl ModuleTree {
 
     fn init_subtree(
         &mut self,
-        db: &impl HirDatabase,
+        db: &impl PersistentHirDatabase,
         source_root: &SourceRoot,
         parent: Option<LinkId>,
         file_id: HirFileId,
@@ -287,14 +291,18 @@ impl LinkId {
     pub(crate) fn name(self, tree: &ModuleTree) -> &Name {
         &tree.links[self].name
     }
-    pub(crate) fn source(self, tree: &ModuleTree, db: &impl HirDatabase) -> TreeArc<ast::Module> {
+    pub(crate) fn source(
+        self,
+        tree: &ModuleTree,
+        db: &impl PersistentHirDatabase,
+    ) -> TreeArc<ast::Module> {
         let syntax_node = db.file_item(tree.links[self].source);
         ast::Module::cast(&syntax_node).unwrap().to_owned()
     }
 }
 
 fn resolve_submodule(
-    db: &impl HirDatabase,
+    db: &impl PersistentHirDatabase,
     file_id: HirFileId,
     name: &Name,
     is_root: bool,

@@ -6,17 +6,20 @@ use ra_syntax::{
 
 use crate::{
     SourceFileItems, SourceItemId, HirFileId,
-    db::HirDatabase,
+    PersistentHirDatabase,
 };
 
-pub(super) fn file_items(db: &impl HirDatabase, file_id: HirFileId) -> Arc<SourceFileItems> {
+pub(super) fn file_items(
+    db: &impl PersistentHirDatabase,
+    file_id: HirFileId,
+) -> Arc<SourceFileItems> {
     let source_file = db.hir_parse(file_id);
     let res = SourceFileItems::new(file_id, &source_file);
     Arc::new(res)
 }
 
 pub(super) fn file_item(
-    db: &impl HirDatabase,
+    db: &impl PersistentHirDatabase,
     source_item_id: SourceItemId,
 ) -> TreeArc<SyntaxNode> {
     let source_file = db.hir_parse(source_item_id.file_id);

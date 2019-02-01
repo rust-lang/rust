@@ -10,6 +10,7 @@ use ra_arena::{Arena, RawId, ArenaId, impl_arena_id};
 use crate::{
     HirDatabase,
     Module,
+    PersistentHirDatabase,
 };
 
 #[derive(Debug, Default)]
@@ -62,7 +63,7 @@ pub struct HirFileId(HirFileIdRepr);
 impl HirFileId {
     /// For macro-expansion files, returns the file original source file the
     /// expansionoriginated from.
-    pub fn original_file(self, db: &impl HirDatabase) -> FileId {
+    pub fn original_file(self, db: &impl PersistentHirDatabase) -> FileId {
         match self.0 {
             HirFileIdRepr::File(file_id) => file_id,
             HirFileIdRepr::Macro(macro_call_id) => {
@@ -86,7 +87,10 @@ impl HirFileId {
         }
     }
 
-    pub(crate) fn hir_parse(db: &impl HirDatabase, file_id: HirFileId) -> TreeArc<SourceFile> {
+    pub(crate) fn hir_parse(
+        db: &impl PersistentHirDatabase,
+        file_id: HirFileId,
+    ) -> TreeArc<SourceFile> {
         match file_id.0 {
             HirFileIdRepr::File(file_id) => db.parse(file_id),
             HirFileIdRepr::Macro(m) => {
@@ -180,7 +184,7 @@ pub(crate) struct LocationCtx<DB> {
     file_id: HirFileId,
 }
 
-impl<'a, DB: HirDatabase> LocationCtx<&'a DB> {
+impl<'a, DB: PersistentHirDatabase> LocationCtx<&'a DB> {
     pub(crate) fn new(db: &'a DB, module: Module, file_id: HirFileId) -> LocationCtx<&'a DB> {
         LocationCtx {
             db,
@@ -199,7 +203,7 @@ impl<'a, DB: HirDatabase> LocationCtx<&'a DB> {
 
 pub(crate) trait AstItemDef<N: AstNode>: ArenaId + Clone {
     fn interner(interner: &HirInterner) -> &LocationIntener<ItemLoc<N>, Self>;
-    fn from_ast(ctx: LocationCtx<&impl HirDatabase>, ast: &N) -> Self {
+    fn from_ast(ctx: LocationCtx<&impl PersistentHirDatabase>, ast: &N) -> Self {
         let items = ctx.db.file_items(ctx.file_id);
         let raw = SourceItemId {
             file_id: ctx.file_id,
@@ -213,7 +217,7 @@ pub(crate) trait AstItemDef<N: AstNode>: ArenaId + Clone {
 
         Self::interner(ctx.db.as_ref()).loc2id(&loc)
     }
-    fn source(self, db: &impl HirDatabase) -> (HirFileId, TreeArc<N>) {
+    fn source(self, db: &impl PersistentHirDatabase) -> (HirFileId, TreeArc<N>) {
         let int = Self::interner(db.as_ref());
         let loc = int.id2loc(self);
         let syntax = db.file_item(loc.raw);

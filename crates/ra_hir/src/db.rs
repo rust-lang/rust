@@ -27,9 +27,6 @@ pub trait PersistentHirDatabase: SourceDatabase + AsRef<HirInterner> {
     #[salsa::invoke(crate::macros::expand_macro_invocation)]
     fn expand_macro_invocation(&self, invoc: MacroCallId) -> Option<Arc<MacroExpansion>>;
 
-    #[salsa::invoke(ExprScopes::expr_scopes_query)]
-    fn expr_scopes(&self, func: Function) -> Arc<ExprScopes>;
-
     #[salsa::invoke(crate::adt::StructData::struct_data_query)]
     fn struct_data(&self, s: Struct) -> Arc<StructData>;
 
@@ -38,6 +35,9 @@ pub trait PersistentHirDatabase: SourceDatabase + AsRef<HirInterner> {
 
     #[salsa::invoke(query_definitions::file_items)]
     fn file_items(&self, file_id: HirFileId) -> Arc<SourceFileItems>;
+
+    #[salsa::invoke(query_definitions::file_item)]
+    fn file_item(&self, source_item_id: SourceItemId) -> TreeArc<SyntaxNode>;
 
     #[salsa::invoke(crate::module_tree::Submodule::submodules_query)]
     fn submodules(
@@ -61,20 +61,17 @@ pub trait PersistentHirDatabase: SourceDatabase + AsRef<HirInterner> {
     #[salsa::invoke(crate::module_tree::ModuleTree::module_tree_query)]
     fn module_tree(&self, krate: Crate) -> Arc<ModuleTree>;
 
-    #[salsa::invoke(crate::impl_block::impls_in_module_with_source_map_query)]
-    fn impls_in_module_with_source_map(
-        &self,
-        module: Module,
-    ) -> (Arc<ModuleImplBlocks>, Arc<ImplSourceMap>);
-
     #[salsa::invoke(crate::impl_block::impls_in_module)]
     fn impls_in_module(&self, module: Module) -> Arc<ModuleImplBlocks>;
 
     #[salsa::invoke(crate::impl_block::impls_in_module_source_map_query)]
     fn impls_in_module_source_map(&self, module: Module) -> Arc<ImplSourceMap>;
 
-    #[salsa::invoke(crate::ty::method_resolution::CrateImplBlocks::impls_in_crate_query)]
-    fn impls_in_crate(&self, krate: Crate) -> Arc<CrateImplBlocks>;
+    #[salsa::invoke(crate::impl_block::impls_in_module_with_source_map_query)]
+    fn impls_in_module_with_source_map(
+        &self,
+        module: Module,
+    ) -> (Arc<ModuleImplBlocks>, Arc<ImplSourceMap>);
 
     #[salsa::invoke(crate::generics::GenericParams::generic_params_query)]
     fn generic_params(&self, def: GenericDef) -> Arc<GenericParams>;
@@ -85,11 +82,8 @@ pub trait PersistentHirDatabase: SourceDatabase + AsRef<HirInterner> {
 
 #[salsa::query_group(HirDatabaseStorage)]
 pub trait HirDatabase: PersistentHirDatabase {
-    #[salsa::invoke(query_definitions::fn_scopes)]
-    fn fn_scopes(&self, func: Function) -> Arc<FnScopes>;
-
-    #[salsa::invoke(query_definitions::file_item)]
-    fn file_item(&self, source_item_id: SourceItemId) -> TreeArc<SyntaxNode>;
+    #[salsa::invoke(ExprScopes::expr_scopes_query)]
+    fn expr_scopes(&self, func: Function) -> Arc<ExprScopes>;
 
     #[salsa::invoke(crate::ty::infer)]
     fn infer(&self, func: Function) -> Arc<InferenceResult>;
@@ -105,4 +99,7 @@ pub trait HirDatabase: PersistentHirDatabase {
 
     #[salsa::invoke(crate::expr::body_syntax_mapping)]
     fn body_syntax_mapping(&self, func: Function) -> Arc<crate::expr::BodySyntaxMapping>;
+
+    #[salsa::invoke(crate::ty::method_resolution::CrateImplBlocks::impls_in_crate_query)]
+    fn impls_in_crate(&self, krate: Crate) -> Arc<CrateImplBlocks>;
 }

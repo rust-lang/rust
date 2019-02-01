@@ -7,7 +7,7 @@ use crate::{
     module_tree::ModuleId,
     impl_block::ImplId,
     nameres::{lower::ImportId},
-    db::HirDatabase,
+    HirDatabase, PersistentHirDatabase,
 };
 
 impl Module {
@@ -24,7 +24,10 @@ impl Module {
         Some(link.name(&module_tree).clone())
     }
 
-    pub(crate) fn definition_source_impl(&self, db: &impl HirDatabase) -> (FileId, ModuleSource) {
+    pub(crate) fn definition_source_impl(
+        &self,
+        db: &impl PersistentHirDatabase,
+    ) -> (FileId, ModuleSource) {
         let module_tree = db.module_tree(self.krate);
         let file_id = self.module_id.file_id(&module_tree);
         let decl_id = self.module_id.decl_id(&module_tree);
@@ -67,7 +70,7 @@ impl Module {
         source_map.get(&source, impl_id)
     }
 
-    pub(crate) fn crate_root_impl(&self, db: &impl HirDatabase) -> Module {
+    pub(crate) fn crate_root_impl(&self, db: &impl PersistentHirDatabase) -> Module {
         let module_tree = db.module_tree(self.krate);
         let module_id = self.module_id.crate_root(&module_tree);
         self.with_module_id(module_id)
@@ -81,7 +84,10 @@ impl Module {
     }
 
     /// Iterates over all child modules.
-    pub(crate) fn children_impl(&self, db: &impl HirDatabase) -> impl Iterator<Item = Module> {
+    pub(crate) fn children_impl(
+        &self,
+        db: &impl PersistentHirDatabase,
+    ) -> impl Iterator<Item = Module> {
         let module_tree = db.module_tree(self.krate);
         let children = self
             .module_id
@@ -91,7 +97,7 @@ impl Module {
         children.into_iter()
     }
 
-    pub(crate) fn parent_impl(&self, db: &impl HirDatabase) -> Option<Module> {
+    pub(crate) fn parent_impl(&self, db: &impl PersistentHirDatabase) -> Option<Module> {
         let module_tree = db.module_tree(self.krate);
         let parent_id = self.module_id.parent(&module_tree)?;
         Some(self.with_module_id(parent_id))
