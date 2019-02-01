@@ -174,7 +174,7 @@ fn handle_run(socket: TcpStream, work: &Path, lock: &Mutex<()>) {
     // other thread created a child process with the file open for writing, and
     // we attempt to execute it, so we get an error.
     //
-    // This race is resolve by ensuring that only one thread can writ ethe file
+    // This race is resolve by ensuring that only one thread can write the file
     // and spawn a child process at once. Kinda an unfortunate solution, but we
     // don't have many other choices with this sort of setup!
     //
