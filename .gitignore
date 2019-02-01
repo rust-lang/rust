@@ -5,4 +5,3 @@ crates/*/target
 *.log
 *.iml
 .vscode/settings.json
-**/*.snap.new

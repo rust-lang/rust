@@ -66,6 +66,17 @@ mod tests {
     }
 
     #[test]
+    #[ignore] // should not complete foo, which currently doesn't work
+    fn dont_complete_current_use() {
+        check_reference_completion(
+            "dont_complete_current_use",
+            r"
+            use self::foo<|>;
+            ",
+        );
+    }
+
+    #[test]
     fn completes_mod_with_docs() {
         check_reference_completion(
             "mod_with_docs",

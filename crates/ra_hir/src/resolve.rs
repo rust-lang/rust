@@ -46,7 +46,6 @@ pub(crate) enum Scope {
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Resolution {
-    // FIXME make these tuple variants
     /// An item
     Def(ModuleDef),
     /// A local binding (only value namespace)
@@ -85,7 +84,7 @@ impl Resolver {
 
     pub fn all_names(&self) -> FxHashMap<Name, PerNs<Resolution>> {
         let mut names = FxHashMap::default();
-        for scope in &self.scopes {
+        for scope in self.scopes.iter().rev() {
             scope.collect_names(&mut |name, res| {
                 let current: &mut PerNs<Resolution> = names.entry(name).or_default();
                 if current.types.is_none() {

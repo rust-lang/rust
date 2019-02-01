@@ -6,29 +6,15 @@ pub(super) fn complete_scope(acc: &mut Completions, ctx: &CompletionContext) {
     }
     let names = ctx.resolver.all_names();
 
-    // let module_scope = module.scope(ctx.db);
-    names
-        .into_iter()
-        // FIXME check tests
-        // .filter(|(_name, res)| {
-        //     // For cases like `use self::foo<|>` don't suggest foo itself.
-        //     match res.import {
-        //         None => true,
-        //         Some(import) => {
-        //             let source = module.import_source(ctx.db, import);
-        //             !source.syntax().range().is_subrange(&ctx.leaf.range())
-        //         }
-        //     }
-        // })
-        .for_each(|(name, res)| {
-            CompletionItem::new(
-                CompletionKind::Reference,
-                ctx.source_range(),
-                name.to_string(),
-            )
-            .from_resolution(ctx, &res)
-            .add_to(acc)
-        });
+    names.into_iter().for_each(|(name, res)| {
+        CompletionItem::new(
+            CompletionKind::Reference,
+            ctx.source_range(),
+            name.to_string(),
+        )
+        .from_resolution(ctx, &res)
+        .add_to(acc)
+    });
 }
 
 #[cfg(test)]
@@ -81,6 +67,30 @@ mod tests {
                 for x in &[1, 2, 3] {
                     <|>
                 }
+            }
+            ",
+        );
+    }
+
+    #[test]
+    fn completes_generic_params() {
+        check_reference_completion(
+            "generic_params",
+            r"
+            fn quux<T>() {
+                <|>
+            }
+            ",
+        );
+    }
+
+    #[test]
+    fn completes_generic_params_in_struct() {
+        check_reference_completion(
+            "generic_params_in_struct",
+            r"
+            struct X<T> {
+                x: <|>
             }
             ",
         );
@@ -145,5 +155,4 @@ mod tests {
     fn completes_self_in_methods() {
         check_reference_completion("self_in_methods", r"impl S { fn foo(&self) { <|> } }")
     }
-
 }

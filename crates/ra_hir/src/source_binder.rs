@@ -204,12 +204,13 @@ pub fn macro_symbols(db: &impl HirDatabase, file_id: FileId) -> Vec<(SmolStr, Te
 }
 
 pub fn resolver_for_position(db: &impl HirDatabase, position: FilePosition) -> Resolver {
-    let file = db.parse(position.file_id);
+    let file_id = position.file_id;
+    let file = db.parse(file_id);
     find_leaf_at_offset(file.syntax(), position.offset)
         .find_map(|node| {
             node.ancestors().find_map(|node| {
                 if ast::Expr::cast(node).is_some() || ast::Block::cast(node).is_some() {
-                    if let Some(func) = function_from_child_node(db, position.file_id, node) {
+                    if let Some(func) = function_from_child_node(db, file_id, node) {
                         let scopes = func.scopes(db);
                         let scope = scopes.scope_for_offset(position.offset);
                         Some(expr::resolver_for_scope(func.body(db), db, scope))
@@ -218,9 +219,15 @@ pub fn resolver_for_position(db: &impl HirDatabase, position: FilePosition) -> R
                         None
                     }
                 } else if let Some(module) = ast::Module::cast(node) {
-                    Some(module_from_declaration(db, position.file_id, module)?.resolver(db))
+                    Some(module_from_declaration(db, file_id, module)?.resolver(db))
                 } else if let Some(_) = ast::SourceFile::cast(node) {
-                    Some(module_from_source(db, position.file_id.into(), None)?.resolver(db))
+                    Some(module_from_source(db, file_id.into(), None)?.resolver(db))
+                } else if let Some(s) = ast::StructDef::cast(node) {
+                    let module = module_from_child_node(db, file_id, s.syntax())?;
+                    Some(struct_from_module(db, module, s).resolver(db))
+                } else if let Some(e) = ast::EnumDef::cast(node) {
+                    let module = module_from_child_node(db, file_id, e.syntax())?;
+                    Some(enum_from_module(db, module, e).resolver(db))
                 } else {
                     // TODO add missing cases
                     None
@@ -246,6 +253,12 @@ pub fn resolver_for_node(db: &impl HirDatabase, file_id: FileId, node: &SyntaxNo
                 Some(module_from_declaration(db, file_id, module)?.resolver(db))
             } else if let Some(_) = ast::SourceFile::cast(node) {
                 Some(module_from_source(db, file_id.into(), None)?.resolver(db))
+            } else if let Some(s) = ast::StructDef::cast(node) {
+                let module = module_from_child_node(db, file_id, s.syntax())?;
+                Some(struct_from_module(db, module, s).resolver(db))
+            } else if let Some(e) = ast::EnumDef::cast(node) {
+                let module = module_from_child_node(db, file_id, e.syntax())?;
+                Some(enum_from_module(db, module, e).resolver(db))
             } else {
                 // TODO add missing cases
                 None
