@@ -1,4 +1,4 @@
-error[E0495]: cannot infer an appropriate lifetime for lifetime parameter `'a` due to conflicting requirements
+error[E0495]: cannot infer an appropriate lifetime due to conflicting requirements
   --> $DIR/project-fn-ret-invariant.rs:48:8
    |
 LL |    bar(foo, x) //[transmute]~ ERROR E0495

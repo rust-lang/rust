@@ -1018,6 +1018,18 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
         self.tcx.mk_region(ty::ReVar(region_var))
     }
 
+    /// Return the universe that the region `r` was created in.  For
+    /// most regions (e.g., `'static`, named regions from the user,
+    /// etc) this is the root universe U0. For inference variables or
+    /// placeholders, however, it will return the universe which which
+    /// they are associated.
+    fn universe_of_region(
+        &self,
+        r: ty::Region<'tcx>,
+    ) -> ty::UniverseIndex {
+        self.borrow_region_constraints().universe(r)
+    }
+
     /// Number of region variables created so far.
     pub fn num_region_vars(&self) -> usize {
         self.borrow_region_constraints().num_region_vars()

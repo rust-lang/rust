@@ -824,7 +824,7 @@ impl<'tcx> RegionConstraintCollector<'tcx> {
         new_r
     }
 
-    fn universe(&self, region: Region<'tcx>) -> ty::UniverseIndex {
+    pub fn universe(&self, region: Region<'tcx>) -> ty::UniverseIndex {
         match *region {
             ty::ReScope(..)
             | ty::ReStatic
