@@ -42,13 +42,10 @@ matrix:
     # Builds that are executed for every PR
     - os: osx # run base tests on both platforms
       env: BASE_TESTS=true
-      if: type = pull_request OR branch IN (auto, try)
     - os: linux
       env: BASE_TESTS=true
-      if: type = pull_request OR branch IN (auto, try)
     - os: windows
       env: CARGO_INCREMENTAL=0 BASE_TESTS=true
-      if: type = pull_request OR branch IN (auto, try)
 
     # Builds that are only executed when a PR is r+ed or a try build is started
     # We don't want to run these always because they go towards
