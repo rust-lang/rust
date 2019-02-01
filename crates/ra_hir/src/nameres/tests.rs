@@ -335,6 +335,48 @@ fn item_map_across_crates() {
 }
 
 #[test]
+fn extern_crate_rename() {
+    let (mut db, sr) = MockDatabase::with_files(
+        "
+        //- /main.rs
+        extern crate alloc as alloc_crate;
+
+        mod alloc;
+
+        use alloc_crate::Arc;
+
+        //- /lib.rs
+        struct Arc;
+    ",
+    );
+    let main_id = sr.files[RelativePath::new("/main.rs")];
+    let lib_id = sr.files[RelativePath::new("/lib.rs")];
+
+    let mut crate_graph = CrateGraph::default();
+    let main_crate = crate_graph.add_crate_root(main_id);
+    let lib_crate = crate_graph.add_crate_root(lib_id);
+    crate_graph
+        .add_dep(main_crate, "alloc".into(), lib_crate)
+        .unwrap();
+
+    db.set_crate_graph(Arc::new(crate_graph));
+
+    let module = crate::source_binder::module_from_file_id(&db, main_id).unwrap();
+    let krate = module.krate(&db).unwrap();
+    let item_map = db.item_map(krate);
+
+    check_module_item_map(
+        &item_map,
+        module.module_id,
+        "
+            Arc: t v
+            alloc: t
+            alloc_crate: t
+        ",
+    );
+}
+
+#[test]
 fn import_across_source_roots() {
     let (mut db, sr) = MockDatabase::with_files(
         "
