@@ -10,11 +10,11 @@ mod should_trigger {
     use super::SizedStruct;
 
     struct StructWithVecBox {
-        sized_type: Vec<Box<SizedStruct>>,
+        sized_type: Vec<SizedStruct>,
     }
 
-    struct A(Vec<Box<SizedStruct>>);
-    struct B(Vec<Vec<Box<(u32)>>>);
+    struct A(Vec<SizedStruct>);
+    struct B(Vec<Vec<u32>>);
 }
 
 /// The following should not trigger the lint
