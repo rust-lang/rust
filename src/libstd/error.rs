@@ -197,9 +197,7 @@ pub trait Error: Debug + Display {
 
     /// Get the `TypeId` of `self`
     #[doc(hidden)]
-    #[unstable(feature = "error_type_id",
-               reason = "unclear whether to commit to this public implementation detail",
-               issue = "27745")]
+    #[stable(feature = "error_type_id", since = "1.34.0")]
     fn type_id(&self) -> TypeId where Self: 'static {
         TypeId::of::<Self>()
     }
