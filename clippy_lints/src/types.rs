@@ -241,7 +241,7 @@ fn match_type_parameter(cx: &LateContext<'_, '_>, qpath: &QPath, path: &[&str]) 
 /// The parameter `is_local` distinguishes the context of the type; types from
 /// local bindings should only be checked for the `BORROWED_BOX` lint.
 #[allow(clippy::too_many_lines)]
-fn check_ty(cx: &LateContext<'_, '_>, ast_ty: &hir::Ty, is_local: bool) {
+fn check_ty(cx: &LateContext<'_, '_>, hir_ty: &hir::Ty, is_local: bool) {
     if in_macro(ast_ty.span) {
         return;
     }
