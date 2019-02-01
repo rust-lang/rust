@@ -106,27 +106,34 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
             }
 
             PatternKind::Range(PatternRange { lo, hi, ty, end }) => {
-                let range = match ty.sty {
+                let (range, bias) = match ty.sty {
                     ty::Char => {
-                        Some(('\u{0000}' as u128, '\u{10FFFF}' as u128, Size::from_bits(32)))
+                        (Some(('\u{0000}' as u128, '\u{10FFFF}' as u128, Size::from_bits(32))), 0)
                     }
                     ty::Int(ity) => {
                         // FIXME(49937): refactor these bit manipulations into interpret.
                         let size = Integer::from_attr(&tcx, SignedInt(ity)).size();
-                        let min = 1u128 << (size.bits() - 1);
-                        let max = (1u128 << (size.bits() - 1)) - 1;
-                        Some((min, max, size))
+                        let max = !0u128 >> (128 - size.bits());
+                        let bias = 1u128 << (size.bits() - 1);
+                        (Some((0, max, size)), bias)
                     }
                     ty::Uint(uty) => {
                         // FIXME(49937): refactor these bit manipulations into interpret.
                         let size = Integer::from_attr(&tcx, UnsignedInt(uty)).size();
                         let max = !0u128 >> (128 - size.bits());
-                        Some((0, max, size))
+                        (Some((0, max, size)), 0)
                     }
-                    _ => None,
+                    _ => (None, 0),
                 };
                 if let Some((min, max, sz)) = range {
                     if let (Some(lo), Some(hi)) = (lo.val.try_to_bits(sz), hi.val.try_to_bits(sz)) {
+                        // We want to compare ranges numerically, but the order of the bitwise
+                        // representation of signed integers does not match their numeric order.
+                        // Thus, to correct the ordering, we need to shift the range of signed
+                        // integers to correct the comparison. This is achieved by XORing with a
+                        // bias (see pattern/_match.rs for another pertinent example of this
+                        // pattern).
+                        let (lo, hi) = (lo ^ bias, hi ^ bias);
                         if lo <= min && (hi > max || hi == max && end == RangeEnd::Included) {
                             // Irrefutable pattern match.
                             return Ok(());
