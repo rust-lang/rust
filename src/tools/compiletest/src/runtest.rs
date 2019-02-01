@@ -512,7 +512,7 @@ impl<'test> TestCx<'test> {
         // Finally, let's make sure it actually appears to remain valid code.
         let proc_res = self.typecheck_source(actual);
         if !proc_res.status.success() {
-            self.fatal_proc_rec("pretty-printed source does not typecheck", &proc_res);
+            self.fatal_proc_rec("pretty-printed source does not type-check", &proc_res);
         }
 
         if !self.props.pretty_expanded {
@@ -532,7 +532,7 @@ impl<'test> TestCx<'test> {
         let proc_res = self.typecheck_source(expanded_src);
         if !proc_res.status.success() {
             self.fatal_proc_rec(
-                "pretty-printed source (expanded) does not typecheck",
+                "pretty-printed source (expanded) does not type-check",
                 &proc_res,
             );
         }

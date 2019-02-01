@@ -140,7 +140,7 @@ pub fn parse_config(args: Vec<String>) -> Config {
             "",
             "runtool",
             "supervisor program to run tests under \
-             (eg. emulator, valgrind)",
+             (e.g., emulator, valgrind)",
             "PROGRAM",
         )
         .optopt(
