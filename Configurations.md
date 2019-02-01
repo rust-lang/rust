@@ -1037,8 +1037,7 @@ Format string literals where necessary
 
 ```rust
 fn main() {
-    let lorem =
-        "ipsum dolor sit amet consectetur adipiscing elit lorem ipsum dolor sit amet consectetur adipiscing";
+    let lorem = "ipsum dolor sit amet consectetur adipiscing elit lorem ipsum dolor sit amet consectetur adipiscing";
 }
 ```
 

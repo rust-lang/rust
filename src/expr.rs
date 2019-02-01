@@ -22,7 +22,7 @@ use comment::{
     combine_strs_with_missing_comments, contains_comment, recover_comment_removed, rewrite_comment,
     rewrite_missing_comment, CharClasses, FindUncommented,
 };
-use config::{Config, ControlBraceStyle, IndentStyle};
+use config::{Config, ControlBraceStyle, IndentStyle, Version};
 use lists::{
     definitive_tactic, itemize_list, shape_for_tactic, struct_lit_formatting, struct_lit_shape,
     struct_lit_tactic, write_list, ListFormatting, ListItem, Separator,
@@ -1264,7 +1264,11 @@ fn rewrite_string_lit(context: &RewriteContext, span: Span, shape: Shape) -> Opt
                     .join("\n")
                     .trim_start(),
             );
-            return wrap_str(indented_string_lit, context.config.max_width(), shape);
+            return if context.config.version() == Version::Two {
+                Some(indented_string_lit)
+            } else {
+                wrap_str(indented_string_lit, context.config.max_width(), shape)
+            };
         } else {
             return wrap_str(string_lit.to_owned(), context.config.max_width(), shape);
         }
