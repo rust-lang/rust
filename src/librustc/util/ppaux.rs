@@ -1430,6 +1430,15 @@ define_print! {
                         }
                     }
 
+                    if cx.is_verbose {
+                        write!(
+                            f,
+                            " closure_kind_ty={:?} closure_sig_ty={:?}",
+                            substs.closure_kind_ty(did, tcx),
+                            substs.closure_sig_ty(did, tcx),
+                        )?;
+                    }
+
                     write!(f, "]")
                 }),
                 Array(ty, sz) => {
