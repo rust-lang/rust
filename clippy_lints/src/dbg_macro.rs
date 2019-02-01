@@ -1,8 +1,8 @@
+use crate::utils::span_lint_and_sugg;
 use rustc::lint::{EarlyContext, EarlyLintPass, LintArray, LintPass};
 use rustc::{declare_tool_lint, lint_array};
-use crate::utils::span_lint_and_sugg;
-use syntax::ast;
 use rustc_errors::Applicability;
+use syntax::ast;
 
 /// **What it does:** Checks for usage of dbg!() macro.
 ///
