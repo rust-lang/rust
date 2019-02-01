@@ -68,7 +68,7 @@ pub use core::str::SplitWhitespace;
 pub use core::str::pattern;
 #[stable(feature = "encode_utf16", since = "1.8.0")]
 pub use core::str::EncodeUtf16;
-#[unstable(feature = "split_ascii_whitespace", issue = "48656")]
+#[stable(feature = "split_ascii_whitespace", since = "1.34.0")]
 pub use core::str::SplitAsciiWhitespace;
 
 #[unstable(feature = "slice_concat_ext",
