@@ -1,0 +1,12 @@
+warning: use of deprecated item 'std::sync::atomic::ATOMIC_ISIZE_INIT': the `new` function is now preferred
+  --> $DIR/atomic_initializers.rs:8:27
+   |
+LL | static FOO: AtomicIsize = ATOMIC_ISIZE_INIT;
+   |                           ^^^^^^^^^^^^^^^^^
+   |
+   = note: #[warn(deprecated)] on by default
+help: use of deprecated item 'std::sync::atomic::ATOMIC_ISIZE_INIT': the `new` function is now preferred
+   |
+LL | static FOO: AtomicIsize = AtomicIsize::new(0);
+   |                           ^^^^^^^^^^^^^^^^^^^
+

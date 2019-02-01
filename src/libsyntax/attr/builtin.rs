@@ -158,6 +158,8 @@ impl StabilityLevel {
 pub struct RustcDeprecation {
     pub since: Symbol,
     pub reason: Symbol,
+    /// A text snippet used to completely replace any use of the deprecated item in an expression.
+    pub suggestion: Option<Symbol>,
 }
 
 /// Check if `attrs` contains an attribute like `#![feature(feature_name)]`.
@@ -274,13 +276,14 @@ fn find_stability_generic<'a, I>(sess: &ParseSess,
                         continue 'outer
                     }
 
-                    get_meta!(since, reason);
+                    get_meta!(since, reason, suggestion);
 
                     match (since, reason) {
                         (Some(since), Some(reason)) => {
                             rustc_depr = Some(RustcDeprecation {
                                 since,
                                 reason,
+                                suggestion,
                             })
                         }
                         (None, _) => {

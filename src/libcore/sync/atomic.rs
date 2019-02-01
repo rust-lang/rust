@@ -290,7 +290,15 @@ pub enum Ordering {
 /// [`AtomicBool`]: struct.AtomicBool.html
 #[cfg(target_has_atomic = "8")]
 #[stable(feature = "rust1", since = "1.0.0")]
-#[rustc_deprecated(since = "1.34.0", reason = "the `new` function is now preferred")]
+#[cfg_attr(not(stage0), rustc_deprecated(
+    since = "1.34.0",
+    reason = "the `new` function is now preferred",
+    suggestion = "AtomicBool::new(false)",
+))]
+#[cfg_attr(stage0, rustc_deprecated(
+    since = "1.34.0",
+    reason = "the `new` function is now preferred",
+))]
 pub const ATOMIC_BOOL_INIT: AtomicBool = AtomicBool::new(false);
 
 #[cfg(target_has_atomic = "8")]
@@ -1127,6 +1135,7 @@ macro_rules! atomic_int {
      $extra_feature:expr,
      $min_fn:ident, $max_fn:ident,
      $align:expr,
+     $atomic_new:expr,
      $int_type:ident $atomic_type:ident $atomic_init:ident) => {
         /// An integer type which can be safely shared between threads.
         ///
@@ -1148,7 +1157,15 @@ macro_rules! atomic_int {
 
         /// An atomic integer initialized to `0`.
         #[$stable]
-        #[rustc_deprecated(since = "1.34.0", reason = "the `new` function is now preferred")]
+        #[cfg_attr(stage0, rustc_deprecated(
+            since = "1.34.0",
+            reason = "the `new` function is now preferred",
+        ))]
+        #[cfg_attr(not(stage0), rustc_deprecated(
+            since = "1.34.0",
+            reason = "the `new` function is now preferred",
+            suggestion = $atomic_new,
+        ))]
         pub const $atomic_init: $atomic_type = $atomic_type::new(0);
 
         #[$stable]
@@ -1878,6 +1895,7 @@ atomic_int! {
     "#![feature(integer_atomics)]\n\n",
     atomic_min, atomic_max,
     1,
+    "AtomicI8::new(0)",
     i8 AtomicI8 ATOMIC_I8_INIT
 }
 #[cfg(target_has_atomic = "8")]
@@ -1892,6 +1910,7 @@ atomic_int! {
     "#![feature(integer_atomics)]\n\n",
     atomic_umin, atomic_umax,
     1,
+    "AtomicU8::new(0)",
     u8 AtomicU8 ATOMIC_U8_INIT
 }
 #[cfg(target_has_atomic = "16")]
@@ -1906,6 +1925,7 @@ atomic_int! {
     "#![feature(integer_atomics)]\n\n",
     atomic_min, atomic_max,
     2,
+    "AtomicI16::new(0)",
     i16 AtomicI16 ATOMIC_I16_INIT
 }
 #[cfg(target_has_atomic = "16")]
@@ -1920,6 +1940,7 @@ atomic_int! {
     "#![feature(integer_atomics)]\n\n",
     atomic_umin, atomic_umax,
     2,
+    "AtomicU16::new(0)",
     u16 AtomicU16 ATOMIC_U16_INIT
 }
 #[cfg(target_has_atomic = "32")]
@@ -1934,6 +1955,7 @@ atomic_int! {
     "#![feature(integer_atomics)]\n\n",
     atomic_min, atomic_max,
     4,
+    "AtomicI32::new(0)",
     i32 AtomicI32 ATOMIC_I32_INIT
 }
 #[cfg(target_has_atomic = "32")]
@@ -1948,6 +1970,7 @@ atomic_int! {
     "#![feature(integer_atomics)]\n\n",
     atomic_umin, atomic_umax,
     4,
+    "AtomicU32::new(0)",
     u32 AtomicU32 ATOMIC_U32_INIT
 }
 #[cfg(target_has_atomic = "64")]
@@ -1962,6 +1985,7 @@ atomic_int! {
     "#![feature(integer_atomics)]\n\n",
     atomic_min, atomic_max,
     8,
+    "AtomicI64::new(0)",
     i64 AtomicI64 ATOMIC_I64_INIT
 }
 #[cfg(target_has_atomic = "64")]
@@ -1976,6 +2000,7 @@ atomic_int! {
     "#![feature(integer_atomics)]\n\n",
     atomic_umin, atomic_umax,
     8,
+    "AtomicU64::new(0)",
     u64 AtomicU64 ATOMIC_U64_INIT
 }
 #[cfg(target_has_atomic = "128")]
@@ -1990,6 +2015,7 @@ atomic_int! {
     "#![feature(integer_atomics)]\n\n",
     atomic_min, atomic_max,
     16,
+    "AtomicI128::new(0)",
     i128 AtomicI128 ATOMIC_I128_INIT
 }
 #[cfg(target_has_atomic = "128")]
@@ -2004,6 +2030,7 @@ atomic_int! {
     "#![feature(integer_atomics)]\n\n",
     atomic_umin, atomic_umax,
     16,
+    "AtomicU128::new(0)",
     u128 AtomicU128 ATOMIC_U128_INIT
 }
 #[cfg(target_pointer_width = "16")]
@@ -2030,6 +2057,7 @@ atomic_int!{
     "",
     atomic_min, atomic_max,
     ptr_width!(),
+    "AtomicIsize::new(0)",
     isize AtomicIsize ATOMIC_ISIZE_INIT
 }
 #[cfg(target_has_atomic = "ptr")]
@@ -2044,6 +2072,7 @@ atomic_int!{
     "",
     atomic_umin, atomic_umax,
     ptr_width!(),
+    "AtomicUsize::new(0)",
     usize AtomicUsize ATOMIC_USIZE_INIT
 }
 
