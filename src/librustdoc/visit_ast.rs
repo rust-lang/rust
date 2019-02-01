@@ -284,10 +284,11 @@ impl<'a, 'tcx, 'rcx> RustdocVisitor<'a, 'tcx, 'rcx> {
         debug!("maybe_inline_local def: {:?}", def);
 
         let tcx = self.cx.tcx;
-        if def == Def::Err {
+        let def_did = if let Some(did) = def.opt_def_id() {
+            did
+        } else {
             return false;
-        }
-        let def_did = def.def_id();
+        };
 
         let use_attrs = tcx.hir().attrs(id);
         // Don't inline `doc(hidden)` imports so they can be stripped at a later stage.
