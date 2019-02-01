@@ -12,7 +12,7 @@ use ra_syntax::{
 use crate::{
     Name, AsName, Struct, Enum, EnumVariant, Crate,
     HirDatabase, HirFileId, StructField, FieldSource,
-    type_ref::TypeRef,
+    type_ref::TypeRef, PersistentHirDatabase,
 };
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
@@ -33,7 +33,7 @@ impl AdtDef {
 }
 
 impl Struct {
-    pub(crate) fn variant_data(&self, db: &impl HirDatabase) -> Arc<VariantData> {
+    pub(crate) fn variant_data(&self, db: &impl PersistentHirDatabase) -> Arc<VariantData> {
         db.struct_data((*self).into()).variant_data.clone()
     }
 }
@@ -52,7 +52,10 @@ impl StructData {
         StructData { name, variant_data }
     }
 
-    pub(crate) fn struct_data_query(db: &impl HirDatabase, struct_: Struct) -> Arc<StructData> {
+    pub(crate) fn struct_data_query(
+        db: &impl PersistentHirDatabase,
+        struct_: Struct,
+    ) -> Arc<StructData> {
         let (_, struct_def) = struct_.source(db);
         Arc::new(StructData::new(&*struct_def))
     }
@@ -68,7 +71,7 @@ fn variants(enum_def: &ast::EnumDef) -> impl Iterator<Item = &ast::EnumVariant> 
 impl EnumVariant {
     pub(crate) fn source_impl(
         &self,
-        db: &impl HirDatabase,
+        db: &impl PersistentHirDatabase,
     ) -> (HirFileId, TreeArc<ast::EnumVariant>) {
         let (file_id, enum_def) = self.parent.source(db);
         let var = variants(&*enum_def)
@@ -79,7 +82,7 @@ impl EnumVariant {
             .to_owned();
         (file_id, var)
     }
-    pub(crate) fn variant_data(&self, db: &impl HirDatabase) -> Arc<VariantData> {
+    pub(crate) fn variant_data(&self, db: &impl PersistentHirDatabase) -> Arc<VariantData> {
         db.enum_data(self.parent).variants[self.id]
             .variant_data
             .clone()
@@ -93,7 +96,7 @@ pub struct EnumData {
 }
 
 impl EnumData {
-    pub(crate) fn enum_data_query(db: &impl HirDatabase, e: Enum) -> Arc<EnumData> {
+    pub(crate) fn enum_data_query(db: &impl PersistentHirDatabase, e: Enum) -> Arc<EnumData> {
         let (_file_id, enum_def) = e.source(db);
         let name = enum_def.name().map(|n| n.as_name());
         let variants = variants(&*enum_def)
@@ -191,7 +194,7 @@ impl VariantDef {
             VariantDef::EnumVariant(it) => it.field(db, name),
         }
     }
-    pub(crate) fn variant_data(self, db: &impl HirDatabase) -> Arc<VariantData> {
+    pub(crate) fn variant_data(self, db: &impl PersistentHirDatabase) -> Arc<VariantData> {
         match self {
             VariantDef::Struct(it) => it.variant_data(db),
             VariantDef::EnumVariant(it) => it.variant_data(db),
@@ -200,7 +203,7 @@ impl VariantDef {
 }
 
 impl StructField {
-    pub(crate) fn source_impl(&self, db: &impl HirDatabase) -> (HirFileId, FieldSource) {
+    pub(crate) fn source_impl(&self, db: &impl PersistentHirDatabase) -> (HirFileId, FieldSource) {
         let var_data = self.parent.variant_data(db);
         let fields = var_data.fields().unwrap();
         let ss;

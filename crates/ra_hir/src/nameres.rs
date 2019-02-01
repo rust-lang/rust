@@ -24,9 +24,8 @@ use rustc_hash::{FxHashMap, FxHashSet};
 
 use crate::{
     Module, ModuleDef,
-    Path, PathKind,
-    HirDatabase, Crate,
-    Name,
+    Path, PathKind, Crate,
+    Name, PersistentHirDatabase,
     module_tree::{ModuleId, ModuleTree},
     nameres::lower::{ImportId, LoweredModule, ImportData},
 };
@@ -166,7 +165,7 @@ struct Resolver<'a, DB> {
 
 impl<'a, DB> Resolver<'a, DB>
 where
-    DB: HirDatabase,
+    DB: PersistentHirDatabase,
 {
     fn new(
         db: &'a DB,
@@ -330,7 +329,7 @@ enum ReachedFixedPoint {
 }
 
 impl ItemMap {
-    pub(crate) fn item_map_query(db: &impl HirDatabase, krate: Crate) -> Arc<ItemMap> {
+    pub(crate) fn item_map_query(db: &impl PersistentHirDatabase, krate: Crate) -> Arc<ItemMap> {
         let start = time::Instant::now();
         let module_tree = db.module_tree(krate);
         let input = module_tree
@@ -352,7 +351,7 @@ impl ItemMap {
 
     pub(crate) fn resolve_path(
         &self,
-        db: &impl HirDatabase,
+        db: &impl PersistentHirDatabase,
         original_module: Module,
         path: &Path,
     ) -> PerNs<ModuleDef> {
@@ -363,7 +362,7 @@ impl ItemMap {
     // the result.
     fn resolve_path_fp(
         &self,
-        db: &impl HirDatabase,
+        db: &impl PersistentHirDatabase,
         original_module: Module,
         path: &Path,
     ) -> (PerNs<ModuleDef>, ReachedFixedPoint) {

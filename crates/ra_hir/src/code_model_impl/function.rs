@@ -5,7 +5,7 @@ use ra_syntax::ast::{self, NameOwner};
 use crate::{
     HirDatabase, Name, AsName, Function, FnSignature,
     type_ref::{TypeRef, Mutability},
-    expr::Body,
+    expr::Body, PersistentHirDatabase,
     impl_block::ImplBlock,
 };
 
@@ -22,7 +22,10 @@ impl Function {
 }
 
 impl FnSignature {
-    pub(crate) fn fn_signature_query(db: &impl HirDatabase, func: Function) -> Arc<FnSignature> {
+    pub(crate) fn fn_signature_query(
+        db: &impl PersistentHirDatabase,
+        func: Function,
+    ) -> Arc<FnSignature> {
         let (_, node) = func.source(db);
         let name = node
             .name()

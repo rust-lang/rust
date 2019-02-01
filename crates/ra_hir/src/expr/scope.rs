@@ -12,7 +12,7 @@ use ra_arena::{Arena, RawId, impl_arena_id};
 use crate::{
     Name, AsName, Function,
     expr::{PatId, ExprId, Pat, Expr, Body, Statement, BodySyntaxMapping},
-    db::HirDatabase,
+    HirDatabase,
 };
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]

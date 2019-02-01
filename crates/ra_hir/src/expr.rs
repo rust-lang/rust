@@ -10,8 +10,8 @@ use ra_syntax::{
 };
 
 use crate::{
-    Path, Name, HirDatabase, Function,
-    name::AsName,
+    Path, Name, Function,
+    name::AsName, HirDatabase,
     type_ref::{Mutability, TypeRef},
 };
 use crate::ty::primitive::{UintTy, UncertainIntTy, UncertainFloatTy};

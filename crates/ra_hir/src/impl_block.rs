@@ -9,7 +9,7 @@ ast::{self, AstNode}};
 use crate::{
     Const, Type,
     Function, HirFileId,
-    db::HirDatabase,
+    PersistentHirDatabase,
     type_ref::TypeRef,
     ids::LocationCtx,
 };
@@ -91,7 +91,7 @@ pub struct ImplData {
 
 impl ImplData {
     pub(crate) fn from_ast(
-        db: &impl HirDatabase,
+        db: &impl PersistentHirDatabase,
         file_id: HirFileId,
         module: Module,
         node: &ast::ImplBlock,
@@ -174,7 +174,12 @@ impl ModuleImplBlocks {
         }
     }
 
-    fn collect(&mut self, db: &impl HirDatabase, module: Module, source_map: &mut ImplSourceMap) {
+    fn collect(
+        &mut self,
+        db: &impl PersistentHirDatabase,
+        module: Module,
+        source_map: &mut ImplSourceMap,
+    ) {
         let (file_id, module_source) = module.definition_source(db);
         let file_id: HirFileId = file_id.into();
         let node = match &module_source {
@@ -198,7 +203,7 @@ impl ModuleImplBlocks {
 }
 
 pub(crate) fn impls_in_module_with_source_map_query(
-    db: &impl HirDatabase,
+    db: &impl PersistentHirDatabase,
     module: Module,
 ) -> (Arc<ModuleImplBlocks>, Arc<ImplSourceMap>) {
     let mut source_map = ImplSourceMap::default();
@@ -209,12 +214,15 @@ pub(crate) fn impls_in_module_with_source_map_query(
     (Arc::new(result), Arc::new(source_map))
 }
 
-pub(crate) fn impls_in_module(db: &impl HirDatabase, module: Module) -> Arc<ModuleImplBlocks> {
+pub(crate) fn impls_in_module(
+    db: &impl PersistentHirDatabase,
+    module: Module,
+) -> Arc<ModuleImplBlocks> {
     db.impls_in_module_with_source_map(module).0
 }
 
 pub(crate) fn impls_in_module_source_map_query(
-    db: &impl HirDatabase,
+    db: &impl PersistentHirDatabase,
     module: Module,
 ) -> Arc<ImplSourceMap> {
     db.impls_in_module_with_source_map(module).1

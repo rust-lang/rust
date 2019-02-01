@@ -44,7 +44,7 @@ mod code_model_impl;
 mod marks;
 
 use crate::{
-    db::HirDatabase,
+    db::{HirDatabase, PersistentHirDatabase},
     name::{AsName, KnownName},
     ids::{SourceItemId, SourceFileItems},
 };

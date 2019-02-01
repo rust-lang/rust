@@ -35,7 +35,7 @@ use test_utils::tested_by;
 use crate::{
     Module, Function, Struct, StructField, Enum, EnumVariant, Path, Name, ImplBlock,
     FnSignature, ExprScopes, ModuleDef, AdtDef,
-    db::HirDatabase,
+    HirDatabase,
     type_ref::{TypeRef, Mutability},
     name::KnownName,
     expr::{Body, Expr, BindingAnnotation, Literal, ExprId, Pat, PatId, UnaryOp, BinaryOp, Statement, FieldPat},

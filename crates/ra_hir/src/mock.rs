@@ -11,7 +11,11 @@ use crate::{db, HirInterner};
 
 pub const WORKSPACE: SourceRootId = SourceRootId(0);
 
-#[salsa::database(ra_db::SourceDatabaseStorage, db::HirDatabaseStorage)]
+#[salsa::database(
+    ra_db::SourceDatabaseStorage,
+    db::HirDatabaseStorage,
+    db::PersistentHirDatabaseStorage
+)]
 #[derive(Debug)]
 pub(crate) struct MockDatabase {
     events: Mutex<Option<Vec<salsa::Event<MockDatabase>>>>,

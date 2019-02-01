@@ -19,31 +19,19 @@ use crate::{
     ids::SourceFileItemId,
 };
 
-#[salsa::query_group(HirDatabaseStorage)]
-pub trait HirDatabase: SourceDatabase + AsRef<HirInterner> {
+#[salsa::query_group(PersistentHirDatabaseStorage)]
+pub trait PersistentHirDatabase: SourceDatabase + AsRef<HirInterner> {
     #[salsa::invoke(HirFileId::hir_parse)]
     fn hir_parse(&self, file_id: HirFileId) -> TreeArc<SourceFile>;
 
     #[salsa::invoke(crate::macros::expand_macro_invocation)]
     fn expand_macro_invocation(&self, invoc: MacroCallId) -> Option<Arc<MacroExpansion>>;
 
-    #[salsa::invoke(ExprScopes::expr_scopes_query)]
-    fn expr_scopes(&self, func: Function) -> Arc<ExprScopes>;
-
     #[salsa::invoke(crate::adt::StructData::struct_data_query)]
     fn struct_data(&self, s: Struct) -> Arc<StructData>;
 
     #[salsa::invoke(crate::adt::EnumData::enum_data_query)]
     fn enum_data(&self, e: Enum) -> Arc<EnumData>;
-
-    #[salsa::invoke(crate::ty::infer)]
-    fn infer(&self, func: Function) -> Arc<InferenceResult>;
-
-    #[salsa::invoke(crate::ty::type_for_def)]
-    fn type_for_def(&self, def: TypableDef) -> Ty;
-
-    #[salsa::invoke(crate::ty::type_for_field)]
-    fn type_for_field(&self, field: StructField) -> Ty;
 
     #[salsa::invoke(query_definitions::file_items)]
     fn file_items(&self, file_id: HirFileId) -> Arc<SourceFileItems>;
@@ -73,20 +61,38 @@ pub trait HirDatabase: SourceDatabase + AsRef<HirInterner> {
     #[salsa::invoke(crate::module_tree::ModuleTree::module_tree_query)]
     fn module_tree(&self, krate: Crate) -> Arc<ModuleTree>;
 
-    #[salsa::invoke(crate::impl_block::impls_in_module_with_source_map_query)]
-    fn impls_in_module_with_source_map(
-        &self,
-        module: Module,
-    ) -> (Arc<ModuleImplBlocks>, Arc<ImplSourceMap>);
-
     #[salsa::invoke(crate::impl_block::impls_in_module)]
     fn impls_in_module(&self, module: Module) -> Arc<ModuleImplBlocks>;
 
     #[salsa::invoke(crate::impl_block::impls_in_module_source_map_query)]
     fn impls_in_module_source_map(&self, module: Module) -> Arc<ImplSourceMap>;
 
-    #[salsa::invoke(crate::ty::method_resolution::CrateImplBlocks::impls_in_crate_query)]
-    fn impls_in_crate(&self, krate: Crate) -> Arc<CrateImplBlocks>;
+    #[salsa::invoke(crate::impl_block::impls_in_module_with_source_map_query)]
+    fn impls_in_module_with_source_map(
+        &self,
+        module: Module,
+    ) -> (Arc<ModuleImplBlocks>, Arc<ImplSourceMap>);
+
+    #[salsa::invoke(crate::generics::GenericParams::generic_params_query)]
+    fn generic_params(&self, def: GenericDef) -> Arc<GenericParams>;
+
+    #[salsa::invoke(crate::FnSignature::fn_signature_query)]
+    fn fn_signature(&self, func: Function) -> Arc<FnSignature>;
+}
+
+#[salsa::query_group(HirDatabaseStorage)]
+pub trait HirDatabase: PersistentHirDatabase {
+    #[salsa::invoke(ExprScopes::expr_scopes_query)]
+    fn expr_scopes(&self, func: Function) -> Arc<ExprScopes>;
+
+    #[salsa::invoke(crate::ty::infer)]
+    fn infer(&self, func: Function) -> Arc<InferenceResult>;
+
+    #[salsa::invoke(crate::ty::type_for_def)]
+    fn type_for_def(&self, def: TypableDef) -> Ty;
+
+    #[salsa::invoke(crate::ty::type_for_field)]
+    fn type_for_field(&self, field: StructField) -> Ty;
 
     #[salsa::invoke(crate::expr::body_hir)]
     fn body_hir(&self, func: Function) -> Arc<crate::expr::Body>;
@@ -94,9 +100,6 @@ pub trait HirDatabase: SourceDatabase + AsRef<HirInterner> {
     #[salsa::invoke(crate::expr::body_syntax_mapping)]
     fn body_syntax_mapping(&self, func: Function) -> Arc<crate::expr::BodySyntaxMapping>;
 
-    #[salsa::invoke(crate::generics::GenericParams::generic_params_query)]
-    fn generic_params(&self, def: GenericDef) -> Arc<GenericParams>;
-
-    #[salsa::invoke(crate::FnSignature::fn_signature_query)]
-    fn fn_signature(&self, func: Function) -> Arc<FnSignature>;
+    #[salsa::invoke(crate::ty::method_resolution::CrateImplBlocks::impls_in_crate_query)]
+    fn impls_in_crate(&self, krate: Crate) -> Arc<CrateImplBlocks>;
 }

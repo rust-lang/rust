@@ -8,10 +8,10 @@ use ra_arena::{Arena, RawId, impl_arena_id, map::ArenaMap};
 use rustc_hash::FxHashMap;
 
 use crate::{
-    SourceItemId, Path, ModuleSource, HirDatabase, Name,
+    SourceItemId, Path, ModuleSource, Name,
     HirFileId, MacroCallLoc, AsName, PerNs, Function,
     ModuleDef, Module, Struct, Enum, Const, Static, Trait, Type,
-    ids::LocationCtx,
+    ids::LocationCtx, PersistentHirDatabase,
 };
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
@@ -58,21 +58,21 @@ impl ImportSourceMap {
 
 impl LoweredModule {
     pub(crate) fn lower_module_module_query(
-        db: &impl HirDatabase,
+        db: &impl PersistentHirDatabase,
         module: Module,
     ) -> Arc<LoweredModule> {
         db.lower_module(module).0
     }
 
     pub(crate) fn lower_module_source_map_query(
-        db: &impl HirDatabase,
+        db: &impl PersistentHirDatabase,
         module: Module,
     ) -> Arc<ImportSourceMap> {
         db.lower_module(module).1
     }
 
     pub(crate) fn lower_module_query(
-        db: &impl HirDatabase,
+        db: &impl PersistentHirDatabase,
         module: Module,
     ) -> (Arc<LoweredModule>, Arc<ImportSourceMap>) {
         let (file_id, source) = module.definition_source(db);
@@ -105,7 +105,7 @@ impl LoweredModule {
     fn fill(
         &mut self,
         source_map: &mut ImportSourceMap,
-        db: &impl HirDatabase,
+        db: &impl PersistentHirDatabase,
         module: Module,
         file_id: HirFileId,
         items: &mut Iterator<Item = ast::ItemOrMacro>,
@@ -137,7 +137,7 @@ impl LoweredModule {
     fn add_def_id(
         &mut self,
         source_map: &mut ImportSourceMap,
-        db: &impl HirDatabase,
+        db: &impl PersistentHirDatabase,
         module: Module,
         file_id: HirFileId,
         item: &ast::ModuleItem,

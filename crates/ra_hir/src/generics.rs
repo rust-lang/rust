@@ -7,7 +7,7 @@ use std::sync::Arc;
 
 use ra_syntax::ast::{self, NameOwner, TypeParamsOwner};
 
-use crate::{db::HirDatabase, Name, AsName, Function, Struct, Enum, Trait, Type};
+use crate::{db::PersistentHirDatabase, Name, AsName, Function, Struct, Enum, Trait, Type};
 
 /// Data about a generic parameter (to a function, struct, impl, ...).
 #[derive(Clone, PartialEq, Eq, Debug)]
@@ -34,7 +34,7 @@ impl_froms!(GenericDef: Function, Struct, Enum, Trait, Type);
 
 impl GenericParams {
     pub(crate) fn generic_params_query(
-        db: &impl HirDatabase,
+        db: &impl PersistentHirDatabase,
         def: GenericDef,
     ) -> Arc<GenericParams> {
         let mut generics = GenericParams::default();

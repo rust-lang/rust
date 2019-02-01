@@ -14,7 +14,7 @@ use ra_syntax::{
     ast::{self, NameOwner},
 };
 
-use crate::{HirDatabase, MacroCallId};
+use crate::{MacroCallId, PersistentHirDatabase};
 
 // Hard-coded defs for now :-(
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -157,7 +157,7 @@ impl MacroExpansion {
 }
 
 pub(crate) fn expand_macro_invocation(
-    db: &impl HirDatabase,
+    db: &impl PersistentHirDatabase,
     invoc: MacroCallId,
 ) -> Option<Arc<MacroExpansion>> {
     let loc = invoc.loc(db);
