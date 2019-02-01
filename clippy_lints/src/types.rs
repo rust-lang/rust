@@ -4,8 +4,8 @@ use crate::consts::{constant, Constant};
 use crate::reexport::*;
 use crate::utils::paths;
 use crate::utils::{
-    clip, comparisons, differing_macro_contexts, get_def_path, higher, in_constant, in_macro, int_bits,
-    last_path_segment, match_def_path, match_path, multispan_sugg, opt_def_id, same_tys, sext, snippet, snippet_opt,
+    clip, comparisons, differing_macro_contexts, higher, in_constant, in_macro, int_bits, last_path_segment,
+    match_def_path, match_path, multispan_sugg, opt_def_id, same_tys, sext, snippet, snippet_opt,
     snippet_with_applicability, span_help_and_lint, span_lint, span_lint_and_sugg, span_lint_and_then, unsext,
     AbsolutePathBuffer,
 };
@@ -1015,23 +1015,6 @@ fn check_loss_of_sign(cx: &LateContext<'_, '_>, expr: &Expr, op: &Expr, cast_fro
         if sext(cx.tcx, n, ity) >= 0;
         then {
             return
-        }
-    }
-
-    // don't lint for max_value const fns
-    if_chain! {
-        if let ExprKind::Call(callee, args) = &op.node;
-        if args.is_empty();
-        if let ExprKind::Path(qpath) = &callee.node;
-        let def = cx.tables.qpath_def(qpath, callee.hir_id);
-        if let Some(def_id) = def.opt_def_id();
-        let def_path = get_def_path(cx.tcx, def_id);
-        if let &["core", "num", impl_ty, "max_value"] = &def_path[..];
-        then {
-           if let "<impl i8>" | "<impl i16>" | "<impl i32>" |
-                  "<impl i64>" | "<impl i128>" = impl_ty {
-               return;
-           }
         }
     }
 
