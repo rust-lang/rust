@@ -189,11 +189,11 @@ impl<'a, 'tcx> Functions {
         let mut code_in_line;
 
         // Skip the surrounding function decl.
-        let start_brace_idx = match code_snippet.find("{") {
+        let start_brace_idx = match code_snippet.find('{') {
             Some(i) => i + 1,
             None => 0,
         };
-        let end_brace_idx = match code_snippet.find("}") {
+        let end_brace_idx = match code_snippet.find('}') {
             Some(i) => i,
             None => code_snippet.len(),
         };
