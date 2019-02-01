@@ -990,15 +990,15 @@ fn test_split_at_boundscheck() {
 
 #[test]
 fn test_escape_unicode() {
-    assert_eq!("abc".escape_unicode(), "\\u{61}\\u{62}\\u{63}");
-    assert_eq!("a c".escape_unicode(), "\\u{61}\\u{20}\\u{63}");
-    assert_eq!("\r\n\t".escape_unicode(), "\\u{d}\\u{a}\\u{9}");
-    assert_eq!("'\"\\".escape_unicode(), "\\u{27}\\u{22}\\u{5c}");
-    assert_eq!("\x00\x01\u{fe}\u{ff}".escape_unicode(), "\\u{0}\\u{1}\\u{fe}\\u{ff}");
-    assert_eq!("\u{100}\u{ffff}".escape_unicode(), "\\u{100}\\u{ffff}");
-    assert_eq!("\u{10000}\u{10ffff}".escape_unicode(), "\\u{10000}\\u{10ffff}");
-    assert_eq!("ab\u{fb00}".escape_unicode(), "\\u{61}\\u{62}\\u{fb00}");
-    assert_eq!("\u{1d4ea}\r".escape_unicode(), "\\u{1d4ea}\\u{d}");
+    assert_eq!("abc".escape_unicode().to_string(), "\\u{61}\\u{62}\\u{63}");
+    assert_eq!("a c".escape_unicode().to_string(), "\\u{61}\\u{20}\\u{63}");
+    assert_eq!("\r\n\t".escape_unicode().to_string(), "\\u{d}\\u{a}\\u{9}");
+    assert_eq!("'\"\\".escape_unicode().to_string(), "\\u{27}\\u{22}\\u{5c}");
+    assert_eq!("\x00\x01\u{fe}\u{ff}".escape_unicode().to_string(), "\\u{0}\\u{1}\\u{fe}\\u{ff}");
+    assert_eq!("\u{100}\u{ffff}".escape_unicode().to_string(), "\\u{100}\\u{ffff}");
+    assert_eq!("\u{10000}\u{10ffff}".escape_unicode().to_string(), "\\u{10000}\\u{10ffff}");
+    assert_eq!("ab\u{fb00}".escape_unicode().to_string(), "\\u{61}\\u{62}\\u{fb00}");
+    assert_eq!("\u{1d4ea}\r".escape_unicode().to_string(), "\\u{1d4ea}\\u{d}");
 }
 
 #[test]
@@ -1009,31 +1009,32 @@ fn test_escape_debug() {
     // they are escaped. However, when the character is unescaped (e.g., for
     // printable characters), only a single backslash appears (as the character
     // itself appears in the debug string).
-    assert_eq!("abc".escape_debug(), "abc");
-    assert_eq!("a c".escape_debug(), "a c");
-    assert_eq!("éèê".escape_debug(), "éèê");
-    assert_eq!("\r\n\t".escape_debug(), "\\r\\n\\t");
-    assert_eq!("'\"\\".escape_debug(), "\\'\\\"\\\\");
-    assert_eq!("\u{7f}\u{ff}".escape_debug(), "\\u{7f}\u{ff}");
-    assert_eq!("\u{100}\u{ffff}".escape_debug(), "\u{100}\\u{ffff}");
-    assert_eq!("\u{10000}\u{10ffff}".escape_debug(), "\u{10000}\\u{10ffff}");
-    assert_eq!("ab\u{200b}".escape_debug(), "ab\\u{200b}");
-    assert_eq!("\u{10d4ea}\r".escape_debug(), "\\u{10d4ea}\\r");
-    assert_eq!("\u{301}a\u{301}bé\u{e000}".escape_debug(), "\\u{301}a\u{301}bé\\u{e000}");
+    assert_eq!("abc".escape_debug().to_string(), "abc");
+    assert_eq!("a c".escape_debug().to_string(), "a c");
+    assert_eq!("éèê".escape_debug().to_string(), "éèê");
+    assert_eq!("\r\n\t".escape_debug().to_string(), "\\r\\n\\t");
+    assert_eq!("'\"\\".escape_debug().to_string(), "\\'\\\"\\\\");
+    assert_eq!("\u{7f}\u{ff}".escape_debug().to_string(), "\\u{7f}\u{ff}");
+    assert_eq!("\u{100}\u{ffff}".escape_debug().to_string(), "\u{100}\\u{ffff}");
+    assert_eq!("\u{10000}\u{10ffff}".escape_debug().to_string(), "\u{10000}\\u{10ffff}");
+    assert_eq!("ab\u{200b}".escape_debug().to_string(), "ab\\u{200b}");
+    assert_eq!("\u{10d4ea}\r".escape_debug().to_string(), "\\u{10d4ea}\\r");
+    assert_eq!("\u{301}a\u{301}bé\u{e000}".escape_debug().to_string(),
+               "\\u{301}a\u{301}bé\\u{e000}");
 }
 
 #[test]
 fn test_escape_default() {
-    assert_eq!("abc".escape_default(), "abc");
-    assert_eq!("a c".escape_default(), "a c");
-    assert_eq!("éèê".escape_default(), "\\u{e9}\\u{e8}\\u{ea}");
-    assert_eq!("\r\n\t".escape_default(), "\\r\\n\\t");
-    assert_eq!("'\"\\".escape_default(), "\\'\\\"\\\\");
-    assert_eq!("\u{7f}\u{ff}".escape_default(), "\\u{7f}\\u{ff}");
-    assert_eq!("\u{100}\u{ffff}".escape_default(), "\\u{100}\\u{ffff}");
-    assert_eq!("\u{10000}\u{10ffff}".escape_default(), "\\u{10000}\\u{10ffff}");
-    assert_eq!("ab\u{200b}".escape_default(), "ab\\u{200b}");
-    assert_eq!("\u{10d4ea}\r".escape_default(), "\\u{10d4ea}\\r");
+    assert_eq!("abc".escape_default().to_string(), "abc");
+    assert_eq!("a c".escape_default().to_string(), "a c");
+    assert_eq!("éèê".escape_default().to_string(), "\\u{e9}\\u{e8}\\u{ea}");
+    assert_eq!("\r\n\t".escape_default().to_string(), "\\r\\n\\t");
+    assert_eq!("'\"\\".escape_default().to_string(), "\\'\\\"\\\\");
+    assert_eq!("\u{7f}\u{ff}".escape_default().to_string(), "\\u{7f}\\u{ff}");
+    assert_eq!("\u{100}\u{ffff}".escape_default().to_string(), "\\u{100}\\u{ffff}");
+    assert_eq!("\u{10000}\u{10ffff}".escape_default().to_string(), "\\u{10000}\\u{10ffff}");
+    assert_eq!("ab\u{200b}".escape_default().to_string(), "ab\\u{200b}");
+    assert_eq!("\u{10d4ea}\r".escape_default().to_string(), "\\u{10d4ea}\\r");
 }
 
 #[test]

@@ -29,10 +29,13 @@
 #![allow(unused_imports)]
 
 use core::borrow::Borrow;
-use core::fmt;
-use core::str as core_str;
+use core::fmt::{self, Write};
+use core::char;
+use core::iter::{Chain, Flatten, FlatMap};
 use core::str::pattern::{Pattern, Searcher, ReverseSearcher, DoubleEndedSearcher};
 use core::mem;
+use core::ops::Try;
+use core::option;
 use core::ptr;
 use core::iter::FusedIterator;
 use core::unicode::conversions;
@@ -452,14 +455,15 @@ impl str {
     #[unstable(feature = "str_escape",
                reason = "return type may change to be an iterator",
                issue = "27791")]
-    pub fn escape_debug(&self) -> String {
-        let mut string = String::with_capacity(self.len());
+    pub fn escape_debug(&self) -> EscapeDebug {
         let mut chars = self.chars();
-        if let Some(first) = chars.next() {
-            string.extend(first.escape_debug_ext(true))
+        EscapeDebug {
+            inner: chars.next()
+                .map(|first| first.escape_debug_ext(true))
+                .into_iter()
+                .flatten()
+                .chain(chars.flat_map(CharEscapeDebugContinue))
         }
-        string.extend(chars.flat_map(|c| c.escape_debug_ext(false)));
-        string
     }
 
     /// Escapes each char in `s` with [`char::escape_default`].
@@ -468,8 +472,8 @@ impl str {
     #[unstable(feature = "str_escape",
                reason = "return type may change to be an iterator",
                issue = "27791")]
-    pub fn escape_default(&self) -> String {
-        self.chars().flat_map(|c| c.escape_default()).collect()
+    pub fn escape_default(&self) -> EscapeDefault {
+        EscapeDefault { inner: self.chars().flat_map(CharEscapeDefault) }
     }
 
     /// Escapes each char in `s` with [`char::escape_unicode`].
@@ -478,8 +482,8 @@ impl str {
     #[unstable(feature = "str_escape",
                reason = "return type may change to be an iterator",
                issue = "27791")]
-    pub fn escape_unicode(&self) -> String {
-        self.chars().flat_map(|c| c.escape_unicode()).collect()
+    pub fn escape_unicode(&self) -> EscapeUnicode {
+        EscapeUnicode { inner: self.chars().flat_map(CharEscapeUnicode) }
     }
 
     /// Converts a [`Box<str>`] into a [`String`] without copying or allocating.
@@ -611,4 +615,84 @@ impl str {
 #[inline]
 pub unsafe fn from_boxed_utf8_unchecked(v: Box<[u8]>) -> Box<str> {
     Box::from_raw(Box::into_raw(v) as *mut str)
+}
+
+impl_fn_for_zst! {
+    #[derive(Clone)]
+    struct CharEscapeDebugContinue impl Fn = |c: char| -> char::EscapeDebug {
+        c.escape_debug_ext(false)
+    };
+
+    #[derive(Clone)]
+    struct CharEscapeUnicode impl Fn = |c: char| -> char::EscapeUnicode {
+        c.escape_unicode()
+    };
+    #[derive(Clone)]
+    struct CharEscapeDefault impl Fn = |c: char| -> char::EscapeDefault {
+        c.escape_default()
+    };
+}
+
+macro_rules! escape_types {
+    ($(
+        struct $Name: ident<'a> {
+            inner: $Inner: ty,
+        }
+    )+) => {$(
+        #[unstable(feature = "str_escape", issue = "27791")]
+        #[derive(Clone, Debug)]
+        pub struct $Name<'a> {
+            inner: $Inner,
+        }
+
+        #[unstable(feature = "str_escape", issue = "27791")]
+        impl<'a> fmt::Display for $Name<'a> {
+            fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+                self.clone().try_for_each(|c| f.write_char(c))
+            }
+        }
+
+        #[unstable(feature = "str_escape", issue = "27791")]
+        impl<'a> Iterator for $Name<'a> {
+            type Item = char;
+
+            #[inline]
+            fn next(&mut self) -> Option<char> { self.inner.next() }
+
+            #[inline]
+            fn size_hint(&self) -> (usize, Option<usize>) { self.inner.size_hint() }
+
+            #[inline]
+            fn try_fold<Acc, Fold, R>(&mut self, init: Acc, fold: Fold) -> R where
+                Self: Sized, Fold: FnMut(Acc, Self::Item) -> R, R: Try<Ok=Acc>
+            {
+                self.inner.try_fold(init, fold)
+            }
+
+            #[inline]
+            fn fold<Acc, Fold>(self, init: Acc, fold: Fold) -> Acc
+                where Fold: FnMut(Acc, Self::Item) -> Acc,
+            {
+                self.inner.fold(init, fold)
+            }
+        }
+
+        #[unstable(feature = "str_escape", issue = "27791")]
+        impl<'a> FusedIterator for $Name<'a> {}
+    )+}
+}
+
+escape_types! {
+    struct EscapeDebug<'a> {
+        inner: Chain<
+            Flatten<option::IntoIter<char::EscapeDebug>>,
+            FlatMap<Chars<'a>, char::EscapeDebug, CharEscapeDebugContinue>
+        >,
+    }
+    struct EscapeUnicode<'a> {
+        inner: FlatMap<Chars<'a>, char::EscapeUnicode, CharEscapeUnicode>,
+    }
+    struct EscapeDefault<'a> {
+        inner: FlatMap<Chars<'a>, char::EscapeDefault, CharEscapeDefault>,
+    }
 }
