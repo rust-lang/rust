@@ -275,26 +275,24 @@ fn check_ty(cx: &LateContext<'_, '_>, hir_ty: &hir::Ty, is_local: bool) {
                         if Some(def_id) == cx.tcx.lang_items().owned_box();
                         // At this point, we know ty is Box<T>, now get T
                         if let Some(ref last) = last_path_segment(ty_qpath).args;
-                        if let Some(ty) = last.args.iter().find_map(|arg| match arg {
+                        if let Some(boxed_ty) = last.args.iter().find_map(|arg| match arg {
                             GenericArg::Type(ty) => Some(ty),
                             GenericArg::Lifetime(_) => None,
                         });
-                        if let TyKind::Path(ref ty_qpath) = ty.node;
-                        let def = cx.tables.qpath_def(ty_qpath, ty.hir_id);
-                        if let Some(def_id) = opt_def_id(def);
-                        let boxed_type = cx.tcx.type_of(def_id);
-                        if boxed_type.is_sized(cx.tcx.at(ty.span), cx.param_env);
                         then {
-                            span_lint_and_sugg(
-                                cx,
-                                VEC_BOX,
-                                hir_ty.span,
-                                "`Vec<T>` is already on the heap, the boxing is unnecessary.",
-                                "try",
-                                format!("Vec<{}>", boxed_type),
-                                Applicability::MaybeIncorrect,
-                            );
-                            return; // don't recurse into the type
+                            let ty_ty = hir_ty_to_ty(cx.tcx, boxed_ty);
+                            if ty_ty.is_sized(cx.tcx.at(ty.span), cx.param_env) {
+                                span_lint_and_sugg(
+                                    cx,
+                                    VEC_BOX,
+                                    hir_ty.span,
+                                    "`Vec<T>` is already on the heap, the boxing is unnecessary.",
+                                    "try",
+                                    format!("Vec<{}>", ty_ty),
+                                    Applicability::MaybeIncorrect,
+                                );
+                                return; // don't recurse into the type
+                            }
                         }
                     }
                 } else if match_def_path(cx.tcx, def_id, &paths::OPTION) {
