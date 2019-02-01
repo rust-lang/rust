@@ -1175,7 +1175,7 @@ $EndFeature, "
 ```"),
             #[stable(feature = "num_wrapping", since = "1.2.0")]
             #[inline]
-            pub fn wrapping_neg(self) -> Self {
+            pub const fn wrapping_neg(self) -> Self {
                 self.overflowing_neg().0
             }
         }
@@ -1529,12 +1529,8 @@ assert_eq!(", stringify!($SelfT), "::MIN.overflowing_neg(), (", stringify!($Self
 ```"),
             #[inline]
             #[stable(feature = "wrapping", since = "1.7.0")]
-            pub fn overflowing_neg(self) -> (Self, bool) {
-                if self == Self::min_value() {
-                    (Self::min_value(), true)
-                } else {
-                    (-self, false)
-                }
+            pub const fn overflowing_neg(self) -> (Self, bool) {
+                ((self ^ -1).wrapping_add(1), s == $SelfT::min_value())
             }
         }
 
@@ -3017,7 +3013,7 @@ assert_eq!(100", stringify!($SelfT), ".wrapping_rem_euclid(10), 0);
         /// ```
         #[stable(feature = "num_wrapping", since = "1.2.0")]
         #[inline]
-        pub fn wrapping_neg(self) -> Self {
+        pub const fn wrapping_neg(self) -> Self {
             self.overflowing_neg().0
         }
 
@@ -3322,7 +3318,7 @@ assert_eq!(2", stringify!($SelfT), ".overflowing_neg(), (-2i32 as ", stringify!(
 ```"),
             #[inline]
             #[stable(feature = "wrapping", since = "1.7.0")]
-            pub fn overflowing_neg(self) -> (Self, bool) {
+            pub const fn overflowing_neg(self) -> (Self, bool) {
                 ((!self).wrapping_add(1), self != 0)
             }
         }
