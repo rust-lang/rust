@@ -289,7 +289,7 @@ fn check_ty(cx: &LateContext<'_, '_>, hir_ty: &hir::Ty, is_local: bool) {
                                     "`Vec<T>` is already on the heap, the boxing is unnecessary.",
                                     "try",
                                     format!("Vec<{}>", ty_ty),
-                                    Applicability::MaybeIncorrect,
+                                    Applicability::MachineApplicable,
                                 );
                                 return; // don't recurse into the type
                             }
