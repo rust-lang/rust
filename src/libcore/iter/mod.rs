@@ -327,7 +327,7 @@ pub use self::sources::{Once, once};
 #[unstable(feature = "iter_once_with", issue = "57581")]
 pub use self::sources::{OnceWith, once_with};
 #[unstable(feature = "iter_unfold", issue = "55977")]
-pub use self::sources::{Unfold, unfold, Successors, successors};
+pub use self::sources::{FromFn, from_fn, Successors, successors};
 
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use self::traits::{FromIterator, IntoIterator, DoubleEndedIterator, Extend};
