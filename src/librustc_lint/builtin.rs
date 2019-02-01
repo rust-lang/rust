@@ -312,6 +312,7 @@ declare_lint! {
     report_in_external_macro: true
 }
 
+#[derive(Clone)]
 pub struct MissingDoc {
     /// Stack of whether `#[doc(hidden)]` is set at each level which has lint attributes.
     doc_hidden_stack: Vec<bool>,
@@ -598,6 +599,7 @@ declare_lint! {
     "detects missing implementations of fmt::Debug"
 }
 
+#[derive(Clone)]
 pub struct MissingDebugImplementations {
     impling_types: Option<NodeSet>,
 }
@@ -1042,6 +1044,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for UnstableFeatures {
 }
 
 /// Lint for unions that contain fields with possibly non-trivial destructors.
+#[derive(Copy, Clone)]
 pub struct UnionsWithDropFields;
 
 declare_lint! {
@@ -1154,7 +1157,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for UnreachablePub {
 /// Lint for trait and lifetime bounds in type aliases being mostly ignored.
 /// They are relevant when using associated types, but otherwise neither checked
 /// at definition site nor enforced at use site.
-
+#[derive(Copy, Clone)]
 pub struct TypeAliasBounds;
 
 declare_lint! {
@@ -1269,6 +1272,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for TypeAliasBounds {
 /// Without this lint, we might not get any diagnostic if the constant is
 /// unused within this crate, even though downstream crates can't use it
 /// without producing an error.
+#[derive(Copy, Clone)]
 pub struct UnusedBrokenConst;
 
 impl LintPass for UnusedBrokenConst {
@@ -1314,6 +1318,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for UnusedBrokenConst {
 
 /// Lint for trait and lifetime bounds that don't depend on type parameters
 /// which either do nothing, or stop the item from being used.
+#[derive(Copy, Clone)]
 pub struct TrivialConstraints;
 
 declare_lint! {
@@ -1414,7 +1419,7 @@ declare_lint! {
     "`...` range patterns are deprecated"
 }
 
-
+#[derive(Copy, Clone)]
 pub struct EllipsisInclusiveRangePatterns;
 
 impl LintPass for EllipsisInclusiveRangePatterns {
@@ -1481,6 +1486,7 @@ declare_lint! {
     report_in_external_macro: true
 }
 
+#[derive(Copy, Clone)]
 pub struct UnnameableTestItems {
     // `NodeId` of the item under which things are not nameable.
     boundary: ast::NodeId,
@@ -1649,7 +1655,7 @@ impl EarlyLintPass for KeywordIdents {
     }
 }
 
-
+#[derive(Copy, Clone)]
 pub struct ExplicitOutlivesRequirements;
 
 impl LintPass for ExplicitOutlivesRequirements {
