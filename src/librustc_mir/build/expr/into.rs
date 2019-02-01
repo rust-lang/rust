@@ -94,8 +94,9 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                 } else {
                     // Body of the `if` expression without an `else` clause must return `()`, thus
                     // we implicitly generate a `else {}` if it is not specified.
+                    let destination = this.hir.tcx().as_new_place(destination);
                     this.cfg
-                        .push_assign_unit(else_block, source_info, destination);
+                        .push_assign_unit(else_block, source_info, &destination);
                     else_block
                 };
 
@@ -140,10 +141,11 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                 let term = TerminatorKind::if_(this.hir.tcx(), lhs, blocks.0, blocks.1);
                 this.cfg.terminate(block, source_info, term);
 
+                let destination = this.hir.tcx().as_new_place(destination);
                 this.cfg.push_assign_constant(
                     shortcircuit_block,
                     source_info,
-                    destination,
+                    &destination,
                     Constant {
                         span: expr_span,
                         ty: this.hir.bool_ty(),
@@ -164,7 +166,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                 this.cfg.push_assign(
                     else_block,
                     source_info,
-                    destination,
+                    &destination,
                     Rvalue::Use(rhs),
                 );
                 this.cfg.terminate(
@@ -228,8 +230,9 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                             // if the test is false, there's no `break` to assign `destination`, so
                             // we have to do it; this overwrites any `break`-assigned value but it's
                             // always `()` anyway
+                            let destination = this.hir.tcx().as_new_place(destination);
                             this.cfg
-                                .push_assign_unit(exit_block, source_info, destination);
+                                .push_assign_unit(exit_block, source_info, &destination);
                         } else {
                             body_block = this.cfg.start_new_block();
                             let diverge_cleanup = this.diverge_cleanup();
@@ -336,7 +339,8 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
             | ExprKind::InlineAsm { .. }
             | ExprKind::Return { .. } => {
                 unpack!(block = this.stmt_expr(block, expr, None));
-                this.cfg.push_assign_unit(block, source_info, destination);
+                let destination = this.hir.tcx().as_new_place(destination);
+                this.cfg.push_assign_unit(block, source_info, &destination);
                 block.unit()
             }
 
@@ -350,8 +354,9 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
 
                 let place = unpack!(block = this.as_place(block, expr));
                 let rvalue = Rvalue::Use(this.consume_by_copy_or_move(place));
+                let destination = this.hir.tcx().as_new_place(destination);
                 this.cfg
-                    .push_assign(block, source_info, destination, rvalue);
+                    .push_assign(block, source_info, &destination, rvalue);
                 block.unit()
             }
             ExprKind::Index { .. } | ExprKind::Deref { .. } | ExprKind::Field { .. } => {
@@ -369,8 +374,9 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
 
                 let place = unpack!(block = this.as_place(block, expr));
                 let rvalue = Rvalue::Use(this.consume_by_copy_or_move(place));
+                let destination = this.hir.tcx().as_new_place(destination);
                 this.cfg
-                    .push_assign(block, source_info, destination, rvalue);
+                    .push_assign(block, source_info, &destination, rvalue);
                 block.unit()
             }
 
@@ -405,7 +411,8 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                 });
 
                 let rvalue = unpack!(block = this.as_local_rvalue(block, expr));
-                this.cfg.push_assign(block, source_info, destination, rvalue);
+                let destination = this.hir.tcx().as_new_place(destination);
+                this.cfg.push_assign(block, source_info, &destination, rvalue);
                 block.unit()
             }
         };

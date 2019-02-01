@@ -87,7 +87,7 @@ impl Lower128Bit {
                     block.statements.push(Statement {
                         source_info: source_info,
                         kind: StatementKind::Assign(
-                            Place::Local(local),
+                            NeoPlace::local(local),
                             box Rvalue::Cast(
                                 CastKind::Misc,
                                 rhs,
@@ -97,7 +97,7 @@ impl Lower128Bit {
                 }
 
                 let call_did = check_lang_item_type(
-                    lang_item, &place, &lhs, &rhs, local_decls, tcx);
+                    lang_item, &place.clone().into_tree(), &lhs, &rhs, local_decls, tcx);
 
                 let bb = BasicBlock::new(cur_len + new_blocks.len());
                 new_blocks.push(after_call);
@@ -109,7 +109,7 @@ impl Lower128Bit {
                             func: Operand::function_handle(tcx, call_did,
                                 List::empty(), source_info.span),
                             args: vec![lhs, rhs],
-                            destination: Some((place, bb)),
+                            destination: Some((place.into_tree(), bb)),
                             cleanup: None,
                             from_hir_call: false,
                         },

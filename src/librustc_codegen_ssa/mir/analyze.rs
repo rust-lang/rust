@@ -98,18 +98,18 @@ impl<'mir, 'a: 'mir, 'tcx: 'a, Bx: BuilderMethods<'a, 'tcx>> Visitor<'tcx>
     for LocalAnalyzer<'mir, 'a, 'tcx, Bx> {
     fn visit_assign(&mut self,
                     block: mir::BasicBlock,
-                    place: &mir::Place<'tcx>,
+                    place: &mir::NeoPlace<'tcx>,
                     rvalue: &mir::Rvalue<'tcx>,
                     location: Location) {
         debug!("visit_assign(block={:?}, place={:?}, rvalue={:?})", block, place, rvalue);
 
-        if let mir::Place::Local(index) = *place {
+        if let Some(index) = place.as_local() {
             self.assign(index, location);
             if !self.fx.rvalue_creates_operand(rvalue) {
                 self.not_ssa(index);
             }
         } else {
-            self.visit_place(
+            self.visit_neoplace(
                 place,
                 PlaceContext::MutatingUse(MutatingUseContext::Store),
                 location

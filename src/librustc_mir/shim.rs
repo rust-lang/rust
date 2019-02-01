@@ -422,7 +422,7 @@ impl<'a, 'tcx> CloneShimBuilder<'a, 'tcx> {
         let rcvr = Place::Local(Local::new(1+0)).deref();
         let ret_statement = self.make_statement(
             StatementKind::Assign(
-                Place::Local(RETURN_PLACE),
+                NeoPlace::local(RETURN_PLACE),
                 box Rvalue::Use(Operand::Copy(rcvr))
             )
         );
@@ -473,9 +473,10 @@ impl<'a, 'tcx> CloneShimBuilder<'a, 'tcx> {
         );
 
         // `let ref_loc: &ty = &src;`
+        let neo_ref_loc = tcx.as_new_place(&ref_loc);
         let statement = self.make_statement(
             StatementKind::Assign(
-                ref_loc.clone(),
+                neo_ref_loc.clone(),
                 box Rvalue::Ref(tcx.types.re_erased, BorrowKind::Shared, src)
             )
         );
@@ -501,9 +502,10 @@ impl<'a, 'tcx> CloneShimBuilder<'a, 'tcx> {
         let tcx = self.tcx;
 
         let cond = self.make_place(Mutability::Mut, tcx.types.bool);
+        let neo_cond = tcx.as_new_place(&cond);
         let compute_cond = self.make_statement(
             StatementKind::Assign(
-                cond.clone(),
+                neo_cond.clone(),
                 box Rvalue::BinaryOp(BinOp::Ne, Operand::Copy(end), Operand::Copy(beg))
             )
         );
@@ -538,16 +540,17 @@ impl<'a, 'tcx> CloneShimBuilder<'a, 'tcx> {
         // `let mut beg = 0;`
         // `let end = len;`
         // `goto #1;`
+        let neo_end = tcx.as_new_place(&end);
         let inits = vec![
             self.make_statement(
                 StatementKind::Assign(
-                    Place::Local(beg),
+                    NeoPlace::local(beg),
                     box Rvalue::Use(Operand::Constant(self.make_usize(0)))
                 )
             ),
             self.make_statement(
                 StatementKind::Assign(
-                    end.clone(),
+                    neo_end.clone(),
                     box Rvalue::Use(Operand::Constant(self.make_usize(len)))
                 )
             )
@@ -575,7 +578,7 @@ impl<'a, 'tcx> CloneShimBuilder<'a, 'tcx> {
         let statements = vec![
             self.make_statement(
                 StatementKind::Assign(
-                    Place::Local(beg),
+                    NeoPlace::local(beg),
                     box Rvalue::BinaryOp(
                         BinOp::Add,
                         Operand::Copy(Place::Local(beg)),
@@ -598,7 +601,7 @@ impl<'a, 'tcx> CloneShimBuilder<'a, 'tcx> {
         let beg = self.local_decls.push(temp_decl(Mutability::Mut, tcx.types.usize, span));
         let init = self.make_statement(
             StatementKind::Assign(
-                Place::Local(beg),
+                NeoPlace::local(beg),
                 box Rvalue::Use(Operand::Constant(self.make_usize(0)))
             )
         );
@@ -625,7 +628,7 @@ impl<'a, 'tcx> CloneShimBuilder<'a, 'tcx> {
         // `goto #6;`
         let statement = self.make_statement(
             StatementKind::Assign(
-                Place::Local(beg),
+                NeoPlace::local(beg),
                 box Rvalue::BinaryOp(
                     BinOp::Add,
                     Operand::Copy(Place::Local(beg)),
@@ -743,7 +746,7 @@ fn build_call_shim<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
             statements.push(Statement {
                 source_info,
                 kind: StatementKind::Assign(
-                    Place::Local(ref_rcvr),
+                    NeoPlace::local(ref_rcvr),
                     box Rvalue::Ref(tcx.types.re_erased, borrow_kind, rcvr_l)
                 )
             });
@@ -887,7 +890,7 @@ pub fn build_adt_ctor<'a, 'gcx, 'tcx>(infcx: &infer::InferCtxt<'a, 'gcx, 'tcx>,
         statements: vec![Statement {
             source_info,
             kind: StatementKind::Assign(
-                Place::Local(RETURN_PLACE),
+                NeoPlace::local(RETURN_PLACE),
                 box Rvalue::Aggregate(
                     box AggregateKind::Adt(adt_def, variant_no, substs, None, None),
                     (1..sig.inputs().len()+1).map(|i| {

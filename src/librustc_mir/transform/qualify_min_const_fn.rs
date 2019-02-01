@@ -209,7 +209,7 @@ fn check_statement(
     let span = statement.source_info.span;
     match &statement.kind {
         StatementKind::Assign(place, rval) => {
-            check_place(tcx, mir, place, span)?;
+            check_place(tcx, mir, &place.clone().into_tree(), span)?;
             check_rvalue(tcx, mir, rval, span)
         }
 

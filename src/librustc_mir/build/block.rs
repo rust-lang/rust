@@ -184,7 +184,8 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
             if destination_ty.is_unit() {
                 // We only want to assign an implicit `()` as the return value of the block if the
                 // block does not diverge. (Otherwise, we may try to assign a unit to a `!`-type.)
-                this.cfg.push_assign_unit(block, source_info, destination);
+                let destination = tcx.as_new_place(destination);
+                this.cfg.push_assign_unit(block, source_info, &destination);
             }
         }
         // Finally, we pop all the let scopes before exiting out from the scope of block

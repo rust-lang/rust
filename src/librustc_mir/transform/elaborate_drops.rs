@@ -469,7 +469,8 @@ impl<'b, 'tcx> ElaborateDropsCtxt<'b, 'tcx> {
         assert!(!data.is_cleanup, "DropAndReplace in unwind path not supported");
 
         let assign = Statement {
-            kind: StatementKind::Assign(location.clone(), box Rvalue::Use(value.clone())),
+            kind: StatementKind::Assign(self.tcx.as_new_place(&location.clone()),
+                                        box Rvalue::Use(value.clone())),
             source_info: terminator.source_info
         };
 
@@ -543,7 +544,9 @@ impl<'b, 'tcx> ElaborateDropsCtxt<'b, 'tcx> {
         if let Some(&flag) = self.drop_flags.get(&path) {
             let span = self.patch.source_info_for_location(self.mir, loc).span;
             let val = self.constant_bool(span, val.value());
-            self.patch.add_assign(loc, Place::Local(flag), val);
+            self.patch.add_assign(loc,
+                                  self.tcx.as_new_place(&Place::Local(flag)),
+                                  val);
         }
     }
 
@@ -552,7 +555,9 @@ impl<'b, 'tcx> ElaborateDropsCtxt<'b, 'tcx> {
         let span = self.patch.source_info_for_location(self.mir, loc).span;
         let false_ = self.constant_bool(span, false);
         for flag in self.drop_flags.values() {
-            self.patch.add_assign(loc, Place::Local(*flag), false_.clone());
+            self.patch.add_assign(loc,
+                                  self.tcx.as_new_place(&Place::Local(*flag)),
+                                  false_.clone());
         }
     }
 

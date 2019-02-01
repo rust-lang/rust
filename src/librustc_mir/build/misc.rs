@@ -57,8 +57,9 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                       -> Place<'tcx> {
         let usize_ty = self.hir.usize_ty();
         let temp = self.temp(usize_ty, source_info.span);
+        let neo_temp = self.hir.tcx().as_new_place(&temp);
         self.cfg.push_assign_constant(
-            block, source_info, &temp,
+            block, source_info, &neo_temp,
             Constant {
                 span: source_info.span,
                 ty: self.hir.usize_ty(),

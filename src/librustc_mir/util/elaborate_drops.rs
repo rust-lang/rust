@@ -487,14 +487,14 @@ impl<'l, 'b, 'tcx, D> DropCtxt<'l, 'b, 'tcx, D>
         // discriminant after it is free-ed, because that
         // way lies only trouble.
         let discr_ty = adt.repr.discr_type().to_ty(self.tcx());
-        let discr = Place::Local(self.new_temp(discr_ty));
+        let discr = NeoPlace::local(self.new_temp(discr_ty));
         let discr_rv = Rvalue::Discriminant(self.place.clone());
         let switch_block = BasicBlockData {
             statements: vec![self.assign(&discr, discr_rv)],
             terminator: Some(Terminator {
                 source_info: self.source_info,
                 kind: TerminatorKind::SwitchInt {
-                    discr: Operand::Move(discr),
+                    discr: Operand::Move(discr.into_tree()),
                     switch_ty: discr_ty,
                     values: From::from(values.to_owned()),
                     targets: blocks,
@@ -525,7 +525,7 @@ impl<'l, 'b, 'tcx, D> DropCtxt<'l, 'b, 'tcx, D>
 
         let result = BasicBlockData {
             statements: vec![self.assign(
-                &Place::Local(ref_place),
+                &NeoPlace::local(ref_place),
                 Rvalue::Ref(tcx.types.re_erased,
                             BorrowKind::Mut { allow_two_phase_borrow: false },
                             self.place.clone())
@@ -601,10 +601,12 @@ impl<'l, 'b, 'tcx, D> DropCtxt<'l, 'b, 'tcx, D>
              Rvalue::BinaryOp(BinOp::Add, copy(&Place::Local(cur)), one))
         };
 
+        let neo_ptr = tcx.as_new_place(&ptr);
+        let place = NeoPlace::local(cur);
         let drop_block = BasicBlockData {
             statements: vec![
-                self.assign(ptr, ptr_next),
-                self.assign(&Place::Local(cur), cur_next)
+                self.assign(&neo_ptr, ptr_next),
+                self.assign(&place, cur_next)
             ],
             is_cleanup: unwind.is_cleanup(),
             terminator: Some(Terminator {
@@ -615,9 +617,10 @@ impl<'l, 'b, 'tcx, D> DropCtxt<'l, 'b, 'tcx, D>
         };
         let drop_block = self.elaborator.patch().new_block(drop_block);
 
+        let neo_can_go = tcx.as_new_place(can_go);
         let loop_block = BasicBlockData {
             statements: vec![
-                self.assign(can_go, Rvalue::BinaryOp(BinOp::Eq,
+                self.assign(&neo_can_go, Rvalue::BinaryOp(BinOp::Eq,
                                                      copy(&Place::Local(cur)),
                                                      copy(length_or_end)))
             ],
@@ -668,13 +671,13 @@ impl<'l, 'b, 'tcx, D> DropCtxt<'l, 'b, 'tcx, D>
 
         let move_ = |place: &Place<'tcx>| Operand::Move(place.clone());
         let tcx = self.tcx();
-        let size = &Place::Local(self.new_temp(tcx.types.usize));
-        let size_is_zero = &Place::Local(self.new_temp(tcx.types.bool));
+        let size = &NeoPlace::local(self.new_temp(tcx.types.usize));
+        let size_is_zero = &NeoPlace::local(self.new_temp(tcx.types.bool));
         let base_block = BasicBlockData {
             statements: vec![
                 self.assign(size, Rvalue::NullaryOp(NullOp::SizeOf, ety)),
                 self.assign(size_is_zero, Rvalue::BinaryOp(BinOp::Eq,
-                                                           move_(size),
+                                                           move_(&size.clone().into_tree()),
                                                            self.constant_usize(0)))
             ],
             is_cleanup: self.unwind.is_cleanup(),
@@ -682,7 +685,7 @@ impl<'l, 'b, 'tcx, D> DropCtxt<'l, 'b, 'tcx, D>
                 source_info: self.source_info,
                 kind: TerminatorKind::if_(
                     tcx,
-                    move_(size_is_zero),
+                    move_(&size_is_zero.clone().into_tree()),
                     self.drop_loop_pair(ety, false),
                     self.drop_loop_pair(ety, true)
                 )
@@ -732,28 +735,33 @@ impl<'l, 'b, 'tcx, D> DropCtxt<'l, 'b, 'tcx, D>
         let cur = Place::Local(cur);
         let zero = self.constant_usize(0);
         let mut drop_block_stmts = vec![];
-        drop_block_stmts.push(self.assign(&length, Rvalue::Len(self.place.clone())));
+        let neo_length = tcx.as_new_place(&length);
+        drop_block_stmts.push(self.assign(&neo_length, Rvalue::Len(self.place.clone())));
         if ptr_based {
             let tmp_ty = tcx.mk_mut_ptr(self.place_ty(self.place));
             let tmp = Place::Local(self.new_temp(tmp_ty));
             // tmp = &mut P;
             // cur = tmp as *mut T;
             // end = Offset(cur, len);
-            drop_block_stmts.push(self.assign(&tmp, Rvalue::Ref(
+            let neo_tmp = tcx.as_new_place(&tmp);
+            drop_block_stmts.push(self.assign(&neo_tmp, Rvalue::Ref(
                 tcx.types.re_erased,
                 BorrowKind::Mut { allow_two_phase_borrow: false },
                 self.place.clone()
             )));
-            drop_block_stmts.push(self.assign(&cur, Rvalue::Cast(
+            let neo_cur = tcx.as_new_place(&cur);
+            drop_block_stmts.push(self.assign(&neo_cur, Rvalue::Cast(
                 CastKind::Misc, Operand::Move(tmp), iter_ty
             )));
-            drop_block_stmts.push(self.assign(&length_or_end,
+            let neo_length_or_end = tcx.as_new_place(&length_or_end);
+            drop_block_stmts.push(self.assign(&neo_length_or_end,
                 Rvalue::BinaryOp(BinOp::Offset,
                      Operand::Copy(cur), Operand::Move(length)
             )));
         } else {
             // index = 0 (length already pushed)
-            drop_block_stmts.push(self.assign(&cur, Rvalue::Use(zero)));
+            let neo_cur = tcx.as_new_place(&cur);
+            drop_block_stmts.push(self.assign(&neo_cur, Rvalue::Use(zero)));
         }
         let drop_block = self.elaborator.patch().new_block(BasicBlockData {
             statements: drop_block_stmts,
@@ -970,7 +978,7 @@ impl<'l, 'b, 'tcx, D> DropCtxt<'l, 'b, 'tcx, D>
         })
     }
 
-    fn assign(&self, lhs: &Place<'tcx>, rhs: Rvalue<'tcx>) -> Statement<'tcx> {
+    fn assign(&self, lhs: &NeoPlace<'tcx>, rhs: Rvalue<'tcx>) -> Statement<'tcx> {
         Statement {
             source_info: self.source_info,
             kind: StatementKind::Assign(lhs.clone(), box rhs)

@@ -455,15 +455,14 @@ impl<'a, 'tcx> Inliner<'a, 'tcx> {
                     let temp = LocalDecl::new_temp(ty, callsite.location.span);
 
                     let tmp = caller_mir.local_decls.push(temp);
-                    let tmp = Place::Local(tmp);
-
+                    let tmp = NeoPlace::local(tmp);
                     let stmt = Statement {
                         source_info: callsite.location,
                         kind: StatementKind::Assign(tmp.clone(), box dest)
                     };
                     caller_mir[callsite.bb]
                         .statements.push(stmt);
-                    tmp.deref()
+                    tmp.into_tree().deref()
                 } else {
                     destination.0
                 };
@@ -605,9 +604,10 @@ impl<'a, 'tcx> Inliner<'a, 'tcx> {
         let arg_tmp = LocalDecl::new_temp(ty, callsite.location.span);
         let arg_tmp = caller_mir.local_decls.push(arg_tmp);
 
+        let place = NeoPlace::local(arg_tmp);
         let stmt = Statement {
             source_info: callsite.location,
-            kind: StatementKind::Assign(Place::Local(arg_tmp), box arg),
+            kind: StatementKind::Assign(place, box arg),
         };
         caller_mir[callsite.bb].statements.push(stmt);
         arg_tmp

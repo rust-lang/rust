@@ -187,7 +187,7 @@ impl<'a, 'gcx, 'tcx> Visitor<'tcx> for GatherBorrows<'a, 'gcx, 'tcx> {
     fn visit_assign(
         &mut self,
         block: mir::BasicBlock,
-        assigned_place: &mir::Place<'tcx>,
+        assigned_place: &mir::NeoPlace<'tcx>,
         rvalue: &mir::Rvalue<'tcx>,
         location: mir::Location,
     ) {
@@ -206,15 +206,14 @@ impl<'a, 'gcx, 'tcx> Visitor<'tcx> for GatherBorrows<'a, 'gcx, 'tcx> {
                 reserve_location: location,
                 activation_location: TwoPhaseActivation::NotTwoPhase,
                 borrowed_place: borrowed_place.clone(),
-                assigned_place: assigned_place.clone(),
+                assigned_place: assigned_place.clone().into_tree(),
             };
             let idx = self.idx_vec.push(borrow);
             self.location_map.insert(location, idx);
 
-            self.insert_as_pending_if_two_phase(location, &assigned_place, kind, idx);
+            self.insert_as_pending_if_two_phase(location, &assigned_place.clone().into_tree(), kind, idx);
 
-            let neo_place = self.tcx.as_new_place(borrowed_place);
-            if let mir::PlaceBase::Local(local) = neo_place.base {
+            if let mir::PlaceBase::Local(local) = borrowed_neo_place.base {
                 self.local_map.entry(local).or_default().insert(idx);
             }
         }

@@ -259,15 +259,16 @@ impl<'b, 'a, 'gcx, 'tcx> Gatherer<'b, 'a, 'gcx, 'tcx> {
     fn gather_statement(&mut self, stmt: &Statement<'tcx>) {
         match stmt.kind {
             StatementKind::Assign(ref place, ref rval) => {
-                self.create_move_path(place);
+                let place = place.clone().into_tree();
+                self.create_move_path(&place);
                 if let RvalueInitializationState::Shallow = rval.initialization_state() {
                     // Box starts out uninitialized - need to create a separate
                     // move-path for the interior so it will be separate from
                     // the exterior.
                     self.create_move_path(&place.clone().deref());
-                    self.gather_init(place, InitKind::Shallow);
+                    self.gather_init(&place, InitKind::Shallow);
                 } else {
-                    self.gather_init(place, InitKind::Deep);
+                    self.gather_init(&place, InitKind::Deep);
                 }
                 self.gather_rvalue(rval);
             }

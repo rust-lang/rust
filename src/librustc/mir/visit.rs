@@ -96,7 +96,7 @@ macro_rules! make_mir_visitor {
 
             fn visit_assign(&mut self,
                             block: BasicBlock,
-                            place: & $($mutability)* Place<'tcx>,
+                            place: & $($mutability)* NeoPlace<'tcx>,
                             rvalue: & $($mutability)* Rvalue<'tcx>,
                             location: Location) {
                 self.super_assign(block, place, rvalue, location);
@@ -441,10 +441,10 @@ macro_rules! make_mir_visitor {
 
             fn super_assign(&mut self,
                             _block: BasicBlock,
-                            place: &$($mutability)* Place<'tcx>,
+                            place: &$($mutability)* NeoPlace<'tcx>,
                             rvalue: &$($mutability)* Rvalue<'tcx>,
                             location: Location) {
-                self.visit_place(
+                self.visit_neoplace(
                     place,
                     PlaceContext::MutatingUse(MutatingUseContext::Store),
                     location
@@ -771,6 +771,16 @@ macro_rules! make_mir_visitor {
                     base,
                     elems,
                 } = place;
+                
+                let mut context = context;
+                
+                if !elems.is_empty() {
+                    context = if context.is_mutating_use() {
+                        PlaceContext::MutatingUse(MutatingUseContext::Projection)
+                    } else {
+                        PlaceContext::NonMutatingUse(NonMutatingUseContext::Projection)
+                    };
+                }
 
                 match base {
                     PlaceBase::Local(local) => {
@@ -784,13 +794,11 @@ macro_rules! make_mir_visitor {
                     }
                 }
 
-                if !elems.is_empty() {
-                    for elem in elems.iter().cloned().rev() {
-                        self.visit_projection_elem(
-                            &$($mutability)* elem.clone(),
-                            location
-                        );
-                    }
+                for elem in elems.iter().cloned().rev() {
+                    self.visit_projection_elem(
+                        &$($mutability)* elem.clone(),
+                        location
+                    );
                 }
             }
 

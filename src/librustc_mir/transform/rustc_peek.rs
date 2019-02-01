@@ -159,7 +159,7 @@ fn each_block<'a, 'tcx, O>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                           "sanity_check should run before Deaggregator inserts SetDiscriminant"),
         };
 
-        if place == peek_arg_place {
+        if &place.clone().into_tree() == peek_arg_place {
             if let mir::Rvalue::Ref(_, mir::BorrowKind::Shared, ref peeking_at_place) = **rvalue {
                 // Okay, our search is over.
                 match move_data.rev_lookup.find(peeking_at_place) {
@@ -186,7 +186,7 @@ fn each_block<'a, 'tcx, O>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
             }
         }
 
-        let lhs_mpi = move_data.rev_lookup.find(place);
+        let lhs_mpi = move_data.rev_lookup.find(&place.clone().into_tree());
 
         debug!("rustc_peek: computing effect on place: {:?} ({:?}) in stmt: {:?}",
                place, lhs_mpi, stmt);

@@ -177,6 +177,7 @@ impl<'a, 'tcx> TransformVisitor<'a, 'tcx> {
                 ty::ParamEnv::empty().and(self.tcx.types.u32)
             ))),
         });
+        let state = self.tcx.as_new_place(&state);
         Statement {
             source_info,
             kind: StatementKind::Assign(state, box Rvalue::Use(val)),
@@ -234,9 +235,10 @@ impl<'a, 'tcx> MutVisitor<'tcx> for TransformVisitor<'a, 'tcx> {
         if let Some((state_idx, resume, v, drop)) = ret_val {
             let source_info = data.terminator().source_info;
             // We must assign the value first in case it gets declared dead below
+            let place = NeoPlace::local(RETURN_PLACE);
             data.statements.push(Statement {
                 source_info,
-                kind: StatementKind::Assign(Place::Local(RETURN_PLACE),
+                kind: StatementKind::Assign(place,
                                             box self.make_state(state_idx, v)),
             });
             let state = if let Some(resume) = resume { // Yield

@@ -19,7 +19,10 @@
 //! (non-mutating) use of `SRC`. These restrictions are conservative and may be relaxed in the
 //! future.
 
-use rustc::mir::{Constant, Local, LocalKind, Location, Place, Mir, Operand, Rvalue, StatementKind};
+use rustc::mir::{
+    Constant, Local, LocalKind, Location, Place, NeoPlace, PlaceBase,
+    Mir, Operand, Rvalue, StatementKind
+};
 use rustc::mir::visit::MutVisitor;
 use rustc::ty::TyCtxt;
 use transform::{MirPass, MirSource};
@@ -94,7 +97,10 @@ impl MirPass for CopyPropagation {
 
                     // That use of the source must be an assignment.
                     match statement.kind {
-                        StatementKind::Assign(Place::Local(local), box Rvalue::Use(ref operand)) if
+                        StatementKind::Assign(NeoPlace {
+                            base: PlaceBase::Local(local),
+                            elems: &[],
+                        }, box Rvalue::Use(ref operand)) if
                                 local == dest_local => {
                             let maybe_action = match *operand {
                                 Operand::Copy(ref src_place) |
@@ -144,11 +150,17 @@ fn eliminate_self_assignments<'tcx>(
             if let Some(stmt) = mir[location.block].statements.get(location.statement_index) {
                 match stmt.kind {
                     StatementKind::Assign(
-                        Place::Local(local),
+                        NeoPlace {
+                            base: PlaceBase::Local(local),
+                            elems: &[],
+                        },
                         box Rvalue::Use(Operand::Copy(Place::Local(src_local))),
                     ) |
                     StatementKind::Assign(
-                        Place::Local(local),
+                        NeoPlace {
+                            base: PlaceBase::Local(local),
+                            elems: &[],
+                        },
                         box Rvalue::Use(Operand::Move(Place::Local(src_local))),
                     ) if local == dest_local && dest_local == src_local => {}
                     _ => {

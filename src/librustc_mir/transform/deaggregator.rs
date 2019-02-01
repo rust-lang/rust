@@ -33,7 +33,7 @@ impl MirPass for Deaggregator {
                 let (mut lhs, kind, operands) = match stmt.kind {
                     StatementKind::Assign(lhs, box rvalue) => {
                         match rvalue {
-                            Rvalue::Aggregate(kind, operands) => (lhs, kind, operands),
+                            Rvalue::Aggregate(kind, operands) => (lhs.into_tree(), kind, operands),
                             _ => bug!()
                         }
                     }
@@ -74,6 +74,7 @@ impl MirPass for Deaggregator {
                         let field = Field::new(active_field_index.unwrap_or(i));
                         lhs.clone().field(field, ty)
                     };
+                    let lhs_field = tcx.as_new_place(&lhs_field);
                     Statement {
                         source_info,
                         kind: StatementKind::Assign(lhs_field, box Rvalue::Use(op)),

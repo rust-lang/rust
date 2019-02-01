@@ -73,7 +73,7 @@ impl<'cx, 'tcx, 'gcx> Visitor<'tcx> for InvalidationGenerator<'cx, 'tcx, 'gcx> {
 
                 self.mutate_place(
                     ContextKind::AssignLhs.new(location),
-                    lhs,
+                    &lhs.clone().into_tree(),
                     Shallow(None),
                     JustWrite
                 );

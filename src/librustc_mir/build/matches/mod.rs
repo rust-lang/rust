@@ -1396,8 +1396,9 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
             match binding.binding_mode {
                 BindingMode::ByValue => {
                     let rvalue = Rvalue::Ref(re_erased, BorrowKind::Shared, binding.source.clone());
+                    let neo_ref_for_guard = self.hir.tcx().as_new_place(&ref_for_guard);
                     self.cfg
-                        .push_assign(block, source_info, &ref_for_guard, rvalue);
+                        .push_assign(block, source_info, &neo_ref_for_guard, rvalue);
                 }
                 BindingMode::ByRef(borrow_kind) => {
                     // Tricky business: For `ref id` and `ref mut id`
@@ -1440,9 +1441,11 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                         },
                     };
                     let rvalue = Rvalue::Ref(re_erased, borrow_kind, binding.source.clone());
+                    let neo_val_for_guard = self.hir.tcx().as_new_place(&val_for_guard);
                     self.cfg
-                        .push_assign(block, source_info, &val_for_guard, rvalue);
+                        .push_assign(block, source_info, &neo_val_for_guard, rvalue);
                     let rvalue = Rvalue::Ref(re_erased, BorrowKind::Shared, val_for_guard);
+                    let ref_for_guard = self.hir.tcx().as_new_place(&ref_for_guard);
                     self.cfg
                         .push_assign(block, source_info, &ref_for_guard, rvalue);
                 }
@@ -1476,6 +1479,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                     Rvalue::Ref(re_erased, borrow_kind, binding.source.clone())
                 }
             };
+            let local = self.hir.tcx().as_new_place(&local);
             self.cfg.push_assign(block, source_info, &local, rvalue);
         }
     }
@@ -1629,10 +1633,11 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                 Rvalue::Ref(tcx.types.re_erased, borrow_kind, matched_place.clone());
             let borrowed_input_ty = borrowed_input.ty(&self.local_decls, tcx);
             let borrowed_input_temp = self.temp(borrowed_input_ty, source_info.span);
+            let neo_borrowed_input_temp = tcx.as_new_place(&borrowed_input_temp);
             self.cfg.push_assign(
                 start_block,
                 source_info,
-                &borrowed_input_temp,
+                &neo_borrowed_input_temp,
                 borrowed_input
             );
             borrowed_input_temps.push(borrowed_input_temp);

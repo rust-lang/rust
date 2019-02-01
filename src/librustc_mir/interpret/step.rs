@@ -82,7 +82,8 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> 
         self.memory.tcx.span = stmt.source_info.span;
 
         match stmt.kind {
-            Assign(ref place, ref rvalue) => self.eval_rvalue_into_place(rvalue, place)?,
+            Assign(ref place, ref rvalue) =>
+                self.eval_rvalue_into_place(rvalue, &place.clone().into_tree())?,
 
             SetDiscriminant {
                 ref place,

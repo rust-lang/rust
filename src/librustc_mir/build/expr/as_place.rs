@@ -86,16 +86,18 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                     this.temp(usize_ty.clone(), expr_span),
                     this.temp(bool_ty, expr_span),
                 );
+                let neo_len = this.hir.tcx().as_new_place(&len);
                 this.cfg.push_assign(
                     block,
                     source_info, // len = len(slice)
-                    &len,
+                    &neo_len,
                     Rvalue::Len(slice.clone()),
                 );
+                let neo_lt = this.hir.tcx().as_new_place(&lt);
                 this.cfg.push_assign(
                     block,
                     source_info, // lt = idx < len
-                    &lt,
+                    &neo_lt,
                     Rvalue::BinaryOp(
                         BinOp::Lt,
                         Operand::Copy(Place::Local(idx)),

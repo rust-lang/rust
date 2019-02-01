@@ -1495,8 +1495,7 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
                             target == neo_place.base_local()
                         } =>
                     {
-                        let neo_into = self.infcx.tcx.as_new_place(into);
-                        target = neo_into.base_local();
+                        target = into.base_local();
                     }
                     _ => {},
                 }
@@ -1931,7 +1930,6 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
                 "annotate_argument_and_return_for_borrow: reservation={:?}",
                 reservation
             );
-            let reservation = self.infcx.tcx.as_new_place(reservation);
             // Check that the initial assignment of the reserve location is into a temporary.
             let mut target = match reservation.as_local() {
                 Some(local) if self.mir.local_kind(local) == LocalKind::Temp => local,
@@ -1946,7 +1944,11 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
                     "annotate_argument_and_return_for_borrow: target={:?} stmt={:?}",
                     target, stmt
                 );
-                if let StatementKind::Assign(Place::Local(assigned_to), box rvalue) = &stmt.kind
+                if let StatementKind::Assign(
+                            NeoPlace {
+                                base: PlaceBase::Local(assigned_to),
+                                elems: &[],
+                            }, box rvalue) = &stmt.kind
                 {
                     debug!(
                         "annotate_argument_and_return_for_borrow: assigned_to={:?} \
@@ -2513,7 +2515,10 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
             .get(location.statement_index)
         {
             Some(&Statement {
-                kind: StatementKind::Assign(Place::Local(local), _),
+                kind: StatementKind::Assign(NeoPlace {
+                    base: PlaceBase::Local(local),
+                    elems: &[],
+                }, _),
                 ..
             }) => local,
             _ => return OtherUse(use_span),

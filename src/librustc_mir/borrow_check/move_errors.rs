@@ -118,8 +118,7 @@ impl<'a, 'gcx, 'tcx> MirBorrowckCtxt<'a, 'gcx, 'tcx> {
                     .get(location.statement_index)
                     .map(|stmt| &stmt.kind)
                 {
-                    let neo_place = self.infcx.tcx.as_new_place(&place);
-                    if let Some(PlaceBase::Local(local)) = neo_place.as_place_base() {
+                    if let Some(PlaceBase::Local(local)) = place.as_place_base() {
                         let local_decl = &self.mir.local_decls[*local];
                         // opt_match_place is the
                         // match_span is the span of the expression being matched on

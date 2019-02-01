@@ -54,6 +54,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                 } else {
                     let rhs = unpack!(block = this.as_local_rvalue(block, rhs));
                     let lhs = unpack!(block = this.as_place(block, lhs));
+                    let lhs = this.hir.tcx().as_new_place(&lhs);
                     this.cfg.push_assign(block, source_info, &lhs, rhs);
                 }
 
@@ -92,6 +93,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                         rhs
                     )
                 );
+                let lhs = this.hir.tcx().as_new_place(&lhs);
                 this.cfg.push_assign(block, source_info, &lhs, result);
 
                 this.block_context.pop();
@@ -129,6 +131,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                     unpack!(block = this.into(&destination, block, value));
                     this.block_context.pop();
                 } else {
+                    let destination = this.hir.tcx().as_new_place(&destination);
                     this.cfg.push_assign_unit(block, source_info, &destination)
                 }
                 this.exit_scope(expr_span, (region_scope, source_info), block, break_block);
@@ -145,7 +148,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                     }
                     None => {
                         this.cfg
-                            .push_assign_unit(block, source_info, &Place::Local(RETURN_PLACE));
+                            .push_assign_unit(block, source_info, &NeoPlace::local(RETURN_PLACE));
                         block
                     }
                 };

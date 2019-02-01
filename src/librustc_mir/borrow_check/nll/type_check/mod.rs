@@ -1234,32 +1234,33 @@ impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
                 // they are not caused by the user, but rather artifacts
                 // of lowering. Assignments to other sorts of places *are* interesting
                 // though.
-                let category = match *place {
-                    Place::Local(RETURN_PLACE) => if let Some(BorrowCheckContext {
-                        universal_regions:
-                            UniversalRegions {
-                                defining_ty: DefiningTy::Const(def_id, _),
+                let category = match place.as_local() {
+                    Some(RETURN_PLACE) =>
+                        if let Some(BorrowCheckContext {
+                            universal_regions:
+                                UniversalRegions {
+                                    defining_ty: DefiningTy::Const(def_id, _),
+                                    ..
+                                },
                                 ..
-                            },
-                        ..
-                    }) = self.borrowck_context
-                    {
-                        if tcx.is_static(*def_id).is_some() {
-                            ConstraintCategory::UseAsStatic
+                        }) = self.borrowck_context {
+                            if tcx.is_static(*def_id).is_some() {
+                                ConstraintCategory::UseAsStatic
+                            } else {
+                                ConstraintCategory::UseAsConst
+                            }
                         } else {
-                            ConstraintCategory::UseAsConst
-                        }
-                    } else {
-                        ConstraintCategory::Return
-                    },
-                    Place::Local(l) if !mir.local_decls[l].is_user_variable.is_some() => {
+                            ConstraintCategory::Return
+                        },
+
+                    Some(l) if !mir.local_decls[l].is_user_variable.is_some() => {
                         ConstraintCategory::Boring
                     }
+
                     _ => ConstraintCategory::Assignment,
                 };
 
-                let neo_place = tcx.as_new_place(place);
-                let place_ty = neo_place.ty(mir, tcx).to_ty(tcx);
+                let place_ty = place.ty(mir, tcx).to_ty(tcx);
                 let rv_ty = rv.ty(mir, tcx);
                 if let Err(terr) =
                     self.sub_types_or_anon(rv_ty, place_ty, location.to_locations(), category)

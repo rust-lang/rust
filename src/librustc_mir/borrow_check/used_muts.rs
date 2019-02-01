@@ -88,8 +88,7 @@ impl<'visit, 'cx, 'gcx, 'tcx> Visitor<'tcx> for GatherUsedMutsVisitor<'visit, 'c
                 // be those that were never initialized - we will consider those as being used as
                 // they will either have been removed by unreachable code optimizations; or linted
                 // as unused variables.
-                let neo_into = self.mbcx.infcx.tcx.as_new_place(into);
-                if let Some(local) = neo_into.base_local() {
+                if let Some(local) = into.base_local() {
                     debug!(
                         "visit_statement: statement={:?} local={:?} \
                          never_initialized_mut_locals={:?}",

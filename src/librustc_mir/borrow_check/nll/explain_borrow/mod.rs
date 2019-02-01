@@ -6,7 +6,7 @@ use borrow_check::{Context, MirBorrowckCtxt, WriteKind};
 use rustc::ty::{self, TyCtxt};
 use rustc::mir::{
     CastKind, ConstraintCategory, FakeReadCause, Local, Location, Mir, Operand,
-    Place, Projection, ProjectionElem, Rvalue, Statement, StatementKind,
+    Place, NeoPlace, PlaceBase, ProjectionElem, Rvalue, Statement, StatementKind,
     TerminatorKind
 };
 use rustc_errors::DiagnosticBuilder;
@@ -422,7 +422,10 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
         // it which simplifies the termination logic.
         let mut queue = vec![location];
         let mut target = if let Some(&Statement {
-            kind: StatementKind::Assign(Place::Local(local), _),
+            kind: StatementKind::Assign(NeoPlace {
+                base: PlaceBase::Local(local),
+                elems: &[],
+            }, _),
             ..
         }) = stmt {
             local
@@ -446,11 +449,16 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
                     box rvalue,
                 ) = &stmt.kind {
                     let into = match place {
-                        Place::Local(into) => into,
-                        Place::Projection(box Projection {
-                            base: Place::Local(into),
-                            elem: ProjectionElem::Deref,
-                        }) => into,
+                        NeoPlace {
+                            base: PlaceBase::Local(into),
+                            elems: &[],
+                        } => into,
+
+                        NeoPlace {
+                            base: PlaceBase::Local(into),
+                            elems,
+                        } if elems.last().unwrap() == &ProjectionElem::Deref => into,
+
                         _ =>  {
                             // Continue at the next location.
                             queue.push(current_location.successor_within_block());

@@ -188,6 +188,70 @@ impl<'a, 'tcx> Qualifier<'a, 'tcx, 'tcx> {
     }
 
     /// Assign the current qualification to the given destination.
+    fn neo_assign(&mut self, dest: &NeoPlace<'tcx>, location: Location) {
+        trace!("assign: {:?}", dest);
+        let qualif = self.qualif;
+        let span = self.span;
+        let store = |slot: &mut Option<Qualif>| {
+            if slot.is_some() {
+                span_bug!(span, "multiple assignments to {:?}", dest);
+            }
+            *slot = Some(qualif);
+        };
+
+        // Only handle promotable temps in non-const functions.
+        if self.mode == Mode::Fn {
+            if let Some(index) = dest.as_local() {
+                if self.mir.local_kind(index) == LocalKind::Temp
+                && self.temp_promotion_state[index].is_promotable() {
+                    debug!("store to promotable temp {:?} ({:?})", index, qualif);
+                    store(&mut self.local_qualif[index]);
+                }
+            }
+            return;
+        }
+
+        // projections are transparent for assignments
+        // we qualify the entire destination at once, even if just a field would have
+        // stricter qualification
+        if !dest.elems.is_empty() {
+            // Catch more errors in the destination. `visit_place` also checks various
+            // projection rules like union field access and raw pointer deref
+            self.visit_neoplace(
+                dest,
+                PlaceContext::MutatingUse(MutatingUseContext::Store),
+                location
+            );
+        }
+
+        let index = match dest.base {
+            // We treat all locals equal in constants
+            PlaceBase::Local(index) => index,
+            PlaceBase::Promoted(..) => bug!("promoteds don't exist yet during promotion"),
+            PlaceBase::Static(..) => {
+                // Catch more errors in the destination. `visit_place` also checks that we
+                // do not try to access statics from constants or try to mutate statics
+                self.visit_neoplace(
+                    dest,
+                    PlaceContext::MutatingUse(MutatingUseContext::Store),
+                    location
+                );
+                return;
+            }
+        };
+        debug!("store to var {:?}", index);
+        match &mut self.local_qualif[index] {
+            // this is overly restrictive, because even full assignments do not clear the qualif
+            // While we could special case full assignments, this would be inconsistent with
+            // aggregates where we overwrite all fields via assignments, which would not get
+            // that feature.
+            Some(ref mut qualif) => *qualif = *qualif | self.qualif,
+            // insert new qualification
+            qualif @ None => *qualif = Some(self.qualif),
+        }
+    }
+
+    /// Assign the current qualification to the given destination.
     fn assign(&mut self, dest: &Place<'tcx>, location: Location) {
         trace!("assign: {:?}", dest);
         let qualif = self.qualif;
@@ -1069,13 +1133,13 @@ impl<'a, 'tcx> Visitor<'tcx> for Qualifier<'a, 'tcx, 'tcx> {
 
     fn visit_assign(&mut self,
                     _: BasicBlock,
-                    dest: &Place<'tcx>,
+                    dest: &NeoPlace<'tcx>,
                     rvalue: &Rvalue<'tcx>,
                     location: Location) {
         debug!("visit_assign: dest={:?} rvalue={:?} location={:?}", dest, rvalue, location);
         self.visit_rvalue(rvalue, location);
 
-        self.assign(dest, location);
+        self.neo_assign(dest, location);
     }
 
     fn visit_source_info(&mut self, source_info: &SourceInfo) {

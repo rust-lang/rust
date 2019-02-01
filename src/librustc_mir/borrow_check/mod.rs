@@ -503,9 +503,10 @@ impl<'cx, 'gcx, 'tcx> DataflowResultsConsumer<'cx, 'tcx> for MirBorrowckCtxt<'cx
                     flow_state,
                 );
 
+                let lhs = lhs.clone().into_tree();
                 self.mutate_place(
                     ContextKind::AssignLhs.new(location),
-                    (lhs, span),
+                    (&lhs, span),
                     Shallow(None),
                     JustWrite,
                     flow_state,

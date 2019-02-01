@@ -90,10 +90,11 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                     let minval = this.minval_literal(expr_span, expr.ty);
                     let is_min = this.temp(bool_ty, expr_span);
 
+                    let neo_is_min = this.hir.tcx().as_new_place(&is_min);
                     this.cfg.push_assign(
                         block,
                         source_info,
-                        &is_min,
+                        &neo_is_min,
                         Rvalue::BinaryOp(BinOp::Eq, arg.to_copy(), minval),
                     );
 
@@ -135,7 +136,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                 // malloc some memory of suitable type (thus far, uninitialized):
                 let box_ = Rvalue::NullaryOp(NullOp::Box, value.ty);
                 this.cfg
-                    .push_assign(block, source_info, &Place::Local(result), box_);
+                    .push_assign(block, source_info, &NeoPlace::local(result), box_);
 
                 // initialize the box contents:
                 unpack!(block = this.into(&Place::Local(result).deref(), block, value));
@@ -414,10 +415,11 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
             let result_tup = self.hir.tcx().intern_tup(&[ty, bool_ty]);
             let result_value = self.temp(result_tup, span);
 
+            let neo_result_value = self.hir.tcx().as_new_place(&result_value);
             self.cfg.push_assign(
                 block,
                 source_info,
-                &result_value,
+                &neo_result_value,
                 Rvalue::CheckedBinaryOp(op, lhs, rhs),
             );
             let val_fld = Field::new(0);
@@ -445,10 +447,11 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                 // Check for / 0
                 let is_zero = self.temp(bool_ty, span);
                 let zero = self.zero_literal(span, ty);
+                let neo_is_zero = self.hir.tcx().as_new_place(&is_zero);
                 self.cfg.push_assign(
                     block,
                     source_info,
-                    &is_zero,
+                    &neo_is_zero,
                     Rvalue::BinaryOp(BinOp::Eq, rhs.to_copy(), zero),
                 );
 
@@ -466,25 +469,28 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
 
                     // this does (rhs == -1) & (lhs == MIN). It could short-circuit instead
 
+                    let neo_is_neg_1 = self.hir.tcx().as_new_place(&is_neg_1);
                     self.cfg.push_assign(
                         block,
                         source_info,
-                        &is_neg_1,
+                        &neo_is_neg_1,
                         Rvalue::BinaryOp(BinOp::Eq, rhs.to_copy(), neg_1),
                     );
+                    let neo_is_min = self.hir.tcx().as_new_place(&is_min);
                     self.cfg.push_assign(
                         block,
                         source_info,
-                        &is_min,
+                        &neo_is_min,
                         Rvalue::BinaryOp(BinOp::Eq, lhs.to_copy(), min),
                     );
 
                     let is_neg_1 = Operand::Move(is_neg_1);
                     let is_min = Operand::Move(is_min);
+                    let neo_of = self.hir.tcx().as_new_place(&of);
                     self.cfg.push_assign(
                         block,
                         source_info,
-                        &of,
+                        &neo_of,
                         Rvalue::BinaryOp(BinOp::BitAnd, is_neg_1, is_min),
                     );
 
@@ -583,7 +589,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
         this.cfg.push_assign(
             block,
             source_info,
-            &Place::Local(temp),
+            &NeoPlace::local(temp),
             Rvalue::Ref(this.hir.tcx().types.re_erased, borrow_kind, arg_place),
         );
 

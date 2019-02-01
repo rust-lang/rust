@@ -22,7 +22,7 @@
 
 use rustc_data_structures::fx::FxHashSet;
 
-use rustc::mir::{BasicBlock, FakeReadCause, Local, Location, Mir, Place};
+use rustc::mir::{BasicBlock, FakeReadCause, Local, Location, Mir, Place, NeoPlace, PlaceBase};
 use rustc::mir::{Statement, StatementKind};
 use rustc::mir::visit::MutVisitor;
 use rustc::ty::TyCtxt;
@@ -103,7 +103,10 @@ impl<'tcx> MutVisitor<'tcx> for DeleteFakeBorrows {
                        block: BasicBlock,
                        statement: &mut Statement<'tcx>,
                        location: Location) {
-        if let StatementKind::Assign(Place::Local(local), _) = statement.kind {
+        if let StatementKind::Assign(NeoPlace {
+            base: PlaceBase::Local(local),
+            elems: &[],
+        }, _) = statement.kind {
             if self.fake_borrow_temporaries.contains(&local) {
                 statement.make_nop();
             }

@@ -207,7 +207,8 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                        num_enum_variants, values, variants);
                 let discr_ty = adt_def.repr.discr_type().to_ty(tcx);
                 let discr = self.temp(discr_ty, test.span);
-                self.cfg.push_assign(block, source_info, &discr,
+                let neo_discr = self.hir.tcx().as_new_place(&discr);
+                self.cfg.push_assign(block, source_info, &neo_discr,
                                      Rvalue::Discriminant(place.clone()));
                 assert_eq!(values.len() + 1, targets.len());
                 self.cfg.terminate(block, source_info, TerminatorKind::SwitchInt {
@@ -284,6 +285,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                             ty = tcx.mk_imm_ref(region, tcx.mk_slice(elem_ty));
                             if opt_ref_ty.is_some() {
                                 place = self.temp(ty, test.span);
+                                let place = tcx.as_new_place(&place);
                                 self.cfg.push_assign(block, source_info, &place,
                                                     Rvalue::Cast(CastKind::Unsize, val, ty));
                             }
@@ -295,7 +297,8 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                                 );
 
                                 let slice = self.temp(ty, test.span);
-                                self.cfg.push_assign(block, source_info, &slice,
+                                let neo_slice = tcx.as_new_place(&slice);
+                                self.cfg.push_assign(block, source_info, &neo_slice,
                                                     Rvalue::Cast(CastKind::Unsize, array, ty));
                                 expect = Operand::Move(slice);
                             }
@@ -316,17 +319,20 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                     // let lhs_ref_place = &lhs;
                     let ref_rvalue = Rvalue::Ref(re_erased, BorrowKind::Shared, place);
                     let lhs_ref_place = self.temp(ref_ty, test.span);
-                    self.cfg.push_assign(block, source_info, &lhs_ref_place, ref_rvalue);
+                    let neo_lhs_ref_place = self.hir.tcx().as_new_place(&lhs_ref_place);
+                    self.cfg.push_assign(block, source_info, &neo_lhs_ref_place, ref_rvalue);
                     let val = Operand::Move(lhs_ref_place);
 
                     // let rhs_place = rhs;
                     let rhs_place = self.temp(ty, test.span);
-                    self.cfg.push_assign(block, source_info, &rhs_place, Rvalue::Use(expect));
+                    let neo_rhs_place = self.hir.tcx().as_new_place(&rhs_place);
+                    self.cfg.push_assign(block, source_info, &neo_rhs_place, Rvalue::Use(expect));
 
                     // let rhs_ref_place = &rhs_place;
                     let ref_rvalue = Rvalue::Ref(re_erased, BorrowKind::Shared, rhs_place);
                     let rhs_ref_place = self.temp(ref_ty, test.span);
-                    self.cfg.push_assign(block, source_info, &rhs_ref_place, ref_rvalue);
+                    let neo_rhs_ref_place = self.hir.tcx().as_new_place(&rhs_ref_place);
+                    self.cfg.push_assign(block, source_info, &neo_rhs_ref_place, ref_rvalue);
                     let expect = Operand::Move(rhs_ref_place);
 
                     let bool_ty = self.hir.bool_ty();
@@ -389,14 +395,16 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                                         self.temp(bool_ty, test.span));
 
                 // actual = len(place)
+                let neo_actual = self.hir.tcx().as_new_place(&actual);
                 self.cfg.push_assign(block, source_info,
-                                     &actual, Rvalue::Len(place.clone()));
+                                     &neo_actual, Rvalue::Len(place.clone()));
 
                 // expected = <N>
                 let expected = self.push_usize(block, source_info, len);
 
                 // result = actual == expected OR result = actual < expected
-                self.cfg.push_assign(block, source_info, &result,
+                let neo_result = self.hir.tcx().as_new_place(&result);
+                self.cfg.push_assign(block, source_info, &neo_result,
                                      Rvalue::BinaryOp(op,
                                                       Operand::Move(actual),
                                                       Operand::Move(expected)));
@@ -424,7 +432,8 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
 
         // result = op(left, right)
         let source_info = self.source_info(span);
-        self.cfg.push_assign(block, source_info, &result,
+        let neo_result = self.hir.tcx().as_new_place(&result);
+        self.cfg.push_assign(block, source_info, &neo_result,
                              Rvalue::BinaryOp(op, left, right));
 
         // branch based on result

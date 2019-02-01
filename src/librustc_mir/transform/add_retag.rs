@@ -175,7 +175,8 @@ impl MirPass for AddRetag {
                     // Assignments of reference or ptr type are the ones where we may have
                     // to update tags.  This includes `x = &[mut] ...` and hence
                     // we also retag after taking a reference!
-                    StatementKind::Assign(ref place, box ref rvalue) if needs_retag(place) => {
+                    StatementKind::Assign(ref place, box ref rvalue) if
+                        needs_retag(&place.clone().into_tree()) => {
                         let kind = match rvalue {
                             Rvalue::Ref(_, borrow_kind, _)
                                 if borrow_kind.allows_two_phase_borrow()
@@ -193,7 +194,7 @@ impl MirPass for AddRetag {
                 let source_info = block_data.statements[i].source_info;
                 block_data.statements.insert(i+1, Statement {
                     source_info,
-                    kind: StatementKind::Retag(retag_kind, place.clone()),
+                    kind: StatementKind::Retag(retag_kind, place.clone().into_tree()),
                 });
             }
         }

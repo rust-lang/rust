@@ -172,12 +172,13 @@ impl<'a, 'tcx> Promoter<'a, 'tcx> {
     fn assign(&mut self, dest: Local, rvalue: Rvalue<'tcx>, span: Span) {
         let last = self.promoted.basic_blocks().last().unwrap();
         let data = &mut self.promoted[last];
+        let place = NeoPlace::local(dest);
         data.statements.push(Statement {
             source_info: SourceInfo {
                 span,
                 scope: OUTERMOST_SOURCE_SCOPE
             },
-            kind: StatementKind::Assign(Place::Local(dest), box rvalue)
+            kind: StatementKind::Assign(place, box rvalue)
         });
     }
 
@@ -373,7 +374,10 @@ pub fn promote_candidates<'a, 'tcx>(mir: &mut Mir<'tcx>,
         match candidate {
             Candidate::Ref(Location { block, statement_index }) => {
                 match mir[block].statements[statement_index].kind {
-                    StatementKind::Assign(Place::Local(local), _) => {
+                    StatementKind::Assign(NeoPlace {
+                        base: PlaceBase::Local(local),
+                        elems: &[],
+                    }, _) => {
                         if temps[local] == TempState::PromotedOut {
                             // Already promoted.
                             continue;
@@ -420,7 +424,10 @@ pub fn promote_candidates<'a, 'tcx>(mir: &mut Mir<'tcx>,
     for block in mir.basic_blocks_mut() {
         block.statements.retain(|statement| {
             match statement.kind {
-                StatementKind::Assign(Place::Local(index), _) |
+                StatementKind::Assign(NeoPlace {
+                    base: PlaceBase::Local(index),
+                    elems: &[],
+                }, _) |
                 StatementKind::StorageLive(index) |
                 StatementKind::StorageDead(index) => {
                     !promoted(index)

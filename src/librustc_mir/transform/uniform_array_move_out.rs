@@ -59,7 +59,7 @@ struct UniformArrayMoveOutVisitor<'a, 'tcx: 'a> {
 impl<'a, 'tcx> Visitor<'tcx> for UniformArrayMoveOutVisitor<'a, 'tcx> {
     fn visit_assign(&mut self,
                     block: BasicBlock,
-                    dst_place: &Place<'tcx>,
+                    dst_place: &NeoPlace<'tcx>,
                     rvalue: &Rvalue<'tcx>,
                     location: Location) {
         if let Rvalue::Use(Operand::Move(ref src_place)) = rvalue {
@@ -76,7 +76,7 @@ impl<'a, 'tcx> Visitor<'tcx> for UniformArrayMoveOutVisitor<'a, 'tcx> {
                             assert!(size <= u32::max_value() as u64,
                                     "uniform array move out doesn't supported
                                      for array bigger then u32");
-                            self.uniform(location, dst_place, proj, item_ty, size as u32);
+                            self.uniform(location, &dst_place.clone().into_tree(), proj, item_ty, size as u32);
                         }
                     }
 
@@ -102,7 +102,7 @@ impl<'a, 'tcx> UniformArrayMoveOutVisitor<'a, 'tcx> {
                     let temp = self.patch.new_temp(item_ty, self.mir.source_info(location).span);
                     self.patch.add_statement(location, StatementKind::StorageLive(temp));
                     self.patch.add_assign(location,
-                                          Place::Local(temp),
+                                          NeoPlace::local(temp),
                                           Rvalue::Use(
                                               Operand::Move(
                                                   Place::Projection(box PlaceProjection{
@@ -114,8 +114,9 @@ impl<'a, 'tcx> UniformArrayMoveOutVisitor<'a, 'tcx> {
                                                   }))));
                     temp
                 }).collect();
+                let neo_dst_place = self.tcx.as_new_place(&dst_place);
                 self.patch.add_assign(location,
-                                      dst_place.clone(),
+                                      neo_dst_place.clone(),
                                       Rvalue::Aggregate(box AggregateKind::Array(item_ty),
                                       temps.iter().map(
                                           |x| Operand::Move(Place::Local(*x))).collect()
@@ -127,8 +128,9 @@ impl<'a, 'tcx> UniformArrayMoveOutVisitor<'a, 'tcx> {
             // uniforms statements like _11 = move _2[-1 of 1];
             ProjectionElem::ConstantIndex{offset, min_length: _, from_end: true} => {
                 self.patch.make_nop(location);
+                let neo_dst_place = self.tcx.as_new_place(&dst_place);
                 self.patch.add_assign(location,
-                                      dst_place.clone(),
+                                      neo_dst_place.clone(),
                                       Rvalue::Use(
                                           Operand::Move(
                                               Place::Projection(box PlaceProjection{
@@ -217,7 +219,7 @@ impl RestoreSubsliceArrayMoveOut {
                              items: &[Option<(&LocalUse, u32, &Place<'tcx>)>],
                              opt_size: Option<u64>,
                              patch: &mut MirPatch<'tcx>,
-                             dst_place: &Place<'tcx>) {
+                             dst_place: &NeoPlace<'tcx>) {
         let opt_src_place = items.first().and_then(|x| *x).map(|x| x.2);
 
         if opt_size.is_some() && items.iter().all(
@@ -259,7 +261,10 @@ impl RestoreSubsliceArrayMoveOut {
             if block.statements.len() > location.statement_index {
                 let statement = &block.statements[location.statement_index];
                 if let StatementKind::Assign(
-                    Place::Local(_),
+                    NeoPlace {
+                        base: PlaceBase::Local(_),
+                        elems: &[],
+                    },
                     box Rvalue::Use(Operand::Move(Place::Projection(box PlaceProjection{
                         ref base, elem: ProjectionElem::ConstantIndex{
                             offset, min_length: _, from_end: false}})))) = statement.kind {
@@ -293,7 +298,7 @@ struct RestoreDataCollector {
 impl<'tcx> Visitor<'tcx> for RestoreDataCollector {
     fn visit_assign(&mut self,
                     block: BasicBlock,
-                    place: &Place<'tcx>,
+                    place: &NeoPlace<'tcx>,
                     rvalue: &Rvalue<'tcx>,
                     location: Location) {
         if let Rvalue::Aggregate(box AggregateKind::Array(_), _) = *rvalue {

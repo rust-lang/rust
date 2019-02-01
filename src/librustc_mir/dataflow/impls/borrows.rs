@@ -266,7 +266,7 @@ impl<'a, 'gcx, 'tcx> BitDenotation<'tcx> for Borrows<'a, 'gcx, 'tcx> {
             mir::StatementKind::Assign(lhs, rhs) => {
                 // Make sure there are no remaining borrows for variables
                 // that are assigned over.
-                self.kill_borrows_on_place(sets, lhs);
+                self.kill_borrows_on_place(sets, &lhs.clone().into_tree());
 
                 if let box mir::Rvalue::Ref(_, _, place) = rhs {
                     let neo_place = self.tcx.as_new_place(place);
