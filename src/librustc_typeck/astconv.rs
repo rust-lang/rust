@@ -967,7 +967,7 @@ impl<'o, 'gcx: 'tcx, 'tcx> dyn AstConv<'gcx, 'tcx> + 'o {
             // Perform sanity check for non-principal trait bounds.
             self.instantiate_poly_trait_ref(trait_bound,
                                             dummy_self,
-                                            &mut vec![]);
+                                            &mut Vec::new());
         }
 
         let (mut auto_traits, trait_bounds) = split_auto_traits(tcx, &trait_bounds[1..]);

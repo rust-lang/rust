@@ -123,8 +123,8 @@ impl<'a> StripUnconfigured<'a> {
         // Check feature gate and lint on zero attributes in source. Even if the feature is gated,
         // we still compute as if it wasn't, since the emitted error will stop compilation further
         // along the compilation.
-        if expanded_attrs.len() == 0 {
-            // FIXME: Emit unused attribute lint here.
+        if expanded_attrs.is_empty() {
+            // FIXME: emit unused attribute lint here.
         }
 
         if attr::cfg_matches(&cfg_predicate, self.sess, self.features) {

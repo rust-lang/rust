@@ -2910,7 +2910,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                 err.span_suggestion(
                     sugg_span,
                     "expected the unit value `()`; create it with empty parentheses",
-                    String::from("()"),
+                    "()".to_owned(),
                     Applicability::MachineApplicable);
             } else {
                 err.span_label(sp, format!("expected {}{}",
@@ -5443,7 +5443,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                                     err.span_suggestion(
                                         span,
                                         "use curly brackets",
-                                        String::from("Self { /* fields */ }"),
+                                        "Self { /* fields */ }".to_owned(),
                                         Applicability::HasPlaceholders,
                                     );
                                 }
