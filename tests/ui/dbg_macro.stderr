@@ -1,14 +1,59 @@
 error: `dbg!` macro is intended as a debugging tool
-  --> $DIR/dbg_macro.rs:4:5
+  --> $DIR/dbg_macro.rs:4:22
+   |
+LL |     if let Some(n) = dbg!(n.checked_sub(4)) {
+   |                      ^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: `-D clippy::dbg-macro` implied by `-D warnings`
+   = help: ensure to avoid having uses of it in version control
+
+error: `dbg!` macro is intended as a debugging tool
+  --> $DIR/dbg_macro.rs:12:8
+   |
+LL |     if dbg!(n <= 1) {
+   |        ^^^^^^^^^^^^
+   |
+   = help: ensure to avoid having uses of it in version control
+
+error: `dbg!` macro is intended as a debugging tool
+  --> $DIR/dbg_macro.rs:13:9
+   |
+LL |         dbg!(1)
+   |         ^^^^^^^
+   |
+   = help: ensure to avoid having uses of it in version control
+
+error: `dbg!` macro is intended as a debugging tool
+  --> $DIR/dbg_macro.rs:15:9
+   |
+LL |         dbg!(n * factorial(n - 1))
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: ensure to avoid having uses of it in version control
+
+error: `dbg!` macro is intended as a debugging tool
+  --> $DIR/dbg_macro.rs:20:5
    |
 LL |     dbg!(42);
    |     ^^^^^^^^
    |
-   = note: `-D clippy::dbg-macro` implied by `-D warnings`
-help: ensure to avoid having uses of it in version control
-   |
-LL |     42;
-   |     ^^
+   = help: ensure to avoid having uses of it in version control
 
-error: aborting due to previous error
+error: `dbg!` macro is intended as a debugging tool
+  --> $DIR/dbg_macro.rs:21:5
+   |
+LL |     dbg!(dbg!(dbg!(42)));
+   |     ^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: ensure to avoid having uses of it in version control
+
+error: `dbg!` macro is intended as a debugging tool
+  --> $DIR/dbg_macro.rs:22:14
+   |
+LL |     foo(3) + dbg!(factorial(4));
+   |              ^^^^^^^^^^^^^^^^^^
+   |
+   = help: ensure to avoid having uses of it in version control
+
+error: aborting due to 7 previous errors
 

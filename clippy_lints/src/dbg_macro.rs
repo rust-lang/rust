@@ -1,7 +1,6 @@
 use crate::utils::span_help_and_lint;
 use rustc::lint::{EarlyContext, EarlyLintPass, LintArray, LintPass};
 use rustc::{declare_tool_lint, lint_array};
-use rustc_errors::Applicability;
 use syntax::ast;
 
 /// **What it does:** Checks for usage of dbg!() macro.
