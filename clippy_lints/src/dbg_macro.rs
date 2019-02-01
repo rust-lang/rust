@@ -47,7 +47,7 @@ impl EarlyLintPass for Pass {
                 mac.span,
                 "`dbg!` macro is intended as a debugging tool",
                 "ensure to avoid having uses of it in version control",
-                mac.node.tts.to_string(), // TODO: to string
+                mac.node.tts.to_string(),
                 Applicability::MaybeIncorrect,
             );
         }
