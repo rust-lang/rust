@@ -557,7 +557,7 @@ impl Definitions {
                parent, node_id, data);
 
         assert!(!self.node_to_def_index.contains_key(&node_id),
-                "adding a def'n for node-id {:?} and data {:?} but a previous def'n exists: {:?}",
+                "adding def'n for `NodeId` {:?} and data {:?} but previous def'n exists: {:?}",
                 node_id,
                 data,
                 self.table.def_key(self.node_to_def_index[&node_id]));

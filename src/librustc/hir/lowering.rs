@@ -528,7 +528,7 @@ impl<'a> LoweringContext<'a> {
     fn allocate_hir_id_counter<T: Debug>(&mut self, owner: NodeId, debug: &T) -> LoweredNodeId {
         if self.item_local_id_counters.insert(owner, 0).is_some() {
             bug!(
-                "Tried to allocate item_local_id_counter for {:?} twice",
+                "tried to allocate `item_local_id_counter` for {:?} twice",
                 debug
             );
         }
@@ -617,7 +617,7 @@ impl<'a> LoweringContext<'a> {
             let local_id_counter = this
                 .item_local_id_counters
                 .get_mut(&owner)
-                .expect("called lower_node_id_with_owner before allocate_hir_id_counter");
+                .expect("called `lower_node_id_with_owner` before `allocate_hir_id_counter`");
             let local_id = *local_id_counter;
 
             // We want to be sure not to modify the counter in the map while it
@@ -630,7 +630,7 @@ impl<'a> LoweringContext<'a> {
                 .resolver
                 .definitions()
                 .opt_def_index(owner)
-                .expect("You forgot to call `create_def_with_parent` or are lowering node ids \
+                .expect("you forgot to call `create_def_with_parent` or are lowering `NodeId`s \
                          that do not belong to the current owner");
 
             hir::HirId {
@@ -777,7 +777,8 @@ impl<'a> LoweringContext<'a> {
                     DefPathData::LifetimeParam(str_name),
                     DefIndexAddressSpace::High,
                     Mark::root(),
-                    span);
+                    span,
+                );
 
                 hir::GenericParam {
                     id: node_id,
@@ -1556,7 +1557,8 @@ impl<'a> LoweringContext<'a> {
                         DefPathData::LifetimeParam(name.ident().as_interned_str()),
                         DefIndexAddressSpace::High,
                         Mark::root(),
-                        lifetime.span);
+                        lifetime.span,
+                    );
 
                     let (name, kind) = match name {
                         hir::LifetimeName::Underscore => (
@@ -2104,7 +2106,7 @@ impl<'a> LoweringContext<'a> {
             self.lower_async_fn_ret_ty(
                 &inputs,
                 &decl.output,
-                in_band_ty_params.expect("make_ret_async but no fn_def_id").0,
+                in_band_ty_params.expect("`make_ret_async` but no `fn_def_id`").0,
                 ret_id,
             )
         } else {
@@ -3057,7 +3059,7 @@ impl<'a> LoweringContext<'a> {
                 self.lower_generics(generics, ImplTraitContext::disallowed()),
                 self.lower_param_bounds(bounds, ImplTraitContext::disallowed()),
             ),
-            ItemKind::MacroDef(..) | ItemKind::Mac(..) => panic!("shouldn't still be around"),
+            ItemKind::MacroDef(..) | ItemKind::Mac(..) => panic!("Shouldn't still be around"),
         }
 
         // [1] `defaultness.has_value()` is never called for an `impl`, always `true` in order to
@@ -3365,7 +3367,7 @@ impl<'a> LoweringContext<'a> {
                         .map(|x| self.lower_ty(x, ImplTraitContext::disallowed())),
                 ),
             ),
-            TraitItemKind::Macro(..) => panic!("shouldn't exist any more"),
+            TraitItemKind::Macro(..) => panic!("Shouldn't exist any more"),
         };
 
         hir::TraitItem {
@@ -3441,7 +3443,7 @@ impl<'a> LoweringContext<'a> {
                     self.lower_param_bounds(bounds, ImplTraitContext::disallowed()),
                 ),
             ),
-            ImplItemKind::Macro(..) => panic!("shouldn't exist any more"),
+            ImplItemKind::Macro(..) => panic!("Shouldn't exist any more"),
         };
 
         hir::ImplItem {

@@ -14,7 +14,7 @@ use std::collections::{BTreeSet, BTreeMap};
 
 impl<'tcx, T: fmt::Debug> fmt::Debug for Normalized<'tcx, T> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "Normalized({:?},{:?})", self.value, self.obligations)
+        write!(f, "Normalized({:?}, {:?})", self.value, self.obligations)
     }
 }
 

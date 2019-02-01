@@ -4279,7 +4279,7 @@ impl<'a> Resolver<'a> {
                 self.trait_map.insert(expr.id, traits);
             }
             ExprKind::MethodCall(ref segment, ..) => {
-                debug!("(recording candidate traits for expr) recording traits for {}",
+                debug!("(recording candidate traits for expr) recording traits for node {}",
                        expr.id);
                 let traits = self.get_traits_containing_item(segment.ident, ValueNS);
                 self.trait_map.insert(expr.id, traits);
@@ -4568,7 +4568,7 @@ impl<'a> Resolver<'a> {
     }
 
     fn record_def(&mut self, node_id: NodeId, resolution: PathResolution) {
-        debug!("(recording def) recording {:?} for {}", resolution, node_id);
+        debug!("(recording def) recording {:?} for node {}", resolution, node_id);
         if let Some(prev_res) = self.def_map.insert(node_id, resolution) {
             panic!("path resolved multiple times ({:?} before, {:?} now)", prev_res, resolution);
         }

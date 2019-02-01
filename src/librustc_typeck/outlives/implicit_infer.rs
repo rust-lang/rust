@@ -60,7 +60,7 @@ impl<'cx, 'tcx> ItemLikeVisitor<'tcx> for InferVisitor<'cx, 'tcx> {
             .tcx
             .hir()
             .as_local_node_id(item_did)
-            .expect("expected local def-id");
+            .expect("expected local `DefId`");
         let item = match self.tcx.hir().get(node_id) {
             Node::Item(item) => item,
             _ => bug!(),

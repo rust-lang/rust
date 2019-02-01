@@ -54,7 +54,7 @@ fn const_is_rvalue_promotable_to_static<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     assert!(def_id.is_local());
 
     let node_id = tcx.hir().as_local_node_id(def_id)
-        .expect("rvalue_promotable_map invoked with non-local def-id");
+        .expect("rvalue_promotable_map invoked with non-local `DefId`");
     let body_id = tcx.hir().body_owned_by(node_id);
     tcx.rvalue_promotable_map(def_id).contains(&body_id.hir_id.local_id)
 }
@@ -81,7 +81,7 @@ fn rvalue_promotable_map<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
 
     // `def_id` should be a `Body` owner
     let node_id = tcx.hir().as_local_node_id(def_id)
-        .expect("rvalue_promotable_map invoked with non-local def-id");
+        .expect("rvalue_promotable_map invoked with non-local `DefId`");
     let body_id = tcx.hir().body_owned_by(node_id);
     let _ = visitor.check_nested_body(body_id);
 

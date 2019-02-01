@@ -553,7 +553,7 @@ fn unsafety_check_result<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: DefId)
 fn unsafe_derive_on_repr_packed<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: DefId) {
     let lint_node_id = match tcx.hir().as_local_node_id(def_id) {
         Some(node_id) => node_id,
-        None => bug!("checking unsafety for non-local def id {:?}", def_id)
+        None => bug!("checking unsafety for non-local `DefId` {:?}", def_id)
     };
 
     // FIXME: when we make this a hard error, this should have its own error code.

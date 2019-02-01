@@ -395,7 +395,7 @@ impl Session {
             Some(next) => {
                 self.next_node_id.set(ast::NodeId::from_usize(next));
             }
-            None => bug!("Input too large, ran out of node ids!"),
+            None => bug!("input too large, ran out of `NodeId`s!"),
         }
 
         id

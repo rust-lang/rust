@@ -548,9 +548,10 @@ fn validate_and_turn_into_const<'a, 'tcx>(
         let err = error_to_const_error(&ecx, error);
         match err.struct_error(ecx.tcx, "it is undefined behavior to use this value") {
             Ok(mut diag) => {
-                diag.note("The rules on what exactly is undefined behavior aren't clear, \
-                    so this check might be overzealous. Please open an issue on the rust compiler \
-                    repository if you believe it should not be considered undefined behavior",
+                diag.note(
+                    "the rules on what exactly is undefined behavior aren't clear, \
+                     so this check might be overzealous. please open an issue on the compiler \
+                     repository if you believe it should not be considered undefined behavior",
                 );
                 diag.emit();
                 ErrorHandled::Reported

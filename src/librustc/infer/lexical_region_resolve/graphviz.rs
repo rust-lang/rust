@@ -175,7 +175,7 @@ impl<'a, 'gcx, 'tcx> dot::Labeller<'a> for ConstraintGraph<'a, 'gcx, 'tcx> {
         let name = || format!("node_{}", node_id);
 
         dot::Id::new(name()).unwrap_or_else(|_|
-            bug!("failed to create graphviz node identified by {}", name()))
+            bug!("failed to create graphviz `NodeId`entified by {}", name()))
     }
     fn node_label(&self, n: &Node) -> dot::LabelText<'_> {
         match *n {

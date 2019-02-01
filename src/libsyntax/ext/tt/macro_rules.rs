@@ -138,7 +138,7 @@ fn generic_extension<'cx>(cx: &'cx mut ExtCtxt<'_>,
     for (i, lhs) in lhses.iter().enumerate() {
         let lhs_tt = match *lhs {
             quoted::TokenTree::Delimited(_, ref delim) => &delim.tts[..],
-            _ => cx.span_bug(sp, "malformed macro lhs")
+            _ => cx.span_bug(sp, "malformed macro LHS")
         };
 
         match TokenTree::parse(cx, lhs_tt, arg.clone()) {
@@ -329,10 +329,10 @@ pub fn compile(
                         return tt;
                     }
                 }
-                sess.span_diagnostic.span_bug(def.span, "wrong-structured lhs")
+                sess.span_diagnostic.span_bug(def.span, "badly-structured LHS")
             }).collect::<Vec<quoted::TokenTree>>()
         }
-        _ => sess.span_diagnostic.span_bug(def.span, "wrong-structured lhs")
+        _ => sess.span_diagnostic.span_bug(def.span, "badly-structured LHS")
     };
 
     let rhses = match *argument_map[&rhs_nm] {
@@ -352,10 +352,10 @@ pub fn compile(
                          .unwrap();
                     }
                 }
-                sess.span_diagnostic.span_bug(def.span, "wrong-structured lhs")
+                sess.span_diagnostic.span_bug(def.span, "badly-structured LHS")
             }).collect::<Vec<quoted::TokenTree>>()
         }
-        _ => sess.span_diagnostic.span_bug(def.span, "wrong-structured rhs")
+        _ => sess.span_diagnostic.span_bug(def.span, "badly-structured RHS")
     };
 
     for rhs in &rhses {
@@ -392,9 +392,10 @@ pub fn compile(
                 )
                 .unwrap_or_else(|| {
                     sess.span_diagnostic.span_warn(
-                        attr.span, "allow_internal_unstable expects list of feature names. In the \
-                        future this will become a hard error. Please use `allow_internal_unstable(\
-                        foo, bar)` to only allow the `foo` and `bar` features",
+                        attr.span,
+                        "allow_internal_unstable expects list of feature names. in the \
+                         future this will become a hard error. please use `allow_internal_unstable(\
+                         foo, bar)` to only allow the `foo` and `bar` features",
                     );
                     vec![Symbol::intern("allow_internal_unstable_backcompat_hack")].into()
                 })
@@ -541,7 +542,7 @@ fn check_lhs_duplicate_matcher_bindings(
 fn check_rhs(sess: &ParseSess, rhs: &quoted::TokenTree) -> bool {
     match *rhs {
         quoted::TokenTree::Delimited(..) => return true,
-        _ => sess.span_diagnostic.span_err(rhs.span(), "macro rhs must be delimited")
+        _ => sess.span_diagnostic.span_err(rhs.span(), "macro RHS must be delimited")
     }
     false
 }
@@ -695,7 +696,7 @@ impl FirstSets {
                         }
 
                         None => {
-                            panic!("We missed a sequence during FirstSets construction");
+                            panic!("we missed a sequence during `FirstSets` construction");
                         }
                     }
                 }
@@ -1155,7 +1156,7 @@ fn quoted_tt_to_string(tt: &quoted::TokenTree) -> String {
         quoted::TokenTree::Token(_, ref tok) => crate::print::pprust::token_to_string(tok),
         quoted::TokenTree::MetaVar(_, name) => format!("${}", name),
         quoted::TokenTree::MetaVarDecl(_, name, kind) => format!("${}:{}", name, kind),
-        _ => panic!("unexpected quoted::TokenTree::{{Sequence or Delimited}} \
+        _ => panic!("unexpected `quoted::TokenTree::Sequence` or `quoted::TokenTree::Delimited` \
                      in follow set checker"),
     }
 }

@@ -560,13 +560,13 @@ impl<'a> Printer<'a> {
             }
             PrintStackBreak::Broken(Breaks::Inconsistent) => {
                 if l > self.space {
-                    debug!("print Break({}+{}) w/ newline in inconsistent",
+                    debug!("print Break({}+{}) with newline in inconsistent",
                            top.offset, b.offset);
                     let ret = self.print_newline(top.offset + b.offset);
                     self.space = self.margin - (top.offset + b.offset);
                     ret
                 } else {
-                    debug!("print Break({}) w/o newline in inconsistent",
+                    debug!("print Break({}) without newline in inconsistent",
                            b.blank_space);
                     self.indent(b.blank_space);
                     self.space -= b.blank_space;

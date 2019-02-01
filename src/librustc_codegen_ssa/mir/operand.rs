@@ -77,7 +77,7 @@ impl<'a, 'tcx: 'a, V: CodegenObject> OperandRef<'tcx, V> {
             ConstValue::Scalar(x) => {
                 let scalar = match layout.abi {
                     layout::Abi::Scalar(ref x) => x,
-                    _ => bug!("from_const: invalid ByVal layout: {:#?}", layout)
+                    _ => bug!("from_const: invalid `ByVal` layout: {:#?}", layout)
                 };
                 let llval = bx.cx().scalar_to_backend(
                     x,
@@ -89,7 +89,7 @@ impl<'a, 'tcx: 'a, V: CodegenObject> OperandRef<'tcx, V> {
             ConstValue::Slice(a, b) => {
                 let a_scalar = match layout.abi {
                     layout::Abi::ScalarPair(ref a, _) => a,
-                    _ => bug!("from_const: invalid ScalarPair layout: {:#?}", layout)
+                    _ => bug!("from_const: invalid `ScalarPair` layout: {:#?}", layout)
                 };
                 let a_llval = bx.cx().scalar_to_backend(
                     a,
@@ -128,7 +128,7 @@ impl<'a, 'tcx: 'a, V: CodegenObject> OperandRef<'tcx, V> {
         let (llptr, llextra) = match self.val {
             OperandValue::Immediate(llptr) => (llptr, None),
             OperandValue::Pair(llptr, llextra) => (llptr, Some(llextra)),
-            OperandValue::Ref(..) => bug!("Deref of by-Ref operand {:?}", self)
+            OperandValue::Ref(..) => bug!("deref of by-ref operand {:?}", self)
         };
         let layout = cx.layout_of(projected_ty);
         PlaceRef {

@@ -44,12 +44,12 @@ pub fn expand_test_or_bench(
         if let Annotatable::Item(i) = item { i }
         else {
             cx.parse_sess.span_diagnostic.span_fatal(item.span(),
-                "#[test] attribute is only allowed on non associated functions").raise();
+                "`#[test]` attribute is only allowed on non associated functions").raise();
         };
 
     if let ast::ItemKind::Mac(_) = item.node {
         cx.parse_sess.span_diagnostic.span_warn(item.span,
-            "#[test] attribute should not be used on macros. Use #[cfg(test)] instead.");
+            "`#[test]` attribute should not be used on macros. use `#[cfg(test)]` instead.");
         return vec![Annotatable::Item(item)];
     }
 
@@ -184,7 +184,7 @@ pub fn expand_test_or_bench(
         ast::ItemKind::ExternCrate(Some(Symbol::intern("test")))
     );
 
-    log::debug!("Synthetic test item:\n{}\n", pprust::item_to_string(&test_const));
+    log::debug!("synthetic test item:\n{}\n", pprust::item_to_string(&test_const));
 
     vec![
         // Access to libtest under a gensym-ed name.
@@ -231,8 +231,8 @@ fn should_panic(cx: &ExtCtxt<'_>, i: &ast::Item) -> ShouldPanic {
                             attr.span(),
                             "argument must be of the form: \
                              `expected = \"error message\"`"
-                        ).note("Errors in this attribute were erroneously \
-                                allowed and will become a hard error in a \
+                        ).note("errors in this attribute were erroneously \
+                                allowed, and will become a hard error in a \
                                 future release.").emit();
                         ShouldPanic::Yes(None)
                     } else {
@@ -286,8 +286,7 @@ fn has_test_signature(cx: &ExtCtxt<'_>, i: &ast::Item) -> bool {
                 false
             },
             (true, false) => if !generics.params.is_empty() {
-                sd.span_err(i.span,
-                                "functions used as tests must have signature fn() -> ()");
+                sd.span_err(i.span, "functions used as tests must have signature `fn() -> ()`");
                 false
             } else {
                 true

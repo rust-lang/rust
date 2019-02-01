@@ -580,7 +580,7 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
             MultiDecorator(ref mac) => {
                 let mut items = Vec::new();
                 let meta = attr.parse_meta(self.cx.parse_sess)
-                               .expect("derive meta should already have been parsed");
+                               .expect("`derive` meta should already have been parsed");
                 mac.expand(self.cx, attr.span, &meta, &item, &mut |item| items.push(item));
                 items.push(item);
                 Some(invoc.fragment_kind.expect_from_annotatables(items))
@@ -603,7 +603,7 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
                 res
             }
             ProcMacroDerive(..) | BuiltinDerive(..) => {
-                self.cx.span_err(attr.span, &format!("`{}` is a derive mode", attr.path));
+                self.cx.span_err(attr.span, &format!("`{}` is a `derive` macro", attr.path));
                 self.cx.trace_macros_diag();
                 invoc.fragment_kind.dummy(attr.span)
             }
@@ -824,7 +824,7 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
             }
 
             ProcMacroDerive(..) | BuiltinDerive(..) => {
-                self.cx.span_err(path.span, &format!("`{}` is a derive mode", path));
+                self.cx.span_err(path.span, &format!("`{}` is a `derive` macro", path));
                 self.cx.trace_macros_diag();
                 kind.dummy(span)
             }
@@ -954,7 +954,7 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
                 Some(invoc.fragment_kind.expect_from_annotatables(items))
             }
             _ => {
-                let msg = &format!("macro `{}` may not be used for derive attributes", attr.path);
+                let msg = &format!("macro `{}` may not be used for `derive` attributes", attr.path);
                 self.cx.span_err(span, msg);
                 self.cx.trace_macros_diag();
                 invoc.fragment_kind.dummy(span)

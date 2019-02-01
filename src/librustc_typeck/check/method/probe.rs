@@ -1257,7 +1257,7 @@ impl<'a, 'gcx, 'tcx> ProbeContext<'a, 'gcx, 'tcx> {
                                             .sup(probe.xform_self_ty, self_ty) {
                 Ok(InferOk { obligations, value: () }) => obligations,
                 Err(_) => {
-                    debug!("--> cannot relate self-types");
+                    debug!("--> cannot relate self types");
                     return ProbeResult::NoMatch;
                 }
             };

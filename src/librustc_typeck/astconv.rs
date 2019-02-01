@@ -292,8 +292,8 @@ impl<'o, 'gcx: 'tcx, 'tcx> dyn AstConv<'gcx, 'tcx> + 'o {
         if !infer_lifetimes {
             if let Some(span_late) = def.has_late_bound_regions {
                 let msg = "cannot specify lifetime arguments explicitly \
-                           if late bound lifetime parameters are present";
-                let note = "the late bound lifetime parameter is introduced here";
+                           if late-bound lifetime parameters are present";
+                let note = "the late-bound lifetime parameter is introduced here";
                 let span = args.args[0].span();
                 if position == GenericArgPosition::Value
                     && arg_counts.lifetimes != param_counts.lifetimes {

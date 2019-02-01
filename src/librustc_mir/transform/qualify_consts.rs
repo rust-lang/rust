@@ -667,10 +667,10 @@ impl<'a, 'tcx> Checker<'a, 'tcx> {
                 self.mode
             );
             if self.tcx.sess.teach(&err.get_code().unwrap()) {
-                err.note("A function call isn't allowed in the const's initialization expression \
-                          because the expression's value must be known at compile-time.");
-                err.note("Remember: you can't use a function call inside a const's initialization \
-                          expression! However, you can use it anywhere else.");
+                err.note("a function call isn't allowed in the const's initialization expression \
+                          because the expression's value must be known at compile-time");
+                err.note("remember: you can't use a function call inside a const's initialization \
+                          expression! however, you can use it anywhere else.");
             }
             err.emit();
         }
@@ -701,14 +701,14 @@ impl<'a, 'tcx> Checker<'a, 'tcx> {
                         err.span_label(self.span, format!("{}s require immutable values",
                                                             self.mode));
                         if self.tcx.sess.teach(&err.get_code().unwrap()) {
-                            err.note("References in statics and constants may only refer to \
+                            err.note("references in statics and constants may only refer to \
                                       immutable values.\n\n\
-                                      Statics are shared everywhere, and if they refer to \
+                                      statics are shared everywhere, and if they refer to \
                                       mutable data one might violate memory safety since \
                                       holding multiple mutable references to shared data is \
                                       not allowed.\n\n\
-                                      If you really want global mutable state, try using \
-                                      static mut or a global UnsafeCell.");
+                                      if you really want global mutable state, try using \
+                                      static mut or a global `UnsafeCell`.");
                         }
                         err.emit();
                     } else {
@@ -948,11 +948,11 @@ impl<'a, 'tcx> Visitor<'tcx> for Checker<'a, 'tcx> {
                                                     a constant instead", self.mode);
                     if self.tcx.sess.teach(&err.get_code().unwrap()) {
                         err.note(
-                            "Static and const variables can refer to other const variables. But a \
-                             const variable cannot refer to a static variable."
+                            "static and const variables can refer to other const variables, but a \
+                             const variable cannot refer to a static variable"
                         );
                         err.help(
-                            "To fix this, the value can be extracted as a const and then used."
+                            "to fix this, the value can be extracted as a const and then used"
                         );
                     }
                     err.emit()
@@ -1147,8 +1147,8 @@ impl<'a, 'tcx> Visitor<'tcx> for Checker<'a, 'tcx> {
                     err.span_label(self.span, format!("allocation not allowed in {}s", self.mode));
                     if self.tcx.sess.teach(&err.get_code().unwrap()) {
                         err.note(
-                            "The value of statics and constants must be known at compile time, \
-                             and they live for the entire lifetime of a program. Creating a boxed \
+                            "the value of statics and constants must be known at compile time, \
+                             and they live for the entire lifetime of a program. creating a boxed \
                              value allocates memory on the heap at runtime, and therefore cannot \
                              be done at compile time."
                         );
@@ -1194,8 +1194,9 @@ impl<'a, 'tcx> Visitor<'tcx> for Checker<'a, 'tcx> {
                                             emit_feature_err(
                                                 &self.tcx.sess.parse_sess, "const_transmute",
                                                 self.span, GateIssue::Language,
-                                                &format!("The use of std::mem::transmute() \
-                                                is gated in {}s", self.mode));
+                                                &format!("the use of `std::mem::transmute()` \
+                                                          is gated in {}s",
+                                                          self.mode));
                                         }
                                     }
                                 }
@@ -1505,18 +1506,21 @@ impl MirPass for QualifyAndPromoteConstants {
                     let mut error = tcx.sess.struct_span_err(
                         span,
                         &format!(
-                            "new features like let bindings are not permitted in {}s \
-                            which also use short circuiting operators",
+                            "new features like `let` bindings are not permitted in {}s \
+                             which also use short circuiting operators",
                             mode,
                         ),
                     );
                     for (span, kind) in mir.control_flow_destroyed.iter() {
                         error.span_note(
                             *span,
-                            &format!("use of {} here does not actually short circuit due to \
-                            the const evaluator presently not being able to do control flow. \
-                            see <https://github.com/rust-lang/rust/issues/49146> for more \
-                            information.", kind),
+                            &format!(
+                                "use of {} here does not actually short circuit due to \
+                                 the const evaluator presently not being able to do control flow. \
+                                 see <https://github.com/rust-lang/rust/issues/49146> for more \
+                                 information.",
+                                kind
+                            ),
                         );
                     }
                     for local in locals {

@@ -291,7 +291,7 @@ impl<'a, 'gcx, 'tcx> ConfirmContext<'a, 'gcx, 'tcx> {
             .next()
             .unwrap_or_else(||
                 span_bug!(self.span,
-                          "self-type `{}` for ObjectPick never dereferenced to an object",
+                          "self type `{}` for ObjectPick never dereferenced to an object",
                           self_ty)
             )
     }

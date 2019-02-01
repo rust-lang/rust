@@ -512,7 +512,7 @@ impl<'a, 'tcx: 'a, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                             .max(tcx.data_layout.pointer_align.abi);
 
                         let str = format!(
-                            "Attempted to instantiate uninhabited type {}",
+                            "attempted to instantiate uninhabited type `{}`",
                             ty
                         );
                         let msg_str = Symbol::intern(&str).as_str();

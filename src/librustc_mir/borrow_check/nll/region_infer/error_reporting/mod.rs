@@ -384,9 +384,9 @@ impl<'tcx> RegionInferenceContext<'tcx> {
 
         diag.note(
             "`FnMut` closures only have access to their captured variables while they are \
-             executing...",
+             executing ...",
         );
-        diag.note("...therefore, they cannot allow references to captured variables to escape");
+        diag.note("... therefore, they cannot allow references to captured variables to escape");
 
         diag.buffer(errors_buffer);
     }

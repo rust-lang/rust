@@ -110,7 +110,7 @@ impl<'a, 'hir: 'a> HirIdValidator<'a, 'hir> {
                     local_id: ItemLocalId::from_u32(local_id),
                 };
 
-                trace!("missing hir id {:#?}", hir_id);
+                trace!("missing `HirID` {:#?}", hir_id);
 
                 // We are already in ICE mode here, so doing a linear search should be fine.
                 let (node_id, _) = self.hir_map
@@ -126,8 +126,8 @@ impl<'a, 'hir: 'a> HirIdValidator<'a, 'hir> {
                                            self.hir_map.node_to_string(node_id)));
             }
             self.error(|| format!(
-                "ItemLocalIds not assigned densely in {}. \
-                Max ItemLocalId = {}, missing IDs = {:?}; seens IDs = {:?}",
+                "`ItemLocalId`s not assigned densely in {}; \
+                 max `ItemLocalId` = {}, missing IDs = {:?}; seens IDs = {:?}",
                 self.hir_map.def_path(DefId::local(owner_def_index)).to_string_no_crate(),
                 max,
                 missing_items,

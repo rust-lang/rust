@@ -1839,7 +1839,7 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
                 candidates.vec.push(GeneratorCandidate);
             }
             ty::Infer(ty::TyVar(_)) => {
-                debug!("assemble_generator_candidates: ambiguous self-type");
+                debug!("assemble_generator_candidates: ambiguous self type");
                 candidates.ambiguous = true;
             }
             _ => {}
@@ -1895,7 +1895,7 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
                 }
             }
             ty::Infer(ty::TyVar(_)) => {
-                debug!("assemble_unboxed_closure_candidates: ambiguous self-type");
+                debug!("assemble_unboxed_closure_candidates: ambiguous self type");
                 candidates.ambiguous = true;
             }
             _ => {}
@@ -1923,7 +1923,7 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
         let self_ty = *obligation.self_ty().skip_binder();
         match self_ty.sty {
             ty::Infer(ty::TyVar(_)) => {
-                debug!("assemble_fn_pointer_candidates: ambiguous self-type");
+                debug!("assemble_fn_pointer_candidates: ambiguous self type");
                 candidates.ambiguous = true; // could wind up being a fn() type
             }
             // provide an impl, but only for suitable `fn` pointers

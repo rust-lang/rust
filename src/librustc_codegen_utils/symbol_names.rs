@@ -303,7 +303,7 @@ fn compute_symbol_name<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, instance: Instance
                 // *somewhere*
                 ty_def_id.index = key.parent.unwrap_or_else(|| {
                     bug!(
-                        "finding type for {:?}, encountered def-id {:?} with no \
+                        "finding type for {:?}, encountered `DefId` {:?} with no \
                          parent",
                         def_id,
                         ty_def_id

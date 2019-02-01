@@ -437,7 +437,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
         let interpret_alloc_index = {
             let mut interpret_alloc_index = Vec::new();
             let mut n = 0;
-            trace!("beginning to encode alloc ids");
+            trace!("beginning to encode alloc IDs");
             loop {
                 let new_n = self.interpret_allocs_inverse.len();
                 // If we have found new IDs, serialize those too.
@@ -445,7 +445,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
                     // otherwise, abort.
                     break;
                 }
-                trace!("encoding {} further alloc ids", new_n - n);
+                trace!("encoding {} further alloc IDs", new_n - n);
                 for idx in n..new_n {
                     let id = self.interpret_allocs_inverse[idx];
                     let pos = self.position() as u32;

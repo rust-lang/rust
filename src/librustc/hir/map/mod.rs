@@ -624,8 +624,8 @@ impl<'hir> Map<'hir> {
     /// Retrieves the `Node` corresponding to `id`, panicking if it cannot
     /// be found.
     pub fn get(&self, id: NodeId) -> Node<'hir> {
-        // read recorded by `find`
-        self.find(id).unwrap_or_else(|| bug!("couldn't find node id {} in the AST map", id))
+        // Read is recorded by `find`.
+        self.find(id).unwrap_or_else(|| bug!("couldn't find `NodeId` {} in the AST map", id))
     }
 
     // FIXME(ljedrz): replace the `NodeId` variant.
@@ -1491,7 +1491,7 @@ pub fn describe_def(tcx: TyCtxt<'_, '_, '_>, def_id: DefId) -> Option<Def> {
     if let Some(node_id) = tcx.hir().as_local_node_id(def_id) {
         tcx.hir().describe_def(node_id)
     } else {
-        bug!("Calling local describe_def query provider for upstream DefId: {:?}",
+        bug!("calling local `describe_def` query provider for upstream `DefId`: {:?}",
              def_id)
     }
 }

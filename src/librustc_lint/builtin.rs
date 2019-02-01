@@ -1009,14 +1009,14 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for MutableTransmutes {
     }
 }
 
-/// Forbids using the `#[feature(...)]` attribute
+/// Forbids using the `#[feature(...)]` attribute.
 #[derive(Copy, Clone)]
 pub struct UnstableFeatures;
 
 declare_lint! {
     UNSTABLE_FEATURES,
     Allow,
-    "enabling unstable features (deprecated. do not use)"
+    "enabling unstable features (deprecated, do not use)"
 }
 
 impl LintPass for UnstableFeatures {

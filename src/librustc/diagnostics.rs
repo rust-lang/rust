@@ -64,7 +64,7 @@ impl Trait for u8 {
 }
 ```
 
-(Note that `&self` and `&mut self` are okay, it's additional `Self` types which
+(Note that `&self` and `&mut self` are ok, it's additional `Self` types which
 cause this problem.)
 
 In such a case, the compiler cannot predict the return type of `foo()` in a
@@ -283,7 +283,7 @@ trait Super<A> {
 ```
 
 If the trait `Foo` was deriving from something like `Super<String>` or
-`Super<T>` (where `Foo` itself is `Foo<T>`), this is okay, because given a type
+`Super<T>` (where `Foo` itself is `Foo<T>`), this is ok, because given a type
 `get_a()` will definitely return an object of that type.
 
 However, if it derives from `Super<Self>`, even though `Super` is object safe,

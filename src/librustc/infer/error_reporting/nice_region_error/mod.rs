@@ -82,7 +82,7 @@ impl<'cx, 'gcx, 'tcx> NiceRegionError<'cx, 'gcx, 'tcx> {
             (Some(ConcreteFailure(origin, sub, sup)), None) => (origin.span(), sub, sup),
             (Some(SubSupConflict(_, _, origin, sub, _, sup)), None) => (origin.span(), sub, sup),
             (None, Some((span, sub, sup))) => (span, sub, sup),
-            (Some(_), Some(_)) => panic!("incorrectly built NiceRegionError"),
+            (Some(_), Some(_)) => panic!("incorrectly built `NiceRegionError`"),
             _ => panic!("trying to report on an incorrect lifetime failure"),
         }
     }

@@ -1101,7 +1101,7 @@ impl<'a> State<'a> {
                     }
                     // Constraints would be great here!
                     _ => {
-                        panic!("print_if saw if with weird alternative");
+                        panic!("`print_if` saw `if` with weird alternative");
                     }
                 }
             }

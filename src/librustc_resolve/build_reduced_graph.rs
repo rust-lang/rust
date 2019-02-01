@@ -878,10 +878,10 @@ impl<'a> Resolver<'a> {
     fn contains_macro_use(&mut self, attrs: &[ast::Attribute]) -> bool {
         for attr in attrs {
             if attr.check_name("macro_escape") {
-                let msg = "macro_escape is a deprecated synonym for macro_use";
+                let msg = "`macro_escape` is a deprecated synonym for `macro_use`";
                 let mut err = self.session.struct_span_warn(attr.span, msg);
                 if let ast::AttrStyle::Inner = attr.style {
-                    err.help("consider an outer attribute, #[macro_use] mod ...").emit();
+                    err.help("consider an outer attribute, `#[macro_use] mod ...`").emit();
                 } else {
                     err.emit();
                 }
@@ -890,7 +890,7 @@ impl<'a> Resolver<'a> {
             }
 
             if !attr.is_word() {
-                self.session.span_err(attr.span, "arguments to macro_use are not allowed here");
+                self.session.span_err(attr.span, "arguments to `macro_use` are not allowed here");
             }
             return true;
         }

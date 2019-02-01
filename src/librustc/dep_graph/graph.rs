@@ -637,7 +637,7 @@ impl DepGraph {
                     // This dependency has been marked as green before, we are
                     // still fine and can continue with checking the other
                     // dependencies.
-                    debug!("try_mark_previous_green({:?}) --- found dependency {:?} to \
+                    debug!("try_mark_previous_green({:?}) - found dependency {:?} to \
                             be immediately green",
                             dep_node,
                             data.previous.index_to_node(dep_dep_node_index));
@@ -660,7 +660,7 @@ impl DepGraph {
                     // We don't know the state of this dependency. If it isn't
                     // an input node, let's try to mark it green recursively.
                     if !dep_dep_node.kind.is_input() {
-                         debug!("try_mark_previous_green({:?}) --- state of dependency {:?} \
+                         debug!("try_mark_previous_green({:?}) - state of dependency {:?} \
                                  is unknown, trying to mark it green", dep_node,
                                  dep_dep_node);
 
@@ -671,7 +671,7 @@ impl DepGraph {
                             dep_dep_node
                         );
                         if let Some(node_index) = node_index {
-                            debug!("try_mark_previous_green({:?}) --- managed to MARK \
+                            debug!("try_mark_previous_green({:?}) - managed to mark \
                                     dependency {:?} as green", dep_node, dep_dep_node);
                             current_deps.push(node_index);
                             continue;
@@ -701,15 +701,15 @@ impl DepGraph {
                     }
 
                     // We failed to mark it green, so we try to force the query.
-                    debug!("try_mark_previous_green({:?}) --- trying to force \
+                    debug!("try_mark_previous_green({:?}) - trying to force \
                             dependency {:?}", dep_node, dep_dep_node);
                     if crate::ty::query::force_from_dep_node(tcx, dep_dep_node) {
                         let dep_dep_node_color = data.colors.get(dep_dep_node_index);
 
                         match dep_dep_node_color {
                             Some(DepNodeColor::Green(node_index)) => {
-                                debug!("try_mark_previous_green({:?}) --- managed to \
-                                        FORCE dependency {:?} to green",
+                                debug!("try_mark_previous_green({:?}) - managed to \
+                                        force dependency {:?} to green",
                                         dep_node, dep_dep_node);
                                 current_deps.push(node_index);
                             }
@@ -722,8 +722,9 @@ impl DepGraph {
                             }
                             None => {
                                 if !tcx.sess.has_errors() {
-                                    bug!("try_mark_previous_green() - Forcing the DepNode \
-                                          should have set its color")
+                                    bug!("try_mark_previous_green({:?}) - forcing `DepNode` \
+                                          should have set its color",
+                                         dep_node);
                                 } else {
                                     // If the query we just forced has resulted
                                     // in some kind of compilation error, we
@@ -779,12 +780,13 @@ impl DepGraph {
         // Multiple threads can all write the same color here.
         #[cfg(not(parallel_compiler))]
         debug_assert!(data.colors.get(prev_dep_node_index).is_none(),
-                      "DepGraph::try_mark_previous_green() - Duplicate DepNodeColor \
-                      insertion for {:?}", dep_node);
+                      "try_mark_previous_green({:?}) - duplicate `DepNodeColor` insertion",
+                      dep_node);
 
         data.colors.insert(prev_dep_node_index, DepNodeColor::Green(dep_node_index));
 
-        debug!("try_mark_previous_green({:?}) - END - successfully marked as green", dep_node);
+        debug!("try_mark_previous_green({:?}) - END - successfully marked as green",
+               dep_node);
         Some(dep_node_index)
     }
 
@@ -1033,7 +1035,7 @@ impl CurrentDepGraph {
                         self.data[i].node.kind == DepKind::Krate)
                 })
             {
-                bug!("Input node {:?} with unexpected reads: {:?}",
+                bug!("input node {:?} with unexpected reads: {:?}",
                     node,
                     task_deps.reads.iter().map(|&i| self.data[i].node).collect::<Vec<_>>())
             }

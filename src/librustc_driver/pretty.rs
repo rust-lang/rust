@@ -863,8 +863,8 @@ fn print_flowgraph<'a, 'tcx, W: Write>(variants: Vec<borrowck_dot::Variant>,
             return expand_err_details(r);
         }
         blocks::Code::Expr(_) => {
-            tcx.sess.err("--pretty flowgraph with -Z flowgraph-print annotations requires \
-                          fn-like node id.");
+            tcx.sess.err("`--pretty` flowgraph with `-Z flowgraph-print` annotations requires \
+                          fn-like `NodeId`.");
             return Ok(());
         }
         blocks::Code::FnLike(fn_like) => {
@@ -915,7 +915,7 @@ fn write_output(out: Vec<u8>, ofile: Option<&Path>) {
         Some(p) => {
             match File::create(p) {
                 Ok(mut w) => w.write_all(&out).unwrap(),
-                Err(e) => panic!("print-print failed to open {} due to {}", p.display(), e),
+                Err(e) => panic!("pretty-print failed to open {} due to {}", p.display(), e),
             }
         }
     }
@@ -1047,7 +1047,7 @@ pub fn print_after_hir_lowering<'tcx, 'a: 'tcx>(sess: &'a Session,
                                        move |annotation, _| {
                 debug!("pretty-printing source code {:?}", s);
                 let sess = annotation.sess();
-                let hir_map = annotation.hir_map().expect("-Z unpretty missing HIR map");
+                let hir_map = annotation.hir_map().expect("`-Z unpretty` missing HIR map");
                 let mut pp_state = pprust_hir::State::new_from_input(sess.source_map(),
                                                                         &sess.parse_sess,
                                                                         src_name,
@@ -1060,7 +1060,7 @@ pub fn print_after_hir_lowering<'tcx, 'a: 'tcx>(sess: &'a Session,
                     pp_state.print_node(node)?;
                     pp_state.s.space()?;
                     let path = annotation.node_path(node_id)
-                        .expect("-Z unpretty missing node paths");
+                        .expect("`-Z unpretty` missing node paths");
                     pp_state.synth_comment(path)?;
                     pp_state.s.hardbreak()?;
                 }

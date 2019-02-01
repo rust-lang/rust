@@ -141,7 +141,7 @@ pub fn mir_build<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: DefId) -> Mir<'t
                     ty::Generator(gen_def_id, gen_substs, ..) =>
                         gen_substs.sig(gen_def_id, tcx),
                     _ =>
-                        span_bug!(tcx.hir().span(id), "generator w/o generator type: {:?}", ty),
+                        span_bug!(tcx.hir().span(id), "generator without generator type: {:?}", ty),
                 };
                 (Some(gen_sig.yield_ty), gen_sig.return_ty)
             } else {

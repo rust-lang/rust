@@ -293,7 +293,7 @@ pub fn check_safety_of_destructor_if_necessary<'a, 'gcx, 'tcx>(
     body_id: hir::HirId,
     scope: region::Scope,
 ) -> Result<(), ErrorReported> {
-    debug!("check_safety_of_destructor_if_necessary typ: {:?} scope: {:?}",
+    debug!("check_safety_of_destructor_if_necessary: typ={:?} scope={:?}",
            ty, scope);
 
     let parent_scope = match rcx.region_scope_tree.opt_encl_scope(scope) {
@@ -306,7 +306,7 @@ pub fn check_safety_of_destructor_if_necessary<'a, 'gcx, 'tcx>(
     let origin = || infer::SubregionOrigin::SafeDestructor(span);
     let cause = &ObligationCause::misc(span, body_id);
     let infer_ok = rcx.infcx.at(cause, rcx.fcx.param_env).dropck_outlives(ty);
-    debug!("dropck_outlives = {:#?}", infer_ok);
+    debug!("check_safety_of_destructor_if_necessary: dropck_outlives={:#?}", infer_ok);
     let kinds = rcx.fcx.register_infer_ok_obligations(infer_ok);
     for kind in kinds {
         match kind.unpack() {

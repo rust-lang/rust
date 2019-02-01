@@ -311,7 +311,7 @@ impl<'a, 'gcx, 'tcx> CastCheck<'tcx> {
                 let mut err = struct_span_err!(fcx.tcx.sess, self.span, E0641,
                                                "cannot cast {} a pointer of an unknown kind",
                                                if unknown_cast_to { "to" } else { "from" });
-                err.note("The type information given here is insufficient to check whether \
+                err.note("the type information given here is insufficient to check whether \
                           the pointer cast is valid");
                 if unknown_cast_to {
                     err.span_suggestion_short(

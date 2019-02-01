@@ -200,8 +200,8 @@ fn check_main_fn_ty<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, main_def_id: DefId) {
                     }
                     if let Some(sp) = generics.where_clause.span() {
                         struct_span_err!(tcx.sess, sp, E0646,
-                            "`main` function is not allowed to have a `where` clause")
-                            .span_label(sp, "`main` cannot have a `where` clause")
+                            "`main` function is not allowed to have a where-clause")
+                            .span_label(sp, "`main` cannot have a where-clause")
                             .emit();
                         error = true;
                     }
@@ -264,8 +264,8 @@ fn check_start_fn_ty<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, start_def_id: DefId)
                     }
                     if let Some(sp) = generics.where_clause.span() {
                         struct_span_err!(tcx.sess, sp, E0647,
-                            "start function is not allowed to have a `where` clause")
-                            .span_label(sp, "start function cannot have a `where` clause")
+                            "start function is not allowed to have a where-clause")
+                            .span_label(sp, "start function cannot have a where-clause")
                             .emit();
                         error = true;
                     }

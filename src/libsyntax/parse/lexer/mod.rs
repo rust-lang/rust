@@ -561,8 +561,8 @@ impl<'a> StringReader<'a> {
                     .warn("this was previously accepted by the compiler but is \
                           being phased out; it will become a hard error in \
                           a future release!")
-                    .note("for more information, see issue #42326 \
-                          <https://github.com/rust-lang/rust/issues/42326>")
+                    .note("for more information, see \
+                           <https://github.com/rust-lang/rust/issues/42326>")
                     .emit();
                 None
             } else {

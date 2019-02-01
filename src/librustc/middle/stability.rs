@@ -589,7 +589,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
             }
             diag.emit();
             if id == ast::DUMMY_NODE_ID {
-                span_bug!(span, "emitted a {} lint with dummy node id: {:?}", lint.name, def_id);
+                span_bug!(span, "emitted a {} lint with dummy `NodeId`: {:?}", lint.name, def_id);
             }
         };
 

@@ -358,7 +358,7 @@ impl<'a, 'gcx, 'tcx> RegionCtxt<'a, 'gcx, 'tcx> {
 
         let call_site_scope = self.call_site_scope.unwrap();
         debug!(
-            "visit_fn_body body.id {:?} call_site_scope: {:?}",
+            "visit_fn_body: body.id={:?} call_site_scope={:?}",
             body.id(),
             call_site_scope
         );
@@ -548,7 +548,7 @@ impl<'a, 'gcx, 'tcx> Visitor<'gcx> for RegionCtxt<'a, 'gcx, 'tcx> {
                 self.check_safety_of_rvalue_destructor_if_necessary(&head_cmt, expr.span);
             }
             Err(..) => {
-                self.tcx.sess.delay_span_bug(expr.span, "cat_expr Errd");
+                self.tcx.sess.delay_span_bug(expr.span, "cat_expr errored");
             }
         }
 

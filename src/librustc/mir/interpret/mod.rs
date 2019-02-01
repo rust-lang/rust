@@ -354,7 +354,7 @@ impl<'tcx> AllocMap<'tcx> {
     pub fn unwrap_memory(&self, id: AllocId) -> &'tcx Allocation {
         match self.get(id) {
             Some(AllocKind::Memory(mem)) => mem,
-            _ => bug!("expected allocation id {} to point to memory", id),
+            _ => bug!("expected allocation ID {} to point to memory", id),
         }
     }
 

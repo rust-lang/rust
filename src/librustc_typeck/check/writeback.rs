@@ -573,8 +573,8 @@ impl<'cx, 'gcx, 'tcx> WritebackCx<'cx, 'gcx, 'tcx> {
                 if old != definition_ty {
                     span_bug!(
                         span,
-                        "visit_opaque_types tried to write \
-                        different types for the same existential type: {:?}, {:?}, {:?}",
+                        "`visit_opaque_types` tried to write \
+                         different types for the same existential type: {:?}, {:?}, {:?}",
                         def_id,
                         definition_ty,
                         old,

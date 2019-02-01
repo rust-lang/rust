@@ -91,7 +91,7 @@ fn prepare_lto(cgcx: &CodegenContext<LlvmCodegenBackend>,
         // Make sure we can actually run LTO.
         for crate_type in cgcx.crate_types.iter() {
             if !crate_type_allows_lto(*crate_type) {
-                let e = diag_handler.fatal("lto can only be run for executables, cdylibs and \
+                let e = diag_handler.fatal("LTO can only be run for executables, cdylibs and \
                                             static library outputs");
                 return Err(e)
             }
@@ -168,7 +168,7 @@ pub(crate) fn run_thin(cgcx: &CodegenContext<LlvmCodegenBackend>,
                                              .map(|c| c.as_ptr())
                                              .collect::<Vec<_>>();
     if cgcx.opts.cg.linker_plugin_lto.enabled() {
-        unreachable!("We should never reach this case if the LTO step \
+        unreachable!("we should never reach this case if the LTO step \
                       is deferred to the linker");
     }
     thin_lto(cgcx,

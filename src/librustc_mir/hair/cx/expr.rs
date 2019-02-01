@@ -526,7 +526,7 @@ fn make_mirror_unadjusted<'a, 'gcx, 'tcx>(cx: &mut Cx<'a, 'gcx, 'tcx>,
                     (def_id, UpvarSubsts::Generator(substs), Some(movability))
                 }
                 _ => {
-                    span_bug!(expr.span, "closure expr w/o closure type: {:?}", closure_ty);
+                    span_bug!(expr.span, "closure expr without closure type: {:?}", closure_ty);
                 }
             };
             let upvars = cx.tcx.with_freevars(expr.id, |freevars| {
@@ -646,7 +646,7 @@ fn make_mirror_unadjusted<'a, 'gcx, 'tcx>(cx: &mut Cx<'a, 'gcx, 'tcx>,
             let user_ty = user_provided_types.get(cast_ty.hir_id);
 
             debug!(
-                "cast({:?}) has ty w/ hir_id {:?} and user provided ty {:?}",
+                "cast({:?}) has ty with hir_id {:?} and user provided ty {:?}",
                 expr,
                 cast_ty.hir_id,
                 user_ty,

@@ -863,7 +863,7 @@ impl GenericParamDef {
                 name: self.name,
             }
         } else {
-            bug!("cannot convert a non-lifetime parameter def to an early bound region")
+            bug!("cannot convert a non-lifetime parameter def to an early-bound region")
         }
     }
 
@@ -871,7 +871,7 @@ impl GenericParamDef {
         if let GenericParamDefKind::Lifetime = self.kind {
             self.to_early_bound_region_data().to_bound_region()
         } else {
-            bug!("cannot convert a non-lifetime parameter def to an early bound region")
+            bug!("cannot convert a non-lifetime parameter def to an early-bound region")
         }
     }
 }
@@ -2682,10 +2682,10 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
                 e.span
             }
             Some(f) => {
-                bug!("Node id {} is not an expr: {:?}", id, f);
+                bug!("`NodeId` {} is not an expr: {:?}", id, f);
             }
             None => {
-                bug!("Node id {} is not present in the node map", id);
+                bug!("`NodeId` {} is not present in the node map", id);
             }
         }
     }
@@ -2709,7 +2709,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
                 _ => false,
             }
         } else {
-            match self.describe_def(def_id).expect("no def for def-id") {
+            match self.describe_def(def_id).expect("no def for `DefId`") {
                 Def::AssociatedConst(_) | Def::Method(_) | Def::AssociatedTy(_) => true,
                 _ => false,
             }

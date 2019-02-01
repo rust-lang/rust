@@ -292,7 +292,7 @@ impl<'cx, 'gcx, 'tcx> TypeFolder<'gcx, 'tcx> for Canonicalizer<'cx, 'gcx, 'tcx> 
         match *r {
             ty::ReLateBound(index, ..) => {
                 if index >= self.binder_index {
-                    bug!("escaping late bound region during canonicalization")
+                    bug!("escaping late-bound region during canonicalization")
                 } else {
                     r
                 }

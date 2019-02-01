@@ -27,7 +27,7 @@ fn inferred_outlives_of<'a, 'tcx>(
     let id = tcx
         .hir()
         .as_local_node_id(item_def_id)
-        .expect("expected local def-id");
+        .expect("expected local `DefId`");
 
     match tcx.hir().get(id) {
         Node::Item(item) => match item.node {

@@ -40,7 +40,7 @@ fn in_environment(
         None if obligation.param_env.caller_bounds.is_empty() => Environment {
             clauses: ty::List::empty(),
         },
-        _ => bug!("non-empty `ParamEnv` with no def-id"),
+        _ => bug!("non-empty `ParamEnv` with no `DefId`"),
     };
 
     InEnvironment {

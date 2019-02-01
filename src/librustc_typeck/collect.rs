@@ -1316,6 +1316,8 @@ fn find_existential_constraints<'a, 'tcx>(
 ) -> ty::Ty<'tcx> {
     use rustc::hir::*;
 
+    debug!("find_existential_constraints({:?})", def_id);
+
     struct ConstraintLocator<'a, 'tcx: 'a> {
         tcx: TyCtxt<'a, 'tcx, 'tcx>,
         def_id: DefId,
@@ -2132,7 +2134,7 @@ fn is_foreign_item<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: DefId) -> bool
     match tcx.hir().get_if_local(def_id) {
         Some(Node::ForeignItem(..)) => true,
         Some(_) => false,
-        _ => bug!("is_foreign_item applied to non-local def-id {:?}", def_id),
+        _ => bug!("is_foreign_item applied to non-local `DefId` {:?}", def_id),
     }
 }
 

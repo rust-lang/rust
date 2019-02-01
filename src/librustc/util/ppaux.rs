@@ -435,7 +435,7 @@ impl PrintContext {
                         // to be a value or type-def or something in there
                         // *somewhere*
                         item_def_id.index = key.parent.unwrap_or_else(|| {
-                            bug!("finding type for {:?}, encountered def-id {:?} with no \
+                            bug!("finding type for {:?}, encountered `DefId` {:?} with no \
                                  parent", did, item_def_id);
                         });
                     }

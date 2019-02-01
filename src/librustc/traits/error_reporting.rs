@@ -1497,33 +1497,33 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
                           repeated element will be copied");
             }
             ObligationCauseCode::VariableType(_) => {
-                err.note("all local variables must have a statically known size");
+                err.note("all local variables must have a statically-known size");
                 if !self.tcx.features().unsized_locals {
                     err.help("unsized locals are gated as an unstable feature");
                 }
             }
             ObligationCauseCode::SizedArgumentType => {
-                err.note("all function arguments must have a statically known size");
+                err.note("all function arguments must have a statically-known size");
                 if !self.tcx.features().unsized_locals {
                     err.help("unsized locals are gated as an unstable feature");
                 }
             }
             ObligationCauseCode::SizedReturnType => {
                 err.note("the return type of a function must have a \
-                          statically known size");
+                          statically-known size");
             }
             ObligationCauseCode::SizedYieldType => {
                 err.note("the yield type of a generator must have a \
-                          statically known size");
+                          statically-known size");
             }
             ObligationCauseCode::AssignmentLhsSized => {
-                err.note("the left-hand-side of an assignment must have a statically known size");
+                err.note("the left-hand-side of an assignment must have a statically-known size");
             }
             ObligationCauseCode::TupleInitializerSized => {
-                err.note("tuples must have a statically known size to be initialized");
+                err.note("tuples must have a statically-known size to be initialized");
             }
             ObligationCauseCode::StructInitializerSized => {
-                err.note("structs must have a statically known size to be initialized");
+                err.note("structs must have a statically-known size to be initialized");
             }
             ObligationCauseCode::FieldSized { adt_kind: ref item, last } => {
                 match *item {
@@ -1545,7 +1545,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
                 }
             }
             ObligationCauseCode::ConstSized => {
-                err.note("constant expressions must have a statically known size");
+                err.note("constant expressions must have a statically-known size");
             }
             ObligationCauseCode::SharedStatic => {
                 err.note("shared static variables must have a type that implements `Sync`");

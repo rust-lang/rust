@@ -124,7 +124,7 @@ impl TypeMap<'ll, 'tcx> {
         metadata: &'ll DIType,
     ) {
         if self.unique_id_to_metadata.insert(unique_type_id, metadata).is_some() {
-            bug!("Type metadata for unique id '{}' is already in the TypeMap!",
+            bug!("type metadata for unique id '{}' is already in the `TypeMap`!",
                  self.get_unique_type_id_as_string(unique_type_id));
         }
     }
@@ -671,7 +671,7 @@ pub fn type_metadata(
                 Some(metadata) => metadata,
                 None => {
                     span_bug!(usage_site_span,
-                              "Expected type metadata for unique \
+                              "expected type metadata for unique \
                                type id '{}' to already be in \
                                the debuginfo::TypeMap but it \
                                was not. (Ty = {})",

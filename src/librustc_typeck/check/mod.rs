@@ -5436,7 +5436,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                         if let Some(adt_def) = adt_def {
                             match adt_def.adt_kind() {
                                 AdtKind::Enum => {
-                                    err.help("did you mean to use one of the enum's variants?");
+                                    err.note("did you mean to use one of the enum's variants?");
                                 },
                                 AdtKind::Struct |
                                 AdtKind::Union => {
@@ -5719,12 +5719,12 @@ fn fatally_break_rust(sess: &Session) {
     let handler = sess.diagnostic();
     handler.span_bug_no_panic(
         MultiSpan::new(),
-        "It looks like you're trying to break rust; would you like some ICE?",
+        "It looks like you're trying to break Rust; would you like some ICE?",
     );
     handler.note_without_error("the compiler expectedly panicked. this is a feature.");
     handler.note_without_error(
         "we would appreciate a joke overview: \
-        https://github.com/rust-lang/rust/issues/43162#issuecomment-320764675"
+         <https://github.com/rust-lang/rust/issues/43162#issuecomment-320764675>"
     );
     handler.note_without_error(&format!("rustc {} running on {}",
         option_env!("CFG_VERSION").unwrap_or("unknown_version"),

@@ -330,7 +330,7 @@ pub fn coerce_unsized_info<'a, 'gcx>(gcx: TyCtxt<'a, 'gcx, 'gcx>,
 
     // This provider should only get invoked for local `DefId`s.
     let impl_hir_id = gcx.hir().as_local_hir_id(impl_did).unwrap_or_else(|| {
-        bug!("coerce_unsized_info: invoked for non-local def-id {:?}", impl_did)
+        bug!("coerce_unsized_info: invoked for non-local `DefId` {:?}", impl_did)
     });
 
     let source = gcx.type_of(impl_did);
