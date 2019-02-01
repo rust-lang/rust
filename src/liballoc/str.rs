@@ -452,9 +452,7 @@ impl str {
     /// escaped.
     ///
     /// [`char::escape_debug`]: primitive.char.html#method.escape_debug
-    #[unstable(feature = "str_escape",
-               reason = "return type may change to be an iterator",
-               issue = "27791")]
+    #[stable(feature = "str_escape", since = "1.34.0")]
     pub fn escape_debug(&self) -> EscapeDebug {
         let mut chars = self.chars();
         EscapeDebug {
@@ -469,9 +467,7 @@ impl str {
     /// Escapes each char in `s` with [`char::escape_default`].
     ///
     /// [`char::escape_default`]: primitive.char.html#method.escape_default
-    #[unstable(feature = "str_escape",
-               reason = "return type may change to be an iterator",
-               issue = "27791")]
+    #[stable(feature = "str_escape", since = "1.34.0")]
     pub fn escape_default(&self) -> EscapeDefault {
         EscapeDefault { inner: self.chars().flat_map(CharEscapeDefault) }
     }
@@ -479,9 +475,7 @@ impl str {
     /// Escapes each char in `s` with [`char::escape_unicode`].
     ///
     /// [`char::escape_unicode`]: primitive.char.html#method.escape_unicode
-    #[unstable(feature = "str_escape",
-               reason = "return type may change to be an iterator",
-               issue = "27791")]
+    #[stable(feature = "str_escape", since = "1.34.0")]
     pub fn escape_unicode(&self) -> EscapeUnicode {
         EscapeUnicode { inner: self.chars().flat_map(CharEscapeUnicode) }
     }
@@ -639,20 +633,20 @@ macro_rules! escape_types {
             inner: $Inner: ty,
         }
     )+) => {$(
-        #[unstable(feature = "str_escape", issue = "27791")]
+        #[stable(feature = "str_escape", since = "1.34.0")]
         #[derive(Clone, Debug)]
         pub struct $Name<'a> {
             inner: $Inner,
         }
 
-        #[unstable(feature = "str_escape", issue = "27791")]
+        #[stable(feature = "str_escape", since = "1.34.0")]
         impl<'a> fmt::Display for $Name<'a> {
             fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
                 self.clone().try_for_each(|c| f.write_char(c))
             }
         }
 
-        #[unstable(feature = "str_escape", issue = "27791")]
+        #[stable(feature = "str_escape", since = "1.34.0")]
         impl<'a> Iterator for $Name<'a> {
             type Item = char;
 
@@ -677,7 +671,7 @@ macro_rules! escape_types {
             }
         }
 
-        #[unstable(feature = "str_escape", issue = "27791")]
+        #[stable(feature = "str_escape", since = "1.34.0")]
         impl<'a> FusedIterator for $Name<'a> {}
     )+}
 }
