@@ -4564,7 +4564,7 @@ macro_rules! try_from_lower_bounded {
 
             /// Try to create a target number type from a
             /// source type that has `source::MIN > dest::MIN`.
-            /// Will return an error if `source` is less than 
+            /// Will return an error if `source` is less than
             /// `dest::MIN`.
             #[inline]
             fn try_from(u: $source) -> Result<$target, TryFromIntError> {
@@ -4587,7 +4587,7 @@ macro_rules! try_from_upper_bounded {
 
             /// Try to create a target number type from a
             /// source type that has `source::MAX > dest::MAX`.
-            /// Will return an error if `source` is greater than 
+            /// Will return an error if `source` is greater than
             /// `dest::MAX`.
             #[inline]
             fn try_from(u: $source) -> Result<$target, TryFromIntError> {
@@ -4609,9 +4609,9 @@ macro_rules! try_from_both_bounded {
             type Error = TryFromIntError;
 
             /// Try to "narrow" a number from the source type
-            /// to the target type.  Will return an error if 
-            /// the source value is either larger than the 
-            /// `MAX` value for the target type or smaller 
+            /// to the target type.  Will return an error if
+            /// the source value is either larger than the
+            /// `MAX` value for the target type or smaller
             /// than the `MIN` value for it.
             #[inline]
             fn try_from(u: $source) -> Result<$target, TryFromIntError> {
