@@ -57,7 +57,7 @@ pub type LoanDataFlow<'a, 'tcx> = DataFlowContext<'a, 'tcx, LoanDataFlowOperator
 
 pub fn check_crate<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>) {
     tcx.par_body_owners(|body_owner_def_id| {
-        tcx.borrowck(body_owner_def_id);
+        tcx.ensure().borrowck(body_owner_def_id);
     });
 }
 
@@ -121,7 +121,7 @@ fn borrowck<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, owner_def_id: DefId)
     // Note that `mir_validated` is a "stealable" result; the
     // thief, `optimized_mir()`, forces borrowck, so we know that
     // is not yet stolen.
-    ty::query::queries::mir_validated::ensure(tcx, owner_def_id);
+    tcx.ensure().mir_validated(owner_def_id);
 
     // option dance because you can't capture an uninitialized variable
     // by mut-ref.

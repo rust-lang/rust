@@ -402,7 +402,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
             return None;
         };
 
-        ty::query::queries::coherent_trait::ensure(self, drop_trait);
+        self.ensure().coherent_trait(drop_trait);
 
         let mut dtor_did = None;
         let ty = self.type_of(adt_did);

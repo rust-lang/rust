@@ -1283,7 +1283,7 @@ where
 
             time(sess,
                  "MIR borrow checking",
-                 || tcx.par_body_owners(|def_id| { tcx.mir_borrowck(def_id); }));
+                 || tcx.par_body_owners(|def_id| { tcx.ensure().mir_borrowck(def_id); }));
 
             time(sess, "dumping chalk-like clauses", || {
                 rustc_traits::lowering::dump_program_clauses(tcx);

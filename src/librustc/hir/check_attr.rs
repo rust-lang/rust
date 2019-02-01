@@ -7,7 +7,6 @@
 
 use ty::TyCtxt;
 use ty::query::Providers;
-use ty::query::queries;
 
 use hir;
 use hir::def_id::DefId;
@@ -355,7 +354,7 @@ impl<'a, 'tcx> Visitor<'tcx> for CheckAttrVisitor<'a, 'tcx> {
 
 pub fn check_crate<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>) {
     for &module in tcx.hir().krate().modules.keys() {
-        queries::check_mod_attrs::ensure(tcx, tcx.hir().local_def_id(module));
+        tcx.ensure().check_mod_attrs(tcx.hir().local_def_id(module));
     }
 }
 

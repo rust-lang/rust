@@ -28,22 +28,10 @@ use syntax::ast;
 use syntax::ptr::P;
 use syntax_pos::{Span, DUMMY_SP, MultiSpan};
 
-struct OuterVisitor<'a, 'tcx: 'a> { tcx: TyCtxt<'a, 'tcx, 'tcx> }
-
-impl<'a, 'tcx> Visitor<'tcx> for OuterVisitor<'a, 'tcx> {
-    fn nested_visit_map<'this>(&'this mut self) -> NestedVisitorMap<'this, 'tcx> {
-        NestedVisitorMap::OnlyBodies(&self.tcx.hir())
-    }
-
-    fn visit_body(&mut self, body: &'tcx hir::Body) {
-        intravisit::walk_body(self, body);
-        let def_id = self.tcx.hir().body_owner_def_id(body.id());
-        let _ = self.tcx.check_match(def_id);
-    }
-}
-
 pub fn check_crate<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>) {
-    tcx.hir().krate().visit_all_item_likes(&mut OuterVisitor { tcx }.as_deep_visitor());
+    for def_id in tcx.body_owners() {
+        tcx.ensure().check_match(def_id);
+    }
     tcx.sess.abort_if_errors();
 }
 

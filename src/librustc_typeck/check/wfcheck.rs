@@ -14,7 +14,7 @@ use syntax::feature_gate::{self, GateIssue};
 use syntax_pos::Span;
 use errors::{DiagnosticBuilder, DiagnosticId};
 
-use rustc::hir::intravisit::{self, Visitor, NestedVisitorMap};
+use rustc::hir::itemlikevisit::ItemLikeVisitor;
 use rustc::hir;
 
 /// Helper type of a temporary returned by `.for_item(...)`.
@@ -1015,30 +1015,23 @@ impl<'a, 'gcx> CheckTypeWellFormedVisitor<'a, 'gcx> {
     }
 }
 
-impl<'a, 'tcx, 'v> Visitor<'v> for CheckTypeWellFormedVisitor<'a, 'tcx> {
-    fn nested_visit_map<'this>(&'this mut self) -> NestedVisitorMap<'this, 'v> {
-        NestedVisitorMap::None
-    }
-
-    fn visit_item(&mut self, i: &hir::Item) {
+impl<'a, 'tcx> ItemLikeVisitor<'tcx> for CheckTypeWellFormedVisitor<'a, 'tcx> {
+    fn visit_item(&mut self, i: &'tcx hir::Item) {
         debug!("visit_item: {:?}", i);
         let def_id = self.tcx.hir().local_def_id(i.id);
-        ty::query::queries::check_item_well_formed::ensure(self.tcx, def_id);
-        intravisit::walk_item(self, i);
+        self.tcx.ensure().check_item_well_formed(def_id);
     }
 
-    fn visit_trait_item(&mut self, trait_item: &'v hir::TraitItem) {
+    fn visit_trait_item(&mut self, trait_item: &'tcx hir::TraitItem) {
         debug!("visit_trait_item: {:?}", trait_item);
         let def_id = self.tcx.hir().local_def_id(trait_item.id);
-        ty::query::queries::check_trait_item_well_formed::ensure(self.tcx, def_id);
-        intravisit::walk_trait_item(self, trait_item)
+        self.tcx.ensure().check_trait_item_well_formed(def_id);
     }
 
-    fn visit_impl_item(&mut self, impl_item: &'v hir::ImplItem) {
+    fn visit_impl_item(&mut self, impl_item: &'tcx hir::ImplItem) {
         debug!("visit_impl_item: {:?}", impl_item);
         let def_id = self.tcx.hir().local_def_id(impl_item.id);
-        ty::query::queries::check_impl_item_well_formed::ensure(self.tcx, def_id);
-        intravisit::walk_impl_item(self, impl_item)
+        self.tcx.ensure().check_impl_item_well_formed(def_id);
     }
 }
 

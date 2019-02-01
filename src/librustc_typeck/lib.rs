@@ -318,6 +318,7 @@ pub fn provide(providers: &mut Providers) {
     check::provide(providers);
     variance::provide(providers);
     outlives::provide(providers);
+    impl_wf_check::provide(providers);
 }
 
 pub fn check_crate<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>)
@@ -333,10 +334,12 @@ pub fn check_crate<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>)
 
     })?;
 
-    tcx.sess.track_errors(|| {
-        time(tcx.sess, "outlives testing", ||
-            outlives::test::test_inferred_outlives(tcx));
-    })?;
+    if tcx.features().rustc_attrs {
+        tcx.sess.track_errors(|| {
+            time(tcx.sess, "outlives testing", ||
+                outlives::test::test_inferred_outlives(tcx));
+        })?;
+    }
 
     tcx.sess.track_errors(|| {
         time(tcx.sess, "impl wf inference", ||
@@ -348,10 +351,12 @@ pub fn check_crate<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>)
           coherence::check_coherence(tcx));
     })?;
 
-    tcx.sess.track_errors(|| {
-        time(tcx.sess, "variance testing", ||
-             variance::test::test_variance(tcx));
-    })?;
+    if tcx.features().rustc_attrs {
+        tcx.sess.track_errors(|| {
+            time(tcx.sess, "variance testing", ||
+                variance::test::test_variance(tcx));
+        })?;
+    }
 
     time(tcx.sess, "wf checking", || check::check_wf_new(tcx))?;
 

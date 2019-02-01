@@ -22,7 +22,7 @@ use rustc::lint;
 use rustc::middle::privacy::{AccessLevel, AccessLevels};
 use rustc::ty::{self, TyCtxt, Ty, TraitRef, TypeFoldable, GenericParamDefKind};
 use rustc::ty::fold::TypeVisitor;
-use rustc::ty::query::{Providers, queries};
+use rustc::ty::query::Providers;
 use rustc::ty::subst::Substs;
 use rustc::util::nodemap::NodeSet;
 use rustc_data_structures::fx::FxHashSet;
@@ -1722,7 +1722,7 @@ fn privacy_access_levels<'tcx>(
     let krate = tcx.hir().krate();
 
     for &module in krate.modules.keys() {
-        queries::check_mod_privacy::ensure(tcx, tcx.hir().local_def_id(module));
+        tcx.ensure().check_mod_privacy(tcx.hir().local_def_id(module));
     }
 
     // Build up a set of all exported items in the AST. This is a set of all

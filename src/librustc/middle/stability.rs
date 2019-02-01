@@ -9,7 +9,6 @@ use hir::def::Def;
 use hir::def_id::{CrateNum, CRATE_DEF_INDEX, DefId, LOCAL_CRATE};
 use hir::intravisit::{self, Visitor, NestedVisitorMap};
 use ty::query::Providers;
-use ty::query::queries;
 use middle::privacy::AccessLevels;
 use session::{DiagnosticMessageId, Session};
 use syntax::symbol::Symbol;
@@ -459,7 +458,7 @@ impl<'a, 'tcx> Index<'tcx> {
 
 pub fn check_unstable_api_usage<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>) {
     for &module in tcx.hir().krate().modules.keys() {
-        queries::check_mod_unstable_api_usage::ensure(tcx, tcx.hir().local_def_id(module));
+        tcx.ensure().check_mod_unstable_api_usage(tcx.hir().local_def_id(module));
     }
 }
 
