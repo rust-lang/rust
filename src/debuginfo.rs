@@ -9,8 +9,8 @@ use syntax::source_map::FileName;
 use gimli::write::{
     Address, AttributeValue, CompilationUnit, DebugAbbrev, DebugInfo, DebugLine, DebugRanges,
     DebugRngLists, DebugStr, EndianVec, LineProgram, LineProgramId, LineProgramTable, Range,
-    RangeList, RangeListTable, Result, SectionId, StringTable, UnitEntryId, UnitId, UnitTable,
-    Writer, FileId,
+    RangeList, Result, SectionId, StringTable, UnitEntryId, UnitId, UnitTable,
+    Writer, FileId, LineStringTable, DebugLineStr, LineString,
 };
 use gimli::{Encoding, Format, RunTimeEndian};
 
@@ -25,13 +25,15 @@ fn target_endian(tcx: TyCtxt) -> RunTimeEndian {
     }
 }
 
-fn line_program_add_file(line_program: &mut LineProgram, file: &FileName) -> FileId {
+fn line_program_add_file(line_program: &mut LineProgram, line_strings: &mut LineStringTable, file: &FileName) -> FileId {
     match file {
         FileName::Real(path) => {
+            let dir_name = LineString::new(path.parent().unwrap().to_str().unwrap().as_bytes(), line_program.encoding(), line_strings);
             let dir_id =
-                line_program.add_directory(path.parent().unwrap().to_str().unwrap().as_bytes());
+                line_program.add_directory(dir_name);
+            let file_name = LineString::new(path.file_name().unwrap().to_str().unwrap().as_bytes(), line_program.encoding(), line_strings);
             line_program.add_file(
-                path.file_name().unwrap().to_str().unwrap().as_bytes(),
+                file_name,
                 dir_id,
                 None,
             )
@@ -39,8 +41,9 @@ fn line_program_add_file(line_program: &mut LineProgram, file: &FileName) -> Fil
         // FIXME give more appropriate file names
         _ => {
             let dir_id = line_program.default_directory();
+            let dummy_file_name = LineString::new(file.to_string().into_bytes(), line_program.encoding(), line_strings);
             line_program.add_file(
-                file.to_string().as_bytes(),
+                dummy_file_name,
                 dir_id,
                 None,
             )
@@ -57,7 +60,6 @@ struct DebugReloc {
 
 pub struct DebugContext<'tcx> {
     // Encoding info
-    encoding: Encoding,
     endian: RunTimeEndian,
     symbols: indexmap::IndexSet<String>,
 
@@ -67,7 +69,7 @@ pub struct DebugContext<'tcx> {
 
     // Side tables
     strings: StringTable,
-    range_lists: RangeListTable,
+    line_strings: LineStringTable,
 
     // Global ids
     unit_id: UnitId,
@@ -97,7 +99,7 @@ impl<'a, 'tcx: 'a> DebugContext<'tcx> {
         };
 
         let mut strings = StringTable::default();
-        let range_lists = RangeListTable::default();
+        let mut line_strings = LineStringTable::default();
 
         let mut units = UnitTable::default();
         let mut line_programs = LineProgramTable::default();
@@ -108,8 +110,8 @@ impl<'a, 'tcx: 'a> DebugContext<'tcx> {
             1,
             -5,
             14,
-            comp_dir.as_bytes(),
-            name.as_bytes(),
+            LineString::new(comp_dir.as_bytes(), encoding, &mut line_strings),
+            LineString::new(name.as_bytes(), encoding, &mut line_strings),
             None,
         ));
 
@@ -141,13 +143,12 @@ impl<'a, 'tcx: 'a> DebugContext<'tcx> {
             );
         }
 
-        DebugContext {
-            encoding,
+         DebugContext {
             endian: target_endian(tcx),
             symbols: indexmap::IndexSet::new(),
 
             strings,
-            range_lists,
+            line_strings,
 
             units,
             line_programs,
@@ -164,7 +165,7 @@ impl<'a, 'tcx: 'a> DebugContext<'tcx> {
         let loc = tcx.sess.source_map().lookup_char_pos(span.lo());
 
         let line_program = self.line_programs.get_mut(self.global_line_program);
-        let file_id = line_program_add_file(line_program, &loc.file.name);
+        let file_id = line_program_add_file(line_program, &mut self.line_strings, &loc.file.name);
 
         let unit = self.units.get_mut(self.unit_id);
         let entry = unit.get_mut(entry_id);
@@ -182,8 +183,8 @@ impl<'a, 'tcx: 'a> DebugContext<'tcx> {
     }
 
     pub fn emit(&mut self, artifact: &mut Artifact) {
-        let unit_range_list_id = self.range_lists.add(self.unit_range_list.clone());
         let unit = self.units.get_mut(self.unit_id);
+        let unit_range_list_id = unit.ranges.add(self.unit_range_list.clone());
         let root = unit.root();
         let root = unit.get_mut(root);
         root.set(
@@ -194,28 +195,24 @@ impl<'a, 'tcx: 'a> DebugContext<'tcx> {
         let mut debug_abbrev = DebugAbbrev::from(WriterRelocate::new(self));
         let mut debug_info = DebugInfo::from(WriterRelocate::new(self));
         let mut debug_str = DebugStr::from(WriterRelocate::new(self));
+        let mut debug_line_str = DebugLineStr::from(WriterRelocate::new(self));
         let mut debug_line = DebugLine::from(WriterRelocate::new(self));
         let mut debug_ranges = DebugRanges::from(WriterRelocate::new(self));
         let mut debug_rnglists = DebugRngLists::from(WriterRelocate::new(self));
 
         let debug_str_offsets = self.strings.write(&mut debug_str).unwrap();
+        let debug_line_str_offsets = self.line_strings.write(&mut debug_line_str).unwrap();
 
-        let debug_line_offsets = self.line_programs.write(&mut debug_line).unwrap();
+        let debug_line_offsets = self.line_programs.write(&mut debug_line, &debug_line_str_offsets, &debug_str_offsets).unwrap();
 
-        let range_list_offsets = self
-            .range_lists
-            .write(
-                &mut debug_ranges,
-                &mut debug_rnglists,
-                self.encoding
-            )
-            .unwrap();
         self.units
             .write(
                 &mut debug_abbrev,
                 &mut debug_info,
+                &mut debug_ranges,
+                &mut debug_rnglists,
                 &debug_line_offsets,
-                &range_list_offsets,
+                &debug_line_str_offsets,
                 &debug_str_offsets,
             )
             .unwrap();
@@ -234,6 +231,7 @@ impl<'a, 'tcx: 'a> DebugContext<'tcx> {
         decl_section!(DebugInfo = debug_info);
         decl_section!(DebugStr = debug_str);
         decl_section!(DebugLine = debug_line);
+        decl_section!(DebugLineStr = debug_line_str);
 
         let debug_ranges_not_empty = !debug_ranges.0.writer.slice().is_empty();
         if debug_ranges_not_empty {
@@ -267,6 +265,7 @@ impl<'a, 'tcx: 'a> DebugContext<'tcx> {
         sect_relocs!(DebugInfo = debug_info);
         sect_relocs!(DebugStr = debug_str);
         sect_relocs!(DebugLine = debug_line);
+        sect_relocs!(DebugLineStr = debug_line_str);
 
         if debug_ranges_not_empty {
             sect_relocs!(DebugRanges = debug_ranges);
@@ -339,15 +338,12 @@ impl<'a, 'b, 'tcx: 'b> FunctionDebugContext<'a, 'tcx> {
         let entry = unit.get_mut(self.entry_id);
         entry.set(gimli::DW_AT_high_pc, AttributeValue::Udata(code_size as u64));
 
-        self.debug_context.unit_range_list.0.push(Range {
+        self.debug_context.unit_range_list.0.push(Range::StartLength {
             begin: Address::Relative {
                 symbol: self.symbol,
                 addend: 0,
             },
-            end: Address::Relative {
-                symbol: self.symbol,
-                addend: code_size as i64,
-            },
+            length: code_size as u64,
         });
 
         let line_program = self
@@ -365,9 +361,10 @@ impl<'a, 'b, 'tcx: 'b> FunctionDebugContext<'a, 'tcx> {
         let mut ebbs = func.layout.ebbs().collect::<Vec<_>>();
         ebbs.sort_by_key(|ebb| func.offsets[*ebb]); // Ensure inst offsets always increase
 
-        let create_row_for_span = |line_program: &mut LineProgram, span: Span| {
+        let line_strings = &mut self.debug_context.line_strings;
+        let mut create_row_for_span = |line_program: &mut LineProgram, span: Span| {
             let loc = tcx.sess.source_map().lookup_char_pos(span.lo());
-            let file_id = line_program_add_file(line_program, &loc.file.name);
+            let file_id = line_program_add_file(line_program, line_strings, &loc.file.name);
 
             /*println!(
                 "srcloc {:>04X} {}:{}:{}",
