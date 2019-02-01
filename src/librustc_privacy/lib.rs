@@ -9,6 +9,7 @@
 
 #[macro_use] extern crate rustc;
 #[macro_use] extern crate syntax;
+#[macro_use] extern crate log;
 extern crate rustc_typeck;
 extern crate syntax_pos;
 extern crate rustc_data_structures;
@@ -1451,6 +1452,7 @@ impl<'a, 'tcx> Visitor<'tcx> for ObsoleteVisiblePrivateTypesVisitor<'a, 'tcx> {
 
 struct SearchInterfaceForPrivateItemsVisitor<'a, 'tcx: 'a> {
     tcx: TyCtxt<'a, 'tcx, 'tcx>,
+    item_id: ast::NodeId,
     item_def_id: DefId,
     span: Span,
     /// The visitor checks that each component type is at least this visible.
@@ -1458,6 +1460,7 @@ struct SearchInterfaceForPrivateItemsVisitor<'a, 'tcx: 'a> {
     has_pub_restricted: bool,
     has_old_errors: bool,
     in_assoc_ty: bool,
+    private_crates: FxHashSet<CrateNum>
 }
 
 impl<'a, 'tcx: 'a> SearchInterfaceForPrivateItemsVisitor<'a, 'tcx> {
@@ -1492,6 +1495,16 @@ impl<'a, 'tcx: 'a> SearchInterfaceForPrivateItemsVisitor<'a, 'tcx> {
     }
 
     fn check_def_id(&mut self, def_id: DefId, kind: &str, descr: &dyn fmt::Display) -> bool {
+        if self.leaks_private_dep(def_id) {
+            self.tcx.lint_node(lint::builtin::EXPORTED_PRIVATE_DEPENDENCIES,
+                               self.item_id,
+                               self.span,
+                               &format!("{} `{}` from private dependency '{}' in public \
+                                         interface", kind, descr,
+                                         self.tcx.crate_name(def_id.krate)));
+
+        }
+
         let node_id = match self.tcx.hir().as_local_node_id(def_id) {
             Some(node_id) => node_id,
             None => return false,
@@ -1514,8 +1527,22 @@ impl<'a, 'tcx: 'a> SearchInterfaceForPrivateItemsVisitor<'a, 'tcx> {
                 self.tcx.lint_node(lint::builtin::PRIVATE_IN_PUBLIC, node_id, self.span,
                                    &format!("{} (error {})", msg, err_code));
             }
+
         }
+
         false
+    }
+
+    /// An item is 'leaked' from a private dependency if all
+    /// of the following are true:
+    /// 1. It's contained within a public type
+    /// 2. It comes from a private crate
+    fn leaks_private_dep(&self, item_id: DefId) -> bool {
+        let ret = self.required_visibility == ty::Visibility::Public &&
+            self.private_crates.contains(&item_id.krate);
+
+        debug!("leaks_private_dep(item_id={:?})={}", item_id, ret);
+        return ret;
     }
 }
 
@@ -1530,6 +1557,7 @@ struct PrivateItemsInPublicInterfacesVisitor<'a, 'tcx: 'a> {
     tcx: TyCtxt<'a, 'tcx, 'tcx>,
     has_pub_restricted: bool,
     old_error_set: &'a NodeSet,
+    private_crates: FxHashSet<CrateNum>
 }
 
 impl<'a, 'tcx> PrivateItemsInPublicInterfacesVisitor<'a, 'tcx> {
@@ -1560,12 +1588,14 @@ impl<'a, 'tcx> PrivateItemsInPublicInterfacesVisitor<'a, 'tcx> {
 
         SearchInterfaceForPrivateItemsVisitor {
             tcx: self.tcx,
+            item_id,
             item_def_id: self.tcx.hir().local_def_id(item_id),
             span: self.tcx.hir().span(item_id),
             required_visibility,
             has_pub_restricted: self.has_pub_restricted,
             has_old_errors,
             in_assoc_ty: false,
+            private_crates: self.private_crates.clone()
         }
     }
 
@@ -1690,6 +1720,7 @@ pub fn check_crate<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>) -> Lrc<AccessLevels> {
 fn check_mod_privacy<'tcx>(tcx: TyCtxt<'_, 'tcx, 'tcx>, module_def_id: DefId) {
     let empty_tables = ty::TypeckTables::empty(None);
 
+
     // Check privacy of names not checked in previous compilation stages.
     let mut visitor = NamePrivacyVisitor {
         tcx,
@@ -1724,6 +1755,12 @@ fn privacy_access_levels<'tcx>(
     for &module in krate.modules.keys() {
         tcx.ensure().check_mod_privacy(tcx.hir().local_def_id(module));
     }
+
+    let private_crates: FxHashSet<CrateNum> = tcx.sess.opts.extern_private.iter()
+        .flat_map(|c| {
+            tcx.crates().iter().find(|&&krate| &tcx.crate_name(krate) == c).cloned()
+        }).collect();
+
 
     // Build up a set of all exported items in the AST. This is a set of all
     // items which are reachable from external crates based on visibility.
@@ -1767,6 +1804,7 @@ fn privacy_access_levels<'tcx>(
             tcx,
             has_pub_restricted,
             old_error_set: &visitor.old_error_set,
+            private_crates
         };
         krate.visit_all_item_likes(&mut DeepVisitor::new(&mut visitor));
     }

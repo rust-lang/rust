@@ -411,6 +411,10 @@ top_level_options!(
         remap_path_prefix: Vec<(PathBuf, PathBuf)> [UNTRACKED],
 
         edition: Edition [TRACKED],
+
+        // The list of crates to consider private when
+        // checking leaked private dependency types in public interfaces
+        extern_private: Vec<String> [TRACKED],
     }
 );
 
@@ -606,6 +610,7 @@ impl Default for Options {
             cli_forced_thinlto_off: false,
             remap_path_prefix: Vec::new(),
             edition: DEFAULT_EDITION,
+            extern_private: Vec::new()
         }
     }
 }
@@ -1724,6 +1729,12 @@ pub fn rustc_optgroups() -> Vec<RustcOptGroup> {
             "Specify where an external rust library is located",
             "NAME=PATH",
         ),
+        opt::multi_s(
+            "",
+            "extern-private",
+            "Specify where an extern rust library is located, marking it as a private dependency",
+            "NAME=PATH",
+        ),
         opt::opt_s("", "sysroot", "Override the system root", "PATH"),
         opt::multi("Z", "", "Set internal debugging options", "FLAG"),
         opt::opt_s(
@@ -1904,6 +1915,7 @@ pub fn build_session_options_and_crate_config(
     let unparsed_crate_types = matches.opt_strs("crate-type");
     let crate_types = parse_crate_types_from_list(unparsed_crate_types)
         .unwrap_or_else(|e| early_error(error_format, &e[..]));
+
 
     let (lint_opts, describe_lints, lint_cap) = get_cmd_lint_options(matches, error_format);
 
@@ -2218,8 +2230,18 @@ pub fn build_session_options_and_crate_config(
         );
     }
 
+    if matches.opt_present("extern-private") && !debugging_opts.unstable_options {
+        early_error(
+            ErrorOutputType::default(),
+            "'--extern-private' is unstable and only \
+            available for nightly builds of rustc."
+        )
+    }
+
+    let extern_private = matches.opt_strs("extern-private");
+
     let mut externs: BTreeMap<_, BTreeSet<_>> = BTreeMap::new();
-    for arg in &matches.opt_strs("extern") {
+    for arg in matches.opt_strs("extern").into_iter().chain(matches.opt_strs("extern-private")) {
         let mut parts = arg.splitn(2, '=');
         let name = parts.next().unwrap_or_else(||
             early_error(error_format, "--extern value must not be empty"));
@@ -2287,6 +2309,7 @@ pub fn build_session_options_and_crate_config(
             cli_forced_thinlto_off: disable_thinlto,
             remap_path_prefix,
             edition,
+            extern_private
         },
         cfg,
     )
@@ -2460,6 +2483,7 @@ mod dep_tracking {
     impl_dep_tracking_hash_via_hash!(Option<usize>);
     impl_dep_tracking_hash_via_hash!(Option<String>);
     impl_dep_tracking_hash_via_hash!(Option<(String, u64)>);
+    impl_dep_tracking_hash_via_hash!(Option<Vec<String>>);
     impl_dep_tracking_hash_via_hash!(Option<MergeFunctions>);
     impl_dep_tracking_hash_via_hash!(Option<PanicStrategy>);
     impl_dep_tracking_hash_via_hash!(Option<RelroLevel>);

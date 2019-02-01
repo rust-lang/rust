@@ -126,6 +126,12 @@ declare_lint! {
 }
 
 declare_lint! {
+    pub EXPORTED_PRIVATE_DEPENDENCIES,
+    Warn,
+    "public interface leaks type from a private dependency"
+}
+
+declare_lint! {
     pub PUB_USE_OF_PRIVATE_EXTERN_CRATE,
     Deny,
     "detect public re-exports of private extern crates"
@@ -405,6 +411,7 @@ impl LintPass for HardwiredLints {
             TRIVIAL_CASTS,
             TRIVIAL_NUMERIC_CASTS,
             PRIVATE_IN_PUBLIC,
+            EXPORTED_PRIVATE_DEPENDENCIES,
             PUB_USE_OF_PRIVATE_EXTERN_CRATE,
             INVALID_TYPE_PARAM_DEFAULT,
             CONST_ERR,
