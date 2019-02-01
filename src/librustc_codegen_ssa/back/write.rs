@@ -126,7 +126,7 @@ impl ModuleConfig {
         self.time_passes = sess.time_passes();
         self.inline_threshold = sess.opts.cg.inline_threshold;
         self.obj_is_bitcode = sess.target.target.options.obj_is_bitcode ||
-                              sess.opts.debugging_opts.cross_lang_lto.enabled();
+                              sess.opts.cg.linker_plugin_lto.enabled();
         let embed_bitcode = sess.target.target.options.embed_bitcode ||
                             sess.opts.debugging_opts.embed_bitcode;
         if embed_bitcode {
@@ -737,7 +737,7 @@ fn execute_optimize_work_item<B: ExtraBackendMethods>(
     // If the linker does LTO, we don't have to do it. Note that we
     // keep doing full LTO, if it is requested, as not to break the
     // assumption that the output will be a single module.
-    let linker_does_lto = cgcx.opts.debugging_opts.cross_lang_lto.enabled();
+    let linker_does_lto = cgcx.opts.cg.linker_plugin_lto.enabled();
 
     // When we're automatically doing ThinLTO for multi-codegen-unit
     // builds we don't actually want to LTO the allocator modules if
@@ -1883,7 +1883,7 @@ pub fn pre_lto_bitcode_filename(module_name: &str) -> String {
 fn msvc_imps_needed(tcx: TyCtxt) -> bool {
     // This should never be true (because it's not supported). If it is true,
     // something is wrong with commandline arg validation.
-    assert!(!(tcx.sess.opts.debugging_opts.cross_lang_lto.enabled() &&
+    assert!(!(tcx.sess.opts.cg.linker_plugin_lto.enabled() &&
               tcx.sess.target.target.options.is_like_msvc &&
               tcx.sess.opts.cg.prefer_dynamic));
 
@@ -1891,6 +1891,6 @@ fn msvc_imps_needed(tcx: TyCtxt) -> bool {
         tcx.sess.crate_types.borrow().iter().any(|ct| *ct == config::CrateType::Rlib) &&
     // ThinLTO can't handle this workaround in all cases, so we don't
     // emit the `__imp_` symbols. Instead we make them unnecessary by disallowing
-    // dynamic linking when cross-language LTO is enabled.
-    !tcx.sess.opts.debugging_opts.cross_lang_lto.enabled()
+    // dynamic linking when linker plugin LTO is enabled.
+    !tcx.sess.opts.cg.linker_plugin_lto.enabled()
 }

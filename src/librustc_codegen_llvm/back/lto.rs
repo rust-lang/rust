@@ -159,7 +159,7 @@ pub(crate) fn run_thin(cgcx: &CodegenContext<LlvmCodegenBackend>,
     let symbol_white_list = symbol_white_list.iter()
                                              .map(|c| c.as_ptr())
                                              .collect::<Vec<_>>();
-    if cgcx.opts.debugging_opts.cross_lang_lto.enabled() {
+    if cgcx.opts.cg.linker_plugin_lto.enabled() {
         unreachable!("We should never reach this case if the LTO step \
                       is deferred to the linker");
     }
