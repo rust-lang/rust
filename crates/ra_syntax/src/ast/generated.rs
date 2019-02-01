@@ -970,7 +970,15 @@ impl ToOwned for ExternCrateItem {
 }
 
 
-impl ExternCrateItem {}
+impl ExternCrateItem {
+    pub fn name_ref(&self) -> Option<&NameRef> {
+        super::child_opt(self)
+    }
+
+    pub fn alias(&self) -> Option<&Alias> {
+        super::child_opt(self)
+    }
+}
 
 // FalseKw
 #[derive(Debug, PartialEq, Eq, Hash)]
