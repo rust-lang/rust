@@ -496,6 +496,7 @@ pub fn register_plugins(reg: &mut rustc_plugin::Registry<'_>, conf: &Conf) {
     reg.register_lint_group("clippy::restriction", Some("clippy_restriction"), vec![
         arithmetic::FLOAT_ARITHMETIC,
         arithmetic::INTEGER_ARITHMETIC,
+        dbg_macro::DBG_MACRO,
         else_if_without_else::ELSE_IF_WITHOUT_ELSE,
         implicit_return::IMPLICIT_RETURN,
         indexing_slicing::INDEXING_SLICING,
@@ -591,7 +592,6 @@ pub fn register_plugins(reg: &mut rustc_plugin::Registry<'_>, conf: &Conf) {
         copies::IFS_SAME_COND,
         copies::IF_SAME_THEN_ELSE,
         cyclomatic_complexity::CYCLOMATIC_COMPLEXITY,
-        dbg_macro::DBG_MACRO,
         derive::DERIVE_HASH_XOR_EQ,
         double_comparison::DOUBLE_COMPARISONS,
         double_parens::DOUBLE_PARENS,
@@ -803,7 +803,6 @@ pub fn register_plugins(reg: &mut rustc_plugin::Registry<'_>, conf: &Conf) {
         block_in_if_condition::BLOCK_IN_IF_CONDITION_STMT,
         collapsible_if::COLLAPSIBLE_IF,
         const_static_lifetime::CONST_STATIC_LIFETIME,
-        dbg_macro::DBG_MACRO,
         enum_variants::ENUM_VARIANT_NAMES,
         enum_variants::MODULE_INCEPTION,
         eq_op::OP_REF,
