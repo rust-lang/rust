@@ -1,4 +1,4 @@
-use crate::utils::span_lint_and_sugg;
+use crate::utils::span_help_and_lint;
 use rustc::lint::{EarlyContext, EarlyLintPass, LintArray, LintPass};
 use rustc::{declare_tool_lint, lint_array};
 use rustc_errors::Applicability;
@@ -41,14 +41,12 @@ impl LintPass for Pass {
 impl EarlyLintPass for Pass {
     fn check_mac(&mut self, cx: &EarlyContext<'_>, mac: &ast::Mac) {
         if mac.node.path == "dbg" {
-            span_lint_and_sugg(
+            span_help_and_lint(
                 cx,
                 DBG_MACRO,
                 mac.span,
                 "`dbg!` macro is intended as a debugging tool",
                 "ensure to avoid having uses of it in version control",
-                mac.node.tts.to_string(),
-                Applicability::MaybeIncorrect,
             );
         }
     }
