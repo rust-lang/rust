@@ -1187,7 +1187,7 @@ impl Generator for AnotherImpl {
 fn main() {
     let cont: u32 = Generator::create();
     // error, impossible to choose one of Generator trait implementation
-    // Impl or AnotherImpl? Maybe anything else?
+    // Should it be Impl or AnotherImpl, maybe something else?
 }
 ```
 
