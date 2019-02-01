@@ -1,6 +1,6 @@
 use std::sync::Arc;
 
-use ra_syntax::{ast, AstNode};
+use ra_syntax::{ast::{self, NameOwner}, AstNode};
 
 use crate::{Name, AsName, type_ref::TypeRef};
 
@@ -46,7 +46,7 @@ impl Path {
     /// Calls `cb` with all paths, represented by this use item.
     pub fn expand_use_item<'a>(
         item: &'a ast::UseItem,
-        mut cb: impl FnMut(Path, Option<&'a ast::PathSegment>),
+        mut cb: impl FnMut(Path, Option<&'a ast::PathSegment>, Option<Name>),
     ) {
         if let Some(tree) = item.use_tree() {
             expand_use_tree(None, tree, &mut cb);
@@ -164,7 +164,7 @@ impl From<Name> for Path {
 fn expand_use_tree<'a>(
     prefix: Option<Path>,
     tree: &'a ast::UseTree,
-    cb: &mut impl FnMut(Path, Option<&'a ast::PathSegment>),
+    cb: &mut impl FnMut(Path, Option<&'a ast::PathSegment>, Option<Name>),
 ) {
     if let Some(use_tree_list) = tree.use_tree_list() {
         let prefix = match tree.path() {
@@ -181,6 +181,7 @@ fn expand_use_tree<'a>(
             expand_use_tree(prefix.clone(), child_tree, cb);
         }
     } else {
+        let alias = tree.alias().and_then(|a| a.name()).map(|a| a.as_name());
         if let Some(ast_path) = tree.path() {
             // Handle self in a path.
             // E.g. `use something::{self, <...>}`
@@ -188,7 +189,7 @@ fn expand_use_tree<'a>(
                 if let Some(segment) = ast_path.segment() {
                     if segment.kind() == Some(ast::PathSegmentKind::SelfKw) {
                         if let Some(prefix) = prefix {
-                            cb(prefix, Some(segment));
+                            cb(prefix, Some(segment), alias);
                             return;
                         }
                     }
@@ -196,9 +197,9 @@ fn expand_use_tree<'a>(
             }
             if let Some(path) = convert_path(prefix, ast_path) {
                 if tree.has_star() {
-                    cb(path, None)
+                    cb(path, None, alias)
                 } else if let Some(segment) = ast_path.segment() {
-                    cb(path, Some(segment))
+                    cb(path, Some(segment), alias)
                 };
             }
             // TODO: report errors somewhere

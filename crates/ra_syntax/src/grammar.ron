@@ -593,7 +593,10 @@ Grammar(
             options: [ "UseTree" ]
         ),
         "UseTree": (
-            options: [ "Path", "UseTreeList" ]
+            options: [ "Path", "UseTreeList", "Alias" ]
+        ),
+        "Alias": (
+            traits: ["NameOwner"],
         ),
         "UseTreeList": (
             collections: [["use_trees", "UseTree"]]
