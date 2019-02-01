@@ -399,7 +399,12 @@ impl<T> Packet<T> {
                 *guard.canceled.take().unwrap() = true;
                 Some(token)
             }
-            BlockedReceiver(..) => unreachable!(),
+            // We're the only ones that can block on this port, but we may be
+            // unwinding
+            BlockedReceiver(token) => {
+                drop(token);
+                None
+            }
         };
         mem::drop(guard);
 

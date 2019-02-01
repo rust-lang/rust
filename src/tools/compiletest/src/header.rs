@@ -271,6 +271,12 @@ impl EarlyProps {
     }
 }
 
+#[derive(Copy, Clone, Debug, Eq, PartialEq)]
+pub enum FailureStatus {
+    ExitCode(i32),
+    Signal(i32),
+}
+
 #[derive(Clone, Debug)]
 pub struct TestProps {
     // Lines that should be expected, in order, on standard out
@@ -332,7 +338,7 @@ pub struct TestProps {
     // customized normalization rules
     pub normalize_stdout: Vec<(String, String)>,
     pub normalize_stderr: Vec<(String, String)>,
-    pub failure_status: i32,
+    pub failure_status: FailureStatus,
     pub run_rustfix: bool,
     pub rustfix_only_machine_applicable: bool,
 }
@@ -367,7 +373,7 @@ impl TestProps {
             disable_ui_testing_normalization: false,
             normalize_stdout: vec![],
             normalize_stderr: vec![],
-            failure_status: -1,
+            failure_status: FailureStatus::ExitCode(-1),
             run_rustfix: false,
             rustfix_only_machine_applicable: false,
         }
@@ -519,10 +525,10 @@ impl TestProps {
             }
         });
 
-        if self.failure_status == -1 {
+        if self.failure_status == FailureStatus::ExitCode(-1) {
             self.failure_status = match config.mode {
-                Mode::RunFail => 101,
-                _ => 1,
+                Mode::RunFail => FailureStatus::ExitCode(101),
+                _ => FailureStatus::ExitCode(1),
             };
         }
 
@@ -649,11 +655,13 @@ impl Config {
         self.parse_name_directive(line, "pretty-compare-only")
     }
 
-    fn parse_failure_status(&self, line: &str) -> Option<i32> {
-        match self.parse_name_value_directive(line, "failure-status") {
-            Some(code) => code.trim().parse::<i32>().ok(),
-            _ => None,
+    fn parse_failure_status(&self, line: &str) -> Option<FailureStatus> {
+        let status_str = self.parse_name_value_directive(line, "failure-status")?;
+        if let Ok(code) = status_str.trim().parse::<i32>() {
+            return Some(FailureStatus::ExitCode(code))
         }
+        let signal = self.parse_name_value_directive(&status_str, "signal")?;
+        Some(FailureStatus::Signal(signal.trim().parse::<i32>().ok()?))
     }
 
     fn parse_compile_pass(&self, line: &str) -> bool {

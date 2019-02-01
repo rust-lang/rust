@@ -8,12 +8,13 @@ use common::{Incremental, MirOpt, RunMake, Ui};
 use diff;
 use errors::{self, Error, ErrorKind};
 use filetime::FileTime;
-use header::TestProps;
+use header::{TestProps, FailureStatus};
 use json;
 use regex::Regex;
 use rustfix::{apply_suggestions, get_suggestions_from_json, Filter};
 use util::{logv, PathBufExt};
 
+use std::cmp::PartialEq;
 use std::collections::hash_map::DefaultHasher;
 use std::collections::{HashMap, HashSet, VecDeque};
 use std::env;
@@ -373,8 +374,23 @@ impl<'test> TestCx<'test> {
     }
 
     fn check_correct_failure_status(&self, proc_res: &ProcRes) {
-        let expected_status = Some(self.props.failure_status);
-        let received_status = proc_res.status.code();
+        impl PartialEq<ExitStatus> for FailureStatus {
+            fn eq(&self, other: &ExitStatus) -> bool {
+                match *self {
+                    #[cfg(unix)]
+                    FailureStatus::Signal(signal) => {
+                        use std::os::unix::process::ExitStatusExt;
+                        other.signal() == Some(signal)
+                    }
+                    #[cfg(not(unix))]
+                    FailureStatus::Signal(signal) => false,
+                    FailureStatus::ExitCode(code) => other.code() == Some(code),
+                }
+            }
+        }
+
+        let expected_status = self.props.failure_status;
+        let received_status = proc_res.status;
 
         if expected_status != received_status {
             self.fatal_proc_rec(

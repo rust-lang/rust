@@ -255,8 +255,11 @@ impl<T> Packet<T> {
             // to stay valid while we take the data).
             DATA => unsafe { (&mut *self.data.get()).take().unwrap(); },
 
-            // We're the only ones that can block on this port
-            _ => unreachable!()
+            // We're the only ones that can block on this port, but we may be
+            // unwinding
+            ptr => unsafe {
+                drop(SignalToken::cast_from_usize(ptr));
+            }
         }
     }
 
