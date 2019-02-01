@@ -42,7 +42,6 @@ mod tests {
         let (analysis, file_id) = single_file(
             "
             fn main() {
-                ctry!({ let x = 92; x});
                 vec![{ let x = 92; x}];
             }
             ",

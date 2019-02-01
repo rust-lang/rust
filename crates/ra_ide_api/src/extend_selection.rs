@@ -47,11 +47,11 @@ mod tests {
         let (analysis, frange) = single_file_with_range(
             "
             fn main() {
-                ctry!(foo(|x| <|>x<|>));
+                vec![foo(|x| <|>x<|>)];
             }
         ",
         );
         let r = analysis.extend_selection(frange).unwrap();
-        assert_eq!(r, TextRange::from_to(51.into(), 56.into()));
+        assert_eq!(r, TextRange::from_to(50.into(), 55.into()));
     }
 }

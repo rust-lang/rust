@@ -1,8 +1,8 @@
 ---
-created: "2019-01-22T14:45:01.043047100+00:00"
-creator: insta@0.4.0
+created: "2019-02-01T07:46:59.130146403+00:00"
+creator: insta@0.5.3
 expression: "&highlights"
-source: "crates\\ra_ide_api\\src\\syntax_highlighting.rs"
+source: crates/ra_ide_api/src/syntax_highlighting.rs
 ---
 [
     HighlightedRange {
@@ -14,59 +14,31 @@ source: "crates\\ra_ide_api\\src\\syntax_highlighting.rs"
         tag: "function"
     },
     HighlightedRange {
-        range: [41; 46),
+        range: [41; 45),
         tag: "macro"
     },
     HighlightedRange {
-        range: [49; 52),
+        range: [48; 51),
         tag: "keyword"
     },
     HighlightedRange {
-        range: [57; 59),
+        range: [56; 58),
         tag: "literal"
     },
     HighlightedRange {
-        range: [82; 86),
-        tag: "macro"
-    },
-    HighlightedRange {
-        range: [89; 92),
+        range: [48; 51),
         tag: "keyword"
     },
     HighlightedRange {
-        range: [97; 99),
-        tag: "literal"
-    },
-    HighlightedRange {
-        range: [49; 52),
-        tag: "keyword"
-    },
-    HighlightedRange {
-        range: [53; 54),
+        range: [52; 53),
         tag: "function"
     },
     HighlightedRange {
-        range: [57; 59),
+        range: [56; 58),
         tag: "literal"
     },
     HighlightedRange {
-        range: [61; 62),
-        tag: "text"
-    },
-    HighlightedRange {
-        range: [89; 92),
-        tag: "keyword"
-    },
-    HighlightedRange {
-        range: [93; 94),
-        tag: "function"
-    },
-    HighlightedRange {
-        range: [97; 99),
-        tag: "literal"
-    },
-    HighlightedRange {
-        range: [101; 102),
+        range: [60; 61),
         tag: "text"
     }
 ]

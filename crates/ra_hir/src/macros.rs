@@ -19,7 +19,6 @@ use crate::{HirDatabase, MacroCallId};
 // Hard-coded defs for now :-(
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum MacroDef {
-    CTry,
     Vec,
     QueryGroup,
 }
@@ -38,9 +37,7 @@ impl MacroDef {
         let def = {
             let path = macro_call.path()?;
             let name_ref = path.segment()?.name_ref()?;
-            if name_ref.text() == "ctry" {
-                MacroDef::CTry
-            } else if name_ref.text() == "vec" {
+            if name_ref.text() == "vec" {
                 MacroDef::Vec
             } else if name_ref.text() == "query_group" {
                 MacroDef::QueryGroup
@@ -60,34 +57,9 @@ impl MacroDef {
 
     fn expand(self, input: MacroInput) -> Option<MacroExpansion> {
         match self {
-            MacroDef::CTry => self.expand_ctry(input),
             MacroDef::Vec => self.expand_vec(input),
             MacroDef::QueryGroup => self.expand_query_group(input),
         }
-    }
-    fn expand_ctry(self, input: MacroInput) -> Option<MacroExpansion> {
-        let text = format!(
-            r"
-                fn dummy() {{
-                    match {} {{
-                        None => return Ok(None),
-                        Some(it) => it,
-                    }}
-                }}",
-            input.text
-        );
-        let file = SourceFile::parse(&text);
-        let match_expr = file.syntax().descendants().find_map(ast::MatchExpr::cast)?;
-        let match_arg = match_expr.expr()?;
-        let ptr = SyntaxNodePtr::new(match_arg.syntax());
-        let src_range = TextRange::offset_len(0.into(), TextUnit::of_str(&input.text));
-        let ranges_map = vec![(src_range, match_arg.syntax().range())];
-        let res = MacroExpansion {
-            text,
-            ranges_map,
-            ptr,
-        };
-        Some(res)
     }
     fn expand_vec(self, input: MacroInput) -> Option<MacroExpansion> {
         let text = format!(r"fn dummy() {{ {}; }}", input.text);
