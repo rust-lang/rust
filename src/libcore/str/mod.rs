@@ -1345,33 +1345,14 @@ impl FusedIterator for Lines<'_> {}
 #[allow(deprecated)]
 pub struct LinesAny<'a>(Lines<'a>);
 
-/// A nameable, cloneable fn type
-#[derive(Clone)]
-struct LinesAnyMap;
-
-impl<'a> Fn<(&'a str,)> for LinesAnyMap {
-    #[inline]
-    extern "rust-call" fn call(&self, (line,): (&'a str,)) -> &'a str {
+impl_fn_for_zst! {
+    /// A nameable, cloneable fn type
+    #[derive(Clone)]
+    struct LinesAnyMap impl<'a> Fn = |line: &'a str| -> &'a str {
         let l = line.len();
         if l > 0 && line.as_bytes()[l - 1] == b'\r' { &line[0 .. l - 1] }
         else { line }
-    }
-}
-
-impl<'a> FnMut<(&'a str,)> for LinesAnyMap {
-    #[inline]
-    extern "rust-call" fn call_mut(&mut self, (line,): (&'a str,)) -> &'a str {
-        Fn::call(&*self, (line,))
-    }
-}
-
-impl<'a> FnOnce<(&'a str,)> for LinesAnyMap {
-    type Output = &'a str;
-
-    #[inline]
-    extern "rust-call" fn call_once(self, (line,): (&'a str,)) -> &'a str {
-        Fn::call(&self, (line,))
-    }
+    };
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -2727,7 +2708,7 @@ impl str {
         let inner = self
             .as_bytes()
             .split(IsAsciiWhitespace)
-            .filter(IsNotEmpty)
+            .filter(BytesIsNotEmpty)
             .map(UnsafeBytesToStr);
         SplitAsciiWhitespace { inner }
     }
@@ -4011,101 +3992,35 @@ pub struct SplitWhitespace<'a> {
 #[stable(feature = "split_ascii_whitespace", since = "1.34.0")]
 #[derive(Clone, Debug)]
 pub struct SplitAsciiWhitespace<'a> {
-    inner: Map<Filter<SliceSplit<'a, u8, IsAsciiWhitespace>, IsNotEmpty>, UnsafeBytesToStr>,
+    inner: Map<Filter<SliceSplit<'a, u8, IsAsciiWhitespace>, BytesIsNotEmpty>, UnsafeBytesToStr>,
 }
 
-#[derive(Clone)]
-struct IsWhitespace;
+impl_fn_for_zst! {
+    #[derive(Clone)]
+    struct IsWhitespace impl Fn = |c: char| -> bool {
+        c.is_whitespace()
+    };
 
-impl FnOnce<(char, )> for IsWhitespace {
-    type Output = bool;
+    #[derive(Clone)]
+    struct IsAsciiWhitespace impl Fn = |byte: &u8| -> bool {
+        byte.is_ascii_whitespace()
+    };
 
-    #[inline]
-    extern "rust-call" fn call_once(mut self, arg: (char, )) -> bool {
-        self.call_mut(arg)
-    }
+    #[derive(Clone)]
+    struct IsNotEmpty impl<'a, 'b> Fn = |s: &'a &'b str| -> bool {
+        !s.is_empty()
+    };
+
+    #[derive(Clone)]
+    struct BytesIsNotEmpty impl<'a, 'b> Fn = |s: &'a &'b [u8]| -> bool {
+        !s.is_empty()
+    };
+
+    #[derive(Clone)]
+    struct UnsafeBytesToStr impl<'a> Fn = |bytes: &'a [u8]| -> &'a str {
+        unsafe { from_utf8_unchecked(bytes) }
+    };
 }
-
-impl FnMut<(char, )> for IsWhitespace {
-    #[inline]
-    extern "rust-call" fn call_mut(&mut self, arg: (char, )) -> bool {
-        arg.0.is_whitespace()
-    }
-}
-
-#[derive(Clone)]
-struct IsAsciiWhitespace;
-
-impl<'a> FnOnce<(&'a u8, )> for IsAsciiWhitespace {
-    type Output = bool;
-
-    #[inline]
-    extern "rust-call" fn call_once(mut self, arg: (&u8, )) -> bool {
-        self.call_mut(arg)
-    }
-}
-
-impl<'a> FnMut<(&'a u8, )> for IsAsciiWhitespace {
-    #[inline]
-    extern "rust-call" fn call_mut(&mut self, arg: (&u8, )) -> bool {
-        arg.0.is_ascii_whitespace()
-    }
-}
-
-#[derive(Clone)]
-struct IsNotEmpty;
-
-impl<'a, 'b> FnOnce<(&'a &'b str, )> for IsNotEmpty {
-    type Output = bool;
-
-    #[inline]
-    extern "rust-call" fn call_once(mut self, arg: (&'a &'b str, )) -> bool {
-        self.call_mut(arg)
-    }
-}
-
-impl<'a, 'b> FnMut<(&'a &'b str, )> for IsNotEmpty {
-    #[inline]
-    extern "rust-call" fn call_mut(&mut self, arg: (&'a &'b str, )) -> bool {
-        !arg.0.is_empty()
-    }
-}
-
-impl<'a, 'b> FnOnce<(&'a &'b [u8], )> for IsNotEmpty {
-    type Output = bool;
-
-    #[inline]
-    extern "rust-call" fn call_once(mut self, arg: (&'a &'b [u8], )) -> bool {
-        self.call_mut(arg)
-    }
-}
-
-impl<'a, 'b> FnMut<(&'a &'b [u8], )> for IsNotEmpty {
-    #[inline]
-    extern "rust-call" fn call_mut(&mut self, arg: (&'a &'b [u8], )) -> bool {
-        !arg.0.is_empty()
-    }
-}
-
-#[derive(Clone)]
-struct UnsafeBytesToStr;
-
-impl<'a> FnOnce<(&'a [u8], )> for UnsafeBytesToStr {
-    type Output = &'a str;
-
-    #[inline]
-    extern "rust-call" fn call_once(mut self, arg: (&'a [u8], )) -> &'a str {
-        self.call_mut(arg)
-    }
-}
-
-impl<'a> FnMut<(&'a [u8], )> for UnsafeBytesToStr {
-    #[inline]
-    extern "rust-call" fn call_mut(&mut self, arg: (&'a [u8], )) -> &'a str {
-        unsafe { from_utf8_unchecked(arg.0) }
-    }
-}
-
 
 #[stable(feature = "split_whitespace", since = "1.1.0")]
 impl<'a> Iterator for SplitWhitespace<'a> {
