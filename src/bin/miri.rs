@@ -11,115 +11,46 @@ extern crate rustc_metadata;
 extern crate rustc_driver;
 extern crate rustc_errors;
 extern crate rustc_codegen_utils;
+extern crate rustc_interface;
 extern crate syntax;
 
-use std::path::PathBuf;
 use std::str::FromStr;
 use std::env;
 
-use miri::MiriConfig;
-use rustc::session::Session;
-use rustc_metadata::cstore::CStore;
-use rustc_driver::{Compilation, CompilerCalls, RustcDefaultCalls};
-use rustc_driver::driver::{CompileState, CompileController};
-use rustc::session::config::{self, Input, ErrorOutputType};
-use rustc_codegen_utils::codegen_backend::CodegenBackend;
+use rustc_interface::interface;
 use rustc::hir::def_id::LOCAL_CRATE;
-use syntax::ast;
 
 struct MiriCompilerCalls {
-    default: Box<RustcDefaultCalls>,
-    miri_config: MiriConfig,
+    miri_config: miri::MiriConfig,
 }
 
-impl<'a> CompilerCalls<'a> for MiriCompilerCalls {
-    fn early_callback(
-        &mut self,
-        matches: &getopts::Matches,
-        sopts: &config::Options,
-        cfg: &ast::CrateConfig,
-        descriptions: &rustc_errors::registry::Registry,
-        output: ErrorOutputType,
-    ) -> Compilation {
-        self.default.early_callback(
-            matches,
-            sopts,
-            cfg,
-            descriptions,
-            output,
-        )
+impl rustc_driver::Callbacks for MiriCompilerCalls {
+    fn after_parsing(&mut self, compiler: &interface::Compiler) -> bool {
+        let attr = (
+            String::from("miri"),
+            syntax::feature_gate::AttributeType::Whitelisted,
+        );
+        compiler.session().plugin_attributes.borrow_mut().push(attr);
+
+        // Continue execution
+        true
     }
-    fn no_input(
-        &mut self,
-        matches: &getopts::Matches,
-        sopts: &config::Options,
-        cfg: &ast::CrateConfig,
-        odir: &Option<PathBuf>,
-        ofile: &Option<PathBuf>,
-        descriptions: &rustc_errors::registry::Registry,
-    ) -> Option<(Input, Option<PathBuf>)> {
-        self.default.no_input(
-            matches,
-            sopts,
-            cfg,
-            odir,
-            ofile,
-            descriptions,
-        )
+
+    fn after_analysis(&mut self, compiler: &interface::Compiler) -> bool {
+        init_late_loggers();
+        compiler.session().abort_if_errors();
+
+        compiler.global_ctxt().unwrap().peek_mut().enter(|tcx| {
+            let (entry_def_id, _) = tcx.entry_fn(LOCAL_CRATE).expect("no main function found!");
+
+            miri::eval_main(tcx, entry_def_id, self.miri_config.clone());
+        });
+
+        compiler.session().abort_if_errors();
+
+        // Don't continue execution
+        false
     }
-    fn late_callback(
-        &mut self,
-        codegen_backend: &CodegenBackend,
-        matches: &getopts::Matches,
-        sess: &Session,
-        cstore: &CStore,
-        input: &Input,
-        odir: &Option<PathBuf>,
-        ofile: &Option<PathBuf>,
-    ) -> Compilation {
-        // Called *before* `build_controller`. Add filename to `miri` arguments.
-        self.miri_config.args.insert(0, input.filestem().to_string());
-        self.default.late_callback(codegen_backend, matches, sess, cstore, input, odir, ofile)
-    }
-    fn build_controller(
-        self: Box<Self>,
-        sess: &Session,
-        matches: &getopts::Matches,
-    ) -> CompileController<'a> {
-        let this = *self;
-        let mut control = this.default.build_controller(sess, matches);
-        control.after_hir_lowering.callback = Box::new(after_hir_lowering);
-        let miri_config = this.miri_config;
-        control.after_analysis.callback =
-            Box::new(move |state| after_analysis(state, miri_config.clone()));
-        control.after_analysis.stop = Compilation::Stop;
-        control
-    }
-}
-
-fn after_hir_lowering(state: &mut CompileState) {
-    let attr = (
-        String::from("miri"),
-        syntax::feature_gate::AttributeType::Whitelisted,
-    );
-    state.session.plugin_attributes.borrow_mut().push(attr);
-}
-
-fn after_analysis<'a, 'tcx>(
-    state: &mut CompileState<'a, 'tcx>,
-    miri_config: MiriConfig,
-) {
-    init_late_loggers();
-    state.session.abort_if_errors();
-
-    let tcx = state.tcx.unwrap();
-
-
-    let (entry_def_id, _) = tcx.entry_fn(LOCAL_CRATE).expect("no main function found!");
-
-    miri::eval_main(tcx, entry_def_id, miri_config);
-
-    state.session.abort_if_errors();
 }
 
 fn init_early_loggers() {
@@ -228,12 +159,9 @@ fn main() {
 
     debug!("rustc arguments: {:?}", rustc_args);
     debug!("miri arguments: {:?}", miri_args);
-    let miri_config = MiriConfig { validate, args: miri_args };
-    let result = rustc_driver::run(move || {
-        rustc_driver::run_compiler(&rustc_args, Box::new(MiriCompilerCalls {
-            default: Box::new(RustcDefaultCalls),
-            miri_config,
-        }), None, None)
-    });
-    std::process::exit(result as i32);
+    let miri_config = miri::MiriConfig { validate, args: miri_args };
+    let result = rustc_driver::report_ices_to_stderr_if_any(move || {
+        rustc_driver::run_compiler(&rustc_args, &mut MiriCompilerCalls { miri_config }, None, None)
+    }).and_then(|result| result);
+    std::process::exit(result.is_err() as i32);
 }
