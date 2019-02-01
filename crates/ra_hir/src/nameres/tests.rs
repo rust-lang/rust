@@ -91,6 +91,30 @@ fn item_map_smoke_test() {
 }
 
 #[test]
+fn use_as() {
+    let (item_map, module_id) = item_map(
+        "
+        //- /lib.rs
+        mod foo;
+
+        use crate::foo::Baz as Foo;
+        <|>
+
+        //- /foo/mod.rs
+        pub struct Baz;
+    ",
+    );
+    check_module_item_map(
+        &item_map,
+        module_id,
+        "
+            Foo: t v
+            foo: t
+        ",
+    );
+}
+
+#[test]
 fn use_trees() {
     let (item_map, module_id) = item_map(
         "
