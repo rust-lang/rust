@@ -1,12 +1,13 @@
 use rustc::lint::{EarlyContext, EarlyLintPass, LintArray, LintPass};
 use rustc::{declare_tool_lint, lint_array};
-use crate::utils::span_lint;
+use crate::utils::span_lint_and_sugg;
 use syntax::ast;
+use rustc_errors::Applicability;
 
-/// **What it does:** Checks for usage of dbg!() macro not to have it in
-/// version control.
+/// **What it does:** Checks for usage of dbg!() macro.
 ///
-/// **Why is this bad?** `dbg!` macro is intended as a debugging tool.
+/// **Why is this bad?** `dbg!` macro is intended as a debugging tool. It
+/// should not be in version control.
 ///
 /// **Known problems:** None.
 ///
@@ -20,7 +21,7 @@ use syntax::ast;
 /// ```
 declare_clippy_lint! {
     pub DBG_MACRO,
-    style,
+    restriction,
     "`dbg!` macro is intended as a debugging tool"
 }
 
@@ -40,11 +41,14 @@ impl LintPass for Pass {
 impl EarlyLintPass for Pass {
     fn check_mac(&mut self, cx: &EarlyContext<'_>, mac: &ast::Mac) {
         if mac.node.path == "dbg" {
-            span_lint(
+            span_lint_and_sugg(
                 cx,
                 DBG_MACRO,
                 mac.span,
-                "`dbg!` macro is intended as a debugging tool. ensure to avoid having uses of it in version control",
+                "`dbg!` macro is intended as a debugging tool",
+                "ensure to avoid having uses of it in version control",
+                mac.node.tts.to_string(), // TODO: to string
+                Applicability::MaybeIncorrect,
             );
         }
     }
