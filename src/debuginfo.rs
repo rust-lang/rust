@@ -46,7 +46,6 @@ fn line_program_add_file(line_program: &mut LineProgram, file: &FileName) -> Fil
             )
         }
     }
-    
 }
 
 struct DebugReloc {
@@ -57,16 +56,20 @@ struct DebugReloc {
 }
 
 pub struct DebugContext<'tcx> {
+    // Encoding info
     encoding: Encoding,
     endian: RunTimeEndian,
-
     symbols: indexmap::IndexSet<String>,
 
-    strings: StringTable,
+    // Main data
     units: UnitTable,
     line_programs: LineProgramTable,
+
+    // Side tables
+    strings: StringTable,
     range_lists: RangeListTable,
 
+    // Global ids
     unit_id: UnitId,
     global_line_program: LineProgramId,
     unit_range_list: RangeList,
@@ -93,10 +96,11 @@ impl<'a, 'tcx: 'a> DebugContext<'tcx> {
             None => tcx.crate_name(LOCAL_CRATE).to_string(),
         };
 
-        let mut units = UnitTable::default();
         let mut strings = StringTable::default();
-        let mut line_programs = LineProgramTable::default();
         let range_lists = RangeListTable::default();
+
+        let mut units = UnitTable::default();
+        let mut line_programs = LineProgramTable::default();
 
         let global_line_program = line_programs.add(LineProgram::new(
             encoding,
@@ -140,13 +144,13 @@ impl<'a, 'tcx: 'a> DebugContext<'tcx> {
         DebugContext {
             encoding,
             endian: target_endian(tcx),
-
             symbols: indexmap::IndexSet::new(),
 
             strings,
+            range_lists,
+
             units,
             line_programs,
-            range_lists,
 
             unit_id,
             global_line_program,
@@ -194,8 +198,10 @@ impl<'a, 'tcx: 'a> DebugContext<'tcx> {
         let mut debug_ranges = DebugRanges::from(WriterRelocate::new(self));
         let mut debug_rnglists = DebugRngLists::from(WriterRelocate::new(self));
 
-        let debug_line_offsets = self.line_programs.write(&mut debug_line).unwrap();
         let debug_str_offsets = self.strings.write(&mut debug_str).unwrap();
+
+        let debug_line_offsets = self.line_programs.write(&mut debug_line).unwrap();
+
         let range_list_offsets = self
             .range_lists
             .write(
