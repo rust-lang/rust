@@ -1675,6 +1675,12 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
         }
         false
     }
+
+    /// Determine whether identifiers in the assembly have strict naming rules.
+    /// Currently, only NVPTX* targets need it.
+    pub fn has_strict_asm_symbol_naming(&self) -> bool {
+        self.gcx.sess.target.target.arch.contains("nvptx")
+    }
 }
 
 impl<'a, 'tcx> TyCtxt<'a, 'tcx, 'tcx> {

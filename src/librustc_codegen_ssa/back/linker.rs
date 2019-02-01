@@ -13,7 +13,7 @@ use rustc::hir::def_id::{LOCAL_CRATE, CrateNum};
 use rustc::middle::dependency_format::Linkage;
 use rustc::session::Session;
 use rustc::session::config::{self, CrateType, OptLevel, DebugInfo,
-                             CrossLangLto};
+                             CrossLangLto, Lto};
 use rustc::ty::TyCtxt;
 use rustc_target::spec::{LinkerFlavor, LldFlavor};
 use serialize::{json, Encoder};
@@ -82,6 +82,10 @@ impl LinkerInfo {
 
             LinkerFlavor::Lld(LldFlavor::Wasm) => {
                 Box::new(WasmLd::new(cmd, sess, self)) as Box<dyn Linker>
+            }
+
+            LinkerFlavor::PtxLinker => {
+                Box::new(PtxLinker { cmd, sess }) as Box<dyn Linker>
             }
         }
     }
@@ -1079,4 +1083,130 @@ fn exported_symbols(tcx: TyCtxt, crate_type: CrateType) -> Vec<String> {
     }
 
     symbols
+}
+
+/// Much simplified and explicit CLI for the NVPTX linker. The linker operates
+/// with bitcode and uses LLVM backend to generate a PTX assembly.
+pub struct PtxLinker<'a> {
+    cmd: Command,
+    sess: &'a Session,
+}
+
+impl<'a> Linker for PtxLinker<'a> {
+    fn link_rlib(&mut self, path: &Path) {
+        self.cmd.arg("--rlib").arg(path);
+    }
+
+    fn link_whole_rlib(&mut self, path: &Path) {
+        self.cmd.arg("--rlib").arg(path);
+    }
+
+    fn include_path(&mut self, path: &Path) {
+        self.cmd.arg("-L").arg(path);
+    }
+
+    fn debuginfo(&mut self) {
+        self.cmd.arg("--debug");
+    }
+
+    fn add_object(&mut self, path: &Path) {
+        self.cmd.arg("--bitcode").arg(path);
+    }
+
+    fn args(&mut self, args: &[String]) {
+        self.cmd.args(args);
+    }
+
+    fn optimize(&mut self) {
+        match self.sess.lto() {
+            Lto::Thin | Lto::Fat | Lto::ThinLocal => {
+                self.cmd.arg("-Olto");
+            },
+
+            Lto::No => { },
+        };
+    }
+
+    fn output_filename(&mut self, path: &Path) {
+        self.cmd.arg("-o").arg(path);
+    }
+
+    fn finalize(&mut self) -> Command {
+        // Provide the linker with fallback to internal `target-cpu`.
+        self.cmd.arg("--fallback-arch").arg(match self.sess.opts.cg.target_cpu {
+            Some(ref s) => s,
+            None => &self.sess.target.target.options.cpu
+        });
+
+        ::std::mem::replace(&mut self.cmd, Command::new(""))
+    }
+
+    fn link_dylib(&mut self, _lib: &str) {
+        panic!("external dylibs not supported")
+    }
+
+    fn link_rust_dylib(&mut self, _lib: &str, _path: &Path) {
+        panic!("external dylibs not supported")
+    }
+
+    fn link_staticlib(&mut self, _lib: &str) {
+        panic!("staticlibs not supported")
+    }
+
+    fn link_whole_staticlib(&mut self, _lib: &str, _search_path: &[PathBuf]) {
+        panic!("staticlibs not supported")
+    }
+
+    fn framework_path(&mut self, _path: &Path) {
+        panic!("frameworks not supported")
+    }
+
+    fn link_framework(&mut self, _framework: &str) {
+        panic!("frameworks not supported")
+    }
+
+    fn position_independent_executable(&mut self) {
+    }
+
+    fn full_relro(&mut self) {
+    }
+
+    fn partial_relro(&mut self) {
+    }
+
+    fn no_relro(&mut self) {
+    }
+
+    fn build_static_executable(&mut self) {
+    }
+
+    fn gc_sections(&mut self, _keep_metadata: bool) {
+    }
+
+    fn pgo_gen(&mut self) {
+    }
+
+    fn no_default_libraries(&mut self) {
+    }
+
+    fn build_dylib(&mut self, _out_filename: &Path) {
+    }
+
+    fn export_symbols(&mut self, _tmpdir: &Path, _crate_type: CrateType) {
+    }
+
+    fn subsystem(&mut self, _subsystem: &str) {
+    }
+
+    fn no_position_independent_executable(&mut self) {
+    }
+
+    fn group_start(&mut self) {
+    }
+
+    fn group_end(&mut self) {
+    }
+
+    fn cross_lang_lto(&mut self) {
+    }
 }
