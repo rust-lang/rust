@@ -1,21 +1,21 @@
 use join_to_string::join;
 
+use hir::{Docs, Resolution};
+
 use crate::{
     completion::{CompletionItem, CompletionItemKind, Completions, CompletionKind, CompletionContext},
 };
 
-use hir::Docs;
-
 pub(super) fn complete_path(acc: &mut Completions, ctx: &CompletionContext) {
-    let (path, module) = match (&ctx.path_prefix, &ctx.module) {
-        (Some(path), Some(module)) => (path.clone(), module),
+    let path = match &ctx.path_prefix {
+        Some(path) => path.clone(),
         _ => return,
     };
-    let def_id = match module.resolve_path(ctx.db, &path).take_types() {
-        Some(it) => it,
-        None => return,
+    let def = match ctx.resolver.resolve_path(ctx.db, &path).take_types() {
+        Some(Resolution::Def(def)) => def,
+        _ => return,
     };
-    match def_id {
+    match def {
         hir::ModuleDef::Module(module) => {
             let module_scope = module.scope(ctx.db);
             for (name, res) in module_scope.entries() {
@@ -24,7 +24,7 @@ pub(super) fn complete_path(acc: &mut Completions, ctx: &CompletionContext) {
                     ctx.source_range(),
                     name.to_string(),
                 )
-                .from_resolution(ctx, res)
+                .from_resolution(ctx, &res.def.map(hir::Resolution::Def))
                 .add_to(acc);
             }
         }
@@ -63,6 +63,17 @@ mod tests {
 
     fn check_reference_completion(code: &str, expected_completions: &str) {
         check_completion(code, expected_completions, CompletionKind::Reference);
+    }
+
+    #[test]
+    #[ignore] // should not complete foo, which currently doesn't work
+    fn dont_complete_current_use() {
+        check_reference_completion(
+            "dont_complete_current_use",
+            r"
+            use self::foo<|>;
+            ",
+        );
     }
 
     #[test]

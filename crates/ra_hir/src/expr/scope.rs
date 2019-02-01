@@ -58,28 +58,19 @@ impl ExprScopes {
         scopes
     }
 
+    pub fn body(&self) -> Arc<Body> {
+        self.body.clone()
+    }
+
     pub fn entries(&self, scope: ScopeId) -> &[ScopeEntry] {
         &self.scopes[scope].entries
     }
 
-    pub fn scope_chain_for<'a>(&'a self, expr: ExprId) -> impl Iterator<Item = ScopeId> + 'a {
-        generate(self.scope_for(expr), move |&scope| {
-            self.scopes[scope].parent
-        })
-    }
-
-    pub fn resolve_local_name<'a>(
+    pub fn scope_chain_for<'a>(
         &'a self,
-        context_expr: ExprId,
-        name: Name,
-    ) -> Option<&'a ScopeEntry> {
-        let mut shadowed = FxHashSet::default();
-        let ret = self
-            .scope_chain_for(context_expr)
-            .flat_map(|scope| self.entries(scope).iter())
-            .filter(|entry| shadowed.insert(entry.name()))
-            .find(|entry| entry.name() == &name);
-        ret
+        scope: Option<ScopeId>,
+    ) -> impl Iterator<Item = ScopeId> + 'a {
+        generate(scope, move |&scope| self.scopes[scope].parent)
     }
 
     fn root_scope(&mut self) -> ScopeId {
@@ -122,7 +113,7 @@ impl ExprScopes {
         self.scope_for.insert(node, scope);
     }
 
-    fn scope_for(&self, expr: ExprId) -> Option<ScopeId> {
+    pub fn scope_for(&self, expr: ExprId) -> Option<ScopeId> {
         self.scope_for.get(&expr).map(|&scope| scope)
     }
 }
@@ -150,18 +141,14 @@ impl ScopeEntryWithSyntax {
 }
 
 impl ScopesWithSyntaxMapping {
-    pub fn scope_chain<'a>(&'a self, node: &SyntaxNode) -> impl Iterator<Item = ScopeId> + 'a {
+    fn scope_chain<'a>(&'a self, node: &SyntaxNode) -> impl Iterator<Item = ScopeId> + 'a {
         generate(self.scope_for(node), move |&scope| {
             self.scopes.scopes[scope].parent
         })
     }
 
-    pub fn scope_chain_for_offset<'a>(
-        &'a self,
-        offset: TextUnit,
-    ) -> impl Iterator<Item = ScopeId> + 'a {
-        let scope = self
-            .scopes
+    pub fn scope_for_offset<'a>(&'a self, offset: TextUnit) -> Option<ScopeId> {
+        self.scopes
             .scope_for
             .iter()
             .filter_map(|(id, scope)| Some((self.syntax_mapping.expr_syntax(*id)?, scope)))
@@ -172,13 +159,12 @@ impl ScopesWithSyntaxMapping {
                     ptr.range().len(),
                 )
             })
-            .map(|(ptr, scope)| self.adjust(ptr, *scope, offset));
-
-        generate(scope, move |&scope| self.scopes.scopes[scope].parent)
+            .map(|(ptr, scope)| self.adjust(ptr, *scope, offset))
     }
 
     // XXX: during completion, cursor might be outside of any particular
     // expression. Try to figure out the correct scope...
+    // TODO: move this to source binder?
     fn adjust(&self, ptr: SyntaxNodePtr, original_scope: ScopeId, offset: TextUnit) -> ScopeId {
         let r = ptr.range();
         let child_scopes = self
@@ -238,7 +224,7 @@ impl ScopesWithSyntaxMapping {
             .collect()
     }
 
-    fn scope_for(&self, node: &SyntaxNode) -> Option<ScopeId> {
+    pub fn scope_for(&self, node: &SyntaxNode) -> Option<ScopeId> {
         node.ancestors()
             .map(SyntaxNodePtr::new)
             .filter_map(|ptr| self.syntax_mapping.syntax_expr(ptr))
@@ -336,6 +322,7 @@ pub struct ReferenceDescriptor {
 mod tests {
     use ra_syntax::{SourceFile, algo::find_node_at_offset};
     use test_utils::{extract_offset, assert_eq_text};
+    use ra_arena::ArenaId;
 
     use crate::expr;
 
@@ -354,7 +341,10 @@ mod tests {
         let file = SourceFile::parse(&code);
         let marker: &ast::PathExpr = find_node_at_offset(file.syntax(), off).unwrap();
         let fn_def: &ast::FnDef = find_node_at_offset(file.syntax(), off).unwrap();
-        let body_hir = expr::collect_fn_body_syntax(fn_def);
+        let irrelevant_function = Function {
+            id: crate::ids::FunctionId::from_raw(0.into()),
+        };
+        let body_hir = expr::collect_fn_body_syntax(irrelevant_function, fn_def);
         let scopes = ExprScopes::new(Arc::clone(body_hir.body()));
         let scopes = ScopesWithSyntaxMapping {
             scopes: Arc::new(scopes),
@@ -454,7 +444,10 @@ mod tests {
         let fn_def: &ast::FnDef = find_node_at_offset(file.syntax(), off).unwrap();
         let name_ref: &ast::NameRef = find_node_at_offset(file.syntax(), off).unwrap();
 
-        let body_hir = expr::collect_fn_body_syntax(fn_def);
+        let irrelevant_function = Function {
+            id: crate::ids::FunctionId::from_raw(0.into()),
+        };
+        let body_hir = expr::collect_fn_body_syntax(irrelevant_function, fn_def);
         let scopes = ExprScopes::new(Arc::clone(body_hir.body()));
         let scopes = ScopesWithSyntaxMapping {
             scopes: Arc::new(scopes),

@@ -1,12 +1,12 @@
 ---
-created: "2019-01-26T18:16:16.530712344+00:00"
+created: "2019-01-27T14:52:29.934503829+00:00"
 creator: insta@0.5.2
 expression: "&result"
 source: crates/ra_hir/src/ty/tests.rs
 ---
-[10; 11) 't': [unknown]
-[21; 26) '{ t }': [unknown]
-[23; 24) 't': [unknown]
+[10; 11) 't': T
+[21; 26) '{ t }': T
+[23; 24) 't': T
 [38; 98) '{     ...(1); }': ()
 [44; 46) 'id': fn id<u32>(T) -> T
 [44; 52) 'id(1u32)': u32

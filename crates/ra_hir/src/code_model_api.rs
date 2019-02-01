@@ -5,18 +5,19 @@ use ra_db::{CrateId, FileId};
 use ra_syntax::{ast::self, TreeArc, SyntaxNode};
 
 use crate::{
-    Name, Path, PerNs, ScopesWithSyntaxMapping, Ty, HirFileId,
+    Name, ScopesWithSyntaxMapping, Ty, HirFileId,
     type_ref::TypeRef,
     nameres::{ModuleScope, lower::ImportId},
     HirDatabase, PersistentHirDatabase,
-    expr::BodySyntaxMapping,
-    ty::{InferenceResult},
+    expr::{Body, BodySyntaxMapping},
+    ty::InferenceResult,
     adt::{EnumVariantId, StructFieldId, VariantDef},
     generics::GenericParams,
     docs::{Documentation, Docs, docs_from_ast},
     module_tree::ModuleId,
     ids::{FunctionId, StructId, EnumId, AstItemDef, ConstId, StaticId, TraitId, TypeId},
     impl_block::ImplId,
+    resolve::Resolver,
 };
 
 /// hir::Crate describes a single crate. It's the main interface with which
@@ -174,12 +175,13 @@ impl Module {
         db.item_map(self.krate)[self.module_id].clone()
     }
 
-    pub fn resolve_path(&self, db: &impl PersistentHirDatabase, path: &Path) -> PerNs<ModuleDef> {
-        db.item_map(self.krate).resolve_path(db, *self, path)
-    }
-
     pub fn problems(&self, db: &impl HirDatabase) -> Vec<(TreeArc<SyntaxNode>, Problem)> {
         self.problems_impl(db)
+    }
+
+    pub fn resolver(&self, db: &impl HirDatabase) -> Resolver {
+        let item_map = db.item_map(self.krate);
+        Resolver::default().push_module_scope(item_map, *self)
     }
 }
 
@@ -282,6 +284,21 @@ impl Struct {
     pub fn ty(&self, db: &impl HirDatabase) -> Ty {
         db.type_for_def((*self).into())
     }
+
+    // TODO move to a more general type
+    /// Builds a resolver for type references inside this struct.
+    pub fn resolver(&self, db: &impl HirDatabase) -> Resolver {
+        // take the outer scope...
+        let r = self.module(db).resolver(db);
+        // ...and add generic params, if present
+        let p = self.generic_params(db);
+        let r = if !p.params.is_empty() {
+            r.push_generic_params_scope(p)
+        } else {
+            r
+        };
+        r
+    }
 }
 
 impl Docs for Struct {
@@ -330,6 +347,21 @@ impl Enum {
 
     pub fn ty(&self, db: &impl HirDatabase) -> Ty {
         db.type_for_def((*self).into())
+    }
+
+    // TODO move to a more general type
+    /// Builds a resolver for type references inside this struct.
+    pub fn resolver(&self, db: &impl HirDatabase) -> Resolver {
+        // take the outer scope...
+        let r = self.module(db).resolver(db);
+        // ...and add generic params, if present
+        let p = self.generic_params(db);
+        let r = if !p.params.is_empty() {
+            r.push_generic_params_scope(p)
+        } else {
+            r
+        };
+        r
     }
 }
 
@@ -449,6 +481,10 @@ impl Function {
         db.body_syntax_mapping(*self)
     }
 
+    pub fn body(&self, db: &impl HirDatabase) -> Arc<Body> {
+        db.body_hir(*self)
+    }
+
     pub fn scopes(&self, db: &impl HirDatabase) -> ScopesWithSyntaxMapping {
         let scopes = db.expr_scopes(*self);
         let syntax_mapping = db.body_syntax_mapping(*self);
@@ -468,6 +504,24 @@ impl Function {
 
     pub fn generic_params(&self, db: &impl PersistentHirDatabase) -> Arc<GenericParams> {
         db.generic_params((*self).into())
+    }
+
+    // TODO move to a more general type for 'body-having' items
+    /// Builds a resolver for code inside this item.
+    pub fn resolver(&self, db: &impl HirDatabase) -> Resolver {
+        // take the outer scope...
+        let r = self
+            .impl_block(db)
+            .map(|ib| ib.resolver(db))
+            .unwrap_or_else(|| self.module(db).resolver(db));
+        // ...and add generic params, if present
+        let p = self.generic_params(db);
+        let r = if !p.params.is_empty() {
+            r.push_generic_params_scope(p)
+        } else {
+            r
+        };
+        r
     }
 }
 

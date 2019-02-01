@@ -7,11 +7,13 @@ use ra_syntax::{
 ast::{self, AstNode}};
 
 use crate::{
-    Const, Type,
-    Function, HirFileId,
-    PersistentHirDatabase,
+    Const, Type, Function, HirFileId,
+    HirDatabase, PersistentHirDatabase,
+    ModuleDef, Trait, Resolution,
     type_ref::TypeRef,
     ids::LocationCtx,
+    resolve::Resolver,
+    ty::Ty,
 };
 
 use crate::code_model_api::{Module, ModuleSource};
@@ -69,7 +71,11 @@ impl ImplBlock {
         &self.module_impl_blocks.impls[self.impl_id]
     }
 
-    pub fn target_trait(&self) -> Option<&TypeRef> {
+    pub fn module(&self) -> Module {
+        self.module_impl_blocks.module.clone()
+    }
+
+    pub fn target_trait_ref(&self) -> Option<&TypeRef> {
         self.impl_data().target_trait()
     }
 
@@ -77,8 +83,31 @@ impl ImplBlock {
         self.impl_data().target_type()
     }
 
+    pub fn target_ty(&self, db: &impl HirDatabase) -> Ty {
+        Ty::from_hir(db, &self.resolver(db), self.target_type())
+    }
+
+    pub fn target_trait(&self, db: &impl HirDatabase) -> Option<Trait> {
+        if let Some(TypeRef::Path(path)) = self.target_trait_ref() {
+            let resolver = self.resolver(db);
+            if let Some(Resolution::Def(ModuleDef::Trait(tr))) =
+                resolver.resolve_path(db, path).take_types()
+            {
+                return Some(tr);
+            }
+        }
+        None
+    }
+
     pub fn items(&self) -> &[ImplItem] {
         self.impl_data().items()
+    }
+
+    pub fn resolver(&self, db: &impl HirDatabase) -> Resolver {
+        let r = self.module().resolver(db);
+        // TODO: add generics
+        let r = r.push_impl_block_scope(self.clone());
+        r
     }
 }
 
@@ -162,25 +191,24 @@ impl_arena_id!(ImplId);
 /// we don't need to do the second step again.
 #[derive(Debug, PartialEq, Eq)]
 pub struct ModuleImplBlocks {
+    module: Module,
     pub(crate) impls: Arena<ImplId, ImplData>,
     impls_by_def: FxHashMap<ImplItem, ImplId>,
 }
 
 impl ModuleImplBlocks {
-    fn new() -> Self {
-        ModuleImplBlocks {
-            impls: Arena::default(),
-            impls_by_def: FxHashMap::default(),
-        }
-    }
-
     fn collect(
-        &mut self,
         db: &impl PersistentHirDatabase,
         module: Module,
         source_map: &mut ImplSourceMap,
-    ) {
-        let (file_id, module_source) = module.definition_source(db);
+    ) -> Self {
+        let mut m = ModuleImplBlocks {
+            module,
+            impls: Arena::default(),
+            impls_by_def: FxHashMap::default(),
+        };
+
+        let (file_id, module_source) = m.module.definition_source(db);
         let file_id: HirFileId = file_id.into();
         let node = match &module_source {
             ModuleSource::SourceFile(node) => node.syntax(),
@@ -191,14 +219,16 @@ impl ModuleImplBlocks {
         };
 
         for impl_block_ast in node.children().filter_map(ast::ImplBlock::cast) {
-            let impl_block = ImplData::from_ast(db, file_id, module, impl_block_ast);
-            let id = self.impls.alloc(impl_block);
-            for &impl_item in &self.impls[id].items {
-                self.impls_by_def.insert(impl_item, id);
+            let impl_block = ImplData::from_ast(db, file_id, m.module, impl_block_ast);
+            let id = m.impls.alloc(impl_block);
+            for &impl_item in &m.impls[id].items {
+                m.impls_by_def.insert(impl_item, id);
             }
 
             source_map.insert(id, impl_block_ast);
         }
+
+        m
     }
 }
 
@@ -208,8 +238,7 @@ pub(crate) fn impls_in_module_with_source_map_query(
 ) -> (Arc<ModuleImplBlocks>, Arc<ImplSourceMap>) {
     let mut source_map = ImplSourceMap::default();
 
-    let mut result = ModuleImplBlocks::new();
-    result.collect(db, module, &mut source_map);
+    let result = ModuleImplBlocks::collect(db, module, &mut source_map);
 
     (Arc::new(result), Arc::new(source_map))
 }

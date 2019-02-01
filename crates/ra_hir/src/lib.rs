@@ -36,6 +36,7 @@ mod impl_block;
 mod expr;
 mod generics;
 mod docs;
+mod resolve;
 
 mod code_model_api;
 mod code_model_impl;
@@ -54,12 +55,13 @@ pub use self::{
     name::Name,
     ids::{HirFileId, MacroCallId, MacroCallLoc, HirInterner},
     macros::{MacroDef, MacroInput, MacroExpansion},
-    nameres::{ItemMap, PerNs, Namespace, Resolution},
+    nameres::{ItemMap, PerNs, Namespace},
     ty::Ty,
     impl_block::{ImplBlock, ImplItem},
     docs::{Docs, Documentation},
     adt::AdtDef,
     expr::{ExprScopes, ScopesWithSyntaxMapping},
+    resolve::{Resolver, Resolution},
 };
 
 pub use self::code_model_api::{

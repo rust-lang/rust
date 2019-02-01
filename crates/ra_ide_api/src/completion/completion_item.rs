@@ -1,5 +1,7 @@
-use hir::{Docs, Documentation};
-use ra_syntax::TextRange;
+use hir::{Docs, Documentation, PerNs, Resolution};
+use ra_syntax::{
+    TextRange,
+};
 use ra_text_edit::TextEdit;
 use test_utils::tested_by;
 
@@ -48,6 +50,7 @@ pub enum CompletionItemKind {
     Trait,
     TypeAlias,
     Method,
+    TypeParam,
 }
 
 #[derive(Debug, PartialEq, Eq, Copy, Clone)]
@@ -207,23 +210,34 @@ impl Builder {
     pub(super) fn from_resolution(
         mut self,
         ctx: &CompletionContext,
-        resolution: &hir::Resolution,
+        resolution: &PerNs<Resolution>,
     ) -> Builder {
-        let def = resolution.def.take_types().or(resolution.def.take_values());
+        use hir::ModuleDef::*;
+
+        let def = resolution
+            .as_ref()
+            .take_types()
+            .or(resolution.as_ref().take_values());
         let def = match def {
             None => return self,
             Some(it) => it,
         };
         let (kind, docs) = match def {
-            hir::ModuleDef::Module(it) => (CompletionItemKind::Module, it.docs(ctx.db)),
-            hir::ModuleDef::Function(func) => return self.from_function(ctx, func),
-            hir::ModuleDef::Struct(it) => (CompletionItemKind::Struct, it.docs(ctx.db)),
-            hir::ModuleDef::Enum(it) => (CompletionItemKind::Enum, it.docs(ctx.db)),
-            hir::ModuleDef::EnumVariant(it) => (CompletionItemKind::EnumVariant, it.docs(ctx.db)),
-            hir::ModuleDef::Const(it) => (CompletionItemKind::Const, it.docs(ctx.db)),
-            hir::ModuleDef::Static(it) => (CompletionItemKind::Static, it.docs(ctx.db)),
-            hir::ModuleDef::Trait(it) => (CompletionItemKind::Trait, it.docs(ctx.db)),
-            hir::ModuleDef::Type(it) => (CompletionItemKind::TypeAlias, it.docs(ctx.db)),
+            Resolution::Def(Module(it)) => (CompletionItemKind::Module, it.docs(ctx.db)),
+            Resolution::Def(Function(func)) => return self.from_function(ctx, *func),
+            Resolution::Def(Struct(it)) => (CompletionItemKind::Struct, it.docs(ctx.db)),
+            Resolution::Def(Enum(it)) => (CompletionItemKind::Enum, it.docs(ctx.db)),
+            Resolution::Def(EnumVariant(it)) => (CompletionItemKind::EnumVariant, it.docs(ctx.db)),
+            Resolution::Def(Const(it)) => (CompletionItemKind::Const, it.docs(ctx.db)),
+            Resolution::Def(Static(it)) => (CompletionItemKind::Static, it.docs(ctx.db)),
+            Resolution::Def(Trait(it)) => (CompletionItemKind::Trait, it.docs(ctx.db)),
+            Resolution::Def(Type(it)) => (CompletionItemKind::TypeAlias, it.docs(ctx.db)),
+            Resolution::GenericParam(..) => (CompletionItemKind::TypeParam, None),
+            Resolution::LocalBinding(..) => (CompletionItemKind::Binding, None),
+            Resolution::SelfType(..) => (
+                CompletionItemKind::TypeParam, // (does this need its own kind?)
+                None,
+            ),
         };
         self.kind = Some(kind);
         self.documentation = docs;

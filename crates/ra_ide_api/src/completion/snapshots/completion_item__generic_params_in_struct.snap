@@ -1,13 +1,13 @@
 ---
-created: "2019-01-27T20:17:10.051725945+00:00"
-creator: insta@0.5.2
+created: "2019-02-01T22:23:21.508620224+00:00"
+creator: insta@0.5.3
 expression: kind_completions
 source: crates/ra_ide_api/src/completion/completion_item.rs
 ---
 [
     CompletionItem {
         completion_kind: Reference,
-        label: "Self",
+        label: "T",
         kind: Some(
             TypeParam
         ),
@@ -16,21 +16,21 @@ source: crates/ra_ide_api/src/completion/completion_item.rs
         lookup: None,
         insert_text: None,
         insert_text_format: PlainText,
-        source_range: [25; 25),
+        source_range: [46; 46),
         text_edit: None
     },
     CompletionItem {
         completion_kind: Reference,
-        label: "self",
+        label: "X",
         kind: Some(
-            Binding
+            Struct
         ),
         detail: None,
         documentation: None,
         lookup: None,
         insert_text: None,
         insert_text_format: PlainText,
-        source_range: [25; 25),
+        source_range: [46; 46),
         text_edit: None
     }
 ]
