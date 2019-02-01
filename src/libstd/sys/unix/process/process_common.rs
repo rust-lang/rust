@@ -149,7 +149,7 @@ impl Command {
         &mut self.closures
     }
 
-    pub fn before_exec(&mut self,
+    pub unsafe fn pre_exec(&mut self,
                        f: Box<dyn FnMut() -> io::Result<()> + Send + Sync>) {
         self.closures.push(f);
     }
