@@ -39,40 +39,45 @@ install:
 matrix:
   fast_finish: true
   include:
+    # Builds that are executed for every PR
     - os: osx # run base tests on both platforms
       env: BASE_TESTS=true
     - os: linux
       env: BASE_TESTS=true
     - os: windows
       env: CARGO_INCREMENTAL=0 BASE_TESTS=true
+
+    # Builds that are only executed when a PR is r+ed or a try build is started
+    # We don't want to run these always because they go towards
+    # the build limit within the Travis rust-lang account.
     - env: INTEGRATION=rust-lang/cargo
-      if: repo =~ /^rust-lang\/rust-clippy$/
+      if: repo =~ /^rust-lang\/rust-clippy$/ AND branch IN (auto, try)
     - env: INTEGRATION=rust-random/rand
-      if: repo =~ /^rust-lang\/rust-clippy$/
+      if: repo =~ /^rust-lang\/rust-clippy$/ AND branch IN (auto, try)
     - env: INTEGRATION=rust-lang-nursery/stdsimd
-      if: repo =~ /^rust-lang\/rust-clippy$/
+      if: repo =~ /^rust-lang\/rust-clippy$/ AND branch IN (auto, try)
     - env: INTEGRATION=rust-lang/rustfmt
-      if: repo =~ /^rust-lang\/rust-clippy$/
+      if: repo =~ /^rust-lang\/rust-clippy$/ AND branch IN (auto, try)
     - env: INTEGRATION=rust-lang-nursery/futures-rs
-      if: repo =~ /^rust-lang\/rust-clippy$/
+      if: repo =~ /^rust-lang\/rust-clippy$/ AND branch IN (auto, try)
     - env: INTEGRATION=rust-lang-nursery/failure
-      if: repo =~ /^rust-lang\/rust-clippy$/
+      if: repo =~ /^rust-lang\/rust-clippy$/ AND branch IN (auto, try)
     - env: INTEGRATION=rust-lang-nursery/log
-      if: repo =~ /^rust-lang\/rust-clippy$/
+      if: repo =~ /^rust-lang\/rust-clippy$/ AND branch IN (auto, try)
     - env: INTEGRATION=rust-lang-nursery/chalk
-      if: repo =~ /^rust-lang\/rust-clippy$/
+      if: repo =~ /^rust-lang\/rust-clippy$/ AND branch IN (auto, try)
     - env: INTEGRATION=rust-lang/rls
-      if: repo =~ /^rust-lang\/rust-clippy$/
+      if: repo =~ /^rust-lang\/rust-clippy$/ AND branch IN (auto, try)
     - env: INTEGRATION=chronotope/chrono
-      if: repo =~ /^rust-lang\/rust-clippy$/
+      if: repo =~ /^rust-lang\/rust-clippy$/ AND branch IN (auto, try)
     - env: INTEGRATION=serde-rs/serde
-      if: repo =~ /^rust-lang\/rust-clippy$/
+      if: repo =~ /^rust-lang\/rust-clippy$/ AND branch IN (auto, try)
     - env: INTEGRATION=Geal/nom
-      if: repo =~ /^rust-lang\/rust-clippy$/
+      if: repo =~ /^rust-lang\/rust-clippy$/ AND branch IN (auto, try)
     - env: INTEGRATION=hyperium/hyper
-      if: repo =~ /^rust-lang\/rust-clippy$/
+      if: repo =~ /^rust-lang\/rust-clippy$/ AND branch IN (auto, try)
     - env: INTEGRATION=bluss/rust-itertools
-      if: repo =~ /^rust-lang\/rust-clippy$/
+      if: repo =~ /^rust-lang\/rust-clippy$/ AND branch IN (auto, try)
   allow_failures:
   - os: windows
     env: CARGO_INCREMENTAL=0 BASE_TESTS=true
