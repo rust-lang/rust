@@ -70,7 +70,7 @@ use core::{
         Index, IndexMut, RangeBounds,
     },
     ptr::{self, NonNull},
-    slice,
+    slice::{self, SliceIndex},
 };
 
 use crate::{
@@ -1672,10 +1672,7 @@ impl<T: Hash> Hash for Vec<T> {
     message="vector indices are of type `usize` or ranges of `usize`",
     label="vector indices are of type `usize` or ranges of `usize`",
 )]
-impl<T, I> Index<I> for Vec<T>
-where
-    I: ::core::slice::SliceIndex<[T]>,
-{
+impl<T, I: SliceIndex<[T]>> Index<I> for Vec<T> {
     type Output = I::Output;
 
     #[inline]
@@ -1689,10 +1686,7 @@ where
     message="vector indices are of type `usize` or ranges of `usize`",
     label="vector indices are of type `usize` or ranges of `usize`",
 )]
-impl<T, I> IndexMut<I> for Vec<T>
-where
-    I: ::core::slice::SliceIndex<[T]>,
-{
+impl<T, I: SliceIndex<[T]>> IndexMut<I> for Vec<T> {
     #[inline]
     fn index_mut(&mut self, index: I) -> &mut Self::Output {
         IndexMut::index_mut(&mut **self, index)

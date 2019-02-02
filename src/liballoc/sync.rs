@@ -24,6 +24,7 @@ use core::{
     hash::{Hash, Hasher},
     isize, usize,
     convert::From,
+    slice::from_raw_parts_mut,
 };
 
 use crate::{
@@ -677,8 +678,6 @@ impl<T: Clone> ArcFromSlice<T> for Arc<[T]> {
 
         impl<T> Drop for Guard<T> {
             fn drop(&mut self) {
-                use core::slice::from_raw_parts_mut;
-
                 unsafe {
                     let slice = from_raw_parts_mut(self.elems, self.n_elems);
                     ptr::drop_in_place(slice);

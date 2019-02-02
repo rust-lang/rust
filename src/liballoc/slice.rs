@@ -141,12 +141,10 @@ pub use self::hack::to_vec;
 // `test_permutations` test
 mod hack {
     use core::mem;
-    use crate::boxed::Box;
+    use crate::{boxed::Box, vec::Vec};
 
     #[cfg(test)]
     use crate::string::ToString;
-
-    use crate::vec::Vec;
 
     pub fn into_vec<T>(mut b: Box<[T]>) -> Vec<T> {
         unsafe {

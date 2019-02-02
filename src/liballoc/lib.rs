@@ -165,5 +165,5 @@ pub mod vec;
 
 #[cfg(not(test))]
 mod std {
-    pub use core::ops;      // RangeFull
+    pub use core::ops; // RangeFull
 }

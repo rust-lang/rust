@@ -244,6 +244,7 @@ use core::{
     ops::{Deref, Receiver, CoerceUnsized, DispatchFromDyn},
     pin::Pin,
     ptr::{self, NonNull},
+    slice::from_raw_parts_mut,
     convert::From,
     usize,
 };
@@ -768,8 +769,6 @@ impl<T: Clone> RcFromSlice<T> for Rc<[T]> {
 
         impl<T> Drop for Guard<T> {
             fn drop(&mut self) {
-                use core::slice::from_raw_parts_mut;
-
                 unsafe {
                     let slice = from_raw_parts_mut(self.elems, self.n_elems);
                     ptr::drop_in_place(slice);

@@ -200,7 +200,7 @@ fn test_range_inclusive() {
 
 #[test]
 fn test_range_inclusive_max_value() {
-    let max = ::std::usize::MAX;
+    let max = std::usize::MAX;
     let map: BTreeMap<_, _> = vec![(max, 0)].into_iter().collect();
 
     assert_eq!(map.range(max..=max).collect::<Vec<_>>(), &[(&max, &0)]);
