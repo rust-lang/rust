@@ -160,4 +160,46 @@ impl_froms!(TokenTree: Leaf, Subtree);
          impl From < Subtree > for TokenTree {fn from (it : Subtree) -> TokenTree {TokenTree :: Subtree (it)}}"
     )
     }
+
+    #[test]
+    fn test_fail_match_pattern_by_token() {
+        let macro_definition = r#"
+        macro_rules! foo {
+            ($ i:ident) => (
+                mod $ i {}
+            );
+            (= $ i:ident) => (
+                fn $ i() {}
+            );
+            (+ $ i:ident) => (
+                struct $ i;
+            )
+        }
+"#;
+
+        let macro_invocation = r#"
+foo! {   foo }
+"#;
+
+        let source_file = ast::SourceFile::parse(macro_definition);
+        let macro_definition = source_file
+            .syntax()
+            .descendants()
+            .find_map(ast::MacroCall::cast)
+            .unwrap();
+
+        let source_file = ast::SourceFile::parse(macro_invocation);
+        let macro_invocation = source_file
+            .syntax()
+            .descendants()
+            .find_map(ast::MacroCall::cast)
+            .unwrap();
+
+        let definition_tt = ast_to_token_tree(macro_definition.token_tree().unwrap()).unwrap();
+        let invocation_tt = ast_to_token_tree(macro_invocation.token_tree().unwrap()).unwrap();
+        let rules = crate::MacroRules::parse(&definition_tt).unwrap();
+        let expansion = rules.expand(&invocation_tt).unwrap();
+        assert_eq!(expansion.to_string(), "mod foo {}")
+    }
+
 }
