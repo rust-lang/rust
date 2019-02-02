@@ -3949,12 +3949,42 @@ impl str {
         me.make_ascii_lowercase()
     }
 
-    /// Escapes each char in `s` with [`char::escape_debug`].
+    /// Return an iterator that escapes each char in `s` with [`char::escape_debug`].
     ///
     /// Note: only extended grapheme codepoints that begin the string will be
     /// escaped.
     ///
     /// [`char::escape_debug`]: ../std/primitive.char.html#method.escape_debug
+    ///
+    /// # Examples
+    ///
+    /// As an iterator:
+    ///
+    /// ```
+    /// for c in "❤\n!".escape_debug() {
+    ///     print!("{}", c);
+    /// }
+    /// println!();
+    /// ```
+    ///
+    /// Using `println!` directly:
+    ///
+    /// ```
+    /// println!("{}", "❤\n!".escape_debug());
+    /// ```
+    ///
+    ///
+    /// Both are equivalent to:
+    ///
+    /// ```
+    /// println!("❤\\n!");
+    /// ```
+    ///
+    /// Using `to_string`:
+    ///
+    /// ```
+    /// assert_eq!("❤\n!".escape_debug().to_string(), "❤\\n!");
+    /// ```
     #[stable(feature = "str_escape", since = "1.34.0")]
     pub fn escape_debug(&self) -> EscapeDebug {
         let mut chars = self.chars();
@@ -3967,17 +3997,77 @@ impl str {
         }
     }
 
-    /// Escapes each char in `s` with [`char::escape_default`].
+    /// Return an iterator that escapes each char in `s` with [`char::escape_default`].
     ///
     /// [`char::escape_default`]: ../std/primitive.char.html#method.escape_default
+    ///
+    /// # Examples
+    ///
+    /// As an iterator:
+    ///
+    /// ```
+    /// for c in "❤\n!".escape_default() {
+    ///     print!("{}", c);
+    /// }
+    /// println!();
+    /// ```
+    ///
+    /// Using `println!` directly:
+    ///
+    /// ```
+    /// println!("{}", "❤\n!".escape_default());
+    /// ```
+    ///
+    ///
+    /// Both are equivalent to:
+    ///
+    /// ```
+    /// println!("\\u{{2764}}\n!");
+    /// ```
+    ///
+    /// Using `to_string`:
+    ///
+    /// ```
+    /// assert_eq!("❤\n!".escape_default().to_string(), "\\u{2764}\\n!");
+    /// ```
     #[stable(feature = "str_escape", since = "1.34.0")]
     pub fn escape_default(&self) -> EscapeDefault {
         EscapeDefault { inner: self.chars().flat_map(CharEscapeDefault) }
     }
 
-    /// Escapes each char in `s` with [`char::escape_unicode`].
+    /// Return an iterator that escapes each char in `s` with [`char::escape_unicode`].
     ///
     /// [`char::escape_unicode`]: ../std/primitive.char.html#method.escape_unicode
+    ///
+    /// # Examples
+    ///
+    /// As an iterator:
+    ///
+    /// ```
+    /// for c in "❤\n!".escape_unicode() {
+    ///     print!("{}", c);
+    /// }
+    /// println!();
+    /// ```
+    ///
+    /// Using `println!` directly:
+    ///
+    /// ```
+    /// println!("{}", "❤\n!".escape_unicode());
+    /// ```
+    ///
+    ///
+    /// Both are equivalent to:
+    ///
+    /// ```
+    /// println!("\\u{{2764}}\\u{{a}}\\u{{21}}");
+    /// ```
+    ///
+    /// Using `to_string`:
+    ///
+    /// ```
+    /// assert_eq!("❤\n!".escape_unicode().to_string(), "\\u{2764}\\u{a}\\u{21}");
+    /// ```
     #[stable(feature = "str_escape", since = "1.34.0")]
     pub fn escape_unicode(&self) -> EscapeUnicode {
         EscapeUnicode { inner: self.chars().flat_map(CharEscapeUnicode) }
