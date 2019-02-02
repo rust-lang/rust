@@ -552,7 +552,7 @@ use crate::string;
 /// [`format_args!`]: ../../std/macro.format_args.html
 /// [`format!`]: ../../std/macro.format.html
 #[stable(feature = "rust1", since = "1.0.0")]
-pub fn format(args: Arguments) -> string::String {
+pub fn format(args: Arguments<'_>) -> string::String {
     let capacity = args.estimated_capacity();
     let mut output = string::String::with_capacity(capacity);
     output

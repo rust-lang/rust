@@ -232,7 +232,7 @@ pub struct PeekMut<'a, T: 'a + Ord> {
 
 #[stable(feature = "collection_debug", since = "1.17.0")]
 impl<T: Ord + fmt::Debug> fmt::Debug for PeekMut<'_, T> {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_tuple("PeekMut")
          .field(&self.heap.data[0])
          .finish()
@@ -295,7 +295,7 @@ impl<T: Ord> Default for BinaryHeap<T> {
 
 #[stable(feature = "binaryheap_debug", since = "1.4.0")]
 impl<T: fmt::Debug + Ord> fmt::Debug for BinaryHeap<T> {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_list().entries(self.iter()).finish()
     }
 }
@@ -353,7 +353,7 @@ impl<T: Ord> BinaryHeap<T> {
     /// }
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub fn iter(&self) -> Iter<T> {
+    pub fn iter(&self) -> Iter<'_, T> {
         Iter { iter: self.data.iter() }
     }
 
@@ -404,7 +404,7 @@ impl<T: Ord> BinaryHeap<T> {
     /// assert_eq!(heap.peek(), Some(&2));
     /// ```
     #[stable(feature = "binary_heap_peek_mut", since = "1.12.0")]
-    pub fn peek_mut(&mut self) -> Option<PeekMut<T>> {
+    pub fn peek_mut(&mut self) -> Option<PeekMut<'_, T>> {
         if self.is_empty() {
             None
         } else {
@@ -765,7 +765,7 @@ impl<T: Ord> BinaryHeap<T> {
     /// ```
     #[inline]
     #[stable(feature = "drain", since = "1.6.0")]
-    pub fn drain(&mut self) -> Drain<T> {
+    pub fn drain(&mut self) -> Drain<'_, T> {
         Drain { iter: self.data.drain(..) }
     }
 
@@ -937,7 +937,7 @@ pub struct Iter<'a, T: 'a> {
 
 #[stable(feature = "collection_debug", since = "1.17.0")]
 impl<T: fmt::Debug> fmt::Debug for Iter<'_, T> {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_tuple("Iter")
          .field(&self.iter.as_slice())
          .finish()
@@ -1000,7 +1000,7 @@ pub struct IntoIter<T> {
 
 #[stable(feature = "collection_debug", since = "1.17.0")]
 impl<T: fmt::Debug> fmt::Debug for IntoIter<T> {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_tuple("IntoIter")
          .field(&self.iter.as_slice())
          .finish()

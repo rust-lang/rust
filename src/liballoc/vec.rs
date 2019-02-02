@@ -1122,7 +1122,7 @@ impl<T> Vec<T> {
     /// assert_eq!(v, &[]);
     /// ```
     #[stable(feature = "drain", since = "1.6.0")]
-    pub fn drain<R>(&mut self, range: R) -> Drain<T>
+    pub fn drain<R>(&mut self, range: R) -> Drain<'_, T>
         where R: RangeBounds<usize>
     {
         // Memory safety
@@ -1979,7 +1979,7 @@ impl<T> Vec<T> {
     /// ```
     #[inline]
     #[stable(feature = "vec_splice", since = "1.21.0")]
-    pub fn splice<R, I>(&mut self, range: R, replace_with: I) -> Splice<I::IntoIter>
+    pub fn splice<R, I>(&mut self, range: R, replace_with: I) -> Splice<'_, I::IntoIter>
         where R: RangeBounds<usize>, I: IntoIterator<Item=T>
     {
         Splice {
@@ -2034,7 +2034,7 @@ impl<T> Vec<T> {
     /// assert_eq!(odds, vec![1, 3, 5, 9, 11, 13, 15]);
     /// ```
     #[unstable(feature = "drain_filter", reason = "recently added", issue = "43244")]
-    pub fn drain_filter<F>(&mut self, filter: F) -> DrainFilter<T, F>
+    pub fn drain_filter<F>(&mut self, filter: F) -> DrainFilter<'_, T, F>
         where F: FnMut(&mut T) -> bool,
     {
         let old_len = self.len();
@@ -2150,7 +2150,7 @@ impl<T> Default for Vec<T> {
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T: fmt::Debug> fmt::Debug for Vec<T> {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         fmt::Debug::fmt(&**self, f)
     }
 }
@@ -2293,7 +2293,7 @@ pub struct IntoIter<T> {
 
 #[stable(feature = "vec_intoiter_debug", since = "1.13.0")]
 impl<T: fmt::Debug> fmt::Debug for IntoIter<T> {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_tuple("IntoIter")
             .field(&self.as_slice())
             .finish()
@@ -2463,7 +2463,7 @@ pub struct Drain<'a, T: 'a> {
 
 #[stable(feature = "collection_debug", since = "1.17.0")]
 impl<'a, T: 'a + fmt::Debug> fmt::Debug for Drain<'a, T> {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_tuple("Drain")
          .field(&self.iter.as_slice())
          .finish()
@@ -2652,7 +2652,7 @@ impl<T> Drain<'_, T> {
 /// An iterator produced by calling `drain_filter` on Vec.
 #[unstable(feature = "drain_filter", reason = "recently added", issue = "43244")]
 #[derive(Debug)]
-pub struct DrainFilter<'a, T: 'a, F>
+pub struct DrainFilter<'a, T, F>
     where F: FnMut(&mut T) -> bool,
 {
     vec: &'a mut Vec<T>,

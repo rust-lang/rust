@@ -249,7 +249,7 @@ impl<K, Q: ?Sized> super::Recover<Q> for BTreeMap<K, ()>
 
     fn replace(&mut self, key: K) -> Option<K> {
         self.ensure_root_is_owned();
-        match search::search_tree::<marker::Mut, K, (), K>(self.root.as_mut(), &key) {
+        match search::search_tree::<marker::Mut<'_>, K, (), K>(self.root.as_mut(), &key) {
             Found(handle) => Some(mem::replace(handle.into_kv_mut().0, key)),
             GoDown(handle) => {
                 VacantEntry {
@@ -280,7 +280,7 @@ pub struct Iter<'a, K: 'a, V: 'a> {
 
 #[stable(feature = "collection_debug", since = "1.17.0")]
 impl<K: fmt::Debug, V: fmt::Debug> fmt::Debug for Iter<'_, K, V> {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_list().entries(self.clone()).finish()
     }
 }
@@ -315,7 +315,7 @@ pub struct IntoIter<K, V> {
 
 #[stable(feature = "collection_debug", since = "1.17.0")]
 impl<K: fmt::Debug, V: fmt::Debug> fmt::Debug for IntoIter<K, V> {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let range = Range {
             front: self.front.reborrow(),
             back: self.back.reborrow(),
@@ -338,7 +338,7 @@ pub struct Keys<'a, K: 'a, V: 'a> {
 
 #[stable(feature = "collection_debug", since = "1.17.0")]
 impl<K: fmt::Debug, V> fmt::Debug for Keys<'_, K, V> {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_list().entries(self.clone()).finish()
     }
 }
@@ -357,7 +357,7 @@ pub struct Values<'a, K: 'a, V: 'a> {
 
 #[stable(feature = "collection_debug", since = "1.17.0")]
 impl<K, V: fmt::Debug> fmt::Debug for Values<'_, K, V> {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_list().entries(self.clone()).finish()
     }
 }
@@ -390,7 +390,7 @@ pub struct Range<'a, K: 'a, V: 'a> {
 
 #[stable(feature = "collection_debug", since = "1.17.0")]
 impl<K: fmt::Debug, V: fmt::Debug> fmt::Debug for Range<'_, K, V> {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_list().entries(self.clone()).finish()
     }
 }
@@ -413,7 +413,7 @@ pub struct RangeMut<'a, K: 'a, V: 'a> {
 
 #[stable(feature = "collection_debug", since = "1.17.0")]
 impl<K: fmt::Debug, V: fmt::Debug> fmt::Debug for RangeMut<'_, K, V> {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let range = Range {
             front: self.front.reborrow(),
             back: self.back.reborrow(),
@@ -443,7 +443,7 @@ pub enum Entry<'a, K: 'a, V: 'a> {
 
 #[stable(feature= "debug_btree_map", since = "1.12.0")]
 impl<K: Debug + Ord, V: Debug> Debug for Entry<'_, K, V> {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match *self {
             Vacant(ref v) => f.debug_tuple("Entry")
                               .field(v)
@@ -471,7 +471,7 @@ pub struct VacantEntry<'a, K: 'a, V: 'a> {
 
 #[stable(feature= "debug_btree_map", since = "1.12.0")]
 impl<K: Debug + Ord, V> Debug for VacantEntry<'_, K, V> {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_tuple("VacantEntry")
          .field(self.key())
          .finish()
@@ -494,7 +494,7 @@ pub struct OccupiedEntry<'a, K: 'a, V: 'a> {
 
 #[stable(feature= "debug_btree_map", since = "1.12.0")]
 impl<K: Debug + Ord, V: Debug> Debug for OccupiedEntry<'_, K, V> {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("OccupiedEntry")
          .field("key", self.key())
          .field("value", self.get())
@@ -818,7 +818,7 @@ impl<K: Ord, V> BTreeMap<K, V> {
     /// assert_eq!(Some((&5, &"b")), map.range(4..).next());
     /// ```
     #[stable(feature = "btree_range", since = "1.17.0")]
-    pub fn range<T: ?Sized, R>(&self, range: R) -> Range<K, V>
+    pub fn range<T: ?Sized, R>(&self, range: R) -> Range<'_, K, V>
         where T: Ord, K: Borrow<T>, R: RangeBounds<T>
     {
         let root1 = self.root.as_ref();
@@ -859,7 +859,7 @@ impl<K: Ord, V> BTreeMap<K, V> {
     /// }
     /// ```
     #[stable(feature = "btree_range", since = "1.17.0")]
-    pub fn range_mut<T: ?Sized, R>(&mut self, range: R) -> RangeMut<K, V>
+    pub fn range_mut<T: ?Sized, R>(&mut self, range: R) -> RangeMut<'_, K, V>
         where T: Ord, K: Borrow<T>, R: RangeBounds<T>
     {
         let root1 = self.root.as_mut();
@@ -892,7 +892,7 @@ impl<K: Ord, V> BTreeMap<K, V> {
     /// assert_eq!(count["a"], 3);
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub fn entry(&mut self, key: K) -> Entry<K, V> {
+    pub fn entry(&mut self, key: K) -> Entry<'_, K, V> {
         // FIXME(@porglezomp) Avoid allocating if we don't insert
         self.ensure_root_is_owned();
         match search::search_tree(self.root.as_mut(), &key) {
@@ -1783,7 +1783,7 @@ impl<K: Ord, V: Ord> Ord for BTreeMap<K, V> {
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<K: Debug, V: Debug> Debug for BTreeMap<K, V> {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_map().entries(self.iter()).finish()
     }
 }
@@ -1940,7 +1940,7 @@ impl<K, V> BTreeMap<K, V> {
     /// assert_eq!((*first_key, *first_value), (1, "a"));
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub fn iter(&self) -> Iter<K, V> {
+    pub fn iter(&self) -> Iter<'_, K, V> {
         Iter {
             range: Range {
                 front: first_leaf_edge(self.root.as_ref()),
@@ -1972,7 +1972,7 @@ impl<K, V> BTreeMap<K, V> {
     /// }
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub fn iter_mut(&mut self) -> IterMut<K, V> {
+    pub fn iter_mut(&mut self) -> IterMut<'_, K, V> {
         let root1 = self.root.as_mut();
         let root2 = unsafe { ptr::read(&root1) };
         IterMut {
@@ -2049,7 +2049,7 @@ impl<K, V> BTreeMap<K, V> {
     ///                     String::from("goodbye!")]);
     /// ```
     #[stable(feature = "map_values_mut", since = "1.10.0")]
-    pub fn values_mut(&mut self) -> ValuesMut<K, V> {
+    pub fn values_mut(&mut self) -> ValuesMut<'_, K, V> {
         ValuesMut { inner: self.iter_mut() }
     }
 

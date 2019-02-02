@@ -1122,21 +1122,21 @@ impl<T: ?Sized + Hash> Hash for Rc<T> {
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T: ?Sized + fmt::Display> fmt::Display for Rc<T> {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         fmt::Display::fmt(&**self, f)
     }
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T: ?Sized + fmt::Debug> fmt::Debug for Rc<T> {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         fmt::Debug::fmt(&**self, f)
     }
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T: ?Sized> fmt::Pointer for Rc<T> {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         fmt::Pointer::fmt(&(&**self as *const T), f)
     }
 }
@@ -1460,7 +1460,7 @@ impl<T: ?Sized> Clone for Weak<T> {
 
 #[stable(feature = "rc_weak", since = "1.4.0")]
 impl<T: ?Sized + fmt::Debug> fmt::Debug for Weak<T> {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "(Weak)")
     }
 }

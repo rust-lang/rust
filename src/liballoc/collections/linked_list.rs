@@ -64,7 +64,7 @@ pub struct Iter<'a, T: 'a> {
 
 #[stable(feature = "collection_debug", since = "1.17.0")]
 impl<T: fmt::Debug> fmt::Debug for Iter<'_, T> {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_tuple("Iter")
          .field(&self.len)
          .finish()
@@ -96,7 +96,7 @@ pub struct IterMut<'a, T: 'a> {
 
 #[stable(feature = "collection_debug", since = "1.17.0")]
 impl<T: fmt::Debug> fmt::Debug for IterMut<'_, T> {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_tuple("IterMut")
          .field(&self.list)
          .field(&self.len)
@@ -119,7 +119,7 @@ pub struct IntoIter<T> {
 
 #[stable(feature = "collection_debug", since = "1.17.0")]
 impl<T: fmt::Debug> fmt::Debug for IntoIter<T> {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_tuple("IntoIter")
          .field(&self.list)
          .finish()
@@ -333,7 +333,7 @@ impl<T> LinkedList<T> {
     /// ```
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub fn iter(&self) -> Iter<T> {
+    pub fn iter(&self) -> Iter<'_, T> {
         Iter {
             head: self.head,
             tail: self.tail,
@@ -367,7 +367,7 @@ impl<T> LinkedList<T> {
     /// ```
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub fn iter_mut(&mut self) -> IterMut<T> {
+    pub fn iter_mut(&mut self) -> IterMut<'_, T> {
         IterMut {
             head: self.head,
             tail: self.tail,
@@ -766,7 +766,7 @@ impl<T> LinkedList<T> {
     /// assert_eq!(odds.into_iter().collect::<Vec<_>>(), vec![1, 3, 5, 9, 11, 13, 15]);
     /// ```
     #[unstable(feature = "drain_filter", reason = "recently added", issue = "43244")]
-    pub fn drain_filter<F>(&mut self, filter: F) -> DrainFilter<T, F>
+    pub fn drain_filter<F>(&mut self, filter: F) -> DrainFilter<'_, T, F>
         where F: FnMut(&mut T) -> bool
     {
         // avoid borrow issues.
@@ -1023,7 +1023,7 @@ impl<T, F> Drop for DrainFilter<'_, T, F>
 impl<T: fmt::Debug, F> fmt::Debug for DrainFilter<'_, T, F>
     where F: FnMut(&mut T) -> bool
 {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_tuple("DrainFilter")
          .field(&self.list)
          .finish()
@@ -1166,7 +1166,7 @@ impl<T: Clone> Clone for LinkedList<T> {
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T: fmt::Debug> fmt::Debug for LinkedList<T> {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_list().entries(self).finish()
     }
 }

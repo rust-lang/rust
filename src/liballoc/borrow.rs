@@ -332,7 +332,7 @@ impl<B: ?Sized> fmt::Debug for Cow<'_, B>
     where B: fmt::Debug + ToOwned,
           <B as ToOwned>::Owned: fmt::Debug
 {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match *self {
             Borrowed(ref b) => fmt::Debug::fmt(b, f),
             Owned(ref o) => fmt::Debug::fmt(o, f),
@@ -345,7 +345,7 @@ impl<B: ?Sized> fmt::Display for Cow<'_, B>
     where B: fmt::Display + ToOwned,
           <B as ToOwned>::Owned: fmt::Display
 {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match *self {
             Borrowed(ref b) => fmt::Display::fmt(b, f),
             Owned(ref o) => fmt::Display::fmt(o, f),

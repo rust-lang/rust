@@ -1494,7 +1494,7 @@ impl String {
     /// assert_eq!(s, "");
     /// ```
     #[stable(feature = "drain", since = "1.6.0")]
-    pub fn drain<R>(&mut self, range: R) -> Drain
+    pub fn drain<R>(&mut self, range: R) -> Drain<'_>
         where R: RangeBounds<usize>
     {
         // Memory safety
@@ -1678,14 +1678,14 @@ impl FromUtf8Error {
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl fmt::Display for FromUtf8Error {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         fmt::Display::fmt(&self.error, f)
     }
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl fmt::Display for FromUtf16Error {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         fmt::Display::fmt("invalid utf-16: lone surrogate found", f)
     }
 }
@@ -1876,7 +1876,7 @@ impl Default for String {
 #[stable(feature = "rust1", since = "1.0.0")]
 impl fmt::Display for String {
     #[inline]
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         fmt::Display::fmt(&**self, f)
     }
 }
@@ -1884,7 +1884,7 @@ impl fmt::Display for String {
 #[stable(feature = "rust1", since = "1.0.0")]
 impl fmt::Debug for String {
     #[inline]
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         fmt::Debug::fmt(&**self, f)
     }
 }
@@ -2106,14 +2106,14 @@ impl Clone for ParseError {
 
 #[stable(feature = "str_parse_error", since = "1.5.0")]
 impl fmt::Debug for ParseError {
-    fn fmt(&self, _: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, _: &mut fmt::Formatter<'_>) -> fmt::Result {
         match *self {}
     }
 }
 
 #[stable(feature = "str_parse_error2", since = "1.8.0")]
 impl fmt::Display for ParseError {
-    fn fmt(&self, _: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, _: &mut fmt::Formatter<'_>) -> fmt::Result {
         match *self {}
     }
 }
@@ -2374,7 +2374,7 @@ pub struct Drain<'a> {
 
 #[stable(feature = "collection_debug", since = "1.17.0")]
 impl fmt::Debug for Drain<'_> {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.pad("Drain { .. }")
     }
 }

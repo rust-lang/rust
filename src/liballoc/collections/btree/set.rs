@@ -80,7 +80,7 @@ pub struct Iter<'a, T: 'a> {
 
 #[stable(feature = "collection_debug", since = "1.17.0")]
 impl<T: fmt::Debug> fmt::Debug for Iter<'_, T> {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_tuple("Iter")
          .field(&self.iter.clone())
          .finish()
@@ -128,7 +128,7 @@ pub struct Difference<'a, T: 'a> {
 
 #[stable(feature = "collection_debug", since = "1.17.0")]
 impl<T: fmt::Debug> fmt::Debug for Difference<'_, T> {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_tuple("Difference")
          .field(&self.a)
          .field(&self.b)
@@ -151,7 +151,7 @@ pub struct SymmetricDifference<'a, T: 'a> {
 
 #[stable(feature = "collection_debug", since = "1.17.0")]
 impl<T: fmt::Debug> fmt::Debug for SymmetricDifference<'_, T> {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_tuple("SymmetricDifference")
          .field(&self.a)
          .field(&self.b)
@@ -174,7 +174,7 @@ pub struct Intersection<'a, T: 'a> {
 
 #[stable(feature = "collection_debug", since = "1.17.0")]
 impl<T: fmt::Debug> fmt::Debug for Intersection<'_, T> {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_tuple("Intersection")
          .field(&self.a)
          .field(&self.b)
@@ -197,7 +197,7 @@ pub struct Union<'a, T: 'a> {
 
 #[stable(feature = "collection_debug", since = "1.17.0")]
 impl<T: fmt::Debug> fmt::Debug for Union<'_, T> {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_tuple("Union")
          .field(&self.a)
          .field(&self.b)
@@ -244,7 +244,7 @@ impl<T: Ord> BTreeSet<T> {
     /// assert_eq!(Some(&5), set.range(4..).next());
     /// ```
     #[stable(feature = "btree_range", since = "1.17.0")]
-    pub fn range<K: ?Sized, R>(&self, range: R) -> Range<T>
+    pub fn range<K: ?Sized, R>(&self, range: R) -> Range<'_, T>
         where K: Ord, T: Borrow<K>, R: RangeBounds<K>
     {
         Range { iter: self.map.range(range) }
@@ -706,7 +706,7 @@ impl<T> BTreeSet<T> {
     /// assert_eq!(set_iter.next(), None);
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub fn iter(&self) -> Iter<T> {
+    pub fn iter(&self) -> Iter<'_, T> {
         Iter { iter: self.map.keys() }
     }
 
@@ -905,7 +905,7 @@ impl<T: Ord + Clone> BitOr<&BTreeSet<T>> for &BTreeSet<T> {
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T: Debug> Debug for BTreeSet<T> {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_set().entries(self.iter()).finish()
     }
 }

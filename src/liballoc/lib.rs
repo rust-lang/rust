@@ -63,6 +63,9 @@
 #![no_std]
 #![needs_allocator]
 
+#![deny(rust_2018_idioms)]
+#![allow(explicit_outlives_requirements)]
+
 #![warn(deprecated_in_future)]
 #![warn(intra_doc_link_resolution_failure)]
 #![warn(missing_debug_implementations)]

@@ -801,7 +801,7 @@ impl<T> VecDeque<T> {
     /// assert_eq!(&c[..], b);
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub fn iter(&self) -> Iter<T> {
+    pub fn iter(&self) -> Iter<'_, T> {
         Iter {
             tail: self.tail,
             head: self.head,
@@ -827,7 +827,7 @@ impl<T> VecDeque<T> {
     /// assert_eq!(&buf.iter_mut().collect::<Vec<&mut i32>>()[..], b);
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub fn iter_mut(&mut self) -> IterMut<T> {
+    pub fn iter_mut(&mut self) -> IterMut<'_, T> {
         IterMut {
             tail: self.tail,
             head: self.head,
@@ -961,7 +961,7 @@ impl<T> VecDeque<T> {
     /// ```
     #[inline]
     #[stable(feature = "drain", since = "1.6.0")]
-    pub fn drain<R>(&mut self, range: R) -> Drain<T>
+    pub fn drain<R>(&mut self, range: R) -> Drain<'_, T>
         where R: RangeBounds<usize>
     {
         // Memory safety
@@ -2127,7 +2127,7 @@ pub struct Iter<'a, T: 'a> {
 
 #[stable(feature = "collection_debug", since = "1.17.0")]
 impl<T: fmt::Debug> fmt::Debug for Iter<'_, T> {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let (front, back) = RingSlices::ring_slices(self.ring, self.head, self.tail);
         f.debug_tuple("Iter")
             .field(&front)
@@ -2232,7 +2232,7 @@ pub struct IterMut<'a, T: 'a> {
 
 #[stable(feature = "collection_debug", since = "1.17.0")]
 impl<'a, T: fmt::Debug> fmt::Debug for IterMut<'_, T> {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let (front, back) = RingSlices::ring_slices(&*self.ring, self.head, self.tail);
         f.debug_tuple("IterMut")
             .field(&front)
@@ -2323,7 +2323,7 @@ pub struct IntoIter<T> {
 
 #[stable(feature = "collection_debug", since = "1.17.0")]
 impl<T: fmt::Debug> fmt::Debug for IntoIter<T> {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_tuple("IntoIter")
          .field(&self.inner)
          .finish()
@@ -2381,7 +2381,7 @@ pub struct Drain<'a, T: 'a> {
 
 #[stable(feature = "collection_debug", since = "1.17.0")]
 impl<T: fmt::Debug> fmt::Debug for Drain<'_, T> {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_tuple("Drain")
          .field(&self.after_tail)
          .field(&self.after_head)
@@ -2657,7 +2657,7 @@ impl<'a, T: 'a + Copy> Extend<&'a T> for VecDeque<T> {
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T: fmt::Debug> fmt::Debug for VecDeque<T> {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_list().entries(self).finish()
     }
 }
