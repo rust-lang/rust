@@ -1,0 +1,82 @@
+From 725a1e7b487e32b5f2e90049c8b37fed1a957003 Mon Sep 17 00:00:00 2001
+From: bjorn3 <bjorn3@users.noreply.github.com>
+Date: Sat, 2 Feb 2019 11:39:22 +0100
+Subject: [PATCH] Workaround missing saturating_sub intrinsic impl
+
+---
+ src/libcore/num/mod.rs | 20 --------------------
+ 1 file changed, 20 deletions(-)
+
+diff --git a/src/libcore/num/mod.rs b/src/libcore/num/mod.rs
+index eed1241..f928d40 100644
+--- a/src/libcore/num/mod.rs
++++ b/src/libcore/num/mod.rs
+@@ -881,16 +881,11 @@ $EndFeature, "
+             #[stable(feature = "rust1", since = "1.0.0")]
+             #[inline]
+             pub fn saturating_add(self, rhs: Self) -> Self {
+-                #[cfg(stage0)]
+                 match self.checked_add(rhs) {
+                     Some(x) => x,
+                     None if rhs >= 0 => Self::max_value(),
+                     None => Self::min_value(),
+                 }
+-                #[cfg(not(stage0))]
+-                {
+-                    intrinsics::saturating_add(self, rhs)
+-                }
+             }
+         }
+ 
+@@ -911,16 +906,11 @@ $EndFeature, "
+             #[stable(feature = "rust1", since = "1.0.0")]
+             #[inline]
+             pub fn saturating_sub(self, rhs: Self) -> Self {
+-                #[cfg(stage0)]
+                 match self.checked_sub(rhs) {
+                     Some(x) => x,
+                     None if rhs >= 0 => Self::min_value(),
+                     None => Self::max_value(),
+                 }
+-                #[cfg(not(stage0))]
+-                {
+-                    intrinsics::saturating_sub(self, rhs)
+-                }
+             }
+         }
+ 
+@@ -2740,15 +2730,10 @@ assert_eq!(200u8.saturating_add(127), 255);", $EndFeature, "
+             #[stable(feature = "rust1", since = "1.0.0")]
+             #[inline]
+             pub fn saturating_add(self, rhs: Self) -> Self {
+-                #[cfg(stage0)]
+                 match self.checked_add(rhs) {
+                     Some(x) => x,
+                     None => Self::max_value(),
+                 }
+-                #[cfg(not(stage0))]
+-                {
+-                    intrinsics::saturating_add(self, rhs)
+-                }
+             }
+         }
+ 
+@@ -2767,15 +2752,10 @@ assert_eq!(13", stringify!($SelfT), ".saturating_sub(127), 0);", $EndFeature, "
+             #[stable(feature = "rust1", since = "1.0.0")]
+             #[inline]
+             pub fn saturating_sub(self, rhs: Self) -> Self {
+-                #[cfg(stage0)]
+                 match self.checked_sub(rhs) {
+                     Some(x) => x,
+                     None => Self::min_value(),
+                 }
+-                #[cfg(not(stage0))]
+-                {
+-                    intrinsics::saturating_sub(self, rhs)
+-                }
+             }
+         }
+ 
+-- 
+2.11.0
+

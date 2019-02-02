@@ -1,6 +1,6 @@
-From e56a552cfe6d51ec4db5ea69aff1c46c0090f470 Mon Sep 17 00:00:00 2001
+From d723688cb9f94c7c90617eb96b1d64fd968a02c3 Mon Sep 17 00:00:00 2001
 From: bjorn3 <bjorn3@users.noreply.github.com>
-Date: Tue, 29 Jan 2019 20:19:01 +0100
+Date: Sat, 2 Feb 2019 11:30:28 +0100
 Subject: [PATCH] Disable u128 and i128 in libcore
 
 ---
@@ -18,7 +18,7 @@ Subject: [PATCH] Disable u128 and i128 in libcore
  src/libcore/num/wrapping.rs      |  14 ++---
  src/libcore/ops/arith.rs         |  22 +++----
  src/libcore/ops/bit.rs           |  30 ++++------
- src/libcore/sync/atomic.rs       |  28 ---------
+ src/libcore/sync/atomic.rs       |  30 ----------
  src/libcore/tests/iter.rs        |  15 -----
  src/libcore/tests/num/mod.rs     |  18 ------
  src/libcore/time.rs              | 123 ---------------------------------------
@@ -26,7 +26,7 @@ Subject: [PATCH] Disable u128 and i128 in libcore
  src/libstd/net/ip.rs             |  20 -------
  src/libstd/num.rs                |   2 +-
  src/libstd/panic.rs              |   6 --
- 22 files changed, 63 insertions(+), 368 deletions(-)
+ 22 files changed, 63 insertions(+), 370 deletions(-)
 
 diff --git a/src/libcore/clone.rs b/src/libcore/clone.rs
 index ed90b7d..1739f91 100644
@@ -94,10 +94,10 @@ index 0e47c2f..570b949 100644
  default_impl! { f32, 0.0f32, "Returns the default value of `0.0`" }
  default_impl! { f64, 0.0f64, "Returns the default value of `0.0`" }
 diff --git a/src/libcore/fmt/num.rs b/src/libcore/fmt/num.rs
-index c7c8fc5..689d611 100644
+index 3a81233..f889d57 100644
 --- a/src/libcore/fmt/num.rs
 +++ b/src/libcore/fmt/num.rs
-@@ -19,7 +19,6 @@ trait Int: PartialEq + PartialOrd + Div<Output=Self> + Rem<Output=Self> +
+@@ -17,7 +17,6 @@ trait Int: PartialEq + PartialOrd + Div<Output=Self> + Rem<Output=Self> +
      fn to_u16(&self) -> u16;
      fn to_u32(&self) -> u32;
      fn to_u64(&self) -> u64;
@@ -105,7 +105,7 @@ index c7c8fc5..689d611 100644
  }
  
  macro_rules! doit {
-@@ -30,10 +29,9 @@ macro_rules! doit {
+@@ -28,10 +27,9 @@ macro_rules! doit {
          fn to_u16(&self) -> u16 { *self as u16 }
          fn to_u32(&self) -> u32 { *self as u32 }
          fn to_u64(&self) -> u64 { *self as u64 }
@@ -117,7 +117,7 @@ index c7c8fc5..689d611 100644
  
  /// A type that represents a specific radix
  #[doc(hidden)]
-@@ -174,7 +172,6 @@ integer! { i8, u8 }
+@@ -176,7 +174,6 @@ integer! { i8, u8 }
  integer! { i16, u16 }
  integer! { i32, u32 }
  integer! { i64, u64 }
@@ -125,7 +125,7 @@ index c7c8fc5..689d611 100644
  
  const DEC_DIGITS_LUT: &'static[u8] =
      b"0001020304050607080910111213141516171819\
-@@ -250,7 +247,6 @@ macro_rules! impl_Display {
+@@ -252,7 +249,6 @@ macro_rules! impl_Display {
  
  impl_Display!(i8, u8, i16, u16, i32, u32: to_u32);
  impl_Display!(i64, u64: to_u64);
@@ -218,10 +218,10 @@ index dfe1d2a..06cc578 100644
  
  /// An iterator adapter that produces output as long as the underlying
 diff --git a/src/libcore/lib.rs b/src/libcore/lib.rs
-index cde7e7c..094e1fb 100644
+index 97b07aa..9e1e9a6 100644
 --- a/src/libcore/lib.rs
 +++ b/src/libcore/lib.rs
-@@ -146,14 +146,12 @@ mod uint_macros;
+@@ -149,14 +149,12 @@ mod uint_macros;
  #[path = "num/i16.rs"]   pub mod i16;
  #[path = "num/i32.rs"]   pub mod i32;
  #[path = "num/i64.rs"]   pub mod i64;
@@ -252,7 +252,7 @@ index 457d556..91425fb 100644
          bool char
      }
 diff --git a/src/libcore/mem.rs b/src/libcore/mem.rs
-index 0eeac5e..d8277ef 100644
+index 8b6d9d8..8023dc1 100644
 --- a/src/libcore/mem.rs
 +++ b/src/libcore/mem.rs
 @@ -163,12 +163,10 @@ pub fn forget_unsized<T: ?Sized>(t: T) {
@@ -269,7 +269,7 @@ index 0eeac5e..d8277ef 100644
  /// f64 | 8
  /// char | 4
 diff --git a/src/libcore/num/mod.rs b/src/libcore/num/mod.rs
-index 7cf2317..f928d40 100644
+index f80f839..eed1241 100644
 --- a/src/libcore/num/mod.rs
 +++ b/src/libcore/num/mod.rs
 @@ -102,13 +102,11 @@ nonzero_integers! {
@@ -286,7 +286,7 @@ index 7cf2317..f928d40 100644
      #[stable(feature = "signed_nonzero", since = "1.34.0")] NonZeroIsize(isize);
  }
  
-@@ -2074,18 +2072,6 @@ impl i64 {
+@@ -2084,18 +2082,6 @@ impl i64 {
           "[0x12, 0x34, 0x56, 0x78, 0x90, 0x12, 0x34, 0x56]" }
  }
  
@@ -305,7 +305,7 @@ index 7cf2317..f928d40 100644
  #[cfg(target_pointer_width = "16")]
  #[lang = "isize"]
  impl isize {
-@@ -4316,17 +4302,6 @@ impl u64 {
+@@ -4336,17 +4322,6 @@ impl u64 {
          "[0x12, 0x34, 0x56, 0x78, 0x90, 0x12, 0x34, 0x56]" }
  }
  
@@ -323,7 +323,7 @@ index 7cf2317..f928d40 100644
  #[cfg(target_pointer_width = "16")]
  #[lang = "usize"]
  impl usize {
-@@ -4410,7 +4385,7 @@ macro_rules! from_str_radix_int_impl {
+@@ -4430,7 +4405,7 @@ macro_rules! from_str_radix_int_impl {
          }
      )*}
  }
@@ -332,7 +332,7 @@ index 7cf2317..f928d40 100644
  
  /// The error type returned when a checked integral type conversion fails.
  #[unstable(feature = "try_from", issue = "33417")]
-@@ -4526,30 +4501,25 @@ macro_rules! rev {
+@@ -4546,30 +4521,25 @@ macro_rules! rev {
  try_from_upper_bounded!(u16, u8);
  try_from_upper_bounded!(u32, u16, u8);
  try_from_upper_bounded!(u64, u32, u16, u8);
@@ -367,7 +367,7 @@ index 7cf2317..f928d40 100644
  
  // usize/isize
  try_from_upper_bounded!(usize, isize);
-@@ -4561,21 +4531,21 @@ mod ptr_try_from_impls {
+@@ -4581,21 +4551,21 @@ mod ptr_try_from_impls {
      use convert::TryFrom;
  
      try_from_upper_bounded!(usize, u8);
@@ -397,7 +397,7 @@ index 7cf2317..f928d40 100644
  }
  
  #[cfg(target_pointer_width = "32")]
-@@ -4584,24 +4554,24 @@ mod ptr_try_from_impls {
+@@ -4604,24 +4574,24 @@ mod ptr_try_from_impls {
      use convert::TryFrom;
  
      try_from_upper_bounded!(usize, u8, u16);
@@ -430,7 +430,7 @@ index 7cf2317..f928d40 100644
  }
  
  #[cfg(target_pointer_width = "64")]
-@@ -4610,24 +4580,20 @@ mod ptr_try_from_impls {
+@@ -4630,24 +4600,20 @@ mod ptr_try_from_impls {
      use convert::TryFrom;
  
      try_from_upper_bounded!(usize, u8, u16, u32);
@@ -459,7 +459,7 @@ index 7cf2317..f928d40 100644
  }
  
  #[doc(hidden)]
-@@ -4662,7 +4628,7 @@ macro_rules! doit {
+@@ -4682,7 +4648,7 @@ macro_rules! doit {
          }
      })*)
  }
@@ -468,7 +468,7 @@ index 7cf2317..f928d40 100644
  
  fn from_str_radix<T: FromStrRadixHelper>(src: &str, radix: u32) -> Result<T, ParseIntError> {
      use self::IntErrorKind::*;
-@@ -4853,52 +4819,38 @@ impl_from_bool! { u8, #[stable(feature = "from_bool", since = "1.28.0")] }
+@@ -4873,52 +4839,38 @@ impl_from_bool! { u8, #[stable(feature = "from_bool", since = "1.28.0")] }
  impl_from_bool! { u16, #[stable(feature = "from_bool", since = "1.28.0")] }
  impl_from_bool! { u32, #[stable(feature = "from_bool", since = "1.28.0")] }
  impl_from_bool! { u64, #[stable(feature = "from_bool", since = "1.28.0")] }
@@ -845,11 +845,11 @@ index 2c9bf24..af2ab6f 100644
 -shr_assign_impl_all! { u8 u16 u32 u64 u128 usize i8 i16 i32 i64 i128 isize }
 +shr_assign_impl_all! { u8 u16 u32 u64 usize i8 i16 i32 i64 isize }
 diff --git a/src/libcore/sync/atomic.rs b/src/libcore/sync/atomic.rs
-index bcedff5..a388e78 100644
+index 8c5dde7..8122120 100644
 --- a/src/libcore/sync/atomic.rs
 +++ b/src/libcore/sync/atomic.rs
-@@ -1978,34 +1978,6 @@ atomic_int! {
-     8,
+@@ -2003,36 +2003,6 @@ atomic_int! {
+     "AtomicU64::new(0)",
      u64 AtomicU64 ATOMIC_U64_INIT
  }
 -#[cfg(target_has_atomic = "128")]
@@ -864,6 +864,7 @@ index bcedff5..a388e78 100644
 -    "#![feature(integer_atomics)]\n\n",
 -    atomic_min, atomic_max,
 -    16,
+-    "AtomicI128::new(0)",
 -    i128 AtomicI128 ATOMIC_I128_INIT
 -}
 -#[cfg(target_has_atomic = "128")]
@@ -878,6 +879,7 @@ index bcedff5..a388e78 100644
 -    "#![feature(integer_atomics)]\n\n",
 -    atomic_umin, atomic_umax,
 -    16,
+-    "AtomicU128::new(0)",
 -    u128 AtomicU128 ATOMIC_U128_INIT
 -}
  #[cfg(target_pointer_width = "16")]
@@ -1134,10 +1136,10 @@ index a751965..5d162cb 100644
      ///
      /// # Examples
 diff --git a/src/libstd/lib.rs b/src/libstd/lib.rs
-index 137ec65..4d1386c 100644
+index f269fda..07c3680 100644
 --- a/src/libstd/lib.rs
 +++ b/src/libstd/lib.rs
-@@ -398,8 +398,6 @@ pub use core::i16;
+@@ -397,8 +397,6 @@ pub use core::i16;
  pub use core::i32;
  #[stable(feature = "rust1", since = "1.0.0")]
  pub use core::i64;
@@ -1146,7 +1148,7 @@ index 137ec65..4d1386c 100644
  #[stable(feature = "rust1", since = "1.0.0")]
  pub use core::usize;
  #[stable(feature = "rust1", since = "1.0.0")]
-@@ -432,8 +430,6 @@ pub use alloc_crate::string;
+@@ -431,8 +429,6 @@ pub use alloc_crate::string;
  pub use alloc_crate::vec;
  #[stable(feature = "rust1", since = "1.0.0")]
  pub use core::char;
