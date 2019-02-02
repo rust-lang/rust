@@ -52,7 +52,7 @@ use alloc::boxed::Box;
 
 use unwind as uw;
 use libc::{c_int, uintptr_t};
-use dwarf::eh::{self, EHContext, EHAction};
+use crate::dwarf::eh::{self, EHContext, EHAction};
 
 #[repr(C)]
 struct Exception {
