@@ -2,6 +2,7 @@
 // to TreeMap
 
 use core::{
+    borrow::Borrow,
     cmp::{
         Ordering::{self, Less, Greater, Equal},
         min, max,
@@ -11,10 +12,7 @@ use core::{
     ops::{BitOr, BitAnd, BitXor, Sub, RangeBounds},
 };
 
-use crate::{
-    borrow::Borrow,
-    collections::btree_map::{self, BTreeMap, Keys},
-};
+use crate::collections::btree_map::{self, BTreeMap, Keys};
 use super::Recover;
 
 // FIXME(conventions): implement bounded iterators

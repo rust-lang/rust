@@ -88,6 +88,7 @@
 #![cfg_attr(test, allow(unused_imports, dead_code))]
 
 use core::{
+    borrow::{Borrow, BorrowMut},
     cmp::Ordering::{self, Less},
     mem::{self, size_of},
     ptr,
@@ -95,7 +96,7 @@ use core::{
 };
 
 use crate::{
-    borrow::{Borrow, BorrowMut, ToOwned},
+    borrow::ToOwned,
     boxed::Box,
     vec::Vec,
 };

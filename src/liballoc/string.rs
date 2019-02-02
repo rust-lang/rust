@@ -64,8 +64,8 @@ use core::{
 };
 
 use crate::{
-    collections::CollectionAllocErr,
     borrow::{Cow, ToOwned},
+    collections::CollectionAllocErr,
     boxed::Box,
     str::{self, from_boxed_utf8_unchecked, FromStr, Utf8Error, Chars},
     vec::Vec,

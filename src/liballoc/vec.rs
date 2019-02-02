@@ -74,9 +74,8 @@ use core::{
 };
 
 use crate::{
+    borrow::{ToOwned, Cow},
     collections::CollectionAllocErr,
-    borrow::ToOwned,
-    borrow::Cow,
     boxed::Box,
     raw_vec::RawVec,
 };

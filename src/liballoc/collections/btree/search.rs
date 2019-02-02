@@ -1,6 +1,7 @@
-use core::cmp::Ordering;
-
-use crate::borrow::Borrow;
+use core::{
+    borrow::Borrow,
+    cmp::Ordering,
+};
 
 use super::node::{Handle, NodeRef, marker, ForceResult::*};
 

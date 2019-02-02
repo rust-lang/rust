@@ -1,4 +1,5 @@
 use core::{
+    borrow::Borrow,
     cmp::Ordering,
     fmt::Debug,
     hash::{Hash, Hasher},
@@ -10,8 +11,6 @@ use core::{
     },
     fmt, intrinsics, mem, ptr,
 };
-
-use crate::borrow::Borrow;
 
 use super::{
     node::{self, Handle, NodeRef, marker, InsertResult::*, ForceResult::*},

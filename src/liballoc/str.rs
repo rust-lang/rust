@@ -29,6 +29,7 @@
 #![allow(unused_imports)]
 
 use core::{
+    borrow::Borrow,
     fmt,
     str::{
         self as core_str,
@@ -41,7 +42,7 @@ use core::{
 };
 
 use crate::{
-    borrow::{Borrow, ToOwned},
+    borrow::ToOwned,
     boxed::Box,
     slice::{SliceConcatExt, SliceIndex},
     string::String,
