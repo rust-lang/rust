@@ -11,7 +11,7 @@ mod if_arc {
     use core::marker::PhantomData;
     use core::mem;
     use core::ptr::{self, NonNull};
-    use sync::Arc;
+    use crate::sync::Arc;
 
     /// A way of waking up a specific task.
     ///

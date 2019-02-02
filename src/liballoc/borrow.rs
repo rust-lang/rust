@@ -6,8 +6,8 @@ use core::cmp::Ordering;
 use core::hash::{Hash, Hasher};
 use core::ops::{Add, AddAssign, Deref};
 
-use fmt;
-use string::String;
+use crate::fmt;
+use crate::string::String;
 
 use self::Cow::*;
 

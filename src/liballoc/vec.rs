@@ -70,11 +70,11 @@ use core::ptr;
 use core::ptr::NonNull;
 use core::slice;
 
-use collections::CollectionAllocErr;
-use borrow::ToOwned;
-use borrow::Cow;
-use boxed::Box;
-use raw_vec::RawVec;
+use crate::collections::CollectionAllocErr;
+use crate::borrow::ToOwned;
+use crate::borrow::Cow;
+use crate::boxed::Box;
+use crate::raw_vec::RawVec;
 
 /// A contiguous growable array type, written `Vec<T>` but pronounced 'vector'.
 ///

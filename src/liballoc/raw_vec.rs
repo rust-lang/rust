@@ -7,10 +7,10 @@ use core::ops::Drop;
 use core::ptr::{self, NonNull, Unique};
 use core::slice;
 
-use alloc::{Alloc, Layout, Global, handle_alloc_error};
-use collections::CollectionAllocErr;
-use collections::CollectionAllocErr::*;
-use boxed::Box;
+use crate::alloc::{Alloc, Layout, Global, handle_alloc_error};
+use crate::collections::CollectionAllocErr;
+use crate::collections::CollectionAllocErr::*;
+use crate::boxed::Box;
 
 /// A low-level utility for more ergonomically allocating, reallocating, and deallocating
 /// a buffer of memory on the heap without having to worry about all the corner cases
@@ -639,7 +639,7 @@ impl<T, A: Alloc> RawVec<T, A> {
         strategy: ReserveStrategy,
     ) -> Result<(), CollectionAllocErr> {
         unsafe {
-            use alloc::AllocErr;
+            use crate::alloc::AllocErr;
 
             // NOTE: we don't early branch on ZSTs here because we want this
             // to actually catch "asking for more than usize::MAX" in that case.

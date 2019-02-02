@@ -8,7 +8,7 @@ use core::ops::Index;
 use core::ops::RangeBounds;
 use core::{fmt, intrinsics, mem, ptr};
 
-use borrow::Borrow;
+use crate::borrow::Borrow;
 
 use super::node::{self, Handle, NodeRef, marker};
 use super::search;

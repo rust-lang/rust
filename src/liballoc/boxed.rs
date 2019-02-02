@@ -73,9 +73,9 @@ use core::ops::{
 use core::ptr::{self, NonNull, Unique};
 use core::task::{LocalWaker, Poll};
 
-use vec::Vec;
-use raw_vec::RawVec;
-use str::from_boxed_utf8_unchecked;
+use crate::vec::Vec;
+use crate::raw_vec::RawVec;
+use crate::str::from_boxed_utf8_unchecked;
 
 /// A pointer type for heap allocation.
 ///

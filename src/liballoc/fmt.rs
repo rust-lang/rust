@@ -527,7 +527,7 @@ pub use core::fmt::{DebugList, DebugMap, DebugSet, DebugStruct, DebugTuple};
 #[stable(feature = "fmt_flags_align", since = "1.28.0")]
 pub use core::fmt::{Alignment};
 
-use string;
+use crate::string;
 
 /// The `format` function takes an [`Arguments`] struct and returns the resulting
 /// formatted string.

@@ -20,9 +20,9 @@ use core::slice;
 use core::hash::{Hash, Hasher};
 use core::cmp;
 
-use collections::CollectionAllocErr;
-use raw_vec::RawVec;
-use vec::Vec;
+use crate::collections::CollectionAllocErr;
+use crate::raw_vec::RawVec;
+use crate::vec::Vec;
 
 const INITIAL_CAPACITY: usize = 7; // 2^3 - 1
 const MINIMUM_CAPACITY: usize = 1; // 2 - 1

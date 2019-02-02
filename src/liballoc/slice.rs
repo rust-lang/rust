@@ -93,9 +93,9 @@ use core::mem;
 use core::ptr;
 use core::{u8, u16, u32};
 
-use borrow::{Borrow, BorrowMut, ToOwned};
-use boxed::Box;
-use vec::Vec;
+use crate::borrow::{Borrow, BorrowMut, ToOwned};
+use crate::boxed::Box;
+use crate::vec::Vec;
 
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use core::slice::{Chunks, Windows};
@@ -137,12 +137,13 @@ pub use self::hack::to_vec;
 // `core::slice::SliceExt` - we need to supply these functions for the
 // `test_permutations` test
 mod hack {
-    use boxed::Box;
     use core::mem;
+    use crate::boxed::Box;
 
     #[cfg(test)]
-    use string::ToString;
-    use vec::Vec;
+    use crate::string::ToString;
+
+    use crate::vec::Vec;
 
     pub fn into_vec<T>(mut b: Box<[T]>) -> Vec<T> {
         unsafe {

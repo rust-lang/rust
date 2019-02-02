@@ -8,8 +8,8 @@ use core::fmt;
 use core::iter::{Peekable, FromIterator, FusedIterator};
 use core::ops::{BitOr, BitAnd, BitXor, Sub, RangeBounds};
 
-use borrow::Borrow;
-use collections::btree_map::{self, BTreeMap, Keys};
+use crate::borrow::Borrow;
+use crate::collections::btree_map::{self, BTreeMap, Keys};
 use super::Recover;
 
 // FIXME(conventions): implement bounded iterators

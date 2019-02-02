@@ -227,7 +227,7 @@
 #![stable(feature = "rust1", since = "1.0.0")]
 
 #[cfg(not(test))]
-use boxed::Box;
+use crate::boxed::Box;
 #[cfg(test)]
 use std::boxed::Box;
 
@@ -248,9 +248,9 @@ use core::ptr::{self, NonNull};
 use core::convert::From;
 use core::usize;
 
-use alloc::{Global, Alloc, Layout, box_free, handle_alloc_error};
-use string::String;
-use vec::Vec;
+use crate::alloc::{Global, Alloc, Layout, box_free, handle_alloc_error};
+use crate::string::String;
+use crate::vec::Vec;
 
 struct RcBox<T: ?Sized> {
     strong: Cell<usize>,

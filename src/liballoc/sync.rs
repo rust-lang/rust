@@ -23,11 +23,11 @@ use core::hash::{Hash, Hasher};
 use core::{isize, usize};
 use core::convert::From;
 
-use alloc::{Global, Alloc, Layout, box_free, handle_alloc_error};
-use boxed::Box;
-use rc::is_dangling;
-use string::String;
-use vec::Vec;
+use crate::alloc::{Global, Alloc, Layout, box_free, handle_alloc_error};
+use crate::boxed::Box;
+use crate::rc::is_dangling;
+use crate::string::String;
+use crate::vec::Vec;
 
 /// A soft limit on the amount of references that may be made to an `Arc`.
 ///

@@ -20,7 +20,7 @@ use core::marker::PhantomData;
 use core::mem;
 use core::ptr::NonNull;
 
-use boxed::Box;
+use crate::boxed::Box;
 use super::SpecExtend;
 
 /// A doubly-linked list with owned nodes.

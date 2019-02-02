@@ -37,11 +37,11 @@ use core::ptr;
 use core::iter::FusedIterator;
 use core::unicode::conversions;
 
-use borrow::{Borrow, ToOwned};
-use boxed::Box;
-use slice::{SliceConcatExt, SliceIndex};
-use string::String;
-use vec::Vec;
+use crate::borrow::{Borrow, ToOwned};
+use crate::boxed::Box;
+use crate::slice::{SliceConcatExt, SliceIndex};
+use crate::string::String;
+use crate::vec::Vec;
 
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use core::str::{FromStr, Utf8Error};

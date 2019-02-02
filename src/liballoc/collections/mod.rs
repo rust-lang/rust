@@ -41,7 +41,7 @@ pub use self::linked_list::LinkedList;
 #[doc(no_inline)]
 pub use self::vec_deque::VecDeque;
 
-use alloc::{AllocErr, LayoutErr};
+use crate::alloc::{AllocErr, LayoutErr};
 
 /// Augments `AllocErr` with a CapacityOverflow variant.
 #[derive(Clone, PartialEq, Eq, Debug)]

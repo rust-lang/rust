@@ -151,8 +151,8 @@ use core::mem::{swap, size_of, ManuallyDrop};
 use core::ptr;
 use core::fmt;
 
-use slice;
-use vec::{self, Vec};
+use crate::slice;
+use crate::vec::{self, Vec};
 
 use super::SpecExtend;
 
