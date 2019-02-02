@@ -9,8 +9,8 @@ use alloc::boxed::Box;
 use core::any::Any;
 use core::intrinsics;
 use core::ptr;
-use dwarf::eh::{EHContext, EHAction, find_eh_action};
-use windows as c;
+use crate::dwarf::eh::{EHContext, EHAction, find_eh_action};
+use crate::windows as c;
 
 // Define our exception codes:
 // according to http://msdn.microsoft.com/en-us/library/het71c37(v=VS.80).aspx,

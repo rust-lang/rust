@@ -52,7 +52,7 @@ use core::any::Any;
 use core::mem;
 use core::raw;
 
-use windows as c;
+use crate::windows as c;
 use libc::{c_int, c_uint};
 
 // First up, a whole bunch of type definitions. There's a few platform-specific
@@ -301,5 +301,5 @@ pub unsafe fn cleanup(payload: [u64; 2]) -> Box<dyn Any + Send> {
 #[lang = "eh_personality"]
 #[cfg(not(test))]
 fn rust_eh_personality() {
-    unsafe { ::core::intrinsics::abort() }
+    unsafe { core::intrinsics::abort() }
 }
