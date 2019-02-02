@@ -13,27 +13,29 @@
        html_root_url = "https://doc.rust-lang.org/nightly/",
        test(no_crate_inject, attr(deny(warnings))))]
 
+#![deny(rust_2018_idioms)]
+
 #![feature(alloc)]
 #![feature(core_intrinsics)]
 #![feature(dropck_eyepatch)]
-#![feature(nll)]
 #![feature(raw_vec_internals)]
 #![cfg_attr(test, feature(test))]
 
 #![allow(deprecated)]
 
 extern crate alloc;
-extern crate rustc_data_structures;
 
 use rustc_data_structures::sync::MTLock;
 
-use std::cell::{Cell, RefCell};
-use std::cmp;
-use std::intrinsics;
-use std::marker::{PhantomData, Send};
-use std::mem;
-use std::ptr;
-use std::slice;
+use std::{
+    cell::{Cell, RefCell},
+    cmp,
+    intrinsics,
+    marker::{PhantomData, Send},
+    mem,
+    ptr,
+    slice,
+};
 
 use alloc::raw_vec::RawVec;
 
@@ -478,7 +480,7 @@ impl SyncDroplessArena {
 #[cfg(test)]
 mod tests {
     extern crate test;
-    use self::test::Bencher;
+    use test::Bencher;
     use super::TypedArena;
     use std::cell::Cell;
 
@@ -611,7 +613,7 @@ mod tests {
         count: &'a Cell<u32>,
     }
 
-    impl<'a> Drop for DropCounter<'a> {
+    impl Drop for DropCounter<'_> {
         fn drop(&mut self) {
             self.count.set(self.count.get() + 1);
         }
