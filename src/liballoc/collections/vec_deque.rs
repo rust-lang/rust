@@ -2170,12 +2170,29 @@ impl<'a, T> Iterator for Iter<'a, T> {
         back.iter().fold(accum, &mut f)
     }
 
-    fn try_fold<B, F, R>(&mut self, init: B, mut f: F) -> R where
-        Self: Sized, F: FnMut(B, Self::Item) -> R, R: Try<Ok=B>
+    fn try_fold<B, F, R>(&mut self, init: B, mut f: F) -> R
+    where
+        Self: Sized,
+        F: FnMut(B, Self::Item) -> R,
+        R: Try<Ok = B>,
     {
-        let (front, back) = RingSlices::ring_slices(self.ring, self.head, self.tail);
-        let accum = front.iter().try_fold(init, &mut f)?;
-        back.iter().try_fold(accum, &mut f)
+        let (mut iter, final_res);
+        if self.tail <= self.head {
+            // single slice self.ring[self.tail..self.head]
+            iter = self.ring[self.tail..self.head].iter();
+            final_res = iter.try_fold(init, &mut f);
+        } else {
+            // two slices: self.ring[self.tail..], self.ring[..self.head]
+            let (front, back) = self.ring.split_at(self.tail);
+            let mut back_iter = back.iter();
+            let res = back_iter.try_fold(init, &mut f);
+            let len = self.ring.len();
+            self.tail = (self.ring.len() - back_iter.len()) & (len - 1);
+            iter = front[..self.head].iter();
+            final_res = iter.try_fold(res?, &mut f);
+        }
+        self.tail = self.head - iter.len();
+        final_res
     }
 }
 
@@ -2196,6 +2213,30 @@ impl<'a, T> DoubleEndedIterator for Iter<'a, T> {
         let (front, back) = RingSlices::ring_slices(self.ring, self.head, self.tail);
         accum = back.iter().rfold(accum, &mut f);
         front.iter().rfold(accum, &mut f)
+    }
+
+    fn try_rfold<B, F, R>(&mut self, init: B, mut f: F) -> R
+    where
+        Self: Sized,
+        F: FnMut(B, Self::Item) -> R,
+        R: Try<Ok = B>,
+    {
+        let (mut iter, final_res);
+        if self.tail <= self.head {
+            // single slice self.ring[self.tail..self.head]
+            iter = self.ring[self.tail..self.head].iter();
+            final_res = iter.try_rfold(init, &mut f);
+        } else {
+            // two slices: self.ring[self.tail..], self.ring[..self.head]
+            let (front, back) = self.ring.split_at(self.tail);
+            let mut front_iter = front[..self.head].iter();
+            let res = front_iter.try_rfold(init, &mut f);
+            self.head = front_iter.len();
+            iter = back.iter();
+            final_res = iter.try_rfold(res?, &mut f);
+        }
+        self.head = self.tail + iter.len();
+        final_res
     }
 }
 
