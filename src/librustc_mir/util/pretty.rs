@@ -1,4 +1,3 @@
-use rustc::hir;
 use rustc::hir::def_id::{DefId, LOCAL_CRATE};
 use rustc::mir::*;
 use rustc::mir::visit::Visitor;
@@ -184,7 +183,7 @@ fn dump_path(
     let mut file_path = PathBuf::new();
     file_path.push(Path::new(&tcx.sess.opts.debugging_opts.dump_mir_dir));
 
-    let item_name = tcx.hir()
+    let item_name = tcx
         .def_path(source.def_id)
         .to_filename_friendly_no_crate();
 
@@ -574,15 +573,17 @@ fn write_mir_sig(
     mir: &Mir<'_>,
     w: &mut dyn Write,
 ) -> io::Result<()> {
-    let id = tcx.hir().as_local_node_id(src.def_id).unwrap();
-    let body_owner_kind = tcx.hir().body_owner_kind(id);
-    match (body_owner_kind, src.promoted) {
+    use rustc::hir::def::Def;
+
+    debug!("write_mir_sig: {:?}", src.def_id);
+    let descr = tcx.describe_def(src.def_id).unwrap();
+    match (descr, src.promoted) {
         (_, Some(i)) => write!(w, "{:?} in", i)?,
-        (hir::BodyOwnerKind::Closure, _) |
-        (hir::BodyOwnerKind::Fn, _) => write!(w, "fn")?,
-        (hir::BodyOwnerKind::Const, _) => write!(w, "const")?,
-        (hir::BodyOwnerKind::Static(hir::MutImmutable), _) => write!(w, "static")?,
-        (hir::BodyOwnerKind::Static(hir::MutMutable), _) => write!(w, "static mut")?,
+        (Def::Fn(_), _) => write!(w, "fn")?,
+        (Def::Const(_), _) => write!(w, "const")?,
+        (Def::Static(_, /*is_mutbl*/false), _) => write!(w, "static")?,
+        (Def::Static(_, /*is_mutbl*/true), _) => write!(w, "static mut")?,
+        _ => bug!("Unexpected def description {:?}", descr),
     }
 
     item_path::with_forced_impl_filename_line(|| {
@@ -590,9 +591,8 @@ fn write_mir_sig(
         write!(w, " {}", tcx.item_path_str(src.def_id))
     })?;
 
-    match (body_owner_kind, src.promoted) {
-        (hir::BodyOwnerKind::Closure, None) |
-        (hir::BodyOwnerKind::Fn, None) => {
+    match (descr, src.promoted) {
+        (Def::Fn(_), None) => {
             write!(w, "(")?;
 
             // fn argument types.
@@ -605,10 +605,11 @@ fn write_mir_sig(
 
             write!(w, ") -> {}", mir.return_ty())?;
         }
-        (hir::BodyOwnerKind::Const, _) | (hir::BodyOwnerKind::Static(_), _) | (_, Some(_)) => {
+        (Def::Const(_), _) | (Def::Static(_, _), _) | (_, Some(_)) => {
             assert_eq!(mir.arg_count, 0);
             write!(w, ": {} =", mir.return_ty())?;
         }
+        _ => bug!("Unexpected def description {:?}", descr),
     }
 
     if let Some(yield_ty) = mir.yield_ty {
