@@ -189,10 +189,8 @@ impl char {
     /// An extended version of `escape_debug` that optionally permits escaping
     /// Extended Grapheme codepoints. This allows us to format characters like
     /// nonspacing marks better when they're at the start of a string.
-    #[doc(hidden)]
-    #[unstable(feature = "str_internals", issue = "0")]
     #[inline]
-    pub fn escape_debug_ext(self, escape_grapheme_extended: bool) -> EscapeDebug {
+    pub(crate) fn escape_debug_ext(self, escape_grapheme_extended: bool) -> EscapeDebug {
         let init_state = match self {
             '\t' => EscapeDefaultState::Backslash('t'),
             '\r' => EscapeDefaultState::Backslash('r'),
