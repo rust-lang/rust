@@ -4,15 +4,15 @@
 
 #![feature(nll)]
 
-fn match_guard(x: Option<&&i32>) -> i32 {
+fn match_guard(x: Option<&&i32>, c: bool) -> i32 {
     match x {
-        Some(0) if true => 0,
+        Some(0) if c => 0,
         _ => 1,
     }
 }
 
 fn main() {
-    match_guard(None);
+    match_guard(None, true);
 }
 
 // END RUST SOURCE
@@ -20,49 +20,48 @@ fn main() {
 // START rustc.match_guard.CleanFakeReadsAndBorrows.before.mir
 // bb0: {
 //     FakeRead(ForMatchedPlace, _1);
-//     _2 = discriminant(_1);
-//     _3 = &shallow _1;
-//     _4 = &shallow ((_1 as Some).0: &'<empty> &'<empty> i32);
-//     _5 = &shallow (*((_1 as Some).0: &'<empty> &'<empty> i32));
-//     _6 = &shallow (*(*((_1 as Some).0: &'<empty> &'<empty> i32)));
-//     switchInt(move _2) -> [1isize: bb6, otherwise: bb4];
+//     _3 = discriminant(_1);
+//     switchInt(move _3) -> [1isize: bb5, otherwise: bb2];
 // }
 // bb1: {
-//     _0 = const 0i32;
-//     goto -> bb9;
+//     goto -> bb8;
 // }
 // bb2: {
-//     _0 = const 1i32;
 //     goto -> bb9;
 // }
 // bb3: {
-//     FakeRead(ForMatchGuard, _3);
-//     FakeRead(ForMatchGuard, _4);
-//     FakeRead(ForMatchGuard, _5);
-//     FakeRead(ForMatchGuard, _6);
-//     goto -> bb7;
+//     unreachable;
 // }
 // bb4: {
-//     FakeRead(ForMatchGuard, _3);
-//     FakeRead(ForMatchGuard, _4);
-//     FakeRead(ForMatchGuard, _5);
-//     FakeRead(ForMatchGuard, _6);
 //     goto -> bb2;
 // }
 // bb5: {
-//     unreachable;
+//     switchInt((*(*((_1 as Some).0: &'<empty> &'<empty> i32)))) -> [0i32: bb1, otherwise: bb2];
 // }
 // bb6: {
-//     switchInt((*(*((_1 as Some).0: &'<empty> &'<empty> i32)))) -> [0i32: bb3, otherwise: bb4];
+//     StorageDead(_8);
+//     return;
 // }
 // bb7: {
-//     goto -> bb1;
+//     _0 = const 0i32;
+//     goto -> bb6;
 // }
 // bb8: {
-//     goto -> bb4;
+//     _4 = &shallow _1;
+//     _5 = &shallow ((_1 as Some).0: &'<empty> &'<empty> i32);
+//     _6 = &shallow (*((_1 as Some).0: &'<empty> &'<empty> i32));
+//     _7 = &shallow (*(*((_1 as Some).0: &'<empty> &'<empty> i32)));
+//     StorageLive(_8);
+//     _8 = _2;
+//     FakeRead(ForMatchGuard, _4);
+//     FakeRead(ForMatchGuard, _5);
+//     FakeRead(ForMatchGuard, _6);
+//     FakeRead(ForMatchGuard, _7);
+//     switchInt(move _8) -> [false: bb4, otherwise: bb7];
 // }
 // bb9: {
-//     return;
+//     _0 = const 1i32;
+//     goto -> bb6;
 // }
 // bb10: {
 //     resume;
@@ -72,51 +71,50 @@ fn main() {
 // START rustc.match_guard.CleanFakeReadsAndBorrows.after.mir
 // bb0: {
 //     nop;
-//     _2 = discriminant(_1);
-//     nop;
-//     nop;
-//     nop;
-//     nop;
-//     switchInt(move _2) -> [1isize: bb6, otherwise: bb4];
+//     _3 = discriminant(_1);
+//     switchInt(move _3) -> [1isize: bb5, otherwise: bb2];
 // }
 // bb1: {
-//     _0 = const 0i32;
-//     goto -> bb9;
+//     goto -> bb8;
 // }
 // bb2: {
-//     _0 = const 1i32;
 //     goto -> bb9;
 // }
 // bb3: {
-//     nop;
-//     nop;
-//     nop;
-//     nop;
-//     goto -> bb7;
+//     unreachable;
 // }
 // bb4: {
-//     nop;
-//     nop;
-//     nop;
-//     nop;
 //     goto -> bb2;
 // }
 // bb5: {
-//     unreachable;
+//     switchInt((*(*((_1 as Some).0: &'<empty> &'<empty> i32)))) -> [0i32: bb1, otherwise: bb2];
 // }
 // bb6: {
-//     switchInt((*(*((_1 as Some).0: &'<empty> &'<empty> i32)))) -> [0i32: bb3, otherwise: bb4];
+//     StorageDead(_8);
+//     return;
 // }
 // bb7: {
-//     goto -> bb1;
+//     _0 = const 0i32;
+//     goto -> bb6;
 // }
 // bb8: {
-//     goto -> bb4;
+//     nop;
+//     nop;
+//     nop;
+//     nop;
+//     StorageLive(_8);
+//     _8 = _2;
+//     nop;
+//     nop;
+//     nop;
+//     nop;
+//     switchInt(move _8) -> [false: bb4, otherwise: bb7];
 // }
 // bb9: {
-//     return;
+//     _0 = const 1i32;
+//     goto -> bb6;
 // }
 // bb10: {
 //     resume;
-// }
+//    }
 // END rustc.match_guard.CleanFakeReadsAndBorrows.after.mir
