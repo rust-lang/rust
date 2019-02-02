@@ -1481,7 +1481,7 @@ impl<'a> SetLenOnDrop<'a> {
     }
 }
 
-impl<'a> Drop for SetLenOnDrop<'a> {
+impl Drop for SetLenOnDrop<'_> {
     #[inline]
     fn drop(&mut self) {
         *self.len = self.local_len;
@@ -2471,12 +2471,12 @@ impl<'a, T: 'a + fmt::Debug> fmt::Debug for Drain<'a, T> {
 }
 
 #[stable(feature = "drain", since = "1.6.0")]
-unsafe impl<'a, T: Sync> Sync for Drain<'a, T> {}
+unsafe impl<T: Sync> Sync for Drain<'_, T> {}
 #[stable(feature = "drain", since = "1.6.0")]
-unsafe impl<'a, T: Send> Send for Drain<'a, T> {}
+unsafe impl<T: Send> Send for Drain<'_, T> {}
 
 #[stable(feature = "drain", since = "1.6.0")]
-impl<'a, T> Iterator for Drain<'a, T> {
+impl<T> Iterator for Drain<'_, T> {
     type Item = T;
 
     #[inline]
@@ -2490,7 +2490,7 @@ impl<'a, T> Iterator for Drain<'a, T> {
 }
 
 #[stable(feature = "drain", since = "1.6.0")]
-impl<'a, T> DoubleEndedIterator for Drain<'a, T> {
+impl<T> DoubleEndedIterator for Drain<'_, T> {
     #[inline]
     fn next_back(&mut self) -> Option<T> {
         self.iter.next_back().map(|elt| unsafe { ptr::read(elt as *const _) })
@@ -2498,7 +2498,7 @@ impl<'a, T> DoubleEndedIterator for Drain<'a, T> {
 }
 
 #[stable(feature = "drain", since = "1.6.0")]
-impl<'a, T> Drop for Drain<'a, T> {
+impl<T> Drop for Drain<'_, T> {
     fn drop(&mut self) {
         // exhaust self first
         self.for_each(drop);
@@ -2522,14 +2522,14 @@ impl<'a, T> Drop for Drain<'a, T> {
 
 
 #[stable(feature = "drain", since = "1.6.0")]
-impl<'a, T> ExactSizeIterator for Drain<'a, T> {
+impl<T> ExactSizeIterator for Drain<'_, T> {
     fn is_empty(&self) -> bool {
         self.iter.is_empty()
     }
 }
 
 #[stable(feature = "fused", since = "1.26.0")]
-impl<'a, T> FusedIterator for Drain<'a, T> {}
+impl<T> FusedIterator for Drain<'_, T> {}
 
 /// A splicing iterator for `Vec`.
 ///
@@ -2546,7 +2546,7 @@ pub struct Splice<'a, I: Iterator + 'a> {
 }
 
 #[stable(feature = "vec_splice", since = "1.21.0")]
-impl<'a, I: Iterator> Iterator for Splice<'a, I> {
+impl<I: Iterator> Iterator for Splice<'_, I> {
     type Item = I::Item;
 
     fn next(&mut self) -> Option<Self::Item> {
@@ -2559,18 +2559,18 @@ impl<'a, I: Iterator> Iterator for Splice<'a, I> {
 }
 
 #[stable(feature = "vec_splice", since = "1.21.0")]
-impl<'a, I: Iterator> DoubleEndedIterator for Splice<'a, I> {
+impl<I: Iterator> DoubleEndedIterator for Splice<'_, I> {
     fn next_back(&mut self) -> Option<Self::Item> {
         self.drain.next_back()
     }
 }
 
 #[stable(feature = "vec_splice", since = "1.21.0")]
-impl<'a, I: Iterator> ExactSizeIterator for Splice<'a, I> {}
+impl<I: Iterator> ExactSizeIterator for Splice<'_, I> {}
 
 
 #[stable(feature = "vec_splice", since = "1.21.0")]
-impl<'a, I: Iterator> Drop for Splice<'a, I> {
+impl<I: Iterator> Drop for Splice<'_, I> {
     fn drop(&mut self) {
         self.drain.by_ref().for_each(drop);
 
@@ -2611,7 +2611,7 @@ impl<'a, I: Iterator> Drop for Splice<'a, I> {
 }
 
 /// Private helper methods for `Splice::drop`
-impl<'a, T> Drain<'a, T> {
+impl<T> Drain<'_, T> {
     /// The range from `self.vec.len` to `self.tail_start` contains elements
     /// that have been moved out.
     /// Fill that range as much as possible with new elements from the `replace_with` iterator.
@@ -2663,7 +2663,7 @@ pub struct DrainFilter<'a, T: 'a, F>
 }
 
 #[unstable(feature = "drain_filter", reason = "recently added", issue = "43244")]
-impl<'a, T, F> Iterator for DrainFilter<'a, T, F>
+impl<T, F> Iterator for DrainFilter<'_, T, F>
     where F: FnMut(&mut T) -> bool,
 {
     type Item = T;
@@ -2697,7 +2697,7 @@ impl<'a, T, F> Iterator for DrainFilter<'a, T, F>
 }
 
 #[unstable(feature = "drain_filter", reason = "recently added", issue = "43244")]
-impl<'a, T, F> Drop for DrainFilter<'a, T, F>
+impl<T, F> Drop for DrainFilter<'_, T, F>
     where F: FnMut(&mut T) -> bool,
 {
     fn drop(&mut self) {

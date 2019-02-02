@@ -279,7 +279,7 @@ pub struct Iter<'a, K: 'a, V: 'a> {
 }
 
 #[stable(feature = "collection_debug", since = "1.17.0")]
-impl<'a, K: 'a + fmt::Debug, V: 'a + fmt::Debug> fmt::Debug for Iter<'a, K, V> {
+impl<K: fmt::Debug, V: fmt::Debug> fmt::Debug for Iter<'_, K, V> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         f.debug_list().entries(self.clone()).finish()
     }
@@ -337,7 +337,7 @@ pub struct Keys<'a, K: 'a, V: 'a> {
 }
 
 #[stable(feature = "collection_debug", since = "1.17.0")]
-impl<'a, K: 'a + fmt::Debug, V: 'a> fmt::Debug for Keys<'a, K, V> {
+impl<K: fmt::Debug, V> fmt::Debug for Keys<'_, K, V> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         f.debug_list().entries(self.clone()).finish()
     }
@@ -356,7 +356,7 @@ pub struct Values<'a, K: 'a, V: 'a> {
 }
 
 #[stable(feature = "collection_debug", since = "1.17.0")]
-impl<'a, K: 'a, V: 'a + fmt::Debug> fmt::Debug for Values<'a, K, V> {
+impl<K, V: fmt::Debug> fmt::Debug for Values<'_, K, V> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         f.debug_list().entries(self.clone()).finish()
     }
@@ -389,7 +389,7 @@ pub struct Range<'a, K: 'a, V: 'a> {
 }
 
 #[stable(feature = "collection_debug", since = "1.17.0")]
-impl<'a, K: 'a + fmt::Debug, V: 'a + fmt::Debug> fmt::Debug for Range<'a, K, V> {
+impl<K: fmt::Debug, V: fmt::Debug> fmt::Debug for Range<'_, K, V> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         f.debug_list().entries(self.clone()).finish()
     }
@@ -412,7 +412,7 @@ pub struct RangeMut<'a, K: 'a, V: 'a> {
 }
 
 #[stable(feature = "collection_debug", since = "1.17.0")]
-impl<'a, K: 'a + fmt::Debug, V: 'a + fmt::Debug> fmt::Debug for RangeMut<'a, K, V> {
+impl<K: fmt::Debug, V: fmt::Debug> fmt::Debug for RangeMut<'_, K, V> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         let range = Range {
             front: self.front.reborrow(),
@@ -442,7 +442,7 @@ pub enum Entry<'a, K: 'a, V: 'a> {
 }
 
 #[stable(feature= "debug_btree_map", since = "1.12.0")]
-impl<'a, K: 'a + Debug + Ord, V: 'a + Debug> Debug for Entry<'a, K, V> {
+impl<K: Debug + Ord, V: Debug> Debug for Entry<'_, K, V> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match *self {
             Vacant(ref v) => f.debug_tuple("Entry")
@@ -470,7 +470,7 @@ pub struct VacantEntry<'a, K: 'a, V: 'a> {
 }
 
 #[stable(feature= "debug_btree_map", since = "1.12.0")]
-impl<'a, K: 'a + Debug + Ord, V: 'a> Debug for VacantEntry<'a, K, V> {
+impl<K: Debug + Ord, V> Debug for VacantEntry<'_, K, V> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         f.debug_tuple("VacantEntry")
          .field(self.key())
@@ -493,7 +493,7 @@ pub struct OccupiedEntry<'a, K: 'a, V: 'a> {
 }
 
 #[stable(feature= "debug_btree_map", since = "1.12.0")]
-impl<'a, K: 'a + Debug + Ord, V: 'a + Debug> Debug for OccupiedEntry<'a, K, V> {
+impl<K: Debug + Ord, V: Debug> Debug for OccupiedEntry<'_, K, V> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         f.debug_struct("OccupiedEntry")
          .field("key", self.key())
@@ -1202,7 +1202,7 @@ impl<'a, K: 'a, V: 'a> Iterator for Iter<'a, K, V> {
 }
 
 #[stable(feature = "fused", since = "1.26.0")]
-impl<'a, K, V> FusedIterator for Iter<'a, K, V> {}
+impl<K, V> FusedIterator for Iter<'_, K, V> {}
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<'a, K: 'a, V: 'a> DoubleEndedIterator for Iter<'a, K, V> {
@@ -1217,7 +1217,7 @@ impl<'a, K: 'a, V: 'a> DoubleEndedIterator for Iter<'a, K, V> {
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<'a, K: 'a, V: 'a> ExactSizeIterator for Iter<'a, K, V> {
+impl<K, V> ExactSizeIterator for Iter<'_, K, V> {
     fn len(&self) -> usize {
         self.length
     }
@@ -1274,14 +1274,14 @@ impl<'a, K: 'a, V: 'a> DoubleEndedIterator for IterMut<'a, K, V> {
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<'a, K: 'a, V: 'a> ExactSizeIterator for IterMut<'a, K, V> {
+impl<K, V> ExactSizeIterator for IterMut<'_, K, V> {
     fn len(&self) -> usize {
         self.length
     }
 }
 
 #[stable(feature = "fused", since = "1.26.0")]
-impl<'a, K, V> FusedIterator for IterMut<'a, K, V> {}
+impl<K, V> FusedIterator for IterMut<'_, K, V> {}
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<K, V> IntoIterator for BTreeMap<K, V> {
@@ -1437,14 +1437,14 @@ impl<'a, K, V> DoubleEndedIterator for Keys<'a, K, V> {
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<'a, K, V> ExactSizeIterator for Keys<'a, K, V> {
+impl<K, V> ExactSizeIterator for Keys<'_, K, V> {
     fn len(&self) -> usize {
         self.inner.len()
     }
 }
 
 #[stable(feature = "fused", since = "1.26.0")]
-impl<'a, K, V> FusedIterator for Keys<'a, K, V> {}
+impl<K, V> FusedIterator for Keys<'_, K, V> {}
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<'a, K, V> Clone for Keys<'a, K, V> {
@@ -1474,14 +1474,14 @@ impl<'a, K, V> DoubleEndedIterator for Values<'a, K, V> {
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<'a, K, V> ExactSizeIterator for Values<'a, K, V> {
+impl<K, V> ExactSizeIterator for Values<'_, K, V> {
     fn len(&self) -> usize {
         self.inner.len()
     }
 }
 
 #[stable(feature = "fused", since = "1.26.0")]
-impl<'a, K, V> FusedIterator for Values<'a, K, V> {}
+impl<K, V> FusedIterator for Values<'_, K, V> {}
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<'a, K, V> Clone for Values<'a, K, V> {
@@ -1524,15 +1524,14 @@ impl<'a, K, V> DoubleEndedIterator for ValuesMut<'a, K, V> {
 }
 
 #[stable(feature = "map_values_mut", since = "1.10.0")]
-impl<'a, K, V> ExactSizeIterator for ValuesMut<'a, K, V> {
+impl<K, V> ExactSizeIterator for ValuesMut<'_, K, V> {
     fn len(&self) -> usize {
         self.inner.len()
     }
 }
 
 #[stable(feature = "fused", since = "1.26.0")]
-impl<'a, K, V> FusedIterator for ValuesMut<'a, K, V> {}
-
+impl<K, V> FusedIterator for ValuesMut<'_, K, V> {}
 
 impl<'a, K, V> Range<'a, K, V> {
     unsafe fn next_unchecked(&mut self) -> (&'a K, &'a V) {
@@ -1610,7 +1609,7 @@ impl<'a, K, V> Range<'a, K, V> {
 }
 
 #[stable(feature = "fused", since = "1.26.0")]
-impl<'a, K, V> FusedIterator for Range<'a, K, V> {}
+impl<K, V> FusedIterator for Range<'_, K, V> {}
 
 #[stable(feature = "btree_range", since = "1.17.0")]
 impl<'a, K, V> Clone for Range<'a, K, V> {
@@ -1679,7 +1678,7 @@ impl<'a, K, V> DoubleEndedIterator for RangeMut<'a, K, V> {
 }
 
 #[stable(feature = "fused", since = "1.26.0")]
-impl<'a, K, V> FusedIterator for RangeMut<'a, K, V> {}
+impl<K, V> FusedIterator for RangeMut<'_, K, V> {}
 
 impl<'a, K, V> RangeMut<'a, K, V> {
     unsafe fn next_back_unchecked(&mut self) -> (&'a K, &'a mut V) {
@@ -1790,7 +1789,7 @@ impl<K: Debug, V: Debug> Debug for BTreeMap<K, V> {
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<'a, K: Ord, Q: ?Sized, V> Index<&'a Q> for BTreeMap<K, V>
+impl<K: Ord, Q: ?Sized, V> Index<&Q> for BTreeMap<K, V>
     where K: Borrow<Q>,
           Q: Ord
 {

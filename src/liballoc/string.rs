@@ -1935,7 +1935,7 @@ impl hash::Hash for String {
 /// let c = a.to_string() + b;
 /// ```
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<'a> Add<&'a str> for String {
+impl Add<&str> for String {
     type Output = String;
 
     #[inline]
@@ -1949,7 +1949,7 @@ impl<'a> Add<&'a str> for String {
 ///
 /// This has the same behavior as the [`push_str`][String::push_str] method.
 #[stable(feature = "stringaddassign", since = "1.12.0")]
-impl<'a> AddAssign<&'a str> for String {
+impl AddAssign<&str> for String {
     #[inline]
     fn add_assign(&mut self, other: &str) {
         self.push_str(other);
@@ -2183,7 +2183,7 @@ impl ToString for str {
 }
 
 #[stable(feature = "cow_str_to_string_specialization", since = "1.17.0")]
-impl<'a> ToString for Cow<'a, str> {
+impl ToString for Cow<'_, str> {
     #[inline]
     fn to_string(&self) -> String {
         self[..].to_owned()
@@ -2373,19 +2373,19 @@ pub struct Drain<'a> {
 }
 
 #[stable(feature = "collection_debug", since = "1.17.0")]
-impl<'a> fmt::Debug for Drain<'a> {
+impl fmt::Debug for Drain<'_> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         f.pad("Drain { .. }")
     }
 }
 
 #[stable(feature = "drain", since = "1.6.0")]
-unsafe impl<'a> Sync for Drain<'a> {}
+unsafe impl Sync for Drain<'_> {}
 #[stable(feature = "drain", since = "1.6.0")]
-unsafe impl<'a> Send for Drain<'a> {}
+unsafe impl Send for Drain<'_> {}
 
 #[stable(feature = "drain", since = "1.6.0")]
-impl<'a> Drop for Drain<'a> {
+impl Drop for Drain<'_> {
     fn drop(&mut self) {
         unsafe {
             // Use Vec::drain. "Reaffirm" the bounds checks to avoid
@@ -2399,7 +2399,7 @@ impl<'a> Drop for Drain<'a> {
 }
 
 #[stable(feature = "drain", since = "1.6.0")]
-impl<'a> Iterator for Drain<'a> {
+impl Iterator for Drain<'_> {
     type Item = char;
 
     #[inline]
@@ -2413,7 +2413,7 @@ impl<'a> Iterator for Drain<'a> {
 }
 
 #[stable(feature = "drain", since = "1.6.0")]
-impl<'a> DoubleEndedIterator for Drain<'a> {
+impl DoubleEndedIterator for Drain<'_> {
     #[inline]
     fn next_back(&mut self) -> Option<char> {
         self.iter.next_back()
@@ -2421,4 +2421,4 @@ impl<'a> DoubleEndedIterator for Drain<'a> {
 }
 
 #[stable(feature = "fused", since = "1.26.0")]
-impl<'a> FusedIterator for Drain<'a> {}
+impl FusedIterator for Drain<'_> {}

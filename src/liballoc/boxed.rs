@@ -739,7 +739,7 @@ impl<A, F> FnBox<A> for F
 
 #[unstable(feature = "fnbox",
            reason = "will be deprecated if and when `Box<FnOnce>` becomes usable", issue = "28796")]
-impl<'a, A, R> FnOnce<A> for Box<dyn FnBox<A, Output = R> + 'a> {
+impl<A, R> FnOnce<A> for Box<dyn FnBox<A, Output = R> + '_> {
     type Output = R;
 
     extern "rust-call" fn call_once(self, args: A) -> R {
@@ -749,7 +749,7 @@ impl<'a, A, R> FnOnce<A> for Box<dyn FnBox<A, Output = R> + 'a> {
 
 #[unstable(feature = "fnbox",
            reason = "will be deprecated if and when `Box<FnOnce>` becomes usable", issue = "28796")]
-impl<'a, A, R> FnOnce<A> for Box<dyn FnBox<A, Output = R> + Send + 'a> {
+impl<A, R> FnOnce<A> for Box<dyn FnBox<A, Output = R> + Send + '_> {
     type Output = R;
 
     extern "rust-call" fn call_once(self, args: A) -> R {

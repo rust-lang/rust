@@ -1003,7 +1003,7 @@ struct DropCounter<'a> {
     count: &'a mut u32,
 }
 
-impl<'a> Drop for DropCounter<'a> {
+impl Drop for DropCounter<'_> {
     fn drop(&mut self) {
         *self.count += 1;
     }

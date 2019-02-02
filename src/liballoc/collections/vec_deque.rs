@@ -2086,7 +2086,7 @@ trait RingSlices: Sized {
     }
 }
 
-impl<'a, T> RingSlices for &'a [T] {
+impl<T> RingSlices for &[T] {
     fn slice(self, from: usize, to: usize) -> Self {
         &self[from..to]
     }
@@ -2095,7 +2095,7 @@ impl<'a, T> RingSlices for &'a [T] {
     }
 }
 
-impl<'a, T> RingSlices for &'a mut [T] {
+impl<T> RingSlices for &mut [T] {
     fn slice(self, from: usize, to: usize) -> Self {
         &mut self[from..to]
     }
@@ -2126,7 +2126,7 @@ pub struct Iter<'a, T: 'a> {
 }
 
 #[stable(feature = "collection_debug", since = "1.17.0")]
-impl<'a, T: 'a + fmt::Debug> fmt::Debug for Iter<'a, T> {
+impl<T: fmt::Debug> fmt::Debug for Iter<'_, T> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         let (front, back) = RingSlices::ring_slices(self.ring, self.head, self.tail);
         f.debug_tuple("Iter")
@@ -2206,14 +2206,14 @@ impl<'a, T> DoubleEndedIterator for Iter<'a, T> {
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<'a, T> ExactSizeIterator for Iter<'a, T> {
+impl<T> ExactSizeIterator for Iter<'_, T> {
     fn is_empty(&self) -> bool {
         self.head == self.tail
     }
 }
 
 #[stable(feature = "fused", since = "1.26.0")]
-impl<'a, T> FusedIterator for Iter<'a, T> {}
+impl<T> FusedIterator for Iter<'_, T> {}
 
 
 /// A mutable iterator over the elements of a `VecDeque`.
@@ -2231,7 +2231,7 @@ pub struct IterMut<'a, T: 'a> {
 }
 
 #[stable(feature = "collection_debug", since = "1.17.0")]
-impl<'a, T: 'a + fmt::Debug> fmt::Debug for IterMut<'a, T> {
+impl<'a, T: fmt::Debug> fmt::Debug for IterMut<'_, T> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         let (front, back) = RingSlices::ring_slices(&*self.ring, self.head, self.tail);
         f.debug_tuple("IterMut")
@@ -2299,14 +2299,14 @@ impl<'a, T> DoubleEndedIterator for IterMut<'a, T> {
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<'a, T> ExactSizeIterator for IterMut<'a, T> {
+impl<T> ExactSizeIterator for IterMut<'_, T> {
     fn is_empty(&self) -> bool {
         self.head == self.tail
     }
 }
 
 #[stable(feature = "fused", since = "1.26.0")]
-impl<'a, T> FusedIterator for IterMut<'a, T> {}
+impl<T> FusedIterator for IterMut<'_, T> {}
 
 /// An owning iterator over the elements of a `VecDeque`.
 ///
@@ -2380,7 +2380,7 @@ pub struct Drain<'a, T: 'a> {
 }
 
 #[stable(feature = "collection_debug", since = "1.17.0")]
-impl<'a, T: 'a + fmt::Debug> fmt::Debug for Drain<'a, T> {
+impl<T: fmt::Debug> fmt::Debug for Drain<'_, T> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         f.debug_tuple("Drain")
          .field(&self.after_tail)
@@ -2391,12 +2391,12 @@ impl<'a, T: 'a + fmt::Debug> fmt::Debug for Drain<'a, T> {
 }
 
 #[stable(feature = "drain", since = "1.6.0")]
-unsafe impl<'a, T: Sync> Sync for Drain<'a, T> {}
+unsafe impl<T: Sync> Sync for Drain<'_, T> {}
 #[stable(feature = "drain", since = "1.6.0")]
-unsafe impl<'a, T: Send> Send for Drain<'a, T> {}
+unsafe impl<T: Send> Send for Drain<'_, T> {}
 
 #[stable(feature = "drain", since = "1.6.0")]
-impl<'a, T: 'a> Drop for Drain<'a, T> {
+impl<T> Drop for Drain<'_, T> {
     fn drop(&mut self) {
         self.for_each(drop);
 
@@ -2443,7 +2443,7 @@ impl<'a, T: 'a> Drop for Drain<'a, T> {
 }
 
 #[stable(feature = "drain", since = "1.6.0")]
-impl<'a, T: 'a> Iterator for Drain<'a, T> {
+impl<T> Iterator for Drain<'_, T> {
     type Item = T;
 
     #[inline]
@@ -2458,7 +2458,7 @@ impl<'a, T: 'a> Iterator for Drain<'a, T> {
 }
 
 #[stable(feature = "drain", since = "1.6.0")]
-impl<'a, T: 'a> DoubleEndedIterator for Drain<'a, T> {
+impl<T> DoubleEndedIterator for Drain<'_, T> {
     #[inline]
     fn next_back(&mut self) -> Option<T> {
         self.iter.next_back().map(|elt| unsafe { ptr::read(elt) })
@@ -2466,10 +2466,10 @@ impl<'a, T: 'a> DoubleEndedIterator for Drain<'a, T> {
 }
 
 #[stable(feature = "drain", since = "1.6.0")]
-impl<'a, T: 'a> ExactSizeIterator for Drain<'a, T> {}
+impl<T> ExactSizeIterator for Drain<'_, T> {}
 
 #[stable(feature = "fused", since = "1.26.0")]
-impl<'a, T: 'a> FusedIterator for Drain<'a, T> {}
+impl<T> FusedIterator for Drain<'_, T> {}
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<A: PartialEq> PartialEq for VecDeque<A> {
@@ -2519,7 +2519,7 @@ macro_rules! __impl_slice_eq1 {
     };
     ($Lhs: ty, $Rhs: ty, $Bound: ident) => {
         #[stable(feature = "vec_deque_partial_eq_slice", since = "1.17.0")]
-        impl<'a, 'b, A: $Bound, B> PartialEq<$Rhs> for $Lhs where A: PartialEq<B> {
+        impl<A: $Bound, B> PartialEq<$Rhs> for $Lhs where A: PartialEq<B> {
             fn eq(&self, other: &$Rhs) -> bool {
                 if self.len() != other.len() {
                     return false;
@@ -2533,15 +2533,15 @@ macro_rules! __impl_slice_eq1 {
 }
 
 __impl_slice_eq1! { VecDeque<A>, Vec<B> }
-__impl_slice_eq1! { VecDeque<A>, &'b [B] }
-__impl_slice_eq1! { VecDeque<A>, &'b mut [B] }
+__impl_slice_eq1! { VecDeque<A>, &[B] }
+__impl_slice_eq1! { VecDeque<A>, &mut [B] }
 
 macro_rules! array_impls {
     ($($N: expr)+) => {
         $(
             __impl_slice_eq1! { VecDeque<A>, [B; $N] }
-            __impl_slice_eq1! { VecDeque<A>, &'b [B; $N] }
-            __impl_slice_eq1! { VecDeque<A>, &'b mut [B; $N] }
+            __impl_slice_eq1! { VecDeque<A>, &[B; $N] }
+            __impl_slice_eq1! { VecDeque<A>, &mut [B; $N] }
         )+
     }
 }

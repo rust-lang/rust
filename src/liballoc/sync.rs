@@ -1605,7 +1605,7 @@ impl<T> From<T> for Arc<T> {
 }
 
 #[stable(feature = "shared_from_slice", since = "1.21.0")]
-impl<'a, T: Clone> From<&'a [T]> for Arc<[T]> {
+impl<T: Clone> From<&[T]> for Arc<[T]> {
     #[inline]
     fn from(v: &[T]) -> Arc<[T]> {
         <Self as ArcFromSlice<T>>::from_slice(v)
@@ -1613,7 +1613,7 @@ impl<'a, T: Clone> From<&'a [T]> for Arc<[T]> {
 }
 
 #[stable(feature = "shared_from_slice", since = "1.21.0")]
-impl<'a> From<&'a str> for Arc<str> {
+impl From<&str> for Arc<str> {
     #[inline]
     fn from(v: &str) -> Arc<str> {
         let arc = Arc::<[u8]>::from(v.as_bytes());
