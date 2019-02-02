@@ -1823,16 +1823,21 @@ pub enum RetagKind {
 /// The `FakeReadCause` describes the type of pattern why a `FakeRead` statement exists.
 #[derive(Copy, Clone, RustcEncodable, RustcDecodable, Debug)]
 pub enum FakeReadCause {
-    /// Inject a fake read of the borrowed input at the start of each arm's
-    /// pattern testing code.
+    /// Inject a fake read of the borrowed input at the end of each guards
+    /// code.
     ///
-    /// This should ensure that you cannot change the variant for an enum
-    /// while you are in the midst of matching on it.
+    /// This should ensure that you cannot change the variant for an enum while
+    /// you are in the midst of matching on it.
     ForMatchGuard,
 
     /// `let x: !; match x {}` doesn't generate any read of x so we need to
     /// generate a read of x to check that it is initialized and safe.
     ForMatchedPlace,
+
+    /// A fake read of the RefWithinGuard version of a bind-by-value variable
+    /// in a match guard to ensure that it's value hasn't change by the time
+    /// we create the OutsideGuard version.
+    ForGuardBinding,
 
     /// Officially, the semantics of
     ///

@@ -998,7 +998,9 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
                 }
 
                 (Read(_), BorrowKind::Shared) | (Reservation(..), BorrowKind::Shared)
-                | (Read(_), BorrowKind::Shallow) | (Reservation(..), BorrowKind::Shallow) => {
+                | (Read(_), BorrowKind::Shallow) | (Reservation(..), BorrowKind::Shallow)
+                | (Read(ReadKind::Borrow(BorrowKind::Shallow)), BorrowKind::Unique)
+                | (Read(ReadKind::Borrow(BorrowKind::Shallow)), BorrowKind::Mut { .. }) => {
                     Control::Continue
                 }
 

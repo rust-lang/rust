@@ -73,34 +73,33 @@ fn main() {
 //      return;
 //  }
 //  bb9: { // binding1 and guard
-//      StorageLive(_8);
-//      _8 = &(((promoted[2]: std::option::Option<i32>) as Some).0: i32);
-//      _4 = &shallow (promoted[1]: std::option::Option<i32>);
-//      _5 = &(((promoted[0]: std::option::Option<i32>) as Some).0: i32);
-//      StorageLive(_9);
-//      _9 = const guard() -> [return: bb10, unwind: bb1];
+//      StorageLive(_6);
+//      _6 = &(((promoted[1]: std::option::Option<i32>) as Some).0: i32);
+//      _4 = &shallow (promoted[0]: std::option::Option<i32>);
+//      StorageLive(_7);
+//      _7 = const guard() -> [return: bb10, unwind: bb1];
 //  }
 //  bb10: {
 //      FakeRead(ForMatchGuard, _4);
-//      FakeRead(ForMatchGuard, _5);
-//      switchInt(move _9) -> [false: bb6, otherwise: bb11];
+//      FakeRead(ForGuardBinding, _6);
+//      switchInt(move _7) -> [false: bb6, otherwise: bb11];
 //  }
 //  bb11: {
-//      StorageLive(_6);
-//      _6 = ((_2 as Some).0: i32);
-//      StorageLive(_10);
-//      _10 = _6;
-//      _1 = (const 1i32, move _10);
-//      StorageDead(_10);
+//      StorageLive(_5);
+//      _5 = ((_2 as Some).0: i32);
+//      StorageLive(_8);
+//      _8 = _5;
+//      _1 = (const 1i32, move _8);
+//      StorageDead(_8);
 //      goto -> bb8;
 //  }
 //  bb12: {
-//      StorageLive(_11);
-//      _11 = ((_2 as Some).0: i32);
-//      StorageLive(_12);
-//      _12 = _11;
-//      _1 = (const 2i32, move _12);
-//      StorageDead(_12);
+//      StorageLive(_9);
+//      _9 = ((_2 as Some).0: i32);
+//      StorageLive(_10);
+//      _10 = _9;
+//      _1 = (const 2i32, move _10);
+//      StorageDead(_10);
 //      goto -> bb8;
 //  }
 //  bb13: {
@@ -143,25 +142,24 @@ fn main() {
 //      return;
 //  }
 //  bb9: { // binding1 and guard
-//      StorageLive(_8);
-//      _8 = &((_2 as Some).0: i32);
+//      StorageLive(_6);
+//      _6 = &((_2 as Some).0: i32);
 //      _4 = &shallow _2;
-//      _5 = &((_2 as Some).0: i32);
-//      StorageLive(_9);
-//      _9 = const guard() -> [return: bb10, unwind: bb1];
+//      StorageLive(_7);
+//      _7 = const guard() -> [return: bb10, unwind: bb1];
 //  }
 //  bb10: { // end of guard
 //      FakeRead(ForMatchGuard, _4);
-//      FakeRead(ForMatchGuard, _5);
-//      switchInt(move _9) -> [false: bb6, otherwise: bb11];
+//      FakeRead(ForGuardBinding, _6);
+//      switchInt(move _7) -> [false: bb6, otherwise: bb11];
 //  }
 //  bb11: { // arm1
-//      StorageLive(_6);
-//      _6 = ((_2 as Some).0: i32);
-//      StorageLive(_10);
-//      _10 = _6;
-//      _1 = (const 1i32, move _10);
-//      StorageDead(_10);
+//      StorageLive(_5);
+//      _5 = ((_2 as Some).0: i32);
+//      StorageLive(_8);
+//      _8 = _5;
+//      _1 = (const 1i32, move _8);
+//      StorageDead(_8);
 //      goto -> bb8;
 //  }
 //  bb12: { // arm2
@@ -169,12 +167,12 @@ fn main() {
 //      goto -> bb8;
 //  }
 //  bb13: { // binding3 and arm3
-//      StorageLive(_11);
-//      _11 = ((_2 as Some).0: i32);
-//      StorageLive(_12);
-//      _12 = _11;
-//      _1 = (const 2i32, move _12);
-//      StorageDead(_12);
+//      StorageLive(_9);
+//      _9 = ((_2 as Some).0: i32);
+//      StorageLive(_10);
+//      _10 = _9;
+//      _1 = (const 2i32, move _10);
+//      StorageDead(_10);
 //      goto -> bb8;
 //  }
 // END rustc.full_tested_match2.QualifyAndPromoteConstants.before.mir
@@ -216,55 +214,53 @@ fn main() {
 //      return;
 //  }
 //  bb10: { // binding1: Some(w) if guard()
-//      StorageLive(_9);
-//      _9 = &((_2 as Some).0: i32);
+//      StorageLive(_7);
+//      _7 = &((_2 as Some).0: i32);
 //      _5 = &shallow _2;
-//      _6 = &((_2 as Some).0: i32);
-//      StorageLive(_10);
-//      _10 = const guard() -> [return: bb11, unwind: bb1];
+//      StorageLive(_8);
+//      _8 = const guard() -> [return: bb11, unwind: bb1];
 //  }
 //  bb11: { //end of guard
 //      FakeRead(ForMatchGuard, _5);
-//      FakeRead(ForMatchGuard, _6);
-//      switchInt(move _10) -> [false: bb7, otherwise: bb12];
+//      FakeRead(ForGuardBinding, _7);
+//      switchInt(move _8) -> [false: bb7, otherwise: bb12];
 //  }
 //  bb12: { // set up bindings for arm1
-//      StorageLive(_7);
-//      _7 = ((_2 as Some).0: i32);
+//      StorageLive(_6);
+//      _6 = ((_2 as Some).0: i32);
 //      _1 = const 1i32;
 //      goto -> bb9;
 //  }
 //  bb13: { // binding2 & arm2
-//      StorageLive(_11);
-//      _11 = _2;
+//      StorageLive(_9);
+//      _9 = _2;
 //      _1 = const 2i32;
 //      goto -> bb9;
 //  }
 //  bb14: { // binding3: Some(y) if guard2(y)
-//      StorageLive(_14);
-//      _14 = &((_2 as Some).0: i32);
+//      StorageLive(_11);
+//      _11 = &((_2 as Some).0: i32);
 //      _5 = &shallow _2;
-//      _6 = &((_2 as Some).0: i32);
-//      StorageLive(_15);
-//      StorageLive(_16);
-//      _16 = (*_14);
-//      _15 = const guard2(move _16) -> [return: bb15, unwind: bb1];
+//      StorageLive(_12);
+//      StorageLive(_13);
+//      _13 = (*_11);
+//      _12 = const guard2(move _13) -> [return: bb15, unwind: bb1];
 //  }
 //  bb15: { // end of guard2
-//      StorageDead(_16);
+//      StorageDead(_13);
 //      FakeRead(ForMatchGuard, _5);
-//      FakeRead(ForMatchGuard, _6);
-//      switchInt(move _15) -> [false: bb8, otherwise: bb16];
+//      FakeRead(ForGuardBinding, _11);
+//      switchInt(move _12) -> [false: bb8, otherwise: bb16];
 //  }
 //  bb16: { // binding4 & arm4
-//      StorageLive(_12);
-//      _12 = ((_2 as Some).0: i32);
+//      StorageLive(_10);
+//      _10 = ((_2 as Some).0: i32);
 //      _1 = const 3i32;
 //      goto -> bb9;
 //  }
 //  bb17: {
-//      StorageLive(_17);
-//      _17 = _2;
+//      StorageLive(_14);
+//      _14 = _2;
 //      _1 = const 4i32;
 //      goto -> bb9;
 //  }
