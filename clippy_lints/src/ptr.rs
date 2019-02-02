@@ -151,6 +151,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for PointerPass {
     }
 }
 
+#[allow(clippy::too_many_lines)]
 fn check_fn(cx: &LateContext<'_, '_>, decl: &FnDecl, fn_id: NodeId, opt_body_id: Option<BodyId>) {
     let fn_def_id = cx.tcx.hir().local_def_id(fn_id);
     let sig = cx.tcx.fn_sig(fn_def_id);

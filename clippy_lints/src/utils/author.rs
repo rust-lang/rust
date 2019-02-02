@@ -194,6 +194,7 @@ struct PrintVisitor {
 }
 
 impl<'tcx> Visitor<'tcx> for PrintVisitor {
+    #[allow(clippy::too_many_lines)]
     fn visit_expr(&mut self, expr: &Expr) {
         print!("    if let ExprKind::");
         let current = format!("{}.node", self.current);
@@ -506,6 +507,7 @@ impl<'tcx> Visitor<'tcx> for PrintVisitor {
         }
     }
 
+    #[allow(clippy::too_many_lines)]
     fn visit_pat(&mut self, pat: &Pat) {
         print!("    if let PatKind::");
         let current = format!("{}.node", self.current);

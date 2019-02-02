@@ -472,6 +472,7 @@ impl LintPass for Pass {
 }
 
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Pass {
+    #[allow(clippy::too_many_lines)]
     fn check_expr(&mut self, cx: &LateContext<'a, 'tcx>, expr: &'tcx Expr) {
         // we don't want to check expanded macros
         if in_macro(expr.span) {
@@ -1066,6 +1067,7 @@ fn detect_manual_memcpy<'a, 'tcx>(
 
 /// Check for looping over a range and then indexing a sequence with it.
 /// The iteratee must be a range literal.
+#[allow(clippy::too_many_lines)]
 fn check_for_loop_range<'a, 'tcx>(
     cx: &LateContext<'a, 'tcx>,
     pat: &'tcx Pat,
