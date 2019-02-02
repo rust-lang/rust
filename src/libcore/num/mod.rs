@@ -1530,7 +1530,7 @@ assert_eq!(", stringify!($SelfT), "::MIN.overflowing_neg(), (", stringify!($Self
             #[inline]
             #[stable(feature = "wrapping", since = "1.7.0")]
             pub const fn overflowing_neg(self) -> (Self, bool) {
-                ((self ^ -1).wrapping_add(1), self == Self::min_value())
+                ((!self).wrapping_add(1), self == Self::min_value())
             }
         }
 
