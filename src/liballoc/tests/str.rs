@@ -1,6 +1,8 @@
-use std::borrow::Cow;
-use std::cmp::Ordering::{Equal, Greater, Less};
-use std::str::from_utf8;
+use std::{
+    borrow::Cow,
+    cmp::Ordering::{Equal, Greater, Less},
+    str::from_utf8,
+};
 
 #[test]
 fn test_le() {
@@ -1599,9 +1601,10 @@ fn test_repeat() {
 }
 
 mod pattern {
-    use std::str::pattern::Pattern;
-    use std::str::pattern::{Searcher, ReverseSearcher};
-    use std::str::pattern::SearchStep::{self, Match, Reject, Done};
+    use std::str::pattern::{
+        Pattern, Searcher, ReverseSearcher,
+        SearchStep::{self, Match, Reject, Done},
+    };
 
     macro_rules! make_test {
         ($name:ident, $p:expr, $h:expr, [$($e:expr,)*]) => {

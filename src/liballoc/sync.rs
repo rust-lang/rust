@@ -6,28 +6,33 @@
 //!
 //! [arc]: struct.Arc.html
 
-use core::any::Any;
-use core::sync::atomic;
-use core::sync::atomic::Ordering::{Acquire, Relaxed, Release, SeqCst};
-use core::borrow;
-use core::fmt;
-use core::cmp::{self, Ordering};
-use core::intrinsics::abort;
-use core::mem::{self, align_of_val, size_of_val};
-use core::ops::{Deref, Receiver};
-use core::ops::{CoerceUnsized, DispatchFromDyn};
-use core::pin::Pin;
-use core::ptr::{self, NonNull};
-use core::marker::{Unpin, Unsize, PhantomData};
-use core::hash::{Hash, Hasher};
-use core::{isize, usize};
-use core::convert::From;
+use core::{
+    any::Any,
+    sync::atomic::{
+        self,
+        Ordering::{Acquire, Relaxed, Release, SeqCst}
+    },
+    borrow,
+    fmt,
+    cmp::{self, Ordering},
+    intrinsics::abort,
+    mem::{self, align_of_val, size_of_val},
+    ops::{Deref, Receiver, CoerceUnsized, DispatchFromDyn},
+    pin::Pin,
+    ptr::{self, NonNull},
+    marker::{Unpin, Unsize, PhantomData},
+    hash::{Hash, Hasher},
+    isize, usize,
+    convert::From,
+};
 
-use crate::alloc::{Global, Alloc, Layout, box_free, handle_alloc_error};
-use crate::boxed::Box;
-use crate::rc::is_dangling;
-use crate::string::String;
-use crate::vec::Vec;
+use crate::{
+    alloc::{Global, Alloc, Layout, box_free, handle_alloc_error},
+    boxed::Box,
+    rc::is_dangling,
+    string::String,
+    vec::Vec,
+};
 
 /// A soft limit on the amount of references that may be made to an `Arc`.
 ///
@@ -1650,21 +1655,21 @@ impl<T> From<Vec<T>> for Arc<[T]> {
 
 #[cfg(test)]
 mod tests {
-    use std::boxed::Box;
-    use std::clone::Clone;
-    use std::sync::mpsc::channel;
-    use std::mem::drop;
-    use std::ops::Drop;
-    use std::option::Option;
-    use std::option::Option::{None, Some};
-    use std::sync::atomic;
-    use std::sync::atomic::Ordering::{Acquire, SeqCst};
-    use std::thread;
-    use std::sync::Mutex;
-    use std::convert::From;
+    use std::{
+        boxed::Box,
+        clone::Clone,
+        sync::mpsc::channel,
+        mem::drop,
+        ops::Drop,
+        option::Option::{self, None, Some},
+        sync::atomic::{self, Ordering::{Acquire, SeqCst}},
+        thread,
+        sync::Mutex,
+        convert::From,
+    };
 
     use super::{Arc, Weak};
-    use vec::Vec;
+    use crate::vec::Vec;
 
     struct Canary(*mut atomic::AtomicUsize);
 
@@ -1770,8 +1775,7 @@ mod tests {
 
     #[test]
     fn test_into_from_raw_unsized() {
-        use std::fmt::Display;
-        use std::string::ToString;
+        use std::{fmt::Display, string::ToString};
 
         let arc: Arc<str> = Arc::from("foo");
 
@@ -2083,8 +2087,7 @@ mod tests {
 
     #[test]
     fn test_from_box_trait() {
-        use std::fmt::Display;
-        use std::string::ToString;
+        use std::{fmt::Display, string::ToString};
 
         let b: Box<dyn Display> = box 123;
         let r: Arc<dyn Display> = Arc::from(b);

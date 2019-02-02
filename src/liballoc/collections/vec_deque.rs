@@ -7,22 +7,25 @@
 
 #![stable(feature = "rust1", since = "1.0.0")]
 
-use core::cmp::Ordering;
-use core::fmt;
-use core::iter::{repeat_with, FromIterator, FusedIterator};
-use core::mem;
-use core::ops::Bound::{Excluded, Included, Unbounded};
-use core::ops::{Index, IndexMut, RangeBounds, Try};
-use core::ptr;
-use core::ptr::NonNull;
-use core::slice;
+use core::{
+    cmp::{self, Ordering},
+    fmt,
+    iter::{repeat_with, FromIterator, FusedIterator},
+    mem,
+    ops::{
+        Bound::{Excluded, Included, Unbounded},
+        Index, IndexMut, RangeBounds, Try,
+    },
+    ptr::{self, NonNull},
+    slice,
+    hash::{Hash, Hasher},
+};
 
-use core::hash::{Hash, Hasher};
-use core::cmp;
-
-use crate::collections::CollectionAllocErr;
-use crate::raw_vec::RawVec;
-use crate::vec::Vec;
+use crate::{
+    collections::CollectionAllocErr,
+    raw_vec::RawVec,
+    vec::Vec,
+};
 
 const INITIAL_CAPACITY: usize = 7; // 2^3 - 1
 const MINIMUM_CAPACITY: usize = 1; // 2 - 1
@@ -2758,7 +2761,7 @@ impl<T> From<VecDeque<T>> for Vec<T> {
 
 #[cfg(test)]
 mod tests {
-    use test;
+    use ::test;
 
     use super::VecDeque;
 
@@ -3036,7 +3039,7 @@ mod tests {
 
     #[test]
     fn test_from_vec() {
-        use vec::Vec;
+        use crate::vec::Vec;
         for cap in 0..35 {
             for len in 0..=cap {
                 let mut vec = Vec::with_capacity(cap);
@@ -3052,7 +3055,7 @@ mod tests {
 
     #[test]
     fn test_vec_from_vecdeque() {
-        use vec::Vec;
+        use crate::vec::Vec;
 
         fn create_vec_and_test_convert(cap: usize, offset: usize, len: usize) {
             let mut vd = VecDeque::with_capacity(cap);
@@ -3114,7 +3117,7 @@ mod tests {
 
     #[test]
     fn issue_53529() {
-        use boxed::Box;
+        use crate::boxed::Box;
 
         let mut dst = VecDeque::new();
         dst.push_front(Box::new(1));

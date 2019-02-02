@@ -231,26 +231,28 @@ use crate::boxed::Box;
 #[cfg(test)]
 use std::boxed::Box;
 
-use core::any::Any;
-use core::borrow;
-use core::cell::Cell;
-use core::cmp::Ordering;
-use core::fmt;
-use core::hash::{Hash, Hasher};
-use core::intrinsics::abort;
-use core::marker;
-use core::marker::{Unpin, Unsize, PhantomData};
-use core::mem::{self, align_of_val, forget, size_of_val};
-use core::ops::{Deref, Receiver};
-use core::ops::{CoerceUnsized, DispatchFromDyn};
-use core::pin::Pin;
-use core::ptr::{self, NonNull};
-use core::convert::From;
-use core::usize;
+use core::{
+    any::Any,
+    borrow,
+    cell::Cell,
+    cmp::Ordering,
+    fmt,
+    hash::{Hash, Hasher},
+    intrinsics::abort,
+    marker::{self, Unpin, Unsize, PhantomData},
+    mem::{self, align_of_val, forget, size_of_val},
+    ops::{Deref, Receiver, CoerceUnsized, DispatchFromDyn},
+    pin::Pin,
+    ptr::{self, NonNull},
+    convert::From,
+    usize,
+};
 
-use crate::alloc::{Global, Alloc, Layout, box_free, handle_alloc_error};
-use crate::string::String;
-use crate::vec::Vec;
+use crate::{
+    alloc::{Global, Alloc, Layout, box_free, handle_alloc_error},
+    string::String,
+    vec::Vec,
+};
 
 struct RcBox<T: ?Sized> {
     strong: Cell<usize>,
@@ -1562,14 +1564,15 @@ impl<T: ?Sized> RcBoxPtr<T> for RcBox<T> {
 #[cfg(test)]
 mod tests {
     use super::{Rc, Weak};
-    use std::boxed::Box;
-    use std::cell::RefCell;
-    use std::option::Option;
-    use std::option::Option::{None, Some};
-    use std::result::Result::{Err, Ok};
-    use std::mem::drop;
-    use std::clone::Clone;
-    use std::convert::From;
+    use std::{
+        boxed::Box,
+        cell::RefCell,
+        option::Option::{self, None, Some},
+        result::Result::{Err, Ok},
+        mem::drop,
+        clone::Clone,
+        convert::From,
+    };
 
     #[test]
     fn test_clone() {
@@ -1733,8 +1736,7 @@ mod tests {
 
     #[test]
     fn test_into_from_raw_unsized() {
-        use std::fmt::Display;
-        use std::string::ToString;
+        use std::{fmt::Display, string::ToString};
 
         let rc: Rc<str> = Rc::from("foo");
 
@@ -1942,8 +1944,7 @@ mod tests {
 
     #[test]
     fn test_from_box_trait() {
-        use std::fmt::Display;
-        use std::string::ToString;
+        use std::{fmt::Display, string::ToString};
 
         let b: Box<dyn Display> = box 123;
         let r: Rc<dyn Display> = Rc::from(b);

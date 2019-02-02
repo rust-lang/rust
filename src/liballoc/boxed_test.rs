@@ -1,11 +1,13 @@
 //! Test for `boxed` mod.
 
-use core::any::Any;
-use core::ops::Deref;
-use core::result::Result::{Err, Ok};
-use core::clone::Clone;
-use core::f64;
-use core::i64;
+use core::{
+    any::Any,
+    ops::Deref,
+    result::Result::{Err, Ok},
+    clone::Clone,
+    f64,
+    i64,
+};
 
 use std::boxed::Box;
 

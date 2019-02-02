@@ -1,15 +1,20 @@
 // This is pretty much entirely stolen from TreeSet, since BTreeMap has an identical interface
 // to TreeMap
 
-use core::cmp::Ordering::{self, Less, Greater, Equal};
-use core::cmp::{min, max};
-use core::fmt::Debug;
-use core::fmt;
-use core::iter::{Peekable, FromIterator, FusedIterator};
-use core::ops::{BitOr, BitAnd, BitXor, Sub, RangeBounds};
+use core::{
+    cmp::{
+        Ordering::{self, Less, Greater, Equal},
+        min, max,
+    },
+    fmt::{self, Debug},
+    iter::{Peekable, FromIterator, FusedIterator},
+    ops::{BitOr, BitAnd, BitXor, Sub, RangeBounds},
+};
 
-use crate::borrow::Borrow;
-use crate::collections::btree_map::{self, BTreeMap, Keys};
+use crate::{
+    borrow::Borrow,
+    collections::btree_map::{self, BTreeMap, Keys},
+};
 use super::Recover;
 
 // FIXME(conventions): implement bounded iterators

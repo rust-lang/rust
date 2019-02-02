@@ -1,9 +1,10 @@
-use std::collections::BTreeMap;
-use std::collections::btree_map::Entry::{Occupied, Vacant};
-use std::ops::Bound::{self, Excluded, Included, Unbounded};
-use std::rc::Rc;
+use std::{
+    collections::{BTreeMap, btree_map::Entry::{Occupied, Vacant}},
+    ops::Bound::{self, Excluded, Included, Unbounded},
+    rc::Rc,
+    iter::FromIterator,
+};
 
-use std::iter::FromIterator;
 use super::DeterministicRng;
 
 #[test]

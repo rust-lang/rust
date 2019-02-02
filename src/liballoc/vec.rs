@@ -56,25 +56,30 @@
 
 #![stable(feature = "rust1", since = "1.0.0")]
 
-use core::cmp::{self, Ordering};
-use core::fmt;
-use core::hash::{self, Hash};
-use core::intrinsics::{arith_offset, assume};
-use core::iter::{FromIterator, FusedIterator, TrustedLen};
-use core::marker::PhantomData;
-use core::mem;
-use core::ops::Bound::{Excluded, Included, Unbounded};
-use core::ops::{Index, IndexMut, RangeBounds};
-use core::ops;
-use core::ptr;
-use core::ptr::NonNull;
-use core::slice;
+use core::{
+    cmp::{self, Ordering},
+    fmt,
+    hash::{self, Hash},
+    intrinsics::{arith_offset, assume},
+    iter::{FromIterator, FusedIterator, TrustedLen},
+    marker::PhantomData,
+    mem,
+    ops::{
+        self,
+        Bound::{Excluded, Included, Unbounded},
+        Index, IndexMut, RangeBounds,
+    },
+    ptr::{self, NonNull},
+    slice,
+};
 
-use crate::collections::CollectionAllocErr;
-use crate::borrow::ToOwned;
-use crate::borrow::Cow;
-use crate::boxed::Box;
-use crate::raw_vec::RawVec;
+use crate::{
+    collections::CollectionAllocErr,
+    borrow::ToOwned,
+    borrow::Cow,
+    boxed::Box,
+    raw_vec::RawVec,
+};
 
 /// A contiguous growable array type, written `Vec<T>` but pronounced 'vector'.
 ///
@@ -1646,7 +1651,7 @@ impl<T: Clone> Clone for Vec<T> {
     // NB see the slice::hack module in slice.rs for more information
     #[cfg(test)]
     fn clone(&self) -> Vec<T> {
-        ::slice::to_vec(&**self)
+        crate::slice::to_vec(&**self)
     }
 
     fn clone_from(&mut self, other: &Vec<T>) {
@@ -2193,7 +2198,7 @@ impl<'a, T: Clone> From<&'a [T]> for Vec<T> {
     }
     #[cfg(test)]
     fn from(s: &'a [T]) -> Vec<T> {
-        ::slice::to_vec(s)
+        crate::slice::to_vec(s)
     }
 }
 
@@ -2205,7 +2210,7 @@ impl<'a, T: Clone> From<&'a mut [T]> for Vec<T> {
     }
     #[cfg(test)]
     fn from(s: &'a mut [T]) -> Vec<T> {
-        ::slice::to_vec(s)
+        crate::slice::to_vec(s)
     }
 }
 

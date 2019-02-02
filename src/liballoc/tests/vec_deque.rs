@@ -1,9 +1,14 @@
-use std::collections::VecDeque;
-use std::fmt::Debug;
-use std::collections::vec_deque::{Drain};
-use std::collections::CollectionAllocErr::*;
-use std::mem::size_of;
-use std::{usize, isize};
+use std::{
+    fmt::Debug,
+    collections::{
+        VecDeque, vec_deque::Drain,
+        CollectionAllocErr::*,
+    },
+    mem::size_of,
+    usize, isize,
+};
+
+use crate::hash;
 
 use self::Taggy::*;
 use self::Taggypar::*;
@@ -583,7 +588,7 @@ fn test_hash() {
     y.push_back(2);
     y.push_back(3);
 
-    assert!(::hash(&x) == ::hash(&y));
+    assert!(hash(&x) == hash(&y));
 }
 
 #[test]
@@ -599,7 +604,7 @@ fn test_hash_after_rotation() {
             *elt -= 1;
         }
         ring.push_back(len - 1);
-        assert_eq!(::hash(&orig), ::hash(&ring));
+        assert_eq!(hash(&orig), hash(&ring));
         assert_eq!(orig, ring);
         assert_eq!(ring, orig);
     }

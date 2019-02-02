@@ -1,23 +1,24 @@
-use core::cmp::Ordering;
-use core::fmt::Debug;
-use core::hash::{Hash, Hasher};
-use core::iter::{FromIterator, Peekable, FusedIterator};
-use core::marker::PhantomData;
-use core::ops::Bound::{Excluded, Included, Unbounded};
-use core::ops::Index;
-use core::ops::RangeBounds;
-use core::{fmt, intrinsics, mem, ptr};
+use core::{
+    cmp::Ordering,
+    fmt::Debug,
+    hash::{Hash, Hasher},
+    iter::{FromIterator, Peekable, FusedIterator},
+    marker::PhantomData,
+    ops::{
+        Bound::{Excluded, Included, Unbounded},
+        Index, RangeBounds,
+    },
+    fmt, intrinsics, mem, ptr,
+};
 
 use crate::borrow::Borrow;
 
-use super::node::{self, Handle, NodeRef, marker};
-use super::search;
+use super::{
+    node::{self, Handle, NodeRef, marker, InsertResult::*, ForceResult::*},
+    search::{self, SearchResult::*},
+};
 
-use super::node::InsertResult::*;
-use super::node::ForceResult::*;
-use super::search::SearchResult::*;
-use self::UnderflowResult::*;
-use self::Entry::*;
+use self::{UnderflowResult::*, Entry::*};
 
 /// A map based on a B-Tree.
 ///

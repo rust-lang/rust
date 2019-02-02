@@ -12,13 +12,15 @@
 
 #![stable(feature = "rust1", since = "1.0.0")]
 
-use core::cmp::Ordering;
-use core::fmt;
-use core::hash::{Hasher, Hash};
-use core::iter::{FromIterator, FusedIterator};
-use core::marker::PhantomData;
-use core::mem;
-use core::ptr::NonNull;
+use core::{
+    cmp::Ordering,
+    fmt,
+    hash::{Hasher, Hash},
+    iter::{FromIterator, FusedIterator},
+    marker::PhantomData,
+    mem,
+    ptr::NonNull,
+};
 
 use crate::boxed::Box;
 use super::SpecExtend;
@@ -1213,11 +1215,8 @@ unsafe impl<'a, T: Sync> Sync for IterMut<'a, T> {}
 
 #[cfg(test)]
 mod tests {
-    use std::thread;
-    use std::vec::Vec;
-
+    use std::{thread, vec::Vec};
     use rand::{thread_rng, RngCore};
-
     use super::{LinkedList, Node};
 
     #[cfg(test)]

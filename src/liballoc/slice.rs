@@ -87,15 +87,18 @@
 // It's cleaner to just turn off the unused_imports warning than to fix them.
 #![cfg_attr(test, allow(unused_imports, dead_code))]
 
-use core::cmp::Ordering::{self, Less};
-use core::mem::size_of;
-use core::mem;
-use core::ptr;
-use core::{u8, u16, u32};
+use core::{
+    cmp::Ordering::{self, Less},
+    mem::{self, size_of},
+    ptr,
+    u8, u16, u32,
+};
 
-use crate::borrow::{Borrow, BorrowMut, ToOwned};
-use crate::boxed::Box;
-use crate::vec::Vec;
+use crate::{
+    borrow::{Borrow, BorrowMut, ToOwned},
+    boxed::Box,
+    vec::Vec,
+};
 
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use core::slice::{Chunks, Windows};

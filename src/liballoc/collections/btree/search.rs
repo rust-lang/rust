@@ -2,9 +2,8 @@ use core::cmp::Ordering;
 
 use crate::borrow::Borrow;
 
-use super::node::{Handle, NodeRef, marker};
+use super::node::{Handle, NodeRef, marker, ForceResult::*};
 
-use super::node::ForceResult::*;
 use self::SearchResult::*;
 
 pub enum SearchResult<BorrowType, K, V, FoundType, GoDownType> {

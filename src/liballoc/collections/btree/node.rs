@@ -31,13 +31,17 @@
 // - A node of length `n` has `n` keys, `n` values, and (in an internal node) `n + 1` edges.
 //   This implies that even an empty internal node has at least one edge.
 
-use core::marker::PhantomData;
-use core::mem::{self, MaybeUninit};
-use core::ptr::{self, Unique, NonNull};
-use core::slice;
+use core::{
+    marker::PhantomData,
+    mem::{self, MaybeUninit},
+    ptr::{self, Unique, NonNull},
+    slice,
+};
 
-use crate::alloc::{Global, Alloc, Layout};
-use crate::boxed::Box;
+use crate::{
+    alloc::{Global, Alloc, Layout},
+    boxed::Box,
+};
 
 const B: usize = 6;
 pub const MIN_LEN: usize = B - 1;

@@ -1,16 +1,19 @@
 #![unstable(feature = "raw_vec_internals", reason = "implementation detail", issue = "0")]
 #![doc(hidden)]
 
-use core::cmp;
-use core::mem;
-use core::ops::Drop;
-use core::ptr::{self, NonNull, Unique};
-use core::slice;
+use core::{
+    cmp,
+    mem,
+    ops::Drop,
+    ptr::{self, NonNull, Unique},
+    slice,
+};
 
-use crate::alloc::{Alloc, Layout, Global, handle_alloc_error};
-use crate::collections::CollectionAllocErr;
-use crate::collections::CollectionAllocErr::*;
-use crate::boxed::Box;
+use crate::{
+    alloc::{Alloc, Layout, Global, handle_alloc_error},
+    collections::CollectionAllocErr::{self, *},
+    boxed::Box,
+};
 
 /// A low-level utility for more ergonomically allocating, reallocating, and deallocating
 /// a buffer of memory on the heap without having to worry about all the corner cases
@@ -753,7 +756,7 @@ mod tests {
 
     #[test]
     fn allocator_param() {
-        use alloc::AllocErr;
+        use crate::alloc::AllocErr;
 
         // Writing a test of integration between third-party
         // allocators and RawVec is a little tricky because the RawVec

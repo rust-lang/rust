@@ -1,8 +1,10 @@
-use std::borrow::Cow;
-use std::mem::size_of;
-use std::{usize, isize};
-use std::vec::{Drain, IntoIter};
-use std::collections::CollectionAllocErr::*;
+use std::{
+    borrow::Cow,
+    mem::size_of,
+    usize, isize,
+    vec::{Drain, IntoIter},
+    collections::CollectionAllocErr::*,
+};
 
 struct DropCounter<'a> {
     count: &'a mut u32,

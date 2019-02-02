@@ -2,12 +2,13 @@
 
 #![stable(feature = "rust1", since = "1.0.0")]
 
-use core::cmp::Ordering;
-use core::hash::{Hash, Hasher};
-use core::ops::{Add, AddAssign, Deref};
+use core::{
+    cmp::Ordering,
+    hash::{Hash, Hasher},
+    ops::{Add, AddAssign, Deref},
+};
 
-use crate::fmt;
-use crate::string::String;
+use crate::{fmt, string::String};
 
 use self::Cow::*;
 
