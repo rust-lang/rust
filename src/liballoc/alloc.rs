@@ -229,7 +229,7 @@ pub fn handle_alloc_error(layout: Layout) -> ! {
 #[cfg(test)]
 mod tests {
     extern crate test;
-    use self::test::Bencher;
+    use test::Bencher;
     use crate::{
         boxed::Box,
         alloc::{Global, Alloc, Layout, handle_alloc_error},

@@ -3,7 +3,7 @@
 pub use core::task::*;
 
 #[cfg(all(target_has_atomic = "ptr", target_has_atomic = "cas"))]
-pub use self::if_arc::*;
+pub use if_arc::*;
 
 #[cfg(all(target_has_atomic = "ptr", target_has_atomic = "cas"))]
 mod if_arc {

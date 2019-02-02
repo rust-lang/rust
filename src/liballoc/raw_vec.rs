@@ -624,14 +624,14 @@ enum Fallibility {
     Infallible,
 }
 
-use self::Fallibility::*;
+use Fallibility::*;
 
 enum ReserveStrategy {
     Exact,
     Amortized,
 }
 
-use self::ReserveStrategy::*;
+use ReserveStrategy::*;
 
 impl<T, A: Alloc> RawVec<T, A> {
     fn reserve_internal(

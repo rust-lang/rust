@@ -5,7 +5,7 @@ use core::{
 
 use super::node::{Handle, NodeRef, marker, ForceResult::*};
 
-use self::SearchResult::*;
+use SearchResult::*;
 
 pub enum SearchResult<BorrowType, K, V, FoundType, GoDownType> {
     Found(Handle<NodeRef<BorrowType, K, V, FoundType>, marker::KV>),

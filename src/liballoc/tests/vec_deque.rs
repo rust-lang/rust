@@ -10,8 +10,8 @@ use std::{
 
 use crate::hash;
 
-use self::Taggy::*;
-use self::Taggypar::*;
+use Taggy::*;
+use Taggypar::*;
 
 #[test]
 fn test_simple() {

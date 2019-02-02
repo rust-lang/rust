@@ -17,7 +17,8 @@ use super::{
     search::{self, SearchResult::*},
 };
 
-use self::{UnderflowResult::*, Entry::*};
+use UnderflowResult::*;
+use Entry::*;
 
 /// A map based on a B-Tree.
 ///

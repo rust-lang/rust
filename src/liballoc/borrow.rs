@@ -8,12 +8,12 @@ use core::{
     ops::{Add, AddAssign, Deref},
 };
 
-use crate::{fmt, string::String};
-
-use self::Cow::*;
-
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use core::borrow::{Borrow, BorrowMut};
+
+use crate::{fmt, string::String};
+
+use Cow::*;
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<'a, B: ?Sized> Borrow<B> for Cow<'a, B>
