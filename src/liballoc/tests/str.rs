@@ -586,7 +586,7 @@ mod slice_index {
     }
 
     mod boundary {
-        const DATA: &'static str = "abcαβγ";
+        const DATA: &str = "abcαβγ";
 
         const BAD_START: usize = 4;
         const GOOD_START: usize = 3;
@@ -650,7 +650,7 @@ mod slice_index {
         }
     }
 
-    const LOREM_PARAGRAPH: &'static str = "\
+    const LOREM_PARAGRAPH: &str = "\
     Lorem ipsum dolor sit amet, consectetur adipiscing elit. Suspendisse quis lorem \
     sit amet dolor ultricies condimentum. Praesent iaculis purus elit, ac malesuada \
     quam malesuada in. Duis sed orci eros. Suspendisse sit amet magna mollis, mollis \
