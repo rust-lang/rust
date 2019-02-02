@@ -33,6 +33,9 @@ fn main() {
     assert_eq!(SHL_A, ident(128));
     assert_eq!(SHL_B, ident(1));
 
-    assert_eq!(SHR_A, ident(4294967291));
-    assert_eq!(SHR_B, ident(3060399406));
+    assert_eq!(SHR_A, ident(1));
+    assert_eq!(SHR_B, ident(128));
+
+    assert_eq!(NEG_A, ident(4294967291));
+    assert_eq!(NEG_B, ident(3060399406));
 }
