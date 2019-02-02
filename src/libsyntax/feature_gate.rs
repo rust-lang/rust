@@ -665,6 +665,8 @@ declare_features! (
     (accepted, self_struct_ctor, "1.32.0", Some(51994), None),
     // `Self` in type definitions (RFC 2300)
     (accepted, self_in_typedefs, "1.32.0", Some(49303), None),
+    // Allows `use x::y;` to search `x` in the current scope.
+    (accepted, uniform_paths, "1.32.0", Some(53130), None),
     // Integer match exhaustiveness checking (RFC 2591)
     (accepted, exhaustive_integer_patterns, "1.33.0", Some(50907), None),
     // `use path as _;` and `extern crate c as _;`
@@ -683,8 +685,6 @@ declare_features! (
     (accepted, cfg_attr_multi, "1.33.0", Some(54881), None),
     // Top level or-patterns (`p | q`) in `if let` and `while let`.
     (accepted, if_while_or_patterns, "1.33.0", Some(48215), None),
-    // Allows `use x::y;` to search `x` in the current scope.
-    (accepted, uniform_paths, "1.32.0", Some(53130), None),
     // Allows `cfg(target_vendor = "...")`.
     (accepted, cfg_target_vendor, "1.33.0", Some(29718), None),
     // `extern crate self as foo;` puts local crate root into extern prelude under name `foo`.
