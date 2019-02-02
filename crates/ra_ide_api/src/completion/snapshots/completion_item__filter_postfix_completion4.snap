@@ -1,5 +1,5 @@
 ---
-created: "2019-02-02T15:08:34.060136941+00:00"
+created: "2019-02-02T15:08:34.069147268+00:00"
 creator: insta@0.5.3
 expression: kind_completions
 source: crates/ra_ide_api/src/completion/completion_item.rs
