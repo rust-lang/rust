@@ -276,10 +276,11 @@
        html_root_url = "https://doc.rust-lang.org/nightly/",
        test(attr(allow(unused_variables), deny(warnings))))]
 
-#![feature(nll)]
+#![deny(rust_2018_idioms)]
+
 #![feature(str_escape)]
 
-use self::LabelText::*;
+use LabelText::*;
 
 use std::borrow::Cow;
 use std::io::prelude::*;
@@ -548,12 +549,12 @@ impl<'a> LabelText<'a> {
     }
 
     /// Puts `prefix` on a line above this label, with a blank line separator.
-    pub fn prefix_line(self, prefix: LabelText) -> LabelText<'static> {
+    pub fn prefix_line(self, prefix: LabelText<'_>) -> LabelText<'static> {
         prefix.suffix_line(self)
     }
 
     /// Puts `suffix` on a line below this label, with a blank line separator.
-    pub fn suffix_line(self, suffix: LabelText) -> LabelText<'static> {
+    pub fn suffix_line(self, suffix: LabelText<'_>) -> LabelText<'static> {
         let mut prefix = self.pre_escaped_content().into_owned();
         let suffix = suffix.pre_escaped_content();
         prefix.push_str(r"\n\n");
@@ -686,7 +687,7 @@ pub fn render_opts<'a, N, E, G, W>(g: &'a G,
 
 #[cfg(test)]
 mod tests {
-    use self::NodeLabels::*;
+    use NodeLabels::*;
     use super::{Id, Labeller, Nodes, Edges, GraphWalk, render, Style};
     use super::LabelText::{self, LabelStr, EscStr, HtmlStr};
     use std::io;
