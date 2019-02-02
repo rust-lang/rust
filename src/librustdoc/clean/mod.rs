@@ -3692,7 +3692,7 @@ fn name_from_pat(p: &hir::Pat) -> String {
 
     match p.node {
         PatKind::Wild => "_".to_string(),
-        PatKind::Binding(_, _, ident, _) => ident.to_string(),
+        PatKind::Binding(_, _, _, ident, _) => ident.to_string(),
         PatKind::TupleStruct(ref p, ..) | PatKind::Path(ref p) => qpath_to_string(p),
         PatKind::Struct(ref name, ref fields, etc) => {
             format!("{} {{ {}{} }}", qpath_to_string(name),
@@ -4071,6 +4071,7 @@ where F: Fn(DefId) -> Def {
         segments: hir::HirVec::from_vec(apb.names.iter().map(|s| hir::PathSegment {
             ident: ast::Ident::from_str(&s),
             id: None,
+            hir_id: None,
             def: None,
             args: None,
             infer_types: false,

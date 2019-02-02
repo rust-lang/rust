@@ -83,7 +83,7 @@ impl hir::Pat {
         where F: FnMut(hir::BindingAnnotation, HirId, Span, ast::Ident),
     {
         self.walk(|p| {
-            if let PatKind::Binding(binding_mode, _, ident, _) = p.node {
+            if let PatKind::Binding(binding_mode, _, _, ident, _) = p.node {
                 f(binding_mode, p.hir_id, p.span, ident);
             }
             true
@@ -123,8 +123,8 @@ impl hir::Pat {
 
     pub fn simple_ident(&self) -> Option<ast::Ident> {
         match self.node {
-            PatKind::Binding(hir::BindingAnnotation::Unannotated, _, ident, None) |
-            PatKind::Binding(hir::BindingAnnotation::Mutable, _, ident, None) => Some(ident),
+            PatKind::Binding(hir::BindingAnnotation::Unannotated, _, _, ident, None) |
+            PatKind::Binding(hir::BindingAnnotation::Mutable, _, _, ident, None) => Some(ident),
             _ => None,
         }
     }

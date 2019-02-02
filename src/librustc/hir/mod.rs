@@ -146,6 +146,7 @@ pub const DUMMY_ITEM_LOCAL_ID: ItemLocalId = ItemLocalId::MAX;
 #[derive(Clone, RustcEncodable, RustcDecodable, Copy)]
 pub struct Lifetime {
     pub id: NodeId,
+    pub hir_id: HirId,
     pub span: Span,
 
     /// Either "'a", referring to a named lifetime definition,
@@ -321,6 +322,7 @@ pub struct PathSegment {
     // affected. (In general, we don't bother to get the defs for synthesized
     // segments, only for segments which have come from the AST).
     pub id: Option<NodeId>,
+    pub hir_id: Option<HirId>,
     pub def: Option<Def>,
 
     /// Type/lifetime parameters attached to this path. They come in
@@ -343,6 +345,7 @@ impl PathSegment {
         PathSegment {
             ident,
             id: None,
+            hir_id: None,
             def: None,
             infer_types: true,
             args: None,
@@ -352,6 +355,7 @@ impl PathSegment {
     pub fn new(
         ident: Ident,
         id: Option<NodeId>,
+        hir_id: Option<HirId>,
         def: Option<Def>,
         args: GenericArgs,
         infer_types: bool,
@@ -359,6 +363,7 @@ impl PathSegment {
         PathSegment {
             ident,
             id,
+            hir_id,
             def,
             infer_types,
             args: if args.is_empty() {
@@ -528,6 +533,7 @@ pub enum GenericParamKind {
 #[derive(Clone, RustcEncodable, RustcDecodable, Debug)]
 pub struct GenericParam {
     pub id: NodeId,
+    pub hir_id: HirId,
     pub name: ParamName,
     pub attrs: HirVec<Attribute>,
     pub bounds: GenericBounds,
@@ -558,6 +564,7 @@ impl Generics {
             params: HirVec::new(),
             where_clause: WhereClause {
                 id: DUMMY_NODE_ID,
+                hir_id: DUMMY_HIR_ID,
                 predicates: HirVec::new(),
             },
             span: DUMMY_SP,
@@ -601,6 +608,7 @@ pub enum SyntheticTyParamKind {
 #[derive(Clone, RustcEncodable, RustcDecodable, Debug)]
 pub struct WhereClause {
     pub id: NodeId,
+    pub hir_id: HirId,
     pub predicates: HirVec<WherePredicate>,
 }
 
@@ -661,6 +669,7 @@ pub struct WhereRegionPredicate {
 #[derive(Clone, RustcEncodable, RustcDecodable, Debug)]
 pub struct WhereEqPredicate {
     pub id: NodeId,
+    pub hir_id: HirId,
     pub span: Span,
     pub lhs_ty: P<Ty>,
     pub rhs_ty: P<Ty>,
@@ -789,6 +798,7 @@ pub struct MacroDef {
     pub vis: Visibility,
     pub attrs: HirVec<Attribute>,
     pub id: NodeId,
+    pub hir_id: HirId,
     pub span: Span,
     pub body: TokenStream,
     pub legacy: bool,
@@ -878,6 +888,7 @@ impl Pat {
 #[derive(Clone, RustcEncodable, RustcDecodable, Debug)]
 pub struct FieldPat {
     pub id: NodeId,
+    pub hir_id: HirId,
     /// The identifier for the field
     pub ident: Ident,
     /// The pattern the field is destructured to
@@ -924,7 +935,7 @@ pub enum PatKind {
     /// The `NodeId` is the canonical ID for the variable being bound,
     /// e.g., in `Ok(x) | Err(x)`, both `x` use the same canonical ID,
     /// which is the pattern ID of the first `x`.
-    Binding(BindingAnnotation, NodeId, Ident, Option<P<Pat>>),
+    Binding(BindingAnnotation, NodeId, HirId, Ident, Option<P<Pat>>),
 
     /// A struct or struct variant pattern, e.g., `Variant {x, y, ..}`.
     /// The `bool` is `true` in the presence of a `..`.
@@ -1137,6 +1148,7 @@ impl UnOp {
 #[derive(Clone, RustcEncodable, RustcDecodable)]
 pub struct Stmt {
     pub id: NodeId,
+    pub hir_id: HirId,
     pub node: StmtKind,
     pub span: Span,
 }
@@ -1204,6 +1216,7 @@ pub enum Guard {
 #[derive(Clone, RustcEncodable, RustcDecodable, Debug)]
 pub struct Field {
     pub id: NodeId,
+    pub hir_id: HirId,
     pub ident: Ident,
     pub expr: P<Expr>,
     pub span: Span,
@@ -1711,6 +1724,7 @@ pub enum ImplItemKind {
 #[derive(Clone, RustcEncodable, RustcDecodable, Debug)]
 pub struct TypeBinding {
     pub id: NodeId,
+    pub hir_id: HirId,
     pub ident: Ident,
     pub ty: P<Ty>,
     pub span: Span,
@@ -2106,6 +2120,7 @@ pub struct StructField {
     pub ident: Ident,
     pub vis: Visibility,
     pub id: NodeId,
+    pub hir_id: HirId,
     pub ty: P<Ty>,
     pub attrs: HirVec<Attribute>,
 }
@@ -2131,21 +2146,30 @@ impl StructField {
 /// Id of the whole struct lives in `Item`.
 #[derive(Clone, RustcEncodable, RustcDecodable, Debug)]
 pub enum VariantData {
-    Struct(HirVec<StructField>, NodeId),
-    Tuple(HirVec<StructField>, NodeId),
-    Unit(NodeId),
+    Struct(HirVec<StructField>, NodeId, HirId),
+    Tuple(HirVec<StructField>, NodeId, HirId),
+    Unit(NodeId, HirId),
 }
 
 impl VariantData {
     pub fn fields(&self) -> &[StructField] {
         match *self {
-            VariantData::Struct(ref fields, _) | VariantData::Tuple(ref fields, _) => fields,
+            VariantData::Struct(ref fields, ..) | VariantData::Tuple(ref fields, ..) => fields,
             _ => &[],
         }
     }
     pub fn id(&self) -> NodeId {
         match *self {
-            VariantData::Struct(_, id) | VariantData::Tuple(_, id) | VariantData::Unit(id) => id,
+            VariantData::Struct(_, id, ..)
+            | VariantData::Tuple(_, id, ..)
+            | VariantData::Unit(id, ..) => id,
+        }
+    }
+    pub fn hir_id(&self) -> HirId {
+        match *self {
+            VariantData::Struct(_, _, hir_id)
+            | VariantData::Tuple(_, _, hir_id)
+            | VariantData::Unit(_, hir_id) => hir_id,
         }
     }
     pub fn is_struct(&self) -> bool {
@@ -2343,6 +2367,7 @@ pub struct ForeignItem {
     pub attrs: HirVec<Attribute>,
     pub node: ForeignItemKind,
     pub id: NodeId,
+    pub hir_id: HirId,
     pub span: Span,
     pub vis: Visibility,
 }

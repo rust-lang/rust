@@ -1768,7 +1768,7 @@ impl<'a> State<'a> {
         // is that it doesn't matter
         match pat.node {
             PatKind::Wild => self.s.word("_")?,
-            PatKind::Binding(binding_mode, _, ident, ref sub) => {
+            PatKind::Binding(binding_mode, _, _, ident, ref sub) => {
                 match binding_mode {
                     hir::BindingAnnotation::Ref => {
                         self.word_nbsp("ref")?;
@@ -2246,6 +2246,7 @@ impl<'a> State<'a> {
             params: hir::HirVec::new(),
             where_clause: hir::WhereClause {
                 id: ast::DUMMY_NODE_ID,
+                hir_id: hir::DUMMY_HIR_ID,
                 predicates: hir::HirVec::new(),
             },
             span: syntax_pos::DUMMY_SP,

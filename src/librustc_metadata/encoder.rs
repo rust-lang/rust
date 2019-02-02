@@ -977,7 +977,7 @@ impl<'a, 'b: 'a, 'tcx: 'b> IsolatedEncoder<'a, 'b, 'tcx> {
             let body = self.tcx.hir().body(body_id);
             self.lazy_seq(body.arguments.iter().map(|arg| {
                 match arg.pat.node {
-                    PatKind::Binding(_, _, ident, _) => ident.name,
+                    PatKind::Binding(_, _, _, ident, _) => ident.name,
                     _ => keywords::Invalid.name(),
                 }
             }))

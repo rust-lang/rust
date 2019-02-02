@@ -80,7 +80,7 @@ fn mir_keys<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, krate: CrateNum)
                               _: &'tcx hir::Generics,
                               _: ast::NodeId,
                               _: Span) {
-            if let hir::VariantData::Tuple(_, node_id) = *v {
+            if let hir::VariantData::Tuple(_, node_id, _) = *v {
                 self.set.insert(self.tcx.hir().local_def_id(node_id));
             }
             intravisit::walk_struct_def(self, v)

@@ -285,7 +285,7 @@ impl<'a, 'tcx> MatchVisitor<'a, 'tcx> {
 
 fn check_for_bindings_named_same_as_variants(cx: &MatchVisitor, pat: &Pat) {
     pat.walk(|p| {
-        if let PatKind::Binding(_, _, ident, None) = p.node {
+        if let PatKind::Binding(_, _, _, ident, None) = p.node {
             if let Some(&bm) = cx.tables.pat_binding_modes().get(p.hir_id) {
                 if bm != ty::BindByValue(hir::MutImmutable) {
                     // Nothing to check.
@@ -503,7 +503,7 @@ fn check_legality_of_move_bindings(cx: &MatchVisitor,
 
     for pat in pats {
         pat.walk(|p| {
-            if let PatKind::Binding(_, _, _, ref sub) = p.node {
+            if let PatKind::Binding(_, _, _, _, ref sub) = p.node {
                 if let Some(&bm) = cx.tables.pat_binding_modes().get(p.hir_id) {
                     match bm {
                         ty::BindByValue(..) => {
