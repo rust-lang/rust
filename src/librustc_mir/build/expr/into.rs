@@ -53,8 +53,8 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
             ExprKind::Block { body: ast_block } => {
                 this.ast_block(destination, block, ast_block, source_info)
             }
-            ExprKind::Match { discriminant, arms } => {
-                this.match_expr(destination, expr_span, block, discriminant, arms)
+            ExprKind::Match { scrutinee, arms } => {
+                this.match_expr(destination, expr_span, block, scrutinee, arms)
             }
             ExprKind::NeverToAny { source } => {
                 let source = this.hir.mirror(source);

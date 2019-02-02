@@ -33,7 +33,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
     /// ```text
     /// [ 0. Pre-match ]
     ///        |
-    /// [ 1. Evaluate Scrutinee]
+    /// [ 1. Evaluate Scrutinee (expression being matched on) ]
     /// [ (fake read of scrutinee) ]
     ///        |
     /// [ 2. Decision tree -- check discriminants ] <--------+
@@ -102,17 +102,17 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
         destination: &Place<'tcx>,
         span: Span,
         mut block: BasicBlock,
-        discriminant: ExprRef<'tcx>,
+        scrutinee: ExprRef<'tcx>,
         arms: Vec<Arm<'tcx>>,
     ) -> BlockAnd<()> {
         let tcx = self.hir.tcx();
 
         // Step 1. Evaluate the scrutinee and add the fake read of it.
 
-        let discriminant_span = discriminant.span();
-        let discriminant_place = unpack!(block = self.as_place(block, discriminant));
+        let scrutinee_span = scrutinee.span();
+        let scrutinee_place = unpack!(block = self.as_place(block, scrutinee));
 
-        // Matching on a `discriminant_place` with an uninhabited type doesn't
+        // Matching on a `scrutinee_place` with an uninhabited type doesn't
         // generate any memory reads by itself, and so if the place "expression"
         // contains unsafe operations like raw pointer dereferences or union
         // field projections, we wouldn't know to require an `unsafe` block
@@ -120,20 +120,20 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
         // See issue #47412 for this hole being discovered in the wild.
         //
         // HACK(eddyb) Work around the above issue by adding a dummy inspection
-        // of `discriminant_place`, specifically by applying `ReadForMatch`.
+        // of `scrutinee_place`, specifically by applying `ReadForMatch`.
         //
-        // NOTE: ReadForMatch also checks that the discriminant is initialized.
+        // NOTE: ReadForMatch also checks that the scrutinee is initialized.
         // This is currently needed to not allow matching on an uninitialized,
         // uninhabited value. If we get never patterns, those will check that
         // the place is initialized, and so this read would only be used to
         // check safety.
 
-        let source_info = self.source_info(discriminant_span);
+        let source_info = self.source_info(scrutinee_span);
         self.cfg.push(block, Statement {
             source_info,
             kind: StatementKind::FakeRead(
                 FakeReadCause::ForMatchedPlace,
-                discriminant_place.clone(),
+                scrutinee_place.clone(),
             ),
         });
 
@@ -175,7 +175,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                             Candidate {
                                 span: pattern.span,
                                 match_pairs: vec![
-                                    MatchPair::new(discriminant_place.clone(), pattern),
+                                    MatchPair::new(scrutinee_place.clone(), pattern),
                                 ],
                                 bindings: vec![],
                                 ascriptions: vec![],
@@ -216,10 +216,10 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
             .flat_map(|(_, candidates)| candidates)
             .collect::<Vec<_>>();
 
-        // this will generate code to test discriminant_place and
+        // this will generate code to test scrutinee_place and
         // branch to the appropriate arm block
         let otherwise = self.match_candidates(
-            discriminant_span,
+            scrutinee_span,
             candidates,
             block,
             &mut fake_borrows,
@@ -245,7 +245,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
         // places. Create the required temporaries for them.
 
         let fake_borrow_temps = if let Some(ref borrows) = fake_borrows {
-            self.calculate_fake_borrows(borrows, discriminant_span)
+            self.calculate_fake_borrows(borrows, scrutinee_span)
         } else {
             Vec::new()
         };
@@ -267,7 +267,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                 LintLevel::Inherited,
                 &arm.patterns[..],
                 ArmHasGuard(arm.guard.is_some()),
-                Some((Some(&discriminant_place), discriminant_span)),
+                Some((Some(&scrutinee_place), scrutinee_span)),
             );
 
             for (pat_index, candidate) in candidates.into_iter().enumerate() {
@@ -276,7 +276,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                     arm.guard.clone(),
                     arm_block,
                     &fake_borrow_temps,
-                    discriminant_span,
+                    scrutinee_span,
                     pat_index,
                 );
             }
@@ -1302,7 +1302,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
         guard: Option<Guard<'tcx>>,
         arm_block: BasicBlock,
         fake_borrows: &Vec<(&Place<'tcx>, BorrowKind, Local)>,
-        discriminant_span: Span,
+        scrutinee_span: Span,
         pat_index: usize,
     ) {
         debug!("bind_and_guard_matched_candidate(candidate={:?})", candidate);
@@ -1427,7 +1427,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
             }
 
             let re_erased = tcx.types.re_erased;
-            let discriminant_source_info = self.source_info(discriminant_span);
+            let scrutinee_source_info = self.source_info(scrutinee_span);
             for &(place, borrow_kind, temp) in fake_borrows {
                 let borrow = Rvalue::Ref(
                     re_erased,
@@ -1436,7 +1436,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                 );
                 self.cfg.push_assign(
                     block,
-                    discriminant_source_info,
+                    scrutinee_source_info,
                     &Place::Local(temp),
                     borrow,
                 );

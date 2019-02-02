@@ -611,7 +611,7 @@ fn make_mirror_unadjusted<'a, 'gcx, 'tcx>(cx: &mut Cx<'a, 'gcx, 'tcx>,
         }
         hir::ExprKind::Match(ref discr, ref arms, _) => {
             ExprKind::Match {
-                discriminant: discr.to_ref(),
+                scrutinee: discr.to_ref(),
                 arms: arms.iter().map(|a| convert_arm(cx, a)).collect(),
             }
         }

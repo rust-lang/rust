@@ -203,7 +203,7 @@ pub enum ExprKind<'tcx> {
         body: ExprRef<'tcx>,
     },
     Match {
-        discriminant: ExprRef<'tcx>,
+        scrutinee: ExprRef<'tcx>,
         arms: Vec<Arm<'tcx>>,
     },
     Block {
