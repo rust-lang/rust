@@ -2700,7 +2700,6 @@ impl str {
     /// Basic usage:
     ///
     /// ```
-    /// #![feature(split_ascii_whitespace)]
     /// let mut iter = "A few words".split_ascii_whitespace();
     ///
     /// assert_eq!(Some("A"), iter.next());
@@ -2722,7 +2721,7 @@ impl str {
     ///
     /// assert_eq!(None, iter.next());
     /// ```
-    #[unstable(feature = "split_ascii_whitespace", issue = "48656")]
+    #[stable(feature = "split_ascii_whitespace", since = "1.34.0")]
     #[inline]
     pub fn split_ascii_whitespace(&self) -> SplitAsciiWhitespace {
         let inner = self
@@ -4009,7 +4008,7 @@ pub struct SplitWhitespace<'a> {
 ///
 /// [`split_ascii_whitespace`]: ../../std/primitive.str.html#method.split_ascii_whitespace
 /// [`str`]: ../../std/primitive.str.html
-#[unstable(feature = "split_ascii_whitespace", issue = "48656")]
+#[stable(feature = "split_ascii_whitespace", since = "1.34.0")]
 #[derive(Clone, Debug)]
 pub struct SplitAsciiWhitespace<'a> {
     inner: Map<Filter<SliceSplit<'a, u8, IsAsciiWhitespace>, IsNotEmpty>, UnsafeBytesToStr>,
@@ -4134,7 +4133,7 @@ impl<'a> DoubleEndedIterator for SplitWhitespace<'a> {
 #[stable(feature = "fused", since = "1.26.0")]
 impl FusedIterator for SplitWhitespace<'_> {}
 
-#[unstable(feature = "split_ascii_whitespace", issue = "48656")]
+#[stable(feature = "split_ascii_whitespace", since = "1.34.0")]
 impl<'a> Iterator for SplitAsciiWhitespace<'a> {
     type Item = &'a str;
 
@@ -4149,7 +4148,7 @@ impl<'a> Iterator for SplitAsciiWhitespace<'a> {
     }
 }
 
-#[unstable(feature = "split_ascii_whitespace", issue = "48656")]
+#[stable(feature = "split_ascii_whitespace", since = "1.34.0")]
 impl<'a> DoubleEndedIterator for SplitAsciiWhitespace<'a> {
     #[inline]
     fn next_back(&mut self) -> Option<&'a str> {
@@ -4157,7 +4156,7 @@ impl<'a> DoubleEndedIterator for SplitAsciiWhitespace<'a> {
     }
 }
 
-#[unstable(feature = "split_ascii_whitespace", issue = "48656")]
+#[stable(feature = "split_ascii_whitespace", since = "1.34.0")]
 impl FusedIterator for SplitAsciiWhitespace<'_> {}
 
 /// An iterator of [`u16`] over the string encoded as UTF-16.

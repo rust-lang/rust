@@ -98,7 +98,6 @@
 #![feature(rustc_attrs)]
 #![feature(receiver_trait)]
 #![feature(specialization)]
-#![feature(split_ascii_whitespace)]
 #![feature(staged_api)]
 #![feature(str_internals)]
 #![feature(trusted_len)]
