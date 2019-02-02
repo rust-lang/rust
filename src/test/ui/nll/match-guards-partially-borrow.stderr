@@ -6,9 +6,6 @@ LL |     match q {
 ...
 LL |             q = true; //~ ERROR
    |             ^^^^^^^^ cannot assign
-...
-LL |         _ => (),
-   |         - borrow later used here
 
 error[E0510]: cannot assign `r` in match guard
   --> $DIR/match-guards-partially-borrow.rs:47:13
@@ -18,9 +15,6 @@ LL |     match r {
 ...
 LL |             r = true; //~ ERROR
    |             ^^^^^^^^ cannot assign
-...
-LL |         _ => (),
-   |         - borrow later used here
 
 error[E0503]: cannot use `s` because it was mutably borrowed
   --> $DIR/match-guards-partially-borrow.rs:56:11
@@ -41,9 +35,6 @@ LL |     match t {
 ...
 LL |             t = true; //~ ERROR
    |             ^^^^^^^^ cannot assign
-...
-LL |         false => (),
-   |         ----- borrow later used here
 
 error[E0506]: cannot assign to `u` because it is borrowed
   --> $DIR/match-guards-partially-borrow.rs:83:13
@@ -53,8 +44,8 @@ LL |     match u {
 ...
 LL |             u = true; //~ ERROR
    |             ^^^^^^^^ assignment to borrowed `u` occurs here
-...
-LL |         x => (),
+LL |             false
+LL |         } => (),
    |         - borrow later used here
 
 error[E0510]: cannot mutably borrow `x.0` in match guard
@@ -74,59 +65,59 @@ LL |     match w {
 ...
 LL |             *w.0 = true; //~ ERROR
    |             ^^^^^^^^^^^ assignment to borrowed `*w.0` occurs here
-...
-LL |         x => (),
+LL |             false
+LL |         } => (),
+   |         - borrow later used here
+
+error[E0506]: cannot assign to `t` because it is borrowed
+  --> $DIR/match-guards-partially-borrow.rs:122:13
+   |
+LL |     match t {
+   |           - borrow of `t` occurs here
+LL |         s if {
+LL |             t = !t; //~ ERROR
+   |             ^^^^^^ assignment to borrowed `t` occurs here
+LL |             false
+LL |         } => (), // What value should `s` have in the arm?
    |         - borrow later used here
 
 error[E0510]: cannot assign `y` in match guard
-  --> $DIR/match-guards-partially-borrow.rs:123:13
+  --> $DIR/match-guards-partially-borrow.rs:133:13
    |
 LL |     match *y {
    |           -- value is immutable in match guard
 ...
 LL |             y = &true; //~ ERROR
    |             ^^^^^^^^^ cannot assign
-...
-LL |         false => (),
-   |         ----- borrow later used here
 
 error[E0510]: cannot assign `z` in match guard
-  --> $DIR/match-guards-partially-borrow.rs:134:13
+  --> $DIR/match-guards-partially-borrow.rs:144:13
    |
 LL |     match z {
    |           - value is immutable in match guard
 ...
 LL |             z = &true; //~ ERROR
    |             ^^^^^^^^^ cannot assign
-...
-LL |         &false => (),
-   |         ------ borrow later used here
 
 error[E0510]: cannot assign `a` in match guard
-  --> $DIR/match-guards-partially-borrow.rs:146:13
+  --> $DIR/match-guards-partially-borrow.rs:156:13
    |
 LL |     match a {
    |           - value is immutable in match guard
 ...
 LL |             a = &true; //~ ERROR
    |             ^^^^^^^^^ cannot assign
-...
-LL |         false => (),
-   |         ----- borrow later used here
 
 error[E0510]: cannot assign `b` in match guard
-  --> $DIR/match-guards-partially-borrow.rs:157:13
+  --> $DIR/match-guards-partially-borrow.rs:167:13
    |
 LL |     match b {
    |           - value is immutable in match guard
 ...
 LL |             b = &true; //~ ERROR
    |             ^^^^^^^^^ cannot assign
-...
-LL |         &b => (),
-   |         -- borrow later used here
 
-error: aborting due to 11 previous errors
+error: aborting due to 12 previous errors
 
 Some errors occurred: E0503, E0506, E0510.
 For more information about an error, try `rustc --explain E0503`.

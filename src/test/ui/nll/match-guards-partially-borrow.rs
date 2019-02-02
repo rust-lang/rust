@@ -30,7 +30,7 @@ fn ok_indirect_mutation_in_guard(mut p: &bool) {
 
 fn mutation_invalidates_pattern_in_guard(mut q: bool) {
     match q {
-        // s doesn't match the pattern with the guard by the end of the guard.
+        // q doesn't match the pattern with the guard by the end of the guard.
         false if {
             q = true; //~ ERROR
             true
@@ -41,7 +41,7 @@ fn mutation_invalidates_pattern_in_guard(mut q: bool) {
 
 fn mutation_invalidates_previous_pattern_in_guard(mut r: bool) {
     match r {
-        // s matches a previous pattern by the end of the guard.
+        // r matches a previous pattern by the end of the guard.
         true => (),
         _ if {
             r = true; //~ ERROR
@@ -113,6 +113,16 @@ fn bad_mutation_in_guard4(mut w: (&mut bool,)) {
             false
         } => (),
         x => (),
+    }
+}
+
+fn bad_mutation_in_guard5(mut t: bool) {
+    match t {
+        s if {
+            t = !t; //~ ERROR
+            false
+        } => (), // What value should `s` have in the arm?
+        _ => (),
     }
 }
 
