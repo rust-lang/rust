@@ -1570,5 +1570,6 @@ div.name::before {
 }
 div.name.expand::before {
 	transform: rotate(90deg);
-	left: -14px;
+	left: -15px;
+	top: 2px;
 }
