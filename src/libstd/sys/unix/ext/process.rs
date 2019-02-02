@@ -48,7 +48,8 @@ pub trait CommandExt {
     /// This also means that all resources such as file descriptors and
     /// memory-mapped regions got duplicated. It is your responsibility to make
     /// sure that the closure does not violate library invariants by making
-    /// invalid use of these duplicates.
+    /// invalid use of these duplicates.  Moreover, POSIX demands that you only
+    /// perform operations that are explicitly documented as async-signal-safe.
     ///
     /// When this closure is run, aspects such as the stdio file descriptors and
     /// working directory have successfully been changed, so output to these
@@ -60,8 +61,8 @@ pub trait CommandExt {
     /// Schedules a closure to be run just before the `exec` function is
     /// invoked.
     ///
-    /// This method should be unsafe, so it got deprecated in favor of the
-    /// unsafe [`pre_exec`].
+    /// This method is stable and usable, but it should be unsafe. To fix
+    /// that, it got deprecated in favor of the unsafe [`pre_exec`].
     ///
     /// [`pre_exec`]: #tymethod.pre_exec
     #[stable(feature = "process_exec", since = "1.15.0")]
