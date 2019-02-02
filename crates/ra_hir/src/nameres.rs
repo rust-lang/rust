@@ -251,10 +251,14 @@ where
             };
         }
         for (import_id, import_data) in input.imports.iter() {
-            if let Some(segment) = import_data.path.segments.iter().last() {
+            if let Some(last_segment) = import_data.path.segments.iter().last() {
                 if !import_data.is_glob {
+                    let name = import_data
+                        .alias
+                        .clone()
+                        .unwrap_or_else(|| last_segment.name.clone());
                     module_items.items.insert(
-                        segment.name.clone(),
+                        name,
                         Resolution {
                             def: PerNs::none(),
                             import: Some(import_id),
@@ -319,19 +323,18 @@ where
 
         if reached_fixedpoint == ReachedFixedPoint::Yes {
             let last_segment = import.path.segments.last().unwrap();
+            let name = import
+                .alias
+                .clone()
+                .unwrap_or_else(|| last_segment.name.clone());
+            log::debug!("resolved import {:?} ({:?}) to {:?}", name, import, def,);
             self.update(module_id, |items| {
                 let res = Resolution {
                     def,
                     import: Some(import_id),
                 };
-                items.items.insert(last_segment.name.clone(), res);
+                items.items.insert(name, res);
             });
-            log::debug!(
-                "resolved import {:?} ({:?}) cross-source root to {:?}",
-                last_segment.name,
-                import,
-                def,
-            );
         }
         reached_fixedpoint
     }

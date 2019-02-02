@@ -21,6 +21,7 @@ impl_arena_id!(ImportId);
 #[derive(Debug, PartialEq, Eq)]
 pub(super) struct ImportData {
     pub(super) path: Path,
+    pub(super) alias: Option<Name>,
     pub(super) is_glob: bool,
 }
 
@@ -209,9 +210,10 @@ impl LoweredModule {
     }
 
     fn add_use_item(&mut self, source_map: &mut ImportSourceMap, item: &ast::UseItem) {
-        Path::expand_use_item(item, |path, segment| {
+        Path::expand_use_item(item, |path, segment, alias| {
             let import = self.imports.alloc(ImportData {
                 path,
+                alias,
                 is_glob: segment.is_none(),
             });
             if let Some(segment) = segment {

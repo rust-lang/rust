@@ -17,6 +17,35 @@ use crate::{
     ast::{self, AstNode},
 };
 
+// Alias
+#[derive(Debug, PartialEq, Eq, Hash)]
+#[repr(transparent)]
+pub struct Alias {
+    pub(crate) syntax: SyntaxNode,
+}
+unsafe impl TransparentNewType for Alias {
+    type Repr = rowan::SyntaxNode<RaTypes>;
+}
+
+impl AstNode for Alias {
+    fn cast(syntax: &SyntaxNode) -> Option<&Self> {
+        match syntax.kind() {
+            ALIAS => Some(Alias::from_repr(syntax.into_repr())),
+            _ => None,
+        }
+    }
+    fn syntax(&self) -> &SyntaxNode { &self.syntax }
+}
+
+impl ToOwned for Alias {
+    type Owned = TreeArc<Alias>;
+    fn to_owned(&self) -> TreeArc<Alias> { TreeArc::cast(self.syntax.to_owned()) }
+}
+
+
+impl ast::NameOwner for Alias {}
+impl Alias {}
+
 // ArgList
 #[derive(Debug, PartialEq, Eq, Hash)]
 #[repr(transparent)]
@@ -4174,6 +4203,10 @@ impl UseTree {
     }
 
     pub fn use_tree_list(&self) -> Option<&UseTreeList> {
+        super::child_opt(self)
+    }
+
+    pub fn alias(&self) -> Option<&Alias> {
         super::child_opt(self)
     }
 }
