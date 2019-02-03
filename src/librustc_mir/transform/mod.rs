@@ -2,7 +2,7 @@ use crate::borrow_check::nll::type_check;
 use crate::build;
 use rustc::hir::def_id::{CrateNum, DefId, LOCAL_CRATE};
 use rustc::mir::{Mir, MirPhase, Promoted};
-use rustc::ty::TyCtxt;
+use rustc::ty::{TyCtxt, InstanceDef};
 use rustc::ty::query::Providers;
 use rustc::ty::steal::Steal;
 use rustc::hir;
@@ -104,19 +104,24 @@ fn mir_built<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: DefId) -> &'tcx Stea
 
 /// Where a specific Mir comes from.
 #[derive(Debug, Copy, Clone)]
-pub struct MirSource {
-    pub def_id: DefId,
+pub struct MirSource<'tcx> {
+    pub instance: InstanceDef<'tcx>,
 
     /// If `Some`, this is a promoted rvalue within the parent function.
     pub promoted: Option<Promoted>,
 }
 
-impl MirSource {
+impl<'tcx> MirSource<'tcx> {
     pub fn item(def_id: DefId) -> Self {
         MirSource {
-            def_id,
+            instance: InstanceDef::Item(def_id),
             promoted: None
         }
+    }
+
+    #[inline]
+    pub fn def_id(&self) -> DefId {
+        self.instance.def_id()
     }
 }
 
@@ -141,14 +146,14 @@ pub trait MirPass {
 
     fn run_pass<'a, 'tcx>(&self,
                           tcx: TyCtxt<'a, 'tcx, 'tcx>,
-                          source: MirSource,
+                          source: MirSource<'tcx>,
                           mir: &mut Mir<'tcx>);
 }
 
 pub fn run_passes(
     tcx: TyCtxt<'a, 'tcx, 'tcx>,
     mir: &mut Mir<'tcx>,
-    def_id: DefId,
+    instance: InstanceDef<'tcx>,
     mir_phase: MirPhase,
     passes: &[&dyn MirPass],
 ) {
@@ -160,7 +165,7 @@ pub fn run_passes(
         }
 
         let source = MirSource {
-            def_id,
+            instance,
             promoted,
         };
         let mut index = 0;
@@ -198,7 +203,7 @@ fn mir_const<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: DefId) -> &'tcx Stea
     let _ = tcx.unsafety_check_result(def_id);
 
     let mut mir = tcx.mir_built(def_id).steal();
-    run_passes(tcx, &mut mir, def_id, MirPhase::Const, &[
+    run_passes(tcx, &mut mir, InstanceDef::Item(def_id), MirPhase::Const, &[
         // What we need to do constant evaluation.
         &simplify::SimplifyCfg::new("initial"),
         &type_check::TypeckMir,
@@ -217,7 +222,7 @@ fn mir_validated<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: DefId) -> &'tcx 
     }
 
     let mut mir = tcx.mir_const(def_id).steal();
-    run_passes(tcx, &mut mir, def_id, MirPhase::Validated, &[
+    run_passes(tcx, &mut mir, InstanceDef::Item(def_id), MirPhase::Validated, &[
         // What we need to run borrowck etc.
         &qualify_consts::QualifyAndPromoteConstants,
         &simplify::SimplifyCfg::new("qualify-consts"),
@@ -235,7 +240,7 @@ fn optimized_mir<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: DefId) -> &'tcx 
     }
 
     let mut mir = tcx.mir_validated(def_id).steal();
-    run_passes(tcx, &mut mir, def_id, MirPhase::Optimized, &[
+    run_passes(tcx, &mut mir, InstanceDef::Item(def_id), MirPhase::Optimized, &[
         // Remove all things not needed by analysis
         &no_landing_pads::NoLandingPads,
         &simplify_branches::SimplifyBranches::new("initial"),

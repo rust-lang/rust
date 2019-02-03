@@ -46,7 +46,7 @@ impl MirPass for AddMovesForPackedDrops {
                           mir: &mut Mir<'tcx>)
     {
         debug!("add_moves_for_packed_drops({:?} @ {:?})", src, mir.span);
-        add_moves_for_packed_drops(tcx, mir, src.def_id);
+        add_moves_for_packed_drops(tcx, mir, src.def_id());
     }
 }
 

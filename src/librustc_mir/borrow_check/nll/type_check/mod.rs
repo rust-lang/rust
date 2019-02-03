@@ -2428,7 +2428,7 @@ pub struct TypeckMir;
 
 impl MirPass for TypeckMir {
     fn run_pass<'a, 'tcx>(&self, tcx: TyCtxt<'a, 'tcx, 'tcx>, src: MirSource, mir: &mut Mir<'tcx>) {
-        let def_id = src.def_id;
+        let def_id = src.def_id();
         debug!("run_pass: {:?}", def_id);
 
         // When NLL is enabled, the borrow checker runs the typeck

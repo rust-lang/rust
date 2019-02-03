@@ -28,8 +28,8 @@ impl MirPass for ElaborateDrops {
     {
         debug!("elaborate_drops({:?} @ {:?})", src, mir.span);
 
-        let id = tcx.hir().as_local_node_id(src.def_id).unwrap();
-        let param_env = tcx.param_env(src.def_id).with_reveal_all();
+        let id = tcx.hir().as_local_node_id(src.def_id()).unwrap();
+        let param_env = tcx.param_env(src.def_id()).with_reveal_all();
         let move_data = match MoveData::gather_moves(mir, tcx) {
             Ok(move_data) => move_data,
             Err((move_data, _move_errors)) => {

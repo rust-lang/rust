@@ -80,7 +80,7 @@ pub fn dump_mir<'a, 'gcx, 'tcx, F>(
 
     let node_path = item_path::with_forced_impl_filename_line(|| {
         // see notes on #41697 below
-        tcx.item_path_str(source.def_id)
+        tcx.item_path_str(source.def_id())
     });
     dump_matched_mir_node(
         tcx,
@@ -105,7 +105,7 @@ pub fn dump_enabled<'a, 'gcx, 'tcx>(
     };
     let node_path = item_path::with_forced_impl_filename_line(|| {
         // see notes on #41697 below
-        tcx.item_path_str(source.def_id)
+        tcx.item_path_str(source.def_id())
     });
     filters.split('|').any(|or_filter| {
         or_filter.split('&').all(|and_filter| {
@@ -150,7 +150,7 @@ fn dump_matched_mir_node<'a, 'gcx, 'tcx, F>(
         let _: io::Result<()> = try {
             let mut file =
                 create_dump_file(tcx, "dot", pass_num, pass_name, disambiguator, source)?;
-            write_mir_fn_graphviz(tcx, source.def_id, mir, &mut file)?;
+            write_mir_fn_graphviz(tcx, source.def_id(), mir, &mut file)?;
         };
     }
 }
@@ -184,7 +184,7 @@ fn dump_path(
     file_path.push(Path::new(&tcx.sess.opts.debugging_opts.dump_mir_dir));
 
     let item_name = tcx
-        .def_path(source.def_id)
+        .def_path(source.def_id())
         .to_filename_friendly_no_crate();
 
     let file_name = format!(
@@ -252,7 +252,7 @@ pub fn write_mir_pretty<'a, 'gcx, 'tcx>(
         for (i, mir) in mir.promoted.iter_enumerated() {
             writeln!(w, "")?;
             let src = MirSource {
-                def_id,
+                instance: ty::InstanceDef::Item(def_id),
                 promoted: Some(i),
             };
             write_mir_fn(tcx, src, mir, &mut |_, _| Ok(()), w)?;
@@ -575,8 +575,8 @@ fn write_mir_sig(
 ) -> io::Result<()> {
     use rustc::hir::def::Def;
 
-    debug!("write_mir_sig: {:?} {:?}", src.def_id, tcx.hir().get_if_local(src.def_id));
-    let descr = tcx.describe_def(src.def_id).unwrap();
+    trace!("write_mir_sig: {:?} {:?}", src, tcx.hir().get_if_local(src.def_id()));
+    let descr = tcx.describe_def(src.def_id()).unwrap();
     match (descr, src.promoted) {
         (_, Some(i)) => write!(w, "{:?} in", i)?,
         (Def::Fn(_), _) | (Def::Method(_), _) => write!(w, "fn")?,
@@ -588,7 +588,7 @@ fn write_mir_sig(
 
     item_path::with_forced_impl_filename_line(|| {
         // see notes on #41697 elsewhere
-        write!(w, " {}", tcx.item_path_str(src.def_id))
+        write!(w, " {}", tcx.item_path_str(src.def_id()))
     })?;
 
     match (descr, src.promoted) {

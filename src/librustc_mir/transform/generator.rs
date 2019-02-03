@@ -383,7 +383,7 @@ fn locals_live_across_suspend_points(
     FxHashMap<BasicBlock, liveness::LiveVarSet<Local>>,
 ) {
     let dead_unwinds = BitSet::new_empty(mir.basic_blocks().len());
-    let node_id = tcx.hir().as_local_node_id(source.def_id).unwrap();
+    let node_id = tcx.hir().as_local_node_id(source.def_id()).unwrap();
 
     // Calculate when MIR locals have live storage. This gives us an upper bound of their
     // lifetimes.
@@ -880,7 +880,7 @@ impl MirPass for StateTransform {
 
         assert!(mir.generator_drop.is_none());
 
-        let def_id = source.def_id;
+        let def_id = source.def_id();
 
         // The first argument is the generator type passed by value
         let gen_ty = mir.local_decls.raw[1].ty;

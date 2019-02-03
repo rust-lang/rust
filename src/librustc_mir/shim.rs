@@ -116,7 +116,7 @@ fn make_shim<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     };
     debug!("make_shim({:?}) = untransformed {:?}", instance, result);
 
-    run_passes(tcx, &mut result, instance.def_id(), MirPhase::Const, &[
+    run_passes(tcx, &mut result, instance, MirPhase::Const, &[
         &add_moves_for_packed_drops::AddMovesForPackedDrops,
         &no_landing_pads::NoLandingPads,
         &remove_noop_landing_pads::RemoveNoopLandingPads,
