@@ -1117,11 +1117,14 @@ impl<T> MaybeUninit<T> {
     }
 
     /// Set the value of the `MaybeUninit`. This overwrites any previous value without dropping it.
+    /// For your convenience, this also returns a mutable reference to the (now
+    /// safely initialized) content of `self`.
     #[unstable(feature = "maybe_uninit", issue = "53491")]
     #[inline(always)]
-    pub fn set(&mut self, val: T) {
+    pub fn set(&mut self, val: T) -> &mut T {
         unsafe {
             self.value = ManuallyDrop::new(val);
+            self.get_mut()
         }
     }
 
