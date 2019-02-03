@@ -312,6 +312,7 @@ impl<'a, 'gcx, 'tcx> MirBorrowckCtxt<'a, 'gcx, 'tcx> {
                     if let hir::PatKind::Binding(
                         hir::BindingAnnotation::Unannotated,
                         _,
+                        _,
                         upvar_ident,
                         _,
                     ) = pat.node

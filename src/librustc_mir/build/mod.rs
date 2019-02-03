@@ -229,7 +229,7 @@ fn create_constructor_shim<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                                      -> Mir<'tcx>
 {
     let span = tcx.hir().span(ctor_id);
-    if let hir::VariantData::Tuple(ref fields, ctor_id) = *v {
+    if let hir::VariantData::Tuple(ref fields, ctor_id, _) = *v {
         tcx.infer_ctxt().enter(|infcx| {
             let mut mir = shim::build_adt_ctor(&infcx, ctor_id, fields, span);
 
@@ -671,7 +671,7 @@ fn construct_fn<'a, 'gcx, 'tcx, A>(hir: Cx<'a, 'gcx, 'tcx>,
                 mutability: Mutability::Not,
             };
             if let Some(Node::Binding(pat)) = tcx_hir.find(var_node_id) {
-                if let hir::PatKind::Binding(_, _, ident, _) = pat.node {
+                if let hir::PatKind::Binding(_, _, _, ident, _) = pat.node {
                     decl.debug_name = ident.name;
                     if let Some(&bm) = hir.tables.pat_binding_modes().get(pat.hir_id) {
                         if bm == ty::BindByValue(hir::MutMutable) {
@@ -877,8 +877,8 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
             let mut name = None;
             if let Some(pat) = pattern {
                 match pat.node {
-                    hir::PatKind::Binding(hir::BindingAnnotation::Unannotated, _, ident, _)
-                    | hir::PatKind::Binding(hir::BindingAnnotation::Mutable, _, ident, _) => {
+                    hir::PatKind::Binding(hir::BindingAnnotation::Unannotated, _, _, ident, _)
+                    | hir::PatKind::Binding(hir::BindingAnnotation::Mutable, _, _, ident, _) => {
                         name = Some(ident.name);
                     }
                     _ => (),

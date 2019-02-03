@@ -362,7 +362,7 @@ fn is_c_like_enum(item: &hir::Item) -> bool {
     if let hir::ItemKind::Enum(ref def, _) = item.node {
         for variant in &def.variants {
             match variant.node.data {
-                hir::VariantData::Unit(_) => { /* continue */ }
+                hir::VariantData::Unit(..) => { /* continue */ }
                 _ => { return false; }
             }
         }

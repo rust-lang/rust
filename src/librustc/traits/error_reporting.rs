@@ -1024,7 +1024,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
             Node::Variant(&hir::Variant {
                 span,
                 node: hir::VariantKind {
-                    data: hir::VariantData::Tuple(ref fields, _),
+                    data: hir::VariantData::Tuple(ref fields, ..),
                     ..
                 },
                 ..

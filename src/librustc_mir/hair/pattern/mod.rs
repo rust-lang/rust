@@ -513,7 +513,7 @@ impl<'a, 'tcx> PatternContext<'a, 'tcx> {
                 }
             }
 
-            PatKind::Binding(_, id, ident, ref sub) => {
+            PatKind::Binding(_, id, _, ident, ref sub) => {
                 let var_ty = self.tables.node_id_to_type(pat.hir_id);
                 if let ty::Error = var_ty.sty {
                     // Avoid ICE

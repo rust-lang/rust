@@ -159,6 +159,7 @@ impl_stable_hash_for!(struct ast::Label {
 
 impl_stable_hash_for!(struct hir::Lifetime {
     id,
+    hir_id,
     span,
     name
 });
@@ -172,6 +173,7 @@ impl_stable_hash_for!(struct hir::Path {
 impl_stable_hash_for!(struct hir::PathSegment {
     ident -> (ident.name),
     id,
+    hir_id,
     def,
     infer_types,
     args
@@ -200,6 +202,7 @@ impl_stable_hash_for!(enum hir::TraitBoundModifier {
 
 impl_stable_hash_for!(struct hir::GenericParam {
     id,
+    hir_id,
     name,
     pure_wrt_drop,
     attrs,
@@ -244,6 +247,7 @@ impl_stable_hash_for!(enum hir::SyntheticTyParamKind {
 
 impl_stable_hash_for!(struct hir::WhereClause {
     id,
+    hir_id,
     predicates
 });
 
@@ -268,6 +272,7 @@ impl_stable_hash_for!(struct hir::WhereRegionPredicate {
 
 impl_stable_hash_for!(struct hir::WhereEqPredicate {
     id,
+    hir_id,
     span,
     lhs_ty,
     rhs_ty
@@ -285,6 +290,7 @@ impl_stable_hash_for!(struct hir::MethodSig {
 
 impl_stable_hash_for!(struct hir::TypeBinding {
     id,
+    hir_id,
     ident -> (ident.name),
     ty,
     span
@@ -397,6 +403,7 @@ impl_stable_hash_for!(struct hir::MacroDef {
     vis,
     attrs,
     id,
+    hir_id,
     span,
     legacy,
     body
@@ -423,6 +430,7 @@ impl_stable_hash_for_spanned!(hir::FieldPat);
 
 impl_stable_hash_for!(struct hir::FieldPat {
     id -> _,
+    hir_id -> _,
     ident -> (ident.name),
     pat,
     is_shorthand,
@@ -442,7 +450,7 @@ impl_stable_hash_for!(enum hir::RangeEnd {
 
 impl_stable_hash_for!(enum hir::PatKind {
     Wild,
-    Binding(binding_mode, var, name, sub),
+    Binding(binding_mode, var, hir_id, name, sub),
     Struct(path, field_pats, dotdot),
     TupleStruct(path, field_pats, dotdot),
     Path(path),
@@ -485,6 +493,7 @@ impl_stable_hash_for!(enum hir::UnOp {
 
 impl_stable_hash_for!(struct hir::Stmt {
     id,
+    hir_id,
     node,
     span,
 });
@@ -514,6 +523,7 @@ impl_stable_hash_for!(enum hir::Guard {
 
 impl_stable_hash_for!(struct hir::Field {
     id -> _,
+    hir_id -> _,
     ident,
     expr,
     span,
@@ -836,14 +846,15 @@ impl_stable_hash_for!(struct hir::StructField {
     ident -> (ident.name),
     vis,
     id,
+    hir_id,
     ty,
     attrs
 });
 
 impl_stable_hash_for!(enum hir::VariantData {
-    Struct(fields, id),
-    Tuple(fields, id),
-    Unit(id)
+    Struct(fields, id, hir_id),
+    Tuple(fields, id, hir_id),
+    Unit(id, hir_id)
 });
 
 impl<'a> HashStable<StableHashingContext<'a>> for hir::Item {
@@ -929,6 +940,7 @@ impl_stable_hash_for!(struct hir::ForeignItem {
     attrs,
     node,
     id,
+    hir_id,
     span,
     vis
 });
