@@ -69,7 +69,7 @@ struct Counter {
     wakes: AtomicUsize,
 }
 
-impl Wake for Counter {
+impl ArcWake for Counter {
     fn wake(arc_self: &Arc<Self>) {
         arc_self.wakes.fetch_add(1, atomic::Ordering::SeqCst);
     }
