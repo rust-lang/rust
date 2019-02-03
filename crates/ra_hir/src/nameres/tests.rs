@@ -329,7 +329,6 @@ fn item_map_across_crates() {
         module.module_id,
         "
             Baz: t v
-            test_crate: t
         ",
     );
 }
@@ -342,7 +341,9 @@ fn extern_crate_rename() {
         extern crate alloc as alloc_crate;
 
         mod alloc;
+        mod sync;
 
+        //- /sync.rs
         use alloc_crate::Arc;
 
         //- /lib.rs
@@ -350,6 +351,7 @@ fn extern_crate_rename() {
     ",
     );
     let main_id = sr.files[RelativePath::new("/main.rs")];
+    let sync_id = sr.files[RelativePath::new("/sync.rs")];
     let lib_id = sr.files[RelativePath::new("/lib.rs")];
 
     let mut crate_graph = CrateGraph::default();
@@ -361,7 +363,7 @@ fn extern_crate_rename() {
 
     db.set_crate_graph(Arc::new(crate_graph));
 
-    let module = crate::source_binder::module_from_file_id(&db, main_id).unwrap();
+    let module = crate::source_binder::module_from_file_id(&db, sync_id).unwrap();
     let krate = module.krate(&db).unwrap();
     let item_map = db.item_map(krate);
 
@@ -370,8 +372,6 @@ fn extern_crate_rename() {
         module.module_id,
         "
             Arc: t v
-            alloc: t
-            alloc_crate: t
         ",
     );
 }
@@ -403,8 +403,6 @@ fn import_across_source_roots() {
 
     let main_id = sr2.files[RelativePath::new("/main.rs")];
 
-    eprintln!("lib = {:?}, main = {:?}", lib_id, main_id);
-
     let mut crate_graph = CrateGraph::default();
     let main_crate = crate_graph.add_crate_root(main_id);
     let lib_crate = crate_graph.add_crate_root(lib_id);
@@ -423,7 +421,6 @@ fn import_across_source_roots() {
         module.module_id,
         "
             C: t v
-            test_crate: t
         ",
     );
 }
@@ -465,7 +462,6 @@ fn reexport_across_crates() {
         module.module_id,
         "
             Baz: t v
-            test_crate: t
         ",
     );
 }

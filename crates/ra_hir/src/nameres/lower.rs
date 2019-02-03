@@ -23,6 +23,7 @@ pub(super) struct ImportData {
     pub(super) path: Path,
     pub(super) alias: Option<Name>,
     pub(super) is_glob: bool,
+    pub(super) is_extern_crate: bool,
 }
 
 /// A set of items and imports declared inside a module, without relation to
@@ -199,6 +200,7 @@ impl LoweredModule {
                         path,
                         alias,
                         is_glob: false,
+                        is_extern_crate: true,
                     });
                 }
             }
@@ -228,6 +230,7 @@ impl LoweredModule {
                 path,
                 alias,
                 is_glob: segment.is_none(),
+                is_extern_crate: false,
             });
             if let Some(segment) = segment {
                 source_map.insert(import, segment)
