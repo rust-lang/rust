@@ -56,52 +56,13 @@ mod tests {
     }
 
     #[test]
-    fn test_filter_postfix_completion1() {
+    fn postfix_completion_works_for_trivial_path_expression() {
         check_snippet_completion(
-            "filter_postfix_completion1",
+            "postfix_completion_works_for_trivial_path_expression",
             r#"
             fn main() {
                 let bar = "a";
                 bar.<|>
-            }
-            "#,
-        );
-    }
-
-    #[test]
-    fn test_filter_postfix_completion2() {
-        check_snippet_completion(
-            "filter_postfix_completion2",
-            r#"
-            fn main() {
-                let bar = "a";
-                bar.i<|>
-            }
-            "#,
-        );
-    }
-
-    #[test]
-    fn test_filter_postfix_completion3() {
-        check_snippet_completion(
-            "filter_postfix_completion3",
-            r#"
-            fn main() {
-                let bar = "a";
-                bar.if<|>
-            }
-            "#,
-        );
-    }
-
-    #[test]
-    fn test_filter_postfix_completion4() {
-        check_snippet_completion(
-            "filter_postfix_completion4",
-            r#"
-            fn main() {
-                let bar = "a";
-                bar.dbg<|>
             }
             "#,
         );
