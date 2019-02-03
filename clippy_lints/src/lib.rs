@@ -94,6 +94,7 @@ pub mod const_static_lifetime;
 pub mod copies;
 pub mod copy_iterator;
 pub mod cyclomatic_complexity;
+pub mod dbg_macro;
 pub mod default_trait_access;
 pub mod derive;
 pub mod doc;
@@ -231,6 +232,7 @@ pub fn register_pre_expansion_lints(
         },
     );
     store.register_pre_expansion_pass(Some(session), true, false, box attrs::CfgAttrPass);
+    store.register_pre_expansion_pass(Some(session), true, false, box dbg_macro::Pass);
 }
 
 pub fn read_conf(reg: &rustc_plugin::Registry<'_>) -> Conf {
@@ -495,6 +497,7 @@ pub fn register_plugins(reg: &mut rustc_plugin::Registry<'_>, conf: &Conf) {
     reg.register_lint_group("clippy::restriction", Some("clippy_restriction"), vec![
         arithmetic::FLOAT_ARITHMETIC,
         arithmetic::INTEGER_ARITHMETIC,
+        dbg_macro::DBG_MACRO,
         else_if_without_else::ELSE_IF_WITHOUT_ELSE,
         implicit_return::IMPLICIT_RETURN,
         indexing_slicing::INDEXING_SLICING,
