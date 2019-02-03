@@ -11,6 +11,7 @@ authors = [
 license = "MPL-2.0"
 description = "A macro to test clippy's procedural macro checks"
 repository = "https://github.com/rust-lang/rust-clippy"
+edition = "2018"
 
 [lib]
 name = "clippy_mini_macro_test"
