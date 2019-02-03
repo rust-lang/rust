@@ -20,7 +20,7 @@ use syntax::ast;
 use syntax::ext::hygiene::Mark;
 use syntax::symbol::{Symbol, InternedString};
 use syntax_pos::{Span, DUMMY_SP};
-use util::nodemap::{HirIdMap, NodeMap};
+use util::nodemap::NodeMap;
 
 /// The DefPathTable maps DefIndexes to DefKeys and vice versa.
 /// Internally the DefPathTable holds a tree of DefKeys, where each DefKey
@@ -147,7 +147,6 @@ impl Decodable for DefPathTable {
 pub struct Definitions {
     table: DefPathTable,
     node_to_def_index: NodeMap<DefIndex>,
-    hir_to_def_index: HirIdMap<DefIndex>,
     def_index_to_node: [Vec<ast::NodeId>; 2],
     pub(super) node_to_hir_id: IndexVec<ast::NodeId, hir::HirId>,
     /// If `Mark` is an ID of some macro expansion,
@@ -442,32 +441,14 @@ impl Definitions {
         self.node_to_def_index.get(&node).cloned()
     }
 
-    // FIXME(@ljedrz): replace the NodeId variant
-    #[inline]
-    pub fn opt_def_index_from_hir_id(&self, hir: hir::HirId) -> Option<DefIndex> {
-        self.hir_to_def_index.get(&hir).cloned()
-    }
-
     #[inline]
     pub fn opt_local_def_id(&self, node: ast::NodeId) -> Option<DefId> {
         self.opt_def_index(node).map(DefId::local)
     }
 
-    // FIXME(@ljedrz): replace the NodeId variant
-    #[inline]
-    pub fn opt_local_def_id_from_hir_id(&self, hir: hir::HirId) -> Option<DefId> {
-        self.opt_def_index_from_hir_id(hir).map(DefId::local)
-    }
-
     #[inline]
     pub fn local_def_id(&self, node: ast::NodeId) -> DefId {
         self.opt_local_def_id(node).unwrap()
-    }
-
-    // FIXME(@ljedrz): replace the NodeId variant
-    #[inline]
-    pub fn local_def_id_from_hir_id(&self, hir: hir::HirId) -> DefId {
-        self.opt_local_def_id_from_hir_id(hir).unwrap()
     }
 
     #[inline]
@@ -549,7 +530,6 @@ impl Definitions {
         assert!(self.def_index_to_node[address_space.index()].is_empty());
         self.def_index_to_node[address_space.index()].push(ast::CRATE_NODE_ID);
         self.node_to_def_index.insert(ast::CRATE_NODE_ID, root_index);
-        self.hir_to_def_index.insert(hir::CRATE_HIR_ID, root_index);
 
         // Allocate some other DefIndices that always must exist.
         GlobalMetaDataKind::allocate_def_indices(self);
@@ -610,9 +590,6 @@ impl Definitions {
         if node_id != ast::DUMMY_NODE_ID {
             debug!("create_def_with_parent: def_index_to_node[{:?} <-> {:?}", index, node_id);
             self.node_to_def_index.insert(node_id, index);
-            if let Some(hir_id) = self.node_to_hir_id.get(node_id) {
-                self.hir_to_def_index.insert(*hir_id, index);
-            }
         }
 
         if expansion != Mark::root() {

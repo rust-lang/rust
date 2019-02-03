@@ -252,8 +252,8 @@ impl<'hir> Map<'hir> {
     // FIXME(@ljedrz): replace the NodeId variant
     #[inline]
     pub fn local_def_id_from_hir_id(&self, hir_id: HirId) -> DefId {
-        self.opt_local_def_id_from_hir_id(hir_id).unwrap_or_else(|| {
-            let node_id = self.hir_to_node_id(hir_id);
+        let node_id = self.hir_to_node_id(hir_id);
+        self.opt_local_def_id(node_id).unwrap_or_else(|| {
             bug!("local_def_id_from_hir_id: no entry for `{:?}`, which has a map of `{:?}`",
                  hir_id, self.find_entry(node_id))
         })
@@ -262,7 +262,8 @@ impl<'hir> Map<'hir> {
     // FIXME(@ljedrz): replace the NodeId variant
     #[inline]
     pub fn opt_local_def_id_from_hir_id(&self, hir_id: HirId) -> Option<DefId> {
-        self.definitions.opt_local_def_id_from_hir_id(hir_id)
+        let node_id = self.hir_to_node_id(hir_id);
+        self.definitions.opt_local_def_id(node_id)
     }
 
     #[inline]
