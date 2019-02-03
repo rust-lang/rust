@@ -36,7 +36,7 @@ pub fn analyze_source_file(
     (lines, multi_byte_chars, non_narrow_chars)
 }
 
-cfg_if! {
+cfg_if::cfg_if! {
     if #[cfg(all(any(target_arch = "x86", target_arch = "x86_64")))] {
         fn analyze_source_file_dispatch(src: &str,
                                     source_file_start_pos: BytePos,

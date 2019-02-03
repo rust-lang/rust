@@ -5,10 +5,10 @@
 //! and definition contexts*. J. Funct. Program. 22, 2 (March 2012), 181-216.
 //! DOI=10.1017/S0956796812000093 <https://doi.org/10.1017/S0956796812000093>
 
-use GLOBALS;
-use Span;
-use edition::{Edition, DEFAULT_EDITION};
-use symbol::{keywords, Symbol};
+use crate::GLOBALS;
+use crate::Span;
+use crate::edition::{Edition, DEFAULT_EDITION};
+use crate::symbol::{keywords, Symbol};
 
 use serialize::{Encodable, Decodable, Encoder, Decoder};
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
@@ -525,7 +525,7 @@ impl SyntaxContext {
 }
 
 impl fmt::Debug for SyntaxContext {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "#{}", self.0)
     }
 }

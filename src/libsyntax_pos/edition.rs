@@ -27,7 +27,7 @@ pub const EDITION_NAME_LIST: &str = "2015|2018";
 pub const DEFAULT_EDITION: Edition = Edition::Edition2015;
 
 impl fmt::Display for Edition {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let s = match *self {
             Edition::Edition2015 => "2015",
             Edition::Edition2018 => "2018",
