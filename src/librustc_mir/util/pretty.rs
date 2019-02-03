@@ -186,10 +186,29 @@ fn dump_path(
     let item_name = tcx
         .def_path(source.def_id())
         .to_filename_friendly_no_crate();
+    // All drop shims have the same DefId, so we have to add the type
+    // to get unique file names.
+    let shim_disambiguator = match source.instance {
+        ty::InstanceDef::DropGlue(_, Some(ty)) => {
+            // Unfortunately, pretty-printed typed are not very filename-friendly.
+            // We dome some filtering.
+            let mut s = ".".to_owned();
+            s.extend(ty.to_string()
+                .chars()
+                .filter_map(|c| match c {
+                    ' ' => None,
+                    ':' => Some('_'),
+                    c => Some(c)
+                }));
+            s
+        }
+        _ => String::new(),
+    };
 
     let file_name = format!(
-        "rustc.{}{}{}.{}.{}.{}",
+        "rustc.{}{}{}{}.{}.{}.{}",
         item_name,
+        shim_disambiguator,
         promotion_id,
         pass_num,
         pass_name,
