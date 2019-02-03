@@ -19,7 +19,7 @@ pub use crate::{
     loc2id::LocationIntener,
 };
 
-pub trait CheckCanceled: salsa::Database + panic::RefUnwindSafe {
+pub trait CheckCanceled: panic::RefUnwindSafe {
     /// Aborts current query if there are pending changes.
     ///
     /// rust-analyzer needs to be able to answer semantic questions about the
@@ -33,20 +33,25 @@ pub trait CheckCanceled: salsa::Database + panic::RefUnwindSafe {
     ///
     /// We implement cancellation by panicking with a special value and catching
     /// it on the API boundary. Salsa explicitly supports this use-case.
-    fn check_canceled(&self) {
-        if self.salsa_runtime().is_current_revision_canceled() {
-            Canceled::throw()
-        }
-    }
+    fn check_canceled(&self);
 
-    fn catch_canceled<F: FnOnce(&Self) -> T + panic::UnwindSafe, T>(
-        &self,
-        f: F,
-    ) -> Result<T, Canceled> {
+    fn catch_canceled<F, T>(&self, f: F) -> Result<T, Canceled>
+    where
+        Self: Sized,
+        F: FnOnce(&Self) -> T + panic::UnwindSafe,
+    {
         panic::catch_unwind(|| f(self)).map_err(|err| match err.downcast::<Canceled>() {
             Ok(canceled) => *canceled,
             Err(payload) => panic::resume_unwind(payload),
         })
+    }
+}
+
+impl<T: salsa::Database + panic::RefUnwindSafe> CheckCanceled for T {
+    fn check_canceled(&self) {
+        if self.salsa_runtime().is_current_revision_canceled() {
+            Canceled::throw()
+        }
     }
 }
 
@@ -65,7 +70,7 @@ pub struct FileRange {
 /// Database which stores all significant input facts: source code and project
 /// model. Everything else in rust-analyzer is derived from these queries.
 #[salsa::query_group(SourceDatabaseStorage)]
-pub trait SourceDatabase: salsa::Database + CheckCanceled {
+pub trait SourceDatabase: CheckCanceled {
     /// Text of the file.
     #[salsa::input]
     fn file_text(&self, file_id: FileId) -> Arc<String>;

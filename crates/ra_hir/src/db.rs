@@ -103,3 +103,8 @@ pub trait HirDatabase: PersistentHirDatabase {
     #[salsa::invoke(crate::ty::method_resolution::CrateImplBlocks::impls_in_crate_query)]
     fn impls_in_crate(&self, krate: Crate) -> Arc<CrateImplBlocks>;
 }
+
+#[test]
+fn hir_database_is_object_safe() {
+    fn _assert_object_safe(_: &dyn HirDatabase) {}
+}

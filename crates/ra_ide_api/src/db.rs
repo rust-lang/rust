@@ -60,8 +60,6 @@ impl salsa::ParallelDatabase for RootDatabase {
     }
 }
 
-impl CheckCanceled for RootDatabase {}
-
 impl AsRef<hir::HirInterner> for RootDatabase {
     fn as_ref(&self) -> &hir::HirInterner {
         &self.interner
