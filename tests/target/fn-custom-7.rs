@@ -30,11 +30,7 @@ fn foo(
 
 trait Test
 {
-    fn foo(a: u8)
-    {
-    }
+    fn foo(a: u8) {}
 
-    fn bar(a: u8) -> String
-    {
-    }
+    fn bar(a: u8) -> String {}
 }

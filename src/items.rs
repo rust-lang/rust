@@ -333,19 +333,21 @@ impl<'a> FmtVisitor<'a> {
             newline_brace = false;
         }
 
-        // Prepare for the function body by possibly adding a newline and
-        // indent.
-        // FIXME we'll miss anything between the end of the signature and the
-        // start of the body, but we need more spans from the compiler to solve
-        // this.
-        if newline_brace {
-            result.push_str(&indent.to_string_with_newline(self.config));
+        if let rw @ Some(..) = self.single_line_fn(&result, block, inner_attrs) {
+            rw
         } else {
-            result.push(' ');
+            // Prepare for the function body by possibly adding a newline and
+            // indent.
+            // FIXME we'll miss anything between the end of the signature and the
+            // start of the body, but we need more spans from the compiler to solve
+            // this.
+            if newline_brace {
+                result.push_str(&indent.to_string_with_newline(self.config));
+            } else {
+                result.push(' ');
+            }
+            Some(result)
         }
-
-        self.single_line_fn(&result, block, inner_attrs)
-            .or_else(|| Some(result))
     }
 
     pub fn rewrite_required_fn(
@@ -390,42 +392,37 @@ impl<'a> FmtVisitor<'a> {
 
         if self.config.empty_item_single_line()
             && is_empty_block(block, None, source_map)
-            && self.block_indent.width() + fn_str.len() + 2 <= self.config.max_width()
+            && self.block_indent.width() + fn_str.len() + 3 <= self.config.max_width()
+            && !last_line_contains_single_line_comment(fn_str)
         {
-            return Some(format!("{}{{}}", fn_str));
+            return Some(format!("{} {{}}", fn_str));
         }
 
-        if self.config.fn_single_line() && is_simple_block_stmt(block, None, source_map) {
-            let rewrite = {
-                if let Some(stmt) = block.stmts.first() {
-                    match stmt_expr(stmt) {
-                        Some(e) => {
-                            let suffix = if semicolon_for_expr(&self.get_context(), e) {
-                                ";"
-                            } else {
-                                ""
-                            };
+        if !self.config.fn_single_line() || !is_simple_block_stmt(block, None, source_map) {
+            return None;
+        }
 
-                            format_expr(e, ExprType::Statement, &self.get_context(), self.shape())
-                                .map(|s| s + suffix)
-                                .or_else(|| Some(self.snippet(e.span).to_owned()))
-                        }
-                        None => stmt.rewrite(&self.get_context(), self.shape()),
-                    }
+        let stmt = block.stmts.first()?;
+        let res = match stmt_expr(stmt) {
+            Some(e) => {
+                let suffix = if semicolon_for_expr(&self.get_context(), e) {
+                    ";"
                 } else {
-                    None
-                }
-            };
+                    ""
+                };
 
-            if let Some(res) = rewrite {
-                let width = self.block_indent.width() + fn_str.len() + res.len() + 4;
-                if !res.contains('\n') && width <= self.config.max_width() {
-                    return Some(format!("{}{{ {} }}", fn_str, res));
-                }
+                format_expr(e, ExprType::Statement, &self.get_context(), self.shape())
+                    .map(|s| s + suffix)?
             }
-        }
+            None => stmt.rewrite(&self.get_context(), self.shape())?,
+        };
 
-        None
+        let width = self.block_indent.width() + fn_str.len() + res.len() + 5;
+        if !res.contains('\n') && width <= self.config.max_width() {
+            Some(format!("{} {{ {} }}", fn_str, res))
+        } else {
+            None
+        }
     }
 
     pub fn visit_static(&mut self, static_parts: &StaticParts) {
