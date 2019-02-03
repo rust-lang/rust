@@ -41,10 +41,15 @@ trait ReturnValue {
 macro_rules! define_usercalls {
     // Using `$r:tt` because `$r:ty` doesn't match ! in `clobber_diverging`
     ($(fn $f:ident($($n:ident: $t:ty),*) $(-> $r:tt)*; )*) => {
-        #[repr(C)]
-        #[allow(non_camel_case_types)]
-        enum Usercalls {
-            __enclave_usercalls_invalid,
+        /// Usercall numbers as per the ABI.
+        #[repr(u64)]
+        #[unstable(feature = "sgx_platform", issue = "56975")]
+        #[derive(Copy, Clone, Hash, PartialEq, Eq, Debug)]
+        #[allow(missing_docs, non_camel_case_types)]
+        #[non_exhaustive]
+        pub enum Usercalls {
+            #[doc(hidden)]
+            __enclave_usercalls_invalid = 0,
             $($f,)*
         }
 

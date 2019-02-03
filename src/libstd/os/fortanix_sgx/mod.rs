@@ -21,25 +21,10 @@ pub mod usercalls {
 
     /// Lowest-level interfaces to usercalls and usercall ABI type definitions.
     pub mod raw {
-        use sys::abi::usercalls::raw::invoke_with_usercalls;
-        pub use sys::abi::usercalls::raw::do_usercall;
+        pub use sys::abi::usercalls::raw::{do_usercall, Usercalls as UsercallNrs};
         pub use sys::abi::usercalls::raw::{accept_stream, alloc, async_queues, bind_stream, close,
                                            connect_stream, exit, flush, free, insecure_time,
                                            launch_thread, read, read_alloc, send, wait, write};
-
-        macro_rules! define_usercallnrs {
-            ($(fn $f:ident($($n:ident: $t:ty),*) $(-> $r:ty)*; )*) => {
-                /// Usercall numbers as per the ABI.
-                #[repr(C)]
-                #[unstable(feature = "sgx_platform", issue = "56975")]
-                #[derive(Copy, Clone, Hash, PartialEq, Eq, Debug)]
-                #[allow(missing_docs)]
-                pub enum UsercallNrs {
-                    $($f,)*
-                }
-            };
-        }
-        invoke_with_usercalls!(define_usercallnrs);
 
         // fortanix-sgx-abi re-exports
         pub use sys::abi::usercalls::raw::{ByteBuffer, FifoDescriptor, Return, Usercall};
