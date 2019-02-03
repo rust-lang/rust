@@ -1,6 +1,6 @@
 use crate::hir;
 use crate::hir::def::Namespace;
-use crate::hir::map::DefPathData;
+use crate::hir::map::{DefPathData, DisambiguatedDefPathData};
 use crate::hir::def_id::{CrateNum, DefId, CRATE_DEF_INDEX, LOCAL_CRATE};
 use crate::middle::cstore::{ExternCrate, ExternCrateSource};
 use crate::middle::region;
@@ -313,13 +313,13 @@ pub trait PrettyPrinter<'gcx: 'tcx, 'tcx>:
             visible_parent, actual_parent,
         );
 
-        let data = cur_def_key.disambiguated_data.data;
+        let mut data = cur_def_key.disambiguated_data.data;
         debug!(
             "try_print_visible_def_path: data={:?} visible_parent={:?} actual_parent={:?}",
             data, visible_parent, actual_parent,
         );
 
-        let symbol = match data {
+        match data {
             // In order to output a path that could actually be imported (valid and visible),
             // we need to handle re-exports correctly.
             //
@@ -351,27 +351,30 @@ pub trait PrettyPrinter<'gcx: 'tcx, 'tcx>:
             // the children of the visible parent (as was done when computing
             // `visible_parent_map`), looking for the specific child we currently have and then
             // have access to the re-exported name.
-            DefPathData::Module(actual_name) |
-            DefPathData::TypeNs(actual_name) if Some(visible_parent) != actual_parent => {
-                self.tcx().item_children(visible_parent)
+            DefPathData::Module(ref mut name) |
+            DefPathData::TypeNs(ref mut name) if Some(visible_parent) != actual_parent => {
+                let reexport = self.tcx().item_children(visible_parent)
                     .iter()
                     .find(|child| child.def.def_id() == def_id)
-                    .map(|child| child.ident.as_str())
-                    .unwrap_or_else(|| actual_name.as_str())
+                    .map(|child| child.ident.as_interned_str());
+                if let Some(reexport) = reexport {
+                    *name = reexport;
+                }
             }
-            _ => {
-                data.get_opt_name().map(|n| n.as_str()).unwrap_or_else(|| {
-                    // Re-exported `extern crate` (#43189).
-                    if let DefPathData::CrateRoot = data {
-                        self.tcx().original_crate_name(def_id.krate).as_str()
-                    } else {
-                        Symbol::intern("<unnamed>").as_str()
-                    }
-                })
-            },
-        };
-        debug!("try_print_visible_def_path: symbol={:?}", symbol);
-        Ok((self.path_append(Ok, &symbol)?, true))
+            // Re-exported `extern crate` (#43189).
+            DefPathData::CrateRoot => {
+                data = DefPathData::Module(
+                    self.tcx().original_crate_name(def_id.krate).as_interned_str(),
+                );
+            }
+            _ => {}
+        }
+        debug!("try_print_visible_def_path: data={:?}", data);
+
+        Ok((self.path_append(Ok, &DisambiguatedDefPathData {
+            data,
+            disambiguator: 0,
+        })?, true))
     }
 
     fn pretty_path_qualified(
@@ -932,10 +935,18 @@ impl<F: fmt::Write> Printer<'gcx, 'tcx> for FmtPrinter<'_, 'gcx, 'tcx, F> {
                 // only occur very early in the compiler pipeline.
                 let parent_def_id = DefId { index: key.parent.unwrap(), ..def_id };
                 let span = self.tcx.def_span(def_id);
-                return self.path_append(
-                    |cx| cx.print_def_path(parent_def_id, &[]),
-                    &format!("<impl at {:?}>", span),
-                );
+
+                self = self.print_def_path(parent_def_id, &[])?;
+
+                // HACK(eddyb) copy of `path_append` to avoid
+                // constructing a `DisambiguatedDefPathData`.
+                if !self.empty_path {
+                    write!(self, "::")?;
+                }
+                write!(self, "<impl at {:?}>", span)?;
+                self.empty_path = false;
+
+                return Ok(self);
             }
         }
 
@@ -995,6 +1006,7 @@ impl<F: fmt::Write> Printer<'gcx, 'tcx> for FmtPrinter<'_, 'gcx, 'tcx, F> {
     fn path_append_impl(
         mut self,
         print_prefix: impl FnOnce(Self) -> Result<Self::Path, Self::Error>,
+        _disambiguated_data: &DisambiguatedDefPathData,
         self_ty: Ty<'tcx>,
         trait_ref: Option<ty::TraitRef<'tcx>>,
     ) -> Result<Self::Path, Self::Error> {
@@ -1012,17 +1024,35 @@ impl<F: fmt::Write> Printer<'gcx, 'tcx> for FmtPrinter<'_, 'gcx, 'tcx, F> {
     fn path_append(
         mut self,
         print_prefix: impl FnOnce(Self) -> Result<Self::Path, Self::Error>,
-        text: &str,
+        disambiguated_data: &DisambiguatedDefPathData,
     ) -> Result<Self::Path, Self::Error> {
         self = print_prefix(self)?;
 
-        // FIXME(eddyb) `text` should never be empty, but it
+        // Skip `::{{constructor}}` on tuple/unit structs.
+        match disambiguated_data.data {
+            DefPathData::StructCtor => return Ok(self),
+            _ => {}
+        }
+
+        // FIXME(eddyb) `name` should never be empty, but it
         // currently is for `extern { ... }` "foreign modules".
-        if !text.is_empty() {
+        let name = disambiguated_data.data.as_interned_str().as_str();
+        if !name.is_empty() {
             if !self.empty_path {
                 write!(self, "::")?;
             }
-            write!(self, "{}", text)?;
+            write!(self, "{}", name)?;
+
+            // FIXME(eddyb) this will print e.g. `{{closure}}#3`, but it
+            // might be nicer to use something else, e.g. `{closure#3}`.
+            let dis = disambiguated_data.disambiguator;
+            let print_dis =
+                disambiguated_data.data.get_opt_name().is_none() ||
+                dis != 0 && self.tcx.sess.verbose();
+            if print_dis {
+                write!(self, "#{}", dis)?;
+            }
+
             self.empty_path = false;
         }
 

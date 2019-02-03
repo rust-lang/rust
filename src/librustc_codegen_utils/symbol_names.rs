@@ -90,7 +90,7 @@
 use rustc::hir::def_id::{CrateNum, DefId, LOCAL_CRATE};
 use rustc::hir::Node;
 use rustc::hir::CodegenFnAttrFlags;
-use rustc::hir::map::definitions::DefPathData;
+use rustc::hir::map::{DefPathData, DisambiguatedDefPathData};
 use rustc::ich::NodeIdHashingMode;
 use rustc::ty::print::{PrettyPrinter, Printer, Print};
 use rustc::ty::query::Providers;
@@ -492,11 +492,23 @@ impl Printer<'tcx, 'tcx> for SymbolPrinter<'_, 'tcx> {
     fn path_append_impl(
         self,
         print_prefix: impl FnOnce(Self) -> Result<Self::Path, Self::Error>,
+        _disambiguated_data: &DisambiguatedDefPathData,
         self_ty: Ty<'tcx>,
         trait_ref: Option<ty::TraitRef<'tcx>>,
     ) -> Result<Self::Path, Self::Error> {
         self.pretty_path_append_impl(
-            |cx| cx.path_append(print_prefix, ""),
+            |mut cx| {
+                cx = print_prefix(cx)?;
+
+                if cx.keep_within_component {
+                    // HACK(eddyb) print the path similarly to how `FmtPrinter` prints it.
+                    cx.write_str("::")?;
+                } else {
+                    cx.path.finalize_pending_component();
+                }
+
+                Ok(cx)
+            },
             self_ty,
             trait_ref,
         )
@@ -504,9 +516,15 @@ impl Printer<'tcx, 'tcx> for SymbolPrinter<'_, 'tcx> {
     fn path_append(
         mut self,
         print_prefix: impl FnOnce(Self) -> Result<Self::Path, Self::Error>,
-        text: &str,
+        disambiguated_data: &DisambiguatedDefPathData,
     ) -> Result<Self::Path, Self::Error> {
         self = print_prefix(self)?;
+
+        // Skip `::{{constructor}}` on tuple/unit structs.
+        match disambiguated_data.data {
+            DefPathData::StructCtor => return Ok(self),
+            _ => {}
+        }
 
         if self.keep_within_component {
             // HACK(eddyb) print the path similarly to how `FmtPrinter` prints it.
@@ -515,7 +533,7 @@ impl Printer<'tcx, 'tcx> for SymbolPrinter<'_, 'tcx> {
             self.path.finalize_pending_component();
         }
 
-        self.write_str(text)?;
+        self.write_str(&disambiguated_data.data.as_interned_str().as_str())?;
         Ok(self)
     }
     fn path_generic_args(

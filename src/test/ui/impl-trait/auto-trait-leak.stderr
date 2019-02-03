@@ -1,4 +1,4 @@
-error[E0391]: cycle detected when processing `cycle1::{{impl-Trait}}`
+error[E0391]: cycle detected when processing `cycle1::{{opaque}}#0`
   --> $DIR/auto-trait-leak.rs:14:16
    |
 LL | fn cycle1() -> impl Clone {
@@ -10,7 +10,7 @@ note: ...which requires processing `cycle1`...
 LL | fn cycle1() -> impl Clone {
    | ^^^^^^^^^^^^^^^^^^^^^^^^^
    = note: ...which requires evaluating trait selection obligation `impl std::clone::Clone: std::marker::Send`...
-note: ...which requires processing `cycle2::{{impl-Trait}}`...
+note: ...which requires processing `cycle2::{{opaque}}#0`...
   --> $DIR/auto-trait-leak.rs:23:16
    |
 LL | fn cycle2() -> impl Clone {
@@ -21,7 +21,7 @@ note: ...which requires processing `cycle2`...
 LL | fn cycle2() -> impl Clone {
    | ^^^^^^^^^^^^^^^^^^^^^^^^^
    = note: ...which requires evaluating trait selection obligation `impl std::clone::Clone: std::marker::Send`...
-   = note: ...which again requires processing `cycle1::{{impl-Trait}}`, completing the cycle
+   = note: ...which again requires processing `cycle1::{{opaque}}#0`, completing the cycle
 note: cycle used when checking item types in top-level module
   --> $DIR/auto-trait-leak.rs:3:1
    |
@@ -34,7 +34,7 @@ LL | |     Rc::new(String::from("foo"))
 LL | | }
    | |_^
 
-error[E0391]: cycle detected when processing `cycle1::{{impl-Trait}}`
+error[E0391]: cycle detected when processing `cycle1::{{opaque}}#0`
   --> $DIR/auto-trait-leak.rs:14:16
    |
 LL | fn cycle1() -> impl Clone {
@@ -46,7 +46,7 @@ note: ...which requires processing `cycle1`...
 LL | fn cycle1() -> impl Clone {
    | ^^^^^^^^^^^^^^^^^^^^^^^^^
    = note: ...which requires evaluating trait selection obligation `impl std::clone::Clone: std::marker::Send`...
-note: ...which requires processing `cycle2::{{impl-Trait}}`...
+note: ...which requires processing `cycle2::{{opaque}}#0`...
   --> $DIR/auto-trait-leak.rs:23:16
    |
 LL | fn cycle2() -> impl Clone {
@@ -56,7 +56,7 @@ note: ...which requires processing `cycle2`...
    |
 LL | fn cycle2() -> impl Clone {
    | ^^^^^^^^^^^^^^^^^^^^^^^^^
-   = note: ...which again requires processing `cycle1::{{impl-Trait}}`, completing the cycle
+   = note: ...which again requires processing `cycle1::{{opaque}}#0`, completing the cycle
 note: cycle used when checking item types in top-level module
   --> $DIR/auto-trait-leak.rs:3:1
    |

@@ -1,4 +1,4 @@
-use crate::hir::map::DefPathData;
+use crate::hir::map::{DefPathData, DisambiguatedDefPathData};
 use crate::hir::def_id::{CrateNum, DefId};
 use crate::ty::{self, DefIdTree, Ty, TyCtxt};
 use crate::ty::subst::{Kind, Subst};
@@ -71,13 +71,14 @@ pub trait Printer<'gcx: 'tcx, 'tcx>: Sized {
     fn path_append_impl(
         self,
         print_prefix: impl FnOnce(Self) -> Result<Self::Path, Self::Error>,
+        disambiguated_data: &DisambiguatedDefPathData,
         self_ty: Ty<'tcx>,
         trait_ref: Option<ty::TraitRef<'tcx>>,
     ) -> Result<Self::Path, Self::Error>;
     fn path_append(
         self,
         print_prefix: impl FnOnce(Self) -> Result<Self::Path, Self::Error>,
-        text: &str,
+        disambiguated_data: &DisambiguatedDefPathData,
     ) -> Result<Self::Path, Self::Error>;
     fn path_generic_args(
         self,
@@ -156,7 +157,7 @@ pub trait Printer<'gcx: 'tcx, 'tcx>: Sized {
                     } else {
                         cx.print_def_path(parent_def_id, parent_substs)
                     },
-                    &key.disambiguated_data.data.as_interned_str().as_str(),
+                    &key.disambiguated_data,
                 )
             }
         }
@@ -200,12 +201,14 @@ pub trait Printer<'gcx: 'tcx, 'tcx>: Sized {
         debug!("default_print_impl_path: impl_def_id={:?}, self_ty={}, impl_trait_ref={:?}",
                impl_def_id, self_ty, impl_trait_ref);
 
+        let key = self.tcx().def_key(impl_def_id);
+        let parent_def_id = DefId { index: key.parent.unwrap(), ..impl_def_id };
+
         // Decide whether to print the parent path for the impl.
         // Logically, since impls are global, it's never needed, but
         // users may find it useful. Currently, we omit the parent if
         // the impl is either in the same module as the self-type or
         // as the trait.
-        let parent_def_id = self.tcx().parent(impl_def_id).unwrap();
         let in_self_mod = match characteristic_def_id_of_type(self_ty) {
             None => false,
             Some(ty_def_id) => self.tcx().parent(ty_def_id) == Some(parent_def_id),
@@ -221,6 +224,7 @@ pub trait Printer<'gcx: 'tcx, 'tcx>: Sized {
             // the module more clearly.
             self.path_append_impl(
                 |cx| cx.print_def_path(parent_def_id, &[]),
+                &key.disambiguated_data,
                 self_ty,
                 impl_trait_ref,
             )
