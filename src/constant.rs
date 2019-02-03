@@ -110,12 +110,11 @@ fn trans_const_value<'a, 'tcx: 'a>(
             let bits = const_.val.try_to_bits(layout.size).unwrap();
             CValue::const_val(fx, ty, bits as i128 as i64)
         }
-        ty::FnDef(def_id, substs) => {
-            let func_ref = fx.get_function_ref(
-                Instance::resolve(fx.tcx, ParamEnv::reveal_all(), def_id, substs).unwrap(),
-            );
-            let func_addr = fx.bcx.ins().func_addr(fx.pointer_type, func_ref);
-            CValue::ByVal(func_addr, layout)
+        ty::FnDef(_def_id, _substs) => {
+            CValue::ByRef(
+                fx.bcx.ins().iconst(fx.pointer_type, 0),
+                layout
+            )
         }
         _ => trans_const_place(fx, const_).to_cvalue(fx),
     }

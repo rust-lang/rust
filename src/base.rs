@@ -474,9 +474,17 @@ fn trans_stmt<'a, 'tcx: 'a>(
                     lval.write_cvalue(fx, CValue::ByVal(res, layout));
                 }
                 Rvalue::Cast(CastKind::ReifyFnPointer, operand, ty) => {
-                    let operand = trans_operand(fx, operand);
                     let layout = fx.layout_of(ty);
-                    lval.write_cvalue(fx, operand.unchecked_cast_to(layout));
+                    match fx.monomorphize(&operand.ty(&fx.mir.local_decls, fx.tcx)).sty {
+                        ty::FnDef(def_id, substs) => {
+                            let func_ref = fx.get_function_ref(
+                                Instance::resolve(fx.tcx, ParamEnv::reveal_all(), def_id, substs).unwrap(),
+                            );
+                            let func_addr = fx.bcx.ins().func_addr(fx.pointer_type, func_ref);
+                            lval.write_cvalue(fx, CValue::ByVal(func_addr, layout));
+                        }
+                        _ => bug!("Trying to ReifyFnPointer on non FnDef {:?}", ty),
+                    }
                 }
                 Rvalue::Cast(CastKind::UnsafeFnPointer, operand, ty) => {
                     let operand = trans_operand(fx, operand);
