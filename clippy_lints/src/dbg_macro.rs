@@ -1,10 +1,10 @@
-use crate::utils::{span_help_and_lint, span_lint_and_sugg, snippet_opt};
+use crate::utils::{snippet_opt, span_help_and_lint, span_lint_and_sugg};
 use rustc::lint::{EarlyContext, EarlyLintPass, LintArray, LintPass};
 use rustc::{declare_tool_lint, lint_array};
-use syntax::ast;
 use rustc_errors::Applicability;
-use syntax::tokenstream::TokenStream;
+use syntax::ast;
 use syntax::source_map::Span;
+use syntax::tokenstream::TokenStream;
 
 /// **What it does:** Checks for usage of dbg!() macro.
 ///
