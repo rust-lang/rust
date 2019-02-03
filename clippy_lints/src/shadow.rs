@@ -108,7 +108,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Pass {
 fn check_fn<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, decl: &'tcx FnDecl, body: &'tcx Body) {
     let mut bindings = Vec::new();
     for arg in iter_input_pats(decl, body) {
-        if let PatKind::Binding(_, _, ident, _) = arg.pat.node {
+        if let PatKind::Binding(.., ident, _) = arg.pat.node {
             bindings.push((ident.name, ident.span))
         }
     }
@@ -172,7 +172,7 @@ fn check_pat<'a, 'tcx>(
 ) {
     // TODO: match more stuff / destructuring
     match pat.node {
-        PatKind::Binding(_, _, ident, ref inner) => {
+        PatKind::Binding(.., ident, ref inner) => {
             let name = ident.name;
             if is_binding(cx, pat.hir_id) {
                 let mut new_binding = true;

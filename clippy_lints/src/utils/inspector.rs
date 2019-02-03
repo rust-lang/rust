@@ -420,7 +420,7 @@ fn print_pat(cx: &LateContext<'_, '_>, pat: &hir::Pat, indent: usize) {
     println!("{}+", ind);
     match pat.node {
         hir::PatKind::Wild => println!("{}Wild", ind),
-        hir::PatKind::Binding(ref mode, _, ident, ref inner) => {
+        hir::PatKind::Binding(ref mode, .., ident, ref inner) => {
             println!("{}Binding", ind);
             println!("{}mode: {:?}", ind, mode);
             println!("{}name: {}", ind, ident.name);

@@ -264,8 +264,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Pass {
         }
         for arg in iter_input_pats(decl, body) {
             match arg.pat.node {
-                PatKind::Binding(BindingAnnotation::Ref, _, _, _)
-                | PatKind::Binding(BindingAnnotation::RefMut, _, _, _) => {
+                PatKind::Binding(BindingAnnotation::Ref, ..) | PatKind::Binding(BindingAnnotation::RefMut, ..) => {
                     span_lint(
                         cx,
                         TOPLEVEL_REF_ARG,
@@ -282,7 +281,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Pass {
     fn check_stmt(&mut self, cx: &LateContext<'a, 'tcx>, s: &'tcx Stmt) {
         if_chain! {
             if let StmtKind::Local(ref l) = s.node;
-            if let PatKind::Binding(an, _, i, None) = l.pat.node;
+            if let PatKind::Binding(an, .., i, None) = l.pat.node;
             if let Some(ref init) = l.init;
             then {
                 if an == BindingAnnotation::Ref || an == BindingAnnotation::RefMut {
@@ -445,7 +444,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Pass {
     }
 
     fn check_pat(&mut self, cx: &LateContext<'a, 'tcx>, pat: &'tcx Pat) {
-        if let PatKind::Binding(_, _, ident, Some(ref right)) = pat.node {
+        if let PatKind::Binding(.., ident, Some(ref right)) = pat.node {
             if let PatKind::Wild = right.node {
                 span_lint(
                     cx,

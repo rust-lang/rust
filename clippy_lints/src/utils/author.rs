@@ -513,7 +513,7 @@ impl<'tcx> Visitor<'tcx> for PrintVisitor {
         let current = format!("{}.node", self.current);
         match pat.node {
             PatKind::Wild => println!("Wild = {};", current),
-            PatKind::Binding(anno, _, ident, ref sub) => {
+            PatKind::Binding(anno, .., ident, ref sub) => {
                 let anno_pat = match anno {
                     BindingAnnotation::Unannotated => "BindingAnnotation::Unannotated",
                     BindingAnnotation::Mutable => "BindingAnnotation::Mutable",

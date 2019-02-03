@@ -96,7 +96,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Pass {
         // Matches statements which initializes vectors. For example: `let mut vec = Vec::with_capacity(10)`
         if_chain! {
             if let StmtKind::Local(ref local) = stmt.node;
-            if let PatKind::Binding(BindingAnnotation::Mutable, _, variable_name, None) = local.pat.node;
+            if let PatKind::Binding(BindingAnnotation::Mutable, .., variable_name, None) = local.pat.node;
             if let Some(ref init) = local.init;
             if let Some(ref len_arg) = Self::is_vec_with_capacity(init);
 

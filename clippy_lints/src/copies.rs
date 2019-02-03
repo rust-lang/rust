@@ -286,7 +286,7 @@ fn bindings<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, pat: &Pat) -> FxHashMap<LocalI
                     bindings_impl(cx, pat, map);
                 }
             },
-            PatKind::Binding(_, _, ident, ref as_pat) => {
+            PatKind::Binding(.., ident, ref as_pat) => {
                 if let Entry::Vacant(v) = map.entry(ident.as_str()) {
                     v.insert(cx.tables.pat_ty(pat));
                 }

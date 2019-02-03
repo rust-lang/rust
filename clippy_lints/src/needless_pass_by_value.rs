@@ -164,7 +164,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for NeedlessPassByValue {
 
             // Ignore `self`s.
             if idx == 0 {
-                if let PatKind::Binding(_, _, ident, ..) = arg.pat.node {
+                if let PatKind::Binding(.., ident, _) = arg.pat.node {
                     if ident.as_str() == "self" {
                         continue;
                     }

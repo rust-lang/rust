@@ -44,7 +44,7 @@ impl LintPass for BlackListedName {
 
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for BlackListedName {
     fn check_pat(&mut self, cx: &LateContext<'a, 'tcx>, pat: &'tcx Pat) {
-        if let PatKind::Binding(_, _, ident, _) = pat.node {
+        if let PatKind::Binding(.., ident, _) = pat.node {
             if self.blacklist.contains(&ident.name.to_string()) {
                 span_lint(
                     cx,
