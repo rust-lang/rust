@@ -177,6 +177,7 @@ fn check_compare(cx: &LateContext<'_, '_>, bit_op: &Expr, cmp_op: BinOpKind, cmp
     }
 }
 
+#[allow(clippy::too_many_lines)]
 fn check_bit_mask(
     cx: &LateContext<'_, '_>,
     bit_op: BinOpKind,

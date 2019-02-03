@@ -1,6 +1,6 @@
 #![feature(exclusive_range_pattern)]
 #![warn(clippy::all)]
-#![allow(unused, clippy::redundant_pattern_matching)]
+#![allow(unused, clippy::redundant_pattern_matching, clippy::too_many_lines)]
 #![warn(clippy::match_same_arms)]
 
 fn dummy() {}

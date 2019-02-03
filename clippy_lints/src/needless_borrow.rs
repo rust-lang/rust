@@ -89,7 +89,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for NeedlessBorrow {
             return;
         }
         if_chain! {
-            if let PatKind::Binding(BindingAnnotation::Ref, _, name, _) = pat.node;
+            if let PatKind::Binding(BindingAnnotation::Ref, .., name, _) = pat.node;
             if let ty::Ref(_, tam, mutbl) = cx.tables.pat_ty(pat).sty;
             if mutbl == MutImmutable;
             if let ty::Ref(_, _, mutbl) = tam.sty;

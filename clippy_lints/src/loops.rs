@@ -472,6 +472,7 @@ impl LintPass for Pass {
 }
 
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Pass {
+    #[allow(clippy::too_many_lines)]
     fn check_expr(&mut self, cx: &LateContext<'a, 'tcx>, expr: &'tcx Expr) {
         // we don't want to check expanded macros
         if in_macro(expr.span) {
@@ -968,7 +969,7 @@ fn detect_manual_memcpy<'a, 'tcx>(
     }) = higher::range(cx, arg)
     {
         // the var must be a single name
-        if let PatKind::Binding(_, canonical_id, _, _) = pat.node {
+        if let PatKind::Binding(_, canonical_id, _, _, _) = pat.node {
             let print_sum = |arg1: &Offset, arg2: &Offset| -> String {
                 match (&arg1.value[..], arg1.negate, &arg2.value[..], arg2.negate) {
                     ("0", _, "0", _) => "".into(),
@@ -1066,6 +1067,7 @@ fn detect_manual_memcpy<'a, 'tcx>(
 
 /// Check for looping over a range and then indexing a sequence with it.
 /// The iteratee must be a range literal.
+#[allow(clippy::too_many_lines)]
 fn check_for_loop_range<'a, 'tcx>(
     cx: &LateContext<'a, 'tcx>,
     pat: &'tcx Pat,
@@ -1084,7 +1086,7 @@ fn check_for_loop_range<'a, 'tcx>(
     }) = higher::range(cx, arg)
     {
         // the var must be a single name
-        if let PatKind::Binding(_, canonical_id, ident, _) = pat.node {
+        if let PatKind::Binding(_, canonical_id, _, ident, _) = pat.node {
             let mut visitor = VarVisitor {
                 cx,
                 var: canonical_id,
@@ -1635,7 +1637,7 @@ fn check_for_mutability(cx: &LateContext<'_, '_>, bound: &Expr) -> Option<NodeId
                 let node_str = cx.tcx.hir().get(node_id);
                 if_chain! {
                     if let Node::Binding(pat) = node_str;
-                    if let PatKind::Binding(bind_ann, _, _, _) = pat.node;
+                    if let PatKind::Binding(bind_ann, ..) = pat.node;
                     if let BindingAnnotation::Mutable = bind_ann;
                     then {
                         return Some(node_id);
@@ -1668,7 +1670,7 @@ fn check_for_mutation(
 fn pat_is_wild<'tcx>(pat: &'tcx PatKind, body: &'tcx Expr) -> bool {
     match *pat {
         PatKind::Wild => true,
-        PatKind::Binding(_, _, ident, None) if ident.as_str().starts_with('_') => {
+        PatKind::Binding(.., ident, None) if ident.as_str().starts_with('_') => {
             let mut visitor = UsedVisitor {
                 var: ident.name,
                 used: false,
@@ -2093,7 +2095,7 @@ impl<'a, 'tcx> Visitor<'tcx> for InitializeVisitor<'a, 'tcx> {
         // Look for declarations of the variable
         if let StmtKind::Local(ref local) = stmt.node {
             if local.pat.id == self.var_id {
-                if let PatKind::Binding(_, _, ident, _) = local.pat.node {
+                if let PatKind::Binding(.., ident, _) = local.pat.node {
                     self.name = Some(ident.name);
 
                     self.state = if let Some(ref init) = local.init {
@@ -2284,7 +2286,7 @@ impl<'tcx> Visitor<'tcx> for LoopNestVisitor {
         if self.nesting != Unknown {
             return;
         }
-        if let PatKind::Binding(_, _, span_name, _) = pat.node {
+        if let PatKind::Binding(.., span_name, _) = pat.node {
             if self.iterator == span_name.name {
                 self.nesting = RuledOut;
                 return;

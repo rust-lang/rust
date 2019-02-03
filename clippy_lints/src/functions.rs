@@ -1,9 +1,9 @@
-use crate::utils::{iter_input_pats, span_lint, type_is_unsafe_function};
+use crate::utils::{iter_input_pats, snippet, span_lint, type_is_unsafe_function};
 use matches::matches;
 use rustc::hir;
 use rustc::hir::def::Def;
 use rustc::hir::intravisit;
-use rustc::lint::{LateContext, LateLintPass, LintArray, LintPass};
+use rustc::lint::{in_external_macro, LateContext, LateLintPass, LintArray, LintContext, LintPass};
 use rustc::ty;
 use rustc::{declare_tool_lint, lint_array};
 use rustc_data_structures::fx::FxHashSet;
@@ -29,6 +29,29 @@ declare_clippy_lint! {
     pub TOO_MANY_ARGUMENTS,
     complexity,
     "functions with too many arguments"
+}
+
+/// **What it does:** Checks for functions with a large amount of lines.
+///
+/// **Why is this bad?** Functions with a lot of lines are harder to understand
+/// due to having to look at a larger amount of code to understand what the
+/// function is doing. Consider splitting the body of the function into
+/// multiple functions.
+///
+/// **Known problems:** None.
+///
+/// **Example:**
+/// ``` rust
+/// fn im_too_long() {
+/// println!("");
+/// // ... 100 more LoC
+/// println!("");
+/// }
+/// ```
+declare_clippy_lint! {
+    pub TOO_MANY_LINES,
+    pedantic,
+    "functions with too many lines"
 }
 
 /// **What it does:** Checks for public functions that dereferences raw pointer
@@ -62,17 +85,18 @@ declare_clippy_lint! {
 #[derive(Copy, Clone)]
 pub struct Functions {
     threshold: u64,
+    max_lines: u64,
 }
 
 impl Functions {
-    pub fn new(threshold: u64) -> Self {
-        Self { threshold }
+    pub fn new(threshold: u64, max_lines: u64) -> Self {
+        Self { threshold, max_lines }
     }
 }
 
 impl LintPass for Functions {
     fn get_lints(&self) -> LintArray {
-        lint_array!(TOO_MANY_ARGUMENTS, NOT_UNSAFE_PTR_ARG_DEREF)
+        lint_array!(TOO_MANY_ARGUMENTS, TOO_MANY_LINES, NOT_UNSAFE_PTR_ARG_DEREF)
     }
 
     fn name(&self) -> &'static str {
@@ -123,6 +147,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Functions {
         }
 
         self.check_raw_ptr(cx, unsafety, decl, body, nodeid);
+        self.check_line_number(cx, span);
     }
 
     fn check_trait_item(&mut self, cx: &LateContext<'a, 'tcx>, item: &'tcx hir::TraitItem) {
@@ -150,6 +175,72 @@ impl<'a, 'tcx> Functions {
                 span,
                 &format!("this function has too many arguments ({}/{})", args, self.threshold),
             );
+        }
+    }
+
+    fn check_line_number(self, cx: &LateContext<'_, '_>, span: Span) {
+        if in_external_macro(cx.sess(), span) {
+            return;
+        }
+
+        let code_snippet = snippet(cx, span, "..");
+        let mut line_count: u64 = 0;
+        let mut in_comment = false;
+        let mut code_in_line;
+
+        // Skip the surrounding function decl.
+        let start_brace_idx = match code_snippet.find('{') {
+            Some(i) => i + 1,
+            None => 0,
+        };
+        let end_brace_idx = match code_snippet.find('}') {
+            Some(i) => i,
+            None => code_snippet.len(),
+        };
+        let function_lines = code_snippet[start_brace_idx..end_brace_idx].lines();
+
+        for mut line in function_lines {
+            code_in_line = false;
+            loop {
+                line = line.trim_start();
+                if line.is_empty() {
+                    break;
+                }
+                if in_comment {
+                    match line.find("*/") {
+                        Some(i) => {
+                            line = &line[i + 2..];
+                            in_comment = false;
+                            continue;
+                        },
+                        None => break,
+                    }
+                } else {
+                    let multi_idx = match line.find("/*") {
+                        Some(i) => i,
+                        None => line.len(),
+                    };
+                    let single_idx = match line.find("//") {
+                        Some(i) => i,
+                        None => line.len(),
+                    };
+                    code_in_line |= multi_idx > 0 && single_idx > 0;
+                    // Implies multi_idx is below line.len()
+                    if multi_idx < single_idx {
+                        line = &line[multi_idx + 2..];
+                        in_comment = true;
+                        continue;
+                    }
+                    break;
+                }
+            }
+            if code_in_line {
+                line_count += 1;
+            }
+        }
+
+        if line_count > self.max_lines {
+            span_lint(cx, TOO_MANY_LINES, span, "This function has a large number of lines.")
         }
     }
 
@@ -183,7 +274,7 @@ impl<'a, 'tcx> Functions {
 }
 
 fn raw_ptr_arg(arg: &hir::Arg, ty: &hir::Ty) -> Option<ast::NodeId> {
-    if let (&hir::PatKind::Binding(_, id, _, _), &hir::TyKind::Ptr(_)) = (&arg.pat.node, &ty.node) {
+    if let (&hir::PatKind::Binding(_, id, _, _, _), &hir::TyKind::Ptr(_)) = (&arg.pat.node, &ty.node) {
         Some(id)
     } else {
         None

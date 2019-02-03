@@ -94,10 +94,10 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for LargeEnumVariant {
                         |db| {
                             if variant.fields.len() == 1 {
                                 let span = match def.variants[i].node.data {
-                                    VariantData::Struct(ref fields, _) | VariantData::Tuple(ref fields, _) => {
+                                    VariantData::Struct(ref fields, ..) | VariantData::Tuple(ref fields, ..) => {
                                         fields[0].ty.span
                                     },
-                                    VariantData::Unit(_) => unreachable!(),
+                                    VariantData::Unit(..) => unreachable!(),
                                 };
                                 if let Some(snip) = snippet_opt(cx, span) {
                                     db.span_suggestion(

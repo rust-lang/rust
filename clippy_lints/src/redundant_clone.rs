@@ -80,6 +80,7 @@ impl LintPass for RedundantClone {
 }
 
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for RedundantClone {
+    #[allow(clippy::too_many_lines)]
     fn check_fn(
         &mut self,
         cx: &LateContext<'a, 'tcx>,

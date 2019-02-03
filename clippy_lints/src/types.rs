@@ -186,7 +186,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for TypePass {
         check_fn_decl(cx, decl);
     }
 
-    fn check_struct_field(&mut self, cx: &LateContext<'_, '_>, field: &StructField) {
+    fn check_struct_field(&mut self, cx: &LateContext<'_, '_>, field: &hir::StructField) {
         check_ty(cx, &field.ty, false);
     }
 
@@ -240,13 +240,14 @@ fn match_type_parameter(cx: &LateContext<'_, '_>, qpath: &QPath, path: &[&str]) 
 ///
 /// The parameter `is_local` distinguishes the context of the type; types from
 /// local bindings should only be checked for the `BORROWED_BOX` lint.
-fn check_ty(cx: &LateContext<'_, '_>, ast_ty: &hir::Ty, is_local: bool) {
-    if in_macro(ast_ty.span) {
+#[allow(clippy::too_many_lines)]
+fn check_ty(cx: &LateContext<'_, '_>, hir_ty: &hir::Ty, is_local: bool) {
+    if in_macro(hir_ty.span) {
         return;
     }
-    match ast_ty.node {
+    match hir_ty.node {
         TyKind::Path(ref qpath) if !is_local => {
-            let hir_id = cx.tcx.hir().node_to_hir_id(ast_ty.id);
+            let hir_id = cx.tcx.hir().node_to_hir_id(hir_ty.id);
             let def = cx.tables.qpath_def(qpath, hir_id);
             if let Some(def_id) = opt_def_id(def) {
                 if Some(def_id) == cx.tcx.lang_items().owned_box() {
@@ -254,7 +255,7 @@ fn check_ty(cx: &LateContext<'_, '_>, ast_ty: &hir::Ty, is_local: bool) {
                         span_help_and_lint(
                             cx,
                             BOX_VEC,
-                            ast_ty.span,
+                            hir_ty.span,
                             "you seem to be trying to use `Box<Vec<T>>`. Consider using just `Vec<T>`",
                             "`Vec<T>` is already on the heap, `Box<Vec<T>>` makes an extra allocation.",
                         );
@@ -275,26 +276,24 @@ fn check_ty(cx: &LateContext<'_, '_>, ast_ty: &hir::Ty, is_local: bool) {
                         if Some(def_id) == cx.tcx.lang_items().owned_box();
                         // At this point, we know ty is Box<T>, now get T
                         if let Some(ref last) = last_path_segment(ty_qpath).args;
-                        if let Some(ty) = last.args.iter().find_map(|arg| match arg {
+                        if let Some(boxed_ty) = last.args.iter().find_map(|arg| match arg {
                             GenericArg::Type(ty) => Some(ty),
                             GenericArg::Lifetime(_) => None,
                         });
-                        if let TyKind::Path(ref ty_qpath) = ty.node;
-                        let def = cx.tables.qpath_def(ty_qpath, ty.hir_id);
-                        if let Some(def_id) = opt_def_id(def);
-                        let boxed_type = cx.tcx.type_of(def_id);
-                        if boxed_type.is_sized(cx.tcx.at(ty.span), cx.param_env);
                         then {
-                            span_lint_and_sugg(
-                                cx,
-                                VEC_BOX,
-                                ast_ty.span,
-                                "`Vec<T>` is already on the heap, the boxing is unnecessary.",
-                                "try",
-                                format!("Vec<{}>", boxed_type),
-                                Applicability::MaybeIncorrect,
-                            );
-                            return; // don't recurse into the type
+                            let ty_ty = hir_ty_to_ty(cx.tcx, boxed_ty);
+                            if ty_ty.is_sized(cx.tcx.at(ty.span), cx.param_env) {
+                                span_lint_and_sugg(
+                                    cx,
+                                    VEC_BOX,
+                                    hir_ty.span,
+                                    "`Vec<T>` is already on the heap, the boxing is unnecessary.",
+                                    "try",
+                                    format!("Vec<{}>", ty_ty),
+                                    Applicability::MachineApplicable,
+                                );
+                                return; // don't recurse into the type
+                            }
                         }
                     }
                 } else if match_def_path(cx.tcx, def_id, &paths::OPTION) {
@@ -302,7 +301,7 @@ fn check_ty(cx: &LateContext<'_, '_>, ast_ty: &hir::Ty, is_local: bool) {
                         span_lint(
                             cx,
                             OPTION_OPTION,
-                            ast_ty.span,
+                            hir_ty.span,
                             "consider using `Option<T>` instead of `Option<Option<T>>` or a custom \
                              enum if you need to distinguish all 3 cases",
                         );
@@ -312,7 +311,7 @@ fn check_ty(cx: &LateContext<'_, '_>, ast_ty: &hir::Ty, is_local: bool) {
                     span_help_and_lint(
                         cx,
                         LINKEDLIST,
-                        ast_ty.span,
+                        hir_ty.span,
                         "I see you're using a LinkedList! Perhaps you meant some other data structure?",
                         "a VecDeque might work",
                     );
@@ -360,7 +359,7 @@ fn check_ty(cx: &LateContext<'_, '_>, ast_ty: &hir::Ty, is_local: bool) {
                 },
             }
         },
-        TyKind::Rptr(ref lt, ref mut_ty) => check_ty_rptr(cx, ast_ty, is_local, lt, mut_ty),
+        TyKind::Rptr(ref lt, ref mut_ty) => check_ty_rptr(cx, hir_ty, is_local, lt, mut_ty),
         // recurse
         TyKind::Slice(ref ty) | TyKind::Array(ref ty, _) | TyKind::Ptr(MutTy { ref ty, .. }) => {
             check_ty(cx, ty, is_local)
@@ -374,7 +373,7 @@ fn check_ty(cx: &LateContext<'_, '_>, ast_ty: &hir::Ty, is_local: bool) {
     }
 }
 
-fn check_ty_rptr(cx: &LateContext<'_, '_>, ast_ty: &hir::Ty, is_local: bool, lt: &Lifetime, mut_ty: &MutTy) {
+fn check_ty_rptr(cx: &LateContext<'_, '_>, hir_ty: &hir::Ty, is_local: bool, lt: &Lifetime, mut_ty: &MutTy) {
     match mut_ty.ty.node {
         TyKind::Path(ref qpath) => {
             let hir_id = cx.tcx.hir().node_to_hir_id(mut_ty.ty.id);
@@ -410,7 +409,7 @@ fn check_ty_rptr(cx: &LateContext<'_, '_>, ast_ty: &hir::Ty, is_local: bool, lt:
                     span_lint_and_sugg(
                         cx,
                         BORROWED_BOX,
-                        ast_ty.span,
+                        hir_ty.span,
                         "you seem to be trying to use `&Box<T>`. Consider using just `&T`",
                         "try",
                         format!(
@@ -1324,7 +1323,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for TypeComplexityPass {
         self.check_fndecl(cx, decl);
     }
 
-    fn check_struct_field(&mut self, cx: &LateContext<'a, 'tcx>, field: &'tcx StructField) {
+    fn check_struct_field(&mut self, cx: &LateContext<'a, 'tcx>, field: &'tcx hir::StructField) {
         // enum variants are also struct fields now
         self.check_type(cx, &field.ty);
     }
@@ -1968,7 +1967,7 @@ impl LintPass for ImplicitHasher {
 }
 
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for ImplicitHasher {
-    #[allow(clippy::cast_possible_truncation)]
+    #[allow(clippy::cast_possible_truncation, clippy::too_many_lines)]
     fn check_item(&mut self, cx: &LateContext<'a, 'tcx>, item: &'tcx Item) {
         use syntax_pos::BytePos;
 

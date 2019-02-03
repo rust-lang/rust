@@ -373,7 +373,7 @@ pub fn get_item_name(cx: &LateContext<'_, '_>, expr: &Expr) -> Option<Name> {
 /// Get the name of a `Pat`, if any
 pub fn get_pat_name(pat: &Pat) -> Option<Name> {
     match pat.node {
-        PatKind::Binding(_, _, ref spname, _) => Some(spname.name),
+        PatKind::Binding(.., ref spname, _) => Some(spname.name),
         PatKind::Path(ref qpath) => single_segment_path(qpath).map(|ps| ps.ident.name),
         PatKind::Box(ref p) | PatKind::Ref(ref p, _) => get_pat_name(&*p),
         _ => None,
@@ -1008,7 +1008,7 @@ pub fn opt_def_id(def: Def) -> Option<DefId> {
 }
 
 pub fn is_self(slf: &Arg) -> bool {
-    if let PatKind::Binding(_, _, name, _) = slf.pat.node {
+    if let PatKind::Binding(.., name, _) = slf.pat.node {
         name.name == keywords::SelfLower.name()
     } else {
         false
@@ -1038,7 +1038,7 @@ pub fn is_try(expr: &Expr) -> Option<&Expr> {
         if_chain! {
             if let PatKind::TupleStruct(ref path, ref pat, None) = arm.pats[0].node;
             if match_qpath(path, &paths::RESULT_OK[1..]);
-            if let PatKind::Binding(_, defid, _, None) = pat[0].node;
+            if let PatKind::Binding(_, defid, _, _, None) = pat[0].node;
             if let ExprKind::Path(QPath::Resolved(None, ref path)) = arm.body.node;
             if let Def::Local(lid) = path.def;
             if lid == defid;
@@ -1087,7 +1087,7 @@ pub fn is_allowed(cx: &LateContext<'_, '_>, lint: &'static Lint, id: NodeId) -> 
 
 pub fn get_arg_name(pat: &Pat) -> Option<ast::Name> {
     match pat.node {
-        PatKind::Binding(_, _, ident, None) => Some(ident.name),
+        PatKind::Binding(.., ident, None) => Some(ident.name),
         PatKind::Ref(ref subpat, _) => get_arg_name(subpat),
         _ => None,
     }

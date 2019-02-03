@@ -70,13 +70,13 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Pass {
             then {
                 match closure_body.arguments[0].pat.node {
                     hir::PatKind::Ref(ref inner, _) => if let hir::PatKind::Binding(
-                        hir::BindingAnnotation::Unannotated, _, name, None
+                        hir::BindingAnnotation::Unannotated, .., name, None
                     ) = inner.node {
                         if ident_eq(name, closure_expr) {
                             lint(cx, e.span, args[0].span);
                         }
                     },
-                    hir::PatKind::Binding(hir::BindingAnnotation::Unannotated, _, name, None) => {
+                    hir::PatKind::Binding(hir::BindingAnnotation::Unannotated, .., name, None) => {
                         match closure_expr.node {
                             hir::ExprKind::Unary(hir::UnOp::UnDeref, ref inner) => {
                                 if ident_eq(name, inner) && !cx.tables.expr_ty(inner).is_box() {

@@ -64,6 +64,7 @@ impl LintPass for AssignOps {
 }
 
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for AssignOps {
+    #[allow(clippy::too_many_lines)]
     fn check_expr(&mut self, cx: &LateContext<'a, 'tcx>, expr: &'tcx hir::Expr) {
         match &expr.node {
             hir::ExprKind::AssignOp(op, lhs, rhs) => {

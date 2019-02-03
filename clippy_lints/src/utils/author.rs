@@ -194,6 +194,7 @@ struct PrintVisitor {
 }
 
 impl<'tcx> Visitor<'tcx> for PrintVisitor {
+    #[allow(clippy::too_many_lines)]
     fn visit_expr(&mut self, expr: &Expr) {
         print!("    if let ExprKind::");
         let current = format!("{}.node", self.current);
@@ -506,12 +507,13 @@ impl<'tcx> Visitor<'tcx> for PrintVisitor {
         }
     }
 
+    #[allow(clippy::too_many_lines)]
     fn visit_pat(&mut self, pat: &Pat) {
         print!("    if let PatKind::");
         let current = format!("{}.node", self.current);
         match pat.node {
             PatKind::Wild => println!("Wild = {};", current),
-            PatKind::Binding(anno, _, ident, ref sub) => {
+            PatKind::Binding(anno, .., ident, ref sub) => {
                 let anno_pat = match anno {
                     BindingAnnotation::Unannotated => "BindingAnnotation::Unannotated",
                     BindingAnnotation::Mutable => "BindingAnnotation::Mutable",
