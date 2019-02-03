@@ -6,6 +6,7 @@ cd $(dirname "$0")
 cargo clean
 rm Cargo.lock 2>/dev/null || true
 rm -r sysroot 2>/dev/null || true
+rm -r target 2>/dev/null || true
 
 # FIXME find a better way to get the target triple
 unamestr=`uname`
