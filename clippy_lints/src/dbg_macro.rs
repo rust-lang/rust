@@ -1,7 +1,10 @@
-use crate::utils::span_help_and_lint;
+use crate::utils::{span_help_and_lint, span_lint_and_sugg, snippet_opt};
 use rustc::lint::{EarlyContext, EarlyLintPass, LintArray, LintPass};
 use rustc::{declare_tool_lint, lint_array};
 use syntax::ast;
+use rustc_errors::Applicability;
+use syntax::tokenstream::TokenStream;
+use syntax::source_map::Span;
 
 /// **What it does:** Checks for usage of dbg!() macro.
 ///
@@ -40,13 +43,39 @@ impl LintPass for Pass {
 impl EarlyLintPass for Pass {
     fn check_mac(&mut self, cx: &EarlyContext<'_>, mac: &ast::Mac) {
         if mac.node.path == "dbg" {
-            span_help_and_lint(
-                cx,
-                DBG_MACRO,
-                mac.span,
-                "`dbg!` macro is intended as a debugging tool",
-                "ensure to avoid having uses of it in version control",
-            );
+            match tts_span(mac.node.tts.clone()).and_then(|span| snippet_opt(cx, span)) {
+                Some(sugg) => {
+                    span_lint_and_sugg(
+                        cx,
+                        DBG_MACRO,
+                        mac.span,
+                        "`dbg!` macro is intended as a debugging tool",
+                        "ensure to avoid having uses of it in version control",
+                        sugg,
+                        Applicability::MaybeIncorrect,
+                    );
+                }
+                None => {
+                    span_help_and_lint(
+                        cx,
+                        DBG_MACRO,
+                        mac.span,
+                        "`dbg!` macro is intended as a debugging tool",
+                        "ensure to avoid having uses of it in version control",
+                    );
+                }
+            };
         }
     }
+}
+
+// Get span enclosing entire the token stream.
+fn tts_span(tts: TokenStream) -> Option<Span> {
+    let mut cursor = tts.into_trees();
+    let first = cursor.next()?.span();
+    let span = match cursor.last() {
+        Some(tree) => first.to(tree.span()),
+        None => first,
+    };
+    Some(span)
 }
