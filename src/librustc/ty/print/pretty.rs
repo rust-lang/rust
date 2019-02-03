@@ -1489,7 +1489,7 @@ define_print_and_forward_display! {
 
     ty::ExistentialProjection<'tcx> {
         let name = cx.tcx().associated_item(self.item_def_id).ident;
-        p!(write("{}=", name), print(self.ty))
+        p!(write("{} = ", name), print(self.ty))
     }
 
     ty::ExistentialPredicate<'tcx> {

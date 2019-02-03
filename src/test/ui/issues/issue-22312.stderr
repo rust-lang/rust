@@ -1,4 +1,4 @@
-error[E0605]: non-primitive cast: `Self` as `&dyn std::ops::Index<usize, Output=<Self as std::ops::Index<usize>>::Output>`
+error[E0605]: non-primitive cast: `Self` as `&dyn std::ops::Index<usize, Output = <Self as std::ops::Index<usize>>::Output>`
   --> $DIR/issue-22312.rs:11:24
    |
 LL |         let indexer = &(*self as &Index<usize, Output = <Self as Index<usize>>::Output>);
