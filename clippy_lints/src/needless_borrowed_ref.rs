@@ -76,7 +76,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for NeedlessBorrowedRef {
             if let PatKind::Ref(ref sub_pat, MutImmutable) = pat.node;
 
             // Check sub_pat got a `ref` keyword (excluding `ref mut`).
-            if let PatKind::Binding(BindingAnnotation::Ref, _, spanned_name, ..) = sub_pat.node;
+            if let PatKind::Binding(BindingAnnotation::Ref, .., spanned_name, _) = sub_pat.node;
             then {
                 span_lint_and_then(cx, NEEDLESS_BORROWED_REFERENCE, pat.span,
                                    "this pattern takes a reference on something that is being de-referenced",

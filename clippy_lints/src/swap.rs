@@ -77,7 +77,7 @@ fn check_manual_swap(cx: &LateContext<'_, '_>, block: &Block) {
             // let t = foo();
             if let StmtKind::Local(ref tmp) = w[0].node;
             if let Some(ref tmp_init) = tmp.init;
-            if let PatKind::Binding(_, _, ident, None) = tmp.pat.node;
+            if let PatKind::Binding(.., ident, None) = tmp.pat.node;
 
             // foo() = bar();
             if let StmtKind::Semi(ref first) = w[1].node;
