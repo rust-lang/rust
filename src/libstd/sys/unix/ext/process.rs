@@ -48,8 +48,7 @@ pub trait CommandExt {
     /// This also means that all resources such as file descriptors and
     /// memory-mapped regions got duplicated. It is your responsibility to make
     /// sure that the closure does not violate library invariants by making
-    /// invalid use of these duplicates.  Moreover, POSIX demands that you only
-    /// perform operations that are explicitly documented as async-signal-safe.
+    /// invalid use of these duplicates.
     ///
     /// When this closure is run, aspects such as the stdio file descriptors and
     /// working directory have successfully been changed, so output to these
