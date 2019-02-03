@@ -1,3 +1,4 @@
+// rustfmt-version: One
 // rustfmt-error_on_line_overflow: false
 
 fn issue_2179() {
