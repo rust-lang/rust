@@ -491,23 +491,23 @@ pub fn once_with<A, F: FnOnce() -> A>(gen: F) -> OnceWith<F> {
 }
 
 /// Creates a new iterator where each iteration calls the provided closure
-/// `F: FnMut(&mut St) -> Option<T>`.
+/// `F: FnMut() -> Option<T>`.
 ///
 /// This allows creating a custom iterator with any behavior
 /// without using the more verbose syntax of creating a dedicated type
 /// and implementing the `Iterator` trait for it.
 ///
-/// In addition to its captures and environment,
-/// the closure is given a mutable reference to some state
-/// that is preserved across iterations.
-/// That state starts as the given `initial_state` value.
-///
-/// Note that the `Unfold` iterator doesn’t make assumptions about the behavior of the closure,
+/// Note that the `FromFn` iterator doesn’t make assumptions about the behavior of the closure,
 /// and therefore conservatively does not implement [`FusedIterator`],
 /// or override [`Iterator::size_hint`] from its default `(0, None)`.
 ///
 /// [`FusedIterator`]: trait.FusedIterator.html
 /// [`Iterator::size_hint`]: trait.Iterator.html#method.size_hint
+///
+/// The closure can use its its captures and environment
+/// to track state across iterations.
+/// Depending on how the iterator is used,
+/// this may require specifying the `move` keyword on the closure.
 ///
 /// # Examples
 ///
@@ -517,13 +517,14 @@ pub fn once_with<A, F: FnOnce() -> A>(gen: F) -> OnceWith<F> {
 ///
 /// ```
 /// #![feature(iter_unfold)]
-/// let counter = std::iter::unfold(0, |count| {
+/// let mut count = 0;
+/// let counter = std::iter::from_fn(move || {
 ///     // Increment our count. This is why we started at zero.
-///     *count += 1;
+///     count += 1;
 ///
 ///     // Check to see if we've finished counting or not.
-///     if *count < 6 {
-///         Some(*count)
+///     if count < 6 {
+///         Some(count)
 ///     } else {
 ///         None
 ///     }
@@ -532,46 +533,38 @@ pub fn once_with<A, F: FnOnce() -> A>(gen: F) -> OnceWith<F> {
 /// ```
 #[inline]
 #[unstable(feature = "iter_unfold", issue = "55977")]
-pub fn unfold<St, T, F>(initial_state: St, f: F) -> Unfold<St, F>
-    where F: FnMut(&mut St) -> Option<T>
+pub fn from_fn<T, F>(f: F) -> FromFn<F>
+    where F: FnMut() -> Option<T>
 {
-    Unfold {
-        state: initial_state,
-        f,
-    }
+    FromFn(f)
 }
 
-/// An iterator where each iteration calls the provided closure `F: FnMut(&mut St) -> Option<T>`.
+/// An iterator where each iteration calls the provided closure `F: FnMut() -> Option<T>`.
 ///
-/// This `struct` is created by the [`unfold`] function.
+/// This `struct` is created by the [`iter::from_fn`] function.
 /// See its documentation for more.
 ///
-/// [`unfold`]: fn.unfold.html
+/// [`iter::from_fn`]: fn.from_fn.html
 #[derive(Clone)]
 #[unstable(feature = "iter_unfold", issue = "55977")]
-pub struct Unfold<St, F> {
-    state: St,
-    f: F,
-}
+pub struct FromFn<F>(F);
 
 #[unstable(feature = "iter_unfold", issue = "55977")]
-impl<St, T, F> Iterator for Unfold<St, F>
-    where F: FnMut(&mut St) -> Option<T>
+impl<T, F> Iterator for FromFn<F>
+    where F: FnMut() -> Option<T>
 {
     type Item = T;
 
     #[inline]
     fn next(&mut self) -> Option<Self::Item> {
-        (self.f)(&mut self.state)
+        (self.0)()
     }
 }
 
 #[unstable(feature = "iter_unfold", issue = "55977")]
-impl<St: fmt::Debug, F> fmt::Debug for Unfold<St, F> {
+impl<F> fmt::Debug for FromFn<F> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        f.debug_struct("Unfold")
-            .field("state", &self.state)
-            .finish()
+        f.debug_struct("FromFn").finish()
     }
 }
 
