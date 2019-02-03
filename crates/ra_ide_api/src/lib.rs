@@ -26,6 +26,7 @@ mod syntax_highlighting;
 mod parent_module;
 mod rename;
 mod impls;
+mod assits;
 
 #[cfg(test)]
 mod marks;

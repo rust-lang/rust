@@ -104,7 +104,7 @@ pub enum Assist {
 }
 
 #[derive(Default)]
-struct AssistBuilder {
+pub struct AssistBuilder {
     edit: TextEditBuilder,
     cursor_position: Option<TextUnit>,
 }
@@ -142,11 +142,7 @@ impl<'a> AssistCtx<'a> {
         }
         let mut edit = AssistBuilder::default();
         f(&mut edit);
-        Some(Assist::Edit(LocalEdit {
-            label: label.into(),
-            edit: edit.edit.finish(),
-            cursor_position: edit.cursor_position,
-        }))
+        Some(edit.build(label))
     }
 
     pub(crate) fn leaf_at_offset(&self) -> LeafAtOffset<&'a SyntaxNode> {
@@ -164,7 +160,7 @@ impl AssistBuilder {
     fn replace(&mut self, range: TextRange, replace_with: impl Into<String>) {
         self.edit.replace(range, replace_with.into())
     }
-    fn replace_node_and_indent(&mut self, node: &SyntaxNode, replace_with: impl Into<String>) {
+    pub fn replace_node_and_indent(&mut self, node: &SyntaxNode, replace_with: impl Into<String>) {
         let mut replace_with = replace_with.into();
         if let Some(indent) = leading_indent(node) {
             replace_with = reindent(&replace_with, indent)
@@ -180,6 +176,13 @@ impl AssistBuilder {
     }
     fn set_cursor(&mut self, offset: TextUnit) {
         self.cursor_position = Some(offset)
+    }
+    pub fn build(self, label: impl Into<String>) -> Assist {
+        Assist::Edit(LocalEdit {
+            label: label.into(),
+            cursor_position: self.cursor_position,
+            edit: self.edit.finish(),
+        })
     }
 }
 

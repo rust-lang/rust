@@ -1,0 +1,20 @@
+---
+created: "2019-02-03T15:38:46.094184+00:00"
+creator: insta@0.5.2
+expression: ret
+source: crates/ra_ide_api/src/assits/fill_match_arm.rs
+---
+[
+    LocalEdit {
+        label: "fill match arms",
+        edit: TextEdit {
+            atoms: [
+                AtomTextEdit {
+                    delete: [211; 218),
+                    insert: "match a {\n                A::As => (),\n                A::Bs => (),\n                A::Cs(_) => (),\n                A::Ds(_, _) => (),\n                A::Es{x, y} => (),\n            }"
+                }
+            ]
+        },
+        cursor_position: None
+    }
+]

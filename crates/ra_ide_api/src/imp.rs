@@ -10,7 +10,7 @@ use ra_db::{
     SourceDatabase, SourceRoot, SourceRootId,
     salsa::{Database, SweepStrategy},
 };
-use ra_ide_api_light::{self, assists, LocalEdit, Severity};
+use ra_ide_api_light::{self, LocalEdit, Severity};
 use ra_syntax::{
     algo::find_node_at_offset, ast::{self, NameOwner}, AstNode,
     SourceFile,
@@ -238,8 +238,9 @@ impl db::RootDatabase {
 
     pub(crate) fn assists(&self, frange: FileRange) -> Vec<SourceChange> {
         let file = self.parse(frange.file_id);
-        assists::assists(&file, frange.range)
+        ra_ide_api_light::assists::assists(&file, frange.range)
             .into_iter()
+            .chain(crate::assits::assists(self, frange.file_id, &file, frange.range).into_iter())
             .map(|local_edit| SourceChange::from_local_edit(frange.file_id, local_edit))
             .collect()
     }
