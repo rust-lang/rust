@@ -5,7 +5,7 @@ use std::path::{Path, PathBuf};
 use std::str::FromStr;
 
 use test::ColorConfig;
-use util::PathBufExt;
+use crate::util::PathBufExt;
 
 #[derive(Clone, Copy, PartialEq, Debug)]
 pub enum Mode {
@@ -66,7 +66,7 @@ impl FromStr for Mode {
 }
 
 impl fmt::Display for Mode {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let s = match *self {
             CompileFail => "compile-fail",
             RunFail => "run-fail",
