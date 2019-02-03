@@ -379,14 +379,20 @@ pub fn compile(
         let allow_internal_unstable = attr::find_by_name(&def.attrs, "allow_internal_unstable")
             .map_or(Vec::new(), |attr| attr
                 .meta_item_list()
-                .unwrap_or_else(|| sess.span_diagnostic.span_bug(
-                    attr.span, "allow_internal_unstable expects list of feature names",
-                ))
-                .iter()
-                .map(|it| it.name().unwrap_or_else(|| sess.span_diagnostic.span_bug(
-                    it.span, "allow internal unstable expects feature names",
-                )))
-                .collect()
+                .map(|list| list.iter()
+                    .map(|it| it.name().unwrap_or_else(|| sess.span_diagnostic.span_bug(
+                        it.span, "allow internal unstable expects feature names",
+                    )))
+                    .collect()
+                )
+                .unwrap_or_else(|| {
+                    sess.span_diagnostic.span_warn(
+                        attr.span, "allow_internal_unstable expects list of feature names. In the \
+                        future this will become a hard error. Please use `allow_internal_unstable(\
+                        foo, bar)` to only allow the `foo` and `bar` features",
+                    );
+                    vec![Symbol::intern("allow_internal_unstable_backcompat_hack")]
+                })
             );
         let allow_internal_unsafe = attr::contains_name(&def.attrs, "allow_internal_unsafe");
         let mut local_inner_macros = false;
