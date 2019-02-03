@@ -1,0 +1,57 @@
+From 1ad7a849f9ff845f676d4625ba71d1060039c0de Mon Sep 17 00:00:00 2001
+From: bjorn3 <bjorn3@users.noreply.github.com>
+Date: Thu, 31 Jan 2019 20:11:56 +0100
+Subject: [PATCH] Don't use OS TLS
+
+---
+ src/libstd/thread/local.rs | 4 ++--
+ src/libstd/thread/mod.rs   | 1 -
+ 2 files changed, 2 insertions(+), 3 deletions(-)
+
+diff --git a/src/libstd/thread/local.rs b/src/libstd/thread/local.rs
+index 5d2eb5f..39513b6 100644
+--- a/src/libstd/thread/local.rs
++++ b/src/libstd/thread/local.rs
+@@ -160,10 +160,10 @@ macro_rules! __thread_local_inner {
+                 &'static $crate::cell::UnsafeCell<
+                     $crate::option::Option<$t>>>
+             {
+-                #[cfg(all(target_arch = "wasm32", not(target_feature = "atomics")))]
+                 static __KEY: $crate::thread::__StaticLocalKeyInner<$t> =
+                     $crate::thread::__StaticLocalKeyInner::new();
+ 
++                /*
+                 #[thread_local]
+                 #[cfg(all(
+                     target_thread_local,
+@@ -178,6 +178,7 @@ macro_rules! __thread_local_inner {
+                 ))]
+                 static __KEY: $crate::thread::__OsLocalKeyInner<$t> =
+                     $crate::thread::__OsLocalKeyInner::new();
++                */
+ 
+                 __KEY.get()
+             }
+@@ -304,7 +305,6 @@ impl<T: 'static> LocalKey<T> {
+ /// On some platforms like wasm32 there's no threads, so no need to generate
+ /// thread locals and we can instead just use plain statics!
+ #[doc(hidden)]
+-#[cfg(all(target_arch = "wasm32", not(target_feature = "atomics")))]
+ pub mod statik {
+     use cell::UnsafeCell;
+     use fmt;
+diff --git a/src/libstd/thread/mod.rs b/src/libstd/thread/mod.rs
+index eb8e0c1..b44d737 100644
+--- a/src/libstd/thread/mod.rs
++++ b/src/libstd/thread/mod.rs
+@@ -195,7 +195,6 @@ pub use self::local::{LocalKey, AccessError};
+ // where available, but both are needed.
+ 
+ #[unstable(feature = "libstd_thread_internals", issue = "0")]
+-#[cfg(all(target_arch = "wasm32", not(target_feature = "atomics")))]
+ #[doc(hidden)] pub use self::local::statik::Key as __StaticLocalKeyInner;
+ #[unstable(feature = "libstd_thread_internals", issue = "0")]
+ #[cfg(target_thread_local)]
+-- 
+2.11.0
+
