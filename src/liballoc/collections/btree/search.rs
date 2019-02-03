@@ -1,7 +1,5 @@
-use core::{
-    borrow::Borrow,
-    cmp::Ordering,
-};
+use core::borrow::Borrow;
+use core::cmp::Ordering;
 
 use super::node::{Handle, NodeRef, marker, ForceResult::*};
 

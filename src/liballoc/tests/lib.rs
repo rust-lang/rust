@@ -13,10 +13,8 @@
 extern crate core;
 extern crate rand;
 
-use std::{
-    hash::{Hash, Hasher},
-    collections::hash_map::DefaultHasher,
-};
+use std::hash::{Hash, Hasher};
+use std::collections::hash_map::DefaultHasher;
 
 mod arc;
 mod binary_heap;

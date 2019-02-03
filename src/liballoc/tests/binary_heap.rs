@@ -1,9 +1,8 @@
-use std::{
-    cmp,
-    collections::{BinaryHeap, binary_heap::{Drain, PeekMut}},
-    panic::{self, AssertUnwindSafe},
-    sync::atomic::{AtomicUsize, Ordering},
-};
+use std::cmp;
+use std::collections::BinaryHeap;
+use std::collections::binary_heap::{Drain, PeekMut};
+use std::panic::{self, AssertUnwindSafe};
+use std::sync::atomic::{AtomicUsize, Ordering};
 
 use rand::{thread_rng, seq::SliceRandom};
 

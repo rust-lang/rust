@@ -87,19 +87,15 @@
 // It's cleaner to just turn off the unused_imports warning than to fix them.
 #![cfg_attr(test, allow(unused_imports, dead_code))]
 
-use core::{
-    borrow::{Borrow, BorrowMut},
-    cmp::Ordering::{self, Less},
-    mem::{self, size_of},
-    ptr,
-    u8, u16, u32,
-};
+use core::borrow::{Borrow, BorrowMut};
+use core::cmp::Ordering::{self, Less};
+use core::mem::{self, size_of};
+use core::ptr;
+use core::{u8, u16, u32};
 
-use crate::{
-    borrow::ToOwned,
-    boxed::Box,
-    vec::Vec,
-};
+use crate::borrow::ToOwned;
+use crate::boxed::Box;
+use crate::vec::Vec;
 
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use core::slice::{Chunks, Windows};
@@ -142,8 +138,9 @@ pub use hack::to_vec;
 // `test_permutations` test
 mod hack {
     use core::mem;
-    use crate::{boxed::Box, vec::Vec};
 
+    use crate::boxed::Box;
+    use crate::vec::Vec;
     #[cfg(test)]
     use crate::string::ToString;
 

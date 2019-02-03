@@ -2,11 +2,9 @@
 
 #![stable(feature = "alloc_module", since = "1.28.0")]
 
-use core::{
-    intrinsics::{min_align_of_val, size_of_val},
-    ptr::{NonNull, Unique},
-    usize,
-};
+use core::intrinsics::{min_align_of_val, size_of_val};
+use core::ptr::{NonNull, Unique};
+use core::usize;
 
 #[stable(feature = "alloc_module", since = "1.28.0")]
 #[doc(inline)]
@@ -230,10 +228,8 @@ pub fn handle_alloc_error(layout: Layout) -> ! {
 mod tests {
     extern crate test;
     use test::Bencher;
-    use crate::{
-        boxed::Box,
-        alloc::{Global, Alloc, Layout, handle_alloc_error},
-    };
+    use crate::boxed::Box;
+    use crate::alloc::{Global, Alloc, Layout, handle_alloc_error};
 
     #[test]
     fn allocate_zeroed() {

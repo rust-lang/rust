@@ -1,9 +1,7 @@
-use std::{
-    any::Any,
-    sync::{Arc, Weak},
-    cell::RefCell,
-    cmp::PartialEq,
-};
+use std::any::Any;
+use std::sync::{Arc, Weak};
+use std::cell::RefCell;
+use std::cmp::PartialEq;
 
 #[test]
 fn uninhabited() {

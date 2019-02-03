@@ -1,18 +1,14 @@
-use std::{
-    cell::Cell,
-    cmp::Ordering::{self, Equal, Greater, Less},
-    mem,
-    panic,
-    rc::Rc,
-    sync::atomic::{Ordering::Relaxed, AtomicUsize},
-    thread,
-};
+use std::cell::Cell;
+use std::cmp::Ordering::{self, Equal, Greater, Less};
+use std::mem;
+use std::panic;
+use std::rc::Rc;
+use std::sync::atomic::{Ordering::Relaxed, AtomicUsize};
+use std::thread;
 
-use rand::{
-    Rng, RngCore, thread_rng,
-    seq::SliceRandom,
-    distributions::Standard,
-};
+use rand::{Rng, RngCore, thread_rng};
+use rand::seq::SliceRandom;
+use rand::distributions::Standard;
 
 fn square(n: usize) -> usize {
     n * n

@@ -145,18 +145,14 @@
 #![allow(missing_docs)]
 #![stable(feature = "rust1", since = "1.0.0")]
 
-use core::{
-    ops::{Deref, DerefMut},
-    iter::{FromIterator, FusedIterator},
-    mem::{swap, size_of, ManuallyDrop},
-    ptr,
-    fmt,
-};
+use core::ops::{Deref, DerefMut};
+use core::iter::{FromIterator, FusedIterator};
+use core::mem::{swap, size_of, ManuallyDrop};
+use core::ptr;
+use core::fmt;
 
-use crate::{
-    slice,
-    vec::{self, Vec},
-};
+use crate::slice;
+use crate::vec::{self, Vec};
 
 use super::SpecExtend;
 

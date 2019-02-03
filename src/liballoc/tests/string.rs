@@ -1,9 +1,7 @@
-use std::{
-    borrow::Cow,
-    collections::CollectionAllocErr::*,
-    mem::size_of,
-    usize, isize,
-};
+use std::borrow::Cow;
+use std::collections::CollectionAllocErr::*;
+use std::mem::size_of;
+use std::{usize, isize};
 
 pub trait IntoCow<'a, B: ?Sized> where B: ToOwned {
     fn into_cow(self) -> Cow<'a, B>;

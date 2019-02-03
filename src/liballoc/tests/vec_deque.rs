@@ -1,12 +1,8 @@
-use std::{
-    fmt::Debug,
-    collections::{
-        VecDeque, vec_deque::Drain,
-        CollectionAllocErr::*,
-    },
-    mem::size_of,
-    usize, isize,
-};
+use std::fmt::Debug;
+use std::collections::{VecDeque, vec_deque::Drain};
+use std::collections::CollectionAllocErr::*;
+use std::mem::size_of;
+use std::{usize, isize};
 
 use crate::hash;
 

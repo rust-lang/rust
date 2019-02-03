@@ -8,11 +8,9 @@ pub use if_arc::*;
 #[cfg(all(target_has_atomic = "ptr", target_has_atomic = "cas"))]
 mod if_arc {
     use super::*;
-    use core::{
-        marker::PhantomData,
-        mem,
-        ptr::{self, NonNull},
-    };
+    use core::marker::PhantomData;
+    use core::mem;
+    use core::ptr::{self, NonNull};
     use crate::sync::Arc;
 
     /// A way of waking up a specific task.

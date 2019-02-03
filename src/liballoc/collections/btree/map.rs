@@ -1,21 +1,15 @@
-use core::{
-    borrow::Borrow,
-    cmp::Ordering,
-    fmt::Debug,
-    hash::{Hash, Hasher},
-    iter::{FromIterator, Peekable, FusedIterator},
-    marker::PhantomData,
-    ops::{
-        Bound::{Excluded, Included, Unbounded},
-        Index, RangeBounds,
-    },
-    fmt, intrinsics, mem, ptr,
-};
+use core::borrow::Borrow;
+use core::cmp::Ordering;
+use core::fmt::Debug;
+use core::hash::{Hash, Hasher};
+use core::iter::{FromIterator, Peekable, FusedIterator};
+use core::marker::PhantomData;
+use core::ops::Bound::{Excluded, Included, Unbounded};
+use core::ops::{Index, RangeBounds};
+use core::{fmt, intrinsics, mem, ptr};
 
-use super::{
-    node::{self, Handle, NodeRef, marker, InsertResult::*, ForceResult::*},
-    search::{self, SearchResult::*},
-};
+use super::node::{self, Handle, NodeRef, marker, InsertResult::*, ForceResult::*};
+use super::search::{self, SearchResult::*};
 
 use UnderflowResult::*;
 use Entry::*;

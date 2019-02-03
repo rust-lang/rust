@@ -1,7 +1,6 @@
-use std::{
-    collections::BTreeSet,
-    iter::FromIterator
-};
+use std::collections::BTreeSet;
+use std::iter::FromIterator;
+
 use super::DeterministicRng;
 
 #[test]

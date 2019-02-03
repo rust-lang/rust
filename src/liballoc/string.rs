@@ -46,30 +46,20 @@
 
 #![stable(feature = "rust1", since = "1.0.0")]
 
-use core::{
-    char::{decode_utf16, REPLACEMENT_CHARACTER},
-    fmt,
-    hash,
-    iter::{FromIterator, FusedIterator},
-    ops::{
-        self,
-        Bound::{Excluded, Included, Unbounded},
-        Add, AddAssign, Index, IndexMut, RangeBounds,
-    },
-    ptr,
-    str::{
-        pattern::Pattern,
-        lossy,
-    }
-};
+use core::char::{decode_utf16, REPLACEMENT_CHARACTER};
+use core::fmt;
+use core::hash;
+use core::iter::{FromIterator, FusedIterator};
+use core::ops::{self, Add, AddAssign, Index, IndexMut, RangeBounds};
+use core::ops::Bound::{Excluded, Included, Unbounded};
+use core::ptr;
+use core::str::{pattern::Pattern, lossy};
 
-use crate::{
-    borrow::{Cow, ToOwned},
-    collections::CollectionAllocErr,
-    boxed::Box,
-    str::{self, from_boxed_utf8_unchecked, FromStr, Utf8Error, Chars},
-    vec::Vec,
-};
+use crate::borrow::{Cow, ToOwned};
+use crate::collections::CollectionAllocErr;
+use crate::boxed::Box;
+use crate::str::{self, from_boxed_utf8_unchecked, FromStr, Utf8Error, Chars};
+use crate::vec::Vec;
 
 /// A UTF-8 encoded, growable string.
 ///

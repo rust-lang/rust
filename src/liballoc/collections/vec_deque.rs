@@ -7,25 +7,19 @@
 
 #![stable(feature = "rust1", since = "1.0.0")]
 
-use core::{
-    cmp::{self, Ordering},
-    fmt,
-    iter::{repeat_with, FromIterator, FusedIterator},
-    mem,
-    ops::{
-        Bound::{Excluded, Included, Unbounded},
-        Index, IndexMut, RangeBounds, Try,
-    },
-    ptr::{self, NonNull},
-    slice,
-    hash::{Hash, Hasher},
-};
+use core::cmp::{self, Ordering};
+use core::fmt;
+use core::iter::{repeat_with, FromIterator, FusedIterator};
+use core::mem;
+use core::ops::Bound::{Excluded, Included, Unbounded};
+use core::ops::{Index, IndexMut, RangeBounds, Try};
+use core::ptr::{self, NonNull};
+use core::slice;
+use core::hash::{Hash, Hasher};
 
-use crate::{
-    collections::CollectionAllocErr,
-    raw_vec::RawVec,
-    vec::Vec,
-};
+use crate::collections::CollectionAllocErr;
+use crate::raw_vec::RawVec;
+use crate::vec::Vec;
 
 const INITIAL_CAPACITY: usize = 7; // 2^3 - 1
 const MINIMUM_CAPACITY: usize = 1; // 2 - 1

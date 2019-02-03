@@ -56,29 +56,22 @@
 
 #![stable(feature = "rust1", since = "1.0.0")]
 
-use core::{
-    cmp::{self, Ordering},
-    fmt,
-    hash::{self, Hash},
-    intrinsics::{arith_offset, assume},
-    iter::{FromIterator, FusedIterator, TrustedLen},
-    marker::PhantomData,
-    mem,
-    ops::{
-        self,
-        Bound::{Excluded, Included, Unbounded},
-        Index, IndexMut, RangeBounds,
-    },
-    ptr::{self, NonNull},
-    slice::{self, SliceIndex},
-};
+use core::cmp::{self, Ordering};
+use core::fmt;
+use core::hash::{self, Hash};
+use core::intrinsics::{arith_offset, assume};
+use core::iter::{FromIterator, FusedIterator, TrustedLen};
+use core::marker::PhantomData;
+use core::mem;
+use core::ops::{self, Index, IndexMut, RangeBounds};
+use core::ops::Bound::{Excluded, Included, Unbounded};
+use core::ptr::{self, NonNull};
+use core::slice::{self, SliceIndex};
 
-use crate::{
-    borrow::{ToOwned, Cow},
-    collections::CollectionAllocErr,
-    boxed::Box,
-    raw_vec::RawVec,
-};
+use crate::borrow::{ToOwned, Cow};
+use crate::collections::CollectionAllocErr;
+use crate::boxed::Box;
+use crate::raw_vec::RawVec;
 
 /// A contiguous growable array type, written `Vec<T>` but pronounced 'vector'.
 ///

@@ -56,28 +56,26 @@
 
 #![stable(feature = "rust1", since = "1.0.0")]
 
-use core::{
-    any::Any,
-    borrow,
-    cmp::Ordering,
-    convert::From,
-    fmt,
-    future::Future,
-    hash::{Hash, Hasher},
-    iter::{Iterator, FromIterator, FusedIterator},
-    marker::{Unpin, Unsize},
-    mem,
-    pin::Pin,
-    ops::{CoerceUnsized, DispatchFromDyn, Deref, DerefMut, Receiver, Generator, GeneratorState},
-    ptr::{self, NonNull, Unique},
-    task::{LocalWaker, Poll},
+use core::any::Any;
+use core::borrow;
+use core::cmp::Ordering;
+use core::convert::From;
+use core::fmt;
+use core::future::Future;
+use core::hash::{Hash, Hasher};
+use core::iter::{Iterator, FromIterator, FusedIterator};
+use core::marker::{Unpin, Unsize};
+use core::mem;
+use core::pin::Pin;
+use core::ops::{
+    CoerceUnsized, DispatchFromDyn, Deref, DerefMut, Receiver, Generator, GeneratorState
 };
+use core::ptr::{self, NonNull, Unique};
+use core::task::{LocalWaker, Poll};
 
-use crate::{
-    vec::Vec,
-    raw_vec::RawVec,
-    str::from_boxed_utf8_unchecked,
-};
+use crate::vec::Vec;
+use crate::raw_vec::RawVec;
+use crate::str::from_boxed_utf8_unchecked;
 
 /// A pointer type for heap allocation.
 ///
