@@ -3,28 +3,75 @@
 
 use std::future::Future;
 use std::pin::Pin;
-use std::rc::Rc;
 use std::sync::{
     Arc,
     atomic::{self, AtomicUsize},
 };
 use std::task::{
-    Poll, Wake, Waker, LocalWaker,
-    local_waker, local_waker_from_nonlocal,
+    Poll, Waker, RawWaker, RawWakerVTable,
 };
 
+macro_rules! waker_vtable {
+    ($ty:ident) => {
+        &RawWakerVTable {
+            clone: clone_arc_raw::<$ty>,
+            drop: drop_arc_raw::<$ty>,
+            wake: wake_arc_raw::<$ty>,
+        }
+    };
+}
+
+pub trait ArcWake {
+    fn wake(arc_self: &Arc<Self>);
+
+    fn into_waker(wake: Arc<Self>) -> Waker where Self: Sized
+    {
+        let ptr = Arc::into_raw(wake) as *const();
+
+        unsafe {
+            Waker::new_unchecked(RawWaker{
+                data: ptr,
+                vtable: waker_vtable!(Self),
+            })
+        }
+    }
+}
+
+unsafe fn increase_refcount<T: ArcWake>(data: *const()) {
+    // Retain Arc by creating a copy
+    let arc: Arc<T> = Arc::from_raw(data as *const T);
+    let arc_clone = arc.clone();
+    // Forget the Arcs again, so that the refcount isn't decrased
+    let _ = Arc::into_raw(arc);
+    let _ = Arc::into_raw(arc_clone);
+}
+
+unsafe fn clone_arc_raw<T: ArcWake>(data: *const()) -> RawWaker {
+    increase_refcount::<T>(data);
+    RawWaker {
+        data: data,
+        vtable: waker_vtable!(T),
+    }
+}
+
+unsafe fn drop_arc_raw<T: ArcWake>(data: *const()) {
+    // Drop Arc
+    let _: Arc<T> = Arc::from_raw(data as *const T);
+}
+
+unsafe fn wake_arc_raw<T: ArcWake>(data: *const()) {
+    let arc: Arc<T> = Arc::from_raw(data as *const T);
+    ArcWake::wake(&arc);
+    let _ = Arc::into_raw(arc);
+}
+
 struct Counter {
-    local_wakes: AtomicUsize,
-    nonlocal_wakes: AtomicUsize,
+    wakes: AtomicUsize,
 }
 
 impl Wake for Counter {
-    fn wake(this: &Arc<Self>) {
-        this.nonlocal_wakes.fetch_add(1, atomic::Ordering::SeqCst);
-    }
-
-    unsafe fn wake_local(this: &Arc<Self>) {
-        this.local_wakes.fetch_add(1, atomic::Ordering::SeqCst);
+    fn wake(arc_self: &Arc<Self>) {
+        arc_self.wakes.fetch_add(1, atomic::Ordering::SeqCst);
     }
 }
 
@@ -32,40 +79,28 @@ struct MyFuture;
 
 impl Future for MyFuture {
     type Output = ();
-    fn poll(self: Pin<&mut Self>, lw: &LocalWaker) -> Poll<Self::Output> {
-        // Wake once locally
-        lw.wake();
-        // Wake twice non-locally
-        let waker = lw.clone().into_waker();
+    fn poll(self: Pin<&mut Self>, waker: &Waker) -> Poll<Self::Output> {
+        // Wake twice
         waker.wake();
         waker.wake();
         Poll::Ready(())
     }
 }
 
-fn test_local_waker() {
+fn test_waker() {
     let counter = Arc::new(Counter {
-        local_wakes: AtomicUsize::new(0),
-        nonlocal_wakes: AtomicUsize::new(0),
+        wakes: AtomicUsize::new(0),
     });
-    let waker = unsafe { local_waker(counter.clone()) };
-    assert_eq!(Poll::Ready(()), Pin::new(&mut MyFuture).poll(&waker));
-    assert_eq!(1, counter.local_wakes.load(atomic::Ordering::SeqCst));
-    assert_eq!(2, counter.nonlocal_wakes.load(atomic::Ordering::SeqCst));
-}
+    let waker = ArcWake::into_waker(counter.clone());
+    assert_eq!(2, Arc::strong_count(&counter));
 
-fn test_local_as_nonlocal_waker() {
-    let counter = Arc::new(Counter {
-        local_wakes: AtomicUsize::new(0),
-        nonlocal_wakes: AtomicUsize::new(0),
-    });
-    let waker: LocalWaker = local_waker_from_nonlocal(counter.clone());
     assert_eq!(Poll::Ready(()), Pin::new(&mut MyFuture).poll(&waker));
-    assert_eq!(0, counter.local_wakes.load(atomic::Ordering::SeqCst));
-    assert_eq!(3, counter.nonlocal_wakes.load(atomic::Ordering::SeqCst));
+    assert_eq!(2, counter.wakes.load(atomic::Ordering::SeqCst));
+
+    drop(waker);
+    assert_eq!(1, Arc::strong_count(&counter));
 }
 
 fn main() {
-    test_local_waker();
-    test_local_as_nonlocal_waker();
+    test_waker();
 }

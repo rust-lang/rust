@@ -5,14 +5,14 @@
 use fmt;
 use marker::Unpin;
 
-/// A `RawWaker` allows the implementor of a task executor to create a `Waker`
+/// A `RawWaker` allows the implementor of a task executor to create a [`Waker`]
 /// which provides customized wakeup behavior.
 ///
 /// [vtable]: https://en.wikipedia.org/wiki/Virtual_method_table
 ///
 /// It consists of a data pointer and a [virtual function pointer table (vtable)][vtable] that
 /// customizes the behavior of the `RawWaker`.
-#[derive(PartialEq)]
+#[derive(PartialEq, Debug)]
 pub struct RawWaker {
     /// A data pointer, which can be used to store arbitrary data as required
     /// by the executor. This could be e.g. a type-erased pointer to an `Arc`
@@ -24,55 +24,41 @@ pub struct RawWaker {
     pub vtable: &'static RawWakerVTable,
 }
 
-impl fmt::Debug for RawWaker {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        f.debug_struct("RawWaker")
-            .finish()
-    }
-}
-
 /// A virtual function pointer table (vtable) that specifies the behavior
 /// of a [`RawWaker`].
 ///
 /// The pointer passed to all functions inside the vtable is the `data` pointer
-/// from the enclosing `RawWaker` object.
-#[derive(PartialEq, Copy, Clone)]
+/// from the enclosing [`RawWaker`] object.
+#[derive(PartialEq, Copy, Clone, Debug)]
 pub struct RawWakerVTable {
-    /// This function will be called when the `RawWaker` gets cloned, e.g. when
-    /// the `Waker` in which the `RawWaker` is stored gets cloned.
+    /// This function will be called when the [`RawWaker`] gets cloned, e.g. when
+    /// the [`Waker`] in which the [`RawWaker`] is stored gets cloned.
     ///
     /// The implementation of this function must retain all resources that are
-    /// required for this additional instance of a `RawWaker` and associated
-    /// task. Calling `wake` on the resulting `RawWaker` should result in a wakeup
-    /// of the same task that would have been awoken by the original `RawWaker`.
+    /// required for this additional instance of a [`RawWaker`] and associated
+    /// task. Calling `wake` on the resulting [`RawWaker`] should result in a wakeup
+    /// of the same task that would have been awoken by the original [`RawWaker`].
     pub clone: unsafe fn(*const ()) -> RawWaker,
 
-    /// This function will be called when `wake` is called on the `Waker`.
-    /// It must wake up the task associated with this `RawWaker`.
+    /// This function will be called when `wake` is called on the [`Waker`].
+    /// It must wake up the task associated with this [`RawWaker`].
     pub wake: unsafe fn(*const ()),
 
-    /// This function gets called when a `RawWaker` gets dropped.
+    /// This function gets called when a [`RawWaker`] gets dropped.
     ///
     /// The implementation of this function must make sure to release any
-    /// resources that are associated with this instance of a `RawWaker` and
+    /// resources that are associated with this instance of a [`RawWaker`] and
     /// associated task.
-    pub drop_fn: unsafe fn(*const ()),
-}
-
-impl fmt::Debug for RawWakerVTable {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        f.debug_struct("RawWakerVTable")
-            .finish()
-    }
+    pub drop: unsafe fn(*const ()),
 }
 
 /// A `Waker` is a handle for waking up a task by notifying its executor that it
 /// is ready to be run.
 ///
-/// This handle encapsulates a `RawWaker` instance, which defines the
+/// This handle encapsulates a [`RawWaker`] instance, which defines the
 /// executor-specific wakeup behavior.
 ///
-/// Implements `Clone`, `Send`, and `Sync`.
+/// Implements [`Clone`], [`Send`], and [`Sync`].
 #[repr(transparent)]
 pub struct Waker {
     waker: RawWaker,
@@ -87,6 +73,10 @@ impl Waker {
     pub fn wake(&self) {
         // The actual wakeup call is delegated through a virtual function call
         // to the implementation which is defined by the executor.
+
+        // SAFETY: This is safe because `Waker::new_unchecked` is the only way
+        // to initialize `wake` and `data` requiring the user to acknowledge
+        // that the contract of `RawWaker` is upheld.
         unsafe { (self.waker.vtable.wake)(self.waker.data) }
     }
 
@@ -101,10 +91,11 @@ impl Waker {
         self.waker == other.waker
     }
 
-    /// Creates a new `Waker` from `RawWaker`.
+    /// Creates a new `Waker` from [`RawWaker`].
     ///
-    /// The method cannot check whether `RawWaker` fulfills the required API
-    /// contract to make it usable for `Waker` and is therefore unsafe.
+    /// The behavior of the returned `Waker` is undefined if the contract defined
+    /// in [RawWaker]'s documentation is not upheld. Therefore this method is
+    /// unsafe.
     pub unsafe fn new_unchecked(waker: RawWaker) -> Waker {
         Waker {
             waker,
@@ -115,6 +106,9 @@ impl Waker {
 impl Clone for Waker {
     fn clone(&self) -> Self {
         Waker {
+            // SAFETY: This is safe because `Waker::new_unchecked` is the only way
+            // to initialize `clone` and `data` requiring the user to acknowledge
+            // that the contract of [`RawWaker`] is upheld.
             waker: unsafe { (self.waker.vtable.clone)(self.waker.data) },
         }
     }
@@ -122,7 +116,10 @@ impl Clone for Waker {
 
 impl Drop for Waker {
     fn drop(&mut self) {
-        unsafe { (self.waker.vtable.drop_fn)(self.waker.data) }
+        // SAFETY: This is safe because `Waker::new_unchecked` is the only way
+        // to initialize `drop` and `data` requiring the user to acknowledge
+        // that the contract of `RawWaker` is upheld.
+        unsafe { (self.waker.vtable.drop)(self.waker.data) }
     }
 }
 
