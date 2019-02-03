@@ -42,6 +42,7 @@ pub(super) fn complete_postfix(acc: &mut Completions, ctx: &CompletionContext) {
         )
         .add_to(acc);
         postfix_snippet(ctx, "while", &format!("while {} {{\n$0\n}}", receiver_text)).add_to(acc);
+        postfix_snippet(ctx, "dbg", &format!("dbg!({})", receiver_text)).add_to(acc);
     }
 }
 
@@ -55,39 +56,13 @@ mod tests {
     }
 
     #[test]
-    fn test_filter_postfix_completion1() {
+    fn postfix_completion_works_for_trivial_path_expression() {
         check_snippet_completion(
-            "filter_postfix_completion1",
+            "postfix_completion_works_for_trivial_path_expression",
             r#"
             fn main() {
                 let bar = "a";
                 bar.<|>
-            }
-            "#,
-        );
-    }
-
-    #[test]
-    fn test_filter_postfix_completion2() {
-        check_snippet_completion(
-            "filter_postfix_completion2",
-            r#"
-            fn main() {
-                let bar = "a";
-                bar.i<|>
-            }
-            "#,
-        );
-    }
-
-    #[test]
-    fn test_filter_postfix_completion3() {
-        check_snippet_completion(
-            "filter_postfix_completion3",
-            r#"
-            fn main() {
-                let bar = "a";
-                bar.if<|>
             }
             "#,
         );
