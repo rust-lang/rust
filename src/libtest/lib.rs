@@ -17,6 +17,7 @@
 // this crate, which relies on this attribute (rather than the value of `--crate-name` passed by
 // cargo) to detect this crate.
 
+#![deny(rust_2018_idioms)]
 #![crate_name = "test"]
 #![unstable(feature = "test", issue = "27812")]
 #![doc(html_logo_url = "https://www.rust-lang.org/logos/rust-logo-128x128-blk-v2.png",
@@ -32,10 +33,10 @@
 #![feature(termination_trait_lib)]
 #![feature(test)]
 
-extern crate getopts;
+use getopts;
 #[cfg(any(unix, target_os = "cloudabi"))]
 extern crate libc;
-extern crate term;
+use term;
 
 // FIXME(#54291): rustc and/or LLVM don't yet support building with panic-unwind
 //                on aarch64-pc-windows-msvc, so we don't link libtest against
@@ -78,7 +79,7 @@ const QUIET_MODE_MAX_COLUMN: usize = 100; // insert a '\n' after 100 tests in qu
 
 // to be used by rustc to compile tests in libtest
 pub mod test {
-    pub use {assert_test_result, filter_tests, parse_opts, run_test, test_main, test_main_static,
+    pub use crate::{assert_test_result, filter_tests, parse_opts, run_test, test_main, test_main_static,
              Bencher, DynTestFn, DynTestName, Metric, MetricMap, Options, RunIgnored, ShouldPanic,
              StaticBenchFn, StaticTestFn, StaticTestName, TestDesc, TestDescAndFn, TestName,
              TestOpts, TestResult, TrFailed, TrFailedMsg, TrIgnored, TrOk};
@@ -87,7 +88,7 @@ pub mod test {
 pub mod stats;
 mod formatters;
 
-use formatters::{JsonFormatter, OutputFormatter, PrettyFormatter, TerseFormatter};
+use crate::formatters::{JsonFormatter, OutputFormatter, PrettyFormatter, TerseFormatter};
 
 /// Whether to execute tests concurrently or not
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
@@ -131,7 +132,7 @@ impl TestName {
     }
 }
 impl fmt::Display for TestName {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         fmt::Display::fmt(self.as_slice(), f)
     }
 }
@@ -185,7 +186,7 @@ impl TestFn {
 }
 
 impl fmt::Debug for TestFn {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.write_str(match *self {
             StaticTestFn(..) => "StaticTestFn(..)",
             StaticBenchFn(..) => "StaticBenchFn(..)",
@@ -823,7 +824,7 @@ pub fn list_tests_console(opts: &TestOpts, tests: Vec<TestDescAndFn>) -> io::Res
     let mut nbench = 0;
 
     for test in filter_tests(&opts, tests) {
-        use TestFn::*;
+        use crate::TestFn::*;
 
         let TestDescAndFn {
             desc: TestDesc { name, .. },
@@ -1454,12 +1455,12 @@ pub fn run_test(
 
     match testfn {
         DynBenchFn(bencher) => {
-            ::bench::benchmark(desc, monitor_ch, opts.nocapture, |harness| {
+            crate::bench::benchmark(desc, monitor_ch, opts.nocapture, |harness| {
                 bencher.run(harness)
             });
         }
         StaticBenchFn(benchfn) => {
-            ::bench::benchmark(desc, monitor_ch, opts.nocapture, |harness| {
+            crate::bench::benchmark(desc, monitor_ch, opts.nocapture, |harness| {
                 (benchfn.clone())(harness)
             });
         }
@@ -1673,7 +1674,7 @@ pub mod bench {
     use std::cmp;
     use std::io;
     use std::sync::{Arc, Mutex};
-    use stats;
+    use crate::stats;
     use super::{BenchMode, BenchSamples, Bencher, MonitorMsg, Sender, Sink, TestDesc, TestResult};
 
     pub fn benchmark<F>(desc: TestDesc, monitor_ch: Sender<MonitorMsg>, nocapture: bool, f: F)
@@ -1749,13 +1750,13 @@ pub mod bench {
 
 #[cfg(test)]
 mod tests {
-    use test::{filter_tests, parse_opts, run_test, DynTestFn, DynTestName, MetricMap, RunIgnored,
+    use crate::test::{filter_tests, parse_opts, run_test, DynTestFn, DynTestName, MetricMap, RunIgnored,
                ShouldPanic, StaticTestName, TestDesc, TestDescAndFn, TestOpts, TrFailed,
                TrFailedMsg, TrIgnored, TrOk};
     use std::sync::mpsc::channel;
-    use bench;
-    use Bencher;
-    use Concurrent;
+    use crate::bench;
+    use crate::Bencher;
+    use crate::Concurrent;
 
 
     fn one_ignored_one_unignored_test() -> Vec<TestDescAndFn> {
@@ -2156,7 +2157,7 @@ mod tests {
             allow_fail: false,
         };
 
-        ::bench::benchmark(desc, tx, true, f);
+        crate::bench::benchmark(desc, tx, true, f);
         rx.recv().unwrap();
     }
 
@@ -2175,7 +2176,7 @@ mod tests {
             allow_fail: false,
         };
 
-        ::bench::benchmark(desc, tx, true, f);
+        crate::bench::benchmark(desc, tx, true, f);
         rx.recv().unwrap();
     }
 }
