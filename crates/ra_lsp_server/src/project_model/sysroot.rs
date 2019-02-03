@@ -127,6 +127,7 @@ rustc_tsan
 syntax";
 
 const STD_DEPS: &str = "
+alloc
 alloc_jemalloc
 alloc_system
 core
