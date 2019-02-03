@@ -20,9 +20,12 @@
 #![deny(rust_2018_idioms)]
 #![crate_name = "test"]
 #![unstable(feature = "test", issue = "27812")]
-#![doc(html_logo_url = "https://www.rust-lang.org/logos/rust-logo-128x128-blk-v2.png",
-       html_favicon_url = "https://doc.rust-lang.org/favicon.ico",
-       html_root_url = "https://doc.rust-lang.org/nightly/", test(attr(deny(warnings))))]
+#![doc(
+    html_logo_url = "https://www.rust-lang.org/logos/rust-logo-128x128-blk-v2.png",
+    html_favicon_url = "https://doc.rust-lang.org/favicon.ico",
+    html_root_url = "https://doc.rust-lang.org/nightly/",
+    test(attr(deny(warnings)))
+)]
 #![feature(asm)]
 #![feature(fnbox)]
 #![cfg_attr(any(unix, target_os = "cloudabi"), feature(libc, rustc_private))]
@@ -47,52 +50,57 @@ use term;
 #[cfg(not(all(windows, target_arch = "aarch64")))]
 extern crate panic_unwind;
 
-pub use self::TestFn::*;
 pub use self::ColorConfig::*;
-pub use self::TestResult::*;
-pub use self::TestName::*;
-use self::TestEvent::*;
 use self::NamePadding::*;
 use self::OutputLocation::*;
+use self::TestEvent::*;
+pub use self::TestFn::*;
+pub use self::TestName::*;
+pub use self::TestResult::*;
 
-use std::panic::{catch_unwind, AssertUnwindSafe};
 use std::any::Any;
+use std::borrow::Cow;
 use std::boxed::FnBox;
 use std::cmp;
 use std::collections::BTreeMap;
 use std::env;
 use std::fmt;
 use std::fs::File;
-use std::io::prelude::*;
 use std::io;
+use std::io::prelude::*;
+use std::panic::{catch_unwind, AssertUnwindSafe};
 use std::path::PathBuf;
+use std::process;
 use std::process::Termination;
 use std::sync::mpsc::{channel, Sender};
 use std::sync::{Arc, Mutex};
 use std::thread;
 use std::time::{Duration, Instant};
-use std::borrow::Cow;
-use std::process;
 
 const TEST_WARN_TIMEOUT_S: u64 = 60;
 const QUIET_MODE_MAX_COLUMN: usize = 100; // insert a '\n' after 100 tests in quiet mode
 
 // to be used by rustc to compile tests in libtest
 pub mod test {
-    pub use crate::{assert_test_result, filter_tests, parse_opts, run_test, test_main, test_main_static,
-             Bencher, DynTestFn, DynTestName, Metric, MetricMap, Options, RunIgnored, ShouldPanic,
-             StaticBenchFn, StaticTestFn, StaticTestName, TestDesc, TestDescAndFn, TestName,
-             TestOpts, TestResult, TrFailed, TrFailedMsg, TrIgnored, TrOk};
+    pub use crate::{
+        assert_test_result, filter_tests, parse_opts, run_test, test_main, test_main_static,
+        Bencher, DynTestFn, DynTestName, Metric, MetricMap, Options, RunIgnored, ShouldPanic,
+        StaticBenchFn, StaticTestFn, StaticTestName, TestDesc, TestDescAndFn, TestName, TestOpts,
+        TestResult, TrFailed, TrFailedMsg, TrIgnored, TrOk,
+    };
 }
 
-pub mod stats;
 mod formatters;
+pub mod stats;
 
 use crate::formatters::{JsonFormatter, OutputFormatter, PrettyFormatter, TerseFormatter};
 
 /// Whether to execute tests concurrently or not
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
-pub enum Concurrent { Yes, No }
+pub enum Concurrent {
+    Yes,
+    No,
+}
 
 // The name of a test. By convention this follows the rules for rust
 // paths; i.e., it should be a series of identifiers separated by double
@@ -330,8 +338,7 @@ pub fn test_main_static(tests: &[&TestDescAndFn]) {
 pub fn assert_test_result<T: Termination>(result: T) {
     let code = result.report();
     assert_eq!(
-        code,
-        0,
+        code, 0,
         "the test returned a termination value with a non-zero status code ({}) \
          which indicates a failure",
         code
@@ -559,14 +566,16 @@ pub fn parse_opts(args: &[String]) -> Option<OptRes> {
     let include_ignored = matches.opt_present("include-ignored");
     if !allow_unstable && include_ignored {
         return Some(Err(
-            "The \"include-ignored\" flag is only accepted on the nightly compiler".into()
+            "The \"include-ignored\" flag is only accepted on the nightly compiler".into(),
         ));
     }
 
     let run_ignored = match (include_ignored, matches.opt_present("ignored")) {
-        (true, true) => return Some(Err(
-            "the options --include-ignored and --ignored are mutually exclusive".into()
-        )),
+        (true, true) => {
+            return Some(Err(
+                "the options --include-ignored and --ignored are mutually exclusive".into(),
+            ));
+        }
         (true, false) => RunIgnored::Yes,
         (false, true) => RunIgnored::Only,
         (false, false) => RunIgnored::No,
@@ -598,7 +607,7 @@ pub fn parse_opts(args: &[String]) -> Option<OptRes> {
                     "argument for --test-threads must be a number > 0 \
                      (error: {})",
                     e
-                )))
+                )));
             }
         },
         None => None,
@@ -614,7 +623,7 @@ pub fn parse_opts(args: &[String]) -> Option<OptRes> {
                 "argument for --color must be auto, always, or never (was \
                  {})",
                 v
-            )))
+            )));
         }
     };
 
@@ -636,7 +645,7 @@ pub fn parse_opts(args: &[String]) -> Option<OptRes> {
                 "argument for --format must be pretty, terse, or json (was \
                  {})",
                 v
-            )))
+            )));
         }
     };
 
@@ -1013,10 +1022,12 @@ fn use_color(opts: &TestOpts) -> bool {
     }
 }
 
-#[cfg(any(target_os = "cloudabi",
-          target_os = "redox",
-          all(target_arch = "wasm32", not(target_os = "emscripten")),
-          all(target_vendor = "fortanix", target_env = "sgx")))]
+#[cfg(any(
+    target_os = "cloudabi",
+    target_os = "redox",
+    all(target_arch = "wasm32", not(target_os = "emscripten")),
+    all(target_vendor = "fortanix", target_env = "sgx")
+))]
 fn stdout_isatty() -> bool {
     // FIXME: Implement isatty on Redox and SGX
     false
@@ -1247,21 +1258,34 @@ fn get_concurrency() -> usize {
         1
     }
 
-    #[cfg(any(all(target_arch = "wasm32", not(target_os = "emscripten")),
-              all(target_vendor = "fortanix", target_env = "sgx")))]
+    #[cfg(any(
+        all(target_arch = "wasm32", not(target_os = "emscripten")),
+        all(target_vendor = "fortanix", target_env = "sgx")
+    ))]
     fn num_cpus() -> usize {
         1
     }
 
-    #[cfg(any(target_os = "android", target_os = "cloudabi", target_os = "emscripten",
-              target_os = "fuchsia", target_os = "ios", target_os = "linux",
-              target_os = "macos", target_os = "solaris"))]
+    #[cfg(any(
+        target_os = "android",
+        target_os = "cloudabi",
+        target_os = "emscripten",
+        target_os = "fuchsia",
+        target_os = "ios",
+        target_os = "linux",
+        target_os = "macos",
+        target_os = "solaris"
+    ))]
     fn num_cpus() -> usize {
         unsafe { libc::sysconf(libc::_SC_NPROCESSORS_ONLN) as usize }
     }
 
-    #[cfg(any(target_os = "freebsd", target_os = "dragonfly", target_os = "bitrig",
-              target_os = "netbsd"))]
+    #[cfg(any(
+        target_os = "freebsd",
+        target_os = "dragonfly",
+        target_os = "bitrig",
+        target_os = "netbsd"
+    ))]
     fn num_cpus() -> usize {
         use std::ptr;
 
@@ -1344,18 +1368,20 @@ pub fn filter_tests(opts: &TestOpts, tests: Vec<TestDescAndFn>) -> Vec<TestDescA
     }
 
     // Skip tests that match any of the skip filters
-    filtered.retain(|test| {
-        !opts.skip.iter().any(|sf| matches_filter(test, sf))
-    });
+    filtered.retain(|test| !opts.skip.iter().any(|sf| matches_filter(test, sf)));
 
     // maybe unignore tests
     match opts.run_ignored {
         RunIgnored::Yes => {
-            filtered.iter_mut().for_each(|test| test.desc.ignore = false);
-        },
+            filtered
+                .iter_mut()
+                .for_each(|test| test.desc.ignore = false);
+        }
         RunIgnored::Only => {
             filtered.retain(|test| test.desc.ignore);
-            filtered.iter_mut().for_each(|test| test.desc.ignore = false);
+            filtered
+                .iter_mut()
+                .for_each(|test| test.desc.ignore = false);
         }
         RunIgnored::No => {}
     }
@@ -1397,7 +1423,8 @@ pub fn run_test(
 ) {
     let TestDescAndFn { desc, testfn } = test;
 
-    let ignore_because_panic_abort = cfg!(target_arch = "wasm32") && !cfg!(target_os = "emscripten")
+    let ignore_because_panic_abort = cfg!(target_arch = "wasm32")
+        && !cfg!(target_os = "emscripten")
         && desc.should_panic != ShouldPanic::No;
 
     if force_ignore || desc.ignore || ignore_because_panic_abort {
@@ -1488,7 +1515,8 @@ fn calc_result(desc: &TestDesc, task_result: Result<(), Box<dyn Any + Send>>) ->
     match (&desc.should_panic, task_result) {
         (&ShouldPanic::No, Ok(())) | (&ShouldPanic::Yes, Err(_)) => TrOk,
         (&ShouldPanic::YesWithMessage(msg), Err(ref err)) => {
-            if err.downcast_ref::<String>()
+            if err
+                .downcast_ref::<String>()
                 .map(|e| &**e)
                 .or_else(|| err.downcast_ref::<&'static str>().map(|e| *e))
                 .map(|e| e.contains(msg))
@@ -1535,7 +1563,8 @@ impl MetricMap {
     }
 
     pub fn fmt_metrics(&self) -> String {
-        let v = self.0
+        let v = self
+            .0
             .iter()
             .map(|(k, v)| format!("{}: {} (+/- {})", *k, v.value, v.noise))
             .collect::<Vec<_>>();
@@ -1644,7 +1673,8 @@ where
 
         // If we've run for 100ms and seem to have converged to a
         // stable median.
-        if loop_run > Duration::from_millis(100) && summ.median_abs_dev_pct < 1.0
+        if loop_run > Duration::from_millis(100)
+            && summ.median_abs_dev_pct < 1.0
             && summ.median - summ5.median < summ5.median_abs_dev
         {
             return summ5;
@@ -1670,12 +1700,12 @@ where
 }
 
 pub mod bench {
-    use std::panic::{catch_unwind, AssertUnwindSafe};
+    use super::{BenchMode, BenchSamples, Bencher, MonitorMsg, Sender, Sink, TestDesc, TestResult};
+    use crate::stats;
     use std::cmp;
     use std::io;
+    use std::panic::{catch_unwind, AssertUnwindSafe};
     use std::sync::{Arc, Mutex};
-    use crate::stats;
-    use super::{BenchMode, BenchSamples, Bencher, MonitorMsg, Sender, Sink, TestDesc, TestResult};
 
     pub fn benchmark<F>(desc: TestDesc, monitor_ch: Sender<MonitorMsg>, nocapture: bool, f: F)
     where
@@ -1750,14 +1780,15 @@ pub mod bench {
 
 #[cfg(test)]
 mod tests {
-    use crate::test::{filter_tests, parse_opts, run_test, DynTestFn, DynTestName, MetricMap, RunIgnored,
-               ShouldPanic, StaticTestName, TestDesc, TestDescAndFn, TestOpts, TrFailed,
-               TrFailedMsg, TrIgnored, TrOk};
-    use std::sync::mpsc::channel;
     use crate::bench;
+    use crate::test::{
+        filter_tests, parse_opts, run_test, DynTestFn, DynTestName, MetricMap, RunIgnored,
+        ShouldPanic, StaticTestName, TestDesc, TestDescAndFn, TestOpts, TrFailed, TrFailedMsg,
+        TrIgnored, TrOk,
+    };
     use crate::Bencher;
     use crate::Concurrent;
-
+    use std::sync::mpsc::channel;
 
     fn one_ignored_one_unignored_test() -> Vec<TestDescAndFn> {
         vec![
