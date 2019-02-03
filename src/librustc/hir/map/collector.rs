@@ -1,5 +1,6 @@
 use super::*;
 use dep_graph::{DepGraph, DepKind, DepNodeIndex};
+use hir;
 use hir::def_id::{LOCAL_CRATE, CrateNum};
 use hir::intravisit::{Visitor, NestedVisitorMap};
 use rustc_data_structures::svh::Svh;
@@ -27,6 +28,8 @@ pub(super) struct NodeCollector<'a, 'hir> {
     map: Vec<Option<Entry<'hir>>>,
     /// The parent of this node
     parent_node: NodeId,
+
+    parent_hir: hir::HirId,
 
     // These fields keep track of the currently relevant DepNodes during
     // the visitor's traversal.
@@ -145,6 +148,7 @@ impl<'a, 'hir> NodeCollector<'a, 'hir> {
             source_map: sess.source_map(),
             map: repeat(None).take(sess.current_node_id_count()).collect(),
             parent_node: CRATE_NODE_ID,
+            parent_hir: hir::CRATE_HIR_ID,
             current_signature_dep_index: root_mod_sig_dep_index,
             current_full_dep_index: root_mod_full_dep_index,
             current_dep_node_owner: CRATE_DEF_INDEX,
@@ -156,6 +160,7 @@ impl<'a, 'hir> NodeCollector<'a, 'hir> {
         };
         collector.insert_entry(CRATE_NODE_ID, Entry {
             parent: CRATE_NODE_ID,
+            parent_hir: hir::CRATE_HIR_ID,
             dep_node: root_mod_sig_dep_index,
             node: Node::Crate,
         });
@@ -226,6 +231,7 @@ impl<'a, 'hir> NodeCollector<'a, 'hir> {
     fn insert(&mut self, span: Span, id: NodeId, node: Node<'hir>) {
         let entry = Entry {
             parent: self.parent_node,
+            parent_hir: self.parent_hir,
             dep_node: if self.currently_in_body {
                 self.current_full_dep_index
             } else {
