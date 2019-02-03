@@ -380,79 +380,6 @@ impl SymbolPathBuffer {
         let _ = write!(self.result, "17h{:016x}E", hash);
         self.result
     }
-
-    // Name sanitation. LLVM will happily accept identifiers with weird names, but
-    // gas doesn't!
-    // gas accepts the following characters in symbols: a-z, A-Z, 0-9, ., _, $
-    // NVPTX assembly has more strict naming rules than gas, so additionally, dots
-    // are replaced with '$' there.
-    fn sanitize_and_append(&mut self, s: &str) {
-        self.temp_buf.clear();
-
-        for c in s.chars() {
-            match c {
-                // Escape these with $ sequences
-                '@' => self.temp_buf.push_str("$SP$"),
-                '*' => self.temp_buf.push_str("$BP$"),
-                '&' => self.temp_buf.push_str("$RF$"),
-                '<' => self.temp_buf.push_str("$LT$"),
-                '>' => self.temp_buf.push_str("$GT$"),
-                '(' => self.temp_buf.push_str("$LP$"),
-                ')' => self.temp_buf.push_str("$RP$"),
-                ',' => self.temp_buf.push_str("$C$"),
-
-                '-' | ':' => if self.strict_naming {
-                    // NVPTX doesn't support these characters in symbol names.
-                    self.temp_buf.push('$')
-                }
-                else {
-                    // '.' doesn't occur in types and functions, so reuse it
-                    // for ':' and '-'
-                    self.temp_buf.push('.')
-                },
-
-                '.' => if self.strict_naming {
-                    self.temp_buf.push('$')
-                }
-                else {
-                    self.temp_buf.push('.')
-                },
-
-                // These are legal symbols
-                'a'..='z' | 'A'..='Z' | '0'..='9' | '_' | '$' => self.temp_buf.push(c),
-
-                _ => {
-                    self.temp_buf.push('$');
-                    for c in c.escape_unicode().skip(1) {
-                        match c {
-                            '{' => {}
-                            '}' => self.temp_buf.push('$'),
-                            c => self.temp_buf.push(c),
-                        }
-                    }
-                }
-            }
-        }
-
-        let need_underscore = {
-            // Underscore-qualify anything that didn't start as an ident.
-            !self.temp_buf.is_empty()
-                && self.temp_buf.as_bytes()[0] != '_' as u8
-                && !(self.temp_buf.as_bytes()[0] as char).is_xid_start()
-        };
-
-        let _ = write!(
-            self.result,
-            "{}",
-            self.temp_buf.len() + (need_underscore as usize)
-        );
-
-        if need_underscore {
-            self.result.push('_');
-        }
-
-        self.result.push_str(&self.temp_buf);
-    }
 }
 
 impl ItemPathBuffer for SymbolPathBuffer {
@@ -462,6 +389,66 @@ impl ItemPathBuffer for SymbolPathBuffer {
     }
 
     fn push(&mut self, text: &str) {
-        self.sanitize_and_append(text);
+        self.temp_buf.clear();
+        let need_underscore = sanitize(&mut self.temp_buf, text, self.strict_naming);
+        let _ = write!(
+            self.result,
+            "{}",
+            self.temp_buf.len() + (need_underscore as usize)
+        );
+        if need_underscore {
+            self.result.push('_');
+        }
+        self.result.push_str(&self.temp_buf);
     }
+}
+
+// Name sanitation. LLVM will happily accept identifiers with weird names, but
+// gas doesn't!
+// gas accepts the following characters in symbols: a-z, A-Z, 0-9, ., _, $
+// NVPTX assembly has more strict naming rules than gas, so additionally, dots
+// are replaced with '$' there.
+//
+// returns true if an underscore must be added at the start
+fn sanitize(result: &mut String, s: &str, strict_naming: bool) -> bool {
+    for c in s.chars() {
+        match c {
+            // Escape these with $ sequences
+            '@' => result.push_str("$SP$"),
+            '*' => result.push_str("$BP$"),
+            '&' => result.push_str("$RF$"),
+            '<' => result.push_str("$LT$"),
+            '>' => result.push_str("$GT$"),
+            '(' => result.push_str("$LP$"),
+            ')' => result.push_str("$RP$"),
+            ',' => result.push_str("$C$"),
+
+            '-' | ':' | '.' if strict_naming => {
+                // NVPTX doesn't support these characters in symbol names.
+                result.push('$')
+            }
+
+            // '.' doesn't occur in types and functions, so reuse it
+            // for ':' and '-'
+            '-' | ':' => result.push('.'),
+
+            // These are legal symbols
+            'a'..='z' | 'A'..='Z' | '0'..='9' | '_' | '.' | '$' => result.push(c),
+
+            _ => {
+                result.push('$');
+                for c in c.escape_unicode().skip(1) {
+                    match c {
+                        '{' => {}
+                        '}' => result.push('$'),
+                        c => result.push(c),
+                    }
+                }
+            }
+        }
+    }
+
+    // Underscore-qualify anything that didn't start as an ident.
+    !result.is_empty() && result.as_bytes()[0] != '_' as u8
+        && !(result.as_bytes()[0] as char).is_xid_start()
 }
