@@ -17,6 +17,9 @@ macro_rules! is_powerpc64_feature_detected {
         cfg!(target_feature = "power8") ||
             $crate::detect::check_for($crate::detect::Feature::power8)
     };
+    ($t:tt,) => {
+        is_powerpc64_feature_detected!($t);
+    };
     ($t:tt) => { compile_error!(concat!("unknown powerpc64 target feature: ", $t)) };
 }
 

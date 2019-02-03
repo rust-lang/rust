@@ -17,6 +17,9 @@ macro_rules! is_arm_feature_detected {
     ("vfp2") => { compile_error!("\"vfp2\" feature cannot be detected at run-time") };
     ("vfp3") => { compile_error!("\"vfp3\" feature cannot be detected at run-time") };
     ("vfp4") => { compile_error!("\"vfp4\" feature cannot be detected at run-time") };
+    ($t:tt,) => {
+        is_arm_feature_detected!($t);
+    };
     ($t:tt) => { compile_error!(concat!("unknown arm target feature: ", $t)) };
 }
 

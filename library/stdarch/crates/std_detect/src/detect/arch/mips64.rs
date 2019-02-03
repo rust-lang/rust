@@ -9,6 +9,9 @@ macro_rules! is_mips64_feature_detected {
         cfg!(target_feature = "msa") ||
             $crate::detect::check_for($crate::detect::Feature::msa)
     };
+    ($t:tt,) => {
+        is_mips64_feature_detected!($t);
+    };
     ($t:tt) => { compile_error!(concat!("unknown mips64 target feature: ", $t)) };
 }
 

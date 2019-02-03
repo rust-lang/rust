@@ -66,6 +66,9 @@ macro_rules! is_aarch64_feature_detected {
     ("v8.3a") => {
         compile_error!("\"v8.3a\" feature cannot be detected at run-time")
     };
+    ($t:tt,) => {
+        is_aarch64_feature_detected!($t);
+    };
     ($t:tt) => { compile_error!(concat!("unknown aarch64 target feature: ", $t)) };
 }
 

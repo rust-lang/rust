@@ -234,6 +234,9 @@ macro_rules! is_x86_feature_detected {
         cfg!(target_feature = "adx") || $crate::detect::check_for(
             $crate::detect::Feature::adx)
     };
+    ($t:tt,) => {
+        is_x86_feature_detected!($t);
+    };
     ($t:tt) => {
         compile_error!(concat!("unknown target feature: ", $t))
     };
