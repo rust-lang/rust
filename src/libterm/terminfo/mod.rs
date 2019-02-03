@@ -5,18 +5,13 @@ use std::env;
 use std::error;
 use std::fmt;
 use std::fs::File;
-use std::io::prelude::*;
-use std::io;
-use std::io::BufReader;
+use std::io::{self, prelude::*, BufReader};
 use std::path::Path;
 
-use Attr;
-use color;
-use Terminal;
+use crate::{Attr, color, Terminal};
 use self::searcher::get_dbpath_for_term;
 use self::parser::compiled::{parse, msys_terminfo};
 use self::parm::{expand, Variables, Param};
-
 
 /// A parsed terminfo database entry.
 #[derive(Debug)]
@@ -58,7 +53,7 @@ impl error::Error for Error {
 }
 
 impl fmt::Display for Error {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         use self::Error::*;
         match *self {
             TermUnset => Ok(()),
