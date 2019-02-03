@@ -7,9 +7,9 @@ extern crate libc;
 use std::io;
 use std::io::prelude::*;
 
-use Attr;
-use color;
-use Terminal;
+use crate::Attr;
+use crate::color;
+use crate::Terminal;
 
 /// A Terminal implementation which uses the Win32 Console API.
 pub struct WinConsole<T> {
