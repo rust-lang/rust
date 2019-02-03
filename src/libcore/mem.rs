@@ -1174,16 +1174,16 @@ impl<T> MaybeUninit<T> {
         &mut *self.value
     }
 
-    /// Get a pointer to the contained value. Reading from this pointer will be undefined
-    /// behavior unless the `MaybeUninit` is initialized.
+    /// Get a pointer to the contained value. Reading from this pointer or turning it
+    /// into a reference will be undefined behavior unless the `MaybeUninit` is initialized.
     #[unstable(feature = "maybe_uninit", issue = "53491")]
     #[inline(always)]
     pub fn as_ptr(&self) -> *const T {
         unsafe { &*self.value as *const T }
     }
 
-    /// Get a mutable pointer to the contained value. Reading from this pointer will be undefined
-    /// behavior unless the `MaybeUninit` is initialized.
+    /// Get a mutable pointer to the contained value. Reading from this pointer or turning it
+    /// into a reference will be undefined behavior unless the `MaybeUninit` is initialized.
     #[unstable(feature = "maybe_uninit", issue = "53491")]
     #[inline(always)]
     pub fn as_mut_ptr(&mut self) -> *mut T {
