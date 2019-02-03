@@ -7,7 +7,13 @@ pub(crate) fn parse(tt: &tt::Subtree) -> Option<crate::MacroRules> {
     let mut parser = TtCursor::new(tt);
     let mut rules = Vec::new();
     while !parser.is_eof() {
-        rules.push(parse_rule(&mut parser)?)
+        rules.push(parse_rule(&mut parser)?);
+        if parser.expect_char(';') == None {
+            if !parser.is_eof() {
+                return None;
+            }
+            break;
+        }
     }
     Some(crate::MacroRules { rules })
 }
