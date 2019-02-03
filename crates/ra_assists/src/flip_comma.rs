@@ -1,11 +1,12 @@
+use hir::db::HirDatabase;
 use ra_syntax::{
     Direction,
     SyntaxKind::COMMA,
 };
 
-use crate::assists::{non_trivia_sibling, AssistCtx, Assist};
+use crate::{AssistCtx, Assist, non_trivia_sibling};
 
-pub fn flip_comma(ctx: AssistCtx) -> Option<Assist> {
+pub(crate) fn flip_comma(ctx: AssistCtx<impl HirDatabase>) -> Option<Assist> {
     let comma = ctx.leaf_at_offset().find(|leaf| leaf.kind() == COMMA)?;
     let prev = non_trivia_sibling(comma, Direction::Prev)?;
     let next = non_trivia_sibling(comma, Direction::Next)?;
@@ -18,7 +19,8 @@ pub fn flip_comma(ctx: AssistCtx) -> Option<Assist> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::assists::check_assist;
+
+    use crate::helpers::check_assist;
 
     #[test]
     fn flip_comma_works_for_function_parameters() {

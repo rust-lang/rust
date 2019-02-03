@@ -70,7 +70,7 @@ pub struct FileRange {
 /// Database which stores all significant input facts: source code and project
 /// model. Everything else in rust-analyzer is derived from these queries.
 #[salsa::query_group(SourceDatabaseStorage)]
-pub trait SourceDatabase: CheckCanceled {
+pub trait SourceDatabase: CheckCanceled + std::fmt::Debug {
     /// Text of the file.
     #[salsa::input]
     fn file_text(&self, file_id: FileId) -> Arc<String>;

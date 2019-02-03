@@ -18,8 +18,7 @@ macro_rules! impl_froms {
 }
 
 pub mod db;
-#[cfg(test)]
-mod mock;
+pub mod mock;
 mod query_definitions;
 mod path;
 pub mod source_binder;

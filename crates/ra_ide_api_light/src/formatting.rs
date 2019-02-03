@@ -1,3 +1,4 @@
+use itertools::Itertools;
 use ra_syntax::{
     AstNode,
     SyntaxNode, SyntaxKind::*,
@@ -5,8 +6,13 @@ use ra_syntax::{
     algo::generate,
 };
 
+pub fn reindent(text: &str, indent: &str) -> String {
+    let indent = format!("\n{}", indent);
+    text.lines().intersperse(&indent).collect()
+}
+
 /// If the node is on the beginning of the line, calculate indent.
-pub(crate) fn leading_indent(node: &SyntaxNode) -> Option<&str> {
+pub fn leading_indent(node: &SyntaxNode) -> Option<&str> {
     for leaf in prev_leaves(node) {
         if let Some(ws) = ast::Whitespace::cast(leaf) {
             let ws_text = ws.text();
@@ -32,7 +38,7 @@ fn prev_leaf(node: &SyntaxNode) -> Option<&SyntaxNode> {
     .last()
 }
 
-pub(crate) fn extract_trivial_expression(block: &ast::Block) -> Option<&ast::Expr> {
+pub fn extract_trivial_expression(block: &ast::Block) -> Option<&ast::Expr> {
     let expr = block.expr()?;
     if expr.syntax().text().contains('\n') {
         return None;

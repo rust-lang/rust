@@ -17,7 +17,7 @@ pub const WORKSPACE: SourceRootId = SourceRootId(0);
     db::PersistentHirDatabaseStorage
 )]
 #[derive(Debug)]
-pub(crate) struct MockDatabase {
+pub struct MockDatabase {
     events: Mutex<Option<Vec<salsa::Event<MockDatabase>>>>,
     runtime: salsa::Runtime<MockDatabase>,
     interner: Arc<HirInterner>,
@@ -27,13 +27,13 @@ pub(crate) struct MockDatabase {
 impl panic::RefUnwindSafe for MockDatabase {}
 
 impl MockDatabase {
-    pub(crate) fn with_files(fixture: &str) -> (MockDatabase, SourceRoot) {
+    pub fn with_files(fixture: &str) -> (MockDatabase, SourceRoot) {
         let (db, source_root, position) = MockDatabase::from_fixture(fixture);
         assert!(position.is_none());
         (db, source_root)
     }
 
-    pub(crate) fn with_single_file(text: &str) -> (MockDatabase, SourceRoot, FileId) {
+    pub fn with_single_file(text: &str) -> (MockDatabase, SourceRoot, FileId) {
         let mut db = MockDatabase::default();
         let mut source_root = SourceRoot::default();
         let file_id = db.add_file(WORKSPACE, &mut source_root, "/main.rs", text);
@@ -41,7 +41,7 @@ impl MockDatabase {
         (db, source_root, file_id)
     }
 
-    pub(crate) fn with_position(fixture: &str) -> (MockDatabase, FilePosition) {
+    pub fn with_position(fixture: &str) -> (MockDatabase, FilePosition) {
         let (db, _, position) = MockDatabase::from_fixture(fixture);
         let position = position.expect("expected a marker ( <|> )");
         (db, position)
@@ -166,13 +166,13 @@ impl AsRef<HirInterner> for MockDatabase {
 }
 
 impl MockDatabase {
-    pub(crate) fn log(&self, f: impl FnOnce()) -> Vec<salsa::Event<MockDatabase>> {
+    pub fn log(&self, f: impl FnOnce()) -> Vec<salsa::Event<MockDatabase>> {
         *self.events.lock() = Some(Vec::new());
         f();
         self.events.lock().take().unwrap()
     }
 
-    pub(crate) fn log_executed(&self, f: impl FnOnce()) -> Vec<String> {
+    pub fn log_executed(&self, f: impl FnOnce()) -> Vec<String> {
         let events = self.log(f);
         events
             .into_iter()

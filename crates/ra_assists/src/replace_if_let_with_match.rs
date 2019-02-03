@@ -1,11 +1,10 @@
 use ra_syntax::{AstNode, ast};
+use ra_ide_api_light::formatting::extract_trivial_expression;
+use hir::db::HirDatabase;
 
-use crate::{
-    assists::{AssistCtx, Assist},
-    formatting::extract_trivial_expression,
-};
+use crate::{AssistCtx, Assist};
 
-pub fn replace_if_let_with_match(ctx: AssistCtx) -> Option<Assist> {
+pub(crate) fn replace_if_let_with_match(ctx: AssistCtx<impl HirDatabase>) -> Option<Assist> {
     let if_expr: &ast::IfExpr = ctx.node_at_offset()?;
     let cond = if_expr.condition()?;
     let pat = cond.pat()?;
@@ -51,7 +50,7 @@ fn format_arm(block: &ast::Block) -> String {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::assists::check_assist;
+    use crate::helpers::check_assist;
 
     #[test]
     fn test_replace_if_let_with_match_unwraps_simple_expressions() {

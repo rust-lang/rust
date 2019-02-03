@@ -1,12 +1,13 @@
 use join_to_string::join;
+use hir::db::HirDatabase;
 use ra_syntax::{
     ast::{self, AstNode, AstToken, NameOwner, TypeParamsOwner},
     TextUnit,
 };
 
-use crate::assists::{AssistCtx, Assist};
+use crate::{AssistCtx, Assist};
 
-pub fn add_impl(ctx: AssistCtx) -> Option<Assist> {
+pub(crate) fn add_impl(ctx: AssistCtx<impl HirDatabase>) -> Option<Assist> {
     let nominal = ctx.node_at_offset::<ast::NominalDef>()?;
     let name = nominal.name()?;
     ctx.build("add impl", |edit| {
@@ -42,7 +43,7 @@ pub fn add_impl(ctx: AssistCtx) -> Option<Assist> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::assists::check_assist;
+    use crate::helpers::check_assist;
 
     #[test]
     fn test_add_impl() {

@@ -477,7 +477,7 @@ impl Analysis {
     /// Computes assists (aks code actons aka intentions) for the given
     /// position.
     pub fn assists(&self, frange: FileRange) -> Cancelable<Vec<SourceChange>> {
-        self.with_db(|db| db.assists(frange))
+        self.with_db(|db| assists::assists(db, frange))
     }
 
     /// Computes the set of diagnostics for the given file.
