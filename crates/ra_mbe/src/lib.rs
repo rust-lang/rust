@@ -232,4 +232,28 @@ impl_froms!(TokenTree: Leaf, Subtree);
         assert_expansion(&rules, "foo! { bar = }", "fn bar () {}");
         assert_expansion(&rules, "foo! { Baz + }", "struct Baz ;");
     }
+
+    #[test]
+    fn test_fail_match_pattern_by_word_token() {
+        let rules = create_rules(
+            r#"
+        macro_rules! foo {
+            ($ i:ident) => (
+                mod $ i {}
+            );
+            (spam $ i:ident) => (
+                fn $ i() {}
+            );
+            (eggs $ i:ident) => (
+                struct $ i;
+            )
+        }
+"#,
+        );
+
+        assert_expansion(&rules, "foo! { foo }", "mod foo {}");
+        assert_expansion(&rules, "foo! { spam bar }", "fn bar () {}");
+        assert_expansion(&rules, "foo! { eggs Baz }", "struct Baz ;");
+    }
+
 }
