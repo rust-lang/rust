@@ -375,6 +375,10 @@ impl<'hir> Map<'hir> {
                 let def_id = self.local_def_id(item.id);
                 Some(Def::Const(def_id))
             }
+            Node::StructCtor(variant) => {
+                let def_id = self.local_def_id(variant.id());
+                Some(Def::Fn(def_id))
+            }
             Node::Field(_) |
             Node::Expr(_) |
             Node::Stmt(_) |
@@ -383,7 +387,6 @@ impl<'hir> Map<'hir> {
             Node::TraitRef(_) |
             Node::Pat(_) |
             Node::Binding(_) |
-            Node::StructCtor(_) |
             Node::Lifetime(_) |
             Node::Visibility(_) |
             Node::Block(_) |

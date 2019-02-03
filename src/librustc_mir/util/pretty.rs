@@ -594,7 +594,7 @@ fn write_mir_sig(
 ) -> io::Result<()> {
     use rustc::hir::def::Def;
 
-    trace!("write_mir_sig: {:?} {:?}", src, tcx.hir().get_if_local(src.def_id()));
+    trace!("write_mir_sig: {:?}", src.instance);
     let descr = tcx.describe_def(src.def_id()).unwrap();
     match (descr, src.promoted) {
         (_, Some(i)) => write!(w, "{:?} in", i)?,
