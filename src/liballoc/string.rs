@@ -50,17 +50,16 @@ use core::char::{decode_utf16, REPLACEMENT_CHARACTER};
 use core::fmt;
 use core::hash;
 use core::iter::{FromIterator, FusedIterator};
-use core::ops::Bound::{Excluded, Included, Unbounded};
 use core::ops::{self, Add, AddAssign, Index, IndexMut, RangeBounds};
+use core::ops::Bound::{Excluded, Included, Unbounded};
 use core::ptr;
-use core::str::pattern::Pattern;
-use core::str::lossy;
+use core::str::{pattern::Pattern, lossy};
 
-use collections::CollectionAllocErr;
-use borrow::{Cow, ToOwned};
-use boxed::Box;
-use str::{self, from_boxed_utf8_unchecked, FromStr, Utf8Error, Chars};
-use vec::Vec;
+use crate::borrow::{Cow, ToOwned};
+use crate::collections::CollectionAllocErr;
+use crate::boxed::Box;
+use crate::str::{self, from_boxed_utf8_unchecked, FromStr, Utf8Error, Chars};
+use crate::vec::Vec;
 
 /// A UTF-8 encoded, growable string.
 ///
@@ -1485,7 +1484,7 @@ impl String {
     /// assert_eq!(s, "");
     /// ```
     #[stable(feature = "drain", since = "1.6.0")]
-    pub fn drain<R>(&mut self, range: R) -> Drain
+    pub fn drain<R>(&mut self, range: R) -> Drain<'_>
         where R: RangeBounds<usize>
     {
         // Memory safety
@@ -1669,14 +1668,14 @@ impl FromUtf8Error {
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl fmt::Display for FromUtf8Error {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         fmt::Display::fmt(&self.error, f)
     }
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl fmt::Display for FromUtf16Error {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         fmt::Display::fmt("invalid utf-16: lone surrogate found", f)
     }
 }
@@ -1867,7 +1866,7 @@ impl Default for String {
 #[stable(feature = "rust1", since = "1.0.0")]
 impl fmt::Display for String {
     #[inline]
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         fmt::Display::fmt(&**self, f)
     }
 }
@@ -1875,7 +1874,7 @@ impl fmt::Display for String {
 #[stable(feature = "rust1", since = "1.0.0")]
 impl fmt::Debug for String {
     #[inline]
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         fmt::Debug::fmt(&**self, f)
     }
 }
@@ -1926,7 +1925,7 @@ impl hash::Hash for String {
 /// let c = a.to_string() + b;
 /// ```
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<'a> Add<&'a str> for String {
+impl Add<&str> for String {
     type Output = String;
 
     #[inline]
@@ -1940,7 +1939,7 @@ impl<'a> Add<&'a str> for String {
 ///
 /// This has the same behavior as the [`push_str`][String::push_str] method.
 #[stable(feature = "stringaddassign", since = "1.12.0")]
-impl<'a> AddAssign<&'a str> for String {
+impl AddAssign<&str> for String {
     #[inline]
     fn add_assign(&mut self, other: &str) {
         self.push_str(other);
@@ -2097,14 +2096,14 @@ impl Clone for ParseError {
 
 #[stable(feature = "str_parse_error", since = "1.5.0")]
 impl fmt::Debug for ParseError {
-    fn fmt(&self, _: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, _: &mut fmt::Formatter<'_>) -> fmt::Result {
         match *self {}
     }
 }
 
 #[stable(feature = "str_parse_error2", since = "1.8.0")]
 impl fmt::Display for ParseError {
-    fn fmt(&self, _: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, _: &mut fmt::Formatter<'_>) -> fmt::Result {
         match *self {}
     }
 }
@@ -2156,7 +2155,7 @@ pub trait ToString {
 impl<T: fmt::Display + ?Sized> ToString for T {
     #[inline]
     default fn to_string(&self) -> String {
-        use core::fmt::Write;
+        use fmt::Write;
         let mut buf = String::new();
         buf.write_fmt(format_args!("{}", self))
            .expect("a Display implementation returned an error unexpectedly");
@@ -2174,7 +2173,7 @@ impl ToString for str {
 }
 
 #[stable(feature = "cow_str_to_string_specialization", since = "1.17.0")]
-impl<'a> ToString for Cow<'a, str> {
+impl ToString for Cow<'_, str> {
     #[inline]
     fn to_string(&self) -> String {
         self[..].to_owned()
@@ -2364,19 +2363,19 @@ pub struct Drain<'a> {
 }
 
 #[stable(feature = "collection_debug", since = "1.17.0")]
-impl<'a> fmt::Debug for Drain<'a> {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+impl fmt::Debug for Drain<'_> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.pad("Drain { .. }")
     }
 }
 
 #[stable(feature = "drain", since = "1.6.0")]
-unsafe impl<'a> Sync for Drain<'a> {}
+unsafe impl Sync for Drain<'_> {}
 #[stable(feature = "drain", since = "1.6.0")]
-unsafe impl<'a> Send for Drain<'a> {}
+unsafe impl Send for Drain<'_> {}
 
 #[stable(feature = "drain", since = "1.6.0")]
-impl<'a> Drop for Drain<'a> {
+impl Drop for Drain<'_> {
     fn drop(&mut self) {
         unsafe {
             // Use Vec::drain. "Reaffirm" the bounds checks to avoid
@@ -2390,7 +2389,7 @@ impl<'a> Drop for Drain<'a> {
 }
 
 #[stable(feature = "drain", since = "1.6.0")]
-impl<'a> Iterator for Drain<'a> {
+impl Iterator for Drain<'_> {
     type Item = char;
 
     #[inline]
@@ -2404,7 +2403,7 @@ impl<'a> Iterator for Drain<'a> {
 }
 
 #[stable(feature = "drain", since = "1.6.0")]
-impl<'a> DoubleEndedIterator for Drain<'a> {
+impl DoubleEndedIterator for Drain<'_> {
     #[inline]
     fn next_back(&mut self) -> Option<char> {
         self.iter.next_back()
@@ -2412,4 +2411,4 @@ impl<'a> DoubleEndedIterator for Drain<'a> {
 }
 
 #[stable(feature = "fused", since = "1.26.0")]
-impl<'a> FusedIterator for Drain<'a> {}
+impl FusedIterator for Drain<'_> {}

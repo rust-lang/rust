@@ -73,9 +73,9 @@ use core::ops::{
 use core::ptr::{self, NonNull, Unique};
 use core::task::{LocalWaker, Poll};
 
-use vec::Vec;
-use raw_vec::RawVec;
-use str::from_boxed_utf8_unchecked;
+use crate::vec::Vec;
+use crate::raw_vec::RawVec;
+use crate::str::from_boxed_utf8_unchecked;
 
 /// A pointer type for heap allocation.
 ///
@@ -603,21 +603,21 @@ impl Box<dyn Any + Send> {
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T: fmt::Display + ?Sized> fmt::Display for Box<T> {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         fmt::Display::fmt(&**self, f)
     }
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T: fmt::Debug + ?Sized> fmt::Debug for Box<T> {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         fmt::Debug::fmt(&**self, f)
     }
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T: ?Sized> fmt::Pointer for Box<T> {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         // It's not possible to extract the inner Uniq directly from the Box,
         // instead we cast it to a *const which aliases the Unique
         let ptr: *const T = &**self;
@@ -737,7 +737,7 @@ impl<A, F> FnBox<A> for F
 
 #[unstable(feature = "fnbox",
            reason = "will be deprecated if and when `Box<FnOnce>` becomes usable", issue = "28796")]
-impl<'a, A, R> FnOnce<A> for Box<dyn FnBox<A, Output = R> + 'a> {
+impl<A, R> FnOnce<A> for Box<dyn FnBox<A, Output = R> + '_> {
     type Output = R;
 
     extern "rust-call" fn call_once(self, args: A) -> R {
@@ -747,7 +747,7 @@ impl<'a, A, R> FnOnce<A> for Box<dyn FnBox<A, Output = R> + 'a> {
 
 #[unstable(feature = "fnbox",
            reason = "will be deprecated if and when `Box<FnOnce>` becomes usable", issue = "28796")]
-impl<'a, A, R> FnOnce<A> for Box<dyn FnBox<A, Output = R> + Send + 'a> {
+impl<A, R> FnOnce<A> for Box<dyn FnBox<A, Output = R> + Send + '_> {
     type Output = R;
 
     extern "rust-call" fn call_once(self, args: A) -> R {

@@ -151,8 +151,8 @@ use core::mem::{swap, size_of, ManuallyDrop};
 use core::ptr;
 use core::fmt;
 
-use slice;
-use vec::{self, Vec};
+use crate::slice;
+use crate::vec::{self, Vec};
 
 use super::SpecExtend;
 
@@ -227,8 +227,8 @@ pub struct PeekMut<'a, T: 'a + Ord> {
 }
 
 #[stable(feature = "collection_debug", since = "1.17.0")]
-impl<'a, T: Ord + fmt::Debug> fmt::Debug for PeekMut<'a, T> {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+impl<T: Ord + fmt::Debug> fmt::Debug for PeekMut<'_, T> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_tuple("PeekMut")
          .field(&self.heap.data[0])
          .finish()
@@ -236,7 +236,7 @@ impl<'a, T: Ord + fmt::Debug> fmt::Debug for PeekMut<'a, T> {
 }
 
 #[stable(feature = "binary_heap_peek_mut", since = "1.12.0")]
-impl<'a, T: Ord> Drop for PeekMut<'a, T> {
+impl<T: Ord> Drop for PeekMut<'_, T> {
     fn drop(&mut self) {
         if self.sift {
             self.heap.sift_down(0);
@@ -245,7 +245,7 @@ impl<'a, T: Ord> Drop for PeekMut<'a, T> {
 }
 
 #[stable(feature = "binary_heap_peek_mut", since = "1.12.0")]
-impl<'a, T: Ord> Deref for PeekMut<'a, T> {
+impl<T: Ord> Deref for PeekMut<'_, T> {
     type Target = T;
     fn deref(&self) -> &T {
         &self.heap.data[0]
@@ -253,7 +253,7 @@ impl<'a, T: Ord> Deref for PeekMut<'a, T> {
 }
 
 #[stable(feature = "binary_heap_peek_mut", since = "1.12.0")]
-impl<'a, T: Ord> DerefMut for PeekMut<'a, T> {
+impl<T: Ord> DerefMut for PeekMut<'_, T> {
     fn deref_mut(&mut self) -> &mut T {
         &mut self.heap.data[0]
     }
@@ -291,7 +291,7 @@ impl<T: Ord> Default for BinaryHeap<T> {
 
 #[stable(feature = "binaryheap_debug", since = "1.4.0")]
 impl<T: fmt::Debug + Ord> fmt::Debug for BinaryHeap<T> {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_list().entries(self.iter()).finish()
     }
 }
@@ -349,7 +349,7 @@ impl<T: Ord> BinaryHeap<T> {
     /// }
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub fn iter(&self) -> Iter<T> {
+    pub fn iter(&self) -> Iter<'_, T> {
         Iter { iter: self.data.iter() }
     }
 
@@ -400,7 +400,7 @@ impl<T: Ord> BinaryHeap<T> {
     /// assert_eq!(heap.peek(), Some(&2));
     /// ```
     #[stable(feature = "binary_heap_peek_mut", since = "1.12.0")]
-    pub fn peek_mut(&mut self) -> Option<PeekMut<T>> {
+    pub fn peek_mut(&mut self) -> Option<PeekMut<'_, T>> {
         if self.is_empty() {
             None
         } else {
@@ -761,7 +761,7 @@ impl<T: Ord> BinaryHeap<T> {
     /// ```
     #[inline]
     #[stable(feature = "drain", since = "1.6.0")]
-    pub fn drain(&mut self) -> Drain<T> {
+    pub fn drain(&mut self) -> Drain<'_, T> {
         Drain { iter: self.data.drain(..) }
     }
 
@@ -908,7 +908,7 @@ impl<'a, T> Hole<'a, T> {
     }
 }
 
-impl<'a, T> Drop for Hole<'a, T> {
+impl<T> Drop for Hole<'_, T> {
     #[inline]
     fn drop(&mut self) {
         // fill the hole again
@@ -932,8 +932,8 @@ pub struct Iter<'a, T: 'a> {
 }
 
 #[stable(feature = "collection_debug", since = "1.17.0")]
-impl<'a, T: 'a + fmt::Debug> fmt::Debug for Iter<'a, T> {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+impl<T: fmt::Debug> fmt::Debug for Iter<'_, T> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_tuple("Iter")
          .field(&self.iter.as_slice())
          .finish()
@@ -972,14 +972,14 @@ impl<'a, T> DoubleEndedIterator for Iter<'a, T> {
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<'a, T> ExactSizeIterator for Iter<'a, T> {
+impl<T> ExactSizeIterator for Iter<'_, T> {
     fn is_empty(&self) -> bool {
         self.iter.is_empty()
     }
 }
 
 #[stable(feature = "fused", since = "1.26.0")]
-impl<'a, T> FusedIterator for Iter<'a, T> {}
+impl<T> FusedIterator for Iter<'_, T> {}
 
 /// An owning iterator over the elements of a `BinaryHeap`.
 ///
@@ -996,7 +996,7 @@ pub struct IntoIter<T> {
 
 #[stable(feature = "collection_debug", since = "1.17.0")]
 impl<T: fmt::Debug> fmt::Debug for IntoIter<T> {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_tuple("IntoIter")
          .field(&self.iter.as_slice())
          .finish()
@@ -1050,7 +1050,7 @@ pub struct Drain<'a, T: 'a> {
 }
 
 #[stable(feature = "drain", since = "1.6.0")]
-impl<'a, T: 'a> Iterator for Drain<'a, T> {
+impl<T> Iterator for Drain<'_, T> {
     type Item = T;
 
     #[inline]
@@ -1065,7 +1065,7 @@ impl<'a, T: 'a> Iterator for Drain<'a, T> {
 }
 
 #[stable(feature = "drain", since = "1.6.0")]
-impl<'a, T: 'a> DoubleEndedIterator for Drain<'a, T> {
+impl<T> DoubleEndedIterator for Drain<'_, T> {
     #[inline]
     fn next_back(&mut self) -> Option<T> {
         self.iter.next_back()
@@ -1073,14 +1073,14 @@ impl<'a, T: 'a> DoubleEndedIterator for Drain<'a, T> {
 }
 
 #[stable(feature = "drain", since = "1.6.0")]
-impl<'a, T: 'a> ExactSizeIterator for Drain<'a, T> {
+impl<T> ExactSizeIterator for Drain<'_, T> {
     fn is_empty(&self) -> bool {
         self.iter.is_empty()
     }
 }
 
 #[stable(feature = "fused", since = "1.26.0")]
-impl<'a, T: 'a> FusedIterator for Drain<'a, T> {}
+impl<T> FusedIterator for Drain<'_, T> {}
 
 #[stable(feature = "binary_heap_extras_15", since = "1.5.0")]
 impl<T: Ord> From<Vec<T>> for BinaryHeap<T> {

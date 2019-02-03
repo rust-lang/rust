@@ -527,7 +527,7 @@ pub use core::fmt::{DebugList, DebugMap, DebugSet, DebugStruct, DebugTuple};
 #[stable(feature = "fmt_flags_align", since = "1.28.0")]
 pub use core::fmt::{Alignment};
 
-use string;
+use crate::string;
 
 /// The `format` function takes an [`Arguments`] struct and returns the resulting
 /// formatted string.
@@ -557,7 +557,7 @@ use string;
 /// [`format_args!`]: ../../std/macro.format_args.html
 /// [`format!`]: ../../std/macro.format.html
 #[stable(feature = "rust1", since = "1.0.0")]
-pub fn format(args: Arguments) -> string::String {
+pub fn format(args: Arguments<'_>) -> string::String {
     let capacity = args.estimated_capacity();
     let mut output = string::String::with_capacity(capacity);
     output

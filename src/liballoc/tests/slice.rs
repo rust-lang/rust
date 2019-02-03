@@ -1,14 +1,13 @@
 use std::cell::Cell;
-use std::cmp::Ordering::{Equal, Greater, Less};
-use std::cmp::Ordering;
+use std::cmp::Ordering::{self, Equal, Greater, Less};
 use std::mem;
 use std::panic;
 use std::rc::Rc;
-use std::sync::atomic::Ordering::Relaxed;
-use std::sync::atomic::AtomicUsize;
+use std::sync::atomic::{Ordering::Relaxed, AtomicUsize};
 use std::thread;
 
-use rand::{Rng, RngCore, thread_rng, seq::SliceRandom};
+use rand::{Rng, RngCore, thread_rng};
+use rand::seq::SliceRandom;
 use rand::distributions::Standard;
 
 fn square(n: usize) -> usize {
@@ -476,7 +475,7 @@ fn test_sort_stability() {
             // the second item represents which occurrence of that
             // number this element is, i.e., the second elements
             // will occur in sorted order.
-            let mut orig: Vec<_> = (0..len)
+            let orig: Vec<_> = (0..len)
                 .map(|_| {
                     let n = thread_rng().gen::<usize>() % 10;
                     counts[n] += 1;

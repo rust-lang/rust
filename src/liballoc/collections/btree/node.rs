@@ -36,8 +36,8 @@ use core::mem::{self, MaybeUninit};
 use core::ptr::{self, Unique, NonNull};
 use core::slice;
 
-use alloc::{Global, Alloc, Layout};
-use boxed::Box;
+use crate::alloc::{Global, Alloc, Layout};
+use crate::boxed::Box;
 
 const B: usize = 6;
 pub const MIN_LEN: usize = B - 1;
@@ -226,7 +226,7 @@ impl<K, V> Root<K, V> {
     }
 
     pub fn as_ref(&self)
-            -> NodeRef<marker::Immut, K, V, marker::LeafOrInternal> {
+            -> NodeRef<marker::Immut<'_>, K, V, marker::LeafOrInternal> {
         NodeRef {
             height: self.height,
             node: self.node.as_ptr(),
@@ -236,7 +236,7 @@ impl<K, V> Root<K, V> {
     }
 
     pub fn as_mut(&mut self)
-            -> NodeRef<marker::Mut, K, V, marker::LeafOrInternal> {
+            -> NodeRef<marker::Mut<'_>, K, V, marker::LeafOrInternal> {
         NodeRef {
             height: self.height,
             node: self.node.as_ptr(),
@@ -258,7 +258,7 @@ impl<K, V> Root<K, V> {
     /// Adds a new internal node with a single edge, pointing to the previous root, and make that
     /// new node the root. This increases the height by 1 and is the opposite of `pop_level`.
     pub fn push_level(&mut self)
-            -> NodeRef<marker::Mut, K, V, marker::Internal> {
+            -> NodeRef<marker::Mut<'_>, K, V, marker::Internal> {
         debug_assert!(!self.is_shared_root());
         let mut new_node = Box::new(unsafe { InternalNode::new() });
         new_node.edges[0].set(unsafe { BoxedNode::from_ptr(self.node.as_ptr()) });
@@ -531,7 +531,7 @@ impl<'a, K, V, Type> NodeRef<marker::Mut<'a>, K, V, Type> {
     /// Unsafely asserts to the compiler some static information about whether this
     /// node is a `Leaf`.
     unsafe fn cast_unchecked<NewType>(&mut self)
-            -> NodeRef<marker::Mut, K, V, NewType> {
+            -> NodeRef<marker::Mut<'_>, K, V, NewType> {
 
         NodeRef {
             height: self.height,
@@ -551,7 +551,7 @@ impl<'a, K, V, Type> NodeRef<marker::Mut<'a>, K, V, Type> {
     /// of a reborrowed handle, out of bounds.
     // FIXME(@gereeter) consider adding yet another type parameter to `NodeRef` that restricts
     // the use of `ascend` and `into_root_mut` on reborrowed pointers, preventing this unsafety.
-    unsafe fn reborrow_mut(&mut self) -> NodeRef<marker::Mut, K, V, Type> {
+    unsafe fn reborrow_mut(&mut self) -> NodeRef<marker::Mut<'_>, K, V, Type> {
         NodeRef {
             height: self.height,
             node: self.node,
@@ -928,7 +928,7 @@ impl<BorrowType, K, V, NodeType, HandleType>
 
     /// Temporarily takes out another, immutable handle on the same location.
     pub fn reborrow(&self)
-            -> Handle<NodeRef<marker::Immut, K, V, NodeType>, HandleType> {
+            -> Handle<NodeRef<marker::Immut<'_>, K, V, NodeType>, HandleType> {
 
         // We can't use Handle::new_kv or Handle::new_edge because we don't know our type
         Handle {
@@ -953,7 +953,7 @@ impl<'a, K, V, NodeType, HandleType>
     // FIXME(@gereeter) consider adding yet another type parameter to `NodeRef` that restricts
     // the use of `ascend` and `into_root_mut` on reborrowed pointers, preventing this unsafety.
     pub unsafe fn reborrow_mut(&mut self)
-            -> Handle<NodeRef<marker::Mut, K, V, NodeType>, HandleType> {
+            -> Handle<NodeRef<marker::Mut<'_>, K, V, NodeType>, HandleType> {
 
         // We can't use Handle::new_kv or Handle::new_edge because we don't know our type
         Handle {
@@ -1068,7 +1068,7 @@ impl<'a, K, V> Handle<NodeRef<marker::Mut<'a>, K, V, marker::Internal>, marker::
     /// Unsafely asserts to the compiler some static information about whether the underlying
     /// node of this handle is a `Leaf`.
     unsafe fn cast_unchecked<NewType>(&mut self)
-            -> Handle<NodeRef<marker::Mut, K, V, NewType>, marker::Edge> {
+            -> Handle<NodeRef<marker::Mut<'_>, K, V, NewType>, marker::Edge> {
 
         Handle::new_edge(self.node.cast_unchecked(), self.idx)
     }
@@ -1558,8 +1558,8 @@ unsafe fn move_kv<K, V>(
 
 // Source and destination must have the same height.
 unsafe fn move_edges<K, V>(
-    mut source: NodeRef<marker::Mut, K, V, marker::Internal>, source_offset: usize,
-    mut dest: NodeRef<marker::Mut, K, V, marker::Internal>, dest_offset: usize,
+    mut source: NodeRef<marker::Mut<'_>, K, V, marker::Internal>, source_offset: usize,
+    mut dest: NodeRef<marker::Mut<'_>, K, V, marker::Internal>, dest_offset: usize,
     count: usize)
 {
     let source_ptr = source.as_internal_mut().edges.as_mut_ptr();

@@ -227,7 +227,7 @@
 #![stable(feature = "rust1", since = "1.0.0")]
 
 #[cfg(not(test))]
-use boxed::Box;
+use crate::boxed::Box;
 #[cfg(test)]
 use std::boxed::Box;
 
@@ -238,19 +238,18 @@ use core::cmp::Ordering;
 use core::fmt;
 use core::hash::{Hash, Hasher};
 use core::intrinsics::abort;
-use core::marker;
-use core::marker::{Unpin, Unsize, PhantomData};
+use core::marker::{self, Unpin, Unsize, PhantomData};
 use core::mem::{self, align_of_val, forget, size_of_val};
-use core::ops::{Deref, Receiver};
-use core::ops::{CoerceUnsized, DispatchFromDyn};
+use core::ops::{Deref, Receiver, CoerceUnsized, DispatchFromDyn};
 use core::pin::Pin;
 use core::ptr::{self, NonNull};
+use core::slice::from_raw_parts_mut;
 use core::convert::From;
 use core::usize;
 
-use alloc::{Global, Alloc, Layout, box_free, handle_alloc_error};
-use string::String;
-use vec::Vec;
+use crate::alloc::{Global, Alloc, Layout, box_free, handle_alloc_error};
+use crate::string::String;
+use crate::vec::Vec;
 
 struct RcBox<T: ?Sized> {
     strong: Cell<usize>,
@@ -766,8 +765,6 @@ impl<T: Clone> RcFromSlice<T> for Rc<[T]> {
 
         impl<T> Drop for Guard<T> {
             fn drop(&mut self) {
-                use core::slice::from_raw_parts_mut;
-
                 unsafe {
                     let slice = from_raw_parts_mut(self.elems, self.n_elems);
                     ptr::drop_in_place(slice);
@@ -1121,21 +1118,21 @@ impl<T: ?Sized + Hash> Hash for Rc<T> {
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T: ?Sized + fmt::Display> fmt::Display for Rc<T> {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         fmt::Display::fmt(&**self, f)
     }
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T: ?Sized + fmt::Debug> fmt::Debug for Rc<T> {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         fmt::Debug::fmt(&**self, f)
     }
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T: ?Sized> fmt::Pointer for Rc<T> {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         fmt::Pointer::fmt(&(&**self as *const T), f)
     }
 }
@@ -1459,7 +1456,7 @@ impl<T: ?Sized> Clone for Weak<T> {
 
 #[stable(feature = "rc_weak", since = "1.4.0")]
 impl<T: ?Sized + fmt::Debug> fmt::Debug for Weak<T> {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "(Weak)")
     }
 }
@@ -1564,8 +1561,7 @@ mod tests {
     use super::{Rc, Weak};
     use std::boxed::Box;
     use std::cell::RefCell;
-    use std::option::Option;
-    use std::option::Option::{None, Some};
+    use std::option::Option::{self, None, Some};
     use std::result::Result::{Err, Ok};
     use std::mem::drop;
     use std::clone::Clone;

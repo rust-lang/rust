@@ -14,20 +14,20 @@ use core::fmt;
 use core::cmp::{self, Ordering};
 use core::intrinsics::abort;
 use core::mem::{self, align_of_val, size_of_val};
-use core::ops::{Deref, Receiver};
-use core::ops::{CoerceUnsized, DispatchFromDyn};
+use core::ops::{Deref, Receiver, CoerceUnsized, DispatchFromDyn};
 use core::pin::Pin;
 use core::ptr::{self, NonNull};
 use core::marker::{Unpin, Unsize, PhantomData};
 use core::hash::{Hash, Hasher};
 use core::{isize, usize};
 use core::convert::From;
+use core::slice::from_raw_parts_mut;
 
-use alloc::{Global, Alloc, Layout, box_free, handle_alloc_error};
-use boxed::Box;
-use rc::is_dangling;
-use string::String;
-use vec::Vec;
+use crate::alloc::{Global, Alloc, Layout, box_free, handle_alloc_error};
+use crate::boxed::Box;
+use crate::rc::is_dangling;
+use crate::string::String;
+use crate::vec::Vec;
 
 /// A soft limit on the amount of references that may be made to an `Arc`.
 ///
@@ -251,7 +251,7 @@ impl<T: ?Sized + Unsize<U>, U: ?Sized> DispatchFromDyn<Weak<U>> for Weak<T> {}
 
 #[stable(feature = "arc_weak", since = "1.4.0")]
 impl<T: ?Sized + fmt::Debug> fmt::Debug for Weak<T> {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "(Weak)")
     }
 }
@@ -672,8 +672,6 @@ impl<T: Clone> ArcFromSlice<T> for Arc<[T]> {
 
         impl<T> Drop for Guard<T> {
             fn drop(&mut self) {
-                use core::slice::from_raw_parts_mut;
-
                 unsafe {
                     let slice = from_raw_parts_mut(self.elems, self.n_elems);
                     ptr::drop_in_place(slice);
@@ -1550,21 +1548,21 @@ impl<T: ?Sized + Eq> Eq for Arc<T> {}
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T: ?Sized + fmt::Display> fmt::Display for Arc<T> {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         fmt::Display::fmt(&**self, f)
     }
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T: ?Sized + fmt::Debug> fmt::Debug for Arc<T> {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         fmt::Debug::fmt(&**self, f)
     }
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T: ?Sized> fmt::Pointer for Arc<T> {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         fmt::Pointer::fmt(&(&**self as *const T), f)
     }
 }
@@ -1601,7 +1599,7 @@ impl<T> From<T> for Arc<T> {
 }
 
 #[stable(feature = "shared_from_slice", since = "1.21.0")]
-impl<'a, T: Clone> From<&'a [T]> for Arc<[T]> {
+impl<T: Clone> From<&[T]> for Arc<[T]> {
     #[inline]
     fn from(v: &[T]) -> Arc<[T]> {
         <Self as ArcFromSlice<T>>::from_slice(v)
@@ -1609,7 +1607,7 @@ impl<'a, T: Clone> From<&'a [T]> for Arc<[T]> {
 }
 
 #[stable(feature = "shared_from_slice", since = "1.21.0")]
-impl<'a> From<&'a str> for Arc<str> {
+impl From<&str> for Arc<str> {
     #[inline]
     fn from(v: &str) -> Arc<str> {
         let arc = Arc::<[u8]>::from(v.as_bytes());
@@ -1655,16 +1653,14 @@ mod tests {
     use std::sync::mpsc::channel;
     use std::mem::drop;
     use std::ops::Drop;
-    use std::option::Option;
-    use std::option::Option::{None, Some};
-    use std::sync::atomic;
-    use std::sync::atomic::Ordering::{Acquire, SeqCst};
+    use std::option::Option::{self, None, Some};
+    use std::sync::atomic::{self, Ordering::{Acquire, SeqCst}};
     use std::thread;
     use std::sync::Mutex;
     use std::convert::From;
 
     use super::{Arc, Weak};
-    use vec::Vec;
+    use crate::vec::Vec;
 
     struct Canary(*mut atomic::AtomicUsize);
 

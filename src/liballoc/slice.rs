@@ -87,15 +87,15 @@
 // It's cleaner to just turn off the unused_imports warning than to fix them.
 #![cfg_attr(test, allow(unused_imports, dead_code))]
 
+use core::borrow::{Borrow, BorrowMut};
 use core::cmp::Ordering::{self, Less};
-use core::mem::size_of;
-use core::mem;
+use core::mem::{self, size_of};
 use core::ptr;
 use core::{u8, u16, u32};
 
-use borrow::{Borrow, BorrowMut, ToOwned};
-use boxed::Box;
-use vec::Vec;
+use crate::borrow::ToOwned;
+use crate::boxed::Box;
+use crate::vec::Vec;
 
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use core::slice::{Chunks, Windows};
@@ -125,24 +125,24 @@ pub use core::slice::{RChunks, RChunksMut, RChunksExact, RChunksExactMut};
 // HACK(japaric) needed for the implementation of `vec!` macro during testing
 // NB see the hack module in this file for more details
 #[cfg(test)]
-pub use self::hack::into_vec;
+pub use hack::into_vec;
 
 // HACK(japaric) needed for the implementation of `Vec::clone` during testing
 // NB see the hack module in this file for more details
 #[cfg(test)]
-pub use self::hack::to_vec;
+pub use hack::to_vec;
 
 // HACK(japaric): With cfg(test) `impl [T]` is not available, these three
 // functions are actually methods that are in `impl [T]` but not in
 // `core::slice::SliceExt` - we need to supply these functions for the
 // `test_permutations` test
 mod hack {
-    use boxed::Box;
     use core::mem;
 
+    use crate::boxed::Box;
+    use crate::vec::Vec;
     #[cfg(test)]
-    use string::ToString;
-    use vec::Vec;
+    use crate::string::ToString;
 
     pub fn into_vec<T>(mut b: Box<[T]>) -> Vec<T> {
         unsafe {

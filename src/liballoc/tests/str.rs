@@ -584,7 +584,7 @@ mod slice_index {
     }
 
     mod boundary {
-        const DATA: &'static str = "abcαβγ";
+        const DATA: &str = "abcαβγ";
 
         const BAD_START: usize = 4;
         const GOOD_START: usize = 3;
@@ -648,7 +648,7 @@ mod slice_index {
         }
     }
 
-    const LOREM_PARAGRAPH: &'static str = "\
+    const LOREM_PARAGRAPH: &str = "\
     Lorem ipsum dolor sit amet, consectetur adipiscing elit. Suspendisse quis lorem \
     sit amet dolor ultricies condimentum. Praesent iaculis purus elit, ac malesuada \
     quam malesuada in. Duis sed orci eros. Suspendisse sit amet magna mollis, mollis \
@@ -1068,7 +1068,7 @@ fn test_rev_iterator() {
 #[test]
 fn test_chars_decoding() {
     let mut bytes = [0; 4];
-    for c in (0..0x110000).filter_map(::std::char::from_u32) {
+    for c in (0..0x110000).filter_map(std::char::from_u32) {
         let s = c.encode_utf8(&mut bytes);
         if Some(c) != s.chars().next() {
             panic!("character {:x}={} does not decode correctly", c as u32, c);
@@ -1079,7 +1079,7 @@ fn test_chars_decoding() {
 #[test]
 fn test_chars_rev_decoding() {
     let mut bytes = [0; 4];
-    for c in (0..0x110000).filter_map(::std::char::from_u32) {
+    for c in (0..0x110000).filter_map(std::char::from_u32) {
         let s = c.encode_utf8(&mut bytes);
         if Some(c) != s.chars().rev().next() {
             panic!("character {:x}={} does not decode correctly", c as u32, c);
@@ -1599,8 +1599,7 @@ fn test_repeat() {
 }
 
 mod pattern {
-    use std::str::pattern::Pattern;
-    use std::str::pattern::{Searcher, ReverseSearcher};
+    use std::str::pattern::{Pattern, Searcher, ReverseSearcher};
     use std::str::pattern::SearchStep::{self, Match, Reject, Done};
 
     macro_rules! make_test {

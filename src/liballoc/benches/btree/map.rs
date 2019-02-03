@@ -1,6 +1,7 @@
 use std::iter::Iterator;
 use std::vec::Vec;
 use std::collections::BTreeMap;
+
 use rand::{Rng, seq::SliceRandom, thread_rng};
 use test::{Bencher, black_box};
 

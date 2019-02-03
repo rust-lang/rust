@@ -1,12 +1,13 @@
-use std::collections::VecDeque;
 use std::fmt::Debug;
-use std::collections::vec_deque::{Drain};
+use std::collections::{VecDeque, vec_deque::Drain};
 use std::collections::CollectionAllocErr::*;
 use std::mem::size_of;
 use std::{usize, isize};
 
-use self::Taggy::*;
-use self::Taggypar::*;
+use crate::hash;
+
+use Taggy::*;
+use Taggypar::*;
 
 #[test]
 fn test_simple() {
@@ -583,7 +584,7 @@ fn test_hash() {
     y.push_back(2);
     y.push_back(3);
 
-    assert!(::hash(&x) == ::hash(&y));
+    assert!(hash(&x) == hash(&y));
 }
 
 #[test]
@@ -599,7 +600,7 @@ fn test_hash_after_rotation() {
             *elt -= 1;
         }
         ring.push_back(len - 1);
-        assert_eq!(::hash(&orig), ::hash(&ring));
+        assert_eq!(hash(&orig), hash(&ring));
         assert_eq!(orig, ring);
         assert_eq!(ring, orig);
     }
@@ -998,7 +999,7 @@ struct DropCounter<'a> {
     count: &'a mut u32,
 }
 
-impl<'a> Drop for DropCounter<'a> {
+impl Drop for DropCounter<'_> {
     fn drop(&mut self) {
         *self.count += 1;
     }

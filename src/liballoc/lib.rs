@@ -63,6 +63,9 @@
 #![no_std]
 #![needs_allocator]
 
+#![deny(rust_2018_idioms)]
+#![allow(explicit_outlives_requirements)]
+
 #![warn(deprecated_in_future)]
 #![warn(intra_doc_link_resolution_failure)]
 #![warn(missing_debug_implementations)]
@@ -121,8 +124,6 @@
 extern crate std;
 #[cfg(test)]
 extern crate test;
-#[cfg(test)]
-extern crate rand;
 
 // Module with internal macros used by other modules (needs to be included before other modules).
 #[macro_use]
@@ -164,5 +165,5 @@ pub mod vec;
 
 #[cfg(not(test))]
 mod std {
-    pub use core::ops;      // RangeFull
+    pub use core::ops; // RangeFull
 }

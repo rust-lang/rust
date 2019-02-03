@@ -1,11 +1,9 @@
+use core::borrow::Borrow;
 use core::cmp::Ordering;
 
-use borrow::Borrow;
+use super::node::{Handle, NodeRef, marker, ForceResult::*};
 
-use super::node::{Handle, NodeRef, marker};
-
-use super::node::ForceResult::*;
-use self::SearchResult::*;
+use SearchResult::*;
 
 pub enum SearchResult<BorrowType, K, V, FoundType, GoDownType> {
     Found(Handle<NodeRef<BorrowType, K, V, FoundType>, marker::KV>),
