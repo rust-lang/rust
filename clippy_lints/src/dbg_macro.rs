@@ -43,28 +43,25 @@ impl LintPass for Pass {
 impl EarlyLintPass for Pass {
     fn check_mac(&mut self, cx: &EarlyContext<'_>, mac: &ast::Mac) {
         if mac.node.path == "dbg" {
-            match tts_span(mac.node.tts.clone()).and_then(|span| snippet_opt(cx, span)) {
-                Some(sugg) => {
-                    span_lint_and_sugg(
-                        cx,
-                        DBG_MACRO,
-                        mac.span,
-                        "`dbg!` macro is intended as a debugging tool",
-                        "ensure to avoid having uses of it in version control",
-                        sugg,
-                        Applicability::MaybeIncorrect,
-                    );
-                }
-                None => {
-                    span_help_and_lint(
-                        cx,
-                        DBG_MACRO,
-                        mac.span,
-                        "`dbg!` macro is intended as a debugging tool",
-                        "ensure to avoid having uses of it in version control",
-                    );
-                }
-            };
+            if let Some(sugg) = tts_span(mac.node.tts.clone()).and_then(|span| snippet_opt(cx, span)) {
+                span_lint_and_sugg(
+                    cx,
+                    DBG_MACRO,
+                    mac.span,
+                    "`dbg!` macro is intended as a debugging tool",
+                    "ensure to avoid having uses of it in version control",
+                    sugg,
+                    Applicability::MaybeIncorrect,
+                );
+            } else {
+                span_help_and_lint(
+                    cx,
+                    DBG_MACRO,
+                    mac.span,
+                    "`dbg!` macro is intended as a debugging tool",
+                    "ensure to avoid having uses of it in version control",
+                );
+            }
         }
     }
 }
