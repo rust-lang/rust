@@ -8,7 +8,9 @@ use marker::Unpin;
 /// A `RawWaker` allows the implementor of a task executor to create a `Waker`
 /// which provides customized wakeup behavior.
 ///
-/// It consists of a data pointer and a virtual function pointer table (vtable) that
+/// [vtable]: https://en.wikipedia.org/wiki/Virtual_method_table
+///
+/// It consists of a data pointer and a [virtual function pointer table (vtable)][vtable] that
 /// customizes the behavior of the `RawWaker`.
 #[derive(PartialEq)]
 pub struct RawWaker {
@@ -16,7 +18,7 @@ pub struct RawWaker {
     /// by the executor. This could be e.g. a type-erased pointer to an `Arc`
     /// that is associated with the task.
     /// The value of this field gets passed to all functions that are part of
-    /// the vtable as first parameter.
+    /// the vtable as the first parameter.
     pub data: *const (),
     /// Virtual function pointer table that customizes the behavior of this waker.
     pub vtable: &'static RawWakerVTable,
@@ -30,7 +32,7 @@ impl fmt::Debug for RawWaker {
 }
 
 /// A virtual function pointer table (vtable) that specifies the behavior
-/// of a `RawWaker`.
+/// of a [`RawWaker`].
 ///
 /// The pointer passed to all functions inside the vtable is the `data` pointer
 /// from the enclosing `RawWaker` object.
@@ -105,7 +107,7 @@ impl Waker {
     /// contract to make it usable for `Waker` and is therefore unsafe.
     pub unsafe fn new_unchecked(waker: RawWaker) -> Waker {
         Waker {
-            waker: waker,
+            waker,
         }
     }
 }
