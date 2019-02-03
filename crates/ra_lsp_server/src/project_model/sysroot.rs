@@ -129,6 +129,7 @@ syntax";
 const STD_DEPS: &str = "
 alloc_jemalloc
 alloc_system
+core
 panic_abort
 rand
 compiler_builtins
