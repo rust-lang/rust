@@ -13,6 +13,9 @@ pub(crate) fn exapnd(rules: &crate::MacroRules, input: &tt::Subtree) -> Option<t
 fn expand_rule(rule: &crate::Rule, input: &tt::Subtree) -> Option<tt::Subtree> {
     let mut input = TtCursor::new(input);
     let bindings = match_lhs(&rule.lhs, &mut input)?;
+    if !input.is_eof() {
+        return None;
+    }
     expand_subtree(&rule.rhs, &bindings, &mut Vec::new())
 }
 
