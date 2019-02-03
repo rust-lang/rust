@@ -114,8 +114,7 @@ impl<'o, 'gcx: 'tcx, 'tcx> dyn AstConv<'gcx, 'tcx> + 'o {
             tcx.hir().name(tcx.hir().as_local_node_id(def_id).unwrap()).as_interned_str()
         };
 
-        let hir_id = tcx.hir().node_to_hir_id(lifetime.id);
-        let r = match tcx.named_region(hir_id) {
+        let r = match tcx.named_region(lifetime.hir_id) {
             Some(rl::Region::Static) => {
                 tcx.types.re_static
             }
@@ -1145,8 +1144,7 @@ impl<'o, 'gcx: 'tcx, 'tcx> dyn AstConv<'gcx, 'tcx> + 'o {
             self.ast_region_to_region(lifetime, None)
         } else {
             self.compute_object_lifetime_bound(span, existential_predicates).unwrap_or_else(|| {
-                let hir_id = tcx.hir().node_to_hir_id(lifetime.id);
-                if tcx.named_region(hir_id).is_some() {
+                if tcx.named_region(lifetime.hir_id).is_some() {
                     self.ast_region_to_region(lifetime, None)
                 } else {
                     self.re_infer(span, None).unwrap_or_else(|| {

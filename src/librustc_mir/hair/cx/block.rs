@@ -46,7 +46,7 @@ fn mirror_stmts<'a, 'gcx, 'tcx>(cx: &mut Cx<'a, 'gcx, 'tcx>,
                                 -> Vec<StmtRef<'tcx>> {
     let mut result = vec![];
     for (index, stmt) in stmts.iter().enumerate() {
-        let hir_id = cx.tcx.hir().node_to_hir_id(stmt.id);
+        let hir_id = stmt.hir_id;
         let opt_dxn_ext = cx.region_scope_tree.opt_destruction_scope(hir_id.local_id);
         let stmt_span = StatementSpan(cx.tcx.hir().span(stmt.id));
         match stmt.node {

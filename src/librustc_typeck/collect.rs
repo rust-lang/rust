@@ -814,8 +814,7 @@ fn has_late_bound_regions<'a, 'tcx>(
                 return;
             }
 
-            let hir_id = self.tcx.hir().node_to_hir_id(lt.id);
-            match self.tcx.named_region(hir_id) {
+            match self.tcx.named_region(lt.hir_id) {
                 Some(rl::Region::Static) | Some(rl::Region::EarlyBound(..)) => {}
                 Some(rl::Region::LateBound(debruijn, _, _))
                 | Some(rl::Region::LateBoundAnon(debruijn, _)) if debruijn < self.outer_index => {}
@@ -841,8 +840,7 @@ fn has_late_bound_regions<'a, 'tcx>(
         };
         for param in &generics.params {
             if let GenericParamKind::Lifetime { .. } = param.kind {
-                let hir_id = tcx.hir().node_to_hir_id(param.id);
-                if tcx.is_late_bound(hir_id) {
+                if tcx.is_late_bound(param.hir_id) {
                     return Some(param.span);
                 }
             }
