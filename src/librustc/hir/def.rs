@@ -252,12 +252,14 @@ impl NonMacroAttrKind {
 }
 
 impl Def {
+    /// Return the `DefId` of this `Def` if it has an id, else panic.
     pub fn def_id(&self) -> DefId {
         self.opt_def_id().unwrap_or_else(|| {
             bug!("attempted .def_id() on invalid def: {:?}", self)
         })
     }
 
+    /// Return `Some(..)` with the `DefId` of this `Def` if it has a id, else `None`.
     pub fn opt_def_id(&self) -> Option<DefId> {
         match *self {
             Def::Fn(id) | Def::Mod(id) | Def::Static(id, _) |
@@ -281,6 +283,14 @@ impl Def {
             Def::Err => {
                 None
             }
+        }
+    }
+
+    /// Return the `DefId` of this `Def` if it represents a module.
+    pub fn mod_def_id(&self) -> Option<DefId> {
+        match *self {
+            Def::Mod(id) => Some(id),
+            _ => None,
         }
     }
 
