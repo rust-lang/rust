@@ -575,11 +575,11 @@ fn write_mir_sig(
 ) -> io::Result<()> {
     use rustc::hir::def::Def;
 
-    debug!("write_mir_sig: {:?}", src.def_id);
+    debug!("write_mir_sig: {:?} {:?}", src.def_id, tcx.hir().get_if_local(src.def_id));
     let descr = tcx.describe_def(src.def_id).unwrap();
     match (descr, src.promoted) {
         (_, Some(i)) => write!(w, "{:?} in", i)?,
-        (Def::Fn(_), _) => write!(w, "fn")?,
+        (Def::Fn(_), _) | (Def::Method(_), _) => write!(w, "fn")?,
         (Def::Const(_), _) => write!(w, "const")?,
         (Def::Static(_, /*is_mutbl*/false), _) => write!(w, "static")?,
         (Def::Static(_, /*is_mutbl*/true), _) => write!(w, "static mut")?,
@@ -592,7 +592,7 @@ fn write_mir_sig(
     })?;
 
     match (descr, src.promoted) {
-        (Def::Fn(_), None) => {
+        (Def::Fn(_), None) | (Def::Method(_), None) => {
             write!(w, "(")?;
 
             // fn argument types.

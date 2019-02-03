@@ -371,8 +371,11 @@ impl<'hir> Map<'hir> {
                 let def_id = self.local_def_id(variant.node.data.id());
                 Some(Def::Variant(def_id))
             }
+            Node::AnonConst(item) => {
+                let def_id = self.local_def_id(item.id);
+                Some(Def::Const(def_id))
+            }
             Node::Field(_) |
-            Node::AnonConst(_) |
             Node::Expr(_) |
             Node::Stmt(_) |
             Node::PathSegment(_) |
