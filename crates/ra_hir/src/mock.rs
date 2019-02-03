@@ -2,7 +2,7 @@ use std::{sync::Arc, panic};
 
 use parking_lot::Mutex;
 use ra_db::{
-    CheckCanceled, FilePosition, FileId, CrateGraph, SourceRoot, SourceRootId, SourceDatabase, salsa,
+    FilePosition, FileId, CrateGraph, SourceRoot, SourceRootId, SourceDatabase, salsa,
 };
 use relative_path::RelativePathBuf;
 use test_utils::{parse_fixture, CURSOR_MARKER, extract_offset};
@@ -158,8 +158,6 @@ impl salsa::ParallelDatabase for MockDatabase {
         })
     }
 }
-
-impl CheckCanceled for MockDatabase {}
 
 impl AsRef<HirInterner> for MockDatabase {
     fn as_ref(&self) -> &HirInterner {

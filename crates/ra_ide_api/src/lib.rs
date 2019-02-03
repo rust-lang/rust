@@ -9,6 +9,10 @@
 //!
 //! The sibling `ra_ide_api_light` handles thouse bits of IDE functionality
 //! which are restricted to a single file and need only syntax.
+
+// For proving that RootDatabase is RefUnwindSafe.
+#![recursion_limit = "128"]
+
 mod db;
 mod imp;
 pub mod mock_analysis;
