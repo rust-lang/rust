@@ -1034,7 +1034,41 @@ impl<T: ?Sized> DerefMut for ManuallyDrop<T> {
     }
 }
 
-/// A newtype to construct uninitialized instances of `T`
+/// A newtype to construct uninitialized instances of `T`.
+///
+/// The compiler, in general, assumes that variables are properly initialized
+/// at their respective type.  For example, a variable of reference type must
+/// be aligned and non-NULL.  This is an invariant that must *always* be upheld,
+/// even in unsafe code.  As a consequence, 0-initializing a variable of reference
+/// type causes instantaneous undefined behavior, no matter whether that reference
+/// ever gets used to access memory:
+/// ```rust,ignore
+/// use std::mem;
+///
+/// let x: &i32 = mem::zeroed(); // undefined behavior!
+/// ```
+/// This is exploitet by the compiler for various optimizations, such as eliding
+/// run-time checks and optimizing `enum` layout.
+///
+/// Not initializing memory at all (instead of 0-initializing it) causes the same
+/// issue: after all, the initial value of the variable might just happen to be
+/// one that violates the invariant.
+///
+/// `MaybeUninit` serves to enable unsafe code to deal with uninitialized data:
+/// it is a signal to the compiler indicating that the data here may *not*
+/// be initialized:
+/// ```rust
+/// use std::mem::MaybeUninit;
+///
+/// // Create an explicitly uninitialized reference.
+/// let mut x = MaybeUninit::<&i32>::uninitialized();
+/// // Set it to a valid value.
+/// x.set(&0);
+/// // Extract the initialized data -- this is only allowed *after* properly
+/// initializing `x`!
+/// let x = unsafe { x.into_initialized() };
+/// ```
+/// The compiler then knows to not optimize this code.
 #[allow(missing_debug_implementations)]
 #[unstable(feature = "maybe_uninit", issue = "53491")]
 // NOTE after stabilizing `MaybeUninit` proceed to deprecate `mem::{uninitialized,zeroed}`
@@ -1101,9 +1135,16 @@ impl<T> MaybeUninit<T> {
     /// state, otherwise this will immediately cause undefined behavior.
     #[unstable(feature = "maybe_uninit", issue = "53491")]
     #[inline(always)]
-    pub unsafe fn into_inner(self) -> T {
+    pub unsafe fn into_initialized(self) -> T {
         intrinsics::panic_if_uninhabited::<T>();
         ManuallyDrop::into_inner(self.value)
+    }
+
+    /// Deprecated alternative to `into_initialized`.  Will never get stabilized.
+    /// Exists only to transition stdsimd to `into_initialized`.
+    #[inline(always)]
+    pub(crate) unsafe fn into_inner(self) -> T {
+        self.into_initialized()
     }
 
     /// Get a reference to the contained value.
