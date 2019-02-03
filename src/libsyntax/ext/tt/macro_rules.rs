@@ -376,7 +376,18 @@ pub fn compile(
     });
 
     if body.legacy {
-        let allow_internal_unstable = attr::contains_name(&def.attrs, "allow_internal_unstable");
+        let allow_internal_unstable = attr::find_by_name(&def.attrs, "allow_internal_unstable")
+            .map_or(Vec::new(), |attr| attr
+                .meta_item_list()
+                .unwrap_or_else(|| sess.span_diagnostic.span_bug(
+                    attr.span, "allow_internal_unstable expects list of feature names",
+                ))
+                .iter()
+                .map(|it| it.name().unwrap_or_else(|| sess.span_diagnostic.span_bug(
+                    it.span, "allow internal unstable expects feature names",
+                )))
+                .collect()
+            );
         let allow_internal_unsafe = attr::contains_name(&def.attrs, "allow_internal_unsafe");
         let mut local_inner_macros = false;
         if let Some(macro_export) = attr::find_by_name(&def.attrs, "macro_export") {

@@ -385,9 +385,9 @@ impl Span {
     /// Check if a span is "internal" to a macro in which `#[unstable]`
     /// items can be used (that is, a macro marked with
     /// `#[allow_internal_unstable]`).
-    pub fn allows_unstable(&self) -> bool {
+    pub fn allows_unstable(&self, feature: &str) -> bool {
         match self.ctxt().outer().expn_info() {
-            Some(info) => info.allow_internal_unstable,
+            Some(info) => info.allow_internal_unstable.iter().any(|&f| f == feature),
             None => false,
         }
     }

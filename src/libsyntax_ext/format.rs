@@ -711,7 +711,7 @@ pub fn expand_format_args_nl<'cx>(
     //if !ecx.ecfg.enable_allow_internal_unstable() {
 
     // For some reason, the only one that actually works for `println` is the first check
-    if !sp.allows_unstable()   // the enclosing span is marked as `#[allow_insternal_unsable]`
+    if !sp.allows_unstable("format_args_nl") // the span is marked as `#[allow_insternal_unsable]`
         && !ecx.ecfg.enable_allow_internal_unstable()  // NOTE: when is this enabled?
         && !ecx.ecfg.enable_format_args_nl()  // enabled using `#[feature(format_args_nl]`
     {

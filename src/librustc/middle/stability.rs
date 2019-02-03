@@ -561,11 +561,6 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
     /// deprecated. If the item is indeed deprecated, we will emit a deprecation lint attached to
     /// `id`.
     pub fn eval_stability(self, def_id: DefId, id: Option<NodeId>, span: Span) -> EvalResult {
-        if span.allows_unstable() {
-            debug!("stability: skipping span={:?} since it is internal", span);
-            return EvalResult::Allow;
-        }
-
         let lint_deprecated = |def_id: DefId,
                                id: NodeId,
                                note: Option<Symbol>,
@@ -694,6 +689,10 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
 
         match stability {
             Some(&Stability { level: attr::Unstable { reason, issue }, feature, .. }) => {
+                if span.allows_unstable(&feature.as_str()) {
+                    debug!("stability: skipping span={:?} since it is internal", span);
+                    return EvalResult::Allow;
+                }
                 if self.stability().active_features.contains(&feature) {
                     return EvalResult::Allow;
                 }
