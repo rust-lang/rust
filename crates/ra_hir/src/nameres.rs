@@ -34,7 +34,7 @@ use crate::{
 /// module, the set of visible items.
 #[derive(Default, Debug, PartialEq, Eq)]
 pub struct ItemMap {
-    extern_prelude: FxHashMap<Name, ModuleDef>,
+    pub(crate) extern_prelude: FxHashMap<Name, ModuleDef>,
     per_module: ArenaMap<ModuleId, ModuleScope>,
 }
 

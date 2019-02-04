@@ -197,7 +197,10 @@ impl Scope {
                     .entries()
                     .for_each(|(name, res)| {
                         f(name.clone(), res.def.map(Resolution::Def));
-                    })
+                    });
+                m.item_map.extern_prelude.iter().for_each(|(name, def)| {
+                    f(name.clone(), PerNs::types(Resolution::Def(*def)));
+                });
             }
             Scope::GenericParams(gp) => {
                 for param in &gp.params {
