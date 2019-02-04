@@ -304,7 +304,7 @@ fn make_mirror_unadjusted<'a, 'gcx, 'tcx>(cx: &mut Cx<'a, 'gcx, 'tcx>,
                     }
                 } else {
                     ExprKind::Call {
-                        ty: cx.tables().node_id_to_type(fun.hir_id),
+                        ty: cx.tables().node_type(fun.hir_id),
                         fun: fun.to_ref(),
                         args: args.to_ref(),
                         from_hir_call: true,
@@ -677,7 +677,7 @@ fn make_mirror_unadjusted<'a, 'gcx, 'tcx>(cx: &mut Cx<'a, 'gcx, 'tcx>,
                     let def = cx.tables().qpath_def(qpath, source.hir_id);
                     cx
                         .tables()
-                        .node_id_to_type(source.hir_id)
+                        .node_type(source.hir_id)
                         .ty_adt_def()
                         .and_then(|adt_def| {
                         match def {
@@ -919,7 +919,7 @@ fn convert_path_expr<'a, 'gcx, 'tcx>(cx: &mut Cx<'a, 'gcx, 'tcx>,
             debug!("convert_path_expr: user_ty={:?}", user_ty);
             ExprKind::Literal {
                 literal: cx.tcx.mk_lazy_const(ty::LazyConst::Evaluated(ty::Const::zero_sized(
-                    cx.tables().node_id_to_type(expr.hir_id),
+                    cx.tables().node_type(expr.hir_id),
                 ))),
                 user_ty,
             }
@@ -940,7 +940,7 @@ fn convert_path_expr<'a, 'gcx, 'tcx>(cx: &mut Cx<'a, 'gcx, 'tcx>,
             let user_provided_types = cx.tables.user_provided_types();
             let user_provided_type = user_provided_types.get(expr.hir_id).map(|u_ty| *u_ty);
             debug!("convert_path_expr: user_provided_type={:?}", user_provided_type);
-            match cx.tables().node_id_to_type(expr.hir_id).sty {
+            match cx.tables().node_type(expr.hir_id).sty {
                 // A unit struct/variant which is used as a value.
                 // We return a completely different ExprKind here to account for this special case.
                 ty::Adt(adt_def, substs) => {
@@ -980,11 +980,11 @@ fn convert_var<'a, 'gcx, 'tcx>(cx: &mut Cx<'a, 'gcx, 'tcx>,
                    index,
                    closure_expr_id);
             let var_hir_id = cx.tcx.hir().node_to_hir_id(var_id);
-            let var_ty = cx.tables().node_id_to_type(var_hir_id);
+            let var_ty = cx.tables().node_type(var_hir_id);
 
             // FIXME free regions in closures are not right
             let closure_ty = cx.tables()
-                               .node_id_to_type(cx.tcx.hir().node_to_hir_id(closure_expr_id));
+                               .node_type(cx.tcx.hir().node_to_hir_id(closure_expr_id));
 
             // FIXME we're just hard-coding the idea that the
             // signature will be &self or &mut self and hence will
@@ -1188,7 +1188,7 @@ fn capture_freevar<'a, 'gcx, 'tcx>(cx: &mut Cx<'a, 'gcx, 'tcx>,
     };
     let upvar_capture = cx.tables().upvar_capture(upvar_id);
     let temp_lifetime = cx.region_scope_tree.temporary_scope(closure_expr.hir_id.local_id);
-    let var_ty = cx.tables().node_id_to_type(var_hir_id);
+    let var_ty = cx.tables().node_type(var_hir_id);
     let captured_var = Expr {
         temp_lifetime,
         ty: var_ty,

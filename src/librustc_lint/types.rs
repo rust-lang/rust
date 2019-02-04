@@ -85,7 +85,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for TypeLimits {
                 }
             }
             hir::ExprKind::Lit(ref lit) => {
-                match cx.tables.node_id_to_type(e.hir_id).sty {
+                match cx.tables.node_type(e.hir_id).sty {
                     ty::Int(t) => {
                         match lit.node {
                             ast::LitKind::Int(v, ast::LitIntType::Signed(_)) |
@@ -257,7 +257,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for TypeLimits {
             // Normalize the binop so that the literal is always on the RHS in
             // the comparison
             let norm_binop = if swap { rev_binop(binop) } else { binop };
-            match cx.tables.node_id_to_type(expr.hir_id).sty {
+            match cx.tables.node_type(expr.hir_id).sty {
                 ty::Int(int_ty) => {
                     let (min, max) = int_ty_range(int_ty);
                     let lit_val: i128 = match lit.node {
@@ -400,7 +400,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for TypeLimits {
                 repr_str, val, t, actually, t
             ));
             if let Some(sugg_ty) =
-                get_type_suggestion(&cx.tables.node_id_to_type(expr.hir_id).sty, val, negative)
+                get_type_suggestion(&cx.tables.node_type(expr.hir_id).sty, val, negative)
             {
                 if let Some(pos) = repr_str.chars().position(|c| c == 'i' || c == 'u') {
                     let (sans_suffix, _) = repr_str.split_at(pos);

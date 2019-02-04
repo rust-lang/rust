@@ -525,17 +525,14 @@ impl<'tcx> TypeckTables<'tcx> {
         }
     }
 
-    pub fn node_id_to_type(&self, id: hir::HirId) -> Ty<'tcx> {
-        self.node_id_to_type_opt(id).unwrap_or_else(||
-            bug!("node_id_to_type: no type for node `{}`",
-                 tls::with(|tcx| {
-                     let id = tcx.hir().hir_to_node_id(id);
-                     tcx.hir().node_to_string(id)
-                 }))
+    pub fn node_type(&self, id: hir::HirId) -> Ty<'tcx> {
+        self.node_type_opt(id).unwrap_or_else(||
+            bug!("node_type: no type for node `{}`",
+                 tls::with(|tcx| tcx.hir().hir_to_string(id)))
         )
     }
 
-    pub fn node_id_to_type_opt(&self, id: hir::HirId) -> Option<Ty<'tcx>> {
+    pub fn node_type_opt(&self, id: hir::HirId) -> Option<Ty<'tcx>> {
         validate_hir_id_for_typeck_tables(self.local_id_root, id, false);
         self.node_types.get(&id.local_id).cloned()
     }
@@ -560,11 +557,11 @@ impl<'tcx> TypeckTables<'tcx> {
     // Returns the type of a pattern as a monotype. Like @expr_ty, this function
     // doesn't provide type parameter substitutions.
     pub fn pat_ty(&self, pat: &hir::Pat) -> Ty<'tcx> {
-        self.node_id_to_type(pat.hir_id)
+        self.node_type(pat.hir_id)
     }
 
     pub fn pat_ty_opt(&self, pat: &hir::Pat) -> Option<Ty<'tcx>> {
-        self.node_id_to_type_opt(pat.hir_id)
+        self.node_type_opt(pat.hir_id)
     }
 
     // Returns the type of an expression as a monotype.
@@ -578,11 +575,11 @@ impl<'tcx> TypeckTables<'tcx> {
     // ask for the type of "id" in "id(3)", it will return "fn(&isize) -> isize"
     // instead of "fn(ty) -> T with T = isize".
     pub fn expr_ty(&self, expr: &hir::Expr) -> Ty<'tcx> {
-        self.node_id_to_type(expr.hir_id)
+        self.node_type(expr.hir_id)
     }
 
     pub fn expr_ty_opt(&self, expr: &hir::Expr) -> Option<Ty<'tcx>> {
-        self.node_id_to_type_opt(expr.hir_id)
+        self.node_type_opt(expr.hir_id)
     }
 
     pub fn adjustments(&self) -> LocalTableInContext<'_, Vec<ty::adjustment::Adjustment<'tcx>>> {

@@ -224,7 +224,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                         node: hir::ExprKind::MethodCall(path, span, expr),
                         ..
                     })), 1) = (self.tcx.hir().find(parent), decl.inputs.len()) {
-                        let self_ty = self.tables.borrow().node_id_to_type(expr[0].hir_id);
+                        let self_ty = self.tables.borrow().node_type(expr[0].hir_id);
                         let self_ty = format!("{:?}", self_ty);
                         let name = path.ident.as_str();
                         let is_as_ref_able = (

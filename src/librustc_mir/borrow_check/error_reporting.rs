@@ -1178,7 +1178,7 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
         let escapes_from = if tcx.is_closure(self.mir_def_id) {
             let tables = tcx.typeck_tables_of(self.mir_def_id);
             let mir_hir_id = tcx.hir().def_index_to_hir_id(self.mir_def_id.index);
-            match tables.node_id_to_type(mir_hir_id).sty {
+            match tables.node_type(mir_hir_id).sty {
                 ty::Closure(..) => "closure",
                 ty::Generator(..) => "generator",
                 _ => bug!("Closure body doesn't have a closure or generator type"),

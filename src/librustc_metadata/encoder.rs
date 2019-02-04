@@ -1338,7 +1338,7 @@ impl<'a, 'b: 'a, 'tcx: 'b> IsolatedEncoder<'a, 'b, 'tcx> {
         let tables = self.tcx.typeck_tables_of(def_id);
         let node_id = self.tcx.hir().as_local_node_id(def_id).unwrap();
         let hir_id = self.tcx.hir().node_to_hir_id(node_id);
-        let kind = match tables.node_id_to_type(hir_id).sty {
+        let kind = match tables.node_type(hir_id).sty {
             ty::Generator(def_id, ..) => {
                 let layout = self.tcx.generator_layout(def_id);
                 let data = GeneratorData {

@@ -202,7 +202,7 @@ impl<'a, 'tcx> MatchVisitor<'a, 'tcx> {
 
             // Then, if the match has no arms, check whether the scrutinee
             // is uninhabited.
-            let pat_ty = self.tables.node_id_to_type(scrut.hir_id);
+            let pat_ty = self.tables.node_type(scrut.hir_id);
             let module = self.tcx.hir().get_module_parent(scrut.id);
             if inlined_arms.is_empty() {
                 let scrutinee_is_uninhabited = if self.tcx.features().exhaustive_patterns {
@@ -235,7 +235,7 @@ impl<'a, 'tcx> MatchVisitor<'a, 'tcx> {
                 .flat_map(|arm| &arm.0)
                 .map(|pat| smallvec![pat.0])
                 .collect();
-            let scrut_ty = self.tables.node_id_to_type(scrut.hir_id);
+            let scrut_ty = self.tables.node_type(scrut.hir_id);
             check_exhaustive(cx, scrut_ty, scrut.span, &matrix);
         })
     }
@@ -507,7 +507,7 @@ fn check_legality_of_move_bindings(cx: &MatchVisitor<'_, '_>,
                 if let Some(&bm) = cx.tables.pat_binding_modes().get(p.hir_id) {
                     match bm {
                         ty::BindByValue(..) => {
-                            let pat_ty = cx.tables.node_id_to_type(p.hir_id);
+                            let pat_ty = cx.tables.node_type(p.hir_id);
                             if !pat_ty.is_copy_modulo_regions(cx.tcx, cx.param_env, pat.span) {
                                 check_move(p, sub.as_ref().map(|p| &**p), span_vec);
                             }

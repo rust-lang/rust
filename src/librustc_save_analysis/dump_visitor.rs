@@ -245,7 +245,7 @@ impl<'l, 'tcx: 'l, 'll, O: DumpOutput + 'll> DumpVisitor<'l, 'tcx, 'll, O> {
 
             for (id, ident, ..) in collector.collected_idents {
                 let hir_id = self.tcx.hir().node_to_hir_id(id);
-                let typ = match self.save_ctxt.tables.node_id_to_type_opt(hir_id) {
+                let typ = match self.save_ctxt.tables.node_type_opt(hir_id) {
                     Some(s) => s.to_string(),
                     None => continue,
                 };
@@ -863,7 +863,7 @@ impl<'l, 'tcx: 'l, 'll, O: DumpOutput + 'll> DumpVisitor<'l, 'tcx, 'll, O> {
             PatKind::Struct(ref _path, ref fields, _) => {
                 // FIXME do something with _path?
                 let hir_id = self.tcx.hir().node_to_hir_id(p.id);
-                let adt = match self.save_ctxt.tables.node_id_to_type_opt(hir_id) {
+                let adt = match self.save_ctxt.tables.node_type_opt(hir_id) {
                     Some(ty) => ty.ty_adt_def().unwrap(),
                     None => {
                         visit::walk_pat(self, p);
@@ -910,7 +910,7 @@ impl<'l, 'tcx: 'l, 'll, O: DumpOutput + 'll> DumpVisitor<'l, 'tcx, 'll, O> {
                     let hir_id = self.tcx.hir().node_to_hir_id(id);
                     let typ = self.save_ctxt
                         .tables
-                        .node_id_to_type_opt(hir_id)
+                        .node_type_opt(hir_id)
                         .map(|t| t.to_string())
                         .unwrap_or_default();
                     value.push_str(": ");
@@ -979,7 +979,7 @@ impl<'l, 'tcx: 'l, 'll, O: DumpOutput + 'll> DumpVisitor<'l, 'tcx, 'll, O> {
                 _ => String::new(),
             };
             let hir_id = self.tcx.hir().node_to_hir_id(id);
-            let typ = match self.save_ctxt.tables.node_id_to_type_opt(hir_id) {
+            let typ = match self.save_ctxt.tables.node_type_opt(hir_id) {
                 Some(typ) => {
                     let typ = typ.to_string();
                     if !value.is_empty() {

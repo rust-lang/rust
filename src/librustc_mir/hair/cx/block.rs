@@ -115,7 +115,7 @@ fn mirror_stmts<'a, 'gcx, 'tcx>(cx: &mut Cx<'a, 'gcx, 'tcx>,
 pub fn to_expr_ref<'a, 'gcx, 'tcx>(cx: &mut Cx<'a, 'gcx, 'tcx>,
                                    block: &'tcx hir::Block)
                                    -> ExprRef<'tcx> {
-    let block_ty = cx.tables().node_id_to_type(block.hir_id);
+    let block_ty = cx.tables().node_type(block.hir_id);
     let temp_lifetime = cx.region_scope_tree.temporary_scope(block.hir_id.local_id);
     let expr = Expr {
         ty: block_ty,

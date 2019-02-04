@@ -482,7 +482,7 @@ impl<'cx, 'gcx, 'tcx> UniversalRegionsBuilder<'cx, 'gcx, 'tcx> {
                     tcx.type_of(closure_base_def_id)
                 } else {
                     let tables = tcx.typeck_tables_of(self.mir_def_id);
-                    tables.node_id_to_type(self.mir_hir_id)
+                    tables.node_type(self.mir_hir_id)
                 };
 
                 debug!("defining_ty (pre-replacement): {:?}", defining_ty);

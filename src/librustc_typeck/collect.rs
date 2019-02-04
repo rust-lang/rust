@@ -1253,7 +1253,7 @@ fn type_of<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: DefId) -> Ty<'tcx> {
         }) => {
             if gen.is_some() {
                 let hir_id = tcx.hir().node_to_hir_id(node_id);
-                return tcx.typeck_tables_of(def_id).node_id_to_type(hir_id);
+                return tcx.typeck_tables_of(def_id).node_type(hir_id);
             }
 
             let substs = ty::ClosureSubsts {
