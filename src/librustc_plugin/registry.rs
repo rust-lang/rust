@@ -110,8 +110,8 @@ impl<'a> Registry<'a> {
                     edition,
                 }
             }
-            IdentTT { ext, span: _, allow_internal_unstable } => {
-                IdentTT { ext, span: Some(self.krate_span), allow_internal_unstable }
+            IdentTT { expander, span: _, allow_internal_unstable } => {
+                IdentTT { expander, span: Some(self.krate_span), allow_internal_unstable }
             }
             _ => extension,
         }));

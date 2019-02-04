@@ -658,7 +658,7 @@ pub enum SyntaxExtension {
     /// A function-like syntax extension that has an extra ident before
     /// the block.
     IdentTT {
-        ext: Box<dyn IdentMacroExpander + sync::Sync + sync::Send>,
+        expander: Box<dyn IdentMacroExpander + sync::Sync + sync::Send>,
         span: Option<Span>,
         allow_internal_unstable: Vec<Symbol>,
     },
