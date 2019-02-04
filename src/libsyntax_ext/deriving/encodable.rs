@@ -82,10 +82,10 @@
 //! }
 //! ```
 
-use deriving::{self, pathvec_std};
-use deriving::generic::*;
-use deriving::generic::ty::*;
-use deriving::warn_if_deprecated;
+use crate::deriving::{self, pathvec_std};
+use crate::deriving::generic::*;
+use crate::deriving::generic::ty::*;
+use crate::deriving::warn_if_deprecated;
 
 use syntax::ast::{Expr, ExprKind, MetaItem, Mutability};
 use syntax::ext::base::{Annotatable, ExtCtxt};
@@ -94,7 +94,7 @@ use syntax::ptr::P;
 use syntax::symbol::Symbol;
 use syntax_pos::Span;
 
-pub fn expand_deriving_rustc_encodable(cx: &mut ExtCtxt,
+pub fn expand_deriving_rustc_encodable(cx: &mut ExtCtxt<'_>,
                                        span: Span,
                                        mitem: &MetaItem,
                                        item: &Annotatable,
@@ -102,7 +102,7 @@ pub fn expand_deriving_rustc_encodable(cx: &mut ExtCtxt,
     expand_deriving_encodable_imp(cx, span, mitem, item, push, "rustc_serialize")
 }
 
-pub fn expand_deriving_encodable(cx: &mut ExtCtxt,
+pub fn expand_deriving_encodable(cx: &mut ExtCtxt<'_>,
                                  span: Span,
                                  mitem: &MetaItem,
                                  item: &Annotatable,
@@ -111,7 +111,7 @@ pub fn expand_deriving_encodable(cx: &mut ExtCtxt,
     expand_deriving_encodable_imp(cx, span, mitem, item, push, "serialize")
 }
 
-fn expand_deriving_encodable_imp(cx: &mut ExtCtxt,
+fn expand_deriving_encodable_imp(cx: &mut ExtCtxt<'_>,
                                  span: Span,
                                  mitem: &MetaItem,
                                  item: &Annotatable,
@@ -162,9 +162,9 @@ fn expand_deriving_encodable_imp(cx: &mut ExtCtxt,
     trait_def.expand(cx, mitem, item, push)
 }
 
-fn encodable_substructure(cx: &mut ExtCtxt,
+fn encodable_substructure(cx: &mut ExtCtxt<'_>,
                           trait_span: Span,
-                          substr: &Substructure,
+                          substr: &Substructure<'_>,
                           krate: &'static str)
                           -> P<Expr> {
     let encoder = substr.nonself_args[0].clone();

@@ -1,11 +1,10 @@
 //! A mini version of ast::Ty, which is easier to use, and features an explicit `Self` type to use
 //! when specifying impls to be derived.
 
-pub use self::PtrTy::*;
-pub use self::Ty::*;
+pub use PtrTy::*;
+pub use Ty::*;
 
-use syntax::ast;
-use syntax::ast::{Expr, GenericParamKind, Generics, Ident, SelfKind, GenericArg};
+use syntax::ast::{self, Expr, GenericParamKind, Generics, Ident, SelfKind, GenericArg};
 use syntax::ext::base::ExtCtxt;
 use syntax::ext::build::AstBuilder;
 use syntax::source_map::{respan, DUMMY_SP};
@@ -60,7 +59,7 @@ impl<'a> Path<'a> {
     }
 
     pub fn to_ty(&self,
-                 cx: &ExtCtxt,
+                 cx: &ExtCtxt<'_>,
                  span: Span,
                  self_ty: Ident,
                  self_generics: &Generics)
@@ -68,7 +67,7 @@ impl<'a> Path<'a> {
         cx.ty_path(self.to_path(cx, span, self_ty, self_generics))
     }
     pub fn to_path(&self,
-                   cx: &ExtCtxt,
+                   cx: &ExtCtxt<'_>,
                    span: Span,
                    self_ty: Ident,
                    self_generics: &Generics)
@@ -127,19 +126,19 @@ pub fn nil_ty<'r>() -> Ty<'r> {
     Tuple(Vec::new())
 }
 
-fn mk_lifetime(cx: &ExtCtxt, span: Span, lt: &Option<&str>) -> Option<ast::Lifetime> {
+fn mk_lifetime(cx: &ExtCtxt<'_>, span: Span, lt: &Option<&str>) -> Option<ast::Lifetime> {
     lt.map(|s|
         cx.lifetime(span, Ident::from_str(s))
     )
 }
 
-fn mk_lifetimes(cx: &ExtCtxt, span: Span, lt: &Option<&str>) -> Vec<ast::Lifetime> {
+fn mk_lifetimes(cx: &ExtCtxt<'_>, span: Span, lt: &Option<&str>) -> Vec<ast::Lifetime> {
     mk_lifetime(cx, span, lt).into_iter().collect()
 }
 
 impl<'a> Ty<'a> {
     pub fn to_ty(&self,
-                 cx: &ExtCtxt,
+                 cx: &ExtCtxt<'_>,
                  span: Span,
                  self_ty: Ident,
                  self_generics: &Generics)
@@ -167,7 +166,7 @@ impl<'a> Ty<'a> {
     }
 
     pub fn to_path(&self,
-                   cx: &ExtCtxt,
+                   cx: &ExtCtxt<'_>,
                    span: Span,
                    self_ty: Ident,
                    generics: &Generics)
@@ -193,11 +192,11 @@ impl<'a> Ty<'a> {
 }
 
 
-fn mk_ty_param(cx: &ExtCtxt,
+fn mk_ty_param(cx: &ExtCtxt<'_>,
                span: Span,
                name: &str,
                attrs: &[ast::Attribute],
-               bounds: &[Path],
+               bounds: &[Path<'_>],
                self_ident: Ident,
                self_generics: &Generics)
                -> ast::GenericParam {
@@ -237,7 +236,7 @@ impl<'a> LifetimeBounds<'a> {
         }
     }
     pub fn to_generics(&self,
-                       cx: &ExtCtxt,
+                       cx: &ExtCtxt<'_>,
                        span: Span,
                        self_ty: Ident,
                        self_generics: &Generics)
@@ -262,9 +261,9 @@ impl<'a> LifetimeBounds<'a> {
     }
 }
 
-pub fn get_explicit_self(cx: &ExtCtxt,
+pub fn get_explicit_self(cx: &ExtCtxt<'_>,
                          span: Span,
-                         self_ptr: &Option<PtrTy>)
+                         self_ptr: &Option<PtrTy<'_>>)
                          -> (P<Expr>, ast::ExplicitSelf) {
     // this constructs a fresh `self` path
     let self_path = cx.expr_self(span);

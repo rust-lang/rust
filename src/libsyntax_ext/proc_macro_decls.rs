@@ -1,6 +1,7 @@
 use std::mem;
 
-use errors;
+use crate::deriving;
+use crate::errors;
 
 use syntax::ast::{self, Ident};
 use syntax::attr;
@@ -17,8 +18,6 @@ use syntax::symbol::keywords;
 use syntax::visit::{self, Visitor};
 
 use syntax_pos::{Span, DUMMY_SP};
-
-use deriving;
 
 const PROC_MACRO_KINDS: [&str; 3] = ["proc_macro_derive", "proc_macro_attribute", "proc_macro"];
 
@@ -324,7 +323,7 @@ impl<'a> Visitor<'a> for CollectProcMacros<'a> {
 //          ];
 //      }
 fn mk_decls(
-    cx: &mut ExtCtxt,
+    cx: &mut ExtCtxt<'_>,
     custom_derives: &[ProcMacroDerive],
     custom_attrs: &[ProcMacroDef],
     custom_macros: &[ProcMacroDef],

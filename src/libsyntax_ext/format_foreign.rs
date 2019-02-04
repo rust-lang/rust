@@ -68,7 +68,7 @@ pub mod printf {
         pub position: (usize, usize),
     }
 
-    impl<'a> Format<'a> {
+    impl Format<'_> {
         /// Translate this directive into an equivalent Rust formatting directive.
         ///
         /// Returns `None` in cases where the `printf` directive does not have an exact Rust
@@ -249,12 +249,12 @@ pub mod printf {
             }
         }
 
-        fn translate(&self, s: &mut String) -> ::std::fmt::Result {
+        fn translate(&self, s: &mut String) -> std::fmt::Result {
             use std::fmt::Write;
             match *self {
                 Num::Num(n) => write!(s, "{}", n),
                 Num::Arg(n) => {
-                    let n = n.checked_sub(1).ok_or(::std::fmt::Error)?;
+                    let n = n.checked_sub(1).ok_or(std::fmt::Error)?;
                     write!(s, "{}$", n)
                 },
                 Num::Next => write!(s, "*"),
@@ -263,7 +263,7 @@ pub mod printf {
     }
 
     /// Returns an iterator over all substitutions in a given string.
-    pub fn iter_subs(s: &str) -> Substitutions {
+    pub fn iter_subs(s: &str) -> Substitutions<'_> {
         Substitutions {
             s,
             pos: 0,
@@ -309,7 +309,7 @@ pub mod printf {
     }
 
     /// Parse the next substitution from the input string.
-    pub fn parse_next_substitution(s: &str) -> Option<(Substitution, &str)> {
+    pub fn parse_next_substitution(s: &str) -> Option<(Substitution<'_>, &str)> {
         use self::State::*;
 
         let at = {
@@ -389,7 +389,7 @@ pub mod printf {
         let mut precision: Option<Num> = None;
         let mut length: Option<&str> = None;
         let mut type_: &str = "";
-        let end: Cur;
+        let end: Cur<'_>;
 
         if let Start = state {
             match c {
@@ -575,7 +575,7 @@ pub mod printf {
         Some((Substitution::Format(f), end.slice_after()))
     }
 
-    fn at_next_cp_while<F>(mut cur: Cur, mut pred: F) -> Cur
+    fn at_next_cp_while<F>(mut cur: Cur<'_>, mut pred: F) -> Cur<'_>
     where F: FnMut(char) -> bool {
         loop {
             match cur.next_cp() {
@@ -769,7 +769,7 @@ pub mod shell {
         Escape((usize, usize)),
     }
 
-    impl<'a> Substitution<'a> {
+    impl Substitution<'_> {
         pub fn as_str(&self) -> String {
             match self {
                 Substitution::Ordinal(n, _) => format!("${}", n),
@@ -804,7 +804,7 @@ pub mod shell {
     }
 
     /// Returns an iterator over all substitutions in a given string.
-    pub fn iter_subs(s: &str) -> Substitutions {
+    pub fn iter_subs(s: &str) -> Substitutions<'_> {
         Substitutions {
             s,
             pos: 0,
@@ -839,7 +839,7 @@ pub mod shell {
     }
 
     /// Parse the next substitution from the input string.
-    pub fn parse_next_substitution(s: &str) -> Option<(Substitution, &str)> {
+    pub fn parse_next_substitution(s: &str) -> Option<(Substitution<'_>, &str)> {
         let at = {
             let start = s.find('$')?;
             match s[start+1..].chars().next()? {
@@ -868,7 +868,7 @@ pub mod shell {
         }
     }
 
-    fn at_next_cp_while<F>(mut cur: Cur, mut pred: F) -> Cur
+    fn at_next_cp_while<F>(mut cur: Cur<'_>, mut pred: F) -> Cur<'_>
     where F: FnMut(char) -> bool {
         loop {
             match cur.next_cp() {
@@ -962,8 +962,6 @@ pub mod shell {
 }
 
 mod strcursor {
-    use std;
-
     pub struct StrCursor<'a> {
         s: &'a str,
         pub at: usize,
@@ -1028,7 +1026,7 @@ mod strcursor {
         }
     }
 
-    impl<'a> Copy for StrCursor<'a> {}
+    impl Copy for StrCursor<'_> {}
 
     impl<'a> Clone for StrCursor<'a> {
         fn clone(&self) -> StrCursor<'a> {
@@ -1036,8 +1034,8 @@ mod strcursor {
         }
     }
 
-    impl<'a> std::fmt::Debug for StrCursor<'a> {
-        fn fmt(&self, fmt: &mut std::fmt::Formatter) -> std::fmt::Result {
+    impl std::fmt::Debug for StrCursor<'_> {
+        fn fmt(&self, fmt: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
             write!(fmt, "StrCursor({:?} | {:?})", self.slice_before(), self.slice_after())
         }
     }

@@ -4,29 +4,21 @@
        html_favicon_url = "https://doc.rust-lang.org/favicon.ico",
        html_root_url = "https://doc.rust-lang.org/nightly/")]
 
+#![deny(rust_2018_idioms)]
+
 #![feature(in_band_lifetimes)]
 #![feature(proc_macro_diagnostic)]
 #![feature(proc_macro_internals)]
 #![feature(proc_macro_span)]
 #![feature(decl_macro)]
-#![feature(nll)]
 #![feature(str_escape)]
 #![feature(rustc_diagnostic_macros)]
 
 #![recursion_limit="256"]
 
-extern crate fmt_macros;
-#[macro_use]
-extern crate syntax;
-extern crate syntax_pos;
 extern crate proc_macro;
-extern crate rustc_data_structures;
-extern crate rustc_errors as errors;
-extern crate rustc_target;
-#[macro_use]
-extern crate smallvec;
-#[macro_use]
-extern crate log;
+
+use rustc_errors as errors;
 
 mod diagnostics;
 

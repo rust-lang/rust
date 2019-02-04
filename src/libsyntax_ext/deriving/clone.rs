@@ -1,9 +1,8 @@
-use deriving::path_std;
-use deriving::generic::*;
-use deriving::generic::ty::*;
+use crate::deriving::path_std;
+use crate::deriving::generic::*;
+use crate::deriving::generic::ty::*;
 
-use syntax::ast::{self, Expr, Generics, ItemKind, MetaItem, VariantData};
-use syntax::ast::GenericArg;
+use syntax::ast::{self, Expr, GenericArg, Generics, ItemKind, MetaItem, VariantData};
 use syntax::attr;
 use syntax::ext::base::{Annotatable, ExtCtxt};
 use syntax::ext::build::AstBuilder;
@@ -11,7 +10,7 @@ use syntax::ptr::P;
 use syntax::symbol::{Symbol, keywords};
 use syntax_pos::Span;
 
-pub fn expand_deriving_clone(cx: &mut ExtCtxt,
+pub fn expand_deriving_clone(cx: &mut ExtCtxt<'_>,
                              span: Span,
                              mitem: &MetaItem,
                              item: &Annotatable,
@@ -105,12 +104,12 @@ pub fn expand_deriving_clone(cx: &mut ExtCtxt,
 }
 
 fn cs_clone_shallow(name: &str,
-                    cx: &mut ExtCtxt,
+                    cx: &mut ExtCtxt<'_>,
                     trait_span: Span,
-                    substr: &Substructure,
+                    substr: &Substructure<'_>,
                     is_union: bool)
                     -> P<Expr> {
-    fn assert_ty_bounds(cx: &mut ExtCtxt, stmts: &mut Vec<ast::Stmt>,
+    fn assert_ty_bounds(cx: &mut ExtCtxt<'_>, stmts: &mut Vec<ast::Stmt>,
                         ty: P<ast::Ty>, span: Span, helper_name: &str) {
         // Generate statement `let _: helper_name<ty>;`,
         // set the expn ID so we can use the unstable struct.
@@ -120,7 +119,7 @@ fn cs_clone_shallow(name: &str,
                                         vec![GenericArg::Type(ty)], vec![]);
         stmts.push(cx.stmt_let_type_only(span, cx.ty_path(assert_path)));
     }
-    fn process_variant(cx: &mut ExtCtxt, stmts: &mut Vec<ast::Stmt>, variant: &VariantData) {
+    fn process_variant(cx: &mut ExtCtxt<'_>, stmts: &mut Vec<ast::Stmt>, variant: &VariantData) {
         for field in variant.fields() {
             // let _: AssertParamIsClone<FieldTy>;
             assert_ty_bounds(cx, stmts, field.ty.clone(), field.span, "AssertParamIsClone");
@@ -151,14 +150,14 @@ fn cs_clone_shallow(name: &str,
 }
 
 fn cs_clone(name: &str,
-            cx: &mut ExtCtxt,
+            cx: &mut ExtCtxt<'_>,
             trait_span: Span,
-            substr: &Substructure)
+            substr: &Substructure<'_>)
             -> P<Expr> {
     let ctor_path;
     let all_fields;
     let fn_path = cx.std_path(&["clone", "Clone", "clone"]);
-    let subcall = |cx: &mut ExtCtxt, field: &FieldInfo| {
+    let subcall = |cx: &mut ExtCtxt<'_>, field: &FieldInfo<'_>| {
         let args = vec![cx.expr_addr_of(field.span, field.self_.clone())];
         cx.expr_call_global(field.span, fn_path.clone(), args)
     };
