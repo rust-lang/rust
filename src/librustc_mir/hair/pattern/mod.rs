@@ -167,6 +167,17 @@ pub enum PatternKind<'tcx> {
     },
 }
 
+impl<'tcx> PatternKind<'tcx> {
+    /// If this is a `PatternKind::AscribeUserType` then return the subpattern kind, otherwise
+    /// return this pattern kind.
+    fn with_user_type_ascription_subpattern(self) -> Self {
+        match self {
+            PatternKind::AscribeUserType { subpattern: Pattern { box kind, ..  }, ..  } => kind,
+            kind => kind,
+        }
+    }
+}
+
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct PatternRange<'tcx> {
     pub lo: ty::Const<'tcx>,
@@ -403,9 +414,15 @@ impl<'a, 'tcx> PatternContext<'a, 'tcx> {
             PatKind::Lit(ref value) => self.lower_lit(value),
 
             PatKind::Range(ref lo_expr, ref hi_expr, end) => {
-                match (self.lower_lit(lo_expr), self.lower_lit(hi_expr)) {
-                    (PatternKind::Constant { value: lo },
-                     PatternKind::Constant { value: hi }) => {
+                match (
+                    // Look for `PatternKind::Constant` patterns inside of any
+                    // `PatternKind::AscribeUserType` patterns. Type ascriptions can be safely
+                    // ignored for the purposes of lowering a range correctly - these are checked
+                    // elsewhere for well-formedness.
+                    self.lower_lit(lo_expr).with_user_type_ascription_subpattern(),
+                    self.lower_lit(hi_expr).with_user_type_ascription_subpattern(),
+                ) {
+                    (PatternKind::Constant { value: lo }, PatternKind::Constant { value: hi }) => {
                         use std::cmp::Ordering;
                         let cmp = compare_const_vals(
                             self.tcx,
@@ -454,7 +471,15 @@ impl<'a, 'tcx> PatternContext<'a, 'tcx> {
                             }
                         }
                     }
-                    _ => PatternKind::Wild
+                    ref pats => {
+                        self.tcx.sess.delay_span_bug(
+                            pat.span,
+                            &format!("found bad range pattern `{:?}` outside of error recovery",
+                                     pats),
+                        );
+
+                        PatternKind::Wild
+                    }
                 }
             }
 
