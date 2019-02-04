@@ -765,7 +765,9 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
                 }
             }
             EvalResult::Unmarked => {
-                span_bug!(span, "encountered unmarked API: {:?}", def_id);
+                // The API could be uncallable for other reasons, for example when a private module
+                // was referenced.
+                self.sess.delay_span_bug(span, &format!("encountered unmarked API: {:?}", def_id));
             }
         }
     }
