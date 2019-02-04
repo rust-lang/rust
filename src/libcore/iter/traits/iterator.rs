@@ -952,8 +952,7 @@ pub trait Iterator {
     /// ```
     ///
     /// The `3` is no longer there, because it was consumed in order to see if
-    /// the iteration should stop, but wasn't placed back into the iterator or
-    /// some similar thing.
+    /// the iteration should stop, but wasn't placed back into the iterator.
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
     fn take_while<P>(self, predicate: P) -> TakeWhile<Self, P> where
