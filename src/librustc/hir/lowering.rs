@@ -681,7 +681,9 @@ impl<'a> LoweringContext<'a> {
         Ident::with_empty_ctxt(Symbol::gensym(s))
     }
 
-    fn allow_internal_unstable(
+    /// Reuses the span but adds information like the kind of the desugaring and features that are
+    /// allowed inside this span.
+    fn mark_span_with_reason(
         &self,
         reason: CompilerDesugaringKind,
         span: Span,
@@ -969,7 +971,7 @@ impl<'a> LoweringContext<'a> {
             attrs: ThinVec::new(),
         };
 
-        let unstable_span = self.allow_internal_unstable(
+        let unstable_span = self.mark_span_with_reason(
             CompilerDesugaringKind::Async,
             span,
             vec![
@@ -1371,7 +1373,7 @@ impl<'a> LoweringContext<'a> {
         // desugaring that explicitly states that we don't want to track that.
         // Not tracking it makes lints in rustc and clippy very fragile as
         // frequently opened issues show.
-        let exist_ty_span = self.allow_internal_unstable(
+        let exist_ty_span = self.mark_span_with_reason(
             CompilerDesugaringKind::ExistentialReturnType,
             span,
             Vec::new(), // doesn'c actually allow anything unstable
@@ -3939,7 +3941,7 @@ impl<'a> LoweringContext<'a> {
             }),
             ExprKind::TryBlock(ref body) => {
                 self.with_catch_scope(body.id, |this| {
-                    let unstable_span = this.allow_internal_unstable(
+                    let unstable_span = this.mark_span_with_reason(
                         CompilerDesugaringKind::TryBlock,
                         body.span,
                         vec![
@@ -4377,7 +4379,7 @@ impl<'a> LoweringContext<'a> {
                 // expand <head>
                 let head = self.lower_expr(head);
                 let head_sp = head.span;
-                let desugared_span = self.allow_internal_unstable(
+                let desugared_span = self.mark_span_with_reason(
                     CompilerDesugaringKind::ForLoop,
                     head_sp,
                     Vec::new(),
@@ -4543,7 +4545,7 @@ impl<'a> LoweringContext<'a> {
                 //                 return Try::from_error(From::from(err)),
                 // }
 
-                let unstable_span = self.allow_internal_unstable(
+                let unstable_span = self.mark_span_with_reason(
                     CompilerDesugaringKind::QuestionMark,
                     e.span,
                     vec![
