@@ -73,6 +73,10 @@ an AST expression). `match_def_path()` in Clippy's `utils` module can also be us
 
 ## Writing code
 
+Clippy depends on the current git master version of rustc, which can change rapidly. Make sure you're
+working near rust-clippy's master, and use the `setup-toolchain.sh` script to configure the appropriate
+toolchain for this directory.
+
 [Llogiq's blog post on lints](https://llogiq.github.io/2015/06/04/workflows.html) is a nice primer
 to lint-writing, though it does get into advanced stuff. Most lints consist of an implementation of
 `LintPass` with one or more of its default methods overridden. See the existing lints for examples

@@ -29,7 +29,7 @@ cargo +nightly fmt --all -- --check
 # some lints are sensitive to formatting, exclude some files
 tests_need_reformatting="false"
 # switch to nightly
-rustup default nightly
+rustup override set nightly
 # avoid loop spam and allow cmds with exit status != 0
 set +ex
 
@@ -49,4 +49,4 @@ if [ "${tests_need_reformatting}" == "true" ] ; then
 fi
 
 # switch back to master
-rustup default master
+rustup override set master
