@@ -598,6 +598,10 @@ pub fn handle_code_action(
     for source_edit in assists.chain(fixes) {
         let title = source_edit.label.clone();
         let edit = source_edit.try_conv_with(&world)?;
+
+        // We cannot use the 'editor.action.showReferences' command directly
+        // because that command requires vscode types which we convert in the handler
+        // on the client side.
         let cmd = Command {
             title,
             command: "rust-analyzer.applySourceChange".to_string(),
