@@ -39,7 +39,7 @@ use std::ops::Deref;
 use rustc_data_structures::sync::{self, Lrc, ParallelIterator, par_iter};
 use std::slice;
 use std::{mem, ptr};
-use syntax::ast::{self, DUMMY_NODE_ID, Name, Ident, NodeId};
+use syntax::ast::{self, Name, Ident, NodeId};
 use syntax::attr;
 use syntax::ext::hygiene::Mark;
 use syntax::symbol::{keywords, Symbol, LocalInternedString, InternedString};
@@ -2795,7 +2795,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
 
     pub fn find_field_index(self, ident: Ident, variant: &VariantDef) -> Option<usize> {
         variant.fields.iter().position(|field| {
-            self.adjust_ident(ident, variant.did, DUMMY_NODE_ID).0 == field.ident.modern()
+            self.adjust_ident(ident, variant.did, hir::DUMMY_HIR_ID).0 == field.ident.modern()
         })
     }
 
@@ -3003,10 +3003,10 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
     /// its supposed definition name (`def_name`). The method also needs `DefId` of the supposed
     /// definition's parent/scope to perform comparison.
     pub fn hygienic_eq(self, use_name: Ident, def_name: Ident, def_parent_def_id: DefId) -> bool {
-        self.adjust_ident(use_name, def_parent_def_id, DUMMY_NODE_ID).0 == def_name.modern()
+        self.adjust_ident(use_name, def_parent_def_id, hir::DUMMY_HIR_ID).0 == def_name.modern()
     }
 
-    pub fn adjust_ident(self, mut ident: Ident, scope: DefId, block: NodeId) -> (Ident, DefId) {
+    pub fn adjust_ident(self, mut ident: Ident, scope: DefId, block: hir::HirId) -> (Ident, DefId) {
         ident = ident.modern();
         let target_expansion = match scope.krate {
             LOCAL_CRATE => self.hir().definitions().expansion_that_defined(scope.index),
@@ -3015,8 +3015,8 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
         let scope = match ident.span.adjust(target_expansion) {
             Some(actual_expansion) =>
                 self.hir().definitions().parent_module_of_macro_def(actual_expansion),
-            None if block == DUMMY_NODE_ID => DefId::local(CRATE_DEF_INDEX), // Dummy DefId
-            None => self.hir().get_module_parent(block),
+            None if block == hir::DUMMY_HIR_ID => DefId::local(CRATE_DEF_INDEX), // Dummy DefId
+            None => self.hir().get_module_parent_by_hir_id(block),
         };
         (ident, scope)
     }
@@ -3193,8 +3193,8 @@ fn param_env<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         if tcx.sess.opts.debugging_opts.chalk { Some(def_id) } else { None }
     );
 
-    let body_id = tcx.hir().as_local_node_id(def_id).map_or(DUMMY_NODE_ID, |id| {
-        tcx.hir().maybe_body_owned_by(id).map_or(id, |body| body.node_id)
+    let body_id = tcx.hir().as_local_hir_id(def_id).map_or(hir::DUMMY_HIR_ID, |id| {
+        tcx.hir().maybe_body_owned_by_by_hir_id(id).map_or(id, |body| body.hir_id)
     });
     let cause = traits::ObligationCause::misc(tcx.def_span(def_id), body_id);
     traits::normalize_param_env_or_error(tcx, def_id, unnormalized_env, cause)

@@ -805,7 +805,8 @@ impl<'a, 'tcx> NamePrivacyVisitor<'a, 'tcx> {
                    def: &'tcx ty::AdtDef, // definition of the struct or enum
                    field: &'tcx ty::FieldDef) { // definition of the field
         let ident = Ident::new(keywords::Invalid.name(), use_ctxt);
-        let def_id = self.tcx.adjust_ident(ident, def.did, self.current_item).1;
+        let current_hir = self.tcx.hir().node_to_hir_id(self.current_item);
+        let def_id = self.tcx.adjust_ident(ident, def.did, current_hir).1;
         if !def.is_enum() && !field.vis.is_accessible_from(def_id, self.tcx) {
             struct_span_err!(self.tcx.sess, span, E0451, "field `{}` of {} `{}` is private",
                              field.ident, def.variant_descr(), self.tcx.item_path_str(def.did))

@@ -1,3 +1,4 @@
+use rustc::hir;
 use rustc::infer::canonical::{Canonical, QueryResponse};
 use rustc::traits::query::{normalize::NormalizationResult, CanonicalProjectionGoal, NoSolution};
 use rustc::traits::{self, ObligationCause, SelectionContext, TraitEngineExt};
@@ -5,7 +6,6 @@ use rustc::ty::query::Providers;
 use rustc::ty::{ParamEnvAnd, TyCtxt};
 use rustc_data_structures::sync::Lrc;
 use std::sync::atomic::Ordering;
-use syntax::ast::DUMMY_NODE_ID;
 use syntax_pos::DUMMY_SP;
 
 crate fn provide(p: &mut Providers<'_>) {
@@ -34,7 +34,7 @@ fn normalize_projection_ty<'tcx>(
              value: goal,
          }| {
             let selcx = &mut SelectionContext::new(infcx);
-            let cause = ObligationCause::misc(DUMMY_SP, DUMMY_NODE_ID);
+            let cause = ObligationCause::misc(DUMMY_SP, hir::DUMMY_HIR_ID);
             let mut obligations = vec![];
             let answer = traits::normalize_projection_type(
                 selcx,
