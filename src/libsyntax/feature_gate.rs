@@ -1091,7 +1091,7 @@ pub const BUILTIN_ATTRIBUTES: &[(&str, AttributeType, AttributeTemplate, Attribu
                                               stable",
                                              cfg_fn!(profiler_runtime))),
 
-    ("allow_internal_unstable", Normal, template!(Word, List: "feat1, feat2"),
+    ("allow_internal_unstable", Normal, template!(Word, List: "feat1, feat2, ..."),
                                               Gated(Stability::Unstable,
                                               "allow_internal_unstable",
                                               EXPLAIN_ALLOW_INTERNAL_UNSTABLE,
