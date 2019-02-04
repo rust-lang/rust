@@ -33,7 +33,7 @@ pub fn server_capabilities() -> ServerCapabilities {
         workspace_symbol_provider: Some(true),
         code_action_provider: Some(CodeActionProviderCapability::Simple(true)),
         code_lens_provider: Some(CodeLensOptions {
-            resolve_provider: None,
+            resolve_provider: Some(true),
         }),
         document_formatting_provider: Some(true),
         document_range_formatting_provider: None,

@@ -5,15 +5,17 @@ use lsp_types::{
     FoldingRangeKind, FoldingRangeParams, Hover, HoverContents, Location, MarkupContent,
     MarkupKind, ParameterInformation, ParameterLabel, Position, PrepareRenameResponse, Range,
     RenameParams, SignatureInformation, SymbolInformation, TextDocumentIdentifier, TextEdit,
-    WorkspaceEdit
+    WorkspaceEdit,
 };
 use ra_ide_api::{
     FileId, FilePosition, FileRange, FoldKind, Query, RangeInfo, RunnableKind, Severity, Cancelable,
 };
-use ra_syntax::{AstNode, TextUnit};
+use ra_syntax::{AstNode, SyntaxKind, TextUnit};
 use rustc_hash::FxHashMap;
+use serde::{Serialize, Deserialize};
 use serde_json::to_value;
 use std::io::Write;
+use url_serde::Ser;
 
 use crate::{
     cargo_target_spec::{runnable_args, CargoTargetSpec},
@@ -596,6 +598,10 @@ pub fn handle_code_action(
     for source_edit in assists.chain(fixes) {
         let title = source_edit.label.clone();
         let edit = source_edit.try_conv_with(&world)?;
+
+        // We cannot use the 'editor.action.showReferences' command directly
+        // because that command requires vscode types which we convert in the handler
+        // on the client side.
         let cmd = Command {
             title,
             command: "rust-analyzer.applySourceChange".to_string(),
@@ -616,6 +622,7 @@ pub fn handle_code_lens(
 
     let mut lenses: Vec<CodeLens> = Default::default();
 
+    // Gather runnables
     for runnable in world.analysis().runnables(file_id)? {
         let title = match &runnable.kind {
             RunnableKind::Test { name: _ } | RunnableKind::TestMod { path: _ } => {
@@ -652,7 +659,85 @@ pub fn handle_code_lens(
         }
     }
 
+    // Handle impls
+    lenses.extend(
+        world
+            .analysis()
+            .file_structure(file_id)
+            .into_iter()
+            .filter(|it| match it.kind {
+                SyntaxKind::TRAIT_DEF | SyntaxKind::STRUCT_DEF | SyntaxKind::ENUM_DEF => true,
+                _ => false,
+            })
+            .map(|it| {
+                let range = it.node_range.conv_with(&line_index);
+                let pos = range.start;
+                let lens_params =
+                    req::TextDocumentPositionParams::new(params.text_document.clone(), pos);
+                CodeLens {
+                    range,
+                    command: None,
+                    data: Some(to_value(CodeLensResolveData::Impls(lens_params)).unwrap()),
+                }
+            }),
+    );
+
     return Ok(Some(lenses));
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+enum CodeLensResolveData {
+    Impls(req::TextDocumentPositionParams),
+}
+
+pub fn handle_code_lens_resolve(world: ServerWorld, code_lens: CodeLens) -> Result<CodeLens> {
+    let data = code_lens.data.unwrap();
+    let resolve = serde_json::from_value(data)?;
+    match resolve {
+        Some(CodeLensResolveData::Impls(lens_params)) => {
+            let locations: Vec<Location> =
+                match handle_goto_implementation(world, lens_params.clone())? {
+                    Some(req::GotoDefinitionResponse::Scalar(loc)) => vec![loc],
+                    Some(req::GotoDefinitionResponse::Array(locs)) => locs,
+                    Some(req::GotoDefinitionResponse::Link(links)) => links
+                        .into_iter()
+                        .map(|link| Location::new(link.target_uri, link.target_selection_range))
+                        .collect(),
+                    _ => vec![],
+                };
+
+            let title = if locations.len() == 1 {
+                "1 implementation".into()
+            } else {
+                format!("{} implementations", locations.len())
+            };
+
+            return Ok(CodeLens {
+                range: code_lens.range,
+                command: Some(Command {
+                    title,
+                    command: "rust-analyzer.showReferences".into(),
+                    arguments: Some(vec![
+                        to_value(&Ser::new(&lens_params.text_document.uri)).unwrap(),
+                        to_value(code_lens.range.start).unwrap(),
+                        to_value(locations).unwrap(),
+                    ]),
+                }),
+                data: None,
+            });
+        }
+        _ => {
+            return Ok(CodeLens {
+                range: code_lens.range,
+                command: Some(Command {
+                    title: "Error".into(),
+                    ..Default::default()
+                }),
+                data: None,
+            });
+        }
+    }
 }
 
 pub fn handle_document_highlight(
