@@ -202,7 +202,7 @@ impl<'a, 'tcx> AutoTraitFinder<'a, 'tcx> {
                 full_env,
                 ty,
                 trait_did,
-                ObligationCause::misc(DUMMY_SP, ast::DUMMY_NODE_ID),
+                ObligationCause::misc(DUMMY_SP, hir::DUMMY_HIR_ID),
             );
             fulfill.select_all_or_error(&infcx).unwrap_or_else(|e| {
                 panic!(
@@ -315,7 +315,7 @@ impl<'a, 'tcx> AutoTraitFinder<'a, 'tcx> {
             user_env.caller_bounds.iter().cloned().collect();
 
         let mut new_env = param_env.clone();
-        let dummy_cause = ObligationCause::misc(DUMMY_SP, ast::DUMMY_NODE_ID);
+        let dummy_cause = ObligationCause::misc(DUMMY_SP, hir::DUMMY_HIR_ID);
 
         while let Some(pred) = predicates.pop_front() {
             infcx.clear_caches();
@@ -669,7 +669,7 @@ impl<'a, 'tcx> AutoTraitFinder<'a, 'tcx> {
         select: &mut SelectionContext<'c, 'd, 'cx>,
         only_projections: bool,
     ) -> bool {
-        let dummy_cause = ObligationCause::misc(DUMMY_SP, ast::DUMMY_NODE_ID);
+        let dummy_cause = ObligationCause::misc(DUMMY_SP, hir::DUMMY_HIR_ID);
 
         for (obligation, mut predicate) in nested
             .map(|o| (o.clone(), o.predicate.clone()))

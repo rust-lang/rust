@@ -100,7 +100,7 @@ impl<'cx, 'gcx, 'tcx> WritebackCx<'cx, 'gcx, 'tcx> {
         body: &'gcx hir::Body,
         rustc_dump_user_substs: bool,
     ) -> WritebackCx<'cx, 'gcx, 'tcx> {
-        let owner = fcx.tcx.hir().definitions().node_to_hir_id(body.id().node_id);
+        let owner = body.id().hir_id;
 
         WritebackCx {
             fcx,

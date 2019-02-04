@@ -56,8 +56,7 @@ fn const_is_rvalue_promotable_to_static<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     let node_id = tcx.hir().as_local_node_id(def_id)
         .expect("rvalue_promotable_map invoked with non-local def-id");
     let body_id = tcx.hir().body_owned_by(node_id);
-    let body_hir_id = tcx.hir().node_to_hir_id(body_id.node_id);
-    tcx.rvalue_promotable_map(def_id).contains(&body_hir_id.local_id)
+    tcx.rvalue_promotable_map(def_id).contains(&body_id.hir_id.local_id)
 }
 
 fn rvalue_promotable_map<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,

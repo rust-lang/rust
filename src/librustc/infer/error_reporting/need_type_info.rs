@@ -105,7 +105,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
         };
 
         if let Some(body_id) = body_id {
-            let expr = self.tcx.hir().expect_expr(body_id.node_id);
+            let expr = self.tcx.hir().expect_expr_by_hir_id(body_id.hir_id);
             local_visitor.visit_expr(expr);
         }
 

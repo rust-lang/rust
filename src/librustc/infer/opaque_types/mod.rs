@@ -98,7 +98,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
     pub fn instantiate_opaque_types<T: TypeFoldable<'tcx>>(
         &self,
         parent_def_id: DefId,
-        body_id: ast::NodeId,
+        body_id: hir::HirId,
         param_env: ty::ParamEnv<'tcx>,
         value: &T,
     ) -> InferOk<'tcx, (T, OpaqueTypeMap<'tcx>)> {
@@ -632,7 +632,7 @@ impl<'cx, 'gcx, 'tcx> TypeFolder<'gcx, 'tcx> for ReverseMapper<'cx, 'gcx, 'tcx> 
 struct Instantiator<'a, 'gcx: 'tcx, 'tcx: 'a> {
     infcx: &'a InferCtxt<'a, 'gcx, 'tcx>,
     parent_def_id: DefId,
-    body_id: ast::NodeId,
+    body_id: hir::HirId,
     param_env: ty::ParamEnv<'tcx>,
     opaque_types: OpaqueTypeMap<'tcx>,
     obligations: Vec<PredicateObligation<'tcx>>,
