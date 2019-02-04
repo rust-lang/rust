@@ -606,7 +606,7 @@ pub fn codegen_call_inner<'a, 'tcx: 'a>(
     let return_ptr = match output_pass_mode {
         PassMode::NoPass => None,
         PassMode::ByRef => match ret_place {
-            Some(ret_place) => Some(ret_place.expect_addr()),
+            Some(ret_place) => Some(ret_place.cplace_to_addr(fx)),
             None => Some(fx.bcx.ins().iconst(fx.pointer_type, 0)),
         },
         PassMode::ByVal(_) => None,

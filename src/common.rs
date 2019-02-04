@@ -293,10 +293,19 @@ impl<'a, 'tcx: 'a> CPlace<'tcx> {
         }
     }
 
-    pub fn expect_addr(self) -> Value {
+    pub fn cplace_to_addr(self, fx: &mut FunctionCx<'a, 'tcx, impl Backend>) -> Value {
+        match self.to_addr_maybe_unsized(fx) {
+            (addr, None) => addr,
+            (_, Some(_)) => bug!("Expected sized cplace, found {:?}", self),
+        }
+    }
+
+    pub fn to_addr_maybe_unsized(
+        self,
+        fx: &mut FunctionCx<'a, 'tcx, impl Backend>,
+    ) -> (Value, Option<Value>) {
         match self {
-            CPlace::Addr(addr, None, _layout) => addr,
-            CPlace::Addr(_, _, _) => bug!("Expected sized CPlace::Addr, found {:?}", self),
+            CPlace::Addr(addr, extra, _layout) => (addr, extra),
             CPlace::Var(_, _) => bug!("Expected CPlace::Addr, found CPlace::Var"),
         }
     }
@@ -347,31 +356,32 @@ impl<'a, 'tcx: 'a> CPlace<'tcx> {
             }
         }
 
-        match self {
+        let (addr, dst_layout) = match self {
             CPlace::Var(var, _) => {
                 let data = from.load_scalar(fx);
-                fx.bcx.def_var(mir_var(var), data)
+                fx.bcx.def_var(mir_var(var), data);
+                return;
             }
-            CPlace::Addr(addr, None, dst_layout) => {
-                match from {
-                    CValue::ByVal(val, _src_layout) => {
-                        fx.bcx.ins().store(MemFlags::new(), val, addr, 0);
-                    }
-                    CValue::ByValPair(val1, val2, _src_layout) => {
-                        let val1_offset = dst_layout.fields.offset(0).bytes() as i32;
-                        let val2_offset = dst_layout.fields.offset(1).bytes() as i32;
-                        fx.bcx.ins().store(MemFlags::new(), val1, addr, val1_offset);
-                        fx.bcx.ins().store(MemFlags::new(), val2, addr, val2_offset);
-                    }
-                    CValue::ByRef(from, src_layout) => {
-                        let size = dst_layout.size.bytes();
-                        let src_align = src_layout.align.abi.bytes() as u8;
-                        let dst_align = dst_layout.align.abi.bytes() as u8;
-                        fx.bcx.emit_small_memcpy(fx.module.target_config(), addr, from, size, dst_align, src_align);
-                    }
-                }
-            }
+            CPlace::Addr(addr, None, dst_layout) => (addr, dst_layout),
             CPlace::Addr(_, _, _) => bug!("Can't write value to unsized place {:?}", self),
+        };
+
+        match from {
+            CValue::ByVal(val, _src_layout) => {
+                fx.bcx.ins().store(MemFlags::new(), val, addr, 0);
+            }
+            CValue::ByValPair(val1, val2, _src_layout) => {
+                let val1_offset = dst_layout.fields.offset(0).bytes() as i32;
+                let val2_offset = dst_layout.fields.offset(1).bytes() as i32;
+                fx.bcx.ins().store(MemFlags::new(), val1, addr, val1_offset);
+                fx.bcx.ins().store(MemFlags::new(), val2, addr, val2_offset);
+            }
+            CValue::ByRef(from, src_layout) => {
+                let size = dst_layout.size.bytes();
+                let src_align = src_layout.align.abi.bytes() as u8;
+                let dst_align = dst_layout.align.abi.bytes() as u8;
+                fx.bcx.emit_small_memcpy(fx.module.target_config(), addr, from, size, dst_align, src_align);
+            }
         }
     }
 
@@ -380,25 +390,17 @@ impl<'a, 'tcx: 'a> CPlace<'tcx> {
         fx: &mut FunctionCx<'a, 'tcx, impl Backend>,
         field: mir::Field,
     ) -> CPlace<'tcx> {
-        match self {
-            CPlace::Var(var, layout) => {
-                bug!(
-                    "Tried to project {:?}, which is put in SSA var {:?}",
-                    layout.ty,
-                    var
-                );
-            }
-            CPlace::Addr(base, extra, layout) => {
-                let (field_ptr, field_layout) = codegen_field(fx, base, layout, field);
-                let extra = if field_layout.is_unsized() {
-                    assert!(extra.is_some());
-                    extra
-                } else {
-                    None
-                };
-                CPlace::Addr(field_ptr, extra, field_layout)
-            }
-        }
+        let layout = self.layout();
+        let (base, extra) = self.to_addr_maybe_unsized(fx);
+
+        let (field_ptr, field_layout) = codegen_field(fx, base, layout, field);
+        let extra = if field_layout.is_unsized() {
+            assert!(extra.is_some());
+            extra
+        } else {
+            None
+        };
+        CPlace::Addr(field_ptr, extra, field_layout)
     }
 
     pub fn place_index(
@@ -407,13 +409,10 @@ impl<'a, 'tcx: 'a> CPlace<'tcx> {
         index: Value,
     ) -> CPlace<'tcx> {
         let (elem_layout, addr) = match self.layout().ty.sty {
-            ty::Array(elem_ty, _) => (fx.layout_of(elem_ty), self.expect_addr()),
+            ty::Array(elem_ty, _) => (fx.layout_of(elem_ty), self.cplace_to_addr(fx)),
             ty::Slice(elem_ty) => (
                 fx.layout_of(elem_ty),
-                match self {
-                    CPlace::Addr(addr, _, _) => addr,
-                    CPlace::Var(_, _) => bug!("Expected CPlace::Addr found CPlace::Var"),
-                },
+                self.to_addr_maybe_unsized(fx).0,
             ),
             _ => bug!("place_index({:?})", self.layout().ty),
         };
@@ -433,7 +432,7 @@ impl<'a, 'tcx: 'a> CPlace<'tcx> {
         } else {
             match self.layout().abi {
                 Abi::ScalarPair(ref a, ref b) => {
-                    let addr = self.expect_addr();
+                    let addr = self.cplace_to_addr(fx);
                     let ptr =
                         fx.bcx
                             .ins()
@@ -456,28 +455,28 @@ impl<'a, 'tcx: 'a> CPlace<'tcx> {
 
     pub fn write_place_ref(self, fx: &mut FunctionCx<'a, 'tcx, impl Backend>, dest: CPlace<'tcx>) {
         if !self.layout().is_unsized() {
-            let ptr = CValue::ByVal(self.expect_addr(), dest.layout());
+            let ptr = CValue::ByVal(self.cplace_to_addr(fx), dest.layout());
             dest.write_cvalue(fx, ptr);
         } else {
-            match self {
-                CPlace::Var(_, _) => bug!("expected CPlace::Addr found CPlace::Var"),
-                CPlace::Addr(value, extra, _) => match dest.layout().abi {
-                    Abi::ScalarPair(ref a, _) => {
-                        fx.bcx
-                            .ins()
-                            .store(MemFlags::new(), value, dest.expect_addr(), 0);
-                        fx.bcx.ins().store(
-                            MemFlags::new(),
-                            extra.expect("unsized type without metadata"),
-                            dest.expect_addr(),
-                            a.value.size(&fx.tcx).bytes() as u32 as i32,
-                        );
-                    }
-                    _ => bug!(
-                        "Non ScalarPair abi {:?} in write_place_ref dest",
-                        dest.layout().abi
-                    ),
-                },
+            let (value, extra) = self.to_addr_maybe_unsized(fx);
+
+            match dest.layout().abi {
+                Abi::ScalarPair(ref a, _) => {
+                    let dest_addr = dest.cplace_to_addr(fx);
+                    fx.bcx
+                        .ins()
+                        .store(MemFlags::new(), value, dest_addr, 0);
+                    fx.bcx.ins().store(
+                        MemFlags::new(),
+                        extra.expect("unsized type without metadata"),
+                        dest_addr,
+                        a.value.size(&fx.tcx).bytes() as u32 as i32,
+                    );
+                }
+                _ => bug!(
+                    "Non ScalarPair abi {:?} in write_place_ref dest",
+                    dest.layout().abi
+                ),
             }
         }
     }

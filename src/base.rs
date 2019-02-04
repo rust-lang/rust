@@ -688,10 +688,9 @@ fn codegen_array_len<'a, 'tcx: 'a>(
             let len = crate::constant::force_eval_const(fx, len).unwrap_usize(fx.tcx) as i64;
             fx.bcx.ins().iconst(fx.pointer_type, len)
         }
-        ty::Slice(_elem_ty) => match place {
-            CPlace::Addr(_, size, _) => size.unwrap(),
-            CPlace::Var(_, _) => unreachable!(),
-        },
+        ty::Slice(_elem_ty) => {
+            place.to_addr_maybe_unsized(fx).1.expect("Length metadata for slice place")
+        }
         _ => bug!("Rvalue::Len({:?})", place),
     }
 }
