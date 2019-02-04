@@ -21,7 +21,6 @@
 
 use std::collections::HashMap;
 
-use config::lists::*;
 use syntax::parse::new_parser_from_tts;
 use syntax::parse::parser::Parser;
 use syntax::parse::token::{BinOpToken, DelimToken, Token};
@@ -32,19 +31,22 @@ use syntax::tokenstream::{Cursor, ThinTokenStream, TokenStream, TokenTree};
 use syntax::ThinVec;
 use syntax::{ast, parse, ptr};
 
-use comment::{contains_comment, CharClasses, FindUncommented, FullCodeCharKind, LineClasses};
-use expr::rewrite_array;
-use lists::{itemize_list, write_list, ListFormatting};
-use overflow;
-use rewrite::{Rewrite, RewriteContext};
-use shape::{Indent, Shape};
-use source_map::SpanUtils;
-use spanned::Spanned;
-use utils::{
+use crate::comment::{
+    contains_comment, CharClasses, FindUncommented, FullCodeCharKind, LineClasses,
+};
+use crate::config::lists::*;
+use crate::expr::rewrite_array;
+use crate::lists::{itemize_list, write_list, ListFormatting};
+use crate::overflow;
+use crate::rewrite::{Rewrite, RewriteContext};
+use crate::shape::{Indent, Shape};
+use crate::source_map::SpanUtils;
+use crate::spanned::Spanned;
+use crate::utils::{
     format_visibility, is_empty_line, mk_sp, remove_trailing_white_spaces, rewrite_ident,
     trim_left_preserve_layout, wrap_str, NodeIdExt,
 };
-use visitor::FmtVisitor;
+use crate::visitor::FmtVisitor;
 
 const FORCED_BRACKET_MACROS: &[&str] = &["vec!"];
 
@@ -75,7 +77,7 @@ impl MacroArg {
 
 impl Rewrite for ast::Item {
     fn rewrite(&self, context: &RewriteContext, shape: Shape) -> Option<String> {
-        let mut visitor = ::visitor::FmtVisitor::from_context(context);
+        let mut visitor = crate::visitor::FmtVisitor::from_context(context);
         visitor.block_indent = shape.indent;
         visitor.last_pos = self.span().lo();
         visitor.visit_item(self);
@@ -1271,12 +1273,12 @@ impl MacroBranch {
         config.set().max_width(new_width);
 
         // First try to format as items, then as statements.
-        let new_body_snippet = match ::format_snippet(&body_str, &config) {
+        let new_body_snippet = match crate::format_snippet(&body_str, &config) {
             Some(new_body) => new_body,
             None => {
                 let new_width = new_width + config.tab_spaces();
                 config.set().max_width(new_width);
-                match ::format_code_block(&body_str, &config) {
+                match crate::format_code_block(&body_str, &config) {
                     Some(new_body) => new_body,
                     None => return None,
                 }
@@ -1374,7 +1376,7 @@ fn format_lazy_static(context: &RewriteContext, shape: Shape, ts: &TokenStream) 
 
     while parser.token != Token::Eof {
         // Parse a `lazy_static!` item.
-        let vis = ::utils::format_visibility(context, &parse_or!(parse_visibility, false));
+        let vis = crate::utils::format_visibility(context, &parse_or!(parse_visibility, false));
         parser.eat_keyword(symbol::keywords::Static);
         parser.eat_keyword(symbol::keywords::Ref);
         let id = parse_or!(parse_ident);
@@ -1392,7 +1394,7 @@ fn format_lazy_static(context: &RewriteContext, shape: Shape, ts: &TokenStream) 
             id,
             ty.rewrite(context, nested_shape)?
         ));
-        result.push_str(&::expr::rewrite_assign_rhs(
+        result.push_str(&crate::expr::rewrite_assign_rhs(
             context,
             stmt,
             &*expr,

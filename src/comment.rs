@@ -15,14 +15,14 @@ use std::{self, borrow::Cow, iter};
 use itertools::{multipeek, MultiPeek};
 use syntax::source_map::Span;
 
-use config::Config;
-use rewrite::RewriteContext;
-use shape::{Indent, Shape};
-use string::{rewrite_string, StringFormat};
-use utils::{
+use crate::config::Config;
+use crate::rewrite::RewriteContext;
+use crate::shape::{Indent, Shape};
+use crate::string::{rewrite_string, StringFormat};
+use crate::utils::{
     count_newlines, first_line_width, last_line_width, trim_left_preserve_layout, unicode_str_width,
 };
-use {ErrorKind, FormattingError};
+use crate::{ErrorKind, FormattingError};
 
 fn is_custom_comment(comment: &str) -> bool {
     if !comment.starts_with("//") {
@@ -657,7 +657,7 @@ impl<'a> CommentRewrite<'a> {
                     _ => {
                         let mut config = self.fmt.config.clone();
                         config.set().wrap_comments(false);
-                        match ::format_code_block(&self.code_block_buffer, &config) {
+                        match crate::format_code_block(&self.code_block_buffer, &config) {
                             Some(ref s) => trim_custom_comment_prefix(&s.snippet),
                             None => trim_custom_comment_prefix(&self.code_block_buffer),
                         }
@@ -1672,7 +1672,7 @@ fn remove_comment_header(comment: &str) -> &str {
 #[cfg(test)]
 mod test {
     use super::*;
-    use shape::{Indent, Shape};
+    use crate::shape::{Indent, Shape};
 
     #[test]
     fn char_classes() {
@@ -1733,11 +1733,11 @@ mod test {
     #[test]
     #[rustfmt::skip]
     fn format_doc_comments() {
-        let mut wrap_normalize_config: ::config::Config = Default::default();
+        let mut wrap_normalize_config: crate::config::Config = Default::default();
         wrap_normalize_config.set().wrap_comments(true);
         wrap_normalize_config.set().normalize_comments(true);
 
-        let mut wrap_config: ::config::Config = Default::default();
+        let mut wrap_config: crate::config::Config = Default::default();
         wrap_config.set().wrap_comments(true);
 
         let comment = rewrite_comment(" //test",

@@ -8,7 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use regex::Regex;
 use std::cell::Cell;
 use std::default::Default;
 use std::fs::File;
@@ -16,10 +15,12 @@ use std::io::{Error, ErrorKind, Read};
 use std::path::{Path, PathBuf};
 use std::{env, fs};
 
-use config::config_type::ConfigType;
-pub use config::file_lines::{FileLines, FileName, Range};
-pub use config::lists::*;
-pub use config::options::*;
+use regex::Regex;
+
+use crate::config::config_type::ConfigType;
+pub use crate::config::file_lines::{FileLines, FileName, Range};
+pub use crate::config::lists::*;
+pub use crate::config::options::*;
 
 #[macro_use]
 pub mod config_type;

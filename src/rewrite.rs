@@ -10,16 +10,16 @@
 
 // A generic trait to abstract the rewriting of an element (of the AST).
 
+use std::cell::RefCell;
+
 use syntax::parse::ParseSess;
 use syntax::ptr;
 use syntax::source_map::{SourceMap, Span};
 
-use config::{Config, IndentStyle};
-use shape::Shape;
-use visitor::SnippetProvider;
-use FormatReport;
-
-use std::cell::RefCell;
+use crate::config::{Config, IndentStyle};
+use crate::shape::Shape;
+use crate::visitor::SnippetProvider;
+use crate::FormatReport;
 
 pub trait Rewrite {
     /// Rewrite self into shape.

@@ -8,32 +8,32 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+use std::cell::RefCell;
+
 use syntax::attr::HasAttrs;
 use syntax::parse::ParseSess;
 use syntax::source_map::{self, BytePos, Pos, SourceMap, Span};
 use syntax::{ast, visit};
 
-use attr::*;
-use comment::{CodeCharKind, CommentCodeSlices, FindUncommented};
-use config::{BraceStyle, Config};
-use items::{
+use crate::attr::*;
+use crate::comment::{CodeCharKind, CommentCodeSlices, FindUncommented};
+use crate::config::{BraceStyle, Config};
+use crate::items::{
     format_impl, format_trait, format_trait_alias, is_mod_decl, is_use_item,
     rewrite_associated_impl_type, rewrite_associated_type, rewrite_existential_impl_type,
     rewrite_existential_type, rewrite_extern_crate, rewrite_type_alias, FnSig, StaticParts,
     StructParts,
 };
-use macros::{rewrite_macro, rewrite_macro_def, MacroPosition};
-use rewrite::{Rewrite, RewriteContext};
-use shape::{Indent, Shape};
-use source_map::{LineRangeUtils, SpanUtils};
-use spanned::Spanned;
-use utils::{
+use crate::macros::{rewrite_macro, rewrite_macro_def, MacroPosition};
+use crate::rewrite::{Rewrite, RewriteContext};
+use crate::shape::{Indent, Shape};
+use crate::source_map::{LineRangeUtils, SpanUtils};
+use crate::spanned::Spanned;
+use crate::utils::{
     self, contains_skip, count_newlines, inner_attributes, mk_sp, ptr_vec_to_ref_vec,
     rewrite_ident, DEPR_SKIP_ANNOTATION,
 };
-use {ErrorKind, FormatReport, FormattingError};
-
-use std::cell::RefCell;
+use crate::{ErrorKind, FormatReport, FormattingError};
 
 /// Creates a string slice corresponding to the specified span.
 pub struct SnippetProvider<'a> {

@@ -11,12 +11,12 @@
 use std::fs;
 use std::io::{self, Write};
 
-use checkstyle::output_checkstyle_file;
-use config::{Config, EmitMode, FileName, Verbosity};
-use rustfmt_diff::{make_diff, output_modified, print_diff};
+use crate::checkstyle::output_checkstyle_file;
+use crate::config::{Config, EmitMode, FileName, Verbosity};
+use crate::rustfmt_diff::{make_diff, output_modified, print_diff};
 
 #[cfg(test)]
-use formatting::FileRecord;
+use crate::formatting::FileRecord;
 
 // Append a newline to the end of each file.
 pub fn append_newline(s: &mut String) {
@@ -33,13 +33,13 @@ where
     T: Write,
 {
     if config.emit_mode() == EmitMode::Checkstyle {
-        write!(out, "{}", ::checkstyle::header())?;
+        write!(out, "{}", crate::checkstyle::header())?;
     }
     for &(ref filename, ref text) in source_file {
         write_file(text, filename, out, config)?;
     }
     if config.emit_mode() == EmitMode::Checkstyle {
-        write!(out, "{}", ::checkstyle::footer())?;
+        write!(out, "{}", crate::checkstyle::footer())?;
     }
 
     Ok(())

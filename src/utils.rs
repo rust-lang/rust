@@ -20,13 +20,12 @@ use syntax::ast::{
 use syntax::ptr;
 use syntax::source_map::{BytePos, Span, NO_EXPANSION};
 use syntax_pos::Mark;
-
-use comment::{filter_normal_code, CharClasses, FullCodeCharKind, LineClasses};
-use config::{Config, Version};
-use rewrite::RewriteContext;
-use shape::{Indent, Shape};
-
 use unicode_width::UnicodeWidthStr;
+
+use crate::comment::{filter_normal_code, CharClasses, FullCodeCharKind, LineClasses};
+use crate::config::{Config, Version};
+use crate::rewrite::RewriteContext;
+use crate::shape::{Indent, Shape};
 
 pub const DEPR_SKIP_ANNOTATION: &str = "rustfmt_skip";
 pub const SKIP_ANNOTATION: &str = "rustfmt::skip";

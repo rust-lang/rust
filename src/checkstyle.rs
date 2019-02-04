@@ -11,7 +11,7 @@
 use std::io::{self, Write};
 use std::path::Path;
 
-use rustfmt_diff::{DiffLine, Mismatch};
+use crate::rustfmt_diff::{DiffLine, Mismatch};
 
 /// The checkstyle header - should be emitted before the output of Rustfmt.
 ///

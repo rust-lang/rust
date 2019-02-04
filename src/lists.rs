@@ -13,15 +13,15 @@
 use std::cmp;
 use std::iter::Peekable;
 
-use config::lists::*;
 use syntax::source_map::BytePos;
 
-use comment::{find_comment_end, rewrite_comment, FindUncommented};
-use config::{Config, IndentStyle};
-use rewrite::RewriteContext;
-use shape::{Indent, Shape};
-use utils::{count_newlines, first_line_width, last_line_width, mk_sp, starts_with_newline};
-use visitor::SnippetProvider;
+use crate::comment::{find_comment_end, rewrite_comment, FindUncommented};
+use crate::config::lists::*;
+use crate::config::{Config, IndentStyle};
+use crate::rewrite::RewriteContext;
+use crate::shape::{Indent, Shape};
+use crate::utils::{count_newlines, first_line_width, last_line_width, mk_sp, starts_with_newline};
+use crate::visitor::SnippetProvider;
 
 pub struct ListFormatting<'a> {
     tactic: DefinitiveListTactic,

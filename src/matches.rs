@@ -12,22 +12,22 @@
 
 use std::iter::repeat;
 
-use config::lists::*;
 use syntax::source_map::{BytePos, Span};
 use syntax::{ast, ptr};
 
-use comment::{combine_strs_with_missing_comments, rewrite_comment};
-use config::{Config, ControlBraceStyle, IndentStyle, Version};
-use expr::{
+use crate::comment::{combine_strs_with_missing_comments, rewrite_comment};
+use crate::config::lists::*;
+use crate::config::{Config, ControlBraceStyle, IndentStyle, Version};
+use crate::expr::{
     format_expr, is_empty_block, is_simple_block, is_unsafe_block, prefer_next_line, rewrite_cond,
     rewrite_multiple_patterns, ExprType, RhsTactics,
 };
-use lists::{itemize_list, write_list, ListFormatting};
-use rewrite::{Rewrite, RewriteContext};
-use shape::Shape;
-use source_map::SpanUtils;
-use spanned::Spanned;
-use utils::{
+use crate::lists::{itemize_list, write_list, ListFormatting};
+use crate::rewrite::{Rewrite, RewriteContext};
+use crate::shape::Shape;
+use crate::source_map::SpanUtils;
+use crate::spanned::Spanned;
+use crate::utils::{
     contains_skip, extra_offset, first_line_width, inner_attributes, last_line_extendable, mk_sp,
     ptr_vec_to_ref_vec, semicolon_for_expr, trimmed_last_line_width,
 };

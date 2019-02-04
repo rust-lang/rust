@@ -11,11 +11,11 @@
 //! This module contains utilities that work with the `SourceMap` from `libsyntax`/`syntex_syntax`.
 //! This includes extension traits and methods for looking up spans and line ranges for AST nodes.
 
-use config::file_lines::LineRange;
 use syntax::source_map::{BytePos, SourceMap, Span};
-use visitor::SnippetProvider;
 
-use comment::FindUncommented;
+use crate::comment::FindUncommented;
+use crate::config::file_lines::LineRange;
+use crate::visitor::SnippetProvider;
 
 pub trait SpanUtils {
     fn span_after(&self, original: Span, needle: &str) -> BytePos;

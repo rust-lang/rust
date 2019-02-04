@@ -22,7 +22,7 @@ use std::str::FromStr;
 
 use getopts::{Matches, Options};
 
-use rustfmt::{load_config, CliOptions, Input, Session};
+use crate::rustfmt::{load_config, CliOptions, Input, Session};
 
 fn prune_files(files: Vec<&str>) -> Vec<&str> {
     let prefixes: Vec<_> = files

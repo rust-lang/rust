@@ -12,12 +12,12 @@ use std::borrow::Cow;
 
 use syntax::source_map::{BytePos, Pos, Span};
 
-use comment::{rewrite_comment, CodeCharKind, CommentCodeSlices};
-use config::{EmitMode, FileName};
-use shape::{Indent, Shape};
-use source_map::LineRangeUtils;
-use utils::{count_newlines, last_line_width, mk_sp};
-use visitor::FmtVisitor;
+use crate::comment::{rewrite_comment, CodeCharKind, CommentCodeSlices};
+use crate::config::{EmitMode, FileName};
+use crate::shape::{Indent, Shape};
+use crate::source_map::LineRangeUtils;
+use crate::utils::{count_newlines, last_line_width, mk_sp};
+use crate::visitor::FmtVisitor;
 
 struct SnippetStatus {
     /// An offset to the current line from the beginning of the original snippet.

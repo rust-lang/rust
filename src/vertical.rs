@@ -12,19 +12,21 @@
 
 use std::cmp;
 
-use config::lists::*;
 use syntax::ast;
 use syntax::source_map::{BytePos, Span};
 
-use comment::{combine_strs_with_missing_comments, contains_comment};
-use expr::rewrite_field;
-use items::{rewrite_struct_field, rewrite_struct_field_prefix};
-use lists::{definitive_tactic, itemize_list, write_list, ListFormatting, ListItem, Separator};
-use rewrite::{Rewrite, RewriteContext};
-use shape::{Indent, Shape};
-use source_map::SpanUtils;
-use spanned::Spanned;
-use utils::{contains_skip, is_attributes_extendable, mk_sp, rewrite_ident};
+use crate::comment::{combine_strs_with_missing_comments, contains_comment};
+use crate::config::lists::*;
+use crate::expr::rewrite_field;
+use crate::items::{rewrite_struct_field, rewrite_struct_field_prefix};
+use crate::lists::{
+    definitive_tactic, itemize_list, write_list, ListFormatting, ListItem, Separator,
+};
+use crate::rewrite::{Rewrite, RewriteContext};
+use crate::shape::{Indent, Shape};
+use crate::source_map::SpanUtils;
+use crate::spanned::Spanned;
+use crate::utils::{contains_skip, is_attributes_extendable, mk_sp, rewrite_ident};
 
 pub trait AlignedItem {
     fn skip(&self) -> bool;

@@ -8,14 +8,14 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use config::config_type::ConfigType;
-use config::lists::*;
-use config::{Config, FileName};
+use std::collections::HashSet;
+use std::path::{Path, PathBuf};
 
 use atty;
 
-use std::collections::HashSet;
-use std::path::{Path, PathBuf};
+use crate::config::config_type::ConfigType;
+use crate::config::lists::*;
+use crate::config::{Config, FileName};
 
 /// Macro that will stringify the enum variants or a provided textual repr
 #[macro_export]
@@ -169,7 +169,7 @@ impl NewlineStyle {
     /// If the style is set to `Auto` and `raw_input_text` contains no
     /// newlines, the `Native` style will be used.
     pub(crate) fn apply(self, formatted_text: &mut String, raw_input_text: &str) {
-        use NewlineStyle::*;
+        use crate::NewlineStyle::*;
         let mut style = self;
         if style == Auto {
             style = Self::auto_detect(raw_input_text);

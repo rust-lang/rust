@@ -24,7 +24,7 @@ use failure::err_msg;
 
 use getopts::{Matches, Options};
 
-use rustfmt::{
+use crate::rustfmt::{
     load_config, CliOptions, Color, Config, Edition, EmitMode, ErrorKind, FileLines, FileName,
     Input, Session, Verbosity,
 };
