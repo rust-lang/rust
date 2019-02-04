@@ -1176,9 +1176,15 @@ pub const BUILTIN_ATTRIBUTES: &[(&str, AttributeType, AttributeTemplate, Attribu
     ("stable", Whitelisted, template!(List: r#"feature = "name", since = "version""#), Ungated),
     ("unstable", Whitelisted, template!(List: r#"feature = "name", reason = "...", issue = "N""#),
                                         Ungated),
-    ("deprecated", Normal, template!(Word, List: r#"/*opt*/ since = "version",
-                                                    /*opt*/ note = "reason"#,
-                                                    NameValueStr: "reason"), Ungated),
+    ("deprecated",
+        Normal,
+        template!(
+            Word,
+            List: r#"/*opt*/ since = "version", /*opt*/ note = "reason"#,
+            NameValueStr: "reason"
+        ),
+        Ungated
+    ),
 
     ("rustc_paren_sugar", Normal, template!(Word), Gated(Stability::Unstable,
                                         "unboxed_closures",
