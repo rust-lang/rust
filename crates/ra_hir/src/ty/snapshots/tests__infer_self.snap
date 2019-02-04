@@ -1,8 +1,8 @@
 ---
-created: "2019-01-22T14:45:00.052694700+00:00"
-creator: insta@0.4.0
+created: "2019-02-04T19:40:48.826936500+00:00"
+creator: insta@0.5.3
 expression: "&result"
-source: "crates\\ra_hir\\src\\ty\\tests.rs"
+source: crates/ra_hir/src/ty/tests.rs
 ---
 [34; 38) 'self': &S
 [40; 61) '{     ...     }': ()
@@ -10,4 +10,8 @@ source: "crates\\ra_hir\\src\\ty\\tests.rs"
 [75; 79) 'self': &S
 [88; 109) '{     ...     }': ()
 [98; 102) 'self': &S
+[133; 153) '{     ...     }': S
+[143; 147) 'S {}': S
+[177; 200) '{     ...     }': S
+[187; 194) 'Self {}': S
 
