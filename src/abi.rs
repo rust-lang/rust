@@ -356,7 +356,8 @@ fn local_place<'a, 'tcx: 'a>(
             ));
         }
 
-        place
+        // Take stack_addr in advance to avoid many duplicate instructions
+        CPlace::Addr(place.to_addr(fx), None, layout)
     };
 
     let prev_place = fx.local_map.insert(local, place);
