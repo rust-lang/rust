@@ -346,14 +346,18 @@ fn local_place<'a, 'tcx: 'a>(
         {
             let TyLayout { ty, details } = layout;
             let ty::layout::LayoutDetails { size, align, abi: _, variants: _, fields: _ } = details;
-            let stack_slot = match place {
-                CPlace::Stack(stack_slot, _) => stack_slot,
+            match place {
+                CPlace::Stack(stack_slot, _) => fx.add_entity_comment(stack_slot, format!(
+                    "{:?}: {:?} size={} align={},{}",
+                    local, ty, size.bytes(), align.abi.bytes(), align.pref.bytes(),
+                )),
+                CPlace::NoPlace(_) => fx.add_global_comment(format!(
+                    "zst    {:?}: {:?} size={} align={}, {}",
+                    local, ty, size.bytes(), align.abi.bytes(), align.pref.bytes(),
+                )),
                 _ => unreachable!(),
             };
-            fx.add_entity_comment(stack_slot, format!(
-                "{:?}: {:?} size={} align={},{}",
-                local, ty, size.bytes(), align.abi.bytes(), align.pref.bytes(),
-            ));
+
         }
 
         // Take stack_addr in advance to avoid many duplicate instructions
@@ -456,11 +460,7 @@ pub fn codegen_fn_prelude<'a, 'tcx: 'a>(
 
     match output_pass_mode {
         PassMode::NoPass => {
-            let null = fx.bcx.ins().iconst(fx.pointer_type, 0);
-            fx.local_map.insert(
-                RETURN_PLACE,
-                CPlace::Addr(null, None, ret_layout),
-            );
+            fx.local_map.insert(RETURN_PLACE, CPlace::NoPlace(ret_layout));
         }
         PassMode::ByVal(_) => {
             let is_ssa = !ssa_analyzed
