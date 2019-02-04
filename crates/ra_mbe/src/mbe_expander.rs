@@ -126,6 +126,11 @@ fn match_lhs(pattern: &crate::Subtree, input: &mut TtCursor) -> Option<Bindings>
                         return None;
                     }
                 }
+                crate::Leaf::Ident(ident) => {
+                    if input.eat_ident()?.text != ident.text {
+                        return None;
+                    }
+                }
                 _ => return None,
             },
             crate::TokenTree::Repeat(crate::Repeat {
