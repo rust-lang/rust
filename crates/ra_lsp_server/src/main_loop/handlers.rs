@@ -727,7 +727,7 @@ pub fn handle_code_lens_resolve(world: ServerWorld, code_lens: CodeLens) -> Resu
                 data: None,
             });
         }
-        _ => {
+        None => {
             return Ok(CodeLens {
                 range: code_lens.range,
                 command: Some(Command {
