@@ -19,9 +19,6 @@ unsafe fn rw_lock_size_assert(r: RWLock) {
     mem::transmute::<RWLock, [u8; 128]>(r);
 }
 
-//unsafe impl Send for RWLock {}
-//unsafe impl Sync for RWLock {} // FIXME
-
 impl RWLock {
     pub const fn new() -> RWLock {
         RWLock {
