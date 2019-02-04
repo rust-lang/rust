@@ -417,7 +417,7 @@ impl<'a> Resolver<'a> {
 }
 
 impl<'a, 'b:'a> ImportResolver<'a, 'b> {
-    /// Add suggestions for a path that cannot be resolved.
+    /// Adds suggestions for a path that cannot be resolved.
     pub(crate) fn make_path_suggestion(
         &mut self,
         span: Span,
@@ -431,7 +431,7 @@ impl<'a, 'b:'a> ImportResolver<'a, 'b> {
             // On 2015 `{{root}}` is usually added implicitly.
             (Some(fst), Some(snd)) if fst.ident.name == keywords::PathRoot.name() &&
                                       !snd.ident.is_path_segment_keyword() => {}
-            // `ident::...` on 2018
+            // `ident::...` on 2018.
             (Some(fst), _) if fst.ident.span.rust_2018() &&
                               !fst.ident.is_path_segment_keyword() => {
                 // Insert a placeholder that's later replaced by `self`/`super`/etc.
@@ -470,7 +470,7 @@ impl<'a, 'b:'a> ImportResolver<'a, 'b> {
         }
     }
 
-    /// Suggest a missing `crate::` if that resolves to an correct module.
+    /// Suggests a missing `crate::` if that resolves to an correct module.
     ///
     /// ```
     ///    |
@@ -501,7 +501,7 @@ impl<'a, 'b:'a> ImportResolver<'a, 'b> {
         }
     }
 
-    /// Suggest a missing `super::` if that resolves to an correct module.
+    /// Suggests a missing `super::` if that resolves to an correct module.
     ///
     /// ```
     ///    |
@@ -525,7 +525,7 @@ impl<'a, 'b:'a> ImportResolver<'a, 'b> {
         }
     }
 
-    /// Suggest a missing external crate name if that resolves to an correct module.
+    /// Suggests a missing external crate name if that resolves to an correct module.
     ///
     /// ```
     ///    |
@@ -546,7 +546,7 @@ impl<'a, 'b:'a> ImportResolver<'a, 'b> {
         }
 
         // Sort extern crate names in reverse order to get
-        // 1) some consistent ordering for emitted dignostics and
+        // 1) some consistent ordering for emitted dignostics, and
         // 2) `std` suggestions before `core` suggestions.
         let mut extern_crate_names =
             self.resolver.extern_prelude.iter().map(|(ident, _)| ident.name).collect::<Vec<_>>();

@@ -1737,7 +1737,7 @@ impl<'a> Resolver<'a> {
         }
     }
 
-    /// resolve_hir_path, but takes a callback in case there was an error
+    /// Like `resolve_hir_path`, but takes a callback in case there was an error.
     fn resolve_hir_path_cb<F>(
         &mut self,
         path: &ast::Path,
@@ -1750,7 +1750,7 @@ impl<'a> Resolver<'a> {
         let span = path.span;
         let segments = &path.segments;
         let path = Segment::from_path(&path);
-        // FIXME (Manishearth): Intra doc links won't get warned of epoch changes
+        // FIXME(Manishearth): intra-doc links won't get warned of epoch changes.
         let def = match self.resolve_path_without_parent_scope(&path, Some(namespace), true,
                                                                span, CrateLint::No) {
             PathResult::Module(ModuleOrUniformRoot::Module(module)) =>
@@ -5065,7 +5065,6 @@ fn import_candidate_to_enum_paths(suggestion: &ImportSuggestion) -> (String, Str
 
     (variant_path_string, enum_path_string)
 }
-
 
 /// When an entity with a given name is not available in scope, we search for
 /// entities with that name in all crates. This method allows outputting the
