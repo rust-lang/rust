@@ -1047,7 +1047,7 @@ impl<T: ?Sized> DerefMut for ManuallyDrop<T> {
 ///
 /// let x: &i32 = mem::zeroed(); // undefined behavior!
 /// ```
-/// This is exploitet by the compiler for various optimizations, such as eliding
+/// This is exploited by the compiler for various optimizations, such as eliding
 /// run-time checks and optimizing `enum` layout.
 ///
 /// Not initializing memory at all (instead of 0-initializing it) causes the same
@@ -1055,7 +1055,7 @@ impl<T: ?Sized> DerefMut for ManuallyDrop<T> {
 /// one that violates the invariant.
 ///
 /// `MaybeUninit` serves to enable unsafe code to deal with uninitialized data:
-/// it is a signal to the compiler indicating that the data here may *not*
+/// it is a signal to the compiler indicating that the data here might *not*
 /// be initialized:
 /// ```rust
 /// use std::mem::MaybeUninit;
