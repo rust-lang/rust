@@ -64,8 +64,8 @@ pub fn mir_build<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: DefId) -> Mir<'t
         ) => {
             (*body_id, ty.span)
         }
-        Node::AnonConst(hir::AnonConst { body, id, .. }) => {
-            (*body, tcx.hir().span(*id))
+        Node::AnonConst(hir::AnonConst { body, hir_id, .. }) => {
+            (*body, tcx.hir().span_by_hir_id(*hir_id))
         }
 
         _ => span_bug!(tcx.hir().span(id), "can't build MIR for {:?}", def_id),
@@ -114,7 +114,7 @@ pub fn mir_build<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: DefId) -> Mir<'t
                         let self_arg;
                         if let Some(ref fn_decl) = tcx.hir().fn_decl(owner_id) {
                             let ty_hir_id = fn_decl.inputs[index].hir_id;
-                            let ty_span = tcx.hir().span(tcx.hir().hir_to_node_id(ty_hir_id));
+                            let ty_span = tcx.hir().span_by_hir_id(ty_hir_id);
                             opt_ty_info = Some(ty_span);
                             self_arg = if index == 0 && fn_decl.implicit_self.has_implicit_self() {
                                 match fn_decl.implicit_self {
