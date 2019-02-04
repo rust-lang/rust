@@ -298,32 +298,20 @@ pub fn codegen_intrinsic_call<'a, 'tcx: 'a>(
         };
         init, <T> () {
             let layout = fx.layout_of(T);
-            let stack_slot = fx.bcx.create_stack_slot(StackSlotData {
-                kind: StackSlotKind::ExplicitSlot,
-                size: layout.size.bytes() as u32,
-                offset: None,
-            });
-            let addr = fx.bcx.ins().stack_addr(pointer_ty(fx.tcx), stack_slot, 0);
+            let inited_place = CPlace::new_stack_slot(fx, T);
+            let addr = inited_place.to_addr(fx);
             let zero_val = fx.bcx.ins().iconst(types::I8, 0);
             let len_val = fx.bcx.ins().iconst(pointer_ty(fx.tcx), layout.size.bytes() as i64);
             fx.bcx.call_memset(fx.module.target_config(), addr, zero_val, len_val);
 
-            let uninit_place = CPlace::from_stack_slot(fx, stack_slot, T);
-            let uninit_val = uninit_place.to_cvalue(fx);
-            ret.write_cvalue(fx, uninit_val);
+            let inited_val = inited_place.to_cvalue(fx);
+            ret.write_cvalue(fx, inited_val);
         };
         write_bytes, (v dst, v val, v count) {
             fx.bcx.call_memset(fx.module.target_config(), dst, val, count);
         };
         uninit, <T> () {
-            let layout = fx.layout_of(T);
-            let stack_slot = fx.bcx.create_stack_slot(StackSlotData {
-                kind: StackSlotKind::ExplicitSlot,
-                size: layout.size.bytes() as u32,
-                offset: None,
-            });
-
-            let uninit_place = CPlace::from_stack_slot(fx, stack_slot, T);
+            let uninit_place = CPlace::new_stack_slot(fx, T);
             let uninit_val = uninit_place.to_cvalue(fx);
             ret.write_cvalue(fx, uninit_val);
         };

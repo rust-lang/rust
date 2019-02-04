@@ -258,7 +258,7 @@ fn codegen_fn_content<'a, 'tcx: 'a>(fx: &mut FunctionCx<'a, 'tcx, impl Backend>)
                     // we don't actually need to drop anything
                 } else {
                     let drop_place = trans_place(fx, location);
-                    let arg_place = CPlace::temp(
+                    let arg_place = CPlace::new_stack_slot(
                         fx,
                         fx.tcx.mk_ref(
                             &ty::RegionKind::ReErased,
@@ -937,7 +937,7 @@ pub fn trans_checked_int_binop<'a, 'tcx: 'a>(
     // TODO: check for overflow
     let has_overflow = fx.bcx.ins().iconst(types::I8, 0);
 
-    let out_place = CPlace::temp(fx, out_ty);
+    let out_place = CPlace::new_stack_slot(fx, out_ty);
     let out_layout = out_place.layout();
     out_place.write_cvalue(fx, CValue::ByValPair(res, has_overflow, out_layout));
 

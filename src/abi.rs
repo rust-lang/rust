@@ -340,23 +340,23 @@ fn local_place<'a, 'tcx: 'a>(
         fx.bcx.declare_var(mir_var(local), fx.clif_type(layout.ty).unwrap());
         CPlace::Var(local, layout)
     } else {
-        let stack_slot = fx.bcx.create_stack_slot(StackSlotData {
-            kind: StackSlotKind::ExplicitSlot,
-            size: layout.size.bytes() as u32,
-            offset: None,
-        });
+        let place = CPlace::new_stack_slot(fx, layout.ty);
 
         #[cfg(debug_assertions)]
         {
             let TyLayout { ty, details } = layout;
             let ty::layout::LayoutDetails { size, align, abi: _, variants: _, fields: _ } = details;
+            let stack_slot = match place {
+                CPlace::Stack(stack_slot, _) => stack_slot,
+                _ => unreachable!(),
+            };
             fx.add_entity_comment(stack_slot, format!(
                 "{:?}: {:?} size={} align={},{}",
                 local, ty, size.bytes(), align.abi.bytes(), align.pref.bytes(),
             ));
         }
 
-        CPlace::from_stack_slot(fx, stack_slot, layout.ty)
+        place
     };
 
     let prev_place = fx.local_map.insert(local, place);
@@ -606,7 +606,7 @@ pub fn codegen_call_inner<'a, 'tcx: 'a>(
     let return_ptr = match output_pass_mode {
         PassMode::NoPass => None,
         PassMode::ByRef => match ret_place {
-            Some(ret_place) => Some(ret_place.cplace_to_addr(fx)),
+            Some(ret_place) => Some(ret_place.to_addr(fx)),
             None => Some(fx.bcx.ins().iconst(fx.pointer_type, 0)),
         },
         PassMode::ByVal(_) => None,
