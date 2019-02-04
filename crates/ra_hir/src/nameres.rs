@@ -431,7 +431,7 @@ impl ItemMap {
                     log::debug!("absolute path {:?} resolved to crate {:?}", path, def);
                     PerNs::types(*def)
                 } else {
-                    return (PerNs::none(), ReachedFixedPoint::Yes);
+                    return (PerNs::none(), ReachedFixedPoint::No); // extern crate declarations can add to the extern prelude
                 }
             }
         };
