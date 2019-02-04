@@ -215,6 +215,12 @@ impl S {
     fn test2(self: &Self) {
         self;
     }
+    fn test3() -> Self {
+        S {}
+    }
+    fn test4() -> Self {
+        Self {}
+    }
 }
 "#,
     );
