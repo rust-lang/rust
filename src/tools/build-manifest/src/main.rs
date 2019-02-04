@@ -1,8 +1,7 @@
 #![deny(rust_2018_idioms)]
 
 use toml;
-#[macro_use]
-extern crate serde_derive;
+use serde_derive::Serialize;
 
 use std::collections::BTreeMap;
 use std::env;
