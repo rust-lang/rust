@@ -7,6 +7,7 @@ use result::Result;
 
 /// Indicates whether a value is available or if the current task has been
 /// scheduled to receive a wakeup instead.
+#[must_use = "this `Poll` may be a `Pending` variant, which should be handled"]
 #[derive(Copy, Clone, Debug, Eq, PartialEq, Ord, PartialOrd, Hash)]
 pub enum Poll<T> {
     /// Represents that a value is immediately ready.
