@@ -737,8 +737,8 @@ fn super_predicates_of<'a, 'tcx>(
 }
 
 fn trait_def<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: DefId) -> &'tcx ty::TraitDef {
-    let node_id = tcx.hir().as_local_node_id(def_id).unwrap();
-    let item = tcx.hir().expect_item(node_id);
+    let hir_id = tcx.hir().as_local_hir_id(def_id).unwrap();
+    let item = tcx.hir().expect_item_by_hir_id(hir_id);
 
     let (is_auto, unsafety) = match item.node {
         hir::ItemKind::Trait(is_auto, unsafety, ..) => (is_auto == hir::IsAuto::Yes, unsafety),
@@ -1509,8 +1509,8 @@ fn impl_trait_ref<'a, 'tcx>(
 ) -> Option<ty::TraitRef<'tcx>> {
     let icx = ItemCtxt::new(tcx, def_id);
 
-    let node_id = tcx.hir().as_local_node_id(def_id).unwrap();
-    match tcx.hir().expect_item(node_id).node {
+    let hir_id = tcx.hir().as_local_hir_id(def_id).unwrap();
+    match tcx.hir().expect_item_by_hir_id(hir_id).node {
         hir::ItemKind::Impl(.., ref opt_trait_ref, _, _) => {
             opt_trait_ref.as_ref().map(|ast_trait_ref| {
                 let selfty = tcx.type_of(def_id);
@@ -1522,8 +1522,8 @@ fn impl_trait_ref<'a, 'tcx>(
 }
 
 fn impl_polarity<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: DefId) -> hir::ImplPolarity {
-    let node_id = tcx.hir().as_local_node_id(def_id).unwrap();
-    match tcx.hir().expect_item(node_id).node {
+    let hir_id = tcx.hir().as_local_hir_id(def_id).unwrap();
+    match tcx.hir().expect_item_by_hir_id(hir_id).node {
         hir::ItemKind::Impl(_, polarity, ..) => polarity,
         ref item => bug!("impl_polarity: {:?} not an impl", item),
     }

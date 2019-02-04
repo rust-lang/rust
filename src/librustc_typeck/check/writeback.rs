@@ -407,8 +407,7 @@ impl<'cx, 'gcx, 'tcx> WritebackCx<'cx, 'gcx, 'tcx> {
             if let ty::UserType::TypeOf(_, user_substs) = c_ty.value {
                 if self.rustc_dump_user_substs {
                     // This is a unit-testing mechanism.
-                    let node_id = self.tcx().hir().hir_to_node_id(hir_id);
-                    let span = self.tcx().hir().span(node_id);
+                    let span = self.tcx().hir().span_by_hir_id(hir_id);
                     // We need to buffer the errors in order to guarantee a consistent
                     // order when emitting them.
                     let err = self.tcx().sess.struct_span_err(
@@ -739,15 +738,14 @@ impl Locatable for ast::NodeId {
 
 impl Locatable for DefIndex {
     fn to_span(&self, tcx: &TyCtxt) -> Span {
-        let node_id = tcx.hir().def_index_to_node_id(*self);
-        tcx.hir().span(node_id)
+        let hir_id = tcx.hir().def_index_to_hir_id(*self);
+        tcx.hir().span_by_hir_id(hir_id)
     }
 }
 
 impl Locatable for hir::HirId {
     fn to_span(&self, tcx: &TyCtxt) -> Span {
-        let node_id = tcx.hir().hir_to_node_id(*self);
-        tcx.hir().span(node_id)
+        tcx.hir().span_by_hir_id(*self)
     }
 }
 

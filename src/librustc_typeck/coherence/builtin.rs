@@ -76,7 +76,7 @@ fn visit_implementation_of_drop<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, impl_did:
 fn visit_implementation_of_copy<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, impl_did: DefId) {
     debug!("visit_implementation_of_copy: impl_did={:?}", impl_did);
 
-    let impl_node_id = if let Some(n) = tcx.hir().as_local_node_id(impl_did) {
+    let impl_hir_id = if let Some(n) = tcx.hir().as_local_hir_id(impl_did) {
         n
     } else {
         debug!("visit_implementation_of_copy(): impl not in this crate");
@@ -87,7 +87,7 @@ fn visit_implementation_of_copy<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, impl_did:
     debug!("visit_implementation_of_copy: self_type={:?} (bound)",
            self_type);
 
-    let span = tcx.hir().span(impl_node_id);
+    let span = tcx.hir().span_by_hir_id(impl_hir_id);
     let param_env = tcx.param_env(impl_did);
     assert!(!self_type.has_escaping_bound_vars());
 
@@ -97,7 +97,7 @@ fn visit_implementation_of_copy<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, impl_did:
     match param_env.can_type_implement_copy(tcx, self_type) {
         Ok(()) => {}
         Err(CopyImplementationError::InfrigingFields(fields)) => {
-            let item = tcx.hir().expect_item(impl_node_id);
+            let item = tcx.hir().expect_item_by_hir_id(impl_hir_id);
             let span = if let ItemKind::Impl(.., Some(ref tr), _, _) = item.node {
                 tr.path.span
             } else {
@@ -114,7 +114,7 @@ fn visit_implementation_of_copy<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, impl_did:
             err.emit()
         }
         Err(CopyImplementationError::NotAnAdt) => {
-            let item = tcx.hir().expect_item(impl_node_id);
+            let item = tcx.hir().expect_item_by_hir_id(impl_hir_id);
             let span = if let ItemKind::Impl(.., ref ty, _) = item.node {
                 ty.span
             } else {
