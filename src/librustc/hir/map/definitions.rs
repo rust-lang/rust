@@ -467,6 +467,21 @@ impl Definitions {
         }
     }
 
+    // FIXME(@ljedrz): replace the NodeId variant
+    #[inline]
+    pub fn as_local_hir_id(&self, def_id: DefId) -> Option<hir::HirId> {
+        if def_id.krate == LOCAL_CRATE {
+            let hir_id = self.def_index_to_hir_id(def_id.index);
+            if hir_id != hir::DUMMY_HIR_ID {
+                Some(hir_id)
+            } else {
+                None
+            }
+        } else {
+            None
+        }
+    }
+
     #[inline]
     pub fn node_to_hir_id(&self, node_id: ast::NodeId) -> hir::HirId {
         self.node_to_hir_id[node_id]

@@ -114,7 +114,7 @@ impl<'a, 'gcx, 'tcx> Visitor<'gcx> for FindNestedTypeVisitor<'a, 'gcx, 'tcx> {
 
             hir::TyKind::Rptr(ref lifetime, _) => {
                 // the lifetime of the TyRptr
-                let hir_id = self.tcx.hir().node_to_hir_id(lifetime.id);
+                let hir_id = lifetime.hir_id;
                 match (self.tcx.named_region(hir_id), self.bound_region) {
                     // Find the index of the anonymous region that was part of the
                     // error. We will then search the function parameters for a bound
@@ -221,8 +221,7 @@ impl<'a, 'gcx, 'tcx> Visitor<'gcx> for TyPathVisitor<'a, 'gcx, 'tcx> {
     }
 
     fn visit_lifetime(&mut self, lifetime: &hir::Lifetime) {
-        let hir_id = self.tcx.hir().node_to_hir_id(lifetime.id);
-        match (self.tcx.named_region(hir_id), self.bound_region) {
+        match (self.tcx.named_region(lifetime.hir_id), self.bound_region) {
             // the lifetime of the TyPath!
             (Some(rl::Region::LateBoundAnon(debruijn_index, anon_index)), ty::BrAnon(br_index)) => {
                 if debruijn_index == self.current_index && anon_index == br_index {
