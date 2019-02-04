@@ -26,7 +26,7 @@ hir = { path = "../ra_hir", package = "ra_hir" }
 test_utils = { path = "../test_utils" }
 
 [dev-dependencies]
-insta = "0.5.1"
+insta = "0.6.1"
 
 [features]
 jemalloc = [ "jemallocator", "jemalloc-ctl" ]
