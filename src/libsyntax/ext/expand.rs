@@ -942,6 +942,7 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
                     Symbol::intern("rustc_attrs"),
                     Symbol::intern("derive_clone_copy"),
                     Symbol::intern("derive_eq"),
+                    Symbol::intern("libstd_sys_internals"), // RustcDeserialize and RustcSerialize
                 ];
                 invoc.expansion_data.mark.set_expn_info(expn_info);
                 let span = span.with_ctxt(self.cx.backtrace());
