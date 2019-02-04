@@ -586,13 +586,11 @@ impl Printer<'tcx, 'tcx> for SymbolMangler<'_, 'tcx> {
         disambiguated_data: &DisambiguatedDefPathData,
     ) -> Result<Self::Path, Self::Error> {
         let ns = match disambiguated_data.data {
-            // Avoid putting the burden on demanglers to ignore this.
-            DefPathData::Ctor => return print_prefix(self),
-
             // Uppercase categories are more stable than lowercase ones.
             DefPathData::TypeNs(_) => 't',
             DefPathData::ValueNs(_) => 'v',
             DefPathData::ClosureExpr => 'C',
+            DefPathData::Ctor => 'c',
             DefPathData::AnonConst => 'k',
             DefPathData::ImplTrait => 'i',
 
