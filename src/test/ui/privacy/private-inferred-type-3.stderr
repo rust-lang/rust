@@ -1,8 +1,8 @@
-error: type `fn() {ext::priv_fn}` is private
+error: function `ext::priv_fn` is private
   --> $DIR/private-inferred-type-3.rs:16:5
    |
 LL |     ext::m!();
-   |     ^^^^^^^^^^
+   |     ^^^^^^^^^^ private
    |
    = note: this error originates in a macro outside of the current crate (in Nightly builds, run with -Z external-macro-backtrace for more info)
 
@@ -10,47 +10,47 @@ error: static `PRIV_STATIC` is private
   --> $DIR/private-inferred-type-3.rs:16:5
    |
 LL |     ext::m!();
-   |     ^^^^^^^^^^
+   |     ^^^^^^^^^^ static not accessible from here
    |
    = note: this error originates in a macro outside of the current crate (in Nightly builds, run with -Z external-macro-backtrace for more info)
 
-error: type `ext::PrivEnum` is private
+error: enum `ext::PrivEnum` is private
   --> $DIR/private-inferred-type-3.rs:16:5
    |
 LL |     ext::m!();
-   |     ^^^^^^^^^^
+   |     ^^^^^^^^^^ private
    |
    = note: this error originates in a macro outside of the current crate (in Nightly builds, run with -Z external-macro-backtrace for more info)
 
-error: type `fn() {<u8 as ext::PrivTrait>::method}` is private
+error: method `ext::PrivTrait::method` is private
   --> $DIR/private-inferred-type-3.rs:16:5
    |
 LL |     ext::m!();
-   |     ^^^^^^^^^^
+   |     ^^^^^^^^^^ private
    |
    = note: this error originates in a macro outside of the current crate (in Nightly builds, run with -Z external-macro-backtrace for more info)
 
-error: type `fn(u8) -> ext::PrivTupleStruct {ext::PrivTupleStruct}` is private
+error: struct `ext::PrivTupleStruct` is private
   --> $DIR/private-inferred-type-3.rs:16:5
    |
 LL |     ext::m!();
-   |     ^^^^^^^^^^
+   |     ^^^^^^^^^^ private
    |
    = note: this error originates in a macro outside of the current crate (in Nightly builds, run with -Z external-macro-backtrace for more info)
 
-error: type `fn(u8) -> ext::PubTupleStruct {ext::PubTupleStruct}` is private
+error: struct `ext::PubTupleStruct` is private
   --> $DIR/private-inferred-type-3.rs:16:5
    |
 LL |     ext::m!();
-   |     ^^^^^^^^^^
+   |     ^^^^^^^^^^ private
    |
    = note: this error originates in a macro outside of the current crate (in Nightly builds, run with -Z external-macro-backtrace for more info)
 
-error: type `for<'r> fn(&'r ext::Pub<u8>) {<ext::Pub<u8>>::priv_method}` is private
+error: method `<ext::Pub<u8>>::priv_method` is private
   --> $DIR/private-inferred-type-3.rs:16:5
    |
 LL |     ext::m!();
-   |     ^^^^^^^^^^
+   |     ^^^^^^^^^^ private
    |
    = note: this error originates in a macro outside of the current crate (in Nightly builds, run with -Z external-macro-backtrace for more info)
 

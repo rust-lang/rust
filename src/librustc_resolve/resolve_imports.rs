@@ -268,9 +268,11 @@ impl<'a> Resolver<'a> {
                         }
                     }
 
-                    if !self.is_accessible(binding.vis) &&
+                    let is_accessible = self.is_accessible(binding.vis);
+                    if !is_accessible &&
                        // Remove this together with `PUB_USE_OF_PRIVATE_EXTERN_CRATE`
-                       !(self.last_import_segment && binding.is_extern_crate()) {
+                       !(self.last_import_segment && binding.is_extern_crate())
+                    {
                         self.privacy_errors.push(PrivacyError(path_span, ident, binding));
                     }
 

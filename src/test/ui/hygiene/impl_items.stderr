@@ -1,8 +1,8 @@
-error: type `for<'r> fn(&'r foo::S) {foo::S::f}` is private
+error: method `foo::S::f` is private
   --> $DIR/impl_items.rs:12:23
    |
-LL |         let _: () = S.f(); //~ ERROR type `for<'r> fn(&'r foo::S) {foo::S::f}` is private
-   |                       ^
+LL |         let _: () = S.f();
+   |                       ^ private
 ...
 LL |     foo::m!();
    |     ---------- in this macro invocation

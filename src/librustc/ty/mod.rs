@@ -2242,13 +2242,20 @@ impl<'a, 'gcx, 'tcx> AdtDef {
             .0
     }
 
-    pub fn variant_of_def(&self, def: Def) -> &VariantDef {
+    pub fn opt_variant_of_def(&self, def: Def) -> Option<&VariantDef> {
         match def {
-            Def::Variant(vid) | Def::VariantCtor(vid, ..) => self.variant_with_id(vid),
+            Def::Variant(vid) | Def::VariantCtor(vid, ..) => Some(self.variant_with_id(vid)),
             Def::Struct(..) | Def::StructCtor(..) | Def::Union(..) |
             Def::TyAlias(..) | Def::AssociatedTy(..) | Def::SelfTy(..) |
-            Def::SelfCtor(..) => self.non_enum_variant(),
-            _ => bug!("unexpected def {:?} in variant_of_def", def)
+            Def::SelfCtor(..) => Some(self.non_enum_variant()),
+            _ => None,
+        }
+    }
+
+    pub fn variant_of_def(&self, def: Def) -> &VariantDef {
+        match self.opt_variant_of_def(def) {
+            Some(vd) => vd,
+            None => bug!("unexpected def {:?} in variant_of_def", def),
         }
     }
 

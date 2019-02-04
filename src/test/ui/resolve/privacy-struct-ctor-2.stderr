@@ -1,0 +1,44 @@
+error[E0451]: field `0` of struct `m::S` is private
+  --> $DIR/privacy-struct-ctor-2.rs:29:21
+   |
+LL |     pub struct S(u8);
+   |     ----------------- `m::S` defined here
+...
+LL |     let _: S = m::S(2);
+   |                ---- ^ private field
+   |                |
+   |                `m::S` cannot be built due to private field
+
+error: tuple struct `m::S` is private
+  --> $DIR/privacy-struct-ctor-2.rs:27:5
+   |
+LL |     m::S;
+   |     ^^^^ tuple struct not accesssible from here
+
+error: struct `m::n::Z` is private
+  --> $DIR/privacy-struct-ctor-2.rs:31:5
+   |
+LL |     m::n::Z;
+   |     ^^^^^^^ private
+
+error: struct `xcrate::S` is private
+  --> $DIR/privacy-struct-ctor-2.rs:34:5
+   |
+LL |     xcrate::m::S;
+   |     ^^^^^^^^^^^^ private
+
+error: struct `xcrate::m::n::Z` is private
+  --> $DIR/privacy-struct-ctor-2.rs:36:5
+   |
+LL |     xcrate::m::n::Z;
+   |     ^^^^^^^^^^^^^^^ private
+
+error: tuple struct `n::Z` is private
+  --> $DIR/privacy-struct-ctor-2.rs:18:9
+   |
+LL |         n::Z;
+   |         ^^^^ tuple struct not accesssible from here
+
+error: aborting due to 6 previous errors
+
+For more information about this error, try `rustc --explain E0451`.

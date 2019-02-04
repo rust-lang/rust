@@ -1,0 +1,34 @@
+error[E0451]: fields of struct `a::A` are private
+  --> $DIR/multiple-private-fields.rs:8:18
+   |
+LL |     pub struct A(usize, usize);
+   |     --------------------------- `a::A` defined here
+...
+LL |     let x = a::A(3, 4);
+   |             ---- ^  ^ private field
+   |             |    |
+   |             |    private field
+   |             `a::A` cannot be built due to private fields
+
+error[E0451]: fields of struct `a::B` are private
+  --> $DIR/multiple-private-fields.rs:12:19
+   |
+LL |     pub struct B {a: usize, b: usize}
+   |     --------------------------------- `a::B` defined here
+...
+LL |     let x = a::B {a:1, b:2};
+   |             ------^^^--^^^-
+   |             |     |    |
+   |             |     |    private field
+   |             |     private field
+   |             `a::B` cannot be built due to private fields
+
+error: tuple struct `a::A` is private
+  --> $DIR/multiple-private-fields.rs:10:13
+   |
+LL |     let x = a::A;
+   |             ^^^^ tuple struct not accesssible from here
+
+error: aborting due to 3 previous errors
+
+For more information about this error, try `rustc --explain E0451`.

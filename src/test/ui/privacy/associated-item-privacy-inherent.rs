@@ -11,11 +11,11 @@ mod priv_nominal {
 
     pub macro mac() {
         let value = Pub::method;
-        //~^ ERROR type `for<'r> fn(&'r priv_nominal::Pub) {priv_nominal::Pub::method}` is private
+        //~^ ERROR method `priv_nominal::Pub::method` is private
         value;
-        //~^ ERROR type `for<'r> fn(&'r priv_nominal::Pub) {priv_nominal::Pub::method}` is private
+        //~^ ERROR method `priv_nominal::Pub::method` is private
         Pub.method();
-        //~^ ERROR type `for<'r> fn(&'r priv_nominal::Pub) {priv_nominal::Pub::method}` is private
+        //~^ ERROR method `priv_nominal::Pub::method` is private
         Pub::CONST;
         //~^ ERROR associated constant `CONST` is private
         // let _: Pub::AssocTy;
@@ -35,11 +35,11 @@ mod priv_signature {
 
     pub macro mac() {
         let value = Pub::method;
-        //~^ ERROR type `priv_signature::Priv` is private
+        //~^ ERROR struct `priv_signature::Priv` is private
         value;
-        //~^ ERROR type `priv_signature::Priv` is private
+        //~^ ERROR struct `priv_signature::Priv` is private
         Pub.method(loop {});
-        //~^ ERROR type `priv_signature::Priv` is private
+        //~^ ERROR struct `priv_signature::Priv` is private
     }
 }
 fn priv_signature() {
@@ -55,11 +55,11 @@ mod priv_substs {
 
     pub macro mac() {
         let value = Pub::method::<Priv>;
-        //~^ ERROR type `priv_substs::Priv` is private
+        //~^ ERROR struct `priv_substs::Priv` is private
         value;
-        //~^ ERROR type `priv_substs::Priv` is private
+        //~^ ERROR struct `priv_substs::Priv` is private
         Pub.method::<Priv>();
-        //~^ ERROR type `priv_substs::Priv` is private
+        //~^ ERROR struct `priv_substs::Priv` is private
     }
 }
 fn priv_substs() {
@@ -78,28 +78,28 @@ mod priv_parent_substs {
 
     pub macro mac() {
         let value = <Pub>::method;
-        //~^ ERROR type `priv_parent_substs::Priv` is private
+        //~^ ERROR struct `priv_parent_substs::Priv` is private
         value;
-        //~^ ERROR type `priv_parent_substs::Priv` is private
+        //~^ ERROR struct `priv_parent_substs::Priv` is private
         let value = Pub::method;
-        //~^ ERROR type `priv_parent_substs::Priv` is private
+        //~^ ERROR struct `priv_parent_substs::Priv` is private
         value;
-        //~^ ERROR type `priv_parent_substs::Priv` is private
+        //~^ ERROR struct `priv_parent_substs::Priv` is private
         let value = <Pub>::static_method;
-        //~^ ERROR type `priv_parent_substs::Priv` is private
+        //~^ ERROR struct `priv_parent_substs::Priv` is private
         value;
-        //~^ ERROR type `priv_parent_substs::Priv` is private
+        //~^ ERROR struct `priv_parent_substs::Priv` is private
         let value = Pub::static_method;
-        //~^ ERROR type `priv_parent_substs::Priv` is private
+        //~^ ERROR struct `priv_parent_substs::Priv` is private
         value;
-        //~^ ERROR type `priv_parent_substs::Priv` is private
+        //~^ ERROR struct `priv_parent_substs::Priv` is private
         Pub(Priv).method();
-        //~^ ERROR type `priv_parent_substs::Priv` is private
+        //~^ ERROR struct `priv_parent_substs::Priv` is private
 
         <Pub>::CONST;
-        //~^ ERROR type `priv_parent_substs::Priv` is private
+        //~^ ERROR struct `priv_parent_substs::Priv` is private
         Pub::CONST;
-        //~^ ERROR type `priv_parent_substs::Priv` is private
+        //~^ ERROR struct `priv_parent_substs::Priv` is private
 
         // let _: Pub::AssocTy;
         // pub type InSignatureTy = Pub::AssocTy;

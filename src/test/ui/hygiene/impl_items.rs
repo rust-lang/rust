@@ -9,7 +9,8 @@ mod foo {
     }
 
     pub macro m() {
-        let _: () = S.f(); //~ ERROR type `for<'r> fn(&'r foo::S) {foo::S::f}` is private
+        let _: () = S.f();
+        //~^ ERROR method `foo::S::f` is private
     }
 }
 

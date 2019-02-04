@@ -15,8 +15,8 @@ mod m {
     use m::n::Z; // OK, only the type is imported
 
     fn f() {
-        Z;
-        //~^ ERROR expected value, found struct `Z`
+        n::Z;
+        //~^ ERROR tuple struct `n::Z` is private
     }
 }
 
@@ -24,12 +24,15 @@ use m::S; // OK, only the type is imported
 use m::S2; // OK, only the type is imported
 
 fn main() {
-    S;
-    //~^ ERROR expected value, found struct `S`
+    m::S;
+    //~^ ERROR tuple struct `m::S` is private
+    let _: S = m::S(2);
+    //~^ ERROR field `0` of struct `m::S` is private
+    m::n::Z;
+    //~^ ERROR struct `m::n::Z` is private
 
-    S2;
-    //~^ ERROR expected value, found struct `S2`
-
-    xcrate::S;
-    //~^ ERROR expected value, found struct `xcrate::S`
+    xcrate::m::S;
+    //~^ ERROR struct `xcrate::S` is private
+    xcrate::m::n::Z;
+    //~^ ERROR struct `xcrate::m::n::Z` is private
 }

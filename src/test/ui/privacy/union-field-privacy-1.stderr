@@ -1,14 +1,34 @@
 error[E0451]: field `c` of union `m::U` is private
   --> $DIR/union-field-privacy-1.rs:12:20
    |
-LL |     let u = m::U { c: 0 }; //~ ERROR field `c` of union `m::U` is private
-   |                    ^^^^ field `c` is private
+LL | /     pub union U {
+LL | |         pub a: u8,
+LL | |         pub(super) b: u8,
+LL | |         c: u8,
+LL | |     }
+   | |_____- `m::U` defined here
+...
+LL |       let u = m::U { c: 0 }; //~ ERROR field `c` of union `m::U` is private
+   |               -------^^^^--
+   |               |      |
+   |               |      private field
+   |               `m::U` cannot be built due to private field
 
 error[E0451]: field `c` of union `m::U` is private
   --> $DIR/union-field-privacy-1.rs:16:16
    |
-LL |     let m::U { c } = u; //~ ERROR field `c` of union `m::U` is private
-   |                ^ field `c` is private
+LL | /     pub union U {
+LL | |         pub a: u8,
+LL | |         pub(super) b: u8,
+LL | |         c: u8,
+LL | |     }
+   | |_____- `m::U` defined here
+...
+LL |       let m::U { c } = u; //~ ERROR field `c` of union `m::U` is private
+   |           -------^--
+   |           |      |
+   |           |      private field
+   |           `m::U` cannot be destructured due to private field
 
 error: aborting due to 2 previous errors
 

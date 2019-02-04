@@ -1,0 +1,8 @@
+error: struct `structs::TupleStruct` is private
+  --> $DIR/structs-2.rs:7:23
+   |
+LL |     let ts_explicit = structs::TupleStruct(640, 480);
+   |                       ^^^^^^^^^^^^^^^^^^^^ private
+
+error: aborting due to previous error
+

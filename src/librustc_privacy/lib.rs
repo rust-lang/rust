@@ -222,8 +222,10 @@ impl<'a, 'tcx, V> TypeVisitor<'tcx> for DefIdVisitorSkeleton<'_, 'a, 'tcx, V>
     }
 }
 
-fn def_id_visibility<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: DefId)
-                               -> (ty::Visibility, Span, &'static str) {
+fn def_id_visibility<'a, 'tcx>(
+    tcx: TyCtxt<'a, 'tcx, 'tcx>,
+    def_id: DefId,
+) -> (ty::Visibility, Span, &'static str) {
     match tcx.hir().as_local_node_id(def_id) {
         Some(node_id) => {
             let vis = match tcx.hir().get(node_id) {
@@ -799,22 +801,71 @@ struct NamePrivacyVisitor<'a, 'tcx: 'a> {
     tables: &'a ty::TypeckTables<'tcx>,
     current_item: ast::NodeId,
     empty_tables: &'a ty::TypeckTables<'tcx>,
+    reported_tuple_structs: FxHashSet<Span>,
 }
 
 impl<'a, 'tcx> NamePrivacyVisitor<'a, 'tcx> {
     // Checks that a field in a struct constructor (expression or pattern) is accessible.
-    fn check_field(&mut self,
-                   use_ctxt: Span, // syntax context of the field name at the use site
-                   span: Span, // span of the field pattern, e.g., `x: 0`
-                   def: &'tcx ty::AdtDef, // definition of the struct or enum
-                   field: &'tcx ty::FieldDef) { // definition of the field
+    fn check_field(
+        &mut self,
+        use_ctxt: Span, // syntax context of the field name at the use site
+        span: Span, // span of the field pattern, e.g., `x: 0`
+        def: &'tcx ty::AdtDef, // definition of the struct or enum
+        field: &'tcx ty::FieldDef, // definition of the field
+    ) -> Option<(String /* field name */, Span)> {
         let ident = Ident::new(keywords::Invalid.name(), use_ctxt);
         let def_id = self.tcx.adjust_ident(ident, def.did, self.current_item).1;
         if !def.is_enum() && !field.vis.is_accessible_from(def_id, self.tcx) {
-            struct_span_err!(self.tcx.sess, span, E0451, "field `{}` of {} `{}` is private",
-                             field.ident, def.variant_descr(), self.tcx.item_path_str(def.did))
-                .span_label(span, format!("field `{}` is private", field.ident))
-                .emit();
+            return Some((field.ident.to_string(), span));
+        }
+        None
+    }
+
+    /// If appropriate, construct a privacy error pointing at all the fields of a literal struct
+    /// that are private both when constructing an instance or destructuring a pattern.
+    fn emit_field_checks(
+        &mut self,
+        // d: Def,
+        def: &'tcx ty::AdtDef, // definition of the struct or enum
+        span: Span, // struct span at use site
+        fields: Vec<(String, Span)>, // inaccessible ADT fields
+        action: &str, // "built" or "destructured" depending of where this happened
+    ) {
+        let item_path = self.tcx.item_path_str(def.did);
+
+        if !fields.is_empty() {
+            self.reported_tuple_structs.insert(span);
+            let mut err = struct_span_err!(
+                self.tcx.sess,
+                fields.iter().map(|(_, sp)| *sp).collect::<Vec<Span>>(),
+                E0451,
+                "field{} of {} `{}` {} private",
+                if fields.len() == 1 {
+                    format!(" `{}`", fields[0].0)
+                } else {
+                    "s".to_owned()
+                },
+                def.variant_descr(),
+                item_path,
+                if fields.len() == 1 {
+                    "is"
+                } else {
+                    "are"
+                },
+            );
+            err.span_label(span, format!(
+                "`{}` cannot be {} due to private field{}",
+                item_path,
+                action,
+                if fields.len() == 1 { "" } else { "s" },
+            ));
+            for (_field_name, field) in fields {
+                err.span_label(field, "private field");
+            }
+
+            // Point at definition
+            err.span_label(self.tcx.def_span(def.did), format!("`{}` defined here", item_path));
+            err.emit();
         }
     }
 }
@@ -867,6 +918,7 @@ impl<'a, 'tcx> Visitor<'tcx> for NamePrivacyVisitor<'a, 'tcx> {
                 let def = self.tables.qpath_def(qpath, expr.hir_id);
                 let adt = self.tables.expr_ty(expr).ty_adt_def().unwrap();
                 let variant = adt.variant_of_def(def);
+                let mut field_errors = vec![];
                 if let Some(ref base) = *base {
                     // If the expression uses FRU we need to make sure all the unmentioned fields
                     // are checked for privacy (RFC 736). Rather than computing the set of
@@ -879,13 +931,48 @@ impl<'a, 'tcx> Visitor<'tcx> for NamePrivacyVisitor<'a, 'tcx> {
                             Some(field) => (field.ident.span, field.span),
                             None => (base.span, base.span),
                         };
-                        self.check_field(use_ctxt, span, adt, variant_field);
+                        if let Some(err) = self.check_field(use_ctxt, span, adt, variant_field) {
+                            field_errors.push(err);
+                        }
                     }
                 } else {
                     for field in fields {
                         let use_ctxt = field.ident.span;
                         let index = self.tcx.field_index(field.id, self.tables);
-                        self.check_field(use_ctxt, field.span, adt, &variant.fields[index]);
+                        if let Some(err) = self.check_field(
+                            use_ctxt,
+                            field.span,
+                            adt,
+                            &variant.fields[index],
+                        ) {
+                            field_errors.push(err);
+                        }
+                    }
+                }
+                self.emit_field_checks(adt, expr.span, field_errors, "built");
+            }
+            hir::ExprKind::Call(ref path, ref fields) => {
+                if let hir::ExprKind::Path(qpath) = &path.node {
+                    let def = self.tables.qpath_def(qpath, path.hir_id);
+                    if let Some(_) = def.opt_def_id() {
+                        if let Some(adt) = self.tables.expr_ty(expr).ty_adt_def() {
+                            if let Some(variant) = adt.opt_variant_of_def(def) {
+                                let mut field_errors = vec![];
+                                for (idx, field) in variant.fields.iter().enumerate() {
+                                    let use_ctxt = fields.get(idx).map(|f| f.span)
+                                        .unwrap_or(path.span);
+                                    if let Some(err) = self.check_field(
+                                        use_ctxt,
+                                        use_ctxt,
+                                        adt,
+                                        &field,
+                                    ) {
+                                        field_errors.push(err);
+                                    }
+                                }
+                                self.emit_field_checks(adt, path.span, field_errors, "built");
+                            }
+                        }
                     }
                 }
             }
@@ -901,11 +988,39 @@ impl<'a, 'tcx> Visitor<'tcx> for NamePrivacyVisitor<'a, 'tcx> {
                 let def = self.tables.qpath_def(qpath, pat.hir_id);
                 let adt = self.tables.pat_ty(pat).ty_adt_def().unwrap();
                 let variant = adt.variant_of_def(def);
+                let mut field_errors = vec![];
                 for field in fields {
                     let use_ctxt = field.node.ident.span;
                     let index = self.tcx.field_index(field.node.id, self.tables);
-                    self.check_field(use_ctxt, field.span, adt, &variant.fields[index]);
+                    if let Some(err) = self.check_field(
+                        use_ctxt,
+                        field.span,
+                        adt,
+                        &variant.fields[index],
+                    ) {
+                        field_errors.push(err);
+                    }
                 }
+                self.emit_field_checks(adt, pat.span, field_errors, "destructured");
+            }
+            PatKind::TupleStruct(ref qpath, ref patterns, ..) => {
+                let def = self.tables.qpath_def(qpath, pat.hir_id);
+                let adt = self.tables.pat_ty(pat).ty_adt_def().unwrap();
+                let variant = adt.variant_of_def(def);
+                let mut field_errors = vec![];
+                for (vf_index, variant_field) in variant.fields.iter().enumerate() {
+                    if let Some(pat) = patterns.get(vf_index) {
+                        if let Some(err) = self.check_field(
+                            pat.span,
+                            pat.span,
+                            adt,
+                            variant_field,
+                        ) {
+                            field_errors.push(err);
+                        }
+                    }
+                }
+                self.emit_field_checks(adt, pat.span, field_errors, "destructured");
             }
             _ => {}
         }
@@ -927,11 +1042,13 @@ struct TypePrivacyVisitor<'a, 'tcx: 'a> {
     in_body: bool,
     span: Span,
     empty_tables: &'a ty::TypeckTables<'tcx>,
+    reported_tuple_structs: FxHashSet<Span>,
 }
 
 impl<'a, 'tcx> TypePrivacyVisitor<'a, 'tcx> {
     fn item_is_accessible(&self, did: DefId) -> bool {
-        def_id_visibility(self.tcx, did).0.is_accessible_from(self.current_item, self.tcx)
+        let (a, ..) = def_id_visibility(self.tcx, did);
+        a.is_accessible_from(self.current_item, self.tcx)
     }
 
     // Take node-id of an expression or pattern and check its type for privacy.
@@ -951,11 +1068,33 @@ impl<'a, 'tcx> TypePrivacyVisitor<'a, 'tcx> {
     }
 
     fn check_def_id(&mut self, def_id: DefId, kind: &str, descr: &dyn fmt::Display) -> bool {
-        let is_error = !self.item_is_accessible(def_id);
-        if is_error {
-            self.tcx.sess.span_err(self.span, &format!("{} `{}` is private", kind, descr));
+        let is_ok = self.item_is_accessible(def_id);
+        if !is_ok {
+            match self.tcx.hir().as_local_node_id(def_id) {
+                Some(node_id) => {
+                    match self.tcx.hir().get(node_id) {
+                        Node::StructCtor(hir::VariantData::Tuple(..)) => {
+                            // Ignore tuple structs, as they are handled in `visit_path`
+                            return false;
+                        }
+                        _ => {}
+                    }
+                }
+                _ => {}
+            }
+            let msg = if let Some(def) = self.tcx.describe_def(def_id) {
+                format!("{} `{}` is private", def.kind_name(), self.tcx.item_path_str(def_id))
+            } else {
+                format!("{} `{}` is private", kind, descr)
+            };
+            if !self.reported_tuple_structs.iter().any(|sp| sp.overlaps(self.span)) {
+                self.tcx.sess
+                    .struct_span_err(self.span, &msg)
+                    .span_label(self.span, "private")
+                    .emit();
+            }
         }
-        is_error
+        !is_ok
     }
 }
 
@@ -1079,12 +1218,35 @@ impl<'a, 'tcx> Visitor<'tcx> for TypePrivacyVisitor<'a, 'tcx> {
                     hir::QPath::TypeRelative(_, ref segment) => segment.ident.to_string(),
                 };
                 let msg = format!("{} `{}` is private", def.kind_name(), name);
-                self.tcx.sess.span_err(span, &msg);
+                let label = format!("{} not accessible from here", def.kind_name());
+                self.tcx.sess.struct_span_err(span, &msg)
+                    .span_label(span, label)
+                    .emit();
                 return;
             }
         }
 
         intravisit::walk_qpath(self, qpath, id, span);
+    }
+
+    // Prohibit access to tuple structs that are either unreachable *or* have private fields.
+    fn visit_path(&mut self, path: &'tcx hir::Path, _id: hir::HirId) {
+        // We handle tuple struct visibility here to only complain about bare paths referencing an
+        // unreachable tuple struct or one that has private fields.
+        if let Def::StructCtor(def_id, hir::def::CtorKind::Fn) = path.def {
+            if !self.item_is_accessible(def_id) &&
+                // only report if this is a bare path, not part of a tuple struct literal
+                !self.reported_tuple_structs.iter().any(|sp| sp.overlaps(path.span))
+            {
+                let kind_name = path.def.kind_name();
+                let sp = path.span;
+                let msg = format!("{} `{}` is private", kind_name, path);
+                let label = format!("{} not accesssible from here", kind_name);
+                self.tcx.sess.struct_span_err(sp, &msg)
+                    .span_label(sp, label)
+                    .emit();
+            }
+        }
     }
 
     // Check types of patterns.
@@ -1770,6 +1932,7 @@ fn check_mod_privacy<'tcx>(tcx: TyCtxt<'_, 'tcx, 'tcx>, module_def_id: DefId) {
         tables: &empty_tables,
         current_item: DUMMY_NODE_ID,
         empty_tables: &empty_tables,
+        reported_tuple_structs: FxHashSet::default(),
     };
     let (module, span, node_id) = tcx.hir().get_module(module_def_id);
     intravisit::walk_mod(&mut visitor, module, node_id);
@@ -1783,6 +1946,7 @@ fn check_mod_privacy<'tcx>(tcx: TyCtxt<'_, 'tcx, 'tcx>, module_def_id: DefId) {
         in_body: false,
         span,
         empty_tables: &empty_tables,
+        reported_tuple_structs: visitor.reported_tuple_structs,
     };
     intravisit::walk_mod(&mut visitor, module, node_id);
 }

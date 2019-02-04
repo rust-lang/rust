@@ -1,8 +1,16 @@
 error[E0451]: field `x` of struct `foo::bar::S` is private
   --> $DIR/struct-literal-field.rs:18:9
    |
-LL |     S { x: 0 }; //~ ERROR private
-   |         ^^^^ field `x` is private
+LL | /         pub struct S {
+LL | |             pub(in foo) x: i32,
+LL | |         }
+   | |_________- `foo::bar::S` defined here
+...
+LL |       S { x: 0 }; //~ ERROR private
+   |       ----^^^^--
+   |       |   |
+   |       |   private field
+   |       `foo::bar::S` cannot be built due to private field
 
 error: aborting due to previous error
 

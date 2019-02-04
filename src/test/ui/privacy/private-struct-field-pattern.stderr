@@ -1,8 +1,16 @@
 error[E0451]: field `x` of struct `a::Foo` is private
   --> $DIR/private-struct-field-pattern.rs:15:15
    |
-LL |         Foo { x: _ } => {}  //~ ERROR field `x` of struct `a::Foo` is private
-   |               ^^^^ field `x` is private
+LL | /     pub struct Foo {
+LL | |         x: isize
+LL | |     }
+   | |_____- `a::Foo` defined here
+...
+LL |           Foo { x: _ } => {}  //~ ERROR field `x` of struct `a::Foo` is private
+   |           ------^^^^--
+   |           |     |
+   |           |     private field
+   |           `a::Foo` cannot be destructured due to private field
 
 error: aborting due to previous error
 

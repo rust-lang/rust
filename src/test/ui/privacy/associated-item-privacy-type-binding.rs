@@ -42,19 +42,19 @@ mod priv_parent_substs {
 
     pub macro mac() {
         let _: Box<PubTrWithParam<AssocTy = u8>>;
-        //~^ ERROR type `priv_parent_substs::Priv` is private
-        //~| ERROR type `priv_parent_substs::Priv` is private
+        //~^ ERROR struct `priv_parent_substs::Priv` is private
+        //~| ERROR struct `priv_parent_substs::Priv` is private
         let _: Box<PubTr<AssocTy = u8>>;
-        //~^ ERROR type `priv_parent_substs::Priv` is private
-        //~| ERROR type `priv_parent_substs::Priv` is private
+        //~^ ERROR struct `priv_parent_substs::Priv` is private
+        //~| ERROR struct `priv_parent_substs::Priv` is private
         pub type InSignatureTy1 = Box<PubTrWithParam<AssocTy = u8>>;
-        //~^ ERROR type `priv_parent_substs::Priv` is private
+        //~^ ERROR struct `priv_parent_substs::Priv` is private
         pub type InSignatureTy2 = Box<PubTr<AssocTy = u8>>;
-        //~^ ERROR type `priv_parent_substs::Priv` is private
+        //~^ ERROR struct `priv_parent_substs::Priv` is private
         trait InSignatureTr1: PubTrWithParam<AssocTy = u8> {}
-        //~^ ERROR type `priv_parent_substs::Priv` is private
+        //~^ ERROR struct `priv_parent_substs::Priv` is private
         trait InSignatureTr2: PubTr<AssocTy = u8> {}
-        //~^ ERROR type `priv_parent_substs::Priv` is private
+        //~^ ERROR struct `priv_parent_substs::Priv` is private
     }
 }
 fn priv_parent_substs() {

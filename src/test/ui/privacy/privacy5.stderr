@@ -1,291 +1,579 @@
-error[E0603]: tuple struct `A` is private
-  --> $DIR/privacy5.rs:51:16
+error[E0451]: field `0` of struct `a::A` is private
+  --> $DIR/privacy5.rs:51:18
    |
-LL |     let a = a::A(()); //~ ERROR tuple struct `A` is private
-   |                ^
+LL |     pub struct A(());
+   |     ----------------- `a::A` defined here
+...
+LL |     let a = a::A(());
+   |             ---- ^^ private field
+   |             |
+   |             `a::A` cannot be built due to private field
 
-error[E0603]: tuple struct `B` is private
-  --> $DIR/privacy5.rs:52:16
+error[E0451]: field `0` of struct `a::B` is private
+  --> $DIR/privacy5.rs:53:18
    |
-LL |     let b = a::B(2); //~ ERROR tuple struct `B` is private
-   |                ^
+LL |     pub struct B(isize);
+   |     -------------------- `a::B` defined here
+...
+LL |     let b = a::B(2);
+   |             ---- ^ private field
+   |             |
+   |             `a::B` cannot be built due to private field
 
-error[E0603]: tuple struct `C` is private
-  --> $DIR/privacy5.rs:53:16
+error[E0451]: field `1` of struct `a::C` is private
+  --> $DIR/privacy5.rs:55:21
    |
-LL |     let c = a::C(2, 3); //~ ERROR tuple struct `C` is private
-   |                ^
+LL |     pub struct C(pub isize, isize);
+   |     ------------------------------- `a::C` defined here
+...
+LL |     let c = a::C(2, 3);
+   |             ----    ^ private field
+   |             |
+   |             `a::C` cannot be built due to private field
 
-error[E0603]: tuple struct `A` is private
-  --> $DIR/privacy5.rs:56:12
+error[E0451]: field `0` of struct `a::A` is private
+  --> $DIR/privacy5.rs:59:14
    |
-LL |     let a::A(()) = a; //~ ERROR tuple struct `A` is private
-   |            ^
+LL |     pub struct A(());
+   |     ----------------- `a::A` defined here
+...
+LL |     let a::A(()) = a;
+   |         -----^^-
+   |         |    |
+   |         |    private field
+   |         `a::A` cannot be destructured due to private field
 
-error[E0603]: tuple struct `A` is private
-  --> $DIR/privacy5.rs:57:12
+error[E0451]: field `0` of struct `a::A` is private
+  --> $DIR/privacy5.rs:61:14
    |
-LL |     let a::A(_) = a; //~ ERROR tuple struct `A` is private
-   |            ^
+LL |     pub struct A(());
+   |     ----------------- `a::A` defined here
+...
+LL |     let a::A(_) = a;
+   |         -----^-
+   |         |    |
+   |         |    private field
+   |         `a::A` cannot be destructured due to private field
 
-error[E0603]: tuple struct `A` is private
-  --> $DIR/privacy5.rs:58:18
+error[E0451]: field `0` of struct `a::A` is private
+  --> $DIR/privacy5.rs:63:20
    |
-LL |     match a { a::A(()) => {} } //~ ERROR tuple struct `A` is private
-   |                  ^
+LL |     pub struct A(());
+   |     ----------------- `a::A` defined here
+...
+LL |     match a { a::A(()) => {} }
+   |               -----^^-
+   |               |    |
+   |               |    private field
+   |               `a::A` cannot be destructured due to private field
 
-error[E0603]: tuple struct `A` is private
-  --> $DIR/privacy5.rs:59:18
+error[E0451]: field `0` of struct `a::A` is private
+  --> $DIR/privacy5.rs:65:20
    |
-LL |     match a { a::A(_) => {} } //~ ERROR tuple struct `A` is private
-   |                  ^
+LL |     pub struct A(());
+   |     ----------------- `a::A` defined here
+...
+LL |     match a { a::A(_) => {} }
+   |               -----^-
+   |               |    |
+   |               |    private field
+   |               `a::A` cannot be destructured due to private field
 
-error[E0603]: tuple struct `B` is private
-  --> $DIR/privacy5.rs:61:12
+error[E0451]: field `0` of struct `a::B` is private
+  --> $DIR/privacy5.rs:68:14
    |
-LL |     let a::B(_) = b; //~ ERROR tuple struct `B` is private
-   |            ^
+LL |     pub struct B(isize);
+   |     -------------------- `a::B` defined here
+...
+LL |     let a::B(_) = b;
+   |         -----^-
+   |         |    |
+   |         |    private field
+   |         `a::B` cannot be destructured due to private field
 
-error[E0603]: tuple struct `B` is private
-  --> $DIR/privacy5.rs:62:12
+error[E0451]: field `0` of struct `a::B` is private
+  --> $DIR/privacy5.rs:70:14
    |
-LL |     let a::B(_b) = b; //~ ERROR tuple struct `B` is private
-   |            ^
+LL |     pub struct B(isize);
+   |     -------------------- `a::B` defined here
+...
+LL |     let a::B(_b) = b;
+   |         -----^^-
+   |         |    |
+   |         |    private field
+   |         `a::B` cannot be destructured due to private field
 
-error[E0603]: tuple struct `B` is private
-  --> $DIR/privacy5.rs:63:18
+error[E0451]: field `0` of struct `a::B` is private
+  --> $DIR/privacy5.rs:72:20
    |
-LL |     match b { a::B(_) => {} } //~ ERROR tuple struct `B` is private
-   |                  ^
+LL |     pub struct B(isize);
+   |     -------------------- `a::B` defined here
+...
+LL |     match b { a::B(_) => {} }
+   |               -----^-
+   |               |    |
+   |               |    private field
+   |               `a::B` cannot be destructured due to private field
 
-error[E0603]: tuple struct `B` is private
-  --> $DIR/privacy5.rs:64:18
+error[E0451]: field `0` of struct `a::B` is private
+  --> $DIR/privacy5.rs:74:20
    |
-LL |     match b { a::B(_b) => {} } //~ ERROR tuple struct `B` is private
-   |                  ^
+LL |     pub struct B(isize);
+   |     -------------------- `a::B` defined here
+...
+LL |     match b { a::B(_b) => {} }
+   |               -----^^-
+   |               |    |
+   |               |    private field
+   |               `a::B` cannot be destructured due to private field
 
-error[E0603]: tuple struct `B` is private
-  --> $DIR/privacy5.rs:65:18
+error[E0451]: field `0` of struct `a::B` is private
+  --> $DIR/privacy5.rs:76:20
    |
-LL |     match b { a::B(1) => {} a::B(_) => {} } //~ ERROR tuple struct `B` is private
-   |                  ^
+LL |     pub struct B(isize);
+   |     -------------------- `a::B` defined here
+...
+LL |     match b { a::B(1) => {} a::B(_) => {} }
+   |               -----^-
+   |               |    |
+   |               |    private field
+   |               `a::B` cannot be destructured due to private field
 
-error[E0603]: tuple struct `B` is private
-  --> $DIR/privacy5.rs:65:32
+error[E0451]: field `0` of struct `a::B` is private
+  --> $DIR/privacy5.rs:76:34
    |
-LL |     match b { a::B(1) => {} a::B(_) => {} } //~ ERROR tuple struct `B` is private
-   |                                ^
+LL |     pub struct B(isize);
+   |     -------------------- `a::B` defined here
+...
+LL |     match b { a::B(1) => {} a::B(_) => {} }
+   |                             -----^-
+   |                             |    |
+   |                             |    private field
+   |                             `a::B` cannot be destructured due to private field
 
-error[E0603]: tuple struct `C` is private
-  --> $DIR/privacy5.rs:68:12
+error[E0451]: field `1` of struct `a::C` is private
+  --> $DIR/privacy5.rs:80:17
    |
-LL |     let a::C(_, _) = c; //~ ERROR tuple struct `C` is private
-   |            ^
+LL |     pub struct C(pub isize, isize);
+   |     ------------------------------- `a::C` defined here
+...
+LL |     let a::C(_, _) = c;
+   |         --------^-
+   |         |       |
+   |         |       private field
+   |         `a::C` cannot be destructured due to private field
 
-error[E0603]: tuple struct `C` is private
-  --> $DIR/privacy5.rs:69:12
+error[E0451]: field `1` of struct `a::C` is private
+  --> $DIR/privacy5.rs:82:18
    |
-LL |     let a::C(_a, _) = c; //~ ERROR tuple struct `C` is private
-   |            ^
+LL |     pub struct C(pub isize, isize);
+   |     ------------------------------- `a::C` defined here
+...
+LL |     let a::C(_a, _) = c;
+   |         ---------^-
+   |         |        |
+   |         |        private field
+   |         `a::C` cannot be destructured due to private field
 
-error[E0603]: tuple struct `C` is private
-  --> $DIR/privacy5.rs:70:12
-   |
-LL |     let a::C(_, _b) = c; //~ ERROR tuple struct `C` is private
-   |            ^
-
-error[E0603]: tuple struct `C` is private
-  --> $DIR/privacy5.rs:71:12
-   |
-LL |     let a::C(_a, _b) = c; //~ ERROR tuple struct `C` is private
-   |            ^
-
-error[E0603]: tuple struct `C` is private
-  --> $DIR/privacy5.rs:72:18
-   |
-LL |     match c { a::C(_, _) => {} } //~ ERROR tuple struct `C` is private
-   |                  ^
-
-error[E0603]: tuple struct `C` is private
-  --> $DIR/privacy5.rs:73:18
-   |
-LL |     match c { a::C(_a, _) => {} } //~ ERROR tuple struct `C` is private
-   |                  ^
-
-error[E0603]: tuple struct `C` is private
-  --> $DIR/privacy5.rs:74:18
-   |
-LL |     match c { a::C(_, _b) => {} } //~ ERROR tuple struct `C` is private
-   |                  ^
-
-error[E0603]: tuple struct `C` is private
-  --> $DIR/privacy5.rs:75:18
-   |
-LL |     match c { a::C(_a, _b) => {} } //~ ERROR tuple struct `C` is private
-   |                  ^
-
-error[E0603]: tuple struct `A` is private
-  --> $DIR/privacy5.rs:83:17
-   |
-LL |     let a2 = a::A; //~ ERROR tuple struct `A` is private
-   |                 ^
-
-error[E0603]: tuple struct `B` is private
+error[E0451]: field `1` of struct `a::C` is private
   --> $DIR/privacy5.rs:84:17
    |
-LL |     let b2 = a::B; //~ ERROR tuple struct `B` is private
-   |                 ^
+LL |     pub struct C(pub isize, isize);
+   |     ------------------------------- `a::C` defined here
+...
+LL |     let a::C(_, _b) = c;
+   |         --------^^-
+   |         |       |
+   |         |       private field
+   |         `a::C` cannot be destructured due to private field
 
-error[E0603]: tuple struct `C` is private
-  --> $DIR/privacy5.rs:85:17
+error[E0451]: field `1` of struct `a::C` is private
+  --> $DIR/privacy5.rs:86:18
    |
-LL |     let c2 = a::C; //~ ERROR tuple struct `C` is private
-   |                 ^
+LL |     pub struct C(pub isize, isize);
+   |     ------------------------------- `a::C` defined here
+...
+LL |     let a::C(_a, _b) = c;
+   |         ---------^^-
+   |         |        |
+   |         |        private field
+   |         `a::C` cannot be destructured due to private field
 
-error[E0603]: tuple struct `A` is private
-  --> $DIR/privacy5.rs:90:20
+error[E0451]: field `1` of struct `a::C` is private
+  --> $DIR/privacy5.rs:88:23
    |
-LL |     let a = other::A(()); //~ ERROR tuple struct `A` is private
-   |                    ^
+LL |     pub struct C(pub isize, isize);
+   |     ------------------------------- `a::C` defined here
+...
+LL |     match c { a::C(_, _) => {} }
+   |               --------^-
+   |               |       |
+   |               |       private field
+   |               `a::C` cannot be destructured due to private field
 
-error[E0603]: tuple struct `B` is private
-  --> $DIR/privacy5.rs:91:20
+error[E0451]: field `1` of struct `a::C` is private
+  --> $DIR/privacy5.rs:90:24
    |
-LL |     let b = other::B(2); //~ ERROR tuple struct `B` is private
-   |                    ^
+LL |     pub struct C(pub isize, isize);
+   |     ------------------------------- `a::C` defined here
+...
+LL |     match c { a::C(_a, _) => {} }
+   |               ---------^-
+   |               |        |
+   |               |        private field
+   |               `a::C` cannot be destructured due to private field
 
-error[E0603]: tuple struct `C` is private
-  --> $DIR/privacy5.rs:92:20
+error[E0451]: field `1` of struct `a::C` is private
+  --> $DIR/privacy5.rs:92:23
    |
-LL |     let c = other::C(2, 3); //~ ERROR tuple struct `C` is private
-   |                    ^
+LL |     pub struct C(pub isize, isize);
+   |     ------------------------------- `a::C` defined here
+...
+LL |     match c { a::C(_, _b) => {} }
+   |               --------^^-
+   |               |       |
+   |               |       private field
+   |               `a::C` cannot be destructured due to private field
 
-error[E0603]: tuple struct `A` is private
-  --> $DIR/privacy5.rs:95:16
+error[E0451]: field `1` of struct `a::C` is private
+  --> $DIR/privacy5.rs:94:24
    |
-LL |     let other::A(()) = a; //~ ERROR tuple struct `A` is private
-   |                ^
+LL |     pub struct C(pub isize, isize);
+   |     ------------------------------- `a::C` defined here
+...
+LL |     match c { a::C(_a, _b) => {} }
+   |               ---------^^-
+   |               |        |
+   |               |        private field
+   |               `a::C` cannot be destructured due to private field
 
-error[E0603]: tuple struct `A` is private
-  --> $DIR/privacy5.rs:96:16
-   |
-LL |     let other::A(_) = a; //~ ERROR tuple struct `A` is private
-   |                ^
-
-error[E0603]: tuple struct `A` is private
-  --> $DIR/privacy5.rs:97:22
-   |
-LL |     match a { other::A(()) => {} } //~ ERROR tuple struct `A` is private
-   |                      ^
-
-error[E0603]: tuple struct `A` is private
-  --> $DIR/privacy5.rs:98:22
-   |
-LL |     match a { other::A(_) => {} } //~ ERROR tuple struct `A` is private
-   |                      ^
-
-error[E0603]: tuple struct `B` is private
-  --> $DIR/privacy5.rs:100:16
-   |
-LL |     let other::B(_) = b; //~ ERROR tuple struct `B` is private
-   |                ^
-
-error[E0603]: tuple struct `B` is private
-  --> $DIR/privacy5.rs:101:16
-   |
-LL |     let other::B(_b) = b; //~ ERROR tuple struct `B` is private
-   |                ^
-
-error[E0603]: tuple struct `B` is private
-  --> $DIR/privacy5.rs:102:22
-   |
-LL |     match b { other::B(_) => {} } //~ ERROR tuple struct `B` is private
-   |                      ^
-
-error[E0603]: tuple struct `B` is private
-  --> $DIR/privacy5.rs:103:22
-   |
-LL |     match b { other::B(_b) => {} } //~ ERROR tuple struct `B` is private
-   |                      ^
-
-error[E0603]: tuple struct `B` is private
-  --> $DIR/privacy5.rs:104:22
-   |
-LL |     match b { other::B(1) => {} other::B(_) => {} } //~ ERROR tuple struct `B` is private
-   |                      ^
-
-error[E0603]: tuple struct `B` is private
-  --> $DIR/privacy5.rs:104:40
-   |
-LL |     match b { other::B(1) => {} other::B(_) => {} } //~ ERROR tuple struct `B` is private
-   |                                        ^
-
-error[E0603]: tuple struct `C` is private
-  --> $DIR/privacy5.rs:107:16
-   |
-LL |     let other::C(_, _) = c; //~ ERROR tuple struct `C` is private
-   |                ^
-
-error[E0603]: tuple struct `C` is private
-  --> $DIR/privacy5.rs:108:16
-   |
-LL |     let other::C(_a, _) = c; //~ ERROR tuple struct `C` is private
-   |                ^
-
-error[E0603]: tuple struct `C` is private
-  --> $DIR/privacy5.rs:109:16
-   |
-LL |     let other::C(_, _b) = c; //~ ERROR tuple struct `C` is private
-   |                ^
-
-error[E0603]: tuple struct `C` is private
-  --> $DIR/privacy5.rs:110:16
-   |
-LL |     let other::C(_a, _b) = c; //~ ERROR tuple struct `C` is private
-   |                ^
-
-error[E0603]: tuple struct `C` is private
-  --> $DIR/privacy5.rs:111:22
-   |
-LL |     match c { other::C(_, _) => {} } //~ ERROR tuple struct `C` is private
-   |                      ^
-
-error[E0603]: tuple struct `C` is private
-  --> $DIR/privacy5.rs:112:22
-   |
-LL |     match c { other::C(_a, _) => {} } //~ ERROR tuple struct `C` is private
-   |                      ^
-
-error[E0603]: tuple struct `C` is private
+error[E0451]: field `0` of struct `other::A` is private
   --> $DIR/privacy5.rs:113:22
    |
-LL |     match c { other::C(_, _b) => {} } //~ ERROR tuple struct `C` is private
-   |                      ^
-
-error[E0603]: tuple struct `C` is private
-  --> $DIR/privacy5.rs:114:22
+LL |     let a = other::A(());
+   |             -------- ^^ private field
+   |             |
+   |             `other::A` cannot be built due to private field
+   | 
+  ::: $DIR/auxiliary/privacy_tuple_struct.rs:1:1
    |
-LL |     match c { other::C(_a, _b) => {} } //~ ERROR tuple struct `C` is private
-   |                      ^
+LL | pub struct A(());
+   | ----------------- `other::A` defined here
 
-error[E0603]: tuple struct `A` is private
-  --> $DIR/privacy5.rs:122:21
+error[E0451]: field `0` of struct `other::B` is private
+  --> $DIR/privacy5.rs:115:22
    |
-LL |     let a2 = other::A; //~ ERROR tuple struct `A` is private
-   |                     ^
+LL |     let b = other::B(2);
+   |             -------- ^ private field
+   |             |
+   |             `other::B` cannot be built due to private field
+   | 
+  ::: $DIR/auxiliary/privacy_tuple_struct.rs:2:1
+   |
+LL | pub struct B(isize);
+   | -------------------- `other::B` defined here
 
-error[E0603]: tuple struct `B` is private
-  --> $DIR/privacy5.rs:123:21
+error[E0451]: field `1` of struct `other::C` is private
+  --> $DIR/privacy5.rs:117:25
    |
-LL |     let b2 = other::B; //~ ERROR tuple struct `B` is private
-   |                     ^
+LL |     let c = other::C(2, 3);
+   |             --------    ^ private field
+   |             |
+   |             `other::C` cannot be built due to private field
+   | 
+  ::: $DIR/auxiliary/privacy_tuple_struct.rs:3:1
+   |
+LL | pub struct C(pub isize, isize);
+   | ------------------------------- `other::C` defined here
 
-error[E0603]: tuple struct `C` is private
-  --> $DIR/privacy5.rs:124:21
+error[E0451]: field `0` of struct `other::A` is private
+  --> $DIR/privacy5.rs:121:18
    |
-LL |     let c2 = other::C; //~ ERROR tuple struct `C` is private
-   |                     ^
+LL |     let other::A(()) = a;
+   |         ---------^^-
+   |         |        |
+   |         |        private field
+   |         `other::A` cannot be destructured due to private field
+   | 
+  ::: $DIR/auxiliary/privacy_tuple_struct.rs:1:1
+   |
+LL | pub struct A(());
+   | ----------------- `other::A` defined here
+
+error[E0451]: field `0` of struct `other::A` is private
+  --> $DIR/privacy5.rs:123:18
+   |
+LL |     let other::A(_) = a;
+   |         ---------^-
+   |         |        |
+   |         |        private field
+   |         `other::A` cannot be destructured due to private field
+   | 
+  ::: $DIR/auxiliary/privacy_tuple_struct.rs:1:1
+   |
+LL | pub struct A(());
+   | ----------------- `other::A` defined here
+
+error[E0451]: field `0` of struct `other::A` is private
+  --> $DIR/privacy5.rs:125:24
+   |
+LL |     match a { other::A(()) => {} }
+   |               ---------^^-
+   |               |        |
+   |               |        private field
+   |               `other::A` cannot be destructured due to private field
+   | 
+  ::: $DIR/auxiliary/privacy_tuple_struct.rs:1:1
+   |
+LL | pub struct A(());
+   | ----------------- `other::A` defined here
+
+error[E0451]: field `0` of struct `other::A` is private
+  --> $DIR/privacy5.rs:127:24
+   |
+LL |     match a { other::A(_) => {} }
+   |               ---------^-
+   |               |        |
+   |               |        private field
+   |               `other::A` cannot be destructured due to private field
+   | 
+  ::: $DIR/auxiliary/privacy_tuple_struct.rs:1:1
+   |
+LL | pub struct A(());
+   | ----------------- `other::A` defined here
+
+error[E0451]: field `0` of struct `other::B` is private
+  --> $DIR/privacy5.rs:130:18
+   |
+LL |     let other::B(_) = b;
+   |         ---------^-
+   |         |        |
+   |         |        private field
+   |         `other::B` cannot be destructured due to private field
+   | 
+  ::: $DIR/auxiliary/privacy_tuple_struct.rs:2:1
+   |
+LL | pub struct B(isize);
+   | -------------------- `other::B` defined here
+
+error[E0451]: field `0` of struct `other::B` is private
+  --> $DIR/privacy5.rs:132:18
+   |
+LL |     let other::B(_b) = b;
+   |         ---------^^-
+   |         |        |
+   |         |        private field
+   |         `other::B` cannot be destructured due to private field
+   | 
+  ::: $DIR/auxiliary/privacy_tuple_struct.rs:2:1
+   |
+LL | pub struct B(isize);
+   | -------------------- `other::B` defined here
+
+error[E0451]: field `0` of struct `other::B` is private
+  --> $DIR/privacy5.rs:134:24
+   |
+LL |     match b { other::B(_) => {} }
+   |               ---------^-
+   |               |        |
+   |               |        private field
+   |               `other::B` cannot be destructured due to private field
+   | 
+  ::: $DIR/auxiliary/privacy_tuple_struct.rs:2:1
+   |
+LL | pub struct B(isize);
+   | -------------------- `other::B` defined here
+
+error[E0451]: field `0` of struct `other::B` is private
+  --> $DIR/privacy5.rs:136:24
+   |
+LL |     match b { other::B(_b) => {} }
+   |               ---------^^-
+   |               |        |
+   |               |        private field
+   |               `other::B` cannot be destructured due to private field
+   | 
+  ::: $DIR/auxiliary/privacy_tuple_struct.rs:2:1
+   |
+LL | pub struct B(isize);
+   | -------------------- `other::B` defined here
+
+error[E0451]: field `0` of struct `other::B` is private
+  --> $DIR/privacy5.rs:138:24
+   |
+LL |     match b { other::B(1) => {} other::B(_) => {} }
+   |               ---------^-
+   |               |        |
+   |               |        private field
+   |               `other::B` cannot be destructured due to private field
+   | 
+  ::: $DIR/auxiliary/privacy_tuple_struct.rs:2:1
+   |
+LL | pub struct B(isize);
+   | -------------------- `other::B` defined here
+
+error[E0451]: field `0` of struct `other::B` is private
+  --> $DIR/privacy5.rs:138:42
+   |
+LL |     match b { other::B(1) => {} other::B(_) => {} }
+   |                                 ---------^-
+   |                                 |        |
+   |                                 |        private field
+   |                                 `other::B` cannot be destructured due to private field
+   | 
+  ::: $DIR/auxiliary/privacy_tuple_struct.rs:2:1
+   |
+LL | pub struct B(isize);
+   | -------------------- `other::B` defined here
+
+error[E0451]: field `1` of struct `other::C` is private
+  --> $DIR/privacy5.rs:142:21
+   |
+LL |     let other::C(_, _) = c;
+   |         ------------^-
+   |         |           |
+   |         |           private field
+   |         `other::C` cannot be destructured due to private field
+   | 
+  ::: $DIR/auxiliary/privacy_tuple_struct.rs:3:1
+   |
+LL | pub struct C(pub isize, isize);
+   | ------------------------------- `other::C` defined here
+
+error[E0451]: field `1` of struct `other::C` is private
+  --> $DIR/privacy5.rs:144:22
+   |
+LL |     let other::C(_a, _) = c;
+   |         -------------^-
+   |         |            |
+   |         |            private field
+   |         `other::C` cannot be destructured due to private field
+   | 
+  ::: $DIR/auxiliary/privacy_tuple_struct.rs:3:1
+   |
+LL | pub struct C(pub isize, isize);
+   | ------------------------------- `other::C` defined here
+
+error[E0451]: field `1` of struct `other::C` is private
+  --> $DIR/privacy5.rs:146:21
+   |
+LL |     let other::C(_, _b) = c;
+   |         ------------^^-
+   |         |           |
+   |         |           private field
+   |         `other::C` cannot be destructured due to private field
+   | 
+  ::: $DIR/auxiliary/privacy_tuple_struct.rs:3:1
+   |
+LL | pub struct C(pub isize, isize);
+   | ------------------------------- `other::C` defined here
+
+error[E0451]: field `1` of struct `other::C` is private
+  --> $DIR/privacy5.rs:148:22
+   |
+LL |     let other::C(_a, _b) = c;
+   |         -------------^^-
+   |         |            |
+   |         |            private field
+   |         `other::C` cannot be destructured due to private field
+   | 
+  ::: $DIR/auxiliary/privacy_tuple_struct.rs:3:1
+   |
+LL | pub struct C(pub isize, isize);
+   | ------------------------------- `other::C` defined here
+
+error[E0451]: field `1` of struct `other::C` is private
+  --> $DIR/privacy5.rs:150:27
+   |
+LL |     match c { other::C(_, _) => {} }
+   |               ------------^-
+   |               |           |
+   |               |           private field
+   |               `other::C` cannot be destructured due to private field
+   | 
+  ::: $DIR/auxiliary/privacy_tuple_struct.rs:3:1
+   |
+LL | pub struct C(pub isize, isize);
+   | ------------------------------- `other::C` defined here
+
+error[E0451]: field `1` of struct `other::C` is private
+  --> $DIR/privacy5.rs:152:28
+   |
+LL |     match c { other::C(_a, _) => {} }
+   |               -------------^-
+   |               |            |
+   |               |            private field
+   |               `other::C` cannot be destructured due to private field
+   | 
+  ::: $DIR/auxiliary/privacy_tuple_struct.rs:3:1
+   |
+LL | pub struct C(pub isize, isize);
+   | ------------------------------- `other::C` defined here
+
+error[E0451]: field `1` of struct `other::C` is private
+  --> $DIR/privacy5.rs:154:27
+   |
+LL |     match c { other::C(_, _b) => {} }
+   |               ------------^^-
+   |               |           |
+   |               |           private field
+   |               `other::C` cannot be destructured due to private field
+   | 
+  ::: $DIR/auxiliary/privacy_tuple_struct.rs:3:1
+   |
+LL | pub struct C(pub isize, isize);
+   | ------------------------------- `other::C` defined here
+
+error[E0451]: field `1` of struct `other::C` is private
+  --> $DIR/privacy5.rs:156:28
+   |
+LL |     match c { other::C(_a, _b) => {} }
+   |               -------------^^-
+   |               |            |
+   |               |            private field
+   |               `other::C` cannot be destructured due to private field
+   | 
+  ::: $DIR/auxiliary/privacy_tuple_struct.rs:3:1
+   |
+LL | pub struct C(pub isize, isize);
+   | ------------------------------- `other::C` defined here
+
+error: tuple struct `a::A` is private
+  --> $DIR/privacy5.rs:103:14
+   |
+LL |     let a2 = a::A;
+   |              ^^^^ tuple struct not accesssible from here
+
+error: tuple struct `a::B` is private
+  --> $DIR/privacy5.rs:105:14
+   |
+LL |     let b2 = a::B;
+   |              ^^^^ tuple struct not accesssible from here
+
+error: tuple struct `a::C` is private
+  --> $DIR/privacy5.rs:107:14
+   |
+LL |     let c2 = a::C;
+   |              ^^^^ tuple struct not accesssible from here
+
+error: struct `other::A` is private
+  --> $DIR/privacy5.rs:165:14
+   |
+LL |     let a2 = other::A;
+   |              ^^^^^^^^ private
+
+error: struct `other::B` is private
+  --> $DIR/privacy5.rs:167:14
+   |
+LL |     let b2 = other::B;
+   |              ^^^^^^^^ private
+
+error: struct `other::C` is private
+  --> $DIR/privacy5.rs:169:14
+   |
+LL |     let c2 = other::C;
+   |              ^^^^^^^^ private
 
 error: aborting due to 48 previous errors
 
-For more information about this error, try `rustc --explain E0603`.
+For more information about this error, try `rustc --explain E0451`.

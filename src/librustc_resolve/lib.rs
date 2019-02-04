@@ -5046,8 +5046,24 @@ impl<'a> Resolver<'a> {
         let mut reported_spans = FxHashSet::default();
         for &PrivacyError(dedup_span, ident, binding) in &self.privacy_errors {
             if reported_spans.insert(dedup_span) {
-                span_err!(self.session, ident.span, E0603, "{} `{}` is private",
-                          binding.descr(), ident.name);
+                if let NameBindingKind::Def(
+                    Def::StructCtor(_def_id, CtorKind::Fn), false,
+                ) = binding.kind {
+                    // For tuple structs we want to be clearer about the reason for the ctor being
+                    // private, as we'd want to identify whether the visibility failure is due to a
+                    // non-accessible field. Because of this, ignore them at the resolve time and
+                    // defer to privacy checking step.
+                } else {
+                    let mut err = struct_span_err!(
+                        self.session,
+                        ident.span,
+                        E0603,
+                        "{} `{}` is private",
+                        binding.descr(),
+                        ident.name,
+                    );
+                    err.emit();
+                }
             }
         }
     }

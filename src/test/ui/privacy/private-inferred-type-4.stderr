@@ -1,0 +1,11 @@
+error: tuple struct `PubTupleStruct` is private
+  --> $DIR/private-inferred-type-4.rs:10:9
+   |
+LL |         PubTupleStruct;
+   |         ^^^^^^^^^^^^^^ tuple struct not accesssible from here
+...
+LL |     m::m!();
+   |     -------- in this macro invocation
+
+error: aborting due to previous error
+
