@@ -130,6 +130,21 @@ pub fn match_def_path(tcx: TyCtxt<'_, '_, '_>, def_id: DefId, path: &[&str]) -> 
     apb.names.len() == path.len() && apb.names.into_iter().zip(path.iter()).all(|(a, &b)| *a == *b)
 }
 
+/// Get the absolute path of `def_id` as a vector of `&str`.
+///
+/// # Examples
+/// ```rust,ignore
+/// let def_path = get_def_path(tcx, def_id);
+/// if let &["core", "option", "Option"] = &def_path[..] {
+///     // The given `def_id` is that of an `Option` type
+/// };
+/// ```
+pub fn get_def_path(tcx: TyCtxt<'_, '_, '_>, def_id: DefId) -> Vec<&'static str> {
+    let mut apb = AbsolutePathBuffer { names: vec![] };
+    tcx.push_item_path(&mut apb, def_id, false);
+    apb.names.iter().map(|n| n.get()).collect()
+}
+
 /// Check if type is struct, enum or union type with given def path.
 pub fn match_type(cx: &LateContext<'_, '_>, ty: Ty<'_>, path: &[&str]) -> bool {
     match ty.sty {

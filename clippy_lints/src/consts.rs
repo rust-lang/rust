@@ -1,6 +1,7 @@
 #![allow(clippy::float_cmp)]
 
-use crate::utils::{clip, sext, unsext};
+use crate::utils::{clip, get_def_path, sext, unsext};
+use if_chain::if_chain;
 use rustc::hir::def::Def;
 use rustc::hir::*;
 use rustc::lint::LateContext;
@@ -234,6 +235,31 @@ impl<'c, 'cc> ConstEvalLateContext<'c, 'cc> {
                 UnDeref => Some(o),
             }),
             ExprKind::Binary(op, ref left, ref right) => self.binop(op, left, right),
+            ExprKind::Call(ref callee, ref args) => {
+                // We only handle a few const functions for now
+                if_chain! {
+                    if args.is_empty();
+                    if let ExprKind::Path(qpath) = &callee.node;
+                    let def = self.tables.qpath_def(qpath, callee.hir_id);
+                    if let Some(def_id) = def.opt_def_id();
+                    let def_path = get_def_path(self.tcx, def_id);
+                    if let &["core", "num", impl_ty, "max_value"] = &def_path[..];
+                    then {
+                       let value = match impl_ty {
+                           "<impl i8>" => i8::max_value() as u128,
+                           "<impl i16>" => i16::max_value() as u128,
+                           "<impl i32>" => i32::max_value() as u128,
+                           "<impl i64>" => i64::max_value() as u128,
+                           "<impl i128>" => i128::max_value() as u128,
+                           _ => return None,
+                       };
+                       Some(Constant::Int(value))
+                    }
+                    else {
+                        None
+                    }
+                }
+            },
             // TODO: add other expressions
             _ => None,
         }
