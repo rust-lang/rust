@@ -1042,7 +1042,7 @@ impl<T: ?Sized> DerefMut for ManuallyDrop<T> {
 /// even in unsafe code.  As a consequence, 0-initializing a variable of reference
 /// type causes instantaneous undefined behavior, no matter whether that reference
 /// ever gets used to access memory:
-/// ```rust,ignore
+/// ```rust,no_run
 /// use std::mem;
 ///
 /// let x: &i32 = mem::zeroed(); // undefined behavior!
@@ -1065,7 +1065,7 @@ impl<T: ?Sized> DerefMut for ManuallyDrop<T> {
 /// // Set it to a valid value.
 /// x.set(&0);
 /// // Extract the initialized data -- this is only allowed *after* properly
-/// initializing `x`!
+/// // initializing `x`!
 /// let x = unsafe { x.into_initialized() };
 /// ```
 /// The compiler then knows to not optimize this code.
