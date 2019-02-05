@@ -90,7 +90,7 @@ LL |   use issue_52891::a;
 LL |       m,
    |  ______-
 LL | |     a}; //~ ERROR `a` is defined multiple times
-   | |     -
+   | |     ^
    | |     |
    | |_____`a` reimported here
    |       help: remove unnecessary import
