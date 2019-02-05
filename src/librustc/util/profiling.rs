@@ -169,6 +169,7 @@ impl SelfProfiler {
         profiler
     }
 
+    #[inline]
     pub fn start_activity(&mut self, category: ProfileCategory) {
         self.record(ProfilerEvent::GenericActivityStart {
             category,
@@ -176,6 +177,7 @@ impl SelfProfiler {
         })
     }
 
+    #[inline]
     pub fn end_activity(&mut self, category: ProfileCategory) {
         self.record(ProfilerEvent::GenericActivityEnd {
             category,
@@ -183,6 +185,7 @@ impl SelfProfiler {
         })
     }
 
+    #[inline]
     pub fn record_computed_queries(
         &mut self,
         query_name: &'static str,
@@ -196,6 +199,7 @@ impl SelfProfiler {
         })
     }
 
+    #[inline]
     pub fn record_query_hit(&mut self, query_name: &'static str, category: ProfileCategory) {
         self.record(ProfilerEvent::QueryCacheHit {
             query_name,
@@ -203,6 +207,7 @@ impl SelfProfiler {
         })
     }
 
+    #[inline]
     pub fn start_query(&mut self, query_name: &'static str, category: ProfileCategory) {
         self.record(ProfilerEvent::QueryStart {
             query_name,
@@ -211,6 +216,7 @@ impl SelfProfiler {
         });
     }
 
+    #[inline]
     pub fn end_query(&mut self, query_name: &'static str, category: ProfileCategory) {
         self.record(ProfilerEvent::QueryEnd {
             query_name,
@@ -219,6 +225,7 @@ impl SelfProfiler {
         })
     }
 
+    #[inline]
     fn record(&mut self, event: ProfilerEvent) {
         let thread_id = std::thread::current().id();
         let events = self.events.entry(thread_id).or_default();
