@@ -117,3 +117,19 @@ Rust. It's also sometimes called "the 'nomicon."
 [The `rustc` Guide](https://rust-lang.github.io/rustc-guide/) documents how
 the compiler works and how to contribute to it. This is useful if you want to build
 or modify the Rust compiler from source (e.g. to target something non-standard).
+
+# Specialize Rust
+
+When using Rust in specific domain areas, consider using the following resources tailored to each domain.
+
+## Embedded Systems
+
+When developing for Bare Metal or Embedded Linux systems, you may find these resources maintained by the [Embedded Working Group] useful.
+
+[Embedded Working Group]: https://github.com/rust-embedded
+
+### The Embedded Rust Book
+
+[The Embedded Rust Book] is targeted at developers familiar with embedded development and familiar with Rust, but have not used Rust for embedded development.
+
+[The Embedded Rust Book]: embedded-book/index.html

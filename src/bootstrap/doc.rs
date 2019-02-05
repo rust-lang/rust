@@ -61,6 +61,7 @@ macro_rules! book {
 // adding a build step in `src/bootstrap/builder.rs`!
 book!(
     EditionGuide, "src/doc/edition-guide", "edition-guide", RustbookVersion::MdBook1;
+    EmbeddedBook, "src/doc/embedded-book", "embedded-book", RustbookVersion::MdBook2;
     Nomicon, "src/doc/nomicon", "nomicon", RustbookVersion::MdBook1;
     Reference, "src/doc/reference", "reference", RustbookVersion::MdBook1;
     RustByExample, "src/doc/rust-by-example", "rust-by-example", RustbookVersion::MdBook1;
@@ -71,10 +72,6 @@ book!(
 #[derive(Debug, Copy, Clone, Hash, PartialEq, Eq)]
 enum RustbookVersion {
     MdBook1,
-
-    /// Note: Currently no books use mdBook v2, but we want the option
-    /// to be available
-    #[allow(dead_code)]
     MdBook2,
 }
 
