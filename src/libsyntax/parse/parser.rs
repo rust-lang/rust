@@ -1170,23 +1170,7 @@ impl<'a> Parser<'a> {
 
                 Ok(())
             },
-            None => {
-                match (
-                    &self.token,
-                    self.unmatched_angle_bracket_count,
-                    self.max_angle_bracket_count > 1,
-                ) {
-                    // (token::OpenDelim(_), 1, true) | (token::Semi, 1, true) => {
-                    //     self.struct_span_err(
-                    //         self.span,
-                    //         &format!("expected `>`, found `{}`", self.this_token_to_string()),
-                    //     // ).span_suggestion_short(
-                    //     ).emit();
-                    //     Ok(())
-                    // }
-                    _ => self.unexpected(),
-                }
-            }
+            None => self.unexpected(),
         }
     }
 
@@ -5846,11 +5830,12 @@ impl<'a> Parser<'a> {
                     .span_suggestion(
                         span,
                         &format!(
-                            "remove extra angle bracket{}",
+                            "{}remove extra angle bracket{}",
+                            if plural { "" } else { "maybe " }, // account for `S::<u64(3)`
                             if plural { "s" } else { "" }
                         ),
                         String::new(),
-                        Applicability::MachineApplicable,
+                        Applicability::MaybeIncorrect,
                     )
                     .emit();
 
