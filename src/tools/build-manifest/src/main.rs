@@ -469,7 +469,7 @@ impl Builder {
         }
         manifest.pkg.insert("rust".to_string(), pkg);
 
-        return manifest;
+        manifest
     }
 
     fn profile(&mut self,
