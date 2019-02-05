@@ -1,9 +1,9 @@
-use hir::Unsafety;
-use hir::def_id::DefId;
-use ty::{self, Ty, PolyFnSig, TypeFoldable, Substs, TyCtxt};
-use traits;
+use crate::hir::Unsafety;
+use crate::hir::def_id::DefId;
+use crate::ty::{self, Ty, PolyFnSig, TypeFoldable, Substs, TyCtxt};
+use crate::traits;
 use rustc_target::spec::abi::Abi;
-use util::ppaux;
+use crate::util::ppaux;
 
 use std::fmt;
 use std::iter;
@@ -141,7 +141,7 @@ impl<'tcx> InstanceDef<'tcx> {
         &self,
         tcx: TyCtxt<'a, 'tcx, 'tcx>
     ) -> bool {
-        use hir::map::DefPathData;
+        use crate::hir::map::DefPathData;
         let def_id = match *self {
             ty::InstanceDef::Item(def_id) => def_id,
             ty::InstanceDef::DropGlue(_, Some(_)) => return false,

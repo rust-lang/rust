@@ -3,7 +3,7 @@
 // RFC for reference.
 
 use smallvec::SmallVec;
-use ty::{self, Ty, TyCtxt, TypeFoldable};
+use crate::ty::{self, Ty, TyCtxt, TypeFoldable};
 
 #[derive(Debug)]
 pub enum Component<'tcx> {

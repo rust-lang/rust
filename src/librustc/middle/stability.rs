@@ -3,14 +3,14 @@
 
 pub use self::StabilityLevel::*;
 
-use lint::{self, Lint};
-use hir::{self, Item, Generics, StructField, Variant, HirId};
-use hir::def::Def;
-use hir::def_id::{CrateNum, CRATE_DEF_INDEX, DefId, LOCAL_CRATE};
-use hir::intravisit::{self, Visitor, NestedVisitorMap};
-use ty::query::Providers;
-use middle::privacy::AccessLevels;
-use session::{DiagnosticMessageId, Session};
+use crate::lint::{self, Lint};
+use crate::hir::{self, Item, Generics, StructField, Variant, HirId};
+use crate::hir::def::Def;
+use crate::hir::def_id::{CrateNum, CRATE_DEF_INDEX, DefId, LOCAL_CRATE};
+use crate::hir::intravisit::{self, Visitor, NestedVisitorMap};
+use crate::ty::query::Providers;
+use crate::middle::privacy::AccessLevels;
+use crate::session::{DiagnosticMessageId, Session};
 use syntax::symbol::Symbol;
 use syntax_pos::{Span, MultiSpan};
 use syntax::ast;
@@ -18,8 +18,8 @@ use syntax::ast::{NodeId, Attribute};
 use syntax::errors::Applicability;
 use syntax::feature_gate::{GateIssue, emit_feature_err};
 use syntax::attr::{self, Stability, Deprecation};
-use ty::{self, TyCtxt};
-use util::nodemap::{FxHashSet, FxHashMap};
+use crate::ty::{self, TyCtxt};
+use crate::util::nodemap::{FxHashSet, FxHashMap};
 
 use std::mem::replace;
 use std::cmp::Ordering;

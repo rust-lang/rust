@@ -1,19 +1,19 @@
-use dep_graph::SerializedDepNodeIndex;
-use dep_graph::DepNode;
-use hir::def_id::{CrateNum, DefId, DefIndex};
-use mir::interpret::GlobalId;
-use traits;
-use traits::query::{
+use crate::dep_graph::SerializedDepNodeIndex;
+use crate::dep_graph::DepNode;
+use crate::hir::def_id::{CrateNum, DefId, DefIndex};
+use crate::mir::interpret::GlobalId;
+use crate::traits;
+use crate::traits::query::{
     CanonicalPredicateGoal, CanonicalProjectionGoal, CanonicalTyGoal,
     CanonicalTypeOpAscribeUserTypeGoal, CanonicalTypeOpEqGoal, CanonicalTypeOpNormalizeGoal,
     CanonicalTypeOpProvePredicateGoal, CanonicalTypeOpSubtypeGoal,
 };
-use ty::{self, ParamEnvAnd, Ty, TyCtxt};
-use ty::subst::Substs;
-use ty::query::queries;
-use ty::query::Query;
-use ty::query::QueryCache;
-use util::profiling::ProfileCategory;
+use crate::ty::{self, ParamEnvAnd, Ty, TyCtxt};
+use crate::ty::subst::Substs;
+use crate::ty::query::queries;
+use crate::ty::query::Query;
+use crate::ty::query::QueryCache;
+use crate::util::profiling::ProfileCategory;
 
 use std::borrow::Cow;
 use std::hash::Hash;
@@ -21,7 +21,7 @@ use std::fmt::Debug;
 use syntax_pos::symbol::InternedString;
 use rustc_data_structures::sync::Lock;
 use rustc_data_structures::stable_hasher::HashStable;
-use ich::StableHashingContext;
+use crate::ich::StableHashingContext;
 
 // Query configuration and description traits.
 
@@ -901,7 +901,7 @@ impl<'tcx> QueryDescription<'tcx> for queries::optimized_mir<'tcx> {
     fn try_load_from_disk<'a>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                               id: SerializedDepNodeIndex)
                               -> Option<Self::Value> {
-        let mir: Option<::mir::Mir<'tcx>> = tcx.queries.on_disk_cache
+        let mir: Option<crate::mir::Mir<'tcx>> = tcx.queries.on_disk_cache
                                                .try_load_query_result(tcx, id);
         mir.map(|x| tcx.alloc_mir(x))
     }

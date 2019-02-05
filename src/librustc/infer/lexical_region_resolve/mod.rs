@@ -1,13 +1,13 @@
 //! The code to do lexical region resolution.
 
-use infer::region_constraints::Constraint;
-use infer::region_constraints::GenericKind;
-use infer::region_constraints::RegionConstraintData;
-use infer::region_constraints::VarInfos;
-use infer::region_constraints::VerifyBound;
-use infer::RegionVariableOrigin;
-use infer::SubregionOrigin;
-use middle::free_region::RegionRelations;
+use crate::infer::region_constraints::Constraint;
+use crate::infer::region_constraints::GenericKind;
+use crate::infer::region_constraints::RegionConstraintData;
+use crate::infer::region_constraints::VarInfos;
+use crate::infer::region_constraints::VerifyBound;
+use crate::infer::RegionVariableOrigin;
+use crate::infer::SubregionOrigin;
+use crate::middle::free_region::RegionRelations;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_data_structures::graph::implementation::{
     Direction, Graph, NodeIndex, INCOMING, OUTGOING,
@@ -16,11 +16,11 @@ use rustc_data_structures::indexed_vec::{Idx, IndexVec};
 use smallvec::SmallVec;
 use std::fmt;
 use std::u32;
-use ty::fold::TypeFoldable;
-use ty::{self, Ty, TyCtxt};
-use ty::{ReEarlyBound, ReEmpty, ReErased, ReFree, ReStatic};
-use ty::{ReLateBound, ReScope, RePlaceholder, ReVar};
-use ty::{Region, RegionVid};
+use crate::ty::fold::TypeFoldable;
+use crate::ty::{self, Ty, TyCtxt};
+use crate::ty::{ReEarlyBound, ReEmpty, ReErased, ReFree, ReStatic};
+use crate::ty::{ReLateBound, ReScope, RePlaceholder, ReVar};
+use crate::ty::{Region, RegionVid};
 
 mod graphviz;
 

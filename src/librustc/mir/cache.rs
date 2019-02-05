@@ -2,10 +2,10 @@ use rustc_data_structures::indexed_vec::IndexVec;
 use rustc_data_structures::sync::{RwLock, MappedReadGuard, ReadGuard};
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher,
                                            StableHasherResult};
-use ich::StableHashingContext;
-use mir::{Mir, BasicBlock};
+use crate::ich::StableHashingContext;
+use crate::mir::{Mir, BasicBlock};
 
-use rustc_serialize as serialize;
+use crate::rustc_serialize as serialize;
 
 #[derive(Clone, Debug)]
 pub struct Cache {

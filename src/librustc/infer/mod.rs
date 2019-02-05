@@ -5,31 +5,31 @@ pub use self::LateBoundRegionConversionTime::*;
 pub use self::RegionVariableOrigin::*;
 pub use self::SubregionOrigin::*;
 pub use self::ValuePairs::*;
-pub use ty::IntVarValue;
+pub use crate::ty::IntVarValue;
 
 use arena::SyncDroplessArena;
-use errors::DiagnosticBuilder;
-use hir::def_id::DefId;
-use infer::canonical::{Canonical, CanonicalVarValues};
-use middle::free_region::RegionRelations;
-use middle::lang_items;
-use middle::region;
+use crate::errors::DiagnosticBuilder;
+use crate::hir::def_id::DefId;
+use crate::infer::canonical::{Canonical, CanonicalVarValues};
+use crate::middle::free_region::RegionRelations;
+use crate::middle::lang_items;
+use crate::middle::region;
 use rustc_data_structures::unify as ut;
-use session::config::BorrowckMode;
+use crate::session::config::BorrowckMode;
 use std::cell::{Cell, Ref, RefCell, RefMut};
 use std::collections::BTreeMap;
 use std::fmt;
 use syntax::ast;
 use syntax_pos::symbol::InternedString;
 use syntax_pos::{self, Span};
-use traits::{self, ObligationCause, PredicateObligations, TraitEngine};
-use ty::error::{ExpectedFound, TypeError, UnconstrainedNumeric};
-use ty::fold::TypeFoldable;
-use ty::relate::RelateResult;
-use ty::subst::{Kind, Substs};
-use ty::{self, GenericParamDefKind, Ty, TyCtxt, CtxtInterners};
-use ty::{FloatVid, IntVid, TyVid};
-use util::nodemap::FxHashMap;
+use crate::traits::{self, ObligationCause, PredicateObligations, TraitEngine};
+use crate::ty::error::{ExpectedFound, TypeError, UnconstrainedNumeric};
+use crate::ty::fold::TypeFoldable;
+use crate::ty::relate::RelateResult;
+use crate::ty::subst::{Kind, Substs};
+use crate::ty::{self, GenericParamDefKind, Ty, TyCtxt, CtxtInterners};
+use crate::ty::{FloatVid, IntVid, TyVid};
+use crate::util::nodemap::FxHashMap;
 
 use self::combine::CombineFields;
 use self::lexical_region_resolve::LexicalRegionResolutions;
@@ -617,8 +617,8 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
     }
 
     pub fn type_is_unconstrained_numeric(&'a self, ty: Ty<'_>) -> UnconstrainedNumeric {
-        use ty::error::UnconstrainedNumeric::Neither;
-        use ty::error::UnconstrainedNumeric::{UnconstrainedFloat, UnconstrainedInt};
+        use crate::ty::error::UnconstrainedNumeric::Neither;
+        use crate::ty::error::UnconstrainedNumeric::{UnconstrainedFloat, UnconstrainedInt};
         match ty.sty {
             ty::Infer(ty::IntVar(vid)) => {
                 if self.int_unification_table

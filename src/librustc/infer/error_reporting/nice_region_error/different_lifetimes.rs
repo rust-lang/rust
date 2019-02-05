@@ -1,9 +1,9 @@
 //! Error Reporting for Anonymous Region Lifetime Errors
 //! where both the regions are anonymous.
 
-use infer::error_reporting::nice_region_error::NiceRegionError;
-use infer::error_reporting::nice_region_error::util::AnonymousArgInfo;
-use util::common::ErrorReported;
+use crate::infer::error_reporting::nice_region_error::NiceRegionError;
+use crate::infer::error_reporting::nice_region_error::util::AnonymousArgInfo;
+use crate::util::common::ErrorReported;
 
 impl<'a, 'gcx, 'tcx> NiceRegionError<'a, 'gcx, 'tcx> {
     /// Print the error message for lifetime errors when both the concerned regions are anonymous.

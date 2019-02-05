@@ -5,15 +5,15 @@
 //!
 //! [c]: https://rust-lang.github.io/rustc-guide/traits/canonicalization.html
 
-use infer::canonical::{
+use crate::infer::canonical::{
     Canonical, CanonicalTyVarKind, CanonicalVarInfo, CanonicalVarKind, Canonicalized,
     OriginalQueryValues,
 };
-use infer::InferCtxt;
+use crate::infer::InferCtxt;
 use std::sync::atomic::Ordering;
-use ty::fold::{TypeFoldable, TypeFolder};
-use ty::subst::Kind;
-use ty::{self, BoundVar, Lift, List, Ty, TyCtxt, TypeFlags};
+use crate::ty::fold::{TypeFoldable, TypeFolder};
+use crate::ty::subst::Kind;
+use crate::ty::{self, BoundVar, Lift, List, Ty, TyCtxt, TypeFlags};
 
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::indexed_vec::Idx;

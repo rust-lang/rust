@@ -1,18 +1,18 @@
 //! misc. type-system utilities too small to deserve their own file
 
-use hir::def::Def;
-use hir::def_id::DefId;
-use hir::map::DefPathData;
-use hir::{self, Node};
-use ich::NodeIdHashingMode;
-use traits::{self, ObligationCause};
-use ty::{self, Ty, TyCtxt, GenericParamDefKind, TypeFoldable};
-use ty::subst::{Subst, Substs, UnpackedKind};
-use ty::query::TyCtxtAt;
-use ty::TyKind::*;
-use ty::layout::{Integer, IntegerExt};
-use util::common::ErrorReported;
-use middle::lang_items;
+use crate::hir::def::Def;
+use crate::hir::def_id::DefId;
+use crate::hir::map::DefPathData;
+use crate::hir::{self, Node};
+use crate::ich::NodeIdHashingMode;
+use crate::traits::{self, ObligationCause};
+use crate::ty::{self, Ty, TyCtxt, GenericParamDefKind, TypeFoldable};
+use crate::ty::subst::{Subst, Substs, UnpackedKind};
+use crate::ty::query::TyCtxtAt;
+use crate::ty::TyKind::*;
+use crate::ty::layout::{Integer, IntegerExt};
+use crate::util::common::ErrorReported;
+use crate::middle::lang_items;
 
 use rustc_data_structures::stable_hasher::{StableHasher, HashStable};
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};

@@ -9,10 +9,10 @@ use super::{MiscVariable, RegionVariableOrigin, SubregionOrigin};
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_data_structures::indexed_vec::IndexVec;
 use rustc_data_structures::unify as ut;
-use ty::ReStatic;
-use ty::{self, Ty, TyCtxt};
-use ty::{BrFresh, ReLateBound, ReVar};
-use ty::{Region, RegionVid};
+use crate::ty::ReStatic;
+use crate::ty::{self, Ty, TyCtxt};
+use crate::ty::{BrFresh, ReLateBound, ReVar};
+use crate::ty::{Region, RegionVid};
 
 use std::collections::BTreeMap;
 use std::{cmp, fmt, mem, u32};

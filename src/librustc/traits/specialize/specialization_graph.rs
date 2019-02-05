@@ -1,16 +1,16 @@
 use super::OverlapError;
 
-use hir::def_id::DefId;
-use ich::{self, StableHashingContext};
+use crate::hir::def_id::DefId;
+use crate::ich::{self, StableHashingContext};
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher,
                                            StableHasherResult};
-use traits;
-use ty::{self, TyCtxt, TypeFoldable};
-use ty::fast_reject::{self, SimplifiedType};
+use crate::traits;
+use crate::ty::{self, TyCtxt, TypeFoldable};
+use crate::ty::fast_reject::{self, SimplifiedType};
 use rustc_data_structures::sync::Lrc;
 use syntax::ast::Ident;
-use util::captures::Captures;
-use util::nodemap::{DefIdMap, FxHashMap};
+use crate::util::captures::Captures;
+use crate::util::nodemap::{DefIdMap, FxHashMap};
 
 /// A per-trait graph of impls in specialization order. At the moment, this
 /// graph forms a tree rooted with the trait itself, with all other nodes
@@ -489,7 +489,7 @@ impl<'a, 'gcx, 'tcx> Ancestors {
         trait_def_id: DefId,
     ) -> impl Iterator<Item = NodeItem<ty::AssociatedItem>> + Captures<'gcx> + Captures<'tcx> + 'a {
         self.flat_map(move |node| {
-            use ty::AssociatedKind::*;
+            use crate::ty::AssociatedKind::*;
             node.items(tcx).filter(move |impl_item| match (trait_item_kind, impl_item.kind) {
                 | (Const, Const)
                 | (Method, Method)

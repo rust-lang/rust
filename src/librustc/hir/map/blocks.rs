@@ -11,10 +11,10 @@
 //! nested within a uniquely determined `FnLike`), and users can ask
 //! for the `Code` associated with a particular NodeId.
 
-use hir as ast;
-use hir::map;
-use hir::{Expr, FnDecl, Node};
-use hir::intravisit::FnKind;
+use crate::hir as ast;
+use crate::hir::map;
+use crate::hir::{Expr, FnDecl, Node};
+use crate::hir::intravisit::FnKind;
 use syntax::ast::{Attribute, Ident, NodeId};
 use syntax_pos::Span;
 

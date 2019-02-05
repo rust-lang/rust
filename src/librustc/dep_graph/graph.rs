@@ -1,4 +1,4 @@
-use errors::{Diagnostic, DiagnosticBuilder};
+use crate::errors::{Diagnostic, DiagnosticBuilder};
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_data_structures::indexed_vec::{Idx, IndexVec};
@@ -7,11 +7,11 @@ use rustc_data_structures::sync::{Lrc, Lock, AtomicU32, Ordering};
 use std::env;
 use std::hash::Hash;
 use std::collections::hash_map::Entry;
-use ty::{self, TyCtxt};
-use util::common::{ProfileQueriesMsg, profq_msg};
+use crate::ty::{self, TyCtxt};
+use crate::util::common::{ProfileQueriesMsg, profq_msg};
 use parking_lot::{Mutex, Condvar};
 
-use ich::{StableHashingContext, StableHashingContextProvider, Fingerprint};
+use crate::ich::{StableHashingContext, StableHashingContextProvider, Fingerprint};
 
 use super::debug::EdgeFilter;
 use super::dep_node::{DepNode, DepKind, WorkProductId};
@@ -669,7 +669,7 @@ impl DepGraph {
                     // We failed to mark it green, so we try to force the query.
                     debug!("try_mark_previous_green({:?}) --- trying to force \
                             dependency {:?}", dep_node, dep_dep_node);
-                    if ::ty::query::force_from_dep_node(tcx, dep_dep_node) {
+                    if crate::ty::query::force_from_dep_node(tcx, dep_dep_node) {
                         let dep_dep_node_color = data.colors.get(dep_dep_node_index);
 
                         match dep_dep_node_color {

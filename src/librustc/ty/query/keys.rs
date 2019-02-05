@@ -1,12 +1,12 @@
 //! Defines the set of legal keys that can be used in queries.
 
-use infer::canonical::Canonical;
-use hir::def_id::{CrateNum, DefId, LOCAL_CRATE, DefIndex};
-use traits;
-use ty::{self, Ty, TyCtxt};
-use ty::subst::Substs;
-use ty::fast_reject::SimplifiedType;
-use mir;
+use crate::infer::canonical::Canonical;
+use crate::hir::def_id::{CrateNum, DefId, LOCAL_CRATE, DefIndex};
+use crate::traits;
+use crate::ty::{self, Ty, TyCtxt};
+use crate::ty::subst::Substs;
+use crate::ty::fast_reject::SimplifiedType;
+use crate::mir;
 
 use std::fmt::Debug;
 use std::hash::Hash;

@@ -1,18 +1,18 @@
 //! This module contains `HashStable` implementations for various data types
 //! from rustc::ty in no particular order.
 
-use ich::{Fingerprint, StableHashingContext, NodeIdHashingMode};
+use crate::ich::{Fingerprint, StableHashingContext, NodeIdHashingMode};
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::stable_hasher::{HashStable, ToStableHashKey,
                                            StableHasher, StableHasherResult};
 use std::cell::RefCell;
 use std::hash as std_hash;
 use std::mem;
-use middle::region;
-use infer;
-use traits;
-use ty;
-use mir;
+use crate::middle::region;
+use crate::infer;
+use crate::traits;
+use crate::ty;
+use crate::mir;
 
 impl<'a, 'gcx, T> HashStable<StableHashingContext<'a>>
 for &'gcx ty::List<T>
@@ -306,7 +306,7 @@ impl_stable_hash_for!(
         ByRef(id, alloc, offset),
     }
 );
-impl_stable_hash_for!(struct ::mir::interpret::RawConst<'tcx> {
+impl_stable_hash_for!(struct crate::mir::interpret::RawConst<'tcx> {
     alloc_id,
     ty,
 });
@@ -512,20 +512,22 @@ impl_stable_hash_for!(enum ty::GenericParamDefKind {
 });
 
 impl_stable_hash_for!(
-    impl<T> for enum ::middle::resolve_lifetime::Set1<T> [ ::middle::resolve_lifetime::Set1 ] {
+    impl<T> for enum crate::middle::resolve_lifetime::Set1<T>
+        [ crate::middle::resolve_lifetime::Set1 ]
+    {
         Empty,
         Many,
         One(value),
     }
 );
 
-impl_stable_hash_for!(enum ::middle::resolve_lifetime::LifetimeDefOrigin {
+impl_stable_hash_for!(enum crate::middle::resolve_lifetime::LifetimeDefOrigin {
     ExplicitOrElided,
     InBand,
     Error,
 });
 
-impl_stable_hash_for!(enum ::middle::resolve_lifetime::Region {
+impl_stable_hash_for!(enum crate::middle::resolve_lifetime::Region {
     Static,
     EarlyBound(index, decl, is_in_band),
     LateBound(db_index, decl, is_in_band),
@@ -547,9 +549,9 @@ impl_stable_hash_for!(enum ty::cast::CastKind {
     FnPtrAddrCast
 });
 
-impl_stable_hash_for!(struct ::middle::region::Scope { id, data });
+impl_stable_hash_for!(struct crate::middle::region::Scope { id, data });
 
-impl_stable_hash_for!(enum ::middle::region::ScopeData {
+impl_stable_hash_for!(enum crate::middle::region::ScopeData {
     Node,
     CallSite,
     Arguments,
@@ -588,7 +590,7 @@ for ty::TyKind<'gcx>
     fn hash_stable<W: StableHasherResult>(&self,
                                           hcx: &mut StableHashingContext<'a>,
                                           hasher: &mut StableHasher<W>) {
-        use ty::TyKind::*;
+        use crate::ty::TyKind::*;
 
         mem::discriminant(self).hash_stable(hcx, hasher);
         match *self {
@@ -882,7 +884,7 @@ impl_stable_hash_for!(enum traits::Reveal {
     All
 });
 
-impl_stable_hash_for!(enum ::middle::privacy::AccessLevel {
+impl_stable_hash_for!(enum crate::middle::privacy::AccessLevel {
     ReachableFromImplTrait,
     Reachable,
     Exported,
@@ -890,12 +892,12 @@ impl_stable_hash_for!(enum ::middle::privacy::AccessLevel {
 });
 
 impl<'a> HashStable<StableHashingContext<'a>>
-for ::middle::privacy::AccessLevels {
+for crate::middle::privacy::AccessLevels {
     fn hash_stable<W: StableHasherResult>(&self,
                                           hcx: &mut StableHashingContext<'a>,
                                           hasher: &mut StableHasher<W>) {
         hcx.with_node_id_hashing_mode(NodeIdHashingMode::HashDefPath, |hcx| {
-            let ::middle::privacy::AccessLevels {
+            let crate::middle::privacy::AccessLevels {
                 ref map
             } = *self;
 
@@ -908,14 +910,14 @@ impl_stable_hash_for!(struct ty::CrateInherentImpls {
     inherent_impls
 });
 
-impl_stable_hash_for!(enum ::session::CompileIncomplete {
+impl_stable_hash_for!(enum crate::session::CompileIncomplete {
     Stopped,
     Errored(error_reported)
 });
 
-impl_stable_hash_for!(struct ::util::common::ErrorReported {});
+impl_stable_hash_for!(struct crate::util::common::ErrorReported {});
 
-impl_stable_hash_for!(tuple_struct ::middle::reachable::ReachableSet {
+impl_stable_hash_for!(tuple_struct crate::middle::reachable::ReachableSet {
     reachable_set
 });
 
@@ -924,7 +926,7 @@ for traits::Vtable<'gcx, N> where N: HashStable<StableHashingContext<'a>> {
     fn hash_stable<W: StableHasherResult>(&self,
                                           hcx: &mut StableHashingContext<'a>,
                                           hasher: &mut StableHasher<W>) {
-        use traits::Vtable::*;
+        use crate::traits::Vtable::*;
 
         mem::discriminant(self).hash_stable(hcx, hasher);
 
@@ -1105,7 +1107,7 @@ impl<'a, 'tcx> HashStable<StableHashingContext<'a>> for traits::WhereClause<'tcx
     fn hash_stable<W: StableHasherResult>(&self,
                                           hcx: &mut StableHashingContext<'a>,
                                           hasher: &mut StableHasher<W>) {
-        use traits::WhereClause::*;
+        use crate::traits::WhereClause::*;
 
         mem::discriminant(self).hash_stable(hcx, hasher);
         match self {
@@ -1121,7 +1123,7 @@ impl<'a, 'tcx> HashStable<StableHashingContext<'a>> for traits::WellFormed<'tcx>
     fn hash_stable<W: StableHasherResult>(&self,
                                           hcx: &mut StableHashingContext<'a>,
                                           hasher: &mut StableHasher<W>) {
-        use traits::WellFormed::*;
+        use crate::traits::WellFormed::*;
 
         mem::discriminant(self).hash_stable(hcx, hasher);
         match self {
@@ -1135,7 +1137,7 @@ impl<'a, 'tcx> HashStable<StableHashingContext<'a>> for traits::FromEnv<'tcx> {
     fn hash_stable<W: StableHasherResult>(&self,
                                           hcx: &mut StableHashingContext<'a>,
                                           hasher: &mut StableHasher<W>) {
-        use traits::FromEnv::*;
+        use crate::traits::FromEnv::*;
 
         mem::discriminant(self).hash_stable(hcx, hasher);
         match self {
@@ -1149,7 +1151,7 @@ impl<'a, 'tcx> HashStable<StableHashingContext<'a>> for traits::DomainGoal<'tcx>
     fn hash_stable<W: StableHasherResult>(&self,
                                           hcx: &mut StableHashingContext<'a>,
                                           hasher: &mut StableHasher<W>) {
-        use traits::DomainGoal::*;
+        use crate::traits::DomainGoal::*;
 
         mem::discriminant(self).hash_stable(hcx, hasher);
         match self {
@@ -1165,7 +1167,7 @@ impl<'a, 'tcx> HashStable<StableHashingContext<'a>> for traits::Goal<'tcx> {
     fn hash_stable<W: StableHasherResult>(&self,
                                           hcx: &mut StableHashingContext<'a>,
                                           hasher: &mut StableHasher<W>) {
-        use traits::GoalKind::*;
+        use crate::traits::GoalKind::*;
 
         mem::discriminant(self).hash_stable(hcx, hasher);
         match self {
@@ -1208,7 +1210,7 @@ impl<'a, 'tcx> HashStable<StableHashingContext<'a>> for traits::Clause<'tcx> {
     fn hash_stable<W: StableHasherResult>(&self,
                                           hcx: &mut StableHashingContext<'a>,
                                           hasher: &mut StableHasher<W>) {
-        use traits::Clause::*;
+        use crate::traits::Clause::*;
 
         mem::discriminant(self).hash_stable(hcx, hasher);
         match self {

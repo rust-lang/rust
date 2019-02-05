@@ -1,9 +1,9 @@
-use infer::InferCtxt;
-use infer::lexical_region_resolve::RegionResolutionError;
-use infer::lexical_region_resolve::RegionResolutionError::*;
+use crate::infer::InferCtxt;
+use crate::infer::lexical_region_resolve::RegionResolutionError;
+use crate::infer::lexical_region_resolve::RegionResolutionError::*;
 use syntax::source_map::Span;
-use ty::{self, TyCtxt};
-use util::common::ErrorReported;
+use crate::ty::{self, TyCtxt};
+use crate::util::common::ErrorReported;
 
 mod different_lifetimes;
 mod find_anon_type;

@@ -5,7 +5,7 @@
 // this via an attribute on the crate like `#![recursion_limit="22"]`. This pass
 // just peeks and looks for that attribute.
 
-use session::Session;
+use crate::session::Session;
 use syntax::ast;
 
 use rustc_data_structures::sync::Once;

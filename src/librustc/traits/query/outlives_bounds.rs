@@ -1,12 +1,12 @@
-use infer::InferCtxt;
-use infer::canonical::OriginalQueryValues;
+use crate::infer::InferCtxt;
+use crate::infer::canonical::OriginalQueryValues;
 use syntax::ast;
 use syntax::source_map::Span;
-use traits::{FulfillmentContext, ObligationCause, TraitEngine, TraitEngineExt};
-use traits::query::NoSolution;
-use ty::{self, Ty, TyCtxt};
+use crate::traits::{FulfillmentContext, ObligationCause, TraitEngine, TraitEngineExt};
+use crate::traits::query::NoSolution;
+use crate::ty::{self, Ty, TyCtxt};
 
-use ich::StableHashingContext;
+use crate::ich::StableHashingContext;
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher,
                                            StableHasherResult};
 use std::mem;

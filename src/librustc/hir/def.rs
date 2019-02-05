@@ -1,10 +1,10 @@
-use hir::def_id::DefId;
-use util::nodemap::{NodeMap, DefIdMap};
+use crate::hir::def_id::DefId;
+use crate::util::nodemap::{NodeMap, DefIdMap};
 use syntax::ast;
 use syntax::ext::base::MacroKind;
 use syntax_pos::Span;
-use hir;
-use ty;
+use crate::hir;
+use crate::ty;
 
 use self::Namespace::*;
 

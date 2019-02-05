@@ -4,31 +4,31 @@ pub use self::BorrowKind::*;
 pub use self::IntVarValue::*;
 pub use self::fold::TypeFoldable;
 
-use hir::{map as hir_map, FreevarMap, GlobMap, TraitMap};
-use hir::Node;
-use hir::def::{Def, CtorKind, ExportMap};
-use hir::def_id::{CrateNum, DefId, LocalDefId, CRATE_DEF_INDEX, LOCAL_CRATE};
-use hir::map::DefPathData;
+use crate::hir::{map as hir_map, FreevarMap, GlobMap, TraitMap};
+use crate::hir::Node;
+use crate::hir::def::{Def, CtorKind, ExportMap};
+use crate::hir::def_id::{CrateNum, DefId, LocalDefId, CRATE_DEF_INDEX, LOCAL_CRATE};
+use crate::hir::map::DefPathData;
 use rustc_data_structures::svh::Svh;
-use ich::Fingerprint;
-use ich::StableHashingContext;
-use infer::canonical::Canonical;
-use middle::lang_items::{FnTraitLangItem, FnMutTraitLangItem, FnOnceTraitLangItem};
-use middle::resolve_lifetime::ObjectLifetimeDefault;
-use mir::Mir;
-use mir::interpret::{GlobalId, ErrorHandled};
-use mir::GeneratorLayout;
-use session::CrateDisambiguator;
-use traits::{self, Reveal};
-use ty;
-use ty::layout::VariantIdx;
-use ty::subst::{Subst, Substs};
-use ty::util::{IntTypeExt, Discr};
-use ty::walk::TypeWalker;
-use util::captures::Captures;
-use util::nodemap::{NodeSet, DefIdMap, FxHashMap};
+use crate::ich::Fingerprint;
+use crate::ich::StableHashingContext;
+use crate::infer::canonical::Canonical;
+use crate::middle::lang_items::{FnTraitLangItem, FnMutTraitLangItem, FnOnceTraitLangItem};
+use crate::middle::resolve_lifetime::ObjectLifetimeDefault;
+use crate::mir::Mir;
+use crate::mir::interpret::{GlobalId, ErrorHandled};
+use crate::mir::GeneratorLayout;
+use crate::session::CrateDisambiguator;
+use crate::traits::{self, Reveal};
+use crate::ty;
+use crate::ty::layout::VariantIdx;
+use crate::ty::subst::{Subst, Substs};
+use crate::ty::util::{IntTypeExt, Discr};
+use crate::ty::walk::TypeWalker;
+use crate::util::captures::Captures;
+use crate::util::nodemap::{NodeSet, DefIdMap, FxHashMap};
 use arena::SyncDroplessArena;
-use session::DataTypeKind;
+use crate::session::DataTypeKind;
 
 use serialize::{self, Encodable, Encoder};
 use std::cell::RefCell;
@@ -50,7 +50,7 @@ use rustc_data_structures::indexed_vec::{Idx, IndexVec};
 use rustc_data_structures::stable_hasher::{StableHasher, StableHasherResult,
                                            HashStable};
 
-use hir;
+use crate::hir;
 
 pub use self::sty::{Binder, BoundTy, BoundTyKind, BoundVar, DebruijnIndex, INNERMOST};
 pub use self::sty::{FnSig, GenSig, CanonicalPolyFnSig, PolyFnSig, PolyGenSig};
@@ -2277,7 +2277,7 @@ impl<'a, 'gcx, 'tcx> AdtDef {
                     })
                 } else {
                     info!("invalid enum discriminant: {:#?}", val);
-                    ::mir::interpret::struct_error(
+                    crate::mir::interpret::struct_error(
                         tcx.at(tcx.def_span(expr_did)),
                         "constant evaluation of enum discriminant resulted in non-integer",
                     ).emit();

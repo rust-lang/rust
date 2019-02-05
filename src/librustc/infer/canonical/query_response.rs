@@ -7,26 +7,26 @@
 //!
 //! [c]: https://rust-lang.github.io/rustc-guide/traits/canonicalization.html
 
-use infer::canonical::substitute::substitute_value;
-use infer::canonical::{
+use crate::infer::canonical::substitute::substitute_value;
+use crate::infer::canonical::{
     Canonical, CanonicalVarValues, CanonicalizedQueryResponse, Certainty,
     OriginalQueryValues, QueryRegionConstraint, QueryResponse,
 };
-use infer::region_constraints::{Constraint, RegionConstraintData};
-use infer::InferCtxtBuilder;
-use infer::{InferCtxt, InferOk, InferResult};
+use crate::infer::region_constraints::{Constraint, RegionConstraintData};
+use crate::infer::InferCtxtBuilder;
+use crate::infer::{InferCtxt, InferOk, InferResult};
 use rustc_data_structures::indexed_vec::Idx;
 use rustc_data_structures::indexed_vec::IndexVec;
 use rustc_data_structures::sync::Lrc;
 use std::fmt::Debug;
 use syntax_pos::DUMMY_SP;
-use traits::query::{Fallible, NoSolution};
-use traits::TraitEngine;
-use traits::{Obligation, ObligationCause, PredicateObligation};
-use ty::fold::TypeFoldable;
-use ty::subst::{Kind, UnpackedKind};
-use ty::{self, BoundVar, Lift, Ty, TyCtxt};
-use util::captures::Captures;
+use crate::traits::query::{Fallible, NoSolution};
+use crate::traits::TraitEngine;
+use crate::traits::{Obligation, ObligationCause, PredicateObligation};
+use crate::ty::fold::TypeFoldable;
+use crate::ty::subst::{Kind, UnpackedKind};
+use crate::ty::{self, BoundVar, Lift, Ty, TyCtxt};
+use crate::util::captures::Captures;
 
 impl<'cx, 'gcx, 'tcx> InferCtxtBuilder<'cx, 'gcx, 'tcx> {
     /// The "main method" for a canonicalized trait query. Given the

@@ -1,10 +1,10 @@
 //! Error Reporting for static impl Traits.
 
-use infer::error_reporting::nice_region_error::NiceRegionError;
-use infer::lexical_region_resolve::RegionResolutionError;
-use ty::{BoundRegion, FreeRegion, RegionKind};
-use util::common::ErrorReported;
-use errors::Applicability;
+use crate::infer::error_reporting::nice_region_error::NiceRegionError;
+use crate::infer::lexical_region_resolve::RegionResolutionError;
+use crate::ty::{BoundRegion, FreeRegion, RegionKind};
+use crate::util::common::ErrorReported;
+use crate::errors::Applicability;
 
 impl<'a, 'gcx, 'tcx> NiceRegionError<'a, 'gcx, 'tcx> {
     /// Print the error message for lifetime errors when the return type is a static impl Trait.

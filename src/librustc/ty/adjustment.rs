@@ -1,7 +1,7 @@
-use hir;
-use hir::def_id::DefId;
-use ty::{self, Ty, TyCtxt};
-use ty::subst::Substs;
+use crate::hir;
+use crate::hir::def_id::DefId;
+use crate::ty::{self, Ty, TyCtxt};
+use crate::ty::subst::Substs;
 
 
 /// Represents coercing a value to a different type of value.

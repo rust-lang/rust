@@ -1,8 +1,8 @@
-use ty::context::TyCtxt;
-use ty::{AdtDef, VariantDef, FieldDef, Ty, TyS};
-use ty::{self, DefId, Substs};
-use ty::{AdtKind, Visibility};
-use ty::TyKind::*;
+use crate::ty::context::TyCtxt;
+use crate::ty::{AdtDef, VariantDef, FieldDef, Ty, TyS};
+use crate::ty::{self, DefId, Substs};
+use crate::ty::{AdtKind, Visibility};
+use crate::ty::TyKind::*;
 
 pub use self::def_id_forest::DefIdForest;
 

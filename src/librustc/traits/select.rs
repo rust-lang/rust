@@ -27,17 +27,17 @@ use super::{
     VtableGeneratorData, VtableImplData, VtableObjectData, VtableTraitAliasData,
 };
 
-use dep_graph::{DepKind, DepNodeIndex};
-use hir::def_id::DefId;
-use infer::{InferCtxt, InferOk, TypeFreshener};
-use middle::lang_items;
-use mir::interpret::GlobalId;
-use ty::fast_reject;
-use ty::relate::TypeRelation;
-use ty::subst::{Subst, Substs};
-use ty::{self, ToPolyTraitRef, ToPredicate, Ty, TyCtxt, TypeFoldable};
+use crate::dep_graph::{DepKind, DepNodeIndex};
+use crate::hir::def_id::DefId;
+use crate::infer::{InferCtxt, InferOk, TypeFreshener};
+use crate::middle::lang_items;
+use crate::mir::interpret::GlobalId;
+use crate::ty::fast_reject;
+use crate::ty::relate::TypeRelation;
+use crate::ty::subst::{Subst, Substs};
+use crate::ty::{self, ToPolyTraitRef, ToPredicate, Ty, TyCtxt, TypeFoldable};
 
-use hir;
+use crate::hir;
 use rustc_data_structures::bit_set::GrowableBitSet;
 use rustc_data_structures::sync::Lock;
 use rustc_target::spec::abi::Abi;
@@ -45,7 +45,7 @@ use std::cmp;
 use std::fmt::{self, Display};
 use std::iter;
 use std::rc::Rc;
-use util::nodemap::{FxHashMap, FxHashSet};
+use crate::util::nodemap::{FxHashMap, FxHashSet};
 
 pub struct SelectionContext<'cx, 'gcx: 'cx + 'tcx, 'tcx: 'cx> {
     infcx: &'cx InferCtxt<'cx, 'gcx, 'tcx>,
@@ -103,7 +103,7 @@ impl IntercrateAmbiguityCause {
     /// See #23980 for details.
     pub fn add_intercrate_ambiguity_hint<'a, 'tcx>(
         &self,
-        err: &mut ::errors::DiagnosticBuilder<'_>,
+        err: &mut crate::errors::DiagnosticBuilder<'_>,
     ) {
         err.note(&self.intercrate_ambiguity_hint());
     }

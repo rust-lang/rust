@@ -5,10 +5,10 @@ use super::{
     truncate,
 };
 
-use ty::layout::{Size, Align};
+use crate::ty::layout::{Size, Align};
 use syntax::ast::Mutability;
 use std::iter;
-use mir;
+use crate::mir;
 use std::ops::{Deref, DerefMut};
 use rustc_data_structures::sorted_map::SortedMap;
 use rustc_target::abi::HasDataLayout;

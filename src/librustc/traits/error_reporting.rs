@@ -17,23 +17,23 @@ use super::{
     Overflow,
 };
 
-use errors::{Applicability, DiagnosticBuilder};
-use hir;
-use hir::Node;
-use hir::def_id::DefId;
-use infer::{self, InferCtxt};
-use infer::type_variable::TypeVariableOrigin;
+use crate::errors::{Applicability, DiagnosticBuilder};
+use crate::hir;
+use crate::hir::Node;
+use crate::hir::def_id::DefId;
+use crate::infer::{self, InferCtxt};
+use crate::infer::type_variable::TypeVariableOrigin;
 use std::fmt;
 use syntax::ast;
-use session::DiagnosticMessageId;
-use ty::{self, AdtKind, ToPredicate, ToPolyTraitRef, Ty, TyCtxt, TypeFoldable};
-use ty::GenericParamDefKind;
-use ty::error::ExpectedFound;
-use ty::fast_reject;
-use ty::fold::TypeFolder;
-use ty::subst::Subst;
-use ty::SubtypePredicate;
-use util::nodemap::{FxHashMap, FxHashSet};
+use crate::session::DiagnosticMessageId;
+use crate::ty::{self, AdtKind, ToPredicate, ToPolyTraitRef, Ty, TyCtxt, TypeFoldable};
+use crate::ty::GenericParamDefKind;
+use crate::ty::error::ExpectedFound;
+use crate::ty::fast_reject;
+use crate::ty::fold::TypeFolder;
+use crate::ty::subst::Subst;
+use crate::ty::SubtypePredicate;
+use crate::util::nodemap::{FxHashMap, FxHashSet};
 
 use syntax_pos::{DUMMY_SP, Span, ExpnInfo, ExpnFormat};
 

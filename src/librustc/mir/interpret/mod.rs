@@ -25,17 +25,17 @@ pub use self::allocation::{
 pub use self::pointer::{Pointer, PointerArithmetic};
 
 use std::fmt;
-use mir;
-use hir::def_id::DefId;
-use ty::{self, TyCtxt, Instance};
-use ty::layout::{self, Size};
+use crate::mir;
+use crate::hir::def_id::DefId;
+use crate::ty::{self, TyCtxt, Instance};
+use crate::ty::layout::{self, Size};
 use std::io;
-use rustc_serialize::{Encoder, Decodable, Encodable};
+use crate::rustc_serialize::{Encoder, Decodable, Encodable};
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::sync::{Lock as Mutex, HashMapExt};
 use rustc_data_structures::tiny_list::TinyList;
 use byteorder::{WriteBytesExt, ReadBytesExt, LittleEndian, BigEndian};
-use ty::codec::TyDecoder;
+use crate::ty::codec::TyDecoder;
 use std::sync::atomic::{AtomicU32, Ordering};
 use std::num::NonZeroU32;
 
@@ -53,8 +53,8 @@ pub struct GlobalId<'tcx> {
 #[derive(Copy, Clone, Eq, Hash, Ord, PartialEq, PartialOrd, Debug)]
 pub struct AllocId(pub u64);
 
-impl ::rustc_serialize::UseSpecializedEncodable for AllocId {}
-impl ::rustc_serialize::UseSpecializedDecodable for AllocId {}
+impl crate::rustc_serialize::UseSpecializedEncodable for AllocId {}
+impl crate::rustc_serialize::UseSpecializedDecodable for AllocId {}
 
 #[derive(RustcDecodable, RustcEncodable)]
 enum AllocDiscriminant {

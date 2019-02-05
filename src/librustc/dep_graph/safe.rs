@@ -1,9 +1,9 @@
 //! The `DepGraphSafe` trait
 
-use hir::BodyId;
-use hir::def_id::DefId;
+use crate::hir::BodyId;
+use crate::hir::def_id::DefId;
 use syntax::ast::NodeId;
-use ty::TyCtxt;
+use crate::ty::TyCtxt;
 
 /// The `DepGraphSafe` trait is used to specify what kinds of values
 /// are safe to "leak" into a task. The idea is that this should be

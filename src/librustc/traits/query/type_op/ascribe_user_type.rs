@@ -1,8 +1,8 @@
-use infer::canonical::{Canonical, Canonicalized, CanonicalizedQueryResponse, QueryResponse};
-use traits::query::Fallible;
-use hir::def_id::DefId;
-use ty::{ParamEnvAnd, Ty, TyCtxt};
-use ty::subst::UserSubsts;
+use crate::infer::canonical::{Canonical, Canonicalized, CanonicalizedQueryResponse, QueryResponse};
+use crate::traits::query::Fallible;
+use crate::hir::def_id::DefId;
+use crate::ty::{ParamEnvAnd, Ty, TyCtxt};
+use crate::ty::subst::UserSubsts;
 
 #[derive(Copy, Clone, Debug, Hash, PartialEq, Eq)]
 pub struct AscribeUserType<'tcx> {

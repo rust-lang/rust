@@ -1,11 +1,11 @@
-use cfg::*;
-use middle::region;
+use crate::cfg::*;
+use crate::middle::region;
 use rustc_data_structures::graph::implementation as graph;
 use syntax::ptr::P;
-use ty::{self, TyCtxt};
+use crate::ty::{self, TyCtxt};
 
-use hir::{self, PatKind};
-use hir::def_id::DefId;
+use crate::hir::{self, PatKind};
+use crate::hir::def_id::DefId;
 
 struct CFGBuilder<'a, 'tcx: 'a> {
     tcx: TyCtxt<'a, 'tcx, 'tcx>,

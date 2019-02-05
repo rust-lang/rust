@@ -1,19 +1,19 @@
 pub use self::code_stats::{DataTypeKind, SizeKind, FieldInfo, VariantInfo};
 use self::code_stats::CodeStats;
 
-use dep_graph::cgu_reuse_tracker::CguReuseTracker;
-use hir::def_id::CrateNum;
+use crate::dep_graph::cgu_reuse_tracker::CguReuseTracker;
+use crate::hir::def_id::CrateNum;
 use rustc_data_structures::fingerprint::Fingerprint;
 
-use lint;
-use lint::builtin::BuiltinLintDiagnostics;
-use middle::allocator::AllocatorKind;
-use middle::dependency_format;
-use session::config::{OutputType, Lto};
-use session::search_paths::{PathKind, SearchPath};
-use util::nodemap::{FxHashMap, FxHashSet};
-use util::common::{duration_to_secs_str, ErrorReported};
-use util::common::ProfileQueriesMsg;
+use crate::lint;
+use crate::lint::builtin::BuiltinLintDiagnostics;
+use crate::middle::allocator::AllocatorKind;
+use crate::middle::dependency_format;
+use crate::session::config::{OutputType, Lto};
+use crate::session::search_paths::{PathKind, SearchPath};
+use crate::util::nodemap::{FxHashMap, FxHashSet};
+use crate::util::common::{duration_to_secs_str, ErrorReported};
+use crate::util::common::ProfileQueriesMsg;
 
 use rustc_data_structures::base_n;
 use rustc_data_structures::sync::{
@@ -21,8 +21,8 @@ use rustc_data_structures::sync::{
     Ordering::SeqCst,
 };
 
-use errors::{self, DiagnosticBuilder, DiagnosticId, Applicability};
-use errors::emitter::{Emitter, EmitterWriter};
+use crate::errors::{self, DiagnosticBuilder, DiagnosticId, Applicability};
+use crate::errors::emitter::{Emitter, EmitterWriter};
 use syntax::ast::{self, NodeId};
 use syntax::edition::Edition;
 use syntax::feature_gate::{self, AttributeType};
@@ -30,7 +30,7 @@ use syntax::json::JsonEmitter;
 use syntax::source_map;
 use syntax::parse::{self, ParseSess};
 use syntax_pos::{MultiSpan, Span};
-use util::profiling::SelfProfiler;
+use crate::util::profiling::SelfProfiler;
 
 use rustc_target::spec::{PanicStrategy, RelroLevel, Target, TargetTriple};
 use rustc_data_structures::flock;

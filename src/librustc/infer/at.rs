@@ -27,7 +27,7 @@
 
 use super::*;
 
-use ty::relate::{Relate, TypeRelation};
+use crate::ty::relate::{Relate, TypeRelation};
 
 pub struct At<'a, 'gcx: 'tcx, 'tcx: 'a> {
     pub infcx: &'a InferCtxt<'a, 'gcx, 'tcx>,

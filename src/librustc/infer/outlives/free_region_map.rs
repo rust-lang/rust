@@ -1,4 +1,4 @@
-use ty::{self, Lift, TyCtxt, Region};
+use crate::ty::{self, Lift, TyCtxt, Region};
 use rustc_data_structures::transitive_relation::TransitiveRelation;
 
 #[derive(Clone, RustcEncodable, RustcDecodable, Debug, Default)]

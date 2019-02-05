@@ -33,9 +33,9 @@
 
 use syntax::ast::{NodeId, CRATE_NODE_ID, Ident, Name, Attribute};
 use syntax_pos::Span;
-use hir::*;
-use hir::def::Def;
-use hir::map::Map;
+use crate::hir::*;
+use crate::hir::def::Def;
+use crate::hir::map::Map;
 use super::itemlikevisit::DeepVisitor;
 
 #[derive(Copy, Clone)]

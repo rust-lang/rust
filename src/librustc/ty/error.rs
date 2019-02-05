@@ -1,13 +1,13 @@
-use hir::def_id::DefId;
-use ty::{self, Region, Ty, TyCtxt};
+use crate::hir::def_id::DefId;
+use crate::ty::{self, Region, Ty, TyCtxt};
 use std::borrow::Cow;
 use std::fmt;
 use rustc_target::spec::abi;
 use syntax::ast;
-use errors::{Applicability, DiagnosticBuilder};
+use crate::errors::{Applicability, DiagnosticBuilder};
 use syntax_pos::Span;
 
-use hir;
+use crate::hir;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct ExpectedFound<T> {

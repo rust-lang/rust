@@ -1,6 +1,6 @@
-use hir::map::definitions::*;
-use hir::def_id::{CRATE_DEF_INDEX, DefIndex, DefIndexAddressSpace};
-use session::CrateDisambiguator;
+use crate::hir::map::definitions::*;
+use crate::hir::def_id::{CRATE_DEF_INDEX, DefIndex, DefIndexAddressSpace};
+use crate::session::CrateDisambiguator;
 
 use syntax::ast::*;
 use syntax::ext::hygiene::Mark;
@@ -10,7 +10,7 @@ use syntax::symbol::Symbol;
 use syntax::parse::token::{self, Token};
 use syntax_pos::Span;
 
-use hir::map::{ITEM_LIKE_SPACE, REGULAR_SPACE};
+use crate::hir::map::{ITEM_LIKE_SPACE, REGULAR_SPACE};
 
 /// Creates def ids for nodes in the AST.
 pub struct DefCollector<'a> {

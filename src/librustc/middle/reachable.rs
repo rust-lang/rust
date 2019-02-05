@@ -5,24 +5,24 @@
 // makes all other generics or inline functions that it references
 // reachable as well.
 
-use hir::{CodegenFnAttrs, CodegenFnAttrFlags};
-use hir::Node;
-use hir::def::Def;
-use hir::def_id::{DefId, CrateNum};
+use crate::hir::{CodegenFnAttrs, CodegenFnAttrFlags};
+use crate::hir::Node;
+use crate::hir::def::Def;
+use crate::hir::def_id::{DefId, CrateNum};
 use rustc_data_structures::sync::Lrc;
-use ty::{self, TyCtxt};
-use ty::query::Providers;
-use middle::privacy;
-use session::config;
-use util::nodemap::{NodeSet, FxHashSet};
+use crate::ty::{self, TyCtxt};
+use crate::ty::query::Providers;
+use crate::middle::privacy;
+use crate::session::config;
+use crate::util::nodemap::{NodeSet, FxHashSet};
 
 use rustc_target::spec::abi::Abi;
 use syntax::ast;
-use hir;
-use hir::def_id::LOCAL_CRATE;
-use hir::intravisit::{Visitor, NestedVisitorMap};
-use hir::itemlikevisit::ItemLikeVisitor;
-use hir::intravisit;
+use crate::hir;
+use crate::hir::def_id::LOCAL_CRATE;
+use crate::hir::intravisit::{Visitor, NestedVisitorMap};
+use crate::hir::itemlikevisit::ItemLikeVisitor;
+use crate::hir::intravisit;
 
 // Returns true if the given item must be inlined because it may be
 // monomorphized or it was marked with `#[inline]`. This will only return

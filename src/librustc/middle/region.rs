@@ -6,9 +6,9 @@
 //!
 //! [rustc guide]: https://rust-lang.github.io/rustc-guide/mir/borrowck.html
 
-use ich::{StableHashingContext, NodeIdHashingMode};
-use util::nodemap::{FxHashMap, FxHashSet};
-use ty;
+use crate::ich::{StableHashingContext, NodeIdHashingMode};
+use crate::util::nodemap::{FxHashMap, FxHashSet};
+use crate::ty;
 
 use std::mem;
 use std::fmt;
@@ -16,14 +16,14 @@ use rustc_data_structures::sync::Lrc;
 use syntax::source_map;
 use syntax::ast;
 use syntax_pos::{Span, DUMMY_SP};
-use ty::TyCtxt;
-use ty::query::Providers;
+use crate::ty::TyCtxt;
+use crate::ty::query::Providers;
 
-use hir;
-use hir::Node;
-use hir::def_id::DefId;
-use hir::intravisit::{self, Visitor, NestedVisitorMap};
-use hir::{Block, Arm, Pat, PatKind, Stmt, Expr, Local};
+use crate::hir;
+use crate::hir::Node;
+use crate::hir::def_id::DefId;
+use crate::hir::intravisit::{self, Visitor, NestedVisitorMap};
+use crate::hir::{Block, Arm, Pat, PatKind, Stmt, Expr, Local};
 use rustc_data_structures::indexed_vec::Idx;
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher,
                                            StableHasherResult};
@@ -154,7 +154,7 @@ newtype_index! {
     pub struct FirstStatementIndex { .. }
 }
 
-impl_stable_hash_for!(struct ::middle::region::FirstStatementIndex { private });
+impl_stable_hash_for!(struct crate::middle::region::FirstStatementIndex { private });
 
 // compilation error if size of `ScopeData` is not the same as a `u32`
 static_assert!(ASSERT_SCOPE_DATA: mem::size_of::<ScopeData>() == 4);

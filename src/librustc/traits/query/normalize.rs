@@ -2,15 +2,15 @@
 //! which folds deeply, invoking the underlying
 //! `normalize_projection_ty` query when it encounters projections.
 
-use infer::at::At;
-use infer::canonical::OriginalQueryValues;
-use infer::{InferCtxt, InferOk};
-use mir::interpret::GlobalId;
-use traits::project::Normalized;
-use traits::{Obligation, ObligationCause, PredicateObligation, Reveal};
-use ty::fold::{TypeFoldable, TypeFolder};
-use ty::subst::{Subst, Substs};
-use ty::{self, Ty, TyCtxt};
+use crate::infer::at::At;
+use crate::infer::canonical::OriginalQueryValues;
+use crate::infer::{InferCtxt, InferOk};
+use crate::mir::interpret::GlobalId;
+use crate::traits::project::Normalized;
+use crate::traits::{Obligation, ObligationCause, PredicateObligation, Reveal};
+use crate::ty::fold::{TypeFoldable, TypeFolder};
+use crate::ty::subst::{Subst, Substs};
+use crate::ty::{self, Ty, TyCtxt};
 
 use super::NoSolution;
 

@@ -97,13 +97,13 @@ use self::LoopKind::*;
 use self::LiveNodeKind::*;
 use self::VarKind::*;
 
-use hir::def::*;
-use hir::Node;
-use ty::{self, TyCtxt};
-use ty::query::Providers;
-use lint;
-use errors::Applicability;
-use util::nodemap::{NodeMap, HirIdMap, HirIdSet};
+use crate::hir::def::*;
+use crate::hir::Node;
+use crate::ty::{self, TyCtxt};
+use crate::ty::query::Providers;
+use crate::lint;
+use crate::errors::Applicability;
+use crate::util::nodemap::{NodeMap, HirIdMap, HirIdSet};
 
 use std::collections::{BTreeMap, VecDeque};
 use std::{fmt, u32};
@@ -115,10 +115,10 @@ use syntax::ptr::P;
 use syntax::symbol::keywords;
 use syntax_pos::Span;
 
-use hir;
-use hir::{Expr, HirId};
-use hir::def_id::DefId;
-use hir::intravisit::{self, Visitor, FnKind, NestedVisitorMap};
+use crate::hir;
+use crate::hir::{Expr, HirId};
+use crate::hir::def_id::DefId;
+use crate::hir::intravisit::{self, Visitor, FnKind, NestedVisitorMap};
 
 /// For use with `propagate_through_loop`.
 enum LoopKind<'a> {
@@ -406,7 +406,7 @@ fn add_from_pat<'a, 'tcx>(ir: &mut IrMaps<'a, 'tcx>, pat: &P<hir::Pat>) {
     let mut pats = VecDeque::new();
     pats.push_back(pat);
     while let Some(pat) = pats.pop_front() {
-        use hir::PatKind::*;
+        use crate::hir::PatKind::*;
         match pat.node {
             Binding(_, _, _, _, ref inner_pat) => {
                 pats.extend(inner_pat.iter());

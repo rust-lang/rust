@@ -1,6 +1,6 @@
 use syntax::symbol::InternedString;
 use syntax_pos::Span;
-use ty::{self, Ty};
+use crate::ty::{self, Ty};
 
 use std::cmp;
 use std::marker::PhantomData;

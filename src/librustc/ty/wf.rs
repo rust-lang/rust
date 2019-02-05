@@ -1,12 +1,12 @@
-use hir::def_id::DefId;
-use infer::InferCtxt;
-use ty::subst::Substs;
-use traits;
-use ty::{self, ToPredicate, Ty, TyCtxt, TypeFoldable};
+use crate::hir::def_id::DefId;
+use crate::infer::InferCtxt;
+use crate::ty::subst::Substs;
+use crate::traits;
+use crate::ty::{self, ToPredicate, Ty, TyCtxt, TypeFoldable};
 use std::iter::once;
 use syntax::ast;
 use syntax_pos::Span;
-use middle::lang_items;
+use crate::middle::lang_items;
 
 /// Returns the set of obligations needed to make `ty` well-formed.
 /// If `ty` contains unresolved inference variables, this may include

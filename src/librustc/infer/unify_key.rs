@@ -1,4 +1,4 @@
-use ty::{self, FloatVarValue, IntVarValue, Ty, TyCtxt};
+use crate::ty::{self, FloatVarValue, IntVarValue, Ty, TyCtxt};
 use rustc_data_structures::unify::{NoError, EqUnifyValue, UnifyKey, UnifyValue};
 
 pub trait ToType {

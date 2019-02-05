@@ -22,10 +22,10 @@
 use super::InferCtxt;
 use super::type_variable::TypeVariableOrigin;
 
-use traits::ObligationCause;
-use ty::TyVar;
-use ty::{self, Ty};
-use ty::relate::{RelateResult, TypeRelation};
+use crate::traits::ObligationCause;
+use crate::ty::TyVar;
+use crate::ty::{self, Ty};
+use crate::ty::relate::{RelateResult, TypeRelation};
 
 pub trait LatticeDir<'f, 'gcx: 'f+'tcx, 'tcx: 'f> : TypeRelation<'f, 'gcx, 'tcx> {
     fn infcx(&self) -> &'f InferCtxt<'f, 'gcx, 'tcx>;

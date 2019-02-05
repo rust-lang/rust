@@ -2,7 +2,7 @@
 //! compilation. This is used for incremental compilation tests and debug
 //! output.
 
-use session::Session;
+use crate::session::Session;
 use rustc_data_structures::fx::FxHashMap;
 use std::sync::{Arc, Mutex};
 use syntax_pos::Span;
