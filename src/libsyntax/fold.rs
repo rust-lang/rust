@@ -209,7 +209,7 @@ pub trait Folder : Sized {
         noop_fold_label(label, self)
     }
 
-    fn fold_attribute(&mut self, at: Attribute) -> Option<Attribute> {
+    fn fold_attribute(&mut self, at: Attribute) -> Attribute {
         noop_fold_attribute(at, self)
     }
 
@@ -313,7 +313,7 @@ pub fn noop_fold_use_tree<T: Folder>(use_tree: UseTree, fld: &mut T) -> UseTree 
 }
 
 pub fn fold_attrs<T: Folder>(attrs: Vec<Attribute>, fld: &mut T) -> Vec<Attribute> {
-    attrs.move_flat_map(|x| fld.fold_attribute(x))
+    attrs.move_map(|x| fld.fold_attribute(x))
 }
 
 pub fn fold_thin_attrs<T: Folder>(attrs: ThinVec<Attribute>, fld: &mut T) -> ThinVec<Attribute> {
@@ -485,15 +485,15 @@ pub fn noop_fold_local<T: Folder>(l: P<Local>, fld: &mut T) -> P<Local> {
     })
 }
 
-pub fn noop_fold_attribute<T: Folder>(attr: Attribute, fld: &mut T) -> Option<Attribute> {
-    Some(Attribute {
+pub fn noop_fold_attribute<T: Folder>(attr: Attribute, fld: &mut T) -> Attribute {
+    Attribute {
         id: attr.id,
         style: attr.style,
         path: fld.fold_path(attr.path),
         tokens: fld.fold_tts(attr.tokens),
         is_sugared_doc: attr.is_sugared_doc,
         span: fld.new_span(attr.span),
-    })
+    }
 }
 
 pub fn noop_fold_mac<T: Folder>(Spanned {node, span}: Mac, fld: &mut T) -> Mac {
@@ -678,14 +678,10 @@ pub fn noop_fold_param_bound<T>(pb: GenericBound, fld: &mut T) -> GenericBound w
 }
 
 pub fn noop_fold_generic_param<T: Folder>(param: GenericParam, fld: &mut T) -> GenericParam {
-    let attrs: Vec<_> = param.attrs.into();
     GenericParam {
         ident: fld.fold_ident(param.ident),
         id: fld.new_id(param.id),
-        attrs: attrs.into_iter()
-                    .flat_map(|x| fld.fold_attribute(x).into_iter())
-                    .collect::<Vec<_>>()
-                    .into(),
+        attrs: fold_thin_attrs(param.attrs, fld),
         bounds: param.bounds.move_map(|l| noop_fold_param_bound(l, fld)),
         kind: match param.kind {
             GenericParamKind::Lifetime => GenericParamKind::Lifetime,

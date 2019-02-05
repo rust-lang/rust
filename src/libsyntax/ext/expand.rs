@@ -1465,7 +1465,7 @@ impl<'a, 'b> Folder for InvocationCollector<'a, 'b> {
         noop_fold_generic_param(param, self)
     }
 
-    fn fold_attribute(&mut self, at: ast::Attribute) -> Option<ast::Attribute> {
+    fn fold_attribute(&mut self, at: ast::Attribute) -> ast::Attribute {
         // turn `#[doc(include="filename")]` attributes into `#[doc(include(file="filename",
         // contents="file contents")]` attributes
         if !at.check_name("doc") {
@@ -1585,10 +1585,8 @@ impl<'a, 'b> Folder for InvocationCollector<'a, 'b> {
 
             let meta = attr::mk_list_item(DUMMY_SP, Ident::from_str("doc"), items);
             match at.style {
-                ast::AttrStyle::Inner =>
-                    Some(attr::mk_spanned_attr_inner(at.span, at.id, meta)),
-                ast::AttrStyle::Outer =>
-                    Some(attr::mk_spanned_attr_outer(at.span, at.id, meta)),
+                ast::AttrStyle::Inner => attr::mk_spanned_attr_inner(at.span, at.id, meta),
+                ast::AttrStyle::Outer => attr::mk_spanned_attr_outer(at.span, at.id, meta),
             }
         } else {
             noop_fold_attribute(at, self)
