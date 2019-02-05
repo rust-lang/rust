@@ -320,7 +320,7 @@ pub fn translate_offset_with_edit(
 #[cfg(test)]
 mod test {
     use super::*;
-    use proptest::{prelude::*, proptest, proptest_helper};
+    use proptest::{prelude::*, proptest};
     use crate::line_index;
     use ra_text_edit::test_utils::{arb_offset, arb_text_with_edit};
     use ra_text_edit::TextEdit;

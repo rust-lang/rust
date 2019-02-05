@@ -154,7 +154,7 @@ pub fn to_line_col(text: &str, offset: TextUnit) -> LineCol {
 #[cfg(test)]
 mod test_line_index {
     use super::*;
-    use proptest::{prelude::*, proptest, proptest_helper};
+    use proptest::{prelude::*, proptest};
     use ra_text_edit::test_utils::{arb_text, arb_offset};
 
     #[test]
