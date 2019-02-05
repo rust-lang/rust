@@ -820,6 +820,7 @@ impl<'a, 'tcx> Visitor<'tcx> for Qualifier<'a, 'tcx, 'tcx> {
                                 | "add_with_overflow"
                                 | "sub_with_overflow"
                                 | "mul_with_overflow"
+                                | "saturating_add"
                                 // no need to check feature gates, intrinsics are only callable
                                 // from the libstd or with forever unstable feature gates
                                 => is_const_fn = true,
