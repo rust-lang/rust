@@ -29,6 +29,7 @@ use syntax::attr;
 use syntax::source_map;
 use syntax::edition::Edition;
 use syntax::parse::source_file_to_stream;
+use syntax::parse::parser::emit_unclosed_delims;
 use syntax::symbol::Symbol;
 use syntax_pos::{Span, NO_EXPANSION, FileName};
 use rustc_data_structures::bit_set::BitSet;
@@ -437,12 +438,7 @@ impl cstore::CStore {
         let source_file = sess.parse_sess.source_map().new_source_file(source_name, def.body);
         let local_span = Span::new(source_file.start_pos, source_file.end_pos, NO_EXPANSION);
         let (body, errors) = source_file_to_stream(&sess.parse_sess, source_file, None);
-        for err in errors {
-            sess.struct_span_err(
-                err.found_span,
-                "unclosed delimiter cstore",
-            ).emit();
-        }
+        emit_unclosed_delims(&errors, &sess.diagnostic());
 
         // Mark the attrs as used
         let attrs = data.get_item_attrs(id.index, sess);

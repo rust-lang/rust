@@ -724,7 +724,7 @@ impl<'a> Parser<'a> {
                 if let Some(sp) = unmatched.unclosed_span {
                     err.span_label(sp, "in order to close this...");
                 }
-                err.span_suggestion_short_with_applicability(
+                err.span_suggestion_short(
                     self.sess.source_map().next_point(self.prev_span),
                     &format!("{} may belong here", delim.to_string()),
                     delim.to_string(),
@@ -1180,7 +1180,7 @@ impl<'a> Parser<'a> {
                     //     self.struct_span_err(
                     //         self.span,
                     //         &format!("expected `>`, found `{}`", self.this_token_to_string()),
-                    //     // ).span_suggestion_short_with_applicability(
+                    //     // ).span_suggestion_short(
                     //     ).emit();
                     //     Ok(())
                     // }
@@ -8503,20 +8503,7 @@ impl<'a> Parser<'a> {
             module: self.parse_mod_items(&token::Eof, lo)?,
             span: lo.to(self.span),
         });
-        for unmatched in &self.unclosed_delims {
-            let mut err = self.struct_span_err(unmatched.found_span, &format!(
-                "incorrect close delimiter: `{}`",
-                pprust::token_to_string(&token::Token::CloseDelim(unmatched.found_delim)),
-            ));
-            err.span_label(unmatched.found_span, "incorrect close delimiter");
-            if let Some(sp) = unmatched.candidate_span {
-                err.span_label(sp, "close delimiter possibly meant for this");
-            }
-            if let Some(sp) = unmatched.unclosed_span {
-                err.span_label(sp, "un-closed delimiter");
-            }
-            err.emit();
-        }
+        emit_unclosed_delims(&self.unclosed_delims, self.diagnostic());
         self.unclosed_delims.clear();
         krate
     }
@@ -8545,5 +8532,22 @@ impl<'a> Parser<'a> {
                 Err(err)
             }
         }
+    }
+}
+
+pub fn emit_unclosed_delims(unclosed_delims: &[UnmatchedBrace], handler: &errors::Handler) {
+    for unmatched in unclosed_delims {
+        let mut err = handler.struct_span_err(unmatched.found_span, &format!(
+            "incorrect close delimiter: `{}`",
+            pprust::token_to_string(&token::Token::CloseDelim(unmatched.found_delim)),
+        ));
+        err.span_label(unmatched.found_span, "incorrect close delimiter");
+        if let Some(sp) = unmatched.candidate_span {
+            err.span_label(sp, "close delimiter possibly meant for this");
+        }
+        if let Some(sp) = unmatched.unclosed_span {
+            err.span_label(sp, "un-closed delimiter");
+        }
+        err.emit();
     }
 }

@@ -10,6 +10,7 @@ use crate::print::pprust;
 use crate::ptr::P;
 use crate::symbol::keywords;
 use crate::syntax::parse::parse_stream_from_source_str;
+use crate::syntax::parse::parser::emit_unclosed_delims;
 use crate::tokenstream::{self, DelimSpan, TokenStream, TokenTree};
 
 use serialize::{Decodable, Decoder, Encodable, Encoder};
@@ -547,12 +548,7 @@ impl Token {
             let filename = FileName::macro_expansion_source_code(&source);
             let (tokens, errors) = parse_stream_from_source_str(
                 filename, source, sess, Some(span));
-            for err in errors {
-                sess.span_diagnostic.struct_span_err(
-                    err.found_span,
-                    "unclosed delimiter for_real",
-                ).emit();
-            }
+            emit_unclosed_delims(&errors, &sess.span_diagnostic);
             tokens
         });
 
@@ -800,12 +796,7 @@ fn prepend_attrs(sess: &ParseSess,
                 sess,
                 Some(span),
             );
-            for err in errors {
-                sess.span_diagnostic.struct_span_err(
-                    err.found_span,
-                    "unclosed delimiter attrs",
-                ).emit();
-            }
+            emit_unclosed_delims(&errors, &sess.span_diagnostic);
             builder.push(stream);
             continue
         }
@@ -828,12 +819,7 @@ fn prepend_attrs(sess: &ParseSess,
                 sess,
                 Some(span),
             );
-            for err in errors {
-                sess.span_diagnostic.struct_span_err(
-                    err.found_span,
-                    "unclosed delimiter attrs 2",
-                ).emit();
-            }
+            emit_unclosed_delims(&errors, &sess.span_diagnostic);
             brackets.push(stream);
         }
 

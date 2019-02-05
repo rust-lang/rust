@@ -275,6 +275,7 @@ pub fn maybe_file_to_stream(
         Err(err) => {
             let mut buffer = Vec::with_capacity(1);
             err.buffer(&mut buffer);
+            // Not using `emit_unclosed_delims` to use `db.buffer`
             for unmatched in srdr.unmatched_braces {
                 let mut db = sess.span_diagnostic.struct_span_err(unmatched.found_span, &format!(
                     "incorrect close delimiter: `{}`",
