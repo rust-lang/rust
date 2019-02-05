@@ -719,8 +719,10 @@ impl<T> RawTable<T> {
                 // This may panic.
                 let hash = hasher(item.as_ref());
 
-                // We can use a simpler version of insert() here since there are no
-                // DELETED entries.
+                // We can use a simpler version of insert() here since:
+                // - there are no DELETED entries.
+                // - we know there is enough space in the table.
+                // - all elements are unique.
                 let index = new_table.find_insert_slot(hash);
                 new_table.set_ctrl(index, h2(hash));
                 new_table.bucket(index).write(item.read());

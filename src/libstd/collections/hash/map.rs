@@ -633,11 +633,6 @@ impl<K, V, S> HashMap<K, V, S>
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn entry(&mut self, key: K) -> Entry<K, V> {
-        // Ideally we would put this in VacantEntry::insert, but Entry is not
-        // generic over the BuildHasher and adding a generic parameter would be
-        // a breaking change.
-        self.reserve(1);
-
         let hash = make_hash(&self.hash_builder, &key);
         if let Some(elem) = self.table.find(hash, |q| q.0.eq(&key)) {
             Entry::Occupied(OccupiedEntry {
@@ -646,6 +641,11 @@ impl<K, V, S> HashMap<K, V, S>
                 table: &mut self.table,
             })
         } else {
+            // Ideally we would put this in VacantEntry::insert, but Entry is not
+            // generic over the BuildHasher and adding a generic parameter would be
+            // a breaking change.
+            self.reserve(1);
+
             Entry::Vacant(VacantEntry {
                 hash,
                 key,
