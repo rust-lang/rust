@@ -256,4 +256,28 @@ impl_froms!(TokenTree: Leaf, Subtree);
         assert_expansion(&rules, "foo! { eggs Baz }", "struct Baz ;");
     }
 
+    #[test]
+    fn test_match_group_pattern_by_separator_token() {
+        let rules = create_rules(
+            r#"
+        macro_rules! foo {
+            ($ ($ i:ident),*) => ($ (
+                mod $ i {}
+            )*);
+            ($ ($ i:ident)#*) => ($ (
+                fn $ i() {}
+            )*);
+            ($ i:ident ,# $ j:ident) => (
+                struct $ i;
+                struct $ j;
+            )
+        }
+"#,
+        );
+
+        assert_expansion(&rules, "foo! { foo, bar }", "mod foo {} mod bar {}");
+        assert_expansion(&rules, "foo! { foo# bar }", "fn foo () {} fn bar () {}");
+        assert_expansion(&rules, "foo! { Foo,# Bar }", "struct Foo ; struct Bar ;");
+    }
+
 }

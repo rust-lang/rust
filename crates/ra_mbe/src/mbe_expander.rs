@@ -140,8 +140,12 @@ fn match_lhs(pattern: &crate::Subtree, input: &mut TtCursor) -> Option<Bindings>
             }) => {
                 while let Some(nested) = match_lhs(subtree, input) {
                     res.push_nested(nested)?;
-                    if separator.is_some() && !input.is_eof() {
-                        input.eat_punct()?;
+                    if let Some(separator) = *separator {
+                        if !input.is_eof() {
+                            if input.eat_punct()?.char != separator {
+                                return None;
+                            }
+                        }
                     }
                 }
             }
