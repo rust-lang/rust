@@ -128,6 +128,12 @@ if [ ! -z "$SCRIPT" ]; then
   sh -x -c "$SCRIPT"
   ret=$?
   echo "exit code in src/ci/run.sh: $ret"
+
+  echo "tasklist:"
+  tasklist
+  echo -n "location of sh: "
+  where sh
+
   exit $ret
 else
   do_make() {
