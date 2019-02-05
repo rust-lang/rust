@@ -641,6 +641,9 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpretCx<'mir, 'tcx, M> {
         &self,
         gid: GlobalId<'tcx>,
     ) -> InterpResult<'tcx, MPlaceTy<'tcx, M::PointerTag>> {
+        // FIXME(oli-obk): make this check an assertion that it's not a static here
+        // FIXME(RalfJ, oli-obk): document that `Place::Static` can never be anything but a static
+        // and `ConstValue::Unevaluated` can never be a static
         let param_env = if self.tcx.is_static(gid.instance.def_id()) {
             ty::ParamEnv::reveal_all()
         } else {

@@ -396,6 +396,7 @@ impl<'rt, 'mir, 'tcx, M: Machine<'mir, 'tcx>> ValueVisitor<'mir, 'tcx, M>
                 if let Some(ref mut ref_tracking) = self.ref_tracking {
                     assert!(self.const_mode, "We should only do recursie checking in const mode");
                     let place = self.ecx.ref_to_mplace(value)?;
+                    // FIXME(RalfJ): check ZST for inbound pointers
                     if size != Size::ZERO {
                         // Non-ZST also have to be dereferencable
                         let ptr = try_validation!(place.ptr.to_ptr(),
