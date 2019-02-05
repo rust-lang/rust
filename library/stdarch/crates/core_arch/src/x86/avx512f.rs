@@ -87,6 +87,13 @@ pub unsafe fn _mm512_setr_epi32(
     mem::transmute(r)
 }
 
+/// Broadcast 64-bit integer `a` to all elements of `dst`.
+#[inline]
+#[target_feature(enable = "avx512f")]
+pub unsafe fn _mm512_set1_epi64(a: i64) -> __m512i {
+    mem::transmute(i64x8::splat(a))
+}
+
 #[cfg(test)]
 mod tests {
     use std;
