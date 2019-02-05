@@ -52,6 +52,12 @@ If reading multiple hundreds of pages about a language isn't your style, then
 a lot of words, RBE shows off a bunch of code, and keeps the talking to a
 minimum. It also includes exercises!
 
+## Rustlings
+
+[Rustlings](https://github.com/rust-lang/rustlings) guides you through downloading and setting up the Rust toolchain,
+and teaches you the basics of reading and writing Rust syntax. It's an
+alternative to Rust by Example that works with your own environment.
+
 # Use Rust
 
 Once you've gotten familiar with the language, these resources can help you
