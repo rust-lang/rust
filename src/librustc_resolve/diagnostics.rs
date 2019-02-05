@@ -414,8 +414,8 @@ https://doc.rust-lang.org/reference.html#use-declarations
 "##,
 
 E0401: r##"
-Inner items do not inherit type parameters from the functions they are embedded
-in.
+Inner items do not inherit type or const parameters from the functions
+they are embedded in.
 
 Erroneous code example:
 
@@ -1638,6 +1638,17 @@ mod collider {
 fn main() {
     collider::moon::foo(); // ok!
     collider::earth::foo(); // ok!
+}
+```
+"##,
+
+E0670: r##"
+Const parameters cannot depend on type parameters.
+The following is therefore invalid:
+
+```
+fn const_id<T, const N: T>() -> T {
+    N
 }
 ```
 "##,
