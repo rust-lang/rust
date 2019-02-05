@@ -1,7 +1,7 @@
+// ignore-tidy-linelength
+
 // We need all these 9 issue-20616-N.rs files
 // because we can only catch one parsing error at a time
-
-
 
 type Type_1_<'a, T> = &'a T;
 
@@ -12,7 +12,7 @@ type Type_1_<'a, T> = &'a T;
 //type Type_2 = Type_1_<'static ()>; // error: expected `,` or `>` after lifetime name, found `(`
 
 
-type Type_3<T> = Box<T,,>; //~ error: expected one of `>`, identifier, lifetime, or type, found `,`
+type Type_3<T> = Box<T,,>; //~ error: expected one of `>`, const, identifier, lifetime, or type, found `,`
 
 
 //type Type_4<T> = Type_1_<'static,, T>; // error: expected type, found `,`
