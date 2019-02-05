@@ -62,7 +62,7 @@ use fold::DocFolder;
 use html::escape::Escape;
 use html::format::{AsyncSpace, ConstnessSpace};
 use html::format::{GenericBounds, WhereClause, href, AbiSpace};
-use html::format::{VisSpace, Method, UnsafetySpace, MutableSpace};
+use html::format::{VisSpace, Function, UnsafetySpace, MutableSpace};
 use html::format::fmt_impl_for_trait_page;
 use html::item_type::ItemType;
 use html::markdown::{self, Markdown, MarkdownHtml, MarkdownSummaryLine, ErrorCodes, IdMap};
@@ -2963,10 +2963,11 @@ fn item_function(w: &mut fmt::Formatter, cx: &Context, it: &clean::Item,
            name = it.name.as_ref().unwrap(),
            generics = f.generics,
            where_clause = WhereClause { gens: &f.generics, indent: 0, end_newline: true },
-           decl = Method {
+           decl = Function {
               decl: &f.decl,
               name_len,
               indent: 0,
+              asyncness: f.header.asyncness,
            })?;
     document(w, cx, it)
 }
@@ -3410,10 +3411,11 @@ fn render_assoc_item(w: &mut fmt::Formatter,
                href = href,
                name = name,
                generics = *g,
-               decl = Method {
+               decl = Function {
                    decl: d,
                    name_len: head_len,
                    indent,
+                   asyncness: header.asyncness,
                },
                where_clause = WhereClause {
                    gens: g,

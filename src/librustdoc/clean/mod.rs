@@ -1707,6 +1707,30 @@ impl FnDecl {
     pub fn self_type(&self) -> Option<SelfTy> {
         self.inputs.values.get(0).and_then(|v| v.to_self())
     }
+
+    /// Returns the sugared return type for an async function.
+    ///
+    /// For example, if the return type is `impl std::future::Future<Output = i32>`, this function
+    /// will return `i32`.
+    ///
+    /// # Panics
+    ///
+    /// This function will panic if the return type does not match the expected sugaring for async
+    /// functions.
+    pub fn sugared_async_return_type(&self) -> FunctionRetTy {
+        match &self.output {
+            FunctionRetTy::Return(Type::ImplTrait(bounds)) => {
+                match &bounds[0] {
+                    GenericBound::TraitBound(PolyTrait { trait_, .. }, ..) => {
+                        let bindings = trait_.bindings().unwrap();
+                        FunctionRetTy::Return(bindings[0].ty.clone())
+                    }
+                    _ => panic!("unexpected desugaring of async function"),
+                }
+            }
+            _ => panic!("unexpected desugaring of async function"),
+        }
+    }
 }
 
 #[derive(Clone, RustcEncodable, RustcDecodable, PartialEq, Eq, Debug, Hash)]
@@ -2263,6 +2287,21 @@ impl Type {
                 })
             }
             _ => None,
+        }
+    }
+
+    pub fn bindings(&self) -> Option<&[TypeBinding]> {
+        match *self {
+            ResolvedPath { ref path, .. } => {
+                path.segments.last().and_then(|seg| {
+                    if let GenericArgs::AngleBracketed { ref bindings, .. } = seg.args {
+                        Some(&**bindings)
+                    } else {
+                        None
+                    }
+                })
+            }
+            _ => None
         }
     }
 }

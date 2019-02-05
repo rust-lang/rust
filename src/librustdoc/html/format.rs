@@ -5,6 +5,7 @@
 //! assume that HTML output is desired, although it may be possible to redesign
 //! them in the future to instead emit any format desired.
 
+use std::borrow::Cow;
 use std::fmt;
 
 use rustc::hir::def_id::DefId;
@@ -44,14 +45,16 @@ pub struct GenericBounds<'a>(pub &'a [clean::GenericBound]);
 pub struct CommaSep<'a, T: 'a>(pub &'a [T]);
 pub struct AbiSpace(pub Abi);
 
-/// Wrapper struct for properly emitting a method declaration.
-pub struct Method<'a> {
+/// Wrapper struct for properly emitting a function or method declaration.
+pub struct Function<'a> {
     /// The declaration to emit.
     pub decl: &'a clean::FnDecl,
     /// The length of the function's "name", used to determine line-wrapping.
     pub name_len: usize,
     /// The number of spaces to indent each successive line with, if line-wrapping is necessary.
     pub indent: usize,
+    /// Whether the function is async or not.
+    pub asyncness: hir::IsAsync,
 }
 
 /// Wrapper struct for emitting a where clause from Generics.
@@ -829,9 +832,9 @@ impl fmt::Display for clean::FnDecl {
     }
 }
 
-impl<'a> fmt::Display for Method<'a> {
+impl<'a> fmt::Display for Function<'a> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        let &Method { decl, name_len, indent } = self;
+        let &Function { decl, name_len, indent, asyncness } = self;
         let amp = if f.alternate() { "&" } else { "&amp;" };
         let mut args = String::new();
         let mut args_plain = String::new();
@@ -891,11 +894,17 @@ impl<'a> fmt::Display for Method<'a> {
             args_plain.push_str(", ...");
         }
 
-        let arrow_plain = format!("{:#}", decl.output);
-        let arrow = if f.alternate() {
-            format!("{:#}", decl.output)
+        let output = if let hir::IsAsync::Async = asyncness {
+            Cow::Owned(decl.sugared_async_return_type())
         } else {
-            decl.output.to_string()
+            Cow::Borrowed(&decl.output)
+        };
+
+        let arrow_plain = format!("{:#}", &output);
+        let arrow = if f.alternate() {
+            format!("{:#}", &output)
+        } else {
+            output.to_string()
         };
 
         let pad = " ".repeat(name_len);
