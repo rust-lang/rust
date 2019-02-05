@@ -560,3 +560,6 @@ pub unsafe fn ud2() -> ! {
 
 mod avx512f;
 pub use self::avx512f::*;
+
+mod avx512ifma;
+pub use self::avx512ifma::*;
