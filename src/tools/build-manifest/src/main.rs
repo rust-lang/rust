@@ -1,6 +1,7 @@
-extern crate toml;
-#[macro_use]
-extern crate serde_derive;
+#![deny(rust_2018_idioms)]
+
+use toml;
+use serde::Serialize;
 
 use std::collections::BTreeMap;
 use std::env;
@@ -469,7 +470,7 @@ impl Builder {
         }
         manifest.pkg.insert("rust".to_string(), pkg);
 
-        return manifest;
+        manifest
     }
 
     fn profile(&mut self,
