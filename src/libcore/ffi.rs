@@ -27,7 +27,7 @@ use ::fmt;
 //     would be uninhabited and at least dereferencing such pointers would
 //     be UB.
 #[repr(u8)]
-#[stable(feature = "raw_os", since = "1.1.0")]
+#[stable(feature = "raw_os", since = "1.30.0")]
 pub enum c_void {
     #[unstable(feature = "c_void_variant", reason = "temporary implementation detail",
                issue = "0")]
