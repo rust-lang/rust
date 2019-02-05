@@ -2,9 +2,9 @@ use crate::utils::paths;
 use crate::utils::{is_copy, match_type, snippet, span_lint, span_note_and_lint};
 use rustc::hir::intravisit::{walk_path, NestedVisitorMap, Visitor};
 use rustc::hir::{self, *};
-use rustc::hir::def_id::DefId;
 use rustc::lint::LateContext;
 use rustc_data_structures::fx::FxHashSet;
+use syntax::symbol::Symbol;
 
 use super::OPTION_MAP_UNWRAP_OR;
 
@@ -17,7 +17,6 @@ pub(super) fn lint<'a, 'tcx>(
 ) {
     // lint if the caller of `map()` is an `Option`
     if match_type(cx, cx.tables.expr_ty(&map_args[0]), &paths::OPTION) {
-
         if !is_copy(cx, cx.tables.expr_ty(&unwrap_args[1])) {
             // Do not lint if the `map` argument uses identifiers in the `map`
             // argument that are also used in the `unwrap_or` argument
@@ -80,14 +79,12 @@ pub(super) fn lint<'a, 'tcx>(
 
 struct UnwrapVisitor<'a, 'tcx: 'a> {
     cx: &'a LateContext<'a, 'tcx>,
-    identifiers: FxHashSet<DefId>,
+    identifiers: FxHashSet<Symbol>,
 }
 
 impl<'a, 'tcx: 'a> Visitor<'tcx> for UnwrapVisitor<'a, 'tcx> {
     fn visit_path(&mut self, path: &'tcx Path, _id: HirId) {
-        if let Some(def_id) = path.def.opt_def_id() {
-            self.identifiers.insert(def_id);
-        }
+        self.identifiers.insert(ident(path));
         walk_path(self, path);
     }
 
@@ -98,17 +95,15 @@ impl<'a, 'tcx: 'a> Visitor<'tcx> for UnwrapVisitor<'a, 'tcx> {
 
 struct MapExprVisitor<'a, 'tcx: 'a> {
     cx: &'a LateContext<'a, 'tcx>,
-    identifiers: FxHashSet<DefId>,
+    identifiers: FxHashSet<Symbol>,
     found_identifier: bool,
 }
 
 impl<'a, 'tcx: 'a> Visitor<'tcx> for MapExprVisitor<'a, 'tcx> {
     fn visit_path(&mut self, path: &'tcx Path, _id: HirId) {
-        if let Some(def_id) = path.def.opt_def_id() {
-            if self.identifiers.contains(&def_id) {
-                self.found_identifier = true;
-                return;
-            }
+        if self.identifiers.contains(&ident(path)) {
+            self.found_identifier = true;
+            return;
         }
         walk_path(self, path);
     }
@@ -116,4 +111,12 @@ impl<'a, 'tcx: 'a> Visitor<'tcx> for MapExprVisitor<'a, 'tcx> {
     fn nested_visit_map<'this>(&'this mut self) -> NestedVisitorMap<'this, 'tcx> {
         NestedVisitorMap::All(&self.cx.tcx.hir())
     }
+}
+
+fn ident(path: &Path) -> Symbol {
+    path.segments
+        .last()
+        .expect("segments should be composed of at least 1 element")
+        .ident
+        .name
 }
