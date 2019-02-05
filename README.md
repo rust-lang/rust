@@ -111,20 +111,19 @@ local changes on whatever project you are debugging.
 (We are giving `+nightly` explicitly here all the time because it is important
 that all of these commands get executed with the same toolchain.)
 
-### Testing Miri
-
-Instead of running an entire project using `cargo miri`, you can also use the
-Miri "driver" directly to run just a single file.  That can be easier during
-debugging.
-
 `cargo miri setup` should end in printing the directory where the libstd was
-built.  Set that as your `MIRI_SYSROOT` environment variable:
+built.  For the next step to work, set that as your `MIRI_SYSROOT` environment
+variable:
 
 ```sh
 export MIRI_SYSROOT=~/.cache/miri/HOST # or whatever the previous command said
 ```
 
-Now you can run Miri directly, without going through `cargo miri`:
+### Testing Miri
+
+Instead of running an entire project using `cargo miri`, you can also use the
+Miri "driver" directly to run just a single file.  That can be easier during
+debugging.
 
 ```sh
 cargo run tests/run-pass/format.rs # or whatever test you like
@@ -185,6 +184,15 @@ rustup override set custom
 
 With this, you should now have a working development setup!  See
 ["Testing Miri"](#testing-miri) above for how to proceed.
+
+Running `cargo miri` in this setup is a bit more complicated, because the Miri
+binary you just created does not actually run without some enviroment variables.
+But you can contort cargo into calling `cargo miri` the right way for you:
+
+```sh
+# in some other project's directory, to run `cargo miri test`:
+MIRI_SYSROOT=$(rustc +custom --print sysroot) cargo +custom run --manifest-path /path/to/miri/Cargo.toml --bin cargo-miri --release -- miri test
+```
 
 ### Miri `-Z` flags and environment variables
 
