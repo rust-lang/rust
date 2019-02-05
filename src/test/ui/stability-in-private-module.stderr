@@ -1,0 +1,9 @@
+error[E0603]: module `thread_info` is private
+  --> $DIR/stability-in-private-module.rs:2:26
+   |
+LL |     let _ = std::thread::thread_info::current_thread();
+   |                          ^^^^^^^^^^^
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0603`.

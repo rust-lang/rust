@@ -10,14 +10,15 @@
        html_playground_url = "https://play.rust-lang.org/",
        test(attr(deny(warnings))))]
 
-#![feature(nll)]
+#![deny(rust_2018_idioms)]
+
 #![feature(rustc_private)]
 
-pub use self::Piece::*;
-pub use self::Position::*;
-pub use self::Alignment::*;
-pub use self::Flag::*;
-pub use self::Count::*;
+pub use Piece::*;
+pub use Position::*;
+pub use Alignment::*;
+pub use Flag::*;
+pub use Count::*;
 
 use std::str;
 use std::string;

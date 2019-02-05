@@ -1,6 +1,7 @@
-extern crate toml;
-#[macro_use]
-extern crate serde_derive;
+#![deny(rust_2018_idioms)]
+
+use toml;
+use serde::Serialize;
 
 use std::collections::BTreeMap;
 use std::env;
@@ -78,6 +79,7 @@ static TARGETS: &'static [&'static str] = &[
     "mips64el-unknown-linux-gnuabi64",
     "mipsel-unknown-linux-gnu",
     "mipsel-unknown-linux-musl",
+    "nvptx64-nvidia-cuda",
     "powerpc-unknown-linux-gnu",
     "powerpc64-unknown-linux-gnu",
     "powerpc64le-unknown-linux-gnu",
@@ -468,7 +470,7 @@ impl Builder {
         }
         manifest.pkg.insert("rust".to_string(), pkg);
 
-        return manifest;
+        manifest
     }
 
     fn profile(&mut self,

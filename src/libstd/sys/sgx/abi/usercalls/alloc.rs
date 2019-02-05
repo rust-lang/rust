@@ -537,7 +537,12 @@ impl UserRef<super::raw::ByteBuffer> {
     pub fn copy_user_buffer(&self) -> Vec<u8> {
         unsafe {
             let buf = self.to_enclave();
-            User::from_raw_parts(buf.data as _, buf.len).to_enclave()
+            if buf.len > 0 {
+                User::from_raw_parts(buf.data as _, buf.len).to_enclave()
+            } else {
+                // Mustn't look at `data` or call `free` if `len` is `0`.
+                Vec::with_capacity(0)
+            }
         }
     }
 }
