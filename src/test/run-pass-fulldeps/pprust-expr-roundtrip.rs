@@ -27,7 +27,7 @@ use rustc_data_structures::thin_vec::ThinVec;
 use syntax::ast::*;
 use syntax::source_map::{Spanned, DUMMY_SP, FileName};
 use syntax::source_map::FilePathMapping;
-use syntax::fold::{self, Folder};
+use syntax::mut_visit::{self, MutVisitor, visit_clobber};
 use syntax::parse::{self, ParseSess};
 use syntax::print::pprust;
 use syntax::ptr::P;
@@ -157,32 +157,34 @@ fn iter_exprs(depth: usize, f: &mut FnMut(P<Expr>)) {
 
 // Folders for manipulating the placement of `Paren` nodes.  See below for why this is needed.
 
-/// Folder that removes all `ExprKind::Paren` nodes.
+/// MutVisitor that removes all `ExprKind::Paren` nodes.
 struct RemoveParens;
 
-impl Folder for RemoveParens {
-    fn fold_expr(&mut self, e: P<Expr>) -> P<Expr> {
-        let e = match e.node {
-            ExprKind::Paren(ref inner) => inner.clone(),
-            _ => e.clone(),
+impl MutVisitor for RemoveParens {
+    fn visit_expr(&mut self, e: &mut P<Expr>) {
+        match e.node.clone() {
+            ExprKind::Paren(inner) => *e = inner,
+            _ => {}
         };
-        e.map(|e| fold::noop_fold_expr(e, self))
+        mut_visit::noop_visit_expr(e, self);
     }
 }
 
 
-/// Folder that inserts `ExprKind::Paren` nodes around every `Expr`.
+/// MutVisitor that inserts `ExprKind::Paren` nodes around every `Expr`.
 struct AddParens;
 
-impl Folder for AddParens {
-    fn fold_expr(&mut self, e: P<Expr>) -> P<Expr> {
-        let e = e.map(|e| fold::noop_fold_expr(e, self));
-        P(Expr {
-            id: DUMMY_NODE_ID,
-            node: ExprKind::Paren(e),
-            span: DUMMY_SP,
-            attrs: ThinVec::new(),
-        })
+impl MutVisitor for AddParens {
+    fn visit_expr(&mut self, e: &mut P<Expr>) {
+        mut_visit::noop_visit_expr(e, self);
+        visit_clobber(e, |e| {
+            P(Expr {
+                id: DUMMY_NODE_ID,
+                node: ExprKind::Paren(e),
+                span: DUMMY_SP,
+                attrs: ThinVec::new(),
+            })
+        });
     }
 }
 
@@ -193,13 +195,13 @@ fn main() {
 fn run() {
     let ps = ParseSess::new(FilePathMapping::empty());
 
-    iter_exprs(2, &mut |e| {
+    iter_exprs(2, &mut |mut e| {
         // If the pretty printer is correct, then `parse(print(e))` should be identical to `e`,
         // modulo placement of `Paren` nodes.
         let printed = pprust::expr_to_string(&e);
         println!("printed: {}", printed);
 
-        let parsed = parse_expr(&ps, &printed);
+        let mut parsed = parse_expr(&ps, &printed);
 
         // We want to know if `parsed` is structurally identical to `e`, ignoring trivial
         // differences like placement of `Paren`s or the exact ranges of node spans.
@@ -207,10 +209,12 @@ fn run() {
         // everywhere we can, then pretty-print.  This should give an unambiguous representation of
         // each `Expr`, and it bypasses nearly all of the parenthesization logic, so we aren't
         // relying on the correctness of the very thing we're testing.
-        let e1 = AddParens.fold_expr(RemoveParens.fold_expr(e));
-        let text1 = pprust::expr_to_string(&e1);
-        let e2 = AddParens.fold_expr(RemoveParens.fold_expr(parsed));
-        let text2 = pprust::expr_to_string(&e2);
+        RemoveParens.visit_expr(&mut e);
+        AddParens.visit_expr(&mut e);
+        let text1 = pprust::expr_to_string(&e);
+        RemoveParens.visit_expr(&mut parsed);
+        AddParens.visit_expr(&mut parsed);
+        let text2 = pprust::expr_to_string(&parsed);
         assert!(text1 == text2,
                 "exprs are not equal:\n  e =      {:?}\n  parsed = {:?}",
                 text1, text2);

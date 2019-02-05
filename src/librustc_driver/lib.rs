@@ -870,9 +870,9 @@ impl<'a> CompilerCalls<'a> for RustcDefaultCalls {
                 control.after_hir_lowering.stop = Compilation::Stop;
 
                 control.after_parse.callback = box move |state| {
-                    state.krate = Some(pretty::fold_crate(state.session,
-                                                          state.krate.take().unwrap(),
-                                                          ppm));
+                    let mut krate = state.krate.take().unwrap();
+                    pretty::visit_crate(state.session, &mut krate, ppm);
+                    state.krate = Some(krate);
                 };
                 control.after_hir_lowering.callback = box move |state| {
                     pretty::print_after_hir_lowering(state.session,
@@ -891,7 +891,8 @@ impl<'a> CompilerCalls<'a> for RustcDefaultCalls {
                 control.after_parse.stop = Compilation::Stop;
 
                 control.after_parse.callback = box move |state| {
-                    let krate = pretty::fold_crate(state.session, state.krate.take().unwrap(), ppm);
+                    let mut krate = state.krate.take().unwrap();
+                    pretty::visit_crate(state.session, &mut krate, ppm);
                     pretty::print_after_parsing(state.session,
                                                 state.input,
                                                 &krate,

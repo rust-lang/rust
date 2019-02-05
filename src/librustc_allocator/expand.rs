@@ -16,7 +16,7 @@ use syntax::{
         expand::ExpansionConfig,
         hygiene::{self, Mark, SyntaxContext},
     },
-    fold::{self, Folder},
+    mut_visit::{self, MutVisitor},
     parse::ParseSess,
     ptr::P,
     symbol::Symbol
@@ -28,10 +28,10 @@ use {AllocatorMethod, AllocatorTy, ALLOCATOR_METHODS};
 pub fn modify(
     sess: &ParseSess,
     resolver: &mut dyn Resolver,
-    krate: Crate,
+    krate: &mut Crate,
     crate_name: String,
     handler: &rustc_errors::Handler,
-) -> ast::Crate {
+) {
     ExpandAllocatorDirectives {
         handler,
         sess,
@@ -39,7 +39,7 @@ pub fn modify(
         found: false,
         crate_name: Some(crate_name),
         in_submod: -1, // -1 to account for the "root" module
-    }.fold_crate(krate)
+    }.visit_crate(krate);
 }
 
 struct ExpandAllocatorDirectives<'a> {
@@ -54,14 +54,14 @@ struct ExpandAllocatorDirectives<'a> {
     in_submod: isize,
 }
 
-impl<'a> Folder for ExpandAllocatorDirectives<'a> {
-    fn fold_item(&mut self, item: P<Item>) -> SmallVec<[P<Item>; 1]> {
+impl<'a> MutVisitor for ExpandAllocatorDirectives<'a> {
+    fn flat_map_item(&mut self, item: P<Item>) -> SmallVec<[P<Item>; 1]> {
         debug!("in submodule {}", self.in_submod);
 
         let name = if attr::contains_name(&item.attrs, "global_allocator") {
             "global_allocator"
         } else {
-            return fold::noop_fold_item(item, self);
+            return mut_visit::noop_flat_map_item(item, self);
         };
         match item.node {
             ItemKind::Static(..) => {}
@@ -139,25 +139,24 @@ impl<'a> Folder for ExpandAllocatorDirectives<'a> {
         let name = f.kind.fn_name("allocator_abi");
         let allocator_abi = Ident::with_empty_ctxt(Symbol::gensym(&name));
         let module = f.cx.item_mod(span, span, allocator_abi, Vec::new(), items);
-        let module = f.cx.monotonic_expander().fold_item(module).pop().unwrap();
+        let module = f.cx.monotonic_expander().flat_map_item(module).pop().unwrap();
 
         // Return the item and new submodule
         smallvec![item, module]
     }
 
     // If we enter a submodule, take note.
-    fn fold_mod(&mut self, m: Mod) -> Mod {
+    fn visit_mod(&mut self, m: &mut Mod) {
         debug!("enter submodule");
         self.in_submod += 1;
-        let ret = fold::noop_fold_mod(m, self);
+        mut_visit::noop_visit_mod(m, self);
         self.in_submod -= 1;
         debug!("exit submodule");
-        ret
     }
 
-    // `fold_mac` is disabled by default. Enable it here.
-    fn fold_mac(&mut self, mac: Mac) -> Mac {
-        fold::noop_fold_mac(mac, self)
+    // `visit_mac` is disabled by default. Enable it here.
+    fn visit_mac(&mut self, mac: &mut Mac) {
+        mut_visit::noop_visit_mac(mac, self)
     }
 }
 
