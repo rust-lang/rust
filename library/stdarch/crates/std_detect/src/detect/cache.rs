@@ -84,8 +84,7 @@ impl Cache {
         allow(clippy::declare_interior_mutable_const)
     )]
     const fn uninitialized() -> Self {
-        const X: AtomicU64 = AtomicU64::new(u64::max_value());
-        Cache(X)
+        Cache(AtomicU64::new(u64::max_value()))
     }
     /// Is the cache uninitialized?
     #[inline]
