@@ -21,7 +21,7 @@ use rustc::mir::visit::{PlaceContext, Visitor, MutatingUseContext, NonMutatingUs
 use rustc::middle::lang_items;
 use rustc::session::config::nightly_options;
 use syntax::ast::LitKind;
-use syntax::feature_gate::{UnstableFeatures, emit_feature_err, GateIssue};
+use syntax::feature_gate::{emit_feature_err, GateIssue};
 use syntax_pos::{Span, DUMMY_SP};
 
 use std::fmt;
@@ -1062,32 +1062,14 @@ impl<'a, 'tcx> Visitor<'tcx> for Checker<'a, 'tcx> {
                                         err.emit();
                                     }
                                 } else {
-                                    // FIXME(#57563): remove this check when const fn stabilizes.
-                                    let (msg, note) = if let UnstableFeatures::Disallow =
-                                            self.tcx.sess.opts.unstable_features {
-                                        (format!("calls in {}s are limited to \
-                                                tuple structs and tuple variants",
-                                                self.mode),
-                                        Some("a limited form of compile-time function \
-                                            evaluation is available on a nightly \
-                                            compiler via `const fn`"))
-                                    } else {
-                                        (format!("calls in {}s are limited \
-                                                to constant functions, \
-                                                tuple structs and tuple variants",
-                                                self.mode),
-                                        None)
-                                    };
                                     let mut err = struct_span_err!(
                                         self.tcx.sess,
                                         self.span,
                                         E0015,
-                                        "{}",
-                                        msg,
+                                        "calls in {}s are limited to constant functions, \
+                                         tuple structs and tuple variants",
+                                        self.mode,
                                     );
-                                    if let Some(note) = note {
-                                        err.span_note(self.span, note);
-                                    }
                                     err.emit();
                                 }
                             }
