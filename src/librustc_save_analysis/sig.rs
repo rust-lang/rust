@@ -646,6 +646,11 @@ impl Sig for ast::Generics {
                         param_text.push_str(&pprust::bounds_to_string(&param.bounds));
                         // FIXME descend properly into bounds.
                     }
+                    ast::GenericParamKind::Const { ref ty } => {
+                        param_text.push_str(&pprust::bounds_to_string(&param.bounds));
+                        param_text.push_str("= ");
+                        param_text.push_str(&pprust::ty_to_string(&ty));
+                    }
                 }
             }
             text.push_str(&param_text);
