@@ -595,23 +595,28 @@ fn write_mir_sig(
     use rustc::hir::def::Def;
 
     trace!("write_mir_sig: {:?}", src.instance);
-    let descr = tcx.describe_def(src.def_id()).unwrap();
+    let descr = tcx.describe_def(src.def_id());
     match (descr, src.promoted) {
-        (_, Some(i)) => write!(w, "{:?} in", i)?,
-        (Def::Fn(_), _) | (Def::Method(_), _) => write!(w, "fn")?,
-        (Def::Const(_), _) => write!(w, "const")?,
-        (Def::Static(_, /*is_mutbl*/false), _) => write!(w, "static")?,
-        (Def::Static(_, /*is_mutbl*/true), _) => write!(w, "static mut")?,
+        (_, Some(i)) => write!(w, "{:?} in ", i)?,
+        (Some(Def::Fn(_)), _) | (Some(Def::Method(_)), _) => write!(w, "fn ")?,
+        (Some(Def::StructCtor(..)), _) => write!(w, "struct ")?,
+        (Some(Def::Const(_)), _) => write!(w, "const ")?,
+        (Some(Def::Static(_, /*is_mutbl*/false)), _) => write!(w, "static ")?,
+        (Some(Def::Static(_, /*is_mutbl*/true)), _) => write!(w, "static mut ")?,
+        (None, _) => {}, // things like anon const, not an item
         _ => bug!("Unexpected def description {:?}", descr),
     }
 
     item_path::with_forced_impl_filename_line(|| {
         // see notes on #41697 elsewhere
-        write!(w, " {}", tcx.item_path_str(src.def_id()))
+        write!(w, "{}", tcx.item_path_str(src.def_id()))
     })?;
 
     match (descr, src.promoted) {
-        (Def::Fn(_), None) | (Def::Method(_), None) => {
+        (Some(Def::Fn(_)), None) |
+        (Some(Def::Method(_)), None) |
+        (Some(Def::StructCtor(..)), None) =>
+        {
             write!(w, "(")?;
 
             // fn argument types.
@@ -624,17 +629,19 @@ fn write_mir_sig(
 
             write!(w, ") -> {}", mir.return_ty())?;
         }
-        (Def::Const(_), _) | (Def::Static(_, _), _) | (_, Some(_)) => {
+        _ => {
             assert_eq!(mir.arg_count, 0);
             write!(w, ": {} =", mir.return_ty())?;
         }
-        _ => bug!("Unexpected def description {:?}", descr),
     }
 
     if let Some(yield_ty) = mir.yield_ty {
         writeln!(w)?;
         writeln!(w, "yields {}", yield_ty)?;
     }
+
+    write!(w, " ")?;
+    // Next thing that gets printed is the opening {
 
     Ok(())
 }
