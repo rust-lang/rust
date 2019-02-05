@@ -125,10 +125,6 @@ pub trait Folder : Sized {
         noop_fold_opt_expr(e, self)
     }
 
-    fn fold_exprs(&mut self, es: Vec<P<Expr>>) -> Vec<P<Expr>> {
-        noop_fold_exprs(es, self)
-    }
-
     fn fold_generic_arg(&mut self, arg: GenericArg) -> GenericArg {
         match arg {
             GenericArg::Lifetime(lt) => GenericArg::Lifetime(self.fold_lifetime(lt)),
@@ -257,10 +253,6 @@ pub trait Folder : Sized {
         noop_fold_interpolated(nt, self)
     }
 
-    fn fold_bounds(&mut self, b: GenericBounds) -> GenericBounds {
-        noop_fold_bounds(b, self)
-    }
-
     fn fold_param_bound(&mut self, tpb: GenericBound) -> GenericBound {
         noop_fold_param_bound(tpb, self)
     }
@@ -296,6 +288,34 @@ pub trait Folder : Sized {
     }
 }
 
+// No `noop_` prefix because there isn't a corresponding method in `Folder`.
+fn fold_attrs<T: Folder>(attrs: Vec<Attribute>, fld: &mut T) -> Vec<Attribute> {
+    attrs.move_map(|x| fld.fold_attribute(x))
+}
+
+// No `noop_` prefix because there isn't a corresponding method in `Folder`.
+fn fold_thin_attrs<T: Folder>(attrs: ThinVec<Attribute>, fld: &mut T) -> ThinVec<Attribute> {
+    fold_attrs(attrs.into(), fld).into()
+}
+
+// No `noop_` prefix because there isn't a corresponding method in `Folder`.
+fn fold_exprs<T: Folder>(es: Vec<P<Expr>>, fld: &mut T) -> Vec<P<Expr>> {
+    es.move_flat_map(|e| fld.fold_opt_expr(e))
+}
+
+// No `noop_` prefix because there isn't a corresponding method in `Folder`.
+fn fold_bounds<T: Folder>(bounds: GenericBounds, folder: &mut T) -> GenericBounds {
+    bounds.move_map(|bound| folder.fold_param_bound(bound))
+}
+
+// No `noop_` prefix because there isn't a corresponding method in `Folder`.
+fn fold_method_sig<T: Folder>(sig: MethodSig, folder: &mut T) -> MethodSig {
+    MethodSig {
+        header: folder.fold_fn_header(sig.header),
+        decl: folder.fold_fn_decl(sig.decl)
+    }
+}
+
 pub fn noop_fold_use_tree<T: Folder>(use_tree: UseTree, fld: &mut T) -> UseTree {
     UseTree {
         span: fld.new_span(use_tree.span),
@@ -310,14 +330,6 @@ pub fn noop_fold_use_tree<T: Folder>(use_tree: UseTree, fld: &mut T) -> UseTree 
             })),
         },
     }
-}
-
-pub fn fold_attrs<T: Folder>(attrs: Vec<Attribute>, fld: &mut T) -> Vec<Attribute> {
-    attrs.move_map(|x| fld.fold_attribute(x))
-}
-
-pub fn fold_thin_attrs<T: Folder>(attrs: ThinVec<Attribute>, fld: &mut T) -> ThinVec<Attribute> {
-    fold_attrs(attrs.into(), fld).into()
 }
 
 pub fn noop_fold_arm<T: Folder>(Arm {attrs, pats, guard, body}: Arm,
@@ -824,11 +836,6 @@ pub fn noop_fold_mt<T: Folder>(MutTy {ty, mutbl}: MutTy, folder: &mut T) -> MutT
     }
 }
 
-fn noop_fold_bounds<T: Folder>(bounds: GenericBounds, folder: &mut T)
-                          -> GenericBounds {
-    bounds.move_map(|bound| folder.fold_param_bound(bound))
-}
-
 pub fn noop_fold_block<T: Folder>(b: P<Block>, folder: &mut T) -> P<Block> {
     b.map(|Block {id, stmts, rules, span}| Block {
         id: folder.new_id(id),
@@ -864,7 +871,7 @@ pub fn noop_fold_item_kind<T: Folder>(i: ItemKind, folder: &mut T) -> ItemKind {
             ItemKind::Ty(folder.fold_ty(t), folder.fold_generics(generics))
         }
         ItemKind::Existential(bounds, generics) => ItemKind::Existential(
-            folder.fold_bounds(bounds),
+            fold_bounds(bounds, folder),
             folder.fold_generics(generics),
         ),
         ItemKind::Enum(enum_definition, generics) => {
@@ -899,12 +906,12 @@ pub fn noop_fold_item_kind<T: Folder>(i: ItemKind, folder: &mut T) -> ItemKind {
             is_auto,
             unsafety,
             folder.fold_generics(generics),
-            folder.fold_bounds(bounds),
+            fold_bounds(bounds, folder),
             items.move_flat_map(|item| folder.fold_trait_item(item)),
         ),
         ItemKind::TraitAlias(generics, bounds) => ItemKind::TraitAlias(
             folder.fold_generics(generics),
-            folder.fold_bounds(bounds)),
+            fold_bounds(bounds, folder)),
         ItemKind::Mac(m) => ItemKind::Mac(folder.fold_mac(m)),
         ItemKind::MacroDef(def) => ItemKind::MacroDef(folder.fold_macro_def(def)),
     }
@@ -922,11 +929,11 @@ pub fn noop_fold_trait_item<T: Folder>(i: TraitItem, folder: &mut T) -> SmallVec
                                default.map(|x| folder.fold_expr(x)))
             }
             TraitItemKind::Method(sig, body) => {
-                TraitItemKind::Method(noop_fold_method_sig(sig, folder),
+                TraitItemKind::Method(fold_method_sig(sig, folder),
                                 body.map(|x| folder.fold_block(x)))
             }
             TraitItemKind::Type(bounds, default) => {
-                TraitItemKind::Type(folder.fold_bounds(bounds),
+                TraitItemKind::Type(fold_bounds(bounds, folder),
                               default.map(|x| folder.fold_ty(x)))
             }
             TraitItemKind::Macro(mac) => {
@@ -951,12 +958,12 @@ pub fn noop_fold_impl_item<T: Folder>(i: ImplItem, folder: &mut T)-> SmallVec<[I
                 ImplItemKind::Const(folder.fold_ty(ty), folder.fold_expr(expr))
             }
             ImplItemKind::Method(sig, body) => {
-                ImplItemKind::Method(noop_fold_method_sig(sig, folder),
+                ImplItemKind::Method(fold_method_sig(sig, folder),
                                folder.fold_block(body))
             }
             ImplItemKind::Type(ty) => ImplItemKind::Type(folder.fold_ty(ty)),
             ImplItemKind::Existential(bounds) => {
-                ImplItemKind::Existential(folder.fold_bounds(bounds))
+                ImplItemKind::Existential(fold_bounds(bounds, folder))
             },
             ImplItemKind::Macro(mac) => ImplItemKind::Macro(folder.fold_mac(mac))
         },
@@ -1047,13 +1054,6 @@ pub fn noop_fold_foreign_item<T: Folder>(ni: ForeignItem, folder: &mut T)
     }]
 }
 
-pub fn noop_fold_method_sig<T: Folder>(sig: MethodSig, folder: &mut T) -> MethodSig {
-    MethodSig {
-        header: folder.fold_fn_header(sig.header),
-        decl: folder.fold_fn_decl(sig.decl)
-    }
-}
-
 pub fn noop_fold_pat<T: Folder>(p: P<Pat>, folder: &mut T) -> P<Pat> {
     p.map(|Pat {id, node, span}| Pat {
         id: folder.new_id(id),
@@ -1125,15 +1125,15 @@ pub fn noop_fold_expr<T: Folder>(Expr {id, node, span, attrs}: Expr, folder: &mu
                 ExprKind::ObsoleteInPlace(folder.fold_expr(a), folder.fold_expr(b))
             }
             ExprKind::Array(exprs) => {
-                ExprKind::Array(folder.fold_exprs(exprs))
+                ExprKind::Array(fold_exprs(exprs, folder))
             }
             ExprKind::Repeat(expr, count) => {
                 ExprKind::Repeat(folder.fold_expr(expr), folder.fold_anon_const(count))
             }
-            ExprKind::Tup(exprs) => ExprKind::Tup(folder.fold_exprs(exprs)),
+            ExprKind::Tup(exprs) => ExprKind::Tup(fold_exprs(exprs, folder)),
             ExprKind::Call(f, args) => {
                 ExprKind::Call(folder.fold_expr(f),
-                         folder.fold_exprs(args))
+                         fold_exprs(args, folder))
             }
             ExprKind::MethodCall(seg, args) => {
                 ExprKind::MethodCall(
@@ -1144,7 +1144,7 @@ pub fn noop_fold_expr<T: Folder>(Expr {id, node, span, attrs}: Expr, folder: &mu
                             args.map(|args| folder.fold_generic_args(args))
                         }),
                     },
-                    folder.fold_exprs(args))
+                    fold_exprs(args, folder))
             }
             ExprKind::Binary(binop, lhs, rhs) => {
                 ExprKind::Binary(binop,
@@ -1292,10 +1292,6 @@ pub fn noop_fold_expr<T: Folder>(Expr {id, node, span, attrs}: Expr, folder: &mu
 
 pub fn noop_fold_opt_expr<T: Folder>(e: P<Expr>, folder: &mut T) -> Option<P<Expr>> {
     Some(folder.fold_expr(e))
-}
-
-pub fn noop_fold_exprs<T: Folder>(es: Vec<P<Expr>>, folder: &mut T) -> Vec<P<Expr>> {
-    es.move_flat_map(|e| folder.fold_opt_expr(e))
 }
 
 pub fn noop_fold_stmt<T: Folder>(Stmt {node, span, id}: Stmt, folder: &mut T) -> SmallVec<[Stmt; 1]>
