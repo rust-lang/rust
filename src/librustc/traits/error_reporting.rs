@@ -598,11 +598,12 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
         }
     }
 
-    pub fn report_selection_error(&self,
-                                  obligation: &PredicateObligation<'tcx>,
-                                  error: &SelectionError<'tcx>,
-                                  fallback_has_occurred: bool)
-    {
+    pub fn report_selection_error(
+        &self,
+        obligation: &PredicateObligation<'tcx>,
+        error: &SelectionError<'tcx>,
+        fallback_has_occurred: bool,
+    ) {
         let span = obligation.cause.span;
 
         let mut err = match *error {
@@ -647,6 +648,27 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
                                          trait_ref.to_predicate(), post_message)
                             ));
 
+                        let parent_node = self.tcx.hir().get_parent_node(obligation.cause.body_id);
+                        let node = self.tcx.hir().find(parent_node);
+                        if let Some(hir::Node::Item(hir::Item {
+                            node: hir::ItemKind::Fn(decl, _, _, body_id),
+                            ..
+                        })) = node {
+                            let body = self.tcx.hir().body(*body_id);
+                            if let hir::ExprKind::Block(blk, _) = &body.value.node {
+                                if decl.output.span().overlaps(span) && blk.expr.is_none() &&
+                                    "()" == &trait_ref.self_ty().to_string()
+                                {
+                                    // When encountering a method with a trait bound not satisfied
+                                    // in the return type with a body that has no return, suggest
+                                    // removal of semicolon on last statement.
+                                    if let Some(ref stmt) = blk.stmts.last() {
+                                        let sp = self.tcx.sess.source_map().end_point(stmt.span);
+                                        err.span_label(sp, "consider removing this semicolon");
+                                    }
+                                }
+                            }
+                        }
                         let explanation =
                             if obligation.cause.code == ObligationCauseCode::MainFunctionType {
                                 "consider using `()`, or a `Result`".to_owned()
