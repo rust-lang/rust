@@ -42,6 +42,9 @@ pub struct RawWakerVTable {
 
     /// This function will be called when `wake` is called on the [`Waker`].
     /// It must wake up the task associated with this [`RawWaker`].
+    ///
+    /// The implemention of this function must not consume the provided data
+    /// pointer.
     pub wake: unsafe fn(*const ()),
 
     /// This function gets called when a [`RawWaker`] gets dropped.
@@ -125,7 +128,10 @@ impl Drop for Waker {
 
 impl fmt::Debug for Waker {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        let vtable_ptr = self.waker.vtable as *const RawWakerVTable;
         f.debug_struct("Waker")
+            .field("data", &self.waker.data)
+            .field("vtable", &vtable_ptr)
             .finish()
     }
 }

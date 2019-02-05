@@ -19,7 +19,8 @@ use task::{Poll, Waker};
 /// final value. This method does not block if the value is not ready. Instead,
 /// the current task is scheduled to be woken up when it's possible to make
 /// further progress by `poll`ing again. The wake up is performed using
-/// `cx.waker()`, a handle for waking up the current task.
+/// the `waker` argument of the `poll()` method, which is a handle for waking
+/// up the current task.
 ///
 /// When using a future, you generally won't call `poll` directly, but instead
 /// `await!` the value.
@@ -78,8 +79,9 @@ pub trait Future {
     ///
     /// Once a future has completed (returned `Ready` from `poll`),
     /// then any future calls to `poll` may panic, block forever, or otherwise
-    /// cause bad behavior. The `Future` trait itself provides no guarantees
-    /// about the behavior of `poll` after a future has completed.
+    /// cause any kind of bad behavior expect causing memory unsafety.
+    /// The `Future` trait itself provides no guarantees about the behavior
+    /// of `poll` after a future has completed.
     ///
     /// [`Poll::Pending`]: ../task/enum.Poll.html#variant.Pending
     /// [`Poll::Ready(val)`]: ../task/enum.Poll.html#variant.Ready
