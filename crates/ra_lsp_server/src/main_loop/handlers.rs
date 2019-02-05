@@ -599,9 +599,6 @@ pub fn handle_code_action(
         let title = source_edit.label.clone();
         let edit = source_edit.try_conv_with(&world)?;
 
-        // We cannot use the 'editor.action.showReferences' command directly
-        // because that command requires vscode types which we convert in the handler
-        // on the client side.
         let cmd = Command {
             title,
             command: "rust-analyzer.applySourceChange".to_string(),
@@ -713,17 +710,21 @@ pub fn handle_code_lens_resolve(world: ServerWorld, code_lens: CodeLens) -> Resu
                 format!("{} implementations", locations.len())
             };
 
+            // We cannot use the 'editor.action.showReferences' command directly
+            // because that command requires vscode types which we convert in the handler
+            // on the client side.
+            let cmd = Command {
+                title,
+                command: "rust-analyzer.showReferences".into(),
+                arguments: Some(vec![
+                    to_value(&Ser::new(&lens_params.text_document.uri)).unwrap(),
+                    to_value(code_lens.range.start).unwrap(),
+                    to_value(locations).unwrap(),
+                ]),
+            };
             return Ok(CodeLens {
                 range: code_lens.range,
-                command: Some(Command {
-                    title,
-                    command: "rust-analyzer.showReferences".into(),
-                    arguments: Some(vec![
-                        to_value(&Ser::new(&lens_params.text_document.uri)).unwrap(),
-                        to_value(code_lens.range.start).unwrap(),
-                        to_value(locations).unwrap(),
-                    ]),
-                }),
+                command: Some(cmd),
                 data: None,
             });
         }
