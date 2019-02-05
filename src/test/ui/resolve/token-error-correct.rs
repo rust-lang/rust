@@ -2,6 +2,8 @@
 
 fn main() {
     foo(bar(;
-    //~^ ERROR: expected expression, found `;`
+    //~^ ERROR cannot find function `bar` in this scope
 }
 //~^ ERROR: incorrect close delimiter: `}`
+
+fn foo(_: usize) {}
