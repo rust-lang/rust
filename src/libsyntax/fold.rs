@@ -9,7 +9,6 @@
 //! that are created by the expansion of a macro.
 
 use ast::*;
-use ast;
 use syntax_pos::Span;
 use source_map::{Spanned, respan};
 use parse::token::{self, Token};
@@ -785,31 +784,26 @@ pub fn noop_fold_where_predicate<T: Folder>(
                                  fld: &mut T)
                                  -> WherePredicate {
     match pred {
-        ast::WherePredicate::BoundPredicate(ast::WhereBoundPredicate{bound_generic_params,
-                                                                     bounded_ty,
-                                                                     bounds,
-                                                                     span}) => {
-            ast::WherePredicate::BoundPredicate(ast::WhereBoundPredicate {
+        WherePredicate::BoundPredicate(WhereBoundPredicate { bound_generic_params,
+                                                             bounded_ty,
+                                                             bounds,
+                                                             span }) => {
+            WherePredicate::BoundPredicate(WhereBoundPredicate {
                 bound_generic_params: fld.fold_generic_params(bound_generic_params),
                 bounded_ty: fld.fold_ty(bounded_ty),
                 bounds: bounds.move_map(|x| fld.fold_param_bound(x)),
                 span: fld.new_span(span)
             })
         }
-        ast::WherePredicate::RegionPredicate(ast::WhereRegionPredicate{lifetime,
-                                                                       bounds,
-                                                                       span}) => {
-            ast::WherePredicate::RegionPredicate(ast::WhereRegionPredicate {
+        WherePredicate::RegionPredicate(WhereRegionPredicate { lifetime, bounds, span }) => {
+            WherePredicate::RegionPredicate(WhereRegionPredicate {
                 span: fld.new_span(span),
                 lifetime: noop_fold_lifetime(lifetime, fld),
                 bounds: bounds.move_map(|bound| noop_fold_param_bound(bound, fld))
             })
         }
-        ast::WherePredicate::EqPredicate(ast::WhereEqPredicate{id,
-                                                               lhs_ty,
-                                                               rhs_ty,
-                                                               span}) => {
-            ast::WherePredicate::EqPredicate(ast::WhereEqPredicate{
+        WherePredicate::EqPredicate(WhereEqPredicate { id, lhs_ty, rhs_ty, span }) => {
+            WherePredicate::EqPredicate(WhereEqPredicate{
                 id: fld.new_id(id),
                 lhs_ty: fld.fold_ty(lhs_ty),
                 rhs_ty: fld.fold_ty(rhs_ty),
@@ -821,15 +815,13 @@ pub fn noop_fold_where_predicate<T: Folder>(
 
 pub fn noop_fold_variant_data<T: Folder>(vdata: VariantData, fld: &mut T) -> VariantData {
     match vdata {
-        ast::VariantData::Struct(fields, id) => {
-            ast::VariantData::Struct(fields.move_map(|f| fld.fold_struct_field(f)),
-                                     fld.new_id(id))
+        VariantData::Struct(fields, id) => {
+            VariantData::Struct(fields.move_map(|f| fld.fold_struct_field(f)), fld.new_id(id))
         }
-        ast::VariantData::Tuple(fields, id) => {
-            ast::VariantData::Tuple(fields.move_map(|f| fld.fold_struct_field(f)),
-                                    fld.new_id(id))
+        VariantData::Tuple(fields, id) => {
+            VariantData::Tuple(fields.move_map(|f| fld.fold_struct_field(f)), fld.new_id(id))
         }
-        ast::VariantData::Unit(id) => ast::VariantData::Unit(fld.new_id(id))
+        VariantData::Unit(id) => VariantData::Unit(fld.new_id(id))
     }
 }
 
@@ -839,14 +831,14 @@ pub fn noop_fold_trait_ref<T: Folder>(p: TraitRef, fld: &mut T) -> TraitRef {
         path,
         ref_id: _,
     } = p;
-    ast::TraitRef {
+    TraitRef {
         path: fld.fold_path(path),
         ref_id: id,
     }
 }
 
 pub fn noop_fold_poly_trait_ref<T: Folder>(p: PolyTraitRef, fld: &mut T) -> PolyTraitRef {
-    ast::PolyTraitRef {
+    PolyTraitRef {
         bound_generic_params: fld.fold_generic_params(p.bound_generic_params),
         trait_ref: fld.fold_trait_ref(p.trait_ref),
         span: fld.new_span(p.span),
@@ -932,7 +924,7 @@ pub fn noop_fold_item_kind<T: Folder>(i: ItemKind, folder: &mut T) -> ItemKind {
         ItemKind::Enum(enum_definition, generics) => {
             let generics = folder.fold_generics(generics);
             let variants = enum_definition.variants.move_map(|x| folder.fold_variant(x));
-            ItemKind::Enum(ast::EnumDef { variants }, generics)
+            ItemKind::Enum(EnumDef { variants }, generics)
         }
         ItemKind::Struct(struct_def, generics) => {
             let generics = folder.fold_generics(generics);
@@ -991,7 +983,7 @@ pub fn noop_fold_trait_item<T: Folder>(i: TraitItem, folder: &mut T) -> SmallVec
                 TraitItemKind::Type(folder.fold_bounds(bounds),
                               default.map(|x| folder.fold_ty(x)))
             }
-            ast::TraitItemKind::Macro(mac) => {
+            TraitItemKind::Macro(mac) => {
                 TraitItemKind::Macro(folder.fold_mac(mac))
             }
         },
@@ -1009,18 +1001,18 @@ pub fn noop_fold_impl_item<T: Folder>(i: ImplItem, folder: &mut T)-> SmallVec<[I
         generics: folder.fold_generics(i.generics),
         defaultness: i.defaultness,
         node: match i.node  {
-            ast::ImplItemKind::Const(ty, expr) => {
-                ast::ImplItemKind::Const(folder.fold_ty(ty), folder.fold_expr(expr))
+            ImplItemKind::Const(ty, expr) => {
+                ImplItemKind::Const(folder.fold_ty(ty), folder.fold_expr(expr))
             }
-            ast::ImplItemKind::Method(sig, body) => {
-                ast::ImplItemKind::Method(noop_fold_method_sig(sig, folder),
+            ImplItemKind::Method(sig, body) => {
+                ImplItemKind::Method(noop_fold_method_sig(sig, folder),
                                folder.fold_block(body))
             }
-            ast::ImplItemKind::Type(ty) => ast::ImplItemKind::Type(folder.fold_ty(ty)),
-            ast::ImplItemKind::Existential(bounds) => {
-                ast::ImplItemKind::Existential(folder.fold_bounds(bounds))
+            ImplItemKind::Type(ty) => ImplItemKind::Type(folder.fold_ty(ty)),
+            ImplItemKind::Existential(bounds) => {
+                ImplItemKind::Existential(folder.fold_bounds(bounds))
             },
-            ast::ImplItemKind::Macro(mac) => ast::ImplItemKind::Macro(folder.fold_mac(mac))
+            ImplItemKind::Macro(mac) => ImplItemKind::Macro(folder.fold_mac(mac))
         },
         span: folder.new_span(i.span),
         tokens: i.tokens,
@@ -1042,13 +1034,13 @@ pub fn noop_fold_mod<T: Folder>(Mod {inner, items, inline}: Mod, folder: &mut T)
 
 pub fn noop_fold_crate<T: Folder>(Crate {module, attrs, span}: Crate,
                                   folder: &mut T) -> Crate {
-    let mut items = folder.fold_item(P(ast::Item {
+    let mut items = folder.fold_item(P(Item {
         ident: keywords::Invalid.ident(),
         attrs,
-        id: ast::DUMMY_NODE_ID,
-        vis: respan(span.shrink_to_lo(), ast::VisibilityKind::Public),
+        id: DUMMY_NODE_ID,
+        vis: respan(span.shrink_to_lo(), VisibilityKind::Public),
         span,
-        node: ast::ItemKind::Mod(module),
+        node: ItemKind::Mod(module),
         tokens: None,
     })).into_iter();
 
@@ -1056,14 +1048,14 @@ pub fn noop_fold_crate<T: Folder>(Crate {module, attrs, span}: Crate,
         Some(item) => {
             assert!(items.next().is_none(),
                     "a crate cannot expand to more than one item");
-            item.and_then(|ast::Item { attrs, span, node, .. }| {
+            item.and_then(|Item { attrs, span, node, .. }| {
                 match node {
-                    ast::ItemKind::Mod(m) => (m, attrs, span),
+                    ItemKind::Mod(m) => (m, attrs, span),
                     _ => panic!("fold converted a module to not a module"),
                 }
             })
         }
-        None => (ast::Mod {
+        None => (Mod {
             inner: span,
             items: vec![],
             inline: true,
@@ -1155,7 +1147,7 @@ pub fn noop_fold_pat<T: Folder>(p: P<Pat>, folder: &mut T) -> P<Pat> {
                 let pth = folder.fold_path(pth);
                 let fs = fields.move_map(|f| {
                     Spanned { span: folder.new_span(f.span),
-                              node: ast::FieldPat {
+                              node: FieldPat {
                                   ident: folder.fold_ident(f.node.ident),
                                   pat: folder.fold_pat(f.node.pat),
                                   is_shorthand: f.node.is_shorthand,

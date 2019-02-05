@@ -9,7 +9,6 @@ use ext::derive::{add_derived_markers, collect_derives};
 use ext::hygiene::{self, Mark, SyntaxContext};
 use ext::placeholders::{placeholder, PlaceholderExpander};
 use feature_gate::{self, Features, GateIssue, is_builtin_attr, emit_feature_err};
-use fold;
 use fold::*;
 use parse::{DirectoryOwnership, PResult, ParseSess};
 use parse::token::{self, Token};
@@ -1395,7 +1394,7 @@ impl<'a, 'b> Folder for InvocationCollector<'a, 'b> {
                 self.check_attributes(&attrs);
                 self.collect_bang(mac, span, AstFragmentKind::TraitItems).make_trait_items()
             }
-            _ => fold::noop_fold_trait_item(item, self),
+            _ => noop_fold_trait_item(item, self),
         }
     }
 
@@ -1414,14 +1413,14 @@ impl<'a, 'b> Folder for InvocationCollector<'a, 'b> {
                 self.check_attributes(&attrs);
                 self.collect_bang(mac, span, AstFragmentKind::ImplItems).make_impl_items()
             }
-            _ => fold::noop_fold_impl_item(item, self),
+            _ => noop_fold_impl_item(item, self),
         }
     }
 
     fn fold_ty(&mut self, ty: P<ast::Ty>) -> P<ast::Ty> {
         let ty = match ty.node {
             ast::TyKind::Mac(_) => ty.into_inner(),
-            _ => return fold::noop_fold_ty(ty, self),
+            _ => return noop_fold_ty(ty, self),
         };
 
         match ty.node {
