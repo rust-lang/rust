@@ -281,7 +281,7 @@ Grammar(
             "DocCommentsOwner"
         ], options: [["variant_list", "EnumVariantList"]] ),
         "EnumVariantList": ( collections: [["variants", "EnumVariant"]] ),
-        "EnumVariant": ( traits: ["NameOwner", "DocCommentsOwner"], options: ["Expr"] ),
+        "EnumVariant": ( traits: ["NameOwner", "DocCommentsOwner", "AttrsOwner"], options: ["Expr"] ),
         "TraitDef": ( traits: ["VisibilityOwner", "NameOwner", "AttrsOwner", "DocCommentsOwner", "TypeParamsOwner"] ),
         "Module": (
             traits: ["VisibilityOwner", "NameOwner", "AttrsOwner", "DocCommentsOwner" ],
