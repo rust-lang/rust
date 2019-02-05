@@ -734,7 +734,7 @@ pub fn noop_fold_where_clause<T: Folder>(
         predicates: predicates.move_map(|predicate| {
             fld.fold_where_predicate(predicate)
         }),
-        span,
+        span: fld.new_span(span),
     }
 }
 
@@ -1111,7 +1111,7 @@ pub fn noop_fold_pat<T: Folder>(p: P<Pat>, folder: &mut T) -> P<Pat> {
             PatKind::Range(e1, e2, Spanned { span, node }) => {
                 PatKind::Range(folder.fold_expr(e1),
                                folder.fold_expr(e2),
-                               Spanned { span, node })
+                               Spanned { node, span: folder.new_span(span) })
             },
             PatKind::Slice(before, slice, after) => {
                 PatKind::Slice(before.move_map(|x| folder.fold_pat(x)),
@@ -1342,15 +1342,20 @@ pub fn noop_fold_stmt_kind<T: Folder>(node: StmtKind, folder: &mut T) -> SmallVe
     }
 }
 
-pub fn noop_fold_vis<T: Folder>(vis: Visibility, folder: &mut T) -> Visibility {
-    match vis.node {
-        VisibilityKind::Restricted { path, id } => {
-            respan(vis.span, VisibilityKind::Restricted {
-                path: path.map(|path| folder.fold_path(path)),
-                id: folder.new_id(id),
-            })
-        }
-        _ => vis,
+pub fn noop_fold_vis<T: Folder>(Spanned { node, span }: Visibility, folder: &mut T) -> Visibility {
+    Visibility {
+        node: match node {
+            VisibilityKind::Public => VisibilityKind::Public,
+            VisibilityKind::Crate(sugar) => VisibilityKind::Crate(sugar),
+            VisibilityKind::Restricted { path, id } => {
+                VisibilityKind::Restricted {
+                    path: path.map(|path| folder.fold_path(path)),
+                    id: folder.new_id(id),
+                }
+            }
+            VisibilityKind::Inherited => VisibilityKind::Inherited,
+        },
+        span: folder.new_span(span),
     }
 }
 
