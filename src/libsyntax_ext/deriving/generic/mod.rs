@@ -560,6 +560,7 @@ impl<'a> TraitDef<'a> {
 
                 cx.typaram(self.span, param.ident, vec![], bounds, None)
             }
+            GenericParamKind::Const { .. } => param.clone(),
         }));
 
         // and similarly for where clauses
@@ -656,6 +657,9 @@ impl<'a> TraitDef<'a> {
             }
             GenericParamKind::Type { .. } => {
                 GenericArg::Type(cx.ty_ident(self.span, param.ident))
+            }
+            GenericParamKind::Const { .. } => {
+                GenericArg::Const(cx.const_ident(self.span, param.ident))
             }
         }).collect();
 
