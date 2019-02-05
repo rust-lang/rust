@@ -2164,6 +2164,13 @@ pub struct Item {
     pub tokens: Option<TokenStream>,
 }
 
+impl Item {
+    /// Return the span that encompasses the attributes.
+    pub fn span_with_attributes(&self) -> Span {
+        self.attrs.iter().fold(self.span, |acc, attr| acc.to(attr.span()))
+    }
+}
+
 /// A function header.
 ///
 /// All the information between the visibility and the name of the function is

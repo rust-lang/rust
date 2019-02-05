@@ -1,17 +1,16 @@
 error[E0259]: the name `derive_a` is defined multiple times
   --> $DIR/shadow.rs:6:1
    |
-LL | extern crate derive_a;
-   | ---------------------- previous import of the extern crate `derive_a` here
-LL | #[macro_use]
-LL | extern crate derive_a; //~ ERROR the name `derive_a` is defined multiple times
-   | ^^^^^^^^^^^^^^^^^^^^^^ `derive_a` reimported here
+LL |   extern crate derive_a;
+   |   ---------------------- previous import of the extern crate `derive_a` here
+LL | / #[macro_use]
+LL | | extern crate derive_a; //~ ERROR the name `derive_a` is defined multiple times
+   | | ^^^^^^^^^^^^^^^^^^^^^-
+   | |_|____________________|
+   |   |                    help: remove unnecessary import
+   |   `derive_a` reimported here
    |
    = note: `derive_a` must be defined only once in the type namespace of this module
-help: you can use `as` to change the binding name of the import
-   |
-LL | extern crate derive_a as other_derive_a; //~ ERROR the name `derive_a` is defined multiple times
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: aborting due to previous error
 

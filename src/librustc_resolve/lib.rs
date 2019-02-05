@@ -63,7 +63,7 @@ use syntax::ast::{Label, Local, Mutability, Pat, PatKind, Path};
 use syntax::ast::{QSelf, TraitItemKind, TraitRef, Ty, TyKind};
 use syntax::ptr::P;
 
-use syntax_pos::{Span, DUMMY_SP, MultiSpan};
+use syntax_pos::{BytePos, Span, DUMMY_SP, MultiSpan};
 use errors::{Applicability, DiagnosticBuilder, DiagnosticId};
 
 use std::cell::{Cell, RefCell};
@@ -1226,6 +1226,16 @@ enum NameBindingKind<'a> {
         directive: &'a ImportDirective<'a>,
         used: Cell<bool>,
     },
+}
+
+impl<'a> NameBindingKind<'a> {
+    /// Is this a name binding of a import?
+    fn is_import(&self) -> bool {
+        match *self {
+            NameBindingKind::Import { .. } => true,
+            _ => false,
+        }
+    }
 }
 
 struct PrivacyError<'a>(Span, Ident, &'a NameBinding<'a>);
@@ -5134,64 +5144,235 @@ impl<'a> Resolver<'a> {
         );
 
         // See https://github.com/rust-lang/rust/issues/32354
+        use NameBindingKind::Import;
         let directive = match (&new_binding.kind, &old_binding.kind) {
-            (NameBindingKind::Import { directive, .. }, _) if !new_binding.span.is_dummy() =>
-                Some((directive, new_binding.span)),
-            (_, NameBindingKind::Import { directive, .. }) if !old_binding.span.is_dummy() =>
-                Some((directive, old_binding.span)),
+            // If there are two imports where one or both have attributes then prefer removing the
+            // import without attributes.
+            (Import { directive: new, .. }, Import { directive: old, .. }) if {
+                !new_binding.span.is_dummy() && !old_binding.span.is_dummy() &&
+                    (new.has_attributes || old.has_attributes)
+            } => {
+                if old.has_attributes {
+                    Some((new, new_binding.span, true))
+                } else {
+                    Some((old, old_binding.span, true))
+                }
+            },
+            // Otherwise prioritize the new binding.
+            (Import { directive, .. }, other) if !new_binding.span.is_dummy() =>
+                Some((directive, new_binding.span, other.is_import())),
+            (other, Import { directive, .. }) if !old_binding.span.is_dummy() =>
+                Some((directive, old_binding.span, other.is_import())),
             _ => None,
         };
-        if let Some((directive, binding_span)) = directive {
-            let suggested_name = if name.as_str().chars().next().unwrap().is_uppercase() {
-                format!("Other{}", name)
-            } else {
-                format!("other_{}", name)
-            };
 
-            let mut suggestion = None;
-            match directive.subclass {
-                ImportDirectiveSubclass::SingleImport { type_ns_only: true, .. } =>
-                    suggestion = Some(format!("self as {}", suggested_name)),
-                ImportDirectiveSubclass::SingleImport { source, .. } => {
-                    if let Some(pos) = source.span.hi().0.checked_sub(binding_span.lo().0)
-                                                         .map(|pos| pos as usize) {
-                        if let Ok(snippet) = self.session.source_map()
-                                                         .span_to_snippet(binding_span) {
-                            if pos <= snippet.len() {
-                                suggestion = Some(format!(
-                                    "{} as {}{}",
-                                    &snippet[..pos],
-                                    suggested_name,
-                                    if snippet.ends_with(";") { ";" } else { "" }
-                                ))
-                            }
-                        }
-                    }
-                }
-                ImportDirectiveSubclass::ExternCrate { source, target, .. } =>
-                    suggestion = Some(format!(
-                        "extern crate {} as {};",
-                        source.unwrap_or(target.name),
-                        suggested_name,
-                    )),
-                _ => unreachable!(),
-            }
+        // Check if the target of the use for both bindings is the same.
+        let duplicate = new_binding.def().opt_def_id() == old_binding.def().opt_def_id();
+        let has_dummy_span = new_binding.span.is_dummy() || old_binding.span.is_dummy();
+        let from_item = self.extern_prelude.get(&ident)
+            .map(|entry| entry.introduced_by_item)
+            .unwrap_or(true);
+        // Only suggest removing an import if both bindings are to the same def, if both spans
+        // aren't dummy spans. Further, if both bindings are imports, then the ident must have
+        // been introduced by a item.
+        let should_remove_import = duplicate && !has_dummy_span &&
+            ((new_binding.is_extern_crate() || old_binding.is_extern_crate()) || from_item);
 
-            let rename_msg = "you can use `as` to change the binding name of the import";
-            if let Some(suggestion) = suggestion {
+        match directive {
+            Some((directive, span, true)) if should_remove_import && directive.is_nested() =>
+                self.add_suggestion_for_duplicate_nested_use(&mut err, directive, span),
+            Some((directive, _, true)) if should_remove_import && !directive.is_glob() => {
+                // Simple case - remove the entire import. Due to the above match arm, this can
+                // only be a single use so just remove it entirely.
                 err.span_suggestion(
-                    binding_span,
-                    rename_msg,
-                    suggestion,
+                    directive.use_span_with_attributes,
+                    "remove unnecessary import",
+                    String::new(),
                     Applicability::MaybeIncorrect,
                 );
-            } else {
-                err.span_label(binding_span, rename_msg);
-            }
+            },
+            Some((directive, span, _)) =>
+                self.add_suggestion_for_rename_of_use(&mut err, name, directive, span),
+            _ => {},
         }
 
         err.emit();
         self.name_already_seen.insert(name, span);
+    }
+
+    /// This function adds a suggestion to change the binding name of a new import that conflicts
+    /// with an existing import.
+    ///
+    /// ```ignore (diagnostic)
+    /// help: you can use `as` to change the binding name of the import
+    ///    |
+    /// LL | use foo::bar as other_bar;
+    ///    |     ^^^^^^^^^^^^^^^^^^^^^
+    /// ```
+    fn add_suggestion_for_rename_of_use(
+        &self,
+        err: &mut DiagnosticBuilder<'_>,
+        name: Symbol,
+        directive: &ImportDirective<'_>,
+        binding_span: Span,
+    ) {
+        let suggested_name = if name.as_str().chars().next().unwrap().is_uppercase() {
+            format!("Other{}", name)
+        } else {
+            format!("other_{}", name)
+        };
+
+        let mut suggestion = None;
+        match directive.subclass {
+            ImportDirectiveSubclass::SingleImport { type_ns_only: true, .. } =>
+                suggestion = Some(format!("self as {}", suggested_name)),
+            ImportDirectiveSubclass::SingleImport { source, .. } => {
+                if let Some(pos) = source.span.hi().0.checked_sub(binding_span.lo().0)
+                                                     .map(|pos| pos as usize) {
+                    if let Ok(snippet) = self.session.source_map()
+                                                     .span_to_snippet(binding_span) {
+                        if pos <= snippet.len() {
+                            suggestion = Some(format!(
+                                "{} as {}{}",
+                                &snippet[..pos],
+                                suggested_name,
+                                if snippet.ends_with(";") { ";" } else { "" }
+                            ))
+                        }
+                    }
+                }
+            }
+            ImportDirectiveSubclass::ExternCrate { source, target, .. } =>
+                suggestion = Some(format!(
+                    "extern crate {} as {};",
+                    source.unwrap_or(target.name),
+                    suggested_name,
+                )),
+            _ => unreachable!(),
+        }
+
+        let rename_msg = "you can use `as` to change the binding name of the import";
+        if let Some(suggestion) = suggestion {
+            err.span_suggestion(
+                binding_span,
+                rename_msg,
+                suggestion,
+                Applicability::MaybeIncorrect,
+            );
+        } else {
+            err.span_label(binding_span, rename_msg);
+        }
+    }
+
+    /// This function adds a suggestion to remove a unnecessary binding from an import that is
+    /// nested. In the following example, this function will be invoked to remove the `a` binding
+    /// in the second use statement:
+    ///
+    /// ```ignore (diagnostic)
+    /// use issue_52891::a;
+    /// use issue_52891::{d, a, e};
+    /// ```
+    ///
+    /// The following suggestion will be added:
+    ///
+    /// ```ignore (diagnostic)
+    /// use issue_52891::{d, a, e};
+    ///                      ^-- help: remove unnecessary import
+    /// ```
+    ///
+    /// If the nested use contains only one import then the suggestion will remove the entire
+    /// line.
+    ///
+    /// It is expected that the directive provided is a nested import - this isn't checked by the
+    /// function. If this invariant is not upheld, this function's behaviour will be unexpected
+    /// as characters expected by span manipulations won't be present.
+    fn add_suggestion_for_duplicate_nested_use(
+        &self,
+        err: &mut DiagnosticBuilder<'_>,
+        directive: &ImportDirective<'_>,
+        binding_span: Span,
+    ) {
+        assert!(directive.is_nested());
+        let message = "remove unnecessary import";
+        let source_map = self.session.source_map();
+
+        // Two examples will be used to illustrate the span manipulations we're doing:
+        //
+        // - Given `use issue_52891::{d, a, e};` where `a` is a duplicate then `binding_span` is
+        //   `a` and `directive.use_span` is `issue_52891::{d, a, e};`.
+        // - Given `use issue_52891::{d, e, a};` where `a` is a duplicate then `binding_span` is
+        //   `a` and `directive.use_span` is `issue_52891::{d, e, a};`.
+
+        // Find the span of everything after the binding.
+        //   ie. `a, e};` or `a};`
+        let binding_until_end = binding_span.with_hi(directive.use_span.hi());
+
+        // Find everything after the binding but not including the binding.
+        //   ie. `, e};` or `};`
+        let after_binding_until_end = binding_until_end.with_lo(binding_span.hi());
+
+        // Keep characters in the span until we encounter something that isn't a comma or
+        // whitespace.
+        //   ie. `, ` or ``.
+        //
+        // Also note whether a closing brace character was encountered. If there
+        // was, then later go backwards to remove any trailing commas that are left.
+        let mut found_closing_brace = false;
+        let after_binding_until_next_binding = source_map.span_take_while(
+            after_binding_until_end,
+            |&ch| {
+                if ch == '}' { found_closing_brace = true; }
+                ch == ' ' || ch == ','
+            }
+        );
+
+        // Combine the two spans.
+        //   ie. `a, ` or `a`.
+        //
+        // Removing these would leave `issue_52891::{d, e};` or `issue_52891::{d, e, };`
+        let span = binding_span.with_hi(after_binding_until_next_binding.hi());
+
+        // If there was a closing brace then identify the span to remove any trailing commas from
+        // previous imports.
+        if found_closing_brace {
+            if let Ok(prev_source) = source_map.span_to_prev_source(span) {
+                // `prev_source` will contain all of the source that came before the span.
+                // Then split based on a command and take the first (ie. closest to our span)
+                // snippet. In the example, this is a space.
+                let prev_comma = prev_source.rsplit(',').collect::<Vec<_>>();
+                let prev_starting_brace = prev_source.rsplit('{').collect::<Vec<_>>();
+                if prev_comma.len() > 1 && prev_starting_brace.len() > 1 {
+                    let prev_comma = prev_comma.first().unwrap();
+                    let prev_starting_brace = prev_starting_brace.first().unwrap();
+
+                    // If the amount of source code before the comma is greater than
+                    // the amount of source code before the starting brace then we've only
+                    // got one item in the nested item (eg. `issue_52891::{self}`).
+                    if prev_comma.len() > prev_starting_brace.len() {
+                        // So just remove the entire line...
+                        err.span_suggestion(
+                            directive.use_span_with_attributes,
+                            message,
+                            String::new(),
+                            Applicability::MaybeIncorrect,
+                        );
+                        return;
+                    }
+
+                    let span = span.with_lo(BytePos(
+                        // Take away the number of bytes for the characters we've found and an
+                        // extra for the comma.
+                        span.lo().0 - (prev_comma.as_bytes().len() as u32) - 1
+                    ));
+                    err.span_suggestion(
+                        span, message, String::new(), Applicability::MaybeIncorrect,
+                    );
+                    return;
+                }
+            }
+        }
+
+        err.span_suggestion(span, message, String::new(), Applicability::MachineApplicable);
     }
 
     fn extern_prelude_get(&mut self, ident: Ident, speculative: bool)

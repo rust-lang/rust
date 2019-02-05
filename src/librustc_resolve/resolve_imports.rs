@@ -18,7 +18,7 @@ use rustc::hir::def::*;
 use rustc::session::DiagnosticMessageId;
 use rustc::util::nodemap::FxHashSet;
 
-use syntax::ast::{Ident, Name, NodeId, CRATE_NODE_ID};
+use syntax::ast::{self, Ident, Name, NodeId, CRATE_NODE_ID};
 use syntax::ext::base::Determinacy::{self, Determined, Undetermined};
 use syntax::ext::hygiene::Mark;
 use syntax::symbol::keywords;
@@ -42,6 +42,8 @@ pub enum ImportDirectiveSubclass<'a> {
         target_bindings: PerNS<Cell<Option<&'a NameBinding<'a>>>>,
         /// `true` for `...::{self [as target]}` imports, `false` otherwise.
         type_ns_only: bool,
+        /// Did this import result from a nested import? ie. `use foo::{bar, baz};`
+        nested: bool,
     },
     GlobImport {
         is_prelude: bool,
@@ -78,6 +80,15 @@ crate struct ImportDirective<'a> {
     /// `UseTree` node.
     pub root_id: NodeId,
 
+    /// Span of the entire use statement.
+    pub use_span: Span,
+
+    /// Span of the entire use statement with attributes.
+    pub use_span_with_attributes: Span,
+
+    /// Did the use statement have any attributes?
+    pub has_attributes: bool,
+
     /// Span of this use tree.
     pub span: Span,
 
@@ -96,6 +107,13 @@ crate struct ImportDirective<'a> {
 impl<'a> ImportDirective<'a> {
     pub fn is_glob(&self) -> bool {
         match self.subclass { ImportDirectiveSubclass::GlobImport { .. } => true, _ => false }
+    }
+
+    pub fn is_nested(&self) -> bool {
+        match self.subclass {
+            ImportDirectiveSubclass::SingleImport { nested, .. } => nested,
+            _ => false
+        }
     }
 
     crate fn crate_lint(&self) -> CrateLint {
@@ -390,6 +408,7 @@ impl<'a> Resolver<'a> {
                                 subclass: ImportDirectiveSubclass<'a>,
                                 span: Span,
                                 id: NodeId,
+                                item: &ast::Item,
                                 root_span: Span,
                                 root_id: NodeId,
                                 vis: ty::Visibility,
@@ -402,6 +421,9 @@ impl<'a> Resolver<'a> {
             subclass,
             span,
             id,
+            use_span: item.span,
+            use_span_with_attributes: item.span_with_attributes(),
+            has_attributes: !item.attrs.is_empty(),
             root_span,
             root_id,
             vis: Cell::new(vis),
@@ -784,7 +806,7 @@ impl<'a, 'b:'a> ImportResolver<'a, 'b> {
         let (source, target, source_bindings, target_bindings, type_ns_only) =
                 match directive.subclass {
             SingleImport { source, target, ref source_bindings,
-                           ref target_bindings, type_ns_only } =>
+                           ref target_bindings, type_ns_only, .. } =>
                 (source, target, source_bindings, target_bindings, type_ns_only),
             GlobImport { .. } => {
                 self.resolve_glob_import(directive);
@@ -905,7 +927,7 @@ impl<'a, 'b:'a> ImportResolver<'a, 'b> {
         let (ident, target, source_bindings, target_bindings, type_ns_only) =
                 match directive.subclass {
             SingleImport { source, target, ref source_bindings,
-                           ref target_bindings, type_ns_only } =>
+                           ref target_bindings, type_ns_only, .. } =>
                 (source, target, source_bindings, target_bindings, type_ns_only),
             GlobImport { is_prelude, ref max_vis } => {
                 if directive.module_path.len() <= 1 {
