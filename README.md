@@ -85,26 +85,44 @@ find useful.
 
 ### Using a nightly rustc
 
-miri heavily relies on internal rustc interfaces to execute MIR.  Still, some
+Miri heavily relies on internal rustc interfaces to execute MIR.  Still, some
 things (like adding support for a new intrinsic) can be done by working just on
-the miri side.
+the Miri side.
 
-To prepare, make sure you are using a nightly Rust compiler.  You also need to
-set up a libstd that enables execution with Miri:
+To prepare, make sure you are using a nightly Rust compiler.  The most
+convenient way is to install Miri using cargo, then you can easily run it on
+other projects:
 
 ```sh
-rustup override set nightly # or the nightly in `rust-version`
-cargo run --bin cargo-miri -- miri setup
+cargo +nightly install --path "$DIR" --force # or the nightly in `rust-version`
+cargo +nightly miri setup
 ```
 
-The last command should end in printing the directory where the libstd was
+If you want to use a different libstd (not the one that comes with the
+nightly), you can do that by running
+
+```sh
+XARGO_RUST_SRC=~/src/rust/rustc/src/ cargo +nightly miri setup
+```
+
+Either way, you can now do `cargo +nightly miri run` to run Miri with your
+local changes on whatever project you are debugging.
+
+(We are giving `+nightly` explicitly here all the time because it is important
+that all of these commands get executed with the same toolchain.)
+
+### Testing Miri
+
+Instead of running an entire project using `cargo miri`, you can also use the
+Miri "driver" directly to run just a single file.  That can be easier during
+debugging.
+
+`cargo miri setup` should end in printing the directory where the libstd was
 built.  Set that as your `MIRI_SYSROOT` environment variable:
 
 ```sh
 export MIRI_SYSROOT=~/.cache/miri/HOST # or whatever the previous command said
 ```
-
-### Testing Miri
 
 Now you can run Miri directly, without going through `cargo miri`:
 
