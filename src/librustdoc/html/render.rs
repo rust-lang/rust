@@ -2817,7 +2817,17 @@ fn stability_tags(item: &clean::Item) -> String {
 
     // The trailing space after each tag is to space it properly against the rest of the docs.
     if item.deprecation().is_some() {
-        tags += &tag_html("deprecated", "Deprecated");
+        let mut message = "Deprecated";
+        if let Some(ref stab) = item.stability {
+            if let Some(ref depr) = stab.deprecation {
+                if let Some(ref since) = depr.since {
+                    if !stability::deprecation_in_effect(&since) {
+                        message = "Deprecation planned";
+                    }
+                }
+            }
+        }
+        tags += &tag_html("deprecated", message);
     }
 
     if let Some(stab) = item
@@ -2848,15 +2858,18 @@ fn short_stability(item: &clean::Item, cx: &Context) -> Vec<String> {
     if let Some(Deprecation { note, .. }) = &item.deprecation() {
         // We display deprecation messages for #[deprecated] and #[rustc_deprecated]
         // but only display the future-deprecation messages for #[rustc_deprecated].
-        let mut message = if let Some(since) = item.stability.deprecation.since {
-            if stability::deprecation_in_effect(since) {
-                format!("Deprecated since {}", Escape(since))
-            } else {
-                format!("Deprecating in {}", Escape(since))
+        let mut message = String::from("Deprecated");
+        if let Some(ref stab) = item.stability {
+            if let Some(ref depr) = stab.deprecation {
+                if let Some(ref since) = depr.since {
+                    if stability::deprecation_in_effect(&since) {
+                        message = format!("Deprecated since {}", Escape(&since));
+                    } else {
+                        message = format!("Deprecating in {}", Escape(&since));
+                    }
+                }
             }
-        } else {
-            String::from("Deprecated")
-        };
+        }
 
         if let Some(note) = note {
             let mut ids = cx.id_map.borrow_mut();
