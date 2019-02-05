@@ -111,6 +111,20 @@ mod tests {
     }
 
     #[test]
+    fn completes_extern_prelude() {
+        check_reference_completion(
+            "extern_prelude",
+            r"
+            //- /lib.rs
+            use <|>;
+
+            //- /other_crate/lib.rs
+            // nothing here
+            ",
+        );
+    }
+
+    #[test]
     fn completes_module_items_in_nested_modules() {
         check_reference_completion(
             "module_items_in_nested_modules",

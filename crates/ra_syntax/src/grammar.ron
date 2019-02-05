@@ -601,7 +601,9 @@ Grammar(
         "UseTreeList": (
             collections: [["use_trees", "UseTree"]]
         ),
-        "ExternCrateItem": (),
+        "ExternCrateItem": (
+            options: ["NameRef", "Alias"],
+        ),
         "ArgList": (
             collections: [
                 ["args", "Expr"]

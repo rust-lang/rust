@@ -34,6 +34,7 @@ use crate::{
 /// module, the set of visible items.
 #[derive(Default, Debug, PartialEq, Eq)]
 pub struct ItemMap {
+    pub(crate) extern_prelude: FxHashMap<Name, ModuleDef>,
     per_module: ArenaMap<ModuleId, ModuleScope>,
 }
 
@@ -204,6 +205,7 @@ where
     }
 
     pub(crate) fn resolve(mut self) -> ItemMap {
+        self.populate_extern_prelude();
         for (&module_id, items) in self.input.iter() {
             self.populate_module(module_id, Arc::clone(items));
         }
@@ -227,29 +229,19 @@ where
         self.result
     }
 
+    fn populate_extern_prelude(&mut self) {
+        for dep in self.krate.dependencies(self.db) {
+            log::debug!("crate dep {:?} -> {:?}", dep.name, dep.krate);
+            if let Some(module) = dep.krate.root_module(self.db) {
+                self.result
+                    .extern_prelude
+                    .insert(dep.name.clone(), module.into());
+            }
+        }
+    }
+
     fn populate_module(&mut self, module_id: ModuleId, input: Arc<LoweredModule>) {
         let mut module_items = ModuleScope::default();
-
-        // Populate extern crates prelude
-        {
-            let root_id = module_id.crate_root(&self.module_tree);
-            let file_id = root_id.file_id(&self.module_tree);
-            let crate_graph = self.db.crate_graph();
-            if let Some(crate_id) = crate_graph.crate_id_for_crate_root(file_id.as_original_file())
-            {
-                let krate = Crate { crate_id };
-                for dep in krate.dependencies(self.db) {
-                    if let Some(module) = dep.krate.root_module(self.db) {
-                        let def = module.into();
-                        self.add_module_item(
-                            &mut module_items,
-                            dep.name.clone(),
-                            PerNs::types(def),
-                        );
-                    }
-                }
-            };
-        }
         for (import_id, import_data) in input.imports.iter() {
             if let Some(last_segment) = import_data.path.segments.iter().last() {
                 if !import_data.is_glob {
@@ -327,7 +319,16 @@ where
                 .alias
                 .clone()
                 .unwrap_or_else(|| last_segment.name.clone());
-            log::debug!("resolved import {:?} ({:?}) to {:?}", name, import, def,);
+            log::debug!("resolved import {:?} ({:?}) to {:?}", name, import, def);
+
+            // extern crates in the crate root are special-cased to insert entries into the extern prelude: rust-lang/rust#54658
+            if let Some(root_module) = self.krate.root_module(self.db) {
+                if import.is_extern_crate && module_id == root_module.module_id {
+                    if let Some(def) = def.take_types() {
+                        self.result.extern_prelude.insert(name.clone(), def);
+                    }
+                }
+            }
             self.update(module_id, |items| {
                 let res = Resolution {
                     def,
@@ -389,24 +390,53 @@ impl ItemMap {
         original_module: Module,
         path: &Path,
     ) -> (PerNs<ModuleDef>, ReachedFixedPoint) {
-        let mut curr_per_ns: PerNs<ModuleDef> = PerNs::types(match path.kind {
-            PathKind::Crate => original_module.crate_root(db).into(),
-            PathKind::Self_ | PathKind::Plain => original_module.into(),
+        let mut segments = path.segments.iter().enumerate();
+        let mut curr_per_ns: PerNs<ModuleDef> = match path.kind {
+            PathKind::Crate => PerNs::types(original_module.crate_root(db).into()),
+            PathKind::Self_ => PerNs::types(original_module.into()),
+            PathKind::Plain => {
+                let segment = match segments.next() {
+                    Some((_, segment)) => segment,
+                    None => return (PerNs::none(), ReachedFixedPoint::Yes),
+                };
+                // Resolve in:
+                //  - current module / scope
+                //  - extern prelude
+                match self[original_module.module_id].items.get(&segment.name) {
+                    Some(res) if !res.def.is_none() => res.def,
+                    _ => {
+                        if let Some(def) = self.extern_prelude.get(&segment.name) {
+                            PerNs::types(*def)
+                        } else {
+                            return (PerNs::none(), ReachedFixedPoint::No);
+                        }
+                    }
+                }
+            }
             PathKind::Super => {
                 if let Some(p) = original_module.parent(db) {
-                    p.into()
+                    PerNs::types(p.into())
                 } else {
                     log::debug!("super path in root module");
                     return (PerNs::none(), ReachedFixedPoint::Yes);
                 }
             }
             PathKind::Abs => {
-                // TODO: absolute use is not supported
-                return (PerNs::none(), ReachedFixedPoint::Yes);
+                // 2018-style absolute path -- only extern prelude
+                let segment = match segments.next() {
+                    Some((_, segment)) => segment,
+                    None => return (PerNs::none(), ReachedFixedPoint::Yes),
+                };
+                if let Some(def) = self.extern_prelude.get(&segment.name) {
+                    log::debug!("absolute path {:?} resolved to crate {:?}", path, def);
+                    PerNs::types(*def)
+                } else {
+                    return (PerNs::none(), ReachedFixedPoint::No); // extern crate declarations can add to the extern prelude
+                }
             }
-        });
+        };
 
-        for (i, segment) in path.segments.iter().enumerate() {
+        for (i, segment) in segments {
             let curr = match curr_per_ns.as_ref().take_types() {
                 Some(r) => r,
                 None => {

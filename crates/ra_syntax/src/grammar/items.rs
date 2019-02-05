@@ -247,7 +247,7 @@ fn extern_crate_item(p: &mut Parser) {
     p.bump();
     assert!(p.at(CRATE_KW));
     p.bump();
-    name(p);
+    name_ref(p);
     opt_alias(p);
     p.expect(SEMI);
 }

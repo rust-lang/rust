@@ -134,7 +134,7 @@ impl Module {
     }
 
     /// Returns the crate this module is part of.
-    pub fn krate(&self, _db: &impl HirDatabase) -> Option<Crate> {
+    pub fn krate(&self, _db: &impl PersistentHirDatabase) -> Option<Crate> {
         Some(self.krate)
     }
 

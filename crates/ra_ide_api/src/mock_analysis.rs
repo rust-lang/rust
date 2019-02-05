@@ -86,17 +86,25 @@ impl MockAnalysis {
         let mut change = AnalysisChange::new();
         change.add_root(source_root, true);
         let mut crate_graph = CrateGraph::default();
+        let mut root_crate = None;
         for (i, (path, contents)) in self.files.into_iter().enumerate() {
             assert!(path.starts_with('/'));
             let path = RelativePathBuf::from_path(&path[1..]).unwrap();
             let file_id = FileId(i as u32 + 1);
             if path == "/lib.rs" || path == "/main.rs" {
-                crate_graph.add_crate_root(file_id);
+                root_crate = Some(crate_graph.add_crate_root(file_id));
+            } else if path.ends_with("/lib.rs") {
+                let other_crate = crate_graph.add_crate_root(file_id);
+                let crate_name = path.parent().unwrap().file_name().unwrap();
+                if let Some(root_crate) = root_crate {
+                    crate_graph
+                        .add_dep(root_crate, crate_name.into(), other_crate)
+                        .unwrap();
+                }
             }
             change.add_file(source_root, file_id, path, Arc::new(contents));
         }
         change.set_crate_graph(crate_graph);
-        // change.set_file_resolver(Arc::new(file_map));
         host.apply_change(change);
         host
     }

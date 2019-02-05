@@ -4,7 +4,7 @@ SOURCE_FILE@[0; 18)
     WHITESPACE@[6; 7)
     CRATE_KW@[7; 12)
     WHITESPACE@[12; 13)
-    NAME@[13; 16)
+    NAME_REF@[13; 16)
       IDENT@[13; 16) "foo"
     SEMI@[16; 17)
   WHITESPACE@[17; 18)
