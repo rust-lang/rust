@@ -480,6 +480,7 @@ pub fn noop_visit_generic_arg<T: MutVisitor>(arg: &mut GenericArg, vis: &mut T) 
     match arg {
         GenericArg::Lifetime(lt) => vis.visit_lifetime(lt),
         GenericArg::Type(ty) => vis.visit_ty(ty),
+        GenericArg::Const(ct) => vis.visit_anon_const(ct),
     }
 }
 
@@ -697,6 +698,9 @@ pub fn noop_visit_generic_param<T: MutVisitor>(param: &mut GenericParam, vis: &m
         GenericParamKind::Lifetime => {}
         GenericParamKind::Type { default } => {
             visit_opt(default, |default| vis.visit_ty(default));
+        }
+        GenericParamKind::Const { ty } => {
+            vis.visit_ty(ty);
         }
     }
 }

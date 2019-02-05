@@ -1157,6 +1157,15 @@ impl<'a> LoweringContext<'a> {
         match arg {
             ast::GenericArg::Lifetime(lt) => GenericArg::Lifetime(self.lower_lifetime(&lt)),
             ast::GenericArg::Type(ty) => GenericArg::Type(self.lower_ty_direct(&ty, itctx)),
+            ast::GenericArg::Const(ct) => {
+                // FIXME(const_generics): const generics are not yet defined in the HIR.
+                self.sess.struct_span_err(
+                    ct.value.span,
+                    "const generics in any position are currently unsupported",
+                ).emit();
+                self.sess.abort_if_errors();
+                bug!();
+            }
         }
     }
 
@@ -2441,7 +2450,7 @@ impl<'a> LoweringContext<'a> {
             |this| this.lower_param_bounds(&param.bounds, itctx.reborrow()),
         );
 
-        match param.kind {
+        let (name, kind) = match param.kind {
             GenericParamKind::Lifetime => {
                 let was_collecting_in_band = self.is_collecting_in_band_lifetimes;
                 self.is_collecting_in_band_lifetimes = false;
@@ -2457,22 +2466,14 @@ impl<'a> LoweringContext<'a> {
                         | hir::LifetimeName::Static => hir::ParamName::Plain(lt.name.ident()),
                     hir::LifetimeName::Error => ParamName::Error,
                 };
-                let param = hir::GenericParam {
-                    id: lt.id,
-                    hir_id: lt.hir_id,
-                    name: param_name,
-                    span: lt.span,
-                    pure_wrt_drop: attr::contains_name(&param.attrs, "may_dangle"),
-                    attrs: self.lower_attrs(&param.attrs),
-                    bounds,
-                    kind: hir::GenericParamKind::Lifetime {
-                        kind: hir::LifetimeParamKind::Explicit,
-                    }
+
+                let kind = hir::GenericParamKind::Lifetime {
+                    kind: hir::LifetimeParamKind::Explicit
                 };
 
                 self.is_collecting_in_band_lifetimes = was_collecting_in_band;
 
-                param
+                (param_name, kind)
             }
             GenericParamKind::Type { ref default, .. } => {
                 // Don't expose `Self` (recovered "keyword used as ident" parse error).
@@ -2491,27 +2492,41 @@ impl<'a> LoweringContext<'a> {
                                    .chain(params)
                                    .collect();
                 }
-                let LoweredNodeId { node_id, hir_id } = self.lower_node_id(param.id);
 
-                hir::GenericParam {
-                    id: node_id,
-                    hir_id,
-                    name: hir::ParamName::Plain(ident),
-                    pure_wrt_drop: attr::contains_name(&param.attrs, "may_dangle"),
-                    attrs: self.lower_attrs(&param.attrs),
-                    bounds,
-                    span: ident.span,
-                    kind: hir::GenericParamKind::Type {
-                        default: default.as_ref().map(|x| {
-                            self.lower_ty(x, ImplTraitContext::disallowed())
-                        }),
-                        synthetic: param.attrs.iter()
-                                              .filter(|attr| attr.check_name("rustc_synthetic"))
-                                              .map(|_| hir::SyntheticTyParamKind::ImplTrait)
-                                              .next(),
-                    }
-                }
+                let kind = hir::GenericParamKind::Type {
+                    default: default.as_ref().map(|x| {
+                        self.lower_ty(x, ImplTraitContext::disallowed())
+                    }),
+                    synthetic: param.attrs.iter()
+                                          .filter(|attr| attr.check_name("rustc_synthetic"))
+                                          .map(|_| hir::SyntheticTyParamKind::ImplTrait)
+                                          .next(),
+                };
+
+                (hir::ParamName::Plain(ident), kind)
             }
+            GenericParamKind::Const { .. } => {
+                // FIXME(const_generics): const generics are not yet defined in the HIR.
+                self.sess.struct_span_err(
+                    param.ident.span,
+                    "const generics in any position are currently unsupported",
+                ).emit();
+                self.sess.abort_if_errors();
+                bug!();
+            }
+        };
+
+        let LoweredNodeId { node_id, hir_id } = self.lower_node_id(param.id);
+
+        hir::GenericParam {
+            id: node_id,
+            hir_id,
+            name,
+            span: param.ident.span,
+            pure_wrt_drop: attr::contains_name(&param.attrs, "may_dangle"),
+            attrs: self.lower_attrs(&param.attrs),
+            bounds,
+            kind,
         }
     }
 
