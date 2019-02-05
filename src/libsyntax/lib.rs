@@ -151,7 +151,7 @@ pub mod source_map;
 pub mod config;
 pub mod entry;
 pub mod feature_gate;
-#[path="fold.rs"] pub mod mut_visit;    // temporary
+pub mod mut_visit;
 pub mod parse;
 pub mod ptr;
 pub mod show_span;
