@@ -321,6 +321,7 @@ fn identify_comment(
         // for a block comment, search for the closing symbol
         CommentStyle::DoubleBullet | CommentStyle::SingleBullet | CommentStyle::Exclamation => {
             let closer = style.closer().trim_start();
+            let mut count = orig.matches(closer).count();
             let mut closing_symbol_offset = 0;
             let mut hbl = false;
             let mut first = true;
@@ -341,7 +342,10 @@ fn identify_comment(
                     first = false;
                 }
                 if trimmed_line.ends_with(closer) {
-                    break;
+                    count -= 1;
+                    if count == 0 {
+                        break;
+                    }
                 }
             }
             (hbl, closing_symbol_offset)
