@@ -224,6 +224,7 @@ impl<'a> fold::DocFolder for Stripper<'a> {
             | clean::ConstantItem(..)
             | clean::UnionItem(..)
             | clean::AssociatedConstItem(..)
+            | clean::TraitAliasItem(..)
             | clean::ForeignTypeItem => {
                 if i.def_id.is_local() {
                     if !self.access_levels.is_exported(i.def_id) {
