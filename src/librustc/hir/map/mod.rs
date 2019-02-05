@@ -401,6 +401,12 @@ impl<'hir> Map<'hir> {
         }
     }
 
+    // FIXME(@ljedrz): replace the NodeId variant
+    pub fn describe_def_by_hir_id(&self, hir_id: HirId) -> Option<Def> {
+        let node_id = self.hir_to_node_id(hir_id);
+        self.describe_def(node_id)
+    }
+
     fn entry_count(&self) -> usize {
         self.map.len()
     }
@@ -443,6 +449,12 @@ impl<'hir> Map<'hir> {
         } else {
             bug!("no entry for node_id `{}`", node_id)
         }
+    }
+
+    // FIXME(@ljedrz): replace the NodeId variant
+    pub fn fn_decl_by_hir_id(&self, hir_id: HirId) -> Option<FnDecl> {
+        let node_id = self.hir_to_node_id(hir_id);
+        self.fn_decl(node_id)
     }
 
     /// Returns the `NodeId` that corresponds to the definition of
@@ -855,6 +867,12 @@ impl<'hir> Map<'hir> {
         self.local_def_id(self.get_parent(id))
     }
 
+    // FIXME(@ljedrz): replace the NodeId variant
+    pub fn get_parent_did_by_hir_id(&self, id: HirId) -> DefId {
+        let node_id = self.hir_to_node_id(id);
+        self.get_parent_did(node_id)
+    }
+
     pub fn get_foreign_abi(&self, id: NodeId) -> Abi {
         let parent = self.get_parent(id);
         if let Some(entry) = self.find_entry(parent) {
@@ -866,6 +884,12 @@ impl<'hir> Map<'hir> {
             }
         }
         bug!("expected foreign mod or inlined parent, found {}", self.node_to_string(parent))
+    }
+
+    // FIXME(@ljedrz): replace the NodeId variant
+    pub fn get_foreign_abi_by_hir_id(&self, id: HirId) -> Abi {
+        let node_id = self.hir_to_node_id(id);
+        self.get_foreign_abi(node_id)
     }
 
     pub fn expect_item(&self, id: NodeId) -> &'hir Item {
@@ -886,6 +910,18 @@ impl<'hir> Map<'hir> {
             Some(Node::ImplItem(item)) => item,
             _ => bug!("expected impl item, found {}", self.node_to_string(id))
         }
+    }
+
+    // FIXME(@ljedrz): replace the NodeId variant
+    pub fn expect_impl_item_by_hir_id(&self, id: HirId) -> &'hir ImplItem {
+        let node_id = self.hir_to_node_id(id);
+        self.expect_impl_item(node_id)
+    }
+
+    // FIXME(@ljedrz): replace the NodeId variant
+    pub fn expect_trait_item_by_hir_id(&self, id: HirId) -> &'hir TraitItem {
+        let node_id = self.hir_to_node_id(id);
+        self.expect_trait_item(node_id)
     }
 
     pub fn expect_trait_item(&self, id: NodeId) -> &'hir TraitItem {
@@ -931,6 +967,12 @@ impl<'hir> Map<'hir> {
         }
     }
 
+    // FIXME(@ljedrz): replace the NodeId variant
+    pub fn expect_expr_by_hir_id(&self, id: HirId) -> &'hir Expr {
+        let node_id = self.hir_to_node_id(id);
+        self.expect_expr(node_id)
+    }
+
     /// Returns the name associated with the given NodeId's AST.
     pub fn name(&self, id: NodeId) -> Name {
         match self.get(id) {
@@ -946,6 +988,12 @@ impl<'hir> Map<'hir> {
             Node::StructCtor(_) => self.name(self.get_parent(id)),
             _ => bug!("no name for {}", self.node_to_string(id))
         }
+    }
+
+    // FIXME(@ljedrz): replace the NodeId variant
+    pub fn name_by_hir_id(&self, id: HirId) -> Name {
+        let node_id = self.hir_to_node_id(id);
+        self.name(node_id)
     }
 
     /// Given a node ID, get a list of attributes associated with the AST
@@ -968,6 +1016,12 @@ impl<'hir> Map<'hir> {
             _ => None
         };
         attrs.unwrap_or(&[])
+    }
+
+    // FIXME(@ljedrz): replace the NodeId variant
+    pub fn attrs_by_hir_id(&self, id: HirId) -> &'hir [ast::Attribute] {
+        let node_id = self.hir_to_node_id(id);
+        self.attrs(node_id)
     }
 
     /// Returns an iterator that yields the node id's with paths that
@@ -1017,6 +1071,12 @@ impl<'hir> Map<'hir> {
             Some(Node::Crate) => self.forest.krate.span,
             None => bug!("hir::map::Map::span: id not in map: {:?}", id),
         }
+    }
+
+    // FIXME(@ljedrz): replace the NodeId variant
+    pub fn span_by_hir_id(&self, id: HirId) -> Span {
+        let node_id = self.hir_to_node_id(id);
+        self.span(node_id)
     }
 
     pub fn span_if_local(&self, id: DefId) -> Option<Span> {
