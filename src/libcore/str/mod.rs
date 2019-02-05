@@ -1757,7 +1757,7 @@ mod traits {
         }
         #[inline]
         unsafe fn get_unchecked_mut(self, slice: &mut str) -> &mut Self::Output {
-            let ptr = slice.as_ptr().add(self.start);
+            let ptr = slice.as_mut_ptr().add(self.start);
             let len = self.end - self.start;
             super::from_utf8_unchecked_mut(slice::from_raw_parts_mut(ptr as *mut u8, len))
         }
@@ -1821,7 +1821,7 @@ mod traits {
         }
         #[inline]
         unsafe fn get_unchecked_mut(self, slice: &mut str) -> &mut Self::Output {
-            let ptr = slice.as_ptr();
+            let ptr = slice.as_mut_ptr();
             super::from_utf8_unchecked_mut(slice::from_raw_parts_mut(ptr as *mut u8, self.end))
         }
         #[inline]
@@ -1883,7 +1883,7 @@ mod traits {
         }
         #[inline]
         unsafe fn get_unchecked_mut(self, slice: &mut str) -> &mut Self::Output {
-            let ptr = slice.as_ptr().add(self.start);
+            let ptr = slice.as_mut_ptr().add(self.start);
             let len = slice.len() - self.start;
             super::from_utf8_unchecked_mut(slice::from_raw_parts_mut(ptr as *mut u8, len))
         }
@@ -2211,6 +2211,22 @@ impl str {
     #[inline]
     pub const fn as_ptr(&self) -> *const u8 {
         self as *const str as *const u8
+    }
+
+    /// Converts a mutable string slice to a raw pointer.
+    ///
+    /// As string slices are a slice of bytes, the raw pointer points to a
+    /// [`u8`]. This pointer will be pointing to the first byte of the string
+    /// slice.
+    ///
+    /// It is your responsibility to make sure that the string slice only gets
+    /// modified in a way that it remains valid UTF-8.
+    ///
+    /// [`u8`]: primitive.u8.html
+    #[unstable(feature = "str_as_mut_ptr", issue = "0")]
+    #[inline]
+    pub fn as_mut_ptr(&mut self) -> *mut u8 {
+        self as *mut str as *mut u8
     }
 
     /// Returns a subslice of `str`.
