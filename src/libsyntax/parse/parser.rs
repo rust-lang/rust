@@ -720,9 +720,9 @@ impl<'a> Parser<'a> {
                 //  {foo(bar {}}
                 //      -      ^ help: `)` may belong here
                 //      |
-                //      in order to close this...
+                //      unclosed delimiter
                 if let Some(sp) = unmatched.unclosed_span {
-                    err.span_label(sp, "in order to close this...");
+                    err.span_label(sp, "unclosed delimiter");
                 }
                 err.span_suggestion_short(
                     self.sess.source_map().next_point(self.prev_span),

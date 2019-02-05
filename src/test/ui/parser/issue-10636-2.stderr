@@ -5,7 +5,7 @@ LL |     option.map(|some| 42;
    |               -         ^
    |               |         |
    |               |         help: `)` may belong here
-   |               in order to close this...
+   |               unclosed delimiter
 
 error: expected expression, found `)`
   --> $DIR/issue-10636-2.rs:8:1

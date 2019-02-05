@@ -5,7 +5,7 @@ LL |             callback(path.as_ref(); //~ ERROR expected one of
    |                     -             ^
    |                     |             |
    |                     |             help: `)` may belong here
-   |                     in order to close this...
+   |                     unclosed delimiter
 
 error: expected one of `.`, `;`, `?`, `}`, or an operator, found `)`
   --> $DIR/token-error-correct-3.rs:20:9
