@@ -2,18 +2,15 @@
        html_favicon_url = "https://doc.rust-lang.org/favicon.ico",
        html_root_url = "https://doc.rust-lang.org/nightly/")]
 
-#![feature(nll)]
+#![deny(rust_2018_idioms)]
+
 #![feature(rustc_diagnostic_macros)]
 
 #![recursion_limit="256"]
 
-#[macro_use] extern crate rustc;
 #[macro_use] extern crate syntax;
-#[macro_use] extern crate log;
-extern crate rustc_typeck;
-extern crate syntax_pos;
-extern crate rustc_data_structures;
 
+use rustc::bug;
 use rustc::hir::{self, Node, PatKind, AssociatedItemKind};
 use rustc::hir::def::Def;
 use rustc::hir::def_id::{CRATE_DEF_INDEX, LOCAL_CRATE, CrateNum, DefId};
@@ -1584,7 +1581,7 @@ impl<'a, 'tcx: 'a> SearchInterfaceForPrivateItemsVisitor<'a, 'tcx> {
         let ret = self.required_visibility == ty::Visibility::Public &&
             self.private_crates.contains(&item_id.krate);
 
-        debug!("leaks_private_dep(item_id={:?})={}", item_id, ret);
+        log::debug!("leaks_private_dep(item_id={:?})={}", item_id, ret);
         return ret;
     }
 }
@@ -1748,7 +1745,7 @@ impl<'a, 'tcx> Visitor<'tcx> for PrivateItemsInPublicInterfacesVisitor<'a, 'tcx>
     }
 }
 
-pub fn provide(providers: &mut Providers) {
+pub fn provide(providers: &mut Providers<'_>) {
     *providers = Providers {
         privacy_access_levels,
         check_mod_privacy,
