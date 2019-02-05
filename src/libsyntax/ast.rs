@@ -167,6 +167,17 @@ impl GenericArgs {
 pub enum GenericArg {
     Lifetime(Lifetime),
     Type(P<Ty>),
+    Const(AnonConst),
+}
+
+impl GenericArg {
+    pub fn span(&self) -> Span {
+        match self {
+            GenericArg::Lifetime(lt) => lt.ident.span,
+            GenericArg::Type(ty) => ty.span,
+            GenericArg::Const(ct) => ct.value.span,
+        }
+    }
 }
 
 /// A path like `Foo<'a, T>`
@@ -300,9 +311,8 @@ pub type GenericBounds = Vec<GenericBound>;
 pub enum GenericParamKind {
     /// A lifetime definition (e.g., `'a: 'b + 'c + 'd`).
     Lifetime,
-    Type {
-        default: Option<P<Ty>>,
-    },
+    Type { default: Option<P<Ty>> },
+    Const { ty: P<Ty> },
 }
 
 #[derive(Clone, RustcEncodable, RustcDecodable, Debug)]
