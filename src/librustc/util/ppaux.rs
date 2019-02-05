@@ -426,6 +426,7 @@ impl PrintContext {
                     DefPathData::ClosureExpr |
                     DefPathData::TypeParam(_) |
                     DefPathData::LifetimeParam(_) |
+                    DefPathData::ConstParam(_) |
                     DefPathData::Field(_) |
                     DefPathData::StructCtor |
                     DefPathData::AnonConst |

@@ -356,10 +356,12 @@ pub enum DefPathData {
     /// A closure expression
     ClosureExpr,
     // Subportions of items
-    /// A type parameter (generic parameter)
+    /// A type (generic) parameter
     TypeParam(InternedString),
-    /// A lifetime definition
+    /// A lifetime (generic) parameter
     LifetimeParam(InternedString),
+    /// A const (generic) parameter
+    ConstParam(InternedString),
     /// A variant of a enum
     EnumVariant(InternedString),
     /// A struct field
@@ -641,6 +643,7 @@ impl DefPathData {
             MacroDef(name) |
             TypeParam(name) |
             LifetimeParam(name) |
+            ConstParam(name) |
             EnumVariant(name) |
             Field(name) |
             GlobalMetaData(name) => Some(name),
@@ -669,6 +672,7 @@ impl DefPathData {
             MacroDef(name) |
             TypeParam(name) |
             LifetimeParam(name) |
+            ConstParam(name) |
             EnumVariant(name) |
             Field(name) |
             GlobalMetaData(name) => {
