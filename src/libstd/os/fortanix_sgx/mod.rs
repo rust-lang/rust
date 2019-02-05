@@ -16,7 +16,7 @@ pub mod usercalls {
     /// Primitives for allocating memory in userspace as well as copying data
     /// to and from user memory.
     pub mod alloc {
-        pub use sys::abi::usercalls::alloc;
+        pub use sys::abi::usercalls::alloc::*;
     }
 
     /// Lowest-level interfaces to usercalls and usercall ABI type definitions.
