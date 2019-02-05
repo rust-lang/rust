@@ -243,19 +243,20 @@ impl SelfProfiler {
 
         let mut results = CalculatedResults::new();
 
+        //(event, child time to subtract)
         let mut query_stack = Vec::new();
 
         for event in events {
             match event {
                 QueryStart { .. } | GenericActivityStart { .. } => {
-                    query_stack.push(event);
+                    query_stack.push((event, 0));
                 },
                 QueryEnd { query_name, category, time: end_time } => {
                     let previous_query = query_stack.pop();
-                    if let Some(QueryStart {
+                    if let Some((QueryStart {
                                     query_name: p_query_name,
                                     time: start_time,
-                                    category: _ }) = previous_query {
+                                    category: _ }, child_time_to_subtract)) = previous_query {
                         assert_eq!(
                             p_query_name,
                             query_name,
@@ -263,18 +264,23 @@ impl SelfProfiler {
                         );
 
                         let time_ns = time_between_ns(*start_time, *end_time);
+                        let self_time_ns = time_ns - child_time_to_subtract;
                         let result_data = results.categories.entry(*category).or_default();
 
-                        *result_data.query_times.entry(query_name).or_default() += time_ns;
+                        *result_data.query_times.entry(query_name).or_default() += self_time_ns;
+
+                        if let Some((_, child_time_to_subtract)) = query_stack.last_mut() {
+                            *child_time_to_subtract += time_ns;
+                        }
                     } else {
                         bug!("Saw a query end but the previous event wasn't a query start");
                     }
                 }
                 GenericActivityEnd { category, time: end_time } => {
                     let previous_event = query_stack.pop();
-                    if let Some(GenericActivityStart {
+                    if let Some((GenericActivityStart {
                                     category: previous_category,
-                                    time: start_time }) = previous_event {
+                                    time: start_time }, child_time_to_subtract)) = previous_event {
                         assert_eq!(
                             previous_category,
                             category,
@@ -282,11 +288,16 @@ impl SelfProfiler {
                         );
 
                         let time_ns = time_between_ns(*start_time, *end_time);
+                        let self_time_ns = time_ns - child_time_to_subtract;
                         let result_data = results.categories.entry(*category).or_default();
 
                         *result_data.query_times
                             .entry("{time spent not running queries}")
-                            .or_default() += time_ns;
+                            .or_default() += self_time_ns;
+
+                        if let Some((_, child_time_to_subtract)) = query_stack.last_mut() {
+                            *child_time_to_subtract += time_ns;
+                        }
                     } else {
                         bug!("Saw an activity end but the previous event wasn't an activity start");
                     }
