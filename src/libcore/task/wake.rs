@@ -29,6 +29,11 @@ pub struct RawWaker {
 ///
 /// The pointer passed to all functions inside the vtable is the `data` pointer
 /// from the enclosing [`RawWaker`] object.
+///
+/// The functions inside this struct are only intended be called on the `data`
+/// pointer of a properly constructed [`RawWaker`] object from inside the
+/// [`RawWaker`] implementation. Calling one of the contained functions using
+/// any other `data` pointer will cause undefined behavior.
 #[derive(PartialEq, Copy, Clone, Debug)]
 pub struct RawWakerVTable {
     /// This function will be called when the [`RawWaker`] gets cloned, e.g. when

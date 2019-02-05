@@ -68,12 +68,14 @@ pub trait Future {
     /// typically do *not* suffer the same problems of "all wakeups must poll
     /// all events"; they are more like `epoll(4)`.
     ///
-    /// An implementation of `poll` should strive to return quickly, and must
-    /// *never* block. Returning quickly prevents unnecessarily clogging up
+    /// An implementation of `poll` should strive to return quickly, and should
+    /// not block. Returning quickly prevents unnecessarily clogging up
     /// threads or event loops. If it is known ahead of time that a call to
     /// `poll` may end up taking awhile, the work should be offloaded to a
     /// thread pool (or something similar) to ensure that `poll` can return
     /// quickly.
+    ///
+    /// An implementation of `poll` may also never cause memory unsafety.
     ///
     /// # Panics
     ///
