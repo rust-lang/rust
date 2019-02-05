@@ -7,6 +7,7 @@
 // or type checking or some other kind of complex analysis.
 
 use std::mem;
+use syntax::print::pprust;
 use rustc::lint;
 use rustc::session::Session;
 use rustc_data_structures::fx::FxHashMap;
@@ -281,7 +282,7 @@ enum GenericPosition {
 
 fn validate_generics_order<'a>(
     handler: &errors::Handler,
-    generics: impl Iterator<Item = (ParamKindOrd, Span, Option<Ident>)>,
+    generics: impl Iterator<Item = (ParamKindOrd, Span, Option<String>)>,
     pos: GenericPosition,
     span: Span,
 ) {
@@ -311,7 +312,7 @@ fn validate_generics_order<'a>(
             if !first {
                 ordered_params += ", ";
             }
-            ordered_params += &ident.as_str();
+            ordered_params += &ident;
             first = false;
         }
     }
@@ -635,11 +636,16 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
         }
 
         validate_generics_order(self.err_handler(), generics.params.iter().map(|param| {
-            (match param.kind {
-                GenericParamKind::Lifetime { .. } => ParamKindOrd::Lifetime,
-                GenericParamKind::Type { .. } => ParamKindOrd::Type,
-                GenericParamKind::Const { .. } => ParamKindOrd::Const,
-            }, param.ident.span, Some(param.ident))
+            let span = param.ident.span;
+            let ident = Some(param.ident.to_string());
+            match &param.kind {
+                GenericParamKind::Lifetime { .. } => (ParamKindOrd::Lifetime, span, ident),
+                GenericParamKind::Type { .. } => (ParamKindOrd::Type, span, ident),
+                GenericParamKind::Const { ref ty } => {
+                    let ty = pprust::ty_to_string(ty);
+                    (ParamKindOrd::Const, span, Some(format!("const {}: {}", param.ident, ty)))
+                }
+            }
         }), GenericPosition::Param, generics.span);
 
         for predicate in &generics.where_clause.predicates {
