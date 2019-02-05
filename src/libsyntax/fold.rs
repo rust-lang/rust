@@ -980,7 +980,7 @@ pub fn noop_fold_mod<T: Folder>(Mod {inner, items, inline}: Mod, folder: &mut T)
 
 pub fn noop_fold_crate<T: Folder>(Crate {module, attrs, span}: Crate,
                                   folder: &mut T) -> Crate {
-    let mut items = folder.fold_item(P(Item {
+    let item = P(Item {
         ident: keywords::Invalid.ident(),
         attrs,
         id: DUMMY_NODE_ID,
@@ -988,30 +988,21 @@ pub fn noop_fold_crate<T: Folder>(Crate {module, attrs, span}: Crate,
         span,
         node: ItemKind::Mod(module),
         tokens: None,
-    })).into_iter();
+    });
+    let items = folder.fold_item(item);
 
-    let (module, attrs, span) = match items.next() {
-        Some(item) => {
-            assert!(items.next().is_none(),
-                    "a crate cannot expand to more than one item");
-            item.and_then(|Item { attrs, span, node, .. }| {
-                match node {
-                    ItemKind::Mod(m) => (m, attrs, span),
-                    _ => panic!("fold converted a module to not a module"),
-                }
-            })
+    let len = items.len();
+    if len == 0 {
+        let module = Mod { inner: span, items: vec![], inline: true };
+        Crate { module, attrs: vec![], span }
+    } else if len == 1 {
+        let Item { attrs, span, node, .. } = items.into_iter().next().unwrap().into_inner();
+        match node {
+            ItemKind::Mod(module) => Crate { module, attrs, span },
+            _ => panic!("fold converted a module to not a module"),
         }
-        None => (Mod {
-            inner: span,
-            items: vec![],
-            inline: true,
-        }, vec![], span)
-    };
-
-    Crate {
-        module,
-        attrs,
-        span,
+    } else {
+        panic!("a crate cannot expand to more than one item");
     }
 }
 
