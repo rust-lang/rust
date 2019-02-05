@@ -1247,10 +1247,7 @@ impl<'a, 'b> Folder for InvocationCollector<'a, 'b> {
     }
 
     fn fold_stmt(&mut self, stmt: ast::Stmt) -> SmallVec<[ast::Stmt; 1]> {
-        let mut stmt = match self.cfg.configure_stmt(stmt) {
-            Some(stmt) => stmt,
-            None => return SmallVec::new(),
-        };
+        let mut stmt = configure!(self, stmt);
 
         // we'll expand attributes on expressions separately
         if !stmt.is_expr() {

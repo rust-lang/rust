@@ -181,17 +181,12 @@ impl<'a, 'b> Folder for PlaceholderExpander<'a, 'b> {
 
     fn fold_block(&mut self, block: P<ast::Block>) -> P<ast::Block> {
         noop_fold_block(block, self).map(|mut block| {
-            let mut remaining_stmts = block.stmts.len();
-
-            block.stmts = block.stmts.move_flat_map(|mut stmt| {
-                remaining_stmts -= 1;
-
+            block.stmts = block.stmts.move_map(|mut stmt| {
                 if self.monotonic {
                     assert_eq!(stmt.id, ast::DUMMY_NODE_ID);
                     stmt.id = self.cx.resolver.next_node_id();
                 }
-
-                Some(stmt)
+                stmt
             });
 
             block
@@ -200,9 +195,9 @@ impl<'a, 'b> Folder for PlaceholderExpander<'a, 'b> {
 
     fn fold_mod(&mut self, module: ast::Mod) -> ast::Mod {
         let mut module = noop_fold_mod(module, self);
-        module.items = module.items.move_flat_map(|item| match item.node {
-            ast::ItemKind::Mac(_) if !self.cx.ecfg.keep_macs => None, // remove macro definitions
-            _ => Some(item),
+        module.items.retain(|item| match item.node {
+            ast::ItemKind::Mac(_) if !self.cx.ecfg.keep_macs => false, // remove macro definitions
+            _ => true,
         });
         module
     }

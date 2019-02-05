@@ -13,6 +13,7 @@ use edition::Edition;
 use parse::{token, ParseSess};
 use smallvec::SmallVec;
 use errors::Applicability;
+use util::move_map::MoveMap;
 
 use ptr::P;
 
@@ -220,19 +221,19 @@ impl<'a> StripUnconfigured<'a> {
     pub fn configure_foreign_mod(&mut self, foreign_mod: ast::ForeignMod) -> ast::ForeignMod {
         ast::ForeignMod {
             abi: foreign_mod.abi,
-            items: foreign_mod.items.into_iter().filter_map(|item| self.configure(item)).collect(),
+            items: foreign_mod.items.move_flat_map(|item| self.configure(item)),
         }
     }
 
     fn configure_variant_data(&mut self, vdata: ast::VariantData) -> ast::VariantData {
         match vdata {
             ast::VariantData::Struct(fields, id) => {
-                let fields = fields.into_iter().filter_map(|field| self.configure(field));
-                ast::VariantData::Struct(fields.collect(), id)
+                let fields = fields.move_flat_map(|field| self.configure(field));
+                ast::VariantData::Struct(fields, id)
             }
             ast::VariantData::Tuple(fields, id) => {
-                let fields = fields.into_iter().filter_map(|field| self.configure(field));
-                ast::VariantData::Tuple(fields.collect(), id)
+                let fields = fields.move_flat_map(|field| self.configure(field));
+                ast::VariantData::Tuple(fields, id)
             }
             ast::VariantData::Unit(id) => ast::VariantData::Unit(id)
         }
@@ -247,7 +248,7 @@ impl<'a> StripUnconfigured<'a> {
                 ast::ItemKind::Union(self.configure_variant_data(def), generics)
             }
             ast::ItemKind::Enum(def, generics) => {
-                let variants = def.variants.into_iter().filter_map(|v| {
+                let variants = def.variants.move_flat_map(|v| {
                     self.configure(v).map(|v| {
                         Spanned {
                             node: ast::Variant_ {
@@ -260,9 +261,7 @@ impl<'a> StripUnconfigured<'a> {
                         }
                     })
                 });
-                ast::ItemKind::Enum(ast::EnumDef {
-                    variants: variants.collect(),
-                }, generics)
+                ast::ItemKind::Enum(ast::EnumDef { variants }, generics)
             }
             item => item,
         }
@@ -271,15 +270,11 @@ impl<'a> StripUnconfigured<'a> {
     pub fn configure_expr_kind(&mut self, expr_kind: ast::ExprKind) -> ast::ExprKind {
         match expr_kind {
             ast::ExprKind::Match(m, arms) => {
-                let arms = arms.into_iter().filter_map(|a| self.configure(a)).collect();
+                let arms = arms.move_flat_map(|a| self.configure(a));
                 ast::ExprKind::Match(m, arms)
             }
             ast::ExprKind::Struct(path, fields, base) => {
-                let fields = fields.into_iter()
-                    .filter_map(|field| {
-                        self.configure(field)
-                    })
-                    .collect();
+                let fields = fields.move_flat_map(|field| self.configure(field));
                 ast::ExprKind::Struct(path, fields, base)
             }
             _ => expr_kind,
@@ -304,22 +299,10 @@ impl<'a> StripUnconfigured<'a> {
         self.process_cfg_attrs(expr)
     }
 
-    pub fn configure_stmt(&mut self, stmt: ast::Stmt) -> Option<ast::Stmt> {
-        self.configure(stmt)
-    }
-
-    pub fn configure_struct_expr_field(&mut self, field: ast::Field) -> Option<ast::Field> {
-        self.configure(field)
-    }
-
     pub fn configure_pat(&mut self, pattern: P<ast::Pat>) -> P<ast::Pat> {
         pattern.map(|mut pattern| {
             if let ast::PatKind::Struct(path, fields, etc) = pattern.node {
-                let fields = fields.into_iter()
-                    .filter_map(|field| {
-                        self.configure(field)
-                    })
-                    .collect();
+                let fields = fields.move_flat_map(|field| self.configure(field));
                 pattern.node = ast::PatKind::Struct(path, fields, etc);
             }
             pattern
@@ -367,10 +350,7 @@ impl<'a> fold::Folder for StripUnconfigured<'a> {
     }
 
     fn fold_stmt(&mut self, stmt: ast::Stmt) -> SmallVec<[ast::Stmt; 1]> {
-        match self.configure_stmt(stmt) {
-            Some(stmt) => fold::noop_fold_stmt(stmt, self),
-            None => return SmallVec::new(),
-        }
+        fold::noop_fold_stmt(configure!(self, stmt), self)
     }
 
     fn fold_item(&mut self, item: P<ast::Item>) -> SmallVec<[P<ast::Item>; 1]> {
