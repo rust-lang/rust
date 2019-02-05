@@ -14,7 +14,7 @@
 
 use std::fmt;
 
-use config::ReportTactic;
+use crate::config::ReportTactic;
 
 const TO_DO_CHARS: &[char] = &['t', 'o', 'd', 'o'];
 const FIX_ME_CHARS: &[char] = &['f', 'i', 'x', 'm', 'e'];

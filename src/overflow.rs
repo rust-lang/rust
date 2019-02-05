@@ -10,28 +10,30 @@
 
 //! Rewrite a list some items with overflow.
 
-use config::lists::*;
-use config::Version;
+use std::cmp::min;
+
 use syntax::parse::token::DelimToken;
 use syntax::source_map::Span;
 use syntax::{ast, ptr};
 
-use closures;
-use expr::{
+use crate::closures;
+use crate::config::lists::*;
+use crate::config::Version;
+use crate::expr::{
     can_be_overflowed_expr, is_every_expr_simple, is_method_call, is_nested_call, is_simple_expr,
     rewrite_cond,
 };
-use lists::{definitive_tactic, itemize_list, write_list, ListFormatting, ListItem, Separator};
-use macros::MacroArg;
-use patterns::{can_be_overflowed_pat, TuplePatField};
-use rewrite::{Rewrite, RewriteContext};
-use shape::Shape;
-use source_map::SpanUtils;
-use spanned::Spanned;
-use types::{can_be_overflowed_type, SegmentParam};
-use utils::{count_newlines, extra_offset, first_line_width, last_line_width, mk_sp};
-
-use std::cmp::min;
+use crate::lists::{
+    definitive_tactic, itemize_list, write_list, ListFormatting, ListItem, Separator,
+};
+use crate::macros::MacroArg;
+use crate::patterns::{can_be_overflowed_pat, TuplePatField};
+use crate::rewrite::{Rewrite, RewriteContext};
+use crate::shape::Shape;
+use crate::source_map::SpanUtils;
+use crate::spanned::Spanned;
+use crate::types::{can_be_overflowed_type, SegmentParam};
+use crate::utils::{count_newlines, extra_offset, first_line_width, last_line_width, mk_sp};
 
 const SHORT_ITEM_THRESHOLD: usize = 10;
 
@@ -544,7 +546,7 @@ impl<'a> Context<'a> {
                     && self.one_line_width != 0
                     && !list_items[0].has_comment()
                     && !list_items[0].inner_as_ref().contains('\n')
-                    && ::lists::total_item_width(&list_items[0]) <= self.one_line_width
+                    && crate::lists::total_item_width(&list_items[0]) <= self.one_line_width
                 {
                     tactic = DefinitiveListTactic::Horizontal;
                 } else {

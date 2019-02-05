@@ -11,40 +11,40 @@
 use std::borrow::Cow;
 use std::cmp::min;
 
-use config::lists::*;
 use syntax::parse::token::DelimToken;
 use syntax::source_map::{BytePos, SourceMap, Span};
 use syntax::{ast, ptr};
 
-use chains::rewrite_chain;
-use closures;
-use comment::{
+use crate::chains::rewrite_chain;
+use crate::closures;
+use crate::comment::{
     combine_strs_with_missing_comments, contains_comment, recover_comment_removed, rewrite_comment,
     rewrite_missing_comment, CharClasses, FindUncommented,
 };
-use config::{Config, ControlBraceStyle, IndentStyle, Version};
-use lists::{
+use crate::config::lists::*;
+use crate::config::{Config, ControlBraceStyle, IndentStyle, Version};
+use crate::lists::{
     definitive_tactic, itemize_list, shape_for_tactic, struct_lit_formatting, struct_lit_shape,
     struct_lit_tactic, write_list, ListFormatting, ListItem, Separator,
 };
-use macros::{rewrite_macro, MacroPosition};
-use matches::rewrite_match;
-use overflow::{self, IntoOverflowableItem, OverflowableItem};
-use pairs::{rewrite_all_pairs, rewrite_pair, PairParts};
-use patterns::is_short_pattern;
-use rewrite::{Rewrite, RewriteContext};
-use shape::{Indent, Shape};
-use source_map::{LineRangeUtils, SpanUtils};
-use spanned::Spanned;
-use string::{rewrite_string, StringFormat};
-use types::{rewrite_path, PathContext};
-use utils::{
+use crate::macros::{rewrite_macro, MacroPosition};
+use crate::matches::rewrite_match;
+use crate::overflow::{self, IntoOverflowableItem, OverflowableItem};
+use crate::pairs::{rewrite_all_pairs, rewrite_pair, PairParts};
+use crate::patterns::is_short_pattern;
+use crate::rewrite::{Rewrite, RewriteContext};
+use crate::shape::{Indent, Shape};
+use crate::source_map::{LineRangeUtils, SpanUtils};
+use crate::spanned::Spanned;
+use crate::string::{rewrite_string, StringFormat};
+use crate::types::{rewrite_path, PathContext};
+use crate::utils::{
     colon_spaces, contains_skip, count_newlines, first_line_ends_with, inner_attributes,
     last_line_extendable, last_line_width, mk_sp, outer_attributes, ptr_vec_to_ref_vec,
     semicolon_for_expr, semicolon_for_stmt, wrap_str,
 };
-use vertical::rewrite_with_alignment;
-use visitor::FmtVisitor;
+use crate::vertical::rewrite_with_alignment;
+use crate::visitor::FmtVisitor;
 
 impl Rewrite for ast::Expr {
     fn rewrite(&self, context: &RewriteContext, shape: Shape) -> Option<String> {

@@ -10,19 +10,19 @@
 
 //! Format attributes and meta items.
 
-use comment::{contains_comment, rewrite_doc_comment, CommentStyle};
-use config::lists::*;
-use config::IndentStyle;
-use expr::rewrite_literal;
-use lists::{definitive_tactic, itemize_list, write_list, ListFormatting, Separator};
-use overflow;
-use rewrite::{Rewrite, RewriteContext};
-use shape::Shape;
-use types::{rewrite_path, PathContext};
-use utils::{count_newlines, mk_sp};
-
 use syntax::ast;
 use syntax::source_map::{BytePos, Span, DUMMY_SP};
+
+use crate::comment::{contains_comment, rewrite_doc_comment, CommentStyle};
+use crate::config::lists::*;
+use crate::config::IndentStyle;
+use crate::expr::rewrite_literal;
+use crate::lists::{definitive_tactic, itemize_list, write_list, ListFormatting, Separator};
+use crate::overflow;
+use crate::rewrite::{Rewrite, RewriteContext};
+use crate::shape::Shape;
+use crate::types::{rewrite_path, PathContext};
+use crate::utils::{count_newlines, mk_sp};
 
 /// Returns attributes on the given statement.
 pub fn get_attrs_from_stmt(stmt: &ast::Stmt) -> &[ast::Attribute] {
@@ -216,7 +216,7 @@ impl Rewrite for ast::MetaItem {
             }
             ast::MetaItemKind::List(ref list) => {
                 let path = rewrite_path(context, PathContext::Type, None, &self.ident, shape)?;
-                let has_trailing_comma = ::expr::span_ends_with_comma(context, self.span);
+                let has_trailing_comma = crate::expr::span_ends_with_comma(context, self.span);
                 overflow::rewrite_with_parens(
                     context,
                     &path,
@@ -383,7 +383,7 @@ impl<'a> Rewrite for [ast::Attribute] {
                 if let Some(missing_span) = missing_span {
                     let snippet = context.snippet(missing_span);
                     let (mla, mlb) = has_newlines_before_after_comment(snippet);
-                    let comment = ::comment::recover_missing_comment_in_span(
+                    let comment = crate::comment::recover_missing_comment_in_span(
                         missing_span,
                         shape.with_max_width(context.config),
                         context,
@@ -418,7 +418,7 @@ impl<'a> Rewrite for [ast::Attribute] {
                     .get(derives.len())
                     .map(|next| mk_sp(attrs[derives.len() - 1].span.hi(), next.span.lo()));
                 if let Some(missing_span) = missing_span {
-                    let comment = ::comment::recover_missing_comment_in_span(
+                    let comment = crate::comment::recover_missing_comment_in_span(
                         missing_span,
                         shape.with_max_width(context.config),
                         context,
@@ -451,7 +451,7 @@ impl<'a> Rewrite for [ast::Attribute] {
                 .get(1)
                 .map(|next| mk_sp(attrs[0].span.hi(), next.span.lo()));
             if let Some(missing_span) = missing_span {
-                let comment = ::comment::recover_missing_comment_in_span(
+                let comment = crate::comment::recover_missing_comment_in_span(
                     missing_span,
                     shape.with_max_width(context.config),
                     context,

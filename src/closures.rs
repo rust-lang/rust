@@ -8,19 +8,19 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use config::lists::*;
 use syntax::parse::classify;
 use syntax::source_map::Span;
 use syntax::{ast, ptr};
 
-use expr::{block_contains_comment, is_simple_block, is_unsafe_block, rewrite_cond};
-use items::{span_hi_for_arg, span_lo_for_arg};
-use lists::{definitive_tactic, itemize_list, write_list, ListFormatting, Separator};
-use overflow::OverflowableItem;
-use rewrite::{Rewrite, RewriteContext};
-use shape::Shape;
-use source_map::SpanUtils;
-use utils::{last_line_width, left_most_sub_expr, stmt_expr, NodeIdExt};
+use crate::config::lists::*;
+use crate::expr::{block_contains_comment, is_simple_block, is_unsafe_block, rewrite_cond};
+use crate::items::{span_hi_for_arg, span_lo_for_arg};
+use crate::lists::{definitive_tactic, itemize_list, write_list, ListFormatting, Separator};
+use crate::overflow::OverflowableItem;
+use crate::rewrite::{Rewrite, RewriteContext};
+use crate::shape::Shape;
+use crate::source_map::SpanUtils;
+use crate::utils::{last_line_width, left_most_sub_expr, stmt_expr, NodeIdExt};
 
 // This module is pretty messy because of the rules around closures and blocks:
 // FIXME - the below is probably no longer true in full.
@@ -159,7 +159,8 @@ fn rewrite_closure_with_block(
         span: body.span,
         recovered: false,
     };
-    let block = ::expr::rewrite_block_with_visitor(context, "", &block, None, None, shape, false)?;
+    let block =
+        crate::expr::rewrite_block_with_visitor(context, "", &block, None, None, shape, false)?;
     Some(format!("{} {}", prefix, block))
 }
 

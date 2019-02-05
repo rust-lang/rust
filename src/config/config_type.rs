@@ -8,8 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use config::file_lines::FileLines;
-use config::options::{IgnoreList, WidthHeuristics};
+use crate::config::file_lines::FileLines;
+use crate::config::options::{IgnoreList, WidthHeuristics};
 
 /// Trait for types that can be used in `Config`.
 pub trait ConfigType: Sized {

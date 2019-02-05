@@ -8,24 +8,25 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+use std::borrow::Cow;
 use std::cmp::Ordering;
+use std::fmt;
 
-use config::lists::*;
 use syntax::ast::{self, UseTreeKind};
 use syntax::source_map::{self, BytePos, Span, DUMMY_SP};
 
-use comment::combine_strs_with_missing_comments;
-use config::{Edition, IndentStyle};
-use lists::{definitive_tactic, itemize_list, write_list, ListFormatting, ListItem, Separator};
-use rewrite::{Rewrite, RewriteContext};
-use shape::Shape;
-use source_map::SpanUtils;
-use spanned::Spanned;
-use utils::{is_same_visibility, mk_sp, rewrite_ident};
-use visitor::FmtVisitor;
-
-use std::borrow::Cow;
-use std::fmt;
+use crate::comment::combine_strs_with_missing_comments;
+use crate::config::lists::*;
+use crate::config::{Edition, IndentStyle};
+use crate::lists::{
+    definitive_tactic, itemize_list, write_list, ListFormatting, ListItem, Separator,
+};
+use crate::rewrite::{Rewrite, RewriteContext};
+use crate::shape::Shape;
+use crate::source_map::SpanUtils;
+use crate::spanned::Spanned;
+use crate::utils::{is_same_visibility, mk_sp, rewrite_ident};
+use crate::visitor::FmtVisitor;
 
 /// Returns a name imported by a `use` declaration. e.g. returns `Ordering`
 /// for `std::cmp::Ordering` and `self` for `std::cmp::self`.
@@ -242,7 +243,7 @@ impl UseTree {
     // Rewrite use tree with `use ` and a trailing `;`.
     pub fn rewrite_top_level(&self, context: &RewriteContext, shape: Shape) -> Option<String> {
         let vis = self.visibility.as_ref().map_or(Cow::from(""), |vis| {
-            ::utils::format_visibility(context, &vis)
+            crate::utils::format_visibility(context, &vis)
         });
         let use_str = self
             .rewrite(context, shape.offset_left(vis.len())?)

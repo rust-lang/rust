@@ -17,8 +17,8 @@ use syntax::parse::{parser, DirectoryOwnership};
 use syntax::source_map;
 use syntax_pos::symbol::Symbol;
 
-use config::FileName;
-use utils::contains_skip;
+use crate::config::FileName;
+use crate::utils::contains_skip;
 
 /// List all the files containing modules of a crate.
 /// If a file is used twice in a crate, it appears only once.

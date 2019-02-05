@@ -12,7 +12,7 @@ use std::borrow::Cow;
 use std::cmp::min;
 use std::ops::{Add, Sub};
 
-use Config;
+use crate::Config;
 
 #[derive(Copy, Clone, Debug)]
 pub struct Indent {

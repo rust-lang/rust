@@ -8,15 +8,15 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+use std::cmp::max;
+
 use syntax::{
     ast, ptr,
     source_map::{self, Span},
 };
 
-use macros::MacroArg;
-use utils::{mk_sp, outer_attributes};
-
-use std::cmp::max;
+use crate::macros::MacroArg;
+use crate::utils::{mk_sp, outer_attributes};
 
 /// Spanned returns a span including attributes, if available.
 pub trait Spanned {
@@ -116,7 +116,7 @@ impl Spanned for ast::Arm {
 
 impl Spanned for ast::Arg {
     fn span(&self) -> Span {
-        if ::items::is_named_arg(self) {
+        if crate::items::is_named_arg(self) {
             mk_sp(self.pat.span.lo(), self.ty.span.hi())
         } else {
             self.ty.span

@@ -16,22 +16,22 @@
 
 // FIXME(#2455): Reorder trait items.
 
-use config::Config;
+use std::cmp::{Ord, Ordering};
+
 use syntax::{ast, attr, source_map::Span};
 
-use attr::filter_inline_attrs;
-use comment::combine_strs_with_missing_comments;
-use imports::{merge_use_trees, UseTree};
-use items::{is_mod_decl, rewrite_extern_crate, rewrite_mod};
-use lists::{itemize_list, write_list, ListFormatting, ListItem};
-use rewrite::{Rewrite, RewriteContext};
-use shape::Shape;
-use source_map::LineRangeUtils;
-use spanned::Spanned;
-use utils::{contains_skip, mk_sp};
-use visitor::FmtVisitor;
-
-use std::cmp::{Ord, Ordering};
+use crate::attr::filter_inline_attrs;
+use crate::comment::combine_strs_with_missing_comments;
+use crate::config::Config;
+use crate::imports::{merge_use_trees, UseTree};
+use crate::items::{is_mod_decl, rewrite_extern_crate, rewrite_mod};
+use crate::lists::{itemize_list, write_list, ListFormatting, ListItem};
+use crate::rewrite::{Rewrite, RewriteContext};
+use crate::shape::Shape;
+use crate::source_map::LineRangeUtils;
+use crate::spanned::Spanned;
+use crate::utils::{contains_skip, mk_sp};
+use crate::visitor::FmtVisitor;
 
 /// Choose the ordering between the given two items.
 fn compare_items(a: &ast::Item, b: &ast::Item) -> Ordering {

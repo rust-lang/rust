@@ -14,9 +14,9 @@ use regex::Regex;
 use unicode_categories::UnicodeCategories;
 use unicode_segmentation::UnicodeSegmentation;
 
-use config::Config;
-use shape::Shape;
-use utils::{unicode_str_width, wrap_str};
+use crate::config::Config;
+use crate::shape::Shape;
+use crate::utils::{unicode_str_width, wrap_str};
 
 const MIN_STRING: usize = 10;
 
@@ -362,8 +362,8 @@ fn graphemes_width(graphemes: &[&str]) -> usize {
 #[cfg(test)]
 mod test {
     use super::{break_string, detect_url, rewrite_string, SnippetState, StringFormat};
-    use config::Config;
-    use shape::{Indent, Shape};
+    use crate::config::Config;
+    use crate::shape::{Indent, Shape};
     use unicode_segmentation::UnicodeSegmentation;
 
     #[test]

@@ -13,32 +13,34 @@
 use std::borrow::Cow;
 use std::cmp::{min, Ordering};
 
-use config::lists::*;
 use regex::Regex;
 use rustc_target::spec::abi;
 use syntax::source_map::{self, BytePos, Span};
 use syntax::visit;
 use syntax::{ast, ptr, symbol};
 
-use comment::{
+use crate::comment::{
     combine_strs_with_missing_comments, contains_comment, recover_comment_removed,
     recover_missing_comment_in_span, rewrite_missing_comment, FindUncommented,
 };
-use config::{BraceStyle, Config, Density, IndentStyle, Version};
-use expr::{
+use crate::config::lists::*;
+use crate::config::{BraceStyle, Config, Density, IndentStyle, Version};
+use crate::expr::{
     format_expr, is_empty_block, is_simple_block_stmt, rewrite_assign_rhs, rewrite_assign_rhs_with,
     ExprType, RhsTactics,
 };
-use lists::{definitive_tactic, itemize_list, write_list, ListFormatting, ListItem, Separator};
-use macros::{rewrite_macro, MacroPosition};
-use overflow;
-use rewrite::{Rewrite, RewriteContext};
-use shape::{Indent, Shape};
-use source_map::{LineRangeUtils, SpanUtils};
-use spanned::Spanned;
-use utils::*;
-use vertical::rewrite_with_alignment;
-use visitor::FmtVisitor;
+use crate::lists::{
+    definitive_tactic, itemize_list, write_list, ListFormatting, ListItem, Separator,
+};
+use crate::macros::{rewrite_macro, MacroPosition};
+use crate::overflow;
+use crate::rewrite::{Rewrite, RewriteContext};
+use crate::shape::{Indent, Shape};
+use crate::source_map::{LineRangeUtils, SpanUtils};
+use crate::spanned::Spanned;
+use crate::utils::*;
+use crate::vertical::rewrite_with_alignment;
+use crate::visitor::FmtVisitor;
 
 const DEFAULT_VISIBILITY: ast::Visibility = source_map::Spanned {
     node: ast::VisibilityKind::Inherited,
@@ -621,7 +623,7 @@ impl<'a> FmtVisitor<'a> {
                 self.buffer.clear();
             }
             // type -> existential -> const -> macro -> method
-            use ast::ImplItemKind::*;
+            use crate::ast::ImplItemKind::*;
             fn need_empty_line(a: &ast::ImplItemKind, b: &ast::ImplItemKind) -> bool {
                 match (a, b) {
                     (Type(..), Type(..))

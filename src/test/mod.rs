@@ -18,11 +18,11 @@ use std::path::{Path, PathBuf};
 use std::process::{Command, Stdio};
 use std::str::Chars;
 
-use config::{Color, Config, EmitMode, FileName, ReportTactic};
-use formatting::{ModifiedChunk, SourceFile};
-use rustfmt_diff::{make_diff, print_diff, DiffLine, Mismatch, OutputWriter};
-use source_file;
-use {FormatReport, Input, Session};
+use crate::config::{Color, Config, EmitMode, FileName, ReportTactic};
+use crate::formatting::{ModifiedChunk, SourceFile};
+use crate::rustfmt_diff::{make_diff, print_diff, DiffLine, Mismatch, OutputWriter};
+use crate::source_file;
+use crate::{FormatReport, Input, Session};
 
 const DIFF_CONTEXT_SIZE: usize = 3;
 const CONFIGURATIONS_FILE_NAME: &str = "Configurations.md";
@@ -145,7 +145,9 @@ fn modified_test() {
     let filename = "tests/writemode/source/modified.rs";
     let mut data = Vec::new();
     let mut config = Config::default();
-    config.set().emit_mode(::config::EmitMode::ModifiedLines);
+    config
+        .set()
+        .emit_mode(crate::config::EmitMode::ModifiedLines);
 
     {
         let mut session = Session::new(config, Some(&mut data));

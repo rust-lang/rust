@@ -10,11 +10,13 @@
 
 use syntax::ast;
 
-use config::lists::*;
-use config::IndentStyle;
-use rewrite::{Rewrite, RewriteContext};
-use shape::Shape;
-use utils::{first_line_width, is_single_line, last_line_width, trimmed_last_line_width, wrap_str};
+use crate::config::lists::*;
+use crate::config::IndentStyle;
+use crate::rewrite::{Rewrite, RewriteContext};
+use crate::shape::Shape;
+use crate::utils::{
+    first_line_width, is_single_line, last_line_width, trimmed_last_line_width, wrap_str,
+};
 
 /// Sigils that decorate a binop pair.
 #[derive(new, Clone, Copy)]

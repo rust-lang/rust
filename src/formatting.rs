@@ -12,11 +12,11 @@ use syntax::errors::{DiagnosticBuilder, Handler};
 use syntax::parse::{self, ParseSess};
 use syntax::source_map::{FilePathMapping, SourceMap, Span};
 
-use comment::{CharClasses, FullCodeCharKind};
-use config::{Config, FileName, Verbosity};
-use issues::BadIssueSeeker;
-use visitor::{FmtVisitor, SnippetProvider};
-use {modules, source_file, ErrorKind, FormatReport, Input, Session};
+use crate::comment::{CharClasses, FullCodeCharKind};
+use crate::config::{Config, FileName, Verbosity};
+use crate::issues::BadIssueSeeker;
+use crate::visitor::{FmtVisitor, SnippetProvider};
+use crate::{modules, source_file, ErrorKind, FormatReport, Input, Session};
 
 // A map of the files of a crate, with their new content
 pub(crate) type SourceFile = Vec<FileRecord>;
@@ -157,7 +157,7 @@ impl<'a, T: FormatHandler + 'a> FormatContext<'a, T> {
 
         debug_assert_eq!(
             visitor.line_number,
-            ::utils::count_newlines(&visitor.buffer)
+            crate::utils::count_newlines(&visitor.buffer)
         );
 
         // For some reason, the source_map does not include terminating

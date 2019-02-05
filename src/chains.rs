@@ -65,24 +65,24 @@
 //!            .qux
 //! ```
 
-use comment::{rewrite_comment, CharClasses, FullCodeCharKind, RichChar};
-use config::IndentStyle;
-use expr::rewrite_call;
-use lists::extract_pre_comment;
-use macros::convert_try_mac;
-use rewrite::{Rewrite, RewriteContext};
-use shape::Shape;
-use source_map::SpanUtils;
-use utils::{
-    self, first_line_width, last_line_extendable, last_line_width, mk_sp, rewrite_ident,
-    trimmed_last_line_width, wrap_str,
-};
-
 use std::borrow::Cow;
 use std::cmp::min;
 
 use syntax::source_map::{BytePos, Span};
 use syntax::{ast, ptr};
+
+use crate::comment::{rewrite_comment, CharClasses, FullCodeCharKind, RichChar};
+use crate::config::IndentStyle;
+use crate::expr::rewrite_call;
+use crate::lists::extract_pre_comment;
+use crate::macros::convert_try_mac;
+use crate::rewrite::{Rewrite, RewriteContext};
+use crate::shape::Shape;
+use crate::source_map::SpanUtils;
+use crate::utils::{
+    self, first_line_width, last_line_extendable, last_line_width, mk_sp, rewrite_ident,
+    trimmed_last_line_width, wrap_str,
+};
 
 pub fn rewrite_chain(expr: &ast::Expr, context: &RewriteContext, shape: Shape) -> Option<String> {
     let chain = Chain::from_ast(expr, context);

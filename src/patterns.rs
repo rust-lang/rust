@@ -8,26 +8,26 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use config::lists::*;
 use syntax::ast::{self, BindingMode, FieldPat, Pat, PatKind, RangeEnd, RangeSyntax};
 use syntax::ptr;
 use syntax::source_map::{self, BytePos, Span};
 
-use comment::FindUncommented;
-use expr::{can_be_overflowed_expr, rewrite_unary_prefix, wrap_struct_field};
-use lists::{
+use crate::comment::FindUncommented;
+use crate::config::lists::*;
+use crate::expr::{can_be_overflowed_expr, rewrite_unary_prefix, wrap_struct_field};
+use crate::lists::{
     itemize_list, shape_for_tactic, struct_lit_formatting, struct_lit_shape, struct_lit_tactic,
     write_list,
 };
-use macros::{rewrite_macro, MacroPosition};
-use overflow;
-use pairs::{rewrite_pair, PairParts};
-use rewrite::{Rewrite, RewriteContext};
-use shape::Shape;
-use source_map::SpanUtils;
-use spanned::Spanned;
-use types::{rewrite_path, PathContext};
-use utils::{format_mutability, mk_sp, rewrite_ident};
+use crate::macros::{rewrite_macro, MacroPosition};
+use crate::overflow;
+use crate::pairs::{rewrite_pair, PairParts};
+use crate::rewrite::{Rewrite, RewriteContext};
+use crate::shape::Shape;
+use crate::source_map::SpanUtils;
+use crate::spanned::Spanned;
+use crate::types::{rewrite_path, PathContext};
+use crate::utils::{format_mutability, mk_sp, rewrite_ident};
 
 /// Returns true if the given pattern is short. A short pattern is defined by the following grammar:
 ///

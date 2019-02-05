@@ -42,15 +42,16 @@ use std::mem;
 use std::panic;
 use std::path::PathBuf;
 use std::rc::Rc;
+
+use failure::Fail;
 use syntax::ast;
 
-use comment::LineClasses;
-use failure::Fail;
-use formatting::{FormatErrorMap, FormattingError, ReportedErrors, SourceFile};
-use issues::Issue;
-use shape::Indent;
+use crate::comment::LineClasses;
+use crate::formatting::{FormatErrorMap, FormattingError, ReportedErrors, SourceFile};
+use crate::issues::Issue;
+use crate::shape::Indent;
 
-pub use config::{
+pub use crate::config::{
     load_config, CliOptions, Color, Config, Edition, EmitMode, FileLines, FileName, NewlineStyle,
     Range, Verbosity,
 };
