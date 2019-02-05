@@ -596,13 +596,17 @@ fn write_mir_sig(
 
     trace!("write_mir_sig: {:?}", src.instance);
     let descr = tcx.describe_def(src.def_id());
+    let is_function = match descr {
+        Some(Def::Fn(_)) | Some(Def::Method(_)) | Some(Def::StructCtor(..)) => true,
+        _ => tcx.is_closure(src.def_id()),
+    };
     match (descr, src.promoted) {
         (_, Some(i)) => write!(w, "{:?} in ", i)?,
-        (Some(Def::Fn(_)), _) | (Some(Def::Method(_)), _) => write!(w, "fn ")?,
         (Some(Def::StructCtor(..)), _) => write!(w, "struct ")?,
         (Some(Def::Const(_)), _) => write!(w, "const ")?,
         (Some(Def::Static(_, /*is_mutbl*/false)), _) => write!(w, "static ")?,
         (Some(Def::Static(_, /*is_mutbl*/true)), _) => write!(w, "static mut ")?,
+        (_, _) if is_function => write!(w, "fn ")?,
         (None, _) => {}, // things like anon const, not an item
         _ => bug!("Unexpected def description {:?}", descr),
     }
@@ -612,27 +616,21 @@ fn write_mir_sig(
         write!(w, "{}", tcx.item_path_str(src.def_id()))
     })?;
 
-    match (descr, src.promoted) {
-        (Some(Def::Fn(_)), None) |
-        (Some(Def::Method(_)), None) |
-        (Some(Def::StructCtor(..)), None) =>
-        {
-            write!(w, "(")?;
+    if src.promoted.is_none() && is_function {
+        write!(w, "(")?;
 
-            // fn argument types.
-            for (i, arg) in mir.args_iter().enumerate() {
-                if i != 0 {
-                    write!(w, ", ")?;
-                }
-                write!(w, "{:?}: {}", Place::Local(arg), mir.local_decls[arg].ty)?;
+        // fn argument types.
+        for (i, arg) in mir.args_iter().enumerate() {
+            if i != 0 {
+                write!(w, ", ")?;
             }
+            write!(w, "{:?}: {}", Place::Local(arg), mir.local_decls[arg].ty)?;
+        }
 
-            write!(w, ") -> {}", mir.return_ty())?;
-        }
-        _ => {
-            assert_eq!(mir.arg_count, 0);
-            write!(w, ": {} =", mir.return_ty())?;
-        }
+        write!(w, ") -> {}", mir.return_ty())?;
+    } else {
+        assert_eq!(mir.arg_count, 0);
+        write!(w, ": {} =", mir.return_ty())?;
     }
 
     if let Some(yield_ty) = mir.yield_ty {
