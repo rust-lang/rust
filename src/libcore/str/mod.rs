@@ -2961,8 +2961,8 @@ impl str {
     /// An iterator over substrings of this string slice, separated by
     /// characters matched by a pattern.
     ///
-    /// The pattern can be a `&str`, [`char`], or a closure that determines the
-    /// split.
+    /// The pattern can be any type that implements the Pattern trait. Notable
+    /// examples are `&str`, [`char`], and closures that determines the split.
     ///
     /// # Iterator behavior
     ///
@@ -3078,8 +3078,8 @@ impl str {
     /// An iterator over substrings of the given string slice, separated by
     /// characters matched by a pattern and yielded in reverse order.
     ///
-    /// The pattern can be a `&str`, [`char`], or a closure that determines the
-    /// split.
+    /// The pattern can be any type that implements the Pattern trait. Notable
+    /// examples are `&str`, [`char`], and closures that determines the split.
     ///
     /// # Iterator behavior
     ///
@@ -3128,8 +3128,8 @@ impl str {
     /// An iterator over substrings of the given string slice, separated by
     /// characters matched by a pattern.
     ///
-    /// The pattern can be a `&str`, [`char`], or a closure that determines the
-    /// split.
+    /// The pattern can be any type that implements the Pattern trait. Notable
+    /// examples are `&str`, [`char`], and closures that determines the split.
     ///
     /// Equivalent to [`split`], except that the trailing substring
     /// is skipped if empty.
@@ -3175,8 +3175,8 @@ impl str {
     /// An iterator over substrings of `self`, separated by characters
     /// matched by a pattern and yielded in reverse order.
     ///
-    /// The pattern can be a simple `&str`, [`char`], or a closure that
-    /// determines the split.
+    /// The pattern can be any type that implements the Pattern trait. Notable
+    /// examples are `&str`, [`char`], and closures that determines the split.
     /// Additional libraries might provide more complex patterns like
     /// regular expressions.
     ///
@@ -3222,8 +3222,8 @@ impl str {
     /// If `n` substrings are returned, the last substring (the `n`th substring)
     /// will contain the remainder of the string.
     ///
-    /// The pattern can be a `&str`, [`char`], or a closure that determines the
-    /// split.
+    /// The pattern can be any type that implements the Pattern trait. Notable
+    /// examples are `&str`, [`char`], and closures that determines the split.
     ///
     /// # Iterator behavior
     ///
@@ -3275,8 +3275,8 @@ impl str {
     /// If `n` substrings are returned, the last substring (the `n`th substring)
     /// will contain the remainder of the string.
     ///
-    /// The pattern can be a `&str`, [`char`], or a closure that
-    /// determines the split.
+    /// The pattern can be any type that implements the Pattern trait. Notable
+    /// examples are `&str`, [`char`], and closures that determines the split.
     ///
     /// # Iterator behavior
     ///
@@ -3319,8 +3319,8 @@ impl str {
     /// An iterator over the disjoint matches of a pattern within the given string
     /// slice.
     ///
-    /// The pattern can be a `&str`, [`char`], or a closure that
-    /// determines if a character matches.
+    /// The pattern can be any type that implements the Pattern trait. Notable
+    /// examples are `&str`, [`char`], and closures that determines the split.
     ///
     /// # Iterator behavior
     ///
