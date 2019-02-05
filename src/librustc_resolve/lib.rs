@@ -51,6 +51,7 @@ use syntax::ast::{FnDecl, ForeignItem, ForeignItemKind, GenericParamKind, Generi
 use syntax::ast::{Item, ItemKind, ImplItem, ImplItemKind};
 use syntax::ast::{Label, Local, Mutability, Pat, PatKind, Path};
 use syntax::ast::{QSelf, TraitItemKind, TraitRef, Ty, TyKind};
+use syntax::ast::ParamKindOrd;
 use syntax::ptr::P;
 use syntax::{span_err, struct_span_err, unwrap_or, walk_list};
 
@@ -142,10 +143,11 @@ impl Ord for BindingError {
 }
 
 enum ResolutionError<'a> {
-    /// error E0401: can't use type parameters from outer function
-    TypeParametersFromOuterFunction(Def),
-    /// error E0403: the name is already used for a type parameter in this type parameter list
-    NameAlreadyUsedInTypeParameterList(Name, &'a Span),
+    /// error E0401: can't use type or const parameters from outer function
+    ParametersFromOuterFunction(Def, ParamKindOrd),
+    /// error E0403: the name is already used for a type/const parameter in this list of
+    /// generic parameters
+    NameAlreadyUsedInParameterList(Name, &'a Span),
     /// error E0407: method is not a member of trait
     MethodNotMemberOfTrait(Name, &'a str),
     /// error E0437: type is not a member of trait
@@ -177,7 +179,9 @@ enum ResolutionError<'a> {
     /// error E0530: X bindings cannot shadow Ys
     BindingShadowsSomethingUnacceptable(&'a str, Name, &'a NameBinding<'a>),
     /// error E0128: type parameters with a default cannot use forward declared identifiers
-    ForwardDeclaredTyParam,
+    ForwardDeclaredTyParam, // FIXME(const_generics:defaults)
+    /// error E0670: const parameter cannot depend on type parameter
+    ConstParamDependentOnTypeParam,
 }
 
 /// Combines an error with provided span and emits it
@@ -195,12 +199,14 @@ fn resolve_struct_error<'sess, 'a>(resolver: &'sess Resolver<'_>,
                                    resolution_error: ResolutionError<'a>)
                                    -> DiagnosticBuilder<'sess> {
     match resolution_error {
-        ResolutionError::TypeParametersFromOuterFunction(outer_def) => {
+        ResolutionError::ParametersFromOuterFunction(outer_def, kind) => {
             let mut err = struct_span_err!(resolver.session,
-                                           span,
-                                           E0401,
-                                           "can't use type parameters from outer function");
-            err.span_label(span, "use of type variable from outer function");
+                span,
+                E0401,
+                "can't use {} parameters from outer function",
+                kind,
+            );
+            err.span_label(span, format!("use of {} variable from outer function", kind));
 
             let cm = resolver.session.source_map();
             match outer_def {
@@ -224,20 +230,25 @@ fn resolve_struct_error<'sess, 'a>(resolver: &'sess Resolver<'_>,
                     }
                     return err;
                 },
-                Def::TyParam(typaram_defid) => {
-                    if let Some(typaram_span) = resolver.definitions.opt_span(typaram_defid) {
-                        err.span_label(typaram_span, "type variable from outer function");
+                Def::TyParam(def_id) => {
+                    if let Some(span) = resolver.definitions.opt_span(def_id) {
+                        err.span_label(span, "type variable from outer function");
                     }
-                },
+                }
+                Def::ConstParam(def_id) => {
+                    if let Some(span) = resolver.definitions.opt_span(def_id) {
+                        err.span_label(span, "const variable from outer function");
+                    }
+                }
                 _ => {
-                    bug!("TypeParametersFromOuterFunction should only be used with Def::SelfTy or \
-                         Def::TyParam")
+                    bug!("TypeParametersFromOuterFunction should only be used with Def::SelfTy, \
+                         Def::TyParam or Def::ConstParam");
                 }
             }
 
             // Try to retrieve the span of the function signature and generate a new message with
-            // a local type parameter
-            let sugg_msg = "try using a local type parameter instead";
+            // a local type or const parameter.
+            let sugg_msg = &format!("try using a local {} parameter instead", kind);
             if let Some((sugg_span, new_snippet)) = cm.generate_local_type_param_snippet(span) {
                 // Suggest the modification to the user
                 err.span_suggestion(
@@ -247,19 +258,20 @@ fn resolve_struct_error<'sess, 'a>(resolver: &'sess Resolver<'_>,
                     Applicability::MachineApplicable,
                 );
             } else if let Some(sp) = cm.generate_fn_name_span(span) {
-                err.span_label(sp, "try adding a local type parameter in this method instead");
+                err.span_label(sp,
+                    format!("try adding a local {} parameter in this method instead", kind));
             } else {
-                err.help("try using a local type parameter instead");
+                err.help(&format!("try using a local {} parameter instead", kind));
             }
 
             err
         }
-        ResolutionError::NameAlreadyUsedInTypeParameterList(name, first_use_span) => {
+        ResolutionError::NameAlreadyUsedInParameterList(name, first_use_span) => {
              let mut err = struct_span_err!(resolver.session,
                                             span,
                                             E0403,
-                                            "the name `{}` is already used for a type parameter \
-                                            in this type parameter list",
+                                            "the name `{}` is already used for a generic \
+                                            parameter in this list of generic parameters",
                                             name);
              err.span_label(span, "already used");
              err.span_label(first_use_span.clone(), format!("first use of `{}`", name));
@@ -416,6 +428,12 @@ fn resolve_struct_error<'sess, 'a>(resolver: &'sess Resolver<'_>,
                 span, "defaulted type parameters cannot be forward declared".to_string());
             err
         }
+        ResolutionError::ConstParamDependentOnTypeParam => {
+            let mut err = struct_span_err!(resolver.session, span, E0670,
+                                           "const parameters cannot depend on type parameters");
+            err.span_label(span, format!("const parameter depends on type parameter"));
+            err
+        }
     }
 }
 
@@ -546,7 +564,7 @@ impl<'a> PathSource<'a> {
                 Def::Struct(..) | Def::Union(..) | Def::Enum(..) |
                 Def::Trait(..) | Def::TraitAlias(..) | Def::TyAlias(..) |
                 Def::AssociatedTy(..) | Def::PrimTy(..) | Def::TyParam(..) |
-                Def::SelfTy(..) | Def::Existential(..) |
+                Def::SelfTy(..) | Def::Existential(..) | Def::ConstParam(..) |
                 Def::ForeignTy(..) => true,
                 _ => false,
             },
@@ -564,7 +582,7 @@ impl<'a> PathSource<'a> {
                 Def::VariantCtor(_, CtorKind::Const) | Def::VariantCtor(_, CtorKind::Fn) |
                 Def::Const(..) | Def::Static(..) | Def::Local(..) | Def::Upvar(..) |
                 Def::Fn(..) | Def::Method(..) | Def::AssociatedConst(..) |
-                Def::SelfCtor(..) => true,
+                Def::SelfCtor(..) | Def::ConstParam(..) => true,
                 _ => false,
             },
             PathSource::Pat => match def {
@@ -855,6 +873,7 @@ impl<'a, 'tcx> Visitor<'tcx> for Resolver<'a> {
         self.label_ribs.pop();
         self.ribs[ValueNS].pop();
     }
+
     fn visit_generics(&mut self, generics: &'tcx Generics) {
         // For type parameter defaults, we have to ban access
         // to following type parameters, as the Substs can only
@@ -865,6 +884,7 @@ impl<'a, 'tcx> Visitor<'tcx> for Resolver<'a> {
         let mut found_default = false;
         default_ban_rib.bindings.extend(generics.params.iter()
             .filter_map(|param| match param.kind {
+                GenericParamKind::Const { .. } |
                 GenericParamKind::Lifetime { .. } => None,
                 GenericParamKind::Type { ref default, .. } => {
                     found_default |= default.is_some();
@@ -875,6 +895,16 @@ impl<'a, 'tcx> Visitor<'tcx> for Resolver<'a> {
                     }
                 }
             }));
+
+        // We also ban access to type parameters for use as the types of const parameters.
+        let mut const_ty_param_ban_rib = Rib::new(TyParamAsConstParamTy);
+        const_ty_param_ban_rib.bindings.extend(generics.params.iter()
+            .filter(|param| if let GenericParamKind::Type { .. } = param.kind {
+                true
+            } else {
+                false
+            })
+            .map(|param| (Ident::with_empty_ctxt(param.ident.name), Def::Err)));
 
         for param in &generics.params {
             match param.kind {
@@ -892,6 +922,17 @@ impl<'a, 'tcx> Visitor<'tcx> for Resolver<'a> {
 
                     // Allow all following defaults to refer to this type parameter.
                     default_ban_rib.bindings.remove(&Ident::with_empty_ctxt(param.ident.name));
+                }
+                GenericParamKind::Const { ref ty } => {
+                    self.ribs[TypeNS].push(const_ty_param_ban_rib);
+
+                    for bound in &param.bounds {
+                        self.visit_param_bound(bound);
+                    }
+
+                    self.visit_ty(ty);
+
+                    const_ty_param_ban_rib = self.ribs[TypeNS].pop().unwrap();
                 }
             }
         }
@@ -944,6 +985,9 @@ enum RibKind<'a> {
     /// from the default of a type parameter because they're not declared
     /// before said type parameter. Also see the `visit_generics` override.
     ForwardTyParamBanRibKind,
+
+    /// We forbid the use of type parameters as the types of const parameters.
+    TyParamAsConstParamTy,
 }
 
 /// One local scope.
@@ -2535,7 +2579,7 @@ impl<'a> Resolver<'a> {
 
                             if seen_bindings.contains_key(&ident) {
                                 let span = seen_bindings.get(&ident).unwrap();
-                                let err = ResolutionError::NameAlreadyUsedInTypeParameterList(
+                                let err = ResolutionError::NameAlreadyUsedInParameterList(
                                     ident.name,
                                     span,
                                 );
@@ -2545,6 +2589,24 @@ impl<'a> Resolver<'a> {
 
                         // Plain insert (no renaming).
                         let def = Def::TyParam(self.definitions.local_def_id(param.id));
+                            function_type_rib.bindings.insert(ident, def);
+                            self.record_def(param.id, PathResolution::new(def));
+                        }
+                        GenericParamKind::Const { .. } => {
+                            let ident = param.ident.modern();
+                            debug!("with_type_parameter_rib: {}", param.id);
+
+                            if seen_bindings.contains_key(&ident) {
+                                let span = seen_bindings.get(&ident).unwrap();
+                                let err = ResolutionError::NameAlreadyUsedInParameterList(
+                                    ident.name,
+                                    span,
+                                );
+                                resolve_error(self, param.ident.span, err);
+                            }
+                            seen_bindings.entry(ident).or_insert(param.ident.span);
+
+                            let def = Def::ConstParam(self.definitions.local_def_id(param.id));
                             function_type_rib.bindings.insert(ident, def);
                             self.record_def(param.id, PathResolution::new(def));
                         }
@@ -4106,6 +4168,15 @@ impl<'a> Resolver<'a> {
             return Def::Err;
         }
 
+        // An invalid use of a type parameter as the type of a const parameter.
+        if let TyParamAsConstParamTy = self.ribs[ns][rib_index].kind {
+            if record_used {
+                resolve_error(self, span, ResolutionError::ConstParamDependentOnTypeParam);
+            }
+            assert_eq!(def, Def::Err);
+            return Def::Err;
+        }
+
         match def {
             Def::Upvar(..) => {
                 span_bug!(span, "unexpected {:?} in bindings", def)
@@ -4114,7 +4185,7 @@ impl<'a> Resolver<'a> {
                 for rib in ribs {
                     match rib.kind {
                         NormalRibKind | ModuleRibKind(..) | MacroDefinition(..) |
-                        ForwardTyParamBanRibKind => {
+                        ForwardTyParamBanRibKind | TyParamAsConstParamTy => {
                             // Nothing to do. Continue.
                         }
                         ClosureRibKind(function_id) => {
@@ -4167,18 +4238,41 @@ impl<'a> Resolver<'a> {
                     match rib.kind {
                         NormalRibKind | TraitOrImplItemRibKind | ClosureRibKind(..) |
                         ModuleRibKind(..) | MacroDefinition(..) | ForwardTyParamBanRibKind |
-                        ConstantItemRibKind => {
+                        ConstantItemRibKind | TyParamAsConstParamTy => {
                             // Nothing to do. Continue.
                         }
                         ItemRibKind => {
-                            // This was an attempt to use a type parameter outside
-                            // its scope.
+                            // This was an attempt to use a type parameter outside its scope.
                             if record_used {
-                                resolve_error(self, span,
-                                    ResolutionError::TypeParametersFromOuterFunction(def));
+                                resolve_error(
+                                    self,
+                                    span,
+                                    ResolutionError::ParametersFromOuterFunction(
+                                        def,
+                                        ParamKindOrd::Type,
+                                    ),
+                                );
                             }
                             return Def::Err;
                         }
+                    }
+                }
+            }
+            Def::ConstParam(..) => {
+                for rib in ribs {
+                    if let ItemRibKind = rib.kind {
+                        // This was an attempt to use a const parameter outside its scope.
+                        if record_used {
+                            resolve_error(
+                                self,
+                                span,
+                                ResolutionError::ParametersFromOuterFunction(
+                                    def,
+                                    ParamKindOrd::Const,
+                                ),
+                            );
+                        }
+                        return Def::Err;
                     }
                 }
             }
