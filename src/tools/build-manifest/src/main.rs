@@ -1,7 +1,7 @@
 #![deny(rust_2018_idioms)]
 
 use toml;
-use serde_derive::Serialize;
+use serde::Serialize;
 
 use std::collections::BTreeMap;
 use std::env;
