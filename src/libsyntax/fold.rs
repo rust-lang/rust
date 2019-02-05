@@ -45,10 +45,6 @@ pub trait Folder : Sized {
         noop_fold_crate(c, self)
     }
 
-    fn fold_meta_items(&mut self, meta_items: Vec<MetaItem>) -> Vec<MetaItem> {
-        noop_fold_meta_items(meta_items, self)
-    }
-
     fn fold_meta_list_item(&mut self, list_item: NestedMetaItem) -> NestedMetaItem {
         noop_fold_meta_list_item(list_item, self)
     }
@@ -65,16 +61,8 @@ pub trait Folder : Sized {
         noop_fold_foreign_item(ni, self)
     }
 
-    fn fold_foreign_item_simple(&mut self, ni: ForeignItem) -> ForeignItem {
-        noop_fold_foreign_item_simple(ni, self)
-    }
-
     fn fold_item(&mut self, i: P<Item>) -> SmallVec<[P<Item>; 1]> {
         noop_fold_item(i, self)
-    }
-
-    fn fold_item_simple(&mut self, i: Item) -> Item {
-        noop_fold_item_simple(i, self)
     }
 
     fn fold_fn_header(&mut self, header: FnHeader) -> FnHeader {
@@ -133,10 +121,6 @@ pub trait Folder : Sized {
         e.map(|e| noop_fold_expr(e, self))
     }
 
-    fn fold_range_end(&mut self, re: RangeEnd) -> RangeEnd {
-        noop_fold_range_end(re, self)
-    }
-
     fn fold_opt_expr(&mut self, e: P<Expr>) -> Option<P<Expr>> {
         noop_fold_opt_expr(e, self)
     }
@@ -172,20 +156,12 @@ pub trait Folder : Sized {
         noop_fold_foreign_mod(nm, self)
     }
 
-    fn fold_global_asm(&mut self, ga: P<GlobalAsm>) -> P<GlobalAsm> {
-        noop_fold_global_asm(ga, self)
-    }
-
     fn fold_variant(&mut self, v: Variant) -> Variant {
         noop_fold_variant(v, self)
     }
 
     fn fold_ident(&mut self, i: Ident) -> Ident {
         noop_fold_ident(i, self)
-    }
-
-    fn fold_usize(&mut self, i: usize) -> usize {
-        noop_fold_usize(i, self)
     }
 
     fn fold_path(&mut self, p: Path) -> Path {
@@ -281,10 +257,6 @@ pub trait Folder : Sized {
         noop_fold_interpolated(nt, self)
     }
 
-    fn fold_opt_bounds(&mut self, b: Option<GenericBounds>) -> Option<GenericBounds> {
-        noop_fold_opt_bounds(b, self)
-    }
-
     fn fold_bounds(&mut self, b: GenericBounds) -> GenericBounds {
         noop_fold_bounds(b, self)
     }
@@ -322,10 +294,6 @@ pub trait Folder : Sized {
     fn new_span(&mut self, sp: Span) -> Span {
         sp
     }
-}
-
-pub fn noop_fold_meta_items<T: Folder>(meta_items: Vec<MetaItem>, fld: &mut T) -> Vec<MetaItem> {
-    meta_items.move_map(|x| fld.fold_meta_item(x))
 }
 
 pub fn noop_fold_use_tree<T: Folder>(use_tree: UseTree, fld: &mut T) -> UseTree {
@@ -430,11 +398,6 @@ pub fn noop_fold_foreign_mod<T: Folder>(ForeignMod {abi, items}: ForeignMod,
     }
 }
 
-pub fn noop_fold_global_asm<T: Folder>(ga: P<GlobalAsm>,
-                                       _: &mut T) -> P<GlobalAsm> {
-    ga
-}
-
 pub fn noop_fold_variant<T: Folder>(v: Variant, fld: &mut T) -> Variant {
     Spanned {
         node: Variant_ {
@@ -449,10 +412,6 @@ pub fn noop_fold_variant<T: Folder>(v: Variant, fld: &mut T) -> Variant {
 
 pub fn noop_fold_ident<T: Folder>(ident: Ident, fld: &mut T) -> Ident {
     Ident::new(ident.name, fld.new_span(ident.span))
-}
-
-pub fn noop_fold_usize<T: Folder>(i: usize, _: &mut T) -> usize {
-    i
 }
 
 pub fn noop_fold_path<T: Folder>(Path { segments, span }: Path, fld: &mut T) -> Path {
@@ -873,11 +832,6 @@ pub fn noop_fold_mt<T: Folder>(MutTy {ty, mutbl}: MutTy, folder: &mut T) -> MutT
     }
 }
 
-pub fn noop_fold_opt_bounds<T: Folder>(b: Option<GenericBounds>, folder: &mut T)
-                                       -> Option<GenericBounds> {
-    b.map(|bounds| folder.fold_bounds(bounds))
-}
-
 fn noop_fold_bounds<T: Folder>(bounds: GenericBounds, folder: &mut T)
                           -> GenericBounds {
     bounds.move_map(|bound| folder.fold_param_bound(bound))
@@ -913,7 +867,7 @@ pub fn noop_fold_item_kind<T: Folder>(i: ItemKind, folder: &mut T) -> ItemKind {
         }
         ItemKind::Mod(m) => ItemKind::Mod(folder.fold_mod(m)),
         ItemKind::ForeignMod(nm) => ItemKind::ForeignMod(folder.fold_foreign_mod(nm)),
-        ItemKind::GlobalAsm(ga) => ItemKind::GlobalAsm(folder.fold_global_asm(ga)),
+        ItemKind::GlobalAsm(ga) => ItemKind::GlobalAsm(ga),
         ItemKind::Ty(t, generics) => {
             ItemKind::Ty(folder.fold_ty(t), folder.fold_generics(generics))
         }
@@ -1071,34 +1025,27 @@ pub fn noop_fold_crate<T: Folder>(Crate {module, attrs, span}: Crate,
 
 // fold one item into possibly many items
 pub fn noop_fold_item<T: Folder>(i: P<Item>, folder: &mut T) -> SmallVec<[P<Item>; 1]> {
-    smallvec![i.map(|i| folder.fold_item_simple(i))]
-}
+    smallvec![i.map(|i| {
+        let Item {id, ident, attrs, node, vis, span, tokens} = i;
+        Item {
+            id: folder.new_id(id),
+            vis: folder.fold_vis(vis),
+            ident: folder.fold_ident(ident),
+            attrs: fold_attrs(attrs, folder),
+            node: folder.fold_item_kind(node),
+            span: folder.new_span(span),
 
-// fold one item into exactly one item
-pub fn noop_fold_item_simple<T: Folder>(Item {id, ident, attrs, node, vis, span, tokens}: Item,
-                                        folder: &mut T) -> Item {
-    Item {
-        id: folder.new_id(id),
-        vis: folder.fold_vis(vis),
-        ident: folder.fold_ident(ident),
-        attrs: fold_attrs(attrs, folder),
-        node: folder.fold_item_kind(node),
-        span: folder.new_span(span),
-
-        // FIXME: if this is replaced with a call to `folder.fold_tts` it causes
-        //        an ICE during resolve... odd!
-        tokens,
-    }
+            // FIXME: if this is replaced with a call to `folder.fold_tts` it causes
+            //        an ICE during resolve... odd!
+            tokens,
+        }
+    })]
 }
 
 pub fn noop_fold_foreign_item<T: Folder>(ni: ForeignItem, folder: &mut T)
     -> SmallVec<[ForeignItem; 1]>
 {
-    smallvec![folder.fold_foreign_item_simple(ni)]
-}
-
-pub fn noop_fold_foreign_item_simple<T: Folder>(ni: ForeignItem, folder: &mut T) -> ForeignItem {
-    ForeignItem {
+    smallvec![ForeignItem {
         id: folder.new_id(ni.id),
         vis: folder.fold_vis(ni.vis),
         ident: folder.fold_ident(ni.ident),
@@ -1114,7 +1061,7 @@ pub fn noop_fold_foreign_item_simple<T: Folder>(ni: ForeignItem, folder: &mut T)
             ForeignItemKind::Macro(mac) => ForeignItemKind::Macro(folder.fold_mac(mac)),
         },
         span: folder.new_span(ni.span)
-    }
+    }]
 }
 
 pub fn noop_fold_method_sig<T: Folder>(sig: MethodSig, folder: &mut T) -> MethodSig {
@@ -1161,10 +1108,10 @@ pub fn noop_fold_pat<T: Folder>(p: P<Pat>, folder: &mut T) -> P<Pat> {
             }
             PatKind::Box(inner) => PatKind::Box(folder.fold_pat(inner)),
             PatKind::Ref(inner, mutbl) => PatKind::Ref(folder.fold_pat(inner), mutbl),
-            PatKind::Range(e1, e2, Spanned { span, node: end }) => {
+            PatKind::Range(e1, e2, Spanned { span, node }) => {
                 PatKind::Range(folder.fold_expr(e1),
                                folder.fold_expr(e2),
-                               Spanned { span, node: folder.fold_range_end(end) })
+                               Spanned { span, node })
             },
             PatKind::Slice(before, slice, after) => {
                 PatKind::Slice(before.move_map(|x| folder.fold_pat(x)),
@@ -1176,10 +1123,6 @@ pub fn noop_fold_pat<T: Folder>(p: P<Pat>, folder: &mut T) -> P<Pat> {
         },
         span: folder.new_span(span)
     })
-}
-
-pub fn noop_fold_range_end<T: Folder>(end: RangeEnd, _folder: &mut T) -> RangeEnd {
-    end
 }
 
 pub fn noop_fold_anon_const<T: Folder>(constant: AnonConst, folder: &mut T) -> AnonConst {
