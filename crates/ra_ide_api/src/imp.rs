@@ -240,7 +240,7 @@ impl db::RootDatabase {
         let file = self.parse(frange.file_id);
         ra_ide_api_light::assists::assists(&file, frange.range)
             .into_iter()
-            .chain(crate::assits::assists(self, frange.file_id, &file, frange.range).into_iter())
+            .chain(crate::assists::assists(self, frange.file_id, &file, frange.range).into_iter())
             .map(|local_edit| SourceChange::from_local_edit(frange.file_id, local_edit))
             .collect()
     }

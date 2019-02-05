@@ -18,7 +18,7 @@ use ra_syntax::{
     }
 };
 
-use crate::assits::AssistCtx;
+use crate::assists::AssistCtx;
 
 pub fn fill_match_arm(ctx: AssistCtx) -> Option<Assist> {
     let match_expr = ctx.node_at_offset::<ast::MatchExpr>()?;
@@ -110,8 +110,8 @@ mod tests {
             .with_db(|db| db.parse(frange.file_id))
             .expect("source file");
         let ret = analysis
-            .with_db(|db| crate::assits::assists(db, frange.file_id, &source_file, frange.range))
-            .expect("assits");
+            .with_db(|db| crate::assists::assists(db, frange.file_id, &source_file, frange.range))
+            .expect("assists");
 
         assert_debug_snapshot_matches!(name, ret);
     }

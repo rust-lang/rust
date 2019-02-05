@@ -30,7 +30,7 @@ mod syntax_highlighting;
 mod parent_module;
 mod rename;
 mod impls;
-mod assits;
+mod assists;
 
 #[cfg(test)]
 mod marks;
