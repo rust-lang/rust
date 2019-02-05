@@ -41,16 +41,13 @@ bitflags::bitflags! {
         // Constant containing an ADT that implements Drop.
         const NEEDS_DROP        = 1 << 1;
 
-        // Function argument.
-        const FN_ARGUMENT       = 1 << 2;
-
         // Not constant at all - non-`const fn` calls, asm!,
         // pointer comparisons, ptr-to-int casts, etc.
-        const NOT_CONST         = 1 << 3;
+        const NOT_CONST         = 1 << 2;
 
         // Refers to temporaries which cannot be promoted as
         // promote_consts decided they weren't simple enough.
-        const NOT_PROMOTABLE    = 1 << 4;
+        const NOT_PROMOTABLE    = 1 << 3;
 
         // Const items can only have MUTABLE_INTERIOR
         // and NOT_PROMOTABLE without producing an error.
@@ -135,10 +132,6 @@ impl<'a, 'tcx> Qualifier<'a, 'tcx> {
             LocalKind::Temp => {
                 let mut qualif = self.local_qualif[local]
                     .unwrap_or(Qualif::NOT_CONST);
-
-                if let LocalKind::Arg = kind {
-                    qualif = qualif | Qualif::FN_ARGUMENT;
-                }
 
                 if !self.temp_promotion_state[local].is_promotable() {
                     qualif = qualif | Qualif::NOT_PROMOTABLE;
@@ -498,9 +491,8 @@ impl<'a, 'tcx> Checker<'a, 'tcx> {
 
         let mut local_qualif = IndexVec::from_elem(None, &mir.local_decls);
         for arg in mir.args_iter() {
-            let mut qualif = Qualif::NEEDS_DROP;
-            qualif.restrict(mir.local_decls[arg].ty, tcx, param_env);
-            local_qualif[arg] = Some(qualif);
+            let qualif = Qualif::for_ty(mir.local_decls[arg].ty, tcx, param_env);
+            local_qualif[arg] = Some(Qualif::NOT_PROMOTABLE | qualif);
         }
 
         Checker {
