@@ -255,7 +255,13 @@ impl TokenStream {
             0 => TokenStream::empty(),
             1 => streams.pop().unwrap(),
             _ => {
-                let mut vec = vec![];
+                // rust-lang/rust#57735: pre-allocate vector to avoid
+                // quadratic blow-up due to on-the-fly reallocations.
+                let tree_count = streams.iter()
+                    .map(|ts| match &ts.0 { None => 0, Some(s) => s.len() })
+                    .sum();
+                let mut vec = Vec::with_capacity(tree_count);
+
                 for stream in streams {
                     match stream.0 {
                         None => {},
