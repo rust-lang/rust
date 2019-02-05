@@ -1,0 +1,18 @@
+error: concrete type differs from previous defining existential type use
+  --> $DIR/not_a_defining_use.rs:29:1
+   |
+LL | / fn four<T: Debug, U: Bar>(t: T) -> Two<T, U> { //~ concrete type differs from previous
+LL | |     (t, <U as Bar>::FOO)
+LL | | }
+   | |_^ expected `(T, i8)`, got `(T, <U as Bar>::Blub)`
+   |
+note: previous use here
+  --> $DIR/not_a_defining_use.rs:9:1
+   |
+LL | / fn two<T: Debug>(t: T) -> Two<T, u32> {
+LL | |     (t, 4i8)
+LL | | }
+   | |_^
+
+error: aborting due to previous error
+
