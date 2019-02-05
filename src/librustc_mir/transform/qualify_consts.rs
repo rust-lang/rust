@@ -58,9 +58,11 @@ bitflags::bitflags! {
 
 impl<'a, 'tcx> Qualif {
     /// Compute the qualifications for the given type.
-    fn for_ty(ty: Ty<'tcx>,
-              tcx: TyCtxt<'a, 'tcx, 'tcx>,
-              param_env: ty::ParamEnv<'tcx>) -> Self {
+    fn any_value_of_ty(
+        ty: Ty<'tcx>,
+        tcx: TyCtxt<'a, 'tcx, 'tcx>,
+        param_env: ty::ParamEnv<'tcx>,
+    ) -> Self {
         let mut qualif = Self::empty();
         if !ty.is_freeze(tcx, param_env, DUMMY_SP) {
             qualif = qualif | Qualif::MUTABLE_INTERIOR;
@@ -72,10 +74,13 @@ impl<'a, 'tcx> Qualif {
     }
 
     /// Remove flags which are impossible for the given type.
-    fn restrict(&mut self, ty: Ty<'tcx>,
-                tcx: TyCtxt<'a, 'tcx, 'tcx>,
-                param_env: ty::ParamEnv<'tcx>) {
-        let ty_qualif = Self::for_ty(ty, tcx, param_env);
+    fn restrict(
+        &mut self,
+        ty: Ty<'tcx>,
+        tcx: TyCtxt<'a, 'tcx, 'tcx>,
+        param_env: ty::ParamEnv<'tcx>,
+    ) {
+        let ty_qualif = Self::any_value_of_ty(ty, tcx, param_env);
         if !ty_qualif.contains(Qualif::MUTABLE_INTERIOR) {
             *self = *self - Qualif::MUTABLE_INTERIOR;
         }
@@ -117,8 +122,8 @@ struct Qualifier<'a, 'tcx> {
 }
 
 impl<'a, 'tcx> Qualifier<'a, 'tcx> {
-    fn qualif_for_ty(&self, ty: Ty<'tcx>) -> Qualif {
-        Qualif::for_ty(ty, self.tcx, self.param_env)
+    fn qualify_any_value_of_ty(&self, ty: Ty<'tcx>) -> Qualif {
+        Qualif::any_value_of_ty(ty, self.tcx, self.param_env)
     }
 
     fn qualify_local(&self, local: Local) -> Qualif {
@@ -217,7 +222,7 @@ impl<'a, 'tcx> Qualifier<'a, 'tcx> {
                 if let ty::LazyConst::Unevaluated(def_id, _) = constant.literal {
                     // Don't peek inside trait associated constants.
                     if self.tcx.trait_of_item(*def_id).is_some() {
-                        self.qualif_for_ty(constant.ty)
+                        self.qualify_any_value_of_ty(constant.ty)
                     } else {
                         let (bits, _) = self.tcx.at(constant.span).mir_const_qualif(*def_id);
 
@@ -348,7 +353,7 @@ impl<'a, 'tcx> Qualifier<'a, 'tcx> {
                 if let AggregateKind::Adt(def, ..) = **kind {
                     if Some(def.did) == self.tcx.lang_items().unsafe_cell_type() {
                         let ty = rvalue.ty(self.mir, self.tcx);
-                        qualif = qualif | self.qualif_for_ty(ty);
+                        qualif = qualif | self.qualify_any_value_of_ty(ty);
                         assert!(qualif.contains(Qualif::MUTABLE_INTERIOR));
                     }
 
@@ -444,7 +449,7 @@ impl<'a, 'tcx> Qualifier<'a, 'tcx> {
         }
 
         // Be conservative about the returned value of a const fn.
-        let qualif = self.qualif_for_ty(return_ty);
+        let qualif = self.qualify_any_value_of_ty(return_ty);
         if !is_promotable_const_fn && self.mode == Mode::Fn {
             qualif | Qualif::NOT_PROMOTABLE
         } else {
@@ -491,7 +496,7 @@ impl<'a, 'tcx> Checker<'a, 'tcx> {
 
         let mut local_qualif = IndexVec::from_elem(None, &mir.local_decls);
         for arg in mir.args_iter() {
-            let qualif = Qualif::for_ty(mir.local_decls[arg].ty, tcx, param_env);
+            let qualif = Qualif::any_value_of_ty(mir.local_decls[arg].ty, tcx, param_env);
             local_qualif[arg] = Some(Qualif::NOT_PROMOTABLE | qualif);
         }
 
@@ -661,7 +666,7 @@ impl<'a, 'tcx> Checker<'a, 'tcx> {
         // Account for errors in consts by using the
         // conservative type qualification instead.
         if qualif.intersects(Qualif::CONST_ERROR) {
-            qualif = self.qualifier().qualif_for_ty(mir.return_ty());
+            qualif = self.qualifier().qualify_any_value_of_ty(mir.return_ty());
         }
 
 
