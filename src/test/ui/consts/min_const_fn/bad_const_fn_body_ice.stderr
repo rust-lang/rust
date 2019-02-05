@@ -1,10 +1,12 @@
-error: heap allocations are not allowed in const fn
+error[E0723]: heap allocations are not allowed in const fn (see issue #57563)
   --> $DIR/bad_const_fn_body_ice.rs:2:5
    |
 LL |     vec![1, 2, 3] //~ ERROR heap allocations are not allowed in const fn
    |     ^^^^^^^^^^^^^
    |
+   = help: add #![feature(const_fn)] to the crate attributes to enable
    = note: this error originates in a macro outside of the current crate (in Nightly builds, run with -Z external-macro-backtrace for more info)
 
 error: aborting due to previous error
 
+For more information about this error, try `rustc --explain E0723`.
