@@ -2388,14 +2388,14 @@ const fn foo() -> impl T { // error: `impl Trait` in const fn is unstable
 To enable this feature on a nightly version of rustc, add the `const_fn`
 feature flag:
 
-```compile_fail,E0723
+```
 #![feature(const_fn)]
 
 trait T {}
 
 impl T for () {}
 
-const fn foo() -> impl T { // error: `impl Trait` in const fn is unstable
+const fn foo() -> impl T {
     ()
 }
 ```
