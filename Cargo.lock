@@ -900,6 +900,7 @@ version = "0.1.0"
 name = "ra_assists"
 version = "0.1.0"
 dependencies = [
+ "itertools 0.8.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "join_to_string 0.1.3 (registry+https://github.com/rust-lang/crates.io-index)",
  "ra_db 0.1.0",
  "ra_fmt 0.1.0",
