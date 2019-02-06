@@ -356,8 +356,7 @@ fn local_place<'a, 'tcx: 'a>(
                     local, ty, size.bytes(), align.abi.bytes(), align.pref.bytes(),
                 )),
                 _ => unreachable!(),
-            };
-
+            }
         }
 
         // Take stack_addr in advance to avoid many duplicate instructions
