@@ -1759,7 +1759,7 @@ mod traits {
         unsafe fn get_unchecked_mut(self, slice: &mut str) -> &mut Self::Output {
             let ptr = slice.as_mut_ptr().add(self.start);
             let len = self.end - self.start;
-            super::from_utf8_unchecked_mut(slice::from_raw_parts_mut(ptr as *mut u8, len))
+            super::from_utf8_unchecked_mut(slice::from_raw_parts_mut(ptr, len))
         }
         #[inline]
         fn index(self, slice: &str) -> &Self::Output {
@@ -1822,7 +1822,7 @@ mod traits {
         #[inline]
         unsafe fn get_unchecked_mut(self, slice: &mut str) -> &mut Self::Output {
             let ptr = slice.as_mut_ptr();
-            super::from_utf8_unchecked_mut(slice::from_raw_parts_mut(ptr as *mut u8, self.end))
+            super::from_utf8_unchecked_mut(slice::from_raw_parts_mut(ptr, self.end))
         }
         #[inline]
         fn index(self, slice: &str) -> &Self::Output {
@@ -1885,7 +1885,7 @@ mod traits {
         unsafe fn get_unchecked_mut(self, slice: &mut str) -> &mut Self::Output {
             let ptr = slice.as_mut_ptr().add(self.start);
             let len = slice.len() - self.start;
-            super::from_utf8_unchecked_mut(slice::from_raw_parts_mut(ptr as *mut u8, len))
+            super::from_utf8_unchecked_mut(slice::from_raw_parts_mut(ptr, len))
         }
         #[inline]
         fn index(self, slice: &str) -> &Self::Output {
