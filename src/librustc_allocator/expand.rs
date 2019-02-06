@@ -1,6 +1,6 @@
+use log::debug;
 use rustc::middle::allocator::AllocatorKind;
-use rustc_errors;
-use smallvec::SmallVec;
+use smallvec::{smallvec, SmallVec};
 use syntax::{
     ast::{
         self, Arg, Attribute, Crate, Expr, FnHeader, Generics, Ident, Item, ItemKind,
@@ -23,7 +23,7 @@ use syntax::{
 };
 use syntax_pos::Span;
 
-use {AllocatorMethod, AllocatorTy, ALLOCATOR_METHODS};
+use crate::{AllocatorMethod, AllocatorTy, ALLOCATOR_METHODS};
 
 pub fn modify(
     sess: &ParseSess,
@@ -54,7 +54,7 @@ struct ExpandAllocatorDirectives<'a> {
     in_submod: isize,
 }
 
-impl<'a> MutVisitor for ExpandAllocatorDirectives<'a> {
+impl MutVisitor for ExpandAllocatorDirectives<'_> {
     fn flat_map_item(&mut self, item: P<Item>) -> SmallVec<[P<Item>; 1]> {
         debug!("in submodule {}", self.in_submod);
 
@@ -168,7 +168,7 @@ struct AllocFnFactory<'a> {
     cx: ExtCtxt<'a>,
 }
 
-impl<'a> AllocFnFactory<'a> {
+impl AllocFnFactory<'_> {
     fn allocator_fn(&self, method: &AllocatorMethod) -> P<Item> {
         let mut abi_args = Vec::new();
         let mut i = 0;
