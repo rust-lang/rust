@@ -418,6 +418,12 @@ impl Step for Rustdoc {
 
     fn run(self, builder: &Builder) -> PathBuf {
         let target_compiler = builder.compiler(builder.top_stage, self.host);
+        if target_compiler.stage == 0 {
+            if !target_compiler.is_snapshot(builder) {
+                panic!("rustdoc in stage 0 must be snapshot rustdoc");
+            }
+            return builder.initial_rustc.with_file_name(exe("rustdoc", &target_compiler.host));
+        }
         let target = target_compiler.host;
         let build_compiler = if target_compiler.stage == 0 {
             builder.compiler(0, builder.config.build)
