@@ -1,0 +1,185 @@
+{
+  "message": "cannot find type `Display` in this scope",
+  "code": {
+    "code": "E0412",
+    "explanation": "
+The type name used is not in scope.
+
+Erroneous code examples:
+
+```compile_fail,E0412
+impl Something {} // error: type name `Something` is not in scope
+
+// or:
+
+trait Foo {
+    fn bar(N); // error: type name `N` is not in scope
+}
+
+// or:
+
+fn foo(x: T) {} // type name `T` is not in scope
+```
+
+To fix this error, please verify you didn't misspell the type name, you did
+declare it or imported it into the scope. Examples:
+
+```
+struct Something;
+
+impl Something {} // ok!
+
+// or:
+
+trait Foo {
+    type N;
+
+    fn bar(_: Self::N); // ok!
+}
+
+// or:
+
+fn foo<T>(x: T) {} // ok!
+```
+
+Another case that causes this error is when a type is imported into a parent
+module. To fix this, you can follow the suggestion and use File directly or
+`use super::File;` which will import the types from the parent namespace. An
+example that causes this error is below:
+
+```compile_fail,E0412
+use std::fs::File;
+
+mod foo {
+    fn some_function(f: File) {}
+}
+```
+
+```
+use std::fs::File;
+
+mod foo {
+    // either
+    use super::File;
+    // or
+    // use std::fs::File;
+    fn foo(f: File) {}
+}
+# fn main() {} // don't insert it for us; that'll break imports
+```
+"
+  },
+  "level": "error",
+  "spans": [
+    {
+      "file_name": "$DIR/issue-53934-multiple-substitutions.rs",
+      "byte_start": 129,
+      "byte_end": 136,
+      "line_start": 5,
+      "line_end": 5,
+      "column_start": 13,
+      "column_end": 20,
+      "is_primary": true,
+      "text": [
+        {
+          "text": "    let d: &Display = &xs;",
+          "highlight_start": 13,
+          "highlight_end": 20
+        }
+      ],
+      "label": "not found in this scope",
+      "suggested_replacement": null,
+      "suggestion_applicability": null,
+      "expansion": null
+    }
+  ],
+  "children": [
+    {
+      "message": "possible candidates are found in other modules, you can import them into scope",
+      "code": null,
+      "level": "help",
+      "spans": [
+        {
+          "file_name": "$DIR/issue-53934-multiple-substitutions.rs",
+          "byte_start": 65,
+          "byte_end": 65,
+          "line_start": 3,
+          "line_end": 3,
+          "column_start": 1,
+          "column_end": 1,
+          "is_primary": true,
+          "text": [
+            {
+              "text": "fn main() {",
+              "highlight_start": 1,
+              "highlight_end": 1
+            }
+          ],
+          "label": null,
+          "suggested_replacement": "use std::fmt::Display;
+
+",
+          "suggestion_applicability": "Unspecified",
+          "expansion": null
+        },
+        {
+          "file_name": "$DIR/issue-53934-multiple-substitutions.rs",
+          "byte_start": 65,
+          "byte_end": 65,
+          "line_start": 3,
+          "line_end": 3,
+          "column_start": 1,
+          "column_end": 1,
+          "is_primary": true,
+          "text": [
+            {
+              "text": "fn main() {",
+              "highlight_start": 1,
+              "highlight_end": 1
+            }
+          ],
+          "label": null,
+          "suggested_replacement": "use std::path::Display;
+
+",
+          "suggestion_applicability": "Unspecified",
+          "expansion": null
+        }
+      ],
+      "children": [],
+      "rendered": null
+    }
+  ],
+  "rendered": "error[E0412]: cannot find type `Display` in this scope
+  --> $DIR/issue-53934-multiple-substitutions.rs:5:13
+   |
+LL |     let d: &Display = &xs;
+   |             ^^^^^^^ not found in this scope
+help: possible candidates are found in other modules, you can import them into scope
+   |
+LL | use std::fmt::Display;
+   |
+LL | use std::path::Display;
+   |
+
+"
+}
+{
+  "message": "aborting due to previous error",
+  "code": null,
+  "level": "error",
+  "spans": [],
+  "children": [],
+  "rendered": "error: aborting due to previous error
+
+"
+}
+{
+  "message": "For more information about this error, try `rustc --explain E0412`.",
+  "code": null,
+  "level": "",
+  "spans": [],
+  "children": [],
+  "rendered": "For more information about this error, try `rustc --explain E0412`.
+"
+}

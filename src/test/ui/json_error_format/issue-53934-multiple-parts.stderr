@@ -1,0 +1,126 @@
+{
+  "message": "expected `}`, found `,`",
+  "code": null,
+  "level": "error",
+  "spans": [
+    {
+      "file_name": "$DIR/issue-53934-multiple-parts.rs",
+      "byte_start": 166,
+      "byte_end": 167,
+      "line_start": 7,
+      "line_end": 7,
+      "column_start": 19,
+      "column_end": 20,
+      "is_primary": true,
+      "text": [
+        {
+          "text": "    let Point { .., y, } = p;",
+          "highlight_start": 19,
+          "highlight_end": 20
+        }
+      ],
+      "label": "expected `}`",
+      "suggested_replacement": null,
+      "suggestion_applicability": null,
+      "expansion": null
+    },
+    {
+      "file_name": "$DIR/issue-53934-multiple-parts.rs",
+      "byte_start": 164,
+      "byte_end": 167,
+      "line_start": 7,
+      "line_end": 7,
+      "column_start": 17,
+      "column_end": 20,
+      "is_primary": false,
+      "text": [
+        {
+          "text": "    let Point { .., y, } = p;",
+          "highlight_start": 17,
+          "highlight_end": 20
+        }
+      ],
+      "label": "`..` must be at the end and cannot have a trailing comma",
+      "suggested_replacement": null,
+      "suggestion_applicability": null,
+      "expansion": null
+    }
+  ],
+  "children": [
+    {
+      "message": "move the `..` to the end of the field list",
+      "code": null,
+      "level": "help",
+      "spans": [
+        {
+          "file_name": "$DIR/issue-53934-multiple-parts.rs",
+          "byte_start": 164,
+          "byte_end": 168,
+          "line_start": 7,
+          "line_end": 7,
+          "column_start": 17,
+          "column_end": 21,
+          "is_primary": true,
+          "text": [
+            {
+              "text": "    let Point { .., y, } = p;",
+              "highlight_start": 17,
+              "highlight_end": 21
+            }
+          ],
+          "label": null,
+          "suggested_replacement": "",
+          "suggestion_applicability": "MachineApplicable",
+          "expansion": null
+        },
+        {
+          "file_name": "$DIR/issue-53934-multiple-parts.rs",
+          "byte_start": 171,
+          "byte_end": 172,
+          "line_start": 7,
+          "line_end": 7,
+          "column_start": 24,
+          "column_end": 25,
+          "is_primary": true,
+          "text": [
+            {
+              "text": "    let Point { .., y, } = p;",
+              "highlight_start": 24,
+              "highlight_end": 25
+            }
+          ],
+          "label": null,
+          "suggested_replacement": ".. }",
+          "suggestion_applicability": "MachineApplicable",
+          "expansion": null
+        }
+      ],
+      "children": [],
+      "rendered": null
+    }
+  ],
+  "rendered": "error: expected `}`, found `,`
+  --> $DIR/issue-53934-multiple-parts.rs:7:19
+   |
+LL |     let Point { .., y, } = p;
+   |                 --^
+   |                 | |
+   |                 | expected `}`
+   |                 `..` must be at the end and cannot have a trailing comma
+help: move the `..` to the end of the field list
+   |
+LL |     let Point { y, .. } = p;
+   |                --  ^^^^
+
+"
+}
+{
+  "message": "aborting due to previous error",
+  "code": null,
+  "level": "error",
+  "spans": [],
+  "children": [],
+  "rendered": "error: aborting due to previous error
+
+"
+}
