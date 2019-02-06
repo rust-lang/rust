@@ -229,8 +229,14 @@ fn rewrite_segment(
                     .chain(data.bindings.iter().map(|x| SegmentParam::Binding(&*x)))
                     .collect::<Vec<_>>();
 
-                let force_separator =
-                    context.inside_macro() && context.snippet(data.span).starts_with("::");
+                // HACK: squeeze out the span between the identifier and the parameters.
+                // The hack is requried so that we don't remove the separator inside macro calls.
+                // This does not work in the presence of comment, hoping that people are
+                // sane about where to put their comment.
+                let separator_snippet = context
+                    .snippet(mk_sp(segment.ident.span.hi(), data.span.lo()))
+                    .trim();
+                let force_separator = context.inside_macro() && separator_snippet.starts_with("::");
                 let separator = if path_context == PathContext::Expr || force_separator {
                     "::"
                 } else {
