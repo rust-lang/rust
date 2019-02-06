@@ -121,20 +121,7 @@ fi
 travis_fold end log-system-info
 
 if [ ! -z "$SCRIPT" ]; then
-  # This `set +e` followed by capturing the return value is a temporary measure
-  # to help debug "error with exit 259" on AppVeyor temporarily, otherwise all
-  # that's needed here is the `sh`
-  set +e
   sh -x -c "$SCRIPT"
-  ret=$?
-  echo "exit code in src/ci/run.sh: $ret"
-
-  echo "tasklist:"
-  tasklist
-  echo -n "location of sh: "
-  where sh
-
-  exit $ret
 else
   do_make() {
     travis_fold start "make-$1"

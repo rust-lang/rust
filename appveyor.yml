@@ -207,10 +207,7 @@ test_script:
   - sh src/ci/init_repo.sh . /c/cache/rustsrc
   - set SRC=.
   - set NO_CCACHE=1
-  # Added this debugging code to try tracking down https://github.com/rust-lang/rust/issues/58160
-  # Replace it with the commented line below after the issue with AppVeyor is fixed
-  - "sh src/ci/run.sh & set ret=%errorlevel% & echo exit code in appveyor.yml: %ret% & exit %ret%"
-#  - sh src/ci/run.sh
+  - sh src/ci/run.sh
 
 on_failure:
   # Dump crash log
