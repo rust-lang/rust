@@ -805,7 +805,7 @@ impl ExprCollector {
                 let lit = match child.flavor() {
                     LiteralFlavor::IntNumber { suffix } => {
                         let known_name = suffix
-                            .map(|s| Name::new(s))
+                            .map(Name::new)
                             .and_then(|name| UncertainIntTy::from_name(&name));
 
                         Literal::Int(
@@ -815,7 +815,7 @@ impl ExprCollector {
                     }
                     LiteralFlavor::FloatNumber { suffix } => {
                         let known_name = suffix
-                            .map(|s| Name::new(s))
+                            .map(Name::new)
                             .and_then(|name| UncertainFloatTy::from_name(&name));
 
                         Literal::Float(
@@ -910,7 +910,7 @@ impl ExprCollector {
             }
             ast::PatKind::PathPat(p) => {
                 let path = p.path().and_then(Path::from_ast);
-                path.map(|path| Pat::Path(path)).unwrap_or(Pat::Missing)
+                path.map(Pat::Path).unwrap_or(Pat::Missing)
             }
             ast::PatKind::TuplePat(p) => {
                 let args = p.args().map(|p| self.collect_pat(p)).collect();

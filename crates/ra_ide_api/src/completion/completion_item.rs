@@ -108,11 +108,11 @@ impl CompletionItem {
         self.lookup
             .as_ref()
             .map(|it| it.as_str())
-            .unwrap_or(self.label())
+            .unwrap_or_else(|| self.label())
     }
 
     pub fn insert_text_format(&self) -> InsertTextFormat {
-        self.insert_text_format.clone()
+        self.insert_text_format
     }
     pub fn insert_text(&self) -> String {
         match &self.insert_text {
@@ -217,7 +217,7 @@ impl Builder {
         let def = resolution
             .as_ref()
             .take_types()
-            .or(resolution.as_ref().take_values());
+            .or_else(|| resolution.as_ref().take_values());
         let def = match def {
             None => return self,
             Some(it) => it,

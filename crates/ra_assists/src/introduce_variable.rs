@@ -8,7 +8,7 @@ use ra_syntax::{
 
 use crate::{AssistCtx, Assist};
 
-pub(crate) fn introduce_variable<'a>(ctx: AssistCtx<impl HirDatabase>) -> Option<Assist> {
+pub(crate) fn introduce_variable(ctx: AssistCtx<impl HirDatabase>) -> Option<Assist> {
     let node = ctx.covering_node();
     if !valid_covering_node(node) {
         return None;
@@ -61,13 +61,13 @@ fn valid_covering_node(node: &SyntaxNode) -> bool {
 /// Check wether the node is a valid expression which can be extracted to a variable.
 /// In general that's true for any expression, but in some cases that would produce invalid code.
 fn valid_target_expr(node: &SyntaxNode) -> Option<&ast::Expr> {
-    return match node.kind() {
+    match node.kind() {
         PATH_EXPR => None,
         BREAK_EXPR => ast::BreakExpr::cast(node).and_then(|e| e.expr()),
         RETURN_EXPR => ast::ReturnExpr::cast(node).and_then(|e| e.expr()),
         LOOP_EXPR => ast::ReturnExpr::cast(node).and_then(|e| e.expr()),
         _ => ast::Expr::cast(node),
-    };
+    }
 }
 
 /// Returns the syntax node which will follow the freshly introduced var

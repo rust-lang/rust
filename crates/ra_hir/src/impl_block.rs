@@ -72,7 +72,7 @@ impl ImplBlock {
     }
 
     pub fn module(&self) -> Module {
-        self.module_impl_blocks.module.clone()
+        self.module_impl_blocks.module
     }
 
     pub fn target_trait_ref(&self) -> Option<&TypeRef> {

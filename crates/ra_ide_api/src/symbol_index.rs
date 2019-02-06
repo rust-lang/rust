@@ -137,7 +137,7 @@ impl SymbolIndex {
         symbols.par_sort_by(cmp);
         symbols.dedup_by(|s1, s2| cmp(s1, s2) == Ordering::Equal);
         let names = symbols.iter().map(|it| it.name.as_str().to_lowercase());
-        let map = fst::Map::from_iter(names.into_iter().zip(0u64..)).unwrap();
+        let map = fst::Map::from_iter(names.zip(0u64..)).unwrap();
         SymbolIndex { symbols, map }
     }
 

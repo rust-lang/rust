@@ -1225,7 +1225,7 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
                     Ty::Tuple(ref tuple_args) => &**tuple_args,
                     _ => &[],
                 };
-                let expectations_iter = expectations.into_iter().chain(repeat(&Ty::Unknown));
+                let expectations_iter = expectations.iter().chain(repeat(&Ty::Unknown));
 
                 let inner_tys = args
                     .iter()
@@ -1398,10 +1398,10 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
                 let method_ty = self.insert_type_vars(method_ty);
                 let (expected_receiver_ty, param_tys, ret_ty) = match &method_ty {
                     Ty::FnPtr(sig) => {
-                        if sig.input.len() > 0 {
+                        if !sig.input.is_empty() {
                             (
                                 sig.input[0].clone(),
-                                sig.input[1..].iter().cloned().collect(),
+                                sig.input[1..].to_vec(),
                                 sig.output.clone(),
                             )
                         } else {
@@ -1411,7 +1411,7 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
                     Ty::FnDef { substs, sig, .. } => {
                         let ret_ty = sig.output.clone().subst(&substs);
 
-                        if sig.input.len() > 0 {
+                        if !sig.input.is_empty() {
                             let mut arg_iter = sig.input.iter().map(|ty| ty.clone().subst(&substs));
                             let receiver_ty = arg_iter.next().unwrap();
                             (receiver_ty, arg_iter.collect(), ret_ty)

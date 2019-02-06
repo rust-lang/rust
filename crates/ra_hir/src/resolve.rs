@@ -78,7 +78,7 @@ impl Resolver {
                 _ => return PerNs::none(),
             };
             let module_res = item_map.resolve_path(db, module, path);
-            module_res.map(|def| Resolution::Def(def))
+            module_res.map(Resolution::Def)
         }
     }
 

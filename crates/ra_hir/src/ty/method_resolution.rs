@@ -113,7 +113,7 @@ impl CrateImplBlocks {
         krate: Crate,
     ) -> Arc<CrateImplBlocks> {
         let mut crate_impl_blocks = CrateImplBlocks {
-            krate: krate.clone(),
+            krate,
             impls: FxHashMap::default(),
             impls_by_trait: FxHashMap::default(),
         };
