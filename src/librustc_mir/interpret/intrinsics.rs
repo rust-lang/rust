@@ -139,12 +139,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> 
                             Scalar::from_uint(1u128 << (num_bits - 1), Size::from_bits(num_bits))
                         }
                     } else {
-                        if num_bits == 128 {
-                            Scalar::from_uint(u128::max_value(), Size::from_bits(128))
-                        } else {
-                            Scalar::from_uint(u128::max_value() & ((1 << num_bits) - 1),
-                                Size::from_bits(num_bits))
-                        }
+                        Scalar::from_uint(u128::max_value() >> (128 - num_bits), Size::from_bits(num_bits))
                     };
                     self.write_scalar(val, dest)?;
                 } else {
@@ -158,12 +153,17 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> 
                 if overflowed {
                     let first_term: u128 = l.to_scalar()?.to_bits(l.layout.size)?;
                     let num_bits = l.layout.size.bits();
-                    let val = if first_term & (1 << (num_bits-1)) == 0 {  // first term is positive
-                        // so overflow is positive
-                        Scalar::from_uint((1u128 << (num_bits - 1)) - 1, Size::from_bits(num_bits))
+                    let val = if l.layout.abi.is_signed() {
+                        if first_term & (1 << (num_bits-1)) == 0 {  // first term is positive
+                            // so overflow is positive
+                            Scalar::from_uint((1u128 << (num_bits - 1)) - 1, Size::from_bits(num_bits))
+                        } else {
+                            // if first term negative, overflow must be negative
+                            Scalar::from_uint(1u128 << (num_bits - 1), Size::from_bits(num_bits))
+                        }
                     } else {
-                        // if first term negative, overflow must be negative
-                        Scalar::from_uint(1u128 << (num_bits - 1), Size::from_bits(num_bits))
+                        // unsigned underflow saturates to 0
+                        Scalar::from_uint(0u128, Size::from_bits(num_bits))
                     };
                     self.write_scalar(val, dest)?;
                 } else {
