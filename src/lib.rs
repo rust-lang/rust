@@ -50,10 +50,11 @@ use crate::comment::LineClasses;
 use crate::formatting::{FormatErrorMap, FormattingError, ReportedErrors, SourceFile};
 use crate::issues::Issue;
 use crate::shape::Indent;
+use crate::utils::indent_next_line;
 
 pub use crate::config::{
     load_config, CliOptions, Color, Config, Edition, EmitMode, FileLines, FileName, NewlineStyle,
-    Range, Verbosity,
+    Range, Verbosity, Version,
 };
 
 #[macro_use]
@@ -438,7 +439,7 @@ fn format_code_block(code_snippet: &str, config: &Config) -> Option<FormattedSni
             }
             result.push_str(&line);
             result.push('\n');
-            need_indent = !kind.is_string() || line.ends_with('\\');
+            need_indent = indent_next_line(kind, &line, config);
         }
         result.push('}');
         result
@@ -499,7 +500,7 @@ fn format_code_block(code_snippet: &str, config: &Config) -> Option<FormattedSni
             line
         };
         result.push_str(trimmed_line);
-        is_indented = !kind.is_string() || line.ends_with('\\');
+        is_indented = indent_next_line(kind, line, config);
     }
     Some(FormattedSnippet {
         snippet: result,
