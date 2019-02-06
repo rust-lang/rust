@@ -37,6 +37,13 @@ pub fn get_ptr_and_method_ref<'a, 'tcx: 'a>(
     arg: CValue<'tcx>,
     idx: usize,
 ) -> (Value, Value) {
+    let arg = if arg.layout().ty.is_box() {
+        // Cast `Box<T>` to `*mut T` so `load_value_pair` works
+        arg.unchecked_cast_to(fx.layout_of(fx.tcx.mk_mut_ptr(arg.layout().ty.boxed_ty())))
+    } else {
+        arg
+    };
+
     let (ptr, vtable) = arg.load_value_pair(fx);
     let usize_size = fx.layout_of(fx.tcx.types.usize).size.bytes();
     let func_ref = fx.bcx.ins().load(
