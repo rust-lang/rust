@@ -130,19 +130,39 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> 
                     let first_term: u128 = l.to_scalar()?.to_bits(l.layout.size)?;
                     let num_bits = l.layout.size.bits();
                     let val = if l.layout.abi.is_signed() {
-                        // For signed addition the saturated value depends on the sign of either term
+                        // For signed addition the saturated value depends on the
+                        // sign of either term
                         if first_term & (1 << (num_bits-1)) == 0 {  // signed term is positive
-                            Scalar::from_uint((1u128 << (num_bits - 1)) - 1, Size::from_bits(num_bits))  // max signed val
+                            Scalar::from_uint((1u128 << (num_bits - 1)) - 1, Size::from_bits(num_bits))
                         } else {  // signed term is negative
-                            Scalar::from_uint(1u128 << (num_bits - 1), Size::from_bits(num_bits))  // min signed val
+                            Scalar::from_uint(1u128 << (num_bits - 1), Size::from_bits(num_bits))
                         }
                     } else {
-                        if num_bits == 128 {  // General bit shift method causes overflow for u128 terms
+                        if num_bits == 128 {
                             Scalar::from_uint(u128::max_value(), Size::from_bits(128))
                         } else {
                             Scalar::from_uint(u128::max_value() & ((1 << num_bits) - 1),
                                 Size::from_bits(num_bits))
                         }
+                    };
+                    self.write_scalar(val, dest)?;
+                } else {
+                    self.write_scalar(val, dest)?;
+                }
+            }
+            "saturating_sub" => {
+                let l = self.read_immediate(args[0])?;
+                let r = self.read_immediate(args[1])?;
+                let (val, overflowed) = self.binary_op_imm(BinOp::Sub, l, r)?;
+                if overflowed {
+                    let first_term: u128 = l.to_scalar()?.to_bits(l.layout.size)?;
+                    let num_bits = l.layout.size.bits();
+                    let val = if first_term & (1 << (num_bits-1)) == 0 {  // first term is positive
+                        // so overflow is positive
+                        Scalar::from_uint((1u128 << (num_bits - 1)) - 1, Size::from_bits(num_bits))
+                    } else {
+                        // if first term negative, overflow must be negative
+                        Scalar::from_uint(1u128 << (num_bits - 1), Size::from_bits(num_bits))
                     };
                     self.write_scalar(val, dest)?;
                 } else {

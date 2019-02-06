@@ -375,6 +375,7 @@ fn is_intrinsic_whitelisted(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: DefId) -> bool 
         | "overflowing_sub" // ~> .wrapping_sub
         | "overflowing_mul" // ~> .wrapping_mul
         | "saturating_add" // ~> .saturating_add
+        | "saturating_sub" // ~> .saturating_sub
         | "unchecked_shl" // ~> .wrapping_shl
         | "unchecked_shr" // ~> .wrapping_shr
         | "rotate_left" // ~> .rotate_left
