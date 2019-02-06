@@ -1045,7 +1045,7 @@ impl<T: ?Sized> DerefMut for ManuallyDrop<T> {
 /// ```rust,no_run
 /// use std::mem;
 ///
-/// let x: &i32 = mem::zeroed(); // undefined behavior!
+/// let x: &i32 = unsafe { mem::zeroed() }; // undefined behavior!
 /// ```
 /// This is exploited by the compiler for various optimizations, such as eliding
 /// run-time checks and optimizing `enum` layout.
@@ -1058,6 +1058,7 @@ impl<T: ?Sized> DerefMut for ManuallyDrop<T> {
 /// it is a signal to the compiler indicating that the data here might *not*
 /// be initialized:
 /// ```rust
+/// #![feature(maybe_uninit)]
 /// use std::mem::MaybeUninit;
 ///
 /// // Create an explicitly uninitialized reference.
