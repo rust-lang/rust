@@ -2,6 +2,8 @@
 #![allow(clippy::blacklisted_name)]
 #![allow(unused)]
 
+/// Test for https://github.com/rust-lang/rust-clippy/issues/3462
+
 enum Foo {
     Bar,
     Baz,

@@ -133,7 +133,6 @@ fn prepare_env() {
 #[test]
 fn compile_test() {
     prepare_env();
-    run_mode("run-pass", "tests/run-pass".into());
     run_mode("ui", "tests/ui".into());
     run_ui_toml();
 }
