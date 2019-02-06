@@ -2855,16 +2855,18 @@ fn short_stability(item: &clean::Item, cx: &Context) -> Vec<String> {
     let mut stability = vec![];
     let error_codes = ErrorCodes::from(UnstableFeatures::from_environment().is_nightly_build());
 
-    if let Some(Deprecation { note, .. }) = &item.deprecation() {
+    if let Some(Deprecation { note, since }) = &item.deprecation() {
         // We display deprecation messages for #[deprecated] and #[rustc_deprecated]
         // but only display the future-deprecation messages for #[rustc_deprecated].
-        let mut message = String::from("Deprecated");
+        let mut message = if let Some(since) = since {
+            format!("Deprecated since {}", Escape(since))
+        } else {
+            String::from("Deprecated")
+        };
         if let Some(ref stab) = item.stability {
             if let Some(ref depr) = stab.deprecation {
                 if let Some(ref since) = depr.since {
-                    if stability::deprecation_in_effect(&since) {
-                        message = format!("Deprecated since {}", Escape(&since));
-                    } else {
+                    if !stability::deprecation_in_effect(&since) {
                         message = format!("Deprecating in {}", Escape(&since));
                     }
                 }
