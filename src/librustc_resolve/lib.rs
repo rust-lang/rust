@@ -4,30 +4,19 @@
 
 #![feature(crate_visibility_modifier)]
 #![feature(label_break_value)]
-#![feature(nll)]
 #![feature(rustc_diagnostic_macros)]
 #![feature(slice_sort_by_cached_key)]
 
 #![recursion_limit="256"]
 
-#[macro_use]
-extern crate bitflags;
-#[macro_use]
-extern crate log;
-#[macro_use]
-extern crate syntax;
-extern crate syntax_pos;
-extern crate rustc_errors as errors;
-extern crate arena;
-#[macro_use]
-extern crate rustc;
-extern crate rustc_data_structures;
-extern crate rustc_metadata;
+#![deny(rust_2018_idioms)]
+
+use rustc_errors as errors;
 
 pub use rustc::hir::def::{Namespace, PerNS};
 
-use self::TypeParameters::*;
-use self::RibKind::*;
+use TypeParameters::*;
+use RibKind::*;
 
 use rustc::hir::map::{Definitions, DefCollector};
 use rustc::hir::{self, PrimTy, Bool, Char, Float, Int, Uint, Str};
@@ -41,6 +30,7 @@ use rustc::hir::{Freevar, FreevarMap, TraitCandidate, TraitMap, GlobMap};
 use rustc::session::config::nightly_options;
 use rustc::ty;
 use rustc::util::nodemap::{NodeMap, NodeSet, FxHashMap, FxHashSet, DefIdMap};
+use rustc::{bug, span_bug};
 
 use rustc_metadata::creader::CrateLoader;
 use rustc_metadata::cstore::CStore;
@@ -62,9 +52,12 @@ use syntax::ast::{Item, ItemKind, ImplItem, ImplItemKind};
 use syntax::ast::{Label, Local, Mutability, Pat, PatKind, Path};
 use syntax::ast::{QSelf, TraitItemKind, TraitRef, Ty, TyKind};
 use syntax::ptr::P;
+use syntax::{span_err, struct_span_err, unwrap_or, walk_list};
 
 use syntax_pos::{BytePos, Span, DUMMY_SP, MultiSpan};
 use errors::{Applicability, DiagnosticBuilder, DiagnosticId};
+
+use log::debug;
 
 use std::cell::{Cell, RefCell};
 use std::{cmp, fmt, iter, mem, ptr};
@@ -191,13 +184,13 @@ enum ResolutionError<'a> {
 ///
 /// This takes the error provided, combines it with the span and any additional spans inside the
 /// error and emits it.
-fn resolve_error<'sess, 'a>(resolver: &'sess Resolver,
+fn resolve_error<'sess, 'a>(resolver: &'sess Resolver<'_>,
                             span: Span,
                             resolution_error: ResolutionError<'a>) {
     resolve_struct_error(resolver, span, resolution_error).emit();
 }
 
-fn resolve_struct_error<'sess, 'a>(resolver: &'sess Resolver,
+fn resolve_struct_error<'sess, 'a>(resolver: &'sess Resolver<'_>,
                                    span: Span,
                                    resolution_error: ResolutionError<'a>)
                                    -> DiagnosticBuilder<'sess> {
@@ -1192,7 +1185,7 @@ impl<'a> ModuleData<'a> {
 }
 
 impl<'a> fmt::Debug for ModuleData<'a> {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "{:?}", self.def())
     }
 }
@@ -1416,7 +1409,7 @@ impl<'a> NameBinding<'a> {
     // in some later round and screw up our previously found resolution.
     // See more detailed explanation in
     // https://github.com/rust-lang/rust/pull/53778#issuecomment-419224049
-    fn may_appear_after(&self, invoc_parent_expansion: Mark, binding: &NameBinding) -> bool {
+    fn may_appear_after(&self, invoc_parent_expansion: Mark, binding: &NameBinding<'_>) -> bool {
         // self > max(invoc, binding) => !(self <= invoc || self <= binding)
         // Expansions are partially ordered, so "may appear after" is an inversion of
         // "certainly appears before or simultaneously" and includes unordered cases.
@@ -1630,14 +1623,14 @@ impl<'a> ResolverArenas<'a> {
         }
         module
     }
-    fn local_modules(&'a self) -> ::std::cell::Ref<'a, Vec<Module<'a>>> {
+    fn local_modules(&'a self) -> std::cell::Ref<'a, Vec<Module<'a>>> {
         self.local_modules.borrow()
     }
     fn alloc_name_binding(&'a self, name_binding: NameBinding<'a>) -> &'a NameBinding<'a> {
         self.name_bindings.alloc(name_binding)
     }
     fn alloc_import_directive(&'a self, import_directive: ImportDirective<'a>)
-                              -> &'a ImportDirective {
+                              -> &'a ImportDirective<'_> {
         self.import_directives.alloc(import_directive)
     }
     fn alloc_name_resolution(&'a self) -> &'a RefCell<NameResolution<'a>> {
@@ -1754,7 +1747,7 @@ impl<'a> Resolver<'a> {
         is_value: bool,
         error_callback: F,
     ) -> hir::Path
-        where F: for<'c, 'b> FnOnce(&'c mut Resolver, Span, ResolutionError<'b>)
+        where F: for<'c, 'b> FnOnce(&'c mut Resolver<'_>, Span, ResolutionError<'b>)
     {
         let namespace = if is_value { ValueNS } else { TypeNS };
         let span = path.span;
@@ -1819,7 +1812,7 @@ impl<'a> Resolver<'a> {
         DefCollector::new(&mut definitions, Mark::root())
             .collect_root(crate_name, session.local_crate_disambiguator());
 
-        let mut extern_prelude: FxHashMap<Ident, ExternPreludeEntry> =
+        let mut extern_prelude: FxHashMap<Ident, ExternPreludeEntry<'_>> =
             session.opts.externs.iter().map(|kv| (Ident::from_str(kv.0), Default::default()))
                                        .collect();
 
@@ -2315,7 +2308,7 @@ impl<'a> Resolver<'a> {
     // implementations thus found, for compatibility with old resolve pass.
 
     pub fn with_scope<F, T>(&mut self, id: NodeId, f: F) -> T
-        where F: FnOnce(&mut Resolver) -> T
+        where F: FnOnce(&mut Resolver<'_>) -> T
     {
         let id = self.definitions.local_def_id(id);
         let module = self.module_map.get(&id).cloned(); // clones a reference
@@ -2342,7 +2335,7 @@ impl<'a> Resolver<'a> {
     ///
     /// Stops after meeting a closure.
     fn search_label<P, R>(&self, mut ident: Ident, pred: P) -> Option<R>
-        where P: Fn(&Rib, Ident) -> Option<R>
+        where P: Fn(&Rib<'_>, Ident) -> Option<R>
     {
         for rib in self.label_ribs.iter().rev() {
             match rib.kind {
@@ -2527,7 +2520,7 @@ impl<'a> Resolver<'a> {
     }
 
     fn with_type_parameter_rib<'b, F>(&'b mut self, type_parameters: TypeParameters<'a, 'b>, f: F)
-        where F: FnOnce(&mut Resolver)
+        where F: FnOnce(&mut Resolver<'_>)
     {
         match type_parameters {
             HasTypeParameters(generics, rib_kind) => {
@@ -2573,7 +2566,7 @@ impl<'a> Resolver<'a> {
     }
 
     fn with_label_rib<F>(&mut self, f: F)
-        where F: FnOnce(&mut Resolver)
+        where F: FnOnce(&mut Resolver<'_>)
     {
         self.label_ribs.push(Rib::new(NormalRibKind));
         f(self);
@@ -2581,7 +2574,7 @@ impl<'a> Resolver<'a> {
     }
 
     fn with_item_rib<F>(&mut self, f: F)
-        where F: FnOnce(&mut Resolver)
+        where F: FnOnce(&mut Resolver<'_>)
     {
         self.ribs[ValueNS].push(Rib::new(ItemRibKind));
         self.ribs[TypeNS].push(Rib::new(ItemRibKind));
@@ -2591,7 +2584,7 @@ impl<'a> Resolver<'a> {
     }
 
     fn with_constant_rib<F>(&mut self, f: F)
-        where F: FnOnce(&mut Resolver)
+        where F: FnOnce(&mut Resolver<'_>)
     {
         self.ribs[ValueNS].push(Rib::new(ConstantItemRibKind));
         self.label_ribs.push(Rib::new(ConstantItemRibKind));
@@ -2601,7 +2594,7 @@ impl<'a> Resolver<'a> {
     }
 
     fn with_current_self_type<T, F>(&mut self, self_type: &Ty, f: F) -> T
-        where F: FnOnce(&mut Resolver) -> T
+        where F: FnOnce(&mut Resolver<'_>) -> T
     {
         // Handle nested impls (inside fn bodies)
         let previous_value = replace(&mut self.current_self_type, Some(self_type.clone()));
@@ -2611,7 +2604,7 @@ impl<'a> Resolver<'a> {
     }
 
     fn with_current_self_item<T, F>(&mut self, self_item: &Item, f: F) -> T
-        where F: FnOnce(&mut Resolver) -> T
+        where F: FnOnce(&mut Resolver<'_>) -> T
     {
         let previous_value = replace(&mut self.current_self_item, Some(self_item.id));
         let result = f(self);
@@ -2621,7 +2614,7 @@ impl<'a> Resolver<'a> {
 
     /// This is called to resolve a trait reference from an `impl` (i.e., `impl Trait for Foo`)
     fn with_optional_trait_ref<T, F>(&mut self, opt_trait_ref: Option<&TraitRef>, f: F) -> T
-        where F: FnOnce(&mut Resolver, Option<DefId>) -> T
+        where F: FnOnce(&mut Resolver<'_>, Option<DefId>) -> T
     {
         let mut new_val = None;
         let mut new_id = None;
@@ -2658,7 +2651,7 @@ impl<'a> Resolver<'a> {
     }
 
     fn with_self_rib<F>(&mut self, self_def: Def, f: F)
-        where F: FnOnce(&mut Resolver)
+        where F: FnOnce(&mut Resolver<'_>)
     {
         let mut self_type_rib = Rib::new(NormalRibKind);
 
@@ -2670,7 +2663,7 @@ impl<'a> Resolver<'a> {
     }
 
     fn with_self_struct_ctor_rib<F>(&mut self, impl_id: DefId, f: F)
-        where F: FnOnce(&mut Resolver)
+        where F: FnOnce(&mut Resolver<'_>)
     {
         let self_def = Def::SelfCtor(impl_id);
         let mut self_type_rib = Rib::new(NormalRibKind);
@@ -2771,7 +2764,7 @@ impl<'a> Resolver<'a> {
     }
 
     fn check_trait_item<F>(&mut self, ident: Ident, ns: Namespace, span: Span, err: F)
-        where F: FnOnce(Name, &str) -> ResolutionError
+        where F: FnOnce(Name, &str) -> ResolutionError<'_>
     {
         // If there is a TraitRef in scope for an impl, then the method must be in the
         // trait.
@@ -3102,7 +3095,7 @@ impl<'a> Resolver<'a> {
                           id: NodeId,
                           qself: Option<&QSelf>,
                           path: &Path,
-                          source: PathSource)
+                          source: PathSource<'_>)
                           -> PathResolution {
         self.smart_resolve_path_with_crate_lint(id, qself, path, source, CrateLint::SimplePath(id))
     }
@@ -3120,7 +3113,7 @@ impl<'a> Resolver<'a> {
         id: NodeId,
         qself: Option<&QSelf>,
         path: &Path,
-        source: PathSource,
+        source: PathSource<'_>,
         crate_lint: CrateLint
     ) -> PathResolution {
         self.smart_resolve_path_fragment(
@@ -3138,7 +3131,7 @@ impl<'a> Resolver<'a> {
                                    qself: Option<&QSelf>,
                                    path: &[Segment],
                                    span: Span,
-                                   source: PathSource,
+                                   source: PathSource<'_>,
                                    crate_lint: CrateLint)
                                    -> PathResolution {
         let ident_span = path.last().map_or(span, |ident| ident.ident.span);
@@ -3581,7 +3574,7 @@ impl<'a> Resolver<'a> {
     }
 
     fn type_ascription_suggestion(&self,
-                                  err: &mut DiagnosticBuilder,
+                                  err: &mut DiagnosticBuilder<'_>,
                                   base_span: Span) {
         debug!("type_ascription_suggetion {:?}", base_span);
         let cm = self.session.source_map();
@@ -4040,7 +4033,7 @@ impl<'a> Resolver<'a> {
         crate_lint: CrateLint,
         path: &[Segment],
         path_span: Span,
-        second_binding: Option<&NameBinding>,
+        second_binding: Option<&NameBinding<'_>>,
     ) {
         let (diag_id, diag_span) = match crate_lint {
             CrateLint::No => return,
@@ -4266,7 +4259,7 @@ impl<'a> Resolver<'a> {
     where
         FilterFn: Fn(Def) -> bool,
     {
-        let add_module_candidates = |module: Module, names: &mut Vec<TypoSuggestion>| {
+        let add_module_candidates = |module: Module<'_>, names: &mut Vec<TypoSuggestion>| {
             for (&(ident, _), resolution) in module.resolutions.borrow().iter() {
                 if let Some(binding) = resolution.borrow().binding {
                     if filter_fn(binding.def()) {
@@ -4361,7 +4354,7 @@ impl<'a> Resolver<'a> {
     }
 
     fn with_resolved_label<F>(&mut self, label: Option<Label>, id: NodeId, f: F)
-        where F: FnOnce(&mut Resolver)
+        where F: FnOnce(&mut Resolver<'_>)
     {
         if let Some(label) = label {
             self.unused_labels.insert(id, label.ident.span);
@@ -4950,7 +4943,7 @@ impl<'a> Resolver<'a> {
         }
     }
 
-    fn binding_description(&self, b: &NameBinding, ident: Ident, from_prelude: bool) -> String {
+    fn binding_description(&self, b: &NameBinding<'_>, ident: Ident, from_prelude: bool) -> String {
         if b.span.is_dummy() {
             let add_built_in = match b.def() {
                 // These already contain the "built-in" prefix or look bad with it.
@@ -4978,7 +4971,7 @@ impl<'a> Resolver<'a> {
         }
     }
 
-    fn report_ambiguity_error(&self, ambiguity_error: &AmbiguityError) {
+    fn report_ambiguity_error(&self, ambiguity_error: &AmbiguityError<'_>) {
         let AmbiguityError { kind, ident, b1, b2, misc1, misc2 } = *ambiguity_error;
         let (b1, b2, misc1, misc2, swapped) = if b2.span.is_dummy() && !b1.span.is_dummy() {
             // We have to print the span-less alternative first, otherwise formatting looks bad.
@@ -4992,7 +4985,7 @@ impl<'a> Resolver<'a> {
                                        ident = ident, why = kind.descr());
         err.span_label(ident.span, "ambiguous name");
 
-        let mut could_refer_to = |b: &NameBinding, misc: AmbiguityErrorMisc, also: &str| {
+        let mut could_refer_to = |b: &NameBinding<'_>, misc: AmbiguityErrorMisc, also: &str| {
             let what = self.binding_description(b, ident, misc == AmbiguityErrorMisc::FromPrelude);
             let note_msg = format!("`{ident}` could{also} refer to {what}",
                                    ident = ident, also = also, what = what);
@@ -5073,7 +5066,7 @@ impl<'a> Resolver<'a> {
     }
 
     fn report_conflict<'b>(&mut self,
-                       parent: Module,
+                       parent: Module<'_>,
                        ident: Ident,
                        ns: Namespace,
                        new_binding: &NameBinding<'b>,
@@ -5451,7 +5444,7 @@ fn import_candidate_to_enum_paths(suggestion: &ImportSuggestion) -> (String, Str
 /// When an entity with a given name is not available in scope, we search for
 /// entities with that name in all crates. This method allows outputting the
 /// results of this search in a programmer-friendly way
-fn show_candidates(err: &mut DiagnosticBuilder,
+fn show_candidates(err: &mut DiagnosticBuilder<'_>,
                    // This is `None` if all placement locations are inside expansions
                    span: Option<Span>,
                    candidates: &[ImportSuggestion],
@@ -5500,10 +5493,10 @@ fn show_candidates(err: &mut DiagnosticBuilder,
 }
 
 /// A somewhat inefficient routine to obtain the name of a module.
-fn module_to_string(module: Module) -> Option<String> {
+fn module_to_string(module: Module<'_>) -> Option<String> {
     let mut names = Vec::new();
 
-    fn collect_mod(names: &mut Vec<Ident>, module: Module) {
+    fn collect_mod(names: &mut Vec<Ident>, module: Module<'_>) {
         if let ModuleKind::Def(_, name) = module.kind {
             if let Some(parent) = module.parent {
                 names.push(Ident::with_empty_ctxt(name));
