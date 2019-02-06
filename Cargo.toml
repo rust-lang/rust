@@ -34,7 +34,6 @@ path = "src/main.rs"
 
 [[bin]]
 name = "clippy-driver"
-test = false
 path = "src/driver.rs"
 
 [dependencies]

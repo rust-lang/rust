@@ -20,6 +20,46 @@ fn show_version() {
     println!(env!("CARGO_PKG_VERSION"));
 }
 
+/// If a command-line option matches `find_arg`, then apply the predicate `pred` on its value. If
+/// true, then return it. The parameter is assumed to be either `--arg=value` or `--arg value`.
+fn arg_value<'a>(
+    args: impl IntoIterator<Item = &'a String>,
+    find_arg: &str,
+    pred: impl Fn(&str) -> bool,
+) -> Option<&'a str> {
+    let mut args = args.into_iter().map(String::as_str);
+
+    while let Some(arg) = args.next() {
+        let arg: Vec<_> = arg.splitn(2, '=').collect();
+        if arg.get(0) != Some(&find_arg) {
+            continue;
+        }
+
+        let value = arg.get(1).cloned().or_else(|| args.next());
+        if value.as_ref().map_or(false, |p| pred(p)) {
+            return value;
+        }
+    }
+    None
+}
+
+#[test]
+fn test_arg_value() {
+    let args: Vec<_> = ["--bar=bar", "--foobar", "123", "--foo"]
+        .iter()
+        .map(|s| s.to_string())
+        .collect();
+
+    assert_eq!(arg_value(None, "--foobar", |_| true), None);
+    assert_eq!(arg_value(&args, "--bar", |_| false), None);
+    assert_eq!(arg_value(&args, "--bar", |_| true), Some("bar"));
+    assert_eq!(arg_value(&args, "--bar", |p| p == "bar"), Some("bar"));
+    assert_eq!(arg_value(&args, "--bar", |p| p == "foo"), None);
+    assert_eq!(arg_value(&args, "--foobar", |p| p == "foo"), None);
+    assert_eq!(arg_value(&args, "--foobar", |p| p == "123"), Some("123"));
+    assert_eq!(arg_value(&args, "--foo", |_| true), None);
+}
+
 #[allow(clippy::too_many_lines)]
 pub fn main() {
     rustc_driver::init_rustc_env_logger();
@@ -32,8 +72,19 @@ pub fn main() {
                 exit(0);
             }
 
-            let sys_root = option_env!("SYSROOT")
-                .map(String::from)
+            let mut orig_args: Vec<String> = env::args().collect();
+
+            // Get the sysroot, looking from most specific to this invocation to the least:
+            // - command line
+            // - runtime environment
+            //    - SYSROOT
+            //    - RUSTUP_HOME, MULTIRUST_HOME, RUSTUP_TOOLCHAIN, MULTIRUST_TOOLCHAIN
+            // - sysroot from rustc in the path
+            // - compile-time environment
+            let sys_root_arg = arg_value(&orig_args, "--sysroot", |_| true);
+            let have_sys_root_arg = sys_root_arg.is_some();
+            let sys_root = sys_root_arg
+                .map(|s| s.to_string())
                 .or_else(|| std::env::var("SYSROOT").ok())
                 .or_else(|| {
                     let home = option_env!("RUSTUP_HOME").or(option_env!("MULTIRUST_HOME"));
@@ -49,11 +100,11 @@ pub fn main() {
                         .and_then(|out| String::from_utf8(out.stdout).ok())
                         .map(|s| s.trim().to_owned())
                 })
+                .or_else(|| option_env!("SYSROOT").map(String::from))
                 .expect("need to specify SYSROOT env var during clippy compilation, or use rustup or multirust");
 
             // Setting RUSTC_WRAPPER causes Cargo to pass 'rustc' as the first argument.
             // We're invoking the compiler programmatically, so we ignore this/
-            let mut orig_args: Vec<String> = env::args().collect();
             if orig_args.len() <= 1 {
                 std::process::exit(1);
             }
@@ -64,7 +115,7 @@ pub fn main() {
             // this conditional check for the --sysroot flag is there so users can call
             // `clippy_driver` directly
             // without having to pass --sysroot or anything
-            let mut args: Vec<String> = if orig_args.iter().any(|s| s == "--sysroot") {
+            let mut args: Vec<String> = if have_sys_root_arg {
                 orig_args.clone()
             } else {
                 orig_args
@@ -79,7 +130,7 @@ pub fn main() {
             // crate is
             // linted but not built
             let clippy_enabled = env::var("CLIPPY_TESTS").ok().map_or(false, |val| val == "true")
-                || orig_args.iter().any(|s| s == "--emit=dep-info,metadata");
+                || arg_value(&orig_args, "--emit", |val| val.split(',').any(|e| e == "metadata")).is_some();
 
             if clippy_enabled {
                 args.extend_from_slice(&["--cfg".to_owned(), r#"feature="cargo-clippy""#.to_owned()]);
