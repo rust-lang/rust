@@ -23,7 +23,6 @@ matrix:
     - env: INTEGRATION=chalk
     - env: INTEGRATION=crater
     - env: INTEGRATION=error-chain
-    - env: INTEGRATION=failure
     - env: INTEGRATION=futures-rs
     - env: INTEGRATION=glob
     - env: INTEGRATION=log
@@ -39,6 +38,8 @@ matrix:
     - env: INTEGRATION=packed_simd
     # Doesn't build - a temporal build failure due to breaking changes in the nightly compilre
     - env: INTEGRATION=rust-semverver
+    # can be moved back to include section after https://github.com/rust-lang-nursery/failure/pull/298 is merged
+    - env: INTEGRATION=failure
 
 script:
   - |
