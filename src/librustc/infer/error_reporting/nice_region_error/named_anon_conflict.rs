@@ -2,13 +2,12 @@
 //! where one region is named and the other is anonymous.
 use crate::infer::error_reporting::nice_region_error::NiceRegionError;
 use crate::ty;
-use crate::util::common::ErrorReported;
-use errors::Applicability;
+use errors::{Applicability, DiagnosticBuilder};
 
 impl<'a, 'gcx, 'tcx> NiceRegionError<'a, 'gcx, 'tcx> {
     /// When given a `ConcreteFailure` for a function with arguments containing a named region and
     /// an anonymous region, emit an descriptive diagnostic error.
-    pub(super) fn try_report_named_anon_conflict(&self) -> Option<ErrorReported> {
+    pub(super) fn try_report_named_anon_conflict(&self) -> Option<DiagnosticBuilder<'a>> {
         let (span, sub, sup) = self.get_regions();
 
         debug!(
@@ -96,21 +95,23 @@ impl<'a, 'gcx, 'tcx> NiceRegionError<'a, 'gcx, 'tcx> {
             ("parameter type".to_owned(), "type".to_owned())
         };
 
-        struct_span_err!(
+        let mut diag = struct_span_err!(
             self.tcx().sess,
             span,
             E0621,
             "explicit lifetime required in {}",
             error_var
-        ).span_suggestion(
-            new_ty_span,
-            &format!("add explicit lifetime `{}` to {}", named, span_label_var),
-            new_ty.to_string(),
-            Applicability::Unspecified,
-        )
-        .span_label(span, format!("lifetime `{}` required", named))
-        .emit();
-        return Some(ErrorReported);
+        );
+
+        diag.span_suggestion(
+                new_ty_span,
+                &format!("add explicit lifetime `{}` to {}", named, span_label_var),
+                new_ty.to_string(),
+                Applicability::Unspecified,
+            )
+            .span_label(span, format!("lifetime `{}` required", named));
+
+        Some(diag)
     }
 
     // This method returns whether the given Region is Named
