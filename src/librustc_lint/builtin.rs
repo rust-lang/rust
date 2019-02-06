@@ -499,7 +499,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for MissingDoc {
 
     fn check_impl_item(&mut self, cx: &LateContext<'_, '_>, impl_item: &hir::ImplItem) {
         // If the method is an impl for a trait, don't doc.
-        if method_context(cx, impl_item.id) == MethodLateContext::TraitImpl {
+        if method_context(cx, impl_item.hir_id) == MethodLateContext::TraitImpl {
             return;
         }
 

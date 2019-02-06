@@ -78,7 +78,7 @@ fn mir_keys<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, krate: CrateNum)
                               v: &'tcx hir::VariantData,
                               _: ast::Name,
                               _: &'tcx hir::Generics,
-                              _: ast::NodeId,
+                              _: hir::HirId,
                               _: Span) {
             if let hir::VariantData::Tuple(_, node_id, _) = *v {
                 self.set.insert(self.tcx.hir().local_def_id(node_id));

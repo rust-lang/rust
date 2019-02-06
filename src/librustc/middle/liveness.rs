@@ -172,7 +172,7 @@ impl<'a, 'tcx> Visitor<'tcx> for IrMaps<'a, 'tcx> {
     }
 
     fn visit_fn(&mut self, fk: FnKind<'tcx>, fd: &'tcx hir::FnDecl,
-                b: hir::BodyId, s: Span, id: NodeId) {
+                b: hir::BodyId, s: Span, id: HirId) {
         visit_fn(self, fk, fd, b, s, id);
     }
 
@@ -358,7 +358,7 @@ fn visit_fn<'a, 'tcx: 'a>(ir: &mut IrMaps<'a, 'tcx>,
                           decl: &'tcx hir::FnDecl,
                           body_id: hir::BodyId,
                           sp: Span,
-                          id: ast::NodeId) {
+                          id: hir::HirId) {
     debug!("visit_fn");
 
     // swap in a new set of IR maps for this function body:
@@ -366,8 +366,8 @@ fn visit_fn<'a, 'tcx: 'a>(ir: &mut IrMaps<'a, 'tcx>,
 
     // Don't run unused pass for #[derive()]
     if let FnKind::Method(..) = fk {
-        let parent = ir.tcx.hir().get_parent(id);
-        if let Some(Node::Item(i)) = ir.tcx.hir().find(parent) {
+        let parent = ir.tcx.hir().get_parent_item(id);
+        if let Some(Node::Item(i)) = ir.tcx.hir().find_by_hir_id(parent) {
             if i.attrs.iter().any(|a| a.check_name("automatically_derived")) {
                 return;
             }

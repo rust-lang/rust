@@ -211,7 +211,7 @@ impl<'a, 'tcx> Visitor<'tcx> for MarkSymbolVisitor<'a, 'tcx> {
     }
 
     fn visit_variant_data(&mut self, def: &'tcx hir::VariantData, _: ast::Name,
-                          _: &hir::Generics, _: ast::NodeId, _: syntax_pos::Span) {
+                          _: &hir::Generics, _: hir::HirId, _: syntax_pos::Span) {
         let has_repr_c = self.repr_has_repr_c;
         let inherited_pub_visibility = self.inherited_pub_visibility;
         let live_fields = def.fields().iter().filter(|f| {
@@ -570,7 +570,7 @@ impl<'a, 'tcx> Visitor<'tcx> for DeadVisitor<'a, 'tcx> {
     fn visit_variant(&mut self,
                      variant: &'tcx hir::Variant,
                      g: &'tcx hir::Generics,
-                     id: ast::NodeId) {
+                     id: hir::HirId) {
         if self.should_warn_about_variant(&variant.node) {
             self.warn_dead_code(variant.node.data.id(), variant.span, variant.node.ident.name,
                                 "variant", "constructed");
