@@ -279,6 +279,9 @@ use self::select::StartResult;
 use self::select::StartResult::*;
 use self::blocking::SignalToken;
 
+#[cfg(all(test, not(target_os = "emscripten")))]
+mod select_tests;
+
 mod blocking;
 mod oneshot;
 mod select;
