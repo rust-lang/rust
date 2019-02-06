@@ -139,7 +139,8 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> 
                             Scalar::from_uint(1u128 << (num_bits - 1), Size::from_bits(num_bits))
                         }
                     } else {
-                        Scalar::from_uint(u128::max_value() >> (128 - num_bits), Size::from_bits(num_bits))
+                        Scalar::from_uint(u128::max_value() >> (128 - num_bits),
+                            Size::from_bits(num_bits))
                     };
                     self.write_scalar(val, dest)?;
                 } else {
@@ -156,7 +157,8 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> 
                     let val = if l.layout.abi.is_signed() {
                         if first_term & (1 << (num_bits-1)) == 0 {  // first term is positive
                             // so overflow is positive
-                            Scalar::from_uint((1u128 << (num_bits - 1)) - 1, Size::from_bits(num_bits))
+                            Scalar::from_uint((1u128 << (num_bits - 1)) - 1,
+                                Size::from_bits(num_bits))
                         } else {
                             // if first term negative, overflow must be negative
                             Scalar::from_uint(1u128 << (num_bits - 1), Size::from_bits(num_bits))
