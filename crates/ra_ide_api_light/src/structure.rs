@@ -62,7 +62,7 @@ fn structure_node(node: &SyntaxNode) -> Option<StructureNode> {
         detail: Option<String>,
     ) -> Option<StructureNode> {
         let name = node.name()?;
-        dbg!(name.text().to_string());
+
         Some(StructureNode {
             parent: None,
             label: name.text().to_string(),
