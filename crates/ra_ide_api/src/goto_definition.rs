@@ -89,7 +89,11 @@ pub(crate) fn reference_definition(
         .and_then(hir::Path::from_ast)
     {
         let resolved = resolver.resolve_path(db, &path);
-        match resolved.clone().take_types().or(resolved.take_values()) {
+        match resolved
+            .clone()
+            .take_types()
+            .or_else(|| resolved.take_values())
+        {
             Some(Resolution::Def(def)) => return Exact(NavigationTarget::from_def(db, def)),
             Some(Resolution::LocalBinding(pat)) => {
                 let body = resolver.body().expect("no body for local binding");

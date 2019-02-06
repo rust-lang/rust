@@ -169,10 +169,7 @@ impl ConvWith for TextEdit {
     type Output = Vec<lsp_types::TextEdit>;
 
     fn conv_with(self, line_index: &LineIndex) -> Vec<lsp_types::TextEdit> {
-        self.as_atoms()
-            .into_iter()
-            .map_conv_with(line_index)
-            .collect()
+        self.as_atoms().iter().map_conv_with(line_index).collect()
     }
 }
 
@@ -394,7 +391,7 @@ pub fn to_location_link(
         origin_selection_range: Some(target.range.conv_with(line_index)),
         target_uri,
         target_range,
-        target_selection_range: target_selection_range,
+        target_selection_range,
     };
     Ok(res)
 }

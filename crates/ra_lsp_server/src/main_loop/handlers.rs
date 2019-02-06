@@ -123,7 +123,7 @@ pub fn handle_on_type_formatting(
     let edit = edit.source_file_edits.pop().unwrap();
 
     let change: Vec<TextEdit> = edit.edit.conv_with(&line_index);
-    return Ok(Some(change));
+    Ok(Some(change))
 }
 
 pub fn handle_document_symbol(
@@ -319,7 +319,7 @@ pub fn handle_runnables(
         args: check_args,
         env: FxHashMap::default(),
     });
-    return Ok(res);
+    Ok(res)
 }
 
 pub fn handle_decorations(
@@ -622,10 +622,8 @@ pub fn handle_code_lens(
     // Gather runnables
     for runnable in world.analysis().runnables(file_id)? {
         let title = match &runnable.kind {
-            RunnableKind::Test { name: _ } | RunnableKind::TestMod { path: _ } => {
-                Some("▶️Run Test")
-            }
-            RunnableKind::Bench { name: _ } => Some("Run Bench"),
+            RunnableKind::Test { .. } | RunnableKind::TestMod { .. } => Some("▶️Run Test"),
+            RunnableKind::Bench { .. } => Some("Run Bench"),
             _ => None,
         };
 
@@ -679,7 +677,7 @@ pub fn handle_code_lens(
             }),
     );
 
-    return Ok(Some(lenses));
+    Ok(Some(lenses))
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -722,22 +720,20 @@ pub fn handle_code_lens_resolve(world: ServerWorld, code_lens: CodeLens) -> Resu
                     to_value(locations).unwrap(),
                 ]),
             };
-            return Ok(CodeLens {
+            Ok(CodeLens {
                 range: code_lens.range,
                 command: Some(cmd),
                 data: None,
-            });
+            })
         }
-        None => {
-            return Ok(CodeLens {
-                range: code_lens.range,
-                command: Some(Command {
-                    title: "Error".into(),
-                    ..Default::default()
-                }),
-                data: None,
-            });
-        }
+        None => Ok(CodeLens {
+            range: code_lens.range,
+            command: Some(Command {
+                title: "Error".into(),
+                ..Default::default()
+            }),
+            data: None,
+        }),
     }
 }
 

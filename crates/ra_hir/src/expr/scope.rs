@@ -105,7 +105,7 @@ impl ExprScopes {
     fn add_params_bindings(&mut self, scope: ScopeId, params: &[PatId]) {
         let body = Arc::clone(&self.body);
         params
-            .into_iter()
+            .iter()
             .for_each(|pat| self.add_bindings(&body, scope, *pat));
     }
 
@@ -147,7 +147,7 @@ impl ScopesWithSyntaxMapping {
         })
     }
 
-    pub fn scope_for_offset<'a>(&'a self, offset: TextUnit) -> Option<ScopeId> {
+    pub fn scope_for_offset(&self, offset: TextUnit) -> Option<ScopeId> {
         self.scopes
             .scope_for
             .iter()

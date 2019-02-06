@@ -130,12 +130,9 @@ impl<'a> CompletionContext<'a> {
             .ancestors()
             .take_while(|it| it.kind() != SOURCE_FILE && it.kind() != MODULE)
             .find_map(ast::FnDef::cast);
-        match (self.module, self.function_syntax) {
-            (Some(module), Some(fn_def)) => {
-                let function = source_binder::function_from_module(self.db, module, fn_def);
-                self.function = Some(function);
-            }
-            _ => (),
+        if let (Some(module), Some(fn_def)) = (self.module, self.function_syntax) {
+            let function = source_binder::function_from_module(self.db, module, fn_def);
+            self.function = Some(function);
         }
 
         let parent = match name_ref.syntax().parent() {

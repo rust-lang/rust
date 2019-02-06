@@ -95,12 +95,12 @@ fn rename_mod(
     };
     source_file_edits.push(edit);
 
-    return Some(SourceChange {
+    Some(SourceChange {
         label: "rename".to_string(),
         source_file_edits,
         file_system_edits,
         cursor_position: None,
-    });
+    })
 }
 
 fn rename_reference(
@@ -124,12 +124,12 @@ fn rename_reference(
         return None;
     }
 
-    return Some(SourceChange {
+    Some(SourceChange {
         label: "rename".to_string(),
         source_file_edits: edit,
         file_system_edits: Vec::new(),
         cursor_position: None,
-    });
+    })
 }
 
 #[cfg(test)]
