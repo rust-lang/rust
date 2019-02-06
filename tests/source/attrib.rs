@@ -211,3 +211,10 @@ pub struct Params {
                   all(target_arch = "wasm32", feature = "wasm-bindgen"),
               ))))]
 type Os = NoSource;
+
+// #3313
+fn stmt_expr_attributes() {
+    let foo ;
+    #[must_use]
+   foo = false ;
+}

@@ -246,3 +246,10 @@ mod issue_2620 {
     )
 )))]
 type Os = NoSource;
+
+// #3313
+fn stmt_expr_attributes() {
+    let foo;
+    #[must_use]
+    foo = false;
+}
