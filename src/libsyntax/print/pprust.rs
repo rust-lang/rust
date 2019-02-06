@@ -1,21 +1,22 @@
+use crate::ast::{self, BlockCheckMode, PatKind, RangeEnd, RangeSyntax};
+use crate::ast::{SelfKind, GenericBound, TraitBoundModifier};
+use crate::ast::{Attribute, MacDelimiter, GenericArg};
+use crate::util::parser::{self, AssocOp, Fixity};
+use crate::attr;
+use crate::source_map::{self, SourceMap, Spanned};
+use crate::parse::token::{self, BinOpToken, Token};
+use crate::parse::lexer::comments;
+use crate::parse::{self, ParseSess};
+use crate::print::pp::{self, Breaks};
+use crate::print::pp::Breaks::{Consistent, Inconsistent};
+use crate::ptr::P;
+use crate::std_inject;
+use crate::symbol::keywords;
+use crate::tokenstream::{self, TokenStream, TokenTree};
+
 use rustc_target::spec::abi::{self, Abi};
-use ast::{self, BlockCheckMode, PatKind, RangeEnd, RangeSyntax};
-use ast::{SelfKind, GenericBound, TraitBoundModifier};
-use ast::{Attribute, MacDelimiter, GenericArg};
-use util::parser::{self, AssocOp, Fixity};
-use attr;
-use source_map::{self, SourceMap, Spanned};
 use syntax_pos::{self, BytePos};
-use parse::token::{self, BinOpToken, Token};
-use parse::lexer::comments;
-use parse::{self, ParseSess};
-use print::pp::{self, Breaks};
-use print::pp::Breaks::{Consistent, Inconsistent};
-use ptr::P;
-use std_inject;
-use symbol::keywords;
 use syntax_pos::{DUMMY_SP, FileName};
-use tokenstream::{self, TokenStream, TokenTree};
 
 use std::ascii;
 use std::borrow::Cow;
@@ -34,8 +35,8 @@ pub enum AnnNode<'a> {
 }
 
 pub trait PpAnn {
-    fn pre(&self, _state: &mut State, _node: AnnNode) -> io::Result<()> { Ok(()) }
-    fn post(&self, _state: &mut State, _node: AnnNode) -> io::Result<()> { Ok(()) }
+    fn pre(&self, _state: &mut State<'_>, _node: AnnNode<'_>) -> io::Result<()> { Ok(()) }
+    fn post(&self, _state: &mut State<'_>, _node: AnnNode<'_>) -> io::Result<()> { Ok(()) }
 }
 
 #[derive(Copy, Clone)]
@@ -150,7 +151,7 @@ impl<'a> State<'a> {
 }
 
 pub fn to_string<F>(f: F) -> String where
-    F: FnOnce(&mut State) -> io::Result<()>,
+    F: FnOnce(&mut State<'_>) -> io::Result<()>,
 {
     let mut wr = Vec::new();
     {
@@ -969,7 +970,7 @@ impl<'a> State<'a> {
                                   elts: &[T],
                                   mut op: F,
                                   mut get_span: G) -> io::Result<()> where
-        F: FnMut(&mut State, &T) -> io::Result<()>,
+        F: FnMut(&mut State<'_>, &T) -> io::Result<()>,
         G: FnMut(&T) -> syntax_pos::Span,
     {
         self.rbox(0, b)?;
@@ -3210,10 +3211,10 @@ impl<'a> State<'a> {
 mod tests {
     use super::*;
 
-    use ast;
-    use source_map;
+    use crate::ast;
+    use crate::source_map;
+    use crate::with_globals;
     use syntax_pos;
-    use with_globals;
 
     #[test]
     fn test_fun_to_string() {

@@ -1,9 +1,10 @@
 //! Parsing and validation of builtin attributes
 
-use ast::{self, Attribute, MetaItem, Name, NestedMetaItemKind};
-use errors::{Applicability, Handler};
-use feature_gate::{Features, GatedCfg};
-use parse::ParseSess;
+use crate::ast::{self, Attribute, MetaItem, Name, NestedMetaItemKind};
+use crate::errors::{Applicability, Handler};
+use crate::feature_gate::{Features, GatedCfg};
+use crate::parse::ParseSess;
+
 use syntax_pos::{symbol::Symbol, Span};
 
 use super::{list_contains_name, mark_used, MetaItemKind};
@@ -188,7 +189,7 @@ fn find_stability_generic<'a, I>(sess: &ParseSess,
                                  -> Option<Stability>
     where I: Iterator<Item = &'a Attribute>
 {
-    use self::StabilityLevel::*;
+    use StabilityLevel::*;
 
     let mut stab: Option<Stability> = None;
     let mut rustc_depr: Option<RustcDeprecation> = None;
@@ -694,7 +695,7 @@ pub enum IntType {
 impl IntType {
     #[inline]
     pub fn is_signed(self) -> bool {
-        use self::IntType::*;
+        use IntType::*;
 
         match self {
             SignedInt(..) => true,
@@ -711,7 +712,7 @@ impl IntType {
 /// structure layout, `packed` to remove padding, and `transparent` to elegate representation
 /// concerns to the only non-ZST field.
 pub fn find_repr_attrs(sess: &ParseSess, attr: &Attribute) -> Vec<ReprAttr> {
-    use self::ReprAttr::*;
+    use ReprAttr::*;
 
     let mut acc = Vec::new();
     let diagnostic = &sess.span_diagnostic;
@@ -831,7 +832,7 @@ pub fn find_repr_attrs(sess: &ParseSess, attr: &Attribute) -> Vec<ReprAttr> {
 }
 
 fn int_type_of_word(s: &str) -> Option<IntType> {
-    use self::IntType::*;
+    use IntType::*;
 
     match s {
         "i8" => Some(SignedInt(ast::IntTy::I8)),

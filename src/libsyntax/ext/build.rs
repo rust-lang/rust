@@ -1,17 +1,18 @@
+use crate::ast::{self, Ident, Generics, Expr, BlockCheckMode, UnOp, PatKind};
+use crate::attr;
+use crate::source_map::{dummy_spanned, respan, Spanned};
+use crate::ext::base::ExtCtxt;
+use crate::ptr::P;
+use crate::symbol::{Symbol, keywords};
+use crate::ThinVec;
+
 use rustc_target::spec::abi::Abi;
-use ast::{self, Ident, Generics, Expr, BlockCheckMode, UnOp, PatKind};
-use attr;
 use syntax_pos::{Pos, Span, DUMMY_SP};
-use source_map::{dummy_spanned, respan, Spanned};
-use ext::base::ExtCtxt;
-use ptr::P;
-use symbol::{Symbol, keywords};
-use ThinVec;
 
 // Transitional re-exports so qquote can find the paths it is looking for
 mod syntax {
-    pub use ext;
-    pub use parse;
+    pub use crate::ext;
+    pub use crate::parse;
 }
 
 pub trait AstBuilder {

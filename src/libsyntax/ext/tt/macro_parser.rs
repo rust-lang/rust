@@ -70,21 +70,22 @@
 //! eof: [a $( a )* a b ·]
 //! ```
 
-pub use self::NamedMatch::*;
-pub use self::ParseResult::*;
-use self::TokenTreeOrTokenTreeSlice::*;
+pub use NamedMatch::*;
+pub use ParseResult::*;
+use TokenTreeOrTokenTreeSlice::*;
 
-use ast::Ident;
+use crate::ast::Ident;
+use crate::errors::FatalError;
+use crate::ext::tt::quoted::{self, TokenTree};
+use crate::parse::{Directory, ParseSess};
+use crate::parse::parser::{Parser, PathStyle};
+use crate::parse::token::{self, DocComment, Nonterminal, Token};
+use crate::print::pprust;
+use crate::symbol::keywords;
+use crate::tokenstream::{DelimSpan, TokenStream};
+
+use smallvec::{smallvec, SmallVec};
 use syntax_pos::{self, Span};
-use errors::FatalError;
-use ext::tt::quoted::{self, TokenTree};
-use parse::{Directory, ParseSess};
-use parse::parser::{Parser, PathStyle};
-use parse::token::{self, DocComment, Nonterminal, Token};
-use print::pprust;
-use smallvec::SmallVec;
-use symbol::keywords;
-use tokenstream::{DelimSpan, TokenStream};
 
 use rustc_data_structures::fx::FxHashMap;
 use std::collections::hash_map::Entry::{Occupied, Vacant};
@@ -649,7 +650,7 @@ pub fn parse(
     sess: &ParseSess,
     tts: TokenStream,
     ms: &[TokenTree],
-    directory: Option<Directory>,
+    directory: Option<Directory<'_>>,
     recurse_into_modules: bool,
 ) -> NamedParseResult {
     // Create a parser that can be used for the "black box" parts.

@@ -7,19 +7,20 @@
 //! a MutVisitor renaming item names in a module will miss all of those
 //! that are created by the expansion of a macro.
 
-use ast::*;
+use crate::ast::*;
+use crate::source_map::{Spanned, respan};
+use crate::parse::token::{self, Token};
+use crate::ptr::P;
+use crate::symbol::keywords;
+use crate::ThinVec;
+use crate::tokenstream::*;
+use crate::util::map_in_place::MapInPlace;
+
+use smallvec::{smallvec, Array, SmallVec};
 use syntax_pos::Span;
-use source_map::{Spanned, respan};
-use parse::token::{self, Token};
-use ptr::P;
-use smallvec::{Array, SmallVec};
-use std::ops::DerefMut;
-use symbol::keywords;
-use ThinVec;
-use tokenstream::*;
-use util::map_in_place::MapInPlace;
 
 use rustc_data_structures::sync::Lrc;
+use std::ops::DerefMut;
 
 pub trait ExpectOne<A: Array> {
     fn expect_one(self, err: &'static str) -> A::Item;
@@ -1256,15 +1257,15 @@ pub fn noop_visit_vis<T: MutVisitor>(Spanned { node, span }: &mut Visibility, vi
 #[cfg(test)]
 mod tests {
     use std::io;
-    use ast::{self, Ident};
-    use util::parser_testing::{string_to_crate, matches_codepattern};
-    use print::pprust;
-    use mut_visit;
-    use with_globals;
+    use crate::ast::{self, Ident};
+    use crate::util::parser_testing::{string_to_crate, matches_codepattern};
+    use crate::print::pprust;
+    use crate::mut_visit;
+    use crate::with_globals;
     use super::*;
 
     // this version doesn't care about getting comments or docstrings in.
-    fn fake_print_crate(s: &mut pprust::State,
+    fn fake_print_crate(s: &mut pprust::State<'_>,
                         krate: &ast::Crate) -> io::Result<()> {
         s.print_mod(&krate.module, &krate.attrs)
     }

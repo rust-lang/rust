@@ -12,8 +12,9 @@ use std::error::Error;
 use rustc_serialize::json::as_json;
 
 use syntax_pos::{Span, FileName};
-use ext::base::ExtCtxt;
-use diagnostics::plugin::{ErrorMap, ErrorInfo};
+
+use crate::ext::base::ExtCtxt;
+use crate::diagnostics::plugin::{ErrorMap, ErrorInfo};
 
 /// JSON encodable/decodable version of `ErrorInfo`.
 #[derive(PartialEq, RustcDecodable, RustcEncodable)]
@@ -34,7 +35,7 @@ pub struct ErrorLocation {
 
 impl ErrorLocation {
     /// Create an error location from a span.
-    pub fn from_span(ecx: &ExtCtxt, sp: Span) -> ErrorLocation {
+    pub fn from_span(ecx: &ExtCtxt<'_>, sp: Span) -> ErrorLocation {
         let loc = ecx.source_map().lookup_char_pos_adj(sp.lo());
         ErrorLocation {
             filename: loc.filename,
@@ -62,7 +63,7 @@ fn get_metadata_path(directory: PathBuf, name: &str) -> PathBuf {
 ///
 /// For our current purposes the prefix is the target architecture and the name is a crate name.
 /// If an error occurs steps will be taken to ensure that no file is created.
-pub fn output_metadata(ecx: &ExtCtxt, prefix: &str, name: &str, err_map: &ErrorMap)
+pub fn output_metadata(ecx: &ExtCtxt<'_>, prefix: &str, name: &str, err_map: &ErrorMap)
     -> Result<(), Box<dyn Error>>
 {
     // Create the directory to place the file in.

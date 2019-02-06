@@ -1,16 +1,18 @@
 //! The main parser interface
 
+use crate::ast::{self, CrateConfig, NodeId};
+use crate::early_buffered_lints::{BufferedEarlyLint, BufferedEarlyLintId};
+use crate::source_map::{SourceMap, FilePathMapping};
+use crate::errors::{FatalError, Level, Handler, ColorConfig, Diagnostic, DiagnosticBuilder};
+use crate::feature_gate::UnstableFeatures;
+use crate::parse::parser::Parser;
+use crate::symbol::Symbol;
+use crate::tokenstream::{TokenStream, TokenTree};
+use crate::diagnostics::plugin::ErrorMap;
+
 use rustc_data_structures::sync::{Lrc, Lock};
-use ast::{self, CrateConfig, NodeId};
-use early_buffered_lints::{BufferedEarlyLint, BufferedEarlyLintId};
-use source_map::{SourceMap, FilePathMapping};
 use syntax_pos::{Span, SourceFile, FileName, MultiSpan};
-use errors::{FatalError, Level, Handler, ColorConfig, Diagnostic, DiagnosticBuilder};
-use feature_gate::UnstableFeatures;
-use parse::parser::Parser;
-use symbol::Symbol;
-use tokenstream::{TokenStream, TokenTree};
-use diagnostics::plugin::ErrorMap;
+use log::debug;
 
 use rustc_data_structures::fx::FxHashSet;
 use std::borrow::Cow;
@@ -125,12 +127,12 @@ pub fn parse_crate_attrs_from_file<'a>(input: &Path, sess: &'a ParseSess)
 }
 
 pub fn parse_crate_from_source_str(name: FileName, source: String, sess: &ParseSess)
-                                       -> PResult<ast::Crate> {
+                                       -> PResult<'_, ast::Crate> {
     new_parser_from_source_str(sess, name, source).parse_crate_mod()
 }
 
 pub fn parse_crate_attrs_from_source_str(name: FileName, source: String, sess: &ParseSess)
-                                             -> PResult<Vec<ast::Attribute>> {
+                                             -> PResult<'_, Vec<ast::Attribute>> {
     new_parser_from_source_str(sess, name, source).parse_inner_attributes()
 }
 
@@ -142,14 +144,14 @@ pub fn parse_stream_from_source_str(name: FileName, source: String, sess: &Parse
 
 /// Create a new parser from a source string
 pub fn new_parser_from_source_str(sess: &ParseSess, name: FileName, source: String)
-                                      -> Parser {
+                                      -> Parser<'_> {
     panictry_buffer!(&sess.span_diagnostic, maybe_new_parser_from_source_str(sess, name, source))
 }
 
 /// Create a new parser from a source string. Returns any buffered errors from lexing the initial
 /// token stream.
 pub fn maybe_new_parser_from_source_str(sess: &ParseSess, name: FileName, source: String)
-    -> Result<Parser, Vec<Diagnostic>>
+    -> Result<Parser<'_>, Vec<Diagnostic>>
 {
     let mut parser = maybe_source_file_to_parser(sess,
                                                  sess.source_map().new_source_file(name, source))?;
@@ -186,7 +188,7 @@ crate fn new_sub_parser_from_file<'a>(sess: &'a ParseSess,
 }
 
 /// Given a source_file and config, return a parser
-fn source_file_to_parser(sess: & ParseSess, source_file: Lrc<SourceFile>) -> Parser {
+fn source_file_to_parser(sess: &ParseSess, source_file: Lrc<SourceFile>) -> Parser<'_> {
     panictry_buffer!(&sess.span_diagnostic,
                      maybe_source_file_to_parser(sess, source_file))
 }
@@ -194,7 +196,7 @@ fn source_file_to_parser(sess: & ParseSess, source_file: Lrc<SourceFile>) -> Par
 /// Given a source_file and config, return a parser. Returns any buffered errors from lexing the
 /// initial token stream.
 fn maybe_source_file_to_parser(sess: &ParseSess, source_file: Lrc<SourceFile>)
-    -> Result<Parser, Vec<Diagnostic>>
+    -> Result<Parser<'_>, Vec<Diagnostic>>
 {
     let end_pos = source_file.end_pos;
     let mut parser = stream_to_parser(sess, maybe_file_to_stream(sess, source_file, None)?);
@@ -208,7 +210,7 @@ fn maybe_source_file_to_parser(sess: &ParseSess, source_file: Lrc<SourceFile>)
 
 // must preserve old name for now, because quote! from the *existing*
 // compiler expands into it
-pub fn new_parser_from_tts(sess: &ParseSess, tts: Vec<TokenTree>) -> Parser {
+pub fn new_parser_from_tts(sess: &ParseSess, tts: Vec<TokenTree>) -> Parser<'_> {
     stream_to_parser(sess, tts.into_iter().collect())
 }
 
@@ -270,7 +272,7 @@ pub fn maybe_file_to_stream(sess: &ParseSess,
 }
 
 /// Given stream and the `ParseSess`, produce a parser
-pub fn stream_to_parser(sess: &ParseSess, stream: TokenStream) -> Parser {
+pub fn stream_to_parser(sess: &ParseSess, stream: TokenStream) -> Parser<'_> {
     Parser::new(sess, stream, None, true, false)
 }
 
@@ -758,22 +760,22 @@ impl SeqSep {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::ast::{self, Ident, PatKind};
+    use crate::attr::first_attr_value_str_by_name;
+    use crate::ptr::P;
+    use crate::print::pprust::item_to_string;
+    use crate::tokenstream::{DelimSpan, TokenTree};
+    use crate::util::parser_testing::string_to_stream;
+    use crate::util::parser_testing::{string_to_expr, string_to_item};
+    use crate::with_globals;
     use syntax_pos::{Span, BytePos, Pos, NO_EXPANSION};
-    use ast::{self, Ident, PatKind};
-    use attr::first_attr_value_str_by_name;
-    use ptr::P;
-    use print::pprust::item_to_string;
-    use tokenstream::{DelimSpan, TokenTree};
-    use util::parser_testing::string_to_stream;
-    use util::parser_testing::{string_to_expr, string_to_item};
-    use with_globals;
 
     /// Parses an item.
     ///
     /// Returns `Ok(Some(item))` when successful, `Ok(None)` when no item was found, and `Err`
     /// when a syntax error occurred.
     fn parse_item_from_source_str(name: FileName, source: String, sess: &ParseSess)
-                                        -> PResult<Option<P<ast::Item>>> {
+                                        -> PResult<'_, Option<P<ast::Item>>> {
         new_parser_from_source_str(sess, name, source).parse_item()
     }
 
@@ -913,20 +915,20 @@ mod tests {
         struct PatIdentVisitor {
             spans: Vec<Span>
         }
-        impl<'a> ::visit::Visitor<'a> for PatIdentVisitor {
+        impl<'a> crate::visit::Visitor<'a> for PatIdentVisitor {
             fn visit_pat(&mut self, p: &'a ast::Pat) {
                 match p.node {
                     PatKind::Ident(_ , ref spannedident, _) => {
                         self.spans.push(spannedident.span.clone());
                     }
                     _ => {
-                        ::visit::walk_pat(self, p);
+                        crate::visit::walk_pat(self, p);
                     }
                 }
             }
         }
         let mut v = PatIdentVisitor { spans: Vec::new() };
-        ::visit::walk_item(&mut v, &item);
+        crate::visit::walk_item(&mut v, &item);
         return v.spans;
     }
 
@@ -1007,7 +1009,7 @@ mod tests {
     fn ttdelim_span() {
         fn parse_expr_from_source_str(
             name: FileName, source: String, sess: &ParseSess
-        ) -> PResult<P<ast::Expr>> {
+        ) -> PResult<'_, P<ast::Expr>> {
             new_parser_from_source_str(sess, name, source).parse_expr()
         }
 

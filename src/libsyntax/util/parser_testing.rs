@@ -1,10 +1,11 @@
-use ast::{self, Ident};
-use source_map::FilePathMapping;
-use parse::{ParseSess, PResult, source_file_to_stream};
-use parse::{lexer, new_parser_from_source_str};
-use parse::parser::Parser;
-use ptr::P;
-use tokenstream::TokenStream;
+use crate::ast::{self, Ident};
+use crate::source_map::FilePathMapping;
+use crate::parse::{ParseSess, PResult, source_file_to_stream};
+use crate::parse::{lexer, new_parser_from_source_str};
+use crate::parse::parser::Parser;
+use crate::ptr::P;
+use crate::tokenstream::TokenStream;
+
 use std::iter::Peekable;
 use std::path::PathBuf;
 

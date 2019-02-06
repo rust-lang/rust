@@ -9,9 +9,10 @@
        html_root_url = "https://doc.rust-lang.org/nightly/",
        test(attr(deny(warnings))))]
 
+#![deny(rust_2018_idioms)]
+
 #![feature(crate_visibility_modifier)]
 #![feature(label_break_value)]
-#![feature(nll)]
 #![feature(rustc_attrs)]
 #![feature(rustc_diagnostic_macros)]
 #![feature(slice_sort_by_cached_key)]
@@ -22,20 +23,10 @@
 
 #![recursion_limit="256"]
 
-#[macro_use] extern crate bitflags;
-extern crate core;
-extern crate serialize;
-#[macro_use] extern crate log;
-pub extern crate rustc_errors as errors;
-extern crate syntax_pos;
-#[macro_use] extern crate rustc_data_structures;
-extern crate rustc_target;
-#[macro_use] extern crate scoped_tls;
-#[macro_use]
-extern crate smallvec;
-
+#[allow(unused_extern_crates)]
 extern crate serialize as rustc_serialize; // used by deriving
 
+pub use rustc_errors as errors;
 use rustc_data_structures::sync::Lock;
 use rustc_data_structures::bit_set::GrowableBitSet;
 pub use rustc_data_structures::thin_vec::ThinVec;
@@ -48,7 +39,7 @@ use ast::AttrId;
 macro_rules! panictry {
     ($e:expr) => ({
         use std::result::Result::{Ok, Err};
-        use errors::FatalError;
+        use crate::errors::FatalError;
         match $e {
             Ok(e) => e,
             Err(mut e) => {
@@ -63,7 +54,7 @@ macro_rules! panictry {
 macro_rules! panictry_buffer {
     ($handler:expr, $e:expr) => ({
         use std::result::Result::{Ok, Err};
-        use errors::{FatalError, DiagnosticBuilder};
+        use crate::errors::{FatalError, DiagnosticBuilder};
         match $e {
             Ok(e) => e,
             Err(errs) => {
@@ -113,7 +104,7 @@ pub fn with_globals<F, R>(f: F) -> R
     })
 }
 
-scoped_thread_local!(pub static GLOBALS: Globals);
+scoped_tls::scoped_thread_local!(pub static GLOBALS: Globals);
 
 #[macro_use]
 pub mod diagnostics {
@@ -139,9 +130,9 @@ pub mod util {
 pub mod json;
 
 pub mod syntax {
-    pub use ext;
-    pub use parse;
-    pub use ast;
+    pub use crate::ext;
+    pub use crate::parse;
+    pub use crate::ast;
 }
 
 pub mod ast;

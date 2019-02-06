@@ -10,7 +10,7 @@
 
 pub use syntax_pos::*;
 pub use syntax_pos::hygiene::{ExpnFormat, ExpnInfo};
-pub use self::ExpnFormat::*;
+pub use ExpnFormat::*;
 
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::stable_hasher::StableHasher;
@@ -22,7 +22,9 @@ use std::path::{Path, PathBuf};
 use std::env;
 use std::fs;
 use std::io;
-use errors::SourceMapper;
+use log::debug;
+
+use crate::errors::SourceMapper;
 
 /// Return the span itself if it doesn't come from a macro expansion,
 /// otherwise return the call site span up to the `enclosing_sp` by
@@ -167,7 +169,7 @@ impl SourceMap {
         Ok(self.new_source_file(filename, src))
     }
 
-    pub fn files(&self) -> MappedLockGuard<Vec<Lrc<SourceFile>>> {
+    pub fn files(&self) -> MappedLockGuard<'_, Vec<Lrc<SourceFile>>> {
         LockGuard::map(self.files.borrow(), |files| &mut files.source_files)
     }
 

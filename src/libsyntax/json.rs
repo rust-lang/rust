@@ -9,13 +9,13 @@
 
 // FIXME: spec the JSON output properly.
 
-use source_map::{SourceMap, FilePathMapping};
-use syntax_pos::{self, MacroBacktrace, Span, SpanLabel, MultiSpan};
-use errors::registry::Registry;
-use errors::{DiagnosticBuilder, SubDiagnostic, CodeSuggestion, SourceMapper};
-use errors::{DiagnosticId, Applicability};
-use errors::emitter::{Emitter, EmitterWriter};
+use crate::source_map::{SourceMap, FilePathMapping};
+use crate::errors::registry::Registry;
+use crate::errors::{DiagnosticBuilder, SubDiagnostic, CodeSuggestion, SourceMapper};
+use crate::errors::{DiagnosticId, Applicability};
+use crate::errors::emitter::{Emitter, EmitterWriter};
 
+use syntax_pos::{self, MacroBacktrace, Span, SpanLabel, MultiSpan};
 use rustc_data_structures::sync::{self, Lrc};
 use std::io::{self, Write};
 use std::vec;
@@ -69,7 +69,7 @@ impl JsonEmitter {
 }
 
 impl Emitter for JsonEmitter {
-    fn emit(&mut self, db: &DiagnosticBuilder) {
+    fn emit(&mut self, db: &DiagnosticBuilder<'_>) {
         let data = Diagnostic::from_diagnostic_builder(db, self);
         let result = if self.pretty {
             writeln!(&mut self.dst, "{}", as_pretty_json(&data))
@@ -159,7 +159,7 @@ struct DiagnosticCode {
 }
 
 impl Diagnostic {
-    fn from_diagnostic_builder(db: &DiagnosticBuilder,
+    fn from_diagnostic_builder(db: &DiagnosticBuilder<'_>,
                                je: &JsonEmitter)
                                -> Diagnostic {
         let sugg = db.suggestions.iter().map(|sugg| {

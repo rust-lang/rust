@@ -3,33 +3,35 @@
 #![allow(dead_code)]
 #![allow(unused_imports)]
 
-use self::HasTestSignature::*;
+use HasTestSignature::*;
 
 use std::iter;
 use std::slice;
 use std::mem;
 use std::vec;
-use attr::{self, HasAttrs};
+
+use log::debug;
+use smallvec::{smallvec, SmallVec};
 use syntax_pos::{self, DUMMY_SP, NO_EXPANSION, Span, SourceFile, BytePos};
 
-use source_map::{self, SourceMap, ExpnInfo, MacroAttribute, dummy_spanned, respan};
-use errors;
-use config;
-use entry::{self, EntryPointType};
-use ext::base::{ExtCtxt, Resolver};
-use ext::build::AstBuilder;
-use ext::expand::ExpansionConfig;
-use ext::hygiene::{self, Mark, SyntaxContext};
-use mut_visit::{*, ExpectOne};
-use feature_gate::Features;
-use util::map_in_place::MapInPlace;
-use parse::{token, ParseSess};
-use print::pprust;
-use ast::{self, Ident};
-use ptr::P;
-use smallvec::SmallVec;
-use symbol::{self, Symbol, keywords};
-use ThinVec;
+use crate::attr::{self, HasAttrs};
+use crate::source_map::{self, SourceMap, ExpnInfo, MacroAttribute, dummy_spanned, respan};
+use crate::errors;
+use crate::config;
+use crate::entry::{self, EntryPointType};
+use crate::ext::base::{ExtCtxt, Resolver};
+use crate::ext::build::AstBuilder;
+use crate::ext::expand::ExpansionConfig;
+use crate::ext::hygiene::{self, Mark, SyntaxContext};
+use crate::mut_visit::{*, ExpectOne};
+use crate::feature_gate::Features;
+use crate::util::map_in_place::MapInPlace;
+use crate::parse::{token, ParseSess};
+use crate::print::pprust;
+use crate::ast::{self, Ident};
+use crate::ptr::P;
+use crate::symbol::{self, Symbol, keywords};
+use crate::ThinVec;
 
 struct Test {
     span: Span,
@@ -210,7 +212,7 @@ impl MutVisitor for EntryPointCleaner {
 /// Each tested submodule will contain a similar reexport module that we will export
 /// under the name of the original module. That is, `submod::__test_reexports` is
 /// reexported like so `pub use submod::__test_reexports as submod`.
-fn mk_reexport_mod(cx: &mut TestCtxt,
+fn mk_reexport_mod(cx: &mut TestCtxt<'_>,
                    parent: ast::NodeId,
                    tests: Vec<Ident>,
                    tested_submods: Vec<(Ident, Ident)>)
@@ -299,7 +301,7 @@ fn generate_test_harness(sess: &ParseSess,
 /// Craft a span that will be ignored by the stability lint's
 /// call to source_map's `is_internal` check.
 /// The expanded code calls some unstable functions in the test crate.
-fn ignored_span(cx: &TestCtxt, sp: Span) -> Span {
+fn ignored_span(cx: &TestCtxt<'_>, sp: Span) -> Span {
     sp.with_ctxt(cx.ctxt)
 }
 
@@ -318,7 +320,7 @@ enum BadTestSignature {
 
 /// Creates a function item for use as the main function of a test build.
 /// This function will call the `test_runner` as specified by the crate attribute
-fn mk_main(cx: &mut TestCtxt) -> P<ast::Item> {
+fn mk_main(cx: &mut TestCtxt<'_>) -> P<ast::Item> {
     // Writing this out by hand with 'ignored_span':
     //        pub fn main() {
     //            #![main]
@@ -398,7 +400,7 @@ fn path_name_i(idents: &[Ident]) -> String {
 
 /// Creates a slice containing every test like so:
 /// &[path::to::test1, path::to::test2]
-fn mk_tests_slice(cx: &TestCtxt) -> P<ast::Expr> {
+fn mk_tests_slice(cx: &TestCtxt<'_>) -> P<ast::Expr> {
     debug!("building test vector from {} tests", cx.test_cases.len());
     let ref ecx = cx.ext_cx;
 
@@ -410,7 +412,7 @@ fn mk_tests_slice(cx: &TestCtxt) -> P<ast::Expr> {
 }
 
 /// Creates a path from the top-level __test module to the test via __test_reexports
-fn visible_path(cx: &TestCtxt, path: &[Ident]) -> Vec<Ident>{
+fn visible_path(cx: &TestCtxt<'_>, path: &[Ident]) -> Vec<Ident>{
     let mut visible_path = vec![];
     match cx.toplevel_reexport {
         Some(id) => visible_path.push(id),

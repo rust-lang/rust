@@ -1,13 +1,14 @@
-use ast::Ident;
-use ext::base::ExtCtxt;
-use ext::expand::Marker;
-use ext::tt::macro_parser::{NamedMatch, MatchedSeq, MatchedNonterminal};
-use ext::tt::quoted;
-use mut_visit::noop_visit_tt;
-use parse::token::{self, Token, NtTT};
-use smallvec::SmallVec;
+use crate::ast::Ident;
+use crate::ext::base::ExtCtxt;
+use crate::ext::expand::Marker;
+use crate::ext::tt::macro_parser::{NamedMatch, MatchedSeq, MatchedNonterminal};
+use crate::ext::tt::quoted;
+use crate::mut_visit::noop_visit_tt;
+use crate::parse::token::{self, Token, NtTT};
+use crate::tokenstream::{DelimSpan, TokenStream, TokenTree, TreeAndJoint};
+
+use smallvec::{smallvec, SmallVec};
 use syntax_pos::DUMMY_SP;
-use tokenstream::{DelimSpan, TokenStream, TokenTree, TreeAndJoint};
 
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::sync::Lrc;
@@ -56,7 +57,7 @@ impl Iterator for Frame {
 /// This can do Macro-By-Example transcription. On the other hand, if
 /// `src` contains no `TokenTree::{Sequence, MetaVar, MetaVarDecl}`s, `interp` can
 /// (and should) be None.
-pub fn transcribe(cx: &ExtCtxt,
+pub fn transcribe(cx: &ExtCtxt<'_>,
                   interp: Option<FxHashMap<Ident, Rc<NamedMatch>>>,
                   src: Vec<quoted::TokenTree>)
                   -> TokenStream {
@@ -230,7 +231,7 @@ fn lockstep_iter_size(tree: &quoted::TokenTree,
                       interpolations: &FxHashMap<Ident, Rc<NamedMatch>>,
                       repeats: &[(usize, usize)])
                       -> LockstepIterSize {
-    use self::quoted::TokenTree;
+    use quoted::TokenTree;
     match *tree {
         TokenTree::Delimited(_, ref delimed) => {
             delimed.tts.iter().fold(LockstepIterSize::Unconstrained, |size, tt| {

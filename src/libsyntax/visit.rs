@@ -13,10 +13,11 @@
 //! instance, a walker looking for item names in a module will miss all of
 //! those that are created by the expansion of a macro.
 
-use ast::*;
+use crate::ast::*;
+use crate::parse::token::Token;
+use crate::tokenstream::{TokenTree, TokenStream};
+
 use syntax_pos::Span;
-use parse::token::Token;
-use tokenstream::{TokenTree, TokenStream};
 
 #[derive(Copy, Clone)]
 pub enum FnKind<'a> {

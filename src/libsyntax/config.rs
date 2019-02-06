@@ -1,20 +1,21 @@
-use attr::HasAttrs;
-use feature_gate::{
+use crate::attr::HasAttrs;
+use crate::feature_gate::{
     feature_err,
     EXPLAIN_STMT_ATTR_SYNTAX,
     Features,
     get_features,
     GateIssue,
 };
-use attr;
-use ast;
-use edition::Edition;
-use errors::Applicability;
-use mut_visit::*;
-use parse::{token, ParseSess};
-use ptr::P;
+use crate::attr;
+use crate::ast;
+use crate::edition::Edition;
+use crate::errors::Applicability;
+use crate::mut_visit::*;
+use crate::parse::{token, ParseSess};
+use crate::ptr::P;
+use crate::util::map_in_place::MapInPlace;
+
 use smallvec::SmallVec;
-use util::map_in_place::MapInPlace;
 
 /// A folder that strips out items that do not belong in the current configuration.
 pub struct StripUnconfigured<'a> {

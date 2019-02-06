@@ -1,28 +1,29 @@
-pub use self::SyntaxExtension::*;
+pub use SyntaxExtension::*;
 
-use ast::{self, Attribute, Name, PatKind, MetaItem};
-use attr::HasAttrs;
-use source_map::{SourceMap, Spanned, respan};
+use crate::ast::{self, Attribute, Name, PatKind, MetaItem};
+use crate::attr::HasAttrs;
+use crate::source_map::{SourceMap, Spanned, respan};
+use crate::edition::Edition;
+use crate::errors::{DiagnosticBuilder, DiagnosticId};
+use crate::ext::expand::{self, AstFragment, Invocation};
+use crate::ext::hygiene::{self, Mark, SyntaxContext, Transparency};
+use crate::mut_visit::{self, MutVisitor};
+use crate::parse::{self, parser, DirectoryOwnership};
+use crate::parse::token;
+use crate::ptr::P;
+use crate::symbol::{keywords, Ident, Symbol};
+use crate::ThinVec;
+use crate::tokenstream::{self, TokenStream};
+
+use smallvec::{smallvec, SmallVec};
 use syntax_pos::{Span, MultiSpan, DUMMY_SP};
-use edition::Edition;
-use errors::{DiagnosticBuilder, DiagnosticId};
-use ext::expand::{self, AstFragment, Invocation};
-use ext::hygiene::{self, Mark, SyntaxContext, Transparency};
-use mut_visit::{self, MutVisitor};
-use parse::{self, parser, DirectoryOwnership};
-use parse::token;
-use ptr::P;
-use smallvec::SmallVec;
-use symbol::{keywords, Ident, Symbol};
-use ThinVec;
 
 use rustc_data_structures::fx::FxHashMap;
+use rustc_data_structures::sync::{self, Lrc};
 use std::iter;
 use std::path::PathBuf;
 use std::rc::Rc;
-use rustc_data_structures::sync::{self, Lrc};
 use std::default::Default;
-use tokenstream::{self, TokenStream};
 
 
 #[derive(Debug,Clone)]
@@ -139,7 +140,7 @@ impl Annotatable {
 // A more flexible ItemDecorator.
 pub trait MultiItemDecorator {
     fn expand(&self,
-              ecx: &mut ExtCtxt,
+              ecx: &mut ExtCtxt<'_>,
               sp: Span,
               meta_item: &ast::MetaItem,
               item: &Annotatable,
@@ -147,10 +148,10 @@ pub trait MultiItemDecorator {
 }
 
 impl<F> MultiItemDecorator for F
-    where F : Fn(&mut ExtCtxt, Span, &ast::MetaItem, &Annotatable, &mut dyn FnMut(Annotatable))
+    where F : Fn(&mut ExtCtxt<'_>, Span, &ast::MetaItem, &Annotatable, &mut dyn FnMut(Annotatable))
 {
     fn expand(&self,
-              ecx: &mut ExtCtxt,
+              ecx: &mut ExtCtxt<'_>,
               sp: Span,
               meta_item: &ast::MetaItem,
               item: &Annotatable,
@@ -163,7 +164,7 @@ impl<F> MultiItemDecorator for F
 // FIXME Decorators should follow the same pattern too.
 pub trait MultiItemModifier {
     fn expand(&self,
-              ecx: &mut ExtCtxt,
+              ecx: &mut ExtCtxt<'_>,
               span: Span,
               meta_item: &ast::MetaItem,
               item: Annotatable)
@@ -171,11 +172,11 @@ pub trait MultiItemModifier {
 }
 
 impl<F, T> MultiItemModifier for F
-    where F: Fn(&mut ExtCtxt, Span, &ast::MetaItem, Annotatable) -> T,
+    where F: Fn(&mut ExtCtxt<'_>, Span, &ast::MetaItem, Annotatable) -> T,
           T: Into<Vec<Annotatable>>,
 {
     fn expand(&self,
-              ecx: &mut ExtCtxt,
+              ecx: &mut ExtCtxt<'_>,
               span: Span,
               meta_item: &ast::MetaItem,
               item: Annotatable)
@@ -192,7 +193,7 @@ impl Into<Vec<Annotatable>> for Annotatable {
 
 pub trait ProcMacro {
     fn expand<'cx>(&self,
-                   ecx: &'cx mut ExtCtxt,
+                   ecx: &'cx mut ExtCtxt<'_>,
                    span: Span,
                    ts: TokenStream)
                    -> TokenStream;
@@ -202,7 +203,7 @@ impl<F> ProcMacro for F
     where F: Fn(TokenStream) -> TokenStream
 {
     fn expand<'cx>(&self,
-                   _ecx: &'cx mut ExtCtxt,
+                   _ecx: &'cx mut ExtCtxt<'_>,
                    _span: Span,
                    ts: TokenStream)
                    -> TokenStream {
@@ -213,7 +214,7 @@ impl<F> ProcMacro for F
 
 pub trait AttrProcMacro {
     fn expand<'cx>(&self,
-                   ecx: &'cx mut ExtCtxt,
+                   ecx: &'cx mut ExtCtxt<'_>,
                    span: Span,
                    annotation: TokenStream,
                    annotated: TokenStream)
@@ -224,7 +225,7 @@ impl<F> AttrProcMacro for F
     where F: Fn(TokenStream, TokenStream) -> TokenStream
 {
     fn expand<'cx>(&self,
-                   _ecx: &'cx mut ExtCtxt,
+                   _ecx: &'cx mut ExtCtxt<'_>,
                    _span: Span,
                    annotation: TokenStream,
                    annotated: TokenStream)
@@ -238,7 +239,7 @@ impl<F> AttrProcMacro for F
 pub trait TTMacroExpander {
     fn expand<'cx>(
         &self,
-        ecx: &'cx mut ExtCtxt,
+        ecx: &'cx mut ExtCtxt<'_>,
         span: Span,
         input: TokenStream,
         def_span: Option<Span>,
@@ -246,16 +247,16 @@ pub trait TTMacroExpander {
 }
 
 pub type MacroExpanderFn =
-    for<'cx> fn(&'cx mut ExtCtxt, Span, &[tokenstream::TokenTree])
+    for<'cx> fn(&'cx mut ExtCtxt<'_>, Span, &[tokenstream::TokenTree])
                 -> Box<dyn MacResult+'cx>;
 
 impl<F> TTMacroExpander for F
-    where F: for<'cx> Fn(&'cx mut ExtCtxt, Span, &[tokenstream::TokenTree])
+    where F: for<'cx> Fn(&'cx mut ExtCtxt<'_>, Span, &[tokenstream::TokenTree])
     -> Box<dyn MacResult+'cx>
 {
     fn expand<'cx>(
         &self,
-        ecx: &'cx mut ExtCtxt,
+        ecx: &'cx mut ExtCtxt<'_>,
         span: Span,
         input: TokenStream,
         _def_span: Option<Span>,
@@ -286,7 +287,7 @@ impl<F> TTMacroExpander for F
 
 pub trait IdentMacroExpander {
     fn expand<'cx>(&self,
-                   cx: &'cx mut ExtCtxt,
+                   cx: &'cx mut ExtCtxt<'_>,
                    sp: Span,
                    ident: ast::Ident,
                    token_tree: Vec<tokenstream::TokenTree>)
@@ -294,15 +295,15 @@ pub trait IdentMacroExpander {
 }
 
 pub type IdentMacroExpanderFn =
-    for<'cx> fn(&'cx mut ExtCtxt, Span, ast::Ident, Vec<tokenstream::TokenTree>)
+    for<'cx> fn(&'cx mut ExtCtxt<'_>, Span, ast::Ident, Vec<tokenstream::TokenTree>)
                 -> Box<dyn MacResult+'cx>;
 
 impl<F> IdentMacroExpander for F
-    where F : for<'cx> Fn(&'cx mut ExtCtxt, Span, ast::Ident,
+    where F : for<'cx> Fn(&'cx mut ExtCtxt<'_>, Span, ast::Ident,
                           Vec<tokenstream::TokenTree>) -> Box<dyn MacResult+'cx>
 {
     fn expand<'cx>(&self,
-                   cx: &'cx mut ExtCtxt,
+                   cx: &'cx mut ExtCtxt<'_>,
                    sp: Span,
                    ident: ast::Ident,
                    token_tree: Vec<tokenstream::TokenTree>)
@@ -567,7 +568,7 @@ impl MacResult for DummyResult {
 }
 
 pub type BuiltinDeriveFn =
-    for<'cx> fn(&'cx mut ExtCtxt, Span, &MetaItem, &Annotatable, &mut dyn FnMut(Annotatable));
+    for<'cx> fn(&'cx mut ExtCtxt<'_>, Span, &MetaItem, &Annotatable, &mut dyn FnMut(Annotatable));
 
 /// Represents different kinds of macro invocations that can be resolved.
 #[derive(Clone, Copy, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug)]
@@ -979,7 +980,7 @@ impl<'a> ExtCtxt<'a> {
 /// emitting `err_msg` if `expr` is not a string literal. This does not stop
 /// compilation on error, merely emits a non-fatal error and returns None.
 pub fn expr_to_spanned_string<'a>(
-    cx: &'a mut ExtCtxt,
+    cx: &'a mut ExtCtxt<'_>,
     mut expr: P<ast::Expr>,
     err_msg: &str,
 ) -> Result<Spanned<(Symbol, ast::StrStyle)>, Option<DiagnosticBuilder<'a>>> {
@@ -998,7 +999,7 @@ pub fn expr_to_spanned_string<'a>(
     })
 }
 
-pub fn expr_to_string(cx: &mut ExtCtxt, expr: P<ast::Expr>, err_msg: &str)
+pub fn expr_to_string(cx: &mut ExtCtxt<'_>, expr: P<ast::Expr>, err_msg: &str)
                       -> Option<(Symbol, ast::StrStyle)> {
     expr_to_spanned_string(cx, expr, err_msg)
         .map_err(|err| err.map(|mut err| err.emit()))
@@ -1011,7 +1012,7 @@ pub fn expr_to_string(cx: &mut ExtCtxt, expr: P<ast::Expr>, err_msg: &str)
 /// compilation should call
 /// `cx.parse_sess.span_diagnostic.abort_if_errors()` (this should be
 /// done as rarely as possible).
-pub fn check_zero_tts(cx: &ExtCtxt,
+pub fn check_zero_tts(cx: &ExtCtxt<'_>,
                       sp: Span,
                       tts: &[tokenstream::TokenTree],
                       name: &str) {
@@ -1022,7 +1023,7 @@ pub fn check_zero_tts(cx: &ExtCtxt,
 
 /// Interpreting `tts` as a comma-separated sequence of expressions,
 /// expect exactly one string literal, or emit an error and return None.
-pub fn get_single_str_from_tts(cx: &mut ExtCtxt,
+pub fn get_single_str_from_tts(cx: &mut ExtCtxt<'_>,
                                sp: Span,
                                tts: &[tokenstream::TokenTree],
                                name: &str)
@@ -1045,7 +1046,7 @@ pub fn get_single_str_from_tts(cx: &mut ExtCtxt,
 
 /// Extract comma-separated expressions from `tts`. If there is a
 /// parsing error, emit a non-fatal error and return None.
-pub fn get_exprs_from_tts(cx: &mut ExtCtxt,
+pub fn get_exprs_from_tts(cx: &mut ExtCtxt<'_>,
                           sp: Span,
                           tts: &[tokenstream::TokenTree]) -> Option<Vec<P<ast::Expr>>> {
     let mut p = cx.new_parser_from_tts(tts);

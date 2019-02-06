@@ -1,14 +1,15 @@
-use ast;
-use attr;
+use crate::ast;
+use crate::attr;
+use crate::edition::Edition;
+use crate::ext::hygiene::{Mark, SyntaxContext};
+use crate::symbol::{Symbol, keywords};
+use crate::source_map::{ExpnInfo, MacroAttribute, dummy_spanned, hygiene, respan};
+use crate::ptr::P;
+use crate::tokenstream::TokenStream;
+
 use std::cell::Cell;
 use std::iter;
-use edition::Edition;
-use ext::hygiene::{Mark, SyntaxContext};
-use symbol::{Symbol, keywords};
 use syntax_pos::{DUMMY_SP, Span};
-use source_map::{ExpnInfo, MacroAttribute, dummy_spanned, hygiene, respan};
-use ptr::P;
-use tokenstream::TokenStream;
 
 /// Craft a span that will be ignored by the stability lint's
 /// call to source_map's `is_internal` check.

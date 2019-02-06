@@ -1,53 +1,55 @@
+use crate::ast::{AngleBracketedArgs, ParenthesizedArgs, AttrStyle, BareFnTy};
+use crate::ast::{GenericBound, TraitBoundModifier};
+use crate::ast::Unsafety;
+use crate::ast::{Mod, AnonConst, Arg, Arm, Guard, Attribute, BindingMode, TraitItemKind};
+use crate::ast::Block;
+use crate::ast::{BlockCheckMode, CaptureBy, Movability};
+use crate::ast::{Constness, Crate};
+use crate::ast::Defaultness;
+use crate::ast::EnumDef;
+use crate::ast::{Expr, ExprKind, RangeLimits};
+use crate::ast::{Field, FnDecl, FnHeader};
+use crate::ast::{ForeignItem, ForeignItemKind, FunctionRetTy};
+use crate::ast::{GenericParam, GenericParamKind};
+use crate::ast::GenericArg;
+use crate::ast::{Ident, ImplItem, IsAsync, IsAuto, Item, ItemKind};
+use crate::ast::{Label, Lifetime, Lit, LitKind};
+use crate::ast::Local;
+use crate::ast::MacStmtStyle;
+use crate::ast::{Mac, Mac_, MacDelimiter};
+use crate::ast::{MutTy, Mutability};
+use crate::ast::{Pat, PatKind, PathSegment};
+use crate::ast::{PolyTraitRef, QSelf};
+use crate::ast::{Stmt, StmtKind};
+use crate::ast::{VariantData, StructField};
+use crate::ast::StrStyle;
+use crate::ast::SelfKind;
+use crate::ast::{TraitItem, TraitRef, TraitObjectSyntax};
+use crate::ast::{Ty, TyKind, TypeBinding, GenericBounds};
+use crate::ast::{Visibility, VisibilityKind, WhereClause, CrateSugar};
+use crate::ast::{UseTree, UseTreeKind};
+use crate::ast::{BinOpKind, UnOp};
+use crate::ast::{RangeEnd, RangeSyntax};
+use crate::{ast, attr};
+use crate::ext::base::DummyResult;
+use crate::source_map::{self, SourceMap, Spanned, respan};
+use crate::errors::{self, Applicability, DiagnosticBuilder, DiagnosticId};
+use crate::parse::{self, SeqSep, classify, token};
+use crate::parse::lexer::TokenAndSpan;
+use crate::parse::lexer::comments::{doc_comment_style, strip_doc_comment_decoration};
+use crate::parse::token::DelimToken;
+use crate::parse::{new_sub_parser_from_file, ParseSess, Directory, DirectoryOwnership};
+use crate::util::parser::{AssocOp, Fixity};
+use crate::print::pprust;
+use crate::ptr::P;
+use crate::parse::PResult;
+use crate::ThinVec;
+use crate::tokenstream::{self, DelimSpan, TokenTree, TokenStream, TreeAndJoint};
+use crate::symbol::{Symbol, keywords};
+
 use rustc_target::spec::abi::{self, Abi};
-use ast::{AngleBracketedArgs, ParenthesizedArgs, AttrStyle, BareFnTy};
-use ast::{GenericBound, TraitBoundModifier};
-use ast::Unsafety;
-use ast::{Mod, AnonConst, Arg, Arm, Guard, Attribute, BindingMode, TraitItemKind};
-use ast::Block;
-use ast::{BlockCheckMode, CaptureBy, Movability};
-use ast::{Constness, Crate};
-use ast::Defaultness;
-use ast::EnumDef;
-use ast::{Expr, ExprKind, RangeLimits};
-use ast::{Field, FnDecl, FnHeader};
-use ast::{ForeignItem, ForeignItemKind, FunctionRetTy};
-use ast::{GenericParam, GenericParamKind};
-use ast::GenericArg;
-use ast::{Ident, ImplItem, IsAsync, IsAuto, Item, ItemKind};
-use ast::{Label, Lifetime, Lit, LitKind};
-use ast::Local;
-use ast::MacStmtStyle;
-use ast::{Mac, Mac_, MacDelimiter};
-use ast::{MutTy, Mutability};
-use ast::{Pat, PatKind, PathSegment};
-use ast::{PolyTraitRef, QSelf};
-use ast::{Stmt, StmtKind};
-use ast::{VariantData, StructField};
-use ast::StrStyle;
-use ast::SelfKind;
-use ast::{TraitItem, TraitRef, TraitObjectSyntax};
-use ast::{Ty, TyKind, TypeBinding, GenericBounds};
-use ast::{Visibility, VisibilityKind, WhereClause, CrateSugar};
-use ast::{UseTree, UseTreeKind};
-use ast::{BinOpKind, UnOp};
-use ast::{RangeEnd, RangeSyntax};
-use {ast, attr};
-use ext::base::DummyResult;
-use source_map::{self, SourceMap, Spanned, respan};
 use syntax_pos::{self, Span, MultiSpan, BytePos, FileName};
-use errors::{self, Applicability, DiagnosticBuilder, DiagnosticId};
-use parse::{self, SeqSep, classify, token};
-use parse::lexer::TokenAndSpan;
-use parse::lexer::comments::{doc_comment_style, strip_doc_comment_decoration};
-use parse::token::DelimToken;
-use parse::{new_sub_parser_from_file, ParseSess, Directory, DirectoryOwnership};
-use util::parser::{AssocOp, Fixity};
-use print::pprust;
-use ptr::P;
-use parse::PResult;
-use ThinVec;
-use tokenstream::{self, DelimSpan, TokenTree, TokenStream, TreeAndJoint};
-use symbol::{Symbol, keywords};
+use log::{debug, trace};
 
 use std::borrow::Cow;
 use std::cmp;
@@ -64,7 +66,7 @@ pub enum AliasKind {
     Existential(GenericBounds),
 }
 
-bitflags! {
+bitflags::bitflags! {
     struct Restrictions: u8 {
         const STMT_EXPR         = 1 << 0;
         const NO_STRUCT_LITERAL = 1 << 1;
@@ -453,7 +455,7 @@ pub enum Error {
 impl Error {
     fn span_err<S: Into<MultiSpan>>(self,
                                         sp: S,
-                                        handler: &errors::Handler) -> DiagnosticBuilder {
+                                        handler: &errors::Handler) -> DiagnosticBuilder<'_> {
         match self {
             Error::FileNotFoundForModule { ref mod_name,
                                            ref default_path,
@@ -1313,7 +1315,7 @@ impl<'a> Parser<'a> {
         self.sess.span_diagnostic.span_bug(sp, m)
     }
 
-    fn cancel(&self, err: &mut DiagnosticBuilder) {
+    fn cancel(&self, err: &mut DiagnosticBuilder<'_>) {
         self.sess.span_diagnostic.cancel(err)
     }
 
@@ -1721,7 +1723,7 @@ impl<'a> Parser<'a> {
         match ty.node {
             TyKind::Rptr(ref lifetime, ref mut_ty) => {
                 let sum_with_parens = pprust::to_string(|s| {
-                    use print::pprust::PrintState;
+                    use crate::print::pprust::PrintState;
 
                     s.s.word("&")?;
                     s.print_opt_lifetime(lifetime)?;
@@ -3063,7 +3065,7 @@ impl<'a> Parser<'a> {
                             None => continue,
                         };
                         let sugg = pprust::to_string(|s| {
-                            use print::pprust::PrintState;
+                            use crate::print::pprust::PrintState;
                             s.popen()?;
                             s.print_expr(&e)?;
                             s.s.word( ".")?;
@@ -5220,7 +5222,7 @@ impl<'a> Parser<'a> {
                         stmt_span = stmt_span.with_hi(self.prev_span.hi());
                     }
                     let sugg = pprust::to_string(|s| {
-                        use print::pprust::{PrintState, INDENT_UNIT};
+                        use crate::print::pprust::{PrintState, INDENT_UNIT};
                         s.ibox(INDENT_UNIT)?;
                         s.bopen()?;
                         s.print_stmt(&stmt)?;
@@ -7050,7 +7052,7 @@ impl<'a> Parser<'a> {
     /// Parse a `mod <foo> { ... }` or `mod <foo>;` item
     fn parse_item_mod(&mut self, outer_attrs: &[Attribute]) -> PResult<'a, ItemInfo> {
         let (in_cfg, outer_attrs) = {
-            let mut strip_unconfigured = ::config::StripUnconfigured {
+            let mut strip_unconfigured = crate::config::StripUnconfigured {
                 sess: self.sess,
                 features: None, // don't perform gated feature checking
             };

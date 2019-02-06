@@ -1,7 +1,7 @@
-use print::pprust::token_to_string;
-use parse::lexer::StringReader;
-use parse::{token, PResult};
-use tokenstream::{DelimSpan, IsJoint::*, TokenStream, TokenTree, TreeAndJoint};
+use crate::print::pprust::token_to_string;
+use crate::parse::lexer::StringReader;
+use crate::parse::{token, PResult};
+use crate::tokenstream::{DelimSpan, IsJoint::*, TokenStream, TokenTree, TreeAndJoint};
 
 impl<'a> StringReader<'a> {
     // Parse a stream of tokens into a list of `TokenTree`s, up to an `Eof`.

@@ -1,13 +1,14 @@
-use ast::NodeId;
-use early_buffered_lints::BufferedEarlyLintId;
-use ext::tt::macro_parser;
-use feature_gate::Features;
-use parse::{token, ParseSess};
-use print::pprust;
-use symbol::keywords;
+use crate::ast::NodeId;
+use crate::early_buffered_lints::BufferedEarlyLintId;
+use crate::ext::tt::macro_parser;
+use crate::feature_gate::Features;
+use crate::parse::{token, ParseSess};
+use crate::print::pprust;
+use crate::tokenstream::{self, DelimSpan};
+use crate::ast;
+use crate::symbol::keywords;
+
 use syntax_pos::{edition::Edition, BytePos, Span};
-use tokenstream::{self, DelimSpan};
-use ast;
 
 use rustc_data_structures::sync::Lrc;
 use std::iter::Peekable;

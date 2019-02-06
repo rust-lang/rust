@@ -1,27 +1,28 @@
-use ast::{self, Block, Ident, LitKind, NodeId, PatKind, Path};
-use ast::{MacStmtStyle, StmtKind, ItemKind};
-use attr::{self, HasAttrs};
-use source_map::{ExpnInfo, MacroBang, MacroAttribute, dummy_spanned, respan};
-use config::StripUnconfigured;
-use errors::{Applicability, FatalError};
-use ext::base::*;
-use ext::derive::{add_derived_markers, collect_derives};
-use ext::hygiene::{self, Mark, SyntaxContext};
-use ext::placeholders::{placeholder, PlaceholderExpander};
-use feature_gate::{self, Features, GateIssue, is_builtin_attr, emit_feature_err};
-use mut_visit::*;
-use parse::{DirectoryOwnership, PResult, ParseSess};
-use parse::token::{self, Token};
-use parse::parser::Parser;
-use ptr::P;
-use smallvec::SmallVec;
-use symbol::Symbol;
-use symbol::keywords;
+use crate::ast::{self, Block, Ident, LitKind, NodeId, PatKind, Path};
+use crate::ast::{MacStmtStyle, StmtKind, ItemKind};
+use crate::attr::{self, HasAttrs};
+use crate::source_map::{ExpnInfo, MacroBang, MacroAttribute, dummy_spanned, respan};
+use crate::config::StripUnconfigured;
+use crate::errors::{Applicability, FatalError};
+use crate::ext::base::*;
+use crate::ext::derive::{add_derived_markers, collect_derives};
+use crate::ext::hygiene::{self, Mark, SyntaxContext};
+use crate::ext::placeholders::{placeholder, PlaceholderExpander};
+use crate::feature_gate::{self, Features, GateIssue, is_builtin_attr, emit_feature_err};
+use crate::mut_visit::*;
+use crate::parse::{DirectoryOwnership, PResult, ParseSess};
+use crate::parse::token::{self, Token};
+use crate::parse::parser::Parser;
+use crate::ptr::P;
+use crate::symbol::Symbol;
+use crate::symbol::keywords;
+use crate::tokenstream::{TokenStream, TokenTree};
+use crate::visit::{self, Visitor};
+use crate::util::map_in_place::MapInPlace;
+
+use smallvec::{smallvec, SmallVec};
 use syntax_pos::{Span, DUMMY_SP, FileName};
 use syntax_pos::hygiene::ExpnFormat;
-use tokenstream::{TokenStream, TokenTree};
-use visit::{self, Visitor};
-use util::map_in_place::MapInPlace;
 
 use rustc_data_structures::fx::FxHashMap;
 use std::fs;
@@ -129,8 +130,8 @@ macro_rules! ast_fragments {
             })*)*
         }
 
-        impl<'a> MacResult for ::ext::tt::macro_rules::ParserAnyMacro<'a> {
-            $(fn $make_ast(self: Box<::ext::tt::macro_rules::ParserAnyMacro<'a>>)
+        impl<'a> MacResult for crate::ext::tt::macro_rules::ParserAnyMacro<'a> {
+            $(fn $make_ast(self: Box<crate::ext::tt::macro_rules::ParserAnyMacro<'a>>)
                            -> Option<$AstTy> {
                 Some(self.make(AstFragmentKind::$Kind).$make_ast())
             })*
