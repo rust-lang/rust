@@ -7,6 +7,8 @@ use rls_data::{self, Analysis, CompilationOptions, CratePreludeData, Def, DefKin
                MacroRef, Ref, RefKind, Relation};
 use rls_span::{Column, Row};
 
+use log::error;
+
 #[derive(Debug)]
 pub struct Access {
     pub reachable: bool,
@@ -23,7 +25,7 @@ pub trait DumpOutput {
     fn dump(&mut self, result: &Analysis);
 }
 
-pub struct WriteOutput<'b, W: Write + 'b> {
+pub struct WriteOutput<'b, W: Write> {
     output: &'b mut W,
 }
 
