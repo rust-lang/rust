@@ -113,7 +113,7 @@ impl<'b, 'a: 'b> FmtVisitor<'a> {
             ast::StmtKind::Local(..) | ast::StmtKind::Expr(..) | ast::StmtKind::Semi(..) => {
                 let attrs = get_attrs_from_stmt(stmt);
                 if contains_skip(attrs) {
-                    self.push_skipped_with_span(attrs, stmt.span());
+                    self.push_skipped_with_span(attrs, stmt.span(), get_span_without_attrs(stmt));
                 } else {
                     let shape = self.shape();
                     let rewrite = self.with_context(|ctx| stmt.rewrite(&ctx, shape));
@@ -123,7 +123,7 @@ impl<'b, 'a: 'b> FmtVisitor<'a> {
             ast::StmtKind::Mac(ref mac) => {
                 let (ref mac, _macro_style, ref attrs) = **mac;
                 if self.visit_attrs(attrs, ast::AttrStyle::Outer) {
-                    self.push_skipped_with_span(attrs, stmt.span());
+                    self.push_skipped_with_span(attrs, stmt.span(), get_span_without_attrs(stmt));
                 } else {
                     self.visit_mac(mac, None, MacroPosition::Statement);
                 }
@@ -331,14 +331,14 @@ impl<'b, 'a: 'b> FmtVisitor<'a> {
             // For use items, skip rewriting attributes. Just check for a skip attribute.
             ast::ItemKind::Use(..) => {
                 if contains_skip(attrs) {
-                    self.push_skipped_with_span(attrs.as_slice(), item.span());
+                    self.push_skipped_with_span(attrs.as_slice(), item.span(), item.span());
                     return;
                 }
             }
             // Module is inline, in this case we treat it like any other item.
             _ if !is_mod_decl(item) => {
                 if self.visit_attrs(&item.attrs, ast::AttrStyle::Outer) {
-                    self.push_skipped_with_span(item.attrs.as_slice(), item.span());
+                    self.push_skipped_with_span(item.attrs.as_slice(), item.span(), item.span());
                     return;
                 }
             }
@@ -357,7 +357,7 @@ impl<'b, 'a: 'b> FmtVisitor<'a> {
             }
             _ => {
                 if self.visit_attrs(&item.attrs, ast::AttrStyle::Outer) {
-                    self.push_skipped_with_span(item.attrs.as_slice(), item.span());
+                    self.push_skipped_with_span(item.attrs.as_slice(), item.span(), item.span());
                     return;
                 }
             }
@@ -474,7 +474,7 @@ impl<'b, 'a: 'b> FmtVisitor<'a> {
         skip_out_of_file_lines_range_visitor!(self, ti.span);
 
         if self.visit_attrs(&ti.attrs, ast::AttrStyle::Outer) {
-            self.push_skipped_with_span(ti.attrs.as_slice(), ti.span());
+            self.push_skipped_with_span(ti.attrs.as_slice(), ti.span(), ti.span());
             return;
         }
 
@@ -518,7 +518,7 @@ impl<'b, 'a: 'b> FmtVisitor<'a> {
         skip_out_of_file_lines_range_visitor!(self, ii.span);
 
         if self.visit_attrs(&ii.attrs, ast::AttrStyle::Outer) {
-            self.push_skipped_with_span(ii.attrs.as_slice(), ii.span());
+            self.push_skipped_with_span(ii.attrs.as_slice(), ii.span(), ii.span());
             return;
         }
 
@@ -592,7 +592,12 @@ impl<'b, 'a: 'b> FmtVisitor<'a> {
         self.push_rewrite_inner(span, rewrite);
     }
 
-    pub fn push_skipped_with_span(&mut self, attrs: &[ast::Attribute], item_span: Span) {
+    pub fn push_skipped_with_span(
+        &mut self,
+        attrs: &[ast::Attribute],
+        item_span: Span,
+        main_span: Span,
+    ) {
         self.format_missing_with_indent(source!(self, item_span).lo());
         // do not take into account the lines with attributes as part of the skipped range
         let attrs_end = attrs
@@ -600,8 +605,11 @@ impl<'b, 'a: 'b> FmtVisitor<'a> {
             .map(|attr| self.source_map.lookup_char_pos(attr.span().hi()).line)
             .max()
             .unwrap_or(1);
-        // Add 1 to get the line past the last attribute
-        let lo = attrs_end + 1;
+        let first_line = self.source_map.lookup_char_pos(main_span.lo()).line;
+        // Statement can start after some newlines and/or spaces
+        // or it can be on the same line as the last attribute.
+        // So here we need to take a minimum between two.
+        let lo = std::cmp::min(attrs_end + 1, first_line);
         self.push_rewrite_inner(item_span, None);
         let hi = self.line_number + 1;
         self.skipped_range.push((lo, hi));
