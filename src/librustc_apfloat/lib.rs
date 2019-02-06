@@ -34,16 +34,12 @@
       html_favicon_url = "https://doc.rust-lang.org/favicon.ico",
       html_root_url = "https://doc.rust-lang.org/nightly/")]
 #![forbid(unsafe_code)]
+#![deny(rust_2018_idioms)]
 
-#![feature(nll)]
 #![feature(try_from)]
 // See librustc_cratesio_shim/Cargo.toml for a comment explaining this.
 #[allow(unused_extern_crates)]
 extern crate rustc_cratesio_shim;
-
-#[macro_use]
-extern crate bitflags;
-extern crate smallvec;
 
 use std::cmp::Ordering;
 use std::fmt;
@@ -51,7 +47,7 @@ use std::ops::{Neg, Add, Sub, Mul, Div, Rem};
 use std::ops::{AddAssign, SubAssign, MulAssign, DivAssign, RemAssign};
 use std::str::FromStr;
 
-bitflags! {
+bitflags::bitflags! {
     /// IEEE-754R 7: Default exception handling.
     ///
     /// UNDERFLOW or OVERFLOW are always returned or-ed with INEXACT.
