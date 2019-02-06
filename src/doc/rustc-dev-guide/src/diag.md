@@ -85,11 +85,11 @@ Server][rls] and [`rustfix`][rustfix].
 [rustfix]: https://github.com/rust-lang-nursery/rustfix
 
 Not all suggestions should be applied mechanically. Use the
-[`span_suggestion_with_applicability`][sswa] method of `DiagnosticBuilder` to
-make a suggestion while providing a hint to tools whether the suggestion is
-mechanically applicable or not.
+[`span_suggestion`][span_suggestion] method of `DiagnosticBuilder` to
+make a suggestion. The last argument provides a hint to tools whether
+the suggestion is mechanically applicable or not.
 
-[sswa]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_errors/struct.DiagnosticBuilder.html#method.span_suggestion_with_applicability
+[span_suggestion]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_errors/struct.DiagnosticBuilder.html#method.span_suggestion
 
 For example, to make our `qux` suggestion machine-applicable, we would do:
 
@@ -97,8 +97,7 @@ For example, to make our `qux` suggestion machine-applicable, we would do:
 let mut err = sess.struct_span_err(sp, "oh no! this is an error!");
 
 if let Ok(snippet) = sess.source_map().span_to_snippet(sp) {
-    // Add applicability info!
-    err.span_suggestion_with_applicability(
+    err.span_suggestion(
         suggestion_sp,
         "try using a qux here",
         format!("qux {}", snip),
@@ -145,7 +144,7 @@ error: aborting due to previous error
 For more information about this error, try `rustc --explain E0999`.
 ```
 
-There are a few other [`Applicability`][appl] possibilities:
+The possible values of [`Applicability`][appl] are:
 
 - `MachineApplicable`: Can be applied mechanically.
 - `HasPlaceholders`: Cannot be applied mechanically because it has placeholder
