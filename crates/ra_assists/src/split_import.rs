@@ -1,12 +1,13 @@
+use hir::db::HirDatabase;
 use ra_syntax::{
     TextUnit, AstNode, SyntaxKind::COLONCOLON,
     ast,
     algo::generate,
 };
 
-use crate::assists::{AssistCtx, Assist};
+use crate::{AssistCtx, Assist};
 
-pub fn split_import(ctx: AssistCtx) -> Option<Assist> {
+pub(crate) fn split_import(ctx: AssistCtx<impl HirDatabase>) -> Option<Assist> {
     let colon_colon = ctx
         .leaf_at_offset()
         .find(|leaf| leaf.kind() == COLONCOLON)?;
@@ -34,7 +35,7 @@ pub fn split_import(ctx: AssistCtx) -> Option<Assist> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::assists::check_assist;
+    use crate::helpers::check_assist;
 
     #[test]
     fn test_split_import() {

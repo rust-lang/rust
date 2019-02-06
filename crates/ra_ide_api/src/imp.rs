@@ -19,7 +19,7 @@ use ra_syntax::{
 
 use crate::{
     AnalysisChange,
-    CrateId, db, Diagnostic, FileId, FilePosition, FileRange, FileSystemEdit,
+    CrateId, db, Diagnostic, FileId, FilePosition, FileSystemEdit,
     Query, RootChange, SourceChange, SourceFileEdit,
     symbol_index::{FileSymbol, SymbolsDatabase},
     status::syntax_tree_stats
@@ -234,15 +234,6 @@ impl db::RootDatabase {
             }
         };
         res
-    }
-
-    pub(crate) fn assists(&self, frange: FileRange) -> Vec<SourceChange> {
-        let file = self.parse(frange.file_id);
-        ra_ide_api_light::assists::assists(&file, frange.range)
-            .into_iter()
-            .chain(crate::assists::assists(self, frange.file_id, &file, frange.range).into_iter())
-            .map(|local_edit| SourceChange::from_local_edit(frange.file_id, local_edit))
-            .collect()
     }
 
     pub(crate) fn index_resolve(&self, name_ref: &ast::NameRef) -> Vec<FileSymbol> {

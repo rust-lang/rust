@@ -3,7 +3,7 @@
 //! This usually means functions which take syntax tree as an input and produce
 //! an edit or some auxiliary info.
 
-pub mod assists;
+pub mod formatting;
 mod extend_selection;
 mod folding_ranges;
 mod line_index;
@@ -14,10 +14,15 @@ mod test_utils;
 mod join_lines;
 mod typing;
 mod diagnostics;
-pub(crate) mod formatting;
+
+#[derive(Debug)]
+pub struct LocalEdit {
+    pub label: String,
+    pub edit: ra_text_edit::TextEdit,
+    pub cursor_position: Option<TextUnit>,
+}
 
 pub use self::{
-    assists::LocalEdit,
     extend_selection::extend_selection,
     folding_ranges::{folding_ranges, Fold, FoldKind},
     line_index::{LineCol, LineIndex},

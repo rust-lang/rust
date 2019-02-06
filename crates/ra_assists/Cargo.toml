@@ -1,0 +1,17 @@
+[package]
+edition = "2018"
+name = "ra_assists"
+version = "0.1.0"
+authors = ["Aleksey Kladov <aleksey.kladov@gmail.com>"]
+
+[dependencies]
+join_to_string = "0.1.3"
+
+ra_ide_api_light = { path = "../ra_ide_api_light" }
+ra_syntax = { path = "../ra_syntax" }
+ra_text_edit = { path = "../ra_text_edit" }
+ra_db = { path = "../ra_db" }
+hir = { path = "../ra_hir", package = "ra_hir" }
+
+[dev-dependencies]
+test_utils = { path = "../test_utils" }

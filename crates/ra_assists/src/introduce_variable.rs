@@ -1,3 +1,4 @@
+use hir::db::HirDatabase;
 use ra_syntax::{
     ast::{self, AstNode},
     SyntaxKind::{
@@ -5,9 +6,9 @@ use ra_syntax::{
     }, SyntaxNode, TextUnit,
 };
 
-use crate::assists::{AssistCtx, Assist};
+use crate::{AssistCtx, Assist};
 
-pub fn introduce_variable<'a>(ctx: AssistCtx) -> Option<Assist> {
+pub(crate) fn introduce_variable<'a>(ctx: AssistCtx<impl HirDatabase>) -> Option<Assist> {
     let node = ctx.covering_node();
     if !valid_covering_node(node) {
         return None;
@@ -103,7 +104,7 @@ fn anchor_stmt(expr: &ast::Expr) -> Option<(&SyntaxNode, bool)> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::assists::{ check_assist, check_assist_not_applicable, check_assist_range };
+    use crate::helpers::{check_assist, check_assist_not_applicable, check_assist_range};
 
     #[test]
     fn test_introduce_var_simple() {
