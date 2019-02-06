@@ -12,7 +12,7 @@
 use source_map::{SourceMap, FilePathMapping};
 use syntax_pos::{self, MacroBacktrace, Span, SpanLabel, MultiSpan};
 use errors::registry::Registry;
-use errors::{DiagnosticBuilder, SubDiagnostic, CodeSuggestion, SourceMapper};
+use errors::{DiagnosticBuilder, SubDiagnostic, SourceMapper};
 use errors::{DiagnosticId, Applicability};
 use errors::emitter::{Emitter, EmitterWriter};
 
@@ -162,15 +162,32 @@ impl Diagnostic {
     fn from_diagnostic_builder(db: &DiagnosticBuilder,
                                je: &JsonEmitter)
                                -> Diagnostic {
-        let sugg = db.suggestions.iter().map(|sugg| {
-            Diagnostic {
-                message: sugg.msg.clone(),
-                code: None,
-                level: "help",
-                spans: DiagnosticSpan::from_suggestion(sugg, je),
-                children: vec![],
-                rendered: None,
-            }
+        // In our internal representation, a `CodeSuggestion` has one
+        // or more `Substitutions`, each of which has one or more
+        // `SubstitutionParts`; here, each `Substitution` becomes an
+        // element in the `children` array
+        let substitution_children = db.suggestions.iter().flat_map(|suggestion| {
+            suggestion.substitutions.iter().map(move |substitution| {
+                Diagnostic {
+                    message: suggestion.msg.clone(),
+                    code: None,
+                    level: "help",
+                    spans: substitution.parts.iter().map(move |suggestion_inner| {
+                        let span_label = SpanLabel {
+                            span: suggestion_inner.span,
+                            is_primary: true,
+                            label: None,
+                        };
+                        DiagnosticSpan::from_span_label(
+                            span_label,
+                            Some((&suggestion_inner.snippet, suggestion.applicability)),
+                            je
+                        )
+                    }).collect(),
+                    children: Vec::new(),
+                    rendered: None,
+                }
+            })
         });
 
         // generate regular command line output and store it in the json
@@ -201,7 +218,7 @@ impl Diagnostic {
             spans: DiagnosticSpan::from_multispan(&db.span, je),
             children: db.children.iter().map(|c| {
                 Diagnostic::from_sub_diagnostic(c, je)
-            }).chain(sugg).collect(),
+            }).chain(substitution_children).collect(),
             rendered: Some(output),
         }
     }
@@ -308,25 +325,6 @@ impl DiagnosticSpan {
            .collect()
     }
 
-    fn from_suggestion(suggestion: &CodeSuggestion, je: &JsonEmitter)
-                       -> Vec<DiagnosticSpan> {
-        suggestion.substitutions
-                      .iter()
-                      .flat_map(|substitution| {
-                          substitution.parts.iter().map(move |suggestion_inner| {
-                              let span_label = SpanLabel {
-                                  span: suggestion_inner.span,
-                                  is_primary: true,
-                                  label: None,
-                              };
-                              DiagnosticSpan::from_span_label(span_label,
-                                                              Some((&suggestion_inner.snippet,
-                                                                   suggestion.applicability)),
-                                                              je)
-                          })
-                      })
-                      .collect()
-    }
 }
 
 impl DiagnosticSpanLine {

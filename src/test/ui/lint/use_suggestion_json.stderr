@@ -121,7 +121,16 @@ mod foo {
 ",
           "suggestion_applicability": "Unspecified",
           "expansion": null
-        },
+        }
+      ],
+      "children": [],
+      "rendered": null
+    },
+    {
+      "message": "possible candidates are found in other modules, you can import them into scope",
+      "code": null,
+      "level": "help",
+      "spans": [
         {
           "file_name": "$DIR/use_suggestion_json.rs",
           "byte_start": 417,
@@ -144,7 +153,16 @@ mod foo {
 ",
           "suggestion_applicability": "Unspecified",
           "expansion": null
-        },
+        }
+      ],
+      "children": [],
+      "rendered": null
+    },
+    {
+      "message": "possible candidates are found in other modules, you can import them into scope",
+      "code": null,
+      "level": "help",
+      "spans": [
         {
           "file_name": "$DIR/use_suggestion_json.rs",
           "byte_start": 417,
@@ -167,7 +185,16 @@ mod foo {
 ",
           "suggestion_applicability": "Unspecified",
           "expansion": null
-        },
+        }
+      ],
+      "children": [],
+      "rendered": null
+    },
+    {
+      "message": "possible candidates are found in other modules, you can import them into scope",
+      "code": null,
+      "level": "help",
+      "spans": [
         {
           "file_name": "$DIR/use_suggestion_json.rs",
           "byte_start": 417,
@@ -190,7 +217,16 @@ mod foo {
 ",
           "suggestion_applicability": "Unspecified",
           "expansion": null
-        },
+        }
+      ],
+      "children": [],
+      "rendered": null
+    },
+    {
+      "message": "possible candidates are found in other modules, you can import them into scope",
+      "code": null,
+      "level": "help",
+      "spans": [
         {
           "file_name": "$DIR/use_suggestion_json.rs",
           "byte_start": 417,
@@ -213,7 +249,16 @@ mod foo {
 ",
           "suggestion_applicability": "Unspecified",
           "expansion": null
-        },
+        }
+      ],
+      "children": [],
+      "rendered": null
+    },
+    {
+      "message": "possible candidates are found in other modules, you can import them into scope",
+      "code": null,
+      "level": "help",
+      "spans": [
         {
           "file_name": "$DIR/use_suggestion_json.rs",
           "byte_start": 417,
@@ -236,7 +281,16 @@ mod foo {
 ",
           "suggestion_applicability": "Unspecified",
           "expansion": null
-        },
+        }
+      ],
+      "children": [],
+      "rendered": null
+    },
+    {
+      "message": "possible candidates are found in other modules, you can import them into scope",
+      "code": null,
+      "level": "help",
+      "spans": [
         {
           "file_name": "$DIR/use_suggestion_json.rs",
           "byte_start": 417,
@@ -259,7 +313,16 @@ mod foo {
 ",
           "suggestion_applicability": "Unspecified",
           "expansion": null
-        },
+        }
+      ],
+      "children": [],
+      "rendered": null
+    },
+    {
+      "message": "possible candidates are found in other modules, you can import them into scope",
+      "code": null,
+      "level": "help",
+      "spans": [
         {
           "file_name": "$DIR/use_suggestion_json.rs",
           "byte_start": 417,
@@ -282,7 +345,16 @@ mod foo {
 ",
           "suggestion_applicability": "Unspecified",
           "expansion": null
-        },
+        }
+      ],
+      "children": [],
+      "rendered": null
+    },
+    {
+      "message": "possible candidates are found in other modules, you can import them into scope",
+      "code": null,
+      "level": "help",
+      "spans": [
         {
           "file_name": "$DIR/use_suggestion_json.rs",
           "byte_start": 417,
@@ -305,7 +377,16 @@ mod foo {
 ",
           "suggestion_applicability": "Unspecified",
           "expansion": null
-        },
+        }
+      ],
+      "children": [],
+      "rendered": null
+    },
+    {
+      "message": "possible candidates are found in other modules, you can import them into scope",
+      "code": null,
+      "level": "help",
+      "spans": [
         {
           "file_name": "$DIR/use_suggestion_json.rs",
           "byte_start": 417,
@@ -328,7 +409,16 @@ mod foo {
 ",
           "suggestion_applicability": "Unspecified",
           "expansion": null
-        },
+        }
+      ],
+      "children": [],
+      "rendered": null
+    },
+    {
+      "message": "possible candidates are found in other modules, you can import them into scope",
+      "code": null,
+      "level": "help",
+      "spans": [
         {
           "file_name": "$DIR/use_suggestion_json.rs",
           "byte_start": 417,
@@ -351,7 +441,16 @@ mod foo {
 ",
           "suggestion_applicability": "Unspecified",
           "expansion": null
-        },
+        }
+      ],
+      "children": [],
+      "rendered": null
+    },
+    {
+      "message": "possible candidates are found in other modules, you can import them into scope",
+      "code": null,
+      "level": "help",
+      "spans": [
         {
           "file_name": "$DIR/use_suggestion_json.rs",
           "byte_start": 417,
