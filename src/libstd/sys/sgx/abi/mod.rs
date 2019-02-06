@@ -12,7 +12,7 @@ pub mod tls;
 #[macro_use]
 pub mod usercalls;
 
-global_asm!(concat!(usercalls_asm!(), include_str!("entry.S")));
+global_asm!(include_str!("entry.S"));
 
 #[no_mangle]
 unsafe extern "C" fn tcs_init(secondary: bool) {

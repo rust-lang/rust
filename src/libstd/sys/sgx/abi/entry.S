@@ -69,10 +69,6 @@ IMAGE_BASE:
     .asciz "Re-entered aborted enclave!"
 .Lreentry_panic_msg_end:
 
-.Lusercall_panic_msg:
-    .asciz "Invalid usercall#!"
-.Lusercall_panic_msg_end:
-
 .org .Lxsave_clear+512
 .Lxsave_header:
     .int 0, 0 /*  XSTATE_BV */
@@ -219,13 +215,21 @@ sgx_entry:
     orq $8,%rsp
     jmp panic_msg
 
-.Lusercall_panic:
-    lea .Lusercall_panic_msg(%rip),%rdi
-    mov $.Lusercall_panic_msg_end-.Lusercall_panic_msg,%esi
-    orq $8,%rsp
-    jmp panic_msg
-
-.macro push_callee_saved_registers
+/*  This *MUST* be called with 6 parameters, otherwise register information */
+/*  might leak! */
+.global usercall
+usercall:
+    test %rcx,%rcx            /* check `abort` function argument */
+    jnz .Lusercall_abort      /* abort is set, jump to abort code (unlikely forward conditional) */
+    jmp .Lusercall_save_state /* non-aborting usercall */
+.Lusercall_abort:
+/* set aborted bit */
+    movb $1,.Laborted(%rip)
+/* save registers in DEBUG mode, so that debugger can reconstruct the stack */
+    testb $0xff,DEBUG(%rip)
+    jz .Lusercall_noreturn
+.Lusercall_save_state:
+/*  save callee-saved state */
     push %r15
     push %r14
     push %r13
@@ -235,33 +239,8 @@ sgx_entry:
     sub $8, %rsp
     fstcw 4(%rsp)
     stmxcsr (%rsp)
-.endm
-
-.global usercall_exit
-usercall_exit:
-/* save registers in DEBUG mode, so that debugger can reconstruct the stack */
-    testb $0xff,DEBUG(%rip)
-    jz .Lskip_save_registers
-    push_callee_saved_registers
-    movq %rsp,%gs:tcsls_panic_last_rsp
-.Lskip_save_registers:
-/* set aborted bit */
-    movb $1,.Laborted(%rip)
-/* call usercall exit(true) */
-    /* NOP: mov %rsi,%rsi */ /*  RSI = usercall() argument: panic */
-    xor %rdx,%rdx /*  RDX cleared */
-    movq $usercall_nr_exit,%rdi /*  RDI = usercall exit */
-    jmp .Lexit
-
-/*  This *MUST* be called with 6 parameters, otherwise register information */
-/*  might leak! */
-.global usercall
-usercall:
-    test %rdi,%rdi
-    jle .Lusercall_panic
-/*  save callee-saved state */
-    push_callee_saved_registers
     movq %rsp,%gs:tcsls_last_rsp
+.Lusercall_noreturn:
 /*  clear general purpose register state */
     /*  RAX overwritten by ENCLU */
     /*  RBX set by sgx_exit */
@@ -281,7 +260,7 @@ usercall:
     jmp .Lsgx_exit
 .Lusercall_ret:
     movq $0,%gs:tcsls_last_rsp
-/*  restore callee-saved state, cf. push_callee_saved_registers */
+/*  restore callee-saved state, cf. "save" above */
     mov %r11,%rsp
     ldmxcsr (%rsp)
     fldcw 4(%rsp)
