@@ -107,6 +107,7 @@ pub enum TyKind<'tcx> {
     /// definition and not a concrete use of it.
     Adt(&'tcx AdtDef, &'tcx Substs<'tcx>),
 
+    /// An unsized FFI type that is opaque to Rust. Written as `extern type T`.
     Foreign(DefId),
 
     /// The pointee of a string slice. Written as `str`.
