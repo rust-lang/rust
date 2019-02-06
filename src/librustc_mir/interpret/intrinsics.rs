@@ -133,7 +133,8 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> 
                         // For signed addition the saturated value depends on the
                         // sign of either term
                         if first_term & (1 << (num_bits-1)) == 0 {  // signed term is positive
-                            Scalar::from_uint((1u128 << (num_bits - 1)) - 1, Size::from_bits(num_bits))
+                            Scalar::from_uint((1u128 << (num_bits - 1)) - 1,
+                                Size::from_bits(num_bits))
                         } else {  // signed term is negative
                             Scalar::from_uint(1u128 << (num_bits - 1), Size::from_bits(num_bits))
                         }
