@@ -1,3 +1,129 @@
+Version 1.33.0 (2019-02-28)
+==========================
+
+Language
+--------
+- [You can now use the `cfg(target_vendor)` attribute.][57465] E.g.
+  `#[cfg(target_vendor="linux")] fn main() { println!("Hello Linux!"); }`
+- [You can now have multiple patterns in `if let` and `while let`
+  expressions.][57532] You can do this with the same syntax as a `match`
+  expression. E.g.
+  ```rust
+  enum Creature {
+    Crab(String),
+    Person(String),
+  }
+
+  fn main() {
+    let state = Creature::Crab("Ferrous");
+
+    if let Creature::Crab(name) | Creature::Person(name) {
+      println!("This creature's name is: {}", name);
+    }
+  }
+  ```
+- [You can now have irrefutable `if let` and `while let` patterns.][57535] Using
+  this feature will by default produce a warning as this behaviour can be
+  unintuitive. E.g. `if let _ = 5 {}`
+- [You can now use `let` bindings and pattern destructurcting in
+  constant functions.][57175]
+- [You can now specify multiple attributes in a `cfg_attr` attribute.][57332]
+  E.g. `#[cfg_attr(all(), must_use, optimize)]`
+- [You can now specify a specific alignment with the `#[repr(packed)]`
+  attribute.][57049] E.g. `#[repr(packed(2))] struct Foo(i16, i32);` is a struct
+  with an alignment of 2 bytes and a size of 6 bytes.
+- [You can now call unsafe constant functions.][57067] E.g.
+  ```rust
+  unsafe const fn foo() -> i32 { 5 }
+  const fn bar() -> i32 {
+    unsafe { foo() }
+  }
+  ```
+- [You can now import an item from a module as a `_`.][56303] This allows you to
+  import a trait's impls, and not have the name in the namespace. E.g.
+  ```rust
+  use std::io::Read as _;
+
+  // Allowed as there is only one `Read` in the module.
+  pub trait Read {}
+  ```
+- [`extern` functions will now abort by default when panicking.][55982]
+
+Compiler
+--------
+- [You can now set a linker flavor for `rustc` with the `-Clinker-flavor`
+  command line argument.][56351]
+- [The mininum required LLVM version has been bumped to 6.0.][56642]
+- [Added support for the PowerPC64 architecture on FreeBSD.][57615]
+- [The `x86_64-fortanix-unknown-sgx` target support has been upgraded to
+  tier 2 support.][57130] Visit the [platform support] page for information on
+  Rust's platform support.
+- [Added support for the `thumbv7neon-linux-androideabi` and
+  `thumbv7neon-unknown-linux-gnueabihf` targets.][56947]
+- [Added support for the `x86_64-unknown-uefi` target.][56769]
+
+Libraries
+---------
+- [The functions `overflowing_{add, sub, mul, shl, shr}` are now constant
+  functions for all numeric types.][57566]
+- [The `get` method for all `NonZero` types is now constant.][57167]
+- [The functions `count_ones`, `count_zeros`, `leading_zeros`, `trailing_zeros`,
+  `swap_bytes`, `from_be`, `from_le`, `to_be`, `to_le` are now constant for all
+  numeric types.][57234]
+- [`Ipv4Addr::new` is now a constant function][57234]
+
+Stabilized APIs
+---------------
+- [`unix::FileExt::read_exact_at`]
+- [`unix::FileExt::write_exact_at`]
+- [`Option::transpose`]
+- [`Result::transpose`]
+- [`convert::identity`]
+- [`pin::Pin`]
+- [`Vec::resize_with`]
+- [`VecDeque::resize_with`]
+- [`Duration::as_millis`]
+- [`Duration::as_micros`]
+- [`Duration::as_nanos`]
+
+Cargo
+-----
+- [Cargo should now rebuild a crate if a file was modified during the initial
+  build.][cargo/6484]
+
+
+[57615]: https://github.com/rust-lang/rust/pull/57615/
+[57465]: https://github.com/rust-lang/rust/pull/57465/
+[57532]: https://github.com/rust-lang/rust/pull/57532/
+[57535]: https://github.com/rust-lang/rust/pull/57535/
+[57566]: https://github.com/rust-lang/rust/pull/57566/
+[57130]: https://github.com/rust-lang/rust/pull/57130/
+[57167]: https://github.com/rust-lang/rust/pull/57167/
+[57175]: https://github.com/rust-lang/rust/pull/57175/
+[57234]: https://github.com/rust-lang/rust/pull/57234/
+[57332]: https://github.com/rust-lang/rust/pull/57332/
+[56947]: https://github.com/rust-lang/rust/pull/56947/
+[57049]: https://github.com/rust-lang/rust/pull/57049/
+[57067]: https://github.com/rust-lang/rust/pull/57067/
+[56769]: https://github.com/rust-lang/rust/pull/56769/
+[56642]: https://github.com/rust-lang/rust/pull/56642/
+[56303]: https://github.com/rust-lang/rust/pull/56303/
+[56351]: https://github.com/rust-lang/rust/pull/56351/
+[55982]: https://github.com/rust-lang/rust/pull/55982/
+[cargo/6484]: https://github.com/rust-lang/cargo/pull/6484/
+[`unix::FileExt::read_exact_at`]: https://doc.rust-lang.org/std/os/unix/fs/trait.FileExt.html#read_exact_at
+[`unix::FileExt::write_exact_at`]: https://doc.rust-lang.org/std/os/unix/fs/trait.FileExt.html#write_exact_at
+[`Option::transpose`]: https://doc.rust-lang.org/std/option/enum.Option.html#transpose
+[`Result::transpose`]: https://doc.rust-lang.org/std/result/enum.Result.html#transpose
+[`convert::identity`]: https://doc.rust-lang.org/std/convert/fn.identity.html
+[`pin::Pin`]: https://doc.rust-lang.org/std/pin/struct.Pin.html
+[`Vec::resize_with`]: https://doc.rust-lang.org/std/vec/struct.Vec.html#resize_with
+[`VecDeque::resize_with`]: https://doc.rust-lang.org/std/collections/struct.VecDeque.html#resize_with
+[`Duration::as_millis`]: https://doc.rust-lang.org/std/time/struct.Duration.html#as_millis
+[`Duration::as_micros`]: https://doc.rust-lang.org/std/time/struct.Duration.html#as_micros
+[`Duration::as_nanos`]: https://doc.rust-lang.org/std/time/struct.Duration.html#as_millis
+
+
 Version 1.32.0 (2019-01-17)
 ==========================
 
