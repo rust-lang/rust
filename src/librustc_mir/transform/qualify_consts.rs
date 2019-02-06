@@ -48,11 +48,6 @@ bitflags::bitflags! {
         // Refers to temporaries which cannot be promoted as
         // promote_consts decided they weren't simple enough.
         const NOT_PROMOTABLE    = 1 << 3;
-
-        // Const items can only have MUTABLE_INTERIOR
-        // and NOT_PROMOTABLE without producing an error.
-        const CONST_ERROR       = !Qualif::MUTABLE_INTERIOR.bits &
-                                  !Qualif::NOT_PROMOTABLE.bits;
     }
 }
 
@@ -419,13 +414,13 @@ impl<'a, 'tcx> Qualifier<'a, 'tcx> {
         };
 
         // Bail out on oon-`const fn` calls or if the callee had errors.
-        if !is_const_fn || self.qualify_operand(callee).intersects(Qualif::CONST_ERROR) {
+        if !is_const_fn || self.qualify_operand(callee).intersects(Qualif::NOT_CONST) {
             return Qualif::NOT_CONST;
         }
 
         // Bail out if any arguments had errors.
         for arg in args {
-            if self.qualify_operand(arg).intersects(Qualif::CONST_ERROR) {
+            if self.qualify_operand(arg).intersects(Qualif::NOT_CONST) {
                 return Qualif::NOT_CONST;
             }
         }
@@ -668,7 +663,7 @@ impl<'a, 'tcx> Checker<'a, 'tcx> {
 
         // Account for errors in consts by using the
         // conservative type qualification instead.
-        if qualif.intersects(Qualif::CONST_ERROR) {
+        if qualif.intersects(Qualif::NOT_CONST) {
             qualif = self.qualifier().qualify_any_value_of_ty(mir.return_ty());
         }
 
