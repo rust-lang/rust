@@ -3835,7 +3835,7 @@ pub fn register_def(cx: &DocContext, def: Def) -> DefId {
 
 fn resolve_use_source(cx: &DocContext, path: Path) -> ImportSource {
     ImportSource {
-        did: if path.def == Def::Err {
+        did: if path.def.opt_def_id().is_none() {
             None
         } else {
             Some(register_def(cx, path.def))
