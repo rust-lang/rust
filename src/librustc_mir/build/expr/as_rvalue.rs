@@ -268,7 +268,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                             span: expr_span,
                             ty: this.hir.tcx().types.u32,
                             user_ty: None,
-                            literal: this.hir.tcx().intern_lazy_const(ty::LazyConst::Evaluated(
+                            literal: this.hir.tcx().mk_lazy_const(ty::LazyConst::Evaluated(
                                 ty::Const::from_bits(
                                     this.hir.tcx(),
                                     0,

@@ -127,6 +127,7 @@ pub struct CtxtInterners<'tcx> {
     goal: InternedSet<'tcx, GoalKind<'tcx>>,
     goal_list: InternedSet<'tcx, List<Goal<'tcx>>>,
     projs: InternedSet<'tcx, List<ProjectionKind<'tcx>>>,
+    lazy_const: InternedSet<'tcx, LazyConst<'tcx>>,
 }
 
 impl<'gcx: 'tcx, 'tcx> CtxtInterners<'tcx> {
@@ -144,6 +145,7 @@ impl<'gcx: 'tcx, 'tcx> CtxtInterners<'tcx> {
             goal: Default::default(),
             goal_list: Default::default(),
             projs: Default::default(),
+            lazy_const: Default::default(),
         }
     }
 
@@ -1072,10 +1074,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
         self.global_arenas.adt_def.alloc(def)
     }
 
-    pub fn intern_const_alloc(
-        self,
-        alloc: Allocation,
-    ) -> &'gcx Allocation {
+    pub fn intern_const_alloc(self, alloc: Allocation) -> &'gcx Allocation {
         self.allocation_interner.borrow_mut().intern(alloc, |alloc| {
             self.global_arenas.const_allocs.alloc(alloc)
         })
@@ -1093,10 +1092,6 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
         self.stability_interner.borrow_mut().intern(stab, |stab| {
             self.global_interners.arena.alloc(stab)
         })
-    }
-
-    pub fn intern_lazy_const(self, c: ty::LazyConst<'tcx>) -> &'tcx ty::LazyConst<'tcx> {
-        self.global_interners.arena.alloc(c)
     }
 
     pub fn intern_layout(self, layout: LayoutDetails) -> &'gcx LayoutDetails {
@@ -2238,6 +2233,12 @@ impl<'tcx: 'lcx, 'lcx> Borrow<GoalKind<'lcx>> for Interned<'tcx, GoalKind<'tcx>>
     }
 }
 
+impl<'tcx: 'lcx, 'lcx> Borrow<LazyConst<'lcx>> for Interned<'tcx, LazyConst<'tcx>> {
+    fn borrow<'a>(&'a self) -> &'a LazyConst<'lcx> {
+        &self.0
+    }
+}
+
 impl<'tcx: 'lcx, 'lcx> Borrow<[ExistentialPredicate<'lcx>]>
     for Interned<'tcx, List<ExistentialPredicate<'tcx>>> {
     fn borrow<'a>(&'a self) -> &'a [ExistentialPredicate<'lcx>] {
@@ -2344,7 +2345,8 @@ pub fn keep_local<'tcx, T: ty::TypeFoldable<'tcx>>(x: &T) -> bool {
 
 direct_interners!('tcx,
     region: mk_region(|r: &RegionKind| r.keep_in_local_tcx()) -> RegionKind,
-    goal: mk_goal(|c: &GoalKind<'_>| keep_local(c)) -> GoalKind<'tcx>
+    goal: mk_goal(|c: &GoalKind<'_>| keep_local(c)) -> GoalKind<'tcx>,
+    lazy_const: mk_lazy_const(|c: &LazyConst<'_>| keep_local(&c)) -> LazyConst<'tcx>
 );
 
 macro_rules! slice_interners {
@@ -2529,7 +2531,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
 
     #[inline]
     pub fn mk_array(self, ty: Ty<'tcx>, n: u64) -> Ty<'tcx> {
-        self.mk_ty(Array(ty, self.intern_lazy_const(
+        self.mk_ty(Array(ty, self.mk_lazy_const(
             ty::LazyConst::Evaluated(ty::Const::from_usize(self.global_tcx(), n))
         )))
     }
