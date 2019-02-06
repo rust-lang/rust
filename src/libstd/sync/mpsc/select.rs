@@ -158,7 +158,7 @@ impl Select {
     }
 
     /// Helper method for skipping the preflight checks during testing
-    fn wait2(&self, do_preflight_checks: bool) -> usize {
+    pub(super) fn wait2(&self, do_preflight_checks: bool) -> usize {
         // Note that this is currently an inefficient implementation. We in
         // theory have knowledge about all receivers in the set ahead of time,
         // so this method shouldn't really have to iterate over all of them yet

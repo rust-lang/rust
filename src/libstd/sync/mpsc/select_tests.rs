@@ -210,7 +210,7 @@ fn cloning3() {
         let mut h2 = s.handle(&rx2);
         unsafe { h2.add(); }
         unsafe { h1.add(); }
-        assert_eq!(s.wait(), h2.id);
+        assert_eq!(s.wait(), h2.id());
         tx3.send(()).unwrap();
     });
 
@@ -256,7 +256,7 @@ fn preflight4() {
     let s = Select::new();
     let mut h = s.handle(&rx);
     unsafe { h.add(); }
-    assert_eq!(s.wait2(false), h.id);
+    assert_eq!(s.wait2(false), h.id());
 }
 
 #[test]
@@ -267,7 +267,7 @@ fn preflight5() {
     let s = Select::new();
     let mut h = s.handle(&rx);
     unsafe { h.add(); }
-    assert_eq!(s.wait2(false), h.id);
+    assert_eq!(s.wait2(false), h.id());
 }
 
 #[test]
@@ -278,7 +278,7 @@ fn preflight6() {
     let s = Select::new();
     let mut h = s.handle(&rx);
     unsafe { h.add(); }
-    assert_eq!(s.wait2(false), h.id);
+    assert_eq!(s.wait2(false), h.id());
 }
 
 #[test]
@@ -288,7 +288,7 @@ fn preflight7() {
     let s = Select::new();
     let mut h = s.handle(&rx);
     unsafe { h.add(); }
-    assert_eq!(s.wait2(false), h.id);
+    assert_eq!(s.wait2(false), h.id());
 }
 
 #[test]
@@ -300,7 +300,7 @@ fn preflight8() {
     let s = Select::new();
     let mut h = s.handle(&rx);
     unsafe { h.add(); }
-    assert_eq!(s.wait2(false), h.id);
+    assert_eq!(s.wait2(false), h.id());
 }
 
 #[test]
@@ -313,7 +313,7 @@ fn preflight9() {
     let s = Select::new();
     let mut h = s.handle(&rx);
     unsafe { h.add(); }
-    assert_eq!(s.wait2(false), h.id);
+    assert_eq!(s.wait2(false), h.id());
 }
 
 #[test]
