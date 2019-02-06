@@ -342,7 +342,7 @@ fn make_mirror_unadjusted<'a, 'gcx, 'tcx>(cx: &mut Cx<'a, 'gcx, 'tcx>,
         }
 
         hir::ExprKind::Lit(ref lit) => ExprKind::Literal {
-            literal: cx.tcx.intern_lazy_const(ty::LazyConst::Evaluated(
+            literal: cx.tcx.mk_lazy_const(ty::LazyConst::Evaluated(
                 cx.const_eval_literal(&lit.node, expr_ty, lit.span, false)
             )),
             user_ty: None,
@@ -442,7 +442,7 @@ fn make_mirror_unadjusted<'a, 'gcx, 'tcx>(cx: &mut Cx<'a, 'gcx, 'tcx>,
             } else {
                 if let hir::ExprKind::Lit(ref lit) = arg.node {
                     ExprKind::Literal {
-                        literal: cx.tcx.intern_lazy_const(ty::LazyConst::Evaluated(
+                        literal: cx.tcx.mk_lazy_const(ty::LazyConst::Evaluated(
                             cx.const_eval_literal(&lit.node, expr_ty, lit.span, true)
                         )),
                         user_ty: None,
@@ -702,7 +702,7 @@ fn make_mirror_unadjusted<'a, 'gcx, 'tcx>(cx: &mut Cx<'a, 'gcx, 'tcx>,
                         ty: var_ty,
                         span: expr.span,
                         kind: ExprKind::Literal {
-                            literal: cx.tcx.intern_lazy_const(literal),
+                            literal: cx.tcx.mk_lazy_const(literal),
                             user_ty: None
                         },
                     }.to_ref();
@@ -856,7 +856,7 @@ fn method_callee<'a, 'gcx, 'tcx>(
         ty,
         span,
         kind: ExprKind::Literal {
-            literal: cx.tcx().intern_lazy_const(ty::LazyConst::Evaluated(
+            literal: cx.tcx().mk_lazy_const(ty::LazyConst::Evaluated(
                 ty::Const::zero_sized(ty)
             )),
             user_ty,
@@ -918,7 +918,7 @@ fn convert_path_expr<'a, 'gcx, 'tcx>(cx: &mut Cx<'a, 'gcx, 'tcx>,
             let user_ty = user_substs_applied_to_def(cx, expr.hir_id, &def);
             debug!("convert_path_expr: user_ty={:?}", user_ty);
             ExprKind::Literal {
-                literal: cx.tcx.intern_lazy_const(ty::LazyConst::Evaluated(ty::Const::zero_sized(
+                literal: cx.tcx.mk_lazy_const(ty::LazyConst::Evaluated(ty::Const::zero_sized(
                     cx.tables().node_id_to_type(expr.hir_id),
                 ))),
                 user_ty,
@@ -930,7 +930,7 @@ fn convert_path_expr<'a, 'gcx, 'tcx>(cx: &mut Cx<'a, 'gcx, 'tcx>,
             let user_ty = user_substs_applied_to_def(cx, expr.hir_id, &def);
             debug!("convert_path_expr: (const) user_ty={:?}", user_ty);
             ExprKind::Literal {
-                literal: cx.tcx.intern_lazy_const(ty::LazyConst::Unevaluated(def_id, substs)),
+                literal: cx.tcx.mk_lazy_const(ty::LazyConst::Unevaluated(def_id, substs)),
                 user_ty,
             }
         },

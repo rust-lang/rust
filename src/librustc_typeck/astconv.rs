@@ -1793,7 +1793,7 @@ impl<'o, 'gcx: 'tcx, 'tcx> dyn AstConv<'gcx, 'tcx> + 'o {
                 let length_def_id = tcx.hir().local_def_id(length.id);
                 let substs = Substs::identity_for_item(tcx, length_def_id);
                 let length = ty::LazyConst::Unevaluated(length_def_id, substs);
-                let length = tcx.intern_lazy_const(length);
+                let length = tcx.mk_lazy_const(length);
                 let array_ty = tcx.mk_ty(ty::Array(self.ast_ty_to_ty(&ty), length));
                 self.normalize_ty(ast_ty.span, array_ty)
             }

@@ -1042,7 +1042,7 @@ impl<'tcx> TypeFoldable<'tcx> for &'tcx ty::LazyConst<'tcx> {
                 ty::LazyConst::Unevaluated(*def_id, substs.fold_with(folder))
             }
         };
-        folder.tcx().intern_lazy_const(new)
+        folder.tcx().mk_lazy_const(new)
     }
 
     fn fold_with<'gcx: 'tcx, F: TypeFolder<'gcx, 'tcx>>(&self, folder: &mut F) -> Self {

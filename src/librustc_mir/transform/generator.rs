@@ -198,7 +198,7 @@ impl<'a, 'tcx> TransformVisitor<'a, 'tcx> {
             span: source_info.span,
             ty: self.tcx.types.u32,
             user_ty: None,
-            literal: self.tcx.intern_lazy_const(ty::LazyConst::Evaluated(ty::Const::from_bits(
+            literal: self.tcx.mk_lazy_const(ty::LazyConst::Evaluated(ty::Const::from_bits(
                 self.tcx,
                 state_disc.into(),
                 ty::ParamEnv::empty().and(self.tcx.types.u32)
@@ -731,7 +731,7 @@ fn insert_panic_block<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
             span: mir.span,
             ty: tcx.types.bool,
             user_ty: None,
-            literal: tcx.intern_lazy_const(ty::LazyConst::Evaluated(
+            literal: tcx.mk_lazy_const(ty::LazyConst::Evaluated(
                 ty::Const::from_bool(tcx, false),
             )),
         }),
