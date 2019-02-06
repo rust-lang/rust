@@ -1663,7 +1663,7 @@ impl<'a, 'b, 'tcx> Visitor<'tcx> for EncodeVisitor<'a, 'b, 'tcx> {
     fn visit_variant(&mut self,
                      v: &'tcx hir::Variant,
                      g: &'tcx hir::Generics,
-                     id: ast::NodeId) {
+                     id: hir::HirId) {
         intravisit::walk_variant(self, v, g, id);
 
         if let Some(ref discr) = v.node.disr_expr {

@@ -3301,7 +3301,9 @@ impl<'a> LoweringContext<'a> {
         let mut path = path.clone();
         for seg in path.segments.iter_mut() {
             if seg.id.is_some() {
-                seg.id = Some(self.next_id().node_id);
+                let next_id = self.next_id();
+                seg.id = Some(next_id.node_id);
+                seg.hir_id = Some(next_id.hir_id);
             }
         }
         path

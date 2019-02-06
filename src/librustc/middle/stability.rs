@@ -293,7 +293,7 @@ impl<'a, 'tcx> Visitor<'tcx> for Annotator<'a, 'tcx> {
         });
     }
 
-    fn visit_variant(&mut self, var: &'tcx Variant, g: &'tcx Generics, item_id: NodeId) {
+    fn visit_variant(&mut self, var: &'tcx Variant, g: &'tcx Generics, item_id: HirId) {
         self.annotate(var.node.data.id(), &var.node.attrs, var.span, AnnotationKind::Required, |v| {
             intravisit::walk_variant(v, var, g, item_id);
         })
@@ -369,7 +369,7 @@ impl<'a, 'tcx> Visitor<'tcx> for MissingStabilityAnnotations<'a, 'tcx> {
         intravisit::walk_impl_item(self, ii);
     }
 
-    fn visit_variant(&mut self, var: &'tcx Variant, g: &'tcx Generics, item_id: NodeId) {
+    fn visit_variant(&mut self, var: &'tcx Variant, g: &'tcx Generics, item_id: HirId) {
         self.check_missing_stability(var.node.data.id(), var.span, "variant");
         intravisit::walk_variant(self, var, g, item_id);
     }
