@@ -504,10 +504,8 @@ pub fn once_with<A, F: FnOnce() -> A>(gen: F) -> OnceWith<F> {
 /// [`FusedIterator`]: trait.FusedIterator.html
 /// [`Iterator::size_hint`]: trait.Iterator.html#method.size_hint
 ///
-/// The closure can use its its captures and environment
-/// to track state across iterations.
-/// Depending on how the iterator is used,
-/// this may require specifying the `move` keyword on the closure.
+/// The closure can use captures and its environment to track state across iterations. Depending on
+/// how the iterator is used, this may require specifying the `move` keyword on the closure.
 ///
 /// # Examples
 ///
