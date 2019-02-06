@@ -763,20 +763,26 @@ impl<'tcx> RegionInferenceContext<'tcx> {
 
             debug!("try_promote_type_test: ur={:?}", ur);
 
-            let non_local_ub = self.universal_region_relations.non_local_upper_bound(ur);
+            let non_local_ub = self.universal_region_relations.non_local_upper_bounds(&ur);
             debug!("try_promote_type_test: non_local_ub={:?}", non_local_ub);
 
-            assert!(self.universal_regions.is_universal_region(non_local_ub));
-            assert!(!self.universal_regions.is_local_free_region(non_local_ub));
+            // This is slightly too conservative. To show T: '1, given `'2: '1`
+            // and `'3: '1` we only need to prove that T: '2 *or* T: '3, but to
+            // avoid potential non-determinism we approximate this by requiring
+            // T: '1 and T: '2.
+            for &upper_bound in non_local_ub {
+                debug_assert!(self.universal_regions.is_universal_region(upper_bound));
+                debug_assert!(!self.universal_regions.is_local_free_region(upper_bound));
 
-            let requirement = ClosureOutlivesRequirement {
-                subject,
-                outlived_free_region: non_local_ub,
-                blame_span: locations.span(mir),
-                category: ConstraintCategory::Boring,
-            };
-            debug!("try_promote_type_test: pushing {:#?}", requirement);
-            propagated_outlives_requirements.push(requirement);
+                let requirement = ClosureOutlivesRequirement {
+                    subject,
+                    outlived_free_region: upper_bound,
+                    blame_span: locations.span(mir),
+                    category: ConstraintCategory::Boring,
+                };
+                debug!("try_promote_type_test: pushing {:#?}", requirement);
+                propagated_outlives_requirements.push(requirement);
+            }
         }
         true
     }
@@ -1217,35 +1223,37 @@ impl<'tcx> RegionInferenceContext<'tcx> {
             longer_fr, shorter_fr,
         );
 
-
         if let Some(propagated_outlives_requirements) = propagated_outlives_requirements {
-            // Shrink `fr` until we find a non-local region (if we do).
-            // We'll call that `fr-` -- it's ever so slightly smaller than `fr`.
-            if let Some(fr_minus) = self.universal_region_relations
+            // Shrink `longer_fr` until we find a non-local region (if we do).
+            // We'll call it `fr-` -- it's ever so slightly smaller than
+            // `longer_fr`.
+
+            if let Some(fr_minus) = self
+                .universal_region_relations
                 .non_local_lower_bound(longer_fr)
             {
                 debug!("check_universal_region: fr_minus={:?}", fr_minus);
 
                 let blame_span_category = self.find_outlives_blame_span(mir, longer_fr, shorter_fr);
 
-                // Grow `shorter_fr` until we find a non-local
-                // region. (We always will.)  We'll call that
-                // `shorter_fr+` -- it's ever so slightly larger than
-                // `fr`.
+                // Grow `shorter_fr` until we find some non-local regions. (We
+                // always will.)  We'll call them `shorter_fr+` -- they're ever
+                // so slightly larger than `shorter_fr`.
                 let shorter_fr_plus = self.universal_region_relations
-                    .non_local_upper_bound(shorter_fr);
+                    .non_local_upper_bounds(&shorter_fr);
                 debug!(
                     "check_universal_region: shorter_fr_plus={:?}",
                     shorter_fr_plus
                 );
-
-                // Push the constraint `fr-: shorter_fr+`
-                propagated_outlives_requirements.push(ClosureOutlivesRequirement {
-                    subject: ClosureOutlivesSubject::Region(fr_minus),
-                    outlived_free_region: shorter_fr_plus,
-                    blame_span: blame_span_category.1,
-                    category: blame_span_category.0,
-                });
+                for &&fr in &shorter_fr_plus {
+                    // Push the constraint `fr-: shorter_fr+`
+                    propagated_outlives_requirements.push(ClosureOutlivesRequirement {
+                        subject: ClosureOutlivesSubject::Region(fr_minus),
+                        outlived_free_region: fr,
+                        blame_span: blame_span_category.1,
+                        category: blame_span_category.0,
+                    });
+                }
                 return None;
             }
         }
