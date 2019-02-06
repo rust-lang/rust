@@ -7,7 +7,7 @@ authors = ["Aleksey Kladov <aleksey.kladov@gmail.com>"]
 [dependencies]
 # itertools = "0.8.0"
 # join_to_string = "0.1.3"
-# log = "0.4.5"
+log = "0.4.5"
 # relative-path = "0.4.0"
 # rayon = "1.0.2"
 # fst = "0.3.1"
@@ -25,6 +25,8 @@ walkdir = "2.2.7"
 cargo_metadata = "0.7.0"
 
 ra_arena = { path = "../ra_arena" }
+ra_db = { path = "../ra_db" }
+ra_vfs = { path = "../ra_vfs" }
 
 [dev-dependencies]
 test_utils = { path = "../test_utils" }
