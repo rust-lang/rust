@@ -17,7 +17,7 @@ LL |     let mut x = Box::new(0);
 LL |     drop(x);
    |          - value moved here
 LL |     let _ = (1,x); //~ ERROR use of moved value: `x` (Ast)
-   |                ^ value used here after move
+   |                ^ value used here after partial move
 
 error: aborting due to 2 previous errors
 

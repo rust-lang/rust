@@ -8,7 +8,7 @@ LL |             asm!("nop" : : "r"(x));
    |                                - value moved here
 LL |         }
 LL |         let z = x;  //[ast]~ ERROR use of moved value: `x`
-   |                 ^ value used here after move
+   |                 ^ value used here after partial move
 
 error[E0503]: cannot use `x` because it was mutably borrowed
   --> $DIR/borrowck-asm.rs:35:32
@@ -71,7 +71,7 @@ LL |         let x = &mut 2;
    |             - move occurs because `x` has type `&mut i32`, which does not implement the `Copy` trait
 LL |         unsafe {
 LL |             asm!("nop" : : "r"(x), "r"(x) );    //[ast]~ ERROR use of moved value
-   |                                -       ^ value used here after move
+   |                                -       ^ value used here after partial move
    |                                |
    |                                value moved here
 

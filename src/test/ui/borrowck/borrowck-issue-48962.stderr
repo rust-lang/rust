@@ -6,7 +6,7 @@ LL |     let mut src = &mut node;
 LL |     {src};
    |      --- value moved here
 LL |     src.next = None; //~ ERROR use of moved value: `src` [E0382]
-   |     ^^^^^^^^ value used here after move
+   |     ^^^^^^^^ value used here after partial move
 
 error[E0382]: use of moved value: `src`
   --> $DIR/borrowck-issue-48962.rs:22:5
@@ -16,7 +16,7 @@ LL |     let mut src = &mut (22, 44);
 LL |     {src};
    |      --- value moved here
 LL |     src.0 = 66; //~ ERROR use of moved value: `src` [E0382]
-   |     ^^^^^^^^^^ value used here after move
+   |     ^^^^^^^^^^ value used here after partial move
 
 error: aborting due to 2 previous errors
 

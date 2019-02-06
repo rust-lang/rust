@@ -13,7 +13,7 @@ LL |             x.zero()
    |             - value moved here
 LL |         };
 LL |         x.zero()
-   |         ^ value used here after move
+   |         ^ value used here after partial move
 
 error: aborting due to previous error
 

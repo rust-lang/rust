@@ -11,7 +11,7 @@ LL |     call_f(move|| { *t + 1 });
 LL |     call_f(move|| { *t + 1 }); //[ast]~ ERROR capture of moved value
    |            ^^^^^^    - use occurs due to use in closure
    |            |
-   |            value used here after move
+   |            value used here after partial move
 
 error: aborting due to previous error
 

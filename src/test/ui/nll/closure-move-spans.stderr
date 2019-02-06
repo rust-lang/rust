@@ -8,7 +8,7 @@ LL |     || x;
    |     |
    |     value moved into closure here
 LL |     let y = x; //~ ERROR
-   |             ^ value used here after move
+   |             ^ value used here after partial move
 
 error[E0382]: borrow of moved value: `x`
   --> $DIR/closure-move-spans.rs:12:13
@@ -20,7 +20,7 @@ LL |     || x;
    |     |
    |     value moved into closure here
 LL |     let y = &x; //~ ERROR
-   |             ^^ value borrowed here after move
+   |             ^^ value borrowed here after partial move
 
 error[E0382]: borrow of moved value: `x`
   --> $DIR/closure-move-spans.rs:17:13
@@ -32,7 +32,7 @@ LL |     || x;
    |     |
    |     value moved into closure here
 LL |     let y = &mut x; //~ ERROR
-   |             ^^^^^^ value borrowed here after move
+   |             ^^^^^^ value borrowed here after partial move
 
 error: aborting due to 3 previous errors
 

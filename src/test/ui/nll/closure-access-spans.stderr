@@ -66,7 +66,7 @@ LL |     let r = x;
 LL |     || x.len(); //~ ERROR
    |     ^^ - borrow occurs due to use in closure
    |     |
-   |     value borrowed here after move
+   |     value borrowed here after partial move
 
 error[E0382]: borrow of moved value: `x`
   --> $DIR/closure-access-spans.rs:42:5
@@ -78,7 +78,7 @@ LL |     let r = x;
 LL |     || x = String::new(); //~ ERROR
    |     ^^ - borrow occurs due to use in closure
    |     |
-   |     value borrowed here after move
+   |     value borrowed here after partial move
 
 error[E0382]: borrow of moved value: `x`
   --> $DIR/closure-access-spans.rs:47:5
@@ -90,7 +90,7 @@ LL |     let r = x;
 LL |     || *x = String::new(); //~ ERROR
    |     ^^  - borrow occurs due to use in closure
    |     |
-   |     value borrowed here after move
+   |     value borrowed here after partial move
 
 error[E0382]: use of moved value: `x`
   --> $DIR/closure-access-spans.rs:52:5
@@ -102,7 +102,7 @@ LL |     let r = x;
 LL |     || x; //~ ERROR
    |     ^^ - use occurs due to use in closure
    |     |
-   |     value used here after move
+   |     value used here after partial move
 
 error: aborting due to 9 previous errors
 

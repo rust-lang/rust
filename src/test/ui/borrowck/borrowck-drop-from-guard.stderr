@@ -8,7 +8,7 @@ LL |         Some(_) if { drop(my_str); false } => {}
    |                           ------ value moved here
 LL |         Some(_) => {}
 LL |         None => { foo(my_str); } //~ ERROR [E0382]
-   |                       ^^^^^^ value used here after move
+   |                       ^^^^^^ value used here after partial move
 
 error: aborting due to previous error
 

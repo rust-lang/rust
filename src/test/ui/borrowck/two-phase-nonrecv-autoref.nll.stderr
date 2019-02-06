@@ -13,7 +13,7 @@ error[E0382]: use of moved value: `*f`
 LL |     fn twice_ten_so<F: FnOnce(i32) -> i32>(f: Box<F>) {
    |                     - consider adding a `Copy` constraint to this type argument
 LL |         f(f(10));
-   |         - ^ value used here after move
+   |         - ^ value used here after partial move
    |         |
    |         value moved here
    |
@@ -44,7 +44,7 @@ error[E0382]: use of moved value: `*f`
   --> $DIR/two-phase-nonrecv-autoref.rs:85:11
    |
 LL |         f(f(10));
-   |         - ^ value used here after move
+   |         - ^ value used here after partial move
    |         |
    |         value moved here
    |
