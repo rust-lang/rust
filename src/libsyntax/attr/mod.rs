@@ -15,6 +15,7 @@ use ast;
 use ast::{AttrId, Attribute, AttrStyle, Name, Ident, Path, PathSegment};
 use ast::{MetaItem, MetaItemKind, NestedMetaItem, NestedMetaItemKind};
 use ast::{Lit, LitKind, Expr, ExprKind, Item, Local, Stmt, StmtKind, GenericParam};
+use mut_visit::visit_clobber;
 use source_map::{BytePos, Spanned, respan, dummy_spanned};
 use syntax_pos::{FileName, Span};
 use parse::lexer::comments::{doc_comment_style, strip_doc_comment_decoration};
@@ -28,6 +29,7 @@ use tokenstream::{TokenStream, TokenTree, DelimSpan};
 use GLOBALS;
 
 use std::iter;
+use std::ops::DerefMut;
 
 pub fn mark_used(attr: &Attribute) {
     debug!("Marking {:?} as used.", attr);
@@ -695,13 +697,13 @@ impl LitKind {
 
 pub trait HasAttrs: Sized {
     fn attrs(&self) -> &[ast::Attribute];
-    fn map_attrs<F: FnOnce(Vec<ast::Attribute>) -> Vec<ast::Attribute>>(self, f: F) -> Self;
+    fn visit_attrs<F: FnOnce(&mut Vec<ast::Attribute>)>(&mut self, f: F);
 }
 
 impl<T: HasAttrs> HasAttrs for Spanned<T> {
     fn attrs(&self) -> &[ast::Attribute] { self.node.attrs() }
-    fn map_attrs<F: FnOnce(Vec<ast::Attribute>) -> Vec<ast::Attribute>>(self, f: F) -> Self {
-        respan(self.span, self.node.map_attrs(f))
+    fn visit_attrs<F: FnOnce(&mut Vec<ast::Attribute>)>(&mut self, f: F) {
+        self.node.visit_attrs(f);
     }
 }
 
@@ -709,7 +711,7 @@ impl HasAttrs for Vec<Attribute> {
     fn attrs(&self) -> &[Attribute] {
         self
     }
-    fn map_attrs<F: FnOnce(Vec<Attribute>) -> Vec<Attribute>>(self, f: F) -> Self {
+    fn visit_attrs<F: FnOnce(&mut Vec<Attribute>)>(&mut self, f: F) {
         f(self)
     }
 }
@@ -718,8 +720,12 @@ impl HasAttrs for ThinVec<Attribute> {
     fn attrs(&self) -> &[Attribute] {
         self
     }
-    fn map_attrs<F: FnOnce(Vec<Attribute>) -> Vec<Attribute>>(self, f: F) -> Self {
-        f(self.into()).into()
+    fn visit_attrs<F: FnOnce(&mut Vec<Attribute>)>(&mut self, f: F) {
+        visit_clobber(self, |this| {
+            let mut vec = this.into();
+            f(&mut vec);
+            vec.into()
+        });
     }
 }
 
@@ -727,8 +733,8 @@ impl<T: HasAttrs + 'static> HasAttrs for P<T> {
     fn attrs(&self) -> &[Attribute] {
         (**self).attrs()
     }
-    fn map_attrs<F: FnOnce(Vec<Attribute>) -> Vec<Attribute>>(self, f: F) -> Self {
-        self.map(|t| t.map_attrs(f))
+    fn visit_attrs<F: FnOnce(&mut Vec<Attribute>)>(&mut self, f: F) {
+        (**self).visit_attrs(f);
     }
 }
 
@@ -745,23 +751,27 @@ impl HasAttrs for StmtKind {
         }
     }
 
-    fn map_attrs<F: FnOnce(Vec<Attribute>) -> Vec<Attribute>>(self, f: F) -> Self {
+    fn visit_attrs<F: FnOnce(&mut Vec<Attribute>)>(&mut self, f: F) {
         match self {
-            StmtKind::Local(local) => StmtKind::Local(local.map_attrs(f)),
-            StmtKind::Item(..) => self,
-            StmtKind::Expr(expr) => StmtKind::Expr(expr.map_attrs(f)),
-            StmtKind::Semi(expr) => StmtKind::Semi(expr.map_attrs(f)),
-            StmtKind::Mac(mac) => StmtKind::Mac(mac.map(|(mac, style, attrs)| {
-                (mac, style, attrs.map_attrs(f))
-            })),
+            StmtKind::Local(local) => local.visit_attrs(f),
+            StmtKind::Item(..) => {}
+            StmtKind::Expr(expr) => expr.visit_attrs(f),
+            StmtKind::Semi(expr) => expr.visit_attrs(f),
+            StmtKind::Mac(mac) => {
+                let (_mac, _style, attrs) = mac.deref_mut();
+                attrs.visit_attrs(f);
+            }
         }
     }
 }
 
 impl HasAttrs for Stmt {
-    fn attrs(&self) -> &[ast::Attribute] { self.node.attrs() }
-    fn map_attrs<F: FnOnce(Vec<ast::Attribute>) -> Vec<ast::Attribute>>(self, f: F) -> Self {
-        Stmt { id: self.id, node: self.node.map_attrs(f), span: self.span }
+    fn attrs(&self) -> &[ast::Attribute] {
+        self.node.attrs()
+    }
+
+    fn visit_attrs<F: FnOnce(&mut Vec<ast::Attribute>)>(&mut self, f: F) {
+        self.node.visit_attrs(f);
     }
 }
 
@@ -770,9 +780,8 @@ impl HasAttrs for GenericParam {
         &self.attrs
     }
 
-    fn map_attrs<F: FnOnce(Vec<Attribute>) -> Vec<Attribute>>(mut self, f: F) -> Self {
-        self.attrs = self.attrs.map_attrs(f);
-        self
+    fn visit_attrs<F: FnOnce(&mut Vec<Attribute>)>(&mut self, f: F) {
+        self.attrs.visit_attrs(f);
     }
 }
 
@@ -783,11 +792,8 @@ macro_rules! derive_has_attrs {
                 &self.attrs
             }
 
-            fn map_attrs<F>(mut self, f: F) -> Self
-                where F: FnOnce(Vec<Attribute>) -> Vec<Attribute>,
-            {
-                self.attrs = self.attrs.map_attrs(f);
-                self
+            fn visit_attrs<F: FnOnce(&mut Vec<Attribute>)>(&mut self, f: F) {
+                self.attrs.visit_attrs(f);
             }
         }
     )* }

@@ -133,7 +133,7 @@ pub mod util {
     pub mod parser;
     #[cfg(test)]
     pub mod parser_testing;
-    pub mod move_map;
+    pub mod map_in_place;
 }
 
 pub mod json;
@@ -151,7 +151,7 @@ pub mod source_map;
 pub mod config;
 pub mod entry;
 pub mod feature_gate;
-pub mod fold;
+pub mod mut_visit;
 pub mod parse;
 pub mod ptr;
 pub mod show_span;

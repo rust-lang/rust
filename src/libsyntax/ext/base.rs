@@ -8,7 +8,7 @@ use edition::Edition;
 use errors::{DiagnosticBuilder, DiagnosticId};
 use ext::expand::{self, AstFragment, Invocation};
 use ext::hygiene::{self, Mark, SyntaxContext, Transparency};
-use fold::{self, Folder};
+use mut_visit::{self, MutVisitor};
 use parse::{self, parser, DirectoryOwnership};
 use parse::token;
 use ptr::P;
@@ -47,15 +47,14 @@ impl HasAttrs for Annotatable {
         }
     }
 
-    fn map_attrs<F: FnOnce(Vec<Attribute>) -> Vec<Attribute>>(self, f: F) -> Self {
+    fn visit_attrs<F: FnOnce(&mut Vec<Attribute>)>(&mut self, f: F) {
         match self {
-            Annotatable::Item(item) => Annotatable::Item(item.map_attrs(f)),
-            Annotatable::TraitItem(trait_item) => Annotatable::TraitItem(trait_item.map_attrs(f)),
-            Annotatable::ImplItem(impl_item) => Annotatable::ImplItem(impl_item.map_attrs(f)),
-            Annotatable::ForeignItem(foreign_item) =>
-                Annotatable::ForeignItem(foreign_item.map_attrs(f)),
-            Annotatable::Stmt(stmt) => Annotatable::Stmt(stmt.map_attrs(f)),
-            Annotatable::Expr(expr) => Annotatable::Expr(expr.map_attrs(f)),
+            Annotatable::Item(item) => item.visit_attrs(f),
+            Annotatable::TraitItem(trait_item) => trait_item.visit_attrs(f),
+            Annotatable::ImplItem(impl_item) => impl_item.visit_attrs(f),
+            Annotatable::ForeignItem(foreign_item) => foreign_item.visit_attrs(f),
+            Annotatable::Stmt(stmt) => stmt.visit_attrs(f),
+            Annotatable::Expr(expr) => expr.visit_attrs(f),
         }
     }
 }
@@ -263,24 +262,24 @@ impl<F> TTMacroExpander for F
     ) -> Box<dyn MacResult+'cx> {
         struct AvoidInterpolatedIdents;
 
-        impl Folder for AvoidInterpolatedIdents {
-            fn fold_tt(&mut self, tt: tokenstream::TokenTree) -> tokenstream::TokenTree {
-                if let tokenstream::TokenTree::Token(_, token::Interpolated(ref nt)) = tt {
+        impl MutVisitor for AvoidInterpolatedIdents {
+            fn visit_tt(&mut self, tt: &mut tokenstream::TokenTree) {
+                if let tokenstream::TokenTree::Token(_, token::Interpolated(nt)) = tt {
                     if let token::NtIdent(ident, is_raw) = nt.0 {
-                        return tokenstream::TokenTree::Token(ident.span,
-                                                             token::Ident(ident, is_raw));
+                        *tt = tokenstream::TokenTree::Token(ident.span,
+                                                            token::Ident(ident, is_raw));
                     }
                 }
-                fold::noop_fold_tt(tt, self)
+                mut_visit::noop_visit_tt(tt, self)
             }
 
-            fn fold_mac(&mut self, mac: ast::Mac) -> ast::Mac {
-                fold::noop_fold_mac(mac, self)
+            fn visit_mac(&mut self, mac: &mut ast::Mac) {
+                mut_visit::noop_visit_mac(mac, self)
             }
         }
 
         let input: Vec<_> =
-            input.trees().map(|tt| AvoidInterpolatedIdents.fold_tt(tt)).collect();
+            input.trees().map(|mut tt| { AvoidInterpolatedIdents.visit_tt(&mut tt); tt }).collect();
         (*self)(ecx, span, &input)
     }
 }
@@ -981,17 +980,14 @@ impl<'a> ExtCtxt<'a> {
 /// compilation on error, merely emits a non-fatal error and returns None.
 pub fn expr_to_spanned_string<'a>(
     cx: &'a mut ExtCtxt,
-    expr: P<ast::Expr>,
+    mut expr: P<ast::Expr>,
     err_msg: &str,
 ) -> Result<Spanned<(Symbol, ast::StrStyle)>, Option<DiagnosticBuilder<'a>>> {
     // Update `expr.span`'s ctxt now in case expr is an `include!` macro invocation.
-    let expr = expr.map(|mut expr| {
-        expr.span = expr.span.apply_mark(cx.current_expansion.mark);
-        expr
-    });
+    expr.span = expr.span.apply_mark(cx.current_expansion.mark);
 
     // we want to be able to handle e.g., `concat!("foo", "bar")`
-    let expr = cx.expander().fold_expr(expr);
+    cx.expander().visit_expr(&mut expr);
     Err(match expr.node {
         ast::ExprKind::Lit(ref l) => match l.node {
             ast::LitKind::Str(s, style) => return Ok(respan(expr.span, (s, style))),
@@ -1055,7 +1051,9 @@ pub fn get_exprs_from_tts(cx: &mut ExtCtxt,
     let mut p = cx.new_parser_from_tts(tts);
     let mut es = Vec::new();
     while p.token != token::Eof {
-        es.push(cx.expander().fold_expr(panictry!(p.parse_expr())));
+        let mut expr = panictry!(p.parse_expr());
+        cx.expander().visit_expr(&mut expr);
+        es.push(expr);
         if p.eat(&token::Comma) {
             continue;
         }

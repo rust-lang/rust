@@ -4,12 +4,11 @@ use ext::base::ExtCtxt;
 use ext::expand::{AstFragment, AstFragmentKind};
 use ext::hygiene::Mark;
 use tokenstream::TokenStream;
-use fold::*;
+use mut_visit::*;
 use ptr::P;
 use smallvec::SmallVec;
 use symbol::keywords;
 use ThinVec;
-use util::move_map::MoveMap;
 
 use rustc_data_structures::fx::FxHashMap;
 
@@ -85,8 +84,8 @@ impl<'a, 'b> PlaceholderExpander<'a, 'b> {
         }
     }
 
-    pub fn add(&mut self, id: ast::NodeId, fragment: AstFragment, derives: Vec<Mark>) {
-        let mut fragment = fragment.fold_with(self);
+    pub fn add(&mut self, id: ast::NodeId, mut fragment: AstFragment, derives: Vec<Mark>) {
+        fragment.mut_visit_with(self);
         if let AstFragment::Items(mut items) = fragment {
             for derive in derives {
                 match self.remove(NodeId::placeholder_from_mark(derive)) {
@@ -104,56 +103,56 @@ impl<'a, 'b> PlaceholderExpander<'a, 'b> {
     }
 }
 
-impl<'a, 'b> Folder for PlaceholderExpander<'a, 'b> {
-    fn fold_item(&mut self, item: P<ast::Item>) -> SmallVec<[P<ast::Item>; 1]> {
+impl<'a, 'b> MutVisitor for PlaceholderExpander<'a, 'b> {
+    fn flat_map_item(&mut self, item: P<ast::Item>) -> SmallVec<[P<ast::Item>; 1]> {
         match item.node {
             ast::ItemKind::Mac(_) => return self.remove(item.id).make_items(),
             ast::ItemKind::MacroDef(_) => return smallvec![item],
             _ => {}
         }
 
-        noop_fold_item(item, self)
+        noop_flat_map_item(item, self)
     }
 
-    fn fold_trait_item(&mut self, item: ast::TraitItem) -> SmallVec<[ast::TraitItem; 1]> {
+    fn flat_map_trait_item(&mut self, item: ast::TraitItem) -> SmallVec<[ast::TraitItem; 1]> {
         match item.node {
             ast::TraitItemKind::Macro(_) => self.remove(item.id).make_trait_items(),
-            _ => noop_fold_trait_item(item, self),
+            _ => noop_flat_map_trait_item(item, self),
         }
     }
 
-    fn fold_impl_item(&mut self, item: ast::ImplItem) -> SmallVec<[ast::ImplItem; 1]> {
+    fn flat_map_impl_item(&mut self, item: ast::ImplItem) -> SmallVec<[ast::ImplItem; 1]> {
         match item.node {
             ast::ImplItemKind::Macro(_) => self.remove(item.id).make_impl_items(),
-            _ => noop_fold_impl_item(item, self),
+            _ => noop_flat_map_impl_item(item, self),
         }
     }
 
-    fn fold_foreign_item(&mut self, item: ast::ForeignItem) -> SmallVec<[ast::ForeignItem; 1]> {
+    fn flat_map_foreign_item(&mut self, item: ast::ForeignItem) -> SmallVec<[ast::ForeignItem; 1]> {
         match item.node {
             ast::ForeignItemKind::Macro(_) => self.remove(item.id).make_foreign_items(),
-            _ => noop_fold_foreign_item(item, self),
+            _ => noop_flat_map_foreign_item(item, self),
         }
     }
 
-    fn fold_expr(&mut self, expr: P<ast::Expr>) -> P<ast::Expr> {
+    fn visit_expr(&mut self, expr: &mut P<ast::Expr>) {
         match expr.node {
-            ast::ExprKind::Mac(_) => self.remove(expr.id).make_expr(),
-            _ => expr.map(|expr| noop_fold_expr(expr, self)),
+            ast::ExprKind::Mac(_) => *expr = self.remove(expr.id).make_expr(),
+            _ => noop_visit_expr(expr, self),
         }
     }
 
-    fn fold_opt_expr(&mut self, expr: P<ast::Expr>) -> Option<P<ast::Expr>> {
+    fn filter_map_expr(&mut self, expr: P<ast::Expr>) -> Option<P<ast::Expr>> {
         match expr.node {
             ast::ExprKind::Mac(_) => self.remove(expr.id).make_opt_expr(),
-            _ => noop_fold_opt_expr(expr, self),
+            _ => noop_filter_map_expr(expr, self),
         }
     }
 
-    fn fold_stmt(&mut self, stmt: ast::Stmt) -> SmallVec<[ast::Stmt; 1]> {
+    fn flat_map_stmt(&mut self, stmt: ast::Stmt) -> SmallVec<[ast::Stmt; 1]> {
         let (style, mut stmts) = match stmt.node {
             ast::StmtKind::Mac(mac) => (mac.1, self.remove(stmt.id).make_stmts()),
-            _ => return noop_fold_stmt(stmt, self),
+            _ => return noop_flat_map_stmt(stmt, self),
         };
 
         if style == ast::MacStmtStyle::Semicolon {
@@ -165,49 +164,40 @@ impl<'a, 'b> Folder for PlaceholderExpander<'a, 'b> {
         stmts
     }
 
-    fn fold_pat(&mut self, pat: P<ast::Pat>) -> P<ast::Pat> {
+    fn visit_pat(&mut self, pat: &mut P<ast::Pat>) {
         match pat.node {
-            ast::PatKind::Mac(_) => self.remove(pat.id).make_pat(),
-            _ => noop_fold_pat(pat, self),
+            ast::PatKind::Mac(_) => *pat = self.remove(pat.id).make_pat(),
+            _ => noop_visit_pat(pat, self),
         }
     }
 
-    fn fold_ty(&mut self, ty: P<ast::Ty>) -> P<ast::Ty> {
+    fn visit_ty(&mut self, ty: &mut P<ast::Ty>) {
         match ty.node {
-            ast::TyKind::Mac(_) => self.remove(ty.id).make_ty(),
-            _ => noop_fold_ty(ty, self),
+            ast::TyKind::Mac(_) => *ty = self.remove(ty.id).make_ty(),
+            _ => noop_visit_ty(ty, self),
         }
     }
 
-    fn fold_block(&mut self, block: P<ast::Block>) -> P<ast::Block> {
-        noop_fold_block(block, self).map(|mut block| {
-            let mut remaining_stmts = block.stmts.len();
+    fn visit_block(&mut self, block: &mut P<ast::Block>) {
+        noop_visit_block(block, self);
 
-            block.stmts = block.stmts.move_flat_map(|mut stmt| {
-                remaining_stmts -= 1;
-
-                if self.monotonic {
-                    assert_eq!(stmt.id, ast::DUMMY_NODE_ID);
-                    stmt.id = self.cx.resolver.next_node_id();
-                }
-
-                Some(stmt)
-            });
-
-            block
-        })
+        for stmt in block.stmts.iter_mut() {
+            if self.monotonic {
+                assert_eq!(stmt.id, ast::DUMMY_NODE_ID);
+                stmt.id = self.cx.resolver.next_node_id();
+            }
+        }
     }
 
-    fn fold_mod(&mut self, module: ast::Mod) -> ast::Mod {
-        let mut module = noop_fold_mod(module, self);
-        module.items = module.items.move_flat_map(|item| match item.node {
-            ast::ItemKind::Mac(_) if !self.cx.ecfg.keep_macs => None, // remove macro definitions
-            _ => Some(item),
+    fn visit_mod(&mut self, module: &mut ast::Mod) {
+        noop_visit_mod(module, self);
+        module.items.retain(|item| match item.node {
+            ast::ItemKind::Mac(_) if !self.cx.ecfg.keep_macs => false, // remove macro definitions
+            _ => true,
         });
-        module
     }
 
-    fn fold_mac(&mut self, mac: ast::Mac) -> ast::Mac {
-        mac
+    fn visit_mac(&mut self, _mac: &mut ast::Mac) {
+        // Do nothing.
     }
 }

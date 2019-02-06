@@ -20,10 +20,9 @@ use ext::base::{ExtCtxt, Resolver};
 use ext::build::AstBuilder;
 use ext::expand::ExpansionConfig;
 use ext::hygiene::{self, Mark, SyntaxContext};
-use fold::Folder;
+use mut_visit::{*, ExpectOne};
 use feature_gate::Features;
-use util::move_map::MoveMap;
-use fold::{self, ExpectOne};
+use util::map_in_place::MapInPlace;
 use parse::{token, ParseSess};
 use print::pprust;
 use ast::{self, Ident};
@@ -57,9 +56,9 @@ struct TestCtxt<'a> {
 pub fn modify_for_testing(sess: &ParseSess,
                           resolver: &mut dyn Resolver,
                           should_test: bool,
-                          krate: ast::Crate,
+                          krate: &mut ast::Crate,
                           span_diagnostic: &errors::Handler,
-                          features: &Features) -> ast::Crate {
+                          features: &Features) {
     // Check for #[reexport_test_harness_main = "some_name"] which
     // creates a `use __test::main as some_name;`. This needs to be
     // unconditional, so that the attribute is still marked as used in
@@ -75,8 +74,6 @@ pub fn modify_for_testing(sess: &ParseSess,
     if should_test {
         generate_test_harness(sess, resolver, reexport_test_harness_main,
                               krate, span_diagnostic, features, test_runner)
-    } else {
-        krate
     }
 }
 
@@ -88,21 +85,20 @@ struct TestHarnessGenerator<'a> {
     tested_submods: Vec<(Ident, Ident)>,
 }
 
-impl<'a> fold::Folder for TestHarnessGenerator<'a> {
-    fn fold_crate(&mut self, c: ast::Crate) -> ast::Crate {
-        let mut folded = fold::noop_fold_crate(c, self);
+impl<'a> MutVisitor for TestHarnessGenerator<'a> {
+    fn visit_crate(&mut self, c: &mut ast::Crate) {
+        noop_visit_crate(c, self);
 
         // Create a main function to run our tests
         let test_main = {
             let unresolved = mk_main(&mut self.cx);
-            self.cx.ext_cx.monotonic_expander().fold_item(unresolved).pop().unwrap()
+            self.cx.ext_cx.monotonic_expander().flat_map_item(unresolved).pop().unwrap()
         };
 
-        folded.module.items.push(test_main);
-        folded
+        c.module.items.push(test_main);
     }
 
-    fn fold_item(&mut self, i: P<ast::Item>) -> SmallVec<[P<ast::Item>; 1]> {
+    fn flat_map_item(&mut self, i: P<ast::Item>) -> SmallVec<[P<ast::Item>; 1]> {
         let ident = i.ident;
         if ident.name != keywords::Invalid.name() {
             self.cx.path.push(ident);
@@ -123,16 +119,16 @@ impl<'a> fold::Folder for TestHarnessGenerator<'a> {
 
         // We don't want to recurse into anything other than mods, since
         // mods or tests inside of functions will break things
-        if let ast::ItemKind::Mod(module) = item.node {
+        if let ast::ItemKind::Mod(mut module) = item.node {
             let tests = mem::replace(&mut self.tests, Vec::new());
             let tested_submods = mem::replace(&mut self.tested_submods, Vec::new());
-            let mut mod_folded = fold::noop_fold_mod(module, self);
+            noop_visit_mod(&mut module, self);
             let tests = mem::replace(&mut self.tests, tests);
             let tested_submods = mem::replace(&mut self.tested_submods, tested_submods);
 
             if !tests.is_empty() || !tested_submods.is_empty() {
                 let (it, sym) = mk_reexport_mod(&mut self.cx, item.id, tests, tested_submods);
-                mod_folded.items.push(it);
+                module.items.push(it);
 
                 if !self.cx.path.is_empty() {
                     self.tested_submods.push((self.cx.path[self.cx.path.len()-1], sym));
@@ -141,7 +137,7 @@ impl<'a> fold::Folder for TestHarnessGenerator<'a> {
                     self.cx.toplevel_reexport = Some(sym);
                 }
             }
-            item.node = ast::ItemKind::Mod(mod_folded);
+            item.node = ast::ItemKind::Mod(module);
         }
         if ident.name != keywords::Invalid.name() {
             self.cx.path.pop();
@@ -149,7 +145,9 @@ impl<'a> fold::Folder for TestHarnessGenerator<'a> {
         smallvec![P(item)]
     }
 
-    fn fold_mac(&mut self, mac: ast::Mac) -> ast::Mac { mac }
+    fn visit_mac(&mut self, _mac: &mut ast::Mac) {
+        // Do nothing.
+    }
 }
 
 /// A folder used to remove any entry points (like fn main) because the harness
@@ -159,20 +157,20 @@ struct EntryPointCleaner {
     depth: usize,
 }
 
-impl fold::Folder for EntryPointCleaner {
-    fn fold_item(&mut self, i: P<ast::Item>) -> SmallVec<[P<ast::Item>; 1]> {
+impl MutVisitor for EntryPointCleaner {
+    fn flat_map_item(&mut self, i: P<ast::Item>) -> SmallVec<[P<ast::Item>; 1]> {
         self.depth += 1;
-        let folded = fold::noop_fold_item(i, self).expect_one("noop did something");
+        let item = noop_flat_map_item(i, self).expect_one("noop did something");
         self.depth -= 1;
 
         // Remove any #[main] or #[start] from the AST so it doesn't
         // clash with the one we're going to add, but mark it as
         // #[allow(dead_code)] to avoid printing warnings.
-        let folded = match entry::entry_point_type(&folded, self.depth) {
+        let item = match entry::entry_point_type(&item, self.depth) {
             EntryPointType::MainNamed |
             EntryPointType::MainAttr |
             EntryPointType::Start =>
-                folded.map(|ast::Item {id, ident, attrs, node, vis, span, tokens}| {
+                item.map(|ast::Item {id, ident, attrs, node, vis, span, tokens}| {
                     let allow_ident = Ident::from_str("allow");
                     let dc_nested = attr::mk_nested_word_item(Ident::from_str("dead_code"));
                     let allow_dead_code_item = attr::mk_list_item(DUMMY_SP, allow_ident,
@@ -197,13 +195,15 @@ impl fold::Folder for EntryPointCleaner {
                     }
                 }),
             EntryPointType::None |
-            EntryPointType::OtherMain => folded,
+            EntryPointType::OtherMain => item,
         };
 
-        smallvec![folded]
+        smallvec![item]
     }
 
-    fn fold_mac(&mut self, mac: ast::Mac) -> ast::Mac { mac }
+    fn visit_mac(&mut self, _mac: &mut ast::Mac) {
+        // Do nothing.
+    }
 }
 
 /// Creates an item (specifically a module) that "pub use"s the tests passed in.
@@ -235,7 +235,7 @@ fn mk_reexport_mod(cx: &mut TestCtxt,
     let sym = Ident::with_empty_ctxt(Symbol::gensym("__test_reexports"));
     let parent = if parent == ast::DUMMY_NODE_ID { ast::CRATE_NODE_ID } else { parent };
     cx.ext_cx.current_expansion.mark = cx.ext_cx.resolver.get_module_scope(parent);
-    let it = cx.ext_cx.monotonic_expander().fold_item(P(ast::Item {
+    let it = cx.ext_cx.monotonic_expander().flat_map_item(P(ast::Item {
         ident: sym,
         attrs: Vec::new(),
         id: ast::DUMMY_NODE_ID,
@@ -252,13 +252,13 @@ fn mk_reexport_mod(cx: &mut TestCtxt,
 fn generate_test_harness(sess: &ParseSess,
                          resolver: &mut dyn Resolver,
                          reexport_test_harness_main: Option<Symbol>,
-                         krate: ast::Crate,
+                         krate: &mut ast::Crate,
                          sd: &errors::Handler,
                          features: &Features,
-                         test_runner: Option<ast::Path>) -> ast::Crate {
+                         test_runner: Option<ast::Path>) {
     // Remove the entry points
     let mut cleaner = EntryPointCleaner { depth: 0 };
-    let krate = cleaner.fold_crate(krate);
+    cleaner.visit_crate(krate);
 
     let mark = Mark::fresh(Mark::root());
 
@@ -293,7 +293,7 @@ fn generate_test_harness(sess: &ParseSess,
         cx,
         tests: Vec::new(),
         tested_submods: Vec::new(),
-    }.fold_crate(krate)
+    }.visit_crate(krate);
 }
 
 /// Craft a span that will be ignored by the stability lint's

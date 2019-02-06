@@ -32,7 +32,7 @@ use rustc_typeck as typeck;
 use syntax::{self, ast, attr, diagnostics, visit};
 use syntax::early_buffered_lints::BufferedEarlyLint;
 use syntax::ext::base::ExtCtxt;
-use syntax::fold::Folder;
+use syntax::mut_visit::MutVisitor;
 use syntax::parse::{self, PResult};
 use syntax::util::node_count::NodeCounter;
 use syntax::util::lev_distance::find_best_match_for_name;
@@ -1000,12 +1000,12 @@ where
     });
     sess.profiler(|p| p.end_activity(ProfileCategory::Expansion));
 
-    krate = time(sess, "maybe building test harness", || {
+    time(sess, "maybe building test harness", || {
         syntax::test::modify_for_testing(
             &sess.parse_sess,
             &mut resolver,
             sess.opts.test,
-            krate,
+            &mut krate,
             sess.diagnostic(),
             &sess.features_untracked(),
         )
@@ -1014,7 +1014,7 @@ where
     // If we're actually rustdoc then there's no need to actually compile
     // anything, so switch everything to just looping
     if sess.opts.actually_rustdoc {
-        krate = ReplaceBodyWithLoop::new(sess).fold_crate(krate);
+        ReplaceBodyWithLoop::new(sess).visit_crate(&mut krate);
     }
 
     let (has_proc_macro_decls, has_global_allocator) = time(sess, "AST validation", || {
@@ -1045,11 +1045,11 @@ where
 
     if has_global_allocator {
         // Expand global allocators, which are treated as an in-tree proc macro
-        krate = time(sess, "creating allocators", || {
+        time(sess, "creating allocators", || {
             allocator::expand::modify(
                 &sess.parse_sess,
                 &mut resolver,
-                krate,
+                &mut krate,
                 crate_name.to_string(),
                 sess.diagnostic(),
             )

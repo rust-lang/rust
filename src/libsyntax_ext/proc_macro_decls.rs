@@ -9,7 +9,7 @@ use syntax::ext::base::ExtCtxt;
 use syntax::ext::build::AstBuilder;
 use syntax::ext::expand::ExpansionConfig;
 use syntax::ext::hygiene::Mark;
-use syntax::fold::Folder;
+use syntax::mut_visit::MutVisitor;
 use syntax::parse::ParseSess;
 use syntax::ptr::P;
 use syntax::symbol::Symbol;
@@ -412,5 +412,5 @@ fn mk_decls(
         i
     });
 
-    cx.monotonic_expander().fold_item(module).pop().unwrap()
+    cx.monotonic_expander().flat_map_item(module).pop().unwrap()
 }

@@ -189,7 +189,7 @@ use syntax::attr;
 use syntax::ext::base::{Annotatable, ExtCtxt};
 use syntax::ext::build::AstBuilder;
 use syntax::source_map::{self, respan};
-use syntax::util::move_map::MoveMap;
+use syntax::util::map_in_place::MapInPlace;
 use syntax::ptr::P;
 use syntax::symbol::{Symbol, keywords};
 use syntax::parse::ParseSess;
@@ -1184,7 +1184,7 @@ impl<'a> MethodDef<'a> {
                                   enum_def: &'b EnumDef,
                                   type_attrs: &[ast::Attribute],
                                   type_ident: Ident,
-                                  self_args: Vec<P<Expr>>,
+                                  mut self_args: Vec<P<Expr>>,
                                   nonself_args: &[P<Expr>])
                                   -> P<Expr> {
         let sp = trait_.span;
@@ -1417,8 +1417,8 @@ impl<'a> MethodDef<'a> {
             // them when they are fed as r-values into a tuple
             // expression; here add a layer of borrowing, turning
             // `(*self, *__arg_0, ...)` into `(&*self, &*__arg_0, ...)`.
-            let borrowed_self_args = self_args.move_map(|self_arg| cx.expr_addr_of(sp, self_arg));
-            let match_arg = cx.expr(sp, ast::ExprKind::Tup(borrowed_self_args));
+            self_args.map_in_place(|self_arg| cx.expr_addr_of(sp, self_arg));
+            let match_arg = cx.expr(sp, ast::ExprKind::Tup(self_args));
 
             // Lastly we create an expression which branches on all discriminants being equal
             //  if discriminant_test {
@@ -1494,8 +1494,8 @@ impl<'a> MethodDef<'a> {
             // them when they are fed as r-values into a tuple
             // expression; here add a layer of borrowing, turning
             // `(*self, *__arg_0, ...)` into `(&*self, &*__arg_0, ...)`.
-            let borrowed_self_args = self_args.move_map(|self_arg| cx.expr_addr_of(sp, self_arg));
-            let match_arg = cx.expr(sp, ast::ExprKind::Tup(borrowed_self_args));
+            self_args.map_in_place(|self_arg| cx.expr_addr_of(sp, self_arg));
+            let match_arg = cx.expr(sp, ast::ExprKind::Tup(self_args));
             cx.expr_match(sp, match_arg, match_arms)
         }
     }

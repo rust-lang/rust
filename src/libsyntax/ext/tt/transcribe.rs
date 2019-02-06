@@ -3,7 +3,7 @@ use ext::base::ExtCtxt;
 use ext::expand::Marker;
 use ext::tt::macro_parser::{NamedMatch, MatchedSeq, MatchedNonterminal};
 use ext::tt::quoted;
-use fold::noop_fold_tt;
+use mut_visit::noop_visit_tt;
 use parse::token::{self, Token, NtTT};
 use smallvec::SmallVec;
 use syntax_pos::DUMMY_SP;
@@ -170,7 +170,9 @@ pub fn transcribe(cx: &ExtCtxt,
             }
             quoted::TokenTree::Token(sp, tok) => {
                 let mut marker = Marker(cx.current_expansion.mark);
-                result.push(noop_fold_tt(TokenTree::Token(sp, tok), &mut marker).into())
+                let mut tt = TokenTree::Token(sp, tok);
+                noop_visit_tt(&mut tt, &mut marker);
+                result.push(tt.into());
             }
             quoted::TokenTree::MetaVarDecl(..) => panic!("unexpected `TokenTree::MetaVarDecl"),
         }

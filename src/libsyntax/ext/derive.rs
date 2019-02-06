@@ -40,7 +40,7 @@ pub fn collect_derives(cx: &mut ExtCtxt, attrs: &mut Vec<ast::Attribute>) -> Vec
     result
 }
 
-pub fn add_derived_markers<T>(cx: &mut ExtCtxt, span: Span, traits: &[ast::Path], item: T) -> T
+pub fn add_derived_markers<T>(cx: &mut ExtCtxt, span: Span, traits: &[ast::Path], item: &mut T)
     where T: HasAttrs,
 {
     let (mut names, mut pretty_name) = (FxHashSet::default(), "derive(".to_owned());
@@ -64,7 +64,7 @@ pub fn add_derived_markers<T>(cx: &mut ExtCtxt, span: Span, traits: &[ast::Path]
     });
 
     let span = span.with_ctxt(cx.backtrace());
-    item.map_attrs(|mut attrs| {
+    item.visit_attrs(|attrs| {
         if names.contains(&Symbol::intern("Eq")) && names.contains(&Symbol::intern("PartialEq")) {
             let meta = cx.meta_word(span, Symbol::intern("structural_match"));
             attrs.push(cx.attribute(span, meta));
@@ -73,6 +73,5 @@ pub fn add_derived_markers<T>(cx: &mut ExtCtxt, span: Span, traits: &[ast::Path]
             let meta = cx.meta_word(span, Symbol::intern("rustc_copy_clone_marker"));
             attrs.push(cx.attribute(span, meta));
         }
-        attrs
-    })
+    });
 }

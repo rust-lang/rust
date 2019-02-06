@@ -735,7 +735,7 @@ impl fmt::Debug for LazyTokenStream {
 }
 
 impl LazyTokenStream {
-    fn new() -> Self {
+    pub fn new() -> Self {
         LazyTokenStream(Lock::new(None))
     }
 

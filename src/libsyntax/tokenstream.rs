@@ -147,7 +147,7 @@ impl TokenTree {
 /// empty stream is represented with `None`; it may be represented as a `Some`
 /// around an empty `Vec`.
 #[derive(Clone, Debug)]
-pub struct TokenStream(Option<Lrc<Vec<TreeAndJoint>>>);
+pub struct TokenStream(pub Option<Lrc<Vec<TreeAndJoint>>>);
 
 pub type TreeAndJoint = (TokenTree, IsJoint);
 

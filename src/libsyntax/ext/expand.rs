@@ -9,8 +9,7 @@ use ext::derive::{add_derived_markers, collect_derives};
 use ext::hygiene::{self, Mark, SyntaxContext};
 use ext::placeholders::{placeholder, PlaceholderExpander};
 use feature_gate::{self, Features, GateIssue, is_builtin_attr, emit_feature_err};
-use fold;
-use fold::*;
+use mut_visit::*;
 use parse::{DirectoryOwnership, PResult, ParseSess};
 use parse::token::{self, Token};
 use parse::parser::Parser;
@@ -22,11 +21,13 @@ use syntax_pos::{Span, DUMMY_SP, FileName};
 use syntax_pos::hygiene::ExpnFormat;
 use tokenstream::{TokenStream, TokenTree};
 use visit::{self, Visitor};
+use util::map_in_place::MapInPlace;
 
 use rustc_data_structures::fx::FxHashMap;
 use std::fs;
 use std::io::ErrorKind;
 use std::{iter, mem};
+use std::ops::DerefMut;
 use std::rc::Rc;
 use std::path::PathBuf;
 
@@ -36,8 +37,8 @@ macro_rules! ast_fragments {
             $kind_name:expr;
             // FIXME: HACK: this should be `$(one ...)?` and `$(many ...)?` but `?` macro
             // repetition was removed from 2015 edition in #51587 because of ambiguities.
-            $(one fn $fold_ast:ident; fn $visit_ast:ident;)*
-            $(many fn $fold_ast_elt:ident; fn $visit_ast_elt:ident;)*
+            $(one fn $mut_visit_ast:ident; fn $visit_ast:ident;)*
+            $(many fn $flat_map_ast_elt:ident; fn $visit_ast_elt:ident;)*
             fn $make_ast:ident;
         })*
     ) => {
@@ -87,16 +88,20 @@ macro_rules! ast_fragments {
                 }
             })*
 
-            pub fn fold_with<F: Folder>(self, folder: &mut F) -> Self {
+            pub fn mut_visit_with<F: MutVisitor>(&mut self, vis: &mut F) {
                 match self {
-                    AstFragment::OptExpr(expr) =>
-                        AstFragment::OptExpr(expr.and_then(|expr| folder.fold_opt_expr(expr))),
+                    AstFragment::OptExpr(opt_expr) => {
+                        visit_clobber(opt_expr, |opt_expr| {
+                            if let Some(expr) = opt_expr {
+                                vis.filter_map_expr(expr)
+                            } else {
+                                None
+                            }
+                        });
+                    }
+                    $($(AstFragment::$Kind(ast) => vis.$mut_visit_ast(ast),)*)*
                     $($(AstFragment::$Kind(ast) =>
-                        AstFragment::$Kind(folder.$fold_ast(ast)),)*)*
-                    $($(AstFragment::$Kind(ast) =>
-                        AstFragment::$Kind(ast.into_iter()
-                                              .flat_map(|ast| folder.$fold_ast_elt(ast))
-                                              .collect()),)*)*
+                        ast.flat_map_in_place(|ast| vis.$flat_map_ast_elt(ast)),)*)*
                 }
             }
 
@@ -112,14 +117,14 @@ macro_rules! ast_fragments {
             }
         }
 
-        impl<'a, 'b> Folder for MacroExpander<'a, 'b> {
-            fn fold_opt_expr(&mut self, expr: P<ast::Expr>) -> Option<P<ast::Expr>> {
+        impl<'a, 'b> MutVisitor for MacroExpander<'a, 'b> {
+            fn filter_map_expr(&mut self, expr: P<ast::Expr>) -> Option<P<ast::Expr>> {
                 self.expand_fragment(AstFragment::OptExpr(Some(expr))).make_opt_expr()
             }
-            $($(fn $fold_ast(&mut self, ast: $AstTy) -> $AstTy {
-                self.expand_fragment(AstFragment::$Kind(ast)).$make_ast()
+            $($(fn $mut_visit_ast(&mut self, ast: &mut $AstTy) {
+                visit_clobber(ast, |ast| self.expand_fragment(AstFragment::$Kind(ast)).$make_ast());
             })*)*
-            $($(fn $fold_ast_elt(&mut self, ast_elt: <$AstTy as IntoIterator>::Item) -> $AstTy {
+            $($(fn $flat_map_ast_elt(&mut self, ast_elt: <$AstTy as IntoIterator>::Item) -> $AstTy {
                 self.expand_fragment(AstFragment::$Kind(smallvec![ast_elt])).$make_ast()
             })*)*
         }
@@ -134,23 +139,23 @@ macro_rules! ast_fragments {
 }
 
 ast_fragments! {
-    Expr(P<ast::Expr>) { "expression"; one fn fold_expr; fn visit_expr; fn make_expr; }
-    Pat(P<ast::Pat>) { "pattern"; one fn fold_pat; fn visit_pat; fn make_pat; }
-    Ty(P<ast::Ty>) { "type"; one fn fold_ty; fn visit_ty; fn make_ty; }
+    Expr(P<ast::Expr>) { "expression"; one fn visit_expr; fn visit_expr; fn make_expr; }
+    Pat(P<ast::Pat>) { "pattern"; one fn visit_pat; fn visit_pat; fn make_pat; }
+    Ty(P<ast::Ty>) { "type"; one fn visit_ty; fn visit_ty; fn make_ty; }
     Stmts(SmallVec<[ast::Stmt; 1]>) {
-        "statement"; many fn fold_stmt; fn visit_stmt; fn make_stmts;
+        "statement"; many fn flat_map_stmt; fn visit_stmt; fn make_stmts;
     }
     Items(SmallVec<[P<ast::Item>; 1]>) {
-        "item"; many fn fold_item; fn visit_item; fn make_items;
+        "item"; many fn flat_map_item; fn visit_item; fn make_items;
     }
     TraitItems(SmallVec<[ast::TraitItem; 1]>) {
-        "trait item"; many fn fold_trait_item; fn visit_trait_item; fn make_trait_items;
+        "trait item"; many fn flat_map_trait_item; fn visit_trait_item; fn make_trait_items;
     }
     ImplItems(SmallVec<[ast::ImplItem; 1]>) {
-        "impl item"; many fn fold_impl_item; fn visit_impl_item; fn make_impl_items;
+        "impl item"; many fn flat_map_impl_item; fn visit_impl_item; fn make_impl_items;
     }
     ForeignItems(SmallVec<[ast::ForeignItem; 1]>) {
-        "foreign item"; many fn fold_foreign_item; fn visit_foreign_item; fn make_foreign_items;
+        "foreign item"; many fn flat_map_foreign_item; fn visit_foreign_item; fn make_foreign_items;
     }
 }
 
@@ -298,7 +303,7 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
         self.cx.current_expansion.depth = 0;
 
         // Collect all macro invocations and replace them with placeholders.
-        let (fragment_with_placeholders, mut invocations)
+        let (mut fragment_with_placeholders, mut invocations)
             = self.collect_invocations(input_fragment, &[]);
 
         // Optimization: if we resolve all imports now,
@@ -370,10 +375,10 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
                         err.emit();
                     }
 
-                    let item = self.fully_configure(item)
-                        .map_attrs(|mut attrs| { attrs.retain(|a| a.path != "derive"); attrs });
-                    let item_with_markers =
-                        add_derived_markers(&mut self.cx, item.span(), &traits, item.clone());
+                    let mut item = self.fully_configure(item);
+                    item.visit_attrs(|attrs| attrs.retain(|a| a.path != "derive"));
+                    let mut item_with_markers = item.clone();
+                    add_derived_markers(&mut self.cx, item.span(), &traits, &mut item_with_markers);
                     let derives = derives.entry(invoc.expansion_data.mark).or_default();
 
                     derives.reserve(traits.len());
@@ -428,7 +433,8 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
                                          expanded_fragment, derives);
             }
         }
-        fragment_with_placeholders.fold_with(&mut placeholder_expander)
+        fragment_with_placeholders.mut_visit_with(&mut placeholder_expander);
+        fragment_with_placeholders
     }
 
     fn resolve_imports(&mut self) {
@@ -441,12 +447,12 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
     /// them with "placeholders" - dummy macro invocations with specially crafted `NodeId`s.
     /// Then call into resolver that builds a skeleton ("reduced graph") of the fragment and
     /// prepares data for resolving paths of macro invocations.
-    fn collect_invocations(&mut self, fragment: AstFragment, derives: &[Mark])
+    fn collect_invocations(&mut self, mut fragment: AstFragment, derives: &[Mark])
                            -> (AstFragment, Vec<Invocation>) {
         // Resolve `$crate`s in the fragment for pretty-printing.
         self.cx.resolver.resolve_dollar_crates(&fragment);
 
-        let (fragment_with_placeholders, invocations) = {
+        let invocations = {
             let mut collector = InvocationCollector {
                 cfg: StripUnconfigured {
                     sess: self.cx.parse_sess,
@@ -456,16 +462,16 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
                 invocations: Vec::new(),
                 monotonic: self.monotonic,
             };
-            (fragment.fold_with(&mut collector), collector.invocations)
+            fragment.mut_visit_with(&mut collector);
+            collector.invocations
         };
 
         if self.monotonic {
             self.cx.resolver.visit_ast_fragment_with_placeholders(
-                self.cx.current_expansion.mark, &fragment_with_placeholders, derives
-            );
+                self.cx.current_expansion.mark, &fragment, derives);
         }
 
-        (fragment_with_placeholders, invocations)
+        (fragment, invocations)
     }
 
     fn fully_configure(&mut self, item: Annotatable) -> Annotatable {
@@ -477,24 +483,25 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
         // we know that fold result vector will contain exactly one element
         match item {
             Annotatable::Item(item) => {
-                Annotatable::Item(cfg.fold_item(item).pop().unwrap())
+                Annotatable::Item(cfg.flat_map_item(item).pop().unwrap())
             }
             Annotatable::TraitItem(item) => {
-                Annotatable::TraitItem(item.map(|item| cfg.fold_trait_item(item).pop().unwrap()))
+                Annotatable::TraitItem(
+                    item.map(|item| cfg.flat_map_trait_item(item).pop().unwrap()))
             }
             Annotatable::ImplItem(item) => {
-                Annotatable::ImplItem(item.map(|item| cfg.fold_impl_item(item).pop().unwrap()))
+                Annotatable::ImplItem(item.map(|item| cfg.flat_map_impl_item(item).pop().unwrap()))
             }
             Annotatable::ForeignItem(item) => {
                 Annotatable::ForeignItem(
-                    item.map(|item| cfg.fold_foreign_item(item).pop().unwrap())
+                    item.map(|item| cfg.flat_map_foreign_item(item).pop().unwrap())
                 )
             }
             Annotatable::Stmt(stmt) => {
-                Annotatable::Stmt(stmt.map(|stmt| cfg.fold_stmt(stmt).pop().unwrap()))
+                Annotatable::Stmt(stmt.map(|stmt| cfg.flat_map_stmt(stmt).pop().unwrap()))
             }
-            Annotatable::Expr(expr) => {
-                Annotatable::Expr(cfg.fold_expr(expr))
+            Annotatable::Expr(mut expr) => {
+                Annotatable::Expr({ cfg.visit_expr(&mut expr); expr })
             }
         }
     }
@@ -536,7 +543,7 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
                          invoc: Invocation,
                          ext: &SyntaxExtension)
                          -> Option<AstFragment> {
-        let (attr, item) = match invoc.kind {
+        let (attr, mut item) = match invoc.kind {
             InvocationKind::Attr { attr, item, .. } => (attr?, item),
             _ => unreachable!(),
         };
@@ -559,7 +566,7 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
         match *ext {
             NonMacroAttr { .. } => {
                 attr::mark_known(&attr);
-                let item = item.map_attrs(|mut attrs| { attrs.push(attr); attrs });
+                item.visit_attrs(|attrs| attrs.push(attr));
                 Some(invoc.fragment_kind.expect_from_annotatables(iter::once(item)))
             }
             MultiModifier(ref mac) => {
@@ -1114,34 +1121,32 @@ impl<'a, 'b> InvocationCollector<'a, 'b> {
     }
 
     /// If `item` is an attr invocation, remove and return the macro attribute and derive traits.
-    fn classify_item<T>(&mut self, mut item: T)
-                        -> (Option<ast::Attribute>, Vec<Path>, T, /* after_derive */ bool)
+    fn classify_item<T>(&mut self, item: &mut T)
+                        -> (Option<ast::Attribute>, Vec<Path>, /* after_derive */ bool)
         where T: HasAttrs,
     {
         let (mut attr, mut traits, mut after_derive) = (None, Vec::new(), false);
 
-        item = item.map_attrs(|mut attrs| {
+        item.visit_attrs(|mut attrs| {
             attr = self.find_attr_invoc(&mut attrs, &mut after_derive);
             traits = collect_derives(&mut self.cx, &mut attrs);
-            attrs
         });
 
-        (attr, traits, item, after_derive)
+        (attr, traits, after_derive)
     }
 
-    /// Alternative of `classify_item()` that ignores `#[derive]` so invocations fallthrough
+    /// Alternative to `classify_item()` that ignores `#[derive]` so invocations fallthrough
     /// to the unused-attributes lint (making it an error on statements and expressions
     /// is a breaking change)
-    fn classify_nonitem<T: HasAttrs>(&mut self, mut item: T)
-                                     -> (Option<ast::Attribute>, T, /* after_derive */ bool) {
+    fn classify_nonitem<T: HasAttrs>(&mut self, nonitem: &mut T)
+                                     -> (Option<ast::Attribute>, /* after_derive */ bool) {
         let (mut attr, mut after_derive) = (None, false);
 
-        item = item.map_attrs(|mut attrs| {
+        nonitem.visit_attrs(|mut attrs| {
             attr = self.find_attr_invoc(&mut attrs, &mut after_derive);
-            attrs
         });
 
-        (attr, item, after_derive)
+        (attr, after_derive)
     }
 
     fn configure<T: HasAttrs>(&mut self, node: T) -> Option<T> {
@@ -1174,14 +1179,14 @@ impl<'a, 'b> InvocationCollector<'a, 'b> {
     }
 }
 
-impl<'a, 'b> Folder for InvocationCollector<'a, 'b> {
-    fn fold_expr(&mut self, expr: P<ast::Expr>) -> P<ast::Expr> {
-        let expr = self.cfg.configure_expr(expr);
-        expr.map(|mut expr| {
-            expr.node = self.cfg.configure_expr_kind(expr.node);
+impl<'a, 'b> MutVisitor for InvocationCollector<'a, 'b> {
+    fn visit_expr(&mut self, expr: &mut P<ast::Expr>) {
+        self.cfg.configure_expr(expr);
+        visit_clobber(expr.deref_mut(), |mut expr| {
+            self.cfg.configure_expr_kind(&mut expr.node);
 
             // ignore derives so they remain unused
-            let (attr, expr, after_derive) = self.classify_nonitem(expr);
+            let (attr, after_derive) = self.classify_nonitem(&mut expr);
 
             if attr.is_some() {
                 // Collect the invoc regardless of whether or not attributes are permitted here
@@ -1190,7 +1195,7 @@ impl<'a, 'b> Folder for InvocationCollector<'a, 'b> {
 
                 // AstFragmentKind::Expr requires the macro to emit an expression.
                 return self.collect_attr(attr, vec![], Annotatable::Expr(P(expr)),
-                                         AstFragmentKind::Expr, after_derive)
+                                          AstFragmentKind::Expr, after_derive)
                     .make_expr()
                     .into_inner()
             }
@@ -1201,18 +1206,19 @@ impl<'a, 'b> Folder for InvocationCollector<'a, 'b> {
                     .make_expr()
                     .into_inner()
             } else {
-                noop_fold_expr(expr, self)
+                noop_visit_expr(&mut expr, self);
+                expr
             }
-        })
+        });
     }
 
-    fn fold_opt_expr(&mut self, expr: P<ast::Expr>) -> Option<P<ast::Expr>> {
+    fn filter_map_expr(&mut self, expr: P<ast::Expr>) -> Option<P<ast::Expr>> {
         let expr = configure!(self, expr);
         expr.filter_map(|mut expr| {
-            expr.node = self.cfg.configure_expr_kind(expr.node);
+            self.cfg.configure_expr_kind(&mut expr.node);
 
             // Ignore derives so they remain unused.
-            let (attr, expr, after_derive) = self.classify_nonitem(expr);
+            let (attr, after_derive) = self.classify_nonitem(&mut expr);
 
             if attr.is_some() {
                 attr.as_ref().map(|a| self.cfg.maybe_emit_expr_attr_err(a));
@@ -1229,47 +1235,45 @@ impl<'a, 'b> Folder for InvocationCollector<'a, 'b> {
                     .make_opt_expr()
                     .map(|expr| expr.into_inner())
             } else {
-                Some(noop_fold_expr(expr, self))
+                Some({ noop_visit_expr(&mut expr, self); expr })
             }
         })
     }
 
-    fn fold_pat(&mut self, pat: P<ast::Pat>) -> P<ast::Pat> {
-        let pat = self.cfg.configure_pat(pat);
+    fn visit_pat(&mut self, pat: &mut P<ast::Pat>) {
+        self.cfg.configure_pat(pat);
         match pat.node {
             PatKind::Mac(_) => {}
-            _ => return noop_fold_pat(pat, self),
+            _ => return noop_visit_pat(pat, self),
         }
 
-        pat.and_then(|pat| match pat.node {
-            PatKind::Mac(mac) => self.collect_bang(mac, pat.span, AstFragmentKind::Pat).make_pat(),
-            _ => unreachable!(),
-        })
+        visit_clobber(pat, |mut pat| {
+            match mem::replace(&mut pat.node, PatKind::Wild) {
+                PatKind::Mac(mac) =>
+                    self.collect_bang(mac, pat.span, AstFragmentKind::Pat).make_pat(),
+                _ => unreachable!(),
+            }
+        });
     }
 
-    fn fold_stmt(&mut self, stmt: ast::Stmt) -> SmallVec<[ast::Stmt; 1]> {
-        let mut stmt = match self.cfg.configure_stmt(stmt) {
-            Some(stmt) => stmt,
-            None => return SmallVec::new(),
-        };
+    fn flat_map_stmt(&mut self, stmt: ast::Stmt) -> SmallVec<[ast::Stmt; 1]> {
+        let mut stmt = configure!(self, stmt);
 
         // we'll expand attributes on expressions separately
         if !stmt.is_expr() {
-            let (attr, derives, stmt_, after_derive) = if stmt.is_item() {
-                self.classify_item(stmt)
+            let (attr, derives, after_derive) = if stmt.is_item() {
+                self.classify_item(&mut stmt)
             } else {
                 // ignore derives on non-item statements so it falls through
                 // to the unused-attributes lint
-                let (attr, stmt, after_derive) = self.classify_nonitem(stmt);
-                (attr, vec![], stmt, after_derive)
+                let (attr, after_derive) = self.classify_nonitem(&mut stmt);
+                (attr, vec![], after_derive)
             };
 
             if attr.is_some() || !derives.is_empty() {
-                return self.collect_attr(attr, derives, Annotatable::Stmt(P(stmt_)),
+                return self.collect_attr(attr, derives, Annotatable::Stmt(P(stmt)),
                                          AstFragmentKind::Stmts, after_derive).make_stmts();
             }
-
-            stmt = stmt_;
         }
 
         if let StmtKind::Mac(mac) = stmt.node {
@@ -1291,24 +1295,23 @@ impl<'a, 'b> Folder for InvocationCollector<'a, 'b> {
 
         // The placeholder expander gives ids to statements, so we avoid folding the id here.
         let ast::Stmt { id, node, span } = stmt;
-        noop_fold_stmt_kind(node, self).into_iter().map(|node| {
+        noop_flat_map_stmt_kind(node, self).into_iter().map(|node| {
             ast::Stmt { id, node, span }
         }).collect()
 
     }
 
-    fn fold_block(&mut self, block: P<Block>) -> P<Block> {
+    fn visit_block(&mut self, block: &mut P<Block>) {
         let old_directory_ownership = self.cx.current_expansion.directory_ownership;
         self.cx.current_expansion.directory_ownership = DirectoryOwnership::UnownedViaBlock;
-        let result = noop_fold_block(block, self);
+        noop_visit_block(block, self);
         self.cx.current_expansion.directory_ownership = old_directory_ownership;
-        result
     }
 
-    fn fold_item(&mut self, item: P<ast::Item>) -> SmallVec<[P<ast::Item>; 1]> {
-        let item = configure!(self, item);
+    fn flat_map_item(&mut self, item: P<ast::Item>) -> SmallVec<[P<ast::Item>; 1]> {
+        let mut item = configure!(self, item);
 
-        let (attr, traits, item, after_derive) = self.classify_item(item);
+        let (attr, traits, after_derive) = self.classify_item(&mut item);
         if attr.is_some() || !traits.is_empty() {
             return self.collect_attr(attr, traits, Annotatable::Item(item),
                                      AstFragmentKind::Items, after_derive).make_items();
@@ -1330,7 +1333,7 @@ impl<'a, 'b> Folder for InvocationCollector<'a, 'b> {
             }
             ast::ItemKind::Mod(ast::Mod { inner, .. }) => {
                 if item.ident == keywords::Invalid.ident() {
-                    return noop_fold_item(item, self);
+                    return noop_flat_map_item(item, self);
                 }
 
                 let orig_directory_ownership = self.cx.current_expansion.directory_ownership;
@@ -1370,20 +1373,20 @@ impl<'a, 'b> Folder for InvocationCollector<'a, 'b> {
 
                 let orig_module =
                     mem::replace(&mut self.cx.current_expansion.module, Rc::new(module));
-                let result = noop_fold_item(item, self);
+                let result = noop_flat_map_item(item, self);
                 self.cx.current_expansion.module = orig_module;
                 self.cx.current_expansion.directory_ownership = orig_directory_ownership;
                 result
             }
 
-            _ => noop_fold_item(item, self),
+            _ => noop_flat_map_item(item, self),
         }
     }
 
-    fn fold_trait_item(&mut self, item: ast::TraitItem) -> SmallVec<[ast::TraitItem; 1]> {
-        let item = configure!(self, item);
+    fn flat_map_trait_item(&mut self, item: ast::TraitItem) -> SmallVec<[ast::TraitItem; 1]> {
+        let mut item = configure!(self, item);
 
-        let (attr, traits, item, after_derive) = self.classify_item(item);
+        let (attr, traits, after_derive) = self.classify_item(&mut item);
         if attr.is_some() || !traits.is_empty() {
             return self.collect_attr(attr, traits, Annotatable::TraitItem(P(item)),
                                      AstFragmentKind::TraitItems, after_derive).make_trait_items()
@@ -1395,14 +1398,14 @@ impl<'a, 'b> Folder for InvocationCollector<'a, 'b> {
                 self.check_attributes(&attrs);
                 self.collect_bang(mac, span, AstFragmentKind::TraitItems).make_trait_items()
             }
-            _ => fold::noop_fold_trait_item(item, self),
+            _ => noop_flat_map_trait_item(item, self),
         }
     }
 
-    fn fold_impl_item(&mut self, item: ast::ImplItem) -> SmallVec<[ast::ImplItem; 1]> {
-        let item = configure!(self, item);
+    fn flat_map_impl_item(&mut self, item: ast::ImplItem) -> SmallVec<[ast::ImplItem; 1]> {
+        let mut item = configure!(self, item);
 
-        let (attr, traits, item, after_derive) = self.classify_item(item);
+        let (attr, traits, after_derive) = self.classify_item(&mut item);
         if attr.is_some() || !traits.is_empty() {
             return self.collect_attr(attr, traits, Annotatable::ImplItem(P(item)),
                                      AstFragmentKind::ImplItems, after_derive).make_impl_items();
@@ -1414,30 +1417,34 @@ impl<'a, 'b> Folder for InvocationCollector<'a, 'b> {
                 self.check_attributes(&attrs);
                 self.collect_bang(mac, span, AstFragmentKind::ImplItems).make_impl_items()
             }
-            _ => fold::noop_fold_impl_item(item, self),
+            _ => noop_flat_map_impl_item(item, self),
         }
     }
 
-    fn fold_ty(&mut self, ty: P<ast::Ty>) -> P<ast::Ty> {
-        let ty = match ty.node {
-            ast::TyKind::Mac(_) => ty.into_inner(),
-            _ => return fold::noop_fold_ty(ty, self),
+    fn visit_ty(&mut self, ty: &mut P<ast::Ty>) {
+        match ty.node {
+            ast::TyKind::Mac(_) => {}
+            _ => return noop_visit_ty(ty, self),
         };
 
-        match ty.node {
-            ast::TyKind::Mac(mac) => self.collect_bang(mac, ty.span, AstFragmentKind::Ty).make_ty(),
-            _ => unreachable!(),
-        }
+        visit_clobber(ty, |mut ty| {
+            match mem::replace(&mut ty.node, ast::TyKind::Err) {
+                ast::TyKind::Mac(mac) =>
+                    self.collect_bang(mac, ty.span, AstFragmentKind::Ty).make_ty(),
+                _ => unreachable!(),
+            }
+        });
     }
 
-    fn fold_foreign_mod(&mut self, foreign_mod: ast::ForeignMod) -> ast::ForeignMod {
-        noop_fold_foreign_mod(self.cfg.configure_foreign_mod(foreign_mod), self)
+    fn visit_foreign_mod(&mut self, foreign_mod: &mut ast::ForeignMod) {
+        self.cfg.configure_foreign_mod(foreign_mod);
+        noop_visit_foreign_mod(foreign_mod, self);
     }
 
-    fn fold_foreign_item(&mut self, foreign_item: ast::ForeignItem)
+    fn flat_map_foreign_item(&mut self, mut foreign_item: ast::ForeignItem)
         -> SmallVec<[ast::ForeignItem; 1]>
     {
-        let (attr, traits, foreign_item, after_derive) = self.classify_item(foreign_item);
+        let (attr, traits, after_derive) = self.classify_item(&mut foreign_item);
 
         if attr.is_some() || !traits.is_empty() {
             return self.collect_attr(attr, traits, Annotatable::ForeignItem(P(foreign_item)),
@@ -1451,38 +1458,41 @@ impl<'a, 'b> Folder for InvocationCollector<'a, 'b> {
                 .make_foreign_items();
         }
 
-        noop_fold_foreign_item(foreign_item, self)
+        noop_flat_map_foreign_item(foreign_item, self)
     }
 
-    fn fold_item_kind(&mut self, item: ast::ItemKind) -> ast::ItemKind {
+    fn visit_item_kind(&mut self, item: &mut ast::ItemKind) {
         match item {
-            ast::ItemKind::MacroDef(..) => item,
-            _ => noop_fold_item_kind(self.cfg.configure_item_kind(item), self),
+            ast::ItemKind::MacroDef(..) => {}
+            _ => {
+                self.cfg.configure_item_kind(item);
+                noop_visit_item_kind(item, self);
+            }
         }
     }
 
-    fn fold_generic_param(&mut self, param: ast::GenericParam) -> ast::GenericParam {
+    fn visit_generic_param(&mut self, param: &mut ast::GenericParam) {
         self.cfg.disallow_cfg_on_generic_param(&param);
-        noop_fold_generic_param(param, self)
+        noop_visit_generic_param(param, self)
     }
 
-    fn fold_attribute(&mut self, at: ast::Attribute) -> Option<ast::Attribute> {
+    fn visit_attribute(&mut self, at: &mut ast::Attribute) {
         // turn `#[doc(include="filename")]` attributes into `#[doc(include(file="filename",
         // contents="file contents")]` attributes
         if !at.check_name("doc") {
-            return noop_fold_attribute(at, self);
+            return noop_visit_attribute(at, self);
         }
 
         if let Some(list) = at.meta_item_list() {
             if !list.iter().any(|it| it.check_name("include")) {
-                return noop_fold_attribute(at, self);
+                return noop_visit_attribute(at, self);
             }
 
             let mut items = vec![];
 
-            for it in list {
+            for mut it in list {
                 if !it.check_name("include") {
-                    items.push(noop_fold_meta_list_item(it, self));
+                    items.push({ noop_visit_meta_list_item(&mut it, self); it });
                     continue;
                 }
 
@@ -1491,7 +1501,7 @@ impl<'a, 'b> Folder for InvocationCollector<'a, 'b> {
                     self.check_attribute(&at);
                     if self.cx.parse_sess.span_diagnostic.err_count() > err_count {
                         // avoid loading the file if they haven't enabled the feature
-                        return noop_fold_attribute(at, self);
+                        return noop_visit_attribute(at, self);
                     }
 
                     let filename = self.cx.root_path.join(file.to_string());
@@ -1586,22 +1596,18 @@ impl<'a, 'b> Folder for InvocationCollector<'a, 'b> {
 
             let meta = attr::mk_list_item(DUMMY_SP, Ident::from_str("doc"), items);
             match at.style {
-                ast::AttrStyle::Inner =>
-                    Some(attr::mk_spanned_attr_inner(at.span, at.id, meta)),
-                ast::AttrStyle::Outer =>
-                    Some(attr::mk_spanned_attr_outer(at.span, at.id, meta)),
+                ast::AttrStyle::Inner => *at = attr::mk_spanned_attr_inner(at.span, at.id, meta),
+                ast::AttrStyle::Outer => *at = attr::mk_spanned_attr_outer(at.span, at.id, meta),
             }
         } else {
-            noop_fold_attribute(at, self)
+            noop_visit_attribute(at, self)
         }
     }
 
-    fn new_id(&mut self, id: ast::NodeId) -> ast::NodeId {
+    fn visit_id(&mut self, id: &mut ast::NodeId) {
         if self.monotonic {
-            assert_eq!(id, ast::DUMMY_NODE_ID);
-            self.cx.resolver.next_node_id()
-        } else {
-            id
+            debug_assert_eq!(*id, ast::DUMMY_NODE_ID);
+            *id = self.cx.resolver.next_node_id()
         }
     }
 }
@@ -1666,12 +1672,12 @@ impl<'feat> ExpansionConfig<'feat> {
 #[derive(Debug)]
 pub struct Marker(pub Mark);
 
-impl Folder for Marker {
-    fn new_span(&mut self, span: Span) -> Span {
-        span.apply_mark(self.0)
+impl MutVisitor for Marker {
+    fn visit_span(&mut self, span: &mut Span) {
+        *span = span.apply_mark(self.0)
     }
 
-    fn fold_mac(&mut self, mac: ast::Mac) -> ast::Mac {
-        noop_fold_mac(mac, self)
+    fn visit_mac(&mut self, mac: &mut ast::Mac) {
+        noop_visit_mac(mac, self)
     }
 }

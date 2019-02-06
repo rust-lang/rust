@@ -7054,7 +7054,8 @@ impl<'a> Parser<'a> {
                 sess: self.sess,
                 features: None, // don't perform gated feature checking
             };
-            let outer_attrs = strip_unconfigured.process_cfg_attrs(outer_attrs.to_owned());
+            let mut outer_attrs = outer_attrs.to_owned();
+            strip_unconfigured.process_cfg_attrs(&mut outer_attrs);
             (!self.cfg_mods || strip_unconfigured.in_cfg(&outer_attrs), outer_attrs)
         };
 
