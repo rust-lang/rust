@@ -252,6 +252,9 @@ pub struct Parser<'a> {
     /// See the comments in the `parse_path_segment` function for more details.
     crate unmatched_angle_bracket_count: u32,
     crate max_angle_bracket_count: u32,
+    /// List of all unclosed delimiters found by the lexer. If an entry is used for error recovery
+    /// it gets removed from here. Every entry left at the end gets emitted as an independent
+    /// error.
     crate unclosed_delims: Vec<UnmatchedBrace>,
 }
 
@@ -5830,12 +5833,11 @@ impl<'a> Parser<'a> {
                     .span_suggestion(
                         span,
                         &format!(
-                            "{}remove extra angle bracket{}",
-                            if plural { "" } else { "maybe " }, // account for `S::<u64(3)`
+                            "remove extra angle bracket{}",
                             if plural { "s" } else { "" }
                         ),
                         String::new(),
-                        Applicability::MaybeIncorrect,
+                        Applicability::MachineApplicable,
                     )
                     .emit();
 

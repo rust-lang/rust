@@ -14,7 +14,7 @@ error: unmatched angle bracket
   --> $DIR/issue-57819.rs:25:10
    |
 LL |     bar::<<<T as Foo>::Output>();
-   |          ^ help: maybe remove extra angle bracket
+   |          ^ help: remove extra angle bracket
 
 error: unmatched angle brackets
   --> $DIR/issue-57819.rs:34:48
@@ -38,7 +38,7 @@ error: unmatched angle bracket
   --> $DIR/issue-57819.rs:43:48
    |
 LL |     let _ = vec![1, 2, 3].into_iter().collect::<<Vec<usize>>();
-   |                                                ^ help: maybe remove extra angle bracket
+   |                                                ^ help: remove extra angle bracket
 
 error: aborting due to 7 previous errors
 
