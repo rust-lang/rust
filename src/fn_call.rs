@@ -39,12 +39,7 @@ pub trait EvalContextExt<'a, 'mir, 'tcx: 'a+'mir>: crate::MiriEvalContextExt<'a,
         if this.tcx.is_foreign_item(instance.def_id()) {
             // An external function that we cannot find MIR for, but we can still run enough
             // of them to make miri viable.
-            this.emulate_foreign_item(
-                instance.def_id(),
-                args,
-                dest.unwrap(),
-                ret.unwrap(),
-            )?;
+            this.emulate_foreign_item(instance.def_id(), args, dest, ret)?;
             // `goto_block` already handled
             return Ok(None);
         }
@@ -59,8 +54,8 @@ pub trait EvalContextExt<'a, 'mir, 'tcx: 'a+'mir>: crate::MiriEvalContextExt<'a,
         &mut self,
         def_id: DefId,
         args: &[OpTy<'tcx, Borrow>],
-        dest: PlaceTy<'tcx, Borrow>,
-        ret: mir::BasicBlock,
+        dest: Option<PlaceTy<'tcx, Borrow>>,
+        ret: Option<mir::BasicBlock>,
     ) -> EvalResult<'tcx> {
         let this = self.eval_context_mut();
         let attrs = this.tcx.get_attrs(def_id);
@@ -70,9 +65,23 @@ pub trait EvalContextExt<'a, 'mir, 'tcx: 'a+'mir>: crate::MiriEvalContextExt<'a,
         };
         // Strip linker suffixes (seen on 32bit macOS)
         let link_name = link_name.trim_end_matches("$UNIX2003");
-
         let tcx = &{this.tcx.tcx};
 
+        // first: functions that could diverge
+        match &link_name[..] {
+            "__rust_start_panic" | "panic_impl" => {
+                return err!(MachineError("the evaluated program panicked".to_string()));
+            }
+            _ => if dest.is_none() {
+                return err!(Unimplemented(
+                    format!("can't call diverging foreign function: {}", link_name),
+                ));
+            }
+        }
+
+        // now: functions that assume a ret and dest
+        let dest = dest.expect("we already checked for a dest");
+        let ret = ret.expect("dest is Some but ret is None");
         match &link_name[..] {
             "malloc" => {
                 let size = this.read_scalar(args[0])?.to_usize(this)?;
@@ -244,9 +253,6 @@ pub trait EvalContextExt<'a, 'mir, 'tcx: 'a+'mir>: crate::MiriEvalContextExt<'a,
                 // Don't fall through, we do NOT want to `goto_block`!
                 return Ok(());
             }
-
-            "__rust_start_panic" =>
-                return err!(MachineError("the evaluated program panicked".to_string())),
 
             "memcmp" => {
                 let left = this.read_scalar(args[0])?.not_undef()?;
