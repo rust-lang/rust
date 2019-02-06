@@ -2,8 +2,6 @@
 //!
 //! See the build.rs for libcompiler_builtins crate for details.
 
-extern crate cc;
-
 use std::env;
 use std::path::Path;
 
