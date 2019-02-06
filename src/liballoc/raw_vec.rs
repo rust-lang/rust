@@ -574,7 +574,7 @@ impl<T, A: Alloc> RawVec<T, A> {
         }
 
         // This check is my waterloo; it's the only thing `Vec` wouldn't have to do.
-        assert!(self.cap >= amount, "Tried to shrink to a larger capacity");
+        assert!(self.cap >= amount, "tried to shrink to a larger capacity");
 
         if amount == 0 {
             // We want to create a new zero-length vector within the
