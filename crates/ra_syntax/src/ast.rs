@@ -177,6 +177,16 @@ impl Attr {
             None
         }
     }
+
+    pub fn as_named(&self) -> Option<SmolStr> {
+        let tt = self.value()?;
+        let attr = tt.syntax().children().nth(1)?;
+        if attr.kind() == IDENT {
+            Some(attr.leaf_text().unwrap().clone())
+        } else {
+            None
+        }
+    }
 }
 
 impl Comment {

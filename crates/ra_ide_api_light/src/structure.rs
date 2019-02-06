@@ -2,7 +2,7 @@ use crate::TextRange;
 
 use ra_syntax::{
     algo::visit::{visitor, Visitor},
-    ast::{self, NameOwner, TypeParamsOwner},
+    ast::{self, AttrsOwner, NameOwner, TypeParamsOwner},
     AstNode, SourceFile, SyntaxKind, SyntaxNode, WalkEvent,
 };
 
@@ -14,6 +14,7 @@ pub struct StructureNode {
     pub node_range: TextRange,
     pub kind: SyntaxKind,
     pub detail: Option<String>,
+    pub deprecated: bool,
 }
 
 pub fn file_structure(file: &SourceFile) -> Vec<StructureNode> {
@@ -40,11 +41,11 @@ pub fn file_structure(file: &SourceFile) -> Vec<StructureNode> {
 }
 
 fn structure_node(node: &SyntaxNode) -> Option<StructureNode> {
-    fn decl<N: NameOwner>(node: &N) -> Option<StructureNode> {
+    fn decl<N: NameOwner + AttrsOwner>(node: &N) -> Option<StructureNode> {
         decl_with_detail(node, None)
     }
 
-    fn decl_with_type_ref<N: NameOwner>(
+    fn decl_with_type_ref<N: NameOwner + AttrsOwner>(
         node: &N,
         type_ref: Option<&ast::TypeRef>,
     ) -> Option<StructureNode> {
@@ -56,8 +57,12 @@ fn structure_node(node: &SyntaxNode) -> Option<StructureNode> {
         decl_with_detail(node, detail)
     }
 
-    fn decl_with_detail<N: NameOwner>(node: &N, detail: Option<String>) -> Option<StructureNode> {
+    fn decl_with_detail<N: NameOwner + AttrsOwner>(
+        node: &N,
+        detail: Option<String>,
+    ) -> Option<StructureNode> {
         let name = node.name()?;
+
         Some(StructureNode {
             parent: None,
             label: name.text().to_string(),
@@ -65,6 +70,10 @@ fn structure_node(node: &SyntaxNode) -> Option<StructureNode> {
             node_range: node.syntax().range(),
             kind: node.syntax().kind(),
             detail,
+            deprecated: node
+                .attrs()
+                .filter_map(|x| x.as_named())
+                .any(|x| x == "deprecated"),
         })
     }
 
@@ -128,6 +137,7 @@ fn structure_node(node: &SyntaxNode) -> Option<StructureNode> {
                 node_range: im.syntax().range(),
                 kind: im.syntax().kind(),
                 detail: None,
+                deprecated: false,
             };
             Some(node)
         })
@@ -165,6 +175,12 @@ const C: i32 = 92;
 impl E {}
 
 impl fmt::Debug for E {}
+
+#[deprecated]
+fn obsolete() {}
+
+#[deprecated(note = "for awhile")]
+fn very_obsolete() {}
 "#,
         );
         let structure = file_structure(&file);

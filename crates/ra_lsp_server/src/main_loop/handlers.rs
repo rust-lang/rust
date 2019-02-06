@@ -140,7 +140,7 @@ pub fn handle_document_symbol(
             name: symbol.label,
             detail: symbol.detail,
             kind: symbol.kind.conv(),
-            deprecated: None,
+            deprecated: Some(symbol.deprecated),
             range: symbol.node_range.conv_with(&line_index),
             selection_range: symbol.navigation_range.conv_with(&line_index),
             children: None,

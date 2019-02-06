@@ -1,8 +1,8 @@
 ---
-created: "2019-01-26T07:11:02.463391362+00:00"
-creator: insta@0.5.2
-expression: structure
+created: "2019-02-05T22:03:50.763530100Z"
+creator: insta@0.6.1
 source: crates/ra_ide_api_light/src/structure.rs
+expression: structure
 ---
 [
     StructureNode {
@@ -11,7 +11,8 @@ source: crates/ra_ide_api_light/src/structure.rs
         navigation_range: [8; 11),
         node_range: [1; 26),
         kind: STRUCT_DEF,
-        detail: None
+        detail: None,
+        deprecated: false
     },
     StructureNode {
         parent: Some(
@@ -23,7 +24,8 @@ source: crates/ra_ide_api_light/src/structure.rs
         kind: NAMED_FIELD_DEF,
         detail: Some(
             "i32"
-        )
+        ),
+        deprecated: false
     },
     StructureNode {
         parent: None,
@@ -31,7 +33,8 @@ source: crates/ra_ide_api_light/src/structure.rs
         navigation_range: [32; 33),
         node_range: [28; 158),
         kind: MODULE,
-        detail: None
+        detail: None,
+        deprecated: false
     },
     StructureNode {
         parent: Some(
@@ -43,7 +46,8 @@ source: crates/ra_ide_api_light/src/structure.rs
         kind: FN_DEF,
         detail: Some(
             "fn()"
-        )
+        ),
+        deprecated: false
     },
     StructureNode {
         parent: Some(
@@ -55,7 +59,8 @@ source: crates/ra_ide_api_light/src/structure.rs
         kind: FN_DEF,
         detail: Some(
             "fn<T>(t: T) -> T"
-        )
+        ),
+        deprecated: false
     },
     StructureNode {
         parent: Some(
@@ -67,7 +72,8 @@ source: crates/ra_ide_api_light/src/structure.rs
         kind: FN_DEF,
         detail: Some(
             "fn<A, B>(a: A, b: B) -> Vec< u32 >"
-        )
+        ),
+        deprecated: false
     },
     StructureNode {
         parent: None,
@@ -75,7 +81,8 @@ source: crates/ra_ide_api_light/src/structure.rs
         navigation_range: [165; 166),
         node_range: [160; 180),
         kind: ENUM_DEF,
-        detail: None
+        detail: None,
+        deprecated: false
     },
     StructureNode {
         parent: Some(
@@ -85,7 +92,8 @@ source: crates/ra_ide_api_light/src/structure.rs
         navigation_range: [169; 170),
         node_range: [169; 170),
         kind: ENUM_VARIANT,
-        detail: None
+        detail: None,
+        deprecated: false
     },
     StructureNode {
         parent: Some(
@@ -95,7 +103,8 @@ source: crates/ra_ide_api_light/src/structure.rs
         navigation_range: [172; 173),
         node_range: [172; 178),
         kind: ENUM_VARIANT,
-        detail: None
+        detail: None,
+        deprecated: false
     },
     StructureNode {
         parent: None,
@@ -105,7 +114,8 @@ source: crates/ra_ide_api_light/src/structure.rs
         kind: TYPE_DEF,
         detail: Some(
             "()"
-        )
+        ),
+        deprecated: false
     },
     StructureNode {
         parent: None,
@@ -115,7 +125,8 @@ source: crates/ra_ide_api_light/src/structure.rs
         kind: STATIC_DEF,
         detail: Some(
             "i32"
-        )
+        ),
+        deprecated: false
     },
     StructureNode {
         parent: None,
@@ -125,7 +136,8 @@ source: crates/ra_ide_api_light/src/structure.rs
         kind: CONST_DEF,
         detail: Some(
             "i32"
-        )
+        ),
+        deprecated: false
     },
     StructureNode {
         parent: None,
@@ -133,7 +145,8 @@ source: crates/ra_ide_api_light/src/structure.rs
         navigation_range: [239; 240),
         node_range: [234; 243),
         kind: IMPL_BLOCK,
-        detail: None
+        detail: None,
+        deprecated: false
     },
     StructureNode {
         parent: None,
@@ -141,6 +154,29 @@ source: crates/ra_ide_api_light/src/structure.rs
         navigation_range: [265; 266),
         node_range: [245; 269),
         kind: IMPL_BLOCK,
-        detail: None
+        detail: None,
+        deprecated: false
+    },
+    StructureNode {
+        parent: None,
+        label: "obsolete",
+        navigation_range: [288; 296),
+        node_range: [271; 301),
+        kind: FN_DEF,
+        detail: Some(
+            "fn()"
+        ),
+        deprecated: true
+    },
+    StructureNode {
+        parent: None,
+        label: "very_obsolete",
+        navigation_range: [341; 354),
+        node_range: [303; 359),
+        kind: FN_DEF,
+        detail: Some(
+            "fn()"
+        ),
+        deprecated: true
     }
 ]
