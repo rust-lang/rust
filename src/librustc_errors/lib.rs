@@ -6,23 +6,15 @@
 #![allow(unused_attributes)]
 #![feature(range_contains)]
 #![cfg_attr(unix, feature(libc))]
-#![feature(nll)]
 #![feature(optin_builtin_traits)]
+#![deny(rust_2018_idioms)]
 
-extern crate atty;
-extern crate termcolor;
-#[cfg(unix)]
-extern crate libc;
-#[macro_use]
-extern crate log;
-extern crate rustc_data_structures;
-extern crate serialize as rustc_serialize;
-extern crate syntax_pos;
-extern crate unicode_width;
+#[allow(unused_extern_crates)]
+extern crate serialize as rustc_serialize; // used by deriving
 
 pub use emitter::ColorConfig;
 
-use self::Level::*;
+use Level::*;
 
 use emitter::{Emitter, EmitterWriter};
 
@@ -144,7 +136,7 @@ impl CodeSuggestion {
         use syntax_pos::{CharPos, Loc, Pos};
 
         fn push_trailing(buf: &mut String,
-                         line_opt: Option<&Cow<str>>,
+                         line_opt: Option<&Cow<'_, str>>,
                          lo: &Loc,
                          hi_opt: Option<&Loc>) {
             let (lo, hi_opt) = (lo.col.to_usize(), hi_opt.map(|hi| hi.col.to_usize()));
@@ -247,7 +239,7 @@ impl FatalError {
 }
 
 impl fmt::Display for FatalError {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "parser fatal error")
     }
 }
@@ -264,7 +256,7 @@ impl error::Error for FatalError {
 pub struct ExplicitBug;
 
 impl fmt::Display for ExplicitBug {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "parser internal bug")
     }
 }
@@ -496,7 +488,7 @@ impl Handler {
         DiagnosticBuilder::new(self, Level::Fatal, msg)
     }
 
-    pub fn cancel(&self, err: &mut DiagnosticBuilder) {
+    pub fn cancel(&self, err: &mut DiagnosticBuilder<'_>) {
         err.cancel();
     }
 
@@ -698,12 +690,12 @@ impl Handler {
         self.taught_diagnostics.borrow_mut().insert(code.clone())
     }
 
-    pub fn force_print_db(&self, mut db: DiagnosticBuilder) {
+    pub fn force_print_db(&self, mut db: DiagnosticBuilder<'_>) {
         self.emitter.borrow_mut().emit(&db);
         db.cancel();
     }
 
-    fn emit_db(&self, db: &DiagnosticBuilder) {
+    fn emit_db(&self, db: &DiagnosticBuilder<'_>) {
         let diagnostic = &**db;
 
         TRACK_DIAGNOSTICS.with(|track_diagnostics| {
@@ -749,7 +741,7 @@ pub enum Level {
 }
 
 impl fmt::Display for Level {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         self.to_str().fmt(f)
     }
 }

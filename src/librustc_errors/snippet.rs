@@ -1,6 +1,6 @@
 // Code for annotating snippets.
 
-use Level;
+use crate::Level;
 
 #[derive(Clone, Debug, PartialOrd, Ord, PartialEq, Eq)]
 pub struct Line {

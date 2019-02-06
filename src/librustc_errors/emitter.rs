@@ -1,28 +1,26 @@
-use self::Destination::*;
+use Destination::*;
 
 use syntax_pos::{SourceFile, Span, MultiSpan};
 
-use {Level, CodeSuggestion, DiagnosticBuilder, SubDiagnostic, SourceMapperDyn, DiagnosticId};
-use snippet::{Annotation, AnnotationType, Line, MultilineAnnotation, StyledString, Style};
-use styled_buffer::StyledBuffer;
+use crate::{Level, CodeSuggestion, DiagnosticBuilder, SubDiagnostic, SourceMapperDyn, DiagnosticId};
+use crate::snippet::{Annotation, AnnotationType, Line, MultilineAnnotation, StyledString, Style};
+use crate::styled_buffer::StyledBuffer;
 
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::sync::Lrc;
-use atty;
 use std::borrow::Cow;
 use std::io::prelude::*;
 use std::io;
 use std::cmp::{min, Reverse};
 use termcolor::{StandardStream, ColorChoice, ColorSpec, BufferWriter};
 use termcolor::{WriteColor, Color, Buffer};
-use unicode_width;
 
 const ANONYMIZED_LINE_NUM: &str = "LL";
 
 /// Emitter trait for emitting errors.
 pub trait Emitter {
     /// Emit a structured diagnostic.
-    fn emit(&mut self, db: &DiagnosticBuilder);
+    fn emit(&mut self, db: &DiagnosticBuilder<'_>);
 
     /// Check if should show explanations about "rustc --explain"
     fn should_show_explain(&self) -> bool {
@@ -31,7 +29,7 @@ pub trait Emitter {
 }
 
 impl Emitter for EmitterWriter {
-    fn emit(&mut self, db: &DiagnosticBuilder) {
+    fn emit(&mut self, db: &DiagnosticBuilder<'_>) {
         let mut primary_span = db.span.clone();
         let mut children = db.children.clone();
         let mut suggestions: &[_] = &[];
@@ -1431,7 +1429,7 @@ fn emit_to_destination(rendered_buffer: &[Vec<StyledString>],
                        dst: &mut Destination,
                        short_message: bool)
                        -> io::Result<()> {
-    use lock;
+    use crate::lock;
 
     let mut dst = dst.writable();
 

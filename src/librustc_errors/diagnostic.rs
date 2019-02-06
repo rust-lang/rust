@@ -1,11 +1,11 @@
-use CodeSuggestion;
-use SubstitutionPart;
-use Substitution;
-use Applicability;
-use Level;
+use crate::CodeSuggestion;
+use crate::SubstitutionPart;
+use crate::Substitution;
+use crate::Applicability;
+use crate::Level;
+use crate::snippet::Style;
 use std::fmt;
 use syntax_pos::{MultiSpan, Span};
-use snippet::Style;
 
 #[must_use]
 #[derive(Clone, Debug, PartialEq, Hash, RustcEncodable, RustcDecodable)]
