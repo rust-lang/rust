@@ -77,7 +77,7 @@ fn debug_tuple() -> DebugTuple {
 }
 
 fn size_of<T>() -> usize {
-    unsafe { intrinsics::size_of::<T>() }
+    intrinsics::size_of::<T>()
 }
 
 fn use_size_of() -> usize {
@@ -93,10 +93,10 @@ unsafe fn use_copy_intrinsic_ref(src: *const u8, dst: *mut u8) {
     copy2(src, dst, 1);
 }
 
-const Abc: u8 = 6 * 7;
+const ABC: u8 = 6 * 7;
 
 fn use_const() -> u8 {
-    Abc
+    ABC
 }
 
 pub fn call_closure_3arg() {
@@ -120,7 +120,7 @@ impl<'a, 'b> FnOnce<(&'a &'b [u16],)> for IsNotEmpty {
 
 impl<'a, 'b> FnMut<(&'a &'b [u16],)> for IsNotEmpty {
     #[inline]
-    extern "rust-call" fn call_mut(&mut self, arg: (&'a &'b [u16],)) -> (u8, u8) {
+    extern "rust-call" fn call_mut(&mut self, _arg: (&'a &'b [u16],)) -> (u8, u8) {
         (0, 42)
     }
 }

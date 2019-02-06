@@ -203,7 +203,7 @@ impl<'a, 'tcx: 'a, B: Backend + 'a> FunctionCx<'a, 'tcx, B> {
             Ok(mut file) => {
                 let target_triple: ::target_lexicon::Triple = self.tcx.sess.target.target.llvm_target.parse().unwrap();
                 writeln!(file, "test compile").unwrap();
-                writeln!(file, "set is_pic");
+                writeln!(file, "set is_pic").unwrap();
                 writeln!(file, "target {}", target_triple).unwrap();
                 writeln!(file, "").unwrap();
                 file.write(clif.as_bytes()).unwrap();

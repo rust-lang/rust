@@ -103,8 +103,8 @@ struct Unique<T: ?Sized> {
 
 impl<T: ?Sized, U: ?Sized> CoerceUnsized<Unique<U>> for Unique<T> where T: Unsize<U> {}
 
-fn take_f32(f: f32) {}
-fn take_unique(u: Unique<()>) {}
+fn take_f32(_f: f32) {}
+fn take_unique(_u: Unique<()>) {}
 
 fn main() {
     take_unique(Unique {
