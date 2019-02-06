@@ -53,7 +53,7 @@ pub fn assists<H>(db: &H, range: FileRange) -> Vec<(AssistLabel, AssistAction)>
 where
     H: HirDatabase + 'static,
 {
-    AssistCtx::with_ctx(db, range, false, |ctx| {
+    AssistCtx::with_ctx(db, range, true, |ctx| {
         all_assists()
             .iter()
             .filter_map(|f| f(ctx.clone()))
