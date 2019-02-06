@@ -117,8 +117,7 @@ struct Qualifier<'a, 'tcx> {
     mode: Mode,
     mir: &'a Mir<'tcx>,
 
-    local_qualif: &'a IndexVec<Local, Option<Qualif>>,
-    temp_promotion_state: &'a IndexVec<Local, TempState>,
+    local_qualif: &'a IndexVec<Local, Qualif>,
 }
 
 impl<'a, 'tcx> Qualifier<'a, 'tcx> {
@@ -127,24 +126,7 @@ impl<'a, 'tcx> Qualifier<'a, 'tcx> {
     }
 
     fn qualify_local(&self, local: Local) -> Qualif {
-        let kind = self.mir.local_kind(local);
-        match kind {
-            LocalKind::ReturnPointer => Qualif::NOT_CONST,
-            LocalKind::Var if self.mode == Mode::Fn => Qualif::NOT_CONST,
-
-            LocalKind::Var |
-            LocalKind::Arg |
-            LocalKind::Temp => {
-                let mut qualif = self.local_qualif[local]
-                    .unwrap_or(Qualif::NOT_CONST);
-
-                if !self.temp_promotion_state[local].is_promotable() {
-                    qualif = qualif | Qualif::NOT_PROMOTABLE;
-                }
-
-                qualif
-            }
-        }
+        self.local_qualif[local]
     }
 
     fn qualify_projection_elem(&self, proj: &PlaceElem<'tcx>) -> Qualif {
@@ -467,7 +449,7 @@ struct Checker<'a, 'tcx> {
     mir: &'a Mir<'tcx>,
     rpo: ReversePostorder<'a, 'tcx>,
 
-    local_qualif: IndexVec<Local, Option<Qualif>>,
+    local_qualif: IndexVec<Local, Qualif>,
     temp_promotion_state: IndexVec<Local, TempState>,
     promotion_candidates: Vec<Candidate>,
 }
@@ -494,11 +476,22 @@ impl<'a, 'tcx> Checker<'a, 'tcx> {
 
         let param_env = tcx.param_env(def_id);
 
-        let mut local_qualif = IndexVec::from_elem(None, &mir.local_decls);
-        for arg in mir.args_iter() {
-            let qualif = Qualif::any_value_of_ty(mir.local_decls[arg].ty, tcx, param_env);
-            local_qualif[arg] = Some(Qualif::NOT_PROMOTABLE | qualif);
-        }
+        let local_qualif = mir.local_decls.iter_enumerated().map(|(local, decl)| {
+            match mir.local_kind(local) {
+                LocalKind::Arg => {
+                    Qualif::any_value_of_ty(decl.ty, tcx, param_env) |
+                        Qualif::NOT_PROMOTABLE
+                }
+
+                LocalKind::Var if mode == Mode::Fn => Qualif::NOT_CONST,
+
+                LocalKind::Temp if !temps[local].is_promotable() => {
+                    Qualif::NOT_PROMOTABLE
+                }
+
+                _ => Qualif::empty(),
+            }
+        }).collect();
 
         Checker {
             mode,
@@ -521,7 +514,6 @@ impl<'a, 'tcx> Checker<'a, 'tcx> {
             mode: self.mode,
             mir: self.mir,
             local_qualif: &self.local_qualif,
-            temp_promotion_state: &self.temp_promotion_state,
         }
     }
 
@@ -559,10 +551,10 @@ impl<'a, 'tcx> Checker<'a, 'tcx> {
                 && self.temp_promotion_state[index].is_promotable() {
                     debug!("store to promotable temp {:?} ({:?})", index, qualif);
                     let slot = &mut self.local_qualif[index];
-                    if slot.is_some() {
+                    if !slot.is_empty() {
                         span_bug!(self.span, "multiple assignments to {:?}", dest);
                     }
-                    *slot = Some(qualif);
+                    *slot = qualif;
                 }
             }
             return;
@@ -605,7 +597,18 @@ impl<'a, 'tcx> Checker<'a, 'tcx> {
         // aggregates where we overwrite all fields via assignments, which would not get
         // that feature.
         let slot = &mut self.local_qualif[index];
-        *slot = Some(slot.unwrap_or(Qualif::empty()) | qualif);
+        *slot = *slot | qualif;
+
+        // Ensure we keep the `NOT_PROMOTABLE` flag is preserved.
+        // NOTE(eddyb) this is actually unnecessary right now, as
+        // we never replace the local's qualif (but we might in
+        // the future) - also, if `NOT_PROMOTABLE` only matters
+        // for `Mode::Fn`, then this is also pointless.
+        if self.mir.local_kind(index) == LocalKind::Temp {
+            if !self.temp_promotion_state[index].is_promotable() {
+                *slot = *slot | Qualif::NOT_PROMOTABLE;
+            }
+        }
     }
 
     /// Check a whole const, static initializer or const fn.
@@ -661,7 +664,7 @@ impl<'a, 'tcx> Checker<'a, 'tcx> {
             }
         }
 
-        let mut qualif = self.local_qualif[RETURN_PLACE].unwrap_or(Qualif::NOT_CONST);
+        let mut qualif = self.local_qualif[RETURN_PLACE];
 
         // Account for errors in consts by using the
         // conservative type qualification instead.
@@ -698,16 +701,6 @@ impl<'a, 'tcx> Checker<'a, 'tcx> {
 /// For functions (constant or not), it also records
 /// candidates for promotion in `promotion_candidates`.
 impl<'a, 'tcx> Visitor<'tcx> for Checker<'a, 'tcx> {
-    fn visit_local(&mut self,
-                   &local: &Local,
-                   _: PlaceContext<'tcx>,
-                   _: Location) {
-        debug!("visit_local: local={:?}", local);
-        if self.local_qualif[local].is_none() {
-            self.not_const();
-        }
-    }
-
     fn visit_place(&mut self,
                     place: &Place<'tcx>,
                     context: PlaceContext<'tcx>,
@@ -833,9 +826,8 @@ impl<'a, 'tcx> Visitor<'tcx> for Checker<'a, 'tcx> {
             Operand::Move(ref place) => {
                 // Mark the consumed locals to indicate later drops are noops.
                 if let Place::Local(local) = *place {
-                    self.local_qualif[local] = self.local_qualif[local].map(|q|
-                        q - Qualif::NEEDS_DROP
-                    );
+                    let slot = &mut self.local_qualif[local];
+                    *slot = *slot - Qualif::NEEDS_DROP;
                 }
             }
             Operand::Copy(_) |
@@ -1137,9 +1129,7 @@ impl<'a, 'tcx> Visitor<'tcx> for Checker<'a, 'tcx> {
                 // HACK(eddyb): emulate a bit of dataflow analysis,
                 // conservatively, that drop elaboration will do.
                 let needs_drop = if let Place::Local(local) = *place {
-                    let local_needs_drop = self.local_qualif[local]
-                        .map_or(true, |q| q.contains(Qualif::NEEDS_DROP));
-                    if local_needs_drop {
+                    if self.local_qualif[local].contains(Qualif::NEEDS_DROP) {
                         Some(self.mir.local_decls[local].source_info.span)
                     } else {
                         None
@@ -1223,18 +1213,17 @@ impl<'a, 'tcx> Visitor<'tcx> for Checker<'a, 'tcx> {
                 if let Place::Local(local) = *place {
                     if self.mir.local_kind(local) == LocalKind::Temp {
                         debug!("qualify_consts: promotion candidate: local={:?}", local);
-                        if let Some(qualif) = self.local_qualif[local] {
-                            // The borrowed place doesn't have `MUTABLE_INTERIOR`
-                            // (from `qualify_rvalue`), so we can safely ignore
-                            // `MUTABLE_INTERIOR` from the local's qualifications.
-                            // This allows borrowing fields which don't have
-                            // `MUTABLE_INTERIOR`, from a type that does, e.g.:
-                            // `let _: &'static _ = &(Cell::new(1), 2).1;`
-                            debug!("qualify_consts: promotion candidate: qualif={:?}", qualif);
-                            if (qualif - Qualif::MUTABLE_INTERIOR).is_empty() {
-                                debug!("qualify_consts: promotion candidate: {:?}", candidate);
-                                self.promotion_candidates.push(candidate);
-                            }
+                        let qualif = self.local_qualif[local];
+                        // The borrowed place doesn't have `MUTABLE_INTERIOR`
+                        // (from `qualify_rvalue`), so we can safely ignore
+                        // `MUTABLE_INTERIOR` from the local's qualifications.
+                        // This allows borrowing fields which don't have
+                        // `MUTABLE_INTERIOR`, from a type that does, e.g.:
+                        // `let _: &'static _ = &(Cell::new(1), 2).1;`
+                        debug!("qualify_consts: promotion candidate: qualif={:?}", qualif);
+                        if (qualif - Qualif::MUTABLE_INTERIOR).is_empty() {
+                            debug!("qualify_consts: promotion candidate: {:?}", candidate);
+                            self.promotion_candidates.push(candidate);
                         }
                     }
                 }
