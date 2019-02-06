@@ -2223,7 +2223,7 @@ impl str {
     /// modified in a way that it remains valid UTF-8.
     ///
     /// [`u8`]: primitive.u8.html
-    #[unstable(feature = "str_as_mut_ptr", issue = "0")]
+    #[unstable(feature = "str_as_mut_ptr", issue = "58215")]
     #[inline]
     pub fn as_mut_ptr(&mut self) -> *mut u8 {
         self as *mut str as *mut u8
