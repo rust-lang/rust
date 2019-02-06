@@ -2962,14 +2962,16 @@ fn item_static(w: &mut fmt::Formatter, cx: &Context, it: &clean::Item,
 
 fn item_function(w: &mut fmt::Formatter, cx: &Context, it: &clean::Item,
                  f: &clean::Function) -> fmt::Result {
-    let name_len = format!("{}{}{}{}{:#}fn {}{:#}",
-                           VisSpace(&it.visibility),
-                           ConstnessSpace(f.header.constness),
-                           UnsafetySpace(f.header.unsafety),
-                           AsyncSpace(f.header.asyncness),
-                           AbiSpace(f.header.abi),
-                           it.name.as_ref().unwrap(),
-                           f.generics).len();
+    let header_len = format!(
+        "{}{}{}{}{:#}fn {}{:#}",
+        VisSpace(&it.visibility),
+        ConstnessSpace(f.header.constness),
+        UnsafetySpace(f.header.unsafety),
+        AsyncSpace(f.header.asyncness),
+        AbiSpace(f.header.abi),
+        it.name.as_ref().unwrap(),
+        f.generics
+    ).len();
     write!(w, "{}<pre class='rust fn'>", render_spotlight_traits(it)?)?;
     render_attributes(w, it)?;
     write!(w,
@@ -2985,7 +2987,7 @@ fn item_function(w: &mut fmt::Formatter, cx: &Context, it: &clean::Item,
            where_clause = WhereClause { gens: &f.generics, indent: 0, end_newline: true },
            decl = Function {
               decl: &f.decl,
-              name_len,
+              header_len,
               indent: 0,
               asyncness: f.header.asyncness,
            })?;
@@ -3400,16 +3402,18 @@ fn render_assoc_item(w: &mut fmt::Formatter,
                 href(did).map(|p| format!("{}#{}.{}", p.0, ty, name)).unwrap_or(anchor)
             }
         };
-        let mut head_len = format!("{}{}{}{}{:#}fn {}{:#}",
-                                   VisSpace(&meth.visibility),
-                                   ConstnessSpace(header.constness),
-                                   UnsafetySpace(header.unsafety),
-                                   AsyncSpace(header.asyncness),
-                                   AbiSpace(header.abi),
-                                   name,
-                                   *g).len();
+        let mut header_len = format!(
+            "{}{}{}{}{:#}fn {}{:#}",
+            VisSpace(&meth.visibility),
+            ConstnessSpace(header.constness),
+            UnsafetySpace(header.unsafety),
+            AsyncSpace(header.asyncness),
+            AbiSpace(header.abi),
+            name,
+            *g
+        ).len();
         let (indent, end_newline) = if parent == ItemType::Trait {
-            head_len += 4;
+            header_len += 4;
             (4, false)
         } else {
             (0, true)
@@ -3427,7 +3431,7 @@ fn render_assoc_item(w: &mut fmt::Formatter,
                generics = *g,
                decl = Function {
                    decl: d,
-                   name_len: head_len,
+                   header_len,
                    indent,
                    asyncness: header.asyncness,
                },
