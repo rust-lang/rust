@@ -1,14 +1,16 @@
 #![deny(clippy::mut_mut, clippy::zero_ptr, clippy::cmp_nan)]
 #![allow(dead_code)]
 
-// compiletest + extern crates doesn't work together
-//#[macro_use]
-//extern crate lazy_static;
+// FIXME: compiletest + extern crates doesn't work together. To make this test work, it would need
+// the following three lines and the lazy_static crate.
+//
+//     #[macro_use]
+//     extern crate lazy_static;
+//     use std::collections::HashMap;
 
-//use std::collections::HashMap;
+/// ensure that we don't suggest `is_nan` and `is_null` inside constants
+/// FIXME: once const fn is stable, suggest these functions again in constants
 
-// ensure that we don't suggest `is_nan` and `is_null` inside constants
-// FIXME: once const fn is stable, suggest these functions again in constants
 const BAA: *const i32 = 0 as *const i32;
 static mut BAR: *const i32 = BAA;
 static mut FOO: *const i32 = 0 as *const i32;

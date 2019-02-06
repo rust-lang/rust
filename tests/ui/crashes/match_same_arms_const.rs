@@ -1,5 +1,7 @@
 #![deny(clippy::match_same_arms)]
 
+/// Test for https://github.com/rust-lang/rust-clippy/issues/2427
+
 const PRICE_OF_SWEETS: u32 = 5;
 const PRICE_OF_KINDNESS: u32 = 0;
 const PRICE_OF_DRINKS: u32 = 5;

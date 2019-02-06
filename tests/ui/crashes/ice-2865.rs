@@ -1,4 +1,7 @@
 #[allow(dead_code)]
+
+/// Test for https://github.com/rust-lang/rust-clippy/issues/2865
+
 struct Ice {
     size: String,
 }

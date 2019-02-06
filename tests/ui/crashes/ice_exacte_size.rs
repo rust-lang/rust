@@ -1,5 +1,7 @@
 #![deny(clippy::all)]
 
+/// Test for https://github.com/rust-lang/rust-clippy/issues/1336
+
 #[allow(dead_code)]
 struct Foo;
 
