@@ -1,11 +1,10 @@
-use syntax::ext::base::ExtCtxt;
-use syntax::ext::base;
+use syntax::ext::base::{self, ExtCtxt};
 use syntax::feature_gate;
 use syntax::symbol::keywords;
 use syntax_pos::Span;
 use syntax::tokenstream::TokenTree;
 
-pub fn expand_trace_macros(cx: &mut ExtCtxt,
+pub fn expand_trace_macros(cx: &mut ExtCtxt<'_>,
                            sp: Span,
                            tt: &[TokenTree])
                            -> Box<dyn base::MacResult + 'static> {

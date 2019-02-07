@@ -1,9 +1,9 @@
 //! The compiler code necessary for `#[derive(Decodable)]`. See encodable.rs for more.
 
-use deriving::{self, pathvec_std};
-use deriving::generic::*;
-use deriving::generic::ty::*;
-use deriving::warn_if_deprecated;
+use crate::deriving::{self, pathvec_std};
+use crate::deriving::generic::*;
+use crate::deriving::generic::ty::*;
+use crate::deriving::warn_if_deprecated;
 
 use syntax::ast;
 use syntax::ast::{Expr, MetaItem, Mutability};
@@ -13,7 +13,7 @@ use syntax::ptr::P;
 use syntax::symbol::Symbol;
 use syntax_pos::Span;
 
-pub fn expand_deriving_rustc_decodable(cx: &mut ExtCtxt,
+pub fn expand_deriving_rustc_decodable(cx: &mut ExtCtxt<'_>,
                                        span: Span,
                                        mitem: &MetaItem,
                                        item: &Annotatable,
@@ -21,7 +21,7 @@ pub fn expand_deriving_rustc_decodable(cx: &mut ExtCtxt,
     expand_deriving_decodable_imp(cx, span, mitem, item, push, "rustc_serialize")
 }
 
-pub fn expand_deriving_decodable(cx: &mut ExtCtxt,
+pub fn expand_deriving_decodable(cx: &mut ExtCtxt<'_>,
                                  span: Span,
                                  mitem: &MetaItem,
                                  item: &Annotatable,
@@ -30,7 +30,7 @@ pub fn expand_deriving_decodable(cx: &mut ExtCtxt,
     expand_deriving_decodable_imp(cx, span, mitem, item, push, "serialize")
 }
 
-fn expand_deriving_decodable_imp(cx: &mut ExtCtxt,
+fn expand_deriving_decodable_imp(cx: &mut ExtCtxt<'_>,
                                  span: Span,
                                  mitem: &MetaItem,
                                  item: &Annotatable,
@@ -79,9 +79,9 @@ fn expand_deriving_decodable_imp(cx: &mut ExtCtxt,
     trait_def.expand(cx, mitem, item, push)
 }
 
-fn decodable_substructure(cx: &mut ExtCtxt,
+fn decodable_substructure(cx: &mut ExtCtxt<'_>,
                           trait_span: Span,
-                          substr: &Substructure,
+                          substr: &Substructure<'_>,
                           krate: &str)
                           -> P<Expr> {
     let decoder = substr.nonself_args[0].clone();
@@ -168,13 +168,13 @@ fn decodable_substructure(cx: &mut ExtCtxt,
 /// Create a decoder for a single enum variant/struct:
 /// - `outer_pat_path` is the path to this enum variant/struct
 /// - `getarg` should retrieve the `usize`-th field with name `@str`.
-fn decode_static_fields<F>(cx: &mut ExtCtxt,
+fn decode_static_fields<F>(cx: &mut ExtCtxt<'_>,
                            trait_span: Span,
                            outer_pat_path: ast::Path,
                            fields: &StaticFields,
                            mut getarg: F)
                            -> P<Expr>
-    where F: FnMut(&mut ExtCtxt, Span, Symbol, usize) -> P<Expr>
+    where F: FnMut(&mut ExtCtxt<'_>, Span, Symbol, usize) -> P<Expr>
 {
     match *fields {
         Unnamed(ref fields, is_tuple) => {

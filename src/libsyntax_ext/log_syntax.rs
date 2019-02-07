@@ -4,7 +4,7 @@ use syntax::print;
 use syntax::tokenstream;
 use syntax_pos;
 
-pub fn expand_syntax_ext<'cx>(cx: &'cx mut base::ExtCtxt,
+pub fn expand_syntax_ext<'cx>(cx: &'cx mut base::ExtCtxt<'_>,
                               sp: syntax_pos::Span,
                               tts: &[tokenstream::TokenTree])
                               -> Box<dyn base::MacResult + 'cx> {

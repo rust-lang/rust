@@ -90,7 +90,7 @@ derive_traits! {
 }
 
 #[inline] // because `name` is a compile-time constant
-fn warn_if_deprecated(ecx: &mut ExtCtxt, sp: Span, name: &str) {
+fn warn_if_deprecated(ecx: &mut ExtCtxt<'_>, sp: Span, name: &str) {
     if let Some(replacement) = match name {
         "Encodable" => Some("RustcEncodable"),
         "Decodable" => Some("RustcDecodable"),
@@ -131,7 +131,7 @@ fn hygienic_type_parameter(item: &Annotatable, base: &str) -> String {
 }
 
 /// Constructs an expression that calls an intrinsic
-fn call_intrinsic(cx: &ExtCtxt,
+fn call_intrinsic(cx: &ExtCtxt<'_>,
                   mut span: Span,
                   intrinsic: &str,
                   args: Vec<P<ast::Expr>>)

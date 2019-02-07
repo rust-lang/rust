@@ -20,7 +20,7 @@ use syntax::source_map::{ExpnInfo, MacroAttribute};
 use syntax::feature_gate;
 
 pub fn expand(
-    ecx: &mut ExtCtxt,
+    ecx: &mut ExtCtxt<'_>,
     attr_sp: Span,
     _meta_item: &ast::MetaItem,
     anno_item: Annotatable
