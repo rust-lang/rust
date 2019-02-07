@@ -3128,7 +3128,7 @@ impl<'a> Resolver<'a> {
                                    qself: Option<&QSelf>,
                                    path: &[Segment],
                                    span: Span,
-                                   source: PathSource,
+                                   source: PathSource<'_>,
                                    crate_lint: CrateLint)
                                    -> PathResolution {
         let ns = source.namespace();

@@ -23,7 +23,7 @@ impl<'a> Resolver<'a> {
         &mut self,
         path: &[Segment],
         span: Span,
-        source: PathSource,
+        source: PathSource<'_>,
         def: Option<Def>,
     ) -> (DiagnosticBuilder<'a>, Vec<ImportSuggestion>) {
         let ident_span = path.last().map_or(span, |ident| ident.ident.span);
@@ -235,7 +235,7 @@ impl<'a> Resolver<'a> {
         &mut self,
         err: &mut DiagnosticBuilder<'a>,
         span: Span,
-        source: PathSource,
+        source: PathSource<'_>,
         def: Def,
         path_str: &str,
         fallback_label: &str,
