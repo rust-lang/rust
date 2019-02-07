@@ -1,12 +1,12 @@
-error[E0401]: can't use type parameters from outer function
+error[E0401]: can't use generic parameters from outer function
   --> $DIR/issue-5997-struct.rs:2:14
    |
 LL | fn f<T>() -> bool {
    |    - - type variable from outer function
    |    |
-   |    try adding a local type parameter in this method instead
-LL |     struct S(T); //~ ERROR can't use type parameters from outer function
-   |              ^ use of type variable from outer function
+   |    try adding a local generic parameter in this method instead
+LL |     struct S(T); //~ ERROR can't use generic parameters from outer function
+   |              ^ use of generic parameter from outer function
 
 error: aborting due to previous error
 

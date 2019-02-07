@@ -348,13 +348,14 @@ fn main() {
 "##,
 
 E0044: r##"
-You can't use type parameters on foreign items. Example of erroneous code:
+You can't use type or const parameters on foreign items.
+Example of erroneous code:
 
 ```compile_fail,E0044
 extern { fn some_func<T>(x: T); }
 ```
 
-To fix this, replace the type parameter with the specializations that you
+To fix this, replace the generic parameter with the specializations that you
 need:
 
 ```

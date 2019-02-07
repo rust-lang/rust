@@ -284,6 +284,7 @@ impl Token {
         match self {
             OpenDelim(Brace) => true,
             Interpolated(ref nt) => match nt.0 {
+                NtExpr(..) => true,
                 NtBlock(..) => true,
                 NtLiteral(..) => true,
                 _ => false,
@@ -306,7 +307,7 @@ impl Token {
         }
     }
 
-    /// Returns `true` if the token is any literal, a minus (which can follow a literal,
+    /// Returns `true` if the token is any literal, a minus (which can prefix a literal,
     /// for example a '-42', or one of the boolean idents).
     crate fn can_begin_literal_or_bool(&self) -> bool {
         match *self {

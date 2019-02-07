@@ -142,8 +142,8 @@ impl Ord for BindingError {
 }
 
 enum ResolutionError<'a> {
-    /// error E0401: can't use type parameters from outer function
-    TypeParametersFromOuterFunction(Def),
+    /// error E0401: can't use type or const parameters from outer function
+    GenericParamsFromOuterFunction(Def),
     /// error E0403: the name is already used for a type/const parameter in this list of
     /// generic parameters
     NameAlreadyUsedInParameterList(Name, &'a Span),
@@ -196,13 +196,13 @@ fn resolve_struct_error<'sess, 'a>(resolver: &'sess Resolver<'_>,
                                    resolution_error: ResolutionError<'a>)
                                    -> DiagnosticBuilder<'sess> {
     match resolution_error {
-        ResolutionError::TypeParametersFromOuterFunction(outer_def) => {
+        ResolutionError::GenericParamsFromOuterFunction(outer_def) => {
             let mut err = struct_span_err!(resolver.session,
                 span,
                 E0401,
-                "can't use type parameters from outer function",
+                "can't use generic parameters from outer function",
             );
-            err.span_label(span, format!("use of type variable from outer function"));
+            err.span_label(span, format!("use of generic parameter from outer function"));
 
             let cm = resolver.session.source_map();
             match outer_def {
@@ -231,15 +231,20 @@ fn resolve_struct_error<'sess, 'a>(resolver: &'sess Resolver<'_>,
                         err.span_label(span, "type variable from outer function");
                     }
                 }
+                Def::ConstParam(def_id) => {
+                    if let Some(span) = resolver.definitions.opt_span(def_id) {
+                        err.span_label(span, "const variable from outer function");
+                    }
+                }
                 _ => {
-                    bug!("TypeParametersFromOuterFunction should only be used with Def::SelfTy, \
+                    bug!("GenericParamsFromOuterFunction should only be used with Def::SelfTy, \
                          Def::TyParam");
                 }
             }
 
             // Try to retrieve the span of the function signature and generate a new message with
             // a local type or const parameter.
-            let sugg_msg = &format!("try using a local type parameter instead");
+            let sugg_msg = &format!("try using a local generic parameter instead");
             if let Some((sugg_span, new_snippet)) = cm.generate_local_type_param_snippet(span) {
                 // Suggest the modification to the user
                 err.span_suggestion(
@@ -250,9 +255,9 @@ fn resolve_struct_error<'sess, 'a>(resolver: &'sess Resolver<'_>,
                 );
             } else if let Some(sp) = cm.generate_fn_name_span(span) {
                 err.span_label(sp,
-                    format!("try adding a local type parameter in this method instead"));
+                    format!("try adding a local generic parameter in this method instead"));
             } else {
-                err.help(&format!("try using a local type parameter instead"));
+                err.help(&format!("try using a local generic parameter instead"));
             }
 
             err
@@ -549,8 +554,7 @@ impl<'a> PathSource<'a> {
                 Def::Struct(..) | Def::Union(..) | Def::Enum(..) |
                 Def::Trait(..) | Def::TraitAlias(..) | Def::TyAlias(..) |
                 Def::AssociatedTy(..) | Def::PrimTy(..) | Def::TyParam(..) |
-                Def::SelfTy(..) | Def::Existential(..) | Def::ConstParam(..) |
-                Def::ForeignTy(..) => true,
+                Def::SelfTy(..) | Def::Existential(..) | Def::ForeignTy(..) => true,
                 _ => false,
             },
             PathSource::Trait(AliasPossibility::No) => match def {
@@ -803,6 +807,7 @@ impl<'a, 'tcx> Visitor<'tcx> for Resolver<'a> {
                 _: Span,
                 node_id: NodeId)
     {
+        debug!("(resolving function) entering function");
         let (rib_kind, asyncness) = match function_kind {
             FnKind::ItemFn(_, ref header, ..) =>
                 (ItemRibKind, header.asyncness),
@@ -2053,6 +2058,7 @@ impl<'a> Resolver<'a> {
         let record_used = record_used_id.is_some();
         let mut module = self.graph_root;
         for i in (0 .. self.ribs[ns].len()).rev() {
+            debug!("walk rib\n{:?}", self.ribs[ns][i].bindings);
             if let Some(def) = self.ribs[ns][i].bindings.get(&ident).cloned() {
                 // The ident resolves to a type parameter or local variable.
                 return Some(LexicalScopeBinding::Def(
@@ -4223,11 +4229,30 @@ impl<'a> Resolver<'a> {
                                 resolve_error(
                                     self,
                                     span,
-                                    ResolutionError::TypeParametersFromOuterFunction(def),
+                                    ResolutionError::GenericParamsFromOuterFunction(def),
                                 );
                             }
                             return Def::Err;
                         }
+                    }
+                }
+            }
+            Def::ConstParam(..) => {
+                // A const param is always declared in a signature, which is always followed by
+                // some kind of function rib kind (specifically, ItemRibKind in the case of a
+                // normal function), so we can skip the first rib as it will be guaranteed to
+                // (spuriously) conflict with the const param.
+                for rib in &ribs[1..] {
+                    if let ItemRibKind = rib.kind {
+                        // This was an attempt to use a const parameter outside its scope.
+                        if record_used {
+                            resolve_error(
+                                self,
+                                span,
+                                ResolutionError::GenericParamsFromOuterFunction(def),
+                            );
+                        }
+                        return Def::Err;
                     }
                 }
             }
