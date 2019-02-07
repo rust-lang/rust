@@ -4480,15 +4480,17 @@ fn sidebar_assoc_items(it: &clean::Item) -> String {
 
         {
             let used_links_bor = Rc::new(RefCell::new(&mut used_links));
-            let ret = v.iter()
-                       .filter(|i| i.inner_impl().trait_.is_none())
-                       .flat_map(move |i| get_methods(i.inner_impl(),
-                                                      false,
-                                                      &mut used_links_bor.borrow_mut()))
-                       .collect::<String>();
+            let mut ret = v.iter()
+                           .filter(|i| i.inner_impl().trait_.is_none())
+                           .flat_map(move |i| get_methods(i.inner_impl(),
+                                                          false,
+                                                          &mut used_links_bor.borrow_mut()))
+                           .collect::<Vec<_>>();
+            // We want links' order to be reproducible so we don't use unstable sort.
+            ret.sort();
             if !ret.is_empty() {
                 out.push_str(&format!("<a class=\"sidebar-title\" href=\"#methods\">Methods\
-                                       </a><div class=\"sidebar-links\">{}</div>", ret));
+                                       </a><div class=\"sidebar-links\">{}</div>", ret.join("")));
             }
         }
 
@@ -4512,40 +4514,47 @@ fn sidebar_assoc_items(it: &clean::Item) -> String {
                                                      impl_.inner_impl().trait_.as_ref().unwrap())),
                                               Escape(&format!("{:#}", target))));
                         out.push_str("</a>");
-                        let ret = impls.iter()
-                                       .filter(|i| i.inner_impl().trait_.is_none())
-                                       .flat_map(|i| get_methods(i.inner_impl(),
-                                                                 true,
-                                                                 &mut used_links))
-                                       .collect::<String>();
-                        out.push_str(&format!("<div class=\"sidebar-links\">{}</div>", ret));
+                        let mut ret = impls.iter()
+                                           .filter(|i| i.inner_impl().trait_.is_none())
+                                           .flat_map(|i| get_methods(i.inner_impl(),
+                                                                     true,
+                                                                     &mut used_links))
+                                           .collect::<Vec<_>>();
+                        // We want links' order to be reproducible so we don't use unstable sort.
+                        ret.sort();
+                        if !ret.is_empty() {
+                            out.push_str(&format!("<div class=\"sidebar-links\">{}</div>",
+                                                  ret.join("")));
+                        }
                     }
                 }
             }
             let format_impls = |impls: Vec<&Impl>| {
                 let mut links = FxHashSet::default();
 
-                impls.iter()
-                     .filter_map(|i| {
-                         let is_negative_impl = is_negative_impl(i.inner_impl());
-                         if let Some(ref i) = i.inner_impl().trait_ {
-                             let i_display = format!("{:#}", i);
-                             let out = Escape(&i_display);
-                             let encoded = small_url_encode(&format!("{:#}", i));
-                             let generated = format!("<a href=\"#impl-{}\">{}{}</a>",
-                                                     encoded,
-                                                     if is_negative_impl { "!" } else { "" },
-                                                     out);
-                             if links.insert(generated.clone()) {
-                                 Some(generated)
-                             } else {
-                                 None
-                             }
-                         } else {
-                             None
-                         }
-                     })
-                     .collect::<String>()
+                let mut ret = impls.iter()
+                    .filter_map(|i| {
+                        let is_negative_impl = is_negative_impl(i.inner_impl());
+                        if let Some(ref i) = i.inner_impl().trait_ {
+                            let i_display = format!("{:#}", i);
+                            let out = Escape(&i_display);
+                            let encoded = small_url_encode(&format!("{:#}", i));
+                            let generated = format!("<a href=\"#impl-{}\">{}{}</a>",
+                                                    encoded,
+                                                    if is_negative_impl { "!" } else { "" },
+                                                    out);
+                            if links.insert(generated.clone()) {
+                                Some(generated)
+                            } else {
+                                None
+                            }
+                        } else {
+                            None
+                        }
+                    })
+                    .collect::<Vec<String>>();
+                ret.sort();
+                ret.join("")
             };
 
             let (synthetic, concrete): (Vec<&Impl>, Vec<&Impl>) = v
@@ -4647,29 +4656,29 @@ fn sidebar_trait(fmt: &mut fmt::Formatter, it: &clean::Item,
                       }
                   })
                   .collect::<String>();
-    let required = t.items
-                    .iter()
-                    .filter_map(|m| {
-                        match m.name {
-                            Some(ref name) if m.is_ty_method() => {
-                                Some(format!("<a href=\"#tymethod.{name}\">{name}</a>",
-                                             name=name))
+    let mut required = t.items
+                        .iter()
+                        .filter_map(|m| {
+                            match m.name {
+                                Some(ref name) if m.is_ty_method() => {
+                                    Some(format!("<a href=\"#tymethod.{name}\">{name}</a>",
+                                                 name=name))
+                                }
+                                _ => None,
                             }
-                            _ => None,
-                        }
-                    })
-                    .collect::<String>();
-    let provided = t.items
-                    .iter()
-                    .filter_map(|m| {
-                        match m.name {
-                            Some(ref name) if m.is_method() => {
-                                Some(format!("<a href=\"#method.{name}\">{name}</a>", name=name))
+                        })
+                        .collect::<Vec<String>>();
+    let mut provided = t.items
+                        .iter()
+                        .filter_map(|m| {
+                            match m.name {
+                                Some(ref name) if m.is_method() => {
+                                    Some(format!("<a href=\"#method.{0}\">{0}</a>", name))
+                                }
+                                _ => None,
                             }
-                            _ => None,
-                        }
-                    })
-                    .collect::<String>();
+                        })
+                        .collect::<Vec<String>>();
 
     if !types.is_empty() {
         sidebar.push_str(&format!("<a class=\"sidebar-title\" href=\"#associated-types\">\
@@ -4682,38 +4691,41 @@ fn sidebar_trait(fmt: &mut fmt::Formatter, it: &clean::Item,
                                   consts));
     }
     if !required.is_empty() {
+        required.sort();
         sidebar.push_str(&format!("<a class=\"sidebar-title\" href=\"#required-methods\">\
                                    Required Methods</a><div class=\"sidebar-links\">{}</div>",
-                                  required));
+                                  required.join("")));
     }
     if !provided.is_empty() {
+        provided.sort();
         sidebar.push_str(&format!("<a class=\"sidebar-title\" href=\"#provided-methods\">\
                                    Provided Methods</a><div class=\"sidebar-links\">{}</div>",
-                                  provided));
+                                  provided.join("")));
     }
 
     let c = cache();
 
     if let Some(implementors) = c.implementors.get(&it.def_id) {
-        let res = implementors.iter()
-                              .filter(|i| i.inner_impl().for_.def_id()
-                              .map_or(false, |d| !c.paths.contains_key(&d)))
-                              .filter_map(|i| {
-                                  match extract_for_impl_name(&i.impl_item) {
-                                      Some((ref name, ref url)) => {
-                                          Some(format!("<a href=\"#impl-{}\">{}</a>",
-                                                      small_url_encode(url),
-                                                      Escape(name)))
+        let mut res = implementors.iter()
+                                  .filter(|i| i.inner_impl().for_.def_id()
+                                  .map_or(false, |d| !c.paths.contains_key(&d)))
+                                  .filter_map(|i| {
+                                      match extract_for_impl_name(&i.impl_item) {
+                                          Some((ref name, ref url)) => {
+                                              Some(format!("<a href=\"#impl-{}\">{}</a>",
+                                                          small_url_encode(url),
+                                                          Escape(name)))
+                                          }
+                                          _ => None,
                                       }
-                                      _ => None,
-                                  }
-                              })
-                              .collect::<String>();
+                                  })
+                                  .collect::<Vec<String>>();
         if !res.is_empty() {
+            res.sort();
             sidebar.push_str(&format!("<a class=\"sidebar-title\" href=\"#foreign-impls\">\
                                        Implementations on Foreign Types</a><div \
                                        class=\"sidebar-links\">{}</div>",
-                                      res));
+                                      res.join("")));
         }
     }
 
