@@ -62,6 +62,10 @@ impl Drop for NoisyDropInner {
     }
 }
 
+impl SomeTrait for NoisyDrop {
+    fn object_safe(&self) {}
+}
+
 enum Ordering {
     Less = -1,
     Equal = 0,
@@ -152,10 +156,10 @@ fn main() {
         intrinsics::size_of_val(&MyDst([0u8; 4]) as &MyDst<[u8]>);
     }
 
-    let _ = NoisyDrop {
-        text: "Outer got dropped!\0",
+    let _ = box NoisyDrop {
+        text: "Boxed outer got dropped!\0",
         inner: NoisyDropInner,
-    };
+    } as Box<SomeTrait>;
 
     const FUNC_REF: Option<fn()> = Some(main);
     match FUNC_REF {

@@ -671,6 +671,25 @@ pub fn codegen_call_inner<'a, 'tcx: 'a>(
     }
 }
 
+pub fn codegen_drop<'a, 'tcx: 'a>(
+    fx: &mut FunctionCx<'a, 'tcx, impl Backend>,
+    drop_place: CPlace<'tcx>,
+    drop_fn_ty: Ty<'tcx>,
+) {
+    let (ptr, vtable) = drop_place.to_addr_maybe_unsized(fx);
+    let drop_fn = crate::vtable::drop_fn_of_obj(fx, vtable.unwrap());
+
+    let fn_sig = ty_fn_sig(fx.tcx, drop_fn_ty);
+
+    match get_pass_mode(fx.tcx, fn_sig.output(), true) {
+        PassMode::NoPass => {},
+        _ => unreachable!(),
+    };
+
+    let sig = fx.bcx.import_signature(clif_sig_from_fn_sig(fx.tcx, fn_sig));
+    fx.bcx.ins().call_indirect(sig, drop_fn, &[ptr]);
+}
+
 pub fn codegen_return(fx: &mut FunctionCx<impl Backend>) {
     match get_pass_mode(fx.tcx, fx.return_type(), true) {
         PassMode::NoPass | PassMode::ByRef => {

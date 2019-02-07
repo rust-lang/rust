@@ -294,12 +294,24 @@ pub struct Box<T: ?Sized>(*mut T);
 
 impl<T: ?Sized + Unsize<U>, U: ?Sized> CoerceUnsized<Box<U>> for Box<T> {}
 
+impl<T: ?Sized> Drop for Box<T> {
+    fn drop(&mut self) {
+        // drop is currently performed by compiler.
+    }
+}
+
 #[lang = "exchange_malloc"]
 // Make it available to jited mini_core_hello_world
 // FIXME remove next line when jit supports linking rlibs
 #[inline(always)]
 unsafe fn allocate(size: usize, _align: usize) -> *mut u8 {
     libc::malloc(size)
+}
+
+#[lang = "box_free"]
+#[inline(always)]
+unsafe fn box_free<T: ?Sized>(ptr: *mut T) {
+    libc::free(ptr as *mut u8);
 }
 
 #[lang = "drop"]
@@ -327,6 +339,7 @@ pub mod libc {
     extern "C" {
         pub fn puts(s: *const u8);
         pub fn malloc(size: usize) -> *mut u8;
+        pub fn free(ptr: *mut u8);
         pub fn memcpy(dst: *mut u8, src: *const u8, size: usize);
         pub fn memmove(dst: *mut u8, src: *const u8, size: usize);
         pub fn strncpy(dst: *mut u8, src: *const u8, size: usize);

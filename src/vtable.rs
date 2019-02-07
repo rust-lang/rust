@@ -6,6 +6,19 @@ const DROP_FN_INDEX: usize = 0;
 const SIZE_INDEX: usize = 1;
 const ALIGN_INDEX: usize = 2;
 
+pub fn drop_fn_of_obj<'a, 'tcx: 'a>(
+    fx: &mut FunctionCx<'a, 'tcx, impl Backend>,
+    vtable: Value,
+) -> Value {
+    let usize_size = fx.layout_of(fx.tcx.types.usize).size.bytes() as usize;
+    fx.bcx.ins().load(
+        pointer_ty(fx.tcx),
+        MemFlags::new(),
+        vtable,
+        (DROP_FN_INDEX * usize_size) as i32,
+    )
+}
+
 pub fn size_of_obj<'a, 'tcx: 'a>(
     fx: &mut FunctionCx<'a, 'tcx, impl Backend>,
     vtable: Value,

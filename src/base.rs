@@ -242,7 +242,8 @@ fn codegen_fn_content<'a, 'tcx: 'a>(fx: &mut FunctionCx<'a, 'tcx, impl Backend>)
             TerminatorKind::Yield { .. }
             | TerminatorKind::FalseEdges { .. }
             | TerminatorKind::FalseUnwind { .. }
-            | TerminatorKind::DropAndReplace { .. } => {
+            | TerminatorKind::DropAndReplace { .. }
+            | TerminatorKind::GeneratorDrop => {
                 bug!("shouldn't exist at trans {:?}", bb_data.terminator());
             }
             TerminatorKind::Drop {
@@ -258,23 +259,23 @@ fn codegen_fn_content<'a, 'tcx: 'a>(fx: &mut FunctionCx<'a, 'tcx, impl Backend>)
                     // we don't actually need to drop anything
                 } else {
                     let drop_place = trans_place(fx, location);
-                    let arg_place = CPlace::new_stack_slot(
-                        fx,
-                        fx.tcx.mk_ref(
-                            &ty::RegionKind::ReErased,
-                            TypeAndMut {
-                                ty,
-                                mutbl: crate::rustc::hir::Mutability::MutMutable,
-                            },
-                        ),
-                    );
-                    drop_place.write_place_ref(fx, arg_place);
+                    let drop_fn_ty = drop_fn.ty(fx.tcx);
                     match ty.sty {
                         ty::Dynamic(..) => {
-                            fx.tcx.sess.warn("Drop for trait object");
+                            crate::abi::codegen_drop(fx, drop_place, drop_fn_ty);
                         }
                         _ => {
-                            let drop_fn_ty = drop_fn.ty(fx.tcx);
+                            let arg_place = CPlace::new_stack_slot(
+                                fx,
+                                fx.tcx.mk_ref(
+                                    &ty::RegionKind::ReErased,
+                                    TypeAndMut {
+                                        ty,
+                                        mutbl: crate::rustc::hir::Mutability::MutMutable,
+                                    },
+                                ),
+                            );
+                            drop_place.write_place_ref(fx, arg_place);
                             let arg_value = arg_place.to_cvalue(fx);
                             crate::abi::codegen_call_inner(
                                 fx,
@@ -285,44 +286,10 @@ fn codegen_fn_content<'a, 'tcx: 'a>(fx: &mut FunctionCx<'a, 'tcx, impl Backend>)
                             );
                         }
                     }
-                    /*
-                    let (args1, args2);
-                    /*let mut args = if let Some(llextra) = place.llextra {
-                        args2 = [place.llval, llextra];
-                        &args2[..]
-                    } else {
-                        args1 = [place.llval];
-                        &args1[..]
-                    };*/
-                    let (drop_fn, fn_ty) = match ty.sty {
-                    ty::Dynamic(..) => {
-                    let fn_ty = drop_fn.ty(bx.cx.tcx);
-                    let sig = common::ty_fn_sig(bx.cx, fn_ty);
-                    let sig = bx.tcx().normalize_erasing_late_bound_regions(
-                    ty::ParamEnv::reveal_all(),
-                    &sig,
-                    );
-                    let fn_ty = FnType::new_vtable(bx.cx, sig, &[]);
-                    let vtable = args[1];
-                    args = &args[..1];
-                    (meth::DESTRUCTOR.get_fn(&bx, vtable, &fn_ty), fn_ty)
-                    }
-                    _ => {
-                    let value = place.to_cvalue(fx);
-                    (callee::get_fn(bx.cx, drop_fn),
-                    FnType::of_instance(bx.cx, &drop_fn))
-                    }
-                    };
-                    do_call(self, bx, fn_ty, drop_fn, args,
-                    Some((ReturnDest::Nothing, target)),
-                    unwind);*/
                 }
 
                 let target_ebb = fx.get_ebb(*target);
                 fx.bcx.ins().jump(target_ebb, &[]);
-            }
-            TerminatorKind::GeneratorDrop => {
-                unimplemented!("terminator GeneratorDrop");
             }
         };
     }
