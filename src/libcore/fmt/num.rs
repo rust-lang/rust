@@ -257,12 +257,22 @@ macro_rules! impl_Display {
     };
 }
 
-impl_Display!(i8, u8, i16, u16, i32, u32 as u32 via to_u32 named fmt_u32);
-impl_Display!(i64, u64 as u64 via to_u64 named fmt_u64);
+// Include wasm32 in here since it doesn't reflect the native pointer size, and
+// often cares strongly about getting a smaller code size.
+#[cfg(any(target_pointer_width = "64", target_arch = "wasm32"))]
+mod imp {
+    use super::*;
+    impl_Display!(
+        i8, u8, i16, u16, i32, u32, i64, u64, usize, isize
+            as u64 via to_u64 named fmt_u64
+    );
+}
+
+#[cfg(not(any(target_pointer_width = "64", target_arch = "wasm32")))]
+mod imp {
+    use super::*;
+    impl_Display!(i8, u8, i16, u16, i32, u32, isize, usize as u32 via to_u32 named fmt_u32);
+    impl_Display!(i64, u64 as u64 via to_u64 named fmt_u64);
+}
+
 impl_Display!(i128, u128 as u128 via to_u128 named fmt_u128);
-#[cfg(target_pointer_width = "16")]
-impl_Display!(isize, usize as u16 via to_u16 named fmt_usize);
-#[cfg(target_pointer_width = "32")]
-impl_Display!(isize, usize as u32 via to_u32 named fmt_usize);
-#[cfg(target_pointer_width = "64")]
-impl_Display!(isize, usize as u64 via to_u64 named fmt_usize);
