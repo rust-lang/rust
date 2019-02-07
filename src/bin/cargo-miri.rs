@@ -7,7 +7,7 @@ use std::io::{self, Write, BufRead};
 use std::process::Command;
 use std::fs::{self, File};
 
-const CARGO_MIRI_HELP: &str = r#"Interprets bin crates and runs test suites
+const CARGO_MIRI_HELP: &str = r#"Interprets bin crates and tests in Miri
 
 Usage:
     cargo miri [subcommand] [options] [--] [<miri opts>...]

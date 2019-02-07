@@ -6,3 +6,6 @@ edition = "2018"
 
 [dependencies]
 byteorder = "1.0"
+
+[dev-dependencies]
+rand = "0.6.5"

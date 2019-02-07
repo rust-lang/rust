@@ -1,3 +1,7 @@
+extern crate byteorder;
+#[cfg(test)]
+extern crate rand;
+
 use byteorder::{BigEndian, ByteOrder};
 
 fn main() {
@@ -6,4 +10,18 @@ fn main() {
     assert_eq!(n, 0x01020304);
     println!("{:#010x}", n);
     eprintln!("standard error");
+}
+
+#[cfg(test)]
+mod test {
+    use rand::{Rng, SeedableRng};
+
+    // Make sure in-crate tests with dev-dependencies work
+    #[test]
+    fn rng() {
+        let mut rng = rand::rngs::StdRng::seed_from_u64(0xcafebeef);
+        let x: u32 = rng.gen();
+        let y: u32 = rng.gen();
+        assert_ne!(x, y);
+    }
 }
