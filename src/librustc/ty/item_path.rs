@@ -76,11 +76,6 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
         self.item_path_str(self.hir().local_def_id(id))
     }
 
-    // FIXME(@ljedrz): replace the NodeId variant
-    pub fn hir_path_str(self, id: hir::HirId) -> String {
-        self.item_path_str(self.hir().local_def_id_from_hir_id(id))
-    }
-
     /// Returns a string identifying this def-id. This string is
     /// suitable for user output. It always begins with a crate identifier.
     pub fn absolute_item_path_str(self, def_id: DefId) -> String {
