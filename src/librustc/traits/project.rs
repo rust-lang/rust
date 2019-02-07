@@ -12,16 +12,16 @@ use super::SelectionError;
 use super::{VtableImplData, VtableClosureData, VtableGeneratorData, VtableFnPointerData};
 use super::util;
 
-use hir::def_id::DefId;
-use infer::{InferCtxt, InferOk, LateBoundRegionConversionTime};
-use infer::type_variable::TypeVariableOrigin;
-use mir::interpret::{GlobalId};
+use crate::hir::def_id::DefId;
+use crate::infer::{InferCtxt, InferOk, LateBoundRegionConversionTime};
+use crate::infer::type_variable::TypeVariableOrigin;
+use crate::mir::interpret::{GlobalId};
 use rustc_data_structures::snapshot_map::{Snapshot, SnapshotMap};
 use syntax::ast::Ident;
-use ty::subst::{Subst, Substs};
-use ty::{self, ToPredicate, ToPolyTraitRef, Ty, TyCtxt};
-use ty::fold::{TypeFoldable, TypeFolder};
-use util::common::FN_OUTPUT_NAME;
+use crate::ty::subst::{Subst, Substs};
+use crate::ty::{self, ToPredicate, ToPolyTraitRef, Ty, TyCtxt};
+use crate::ty::fold::{TypeFoldable, TypeFolder};
+use crate::util::common::FN_OUTPUT_NAME;
 
 /// Depending on the stage of compilation, we want projection to be
 /// more or less conservative.

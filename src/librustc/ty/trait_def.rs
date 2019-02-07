@@ -1,11 +1,11 @@
-use hir;
-use hir::def_id::DefId;
-use hir::map::DefPathHash;
-use ich::{self, StableHashingContext};
-use traits::specialization_graph;
-use ty::fast_reject;
-use ty::fold::TypeFoldable;
-use ty::{Ty, TyCtxt};
+use crate::hir;
+use crate::hir::def_id::DefId;
+use crate::hir::map::DefPathHash;
+use crate::ich::{self, StableHashingContext};
+use crate::traits::specialization_graph;
+use crate::ty::fast_reject;
+use crate::ty::fold::TypeFoldable;
+use crate::ty::{Ty, TyCtxt};
 
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher,

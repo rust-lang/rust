@@ -1,48 +1,48 @@
-use dep_graph::{DepConstructor, DepNode};
-use errors::DiagnosticBuilder;
-use hir::def_id::{CrateNum, DefId, DefIndex};
-use hir::def::{Def, Export};
-use hir::{self, TraitCandidate, ItemLocalId, CodegenFnAttrs};
+use crate::dep_graph::{DepConstructor, DepNode};
+use crate::errors::DiagnosticBuilder;
+use crate::hir::def_id::{CrateNum, DefId, DefIndex};
+use crate::hir::def::{Def, Export};
+use crate::hir::{self, TraitCandidate, ItemLocalId, CodegenFnAttrs};
 use rustc_data_structures::svh::Svh;
-use infer::canonical::{self, Canonical};
-use lint;
-use middle::borrowck::BorrowCheckResult;
-use middle::cstore::{ExternCrate, LinkagePreference, NativeLibrary, ForeignModule};
-use middle::cstore::{NativeLibraryKind, DepKind, CrateSource};
-use middle::privacy::AccessLevels;
-use middle::reachable::ReachableSet;
-use middle::region;
-use middle::resolve_lifetime::{ResolveLifetimes, Region, ObjectLifetimeDefault};
-use middle::stability::{self, DeprecationEntry};
-use middle::lib_features::LibFeatures;
-use middle::lang_items::{LanguageItems, LangItem};
-use middle::exported_symbols::{SymbolExportLevel, ExportedSymbol};
-use mir::interpret::{ConstEvalRawResult, ConstEvalResult};
-use mir::mono::CodegenUnit;
-use mir;
-use mir::interpret::GlobalId;
-use session::{CompileResult, CrateDisambiguator};
-use session::config::{EntryFnType, OutputFilenames, OptLevel};
-use traits::{self, Vtable};
-use traits::query::{
+use crate::infer::canonical::{self, Canonical};
+use crate::lint;
+use crate::middle::borrowck::BorrowCheckResult;
+use crate::middle::cstore::{ExternCrate, LinkagePreference, NativeLibrary, ForeignModule};
+use crate::middle::cstore::{NativeLibraryKind, DepKind, CrateSource};
+use crate::middle::privacy::AccessLevels;
+use crate::middle::reachable::ReachableSet;
+use crate::middle::region;
+use crate::middle::resolve_lifetime::{ResolveLifetimes, Region, ObjectLifetimeDefault};
+use crate::middle::stability::{self, DeprecationEntry};
+use crate::middle::lib_features::LibFeatures;
+use crate::middle::lang_items::{LanguageItems, LangItem};
+use crate::middle::exported_symbols::{SymbolExportLevel, ExportedSymbol};
+use crate::mir::interpret::{ConstEvalRawResult, ConstEvalResult};
+use crate::mir::mono::CodegenUnit;
+use crate::mir;
+use crate::mir::interpret::GlobalId;
+use crate::session::{CompileResult, CrateDisambiguator};
+use crate::session::config::{EntryFnType, OutputFilenames, OptLevel};
+use crate::traits::{self, Vtable};
+use crate::traits::query::{
     CanonicalPredicateGoal, CanonicalProjectionGoal,
     CanonicalTyGoal, CanonicalTypeOpAscribeUserTypeGoal,
     CanonicalTypeOpEqGoal, CanonicalTypeOpSubtypeGoal, CanonicalTypeOpProvePredicateGoal,
     CanonicalTypeOpNormalizeGoal, NoSolution,
 };
-use traits::query::method_autoderef::MethodAutoderefStepsResult;
-use traits::query::dropck_outlives::{DtorckConstraint, DropckOutlivesResult};
-use traits::query::normalize::NormalizationResult;
-use traits::query::outlives_bounds::OutlivesBound;
-use traits::specialization_graph;
-use traits::Clauses;
-use ty::{self, CrateInherentImpls, ParamEnvAnd, Ty, TyCtxt};
-use ty::steal::Steal;
-use ty::subst::Substs;
-use util::nodemap::{DefIdSet, DefIdMap, ItemLocalSet};
-use util::common::{ErrorReported};
-use util::profiling::ProfileCategory::*;
-use session::Session;
+use crate::traits::query::method_autoderef::MethodAutoderefStepsResult;
+use crate::traits::query::dropck_outlives::{DtorckConstraint, DropckOutlivesResult};
+use crate::traits::query::normalize::NormalizationResult;
+use crate::traits::query::outlives_bounds::OutlivesBound;
+use crate::traits::specialization_graph;
+use crate::traits::Clauses;
+use crate::ty::{self, CrateInherentImpls, ParamEnvAnd, Ty, TyCtxt};
+use crate::ty::steal::Steal;
+use crate::ty::subst::Substs;
+use crate::util::nodemap::{DefIdSet, DefIdMap, ItemLocalSet};
+use crate::util::common::{ErrorReported};
+use crate::util::profiling::ProfileCategory::*;
+use crate::session::Session;
 
 use rustc_data_structures::bit_set::BitSet;
 use rustc_data_structures::indexed_vec::IndexVec;

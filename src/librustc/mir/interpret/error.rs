@@ -1,17 +1,17 @@
 use std::{fmt, env};
 
-use hir::map::definitions::DefPathData;
-use mir;
-use ty::{self, Ty, layout};
-use ty::layout::{Size, Align, LayoutError};
+use crate::hir::map::definitions::DefPathData;
+use crate::mir;
+use crate::ty::{self, Ty, layout};
+use crate::ty::layout::{Size, Align, LayoutError};
 use rustc_target::spec::abi::Abi;
 
 use super::{RawConst, Pointer, InboundsCheck, ScalarMaybeUndef};
 
 use backtrace::Backtrace;
 
-use ty::query::TyCtxtAt;
-use errors::DiagnosticBuilder;
+use crate::ty::query::TyCtxtAt;
+use crate::errors::DiagnosticBuilder;
 
 use syntax_pos::{Pos, Span};
 use syntax::ast;
@@ -42,7 +42,7 @@ pub type ConstEvalResult<'tcx> = Result<ty::Const<'tcx>, ErrorHandled>;
 #[derive(Clone, Debug, RustcEncodable, RustcDecodable)]
 pub struct ConstEvalErr<'tcx> {
     pub span: Span,
-    pub error: ::mir::interpret::EvalErrorKind<'tcx, u64>,
+    pub error: crate::mir::interpret::EvalErrorKind<'tcx, u64>,
     pub stacktrace: Vec<FrameInfo<'tcx>>,
 }
 
@@ -136,7 +136,7 @@ impl<'a, 'gcx, 'tcx> ConstEvalErr<'tcx> {
                 .next()
                 .unwrap_or(lint_root);
             tcx.struct_span_lint_node(
-                ::rustc::lint::builtin::CONST_ERR,
+                crate::rustc::lint::builtin::CONST_ERR,
                 node_id,
                 tcx.span,
                 message,

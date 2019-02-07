@@ -1,10 +1,10 @@
 //! Helper functions corresponding to lifetime errors due to
 //! anonymous regions.
 
-use hir;
-use infer::error_reporting::nice_region_error::NiceRegionError;
-use ty::{self, Region, Ty};
-use hir::def_id::DefId;
+use crate::hir;
+use crate::infer::error_reporting::nice_region_error::NiceRegionError;
+use crate::ty::{self, Region, Ty};
+use crate::hir::def_id::DefId;
 use syntax_pos::Span;
 
 // The struct contains the information about the anonymous region

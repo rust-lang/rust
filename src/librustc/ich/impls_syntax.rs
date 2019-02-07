@@ -1,7 +1,7 @@
 //! This module contains `HashStable` implementations for various data types
 //! from libsyntax in no particular order.
 
-use ich::StableHashingContext;
+use crate::ich::StableHashingContext;
 
 use std::hash as std_hash;
 use std::mem;
@@ -13,7 +13,7 @@ use syntax::symbol::{InternedString, LocalInternedString};
 use syntax::tokenstream;
 use syntax_pos::SourceFile;
 
-use hir::def_id::{DefId, CrateNum, CRATE_DEF_INDEX};
+use crate::hir::def_id::{DefId, CrateNum, CRATE_DEF_INDEX};
 
 use smallvec::SmallVec;
 use rustc_data_structures::stable_hasher::{HashStable, ToStableHashKey,

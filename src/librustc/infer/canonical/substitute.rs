@@ -6,10 +6,10 @@
 //!
 //! [c]: https://rust-lang.github.io/rustc-guide/traits/canonicalization.html
 
-use infer::canonical::{Canonical, CanonicalVarValues};
-use ty::fold::TypeFoldable;
-use ty::subst::UnpackedKind;
-use ty::{self, TyCtxt};
+use crate::infer::canonical::{Canonical, CanonicalVarValues};
+use crate::ty::fold::TypeFoldable;
+use crate::ty::subst::UnpackedKind;
+use crate::ty::{self, TyCtxt};
 
 impl<'tcx, V> Canonical<'tcx, V> {
     /// Instantiate the wrapped value, replacing each canonical value

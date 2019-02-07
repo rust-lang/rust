@@ -30,24 +30,24 @@
 //! get confused if the spans from leaf AST nodes occur in multiple places
 //! in the HIR, especially for multiple identifiers.
 
-use dep_graph::DepGraph;
-use errors::Applicability;
-use hir::{self, ParamName};
-use hir::HirVec;
-use hir::map::{DefKey, DefPathData, Definitions};
-use hir::def_id::{DefId, DefIndex, DefIndexAddressSpace, CRATE_DEF_INDEX};
-use hir::def::{Def, PathResolution, PerNS};
-use hir::GenericArg;
-use lint::builtin::{self, PARENTHESIZED_PARAMS_IN_TYPES_AND_MODULES,
+use crate::dep_graph::DepGraph;
+use crate::errors::Applicability;
+use crate::hir::{self, ParamName};
+use crate::hir::HirVec;
+use crate::hir::map::{DefKey, DefPathData, Definitions};
+use crate::hir::def_id::{DefId, DefIndex, DefIndexAddressSpace, CRATE_DEF_INDEX};
+use crate::hir::def::{Def, PathResolution, PerNS};
+use crate::hir::GenericArg;
+use crate::lint::builtin::{self, PARENTHESIZED_PARAMS_IN_TYPES_AND_MODULES,
                     ELIDED_LIFETIMES_IN_PATHS};
-use middle::cstore::CrateStore;
+use crate::middle::cstore::CrateStore;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_data_structures::indexed_vec::IndexVec;
 use rustc_data_structures::thin_vec::ThinVec;
-use session::Session;
-use session::config::nightly_options;
-use util::common::FN_OUTPUT_NAME;
-use util::nodemap::{DefIdMap, NodeMap};
+use crate::session::Session;
+use crate::session::config::nightly_options;
+use crate::util::common::FN_OUTPUT_NAME;
+use crate::util::nodemap::{DefIdMap, NodeMap};
 
 use std::collections::{BTreeSet, BTreeMap};
 use std::fmt::Debug;

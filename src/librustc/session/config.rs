@@ -3,13 +3,13 @@
 
 use std::str::FromStr;
 
-use session::{early_error, early_warn, Session};
-use session::search_paths::SearchPath;
+use crate::session::{early_error, early_warn, Session};
+use crate::session::search_paths::SearchPath;
 
 use rustc_target::spec::{LinkerFlavor, MergeFunctions, PanicStrategy, RelroLevel};
 use rustc_target::spec::{Target, TargetTriple};
-use lint;
-use middle::cstore;
+use crate::lint;
+use crate::middle::cstore;
 
 use syntax::ast::{self, IntTy, UintTy, MetaItemKind};
 use syntax::source_map::{FileName, FilePathMapping};
@@ -19,7 +19,7 @@ use syntax::parse;
 use syntax::symbol::Symbol;
 use syntax::feature_gate::UnstableFeatures;
 
-use errors::{ColorConfig, FatalError, Handler};
+use crate::errors::{ColorConfig, FatalError, Handler};
 
 use getopts;
 use std::collections::{BTreeMap, BTreeSet};
@@ -2344,7 +2344,7 @@ pub mod nightly_options {
     use getopts;
     use syntax::feature_gate::UnstableFeatures;
     use super::{ErrorOutputType, OptionStability, RustcOptGroup};
-    use session::early_error;
+    use crate::session::early_error;
 
     pub fn is_unstable_enabled(matches: &getopts::Matches) -> bool {
         is_nightly_build()
@@ -2433,8 +2433,8 @@ impl fmt::Display for CrateType {
 /// we have an opt-in scheme here, so one is hopefully forced to think about
 /// how the hash should be calculated when adding a new command-line argument.
 mod dep_tracking {
-    use lint;
-    use middle::cstore;
+    use crate::lint;
+    use crate::middle::cstore;
     use std::collections::BTreeMap;
     use std::hash::Hash;
     use std::path::PathBuf;
@@ -2567,14 +2567,14 @@ mod dep_tracking {
 
 #[cfg(test)]
 mod tests {
-    use errors;
+    use crate::errors;
     use getopts;
-    use lint;
-    use middle::cstore;
-    use session::config::{build_configuration, build_session_options_and_crate_config};
-    use session::config::{LtoCli, CrossLangLto};
-    use session::build_session;
-    use session::search_paths::SearchPath;
+    use crate::lint;
+    use crate::middle::cstore;
+    use crate::session::config::{build_configuration, build_session_options_and_crate_config};
+    use crate::session::config::{LtoCli, CrossLangLto};
+    use crate::session::build_session;
+    use crate::session::search_paths::SearchPath;
     use std::collections::{BTreeMap, BTreeSet};
     use std::iter::FromIterator;
     use std::path::PathBuf;

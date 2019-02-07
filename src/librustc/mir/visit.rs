@@ -1,7 +1,7 @@
-use hir::def_id::DefId;
-use ty::subst::Substs;
-use ty::{CanonicalUserTypeAnnotation, ClosureSubsts, GeneratorSubsts, Region, Ty};
-use mir::*;
+use crate::hir::def_id::DefId;
+use crate::ty::subst::Substs;
+use crate::ty::{CanonicalUserTypeAnnotation, ClosureSubsts, GeneratorSubsts, Region, Ty};
+use crate::mir::*;
 use syntax_pos::Span;
 
 // # The MIR Visitor
@@ -567,7 +567,7 @@ macro_rules! make_mir_visitor {
             fn super_assert_message(&mut self,
                                     msg: & $($mutability)* AssertMessage<'tcx>,
                                     location: Location) {
-                use mir::interpret::EvalErrorKind::*;
+                use crate::mir::interpret::EvalErrorKind::*;
                 if let BoundsCheck {
                         ref $($mutability)* len,
                         ref $($mutability)* index

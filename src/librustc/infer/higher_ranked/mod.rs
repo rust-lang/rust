@@ -4,8 +4,8 @@
 use super::combine::CombineFields;
 use super::{HigherRankedType, InferCtxt, PlaceholderMap};
 
-use ty::relate::{Relate, RelateResult, TypeRelation};
-use ty::{self, Binder, TypeFoldable};
+use crate::ty::relate::{Relate, RelateResult, TypeRelation};
+use crate::ty::{self, Binder, TypeFoldable};
 
 impl<'a, 'gcx, 'tcx> CombineFields<'a, 'gcx, 'tcx> {
     pub fn higher_ranked_sub<T>(

@@ -29,13 +29,13 @@ use super::lub::Lub;
 use super::sub::Sub;
 use super::type_variable::TypeVariableValue;
 
-use hir::def_id::DefId;
-use ty::{IntType, UintType};
-use ty::{self, Ty, TyCtxt};
-use ty::error::TypeError;
-use ty::relate::{self, Relate, RelateResult, TypeRelation};
-use ty::subst::Substs;
-use traits::{Obligation, PredicateObligations};
+use crate::hir::def_id::DefId;
+use crate::ty::{IntType, UintType};
+use crate::ty::{self, Ty, TyCtxt};
+use crate::ty::error::TypeError;
+use crate::ty::relate::{self, Relate, RelateResult, TypeRelation};
+use crate::ty::subst::Substs;
+use crate::traits::{Obligation, PredicateObligations};
 
 use syntax::ast;
 use syntax_pos::Span;

@@ -2,11 +2,11 @@
 //!
 //! [rustc guide]: https://rust-lang.github.io/rustc-guide/mir/index.html
 
-use hir::def::CtorKind;
-use hir::def_id::DefId;
-use hir::{self, HirId, InlineAsm};
-use mir::interpret::{ConstValue, EvalErrorKind, Scalar};
-use mir::visit::MirVisitable;
+use crate::hir::def::CtorKind;
+use crate::hir::def_id::DefId;
+use crate::hir::{self, HirId, InlineAsm};
+use crate::mir::interpret::{ConstValue, EvalErrorKind, Scalar};
+use crate::mir::visit::MirVisitable;
 use rustc_apfloat::ieee::{Double, Single};
 use rustc_apfloat::Float;
 use rustc_data_structures::fx::FxHashSet;
@@ -15,7 +15,7 @@ use rustc_data_structures::graph::{self, GraphPredecessors, GraphSuccessors};
 use rustc_data_structures::indexed_vec::{Idx, IndexVec};
 use rustc_data_structures::sync::Lrc;
 use rustc_data_structures::sync::MappedReadGuard;
-use rustc_serialize::{self as serialize};
+use crate::rustc_serialize::{self as serialize};
 use smallvec::SmallVec;
 use std::borrow::Cow;
 use std::fmt::{self, Debug, Formatter, Write};
@@ -26,16 +26,16 @@ use std::{iter, mem, option, u32};
 use syntax::ast::{self, Name};
 use syntax::symbol::InternedString;
 use syntax_pos::{Span, DUMMY_SP};
-use ty::fold::{TypeFoldable, TypeFolder, TypeVisitor};
-use ty::subst::{Subst, Substs};
-use ty::layout::VariantIdx;
-use ty::{
+use crate::ty::fold::{TypeFoldable, TypeFolder, TypeVisitor};
+use crate::ty::subst::{Subst, Substs};
+use crate::ty::layout::VariantIdx;
+use crate::ty::{
     self, AdtDef, CanonicalUserTypeAnnotations, ClosureSubsts, GeneratorSubsts, Region, Ty, TyCtxt,
     UserTypeAnnotationIndex,
 };
-use util::ppaux;
+use crate::util::ppaux;
 
-pub use mir::interpret::AssertMessage;
+pub use crate::mir::interpret::AssertMessage;
 
 mod cache;
 pub mod interpret;
@@ -676,7 +676,7 @@ impl_stable_hash_for!(enum self::MirPhase {
 });
 
 mod binding_form_impl {
-    use ich::StableHashingContext;
+    use crate::ich::StableHashingContext;
     use rustc_data_structures::stable_hasher::{HashStable, StableHasher, StableHasherResult};
 
     impl<'a, 'tcx> HashStable<StableHashingContext<'a>> for super::BindingForm<'tcx> {
@@ -2625,7 +2625,7 @@ CloneTypeFoldableAndLiftImpls! { ProjectionKind<'tcx>, }
 
 impl<'tcx> TypeFoldable<'tcx> for UserTypeProjection<'tcx> {
     fn super_fold_with<'gcx: 'tcx, F: TypeFolder<'gcx, 'tcx>>(&self, folder: &mut F) -> Self {
-        use mir::ProjectionElem::*;
+        use crate::mir::ProjectionElem::*;
 
         let base = self.base.fold_with(folder);
         let projs: Vec<_> = self.projs
@@ -2671,7 +2671,7 @@ pub fn fmt_lazy_const_val(f: &mut impl Write, const_val: &ty::LazyConst<'_>) -> 
 
 /// Write a `ConstValue` in a way closer to the original source code than the `Debug` output.
 pub fn fmt_const_val(f: &mut impl Write, const_val: ty::Const<'_>) -> fmt::Result {
-    use ty::TyKind::*;
+    use crate::ty::TyKind::*;
     let value = const_val.val;
     let ty = const_val.ty;
     // print some primitives
@@ -3116,7 +3116,7 @@ EnumTypeFoldableImpl! {
 
 impl<'tcx> TypeFoldable<'tcx> for Terminator<'tcx> {
     fn super_fold_with<'gcx: 'tcx, F: TypeFolder<'gcx, 'tcx>>(&self, folder: &mut F) -> Self {
-        use mir::TerminatorKind::*;
+        use crate::mir::TerminatorKind::*;
 
         let kind = match self.kind {
             Goto { target } => Goto { target },
@@ -3229,7 +3229,7 @@ impl<'tcx> TypeFoldable<'tcx> for Terminator<'tcx> {
     }
 
     fn super_visit_with<V: TypeVisitor<'tcx>>(&self, visitor: &mut V) -> bool {
-        use mir::TerminatorKind::*;
+        use crate::mir::TerminatorKind::*;
 
         match self.kind {
             SwitchInt {
@@ -3301,7 +3301,7 @@ impl<'tcx> TypeFoldable<'tcx> for Place<'tcx> {
 
 impl<'tcx> TypeFoldable<'tcx> for Rvalue<'tcx> {
     fn super_fold_with<'gcx: 'tcx, F: TypeFolder<'gcx, 'tcx>>(&self, folder: &mut F) -> Self {
-        use mir::Rvalue::*;
+        use crate::mir::Rvalue::*;
         match *self {
             Use(ref op) => Use(op.fold_with(folder)),
             Repeat(ref op, len) => Repeat(op.fold_with(folder), len),
@@ -3343,7 +3343,7 @@ impl<'tcx> TypeFoldable<'tcx> for Rvalue<'tcx> {
     }
 
     fn super_visit_with<V: TypeVisitor<'tcx>>(&self, visitor: &mut V) -> bool {
-        use mir::Rvalue::*;
+        use crate::mir::Rvalue::*;
         match *self {
             Use(ref op) => op.visit_with(visitor),
             Repeat(ref op, _) => op.visit_with(visitor),
@@ -3395,7 +3395,7 @@ where
     T: TypeFoldable<'tcx>,
 {
     fn super_fold_with<'gcx: 'tcx, F: TypeFolder<'gcx, 'tcx>>(&self, folder: &mut F) -> Self {
-        use mir::ProjectionElem::*;
+        use crate::mir::ProjectionElem::*;
 
         let base = self.base.fold_with(folder);
         let elem = match self.elem {
@@ -3409,7 +3409,7 @@ where
     }
 
     fn super_visit_with<Vs: TypeVisitor<'tcx>>(&self, visitor: &mut Vs) -> bool {
-        use mir::ProjectionElem::*;
+        use crate::mir::ProjectionElem::*;
 
         self.base.visit_with(visitor) || match self.elem {
             Field(_, ref ty) => ty.visit_with(visitor),

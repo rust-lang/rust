@@ -2,7 +2,7 @@ use rustc_data_structures::fx::FxHashMap;
 use std::cell::RefCell;
 use std::hash::Hash;
 use std::marker::PhantomData;
-use util::common::MemoizationMap;
+use crate::util::common::MemoizationMap;
 
 use super::{DepKind, DepNodeIndex, DepGraph};
 

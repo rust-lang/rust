@@ -1,6 +1,6 @@
-use hir::def::Def;
-use hir::def_id::DefId;
-use hir::{self, HirId, PatKind};
+use crate::hir::def::Def;
+use crate::hir::def_id::DefId;
+use crate::hir::{self, HirId, PatKind};
 use syntax::ast;
 use syntax_pos::Span;
 

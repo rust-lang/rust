@@ -4,17 +4,17 @@
 //! [trait-resolution]: https://rust-lang.github.io/rustc-guide/traits/resolution.html
 //! [trait-specialization]: https://rust-lang.github.io/rustc-guide/traits/specialization.html
 
-use infer::CombinedSnapshot;
-use hir::def_id::{DefId, LOCAL_CRATE};
+use crate::infer::CombinedSnapshot;
+use crate::hir::def_id::{DefId, LOCAL_CRATE};
 use syntax_pos::DUMMY_SP;
-use traits::{self, Normalized, SelectionContext, Obligation, ObligationCause};
-use traits::IntercrateMode;
-use traits::select::IntercrateAmbiguityCause;
-use ty::{self, Ty, TyCtxt};
-use ty::fold::TypeFoldable;
-use ty::subst::Subst;
+use crate::traits::{self, Normalized, SelectionContext, Obligation, ObligationCause};
+use crate::traits::IntercrateMode;
+use crate::traits::select::IntercrateAmbiguityCause;
+use crate::ty::{self, Ty, TyCtxt};
+use crate::ty::fold::TypeFoldable;
+use crate::ty::subst::Subst;
 
-use infer::{InferOk};
+use crate::infer::{InferOk};
 
 /// Whether we do the orphan check relative to this crate or
 /// to some remote crate.
@@ -39,7 +39,7 @@ pub struct OverlapResult<'tcx> {
     pub involves_placeholder: bool,
 }
 
-pub fn add_placeholder_note(err: &mut ::errors::DiagnosticBuilder<'_>) {
+pub fn add_placeholder_note(err: &mut crate::errors::DiagnosticBuilder<'_>) {
     err.note(&format!(
         "this behavior recently changed as a result of a bug fix; \
          see rust-lang/rust#56105 for details"

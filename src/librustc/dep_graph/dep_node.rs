@@ -49,25 +49,25 @@
 //! user of the `DepNode` API of having to know how to compute the expected
 //! fingerprint for a given set of node parameters.
 
-use mir::interpret::GlobalId;
-use hir::def_id::{CrateNum, DefId, DefIndex, CRATE_DEF_INDEX};
-use hir::map::DefPathHash;
-use hir::HirId;
+use crate::mir::interpret::GlobalId;
+use crate::hir::def_id::{CrateNum, DefId, DefIndex, CRATE_DEF_INDEX};
+use crate::hir::map::DefPathHash;
+use crate::hir::HirId;
 
-use ich::{Fingerprint, StableHashingContext};
+use crate::ich::{Fingerprint, StableHashingContext};
 use rustc_data_structures::stable_hasher::{StableHasher, HashStable};
 use std::fmt;
 use std::hash::Hash;
 use syntax_pos::symbol::InternedString;
-use traits;
-use traits::query::{
+use crate::traits;
+use crate::traits::query::{
     CanonicalProjectionGoal, CanonicalTyGoal, CanonicalTypeOpAscribeUserTypeGoal,
     CanonicalTypeOpEqGoal, CanonicalTypeOpSubtypeGoal, CanonicalPredicateGoal,
     CanonicalTypeOpProvePredicateGoal, CanonicalTypeOpNormalizeGoal,
 };
-use ty::{TyCtxt, FnSig, Instance, InstanceDef,
+use crate::ty::{TyCtxt, FnSig, Instance, InstanceDef,
          ParamEnv, ParamEnvAnd, Predicate, PolyFnSig, PolyTraitRef, Ty};
-use ty::subst::Substs;
+use crate::ty::subst::Substs;
 
 // erase!() just makes tokens go away. It's used to specify which macro argument
 // is repeated (i.e., which sub-expression of the macro we are in) but don't need
@@ -389,7 +389,7 @@ impl fmt::Debug for DepNode {
 
         write!(f, "(")?;
 
-        ::ty::tls::with_opt(|opt_tcx| {
+        crate::ty::tls::with_opt(|opt_tcx| {
             if let Some(tcx) = opt_tcx {
                 if let Some(def_id) = self.extract_def_id(tcx) {
                     write!(f, "{}", tcx.def_path_debug_str(def_id))?;
@@ -825,6 +825,6 @@ impl WorkProductId {
     }
 }
 
-impl_stable_hash_for!(struct ::dep_graph::WorkProductId {
+impl_stable_hash_for!(struct crate::dep_graph::WorkProductId {
     hash
 });

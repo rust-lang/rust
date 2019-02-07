@@ -2,9 +2,9 @@
 //! Uses `Graph` as the underlying representation.
 
 use rustc_data_structures::graph::implementation as graph;
-use ty::TyCtxt;
-use hir;
-use hir::def_id::DefId;
+use crate::ty::TyCtxt;
+use crate::hir;
+use crate::hir::def_id::DefId;
 
 mod construct;
 pub mod graphviz;

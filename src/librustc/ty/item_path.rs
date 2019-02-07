@@ -1,8 +1,8 @@
-use hir;
-use hir::map::DefPathData;
-use hir::def_id::{CrateNum, DefId, CRATE_DEF_INDEX, LOCAL_CRATE};
-use ty::{self, DefIdTree, Ty, TyCtxt};
-use middle::cstore::{ExternCrate, ExternCrateSource};
+use crate::hir;
+use crate::hir::map::DefPathData;
+use crate::hir::def_id::{CrateNum, DefId, CRATE_DEF_INDEX, LOCAL_CRATE};
+use crate::ty::{self, DefIdTree, Ty, TyCtxt};
+use crate::middle::cstore::{ExternCrate, ExternCrateSource};
 use syntax::ast;
 use syntax::symbol::{keywords, LocalInternedString, Symbol};
 

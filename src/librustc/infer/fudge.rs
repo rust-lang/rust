@@ -1,6 +1,6 @@
-use infer::type_variable::TypeVariableMap;
-use ty::{self, Ty, TyCtxt};
-use ty::fold::{TypeFoldable, TypeFolder};
+use crate::infer::type_variable::TypeVariableMap;
+use crate::ty::{self, Ty, TyCtxt};
+use crate::ty::fold::{TypeFoldable, TypeFolder};
 
 use super::InferCtxt;
 use super::RegionVariableOrigin;

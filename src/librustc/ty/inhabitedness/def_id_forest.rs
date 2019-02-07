@@ -1,8 +1,8 @@
 use std::mem;
 use smallvec::SmallVec;
 use syntax::ast::CRATE_NODE_ID;
-use ty::context::TyCtxt;
-use ty::{DefId, DefIdTree};
+use crate::ty::context::TyCtxt;
+use crate::ty::{DefId, DefIdTree};
 
 /// Represents a forest of DefIds closed under the ancestor relation. That is,
 /// if a DefId representing a module is contained in the forest then all

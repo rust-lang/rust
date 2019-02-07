@@ -4,15 +4,15 @@
 //! There are also some rather random cases (like const initializer
 //! expressions) that are mostly just leftovers.
 
-use hir;
-use hir::def_id::{CrateNum, DefId, DefIndex, LOCAL_CRATE, DefIndexAddressSpace,
+use crate::hir;
+use crate::hir::def_id::{CrateNum, DefId, DefIndex, LOCAL_CRATE, DefIndexAddressSpace,
                   CRATE_DEF_INDEX};
-use ich::Fingerprint;
+use crate::ich::Fingerprint;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::indexed_vec::{IndexVec};
 use rustc_data_structures::stable_hasher::StableHasher;
 use serialize::{Encodable, Decodable, Encoder, Decoder};
-use session::CrateDisambiguator;
+use crate::session::CrateDisambiguator;
 use std::borrow::Borrow;
 use std::fmt::Write;
 use std::hash::Hash;
@@ -20,7 +20,7 @@ use syntax::ast;
 use syntax::ext::hygiene::Mark;
 use syntax::symbol::{Symbol, InternedString};
 use syntax_pos::{Span, DUMMY_SP};
-use util::nodemap::NodeMap;
+use crate::util::nodemap::NodeMap;
 
 /// The DefPathTable maps DefIndexes to DefKeys and vice versa.
 /// Internally the DefPathTable holds a tree of DefKeys, where each DefKey

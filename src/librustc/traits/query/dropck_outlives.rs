@@ -1,10 +1,10 @@
-use infer::at::At;
-use infer::InferOk;
-use infer::canonical::OriginalQueryValues;
+use crate::infer::at::At;
+use crate::infer::InferOk;
+use crate::infer::canonical::OriginalQueryValues;
 use std::iter::FromIterator;
 use syntax::source_map::Span;
-use ty::subst::Kind;
-use ty::{self, Ty, TyCtxt};
+use crate::ty::subst::Kind;
+use crate::ty::{self, Ty, TyCtxt};
 
 impl<'cx, 'gcx, 'tcx> At<'cx, 'gcx, 'tcx> {
     /// Given a type `ty` of some value being dropped, computes a set

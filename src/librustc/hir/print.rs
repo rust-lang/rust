@@ -11,9 +11,9 @@ use syntax::symbol::keywords;
 use syntax::util::parser::{self, AssocOp, Fixity};
 use syntax_pos::{self, BytePos, FileName};
 
-use hir;
-use hir::{PatKind, GenericBound, TraitBoundModifier, RangeEnd};
-use hir::{GenericParam, GenericParamKind, GenericArg};
+use crate::hir;
+use crate::hir::{PatKind, GenericBound, TraitBoundModifier, RangeEnd};
+use crate::hir::{GenericParam, GenericParamKind, GenericArg};
 
 use std::borrow::Cow;
 use std::cell::Cell;
@@ -2401,7 +2401,7 @@ fn stmt_ends_with_semi(stmt: &hir::StmtKind) -> bool {
 }
 
 fn bin_op_to_assoc_op(op: hir::BinOpKind) -> AssocOp {
-    use hir::BinOpKind::*;
+    use crate::hir::BinOpKind::*;
     match op {
         Add => AssocOp::Add,
         Sub => AssocOp::Subtract,

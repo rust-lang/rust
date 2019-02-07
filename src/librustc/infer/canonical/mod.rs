@@ -21,16 +21,16 @@
 //!
 //! [c]: https://rust-lang.github.io/rustc-guide/traits/canonicalization.html
 
-use infer::{InferCtxt, RegionVariableOrigin, TypeVariableOrigin};
+use crate::infer::{InferCtxt, RegionVariableOrigin, TypeVariableOrigin};
 use rustc_data_structures::indexed_vec::IndexVec;
 use rustc_data_structures::sync::Lrc;
 use serialize::UseSpecializedDecodable;
 use smallvec::SmallVec;
 use std::ops::Index;
 use syntax::source_map::Span;
-use ty::fold::TypeFoldable;
-use ty::subst::Kind;
-use ty::{self, BoundVar, Lift, List, Region, TyCtxt};
+use crate::ty::fold::TypeFoldable;
+use crate::ty::subst::Kind;
+use crate::ty::{self, BoundVar, Lift, List, Region, TyCtxt};
 
 mod canonicalizer;
 
@@ -393,14 +393,14 @@ impl<'cx, 'gcx, 'tcx> InferCtxt<'cx, 'gcx, 'tcx> {
 }
 
 CloneTypeFoldableAndLiftImpls! {
-    ::infer::canonical::Certainty,
-    ::infer::canonical::CanonicalVarInfo,
-    ::infer::canonical::CanonicalVarKind,
+    crate::infer::canonical::Certainty,
+    crate::infer::canonical::CanonicalVarInfo,
+    crate::infer::canonical::CanonicalVarKind,
 }
 
 CloneTypeFoldableImpls! {
     for <'tcx> {
-        ::infer::canonical::CanonicalVarInfos<'tcx>,
+        crate::infer::canonical::CanonicalVarInfos<'tcx>,
     }
 }
 
@@ -431,7 +431,7 @@ impl<'tcx> CanonicalVarValues<'tcx> {
     /// we'll return a substitution `subst` with:
     /// `subst.var_values == [Type(^0), Lifetime(^1), Type(^2)]`.
     pub fn make_identity<'a>(&self, tcx: TyCtxt<'a, 'tcx, 'tcx>) -> Self {
-        use ty::subst::UnpackedKind;
+        use crate::ty::subst::UnpackedKind;
 
         CanonicalVarValues {
             var_values: self.var_values.iter()

@@ -6,12 +6,12 @@ use super::*;
 use std::collections::hash_map::Entry;
 use std::collections::VecDeque;
 
-use infer::region_constraints::{Constraint, RegionConstraintData};
-use infer::InferCtxt;
+use crate::infer::region_constraints::{Constraint, RegionConstraintData};
+use crate::infer::InferCtxt;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 
-use ty::fold::TypeFolder;
-use ty::{Region, RegionVid};
+use crate::ty::fold::TypeFolder;
+use crate::ty::{Region, RegionVid};
 
 // FIXME(twk): this is obviously not nice to duplicate like that
 #[derive(Eq, PartialEq, Hash, Copy, Clone, Debug)]

@@ -1,4 +1,4 @@
-use session::config::Options;
+use crate::session::config::Options;
 
 use std::fs;
 use std::io::{self, StderrLock, Write};

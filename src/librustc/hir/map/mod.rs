@@ -3,11 +3,11 @@ pub use self::def_collector::{DefCollector, MacroInvocationData};
 pub use self::definitions::{Definitions, DefKey, DefPath, DefPathData,
                             DisambiguatedDefPathData, DefPathHash};
 
-use dep_graph::{DepGraph, DepNode, DepKind, DepNodeIndex};
+use crate::dep_graph::{DepGraph, DepNode, DepKind, DepNodeIndex};
 
-use hir::def_id::{CRATE_DEF_INDEX, DefId, LocalDefId, DefIndexAddressSpace};
+use crate::hir::def_id::{CRATE_DEF_INDEX, DefId, LocalDefId, DefIndexAddressSpace};
 
-use middle::cstore::CrateStoreDyn;
+use crate::middle::cstore::CrateStoreDyn;
 
 use rustc_target::spec::abi::Abi;
 use rustc_data_structures::svh::Svh;
@@ -17,15 +17,15 @@ use syntax::source_map::Spanned;
 use syntax::ext::base::MacroKind;
 use syntax_pos::{Span, DUMMY_SP};
 
-use hir::*;
-use hir::itemlikevisit::ItemLikeVisitor;
-use hir::print::Nested;
-use util::nodemap::FxHashMap;
-use util::common::time;
+use crate::hir::*;
+use crate::hir::itemlikevisit::ItemLikeVisitor;
+use crate::hir::print::Nested;
+use crate::util::nodemap::FxHashMap;
+use crate::util::common::time;
 
 use std::io;
 use std::result::Result::Err;
-use ty::TyCtxt;
+use crate::ty::TyCtxt;
 
 pub mod blocks;
 mod collector;
@@ -1212,13 +1212,13 @@ impl Named for StructField { fn name(&self) -> Name { self.ident.name } }
 impl Named for TraitItem { fn name(&self) -> Name { self.ident.name } }
 impl Named for ImplItem { fn name(&self) -> Name { self.ident.name } }
 
-pub fn map_crate<'hir>(sess: &::session::Session,
+pub fn map_crate<'hir>(sess: &crate::session::Session,
                        cstore: &CrateStoreDyn,
                        forest: &'hir Forest,
                        definitions: &'hir Definitions)
                        -> Map<'hir> {
     let ((map, crate_hash), hir_to_node_id) = join(|| {
-        let hcx = ::ich::StableHashingContext::new(sess, &forest.krate, definitions, cstore);
+        let hcx = crate::ich::StableHashingContext::new(sess, &forest.krate, definitions, cstore);
 
         let mut collector = NodeCollector::root(sess,
                                                 &forest.krate,
@@ -1329,7 +1329,7 @@ fn node_id_to_string(map: &Map<'_>, id: NodeId, include_id: bool) -> String {
     let path_str = || {
         // This functionality is used for debugging, try to use TyCtxt to get
         // the user-friendly path, otherwise fall back to stringifying DefPath.
-        ::ty::tls::with_opt(|tcx| {
+        crate::ty::tls::with_opt(|tcx| {
             if let Some(tcx) = tcx {
                 tcx.node_path_str(id)
             } else if let Some(path) = map.def_path_from_id(id) {

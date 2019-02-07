@@ -1,7 +1,7 @@
-use infer::InferCtxt;
-use mir::interpret::{GlobalId, ErrorHandled};
-use ty::{self, Ty, TypeFoldable, ToPolyTraitRef};
-use ty::error::ExpectedFound;
+use crate::infer::InferCtxt;
+use crate::mir::interpret::{GlobalId, ErrorHandled};
+use crate::ty::{self, Ty, TypeFoldable, ToPolyTraitRef};
+use crate::ty::error::ExpectedFound;
 use rustc_data_structures::obligation_forest::{DoCompleted, Error, ForestObligation};
 use rustc_data_structures::obligation_forest::{ObligationForest, ObligationProcessor};
 use rustc_data_structures::obligation_forest::{ProcessResult};

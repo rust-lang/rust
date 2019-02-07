@@ -11,16 +11,16 @@
 
 pub mod specialization_graph;
 
-use hir::def_id::DefId;
-use infer::{InferCtxt, InferOk};
-use lint;
-use traits::{self, coherence, FutureCompatOverlapErrorKind, ObligationCause, TraitEngine};
+use crate::hir::def_id::DefId;
+use crate::infer::{InferCtxt, InferOk};
+use crate::lint;
+use crate::traits::{self, coherence, FutureCompatOverlapErrorKind, ObligationCause, TraitEngine};
 use rustc_data_structures::fx::FxHashSet;
 use rustc_data_structures::sync::Lrc;
 use syntax_pos::DUMMY_SP;
-use traits::select::IntercrateAmbiguityCause;
-use ty::{self, TyCtxt, TypeFoldable};
-use ty::subst::{Subst, Substs};
+use crate::traits::select::IntercrateAmbiguityCause;
+use crate::ty::{self, TyCtxt, TypeFoldable};
+use crate::ty::subst::{Subst, Substs};
 
 use super::{SelectionContext, FulfillmentContext};
 use super::util::impl_trait_ref_and_oblig;
