@@ -3484,10 +3484,6 @@ fn item_struct(w: &mut fmt::Formatter, cx: &Context, it: &clean::Item,
                        ns_id = ns_id,
                        name = field.name.as_ref().unwrap(),
                        ty = ty)?;
-                if let Some(stability_class) = field.stability_class() {
-                    write!(w, "<span class='stab {stab}'></span>",
-                        stab = stability_class)?;
-                }
                 document(w, cx, field)?;
             }
         }
