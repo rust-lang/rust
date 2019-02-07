@@ -10,7 +10,7 @@ use rustc::util::nodemap::FxHashSet;
 use rustc_data_structures::sync::Lrc;
 use syntax::source_map::{Span, DUMMY_SP};
 
-crate fn provide(p: &mut Providers) {
+crate fn provide(p: &mut Providers<'_>) {
     *p = Providers {
         dropck_outlives,
         adt_dtorck_constraint,
@@ -305,7 +305,7 @@ crate fn adt_dtorck_constraint<'a, 'tcx>(
     let mut result = def.all_fields()
         .map(|field| tcx.type_of(field.did))
         .map(|fty| dtorck_constraint_for_ty(tcx, span, fty, 0, fty))
-        .collect::<Result<DtorckConstraint, NoSolution>>()?;
+        .collect::<Result<DtorckConstraint<'_>, NoSolution>>()?;
     result.outlives.extend(tcx.destructor_constraints(def));
     dedup_dtorck_constraint(&mut result);
 

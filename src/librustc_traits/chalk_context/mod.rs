@@ -502,13 +502,13 @@ type ChalkHhGoal<'tcx> = HhGoal<ChalkArenas<'tcx>>;
 type ChalkExClause<'tcx> = ExClause<ChalkArenas<'tcx>>;
 
 impl Debug for ChalkContext<'cx, 'gcx> {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "ChalkContext")
     }
 }
 
 impl Debug for ChalkInferenceContext<'cx, 'gcx, 'tcx> {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "ChalkInferenceContext")
     }
 }
@@ -658,7 +658,7 @@ impl<'tcx, 'gcx: 'tcx, T> Upcast<'tcx, 'gcx> for Canonical<'gcx, T>
     }
 }
 
-crate fn provide(p: &mut Providers) {
+crate fn provide(p: &mut Providers<'_>) {
     *p = Providers {
         evaluate_goal,
         ..*p

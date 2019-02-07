@@ -21,7 +21,7 @@ use std::fmt;
 use syntax::ast;
 use syntax_pos::DUMMY_SP;
 
-crate fn provide(p: &mut Providers) {
+crate fn provide(p: &mut Providers<'_>) {
     *p = Providers {
         type_op_ascribe_user_type,
         type_op_eq,
