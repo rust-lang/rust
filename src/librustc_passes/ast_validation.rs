@@ -292,7 +292,7 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
                      <https://github.com/rust-lang/rust/issues/27779#issuecomment-378416911>"
                 );
                 match val.node {
-                    ExprKind::Lit(ref v) if v.node.is_numeric() => {
+                    ExprKind::Lit(ref v) if v.is_numeric() => {
                         err.span_suggestion(
                             place.span.between(val.span),
                             "if you meant to write a comparison against a negative value, add a \

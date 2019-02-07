@@ -3852,7 +3852,7 @@ impl<'a> LoweringContext<'a> {
                 let ohs = P(self.lower_expr(ohs));
                 hir::ExprKind::Unary(op, ohs)
             }
-            ExprKind::Lit(ref l) => hir::ExprKind::Lit((*l).clone()),
+            ExprKind::Lit(ref l) => hir::ExprKind::Lit(respan(e.span, (*l).clone())),
             ExprKind::Cast(ref expr, ref ty) => {
                 let expr = P(self.lower_expr(expr));
                 hir::ExprKind::Cast(expr, self.lower_ty(ty, ImplTraitContext::disallowed()))

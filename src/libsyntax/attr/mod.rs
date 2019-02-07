@@ -678,7 +678,7 @@ impl LitKind {
             Token::Ident(ident, false) if ident.name == "false" => Some(LitKind::Bool(false)),
             Token::Interpolated(ref nt) => match nt.0 {
                 token::NtExpr(ref v) | token::NtLiteral(ref v) => match v.node {
-                    ExprKind::Lit(ref lit) => Some(lit.node.clone()),
+                    ExprKind::Lit(ref lit) => Some(lit.clone()),
                     _ => None,
                 },
                 _ => None,

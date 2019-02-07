@@ -21,7 +21,7 @@ pub fn expand_syntax_ext(
     let mut has_errors = false;
     for e in es {
         match e.node {
-            ast::ExprKind::Lit(ref lit) => match lit.node {
+            ast::ExprKind::Lit(ref lit) => match *lit {
                 ast::LitKind::Str(ref s, _)
                 | ast::LitKind::Err(ref s)
                 | ast::LitKind::Float(ref s, _)

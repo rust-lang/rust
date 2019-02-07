@@ -1450,7 +1450,12 @@ pub enum ExprKind {
     Binary(BinOp, P<Expr>, P<Expr>),
     /// A unary operation (For example: `!x`, `*x`)
     Unary(UnOp, P<Expr>),
-    /// A literal (For example: `1`, `"foo"`)
+    /// A literal (For example: `1`, `"foo"`). Unlike the AST, HIR stores a
+    /// Span for the literal. This is because that Span may be different to the
+    /// Span of the enclosing expression, due to HIR not explicitly
+    /// representing parentheses around expressions. E.g. in the expression
+    /// "(1.0)", the expression's Span covers the whole thing, while the
+    /// literal's Span covers only "1.0".
     Lit(Lit),
     /// A cast (`foo as f64`)
     Cast(P<Expr>, P<Ty>),

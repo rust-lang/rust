@@ -1996,7 +1996,7 @@ impl<'a> Parser<'a> {
         let out = match self.token {
             token::Interpolated(ref nt) => match nt.0 {
                 token::NtExpr(ref v) | token::NtLiteral(ref v) => match v.node {
-                    ExprKind::Lit(ref lit) => { lit.node.clone() }
+                    ExprKind::Lit(ref lit) => { lit.clone() }
                     _ => { return self.unexpected_last(&self.token); }
                 },
                 _ => { return self.unexpected_last(&self.token); }
@@ -2079,8 +2079,14 @@ impl<'a> Parser<'a> {
         let minus_present = self.eat(&token::BinOp(token::Minus));
         let lo = self.span;
         let literal = self.parse_lit()?;
-        let hi = self.prev_span;
-        let expr = self.mk_expr(lo.to(hi), ExprKind::Lit(literal), ThinVec::new());
+        // We don't store a span for the literal because it would be the same
+        // as the span for the expression. (Check this.)
+        debug_assert_eq!(literal.span,
+                         { let hi = self.prev_span;
+                           let expr_span = lo.to(hi);
+                           expr_span
+                         });
+        let expr = self.mk_expr(literal.span, ExprKind::Lit(literal.node), ThinVec::new());
 
         if minus_present {
             let minus_hi = self.prev_span;

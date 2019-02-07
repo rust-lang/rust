@@ -598,11 +598,15 @@ pub trait PrintState<'a> {
     }
 
     fn print_literal(&mut self, lit: &ast::Lit) -> io::Result<()> {
-        self.maybe_print_comment(lit.span.lo())?;
-        if let Some(ltrl) = self.next_lit(lit.span.lo()) {
+        self.print_literal_kind(&lit.node, lit.span)
+    }
+
+    fn print_literal_kind(&mut self, lit: &ast::LitKind, span: syntax_pos::Span) -> io::Result<()> {
+        self.maybe_print_comment(span.lo())?;
+        if let Some(ltrl) = self.next_lit(span.lo()) {
             return self.writer().word(ltrl.lit.clone());
         }
-        match lit.node {
+        match *lit {
             ast::LitKind::Str(st, style) => self.print_string(&st.as_str(), style),
             ast::LitKind::Err(st) => {
                 let st = st.as_str().escape_debug();
@@ -2121,7 +2125,7 @@ impl<'a> State<'a> {
                 self.print_expr_addr_of(m, expr)?;
             }
             ast::ExprKind::Lit(ref lit) => {
-                self.print_literal(lit)?;
+                self.print_literal_kind(lit, expr.span)?;
             }
             ast::ExprKind::Cast(ref expr, ref ty) => {
                 let prec = AssocOp::As.precedence() as i8;

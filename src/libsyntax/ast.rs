@@ -1076,7 +1076,7 @@ pub enum ExprKind {
     /// A unary operation (e.g., `!x`, `*x`).
     Unary(UnOp, P<Expr>),
     /// A literal (e.g., `1`, `"foo"`).
-    Lit(Lit),
+    Lit(LitKind),
     /// A cast (e.g., `foo as f64`).
     Cast(P<Expr>, P<Ty>),
     Type(P<Expr>, P<Ty>),
