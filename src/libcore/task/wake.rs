@@ -19,9 +19,29 @@ pub struct RawWaker {
     /// that is associated with the task.
     /// The value of this field gets passed to all functions that are part of
     /// the vtable as the first parameter.
-    pub data: *const (),
+    data: *const (),
     /// Virtual function pointer table that customizes the behavior of this waker.
-    pub vtable: &'static RawWakerVTable,
+    vtable: &'static RawWakerVTable,
+}
+
+impl RawWaker {
+    /// Creates a new `RawWaker` from the provided `data` pointer and `vtable`.
+    ///
+    /// The `data` pointer can be used to store arbitrary data as required
+    /// by the executor. This could be e.g. a type-erased pointer to an `Arc`
+    /// that is associated with the task.
+    /// The value of this poiner will get passed to all functions that are part
+    /// of the `vtable` as the first parameter.
+    ///
+    /// The `vtable` customizes the behavior of a `Waker` which gets created
+    /// from a `RawWaker`. For each operation on the `Waker`, the associated
+    /// function in the `vtable` of the underlying `RawWaker` will be called.
+    pub const fn new(data: *const (), vtable: &'static RawWakerVTable) -> RawWaker {
+        RawWaker {
+            data,
+            vtable,
+        }
+    }
 }
 
 /// A virtual function pointer table (vtable) that specifies the behavior
@@ -102,8 +122,8 @@ impl Waker {
     /// Creates a new `Waker` from [`RawWaker`].
     ///
     /// The behavior of the returned `Waker` is undefined if the contract defined
-    /// in [RawWaker]'s documentation is not upheld. Therefore this method is
-    /// unsafe.
+    /// in [`RawWaker`]'s and [`RawWakerVTable`]'s documentation is not upheld.
+    /// Therefore this method is unsafe.
     pub unsafe fn new_unchecked(waker: RawWaker) -> Waker {
         Waker {
             waker,

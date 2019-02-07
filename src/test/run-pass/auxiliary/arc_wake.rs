@@ -25,10 +25,7 @@ pub trait ArcWake {
         let ptr = Arc::into_raw(wake) as *const();
 
         unsafe {
-            Waker::new_unchecked(RawWaker{
-                data: ptr,
-                vtable: waker_vtable!(Self),
-            })
+            Waker::new_unchecked(RawWaker::new(ptr, waker_vtable!(Self)))
         }
     }
 }
@@ -44,10 +41,7 @@ unsafe fn increase_refcount<T: ArcWake>(data: *const()) {
 
 unsafe fn clone_arc_raw<T: ArcWake>(data: *const()) -> RawWaker {
     increase_refcount::<T>(data);
-    RawWaker {
-        data: data,
-        vtable: waker_vtable!(T),
-    }
+    RawWaker::new(data, waker_vtable!(T))
 }
 
 unsafe fn drop_arc_raw<T: ArcWake>(data: *const()) {
