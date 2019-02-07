@@ -90,10 +90,10 @@ fn uncached_llvm_type<'a, 'tcx>(cx: &CodegenCx<'a, 'tcx>,
             match name {
                 None => {
                     let (llfields, packed) = struct_llfields(cx, layout);
-                    cx.type_struct( &llfields, packed)
+                    cx.type_struct(&llfields, packed)
                 }
                 Some(ref name) => {
-                    let llty = cx.type_named_struct( name);
+                    let llty = cx.type_named_struct(name);
                     *defer = Some((llty, layout));
                     llty
                 }
@@ -298,8 +298,15 @@ impl<'tcx> LayoutLlvmExt<'tcx> for TyLayout<'tcx> {
         cx.lltypes.borrow_mut().insert((self.ty, variant_index), llty);
 
         if let Some((llty, layout)) = defer {
-            let (llfields, packed) = struct_llfields(cx, layout);
-            cx.set_struct_body(llty, &llfields, packed)
+            match layout.ty.sty {
+                // Leave an `extern type` fully opaque (LLVM "unsized").
+                ty::Foreign(..) => {}
+
+                _ => {
+                    let (llfields, packed) = struct_llfields(cx, layout);
+                    cx.set_struct_body(llty, &llfields, packed)
+                }
+            }
         }
 
         llty
