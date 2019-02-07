@@ -608,7 +608,7 @@ impl<'b, 'a: 'b> FmtVisitor<'a> {
         let first_line = self.source_map.lookup_char_pos(main_span.lo()).line;
         // Statement can start after some newlines and/or spaces
         // or it can be on the same line as the last attribute.
-        // So here we need to take a minimum between two.
+        // So here we need to take a minimum between the two.
         let lo = std::cmp::min(attrs_end + 1, first_line);
         self.push_rewrite_inner(item_span, None);
         let hi = self.line_number + 1;
