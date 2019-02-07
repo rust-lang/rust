@@ -2937,13 +2937,6 @@ impl<'a, K, V> OccupiedEntry<'a, K, V> {
         pop_internal(self.elem).1
     }
 
-    /// Returns a key that was used for search.
-    ///
-    /// The key was retained for further use.
-    fn take_key(&mut self) -> Option<K> {
-        self.key.take()
-    }
-
     /// Replaces the entry, returning the old key and value. The new key in the hash map will be
     /// the key used to create this entry.
     ///
@@ -3259,39 +3252,6 @@ impl Default for RandomState {
 impl fmt::Debug for RandomState {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.pad("RandomState { .. }")
-    }
-}
-
-impl<K, S, Q: ?Sized> super::Recover<Q> for HashMap<K, (), S>
-    where K: Eq + Hash + Borrow<Q>,
-          S: BuildHasher,
-          Q: Eq + Hash
-{
-    type Key = K;
-
-    #[inline]
-    fn get(&self, key: &Q) -> Option<&K> {
-        self.search(key).map(|bucket| bucket.into_refs().0)
-    }
-
-    fn take(&mut self, key: &Q) -> Option<K> {
-        self.search_mut(key).map(|bucket| pop_internal(bucket).0)
-    }
-
-    #[inline]
-    fn replace(&mut self, key: K) -> Option<K> {
-        self.reserve(1);
-
-        match self.entry(key) {
-            Occupied(mut occupied) => {
-                let key = occupied.take_key().unwrap();
-                Some(mem::replace(occupied.elem.read_mut().0, key))
-            }
-            Vacant(vacant) => {
-                vacant.insert(());
-                None
-            }
-        }
     }
 }
 
