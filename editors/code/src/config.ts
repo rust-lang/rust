@@ -29,7 +29,9 @@ export class Config {
         }
 
         if (config.has('enableEnhancedTyping')) {
-            this.enableEnhancedTyping = config.get('enableEnhancedTyping') as boolean;
+            this.enableEnhancedTyping = config.get(
+                'enableEnhancedTyping'
+            ) as boolean;
 
             if (this.prevEnhancedTyping === null) {
                 this.prevEnhancedTyping = this.enableEnhancedTyping;
@@ -40,15 +42,20 @@ export class Config {
 
         if (this.prevEnhancedTyping !== this.enableEnhancedTyping) {
             const reloadAction = 'Reload now';
-            vscode.window.showInformationMessage('Changing enhanced typing setting requires a reload', reloadAction)
+            vscode.window
+                .showInformationMessage(
+                    'Changing enhanced typing setting requires a reload',
+                    reloadAction
+                )
                 .then(selectedAction => {
                     if (selectedAction === reloadAction) {
-                        vscode.commands.executeCommand('workbench.action.reloadWindow');
+                        vscode.commands.executeCommand(
+                            'workbench.action.reloadWindow'
+                        );
                     }
                 });
             this.prevEnhancedTyping = this.enableEnhancedTyping;
         }
-
 
         if (config.has('raLspServerPath')) {
             this.raLspServerPath =
