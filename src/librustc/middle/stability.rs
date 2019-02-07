@@ -322,14 +322,17 @@ struct MissingStabilityAnnotations<'a, 'tcx: 'a> {
 }
 
 impl<'a, 'tcx: 'a> MissingStabilityAnnotations<'a, 'tcx> {
-    fn check_missing_stability(&self, id: NodeId, span: Span) {
+    fn check_missing_stability(&self, id: NodeId, span: Span, name: &str) {
         let hir_id = self.tcx.hir().node_to_hir_id(id);
         let stab = self.tcx.stability().local_stability(hir_id);
         let is_error = !self.tcx.sess.opts.test &&
                         stab.is_none() &&
                         self.access_levels.is_reachable(id);
         if is_error {
-            self.tcx.sess.span_err(span, "This node does not have a stability attribute");
+            self.tcx.sess.span_err(
+                span,
+                &format!("{} has missing stability attribute", name),
+            );
         }
     }
 }
@@ -347,42 +350,44 @@ impl<'a, 'tcx> Visitor<'tcx> for MissingStabilityAnnotations<'a, 'tcx> {
             // optional. They inherit stability from their parents when unannotated.
             hir::ItemKind::Impl(.., None, _, _) | hir::ItemKind::ForeignMod(..) => {}
 
-            _ => self.check_missing_stability(i.id, i.span)
+            hir::ItemKind::Mod(..) => self.check_missing_stability(i.id, i.span, "module"),
+
+            _ => self.check_missing_stability(i.id, i.span, "node")
         }
 
         intravisit::walk_item(self, i)
     }
 
     fn visit_trait_item(&mut self, ti: &'tcx hir::TraitItem) {
-        self.check_missing_stability(ti.id, ti.span);
+        self.check_missing_stability(ti.id, ti.span, "node");
         intravisit::walk_trait_item(self, ti);
     }
 
     fn visit_impl_item(&mut self, ii: &'tcx hir::ImplItem) {
         let impl_def_id = self.tcx.hir().local_def_id(self.tcx.hir().get_parent(ii.id));
         if self.tcx.impl_trait_ref(impl_def_id).is_none() {
-            self.check_missing_stability(ii.id, ii.span);
+            self.check_missing_stability(ii.id, ii.span, "node");
         }
         intravisit::walk_impl_item(self, ii);
     }
 
     fn visit_variant(&mut self, var: &'tcx Variant, g: &'tcx Generics, item_id: NodeId) {
-        self.check_missing_stability(var.node.data.id(), var.span);
+        self.check_missing_stability(var.node.data.id(), var.span, "variant");
         intravisit::walk_variant(self, var, g, item_id);
     }
 
     fn visit_struct_field(&mut self, s: &'tcx StructField) {
-        self.check_missing_stability(s.id, s.span);
+        self.check_missing_stability(s.id, s.span, "field");
         intravisit::walk_struct_field(self, s);
     }
 
     fn visit_foreign_item(&mut self, i: &'tcx hir::ForeignItem) {
-        self.check_missing_stability(i.id, i.span);
+        self.check_missing_stability(i.id, i.span, "node");
         intravisit::walk_foreign_item(self, i);
     }
 
     fn visit_macro_def(&mut self, md: &'tcx hir::MacroDef) {
-        self.check_missing_stability(md.id, md.span);
+        self.check_missing_stability(md.id, md.span, "macro");
     }
 }
 
@@ -867,7 +872,7 @@ pub fn check_unused_or_stable_features<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>) {
             tcx,
             access_levels,
         };
-        missing.check_missing_stability(ast::CRATE_NODE_ID, krate.span);
+        missing.check_missing_stability(ast::CRATE_NODE_ID, krate.span, "crate");
         intravisit::walk_crate(&mut missing, krate);
         krate.visit_all_item_likes(&mut missing.as_deep_visitor());
     }
