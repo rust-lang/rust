@@ -17,7 +17,8 @@
        test(no_crate_inject, attr(deny(warnings))),
        test(attr(allow(dead_code, deprecated, unused_variables, unused_mut))))]
 
-#![feature(nll)]
+#![deny(rust_2018_idioms)]
+
 #![feature(staged_api)]
 #![feature(const_fn)]
 #![feature(extern_types)]
@@ -114,7 +115,7 @@ impl ToString for TokenStream {
 /// with `Delimiter::None` delimiters and negative numeric literals.
 #[stable(feature = "proc_macro_lib", since = "1.15.0")]
 impl fmt::Display for TokenStream {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.write_str(&self.to_string())
     }
 }
@@ -122,7 +123,7 @@ impl fmt::Display for TokenStream {
 /// Prints token in a form convenient for debugging.
 #[stable(feature = "proc_macro_lib", since = "1.15.0")]
 impl fmt::Debug for TokenStream {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.write_str("TokenStream ")?;
         f.debug_list().entries(self.clone()).finish()
     }
@@ -183,7 +184,7 @@ impl Extend<TokenStream> for TokenStream {
 /// Public implementation details for the `TokenStream` type, such as iterators.
 #[stable(feature = "proc_macro_lib2", since = "1.29.0")]
 pub mod token_stream {
-    use {bridge, Group, Ident, Literal, Punct, TokenTree, TokenStream};
+    use crate::{bridge, Group, Ident, Literal, Punct, TokenTree, TokenStream};
 
     /// An iterator over `TokenStream`'s `TokenTree`s.
     /// The iteration is "shallow", e.g., the iterator doesn't recurse into delimited groups,
@@ -340,7 +341,7 @@ impl Span {
 /// Prints a span in a form convenient for debugging.
 #[stable(feature = "proc_macro_lib2", since = "1.29.0")]
 impl fmt::Debug for Span {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         self.0.fmt(f)
     }
 }
@@ -398,7 +399,7 @@ impl SourceFile {
 
 #[unstable(feature = "proc_macro_span", issue = "54725")]
 impl fmt::Debug for SourceFile {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("SourceFile")
             .field("path", &self.path())
             .field("is_real", &self.is_real())
@@ -483,7 +484,7 @@ impl TokenTree {
 /// Prints token tree in a form convenient for debugging.
 #[stable(feature = "proc_macro_lib2", since = "1.29.0")]
 impl fmt::Debug for TokenTree {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         // Each of these has the name in the struct type in the derived debug,
         // so don't bother with an extra layer of indirection
         match *self {
@@ -542,7 +543,7 @@ impl ToString for TokenTree {
 /// with `Delimiter::None` delimiters and negative numeric literals.
 #[stable(feature = "proc_macro_lib2", since = "1.29.0")]
 impl fmt::Display for TokenTree {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.write_str(&self.to_string())
     }
 }
@@ -667,14 +668,14 @@ impl ToString for Group {
 /// with `Delimiter::None` delimiters.
 #[stable(feature = "proc_macro_lib2", since = "1.29.0")]
 impl fmt::Display for Group {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.write_str(&self.to_string())
     }
 }
 
 #[stable(feature = "proc_macro_lib2", since = "1.29.0")]
 impl fmt::Debug for Group {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("Group")
             .field("delimiter", &self.delimiter())
             .field("stream", &self.stream())
@@ -763,14 +764,14 @@ impl ToString for Punct {
 /// back into the same character.
 #[stable(feature = "proc_macro_lib2", since = "1.29.0")]
 impl fmt::Display for Punct {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.write_str(&self.to_string())
     }
 }
 
 #[stable(feature = "proc_macro_lib2", since = "1.29.0")]
 impl fmt::Debug for Punct {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("Punct")
             .field("ch", &self.as_char())
             .field("spacing", &self.spacing())
@@ -842,14 +843,14 @@ impl ToString for Ident {
 /// back into the same identifier.
 #[stable(feature = "proc_macro_lib2", since = "1.29.0")]
 impl fmt::Display for Ident {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.write_str(&self.to_string())
     }
 }
 
 #[stable(feature = "proc_macro_lib2", since = "1.29.0")]
 impl fmt::Debug for Ident {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("Ident")
             .field("ident", &self.to_string())
             .field("span", &self.span())
@@ -1092,14 +1093,14 @@ impl ToString for Literal {
 /// back into the same literal (except for possible rounding for floating point literals).
 #[stable(feature = "proc_macro_lib2", since = "1.29.0")]
 impl fmt::Display for Literal {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.write_str(&self.to_string())
     }
 }
 
 #[stable(feature = "proc_macro_lib2", since = "1.29.0")]
 impl fmt::Debug for Literal {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         // FIXME(eddyb) `Literal` should not expose internal `Debug` impls.
         self.0.fmt(f)
     }
