@@ -1,5 +1,5 @@
-use borrow_check::location::{LocationIndex, LocationTable};
-use dataflow::indexes::BorrowIndex;
+use crate::borrow_check::location::{LocationIndex, LocationTable};
+use crate::dataflow::indexes::BorrowIndex;
 use polonius_engine::AllFacts as PoloniusAllFacts;
 use polonius_engine::Atom;
 use rustc::ty::{RegionVid, TyCtxt};

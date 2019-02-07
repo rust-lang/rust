@@ -8,7 +8,7 @@ use rustc::ty::layout::VariantIdx;
 use rustc::ty::subst::Substs;
 use rustc::ty::util::IntTypeExt;
 use rustc_data_structures::indexed_vec::Idx;
-use util::patch::MirPatch;
+use crate::util::patch::MirPatch;
 
 use std::u32;
 

@@ -3,8 +3,7 @@
 //! data to rendered labels.
 
 use super::*;
-use borrow_check::nll::constraints::OutlivesConstraint;
-use dot;
+use crate::borrow_check::nll::constraints::OutlivesConstraint;
 use std::borrow::Cow;
 use std::io::{self, Write};
 

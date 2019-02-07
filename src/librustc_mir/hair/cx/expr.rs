@@ -1,9 +1,9 @@
-use hair::*;
+use crate::hair::*;
+use crate::hair::cx::Cx;
+use crate::hair::cx::block;
+use crate::hair::cx::to_ref::ToRef;
+use crate::hair::util::UserAnnotatedTyHelpers;
 use rustc_data_structures::indexed_vec::Idx;
-use hair::cx::Cx;
-use hair::cx::block;
-use hair::cx::to_ref::ToRef;
-use hair::util::UserAnnotatedTyHelpers;
 use rustc::hir::def::{Def, CtorKind};
 use rustc::mir::interpret::{GlobalId, ErrorHandled};
 use rustc::ty::{self, AdtKind, Ty};

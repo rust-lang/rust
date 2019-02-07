@@ -1,6 +1,6 @@
-use borrow_check::ArtificialField;
-use borrow_check::Overlap;
-use borrow_check::{Deep, Shallow, AccessDepth};
+use crate::borrow_check::ArtificialField;
+use crate::borrow_check::Overlap;
+use crate::borrow_check::{Deep, Shallow, AccessDepth};
 use rustc::hir;
 use rustc::mir::{BorrowKind, Mir, Place};
 use rustc::mir::{Projection, ProjectionElem};

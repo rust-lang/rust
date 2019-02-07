@@ -56,19 +56,19 @@ use rustc::mir::visit::{PlaceContext, Visitor, MutVisitor};
 use rustc::ty::{self, TyCtxt, AdtDef, Ty};
 use rustc::ty::layout::VariantIdx;
 use rustc::ty::subst::Substs;
-use util::dump_mir;
-use util::liveness::{self, IdentityMap};
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::indexed_vec::Idx;
 use rustc_data_structures::bit_set::BitSet;
 use std::borrow::Cow;
 use std::iter::once;
 use std::mem;
-use transform::{MirPass, MirSource};
-use transform::simplify;
-use transform::no_landing_pads::no_landing_pads;
-use dataflow::{do_dataflow, DebugFormatted, state_for_location};
-use dataflow::{MaybeStorageLive, HaveBeenBorrowedLocals};
+use crate::transform::{MirPass, MirSource};
+use crate::transform::simplify;
+use crate::transform::no_landing_pads::no_landing_pads;
+use crate::dataflow::{do_dataflow, DebugFormatted, state_for_location};
+use crate::dataflow::{MaybeStorageLive, HaveBeenBorrowedLocals};
+use crate::util::dump_mir;
+use crate::util::liveness::{self, IdentityMap};
 
 pub struct StateTransform;
 
@@ -581,9 +581,9 @@ fn insert_switch<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
 fn elaborate_generator_drops<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                                        def_id: DefId,
                                        mir: &mut Mir<'tcx>) {
-    use util::elaborate_drops::{elaborate_drop, Unwind};
-    use util::patch::MirPatch;
-    use shim::DropShimElaborator;
+    use crate::util::elaborate_drops::{elaborate_drop, Unwind};
+    use crate::util::patch::MirPatch;
+    use crate::shim::DropShimElaborator;
 
     // Note that `elaborate_drops` only drops the upvars of a generator, and
     // this is ok because `open_drop` can only be reached within that own

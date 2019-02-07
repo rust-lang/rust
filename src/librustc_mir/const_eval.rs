@@ -190,7 +190,7 @@ enum ConstEvalError {
 }
 
 impl fmt::Display for ConstEvalError {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         use self::ConstEvalError::*;
         match *self {
             NeedsRfc(ref msg) => {

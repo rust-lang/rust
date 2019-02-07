@@ -2,24 +2,25 @@
 
 #![allow(unreachable_code)]
 
-use borrow_check::borrow_set::BorrowSet;
-use borrow_check::location::LocationTable;
-use borrow_check::nll::constraints::{ConstraintSet, OutlivesConstraint};
-use borrow_check::nll::facts::AllFacts;
-use borrow_check::nll::region_infer::values::LivenessValues;
-use borrow_check::nll::region_infer::values::PlaceholderIndex;
-use borrow_check::nll::region_infer::values::PlaceholderIndices;
-use borrow_check::nll::region_infer::values::RegionValueElements;
-use borrow_check::nll::region_infer::{ClosureRegionRequirementsExt, TypeTest};
-use borrow_check::nll::renumber;
-use borrow_check::nll::type_check::free_region_relations::{
+use crate::borrow_check::borrow_set::BorrowSet;
+use crate::borrow_check::location::LocationTable;
+use crate::borrow_check::nll::constraints::{ConstraintSet, OutlivesConstraint};
+use crate::borrow_check::nll::facts::AllFacts;
+use crate::borrow_check::nll::region_infer::values::LivenessValues;
+use crate::borrow_check::nll::region_infer::values::PlaceholderIndex;
+use crate::borrow_check::nll::region_infer::values::PlaceholderIndices;
+use crate::borrow_check::nll::region_infer::values::RegionValueElements;
+use crate::borrow_check::nll::region_infer::{ClosureRegionRequirementsExt, TypeTest};
+use crate::borrow_check::nll::renumber;
+use crate::borrow_check::nll::type_check::free_region_relations::{
     CreateResult, UniversalRegionRelations,
 };
-use borrow_check::nll::universal_regions::{DefiningTy, UniversalRegions};
-use borrow_check::nll::ToRegionVid;
-use dataflow::move_paths::MoveData;
-use dataflow::FlowAtLocation;
-use dataflow::MaybeInitializedPlaces;
+use crate::borrow_check::nll::universal_regions::{DefiningTy, UniversalRegions};
+use crate::borrow_check::nll::ToRegionVid;
+use crate::dataflow::move_paths::MoveData;
+use crate::dataflow::FlowAtLocation;
+use crate::dataflow::MaybeInitializedPlaces;
+use crate::transform::{MirPass, MirSource};
 use either::Either;
 use rustc::hir;
 use rustc::hir::def_id::DefId;
@@ -46,7 +47,6 @@ use rustc::ty::layout::VariantIdx;
 use std::rc::Rc;
 use std::{fmt, iter};
 use syntax_pos::{Span, DUMMY_SP};
-use transform::{MirPass, MirSource};
 
 macro_rules! span_mirbug {
     ($context:expr, $elem:expr, $($message:tt)*) => ({
@@ -210,7 +210,7 @@ fn type_check_internal<'a, 'gcx, 'tcx, R>(
     extra(&mut checker)
 }
 
-fn translate_outlives_facts(cx: &mut BorrowCheckContext) {
+fn translate_outlives_facts(cx: &mut BorrowCheckContext<'_, '_>) {
     if let Some(facts) = cx.all_facts {
         let location_table = cx.location_table;
         facts
@@ -235,7 +235,7 @@ fn translate_outlives_facts(cx: &mut BorrowCheckContext) {
     }
 }
 
-fn mirbug(tcx: TyCtxt, span: Span, msg: &str) {
+fn mirbug(tcx: TyCtxt<'_, '_, '_>, span: Span, msg: &str) {
     // We sometimes see MIR failures (notably predicate failures) due to
     // the fact that we check rvalue sized predicates here. So use `delay_span_bug`
     // to avoid reporting bugs in those cases.
@@ -266,7 +266,7 @@ impl<'a, 'b, 'gcx, 'tcx> Visitor<'tcx> for TypeVerifier<'a, 'b, 'gcx, 'tcx> {
         }
     }
 
-    fn visit_place(&mut self, place: &Place<'tcx>, context: PlaceContext, location: Location) {
+    fn visit_place(&mut self, place: &Place<'tcx>, context: PlaceContext<'_>, location: Location) {
         self.sanitize_place(place, location, context);
     }
 
@@ -447,7 +447,7 @@ impl<'a, 'b, 'gcx, 'tcx> TypeVerifier<'a, 'b, 'gcx, 'tcx> {
         &mut self,
         place: &Place<'tcx>,
         location: Location,
-        context: PlaceContext,
+        context: PlaceContext<'_>,
     ) -> PlaceTy<'tcx> {
         debug!("sanitize_place: {:?}", place);
         let place_ty = match *place {

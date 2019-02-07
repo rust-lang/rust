@@ -1,7 +1,7 @@
 use rustc::ty::TyCtxt;
 use rustc::mir::*;
 use rustc_data_structures::indexed_vec::Idx;
-use transform::{MirPass, MirSource};
+use crate::transform::{MirPass, MirSource};
 
 pub struct Deaggregator;
 

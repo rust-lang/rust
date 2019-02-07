@@ -2,7 +2,7 @@ use rustc::mir::ConstraintCategory;
 use rustc::ty::RegionVid;
 use rustc_data_structures::graph::scc::Sccs;
 use rustc_data_structures::indexed_vec::{Idx, IndexVec};
-use borrow_check::nll::type_check::Locations;
+use crate::borrow_check::nll::type_check::Locations;
 
 use std::fmt;
 use std::ops::Deref;
@@ -84,7 +84,7 @@ pub struct OutlivesConstraint {
 }
 
 impl fmt::Debug for OutlivesConstraint {
-    fn fmt(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(
             formatter,
             "({:?}: {:?}) due to {:?}",

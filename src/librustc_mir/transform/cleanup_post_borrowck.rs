@@ -26,7 +26,7 @@ use rustc::mir::{BasicBlock, FakeReadCause, Local, Location, Mir, Place};
 use rustc::mir::{Statement, StatementKind};
 use rustc::mir::visit::MutVisitor;
 use rustc::ty::TyCtxt;
-use transform::{MirPass, MirSource};
+use crate::transform::{MirPass, MirSource};
 
 pub struct CleanAscribeUserType;
 

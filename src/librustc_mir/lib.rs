@@ -4,7 +4,6 @@ Rust MIR: a lowered representation of Rust. Also: an experiment!
 
 */
 
-#![feature(nll)]
 #![feature(in_band_lifetimes)]
 #![feature(slice_patterns)]
 #![feature(slice_sort_by_cached_key)]
@@ -29,28 +28,19 @@ Rust MIR: a lowered representation of Rust. Also: an experiment!
 
 #![recursion_limit="256"]
 
-extern crate arena;
+#![deny(rust_2018_idioms)]
+#![allow(explicit_outlives_requirements)]
 
 #[macro_use]
 extern crate bitflags;
 #[macro_use] extern crate log;
-extern crate either;
-extern crate graphviz as dot;
-extern crate polonius_engine;
 #[macro_use]
 extern crate rustc;
 #[macro_use] extern crate rustc_data_structures;
-extern crate serialize as rustc_serialize;
-extern crate rustc_errors;
+#[allow(unused_extern_crates)]
+extern crate serialize as rustc_serialize; // used by deriving
 #[macro_use]
 extern crate syntax;
-extern crate syntax_pos;
-extern crate rustc_target;
-extern crate log_settings;
-extern crate rustc_apfloat;
-extern crate byteorder;
-extern crate core;
-extern crate smallvec;
 
 // Once we can use edition 2018 in the compiler,
 // replace this with real try blocks.
@@ -77,7 +67,7 @@ pub mod const_eval;
 pub use hair::pattern::check_crate as matchck_crate;
 use rustc::ty::query::Providers;
 
-pub fn provide(providers: &mut Providers) {
+pub fn provide(providers: &mut Providers<'_>) {
     borrow_check::provide(providers);
     shim::provide(providers);
     transform::provide(providers);

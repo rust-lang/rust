@@ -1,7 +1,10 @@
-use build;
-use build::scope::{CachedBlock, DropKind};
-use hair::cx::Cx;
-use hair::{LintLevel, BindingMode, PatternKind};
+use crate::build;
+use crate::build::scope::{CachedBlock, DropKind};
+use crate::hair::cx::Cx;
+use crate::hair::{LintLevel, BindingMode, PatternKind};
+use crate::shim;
+use crate::transform::MirSource;
+use crate::util as mir_util;
 use rustc::hir;
 use rustc::hir::Node;
 use rustc::hir::def_id::DefId;
@@ -13,7 +16,6 @@ use rustc::ty::subst::Substs;
 use rustc::util::nodemap::NodeMap;
 use rustc_target::spec::PanicStrategy;
 use rustc_data_structures::indexed_vec::{IndexVec, Idx};
-use shim;
 use std::mem;
 use std::u32;
 use rustc_target::spec::abi::Abi;
@@ -21,8 +23,6 @@ use syntax::ast;
 use syntax::attr::{self, UnwindAttr};
 use syntax::symbol::keywords;
 use syntax_pos::Span;
-use transform::MirSource;
-use util as mir_util;
 
 use super::lints;
 
@@ -161,7 +161,7 @@ pub fn mir_build<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: DefId) -> Mir<'t
         };
         globalizer.visit_mir(&mut mir);
         let mir = unsafe {
-            mem::transmute::<Mir, Mir<'tcx>>(mir)
+            mem::transmute::<Mir<'_>, Mir<'tcx>>(mir)
         };
 
         mir_util::dump_mir(tcx, None, "mir_map", &0,
@@ -241,7 +241,7 @@ fn create_constructor_shim<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
             };
             globalizer.visit_mir(&mut mir);
             let mir = unsafe {
-                mem::transmute::<Mir, Mir<'tcx>>(mir)
+                mem::transmute::<Mir<'_>, Mir<'tcx>>(mir)
             };
 
             mir_util::dump_mir(tcx, None, "mir_map", &0,

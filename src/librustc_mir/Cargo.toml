@@ -2,6 +2,7 @@
 authors = ["The Rust Project Developers"]
 name = "rustc_mir"
 version = "0.0.0"
+edition = "2018"
 
 [lib]
 name = "rustc_mir"
@@ -12,7 +13,7 @@ crate-type = ["dylib"]
 arena = { path = "../libarena" }
 bitflags = "1.0"
 either = "1.5.0"
-graphviz = { path = "../libgraphviz" }
+dot = { path = "../libgraphviz", package = "graphviz" }
 log = "0.4"
 log_settings = "0.1.1"
 polonius-engine = "0.6.2"

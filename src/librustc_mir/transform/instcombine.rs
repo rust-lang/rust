@@ -6,7 +6,7 @@ use rustc::ty::{TyCtxt, TyKind};
 use rustc::util::nodemap::{FxHashMap, FxHashSet};
 use rustc_data_structures::indexed_vec::Idx;
 use std::mem;
-use transform::{MirPass, MirSource};
+use crate::transform::{MirPass, MirSource};
 
 pub struct InstCombine;
 

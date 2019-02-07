@@ -16,12 +16,12 @@ use syntax_pos::Span;
 use std::fmt;
 use std::iter;
 
-use transform::{add_moves_for_packed_drops, add_call_guards};
-use transform::{remove_noop_landing_pads, no_landing_pads, simplify};
-use util::elaborate_drops::{self, DropElaborator, DropStyle, DropFlagMode};
-use util::patch::MirPatch;
+use crate::transform::{add_moves_for_packed_drops, add_call_guards};
+use crate::transform::{remove_noop_landing_pads, no_landing_pads, simplify};
+use crate::util::elaborate_drops::{self, DropElaborator, DropStyle, DropFlagMode};
+use crate::util::patch::MirPatch;
 
-pub fn provide(providers: &mut Providers) {
+pub fn provide(providers: &mut Providers<'_>) {
     providers.mir_shims = make_shim;
 }
 
@@ -138,7 +138,7 @@ enum CallKind {
     Direct(DefId),
 }
 
-fn temp_decl(mutability: Mutability, ty: Ty, span: Span) -> LocalDecl {
+fn temp_decl(mutability: Mutability, ty: Ty<'_>, span: Span) -> LocalDecl<'_> {
     let source_info = SourceInfo { scope: OUTERMOST_SOURCE_SCOPE, span };
     LocalDecl {
         mutability,
@@ -259,7 +259,7 @@ pub struct DropShimElaborator<'a, 'tcx: 'a> {
 }
 
 impl<'a, 'tcx> fmt::Debug for DropShimElaborator<'a, 'tcx> {
-    fn fmt(&self, _f: &mut fmt::Formatter) -> Result<(), fmt::Error> {
+    fn fmt(&self, _f: &mut fmt::Formatter<'_>) -> Result<(), fmt::Error> {
         Ok(())
     }
 }

@@ -17,7 +17,7 @@ use syntax::symbol::Symbol;
 
 use std::ops::Bound;
 
-use util;
+use crate::util;
 
 pub struct UnsafetyChecker<'a, 'tcx: 'a> {
     mir: &'a Mir<'tcx>,
@@ -458,7 +458,7 @@ impl<'a, 'tcx> UnsafetyChecker<'a, 'tcx> {
     }
 }
 
-pub(crate) fn provide(providers: &mut Providers) {
+pub(crate) fn provide(providers: &mut Providers<'_>) {
     *providers = Providers {
         unsafety_check_result,
         unsafe_derive_on_repr_packed,
@@ -575,7 +575,7 @@ fn unsafe_derive_on_repr_packed<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: D
 }
 
 /// Return the NodeId for an enclosing scope that is also `unsafe`
-fn is_enclosed(tcx: TyCtxt,
+fn is_enclosed(tcx: TyCtxt<'_, '_, '_>,
                used_unsafe: &FxHashSet<ast::NodeId>,
                id: ast::NodeId) -> Option<(String, ast::NodeId)> {
     let parent_id = tcx.hir().get_parent_node(id);
@@ -598,7 +598,9 @@ fn is_enclosed(tcx: TyCtxt,
     }
 }
 
-fn report_unused_unsafe(tcx: TyCtxt, used_unsafe: &FxHashSet<ast::NodeId>, id: ast::NodeId) {
+fn report_unused_unsafe(tcx: TyCtxt<'_, '_, '_>,
+                        used_unsafe: &FxHashSet<ast::NodeId>,
+                        id: ast::NodeId) {
     let span = tcx.sess.source_map().def_span(tcx.hir().span(id));
     let msg = "unnecessary `unsafe` block";
     let mut db = tcx.struct_span_lint_node(UNUSED_UNSAFE, id, span, msg);

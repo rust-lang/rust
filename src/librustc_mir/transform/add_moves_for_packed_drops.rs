@@ -2,9 +2,9 @@ use rustc::hir::def_id::DefId;
 use rustc::mir::*;
 use rustc::ty::TyCtxt;
 
-use transform::{MirPass, MirSource};
-use util::patch::MirPatch;
-use util;
+use crate::transform::{MirPass, MirSource};
+use crate::util::patch::MirPatch;
+use crate::util;
 
 // This pass moves values being dropped that are within a packed
 // struct to a separate local before dropping them, to ensure that

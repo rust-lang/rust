@@ -189,11 +189,11 @@ use rustc::mir::visit::Visitor as MirVisitor;
 use rustc::mir::mono::MonoItem;
 use rustc::mir::interpret::{Scalar, GlobalId, AllocKind, ErrorHandled};
 
-use monomorphize::{self, Instance};
+use crate::monomorphize::{self, Instance};
 use rustc::util::nodemap::{FxHashSet, FxHashMap, DefIdMap};
 use rustc::util::common::time;
 
-use monomorphize::item::{MonoItemExt, DefPathBasedNames, InstantiationMode};
+use crate::monomorphize::item::{MonoItemExt, DefPathBasedNames, InstantiationMode};
 
 use rustc_data_structures::bit_set::GrowableBitSet;
 use rustc_data_structures::sync::{MTRef, MTLock, ParallelIterator, par_iter};

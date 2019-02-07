@@ -229,7 +229,7 @@ impl<'a, 'tcx> MatchVisitor<'a, 'tcx> {
                 return;
             }
 
-            let matrix: Matrix = inlined_arms
+            let matrix: Matrix<'_, '_> = inlined_arms
                 .iter()
                 .filter(|&&(_, guard)| guard.is_none())
                 .flat_map(|arm| &arm.0)
@@ -248,7 +248,7 @@ impl<'a, 'tcx> MatchVisitor<'a, 'tcx> {
                                                 self.tables);
             let pattern = patcx.lower_pattern(pat);
             let pattern_ty = pattern.ty;
-            let pats: Matrix = vec![smallvec![
+            let pats: Matrix<'_, '_> = vec![smallvec![
                 expand_pattern(cx, pattern)
             ]].into_iter().collect();
 
@@ -283,7 +283,7 @@ impl<'a, 'tcx> MatchVisitor<'a, 'tcx> {
     }
 }
 
-fn check_for_bindings_named_same_as_variants(cx: &MatchVisitor, pat: &Pat) {
+fn check_for_bindings_named_same_as_variants(cx: &MatchVisitor<'_, '_>, pat: &Pat) {
     pat.walk(|p| {
         if let PatKind::Binding(_, _, _, ident, None) = p.node {
             if let Some(&bm) = cx.tables.pat_binding_modes().get(p.hir_id) {
@@ -462,7 +462,7 @@ fn check_exhaustive<'p, 'a: 'p, 'tcx: 'a>(cx: &mut MatchCheckCtxt<'a, 'tcx>,
 }
 
 // Legality of move bindings checking
-fn check_legality_of_move_bindings(cx: &MatchVisitor,
+fn check_legality_of_move_bindings(cx: &MatchVisitor<'_, '_>,
                                    has_guard: bool,
                                    pats: &[P<Pat>]) {
     let mut by_ref_span = None;
@@ -541,7 +541,7 @@ fn check_legality_of_move_bindings(cx: &MatchVisitor,
 /// assign.
 ///
 /// FIXME: this should be done by borrowck.
-fn check_for_mutation_in_guard(cx: &MatchVisitor, guard: &hir::Guard) {
+fn check_for_mutation_in_guard(cx: &MatchVisitor<'_, '_>, guard: &hir::Guard) {
     let mut checker = MutationChecker {
         cx,
     };
@@ -561,13 +561,13 @@ struct MutationChecker<'a, 'tcx: 'a> {
 }
 
 impl<'a, 'tcx> Delegate<'tcx> for MutationChecker<'a, 'tcx> {
-    fn matched_pat(&mut self, _: &Pat, _: &cmt_, _: euv::MatchMode) {}
-    fn consume(&mut self, _: ast::NodeId, _: Span, _: &cmt_, _: ConsumeMode) {}
-    fn consume_pat(&mut self, _: &Pat, _: &cmt_, _: ConsumeMode) {}
+    fn matched_pat(&mut self, _: &Pat, _: &cmt_<'_>, _: euv::MatchMode) {}
+    fn consume(&mut self, _: ast::NodeId, _: Span, _: &cmt_<'_>, _: ConsumeMode) {}
+    fn consume_pat(&mut self, _: &Pat, _: &cmt_<'_>, _: ConsumeMode) {}
     fn borrow(&mut self,
               _: ast::NodeId,
               span: Span,
-              _: &cmt_,
+              _: &cmt_<'_>,
               _: ty::Region<'tcx>,
               kind:ty:: BorrowKind,
               _: LoanCause) {
@@ -588,7 +588,7 @@ impl<'a, 'tcx> Delegate<'tcx> for MutationChecker<'a, 'tcx> {
         }
     }
     fn decl_without_init(&mut self, _: ast::NodeId, _: Span) {}
-    fn mutate(&mut self, _: ast::NodeId, span: Span, _: &cmt_, mode: MutateMode) {
+    fn mutate(&mut self, _: ast::NodeId, span: Span, _: &cmt_<'_>, mode: MutateMode) {
         match mode {
             MutateMode::JustWrite | MutateMode::WriteAndRead => {
                 struct_span_err!(self.cx.tcx.sess, span, E0302, "cannot assign in a pattern guard")
@@ -603,7 +603,7 @@ impl<'a, 'tcx> Delegate<'tcx> for MutationChecker<'a, 'tcx> {
 /// Forbids bindings in `@` patterns. This is necessary for memory safety,
 /// because of the way rvalues are handled in the borrow check. (See issue
 /// #14587.)
-fn check_legality_of_bindings_in_at_patterns(cx: &MatchVisitor, pat: &Pat) {
+fn check_legality_of_bindings_in_at_patterns(cx: &MatchVisitor<'_, '_>, pat: &Pat) {
     AtBindingPatternVisitor { cx: cx, bindings_allowed: true }.visit_pat(pat);
 }
 

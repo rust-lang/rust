@@ -5,10 +5,10 @@
 // identify what tests are needed, perform the tests, and then filter
 // the candidates based on the result.
 
-use build::Builder;
-use build::matches::{Candidate, MatchPair, Test, TestKind};
-use hair::*;
-use hair::pattern::compare_const_vals;
+use crate::build::Builder;
+use crate::build::matches::{Candidate, MatchPair, Test, TestKind};
+use crate::hair::*;
+use crate::hair::pattern::compare_const_vals;
 use rustc_data_structures::bit_set::BitSet;
 use rustc_data_structures::fx::FxHashMap;
 use rustc::ty::{self, Ty};

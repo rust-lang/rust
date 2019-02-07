@@ -77,8 +77,8 @@ should go to.
 
 */
 
-use build::{BlockAnd, BlockAndExtension, Builder, CFG};
-use hair::LintLevel;
+use crate::build::{BlockAnd, BlockAndExtension, Builder, CFG};
+use crate::hair::LintLevel;
 use rustc::middle::region;
 use rustc::ty::Ty;
 use rustc::hir;

@@ -1,7 +1,7 @@
-use borrow_check::nll::type_check::constraint_conversion;
-use borrow_check::nll::type_check::{Locations, MirTypeckRegionConstraints};
-use borrow_check::nll::universal_regions::UniversalRegions;
-use borrow_check::nll::ToRegionVid;
+use crate::borrow_check::nll::type_check::constraint_conversion;
+use crate::borrow_check::nll::type_check::{Locations, MirTypeckRegionConstraints};
+use crate::borrow_check::nll::universal_regions::UniversalRegions;
+use crate::borrow_check::nll::ToRegionVid;
 use rustc::infer::canonical::QueryRegionConstraint;
 use rustc::infer::outlives::free_region_map::FreeRegionRelations;
 use rustc::infer::region_constraints::GenericKind;

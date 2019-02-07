@@ -4,8 +4,8 @@
 //! work.
 //!
 
-use hair::*;
-use hair::util::UserAnnotatedTyHelpers;
+use crate::hair::*;
+use crate::hair::util::UserAnnotatedTyHelpers;
 
 use rustc_data_structures::indexed_vec::Idx;
 use rustc::hir::def_id::{DefId, LOCAL_CRATE};
@@ -21,7 +21,7 @@ use syntax::attr;
 use syntax::symbol::Symbol;
 use rustc::hir;
 use rustc_data_structures::sync::Lrc;
-use hair::constant::{lit_to_const, LitToConstError};
+use crate::hair::constant::{lit_to_const, LitToConstError};
 
 #[derive(Clone)]
 pub struct Cx<'a, 'gcx: 'a + 'tcx, 'tcx: 'a> {
@@ -239,7 +239,7 @@ impl UserAnnotatedTyHelpers<'gcx, 'tcx> for Cx<'_, 'gcx, 'tcx> {
     }
 }
 
-fn lint_level_for_hir_id(tcx: TyCtxt, mut id: ast::NodeId) -> ast::NodeId {
+fn lint_level_for_hir_id(tcx: TyCtxt<'_, '_, '_>, mut id: ast::NodeId) -> ast::NodeId {
     // Right now we insert a `with_ignore` node in the dep graph here to
     // ignore the fact that `lint_levels` below depends on the entire crate.
     // For now this'll prevent false positives of recompiling too much when

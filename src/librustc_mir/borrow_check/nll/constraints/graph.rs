@@ -1,6 +1,6 @@
-use borrow_check::nll::type_check::Locations;
-use borrow_check::nll::constraints::ConstraintIndex;
-use borrow_check::nll::constraints::{ConstraintSet, OutlivesConstraint};
+use crate::borrow_check::nll::type_check::Locations;
+use crate::borrow_check::nll::constraints::ConstraintIndex;
+use crate::borrow_check::nll::constraints::{ConstraintSet, OutlivesConstraint};
 use rustc::mir::ConstraintCategory;
 use rustc::ty::RegionVid;
 use rustc_data_structures::graph;

@@ -1,7 +1,7 @@
-use borrow_check::nll::explain_borrow::BorrowExplanation;
-use borrow_check::nll::region_infer::{RegionName, RegionNameSource};
-use borrow_check::prefixes::IsPrefixOf;
-use borrow_check::WriteKind;
+use crate::borrow_check::nll::explain_borrow::BorrowExplanation;
+use crate::borrow_check::nll::region_infer::{RegionName, RegionNameSource};
+use crate::borrow_check::prefixes::IsPrefixOf;
+use crate::borrow_check::WriteKind;
 use rustc::hir;
 use rustc::hir::def_id::DefId;
 use rustc::middle::region::ScopeTree;
@@ -22,10 +22,10 @@ use syntax_pos::Span;
 use super::borrow_set::BorrowData;
 use super::{Context, MirBorrowckCtxt};
 use super::{InitializationRequiringAction, PrefixSet};
-use dataflow::drop_flag_effects;
-use dataflow::move_paths::indexes::MoveOutIndex;
-use dataflow::move_paths::MovePathIndex;
-use util::borrowck_errors::{BorrowckErrors, Origin};
+use crate::dataflow::drop_flag_effects;
+use crate::dataflow::move_paths::indexes::MoveOutIndex;
+use crate::dataflow::move_paths::MovePathIndex;
+use crate::util::borrowck_errors::{BorrowckErrors, Origin};
 
 #[derive(Debug)]
 struct MoveSite {
@@ -1726,7 +1726,7 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
     }
 
     /// End-user visible description of the `field`nth field of `base`
-    fn describe_field(&self, base: &Place, field: Field) -> String {
+    fn describe_field(&self, base: &Place<'_>, field: Field) -> String {
         match *base {
             Place::Local(local) => {
                 let local = &self.mir.local_decls[local];
@@ -1751,7 +1751,7 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
     }
 
     /// End-user visible description of the `field_index`nth field of `ty`
-    fn describe_field_from_ty(&self, ty: &ty::Ty, field: Field) -> String {
+    fn describe_field_from_ty(&self, ty: &ty::Ty<'_>, field: Field) -> String {
         if ty.is_box() {
             // If the type is a box, the field is described from the boxed type
             self.describe_field_from_ty(&ty.boxed_ty(), field)
@@ -1860,7 +1860,7 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
     fn annotate_argument_and_return_for_borrow(
         &self,
         borrow: &BorrowData<'tcx>,
-    ) -> Option<AnnotatedBorrowFnSignature> {
+    ) -> Option<AnnotatedBorrowFnSignature<'_>> {
         // Define a fallback for when we can't match a closure.
         let fallback = || {
             let is_closure = self.infcx.tcx.is_closure(self.mir_def_id);
@@ -2081,7 +2081,7 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
         &self,
         did: DefId,
         sig: ty::PolyFnSig<'tcx>,
-    ) -> Option<AnnotatedBorrowFnSignature> {
+    ) -> Option<AnnotatedBorrowFnSignature<'_>> {
         debug!("annotate_fn_sig: did={:?} sig={:?}", did, sig);
         let is_closure = self.infcx.tcx.is_closure(did);
         let fn_node_id = self.infcx.tcx.hir().as_local_node_id(did)?;
@@ -2368,14 +2368,22 @@ impl UseSpans {
     }
 
     // Add a span label to the arguments of the closure, if it exists.
-    pub(super) fn args_span_label(self, err: &mut DiagnosticBuilder, message: impl Into<String>) {
+    pub(super) fn args_span_label(
+        self,
+        err: &mut DiagnosticBuilder<'_>,
+        message: impl Into<String>,
+    ) {
         if let UseSpans::ClosureUse { args_span, .. } = self {
             err.span_label(args_span, message);
         }
     }
 
     // Add a span label to the use of the captured variable, if it exists.
-    pub(super) fn var_span_label(self, err: &mut DiagnosticBuilder, message: impl Into<String>) {
+    pub(super) fn var_span_label(
+        self,
+        err: &mut DiagnosticBuilder<'_>,
+        message: impl Into<String>,
+    ) {
         if let UseSpans::ClosureUse { var_span, .. } = self {
             err.span_label(var_span, message);
         }
@@ -2563,7 +2571,7 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
 
     /// Helper to retrieve span(s) of given borrow from the current MIR
     /// representation
-    pub(super) fn retrieve_borrow_spans(&self, borrow: &BorrowData) -> UseSpans {
+    pub(super) fn retrieve_borrow_spans(&self, borrow: &BorrowData<'_>) -> UseSpans {
         let span = self.mir.source_info(borrow.reserve_location).span;
         self.borrow_spans(span, borrow.reserve_location)
     }

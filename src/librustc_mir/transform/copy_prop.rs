@@ -22,8 +22,8 @@
 use rustc::mir::{Constant, Local, LocalKind, Location, Place, Mir, Operand, Rvalue, StatementKind};
 use rustc::mir::visit::MutVisitor;
 use rustc::ty::TyCtxt;
-use transform::{MirPass, MirSource};
-use util::def_use::DefUseAnalysis;
+use crate::transform::{MirPass, MirSource};
+use crate::util::def_use::DefUseAnalysis;
 
 pub struct CopyPropagation;
 
@@ -173,7 +173,7 @@ enum Action<'tcx> {
 }
 
 impl<'tcx> Action<'tcx> {
-    fn local_copy(mir: &Mir<'tcx>, def_use_analysis: &DefUseAnalysis, src_place: &Place<'tcx>)
+    fn local_copy(mir: &Mir<'tcx>, def_use_analysis: &DefUseAnalysis<'_>, src_place: &Place<'tcx>)
                   -> Option<Action<'tcx>> {
         // The source must be a local.
         let src_local = if let Place::Local(local) = *src_place {

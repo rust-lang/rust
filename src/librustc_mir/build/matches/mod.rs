@@ -3,11 +3,11 @@
 //! includes the high-level algorithm, the submodules contain the
 //! details.
 
-use build::scope::{CachedBlock, DropKind};
-use build::ForGuard::{self, OutsideGuard, RefWithinGuard, ValWithinGuard};
-use build::{BlockAnd, BlockAndExtension, Builder};
-use build::{GuardFrame, GuardFrameLocal, LocalsForNode};
-use hair::*;
+use crate::build::scope::{CachedBlock, DropKind};
+use crate::build::ForGuard::{self, OutsideGuard, RefWithinGuard, ValWithinGuard};
+use crate::build::{BlockAnd, BlockAndExtension, Builder};
+use crate::build::{GuardFrame, GuardFrameLocal, LocalsForNode};
+use crate::hair::*;
 use rustc::mir::*;
 use rustc::ty::{self, CanonicalUserTypeAnnotation, Ty};
 use rustc::ty::layout::VariantIdx;

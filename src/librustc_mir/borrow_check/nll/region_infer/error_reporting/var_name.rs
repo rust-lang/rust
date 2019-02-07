@@ -1,5 +1,5 @@
-use borrow_check::nll::region_infer::RegionInferenceContext;
-use borrow_check::nll::ToRegionVid;
+use crate::borrow_check::nll::region_infer::RegionInferenceContext;
+use crate::borrow_check::nll::ToRegionVid;
 use rustc::mir::{Local, Mir};
 use rustc::ty::{RegionVid, TyCtxt};
 use rustc_data_structures::indexed_vec::Idx;
