@@ -1,3 +1,5 @@
+#![cfg(not(miri))]
+
 use std::cell::Cell;
 use std::cmp::Ordering::{Equal, Greater, Less};
 use std::cmp::Ordering;

@@ -107,6 +107,7 @@ fn test_index() {
 
 #[test]
 #[should_panic]
+#[cfg(not(miri))]
 fn test_index_out_of_bounds() {
     let mut deq = VecDeque::new();
     for i in 1..4 {
@@ -905,20 +906,24 @@ fn test_append() {
     // normal append
     a.append(&mut b);
     assert_eq!(a.iter().cloned().collect::<Vec<_>>(), [1, 2, 3, 4, 5, 6]);
+    #[cfg(not(miri))]
     assert_eq!(b.iter().cloned().collect::<Vec<_>>(), []);
 
     // append nothing to something
     a.append(&mut b);
     assert_eq!(a.iter().cloned().collect::<Vec<_>>(), [1, 2, 3, 4, 5, 6]);
+    #[cfg(not(miri))]
     assert_eq!(b.iter().cloned().collect::<Vec<_>>(), []);
 
     // append something to nothing
     b.append(&mut a);
     assert_eq!(b.iter().cloned().collect::<Vec<_>>(), [1, 2, 3, 4, 5, 6]);
+    #[cfg(not(miri))]
     assert_eq!(a.iter().cloned().collect::<Vec<_>>(), []);
 }
 
 #[test]
+#[cfg(not(miri))]
 fn test_append_permutations() {
     fn construct_vec_deque(
         push_back: usize,
@@ -1119,6 +1124,7 @@ fn test_reserve_exact_2() {
 }
 
 #[test]
+#[cfg(not(miri))]
 fn test_try_reserve() {
 
     // These are the interesting cases:
@@ -1220,6 +1226,7 @@ fn test_try_reserve() {
 }
 
 #[test]
+#[cfg(not(miri))]
 fn test_try_reserve_exact() {
 
     // This is exactly the same as test_try_reserve with the method changed.
