@@ -248,14 +248,18 @@ impl<T: Ord> Drop for PeekMut<'_, T> {
 impl<T: Ord> Deref for PeekMut<'_, T> {
     type Target = T;
     fn deref(&self) -> &T {
-        &self.heap.data[0]
+        debug_assert!(!self.heap.is_empty());
+        // SAFE: PeekMut is only instantiated for non-empty heaps
+        unsafe { self.heap.data.get_unchecked(0) }
     }
 }
 
 #[stable(feature = "binary_heap_peek_mut", since = "1.12.0")]
 impl<T: Ord> DerefMut for PeekMut<'_, T> {
     fn deref_mut(&mut self) -> &mut T {
-        &mut self.heap.data[0]
+        debug_assert!(!self.heap.is_empty());
+        // SAFE: PeekMut is only instantiated for non-empty heaps
+        unsafe { self.heap.data.get_unchecked_mut(0) }
     }
 }
 
@@ -865,7 +869,8 @@ impl<'a, T> Hole<'a, T> {
     #[inline]
     unsafe fn new(data: &'a mut [T], pos: usize) -> Self {
         debug_assert!(pos < data.len());
-        let elt = ptr::read(&data[pos]);
+        // SAFE: pos should be inside the slice
+        let elt = ptr::read(data.get_unchecked(pos));
         Hole {
             data,
             elt: ManuallyDrop::new(elt),
