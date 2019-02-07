@@ -1,5 +1,5 @@
-use {Category, ExpInt, IEK_INF, IEK_NAN, IEK_ZERO};
-use {Float, FloatConvert, ParseError, Round, Status, StatusAnd};
+use crate::{Category, ExpInt, IEK_INF, IEK_NAN, IEK_ZERO};
+use crate::{Float, FloatConvert, ParseError, Round, Status, StatusAnd};
 
 use smallvec::{SmallVec, smallvec};
 use std::cmp::{self, Ordering};
@@ -325,7 +325,7 @@ impl<S> Neg for IeeeFloat<S> {
 /// 1.01E-2              4        2       0.0101
 /// 1.01E-2              4        1       1.01E-2
 impl<S: Semantics> fmt::Display for IeeeFloat<S> {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let width = f.width().unwrap_or(3);
         let alternate = f.alternate();
 
@@ -614,7 +614,7 @@ impl<S: Semantics> fmt::Display for IeeeFloat<S> {
 }
 
 impl<S: Semantics> fmt::Debug for IeeeFloat<S> {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "{}({:?} | {}{:?} * 2^{})",
                self, self.category,
                if self.sign { "-" } else { "+" },
