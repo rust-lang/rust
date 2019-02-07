@@ -338,9 +338,12 @@ fn in_cargo_miri() {
             (MiriCommand::Test, "test") => {
                 cmd.arg("--test").arg(target.name);
             }
-            (MiriCommand::Test, "lib") |
+            (MiriCommand::Test, "lib") => {
+                // There can be only one lib
+                cmd.arg("--lib").arg("--profile").arg("test");
+            }
             (MiriCommand::Test, "bin") => {
-                cmd.arg(format!("--{}", kind)).arg(target.name).arg("--profile").arg("test");
+                cmd.arg("--bin").arg(target.name).arg("--profile").arg("test");
             }
             // The remaining targets we do not even want to build
             _ => continue,
