@@ -25,6 +25,8 @@ pub enum ProfilerEvent {
     GenericActivityEnd { category: ProfileCategory, time: Instant },
     QueryCacheHit { query_name: &'static str, category: ProfileCategory },
     QueryCount { query_name: &'static str, category: ProfileCategory, count: usize },
+    IncrementalLoadResultStart { query_name: &'static str, time: Instant },
+    IncrementalLoadResultEnd { query_name: &'static str, time: Instant },
 }
 
 impl ProfilerEvent {
@@ -32,9 +34,15 @@ impl ProfilerEvent {
         use self::ProfilerEvent::*;
 
         match self {
-            QueryStart { .. } | GenericActivityStart { .. } => true,
-            QueryEnd { .. } | GenericActivityEnd { .. } |
-            QueryCacheHit { .. } | QueryCount { .. } => false,
+            QueryStart { .. } |
+            GenericActivityStart { .. } |
+            IncrementalLoadResultStart { .. } => true,
+
+            QueryEnd { .. } |
+            GenericActivityEnd { .. } |
+            QueryCacheHit { .. } |
+            QueryCount { .. } |
+            IncrementalLoadResultEnd { .. } => false,
         }
     }
 }
@@ -226,6 +234,22 @@ impl SelfProfiler {
     }
 
     #[inline]
+    pub fn incremental_load_result_start(&mut self, query_name: &'static str) {
+        self.record(ProfilerEvent::IncrementalLoadResultStart {
+            query_name,
+            time: Instant::now(),
+        })
+    }
+
+    #[inline]
+    pub fn incremental_load_result_end(&mut self, query_name: &'static str) {
+        self.record(ProfilerEvent::IncrementalLoadResultEnd {
+            query_name,
+            time: Instant::now(),
+        })
+    }
+
+    #[inline]
     fn record(&mut self, event: ProfilerEvent) {
         let thread_id = std::thread::current().id();
         let events = self.events.entry(thread_id).or_default();
@@ -317,6 +341,8 @@ impl SelfProfiler {
                         result_data.query_cache_stats.entry(query_name).or_insert((0, 0));
                     *totals += *count as u64;
                 },
+                //we don't summarize incremental load result events in the simple output mode
+                IncrementalLoadResultStart { .. } | IncrementalLoadResultEnd { .. } => { },
             }
         }
 

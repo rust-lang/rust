@@ -436,7 +436,9 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
         // First we try to load the result from the on-disk cache
         let result = if Q::cache_on_disk(self.global_tcx(), key.clone()) &&
                         self.sess.opts.debugging_opts.incremental_queries {
+            self.sess.profiler(|p| p.incremental_load_result_start(Q::NAME));
             let result = Q::try_load_from_disk(self.global_tcx(), prev_dep_node_index);
+            self.sess.profiler(|p| p.incremental_load_result_end(Q::NAME));
 
             // We always expect to find a cached result for things that
             // can be forced from DepNode.
