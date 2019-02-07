@@ -186,8 +186,8 @@ impl<'a, 'tcx> CheckAttrVisitor<'a, 'tcx> {
             };
 
             let (article, allowed_targets) = match &*name.as_str() {
-                "C" => {
-                    is_c = true;
+                "C" | "align" => {
+                    is_c |= name == "C";
                     if target != Target::Struct &&
                             target != Target::Union &&
                             target != Target::Enum {
@@ -208,14 +208,6 @@ impl<'a, 'tcx> CheckAttrVisitor<'a, 'tcx> {
                     is_simd = true;
                     if target != Target::Struct {
                         ("a", "struct")
-                    } else {
-                        continue
-                    }
-                }
-                "align" => {
-                    if target != Target::Struct &&
-                            target != Target::Union {
-                        ("a", "struct or union")
                     } else {
                         continue
                     }

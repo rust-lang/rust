@@ -464,6 +464,9 @@ declare_features! (
 
     // #[optimize(X)]
     (active, optimize_attribute, "1.34.0", Some(54882), None),
+
+    // #[repr(align(X))] on enums
+    (active, repr_align_enum, "1.34.0", Some(57996), None),
 );
 
 declare_features! (
@@ -1695,6 +1698,17 @@ impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
                         if item.check_name("simd") {
                             gate_feature_post!(&self, repr_simd, attr.span,
                                                "SIMD types are experimental and possibly buggy");
+                        }
+                    }
+                }
+            }
+
+            ast::ItemKind::Enum(..) => {
+                for attr in attr::filter_by_name(&i.attrs[..], "repr") {
+                    for item in attr.meta_item_list().unwrap_or_else(Vec::new) {
+                        if item.check_name("align") {
+                            gate_feature_post!(&self, repr_align_enum, attr.span,
+                                               "`#[repr(align(x))]` on enums is experimental");
                         }
                     }
                 }
