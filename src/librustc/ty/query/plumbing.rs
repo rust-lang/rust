@@ -3,10 +3,10 @@
 //! provider, manage the caches, and so forth.
 
 use crate::dep_graph::{DepNodeIndex, DepNode, DepKind, SerializedDepNodeIndex};
-use crate::errors::DiagnosticBuilder;
-use crate::errors::Level;
-use crate::errors::Diagnostic;
-use crate::errors::FatalError;
+use errors::DiagnosticBuilder;
+use errors::Level;
+use errors::Diagnostic;
+use errors::FatalError;
 use crate::ty::tls;
 use crate::ty::{TyCtxt};
 use crate::ty::query::Query;

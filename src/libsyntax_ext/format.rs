@@ -3,8 +3,8 @@ use Position::*;
 
 use fmt_macros as parse;
 
-use crate::errors::DiagnosticBuilder;
-use crate::errors::Applicability;
+use errors::DiagnosticBuilder;
+use errors::Applicability;
 
 use syntax::ast;
 use syntax::ext::base::{self, *};

@@ -31,7 +31,7 @@
 //! in the HIR, especially for multiple identifiers.
 
 use crate::dep_graph::DepGraph;
-use crate::errors::Applicability;
+use errors::Applicability;
 use crate::hir::{self, ParamName};
 use crate::hir::HirVec;
 use crate::hir::map::{DefKey, DefPathData, Definitions};

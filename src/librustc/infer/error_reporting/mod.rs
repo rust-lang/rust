@@ -50,7 +50,7 @@ use super::region_constraints::GenericKind;
 use super::{InferCtxt, RegionVariableOrigin, SubregionOrigin, TypeTrace, ValuePairs};
 use crate::infer::{self, SuppressRegionErrors};
 
-use crate::errors::{Applicability, DiagnosticBuilder, DiagnosticStyledString};
+use errors::{Applicability, DiagnosticBuilder, DiagnosticStyledString};
 use crate::hir;
 use crate::hir::def_id::DefId;
 use crate::hir::Node;

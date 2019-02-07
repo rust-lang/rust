@@ -23,7 +23,7 @@ pub use self::LintSource::*;
 
 use rustc_data_structures::sync::{self, Lrc};
 
-use crate::errors::{DiagnosticBuilder, DiagnosticId};
+use errors::{DiagnosticBuilder, DiagnosticId};
 use crate::hir::def_id::{CrateNum, LOCAL_CRATE};
 use crate::hir::intravisit;
 use crate::hir;

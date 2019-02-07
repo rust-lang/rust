@@ -1,4 +1,4 @@
-use crate::errors::{self, Diagnostic, DiagnosticBuilder};
+use errors::{Diagnostic, DiagnosticBuilder};
 
 use std::panic;
 

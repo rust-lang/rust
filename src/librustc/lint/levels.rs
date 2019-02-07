@@ -1,6 +1,6 @@
 use std::cmp;
 
-use crate::errors::{Applicability, DiagnosticBuilder};
+use errors::{Applicability, DiagnosticBuilder};
 use crate::hir::HirId;
 use crate::ich::StableHashingContext;
 use crate::lint::builtin;

@@ -102,7 +102,7 @@ use crate::hir::Node;
 use crate::ty::{self, TyCtxt};
 use crate::ty::query::Providers;
 use crate::lint;
-use crate::errors::Applicability;
+use errors::Applicability;
 use crate::util::nodemap::{NodeMap, HirIdMap, HirIdSet};
 
 use std::collections::{BTreeMap, VecDeque};

@@ -1,7 +1,6 @@
 use std::mem;
 
 use crate::deriving;
-use crate::errors;
 
 use syntax::ast::{self, Ident};
 use syntax::attr;

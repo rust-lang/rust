@@ -10,8 +10,6 @@
 
 #![deny(rust_2018_idioms)]
 
-use rustc_errors as errors;
-
 pub use rustc::hir::def::{Namespace, PerNS};
 
 use GenericParameters::*;

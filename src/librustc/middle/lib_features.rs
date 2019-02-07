@@ -10,7 +10,7 @@ use syntax::ast::{Attribute, MetaItem, MetaItemKind};
 use syntax_pos::Span;
 use crate::hir::intravisit::{self, NestedVisitorMap, Visitor};
 use rustc_data_structures::fx::{FxHashSet, FxHashMap};
-use crate::errors::DiagnosticId;
+use errors::DiagnosticId;
 
 pub struct LibFeatures {
     // A map from feature to stabilisation version.

@@ -1,5 +1,5 @@
 use crate::dep_graph::{self, DepConstructor, DepNode};
-use crate::errors::DiagnosticBuilder;
+use errors::DiagnosticBuilder;
 use crate::hir::def_id::{CrateNum, DefId, DefIndex};
 use crate::hir::def::{Def, Export};
 use crate::hir::{self, TraitCandidate, ItemLocalId, CodegenFnAttrs};

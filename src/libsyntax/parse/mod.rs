@@ -3,7 +3,7 @@
 use crate::ast::{self, CrateConfig, NodeId};
 use crate::early_buffered_lints::{BufferedEarlyLint, BufferedEarlyLintId};
 use crate::source_map::{SourceMap, FilePathMapping};
-use crate::errors::{FatalError, Level, Handler, ColorConfig, Diagnostic, DiagnosticBuilder};
+use errors::{FatalError, Level, Handler, ColorConfig, Diagnostic, DiagnosticBuilder};
 use crate::feature_gate::UnstableFeatures;
 use crate::parse::parser::Parser;
 use crate::symbol::Symbol;

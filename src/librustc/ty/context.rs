@@ -2,7 +2,7 @@
 
 use crate::dep_graph::DepGraph;
 use crate::dep_graph::{self, DepNode, DepConstructor};
-use crate::errors::DiagnosticBuilder;
+use errors::DiagnosticBuilder;
 use crate::session::Session;
 use crate::session::config::{BorrowckMode, OutputFilenames};
 use crate::session::config::CrateType;
@@ -1819,7 +1819,7 @@ pub mod tls {
     use std::ptr;
     use syntax_pos;
     use crate::ty::query;
-    use crate::errors::{Diagnostic, TRACK_DIAGNOSTICS};
+    use errors::{Diagnostic, TRACK_DIAGNOSTICS};
     use rustc_data_structures::OnDrop;
     use rustc_data_structures::sync::{self, Lrc, Lock};
     use rustc_data_structures::thin_vec::ThinVec;

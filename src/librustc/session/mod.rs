@@ -21,8 +21,8 @@ use rustc_data_structures::sync::{
     Ordering::SeqCst,
 };
 
-use crate::errors::{self, DiagnosticBuilder, DiagnosticId, Applicability};
-use crate::errors::emitter::{Emitter, EmitterWriter};
+use errors::{DiagnosticBuilder, DiagnosticId, Applicability};
+use errors::emitter::{Emitter, EmitterWriter};
 use syntax::ast::{self, NodeId};
 use syntax::edition::Edition;
 use syntax::feature_gate::{self, AttributeType};

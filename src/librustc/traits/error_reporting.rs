@@ -17,7 +17,7 @@ use super::{
     Overflow,
 };
 
-use crate::errors::{Applicability, DiagnosticBuilder};
+use errors::{Applicability, DiagnosticBuilder};
 use crate::hir;
 use crate::hir::Node;
 use crate::hir::def_id::DefId;

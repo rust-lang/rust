@@ -5,7 +5,7 @@ use crate::infer::type_variable::TypeVariableOrigin;
 use crate::ty::{self, Ty, Infer, TyVar};
 use syntax::source_map::CompilerDesugaringKind;
 use syntax_pos::Span;
-use crate::errors::DiagnosticBuilder;
+use errors::DiagnosticBuilder;
 
 struct FindLocalByTypeVisitor<'a, 'gcx: 'a + 'tcx, 'tcx: 'a> {
     infcx: &'a InferCtxt<'a, 'gcx, 'tcx>,

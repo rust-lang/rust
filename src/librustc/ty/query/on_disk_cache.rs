@@ -1,5 +1,5 @@
 use crate::dep_graph::{DepNodeIndex, SerializedDepNodeIndex};
-use crate::errors::Diagnostic;
+use errors::Diagnostic;
 use crate::hir;
 use crate::hir::def_id::{CrateNum, DefIndex, DefId, LocalDefId, LOCAL_CRATE};
 use crate::hir::map::definitions::DefPathHash;

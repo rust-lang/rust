@@ -75,7 +75,7 @@ pub use ParseResult::*;
 use TokenTreeOrTokenTreeSlice::*;
 
 use crate::ast::Ident;
-use crate::errors::FatalError;
+use errors::FatalError;
 use crate::ext::tt::quoted::{self, TokenTree};
 use crate::parse::{Directory, ParseSess};
 use crate::parse::parser::{Parser, PathStyle};

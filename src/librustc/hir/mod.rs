@@ -10,7 +10,7 @@ pub use self::PrimTy::*;
 pub use self::UnOp::*;
 pub use self::UnsafeSource::*;
 
-use crate::errors::FatalError;
+use errors::FatalError;
 use crate::hir::def::Def;
 use crate::hir::def_id::{DefId, DefIndex, LocalDefId, CRATE_DEF_INDEX};
 use crate::util::nodemap::{NodeMap, FxHashSet};

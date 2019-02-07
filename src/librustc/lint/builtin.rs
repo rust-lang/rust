@@ -4,7 +4,7 @@
 //! compiler code, rather than using their own custom pass. Those
 //! lints are all available in `rustc_lint::builtin`.
 
-use crate::errors::{Applicability, DiagnosticBuilder};
+use errors::{Applicability, DiagnosticBuilder};
 use crate::lint::{LintPass, LateLintPass, LintArray};
 use crate::session::Session;
 use syntax::ast;

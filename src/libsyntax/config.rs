@@ -9,7 +9,7 @@ use crate::feature_gate::{
 use crate::attr;
 use crate::ast;
 use crate::edition::Edition;
-use crate::errors::Applicability;
+use errors::Applicability;
 use crate::mut_visit::*;
 use crate::parse::{token, ParseSess};
 use crate::ptr::P;

@@ -1,4 +1,4 @@
-use crate::errors::DiagnosticBuilder;
+use errors::DiagnosticBuilder;
 
 use syntax::ast::{self, *};
 use syntax::source_map::Spanned;

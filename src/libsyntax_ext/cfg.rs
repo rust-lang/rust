@@ -2,7 +2,7 @@
 /// a literal `true` or `false` based on whether the given cfg matches the
 /// current compilation environment.
 
-use crate::errors::DiagnosticBuilder;
+use errors::DiagnosticBuilder;
 
 use syntax::ast;
 use syntax::ext::base::{self, *};

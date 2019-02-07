@@ -8,7 +8,7 @@ pub use self::ValuePairs::*;
 pub use crate::ty::IntVarValue;
 
 use arena::SyncDroplessArena;
-use crate::errors::DiagnosticBuilder;
+use errors::DiagnosticBuilder;
 use crate::hir::def_id::DefId;
 use crate::infer::canonical::{Canonical, CanonicalVarValues};
 use crate::middle::free_region::RegionRelations;

@@ -1,7 +1,7 @@
 //! Parsing and validation of builtin attributes
 
 use crate::ast::{self, Attribute, MetaItem, Name, NestedMetaItemKind};
-use crate::errors::{Applicability, Handler};
+use errors::{Applicability, Handler};
 use crate::feature_gate::{Features, GatedCfg};
 use crate::parse::ParseSess;
 

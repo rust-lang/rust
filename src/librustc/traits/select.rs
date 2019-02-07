@@ -103,7 +103,7 @@ impl IntercrateAmbiguityCause {
     /// See #23980 for details.
     pub fn add_intercrate_ambiguity_hint<'a, 'tcx>(
         &self,
-        err: &mut crate::errors::DiagnosticBuilder<'_>,
+        err: &mut errors::DiagnosticBuilder<'_>,
     ) {
         err.note(&self.intercrate_ambiguity_hint());
     }

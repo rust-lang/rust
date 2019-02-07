@@ -16,7 +16,7 @@ use syntax_pos::{self, DUMMY_SP, NO_EXPANSION, Span, SourceFile, BytePos};
 
 use crate::attr::{self, HasAttrs};
 use crate::source_map::{self, SourceMap, ExpnInfo, MacroAttribute, dummy_spanned, respan};
-use crate::errors;
+use errors;
 use crate::config;
 use crate::entry::{self, EntryPointType};
 use crate::ext::base::{ExtCtxt, Resolver};

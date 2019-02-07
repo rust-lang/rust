@@ -20,7 +20,7 @@ use crate::attr;
 use crate::early_buffered_lints::BufferedEarlyLintId;
 use crate::source_map::Spanned;
 use crate::edition::{ALL_EDITIONS, Edition};
-use crate::errors::{DiagnosticBuilder, Handler};
+use errors::{DiagnosticBuilder, Handler};
 use crate::visit::{self, FnKind, Visitor};
 use crate::parse::ParseSess;
 use crate::symbol::Symbol;

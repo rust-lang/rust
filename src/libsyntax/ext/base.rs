@@ -4,7 +4,7 @@ use crate::ast::{self, Attribute, Name, PatKind, MetaItem};
 use crate::attr::HasAttrs;
 use crate::source_map::{SourceMap, Spanned, respan};
 use crate::edition::Edition;
-use crate::errors::{DiagnosticBuilder, DiagnosticId};
+use errors::{DiagnosticBuilder, DiagnosticId};
 use crate::ext::expand::{self, AstFragment, Invocation};
 use crate::ext::hygiene::{self, Mark, SyntaxContext, Transparency};
 use crate::mut_visit::{self, MutVisitor};

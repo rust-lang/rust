@@ -11,7 +11,7 @@ use crate::hir::map::Map;
 use crate::hir::{GenericArg, GenericParam, ItemLocalId, LifetimeName, Node, ParamName};
 use crate::ty::{self, DefIdTree, GenericParamDefKind, TyCtxt};
 
-use crate::errors::{Applicability, DiagnosticBuilder};
+use errors::{Applicability, DiagnosticBuilder};
 use crate::rustc::lint;
 use rustc_data_structures::sync::Lrc;
 use crate::session::Session;
