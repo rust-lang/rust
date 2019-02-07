@@ -10,8 +10,8 @@
 
 use std::ops::{Deref, DerefMut};
 
-use Resolver;
-use resolve_imports::ImportDirectiveSubclass;
+use crate::Resolver;
+use crate::resolve_imports::ImportDirectiveSubclass;
 
 use rustc::{lint, ty};
 use rustc::util::nodemap::NodeMap;
@@ -113,7 +113,7 @@ impl<'a, 'b> Visitor<'a> for UnusedImportCheckVisitor<'a, 'b> {
     }
 }
 
-pub fn check_crate(resolver: &mut Resolver, krate: &ast::Crate) {
+pub fn check_crate(resolver: &mut Resolver<'_>, krate: &ast::Crate) {
     for directive in resolver.potentially_unused_imports.iter() {
         match directive.subclass {
             _ if directive.used.get() ||

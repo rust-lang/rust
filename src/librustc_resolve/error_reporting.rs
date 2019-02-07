@@ -1,10 +1,12 @@
-use {CrateLint, PathResult, Segment};
-use macros::ParentScope;
+use crate::{CrateLint, PathResult, Segment};
+use crate::macros::ParentScope;
+use crate::resolve_imports::ImportResolver;
 
 use syntax::symbol::keywords;
 use syntax_pos::Span;
 
-use resolve_imports::ImportResolver;
+use log::debug;
+
 use std::cmp::Reverse;
 
 impl<'a, 'b:'a> ImportResolver<'a, 'b> {

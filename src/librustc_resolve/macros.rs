@@ -1,16 +1,17 @@
-use {AmbiguityError, AmbiguityKind, AmbiguityErrorMisc};
-use {CrateLint, Resolver, ResolutionError, ScopeSet, Weak};
-use {Module, ModuleKind, NameBinding, NameBindingKind, PathResult, Segment, ToNameBinding};
-use {is_known_tool, resolve_error};
-use ModuleOrUniformRoot;
-use Namespace::*;
-use build_reduced_graph::{BuildReducedGraphVisitor, IsMacroExport};
-use resolve_imports::ImportResolver;
+use crate::{AmbiguityError, AmbiguityKind, AmbiguityErrorMisc};
+use crate::{CrateLint, Resolver, ResolutionError, ScopeSet, Weak};
+use crate::{Module, ModuleKind, NameBinding, NameBindingKind, PathResult, Segment, ToNameBinding};
+use crate::{is_known_tool, resolve_error};
+use crate::ModuleOrUniformRoot;
+use crate::Namespace::*;
+use crate::build_reduced_graph::{BuildReducedGraphVisitor, IsMacroExport};
+use crate::resolve_imports::ImportResolver;
 use rustc::hir::def_id::{DefId, CRATE_DEF_INDEX, DefIndex,
                          CrateNum, DefIndexAddressSpace};
 use rustc::hir::def::{Def, NonMacroAttrKind};
 use rustc::hir::map::{self, DefCollector};
 use rustc::{ty, lint};
+use rustc::{bug, span_bug};
 use syntax::ast::{self, Ident};
 use syntax::attr;
 use syntax::errors::DiagnosticBuilder;
@@ -26,7 +27,7 @@ use syntax::symbol::{Symbol, keywords};
 use syntax::visit::Visitor;
 use syntax::util::lev_distance::find_best_match_for_name;
 use syntax_pos::{Span, DUMMY_SP};
-use errors::Applicability;
+use crate::errors::Applicability;
 
 use std::cell::Cell;
 use std::{mem, ptr};
@@ -530,7 +531,7 @@ impl<'a> Resolver<'a> {
             BuiltinTypes,
         }
 
-        bitflags! {
+        bitflags::bitflags! {
             struct Flags: u8 {
                 const MACRO_RULES        = 1 << 0;
                 const MODULE             = 1 << 1;
@@ -560,7 +561,7 @@ impl<'a> Resolver<'a> {
         // }
         // So we have to save the innermost solution and continue searching in outer scopes
         // to detect potential ambiguities.
-        let mut innermost_result: Option<(&NameBinding, Flags)> = None;
+        let mut innermost_result: Option<(&NameBinding<'_>, Flags)> = None;
 
         // Go through all the scopes and try to resolve the name.
         let rust_2015 = orig_ident.span.rust_2015();
