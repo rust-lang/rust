@@ -1,10 +1,8 @@
 //! Parses ELF auxiliary vectors.
 #![cfg_attr(not(target_arch = "aarch64"), allow(dead_code))]
 
-extern crate std;
-use self::std::{prelude::v1::*, fs::File, io::Read};
-
-use core::mem;
+#[cfg(feature = "std_detect_file_io")]
+use ::{fs::File, io::Read};
 
 /// Key to access the CPU Hardware capabilities bitfield.
 pub(crate) const AT_HWCAP: usize = 16;
@@ -34,8 +32,12 @@ pub(crate) struct AuxVec {
 ///
 /// There is no perfect way of reading the auxiliary vector.
 ///
-/// - If the `getauxval` is dynamically linked to this binary, it will be used.
-/// - Otherwise, try to read `/proc/self/auxv`.
+/// - If the `std_detect_dlsym_getauxval` cargo feature is enabled, this will use
+/// `getauxval` if its linked to the binary, and otherwise proceed to a fallback implementation.
+/// When `std_detect_dlsym_getauxval` is disabled, this will assume that `getauxval` is
+/// linked to the binary - if that is not the case the behavior is undefined.
+/// - Otherwise, if the `std_detect_file_io` cargo feature is enabled, it will
+///   try to read `/proc/self/auxv`.
 /// - If that fails, this function returns an error.
 ///
 /// Note that run-time feature detection is not invoked for features that can
@@ -49,8 +51,42 @@ pub(crate) struct AuxVec {
 /// [auxvec_h]: https://github.com/torvalds/linux/blob/master/include/uapi/linux/auxvec.h
 /// [auxv_docs]: https://docs.rs/auxv/0.3.3/auxv/
 pub(crate) fn auxv() -> Result<AuxVec, ()> {
-    // Try to call a dynamically-linked getauxval function.
-    if let Ok(hwcap) = getauxval(AT_HWCAP) {
+    #[cfg(feature = "std_detect_dlsym_getauxval")] {
+        // Try to call a dynamically-linked getauxval function.
+        if let Ok(hwcap) = getauxval(AT_HWCAP) {
+            // Targets with only AT_HWCAP:
+            #[cfg(any(target_arch = "aarch64", target_arch = "mips",
+                      target_arch = "mips64"))]
+            {
+                if hwcap != 0 {
+                    return Ok(AuxVec { hwcap });
+                }
+            }
+
+            // Targets with AT_HWCAP and AT_HWCAP2:
+            #[cfg(any(target_arch = "arm", target_arch = "powerpc64"))]
+            {
+                if let Ok(hwcap2) = getauxval(AT_HWCAP2) {
+                    if hwcap != 0 && hwcap2 != 0 {
+                        return Ok(AuxVec { hwcap, hwcap2 });
+                    }
+                }
+            }
+            drop(hwcap);
+        }
+        #[cfg(feature = "std_detect_file_io")] {
+            // If calling getauxval fails, try to read the auxiliary vector from
+            // its file:
+            auxv_from_file("/proc/self/auxv")
+        }
+        #[cfg(not(feature = "std_detect_file_io"))] {
+            Err(())
+        }
+    }
+
+    #[cfg(not(feature = "std_detect_dlsym_getauxval"))] {
+        let hwcap = unsafe { ffi_getauxval(AT_HWCAP) };
+
         // Targets with only AT_HWCAP:
         #[cfg(any(target_arch = "aarch64", target_arch = "mips",
                   target_arch = "mips64"))]
@@ -63,22 +99,18 @@ pub(crate) fn auxv() -> Result<AuxVec, ()> {
         // Targets with AT_HWCAP and AT_HWCAP2:
         #[cfg(any(target_arch = "arm", target_arch = "powerpc64"))]
         {
-            if let Ok(hwcap2) = getauxval(AT_HWCAP2) {
-                if hwcap != 0 && hwcap2 != 0 {
-                    return Ok(AuxVec { hwcap, hwcap2 });
-                }
+            let hwcap2 = unsafe { ffi_getauxval(AT_HWCAP2) };
+            if hwcap != 0 && hwcap2 != 0 {
+                return Ok(AuxVec { hwcap, hwcap2 });
             }
         }
-        drop(hwcap);
     }
-    // If calling getauxval fails, try to read the auxiliary vector from
-    // its file:
-    auxv_from_file("/proc/self/auxv")
 }
 
 /// Tries to read the `key` from the auxiliary vector by calling the
 /// dynamically-linked `getauxval` function. If the function is not linked,
 /// this function return `Err`.
+#[cfg(feature = "std_detect_dlsym_getauxval")]
 fn getauxval(key: usize) -> Result<usize, ()> {
     use libc;
     pub type F = unsafe extern "C" fn(usize) -> usize;
@@ -98,6 +130,7 @@ fn getauxval(key: usize) -> Result<usize, ()> {
 
 /// Tries to read the auxiliary vector from the `file`. If this fails, this
 /// function returns `Err`.
+#[cfg(feature = "std_detect_file_io")]
 fn auxv_from_file(file: &str) -> Result<AuxVec, ()> {
     let mut file = File::open(file).map_err(|_| ())?;
 
@@ -117,6 +150,7 @@ fn auxv_from_file(file: &str) -> Result<AuxVec, ()> {
 
 /// Tries to interpret the `buffer` as an auxiliary vector. If that fails, this
 /// function returns `Err`.
+#[cfg(feature = "std_detect_file_io")]
 fn auxv_from_buf(buf: &[usize; 64]) -> Result<AuxVec, ()> {
     // Targets with only AT_HWCAP:
     #[cfg(any(target_arch = "aarch64", target_arch = "mips",
@@ -157,6 +191,7 @@ mod tests {
 
     // Reads the Auxiliary Vector key from /proc/self/auxv
     // using the auxv crate.
+    #[cfg(feature = "std_detect_file_io")]
     fn auxv_crate_getprocfs(key: usize) -> Option<usize> {
         use self::auxv_crate::AuxvType;
         use self::auxv_crate::procfs::search_procfs_auxv;
@@ -210,6 +245,7 @@ mod tests {
         }
     }
 
+    #[cfg(feature = "std_detect_file_io")]
     cfg_if! {
         if #[cfg(target_arch = "arm")] {
             #[test]
@@ -244,6 +280,7 @@ mod tests {
     }
 
     #[test]
+    #[cfg(feature = "std_detect_file_io")]
     fn auxv_dump_procfs() {
         if let Ok(auxvec) = auxv_from_file("/proc/self/auxv") {
             println!("{:?}", auxvec);

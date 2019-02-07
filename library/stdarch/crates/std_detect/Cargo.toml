@@ -23,9 +23,14 @@ is-it-maintained-open-issues = { repository = "rust-lang-nursery/stdsimd" }
 maintenance = { status = "experimental" }
 
 [dependencies]
-libc = "0.2"
+libc = { version = "0.2", optional = true, default-features = false }
 cfg-if = "0.1"
 
 [dev-dependencies]
 auxv = "0.3.3"
 cupid = "0.6.0"
+
+[features]
+default = [ "std_detect_dlsym_getauxval", "std_detect_file_io" ]
+std_detect_file_io = []
+std_detect_dlsym_getauxval = [ "libc" ]

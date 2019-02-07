@@ -58,12 +58,6 @@ cargo_test() {
         fi
     fi
     cmd="$cmd ${subcmd} --target=$TARGET $1"
-    if [ "$NOSTD" = "1" ]
-    then
-        cmd="$cmd -p core_arch"
-    else
-        cmd="$cmd -p core_arch -p std_detect -p stdsimd_examples"
-    fi
     cmd="$cmd -- $2"
     # Un-commenting this disables the test output and shows only a summary:
     #if [ "$NORUN" != "1" ]
@@ -88,8 +82,25 @@ cargo_output() {
 }
 
 cargo_setup
-cargo_test
-cargo_test "--release"
+
+CORE_ARCH="--manifest-path=crates/core_arch/Cargo.toml"
+STD_DETECT="--manifest-path=crates/std_detect/Cargo.toml"
+STDSIMD_EXAMPLES="--manifest-path=examples/Cargo.toml"
+cargo_test "${CORE_ARCH}"
+cargo_test "${CORE_ARCH} --release"
+if [ "$NOSTD" != "1" ]; then
+    cargo_test "${STD_DETECT}"
+    cargo_test "${STD_DETECT} --release"
+
+    cargo_test "${STD_DETECT} --no-default-features"
+    cargo_test "${STD_DETECT} --no-default-features --features=std_detect_file_io"
+    cargo_test "${STD_DETECT} --no-default-features --features=std_detect_dlsym_getauxval"
+    cargo_test "${STD_DETECT} --no-default-features --features=std_detect_dlsym_getauxval,std_detect_file_io"
+
+    cargo_test "${STDSIMD_EXAMPLES}"
+    cargo_test "${STDSIMD_EXAMPLES} --release"
+fi
+
 cargo_output
 
 # Test targets compiled with extra features.

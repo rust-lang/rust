@@ -1,6 +1,8 @@
 //! Run-time feature detection on Linux
 
 mod auxvec;
+
+#[cfg(feature = "std_detect_file_io")]
 mod cpuinfo;
 
 cfg_if! {

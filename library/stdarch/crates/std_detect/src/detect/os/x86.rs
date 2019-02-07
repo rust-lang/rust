@@ -1,10 +1,11 @@
 //! x86 run-time feature detection is OS independent.
 
-use core::{prelude::v1::*, mem};
 #[cfg(target_arch = "x86")]
-use core::arch::x86::*;
+use arch::x86::*;
 #[cfg(target_arch = "x86_64")]
-use core::arch::x86_64::*;
+use arch::x86_64::*;
+
+use mem;
 
 use crate::detect::{Feature, cache, bit};
 

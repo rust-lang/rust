@@ -24,6 +24,22 @@ run-time feature detection support than the one offered by Rust's standard
 library. We intend to make `std_detect` more flexible and configurable in this
 regard to better serve the needs of `#[no_std]` targets. 
 
+# Features
+
+* `std_detect_dlsym_getauxval` (enabled by default, requires `libc`): Enable to
+use `libc::dlsym` to query whether [`getauxval`] is linked into the binary. When
+this is not the case, this feature allows other fallback methods to perform
+run-time feature detection. When this feature is disabled, `std_detect` assumes
+that [`getauxval`] is linked to the binary. If that is not the case the behavior
+is undefined.
+
+* `std_detect_file_io` (enabled by default, requires `std`): Enable to perform run-time feature
+detection using file APIs (e.g. `/proc/cpuinfo`, etc.) if other more performant
+methods fail. This feature requires `libstd` as a dependency, preventing the
+crate from working on applications in which `std` is not available.
+
+[`getauxval`]: http://man7.org/linux/man-pages/man3/getauxval.3.html
+
 # Platform support
 
 * All `x86`/`x86_64` targets are supported on all platforms by querying the
