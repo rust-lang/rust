@@ -659,9 +659,10 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
                                 if decl.output.span().overlaps(span) && blk.expr.is_none() &&
                                     "()" == &trait_ref.self_ty().to_string()
                                 {
-                                    // When encountering a method with a trait bound not satisfied
-                                    // in the return type with a body that has no return, suggest
-                                    // removal of semicolon on last statement.
+                                    // FIXME(estebank): When encountering a method with a trait
+                                    // bound not satisfied in the return type with a body that has
+                                    // no return, suggest removal of semicolon on last statement.
+                                    // Once that is added, close #54771.
                                     if let Some(ref stmt) = blk.stmts.last() {
                                         let sp = self.tcx.sess.source_map().end_point(stmt.span);
                                         err.span_label(sp, "consider removing this semicolon");
