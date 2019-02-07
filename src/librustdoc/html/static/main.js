@@ -150,8 +150,7 @@ if (!DOMTokenList.prototype.remove) {
     }
 
     function browserSupportsHistoryApi() {
-        return document.location.protocol != "file:" &&
-          window.history && typeof window.history.pushState === "function";
+        return window.history && typeof window.history.pushState === "function";
     }
 
     var main = document.getElementById("main");
