@@ -2516,7 +2516,7 @@ impl str {
         // is_char_boundary checks that the index is in [0, .len()]
         if self.is_char_boundary(mid) {
             let len = self.len();
-            let ptr = self.as_ptr() as *mut u8;
+            let ptr = self.as_mut_ptr();
             unsafe {
                 (from_utf8_unchecked_mut(slice::from_raw_parts_mut(ptr, mid)),
                  from_utf8_unchecked_mut(slice::from_raw_parts_mut(
