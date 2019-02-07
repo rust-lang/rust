@@ -1642,20 +1642,6 @@ fn main() {
 ```
 "##,
 
-E0670: r##"
-Const parameters cannot depend on type parameters.
-The following is therefore invalid:
-
-```compile_fail,E0670
-#![feature(const_generics)]
-
-fn const_id<T, const N: T>() -> T {
-    // ERROR: const parameters cannot depend on type parameters
-    N
-}
-```
-"##,
-
 }
 
 register_diagnostics! {
