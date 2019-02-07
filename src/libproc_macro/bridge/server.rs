@@ -131,7 +131,7 @@ pub trait ExecutionStrategy {
         &self,
         dispatcher: &mut impl DispatcherTrait,
         input: Buffer<u8>,
-        run_client: extern "C" fn(Bridge, D) -> Buffer<u8>,
+        run_client: extern "C" fn(Bridge<'_>, D) -> Buffer<u8>,
         client_data: D,
     ) -> Buffer<u8>;
 }
@@ -143,7 +143,7 @@ impl ExecutionStrategy for SameThread {
         &self,
         dispatcher: &mut impl DispatcherTrait,
         input: Buffer<u8>,
-        run_client: extern "C" fn(Bridge, D) -> Buffer<u8>,
+        run_client: extern "C" fn(Bridge<'_>, D) -> Buffer<u8>,
         client_data: D,
     ) -> Buffer<u8> {
         let mut dispatch = |b| dispatcher.dispatch(b);
@@ -168,7 +168,7 @@ impl ExecutionStrategy for CrossThread1 {
         &self,
         dispatcher: &mut impl DispatcherTrait,
         input: Buffer<u8>,
-        run_client: extern "C" fn(Bridge, D) -> Buffer<u8>,
+        run_client: extern "C" fn(Bridge<'_>, D) -> Buffer<u8>,
         client_data: D,
     ) -> Buffer<u8> {
         use std::sync::mpsc::channel;
@@ -206,7 +206,7 @@ impl ExecutionStrategy for CrossThread2 {
         &self,
         dispatcher: &mut impl DispatcherTrait,
         input: Buffer<u8>,
-        run_client: extern "C" fn(Bridge, D) -> Buffer<u8>,
+        run_client: extern "C" fn(Bridge<'_>, D) -> Buffer<u8>,
         client_data: D,
     ) -> Buffer<u8> {
         use std::sync::{Arc, Mutex};
@@ -273,7 +273,7 @@ fn run_server<
     handle_counters: &'static client::HandleCounters,
     server: S,
     input: I,
-    run_client: extern "C" fn(Bridge, D) -> Buffer<u8>,
+    run_client: extern "C" fn(Bridge<'_>, D) -> Buffer<u8>,
     client_data: D,
 ) -> Result<O, PanicMessage> {
     let mut dispatcher = Dispatcher {
@@ -289,7 +289,7 @@ fn run_server<
     Result::decode(&mut &b[..], &mut dispatcher.handle_store)
 }
 
-impl client::Client<fn(::TokenStream) -> ::TokenStream> {
+impl client::Client<fn(crate::TokenStream) -> crate::TokenStream> {
     pub fn run<S: Server>(
         &self,
         strategy: &impl ExecutionStrategy,
@@ -313,7 +313,7 @@ impl client::Client<fn(::TokenStream) -> ::TokenStream> {
     }
 }
 
-impl client::Client<fn(::TokenStream, ::TokenStream) -> ::TokenStream> {
+impl client::Client<fn(crate::TokenStream, crate::TokenStream) -> crate::TokenStream> {
     pub fn run<S: Server>(
         &self,
         strategy: &impl ExecutionStrategy,

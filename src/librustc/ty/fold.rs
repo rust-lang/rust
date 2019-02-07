@@ -29,12 +29,12 @@
 //! These methods return true to indicate that the visitor has found what it is looking for
 //! and does not need to visit anything else.
 
-use hir::def_id::DefId;
-use ty::{self, Binder, Ty, TyCtxt, TypeFlags};
+use crate::hir::def_id::DefId;
+use crate::ty::{self, Binder, Ty, TyCtxt, TypeFlags};
 
 use std::collections::BTreeMap;
 use std::fmt;
-use util::nodemap::FxHashSet;
+use crate::util::nodemap::FxHashSet;
 
 /// The TypeFoldable trait is implemented for every type that can be folded.
 /// Basically, every type that has a corresponding method in TypeFolder.

@@ -1,16 +1,16 @@
-use hir::def_id::DefId;
-use hir;
-use hir::Node;
-use infer::{self, InferCtxt, InferOk, TypeVariableOrigin};
-use infer::outlives::free_region_map::FreeRegionRelations;
+use crate::hir::def_id::DefId;
+use crate::hir;
+use crate::hir::Node;
+use crate::infer::{self, InferCtxt, InferOk, TypeVariableOrigin};
+use crate::infer::outlives::free_region_map::FreeRegionRelations;
 use rustc_data_structures::fx::FxHashMap;
 use syntax::ast;
-use traits::{self, PredicateObligation};
-use ty::{self, Ty, TyCtxt, GenericParamDefKind};
-use ty::fold::{BottomUpFolder, TypeFoldable, TypeFolder};
-use ty::outlives::Component;
-use ty::subst::{Kind, Substs, UnpackedKind};
-use util::nodemap::DefIdMap;
+use crate::traits::{self, PredicateObligation};
+use crate::ty::{self, Ty, TyCtxt, GenericParamDefKind};
+use crate::ty::fold::{BottomUpFolder, TypeFoldable, TypeFolder};
+use crate::ty::outlives::Component;
+use crate::ty::subst::{Kind, Substs, UnpackedKind};
+use crate::util::nodemap::DefIdMap;
 
 pub type OpaqueTypeMap<'tcx> = DefIdMap<OpaqueTypeDecl<'tcx>>;
 

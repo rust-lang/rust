@@ -1,9 +1,9 @@
 use chalk_engine;
 use smallvec::SmallVec;
-use traits;
-use traits::project::Normalized;
-use ty::fold::{TypeFoldable, TypeFolder, TypeVisitor};
-use ty::{self, Lift, TyCtxt};
+use crate::traits;
+use crate::traits::project::Normalized;
+use crate::ty::fold::{TypeFoldable, TypeFolder, TypeVisitor};
+use crate::ty::{self, Lift, TyCtxt};
 use syntax::symbol::InternedString;
 
 use std::fmt;
@@ -163,7 +163,7 @@ impl<'tcx> fmt::Debug for traits::MismatchedProjectionTypes<'tcx> {
 
 impl<'tcx> fmt::Display for traits::WhereClause<'tcx> {
     fn fmt(&self, fmt: &mut fmt::Formatter<'_>) -> fmt::Result {
-        use traits::WhereClause::*;
+        use crate::traits::WhereClause::*;
 
         // Bypass ppaux because it does not print out anonymous regions.
         fn write_region_name<'tcx>(
@@ -206,7 +206,7 @@ impl<'tcx> fmt::Display for traits::WhereClause<'tcx> {
 
 impl<'tcx> fmt::Display for traits::WellFormed<'tcx> {
     fn fmt(&self, fmt: &mut fmt::Formatter<'_>) -> fmt::Result {
-        use traits::WellFormed::*;
+        use crate::traits::WellFormed::*;
 
         match self {
             Trait(trait_ref) => write!(fmt, "WellFormed({})", trait_ref),
@@ -217,7 +217,7 @@ impl<'tcx> fmt::Display for traits::WellFormed<'tcx> {
 
 impl<'tcx> fmt::Display for traits::FromEnv<'tcx> {
     fn fmt(&self, fmt: &mut fmt::Formatter<'_>) -> fmt::Result {
-        use traits::FromEnv::*;
+        use crate::traits::FromEnv::*;
 
         match self {
             Trait(trait_ref) => write!(fmt, "FromEnv({})", trait_ref),
@@ -228,7 +228,7 @@ impl<'tcx> fmt::Display for traits::FromEnv<'tcx> {
 
 impl<'tcx> fmt::Display for traits::DomainGoal<'tcx> {
     fn fmt(&self, fmt: &mut fmt::Formatter<'_>) -> fmt::Result {
-        use traits::DomainGoal::*;
+        use crate::traits::DomainGoal::*;
 
         match self {
             Holds(wc) => write!(fmt, "{}", wc),
@@ -246,7 +246,7 @@ impl<'tcx> fmt::Display for traits::DomainGoal<'tcx> {
 
 impl fmt::Display for traits::QuantifierKind {
     fn fmt(&self, fmt: &mut fmt::Formatter<'_>) -> fmt::Result {
-        use traits::QuantifierKind::*;
+        use crate::traits::QuantifierKind::*;
 
         match self {
             Universal => write!(fmt, "forall"),
@@ -361,7 +361,7 @@ impl<'tcx> TypeVisitor<'tcx> for BoundNamesCollector {
 
 impl<'tcx> fmt::Display for traits::Goal<'tcx> {
     fn fmt(&self, fmt: &mut fmt::Formatter<'_>) -> fmt::Result {
-        use traits::GoalKind::*;
+        use crate::traits::GoalKind::*;
 
         match self {
             Implies(hypotheses, goal) => {
@@ -420,7 +420,7 @@ impl<'tcx> fmt::Display for traits::ProgramClause<'tcx> {
 
 impl<'tcx> fmt::Display for traits::Clause<'tcx> {
     fn fmt(&self, fmt: &mut fmt::Formatter<'_>) -> fmt::Result {
-        use traits::Clause::*;
+        use crate::traits::Clause::*;
 
         match self {
             Implies(clause) => write!(fmt, "{}", clause),

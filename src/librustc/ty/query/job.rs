@@ -1,25 +1,27 @@
 #![allow(warnings)]
 
 use std::mem;
+use std::process;
+use std::{fmt, ptr};
+
 use rustc_data_structures::fx::FxHashSet;
 use rustc_data_structures::sync::{Lock, LockGuard, Lrc, Weak};
 use rustc_data_structures::OnDrop;
 use syntax_pos::Span;
-use ty::tls;
-use ty::query::Query;
-use ty::query::plumbing::CycleError;
+
+use crate::ty::tls;
+use crate::ty::query::Query;
+use crate::ty::query::plumbing::CycleError;
 #[cfg(not(parallel_compiler))]
-use ty::query::{
+use crate::ty::query::{
     plumbing::TryGetJob,
     config::QueryDescription,
 };
-use ty::context::TyCtxt;
-use std::process;
-use std::{fmt, ptr};
+use crate::ty::context::TyCtxt;
 
 #[cfg(parallel_compiler)]
 use {
-    rayon_core,
+    rustc_rayon_core as rayon_core,
     parking_lot::{Mutex, Condvar},
     std::sync::atomic::Ordering,
     std::thread,
@@ -89,7 +91,7 @@ impl<'tcx> QueryJob<'tcx> {
     /// For single threaded rustc there's no concurrent jobs running, so if we are waiting for any
     /// query that means that there is a query cycle, thus this always running a cycle error.
     #[cfg(parallel_compiler)]
-    pub(super) fn await<'lcx>(
+    pub(super) fn r#await<'lcx>(
         &self,
         tcx: TyCtxt<'_, 'tcx, 'lcx>,
         span: Span,
@@ -101,7 +103,7 @@ impl<'tcx> QueryJob<'tcx> {
                 cycle: Lock::new(None),
                 condvar: Condvar::new(),
             });
-            self.latch.await(&waiter);
+            self.latch.r#await(&waiter);
             // FIXME: Get rid of this lock. We have ownership of the QueryWaiter
             // although another thread may still have a Lrc reference so we cannot
             // use Lrc::get_mut
@@ -200,7 +202,7 @@ impl<'tcx> QueryLatch<'tcx> {
     }
 
     /// Awaits the caller on this latch by blocking the current thread.
-    fn await(&self, waiter: &Lrc<QueryWaiter<'tcx>>) {
+    fn r#await(&self, waiter: &Lrc<QueryWaiter<'tcx>>) {
         let mut info = self.info.lock();
         if !info.complete {
             // We push the waiter on to the `waiters` list. It can be accessed inside

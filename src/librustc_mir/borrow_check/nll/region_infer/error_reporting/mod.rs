@@ -205,7 +205,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
             for constraint in self.constraint_graph
                 .outgoing_edges(r, &self.constraints, fr_static)
             {
-                assert_eq!(constraint.sup, r);
+                debug_assert_eq!(constraint.sup, r);
                 let sub_region = constraint.sub;
                 if let Trace::NotVisited = context[sub_region] {
                     context[sub_region] = Trace::FromOutlivesConstraint(constraint);

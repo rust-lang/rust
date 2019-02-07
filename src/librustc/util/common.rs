@@ -12,10 +12,10 @@ use std::time::{Duration, Instant};
 
 use std::sync::mpsc::{Sender};
 use syntax_pos::{SpanData};
-use ty::TyCtxt;
-use dep_graph::{DepNode};
+use crate::ty::TyCtxt;
+use crate::dep_graph::{DepNode};
 use lazy_static;
-use session::Session;
+use crate::session::Session;
 
 // The name of the associated type for `Fn` return types
 pub const FN_OUTPUT_NAME: &str = "Output";

@@ -1,7 +1,7 @@
-use infer::InferCtxt;
-use ty::{self, Ty, TyCtxt, ToPredicate};
-use traits::Obligation;
-use hir::def_id::DefId;
+use crate::infer::InferCtxt;
+use crate::ty::{self, Ty, TyCtxt, ToPredicate};
+use crate::traits::Obligation;
+use crate::hir::def_id::DefId;
 
 use super::{ChalkFulfillmentContext, FulfillmentContext, FulfillmentError};
 use super::{ObligationCause, PredicateObligation};

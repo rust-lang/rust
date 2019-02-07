@@ -1,13 +1,13 @@
 // Inline assembly support.
 //
-use self::State::*;
+use State::*;
 
 use rustc_data_structures::thin_vec::ThinVec;
 
-use errors::DiagnosticBuilder;
+use crate::errors::DiagnosticBuilder;
+
 use syntax::ast;
-use syntax::ext::base;
-use syntax::ext::base::*;
+use syntax::ext::base::{self, *};
 use syntax::feature_gate;
 use syntax::parse::{self, token};
 use syntax::ptr::P;
@@ -15,6 +15,7 @@ use syntax::symbol::Symbol;
 use syntax::ast::AsmDialect;
 use syntax_pos::Span;
 use syntax::tokenstream;
+use syntax::{span_err, struct_span_err};
 
 enum State {
     Asm,
@@ -40,7 +41,7 @@ impl State {
 
 const OPTIONS: &[&str] = &["volatile", "alignstack", "intel"];
 
-pub fn expand_asm<'cx>(cx: &'cx mut ExtCtxt,
+pub fn expand_asm<'cx>(cx: &'cx mut ExtCtxt<'_>,
                        sp: Span,
                        tts: &[tokenstream::TokenTree])
                        -> Box<dyn base::MacResult + 'cx> {

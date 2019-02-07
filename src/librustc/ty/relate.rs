@@ -4,18 +4,18 @@
 //! types or regions but can be other things. Examples of type relations are
 //! subtyping, type equality, etc.
 
-use hir::def_id::DefId;
-use ty::subst::{Kind, UnpackedKind, Substs};
-use ty::{self, Ty, TyCtxt, TypeFoldable};
-use ty::error::{ExpectedFound, TypeError};
-use mir::interpret::GlobalId;
-use util::common::ErrorReported;
+use crate::hir::def_id::DefId;
+use crate::ty::subst::{Kind, UnpackedKind, Substs};
+use crate::ty::{self, Ty, TyCtxt, TypeFoldable};
+use crate::ty::error::{ExpectedFound, TypeError};
+use crate::mir::interpret::GlobalId;
+use crate::util::common::ErrorReported;
 use syntax_pos::DUMMY_SP;
 use std::rc::Rc;
 use std::iter;
 use rustc_target::spec::abi;
-use hir as ast;
-use traits;
+use crate::hir as ast;
+use crate::traits;
 
 pub type RelateResult<'tcx, T> = Result<T, TypeError<'tcx>>;
 
@@ -588,7 +588,7 @@ impl<'tcx> Relate<'tcx> for &'tcx ty::List<ty::ExistentialPredicate<'tcx>> {
 
         let tcx = relation.tcx();
         let v = a.iter().zip(b.iter()).map(|(ep_a, ep_b)| {
-            use ty::ExistentialPredicate::*;
+            use crate::ty::ExistentialPredicate::*;
             match (*ep_a, *ep_b) {
                 (Trait(ref a), Trait(ref b)) => Ok(Trait(relation.relate(a, b)?)),
                 (Projection(ref a), Projection(ref b)) => Ok(Projection(relation.relate(a, b)?)),
@@ -746,7 +746,7 @@ impl<'tcx> Relate<'tcx> for traits::WhereClause<'tcx> {
     ) -> RelateResult<'tcx, traits::WhereClause<'tcx>>
         where R: TypeRelation<'a, 'gcx, 'tcx>, 'gcx: 'tcx, 'tcx: 'a
     {
-        use traits::WhereClause::*;
+        use crate::traits::WhereClause::*;
         match (a, b) {
             (Implemented(a_pred), Implemented(b_pred)) => {
                 Ok(Implemented(relation.relate(a_pred, b_pred)?))
@@ -783,7 +783,7 @@ impl<'tcx> Relate<'tcx> for traits::WellFormed<'tcx> {
     ) -> RelateResult<'tcx, traits::WellFormed<'tcx>>
         where R: TypeRelation<'a, 'gcx, 'tcx>, 'gcx: 'tcx, 'tcx: 'a
     {
-        use traits::WellFormed::*;
+        use crate::traits::WellFormed::*;
         match (a, b) {
             (Trait(a_pred), Trait(b_pred)) => Ok(Trait(relation.relate(a_pred, b_pred)?)),
             (Ty(a_ty), Ty(b_ty)) => Ok(Ty(relation.relate(a_ty, b_ty)?)),
@@ -800,7 +800,7 @@ impl<'tcx> Relate<'tcx> for traits::FromEnv<'tcx> {
     ) -> RelateResult<'tcx, traits::FromEnv<'tcx>>
         where R: TypeRelation<'a, 'gcx, 'tcx>, 'gcx: 'tcx, 'tcx: 'a
     {
-        use traits::FromEnv::*;
+        use crate::traits::FromEnv::*;
         match (a, b) {
             (Trait(a_pred), Trait(b_pred)) => Ok(Trait(relation.relate(a_pred, b_pred)?)),
             (Ty(a_ty), Ty(b_ty)) => Ok(Ty(relation.relate(a_ty, b_ty)?)),
@@ -817,7 +817,7 @@ impl<'tcx> Relate<'tcx> for traits::DomainGoal<'tcx> {
     ) -> RelateResult<'tcx, traits::DomainGoal<'tcx>>
         where R: TypeRelation<'a, 'gcx, 'tcx>, 'gcx: 'tcx, 'tcx: 'a
     {
-        use traits::DomainGoal::*;
+        use crate::traits::DomainGoal::*;
         match (a, b) {
             (Holds(a_wc), Holds(b_wc)) => Ok(Holds(relation.relate(a_wc, b_wc)?)),
             (WellFormed(a_wf), WellFormed(b_wf)) => Ok(WellFormed(relation.relate(a_wf, b_wf)?)),
@@ -840,7 +840,7 @@ impl<'tcx> Relate<'tcx> for traits::Goal<'tcx> {
     ) -> RelateResult<'tcx, traits::Goal<'tcx>>
         where R: TypeRelation<'a, 'gcx, 'tcx>, 'gcx: 'tcx, 'tcx: 'a
     {
-        use traits::GoalKind::*;
+        use crate::traits::GoalKind::*;
         match (a, b) {
             (Implies(a_clauses, a_goal), Implies(b_clauses, b_goal)) => {
                 let clauses = relation.relate(a_clauses, b_clauses)?;
@@ -904,7 +904,7 @@ impl<'tcx> Relate<'tcx> for traits::Clause<'tcx> {
     ) -> RelateResult<'tcx, traits::Clause<'tcx>>
         where R: TypeRelation<'a, 'gcx, 'tcx>, 'gcx: 'tcx, 'tcx: 'a
     {
-        use traits::Clause::*;
+        use crate::traits::Clause::*;
         match (a, b) {
             (Implies(a_clause), Implies(b_clause)) => {
                 let clause = relation.relate(a_clause, b_clause)?;

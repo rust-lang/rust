@@ -1,15 +1,15 @@
-use hir::def_id::DefId;
-use hir::map::definitions::DefPathData;
-use middle::region;
-use ty::subst::{self, Subst};
-use ty::{BrAnon, BrEnv, BrFresh, BrNamed};
-use ty::{Bool, Char, Adt};
-use ty::{Error, Str, Array, Slice, Float, FnDef, FnPtr};
-use ty::{Param, Bound, RawPtr, Ref, Never, Tuple};
-use ty::{Closure, Generator, GeneratorWitness, Foreign, Projection, Opaque};
-use ty::{Placeholder, UnnormalizedProjection, Dynamic, Int, Uint, Infer};
-use ty::{self, Ty, TyCtxt, TypeFoldable, GenericParamCount, GenericParamDefKind};
-use util::nodemap::FxHashSet;
+use crate::hir::def_id::DefId;
+use crate::hir::map::definitions::DefPathData;
+use crate::middle::region;
+use crate::ty::subst::{self, Subst};
+use crate::ty::{BrAnon, BrEnv, BrFresh, BrNamed};
+use crate::ty::{Bool, Char, Adt};
+use crate::ty::{Error, Str, Array, Slice, Float, FnDef, FnPtr};
+use crate::ty::{Param, Bound, RawPtr, Ref, Never, Tuple};
+use crate::ty::{Closure, Generator, GeneratorWitness, Foreign, Projection, Opaque};
+use crate::ty::{Placeholder, UnnormalizedProjection, Dynamic, Int, Uint, Infer};
+use crate::ty::{self, Ty, TyCtxt, TypeFoldable, GenericParamCount, GenericParamDefKind};
+use crate::util::nodemap::FxHashSet;
 
 use std::cell::Cell;
 use std::fmt;
@@ -18,7 +18,7 @@ use std::usize;
 use rustc_target::spec::abi::Abi;
 use syntax::ast::CRATE_NODE_ID;
 use syntax::symbol::{Symbol, InternedString};
-use hir;
+use crate::hir;
 
 /// The "region highlights" are used to control region printing during
 /// specific error messages. When a "region highlight" is enabled, it

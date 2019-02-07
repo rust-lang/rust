@@ -54,19 +54,13 @@
        html_favicon_url = "https://doc.rust-lang.org/favicon.ico",
        html_root_url = "https://doc.rust-lang.org/nightly/")]
 
-#![feature(nll)]
 #![feature(rustc_diagnostic_macros)]
 
 #![recursion_limit="256"]
 
-#[macro_use] extern crate syntax;
+#![deny(rust_2018_idioms)]
 
-extern crate rustc;
-extern crate rustc_metadata;
-extern crate syntax_pos;
-extern crate rustc_errors as errors;
-
-pub use self::registry::Registry;
+pub use registry::Registry;
 
 mod diagnostics;
 pub mod registry;

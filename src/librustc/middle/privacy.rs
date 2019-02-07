@@ -2,7 +2,7 @@
 //! outside their scopes. This pass will also generate a set of exported items
 //! which are available for use externally when compiled as a library.
 
-use util::nodemap::{DefIdSet, FxHashMap};
+use crate::util::nodemap::{DefIdSet, FxHashMap};
 
 use std::hash::Hash;
 use std::fmt;

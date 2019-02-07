@@ -1,9 +1,9 @@
 // Type substitutions.
 
-use hir::def_id::DefId;
-use infer::canonical::Canonical;
-use ty::{self, Lift, List, Ty, TyCtxt};
-use ty::fold::{TypeFoldable, TypeFolder, TypeVisitor};
+use crate::hir::def_id::DefId;
+use crate::infer::canonical::Canonical;
+use crate::ty::{self, Lift, List, Ty, TyCtxt};
+use crate::ty::fold::{TypeFoldable, TypeFolder, TypeVisitor};
 
 use serialize::{self, Encodable, Encoder, Decodable, Decoder};
 use syntax_pos::{Span, DUMMY_SP};

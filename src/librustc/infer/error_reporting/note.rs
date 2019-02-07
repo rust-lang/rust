@@ -1,8 +1,8 @@
-use infer::{self, InferCtxt, SubregionOrigin};
-use middle::region;
-use ty::{self, Region};
-use ty::error::TypeError;
-use errors::DiagnosticBuilder;
+use crate::infer::{self, InferCtxt, SubregionOrigin};
+use crate::middle::region;
+use crate::ty::{self, Region};
+use crate::ty::error::TypeError;
+use crate::errors::DiagnosticBuilder;
 
 impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
     pub(super) fn note_region_origin(&self,

@@ -3,12 +3,11 @@ use syntax::ext::base;
 use syntax::ext::build::AstBuilder;
 use syntax::symbol::Symbol;
 use syntax::tokenstream;
-use syntax_pos;
 
 use std::string::String;
 
 pub fn expand_syntax_ext(
-    cx: &mut base::ExtCtxt,
+    cx: &mut base::ExtCtxt<'_>,
     sp: syntax_pos::Span,
     tts: &[tokenstream::TokenTree],
 ) -> Box<dyn base::MacResult + 'static> {

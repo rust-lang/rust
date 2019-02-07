@@ -1,9 +1,7 @@
-#[macro_use]
-extern crate rustc_apfloat;
-
 use rustc_apfloat::{Category, ExpInt, IEK_INF, IEK_NAN, IEK_ZERO};
 use rustc_apfloat::{Float, FloatConvert, ParseError, Round, Status};
 use rustc_apfloat::ieee::{Half, Single, Double, Quad, X87DoubleExtended};
+use rustc_apfloat::unpack;
 
 trait SingleExt {
     fn from_f32(input: f32) -> Self;

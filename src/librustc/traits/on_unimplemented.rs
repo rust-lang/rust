@@ -1,9 +1,9 @@
 use fmt_macros::{Parser, Piece, Position};
 
-use hir::def_id::DefId;
-use ty::{self, TyCtxt, GenericParamDefKind};
-use util::common::ErrorReported;
-use util::nodemap::FxHashMap;
+use crate::hir::def_id::DefId;
+use crate::ty::{self, TyCtxt, GenericParamDefKind};
+use crate::util::common::ErrorReported;
+use crate::util::nodemap::FxHashMap;
 
 use syntax::ast::{MetaItem, NestedMetaItem};
 use syntax::attr;

@@ -4,13 +4,13 @@
 // and `#[unstable (..)]`), but are not declared in one single location
 // (unlike lang features), which means we need to collect them instead.
 
-use ty::TyCtxt;
+use crate::ty::TyCtxt;
 use syntax::symbol::Symbol;
 use syntax::ast::{Attribute, MetaItem, MetaItemKind};
 use syntax_pos::Span;
-use hir::intravisit::{self, NestedVisitorMap, Visitor};
+use crate::hir::intravisit::{self, NestedVisitorMap, Visitor};
 use rustc_data_structures::fx::{FxHashSet, FxHashMap};
-use errors::DiagnosticId;
+use crate::errors::DiagnosticId;
 
 pub struct LibFeatures {
     // A map from feature to stabilisation version.

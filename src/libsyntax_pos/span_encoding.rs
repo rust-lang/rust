@@ -4,9 +4,9 @@
 // The encoding format for inline spans were obtained by optimizing over crates in rustc/libstd.
 // See https://internals.rust-lang.org/t/rfc-compiler-refactoring-spans/1357/28
 
-use GLOBALS;
-use {BytePos, SpanData};
-use hygiene::SyntaxContext;
+use crate::GLOBALS;
+use crate::{BytePos, SpanData};
+use crate::hygiene::SyntaxContext;
 
 use rustc_data_structures::fx::FxHashMap;
 use std::hash::{Hash, Hasher};

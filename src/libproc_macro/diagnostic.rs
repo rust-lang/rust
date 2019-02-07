@@ -1,4 +1,4 @@
-use Span;
+use crate::Span;
 
 /// An enum representing a diagnostic level.
 #[unstable(feature = "proc_macro_diagnostic", issue = "54140")]
@@ -80,7 +80,7 @@ macro_rules! diagnostic_child_methods {
 /// Iterator over the children diagnostics of a `Diagnostic`.
 #[derive(Debug, Clone)]
 #[unstable(feature = "proc_macro_diagnostic", issue = "54140")]
-pub struct Children<'a>(::std::slice::Iter<'a, Diagnostic>);
+pub struct Children<'a>(std::slice::Iter<'a, Diagnostic>);
 
 #[unstable(feature = "proc_macro_diagnostic", issue = "54140")]
 impl<'a> Iterator for Children<'a> {
@@ -161,22 +161,22 @@ impl Diagnostic {
 
     /// Returns an iterator over the children diagnostics of `self`.
     #[unstable(feature = "proc_macro_diagnostic", issue = "54140")]
-    pub fn children(&self) -> Children {
+    pub fn children(&self) -> Children<'_> {
         Children(self.children.iter())
     }
 
     /// Emit the diagnostic.
     #[unstable(feature = "proc_macro_diagnostic", issue = "54140")]
     pub fn emit(self) {
-        fn to_internal(spans: Vec<Span>) -> ::bridge::client::MultiSpan {
-            let mut multi_span = ::bridge::client::MultiSpan::new();
+        fn to_internal(spans: Vec<Span>) -> crate::bridge::client::MultiSpan {
+            let mut multi_span = crate::bridge::client::MultiSpan::new();
             for span in spans {
                 multi_span.push(span.0);
             }
             multi_span
         }
 
-        let mut diag = ::bridge::client::Diagnostic::new(
+        let mut diag = crate::bridge::client::Diagnostic::new(
             self.level,
             &self.message[..],
             to_internal(self.spans),

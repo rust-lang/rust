@@ -5,6 +5,7 @@
 use arena::DroplessArena;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::indexed_vec::Idx;
+use rustc_data_structures::newtype_index;
 use serialize::{Decodable, Decoder, Encodable, Encoder};
 
 use std::fmt;
@@ -12,8 +13,8 @@ use std::str;
 use std::cmp::{PartialEq, Ordering, PartialOrd, Ord};
 use std::hash::{Hash, Hasher};
 
-use hygiene::SyntaxContext;
-use {Span, DUMMY_SP, GLOBALS};
+use crate::hygiene::SyntaxContext;
+use crate::{Span, DUMMY_SP, GLOBALS};
 
 #[derive(Copy, Clone, Eq)]
 pub struct Ident {
@@ -100,13 +101,13 @@ impl Hash for Ident {
 }
 
 impl fmt::Debug for Ident {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "{}{:?}", self.name, self.span.ctxt())
     }
 }
 
 impl fmt::Display for Ident {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         fmt::Display::fmt(&self.name, f)
     }
 }
@@ -181,7 +182,7 @@ impl Symbol {
     pub fn as_str(self) -> LocalInternedString {
         with_interner(|interner| unsafe {
             LocalInternedString {
-                string: ::std::mem::transmute::<&str, &str>(interner.get(self))
+                string: std::mem::transmute::<&str, &str>(interner.get(self))
             }
         })
     }
@@ -198,7 +199,7 @@ impl Symbol {
 }
 
 impl fmt::Debug for Symbol {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let is_gensymed = with_interner(|interner| interner.is_gensymed(*self));
         if is_gensymed {
             write!(f, "{}({:?})", self, self.0)
@@ -209,7 +210,7 @@ impl fmt::Debug for Symbol {
 }
 
 impl fmt::Display for Symbol {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         fmt::Display::fmt(&self.as_str(), f)
     }
 }
@@ -226,7 +227,7 @@ impl Decodable for Symbol {
     }
 }
 
-impl<T: ::std::ops::Deref<Target=str>> PartialEq<T> for Symbol {
+impl<T: std::ops::Deref<Target=str>> PartialEq<T> for Symbol {
     fn eq(&self, other: &T) -> bool {
         self.as_str() == other.deref()
     }
@@ -335,7 +336,7 @@ macro_rules! declare_keywords {(
             };
         )*
 
-        impl ::std::str::FromStr for Keyword {
+        impl std::str::FromStr for Keyword {
             type Err = ();
 
             fn from_str(s: &str) -> Result<Self, ()> {
@@ -519,40 +520,40 @@ impl LocalInternedString {
     }
 }
 
-impl<U: ?Sized> ::std::convert::AsRef<U> for LocalInternedString
+impl<U: ?Sized> std::convert::AsRef<U> for LocalInternedString
 where
-    str: ::std::convert::AsRef<U>
+    str: std::convert::AsRef<U>
 {
     fn as_ref(&self) -> &U {
         self.string.as_ref()
     }
 }
 
-impl<T: ::std::ops::Deref<Target = str>> ::std::cmp::PartialEq<T> for LocalInternedString {
+impl<T: std::ops::Deref<Target = str>> std::cmp::PartialEq<T> for LocalInternedString {
     fn eq(&self, other: &T) -> bool {
         self.string == other.deref()
     }
 }
 
-impl ::std::cmp::PartialEq<LocalInternedString> for str {
+impl std::cmp::PartialEq<LocalInternedString> for str {
     fn eq(&self, other: &LocalInternedString) -> bool {
         self == other.string
     }
 }
 
-impl<'a> ::std::cmp::PartialEq<LocalInternedString> for &'a str {
+impl<'a> std::cmp::PartialEq<LocalInternedString> for &'a str {
     fn eq(&self, other: &LocalInternedString) -> bool {
         *self == other.string
     }
 }
 
-impl ::std::cmp::PartialEq<LocalInternedString> for String {
+impl std::cmp::PartialEq<LocalInternedString> for String {
     fn eq(&self, other: &LocalInternedString) -> bool {
         self == other.string
     }
 }
 
-impl<'a> ::std::cmp::PartialEq<LocalInternedString> for &'a String {
+impl<'a> std::cmp::PartialEq<LocalInternedString> for &'a String {
     fn eq(&self, other: &LocalInternedString) -> bool {
         *self == other.string
     }
@@ -561,19 +562,19 @@ impl<'a> ::std::cmp::PartialEq<LocalInternedString> for &'a String {
 impl !Send for LocalInternedString {}
 impl !Sync for LocalInternedString {}
 
-impl ::std::ops::Deref for LocalInternedString {
+impl std::ops::Deref for LocalInternedString {
     type Target = str;
     fn deref(&self) -> &str { self.string }
 }
 
 impl fmt::Debug for LocalInternedString {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         fmt::Debug::fmt(self.string, f)
     }
 }
 
 impl fmt::Display for LocalInternedString {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         fmt::Display::fmt(self.string, f)
     }
 }
@@ -640,7 +641,7 @@ impl Ord for InternedString {
     }
 }
 
-impl<T: ::std::ops::Deref<Target = str>> PartialEq<T> for InternedString {
+impl<T: std::ops::Deref<Target = str>> PartialEq<T> for InternedString {
     fn eq(&self, other: &T) -> bool {
         self.with(|string| string == other.deref())
     }
@@ -676,20 +677,20 @@ impl<'a> PartialEq<InternedString> for &'a String {
     }
 }
 
-impl ::std::convert::From<InternedString> for String {
+impl std::convert::From<InternedString> for String {
     fn from(val: InternedString) -> String {
         val.as_symbol().to_string()
     }
 }
 
 impl fmt::Debug for InternedString {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         self.with(|str| fmt::Debug::fmt(&str, f))
     }
 }
 
 impl fmt::Display for InternedString {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         self.with(|str| fmt::Display::fmt(&str, f))
     }
 }
@@ -709,7 +710,7 @@ impl Encodable for InternedString {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use Globals;
+    use crate::Globals;
 
     #[test]
     fn interner_tests() {

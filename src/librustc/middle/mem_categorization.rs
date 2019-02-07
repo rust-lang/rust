@@ -58,19 +58,19 @@ pub use self::Note::*;
 
 use self::Aliasability::*;
 
-use middle::region;
-use hir::def_id::{DefId, LocalDefId};
-use hir::Node;
-use infer::InferCtxt;
-use hir::def::{Def, CtorKind};
-use ty::adjustment;
-use ty::{self, Ty, TyCtxt};
-use ty::fold::TypeFoldable;
-use ty::layout::VariantIdx;
+use crate::middle::region;
+use crate::hir::def_id::{DefId, LocalDefId};
+use crate::hir::Node;
+use crate::infer::InferCtxt;
+use crate::hir::def::{Def, CtorKind};
+use crate::ty::adjustment;
+use crate::ty::{self, Ty, TyCtxt};
+use crate::ty::fold::TypeFoldable;
+use crate::ty::layout::VariantIdx;
 
-use hir::{MutImmutable, MutMutable, PatKind};
-use hir::pat_util::EnumerateAndAdjustIterator;
-use hir;
+use crate::hir::{MutImmutable, MutMutable, PatKind};
+use crate::hir::pat_util::EnumerateAndAdjustIterator;
+use crate::hir;
 use syntax::ast::{self, Name};
 use syntax_pos::Span;
 
@@ -80,7 +80,7 @@ use std::hash::{Hash, Hasher};
 use rustc_data_structures::sync::Lrc;
 use rustc_data_structures::indexed_vec::Idx;
 use std::rc::Rc;
-use util::nodemap::ItemLocalSet;
+use crate::util::nodemap::ItemLocalSet;
 
 #[derive(Clone, Debug, PartialEq)]
 pub enum Categorization<'tcx> {

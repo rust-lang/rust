@@ -8,10 +8,11 @@
       html_favicon_url = "https://doc.rust-lang.org/favicon.ico",
       html_root_url = "https://doc.rust-lang.org/nightly/")]
 
+#![deny(rust_2018_idioms)]
+
 #![feature(const_fn)]
 #![feature(crate_visibility_modifier)]
 #![feature(custom_attribute)]
-#![feature(nll)]
 #![feature(non_exhaustive)]
 #![feature(optin_builtin_traits)]
 #![feature(rustc_attrs)]
@@ -19,22 +20,10 @@
 #![feature(step_trait)]
 #![cfg_attr(not(stage0), feature(stdsimd))]
 
-extern crate arena;
-#[macro_use]
-extern crate rustc_data_structures;
-
-#[macro_use]
-extern crate scoped_tls;
-
 use serialize::{Encodable, Decodable, Encoder, Decoder};
 
-extern crate serialize;
+#[allow(unused_extern_crates)]
 extern crate serialize as rustc_serialize; // used by deriving
-
-#[macro_use]
-extern crate cfg_if;
-
-extern crate unicode_width;
 
 pub mod edition;
 pub mod hygiene;
@@ -74,7 +63,7 @@ impl Globals {
     }
 }
 
-scoped_thread_local!(pub static GLOBALS: Globals);
+scoped_tls::scoped_thread_local!(pub static GLOBALS: Globals);
 
 /// Differentiates between real files and common virtual files.
 #[derive(Debug, Eq, PartialEq, Clone, Ord, PartialOrd, Hash, RustcDecodable, RustcEncodable)]
@@ -100,8 +89,8 @@ pub enum FileName {
 }
 
 impl std::fmt::Display for FileName {
-    fn fmt(&self, fmt: &mut std::fmt::Formatter) -> std::fmt::Result {
-        use self::FileName::*;
+    fn fmt(&self, fmt: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        use FileName::*;
         match *self {
             Real(ref path) => write!(fmt, "{}", path.display()),
             Macros(ref name) => write!(fmt, "<{} macros>", name),
@@ -127,7 +116,7 @@ impl From<PathBuf> for FileName {
 
 impl FileName {
     pub fn is_real(&self) -> bool {
-        use self::FileName::*;
+        use FileName::*;
         match *self {
             Real(_) => true,
             Macros(_) |
@@ -143,7 +132,7 @@ impl FileName {
     }
 
     pub fn is_macros(&self) -> bool {
-        use self::FileName::*;
+        use FileName::*;
         match *self {
             Real(_) |
             Anon(_) |
@@ -611,7 +600,7 @@ impl serialize::UseSpecializedDecodable for Span {
     }
 }
 
-pub fn default_span_debug(span: Span, f: &mut fmt::Formatter) -> fmt::Result {
+pub fn default_span_debug(span: Span, f: &mut fmt::Formatter<'_>) -> fmt::Result {
     f.debug_struct("Span")
         .field("lo", &span.lo())
         .field("hi", &span.hi())
@@ -620,13 +609,13 @@ pub fn default_span_debug(span: Span, f: &mut fmt::Formatter) -> fmt::Result {
 }
 
 impl fmt::Debug for Span {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         SPAN_DEBUG.with(|span_debug| span_debug.get()(*self, f))
     }
 }
 
 impl fmt::Debug for SpanData {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         SPAN_DEBUG.with(|span_debug| span_debug.get()(Span::new(self.lo, self.hi, self.ctxt), f))
     }
 }
@@ -1009,7 +998,7 @@ impl Decodable for SourceFile {
                 // `crate_of_origin` has to be set by the importer.
                 // This value matches up with rustc::hir::def_id::INVALID_CRATE.
                 // That constant is not available here unfortunately :(
-                crate_of_origin: ::std::u32::MAX - 1,
+                crate_of_origin: std::u32::MAX - 1,
                 start_pos,
                 end_pos,
                 src: None,
@@ -1025,7 +1014,7 @@ impl Decodable for SourceFile {
 }
 
 impl fmt::Debug for SourceFile {
-    fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, fmt: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(fmt, "SourceFile({})", self.name)
     }
 }
@@ -1111,7 +1100,7 @@ impl SourceFile {
 
     /// Get a line from the list of pre-computed line-beginnings.
     /// The line number here is 0-based.
-    pub fn get_line(&self, line_number: usize) -> Option<Cow<str>> {
+    pub fn get_line(&self, line_number: usize) -> Option<Cow<'_, str>> {
         fn get_until_newline(src: &str, begin: usize) -> &str {
             // We can't use `lines.get(line_number+1)` because we might
             // be parsing when we call this function and thus the current
@@ -1353,7 +1342,7 @@ pub struct FileLines {
     pub lines: Vec<LineInfo>
 }
 
-thread_local!(pub static SPAN_DEBUG: Cell<fn(Span, &mut fmt::Formatter) -> fmt::Result> =
+thread_local!(pub static SPAN_DEBUG: Cell<fn(Span, &mut fmt::Formatter<'_>) -> fmt::Result> =
                 Cell::new(default_span_debug));
 
 #[derive(Debug)]

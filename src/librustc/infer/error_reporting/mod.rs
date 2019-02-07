@@ -48,19 +48,19 @@
 use super::lexical_region_resolve::RegionResolutionError;
 use super::region_constraints::GenericKind;
 use super::{InferCtxt, RegionVariableOrigin, SubregionOrigin, TypeTrace, ValuePairs};
-use infer::{self, SuppressRegionErrors};
+use crate::infer::{self, SuppressRegionErrors};
 
-use errors::{Applicability, DiagnosticBuilder, DiagnosticStyledString};
-use hir;
-use hir::def_id::DefId;
-use hir::Node;
-use middle::region;
+use crate::errors::{Applicability, DiagnosticBuilder, DiagnosticStyledString};
+use crate::hir;
+use crate::hir::def_id::DefId;
+use crate::hir::Node;
+use crate::middle::region;
 use std::{cmp, fmt};
 use syntax::ast::DUMMY_NODE_ID;
 use syntax_pos::{Pos, Span};
-use traits::{ObligationCause, ObligationCauseCode};
-use ty::error::TypeError;
-use ty::{self, subst::Subst, Region, Ty, TyCtxt, TyKind, TypeFoldable};
+use crate::traits::{ObligationCause, ObligationCauseCode};
+use crate::ty::error::TypeError;
+use crate::ty::{self, subst::Subst, Region, Ty, TyCtxt, TyKind, TypeFoldable};
 
 mod note;
 
@@ -1479,7 +1479,7 @@ enum FailureCode {
 impl<'tcx> ObligationCause<'tcx> {
     fn as_failure_code(&self, terr: &TypeError<'tcx>) -> FailureCode {
         use self::FailureCode::*;
-        use traits::ObligationCauseCode::*;
+        use crate::traits::ObligationCauseCode::*;
         match self.code {
             CompareImplMethodObligation { .. } => Error0308("method not compatible with trait"),
             MatchExpressionArm { source, .. } => Error0308(match source {
@@ -1509,7 +1509,7 @@ impl<'tcx> ObligationCause<'tcx> {
     }
 
     fn as_requirement_str(&self) -> &'static str {
-        use traits::ObligationCauseCode::*;
+        use crate::traits::ObligationCauseCode::*;
         match self.code {
             CompareImplMethodObligation { .. } => "method type is compatible with trait",
             ExprAssignable => "expression is assignable",

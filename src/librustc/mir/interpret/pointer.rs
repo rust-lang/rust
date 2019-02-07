@@ -1,5 +1,5 @@
-use mir;
-use ty::layout::{self, HasDataLayout, Size};
+use crate::mir;
+use crate::ty::layout::{self, HasDataLayout, Size};
 
 use super::{
     AllocId, EvalResult, InboundsCheck,

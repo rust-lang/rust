@@ -10,11 +10,11 @@
 
 use super::elaborate_predicates;
 
-use hir::def_id::DefId;
-use lint;
-use traits::{self, Obligation, ObligationCause};
-use ty::{self, Ty, TyCtxt, TypeFoldable, Predicate, ToPredicate};
-use ty::subst::{Subst, Substs};
+use crate::hir::def_id::DefId;
+use crate::lint;
+use crate::traits::{self, Obligation, ObligationCause};
+use crate::ty::{self, Ty, TyCtxt, TypeFoldable, Predicate, ToPredicate};
+use crate::ty::subst::{Subst, Substs};
 use std::borrow::Cow;
 use std::iter::{self};
 use syntax::ast::{self, Name};
@@ -341,7 +341,7 @@ impl<'a, 'tcx> TyCtxt<'a, 'tcx, 'tcx> {
             } else {
                 // sanity check to make sure the receiver actually has the layout of a pointer
 
-                use ty::layout::Abi;
+                use crate::ty::layout::Abi;
 
                 let param_env = self.param_env(method.def_id);
 

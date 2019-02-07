@@ -1,4 +1,4 @@
-#![feature(nll)]
+#![deny(rust_2018_idioms)]
 #![feature(static_nobundle)]
 
 #![doc(html_logo_url = "https://www.rust-lang.org/logos/rust-logo-128x128-blk-v2.png",

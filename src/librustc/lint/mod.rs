@@ -23,13 +23,13 @@ pub use self::LintSource::*;
 
 use rustc_data_structures::sync::{self, Lrc};
 
-use errors::{DiagnosticBuilder, DiagnosticId};
-use hir::def_id::{CrateNum, LOCAL_CRATE};
-use hir::intravisit;
-use hir;
-use lint::builtin::BuiltinLintDiagnostics;
-use lint::builtin::parser::{QUESTION_MARK_MACRO_SEP, ILL_FORMED_ATTRIBUTE_INPUT};
-use session::{Session, DiagnosticMessageId};
+use crate::errors::{DiagnosticBuilder, DiagnosticId};
+use crate::hir::def_id::{CrateNum, LOCAL_CRATE};
+use crate::hir::intravisit;
+use crate::hir;
+use crate::lint::builtin::BuiltinLintDiagnostics;
+use crate::lint::builtin::parser::{QUESTION_MARK_MACRO_SEP, ILL_FORMED_ATTRIBUTE_INPUT};
+use crate::session::{Session, DiagnosticMessageId};
 use std::{hash, ptr};
 use syntax::ast;
 use syntax::source_map::{MultiSpan, ExpnFormat};
@@ -37,11 +37,11 @@ use syntax::early_buffered_lints::BufferedEarlyLintId;
 use syntax::edition::Edition;
 use syntax::symbol::Symbol;
 use syntax_pos::Span;
-use ty::TyCtxt;
-use ty::query::Providers;
-use util::nodemap::NodeMap;
+use crate::ty::TyCtxt;
+use crate::ty::query::Providers;
+use crate::util::nodemap::NodeMap;
 
-pub use lint::context::{LateContext, EarlyContext, LintContext, LintStore,
+pub use crate::lint::context::{LateContext, EarlyContext, LintContext, LintStore,
                         check_crate, check_ast_crate, CheckLintNameResult,
                         FutureIncompatibleInfo, BufferedEarlyLint};
 
@@ -678,7 +678,7 @@ pub fn struct_lint_level<'a>(sess: &'a Session,
             "this was previously accepted by the compiler but is being phased out; \
              it will become a hard error";
 
-        let explanation = if lint_id == LintId::of(::lint::builtin::UNSTABLE_NAME_COLLISIONS) {
+        let explanation = if lint_id == LintId::of(crate::lint::builtin::UNSTABLE_NAME_COLLISIONS) {
             "once this method is added to the standard library, \
              the ambiguity may cause an error or change in behavior!"
                 .to_owned()

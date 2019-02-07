@@ -188,7 +188,9 @@ impl Output {
 }
 
 fn invalid_encoding() -> io::Error {
-    io::Error::new(io::ErrorKind::InvalidData, "text was not valid unicode")
+    io::Error::new(io::ErrorKind::InvalidData,
+                   "Windows stdio in console mode does not support non-UTF-8 byte sequences; \
+                    see https://github.com/rust-lang/rust/issues/23344")
 }
 
 fn readconsole_input_control(wakeup_mask: c::ULONG) -> c::CONSOLE_READCONSOLE_CONTROL {

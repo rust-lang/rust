@@ -1,9 +1,9 @@
-use ty::query::Providers;
-use hir::def_id::DefId;
-use hir;
-use ty::TyCtxt;
+use crate::ty::query::Providers;
+use crate::hir::def_id::DefId;
+use crate::hir;
+use crate::ty::TyCtxt;
 use syntax_pos::symbol::Symbol;
-use hir::map::blocks::FnLikeNode;
+use crate::hir::map::blocks::FnLikeNode;
 use syntax::attr;
 
 impl<'a, 'tcx> TyCtxt<'a, 'tcx, 'tcx> {

@@ -2,13 +2,13 @@
 //! are *mostly* used as a part of that interface, but these should
 //! probably get a better home if someone can find one.
 
-use hir::def_id::{CrateNum, DefId, LOCAL_CRATE};
-use hir::map as hir_map;
-use hir::map::definitions::{DefKey, DefPathTable};
+use crate::hir::def_id::{CrateNum, DefId, LOCAL_CRATE};
+use crate::hir::map as hir_map;
+use crate::hir::map::definitions::{DefKey, DefPathTable};
 use rustc_data_structures::svh::Svh;
-use ty::{self, TyCtxt};
-use session::{Session, CrateDisambiguator};
-use session::search_paths::PathKind;
+use crate::ty::{self, TyCtxt};
+use crate::session::{Session, CrateDisambiguator};
+use crate::session::search_paths::PathKind;
 
 use std::any::Any;
 use std::path::{Path, PathBuf};

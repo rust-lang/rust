@@ -1,14 +1,15 @@
-use Diagnostic;
-use DiagnosticId;
-use DiagnosticStyledString;
-use Applicability;
+use crate::Diagnostic;
+use crate::DiagnosticId;
+use crate::DiagnosticStyledString;
+use crate::Applicability;
 
-use Level;
-use Handler;
+use crate::Level;
+use crate::Handler;
 use std::fmt::{self, Debug};
 use std::ops::{Deref, DerefMut};
 use std::thread::panicking;
 use syntax_pos::{MultiSpan, Span};
+use log::debug;
 
 /// Used for emitting structured error messages and other diagnostic information.
 ///
@@ -111,8 +112,8 @@ impl<'a> DiagnosticBuilder<'a> {
         // implements `Drop`.
         let diagnostic;
         unsafe {
-            diagnostic = ::std::ptr::read(&self.diagnostic);
-            ::std::mem::forget(self);
+            diagnostic = std::ptr::read(&self.diagnostic);
+            std::mem::forget(self);
         };
         // Logging here is useful to help track down where in logs an error was
         // actually emitted.
@@ -298,7 +299,7 @@ impl<'a> DiagnosticBuilder<'a> {
 }
 
 impl<'a> Debug for DiagnosticBuilder<'a> {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         self.diagnostic.fmt(f)
     }
 }

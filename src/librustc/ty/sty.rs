@@ -1,17 +1,17 @@
 //! This module contains `TyKind` and its major components.
 
-use hir;
-use hir::def_id::DefId;
-use infer::canonical::Canonical;
-use mir::interpret::ConstValue;
-use middle::region;
+use crate::hir;
+use crate::hir::def_id::DefId;
+use crate::infer::canonical::Canonical;
+use crate::mir::interpret::ConstValue;
+use crate::middle::region;
 use polonius_engine::Atom;
 use rustc_data_structures::indexed_vec::Idx;
-use ty::subst::{Substs, Subst, Kind, UnpackedKind};
-use ty::{self, AdtDef, TypeFlags, Ty, TyCtxt, TypeFoldable};
-use ty::{List, TyS, ParamEnvAnd, ParamEnv};
-use util::captures::Captures;
-use mir::interpret::{Scalar, Pointer};
+use crate::ty::subst::{Substs, Subst, Kind, UnpackedKind};
+use crate::ty::{self, AdtDef, TypeFlags, Ty, TyCtxt, TypeFoldable};
+use crate::ty::{List, TyS, ParamEnvAnd, ParamEnv};
+use crate::util::captures::Captures;
+use crate::mir::interpret::{Scalar, Pointer};
 
 use smallvec::SmallVec;
 use std::iter;
@@ -107,6 +107,7 @@ pub enum TyKind<'tcx> {
     /// definition and not a concrete use of it.
     Adt(&'tcx AdtDef, &'tcx Substs<'tcx>),
 
+    /// An unsized FFI type that is opaque to Rust. Written as `extern type T`.
     Foreign(DefId),
 
     /// The pointee of a string slice. Written as `str`.
@@ -550,7 +551,7 @@ impl<'a, 'gcx, 'tcx> ExistentialPredicate<'tcx> {
 impl<'a, 'gcx, 'tcx> Binder<ExistentialPredicate<'tcx>> {
     pub fn with_self_ty(&self, tcx: TyCtxt<'a, 'gcx, 'tcx>, self_ty: Ty<'tcx>)
         -> ty::Predicate<'tcx> {
-        use ty::ToPredicate;
+        use crate::ty::ToPredicate;
         match *self.skip_binder() {
             ExistentialPredicate::Trait(tr) => Binder(tr).with_self_ty(tcx, self_ty).to_predicate(),
             ExistentialPredicate::Projection(p) =>

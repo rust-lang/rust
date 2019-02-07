@@ -1,14 +1,14 @@
-use hir::def::Def;
-use hir::def_id::DefId;
-use ty::{self, Ty, TyCtxt};
-use ty::layout::{LayoutError, Pointer, SizeSkeleton, VariantIdx};
-use ty::query::Providers;
+use crate::hir::def::Def;
+use crate::hir::def_id::DefId;
+use crate::ty::{self, Ty, TyCtxt};
+use crate::ty::layout::{LayoutError, Pointer, SizeSkeleton, VariantIdx};
+use crate::ty::query::Providers;
 
 use rustc_target::spec::abi::Abi::RustIntrinsic;
 use rustc_data_structures::indexed_vec::Idx;
 use syntax_pos::Span;
-use hir::intravisit::{self, Visitor, NestedVisitorMap};
-use hir;
+use crate::hir::intravisit::{self, Visitor, NestedVisitorMap};
+use crate::hir;
 
 pub fn check_crate<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>) {
     for &module in tcx.hir().krate().modules.keys() {

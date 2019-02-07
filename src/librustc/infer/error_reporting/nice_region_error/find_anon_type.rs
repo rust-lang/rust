@@ -1,9 +1,9 @@
-use hir;
-use ty::{self, Region, TyCtxt};
-use hir::Node;
-use middle::resolve_lifetime as rl;
-use hir::intravisit::{self, NestedVisitorMap, Visitor};
-use infer::error_reporting::nice_region_error::NiceRegionError;
+use crate::hir;
+use crate::ty::{self, Region, TyCtxt};
+use crate::hir::Node;
+use crate::middle::resolve_lifetime as rl;
+use crate::hir::intravisit::{self, NestedVisitorMap, Visitor};
+use crate::infer::error_reporting::nice_region_error::NiceRegionError;
 
 impl<'a, 'gcx, 'tcx> NiceRegionError<'a, 'gcx, 'tcx> {
     /// This function calls the `visit_ty` method for the parameters

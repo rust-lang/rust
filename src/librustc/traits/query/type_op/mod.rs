@@ -1,14 +1,14 @@
-use infer::canonical::{
+use crate::infer::canonical::{
     Canonical, Canonicalized, CanonicalizedQueryResponse, OriginalQueryValues,
     QueryRegionConstraint, QueryResponse,
 };
-use infer::{InferCtxt, InferOk};
+use crate::infer::{InferCtxt, InferOk};
 use std::fmt;
 use std::rc::Rc;
-use traits::query::Fallible;
-use traits::ObligationCause;
-use ty::fold::TypeFoldable;
-use ty::{Lift, ParamEnvAnd, TyCtxt};
+use crate::traits::query::Fallible;
+use crate::traits::ObligationCause;
+use crate::ty::fold::TypeFoldable;
+use crate::ty::{Lift, ParamEnvAnd, TyCtxt};
 
 pub mod ascribe_user_type;
 pub mod custom;

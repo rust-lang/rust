@@ -5,16 +5,16 @@
 //! used between functions, and they operate in a purely top-down
 //! way. Therefore we break lifetime name resolution into a separate pass.
 
-use hir::def::Def;
-use hir::def_id::{CrateNum, DefId, LocalDefId, LOCAL_CRATE};
-use hir::map::Map;
-use hir::{GenericArg, GenericParam, ItemLocalId, LifetimeName, Node, ParamName};
-use ty::{self, DefIdTree, GenericParamDefKind, TyCtxt};
+use crate::hir::def::Def;
+use crate::hir::def_id::{CrateNum, DefId, LocalDefId, LOCAL_CRATE};
+use crate::hir::map::Map;
+use crate::hir::{GenericArg, GenericParam, ItemLocalId, LifetimeName, Node, ParamName};
+use crate::ty::{self, DefIdTree, GenericParamDefKind, TyCtxt};
 
-use errors::{Applicability, DiagnosticBuilder};
-use rustc::lint;
+use crate::errors::{Applicability, DiagnosticBuilder};
+use crate::rustc::lint;
 use rustc_data_structures::sync::Lrc;
-use session::Session;
+use crate::session::Session;
 use std::borrow::Cow;
 use std::cell::Cell;
 use std::mem::replace;
@@ -23,10 +23,10 @@ use syntax::attr;
 use syntax::ptr::P;
 use syntax::symbol::keywords;
 use syntax_pos::Span;
-use util::nodemap::{DefIdMap, FxHashMap, FxHashSet, NodeMap, NodeSet};
+use crate::util::nodemap::{DefIdMap, FxHashMap, FxHashSet, NodeMap, NodeSet};
 
-use hir::intravisit::{self, NestedVisitorMap, Visitor};
-use hir::{self, GenericParamKind, LifetimeParamKind};
+use crate::hir::intravisit::{self, NestedVisitorMap, Visitor};
+use crate::hir::{self, GenericParamKind, LifetimeParamKind};
 
 /// The origin of a named lifetime definition.
 ///
@@ -216,7 +216,7 @@ pub struct ResolveLifetimes {
         FxHashMap<LocalDefId, Lrc<FxHashMap<ItemLocalId, Lrc<Vec<ObjectLifetimeDefault>>>>>,
 }
 
-impl_stable_hash_for!(struct ::middle::resolve_lifetime::ResolveLifetimes {
+impl_stable_hash_for!(struct crate::middle::resolve_lifetime::ResolveLifetimes {
     defs,
     late_bound,
     object_lifetime_defaults

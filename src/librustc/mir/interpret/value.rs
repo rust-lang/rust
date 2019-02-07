@@ -515,7 +515,7 @@ impl<'tcx, Tag> ScalarMaybeUndef<Tag> {
     }
 }
 
-impl_stable_hash_for!(enum ::mir::interpret::ScalarMaybeUndef {
+impl_stable_hash_for!(enum crate::mir::interpret::ScalarMaybeUndef {
     Scalar(v),
     Undef
 });

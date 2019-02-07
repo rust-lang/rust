@@ -9,20 +9,20 @@ pub use self::MatchMode::*;
 use self::TrackMatchMode::*;
 use self::OverloadedCallType::*;
 
-use hir::def::Def;
-use hir::def_id::DefId;
-use infer::InferCtxt;
-use middle::mem_categorization as mc;
-use middle::region;
-use ty::{self, TyCtxt, adjustment};
+use crate::hir::def::Def;
+use crate::hir::def_id::DefId;
+use crate::infer::InferCtxt;
+use crate::middle::mem_categorization as mc;
+use crate::middle::region;
+use crate::ty::{self, TyCtxt, adjustment};
 
-use hir::{self, PatKind};
+use crate::hir::{self, PatKind};
 use rustc_data_structures::sync::Lrc;
 use std::rc::Rc;
 use syntax::ast;
 use syntax::ptr::P;
 use syntax_pos::Span;
-use util::nodemap::ItemLocalSet;
+use crate::util::nodemap::ItemLocalSet;
 
 ///////////////////////////////////////////////////////////////////////////
 // The Delegate trait

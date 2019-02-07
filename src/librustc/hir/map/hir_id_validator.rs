@@ -1,7 +1,7 @@
-use hir::def_id::{DefId, DefIndex, CRATE_DEF_INDEX};
-use hir::{self, intravisit, HirId, ItemLocalId};
+use crate::hir::def_id::{DefId, DefIndex, CRATE_DEF_INDEX};
+use crate::hir::{self, intravisit, HirId, ItemLocalId};
 use syntax::ast::NodeId;
-use hir::itemlikevisit::ItemLikeVisitor;
+use crate::hir::itemlikevisit::ItemLikeVisitor;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::sync::{Lock, ParallelIterator, par_iter};
 

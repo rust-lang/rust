@@ -1,48 +1,48 @@
 //! type context book-keeping
 
-use dep_graph::DepGraph;
-use dep_graph::{DepNode, DepConstructor};
-use errors::DiagnosticBuilder;
-use session::Session;
-use session::config::{BorrowckMode, OutputFilenames};
-use session::config::CrateType;
-use middle;
-use hir::{TraitCandidate, HirId, ItemKind, ItemLocalId, Node};
-use hir::def::{Def, Export};
-use hir::def_id::{CrateNum, DefId, DefIndex, LOCAL_CRATE};
-use hir::map as hir_map;
-use hir::map::DefPathHash;
-use lint::{self, Lint};
-use ich::{StableHashingContext, NodeIdHashingMode};
-use infer::canonical::{Canonical, CanonicalVarInfo, CanonicalVarInfos};
-use infer::outlives::free_region_map::FreeRegionMap;
-use middle::cstore::CrateStoreDyn;
-use middle::cstore::EncodedMetadata;
-use middle::lang_items;
-use middle::resolve_lifetime::{self, ObjectLifetimeDefault};
-use middle::stability;
-use mir::{self, Mir, interpret, ProjectionKind};
-use mir::interpret::Allocation;
-use ty::subst::{Kind, Substs, Subst};
-use ty::ReprOptions;
-use traits;
-use traits::{Clause, Clauses, GoalKind, Goal, Goals};
-use ty::{self, Ty, TypeAndMut};
-use ty::{TyS, TyKind, List};
-use ty::{AdtKind, AdtDef, ClosureSubsts, GeneratorSubsts, Region, Const, LazyConst};
-use ty::{PolyFnSig, InferTy, ParamTy, ProjectionTy, ExistentialPredicate, Predicate};
-use ty::RegionKind;
-use ty::{TyVar, TyVid, IntVar, IntVid, FloatVar, FloatVid};
-use ty::TyKind::*;
-use ty::GenericParamDefKind;
-use ty::layout::{LayoutDetails, TargetDataLayout, VariantIdx};
-use ty::query;
-use ty::steal::Steal;
-use ty::subst::{UserSubsts, UnpackedKind};
-use ty::{BoundVar, BindingMode};
-use ty::CanonicalPolyFnSig;
-use util::nodemap::{DefIdMap, DefIdSet, ItemLocalMap};
-use util::nodemap::{FxHashMap, FxHashSet};
+use crate::dep_graph::DepGraph;
+use crate::dep_graph::{DepNode, DepConstructor};
+use crate::errors::DiagnosticBuilder;
+use crate::session::Session;
+use crate::session::config::{BorrowckMode, OutputFilenames};
+use crate::session::config::CrateType;
+use crate::middle;
+use crate::hir::{TraitCandidate, HirId, ItemKind, ItemLocalId, Node};
+use crate::hir::def::{Def, Export};
+use crate::hir::def_id::{CrateNum, DefId, DefIndex, LOCAL_CRATE};
+use crate::hir::map as hir_map;
+use crate::hir::map::DefPathHash;
+use crate::lint::{self, Lint};
+use crate::ich::{StableHashingContext, NodeIdHashingMode};
+use crate::infer::canonical::{Canonical, CanonicalVarInfo, CanonicalVarInfos};
+use crate::infer::outlives::free_region_map::FreeRegionMap;
+use crate::middle::cstore::CrateStoreDyn;
+use crate::middle::cstore::EncodedMetadata;
+use crate::middle::lang_items;
+use crate::middle::resolve_lifetime::{self, ObjectLifetimeDefault};
+use crate::middle::stability;
+use crate::mir::{self, Mir, interpret, ProjectionKind};
+use crate::mir::interpret::Allocation;
+use crate::ty::subst::{Kind, Substs, Subst};
+use crate::ty::ReprOptions;
+use crate::traits;
+use crate::traits::{Clause, Clauses, GoalKind, Goal, Goals};
+use crate::ty::{self, Ty, TypeAndMut};
+use crate::ty::{TyS, TyKind, List};
+use crate::ty::{AdtKind, AdtDef, ClosureSubsts, GeneratorSubsts, Region, Const, LazyConst};
+use crate::ty::{PolyFnSig, InferTy, ParamTy, ProjectionTy, ExistentialPredicate, Predicate};
+use crate::ty::RegionKind;
+use crate::ty::{TyVar, TyVid, IntVar, IntVid, FloatVar, FloatVid};
+use crate::ty::TyKind::*;
+use crate::ty::GenericParamDefKind;
+use crate::ty::layout::{LayoutDetails, TargetDataLayout, VariantIdx};
+use crate::ty::query;
+use crate::ty::steal::Steal;
+use crate::ty::subst::{UserSubsts, UnpackedKind};
+use crate::ty::{BoundVar, BindingMode};
+use crate::ty::CanonicalPolyFnSig;
+use crate::util::nodemap::{DefIdMap, DefIdSet, ItemLocalMap};
+use crate::util::nodemap::{FxHashMap, FxHashSet};
 use rustc_data_structures::interner::HashInterner;
 use smallvec::SmallVec;
 use rustc_data_structures::stable_hasher::{HashStable, hash_stable_hashmap,
@@ -73,7 +73,7 @@ use syntax::feature_gate;
 use syntax::symbol::{Symbol, keywords, InternedString};
 use syntax_pos::Span;
 
-use hir;
+use crate::hir;
 
 pub struct AllArenas<'tcx> {
     pub global: WorkerLocal<GlobalArenas<'tcx>>,
@@ -1822,18 +1822,18 @@ pub mod tls {
     use std::marker::PhantomData;
     use std::ptr;
     use syntax_pos;
-    use ty::query;
-    use errors::{Diagnostic, TRACK_DIAGNOSTICS};
+    use crate::ty::query;
+    use crate::errors::{Diagnostic, TRACK_DIAGNOSTICS};
     use rustc_data_structures::OnDrop;
     use rustc_data_structures::sync::{self, Lrc, Lock};
     use rustc_data_structures::thin_vec::ThinVec;
-    use dep_graph::TaskDeps;
+    use crate::dep_graph::TaskDeps;
 
     #[cfg(not(parallel_compiler))]
     use std::cell::Cell;
 
     #[cfg(parallel_compiler)]
-    use rayon_core;
+    use rustc_rayon_core as rayon_core;
 
     /// This is the implicit state of rustc. It contains the current
     /// TyCtxt and query. It is updated when creating a local interner or
@@ -2114,8 +2114,8 @@ macro_rules! sty_debug_print {
         // variable names.
         #[allow(non_snake_case)]
         mod inner {
-            use ty::{self, TyCtxt};
-            use ty::context::Interned;
+            use crate::ty::{self, TyCtxt};
+            use crate::ty::context::Interned;
 
             #[derive(Copy, Clone)]
             struct DebugStat {

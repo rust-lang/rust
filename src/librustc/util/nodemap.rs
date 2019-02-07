@@ -1,7 +1,7 @@
 //! An efficient hash map for node IDs
 
-use hir::def_id::DefId;
-use hir::{HirId, ItemLocalId};
+use crate::hir::def_id::DefId;
+use crate::hir::{HirId, ItemLocalId};
 use syntax::ast;
 
 pub use rustc_data_structures::fx::FxHashMap;

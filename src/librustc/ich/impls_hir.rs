@@ -1,10 +1,10 @@
 //! This module contains `HashStable` implementations for various HIR data
 //! types in no particular order.
 
-use hir;
-use hir::map::DefPathHash;
-use hir::def_id::{DefId, LocalDefId, CrateNum, CRATE_DEF_INDEX};
-use ich::{StableHashingContext, NodeIdHashingMode, Fingerprint};
+use crate::hir;
+use crate::hir::map::DefPathHash;
+use crate::hir::def_id::{DefId, LocalDefId, CrateNum, CRATE_DEF_INDEX};
+use crate::ich::{StableHashingContext, NodeIdHashingMode, Fingerprint};
 use rustc_data_structures::stable_hasher::{HashStable, ToStableHashKey,
                                            StableHasher, StableHasherResult};
 use std::mem;
@@ -619,7 +619,7 @@ impl<'a> HashStable<StableHashingContext<'a>> for hir::MatchSource {
     fn hash_stable<W: StableHasherResult>(&self,
                                           hcx: &mut StableHashingContext<'a>,
                                           hasher: &mut StableHasher<W>) {
-        use hir::MatchSource;
+        use crate::hir::MatchSource;
 
         mem::discriminant(self).hash_stable(hcx, hasher);
         match *self {
@@ -1116,12 +1116,12 @@ impl_stable_hash_for!(struct hir::def::Export {
     span
 });
 
-impl_stable_hash_for!(struct ::middle::lib_features::LibFeatures {
+impl_stable_hash_for!(struct crate::middle::lib_features::LibFeatures {
     stable,
     unstable
 });
 
-impl<'a> HashStable<StableHashingContext<'a>> for ::middle::lang_items::LangItem {
+impl<'a> HashStable<StableHashingContext<'a>> for crate::middle::lang_items::LangItem {
     fn hash_stable<W: StableHasherResult>(&self,
                                           _: &mut StableHashingContext<'a>,
                                           hasher: &mut StableHasher<W>) {
@@ -1129,7 +1129,7 @@ impl<'a> HashStable<StableHashingContext<'a>> for ::middle::lang_items::LangItem
     }
 }
 
-impl_stable_hash_for!(struct ::middle::lang_items::LanguageItems {
+impl_stable_hash_for!(struct crate::middle::lang_items::LanguageItems {
     items,
     missing
 });

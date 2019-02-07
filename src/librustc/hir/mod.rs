@@ -10,11 +10,11 @@ pub use self::PrimTy::*;
 pub use self::UnOp::*;
 pub use self::UnsafeSource::*;
 
-use errors::FatalError;
-use hir::def::Def;
-use hir::def_id::{DefId, DefIndex, LocalDefId, CRATE_DEF_INDEX};
-use util::nodemap::{NodeMap, FxHashSet};
-use mir::mono::Linkage;
+use crate::errors::FatalError;
+use crate::hir::def::Def;
+use crate::hir::def_id::{DefId, DefIndex, LocalDefId, CRATE_DEF_INDEX};
+use crate::util::nodemap::{NodeMap, FxHashSet};
+use crate::mir::mono::Linkage;
 
 use syntax_pos::{Span, DUMMY_SP, symbol::InternedString};
 use syntax::source_map::Spanned;
@@ -27,8 +27,8 @@ use syntax::ptr::P;
 use syntax::symbol::{Symbol, keywords};
 use syntax::tokenstream::TokenStream;
 use syntax::util::parser::ExprPrecedence;
-use ty::AdtKind;
-use ty::query::Providers;
+use crate::ty::AdtKind;
+use crate::ty::query::Providers;
 
 use rustc_data_structures::sync::{ParallelIterator, par_iter, Send, Sync, scope};
 use rustc_data_structures::thin_vec::ThinVec;

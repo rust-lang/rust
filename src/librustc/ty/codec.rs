@@ -6,15 +6,15 @@
 // The functionality in here is shared between persisting to crate metadata and
 // persisting to incr. comp. caches.
 
-use hir::def_id::{DefId, CrateNum};
-use infer::canonical::{CanonicalVarInfo, CanonicalVarInfos};
+use crate::hir::def_id::{DefId, CrateNum};
+use crate::infer::canonical::{CanonicalVarInfo, CanonicalVarInfos};
 use rustc_data_structures::fx::FxHashMap;
-use rustc_serialize::{Decodable, Decoder, Encoder, Encodable, opaque};
+use crate::rustc_serialize::{Decodable, Decoder, Encoder, Encodable, opaque};
 use std::hash::Hash;
 use std::intrinsics;
-use ty::{self, Ty, TyCtxt};
-use ty::subst::Substs;
-use mir::interpret::Allocation;
+use crate::ty::{self, Ty, TyCtxt};
+use crate::ty::subst::Substs;
+use crate::mir::interpret::Allocation;
 
 /// The shorthand encoding uses an enum's variant index `usize`
 /// and is offset by this value so it never matches a real variant.
@@ -283,7 +283,7 @@ macro_rules! implement_ty_decoder {
             use $crate::ty::codec::*;
             use $crate::ty::subst::Substs;
             use $crate::hir::def_id::{CrateNum};
-            use rustc_serialize::{Decoder, SpecializedDecoder};
+            use crate::rustc_serialize::{Decoder, SpecializedDecoder};
             use std::borrow::Cow;
 
             impl<$($typaram ),*> Decoder for $DecoderName<$($typaram),*> {

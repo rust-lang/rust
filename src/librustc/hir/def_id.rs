@@ -1,6 +1,6 @@
-use ty;
-use ty::TyCtxt;
-use hir::map::definitions::FIRST_FREE_HIGH_DEF_INDEX;
+use crate::ty;
+use crate::ty::TyCtxt;
+use crate::hir::map::definitions::FIRST_FREE_HIGH_DEF_INDEX;
 use rustc_data_structures::indexed_vec::Idx;
 use serialize;
 use std::fmt;

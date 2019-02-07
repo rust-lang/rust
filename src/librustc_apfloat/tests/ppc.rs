@@ -1,5 +1,3 @@
-extern crate rustc_apfloat;
-
 use rustc_apfloat::{Category, Float, Round};
 use rustc_apfloat::ppc::DoubleDouble;
 

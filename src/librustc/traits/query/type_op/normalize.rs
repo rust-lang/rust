@@ -1,8 +1,8 @@
-use infer::canonical::{Canonical, Canonicalized, CanonicalizedQueryResponse, QueryResponse};
+use crate::infer::canonical::{Canonical, Canonicalized, CanonicalizedQueryResponse, QueryResponse};
 use std::fmt;
-use traits::query::Fallible;
-use ty::fold::TypeFoldable;
-use ty::{self, Lift, ParamEnvAnd, Ty, TyCtxt};
+use crate::traits::query::Fallible;
+use crate::ty::fold::TypeFoldable;
+use crate::ty::{self, Lift, ParamEnvAnd, Ty, TyCtxt};
 
 #[derive(Copy, Clone, Debug, Hash, PartialEq, Eq)]
 pub struct Normalize<T> {

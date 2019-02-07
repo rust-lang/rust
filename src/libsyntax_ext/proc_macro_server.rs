@@ -1,4 +1,5 @@
-use errors::{self, Diagnostic, DiagnosticBuilder};
+use crate::errors::{self, Diagnostic, DiagnosticBuilder};
+
 use std::panic;
 
 use proc_macro::bridge::{server, TokenTree};
@@ -369,7 +370,7 @@ pub(crate) struct Rustc<'a> {
 }
 
 impl<'a> Rustc<'a> {
-    pub fn new(cx: &'a ExtCtxt) -> Self {
+    pub fn new(cx: &'a ExtCtxt<'_>) -> Self {
         // No way to determine def location for a proc macro right now, so use call location.
         let location = cx.current_expansion.mark.expn_info().unwrap().call_site;
         let to_span = |transparency| {
@@ -650,7 +651,7 @@ impl server::Literal for Rustc<'_> {
     }
 }
 
-impl<'a> server::SourceFile for Rustc<'a> {
+impl server::SourceFile for Rustc<'_> {
     fn eq(&mut self, file1: &Self::SourceFile, file2: &Self::SourceFile) -> bool {
         Lrc::ptr_eq(file1, file2)
     }

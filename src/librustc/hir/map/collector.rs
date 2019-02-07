@@ -1,19 +1,19 @@
 use super::*;
-use dep_graph::{DepGraph, DepKind, DepNodeIndex};
-use hir;
-use hir::def_id::{LOCAL_CRATE, CrateNum};
-use hir::intravisit::{Visitor, NestedVisitorMap};
+use crate::dep_graph::{DepGraph, DepKind, DepNodeIndex};
+use crate::hir;
+use crate::hir::def_id::{LOCAL_CRATE, CrateNum};
+use crate::hir::intravisit::{Visitor, NestedVisitorMap};
 use rustc_data_structures::svh::Svh;
-use ich::Fingerprint;
-use middle::cstore::CrateStore;
-use session::CrateDisambiguator;
-use session::Session;
+use crate::ich::Fingerprint;
+use crate::middle::cstore::CrateStore;
+use crate::session::CrateDisambiguator;
+use crate::session::Session;
 use std::iter::repeat;
 use syntax::ast::{NodeId, CRATE_NODE_ID};
 use syntax::source_map::SourceMap;
 use syntax_pos::Span;
 
-use ich::StableHashingContext;
+use crate::ich::StableHashingContext;
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher, StableHasherResult};
 
 /// A Visitor that walks over the HIR and collects Nodes into a HIR map
@@ -253,7 +253,7 @@ impl<'a, 'hir> NodeCollector<'a, 'hir> {
                     None => format!("{:?}", node)
                 };
 
-                let forgot_str = if hir_id == ::hir::DUMMY_HIR_ID {
+                let forgot_str = if hir_id == crate::hir::DUMMY_HIR_ID {
                     format!("\nMaybe you forgot to lower the node id {:?}?", id)
                 } else {
                     String::new()

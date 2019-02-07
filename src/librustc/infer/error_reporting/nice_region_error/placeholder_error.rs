@@ -1,15 +1,15 @@
-use errors::DiagnosticBuilder;
-use hir::def_id::DefId;
-use infer::error_reporting::nice_region_error::NiceRegionError;
-use infer::lexical_region_resolve::RegionResolutionError;
-use infer::ValuePairs;
-use infer::{SubregionOrigin, TypeTrace};
-use traits::{ObligationCause, ObligationCauseCode};
-use ty;
-use ty::error::ExpectedFound;
-use ty::subst::Substs;
-use util::common::ErrorReported;
-use util::ppaux::RegionHighlightMode;
+use crate::errors::DiagnosticBuilder;
+use crate::hir::def_id::DefId;
+use crate::infer::error_reporting::nice_region_error::NiceRegionError;
+use crate::infer::lexical_region_resolve::RegionResolutionError;
+use crate::infer::ValuePairs;
+use crate::infer::{SubregionOrigin, TypeTrace};
+use crate::traits::{ObligationCause, ObligationCauseCode};
+use crate::ty;
+use crate::ty::error::ExpectedFound;
+use crate::ty::subst::Substs;
+use crate::util::common::ErrorReported;
+use crate::util::ppaux::RegionHighlightMode;
 
 impl NiceRegionError<'me, 'gcx, 'tcx> {
     /// When given a `ConcreteFailure` for a function with arguments containing a named region and

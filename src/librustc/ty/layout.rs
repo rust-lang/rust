@@ -1,5 +1,5 @@
-use session::{self, DataTypeKind};
-use ty::{self, Ty, TyCtxt, TypeFoldable, ReprOptions};
+use crate::session::{self, DataTypeKind};
+use crate::ty::{self, Ty, TyCtxt, TypeFoldable, ReprOptions};
 
 use syntax::ast::{self, Ident, IntTy, UintTy};
 use syntax::attr;
@@ -12,7 +12,7 @@ use std::iter;
 use std::mem;
 use std::ops::Bound;
 
-use ich::StableHashingContext;
+use crate::ich::StableHashingContext;
 use rustc_data_structures::indexed_vec::{IndexVec, Idx};
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher,
                                            StableHasherResult};
@@ -1872,7 +1872,7 @@ impl<'a> HashStable<StableHashingContext<'a>> for Variants {
     fn hash_stable<W: StableHasherResult>(&self,
                                           hcx: &mut StableHashingContext<'a>,
                                           hasher: &mut StableHasher<W>) {
-        use ty::layout::Variants::*;
+        use crate::ty::layout::Variants::*;
         mem::discriminant(self).hash_stable(hcx, hasher);
 
         match *self {
@@ -1908,7 +1908,7 @@ impl<'a> HashStable<StableHashingContext<'a>> for FieldPlacement {
     fn hash_stable<W: StableHasherResult>(&self,
                                           hcx: &mut StableHashingContext<'a>,
                                           hasher: &mut StableHasher<W>) {
-        use ty::layout::FieldPlacement::*;
+        use crate::ty::layout::FieldPlacement::*;
         mem::discriminant(self).hash_stable(hcx, hasher);
 
         match *self {
@@ -1941,7 +1941,7 @@ impl<'a> HashStable<StableHashingContext<'a>> for Abi {
     fn hash_stable<W: StableHasherResult>(&self,
                                           hcx: &mut StableHashingContext<'a>,
                                           hasher: &mut StableHasher<W>) {
-        use ty::layout::Abi::*;
+        use crate::ty::layout::Abi::*;
         mem::discriminant(self).hash_stable(hcx, hasher);
 
         match *self {
@@ -1975,7 +1975,7 @@ impl<'a> HashStable<StableHashingContext<'a>> for Scalar {
     }
 }
 
-impl_stable_hash_for!(struct ::ty::layout::LayoutDetails {
+impl_stable_hash_for!(struct crate::ty::layout::LayoutDetails {
     variants,
     fields,
     abi,
@@ -1983,7 +1983,7 @@ impl_stable_hash_for!(struct ::ty::layout::LayoutDetails {
     align
 });
 
-impl_stable_hash_for!(enum ::ty::layout::Integer {
+impl_stable_hash_for!(enum crate::ty::layout::Integer {
     I8,
     I16,
     I32,
@@ -1991,13 +1991,13 @@ impl_stable_hash_for!(enum ::ty::layout::Integer {
     I128
 });
 
-impl_stable_hash_for!(enum ::ty::layout::Primitive {
+impl_stable_hash_for!(enum crate::ty::layout::Primitive {
     Int(integer, signed),
     Float(fty),
     Pointer
 });
 
-impl_stable_hash_for!(struct ::ty::layout::AbiAndPrefAlign {
+impl_stable_hash_for!(struct crate::ty::layout::AbiAndPrefAlign {
     abi,
     pref
 });
@@ -2023,7 +2023,7 @@ impl<'a, 'gcx> HashStable<StableHashingContext<'a>> for LayoutError<'gcx>
     fn hash_stable<W: StableHasherResult>(&self,
                                           hcx: &mut StableHashingContext<'a>,
                                           hasher: &mut StableHasher<W>) {
-        use ty::layout::LayoutError::*;
+        use crate::ty::layout::LayoutError::*;
         mem::discriminant(self).hash_stable(hcx, hasher);
 
         match *self {
