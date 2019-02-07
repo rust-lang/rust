@@ -5796,8 +5796,7 @@ impl<'a> Parser<'a> {
                 } else {
                     // FIXME(const_generics): this currently conflicts with emplacement syntax
                     // with negative integer literals.
-                    let lit = self.parse_lit()?;
-                    self.mk_expr(lit.span, ExprKind::Lit(lit), ThinVec::new())
+                    self.parse_literal_maybe_minus()?
                 };
                 let value = AnonConst {
                     id: ast::DUMMY_NODE_ID,

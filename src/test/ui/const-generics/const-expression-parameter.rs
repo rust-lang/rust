@@ -14,6 +14,10 @@ fn foo_b() {
     u32_identity::<1 + 2>(); //~ ERROR expected one of `,` or `>`, found `+`
 }
 
+fn foo_c() {
+    u32_identity::< -1 >(); // ok
+}
+
 fn main() {
     u32_identity::<5>(); // ok
 }
