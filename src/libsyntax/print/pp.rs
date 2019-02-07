@@ -138,6 +138,7 @@ use std::collections::VecDeque;
 use std::fmt;
 use std::io;
 use std::borrow::Cow;
+use log::debug;
 
 /// How to break. Described in more detail in the module docs.
 #[derive(Clone, Copy, PartialEq)]
@@ -192,7 +193,7 @@ impl Token {
 }
 
 impl fmt::Display for Token {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match *self {
             Token::String(ref s, len) => write!(f, "STR({},{})", s, len),
             Token::Break(_) => f.write_str("BREAK"),

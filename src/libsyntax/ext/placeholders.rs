@@ -1,14 +1,15 @@
-use ast::{self, NodeId};
-use source_map::{DUMMY_SP, dummy_spanned};
-use ext::base::ExtCtxt;
-use ext::expand::{AstFragment, AstFragmentKind};
-use ext::hygiene::Mark;
-use tokenstream::TokenStream;
-use mut_visit::*;
-use ptr::P;
-use smallvec::SmallVec;
-use symbol::keywords;
-use ThinVec;
+use crate::ast::{self, NodeId};
+use crate::source_map::{DUMMY_SP, dummy_spanned};
+use crate::ext::base::ExtCtxt;
+use crate::ext::expand::{AstFragment, AstFragmentKind};
+use crate::ext::hygiene::Mark;
+use crate::tokenstream::TokenStream;
+use crate::mut_visit::*;
+use crate::ptr::P;
+use crate::symbol::keywords;
+use crate::ThinVec;
+
+use smallvec::{smallvec, SmallVec};
 
 use rustc_data_structures::fx::FxHashMap;
 

@@ -1,22 +1,26 @@
-pub use self::BinOpToken::*;
-pub use self::Nonterminal::*;
-pub use self::DelimToken::*;
-pub use self::Lit::*;
-pub use self::Token::*;
+pub use BinOpToken::*;
+pub use Nonterminal::*;
+pub use DelimToken::*;
+pub use Lit::*;
+pub use Token::*;
 
-use ast::{self};
-use parse::ParseSess;
-use print::pprust;
-use ptr::P;
+use crate::ast::{self};
+use crate::parse::ParseSess;
+use crate::print::pprust;
+use crate::ptr::P;
+use crate::symbol::keywords;
+use crate::syntax::parse::parse_stream_from_source_str;
+use crate::tokenstream::{self, DelimSpan, TokenStream, TokenTree};
+
 use serialize::{Decodable, Decoder, Encodable, Encoder};
-use symbol::keywords;
-use syntax::parse::parse_stream_from_source_str;
-use syntax_pos::{self, Span, FileName};
 use syntax_pos::symbol::{self, Symbol};
-use tokenstream::{self, DelimSpan, TokenStream, TokenTree};
+use syntax_pos::{self, Span, FileName};
+use log::info;
 
 use std::{cmp, fmt};
 use std::mem;
+#[cfg(target_arch = "x86_64")]
+use rustc_data_structures::static_assert;
 use rustc_data_structures::sync::{Lrc, Lock};
 
 #[derive(Clone, PartialEq, RustcEncodable, RustcDecodable, Hash, Debug, Copy)]
@@ -683,7 +687,7 @@ impl PartialEq for Nonterminal {
 }
 
 impl fmt::Debug for Nonterminal {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match *self {
             NtItem(..) => f.pad("NtItem(..)"),
             NtBlock(..) => f.pad("NtBlock(..)"),
@@ -729,7 +733,7 @@ impl PartialEq for LazyTokenStream {
 }
 
 impl fmt::Debug for LazyTokenStream {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         fmt::Debug::fmt(&self.clone().0.into_inner(), f)
     }
 }

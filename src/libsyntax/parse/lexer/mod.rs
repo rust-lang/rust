@@ -1,9 +1,10 @@
-use ast::{self, Ident};
+use crate::ast::{self, Ident};
+use crate::source_map::{SourceMap, FilePathMapping};
+use crate::errors::{Applicability, FatalError, Diagnostic, DiagnosticBuilder};
+use crate::parse::{token, ParseSess};
+use crate::symbol::{Symbol, keywords};
+
 use syntax_pos::{self, BytePos, CharPos, Pos, Span, NO_EXPANSION};
-use source_map::{SourceMap, FilePathMapping};
-use errors::{Applicability, FatalError, Diagnostic, DiagnosticBuilder};
-use parse::{token, ParseSess};
-use symbol::{Symbol, keywords};
 use core::unicode::property::Pattern_White_Space;
 
 use std::borrow::Cow;
@@ -11,6 +12,7 @@ use std::char;
 use std::iter;
 use std::mem::replace;
 use rustc_data_structures::sync::Lrc;
+use log::debug;
 
 pub mod comments;
 mod tokentrees;
@@ -449,7 +451,7 @@ impl<'a> StringReader<'a> {
         }
         return s.into();
 
-        fn translate_crlf_(rdr: &StringReader,
+        fn translate_crlf_(rdr: &StringReader<'_>,
                            start: BytePos,
                            s: &str,
                            mut j: usize,
@@ -1866,19 +1868,20 @@ fn char_at(s: &str, byte: usize) -> char {
 mod tests {
     use super::*;
 
-    use ast::{Ident, CrateConfig};
-    use symbol::Symbol;
-    use syntax_pos::{BytePos, Span, NO_EXPANSION};
-    use source_map::SourceMap;
-    use errors;
-    use feature_gate::UnstableFeatures;
-    use parse::token;
+    use crate::ast::{Ident, CrateConfig};
+    use crate::symbol::Symbol;
+    use crate::source_map::SourceMap;
+    use crate::errors;
+    use crate::feature_gate::UnstableFeatures;
+    use crate::parse::token;
+    use crate::diagnostics::plugin::ErrorMap;
+    use crate::with_globals;
     use std::io;
     use std::path::PathBuf;
-    use diagnostics::plugin::ErrorMap;
+    use syntax_pos::{BytePos, Span, NO_EXPANSION};
     use rustc_data_structures::fx::FxHashSet;
     use rustc_data_structures::sync::Lock;
-    use with_globals;
+
     fn mk_sess(sm: Lrc<SourceMap>) -> ParseSess {
         let emitter = errors::emitter::EmitterWriter::new(Box::new(io::sink()),
                                                           Some(sm.clone()),
@@ -1943,7 +1946,7 @@ mod tests {
 
     // check that the given reader produces the desired stream
     // of tokens (stop checking after exhausting the expected vec)
-    fn check_tokenization(mut string_reader: StringReader, expected: Vec<token::Token>) {
+    fn check_tokenization(mut string_reader: StringReader<'_>, expected: Vec<token::Token>) {
         for expected_tok in &expected {
             assert_eq!(&string_reader.next_token().tok, expected_tok);
         }

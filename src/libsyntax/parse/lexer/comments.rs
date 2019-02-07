@@ -1,11 +1,13 @@
-pub use self::CommentStyle::*;
+pub use CommentStyle::*;
 
-use ast;
-use source_map::SourceMap;
+use crate::ast;
+use crate::source_map::SourceMap;
+use crate::parse::lexer::{is_block_doc_comment, is_pattern_whitespace};
+use crate::parse::lexer::{self, ParseSess, StringReader, TokenAndSpan};
+use crate::print::pprust;
+
 use syntax_pos::{BytePos, CharPos, Pos, FileName};
-use parse::lexer::{is_block_doc_comment, is_pattern_whitespace};
-use parse::lexer::{self, ParseSess, StringReader, TokenAndSpan};
-use print::pprust;
+use log::debug;
 
 use std::io::Read;
 use std::usize;
@@ -135,7 +137,7 @@ pub fn strip_doc_comment_decoration(comment: &str) -> String {
     panic!("not a doc-comment: {}", comment);
 }
 
-fn push_blank_line_comment(rdr: &StringReader, comments: &mut Vec<Comment>) {
+fn push_blank_line_comment(rdr: &StringReader<'_>, comments: &mut Vec<Comment>) {
     debug!(">>> blank-line comment");
     comments.push(Comment {
         style: BlankLine,
@@ -144,7 +146,10 @@ fn push_blank_line_comment(rdr: &StringReader, comments: &mut Vec<Comment>) {
     });
 }
 
-fn consume_whitespace_counting_blank_lines(rdr: &mut StringReader, comments: &mut Vec<Comment>) {
+fn consume_whitespace_counting_blank_lines(
+    rdr: &mut StringReader<'_>,
+    comments: &mut Vec<Comment>
+) {
     while is_pattern_whitespace(rdr.ch) && !rdr.is_eof() {
         if rdr.ch_is('\n') {
             push_blank_line_comment(rdr, &mut *comments);
@@ -153,7 +158,7 @@ fn consume_whitespace_counting_blank_lines(rdr: &mut StringReader, comments: &mu
     }
 }
 
-fn read_shebang_comment(rdr: &mut StringReader,
+fn read_shebang_comment(rdr: &mut StringReader<'_>,
                         code_to_the_left: bool,
                         comments: &mut Vec<Comment>) {
     debug!(">>> shebang comment");
@@ -166,7 +171,7 @@ fn read_shebang_comment(rdr: &mut StringReader,
     });
 }
 
-fn read_line_comments(rdr: &mut StringReader,
+fn read_line_comments(rdr: &mut StringReader<'_>,
                       code_to_the_left: bool,
                       comments: &mut Vec<Comment>) {
     debug!(">>> line comments");
@@ -222,7 +227,7 @@ fn trim_whitespace_prefix_and_push_line(lines: &mut Vec<String>, s: String, col:
     lines.push(s1);
 }
 
-fn read_block_comment(rdr: &mut StringReader,
+fn read_block_comment(rdr: &mut StringReader<'_>,
                       code_to_the_left: bool,
                       comments: &mut Vec<Comment>) {
     debug!(">>> block comment");
@@ -312,7 +317,7 @@ fn read_block_comment(rdr: &mut StringReader,
 }
 
 
-fn consume_comment(rdr: &mut StringReader,
+fn consume_comment(rdr: &mut StringReader<'_>,
                    comments: &mut Vec<Comment>,
                    code_to_the_left: &mut bool,
                    anything_to_the_left: &mut bool) {

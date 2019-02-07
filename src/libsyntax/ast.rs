@@ -1,22 +1,23 @@
 // The Rust abstract syntax tree.
 
-pub use self::GenericArgs::*;
-pub use self::UnsafeSource::*;
-pub use symbol::{Ident, Symbol as Name};
-pub use util::parser::ExprPrecedence;
+pub use GenericArgs::*;
+pub use UnsafeSource::*;
+pub use crate::symbol::{Ident, Symbol as Name};
+pub use crate::util::parser::ExprPrecedence;
 
-use ext::hygiene::{Mark, SyntaxContext};
-use print::pprust;
-use ptr::P;
+use crate::ext::hygiene::{Mark, SyntaxContext};
+use crate::print::pprust;
+use crate::ptr::P;
+use crate::source_map::{dummy_spanned, respan, Spanned};
+use crate::symbol::{keywords, Symbol};
+use crate::tokenstream::TokenStream;
+use crate::ThinVec;
+
 use rustc_data_structures::indexed_vec::Idx;
 #[cfg(target_arch = "x86_64")]
 use rustc_data_structures::static_assert;
 use rustc_target::spec::abi::Abi;
-use source_map::{dummy_spanned, respan, Spanned};
-use symbol::{keywords, Symbol};
 use syntax_pos::{Span, DUMMY_SP};
-use tokenstream::TokenStream;
-use ThinVec;
 
 use rustc_data_structures::fx::FxHashSet;
 use rustc_data_structures::sync::Lrc;
@@ -31,7 +32,7 @@ pub struct Label {
 }
 
 impl fmt::Debug for Label {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "label({:?})", self.ident)
     }
 }
@@ -43,7 +44,7 @@ pub struct Lifetime {
 }
 
 impl fmt::Debug for Lifetime {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(
             f,
             "lifetime({}: {})",
@@ -74,13 +75,13 @@ impl<'a> PartialEq<&'a str> for Path {
 }
 
 impl fmt::Debug for Path {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "path({})", pprust::path_to_string(self))
     }
 }
 
 impl fmt::Display for Path {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "{}", pprust::path_to_string(self))
     }
 }
@@ -219,6 +220,7 @@ impl ParenthesizedArgs {
 // hack to ensure that we don't try to access the private parts of `NodeId` in this module
 mod node_id_inner {
     use rustc_data_structures::indexed_vec::Idx;
+    use rustc_data_structures::newtype_index;
     newtype_index! {
         pub struct NodeId {
             ENCODABLE = custom
@@ -227,7 +229,7 @@ mod node_id_inner {
     }
 }
 
-pub use self::node_id_inner::NodeId;
+pub use node_id_inner::NodeId;
 
 impl NodeId {
     pub fn placeholder_from_mark(mark: Mark) -> Self {
@@ -240,7 +242,7 @@ impl NodeId {
 }
 
 impl fmt::Display for NodeId {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         fmt::Display::fmt(&self.as_u32(), f)
     }
 }
@@ -478,7 +480,7 @@ pub struct Pat {
 }
 
 impl fmt::Debug for Pat {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "pat({}: {})", self.id, pprust::pat_to_string(self))
     }
 }
@@ -676,7 +678,7 @@ pub enum BinOpKind {
 
 impl BinOpKind {
     pub fn to_string(&self) -> &'static str {
-        use self::BinOpKind::*;
+        use BinOpKind::*;
         match *self {
             Add => "+",
             Sub => "-",
@@ -713,7 +715,7 @@ impl BinOpKind {
     }
 
     pub fn is_comparison(&self) -> bool {
-        use self::BinOpKind::*;
+        use BinOpKind::*;
         match *self {
             Eq | Lt | Le | Ne | Gt | Ge => true,
             And | Or | Add | Sub | Mul | Div | Rem | BitXor | BitAnd | BitOr | Shl | Shr => false,
@@ -792,7 +794,7 @@ impl Stmt {
 }
 
 impl fmt::Debug for Stmt {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(
             f,
             "stmt({}: {})",
@@ -1030,7 +1032,7 @@ impl Expr {
 }
 
 impl fmt::Debug for Expr {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "expr({}: {})", self.id, pprust::expr_to_string(self))
     }
 }
@@ -1438,13 +1440,13 @@ pub enum IntTy {
 }
 
 impl fmt::Debug for IntTy {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         fmt::Display::fmt(self, f)
     }
 }
 
 impl fmt::Display for IntTy {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "{}", self.ty_to_string())
     }
 }
@@ -1519,13 +1521,13 @@ impl UintTy {
 }
 
 impl fmt::Debug for UintTy {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         fmt::Display::fmt(self, f)
     }
 }
 
 impl fmt::Display for UintTy {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "{}", self.ty_to_string())
     }
 }
@@ -1547,7 +1549,7 @@ pub struct Ty {
 }
 
 impl fmt::Debug for Ty {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "type({})", pprust::ty_to_string(self))
     }
 }
@@ -1832,7 +1834,7 @@ pub enum Defaultness {
 }
 
 impl fmt::Display for Unsafety {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         fmt::Display::fmt(
             match *self {
                 Unsafety::Normal => "normal",
@@ -1852,7 +1854,7 @@ pub enum ImplPolarity {
 }
 
 impl fmt::Debug for ImplPolarity {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match *self {
             ImplPolarity::Positive => "positive".fmt(f),
             ImplPolarity::Negative => "negative".fmt(f),

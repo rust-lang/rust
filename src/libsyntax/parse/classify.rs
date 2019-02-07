@@ -2,7 +2,7 @@
 
 // Predicates on exprs and stmts that the pretty-printer and parser use
 
-use ast;
+use crate::ast;
 
 /// Does this expression require a semicolon to be treated
 /// as a statement? The negation of this: 'can this expression

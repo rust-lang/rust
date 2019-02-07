@@ -12,21 +12,23 @@
 //! gate usage is added, *do not remove it again* even once the feature
 //! becomes stable.
 
-use self::AttributeType::*;
-use self::AttributeGate::*;
+use AttributeType::*;
+use AttributeGate::*;
+
+use crate::ast::{self, NodeId, PatKind, RangeEnd};
+use crate::attr;
+use crate::early_buffered_lints::BufferedEarlyLintId;
+use crate::source_map::Spanned;
+use crate::edition::{ALL_EDITIONS, Edition};
+use crate::errors::{DiagnosticBuilder, Handler};
+use crate::visit::{self, FnKind, Visitor};
+use crate::parse::ParseSess;
+use crate::symbol::Symbol;
 
 use rustc_data_structures::fx::FxHashMap;
 use rustc_target::spec::abi::Abi;
-use ast::{self, NodeId, PatKind, RangeEnd};
-use attr;
-use early_buffered_lints::BufferedEarlyLintId;
-use source_map::Spanned;
-use edition::{ALL_EDITIONS, Edition};
 use syntax_pos::{Span, DUMMY_SP};
-use errors::{DiagnosticBuilder, Handler};
-use visit::{self, FnKind, Visitor};
-use parse::ParseSess;
-use symbol::Symbol;
+use log::debug;
 
 use std::env;
 
@@ -778,8 +780,8 @@ pub enum Stability {
 }
 
 // fn() is not Debug
-impl ::std::fmt::Debug for AttributeGate {
-    fn fmt(&self, fmt: &mut ::std::fmt::Formatter) -> ::std::fmt::Result {
+impl std::fmt::Debug for AttributeGate {
+    fn fmt(&self, fmt: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match *self {
             Gated(ref stab, name, expl, _) =>
                 write!(fmt, "Gated({:?}, {}, {})", stab, name, expl),

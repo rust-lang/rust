@@ -1,6 +1,6 @@
-use parse::token::{Token, BinOpToken};
-use symbol::keywords;
-use ast::{self, BinOpKind};
+use crate::parse::token::{Token, BinOpToken};
+use crate::symbol::keywords;
+use crate::ast::{self, BinOpKind};
 
 /// Associative operator with precedence.
 ///
@@ -72,7 +72,7 @@ pub enum Fixity {
 impl AssocOp {
     /// Create a new AssocOP from a token
     pub fn from_token(t: &Token) -> Option<AssocOp> {
-        use self::AssocOp::*;
+        use AssocOp::*;
         match *t {
             Token::BinOpEq(k) => Some(AssignOp(k)),
             Token::LArrow => Some(ObsoleteInPlace),
@@ -107,7 +107,7 @@ impl AssocOp {
 
     /// Create a new AssocOp from ast::BinOpKind.
     pub fn from_ast_binop(op: BinOpKind) -> Self {
-        use self::AssocOp::*;
+        use AssocOp::*;
         match op {
             BinOpKind::Lt => Less,
             BinOpKind::Gt => Greater,
@@ -132,7 +132,7 @@ impl AssocOp {
 
     /// Gets the precedence of this operator
     pub fn precedence(&self) -> usize {
-        use self::AssocOp::*;
+        use AssocOp::*;
         match *self {
             As | Colon => 14,
             Multiply | Divide | Modulus => 13,
@@ -152,7 +152,7 @@ impl AssocOp {
 
     /// Gets the fixity of this operator
     pub fn fixity(&self) -> Fixity {
-        use self::AssocOp::*;
+        use AssocOp::*;
         // NOTE: it is a bug to have an operators that has same precedence but different fixities!
         match *self {
             ObsoleteInPlace | Assign | AssignOp(_) => Fixity::Right,
@@ -164,7 +164,7 @@ impl AssocOp {
     }
 
     pub fn is_comparison(&self) -> bool {
-        use self::AssocOp::*;
+        use AssocOp::*;
         match *self {
             Less | Greater | LessEqual | GreaterEqual | Equal | NotEqual => true,
             ObsoleteInPlace | Assign | AssignOp(_) | As | Multiply | Divide | Modulus | Add |
@@ -174,7 +174,7 @@ impl AssocOp {
     }
 
     pub fn is_assign_like(&self) -> bool {
-        use self::AssocOp::*;
+        use AssocOp::*;
         match *self {
             Assign | AssignOp(_) | ObsoleteInPlace => true,
             Less | Greater | LessEqual | GreaterEqual | Equal | NotEqual | As | Multiply | Divide |
@@ -184,7 +184,7 @@ impl AssocOp {
     }
 
     pub fn to_ast_binop(&self) -> Option<BinOpKind> {
-        use self::AssocOp::*;
+        use AssocOp::*;
         match *self {
             Less => Some(BinOpKind::Lt),
             Greater => Some(BinOpKind::Gt),

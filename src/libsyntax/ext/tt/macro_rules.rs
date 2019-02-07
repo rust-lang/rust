@@ -1,29 +1,31 @@
-use {ast, attr};
+use crate::{ast, attr};
+use crate::edition::Edition;
+use crate::errors::FatalError;
+use crate::ext::base::{DummyResult, ExtCtxt, MacResult, SyntaxExtension};
+use crate::ext::base::{NormalTT, TTMacroExpander};
+use crate::ext::expand::{AstFragment, AstFragmentKind};
+use crate::ext::tt::macro_parser::{Success, Error, Failure};
+use crate::ext::tt::macro_parser::{MatchedSeq, MatchedNonterminal};
+use crate::ext::tt::macro_parser::{parse, parse_failure_msg};
+use crate::ext::tt::quoted;
+use crate::ext::tt::transcribe::transcribe;
+use crate::feature_gate::Features;
+use crate::parse::{Directory, ParseSess};
+use crate::parse::parser::Parser;
+use crate::parse::token::{self, NtTT};
+use crate::parse::token::Token::*;
+use crate::symbol::Symbol;
+use crate::tokenstream::{DelimSpan, TokenStream, TokenTree};
+
 use syntax_pos::{Span, DUMMY_SP};
-use edition::Edition;
-use errors::FatalError;
-use ext::base::{DummyResult, ExtCtxt, MacResult, SyntaxExtension};
-use ext::base::{NormalTT, TTMacroExpander};
-use ext::expand::{AstFragment, AstFragmentKind};
-use ext::tt::macro_parser::{Success, Error, Failure};
-use ext::tt::macro_parser::{MatchedSeq, MatchedNonterminal};
-use ext::tt::macro_parser::{parse, parse_failure_msg};
-use ext::tt::quoted;
-use ext::tt::transcribe::transcribe;
-use feature_gate::Features;
-use parse::{Directory, ParseSess};
-use parse::parser::Parser;
-use parse::token::{self, NtTT};
-use parse::token::Token::*;
-use symbol::Symbol;
-use tokenstream::{DelimSpan, TokenStream, TokenTree};
+use log::debug;
 
 use rustc_data_structures::fx::FxHashMap;
 use std::borrow::Cow;
 use std::collections::hash_map::Entry;
 
 use rustc_data_structures::sync::Lrc;
-use errors::Applicability;
+use crate::errors::Applicability;
 
 const VALID_FRAGMENT_NAMES_MSG: &str = "valid fragment specifiers are \
     `ident`, `block`, `stmt`, `expr`, `pat`, `ty`, `lifetime`, `literal`, \
@@ -91,7 +93,7 @@ struct MacroRulesMacroExpander {
 impl TTMacroExpander for MacroRulesMacroExpander {
     fn expand<'cx>(
         &self,
-        cx: &'cx mut ExtCtxt,
+        cx: &'cx mut ExtCtxt<'_>,
         sp: Span,
         input: TokenStream,
         def_span: Option<Span>,
@@ -109,13 +111,13 @@ impl TTMacroExpander for MacroRulesMacroExpander {
     }
 }
 
-fn trace_macros_note(cx: &mut ExtCtxt, sp: Span, message: String) {
+fn trace_macros_note(cx: &mut ExtCtxt<'_>, sp: Span, message: String) {
     let sp = sp.macro_backtrace().last().map(|trace| trace.call_site).unwrap_or(sp);
     cx.expansions.entry(sp).or_default().push(message);
 }
 
 /// Given `lhses` and `rhses`, this is the new macro we create
-fn generic_extension<'cx>(cx: &'cx mut ExtCtxt,
+fn generic_extension<'cx>(cx: &'cx mut ExtCtxt<'_>,
                           sp: Span,
                           def_span: Option<Span>,
                           name: ast::Ident,
@@ -423,7 +425,7 @@ fn check_lhs_nt_follows(sess: &ParseSess,
 /// Check that the lhs contains no repetition which could match an empty token
 /// tree, because then the matcher would hang indefinitely.
 fn check_lhs_no_empty_seq(sess: &ParseSess, tts: &[quoted::TokenTree]) -> bool {
-    use self::quoted::TokenTree;
+    use quoted::TokenTree;
     for tt in tts {
         match *tt {
             TokenTree::Token(..) | TokenTree::MetaVar(..) | TokenTree::MetaVarDecl(..) => (),
@@ -497,7 +499,7 @@ struct FirstSets {
 
 impl FirstSets {
     fn new(tts: &[quoted::TokenTree]) -> FirstSets {
-        use self::quoted::TokenTree;
+        use quoted::TokenTree;
 
         let mut sets = FirstSets { first: FxHashMap::default() };
         build_recur(&mut sets, tts);
@@ -567,7 +569,7 @@ impl FirstSets {
     // walks forward over `tts` until all potential FIRST tokens are
     // identified.
     fn first(&self, tts: &[quoted::TokenTree]) -> TokenSet {
-        use self::quoted::TokenTree;
+        use quoted::TokenTree;
 
         let mut first = TokenSet::empty();
         for tt in tts.iter() {
@@ -721,7 +723,7 @@ fn check_matcher_core(sess: &ParseSess,
                       first_sets: &FirstSets,
                       matcher: &[quoted::TokenTree],
                       follow: &TokenSet) -> TokenSet {
-    use self::quoted::TokenTree;
+    use quoted::TokenTree;
 
     let mut last = TokenSet::empty();
 
@@ -940,7 +942,7 @@ enum IsInFollow {
 /// separator.
 // when changing this do not forget to update doc/book/macros.md!
 fn is_in_follow(tok: &quoted::TokenTree, frag: &str) -> IsInFollow {
-    use self::quoted::TokenTree;
+    use quoted::TokenTree;
 
     if let TokenTree::Token(_, token::CloseDelim(_)) = *tok {
         // closing a token tree can never be matched by any fragment;
@@ -1072,7 +1074,7 @@ fn is_legal_fragment_specifier(_sess: &ParseSess,
 
 fn quoted_tt_to_string(tt: &quoted::TokenTree) -> String {
     match *tt {
-        quoted::TokenTree::Token(_, ref tok) => ::print::pprust::token_to_string(tok),
+        quoted::TokenTree::Token(_, ref tok) => crate::print::pprust::token_to_string(tok),
         quoted::TokenTree::MetaVar(_, name) => format!("${}", name),
         quoted::TokenTree::MetaVarDecl(_, name, kind) => format!("${}:{}", name, kind),
         _ => panic!("unexpected quoted::TokenTree::{{Sequence or Delimited}} \

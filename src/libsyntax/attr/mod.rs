@@ -2,31 +2,33 @@
 
 mod builtin;
 
-pub use self::builtin::{
+pub use builtin::{
     cfg_matches, contains_feature_attr, eval_condition, find_crate_name, find_deprecation,
     find_repr_attrs, find_stability, find_unwind_attr, Deprecation, InlineAttr, OptimizeAttr,
     IntType, ReprAttr, RustcDeprecation, Stability, StabilityLevel, UnwindAttr,
 };
-pub use self::IntType::*;
-pub use self::ReprAttr::*;
-pub use self::StabilityLevel::*;
+pub use IntType::*;
+pub use ReprAttr::*;
+pub use StabilityLevel::*;
 
-use ast;
-use ast::{AttrId, Attribute, AttrStyle, Name, Ident, Path, PathSegment};
-use ast::{MetaItem, MetaItemKind, NestedMetaItem, NestedMetaItemKind};
-use ast::{Lit, LitKind, Expr, ExprKind, Item, Local, Stmt, StmtKind, GenericParam};
-use mut_visit::visit_clobber;
-use source_map::{BytePos, Spanned, respan, dummy_spanned};
+use crate::ast;
+use crate::ast::{AttrId, Attribute, AttrStyle, Name, Ident, Path, PathSegment};
+use crate::ast::{MetaItem, MetaItemKind, NestedMetaItem, NestedMetaItemKind};
+use crate::ast::{Lit, LitKind, Expr, ExprKind, Item, Local, Stmt, StmtKind, GenericParam};
+use crate::mut_visit::visit_clobber;
+use crate::source_map::{BytePos, Spanned, respan, dummy_spanned};
+use crate::parse::lexer::comments::{doc_comment_style, strip_doc_comment_decoration};
+use crate::parse::parser::Parser;
+use crate::parse::{self, ParseSess, PResult};
+use crate::parse::token::{self, Token};
+use crate::ptr::P;
+use crate::symbol::Symbol;
+use crate::ThinVec;
+use crate::tokenstream::{TokenStream, TokenTree, DelimSpan};
+use crate::GLOBALS;
+
+use log::debug;
 use syntax_pos::{FileName, Span};
-use parse::lexer::comments::{doc_comment_style, strip_doc_comment_decoration};
-use parse::parser::Parser;
-use parse::{self, ParseSess, PResult};
-use parse::token::{self, Token};
-use ptr::P;
-use symbol::Symbol;
-use ThinVec;
-use tokenstream::{TokenStream, TokenTree, DelimSpan};
-use GLOBALS;
 
 use std::iter;
 use std::ops::DerefMut;

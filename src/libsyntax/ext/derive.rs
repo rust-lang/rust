@@ -1,15 +1,16 @@
-use attr::HasAttrs;
-use ast;
-use source_map::{hygiene, ExpnInfo, ExpnFormat};
-use ext::base::ExtCtxt;
-use ext::build::AstBuilder;
-use parse::parser::PathStyle;
-use symbol::Symbol;
+use crate::attr::HasAttrs;
+use crate::ast;
+use crate::source_map::{hygiene, ExpnInfo, ExpnFormat};
+use crate::ext::base::ExtCtxt;
+use crate::ext::build::AstBuilder;
+use crate::parse::parser::PathStyle;
+use crate::symbol::Symbol;
+
 use syntax_pos::Span;
 
 use rustc_data_structures::fx::FxHashSet;
 
-pub fn collect_derives(cx: &mut ExtCtxt, attrs: &mut Vec<ast::Attribute>) -> Vec<ast::Path> {
+pub fn collect_derives(cx: &mut ExtCtxt<'_>, attrs: &mut Vec<ast::Attribute>) -> Vec<ast::Path> {
     let mut result = Vec::new();
     attrs.retain(|attr| {
         if attr.path != "derive" {
@@ -40,7 +41,7 @@ pub fn collect_derives(cx: &mut ExtCtxt, attrs: &mut Vec<ast::Attribute>) -> Vec
     result
 }
 
-pub fn add_derived_markers<T>(cx: &mut ExtCtxt, span: Span, traits: &[ast::Path], item: &mut T)
+pub fn add_derived_markers<T>(cx: &mut ExtCtxt<'_>, span: Span, traits: &[ast::Path], item: &mut T)
     where T: HasAttrs,
 {
     let (mut names, mut pretty_name) = (FxHashSet::default(), "derive(".to_owned());
