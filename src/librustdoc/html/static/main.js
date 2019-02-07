@@ -1886,12 +1886,30 @@ if (!DOMTokenList.prototype.remove) {
             updateLocalStorage("rustdoc-collapse", "true");
             addClass(innerToggle, "will-expand");
             onEveryMatchingChild(innerToggle, "inner", function(e) {
-                e.innerHTML = labelForToggleButton(true);
+                var parent = e.parentNode;
+                var superParent = null;
+
+                if (parent) {
+                    superParent = parent.parentNode;
+                }
+                if (!parent || !superParent || superParent.id !== "main" ||
+                    hasClass(parent, "impl") === false) {
+                    e.innerHTML = labelForToggleButton(true);
+                }
             });
             innerToggle.title = "expand all docs";
             if (fromAutoCollapse !== true) {
                 onEachLazy(document.getElementsByClassName("collapse-toggle"), function(e) {
-                    collapseDocs(e, "hide", pageId);
+                    var parent = e.parentNode;
+                    var superParent = null;
+
+                    if (parent) {
+                        superParent = parent.parentNode;
+                    }
+                    if (!parent || !superParent || superParent.id !== "main" ||
+                        hasClass(parent, "impl") === false) {
+                        collapseDocs(e, "hide", pageId);
+                    }
                 });
             }
         }
