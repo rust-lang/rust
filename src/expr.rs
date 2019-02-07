@@ -379,6 +379,7 @@ pub fn format_expr(
                 ))
             }
         }
+        ast::ExprKind::Err => None,
     };
 
     expr_rw

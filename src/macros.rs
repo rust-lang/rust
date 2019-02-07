@@ -27,7 +27,7 @@ use syntax::parse::token::{BinOpToken, DelimToken, Token};
 use syntax::print::pprust;
 use syntax::source_map::{BytePos, Span};
 use syntax::symbol;
-use syntax::tokenstream::{Cursor, ThinTokenStream, TokenStream, TokenTree};
+use syntax::tokenstream::{Cursor, TokenStream, TokenTree};
 use syntax::ThinVec;
 use syntax::{ast, parse, ptr};
 
@@ -751,7 +751,7 @@ struct MacroArgParser {
 fn last_tok(tt: &TokenTree) -> Token {
     match *tt {
         TokenTree::Token(_, ref t) => t.clone(),
-        TokenTree::Delimited(_, ref d) => d.close_token(),
+        TokenTree::Delimited(_, delim, _) => Token::CloseDelim(delim),
     }
 }
 
@@ -916,11 +916,11 @@ impl MacroArgParser {
     }
 
     /// Returns a collection of parsed macro def's arguments.
-    pub fn parse(mut self, tokens: ThinTokenStream) -> Option<Vec<ParsedMacroArg>> {
+    pub fn parse(mut self, tokens: TokenStream) -> Option<Vec<ParsedMacroArg>> {
         let stream: TokenStream = tokens.into();
         let mut iter = stream.trees();
 
-        while let Some(ref tok) = iter.next() {
+        while let Some(tok) = iter.next() {
             match tok {
                 TokenTree::Token(sp, Token::Dollar) => {
                     // We always want to add a separator before meta variables.
@@ -937,7 +937,7 @@ impl MacroArgParser {
                     self.add_meta_variable(&mut iter)?;
                 }
                 TokenTree::Token(sp, ref t) => self.update_buffer(sp.lo(), t),
-                TokenTree::Delimited(delimited_span, delimited) => {
+                TokenTree::Delimited(delimited_span, delimited, ref tts) => {
                     if !self.buf.is_empty() {
                         if next_space(&self.last_tok) == SpaceState::Always {
                             self.add_separator();
@@ -949,19 +949,19 @@ impl MacroArgParser {
                     // Parse the stuff inside delimiters.
                     let mut parser = MacroArgParser::new();
                     parser.lo = delimited_span.open.lo();
-                    let delimited_arg = parser.parse(delimited.tts.clone())?;
+                    let delimited_arg = parser.parse(tts.clone())?;
 
                     let span = delimited_span.entire();
                     if self.is_meta_var {
-                        self.add_repeat(delimited_arg, delimited.delim, &mut iter, span)?;
+                        self.add_repeat(delimited_arg, delimited, &mut iter, span)?;
                         self.is_meta_var = false;
                     } else {
-                        self.add_delimited(delimited_arg, delimited.delim, span);
+                        self.add_delimited(delimited_arg, delimited, span);
                     }
                 }
             }
 
-            self.set_last_tok(tok);
+            self.set_last_tok(&tok);
         }
 
         // We are left with some stuff in the buffer. Since there is nothing
@@ -1027,11 +1027,7 @@ fn wrap_macro_args_inner(
 //
 // We always try and format on one line.
 // FIXME: Use multi-line when every thing does not fit on one line.
-fn format_macro_args(
-    context: &RewriteContext,
-    toks: ThinTokenStream,
-    shape: Shape,
-) -> Option<String> {
+fn format_macro_args(context: &RewriteContext, toks: TokenStream, shape: Shape) -> Option<String> {
     if !context.config.format_macro_matchers() {
         let token_stream: TokenStream = toks.into();
         let span = span_for_token_stream(&token_stream);
@@ -1176,7 +1172,7 @@ impl MacroParser {
         let tok = self.toks.next()?;
         let (lo, args_paren_kind) = match tok {
             TokenTree::Token(..) => return None,
-            TokenTree::Delimited(delimited_span, ref d) => (delimited_span.open.lo(), d.delim),
+            TokenTree::Delimited(delimited_span, d, _) => (delimited_span.open.lo(), d),
         };
         let args = tok.joint().into();
         match self.toks.next()? {
@@ -1185,7 +1181,7 @@ impl MacroParser {
         }
         let (mut hi, body, whole_body) = match self.toks.next()? {
             TokenTree::Token(..) => return None,
-            TokenTree::Delimited(delimited_span, _) => {
+            TokenTree::Delimited(delimited_span, ..) => {
                 let data = delimited_span.entire().data();
                 (
                     data.hi,
@@ -1218,7 +1214,7 @@ struct Macro {
 struct MacroBranch {
     span: Span,
     args_paren_kind: DelimToken,
-    args: ThinTokenStream,
+    args: TokenStream,
     body: Span,
     whole_body: Span,
 }

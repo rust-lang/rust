@@ -157,7 +157,6 @@ fn rewrite_closure_with_block(
         id: ast::NodeId::root(),
         rules: ast::BlockCheckMode::Default,
         span: body.span,
-        recovered: false,
     };
     let block =
         crate::expr::rewrite_block_with_visitor(context, "", &block, None, None, shape, false)?;
