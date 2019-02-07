@@ -34,6 +34,18 @@ pub fn get_attrs_from_stmt(stmt: &ast::Stmt) -> &[ast::Attribute] {
     }
 }
 
+pub fn get_span_without_attrs(stmt: &ast::Stmt) -> Span {
+    match stmt.node {
+        ast::StmtKind::Local(ref local) => local.span,
+        ast::StmtKind::Item(ref item) => item.span,
+        ast::StmtKind::Expr(ref expr) | ast::StmtKind::Semi(ref expr) => expr.span,
+        ast::StmtKind::Mac(ref mac) => {
+            let (ref mac, _, _) = **mac;
+            mac.span
+        }
+    }
+}
+
 /// Returns attributes that are within `outer_span`.
 pub fn filter_inline_attrs(attrs: &[ast::Attribute], outer_span: Span) -> Vec<ast::Attribute> {
     attrs
