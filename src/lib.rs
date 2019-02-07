@@ -54,7 +54,7 @@ pub use crate::stacked_borrows::{Borrow, Stack, Stacks, BorStackItem};
 pub fn miri_default_args() -> &'static [&'static str] {
     // The flags here should be kept in sync with what bootstrap adds when `test-miri` is
     // set, which happens in `bootstrap/bin/rustc.rs` in the rustc sources.
-    &["-Zalways-encode-mir", "-Zmir-emit-retag", "-Zmir-opt-level=0"]
+    &["-Zalways-encode-mir", "-Zmir-emit-retag", "-Zmir-opt-level=0", "--cfg=miri"]
 }
 
 // Used by priroda
