@@ -28,7 +28,7 @@ pub(crate) fn remove_dbg(ctx: AssistCtx<impl HirDatabase>) -> Option<Assist> {
             .checked_sub(macro_range.start())
             .unwrap_or_else(|| TextUnit::from(0));
 
-        let dbg_size = dbg!(TextUnit::of_str("dbg!("));
+        let dbg_size = TextUnit::of_str("dbg!(");
 
         if offset_start > dbg_size {
             file_range.start() - dbg_size
@@ -39,8 +39,7 @@ pub(crate) fn remove_dbg(ctx: AssistCtx<impl HirDatabase>) -> Option<Assist> {
 
     let macro_content = {
         let macro_args = macro_call.token_tree()?.syntax();
-        let _ = dbg!(macro_args.text());
-        let range = dbg!(macro_args.range());
+        let range = macro_args.range();
         let start = range.start() + TextUnit::of_char('(');
         let end = range.end() - TextUnit::of_char(')');
 
