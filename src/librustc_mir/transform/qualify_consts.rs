@@ -25,6 +25,7 @@ use syntax::feature_gate::{emit_feature_err, GateIssue};
 use syntax_pos::{Span, DUMMY_SP};
 
 use std::fmt;
+use std::ops::Deref;
 use std::usize;
 
 use crate::transform::{MirPass, MirSource};
@@ -106,16 +107,16 @@ impl fmt::Display for Mode {
     }
 }
 
-struct Qualifier<'a, 'tcx> {
+struct ConstCx<'a, 'tcx> {
     tcx: TyCtxt<'a, 'tcx, 'tcx>,
     param_env: ty::ParamEnv<'tcx>,
     mode: Mode,
     mir: &'a Mir<'tcx>,
 
-    local_qualif: &'a IndexVec<Local, Qualif>,
+    local_qualif: IndexVec<Local, Qualif>,
 }
 
-impl<'a, 'tcx> Qualifier<'a, 'tcx> {
+impl<'a, 'tcx> ConstCx<'a, 'tcx> {
     fn qualify_any_value_of_ty(&self, ty: Ty<'tcx>) -> Qualif {
         Qualif::any_value_of_ty(ty, self.tcx, self.param_env)
     }
@@ -436,15 +437,12 @@ impl<'a, 'tcx> Qualifier<'a, 'tcx> {
 }
 
 struct Checker<'a, 'tcx> {
-    tcx: TyCtxt<'a, 'tcx, 'tcx>,
-    param_env: ty::ParamEnv<'tcx>,
-    mode: Mode,
+    cx: ConstCx<'a, 'tcx>,
+
     span: Span,
     def_id: DefId,
-    mir: &'a Mir<'tcx>,
     rpo: ReversePostorder<'a, 'tcx>,
 
-    local_qualif: IndexVec<Local, Qualif>,
     temp_promotion_state: IndexVec<Local, TempState>,
     promotion_candidates: Vec<Candidate>,
 }
@@ -456,6 +454,14 @@ macro_rules! unleash_miri {
             return;
         }
     }}
+}
+
+impl Deref for Checker<'a, 'tcx> {
+    type Target = ConstCx<'a, 'tcx>;
+
+    fn deref(&self) -> &Self::Target {
+        &self.cx
+    }
 }
 
 impl<'a, 'tcx> Checker<'a, 'tcx> {
@@ -489,26 +495,18 @@ impl<'a, 'tcx> Checker<'a, 'tcx> {
         }).collect();
 
         Checker {
-            mode,
+            cx: ConstCx {
+                tcx,
+                param_env,
+                mode,
+                mir,
+                local_qualif,
+            },
             span: mir.span,
             def_id,
-            mir,
             rpo,
-            tcx,
-            param_env,
-            local_qualif,
             temp_promotion_state: temps,
             promotion_candidates: vec![]
-        }
-    }
-
-    fn qualifier(&'a self) -> Qualifier<'a, 'tcx> {
-        Qualifier {
-            tcx: self.tcx,
-            param_env: self.param_env,
-            mode: self.mode,
-            mir: self.mir,
-            local_qualif: &self.local_qualif,
         }
     }
 
@@ -545,7 +543,7 @@ impl<'a, 'tcx> Checker<'a, 'tcx> {
                 if self.mir.local_kind(index) == LocalKind::Temp
                 && self.temp_promotion_state[index].is_promotable() {
                     debug!("store to promotable temp {:?} ({:?})", index, qualif);
-                    let slot = &mut self.local_qualif[index];
+                    let slot = &mut self.cx.local_qualif[index];
                     if !slot.is_empty() {
                         span_bug!(self.span, "multiple assignments to {:?}", dest);
                     }
@@ -586,12 +584,15 @@ impl<'a, 'tcx> Checker<'a, 'tcx> {
                 }
             }
         };
-        debug!("store to var {:?}", index);
+
+        let kind = self.mir.local_kind(index);
+        debug!("store to {:?} {:?}", kind, index);
+
         // this is overly restrictive, because even full assignments do not clear the qualif
         // While we could special case full assignments, this would be inconsistent with
         // aggregates where we overwrite all fields via assignments, which would not get
         // that feature.
-        let slot = &mut self.local_qualif[index];
+        let slot = &mut self.cx.local_qualif[index];
         *slot = *slot | qualif;
 
         // Ensure we keep the `NOT_PROMOTABLE` flag is preserved.
@@ -599,7 +600,7 @@ impl<'a, 'tcx> Checker<'a, 'tcx> {
         // we never replace the local's qualif (but we might in
         // the future) - also, if `NOT_PROMOTABLE` only matters
         // for `Mode::Fn`, then this is also pointless.
-        if self.mir.local_kind(index) == LocalKind::Temp {
+        if kind == LocalKind::Temp {
             if !self.temp_promotion_state[index].is_promotable() {
                 *slot = *slot | Qualif::NOT_PROMOTABLE;
             }
@@ -664,7 +665,7 @@ impl<'a, 'tcx> Checker<'a, 'tcx> {
         // Account for errors in consts by using the
         // conservative type qualification instead.
         if qualif.intersects(Qualif::NOT_CONST) {
-            qualif = self.qualifier().qualify_any_value_of_ty(mir.return_ty());
+            qualif = self.qualify_any_value_of_ty(mir.return_ty());
         }
 
 
@@ -690,7 +691,7 @@ impl<'a, 'tcx> Checker<'a, 'tcx> {
     }
 }
 
-/// Checks MIR for const-correctness, using `Qualifier`
+/// Checks MIR for const-correctness, using `ConstCx`
 /// for value qualifications, and accumulates writes of
 /// rvalue/call results to locals, in `local_qualif`.
 /// For functions (constant or not), it also records
@@ -821,7 +822,7 @@ impl<'a, 'tcx> Visitor<'tcx> for Checker<'a, 'tcx> {
             Operand::Move(ref place) => {
                 // Mark the consumed locals to indicate later drops are noops.
                 if let Place::Local(local) = *place {
-                    let slot = &mut self.local_qualif[local];
+                    let slot = &mut self.cx.local_qualif[local];
                     *slot = *slot - Qualif::NEEDS_DROP;
                 }
             }
@@ -960,7 +961,7 @@ impl<'a, 'tcx> Visitor<'tcx> for Checker<'a, 'tcx> {
         if let TerminatorKind::Call { ref func, ref args, ref destination, .. } = *kind {
             if let Some((ref dest, _)) = *destination {
                 let ty = dest.ty(self.mir, self.tcx).to_ty(self.tcx);
-                let qualif = self.qualifier().qualify_call(func, args, ty);
+                let qualif = self.qualify_call(func, args, ty);
                 self.assign(dest, qualif, location);
             }
 
@@ -1013,7 +1014,7 @@ impl<'a, 'tcx> Visitor<'tcx> for Checker<'a, 'tcx> {
                                     // stable const fns or unstable const fns
                                     // with their feature gate active
                                     // FIXME(eddyb) move stability checks from `is_const_fn` here.
-                                } else if self.qualifier().is_const_panic_fn(def_id) {
+                                } else if self.is_const_panic_fn(def_id) {
                                     // Check the const_panic feature gate.
                                     // FIXME: cannot allow this inside `allow_internal_unstable`
                                     // because that would make `panic!` insta stable in constants,
@@ -1093,7 +1094,7 @@ impl<'a, 'tcx> Visitor<'tcx> for Checker<'a, 'tcx> {
                     // which happens even without the user requesting it.
                     // We can error out with a hard error if the argument is not
                     // constant here.
-                    let arg_qualif = self.qualifier().qualify_operand(arg);
+                    let arg_qualif = self.qualify_operand(arg);
                     if (arg_qualif - Qualif::NOT_PROMOTABLE).is_empty() {
                         debug!("visit_terminator_kind: candidate={:?}", candidate);
                         self.promotion_candidates.push(candidate);
@@ -1157,7 +1158,7 @@ impl<'a, 'tcx> Visitor<'tcx> for Checker<'a, 'tcx> {
                     rvalue: &Rvalue<'tcx>,
                     location: Location) {
         debug!("visit_assign: dest={:?} rvalue={:?} location={:?}", dest, rvalue, location);
-        let mut qualif = self.qualifier().qualify_rvalue(rvalue);
+        let mut qualif = self.qualify_rvalue(rvalue);
 
         if let Rvalue::Ref(_, kind, ref place) = *rvalue {
             // Getting `MUTABLE_INTERIOR` from `qualify_rvalue` means
