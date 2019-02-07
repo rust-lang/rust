@@ -201,7 +201,7 @@ use std::string;
 use std::{char, f64, fmt, str};
 use std;
 
-use Encodable;
+use crate::Encodable;
 
 /// Represents a json value
 #[derive(Clone, PartialEq, PartialOrd, Debug)]
@@ -221,8 +221,8 @@ pub type Object = BTreeMap<string::String, Json>;
 
 pub struct PrettyJson<'a> { inner: &'a Json }
 
-pub struct AsJson<'a, T: 'a> { inner: &'a T }
-pub struct AsPrettyJson<'a, T: 'a> { inner: &'a T, indent: Option<usize> }
+pub struct AsJson<'a, T> { inner: &'a T }
+pub struct AsPrettyJson<'a, T> { inner: &'a T, indent: Option<usize> }
 
 /// The errors that can arise while parsing a JSON stream.
 #[derive(Clone, Copy, PartialEq, Debug)]
@@ -295,18 +295,18 @@ pub fn error_str(error: ErrorCode) -> &'static str {
 }
 
 /// Shortcut function to decode a JSON `&str` into an object
-pub fn decode<T: ::Decodable>(s: &str) -> DecodeResult<T> {
+pub fn decode<T: crate::Decodable>(s: &str) -> DecodeResult<T> {
     let json = match from_str(s) {
         Ok(x) => x,
         Err(e) => return Err(ParseError(e))
     };
 
     let mut decoder = Decoder::new(json);
-    ::Decodable::decode(&mut decoder)
+    crate::Decodable::decode(&mut decoder)
 }
 
 /// Shortcut function to encode a `T` into a JSON `String`
-pub fn encode<T: ::Encodable>(object: &T) -> Result<string::String, EncoderError> {
+pub fn encode<T: crate::Encodable>(object: &T) -> Result<string::String, EncoderError> {
     let mut s = String::new();
     {
         let mut encoder = Encoder::new(&mut s);
@@ -316,7 +316,7 @@ pub fn encode<T: ::Encodable>(object: &T) -> Result<string::String, EncoderError
 }
 
 impl fmt::Display for ErrorCode {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         error_str(*self).fmt(f)
     }
 }
@@ -326,14 +326,14 @@ fn io_error_to_error(io: io::Error) -> ParserError {
 }
 
 impl fmt::Display for ParserError {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         // FIXME this should be a nicer error
         fmt::Debug::fmt(self, f)
     }
 }
 
 impl fmt::Display for DecoderError {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         // FIXME this should be a nicer error
         fmt::Debug::fmt(self, f)
     }
@@ -344,7 +344,7 @@ impl std::error::Error for DecoderError {
 }
 
 impl fmt::Display for EncoderError {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         // FIXME this should be a nicer error
         fmt::Debug::fmt(self, f)
     }
@@ -477,7 +477,7 @@ macro_rules! emit_enquoted_if_mapkey {
     })
 }
 
-impl<'a> ::Encoder for Encoder<'a> {
+impl<'a> crate::Encoder for Encoder<'a> {
     type Error = EncoderError;
 
     fn emit_unit(&mut self) -> EncodeResult {
@@ -727,7 +727,7 @@ impl<'a> PrettyEncoder<'a> {
     }
 }
 
-impl<'a> ::Encoder for PrettyEncoder<'a> {
+impl<'a> crate::Encoder for PrettyEncoder<'a> {
     type Error = EncoderError;
 
     fn emit_unit(&mut self) -> EncodeResult {
@@ -997,7 +997,7 @@ impl<'a> ::Encoder for PrettyEncoder<'a> {
 }
 
 impl Encodable for Json {
-    fn encode<E: ::Encoder>(&self, e: &mut E) -> Result<(), E::Error> {
+    fn encode<E: crate::Encoder>(&self, e: &mut E) -> Result<(), E::Error> {
         match *self {
             Json::I64(v) => v.encode(e),
             Json::U64(v) => v.encode(e),
@@ -1013,20 +1013,20 @@ impl Encodable for Json {
 
 /// Create an `AsJson` wrapper which can be used to print a value as JSON
 /// on-the-fly via `write!`
-pub fn as_json<T>(t: &T) -> AsJson<T> {
+pub fn as_json<T>(t: &T) -> AsJson<'_, T> {
     AsJson { inner: t }
 }
 
 /// Create an `AsPrettyJson` wrapper which can be used to print a value as JSON
 /// on-the-fly via `write!`
-pub fn as_pretty_json<T>(t: &T) -> AsPrettyJson<T> {
+pub fn as_pretty_json<T>(t: &T) -> AsPrettyJson<'_, T> {
     AsPrettyJson { inner: t, indent: None }
 }
 
 impl Json {
     /// Borrow this json object as a pretty object to generate a pretty
     /// representation for it via `Display`.
-    pub fn pretty(&self) -> PrettyJson {
+    pub fn pretty(&self) -> PrettyJson<'_> {
         PrettyJson { inner: self }
     }
 
@@ -1300,7 +1300,7 @@ impl Stack {
     /// Provides access to the StackElement at a given index.
     /// lower indices are at the bottom of the stack while higher indices are
     /// at the top.
-    pub fn get(&self, idx: usize) -> StackElement {
+    pub fn get(&self, idx: usize) -> StackElement<'_> {
         match self.stack[idx] {
             InternalIndex(i) => StackElement::Index(i),
             InternalKey(start, size) => {
@@ -1311,8 +1311,8 @@ impl Stack {
         }
     }
 
-    /// Compares this stack with an array of StackElements.
-    pub fn is_equal_to(&self, rhs: &[StackElement]) -> bool {
+    /// Compares this stack with an array of StackElement<'_>s.
+    pub fn is_equal_to(&self, rhs: &[StackElement<'_>]) -> bool {
         if self.stack.len() != rhs.len() { return false; }
         for (i, r) in rhs.iter().enumerate() {
             if self.get(i) != *r { return false; }
@@ -1322,7 +1322,7 @@ impl Stack {
 
     /// Returns true if the bottom-most elements of this stack are the same as
     /// the ones passed as parameter.
-    pub fn starts_with(&self, rhs: &[StackElement]) -> bool {
+    pub fn starts_with(&self, rhs: &[StackElement<'_>]) -> bool {
         if self.stack.len() < rhs.len() { return false; }
         for (i, r) in rhs.iter().enumerate() {
             if self.get(i) != *r { return false; }
@@ -1332,7 +1332,7 @@ impl Stack {
 
     /// Returns true if the top-most elements of this stack are the same as
     /// the ones passed as parameter.
-    pub fn ends_with(&self, rhs: &[StackElement]) -> bool {
+    pub fn ends_with(&self, rhs: &[StackElement<'_>]) -> bool {
         if self.stack.len() < rhs.len() { return false; }
         let offset = self.stack.len() - rhs.len();
         for (i, r) in rhs.iter().enumerate() {
@@ -1342,7 +1342,7 @@ impl Stack {
     }
 
     /// Returns the top-most element (if any).
-    pub fn top(&self) -> Option<StackElement> {
+    pub fn top(&self) -> Option<StackElement<'_>> {
         match self.stack.last() {
             None => None,
             Some(&InternalIndex(i)) => Some(StackElement::Index(i)),
@@ -2115,7 +2115,7 @@ macro_rules! read_primitive {
     }
 }
 
-impl ::Decoder for Decoder {
+impl crate::Decoder for Decoder {
     type Error = DecoderError;
 
     fn read_nil(&mut self) -> DecodeResult<()> {
@@ -2172,7 +2172,7 @@ impl ::Decoder for Decoder {
         Err(ExpectedError("single character string".to_owned(), s.to_string()))
     }
 
-    fn read_str(&mut self) -> DecodeResult<Cow<str>> {
+    fn read_str(&mut self) -> DecodeResult<Cow<'_, str>> {
         expect!(self.pop(), String).map(Cow::Owned)
     }
 
@@ -2518,7 +2518,7 @@ impl<'a, 'b> fmt::Write for FormatShim<'a, 'b> {
 
 impl fmt::Display for Json {
     /// Encodes a json value into a string
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let mut shim = FormatShim { inner: f };
         let mut encoder = Encoder::new(&mut shim);
         match self.encode(&mut encoder) {
@@ -2530,7 +2530,7 @@ impl fmt::Display for Json {
 
 impl<'a> fmt::Display for PrettyJson<'a> {
     /// Encodes a json value into a string
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let mut shim = FormatShim { inner: f };
         let mut encoder = PrettyEncoder::new(&mut shim);
         match self.inner.encode(&mut encoder) {
@@ -2542,7 +2542,7 @@ impl<'a> fmt::Display for PrettyJson<'a> {
 
 impl<'a, T: Encodable> fmt::Display for AsJson<'a, T> {
     /// Encodes a json value into a string
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let mut shim = FormatShim { inner: f };
         let mut encoder = Encoder::new(&mut shim);
         match self.inner.encode(&mut encoder) {
@@ -2562,7 +2562,7 @@ impl<'a, T> AsPrettyJson<'a, T> {
 
 impl<'a, T: Encodable> fmt::Display for AsPrettyJson<'a, T> {
     /// Encodes a json value into a string
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let mut shim = FormatShim { inner: f };
         let mut encoder = PrettyEncoder::new(&mut shim);
         if let Some(n) = self.indent {
@@ -2587,7 +2587,7 @@ mod tests {
     extern crate test;
     use self::Animal::*;
     use self::test::Bencher;
-    use {Encodable, Decodable};
+    use crate::{Encodable, Decodable};
     use super::Json::*;
     use super::ErrorCode::*;
     use super::ParserError::*;
@@ -3515,7 +3515,7 @@ mod tests {
     #[test]
     fn test_hashmap_with_enum_key() {
         use std::collections::HashMap;
-        use json;
+        use crate::json;
         #[derive(RustcEncodable, Eq, Hash, PartialEq, RustcDecodable, Debug)]
         enum Enum {
             Foo,

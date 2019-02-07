@@ -60,7 +60,7 @@ pub enum FromHexError {
 }
 
 impl fmt::Display for FromHexError {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match *self {
             InvalidHexCharacter(ch, idx) =>
                 write!(f, "Invalid character '{}' at position {}", ch, idx),
@@ -146,7 +146,7 @@ impl FromHex for str {
 mod tests {
     extern crate test;
     use self::test::Bencher;
-    use hex::{FromHex, ToHex};
+    use crate::hex::{FromHex, ToHex};
 
     #[test]
     pub fn test_to_hex() {

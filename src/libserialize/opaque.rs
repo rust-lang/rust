@@ -1,6 +1,6 @@
-use leb128::{self, read_signed_leb128, write_signed_leb128};
+use crate::leb128::{self, read_signed_leb128, write_signed_leb128};
 use std::borrow::Cow;
-use serialize;
+use crate::serialize;
 
 // -----------------------------------------------------------------------------
 // Encoder
@@ -312,7 +312,7 @@ impl<'a> serialize::Decoder for Decoder<'a> {
     }
 
     #[inline]
-    fn read_str(&mut self) -> Result<Cow<str>, Self::Error> {
+    fn read_str(&mut self) -> Result<Cow<'_, str>, Self::Error> {
         let len = self.read_usize()?;
         let s = ::std::str::from_utf8(&self.data[self.position..self.position + len]).unwrap();
         self.position += len;
@@ -328,7 +328,7 @@ impl<'a> serialize::Decoder for Decoder<'a> {
 
 #[cfg(test)]
 mod tests {
-    use serialize::{Encodable, Decodable};
+    use crate::serialize::{Encodable, Decodable};
     use std::fmt::Debug;
     use super::{Encoder, Decoder};
 
