@@ -1,5 +1,3 @@
-// run-pass
-
-fn foo<#[attr]>() {} // ok
+fn foo<#[attr]>() {} //~ ERROR attribute without generic parameters
 
 fn main() {}

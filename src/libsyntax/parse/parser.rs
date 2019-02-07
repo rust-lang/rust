@@ -5545,13 +5545,25 @@ impl<'a> Parser<'a> {
                 params.push(self.parse_ty_param(attrs)?);
             } else {
                 // Check for trailing attributes and stop parsing.
-                if !attrs.is_empty() && !params.is_empty() {
-                    self.struct_span_err(
-                        attrs[0].span,
-                        &format!("trailing attribute after generic parameter"),
-                    )
-                    .span_label(attrs[0].span, "attributes must go before parameters")
-                    .emit();
+                if !attrs.is_empty() {
+                    if !params.is_empty() {
+                        self.struct_span_err(
+                            attrs[0].span,
+                            &format!("trailing attribute after generic parameter"),
+                        )
+                        .span_label(attrs[0].span, "attributes must go before parameters")
+                        .emit();
+                    } else {
+                        self.struct_span_err(
+                            attrs[0].span,
+                            &format!("attribute without generic parameters"),
+                        )
+                        .span_label(
+                            attrs[0].span,
+                            "attributes are only permitted when preceding parameters",
+                        )
+                        .emit();
+                    }
                 }
                 break
             }
