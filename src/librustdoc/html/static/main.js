@@ -150,8 +150,7 @@ if (!DOMTokenList.prototype.remove) {
     }
 
     function browserSupportsHistoryApi() {
-        return document.location.protocol != "file:" &&
-          window.history && typeof window.history.pushState === "function";
+        return window.history && typeof window.history.pushState === "function";
     }
 
     var main = document.getElementById("main");
@@ -1887,12 +1886,30 @@ if (!DOMTokenList.prototype.remove) {
             updateLocalStorage("rustdoc-collapse", "true");
             addClass(innerToggle, "will-expand");
             onEveryMatchingChild(innerToggle, "inner", function(e) {
-                e.innerHTML = labelForToggleButton(true);
+                var parent = e.parentNode;
+                var superParent = null;
+
+                if (parent) {
+                    superParent = parent.parentNode;
+                }
+                if (!parent || !superParent || superParent.id !== "main" ||
+                    hasClass(parent, "impl") === false) {
+                    e.innerHTML = labelForToggleButton(true);
+                }
             });
             innerToggle.title = "expand all docs";
             if (fromAutoCollapse !== true) {
                 onEachLazy(document.getElementsByClassName("collapse-toggle"), function(e) {
-                    collapseDocs(e, "hide", pageId);
+                    var parent = e.parentNode;
+                    var superParent = null;
+
+                    if (parent) {
+                        superParent = parent.parentNode;
+                    }
+                    if (!parent || !superParent || superParent.id !== "main" ||
+                        hasClass(parent, "impl") === false) {
+                        collapseDocs(e, "hide", pageId);
+                    }
                 });
             }
         }
@@ -1918,9 +1935,9 @@ if (!DOMTokenList.prototype.remove) {
             };
         }
 
-        function implHider(addOrRemove) {
+        function implHider(addOrRemove, fullHide) {
             return function(n) {
-                var is_method = hasClass(n, "method");
+                var is_method = hasClass(n, "method") || fullHide;
                 if (is_method || hasClass(n, "type")) {
                     if (is_method === true) {
                         if (addOrRemove) {
@@ -1974,7 +1991,7 @@ if (!DOMTokenList.prototype.remove) {
                 }
             }
         } else {
-            // we are collapsing the impl block
+            // we are collapsing the impl block(s).
 
             var parentElem = toggle.parentNode;
             relatedDoc = parentElem;
@@ -1989,7 +2006,7 @@ if (!DOMTokenList.prototype.remove) {
                 return;
             }
 
-            // Hide all functions, but not associated types/consts
+            // Hide all functions, but not associated types/consts.
 
             if (mode === "toggle") {
                 if (hasClass(relatedDoc, "fns-now-collapsed") ||
@@ -2000,16 +2017,17 @@ if (!DOMTokenList.prototype.remove) {
                 }
             }
 
+            var dontApplyBlockRule = toggle.parentNode.parentNode.id !== "main";
             if (action === "show") {
                 removeClass(relatedDoc, "fns-now-collapsed");
                 removeClass(docblock, "hidden-by-usual-hider");
-                onEachLazy(toggle.childNodes, adjustToggle(false));
-                onEachLazy(relatedDoc.childNodes, implHider(false));
+                onEachLazy(toggle.childNodes, adjustToggle(false, dontApplyBlockRule));
+                onEachLazy(relatedDoc.childNodes, implHider(false, dontApplyBlockRule));
             } else if (action === "hide") {
                 addClass(relatedDoc, "fns-now-collapsed");
                 addClass(docblock, "hidden-by-usual-hider");
-                onEachLazy(toggle.childNodes, adjustToggle(true));
-                onEachLazy(relatedDoc.childNodes, implHider(true));
+                onEachLazy(toggle.childNodes, adjustToggle(true, dontApplyBlockRule);
+                onEachLazy(relatedDoc.childNodes, implHider(true, dontApplyBlockRule));
             }
         }
     }

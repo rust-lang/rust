@@ -30,9 +30,7 @@
 //!
 //! This API is completely unstable and subject to change.
 
-#![doc(html_logo_url = "https://www.rust-lang.org/logos/rust-logo-128x128-blk-v2.png",
-      html_favicon_url = "https://doc.rust-lang.org/favicon.ico",
-      html_root_url = "https://doc.rust-lang.org/nightly/")]
+#![doc(html_root_url = "https://doc.rust-lang.org/nightly/")]
 #![forbid(unsafe_code)]
 #![deny(rust_2018_idioms)]
 

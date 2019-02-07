@@ -271,9 +271,7 @@
 //!
 //! * [DOT language](http://www.graphviz.org/doc/info/lang.html)
 
-#![doc(html_logo_url = "https://www.rust-lang.org/logos/rust-logo-128x128-blk-v2.png",
-       html_favicon_url = "https://doc.rust-lang.org/favicon.ico",
-       html_root_url = "https://doc.rust-lang.org/nightly/",
+#![doc(html_root_url = "https://doc.rust-lang.org/nightly/",
        test(attr(allow(unused_variables), deny(warnings))))]
 
 #![deny(rust_2018_idioms)]

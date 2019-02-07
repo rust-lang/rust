@@ -9,6 +9,6 @@ path = "lib.rs"
 
 [dependencies]
 pulldown-cmark = { version = "0.1.2", default-features = false }
-minifier = "0.0.26"
+minifier = "0.0.28"
 tempfile = "3"
 parking_lot = "0.6.4"
