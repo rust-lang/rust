@@ -389,8 +389,9 @@ impl Span {
         match self.ctxt().outer().expn_info() {
             Some(info) => info
                 .allow_internal_unstable
-                .iter()
-                .any(|&f| f == feature || f == "allow_internal_unstable_backcompat_hack"),
+                .map_or(false, |features| features.iter().any(|&f|
+                    f == feature || f == "allow_internal_unstable_backcompat_hack"
+                )),
             None => false,
         }
     }

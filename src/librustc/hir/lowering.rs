@@ -52,6 +52,7 @@ use crate::util::nodemap::{DefIdMap, NodeMap};
 use std::collections::{BTreeSet, BTreeMap};
 use std::fmt::Debug;
 use std::mem;
+use std::rc::Rc;
 use smallvec::SmallVec;
 use syntax::attr;
 use syntax::ast;
@@ -687,7 +688,7 @@ impl<'a> LoweringContext<'a> {
         &self,
         reason: CompilerDesugaringKind,
         span: Span,
-        allow_internal_unstable: Vec<Symbol>,
+        allow_internal_unstable: Option<Rc<[Symbol]>>,
     ) -> Span {
         let mark = Mark::fresh(Mark::root());
         mark.set_expn_info(source_map::ExpnInfo {
@@ -974,9 +975,9 @@ impl<'a> LoweringContext<'a> {
         let unstable_span = self.mark_span_with_reason(
             CompilerDesugaringKind::Async,
             span,
-            vec![
+            Some(vec![
                 Symbol::intern("gen_future"),
-            ],
+            ].into()),
         );
         let gen_future = self.expr_std_path(
             unstable_span, &["future", "from_generator"], None, ThinVec::new());
@@ -1376,7 +1377,7 @@ impl<'a> LoweringContext<'a> {
         let exist_ty_span = self.mark_span_with_reason(
             CompilerDesugaringKind::ExistentialReturnType,
             span,
-            Vec::new(), // doesn'c actually allow anything unstable
+            None,
         );
 
         let exist_ty_def_index = self
@@ -3944,9 +3945,9 @@ impl<'a> LoweringContext<'a> {
                     let unstable_span = this.mark_span_with_reason(
                         CompilerDesugaringKind::TryBlock,
                         body.span,
-                        vec![
+                        Some(vec![
                             Symbol::intern("try_trait"),
-                        ],
+                        ].into()),
                     );
                     let mut block = this.lower_block(body, true).into_inner();
                     let tail = block.expr.take().map_or_else(
@@ -4382,7 +4383,7 @@ impl<'a> LoweringContext<'a> {
                 let desugared_span = self.mark_span_with_reason(
                     CompilerDesugaringKind::ForLoop,
                     head_sp,
-                    Vec::new(),
+                    None,
                 );
 
                 let iter = self.str_to_ident("iter");
@@ -4548,9 +4549,9 @@ impl<'a> LoweringContext<'a> {
                 let unstable_span = self.mark_span_with_reason(
                     CompilerDesugaringKind::QuestionMark,
                     e.span,
-                    vec![
+                    Some(vec![
                         Symbol::intern("try_trait")
-                    ],
+                    ].into()),
                 );
 
                 // `Try::into_result(<expr>)`

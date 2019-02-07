@@ -622,7 +622,7 @@ pub enum SyntaxExtension {
     ProcMacro {
         expander: Box<dyn ProcMacro + sync::Sync + sync::Send>,
         /// Whitelist of unstable features that are treated as stable inside this macro
-        allow_internal_unstable: Vec<Symbol>,
+        allow_internal_unstable: Option<Rc<[Symbol]>>,
         edition: Edition,
     },
 
@@ -642,7 +642,7 @@ pub enum SyntaxExtension {
         /// directly use `#[unstable]` things.
         ///
         /// Only allows things that require a feature gate in the given whitelist
-        allow_internal_unstable: Vec<Symbol>,
+        allow_internal_unstable: Option<Rc<[Symbol]>>,
         /// Whether the contents of the macro can use `unsafe`
         /// without triggering the `unsafe_code` lint.
         allow_internal_unsafe: bool,
@@ -660,7 +660,7 @@ pub enum SyntaxExtension {
     IdentTT {
         expander: Box<dyn IdentMacroExpander + sync::Sync + sync::Send>,
         span: Option<Span>,
-        allow_internal_unstable: Vec<Symbol>,
+        allow_internal_unstable: Option<Rc<[Symbol]>>,
     },
 
     /// An attribute-like procedural macro. TokenStream -> TokenStream.
