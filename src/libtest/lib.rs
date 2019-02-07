@@ -20,12 +20,7 @@
 #![deny(rust_2018_idioms)]
 #![crate_name = "test"]
 #![unstable(feature = "test", issue = "27812")]
-#![doc(
-    html_logo_url = "https://www.rust-lang.org/logos/rust-logo-128x128-blk-v2.png",
-    html_favicon_url = "https://doc.rust-lang.org/favicon.ico",
-    html_root_url = "https://doc.rust-lang.org/nightly/",
-    test(attr(deny(warnings)))
-)]
+#![doc(html_root_url = "https://doc.rust-lang.org/nightly/", test(attr(deny(warnings))))]
 #![feature(asm)]
 #![feature(fnbox)]
 #![cfg_attr(any(unix, target_os = "cloudabi"), feature(libc, rustc_private))]
