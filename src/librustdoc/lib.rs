@@ -16,6 +16,8 @@
 #![feature(const_fn)]
 #![feature(drain_filter)]
 #![feature(inner_deref)]
+#![feature(never_type)]
+#![feature(exhaustive_patterns)]
 
 #![recursion_limit="256"]
 

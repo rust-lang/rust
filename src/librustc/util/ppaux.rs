@@ -277,7 +277,9 @@ macro_rules! print {
 
 struct LateBoundRegionNameCollector(FxHashSet<InternedString>);
 impl<'tcx> ty::fold::TypeVisitor<'tcx> for LateBoundRegionNameCollector {
-    fn visit_region(&mut self, r: ty::Region<'tcx>) -> bool {
+    type Error = !;
+
+    fn visit_region(&mut self, r: ty::Region<'tcx>) -> Result<(), !> {
         match *r {
             ty::ReLateBound(_, ty::BrNamed(_, name)) => {
                 self.0.insert(name);
@@ -317,7 +319,7 @@ impl PrintContext {
     where T: TypeFoldable<'tcx>
     {
         let mut collector = LateBoundRegionNameCollector(Default::default());
-        value.visit_with(&mut collector);
+        let Ok(()) = value.visit_with(&mut collector);
         self.used_region_names = Some(collector.0);
         self.region_index = 0;
     }

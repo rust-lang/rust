@@ -33,10 +33,11 @@ impl<'cx, 'tcx> TyCtxt<'cx, 'tcx, 'tcx> {
         if !value.has_projections() {
             value
         } else {
-            value.fold_with(&mut NormalizeAfterErasingRegionsFolder {
+            let Ok(t) = value.fold_with(&mut NormalizeAfterErasingRegionsFolder {
                 tcx: self,
                 param_env: param_env,
-            })
+            });
+            t
         }
     }
 
@@ -68,11 +69,13 @@ struct NormalizeAfterErasingRegionsFolder<'cx, 'tcx: 'cx> {
 }
 
 impl<'cx, 'tcx> TypeFolder<'tcx, 'tcx> for NormalizeAfterErasingRegionsFolder<'cx, 'tcx> {
+    type Error = !;
+
     fn tcx<'a>(&'a self) -> TyCtxt<'a, 'tcx, 'tcx> {
         self.tcx
     }
 
-    fn fold_ty(&mut self, ty: Ty<'tcx>) -> Ty<'tcx> {
-        self.tcx.normalize_ty_after_erasing_regions(self.param_env.and(ty))
+    fn fold_ty(&mut self, ty: Ty<'tcx>) -> Result<Ty<'tcx>, !> {
+        Ok(self.tcx.normalize_ty_after_erasing_regions(self.param_env.and(ty)))
     }
 }

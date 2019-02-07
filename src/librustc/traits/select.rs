@@ -3684,7 +3684,7 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
         previous_stack: TraitObligationStackList<'s, 'tcx>,
         obligation: &'o TraitObligation<'tcx>,
     ) -> TraitObligationStack<'o, 'tcx> {
-        let fresh_trait_ref = obligation
+        let Ok(fresh_trait_ref) = obligation
             .predicate
             .to_poly_trait_ref()
             .fold_with(&mut self.freshener);

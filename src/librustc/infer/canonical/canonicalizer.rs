@@ -284,11 +284,13 @@ struct Canonicalizer<'cx, 'gcx: 'tcx, 'tcx: 'cx> {
 }
 
 impl<'cx, 'gcx, 'tcx> TypeFolder<'gcx, 'tcx> for Canonicalizer<'cx, 'gcx, 'tcx> {
+    type Error = !;
+
     fn tcx<'b>(&'b self) -> TyCtxt<'b, 'gcx, 'tcx> {
         self.tcx
     }
 
-    fn fold_binder<T>(&mut self, t: &ty::Binder<T>) -> ty::Binder<T>
+    fn fold_binder<T>(&mut self, t: &ty::Binder<T>) -> Result<ty::Binder<T>, !>
         where T: TypeFoldable<'tcx>
     {
         self.binder_index.shift_in(1);
@@ -297,8 +299,8 @@ impl<'cx, 'gcx, 'tcx> TypeFolder<'gcx, 'tcx> for Canonicalizer<'cx, 'gcx, 'tcx> 
         t
     }
 
-    fn fold_region(&mut self, r: ty::Region<'tcx>) -> ty::Region<'tcx> {
-        match *r {
+    fn fold_region(&mut self, r: ty::Region<'tcx>) -> Result<ty::Region<'tcx>, !> {
+        Ok(match *r {
             ty::ReLateBound(index, ..) => {
                 if index >= self.binder_index {
                     bug!("escaping late bound region during canonicalization")
@@ -333,10 +335,10 @@ impl<'cx, 'gcx, 'tcx> TypeFolder<'gcx, 'tcx> for Canonicalizer<'cx, 'gcx, 'tcx> 
             ty::ReClosureBound(..) => {
                 bug!("closure bound region encountered during canonicalization")
             }
-        }
+        })
     }
 
-    fn fold_ty(&mut self, t: Ty<'tcx>) -> Ty<'tcx> {
+    fn fold_ty(&mut self, t: Ty<'tcx>) -> Result<Ty<'tcx>, !> {
         match t.sty {
             ty::Infer(ty::TyVar(vid)) => {
                 debug!("canonical: type var found with vid {:?}", vid);
@@ -354,29 +356,29 @@ impl<'cx, 'gcx, 'tcx> TypeFolder<'gcx, 'tcx> for Canonicalizer<'cx, 'gcx, 'tcx> 
                             // FIXME: perf problem described in #55921.
                             ui = ty::UniverseIndex::ROOT;
                         }
-                        self.canonicalize_ty_var(
+                        Ok(self.canonicalize_ty_var(
                             CanonicalVarInfo {
                                 kind: CanonicalVarKind::Ty(CanonicalTyVarKind::General(ui))
                             },
                             t
-                        )
+                        ))
                     }
                 }
             }
 
-            ty::Infer(ty::IntVar(_)) => self.canonicalize_ty_var(
+            ty::Infer(ty::IntVar(_)) => Ok(self.canonicalize_ty_var(
                 CanonicalVarInfo {
                     kind: CanonicalVarKind::Ty(CanonicalTyVarKind::Int)
                 },
                 t
-            ),
+            )),
 
-            ty::Infer(ty::FloatVar(_)) => self.canonicalize_ty_var(
+            ty::Infer(ty::FloatVar(_)) => Ok(self.canonicalize_ty_var(
                 CanonicalVarInfo {
                     kind: CanonicalVarKind::Ty(CanonicalTyVarKind::Float)
                 },
                 t
-            ),
+            )),
 
             ty::Infer(ty::FreshTy(_))
             | ty::Infer(ty::FreshIntTy(_))
@@ -384,18 +386,18 @@ impl<'cx, 'gcx, 'tcx> TypeFolder<'gcx, 'tcx> for Canonicalizer<'cx, 'gcx, 'tcx> 
                 bug!("encountered a fresh type during canonicalization")
             }
 
-            ty::Placeholder(placeholder) => self.canonicalize_ty_var(
+            ty::Placeholder(placeholder) => Ok(self.canonicalize_ty_var(
                 CanonicalVarInfo {
                     kind: CanonicalVarKind::PlaceholderTy(placeholder)
                 },
                 t
-            ),
+            )),
 
             ty::Bound(debruijn, _) => {
                 if debruijn >= self.binder_index {
                     bug!("escaping bound type during canonicalization")
                 } else {
-                    t
+                    Ok(t)
                 }
             }
 
@@ -427,7 +429,7 @@ impl<'cx, 'gcx, 'tcx> TypeFolder<'gcx, 'tcx> for Canonicalizer<'cx, 'gcx, 'tcx> 
                 if t.flags.intersects(self.needs_canonical_flags) {
                     t.super_fold_with(self)
                 } else {
-                    t
+                    Ok(t)
                 }
             }
         }
@@ -485,7 +487,7 @@ impl<'cx, 'gcx, 'tcx> Canonicalizer<'cx, 'gcx, 'tcx> {
             indices: FxHashMap::default(),
             binder_index: ty::INNERMOST,
         };
-        let out_value = value.fold_with(&mut canonicalizer);
+        let Ok(out_value) = value.fold_with(&mut canonicalizer);
 
         // Once we have canonicalized `out_value`, it should not
         // contain anything that ties it to this inference context
@@ -627,7 +629,7 @@ impl<'cx, 'gcx, 'tcx> Canonicalizer<'cx, 'gcx, 'tcx> {
         let infcx = self.infcx.expect("encountered ty-var without infcx");
         let bound_to = infcx.shallow_resolve(ty_var);
         if bound_to != ty_var {
-            self.fold_ty(bound_to)
+            self.fold_ty(bound_to).unwrap_or_else(|e: !| e)
         } else {
             let var = self.canonical_var(info, ty_var.into());
             self.tcx().mk_ty(ty::Bound(self.binder_index, var.into()))

@@ -196,7 +196,7 @@ where
             }
         };
 
-        value.skip_binder().visit_with(&mut ScopeInstantiator {
+        let Ok(_) = value.skip_binder().visit_with(&mut ScopeInstantiator {
             next_region: &mut next_region,
             target_index: ty::INNERMOST,
             bound_region_scope: &mut scope,
@@ -604,15 +604,17 @@ struct ScopeInstantiator<'me, 'tcx: 'me> {
 }
 
 impl<'me, 'tcx> TypeVisitor<'tcx> for ScopeInstantiator<'me, 'tcx> {
-    fn visit_binder<T: TypeFoldable<'tcx>>(&mut self, t: &ty::Binder<T>) -> bool {
+    type Error = !;
+
+    fn visit_binder<T: TypeFoldable<'tcx>>(&mut self, t: &ty::Binder<T>) -> Result<(), !> {
         self.target_index.shift_in(1);
-        t.super_visit_with(self);
+        t.super_visit_with(self)?;
         self.target_index.shift_out(1);
 
-        false
+        Ok(())
     }
 
-    fn visit_region(&mut self, r: ty::Region<'tcx>) -> bool {
+    fn visit_region(&mut self, r: ty::Region<'tcx>) -> Result<(), !> {
         let ScopeInstantiator {
             bound_region_scope,
             next_region,
@@ -630,7 +632,7 @@ impl<'me, 'tcx> TypeVisitor<'tcx> for ScopeInstantiator<'me, 'tcx> {
             _ => {}
         }
 
-        false
+        Ok(())
     }
 }
 

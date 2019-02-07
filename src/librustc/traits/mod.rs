@@ -1185,12 +1185,12 @@ where
     fn fold_ex_clause_with<'gcx: 'tcx, F: TypeFolder<'gcx, 'tcx>>(
         ex_clause: &chalk_engine::ExClause<Self>,
         folder: &mut F,
-    ) -> chalk_engine::ExClause<Self>;
+    ) -> Result<chalk_engine::ExClause<Self>, F::Error>;
 
     fn visit_ex_clause_with<'gcx: 'tcx, V: TypeVisitor<'tcx>>(
         ex_clause: &chalk_engine::ExClause<Self>,
         visitor: &mut V,
-    ) -> bool;
+    ) -> Result<(), V::Error>;
 }
 
 pub trait ChalkContextLift<'tcx>

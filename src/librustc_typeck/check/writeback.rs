@@ -553,7 +553,7 @@ impl<'cx, 'gcx, 'tcx> WritebackCx<'cx, 'gcx, 'tcx> {
                             }
                         }
                     },
-                })
+                }).unwrap_or_else(|e: !| e)
             };
 
             if let ty::Opaque(defin_ty_def_id, _substs) = definition_ty.sty {
@@ -714,7 +714,7 @@ impl<'cx, 'gcx, 'tcx> WritebackCx<'cx, 'gcx, 'tcx> {
     where
         T: TypeFoldable<'tcx> + ty::Lift<'gcx>,
     {
-        let x = x.fold_with(&mut Resolver::new(self.fcx, span, self.body));
+        let Ok(x) = x.fold_with(&mut Resolver::new(self.fcx, span, self.body));
         if let Some(lifted) = self.tcx().lift_to_global(&x) {
             lifted
         } else {
@@ -791,28 +791,30 @@ impl<'cx, 'gcx, 'tcx> Resolver<'cx, 'gcx, 'tcx> {
 }
 
 impl<'cx, 'gcx, 'tcx> TypeFolder<'gcx, 'tcx> for Resolver<'cx, 'gcx, 'tcx> {
+    type Error = !;
+
     fn tcx<'a>(&'a self) -> TyCtxt<'a, 'gcx, 'tcx> {
         self.tcx
     }
 
-    fn fold_ty(&mut self, t: Ty<'tcx>) -> Ty<'tcx> {
+    fn fold_ty(&mut self, t: Ty<'tcx>) -> Result<Ty<'tcx>, !> {
         match self.infcx.fully_resolve(&t) {
-            Ok(t) => t,
+            Ok(t) => Ok(t),
             Err(_) => {
                 debug!(
                     "Resolver::fold_ty: input type `{:?}` not fully resolvable",
                     t
                 );
                 self.report_error(t);
-                self.tcx().types.err
+                Ok(self.tcx().types.err)
             }
         }
     }
 
     // FIXME This should be carefully checked
     // We could use `self.report_error` but it doesn't accept a ty::Region, right now.
-    fn fold_region(&mut self, r: ty::Region<'tcx>) -> ty::Region<'tcx> {
-        self.infcx.fully_resolve(&r).unwrap_or(self.tcx.types.re_static)
+    fn fold_region(&mut self, r: ty::Region<'tcx>) -> Result<ty::Region<'tcx>, !> {
+        Ok(self.infcx.fully_resolve(&r).unwrap_or(self.tcx.types.re_static))
     }
 }
 

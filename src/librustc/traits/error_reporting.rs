@@ -1393,14 +1393,16 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
         }
 
         impl<'a, 'gcx, 'tcx> TypeFolder<'gcx, 'tcx> for ParamToVarFolder<'a, 'gcx, 'tcx> {
+            type Error = !;
+
             fn tcx<'b>(&'b self) -> TyCtxt<'b, 'gcx, 'tcx> { self.infcx.tcx }
 
-            fn fold_ty(&mut self, ty: Ty<'tcx>) -> Ty<'tcx> {
+            fn fold_ty(&mut self, ty: Ty<'tcx>) -> Result<Ty<'tcx>, !> {
                 if let ty::Param(ty::ParamTy {name, ..}) = ty.sty {
                     let infcx = self.infcx;
-                    self.var_map.entry(ty).or_insert_with(||
+                    Ok(self.var_map.entry(ty).or_insert_with(||
                         infcx.next_ty_var(
-                            TypeVariableOrigin::TypeParameterDefinition(DUMMY_SP, name)))
+                            TypeVariableOrigin::TypeParameterDefinition(DUMMY_SP, name))))
                 } else {
                     ty.super_fold_with(self)
                 }
@@ -1410,7 +1412,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
         self.probe(|_| {
             let mut selcx = SelectionContext::new(self);
 
-            let cleaned_pred = pred.fold_with(&mut ParamToVarFolder {
+            let Ok(cleaned_pred) = pred.fold_with(&mut ParamToVarFolder {
                 infcx: self,
                 var_map: Default::default()
             });

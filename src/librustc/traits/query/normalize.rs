@@ -54,7 +54,7 @@ impl<'cx, 'gcx, 'tcx> At<'cx, 'gcx, 'tcx> {
             anon_depth: 0,
         };
 
-        let value1 = value.fold_with(&mut normalizer);
+        let Ok(value1) = value.fold_with(&mut normalizer);
         if normalizer.error {
             Err(NoSolution)
         } else {
@@ -78,23 +78,26 @@ struct QueryNormalizer<'cx, 'gcx: 'tcx, 'tcx: 'cx> {
     cause: &'cx ObligationCause<'tcx>,
     param_env: ty::ParamEnv<'tcx>,
     obligations: Vec<PredicateObligation<'tcx>>,
+    // FIXME: consider using a type folder error instead.
     error: bool,
     anon_depth: usize,
 }
 
 impl<'cx, 'gcx, 'tcx> TypeFolder<'gcx, 'tcx> for QueryNormalizer<'cx, 'gcx, 'tcx> {
+    type Error = !;
+
     fn tcx<'c>(&'c self) -> TyCtxt<'c, 'gcx, 'tcx> {
         self.infcx.tcx
     }
 
-    fn fold_ty(&mut self, ty: Ty<'tcx>) -> Ty<'tcx> {
-        let ty = ty.super_fold_with(self);
+    fn fold_ty(&mut self, ty: Ty<'tcx>) -> Result<Ty<'tcx>, !> {
+        let ty = ty.super_fold_with(self)?;
         match ty.sty {
             ty::Opaque(def_id, substs) if !substs.has_escaping_bound_vars() => {
                 // (*)
                 // Only normalize `impl Trait` after type-checking, usually in codegen.
                 match self.param_env.reveal {
-                    Reveal::UserFacing => ty,
+                    Reveal::UserFacing => Ok(ty),
 
                     Reveal::All => {
                         let recursion_limit = *self.tcx().sess.recursion_limit.get();
@@ -154,7 +157,7 @@ impl<'cx, 'gcx, 'tcx> TypeFolder<'gcx, 'tcx> for QueryNormalizer<'cx, 'gcx, 'tcx
                         // We don't expect ambiguity.
                         if result.is_ambiguous() {
                             self.error = true;
-                            return ty;
+                            return Ok(ty);
                         }
 
                         match self.infcx.instantiate_query_response_and_region_obligations(
@@ -167,28 +170,28 @@ impl<'cx, 'gcx, 'tcx> TypeFolder<'gcx, 'tcx> for QueryNormalizer<'cx, 'gcx, 'tcx
                                 debug!("QueryNormalizer: result = {:#?}", result);
                                 debug!("QueryNormalizer: obligations = {:#?}", obligations);
                                 self.obligations.extend(obligations);
-                                return result.normalized_ty;
+                                return Ok(result.normalized_ty);
                             }
 
                             Err(_) => {
                                 self.error = true;
-                                return ty;
+                                return Ok(ty);
                             }
                         }
                     }
 
                     Err(NoSolution) => {
                         self.error = true;
-                        ty
+                        Ok(ty)
                     }
                 }
             }
 
-            _ => ty,
+            _ => Ok(ty),
         }
     }
 
-    fn fold_const(&mut self, constant: &'tcx ty::LazyConst<'tcx>) -> &'tcx ty::LazyConst<'tcx> {
+    fn fold_const(&mut self, constant: &'tcx ty::LazyConst<'tcx>) -> Result<&'tcx ty::LazyConst<'tcx>, !> {
         if let ty::LazyConst::Unevaluated(def_id, substs) = *constant {
             let tcx = self.infcx.tcx.global_tcx();
             if let Some(param_env) = self.tcx().lift_to_global(&self.param_env) {
@@ -203,7 +206,7 @@ impl<'cx, 'gcx, 'tcx> TypeFolder<'gcx, 'tcx> for QueryNormalizer<'cx, 'gcx, 'tcx
                         if let Ok(evaluated) = tcx.const_eval(param_env.and(cid)) {
                             let substs = tcx.lift_to_global(&substs).unwrap();
                             let evaluated = evaluated.subst(tcx, substs);
-                            return tcx.mk_lazy_const(ty::LazyConst::Evaluated(evaluated));
+                            return Ok(tcx.mk_lazy_const(ty::LazyConst::Evaluated(evaluated)));
                         }
                     }
                 } else {
@@ -215,14 +218,14 @@ impl<'cx, 'gcx, 'tcx> TypeFolder<'gcx, 'tcx> for QueryNormalizer<'cx, 'gcx, 'tcx
                                 promoted: None,
                             };
                             if let Ok(evaluated) = tcx.const_eval(param_env.and(cid)) {
-                                return tcx.mk_lazy_const(ty::LazyConst::Evaluated(evaluated));
+                                return Ok(tcx.mk_lazy_const(ty::LazyConst::Evaluated(evaluated)));
                             }
                         }
                     }
                 }
             }
         }
-        constant
+        Ok(constant)
     }
 }
 

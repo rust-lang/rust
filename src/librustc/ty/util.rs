@@ -660,7 +660,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
                 } else if self.seen_opaque_tys.insert(def_id) {
                     let generic_ty = self.tcx.type_of(def_id);
                     let concrete_ty = generic_ty.subst(self.tcx, substs);
-                    let expanded_ty = self.fold_ty(concrete_ty);
+                    let Ok(expanded_ty) = self.fold_ty(concrete_ty);
                     self.seen_opaque_tys.remove(&def_id);
                     Some(expanded_ty)
                 } else {
@@ -673,13 +673,15 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
         }
 
         impl<'a, 'gcx, 'tcx> TypeFolder<'gcx, 'tcx> for OpaqueTypeExpander<'a, 'gcx, 'tcx> {
+            type Error = !;
+
             fn tcx(&self) -> TyCtxt<'_, 'gcx, 'tcx> {
                 self.tcx
             }
 
-            fn fold_ty(&mut self, t: Ty<'tcx>) -> Ty<'tcx> {
+            fn fold_ty(&mut self, t: Ty<'tcx>) -> Result<Ty<'tcx>, !> {
                 if let ty::Opaque(def_id, substs) = t.sty {
-                    self.expand_opaque_ty(def_id, substs).unwrap_or(t)
+                    Ok(self.expand_opaque_ty(def_id, substs).unwrap_or(t))
                 } else {
                     t.super_fold_with(self)
                 }

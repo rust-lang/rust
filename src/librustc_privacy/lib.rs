@@ -61,7 +61,7 @@ trait DefIdVisitor<'a, 'tcx: 'a> {
         }
     }
     fn visit(&mut self, ty_fragment: impl TypeFoldable<'tcx>) -> bool {
-        ty_fragment.visit_with(&mut self.skeleton())
+        ty_fragment.visit_with(&mut self.skeleton()).is_err()
     }
     fn visit_trait(&mut self, trait_ref: TraitRef<'tcx>) -> bool {
         self.skeleton().visit_trait(trait_ref)
@@ -85,7 +85,7 @@ impl<'a, 'tcx, V> DefIdVisitorSkeleton<'_, 'a, 'tcx, V>
     fn visit_trait(&mut self, trait_ref: TraitRef<'tcx>) -> bool {
         let TraitRef { def_id, substs } = trait_ref;
         self.def_id_visitor.visit_def_id(def_id, "trait", &trait_ref) ||
-        (!self.def_id_visitor.shallow() && substs.visit_with(self))
+        (!self.def_id_visitor.shallow() && substs.visit_with(self).is_err())
     }
 
     fn visit_predicates(&mut self, predicates: Lrc<ty::GenericPredicates<'tcx>>) -> bool {
@@ -101,7 +101,7 @@ impl<'a, 'tcx, V> DefIdVisitorSkeleton<'_, 'a, 'tcx, V>
                 ty::Predicate::Projection(poly_predicate) => {
                     let ty::ProjectionPredicate { projection_ty, ty } =
                         *poly_predicate.skip_binder();
-                    if ty.visit_with(self) {
+                    if ty.visit_with(self).is_err() {
                         return true;
                     }
                     if self.visit_trait(projection_ty.trait_ref(self.def_id_visitor.tcx())) {
@@ -110,7 +110,7 @@ impl<'a, 'tcx, V> DefIdVisitorSkeleton<'_, 'a, 'tcx, V>
                 }
                 ty::Predicate::TypeOutlives(poly_predicate) => {
                     let ty::OutlivesPredicate(ty, _region) = *poly_predicate.skip_binder();
-                    if ty.visit_with(self) {
+                    if ty.visit_with(self).is_err() {
                         return true;
                     }
                 }
@@ -125,7 +125,9 @@ impl<'a, 'tcx, V> DefIdVisitorSkeleton<'_, 'a, 'tcx, V>
 impl<'a, 'tcx, V> TypeVisitor<'tcx> for DefIdVisitorSkeleton<'_, 'a, 'tcx, V>
     where V: DefIdVisitor<'a, 'tcx> + ?Sized
 {
-    fn visit_ty(&mut self, ty: Ty<'tcx>) -> bool {
+    type Error = ();
+
+    fn visit_ty(&mut self, ty: Ty<'tcx>) -> Result<(), ()> {
         let tcx = self.def_id_visitor.tcx();
         // InternalSubsts are not visited here because they are visited below in `super_visit_with`.
         match ty.sty {
@@ -135,18 +137,16 @@ impl<'a, 'tcx, V> TypeVisitor<'tcx> for DefIdVisitorSkeleton<'_, 'a, 'tcx, V>
             ty::Closure(def_id, ..) |
             ty::Generator(def_id, ..) => {
                 if self.def_id_visitor.visit_def_id(def_id, "type", ty) {
-                    return true;
+                    return Err(());
                 }
                 if self.def_id_visitor.shallow() {
-                    return false;
+                    return Ok(());
                 }
                 // Default type visitor doesn't visit signatures of fn types.
                 // Something like `fn() -> Priv {my_func}` is considered a private type even if
                 // `my_func` is public, so we need to visit signatures.
                 if let ty::FnDef(..) = ty.sty {
-                    if tcx.fn_sig(def_id).visit_with(self) {
-                        return true;
-                    }
+                    tcx.fn_sig(def_id).visit_with(self)?;
                 }
                 // Inherent static methods don't have self type in substs.
                 // Something like `fn() {my_method}` type of the method
@@ -154,9 +154,7 @@ impl<'a, 'tcx, V> TypeVisitor<'tcx> for DefIdVisitorSkeleton<'_, 'a, 'tcx, V>
                 // so we need to visit the self type additionally.
                 if let Some(assoc_item) = tcx.opt_associated_item(def_id) {
                     if let ty::ImplContainer(impl_def_id) = assoc_item.container {
-                        if tcx.type_of(impl_def_id).visit_with(self) {
-                            return true;
-                        }
+                        tcx.type_of(impl_def_id).visit_with(self)?;
                     }
                 }
             }
@@ -167,10 +165,13 @@ impl<'a, 'tcx, V> TypeVisitor<'tcx> for DefIdVisitorSkeleton<'_, 'a, 'tcx, V>
                     // as visible/reachable even if both `Type` and `Trait` are private.
                     // Ideally, associated types should be substituted in the same way as
                     // free type aliases, but this isn't done yet.
-                    return false;
+                    return Ok(());
                 }
+
                 // This will also visit substs if necessary, so we don't need to recurse.
-                return self.visit_trait(proj.trait_ref(tcx));
+                if self.visit_trait(proj.trait_ref(tcx)) {
+                    return Err(());
+                }
             }
             ty::Dynamic(predicates, ..) => {
                 // All traits in the list are considered the "primary" part of the type
@@ -184,7 +185,7 @@ impl<'a, 'tcx, V> TypeVisitor<'tcx> for DefIdVisitorSkeleton<'_, 'a, 'tcx, V>
                     };
                     let ty::ExistentialTraitRef { def_id, substs: _ } = trait_ref;
                     if self.def_id_visitor.visit_def_id(def_id, "trait", &trait_ref) {
-                        return true;
+                        return Err(());
                     }
                 }
             }
@@ -199,7 +200,7 @@ impl<'a, 'tcx, V> TypeVisitor<'tcx> for DefIdVisitorSkeleton<'_, 'a, 'tcx, V>
                     // All traits in the list are considered the "primary" part of the type
                     // and are visited by shallow visitors.
                     if self.visit_predicates(tcx.predicates_of(def_id)) {
-                        return true;
+                        return Err(());
                     }
                 }
             }
@@ -214,7 +215,11 @@ impl<'a, 'tcx, V> TypeVisitor<'tcx> for DefIdVisitorSkeleton<'_, 'a, 'tcx, V>
                 bug!("unexpected type: {:?}", ty),
         }
 
-        !self.def_id_visitor.shallow() && ty.super_visit_with(self)
+        if self.def_id_visitor.shallow() {
+            Ok(())
+        } else {
+            ty.super_visit_with(self)
+        }
     }
 }
 

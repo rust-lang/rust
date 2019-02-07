@@ -559,29 +559,30 @@ impl ExClauseFold<'tcx> for ChalkArenas<'tcx> {
     fn fold_ex_clause_with<'gcx: 'tcx, F: TypeFolder<'gcx, 'tcx>>(
         ex_clause: &ChalkExClause<'tcx>,
         folder: &mut F,
-    ) -> ChalkExClause<'tcx> {
-        ExClause {
-            subst: ex_clause.subst.fold_with(folder),
-            delayed_literals: ex_clause.delayed_literals.fold_with(folder),
-            constraints: ex_clause.constraints.fold_with(folder),
-            subgoals: ex_clause.subgoals.fold_with(folder),
-        }
+    ) -> Result<ChalkExClause<'tcx>, F::Error> {
+        Ok(ExClause {
+            subst: ex_clause.subst.fold_with(folder)?,
+            delayed_literals: ex_clause.delayed_literals.fold_with(folder)?,
+            constraints: ex_clause.constraints.fold_with(folder)?,
+            subgoals: ex_clause.subgoals.fold_with(folder)?,
+        })
     }
 
     fn visit_ex_clause_with<'gcx: 'tcx, V: TypeVisitor<'tcx>>(
         ex_clause: &ExClause<Self>,
         visitor: &mut V,
-    ) -> bool {
+    ) -> Result<(), V::Error> {
         let ExClause {
             subst,
             delayed_literals,
             constraints,
             subgoals,
         } = ex_clause;
-        subst.visit_with(visitor)
-            || delayed_literals.visit_with(visitor)
-            || constraints.visit_with(visitor)
-            || subgoals.visit_with(visitor)
+        subst.visit_with(visitor)?;
+        delayed_literals.visit_with(visitor)?;
+        constraints.visit_with(visitor)?;
+        subgoals.visit_with(visitor)?;
+        Ok(())
     }
 }
 

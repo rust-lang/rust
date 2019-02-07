@@ -558,7 +558,7 @@ impl<'a, 'tcx, 'rcx> AutoTraitFinder<'a, 'tcx, 'rcx> {
                 }
             })
             .map(|p| {
-                let replaced = p.fold_with(&mut replacer);
+                let Ok(replaced) = p.fold_with(&mut replacer);
                 (replaced.clone(), replaced.clean(self.cx))
             });
 
@@ -863,14 +863,16 @@ struct RegionReplacer<'a, 'gcx: 'a + 'tcx, 'tcx: 'a> {
 }
 
 impl<'a, 'gcx, 'tcx> TypeFolder<'gcx, 'tcx> for RegionReplacer<'a, 'gcx, 'tcx> {
+    type Error = !;
+
     fn tcx<'b>(&'b self) -> TyCtxt<'b, 'gcx, 'tcx> {
         self.tcx
     }
 
-    fn fold_region(&mut self, r: ty::Region<'tcx>) -> ty::Region<'tcx> {
-        (match r {
+    fn fold_region(&mut self, r: ty::Region<'tcx>) -> Result<ty::Region<'tcx>, !> {
+        Ok(match r {
             &ty::ReVar(vid) => self.vid_to_region.get(&vid).cloned(),
             _ => None,
-        }).unwrap_or_else(|| r.super_fold_with(self))
+        }).transpose().unwrap_or_else(|| r.super_fold_with(self))
     }
 }

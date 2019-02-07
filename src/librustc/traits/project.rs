@@ -315,17 +315,19 @@ impl<'a, 'b, 'gcx, 'tcx> AssociatedTypeNormalizer<'a, 'b, 'gcx, 'tcx> {
         if !value.has_projections() {
             value
         } else {
-            value.fold_with(self)
+            value.fold_with(self).unwrap_or_else(|e: !| e)
         }
     }
 }
 
 impl<'a, 'b, 'gcx, 'tcx> TypeFolder<'gcx, 'tcx> for AssociatedTypeNormalizer<'a, 'b, 'gcx, 'tcx> {
+    type Error = !;
+
     fn tcx<'c>(&'c self) -> TyCtxt<'c, 'gcx, 'tcx> {
         self.selcx.tcx()
     }
 
-    fn fold_ty(&mut self, ty: Ty<'tcx>) -> Ty<'tcx> {
+    fn fold_ty(&mut self, ty: Ty<'tcx>) -> Result<Ty<'tcx>, !> {
         // We don't want to normalize associated types that occur inside of region
         // binders, because they may contain bound regions, and we can't cope with that.
         //
@@ -337,8 +339,8 @@ impl<'a, 'b, 'gcx, 'tcx> TypeFolder<'gcx, 'tcx> for AssociatedTypeNormalizer<'a,
         // normalize it when we instantiate those bound regions (which
         // should occur eventually).
 
-        let ty = ty.super_fold_with(self);
-        match ty.sty {
+        let ty = ty.super_fold_with(self)?;
+        Ok(match ty.sty {
             ty::Opaque(def_id, substs) if !substs.has_escaping_bound_vars() => { // (*)
                 // Only normalize `impl Trait` after type-checking, usually in codegen.
                 match self.param_env.reveal {
@@ -359,7 +361,7 @@ impl<'a, 'b, 'gcx, 'tcx> TypeFolder<'gcx, 'tcx> for AssociatedTypeNormalizer<'a,
                         let generic_ty = self.tcx().type_of(def_id);
                         let concrete_ty = generic_ty.subst(self.tcx(), substs);
                         self.depth += 1;
-                        let folded_ty = self.fold_ty(concrete_ty);
+                        let folded_ty = self.fold_ty(concrete_ty)?;
                         self.depth -= 1;
                         folded_ty
                     }
@@ -393,10 +395,10 @@ impl<'a, 'b, 'gcx, 'tcx> TypeFolder<'gcx, 'tcx> for AssociatedTypeNormalizer<'a,
             }
 
             _ => ty
-        }
+        })
     }
 
-    fn fold_const(&mut self, constant: &'tcx ty::LazyConst<'tcx>) -> &'tcx ty::LazyConst<'tcx> {
+    fn fold_const(&mut self, constant: &'tcx ty::LazyConst<'tcx>) -> Result<&'tcx ty::LazyConst<'tcx>, !> {
         if let ty::LazyConst::Unevaluated(def_id, substs) = *constant {
             let tcx = self.selcx.tcx().global_tcx();
             if let Some(param_env) = self.tcx().lift_to_global(&self.param_env) {
@@ -411,7 +413,7 @@ impl<'a, 'b, 'gcx, 'tcx> TypeFolder<'gcx, 'tcx> for AssociatedTypeNormalizer<'a,
                         if let Ok(evaluated) = tcx.const_eval(param_env.and(cid)) {
                             let substs = tcx.lift_to_global(&substs).unwrap();
                             let evaluated = evaluated.subst(tcx, substs);
-                            return tcx.mk_lazy_const(ty::LazyConst::Evaluated(evaluated));
+                            return Ok(tcx.mk_lazy_const(ty::LazyConst::Evaluated(evaluated)));
                         }
                     }
                 } else {
@@ -423,14 +425,14 @@ impl<'a, 'b, 'gcx, 'tcx> TypeFolder<'gcx, 'tcx> for AssociatedTypeNormalizer<'a,
                                 promoted: None
                             };
                             if let Ok(evaluated) = tcx.const_eval(param_env.and(cid)) {
-                                return tcx.mk_lazy_const(ty::LazyConst::Evaluated(evaluated));
+                                return Ok(tcx.mk_lazy_const(ty::LazyConst::Evaluated(evaluated)));
                             }
                         }
                     }
                 }
             }
         }
-        constant
+        Ok(constant)
     }
 }
 

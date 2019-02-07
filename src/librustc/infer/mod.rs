@@ -604,7 +604,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
     }
 
     pub fn freshen<T: TypeFoldable<'tcx>>(&self, t: T) -> T {
-        t.fold_with(&mut self.freshener())
+        t.fold_with(&mut self.freshener()).unwrap_or_else(|e: !| e)
     }
 
     pub fn type_var_diverges(&'a self, ty: Ty<'_>) -> bool {
@@ -1298,7 +1298,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
             return value.clone(); // avoid duplicated subst-folding
         }
         let mut r = resolve::OpportunisticTypeResolver::new(self);
-        value.fold_with(&mut r)
+        value.fold_with(&mut r).unwrap_or_else(|e: !| e)
     }
 
     /// Returns `true` if `T` contains unresolved type variables. In the
@@ -1311,7 +1311,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
         T: TypeFoldable<'tcx>,
     {
         let mut r = resolve::UnresolvedTypeFinder::new(self);
-        value.visit_with(&mut r)
+        value.visit_with(&mut r).is_err()
     }
 
     pub fn fully_resolve<T: TypeFoldable<'tcx>>(&self, value: &T) -> FixupResult<T> {

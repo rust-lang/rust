@@ -481,10 +481,13 @@ fn check_where_clauses<'a, 'gcx, 'fcx, 'tcx>(
     });
     // Now we build the substituted predicates.
     let default_obligations = predicates.predicates.iter().flat_map(|&(pred, _)| {
+        struct HasRegion;
         #[derive(Default)]
         struct CountParams { params: FxHashSet<u32> }
         impl<'tcx> ty::fold::TypeVisitor<'tcx> for CountParams {
-            fn visit_ty(&mut self, t: Ty<'tcx>) -> bool {
+            type Error = HasRegion;
+
+            fn visit_ty(&mut self, t: Ty<'tcx>) -> Result<(), HasRegion> {
                 match t.sty {
                     ty::Param(p) => {
                         self.params.insert(p.idx);
@@ -494,12 +497,12 @@ fn check_where_clauses<'a, 'gcx, 'fcx, 'tcx>(
                 }
             }
 
-            fn visit_region(&mut self, _: ty::Region<'tcx>) -> bool {
-                true
+            fn visit_region(&mut self, _: ty::Region<'tcx>) -> Result<(), HasRegion> {
+                Err(HasRegion)
             }
         }
         let mut param_count = CountParams::default();
-        let has_region = pred.visit_with(&mut param_count);
+        let has_region = pred.visit_with(&mut param_count).is_err();
         let substituted_pred = pred.subst(fcx.tcx, substs);
         // Don't check non-defaulted params, dependent defaults (including lifetimes)
         // or preds with multiple params.
@@ -602,7 +605,7 @@ fn check_existential_types<'a, 'fcx, 'gcx, 'tcx>(
 ) -> Vec<ty::Predicate<'tcx>> {
     trace!("check_existential_types: {:?}, {:?}", ty, ty.sty);
     let mut substituted_predicates = Vec::new();
-    ty.fold_with(&mut ty::fold::BottomUpFolder {
+    let Ok(_) = ty.fold_with(&mut ty::fold::BottomUpFolder {
         tcx: fcx.tcx,
         fldop: |ty| {
             if let ty::Opaque(def_id, substs) = ty.sty {

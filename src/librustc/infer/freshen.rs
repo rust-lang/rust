@@ -64,7 +64,7 @@ impl<'a, 'gcx, 'tcx> TypeFreshener<'a, 'gcx, 'tcx> {
         F: FnOnce(u32) -> ty::InferTy,
     {
         if let Some(ty) = opt_ty {
-            return ty.fold_with(self);
+            return ty.fold_with(self).unwrap_or_else(|e: !| e);
         }
 
         match self.freshen_map.entry(key) {
@@ -81,12 +81,14 @@ impl<'a, 'gcx, 'tcx> TypeFreshener<'a, 'gcx, 'tcx> {
 }
 
 impl<'a, 'gcx, 'tcx> TypeFolder<'gcx, 'tcx> for TypeFreshener<'a, 'gcx, 'tcx> {
+    type Error = !;
+
     fn tcx<'b>(&'b self) -> TyCtxt<'b, 'gcx, 'tcx> {
         self.infcx.tcx
     }
 
-    fn fold_region(&mut self, r: ty::Region<'tcx>) -> ty::Region<'tcx> {
-        match *r {
+    fn fold_region(&mut self, r: ty::Region<'tcx>) -> Result<ty::Region<'tcx>, !> {
+        Ok(match *r {
             ty::ReLateBound(..) => {
                 // leave bound regions alone
                 r
@@ -110,18 +112,18 @@ impl<'a, 'gcx, 'tcx> TypeFolder<'gcx, 'tcx> for TypeFreshener<'a, 'gcx, 'tcx> {
                     r,
                 );
             }
-        }
+        })
     }
 
-    fn fold_ty(&mut self, t: Ty<'tcx>) -> Ty<'tcx> {
+    fn fold_ty(&mut self, t: Ty<'tcx>) -> Result<Ty<'tcx>, !> {
         if !t.needs_infer() && !t.has_erasable_regions() &&
             !(t.has_closure_types() && self.infcx.in_progress_tables.is_some()) {
-            return t;
+            return Ok(t);
         }
 
         let tcx = self.infcx.tcx;
 
-        match t.sty {
+        Ok(match t.sty {
             ty::Infer(ty::TyVar(v)) => {
                 let opt_ty = self.infcx.type_variables.borrow_mut().probe(v).known();
                 self.freshen(
@@ -185,11 +187,11 @@ impl<'a, 'gcx, 'tcx> TypeFolder<'gcx, 'tcx> for TypeFreshener<'a, 'gcx, 'tcx> {
             ty::Closure(..) |
             ty::GeneratorWitness(..) |
             ty::Opaque(..) => {
-                t.super_fold_with(self)
+                t.super_fold_with(self)?
             }
 
             ty::Placeholder(..) |
             ty::Bound(..) => bug!("unexpected type {:?}", t),
-        }
+        })
     }
 }

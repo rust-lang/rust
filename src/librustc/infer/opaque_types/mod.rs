@@ -448,7 +448,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
         // Convert the type from the function into a type valid outside
         // the function, by replacing invalid regions with 'static,
         // after producing an error for each of them.
-        let definition_ty =
+        let Ok(definition_ty) =
             instantiated_ty.fold_with(&mut ReverseMapper::new(
                 self.tcx,
                 self.is_tainted_by_errors(),
@@ -506,23 +506,25 @@ impl<'cx, 'gcx, 'tcx> ReverseMapper<'cx, 'gcx, 'tcx> {
     fn fold_kind_mapping_missing_regions_to_empty(&mut self, kind: Kind<'tcx>) -> Kind<'tcx> {
         assert!(!self.map_missing_regions_to_empty);
         self.map_missing_regions_to_empty = true;
-        let kind = kind.fold_with(self);
+        let Ok(kind) = kind.fold_with(self);
         self.map_missing_regions_to_empty = false;
         kind
     }
 
     fn fold_kind_normally(&mut self, kind: Kind<'tcx>) -> Kind<'tcx> {
         assert!(!self.map_missing_regions_to_empty);
-        kind.fold_with(self)
+        kind.fold_with(self).unwrap_or_else(|e: !| e)
     }
 }
 
 impl<'cx, 'gcx, 'tcx> TypeFolder<'gcx, 'tcx> for ReverseMapper<'cx, 'gcx, 'tcx> {
+    type Error = !;
+
     fn tcx(&self) -> TyCtxt<'_, 'gcx, 'tcx> {
         self.tcx
     }
 
-    fn fold_region(&mut self, r: ty::Region<'tcx>) -> ty::Region<'tcx> {
+    fn fold_region(&mut self, r: ty::Region<'tcx>) -> Result<ty::Region<'tcx>, !> {
         match r {
             // ignore bound regions that appear in the type (e.g., this
             // would ignore `'r` in a type like `for<'r> fn(&'r u32)`.
@@ -533,13 +535,13 @@ impl<'cx, 'gcx, 'tcx> TypeFolder<'gcx, 'tcx> for ReverseMapper<'cx, 'gcx, 'tcx> 
 
             // ignore `ReScope`, as that can appear anywhere
             // See `src/test/run-pass/issue-49556.rs` for example.
-            ty::ReScope(..) => return r,
+            ty::ReScope(..) => return Ok(r),
 
             _ => { }
         }
 
         match self.map.get(&r.into()).map(|k| k.unpack()) {
-            Some(UnpackedKind::Lifetime(r1)) => r1,
+            Some(UnpackedKind::Lifetime(r1)) => Ok(r1),
             Some(u) => panic!("region mapped to unexpected kind: {:?}", u),
             None => {
                 if !self.map_missing_regions_to_empty && !self.tainted_by_errors {
@@ -576,12 +578,12 @@ impl<'cx, 'gcx, 'tcx> TypeFolder<'gcx, 'tcx> for ReverseMapper<'cx, 'gcx, 'tcx> 
                         err.emit();
                     }
                 }
-                self.tcx.types.re_empty
+                Ok(self.tcx.types.re_empty)
             },
         }
     }
 
-    fn fold_ty(&mut self, ty: Ty<'tcx>) -> Ty<'tcx> {
+    fn fold_ty(&mut self, ty: Ty<'tcx>) -> Result<Ty<'tcx>, !> {
         match ty.sty {
             ty::Closure(def_id, substs) => {
                 // I am a horrible monster and I pray for death. When
@@ -621,7 +623,7 @@ impl<'cx, 'gcx, 'tcx> TypeFolder<'gcx, 'tcx> for ReverseMapper<'cx, 'gcx, 'tcx> 
                     },
                 ));
 
-                self.tcx.mk_closure(def_id, ty::ClosureSubsts { substs })
+                Ok(self.tcx.mk_closure(def_id, ty::ClosureSubsts { substs }))
             }
 
             _ => ty.super_fold_with(self),
@@ -733,7 +735,7 @@ impl<'a, 'gcx, 'tcx> Instantiator<'a, 'gcx, 'tcx> {
 
                 ty
             },
-        })
+        }).unwrap_or_else(|e: !| e)
     }
 
     fn fold_opaque_ty(

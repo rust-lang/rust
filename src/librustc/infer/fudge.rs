@@ -95,7 +95,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
             origin,
         };
 
-        Ok(value.fold_with(&mut fudger))
+        value.fold_with(&mut fudger).map_err(|e| e)
     }
 }
 
@@ -107,11 +107,13 @@ pub struct RegionFudger<'a, 'gcx: 'a+'tcx, 'tcx: 'a> {
 }
 
 impl<'a, 'gcx, 'tcx> TypeFolder<'gcx, 'tcx> for RegionFudger<'a, 'gcx, 'tcx> {
+    type Error = !;
+
     fn tcx<'b>(&'b self) -> TyCtxt<'b, 'gcx, 'tcx> {
         self.infcx.tcx
     }
 
-    fn fold_ty(&mut self, ty: Ty<'tcx>) -> Ty<'tcx> {
+    fn fold_ty(&mut self, ty: Ty<'tcx>) -> Result<Ty<'tcx>, !> {
         match ty.sty {
             ty::Infer(ty::InferTy::TyVar(vid)) => {
                 match self.type_variables.get(&vid) {
@@ -124,14 +126,14 @@ impl<'a, 'gcx, 'tcx> TypeFolder<'gcx, 'tcx> for RegionFudger<'a, 'gcx, 'tcx> {
                         debug_assert!(self.infcx.type_variables.borrow_mut()
                                       .probe(vid)
                                       .is_unknown());
-                        ty
+                        Ok(ty)
                     }
 
                     Some(&origin) => {
                         // This variable was created during the
                         // fudging. Recreate it with a fresh variable
                         // here.
-                        self.infcx.next_ty_var(origin)
+                        Ok(self.infcx.next_ty_var(origin))
                     }
                 }
             }
@@ -139,14 +141,14 @@ impl<'a, 'gcx, 'tcx> TypeFolder<'gcx, 'tcx> for RegionFudger<'a, 'gcx, 'tcx> {
         }
     }
 
-    fn fold_region(&mut self, r: ty::Region<'tcx>) -> ty::Region<'tcx> {
-        match *r {
+    fn fold_region(&mut self, r: ty::Region<'tcx>) -> Result<ty::Region<'tcx>, !> {
+        Ok(match *r {
             ty::ReVar(v) if self.region_vars.contains(&v) => {
                 self.infcx.next_region_var(self.origin.clone())
             }
             _ => {
                 r
             }
-        }
+        })
     }
 }

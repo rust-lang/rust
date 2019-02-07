@@ -303,14 +303,16 @@ impl BoundNamesCollector {
 }
 
 impl<'tcx> TypeVisitor<'tcx> for BoundNamesCollector {
-    fn visit_binder<T: TypeFoldable<'tcx>>(&mut self, t: &ty::Binder<T>) -> bool {
+    type Error = !;
+
+    fn visit_binder<T: TypeFoldable<'tcx>>(&mut self, t: &ty::Binder<T>) -> Result<(), !> {
         self.binder_index.shift_in(1);
         let result = t.super_visit_with(self);
         self.binder_index.shift_out(1);
         result
     }
 
-    fn visit_ty(&mut self, t: ty::Ty<'tcx>) -> bool {
+    fn visit_ty(&mut self, t: ty::Ty<'tcx>) -> Result<(), !> {
         use syntax::symbol::Symbol;
 
         match t.sty {
@@ -332,7 +334,7 @@ impl<'tcx> TypeVisitor<'tcx> for BoundNamesCollector {
         t.super_visit_with(self)
     }
 
-    fn visit_region(&mut self, r: ty::Region<'tcx>) -> bool {
+    fn visit_region(&mut self, r: ty::Region<'tcx>) -> Result<(), !> {
         use syntax::symbol::Symbol;
 
         match r {
@@ -379,7 +381,7 @@ impl<'tcx> fmt::Display for traits::Goal<'tcx> {
             DomainGoal(goal) => write!(fmt, "{}", goal),
             Quantified(qkind, goal) => {
                 let mut collector = BoundNamesCollector::new();
-                goal.skip_binder().visit_with(&mut collector);
+                let Ok(_) = goal.skip_binder().visit_with(&mut collector);
 
                 if !collector.is_empty() {
                     write!(fmt, "{}<", qkind)?;
@@ -426,7 +428,7 @@ impl<'tcx> fmt::Display for traits::Clause<'tcx> {
             Implies(clause) => write!(fmt, "{}", clause),
             ForAll(clause) => {
                 let mut collector = BoundNamesCollector::new();
-                clause.skip_binder().visit_with(&mut collector);
+                let Ok(_) = clause.skip_binder().visit_with(&mut collector);
 
                 if !collector.is_empty() {
                     write!(fmt, "forall<")?;
@@ -757,16 +759,17 @@ where
 // TypeFoldable implementations.
 
 impl<'tcx, O: TypeFoldable<'tcx>> TypeFoldable<'tcx> for traits::Obligation<'tcx, O> {
-    fn super_fold_with<'gcx: 'tcx, F: TypeFolder<'gcx, 'tcx>>(&self, folder: &mut F) -> Self {
-        traits::Obligation {
+    fn super_fold_with<'gcx: 'tcx, F: TypeFolder<'gcx, 'tcx>>(&self, folder: &mut F) -> Result<Self, F::Error> {
+        Ok(traits::Obligation {
             cause: self.cause.clone(),
             recursion_depth: self.recursion_depth,
-            predicate: self.predicate.fold_with(folder),
-            param_env: self.param_env.fold_with(folder),
-        }
+            predicate: self.predicate.fold_with(folder)?,
+            param_env: self.param_env.fold_with(folder)?,
+        })
     }
 
-    fn super_visit_with<V: TypeVisitor<'tcx>>(&self, visitor: &mut V) -> bool {
+    fn super_visit_with<V: TypeVisitor<'tcx>>(&self, visitor: &mut V) -> Result<(), V::Error> {
+        // TODO: re-add param-env
         self.predicate.visit_with(visitor)
     }
 }
@@ -890,25 +893,28 @@ EnumTypeFoldableImpl! {
 }
 
 impl<'tcx> TypeFoldable<'tcx> for &'tcx ty::List<traits::Goal<'tcx>> {
-    fn super_fold_with<'gcx: 'tcx, F: TypeFolder<'gcx, 'tcx>>(&self, folder: &mut F) -> Self {
+    fn super_fold_with<'gcx: 'tcx, F: TypeFolder<'gcx, 'tcx>>(&self, folder: &mut F) -> Result<Self, F::Error> {
         let v = self.iter()
             .map(|t| t.fold_with(folder))
-            .collect::<SmallVec<[_; 8]>>();
-        folder.tcx().intern_goals(&v)
+            .collect::<Result<SmallVec<[_; 8]>, _>>()?;
+        Ok(folder.tcx().intern_goals(&v))
     }
 
-    fn super_visit_with<V: TypeVisitor<'tcx>>(&self, visitor: &mut V) -> bool {
-        self.iter().any(|t| t.visit_with(visitor))
+    fn super_visit_with<V: TypeVisitor<'tcx>>(&self, visitor: &mut V) -> Result<(), V::Error> {
+        for t in self.iter() {
+            t.visit_with(visitor)?;
+        }
+        Ok(())
     }
 }
 
 impl<'tcx> TypeFoldable<'tcx> for traits::Goal<'tcx> {
-    fn super_fold_with<'gcx: 'tcx, F: TypeFolder<'gcx, 'tcx>>(&self, folder: &mut F) -> Self {
+    fn super_fold_with<'gcx: 'tcx, F: TypeFolder<'gcx, 'tcx>>(&self, folder: &mut F) -> Result<Self, F::Error> {
         let v = (**self).fold_with(folder);
-        folder.tcx().mk_goal(v)
+        Ok(folder.tcx().mk_goal(v?))
     }
 
-    fn super_visit_with<V: TypeVisitor<'tcx>>(&self, visitor: &mut V) -> bool {
+    fn super_visit_with<V: TypeVisitor<'tcx>>(&self, visitor: &mut V) -> Result<(), V::Error> {
         (**self).visit_with(visitor)
     }
 }
@@ -944,15 +950,18 @@ BraceStructTypeFoldableImpl! {
 }
 
 impl<'tcx> TypeFoldable<'tcx> for traits::Clauses<'tcx> {
-    fn super_fold_with<'gcx: 'tcx, F: TypeFolder<'gcx, 'tcx>>(&self, folder: &mut F) -> Self {
+    fn super_fold_with<'gcx: 'tcx, F: TypeFolder<'gcx, 'tcx>>(&self, folder: &mut F) -> Result<Self, F::Error> {
         let v = self.iter()
             .map(|t| t.fold_with(folder))
-            .collect::<SmallVec<[_; 8]>>();
-        folder.tcx().intern_clauses(&v)
+            .collect::<Result<SmallVec<[_; 8]>, _>>();
+        Ok(folder.tcx().intern_clauses(&(v?)))
     }
 
-    fn super_visit_with<V: TypeVisitor<'tcx>>(&self, visitor: &mut V) -> bool {
-        self.iter().any(|t| t.visit_with(visitor))
+    fn super_visit_with<V: TypeVisitor<'tcx>>(&self, visitor: &mut V) -> Result<(), V::Error> {
+        for t in self.iter() {
+            t.visit_with(visitor)?;
+        }
+        Ok(())
     }
 }
 
@@ -962,14 +971,14 @@ where
     C::Substitution: Clone,
     C::RegionConstraint: Clone,
 {
-    fn super_fold_with<'gcx: 'tcx, F: TypeFolder<'gcx, 'tcx>>(&self, folder: &mut F) -> Self {
+    fn super_fold_with<'gcx: 'tcx, F: TypeFolder<'gcx, 'tcx>>(&self, folder: &mut F) -> Result<Self, F::Error> {
         <C as traits::ExClauseFold>::fold_ex_clause_with(
             self,
             folder,
         )
     }
 
-    fn super_visit_with<V: TypeVisitor<'tcx>>(&self, visitor: &mut V) -> bool {
+    fn super_visit_with<V: TypeVisitor<'tcx>>(&self, visitor: &mut V) -> Result<(), V::Error> {
         <C as traits::ExClauseFold>::visit_ex_clause_with(
             self,
             visitor,

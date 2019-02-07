@@ -221,16 +221,16 @@ macro_rules! CloneTypeFoldableImpls {
                 fn super_fold_with<'gcx: $tcx, F: $crate::ty::fold::TypeFolder<'gcx, $tcx>>(
                     &self,
                     _: &mut F
-                ) -> $ty {
-                    Clone::clone(self)
+                ) -> Result<$ty, F::Error> {
+                    Ok(Clone::clone(self))
                 }
 
                 fn super_visit_with<F: $crate::ty::fold::TypeVisitor<$tcx>>(
                     &self,
                     _: &mut F)
-                    -> bool
+                    -> Result<(), F::Error>
                 {
-                    false
+                    Ok(())
                 }
             }
         )+
@@ -335,17 +335,21 @@ macro_rules! BraceStructTypeFoldableImpl {
             fn super_fold_with<'gcx: $tcx, V: $crate::ty::fold::TypeFolder<'gcx, $tcx>>(
                 &self,
                 folder: &mut V,
-            ) -> Self {
+            ) -> Result<Self, V::Error> {
                 let $s { $($field,)* } = self;
-                $s { $($field: $crate::ty::fold::TypeFoldable::fold_with($field, folder),)* }
+                // FIXME(#58274): investigate parser bug
+                Ok({ $s {
+                    $($field: $crate::ty::fold::TypeFoldable::fold_with($field, folder)?),*
+                }})
             }
 
             fn super_visit_with<V: $crate::ty::fold::TypeVisitor<$tcx>>(
                 &self,
                 visitor: &mut V,
-            ) -> bool {
+            ) -> Result<(), V::Error> {
                 let $s { $($field,)* } = self;
-                false $(|| $crate::ty::fold::TypeFoldable::visit_with($field, visitor))*
+                $($crate::ty::fold::TypeFoldable::visit_with($field, visitor)?;)*;
+                Ok(())
             }
         }
     };
@@ -362,17 +366,20 @@ macro_rules! TupleStructTypeFoldableImpl {
             fn super_fold_with<'gcx: $tcx, V: $crate::ty::fold::TypeFolder<'gcx, $tcx>>(
                 &self,
                 folder: &mut V,
-            ) -> Self {
+            ) -> Result<Self, V::Error> {
                 let $s($($field,)*)= self;
-                $s($($crate::ty::fold::TypeFoldable::fold_with($field, folder),)*)
+                Ok($s(
+                    $($crate::ty::fold::TypeFoldable::fold_with($field, folder)?),*
+                ))
             }
 
             fn super_visit_with<V: $crate::ty::fold::TypeVisitor<$tcx>>(
                 &self,
                 visitor: &mut V,
-            ) -> bool {
+            ) -> Result<(), V::Error> {
                 let $s($($field,)*) = self;
-                false $(|| $crate::ty::fold::TypeFoldable::visit_with($field, visitor))*
+                $($crate::ty::fold::TypeFoldable::visit_with($field, visitor)?;)*;
+                Ok(())
             }
         }
     };
@@ -389,14 +396,14 @@ macro_rules! EnumTypeFoldableImpl {
             fn super_fold_with<'gcx: $tcx, V: $crate::ty::fold::TypeFolder<'gcx, $tcx>>(
                 &self,
                 folder: &mut V,
-            ) -> Self {
+            ) -> Result<Self, V::Error> {
                 EnumTypeFoldableImpl!(@FoldVariants(self, folder) input($($variants)*) output())
             }
 
             fn super_visit_with<V: $crate::ty::fold::TypeVisitor<$tcx>>(
                 &self,
                 visitor: &mut V,
-            ) -> bool {
+            ) -> Result<(), V::Error> {
                 EnumTypeFoldableImpl!(@VisitVariants(self, visitor) input($($variants)*) output())
             }
         }
@@ -416,9 +423,9 @@ macro_rules! EnumTypeFoldableImpl {
                 input($($input)*)
                 output(
                     $variant ( $($variant_arg),* ) => {
-                        $variant (
-                            $($crate::ty::fold::TypeFoldable::fold_with($variant_arg, $folder)),*
-                        )
+                        Ok($variant (
+                            $($crate::ty::fold::TypeFoldable::fold_with($variant_arg, $folder)?),*
+                        ))
                     }
                     $($output)*
                 )
@@ -433,10 +440,12 @@ macro_rules! EnumTypeFoldableImpl {
                 input($($input)*)
                 output(
                     $variant { $($variant_arg),* } => {
-                        $variant {
+                        // FIXME(#58274): investigate parser bug
+                        Ok({$variant {
                             $($variant_arg: $crate::ty::fold::TypeFoldable::fold_with(
                                 $variant_arg, $folder
-                            )),* }
+                            )?),*
+                        }})
                     }
                     $($output)*
                 )
@@ -450,7 +459,7 @@ macro_rules! EnumTypeFoldableImpl {
             @FoldVariants($this, $folder)
                 input($($input)*)
                 output(
-                    $variant => { $variant }
+                    $variant => { Ok($variant) }
                     $($output)*
                 )
         )
@@ -470,9 +479,10 @@ macro_rules! EnumTypeFoldableImpl {
                 input($($input)*)
                 output(
                     $variant ( $($variant_arg),* ) => {
-                        false $(|| $crate::ty::fold::TypeFoldable::visit_with(
+                        $($crate::ty::fold::TypeFoldable::visit_with(
                             $variant_arg, $visitor
-                        ))*
+                        )?;)*;
+                        Ok(())
                     }
                     $($output)*
                 )
@@ -487,9 +497,10 @@ macro_rules! EnumTypeFoldableImpl {
                 input($($input)*)
                 output(
                     $variant { $($variant_arg),* } => {
-                        false $(|| $crate::ty::fold::TypeFoldable::visit_with(
+                        $($crate::ty::fold::TypeFoldable::visit_with(
                             $variant_arg, $visitor
-                        ))*
+                        )?;)*
+                        Ok(())
                     }
                     $($output)*
                 )
@@ -503,10 +514,9 @@ macro_rules! EnumTypeFoldableImpl {
             @VisitVariants($this, $visitor)
                 input($($input)*)
                 output(
-                    $variant => { false }
+                    $variant => { Ok(()) }
                     $($output)*
                 )
         )
     };
 }
-

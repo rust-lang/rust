@@ -41,7 +41,7 @@ pub fn parameters_for<'tcx, T>(t: &T,
         parameters: vec![],
         include_nonconstraining,
     };
-    t.visit_with(&mut collector);
+    let Ok(()) = t.visit_with(&mut collector);
     collector.parameters
 }
 
@@ -51,11 +51,13 @@ struct ParameterCollector {
 }
 
 impl<'tcx> TypeVisitor<'tcx> for ParameterCollector {
-    fn visit_ty(&mut self, t: Ty<'tcx>) -> bool {
+    type Error = !;
+
+    fn visit_ty(&mut self, t: Ty<'tcx>) -> Result<(), !> {
         match t.sty {
             ty::Projection(..) | ty::Opaque(..) if !self.include_nonconstraining => {
                 // projections are not injective
-                return false;
+                return Ok(());
             }
             ty::Param(data) => {
                 self.parameters.push(Parameter::from(data));
@@ -66,11 +68,11 @@ impl<'tcx> TypeVisitor<'tcx> for ParameterCollector {
         t.super_visit_with(self)
     }
 
-    fn visit_region(&mut self, r: ty::Region<'tcx>) -> bool {
+    fn visit_region(&mut self, r: ty::Region<'tcx>) -> Result<(), !> {
         if let ty::ReEarlyBound(data) = *r {
             self.parameters.push(Parameter::from(data));
         }
-        false
+        Ok(())
     }
 }
 
