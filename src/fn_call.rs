@@ -390,10 +390,15 @@ pub trait EvalContextExt<'a, 'mir, 'tcx: 'a+'mir>: crate::MiriEvalContextExt<'a,
                     use std::io::{self, Write};
 
                     let buf_cont = this.memory().read_bytes(buf, Size::from_bytes(n))?;
+                    // We need to flush to make sure this actually appears on the screen
                     let res = if fd == 1 {
-                        io::stdout().write(buf_cont)
+                        let res = io::stdout().write(buf_cont);
+                        io::stdout().flush().unwrap();
+                        res
                     } else {
-                        io::stderr().write(buf_cont)
+                        let res = io::stderr().write(buf_cont);
+                        io::stderr().flush().unwrap();
+                        res
                     };
                     match res {
                         Ok(n) => n as i64,
