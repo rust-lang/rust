@@ -909,6 +909,7 @@ $EndFeature, "
 ```"),
 
             #[stable(feature = "rust1", since = "1.0.0")]
+            #[rustc_const_unstable(feature = "const_saturating_int_methods")]
             #[inline]
             #[cfg(not(stage0))]
             pub const fn saturating_add(self, rhs: Self) -> Self {
@@ -957,6 +958,7 @@ assert_eq!(", stringify!($SelfT), "::min_value().saturating_sub(100), ", stringi
 $EndFeature, "
 ```"),
             #[stable(feature = "rust1", since = "1.0.0")]
+            #[rustc_const_unstable(feature = "const_saturating_int_methods")]
             #[inline]
             #[cfg(not(stage0))]
             pub const fn saturating_sub(self, rhs: Self) -> Self {

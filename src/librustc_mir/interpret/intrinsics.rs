@@ -122,55 +122,41 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> 
                     self.binop_with_overflow(bin_op, lhs, rhs, dest)?;
                 }
             }
-            "saturating_add" => {
+            "saturating_add" | "saturating_sub" => {
                 let l = self.read_immediate(args[0])?;
                 let r = self.read_immediate(args[1])?;
-                let (val, overflowed) = self.binary_op_imm(BinOp::Add, l, r)?;
-                if overflowed {
-                    let first_term: u128 = l.to_scalar()?.to_bits(l.layout.size)?;
-                    let num_bits = l.layout.size.bits();
-                    let val = if l.layout.abi.is_signed() {
-                        // For signed addition the saturated value depends on the
-                        // sign of either term
-                        if first_term & (1 << (num_bits-1)) == 0 {  // signed term is positive
-                            Scalar::from_uint((1u128 << (num_bits - 1)) - 1,
-                                Size::from_bits(num_bits))
-                        } else {  // signed term is negative
-                            Scalar::from_uint(1u128 << (num_bits - 1), Size::from_bits(num_bits))
-                        }
-                    } else {
-                        Scalar::from_uint(u128::max_value() >> (128 - num_bits),
-                            Size::from_bits(num_bits))
-                    };
-                    self.write_scalar(val, dest)?;
+                let is_add = intrinsic_name == "saturating_add";
+                let (val, overflowed) = self.binary_op_imm(if is_add {
+                    BinOp::Add
                 } else {
-                    self.write_scalar(val, dest)?;
-                }
-            }
-            "saturating_sub" => {
-                let l = self.read_immediate(args[0])?;
-                let r = self.read_immediate(args[1])?;
-                let (val, overflowed) = self.binary_op_imm(BinOp::Sub, l, r)?;
-                if overflowed {
+                    BinOp::Sub
+                }, l, r)?;
+                let val = if overflowed {
+                    // For signed ints the saturated value depends on the
+                    // sign of the first term
                     let first_term: u128 = l.to_scalar()?.to_bits(l.layout.size)?;
                     let num_bits = l.layout.size.bits();
-                    let val = if l.layout.abi.is_signed() {
+                    if l.layout.abi.is_signed() {
                         if first_term & (1 << (num_bits-1)) == 0 {  // first term is positive
-                            // so overflow is positive
-                            Scalar::from_uint((1u128 << (num_bits - 1)) - 1,
+                            Scalar::from_uint((1u128 << (num_bits - 1)) - 1,  // max positive
                                 Size::from_bits(num_bits))
-                        } else {
-                            // if first term negative, overflow must be negative
+                        } else {  // first term is negative
+                            // max negative
                             Scalar::from_uint(1u128 << (num_bits - 1), Size::from_bits(num_bits))
                         }
-                    } else {
-                        // unsigned underflow saturates to 0
-                        Scalar::from_uint(0u128, Size::from_bits(num_bits))
-                    };
-                    self.write_scalar(val, dest)?;
+                    } else {  // unsigned
+                        if is_add {
+                            // max unsigned
+                            Scalar::from_uint(u128::max_value() >> (128 - num_bits),
+                                Size::from_bits(num_bits))
+                        } else {  // underflow to 0
+                            Scalar::from_uint(0u128, Size::from_bits(num_bits))
+                        }
+                    }
                 } else {
-                    self.write_scalar(val, dest)?;
-                }
+                    val
+                };
+                self.write_scalar(val, dest)?;
             }
             "unchecked_shl" | "unchecked_shr" => {
                 let l = self.read_immediate(args[0])?;
