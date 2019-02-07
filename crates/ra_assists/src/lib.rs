@@ -73,6 +73,7 @@ mod fill_match_arms;
 mod introduce_variable;
 mod replace_if_let_with_match;
 mod split_import;
+mod remove_dbg;
 fn all_assists<DB: HirDatabase>() -> &'static [fn(AssistCtx<DB>) -> Option<Assist>] {
     &[
         add_derive::add_derive,
@@ -83,6 +84,7 @@ fn all_assists<DB: HirDatabase>() -> &'static [fn(AssistCtx<DB>) -> Option<Assis
         introduce_variable::introduce_variable,
         replace_if_let_with_match::replace_if_let_with_match,
         split_import::split_import,
+        remove_dbg::remove_dbg,
     ]
 }
 
