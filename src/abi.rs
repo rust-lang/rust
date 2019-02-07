@@ -619,28 +619,26 @@ pub fn codegen_call_inner<'a, 'tcx: 'a>(
         _ => None,
     };
 
-    let func_ref: Option<Value>; // Indirect call target
-
-    let first_arg = {
-        if let Some(Instance {
+    //   | Indirect call target
+    //   v         v the first argument to be passed
+    let (func_ref, first_arg) = match instance {
+        // Trait object call
+        Some(Instance {
             def: InstanceDef::Virtual(_, idx),
             ..
-        }) = instance
-        {
+        }) => {
             let (ptr, method) = crate::vtable::get_ptr_and_method_ref(fx, args[0], idx);
-            func_ref = Some(method);
-            Some(ptr)
-        } else {
-            func_ref = if instance.is_none() {
-                let func = trans_operand(fx, func.expect("indirect call without func Operand"));
-                Some(func.load_scalar(fx))
-            } else {
-                None
-            };
-
-            args.get(0).map(|arg| adjust_arg_for_abi(fx, *arg))
+            (Some(method), Some(ptr))
         }
-        .into_iter()
+
+        // Normal call
+        Some(_) => (None, args.get(0).map(|arg| adjust_arg_for_abi(fx, *arg))),
+
+        // Indirect call
+        None => {
+            let func = trans_operand(fx, func.expect("indirect call without func Operand")).load_scalar(fx);
+            (Some(func), args.get(0).map(|arg| adjust_arg_for_abi(fx, *arg)))
+        }
     };
 
     let call_args: Vec<Value> = return_ptr
