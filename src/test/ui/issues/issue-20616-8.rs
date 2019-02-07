@@ -1,5 +1,3 @@
-// ignore-tidy-linelength
-
 // We need all these 9 issue-20616-N.rs files
 // because we can only catch one parsing error at a time
 
@@ -30,7 +28,8 @@ type Type_5_<'a> = Type_1_<'a, ()>;
 //type Type_7 = Box<(),,>; // error: expected type, found `,`
 
 
-type Type_8<'a,,> = &'a (); //~ error: expected one of `>`, `const`, identifier, or lifetime, found `,`
+type Type_8<'a,,> = &'a ();
+//~^ error: expected one of `>`, `const`, identifier, or lifetime, found `,`
 
 
 //type Type_9<T,,> = Box<T>; // error: expected identifier, found `,`

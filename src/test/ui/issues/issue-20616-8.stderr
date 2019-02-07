@@ -1,7 +1,7 @@
 error: expected one of `>`, `const`, identifier, or lifetime, found `,`
-  --> $DIR/issue-20616-8.rs:33:16
+  --> $DIR/issue-20616-8.rs:31:16
    |
-LL | type Type_8<'a,,> = &'a (); //~ error: expected one of `>`, `const`, identifier, or lifetime, found `,`
+LL | type Type_8<'a,,> = &'a ();
    |                ^ expected one of `>`, `const`, identifier, or lifetime here
 
 error: aborting due to previous error

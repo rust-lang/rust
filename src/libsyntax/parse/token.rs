@@ -284,7 +284,6 @@ impl Token {
         match self {
             OpenDelim(Brace) => true,
             Interpolated(ref nt) => match nt.0 {
-                NtExpr(..) => true,
                 NtBlock(..) => true,
                 NtLiteral(..) => true,
                 _ => false,

@@ -948,10 +948,6 @@ impl<'a> Parser<'a> {
         }
     }
 
-    fn check_const_param(&mut self) -> bool {
-        self.check_keyword(keywords::Const)
-    }
-
     fn check_const_arg(&mut self) -> bool {
         if self.token.can_begin_const_arg() {
             true
@@ -1046,7 +1042,8 @@ impl<'a> Parser<'a> {
     }
 
     /// Attempt to consume a `<`. If `<<` is seen, replace it with a single
-    /// `<` and continue. If a `<` is not seen, return false.
+    /// `<` and continue. If `<-` is seen, replace it with a single `<`
+    /// and continue. If a `<` is not seen, return false.
     ///
     /// This is meant to be used when parsing generics on a path to get the
     /// starting token.
@@ -1060,6 +1057,11 @@ impl<'a> Parser<'a> {
             token::BinOp(token::Shl) => {
                 let span = self.span.with_lo(self.span.lo() + BytePos(1));
                 self.bump_with(token::Lt, span);
+                true
+            }
+            token::LArrow => {
+                let span = self.span.with_lo(self.span.lo() + BytePos(1));
+                self.bump_with(token::BinOp(token::Minus), span);
                 true
             }
             _ => false,
@@ -5518,7 +5520,6 @@ impl<'a> Parser<'a> {
     /// trailing comma and erroneous trailing attributes.
     crate fn parse_generic_params(&mut self) -> PResult<'a, Vec<ast::GenericParam>> {
         let mut params = Vec::new();
-        let mut prev_param: Option<ParamKindOrd> = None;
         loop {
             let attrs = self.parse_outer_attributes()?;
             if self.check_lifetime() {
@@ -5536,29 +5537,21 @@ impl<'a> Parser<'a> {
                     bounds,
                     kind: ast::GenericParamKind::Lifetime,
                 });
-                prev_param = Some(ParamKindOrd::Lifetime);
-            } else if self.check_const_param() {
+            } else if self.check_keyword(keywords::Const) {
                 // Parse const parameter.
                 params.push(self.parse_const_param(attrs)?);
-                prev_param = Some(ParamKindOrd::Const);
             } else if self.check_ident() {
                 // Parse type parameter.
                 params.push(self.parse_ty_param(attrs)?);
-                prev_param = Some(ParamKindOrd::Type);
             } else {
                 // Check for trailing attributes and stop parsing.
-                if !attrs.is_empty() {
-                    if let Some(prev_param) = prev_param {
-                        self.struct_span_err(
-                            attrs[0].span,
-                            &format!(
-                                "trailing attribute after {} parameter",
-                                prev_param,
-                            ),
-                        )
-                        .span_label(attrs[0].span, "attributes must go before parameters")
-                        .emit();
-                    }
+                if !attrs.is_empty() && !params.is_empty() {
+                    self.struct_span_err(
+                        attrs[0].span,
+                        &format!("trailing attribute after generic parameter"),
+                    )
+                    .span_label(attrs[0].span, "attributes must go before parameters")
+                    .emit();
                 }
                 break
             }
@@ -5774,19 +5767,25 @@ impl<'a> Parser<'a> {
                 });
                 assoc_ty_bindings.push(span);
             } else if self.check_const_arg() {
+                // FIXME(const_generics): to distinguish between idents for types and consts,
+                // we should introduce a GenericArg::Ident in the AST and distinguish when
+                // lowering to the HIR. For now, idents for const args are not permitted.
+
                 // Parse const argument.
                 let expr = if let token::OpenDelim(token::Brace) = self.token {
                     self.parse_block_expr(None, self.span, BlockCheckMode::Default, ThinVec::new())?
-                } else if self.token.can_begin_literal_or_bool() {
-                    let lit = self.parse_lit()?;
-                    self.mk_expr(lit.span, ExprKind::Lit(lit), ThinVec::new())
-                } else {
+                } else if self.token.is_ident() {
                     // FIXME(const_generics): to distinguish between idents for types and consts,
                     // we should introduce a GenericArg::Ident in the AST and distinguish when
                     // lowering to the HIR. For now, idents for const args are not permitted.
                     return Err(
                         self.fatal("identifiers may currently not be used for const generics")
                     );
+                } else {
+                    // FIXME(const_generics): this currently conflicts with emplacement syntax
+                    // with negative integer literals.
+                    let lit = self.parse_lit()?;
+                    self.mk_expr(lit.span, ExprKind::Lit(lit), ThinVec::new())
                 };
                 let value = AnonConst {
                     id: ast::DUMMY_NODE_ID,
@@ -6444,7 +6443,7 @@ impl<'a> Parser<'a> {
         //     `<` (LIFETIME|IDENT) `,` - first generic parameter in a list
         //     `<` (LIFETIME|IDENT) `:` - generic parameter with bounds
         //     `<` (LIFETIME|IDENT) `=` - generic parameter with a default
-        //     `<` const IDENT          - generic const parameter
+        //     `<` const                - generic const parameter
         // The only truly ambiguous case is
         //     `<` IDENT `>` `::` IDENT ...
         // we disambiguate it in favor of generics (`impl<T> ::absolute::Path<T> { ... }`)
