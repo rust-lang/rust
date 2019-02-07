@@ -2816,6 +2816,7 @@ assert_eq!(200u8.saturating_add(127), 255);", $EndFeature, "
 ```"),
 
             #[stable(feature = "rust1", since = "1.0.0")]
+            #[rustc_const_unstable(feature = "const_saturating_int_methods")]
             #[inline]
             #[cfg(not(stage0))]
             pub const fn saturating_add(self, rhs: Self) -> Self {
@@ -2859,6 +2860,7 @@ Basic usage:
 assert_eq!(13", stringify!($SelfT), ".saturating_sub(127), 0);", $EndFeature, "
 ```"),
             #[stable(feature = "rust1", since = "1.0.0")]
+            #[rustc_const_unstable(feature = "const_saturating_int_methods")]
             #[inline]
             #[cfg(not(stage0))]
             pub const fn saturating_sub(self, rhs: Self) -> Self {
