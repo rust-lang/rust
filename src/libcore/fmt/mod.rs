@@ -1036,6 +1036,32 @@ pub fn write(output: &mut dyn Write, args: Arguments) -> Result {
     Ok(())
 }
 
+/// Padding after the end of something. Returned by `Formatter::padding`.
+#[must_use = "don't forget to write the post padding"]
+struct PostPadding {
+    fill: [u8; 4],
+    fill_len: u32,
+    padding: usize,
+}
+
+impl PostPadding {
+    /// Safety relies on `fill[..fill_len]` being a valid UTF-8 char.
+    unsafe fn new(fill: [u8; 4], fill_len: u32, padding: usize) -> PostPadding {
+        PostPadding { fill, fill_len, padding }
+    }
+
+    /// Write this post padding.
+    fn write(self, buf: &mut dyn Write) -> Result {
+        let fill = unsafe {
+            str::from_utf8_unchecked(&self.fill.get_unchecked(..self.fill_len as usize))
+        };
+        for _ in 0..self.padding {
+            buf.write_str(fill)?;
+        }
+        Ok(())
+    }
+}
+
 impl<'a> Formatter<'a> {
     fn wrap_buf<'b, 'c, F>(&'b mut self, wrap: F) -> Formatter<'c>
         where 'b: 'c, F: FnOnce(&'b mut (dyn Write+'b)) -> &'c mut (dyn Write+'c)
@@ -1193,16 +1219,16 @@ impl<'a> Formatter<'a> {
                 self.fill = '0';
                 self.align = rt::v1::Alignment::Right;
                 write_prefix(self, sign, prefix)?;
-                self.with_padding(min - width, rt::v1::Alignment::Right, |f| {
-                    f.buf.write_str(buf)
-                })
+                let post_padding = self.padding(min - width, rt::v1::Alignment::Right)?;
+                self.buf.write_str(buf)?;
+                post_padding.write(self.buf)
             }
             // Otherwise, the sign and prefix goes after the padding
             Some(min) => {
-                self.with_padding(min - width, rt::v1::Alignment::Right, |f| {
-                    write_prefix(f, sign, prefix)?;
-                    f.buf.write_str(buf)
-                })
+                let post_padding = self.padding(min - width, rt::v1::Alignment::Right)?;
+                write_prefix(self, sign, prefix)?;
+                self.buf.write_str(buf)?;
+                post_padding.write(self.buf)
             }
         }
     }
@@ -1273,19 +1299,21 @@ impl<'a> Formatter<'a> {
             // up the minimum width with the specified string + some alignment.
             Some(width) => {
                 let align = rt::v1::Alignment::Left;
-                self.with_padding(width - s.chars().count(), align, |me| {
-                    me.buf.write_str(s)
-                })
+                let post_padding = self.padding(width - s.chars().count(), align)?;
+                self.buf.write_str(s)?;
+                post_padding.write(self.buf)
             }
         }
     }
 
-    /// Runs a callback, emitting the correct padding either before or
-    /// afterwards depending on whether right or left alignment is requested.
-    fn with_padding<F>(&mut self, padding: usize, default: rt::v1::Alignment,
-                       f: F) -> Result
-        where F: FnOnce(&mut Formatter) -> Result,
-    {
+    /// Write the pre-padding and return the unwritten post-padding. Callers are
+    /// responsible for ensuring post-padding is written after the thing that is
+    /// being padded.
+    fn padding(
+        &mut self,
+        padding: usize,
+        default: rt::v1::Alignment
+    ) -> result::Result<PostPadding, Error> {
         let align = match self.align {
             rt::v1::Alignment::Unknown => default,
             _ => self.align
@@ -1299,19 +1327,19 @@ impl<'a> Formatter<'a> {
         };
 
         let mut fill = [0; 4];
-        let fill = self.fill.encode_utf8(&mut fill);
+        let fill_len = {
+            let fill = self.fill.encode_utf8(&mut fill);
 
-        for _ in 0..pre_pad {
-            self.buf.write_str(fill)?;
-        }
+            for _ in 0..pre_pad {
+                self.buf.write_str(fill)?;
+            }
 
-        f(self)?;
+            fill.len()
+        };
 
-        for _ in 0..post_pad {
-            self.buf.write_str(fill)?;
-        }
-
-        Ok(())
+        Ok(unsafe {
+            PostPadding::new(fill, fill_len as u32, post_pad)
+        })
     }
 
     /// Takes the formatted parts and applies the padding.
@@ -1343,9 +1371,9 @@ impl<'a> Formatter<'a> {
             let ret = if width <= len { // no padding
                 self.write_formatted_parts(&formatted)
             } else {
-                self.with_padding(width - len, align, |f| {
-                    f.write_formatted_parts(&formatted)
-                })
+                let post_padding = self.padding(width - len, align)?;
+                self.write_formatted_parts(&formatted)?;
+                post_padding.write(self.buf)
             };
             self.fill = old_fill;
             self.align = old_align;
