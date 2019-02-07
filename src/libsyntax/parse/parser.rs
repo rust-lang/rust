@@ -721,7 +721,9 @@ impl<'a> Parser<'a> {
                 // the most sense, which is immediately after the last token:
                 //
                 //  {foo(bar {}}
-                //      -      ^ help: `)` may belong here
+                //      -      ^
+                //      |      |
+                //      |      help: `)` may belong here (FIXME: #58270)
                 //      |
                 //      unclosed delimiter
                 if let Some(sp) = unmatched.unclosed_span {
