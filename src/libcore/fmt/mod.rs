@@ -1153,38 +1153,46 @@ impl<'a> Formatter<'a> {
             sign = Some('+'); width += 1;
         }
 
-        let prefixed = self.alternate();
-        if prefixed {
+        let prefix = if self.alternate() {
             width += prefix.chars().count();
-        }
+            Some(prefix)
+        } else {
+            None
+        };
 
         // Writes the sign if it exists, and then the prefix if it was requested
-        let write_prefix = |f: &mut Formatter| {
+        #[inline(never)]
+        fn write_prefix(f: &mut Formatter, sign: Option<char>, prefix: Option<&str>) -> Result {
             if let Some(c) = sign {
                 f.buf.write_char(c)?;
             }
-            if prefixed { f.buf.write_str(prefix) }
-            else { Ok(()) }
-        };
+            if let Some(prefix) = prefix {
+                f.buf.write_str(prefix)
+            } else {
+                Ok(())
+            }
+        }
 
         // The `width` field is more of a `min-width` parameter at this point.
         match self.width {
             // If there's no minimum length requirements then we can just
             // write the bytes.
             None => {
-                write_prefix(self)?; self.buf.write_str(buf)
+                write_prefix(self, sign, prefix)?;
+                self.buf.write_str(buf)
             }
             // Check if we're over the minimum width, if so then we can also
             // just write the bytes.
             Some(min) if width >= min => {
-                write_prefix(self)?; self.buf.write_str(buf)
+                write_prefix(self, sign, prefix)?;
+                self.buf.write_str(buf)
             }
             // The sign and prefix goes before the padding if the fill character
             // is zero
             Some(min) if self.sign_aware_zero_pad() => {
                 self.fill = '0';
                 self.align = rt::v1::Alignment::Right;
-                write_prefix(self)?;
+                write_prefix(self, sign, prefix)?;
                 self.with_padding(min - width, rt::v1::Alignment::Right, |f| {
                     f.buf.write_str(buf)
                 })
@@ -1192,7 +1200,8 @@ impl<'a> Formatter<'a> {
             // Otherwise, the sign and prefix goes after the padding
             Some(min) => {
                 self.with_padding(min - width, rt::v1::Alignment::Right, |f| {
-                    write_prefix(f)?; f.buf.write_str(buf)
+                    write_prefix(f, sign, prefix)?;
+                    f.buf.write_str(buf)
                 })
             }
         }
