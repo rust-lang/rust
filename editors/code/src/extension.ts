@@ -82,7 +82,9 @@ export function activate(context: vscode.ExtensionContext) {
         }
     );
 
-    overrideCommand('type', commands.onEnter.handle);
+    if (Server.config.enableEnhancedTyping) {
+        overrideCommand('type', commands.onEnter.handle);
+    }
 
     // Notifications are events triggered by the language server
     const allNotifications: Iterable<
