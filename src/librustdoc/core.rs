@@ -485,16 +485,16 @@ pub fn run_core(options: RustdocOptions) -> (clean::Crate, RenderInfo, RenderOpt
                                                             &sess);
 
         let resolver = RefCell::new(resolver);
-        abort_on_err(driver::phase_3_run_analysis_passes(&*codegen_backend,
-                                                        control,
-                                                        &sess,
-                                                        &*cstore,
-                                                        hir_map,
-                                                        resolutions,
-                                                        &mut arenas,
-                                                        &name,
-                                                        &output_filenames,
-                                                        |tcx, _, result| {
+        driver::phase_3_run_analysis_passes(&*codegen_backend,
+                                            control,
+                                            &sess,
+                                            &*cstore,
+                                            hir_map,
+                                            resolutions,
+                                            &mut arenas,
+                                            &name,
+                                            &output_filenames,
+                                            |tcx, _, result| {
             if result.is_err() {
                 sess.fatal("Compilation failed, aborting rustdoc");
             }
@@ -609,6 +609,6 @@ pub fn run_core(options: RustdocOptions) -> (clean::Crate, RenderInfo, RenderOpt
             ctxt.sess().abort_if_errors();
 
             (krate, ctxt.renderinfo.into_inner(), render_options, passes)
-        }), &sess)
+        })
     })
 }

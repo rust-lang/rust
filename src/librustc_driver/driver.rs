@@ -34,7 +34,7 @@ use syntax::ext::base::ExtCtxt;
 use syntax::mut_visit::MutVisitor;
 use syntax::parse::{self, PResult};
 use syntax::util::node_count::NodeCounter;
-use syntax_pos::{FileName, hygiene};
+use syntax_pos::hygiene;
 use syntax_ext;
 
 use serialize::json;
@@ -327,7 +327,7 @@ pub fn compile_input(
 
                 Ok((outputs.clone(), ongoing_codegen, tcx.dep_graph.clone()))
             },
-        )??
+        )?
     };
 
     if sess.opts.debugging_opts.print_type_sizes {
@@ -356,13 +356,6 @@ pub fn compile_input(
     );
 
     Ok(())
-}
-
-pub fn source_name(input: &Input) -> FileName {
-    match *input {
-        Input::File(ref ifile) => ifile.clone().into(),
-        Input::Str { ref name, .. } => name.clone(),
-    }
 }
 
 /// CompileController is used to customize compilation, it allows compilation to
@@ -1180,7 +1173,7 @@ pub fn phase_3_run_analysis_passes<'tcx, F, R>(
     name: &str,
     output_filenames: &OutputFilenames,
     f: F,
-) -> Result<R, CompileIncomplete>
+) -> R
 where
     F: for<'a> FnOnce(
         TyCtxt<'a, 'tcx, 'tcx>,
@@ -1223,7 +1216,7 @@ where
 
             tcx.analysis(LOCAL_CRATE).ok();
 
-            Ok(f(tcx, rx, tcx.sess.compile_status()))
+            f(tcx, rx, tcx.sess.compile_status())
         },
     )
 }

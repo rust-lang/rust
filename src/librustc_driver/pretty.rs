@@ -36,7 +36,6 @@ pub use self::PpMode::*;
 use self::NodesMatchingUII::*;
 use abort_on_err;
 use driver;
-use source_name;
 
 #[derive(Copy, Clone, PartialEq, Debug)]
 pub enum PpSourceMode {
@@ -217,16 +216,17 @@ impl PpSourceMode {
                 let control = &driver::CompileController::basic();
                 let codegen_backend = util::get_codegen_backend(sess);
                 let mut arenas = AllArenas::new();
-                abort_on_err(driver::phase_3_run_analysis_passes(&*codegen_backend,
-                                                                 control,
-                                                                 sess,
-                                                                 cstore,
-                                                                 hir_map.clone(),
-                                                                 resolutions.clone(),
-                                                                 &mut arenas,
-                                                                 id,
-                                                                 output_filenames,
-                                                                 |tcx, _, _| {
+                driver::phase_3_run_analysis_passes(&*codegen_backend,
+                                                    control,
+                                                    sess,
+                                                    cstore,
+                                                    hir_map.clone(),
+                                                    resolutions.clone(),
+                                                    &mut arenas,
+                                                    id,
+                                                    output_filenames,
+                                                    |tcx, _, result| {
+                    abort_on_err(result, tcx.sess);
                     let empty_tables = ty::TypeckTables::empty(None);
                     let annotation = TypedAnnotation {
                         tcx,
@@ -235,8 +235,7 @@ impl PpSourceMode {
                     tcx.dep_graph.with_ignore(|| {
                         f(&annotation, hir_map.forest.krate())
                     })
-                }),
-                             sess)
+                })
             }
             _ => panic!("Should use call_with_pp_support"),
         }
@@ -697,7 +696,7 @@ pub fn visit_crate(sess: &Session, krate: &mut ast::Crate, ppm: PpMode) {
 }
 
 fn get_source(input: &Input, sess: &Session) -> (Vec<u8>, FileName) {
-    let src_name = source_name(input);
+    let src_name = input.source_name();
     let src = sess.source_map()
         .get_source_file(&src_name)
         .unwrap()
@@ -919,16 +918,17 @@ fn print_with_analysis<'tcx, 'a: 'tcx>(sess: &'a Session,
     let control = &driver::CompileController::basic();
     let codegen_backend = util::get_codegen_backend(sess);
     let mut arenas = AllArenas::new();
-    abort_on_err(driver::phase_3_run_analysis_passes(&*codegen_backend,
-                                                     control,
-                                                     sess,
-                                                     cstore,
-                                                     hir_map.clone(),
-                                                     resolutions.clone(),
-                                                     &mut arenas,
-                                                     crate_name,
-                                                     output_filenames,
-                                                     |tcx, _, _| {
+    driver::phase_3_run_analysis_passes(&*codegen_backend,
+                                        control,
+                                        sess,
+                                        cstore,
+                                        hir_map.clone(),
+                                        resolutions.clone(),
+                                        &mut arenas,
+                                        crate_name,
+                                        output_filenames,
+                                        |tcx, _, result| {
+        abort_on_err(result, tcx.sess);
         match ppm {
             PpmMir | PpmMirCFG => {
                 if let Some(nodeid) = nodeid {
@@ -974,9 +974,7 @@ fn print_with_analysis<'tcx, 'a: 'tcx>(sess: &'a Session,
             }
             _ => unreachable!(),
         }
-    }),
-                 sess)
-        .unwrap();
+    }).unwrap();
 
     write_output(out, ofile);
 }

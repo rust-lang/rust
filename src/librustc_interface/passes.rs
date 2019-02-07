@@ -59,7 +59,7 @@ use std::rc::Rc;
 use std::mem;
 use std::ops::Generator;
 
-// Returns all the paths that correspond to generated files.
+/// Returns all the paths that correspond to generated files.
 pub fn generated_output_paths(
     sess: &Session,
     outputs: &OutputFilenames,
