@@ -48,12 +48,12 @@ Now you can run your project in Miri:
 3. If you have a binary project, you can run it through Miri using `cargo
    +nightly miri run`.
 
-When running code via `cargo miri`, the `cargo-miri` feature is set.  You can
+When running code via `cargo miri`, the `miri` config flag is set.  You can
 use this to exclude test cases that will fail under Miri because they do things
 Miri does not support:
 
 ```rust
-#[cfg(not(feature = "cargo-miri"))]
+#[cfg(not(miri))]
 #[test]
 fn does_not_work_on_miri() {
     let x = 0u8;
