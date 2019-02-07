@@ -17,7 +17,7 @@ Language
   fn main() {
     let state = Creature::Crab("Ferrous");
 
-    if let Creature::Crab(name) | Creature::Person(name) {
+    if let Creature::Crab(name) | Creature::Person(name) = state {
       println!("This creature's name is: {}", name);
     }
   }
@@ -25,7 +25,7 @@ Language
 - [You can now have irrefutable `if let` and `while let` patterns.][57535] Using
   this feature will by default produce a warning as this behaviour can be
   unintuitive. E.g. `if let _ = 5 {}`
-- [You can now use `let` bindings and pattern destructurcting in
+- [You can now use `let` bindings and pattern destructuring in
   constant functions.][57175]
 - [You can now specify multiple attributes in a `cfg_attr` attribute.][57332]
   E.g. `#[cfg_attr(all(), must_use, optimize)]`
@@ -34,7 +34,7 @@ Language
   with an alignment of 2 bytes and a size of 6 bytes.
 - [You can now call unsafe constant functions.][57067] E.g.
   ```rust
-  unsafe const fn foo() -> i32 { 5 }
+  const unsafe fn foo() -> i32 { 5 }
   const fn bar() -> i32 {
     unsafe { foo() }
   }
@@ -56,8 +56,8 @@ Compiler
 - [The mininum required LLVM version has been bumped to 6.0.][56642]
 - [Added support for the PowerPC64 architecture on FreeBSD.][57615]
 - [The `x86_64-fortanix-unknown-sgx` target support has been upgraded to
-  tier 2 support.][57130] Visit the [platform support] page for information on
-  Rust's platform support.
+  tier 2 support.][57130] Visit the [platform support][platform-support] page for
+  information on Rust's platform support.
 - [Added support for the `thumbv7neon-linux-androideabi` and
   `thumbv7neon-unknown-linux-gnueabihf` targets.][56947]
 - [Added support for the `x86_64-unknown-uefi` target.][56769]
@@ -122,7 +122,7 @@ Cargo
 [`Duration::as_millis`]: https://doc.rust-lang.org/std/time/struct.Duration.html#as_millis
 [`Duration::as_micros`]: https://doc.rust-lang.org/std/time/struct.Duration.html#as_micros
 [`Duration::as_nanos`]: https://doc.rust-lang.org/std/time/struct.Duration.html#as_millis
-
+[platform-support]: https://forge.rust-lang.org/platform-support.html
 
 Version 1.32.0 (2019-01-17)
 ==========================
