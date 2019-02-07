@@ -1,5 +1,5 @@
 fn main() {
     let foo = 42u32;
     const FOO : u32 = foo;
-                   //~^ ERROR can't capture dynamic environment
+                   //~^ ERROR attempt to use a non-constant value in a constant
 }

@@ -4164,6 +4164,9 @@ impl<'a> Resolver<'a> {
                 span_bug!(span, "unexpected {:?} in bindings", def)
             }
             Def::Local(node_id) => {
+                use ResolutionError::*;
+                let mut res_err = None;
+
                 for rib in ribs {
                     match rib.kind {
                         NormalRibKind | ModuleRibKind(..) | MacroDefinition(..) |
@@ -4199,20 +4202,25 @@ impl<'a> Resolver<'a> {
                             // named function item. This is not allowed, so we
                             // report an error.
                             if record_used {
-                                resolve_error(self, span,
-                                    ResolutionError::CannotCaptureDynamicEnvironmentInFnItem);
+                                // We don't immediately trigger a resolve error, because
+                                // we want certain other resolution errors (namely those
+                                // emitted for `ConstantItemRibKind` below) to take
+                                // precedence.
+                                res_err = Some(CannotCaptureDynamicEnvironmentInFnItem);
                             }
-                            return Def::Err;
                         }
                         ConstantItemRibKind => {
                             // Still doesn't deal with upvars
                             if record_used {
-                                resolve_error(self, span,
-                                    ResolutionError::AttemptToUseNonConstantValueInConstant);
+                                resolve_error(self, span, AttemptToUseNonConstantValueInConstant);
                             }
                             return Def::Err;
                         }
                     }
+                }
+                if let Some(res_err) = res_err {
+                     resolve_error(self, span, res_err);
+                     return Def::Err;
                 }
             }
             Def::TyParam(..) | Def::SelfTy(..) => {
