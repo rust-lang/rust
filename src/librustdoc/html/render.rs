@@ -2811,9 +2811,13 @@ fn item_module(w: &mut fmt::Formatter, cx: &Context,
 fn stability_tags(item: &clean::Item) -> String {
     let mut tags = String::new();
 
+    fn tag_html(class: &str, contents: &str) -> String {
+        format!(r#"<span class="stab {}">{}</span>"#, class, contents)
+    }
+
     // The trailing space after each tag is to space it properly against the rest of the docs.
     if item.deprecation().is_some() {
-        tags.push_str("[<div class='stab deprecated'>Deprecated</div>] ");
+        tags += &tag_html("deprecated", "Deprecated");
     }
 
     if let Some(stab) = item
@@ -2822,17 +2826,14 @@ fn stability_tags(item: &clean::Item) -> String {
         .filter(|s| s.level == stability::Unstable)
     {
         if stab.feature.as_ref().map(|s| &**s) == Some("rustc_private") {
-            tags.push_str("[<div class='stab internal'>Internal</div>] ");
+            tags += &tag_html("internal", "Internal");
         } else {
-            tags.push_str("[<div class='stab unstable'>Experimental</div>] ");
+            tags += &tag_html("unstable", "Experimental");
         }
     }
 
     if let Some(ref cfg) = item.attrs.cfg {
-        tags.push_str(&format!(
-            "[<div class='stab portability'>{}</div>] ",
-            cfg.render_short_html()
-        ));
+        tags += &tag_html("portability", &cfg.render_short_html());
     }
 
     tags
