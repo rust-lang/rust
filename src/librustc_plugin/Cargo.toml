@@ -3,6 +3,7 @@ authors = ["The Rust Project Developers"]
 name = "rustc_plugin"
 version = "0.0.0"
 build = false
+edition = "2018"
 
 [lib]
 name = "rustc_plugin"
