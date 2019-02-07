@@ -85,7 +85,7 @@ pub struct Session {
     /// in order to avoid redundantly verbose output (Issue #24690, #44953).
     pub one_time_diagnostics: Lock<FxHashSet<(DiagnosticMessageId, Option<Span>, String)>>,
     pub plugin_llvm_passes: OneThread<RefCell<Vec<String>>>,
-    pub plugin_attributes: OneThread<RefCell<Vec<(String, AttributeType)>>>,
+    pub plugin_attributes: Lock<Vec<(String, AttributeType)>>,
     pub crate_types: Once<Vec<config::CrateType>>,
     pub dependency_formats: Once<dependency_format::Dependencies>,
     /// The crate_disambiguator is constructed out of all the `-C metadata`
@@ -1178,7 +1178,7 @@ pub fn build_session_(
         buffered_lints: Lock::new(Some(Default::default())),
         one_time_diagnostics: Default::default(),
         plugin_llvm_passes: OneThread::new(RefCell::new(Vec::new())),
-        plugin_attributes: OneThread::new(RefCell::new(Vec::new())),
+        plugin_attributes: Lock::new(Vec::new()),
         crate_types: Once::new(),
         dependency_formats: Once::new(),
         crate_disambiguator: Once::new(),

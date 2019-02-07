@@ -189,7 +189,6 @@ pub fn check_crate<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>) {
     for &module in tcx.hir().krate().modules.keys() {
         tcx.ensure().check_mod_liveness(tcx.hir().local_def_id(module));
     }
-    tcx.sess.abort_if_errors();
 }
 
 pub fn provide(providers: &mut Providers<'_>) {

@@ -127,6 +127,13 @@ cfg_if! {
         pub use self::serial_join as join;
         pub use self::serial_scope as scope;
 
+        #[macro_export]
+        macro_rules! parallel {
+            ($($blocks:tt),*) => {
+                $($blocks)*;
+            }
+        }
+
         pub use std::iter::Iterator as ParallelIterator;
 
         pub fn par_iter<T: IntoIterator>(t: T) -> T::IntoIter {
@@ -270,6 +277,26 @@ cfg_if! {
         use std;
         use std::thread;
         pub use rayon::{join, scope};
+
+        #[macro_export]
+        macro_rules! parallel {
+            (impl [$($c:tt,)*] [$block:tt $(, $rest:tt)*]) => {
+                parallel!(impl [$block, $($c,)*] [$($rest),*])
+            };
+            (impl [$($blocks:tt,)*] []) => {
+                ::rustc_data_structures::sync::scope(|s| {
+                    $(
+                        s.spawn(|_| $blocks);
+                    )*
+                })
+            };
+            ($($blocks:tt),*) => {
+                // Reverse the order of the blocks since Rayon executes them in reverse order
+                // when using a single thread. This ensures the execution order matches that
+                // of a single threaded rustc
+                parallel!(impl [] [$($blocks),*]);
+            };
+        }
 
         pub use rayon_core::WorkerLocal;
 

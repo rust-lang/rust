@@ -1222,26 +1222,28 @@ where
             // tcx available.
             time(sess, "dep graph tcx init", || rustc_incremental::dep_graph_tcx_init(tcx));
 
-            time(sess, "looking for entry point", || {
-                middle::entry::find_entry_point(tcx)
-            });
+            parallel!({
+                time(sess, "looking for entry point", || {
+                    middle::entry::find_entry_point(tcx)
+                });
 
-            time(sess, "looking for plugin registrar", || {
-                plugin::build::find_plugin_registrar(tcx)
-            });
+                time(sess, "looking for plugin registrar", || {
+                    plugin::build::find_plugin_registrar(tcx)
+                });
 
-            time(sess, "looking for derive registrar", || {
-                proc_macro_decls::find(tcx)
-            });
-
-            time(sess, "loop checking", || loops::check_crate(tcx));
-
-            time(sess, "attribute checking", || {
-                hir::check_attr::check_crate(tcx)
-            });
-
-            time(sess, "stability checking", || {
-                stability::check_unstable_api_usage(tcx)
+                time(sess, "looking for derive registrar", || {
+                    proc_macro_decls::find(tcx)
+                });
+            }, {
+                time(sess, "loop checking", || loops::check_crate(tcx));
+            }, {
+                time(sess, "attribute checking", || {
+                    hir::check_attr::check_crate(tcx)
+                });
+            }, {
+                time(sess, "stability checking", || {
+                    stability::check_unstable_api_usage(tcx)
+                });
             });
 
             // passes are timed inside typeck
@@ -1253,27 +1255,31 @@ where
                 }
             }
 
-            time(sess, "rvalue promotion", || {
-                rvalue_promotion::check_crate(tcx)
+            time(sess, "misc checking", || {
+                parallel!({
+                    time(sess, "rvalue promotion", || {
+                        rvalue_promotion::check_crate(tcx)
+                    });
+                }, {
+                    time(sess, "intrinsic checking", || {
+                        middle::intrinsicck::check_crate(tcx)
+                    });
+                }, {
+                    time(sess, "match checking", || mir::matchck_crate(tcx));
+                }, {
+                    // this must run before MIR dump, because
+                    // "not all control paths return a value" is reported here.
+                    //
+                    // maybe move the check to a MIR pass?
+                    time(sess, "liveness checking", || {
+                        middle::liveness::check_crate(tcx)
+                    });
+                });
             });
 
-            time(sess, "privacy checking", || {
-                rustc_privacy::check_crate(tcx)
-            });
-
-            time(sess, "intrinsic checking", || {
-                middle::intrinsicck::check_crate(tcx)
-            });
-
-            time(sess, "match checking", || mir::matchck_crate(tcx));
-
-            // this must run before MIR dump, because
-            // "not all control paths return a value" is reported here.
-            //
-            // maybe move the check to a MIR pass?
-            time(sess, "liveness checking", || {
-                middle::liveness::check_crate(tcx)
-            });
+            // Abort so we don't try to construct MIR with liveness errors.
+            // We also won't want to continue with errors from rvalue promotion
+            tcx.sess.abort_if_errors();
 
             time(sess, "borrow checking", || {
                 if tcx.use_ast_borrowck() {
@@ -1297,7 +1303,7 @@ where
 
             time(sess, "layout testing", || layout_test::test_layout(tcx));
 
-            // Avoid overwhelming user with errors if type checking failed.
+            // Avoid overwhelming user with errors if borrow checking failed.
             // I'm not sure how helpful this is, to be honest, but it avoids
             // a
             // lot of annoying errors in the compile-fail tests (basically,
@@ -1307,13 +1313,21 @@ where
                 return Ok(f(tcx, rx, sess.compile_status()));
             }
 
-            time(sess, "death checking", || middle::dead::check_crate(tcx));
-
-            time(sess, "unused lib feature checking", || {
-                stability::check_unused_or_stable_features(tcx)
+            time(sess, "misc checking", || {
+                parallel!({
+                    time(sess, "privacy checking", || {
+                        rustc_privacy::check_crate(tcx)
+                    });
+                }, {
+                    time(sess, "death checking", || middle::dead::check_crate(tcx));
+                },  {
+                    time(sess, "unused lib feature checking", || {
+                        stability::check_unused_or_stable_features(tcx)
+                    });
+                }, {
+                    time(sess, "lint checking", || lint::check_crate(tcx));
+                });
             });
-
-            time(sess, "lint checking", || lint::check_crate(tcx));
 
             return Ok(f(tcx, rx, tcx.sess.compile_status()));
         },
