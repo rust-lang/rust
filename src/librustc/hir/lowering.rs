@@ -44,6 +44,7 @@ use crate::middle::cstore::CrateStore;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_data_structures::indexed_vec::IndexVec;
 use rustc_data_structures::thin_vec::ThinVec;
+use rustc_data_structures::sync::Lrc;
 use crate::session::Session;
 use crate::session::config::nightly_options;
 use crate::util::common::FN_OUTPUT_NAME;
@@ -52,7 +53,6 @@ use crate::util::nodemap::{DefIdMap, NodeMap};
 use std::collections::{BTreeSet, BTreeMap};
 use std::fmt::Debug;
 use std::mem;
-use std::rc::Rc;
 use smallvec::SmallVec;
 use syntax::attr;
 use syntax::ast;
@@ -688,7 +688,7 @@ impl<'a> LoweringContext<'a> {
         &self,
         reason: CompilerDesugaringKind,
         span: Span,
-        allow_internal_unstable: Option<Rc<[Symbol]>>,
+        allow_internal_unstable: Option<Lrc<[Symbol]>>,
     ) -> Span {
         let mark = Mark::fresh(Mark::root());
         mark.set_expn_info(source_map::ExpnInfo {
