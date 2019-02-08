@@ -5,7 +5,7 @@ use rustc::ty;
 use rustc::mir::interpret::{EvalResult, PointerArithmetic};
 
 use crate::{
-    PlaceTy, OpTy, Immediate, Scalar, ScalarMaybeUndef, Borrow,
+    PlaceTy, OpTy, ImmTy, Immediate, Scalar, ScalarMaybeUndef, Borrow,
     OperatorEvalContextExt
 };
 
@@ -80,11 +80,11 @@ pub trait EvalContextExt<'a, 'mir, 'tcx: 'a+'mir>: crate::MiriEvalContextExt<'a,
 
             _ if intrinsic_name.starts_with("atomic_cxchg") => {
                 let ptr = this.deref_operand(args[0])?;
-                let expect_old = this.read_immediate(args[1])?; // read as immediate for the sake of `binary_op_imm()`
+                let expect_old = this.read_immediate(args[1])?; // read as immediate for the sake of `binary_op()`
                 let new = this.read_scalar(args[2])?;
-                let old = this.read_immediate(ptr.into())?; // read as immediate for the sake of `binary_op_imm()`
-                // binary_op_imm will bail if either of them is not a scalar
-                let (eq, _) = this.binary_op_imm(mir::BinOp::Eq, old, expect_old)?;
+                let old = this.read_immediate(ptr.into())?; // read as immediate for the sake of `binary_op()`
+                // binary_op will bail if either of them is not a scalar
+                let (eq, _) = this.binary_op(mir::BinOp::Eq, old, expect_old)?;
                 let res = Immediate::ScalarPair(old.to_scalar_or_undef(), eq.into());
                 this.write_immediate(res, dest)?; // old value is returned
                 // update ptr depending on comparison
@@ -140,9 +140,9 @@ pub trait EvalContextExt<'a, 'mir, 'tcx: 'a+'mir>: crate::MiriEvalContextExt<'a,
                     _ => bug!(),
                 };
                 // Atomics wrap around on overflow.
-                let (val, _overflowed) = this.binary_op_imm(op, old, rhs)?;
+                let (val, _overflowed) = this.binary_op(op, old, rhs)?;
                 let val = if neg {
-                    this.unary_op(mir::UnOp::Not, val, old.layout)?
+                    this.unary_op(mir::UnOp::Not, ImmTy::from_scalar(val, old.layout))?
                 } else {
                     val
                 };
@@ -239,7 +239,7 @@ pub trait EvalContextExt<'a, 'mir, 'tcx: 'a+'mir>: crate::MiriEvalContextExt<'a,
                 let a = this.read_immediate(args[0])?;
                 let b = this.read_immediate(args[1])?;
                 // check x % y != 0
-                if this.binary_op_imm(mir::BinOp::Rem, a, b)?.0.to_bits(dest.layout.size)? != 0 {
+                if this.binary_op(mir::BinOp::Rem, a, b)?.0.to_bits(dest.layout.size)? != 0 {
                     return err!(ValidationFailure(format!("exact_div: {:?} cannot be divided by {:?}", a, b)));
                 }
                 this.binop_ignore_overflow(mir::BinOp::Div, a, b, dest)?;

@@ -7,10 +7,8 @@ pub trait EvalContextExt<'tcx> {
     fn ptr_op(
         &self,
         bin_op: mir::BinOp,
-        left: Scalar<Borrow>,
-        left_layout: TyLayout<'tcx>,
-        right: Scalar<Borrow>,
-        right_layout: TyLayout<'tcx>,
+        left: ImmTy<'tcx, Borrow>,
+        right: ImmTy<'tcx, Borrow>,
     ) -> EvalResult<'tcx, (Scalar<Borrow>, bool)>;
 
     fn ptr_int_arithmetic(
@@ -40,12 +38,15 @@ impl<'a, 'mir, 'tcx> EvalContextExt<'tcx> for super::MiriEvalContext<'a, 'mir, '
     fn ptr_op(
         &self,
         bin_op: mir::BinOp,
-        left: Scalar<Borrow>,
-        left_layout: TyLayout<'tcx>,
-        right: Scalar<Borrow>,
-        right_layout: TyLayout<'tcx>,
+        left: ImmTy<'tcx, Borrow>,
+        right: ImmTy<'tcx, Borrow>,
     ) -> EvalResult<'tcx, (Scalar<Borrow>, bool)> {
         use rustc::mir::BinOp::*;
+
+        let left_layout = left.layout;
+        let left = left.to_scalar()?;
+        let right_layout = right.layout;
+        let right = right.to_scalar()?;
 
         trace!("ptr_op: {:?} {:?} {:?}", left, bin_op, right);
         debug_assert!(left.is_ptr() || right.is_ptr() || bin_op == Offset);
@@ -85,8 +86,8 @@ impl<'a, 'mir, 'tcx> EvalContextExt<'tcx> for super::MiriEvalContext<'a, 'mir, '
                             let layout = self.layout_of(self.tcx.types.usize)?;
                             return self.binary_op(
                                 Sub,
-                                left_offset, layout,
-                                right_offset, layout,
+                                ImmTy::from_scalar(left_offset, layout),
+                                ImmTy::from_scalar(right_offset, layout),
                             )
                         }
                         _ => bug!("We already established it has to be one of these operators."),

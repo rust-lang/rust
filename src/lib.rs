@@ -406,12 +406,10 @@ impl<'a, 'mir, 'tcx> Machine<'a, 'mir, 'tcx> for Evaluator<'tcx> {
     fn ptr_op(
         ecx: &rustc_mir::interpret::EvalContext<'a, 'mir, 'tcx, Self>,
         bin_op: mir::BinOp,
-        left: Scalar<Borrow>,
-        left_layout: TyLayout<'tcx>,
-        right: Scalar<Borrow>,
-        right_layout: TyLayout<'tcx>,
+        left: ImmTy<'tcx, Borrow>,
+        right: ImmTy<'tcx, Borrow>,
     ) -> EvalResult<'tcx, (Scalar<Borrow>, bool)> {
-        ecx.ptr_op(bin_op, left, left_layout, right, right_layout)
+        ecx.ptr_op(bin_op, left, right)
     }
 
     fn box_alloc(
