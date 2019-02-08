@@ -2775,8 +2775,7 @@ fn item_module(w: &mut fmt::Formatter, cx: &Context,
                        <tr class='{stab}{add}module-item'>\
                            <td><a class=\"{class}\" href=\"{href}\" \
                                   title='{title}'>{name}</a>{unsafety_flag}</td>\
-                           <td class='docblock-short'>{stab_tags}{docs}\
-                           </td>\
+                           <td class='docblock-short'>{stab_tags}{docs}</td>\
                        </tr>",
                        name = *myitem.name.as_ref().unwrap(),
                        stab_tags = stability_tags(myitem),
