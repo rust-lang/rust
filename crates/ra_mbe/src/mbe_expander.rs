@@ -28,7 +28,7 @@ fn expand_rule(rule: &crate::Rule, input: &tt::Subtree) -> Option<tt::Subtree> {
 ///
 /// The tricky bit is dealing with repetitions (`$()*`). Consider this example:
 ///
-/// ```ignore
+/// ```not_rust
 /// macro_rules! foo {
 ///     ($($ i:ident $($ e:expr),*);*) => {
 ///         $(fn $ i() { $($ e);*; })*
@@ -46,7 +46,7 @@ fn expand_rule(rule: &crate::Rule, input: &tt::Subtree) -> Option<tt::Subtree> {
 ///
 /// For the above example, the bindings would store
 ///
-/// ```ignore
+/// ```not_rust
 /// i -> [foo, bar]
 /// e -> [[1, 2, 3], [4, 5, 6]]
 /// ```
