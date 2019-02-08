@@ -323,6 +323,29 @@ impl Diagnostic {
         self
     }
 
+    /// Prints out a message with for a suggestion without showing the suggested code.
+    ///
+    /// This is intended to be used for suggestions that are obvious in what the changes need to
+    /// be from the message, showing the span label inline would be visually unpleasant
+    /// (marginally overlapping spans or multiline spans) and showing the snippet window wouldn't
+    /// improve understandability.
+    pub fn span_suggestion_hidden(
+        &mut self, sp: Span, msg: &str, suggestion: String, applicability: Applicability
+    ) -> &mut Self {
+        self.suggestions.push(CodeSuggestion {
+            substitutions: vec![Substitution {
+                parts: vec![SubstitutionPart {
+                    snippet: suggestion,
+                    span: sp,
+                }],
+            }],
+            msg: msg.to_owned(),
+            style: SuggestionStyle::HideCodeInline,
+            applicability: applicability,
+        });
+        self
+    }
+
     pub fn set_span<S: Into<MultiSpan>>(&mut self, sp: S) -> &mut Self {
         self.span = sp.into();
         self
