@@ -31,6 +31,7 @@ fn test_rfind() {
 }
 
 #[test]
+#[cfg(not(miri))]
 fn test_collect() {
     let empty = "";
     let s: String = empty.chars().collect();
@@ -118,6 +119,7 @@ fn test_concat_for_different_types() {
 #[test]
 fn test_concat_for_different_lengths() {
     let empty: &[&str] = &[];
+    #[cfg(not(miri))]
     test_concat!("", empty);
     test_concat!("a", ["a"]);
     test_concat!("ab", ["a", "b"]);
@@ -146,6 +148,7 @@ fn test_join_for_different_types() {
 #[test]
 fn test_join_for_different_lengths() {
     let empty: &[&str] = &[];
+    #[cfg(not(miri))]
     test_join!("", empty, "-");
     test_join!("a", ["a"], "-");
     test_join!("a-b", ["a", "b"], "-");
@@ -159,6 +162,7 @@ fn test_join_for_different_lengths_with_long_separator() {
     assert_eq!("～～～～～".len(), 15);
 
     let empty: &[&str] = &[];
+    #[cfg(not(miri))]
     test_join!("", empty, "～～～～～");
     test_join!("a", ["a"], "～～～～～");
     test_join!("a～～～～～b", ["a", "b"], "～～～～～");
@@ -166,6 +170,7 @@ fn test_join_for_different_lengths_with_long_separator() {
 }
 
 #[test]
+#[cfg(not(miri))]
 fn test_unsafe_slice() {
     assert_eq!("ab", unsafe {"abc".get_unchecked(0..2)});
     assert_eq!("bc", unsafe {"abc".get_unchecked(1..3)});
@@ -238,6 +243,7 @@ fn test_replacen() {
 #[test]
 fn test_replace() {
     let a = "a";
+    #[cfg(not(miri))]
     assert_eq!("".replace(a, "b"), "");
     assert_eq!("a".replace(a, "b"), "b");
     assert_eq!("ab".replace(a, "b"), "bb");
@@ -297,6 +303,7 @@ fn test_replace_pattern() {
 // The current implementation of SliceIndex fails to handle methods
 // orthogonally from range types; therefore, it is worth testing
 // all of the indexing operations on each input.
+#[cfg(not(miri))]
 mod slice_index {
     // Test a slicing operation **that should succeed,**
     // testing it on all of the indexing methods.
@@ -679,6 +686,7 @@ fn test_str_slice_rangetoinclusive_ok() {
 
 #[test]
 #[should_panic]
+#[cfg(not(miri))]
 fn test_str_slice_rangetoinclusive_notok() {
     let s = "abcαβγ";
     &s[..=3];
@@ -694,6 +702,7 @@ fn test_str_slicemut_rangetoinclusive_ok() {
 
 #[test]
 #[should_panic]
+#[cfg(not(miri))]
 fn test_str_slicemut_rangetoinclusive_notok() {
     let mut s = "abcαβγ".to_owned();
     let s: &mut str = &mut s;
@@ -883,6 +892,7 @@ fn test_as_bytes() {
 
 #[test]
 #[should_panic]
+#[cfg(not(miri))]
 fn test_as_bytes_fail() {
     // Don't double free. (I'm not sure if this exercises the
     // original problem code path anymore.)
@@ -972,6 +982,7 @@ fn test_split_at_mut() {
 
 #[test]
 #[should_panic]
+#[cfg(not(miri))]
 fn test_split_at_boundscheck() {
     let s = "ศไทย中华Việt Nam";
     s.split_at(1);
@@ -1066,6 +1077,7 @@ fn test_rev_iterator() {
 }
 
 #[test]
+#[cfg(not(miri))]
 fn test_chars_decoding() {
     let mut bytes = [0; 4];
     for c in (0..0x110000).filter_map(std::char::from_u32) {
@@ -1077,6 +1089,7 @@ fn test_chars_decoding() {
 }
 
 #[test]
+#[cfg(not(miri))]
 fn test_chars_rev_decoding() {
     let mut bytes = [0; 4];
     for c in (0..0x110000).filter_map(std::char::from_u32) {
@@ -1306,6 +1319,7 @@ fn test_splitator() {
 }
 
 #[test]
+#[cfg(not(miri))]
 fn test_str_default() {
     use std::default::Default;
 
@@ -1365,6 +1379,7 @@ fn test_bool_from_str() {
     assert_eq!("not even a boolean".parse::<bool>().ok(), None);
 }
 
+#[cfg(not(miri))]
 fn check_contains_all_substrings(s: &str) {
     assert!(s.contains(""));
     for i in 0..s.len() {
@@ -1375,6 +1390,7 @@ fn check_contains_all_substrings(s: &str) {
 }
 
 #[test]
+#[cfg(not(miri))]
 fn strslice_issue_16589() {
     assert!("bananas".contains("nana"));
 
@@ -1384,6 +1400,7 @@ fn strslice_issue_16589() {
 }
 
 #[test]
+#[cfg(not(miri))]
 fn strslice_issue_16878() {
     assert!(!"1234567ah012345678901ah".contains("hah"));
     assert!(!"00abc01234567890123456789abc".contains("bcabc"));
@@ -1391,6 +1408,7 @@ fn strslice_issue_16878() {
 
 
 #[test]
+#[cfg(not(miri))]
 fn test_strslice_contains() {
     let x = "There are moments, Jeeves, when one asks oneself, 'Do trousers matter?'";
     check_contains_all_substrings(x);
@@ -1528,6 +1546,7 @@ fn trim_ws() {
 
 #[test]
 fn to_lowercase() {
+    #[cfg(not(miri))]
     assert_eq!("".to_lowercase(), "");
     assert_eq!("AÉǅaé ".to_lowercase(), "aéǆaé ");
 
@@ -1561,6 +1580,7 @@ fn to_lowercase() {
 
 #[test]
 fn to_uppercase() {
+    #[cfg(not(miri))]
     assert_eq!("".to_uppercase(), "");
     assert_eq!("aéǅßﬁᾀ".to_uppercase(), "AÉǄSSFIἈΙ");
 }
@@ -1592,6 +1612,7 @@ fn test_cow_from() {
 }
 
 #[test]
+#[cfg(not(miri))]
 fn test_repeat() {
     assert_eq!("".repeat(3), "");
     assert_eq!("abc".repeat(0), "");

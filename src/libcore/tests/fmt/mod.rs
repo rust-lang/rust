@@ -1,3 +1,5 @@
+#![cfg(not(miri))]
+
 mod builders;
 mod float;
 mod num;

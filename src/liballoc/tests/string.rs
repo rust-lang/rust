@@ -1,3 +1,5 @@
+#![cfg(not(miri))]
+
 use std::borrow::Cow;
 use std::collections::CollectionAllocErr::*;
 use std::mem::size_of;
