@@ -131,7 +131,7 @@ fn dump_matched_mir_node<'a, 'gcx, 'tcx, F>(
 ) where
     F: FnMut(PassWhere, &mut dyn Write) -> io::Result<()>,
 {
-    let _: io::Result<()> = try_block! {
+    let _: io::Result<()> = try {
         let mut file = create_dump_file(tcx, "mir", pass_num, pass_name, disambiguator, source)?;
         writeln!(file, "// MIR for `{}`", node_path)?;
         writeln!(file, "// source = {:?}", source)?;
@@ -148,7 +148,7 @@ fn dump_matched_mir_node<'a, 'gcx, 'tcx, F>(
     };
 
     if tcx.sess.opts.debugging_opts.dump_mir_graphviz {
-        let _: io::Result<()> = try_block! {
+        let _: io::Result<()> = try {
             let mut file =
                 create_dump_file(tcx, "dot", pass_num, pass_name, disambiguator, source)?;
             write_mir_fn_graphviz(tcx, source.def_id, mir, &mut file)?;

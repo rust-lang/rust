@@ -254,14 +254,14 @@ fn dump_mir_results<'a, 'gcx, 'tcx>(
     );
 
     // Also dump the inference graph constraints as a graphviz file.
-    let _: io::Result<()> = try_block! {
+    let _: io::Result<()> = try {
         let mut file =
             pretty::create_dump_file(infcx.tcx, "regioncx.all.dot", None, "nll", &0, source)?;
         regioncx.dump_graphviz_raw_constraints(&mut file)?;
     };
 
     // Also dump the inference graph constraints as a graphviz file.
-    let _: io::Result<()> = try_block! {
+    let _: io::Result<()> = try {
         let mut file =
             pretty::create_dump_file(infcx.tcx, "regioncx.scc.dot", None, "nll", &0, source)?;
         regioncx.dump_graphviz_scc_constraints(&mut file)?;

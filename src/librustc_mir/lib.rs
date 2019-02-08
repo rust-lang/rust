@@ -26,6 +26,7 @@ Rust MIR: a lowered representation of Rust. Also: an experiment!
 #![feature(slice_concat_ext)]
 #![feature(try_from)]
 #![feature(reverse_bits)]
+#![feature(try_blocks)]
 
 #![recursion_limit="256"]
 
@@ -42,14 +43,6 @@ extern crate rustc;
 extern crate serialize as rustc_serialize; // used by deriving
 #[macro_use]
 extern crate syntax;
-
-// Once we can use edition 2018 in the compiler,
-// replace this with real try blocks.
-macro_rules! try_block {
-    ($($inside:tt)*) => (
-        (||{ ::std::ops::Try::from_ok({ $($inside)* }) })()
-    )
-}
 
 mod diagnostics;
 
