@@ -4,7 +4,6 @@ use ra_syntax::{
     SyntaxKind::{ PATH, PATH_SEGMENT, COLONCOLON, COMMA }
 };
 use crate::assist_ctx::{AssistCtx, Assist, AssistBuilder};
-use itertools::{ Itertools, EitherOrBoth };
 
 // TODO: refactor this before merge
 mod formatting {
@@ -101,44 +100,13 @@ fn fmt_segments_raw(segments: &[&ast::PathSegment], buf: &mut String) {
     }
 }
 
-#[derive(Copy, Clone)]
-enum PathSegmentsMatch {
-    // Patch matches exactly
-    Full,
-    // When some of the segments matched
-    Partial(usize),
-    // When all the segments of the right path are matched against the left path,
-    // but the left path is longer.
-    PartialLeft(usize),
-    // When all the segments of the left path are matched against the right path,
-    // but the right path is longer.
-    PartialRight(usize),
-    // In all the three cases above we keep track of how many segments matched
-}
-
-fn compare_path_segments(
-    left: &[&ast::PathSegment],
-    right: &[&ast::PathSegment],
-) -> PathSegmentsMatch {
-    let mut matching = 0;
-    for either_or_both in left.iter().zip_longest(right.iter()) {
-        match either_or_both {
-            EitherOrBoth::Both(left, right) => {
-                if compare_path_segment(left, right) {
-                    matching += 1
-                } else {
-                    return PathSegmentsMatch::Partial(matching);
-                }
-            }
-            EitherOrBoth::Left(_) => {
-                return PathSegmentsMatch::PartialLeft(matching);
-            }
-            EitherOrBoth::Right(_) => {
-                return PathSegmentsMatch::PartialRight(matching);
-            }
-        }
-    }
-    return PathSegmentsMatch::Full;
+// Returns the numeber of common segments.
+fn compare_path_segments(left: &[&ast::PathSegment], right: &[&ast::PathSegment]) -> usize {
+    return left
+        .iter()
+        .zip(right)
+        .filter(|(l, r)| compare_path_segment(l, r))
+        .count();
 }
 
 fn compare_path_segment(a: &ast::PathSegment, b: &ast::PathSegment) -> bool {
@@ -259,13 +227,22 @@ fn walk_use_tree_for_best_action<'a>(
 
     // We compare only the new segments added in the line just above.
     // The first prev_len segments were already compared in 'parent' recursive calls.
-    let c = compare_path_segments(
-        target.split_at(prev_len).1,
-        current_path_segments.split_at(prev_len).1,
-    );
-
-    let mut action = match c {
-        PathSegmentsMatch::Full => {
+    let left = target.split_at(prev_len).1;
+    let right = current_path_segments.split_at(prev_len).1;
+    let common = compare_path_segments(left, right);
+    let mut action = match common {
+        0 => ImportAction::AddNewUse(
+            // e.g: target is std::fmt and we can have
+            // use foo::bar
+            // We add a brand new use statement
+            current_use_tree
+                .syntax()
+                .ancestors()
+                .find_map(ast::UseItem::cast)
+                .map(AstNode::syntax),
+            true,
+        ),
+        common if common == left.len() && left.len() == right.len() => {
             // e.g: target is std::fmt and we can have
             // 1- use std::fmt;
             // 2- use std::fmt:{ ... }
@@ -289,25 +266,19 @@ fn walk_use_tree_for_best_action<'a>(
                 ImportAction::Nothing
             }
         }
-        PathSegmentsMatch::Partial(0) => ImportAction::AddNewUse(
-            // e.g: target is std::fmt and we can have
-            // use foo::bar
-            // We add a brand new use statement
-            current_use_tree
-                .syntax()
-                .ancestors()
-                .find_map(ast::UseItem::cast)
-                .map(AstNode::syntax),
-            true,
-        ),
-        PathSegmentsMatch::Partial(n) => {
+        common if common != left.len() && left.len() == right.len() => {
             // e.g: target is std::fmt and we have
             // use std::io;
             // We need to split.
-            let segments_to_split = current_path_segments.split_at(prev_len + n).1;
-            ImportAction::AddNestedImport(prev_len + n, path, Some(segments_to_split[0]), false)
+            let segments_to_split = current_path_segments.split_at(prev_len + common).1;
+            ImportAction::AddNestedImport(
+                prev_len + common,
+                path,
+                Some(segments_to_split[0]),
+                false,
+            )
         }
-        PathSegmentsMatch::PartialLeft(n) => {
+        common if left.len() > right.len() => {
             // e.g: target is std::fmt and we can have
             // 1- use std;
             // 2- use std::{ ... };
@@ -335,16 +306,17 @@ fn walk_use_tree_for_best_action<'a>(
                 }
             } else {
                 // Case 1, split
-                better_action = ImportAction::AddNestedImport(prev_len + n, path, None, true)
+                better_action = ImportAction::AddNestedImport(prev_len + common, path, None, true)
             }
             better_action
         }
-        PathSegmentsMatch::PartialRight(n) => {
+        common if left.len() < right.len() => {
             // e.g: target is std::fmt and we can have
             // use std::fmt::Debug;
-            let segments_to_split = current_path_segments.split_at(prev_len + n).1;
-            ImportAction::AddNestedImport(prev_len + n, path, Some(segments_to_split[0]), true)
+            let segments_to_split = current_path_segments.split_at(prev_len + common).1;
+            ImportAction::AddNestedImport(prev_len + common, path, Some(segments_to_split[0]), true)
         }
+        _ => unreachable!(),
     };
 
     // If we are inside a UseTreeList adding a use statement become adding to the existing
