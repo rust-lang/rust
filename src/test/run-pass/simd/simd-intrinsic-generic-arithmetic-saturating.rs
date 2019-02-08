@@ -1,8 +1,8 @@
 // run-pass
+// ignore-emscripten 
+// min-llvm-version 8.0
+
 #![allow(non_camel_case_types)]
-
-// ignore-emscripten FIXME(#45351) hits an LLVM assert
-
 #![feature(repr_simd, platform_intrinsics)]
 
 #[repr(simd)]
