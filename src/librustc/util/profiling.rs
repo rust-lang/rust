@@ -27,6 +27,8 @@ pub enum ProfilerEvent {
     QueryCount { query_name: &'static str, category: ProfileCategory, count: usize },
     IncrementalLoadResultStart { query_name: &'static str, time: Instant },
     IncrementalLoadResultEnd { query_name: &'static str, time: Instant },
+    QueryBlockedStart { query_name: &'static str, category: ProfileCategory, time: Instant },
+    QueryBlockedEnd { query_name: &'static str, category: ProfileCategory, time: Instant },
 }
 
 impl ProfilerEvent {
@@ -36,13 +38,15 @@ impl ProfilerEvent {
         match self {
             QueryStart { .. } |
             GenericActivityStart { .. } |
-            IncrementalLoadResultStart { .. } => true,
+            IncrementalLoadResultStart { .. } |
+            QueryBlockedStart { .. } => true,
 
             QueryEnd { .. } |
             GenericActivityEnd { .. } |
             QueryCacheHit { .. } |
             QueryCount { .. } |
-            IncrementalLoadResultEnd { .. } => false,
+            IncrementalLoadResultEnd { .. } |
+            QueryBlockedEnd { .. } => false,
         }
     }
 }
@@ -250,6 +254,24 @@ impl SelfProfiler {
     }
 
     #[inline]
+    pub fn query_blocked_start(&mut self, query_name: &'static str, category: ProfileCategory) {
+        self.record(ProfilerEvent::QueryBlockedStart {
+            query_name,
+            category,
+            time: Instant::now(),
+        })
+    }
+
+    #[inline]
+    pub fn query_blocked_end(&mut self, query_name: &'static str, category: ProfileCategory) {
+        self.record(ProfilerEvent::QueryBlockedEnd {
+            query_name,
+            category,
+            time: Instant::now(),
+        })
+    }
+
+    #[inline]
     fn record(&mut self, event: ProfilerEvent) {
         let thread_id = std::thread::current().id();
         let events = self.events.entry(thread_id).or_default();
@@ -343,6 +365,8 @@ impl SelfProfiler {
                 },
                 //we don't summarize incremental load result events in the simple output mode
                 IncrementalLoadResultStart { .. } | IncrementalLoadResultEnd { .. } => { },
+                //we don't summarize parallel query blocking in the simple output mode
+                QueryBlockedStart { .. } | QueryBlockedEnd { .. } => { },
             }
         }
 
