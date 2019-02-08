@@ -7,10 +7,10 @@
 // 3. assignments do not affect things loaned out as immutable
 // 4. moves do not affect things loaned out in any way
 
-use self::UseError::*;
+use UseError::*;
 
-use borrowck::*;
-use borrowck::InteriorKind::{InteriorElement, InteriorField};
+use crate::borrowck::*;
+use crate::borrowck::InteriorKind::{InteriorElement, InteriorField};
 use rustc::middle::expr_use_visitor as euv;
 use rustc::middle::expr_use_visitor::MutateMode;
 use rustc::middle::mem_categorization as mc;
@@ -22,6 +22,7 @@ use syntax_pos::Span;
 use rustc::hir;
 use rustc::hir::Node;
 use rustc_mir::util::borrowck_errors::{BorrowckErrors, Origin};
+use log::debug;
 
 use std::rc::Rc;
 
@@ -101,7 +102,7 @@ impl<'a, 'tcx> euv::Delegate<'tcx> for CheckLoanCtxt<'a, 'tcx> {
 
     fn matched_pat(&mut self,
                    _matched_pat: &hir::Pat,
-                   _cmt: &mc::cmt_,
+                   _cmt: &mc::cmt_<'_>,
                    _mode: euv::MatchMode) { }
 
     fn consume_pat(&mut self,
@@ -910,7 +911,7 @@ impl<'a, 'tcx> CheckLoanCtxt<'a, 'tcx> {
     pub fn report_illegal_mutation(&self,
                                    span: Span,
                                    loan_path: &LoanPath<'tcx>,
-                                   loan: &Loan) {
+                                   loan: &Loan<'_>) {
         self.bccx.cannot_assign_to_borrowed(
             span, loan.span, &self.bccx.loan_path_to_string(loan_path), Origin::Ast)
             .emit();

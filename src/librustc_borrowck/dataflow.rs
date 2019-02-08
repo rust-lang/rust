@@ -10,6 +10,7 @@ use std::io;
 use std::mem;
 use std::usize;
 use syntax::print::pprust::PrintState;
+use log::debug;
 
 use rustc_data_structures::graph::implementation::OUTGOING;
 
@@ -80,7 +81,7 @@ pub trait DataFlowOperator : BitwiseOperator {
     fn initial_value(&self) -> bool;
 }
 
-struct PropagationContext<'a, 'b: 'a, 'tcx: 'b, O: 'a> {
+struct PropagationContext<'a, 'b: 'a, 'tcx: 'b, O> {
     dfcx: &'a mut DataFlowContext<'b, 'tcx, O>,
     changed: bool
 }
@@ -99,12 +100,12 @@ impl<'a, 'tcx, O:DataFlowOperator> DataFlowContext<'a, 'tcx, O> {
 }
 
 impl<'a, 'tcx, O:DataFlowOperator> pprust::PpAnn for DataFlowContext<'a, 'tcx, O> {
-    fn nested(&self, state: &mut pprust::State, nested: pprust::Nested) -> io::Result<()> {
+    fn nested(&self, state: &mut pprust::State<'_>, nested: pprust::Nested) -> io::Result<()> {
         pprust::PpAnn::nested(self.tcx.hir(), state, nested)
     }
     fn pre(&self,
-           ps: &mut pprust::State,
-           node: pprust::AnnNode) -> io::Result<()> {
+           ps: &mut pprust::State<'_>,
+           node: pprust::AnnNode<'_>) -> io::Result<()> {
         let id = match node {
             pprust::AnnNode::Name(_) => return Ok(()),
             pprust::AnnNode::Expr(expr) => expr.hir_id.local_id,
