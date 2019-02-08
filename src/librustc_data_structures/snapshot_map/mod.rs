@@ -1,4 +1,4 @@
-use fx::FxHashMap;
+use crate::fx::FxHashMap;
 use std::hash::Hash;
 use std::ops;
 use std::mem;

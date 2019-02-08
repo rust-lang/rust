@@ -14,12 +14,9 @@ cfg_if! {
     if #[cfg(unix)] {
         use std::ffi::{CString, OsStr};
         use std::os::unix::prelude::*;
-        use libc;
 
         #[cfg(any(target_os = "linux", target_os = "android"))]
         mod os {
-            use libc;
-
             #[repr(C)]
             pub struct flock {
                 pub l_type: libc::c_short,
@@ -35,8 +32,6 @@ cfg_if! {
 
         #[cfg(target_os = "freebsd")]
         mod os {
-            use libc;
-
             #[repr(C)]
             pub struct flock {
                 pub l_start: libc::off_t,
@@ -53,8 +48,6 @@ cfg_if! {
                   target_os = "netbsd",
                   target_os = "openbsd"))]
         mod os {
-            use libc;
-
             #[repr(C)]
             pub struct flock {
                 pub l_start: libc::off_t,
@@ -70,8 +63,6 @@ cfg_if! {
 
         #[cfg(target_os = "haiku")]
         mod os {
-            use libc;
-
             #[repr(C)]
             pub struct flock {
                 pub l_type: libc::c_short,
@@ -87,8 +78,6 @@ cfg_if! {
 
         #[cfg(any(target_os = "macos", target_os = "ios"))]
         mod os {
-            use libc;
-
             #[repr(C)]
             pub struct flock {
                 pub l_start: libc::off_t,
@@ -104,8 +93,6 @@ cfg_if! {
 
         #[cfg(target_os = "solaris")]
         mod os {
-            use libc;
-
             #[repr(C)]
             pub struct flock {
                 pub l_type: libc::c_short,

@@ -1,6 +1,6 @@
 #![cfg(test)]
 
-use graph::test::TestGraph;
+use crate::graph::test::TestGraph;
 use super::*;
 
 #[test]

@@ -1,4 +1,4 @@
-use indexed_vec::{Idx, IndexVec};
+use crate::indexed_vec::{Idx, IndexVec};
 use smallvec::SmallVec;
 use std::fmt;
 use std::iter;
@@ -208,7 +208,7 @@ impl<T: Idx> SubtractFromBitSet<T> for BitSet<T> {
 }
 
 impl<T: Idx> fmt::Debug for BitSet<T> {
-    fn fmt(&self, w: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, w: &mut fmt::Formatter<'_>) -> fmt::Result {
         w.debug_list()
          .entries(self.iter())
          .finish()
@@ -366,7 +366,7 @@ impl<T: Idx> SparseBitSet<T> {
         dense
     }
 
-    fn iter(&self) -> slice::Iter<T> {
+    fn iter(&self) -> slice::Iter<'_, T> {
         self.elems.iter()
     }
 }
@@ -536,7 +536,7 @@ impl<T: Idx> HybridBitSet<T> {
         }
     }
 
-    pub fn iter(&self) -> HybridIter<T> {
+    pub fn iter(&self) -> HybridIter<'_, T> {
         match self {
             HybridBitSet::Sparse(sparse) => HybridIter::Sparse(sparse.iter()),
             HybridBitSet::Dense(dense) => HybridIter::Dense(dense.iter()),

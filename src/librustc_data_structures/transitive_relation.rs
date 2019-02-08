@@ -1,8 +1,8 @@
-use bit_set::BitMatrix;
-use fx::FxHashMap;
-use sync::Lock;
+use crate::bit_set::BitMatrix;
+use crate::fx::FxHashMap;
+use crate::stable_hasher::{HashStable, StableHasher, StableHasherResult};
+use crate::sync::Lock;
 use rustc_serialize::{Encodable, Encoder, Decodable, Decoder};
-use stable_hasher::{HashStable, StableHasher, StableHasherResult};
 use std::fmt::Debug;
 use std::hash::Hash;
 use std::mem;
