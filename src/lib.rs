@@ -139,9 +139,19 @@ pub fn create_ecx<'a, 'mir: 'a, 'tcx: 'mir>(
     // FIXME: extract main source file path
     // Third argument (argv): Created from config.args
     let dest = ecx.eval_place(&mir::Place::Local(args.next().unwrap()))?;
+    // For Windows, construct a command string with all the aguments
+    let mut cmd = String::new();
+    for arg in config.args.iter() {
+        if !cmd.is_empty() {
+            cmd.push(' ');
+        }
+        cmd.push_str(&*shell_escape::windows::escape(arg.as_str().into()));
+    }
+    cmd.push(std::char::from_u32(0).unwrap()); // don't forget 0 terminator
     // Collect the pointers to the individual strings.
     let mut argvs = Vec::<Pointer<Borrow>>::new();
     for arg in config.args {
+        // Add 0 terminator
         let mut arg = arg.into_bytes();
         arg.push(0);
         argvs.push(ecx.memory_mut().allocate_static_bytes(arg.as_slice()).with_default_tag());
@@ -165,9 +175,8 @@ pub fn create_ecx<'a, 'mir: 'a, 'tcx: 'mir>(
     }
     // Store cmdline as UTF-16 for Windows GetCommandLineW
     {
-        const CMD: &str = "running-in-miri\0";
         let tcx = &{ecx.tcx.tcx};
-        let cmd_utf16: Vec<u16> = CMD.encode_utf16().collect();
+        let cmd_utf16: Vec<u16> = cmd.encode_utf16().collect();
         let cmd_ptr = ecx.memory_mut().allocate(
             Size::from_bytes(cmd_utf16.len() as u64 * 2),
             Align::from_bytes(2).unwrap(),
