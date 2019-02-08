@@ -524,7 +524,7 @@ fn check_expr_kind<'a, 'tcx>(
             let _ = v.check_expr(expr);
             for index in hirvec_arm.iter() {
                 let _ = v.check_expr(&*index.body);
-                if let Some(hir::Guard::If(ref expr)) = index.guard {
+                if let Some(ref expr) = index.guard {
                     let _ = v.check_expr(&expr);
                 }
             }

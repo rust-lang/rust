@@ -815,7 +815,7 @@ fn resolve_block<'a, 'tcx>(visitor: &mut RegionResolutionVisitor<'a, 'tcx>, blk:
 fn resolve_arm<'a, 'tcx>(visitor: &mut RegionResolutionVisitor<'a, 'tcx>, arm: &'tcx hir::Arm) {
     visitor.terminating_scopes.insert(arm.body.hir_id.local_id);
 
-    if let Some(hir::Guard::If(ref expr)) = arm.guard {
+    if let Some(ref expr) = arm.guard {
         visitor.terminating_scopes.insert(expr.hir_id.local_id);
     }
 

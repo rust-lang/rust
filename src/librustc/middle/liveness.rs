@@ -1085,7 +1085,7 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
                     let body_succ = self.propagate_through_expr(&arm.body, succ);
 
                     let guard_succ = self.propagate_through_opt_expr(
-                        arm.guard.as_ref().map(|hir::Guard::If(e)| &**e),
+                        arm.guard.as_ref().map(|e| &**e),
                         body_succ
                     );
                     // only consider the first pattern; any later patterns must have

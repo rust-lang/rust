@@ -690,11 +690,9 @@ https://doc.rust-lang.org/reference/types.html#trait-objects");
         };
 
         for (i, (arm, pats_diverge)) in arms.iter().zip(all_arm_pats_diverge).enumerate() {
-            if let Some(ref g) = arm.guard {
+            if let Some(ref e) = arm.guard {
                 self.diverges.set(pats_diverge);
-                match g {
-                    hir::Guard::If(e) => self.check_expr_has_type_or_error(e, tcx.types.bool),
-                };
+                self.check_expr_has_type_or_error(e, tcx.types.bool);
             }
 
             self.diverges.set(pats_diverge);

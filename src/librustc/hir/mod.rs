@@ -1198,13 +1198,8 @@ pub struct Local {
 pub struct Arm {
     pub attrs: HirVec<Attribute>,
     pub pats: HirVec<P<Pat>>,
-    pub guard: Option<Guard>,
+    pub guard: Option<P<Expr>>,
     pub body: P<Expr>,
-}
-
-#[derive(Clone, RustcEncodable, RustcDecodable, Debug)]
-pub enum Guard {
-    If(P<Expr>),
 }
 
 #[derive(Clone, RustcEncodable, RustcDecodable, Debug)]

@@ -625,7 +625,7 @@ pub struct Candidate<'pat, 'tcx: 'pat> {
     ascriptions: Vec<Ascription<'tcx>>,
 
     // ...and the guard must be evaluated...
-    guard: Option<Guard<'tcx>>,
+    guard: Option<ExprRef<'tcx>>,
 
     // ...and then we branch to arm with this index.
     arm_index: usize,
@@ -1242,9 +1242,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
 
             // the block to branch to if the guard fails; if there is no
             // guard, this block is simply unreachable
-            let guard = match guard {
-                Guard::If(e) => self.hir.mirror(e),
-            };
+            let guard = self.hir.mirror(guard);
             let source_info = self.source_info(guard.span);
             let cond = unpack!(block = self.as_local_operand(block, guard));
             if autoref {

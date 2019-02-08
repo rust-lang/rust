@@ -793,7 +793,7 @@ impl<'a, 'gcx, 'tcx> ExprUseVisitor<'a, 'gcx, 'tcx> {
             self.walk_pat(discr_cmt.clone(), &pat, mode);
         }
 
-        if let Some(hir::Guard::If(ref e)) = arm.guard {
+        if let Some(ref e) = arm.guard {
             self.consume_expr(e)
         }
 

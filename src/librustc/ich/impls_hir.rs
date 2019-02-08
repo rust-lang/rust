@@ -517,10 +517,6 @@ impl_stable_hash_for!(struct hir::Arm {
     body
 });
 
-impl_stable_hash_for!(enum hir::Guard {
-    If(expr),
-});
-
 impl_stable_hash_for!(struct hir::Field {
     id -> _,
     hir_id -> _,

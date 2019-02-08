@@ -321,14 +321,9 @@ pub struct FruInfo<'tcx> {
 #[derive(Clone, Debug)]
 pub struct Arm<'tcx> {
     pub patterns: Vec<Pattern<'tcx>>,
-    pub guard: Option<Guard<'tcx>>,
+    pub guard: Option<ExprRef<'tcx>>,
     pub body: ExprRef<'tcx>,
     pub lint_level: LintLevel,
-}
-
-#[derive(Clone, Debug)]
-pub enum Guard<'tcx> {
-    If(ExprRef<'tcx>),
 }
 
 #[derive(Copy, Clone, Debug)]
