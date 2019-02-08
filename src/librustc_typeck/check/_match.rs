@@ -690,6 +690,7 @@ https://doc.rust-lang.org/reference/types.html#trait-objects");
         };
 
         let mut other_arms = vec![];  // used only for diagnostics
+        let mut prior_arm_ty = None;
         for (i, (arm, pats_diverge)) in arms.iter().zip(all_arm_pats_diverge).enumerate() {
             if let Some(ref g) = arm.guard {
                 self.diverges.set(pats_diverge);
@@ -730,11 +731,16 @@ https://doc.rust-lang.org/reference/types.html#trait-objects");
                         arm_span,
                         source: match_src,
                         prior_arms: other_arms.clone(),
+                        last_ty: prior_arm_ty.unwrap(),
                     })
                 };
                 coercion.coerce(self, &cause, &arm.body, arm_ty);
             }
-            other_arms.push((arm_span, arm_ty));
+            other_arms.push(arm_span);
+            if other_arms.len() > 5 {
+                other_arms.remove(0);
+            }
+            prior_arm_ty = Some(arm_ty);
         }
 
         // We won't diverge unless the discriminant or all arms diverge.

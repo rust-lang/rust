@@ -512,6 +512,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
             ObligationCauseCode::MatchExpressionArm {
                 source,
                 ref prior_arms,
+                last_ty,
                 ..
             } => match source {
                 hir::MatchSource::IfLetDesugar { .. } => {
@@ -522,13 +523,16 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
                 _ => {
                     let msg = "`match` arms have incompatible types";
                     err.span_label(cause.span, msg);
-                    if prior_arms.len() < 4 {
-                        for (sp, ty) in prior_arms {
-                            err.span_label(*sp, format!("this is found to be of type `{}`", ty));
+                    if prior_arms.len() <= 4 {
+                        for sp in prior_arms {
+                            err.span_label(*sp, format!(
+                                "this is found to be of type `{}`",
+                                last_ty,
+                            ));
                         }
-                    } else if let Some((sp, ty)) = prior_arms.last() {
+                    } else if let Some(sp) = prior_arms.last() {
                         err.span_label(*sp, format!(
-                            "this and all prior arms are found to be of type `{}`", ty,
+                            "this and all prior arms are found to be of type `{}`", last_ty,
                         ));
                     }
                 }

@@ -26,6 +26,28 @@ LL | |     };
    = note: expected type `char`
               found type `{integer}`
 
-error: aborting due to 2 previous errors
+error[E0308]: match arms have incompatible types
+  --> $DIR/match-type-err-first-arm.rs:39:14
+   |
+LL |       let x = match n {
+   |  _____________-
+LL | |     //~^ NOTE `match` arms have incompatible types
+LL | |         1 => 'b',
+LL | |         2 => 'b',
+...  |
+LL | |         6 => 'b',
+   | |              --- this and all prior arms are found to be of type `char`
+LL | |         //~^ NOTE this and all prior arms are found to be of type `char`
+LL | |         _ => 42,
+   | |              ^^ expected char, found integer
+...  |
+LL | |         //~| NOTE expected type `char`
+LL | |     };
+   | |_____- `match` arms have incompatible types
+   |
+   = note: expected type `char`
+              found type `{integer}`
+
+error: aborting due to 3 previous errors
 
 For more information about this error, try `rustc --explain E0308`.
