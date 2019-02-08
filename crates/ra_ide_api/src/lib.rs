@@ -14,7 +14,6 @@
 #![recursion_limit = "128"]
 
 mod db;
-mod imp;
 pub mod mock_analysis;
 mod symbol_index;
 mod navigation_target;
@@ -32,6 +31,7 @@ mod parent_module;
 mod references;
 mod impls;
 mod assists;
+mod diagnostics;
 
 #[cfg(test)]
 mod marks;
@@ -58,7 +58,7 @@ pub use crate::{
     change::{AnalysisChange, LibraryData},
 };
 pub use ra_ide_api_light::{
-    Fold, FoldKind, HighlightedRange, Severity, StructureNode,
+    Fold, FoldKind, HighlightedRange, Severity, StructureNode, LocalEdit,
     LineIndex, LineCol, translate_offset_with_edit,
 };
 pub use ra_db::{
@@ -396,6 +396,23 @@ impl Analysis {
         f: F,
     ) -> Cancelable<T> {
         self.db.catch_canceled(f)
+    }
+}
+
+impl SourceChange {
+    pub(crate) fn from_local_edit(file_id: FileId, edit: LocalEdit) -> SourceChange {
+        let file_edit = SourceFileEdit {
+            file_id,
+            edit: edit.edit,
+        };
+        SourceChange {
+            label: edit.label,
+            source_file_edits: vec![file_edit],
+            file_system_edits: vec![],
+            cursor_position: edit
+                .cursor_position
+                .map(|offset| FilePosition { offset, file_id }),
+        }
     }
 }
 

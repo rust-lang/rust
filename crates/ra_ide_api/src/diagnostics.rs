@@ -1,13 +1,8 @@
-use hir::{
-    self, Problem, source_binder
-};
-use ra_ide_api_light::{self, LocalEdit, Severity};
+use hir::{Problem, source_binder};
+use ra_ide_api_light::Severity;
 use ra_db::SourceDatabase;
 
-use crate::{
-    db, Diagnostic, FileId, FilePosition, FileSystemEdit,
-    SourceChange, SourceFileEdit,
-};
+use crate::{db, Diagnostic, FileId, FileSystemEdit, SourceChange};
 
 impl db::RootDatabase {
     pub(crate) fn diagnostics(&self, file_id: FileId) -> Vec<Diagnostic> {
@@ -72,22 +67,5 @@ impl db::RootDatabase {
             }
         };
         res
-    }
-}
-
-impl SourceChange {
-    pub(crate) fn from_local_edit(file_id: FileId, edit: LocalEdit) -> SourceChange {
-        let file_edit = SourceFileEdit {
-            file_id,
-            edit: edit.edit,
-        };
-        SourceChange {
-            label: edit.label,
-            source_file_edits: vec![file_edit],
-            file_system_edits: vec![],
-            cursor_position: edit
-                .cursor_position
-                .map(|offset| FilePosition { offset, file_id }),
-        }
     }
 }
