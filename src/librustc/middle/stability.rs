@@ -352,7 +352,7 @@ impl<'a, 'tcx> Visitor<'tcx> for MissingStabilityAnnotations<'a, 'tcx> {
 
             hir::ItemKind::Mod(..) => self.check_missing_stability(i.id, i.span, "module"),
 
-            _ => self.check_missing_stability(i.id, i.span, "node")
+            _ => self.check_missing_stability(i.id, i.span, i.node.descriptive_variant())
         }
 
         intravisit::walk_item(self, i)
@@ -382,7 +382,7 @@ impl<'a, 'tcx> Visitor<'tcx> for MissingStabilityAnnotations<'a, 'tcx> {
     }
 
     fn visit_foreign_item(&mut self, i: &'tcx hir::ForeignItem) {
-        self.check_missing_stability(i.id, i.span, "node");
+        self.check_missing_stability(i.id, i.span, i.node.descriptive_variant());
         intravisit::walk_foreign_item(self, i);
     }
 
