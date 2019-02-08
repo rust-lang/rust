@@ -58,7 +58,7 @@ fn equate_intrinsic_type<'a, 'tcx>(
         safety,
         abi
     )));
-    let cause = ObligationCause::new(it.span, it.id, ObligationCauseCode::IntrinsicType);
+    let cause = ObligationCause::new(it.span, it.hir_id, ObligationCauseCode::IntrinsicType);
     require_same_types(tcx, &cause, tcx.mk_fn_ptr(tcx.fn_sig(def_id)), fty);
 }
 

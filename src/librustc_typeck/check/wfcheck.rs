@@ -22,7 +22,7 @@ use rustc::hir;
 /// `F: for<'b, 'tcx> where 'gcx: 'tcx FnOnce(FnCtxt<'b, 'gcx, 'tcx>)`.
 struct CheckWfFcxBuilder<'a, 'gcx: 'a+'tcx, 'tcx: 'a> {
     inherited: super::InheritedBuilder<'a, 'gcx, 'tcx>,
-    id: ast::NodeId,
+    id: hir::HirId,
     span: Span,
     param_env: ty::ParamEnv<'tcx>,
 }
@@ -226,9 +226,10 @@ fn for_item<'a, 'gcx, 'tcx>(tcx: TyCtxt<'a, 'gcx, 'gcx>, item: &hir::Item)
 fn for_id<'a, 'gcx, 'tcx>(tcx: TyCtxt<'a, 'gcx, 'gcx>, id: ast::NodeId, span: Span)
                           -> CheckWfFcxBuilder<'a, 'gcx, 'tcx> {
     let def_id = tcx.hir().local_def_id(id);
+    let hir_id = tcx.hir().node_to_hir_id(id);
     CheckWfFcxBuilder {
         inherited: Inherited::build(tcx, def_id),
-        id,
+        id: hir_id,
         span,
         param_env: tcx.param_env(def_id),
     }
@@ -968,13 +969,13 @@ fn reject_shadowing_parameters(tcx: TyCtxt, def_id: DefId) {
 fn check_false_global_bounds<'a, 'gcx, 'tcx>(
     fcx: &FnCtxt<'a, 'gcx, 'tcx>,
     span: Span,
-    id: ast::NodeId)
+    id: hir::HirId)
 {
     use rustc::ty::TypeFoldable;
 
     let empty_env = ty::ParamEnv::empty();
 
-    let def_id = fcx.tcx.hir().local_def_id(id);
+    let def_id = fcx.tcx.hir().local_def_id_from_hir_id(id);
     let predicates = fcx.tcx.predicates_of(def_id).predicates
         .iter()
         .map(|(p, _)| *p)
