@@ -1,5 +1,5 @@
 #!/bin/bash
-set -e
+set -euo pipefail
 
 # Determine configuration
 if [ "$TRAVIS_OS_NAME" == osx ]; then
