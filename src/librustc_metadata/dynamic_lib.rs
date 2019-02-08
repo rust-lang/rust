@@ -76,7 +76,6 @@ impl DynamicLibrary {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use libc;
     use std::mem;
 
     #[test]
@@ -127,7 +126,6 @@ mod tests {
 
 #[cfg(unix)]
 mod dl {
-    use libc;
     use std::ffi::{CStr, OsStr, CString};
     use std::os::unix::prelude::*;
     use std::ptr;

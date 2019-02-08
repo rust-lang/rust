@@ -1,9 +1,9 @@
-use cstore::{self, LoadedMacro};
-use encoder;
-use link_args;
-use native_libs;
-use foreign_modules;
-use schema;
+use crate::cstore::{self, LoadedMacro};
+use crate::encoder;
+use crate::link_args;
+use crate::native_libs;
+use crate::foreign_modules;
+use crate::schema;
 
 use rustc::ty::query::QueryConfig;
 use rustc::middle::cstore::{CrateStore, DepKind,
@@ -51,7 +51,7 @@ macro_rules! provide {
                     index: CRATE_DEF_INDEX
                 });
                 let dep_node = def_path_hash
-                    .to_dep_node(::rustc::dep_graph::DepKind::CrateMetadata);
+                    .to_dep_node(rustc::dep_graph::DepKind::CrateMetadata);
                 // The DepNodeIndex of the DepNode::CrateMetadata should be
                 // cached somewhere, so that we can use read_index().
                 $tcx.dep_graph.read(dep_node);
@@ -421,7 +421,7 @@ impl cstore::CStore {
             use syntax::ext::base::SyntaxExtension;
             use syntax_ext::proc_macro_impl::BangProcMacro;
 
-            let client = ::proc_macro::bridge::client::Client::expand1(::proc_macro::quote);
+            let client = proc_macro::bridge::client::Client::expand1(proc_macro::quote);
             let ext = SyntaxExtension::ProcMacro {
                 expander: Box::new(BangProcMacro { client }),
                 allow_internal_unstable: true,
