@@ -2,7 +2,7 @@
 
 #![stable(feature = "rust1", since = "1.0.0")]
 
-use convert::TryFrom;
+use convert::{TryFrom, Infallible};
 use fmt;
 use intrinsics;
 use mem;
@@ -4531,9 +4531,19 @@ impl fmt::Display for TryFromIntError {
 }
 
 #[unstable(feature = "try_from", issue = "33417")]
+impl From<Infallible> for TryFromIntError {
+    fn from(x: Infallible) -> TryFromIntError {
+        match x {}
+    }
+}
+
+#[unstable(feature = "never_type", issue = "35121")]
 impl From<!> for TryFromIntError {
     fn from(never: !) -> TryFromIntError {
-        never
+        // Match rather than coerce to make sure that code like
+        // `From<Infallible> for TryFromIntError` above will keep working
+        // when `Infallible` becomes an alias to `!`.
+        match never {}
     }
 }
 
