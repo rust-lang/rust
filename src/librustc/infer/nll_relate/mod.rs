@@ -239,6 +239,7 @@ where
         first_free_index: ty::DebruijnIndex,
         scopes: &[BoundRegionScope<'tcx>],
     ) -> ty::Region<'tcx> {
+        debug!("replace_bound_regions(scopes={:?})", scopes);
         if let ty::ReLateBound(debruijn, br) = r {
             Self::lookup_bound_region(*debruijn, br, first_free_index, scopes)
         } else {
@@ -421,7 +422,13 @@ where
                     // Forbid inference variables in the RHS.
                     bug!("unexpected inference var {:?}", b)
                 } else {
-                    self.relate_ty_var(vid, a)
+                    // We swap the order of `a` and `b` in the call to
+                    // `relate_ty_var` below, so swap the corresponding scopes
+                    // as well.
+                    std::mem::swap(&mut self.a_scopes, &mut self.b_scopes);
+                    let res = self.relate_ty_var(vid, a);
+                    std::mem::swap(&mut self.a_scopes, &mut self.b_scopes);
+                    res
                 }
             }
 
@@ -436,7 +443,12 @@ where
             (_, &ty::Projection(projection_ty))
                 if D::normalization() == NormalizationStrategy::Lazy =>
             {
-                Ok(self.relate_projection_ty(projection_ty, a))
+                // Swap the respective scopes of `a` and `b` (see comment
+                // above).
+                std::mem::swap(&mut self.a_scopes, &mut self.b_scopes);
+                let res = self.relate_projection_ty(projection_ty, a);
+                std::mem::swap(&mut self.a_scopes, &mut self.b_scopes);
+                Ok(res)
             }
 
             _ => {
