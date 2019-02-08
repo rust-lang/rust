@@ -2,11 +2,7 @@ use hir::{
     self, Problem, source_binder
 };
 use ra_ide_api_light::{self, LocalEdit, Severity};
-use ra_syntax::{
-    algo::find_node_at_offset, ast::{self, NameOwner}, AstNode,
-    SourceFile,
-    TextRange,
-};
+use ra_syntax::ast;
 use ra_db::SourceDatabase;
 
 use crate::{
@@ -16,54 +12,6 @@ use crate::{
 };
 
 impl db::RootDatabase {
-    pub(crate) fn find_all_refs(&self, position: FilePosition) -> Vec<(FileId, TextRange)> {
-        let file = self.parse(position.file_id);
-        // Find the binding associated with the offset
-        let (binding, descr) = match find_binding(self, &file, position) {
-            None => return Vec::new(),
-            Some(it) => it,
-        };
-
-        let mut ret = binding
-            .name()
-            .into_iter()
-            .map(|name| (position.file_id, name.syntax().range()))
-            .collect::<Vec<_>>();
-        ret.extend(
-            descr
-                .scopes(self)
-                .find_all_refs(binding)
-                .into_iter()
-                .map(|ref_desc| (position.file_id, ref_desc.range)),
-        );
-
-        return ret;
-
-        fn find_binding<'a>(
-            db: &db::RootDatabase,
-            source_file: &'a SourceFile,
-            position: FilePosition,
-        ) -> Option<(&'a ast::BindPat, hir::Function)> {
-            let syntax = source_file.syntax();
-            if let Some(binding) = find_node_at_offset::<ast::BindPat>(syntax, position.offset) {
-                let descr = source_binder::function_from_child_node(
-                    db,
-                    position.file_id,
-                    binding.syntax(),
-                )?;
-                return Some((binding, descr));
-            };
-            let name_ref = find_node_at_offset::<ast::NameRef>(syntax, position.offset)?;
-            let descr =
-                source_binder::function_from_child_node(db, position.file_id, name_ref.syntax())?;
-            let scope = descr.scopes(db);
-            let resolved = scope.resolve_local_name(name_ref)?;
-            let resolved = resolved.ptr().to_node(source_file);
-            let binding = find_node_at_offset::<ast::BindPat>(syntax, resolved.range().end())?;
-            Some((binding, descr))
-        }
-    }
-
     pub(crate) fn diagnostics(&self, file_id: FileId) -> Vec<Diagnostic> {
         let syntax = self.parse(file_id);
 

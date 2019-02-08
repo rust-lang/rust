@@ -322,7 +322,7 @@ impl Analysis {
 
     /// Finds all usages of the reference at point.
     pub fn find_all_refs(&self, position: FilePosition) -> Cancelable<Vec<(FileId, TextRange)>> {
-        self.with_db(|db| db.find_all_refs(position))
+        self.with_db(|db| references::find_all_refs(db, position))
     }
 
     /// Returns a short text descrbing element at position.
