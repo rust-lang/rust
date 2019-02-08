@@ -422,7 +422,7 @@ impl<'tcx> FnTypeExt<'tcx> for FnType<'tcx, Ty<'tcx>> {
 
         let mut inputs = sig.inputs();
         let extra_args = if sig.abi == RustCall {
-            assert!(!sig.variadic && extra_args.is_empty());
+            assert!(!sig.c_variadic && extra_args.is_empty());
 
             match sig.inputs().last().unwrap().sty {
                 ty::Tuple(ref tupled_arguments) => {
@@ -435,7 +435,7 @@ impl<'tcx> FnTypeExt<'tcx> for FnType<'tcx, Ty<'tcx>> {
                 }
             }
         } else {
-            assert!(sig.variadic || extra_args.is_empty());
+            assert!(sig.c_variadic || extra_args.is_empty());
             extra_args
         };
 
@@ -531,7 +531,7 @@ impl<'tcx> FnTypeExt<'tcx> for FnType<'tcx, Ty<'tcx>> {
             // If this is a C-variadic function, this is not the return value,
             // and there is one or more fixed arguments; ensure that the `VaList`
             // is ignored as an argument.
-            if sig.variadic {
+            if sig.c_variadic {
                 match (last_arg_idx, arg_idx) {
                     (Some(last_idx), Some(cur_idx)) if last_idx == cur_idx => {
                         let va_list_did = match cx.tcx.lang_items().va_list() {
@@ -589,7 +589,7 @@ impl<'tcx> FnTypeExt<'tcx> for FnType<'tcx, Ty<'tcx>> {
             args: inputs.iter().chain(extra_args).enumerate().map(|(i, ty)| {
                 arg_of(ty, Some(i))
             }).collect(),
-            variadic: sig.variadic,
+            c_variadic: sig.c_variadic,
             conv,
         };
         fn_ty.adjust_for_abi(cx, sig.abi);
@@ -717,7 +717,7 @@ impl<'tcx> FnTypeExt<'tcx> for FnType<'tcx, Ty<'tcx>> {
             llargument_tys.push(llarg_ty);
         }
 
-        if self.variadic {
+        if self.c_variadic {
             cx.type_variadic_func(&llargument_tys, llreturn_ty)
         } else {
             cx.type_func(&llargument_tys, llreturn_ty)

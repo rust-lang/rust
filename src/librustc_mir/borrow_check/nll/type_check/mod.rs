@@ -1604,12 +1604,12 @@ impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
         debug!("check_call_inputs({:?}, {:?})", sig, args);
         // Do not count the `VaList` argument as a "true" argument to
         // a C-variadic function.
-        let inputs = if sig.variadic {
+        let inputs = if sig.c_variadic {
             &sig.inputs()[..sig.inputs().len() - 1]
         } else {
             &sig.inputs()[..]
         };
-        if args.len() < inputs.len() || (args.len() > inputs.len() && !sig.variadic) {
+        if args.len() < inputs.len() || (args.len() > inputs.len() && !sig.c_variadic) {
             span_mirbug!(self, term, "call to {:?} with wrong # of args", sig);
         }
         for (n, (fn_arg, op_arg)) in inputs.iter().zip(args).enumerate() {

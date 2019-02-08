@@ -2007,7 +2007,7 @@ impl<'a> State<'a> {
             s.print_type(ty)?;
             s.end()
         })?;
-        if decl.variadic {
+        if decl.c_variadic {
             self.s.word(", ...")?;
         }
         self.pclose()?;

@@ -368,7 +368,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
             .0;
         let fn_sig = self.normalize_associated_types_in(call_expr.span, &fn_sig);
 
-        let inputs = if fn_sig.variadic {
+        let inputs = if fn_sig.c_variadic {
             if fn_sig.inputs().len() > 1 {
                 &fn_sig.inputs()[..fn_sig.inputs().len() - 1]
             } else {
@@ -391,7 +391,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
             inputs,
             &expected_arg_tys[..],
             arg_exprs,
-            fn_sig.variadic,
+            fn_sig.c_variadic,
             TupleArgumentsFlag::DontTupleArguments,
             def_span,
         );
@@ -424,7 +424,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
             fn_sig.inputs(),
             &expected_arg_tys,
             arg_exprs,
-            fn_sig.variadic,
+            fn_sig.c_variadic,
             TupleArgumentsFlag::TupleArguments,
             None,
         );

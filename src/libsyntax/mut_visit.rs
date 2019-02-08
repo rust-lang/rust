@@ -673,7 +673,7 @@ pub fn noop_visit_asyncness<T: MutVisitor>(asyncness: &mut IsAsync, vis: &mut T)
 }
 
 pub fn noop_visit_fn_decl<T: MutVisitor>(decl: &mut P<FnDecl>, vis: &mut T) {
-    let FnDecl { inputs, output, variadic: _ } = decl.deref_mut();
+    let FnDecl { inputs, output, c_variadic: _ } = decl.deref_mut();
     visit_vec(inputs, |input| vis.visit_arg(input));
     match output {
         FunctionRetTy::Default(span) => vis.visit_span(span),

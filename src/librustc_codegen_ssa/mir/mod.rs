@@ -585,7 +585,7 @@ fn arg_local_refs<'a, 'tcx: 'a, Bx: BuilderMethods<'a, 'tcx>>(
             indirect_operand.store(bx, tmp);
             tmp
         } else {
-            if fx.fn_ty.variadic && last_arg_idx.map(|idx| arg_index == idx).unwrap_or(false) {
+            if fx.fn_ty.c_variadic && last_arg_idx.map(|idx| arg_index == idx).unwrap_or(false) {
                 let va_list_impl = match arg_decl.ty.ty_adt_def() {
                     Some(adt) => adt.non_enum_variant(),
                     None => bug!("`va_list` language item improperly constructed")

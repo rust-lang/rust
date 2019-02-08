@@ -979,11 +979,11 @@ impl<'tcx> PolyGenSig<'tcx> {
 ///
 /// - `inputs`: is the list of arguments and their modes.
 /// - `output`: is the return type.
-/// - `variadic`: indicates whether this is a C-variadic function.
+/// - `c_variadic`: indicates whether this is a C-variadic function.
 #[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, RustcEncodable, RustcDecodable)]
 pub struct FnSig<'tcx> {
     pub inputs_and_output: &'tcx List<Ty<'tcx>>,
-    pub variadic: bool,
+    pub c_variadic: bool,
     pub unsafety: hir::Unsafety,
     pub abi: abi::Abi,
 }
@@ -1016,8 +1016,8 @@ impl<'tcx> PolyFnSig<'tcx> {
     pub fn output(&self) -> ty::Binder<Ty<'tcx>> {
         self.map_bound_ref(|fn_sig| fn_sig.output())
     }
-    pub fn variadic(&self) -> bool {
-        self.skip_binder().variadic
+    pub fn c_variadic(&self) -> bool {
+        self.skip_binder().c_variadic
     }
     pub fn unsafety(&self) -> hir::Unsafety {
         self.skip_binder().unsafety

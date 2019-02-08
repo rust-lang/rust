@@ -531,7 +531,7 @@ pub struct FnType<'a, Ty> {
     /// LLVM return type.
     pub ret: ArgType<'a, Ty>,
 
-    pub variadic: bool,
+    pub c_variadic: bool,
 
     pub conv: Conv,
 }

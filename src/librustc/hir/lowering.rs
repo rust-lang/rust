@@ -954,7 +954,7 @@ impl<'a> LoweringContext<'a> {
         let decl = FnDecl {
             inputs: vec![],
             output,
-            variadic: false
+            c_variadic: false
         };
         let body_id = self.record_body(body_expr, Some(&decl));
         self.is_generator = prev_is_generator;
@@ -2118,7 +2118,7 @@ impl<'a> LoweringContext<'a> {
         P(hir::FnDecl {
             inputs,
             output,
-            variadic: decl.variadic,
+            c_variadic: decl.c_variadic,
             implicit_self: decl.inputs.get(0).map_or(
                 hir::ImplicitSelfKind::None,
                 |arg| {
@@ -3973,7 +3973,7 @@ impl<'a> LoweringContext<'a> {
                     let outer_decl = FnDecl {
                         inputs: decl.inputs.clone(),
                         output: FunctionRetTy::Default(fn_decl_span),
-                        variadic: false,
+                        c_variadic: false,
                     };
                     // We need to lower the declaration outside the new scope, because we
                     // have to conserve the state of being inside a loop condition for the

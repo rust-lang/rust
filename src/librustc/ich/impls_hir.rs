@@ -368,7 +368,7 @@ impl_stable_hash_for!(enum hir::TyKind {
 impl_stable_hash_for!(struct hir::FnDecl {
     inputs,
     output,
-    variadic,
+    c_variadic,
     implicit_self
 });
 

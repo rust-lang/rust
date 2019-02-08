@@ -1457,12 +1457,12 @@ impl<'a> Parser<'a> {
         };
 
         self.expect_keyword(keywords::Fn)?;
-        let (inputs, variadic) = self.parse_fn_args(false, true)?;
+        let (inputs, c_variadic) = self.parse_fn_args(false, true)?;
         let ret_ty = self.parse_ret_ty(false)?;
         let decl = P(FnDecl {
             inputs,
             output: ret_ty,
-            variadic,
+            c_variadic,
         });
         Ok(TyKind::BareFn(P(BareFnTy {
             abi,
@@ -1635,7 +1635,7 @@ impl<'a> Parser<'a> {
     }
 
     fn parse_ty_common(&mut self, allow_plus: bool, allow_qpath_recovery: bool,
-                       allow_variadic: bool) -> PResult<'a, P<Ty>> {
+                       allow_c_variadic: bool) -> PResult<'a, P<Ty>> {
         maybe_whole!(self, NtTy, |x| x);
 
         let lo = self.span;
@@ -1773,12 +1773,12 @@ impl<'a> Parser<'a> {
                 }
             }
         } else if self.check(&token::DotDotDot) {
-            if allow_variadic {
+            if allow_c_variadic {
                 self.eat(&token::DotDotDot);
                 TyKind::CVarArgs
             } else {
                 return Err(self.fatal(
-                    "only foreign functions are allowed to be variadic"
+                    "only foreign functions are allowed to be C-variadic"
                 ));
             }
         } else {
@@ -1969,7 +1969,7 @@ impl<'a> Parser<'a> {
 
     /// This version of parse arg doesn't necessarily require identifier names.
     fn parse_arg_general(&mut self, require_name: bool, is_trait_item: bool,
-                         allow_variadic: bool) -> PResult<'a, Arg> {
+                         allow_c_variadic: bool) -> PResult<'a, Arg> {
         maybe_whole!(self, NtArg, |x| x);
 
         if let Ok(Some(_)) = self.parse_self_arg() {
@@ -2018,12 +2018,12 @@ impl<'a> Parser<'a> {
             }
 
             self.eat_incorrect_doc_comment("a method argument's type");
-            (pat, self.parse_ty_common(true, true, allow_variadic)?)
+            (pat, self.parse_ty_common(true, true, allow_c_variadic)?)
         } else {
             debug!("parse_arg_general ident_to_pat");
             let parser_snapshot_before_ty = self.clone();
             self.eat_incorrect_doc_comment("a method argument's type");
-            let mut ty = self.parse_ty_common(true, true, allow_variadic);
+            let mut ty = self.parse_ty_common(true, true, allow_c_variadic);
             if ty.is_ok() && self.token != token::Comma &&
                self.token != token::CloseDelim(token::Paren) {
                 // This wasn't actually a type, but a pattern looking like a type,
@@ -2042,7 +2042,7 @@ impl<'a> Parser<'a> {
                     (pat, ty)
                 }
                 Err(mut err) => {
-                    // If this is a variadic argument and we hit an error, return the
+                    // If this is a C-variadic argument and we hit an error, return the
                     // error.
                     if self.token == token::DotDotDot {
                         return Err(err);
@@ -6122,12 +6122,12 @@ impl<'a> Parser<'a> {
         Ok(where_clause)
     }
 
-    fn parse_fn_args(&mut self, named_args: bool, allow_variadic: bool)
+    fn parse_fn_args(&mut self, named_args: bool, allow_c_variadic: bool)
                      -> PResult<'a, (Vec<Arg> , bool)> {
         self.expect(&token::OpenDelim(token::Paren))?;
 
         let sp = self.span;
-        let mut variadic = false;
+        let mut c_variadic = false;
         let (args, recovered): (Vec<Option<Arg>>, bool) =
             self.parse_seq_to_before_end(
                 &token::CloseDelim(token::Paren),
@@ -6141,14 +6141,14 @@ impl<'a> Parser<'a> {
                         named_args
                     };
                     match p.parse_arg_general(enforce_named_args, false,
-                                              allow_variadic) {
+                                              allow_c_variadic) {
                         Ok(arg) => {
                             if let TyKind::CVarArgs = arg.ty.node {
-                                variadic = true;
+                                c_variadic = true;
                                 if p.token != token::CloseDelim(token::Paren) {
                                     let span = p.span;
                                     p.span_err(span,
-                                        "`...` must be last in argument list in variadic function");
+                                        "`...` must be the last argument of a C-variadic function");
                                     Ok(None)
                                 } else {
                                     Ok(Some(arg))
@@ -6176,24 +6176,24 @@ impl<'a> Parser<'a> {
 
         let args: Vec<_> = args.into_iter().filter_map(|x| x).collect();
 
-        if variadic && args.is_empty() {
+        if c_variadic && args.is_empty() {
             self.span_err(sp,
-                          "variadic function must be declared with at least one named argument");
+                          "C-variadic function must be declared with at least one named argument");
         }
 
-        Ok((args, variadic))
+        Ok((args, c_variadic))
     }
 
     /// Parses the argument list and result type of a function declaration.
-    fn parse_fn_decl(&mut self, allow_variadic: bool) -> PResult<'a, P<FnDecl>> {
+    fn parse_fn_decl(&mut self, allow_c_variadic: bool) -> PResult<'a, P<FnDecl>> {
 
-        let (args, variadic) = self.parse_fn_args(true, allow_variadic)?;
+        let (args, c_variadic) = self.parse_fn_args(true, allow_c_variadic)?;
         let ret_ty = self.parse_ret_ty(true)?;
 
         Ok(P(FnDecl {
             inputs: args,
             output: ret_ty,
-            variadic,
+            c_variadic,
         }))
     }
 
@@ -6340,7 +6340,7 @@ impl<'a> Parser<'a> {
         Ok(P(FnDecl {
             inputs: fn_inputs,
             output: self.parse_ret_ty(true)?,
-            variadic: false
+            c_variadic: false
         }))
     }
 
@@ -6366,7 +6366,7 @@ impl<'a> Parser<'a> {
         Ok(P(FnDecl {
             inputs: inputs_captures,
             output,
-            variadic: false
+            c_variadic: false
         }))
     }
 
@@ -6398,8 +6398,8 @@ impl<'a> Parser<'a> {
                      abi: Abi)
                      -> PResult<'a, ItemInfo> {
         let (ident, mut generics) = self.parse_fn_header()?;
-        let allow_variadic = abi == Abi::C && unsafety == Unsafety::Unsafe;
-        let decl = self.parse_fn_decl(allow_variadic)?;
+        let allow_c_variadic = abi == Abi::C && unsafety == Unsafety::Unsafe;
+        let decl = self.parse_fn_decl(allow_c_variadic)?;
         generics.where_clause = self.parse_where_clause()?;
         let (inner_attrs, body) = self.parse_inner_attrs_and_block()?;
         let header = FnHeader { unsafety, asyncness, constness, abi };

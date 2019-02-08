@@ -766,7 +766,7 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
         let def_id = self.cx.tcx.hir().local_def_id(id);
         let sig = self.cx.tcx.fn_sig(def_id);
         let sig = self.cx.tcx.erase_late_bound_regions(&sig);
-        let inputs = if sig.variadic {
+        let inputs = if sig.c_variadic {
             // Don't include the spoofed `VaList` in the functions list
             // of inputs.
             &sig.inputs()[..sig.inputs().len() - 1]

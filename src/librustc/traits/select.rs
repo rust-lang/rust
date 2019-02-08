@@ -1944,7 +1944,7 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
                 if let ty::FnSig {
                     unsafety: hir::Unsafety::Normal,
                     abi: Abi::Rust,
-                    variadic: false,
+                    c_variadic: false,
                     ..
                 } = self_ty.fn_sig(self.tcx()).skip_binder()
                 {

@@ -2814,7 +2814,7 @@ impl<'a> State<'a> {
         -> io::Result<()> {
         self.popen()?;
         self.commasep(Inconsistent, &decl.inputs, |s, arg| s.print_arg(arg, false))?;
-        if decl.variadic {
+        if decl.c_variadic {
             self.s.word(", ...")?;
         }
         self.pclose()?;
@@ -3241,7 +3241,7 @@ mod tests {
             let decl = ast::FnDecl {
                 inputs: Vec::new(),
                 output: ast::FunctionRetTy::Default(syntax_pos::DUMMY_SP),
-                variadic: false
+                c_variadic: false
             };
             let generics = ast::Generics::default();
             assert_eq!(

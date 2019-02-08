@@ -141,7 +141,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
             self.tcx.mk_fn_sig(
                 iter::once(self.tcx.intern_tup(sig.inputs())),
                 sig.output(),
-                sig.variadic,
+                sig.c_variadic,
                 sig.unsafety,
                 sig.abi,
             )
@@ -386,7 +386,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         // Watch out for some surprises and just ignore the
         // expectation if things don't see to match up with what we
         // expect.
-        if expected_sig.sig.variadic != decl.variadic {
+        if expected_sig.sig.c_variadic != decl.c_variadic {
             return self.sig_of_closure_no_expectation(expr_def_id, decl, body);
         } else if expected_sig.sig.inputs_and_output.len() != decl.inputs.len() + 1 {
             return self.sig_of_closure_with_mismatched_number_of_arguments(
@@ -404,7 +404,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         let bound_sig = ty::Binder::bind(self.tcx.mk_fn_sig(
             expected_sig.sig.inputs().iter().cloned(),
             expected_sig.sig.output(),
-            decl.variadic,
+            decl.c_variadic,
             hir::Unsafety::Normal,
             Abi::RustCall,
         ));
@@ -586,7 +586,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         let result = ty::Binder::bind(self.tcx.mk_fn_sig(
             supplied_arguments,
             supplied_return,
-            decl.variadic,
+            decl.c_variadic,
             hir::Unsafety::Normal,
             Abi::RustCall,
         ));
@@ -621,7 +621,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         let result = ty::Binder::bind(self.tcx.mk_fn_sig(
             supplied_arguments,
             self.tcx.types.err,
-            decl.variadic,
+            decl.c_variadic,
             hir::Unsafety::Normal,
             Abi::RustCall,
         ));

@@ -232,7 +232,7 @@ impl<'a, 'tcx: 'a, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         &mut self,
         mut bx: Bx,
     ) {
-        if self.fn_ty.variadic {
+        if self.fn_ty.c_variadic {
             if let Some(va_list) = self.va_list_ref {
                 bx.va_end(va_list.llval);
             }
@@ -507,7 +507,7 @@ impl<'a, 'tcx: 'a, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
 
         // The "spoofed" `VaList` added to a C-variadic functions signature
         // should not be included in the `extra_args` calculation.
-        let extra_args_start_idx = sig.inputs().len() - if sig.variadic { 1 } else { 0 };
+        let extra_args_start_idx = sig.inputs().len() - if sig.c_variadic { 1 } else { 0 };
         let extra_args = &args[extra_args_start_idx..];
         let extra_args = extra_args.iter().map(|op_arg| {
             let op_ty = op_arg.ty(self.mir, bx.tcx());
@@ -695,7 +695,7 @@ impl<'a, 'tcx: 'a, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
             // an "spoofed" `VaList`. This argument is ignored, but we need to
             // populate it with a dummy operand so that the users real arguments
             // are not overwritten.
-            let i = if sig.variadic && last_arg_idx.map(|x| x == i).unwrap_or(false) {
+            let i = if sig.c_variadic && last_arg_idx.map(|x| x == i).unwrap_or(false) {
                 let layout = match self.cx.tcx().lang_items().va_list() {
                     Some(did) => bx.cx().layout_of(bx.tcx().type_of(did)),
                     None => bug!("`va_list` language item required for C-variadics"),

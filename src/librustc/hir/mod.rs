@@ -1868,7 +1868,7 @@ pub struct Arg {
 pub struct FnDecl {
     pub inputs: HirVec<Ty>,
     pub output: FunctionRetTy,
-    pub variadic: bool,
+    pub c_variadic: bool,
     /// Does the function have an implicit self?
     pub implicit_self: ImplicitSelfKind,
 }

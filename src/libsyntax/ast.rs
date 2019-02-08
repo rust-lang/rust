@@ -1804,7 +1804,7 @@ impl Arg {
 pub struct FnDecl {
     pub inputs: Vec<Arg>,
     pub output: FunctionRetTy,
-    pub variadic: bool,
+    pub c_variadic: bool,
 }
 
 impl FnDecl {
