@@ -1,4 +1,4 @@
-use spec::{LldFlavor, LinkerFlavor, Target, TargetOptions, TargetResult};
+use crate::spec::{LldFlavor, LinkerFlavor, Target, TargetOptions, TargetResult};
 
 pub fn target() -> TargetResult {
     let mut base = super::fuchsia_base::opts();

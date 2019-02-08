@@ -1,4 +1,4 @@
-use spec::{LinkerFlavor, Target, TargetResult};
+use crate::spec::{LinkerFlavor, Target, TargetResult};
 
 pub fn target() -> TargetResult {
     let mut base = super::dragonfly_base::opts();

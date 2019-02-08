@@ -8,7 +8,7 @@
 //
 // To opt into double precision hardware support, use the `-C target-feature=-fp-only-sp` flag.
 
-use spec::{LinkerFlavor, LldFlavor, Target, TargetOptions, TargetResult};
+use crate::spec::{LinkerFlavor, LldFlavor, Target, TargetOptions, TargetResult};
 
 pub fn target() -> TargetResult {
     Ok(Target {

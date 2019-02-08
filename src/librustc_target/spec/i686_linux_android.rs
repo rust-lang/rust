@@ -1,4 +1,4 @@
-use spec::{LinkerFlavor, Target, TargetResult};
+use crate::spec::{LinkerFlavor, Target, TargetResult};
 
 // See https://developer.android.com/ndk/guides/abis.html#x86
 // for target ABI requirements.

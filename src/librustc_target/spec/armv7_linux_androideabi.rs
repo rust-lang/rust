@@ -1,4 +1,4 @@
-use spec::{LinkerFlavor, Target, TargetOptions, TargetResult};
+use crate::spec::{LinkerFlavor, Target, TargetOptions, TargetResult};
 
 // This target if is for the baseline of the Android v7a ABI
 // in thumb mode. It's named armv7-* instead of thumbv7-*
