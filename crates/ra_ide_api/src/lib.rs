@@ -29,7 +29,7 @@ mod hover;
 mod call_info;
 mod syntax_highlighting;
 mod parent_module;
-mod rename;
+mod references;
 mod impls;
 mod assists;
 
@@ -388,7 +388,7 @@ impl Analysis {
         position: FilePosition,
         new_name: &str,
     ) -> Cancelable<Option<SourceChange>> {
-        self.with_db(|db| rename::rename(db, position, new_name))
+        self.with_db(|db| references::rename(db, position, new_name))
     }
 
     fn with_db<F: FnOnce(&db::RootDatabase) -> T + std::panic::UnwindSafe, T>(
