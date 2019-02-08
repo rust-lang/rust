@@ -25,7 +25,7 @@ use syntax::ast::{Attribute, LitKind, DUMMY_NODE_ID};
 /// }
 /// ```
 ///
-/// Running `TESTNAME=ui/my_lint cargo test --test compile-test` will produce
+/// Running `TESTNAME=ui/my_lint cargo uitest` will produce
 /// a `./tests/ui/new_lint.stdout` file with the generated code:
 ///
 /// ```rust
