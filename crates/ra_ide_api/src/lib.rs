@@ -52,10 +52,10 @@ use crate::{
 };
 
 pub use crate::{
+    change::{AnalysisChange, LibraryData},
     completion::{CompletionItem, CompletionItemKind, InsertTextFormat},
     runnables::{Runnable, RunnableKind},
     navigation_target::NavigationTarget,
-    change::{AnalysisChange, LibraryData},
 };
 pub use ra_ide_api_light::{
     Fold, FoldKind, HighlightedRange, Severity, StructureNode, LocalEdit,
@@ -373,7 +373,7 @@ impl Analysis {
 
     /// Computes the set of diagnostics for the given file.
     pub fn diagnostics(&self, file_id: FileId) -> Cancelable<Vec<Diagnostic>> {
-        self.with_db(|db| db.diagnostics(file_id))
+        self.with_db(|db| diagnostics::diagnostics(db, file_id))
     }
 
     /// Computes the type of the expression at the given position.
