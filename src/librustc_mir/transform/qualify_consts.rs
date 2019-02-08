@@ -30,7 +30,7 @@ use std::usize;
 use crate::transform::{MirPass, MirSource};
 use super::promote_consts::{self, Candidate, TempState};
 
-bitflags! {
+bitflags::bitflags! {
     // Borrows of temporaries can be promoted only if
     // they have none of these qualifications, with
     // the exception of `STATIC_REF` (in statics only).

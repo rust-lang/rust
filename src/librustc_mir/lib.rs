@@ -33,8 +33,6 @@ Rust MIR: a lowered representation of Rust. Also: an experiment!
 #![deny(rust_2018_idioms)]
 #![allow(explicit_outlives_requirements)]
 
-#[macro_use]
-extern crate bitflags;
 #[macro_use] extern crate log;
 #[macro_use]
 extern crate rustc;
