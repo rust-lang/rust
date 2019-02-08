@@ -392,13 +392,16 @@ pub trait EvalContextExt<'a, 'mir, 'tcx: 'a+'mir>: crate::MiriEvalContextExt<'a,
                     let buf_cont = this.memory().read_bytes(buf, Size::from_bytes(n))?;
                     // We need to flush to make sure this actually appears on the screen
                     let res = if fd == 1 {
+                        // Stdout is buffered, flush to make sure it appears on the screen.
+                        // This is the write() syscall of the interpreted program, we want it
+                        // to correspond to a write() syscall on the host -- there is no good
+                        // in adding extra buffering here.
                         let res = io::stdout().write(buf_cont);
                         io::stdout().flush().unwrap();
                         res
                     } else {
-                        let res = io::stderr().write(buf_cont);
-                        io::stderr().flush().unwrap();
-                        res
+                        // No need to flush, stderr is not buffered.
+                        io::stderr().write(buf_cont)
                     };
                     match res {
                         Ok(n) => n as i64,
