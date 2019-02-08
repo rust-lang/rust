@@ -10,25 +10,12 @@ use ra_syntax::{
 use ra_db::SourceDatabase;
 
 use crate::{
-    CrateId, db, Diagnostic, FileId, FilePosition, FileSystemEdit,
+    db, Diagnostic, FileId, FilePosition, FileSystemEdit,
     Query, SourceChange, SourceFileEdit,
     symbol_index::FileSymbol,
 };
 
 impl db::RootDatabase {
-    /// Returns `Vec` for the same reason as `parent_module`
-    pub(crate) fn crate_for(&self, file_id: FileId) -> Vec<CrateId> {
-        let module = match source_binder::module_from_file_id(self, file_id) {
-            Some(it) => it,
-            None => return Vec::new(),
-        };
-        let krate = match module.krate(self) {
-            Some(it) => it,
-            None => return Vec::new(),
-        };
-        vec![krate.crate_id()]
-    }
-
     pub(crate) fn find_all_refs(&self, position: FilePosition) -> Vec<(FileId, TextRange)> {
         let file = self.parse(position.file_id);
         // Find the binding associated with the offset

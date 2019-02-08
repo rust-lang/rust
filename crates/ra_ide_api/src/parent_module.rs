@@ -1,4 +1,4 @@
-use ra_db::FilePosition;
+use ra_db::{FilePosition, FileId, CrateId};
 
 use crate::{NavigationTarget, db::RootDatabase};
 
@@ -11,6 +11,19 @@ pub(crate) fn parent_module(db: &RootDatabase, position: FilePosition) -> Vec<Na
     };
     let nav = NavigationTarget::from_module_to_decl(db, module);
     vec![nav]
+}
+
+/// Returns `Vec` for the same reason as `parent_module`
+pub(crate) fn crate_for(db: &RootDatabase, file_id: FileId) -> Vec<CrateId> {
+    let module = match hir::source_binder::module_from_file_id(db, file_id) {
+        Some(it) => it,
+        None => return Vec::new(),
+    };
+    let krate = match module.krate(db) {
+        Some(it) => it,
+        None => return Vec::new(),
+    };
+    vec![krate.crate_id()]
 }
 
 #[cfg(test)]

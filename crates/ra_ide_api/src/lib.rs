@@ -342,7 +342,7 @@ impl Analysis {
 
     /// Returns crates this file belongs too.
     pub fn crate_for(&self, file_id: FileId) -> Cancelable<Vec<CrateId>> {
-        self.with_db(|db| db.crate_for(file_id))
+        self.with_db(|db| parent_module::crate_for(db, file_id))
     }
 
     /// Returns the root file of the given crate.
