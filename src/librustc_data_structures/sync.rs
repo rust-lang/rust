@@ -21,7 +21,7 @@ use std::collections::HashMap;
 use std::hash::{Hash, BuildHasher};
 use std::marker::PhantomData;
 use std::ops::{Deref, DerefMut};
-use owning_ref::{Erased, OwningRef};
+use crate::owning_ref::{Erased, OwningRef};
 
 pub fn serial_join<A, B, RA, RB>(oper_a: A, oper_b: B) -> (RA, RB)
     where A: FnOnce() -> RA,
@@ -261,12 +261,12 @@ cfg_if! {
             }
 
             #[inline(always)]
-            pub fn lock(&self) -> LockGuard<T> {
+            pub fn lock(&self) -> LockGuard<'_, T> {
                 self.0.lock()
             }
 
             #[inline(always)]
-            pub fn lock_mut(&self) -> LockGuard<T> {
+            pub fn lock_mut(&self) -> LockGuard<'_, T> {
                 self.lock()
             }
         }
@@ -490,19 +490,19 @@ impl<T> Lock<T> {
 
     #[cfg(parallel_compiler)]
     #[inline(always)]
-    pub fn try_lock(&self) -> Option<LockGuard<T>> {
+    pub fn try_lock(&self) -> Option<LockGuard<'_, T>> {
         self.0.try_lock()
     }
 
     #[cfg(not(parallel_compiler))]
     #[inline(always)]
-    pub fn try_lock(&self) -> Option<LockGuard<T>> {
+    pub fn try_lock(&self) -> Option<LockGuard<'_, T>> {
         self.0.try_borrow_mut().ok()
     }
 
     #[cfg(parallel_compiler)]
     #[inline(always)]
-    pub fn lock(&self) -> LockGuard<T> {
+    pub fn lock(&self) -> LockGuard<'_, T> {
         if ERROR_CHECKING {
             self.0.try_lock().expect("lock was already held")
         } else {
@@ -512,7 +512,7 @@ impl<T> Lock<T> {
 
     #[cfg(not(parallel_compiler))]
     #[inline(always)]
-    pub fn lock(&self) -> LockGuard<T> {
+    pub fn lock(&self) -> LockGuard<'_, T> {
         self.0.borrow_mut()
     }
 
@@ -522,12 +522,12 @@ impl<T> Lock<T> {
     }
 
     #[inline(always)]
-    pub fn borrow(&self) -> LockGuard<T> {
+    pub fn borrow(&self) -> LockGuard<'_, T> {
         self.lock()
     }
 
     #[inline(always)]
-    pub fn borrow_mut(&self) -> LockGuard<T> {
+    pub fn borrow_mut(&self) -> LockGuard<'_, T> {
         self.lock()
     }
 }
@@ -568,13 +568,13 @@ impl<T> RwLock<T> {
 
     #[cfg(not(parallel_compiler))]
     #[inline(always)]
-    pub fn read(&self) -> ReadGuard<T> {
+    pub fn read(&self) -> ReadGuard<'_, T> {
         self.0.borrow()
     }
 
     #[cfg(parallel_compiler)]
     #[inline(always)]
-    pub fn read(&self) -> ReadGuard<T> {
+    pub fn read(&self) -> ReadGuard<'_, T> {
         if ERROR_CHECKING {
             self.0.try_read().expect("lock was already held")
         } else {
@@ -589,25 +589,25 @@ impl<T> RwLock<T> {
 
     #[cfg(not(parallel_compiler))]
     #[inline(always)]
-    pub fn try_write(&self) -> Result<WriteGuard<T>, ()> {
+    pub fn try_write(&self) -> Result<WriteGuard<'_, T>, ()> {
         self.0.try_borrow_mut().map_err(|_| ())
     }
 
     #[cfg(parallel_compiler)]
     #[inline(always)]
-    pub fn try_write(&self) -> Result<WriteGuard<T>, ()> {
+    pub fn try_write(&self) -> Result<WriteGuard<'_, T>, ()> {
         self.0.try_write().ok_or(())
     }
 
     #[cfg(not(parallel_compiler))]
     #[inline(always)]
-    pub fn write(&self) -> WriteGuard<T> {
+    pub fn write(&self) -> WriteGuard<'_, T> {
         self.0.borrow_mut()
     }
 
     #[cfg(parallel_compiler)]
     #[inline(always)]
-    pub fn write(&self) -> WriteGuard<T> {
+    pub fn write(&self) -> WriteGuard<'_, T> {
         if ERROR_CHECKING {
             self.0.try_write().expect("lock was already held")
         } else {
@@ -621,12 +621,12 @@ impl<T> RwLock<T> {
     }
 
     #[inline(always)]
-    pub fn borrow(&self) -> ReadGuard<T> {
+    pub fn borrow(&self) -> ReadGuard<'_, T> {
         self.read()
     }
 
     #[inline(always)]
-    pub fn borrow_mut(&self) -> WriteGuard<T> {
+    pub fn borrow_mut(&self) -> WriteGuard<'_, T> {
         self.write()
     }
 }

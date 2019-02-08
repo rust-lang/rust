@@ -80,7 +80,7 @@
 //! processing step, we compress the vector to remove completed and error
 //! nodes, which aren't needed anymore.
 
-use fx::{FxHashMap, FxHashSet};
+use crate::fx::{FxHashMap, FxHashSet};
 
 use std::cell::Cell;
 use std::collections::hash_map::Entry;
@@ -733,7 +733,7 @@ impl<O> Node<O> {
 
 // I need a Clone closure
 #[derive(Clone)]
-struct GetObligation<'a, O: 'a>(&'a [Node<O>]);
+struct GetObligation<'a, O>(&'a [Node<O>]);
 
 impl<'a, 'b, O> FnOnce<(&'b usize,)> for GetObligation<'a, O> {
     type Output = &'a O;

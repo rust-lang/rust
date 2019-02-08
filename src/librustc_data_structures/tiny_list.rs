@@ -123,7 +123,7 @@ impl<T: PartialEq> Element<T> {
 mod test {
     use super::*;
     extern crate test;
-    use self::test::Bencher;
+    use test::Bencher;
 
     #[test]
     fn test_contains_and_insert() {

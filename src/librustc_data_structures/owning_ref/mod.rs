@@ -1002,7 +1002,7 @@ impl<O, T: ?Sized> Debug for OwningRef<O, T>
     where O: Debug,
           T: Debug,
 {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f,
                "OwningRef {{ owner: {:?}, reference: {:?} }}",
                self.owner(),
@@ -1014,7 +1014,7 @@ impl<O, T: ?Sized> Debug for OwningRefMut<O, T>
     where O: Debug,
           T: Debug,
 {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f,
                "OwningRefMut {{ owner: {:?}, reference: {:?} }}",
                self.owner(),
@@ -1047,7 +1047,7 @@ unsafe impl<O, T: ?Sized> Sync for OwningRefMut<O, T>
     where O: Sync, for<'a> (&'a mut T): Sync {}
 
 impl Debug for dyn Erased {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "<Erased>",)
     }
 }

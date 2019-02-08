@@ -1,4 +1,4 @@
-use fx::FxHashMap;
+use crate::fx::FxHashMap;
 use std::cmp::max;
 use std::slice;
 use std::iter;
