@@ -84,6 +84,18 @@ impl ChalkInferenceContext<'cx, 'gcx, 'tcx> {
                     );
                 }
 
+                if Some(trait_predicate.def_id()) == self.infcx.tcx.lang_items().unsize_trait() {
+                    let source = trait_predicate.self_ty();
+                    let target = trait_predicate.trait_ref.substs.type_at(1);
+                    assemble_builtin_unsize_impls(
+                        self.infcx.tcx,
+                        trait_predicate.def_id(),
+                        source,
+                        target,
+                        &mut clauses
+                    );
+                }
+
                 // FIXME: we need to add special rules for other builtin impls:
                 // * `Copy` / `Clone`
                 // * `Generator`

@@ -10,6 +10,82 @@ use rustc::hir::def_id::DefId;
 use crate::lowering::Lower;
 use crate::generic_types;
 
+crate fn assemble_builtin_unsize_impls<'tcx>(
+    tcx: ty::TyCtxt<'_, '_, 'tcx>,
+    unsize_def_id: DefId,
+    source: ty::Ty<'tcx>,
+    target: ty::Ty<'tcx>,
+    clauses: &mut Vec<Clause<'tcx>>
+) {
+    match (&source.sty, &target.sty) {
+        (ty::Dynamic(data_a, ..), ty::Dynamic(data_b, ..)) => {
+            if data_a.principal_def_id() != data_b.principal_def_id()
+                || data_b.auto_traits().any(|b| data_a.auto_traits().all(|a| a != b))
+            {
+                return;
+            }
+
+            // FIXME: rules for trait upcast
+        }
+
+        (_, &ty::Dynamic(..)) => {
+            // FIXME: basically, we should have something like:
+            // ```
+            // forall<T> {
+            //     Implemented(T: Unsize< for<...> dyn Trait<...> >) :-
+            //         for<...> Implemented(T: Trait<...>).
+            // }
+            // ```
+            // The question is: how to correctly handle the higher-ranked
+            // `for<...>` binder in order to have a generic rule?
+            // (Having generic rules is useful for caching, as we may be able
+            // to turn this function and others into tcx queries later on).
+        }
+
+        (ty::Array(_, length), ty::Slice(_)) => {
+            let ty_param = generic_types::bound(tcx, 0);
+            let array_ty = tcx.mk_ty(ty::Array(ty_param, length));
+            let slice_ty = tcx.mk_ty(ty::Slice(ty_param));
+
+            // `forall<T> { Implemented([T; N]: Unsize<[T]>). }`
+            let clause = ProgramClause {
+                goal: ty::TraitPredicate {
+                    trait_ref: ty::TraitRef {
+                        def_id: unsize_def_id,
+                        substs: tcx.mk_substs_trait(array_ty, &[slice_ty.into()])
+                    },
+                }.lower(),
+                hypotheses: ty::List::empty(),
+                category: ProgramClauseCategory::Other,
+            };
+
+            clauses.push(Clause::ForAll(ty::Binder::bind(clause)));
+        }
+
+        (ty::Infer(ty::TyVar(_)), _) | (_, ty::Infer(ty::TyVar(_))) => {
+            // FIXME: ambiguous
+        }
+
+        (ty::Adt(def_id_a, ..), ty::Adt(def_id_b, ..)) => {
+            if def_id_a != def_id_b {
+                return;
+            }
+
+            // FIXME: rules for struct unsizing
+        }
+
+        (&ty::Tuple(tys_a), &ty::Tuple(tys_b)) => {
+            if tys_a.len() != tys_b.len() {
+                return;
+            }
+
+            // FIXME: rules for tuple unsizing
+        }
+
+        _ => (),
+    }
+}
+
 crate fn assemble_builtin_sized_impls<'tcx>(
     tcx: ty::TyCtxt<'_, '_, 'tcx>,
     sized_def_id: DefId,
