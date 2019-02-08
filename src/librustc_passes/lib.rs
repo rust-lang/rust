@@ -11,18 +11,10 @@
 
 #![recursion_limit="256"]
 
-#[macro_use]
-extern crate rustc;
-extern crate rustc_mir;
-extern crate rustc_data_structures;
+#![deny(rust_2018_idioms)]
 
 #[macro_use]
-extern crate log;
-#[macro_use]
-extern crate syntax;
-extern crate syntax_ext;
-extern crate syntax_pos;
-extern crate rustc_errors as errors;
+extern crate rustc;
 
 use rustc::ty::query::Providers;
 
@@ -36,7 +28,7 @@ pub mod loops;
 
 __build_diagnostic_array! { librustc_passes, DIAGNOSTICS }
 
-pub fn provide(providers: &mut Providers) {
+pub fn provide(providers: &mut Providers<'_>) {
     rvalue_promotion::provide(providers);
     loops::provide(providers);
 }

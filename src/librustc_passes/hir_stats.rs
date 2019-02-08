@@ -61,7 +61,7 @@ impl<'k> StatCollector<'k> {
         });
 
         entry.count += 1;
-        entry.size = ::std::mem::size_of_val(node);
+        entry.size = std::mem::size_of_val(node);
     }
 
     fn print(&self, title: &str) {
