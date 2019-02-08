@@ -350,8 +350,6 @@ impl<'a, 'tcx> Visitor<'tcx> for MissingStabilityAnnotations<'a, 'tcx> {
             // optional. They inherit stability from their parents when unannotated.
             hir::ItemKind::Impl(.., None, _, _) | hir::ItemKind::ForeignMod(..) => {}
 
-            hir::ItemKind::Mod(..) => self.check_missing_stability(i.id, i.span, "module"),
-
             _ => self.check_missing_stability(i.id, i.span, i.node.descriptive_variant())
         }
 
@@ -359,14 +357,14 @@ impl<'a, 'tcx> Visitor<'tcx> for MissingStabilityAnnotations<'a, 'tcx> {
     }
 
     fn visit_trait_item(&mut self, ti: &'tcx hir::TraitItem) {
-        self.check_missing_stability(ti.id, ti.span, "node");
+        self.check_missing_stability(ti.id, ti.span, "item");
         intravisit::walk_trait_item(self, ti);
     }
 
     fn visit_impl_item(&mut self, ii: &'tcx hir::ImplItem) {
         let impl_def_id = self.tcx.hir().local_def_id(self.tcx.hir().get_parent(ii.id));
         if self.tcx.impl_trait_ref(impl_def_id).is_none() {
-            self.check_missing_stability(ii.id, ii.span, "node");
+            self.check_missing_stability(ii.id, ii.span, "item");
         }
         intravisit::walk_impl_item(self, ii);
     }
