@@ -1,8 +1,9 @@
 #![feature(rustc_private)]
 
+#![deny(rust_2018_idioms)]
+
 extern crate env_logger;
 extern crate syntax;
-extern crate rustdoc;
 extern crate serialize as rustc_serialize;
 
 use std::collections::BTreeMap;
