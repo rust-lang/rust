@@ -1,14 +1,5 @@
-use std::{
-    sync::Arc,
-    time,
-};
-
 use hir::{
     self, Problem, source_binder
-};
-use ra_db::{
-    SourceDatabase, SourceRoot, SourceRootId,
-    salsa::{Database, SweepStrategy},
 };
 use ra_ide_api_light::{self, LocalEdit, Severity};
 use ra_syntax::{
@@ -16,99 +7,13 @@ use ra_syntax::{
     SourceFile,
     TextRange,
 };
+use ra_db::SourceDatabase;
 
 use crate::{
-    AnalysisChange,
     CrateId, db, Diagnostic, FileId, FilePosition, FileSystemEdit,
-    Query, RootChange, SourceChange, SourceFileEdit,
-    symbol_index::{FileSymbol, SymbolsDatabase},
-    status::syntax_tree_stats
+    Query, SourceChange, SourceFileEdit,
+    symbol_index::FileSymbol,
 };
-
-const GC_COOLDOWN: time::Duration = time::Duration::from_millis(100);
-
-impl db::RootDatabase {
-    pub(crate) fn apply_change(&mut self, change: AnalysisChange) {
-        log::info!("apply_change {:?}", change);
-        if !change.new_roots.is_empty() {
-            let mut local_roots = Vec::clone(&self.local_roots());
-            for (root_id, is_local) in change.new_roots {
-                self.set_source_root(root_id, Default::default());
-                if is_local {
-                    local_roots.push(root_id);
-                }
-            }
-            self.set_local_roots(Arc::new(local_roots));
-        }
-
-        for (root_id, root_change) in change.roots_changed {
-            self.apply_root_change(root_id, root_change);
-        }
-        for (file_id, text) in change.files_changed {
-            self.set_file_text(file_id, text)
-        }
-        if !change.libraries_added.is_empty() {
-            let mut libraries = Vec::clone(&self.library_roots());
-            for library in change.libraries_added {
-                libraries.push(library.root_id);
-                self.set_source_root(library.root_id, Default::default());
-                self.set_constant_library_symbols(library.root_id, Arc::new(library.symbol_index));
-                self.apply_root_change(library.root_id, library.root_change);
-            }
-            self.set_library_roots(Arc::new(libraries));
-        }
-        if let Some(crate_graph) = change.crate_graph {
-            self.set_crate_graph(Arc::new(crate_graph))
-        }
-    }
-
-    fn apply_root_change(&mut self, root_id: SourceRootId, root_change: RootChange) {
-        let mut source_root = SourceRoot::clone(&self.source_root(root_id));
-        for add_file in root_change.added {
-            self.set_file_text(add_file.file_id, add_file.text);
-            self.set_file_relative_path(add_file.file_id, add_file.path.clone());
-            self.set_file_source_root(add_file.file_id, root_id);
-            source_root.files.insert(add_file.path, add_file.file_id);
-        }
-        for remove_file in root_change.removed {
-            self.set_file_text(remove_file.file_id, Default::default());
-            source_root.files.remove(&remove_file.path);
-        }
-        self.set_source_root(root_id, Arc::new(source_root));
-    }
-
-    pub(crate) fn maybe_collect_garbage(&mut self) {
-        if self.last_gc_check.elapsed() > GC_COOLDOWN {
-            self.last_gc_check = time::Instant::now();
-            let retained_trees = syntax_tree_stats(self).retained;
-            if retained_trees > 100 {
-                log::info!(
-                    "automatic garbadge collection, {} retained trees",
-                    retained_trees
-                );
-                self.collect_garbage();
-            }
-        }
-    }
-
-    pub(crate) fn collect_garbage(&mut self) {
-        self.last_gc = time::Instant::now();
-
-        let sweep = SweepStrategy::default()
-            .discard_values()
-            .sweep_all_revisions();
-
-        self.query(ra_db::ParseQuery).sweep(sweep);
-
-        self.query(hir::db::HirParseQuery).sweep(sweep);
-        self.query(hir::db::FileItemsQuery).sweep(sweep);
-        self.query(hir::db::FileItemQuery).sweep(sweep);
-
-        self.query(hir::db::LowerModuleQuery).sweep(sweep);
-        self.query(hir::db::LowerModuleSourceMapQuery).sweep(sweep);
-        self.query(hir::db::BodySyntaxMappingQuery).sweep(sweep);
-    }
-}
 
 impl db::RootDatabase {
     /// Returns `Vec` for the same reason as `parent_module`
