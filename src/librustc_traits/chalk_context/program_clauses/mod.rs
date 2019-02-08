@@ -1,23 +1,22 @@
+mod builtin;
+mod primitive;
+
 use rustc::traits::{
     WellFormed,
     FromEnv,
     DomainGoal,
-    GoalKind,
     Clause,
-    Clauses,
     ProgramClause,
     ProgramClauseCategory,
     Environment,
 };
 use rustc::ty;
-use rustc::ty::subst::{InternalSubsts, Subst};
-use rustc::hir;
 use rustc::hir::def_id::DefId;
-use rustc_target::spec::abi;
 use super::ChalkInferenceContext;
-use crate::lowering::Lower;
-use crate::generic_types;
 use std::iter;
+
+use self::primitive::*;
+use self::builtin::*;
 
 fn assemble_clauses_from_impls<'tcx>(
     tcx: ty::TyCtxt<'_, '_, 'tcx>,
@@ -47,315 +46,6 @@ fn assemble_clauses_from_assoc_ty_values<'tcx>(
             );
         }
     });
-}
-
-fn assemble_builtin_sized_impls<'tcx>(
-    tcx: ty::TyCtxt<'_, '_, 'tcx>,
-    sized_def_id: DefId,
-    ty: ty::Ty<'tcx>,
-    clauses: &mut Vec<Clause<'tcx>>
-) {
-    let mut push_builtin_impl = |ty: ty::Ty<'tcx>, nested: &[ty::Ty<'tcx>]| {
-        let clause = ProgramClause {
-            goal: ty::TraitPredicate {
-                trait_ref: ty::TraitRef {
-                    def_id: sized_def_id,
-                    substs: tcx.mk_substs_trait(ty, &[]),
-                },
-            }.lower(),
-            hypotheses: tcx.mk_goals(
-                nested.iter()
-                    .cloned()
-                    .map(|nested_ty| ty::TraitRef {
-                        def_id: sized_def_id,
-                        substs: tcx.mk_substs_trait(nested_ty, &[]),
-                    })
-                    .map(|trait_ref| ty::TraitPredicate { trait_ref })
-                    .map(|pred| GoalKind::DomainGoal(pred.lower()))
-                    .map(|goal_kind| tcx.mk_goal(goal_kind))
-            ),
-            category: ProgramClauseCategory::Other,
-        };
-        // Bind innermost bound vars that may exist in `ty` and `nested`.
-        clauses.push(Clause::ForAll(ty::Binder::bind(clause)));
-    };
-
-    match &ty.sty {
-        // Non parametric primitive types.
-        ty::Bool |
-        ty::Char |
-        ty::Int(..) |
-        ty::Uint(..) |
-        ty::Float(..) |
-        ty::Error |
-        ty::Never => push_builtin_impl(ty, &[]),
-
-        // These ones are always `Sized`.
-        &ty::Array(_, length) => {
-            push_builtin_impl(tcx.mk_ty(ty::Array(generic_types::bound(tcx, 0), length)), &[]);
-        }
-        ty::RawPtr(ptr) => {
-            push_builtin_impl(generic_types::raw_ptr(tcx, ptr.mutbl), &[]);
-        }
-        &ty::Ref(_, _, mutbl) => {
-            push_builtin_impl(generic_types::ref_ty(tcx, mutbl), &[]);
-        }
-        ty::FnPtr(fn_ptr) => {
-            let fn_ptr = fn_ptr.skip_binder();
-            let fn_ptr = generic_types::fn_ptr(
-                tcx,
-                fn_ptr.inputs_and_output.len(),
-                fn_ptr.c_variadic,
-                fn_ptr.unsafety,
-                fn_ptr.abi
-            );
-            push_builtin_impl(fn_ptr, &[]);
-        }
-        &ty::FnDef(def_id, ..) => {
-            push_builtin_impl(generic_types::fn_def(tcx, def_id), &[]);
-        }
-        &ty::Closure(def_id, ..) => {
-            push_builtin_impl(generic_types::closure(tcx, def_id), &[]);
-        }
-        &ty::Generator(def_id, ..) => {
-            push_builtin_impl(generic_types::generator(tcx, def_id), &[]);
-        }
-
-        // `Sized` if the last type is `Sized` (because else we will get a WF error anyway).
-        &ty::Tuple(type_list) => {
-            let type_list = generic_types::type_list(tcx, type_list.len());
-            push_builtin_impl(tcx.mk_ty(ty::Tuple(type_list)), &**type_list);
-        }
-
-        // Struct def
-        ty::Adt(adt_def, _) => {
-            let substs = InternalSubsts::bound_vars_for_item(tcx, adt_def.did);
-            let adt = tcx.mk_ty(ty::Adt(adt_def, substs));
-            let sized_constraint = adt_def.sized_constraint(tcx)
-                .iter()
-                .map(|ty| ty.subst(tcx, substs))
-                .collect::<Vec<_>>();
-            push_builtin_impl(adt, &sized_constraint);
-        }
-
-        // Artificially trigger an ambiguity.
-        ty::Infer(..) => {
-            // Everybody can find at least two types to unify against:
-            // general ty vars, int vars and float vars.
-            push_builtin_impl(tcx.types.i32, &[]);
-            push_builtin_impl(tcx.types.u32, &[]);
-            push_builtin_impl(tcx.types.f32, &[]);
-            push_builtin_impl(tcx.types.f64, &[]);
-        }
-
-        ty::Projection(_projection_ty) => {
-            // FIXME: add builtin impls from the associated type values found in
-            // trait impls of `projection_ty.trait_ref(tcx)`.
-        }
-
-        // The `Sized` bound can only come from the environment.
-        ty::Param(..) |
-        ty::Placeholder(..) |
-        ty::UnnormalizedProjection(..) => (),
-
-        // Definitely not `Sized`.
-        ty::Foreign(..) |
-        ty::Str |
-        ty::Slice(..) |
-        ty::Dynamic(..) |
-        ty::Opaque(..) => (),
-
-        ty::Bound(..) |
-        ty::GeneratorWitness(..) => bug!("unexpected type {:?}", ty),
-    }
-}
-
-fn wf_clause_for_raw_ptr<'tcx>(
-    tcx: ty::TyCtxt<'_, '_, 'tcx>,
-    mutbl: hir::Mutability
-) -> Clauses<'tcx> {
-    let ptr_ty = generic_types::raw_ptr(tcx, mutbl);
-
-    let wf_clause = ProgramClause {
-        goal: DomainGoal::WellFormed(WellFormed::Ty(ptr_ty)),
-        hypotheses: ty::List::empty(),
-        category: ProgramClauseCategory::WellFormed,
-    };
-    let wf_clause = Clause::Implies(wf_clause);
-
-    // `forall<T> { WellFormed(*const T). }`
-    tcx.mk_clauses(iter::once(wf_clause))
-}
-
-fn wf_clause_for_fn_ptr<'tcx>(
-    tcx: ty::TyCtxt<'_, '_, 'tcx>,
-    arity_and_output: usize,
-    c_variadic: bool,
-    unsafety: hir::Unsafety,
-    abi: abi::Abi
-) -> Clauses<'tcx> {
-    let fn_ptr = generic_types::fn_ptr(tcx, arity_and_output, c_variadic, unsafety, abi);
-
-    let wf_clause = ProgramClause {
-        goal: DomainGoal::WellFormed(WellFormed::Ty(fn_ptr)),
-        hypotheses: ty::List::empty(),
-        category: ProgramClauseCategory::WellFormed,
-    };
-    let wf_clause = Clause::ForAll(ty::Binder::bind(wf_clause));
-
-    // `forall <T1, ..., Tn+1> { WellFormed(for<> fn(T1, ..., Tn) -> Tn+1). }`
-    // where `n + 1` == `arity_and_output`
-    tcx.mk_clauses(iter::once(wf_clause))
-}
-
-fn wf_clause_for_slice<'tcx>(tcx: ty::TyCtxt<'_, '_, 'tcx>) -> Clauses<'tcx> {
-    let ty = generic_types::bound(tcx, 0);
-    let slice_ty = tcx.mk_slice(ty);
-
-    let sized_trait = match tcx.lang_items().sized_trait() {
-        Some(def_id) => def_id,
-        None => return ty::List::empty(),
-    };
-    let sized_implemented = ty::TraitRef {
-        def_id: sized_trait,
-        substs: tcx.mk_substs_trait(ty, ty::List::empty()),
-    };
-    let sized_implemented: DomainGoal<'_> = ty::TraitPredicate {
-        trait_ref: sized_implemented
-    }.lower();
-
-    let wf_clause = ProgramClause {
-        goal: DomainGoal::WellFormed(WellFormed::Ty(slice_ty)),
-        hypotheses: tcx.mk_goals(
-            iter::once(tcx.mk_goal(GoalKind::DomainGoal(sized_implemented)))
-        ),
-        category: ProgramClauseCategory::WellFormed,
-    };
-    let wf_clause = Clause::ForAll(ty::Binder::bind(wf_clause));
-
-    // `forall<T> { WellFormed([T]) :- Implemented(T: Sized). }`
-    tcx.mk_clauses(iter::once(wf_clause))
-}
-
-fn wf_clause_for_array<'tcx>(
-    tcx: ty::TyCtxt<'_, '_, 'tcx>,
-    length: &'tcx ty::Const<'tcx>
-) -> Clauses<'tcx> {
-    let ty = generic_types::bound(tcx, 0);
-    let array_ty = tcx.mk_ty(ty::Array(ty, length));
-
-    let sized_trait = match tcx.lang_items().sized_trait() {
-        Some(def_id) => def_id,
-        None => return ty::List::empty(),
-    };
-    let sized_implemented = ty::TraitRef {
-        def_id: sized_trait,
-        substs: tcx.mk_substs_trait(ty, ty::List::empty()),
-    };
-    let sized_implemented: DomainGoal<'_> = ty::TraitPredicate {
-        trait_ref: sized_implemented
-    }.lower();
-
-    let wf_clause = ProgramClause {
-        goal: DomainGoal::WellFormed(WellFormed::Ty(array_ty)),
-        hypotheses: tcx.mk_goals(
-            iter::once(tcx.mk_goal(GoalKind::DomainGoal(sized_implemented)))
-        ),
-        category: ProgramClauseCategory::WellFormed,
-    };
-    let wf_clause = Clause::ForAll(ty::Binder::bind(wf_clause));
-
-    // `forall<T> { WellFormed([T; length]) :- Implemented(T: Sized). }`
-    tcx.mk_clauses(iter::once(wf_clause))
-}
-
-fn wf_clause_for_tuple<'tcx>(
-    tcx: ty::TyCtxt<'_, '_, 'tcx>,
-    arity: usize
-) -> Clauses<'tcx> {
-    let type_list = generic_types::type_list(tcx, arity);
-    let tuple_ty = tcx.mk_ty(ty::Tuple(type_list));
-
-    let sized_trait = match tcx.lang_items().sized_trait() {
-        Some(def_id) => def_id,
-        None => return ty::List::empty(),
-    };
-
-    // If `arity == 0` (i.e. the unit type) or `arity == 1`, this list of
-    // hypotheses is actually empty.
-    let sized_implemented = type_list[0 .. std::cmp::max(arity, 1) - 1].iter()
-        .map(|ty| ty::TraitRef {
-            def_id: sized_trait,
-            substs: tcx.mk_substs_trait(*ty, ty::List::empty()),
-        })
-        .map(|trait_ref| ty::TraitPredicate { trait_ref })
-        .map(|predicate| predicate.lower());
-
-    let wf_clause = ProgramClause {
-        goal: DomainGoal::WellFormed(WellFormed::Ty(tuple_ty)),
-        hypotheses: tcx.mk_goals(
-            sized_implemented.map(|domain_goal| {
-                tcx.mk_goal(GoalKind::DomainGoal(domain_goal))
-            })
-        ),
-        category: ProgramClauseCategory::WellFormed,
-    };
-    let wf_clause = Clause::ForAll(ty::Binder::bind(wf_clause));
-
-    // ```
-    // forall<T1, ..., Tn-1, Tn> {
-    //     WellFormed((T1, ..., Tn)) :-
-    //         Implemented(T1: Sized),
-    //         ...
-    //         Implemented(Tn-1: Sized).
-    // }
-    // ```
-    tcx.mk_clauses(iter::once(wf_clause))
-}
-
-fn wf_clause_for_ref<'tcx>(
-    tcx: ty::TyCtxt<'_, '_, 'tcx>,
-    mutbl: hir::Mutability
-) -> Clauses<'tcx> {
-    let region = tcx.mk_region(
-        ty::ReLateBound(ty::INNERMOST, ty::BoundRegion::BrAnon(0))
-    );
-    let ty = generic_types::bound(tcx, 1);
-    let ref_ty = tcx.mk_ref(region, ty::TypeAndMut {
-        ty,
-        mutbl,
-    });
-
-    let outlives: DomainGoal<'_> = ty::OutlivesPredicate(ty, region).lower();
-    let wf_clause = ProgramClause {
-        goal: DomainGoal::WellFormed(WellFormed::Ty(ref_ty)),
-        hypotheses: tcx.mk_goals(
-            iter::once(tcx.mk_goal(outlives.into_goal()))
-        ),
-        category: ProgramClauseCategory::WellFormed,
-    };
-    let wf_clause = Clause::ForAll(ty::Binder::bind(wf_clause));
-
-    // `forall<'a, T> { WellFormed(&'a T) :- Outlives(T: 'a). }`
-    tcx.mk_clauses(iter::once(wf_clause))
-}
-
-fn wf_clause_for_fn_def<'tcx>(
-    tcx: ty::TyCtxt<'_, '_, 'tcx>,
-    def_id: DefId
-) -> Clauses<'tcx> {
-    let fn_def = generic_types::fn_def(tcx, def_id);
-
-    let wf_clause = ProgramClause {
-        goal: DomainGoal::WellFormed(WellFormed::Ty(fn_def)),
-        hypotheses: ty::List::empty(),
-        category: ProgramClauseCategory::WellFormed,
-    };
-    let wf_clause = Clause::ForAll(ty::Binder::bind(wf_clause));
-
-    // `forall <T1, ..., Tn+1> { WellFormed(fn some_fn(T1, ..., Tn) -> Tn+1). }`
-    // where `def_id` maps to the `some_fn` function definition
-    tcx.mk_clauses(iter::once(wf_clause))
 }
 
 impl ChalkInferenceContext<'cx, 'gcx, 'tcx> {
@@ -394,10 +84,8 @@ impl ChalkInferenceContext<'cx, 'gcx, 'tcx> {
                     );
                 }
 
-                // FIXME: we need to add special rules for builtin impls:
+                // FIXME: we need to add special rules for other builtin impls:
                 // * `Copy` / `Clone`
-                // * `Sized`
-                // * `Unsize`
                 // * `Generator`
                 // * `FnOnce` / `FnMut` / `Fn`
                 // * trait objects
