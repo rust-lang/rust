@@ -538,7 +538,7 @@ impl<'a, 'tcx> ItemLikeVisitor<'tcx> for DirtyCleanVisitor<'a, 'tcx> {
 ///
 /// Also make sure that the `label` and `except` fields do not
 /// both exist.
-fn check_config(tcx: TyCtxt, attr: &Attribute) -> bool {
+fn check_config(tcx: TyCtxt<'_, '_, '_>, attr: &Attribute) -> bool {
     debug!("check_config(attr={:?})", attr);
     let config = &tcx.sess.parse_sess.config;
     debug!("check_config: config={:?}", config);
@@ -573,7 +573,7 @@ fn check_config(tcx: TyCtxt, attr: &Attribute) -> bool {
     }
 }
 
-fn expect_associated_value(tcx: TyCtxt, item: &NestedMetaItem) -> ast::Name {
+fn expect_associated_value(tcx: TyCtxt<'_, '_, '_>, item: &NestedMetaItem) -> ast::Name {
     if let Some(value) = item.value_str() {
         value
     } else {
