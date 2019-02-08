@@ -167,6 +167,7 @@ impl<'a> OverflowableItem<'a> {
                 MacroArg::Ty(ref ty) => can_be_overflowed_type(context, ty, len),
                 MacroArg::Pat(..) => false,
                 MacroArg::Item(..) => len == 1,
+                MacroArg::Keyword(..) => false,
             },
             OverflowableItem::NestedMetaItem(nested_meta_item) if len == 1 => {
                 match nested_meta_item.node {
