@@ -2026,7 +2026,7 @@ if (!DOMTokenList.prototype.remove) {
             } else if (action === "hide") {
                 addClass(relatedDoc, "fns-now-collapsed");
                 addClass(docblock, "hidden-by-usual-hider");
-                onEachLazy(toggle.childNodes, adjustToggle(true, dontApplyBlockRule);
+                onEachLazy(toggle.childNodes, adjustToggle(true, dontApplyBlockRule));
                 onEachLazy(relatedDoc.childNodes, implHider(true, dontApplyBlockRule));
             }
         }
