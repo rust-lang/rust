@@ -1,18 +1,18 @@
-use common::CompareMode;
-use common::{expected_output_path, UI_EXTENSIONS, UI_FIXED, UI_STDERR, UI_STDOUT};
-use common::{output_base_dir, output_base_name, output_testname_unique};
-use common::{Codegen, CodegenUnits, DebugInfoBoth, DebugInfoGdb, DebugInfoLldb, Rustdoc};
-use common::{CompileFail, Pretty, RunFail, RunPass, RunPassValgrind};
-use common::{Config, TestPaths};
-use common::{Incremental, MirOpt, RunMake, Ui};
+use crate::common::CompareMode;
+use crate::common::{expected_output_path, UI_EXTENSIONS, UI_FIXED, UI_STDERR, UI_STDOUT};
+use crate::common::{output_base_dir, output_base_name, output_testname_unique};
+use crate::common::{Codegen, CodegenUnits, DebugInfoBoth, DebugInfoGdb, DebugInfoLldb, Rustdoc};
+use crate::common::{CompileFail, Pretty, RunFail, RunPass, RunPassValgrind};
+use crate::common::{Config, TestPaths};
+use crate::common::{Incremental, MirOpt, RunMake, Ui};
 use diff;
-use errors::{self, Error, ErrorKind};
+use crate::errors::{self, Error, ErrorKind};
 use filetime::FileTime;
-use header::TestProps;
-use json;
+use crate::header::TestProps;
+use crate::json;
 use regex::Regex;
 use rustfix::{apply_suggestions, get_suggestions_from_json, Filter};
-use util::{logv, PathBufExt};
+use crate::util::{logv, PathBufExt};
 
 use std::collections::hash_map::DefaultHasher;
 use std::collections::{HashMap, HashSet, VecDeque};
@@ -27,8 +27,8 @@ use std::path::{Path, PathBuf};
 use std::process::{Child, Command, ExitStatus, Output, Stdio};
 use std::str;
 
-use extract_gdb_version;
-use is_android_gdb_target;
+use crate::extract_gdb_version;
+use crate::is_android_gdb_target;
 
 #[cfg(windows)]
 fn disable_error_reporting<F: FnOnce() -> R, R>(f: F) -> R {
@@ -1937,7 +1937,7 @@ impl<'test> TestCx<'test> {
     }
 
     fn make_cmdline(&self, command: &Command, libpath: &str) -> String {
-        use util;
+        use crate::util;
 
         // Linux and mac don't require adjusting the library search path
         if cfg!(unix) {
@@ -3255,7 +3255,7 @@ impl<'test> TestCx<'test> {
     }
 
     fn create_stamp(&self) {
-        let stamp = ::stamp(&self.config, self.testpaths, self.revision);
+        let stamp = crate::stamp(&self.config, self.testpaths, self.revision);
         fs::write(&stamp, compute_stamp_hash(&self.config)).unwrap();
     }
 }
@@ -3311,7 +3311,7 @@ impl<T> fmt::Debug for ExpectedLine<T>
 where
     T: AsRef<str> + fmt::Debug,
 {
-    fn fmt(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
         if let &ExpectedLine::Text(ref t) = self {
             write!(formatter, "{:?}", t)
         } else {
@@ -3334,7 +3334,7 @@ fn nocomment_mir_line(line: &str) -> &str {
 }
 
 fn read2_abbreviated(mut child: Child) -> io::Result<Output> {
-    use read2::read2;
+    use crate::read2::read2;
     use std::mem::replace;
 
     const HEAD_LEN: usize = 160 * 1024;

@@ -1,29 +1,21 @@
 #![crate_name = "compiletest"]
 #![feature(test)]
-#![deny(warnings)]
+#![deny(warnings, rust_2018_idioms)]
 
-extern crate diff;
-extern crate env_logger;
-extern crate filetime;
-extern crate getopts;
 #[cfg(unix)]
 extern crate libc;
 #[macro_use]
 extern crate log;
-extern crate regex;
 #[macro_use]
 extern crate lazy_static;
 #[macro_use]
 extern crate serde_derive;
-extern crate serde_json;
 extern crate test;
-extern crate rustfix;
-extern crate walkdir;
 
-use common::CompareMode;
-use common::{expected_output_path, output_base_dir, output_relative_path, UI_EXTENSIONS};
-use common::{Config, TestPaths};
-use common::{DebugInfoBoth, DebugInfoGdb, DebugInfoLldb, Mode, Pretty};
+use crate::common::CompareMode;
+use crate::common::{expected_output_path, output_base_dir, output_relative_path, UI_EXTENSIONS};
+use crate::common::{Config, TestPaths};
+use crate::common::{DebugInfoBoth, DebugInfoGdb, DebugInfoLldb, Mode, Pretty};
 use filetime::FileTime;
 use getopts::Options;
 use std::env;
@@ -33,8 +25,10 @@ use std::io::{self, ErrorKind};
 use std::path::{Path, PathBuf};
 use std::process::Command;
 use test::ColorConfig;
-use util::logv;
+use crate::util::logv;
 use walkdir::WalkDir;
+use env_logger;
+use getopts;
 
 use self::header::{EarlyProps, Ignore};
 

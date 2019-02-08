@@ -4,10 +4,10 @@ use std::io::prelude::*;
 use std::io::BufReader;
 use std::path::{Path, PathBuf};
 
-use common::{self, CompareMode, Config, Mode};
-use util;
+use crate::common::{self, CompareMode, Config, Mode};
+use crate::util;
 
-use extract_gdb_version;
+use crate::extract_gdb_version;
 
 /// Whether to ignore the test.
 #[derive(Clone, Copy, PartialEq, Debug)]
