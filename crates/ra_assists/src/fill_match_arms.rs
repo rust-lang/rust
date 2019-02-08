@@ -65,6 +65,7 @@ pub(crate) fn fill_match_arms(ctx: AssistCtx<impl HirDatabase>) -> Option<Assist
             buf.push_str(" => (),\n");
         }
         buf.push_str("}");
+        edit.target(match_expr.syntax().range());
         edit.set_cursor(expr.syntax().range().start());
         edit.replace_node_and_indent(match_expr.syntax(), buf);
     })
@@ -72,7 +73,7 @@ pub(crate) fn fill_match_arms(ctx: AssistCtx<impl HirDatabase>) -> Option<Assist
 
 #[cfg(test)]
 mod tests {
-    use crate::helpers::check_assist;
+    use crate::helpers::{check_assist, check_assist_target};
 
     use super::fill_match_arms;
 
@@ -137,6 +138,21 @@ mod tests {
                 }
             }
             "#,
+        );
+    }
+
+    #[test]
+    fn fill_match_arms_target() {
+        check_assist_target(
+            fill_match_arms,
+            r#"
+            enum E { X, Y}
+
+            fn main() {
+                match E::X<|> {}
+            }
+            "#,
+            "match E::X {}",
         );
     }
 }

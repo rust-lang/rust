@@ -17,6 +17,7 @@ pub(crate) fn replace_if_let_with_match(ctx: AssistCtx<impl HirDatabase>) -> Opt
 
     ctx.build("replace with match", |edit| {
         let match_expr = build_match_expr(expr, pat, then_block, else_block);
+        edit.target(if_expr.syntax().range());
         edit.replace_node_and_indent(if_expr.syntax(), match_expr);
         edit.set_cursor(if_expr.syntax().range().start())
     })
@@ -46,7 +47,7 @@ fn format_arm(block: &ast::Block) -> String {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::helpers::check_assist;
+    use crate::helpers::{check_assist, check_assist_target};
 
     #[test]
     fn test_replace_if_let_with_match_unwraps_simple_expressions() {
@@ -72,5 +73,27 @@ impl VariantData {
     }
 }           ",
         )
+    }
+
+    #[test]
+    fn replace_if_let_with_match_target() {
+        check_assist_target(
+            replace_if_let_with_match,
+            "
+impl VariantData {
+    pub fn is_struct(&self) -> bool {
+        if <|>let VariantData::Struct(..) = *self {
+            true
+        } else {
+            false
+        }
+    }
+}           ",
+            "if let VariantData::Struct(..) = *self {
+            true
+        } else {
+            false
+        }",
+        );
     }
 }
