@@ -1,3 +1,5 @@
+#![cfg(not(miri))]
+
 mod sip;
 
 use std::hash::{Hash, Hasher};
