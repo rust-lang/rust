@@ -2,13 +2,11 @@ use hir::{
     self, Problem, source_binder
 };
 use ra_ide_api_light::{self, LocalEdit, Severity};
-use ra_syntax::ast;
 use ra_db::SourceDatabase;
 
 use crate::{
     db, Diagnostic, FileId, FilePosition, FileSystemEdit,
-    Query, SourceChange, SourceFileEdit,
-    symbol_index::FileSymbol,
+    SourceChange, SourceFileEdit,
 };
 
 impl db::RootDatabase {
@@ -74,14 +72,6 @@ impl db::RootDatabase {
             }
         };
         res
-    }
-
-    pub(crate) fn index_resolve(&self, name_ref: &ast::NameRef) -> Vec<FileSymbol> {
-        let name = name_ref.text();
-        let mut query = Query::new(name.to_string());
-        query.exact();
-        query.limit(4);
-        crate::symbol_index::world_symbols(self, query)
     }
 }
 

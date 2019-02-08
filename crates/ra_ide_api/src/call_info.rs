@@ -20,7 +20,7 @@ pub(crate) fn call_info(db: &RootDatabase, position: FilePosition) -> Option<Cal
     let name_ref = calling_node.name_ref()?;
 
     // Resolve the function's NameRef (NOTE: this isn't entirely accurate).
-    let file_symbols = db.index_resolve(name_ref);
+    let file_symbols = crate::symbol_index::index_resolve(db, name_ref);
     let symbol = file_symbols
         .into_iter()
         .find(|it| it.ptr.kind() == FN_DEF)?;
