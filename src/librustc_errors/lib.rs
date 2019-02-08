@@ -68,6 +68,27 @@ pub enum Applicability {
     Unspecified,
 }
 
+#[derive(Debug, PartialEq, Eq, Clone, Copy, Hash, RustcEncodable, RustcDecodable)]
+pub enum SuggestionStyle {
+    /// Hide the suggested code when displaying this suggestion inline.
+    HideCodeInline,
+    /// Always hide the suggested code.
+    HideCodeAlways,
+    /// Always show the suggested code.
+    /// This will *not* show the code if the suggestion is inline *and* the suggested code is
+    /// empty.
+    ShowCode,
+}
+
+impl SuggestionStyle {
+    fn hide_inline(&self) -> bool {
+        match *self {
+            SuggestionStyle::HideCodeAlways | SuggestionStyle::HideCodeInline => true,
+            SuggestionStyle::ShowCode => false,
+        }
+    }
+}
+
 #[derive(Clone, Debug, PartialEq, Hash, RustcEncodable, RustcDecodable)]
 pub struct CodeSuggestion {
     /// Each substitute can have multiple variants due to multiple
@@ -93,7 +114,8 @@ pub struct CodeSuggestion {
     /// ```
     pub substitutions: Vec<Substitution>,
     pub msg: String,
-    pub show_code_when_inline: bool,
+    /// Visual representation of this suggestion.
+    pub style: SuggestionStyle,
     /// Whether or not the suggestion is approximate
     ///
     /// Sometimes we may show suggestions with placeholders,

@@ -1,4 +1,5 @@
 use crate::CodeSuggestion;
+use crate::SuggestionStyle;
 use crate::SubstitutionPart;
 use crate::Substitution;
 use crate::Applicability;
@@ -243,7 +244,7 @@ impl Diagnostic {
                     .collect(),
             }],
             msg: msg.to_owned(),
-            show_code_when_inline: true,
+            style: SuggestionStyle::ShowCode,
             applicability,
         });
         self
@@ -277,7 +278,7 @@ impl Diagnostic {
                 }],
             }],
             msg: msg.to_owned(),
-            show_code_when_inline: true,
+            style: SuggestionStyle::ShowCode,
             applicability,
         });
         self
@@ -295,7 +296,7 @@ impl Diagnostic {
                 }],
             }).collect(),
             msg: msg.to_owned(),
-            show_code_when_inline: true,
+            style: SuggestionStyle::ShowCode,
             applicability,
         });
         self
@@ -316,7 +317,7 @@ impl Diagnostic {
                 }],
             }],
             msg: msg.to_owned(),
-            show_code_when_inline: false,
+            style: SuggestionStyle::HideCodeInline,
             applicability: applicability,
         });
         self
