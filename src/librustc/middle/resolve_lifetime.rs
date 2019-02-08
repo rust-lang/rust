@@ -1248,12 +1248,12 @@ fn extract_labels(ctxt: &mut LifetimeContext<'_, '_>, body: &hir::Body) {
                 } => {
                     // FIXME (#24278): non-hygienic comparison
                     if let Some(def) = lifetimes.get(&hir::ParamName::Plain(label.modern())) {
-                        let node_id = tcx.hir().as_local_node_id(def.id().unwrap()).unwrap();
+                        let hir_id = tcx.hir().as_local_hir_id(def.id().unwrap()).unwrap();
 
                         signal_shadowing_problem(
                             tcx,
                             label.name,
-                            original_lifetime(tcx.hir().span(node_id)),
+                            original_lifetime(tcx.hir().span_by_hir_id(hir_id)),
                             shadower_label(label.span),
                         );
                         return;
@@ -2593,12 +2593,12 @@ impl<'a, 'tcx> LifetimeContext<'a, 'tcx> {
                     ref lifetimes, s, ..
                 } => {
                     if let Some(&def) = lifetimes.get(&param.name.modern()) {
-                        let node_id = self.tcx.hir().as_local_node_id(def.id().unwrap()).unwrap();
+                        let hir_id = self.tcx.hir().as_local_hir_id(def.id().unwrap()).unwrap();
 
                         signal_shadowing_problem(
                             self.tcx,
                             param.name.ident().name,
-                            original_lifetime(self.tcx.hir().span(node_id)),
+                            original_lifetime(self.tcx.hir().span_by_hir_id(hir_id)),
                             shadower_lifetime(&param),
                         );
                         return;

@@ -2939,8 +2939,8 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
 
     /// Get the attributes of a definition.
     pub fn get_attrs(self, did: DefId) -> Attributes<'gcx> {
-        if let Some(id) = self.hir().as_local_node_id(did) {
-            Attributes::Borrowed(self.hir().attrs(id))
+        if let Some(id) = self.hir().as_local_hir_id(did) {
+            Attributes::Borrowed(self.hir().attrs_by_hir_id(id))
         } else {
             Attributes::Owned(self.item_attrs(did))
         }
@@ -2991,8 +2991,8 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
     /// with the name of the crate containing the impl.
     pub fn span_of_impl(self, impl_did: DefId) -> Result<Span, Symbol> {
         if impl_did.is_local() {
-            let node_id = self.hir().as_local_node_id(impl_did).unwrap();
-            Ok(self.hir().span(node_id))
+            let hir_id = self.hir().as_local_hir_id(impl_did).unwrap();
+            Ok(self.hir().span_by_hir_id(hir_id))
         } else {
             Err(self.crate_name(impl_did.krate))
         }
@@ -3110,8 +3110,8 @@ fn adt_sized_constraint<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
 fn associated_item_def_ids<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                                      def_id: DefId)
                                      -> Lrc<Vec<DefId>> {
-    let id = tcx.hir().as_local_node_id(def_id).unwrap();
-    let item = tcx.hir().expect_item(id);
+    let id = tcx.hir().as_local_hir_id(def_id).unwrap();
+    let item = tcx.hir().expect_item_by_hir_id(id);
     let vec: Vec<_> = match item.node {
         hir::ItemKind::Trait(.., ref trait_item_refs) => {
             trait_item_refs.iter()
