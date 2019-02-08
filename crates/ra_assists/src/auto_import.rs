@@ -48,8 +48,8 @@ fn collect_path_segments(path: &ast::Path) -> Option<Vec<&ast::PathSegment>> {
     return Some(v);
 }
 
-fn collect_path_segments_raw<'b, 'a: 'b>(
-    segments: &'b mut Vec<&'a ast::PathSegment>,
+fn collect_path_segments_raw<'a>(
+    segments: &mut Vec<&'a ast::PathSegment>,
     mut path: &'a ast::Path,
 ) -> Option<usize> {
     let oldlen = segments.len();
@@ -105,8 +105,6 @@ fn fmt_segments_raw(segments: &[&ast::PathSegment], buf: &mut String) {
 enum PathSegmentsMatch {
     // Patch matches exactly
     Full,
-    // None of the segments matched. It's a more explicit Partial(0)
-    Empty,
     // When some of the segments matched
     Partial(usize),
     // When all the segments of the right path are matched against the left path,
@@ -129,11 +127,7 @@ fn compare_path_segments(
                 if compare_path_segment(left, right) {
                     matching += 1
                 } else {
-                    return if matching == 0 {
-                        PathSegmentsMatch::Empty
-                    } else {
-                        PathSegmentsMatch::Partial(matching)
-                    };
+                    return PathSegmentsMatch::Partial(matching);
                 }
             }
             EitherOrBoth::Left(_) => {
@@ -149,7 +143,7 @@ fn compare_path_segments(
 
 fn compare_path_segment(a: &ast::PathSegment, b: &ast::PathSegment) -> bool {
     if let (Some(ka), Some(kb)) = (a.kind(), b.kind()) {
-        return match (ka, kb) {
+        match (ka, kb) {
             (ast::PathSegmentKind::Name(nameref_a), ast::PathSegmentKind::Name(nameref_b)) => {
                 nameref_a.text() == nameref_b.text()
             }
@@ -157,7 +151,7 @@ fn compare_path_segment(a: &ast::PathSegment, b: &ast::PathSegment) -> bool {
             (ast::PathSegmentKind::SuperKw, ast::PathSegmentKind::SuperKw) => true,
             (ast::PathSegmentKind::CrateKw, ast::PathSegmentKind::CrateKw) => true,
             (_, _) => false,
-        };
+        }
     } else {
         false
     }
@@ -226,11 +220,11 @@ impl<'a> ImportAction<'a> {
 
 // Find out the best ImportAction to import target path against current_use_tree.
 // If current_use_tree has a nested import the function gets called recursively on every UseTree inside a UseTreeList.
-fn walk_use_tree_for_best_action<'b, 'c, 'a: 'b + 'c>(
-    current_path_segments: &'b mut Vec<&'a ast::PathSegment>, // buffer containing path segments
+fn walk_use_tree_for_best_action<'a>(
+    current_path_segments: &mut Vec<&'a ast::PathSegment>, // buffer containing path segments
     current_parent_use_tree_list: Option<&'a ast::UseTreeList>, // will be Some value if we are in a nested import
     current_use_tree: &'a ast::UseTree, // the use tree we are currently examinating
-    target: &'c [&'a ast::PathSegment], // the path we want to import
+    target: &[&'a ast::PathSegment],    // the path we want to import
 ) -> ImportAction<'a> {
     // We save the number of segments in the buffer so we can restore the correct segments
     // before returning. Recursive call will add segments so we need to delete them.
@@ -295,7 +289,7 @@ fn walk_use_tree_for_best_action<'b, 'c, 'a: 'b + 'c>(
                 ImportAction::Nothing
             }
         }
-        PathSegmentsMatch::Empty => ImportAction::AddNewUse(
+        PathSegmentsMatch::Partial(0) => ImportAction::AddNewUse(
             // e.g: target is std::fmt and we can have
             // use foo::bar
             // We add a brand new use statement
@@ -346,7 +340,7 @@ fn walk_use_tree_for_best_action<'b, 'c, 'a: 'b + 'c>(
             better_action
         }
         PathSegmentsMatch::PartialRight(n) => {
-            // e.g: target std::fmt and we can have
+            // e.g: target is std::fmt and we can have
             // use std::fmt::Debug;
             let segments_to_split = current_path_segments.split_at(prev_len + n).1;
             ImportAction::AddNestedImport(prev_len + n, path, Some(segments_to_split[0]), true)
