@@ -4,7 +4,7 @@
 // This test was added to show the motivation for doing this
 // over `TryFrom` being blanket impl for all `T: From`
 
-#![feature(try_from, never_type)]
+#![feature(never_type)]
 
 use std::convert::{TryInto, Infallible};
 

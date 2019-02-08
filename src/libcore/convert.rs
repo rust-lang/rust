@@ -370,22 +370,26 @@ pub trait From<T>: Sized {
 ///
 /// [`TryFrom`]: trait.TryFrom.html
 /// [`Into`]: trait.Into.html
-#[unstable(feature = "try_from", issue = "33417")]
+#[stable(feature = "try_from", since = "1.34.0")]
 pub trait TryInto<T>: Sized {
     /// The type returned in the event of a conversion error.
+    #[stable(feature = "try_from", since = "1.34.0")]
     type Error;
 
     /// Performs the conversion.
+    #[stable(feature = "try_from", since = "1.34.0")]
     fn try_into(self) -> Result<T, Self::Error>;
 }
 
 /// Attempt to construct `Self` via a conversion.
-#[unstable(feature = "try_from", issue = "33417")]
+#[stable(feature = "try_from", since = "1.34.0")]
 pub trait TryFrom<T>: Sized {
     /// The type returned in the event of a conversion error.
+    #[stable(feature = "try_from", since = "1.34.0")]
     type Error;
 
     /// Performs the conversion.
+    #[stable(feature = "try_from", since = "1.34.0")]
     fn try_from(value: T) -> Result<Self, Self::Error>;
 }
 
@@ -453,7 +457,7 @@ impl<T> From<T> for T {
 
 
 // TryFrom implies TryInto
-#[unstable(feature = "try_from", issue = "33417")]
+#[stable(feature = "try_from", since = "1.34.0")]
 impl<T, U> TryInto<U> for T where U: TryFrom<T>
 {
     type Error = U::Error;
@@ -465,7 +469,7 @@ impl<T, U> TryInto<U> for T where U: TryFrom<T>
 
 // Infallible conversions are semantically equivalent to fallible conversions
 // with an uninhabited error type.
-#[unstable(feature = "try_from", issue = "33417")]
+#[stable(feature = "try_from", since = "1.34.0")]
 impl<T, U> TryFrom<U> for T where U: Into<T> {
     type Error = Infallible;
 
