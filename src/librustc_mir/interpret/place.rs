@@ -487,7 +487,7 @@ where
             Deref => self.deref_operand(base.into())?,
 
             Index(local) => {
-                let layout =  self.layout_of(self.tcx.types.usize)?;
+                let layout = self.layout_of(self.tcx.types.usize)?;
                 let n = self.access_local(self.frame(), local, Some(layout))?;
                 let n = self.read_scalar(n)?;
                 let n = n.to_bits(self.tcx.data_layout.pointer_size)?;
