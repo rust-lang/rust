@@ -212,9 +212,9 @@
 //! no means all of the necessary details. Take a look at the rest of
 //! metadata::locator or metadata::creader for all the juicy details!
 
-use cstore::{MetadataRef, MetadataBlob};
-use creader::Library;
-use schema::{METADATA_HEADER, rustc_version};
+use crate::cstore::{MetadataRef, MetadataBlob};
+use crate::creader::Library;
+use crate::schema::{METADATA_HEADER, rustc_version};
 
 use rustc_data_structures::fx::FxHashSet;
 use rustc_data_structures::svh::Svh;
@@ -226,6 +226,7 @@ use rustc::util::nodemap::FxHashMap;
 
 use errors::DiagnosticBuilder;
 use syntax::symbol::Symbol;
+use syntax::struct_span_err;
 use syntax_pos::Span;
 use rustc_target::spec::{Target, TargetTriple};
 
@@ -240,6 +241,8 @@ use std::time::Instant;
 use flate2::read::DeflateDecoder;
 
 use rustc_data_structures::owning_ref::OwningRef;
+
+use log::{debug, info, warn};
 
 pub struct CrateMismatch {
     path: PathBuf,
@@ -283,7 +286,7 @@ enum CrateFlavor {
 }
 
 impl fmt::Display for CrateFlavor {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.write_str(match *self {
             CrateFlavor::Rlib => "rlib",
             CrateFlavor::Rmeta => "rmeta",
@@ -600,7 +603,7 @@ impl<'a> Context<'a> {
             }
         }
 
-        let mut err: Option<DiagnosticBuilder> = None;
+        let mut err: Option<DiagnosticBuilder<'_>> = None;
         for (lib, kind) in m {
             info!("{} reading metadata from: {}", flavor, lib.display());
             let (hash, metadata) =

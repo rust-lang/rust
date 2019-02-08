@@ -13,23 +13,15 @@
 
 #![recursion_limit="256"]
 
+#![deny(rust_2018_idioms)]
+
 extern crate libc;
-#[macro_use]
-extern crate log;
-extern crate memmap;
-extern crate stable_deref_trait;
-#[macro_use]
-extern crate syntax;
-extern crate syntax_pos;
-extern crate flate2;
+#[allow(unused_extern_crates)]
 extern crate serialize as rustc_serialize; // used by deriving
-extern crate rustc_errors as errors;
-extern crate syntax_ext;
 extern crate proc_macro;
 
 #[macro_use]
 extern crate rustc;
-extern crate rustc_target;
 #[macro_use]
 extern crate rustc_data_structures;
 
