@@ -10,9 +10,6 @@ use rustc::traits::{
 use rustc::ty::{self, TyCtxt, Ty};
 use rustc::hir::def_id::DefId;
 use rustc_data_structures::fx::FxHashSet;
-use super::Lower;
-use crate::generic_types;
-use std::iter;
 
 struct ClauseVisitor<'set, 'a, 'tcx: 'a + 'set> {
     tcx: TyCtxt<'a, 'tcx, 'tcx>,
@@ -36,30 +33,6 @@ impl ClauseVisitor<'set, 'a, 'tcx> {
                         .filter(|c| c.category() == ProgramClauseCategory::ImpliedBound)
                         .cloned()
                 );
-            }
-
-            // forall<'a, T> { `Outlives(T: 'a) :- FromEnv(&'a T)` }
-            ty::Ref(_, _, mutbl) => {
-                let region = self.tcx.mk_region(
-                    ty::ReLateBound(ty::INNERMOST, ty::BoundRegion::BrAnon(0))
-                );
-                let ty = generic_types::bound(self.tcx, 1);
-                let ref_ty = self.tcx.mk_ref(region, ty::TypeAndMut {
-                    ty,
-                    mutbl,
-                });
-
-                let from_env = DomainGoal::FromEnv(FromEnv::Ty(ref_ty));
-
-                let clause = ProgramClause {
-                    goal: ty::OutlivesPredicate(ty, region).lower(),
-                    hypotheses: self.tcx.mk_goals(
-                        iter::once(self.tcx.mk_goal(from_env.into_goal()))
-                    ),
-                    category: ProgramClauseCategory::ImpliedBound,
-                };
-                let clause = Clause::ForAll(ty::Binder::bind(clause));
-                self.round.insert(clause);
             }
 
             ty::Dynamic(..) => {
@@ -99,6 +72,7 @@ impl ClauseVisitor<'set, 'a, 'tcx> {
             ty::RawPtr(..) |
             ty::FnPtr(..) |
             ty::Tuple(..) |
+            ty::Ref(..) |
             ty::Never |
             ty::Infer(..) |
             ty::Placeholder(..) |

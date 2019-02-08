@@ -8,6 +8,7 @@ use rustc::infer::{InferCtxt, LateBoundRegionConversionTime};
 use rustc::infer::canonical::{Canonical, CanonicalVarValues};
 use rustc::traits::{
     DomainGoal,
+    WhereClause,
     Goal,
     GoalKind,
     Clause,
@@ -75,6 +76,23 @@ impl context::ResolventOps<ChalkArenas<'gcx>, ChalkArenas<'tcx>>
                 })
             );
 
+            // If we have a goal of the form `T: 'a` or `'a: 'b`, then just
+            // assume it is true (no subgoals) and register it as a constraint
+            // instead.
+            match goal {
+                DomainGoal::Holds(WhereClause::RegionOutlives(pred)) => {
+                    assert_eq!(ex_clause.subgoals.len(), 0);
+                    ex_clause.constraints.push(ty::OutlivesPredicate(pred.0.into(), pred.1));
+                }
+
+                DomainGoal::Holds(WhereClause::TypeOutlives(pred)) => {
+                    assert_eq!(ex_clause.subgoals.len(), 0);
+                    ex_clause.constraints.push(ty::OutlivesPredicate(pred.0.into(), pred.1));
+                }
+
+                _ => (),
+            };
+
             let canonical_ex_clause = self.canonicalize_ex_clause(&ex_clause);
             Ok(canonical_ex_clause)
         });
@@ -112,10 +130,8 @@ impl context::ResolventOps<ChalkArenas<'gcx>, ChalkArenas<'tcx>>
         substitutor.relate(&answer_table_goal.value, &selected_goal)
             .map_err(|_| NoSolution)?;
 
-        let ex_clause = substitutor.ex_clause;
-
-        // FIXME: restore this later once we get better at handling regions
-        // ex_clause.constraints.extend(answer_subst.constraints);
+        let mut ex_clause = substitutor.ex_clause;
+        ex_clause.constraints.extend(answer_subst.constraints);
 
         debug!("apply_answer_subst: ex_clause = {:?}", ex_clause);
         Ok(ex_clause)

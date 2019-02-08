@@ -326,15 +326,12 @@ fn wf_clause_for_ref<'tcx>(
         mutbl,
     });
 
-    let _outlives: DomainGoal<'_> = ty::OutlivesPredicate(ty, region).lower();
+    let outlives: DomainGoal<'_> = ty::OutlivesPredicate(ty, region).lower();
     let wf_clause = ProgramClause {
         goal: DomainGoal::WellFormed(WellFormed::Ty(ref_ty)),
-        hypotheses: ty::List::empty(),
-
-        // FIXME: restore this later once we get better at handling regions
-        // hypotheses: tcx.mk_goals(
-        //     iter::once(tcx.mk_goal(outlives.into_goal()))
-        // ),
+        hypotheses: tcx.mk_goals(
+            iter::once(tcx.mk_goal(outlives.into_goal()))
+        ),
         category: ProgramClauseCategory::WellFormed,
     };
     let wf_clause = Clause::ForAll(ty::Binder::bind(wf_clause));
@@ -432,22 +429,14 @@ impl ChalkInferenceContext<'cx, 'gcx, 'tcx> {
                 clauses
             }
 
-            DomainGoal::Holds(RegionOutlives(..)) => {
-                // These come from:
-                // * implied bounds from trait definitions (rule `Implied-Bound-From-Trait`)
-                // * implied bounds from type definitions (rule `Implied-Bound-From-Type`)
-
-                // All of these rules are computed in the environment.
-                vec![]
-            }
-
-            DomainGoal::Holds(TypeOutlives(..)) => {
-                // These come from:
-                // * implied bounds from trait definitions (rule `Implied-Bound-From-Trait`)
-                // * implied bounds from type definitions (rule `Implied-Bound-From-Type`)
-
-                // All of these rules are computed in the environment.
-                vec![]
+            // For outlive requirements, just assume they hold. `ResolventOps::resolvent_clause`
+            // will register them as actual region constraints later.
+            DomainGoal::Holds(RegionOutlives(..)) | DomainGoal::Holds(TypeOutlives(..)) => {
+                vec![Clause::Implies(ProgramClause {
+                    goal,
+                    hypotheses: ty::List::empty(),
+                    category: ProgramClauseCategory::Other,
+                })]
             }
 
             DomainGoal::WellFormed(WellFormed::Trait(trait_predicate)) => {
@@ -485,7 +474,7 @@ impl ChalkInferenceContext<'cx, 'gcx, 'tcx> {
                     ty::Error |
                     ty::Never => {
                         let wf_clause = ProgramClause {
-                            goal: DomainGoal::WellFormed(WellFormed::Ty(ty)),
+                            goal,
                             hypotheses: ty::List::empty(),
                             category: ProgramClauseCategory::WellFormed,
                         };
