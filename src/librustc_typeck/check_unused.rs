@@ -1,4 +1,4 @@
-use lint;
+use crate::lint;
 use rustc::ty::TyCtxt;
 
 use errors::Applicability;

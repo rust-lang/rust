@@ -1,5 +1,4 @@
-use rustc::hir;
-use hir::Node;
+use rustc::hir::{self, Node};
 use rustc::hir::def_id::DefId;
 use rustc::hir::itemlikevisit::ItemLikeVisitor;
 use rustc::ty::subst::{Kind, Subst, UnpackedKind};

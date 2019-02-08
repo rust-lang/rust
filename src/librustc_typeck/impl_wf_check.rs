@@ -8,7 +8,7 @@
 //! specialization errors. These things can (and probably should) be
 //! fixed, but for the moment it's easier to do these checks early.
 
-use constrained_type_params as ctp;
+use crate::constrained_type_params as ctp;
 use rustc::hir;
 use rustc::hir::itemlikevisit::ItemLikeVisitor;
 use rustc::hir::def_id::DefId;
@@ -162,7 +162,7 @@ fn enforce_impl_params_are_constrained<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     // used elsewhere are not projected back out.
 }
 
-fn report_unused_parameter(tcx: TyCtxt,
+fn report_unused_parameter(tcx: TyCtxt<'_, '_, '_>,
                            span: Span,
                            kind: &str,
                            name: &str)

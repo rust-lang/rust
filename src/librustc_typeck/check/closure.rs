@@ -2,8 +2,8 @@
 
 use super::{check_fn, Expectation, FnCtxt, GeneratorTypes};
 
-use astconv::AstConv;
-use middle::region;
+use crate::astconv::AstConv;
+use crate::middle::region;
 use rustc::hir::def_id::DefId;
 use rustc::infer::{InferOk, InferResult};
 use rustc::infer::LateBoundRegionConversionTime;

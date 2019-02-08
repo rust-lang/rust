@@ -3,13 +3,13 @@
 //! instance of `AstConv`.
 
 use errors::{Applicability, DiagnosticId};
-use hir::{self, GenericArg, GenericArgs};
-use hir::def::Def;
-use hir::def_id::DefId;
-use hir::HirVec;
-use lint;
-use middle::resolve_lifetime as rl;
-use namespace::Namespace;
+use crate::hir::{self, GenericArg, GenericArgs};
+use crate::hir::def::Def;
+use crate::hir::def_id::DefId;
+use crate::hir::HirVec;
+use crate::lint;
+use crate::middle::resolve_lifetime as rl;
+use crate::namespace::Namespace;
 use rustc::lint::builtin::AMBIGUOUS_ASSOCIATED_ITEMS;
 use rustc::traits;
 use rustc::ty::{self, Ty, TyCtxt, ToPredicate, TypeFoldable};
@@ -18,15 +18,15 @@ use rustc::ty::subst::{Kind, Subst, Substs};
 use rustc::ty::wf::object_region_bounds;
 use rustc_data_structures::sync::Lrc;
 use rustc_target::spec::abi;
-use require_c_abi_if_variadic;
+use crate::require_c_abi_if_variadic;
 use smallvec::SmallVec;
 use syntax::ast;
 use syntax::feature_gate::{GateIssue, emit_feature_err};
 use syntax::ptr::P;
 use syntax::util::lev_distance::find_best_match_for_name;
 use syntax_pos::{DUMMY_SP, Span, MultiSpan};
-use util::common::ErrorReported;
-use util::nodemap::FxHashMap;
+use crate::util::common::ErrorReported;
+use crate::util::nodemap::FxHashMap;
 
 use std::collections::BTreeSet;
 use std::iter;

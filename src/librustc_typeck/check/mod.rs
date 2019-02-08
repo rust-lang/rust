@@ -83,15 +83,15 @@ mod generator_interior;
 pub mod intrinsic;
 mod op;
 
-use astconv::{AstConv, PathSeg};
+use crate::astconv::{AstConv, PathSeg};
 use errors::{Applicability, DiagnosticBuilder, DiagnosticId};
 use rustc::hir::{self, ExprKind, GenericArg, ItemKind, Node, PatKind, QPath};
 use rustc::hir::def::{CtorKind, Def};
 use rustc::hir::def_id::{CrateNum, DefId, LOCAL_CRATE};
 use rustc::hir::intravisit::{self, Visitor, NestedVisitorMap};
 use rustc::hir::itemlikevisit::ItemLikeVisitor;
-use middle::lang_items;
-use namespace::Namespace;
+use crate::middle::lang_items;
+use crate::namespace::Namespace;
 use rustc::infer::{self, InferCtxt, InferOk, InferResult, RegionVariableOrigin};
 use rustc::infer::canonical::{Canonical, OriginalQueryValues, QueryResponse};
 use rustc_data_structures::indexed_vec::Idx;
@@ -130,14 +130,14 @@ use std::mem::replace;
 use std::ops::{self, Deref};
 use std::slice;
 
-use require_c_abi_if_variadic;
-use session::{CompileIncomplete, Session};
-use session::config::EntryFnType;
-use TypeAndSubsts;
-use lint;
-use util::captures::Captures;
-use util::common::{ErrorReported, indenter};
-use util::nodemap::{DefIdMap, DefIdSet, FxHashMap, FxHashSet, NodeMap};
+use crate::require_c_abi_if_variadic;
+use crate::session::{CompileIncomplete, Session};
+use crate::session::config::EntryFnType;
+use crate::TypeAndSubsts;
+use crate::lint;
+use crate::util::captures::Captures;
+use crate::util::common::{ErrorReported, indenter};
+use crate::util::nodemap::{DefIdMap, DefIdSet, FxHashMap, FxHashSet, NodeMap};
 
 pub use self::Expectation::*;
 use self::autoderef::Autoderef;
@@ -3044,7 +3044,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         // arguments which we skipped above.
         if variadic {
             fn variadic_error<'tcx>(s: &Session, span: Span, t: Ty<'tcx>, cast_ty: &str) {
-                use structured_errors::{VariadicError, StructuredDiagnostic};
+                use crate::structured_errors::{VariadicError, StructuredDiagnostic};
                 VariadicError::new(s, span, t, cast_ty).diagnostic().emit();
             }
 
@@ -3685,8 +3685,8 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         display
     }
 
-    fn no_such_field_err<T: Display>(&self, span: Span, field: T, expr_t: &ty::TyS)
-        -> DiagnosticBuilder {
+    fn no_such_field_err<T: Display>(&self, span: Span, field: T, expr_t: &ty::TyS<'_>)
+        -> DiagnosticBuilder<'_> {
         type_error_struct!(self.tcx().sess, span, expr_t, E0609,
                            "no field `{}` on type `{}`",
                            field, expr_t)
@@ -5257,7 +5257,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         &self,
         blk: &'gcx hir::Block,
         expected_ty: Ty<'tcx>,
-        err: &mut DiagnosticBuilder,
+        err: &mut DiagnosticBuilder<'_>,
     ) {
         if let Some(span_semi) = self.could_remove_semicolon(blk, expected_ty) {
             err.span_suggestion(
@@ -5725,7 +5725,7 @@ fn fatally_break_rust(sess: &Session) {
     );
     handler.note_without_error(&format!("rustc {} running on {}",
         option_env!("CFG_VERSION").unwrap_or("unknown_version"),
-        ::session::config::host_triple(),
+        crate::session::config::host_triple(),
     ));
 }
 

@@ -1,7 +1,7 @@
-use check::{Inherited, FnCtxt};
-use constrained_type_params::{identify_constrained_type_params, Parameter};
+use crate::check::{Inherited, FnCtxt};
+use crate::constrained_type_params::{identify_constrained_type_params, Parameter};
 
-use hir::def_id::DefId;
+use crate::hir::def_id::DefId;
 use rustc::traits::{self, ObligationCauseCode};
 use rustc::ty::{self, Lift, Ty, TyCtxt, TyKind, GenericParamDefKind, TypeFoldable, ToPredicate};
 use rustc::ty::subst::{Subst, Substs};
