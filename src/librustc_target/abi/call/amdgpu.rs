@@ -1,5 +1,5 @@
-use abi::call::{ArgType, FnType, };
-use abi::{HasDataLayout, LayoutOf, TyLayout, TyLayoutMethods};
+use crate::abi::call::{ArgType, FnType, };
+use crate::abi::{HasDataLayout, LayoutOf, TyLayout, TyLayoutMethods};
 
 fn classify_ret_ty<'a, Ty, C>(_cx: &C, ret: &mut ArgType<'a, Ty>)
   where Ty: TyLayoutMethods<'a, C> + Copy,

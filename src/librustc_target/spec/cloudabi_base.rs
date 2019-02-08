@@ -1,4 +1,4 @@
-use spec::{LinkArgs, LinkerFlavor, TargetOptions, RelroLevel};
+use crate::spec::{LinkArgs, LinkerFlavor, TargetOptions, RelroLevel};
 
 pub fn opts() -> TargetOptions {
     let mut args = LinkArgs::new();

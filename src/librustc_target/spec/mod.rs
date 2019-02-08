@@ -40,7 +40,7 @@ use std::default::Default;
 use std::{fmt, io};
 use std::path::{Path, PathBuf};
 use std::str::FromStr;
-use spec::abi::{Abi, lookup as lookup_abi};
+use crate::spec::abi::{Abi, lookup as lookup_abi};
 
 pub mod abi;
 mod android_base;
@@ -1408,7 +1408,7 @@ impl TargetTriple {
 }
 
 impl fmt::Display for TargetTriple {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "{}", self.debug_triple())
     }
 }

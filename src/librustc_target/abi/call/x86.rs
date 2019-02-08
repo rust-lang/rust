@@ -1,6 +1,6 @@
-use abi::call::{ArgAttribute, FnType, PassMode, Reg, RegKind};
-use abi::{self, HasDataLayout, LayoutOf, TyLayout, TyLayoutMethods};
-use spec::HasTargetSpec;
+use crate::abi::call::{ArgAttribute, FnType, PassMode, Reg, RegKind};
+use crate::abi::{self, HasDataLayout, LayoutOf, TyLayout, TyLayoutMethods};
+use crate::spec::HasTargetSpec;
 
 #[derive(PartialEq)]
 pub enum Flavor {

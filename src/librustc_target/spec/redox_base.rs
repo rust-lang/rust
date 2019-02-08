@@ -1,4 +1,4 @@
-use spec::{LinkArgs, LinkerFlavor, TargetOptions};
+use crate::spec::{LinkArgs, LinkerFlavor, TargetOptions};
 use std::default::Default;
 
 pub fn opts() -> TargetOptions {

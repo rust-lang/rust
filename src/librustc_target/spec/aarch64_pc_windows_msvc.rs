@@ -1,4 +1,4 @@
-use spec::{LinkerFlavor, Target, TargetResult, PanicStrategy};
+use crate::spec::{LinkerFlavor, Target, TargetResult, PanicStrategy};
 
 pub fn target() -> TargetResult {
     let mut base = super::windows_msvc_base::opts();

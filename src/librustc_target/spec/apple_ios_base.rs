@@ -1,8 +1,8 @@
 use std::io;
 use std::process::Command;
-use spec::{LinkArgs, LinkerFlavor, TargetOptions};
+use crate::spec::{LinkArgs, LinkerFlavor, TargetOptions};
 
-use self::Arch::*;
+use Arch::*;
 
 #[allow(non_camel_case_types)]
 #[derive(Copy, Clone)]

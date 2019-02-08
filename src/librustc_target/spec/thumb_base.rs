@@ -28,7 +28,7 @@
 // build scripts / gcc flags.
 
 use std::default::Default;
-use spec::{PanicStrategy, TargetOptions};
+use crate::spec::{PanicStrategy, TargetOptions};
 
 pub fn opts() -> TargetOptions {
     // See rust-lang/rfcs#1645 for a discussion about these defaults

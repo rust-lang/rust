@@ -2,16 +2,16 @@
 // Alignment of 128 bit types is not currently handled, this will
 // need to be fixed when PowerPC vector support is added.
 
-use abi::call::{FnType, ArgType, Reg, RegKind, Uniform};
-use abi::{Endian, HasDataLayout, LayoutOf, TyLayout, TyLayoutMethods};
-use spec::HasTargetSpec;
+use crate::abi::call::{FnType, ArgType, Reg, RegKind, Uniform};
+use crate::abi::{Endian, HasDataLayout, LayoutOf, TyLayout, TyLayoutMethods};
+use crate::spec::HasTargetSpec;
 
 #[derive(Debug, Clone, Copy, PartialEq)]
 enum ABI {
     ELFv1, // original ABI used for powerpc64 (big-endian)
     ELFv2, // newer ABI used for powerpc64le and musl (both endians)
 }
-use self::ABI::*;
+use ABI::*;
 
 fn is_homogeneous_aggregate<'a, Ty, C>(cx: &C, arg: &mut ArgType<'a, Ty>, abi: ABI)
                                        -> Option<Uniform>

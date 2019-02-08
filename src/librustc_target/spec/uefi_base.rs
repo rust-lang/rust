@@ -9,7 +9,7 @@
 // the timer-interrupt. Device-drivers are required to use polling-based models. Furthermore, all
 // code runs in the same environment, no process separation is supported.
 
-use spec::{LinkArgs, LinkerFlavor, LldFlavor, PanicStrategy, TargetOptions};
+use crate::spec::{LinkArgs, LinkerFlavor, LldFlavor, PanicStrategy, TargetOptions};
 use std::default::Default;
 
 pub fn opts() -> TargetOptions {
