@@ -14,10 +14,10 @@
 #![recursion_limit = "128"]
 
 mod db;
-mod imp;
 pub mod mock_analysis;
 mod symbol_index;
 mod navigation_target;
+mod change;
 
 mod status;
 mod completion;
@@ -28,14 +28,15 @@ mod hover;
 mod call_info;
 mod syntax_highlighting;
 mod parent_module;
-mod rename;
+mod references;
 mod impls;
 mod assists;
+mod diagnostics;
 
 #[cfg(test)]
 mod marks;
 
-use std::{fmt, sync::Arc};
+use std::sync::Arc;
 
 use ra_syntax::{SourceFile, TreeArc, TextRange, TextUnit};
 use ra_text_edit::TextEdit;
@@ -43,22 +44,21 @@ use ra_db::{
     SourceDatabase, CheckCanceled,
     salsa::{self, ParallelDatabase},
 };
-use rayon::prelude::*;
 use relative_path::RelativePathBuf;
-use rustc_hash::FxHashMap;
 
 use crate::{
-    symbol_index::{FileSymbol, SymbolIndex},
+    symbol_index::FileSymbol,
     db::LineIndexDatabase,
 };
 
 pub use crate::{
+    change::{AnalysisChange, LibraryData},
     completion::{CompletionItem, CompletionItemKind, InsertTextFormat},
     runnables::{Runnable, RunnableKind},
     navigation_target::NavigationTarget,
 };
 pub use ra_ide_api_light::{
-    Fold, FoldKind, HighlightedRange, Severity, StructureNode,
+    Fold, FoldKind, HighlightedRange, Severity, StructureNode, LocalEdit,
     LineIndex, LineCol, translate_offset_with_edit,
 };
 pub use ra_db::{
@@ -73,115 +73,6 @@ pub use hir::Documentation;
 static ALLOC: jemallocator::Jemalloc = jemallocator::Jemalloc;
 
 pub type Cancelable<T> = Result<T, Canceled>;
-
-#[derive(Default)]
-pub struct AnalysisChange {
-    new_roots: Vec<(SourceRootId, bool)>,
-    roots_changed: FxHashMap<SourceRootId, RootChange>,
-    files_changed: Vec<(FileId, Arc<String>)>,
-    libraries_added: Vec<LibraryData>,
-    crate_graph: Option<CrateGraph>,
-}
-
-#[derive(Default)]
-struct RootChange {
-    added: Vec<AddFile>,
-    removed: Vec<RemoveFile>,
-}
-
-#[derive(Debug)]
-struct AddFile {
-    file_id: FileId,
-    path: RelativePathBuf,
-    text: Arc<String>,
-}
-
-#[derive(Debug)]
-struct RemoveFile {
-    file_id: FileId,
-    path: RelativePathBuf,
-}
-
-impl fmt::Debug for AnalysisChange {
-    fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
-        let mut d = fmt.debug_struct("AnalysisChange");
-        if !self.new_roots.is_empty() {
-            d.field("new_roots", &self.new_roots);
-        }
-        if !self.roots_changed.is_empty() {
-            d.field("roots_changed", &self.roots_changed);
-        }
-        if !self.files_changed.is_empty() {
-            d.field("files_changed", &self.files_changed.len());
-        }
-        if !self.libraries_added.is_empty() {
-            d.field("libraries_added", &self.libraries_added.len());
-        }
-        if self.crate_graph.is_none() {
-            d.field("crate_graph", &self.crate_graph);
-        }
-        d.finish()
-    }
-}
-
-impl fmt::Debug for RootChange {
-    fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
-        fmt.debug_struct("AnalysisChange")
-            .field("added", &self.added.len())
-            .field("removed", &self.removed.len())
-            .finish()
-    }
-}
-
-impl AnalysisChange {
-    pub fn new() -> AnalysisChange {
-        AnalysisChange::default()
-    }
-
-    pub fn add_root(&mut self, root_id: SourceRootId, is_local: bool) {
-        self.new_roots.push((root_id, is_local));
-    }
-
-    pub fn add_file(
-        &mut self,
-        root_id: SourceRootId,
-        file_id: FileId,
-        path: RelativePathBuf,
-        text: Arc<String>,
-    ) {
-        let file = AddFile {
-            file_id,
-            path,
-            text,
-        };
-        self.roots_changed
-            .entry(root_id)
-            .or_default()
-            .added
-            .push(file);
-    }
-
-    pub fn change_file(&mut self, file_id: FileId, new_text: Arc<String>) {
-        self.files_changed.push((file_id, new_text))
-    }
-
-    pub fn remove_file(&mut self, root_id: SourceRootId, file_id: FileId, path: RelativePathBuf) {
-        let file = RemoveFile { file_id, path };
-        self.roots_changed
-            .entry(root_id)
-            .or_default()
-            .removed
-            .push(file);
-    }
-
-    pub fn add_library(&mut self, data: LibraryData) {
-        self.libraries_added.push(data)
-    }
-
-    pub fn set_crate_graph(&mut self, graph: CrateGraph) {
-        self.crate_graph = Some(graph);
-    }
-}
 
 #[derive(Debug)]
 pub struct SourceChange {
@@ -431,7 +322,7 @@ impl Analysis {
 
     /// Finds all usages of the reference at point.
     pub fn find_all_refs(&self, position: FilePosition) -> Cancelable<Vec<(FileId, TextRange)>> {
-        self.with_db(|db| db.find_all_refs(position))
+        self.with_db(|db| references::find_all_refs(db, position))
     }
 
     /// Returns a short text descrbing element at position.
@@ -451,7 +342,7 @@ impl Analysis {
 
     /// Returns crates this file belongs too.
     pub fn crate_for(&self, file_id: FileId) -> Cancelable<Vec<CrateId>> {
-        self.with_db(|db| db.crate_for(file_id))
+        self.with_db(|db| parent_module::crate_for(db, file_id))
     }
 
     /// Returns the root file of the given crate.
@@ -482,7 +373,7 @@ impl Analysis {
 
     /// Computes the set of diagnostics for the given file.
     pub fn diagnostics(&self, file_id: FileId) -> Cancelable<Vec<Diagnostic>> {
-        self.with_db(|db| db.diagnostics(file_id))
+        self.with_db(|db| diagnostics::diagnostics(db, file_id))
     }
 
     /// Computes the type of the expression at the given position.
@@ -497,7 +388,7 @@ impl Analysis {
         position: FilePosition,
         new_name: &str,
     ) -> Cancelable<Option<SourceChange>> {
-        self.with_db(|db| rename::rename(db, position, new_name))
+        self.with_db(|db| references::rename(db, position, new_name))
     }
 
     fn with_db<F: FnOnce(&db::RootDatabase) -> T + std::panic::UnwindSafe, T>(
@@ -508,44 +399,19 @@ impl Analysis {
     }
 }
 
-pub struct LibraryData {
-    root_id: SourceRootId,
-    root_change: RootChange,
-    symbol_index: SymbolIndex,
-}
-
-impl fmt::Debug for LibraryData {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        f.debug_struct("LibraryData")
-            .field("root_id", &self.root_id)
-            .field("root_change", &self.root_change)
-            .field("n_symbols", &self.symbol_index.len())
-            .finish()
-    }
-}
-
-impl LibraryData {
-    pub fn prepare(
-        root_id: SourceRootId,
-        files: Vec<(FileId, RelativePathBuf, Arc<String>)>,
-    ) -> LibraryData {
-        let symbol_index = SymbolIndex::for_files(files.par_iter().map(|(file_id, _, text)| {
-            let file = SourceFile::parse(text);
-            (*file_id, file)
-        }));
-        let mut root_change = RootChange::default();
-        root_change.added = files
-            .into_iter()
-            .map(|(file_id, path, text)| AddFile {
-                file_id,
-                path,
-                text,
-            })
-            .collect();
-        LibraryData {
-            root_id,
-            root_change,
-            symbol_index,
+impl SourceChange {
+    pub(crate) fn from_local_edit(file_id: FileId, edit: LocalEdit) -> SourceChange {
+        let file_edit = SourceFileEdit {
+            file_id,
+            edit: edit.edit,
+        };
+        SourceChange {
+            label: edit.label,
+            source_file_edits: vec![file_edit],
+            file_system_edits: vec![],
+            cursor_position: edit
+                .cursor_position
+                .map(|offset| FilePosition { offset, file_id }),
         }
     }
 }

@@ -118,8 +118,7 @@ pub(crate) fn reference_definition(
         }
     }
     // If that fails try the index based approach.
-    let navs = db
-        .index_resolve(name_ref)
+    let navs = crate::symbol_index::index_resolve(db, name_ref)
         .into_iter()
         .map(NavigationTarget::from_symbol)
         .collect();

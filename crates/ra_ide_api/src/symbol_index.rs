@@ -109,6 +109,14 @@ pub(crate) fn world_symbols(db: &RootDatabase, query: Query) -> Vec<FileSymbol> 
     query.search(&buf)
 }
 
+pub(crate) fn index_resolve(db: &RootDatabase, name_ref: &ast::NameRef) -> Vec<FileSymbol> {
+    let name = name_ref.text();
+    let mut query = Query::new(name.to_string());
+    query.exact();
+    query.limit(4);
+    crate::symbol_index::world_symbols(db, query)
+}
+
 #[derive(Default, Debug)]
 pub(crate) struct SymbolIndex {
     symbols: Vec<FileSymbol>,

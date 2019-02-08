@@ -1,13 +1,10 @@
-use relative_path::RelativePathBuf;
-
-use hir::{
-    self, ModuleSource, source_binder::module_from_declaration,
-};
+use relative_path::{RelativePath, RelativePathBuf};
+use hir::{ModuleSource, source_binder};
+use ra_db::{FileId, SourceDatabase};
 use ra_syntax::{
+    AstNode, SyntaxNode, TextRange, SourceFile,
+    ast::{self, NameOwner},
     algo::find_node_at_offset,
-    ast,
-    AstNode,
-    SyntaxNode
 };
 
 use crate::{
@@ -17,8 +14,51 @@ use crate::{
     SourceChange,
     SourceFileEdit,
 };
-use ra_db::SourceDatabase;
-use relative_path::RelativePath;
+
+pub(crate) fn find_all_refs(db: &RootDatabase, position: FilePosition) -> Vec<(FileId, TextRange)> {
+    let file = db.parse(position.file_id);
+    // Find the binding associated with the offset
+    let (binding, descr) = match find_binding(db, &file, position) {
+        None => return Vec::new(),
+        Some(it) => it,
+    };
+
+    let mut ret = binding
+        .name()
+        .into_iter()
+        .map(|name| (position.file_id, name.syntax().range()))
+        .collect::<Vec<_>>();
+    ret.extend(
+        descr
+            .scopes(db)
+            .find_all_refs(binding)
+            .into_iter()
+            .map(|ref_desc| (position.file_id, ref_desc.range)),
+    );
+
+    return ret;
+
+    fn find_binding<'a>(
+        db: &RootDatabase,
+        source_file: &'a SourceFile,
+        position: FilePosition,
+    ) -> Option<(&'a ast::BindPat, hir::Function)> {
+        let syntax = source_file.syntax();
+        if let Some(binding) = find_node_at_offset::<ast::BindPat>(syntax, position.offset) {
+            let descr =
+                source_binder::function_from_child_node(db, position.file_id, binding.syntax())?;
+            return Some((binding, descr));
+        };
+        let name_ref = find_node_at_offset::<ast::NameRef>(syntax, position.offset)?;
+        let descr =
+            source_binder::function_from_child_node(db, position.file_id, name_ref.syntax())?;
+        let scope = descr.scopes(db);
+        let resolved = scope.resolve_local_name(name_ref)?;
+        let resolved = resolved.ptr().to_node(source_file);
+        let binding = find_node_at_offset::<ast::BindPat>(syntax, resolved.range().end())?;
+        Some((binding, descr))
+    }
+}
 
 pub(crate) fn rename(
     db: &RootDatabase,
@@ -57,7 +97,8 @@ fn rename_mod(
 ) -> Option<SourceChange> {
     let mut source_file_edits = Vec::new();
     let mut file_system_edits = Vec::new();
-    if let Some(module) = module_from_declaration(db, position.file_id, &ast_module) {
+    if let Some(module) = source_binder::module_from_declaration(db, position.file_id, &ast_module)
+    {
         let (file_id, module_source) = module.definition_source(db);
         match module_source {
             ModuleSource::SourceFile(..) => {
@@ -108,8 +149,7 @@ fn rename_reference(
     position: FilePosition,
     new_name: &str,
 ) -> Option<SourceChange> {
-    let edit = db
-        .find_all_refs(position)
+    let edit = find_all_refs(db, position)
         .iter()
         .map(|(file_id, text_range)| SourceFileEdit {
             file_id: *file_id,

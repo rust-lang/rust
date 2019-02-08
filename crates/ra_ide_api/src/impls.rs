@@ -1,4 +1,4 @@
-use ra_db::{SourceDatabase};
+use ra_db::SourceDatabase;
 use ra_syntax::{
     AstNode, ast,
     algo::find_node_at_offset,
