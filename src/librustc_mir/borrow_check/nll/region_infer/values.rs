@@ -166,7 +166,7 @@ impl<N: Idx> LivenessValues<N> {
         self.points.rows()
     }
 
-    /// Adds the given element to the value for the given region. Returns true if
+    /// Adds the given element to the value for the given region. Returns whether
     /// the element is newly added (i.e., was not already present).
     crate fn add_element(&mut self, row: N, location: Location) -> bool {
         debug!("LivenessValues::add(r={:?}, location={:?})", row, location);
@@ -175,7 +175,7 @@ impl<N: Idx> LivenessValues<N> {
     }
 
     /// Adds all the elements in the given bit array into the given
-    /// region. Returns true if any of them are newly added.
+    /// region. Returns whether any of them are newly added.
     crate fn add_elements(&mut self, row: N, locations: &HybridBitSet<PointIndex>) -> bool {
         debug!(
             "LivenessValues::add_elements(row={:?}, locations={:?})",
@@ -189,7 +189,7 @@ impl<N: Idx> LivenessValues<N> {
         self.points.insert_all_into_row(row);
     }
 
-    /// True if the region `r` contains the given element.
+    /// Returns `true` if the region `r` contains the given element.
     crate fn contains(&self, row: N, location: Location) -> bool {
         let index = self.elements.point_from_location(location);
         self.points.contains(row, index)
@@ -291,7 +291,7 @@ impl<N: Idx> RegionValues<N> {
         }
     }
 
-    /// Adds the given element to the value for the given region. Returns true if
+    /// Adds the given element to the value for the given region. Returns whether
     /// the element is newly added (i.e., was not already present).
     crate fn add_element(&mut self, r: N, elem: impl ToElementIndex) -> bool {
         debug!("add(r={:?}, elem={:?})", r, elem);
@@ -303,7 +303,7 @@ impl<N: Idx> RegionValues<N> {
         self.points.insert_all_into_row(r);
     }
 
-    /// Add all elements in `r_from` to `r_to` (because e.g., `r_to:
+    /// Adds all elements in `r_from` to `r_to` (because e.g., `r_to:
     /// r_from`).
     crate fn add_region(&mut self, r_to: N, r_from: N) -> bool {
         self.points.union_rows(r_from, r_to)
@@ -311,7 +311,7 @@ impl<N: Idx> RegionValues<N> {
             | self.placeholders.union_rows(r_from, r_to)
     }
 
-    /// True if the region `r` contains the given element.
+    /// Returns `true` if the region `r` contains the given element.
     crate fn contains(&self, r: N, elem: impl ToElementIndex) -> bool {
         elem.contained_in_row(self, r)
     }
@@ -325,7 +325,7 @@ impl<N: Idx> RegionValues<N> {
         }
     }
 
-    /// True if `sup_region` contains all the CFG points that
+    /// Returns `true` if `sup_region` contains all the CFG points that
     /// `sub_region` contains. Ignores universal regions.
     crate fn contains_points(&self, sup_region: N, sub_region: N) -> bool {
         if let Some(sub_row) = self.points.row(sub_region) {

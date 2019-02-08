@@ -1,4 +1,4 @@
-//! Representation of a `#[doc(cfg(...))]` attribute.
+//! The representation of a `#[doc(cfg(...))]` attribute.
 
 // FIXME: Once the portability lint RFC is implemented (see tracking issue #41619),
 // switch to use those structures instead.
@@ -24,7 +24,7 @@ pub enum Cfg {
     False,
     /// A generic configuration option, e.g., `test` or `target_os = "linux"`.
     Cfg(Symbol, Option<Symbol>),
-    /// Negate a configuration requirement, i.e., `not(x)`.
+    /// Negates a configuration requirement, i.e., `not(x)`.
     Not(Box<Cfg>),
     /// Union of a list of configuration requirements, i.e., `any(...)`.
     Any(Vec<Cfg>),

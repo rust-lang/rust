@@ -143,7 +143,7 @@ where MWF: MirWithFlowState<'tcx>,
         Ok(())
     }
 
-    /// Build the verbose row: full MIR data, and detailed gen/kill/entry sets
+    /// Builds the verbose row: full MIR data, and detailed gen/kill/entry sets.
     fn node_label_verbose_row<W: io::Write>(&self,
                                             n: &Node,
                                             w: &mut W,
@@ -193,7 +193,7 @@ where MWF: MirWithFlowState<'tcx>,
         Ok(())
     }
 
-    /// Build the summary row: terminator, gen/kill/entry bit sets
+    /// Builds the summary row: terminator, gen/kill/entry bit sets.
     fn node_label_final_row<W: io::Write>(&self,
                                           n: &Node,
                                           w: &mut W,

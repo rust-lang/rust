@@ -31,37 +31,38 @@ use {
     rustc_data_structures::stable_hasher::{StableHasherResult, StableHasher, HashStable},
 };
 
-/// Indicates the state of a query for a given key in a query map
+/// Indicates the state of a query for a given key in a query map.
 pub(super) enum QueryResult<'tcx> {
-    /// An already executing query. The query job can be used to await for its completion
+    /// An already executing query. The query job can be used to await for its completion.
     Started(Lrc<QueryJob<'tcx>>),
 
-    /// The query panicked. Queries trying to wait on this will raise a fatal error / silently panic
+    /// The query panicked. Queries trying to wait on this will raise a fatal error or
+    /// silently panic.
     Poisoned,
 }
 
-/// A span and a query key
+/// Represents a span and a query key.
 #[derive(Clone, Debug)]
 pub struct QueryInfo<'tcx> {
-    /// The span for a reason this query was required
+    /// The span corresponding to the reason for which this query was required.
     pub span: Span,
     pub query: Query<'tcx>,
 }
 
-/// A object representing an active query job.
+/// Representss an object representing an active query job.
 pub struct QueryJob<'tcx> {
     pub info: QueryInfo<'tcx>,
 
     /// The parent query job which created this job and is implicitly waiting on it.
     pub parent: Option<Lrc<QueryJob<'tcx>>>,
 
-    /// The latch which is used to wait on this job
+    /// The latch that is used to wait on this job.
     #[cfg(parallel_compiler)]
     latch: QueryLatch<'tcx>,
 }
 
 impl<'tcx> QueryJob<'tcx> {
-    /// Creates a new query job
+    /// Creates a new query job.
     pub fn new(info: QueryInfo<'tcx>, parent: Option<Lrc<QueryJob<'tcx>>>) -> Self {
         QueryJob {
             info,
@@ -230,7 +231,7 @@ impl<'tcx> QueryLatch<'tcx> {
         }
     }
 
-    /// Remove a single waiter from the list of waiters.
+    /// Removes a single waiter from the list of waiters.
     /// This is used to break query cycles.
     fn extract_waiter(
         &self,

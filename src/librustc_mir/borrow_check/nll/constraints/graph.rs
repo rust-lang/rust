@@ -71,7 +71,7 @@ impl ConstraintGraphDirecton for Reverse {
 }
 
 impl<D: ConstraintGraphDirecton> ConstraintGraph<D> {
-    /// Create a "dependency graph" where each region constraint `R1:
+    /// Creates a "dependency graph" where each region constraint `R1:
     /// R2` is treated as an edge `R1 -> R2`. We use this graph to
     /// construct SCCs for region inference but also for error
     /// reporting.
@@ -186,7 +186,7 @@ crate struct RegionGraph<'s, D: ConstraintGraphDirecton> {
 }
 
 impl<'s, D: ConstraintGraphDirecton> RegionGraph<'s, D> {
-    /// Create a "dependency graph" where each region constraint `R1:
+    /// Creates a "dependency graph" where each region constraint `R1:
     /// R2` is treated as an edge `R1 -> R2`. We use this graph to
     /// construct SCCs for region inference but also for error
     /// reporting.

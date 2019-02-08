@@ -72,7 +72,7 @@ pub struct Lint {
     /// `default_level`.
     pub edition_lint_opts: Option<(Edition, Level)>,
 
-    /// Whether this lint is reported even inside expansions of external macros
+    /// `true` if this lint is reported even inside expansions of external macros.
     pub report_in_external_macro: bool,
 }
 
@@ -86,7 +86,7 @@ impl Lint {
         }
     }
 
-    /// Get the lint's name, with ASCII letters converted to lowercase.
+    /// Gets the lint's name, with ASCII letters converted to lowercase.
     pub fn name_lower(&self) -> String {
         self.name.to_ascii_lowercase()
     }
@@ -99,7 +99,7 @@ impl Lint {
     }
 }
 
-/// Declare a static item of type `&'static Lint`.
+/// Declares a static item of type `&'static Lint`.
 #[macro_export]
 macro_rules! declare_lint {
     ($vis: vis $NAME: ident, $Level: ident, $desc: expr) => (
@@ -150,7 +150,7 @@ macro_rules! declare_tool_lint {
     );
 }
 
-/// Declare a static `LintArray` and return it as an expression.
+/// Declares a static `LintArray` and return it as an expression.
 #[macro_export]
 macro_rules! lint_array {
     ($( $lint:expr ),* ,) => { lint_array!( $($lint),* ) };
@@ -164,7 +164,7 @@ pub type LintArray = Vec<&'static Lint>;
 pub trait LintPass {
     fn name(&self) -> &'static str;
 
-    /// Get descriptions of the lints this `LintPass` object can emit.
+    /// Gets descriptions of the lints this `LintPass` object can emit.
     ///
     /// N.B., there is no enforcement that the object only emits lints it registered.
     /// And some `rustc` internal `LintPass`es register lints to be emitted by other
@@ -487,7 +487,7 @@ impl hash::Hash for LintId {
 }
 
 impl LintId {
-    /// Get the `LintId` for a `Lint`.
+    /// Gets the `LintId` for a `Lint`.
     pub fn of(lint: &'static Lint) -> LintId {
         LintId {
             lint,
@@ -498,7 +498,7 @@ impl LintId {
         self.lint.name
     }
 
-    /// Get the name of the lint.
+    /// Gets the name of the lint.
     pub fn to_string(&self) -> String {
         self.lint.name_lower()
     }
@@ -518,7 +518,7 @@ impl_stable_hash_for!(enum self::Level {
 });
 
 impl Level {
-    /// Convert a level to a lower-case string.
+    /// Converts a level to a lower-case string.
     pub fn as_str(self) -> &'static str {
         match self {
             Allow => "allow",
@@ -528,7 +528,7 @@ impl Level {
         }
     }
 
-    /// Convert a lower-case string to a level.
+    /// Converts a lower-case string to a level.
     pub fn from_str(x: &str) -> Option<Level> {
         match x {
             "allow" => Some(Allow),

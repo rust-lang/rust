@@ -30,9 +30,9 @@ const ADB_TEST_DIR: &str = "/data/tmp/work";
 /// The two modes of the test runner; tests or benchmarks.
 #[derive(Debug, PartialEq, Eq, Hash, Copy, Clone, PartialOrd, Ord)]
 pub enum TestKind {
-    /// Run `cargo test`
+    /// Run `cargo test`.
     Test,
-    /// Run `cargo bench`
+    /// Run `cargo bench`.
     Bench,
 }
 
@@ -1288,7 +1288,7 @@ impl Step for DocTest {
         run.never()
     }
 
-    /// Run `rustdoc --test` for all documentation in `src/doc`.
+    /// Runs `rustdoc --test` for all documentation in `src/doc`.
     ///
     /// This will run all tests in our markdown documentation (e.g., the book)
     /// located in `src/doc`. The `rustdoc` that's run is the one that sits next to
@@ -1408,7 +1408,7 @@ impl Step for ErrorIndex {
         });
     }
 
-    /// Run the error index generator tool to execute the tests located in the error
+    /// Runs the error index generator tool to execute the tests located in the error
     /// index.
     ///
     /// The `error_index_generator` tool lives in `src/tools` and is used to
@@ -1614,7 +1614,7 @@ impl Step for Crate {
         }
     }
 
-    /// Run all unit tests plus documentation tests for a given crate defined
+    /// Runs all unit tests plus documentation tests for a given crate defined
     /// by a `Cargo.toml` (single manifest)
     ///
     /// This is what runs tests for crates like the standard library, compiler, etc.
@@ -1833,7 +1833,7 @@ fn envify(s: &str) -> String {
 /// the standard library and such to the emulator ahead of time. This step
 /// represents this and is a dependency of all test suites.
 ///
-/// Most of the time this is a noop. For some steps such as shipping data to
+/// Most of the time this is a no-op. For some steps such as shipping data to
 /// QEMU we have to build our own tools so we've got conditional dependencies
 /// on those programs as well. Note that the remote test client is built for
 /// the build target (us) and the server is built for the target.
@@ -1904,7 +1904,7 @@ impl Step for Distcheck {
         run.builder.ensure(Distcheck);
     }
 
-    /// Run "distcheck", a 'make check' from a tarball
+    /// Runs "distcheck", a 'make check' from a tarball
     fn run(self, builder: &Builder) {
         builder.info("Distcheck");
         let dir = builder.out.join("tmp").join("distcheck");
@@ -1965,7 +1965,7 @@ impl Step for Bootstrap {
     const DEFAULT: bool = true;
     const ONLY_HOSTS: bool = true;
 
-    /// Test the build system itself
+    /// Tests the build system itself.
     fn run(self, builder: &Builder) {
         let mut cmd = Command::new(&builder.initial_cargo);
         cmd.arg("test")

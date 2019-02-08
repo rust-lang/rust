@@ -296,11 +296,11 @@ pub struct Loan<'tcx> {
     /// gen_scope indicates where loan is introduced. Typically the
     /// loan is introduced at the point of the borrow, but in some
     /// cases, notably method arguments, the loan may be introduced
-    /// only later, once it comes into scope.  See also
+    /// only later, once it comes into scope. See also
     /// `GatherLoanCtxt::compute_gen_scope`.
     gen_scope: region::Scope,
 
-    /// kill_scope indicates when the loan goes out of scope.  This is
+    /// kill_scope indicates when the loan goes out of scope. This is
     /// either when the lifetime expires or when the local variable
     /// which roots the loan-path goes out of scope, whichever happens
     /// faster. See also `GatherLoanCtxt::compute_kill_scope`.

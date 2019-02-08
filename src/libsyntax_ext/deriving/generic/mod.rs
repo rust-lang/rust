@@ -243,7 +243,7 @@ pub struct MethodDef<'a> {
     /// Arguments other than the self argument
     pub args: Vec<(Ty<'a>, &'a str)>,
 
-    /// Return type
+    /// Returns type
     pub ret_ty: Ty<'a>,
 
     pub attributes: Vec<ast::Attribute>,
@@ -303,7 +303,7 @@ pub enum SubstructureFields<'a> {
     EnumMatching(usize, usize, &'a ast::Variant, Vec<FieldInfo<'a>>),
 
     /// Non-matching variants of the enum, but with all state hidden from
-    /// the consequent code.  The first component holds `Ident`s for all of
+    /// the consequent code. The first component holds `Ident`s for all of
     /// the `Self` arguments; the second component is a slice of all of the
     /// variants for the enum itself, and the third component is a list of
     /// `Ident`s bound to the variant index values for each of the actual
@@ -323,10 +323,10 @@ pub enum SubstructureFields<'a> {
 pub type CombineSubstructureFunc<'a> =
     Box<dyn FnMut(&mut ExtCtxt<'_>, Span, &Substructure<'_>) -> P<Expr> + 'a>;
 
-/// Deal with non-matching enum variants.  The tuple is a list of
+/// Deal with non-matching enum variants. The tuple is a list of
 /// identifiers (one for each `Self` argument, which could be any of the
 /// variants since they have been collapsed together) and the identifiers
-/// holding the variant index value for each of the `Self` arguments.  The
+/// holding the variant index value for each of the `Self` arguments. The
 /// last argument is all the non-`Self` args of the method being derived.
 pub type EnumNonMatchCollapsedFunc<'a> =
     Box<dyn FnMut(&mut ExtCtxt<'_>, Span, (&[Ident], &[Ident]), &[P<Expr>]) -> P<Expr> + 'a>;
@@ -497,7 +497,7 @@ impl<'a> TraitDef<'a> {
     /// create an impl like:
     ///
     /// ```ignore (only-for-syntax-highlight)
-    /// impl<'a, ..., 'z, A, B: DeclaredTrait, C, ...  Z> where
+    /// impl<'a, ..., 'z, A, B: DeclaredTrait, C, ... Z> where
     ///     C:                       WhereTrait,
     ///     A: DerivedTrait + B1 + ... + BN,
     ///     B: DerivedTrait + B1 + ... + BN,
@@ -1126,7 +1126,7 @@ impl<'a> MethodDef<'a> {
     ///
     /// (Of course `__self_vi` and `__arg_1_vi` are unused for
     /// `PartialEq`, and those subcomputations will hopefully be removed
-    /// as their results are unused.  The point of `__self_vi` and
+    /// as their results are unused. The point of `__self_vi` and
     /// `__arg_1_vi` is for `PartialOrd`; see #15503.)
     fn expand_enum_method_body<'b>(&self,
                                    cx: &mut ExtCtxt<'_>,
@@ -1724,7 +1724,7 @@ pub fn cs_fold<F>(use_foldl: bool,
 
 /// Function to fold over fields, with three cases, to generate more efficient and concise code.
 /// When the `substructure` has grouped fields, there are two cases:
-/// Zero fields: call the base case function with None (like the usual base case of `cs_fold`).
+/// Zero fields: call the base case function with `None` (like the usual base case of `cs_fold`).
 /// One or more fields: call the base case function on the first value (which depends on
 /// `use_fold`), and use that as the base case. Then perform `cs_fold` on the remainder of the
 /// fields.
@@ -1815,7 +1815,7 @@ pub fn cs_same_method<F>(f: F,
     }
 }
 
-/// Return true if the type has no value fields
+/// Returns `true` if the type has no value fields
 /// (for an enum, no variant has any fields)
 pub fn is_type_without_fields(item: &Annotatable) -> bool {
     if let Annotatable::Item(ref item) = *item {

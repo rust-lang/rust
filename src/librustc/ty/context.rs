@@ -1,4 +1,4 @@
-//! type context book-keeping
+//! Type context book-keeping.
 
 use crate::dep_graph::DepGraph;
 use crate::dep_graph::{self, DepNode, DepConstructor};
@@ -332,13 +332,13 @@ pub struct TypeckTables<'tcx> {
     /// belongs, but it may not exist if it's a tuple field (`tuple.0`).
     field_indices: ItemLocalMap<usize>,
 
-    /// Stores the types for various nodes in the AST.  Note that this table
-    /// is not guaranteed to be populated until after typeck.  See
+    /// Stores the types for various nodes in the AST. Note that this table
+    /// is not guaranteed to be populated until after typeck. See
     /// typeck::check::fn_ctxt for details.
     node_types: ItemLocalMap<Ty<'tcx>>,
 
     /// Stores the type parameters which were substituted to obtain the type
-    /// of this node.  This only applies to nodes that refer to entities
+    /// of this node. This only applies to nodes that refer to entities
     /// parameterized by type parameters, such as generic fns, types, or
     /// other items.
     node_substs: ItemLocalMap<&'tcx Substs<'tcx>>,
@@ -413,7 +413,7 @@ pub struct TypeckTables<'tcx> {
     pub tainted_by_errors: bool,
 
     /// Stores the free-region relationships that were deduced from
-    /// its where clauses and parameter types. These are then
+    /// its where-clauses and parameter types. These are then
     /// read-again by borrowck.
     pub free_region_map: FreeRegionMap<'tcx>,
 
@@ -837,7 +837,7 @@ pub type CanonicalUserType<'gcx> = Canonical<'gcx, UserType<'gcx>>;
 
 impl CanonicalUserType<'gcx> {
     /// Returns `true` if this represents a substitution of the form `[?0, ?1, ?2]`,
-    /// i.e. each thing is mapped to a canonical variable with the same index.
+    /// i.e., each thing is mapped to a canonical variable with the same index.
     pub fn is_identity(&self) -> bool {
         match self.value {
             UserType::Ty(_) => false,
@@ -872,7 +872,7 @@ impl CanonicalUserType<'gcx> {
     }
 }
 
-/// A user-given type annotation attached to a constant.  These arise
+/// A user-given type annotation attached to a constant. These arise
 /// from constants that are named via paths, like `Foo::<A>::new` and
 /// so forth.
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash, RustcEncodable, RustcDecodable)]
@@ -1053,7 +1053,7 @@ pub struct GlobalCtxt<'tcx> {
 }
 
 impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
-    /// Get the global TyCtxt.
+    /// Gets the global `TyCtxt`.
     #[inline]
     pub fn global_tcx(self) -> TyCtxt<'gcx, 'gcx, 'gcx> {
         TyCtxt {
@@ -1153,12 +1153,12 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
         value.lift_to_tcx(self.global_tcx())
     }
 
-    /// Returns true if self is the same as self.global_tcx().
+    /// Returns `true` if self is the same as self.global_tcx().
     fn is_global(self) -> bool {
         ptr::eq(self.interners, &self.global_interners)
     }
 
-    /// Create a type context and call the closure with a `TyCtxt` reference
+    /// Creates a type context and call the closure with a `TyCtxt` reference
     /// to the context. The closure enforces that the type context and any interned
     /// value (types, substs, etc.) can only be used while `ty::tls` has a valid
     /// reference to the context, to allow formatting values that need it.
@@ -1353,7 +1353,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
         }
     }
 
-    /// Convert a `DefId` into its fully expanded `DefPath` (every
+    /// Converts a `DefId` into its fully expanded `DefPath` (every
     /// `DefId` is really just an interned def-path).
     ///
     /// Note that if `id` is not local to this crate, the result will

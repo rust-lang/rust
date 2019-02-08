@@ -43,7 +43,7 @@ impl Ident {
         Ident::with_empty_ctxt(Symbol::intern(string))
     }
 
-    /// Replace `lo` and `hi` with those from `span`, but keep hygiene context.
+    /// Replaces `lo` and `hi` with those from `span`, but keep hygiene context.
     pub fn with_span_pos(self, span: Span) -> Ident {
         Ident::new(self.name, span.with_ctxt(self.span.ctxt()))
     }
@@ -135,12 +135,12 @@ impl Decodable for Ident {
     }
 }
 
-/// A symbol is an interned or gensymed string. The use of newtype_index! means
-/// that Option<Symbol> only takes up 4 bytes, because newtype_index! reserves
+/// A symbol is an interned or gensymed string. The use of `newtype_index!` means
+/// that `Option<Symbol>` only takes up 4 bytes, because `newtype_index! reserves
 /// the last 256 values for tagging purposes.
 ///
-/// Note that Symbol cannot be a newtype_index! directly because it implements
-/// fmt::Debug, Encodable, and Decodable in special ways.
+/// Note that `Symbol` cannot directly be a `newtype_index!` because it implements
+/// `fmt::Debug`, `Encodable`, and `Decodable` in special ways.
 #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct Symbol(SymbolIndex);
 
@@ -170,7 +170,7 @@ impl Symbol {
         with_interner(|interner| interner.interned(self))
     }
 
-    /// Gensyms a new usize, using the current interner.
+    /// Gensyms a new `usize`, using the current interner.
     pub fn gensym(string: &str) -> Self {
         with_interner(|interner| interner.gensym(string))
     }

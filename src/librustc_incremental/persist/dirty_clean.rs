@@ -5,14 +5,13 @@
 //!
 //! - `#[rustc_clean(cfg="rev2", except="TypeckTables")]` if we are
 //!   in `#[cfg(rev2)]`, then the fingerprints associated with
-//!   `DepNode::TypeckTables(X)` must be DIFFERENT (`X` is the def-id of the
+//!   `DepNode::TypeckTables(X)` must be DIFFERENT (`X` is the `DefId` of the
 //!   current node).
 //! - `#[rustc_clean(cfg="rev2")]` same as above, except that the
 //!   fingerprints must be the SAME (along with all other fingerprints).
 //!
 //! Errors are reported if we are in the suitable configuration but
 //! the required condition is not met.
-//!
 
 use std::iter::FromIterator;
 use std::vec::Vec;
@@ -84,7 +83,7 @@ const BASE_STRUCT: &[&str] = &[
     label_strs::TypeOfItem,
 ];
 
-/// Trait Definition DepNodes
+/// Trait definition `DepNode`s.
 const BASE_TRAIT_DEF: &[&str] = &[
     label_strs::AssociatedItemDefIds,
     label_strs::GenericsOfItem,
@@ -95,7 +94,7 @@ const BASE_TRAIT_DEF: &[&str] = &[
     label_strs::TraitImpls,
 ];
 
-/// extra DepNodes for methods (+fn)
+/// Extra `DepNode`s for functions and methods.
 const EXTRA_ASSOCIATED: &[&str] = &[
     label_strs::AssociatedItems,
 ];
@@ -126,14 +125,14 @@ const LABELS_CONST_IN_TRAIT: &[&[&str]] = &[
     EXTRA_TRAIT,
 ];
 
-/// Function DepNode
+/// Function `DepNode`s.
 const LABELS_FN: &[&[&str]] = &[
     BASE_HIR,
     BASE_MIR,
     BASE_FN,
 ];
 
-/// Method DepNodes
+/// Method `DepNode`s.
 const LABELS_FN_IN_IMPL: &[&[&str]] = &[
     BASE_HIR,
     BASE_MIR,
@@ -141,7 +140,7 @@ const LABELS_FN_IN_IMPL: &[&[&str]] = &[
     EXTRA_ASSOCIATED,
 ];
 
-/// Trait-Method DepNodes
+/// Trait method `DepNode`s.
 const LABELS_FN_IN_TRAIT: &[&[&str]] = &[
     BASE_HIR,
     BASE_MIR,
@@ -150,24 +149,24 @@ const LABELS_FN_IN_TRAIT: &[&[&str]] = &[
     EXTRA_TRAIT,
 ];
 
-/// For generic cases like inline-assembly/mod/etc
+/// For generic cases like inline-assembly, modules, etc.
 const LABELS_HIR_ONLY: &[&[&str]] = &[
     BASE_HIR,
 ];
 
-/// Impl DepNodes
+/// Impl `DepNode`s.
 const LABELS_IMPL: &[&[&str]] = &[
     BASE_HIR,
     BASE_IMPL,
 ];
 
-/// Abstract Data Type (Struct, Enum, Unions) DepNodes
+/// Abstract data type (struct, enum, union) `DepNode`s.
 const LABELS_ADT: &[&[&str]] = &[
     BASE_HIR,
     BASE_STRUCT,
 ];
 
-/// Trait Definition DepNodes
+/// Trait definition `DepNode`s.
 #[allow(dead_code)]
 const LABELS_TRAIT: &[&[&str]] = &[
     BASE_HIR,
@@ -269,7 +268,7 @@ impl<'a, 'tcx> DirtyCleanVisitor<'a, 'tcx> {
         Some(assertion)
     }
 
-    /// Get the "auto" assertion on pre-validated attr, along with the `except` labels
+    /// Gets the "auto" assertion on pre-validated attr, along with the `except` labels.
     fn assertion_auto(&mut self, item_id: ast::NodeId, attr: &Attribute, is_clean: bool)
         -> Assertion
     {

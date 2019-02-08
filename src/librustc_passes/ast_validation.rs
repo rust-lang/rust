@@ -181,21 +181,21 @@ impl<'a> AstValidator<'a> {
         }
     }
 
-    /// matches '-' lit | lit (cf. parser::Parser::parse_literal_maybe_minus),
-    /// or path for ranges.
-    ///
-    /// FIXME: do we want to allow expr -> pattern conversion to create path expressions?
-    /// That means making this work:
-    ///
-    /// ```rust,ignore (FIXME)
-    ///     struct S;
-    ///     macro_rules! m {
-    ///         ($a:expr) => {
-    ///             let $a = S;
-    ///         }
-    ///     }
-    ///     m!(S);
-    /// ```
+    /// Matches `'-' lit | lit (cf. parser::Parser::parse_literal_maybe_minus)`,
+    /// or paths for ranges.
+    //
+    // FIXME: do we want to allow `expr -> pattern` conversion to create path expressions?
+    // That means making this work:
+    //
+    // ```rust,ignore (FIXME)
+    // struct S;
+    // macro_rules! m {
+    //     ($a:expr) => {
+    //         let $a = S;
+    //     }
+    // }
+    // m!(S);
+    // ```
     fn check_expr_within_pat(&self, expr: &Expr, allow_paths: bool) {
         match expr.node {
             ExprKind::Lit(..) => {}

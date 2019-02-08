@@ -30,7 +30,7 @@ pub trait TypeRelation<'a, 'gcx: 'a+'tcx, 'tcx: 'a> : Sized {
     /// Returns a static string we can use for printouts.
     fn tag(&self) -> &'static str;
 
-    /// Returns true if the value `a` is the "expected" type in the
+    /// Returns `true` if the value `a` is the "expected" type in the
     /// relation. Just affects error messages.
     fn a_is_expected(&self) -> bool;
 

@@ -12,7 +12,7 @@ use syntax_pos::Span;
 
 use crate::hir::map::{ITEM_LIKE_SPACE, REGULAR_SPACE};
 
-/// Creates def ids for nodes in the AST.
+/// Creates `DefId`s for nodes in the AST.
 pub struct DefCollector<'a> {
     definitions: &'a mut Definitions,
     parent_def: Option<DefIndex>,

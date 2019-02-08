@@ -70,7 +70,7 @@ pub enum Fixity {
 }
 
 impl AssocOp {
-    /// Create a new AssocOP from a token
+    /// Creates a new AssocOP from a token
     pub fn from_token(t: &Token) -> Option<AssocOp> {
         use AssocOp::*;
         match *t {
@@ -105,7 +105,7 @@ impl AssocOp {
         }
     }
 
-    /// Create a new AssocOp from ast::BinOpKind.
+    /// Creates a new AssocOp from ast::BinOpKind.
     pub fn from_ast_binop(op: BinOpKind) -> Self {
         use AssocOp::*;
         match op {

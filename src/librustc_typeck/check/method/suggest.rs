@@ -709,12 +709,12 @@ impl Ord for TraitInfo {
     }
 }
 
-/// Retrieve all traits in this crate and any dependent crates.
+/// Retrieves all traits in this crate and any dependent crates.
 pub fn all_traits<'a, 'gcx, 'tcx>(tcx: TyCtxt<'a, 'gcx, 'tcx>) -> Vec<TraitInfo> {
     tcx.all_traits(LOCAL_CRATE).iter().map(|&def_id| TraitInfo { def_id }).collect()
 }
 
-/// Compute all traits in this crate and any dependent crates.
+/// Computes all traits in this crate and any dependent crates.
 fn compute_all_traits<'a, 'gcx, 'tcx>(tcx: TyCtxt<'a, 'gcx, 'tcx>) -> Vec<DefId> {
     use hir::itemlikevisit;
 

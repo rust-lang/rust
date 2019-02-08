@@ -358,7 +358,7 @@ fn check_terminator(
     }
 }
 
-/// Returns true if the `def_id` refers to an intrisic which we've whitelisted
+/// Returns `true` if the `def_id` refers to an intrisic which we've whitelisted
 /// for being called from stable `const fn`s (`min_const_fn`).
 ///
 /// Adding more intrinsics requires sign-off from @rust-lang/lang.

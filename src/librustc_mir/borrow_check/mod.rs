@@ -420,11 +420,11 @@ pub struct MirBorrowckCtxt<'cx, 'gcx: 'tcx, 'tcx: 'cx> {
     access_place_error_reported: FxHashSet<(Place<'tcx>, Span)>,
     /// This field keeps track of when borrow conflict errors are reported
     /// for reservations, so that we don't report seemingly duplicate
-    /// errors for corresponding activations
-    ///
-    /// FIXME: Ideally this would be a set of BorrowIndex, not Places,
-    /// but it is currently inconvenient to track down the BorrowIndex
-    /// at the time we detect and report a reservation error.
+    /// errors for corresponding activations.
+    //
+    // FIXME: ideally this would be a set of `BorrowIndex`, not `Place`s,
+    // but it is currently inconvenient to track down the `BorrowIndex`
+    // at the time we detect and report a reservation error.
     reservation_error_reported: FxHashSet<Place<'tcx>>,
     /// This field keeps track of move errors that are to be reported for given move indicies.
     ///
@@ -452,7 +452,7 @@ pub struct MirBorrowckCtxt<'cx, 'gcx: 'tcx, 'tcx: 'cx> {
     /// If the function we're checking is a closure, then we'll need to report back the list of
     /// mutable upvars that have been used. This field keeps track of them.
     used_mut_upvars: SmallVec<[Field; 8]>,
-    /// Non-lexical region inference context, if NLL is enabled.  This
+    /// Non-lexical region inference context, if NLL is enabled. This
     /// contains the results from region inference and lets us e.g.
     /// find out which CFG points are contained in each borrow region.
     nonlexical_regioncx: Rc<RegionInferenceContext<'tcx>>,
@@ -835,12 +835,12 @@ enum WriteKind {
 
 /// When checking permissions for a place access, this flag is used to indicate that an immutable
 /// local place can be mutated.
-///
-/// FIXME: @nikomatsakis suggested that this flag could be removed with the following modifications:
-/// - Merge `check_access_permissions()` and `check_if_reassignment_to_immutable_state()`
-/// - Split `is_mutable()` into `is_assignable()` (can be directly assigned) and
-///   `is_declared_mutable()`
-/// - Take flow state into consideration in `is_assignable()` for local variables
+//
+// FIXME: @nikomatsakis suggested that this flag could be removed with the following modifications:
+// - Merge `check_access_permissions()` and `check_if_reassignment_to_immutable_state()`.
+// - Split `is_mutable()` into `is_assignable()` (can be directly assigned) and
+//   `is_declared_mutable()`.
+// - Take flow state into consideration in `is_assignable()` for local variables.
 #[derive(Copy, Clone, PartialEq, Eq, Debug)]
 enum LocalMutationIsAllowed {
     Yes,
@@ -895,7 +895,7 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
     /// place is initialized and (b) it is not borrowed in some way that would prevent this
     /// access.
     ///
-    /// Returns true if an error is reported, false otherwise.
+    /// Returns `true` if an error is reported.
     fn access_place(
         &mut self,
         context: Context,
@@ -1785,9 +1785,9 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
         }
     }
 
-    /// Check the permissions for the given place and read or write kind
+    /// Checks the permissions for the given place and read or write kind
     ///
-    /// Returns true if an error is reported, false otherwise.
+    /// Returns `true` if an error is reported.
     fn check_access_permissions(
         &mut self,
         (place, span): (&Place<'tcx>, Span),

@@ -587,7 +587,7 @@ impl<'rt, 'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>>
 }
 
 impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> {
-    /// This function checks the data at `op`.  `op` is assumed to cover valid memory if it
+    /// This function checks the data at `op`. `op` is assumed to cover valid memory if it
     /// is an indirect operand.
     /// It will error if the bits at the destination do not match the ones described by the layout.
     ///

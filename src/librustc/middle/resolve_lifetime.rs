@@ -3,7 +3,7 @@
 //! Name resolution for lifetimes follows MUCH simpler rules than the
 //! full resolve. For example, lifetime names are never exported or
 //! used between functions, and they operate in a purely top-down
-//! way. Therefore we break lifetime name resolution into a separate pass.
+//! way. Therefore, we break lifetime name resolution into a separate pass.
 
 use crate::hir::def::Def;
 use crate::hir::def_id::{CrateNum, DefId, LocalDefId, LOCAL_CRATE};
@@ -207,7 +207,7 @@ struct NamedRegionMap {
     pub object_lifetime_defaults: NodeMap<Vec<ObjectLifetimeDefault>>,
 }
 
-/// See `NamedRegionMap`.
+/// See [`NamedRegionMap`].
 #[derive(Default)]
 pub struct ResolveLifetimes {
     defs: FxHashMap<LocalDefId, Lrc<FxHashMap<ItemLocalId, Region>>>,
@@ -227,21 +227,19 @@ struct LifetimeContext<'a, 'tcx: 'a> {
     map: &'a mut NamedRegionMap,
     scope: ScopeRef<'a>,
 
-    /// Deep breath. Our representation for poly trait refs contains a single
+    /// This is slightly complicated. Our representation for poly-trait-refs contains a single
     /// binder and thus we only allow a single level of quantification. However,
     /// the syntax of Rust permits quantification in two places, e.g., `T: for <'a> Foo<'a>`
-    /// and `for <'a, 'b> &'b T: Foo<'a>`. In order to get the de Bruijn indices
+    /// and `for <'a, 'b> &'b T: Foo<'a>`. In order to get the De Bruijn indices
     /// correct when representing these constraints, we should only introduce one
     /// scope. However, we want to support both locations for the quantifier and
     /// during lifetime resolution we want precise information (so we can't
     /// desugar in an earlier phase).
     ///
-    /// SO, if we encounter a quantifier at the outer scope, we set
-    /// trait_ref_hack to true (and introduce a scope), and then if we encounter
-    /// a quantifier at the inner scope, we error. If trait_ref_hack is false,
+    /// So, if we encounter a quantifier at the outer scope, we set
+    /// `trait_ref_hack` to `true` (and introduce a scope), and then if we encounter
+    /// a quantifier at the inner scope, we error. If `trait_ref_hack` is `false`,
     /// then we introduce the scope at the inner quantifier.
-    ///
-    /// I'm sorry.
     trait_ref_hack: bool,
 
     /// Used to disallow the use of in-band lifetimes in `fn` or `Fn` syntax.
@@ -1676,7 +1674,7 @@ impl<'a, 'tcx> LifetimeContext<'a, 'tcx> {
     /// If early bound lifetimes are present, we separate them into their own list (and likewise
     /// for late bound). They will be numbered sequentially, starting from the lowest index that is
     /// already in scope (for a fn item, that will be 0, but for a method it might not be). Late
-    /// bound lifetimes are resolved by name and associated with a binder id (`binder_id`), so the
+    /// bound lifetimes are resolved by name and associated with a binder ID (`binder_id`), so the
     /// ordering is not important there.
     fn visit_early_late<F>(
         &mut self,
@@ -2610,7 +2608,7 @@ impl<'a, 'tcx> LifetimeContext<'a, 'tcx> {
         }
     }
 
-    /// Returns true if, in the current scope, replacing `'_` would be
+    /// Returns `true` if, in the current scope, replacing `'_` would be
     /// equivalent to a single-use lifetime.
     fn track_lifetime_uses(&self) -> bool {
         let mut scope = self.scope;
@@ -2714,7 +2712,7 @@ impl<'a, 'tcx> LifetimeContext<'a, 'tcx> {
 /// - it does not appear in a where-clause.
 ///
 /// "Constrained" basically means that it appears in any type but
-/// not amongst the inputs to a projection.  In other words, `<&'a
+/// not amongst the inputs to a projection. In other words, `<&'a
 /// T as Trait<''b>>::Foo` does not constrain `'a` or `'b`.
 fn insert_late_bound_lifetimes(
     map: &mut NamedRegionMap,

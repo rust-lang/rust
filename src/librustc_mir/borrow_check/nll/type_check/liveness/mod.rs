@@ -23,7 +23,7 @@ mod trace;
 /// that indicate which types must be live at which point in the CFG.
 /// This vector is consumed by `constraint_generation`.
 ///
-/// NB. This computation requires normalization; therefore, it must be
+/// N.B., this computation requires normalization; therefore, it must be
 /// performed before
 pub(super) fn generate<'gcx, 'tcx>(
     typeck: &mut TypeChecker<'_, 'gcx, 'tcx>,
@@ -46,7 +46,7 @@ pub(super) fn generate<'gcx, 'tcx>(
     trace::trace(typeck, mir, elements, flow_inits, move_data, &liveness_map, location_table);
 }
 
-/// Compute all regions that are (currently) known to outlive free
+/// Computes all regions that are (currently) known to outlive free
 /// regions. For these regions, we do not need to compute
 /// liveness, since the outlives constraints will ensure that they
 /// are live over the whole fn body anyhow.

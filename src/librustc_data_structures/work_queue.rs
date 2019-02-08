@@ -14,7 +14,7 @@ pub struct WorkQueue<T: Idx> {
 }
 
 impl<T: Idx> WorkQueue<T> {
-    /// Create a new work queue with all the elements from (0..len).
+    /// Creates a new work queue with all the elements from (0..len).
     #[inline]
     pub fn with_all(len: usize) -> Self {
         WorkQueue {
@@ -23,7 +23,7 @@ impl<T: Idx> WorkQueue<T> {
         }
     }
 
-    /// Create a new work queue that starts empty, where elements range from (0..len).
+    /// Creates a new work queue that starts empty, where elements range from (0..len).
     #[inline]
     pub fn with_none(len: usize) -> Self {
         WorkQueue {
@@ -54,7 +54,7 @@ impl<T: Idx> WorkQueue<T> {
         }
     }
 
-    /// True if nothing is enqueued.
+    /// Returns `true` if nothing is enqueued.
     #[inline]
     pub fn is_empty(&self) -> bool {
         self.deque.is_empty()

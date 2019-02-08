@@ -163,7 +163,7 @@ pub struct RustcDeprecation {
     pub suggestion: Option<Symbol>,
 }
 
-/// Check if `attrs` contains an attribute like `#![feature(feature_name)]`.
+/// Checks if `attrs` contains an attribute like `#![feature(feature_name)]`.
 /// This will not perform any "sanity checks" on the form of the attributes.
 pub fn contains_feature_attr(attrs: &[Attribute], feature_name: &str) -> bool {
     attrs.iter().any(|item| {
@@ -177,7 +177,7 @@ pub fn contains_feature_attr(attrs: &[Attribute], feature_name: &str) -> bool {
     })
 }
 
-/// Find the first stability attribute. `None` if none exists.
+/// Finds the first stability attribute. `None` if none exists.
 pub fn find_stability(sess: &ParseSess, attrs: &[Attribute],
                       item_sp: Span) -> Option<Stability> {
     find_stability_generic(sess, attrs.iter(), item_sp)
@@ -580,7 +580,7 @@ pub struct Deprecation {
     pub note: Option<Symbol>,
 }
 
-/// Find the deprecation attribute. `None` if none exists.
+/// Finds the deprecation attribute. `None` if none exists.
 pub fn find_deprecation(sess: &ParseSess, attrs: &[Attribute],
                         item_sp: Span) -> Option<Deprecation> {
     find_deprecation_generic(sess, attrs.iter(), item_sp)

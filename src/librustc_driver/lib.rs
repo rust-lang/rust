@@ -114,7 +114,7 @@ pub mod target_features {
     use rustc::session::Session;
     use rustc_codegen_utils::codegen_backend::CodegenBackend;
 
-    /// Add `target_feature = "..."` cfgs for a variety of platform
+    /// Adds `target_feature = "..."` cfgs for a variety of platform
     /// specific features (SSE, NEON etc.).
     ///
     /// This is performed by checking whether a whitelisted set of
@@ -1316,7 +1316,7 @@ fn print_flag_list<T>(cmdline_opt: &str,
 
 /// Process command line options. Emits messages as appropriate. If compilation
 /// should continue, returns a getopts::Matches object parsed from args,
-/// otherwise returns None.
+/// otherwise returns `None`.
 ///
 /// The compiler's handling of options is a little complicated as it ties into
 /// our stability story, and it's even *more* complicated by historical
@@ -1480,7 +1480,7 @@ pub fn in_rustc_thread<F, R>(f: F) -> Result<R, Box<dyn Any + Send>>
     in_named_rustc_thread("rustc".to_string(), f)
 }
 
-/// Get a list of extra command-line flags provided by the user, as strings.
+/// Gets a list of extra command-line flags provided by the user, as strings.
 ///
 /// This function is used during ICEs to show more information useful for
 /// debugging, since some ICEs only happens with non-default compiler flags
@@ -1545,7 +1545,7 @@ impl Display for CompilationFailure {
     }
 }
 
-/// Run a procedure which will detect panics in the compiler and print nicer
+/// Runs a procedure which will detect panics in the compiler and print nicer
 /// error messages rather than just failing the test.
 ///
 /// The diagnostic emitter yielded to the procedure should be used for reporting

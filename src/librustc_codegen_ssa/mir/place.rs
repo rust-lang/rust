@@ -13,16 +13,16 @@ use super::operand::OperandValue;
 
 #[derive(Copy, Clone, Debug)]
 pub struct PlaceRef<'tcx, V> {
-    /// Pointer to the contents of the place
+    /// Pointer to the contents of the place.
     pub llval: V,
 
-    /// This place's extra data if it is unsized, or null
+    /// This place's extra data if it is unsized, or null.
     pub llextra: Option<V>,
 
-    /// Monomorphized type of this place, including variant information
+    /// Monomorphized type of this place, including variant information.
     pub layout: TyLayout<'tcx>,
 
-    /// What alignment we know for this place
+    /// What alignment we know for this place.
     pub align: Align,
 }
 
@@ -277,7 +277,7 @@ impl<'a, 'tcx: 'a, V: CodegenObject> PlaceRef<'tcx, V> {
         }
     }
 
-    /// Set the discriminant for a new value of the given case of the given
+    /// Sets the discriminant for a new value of the given case of the given
     /// representation.
     pub fn codegen_set_discr<Bx: BuilderMethods<'a, 'tcx, Value = V>>(
         &self,

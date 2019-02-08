@@ -1,4 +1,4 @@
-//! The code to do lexical region resolution.
+//! Lexical region resolution.
 
 use crate::infer::region_constraints::Constraint;
 use crate::infer::region_constraints::GenericKind;
@@ -492,20 +492,20 @@ impl<'cx, 'gcx, 'tcx> LexicalResolver<'cx, 'gcx, 'tcx> {
             match *value {
                 VarValue::Value(_) => { /* Inference successful */ }
                 VarValue::ErrorValue => {
-                    /* Inference impossible, this value contains
+                    /* Inference impossible: this value contains
                        inconsistent constraints.
 
                        I think that in this case we should report an
-                       error now---unlike the case above, we can't
+                       error now -- unlike the case above, we can't
                        wait to see whether the user needs the result
-                       of this variable.  The reason is that the mere
+                       of this variable. The reason is that the mere
                        existence of this variable implies that the
                        region graph is inconsistent, whether or not it
                        is used.
 
                        For example, we may have created a region
                        variable that is the GLB of two other regions
-                       which do not have a GLB.  Even if that variable
+                       which do not have a GLB. Even if that variable
                        is not used, it implies that those two regions
                        *should* have a GLB.
 

@@ -13,7 +13,7 @@ use std::path::Path;
 crate type AllFacts = PoloniusAllFacts<RegionVid, BorrowIndex, LocationIndex>;
 
 crate trait AllFactsExt {
-    /// Returns true if there is a need to gather `AllFacts` given the
+    /// Returns `true` if there is a need to gather `AllFacts` given the
     /// current `-Z` flags.
     fn enabled(tcx: TyCtxt<'_, '_, '_>) -> bool;
 

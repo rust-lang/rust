@@ -227,7 +227,7 @@ impl<'a, 'gcx, 'tcx> WfPredicates<'a, 'gcx, 'tcx> {
         }
     }
 
-    /// Push new obligations into `out`. Returns true if it was able
+    /// Pushes new obligations into `out`. Returns `true` if it was able
     /// to generate all the predicates needed to validate that `ty0`
     /// is WF. Returns false if `ty0` is an unresolved type variable,
     /// in which case we are not able to simplify at all.
@@ -502,7 +502,7 @@ impl<'a, 'gcx, 'tcx> WfPredicates<'a, 'gcx, 'tcx> {
     }
 }
 
-/// Given an object type like `SomeTrait+Send`, computes the lifetime
+/// Given an object type like `SomeTrait + Send`, computes the lifetime
 /// bounds that must hold on the elided self type. These are derived
 /// from the declarations of `SomeTrait`, `Send`, and friends -- if
 /// they declare `trait SomeTrait : 'static`, for example, then

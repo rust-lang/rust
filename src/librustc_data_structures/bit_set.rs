@@ -27,7 +27,7 @@ pub struct BitSet<T: Idx> {
 }
 
 impl<T: Idx> BitSet<T> {
-    /// Create a new, empty bitset with a given `domain_size`.
+    /// Creates a new, empty bitset with a given `domain_size`.
     #[inline]
     pub fn new_empty(domain_size: usize) -> BitSet<T> {
         let num_words = num_words(domain_size);
@@ -38,7 +38,7 @@ impl<T: Idx> BitSet<T> {
         }
     }
 
-    /// Create a new, filled bitset with a given `domain_size`.
+    /// Creates a new, filled bitset with a given `domain_size`.
     #[inline]
     pub fn new_filled(domain_size: usize) -> BitSet<T> {
         let num_words = num_words(domain_size);
@@ -51,7 +51,7 @@ impl<T: Idx> BitSet<T> {
         result
     }
 
-    /// Get the domain size.
+    /// Gets the domain size.
     pub fn domain_size(&self) -> usize {
         self.domain_size
     }
@@ -85,7 +85,7 @@ impl<T: Idx> BitSet<T> {
         self.words.iter().map(|e| e.count_ones() as usize).sum()
     }
 
-    /// True if `self` contains `elem`.
+    /// Returns `true` if `self` contains `elem`.
     #[inline]
     pub fn contains(&self, elem: T) -> bool {
         assert!(elem.index() < self.domain_size);
@@ -106,7 +106,7 @@ impl<T: Idx> BitSet<T> {
         self.words.iter().all(|a| *a == 0)
     }
 
-    /// Insert `elem`. Returns true if the set has changed.
+    /// Insert `elem`. Returns whether the set has changed.
     #[inline]
     pub fn insert(&mut self, elem: T) -> bool {
         assert!(elem.index() < self.domain_size);
@@ -126,7 +126,7 @@ impl<T: Idx> BitSet<T> {
         self.clear_excess_bits();
     }
 
-    /// Returns true if the set has changed.
+    /// Returns `true` if the set has changed.
     #[inline]
     pub fn remove(&mut self, elem: T) -> bool {
         assert!(elem.index() < self.domain_size);
@@ -138,26 +138,26 @@ impl<T: Idx> BitSet<T> {
         new_word != word
     }
 
-    /// Set `self = self | other` and return true if `self` changed
+    /// Sets `self = self | other` and returns `true` if `self` changed
     /// (i.e., if new bits were added).
     pub fn union(&mut self, other: &impl UnionIntoBitSet<T>) -> bool {
         other.union_into(self)
     }
 
-    /// Set `self = self - other` and return true if `self` changed.
+    /// Sets `self = self - other` and returns `true` if `self` changed.
     /// (i.e., if any bits were removed).
     pub fn subtract(&mut self, other: &impl SubtractFromBitSet<T>) -> bool {
         other.subtract_from(self)
     }
 
-    /// Set `self = self & other` and return true if `self` changed.
+    /// Sets `self = self & other` and return `true` if `self` changed.
     /// (i.e., if any bits were removed).
     pub fn intersect(&mut self, other: &BitSet<T>) -> bool {
         assert_eq!(self.domain_size, other.domain_size);
         bitwise(&mut self.words, &other.words, |a, b| { a & b })
     }
 
-    /// Get a slice of the underlying words.
+    /// Gets a slice of the underlying words.
     pub fn words(&self) -> &[Word] {
         &self.words
     }
@@ -611,7 +611,7 @@ impl<T: Idx> GrowableBitSet<T> {
         GrowableBitSet { bit_set: BitSet::new_empty(bits) }
     }
 
-    /// Returns true if the set has changed.
+    /// Returns `true` if the set has changed.
     #[inline]
     pub fn insert(&mut self, elem: T) -> bool {
         self.ensure(elem.index() + 1);
@@ -645,7 +645,7 @@ pub struct BitMatrix<R: Idx, C: Idx> {
 }
 
 impl<R: Idx, C: Idx> BitMatrix<R, C> {
-    /// Create a new `rows x columns` matrix, initially empty.
+    /// Creates a new `rows x columns` matrix, initially empty.
     pub fn new(num_rows: usize, num_columns: usize) -> BitMatrix<R, C> {
         // For every element, we need one bit for every other
         // element. Round up to an even number of words.
@@ -668,7 +668,7 @@ impl<R: Idx, C: Idx> BitMatrix<R, C> {
     /// Sets the cell at `(row, column)` to true. Put another way, insert
     /// `column` to the bitset for `row`.
     ///
-    /// Returns true if this changed the matrix, and false otherwise.
+    /// Returns `true` if this changed the matrix.
     pub fn insert(&mut self, row: R, column: C) -> bool {
         assert!(row.index() < self.num_rows && column.index() < self.num_columns);
         let (start, _) = self.range(row);
@@ -691,7 +691,7 @@ impl<R: Idx, C: Idx> BitMatrix<R, C> {
         (self.words[start + word_index] & mask) != 0
     }
 
-    /// Returns those indices that are true in rows `a` and `b`.  This
+    /// Returns those indices that are true in rows `a` and `b`. This
     /// is an O(n) operation where `n` is the number of elements
     /// (somewhat independent from the actual size of the
     /// intersection, in particular).
@@ -715,8 +715,8 @@ impl<R: Idx, C: Idx> BitMatrix<R, C> {
         result
     }
 
-    /// Add the bits from row `read` to the bits from row `write`,
-    /// return true if anything changed.
+    /// Adds the bits from row `read` to the bits from row `write`, and
+    /// returns `true` if anything changed.
     ///
     /// This is used when computing transitive reachability because if
     /// you have an edge `write -> read`, because in that case
@@ -772,7 +772,7 @@ where
 }
 
 impl<R: Idx, C: Idx> SparseBitMatrix<R, C> {
-    /// Create a new empty sparse bit matrix with no rows or columns.
+    /// Creates a new empty sparse bit matrix with no rows or columns.
     pub fn new(num_columns: usize) -> Self {
         Self {
             num_columns,
@@ -793,7 +793,7 @@ impl<R: Idx, C: Idx> SparseBitMatrix<R, C> {
     /// Sets the cell at `(row, column)` to true. Put another way, insert
     /// `column` to the bitset for `row`.
     ///
-    /// Returns true if this changed the matrix, and false otherwise.
+    /// Returns `true` if this changed the matrix.
     pub fn insert(&mut self, row: R, column: C) -> bool {
         self.ensure_row(row).insert(column)
     }
@@ -806,8 +806,8 @@ impl<R: Idx, C: Idx> SparseBitMatrix<R, C> {
         self.row(row).map_or(false, |r| r.contains(column))
     }
 
-    /// Add the bits from row `read` to the bits from row `write`,
-    /// return true if anything changed.
+    /// Adds the bits from row `read` to the bits from row `write`, and
+    /// returns `true` if anything changed.
     ///
     /// This is used when computing transitive reachability because if
     /// you have an edge `write -> read`, because in that case

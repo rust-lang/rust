@@ -165,7 +165,7 @@ fn decodable_substructure(cx: &mut ExtCtxt<'_>,
     };
 }
 
-/// Create a decoder for a single enum variant/struct:
+/// Creates a decoder for a single enum variant/struct:
 /// - `outer_pat_path` is the path to this enum variant/struct
 /// - `getarg` should retrieve the `usize`-th field with name `@str`.
 fn decode_static_fields<F>(cx: &mut ExtCtxt<'_>,

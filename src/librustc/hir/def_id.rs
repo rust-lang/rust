@@ -229,7 +229,7 @@ impl fmt::Debug for DefId {
 }
 
 impl DefId {
-    /// Make a local `DefId` with the given index.
+    /// Makes a local `DefId` from the given `DefIndex`.
     #[inline]
     pub fn local(index: DefIndex) -> DefId {
         DefId { krate: LOCAL_CRATE, index: index }

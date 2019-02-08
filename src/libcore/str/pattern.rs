@@ -1,7 +1,7 @@
 //! The string Pattern API.
 //!
-//! For more details, see the traits `Pattern`, `Searcher`,
-//! `ReverseSearcher` and `DoubleEndedSearcher`.
+//! For more details, see the traits [`Pattern`], [`Searcher`],
+//! [`ReverseSearcher`], and [`DoubleEndedSearcher`].
 
 #![unstable(feature = "pattern",
             reason = "API not fully fleshed out and ready to be stabilized",

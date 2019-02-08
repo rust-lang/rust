@@ -26,7 +26,7 @@ pub struct DiagnosticBuilder<'a> {
 
 /// In general, the `DiagnosticBuilder` uses deref to allow access to
 /// the fields and methods of the embedded `diagnostic` in a
-/// transparent way.  *However,* many of the methods are intended to
+/// transparent way. *However,* many of the methods are intended to
 /// be used in a chained way, and hence ought to return `self`. In
 /// that case, we can't just naively forward to the method on the
 /// `diagnostic`, because the return type would be a `&Diagnostic`
@@ -150,7 +150,7 @@ impl<'a> DiagnosticBuilder<'a> {
         self.cancel();
     }
 
-    /// Add a span/label to be included in the resulting snippet.
+    /// Adds a span/label to be included in the resulting snippet.
     /// This is pushed onto the `MultiSpan` that was created when the
     /// diagnostic was first built. If you don't call this function at
     /// all, and you just supplied a `Span` to create the diagnostic,

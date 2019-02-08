@@ -12,7 +12,7 @@ use rustc_serialize as serialize;
 
 /// Represents some newtyped `usize` wrapper.
 ///
-/// (purpose: avoid mixing indexes for different bitvector domains.)
+/// Purpose: avoid mixing indexes for different bitvector domains.
 pub trait Idx: Copy + 'static + Ord + Debug + Hash {
     fn new(idx: usize) -> Self;
 
@@ -144,19 +144,19 @@ macro_rules! newtype_index {
                 unsafe { $type { private: value } }
             }
 
-            /// Extract value of this index as an integer.
+            /// Extracts the value of this index as an integer.
             #[inline]
             $v fn index(self) -> usize {
                 self.as_usize()
             }
 
-            /// Extract value of this index as a usize.
+            /// Extracts the value of this index as a `u32`.
             #[inline]
             $v fn as_u32(self) -> u32 {
                 self.private
             }
 
-            /// Extract value of this index as a u32.
+            /// Extracts the value of this index as a `usize`.
             #[inline]
             $v fn as_usize(self) -> usize {
                 self.as_u32() as usize
@@ -641,7 +641,7 @@ impl<I: Idx, T> IndexVec<I, T> {
         self.raw.get_mut(index.index())
     }
 
-    /// Return mutable references to two distinct elements, a and b. Panics if a == b.
+    /// Returns mutable references to two distinct elements, a and b. Panics if a == b.
     #[inline]
     pub fn pick2_mut(&mut self, a: I, b: I) -> (&mut T, &mut T) {
         let (ai, bi) = (a.index(), b.index());

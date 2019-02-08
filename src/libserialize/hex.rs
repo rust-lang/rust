@@ -80,7 +80,7 @@ impl error::Error for FromHexError {
 
 
 impl FromHex for str {
-    /// Convert any hexadecimal encoded string (literal, `@`, `&`, or `~`)
+    /// Converts any hexadecimal encoded string (literal, `@`, `&`, or `~`)
     /// to the byte values it encodes.
     ///
     /// You can use the `String::from_utf8` function to turn a

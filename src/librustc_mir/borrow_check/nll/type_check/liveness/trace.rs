@@ -192,7 +192,7 @@ impl LivenessResults<'me, 'typeck, 'flow, 'gcx, 'tcx> {
         }
     }
 
-    /// Compute all points where local is "use live" -- meaning its
+    /// Computes all points where local is "use live" -- meaning its
     /// current value may be used later (except by a drop). This is
     /// done by walking backwards from each use of `live_local` until we
     /// find a `def` of local.
@@ -215,7 +215,7 @@ impl LivenessResults<'me, 'typeck, 'flow, 'gcx, 'tcx> {
         }
     }
 
-    /// Compute all points where local is "drop live" -- meaning its
+    /// Computes all points where local is "drop live" -- meaning its
     /// current value may be dropped later (but not used). This is
     /// done by iterating over the drops of `local` where `local` (or
     /// some subpart of `local`) is initialized. For each such drop,
@@ -407,7 +407,7 @@ impl LivenessResults<'me, 'typeck, 'flow, 'gcx, 'tcx> {
 }
 
 impl LivenessContext<'_, '_, '_, '_, 'tcx> {
-    /// True if the local variable (or some part of it) is initialized in
+    /// Returns `true` if the local variable (or some part of it) is initialized in
     /// the terminator of `block`. We need to check this to determine if a
     /// DROP of some local variable will have an effect -- note that
     /// drops, as they may unwind, are always terminators.
@@ -429,7 +429,7 @@ impl LivenessContext<'_, '_, '_, '_, 'tcx> {
         self.flow_inits.has_any_child_of(mpi).is_some()
     }
 
-    /// True if the path `mpi` (or some part of it) is initialized at
+    /// Returns `true` if the path `mpi` (or some part of it) is initialized at
     /// the exit of `block`.
     ///
     /// **Warning:** Does not account for the result of `Call`
@@ -439,7 +439,7 @@ impl LivenessContext<'_, '_, '_, '_, 'tcx> {
         self.flow_inits.has_any_child_of(mpi).is_some()
     }
 
-    /// Store the result that all regions in `value` are live for the
+    /// Stores the result that all regions in `value` are live for the
     /// points `live_at`.
     fn add_use_live_facts_for(
         &mut self,

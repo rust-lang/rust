@@ -75,7 +75,7 @@ bitflags::bitflags! {
 
 type ItemInfo = (Ident, ItemKind, Option<Vec<Attribute>>);
 
-/// How to parse a path.
+/// Specifies how to parse a path.
 #[derive(Copy, Clone, PartialEq)]
 pub enum PathStyle {
     /// In some contexts, notably in expressions, paths with generic arguments are ambiguous
@@ -111,7 +111,7 @@ enum BlockMode {
     Ignore,
 }
 
-/// Possibly accept an `token::Interpolated` expression (a pre-parsed expression
+/// Possibly accepts an `token::Interpolated` expression (a pre-parsed expression
 /// dropped into the token stream, which happens while parsing the result of
 /// macro expansion). Placement of these is not as complex as I feared it would
 /// be. The important thing is to make sure that lookahead doesn't balk at
@@ -420,11 +420,11 @@ impl TokenType {
     }
 }
 
-/// Returns true if `IDENT t` can start a type - `IDENT::a::b`, `IDENT<u8, u8>`,
+/// Returns `true` if `IDENT t` can start a type -- `IDENT::a::b`, `IDENT<u8, u8>`,
 /// `IDENT<<u8 as Trait>::AssocTy>`.
 ///
 /// Types can also be of the form `IDENT(u8, u8) -> u8`, however this assumes
-/// that IDENT is not the ident of a fn trait
+/// that `IDENT` is not the ident of a fn trait.
 fn can_continue_type_after_non_fn_ident(t: &token::Token) -> bool {
     t == &token::ModSep || t == &token::Lt ||
     t == &token::BinOp(token::Shl)
@@ -525,7 +525,7 @@ impl From<P<Expr>> for LhsExpr {
     }
 }
 
-/// Create a placeholder argument.
+/// Creates a placeholder argument.
 fn dummy_arg(span: Span) -> Arg {
     let ident = Ident::new(keywords::Invalid.name(), span);
     let pat = P(Pat {
@@ -614,7 +614,7 @@ impl<'a> Parser<'a> {
         next
     }
 
-    /// Convert the current token to a string using self's reader
+    /// Converts the current token to a string using `self`'s reader.
     pub fn this_token_to_string(&self) -> String {
         pprust::token_to_string(&self.token)
     }
@@ -649,8 +649,7 @@ impl<'a> Parser<'a> {
         }
     }
 
-    /// Expect and consume the token t. Signal an error if
-    /// the next token is not t.
+    /// Expects and consumes the token `t`. Signals an error if the next token is not `t`.
     pub fn expect(&mut self, t: &token::Token) -> PResult<'a,  bool /* recovered */> {
         if self.expected_tokens.is_empty() {
             if self.token == *t {
@@ -867,7 +866,7 @@ impl<'a> Parser<'a> {
         }
     }
 
-    /// returns the span of expr, if it was not interpolated or the span of the interpolated token
+    /// Returns the span of expr, if it was not interpolated or the span of the interpolated token.
     fn interpolated_or_expr_span(&self,
                                  expr: PResult<'a, P<Expr>>)
                                  -> PResult<'a, (Span, P<Expr>)> {
@@ -941,7 +940,7 @@ impl<'a> Parser<'a> {
         }
     }
 
-    /// Check if the next token is `tok`, and return `true` if so.
+    /// Checks if the next token is `tok`, and returns `true` if so.
     ///
     /// This method will automatically add `tok` to `expected_tokens` if `tok` is not
     /// encountered.
@@ -951,8 +950,7 @@ impl<'a> Parser<'a> {
         is_present
     }
 
-    /// Consume token 'tok' if it exists. Returns true if the given
-    /// token was present, false otherwise.
+    /// Consumes a token 'tok' if it exists. Returns whether the given token was present.
     pub fn eat(&mut self, tok: &token::Token) -> bool {
         let is_present = self.check(tok);
         if is_present { self.bump() }
@@ -964,8 +962,8 @@ impl<'a> Parser<'a> {
         self.token.is_keyword(kw)
     }
 
-    /// If the next token is the given keyword, eat it and return
-    /// true. Otherwise, return false.
+    /// If the next token is the given keyword, eats it and returns
+    /// `true`. Otherwise, returns `false`.
     pub fn eat_keyword(&mut self, kw: keywords::Keyword) -> bool {
         if self.check_keyword(kw) {
             self.bump();
@@ -984,9 +982,9 @@ impl<'a> Parser<'a> {
         }
     }
 
-    /// If the given word is not a keyword, signal an error.
-    /// If the next token is not the given word, signal an error.
-    /// Otherwise, eat it.
+    /// If the given word is not a keyword, signals an error.
+    /// If the next token is not the given word, signals an error.
+    /// Otherwise, eats it.
     fn expect_keyword(&mut self, kw: keywords::Keyword) -> PResult<'a, ()> {
         if !self.eat_keyword(kw) {
             self.unexpected()
@@ -1031,11 +1029,11 @@ impl<'a> Parser<'a> {
         }
     }
 
-    /// Expect and consume a `+`. if `+=` is seen, replace it with a `=`
-    /// and continue. If a `+` is not seen, return false.
+    /// Expects and consumes a `+`. if `+=` is seen, replaces it with a `=`
+    /// and continues. If a `+` is not seen, returns `false`.
     ///
-    /// This is using when token splitting += into +.
-    /// See issue 47856 for an example of when this may occur.
+    /// This is used when token-splitting `+=` into `+`.
+    /// See issue #47856 for an example of when this may occur.
     fn eat_plus(&mut self) -> bool {
         self.expected_tokens.push(TokenType::Token(token::BinOp(token::Plus)));
         match self.token {
@@ -1054,7 +1052,7 @@ impl<'a> Parser<'a> {
 
 
     /// Checks to see if the next token is either `+` or `+=`.
-    /// Otherwise returns false.
+    /// Otherwise returns `false`.
     fn check_plus(&mut self) -> bool {
         if self.token.is_like_plus() {
             true
@@ -1065,8 +1063,8 @@ impl<'a> Parser<'a> {
         }
     }
 
-    /// Expect and consume an `&`. If `&&` is seen, replace it with a single
-    /// `&` and continue. If an `&` is not seen, signal an error.
+    /// Expects and consumes an `&`. If `&&` is seen, replaces it with a single
+    /// `&` and continues. If an `&` is not seen, signals an error.
     fn expect_and(&mut self) -> PResult<'a, ()> {
         self.expected_tokens.push(TokenType::Token(token::BinOp(token::And)));
         match self.token {
@@ -1082,8 +1080,8 @@ impl<'a> Parser<'a> {
         }
     }
 
-    /// Expect and consume an `|`. If `||` is seen, replace it with a single
-    /// `|` and continue. If an `|` is not seen, signal an error.
+    /// Expects and consumes an `|`. If `||` is seen, replaces it with a single
+    /// `|` and continues. If an `|` is not seen, signals an error.
     fn expect_or(&mut self) -> PResult<'a, ()> {
         self.expected_tokens.push(TokenType::Token(token::BinOp(token::Or)));
         match self.token {
@@ -1115,9 +1113,9 @@ impl<'a> Parser<'a> {
         }
     }
 
-    /// Attempt to consume a `<`. If `<<` is seen, replace it with a single
-    /// `<` and continue. If `<-` is seen, replace it with a single `<`
-    /// and continue. If a `<` is not seen, return false.
+    /// Attempts to consume a `<`. If `<<` is seen, replaces it with a single
+    /// `<` and continue. If `<-` is seen, replaces it with a single `<`
+    /// and continue. If a `<` is not seen, returns false.
     ///
     /// This is meant to be used when parsing generics on a path to get the
     /// starting token.
@@ -1159,9 +1157,8 @@ impl<'a> Parser<'a> {
         }
     }
 
-    /// Expect and consume a GT. if a >> is seen, replace it
-    /// with a single > and continue. If a GT is not seen,
-    /// signal an error.
+    /// Expects and consumes a single `>` token. if a `>>` is seen, replaces it
+    /// with a single `>` and continues. If a `>` is not seen, signals an error.
     fn expect_gt(&mut self) -> PResult<'a, ()> {
         self.expected_tokens.push(TokenType::Token(token::Gt));
         let ate = match self.token {
@@ -1196,7 +1193,7 @@ impl<'a> Parser<'a> {
         }
     }
 
-    /// Eat and discard tokens until one of `kets` is encountered. Respects token trees,
+    /// Eats and discards tokens until one of `kets` is encountered. Respects token trees,
     /// passes through any errors encountered. Used for error recovery.
     fn eat_to_tokens(&mut self, kets: &[&token::Token]) {
         let handler = self.diagnostic();
@@ -1209,8 +1206,8 @@ impl<'a> Parser<'a> {
         }
     }
 
-    /// Parse a sequence, including the closing delimiter. The function
-    /// f must consume tokens until reaching the next separator or
+    /// Parses a sequence, including the closing delimiter. The function
+    /// `f` must consume tokens until reaching the next separator or
     /// closing bracket.
     pub fn parse_seq_to_end<T, F>(&mut self,
                                   ket: &token::Token,
@@ -1226,8 +1223,8 @@ impl<'a> Parser<'a> {
         Ok(val)
     }
 
-    /// Parse a sequence, not including the closing delimiter. The function
-    /// f must consume tokens until reaching the next separator or
+    /// Parses a sequence, not including the closing delimiter. The function
+    /// `f` must consume tokens until reaching the next separator or
     /// closing bracket.
     pub fn parse_seq_to_before_end<T, F>(
         &mut self,
@@ -1311,8 +1308,8 @@ impl<'a> Parser<'a> {
         Ok((v, recovered))
     }
 
-    /// Parse a sequence, including the closing delimiter. The function
-    /// f must consume tokens until reaching the next separator or
+    /// Parses a sequence, including the closing delimiter. The function
+    /// `f` must consume tokens until reaching the next separator or
     /// closing bracket.
     fn parse_unspanned_seq<T, F>(
         &mut self,
@@ -1429,15 +1426,14 @@ impl<'a> Parser<'a> {
         &self.sess.span_diagnostic
     }
 
-    /// Is the current token one of the keywords that signals a bare function
-    /// type?
+    /// Is the current token one of the keywords that signals a bare function type?
     fn token_is_bare_fn_keyword(&mut self) -> bool {
         self.check_keyword(keywords::Fn) ||
             self.check_keyword(keywords::Unsafe) ||
             self.check_keyword(keywords::Extern)
     }
 
-    /// parse a `TyKind::BareFn` type:
+    /// Parses a `TyKind::BareFn` type.
     fn parse_ty_bare_fn(&mut self, generic_params: Vec<GenericParam>) -> PResult<'a, TyKind> {
         /*
 
@@ -1474,7 +1470,7 @@ impl<'a> Parser<'a> {
         })))
     }
 
-    /// Parse asyncness: `async` or nothing
+    /// Parses asyncness: `async` or nothing.
     fn parse_asyncness(&mut self) -> IsAsync {
         if self.eat_keyword(keywords::Async) {
             IsAsync::Async {
@@ -1486,7 +1482,7 @@ impl<'a> Parser<'a> {
         }
     }
 
-    /// Parse unsafety: `unsafe` or nothing.
+    /// Parses unsafety: `unsafe` or nothing.
     fn parse_unsafety(&mut self) -> Unsafety {
         if self.eat_keyword(keywords::Unsafe) {
             Unsafety::Unsafe
@@ -1495,7 +1491,7 @@ impl<'a> Parser<'a> {
         }
     }
 
-    /// Parse the items in a trait declaration
+    /// Parses the items in a trait declaration.
     pub fn parse_trait_item(&mut self, at_end: &mut bool) -> PResult<'a, TraitItem> {
         maybe_whole!(self, NtTraitItem, |x| x);
         let attrs = self.parse_outer_attributes()?;
@@ -1612,7 +1608,7 @@ impl<'a> Parser<'a> {
         })
     }
 
-    /// Parse optional return type [ -> TY ] in function decl
+    /// Parses an optional return type `[ -> TY ]` in a function declaration.
     fn parse_ret_ty(&mut self, allow_plus: bool) -> PResult<'a, FunctionRetTy> {
         if self.eat(&token::RArrow) {
             Ok(FunctionRetTy::Ty(self.parse_ty_common(allow_plus, true)?))
@@ -1621,12 +1617,13 @@ impl<'a> Parser<'a> {
         }
     }
 
-    // Parse a type
+    /// Parses a type.
     pub fn parse_ty(&mut self) -> PResult<'a, P<Ty>> {
         self.parse_ty_common(true, true)
     }
 
-    /// Parse a type in restricted contexts where `+` is not permitted.
+    /// Parses a type in restricted contexts where `+` is not permitted.
+    ///
     /// Example 1: `&'a TYPE`
     ///     `+` is prohibited to maintain operator priority (P(+) < P(&)).
     /// Example 2: `value1 as TYPE + value2`
@@ -1929,7 +1926,8 @@ impl<'a> Parser<'a> {
         self.look_ahead(offset + 1, |t| t == &token::Colon)
     }
 
-    /// Skip unexpected attributes and doc comments in this position and emit an appropriate error.
+    /// Skips unexpected attributes and doc comments in this position and emits an appropriate
+    /// error.
     fn eat_incorrect_doc_comment(&mut self, applied_to: &str) {
         if let token::DocComment(_) = self.token {
             let mut err = self.diagnostic().struct_span_err(
@@ -1958,8 +1956,7 @@ impl<'a> Parser<'a> {
         }
     }
 
-    /// This version of parse arg doesn't necessarily require
-    /// identifier names.
+    /// This version of parse arg doesn't necessarily require identifier names.
     fn parse_arg_general(&mut self, require_name: bool, is_trait_item: bool) -> PResult<'a, Arg> {
         maybe_whole!(self, NtArg, |x| x);
 
@@ -2067,12 +2064,12 @@ impl<'a> Parser<'a> {
         Ok(Arg { ty, pat, id: ast::DUMMY_NODE_ID })
     }
 
-    /// Parse a single function argument
+    /// Parses a single function argument.
     crate fn parse_arg(&mut self) -> PResult<'a, Arg> {
         self.parse_arg_general(true, false)
     }
 
-    /// Parse an argument in a lambda header e.g., |arg, arg|
+    /// Parses an argument in a lambda header (e.g., `|arg, arg|`).
     fn parse_fn_block_arg(&mut self) -> PResult<'a, Arg> {
         let pat = self.parse_pat(Some("argument name"))?;
         let t = if self.eat(&token::Colon) {
@@ -2099,7 +2096,7 @@ impl<'a> Parser<'a> {
         }
     }
 
-    /// Matches token_lit = LIT_INTEGER | ...
+    /// Matches `token_lit = LIT_INTEGER | ...`.
     fn parse_lit_token(&mut self) -> PResult<'a, LitKind> {
         let out = match self.token {
             token::Interpolated(ref nt) => match nt.0 {
@@ -2165,7 +2162,7 @@ impl<'a> Parser<'a> {
         Ok(out)
     }
 
-    /// Matches lit = true | false | token_lit
+    /// Matches `lit = true | false | token_lit`.
     crate fn parse_lit(&mut self) -> PResult<'a, Lit> {
         let lo = self.span;
         let lit = if self.eat_keyword(keywords::True) {
@@ -2179,7 +2176,7 @@ impl<'a> Parser<'a> {
         Ok(source_map::Spanned { node: lit, span: lo.to(self.prev_span) })
     }
 
-    /// matches '-' lit | lit (cf. ast_validation::AstValidator::check_expr_within_pat)
+    /// Matches `'-' lit | lit` (cf. `ast_validation::AstValidator::check_expr_within_pat`).
     crate fn parse_literal_maybe_minus(&mut self) -> PResult<'a, P<Expr>> {
         maybe_whole_expr!(self);
 
@@ -2221,7 +2218,7 @@ impl<'a> Parser<'a> {
         }
     }
 
-    /// Parses qualified path.
+    /// Parses a qualified path.
     /// Assumes that the leading `<` has been parsed already.
     ///
     /// `qualified_path = <type [as trait_ref]>::path`
@@ -2297,8 +2294,9 @@ impl<'a> Parser<'a> {
         Ok(ast::Path { segments, span: lo.to(self.prev_span) })
     }
 
-    /// Like `parse_path`, but also supports parsing `Word` meta items into paths for back-compat.
-    /// This is used when parsing derive macro paths in `#[derive]` attributes.
+    /// Like `parse_path`, but also supports parsing `Word` meta items into paths for
+    /// backwards-compatibility. This is used when parsing derive macro paths in `#[derive]`
+    /// attributes.
     pub fn parse_path_allowing_meta(&mut self, style: PathStyle) -> PResult<'a, ast::Path> {
         let meta_ident = match self.token {
             token::Interpolated(ref nt) => match nt.0 {
@@ -2423,7 +2421,7 @@ impl<'a> Parser<'a> {
         self.token.is_lifetime()
     }
 
-    /// Parse single lifetime 'a or panic.
+    /// Parses a single lifetime `'a` or panics.
     crate fn expect_lifetime(&mut self) -> Lifetime {
         if let Some(ident) = self.token.lifetime() {
             let span = self.span;
@@ -2444,7 +2442,7 @@ impl<'a> Parser<'a> {
         }
     }
 
-    /// Parse mutability (`mut` or nothing).
+    /// Parses mutability (`mut` or nothing).
     fn parse_mutability(&mut self) -> Mutability {
         if self.eat_keyword(keywords::Mut) {
             Mutability::Mutable
@@ -2575,12 +2573,10 @@ impl<'a> Parser<'a> {
     }
 
     /// At the bottom (top?) of the precedence hierarchy,
-    /// parse things like parenthesized exprs,
-    /// macros, return, etc.
+    /// Parses things like parenthesized exprs, macros, `return`, etc.
     ///
-    /// N.B., this does not parse outer attributes,
-    ///     and is private because it only works
-    ///     correctly if called from parse_dot_or_call_expr().
+    /// N.B., this does not parse outer attributes, and is private because it only works
+    /// correctly if called from `parse_dot_or_call_expr()`.
     fn parse_bottom_expr(&mut self) -> PResult<'a, P<Expr>> {
         maybe_whole_expr!(self);
 
@@ -2965,7 +2961,7 @@ impl<'a> Parser<'a> {
         }
     }
 
-    /// Parse a block or unsafe block
+    /// Parses a block or unsafe block.
     fn parse_block_expr(&mut self, opt_label: Option<Label>,
                             lo: Span, blk_mode: BlockCheckMode,
                             outer_attrs: ThinVec<Attribute>)
@@ -2979,7 +2975,7 @@ impl<'a> Parser<'a> {
         return Ok(self.mk_expr(blk.span, ExprKind::Block(blk, opt_label), attrs));
     }
 
-    /// parse a.b or a(13) or a[4] or just a
+    /// Parses `a.b` or `a(13)` or `a[4]` or just `a`.
     fn parse_dot_or_call_expr(&mut self,
                                   already_parsed_attrs: Option<ThinVec<Attribute>>)
                                   -> PResult<'a, P<Expr>> {
@@ -3287,7 +3283,7 @@ impl<'a> Parser<'a> {
         self.span = span;
     }
 
-    /// parse a single token tree from the input.
+    /// Parses a single token tree from the input.
     crate fn parse_token_tree(&mut self) -> TokenTree {
         match self.token {
             token::OpenDelim(..) => {
@@ -3447,7 +3443,7 @@ impl<'a> Parser<'a> {
         return Ok(self.mk_expr(lo.to(hi), ex, attrs));
     }
 
-    /// Parse an associative expression
+    /// Parses an associative expression.
     ///
     /// This parses an expression accounting for associativity and precedence of the operators in
     /// the expression.
@@ -3458,7 +3454,7 @@ impl<'a> Parser<'a> {
         self.parse_assoc_expr_with(0, already_parsed_attrs.into())
     }
 
-    /// Parse an associative expression with operators of at least `min_prec` precedence
+    /// Parses an associative expression with operators of at least `min_prec` precedence.
     fn parse_assoc_expr_with(&mut self,
                                  min_prec: usize,
                                  lhs: LhsExpr)
@@ -3793,7 +3789,7 @@ impl<'a> Parser<'a> {
         }
     }
 
-    /// Parse an 'if' or 'if let' expression ('if' token already eaten)
+    /// Parses an `if` or `if let` expression (`if` token already eaten).
     fn parse_if_expr(&mut self, attrs: ThinVec<Attribute>) -> PResult<'a, P<Expr>> {
         if self.check_keyword(keywords::Let) {
             return self.parse_if_let_expr(attrs);
@@ -3829,7 +3825,7 @@ impl<'a> Parser<'a> {
         Ok(self.mk_expr(lo.to(hi), ExprKind::If(cond, thn, els), attrs))
     }
 
-    /// Parse an 'if let' expression ('if' token already eaten)
+    /// Parses an `if let` expression (`if` token already eaten).
     fn parse_if_let_expr(&mut self, attrs: ThinVec<Attribute>)
                              -> PResult<'a, P<Expr>> {
         let lo = self.prev_span;
@@ -3847,7 +3843,7 @@ impl<'a> Parser<'a> {
         Ok(self.mk_expr(lo.to(hi), ExprKind::IfLet(pats, expr, thn, els), attrs))
     }
 
-    // `move |args| expr`
+    /// Parses `move |args| expr`.
     fn parse_lambda_expr(&mut self,
                              attrs: ThinVec<Attribute>)
                              -> PResult<'a, P<Expr>>
@@ -3943,7 +3939,7 @@ impl<'a> Parser<'a> {
         Ok(self.mk_expr(span_lo.to(hi), ExprKind::ForLoop(pat, expr, loop_block, opt_label), attrs))
     }
 
-    /// Parse a 'while' or 'while let' expression ('while' token already eaten)
+    /// Parses a `while` or `while let` expression (`while` token already eaten).
     fn parse_while_expr(&mut self, opt_label: Option<Label>,
                             span_lo: Span,
                             mut attrs: ThinVec<Attribute>) -> PResult<'a, P<Expr>> {
@@ -3957,7 +3953,7 @@ impl<'a> Parser<'a> {
         return Ok(self.mk_expr(span, ExprKind::While(cond, body, opt_label), attrs));
     }
 
-    /// Parse a 'while let' expression ('while' token already eaten)
+    /// Parses a `while let` expression (`while` token already eaten).
     fn parse_while_let_expr(&mut self, opt_label: Option<Label>,
                                 span_lo: Span,
                                 mut attrs: ThinVec<Attribute>) -> PResult<'a, P<Expr>> {
@@ -3981,7 +3977,7 @@ impl<'a> Parser<'a> {
         Ok(self.mk_expr(span, ExprKind::Loop(body, opt_label), attrs))
     }
 
-    /// Parse an `async move {...}` expression
+    /// Parses an `async move {...}` expression.
     pub fn parse_async_block(&mut self, mut attrs: ThinVec<Attribute>)
         -> PResult<'a, P<Expr>>
     {
@@ -3999,7 +3995,7 @@ impl<'a> Parser<'a> {
             ExprKind::Async(capture_clause, ast::DUMMY_NODE_ID, body), attrs))
     }
 
-    /// Parse a `try {...}` expression (`try` token already eaten)
+    /// Parses a `try {...}` expression (`try` token already eaten).
     fn parse_try_block(&mut self, span_lo: Span, mut attrs: ThinVec<Attribute>)
         -> PResult<'a, P<Expr>>
     {
@@ -4117,15 +4113,15 @@ impl<'a> Parser<'a> {
         })
     }
 
-    /// Parse an expression
+    /// Parses an expression.
     #[inline]
     pub fn parse_expr(&mut self) -> PResult<'a, P<Expr>> {
         self.parse_expr_res(Restrictions::empty(), None)
     }
 
-    /// Evaluate the closure with restrictions in place.
+    /// Evaluates the closure with restrictions in place.
     ///
-    /// After the closure is evaluated, restrictions are reset.
+    /// Afters the closure is evaluated, restrictions are reset.
     fn with_res<F, T>(&mut self, r: Restrictions, f: F) -> T
         where F: FnOnce(&mut Self) -> T
     {
@@ -4137,7 +4133,7 @@ impl<'a> Parser<'a> {
 
     }
 
-    /// Parse an expression, subject to the given restrictions
+    /// Parses an expression, subject to the given restrictions.
     #[inline]
     fn parse_expr_res(&mut self, r: Restrictions,
                           already_parsed_attrs: Option<ThinVec<Attribute>>)
@@ -4145,7 +4141,7 @@ impl<'a> Parser<'a> {
         self.with_res(r, |this| this.parse_assoc_expr(already_parsed_attrs))
     }
 
-    /// Parse the RHS of a local variable declaration (e.g., '= 14;')
+    /// Parses the RHS of a local variable declaration (e.g., '= 14;').
     fn parse_initializer(&mut self, skip_eq: bool) -> PResult<'a, Option<P<Expr>>> {
         if self.eat(&token::Eq) {
             Ok(Some(self.parse_expr()?))
@@ -4156,7 +4152,7 @@ impl<'a> Parser<'a> {
         }
     }
 
-    /// Parse patterns, separated by '|' s
+    /// Parses patterns, separated by '|' s.
     fn parse_pats(&mut self) -> PResult<'a, Vec<P<Pat>>> {
         // Allow a '|' before the pats (RFC 1925 + RFC 2530)
         self.eat(&token::BinOp(token::Or));
@@ -4346,7 +4342,7 @@ impl<'a> Parser<'a> {
         })
     }
 
-    /// Parse the fields of a struct-like pattern
+    /// Parses the fields of a struct-like pattern.
     fn parse_pat_fields(&mut self) -> PResult<'a, (Vec<source_map::Spanned<ast::FieldPat>>, bool)> {
         let mut fields = Vec::new();
         let mut etc = false;
@@ -4538,13 +4534,13 @@ impl<'a> Parser<'a> {
         Ok(pat)
     }
 
-    /// Parse a pattern.
+    /// Parses a pattern.
     pub fn parse_pat(&mut self, expected: Option<&'static str>) -> PResult<'a, P<Pat>> {
         self.parse_pat_with_range_pat(true, expected)
     }
 
-    /// Parse a pattern, with a setting whether modern range patterns e.g., `a..=b`, `a..b` are
-    /// allowed.
+    /// Parses a pattern, with a setting whether modern range patterns (e.g., `a..=b`, `a..b` are
+    /// allowed).
     fn parse_pat_with_range_pat(
         &mut self,
         allow_range_pat: bool,
@@ -4754,9 +4750,9 @@ impl<'a> Parser<'a> {
         Ok(P(pat))
     }
 
-    /// Parse ident or ident @ pat
+    /// Parses `ident` or `ident @ pat`.
     /// used by the copy foo and ref foo patterns to give a good
-    /// error message when parsing mistakes like ref foo(a,b)
+    /// error message when parsing mistakes like `ref foo(a, b)`.
     fn parse_pat_ident(&mut self,
                        binding_mode: ast::BindingMode)
                        -> PResult<'a, PatKind> {
@@ -4782,7 +4778,7 @@ impl<'a> Parser<'a> {
         Ok(PatKind::Ident(binding_mode, ident, sub))
     }
 
-    /// Parse a local variable declaration
+    /// Parses a local variable declaration.
     fn parse_local(&mut self, attrs: ThinVec<Attribute>) -> PResult<'a, P<Local>> {
         let lo = self.prev_span;
         let pat = self.parse_top_level_pat()?;
@@ -4855,7 +4851,7 @@ impl<'a> Parser<'a> {
         }))
     }
 
-    /// Parse a structure field
+    /// Parses a structure field.
     fn parse_name_and_ty(&mut self,
                          lo: Span,
                          vis: Visibility,
@@ -4874,7 +4870,7 @@ impl<'a> Parser<'a> {
         })
     }
 
-    /// Emit an expected item after attributes error.
+    /// Emits an expected-item-after-attributes error.
     fn expected_item_err(&mut self, attrs: &[Attribute]) -> PResult<'a,  ()> {
         let message = match attrs.last() {
             Some(&Attribute { is_sugared_doc: true, .. }) => "expected item after doc comment",
@@ -5297,13 +5293,13 @@ impl<'a> Parser<'a> {
         }))
     }
 
-    /// Is this expression a successfully-parsed statement?
+    /// Checks if this expression is a successfully parsed statement.
     fn expr_is_complete(&mut self, e: &Expr) -> bool {
         self.restrictions.contains(Restrictions::STMT_EXPR) &&
             !classify::expr_requires_semi_to_be_stmt(e)
     }
 
-    /// Parse a block. No inner attrs are allowed.
+    /// Parses a block. No inner attributes are allowed.
     pub fn parse_block(&mut self) -> PResult<'a, P<Block>> {
         maybe_whole!(self, NtBlock, |x| x);
 
@@ -5381,7 +5377,7 @@ impl<'a> Parser<'a> {
         self.parse_block_tail(lo, BlockCheckMode::Default)
     }
 
-    /// Parse a block. Inner attrs are allowed.
+    /// Parses a block. Inner attributes are allowed.
     fn parse_inner_attrs_and_block(&mut self) -> PResult<'a, (Vec<Attribute>, P<Block>)> {
         maybe_whole!(self, NtBlock, |x| (Vec::new(), x));
 
@@ -5391,7 +5387,7 @@ impl<'a> Parser<'a> {
             self.parse_block_tail(lo, BlockCheckMode::Default)?))
     }
 
-    /// Parse the rest of a block expression or function body
+    /// Parses the rest of a block expression or function body.
     /// Precondition: already parsed the '{'.
     fn parse_block_tail(&mut self, lo: Span, s: BlockCheckMode) -> PResult<'a, P<Block>> {
         let mut stmts = vec![];
@@ -5425,7 +5421,7 @@ impl<'a> Parser<'a> {
         }))
     }
 
-    /// Parse a statement, including the trailing semicolon.
+    /// Parses a statement, including the trailing semicolon.
     crate fn parse_full_stmt(&mut self, macro_legacy_warnings: bool) -> PResult<'a, Option<Stmt>> {
         // skip looking for a trailing semicolon when we have an interpolated statement
         maybe_whole!(self, NtStmt, |x| Some(x));
@@ -5487,11 +5483,14 @@ impl<'a> Parser<'a> {
         ).emit();
     }
 
-    // Parse bounds of a type parameter `BOUND + BOUND + BOUND`, possibly with trailing `+`.
-    // BOUND = TY_BOUND | LT_BOUND
-    // LT_BOUND = LIFETIME (e.g., `'a`)
-    // TY_BOUND = TY_BOUND_NOPAREN | (TY_BOUND_NOPAREN)
-    // TY_BOUND_NOPAREN = [?] [for<LT_PARAM_DEFS>] SIMPLE_PATH (e.g., `?for<'a: 'b> m::Trait<'a>`)
+    /// Parses bounds of a type parameter `BOUND + BOUND + ...`, possibly with trailing `+`.
+    ///
+    /// ```
+    /// BOUND = TY_BOUND | LT_BOUND
+    /// LT_BOUND = LIFETIME (e.g., `'a`)
+    /// TY_BOUND = TY_BOUND_NOPAREN | (TY_BOUND_NOPAREN)
+    /// TY_BOUND_NOPAREN = [?] [for<LT_PARAM_DEFS>] SIMPLE_PATH (e.g., `?for<'a: 'b> m::Trait<'a>`)
+    /// ```
     fn parse_generic_bounds_common(&mut self, allow_plus: bool) -> PResult<'a, GenericBounds> {
         let mut bounds = Vec::new();
         loop {
@@ -5545,8 +5544,11 @@ impl<'a> Parser<'a> {
         self.parse_generic_bounds_common(true)
     }
 
-    // Parse bounds of a lifetime parameter `BOUND + BOUND + BOUND`, possibly with trailing `+`.
-    // BOUND = LT_BOUND (e.g., `'a`)
+    /// Parses bounds of a lifetime parameter `BOUND + BOUND + BOUND`, possibly with trailing `+`.
+    ///
+    /// ```
+    /// BOUND = LT_BOUND (e.g., `'a`)
+    /// ```
     fn parse_lt_param_bounds(&mut self) -> GenericBounds {
         let mut lifetimes = Vec::new();
         while self.check_lifetime() {
@@ -5559,7 +5561,7 @@ impl<'a> Parser<'a> {
         lifetimes
     }
 
-    /// Matches typaram = IDENT (`?` unbound)? optbounds ( EQ ty )?
+    /// Matches `typaram = IDENT (`?` unbound)? optbounds ( EQ ty )?`.
     fn parse_ty_param(&mut self,
                       preceding_attrs: Vec<Attribute>)
                       -> PResult<'a, GenericParam> {
@@ -5590,6 +5592,7 @@ impl<'a> Parser<'a> {
     }
 
     /// Parses the following grammar:
+    ///
     ///     TraitItemAssocTy = Ident ["<"...">"] [":" [GenericBounds]] ["where" ...] ["=" Ty]
     fn parse_trait_item_assoc_ty(&mut self)
         -> PResult<'a, (Ident, TraitItemKind, ast::Generics)> {
@@ -5631,8 +5634,8 @@ impl<'a> Parser<'a> {
         })
     }
 
-    /// Parses (possibly empty) list of lifetime and type parameters, possibly including
-    /// trailing comma and erroneous trailing attributes.
+    /// Parses a (possibly empty) list of lifetime and type parameters, possibly including
+    /// a trailing comma and erroneous trailing attributes.
     crate fn parse_generic_params(&mut self) -> PResult<'a, Vec<ast::GenericParam>> {
         let mut params = Vec::new();
         loop {
@@ -5690,7 +5693,7 @@ impl<'a> Parser<'a> {
         Ok(params)
     }
 
-    /// Parse a set of optional generic type parameter declarations. Where
+    /// Parses a set of optional generic type parameter declarations. Where
     /// clauses are not parsed here, and must be added later via
     /// `parse_where_clause()`.
     ///
@@ -5718,7 +5721,7 @@ impl<'a> Parser<'a> {
         }
     }
 
-    /// Parse generic args (within a path segment) with recovery for extra leading angle brackets.
+    /// Parses generic args (within a path segment) with recovery for extra leading angle brackets.
     /// For the purposes of understanding the parsing logic of generic arguments, this function
     /// can be thought of being the same as just calling `self.parse_generic_args()` if the source
     /// had the correct amount of leading angle brackets.
@@ -5952,7 +5955,7 @@ impl<'a> Parser<'a> {
         Ok((args, bindings))
     }
 
-    /// Parses an optional `where` clause and places it in `generics`.
+    /// Parses an optional where-clause and places it in `generics`.
     ///
     /// ```ignore (only-for-syntax-highlight)
     /// where T : Trait<U, V> + 'b, 'a : 'b
@@ -6116,7 +6119,7 @@ impl<'a> Parser<'a> {
         Ok((args, variadic))
     }
 
-    /// Parse the argument list and result type of a function declaration
+    /// Parses the argument list and result type of a function declaration.
     fn parse_fn_decl(&mut self, allow_variadic: bool) -> PResult<'a, P<FnDecl>> {
 
         let (args, variadic) = self.parse_fn_args(true, allow_variadic)?;
@@ -6238,7 +6241,7 @@ impl<'a> Parser<'a> {
         Ok(Some(Arg::from_self(eself, eself_ident)))
     }
 
-    /// Parse the parameter list and result type of a function that may have a `self` parameter.
+    /// Parses the parameter list and result type of a function that may have a `self` parameter.
     fn parse_fn_decl_with_self<F>(&mut self, parse_arg_fn: F) -> PResult<'a, P<FnDecl>>
         where F: FnMut(&mut Parser<'a>) -> PResult<'a,  Arg>,
     {
@@ -6276,7 +6279,7 @@ impl<'a> Parser<'a> {
         }))
     }
 
-    // parse the |arg, arg| header on a lambda
+    /// Parses the `|arg, arg|` header of a closure.
     fn parse_fn_block_decl(&mut self) -> PResult<'a, P<FnDecl>> {
         let inputs_captures = {
             if self.eat(&token::OrOr) {
@@ -6302,7 +6305,7 @@ impl<'a> Parser<'a> {
         }))
     }
 
-    /// Parse the name and optional generic types of a function header.
+    /// Parses the name and optional generic types of a function header.
     fn parse_fn_header(&mut self) -> PResult<'a, (Ident, ast::Generics)> {
         let id = self.parse_ident()?;
         let generics = self.parse_generics()?;
@@ -6322,7 +6325,7 @@ impl<'a> Parser<'a> {
         })
     }
 
-    /// Parse an item-position function declaration.
+    /// Parses an item-position function declaration.
     fn parse_item_fn(&mut self,
                      unsafety: Unsafety,
                      asyncness: IsAsync,
@@ -6337,21 +6340,22 @@ impl<'a> Parser<'a> {
         Ok((ident, ItemKind::Fn(decl, header, generics, body), Some(inner_attrs)))
     }
 
-    /// true if we are looking at `const ID`, false for things like `const fn` etc
+    /// Returns `true` if we are looking at `const ID`
+    /// (returns `false` for things like `const fn`, etc.).
     fn is_const_item(&mut self) -> bool {
         self.token.is_keyword(keywords::Const) &&
             !self.look_ahead(1, |t| t.is_keyword(keywords::Fn)) &&
             !self.look_ahead(1, |t| t.is_keyword(keywords::Unsafe))
     }
 
-    /// parses all the "front matter" for a `fn` declaration, up to
+    /// Parses all the "front matter" for a `fn` declaration, up to
     /// and including the `fn` keyword:
     ///
     /// - `const fn`
     /// - `unsafe fn`
     /// - `const unsafe fn`
     /// - `extern fn`
-    /// - etc
+    /// - etc.
     fn parse_fn_front_matter(&mut self)
         -> PResult<'a, (
             Spanned<Constness>,
@@ -6378,7 +6382,7 @@ impl<'a> Parser<'a> {
         Ok((constness, unsafety, asyncness, abi))
     }
 
-    /// Parse an impl item.
+    /// Parses an impl item.
     pub fn parse_impl_item(&mut self, at_end: &mut bool) -> PResult<'a, ImplItem> {
         maybe_whole!(self, NtImplItem, |x| x);
         let attrs = self.parse_outer_attributes()?;
@@ -6517,7 +6521,7 @@ impl<'a> Parser<'a> {
         }
     }
 
-    /// Parse `trait Foo { ... }` or `trait Foo = Bar;`
+    /// Parses `trait Foo { ... }` or `trait Foo = Bar;`.
     fn parse_item_trait(&mut self, is_auto: IsAuto, unsafety: Unsafety) -> PResult<'a, ItemInfo> {
         let ident = self.parse_ident()?;
         let mut tps = self.parse_generics()?;
@@ -6608,9 +6612,11 @@ impl<'a> Parser<'a> {
     }
 
     /// Parses an implementation item, `impl` keyword is already parsed.
+    ///
     ///    impl<'a, T> TYPE { /* impl items */ }
     ///    impl<'a, T> TRAIT for TYPE { /* impl items */ }
     ///    impl<'a, T> !TRAIT for TYPE { /* impl items */ }
+    ///
     /// We actually parse slightly more relaxed grammar for better error reporting and recovery.
     ///     `impl` GENERICS `!`? TYPE `for`? (TYPE | `..`) (`where` PREDICATES)? `{` BODY `}`
     ///     `impl` GENERICS `!`? TYPE (`where` PREDICATES)? `{` BODY `}`
@@ -6702,7 +6708,7 @@ impl<'a> Parser<'a> {
         }
     }
 
-    /// Parse struct Foo { ... }
+    /// Parses `struct Foo { ... }`.
     fn parse_item_struct(&mut self) -> PResult<'a, ItemInfo> {
         let class_name = self.parse_ident()?;
 
@@ -6756,7 +6762,7 @@ impl<'a> Parser<'a> {
         Ok((class_name, ItemKind::Struct(vdata, generics), None))
     }
 
-    /// Parse union Foo { ... }
+    /// Parses `union Foo { ... }`.
     fn parse_item_union(&mut self) -> PResult<'a, ItemInfo> {
         let class_name = self.parse_ident()?;
 
@@ -6850,7 +6856,7 @@ impl<'a> Parser<'a> {
         Ok(fields)
     }
 
-    /// Parse a structure field declaration
+    /// Parses a structure field declaration.
     fn parse_single_struct_field(&mut self,
                                      lo: Span,
                                      vis: Visibility,
@@ -6912,7 +6918,7 @@ impl<'a> Parser<'a> {
         Ok(a_var)
     }
 
-    /// Parse an element of a struct definition
+    /// Parses an element of a struct declaration.
     fn parse_struct_decl_field(&mut self) -> PResult<'a, StructField> {
         let attrs = self.parse_outer_attributes()?;
         let lo = self.span;
@@ -6920,11 +6926,11 @@ impl<'a> Parser<'a> {
         self.parse_single_struct_field(lo, vis, attrs)
     }
 
-    /// Parse `pub`, `pub(crate)` and `pub(in path)` plus shortcuts `crate` for `pub(crate)`,
+    /// Parses `pub`, `pub(crate)` and `pub(in path)` plus shortcuts `crate` for `pub(crate)`,
     /// `pub(self)` for `pub(in self)` and `pub(super)` for `pub(in super)`.
-    /// If the following element can't be a tuple (i.e., it's a function definition,
-    /// it's not a tuple struct field) and the contents within the parens
-    /// isn't valid, emit a proper diagnostic.
+    /// If the following element can't be a tuple (i.e., it's a function definition), then
+    /// it's not a tuple struct field), and the contents within the parentheses isn't valid,
+    /// so emit a proper diagnostic.
     pub fn parse_visibility(&mut self, can_take_tuple: bool) -> PResult<'a, Visibility> {
         maybe_whole!(self, NtVis, |x| x);
 
@@ -7005,7 +7011,7 @@ impl<'a> Parser<'a> {
         Ok(respan(lo, VisibilityKind::Public))
     }
 
-    /// Parse defaultness: `default` or nothing.
+    /// Parses defaultness (i.e., `default` or nothing).
     fn parse_defaultness(&mut self) -> Defaultness {
         // `pub` is included for better error messages
         if self.check_keyword(keywords::Default) &&
@@ -7054,7 +7060,7 @@ impl<'a> Parser<'a> {
         }
     }
 
-    /// Given a termination token, parse all of the items in a module
+    /// Given a termination token, parses all of the items in a module.
     fn parse_mod_items(&mut self, term: &token::Token, inner_lo: Span) -> PResult<'a, Mod> {
         let mut items = vec![];
         while let Some(item) = self.parse_item()? {
@@ -7191,7 +7197,7 @@ impl<'a> Parser<'a> {
         }
     }
 
-    /// Returns either a path to a module, or .
+    /// Returns a path to a module.
     pub fn default_submod_path(
         id: ast::Ident,
         relative: Option<ast::Ident>,
@@ -7334,7 +7340,7 @@ impl<'a> Parser<'a> {
         }
     }
 
-    /// Read a module from a source file.
+    /// Reads a module from a source file.
     fn eval_src_mod(&mut self,
                     path: PathBuf,
                     directory_ownership: DirectoryOwnership,
@@ -7366,7 +7372,7 @@ impl<'a> Parser<'a> {
         Ok((m0, mod_attrs))
     }
 
-    /// Parse a function declaration from a foreign module
+    /// Parses a function declaration from a foreign module.
     fn parse_item_foreign_fn(&mut self, vis: ast::Visibility, lo: Span, attrs: Vec<Attribute>)
                              -> PResult<'a, ForeignItem> {
         self.expect_keyword(keywords::Fn)?;
@@ -7386,7 +7392,7 @@ impl<'a> Parser<'a> {
         })
     }
 
-    /// Parse a static item from a foreign module.
+    /// Parses a static item from a foreign module.
     /// Assumes that the `static` keyword is already parsed.
     fn parse_item_foreign_static(&mut self, vis: ast::Visibility, lo: Span, attrs: Vec<Attribute>)
                                  -> PResult<'a, ForeignItem> {
@@ -7406,7 +7412,7 @@ impl<'a> Parser<'a> {
         })
     }
 
-    /// Parse a type from a foreign module
+    /// Parses a type from a foreign module.
     fn parse_item_foreign_type(&mut self, vis: ast::Visibility, lo: Span, attrs: Vec<Attribute>)
                              -> PResult<'a, ForeignItem> {
         self.expect_keyword(keywords::Type)?;
@@ -7465,12 +7471,14 @@ impl<'a> Parser<'a> {
         Ok(ident)
     }
 
-    /// Parse extern crate links
+    /// Parses `extern crate` links.
     ///
     /// # Examples
     ///
+    /// ```
     /// extern crate foo;
     /// extern crate bar as foo;
+    /// ```
     fn parse_item_extern_crate(&mut self,
                                lo: Span,
                                visibility: Visibility,
@@ -7489,16 +7497,17 @@ impl<'a> Parser<'a> {
         Ok(self.mk_item(span, item_name, ItemKind::ExternCrate(orig_name), visibility, attrs))
     }
 
-    /// Parse `extern` for foreign ABIs
-    /// modules.
+    /// Parses `extern` for foreign ABIs modules.
     ///
     /// `extern` is expected to have been
-    /// consumed before calling this method
+    /// consumed before calling this method.
     ///
-    /// # Examples:
+    /// # Examples
     ///
+    /// ```ignore (only-for-syntax-highlight)
     /// extern "C" {}
     /// extern {}
+    /// ```
     fn parse_item_foreign_mod(&mut self,
                               lo: Span,
                               opt_abi: Option<Abi>,
@@ -7525,11 +7534,12 @@ impl<'a> Parser<'a> {
         Ok(self.mk_item(lo.to(prev_span), invalid, ItemKind::ForeignMod(m), visibility, attrs))
     }
 
-    /// Parse `type Foo = Bar;`
+    /// Parses `type Foo = Bar;`
     /// or
     /// `existential type Foo: Bar;`
     /// or
-    /// `return None` without modifying the parser state
+    /// `return `None``
+    /// without modifying the parser state.
     fn eat_type(&mut self) -> Option<PResult<'a, (Ident, AliasKind, ast::Generics)>> {
         // This parses the grammar:
         //     Ident ["<"...">"] ["where" ...] ("=" | ":") Ty ";"
@@ -7544,7 +7554,7 @@ impl<'a> Parser<'a> {
         }
     }
 
-    /// Parse type alias or existential type
+    /// Parses a type alias or existential type.
     fn parse_existential_or_alias(
         &mut self,
         existential: bool,
@@ -7565,7 +7575,7 @@ impl<'a> Parser<'a> {
         Ok((ident, alias, tps))
     }
 
-    /// Parse the part of an "enum" decl following the '{'
+    /// Parses the part of an enum declaration following the `{`.
     fn parse_enum_def(&mut self, _generics: &ast::Generics) -> PResult<'a, EnumDef> {
         let mut variants = Vec::new();
         let mut all_nullary = true;
@@ -7624,7 +7634,7 @@ impl<'a> Parser<'a> {
         Ok(ast::EnumDef { variants })
     }
 
-    /// Parse an "enum" declaration
+    /// Parses an enum declaration.
     fn parse_item_enum(&mut self) -> PResult<'a, ItemInfo> {
         let id = self.parse_ident()?;
         let mut generics = self.parse_generics()?;
@@ -7720,7 +7730,7 @@ impl<'a> Parser<'a> {
         }))
     }
 
-    /// Parse one of the items allowed by the flags.
+    /// Parses one of the items allowed by the flags.
     fn parse_item_implementation(
         &mut self,
         attrs: Vec<Attribute>,
@@ -8145,7 +8155,7 @@ impl<'a> Parser<'a> {
         self.parse_macro_use_or_failure(attrs, macros_allowed, attributes_allowed, lo, visibility)
     }
 
-    /// Parse a foreign item.
+    /// Parses a foreign item.
     crate fn parse_foreign_item(&mut self) -> PResult<'a, ForeignItem> {
         maybe_whole!(self, NtForeignItem, |ni| ni);
 
@@ -8261,7 +8271,7 @@ impl<'a> Parser<'a> {
         Ok(None)
     }
 
-    /// Parse a macro invocation inside a `trait`, `impl` or `extern` block
+    /// Parses a macro invocation inside a `trait`, `impl` or `extern` block.
     fn parse_assoc_macro_invoc(&mut self, item_kind: &str, vis: Option<&Visibility>,
                                at_end: &mut bool) -> PResult<'a, Option<Mac>>
     {
@@ -8364,13 +8374,15 @@ impl<'a> Parser<'a> {
                                    *t == token::BinOp(token::Star))
     }
 
-    /// Parse UseTree
+    /// Parses a `UseTree`.
     ///
+    /// ```
     /// USE_TREE = [`::`] `*` |
     ///            [`::`] `{` USE_TREE_LIST `}` |
     ///            PATH `::` `*` |
     ///            PATH `::` `{` USE_TREE_LIST `}` |
     ///            PATH [`as` IDENT]
+    /// ```
     fn parse_use_tree(&mut self) -> PResult<'a, UseTree> {
         let lo = self.span;
 
@@ -8409,9 +8421,11 @@ impl<'a> Parser<'a> {
         Ok(UseTree { prefix, kind, span: lo.to(self.prev_span) })
     }
 
-    /// Parse UseTreeKind::Nested(list)
+    /// Parses a `UseTreeKind::Nested(list)`.
     ///
+    /// ```
     /// USE_TREE_LIST = Ø | (USE_TREE `,`)* USE_TREE [`,`]
+    /// ```
     fn parse_use_tree_list(&mut self) -> PResult<'a, Vec<(UseTree, ast::NodeId)>> {
         self.parse_unspanned_seq(&token::OpenDelim(token::Brace),
                                  &token::CloseDelim(token::Brace),
@@ -8428,8 +8442,7 @@ impl<'a> Parser<'a> {
         }
     }
 
-    /// Parses a source module as a crate. This is the main
-    /// entry point for the parser.
+    /// Parses a source module as a crate. This is the main entry point for the parser.
     pub fn parse_crate_mod(&mut self) -> PResult<'a, Crate> {
         let lo = self.span;
         let krate = Ok(ast::Crate {

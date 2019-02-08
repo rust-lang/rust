@@ -55,7 +55,7 @@
 //! fn foo<U, F: for<'a> FnMut(&'a U)>(_f: F) {}
 //! ```
 //!
-//! the type of the closure's first argument would be `&'a ?U`.  We
+//! the type of the closure's first argument would be `&'a ?U`. We
 //! might later infer `?U` to something like `&'b u32`, which would
 //! imply that `'b: 'a`.
 

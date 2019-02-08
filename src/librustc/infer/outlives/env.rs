@@ -63,7 +63,7 @@ pub struct OutlivesEnvironment<'tcx> {
 }
 
 /// "Region-bound pairs" tracks outlives relations that are known to
-/// be true, either because of explicit where clauses like `T: 'a` or
+/// be true, either because of explicit where-clauses like `T: 'a` or
 /// because of implied bounds.
 pub type RegionBoundPairs<'tcx> = Vec<(ty::Region<'tcx>, GenericKind<'tcx>)>;
 

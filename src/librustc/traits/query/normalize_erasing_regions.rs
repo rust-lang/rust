@@ -45,7 +45,7 @@ impl<'cx, 'tcx> TyCtxt<'cx, 'tcx, 'tcx> {
     /// a `T` (with regions erased). This is appropriate when the
     /// binder is being instantiated at the call site.
     ///
-    /// NB. Currently, higher-ranked type bounds inhibit
+    /// N.B., currently, higher-ranked type bounds inhibit
     /// normalization. Therefore, each time we erase them in
     /// codegen, we need to normalize the contents.
     pub fn normalize_erasing_late_bound_regions<T>(

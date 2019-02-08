@@ -6,8 +6,8 @@
 ///
 /// The algorithm implemented here is a modified version of the one described in:
 /// http://moscova.inria.fr/~maranget/papers/warn/index.html
-/// However, to save future implementors from reading the original paper, I'm going
-/// to summarise the algorithm here to hopefully save time and be a little clearer
+/// However, to save future implementors from reading the original paper, we
+/// summarise the algorithm here to hopefully save time and be a little clearer
 /// (without being so rigorous).
 ///
 /// The core of the algorithm revolves about a "usefulness" check. In particular, we
@@ -351,7 +351,7 @@ pub struct MatchCheckCtxt<'a, 'tcx: 'a> {
     /// The module in which the match occurs. This is necessary for
     /// checking inhabited-ness of types because whether a type is (visibly)
     /// inhabited can depend on whether it was defined in the current module or
-    /// not. eg. `struct Foo { _private: ! }` cannot be seen to be empty
+    /// not. E.g., `struct Foo { _private: ! }` cannot be seen to be empty
     /// outside it's module and should not be matchable with an empty match
     /// statement.
     pub module: DefId,
@@ -896,7 +896,7 @@ impl<'tcx> IntRange<'tcx> {
         }
     }
 
-    /// Convert a `RangeInclusive` to a `ConstantValue` or inclusive `ConstantRange`.
+    /// Converts a `RangeInclusive` to a `ConstantValue` or inclusive `ConstantRange`.
     fn range_to_ctor(
         tcx: TyCtxt<'_, 'tcx, 'tcx>,
         ty: Ty<'tcx>,
@@ -912,7 +912,7 @@ impl<'tcx> IntRange<'tcx> {
         }
     }
 
-    /// Return a collection of ranges that spans the values covered by `ranges`, subtracted
+    /// Returns a collection of ranges that spans the values covered by `ranges`, subtracted
     /// by the values covered by `self`: i.e., `ranges \ self` (in set notation).
     fn subtract_from(self,
                      tcx: TyCtxt<'_, 'tcx, 'tcx>,
@@ -1033,13 +1033,13 @@ fn compute_missing_ctors<'a, 'tcx: 'a>(
     }
 }
 
-/// Algorithm from http://moscova.inria.fr/~maranget/papers/warn/index.html
+/// Algorithm from http://moscova.inria.fr/~maranget/papers/warn/index.html.
 /// The algorithm from the paper has been modified to correctly handle empty
 /// types. The changes are:
 ///   (0) We don't exit early if the pattern matrix has zero rows. We just
 ///       continue to recurse over columns.
 ///   (1) all_constructors will only return constructors that are statically
-///       possible. eg. it will only return Ok for Result<T, !>
+///       possible. E.g., it will only return `Ok` for `Result<T, !>`.
 ///
 /// This finds whether a (row) vector `v` of patterns is 'useful' in relation
 /// to a set of such vectors `m` - this is defined as there being a set of
@@ -1047,8 +1047,8 @@ fn compute_missing_ctors<'a, 'tcx: 'a>(
 ///
 /// All the patterns at each column of the `matrix ++ v` matrix must
 /// have the same type, except that wildcard (PatternKind::Wild) patterns
-/// with type TyErr are also allowed, even if the "type of the column"
-/// is not TyErr. That is used to represent private fields, as using their
+/// with type `TyErr` are also allowed, even if the "type of the column"
+/// is not `TyErr`. That is used to represent private fields, as using their
 /// real type would assert that they are inhabited.
 ///
 /// This is used both for reachability checking (if a pattern isn't useful in
@@ -1299,7 +1299,7 @@ fn is_useful_specialized<'p, 'a: 'p, 'tcx: 'a>(
 /// Slice patterns, however, can match slices of different lengths. For instance,
 /// `[a, b, ..tail]` can match a slice of length 2, 3, 4 and so on.
 ///
-/// Returns None in case of a catch-all, which can't be specialized.
+/// Returns `None` in case of a catch-all, which can't be specialized.
 fn pat_constructors<'tcx>(cx: &mut MatchCheckCtxt<'_, 'tcx>,
                           pat: &Pattern<'tcx>,
                           pcx: PatternContext<'_>)
@@ -1614,7 +1614,7 @@ fn split_grouped_constructors<'p, 'a: 'p, 'tcx: 'a>(
     split_ctors
 }
 
-/// Check whether there exists any shared value in either `ctor` or `pat` by intersecting them.
+/// Checks whether there exists any shared value in either `ctor` or `pat` by intersecting them.
 fn constructor_intersects_pattern<'p, 'a: 'p, 'tcx: 'a>(
     tcx: TyCtxt<'a, 'tcx, 'tcx>,
     ctor: &Constructor<'tcx>,

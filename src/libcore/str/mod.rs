@@ -1,6 +1,6 @@
-//! String manipulation
+//! String manipulation.
 //!
-//! For more details, see std::str
+//! For more details, see the `std::str` module.
 
 #![stable(feature = "rust1", since = "1.0.0")]
 

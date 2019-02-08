@@ -57,7 +57,7 @@ impl<'a, 'tcx> HashStable<StableHashingContext<'a>> for MonoItem<'tcx> {
 
 pub struct CodegenUnit<'tcx> {
     /// A name for this CGU. Incremental compilation requires that
-    /// name be unique amongst **all** crates.  Therefore, it should
+    /// name be unique amongst **all** crates. Therefore, it should
     /// contain something unique to this crate (e.g., a module path)
     /// as well as the crate name and disambiguator.
     name: InternedString,

@@ -23,7 +23,7 @@ impl<'tcx> ForestObligation for PendingPredicateObligation<'tcx> {
     fn as_predicate(&self) -> &Self::Predicate { &self.obligation.predicate }
 }
 
-/// The fulfillment context is used to drive trait resolution.  It
+/// The fulfillment context is used to drive trait resolution. It
 /// consists of a list of obligations that must be (eventually)
 /// satisfied. The job is to track which are satisfied, which yielded
 /// errors, and which are still pending. At any point, users can call
@@ -140,7 +140,7 @@ impl<'tcx> TraitEngine<'tcx> for FulfillmentContext<'tcx> {
     /// creating a fresh type variable `$0` as well as a projection
     /// predicate `<SomeType as SomeTrait>::X == $0`. When the
     /// inference engine runs, it will attempt to find an impl of
-    /// `SomeTrait` or a where clause that lets us unify `$0` with
+    /// `SomeTrait` or a where-clause that lets us unify `$0` with
     /// something concrete. If this fails, we'll unify `$0` with
     /// `projection_ty` again.
     fn normalize_projection_type<'a, 'gcx>(&mut self,
@@ -509,7 +509,7 @@ impl<'a, 'b, 'gcx, 'tcx> ObligationProcessor for FulfillProcessor<'a, 'b, 'gcx, 
     }
 }
 
-/// Return the set of type variables contained in a trait ref
+/// Returns the set of type variables contained in a trait ref
 fn trait_ref_type_vars<'a, 'gcx, 'tcx>(selcx: &mut SelectionContext<'a, 'gcx, 'tcx>,
                                        t: ty::PolyTraitRef<'tcx>) -> Vec<Ty<'tcx>>
 {

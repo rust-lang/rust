@@ -1,4 +1,4 @@
-//! Implementation of panics backed by libgcc/libunwind (in some form)
+//! Implementation of panics backed by libgcc/libunwind (in some form).
 //!
 //! For background on exception handling and stack unwinding please see
 //! "Exception Handling in LLVM" (llvm.org/docs/ExceptionHandling.html) and
@@ -23,14 +23,14 @@
 //!
 //! In the search phase, the job of a personality routine is to examine
 //! exception object being thrown, and to decide whether it should be caught at
-//! that stack frame.  Once the handler frame has been identified, cleanup phase
+//! that stack frame. Once the handler frame has been identified, cleanup phase
 //! begins.
 //!
 //! In the cleanup phase, the unwinder invokes each personality routine again.
 //! This time it decides which (if any) cleanup code needs to be run for
-//! the current stack frame.  If so, the control is transferred to a special
+//! the current stack frame. If so, the control is transferred to a special
 //! branch in the function body, the "landing pad", which invokes destructors,
-//! frees memory, etc.  At the end of the landing pad, control is transferred
+//! frees memory, etc. At the end of the landing pad, control is transferred
 //! back to the unwinder and unwinding resumes.
 //!
 //! Once stack has been unwound down to the handler frame level, unwinding stops
@@ -39,7 +39,7 @@
 //! ## `eh_personality` and `eh_unwind_resume`
 //!
 //! These language items are used by the compiler when generating unwind info.
-//! The first one is the personality routine described above.  The second one
+//! The first one is the personality routine described above. The second one
 //! allows compilation target to customize the process of resuming unwind at the
 //! end of the landing pads. `eh_unwind_resume` is used only if
 //! `custom_unwind_resume` flag in the target options is set.

@@ -42,7 +42,7 @@ pub use rustc_codegen_utils::link::{find_crate_name, filename_for_input, default
                                     out_filename, check_file_is_writeable};
 
 
-/// Perform the linkage portion of the compilation phase. This will generate all
+/// Performs the linkage portion of the compilation phase. This will generate all
 /// of the requested outputs for this compilation session.
 pub(crate) fn link_binary(sess: &Session,
                           codegen_results: &CodegenResults,

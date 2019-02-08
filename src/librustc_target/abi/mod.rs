@@ -174,7 +174,7 @@ impl TargetDataLayout {
         Ok(dl)
     }
 
-    /// Return exclusive upper bound on object size.
+    /// Returns exclusive upper bound on object size.
     ///
     /// The theoretical maximum object size is defined as the maximum positive `isize` value.
     /// This ensures that the `offset` semantics remain well-defined by allowing it to correctly
@@ -396,7 +396,7 @@ impl Align {
         self.bytes() * 8
     }
 
-    /// Compute the best alignment possible for the given offset
+    /// Computes the best alignment possible for the given offset
     /// (the largest power of two that the offset is a multiple of).
     ///
     /// N.B., for an offset of `0`, this happens to return `2^64`.
@@ -476,7 +476,7 @@ impl Integer {
         }
     }
 
-    /// Find the smallest Integer type which can represent the signed value.
+    /// Finds the smallest Integer type which can represent the signed value.
     pub fn fit_signed(x: i128) -> Integer {
         match x {
             -0x0000_0000_0000_0080..=0x0000_0000_0000_007f => I8,
@@ -487,7 +487,7 @@ impl Integer {
         }
     }
 
-    /// Find the smallest Integer type which can represent the unsigned value.
+    /// Finds the smallest Integer type which can represent the unsigned value.
     pub fn fit_unsigned(x: u128) -> Integer {
         match x {
             0..=0x0000_0000_0000_00ff => I8,
@@ -498,7 +498,7 @@ impl Integer {
         }
     }
 
-    /// Find the smallest integer with the given alignment.
+    /// Finds the smallest integer with the given alignment.
     pub fn for_align<C: HasDataLayout>(cx: &C, wanted: Align) -> Option<Integer> {
         let dl = cx.data_layout();
 
@@ -734,7 +734,7 @@ impl FieldPlacement {
         }
     }
 
-    /// Get source indices of the fields by increasing offsets.
+    /// Gets source indices of the fields by increasing offsets.
     #[inline]
     pub fn index_by_increasing_offset<'a>(&'a self) -> impl Iterator<Item=usize>+'a {
         let mut inverse_small = [0u8; 64];
@@ -786,7 +786,7 @@ pub enum Abi {
 }
 
 impl Abi {
-    /// Returns true if the layout corresponds to an unsized type.
+    /// Returns `true` if the layout corresponds to an unsized type.
     pub fn is_unsized(&self) -> bool {
         match *self {
             Abi::Uninhabited |
@@ -797,7 +797,7 @@ impl Abi {
         }
     }
 
-    /// Returns true if this is a single signed integer scalar
+    /// Returns `true` if this is a single signed integer scalar
     pub fn is_signed(&self) -> bool {
         match *self {
             Abi::Scalar(ref scal) => match scal.value {
@@ -808,7 +808,7 @@ impl Abi {
         }
     }
 
-    /// Returns true if this is an uninhabited type
+    /// Returns `true` if this is an uninhabited type
     pub fn is_uninhabited(&self) -> bool {
         match *self {
             Abi::Uninhabited => true,
@@ -924,12 +924,12 @@ impl<'a, Ty> TyLayout<'a, Ty> {
 }
 
 impl<'a, Ty> TyLayout<'a, Ty> {
-    /// Returns true if the layout corresponds to an unsized type.
+    /// Returns `true` if the layout corresponds to an unsized type.
     pub fn is_unsized(&self) -> bool {
         self.abi.is_unsized()
     }
 
-    /// Returns true if the type is a ZST and not unsized.
+    /// Returns `true` if the type is a ZST and not unsized.
     pub fn is_zst(&self) -> bool {
         match self.abi {
             Abi::Scalar(_) |

@@ -87,7 +87,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> 
         Ok(vtable)
     }
 
-    /// Return the drop fn instance as well as the actual dynamic type
+    /// Returns the drop fn instance as well as the actual dynamic type
     pub fn read_drop_type_from_vtable(
         &self,
         vtable: Pointer<M::PointerTag>,

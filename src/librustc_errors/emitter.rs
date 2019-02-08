@@ -22,7 +22,7 @@ pub trait Emitter {
     /// Emit a structured diagnostic.
     fn emit(&mut self, db: &DiagnosticBuilder<'_>);
 
-    /// Check if should show explanations about "rustc --explain"
+    /// Checks if should show explanations about "rustc --explain"
     fn should_show_explain(&self) -> bool {
         true
     }
@@ -868,7 +868,7 @@ impl EmitterWriter {
         }
     }
 
-    /// Add a left margin to every line but the first, given a padding length and the label being
+    /// Adds a left margin to every line but the first, given a padding length and the label being
     /// displayed, keeping the provided highlighting.
     fn msg_to_buffer(&self,
                      buffer: &mut StyledBuffer,
@@ -895,7 +895,7 @@ impl EmitterWriter {
         //    `max_line_num_len`
         let padding = " ".repeat(padding + label.len() + 5);
 
-        /// Return whether `style`, or the override if present and the style is `NoStyle`.
+        /// Returns `true` if `style`, or the override if present and the style is `NoStyle`.
         fn style_or_override(style: Style, override_style: Option<Style>) -> Style {
             if let Some(o) = override_style {
                 if style == Style::NoStyle {

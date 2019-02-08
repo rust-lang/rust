@@ -6,7 +6,7 @@
 //!   - have a suitable receiver from which we can extract a vtable and coerce to a "thin" version
 //!     that doesn't contain the vtable;
 //!   - not reference the erased type `Self` except for in this receiver;
-//!   - not have generic type parameters
+//!   - not have generic type parameters.
 
 use super::elaborate_predicates;
 
@@ -22,17 +22,17 @@ use syntax_pos::Span;
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
 pub enum ObjectSafetyViolation {
-    /// Self : Sized declared on the trait
+    /// `Self: Sized` declared on the trait.
     SizedSelf,
 
     /// Supertrait reference references `Self` an in illegal location
-    /// (e.g., `trait Foo : Bar<Self>`)
+    /// (e.g., `trait Foo : Bar<Self>`).
     SupertraitSelf,
 
-    /// Method has something illegal
+    /// Method has something illegal.
     Method(ast::Name, MethodViolationCode),
 
-    /// Associated const
+    /// Associated const.
     AssociatedConst(ast::Name),
 }
 
@@ -84,7 +84,7 @@ pub enum MethodViolationCode {
 impl<'a, 'tcx> TyCtxt<'a, 'tcx, 'tcx> {
 
     /// Returns the object safety violations that affect
-    /// astconv - currently, Self in supertraits. This is needed
+    /// astconv -- currently, `Self` in supertraits. This is needed
     /// because `object_safety_violations` can't be used during
     /// type collection.
     pub fn astconv_object_safety_violations(self, trait_def_id: DefId)
@@ -399,8 +399,8 @@ impl<'a, 'tcx> TyCtxt<'a, 'tcx, 'tcx> {
         None
     }
 
-    /// performs a type substitution to produce the version of receiver_ty when `Self = self_ty`
-    /// e.g., for receiver_ty = `Rc<Self>` and self_ty = `Foo`, returns `Rc<Foo>`
+    /// Performs a type substitution to produce the version of receiver_ty when `Self = self_ty`
+    /// e.g., for receiver_ty = `Rc<Self>` and self_ty = `Foo`, returns `Rc<Foo>`.
     fn receiver_for_self_ty(
         self, receiver_ty: Ty<'tcx>, self_ty: Ty<'tcx>, method_def_id: DefId
     ) -> Ty<'tcx> {
@@ -419,9 +419,9 @@ impl<'a, 'tcx> TyCtxt<'a, 'tcx, 'tcx> {
         result
     }
 
-    /// creates the object type for the current trait. For example,
+    /// Creates the object type for the current trait. For example,
     /// if the current trait is `Deref`, then this will be
-    /// `dyn Deref<Target=Self::Target> + 'static`
+    /// `dyn Deref<Target = Self::Target> + 'static`.
     fn object_ty_for_trait(self, trait_def_id: DefId, lifetime: ty::Region<'tcx>) -> Ty<'tcx> {
         debug!("object_ty_for_trait: trait_def_id={:?}", trait_def_id);
 
@@ -470,25 +470,27 @@ impl<'a, 'tcx> TyCtxt<'a, 'tcx, 'tcx> {
         object_ty
     }
 
-    /// checks the method's receiver (the `self` argument) can be dispatched on when `Self` is a
+    /// Checks the method's receiver (the `self` argument) can be dispatched on when `Self` is a
     /// trait object. We require that `DispatchableFromDyn` be implemented for the receiver type
     /// in the following way:
-    /// - let `Receiver` be the type of the `self` argument, i.e `Self`, `&Self`, `Rc<Self>`
+    /// - let `Receiver` be the type of the `self` argument, i.e `Self`, `&Self`, `Rc<Self>`,
     /// - require the following bound:
     ///
-    ///        Receiver[Self => T]: DispatchFromDyn<Receiver[Self => dyn Trait]>
+    ///   ```
+    ///   Receiver[Self => T]: DispatchFromDyn<Receiver[Self => dyn Trait]>
+    ///   ```
     ///
-    ///    where `Foo[X => Y]` means "the same type as `Foo`, but with `X` replaced with `Y`"
+    ///   where `Foo[X => Y]` means "the same type as `Foo`, but with `X` replaced with `Y`"
     ///   (substitution notation).
     ///
-    /// some examples of receiver types and their required obligation
-    /// - `&'a mut self` requires `&'a mut Self: DispatchFromDyn<&'a mut dyn Trait>`
-    /// - `self: Rc<Self>` requires `Rc<Self>: DispatchFromDyn<Rc<dyn Trait>>`
-    /// - `self: Pin<Box<Self>>` requires `Pin<Box<Self>>: DispatchFromDyn<Pin<Box<dyn Trait>>>`
+    /// Some examples of receiver types and their required obligation:
+    /// - `&'a mut self` requires `&'a mut Self: DispatchFromDyn<&'a mut dyn Trait>`,
+    /// - `self: Rc<Self>` requires `Rc<Self>: DispatchFromDyn<Rc<dyn Trait>>`,
+    /// - `self: Pin<Box<Self>>` requires `Pin<Box<Self>>: DispatchFromDyn<Pin<Box<dyn Trait>>>`.
     ///
     /// The only case where the receiver is not dispatchable, but is still a valid receiver
     /// type (just not object-safe), is when there is more than one level of pointer indirection.
-    /// e.g., `self: &&Self`, `self: &Rc<Self>`, `self: Box<Box<Self>>`. In these cases, there
+    /// E.g., `self: &&Self`, `self: &Rc<Self>`, `self: Box<Box<Self>>`. In these cases, there
     /// is no way, or at least no inexpensive way, to coerce the receiver from the version where
     /// `Self = dyn Trait` to the version where `Self = T`, where `T` is the unknown erased type
     /// contained by the trait object, because the object that needs to be coerced is behind

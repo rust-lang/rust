@@ -275,10 +275,10 @@ fn place_components_conflict<'gcx, 'tcx>(
 
 /// A linked list of places running up the stack; begins with the
 /// innermost place and extends to projections (e.g., `a.b` would have
-/// the place `a` with a "next" pointer to `a.b`).  Created by
+/// the place `a` with a "next" pointer to `a.b`). Created by
 /// `unroll_place`.
 ///
-/// N.B., this particular impl strategy is not the most obvious.  It was
+/// N.B., this particular impl strategy is not the most obvious. It was
 /// chosen because it makes a measurable difference to NLL
 /// performance, as this code (`borrow_conflicts_with_place`) is somewhat hot.
 struct PlaceComponents<'p, 'tcx: 'p> {

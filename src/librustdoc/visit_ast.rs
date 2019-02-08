@@ -259,7 +259,7 @@ impl<'a, 'tcx, 'rcx> RustdocVisitor<'a, 'tcx, 'rcx> {
     /// Cross-crate inlining occurs later on during crate cleaning
     /// and follows different rules.
     ///
-    /// Returns true if the target has been inlined.
+    /// Returns `true` if the target has been inlined.
     fn maybe_inline_local(&mut self,
                           id: ast::NodeId,
                           def: Def,

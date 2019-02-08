@@ -6,7 +6,7 @@
 //!   http://www.airs.com/blog/archives/464
 //!
 //! A reference implementation may be found in the GCC source tree
-//! (<root>/libgcc/unwind-c.c as of this writing)
+//! (`<root>/libgcc/unwind-c.c` as of this writing).
 
 #![allow(non_upper_case_globals)]
 #![allow(unused)]

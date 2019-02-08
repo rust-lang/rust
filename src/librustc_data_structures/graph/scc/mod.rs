@@ -200,7 +200,7 @@ where
         }
     }
 
-    /// Visit a node during the DFS. We first examine its current
+    /// Visits a node during the DFS. We first examine its current
     /// state -- if it is not yet visited (`NotVisited`), we can push
     /// it onto the stack and start walking its successors.
     ///

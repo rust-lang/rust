@@ -162,11 +162,11 @@ pub struct SelectionCache<'tcx> {
 }
 
 /// The selection process begins by considering all impls, where
-/// clauses, and so forth that might resolve an obligation.  Sometimes
+/// clauses, and so forth that might resolve an obligation. Sometimes
 /// we'll be able to say definitively that (e.g.) an impl does not
 /// apply to the obligation: perhaps it is defined for `usize` but the
 /// obligation is for `int`. In that case, we drop the impl out of the
-/// list.  But the other cases are considered *candidates*.
+/// list. But the other cases are considered *candidates*.
 ///
 /// For selection to succeed, there must be exactly one matching
 /// candidate. If the obligation is fully known, this is guaranteed
@@ -331,7 +331,7 @@ enum BuiltinImplConditions<'tcx> {
 ///     - `EvaluatedToErr` implies `EvaluatedToRecur`
 ///     - the "union" of evaluation results is equal to their maximum -
 ///     all the "potential success" candidates can potentially succeed,
-///     so they are no-ops when unioned with a definite error, and within
+///     so they are noops when unioned with a definite error, and within
 ///     the categories it's easy to see that the unions are correct.
 pub enum EvaluationResult {
     /// Evaluation successful
@@ -383,31 +383,30 @@ pub enum EvaluationResult {
     /// ```
     ///
     /// When we try to prove it, we first go the first option, which
-    /// recurses. This shows us that the impl is "useless" - it won't
+    /// recurses. This shows us that the impl is "useless" -- it won't
     /// tell us that `T: Trait` unless it already implemented `Trait`
     /// by some other means. However, that does not prevent `T: Trait`
     /// does not hold, because of the bound (which can indeed be satisfied
     /// by `SomeUnsizedType` from another crate).
-    ///
-    /// FIXME: when an `EvaluatedToRecur` goes past its parent root, we
-    /// ought to convert it to an `EvaluatedToErr`, because we know
-    /// there definitely isn't a proof tree for that obligation. Not
-    /// doing so is still sound - there isn't any proof tree, so the
-    /// branch still can't be a part of a minimal one - but does not
-    /// re-enable caching.
+    //
+    // FIXME: when an `EvaluatedToRecur` goes past its parent root, we
+    // ought to convert it to an `EvaluatedToErr`, because we know
+    // there definitely isn't a proof tree for that obligation. Not
+    // doing so is still sound -- there isn't any proof tree, so the
+    // branch still can't be a part of a minimal one -- but does not re-enable caching.
     EvaluatedToRecur,
-    /// Evaluation failed
+    /// Evaluation failed.
     EvaluatedToErr,
 }
 
 impl EvaluationResult {
-    /// True if this evaluation result is known to apply, even
+    /// Returns `true` if this evaluation result is known to apply, even
     /// considering outlives constraints.
     pub fn must_apply_considering_regions(self) -> bool {
         self == EvaluatedToOk
     }
 
-    /// True if this evaluation result is known to apply, ignoring
+    /// Returns `true` if this evaluation result is known to apply, ignoring
     /// outlives constraints.
     pub fn must_apply_modulo_regions(self) -> bool {
         self <= EvaluatedToOkModuloRegions
@@ -981,8 +980,8 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
     /// that recursion is ok. This routine returns true if the top of the
     /// stack (`cycle[0]`):
     ///
-    /// - is a defaulted trait, and
-    /// - it also appears in the backtrace at some position `X`; and,
+    /// - is a defaulted trait,
+    /// - it also appears in the backtrace at some position `X`,
     /// - all the predicates at positions `X..` between `X` an the top are
     ///   also defaulted traits.
     pub fn coinductive_match<I>(&mut self, cycle: I) -> bool
@@ -1003,7 +1002,7 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
     }
 
     /// Further evaluate `candidate` to decide whether all type parameters match and whether nested
-    /// obligations are met. Returns true if `candidate` remains viable after this further
+    /// obligations are met. Returns whether `candidate` remains viable after this further
     /// scrutiny.
     fn evaluate_candidate<'o>(
         &mut self,
@@ -1434,7 +1433,7 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
         }
     }
 
-    /// Returns true if the global caches can be used.
+    /// Returns `true` if the global caches can be used.
     /// Do note that if the type itself is not in the
     /// global tcx, the local caches will be used.
     fn can_use_global_caches(&self, param_env: ty::ParamEnv<'tcx>) -> bool {
@@ -1850,7 +1849,7 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
         Ok(())
     }
 
-    /// Check for the artificial impl that the compiler will create for an obligation like `X :
+    /// Checks for the artificial impl that the compiler will create for an obligation like `X :
     /// FnMut<..>` where `X` is a closure type.
     ///
     /// Note: the type parameters on a closure candidate are modeled as *output* type
@@ -2231,8 +2230,8 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
     // type variables and then we also attempt to evaluate recursive
     // bounds to see if they are satisfied.
 
-    /// Returns true if `victim` should be dropped in favor of
-    /// `other`.  Generally speaking we will drop duplicate
+    /// Returns `true` if `victim` should be dropped in favor of
+    /// `other`. Generally speaking we will drop duplicate
     /// candidates and prefer where-clause candidates.
     ///
     /// See the comment for "SelectionCandidate" for more details.
@@ -3221,7 +3220,7 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
     /// we currently treat the input type parameters on the trait as
     /// outputs. This means that when we have a match we have only
     /// considered the self type, so we have to go back and make sure
-    /// to relate the argument types too.  This is kind of wrong, but
+    /// to relate the argument types too. This is kind of wrong, but
     /// since we control the full set of impls, also not that wrong,
     /// and it DOES yield better error messages (since we don't report
     /// errors as if there is no applicable impl, but rather report
@@ -3235,7 +3234,7 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
     ///     impl Fn(int) for Closure { ... }
     ///
     /// Now imagine our obligation is `Fn(usize) for Closure`. So far
-    /// we have matched the self-type `Closure`. At this point we'll
+    /// we have matched the self type `Closure`. At this point we'll
     /// compare the `int` to `usize` and generate an error.
     ///
     /// Note that this checking occurs *after* the impl has selected,
@@ -3597,7 +3596,7 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
     }
 
     /// Normalize `where_clause_trait_ref` and try to match it against
-    /// `obligation`.  If successful, return any predicates that
+    /// `obligation`. If successful, return any predicates that
     /// result from the normalization. Normalization is necessary
     /// because where-clauses are stored in the parameter environment
     /// unnormalized.

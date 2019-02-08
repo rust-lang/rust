@@ -60,17 +60,17 @@ pub trait Step: 'static + Clone + Debug + PartialEq + Eq + Hash {
     /// Run this rule for all hosts without cross compiling.
     const ONLY_HOSTS: bool = false;
 
-    /// Primary function to execute this rule. Can call `builder.ensure(...)`
+    /// Primary function to execute this rule. Can call `builder.ensure()`
     /// with other steps to run those.
     fn run(self, builder: &Builder) -> Self::Output;
 
     /// When bootstrap is passed a set of paths, this controls whether this rule
     /// will execute. However, it does not get called in a "default" context
-    /// when we are not passed any paths; in that case, make_run is called
+    /// when we are not passed any paths; in that case, `make_run` is called
     /// directly.
     fn should_run(run: ShouldRun) -> ShouldRun;
 
-    /// Build up a "root" rule, either as a default rule or from a path passed
+    /// Builds up a "root" rule, either as a default rule or from a path passed
     /// to us.
     ///
     /// When path is `None`, we are executing in a context where no paths were
@@ -648,7 +648,7 @@ impl<'a> Builder<'a> {
         add_lib_path(vec![self.rustc_libdir(compiler)], cmd);
     }
 
-    /// Get a path to the compiler specified.
+    /// Gets a path to the compiler specified.
     pub fn rustc(&self, compiler: Compiler) -> PathBuf {
         if compiler.is_snapshot(self) {
             self.initial_rustc.clone()
@@ -659,7 +659,7 @@ impl<'a> Builder<'a> {
         }
     }
 
-    /// Get the paths to all of the compiler's codegen backends.
+    /// Gets the paths to all of the compiler's codegen backends.
     fn codegen_backends(&self, compiler: Compiler) -> impl Iterator<Item = PathBuf> {
         fs::read_dir(self.sysroot_codegen_backends(compiler))
             .into_iter()

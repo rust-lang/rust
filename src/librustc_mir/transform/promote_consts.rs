@@ -182,7 +182,7 @@ impl<'a, 'tcx> Promoter<'a, 'tcx> {
         });
     }
 
-    /// Copy the initialization of this temp to the
+    /// Copies the initialization of this temp to the
     /// promoted MIR, recursing through temps.
     fn promote_temp(&mut self, temp: Local) -> Local {
         let old_keep_original = self.keep_original;

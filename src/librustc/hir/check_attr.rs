@@ -91,7 +91,7 @@ struct CheckAttrVisitor<'a, 'tcx: 'a> {
 }
 
 impl<'a, 'tcx> CheckAttrVisitor<'a, 'tcx> {
-    /// Check any attribute.
+    /// Checks any attribute.
     fn check_attributes(&self, item: &hir::Item, target: Target) {
         if target == Target::Fn || target == Target::Const {
             self.tcx.codegen_fn_attrs(self.tcx.hir().local_def_id(item.id));
@@ -115,7 +115,7 @@ impl<'a, 'tcx> CheckAttrVisitor<'a, 'tcx> {
         self.check_used(item, target);
     }
 
-    /// Check if an `#[inline]` is applied to a function or a closure.
+    /// Checks if an `#[inline]` is applied to a function or a closure.
     fn check_inline(&self, attr: &hir::Attribute, span: &Span, target: Target) {
         if target != Target::Fn && target != Target::Closure {
             struct_span_err!(self.tcx.sess,
@@ -127,7 +127,7 @@ impl<'a, 'tcx> CheckAttrVisitor<'a, 'tcx> {
         }
     }
 
-    /// Check if the `#[non_exhaustive]` attribute on an `item` is valid.
+    /// Checks if the `#[non_exhaustive]` attribute on an `item` is valid.
     fn check_non_exhaustive(&self, attr: &hir::Attribute, item: &hir::Item, target: Target) {
         match target {
             Target::Struct | Target::Enum => { /* Valid */ },
@@ -143,7 +143,7 @@ impl<'a, 'tcx> CheckAttrVisitor<'a, 'tcx> {
         }
     }
 
-    /// Check if the `#[marker]` attribute on an `item` is valid.
+    /// Checks if the `#[marker]` attribute on an `item` is valid.
     fn check_marker(&self, attr: &hir::Attribute, item: &hir::Item, target: Target) {
         match target {
             Target::Trait => { /* Valid */ },
@@ -157,7 +157,7 @@ impl<'a, 'tcx> CheckAttrVisitor<'a, 'tcx> {
         }
     }
 
-    /// Check if the `#[repr]` attributes on `item` are valid.
+    /// Checks if the `#[repr]` attributes on `item` are valid.
     fn check_repr(&self, item: &hir::Item, target: Target) {
         // Extract the names of all repr hints, e.g., [foo, bar, align] for:
         // ```

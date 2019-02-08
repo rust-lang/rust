@@ -13,16 +13,17 @@ pub struct RawConst<'tcx> {
     pub ty: Ty<'tcx>,
 }
 
-/// Represents a constant value in Rust. Scalar and ScalarPair are optimizations which
-/// matches the LocalState optimizations for easy conversions between Value and ConstValue.
+/// Represents a constant value in Rust. `Scalar` and `ScalarPair` are optimizations that
+/// match the `LocalState` optimizations for easy conversions between `Value` and `ConstValue`.
 #[derive(Copy, Clone, Debug, Eq, PartialEq, PartialOrd, Ord, RustcEncodable, RustcDecodable, Hash)]
 pub enum ConstValue<'tcx> {
-    /// Used only for types with layout::abi::Scalar ABI and ZSTs
+    /// Used only for types with `layout::abi::Scalar` ABI and ZSTs.
     ///
-    /// Not using the enum `Value` to encode that this must not be `Undef`
+    /// Not using the enum `Value` to encode that this must not be `Undef`.
     Scalar(Scalar),
 
-    /// Used only for slices and strings (`&[T]`, `&str`, `*const [T]`, `*mut str`, `Box<str>`, ...)
+    /// Used only for slices and strings (`&[T]`, `&str`, `*const [T]`, `*mut str`, `Box<str>`,
+    /// etc.).
     ///
     /// Empty slices don't necessarily have an address backed by an `AllocId`, thus we also need to
     /// enable integer pointers. The `Scalar` type covers exactly those two cases. While we could
@@ -30,8 +31,8 @@ pub enum ConstValue<'tcx> {
     /// it.
     Slice(Scalar, u64),
 
-    /// An allocation + offset into the allocation.
-    /// Invariant: The AllocId matches the allocation.
+    /// An allocation together with an offset into the allocation.
+    /// Invariant: the `AllocId` matches the allocation.
     ByRef(AllocId, &'tcx Allocation, Size),
 }
 

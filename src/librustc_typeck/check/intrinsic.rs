@@ -62,7 +62,7 @@ fn equate_intrinsic_type<'a, 'tcx>(
     require_same_types(tcx, &cause, tcx.mk_fn_ptr(tcx.fn_sig(def_id)), fty);
 }
 
-/// Returns whether the given intrinsic is unsafe to call or not.
+/// Returns `true` if the given intrinsic is unsafe to call or not.
 pub fn intrisic_operation_unsafety(intrinsic: &str) -> hir::Unsafety {
     match intrinsic {
         "size_of" | "min_align_of" | "needs_drop" |

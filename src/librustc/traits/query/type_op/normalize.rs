@@ -52,7 +52,7 @@ pub trait Normalizable<'gcx, 'tcx>: fmt::Debug + TypeFoldable<'tcx> + Lift<'gcx>
         canonicalized: Canonicalized<'gcx, ParamEnvAnd<'tcx, Normalize<Self>>>,
     ) -> Fallible<CanonicalizedQueryResponse<'gcx, Self>>;
 
-    /// Convert from the `'gcx` (lifted) form of `Self` into the `tcx`
+    /// Converts from the `'gcx` (lifted) form of `Self` into the `tcx`
     /// form of `Self`.
     fn shrink_to_tcx_lifetime(
         v: &'a CanonicalizedQueryResponse<'gcx, Self>,

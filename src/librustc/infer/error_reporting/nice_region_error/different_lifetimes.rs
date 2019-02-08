@@ -39,7 +39,7 @@ impl<'a, 'gcx, 'tcx> NiceRegionError<'a, 'gcx, 'tcx> {
     ///     x.push(y);
     ///     ^ ...but data from `y` flows into `x` here
     /// }
-    /// ````
+    /// ```
     ///
     /// It will later be extended to trait objects.
     pub(super) fn try_report_anon_anon_conflict(&self) -> Option<ErrorReported> {

@@ -26,7 +26,7 @@ use log::debug;
 
 use crate::errors::SourceMapper;
 
-/// Return the span itself if it doesn't come from a macro expansion,
+/// Returns the span itself if it doesn't come from a macro expansion,
 /// otherwise return the call site span up to the `enclosing_sp` by
 /// following the `expn_info` chain.
 pub fn original_sp(sp: Span, enclosing_sp: Span) -> Span {
@@ -62,7 +62,7 @@ pub trait FileLoader {
     /// Query the existence of a file.
     fn file_exists(&self, path: &Path) -> bool;
 
-    /// Return an absolute path to a file, if possible.
+    /// Returns an absolute path to a file, if possible.
     fn abs_path(&self, path: &Path) -> Option<PathBuf>;
 
     /// Read the contents of an UTF-8 file into memory.
@@ -398,7 +398,7 @@ impl SourceMap {
         }
     }
 
-    /// Returns `Some(span)`, a union of the lhs and rhs span.  The lhs must precede the rhs. If
+    /// Returns `Some(span)`, a union of the lhs and rhs span. The lhs must precede the rhs. If
     /// there are gaps between lhs and rhs, the resulting union will cross these gaps.
     /// For this to work, the spans have to be:
     ///
@@ -511,7 +511,7 @@ impl SourceMap {
         Ok(FileLines {file: lo.file, lines: lines})
     }
 
-    /// Extract the source surrounding the given `Span` using the `extract_source` function. The
+    /// Extracts the source surrounding the given `Span` using the `extract_source` function. The
     /// extract function takes three arguments: a string slice containing the source, an index in
     /// the slice for the beginning of the span and an index in the slice for the end of the span.
     fn span_to_source<F>(&self, sp: Span, extract_source: F) -> Result<String, SpanSnippetError>
@@ -561,7 +561,7 @@ impl SourceMap {
         }
     }
 
-    /// Return the source snippet as `String` corresponding to the given `Span`
+    /// Returns the source snippet as `String` corresponding to the given `Span`
     pub fn span_to_snippet(&self, sp: Span) -> Result<String, SpanSnippetError> {
         self.span_to_source(sp, |src, start_index, end_index| src[start_index..end_index]
                                                                 .to_string())
@@ -576,7 +576,7 @@ impl SourceMap {
         }
     }
 
-    /// Return the source snippet as `String` before the given `Span`
+    /// Returns the source snippet as `String` before the given `Span`
     pub fn span_to_prev_source(&self, sp: Span) -> Result<String, SpanSnippetError> {
         self.span_to_source(sp, |src, start_index, _| src[..start_index].to_string())
     }
@@ -1123,7 +1123,7 @@ mod tests {
 
     /// Given a string like " ~~~~~~~~~~~~ ", produces a span
     /// converting that range. The idea is that the string has the same
-    /// length as the input, and we uncover the byte positions.  Note
+    /// length as the input, and we uncover the byte positions. Note
     /// that this can span lines and so on.
     fn span_from_selection(input: &str, selection: &str) -> Span {
         assert_eq!(input.len(), selection.len());
@@ -1132,7 +1132,7 @@ mod tests {
         Span::new(BytePos(left_index), BytePos(right_index + 1), NO_EXPANSION)
     }
 
-    /// Test span_to_snippet and span_to_lines for a span converting 3
+    /// Tests span_to_snippet and span_to_lines for a span converting 3
     /// lines in the middle of a file.
     #[test]
     fn span_to_snippet_and_lines_spanning_multiple_lines() {
@@ -1175,7 +1175,7 @@ mod tests {
         assert_eq!(sstr, "blork.rs:2:1: 2:12");
     }
 
-    /// Test failing to merge two spans on different lines
+    /// Tests failing to merge two spans on different lines
     #[test]
     fn span_merging_fail() {
         let sm = SourceMap::new(FilePathMapping::empty());

@@ -1,6 +1,6 @@
 /*!
 
-# typeck.rs
+# typeck
 
 The type checker is responsible for:
 

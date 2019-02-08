@@ -36,7 +36,7 @@ pub fn create_DIArray(
     };
 }
 
-/// Return syntax_pos::Loc corresponding to the beginning of the span
+/// Returns syntax_pos::Loc corresponding to the beginning of the span
 pub fn span_start(cx: &CodegenCx, span: Span) -> syntax_pos::Loc {
     cx.sess().source_map().lookup_char_pos(span.lo())
 }

@@ -39,13 +39,13 @@ pub trait BaseTypeMethods<'tcx>: Backend<'tcx> {
     fn type_ptr_to(&self, ty: Self::Type) -> Self::Type;
     fn element_type(&self, ty: Self::Type) -> Self::Type;
 
-    /// Return the number of elements in `self` if it is a LLVM vector type.
+    /// Returns the number of elements in `self` if it is a LLVM vector type.
     fn vector_length(&self, ty: Self::Type) -> usize;
 
     fn func_params_types(&self, ty: Self::Type) -> Vec<Self::Type>;
     fn float_width(&self, ty: Self::Type) -> usize;
 
-    /// Retrieve the bit width of the integer type `self`.
+    /// Retrieves the bit width of the integer type `self`.
     fn int_width(&self, ty: Self::Type) -> u64;
 
     fn val_ty(&self, v: Self::Value) -> Self::Type;

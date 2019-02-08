@@ -53,7 +53,7 @@ struct GuaranteeLifetimeContext<'a, 'tcx: 'a> {
 impl<'a, 'tcx> GuaranteeLifetimeContext<'a, 'tcx> {
     fn check(&self, cmt: &mc::cmt_<'tcx>, discr_scope: Option<ast::NodeId>) -> R {
         //! Main routine. Walks down `cmt` until we find the
-        //! "guarantor".  Reports an error if `self.loan_region` is
+        //! "guarantor". Reports an error if `self.loan_region` is
         //! larger than scope of `cmt`.
         debug!("guarantee_lifetime.check(cmt={:?}, loan_region={:?})",
                cmt,

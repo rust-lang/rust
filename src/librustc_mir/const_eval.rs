@@ -38,7 +38,7 @@ const DETECTOR_SNAPSHOT_PERIOD: isize = 256;
 /// `simd_shuffle` and const patterns in match arms.
 ///
 /// The function containing the `match` that is currently being analyzed may have generic bounds
-/// that inform us about the generic bounds of the constant. E.g. using an associated constant
+/// that inform us about the generic bounds of the constant. E.g., using an associated constant
 /// of a function's generic parameter will require knowledge about the bounds on the generic
 /// parameter. These bounds are passed to `mk_eval_cx` via the `ParamEnv` argument.
 pub(crate) fn mk_eval_cx<'a, 'mir, 'tcx>(
@@ -464,7 +464,7 @@ impl<'a, 'mir, 'tcx> interpret::Machine<'a, 'mir, 'tcx>
         Ok(())
     }
 
-    /// Called immediately before a stack frame gets popped
+    /// Called immediately before a stack frame gets popped.
     #[inline(always)]
     fn stack_pop(
         _ecx: &mut EvalContext<'a, 'mir, 'tcx, Self>,
@@ -474,7 +474,7 @@ impl<'a, 'mir, 'tcx> interpret::Machine<'a, 'mir, 'tcx>
     }
 }
 
-/// Project to a field of a (variant of a) const
+/// Projects to a field of a (variant of a) const.
 pub fn const_field<'a, 'tcx>(
     tcx: TyCtxt<'a, 'tcx, 'tcx>,
     param_env: ty::ParamEnv<'tcx>,
@@ -542,10 +542,10 @@ fn validate_and_turn_into_const<'a, 'tcx>(
                 op,
                 path,
                 Some(&mut ref_tracking),
-                /* const_mode */ true,
+                true, // const mode
             )?;
         }
-        // Now that we validated, turn this into a proper constant
+        // Now that we validated, turn this into a proper constant.
         let def_id = cid.instance.def.def_id();
         let normalize = tcx.is_static(def_id).is_none() && cid.promoted.is_none();
         op_to_const(&ecx, op, normalize)

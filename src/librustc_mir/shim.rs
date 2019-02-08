@@ -306,7 +306,7 @@ impl<'a, 'tcx> DropElaborator<'a, 'tcx> for DropShimElaborator<'a, 'tcx> {
     }
 }
 
-/// Build a `Clone::clone` shim for `self_ty`. Here, `def_id` is `Clone::clone`.
+/// Builds a `Clone::clone` shim for `self_ty`. Here, `def_id` is `Clone::clone`.
 fn build_clone_shim<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                               def_id: DefId,
                               self_ty: Ty<'tcx>)
@@ -691,7 +691,7 @@ impl<'a, 'tcx> CloneShimBuilder<'a, 'tcx> {
     }
 }
 
-/// Build a "call" shim for `def_id`. The shim calls the
+/// Builds a "call" shim for `def_id`. The shim calls the
 /// function specified by `call_kind`, first adjusting its first
 /// argument according to `rcvr_adjustment`.
 ///

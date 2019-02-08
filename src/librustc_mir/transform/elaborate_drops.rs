@@ -74,7 +74,7 @@ impl MirPass for ElaborateDrops {
     }
 }
 
-/// Return the set of basic blocks whose unwind edges are known
+/// Returns the set of basic blocks whose unwind edges are known
 /// to not be reachable, because they are `drop` terminators
 /// that can't drop anything.
 fn find_dead_unwinds<'a, 'tcx>(

@@ -51,7 +51,7 @@ enum AnnotationKind {
 pub struct DeprecationEntry {
     /// The metadata of the attribute associated with this entry.
     pub attr: Deprecation,
-    /// The def id where the attr was originally attached. `None` for non-local
+    /// The `DefId` where the attr was originally attached. `None` for non-local
     /// `DefId`'s.
     origin: Option<HirId>,
 }
@@ -475,7 +475,7 @@ pub fn provide(providers: &mut Providers<'_>) {
     };
 }
 
-/// Check whether an item marked with `deprecated(since="X")` is currently
+/// Checks whether an item marked with `deprecated(since="X")` is currently
 /// deprecated (i.e., whether X is not greater than the current rustc version).
 pub fn deprecation_in_effect(since: &str) -> bool {
     fn parse_version(ver: &str) -> Vec<u32> {

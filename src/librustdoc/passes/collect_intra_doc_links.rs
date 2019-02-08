@@ -59,7 +59,7 @@ impl<'a, 'tcx, 'rcx> LinkCollector<'a, 'tcx, 'rcx> {
         }
     }
 
-    /// Resolve a given string as a path, along with whether or not it is
+    /// Resolves a given string as a path, along with whether or not it is
     /// in the value namespace. Also returns an optional URL fragment in the case
     /// of variants and methods.
     fn resolve(&self,
@@ -422,7 +422,7 @@ impl<'a, 'tcx, 'rcx> DocFolder for LinkCollector<'a, 'tcx, 'rcx> {
     }
 }
 
-/// Resolve a string as a macro.
+/// Resolves a string as a macro.
 fn macro_resolve(cx: &DocContext, path_str: &str) -> Option<Def> {
     use syntax::ext::base::{MacroKind, SyntaxExtension};
     let segment = ast::PathSegment::from_ident(Ident::from_str(path_str));

@@ -108,7 +108,7 @@ pub struct Mir<'tcx> {
     /// in scope, but a separate set of locals.
     pub promoted: IndexVec<Promoted, Mir<'tcx>>,
 
-    /// Yield type of the function, if it is a generator.
+    /// Yields type of the function, if it is a generator.
     pub yield_ty: Option<Ty<'tcx>>,
 
     /// Generator drop glue
@@ -380,7 +380,7 @@ impl<'tcx> Mir<'tcx> {
         }
     }
 
-    /// Check if `sub` is a sub scope of `sup`
+    /// Checks if `sub` is a sub scope of `sup`
     pub fn is_sub_scope(&self, mut sub: SourceScope, sup: SourceScope) -> bool {
         while sub != sup {
             match self.source_scopes[sub].parent_scope {
@@ -391,12 +391,12 @@ impl<'tcx> Mir<'tcx> {
         true
     }
 
-    /// Return the return type, it always return first element from `local_decls` array
+    /// Returns the return type, it always return first element from `local_decls` array
     pub fn return_ty(&self) -> Ty<'tcx> {
         self.local_decls[RETURN_PLACE].ty
     }
 
-    /// Get the location of the terminator for the given block
+    /// Gets the location of the terminator for the given block
     pub fn terminator_loc(&self, bb: BasicBlock) -> Location {
         Location {
             block: bb,
@@ -526,7 +526,7 @@ pub enum BorrowKind {
     /// We can also report errors with this kind of borrow differently.
     Shallow,
 
-    /// Data must be immutable but not aliasable.  This kind of borrow
+    /// Data must be immutable but not aliasable. This kind of borrow
     /// cannot currently be expressed by the user and is used only in
     /// implicit closure bindings. It is needed when the closure is
     /// borrowing or mutating a mutable referent, e.g.:
@@ -565,8 +565,8 @@ pub enum BorrowKind {
 
     /// Data is mutable and not aliasable.
     Mut {
-        /// True if this borrow arose from method-call auto-ref
-        /// (i.e., `adjustment::Adjust::Borrow`)
+        /// `true` if this borrow arose from method-call auto-ref
+        /// (i.e., `adjustment::Adjust::Borrow`).
         allow_two_phase_borrow: bool,
     },
 }
@@ -610,7 +610,7 @@ pub struct VarBindingForm<'tcx> {
     /// If an explicit type was provided for this variable binding,
     /// this holds the source Span of that type.
     ///
-    /// NOTE: If you want to change this to a `HirId`, be wary that
+    /// NOTE: if you want to change this to a `HirId`, be wary that
     /// doing so breaks incremental compilation (as of this writing),
     /// while a `Span` does not cause our tests to fail.
     pub opt_ty_info: Option<Span>,
@@ -737,7 +737,7 @@ pub struct LocalDecl<'tcx> {
     /// `ClearCrossCrate` as long as it carries as `HirId`.
     pub is_user_variable: Option<ClearCrossCrate<BindingForm<'tcx>>>,
 
-    /// True if this is an internal local
+    /// `true` if this is an internal local.
     ///
     /// These locals are not based on types in the source code and are only used
     /// for a few desugarings at the moment.
@@ -864,7 +864,7 @@ pub struct LocalDecl<'tcx> {
 }
 
 impl<'tcx> LocalDecl<'tcx> {
-    /// Returns true only if local is a binding that can itself be
+    /// Returns `true` only if local is a binding that can itself be
     /// made mutable via the addition of the `mut` keyword, namely
     /// something like the occurrences of `x` in:
     /// - `fn foo(x: Type) { ... }`,
@@ -886,7 +886,7 @@ impl<'tcx> LocalDecl<'tcx> {
         }
     }
 
-    /// Returns true if local is definitely not a `ref ident` or
+    /// Returns `true` if local is definitely not a `ref ident` or
     /// `ref mut ident` binding. (Such bindings cannot be made into
     /// mutable bindings, but the inverse does not necessarily hold).
     pub fn is_nonref_binding(&self) -> bool {
@@ -904,7 +904,7 @@ impl<'tcx> LocalDecl<'tcx> {
         }
     }
 
-    /// Create a new `LocalDecl` for a temporary.
+    /// Creates a new `LocalDecl` for a temporary.
     #[inline]
     pub fn new_temp(ty: Ty<'tcx>, span: Span) -> Self {
         Self::new_local(ty, Mutability::Mut, false, span)
@@ -925,7 +925,7 @@ impl<'tcx> LocalDecl<'tcx> {
         self
     }
 
-    /// Create a new `LocalDecl` for a internal temporary.
+    /// Creates a new `LocalDecl` for a internal temporary.
     #[inline]
     pub fn new_internal(ty: Ty<'tcx>, span: Span) -> Self {
         Self::new_local(ty, Mutability::Mut, true, span)
@@ -1019,7 +1019,7 @@ pub struct BasicBlockData<'tcx> {
 
     /// Terminator for this block.
     ///
-    /// NB. This should generally ONLY be `None` during construction.
+    /// N.B., this should generally ONLY be `None` during construction.
     /// Therefore, you should generally access it via the
     /// `terminator()` or `terminator_mut()` methods. The only
     /// exception is that certain passes, such as `simplify_cfg`, swap
@@ -1637,7 +1637,7 @@ impl<'tcx> TerminatorKind<'tcx> {
         }
     }
 
-    /// Return the list of labels for the edges to the successor basic blocks.
+    /// Returns the list of labels for the edges to the successor basic blocks.
     pub fn fmt_successor_labels(&self) -> Vec<Cow<'static, str>> {
         use self::TerminatorKind::*;
         match *self {
@@ -1760,7 +1760,7 @@ pub enum StatementKind<'tcx> {
     /// error messages to these specific patterns.
     ///
     /// Note that this also is emitted for regular `let` bindings to ensure that locals that are
-    /// never accessed still get some sanity checks for e.g. `let x: ! = ..;`
+    /// never accessed still get some sanity checks for, e.g., `let x: ! = ..;`
     FakeRead(FakeReadCause, Place<'tcx>),
 
     /// Write the discriminant for a variant to the enum Place.
@@ -1775,14 +1775,14 @@ pub enum StatementKind<'tcx> {
     /// End the current live range for the storage of the local.
     StorageDead(Local),
 
-    /// Execute a piece of inline Assembly.
+    /// Executes a piece of inline Assembly.
     InlineAsm {
         asm: Box<InlineAsm>,
         outputs: Box<[Place<'tcx>]>,
         inputs: Box<[(Span, Operand<'tcx>)]>,
     },
 
-    /// Retag references in the given place, ensuring they got fresh tags.  This is
+    /// Retag references in the given place, ensuring they got fresh tags. This is
     /// part of the Stacked Borrows model. These statements are currently only interpreted
     /// by miri and only generated when "-Z mir-emit-retag" is passed.
     /// See <https://internals.rust-lang.org/t/stacked-borrows-an-aliasing-model-for-rust/8153/>
@@ -1904,7 +1904,7 @@ pub enum Place<'tcx> {
     Projection(Box<PlaceProjection<'tcx>>),
 }
 
-/// The def-id of a static, along with its normalized type (which is
+/// The `DefId` of a static, along with its normalized type (which is
 /// stored to avoid requiring normalization when reading MIR).
 #[derive(Clone, PartialEq, Eq, PartialOrd, Ord, Hash, RustcEncodable, RustcDecodable)]
 pub struct Static<'tcx> {
@@ -2009,10 +2009,10 @@ impl<'tcx> Place<'tcx> {
         Place::Projection(Box::new(PlaceProjection { base: self, elem }))
     }
 
-    /// Find the innermost `Local` from this `Place`, *if* it is either a local itself or
+    /// Finds the innermost `Local` from this `Place`, *if* it is either a local itself or
     /// a single deref of a local.
-    ///
-    /// FIXME: can we safely swap the semantics of `fn base_local` below in here instead?
+    //
+    // FIXME: can we safely swap the semantics of `fn base_local` below in here instead?
     pub fn local(&self) -> Option<Local> {
         match self {
             Place::Local(local) |
@@ -2024,7 +2024,7 @@ impl<'tcx> Place<'tcx> {
         }
     }
 
-    /// Find the innermost `Local` from this `Place`.
+    /// Finds the innermost `Local` from this `Place`.
     pub fn base_local(&self) -> Option<Local> {
         match self {
             Place::Local(local) => Some(*local),
@@ -2141,7 +2141,7 @@ impl<'tcx> Debug for Operand<'tcx> {
 
 impl<'tcx> Operand<'tcx> {
     /// Convenience helper to make a constant that refers to the fn
-    /// with given def-id and substs. Since this is used to synthesize
+    /// with given `DefId` and substs. Since this is used to synthesize
     /// MIR, assumes `user_ty` is None.
     pub fn function_handle<'a>(
         tcx: TyCtxt<'a, 'tcx, 'tcx>,
@@ -2199,7 +2199,7 @@ pub enum Rvalue<'tcx> {
     /// be defined to return, say, a 0) if ADT is not an enum.
     Discriminant(Place<'tcx>),
 
-    /// Create an aggregate value, like a tuple or struct.  This is
+    /// Creates an aggregate value, like a tuple or struct. This is
     /// only needed because we want to distinguish `dest = Foo { x:
     /// ..., y: ... }` from `dest.x = ...; dest.y = ...;` in the case
     /// that `Foo` has a destructor. These rvalues can be optimized
@@ -2211,13 +2211,13 @@ pub enum Rvalue<'tcx> {
 pub enum CastKind {
     Misc,
 
-    /// Convert unique, zero-sized type for a fn to fn()
+    /// Converts unique, zero-sized type for a fn to fn()
     ReifyFnPointer,
 
-    /// Convert non capturing closure to fn()
+    /// Converts non capturing closure to fn()
     ClosureFnPointer,
 
-    /// Convert safe fn() to unsafe fn()
+    /// Converts safe fn() to unsafe fn()
     UnsafeFnPointer,
 
     /// "Unsize" -- convert a thin-or-fat pointer to a fat pointer.
@@ -2301,9 +2301,9 @@ impl BinOp {
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq, RustcEncodable, RustcDecodable)]
 pub enum NullOp {
-    /// Return the size of a value of that type
+    /// Returns the size of a value of that type
     SizeOf,
-    /// Create a new uninitialized box for a value of that type
+    /// Creates a new uninitialized box for a value of that type
     Box,
 }
 
@@ -2847,7 +2847,7 @@ impl Location {
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash, RustcEncodable, RustcDecodable)]
 pub enum UnsafetyViolationKind {
     General,
-    /// Permitted in const fn and regular fns
+    /// Permitted in const fn and regular fns.
     GeneralAndConstFn,
     ExternStatic(ast::NodeId),
     BorrowPacked(ast::NodeId),
@@ -2884,7 +2884,7 @@ pub struct BorrowCheckResult<'gcx> {
 
 /// After we borrow check a closure, we are left with various
 /// requirements that we have inferred between the free regions that
-/// appear in the closure's signature or on its field types.  These
+/// appear in the closure's signature or on its field types. These
 /// requirements are then verified and proved by the closure's
 /// creating function. This struct encodes those requirements.
 ///
@@ -2934,7 +2934,7 @@ pub struct BorrowCheckResult<'gcx> {
 /// internally within the rest of the NLL code).
 #[derive(Clone, Debug, RustcEncodable, RustcDecodable)]
 pub struct ClosureRegionRequirements<'gcx> {
-    /// The number of external regions defined on the closure.  In our
+    /// The number of external regions defined on the closure. In our
     /// example above, it would be 3 -- one for `'static`, then `'1`
     /// and `'2`. This is just used for a sanity check later on, to
     /// make sure that the number of regions we see at the callsite

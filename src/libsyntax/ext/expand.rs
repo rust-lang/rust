@@ -444,7 +444,7 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
         }
     }
 
-    /// Collect all macro invocations reachable at this time in this AST fragment, and replace
+    /// Collects all macro invocations reachable at this time in this AST fragment, and replace
     /// them with "placeholders" - dummy macro invocations with specially crafted `NodeId`s.
     /// Then call into resolver that builds a skeleton ("reduced graph") of the fragment and
     /// prepares data for resolving paths of macro invocations.

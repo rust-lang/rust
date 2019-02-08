@@ -1,5 +1,5 @@
-//! For each definition, we track the following data.  A definition
-//! here is defined somewhat circularly as "something with a def-id",
+//! For each definition, we track the following data. A definition
+//! here is defined somewhat circularly as "something with a `DefId`",
 //! but it generally corresponds to things like structs, enums, etc.
 //! There are also some rather random cases (like const initializer
 //! expressions) that are mostly just leftovers.
@@ -163,10 +163,10 @@ pub struct Definitions {
 /// any) with a `DisambiguatedDefPathData`.
 #[derive(Clone, PartialEq, Debug, Hash, RustcEncodable, RustcDecodable)]
 pub struct DefKey {
-    /// Parent path.
+    /// The parent path.
     pub parent: Option<DefIndex>,
 
-    /// Identifier of this node.
+    /// The identifier of this node.
     pub disambiguated_data: DisambiguatedDefPathData,
 }
 
@@ -207,12 +207,12 @@ impl DefKey {
     }
 }
 
-/// Pair of `DefPathData` and an integer disambiguator. The integer is
+/// A pair of `DefPathData` and an integer disambiguator. The integer is
 /// normally 0, but in the event that there are multiple defs with the
 /// same `parent` and `data`, we use this field to disambiguate
 /// between them. This introduces some artificial ordering dependency
 /// but means that if you have (e.g.) two impls for the same type in
-/// the same module, they do get distinct def-ids.
+/// the same module, they do get distinct `DefId`s.
 #[derive(Clone, PartialEq, Debug, Hash, RustcEncodable, RustcDecodable)]
 pub struct DisambiguatedDefPathData {
     pub data: DefPathData,
@@ -221,10 +221,10 @@ pub struct DisambiguatedDefPathData {
 
 #[derive(Clone, Debug, Hash, RustcEncodable, RustcDecodable)]
 pub struct DefPath {
-    /// the path leading from the crate root to the item
+    /// The path leading from the crate root to the item.
     pub data: Vec<DisambiguatedDefPathData>,
 
-    /// what krate root is this path relative to?
+    /// The crate root this path is relative to.
     pub krate: CrateNum,
 }
 
@@ -260,9 +260,9 @@ impl DefPath {
         DefPath { data: data, krate: krate }
     }
 
-    /// Returns a string representation of the DefPath without
+    /// Returns a string representation of the `DefPath` without
     /// the crate-prefix. This method is useful if you don't have
-    /// a TyCtxt available.
+    /// a `TyCtxt` available.
     pub fn to_string_no_crate(&self) -> String {
         let mut s = String::with_capacity(self.data.len() * 16);
 
@@ -277,7 +277,7 @@ impl DefPath {
         s
     }
 
-    /// Return filename friendly string of the DefPah with the
+    /// Returns a filename-friendly string for the `DefPath`, with the
     /// crate-prefix.
     pub fn to_string_friendly<F>(&self, crate_imported_name: F) -> String
         where F: FnOnce(CrateNum) -> Symbol
@@ -302,9 +302,9 @@ impl DefPath {
         s
     }
 
-    /// Return filename friendly string of the DefPah without
+    /// Returns a filename-friendly string of the `DefPath`, without
     /// the crate-prefix. This method is useful if you don't have
-    /// a TyCtxt available.
+    /// a `TyCtxt` available.
     pub fn to_filename_friendly_no_crate(&self) -> String {
         let mut s = String::with_capacity(self.data.len() * 16);
 
@@ -394,18 +394,18 @@ impl Borrow<Fingerprint> for DefPathHash {
 }
 
 impl Definitions {
-    /// Create new empty definition map.
+    /// Creates new empty definition map.
     ///
-    /// The DefIndex returned from a new Definitions are as follows:
-    /// 1. At DefIndexAddressSpace::Low,
+    /// The `DefIndex` returned from a new `Definitions` are as follows:
+    /// 1. At `DefIndexAddressSpace::Low`,
     ///     CRATE_ROOT has index 0:0, and then new indexes are allocated in
     ///     ascending order.
-    /// 2. At DefIndexAddressSpace::High,
-    ///     the first FIRST_FREE_HIGH_DEF_INDEX indexes are reserved for
-    ///     internal use, then 1:FIRST_FREE_HIGH_DEF_INDEX are allocated in
+    /// 2. At `DefIndexAddressSpace::High`,
+    ///     the first `FIRST_FREE_HIGH_DEF_INDEX` indexes are reserved for
+    ///     internal use, then `1:FIRST_FREE_HIGH_DEF_INDEX` are allocated in
     ///     ascending order.
-    ///
-    /// FIXME: there is probably a better place to put this comment.
+    //
+    // FIXME: there is probably a better place to put this comment.
     pub fn new() -> Self {
         Self::default()
     }
@@ -414,7 +414,7 @@ impl Definitions {
         &self.table
     }
 
-    /// Get the number of definitions.
+    /// Gets the number of definitions.
     pub fn def_index_counts_lo_hi(&self) -> (usize, usize) {
         (self.table.index_to_key[DefIndexAddressSpace::Low.index()].len(),
          self.table.index_to_key[DefIndexAddressSpace::High.index()].len())
@@ -497,8 +497,8 @@ impl Definitions {
         self.node_to_hir_id[node_id]
     }
 
-    /// Retrieve the span of the given `DefId` if `DefId` is in the local crate, the span exists and
-    /// it's not DUMMY_SP
+    /// Retrieves the span of the given `DefId` if `DefId` is in the local crate, the span exists
+    /// and it's not `DUMMY_SP`.
     #[inline]
     pub fn opt_span(&self, def_id: DefId) -> Option<Span> {
         if def_id.krate == LOCAL_CRATE {
@@ -508,7 +508,7 @@ impl Definitions {
         }
     }
 
-    /// Add a definition with a parent definition.
+    /// Adds a root definition (no parent).
     pub fn create_root_def(&mut self,
                            crate_name: &str,
                            crate_disambiguator: CrateDisambiguator)
@@ -606,7 +606,7 @@ impl Definitions {
         index
     }
 
-    /// Initialize the ast::NodeId to HirId mapping once it has been generated during
+    /// Initialize the `ast::NodeId` to `HirId` mapping once it has been generated during
     /// AST to HIR lowering.
     pub fn init_node_id_to_hir_id_mapping(&mut self,
                                           mapping: IndexVec<ast::NodeId, hir::HirId>) {

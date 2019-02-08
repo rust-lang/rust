@@ -1337,7 +1337,7 @@ extern "C" {
     pub fn LLVMGetSections(ObjFile: &'a ObjectFile) -> &'a mut SectionIterator<'a>;
     /// Destroys a section iterator.
     pub fn LLVMDisposeSectionIterator(SI: &'a mut SectionIterator<'a>);
-    /// Returns true if the section iterator is at the end of the section
+    /// Returns `true` if the section iterator is at the end of the section
     /// list:
     pub fn LLVMIsSectionIteratorAtEnd(ObjFile: &'a ObjectFile, SI: &SectionIterator<'a>) -> Bool;
     /// Moves the section iterator to point to the next section.

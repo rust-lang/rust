@@ -4,7 +4,7 @@
 //! compiler 'backend', though LLVM is rustc's backend, so rustc_target
 //! is really just odds-and-ends relating to code gen and linking.
 //! This crate mostly exists to make rustc smaller, so we might put
-//! more 'stuff' here in the future.  It does not have a dependency on
+//! more 'stuff' here in the future. It does not have a dependency on
 //! LLVM.
 
 #![doc(html_root_url = "https://doc.rust-lang.org/nightly/")]

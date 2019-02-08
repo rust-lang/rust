@@ -884,7 +884,7 @@ impl<'a, 'tcx: 'a, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         }
     }
 
-    /// Return the landingpad wrapper around the given basic block
+    /// Returns the landing-pad wrapper around the given basic block.
     ///
     /// No-op in MSVC SEH scheme.
     fn landing_pad_to(

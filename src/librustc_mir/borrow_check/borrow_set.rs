@@ -26,12 +26,12 @@ crate struct BorrowSet<'tcx> {
     crate location_map: FxHashMap<Location, BorrowIndex>,
 
     /// Locations which activate borrows.
-    /// NOTE: A given location may activate more than one borrow in the future
+    /// NOTE: a given location may activate more than one borrow in the future
     /// when more general two-phase borrow support is introduced, but for now we
-    /// only need to store one borrow index
+    /// only need to store one borrow index.
     crate activation_map: FxHashMap<Location, Vec<BorrowIndex>>,
 
-    /// Map from local to all the borrows on that local
+    /// Map from local to all the borrows on that local.
     crate local_map: FxHashMap<mir::Local, FxHashSet<BorrowIndex>>,
 
     crate locals_state_at_exit: LocalsStateAtExit,
@@ -45,8 +45,8 @@ impl<'tcx> Index<BorrowIndex> for BorrowSet<'tcx> {
     }
 }
 
-/// Location where a two phase borrow is activated, if a borrow
-/// is in fact a two phase borrow.
+/// Location where a two-phase borrow is activated, if a borrow
+/// is in fact a two-phase borrow.
 #[derive(Copy, Clone, PartialEq, Eq, Debug)]
 crate enum TwoPhaseActivation {
     NotTwoPhase,
@@ -311,7 +311,7 @@ impl<'a, 'gcx, 'tcx> Visitor<'tcx> for GatherBorrows<'a, 'gcx, 'tcx> {
 }
 
 impl<'a, 'gcx, 'tcx> GatherBorrows<'a, 'gcx, 'tcx> {
-    /// Returns true if the borrow represented by `kind` is
+    /// Returns `true` if the borrow represented by `kind` is
     /// allowed to be split into separate Reservation and
     /// Activation phases.
     fn allow_two_phase_borrow(&self, kind: mir::BorrowKind) -> bool {

@@ -56,7 +56,7 @@ fn is_mir_available<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: DefId) -> boo
     tcx.mir_keys(def_id.krate).contains(&def_id)
 }
 
-/// Finds the full set of def-ids within the current crate that have
+/// Finds the full set of `DefId`s within the current crate that have
 /// MIR associated with them.
 fn mir_keys<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, krate: CrateNum)
                       -> Lrc<DefIdSet> {

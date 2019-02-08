@@ -13,7 +13,7 @@ use std::mem;
 
 /// Outlives bounds are relationships between generic parameters,
 /// whether they both be regions (`'a: 'b`) or whether types are
-/// involved (`T: 'a`).  These relationships can be extracted from the
+/// involved (`T: 'a`). These relationships can be extracted from the
 /// full set of predicates we understand or also from types (in which
 /// case they are called implied bounds). They are fed to the
 /// `OutlivesEnv` which in turn is supplied to the region checker and
@@ -66,7 +66,7 @@ impl<'a, 'tcx> HashStable<StableHashingContext<'a>> for OutlivesBound<'tcx> {
 
 impl<'cx, 'gcx, 'tcx> InferCtxt<'cx, 'gcx, 'tcx> {
     /// Implied bounds are region relationships that we deduce
-    /// automatically.  The idea is that (e.g.) a caller must check that a
+    /// automatically. The idea is that (e.g.) a caller must check that a
     /// function's argument types are well-formed immediately before
     /// calling that fn, and hence the *callee* can assume that its
     /// argument types are well-formed. This may imply certain relationships

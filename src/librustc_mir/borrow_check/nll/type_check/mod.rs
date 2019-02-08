@@ -839,7 +839,7 @@ pub enum Locations {
     /// older NLL analysis, we required this only at the entry point
     /// to the function. By the nature of the constraints, this wound
     /// up propagating to all points reachable from start (because
-    /// `'1` -- as a universal region -- is live everywhere).  In the
+    /// `'1` -- as a universal region -- is live everywhere). In the
     /// newer analysis, though, this doesn't work: `_0` is considered
     /// dead at the start (it has no usable value) and hence this type
     /// equality is basically a no-op. Then, later on, when we do `_0
@@ -2079,7 +2079,7 @@ impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
         }
     }
 
-    /// Add the constraints that arise from a borrow expression `&'a P` at the location `L`.
+    /// Adds the constraints that arise from a borrow expression `&'a P` at the location `L`.
     ///
     /// # Parameters
     ///

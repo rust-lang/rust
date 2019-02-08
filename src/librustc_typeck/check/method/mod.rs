@@ -124,7 +124,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         }
     }
 
-    /// Add a suggestion to call the given method to the provided diagnostic.
+    /// Adds a suggestion to call the given method to the provided diagnostic.
     crate fn suggest_method_call(
         &self,
         err: &mut DiagnosticBuilder<'a>,
@@ -261,12 +261,12 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
     /// `lookup_method_in_trait` is used for overloaded operators.
     /// It does a very narrow slice of what the normal probe/confirm path does.
     /// In particular, it doesn't really do any probing: it simply constructs
-    /// an obligation for a particular trait with the given self-type and checks
+    /// an obligation for a particular trait with the given self type and checks
     /// whether that trait is implemented.
-    ///
-    /// FIXME(#18741): it seems likely that we can consolidate some of this
-    /// code with the other method-lookup code. In particular, the second half
-    /// of this method is basically the same as confirmation.
+    //
+    // FIXME(#18741): it seems likely that we can consolidate some of this
+    // code with the other method-lookup code. In particular, the second half
+    // of this method is basically the same as confirmation.
     pub fn lookup_method_in_trait(&self,
                                   span: Span,
                                   m_name: ast::Ident,
@@ -440,7 +440,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         Ok(def)
     }
 
-    /// Find item with name `item_name` defined in impl/trait `def_id`
+    /// Finds item with name `item_name` defined in impl/trait `def_id`
     /// and return it, or `None`, if no such item was defined there.
     pub fn associated_item(&self, def_id: DefId, item_name: ast::Ident, ns: Namespace)
                            -> Option<ty::AssociatedItem> {

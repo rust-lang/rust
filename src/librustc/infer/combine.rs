@@ -165,8 +165,8 @@ impl<'infcx, 'gcx, 'tcx> CombineFields<'infcx, 'gcx, 'tcx> {
         Glb::new(self, a_is_expected)
     }
 
-    /// Here dir is either EqTo, SubtypeOf, or SupertypeOf. The
-    /// idea is that we should ensure that the type `a_ty` is equal
+    /// Here, `dir` is either `EqTo`, `SubtypeOf`, or `SupertypeOf`.
+    /// The idea is that we should ensure that the type `a_ty` is equal
     /// to, a subtype of, or a supertype of (respectively) the type
     /// to which `b_vid` is bound.
     ///
@@ -280,7 +280,7 @@ impl<'infcx, 'gcx, 'tcx> CombineFields<'infcx, 'gcx, 'tcx> {
 struct Generalizer<'cx, 'gcx: 'cx+'tcx, 'tcx: 'cx> {
     infcx: &'cx InferCtxt<'cx, 'gcx, 'tcx>,
 
-    /// Span, used when creating new type variables and things.
+    /// The span, used when creating new type variables and things.
     span: Span,
 
     /// The vid of the type variable that is in the process of being
@@ -310,7 +310,7 @@ struct Generalization<'tcx> {
     /// particular around 'bivariant' type parameters that are only
     /// constrained by a where-clause. As an example, imagine a type:
     ///
-    ///     struct Foo<A, B> where A: Iterator<Item=B> {
+    ///     struct Foo<A, B> where A: Iterator<Item = B> {
     ///         data: A
     ///     }
     ///
@@ -323,7 +323,7 @@ struct Generalization<'tcx> {
     /// <: ?C`, but no particular relationship between `?B` and `?D`
     /// (after all, we do not know the variance of the normalized form
     /// of `A::Item` with respect to `A`). If we do nothing else, this
-    /// may mean that `?D` goes unconstrained (as in #41677).  So, in
+    /// may mean that `?D` goes unconstrained (as in #41677). So, in
     /// this scenario where we create a new type variable in a
     /// bivariant context, we set the `needs_wf` flag to true. This
     /// will force the calling code to check that `WF(Foo<?C, ?D>)`

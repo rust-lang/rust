@@ -358,7 +358,7 @@ impl<'tcx> ExprRef<'tcx> {
 /// Mirroring is gradual: when you mirror an outer expression like `e1
 /// + e2`, the references to the inner expressions `e1` and `e2` are
 /// `ExprRef<'tcx>` instances, and they may or may not be eagerly
-/// mirrored.  This allows a single AST node from the compiler to
+/// mirrored. This allows a single AST node from the compiler to
 /// expand into one or more Hair nodes, which lets the Hair nodes be
 /// simpler.
 pub trait Mirror<'tcx> {

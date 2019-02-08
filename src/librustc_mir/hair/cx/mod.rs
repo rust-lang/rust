@@ -1,8 +1,6 @@
-//! This module contains the code to convert from the wacky tcx data
-//! structures into the hair. The `builder` is generally ignorant of
-//! the tcx etc, and instead goes through the `Cx` for most of its
-//! work.
-//!
+//! This module contains the fcuntaiontliy to convert from the wacky tcx data
+//! structures into the HAIR. The `builder` is generally ignorant of the tcx,
+//! etc., and instead goes through the `Cx` for most of its work.
 
 use crate::hair::*;
 use crate::hair::util::UserAnnotatedTyHelpers;
@@ -44,10 +42,10 @@ pub struct Cx<'a, 'gcx: 'a + 'tcx, 'tcx: 'a> {
     /// What kind of body is being compiled.
     pub body_owner_kind: hir::BodyOwnerKind,
 
-    /// True if this constant/function needs overflow checks.
+    /// Whether this constant/function needs overflow checks.
     check_overflow: bool,
 
-    /// See field with the same name on `Mir`
+    /// See field with the same name on `Mir`.
     control_flow_destroyed: Vec<(Span, String)>,
 }
 
@@ -100,7 +98,7 @@ impl<'a, 'gcx, 'tcx> Cx<'a, 'gcx, 'tcx> {
 }
 
 impl<'a, 'gcx, 'tcx> Cx<'a, 'gcx, 'tcx> {
-    /// Normalizes `ast` into the appropriate `mirror` type.
+    /// Normalizes `ast` into the appropriate "mirror" type.
     pub fn mirror<M: Mirror<'tcx>>(&mut self, ast: M) -> M::Output {
         ast.make_mirror(self)
     }

@@ -1,8 +1,8 @@
 //! This pass erases all early-bound regions from the types occurring in the MIR.
 //! We want to do this once just before codegen, so codegen does not have to take
 //! care erasing regions all over the place.
-//! NOTE:  We do NOT erase regions of statements that are relevant for
-//! "types-as-contracts"-validation, namely, AcquireValid, ReleaseValid
+//! N.B., we do _not_ erase regions of statements that are relevant for
+//! "types-as-contracts"-validation, namely, `AcquireValid` and `ReleaseValid`.
 
 use rustc::ty::subst::Substs;
 use rustc::ty::{self, Ty, TyCtxt};

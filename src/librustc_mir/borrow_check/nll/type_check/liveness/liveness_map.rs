@@ -79,7 +79,7 @@ impl NllLivenessMap {
         }
     }
 
-    /// True if there are no local variables that need liveness computation.
+    /// Returns `true` if there are no local variables that need liveness computation.
     crate fn is_empty(&self) -> bool {
         self.to_local.is_empty()
     }

@@ -112,7 +112,7 @@ impl<'a> StringReader<'a> {
         self.unwrap_or_abort(res)
     }
 
-    /// Return the next token. EFFECT: advances the string_reader.
+    /// Returns the next token. EFFECT: advances the string_reader.
     pub fn try_next_token(&mut self) -> Result<TokenAndSpan, ()> {
         assert!(self.fatal_errs.is_empty());
         let ret_val = TokenAndSpan {
@@ -425,7 +425,7 @@ impl<'a> StringReader<'a> {
         self.with_str_from_to(start, self.pos, f)
     }
 
-    /// Create a Name from a given offset to the current offset, each
+    /// Creates a Name from a given offset to the current offset, each
     /// adjusted 1 towards each other (assumes that on either side there is a
     /// single-byte delimiter).
     fn name_from(&self, start: BytePos) -> ast::Name {
@@ -670,7 +670,7 @@ impl<'a> StringReader<'a> {
     }
 
     /// If there is whitespace, shebang, or a comment, scan it. Otherwise,
-    /// return None.
+    /// return `None`.
     fn scan_whitespace_or_comment(&mut self) -> Option<TokenAndSpan> {
         match self.ch.unwrap_or('\0') {
             // # to handle shebang at start of file -- this is the entry point
@@ -920,7 +920,7 @@ impl<'a> StringReader<'a> {
     /// in a byte, (non-raw) byte string, char, or (non-raw) string literal.
     /// `start` is the position of `first_source_char`, which is already consumed.
     ///
-    /// Returns true if there was a valid char/byte, false otherwise.
+    /// Returns `true` if there was a valid char/byte.
     fn scan_char_or_byte(&mut self,
                          start: BytePos,
                          first_source_char: char,
@@ -1152,7 +1152,7 @@ impl<'a> StringReader<'a> {
         }
     }
 
-    /// Check that a base is valid for a floating literal, emitting a nice
+    /// Checks that a base is valid for a floating literal, emitting a nice
     /// error if it isn't.
     fn check_float_base(&mut self, start_bpos: BytePos, last_bpos: BytePos, base: usize) {
         match base {
@@ -1185,7 +1185,7 @@ impl<'a> StringReader<'a> {
         }
     }
 
-    /// Return the next token from the string, advances the input past that
+    /// Returns the next token from the string, advances the input past that
     /// token, and updates the interner
     fn next_token_inner(&mut self) -> Result<token::Token, ()> {
         let c = self.ch;

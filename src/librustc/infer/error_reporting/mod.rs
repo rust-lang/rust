@@ -659,7 +659,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
         None
     }
 
-    /// Add a `,` to the type representation only if it is appropriate.
+    /// Adds a `,` to the type representation only if it is appropriate.
     fn push_comma(
         &self,
         value: &mut DiagnosticStyledString,
@@ -715,7 +715,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
         substs.truncate_to(self.tcx, &generics)
     }
 
-    /// Compare two given types, eliding parts that are the same between them and highlighting
+    /// Compares two given types, eliding parts that are the same between them and highlighting
     /// relevant differences, and return two representation of those types for highlighted printing.
     fn cmp(&self, t1: Ty<'tcx>, t2: Ty<'tcx>) -> (DiagnosticStyledString, DiagnosticStyledString) {
         fn equals<'tcx>(a: &Ty<'tcx>, b: &Ty<'tcx>) -> bool {

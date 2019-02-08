@@ -186,7 +186,7 @@ impl Semantics for X87DoubleExtendedS {
     ///  exponent = all 1's, integer bit 0, significand 0 ("pseudoinfinity")
     ///  exponent = all 1's, integer bit 0, significand nonzero ("pseudoNaN")
     ///  exponent = 0, integer bit 1 ("pseudodenormal")
-    ///  exponent!=0 nor all 1's, integer bit 0 ("unnormal")
+    ///  exponent != 0 nor all 1's, integer bit 0 ("unnormal")
     /// At the moment, the first two are treated as NaNs, the second two as Normal.
     fn from_bits(bits: u128) -> IeeeFloat<Self> {
         let sign = bits & (1 << (Self::BITS - 1));
@@ -1549,11 +1549,11 @@ impl<S: Semantics> IeeeFloat<S> {
         }
     }
 
-    /// Returns TRUE if, when truncating the current number, with BIT the
+    /// Returns `true` if, when truncating the current number, with `bit` the
     /// new LSB, with the given lost fraction and rounding mode, the result
     /// would need to be rounded away from zero (i.e., by increasing the
-    /// signficand). This routine must work for Category::Zero of both signs, and
-    /// Category::Normal numbers.
+    /// signficand). This routine must work for `Category::Zero` of both signs, and
+    /// `Category::Normal` numbers.
     fn round_away_from_zero(&self, round: Round, loss: Loss, bit: usize) -> bool {
         // NaNs and infinities should not have lost fractions.
         assert!(self.is_finite_non_zero() || self.is_zero());
@@ -2257,7 +2257,7 @@ impl Loss {
         more_significant
     }
 
-    /// Return the fraction lost were a bignum truncated losing the least
+    /// Returns the fraction lost were a bignum truncated losing the least
     /// significant `bits` bits.
     fn through_truncation(limbs: &[Limb], bits: usize) -> Loss {
         if bits == 0 {
@@ -2320,12 +2320,12 @@ mod sig {
         Ordering::Equal
     }
 
-    /// Extract the given bit.
+    /// Extracts the given bit.
     pub(super) fn get_bit(limbs: &[Limb], bit: usize) -> bool {
         limbs[bit / LIMB_BITS] & (1 << (bit % LIMB_BITS)) != 0
     }
 
-    /// Set the given bit.
+    /// Sets the given bit.
     pub(super) fn set_bit(limbs: &mut [Limb], bit: usize) {
         limbs[bit / LIMB_BITS] |= 1 << (bit % LIMB_BITS);
     }
@@ -2335,7 +2335,7 @@ mod sig {
         limbs[bit / LIMB_BITS] &= !(1 << (bit % LIMB_BITS));
     }
 
-    /// Shift `dst` left `bits` bits, subtract `bits` from its exponent.
+    /// Shifts `dst` left `bits` bits, subtract `bits` from its exponent.
     pub(super) fn shift_left(dst: &mut [Limb], exp: &mut ExpInt, bits: usize) {
         if bits > 0 {
             // Our exponent should not underflow.
@@ -2367,7 +2367,7 @@ mod sig {
         }
     }
 
-    /// Shift `dst` right `bits` bits noting lost fraction.
+    /// Shifts `dst` right `bits` bits noting lost fraction.
     pub(super) fn shift_right(dst: &mut [Limb], exp: &mut ExpInt, bits: usize) -> Loss {
         let loss = Loss::through_truncation(dst, bits);
 
@@ -2403,7 +2403,7 @@ mod sig {
         loss
     }
 
-    /// Copy the bit vector of width `src_bits` from `src`, starting at bit SRC_LSB,
+    /// Copies the bit vector of width `src_bits` from `src`, starting at bit SRC_LSB,
     /// to `dst`, such that the bit SRC_LSB becomes the least significant bit of `dst`.
     /// All high bits above `src_bits` in `dst` are zero-filled.
     pub(super) fn extract(dst: &mut [Limb], src: &[Limb], src_bits: usize, src_lsb: usize) {

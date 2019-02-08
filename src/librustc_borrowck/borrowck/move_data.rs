@@ -114,7 +114,7 @@ pub struct Move {
     /// Path being moved.
     pub path: MovePathIndex,
 
-    /// id of node that is doing the move.
+    /// ID of node that is doing the move.
     pub id: hir::ItemLocalId,
 
     /// Kind of move, for error messages.
@@ -129,7 +129,7 @@ pub struct Assignment {
     /// Path being assigned.
     pub path: MovePathIndex,
 
-    /// id where assignment occurs
+    /// ID where assignment occurs
     pub id: hir::ItemLocalId,
 
     /// span of node where assignment occurs
@@ -168,8 +168,8 @@ fn loan_path_is_precise(loan_path: &LoanPath<'_>) -> bool {
 }
 
 impl<'a, 'tcx> MoveData<'tcx> {
-    /// return true if there are no trackable assignments or moves
-    /// in this move data - that means that there is nothing that
+    /// Returns `true` if there are no trackable assignments or moves
+    /// in this move data -- that means that there is nothing that
     /// could cause a borrow error.
     pub fn is_empty(&self) -> bool {
         self.moves.borrow().is_empty() &&

@@ -31,7 +31,7 @@ struct SyntaxContextData {
     dollar_crate_name: Symbol,
 }
 
-/// A mark is a unique id associated with a macro expansion.
+/// A mark is a unique ID associated with a macro expansion.
 #[derive(Copy, Clone, PartialEq, Eq, Hash, Debug, RustcEncodable, RustcDecodable)]
 pub struct Mark(u32);
 
@@ -590,7 +590,7 @@ pub enum CompilerDesugaringKind {
     QuestionMark,
     TryBlock,
     /// Desugaring of an `impl Trait` in return type position
-    /// to an `existential type Foo: Trait;` + replacing the
+    /// to an `existential type Foo: Trait;` and replacing the
     /// `impl Trait` with `Foo`.
     ExistentialReturnType,
     Async,

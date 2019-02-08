@@ -13,10 +13,13 @@
 //! `LintPass` (also, note that such lints will need to be defined in
 //! `rustc::lint::builtin`, not here).
 //!
-//! If you define a new `LintPass`, you will also need to add it to the
-//! `add_builtin!` or `add_builtin_with_new!` invocation in `lib.rs`.
-//! Use the former for unit-like structs and the latter for structs with
-//! a `pub fn new()`.
+//! If you define a new `EarlyLintPass`, you will also need to add it to the
+//! `add_early_builtin!` or `add_early_builtin_with_new!` invocation in
+//! `lib.rs`. Use the former for unit-like structs and the latter for structs
+//! with a `pub fn new()`.
+//!
+//! If you define a new `LateLintPass`, you will also need to add it to the
+//! `late_lint_methods!` invocation in `lib.rs`.
 
 use rustc::hir::def::Def;
 use rustc::hir::def_id::{DefId, LOCAL_CRATE};
@@ -317,8 +320,7 @@ declare_lint! {
 }
 
 pub struct MissingDoc {
-    /// Stack of whether #[doc(hidden)] is set
-    /// at each level which has lint attributes.
+    /// Stack of whether `#[doc(hidden)]` is set at each level which has lint attributes.
     doc_hidden_stack: Vec<bool>,
 
     /// Private traits or trait items that leaked through. Don't check their methods.
@@ -670,8 +672,8 @@ declare_lint! {
     "detects anonymous parameters"
 }
 
-/// Checks for use of anonymous parameters (RFC 1685)
-#[derive(Clone)]
+/// Checks for use of anonymous parameters (RFC 1685).
+#[derive(Copy, Clone)]
 pub struct AnonymousParameters;
 
 impl LintPass for AnonymousParameters {
@@ -726,7 +728,7 @@ impl EarlyLintPass for AnonymousParameters {
     }
 }
 
-/// Checks for use of attributes which have been deprecated.
+/// Check for use of attributes which have been deprecated.
 #[derive(Clone)]
 pub struct DeprecatedAttr {
     // This is not free to compute, so we want to keep it around, rather than
@@ -1083,7 +1085,8 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for UnionsWithDropFields {
     }
 }
 
-/// Lint for items marked `pub` that aren't reachable from other crates
+/// Lint for items marked `pub` that aren't reachable from other crates.
+#[derive(Copy, Clone)]
 pub struct UnreachablePub;
 
 declare_lint! {
@@ -1156,7 +1159,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for UnreachablePub {
     }
 }
 
-/// Lint for trait and lifetime bounds in type aliases being mostly ignored:
+/// Lint for trait and lifetime bounds in type aliases being mostly ignored.
 /// They are relevant when using associated types, but otherwise neither checked
 /// at definition site nor enforced at use site.
 
@@ -1543,8 +1546,8 @@ declare_lint! {
     "detects edition keywords being used as an identifier"
 }
 
-/// Checks for uses of edition keywords used as an identifier
-#[derive(Clone)]
+/// Check for uses of edition keywords used as an identifier.
+#[derive(Copy, Clone)]
 pub struct KeywordIdents;
 
 impl LintPass for KeywordIdents {

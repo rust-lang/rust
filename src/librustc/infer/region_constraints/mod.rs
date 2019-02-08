@@ -1,4 +1,4 @@
-//! See README.md
+//! See `README.md`.
 
 use self::CombineMapType::*;
 use self::UndoLog::*;
@@ -108,16 +108,16 @@ pub struct RegionConstraintData<'tcx> {
     pub givens: FxHashSet<(Region<'tcx>, ty::RegionVid)>,
 }
 
-/// A constraint that influences the inference process.
+/// Represents a constraint that influences the inference process.
 #[derive(Clone, Copy, PartialEq, Eq, Hash, Debug, PartialOrd, Ord)]
 pub enum Constraint<'tcx> {
-    /// One region variable is subregion of another
+    /// A region variable is a subregion of another.
     VarSubVar(RegionVid, RegionVid),
 
-    /// Concrete region is subregion of region variable
+    /// A concrete region is a subregion of region variable.
     RegSubVar(Region<'tcx>, RegionVid),
 
-    /// Region variable is subregion of concrete region. This does not
+    /// A region variable is a subregion of a concrete region. This does not
     /// directly affect inference, but instead is checked after
     /// inference is complete.
     VarSubReg(RegionVid, Region<'tcx>),
@@ -138,9 +138,9 @@ impl Constraint<'_> {
     }
 }
 
-/// VerifyGenericBound(T, _, R, RS): The parameter type `T` (or
+/// `VerifyGenericBound(T, _, R, RS)`: the parameter type `T` (or
 /// associated type) must outlive the region `R`. `T` is known to
-/// outlive `RS`. Therefore verify that `R <= RS[i]` for some
+/// outlive `RS`. Therefore, verify that `R <= RS[i]` for some
 /// `i`. Inference variables may be involved (but this verification
 /// step doesn't influence inference).
 #[derive(Debug, Clone)]
@@ -164,7 +164,7 @@ EnumTypeFoldableImpl! {
     }
 }
 
-/// Describes the things that some `GenericKind` value G is known to
+/// Describes the things that some `GenericKind` value `G` is known to
 /// outlive. Each variant of `VerifyBound` can be thought of as a
 /// function:
 ///
@@ -187,13 +187,15 @@ pub enum VerifyBound<'tcx> {
     /// following, where `G` is the generic for which this verify
     /// bound was created:
     ///
-    ///     fn(min) -> bool {
-    ///       if G == K {
+    /// ```rust
+    /// fn(min) -> bool {
+    ///     if G == K {
     ///         B(min)
-    ///       } else {
+    ///     } else {
     ///         false
-    ///       }
     ///     }
+    /// }
+    /// ```
     ///
     /// In other words, if the generic `G` that we are checking is
     /// equal to `K`, then check the associated verify bound
@@ -202,14 +204,16 @@ pub enum VerifyBound<'tcx> {
     /// This is used when we have something in the environment that
     /// may or may not be relevant, depending on the region inference
     /// results. For example, we may have `where <T as
-    /// Trait<'a>>::Item: 'b` in our where clauses. If we are
+    /// Trait<'a>>::Item: 'b` in our where-clauses. If we are
     /// generating the verify-bound for `<T as Trait<'0>>::Item`, then
     /// this where-clause is only relevant if `'0` winds up inferred
     /// to `'a`.
     ///
     /// So we would compile to a verify-bound like
     ///
-    ///     IfEq(<T as Trait<'a>>::Item, AnyRegion('a))
+    /// ```
+    /// IfEq(<T as Trait<'a>>::Item, AnyRegion('a))
+    /// ```
     ///
     /// meaning, if the subject G is equal to `<T as Trait<'a>>::Item`
     /// (after inference), and `'a: min`, then `G: min`.
@@ -217,9 +221,11 @@ pub enum VerifyBound<'tcx> {
 
     /// Given a region `R`, expands to the function:
     ///
-    ///     fn(min) -> bool {
-    ///       R: min
-    ///     }
+    /// ```
+    /// fn(min) -> bool {
+    ///     R: min
+    /// }
+    /// ```
     ///
     /// This is used when we can establish that `G: R` -- therefore,
     /// if `R: min`, then by transitivity `G: min`.
@@ -227,20 +233,23 @@ pub enum VerifyBound<'tcx> {
 
     /// Given a set of bounds `B`, expands to the function:
     ///
-    ///     fn(min) -> bool {
-    ///       exists (b in B) { b(min) }
-    ///     }
+    /// ```rust
+    /// fn(min) -> bool {
+    ///     exists (b in B) { b(min) }
+    /// }
+    /// ```
     ///
     /// In other words, if we meet some bound in `B`, that suffices.
-    /// This is used when all the bounds in `B` are known to apply to
-    /// G.
+    /// This is used when all the bounds in `B` are known to apply to `G`.
     AnyBound(Vec<VerifyBound<'tcx>>),
 
     /// Given a set of bounds `B`, expands to the function:
     ///
-    ///     fn(min) -> bool {
-    ///       forall (b in B) { b(min) }
-    ///     }
+    /// ```rust
+    /// fn(min) -> bool {
+    ///     forall (b in B) { b(min) }
+    /// }
+    /// ```
     ///
     /// In other words, if we meet *all* bounds in `B`, that suffices.
     /// This is used when *some* bound in `B` is known to suffice, but
@@ -256,19 +265,19 @@ struct TwoRegions<'tcx> {
 
 #[derive(Copy, Clone, PartialEq)]
 enum UndoLog<'tcx> {
-    /// We added `RegionVid`
+    /// We added `RegionVid`.
     AddVar(RegionVid),
 
-    /// We added the given `constraint`
+    /// We added the given `constraint`.
     AddConstraint(Constraint<'tcx>),
 
-    /// We added the given `verify`
+    /// We added the given `verify`.
     AddVerify(usize),
 
-    /// We added the given `given`
+    /// We added the given `given`.
     AddGiven(Region<'tcx>, ty::RegionVid),
 
-    /// We added a GLB/LUB "combination variable"
+    /// We added a GLB/LUB "combination variable".
     AddCombination(CombineMapType, TwoRegions<'tcx>),
 
     /// During skolemization, we sometimes purge entries from the undo
@@ -303,7 +312,7 @@ pub struct RegionSnapshot {
 /// When working with placeholder regions, we often wish to find all of
 /// the regions that are either reachable from a placeholder region, or
 /// which can reach a placeholder region, or both. We call such regions
-/// *tainted* regions.  This struct allows you to decide what set of
+/// *tainted* regions. This struct allows you to decide what set of
 /// tainted regions you want.
 #[derive(Debug)]
 pub struct TaintDirections {
@@ -359,7 +368,7 @@ impl<'tcx> RegionConstraintCollector<'tcx> {
 
     /// Takes (and clears) the current set of constraints. Note that
     /// the set of variables remains intact, but all relationships
-    /// between them are reset.  This is used during NLL checking to
+    /// between them are reset. This is used during NLL checking to
     /// grab the set of constraints that arose from a particular
     /// operation.
     ///
@@ -707,7 +716,7 @@ impl<'tcx> RegionConstraintCollector<'tcx> {
         }
     }
 
-    /// See `Verify::VerifyGenericBound`
+    /// See [`Verify::VerifyGenericBound`].
     pub fn verify_generic_bound(
         &mut self,
         origin: SubregionOrigin<'tcx>,
@@ -837,7 +846,7 @@ impl<'tcx> RegionConstraintCollector<'tcx> {
             }).collect()
     }
 
-    /// See [`RegionInference::region_constraints_added_in_snapshot`]
+    /// See [`RegionInference::region_constraints_added_in_snapshot`].
     pub fn region_constraints_added_in_snapshot(&self, mark: &RegionSnapshot) -> Option<bool> {
         self.undo_log[mark.length..]
             .iter()
@@ -925,7 +934,8 @@ impl<'a, 'gcx, 'tcx> VerifyBound<'tcx> {
 }
 
 impl<'tcx> RegionConstraintData<'tcx> {
-    /// True if this region constraint data contains no constraints.
+    /// Returns `true` if this region constraint data contains no constraints, and `false`
+    /// otherwise.
     pub fn is_empty(&self) -> bool {
         let RegionConstraintData {
             constraints,

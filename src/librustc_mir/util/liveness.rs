@@ -1,21 +1,22 @@
-//! Liveness analysis which computes liveness of MIR local variables at the boundary of basic blocks
+//! Liveness analysis which computes liveness of MIR local variables at the boundary of basic
+//! blocks.
 //!
 //! This analysis considers references as being used only at the point of the
 //! borrow. This means that this does not track uses because of references that
 //! already exist:
 //!
-//! ```Rust
-//!     fn foo() {
-//!         x = 0;
-//!         // `x` is live here
-//!         GLOBAL = &x: *const u32;
-//!         // but not here, even while it can be accessed through `GLOBAL`.
-//!         foo();
-//!         x = 1;
-//!         // `x` is live again here, because it is assigned to `OTHER_GLOBAL`
-//!         OTHER_GLOBAL = &x: *const u32;
-//!         // ...
-//!     }
+//! ```rust
+//! fn foo() {
+//!     x = 0;
+//!     // `x` is live here ...
+//!     GLOBAL = &x: *const u32;
+//!     // ... but not here, even while it can be accessed through `GLOBAL`.
+//!     foo();
+//!     x = 1;
+//!     // `x` is live again here, because it is assigned to `OTHER_GLOBAL`.
+//!     OTHER_GLOBAL = &x: *const u32;
+//!     // ...
+//! }
 //! ```
 //!
 //! This means that users of this analysis still have to check whether
@@ -91,7 +92,7 @@ impl<'a, 'tcx> LiveVariableMap for IdentityMap<'a, 'tcx> {
     }
 }
 
-/// Compute which local variables are live within the given function
+/// Computes which local variables are live within the given function
 /// `mir`. The liveness mode `mode` determines what sorts of uses are
 /// considered to make a variable live (e.g., do drops count?).
 pub fn liveness_of_locals<'tcx, V: Idx>(

@@ -122,7 +122,7 @@ pub trait MonoItemExt<'a, 'tcx>: fmt::Debug {
         codegen_fn_attrs.linkage
     }
 
-    /// Returns whether this instance is instantiable - whether it has no unsatisfied
+    /// Returns `true` if this instance is instantiable - whether it has no unsatisfied
     /// predicates.
     ///
     /// In order to codegen an item, all of its predicates must hold, because

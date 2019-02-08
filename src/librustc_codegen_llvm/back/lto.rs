@@ -791,7 +791,7 @@ impl ThinLTOImports {
         self.imports.get(llvm_module_name).map(|v| &v[..]).unwrap_or(&[])
     }
 
-    /// Load the ThinLTO import map from ThinLTOData.
+    /// Loads the ThinLTO import map from ThinLTOData.
     unsafe fn from_thin_lto_data(data: *const llvm::ThinLTOData) -> ThinLTOImports {
         unsafe extern "C" fn imported_module_callback(payload: *mut libc::c_void,
                                                       importing_module_name: *const libc::c_char,

@@ -4,7 +4,7 @@
 //! in various ways.
 //!
 //! Plugin authors will use the `Registry` type re-exported by
-//! this module, along with its methods.  The rest of the module
+//! this module, along with its methods. The rest of the module
 //! is for use by `rustc` itself.
 //!
 //! To define a plugin, build a dylib crate with a

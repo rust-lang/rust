@@ -1,4 +1,4 @@
-//! This is an NFA-based parser, which calls out to the main rust parser for named nonterminals
+//! This is an NFA-based parser, which calls out to the main rust parser for named non-terminals
 //! (which it commits to fully when it hits one in a grammar). There's a set of current NFA threads
 //! and a set of next ones. Instead of NTs, we have a special case for Kleene star. The big-O, in
 //! pathological cases, is worse than traditional use of NFA or Earley parsing, but it's an easier
@@ -22,7 +22,7 @@
 //!
 //! As it processes them, it fills up `eof_items` with threads that would be valid if
 //! the macro invocation is now over, `bb_items` with threads that are waiting on
-//! a Rust nonterminal like `$e:expr`, and `next_items` with threads that are waiting
+//! a Rust non-terminal like `$e:expr`, and `next_items` with threads that are waiting
 //! on a particular token. Most of the logic concerns moving the · through the
 //! repetitions indicated by Kleene stars. The rules for moving the · without
 //! consuming any input are called epsilon transitions. It only advances or calls
@@ -216,7 +216,7 @@ struct MatcherPos<'root, 'tt: 'root> {
 }
 
 impl<'root, 'tt> MatcherPos<'root, 'tt> {
-    /// Add `m` as a named match for the `idx`-th metavar.
+    /// Adds `m` as a named match for the `idx`-th metavar.
     fn push_match(&mut self, idx: usize, m: NamedMatch) {
         let matches = Rc::make_mut(&mut self.matches[idx]);
         matches.push(m);
@@ -304,7 +304,7 @@ fn create_matches(len: usize) -> Box<[Rc<NamedMatchVec>]> {
     }.into_boxed_slice()
 }
 
-/// Generate the top-level matcher position in which the "dot" is before the first token of the
+/// Generates the top-level matcher position in which the "dot" is before the first token of the
 /// matcher `ms` and we are going to start matching at the span `open` in the source.
 fn initial_matcher_pos<'root, 'tt>(ms: &'tt [TokenTree], open: Span) -> MatcherPos<'root, 'tt> {
     let match_idx_hi = count_names(ms);
@@ -337,7 +337,7 @@ fn initial_matcher_pos<'root, 'tt>(ms: &'tt [TokenTree], open: Span) -> MatcherP
 
 /// `NamedMatch` is a pattern-match result for a single `token::MATCH_NONTERMINAL`:
 /// so it is associated with a single ident in a parse, and all
-/// `MatchedNonterminal`s in the `NamedMatch` have the same nonterminal type
+/// `MatchedNonterminal`s in the `NamedMatch` have the same non-terminal type
 /// (expr, item, etc). Each leaf in a single `NamedMatch` corresponds to a
 /// single `token::MATCH_NONTERMINAL` in the `TokenTree` that produced it.
 ///
@@ -414,7 +414,7 @@ fn nameize<I: Iterator<Item = NamedMatch>>(
     Success(ret_val)
 }
 
-/// Generate an appropriate parsing failure message. For EOF, this is "unexpected end...". For
+/// Generates an appropriate parsing failure message. For EOF, this is "unexpected end...". For
 /// other tokens, this is "unexpected token...".
 pub fn parse_failure_msg(tok: Token) -> String {
     match tok {
@@ -426,7 +426,7 @@ pub fn parse_failure_msg(tok: Token) -> String {
     }
 }
 
-/// Perform a token equality check, ignoring syntax context (that is, an unhygienic comparison)
+/// Performs a token equality check, ignoring syntax context (that is, an unhygienic comparison)
 fn token_name_eq(t1: &Token, t2: &Token) -> bool {
     if let (Some((id1, is_raw1)), Some((id2, is_raw2))) = (t1.ident(), t2.ident()) {
         id1.name == id2.name && is_raw1 == is_raw2
@@ -880,7 +880,7 @@ fn may_begin_with(name: &str, token: &Token) -> bool {
     }
 }
 
-/// A call to the "black-box" parser to parse some rust nonterminal.
+/// A call to the "black-box" parser to parse some Rust non-terminal.
 ///
 /// # Parameters
 ///
@@ -891,7 +891,7 @@ fn may_begin_with(name: &str, token: &Token) -> bool {
 ///
 /// # Returns
 ///
-/// The parsed nonterminal.
+/// The parsed non-terminal.
 fn parse_nt<'a>(p: &mut Parser<'a>, sp: Span, name: &str) -> Nonterminal {
     if name == "tt" {
         return token::NtTT(p.parse_token_tree());

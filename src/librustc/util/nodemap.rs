@@ -1,4 +1,4 @@
-//! An efficient hash map for node IDs
+//! An efficient hash map for `NodeId`s.
 
 use crate::hir::def_id::DefId;
 use crate::hir::{HirId, ItemLocalId};

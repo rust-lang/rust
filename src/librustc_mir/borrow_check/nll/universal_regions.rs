@@ -35,15 +35,15 @@ pub struct UniversalRegions<'tcx> {
     pub fr_static: RegionVid,
 
     /// A special region vid created to represent the current MIR fn
-    /// body.  It will outlive the entire CFG but it will not outlive
+    /// body. It will outlive the entire CFG but it will not outlive
     /// any other universal regions.
     pub fr_fn_body: RegionVid,
 
     /// We create region variables such that they are ordered by their
     /// `RegionClassification`. The first block are globals, then
-    /// externals, then locals. So things from:
-    /// - `FIRST_GLOBAL_INDEX..first_extern_index` are global;
-    /// - `first_extern_index..first_local_index` are external; and
+    /// externals, then locals. So, things from:
+    /// - `FIRST_GLOBAL_INDEX..first_extern_index` are global,
+    /// - `first_extern_index..first_local_index` are external,
     /// - `first_local_index..num_universals` are local.
     first_extern_index: usize,
 
@@ -54,21 +54,21 @@ pub struct UniversalRegions<'tcx> {
     num_universals: usize,
 
     /// The "defining" type for this function, with all universal
-    /// regions instantiated.  For a closure or generator, this is the
+    /// regions instantiated. For a closure or generator, this is the
     /// closure type, but for a top-level function it's the `FnDef`.
     pub defining_ty: DefiningTy<'tcx>,
 
     /// The return type of this function, with all regions replaced by
     /// their universal `RegionVid` equivalents.
     ///
-    /// NB. Associated types in this type have not been normalized,
+    /// N.B., associated types in this type have not been normalized,
     /// as the name suggests. =)
     pub unnormalized_output_ty: Ty<'tcx>,
 
     /// The fully liberated input types of this function, with all
     /// regions replaced by their universal `RegionVid` equivalents.
     ///
-    /// NB. Associated types in these types have not been normalized,
+    /// N.B., associated types in these types have not been normalized,
     /// as the name suggests. =)
     pub unnormalized_input_tys: &'tcx [Ty<'tcx>],
 
@@ -92,7 +92,7 @@ pub enum DefiningTy<'tcx> {
     /// `ClosureSubsts::generator_return_ty`.
     Generator(DefId, ty::GeneratorSubsts<'tcx>, hir::GeneratorMovability),
 
-    /// The MIR is a fn item with the given def-id and substs. The signature
+    /// The MIR is a fn item with the given `DefId` and substs. The signature
     /// of the function can be bound then with the `fn_sig` query.
     FnDef(DefId, &'tcx Substs<'tcx>),
 
@@ -174,13 +174,13 @@ pub enum RegionClassification {
 
     /// A **local** lifetime is one about which we know the full set
     /// of relevant constraints (that is, relationships to other named
-    /// regions).  For a closure, this includes any region bound in
-    /// the closure's signature.  For a fn item, this includes all
+    /// regions). For a closure, this includes any region bound in
+    /// the closure's signature. For a fn item, this includes all
     /// regions other than global ones.
     ///
     /// Continuing with the example from `External`, if we were
     /// analyzing the closure, then `'x` would be local (and `'a` and
-    /// `'b` are external).  If we are analyzing the function item
+    /// `'b` are external). If we are analyzing the function item
     /// `foo`, then `'a` and `'b` are local (and `'x` is not in
     /// scope).
     Local,
@@ -245,7 +245,7 @@ impl<'tcx> UniversalRegions<'tcx> {
         region_mapping
     }
 
-    /// True if `r` is a member of this set of universal regions.
+    /// Returns `true` if `r` is a member of this set of universal regions.
     pub fn is_universal_region(&self, r: RegionVid) -> bool {
         (FIRST_GLOBAL_INDEX..self.num_universals).contains(&r.index())
     }
@@ -271,7 +271,7 @@ impl<'tcx> UniversalRegions<'tcx> {
         (FIRST_GLOBAL_INDEX..self.num_universals).map(RegionVid::new)
     }
 
-    /// True if `r` is classified as an local region.
+    /// Returns `true` if `r` is classified as an local region.
     pub fn is_local_free_region(&self, r: RegionVid) -> bool {
         self.region_classification(r) == Some(RegionClassification::Local)
     }
@@ -290,7 +290,7 @@ impl<'tcx> UniversalRegions<'tcx> {
         self.first_local_index
     }
 
-    /// Get an iterator over all the early-bound regions that have names.
+    /// Gets an iterator over all the early-bound regions that have names.
     pub fn named_universal_regions<'s>(
         &'s self,
     ) -> impl Iterator<Item = (ty::Region<'tcx>, ty::RegionVid)> + 's {
@@ -692,7 +692,7 @@ impl<'cx, 'gcx, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'cx, 'gcx, 'tcx> {
     /// indices vector. Typically, we identify late-bound regions as we process the inputs and
     /// outputs of the closure/function. However, sometimes there are late-bound regions which do
     /// not appear in the fn parameters but which are nonetheless in scope. The simplest case of
-    /// this are unused functions, like fn foo<'a>() { } (see eg., #51351). Despite not being used,
+    /// this are unused functions, like fn foo<'a>() { } (see e.g., #51351). Despite not being used,
     /// users can still reference these regions (e.g., let x: &'a u32 = &22;), so we need to create
     /// entries for them and store them in the indices map. This code iterates over the complete
     /// set of late-bound regions and checks for any that we have not yet seen, adding them to the
@@ -746,7 +746,7 @@ impl<'tcx> UniversalRegionIndices<'tcx> {
         }
     }
 
-    /// Replace all free regions in `value` with region vids, as
+    /// Replaces all free regions in `value` with region vids, as
     /// returned by `to_region_vid`.
     pub fn fold_to_region_vids<T>(&self, tcx: TyCtxt<'_, '_, 'tcx>, value: &T) -> T
     where

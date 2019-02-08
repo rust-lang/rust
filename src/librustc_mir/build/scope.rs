@@ -210,7 +210,7 @@ impl DropKind {
 }
 
 impl<'tcx> Scope<'tcx> {
-    /// Invalidate all the cached blocks in the scope.
+    /// Invalidates all the cached blocks in the scope.
     ///
     /// Should always be run for all inner scopes when a drop is pushed into some scope enclosing a
     /// larger extent of code.
@@ -390,7 +390,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
 
 
     /// Branch out of `block` to `target`, exiting all scopes up to
-    /// and including `region_scope`.  This will insert whatever drops are
+    /// and including `region_scope`. This will insert whatever drops are
     /// needed. See module comment for details.
     pub fn exit_scope(&mut self,
                       span: Span,
@@ -846,7 +846,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
         next_target.unit()
     }
 
-    /// Create an Assert terminator and return the success block.
+    /// Creates an Assert terminator and return the success block.
     /// If the boolean condition operand is not the expected value,
     /// a runtime panic will be caused with the given message.
     pub fn assert(&mut self, block: BasicBlock,

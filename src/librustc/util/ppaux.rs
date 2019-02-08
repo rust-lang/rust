@@ -23,18 +23,18 @@ use crate::hir;
 /// The "region highlights" are used to control region printing during
 /// specific error messages. When a "region highlight" is enabled, it
 /// gives an alternate way to print specific regions. For now, we
-/// always print those regions using a number, so something like `'0`.
+/// always print those regions using a number, so something like "`'0`".
 ///
 /// Regions not selected by the region highlight mode are presently
 /// unaffected.
 #[derive(Copy, Clone, Default)]
 pub struct RegionHighlightMode {
-    /// If enabled, when we see the selected region, use `"'N"`
+    /// If enabled, when we see the selected region, use "`'N`"
     /// instead of the ordinary behavior.
     highlight_regions: [Option<(ty::RegionKind, usize)>; 3],
 
     /// If enabled, when printing a "free region" that originated from
-    /// the given `ty::BoundRegion`, print it as `'1`. Free regions that would ordinarily
+    /// the given `ty::BoundRegion`, print it as "`'1`". Free regions that would ordinarily
     /// have names print as normal.
     ///
     /// This is used when you have a signature like `fn foo(x: &u32,
@@ -51,12 +51,12 @@ thread_local! {
 }
 
 impl RegionHighlightMode {
-    /// Read and return current region highlight settings (accesses thread-local state).a
+    /// Reads and returns the current region highlight settings (accesses thread-local state).
     pub fn get() -> Self {
         REGION_HIGHLIGHT_MODE.with(|c| c.get())
     }
 
-    /// Internal helper to update current settings during the execution of `op`.
+    // Internal helper to update current settings during the execution of `op`.
     fn set<R>(
         old_mode: Self,
         new_mode: Self,
@@ -70,8 +70,8 @@ impl RegionHighlightMode {
         })
     }
 
-    /// If `region` and `number` are both `Some`, invoke
-    /// `highlighting_region`. Otherwise, just invoke `op` directly.
+    /// If `region` and `number` are both `Some`, invokes
+    /// `highlighting_region`; otherwise, just invokes `op` directly.
     pub fn maybe_highlighting_region<R>(
         region: Option<ty::Region<'_>>,
         number: Option<usize>,
@@ -86,8 +86,8 @@ impl RegionHighlightMode {
         op()
     }
 
-    /// During the execution of `op`, highlight the region inference
-    /// vairable `vid` as `'N`.  We can only highlight one region vid
+    /// During the execution of `op`, highlights the region inference
+    /// variable `vid` as `'N`. We can only highlight one region `vid`
     /// at a time.
     pub fn highlighting_region<R>(
         region: ty::Region<'_>,
@@ -109,7 +109,7 @@ impl RegionHighlightMode {
         Self::set(old_mode, new_mode, op)
     }
 
-    /// Convenience wrapper for `highlighting_region`
+    /// Convenience wrapper for `highlighting_region`.
     pub fn highlighting_region_vid<R>(
         vid: ty::RegionVid,
         number: usize,
@@ -118,7 +118,7 @@ impl RegionHighlightMode {
         Self::highlighting_region(&ty::ReVar(vid), number, op)
     }
 
-    /// Returns true if any placeholders are highlighted.
+    /// Returns `true` if any placeholders are highlighted, and `false` otherwise.
     fn any_region_vids_highlighted(&self) -> bool {
         Self::get()
             .highlight_regions
@@ -129,8 +129,7 @@ impl RegionHighlightMode {
             })
     }
 
-    /// Returns `Some(n)` with the number to use for the given region,
-    /// if any.
+    /// Returns `Some(n)` with the number to use for the given region, if any.
     fn region_highlighted(&self, region: ty::Region<'_>) -> Option<usize> {
         Self::get()
             .highlight_regions
@@ -143,7 +142,7 @@ impl RegionHighlightMode {
     }
 
     /// During the execution of `op`, highlight the given bound
-    /// region. We can only highlight one bound region at a time.  See
+    /// region. We can only highlight one bound region at a time. See
     /// the field `highlight_bound_region` for more detailed notes.
     pub fn highlighting_bound_region<R>(
         br: ty::BoundRegion,
@@ -162,7 +161,7 @@ impl RegionHighlightMode {
         )
     }
 
-    /// Returns true if any placeholders are highlighted.
+    /// Returns `true` if any placeholders are highlighted, and `false` otherwise.
     pub fn any_placeholders_highlighted(&self) -> bool {
         Self::get()
             .highlight_regions
@@ -173,7 +172,7 @@ impl RegionHighlightMode {
             })
     }
 
-    /// Returns `Some(N)` if the placeholder `p` is highlighted to print as `'N`.
+    /// Returns `Some(N)` if the placeholder `p` is highlighted to print as "`'N`".
     pub fn placeholder_highlight(&self, p: ty::PlaceholderRegion) -> Option<usize> {
         self.region_highlighted(&ty::RePlaceholder(p))
     }

@@ -824,7 +824,7 @@ impl<T:Decodable> Decodable for Arc<T> {
 /// Implement this trait on your `{Encodable,Decodable}::Error` types
 /// to override the default panic behavior for missing specializations.
 pub trait SpecializationError {
-    /// Create an error for a missing method specialization.
+    /// Creates an error for a missing method specialization.
     /// Defaults to panicking with type, trait & method names.
     /// `S` is the encoder/decoder state type,
     /// `T` is the type being encoded/decoded, and

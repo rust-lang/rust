@@ -7,8 +7,8 @@ use std::sync::atomic::AtomicUsize;
 use std::sync::atomic::Ordering;
 
 impl<O: ForestObligation> ObligationForest<O> {
-    /// Create a graphviz representation of the obligation forest.  Given a directory this will
-    /// create files with name of the format `<counter>_<description>.gv`.  The counter is
+    /// Creates a graphviz representation of the obligation forest. Given a directory this will
+    /// create files with name of the format `<counter>_<description>.gv`. The counter is
     /// global and is maintained internally.
     ///
     /// Calling this will do nothing unless the environment variable

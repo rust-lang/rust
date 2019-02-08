@@ -218,7 +218,7 @@ impl<'tcx> TypeVariableTable<'tcx> {
         self.sub_relations.find(vid)
     }
 
-    /// True if `a` and `b` have same "sub-root" (i.e., exists some
+    /// Returns `true` if `a` and `b` have same "sub-root" (i.e., exists some
     /// type X such that `forall i in {a, b}. (i <: X || X <: i)`.
     pub fn sub_unified(&mut self, a: ty::TyVid, b: ty::TyVid) -> bool {
         self.sub_root_var(a) == self.sub_root_var(b)
@@ -245,9 +245,9 @@ impl<'tcx> TypeVariableTable<'tcx> {
         }
     }
 
-    /// Creates a snapshot of the type variable state.  This snapshot
+    /// Creates a snapshot of the type variable state. This snapshot
     /// must later be committed (`commit()`) or rolled back
-    /// (`rollback_to()`).  Nested snapshots are permitted, but must
+    /// (`rollback_to()`). Nested snapshots are permitted, but must
     /// be processed in a stack-like fashion.
     pub fn snapshot(&mut self) -> Snapshot<'tcx> {
         Snapshot {
@@ -306,7 +306,7 @@ impl<'tcx> TypeVariableTable<'tcx> {
             .collect()
     }
 
-    /// Find the set of type variables that existed *before* `s`
+    /// Finds the set of type variables that existed *before* `s`
     /// but which have only been unified since `s` started, and
     /// return the types with which they were unified. So if we had
     /// a type variable `V0`, then we started the snapshot, then we

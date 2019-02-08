@@ -68,7 +68,7 @@ impl<'a> Registry<'a> {
         }
     }
 
-    /// Get the plugin's arguments, if any.
+    /// Gets the plugin's arguments, if any.
     ///
     /// These are specified inside the `plugin` crate attribute as
     ///

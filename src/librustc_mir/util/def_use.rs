@@ -61,7 +61,7 @@ impl<'tcx> DefUseAnalysis<'tcx> {
         }
     }
 
-    /// FIXME(pcwalton): This should update the def-use chains.
+    // FIXME(pcwalton): this should update the def-use chains.
     pub fn replace_all_defs_and_uses_with(&self,
                                           local: Local,
                                           mir: &mut Mir<'tcx>,

@@ -5,6 +5,7 @@
 //! which are themselves a single `Token` or a `Delimited` subsequence of tokens.
 //!
 //! ## Ownership
+//!
 //! `TokenStreams` are persistent data structures constructed as ropes with reference
 //! counted-children. In general, this means that calling an operation on a `TokenStream`
 //! (such as `slice`) produces an entirely new `TokenStream` from the borrowed reference to
@@ -59,7 +60,7 @@ impl TokenTree {
         macro_parser::parse(cx.parse_sess(), tts, mtch, Some(directory), true)
     }
 
-    /// Check if this TokenTree is equal to the other, regardless of span information.
+    /// Checks if this TokenTree is equal to the other, regardless of span information.
     pub fn eq_unspanned(&self, other: &TokenTree) -> bool {
         match (self, other) {
             (&TokenTree::Token(_, ref tk), &TokenTree::Token(_, ref tk2)) => tk == tk2,
@@ -89,7 +90,7 @@ impl TokenTree {
         }
     }
 
-    /// Retrieve the TokenTree's span.
+    /// Retrieves the TokenTree's span.
     pub fn span(&self) -> Span {
         match *self {
             TokenTree::Token(sp, _) => sp,

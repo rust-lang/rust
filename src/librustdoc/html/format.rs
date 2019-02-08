@@ -54,13 +54,13 @@ pub struct Method<'a> {
     pub indent: usize,
 }
 
-/// Wrapper struct for emitting a where clause from Generics.
+/// Wrapper struct for emitting a where-clause from Generics.
 pub struct WhereClause<'a>{
-    /// The Generics from which to emit a where clause.
+    /// The Generics from which to emit a where-clause.
     pub gens: &'a clean::Generics,
     /// The number of spaces to indent each line with.
     pub indent: usize,
-    /// Whether the where clause needs to add a comma and newline after the last bound.
+    /// Whether the where-clause needs to add a comma and newline after the last bound.
     pub end_newline: bool,
 }
 

@@ -1,4 +1,4 @@
-//! See rustc guide chapters on [trait-resolution] and [trait-specialization] for more info on how
+//! See Rustc Guide chapters on [trait-resolution] and [trait-specialization] for more info on how
 //! this works.
 //!
 //! [trait-resolution]: https://rust-lang.github.io/rustc-guide/traits/resolution.html
@@ -34,7 +34,7 @@ pub struct OverlapResult<'tcx> {
     pub impl_header: ty::ImplHeader<'tcx>,
     pub intercrate_ambiguity_causes: Vec<IntercrateAmbiguityCause>,
 
-    /// True if the overlap might've been permitted before the shift
+    /// `true` if the overlap might've been permitted before the shift
     /// to universes.
     pub involves_placeholder: bool,
 }
@@ -111,7 +111,7 @@ fn with_fresh_ty_vars<'cx, 'gcx, 'tcx>(selcx: &mut SelectionContext<'cx, 'gcx, '
 }
 
 /// Can both impl `a` and impl `b` be satisfied by a common type (including
-/// `where` clauses)? If so, returns an `ImplHeader` that unifies the two impls.
+/// where-clauses)? If so, returns an `ImplHeader` that unifies the two impls.
 fn overlap<'cx, 'gcx, 'tcx>(
     selcx: &mut SelectionContext<'cx, 'gcx, 'tcx>,
     a_def_id: DefId,
@@ -242,7 +242,7 @@ pub enum OrphanCheckErr<'tcx> {
 }
 
 /// Checks the coherence orphan rules. `impl_def_id` should be the
-/// def-id of a trait impl. To pass, either the trait must be local, or else
+/// `DefId` of a trait impl. To pass, either the trait must be local, or else
 /// two conditions must be satisfied:
 ///
 /// 1. All type parameters in `Self` must be "covered" by some local type constructor.
@@ -268,7 +268,7 @@ pub fn orphan_check<'a, 'gcx, 'tcx>(tcx: TyCtxt<'a, 'gcx, 'tcx>,
     orphan_check_trait_ref(tcx, trait_ref, InCrate::Local)
 }
 
-/// Check whether a trait-ref is potentially implementable by a crate.
+/// Checks whether a trait-ref is potentially implementable by a crate.
 ///
 /// The current rule is that a trait-ref orphan checks in a crate C:
 ///

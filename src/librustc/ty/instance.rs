@@ -22,17 +22,17 @@ pub enum InstanceDef<'tcx> {
     /// `<T as Trait>::method` where `method` receives unsizeable `self: Self`.
     VtableShim(DefId),
 
-    /// \<fn() as FnTrait>::call_*
-    /// def-id is FnTrait::call_*
+    /// `<fn() as FnTrait>::call_*`
+    /// `DefId` is `FnTrait::call_*`
     FnPtrShim(DefId, Ty<'tcx>),
 
-    /// <Trait as Trait>::fn
+    /// `<Trait as Trait>::fn`
     Virtual(DefId, usize),
 
-    /// <[mut closure] as FnOnce>::call_once
+    /// `<[mut closure] as FnOnce>::call_once`
     ClosureOnceShim { call_once: DefId },
 
-    /// drop_in_place::<T>; None for empty drop glue.
+    /// `drop_in_place::<T>; None` for empty drop glue.
     DropGlue(DefId, Option<Ty<'tcx>>),
 
     ///`<T as Clone>::clone` shim.
@@ -220,7 +220,7 @@ impl<'a, 'b, 'tcx> Instance<'tcx> {
         self.def.def_id()
     }
 
-    /// Resolve a (def_id, substs) pair to an (optional) instance -- most commonly,
+    /// Resolves a `(def_id, substs)` pair to an (optional) instance -- most commonly,
     /// this is used to find the precise code that will run for a trait method invocation,
     /// if known.
     ///

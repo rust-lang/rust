@@ -55,7 +55,7 @@ pub enum Reveal {
     /// Also, `impl Trait` is normalized to the concrete type,
     /// which has to be already collected by type-checking.
     ///
-    /// NOTE: As `impl Trait`'s concrete type should *never*
+    /// NOTE: as `impl Trait`'s concrete type should *never*
     /// be observable directly by the user, `Reveal::All`
     /// should not be used by checks which may expose
     /// type equality or type contents to the user.
@@ -751,9 +751,9 @@ fn prune_cache_value_obligations<'a, 'gcx, 'tcx>(infcx: &'a InferCtxt<'a, 'gcx, 
 ///
 /// Concern #2. Even within the snapshot, if those original
 /// obligations are not yet proven, then we are able to do projections
-/// that may yet turn out to be wrong.  This *may* lead to some sort
+/// that may yet turn out to be wrong. This *may* lead to some sort
 /// of trouble, though we don't have a concrete example of how that
-/// can occur yet.  But it seems risky at best.
+/// can occur yet. But it seems risky at best.
 fn get_paranoid_cache_value_obligation<'a, 'gcx, 'tcx>(
     infcx: &'a InferCtxt<'a, 'gcx, 'tcx>,
     param_env: ty::ParamEnv<'tcx>,
@@ -786,7 +786,7 @@ fn get_paranoid_cache_value_obligation<'a, 'gcx, 'tcx>(
 /// cycles to arise, where you basically had a setup like `<MyType<$0>
 /// as Trait>::Foo == $0`. Here, normalizing `<MyType<$0> as
 /// Trait>::Foo> to `[type error]` would lead to an obligation of
-/// `<MyType<[type error]> as Trait>::Foo`.  We are supposed to report
+/// `<MyType<[type error]> as Trait>::Foo`. We are supposed to report
 /// an error for this obligation, but we legitimately should not,
 /// because it contains `[type error]`. Yuck! (See issue #29857 for
 /// one case where this arose.)
@@ -844,7 +844,7 @@ impl<'tcx> Progress<'tcx> {
     }
 }
 
-/// Compute the result of a projection type (if we can).
+/// Computes the result of a projection type (if we can).
 ///
 /// IMPORTANT:
 /// - `obligation` must be fully normalized
@@ -1553,7 +1553,7 @@ fn assoc_ty_def<'cx, 'gcx, 'tcx>(
 // # Cache
 
 /// The projection cache. Unlike the standard caches, this can include
-/// infcx-dependent type variables - therefore, we have to roll the
+/// infcx-dependent type variables, therefore we have to roll the
 /// cache back each time we roll a snapshot back, to avoid assumptions
 /// on yet-unresolved inference variables. Types with placeholder
 /// regions also have to be removed when the respective snapshot ends.
@@ -1564,9 +1564,9 @@ fn assoc_ty_def<'cx, 'gcx, 'tcx>(
 /// (for the lifetime of the infcx).
 ///
 /// Entries in the projection cache might contain inference variables
-/// that will be resolved by obligations on the projection cache entry - e.g.
+/// that will be resolved by obligations on the projection cache entry (e.g.,
 /// when a type parameter in the associated type is constrained through
-/// an "RFC 447" projection on the impl.
+/// an "RFC 447" projection on the impl).
 ///
 /// When working with a fulfillment context, the derived obligations of each
 /// projection cache entry will be registered on the fulfillcx, so any users
@@ -1578,10 +1578,9 @@ fn assoc_ty_def<'cx, 'gcx, 'tcx>(
 /// If that is done, after evaluation the obligations, it is a good idea to
 /// call `ProjectionCache::complete` to make sure the obligations won't be
 /// re-evaluated and avoid an exponential worst-case.
-///
-/// FIXME: we probably also want some sort of cross-infcx cache here to
-/// reduce the amount of duplication. Let's see what we get with the Chalk
-/// reforms.
+//
+// FIXME: we probably also want some sort of cross-infcx cache here to
+// reduce the amount of duplication. Let's see what we get with the Chalk reforms.
 #[derive(Default)]
 pub struct ProjectionCache<'tcx> {
     map: SnapshotMap<ProjectionCacheKey<'tcx>, ProjectionCacheEntry<'tcx>>,

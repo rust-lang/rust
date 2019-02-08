@@ -259,7 +259,7 @@ impl Step for TheBook {
         });
     }
 
-    /// Build the book and associated stuff.
+    /// Builds the book and associated stuff.
     ///
     /// We need to build:
     ///
@@ -611,7 +611,7 @@ impl Step for WhitelistedRustc {
         });
     }
 
-    /// Generate whitelisted compiler crate documentation.
+    /// Generates whitelisted compiler crate documentation.
     ///
     /// This will generate all documentation for crates that are whitelisted
     /// to be included in the standard documentation. This documentation is
@@ -683,7 +683,7 @@ impl Step for Rustc {
         });
     }
 
-    /// Generate compiler documentation.
+    /// Generates compiler documentation.
     ///
     /// This will generate all documentation for compiler and dependencies.
     /// Compiler documentation is distributed separately, so we make sure
@@ -784,7 +784,7 @@ impl Step for Rustdoc {
         });
     }
 
-    /// Generate compiler documentation.
+    /// Generates compiler documentation.
     ///
     /// This will generate all documentation for compiler and dependencies.
     /// Compiler documentation is distributed separately, so we make sure

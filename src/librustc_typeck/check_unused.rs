@@ -194,7 +194,7 @@ struct CollectExternCrateVisitor<'a, 'tcx: 'a> {
 }
 
 struct ExternCrateToLint {
-    /// def-id of the extern crate
+    /// `DefId` of the extern crate
     def_id: DefId,
 
     /// span from the item

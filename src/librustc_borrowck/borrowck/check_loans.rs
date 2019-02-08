@@ -239,7 +239,7 @@ impl<'a, 'tcx> CheckLoanCtxt<'a, 'tcx> {
     {
         //! Iterates over each loan that has been issued
         //! on entrance to `node`, regardless of whether it is
-        //! actually *in scope* at that point.  Sometimes loans
+        //! actually *in scope* at that point. Sometimes loans
         //! are issued for future scopes and thus they may have been
         //! *issued* but not yet be in effect.
 

@@ -479,7 +479,7 @@ fn is_repr_nullable_ptr<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
 }
 
 impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
-    /// Check if the given type is "ffi-safe" (has a stable, well-defined
+    /// Checks if the given type is "ffi-safe" (has a stable, well-defined
     /// representation which can be exported to C code).
     fn check_type_for_ffi(&self,
                           cache: &mut FxHashSet<Ty<'tcx>>,

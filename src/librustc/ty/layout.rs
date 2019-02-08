@@ -46,7 +46,7 @@ impl IntegerExt for Integer {
         }
     }
 
-    /// Get the Integer type from an attr::IntType.
+    /// Gets the Integer type from an attr::IntType.
     fn from_attr<C: HasDataLayout>(cx: &C, ity: attr::IntType) -> Integer {
         let dl = cx.data_layout();
 
@@ -62,7 +62,7 @@ impl IntegerExt for Integer {
         }
     }
 
-    /// Find the appropriate Integer type and signedness for the given
+    /// Finds the appropriate Integer type and signedness for the given
     /// signed discriminant range and #[repr] attribute.
     /// N.B.: u128 values above i128::MAX will be treated as signed, but
     /// that shouldn't affect anything, other than maybe debuginfo.
@@ -1686,7 +1686,7 @@ impl<'a, 'tcx, C> TyLayoutMethods<'tcx, C> for Ty<'tcx>
                             tcx.types.re_static,
                             tcx.mk_array(tcx.types.usize, 3),
                         )
-                        /* FIXME use actual fn pointers
+                        /* FIXME: use actual fn pointers
                         Warning: naively computing the number of entries in the
                         vtable by counting the methods on the trait + methods on
                         all parent traits does not work, because some methods can

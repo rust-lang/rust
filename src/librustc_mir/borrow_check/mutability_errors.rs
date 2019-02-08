@@ -615,7 +615,7 @@ fn is_closure_or_generator(ty: ty::Ty<'_>) -> bool {
     ty.is_closure() || ty.is_generator()
 }
 
-/// Add a suggestion to a struct definition given a field access to a local.
+/// Adds a suggestion to a struct definition given a field access to a local.
 /// This function expects the local to be a reference to a struct in order to produce a suggestion.
 ///
 /// ```text

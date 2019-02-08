@@ -69,7 +69,7 @@
 //! ## Copying stage0 {std,test,rustc}
 //!
 //! This copies the build output from Cargo into
-//! `build/$HOST/stage0-sysroot/lib/rustlib/$ARCH/lib`. FIXME: This step's
+//! `build/$HOST/stage0-sysroot/lib/rustlib/$ARCH/lib`. FIXME: this step's
 //! documentation should be expanded -- the information already here may be
 //! incorrect.
 //!
@@ -504,7 +504,7 @@ impl Build {
         cleared
     }
 
-    /// Get the space-separated set of activated features for the standard
+    /// Gets the space-separated set of activated features for the standard
     /// library.
     fn std_features(&self) -> String {
         let mut features = "panic-unwind".to_string();
@@ -521,7 +521,7 @@ impl Build {
         features
     }
 
-    /// Get the space-separated set of activated features for the compiler.
+    /// Gets the space-separated set of activated features for the compiler.
     fn rustc_features(&self) -> String {
         let mut features = String::new();
         if self.config.jemalloc {
@@ -609,7 +609,7 @@ impl Build {
         self.out.join(&*target).join("crate-docs")
     }
 
-    /// Returns true if no custom `llvm-config` is set for the specified target.
+    /// Returns `true` if no custom `llvm-config` is set for the specified target.
     ///
     /// If no custom `llvm-config` was specified then Rust's llvm will be used.
     fn is_rust_llvm(&self, target: Interned<String>) -> bool {
@@ -857,13 +857,13 @@ impl Build {
             .map(|p| &**p)
     }
 
-    /// Returns true if this is a no-std `target`, if defined
+    /// Returns `true` if this is a no-std `target`, if defined
     fn no_std(&self, target: Interned<String>) -> Option<bool> {
         self.config.target_config.get(&target)
             .map(|t| t.no_std)
     }
 
-    /// Returns whether the target will be tested using the `remote-test-client`
+    /// Returns `true` if the target will be tested using the `remote-test-client`
     /// and `remote-test-server` binaries.
     fn remote_tested(&self, target: Interned<String>) -> bool {
         self.qemu_rootfs(target).is_some() || target.contains("android") ||
@@ -1059,7 +1059,7 @@ impl Build {
         self.rust_info.version(self, channel::CFG_RELEASE_NUM)
     }
 
-    /// Return the full commit hash
+    /// Returns the full commit hash.
     fn rust_sha(&self) -> Option<&str> {
         self.rust_info.sha()
     }
@@ -1079,7 +1079,7 @@ impl Build {
         panic!("failed to find version in {}'s Cargo.toml", package)
     }
 
-    /// Returns whether unstable features should be enabled for the compiler
+    /// Returns `true` if unstable features should be enabled for the compiler
     /// we're building.
     fn unstable_features(&self) -> bool {
         match &self.config.channel[..] {
@@ -1327,7 +1327,7 @@ impl<'a> Compiler {
         self
     }
 
-    /// Returns whether this is a snapshot compiler for `build`'s configuration
+    /// Returns `true` if this is a snapshot compiler for `build`'s configuration
     pub fn is_snapshot(&self, build: &Build) -> bool {
         self.stage == 0 && self.host == build.build
     }

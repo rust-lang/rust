@@ -64,23 +64,23 @@ pub enum ImportDirectiveSubclass<'a> {
 /// One import directive.
 #[derive(Debug,Clone)]
 crate struct ImportDirective<'a> {
-    /// The id of the `extern crate`, `UseTree` etc that imported this `ImportDirective`.
+    /// The ID of the `extern crate`, `UseTree` etc that imported this `ImportDirective`.
     ///
     /// In the case where the `ImportDirective` was expanded from a "nested" use tree,
-    /// this id is the id of the leaf tree. For example:
+    /// this id is the ID of the leaf tree. For example:
     ///
     /// ```ignore (pacify the mercilous tidy)
     /// use foo::bar::{a, b}
     /// ```
     ///
-    /// If this is the import directive for `foo::bar::a`, we would have the id of the `UseTree`
+    /// If this is the import directive for `foo::bar::a`, we would have the ID of the `UseTree`
     /// for `a` in this field.
     pub id: NodeId,
 
     /// The `id` of the "root" use-kind -- this is always the same as
     /// `id` except in the case of "nested" use trees, in which case
     /// it will be the `id` of the root use tree. e.g., in the example
-    /// from `id`, this would be the id of the `use foo::bar`
+    /// from `id`, this would be the ID of the `use foo::bar`
     /// `UseTree` node.
     pub root_id: NodeId,
 

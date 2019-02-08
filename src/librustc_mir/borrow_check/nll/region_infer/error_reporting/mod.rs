@@ -738,8 +738,8 @@ impl<'tcx> RegionInferenceContext<'tcx> {
     }
 
     /// If `r2` represents a placeholder region, then this returns
-    /// true if `r1` cannot name that placeholder in its
-    /// value. Otherwise, returns false.
+    /// `true` if `r1` cannot name that placeholder in its
+    /// value; otherwise, returns `false`.
     fn cannot_name_placeholder(&self, r1: RegionVid, r2: RegionVid) -> bool {
         debug!("cannot_name_value_of(r1={:?}, r2={:?})", r1, r2);
 
