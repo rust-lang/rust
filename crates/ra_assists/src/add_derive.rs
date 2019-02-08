@@ -24,6 +24,7 @@ pub(crate) fn add_derive(ctx: AssistCtx<impl HirDatabase>) -> Option<Assist> {
             }
             Some(tt) => tt.syntax().range().end() - TextUnit::of_char(')'),
         };
+        edit.target(nominal.syntax().range());
         edit.set_cursor(offset)
     })
 }

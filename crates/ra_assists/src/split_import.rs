@@ -24,6 +24,7 @@ pub(crate) fn split_import(ctx: AssistCtx<impl HirDatabase>) -> Option<Assist> {
     };
 
     ctx.build("split import", |edit| {
+        edit.target(colon_colon.range());
         edit.insert(l_curly, "{");
         edit.insert(r_curly, "}");
         edit.set_cursor(l_curly + TextUnit::of_str("{"));
