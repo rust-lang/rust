@@ -53,9 +53,7 @@ impl Sysroot {
             );
         }
 
-        let mut sysroot = Sysroot {
-            crates: Arena::default(),
-        };
+        let mut sysroot = Sysroot { crates: Arena::default() };
         for name in SYSROOT_CRATES.trim().lines() {
             let root = src.join(format!("lib{}", name)).join("lib.rs");
             if root.exists() {
@@ -77,10 +75,7 @@ impl Sysroot {
     }
 
     fn by_name(&self, name: &str) -> Option<SysrootCrate> {
-        self.crates
-            .iter()
-            .find(|(_id, data)| data.name == name)
-            .map(|(id, _data)| id)
+        self.crates.iter().find(|(_id, data)| data.name == name).map(|(id, _data)| id)
     }
 }
 

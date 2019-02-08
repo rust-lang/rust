@@ -54,9 +54,7 @@ pub(crate) fn parse_with<S: Sink>(
         parser(&mut parser_api);
         parser_api.0.into_events()
     };
-    EventProcessor::new(sink, text, tokens, &mut events)
-        .process()
-        .finish()
+    EventProcessor::new(sink, text, tokens, &mut events).process().finish()
 }
 
 /// Implementation details of `Parser`, extracted
@@ -160,17 +158,13 @@ impl<'t> ParserImpl<'t> {
 
     /// Append one Error event to the back of events.
     pub(super) fn error(&mut self, msg: String) {
-        self.push_event(Event::Error {
-            msg: ParseError(msg),
-        })
+        self.push_event(Event::Error { msg: ParseError(msg) })
     }
 
     /// Complete an event with appending a `Finish` event.
     pub(super) fn complete(&mut self, pos: u32, kind: SyntaxKind) {
         match self.events[pos as usize] {
-            Event::Start {
-                kind: ref mut slot, ..
-            } => {
+            Event::Start { kind: ref mut slot, .. } => {
                 *slot = kind;
             }
             _ => unreachable!(),
@@ -183,10 +177,7 @@ impl<'t> ParserImpl<'t> {
         let idx = pos as usize;
         if idx == self.events.len() - 1 {
             match self.events.pop() {
-                Some(Event::Start {
-                    kind: TOMBSTONE,
-                    forward_parent: None,
-                }) => (),
+                Some(Event::Start { kind: TOMBSTONE, forward_parent: None }) => (),
                 _ => unreachable!(),
             }
         }
@@ -196,10 +187,7 @@ impl<'t> ParserImpl<'t> {
     pub(super) fn precede(&mut self, pos: u32) -> u32 {
         let new_pos = self.start();
         match self.events[pos as usize] {
-            Event::Start {
-                ref mut forward_parent,
-                ..
-            } => {
+            Event::Start { ref mut forward_parent, .. } => {
                 *forward_parent = Some(new_pos - pos);
             }
             _ => unreachable!(),

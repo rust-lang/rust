@@ -42,19 +42,11 @@ fn check_module_item_map(map: &ItemMap, module_id: ModuleId, expected: &str) {
         .collect::<Vec<_>>();
     lines.sort();
     let actual = lines.join("\n");
-    let expected = expected
-        .trim()
-        .lines()
-        .map(|it| it.trim())
-        .collect::<Vec<_>>()
-        .join("\n");
+    let expected = expected.trim().lines().map(|it| it.trim()).collect::<Vec<_>>().join("\n");
     assert_eq_text!(&expected, &actual);
 
     fn dump_resolution(resolution: &Resolution) -> &'static str {
-        match (
-            resolution.def.types.is_some(),
-            resolution.def.values.is_some(),
-        ) {
+        match (resolution.def.types.is_some(), resolution.def.values.is_some()) {
             (true, true) => "t v",
             (true, false) => "t",
             (false, true) => "v",
@@ -314,9 +306,7 @@ fn item_map_across_crates() {
     let mut crate_graph = CrateGraph::default();
     let main_crate = crate_graph.add_crate_root(main_id);
     let lib_crate = crate_graph.add_crate_root(lib_id);
-    crate_graph
-        .add_dep(main_crate, "test_crate".into(), lib_crate)
-        .unwrap();
+    crate_graph.add_dep(main_crate, "test_crate".into(), lib_crate).unwrap();
 
     db.set_crate_graph(Arc::new(crate_graph));
 
@@ -357,9 +347,7 @@ fn extern_crate_rename() {
     let mut crate_graph = CrateGraph::default();
     let main_crate = crate_graph.add_crate_root(main_id);
     let lib_crate = crate_graph.add_crate_root(lib_id);
-    crate_graph
-        .add_dep(main_crate, "alloc".into(), lib_crate)
-        .unwrap();
+    crate_graph.add_dep(main_crate, "alloc".into(), lib_crate).unwrap();
 
     db.set_crate_graph(Arc::new(crate_graph));
 
@@ -406,9 +394,7 @@ fn import_across_source_roots() {
     let mut crate_graph = CrateGraph::default();
     let main_crate = crate_graph.add_crate_root(main_id);
     let lib_crate = crate_graph.add_crate_root(lib_id);
-    crate_graph
-        .add_dep(main_crate, "test_crate".into(), lib_crate)
-        .unwrap();
+    crate_graph.add_dep(main_crate, "test_crate".into(), lib_crate).unwrap();
 
     db.set_crate_graph(Arc::new(crate_graph));
 
@@ -447,9 +433,7 @@ fn reexport_across_crates() {
     let mut crate_graph = CrateGraph::default();
     let main_crate = crate_graph.add_crate_root(main_id);
     let lib_crate = crate_graph.add_crate_root(lib_id);
-    crate_graph
-        .add_dep(main_crate, "test_crate".into(), lib_crate)
-        .unwrap();
+    crate_graph.add_dep(main_crate, "test_crate".into(), lib_crate).unwrap();
 
     db.set_crate_graph(Arc::new(crate_graph));
 
@@ -482,11 +466,7 @@ fn check_item_map_is_not_recomputed(initial: &str, file_change: &str) {
         let events = db.log_executed(|| {
             db.item_map(krate);
         });
-        assert!(
-            !format!("{:?}", events).contains("item_map"),
-            "{:#?}",
-            events
-        )
+        assert!(!format!("{:?}", events).contains("item_map"), "{:#?}", events)
     }
 }
 

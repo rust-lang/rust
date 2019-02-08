@@ -86,10 +86,7 @@ pub(crate) enum Event {
 
 impl Event {
     pub(crate) fn tombstone() -> Self {
-        Event::Start {
-            kind: TOMBSTONE,
-            forward_parent: None,
-        }
+        Event::Start { kind: TOMBSTONE, forward_parent: None }
     }
 }
 
@@ -109,14 +106,7 @@ impl<'a, S: Sink> EventProcessor<'a, S> {
         tokens: &'a [Token],
         events: &'a mut [Event],
     ) -> EventProcessor<'a, S> {
-        EventProcessor {
-            sink,
-            text_pos: 0.into(),
-            text,
-            token_pos: 0,
-            tokens,
-            events,
-        }
+        EventProcessor { sink, text_pos: 0.into(), text, token_pos: 0, tokens, events }
     }
 
     /// Generate the syntax tree with the control of events.
@@ -125,14 +115,9 @@ impl<'a, S: Sink> EventProcessor<'a, S> {
 
         for i in 0..self.events.len() {
             match mem::replace(&mut self.events[i], Event::tombstone()) {
-                Event::Start {
-                    kind: TOMBSTONE, ..
-                } => (),
+                Event::Start { kind: TOMBSTONE, .. } => (),
 
-                Event::Start {
-                    kind,
-                    forward_parent,
-                } => {
+                Event::Start { kind, forward_parent } => {
                     // For events[A, B, C], B is A's forward_parent, C is B's forward_parent,
                     // in the normal control flow, the parent-child relation: `A -> B -> C`,
                     // while with the magic forward_parent, it writes: `C <- B <- A`.
@@ -145,10 +130,7 @@ impl<'a, S: Sink> EventProcessor<'a, S> {
                         idx += fwd as usize;
                         // append `A`'s forward_parent `B`
                         fp = match mem::replace(&mut self.events[idx], Event::tombstone()) {
-                            Event::Start {
-                                kind,
-                                forward_parent,
-                            } => {
+                            Event::Start { kind, forward_parent } => {
                                 forward_parents.push(kind);
                                 forward_parent
                             }
@@ -174,10 +156,9 @@ impl<'a, S: Sink> EventProcessor<'a, S> {
                         .sum::<TextUnit>();
                     self.leaf(kind, len, n_raw_tokens);
                 }
-                Event::Error { msg } => self.sink.error(SyntaxError::new(
-                    SyntaxErrorKind::ParseError(msg),
-                    self.text_pos,
-                )),
+                Event::Error { msg } => self
+                    .sink
+                    .error(SyntaxError::new(SyntaxErrorKind::ParseError(msg), self.text_pos)),
             }
         }
         self.sink
@@ -189,10 +170,8 @@ impl<'a, S: Sink> EventProcessor<'a, S> {
             self.sink.start_branch(kind);
             return;
         }
-        let n_trivias = self.tokens[self.token_pos..]
-            .iter()
-            .take_while(|it| it.kind.is_trivia())
-            .count();
+        let n_trivias =
+            self.tokens[self.token_pos..].iter().take_while(|it| it.kind.is_trivia()).count();
         let leading_trivias = &self.tokens[self.token_pos..self.token_pos + n_trivias];
         let mut trivia_end =
             self.text_pos + leading_trivias.iter().map(|it| it.len).sum::<TextUnit>();

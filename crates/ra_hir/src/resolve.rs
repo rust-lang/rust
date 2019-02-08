@@ -138,10 +138,7 @@ impl Resolver {
         expr_scopes: Arc<ExprScopes>,
         scope_id: ScopeId,
     ) -> Resolver {
-        self.push_scope(Scope::ExprScope(ExprScope {
-            expr_scopes,
-            scope_id,
-        }))
+        self.push_scope(Scope::ExprScope(ExprScope { expr_scopes, scope_id }))
     }
 }
 
@@ -170,11 +167,8 @@ impl Scope {
                 }
             }
             Scope::ExprScope(e) => {
-                let entry = e
-                    .expr_scopes
-                    .entries(e.scope_id)
-                    .iter()
-                    .find(|entry| entry.name() == name);
+                let entry =
+                    e.expr_scopes.entries(e.scope_id).iter().find(|entry| entry.name() == name);
                 match entry {
                     Some(e) => PerNs::values(Resolution::LocalBinding(e.pat())),
                     None => PerNs::none(),
@@ -193,35 +187,24 @@ impl Scope {
                 //         def: m.module.into(),
                 //     }),
                 // );
-                m.item_map[m.module.module_id]
-                    .entries()
-                    .for_each(|(name, res)| {
-                        f(name.clone(), res.def.map(Resolution::Def));
-                    });
+                m.item_map[m.module.module_id].entries().for_each(|(name, res)| {
+                    f(name.clone(), res.def.map(Resolution::Def));
+                });
                 m.item_map.extern_prelude.iter().for_each(|(name, def)| {
                     f(name.clone(), PerNs::types(Resolution::Def(*def)));
                 });
             }
             Scope::GenericParams(gp) => {
                 for param in &gp.params {
-                    f(
-                        param.name.clone(),
-                        PerNs::types(Resolution::GenericParam(param.idx)),
-                    )
+                    f(param.name.clone(), PerNs::types(Resolution::GenericParam(param.idx)))
                 }
             }
             Scope::ImplBlockScope(i) => {
-                f(
-                    Name::self_type(),
-                    PerNs::types(Resolution::SelfType(i.clone())),
-                );
+                f(Name::self_type(), PerNs::types(Resolution::SelfType(i.clone())));
             }
             Scope::ExprScope(e) => {
                 e.expr_scopes.entries(e.scope_id).iter().for_each(|e| {
-                    f(
-                        e.name().clone(),
-                        PerNs::values(Resolution::LocalBinding(e.pat())),
-                    );
+                    f(e.name().clone(), PerNs::values(Resolution::LocalBinding(e.pat())));
                 });
             }
         }

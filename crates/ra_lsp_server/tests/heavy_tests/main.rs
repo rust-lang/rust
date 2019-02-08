@@ -55,10 +55,7 @@ fn foo() {
     );
     server.wait_for_feedback("workspace loaded");
     server.request::<Runnables>(
-        RunnablesParams {
-            text_document: server.doc_id("lib.rs"),
-            position: None,
-        },
+        RunnablesParams { text_document: server.doc_id("lib.rs"), position: None },
         json!([
           {
             "args": [ "test", "--", "foo", "--nocapture" ],
@@ -220,10 +217,7 @@ fn main() {}
 "#,
     );
     server.wait_for_feedback("workspace loaded");
-    let empty_context = || CodeActionContext {
-        diagnostics: Vec::new(),
-        only: None,
-    };
+    let empty_context = || CodeActionContext { diagnostics: Vec::new(), only: None };
     server.request::<CodeActionRequest>(
         CodeActionParams {
             text_document: server.doc_id("src/lib.rs"),

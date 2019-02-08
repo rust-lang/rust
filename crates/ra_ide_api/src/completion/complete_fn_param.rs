@@ -43,13 +43,12 @@ pub(super) fn complete_fn_param(acc: &mut Completions, ctx: &CompletionContext) 
         node: &'a N,
         params: &mut FxHashMap<String, (u32, &'a ast::Param)>,
     ) {
-        node.functions()
-            .filter_map(|it| it.param_list())
-            .flat_map(|it| it.params())
-            .for_each(|param| {
+        node.functions().filter_map(|it| it.param_list()).flat_map(|it| it.params()).for_each(
+            |param| {
                 let text = param.syntax().text().to_string();
                 params.entry(text).or_insert((0, param)).0 += 1;
-            })
+            },
+        )
     }
 }
 

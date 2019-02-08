@@ -58,14 +58,8 @@ impl GenericParams {
 
     fn fill_params(&mut self, params: &ast::TypeParamList) {
         for (idx, type_param) in params.type_params().enumerate() {
-            let name = type_param
-                .name()
-                .map(AsName::as_name)
-                .unwrap_or_else(Name::missing);
-            let param = GenericParam {
-                idx: idx as u32,
-                name,
-            };
+            let name = type_param.name().map(AsName::as_name).unwrap_or_else(Name::missing);
+            let param = GenericParam { idx: idx as u32, name };
             self.params.push(param);
         }
     }

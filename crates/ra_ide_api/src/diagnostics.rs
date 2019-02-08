@@ -21,10 +21,8 @@ pub(crate) fn diagnostics(db: &RootDatabase, file_id: FileId) -> Vec<Diagnostic>
             let source_root = db.file_source_root(file_id);
             let diag = match problem {
                 Problem::UnresolvedModule { candidate } => {
-                    let create_file = FileSystemEdit::CreateFile {
-                        source_root,
-                        path: candidate.clone(),
-                    };
+                    let create_file =
+                        FileSystemEdit::CreateFile { source_root, path: candidate.clone() };
                     let fix = SourceChange {
                         label: "create module".to_string(),
                         source_file_edits: Vec::new(),
@@ -44,10 +42,8 @@ pub(crate) fn diagnostics(db: &RootDatabase, file_id: FileId) -> Vec<Diagnostic>
                         dst_source_root: source_root,
                         dst_path: move_to.clone(),
                     };
-                    let create_file = FileSystemEdit::CreateFile {
-                        source_root,
-                        path: move_to.join(candidate),
-                    };
+                    let create_file =
+                        FileSystemEdit::CreateFile { source_root, path: move_to.join(candidate) };
                     let fix = SourceChange {
                         label: "move file and create module".to_string(),
                         source_file_edits: Vec::new(),

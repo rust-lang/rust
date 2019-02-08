@@ -80,10 +80,7 @@ impl RawMessage {
             #[serde(flatten)]
             msg: RawMessage,
         }
-        let text = to_string(&JsonRpc {
-            jsonrpc: "2.0",
-            msg: self,
-        })?;
+        let text = to_string(&JsonRpc { jsonrpc: "2.0", msg: self })?;
         write_msg_text(w, &text)?;
         Ok(())
     }
@@ -95,11 +92,7 @@ impl RawRequest {
         R: Request,
         R::Params: serde::Serialize,
     {
-        RawRequest {
-            id,
-            method: R::METHOD.to_string(),
-            params: to_value(params).unwrap(),
-        }
+        RawRequest { id, method: R::METHOD.to_string(), params: to_value(params).unwrap() }
     }
     pub fn cast<R>(self) -> ::std::result::Result<(u64, R::Params), RawRequest>
     where
@@ -121,23 +114,11 @@ impl RawResponse {
         R: Request,
         R::Result: serde::Serialize,
     {
-        RawResponse {
-            id,
-            result: Some(to_value(&result).unwrap()),
-            error: None,
-        }
+        RawResponse { id, result: Some(to_value(&result).unwrap()), error: None }
     }
     pub fn err(id: u64, code: i32, message: String) -> RawResponse {
-        let error = RawResponseError {
-            code,
-            message,
-            data: None,
-        };
-        RawResponse {
-            id,
-            result: None,
-            error: Some(error),
-        }
+        let error = RawResponseError { code, message, data: None };
+        RawResponse { id, result: None, error: Some(error) }
     }
 }
 
@@ -147,10 +128,7 @@ impl RawNotification {
         N: Notification,
         N::Params: serde::Serialize,
     {
-        RawNotification {
-            method: N::METHOD.to_string(),
-            params: to_value(params).unwrap(),
-        }
+        RawNotification { method: N::METHOD.to_string(), params: to_value(params).unwrap() }
     }
     pub fn is<N>(&self) -> bool
     where
@@ -187,9 +165,8 @@ fn read_msg_text(inp: &mut impl BufRead) -> Result<Option<String>> {
         }
         let mut parts = buf.splitn(2, ": ");
         let header_name = parts.next().unwrap();
-        let header_value = parts
-            .next()
-            .ok_or_else(|| format_err!("malformed header: {:?}", buf))?;
+        let header_value =
+            parts.next().ok_or_else(|| format_err!("malformed header: {:?}", buf))?;
         if header_name == "Content-Length" {
             size = Some(header_value.parse::<usize>()?);
         }

@@ -54,10 +54,7 @@ impl LineIndex {
 
             let char_len = TextUnit::of_char(c);
             if char_len.to_usize() > 1 {
-                utf16_chars.push(Utf16Char {
-                    start: curr_col,
-                    end: curr_col + char_len,
-                });
+                utf16_chars.push(Utf16Char { start: curr_col, end: curr_col + char_len });
             }
 
             curr_col += char_len;
@@ -68,10 +65,7 @@ impl LineIndex {
             utf16_lines.insert(line, utf16_chars);
         }
 
-        LineIndex {
-            newlines,
-            utf16_lines,
-        }
+        LineIndex { newlines, utf16_lines }
     }
 
     pub fn line_col(&self, offset: TextUnit) -> LineCol {
@@ -79,10 +73,7 @@ impl LineIndex {
         let line_start_offset = self.newlines[line];
         let col = offset - line_start_offset;
 
-        LineCol {
-            line: line as u32,
-            col_utf16: self.utf8_to_utf16_col(line as u32, col) as u32,
-        }
+        LineCol { line: line as u32, col_utf16: self.utf8_to_utf16_col(line as u32, col) as u32 }
     }
 
     pub fn offset(&self, line_col: LineCol) -> TextUnit {
@@ -131,10 +122,7 @@ impl LineIndex {
 #[cfg(test)]
 /// Simple reference implementation to use in proptests
 pub fn to_line_col(text: &str, offset: TextUnit) -> LineCol {
-    let mut res = LineCol {
-        line: 0,
-        col_utf16: 0,
-    };
+    let mut res = LineCol { line: 0, col_utf16: 0 };
     for (i, c) in text.char_indices() {
         if i + c.len_utf8() > offset.to_usize() {
             // if it's an invalid offset, inside a multibyte char
@@ -161,120 +149,31 @@ mod test_line_index {
     fn test_line_index() {
         let text = "hello\nworld";
         let index = LineIndex::new(text);
-        assert_eq!(
-            index.line_col(0.into()),
-            LineCol {
-                line: 0,
-                col_utf16: 0
-            }
-        );
-        assert_eq!(
-            index.line_col(1.into()),
-            LineCol {
-                line: 0,
-                col_utf16: 1
-            }
-        );
-        assert_eq!(
-            index.line_col(5.into()),
-            LineCol {
-                line: 0,
-                col_utf16: 5
-            }
-        );
-        assert_eq!(
-            index.line_col(6.into()),
-            LineCol {
-                line: 1,
-                col_utf16: 0
-            }
-        );
-        assert_eq!(
-            index.line_col(7.into()),
-            LineCol {
-                line: 1,
-                col_utf16: 1
-            }
-        );
-        assert_eq!(
-            index.line_col(8.into()),
-            LineCol {
-                line: 1,
-                col_utf16: 2
-            }
-        );
-        assert_eq!(
-            index.line_col(10.into()),
-            LineCol {
-                line: 1,
-                col_utf16: 4
-            }
-        );
-        assert_eq!(
-            index.line_col(11.into()),
-            LineCol {
-                line: 1,
-                col_utf16: 5
-            }
-        );
-        assert_eq!(
-            index.line_col(12.into()),
-            LineCol {
-                line: 1,
-                col_utf16: 6
-            }
-        );
+        assert_eq!(index.line_col(0.into()), LineCol { line: 0, col_utf16: 0 });
+        assert_eq!(index.line_col(1.into()), LineCol { line: 0, col_utf16: 1 });
+        assert_eq!(index.line_col(5.into()), LineCol { line: 0, col_utf16: 5 });
+        assert_eq!(index.line_col(6.into()), LineCol { line: 1, col_utf16: 0 });
+        assert_eq!(index.line_col(7.into()), LineCol { line: 1, col_utf16: 1 });
+        assert_eq!(index.line_col(8.into()), LineCol { line: 1, col_utf16: 2 });
+        assert_eq!(index.line_col(10.into()), LineCol { line: 1, col_utf16: 4 });
+        assert_eq!(index.line_col(11.into()), LineCol { line: 1, col_utf16: 5 });
+        assert_eq!(index.line_col(12.into()), LineCol { line: 1, col_utf16: 6 });
 
         let text = "\nhello\nworld";
         let index = LineIndex::new(text);
-        assert_eq!(
-            index.line_col(0.into()),
-            LineCol {
-                line: 0,
-                col_utf16: 0
-            }
-        );
-        assert_eq!(
-            index.line_col(1.into()),
-            LineCol {
-                line: 1,
-                col_utf16: 0
-            }
-        );
-        assert_eq!(
-            index.line_col(2.into()),
-            LineCol {
-                line: 1,
-                col_utf16: 1
-            }
-        );
-        assert_eq!(
-            index.line_col(6.into()),
-            LineCol {
-                line: 1,
-                col_utf16: 5
-            }
-        );
-        assert_eq!(
-            index.line_col(7.into()),
-            LineCol {
-                line: 2,
-                col_utf16: 0
-            }
-        );
+        assert_eq!(index.line_col(0.into()), LineCol { line: 0, col_utf16: 0 });
+        assert_eq!(index.line_col(1.into()), LineCol { line: 1, col_utf16: 0 });
+        assert_eq!(index.line_col(2.into()), LineCol { line: 1, col_utf16: 1 });
+        assert_eq!(index.line_col(6.into()), LineCol { line: 1, col_utf16: 5 });
+        assert_eq!(index.line_col(7.into()), LineCol { line: 2, col_utf16: 0 });
     }
 
     fn arb_text_with_offset() -> BoxedStrategy<(TextUnit, String)> {
-        arb_text()
-            .prop_flat_map(|text| (arb_offset(&text), Just(text)))
-            .boxed()
+        arb_text().prop_flat_map(|text| (arb_offset(&text), Just(text))).boxed()
     }
 
     fn to_line_col(text: &str, offset: TextUnit) -> LineCol {
-        let mut res = LineCol {
-            line: 0,
-            col_utf16: 0,
-        };
+        let mut res = LineCol { line: 0, col_utf16: 0 };
         for (i, c) in text.char_indices() {
             if i + c.len_utf8() > offset.to_usize() {
                 // if it's an invalid offset, inside a multibyte char
@@ -333,13 +232,7 @@ const C: char = 'メ';
 
         assert_eq!(col_index.utf16_lines.len(), 1);
         assert_eq!(col_index.utf16_lines[&1].len(), 1);
-        assert_eq!(
-            col_index.utf16_lines[&1][0],
-            Utf16Char {
-                start: 17.into(),
-                end: 20.into()
-            }
-        );
+        assert_eq!(col_index.utf16_lines[&1][0], Utf16Char { start: 17.into(), end: 20.into() });
 
         // UTF-8 to UTF-16, no changes
         assert_eq!(col_index.utf8_to_utf16_col(1, 15.into()), 15);
@@ -364,20 +257,8 @@ const C: char = \"メ メ\";
 
         assert_eq!(col_index.utf16_lines.len(), 1);
         assert_eq!(col_index.utf16_lines[&1].len(), 2);
-        assert_eq!(
-            col_index.utf16_lines[&1][0],
-            Utf16Char {
-                start: 17.into(),
-                end: 20.into()
-            }
-        );
-        assert_eq!(
-            col_index.utf16_lines[&1][1],
-            Utf16Char {
-                start: 21.into(),
-                end: 24.into()
-            }
-        );
+        assert_eq!(col_index.utf16_lines[&1][0], Utf16Char { start: 17.into(), end: 20.into() });
+        assert_eq!(col_index.utf16_lines[&1][1], Utf16Char { start: 21.into(), end: 24.into() });
 
         // UTF-8 to UTF-16
         assert_eq!(col_index.utf8_to_utf16_col(1, 15.into()), 15);

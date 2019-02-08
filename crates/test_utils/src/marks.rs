@@ -64,10 +64,7 @@ pub struct MarkChecker {
 impl MarkChecker {
     pub fn new(mark: &'static AtomicUsize) -> MarkChecker {
         let value_on_entry = mark.load(Ordering::SeqCst);
-        MarkChecker {
-            mark,
-            value_on_entry,
-        }
+        MarkChecker { mark, value_on_entry }
     }
 }
 

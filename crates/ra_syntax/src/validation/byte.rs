@@ -28,10 +28,7 @@ pub(super) fn validate_byte_node(node: &ast::Byte, errors: &mut Vec<SyntaxError>
     }
 
     if let Some(range) = components.suffix {
-        errors.push(SyntaxError::new(
-            InvalidSuffix,
-            range + literal_range.start(),
-        ));
+        errors.push(SyntaxError::new(InvalidSuffix, range + literal_range.start()));
     }
 
     if len == 0 {
@@ -55,10 +52,7 @@ pub(super) fn validate_byte_component(
         AsciiCodeEscape => validate_byte_code_escape(text, range, errors),
         UnicodeEscape => errors.push(SyntaxError::new(UnicodeEscapeForbidden, range)),
         CodePoint => {
-            let c = text
-                .chars()
-                .next()
-                .expect("Code points should be one character long");
+            let c = text.chars().next().expect("Code points should be one character long");
 
             // These bytes must always be escaped
             if c == '\t' || c == '\r' || c == '\n' {
@@ -93,10 +87,7 @@ fn validate_byte_code_escape(text: &str, range: TextRange, errors: &mut Vec<Synt
     } else if text.chars().count() < 4 {
         errors.push(SyntaxError::new(TooShortByteCodeEscape, range));
     } else {
-        assert!(
-            text.chars().count() == 4,
-            "ByteCodeEscape cannot be longer than 4 chars"
-        );
+        assert!(text.chars().count() == 4, "ByteCodeEscape cannot be longer than 4 chars");
 
         if u8::from_str_radix(&text[2..], 16).is_err() {
             errors.push(SyntaxError::new(MalformedByteCodeEscape, range));
@@ -115,12 +106,7 @@ mod test {
 
     fn assert_valid_byte(literal: &str) {
         let file = build_file(literal);
-        assert!(
-            file.errors().len() == 0,
-            "Errors for literal '{}': {:?}",
-            literal,
-            file.errors()
-        );
+        assert!(file.errors().len() == 0, "Errors for literal '{}': {:?}", literal, file.errors());
     }
 
     fn assert_invalid_byte(literal: &str) {
@@ -193,13 +179,7 @@ mod test {
 
     #[test]
     fn test_invalid_unicode_escape() {
-        let well_formed = [
-            r"\u{FF}",
-            r"\u{0}",
-            r"\u{F}",
-            r"\u{10FFFF}",
-            r"\u{1_0__FF___FF_____}",
-        ];
+        let well_formed = [r"\u{FF}", r"\u{0}", r"\u{F}", r"\u{10FFFF}", r"\u{1_0__FF___FF_____}"];
         for c in &well_formed {
             assert_invalid_byte(c);
         }

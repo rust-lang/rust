@@ -15,16 +15,12 @@ pub struct SyntaxNodePtr {
 
 impl SyntaxNodePtr {
     pub fn new(node: &SyntaxNode) -> SyntaxNodePtr {
-        SyntaxNodePtr {
-            range: node.range(),
-            kind: node.kind(),
-        }
+        SyntaxNodePtr { range: node.range(), kind: node.kind() }
     }
 
     pub fn to_node(self, source_file: &SourceFile) -> &SyntaxNode {
         generate(Some(source_file.syntax()), |&node| {
-            node.children()
-                .find(|it| self.range.is_subrange(&it.range()))
+            node.children().find(|it| self.range.is_subrange(&it.range()))
         })
         .find(|it| it.range() == self.range && it.kind() == self.kind)
         .unwrap_or_else(|| panic!("can't resolve local ptr to SyntaxNode: {:?}", self))
@@ -55,10 +51,7 @@ impl<N: AstNode> Clone for AstPtr<N> {
 
 impl<N: AstNode> AstPtr<N> {
     pub fn new(node: &N) -> AstPtr<N> {
-        AstPtr {
-            raw: SyntaxNodePtr::new(node.syntax()),
-            _ty: PhantomData,
-        }
+        AstPtr { raw: SyntaxNodePtr::new(node.syntax()), _ty: PhantomData }
     }
 
     pub fn to_node(self, source_file: &SourceFile) -> &N {
@@ -76,11 +69,7 @@ fn test_local_syntax_ptr() {
     use crate::{ast, AstNode};
 
     let file = SourceFile::parse("struct Foo { f: u32, }");
-    let field = file
-        .syntax()
-        .descendants()
-        .find_map(ast::NamedFieldDef::cast)
-        .unwrap();
+    let field = file.syntax().descendants().find_map(ast::NamedFieldDef::cast).unwrap();
     let ptr = SyntaxNodePtr::new(field.syntax());
     let field_syntax = ptr.to_node(&file);
     assert_eq!(field.syntax(), &*field_syntax);

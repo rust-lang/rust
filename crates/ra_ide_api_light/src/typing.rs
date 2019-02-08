@@ -8,9 +8,8 @@ use ra_syntax::{
 use crate::{LocalEdit, TextEditBuilder, formatting::leading_indent};
 
 pub fn on_enter(file: &SourceFile, offset: TextUnit) -> Option<LocalEdit> {
-    let comment = find_leaf_at_offset(file.syntax(), offset)
-        .left_biased()
-        .and_then(ast::Comment::cast)?;
+    let comment =
+        find_leaf_at_offset(file.syntax(), offset).left_biased().and_then(ast::Comment::cast)?;
 
     if let ast::CommentFlavor::Multiline = comment.flavor() {
         return None;
@@ -64,12 +63,7 @@ pub fn on_eq_typed(file: &SourceFile, eq_offset: TextUnit) -> Option<LocalEdit> 
         if expr_range.contains(eq_offset) && eq_offset != expr_range.start() {
             return None;
         }
-        if file
-            .syntax()
-            .text()
-            .slice(eq_offset..expr_range.start())
-            .contains('\n')
-        {
+        if file.syntax().text().slice(eq_offset..expr_range.start()).contains('\n') {
             return None;
         }
     } else {
@@ -100,10 +94,7 @@ pub fn on_dot_typed(file: &SourceFile, dot_offset: TextUnit) -> Option<LocalEdit
     let current_indent_len = TextUnit::of_str(current_indent);
 
     // Make sure dot is a part of call chain
-    let field_expr = whitespace
-        .syntax()
-        .parent()
-        .and_then(ast::FieldExpr::cast)?;
+    let field_expr = whitespace.syntax().parent().and_then(ast::FieldExpr::cast)?;
     let prev_indent = leading_indent(field_expr.syntax())?;
     let target_indent = format!("    {}", prev_indent);
     let target_indent_len = TextUnit::of_str(&target_indent);

@@ -41,10 +41,7 @@ impl MockAnalysis {
         let mut res = MockAnalysis::new();
         for entry in parse_fixture(fixture) {
             if entry.text.contains(CURSOR_MARKER) {
-                assert!(
-                    position.is_none(),
-                    "only one marker (<|>) per fixture is allowed"
-                );
+                assert!(position.is_none(), "only one marker (<|>) per fixture is allowed");
                 position = Some(res.add_file_with_position(&entry.meta, &entry.text));
             } else {
                 res.add_file(&entry.meta, &entry.text);
@@ -97,9 +94,7 @@ impl MockAnalysis {
                 let other_crate = crate_graph.add_crate_root(file_id);
                 let crate_name = path.parent().unwrap().file_name().unwrap();
                 if let Some(root_crate) = root_crate {
-                    crate_graph
-                        .add_dep(root_crate, crate_name.into(), other_crate)
-                        .unwrap();
+                    crate_graph.add_dep(root_crate, crate_name.into(), other_crate).unwrap();
                 }
             }
             change.add_file(source_root, file_id, path, Arc::new(contents));

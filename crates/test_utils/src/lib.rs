@@ -85,9 +85,7 @@ pub fn extract_ranges(mut text: &str, tag: &str) -> (Vec<TextRange>, String) {
                     stack.push(from);
                 } else if text.starts_with(&close) {
                     text = &text[close.len()..];
-                    let from = stack
-                        .pop()
-                        .unwrap_or_else(|| panic!("unmatched </{}>", tag));
+                    let from = stack.pop().unwrap_or_else(|| panic!("unmatched </{}>", tag));
                     let to = TextUnit::of_str(&res);
                     ranges.push(TextRange::from_to(from, to));
                 }
@@ -131,10 +129,7 @@ pub fn parse_fixture(fixture: &str) -> Vec<FixtureEntry> {
     macro_rules! flush {
         () => {
             if let Some(meta) = meta {
-                res.push(FixtureEntry {
-                    meta: meta.to_string(),
-                    text: buf.clone(),
-                });
+                res.push(FixtureEntry { meta: meta.to_string(), text: buf.clone() });
                 buf.clear();
             }
         };
@@ -226,15 +221,13 @@ pub fn find_mismatch<'a>(expected: &'a Value, actual: &'a Value) -> Option<(&'a 
             let mut l = l.iter().collect::<Vec<_>>();
             let mut r = r.iter().collect::<Vec<_>>();
 
-            l.retain(
-                |l| match r.iter().position(|r| find_mismatch(l, r).is_none()) {
-                    Some(i) => {
-                        r.remove(i);
-                        false
-                    }
-                    None => true,
-                },
-            );
+            l.retain(|l| match r.iter().position(|r| find_mismatch(l, r).is_none()) {
+                Some(i) => {
+                    r.remove(i);
+                    false
+                }
+                None => true,
+            });
 
             if !l.is_empty() {
                 assert!(!r.is_empty());
@@ -250,10 +243,7 @@ pub fn find_mismatch<'a>(expected: &'a Value, actual: &'a Value) -> Option<(&'a 
                 return Some((expected, actual));
             }
 
-            l.values()
-                .zip(r.values())
-                .filter_map(|(l, r)| find_mismatch(l, r))
-                .nth(0)
+            l.values().zip(r.values()).filter_map(|(l, r)| find_mismatch(l, r)).nth(0)
         }
         (&Null, &Null) => None,
         // magic string literal "{...}" acts as wildcard for any sub-JSON
@@ -312,12 +302,7 @@ fn test_from_dir(dir: &Path) -> Vec<PathBuf> {
 
 pub fn project_dir() -> PathBuf {
     let dir = env!("CARGO_MANIFEST_DIR");
-    PathBuf::from(dir)
-        .parent()
-        .unwrap()
-        .parent()
-        .unwrap()
-        .to_owned()
+    PathBuf::from(dir).parent().unwrap().parent().unwrap().to_owned()
 }
 
 /// Read file and normalize newlines.

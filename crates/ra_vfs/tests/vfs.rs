@@ -7,10 +7,7 @@ use tempfile::tempdir;
 
 fn process_tasks(vfs: &mut Vfs, num_tasks: u32) {
     for _ in 0..num_tasks {
-        let task = vfs
-            .task_receiver()
-            .recv_timeout(Duration::from_secs(3))
-            .unwrap();
+        let task = vfs.task_receiver().recv_timeout(Duration::from_secs(3)).unwrap();
         log::debug!("{:?}", task);
         vfs.handle_task(task);
     }
@@ -32,11 +29,7 @@ macro_rules! assert_match {
 fn test_vfs_works() -> std::io::Result<()> {
     // Logger::with_str("vfs=debug,ra_vfs=debug").start().unwrap();
 
-    let files = [
-        ("a/foo.rs", "hello"),
-        ("a/bar.rs", "world"),
-        ("a/b/baz.rs", "nested hello"),
-    ];
+    let files = [("a/foo.rs", "hello"), ("a/bar.rs", "world"), ("a/b/baz.rs", "nested hello")];
 
     let dir = tempdir().unwrap();
     for (path, text) in files.iter() {
@@ -66,14 +59,10 @@ fn test_vfs_works() -> std::io::Result<()> {
             })
             .collect::<HashSet<_>>();
 
-        let expected_files = [
-            ("foo.rs", "hello"),
-            ("bar.rs", "world"),
-            ("baz.rs", "nested hello"),
-        ]
-        .iter()
-        .map(|(path, text)| (path.to_string(), text.to_string()))
-        .collect::<HashSet<_>>();
+        let expected_files = [("foo.rs", "hello"), ("bar.rs", "world"), ("baz.rs", "nested hello")]
+            .iter()
+            .map(|(path, text)| (path.to_string(), text.to_string()))
+            .collect::<HashSet<_>>();
 
         assert_eq!(files, expected_files);
     }
@@ -107,14 +96,10 @@ fn test_vfs_works() -> std::io::Result<()> {
     );
 
     vfs.add_file_overlay(&dir.path().join("a/b/spam.rs"), "spam".to_string());
-    assert_match!(
-        vfs.commit_changes().as_slice(),
-        [VfsChange::AddFile { text, path, .. }],
-        {
-            assert_eq!(text.as_str(), "spam");
-            assert_eq!(path, "spam.rs");
-        }
-    );
+    assert_match!(vfs.commit_changes().as_slice(), [VfsChange::AddFile { text, path, .. }], {
+        assert_eq!(text.as_str(), "spam");
+        assert_eq!(path, "spam.rs");
+    });
 
     vfs.remove_file_overlay(&dir.path().join("a/b/spam.rs"));
     assert_match!(
@@ -126,30 +111,17 @@ fn test_vfs_works() -> std::io::Result<()> {
     fs::create_dir_all(dir.path().join("a/sub1/sub2")).unwrap();
     fs::write(dir.path().join("a/sub1/sub2/new.rs"), "new hello").unwrap();
     process_tasks(&mut vfs, 1);
-    assert_match!(
-        vfs.commit_changes().as_slice(),
-        [VfsChange::AddFile { text, path, .. }],
-        {
-            assert_eq!(text.as_str(), "new hello");
-            assert_eq!(path, "sub1/sub2/new.rs");
-        }
-    );
+    assert_match!(vfs.commit_changes().as_slice(), [VfsChange::AddFile { text, path, .. }], {
+        assert_eq!(text.as_str(), "new hello");
+        assert_eq!(path, "sub1/sub2/new.rs");
+    });
 
-    fs::rename(
-        &dir.path().join("a/sub1/sub2/new.rs"),
-        &dir.path().join("a/sub1/sub2/new1.rs"),
-    )
-    .unwrap();
+    fs::rename(&dir.path().join("a/sub1/sub2/new.rs"), &dir.path().join("a/sub1/sub2/new1.rs"))
+        .unwrap();
     process_tasks(&mut vfs, 2);
     assert_match!(
         vfs.commit_changes().as_slice(),
-        [VfsChange::RemoveFile {
-            path: removed_path, ..
-        }, VfsChange::AddFile {
-            text,
-            path: added_path,
-            ..
-        }],
+        [VfsChange::RemoveFile { path: removed_path, .. }, VfsChange::AddFile { text, path: added_path, .. }],
         {
             assert_eq!(removed_path, "sub1/sub2/new.rs");
             assert_eq!(added_path, "sub1/sub2/new1.rs");

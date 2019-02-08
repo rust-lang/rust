@@ -66,14 +66,9 @@ impl Path {
 
             match segment.kind()? {
                 ast::PathSegmentKind::Name(name) => {
-                    let args = segment
-                        .type_arg_list()
-                        .and_then(GenericArgs::from_ast)
-                        .map(Arc::new);
-                    let segment = PathSegment {
-                        name: name.as_name(),
-                        args_and_bindings: args,
-                    };
+                    let args =
+                        segment.type_arg_list().and_then(GenericArgs::from_ast).map(Arc::new);
+                    let segment = PathSegment { name: name.as_name(), args_and_bindings: args };
                     segments.push(segment);
                 }
                 ast::PathSegmentKind::CrateKw => {
@@ -153,10 +148,7 @@ impl From<Name> for Path {
     fn from(name: Name) -> Path {
         Path {
             kind: PathKind::Plain,
-            segments: vec![PathSegment {
-                name,
-                args_and_bindings: None,
-            }],
+            segments: vec![PathSegment { name, args_and_bindings: None }],
         }
     }
 }
@@ -209,18 +201,13 @@ fn expand_use_tree<'a>(
 }
 
 fn convert_path(prefix: Option<Path>, path: &ast::Path) -> Option<Path> {
-    let prefix = if let Some(qual) = path.qualifier() {
-        Some(convert_path(prefix, qual)?)
-    } else {
-        prefix
-    };
+    let prefix =
+        if let Some(qual) = path.qualifier() { Some(convert_path(prefix, qual)?) } else { prefix };
     let segment = path.segment()?;
     let res = match segment.kind()? {
         ast::PathSegmentKind::Name(name) => {
-            let mut res = prefix.unwrap_or_else(|| Path {
-                kind: PathKind::Plain,
-                segments: Vec::with_capacity(1),
-            });
+            let mut res = prefix
+                .unwrap_or_else(|| Path { kind: PathKind::Plain, segments: Vec::with_capacity(1) });
             res.segments.push(PathSegment {
                 name: name.as_name(),
                 args_and_bindings: None, // no type args in use
@@ -231,28 +218,19 @@ fn convert_path(prefix: Option<Path>, path: &ast::Path) -> Option<Path> {
             if prefix.is_some() {
                 return None;
             }
-            Path {
-                kind: PathKind::Crate,
-                segments: Vec::new(),
-            }
+            Path { kind: PathKind::Crate, segments: Vec::new() }
         }
         ast::PathSegmentKind::SelfKw => {
             if prefix.is_some() {
                 return None;
             }
-            Path {
-                kind: PathKind::Self_,
-                segments: Vec::new(),
-            }
+            Path { kind: PathKind::Self_, segments: Vec::new() }
         }
         ast::PathSegmentKind::SuperKw => {
             if prefix.is_some() {
                 return None;
             }
-            Path {
-                kind: PathKind::Super,
-                segments: Vec::new(),
-            }
+            Path { kind: PathKind::Super, segments: Vec::new() }
         }
     };
     Some(res)

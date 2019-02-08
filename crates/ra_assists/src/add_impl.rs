@@ -21,17 +21,11 @@ pub(crate) fn add_impl(ctx: AssistCtx<impl HirDatabase>) -> Option<Assist> {
         buf.push_str(" ");
         buf.push_str(name.text().as_str());
         if let Some(type_params) = type_params {
-            let lifetime_params = type_params
-                .lifetime_params()
-                .filter_map(|it| it.lifetime())
-                .map(|it| it.text());
-            let type_params = type_params
-                .type_params()
-                .filter_map(|it| it.name())
-                .map(|it| it.text());
-            join(lifetime_params.chain(type_params))
-                .surround_with("<", ">")
-                .to_buf(&mut buf);
+            let lifetime_params =
+                type_params.lifetime_params().filter_map(|it| it.lifetime()).map(|it| it.text());
+            let type_params =
+                type_params.type_params().filter_map(|it| it.name()).map(|it| it.text());
+            join(lifetime_params.chain(type_params)).surround_with("<", ">").to_buf(&mut buf);
         }
         buf.push_str(" {\n");
         edit.set_cursor(start_offset + TextUnit::of_str(&buf));
@@ -47,11 +41,7 @@ mod tests {
 
     #[test]
     fn test_add_impl() {
-        check_assist(
-            add_impl,
-            "struct Foo {<|>}\n",
-            "struct Foo {}\n\nimpl Foo {\n<|>\n}\n",
-        );
+        check_assist(add_impl, "struct Foo {<|>}\n", "struct Foo {}\n\nimpl Foo {\n<|>\n}\n");
         check_assist(
             add_impl,
             "struct Foo<T: Clone> {<|>}",

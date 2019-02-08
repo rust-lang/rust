@@ -50,11 +50,7 @@ pub fn join_lines(file: &SourceFile, range: TextRange) -> LocalEdit {
         }
     }
 
-    LocalEdit {
-        label: "join lines".to_string(),
-        edit: edit.finish(),
-        cursor_position: None,
-    }
+    LocalEdit { label: "join lines".to_string(), edit: edit.finish(), cursor_position: None }
 }
 
 fn remove_newline(
@@ -71,10 +67,7 @@ fn remove_newline(
         )];
         let spaces = suff.bytes().take_while(|&b| b == b' ').count();
 
-        edit.replace(
-            TextRange::offset_len(offset, ((spaces + 1) as u32).into()),
-            " ".to_string(),
-        );
+        edit.replace(TextRange::offset_len(offset, ((spaces + 1) as u32).into()), " ".to_string());
         return;
     }
 
@@ -109,11 +102,7 @@ fn remove_newline(
         edit.delete(TextRange::from_to(prev.range().start(), node.range().end()));
     } else if prev.kind() == COMMA && next.kind() == R_CURLY {
         // Removes: comma, newline (incl. surrounding whitespace)
-        let space = if let Some(left) = prev.prev_sibling() {
-            compute_ws(left, next)
-        } else {
-            " "
-        };
+        let space = if let Some(left) = prev.prev_sibling() { compute_ws(left, next) } else { " " };
         edit.replace(
             TextRange::from_to(prev.range().start(), node.range().end()),
             space.to_string(),
@@ -134,20 +123,14 @@ fn join_single_expr_block(edit: &mut TextEditBuilder, node: &SyntaxNode) -> Opti
     let block = ast::Block::cast(node.parent()?)?;
     let block_expr = ast::BlockExpr::cast(block.syntax().parent()?)?;
     let expr = extract_trivial_expression(block)?;
-    edit.replace(
-        block_expr.syntax().range(),
-        expr.syntax().text().to_string(),
-    );
+    edit.replace(block_expr.syntax().range(), expr.syntax().text().to_string());
     Some(())
 }
 
 fn join_single_use_tree(edit: &mut TextEditBuilder, node: &SyntaxNode) -> Option<()> {
     let use_tree_list = ast::UseTreeList::cast(node.parent()?)?;
     let (tree,) = use_tree_list.use_trees().collect_tuple()?;
-    edit.replace(
-        use_tree_list.syntax().range(),
-        tree.syntax().text().to_string(),
-    );
+    edit.replace(use_tree_list.syntax().range(), tree.syntax().text().to_string());
     Some(())
 }
 

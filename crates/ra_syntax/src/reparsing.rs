@@ -75,10 +75,7 @@ fn is_contextual_kw(text: &str) -> bool {
 type ParseFn = fn(&mut Parser);
 fn find_reparsable_node(node: &SyntaxNode, range: TextRange) -> Option<(&SyntaxNode, ParseFn)> {
     let node = algo::find_covering_node(node, range);
-    return node
-        .ancestors()
-        .filter_map(|node| reparser(node).map(|r| (node, r)))
-        .next();
+    return node.ancestors().filter_map(|node| reparser(node).map(|r| (node, r))).next();
 
     fn reparser(node: &SyntaxNode) -> Option<ParseFn> {
         let res = match node.kind() {
@@ -169,10 +166,7 @@ mod tests {
         let fully_reparsed = SourceFile::parse(&after);
         let incrementally_reparsed = {
             let f = SourceFile::parse(&before);
-            let edit = AtomTextEdit {
-                delete: range,
-                insert: replace_with.to_string(),
-            };
+            let edit = AtomTextEdit { delete: range, insert: replace_with.to_string() };
             let (node, green, new_errors) =
                 reparser(f.syntax(), &edit).expect("cannot incrementally reparse");
             let green_root = node.replace_with(green);

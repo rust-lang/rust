@@ -36,11 +36,7 @@ impl<'t> ParserInput<'t> {
             len += token.len;
         }
 
-        ParserInput {
-            text,
-            start_offsets,
-            tokens,
-        }
+        ParserInput { text, start_offsets, tokens }
     }
 
     /// Get the syntax kind of token at given input position.

@@ -23,36 +23,28 @@ fn lexer_tests() {
 
 #[test]
 fn parser_tests() {
-    dir_tests(
-        &test_data_dir(),
-        &["parser/inline/ok", "parser/ok"],
-        |text, path| {
-            let file = SourceFile::parse(text);
-            let errors = file.errors();
-            assert_eq!(
-                &*errors,
-                &[] as &[ra_syntax::SyntaxError],
-                "There should be no errors in the file {:?}",
-                path.display()
-            );
-            dump_tree(file.syntax())
-        },
-    );
-    dir_tests(
-        &test_data_dir(),
-        &["parser/err", "parser/inline/err"],
-        |text, path| {
-            let file = SourceFile::parse(text);
-            let errors = file.errors();
-            assert_ne!(
-                &*errors,
-                &[] as &[ra_syntax::SyntaxError],
-                "There should be errors in the file {:?}",
-                path.display()
-            );
-            dump_tree(file.syntax())
-        },
-    );
+    dir_tests(&test_data_dir(), &["parser/inline/ok", "parser/ok"], |text, path| {
+        let file = SourceFile::parse(text);
+        let errors = file.errors();
+        assert_eq!(
+            &*errors,
+            &[] as &[ra_syntax::SyntaxError],
+            "There should be no errors in the file {:?}",
+            path.display()
+        );
+        dump_tree(file.syntax())
+    });
+    dir_tests(&test_data_dir(), &["parser/err", "parser/inline/err"], |text, path| {
+        let file = SourceFile::parse(text);
+        let errors = file.errors();
+        assert_ne!(
+            &*errors,
+            &[] as &[ra_syntax::SyntaxError],
+            "There should be errors in the file {:?}",
+            path.display()
+        );
+        dump_tree(file.syntax())
+    });
 }
 
 #[test]
@@ -87,12 +79,7 @@ fn self_hosting_parsing() {
         let text = read_text(entry.path());
         let node = SourceFile::parse(&text);
         let errors = node.errors();
-        assert_eq!(
-            &*errors,
-            &[],
-            "There should be no errors in the file {:?}",
-            entry
-        );
+        assert_eq!(&*errors, &[], "There should be no errors in the file {:?}", entry);
     }
     assert!(
         count > 30,

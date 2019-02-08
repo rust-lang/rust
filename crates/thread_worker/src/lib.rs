@@ -71,12 +71,5 @@ impl WorkerHandle {
 fn worker_chan<I, O>(buf: usize) -> (Worker<I, O>, Receiver<I>, Sender<O>) {
     let (input_sender, input_receiver) = bounded::<I>(buf);
     let (output_sender, output_receiver) = unbounded::<O>();
-    (
-        Worker {
-            inp: input_sender,
-            out: output_receiver,
-        },
-        input_receiver,
-        output_sender,
-    )
+    (Worker { inp: input_sender, out: output_receiver }, input_receiver, output_sender)
 }

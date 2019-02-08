@@ -11,11 +11,7 @@
 //!   [rfc#2256]: <https://github.com/rust-lang/rfcs/pull/2256>
 //!   [RFC.md]: <https://github.com/matklad/libsyntax2/blob/master/docs/RFC.md>
 
-#![forbid(
-    missing_debug_implementations,
-    unconditional_recursion,
-    future_incompatible
-)]
+#![forbid(missing_debug_implementations, unconditional_recursion, future_incompatible)]
 #![deny(bad_style, missing_docs)]
 #![allow(missing_docs)]
 //#![warn(unreachable_pub)] // rust-lang/rust#47816
@@ -70,8 +66,7 @@ impl SourceFile {
     }
 
     pub fn reparse(&self, edit: &AtomTextEdit) -> TreeArc<SourceFile> {
-        self.incremental_reparse(edit)
-            .unwrap_or_else(|| self.full_reparse(edit))
+        self.incremental_reparse(edit).unwrap_or_else(|| self.full_reparse(edit))
     }
 
     pub fn incremental_reparse(&self, edit: &AtomTextEdit) -> Option<TreeArc<SourceFile>> {

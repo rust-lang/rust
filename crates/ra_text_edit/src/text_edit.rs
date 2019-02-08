@@ -25,9 +25,7 @@ impl TextEditBuilder {
         TextEdit::from_atoms(self.atoms)
     }
     pub fn invalidates_offset(&self, offset: TextUnit) -> bool {
-        self.atoms
-            .iter()
-            .any(|atom| atom.delete.contains_inclusive(offset))
+        self.atoms.iter().any(|atom| atom.delete.contains_inclusive(offset))
     }
 }
 

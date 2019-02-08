@@ -71,17 +71,7 @@ pub enum ModuleDef {
     Trait(Trait),
     Type(Type),
 }
-impl_froms!(
-    ModuleDef: Module,
-    Function,
-    Struct,
-    Enum,
-    EnumVariant,
-    Const,
-    Static,
-    Trait,
-    Type
-);
+impl_froms!(ModuleDef: Module, Function, Struct, Enum, EnumVariant, Const, Static, Trait, Type);
 
 pub enum ModuleSource {
     SourceFile(TreeArc<ast::SourceFile>),
@@ -90,13 +80,8 @@ pub enum ModuleSource {
 
 #[derive(Clone, Debug, Hash, PartialEq, Eq)]
 pub enum Problem {
-    UnresolvedModule {
-        candidate: RelativePathBuf,
-    },
-    NotDirOwner {
-        move_to: RelativePathBuf,
-        candidate: RelativePathBuf,
-    },
+    UnresolvedModule { candidate: RelativePathBuf },
+    NotDirOwner { move_to: RelativePathBuf, candidate: RelativePathBuf },
 }
 
 impl Module {
@@ -187,8 +172,7 @@ impl Module {
 
 impl Docs for Module {
     fn docs(&self, db: &impl HirDatabase) -> Option<Documentation> {
-        self.declaration_source(db)
-            .and_then(|it| docs_from_ast(&*it.1))
+        self.declaration_source(db).and_then(|it| docs_from_ast(&*it.1))
     }
 }
 
@@ -206,9 +190,7 @@ pub enum FieldSource {
 
 impl StructField {
     pub fn name(&self, db: &impl HirDatabase) -> Name {
-        self.parent.variant_data(db).fields().unwrap()[self.id]
-            .name
-            .clone()
+        self.parent.variant_data(db).fields().unwrap()[self.id].name.clone()
     }
 
     pub fn source(&self, db: &impl PersistentHirDatabase) -> (HirFileId, FieldSource) {
@@ -257,10 +239,7 @@ impl Struct {
             .fields()
             .into_iter()
             .flat_map(|it| it.iter())
-            .map(|(id, _)| StructField {
-                parent: (*self).into(),
-                id,
-            })
+            .map(|(id, _)| StructField { parent: (*self).into(), id })
             .collect()
     }
 
@@ -271,10 +250,7 @@ impl Struct {
             .into_iter()
             .flat_map(|it| it.iter())
             .find(|(_id, data)| data.name == *name)
-            .map(|(id, _)| StructField {
-                parent: (*self).into(),
-                id,
-            })
+            .map(|(id, _)| StructField { parent: (*self).into(), id })
     }
 
     pub fn generic_params(&self, db: &impl PersistentHirDatabase) -> Arc<GenericParams> {
@@ -292,11 +268,7 @@ impl Struct {
         let r = self.module(db).resolver(db);
         // ...and add generic params, if present
         let p = self.generic_params(db);
-        let r = if !p.params.is_empty() {
-            r.push_generic_params_scope(p)
-        } else {
-            r
-        };
+        let r = if !p.params.is_empty() { r.push_generic_params_scope(p) } else { r };
         r
     }
 }
@@ -356,11 +328,7 @@ impl Enum {
         let r = self.module(db).resolver(db);
         // ...and add generic params, if present
         let p = self.generic_params(db);
-        let r = if !p.params.is_empty() {
-            r.push_generic_params_scope(p)
-        } else {
-            r
-        };
+        let r = if !p.params.is_empty() { r.push_generic_params_scope(p) } else { r };
         r
     }
 }
@@ -400,10 +368,7 @@ impl EnumVariant {
             .fields()
             .into_iter()
             .flat_map(|it| it.iter())
-            .map(|(id, _)| StructField {
-                parent: (*self).into(),
-                id,
-            })
+            .map(|(id, _)| StructField { parent: (*self).into(), id })
             .collect()
     }
 
@@ -413,10 +378,7 @@ impl EnumVariant {
             .into_iter()
             .flat_map(|it| it.iter())
             .find(|(_id, data)| data.name == *name)
-            .map(|(id, _)| StructField {
-                parent: (*self).into(),
-                id,
-            })
+            .map(|(id, _)| StructField { parent: (*self).into(), id })
     }
 }
 
@@ -488,10 +450,7 @@ impl Function {
     pub fn scopes(&self, db: &impl HirDatabase) -> ScopesWithSyntaxMapping {
         let scopes = db.expr_scopes(*self);
         let syntax_mapping = db.body_syntax_mapping(*self);
-        ScopesWithSyntaxMapping {
-            scopes,
-            syntax_mapping,
-        }
+        ScopesWithSyntaxMapping { scopes, syntax_mapping }
     }
 
     pub fn signature(&self, db: &impl HirDatabase) -> Arc<FnSignature> {
@@ -516,11 +475,7 @@ impl Function {
             .unwrap_or_else(|| self.module(db).resolver(db));
         // ...and add generic params, if present
         let p = self.generic_params(db);
-        let r = if !p.params.is_empty() {
-            r.push_generic_params_scope(p)
-        } else {
-            r
-        };
+        let r = if !p.params.is_empty() { r.push_generic_params_scope(p) } else { r };
         r
     }
 }

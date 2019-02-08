@@ -13,18 +13,8 @@ fn main() -> Result<()> {
         .setting(clap::AppSettings::SubcommandRequiredElseHelp)
         .subcommand(
             SubCommand::with_name("render-test")
-                .arg(
-                    Arg::with_name("line")
-                        .long("--line")
-                        .required(true)
-                        .takes_value(true),
-                )
-                .arg(
-                    Arg::with_name("file")
-                        .long("--file")
-                        .required(true)
-                        .takes_value(true),
-                ),
+                .arg(Arg::with_name("line").long("--line").required(true).takes_value(true))
+                .arg(Arg::with_name("file").long("--file").required(true).takes_value(true)),
         )
         .subcommand(SubCommand::with_name("parse").arg(Arg::with_name("no-dump").long("--no-dump")))
         .subcommand(SubCommand::with_name("symbols"))
@@ -108,8 +98,5 @@ fn selections(file: &SourceFile, start: u32, end: u32) -> String {
         .iter()
         .map(|r| (1 + u32::from(r.start()), 1 + u32::from(r.end())))
         .map(|(s, e)| format!("({} {})", s, e));
-    join(ranges)
-        .separator(" ")
-        .surround_with("(", ")")
-        .to_string()
+    join(ranges).separator(" ").surround_with("(", ")").to_string()
 }

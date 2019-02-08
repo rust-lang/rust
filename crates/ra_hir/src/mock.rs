@@ -64,10 +64,7 @@ impl MockDatabase {
         let mut source_root = SourceRoot::default();
         for entry in parse_fixture(fixture) {
             if entry.text.contains(CURSOR_MARKER) {
-                assert!(
-                    position.is_none(),
-                    "only one marker (<|>) per fixture is allowed"
-                );
+                assert!(position.is_none(), "only one marker (<|>) per fixture is allowed");
                 position = Some(self.add_file_with_position(
                     source_root_id,
                     &mut source_root,

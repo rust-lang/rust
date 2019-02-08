@@ -62,11 +62,9 @@ impl TypeRef {
             ParenType(inner) => TypeRef::from_ast_opt(inner.type_ref()),
             TupleType(inner) => TypeRef::Tuple(inner.fields().map(TypeRef::from_ast).collect()),
             NeverType(..) => TypeRef::Never,
-            PathType(inner) => inner
-                .path()
-                .and_then(Path::from_ast)
-                .map(TypeRef::Path)
-                .unwrap_or(TypeRef::Error),
+            PathType(inner) => {
+                inner.path().and_then(Path::from_ast).map(TypeRef::Path).unwrap_or(TypeRef::Error)
+            }
             PointerType(inner) => {
                 let inner_ty = TypeRef::from_ast_opt(inner.type_ref());
                 let mutability = Mutability::from_mutable(inner.is_mut());
@@ -83,10 +81,7 @@ impl TypeRef {
             FnPointerType(inner) => {
                 let ret_ty = TypeRef::from_ast_opt(inner.ret_type().and_then(|rt| rt.type_ref()));
                 let mut params = if let Some(pl) = inner.param_list() {
-                    pl.params()
-                        .map(|p| p.type_ref())
-                        .map(TypeRef::from_ast_opt)
-                        .collect()
+                    pl.params().map(|p| p.type_ref()).map(TypeRef::from_ast_opt).collect()
                 } else {
                     Vec::new()
                 };

@@ -153,10 +153,8 @@ impl ModuleTree {
         file_id: HirFileId,
         decl_id: Option<SourceFileItemId>,
     ) -> Option<ModuleId> {
-        let (res, _) = self
-            .mods
-            .iter()
-            .find(|(_, m)| (m.file_id, m.decl_id) == (file_id, decl_id))?;
+        let (res, _) =
+            self.mods.iter().find(|(_, m)| (m.file_id, m.decl_id) == (file_id, decl_id))?;
         Some(res)
     }
 
@@ -178,18 +176,10 @@ impl ModuleTree {
         decl_id: Option<SourceFileItemId>,
     ) -> ModuleId {
         let is_root = parent.is_none();
-        let id = self.alloc_mod(ModuleData {
-            file_id,
-            decl_id,
-            parent,
-            children: Vec::new(),
-        });
+        let id = self.alloc_mod(ModuleData { file_id, decl_id, parent, children: Vec::new() });
         for sub in db.submodules(file_id, decl_id).iter() {
             let link = self.alloc_link(LinkData {
-                source: SourceItemId {
-                    file_id,
-                    item_id: sub.decl_id,
-                },
+                source: SourceItemId { file_id, item_id: sub.decl_id },
                 name: sub.name.clone(),
                 owner: id,
                 points_to: Vec::new(),
@@ -244,9 +234,7 @@ impl ModuleId {
         Some(tree.links[link].owner)
     }
     pub(crate) fn crate_root(self, tree: &ModuleTree) -> ModuleId {
-        generate(Some(self), move |it| it.parent(tree))
-            .last()
-            .unwrap()
+        generate(Some(self), move |it| it.parent(tree)).last().unwrap()
     }
     pub(crate) fn child(self, tree: &ModuleTree, name: &Name) -> Option<ModuleId> {
         let link = tree.mods[self]

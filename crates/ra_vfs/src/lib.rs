@@ -58,10 +58,7 @@ impl std::ops::Deref for Roots {
 
 impl RootConfig {
     fn new(root: PathBuf, excluded_dirs: Vec<PathBuf>) -> RootConfig {
-        RootConfig {
-            root,
-            excluded_dirs,
-        }
+        RootConfig { root, excluded_dirs }
     }
     /// Cheks if root contains a path and returns a root-relative path.
     pub(crate) fn contains(&self, path: &Path) -> Option<RelativePathBuf> {
@@ -111,9 +108,7 @@ impl Roots {
         Roots { roots }
     }
     pub(crate) fn find(&self, path: &Path) -> Option<(VfsRoot, RelativePathBuf)> {
-        self.roots
-            .iter()
-            .find_map(|(root, data)| data.contains(path).map(|it| (root, it)))
+        self.roots.iter().find_map(|(root, data)| data.contains(path).map(|it| (root, it)))
     }
 }
 
@@ -154,21 +149,10 @@ impl Vfs {
 
         for (root, config) in roots.iter() {
             root2files.insert(root, Default::default());
-            worker
-                .sender()
-                .send(io::Task::AddRoot {
-                    root,
-                    config: Arc::clone(config),
-                })
-                .unwrap();
+            worker.sender().send(io::Task::AddRoot { root, config: Arc::clone(config) }).unwrap();
         }
-        let res = Vfs {
-            roots,
-            files: Arena::default(),
-            root2files,
-            worker,
-            pending_changes: Vec::new(),
-        };
+        let res =
+            Vfs { roots, files: Arena::default(), root2files, worker, pending_changes: Vec::new() };
         let vfs_roots = res.roots.iter().map(|(id, _)| id).collect();
         (res, vfs_roots)
     }
@@ -205,12 +189,7 @@ impl Vfs {
                 let text = fs::read_to_string(path).unwrap_or_default();
                 let text = Arc::new(text);
                 let file = self.add_file(root, rel_path.clone(), Arc::clone(&text), false);
-                let change = VfsChange::AddFile {
-                    file,
-                    text,
-                    root,
-                    path: rel_path,
-                };
+                let change = VfsChange::AddFile { file, text, root, path: rel_path };
                 self.pending_changes.push(change);
                 Some(file)
             };
@@ -243,10 +222,7 @@ impl Vfs {
                     cur_files.push((file, path, text));
                 }
 
-                let change = VfsChange::AddRoot {
-                    root,
-                    files: cur_files,
-                };
+                let change = VfsChange::AddRoot { root, files: cur_files };
                 self.pending_changes.push(change);
             }
             TaskResult::AddSingleFile { root, path, text } => {
@@ -278,12 +254,7 @@ impl Vfs {
     ) -> Option<VfsFile> {
         let text = Arc::new(text);
         let file = self.add_file(root, path.clone(), text.clone(), is_overlay);
-        self.pending_changes.push(VfsChange::AddFile {
-            file,
-            root,
-            path,
-            text,
-        });
+        self.pending_changes.push(VfsChange::AddFile { file, root, path, text });
         Some(file)
     }
 
@@ -293,8 +264,7 @@ impl Vfs {
         }
         let text = Arc::new(text);
         self.change_file(file, text.clone(), is_overlay);
-        self.pending_changes
-            .push(VfsChange::ChangeFile { file, text });
+        self.pending_changes.push(VfsChange::ChangeFile { file, text });
     }
 
     fn do_remove_file(
@@ -308,8 +278,7 @@ impl Vfs {
             return;
         }
         self.remove_file(file);
-        self.pending_changes
-            .push(VfsChange::RemoveFile { root, path, file });
+        self.pending_changes.push(VfsChange::RemoveFile { root, path, file });
     }
 
     pub fn add_file_overlay(&mut self, path: &Path, text: String) -> Option<VfsFile> {
@@ -363,12 +332,7 @@ impl Vfs {
         text: Arc<String>,
         is_overlayed: bool,
     ) -> VfsFile {
-        let data = VfsFileData {
-            root,
-            path,
-            text,
-            is_overlayed,
-        };
+        let data = VfsFileData { root, path, text, is_overlayed };
         let file = self.files.alloc(data);
         self.root2files.get_mut(root).unwrap().insert(file);
         file
@@ -396,32 +360,14 @@ impl Vfs {
     }
 
     fn find_file(&self, root: VfsRoot, path: &RelativePath) -> Option<VfsFile> {
-        self.root2files[root]
-            .iter()
-            .map(|&it| it)
-            .find(|&file| self.files[file].path == path)
+        self.root2files[root].iter().map(|&it| it).find(|&file| self.files[file].path == path)
     }
 }
 
 #[derive(Debug, Clone)]
 pub enum VfsChange {
-    AddRoot {
-        root: VfsRoot,
-        files: Vec<(VfsFile, RelativePathBuf, Arc<String>)>,
-    },
-    AddFile {
-        root: VfsRoot,
-        file: VfsFile,
-        path: RelativePathBuf,
-        text: Arc<String>,
-    },
-    RemoveFile {
-        root: VfsRoot,
-        file: VfsFile,
-        path: RelativePathBuf,
-    },
-    ChangeFile {
-        file: VfsFile,
-        text: Arc<String>,
-    },
+    AddRoot { root: VfsRoot, files: Vec<(VfsFile, RelativePathBuf, Arc<String>)> },
+    AddFile { root: VfsRoot, file: VfsFile, path: RelativePathBuf, text: Arc<String> },
+    RemoveFile { root: VfsRoot, file: VfsFile, path: RelativePathBuf },
+    ChangeFile { file: VfsFile, text: Arc<String> },
 }

@@ -155,11 +155,7 @@ pub(super) fn maybe_item(p: &mut Parser, flavor: ItemFlavor) -> MaybeItem {
             IMPL_BLOCK
         }
         _ => {
-            return if has_mods {
-                MaybeItem::Modifiers
-            } else {
-                MaybeItem::None
-            };
+            return if has_mods { MaybeItem::Modifiers } else { MaybeItem::None };
         }
     };
 

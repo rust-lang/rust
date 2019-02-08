@@ -141,14 +141,7 @@ fn tuple_expr(p: &mut Parser) -> CompletedMarker {
         }
     }
     p.expect(R_PAREN);
-    m.complete(
-        p,
-        if saw_expr && !saw_comma {
-            PAREN_EXPR
-        } else {
-            TUPLE_EXPR
-        },
-    )
+    m.complete(p, if saw_expr && !saw_comma { PAREN_EXPR } else { TUPLE_EXPR })
 }
 
 // test array_expr

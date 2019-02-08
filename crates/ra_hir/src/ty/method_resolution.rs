@@ -46,18 +46,13 @@ impl CrateImplBlocks {
         ty: &Ty,
     ) -> impl Iterator<Item = (Module, ImplBlock)> + 'a {
         let fingerprint = TyFingerprint::for_impl(ty);
-        fingerprint
-            .and_then(|f| self.impls.get(&f))
-            .into_iter()
-            .flat_map(|i| i.iter())
-            .map(move |(module_id, impl_id)| {
-                let module = Module {
-                    krate: self.krate,
-                    module_id: *module_id,
-                };
+        fingerprint.and_then(|f| self.impls.get(&f)).into_iter().flat_map(|i| i.iter()).map(
+            move |(module_id, impl_id)| {
+                let module = Module { krate: self.krate, module_id: *module_id };
                 let module_impl_blocks = db.impls_in_module(module);
                 (module, ImplBlock::from_id(module_impl_blocks, *impl_id))
-            })
+            },
+        )
     }
 
     pub fn lookup_impl_blocks_for_trait<'a>(
@@ -66,18 +61,13 @@ impl CrateImplBlocks {
         tr: &Trait,
     ) -> impl Iterator<Item = (Module, ImplBlock)> + 'a {
         let id = tr.id;
-        self.impls_by_trait
-            .get(&id)
-            .into_iter()
-            .flat_map(|i| i.iter())
-            .map(move |(module_id, impl_id)| {
-                let module = Module {
-                    krate: self.krate,
-                    module_id: *module_id,
-                };
+        self.impls_by_trait.get(&id).into_iter().flat_map(|i| i.iter()).map(
+            move |(module_id, impl_id)| {
+                let module = Module { krate: self.krate, module_id: *module_id };
                 let module_impl_blocks = db.impls_in_module(module);
                 (module, ImplBlock::from_id(module_impl_blocks, *impl_id))
-            })
+            },
+        )
     }
 
     fn collect_recursive(&mut self, db: &impl HirDatabase, module: &Module) {

@@ -30,11 +30,7 @@ fn build_match_expr(
 ) -> String {
     let mut buf = String::new();
     buf.push_str(&format!("match {} {{\n", expr.syntax().text()));
-    buf.push_str(&format!(
-        "    {} => {}\n",
-        pat1.syntax().text(),
-        format_arm(arm1)
-    ));
+    buf.push_str(&format!("    {} => {}\n", pat1.syntax().text(), format_arm(arm1)));
     buf.push_str(&format!("    _ => {}\n", format_arm(arm2)));
     buf.push_str("}");
     buf

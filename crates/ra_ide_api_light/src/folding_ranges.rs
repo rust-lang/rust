@@ -30,30 +30,21 @@ pub fn folding_ranges(file: &SourceFile) -> Vec<Fold> {
         // Fold items that span multiple lines
         if let Some(kind) = fold_kind(node.kind()) {
             if node.text().contains('\n') {
-                res.push(Fold {
-                    range: node.range(),
-                    kind,
-                });
+                res.push(Fold { range: node.range(), kind });
             }
         }
 
         // Fold groups of comments
         if node.kind() == COMMENT && !visited_comments.contains(&node) {
             if let Some(range) = contiguous_range_for_comment(node, &mut visited_comments) {
-                res.push(Fold {
-                    range,
-                    kind: FoldKind::Comment,
-                })
+                res.push(Fold { range, kind: FoldKind::Comment })
             }
         }
 
         // Fold groups of imports
         if node.kind() == USE_ITEM && !visited_imports.contains(&node) {
             if let Some(range) = contiguous_range_for_group(node, &mut visited_imports) {
-                res.push(Fold {
-                    range,
-                    kind: FoldKind::Imports,
-                })
+                res.push(Fold { range, kind: FoldKind::Imports })
             }
         }
 
@@ -62,10 +53,7 @@ pub fn folding_ranges(file: &SourceFile) -> Vec<Fold> {
             if let Some(range) =
                 contiguous_range_for_group_unless(node, has_visibility, &mut visited_mods)
             {
-                res.push(Fold {
-                    range,
-                    kind: FoldKind::Mods,
-                })
+                res.push(Fold { range, kind: FoldKind::Mods })
             }
         }
     }
@@ -84,9 +72,7 @@ fn fold_kind(kind: SyntaxKind) -> Option<FoldKind> {
 }
 
 fn has_visibility(node: &SyntaxNode) -> bool {
-    ast::Module::cast(node)
-        .and_then(|m| m.visibility())
-        .is_some()
+    ast::Module::cast(node).and_then(|m| m.visibility()).is_some()
 }
 
 fn contiguous_range_for_group<'a>(
@@ -125,10 +111,7 @@ fn contiguous_range_for_group_unless<'a>(
     }
 
     if first != last {
-        Some(TextRange::from_to(
-            first.range().start(),
-            last.range().end(),
-        ))
+        Some(TextRange::from_to(first.range().start(), last.range().end()))
     } else {
         // The group consists of only one element, therefore it cannot be folded
         None
@@ -169,10 +152,7 @@ fn contiguous_range_for_comment<'a>(
     }
 
     if first != last {
-        Some(TextRange::from_to(
-            first.range().start(),
-            last.range().end(),
-        ))
+        Some(TextRange::from_to(first.range().start(), last.range().end()))
     } else {
         // The group consists of only one element, therefore it cannot be folded
         None
@@ -199,10 +179,8 @@ mod tests {
             fold_kinds.len(),
             "The amount of fold kinds is different than the expected amount"
         );
-        for ((fold, range), fold_kind) in folds
-            .into_iter()
-            .zip(ranges.into_iter())
-            .zip(fold_kinds.into_iter())
+        for ((fold, range), fold_kind) in
+            folds.into_iter().zip(ranges.into_iter()).zip(fold_kinds.into_iter())
         {
             assert_eq!(fold.range.start(), range.start());
             assert_eq!(fold.range.end(), range.end());
@@ -280,12 +258,7 @@ mod with_attribute_next;</fold>
 fn main() <fold>{
 }</fold>"#;
 
-        let folds = &[
-            FoldKind::Mods,
-            FoldKind::Mods,
-            FoldKind::Mods,
-            FoldKind::Block,
-        ];
+        let folds = &[FoldKind::Mods, FoldKind::Mods, FoldKind::Mods, FoldKind::Block];
         do_check(text, folds);
     }
 

@@ -24,9 +24,7 @@ impl<'a> Parser<'a> {
     }
 
     pub fn advance(&mut self) -> char {
-        let next = self
-            .peek()
-            .expect("cannot advance if end of input is reached");
+        let next = self.peek().expect("cannot advance if end of input is reached");
         self.pos += next.len_utf8();
         next
     }
@@ -133,10 +131,7 @@ impl<'a> Parser<'a> {
             Some(self.parse_escape(start))
         } else {
             let end = self.get_pos();
-            Some(StringComponent::new(
-                TextRange::from_to(start, end),
-                CodePoint,
-            ))
+            Some(StringComponent::new(TextRange::from_to(start, end), CodePoint))
         }
     }
 

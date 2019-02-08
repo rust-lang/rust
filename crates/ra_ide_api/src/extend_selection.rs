@@ -31,9 +31,7 @@ fn extend_selection_in_macro(
 }
 
 fn find_macro_call(node: &SyntaxNode, range: TextRange) -> Option<&ast::MacroCall> {
-    find_covering_node(node, range)
-        .ancestors()
-        .find_map(ast::MacroCall::cast)
+    find_covering_node(node, range).ancestors().find_map(ast::MacroCall::cast)
 }
 
 #[cfg(test)]

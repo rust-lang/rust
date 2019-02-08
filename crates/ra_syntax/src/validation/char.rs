@@ -31,10 +31,7 @@ pub(super) fn validate_char_node(node: &ast::Char, errors: &mut Vec<SyntaxError>
     }
 
     if let Some(range) = components.suffix {
-        errors.push(SyntaxError::new(
-            InvalidSuffix,
-            range + literal_range.start(),
-        ));
+        errors.push(SyntaxError::new(InvalidSuffix, range + literal_range.start()));
     }
 
     if len == 0 {
@@ -184,12 +181,7 @@ mod test {
 
     fn assert_valid_char(literal: &str) {
         let file = build_file(literal);
-        assert!(
-            file.errors().len() == 0,
-            "Errors for literal '{}': {:?}",
-            literal,
-            file.errors()
-        );
+        assert!(file.errors().len() == 0, "Errors for literal '{}': {:?}", literal, file.errors());
     }
 
     fn assert_invalid_char(literal: &str) {
@@ -258,13 +250,7 @@ mod test {
 
     #[test]
     fn test_valid_unicode_escape() {
-        let valid = [
-            r"\u{FF}",
-            r"\u{0}",
-            r"\u{F}",
-            r"\u{10FFFF}",
-            r"\u{1_0__FF___FF_____}",
-        ];
+        let valid = [r"\u{FF}", r"\u{0}", r"\u{F}", r"\u{10FFFF}", r"\u{1_0__FF___FF_____}"];
         for c in &valid {
             assert_valid_char(c);
         }

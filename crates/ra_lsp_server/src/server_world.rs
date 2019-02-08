@@ -80,10 +80,7 @@ impl ServerWorldState {
                 }
             }
 
-            let libstd = ws
-                .sysroot
-                .std()
-                .and_then(|it| sysroot_crates.get(&it).map(|&it| it));
+            let libstd = ws.sysroot.std().and_then(|it| sysroot_crates.get(&it).map(|&it| it));
 
             let mut pkg_to_lib_crate = FxHashMap::default();
             let mut pkg_crates = FxHashMap::default();
@@ -99,10 +96,7 @@ impl ServerWorldState {
                             lib_tgt = Some(crate_id);
                             pkg_to_lib_crate.insert(pkg, crate_id);
                         }
-                        pkg_crates
-                            .entry(pkg)
-                            .or_insert_with(Vec::new)
-                            .push(crate_id);
+                        pkg_crates.entry(pkg).or_insert_with(Vec::new).push(crate_id);
                     }
                 }
 
@@ -192,18 +186,8 @@ impl ServerWorldState {
                         libs.push((SourceRootId(root.0.into()), files));
                     }
                 }
-                VfsChange::AddFile {
-                    root,
-                    file,
-                    path,
-                    text,
-                } => {
-                    change.add_file(
-                        SourceRootId(root.0.into()),
-                        FileId(file.0.into()),
-                        path,
-                        text,
-                    );
+                VfsChange::AddFile { root, file, path, text } => {
+                    change.add_file(SourceRootId(root.0.into()), FileId(file.0.into()), path, text);
                 }
                 VfsChange::RemoveFile { root, file, path } => {
                     change.remove_file(SourceRootId(root.0.into()), FileId(file.0.into()), path)
@@ -247,9 +231,7 @@ impl ServerWorld {
     }
 
     pub fn uri_to_file_id(&self, uri: &Url) -> Result<FileId> {
-        let path = uri
-            .to_file_path()
-            .map_err(|()| format_err!("invalid uri: {}", uri))?;
+        let path = uri.to_file_path().map_err(|()| format_err!("invalid uri: {}", uri))?;
         let file = self
             .vfs
             .read()

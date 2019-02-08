@@ -89,9 +89,7 @@ fn all_assists<DB: HirDatabase>() -> &'static [fn(AssistCtx<DB>) -> Option<Assis
 }
 
 fn non_trivia_sibling(node: &SyntaxNode, direction: Direction) -> Option<&SyntaxNode> {
-    node.siblings(direction)
-        .skip(1)
-        .find(|node| !node.kind().is_trivia())
+    node.siblings(direction).skip(1).find(|node| !node.kind().is_trivia())
 }
 
 #[cfg(test)]
@@ -110,10 +108,8 @@ mod helpers {
     ) {
         let (before_cursor_pos, before) = extract_offset(before);
         let (db, _source_root, file_id) = MockDatabase::with_single_file(&before);
-        let frange = FileRange {
-            file_id,
-            range: TextRange::offset_len(before_cursor_pos, 0.into()),
-        };
+        let frange =
+            FileRange { file_id, range: TextRange::offset_len(before_cursor_pos, 0.into()) };
         let assist =
             AssistCtx::with_ctx(&db, frange, true, assist).expect("code action is not applicable");
         let action = match assist {
@@ -161,10 +157,8 @@ mod helpers {
     ) {
         let (before_cursor_pos, before) = extract_offset(before);
         let (db, _source_root, file_id) = MockDatabase::with_single_file(&before);
-        let frange = FileRange {
-            file_id,
-            range: TextRange::offset_len(before_cursor_pos, 0.into()),
-        };
+        let frange =
+            FileRange { file_id, range: TextRange::offset_len(before_cursor_pos, 0.into()) };
         let assist = AssistCtx::with_ctx(&db, frange, true, assist);
         assert!(assist.is_none());
     }

@@ -108,12 +108,8 @@ impl<'a> CompletionContext<'a> {
     }
     fn classify_name_ref(&mut self, original_file: &'a SourceFile, name_ref: &ast::NameRef) {
         let name_range = name_ref.syntax().range();
-        let top_node = name_ref
-            .syntax()
-            .ancestors()
-            .take_while(|it| it.range() == name_range)
-            .last()
-            .unwrap();
+        let top_node =
+            name_ref.syntax().ancestors().take_while(|it| it.range() == name_range).last().unwrap();
 
         match top_node.parent().map(|it| it.kind()) {
             Some(SOURCE_FILE) | Some(ITEM_LIST) => {

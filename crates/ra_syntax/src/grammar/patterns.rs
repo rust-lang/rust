@@ -2,9 +2,7 @@ use super::*;
 
 pub(super) const PATTERN_FIRST: TokenSet = expressions::LITERAL_FIRST
     .union(paths::PATH_FIRST)
-    .union(token_set![
-        REF_KW, MUT_KW, L_PAREN, L_BRACK, AMP, UNDERSCORE
-    ]);
+    .union(token_set![REF_KW, MUT_KW, L_PAREN, L_BRACK, AMP, UNDERSCORE]);
 
 pub(super) fn pattern(p: &mut Parser) {
     pattern_r(p, PAT_RECOVERY_SET)

@@ -83,9 +83,7 @@ mod tests {
 
         let navs = analysis.goto_implementation(pos).unwrap().unwrap().info;
         assert_eq!(navs.len(), expected.len());
-        navs.into_iter()
-            .enumerate()
-            .for_each(|(i, nav)| nav.assert_match(expected[i]));
+        navs.into_iter().enumerate().for_each(|(i, nav)| nav.assert_match(expected[i]));
     }
 
     #[test]
@@ -109,10 +107,7 @@ mod tests {
             impl Foo {}
             impl Foo {}
             ",
-            &[
-                "impl IMPL_BLOCK FileId(1) [12; 23)",
-                "impl IMPL_BLOCK FileId(1) [24; 35)",
-            ],
+            &["impl IMPL_BLOCK FileId(1) [12; 23)", "impl IMPL_BLOCK FileId(1) [24; 35)"],
         );
     }
 
@@ -129,10 +124,7 @@ mod tests {
                 impl super::Foo {}
             }
             ",
-            &[
-                "impl IMPL_BLOCK FileId(1) [24; 42)",
-                "impl IMPL_BLOCK FileId(1) [57; 75)",
-            ],
+            &["impl IMPL_BLOCK FileId(1) [24; 42)", "impl IMPL_BLOCK FileId(1) [57; 75)"],
         );
     }
 
@@ -149,10 +141,7 @@ mod tests {
             //- /b.rs
             impl crate::Foo {}
             ",
-            &[
-                "impl IMPL_BLOCK FileId(2) [0; 18)",
-                "impl IMPL_BLOCK FileId(3) [0; 18)",
-            ],
+            &["impl IMPL_BLOCK FileId(2) [0; 18)", "impl IMPL_BLOCK FileId(3) [0; 18)"],
         );
     }
 
@@ -183,10 +172,7 @@ mod tests {
             //- /b.rs
             impl crate::T for crate::Foo {}
             ",
-            &[
-                "impl IMPL_BLOCK FileId(2) [0; 31)",
-                "impl IMPL_BLOCK FileId(3) [0; 31)",
-            ],
+            &["impl IMPL_BLOCK FileId(2) [0; 31)", "impl IMPL_BLOCK FileId(3) [0; 31)"],
         );
     }
 }

@@ -127,16 +127,12 @@ pub trait DocCommentsOwner: AstNode {
                 let line = comment.text().as_str();
 
                 // Determine if the prefix or prefix + 1 char is stripped
-                let pos = if line
-                    .chars()
-                    .nth(prefix_len)
-                    .map(|c| c.is_whitespace())
-                    .unwrap_or(false)
-                {
-                    prefix_len + 1
-                } else {
-                    prefix_len
-                };
+                let pos =
+                    if line.chars().nth(prefix_len).map(|c| c.is_whitespace()).unwrap_or(false) {
+                        prefix_len + 1
+                    } else {
+                        prefix_len
+                    };
 
                 line[pos..].to_owned()
             })
@@ -357,10 +353,7 @@ pub enum PathSegmentKind<'a> {
 
 impl PathSegment {
     pub fn parent_path(&self) -> &Path {
-        self.syntax()
-            .parent()
-            .and_then(Path::cast)
-            .expect("segments are always nested in paths")
+        self.syntax().parent().and_then(Path::cast).expect("segments are always nested in paths")
     }
 
     pub fn kind(&self) -> Option<PathSegmentKind> {
@@ -428,10 +421,7 @@ pub struct AstChildren<'a, N> {
 
 impl<'a, N> AstChildren<'a, N> {
     fn new(parent: &'a SyntaxNode) -> Self {
-        AstChildren {
-            inner: parent.children(),
-            ph: PhantomData,
-        }
+        AstChildren { inner: parent.children(), ph: PhantomData }
     }
 }
 
@@ -658,11 +648,7 @@ impl SelfParam {
         let borrowed = self.syntax().children().any(|n| n.kind() == AMP);
         if borrowed {
             // check for a `mut` coming after the & -- `mut &self` != `&mut self`
-            if self
-                .syntax()
-                .children()
-                .skip_while(|n| n.kind() != AMP)
-                .any(|n| n.kind() == MUT_KW)
+            if self.syntax().children().skip_while(|n| n.kind() != AMP).any(|n| n.kind() == MUT_KW)
             {
                 SelfParamFlavor::MutRef
             } else {
@@ -769,8 +755,5 @@ fn test_doc_comment_preserves_indents() {
         "#,
     );
     let module = file.syntax().descendants().find_map(Module::cast).unwrap();
-    assert_eq!(
-        "doc1\n```\nfn foo() {\n    // ...\n}\n```",
-        module.doc_comment_text().unwrap()
-    );
+    assert_eq!("doc1\n```\nfn foo() {\n    // ...\n}\n```", module.doc_comment_text().unwrap());
 }

@@ -11,10 +11,7 @@ pub(crate) struct Ptr<'s> {
 impl<'s> Ptr<'s> {
     /// Creates a new `Ptr` from a string.
     pub fn new(text: &'s str) -> Ptr<'s> {
-        Ptr {
-            text,
-            len: 0.into(),
-        }
+        Ptr { text, len: 0.into() }
     }
 
     /// Gets the length of the remaining string.

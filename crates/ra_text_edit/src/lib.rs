@@ -15,10 +15,7 @@ pub struct AtomTextEdit {
 
 impl AtomTextEdit {
     pub fn replace(range: TextRange, replace_with: String) -> AtomTextEdit {
-        AtomTextEdit {
-            delete: range,
-            insert: replace_with,
-        }
+        AtomTextEdit { delete: range, insert: replace_with }
     }
 
     pub fn delete(range: TextRange) -> AtomTextEdit {

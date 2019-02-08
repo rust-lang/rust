@@ -7,26 +7,17 @@ use super::*;
 const EXPR_FIRST: TokenSet = LHS_FIRST;
 
 pub(super) fn expr(p: &mut Parser) -> BlockLike {
-    let r = Restrictions {
-        forbid_structs: false,
-        prefer_stmt: false,
-    };
+    let r = Restrictions { forbid_structs: false, prefer_stmt: false };
     expr_bp(p, r, 1)
 }
 
 pub(super) fn expr_stmt(p: &mut Parser) -> BlockLike {
-    let r = Restrictions {
-        forbid_structs: false,
-        prefer_stmt: true,
-    };
+    let r = Restrictions { forbid_structs: false, prefer_stmt: true };
     expr_bp(p, r, 1)
 }
 
 fn expr_no_struct(p: &mut Parser) {
-    let r = Restrictions {
-        forbid_structs: true,
-        prefer_stmt: false,
-    };
+    let r = Restrictions { forbid_structs: true, prefer_stmt: false };
     expr_bp(p, r, 1);
 }
 

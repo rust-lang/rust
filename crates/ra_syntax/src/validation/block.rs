@@ -17,8 +17,6 @@ pub(crate) fn validate_block_node(node: &ast::Block, errors: &mut Vec<SyntaxErro
             _ => {}
         }
     }
-    errors.extend(
-        node.attrs()
-            .map(|attr| SyntaxError::new(InvalidBlockAttr, attr.syntax().range())),
-    )
+    errors
+        .extend(node.attrs().map(|attr| SyntaxError::new(InvalidBlockAttr, attr.syntax().range())))
 }

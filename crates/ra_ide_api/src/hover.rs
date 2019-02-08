@@ -33,13 +33,9 @@ pub(crate) fn hover(db: &RootDatabase, position: FilePosition) -> Option<RangeIn
     }
     if range.is_none() {
         let node = find_leaf_at_offset(file.syntax(), position.offset).find_map(|leaf| {
-            leaf.ancestors()
-                .find(|n| ast::Expr::cast(*n).is_some() || ast::Pat::cast(*n).is_some())
+            leaf.ancestors().find(|n| ast::Expr::cast(*n).is_some() || ast::Pat::cast(*n).is_some())
         })?;
-        let frange = FileRange {
-            file_id: position.file_id,
-            range: node.range(),
-        };
+        let frange = FileRange { file_id: position.file_id, range: node.range() };
         res.extend(type_of(db, frange).map(Into::into));
         range = Some(node.range());
     };
@@ -126,10 +122,8 @@ impl NavigationTarget {
         where
             T: ast::NameOwner + ast::VisibilityOwner,
         {
-            let mut string = node
-                .visibility()
-                .map(|v| format!("{} ", v.syntax().text()))
-                .unwrap_or_default();
+            let mut string =
+                node.visibility().map(|v| format!("{} ", v.syntax().text())).unwrap_or_default();
             string.push_str(label);
             node.name()?.syntax().text().push_to(&mut string);
             Some(string)

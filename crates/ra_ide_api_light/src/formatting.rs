@@ -32,10 +32,7 @@ fn prev_leaves(node: &SyntaxNode) -> impl Iterator<Item = &SyntaxNode> {
 }
 
 fn prev_leaf(node: &SyntaxNode) -> Option<&SyntaxNode> {
-    generate(node.ancestors().find_map(SyntaxNode::prev_sibling), |it| {
-        it.last_child()
-    })
-    .last()
+    generate(node.ancestors().find_map(SyntaxNode::prev_sibling), |it| it.last_child()).last()
 }
 
 pub fn extract_trivial_expression(block: &ast::Block) -> Option<&ast::Expr> {

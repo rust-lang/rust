@@ -23,23 +23,14 @@ fn convert_tt(tt: &SyntaxNode) -> Option<tt::Subtree> {
             for char in child.leaf_text().unwrap().chars() {
                 if let Some(char) = prev {
                     token_trees.push(
-                        tt::Leaf::from(tt::Punct {
-                            char,
-                            spacing: tt::Spacing::Joint,
-                        })
-                        .into(),
+                        tt::Leaf::from(tt::Punct { char, spacing: tt::Spacing::Joint }).into(),
                     );
                 }
                 prev = Some(char)
             }
             if let Some(char) = prev {
-                token_trees.push(
-                    tt::Leaf::from(tt::Punct {
-                        char,
-                        spacing: tt::Spacing::Alone,
-                    })
-                    .into(),
-                );
+                token_trees
+                    .push(tt::Leaf::from(tt::Punct { char, spacing: tt::Spacing::Alone }).into());
             }
         } else {
             let child: tt::TokenTree = if child.kind() == TOKEN_TREE {
@@ -48,10 +39,7 @@ fn convert_tt(tt: &SyntaxNode) -> Option<tt::Subtree> {
                 let text = child.leaf_text().unwrap().clone();
                 tt::Leaf::from(tt::Ident { text }).into()
             } else if child.kind().is_literal() {
-                tt::Leaf::from(tt::Literal {
-                    text: child.leaf_text().unwrap().clone(),
-                })
-                .into()
+                tt::Leaf::from(tt::Literal { text: child.leaf_text().unwrap().clone() }).into()
             } else {
                 return None;
             };
@@ -59,9 +47,6 @@ fn convert_tt(tt: &SyntaxNode) -> Option<tt::Subtree> {
         }
     }
 
-    let res = tt::Subtree {
-        delimiter,
-        token_trees,
-    };
+    let res = tt::Subtree { delimiter, token_trees };
     Some(res)
 }

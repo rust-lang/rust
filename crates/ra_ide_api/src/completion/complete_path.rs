@@ -31,14 +31,10 @@ pub(super) fn complete_path(acc: &mut Completions, ctx: &CompletionContext) {
         hir::ModuleDef::Enum(e) => {
             e.variants(ctx.db).into_iter().for_each(|variant| {
                 if let Some(name) = variant.name(ctx.db) {
-                    let detail_types = variant
-                        .fields(ctx.db)
-                        .into_iter()
-                        .map(|field| field.ty(ctx.db));
-                    let detail = join(detail_types)
-                        .separator(", ")
-                        .surround_with("(", ")")
-                        .to_string();
+                    let detail_types =
+                        variant.fields(ctx.db).into_iter().map(|field| field.ty(ctx.db));
+                    let detail =
+                        join(detail_types).separator(", ").surround_with("(", ")").to_string();
 
                     CompletionItem::new(
                         CompletionKind::Reference,

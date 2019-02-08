@@ -133,11 +133,7 @@ fn match_lhs(pattern: &crate::Subtree, input: &mut TtCursor) -> Option<Bindings>
                 }
                 _ => return None,
             },
-            crate::TokenTree::Repeat(crate::Repeat {
-                subtree,
-                kind: _,
-                separator,
-            }) => {
+            crate::TokenTree::Repeat(crate::Repeat { subtree, kind: _, separator }) => {
                 while let Some(nested) = match_lhs(subtree, input) {
                     res.push_nested(nested)?;
                     if let Some(separator) = *separator {
@@ -166,10 +162,7 @@ fn expand_subtree(
         .map(|it| expand_tt(it, bindings, nesting))
         .collect::<Option<Vec<_>>>()?;
 
-    Some(tt::Subtree {
-        token_trees,
-        delimiter: template.delimiter,
-    })
+    Some(tt::Subtree { token_trees, delimiter: template.delimiter })
 }
 
 fn expand_tt(
@@ -188,23 +181,15 @@ fn expand_tt(
                 token_trees.push(t.into())
             }
             nesting.pop().unwrap();
-            tt::Subtree {
-                token_trees,
-                delimiter: tt::Delimiter::None,
-            }
-            .into()
+            tt::Subtree { token_trees, delimiter: tt::Delimiter::None }.into()
         }
         crate::TokenTree::Leaf(leaf) => match leaf {
-            crate::Leaf::Ident(ident) => tt::Leaf::from(tt::Ident {
-                text: ident.text.clone(),
-            })
-            .into(),
+            crate::Leaf::Ident(ident) => {
+                tt::Leaf::from(tt::Ident { text: ident.text.clone() }).into()
+            }
             crate::Leaf::Punct(punct) => tt::Leaf::from(punct.clone()).into(),
             crate::Leaf::Var(v) => bindings.get(&v.text, nesting)?.clone(),
-            crate::Leaf::Literal(l) => tt::Leaf::from(tt::Literal {
-                text: l.text.clone(),
-            })
-            .into(),
+            crate::Leaf::Literal(l) => tt::Leaf::from(tt::Literal { text: l.text.clone() }).into(),
         },
     };
     Some(res)

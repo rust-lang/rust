@@ -34,10 +34,7 @@ pub(crate) fn validate_byte_string_node(node: &ast::ByteString, errors: &mut Vec
     }
 
     if let Some(range) = components.suffix {
-        errors.push(SyntaxError::new(
-            InvalidSuffix,
-            range + literal_range.start(),
-        ));
+        errors.push(SyntaxError::new(InvalidSuffix, range + literal_range.start()));
     }
 }
 
@@ -53,12 +50,7 @@ mod test {
 
     fn assert_valid_str(literal: &str) {
         let file = build_file(literal);
-        assert!(
-            file.errors().len() == 0,
-            "Errors for literal '{}': {:?}",
-            literal,
-            file.errors()
-        );
+        assert!(file.errors().len() == 0, "Errors for literal '{}': {:?}", literal, file.errors());
     }
 
     fn assert_invalid_str(literal: &str) {
@@ -130,13 +122,7 @@ mod test {
 
     #[test]
     fn test_invalid_unicode_escape() {
-        let well_formed = [
-            r"\u{FF}",
-            r"\u{0}",
-            r"\u{F}",
-            r"\u{10FFFF}",
-            r"\u{1_0__FF___FF_____}",
-        ];
+        let well_formed = [r"\u{FF}", r"\u{0}", r"\u{F}", r"\u{10FFFF}", r"\u{1_0__FF___FF_____}"];
         for c in &well_formed {
             assert_invalid_str(c);
         }

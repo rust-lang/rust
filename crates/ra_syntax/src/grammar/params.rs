@@ -36,11 +36,7 @@ impl Flavor {
 }
 
 fn list_(p: &mut Parser, flavor: Flavor) {
-    let (bra, ket) = if flavor.type_required() {
-        (L_PAREN, R_PAREN)
-    } else {
-        (PIPE, PIPE)
-    };
+    let (bra, ket) = if flavor.type_required() { (L_PAREN, R_PAREN) } else { (PIPE, PIPE) };
     assert!(p.at(bra));
     let m = p.start();
     p.bump();

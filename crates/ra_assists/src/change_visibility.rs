@@ -81,31 +81,11 @@ mod tests {
 
     #[test]
     fn change_visibility_adds_pub_crate_to_items() {
-        check_assist(
-            change_visibility,
-            "<|>fn foo() {}",
-            "<|>pub(crate) fn foo() {}",
-        );
-        check_assist(
-            change_visibility,
-            "f<|>n foo() {}",
-            "<|>pub(crate) fn foo() {}",
-        );
-        check_assist(
-            change_visibility,
-            "<|>struct Foo {}",
-            "<|>pub(crate) struct Foo {}",
-        );
-        check_assist(
-            change_visibility,
-            "<|>mod foo {}",
-            "<|>pub(crate) mod foo {}",
-        );
-        check_assist(
-            change_visibility,
-            "<|>trait Foo {}",
-            "<|>pub(crate) trait Foo {}",
-        );
+        check_assist(change_visibility, "<|>fn foo() {}", "<|>pub(crate) fn foo() {}");
+        check_assist(change_visibility, "f<|>n foo() {}", "<|>pub(crate) fn foo() {}");
+        check_assist(change_visibility, "<|>struct Foo {}", "<|>pub(crate) struct Foo {}");
+        check_assist(change_visibility, "<|>mod foo {}", "<|>pub(crate) mod foo {}");
+        check_assist(change_visibility, "<|>trait Foo {}", "<|>pub(crate) trait Foo {}");
         check_assist(change_visibility, "m<|>od {}", "<|>pub(crate) mod {}");
         check_assist(
             change_visibility,
@@ -125,20 +105,12 @@ mod tests {
 
     #[test]
     fn change_visibility_pub_to_pub_crate() {
-        check_assist(
-            change_visibility,
-            "<|>pub fn foo() {}",
-            "<|>pub(crate) fn foo() {}",
-        )
+        check_assist(change_visibility, "<|>pub fn foo() {}", "<|>pub(crate) fn foo() {}")
     }
 
     #[test]
     fn change_visibility_pub_crate_to_pub() {
-        check_assist(
-            change_visibility,
-            "<|>pub(crate) fn foo() {}",
-            "<|>pub fn foo() {}",
-        )
+        check_assist(change_visibility, "<|>pub(crate) fn foo() {}", "<|>pub fn foo() {}")
     }
 
     #[test]

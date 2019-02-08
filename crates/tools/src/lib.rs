@@ -58,10 +58,8 @@ pub fn collect_tests(s: &str) -> Vec<(usize, Test)> {
                 None => continue 'outer,
             }
         };
-        let text: String = itertools::join(
-            block.map(|(_, line)| line).chain(::std::iter::once("")),
-            "\n",
-        );
+        let text: String =
+            itertools::join(block.map(|(_, line)| line).chain(::std::iter::once("")), "\n");
         assert!(!text.trim().is_empty() && text.ends_with('\n'));
         res.push((start_line, Test { name, text, ok }))
     }
@@ -78,11 +76,7 @@ pub fn generate(mode: Mode) -> Result<()> {
 }
 
 pub fn project_root() -> PathBuf {
-    Path::new(&env!("CARGO_MANIFEST_DIR"))
-        .ancestors()
-        .nth(2)
-        .unwrap()
-        .to_path_buf()
+    Path::new(&env!("CARGO_MANIFEST_DIR")).ancestors().nth(2).unwrap().to_path_buf()
 }
 
 pub fn run(cmdline: &str, dir: &str) -> Result<()> {
@@ -90,10 +84,7 @@ pub fn run(cmdline: &str, dir: &str) -> Result<()> {
     let project_dir = project_root().join(dir);
     let mut args = cmdline.split_whitespace();
     let exec = args.next().unwrap();
-    let status = Command::new(exec)
-        .args(args)
-        .current_dir(project_dir)
-        .status()?;
+    let status = Command::new(exec).args(args).current_dir(project_dir).status()?;
     if !status.success() {
         bail!("`{}` exited with {}", cmdline, status);
     }
@@ -112,10 +103,7 @@ pub fn run_rustfmt(mode: Mode) -> Result<()> {
     };
 
     if mode == Verify {
-        run(
-            &format!("rustup run {} -- cargo fmt -- --check", TOOLCHAIN),
-            ".",
-        )?;
+        run(&format!("rustup run {} -- cargo fmt -- --check", TOOLCHAIN), ".")?;
     } else {
         run(&format!("rustup run {} -- cargo fmt", TOOLCHAIN), ".")?;
     }
@@ -124,10 +112,7 @@ pub fn run_rustfmt(mode: Mode) -> Result<()> {
 
 pub fn install_rustfmt() -> Result<()> {
     run(&format!("rustup install {}", TOOLCHAIN), ".")?;
-    run(
-        &format!("rustup component add rustfmt --toolchain {}", TOOLCHAIN),
-        ".",
-    )
+    run(&format!("rustup component add rustfmt --toolchain {}", TOOLCHAIN), ".")
 }
 
 pub fn install_format_hook() -> Result<()> {
@@ -156,10 +141,7 @@ pub fn run_fuzzer() -> Result<()> {
         _ => run("cargo install cargo-fuzz", ".")?,
     };
 
-    run(
-        "rustup run nightly -- cargo fuzz run parser",
-        "./crates/ra_syntax",
-    )
+    run("rustup run nightly -- cargo fuzz run parser", "./crates/ra_syntax")
 }
 
 pub fn gen_tests(mode: Mode) -> Result<()> {
@@ -245,11 +227,7 @@ fn existing_tests(dir: &Path, ok: bool) -> Result<HashMap<String, (PathBuf, Test
             file_name[5..file_name.len() - 3].to_string()
         };
         let text = fs::read_to_string(&path)?;
-        let test = Test {
-            name: name.clone(),
-            text,
-            ok,
-        };
+        let test = Test { name: name.clone(), text, ok };
         if let Some(old) = res.insert(name, (path, test)) {
             println!("Duplicate test: {:?}", old);
         }

@@ -25,9 +25,7 @@ pub(super) fn complete_dot(acc: &mut Completions, ctx: &CompletionContext) {
 fn complete_fields(acc: &mut Completions, ctx: &CompletionContext, receiver: Ty) {
     for receiver in receiver.autoderef(ctx.db) {
         match receiver {
-            Ty::Adt {
-                def_id, ref substs, ..
-            } => {
+            Ty::Adt { def_id, ref substs, .. } => {
                 match def_id {
                     AdtDef::Struct(s) => {
                         for field in s.fields(ctx.db) {

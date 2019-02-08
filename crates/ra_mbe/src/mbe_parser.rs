@@ -52,10 +52,7 @@ fn parse_subtree(tt: &tt::Subtree) -> Option<crate::Subtree> {
         };
         token_trees.push(child);
     }
-    Some(crate::Subtree {
-        token_trees,
-        delimiter: tt.delimiter,
-    })
+    Some(crate::Subtree { token_trees, delimiter: tt.delimiter })
 }
 
 fn parse_var(p: &mut TtCursor) -> Option<crate::Var> {
@@ -92,9 +89,5 @@ fn parse_repeat(p: &mut TtCursor) -> Option<crate::Repeat> {
         _ => return None,
     };
     p.bump();
-    Some(crate::Repeat {
-        subtree,
-        kind,
-        separator,
-    })
+    Some(crate::Repeat { subtree, kind, separator })
 }

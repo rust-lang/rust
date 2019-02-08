@@ -23,7 +23,5 @@ pub(super) fn file_item(
     source_item_id: SourceItemId,
 ) -> TreeArc<SyntaxNode> {
     let source_file = db.hir_parse(source_item_id.file_id);
-    db.file_items(source_item_id.file_id)[source_item_id.item_id]
-        .to_node(&source_file)
-        .to_owned()
+    db.file_items(source_item_id.file_id)[source_item_id.item_id].to_node(&source_file).to_owned()
 }

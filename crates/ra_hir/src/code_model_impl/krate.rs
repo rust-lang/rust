@@ -11,9 +11,7 @@ impl Crate {
         crate_graph
             .dependencies(self.crate_id)
             .map(|dep| {
-                let krate = Crate {
-                    crate_id: dep.crate_id(),
-                };
+                let krate = Crate { crate_id: dep.crate_id() };
                 let name = dep.as_name();
                 CrateDependency { krate, name }
             })
@@ -23,10 +21,7 @@ impl Crate {
         let module_tree = db.module_tree(*self);
         let module_id = module_tree.modules().next()?;
 
-        let module = Module {
-            krate: *self,
-            module_id,
-        };
+        let module = Module { krate: *self, module_id };
         Some(module)
     }
 }

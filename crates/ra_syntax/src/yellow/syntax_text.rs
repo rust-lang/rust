@@ -10,10 +10,7 @@ pub struct SyntaxText<'a> {
 
 impl<'a> SyntaxText<'a> {
     pub(crate) fn new(node: &'a SyntaxNode) -> SyntaxText<'a> {
-        SyntaxText {
-            node,
-            range: node.range(),
-        }
+        SyntaxText { node, range: node.range() }
     }
 
     pub fn chunks(&self) -> impl Iterator<Item = &'a str> {
@@ -58,10 +55,7 @@ impl<'a> SyntaxText<'a> {
         let range = range.restrict(self.range).unwrap_or_else(|| {
             panic!("invalid slice, range: {:?}, slice: {:?}", self.range, range)
         });
-        SyntaxText {
-            node: self.node,
-            range,
-        }
+        SyntaxText { node: self.node, range }
     }
 
     pub fn char_at(&self, offset: impl Into<TextUnit>) -> Option<char> {

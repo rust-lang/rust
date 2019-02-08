@@ -72,14 +72,7 @@ fn text_edit_for_remove_unnecessary_braces_with_self_in_use_statement(
     single_use_tree: &ast::UseTree,
 ) -> Option<TextEdit> {
     let use_tree_list_node = single_use_tree.syntax().parent()?;
-    if single_use_tree
-        .path()?
-        .segment()?
-        .syntax()
-        .first_child()?
-        .kind()
-        == SyntaxKind::SELF_KW
-    {
+    if single_use_tree.path()?.segment()?.syntax().first_child()?.kind() == SyntaxKind::SELF_KW {
         let start = use_tree_list_node.prev_sibling()?.range().start();
         let end = use_tree_list_node.range().end();
         let range = TextRange::from_to(start, end);
@@ -145,9 +138,8 @@ mod tests {
         for node in file.syntax().descendants() {
             func(&mut diagnostics, node);
         }
-        let diagnostic = diagnostics
-            .pop()
-            .unwrap_or_else(|| panic!("no diagnostics for:\n{}\n", before));
+        let diagnostic =
+            diagnostics.pop().unwrap_or_else(|| panic!("no diagnostics for:\n{}\n", before));
         let fix = diagnostic.fix.unwrap();
         let actual = fix.edit.apply(&before);
         assert_eq_text!(after, &actual);
@@ -162,21 +154,9 @@ mod tests {
         ",
             check_unnecessary_braces_in_use_statement,
         );
-        check_apply(
-            "use {b};",
-            "use b;",
-            check_unnecessary_braces_in_use_statement,
-        );
-        check_apply(
-            "use a::{c};",
-            "use a::c;",
-            check_unnecessary_braces_in_use_statement,
-        );
-        check_apply(
-            "use a::{self};",
-            "use a;",
-            check_unnecessary_braces_in_use_statement,
-        );
+        check_apply("use {b};", "use b;", check_unnecessary_braces_in_use_statement);
+        check_apply("use a::{c};", "use a::c;", check_unnecessary_braces_in_use_statement);
+        check_apply("use a::{self};", "use a;", check_unnecessary_braces_in_use_statement);
         check_apply(
             "use a::{c, d::{e}};",
             "use a::{c, d::e};",

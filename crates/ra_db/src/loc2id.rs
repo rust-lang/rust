@@ -30,10 +30,7 @@ where
     LOC: Clone + Eq + Hash,
 {
     fn default() -> Self {
-        Loc2IdMap {
-            id2loc: Arena::default(),
-            loc2id: FxHashMap::default(),
-        }
+        Loc2IdMap { id2loc: Arena::default(), loc2id: FxHashMap::default() }
     }
 }
 
@@ -85,9 +82,7 @@ where
     LOC: Clone + Eq + Hash,
 {
     fn default() -> Self {
-        LocationIntener {
-            map: Default::default(),
-        }
+        LocationIntener { map: Default::default() }
     }
 }
 

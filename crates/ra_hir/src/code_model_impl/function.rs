@@ -25,10 +25,7 @@ impl FnSignature {
         func: Function,
     ) -> Arc<FnSignature> {
         let (_, node) = func.source(db);
-        let name = node
-            .name()
-            .map(|n| n.as_name())
-            .unwrap_or_else(Name::missing);
+        let name = node.name().map(|n| n.as_name()).unwrap_or_else(Name::missing);
         let mut params = Vec::new();
         let mut has_self_param = false;
         if let Some(param_list) = node.param_list() {
@@ -61,12 +58,7 @@ impl FnSignature {
             TypeRef::unit()
         };
 
-        let sig = FnSignature {
-            name,
-            params,
-            ret_type,
-            has_self_param,
-        };
+        let sig = FnSignature { name, params, ret_type, has_self_param };
         Arc::new(sig)
     }
 }

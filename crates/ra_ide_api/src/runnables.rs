@@ -23,11 +23,7 @@ pub enum RunnableKind {
 
 pub(crate) fn runnables(db: &RootDatabase, file_id: FileId) -> Vec<Runnable> {
     let source_file = db.parse(file_id);
-    source_file
-        .syntax()
-        .descendants()
-        .filter_map(|i| runnable(db, file_id, i))
-        .collect()
+    source_file.syntax().descendants().filter_map(|i| runnable(db, file_id, i)).collect()
 }
 
 fn runnable(db: &RootDatabase, file_id: FileId, item: &SyntaxNode) -> Option<Runnable> {
@@ -45,20 +41,13 @@ fn runnable_fn(fn_def: &ast::FnDef) -> Option<Runnable> {
     let kind = if name == "main" {
         RunnableKind::Bin
     } else if fn_def.has_atom_attr("test") {
-        RunnableKind::Test {
-            name: name.to_string(),
-        }
+        RunnableKind::Test { name: name.to_string() }
     } else if fn_def.has_atom_attr("bench") {
-        RunnableKind::Bench {
-            name: name.to_string(),
-        }
+        RunnableKind::Bench { name: name.to_string() }
     } else {
         return None;
     };
-    Some(Runnable {
-        range: fn_def.syntax().range(),
-        kind,
-    })
+    Some(Runnable { range: fn_def.syntax().range(), kind })
 }
 
 fn runnable_mod(db: &RootDatabase, file_id: FileId, module: &ast::Module) -> Option<Runnable> {
@@ -77,16 +66,8 @@ fn runnable_mod(db: &RootDatabase, file_id: FileId, module: &ast::Module) -> Opt
     let module = hir::source_binder::module_from_child_node(db, file_id, module.syntax())?;
 
     // FIXME: thread cancellation instead of `.ok`ing
-    let path = module
-        .path_to_root(db)
-        .into_iter()
-        .rev()
-        .filter_map(|it| it.name(db))
-        .join("::");
-    Some(Runnable {
-        range,
-        kind: RunnableKind::TestMod { path },
-    })
+    let path = module.path_to_root(db).into_iter().rev().filter_map(|it| it.name(db)).join("::");
+    Some(Runnable { range, kind: RunnableKind::TestMod { path } })
 }
 
 #[cfg(test)]

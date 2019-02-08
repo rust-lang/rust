@@ -169,11 +169,7 @@ impl<N: AstNode> Hash for ItemLoc<N> {
 
 impl<N: AstNode> Clone for ItemLoc<N> {
     fn clone(&self) -> ItemLoc<N> {
-        ItemLoc {
-            module: self.module,
-            raw: self.raw,
-            _ty: PhantomData,
-        }
+        ItemLoc { module: self.module, raw: self.raw, _ty: PhantomData }
     }
 }
 
@@ -186,11 +182,7 @@ pub(crate) struct LocationCtx<DB> {
 
 impl<'a, DB: PersistentHirDatabase> LocationCtx<&'a DB> {
     pub(crate) fn new(db: &'a DB, module: Module, file_id: HirFileId) -> LocationCtx<&'a DB> {
-        LocationCtx {
-            db,
-            module,
-            file_id,
-        }
+        LocationCtx { db, module, file_id }
     }
     pub(crate) fn to_def<N, DEF>(self, ast: &N) -> DEF
     where
@@ -205,15 +197,9 @@ pub(crate) trait AstItemDef<N: AstNode>: ArenaId + Clone {
     fn interner(interner: &HirInterner) -> &LocationIntener<ItemLoc<N>, Self>;
     fn from_ast(ctx: LocationCtx<&impl PersistentHirDatabase>, ast: &N) -> Self {
         let items = ctx.db.file_items(ctx.file_id);
-        let raw = SourceItemId {
-            file_id: ctx.file_id,
-            item_id: items.id_of(ctx.file_id, ast.syntax()),
-        };
-        let loc = ItemLoc {
-            module: ctx.module,
-            raw,
-            _ty: PhantomData,
-        };
+        let raw =
+            SourceItemId { file_id: ctx.file_id, item_id: items.id_of(ctx.file_id, ast.syntax()) };
+        let loc = ItemLoc { module: ctx.module, raw, _ty: PhantomData };
 
         Self::interner(ctx.db.as_ref()).loc2id(&loc)
     }
@@ -221,9 +207,8 @@ pub(crate) trait AstItemDef<N: AstNode>: ArenaId + Clone {
         let int = Self::interner(db.as_ref());
         let loc = int.id2loc(self);
         let syntax = db.file_item(loc.raw);
-        let ast = N::cast(&syntax)
-            .unwrap_or_else(|| panic!("invalid ItemLoc: {:?}", loc.raw))
-            .to_owned();
+        let ast =
+            N::cast(&syntax).unwrap_or_else(|| panic!("invalid ItemLoc: {:?}", loc.raw)).to_owned();
         (loc.raw.file_id, ast)
     }
     fn module(self, db: &impl HirDatabase) -> Module {
@@ -317,10 +302,7 @@ pub struct SourceFileItems {
 
 impl SourceFileItems {
     pub(crate) fn new(file_id: HirFileId, source_file: &SourceFile) -> SourceFileItems {
-        let mut res = SourceFileItems {
-            file_id,
-            arena: Arena::default(),
-        };
+        let mut res = SourceFileItems { file_id, arena: Arena::default() };
         res.init(source_file);
         res
     }

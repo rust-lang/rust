@@ -69,12 +69,7 @@ impl<'a, DB: HirDatabase> AssistCtx<'a, DB> {
         F: FnOnce(AssistCtx<DB>) -> T,
     {
         let source_file = &db.parse(frange.file_id);
-        let ctx = AssistCtx {
-            db,
-            frange,
-            source_file,
-            should_compute_edit,
-        };
+        let ctx = AssistCtx { db, frange, source_file, should_compute_edit };
         f(ctx)
     }
 
@@ -83,9 +78,7 @@ impl<'a, DB: HirDatabase> AssistCtx<'a, DB> {
         label: impl Into<String>,
         f: impl FnOnce(&mut AssistBuilder),
     ) -> Option<Assist> {
-        let label = AssistLabel {
-            label: label.into(),
-        };
+        let label = AssistLabel { label: label.into() };
         if !self.should_compute_edit {
             return Some(Assist::Unresolved(label));
         }
@@ -146,9 +139,6 @@ impl AssistBuilder {
     }
 
     fn build(self) -> AssistAction {
-        AssistAction {
-            edit: self.edit.finish(),
-            cursor_position: self.cursor_position,
-        }
+        AssistAction { edit: self.edit.finish(), cursor_position: self.cursor_position }
     }
 }

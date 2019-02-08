@@ -27,10 +27,7 @@ pub(crate) fn fill_match_arms(ctx: AssistCtx<impl HirDatabase>) -> Option<Assist
     let node_expr = syntax_mapping.node_expr(expr)?;
     let match_expr_ty = infer_result[node_expr].clone();
     let enum_def = match match_expr_ty {
-        Ty::Adt {
-            def_id: AdtDef::Enum(e),
-            ..
-        } => e,
+        Ty::Adt { def_id: AdtDef::Enum(e), .. } => e,
         _ => return None,
     };
     let enum_name = enum_def.name(ctx.db)?;

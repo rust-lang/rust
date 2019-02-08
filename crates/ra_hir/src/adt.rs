@@ -62,10 +62,7 @@ impl StructData {
 }
 
 fn variants(enum_def: &ast::EnumDef) -> impl Iterator<Item = &ast::EnumVariant> {
-    enum_def
-        .variant_list()
-        .into_iter()
-        .flat_map(|it| it.variants())
+    enum_def.variant_list().into_iter().flat_map(|it| it.variants())
 }
 
 impl EnumVariant {
@@ -83,9 +80,7 @@ impl EnumVariant {
         (file_id, var)
     }
     pub(crate) fn variant_data(&self, db: &impl PersistentHirDatabase) -> Arc<VariantData> {
-        db.enum_data(self.parent).variants[self.id]
-            .variant_data
-            .clone()
+        db.enum_data(self.parent).variants[self.id].variant_data.clone()
     }
 }
 
@@ -222,14 +217,12 @@ impl StructField {
         };
 
         let field_sources = match struct_flavor {
-            ast::StructFlavor::Tuple(fl) => fl
-                .fields()
-                .map(|it| FieldSource::Pos(it.to_owned()))
-                .collect(),
-            ast::StructFlavor::Named(fl) => fl
-                .fields()
-                .map(|it| FieldSource::Named(it.to_owned()))
-                .collect(),
+            ast::StructFlavor::Tuple(fl) => {
+                fl.fields().map(|it| FieldSource::Pos(it.to_owned())).collect()
+            }
+            ast::StructFlavor::Named(fl) => {
+                fl.fields().map(|it| FieldSource::Named(it.to_owned())).collect()
+            }
             ast::StructFlavor::Unit => Vec::new(),
         };
         let field = field_sources

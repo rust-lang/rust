@@ -21,9 +21,7 @@ pub(crate) fn call_info(db: &RootDatabase, position: FilePosition) -> Option<Cal
 
     // Resolve the function's NameRef (NOTE: this isn't entirely accurate).
     let file_symbols = crate::symbol_index::index_resolve(db, name_ref);
-    let symbol = file_symbols
-        .into_iter()
-        .find(|it| it.ptr.kind() == FN_DEF)?;
+    let symbol = file_symbols.into_iter().find(|it| it.ptr.kind() == FN_DEF)?;
     let fn_file = db.parse(symbol.file_id);
     let fn_def = symbol.ptr.to_node(&fn_file);
     let fn_def = ast::FnDef::cast(fn_def).unwrap();
@@ -53,13 +51,8 @@ pub(crate) fn call_info(db: &RootDatabase, position: FilePosition) -> Option<Cal
             let start = arg_list_range.start();
 
             let range_search = TextRange::from_to(start, position.offset);
-            let mut commas: usize = arg_list
-                .syntax()
-                .text()
-                .slice(range_search)
-                .to_string()
-                .matches(',')
-                .count();
+            let mut commas: usize =
+                arg_list.syntax().text().slice(range_search).to_string().matches(',').count();
 
             // If we have a method call eat the first param since it's just self.
             if has_self {
@@ -96,11 +89,9 @@ impl<'a> FnCallNode<'a> {
                 _ => return None,
             }),
 
-            FnCallNode::MethodCallExpr(call_expr) => call_expr
-                .syntax()
-                .children()
-                .filter_map(ast::NameRef::cast)
-                .nth(0),
+            FnCallNode::MethodCallExpr(call_expr) => {
+                call_expr.syntax().children().filter_map(ast::NameRef::cast).nth(0)
+            }
         }
     }
 
@@ -117,12 +108,7 @@ impl CallInfo {
         let label = crate::completion::function_label(node)?;
         let doc = function.docs(db);
 
-        Some(CallInfo {
-            parameters: param_list(node),
-            label,
-            doc,
-            active_parameter: None,
-        })
+        Some(CallInfo { parameters: param_list(node), label, doc, active_parameter: None })
     }
 }
 
@@ -136,10 +122,7 @@ fn param_list(node: &ast::FnDef) -> Vec<String> {
         // Maybe use param.pat here? See if we can just extract the name?
         //res.extend(param_list.params().map(|p| p.syntax().text().to_string()));
         res.extend(
-            param_list
-                .params()
-                .filter_map(|p| p.pat())
-                .map(|pat| pat.syntax().text().to_string()),
+            param_list.params().filter_map(|p| p.pat()).map(|pat| pat.syntax().text().to_string()),
         );
     }
     res
@@ -378,10 +361,7 @@ pub fn foo() {
 "#,
         );
 
-        assert_eq!(
-            info.parameters,
-            vec!["&mut self".to_string(), "ctx".to_string()]
-        );
+        assert_eq!(info.parameters, vec!["&mut self".to_string(), "ctx".to_string()]);
         assert_eq!(info.active_parameter, Some(1));
         assert_eq!(
             info.doc.map(|it| it.into()),

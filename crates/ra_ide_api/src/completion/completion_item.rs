@@ -105,10 +105,7 @@ impl CompletionItem {
     }
     /// What string is used for filtering.
     pub fn lookup(&self) -> &str {
-        self.lookup
-            .as_ref()
-            .map(|it| it.as_str())
-            .unwrap_or_else(|| self.label())
+        self.lookup.as_ref().map(|it| it.as_str()).unwrap_or_else(|| self.label())
     }
 
     pub fn insert_text_format(&self) -> InsertTextFormat {
@@ -214,10 +211,7 @@ impl Builder {
     ) -> Builder {
         use hir::ModuleDef::*;
 
-        let def = resolution
-            .as_ref()
-            .take_types()
-            .or_else(|| resolution.as_ref().take_values());
+        let def = resolution.as_ref().take_types().or_else(|| resolution.as_ref().take_values());
         let def = match def {
             None => return self,
             Some(it) => it,
@@ -323,10 +317,8 @@ pub(crate) fn check_completion(test_name: &str, code: &str, kind: CompletionKind
     };
     let completions = completions(&analysis.db, position).unwrap();
     let completion_items: Vec<CompletionItem> = completions.into();
-    let mut kind_completions: Vec<CompletionItem> = completion_items
-        .into_iter()
-        .filter(|c| c.completion_kind == kind)
-        .collect();
+    let mut kind_completions: Vec<CompletionItem> =
+        completion_items.into_iter().filter(|c| c.completion_kind == kind).collect();
     kind_completions.sort_by_key(|c| c.label.clone());
     assert_debug_snapshot_matches!(test_name, kind_completions);
 }

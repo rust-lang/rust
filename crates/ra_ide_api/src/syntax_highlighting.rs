@@ -9,20 +9,12 @@ use crate::{
 pub(crate) fn highlight(db: &RootDatabase, file_id: FileId) -> Vec<HighlightedRange> {
     let source_file = db.parse(file_id);
     let mut res = ra_ide_api_light::highlight(source_file.syntax());
-    for macro_call in source_file
-        .syntax()
-        .descendants()
-        .filter_map(ast::MacroCall::cast)
-    {
+    for macro_call in source_file.syntax().descendants().filter_map(ast::MacroCall::cast) {
         if let Some((off, exp)) = hir::MacroDef::ast_expand(macro_call) {
-            let mapped_ranges = ra_ide_api_light::highlight(&exp.syntax())
-                .into_iter()
-                .filter_map(|r| {
+            let mapped_ranges =
+                ra_ide_api_light::highlight(&exp.syntax()).into_iter().filter_map(|r| {
                     let mapped_range = exp.map_range_back(r.range)?;
-                    let res = HighlightedRange {
-                        range: mapped_range + off,
-                        tag: r.tag,
-                    };
+                    let res = HighlightedRange { range: mapped_range + off, tag: r.tag };
                     Some(res)
                 });
             res.extend(mapped_ranges);

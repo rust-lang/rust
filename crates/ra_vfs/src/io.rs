@@ -14,32 +14,15 @@ use notify::{DebouncedEvent, RecommendedWatcher, RecursiveMode, Watcher as _Watc
 use crate::{RootConfig, Roots, VfsRoot};
 
 pub(crate) enum Task {
-    AddRoot {
-        root: VfsRoot,
-        config: Arc<RootConfig>,
-    },
+    AddRoot { root: VfsRoot, config: Arc<RootConfig> },
 }
 
 #[derive(Debug)]
 pub enum TaskResult {
-    BulkLoadRoot {
-        root: VfsRoot,
-        files: Vec<(RelativePathBuf, String)>,
-    },
-    AddSingleFile {
-        root: VfsRoot,
-        path: RelativePathBuf,
-        text: String,
-    },
-    ChangeSingleFile {
-        root: VfsRoot,
-        path: RelativePathBuf,
-        text: String,
-    },
-    RemoveSingleFile {
-        root: VfsRoot,
-        path: RelativePathBuf,
-    },
+    BulkLoadRoot { root: VfsRoot, files: Vec<(RelativePathBuf, String)> },
+    AddSingleFile { root: VfsRoot, path: RelativePathBuf, text: String },
+    ChangeSingleFile { root: VfsRoot, path: RelativePathBuf, text: String },
+    RemoveSingleFile { root: VfsRoot, path: RelativePathBuf },
 }
 
 #[derive(Debug)]
@@ -127,10 +110,7 @@ impl Worker {
             },
         );
 
-        Worker {
-            worker,
-            worker_handle,
-        }
+        Worker { worker, worker_handle }
     }
 
     pub(crate) fn sender(&self) -> &Sender<Task> {
@@ -162,9 +142,7 @@ fn watch_root(
             Some((path, text))
         })
         .collect();
-    sender
-        .send(TaskResult::BulkLoadRoot { root, files })
-        .unwrap();
+    sender.send(TaskResult::BulkLoadRoot { root, files }).unwrap();
     log::debug!("... loaded {}", config.root.as_path().display());
 }
 
@@ -233,21 +211,12 @@ fn handle_change(
         }
         ChangeKind::Write => {
             if let Some(text) = read_to_string(&path) {
-                sender
-                    .send(TaskResult::ChangeSingleFile {
-                        root,
-                        path: rel_path,
-                        text,
-                    })
-                    .unwrap();
+                sender.send(TaskResult::ChangeSingleFile { root, path: rel_path, text }).unwrap();
             }
         }
-        ChangeKind::Remove => sender
-            .send(TaskResult::RemoveSingleFile {
-                root,
-                path: rel_path,
-            })
-            .unwrap(),
+        ChangeKind::Remove => {
+            sender.send(TaskResult::RemoveSingleFile { root, path: rel_path }).unwrap()
+        }
     }
 }
 
@@ -282,7 +251,5 @@ fn watch_one(watcher: &mut RecommendedWatcher, dir: &Path) {
 }
 
 fn read_to_string(path: &Path) -> Option<String> {
-    fs::read_to_string(&path)
-        .map_err(|e| log::warn!("failed to read file {}", e))
-        .ok()
+    fs::read_to_string(&path).map_err(|e| log::warn!("failed to read file {}", e)).ok()
 }

@@ -22,9 +22,7 @@ pub(crate) fn syntax_tree_stats(db: &RootDatabase) -> SyntaxTreeStats {
 pub(crate) fn status(db: &RootDatabase) -> String {
     let files_stats = db.query(FileTextQuery).entries::<FilesStats>();
     let syntax_tree_stats = syntax_tree_stats(db);
-    let symbols_stats = db
-        .query(LibrarySymbolsQuery)
-        .entries::<LibrarySymbolsStats>();
+    let symbols_stats = db.query(LibrarySymbolsQuery).entries::<LibrarySymbolsStats>();
     let n_defs = {
         let interner: &hir::HirInterner = db.as_ref();
         interner.len()
@@ -75,11 +73,7 @@ pub(crate) struct SyntaxTreeStats {
 
 impl fmt::Display for SyntaxTreeStats {
     fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
-        write!(
-            fmt,
-            "{} trees, {} ({}) retained",
-            self.total, self.retained, self.retained_size,
-        )
+        write!(fmt, "{} trees, {} ({}) retained", self.total, self.retained, self.retained_size,)
     }
 }
 
@@ -144,20 +138,13 @@ impl MemoryStats {
 
     #[cfg(not(feature = "jemalloc"))]
     fn current() -> MemoryStats {
-        MemoryStats {
-            allocated: Bytes(0),
-            resident: Bytes(0),
-        }
+        MemoryStats { allocated: Bytes(0), resident: Bytes(0) }
     }
 }
 
 impl fmt::Display for MemoryStats {
     fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
-        write!(
-            fmt,
-            "{} allocated {} resident",
-            self.allocated, self.resident,
-        )
+        write!(fmt, "{} allocated {} resident", self.allocated, self.resident,)
     }
 }
 

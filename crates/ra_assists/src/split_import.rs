@@ -8,9 +8,7 @@ use ra_syntax::{
 use crate::{AssistCtx, Assist};
 
 pub(crate) fn split_import(ctx: AssistCtx<impl HirDatabase>) -> Option<Assist> {
-    let colon_colon = ctx
-        .leaf_at_offset()
-        .find(|leaf| leaf.kind() == COLONCOLON)?;
+    let colon_colon = ctx.leaf_at_offset().find(|leaf| leaf.kind() == COLONCOLON)?;
     let path = colon_colon.parent().and_then(ast::Path::cast)?;
     let top_path = generate(Some(path), |it| it.parent_path()).last()?;
 

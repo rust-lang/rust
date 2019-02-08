@@ -83,9 +83,7 @@ impl Server {
 
     pub fn doc_id(&self, rel_path: &str) -> TextDocumentIdentifier {
         let path = self.dir.path().join(rel_path);
-        TextDocumentIdentifier {
-            uri: Url::from_file_path(path).unwrap(),
-        }
+        TextDocumentIdentifier { uri: Url::from_file_path(path).unwrap() }
     }
 
     pub fn request<R>(&self, params: R::Params, expected_resp: Value)
@@ -119,11 +117,7 @@ impl Server {
     }
     fn send_request_(&self, r: RawRequest) -> Value {
         let id = r.id;
-        self.worker
-            .as_ref()
-            .unwrap()
-            .send(RawMessage::Request(r))
-            .unwrap();
+        self.worker.as_ref().unwrap().send(RawMessage::Request(r)).unwrap();
         while let Some(msg) = self.recv() {
             match msg {
                 RawMessage::Request(req) => panic!("unexpected request: {:?}", req),
@@ -169,11 +163,7 @@ impl Server {
         })
     }
     fn send_notification(&self, not: RawNotification) {
-        self.worker
-            .as_ref()
-            .unwrap()
-            .send(RawMessage::Notification(not))
-            .unwrap();
+        self.worker.as_ref().unwrap().send(RawMessage::Notification(not)).unwrap();
     }
 }
 

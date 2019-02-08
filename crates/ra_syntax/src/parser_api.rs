@@ -136,10 +136,7 @@ pub(crate) struct Marker {
 
 impl Marker {
     fn new(pos: u32) -> Marker {
-        Marker {
-            pos,
-            bomb: DropBomb::new("Marker must be either completed or abandoned"),
-        }
+        Marker { pos, bomb: DropBomb::new("Marker must be either completed or abandoned") }
     }
 
     /// Finishes the syntax tree node and assigns `kind` to it,

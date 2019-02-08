@@ -7,9 +7,7 @@ pub struct Subscriptions {
 
 impl Subscriptions {
     pub fn new() -> Subscriptions {
-        Subscriptions {
-            subs: FxHashSet::default(),
-        }
+        Subscriptions { subs: FxHashSet::default() }
     }
     pub fn add_sub(&mut self, file_id: FileId) {
         self.subs.insert(file_id);

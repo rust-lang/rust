@@ -7,15 +7,13 @@ use lsp_types::{
 
 pub fn server_capabilities() -> ServerCapabilities {
     ServerCapabilities {
-        text_document_sync: Some(TextDocumentSyncCapability::Options(
-            TextDocumentSyncOptions {
-                open_close: Some(true),
-                change: Some(TextDocumentSyncKind::Full),
-                will_save: None,
-                will_save_wait_until: None,
-                save: None,
-            },
-        )),
+        text_document_sync: Some(TextDocumentSyncCapability::Options(TextDocumentSyncOptions {
+            open_close: Some(true),
+            change: Some(TextDocumentSyncKind::Full),
+            will_save: None,
+            will_save_wait_until: None,
+            save: None,
+        })),
         hover_provider: Some(true),
         completion_provider: Some(CompletionOptions {
             resolve_provider: None,
@@ -32,9 +30,7 @@ pub fn server_capabilities() -> ServerCapabilities {
         document_symbol_provider: Some(true),
         workspace_symbol_provider: Some(true),
         code_action_provider: Some(CodeActionProviderCapability::Simple(true)),
-        code_lens_provider: Some(CodeLensOptions {
-            resolve_provider: Some(true),
-        }),
+        code_lens_provider: Some(CodeLensOptions { resolve_provider: Some(true) }),
         document_formatting_provider: Some(true),
         document_range_formatting_provider: None,
         document_on_type_formatting_provider: Some(DocumentOnTypeFormattingOptions {

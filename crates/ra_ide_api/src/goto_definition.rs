@@ -50,18 +50,13 @@ pub(crate) fn reference_definition(
         hir::source_binder::function_from_child_node(db, file_id, name_ref.syntax())
     {
         // Check if it is a method
-        if let Some(method_call) = name_ref
-            .syntax()
-            .parent()
-            .and_then(ast::MethodCallExpr::cast)
-        {
+        if let Some(method_call) = name_ref.syntax().parent().and_then(ast::MethodCallExpr::cast) {
             tested_by!(goto_definition_works_for_methods);
             let infer_result = function.infer(db);
             let syntax_mapping = function.body_syntax_mapping(db);
             let expr = ast::Expr::cast(method_call.syntax()).unwrap();
-            if let Some(func) = syntax_mapping
-                .node_expr(expr)
-                .and_then(|it| infer_result.method_resolution(it))
+            if let Some(func) =
+                syntax_mapping.node_expr(expr).and_then(|it| infer_result.method_resolution(it))
             {
                 return Exact(NavigationTarget::from_function(db, func));
             };
@@ -72,9 +67,8 @@ pub(crate) fn reference_definition(
             let infer_result = function.infer(db);
             let syntax_mapping = function.body_syntax_mapping(db);
             let expr = ast::Expr::cast(field_expr.syntax()).unwrap();
-            if let Some(field) = syntax_mapping
-                .node_expr(expr)
-                .and_then(|it| infer_result.field_resolution(it))
+            if let Some(field) =
+                syntax_mapping.node_expr(expr).and_then(|it| infer_result.field_resolution(it))
             {
                 return Exact(NavigationTarget::from_field(db, field));
             };
@@ -82,29 +76,19 @@ pub(crate) fn reference_definition(
     }
     // Try name resolution
     let resolver = hir::source_binder::resolver_for_node(db, file_id, name_ref.syntax());
-    if let Some(path) = name_ref
-        .syntax()
-        .ancestors()
-        .find_map(ast::Path::cast)
-        .and_then(hir::Path::from_ast)
+    if let Some(path) =
+        name_ref.syntax().ancestors().find_map(ast::Path::cast).and_then(hir::Path::from_ast)
     {
         let resolved = resolver.resolve_path(db, &path);
-        match resolved
-            .clone()
-            .take_types()
-            .or_else(|| resolved.take_values())
-        {
+        match resolved.clone().take_types().or_else(|| resolved.take_values()) {
             Some(Resolution::Def(def)) => return Exact(NavigationTarget::from_def(db, def)),
             Some(Resolution::LocalBinding(pat)) => {
                 let body = resolver.body().expect("no body for local binding");
                 let syntax_mapping = body.syntax_mapping(db);
-                let ptr = syntax_mapping
-                    .pat_syntax(pat)
-                    .expect("pattern not found in syntax mapping");
-                let name = path
-                    .as_ident()
-                    .cloned()
-                    .expect("local binding from a multi-segment path");
+                let ptr =
+                    syntax_mapping.pat_syntax(pat).expect("pattern not found in syntax mapping");
+                let name =
+                    path.as_ident().cloned().expect("local binding from a multi-segment path");
                 let nav = NavigationTarget::from_scope_entry(file_id, name, ptr);
                 return Exact(nav);
             }

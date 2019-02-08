@@ -7,10 +7,7 @@ pub fn visitor<'a, T>() -> impl Visitor<'a, Output = T> {
 }
 
 pub fn visitor_ctx<'a, T, C>(ctx: C) -> impl VisitorCtx<'a, Output = T, Ctx = C> {
-    EmptyVisitorCtx {
-        ph: PhantomData,
-        ctx,
-    }
+    EmptyVisitorCtx { ph: PhantomData, ctx }
 }
 
 pub trait Visitor<'a>: Sized {
@@ -21,11 +18,7 @@ pub trait Visitor<'a>: Sized {
         N: AstNode + 'a,
         F: FnOnce(&'a N) -> Self::Output,
     {
-        Vis {
-            inner: self,
-            f,
-            ph: PhantomData,
-        }
+        Vis { inner: self, f, ph: PhantomData }
     }
 }
 
@@ -38,11 +31,7 @@ pub trait VisitorCtx<'a>: Sized {
         N: AstNode + 'a,
         F: FnOnce(&'a N, Self::Ctx) -> Self::Output,
     {
-        VisCtx {
-            inner: self,
-            f,
-            ph: PhantomData,
-        }
+        VisCtx { inner: self, f, ph: PhantomData }
     }
 }
 

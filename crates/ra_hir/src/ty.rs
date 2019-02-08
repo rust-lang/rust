@@ -305,10 +305,8 @@ impl Ty {
         match type_ref {
             TypeRef::Never => Ty::Never,
             TypeRef::Tuple(inner) => {
-                let inner_tys = inner
-                    .iter()
-                    .map(|tr| Ty::from_hir(db, resolver, tr))
-                    .collect::<Vec<_>>();
+                let inner_tys =
+                    inner.iter().map(|tr| Ty::from_hir(db, resolver, tr)).collect::<Vec<_>>();
                 Ty::Tuple(inner_tys.into())
             }
             TypeRef::Path(path) => Ty::from_hir_path(db, resolver, path),
@@ -330,17 +328,11 @@ impl Ty {
             }
             TypeRef::Placeholder => Ty::Unknown,
             TypeRef::Fn(params) => {
-                let mut inner_tys = params
-                    .iter()
-                    .map(|tr| Ty::from_hir(db, resolver, tr))
-                    .collect::<Vec<_>>();
-                let return_ty = inner_tys
-                    .pop()
-                    .expect("TypeRef::Fn should always have at least return type");
-                let sig = FnSig {
-                    input: inner_tys,
-                    output: return_ty,
-                };
+                let mut inner_tys =
+                    params.iter().map(|tr| Ty::from_hir(db, resolver, tr)).collect::<Vec<_>>();
+                let return_ty =
+                    inner_tys.pop().expect("TypeRef::Fn should always have at least return type");
+                let sig = FnSig { input: inner_tys, output: return_ty };
                 Ty::FnPtr(Arc::new(sig))
             }
             TypeRef::Error => Ty::Unknown,
@@ -407,10 +399,7 @@ impl Ty {
         resolved: TypableDef,
     ) -> Substs {
         let mut substs = Vec::new();
-        let last = path
-            .segments
-            .last()
-            .expect("path should have at least one segment");
+        let last = path.segments.last().expect("path should have at least one segment");
         let (def_generics, segment) = match resolved {
             TypableDef::Function(func) => (func.generic_params(db), last),
             TypableDef::Struct(s) => (s.generic_params(db), last),
@@ -447,11 +436,8 @@ impl Ty {
         }
         // add placeholders for args that were not provided
         // TODO: handle defaults
-        let supplied_params = segment
-            .args_and_bindings
-            .as_ref()
-            .map(|ga| ga.args.len())
-            .unwrap_or(0);
+        let supplied_params =
+            segment.args_and_bindings.as_ref().map(|ga| ga.args.len()).unwrap_or(0);
         for _ in supplied_params..def_generics.params.len() {
             substs.push(Ty::Unknown);
         }
@@ -531,17 +517,8 @@ impl Ty {
     /// `Option<u32>` afterwards.)
     pub fn apply_substs(self, substs: Substs) -> Ty {
         match self {
-            Ty::Adt { def_id, name, .. } => Ty::Adt {
-                def_id,
-                name,
-                substs,
-            },
-            Ty::FnDef { def, name, sig, .. } => Ty::FnDef {
-                def,
-                name,
-                sig,
-                substs,
-            },
+            Ty::Adt { def_id, name, .. } => Ty::Adt { def_id, name, substs },
+            Ty::FnDef { def, name, sig, .. } => Ty::FnDef { def, name, sig, substs },
             _ => self,
         }
     }
@@ -591,42 +568,25 @@ impl fmt::Display for Ty {
                 if ts.len() == 1 {
                     write!(f, "({},)", ts[0])
                 } else {
-                    join(ts.iter())
-                        .surround_with("(", ")")
-                        .separator(", ")
-                        .to_fmt(f)
+                    join(ts.iter()).surround_with("(", ")").separator(", ").to_fmt(f)
                 }
             }
             Ty::FnPtr(sig) => {
-                join(sig.input.iter())
-                    .surround_with("fn(", ")")
-                    .separator(", ")
-                    .to_fmt(f)?;
+                join(sig.input.iter()).surround_with("fn(", ")").separator(", ").to_fmt(f)?;
                 write!(f, " -> {}", sig.output)
             }
-            Ty::FnDef {
-                name, substs, sig, ..
-            } => {
+            Ty::FnDef { name, substs, sig, .. } => {
                 write!(f, "fn {}", name)?;
                 if substs.0.len() > 0 {
-                    join(substs.0.iter())
-                        .surround_with("<", ">")
-                        .separator(", ")
-                        .to_fmt(f)?;
+                    join(substs.0.iter()).surround_with("<", ">").separator(", ").to_fmt(f)?;
                 }
-                join(sig.input.iter())
-                    .surround_with("(", ")")
-                    .separator(", ")
-                    .to_fmt(f)?;
+                join(sig.input.iter()).surround_with("(", ")").separator(", ").to_fmt(f)?;
                 write!(f, " -> {}", sig.output)
             }
             Ty::Adt { name, substs, .. } => {
                 write!(f, "{}", name)?;
                 if substs.0.len() > 0 {
-                    join(substs.0.iter())
-                        .surround_with("<", ">")
-                        .separator(", ")
-                        .to_fmt(f)?;
+                    join(substs.0.iter()).surround_with("<", ">").separator(", ").to_fmt(f)?;
                 }
                 Ok(())
             }
@@ -646,31 +606,16 @@ fn type_for_fn(db: &impl HirDatabase, def: Function) -> Ty {
     let resolver = def.resolver(db);
     let generics = def.generic_params(db);
     let name = def.name(db);
-    let input = signature
-        .params()
-        .iter()
-        .map(|tr| Ty::from_hir(db, &resolver, tr))
-        .collect::<Vec<_>>();
+    let input =
+        signature.params().iter().map(|tr| Ty::from_hir(db, &resolver, tr)).collect::<Vec<_>>();
     let output = Ty::from_hir(db, &resolver, signature.ret_type());
     let sig = Arc::new(FnSig { input, output });
     let substs = make_substs(&generics);
-    Ty::FnDef {
-        def,
-        sig,
-        name,
-        substs,
-    }
+    Ty::FnDef { def, sig, name, substs }
 }
 
 fn make_substs(generics: &GenericParams) -> Substs {
-    Substs(
-        generics
-            .params
-            .iter()
-            .map(|_p| Ty::Unknown)
-            .collect::<Vec<_>>()
-            .into(),
-    )
+    Substs(generics.params.iter().map(|_p| Ty::Unknown).collect::<Vec<_>>().into())
 }
 
 fn type_for_struct(db: &impl HirDatabase, s: Struct) -> Ty {
@@ -935,11 +880,7 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
     }
 
     fn unify_substs(&mut self, substs1: &Substs, substs2: &Substs) -> bool {
-        substs1
-            .0
-            .iter()
-            .zip(substs2.0.iter())
-            .all(|(t1, t2)| self.unify(t1, t2))
+        substs1.0.iter().zip(substs2.0.iter()).all(|(t1, t2)| self.unify(t1, t2))
     }
 
     fn unify(&mut self, ty1: &Ty, ty2: &Ty) -> bool {
@@ -961,25 +902,16 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
             },
             (Ty::Bool, _) | (Ty::Str, _) | (Ty::Never, _) | (Ty::Char, _) => ty1 == ty2,
             (
-                Ty::Adt {
-                    def_id: def_id1,
-                    substs: substs1,
-                    ..
-                },
-                Ty::Adt {
-                    def_id: def_id2,
-                    substs: substs2,
-                    ..
-                },
+                Ty::Adt { def_id: def_id1, substs: substs1, .. },
+                Ty::Adt { def_id: def_id2, substs: substs2, .. },
             ) if def_id1 == def_id2 => self.unify_substs(substs1, substs2),
             (Ty::Slice(t1), Ty::Slice(t2)) => self.unify(t1, t2),
             (Ty::RawPtr(t1, m1), Ty::RawPtr(t2, m2)) if m1 == m2 => self.unify(t1, t2),
             (Ty::Ref(t1, m1), Ty::Ref(t2, m2)) if m1 == m2 => self.unify(t1, t2),
             (Ty::FnPtr(sig1), Ty::FnPtr(sig2)) if sig1 == sig2 => true,
-            (Ty::Tuple(ts1), Ty::Tuple(ts2)) if ts1.len() == ts2.len() => ts1
-                .iter()
-                .zip(ts2.iter())
-                .all(|(t1, t2)| self.unify(t1, t2)),
+            (Ty::Tuple(ts1), Ty::Tuple(ts2)) if ts1.len() == ts2.len() => {
+                ts1.iter().zip(ts2.iter()).all(|(t1, t2)| self.unify(t1, t2))
+            }
             (Ty::Infer(InferTy::TypeVar(tv1)), Ty::Infer(InferTy::TypeVar(tv2)))
             | (Ty::Infer(InferTy::IntVar(tv1)), Ty::Infer(InferTy::IntVar(tv2)))
             | (Ty::Infer(InferTy::FloatVar(tv1)), Ty::Infer(InferTy::FloatVar(tv2))) => {
@@ -994,8 +926,7 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
             | (Ty::Infer(InferTy::FloatVar(tv)), other)
             | (other, Ty::Infer(InferTy::FloatVar(tv))) => {
                 // the type var is unknown since we tried to resolve it
-                self.var_unification_table
-                    .union_value(*tv, TypeVarValue::Known(other.clone()));
+                self.var_unification_table.union_value(*tv, TypeVarValue::Known(other.clone()));
                 true
             }
             _ => false,
@@ -1003,21 +934,15 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
     }
 
     fn new_type_var(&mut self) -> Ty {
-        Ty::Infer(InferTy::TypeVar(
-            self.var_unification_table.new_key(TypeVarValue::Unknown),
-        ))
+        Ty::Infer(InferTy::TypeVar(self.var_unification_table.new_key(TypeVarValue::Unknown)))
     }
 
     fn new_integer_var(&mut self) -> Ty {
-        Ty::Infer(InferTy::IntVar(
-            self.var_unification_table.new_key(TypeVarValue::Unknown),
-        ))
+        Ty::Infer(InferTy::IntVar(self.var_unification_table.new_key(TypeVarValue::Unknown)))
     }
 
     fn new_float_var(&mut self) -> Ty {
-        Ty::Infer(InferTy::FloatVar(
-            self.var_unification_table.new_key(TypeVarValue::Unknown),
-        ))
+        Ty::Infer(InferTy::FloatVar(self.var_unification_table.new_key(TypeVarValue::Unknown)))
     }
 
     /// Replaces Ty::Unknown by a new type var, so we can maybe still infer it.
@@ -1207,9 +1132,8 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
 
         for subpat in subpats {
             let matching_field = def.and_then(|it| it.field(self.db, &subpat.name));
-            let expected_ty = matching_field
-                .map_or(Ty::Unknown, |field| field.ty(self.db))
-                .subst(&substs);
+            let expected_ty =
+                matching_field.map_or(Ty::Unknown, |field| field.ty(self.db)).subst(&substs);
             self.infer_pat(subpat.pat, &expected_ty);
         }
 
@@ -1249,25 +1173,18 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
                 let subty = self.infer_pat(*pat, expectation);
                 Ty::Ref(subty.into(), *mutability)
             }
-            Pat::TupleStruct {
-                path: ref p,
-                args: ref subpats,
-            } => self.infer_tuple_struct_pat(p.as_ref(), subpats, expected),
-            Pat::Struct {
-                path: ref p,
-                args: ref fields,
-            } => self.infer_struct_pat(p.as_ref(), fields, expected),
+            Pat::TupleStruct { path: ref p, args: ref subpats } => {
+                self.infer_tuple_struct_pat(p.as_ref(), subpats, expected)
+            }
+            Pat::Struct { path: ref p, args: ref fields } => {
+                self.infer_struct_pat(p.as_ref(), fields, expected)
+            }
             Pat::Path(path) => {
                 // TODO use correct resolver for the surrounding expression
                 let resolver = self.resolver.clone();
-                self.infer_path_expr(&resolver, &path)
-                    .unwrap_or(Ty::Unknown)
+                self.infer_path_expr(&resolver, &path).unwrap_or(Ty::Unknown)
             }
-            Pat::Bind {
-                mode,
-                name: _name,
-                subpat,
-            } => {
+            Pat::Bind { mode, name: _name, subpat } => {
                 let subty = if let Some(subpat) = subpat {
                     self.infer_pat(*subpat, expected)
                 } else {
@@ -1294,11 +1211,7 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
         let body = Arc::clone(&self.body); // avoid borrow checker problem
         let ty = match &body[tgt_expr] {
             Expr::Missing => Ty::Unknown,
-            Expr::If {
-                condition,
-                then_branch,
-                else_branch,
-            } => {
+            Expr::If { condition, then_branch, else_branch } => {
                 // if let is desugared to match, so this is always simple if
                 self.infer_expr(*condition, &Expectation::has_type(Ty::Bool));
                 let then_ty = self.infer_expr(*then_branch, expected);
@@ -1325,21 +1238,13 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
                 self.infer_expr(*body, &Expectation::has_type(Ty::unit()));
                 Ty::unit()
             }
-            Expr::For {
-                iterable,
-                body,
-                pat,
-            } => {
+            Expr::For { iterable, body, pat } => {
                 let _iterable_ty = self.infer_expr(*iterable, &Expectation::none());
                 self.infer_pat(*pat, &Ty::Unknown);
                 self.infer_expr(*body, &Expectation::has_type(Ty::unit()));
                 Ty::unit()
             }
-            Expr::Lambda {
-                body,
-                args,
-                arg_types,
-            } => {
+            Expr::Lambda { body, args, arg_types } => {
                 assert_eq!(args.len(), arg_types.len());
 
                 for (arg_pat, arg_type) in args.iter().zip(arg_types.iter()) {
@@ -1362,11 +1267,8 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
                     Ty::FnPtr(sig) => (sig.input.clone(), sig.output.clone()),
                     Ty::FnDef { substs, sig, .. } => {
                         let ret_ty = sig.output.clone().subst(&substs);
-                        let param_tys = sig
-                            .input
-                            .iter()
-                            .map(|ty| ty.clone().subst(&substs))
-                            .collect();
+                        let param_tys =
+                            sig.input.iter().map(|ty| ty.clone().subst(&substs)).collect();
                         (param_tys, ret_ty)
                     }
                     _ => {
@@ -1381,11 +1283,7 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
                 }
                 ret_ty
             }
-            Expr::MethodCall {
-                receiver,
-                args,
-                method_name,
-            } => {
+            Expr::MethodCall { receiver, args, method_name } => {
                 let receiver_ty = self.infer_expr(*receiver, &Expectation::none());
                 let resolved = receiver_ty.clone().lookup_method(self.db, method_name);
                 let method_ty = match resolved {
@@ -1399,11 +1297,7 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
                 let (expected_receiver_ty, param_tys, ret_ty) = match &method_ty {
                     Ty::FnPtr(sig) => {
                         if !sig.input.is_empty() {
-                            (
-                                sig.input[0].clone(),
-                                sig.input[1..].to_vec(),
-                                sig.output.clone(),
-                            )
+                            (sig.input[0].clone(), sig.input[1..].to_vec(), sig.output.clone())
                         } else {
                             (Ty::Unknown, Vec::new(), sig.output.clone())
                         }
@@ -1469,11 +1363,7 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
                 }
                 Ty::Never
             }
-            Expr::StructLit {
-                path,
-                fields,
-                spread,
-            } => {
+            Expr::StructLit { path, fields, spread } => {
                 let (ty, def_id) = self.resolve_variant(path.as_ref());
                 let substs = ty.substs().unwrap_or_else(Substs::empty);
                 for field in fields {
@@ -1497,14 +1387,12 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
                             let i = name.to_string().parse::<usize>().ok();
                             i.and_then(|i| fields.get(i).cloned())
                         }
-                        Ty::Adt {
-                            def_id: AdtDef::Struct(s),
-                            ref substs,
-                            ..
-                        } => s.field(self.db, name).map(|field| {
-                            self.write_field_resolution(tgt_expr, field);
-                            field.ty(self.db).subst(substs)
-                        }),
+                        Ty::Adt { def_id: AdtDef::Struct(s), ref substs, .. } => {
+                            s.field(self.db, name).map(|field| {
+                                self.write_field_resolution(tgt_expr, field);
+                                field.ty(self.db).subst(substs)
+                            })
+                        }
                         _ => None,
                     })
                     .unwrap_or(Ty::Unknown);
@@ -1635,15 +1523,9 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
     ) -> Ty {
         for stmt in statements {
             match stmt {
-                Statement::Let {
-                    pat,
-                    type_ref,
-                    initializer,
-                } => {
-                    let decl_ty = type_ref
-                        .as_ref()
-                        .map(|tr| self.make_ty(tr))
-                        .unwrap_or(Ty::Unknown);
+                Statement::Let { pat, type_ref, initializer } => {
+                    let decl_ty =
+                        type_ref.as_ref().map(|tr| self.make_ty(tr)).unwrap_or(Ty::Unknown);
                     let decl_ty = self.insert_type_vars(decl_ty);
                     let ty = if let Some(expr) = initializer {
                         let expr_ty = self.infer_expr(*expr, &Expectation::has_type(decl_ty));
@@ -1659,11 +1541,7 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
                 }
             }
         }
-        let ty = if let Some(expr) = tail {
-            self.infer_expr(expr, expected)
-        } else {
-            Ty::unit()
-        };
+        let ty = if let Some(expr) = tail { self.infer_expr(expr, expected) } else { Ty::unit() };
         ty
     }
 
@@ -1678,10 +1556,7 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
     }
 
     fn infer_body(&mut self) {
-        self.infer_expr(
-            self.body.body_expr(),
-            &Expectation::has_type(self.return_ty.clone()),
-        );
+        self.infer_expr(self.body.body_expr(), &Expectation::has_type(self.return_ty.clone()));
     }
 }
 

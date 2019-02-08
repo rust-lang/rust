@@ -65,11 +65,7 @@ pub fn module_from_child_node(
     file_id: FileId,
     child: &SyntaxNode,
 ) -> Option<Module> {
-    if let Some(m) = child
-        .ancestors()
-        .filter_map(ast::Module::cast)
-        .find(|it| !it.has_semi())
-    {
+    if let Some(m) = child.ancestors().filter_map(ast::Module::cast).find(|it| !it.has_semi()) {
         module_from_inline(db, file_id.into(), m)
     } else {
         module_from_file_id(db, file_id.into())
@@ -82,14 +78,13 @@ fn module_from_source(
     decl_id: Option<SourceFileItemId>,
 ) -> Option<Module> {
     let source_root_id = db.file_source_root(file_id.as_original_file());
-    db.source_root_crates(source_root_id)
-        .iter()
-        .map(|&crate_id| Crate { crate_id })
-        .find_map(|krate| {
+    db.source_root_crates(source_root_id).iter().map(|&crate_id| Crate { crate_id }).find_map(
+        |krate| {
             let module_tree = db.module_tree(krate);
             let module_id = module_tree.find_module_by_source(file_id, decl_id)?;
             Some(Module { krate, module_id })
-        })
+        },
+    )
 }
 
 pub fn function_from_position(db: &impl HirDatabase, position: FilePosition) -> Option<Function> {
@@ -116,9 +111,7 @@ pub fn function_from_module(
     let (file_id, _) = module.definition_source(db);
     let file_id = file_id.into();
     let ctx = LocationCtx::new(db, module, file_id);
-    Function {
-        id: ctx.to_def(fn_def),
-    }
+    Function { id: ctx.to_def(fn_def) }
 }
 
 pub fn function_from_child_node(
@@ -138,18 +131,14 @@ pub fn struct_from_module(
     let (file_id, _) = module.definition_source(db);
     let file_id = file_id.into();
     let ctx = LocationCtx::new(db, module, file_id);
-    Struct {
-        id: ctx.to_def(struct_def),
-    }
+    Struct { id: ctx.to_def(struct_def) }
 }
 
 pub fn enum_from_module(db: &impl HirDatabase, module: Module, enum_def: &ast::EnumDef) -> Enum {
     let (file_id, _) = module.definition_source(db);
     let file_id = file_id.into();
     let ctx = LocationCtx::new(db, module, file_id);
-    Enum {
-        id: ctx.to_def(enum_def),
-    }
+    Enum { id: ctx.to_def(enum_def) }
 }
 
 pub fn trait_from_module(
@@ -160,9 +149,7 @@ pub fn trait_from_module(
     let (file_id, _) = module.definition_source(db);
     let file_id = file_id.into();
     let ctx = LocationCtx::new(db, module, file_id);
-    Trait {
-        id: ctx.to_def(trait_def),
-    }
+    Trait { id: ctx.to_def(trait_def) }
 }
 
 pub fn macro_symbols(db: &impl HirDatabase, file_id: FileId) -> Vec<(SmolStr, TextRange)> {

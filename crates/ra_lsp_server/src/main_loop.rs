@@ -25,10 +25,7 @@ use crate::{
 };
 
 #[derive(Debug, Fail)]
-#[fail(
-    display = "Language Server request failed with {}. ({})",
-    code, message
-)]
+#[fail(display = "Language Server request failed with {}. ({})", code, message)]
 pub struct LspError {
     pub code: i32,
     pub message: String,
@@ -69,9 +66,7 @@ pub fn main_loop(
         }
     };
     ws_worker.shutdown();
-    ws_watcher
-        .shutdown()
-        .map_err(|_| format_err!("ws watcher died"))?;
+    ws_watcher.shutdown().map_err(|_| format_err!("ws watcher died"))?;
     let mut state = ServerWorldState::new(ws_root.clone(), workspaces);
 
     log::info!("server initialized, serving requests");
@@ -92,9 +87,7 @@ pub fn main_loop(
     );
 
     log::info!("waiting for tasks to finish...");
-    task_receiver
-        .into_iter()
-        .for_each(|task| on_task(task, msg_sender, &mut pending_requests));
+    task_receiver.into_iter().for_each(|task| on_task(task, msg_sender, &mut pending_requests));
     log::info!("...tasks have finished");
     log::info!("joining threadpool...");
     drop(pool);
@@ -119,9 +112,7 @@ enum Event {
 impl fmt::Debug for Event {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         let debug_verbose_not = |not: &RawNotification, f: &mut fmt::Formatter| {
-            f.debug_struct("RawNotification")
-                .field("method", &not.method)
-                .finish()
+            f.debug_struct("RawNotification").field("method", &not.method).finish()
         };
 
         match self {
@@ -287,13 +278,7 @@ fn on_request(
     sender: &Sender<Task>,
     req: RawRequest,
 ) -> Result<Option<RawRequest>> {
-    let mut pool_dispatcher = PoolDispatcher {
-        req: Some(req),
-        res: None,
-        pool,
-        world,
-        sender,
-    };
+    let mut pool_dispatcher = PoolDispatcher { req: Some(req), res: None, pool, world, sender };
     let req = pool_dispatcher
         .on::<req::AnalyzerStatus>(handlers::handle_analyzer_status)?
         .on::<req::SyntaxTree>(handlers::handle_syntax_tree)?
@@ -362,13 +347,9 @@ fn on_notification(
     let not = match not.cast::<req::DidOpenTextDocument>() {
         Ok(params) => {
             let uri = params.text_document.uri;
-            let path = uri
-                .to_file_path()
-                .map_err(|()| format_err!("invalid uri: {}", uri))?;
-            if let Some(file_id) = state
-                .vfs
-                .write()
-                .add_file_overlay(&path, params.text_document.text)
+            let path = uri.to_file_path().map_err(|()| format_err!("invalid uri: {}", uri))?;
+            if let Some(file_id) =
+                state.vfs.write().add_file_overlay(&path, params.text_document.text)
             {
                 subs.add_sub(FileId(file_id.0.into()));
             }
@@ -379,14 +360,9 @@ fn on_notification(
     let not = match not.cast::<req::DidChangeTextDocument>() {
         Ok(mut params) => {
             let uri = params.text_document.uri;
-            let path = uri
-                .to_file_path()
-                .map_err(|()| format_err!("invalid uri: {}", uri))?;
-            let text = params
-                .content_changes
-                .pop()
-                .ok_or_else(|| format_err!("empty changes"))?
-                .text;
+            let path = uri.to_file_path().map_err(|()| format_err!("invalid uri: {}", uri))?;
+            let text =
+                params.content_changes.pop().ok_or_else(|| format_err!("empty changes"))?.text;
             state.vfs.write().change_file_overlay(path.as_path(), text);
             return Ok(());
         }
@@ -395,16 +371,11 @@ fn on_notification(
     let not = match not.cast::<req::DidCloseTextDocument>() {
         Ok(params) => {
             let uri = params.text_document.uri;
-            let path = uri
-                .to_file_path()
-                .map_err(|()| format_err!("invalid uri: {}", uri))?;
+            let path = uri.to_file_path().map_err(|()| format_err!("invalid uri: {}", uri))?;
             if let Some(file_id) = state.vfs.write().remove_file_overlay(path.as_path()) {
                 subs.remove_sub(FileId(file_id.0.into()));
             }
-            let params = req::PublishDiagnosticsParams {
-                uri,
-                diagnostics: Vec::new(),
-            };
+            let params = req::PublishDiagnosticsParams { uri, diagnostics: Vec::new() };
             let not = RawNotification::new::<req::PublishDiagnostics>(&params);
             msg_sender.send(RawMessage::Notification(not)).unwrap();
             return Ok(());

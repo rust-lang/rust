@@ -101,10 +101,7 @@ pub(crate) fn world_symbols(db: &RootDatabase, query: Query) -> Vec<FileSymbol> 
         }
 
         let snap = Snap(db.snapshot());
-        files
-            .par_iter()
-            .map_with(snap, |db, &file_id| db.0.file_symbols(file_id))
-            .collect()
+        files.par_iter().map_with(snap, |db, &file_id| db.0.file_symbols(file_id)).collect()
     };
     query.search(&buf)
 }

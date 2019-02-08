@@ -17,11 +17,7 @@ struct LineIndexStepIter<'a> {
 
 impl<'a> LineIndexStepIter<'a> {
     fn from(line_index: &LineIndex) -> LineIndexStepIter {
-        let mut x = LineIndexStepIter {
-            line_index,
-            next_newline_idx: 0,
-            utf16_chars: None,
-        };
+        let mut x = LineIndexStepIter { line_index, next_newline_idx: 0, utf16_chars: None };
         // skip first newline since it's not real
         x.next();
         x
@@ -35,10 +31,7 @@ impl<'a> Iterator for LineIndexStepIter<'a> {
             .as_mut()
             .and_then(|(newline, x)| {
                 let x = x.next()?;
-                Some(Step::Utf16Char(TextRange::from_to(
-                    *newline + x.start,
-                    *newline + x.end,
-                )))
+                Some(Step::Utf16Char(TextRange::from_to(*newline + x.start, *newline + x.end)))
             })
             .or_else(|| {
                 let next_newline = *self.line_index.newlines.get(self.next_newline_idx)?;
@@ -113,11 +106,7 @@ struct Edits<'a> {
 
 impl<'a> Edits<'a> {
     fn from_text_edit(text_edit: &'a TextEdit) -> Edits<'a> {
-        let mut x = Edits {
-            edits: text_edit.as_atoms(),
-            current: None,
-            acc_diff: 0,
-        };
+        let mut x = Edits { edits: text_edit.as_atoms(), current: None, acc_diff: 0 };
         x.advance_edit();
         x
     }
@@ -127,11 +116,7 @@ impl<'a> Edits<'a> {
             Some((next, rest)) => {
                 let delete = self.translate_range(next.delete);
                 let diff = next.insert.len() as i64 - next.delete.len().to_usize() as i64;
-                self.current = Some(TranslatedEdit {
-                    delete,
-                    insert: &next.insert,
-                    diff,
-                });
+                self.current = Some(TranslatedEdit { delete, insert: &next.insert, diff });
                 self.edits = rest;
             }
             None => {
@@ -142,10 +127,7 @@ impl<'a> Edits<'a> {
 
     fn next_inserted_steps(&mut self) -> Option<OffsetStepIter<'a>> {
         let cur = self.current.as_ref()?;
-        let res = Some(OffsetStepIter {
-            offset: cur.delete.start(),
-            text: &cur.insert,
-        });
+        let res = Some(OffsetStepIter { offset: cur.delete.start(), text: &cur.insert });
         self.advance_edit();
         res
     }
@@ -160,18 +142,12 @@ impl<'a> Edits<'a> {
                 if step_pos <= edit.delete.start() {
                     NextSteps::Use
                 } else if step_pos <= edit.delete.end() {
-                    let iter = OffsetStepIter {
-                        offset: edit.delete.start(),
-                        text: &edit.insert,
-                    };
+                    let iter = OffsetStepIter { offset: edit.delete.start(), text: &edit.insert };
                     // empty slice to avoid returning steps again
                     edit.insert = &edit.insert[edit.insert.len()..];
                     NextSteps::ReplaceMany(iter)
                 } else {
-                    let iter = OffsetStepIter {
-                        offset: edit.delete.start(),
-                        text: &edit.insert,
-                    };
+                    let iter = OffsetStepIter { offset: edit.delete.start(), text: &edit.insert };
                     // empty slice to avoid returning steps again
                     edit.insert = &edit.insert[edit.insert.len()..];
                     self.advance_edit();
@@ -222,11 +198,7 @@ struct RunningLineCol {
 
 impl RunningLineCol {
     fn new() -> RunningLineCol {
-        RunningLineCol {
-            line: 0,
-            last_newline: TextUnit::from(0),
-            col_adjust: TextUnit::from(0),
-        }
+        RunningLineCol { line: 0, last_newline: TextUnit::from(0), col_adjust: TextUnit::from(0) }
     }
 
     fn to_line_col(&self, offset: TextUnit) -> LineCol {
@@ -339,12 +311,7 @@ mod test {
                 let edited_text = x.edit.apply(&x.text);
                 let arb_offset = arb_offset(&edited_text);
                 (Just(x), Just(edited_text), arb_offset).prop_map(|(x, edited_text, offset)| {
-                    ArbTextWithEditAndOffset {
-                        text: x.text,
-                        edit: x.edit,
-                        edited_text,
-                        offset,
-                    }
+                    ArbTextWithEditAndOffset { text: x.text, edit: x.edit, edited_text, offset }
                 })
             })
             .boxed()

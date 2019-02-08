@@ -7,10 +7,7 @@ pub(crate) fn assists(db: &RootDatabase, frange: FileRange) -> Vec<SourceChange>
         .into_iter()
         .map(|(label, action)| {
             let file_id = frange.file_id;
-            let file_edit = SourceFileEdit {
-                file_id,
-                edit: action.edit,
-            };
+            let file_edit = SourceFileEdit { file_id, edit: action.edit };
             SourceChange {
                 label: label.label,
                 source_file_edits: vec![file_edit],

@@ -36,23 +36,15 @@ struct InitializationOptions {
 fn main_inner() -> Result<()> {
     let (receiver, sender, threads) = stdio_transport();
     let cwd = ::std::env::current_dir()?;
-    run_server(
-        ra_lsp_server::server_capabilities(),
-        receiver,
-        sender,
-        |params, r, s| {
-            let root = params
-                .root_uri
-                .and_then(|it| it.to_file_path().ok())
-                .unwrap_or(cwd);
-            let supports_decorations = params
-                .initialization_options
-                .and_then(|v| InitializationOptions::deserialize(v).ok())
-                .and_then(|it| it.publish_decorations)
-                == Some(true);
-            ra_lsp_server::main_loop(false, root, supports_decorations, r, s)
-        },
-    )?;
+    run_server(ra_lsp_server::server_capabilities(), receiver, sender, |params, r, s| {
+        let root = params.root_uri.and_then(|it| it.to_file_path().ok()).unwrap_or(cwd);
+        let supports_decorations = params
+            .initialization_options
+            .and_then(|v| InitializationOptions::deserialize(v).ok())
+            .and_then(|it| it.publish_decorations)
+            == Some(true);
+        ra_lsp_server::main_loop(false, root, supports_decorations, r, s)
+    })?;
     log::info!("shutting down IO...");
     threads.join()?;
     log::info!("... IO is down");

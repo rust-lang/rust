@@ -70,10 +70,7 @@ fn structure_node(node: &SyntaxNode) -> Option<StructureNode> {
             node_range: node.syntax().range(),
             kind: node.syntax().kind(),
             detail,
-            deprecated: node
-                .attrs()
-                .filter_map(|x| x.as_named())
-                .any(|x| x == "deprecated"),
+            deprecated: node.attrs().filter_map(|x| x.as_named()).any(|x| x == "deprecated"),
         })
     }
 
@@ -123,11 +120,9 @@ fn structure_node(node: &SyntaxNode) -> Option<StructureNode> {
             let target_trait = im.target_trait();
             let label = match target_trait {
                 None => format!("impl {}", target_type.syntax().text()),
-                Some(t) => format!(
-                    "impl {} for {}",
-                    t.syntax().text(),
-                    target_type.syntax().text(),
-                ),
+                Some(t) => {
+                    format!("impl {} for {}", t.syntax().text(), target_type.syntax().text(),)
+                }
             };
 
             let node = StructureNode {

@@ -43,11 +43,7 @@ pub fn extend_selection(root: &SyntaxNode, range: TextRange) -> Option<TextRange
     let node = find_covering_node(root, range);
 
     // Using shallowest node with same range allows us to traverse siblings.
-    let node = node
-        .ancestors()
-        .take_while(|n| n.range() == node.range())
-        .last()
-        .unwrap();
+    let node = node.ancestors().take_while(|n| n.range() == node.range()).last().unwrap();
 
     if range == node.range() {
         if string_kinds.contains(&node.kind()) {
@@ -145,10 +141,7 @@ fn extend_list_item(node: &SyntaxNode) -> Option<TextRange> {
     }
 
     if let Some(comma_node) = nearby_comma(node, Direction::Prev) {
-        return Some(TextRange::from_to(
-            comma_node.range().start(),
-            node.range().end(),
-        ));
+        return Some(TextRange::from_to(comma_node.range().start(), node.range().end()));
     }
 
     if let Some(comma_node) = nearby_comma(node, Direction::Next) {
@@ -160,10 +153,7 @@ fn extend_list_item(node: &SyntaxNode) -> Option<TextRange> {
             .filter(|node| is_single_line_ws(node))
             .unwrap_or(comma_node);
 
-        return Some(TextRange::from_to(
-            node.range().start(),
-            final_node.range().end(),
-        ));
+        return Some(TextRange::from_to(node.range().start(), final_node.range().end()));
     }
 
     return None;
@@ -217,36 +207,15 @@ mod tests {
     #[test]
     fn test_extend_selection_list() {
         do_check(r#"fn foo(<|>x: i32) {}"#, &["x", "x: i32"]);
-        do_check(
-            r#"fn foo(<|>x: i32, y: i32) {}"#,
-            &["x", "x: i32", "x: i32, "],
-        );
-        do_check(
-            r#"fn foo(<|>x: i32,y: i32) {}"#,
-            &["x", "x: i32", "x: i32,"],
-        );
-        do_check(
-            r#"fn foo(x: i32, <|>y: i32) {}"#,
-            &["y", "y: i32", ", y: i32"],
-        );
-        do_check(
-            r#"fn foo(x: i32, <|>y: i32, ) {}"#,
-            &["y", "y: i32", ", y: i32"],
-        );
-        do_check(
-            r#"fn foo(x: i32,<|>y: i32) {}"#,
-            &["y", "y: i32", ",y: i32"],
-        );
+        do_check(r#"fn foo(<|>x: i32, y: i32) {}"#, &["x", "x: i32", "x: i32, "]);
+        do_check(r#"fn foo(<|>x: i32,y: i32) {}"#, &["x", "x: i32", "x: i32,"]);
+        do_check(r#"fn foo(x: i32, <|>y: i32) {}"#, &["y", "y: i32", ", y: i32"]);
+        do_check(r#"fn foo(x: i32, <|>y: i32, ) {}"#, &["y", "y: i32", ", y: i32"]);
+        do_check(r#"fn foo(x: i32,<|>y: i32) {}"#, &["y", "y: i32", ",y: i32"]);
 
-        do_check(
-            r#"const FOO: [usize; 2] = [ 22<|> , 33];"#,
-            &["22", "22 , "],
-        );
+        do_check(r#"const FOO: [usize; 2] = [ 22<|> , 33];"#, &["22", "22 , "]);
         do_check(r#"const FOO: [usize; 2] = [ 22 , 33<|>];"#, &["33", ", 33"]);
-        do_check(
-            r#"const FOO: [usize; 2] = [ 22 , 33<|> ,];"#,
-            &["33", ", 33"],
-        );
+        do_check(r#"const FOO: [usize; 2] = [ 22 , 33<|> ,];"#, &["33", ", 33"]);
 
         do_check(
             r#"
@@ -292,11 +261,7 @@ struct B {
     <|>
 }
             "#,
-            &[
-                "\n    \n",
-                "{\n    \n}",
-                "/// bla\n/// bla\nstruct B {\n    \n}",
-            ],
+            &["\n    \n", "{\n    \n}", "/// bla\n/// bla\nstruct B {\n    \n}"],
         )
     }
 

@@ -90,15 +90,8 @@ pub struct SourceFileEdit {
 
 #[derive(Debug)]
 pub enum FileSystemEdit {
-    CreateFile {
-        source_root: SourceRootId,
-        path: RelativePathBuf,
-    },
-    MoveFile {
-        src: FileId,
-        dst_source_root: SourceRootId,
-        dst_path: RelativePathBuf,
-    },
+    CreateFile { source_root: SourceRootId, path: RelativePathBuf },
+    MoveFile { src: FileId, dst_source_root: SourceRootId, dst_path: RelativePathBuf },
 }
 
 #[derive(Debug)]
@@ -179,9 +172,7 @@ impl AnalysisHost {
     /// Returns a snapshot of the current state, which you can query for
     /// semantic information.
     pub fn analysis(&self) -> Analysis {
-        Analysis {
-            db: self.db.snapshot(),
-        }
+        Analysis { db: self.db.snapshot() }
     }
 
     /// Applies changes to the current state of the world. If there are
@@ -401,17 +392,12 @@ impl Analysis {
 
 impl SourceChange {
     pub(crate) fn from_local_edit(file_id: FileId, edit: LocalEdit) -> SourceChange {
-        let file_edit = SourceFileEdit {
-            file_id,
-            edit: edit.edit,
-        };
+        let file_edit = SourceFileEdit { file_id, edit: edit.edit };
         SourceChange {
             label: edit.label,
             source_file_edits: vec![file_edit],
             file_system_edits: vec![],
-            cursor_position: edit
-                .cursor_position
-                .map(|offset| FilePosition { offset, file_id }),
+            cursor_position: edit.cursor_position.map(|offset| FilePosition { offset, file_id }),
         }
     }
 }

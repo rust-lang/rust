@@ -12,10 +12,7 @@ use crate::{
 
 impl Module {
     fn with_module_id(&self, module_id: ModuleId) -> Module {
-        Module {
-            module_id,
-            krate: self.krate,
-        }
+        Module { module_id, krate: self.krate }
     }
 
     pub(crate) fn name_impl(&self, db: &impl HirDatabase) -> Option<Name> {
@@ -42,10 +39,7 @@ impl Module {
     ) -> Option<(FileId, TreeArc<ast::Module>)> {
         let module_tree = db.module_tree(self.krate);
         let link = self.module_id.parent_link(&module_tree)?;
-        let file_id = link
-            .owner(&module_tree)
-            .file_id(&module_tree)
-            .as_original_file();
+        let file_id = link.owner(&module_tree).file_id(&module_tree).as_original_file();
         let src = link.source(&module_tree, db);
         Some((file_id, src))
     }

@@ -12,10 +12,7 @@ pub(crate) struct GreenBuilder {
 
 impl GreenBuilder {
     pub(crate) fn new() -> GreenBuilder {
-        GreenBuilder {
-            errors: Vec::new(),
-            inner: GreenNodeBuilder::new(),
-        }
+        GreenBuilder { errors: Vec::new(), inner: GreenNodeBuilder::new() }
     }
 }
 

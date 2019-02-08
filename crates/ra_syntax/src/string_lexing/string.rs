@@ -120,12 +120,7 @@ mod tests {
     fn closed_char_component(src: &str) -> StringComponent {
         let (has_closing_quote, components) = parse(src);
         assert!(has_closing_quote, "char should have closing quote");
-        assert!(
-            components.len() == 1,
-            "Literal: {}\nComponents: {:#?}",
-            src,
-            components
-        );
+        assert!(components.len() == 1, "Literal: {}\nComponents: {:#?}", src, components);
         components[0].clone()
     }
 

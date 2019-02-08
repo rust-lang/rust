@@ -65,16 +65,8 @@ impl AnalysisChange {
         path: RelativePathBuf,
         text: Arc<String>,
     ) {
-        let file = AddFile {
-            file_id,
-            path,
-            text,
-        };
-        self.roots_changed
-            .entry(root_id)
-            .or_default()
-            .added
-            .push(file);
+        let file = AddFile { file_id, path, text };
+        self.roots_changed.entry(root_id).or_default().added.push(file);
     }
 
     pub fn change_file(&mut self, file_id: FileId, new_text: Arc<String>) {
@@ -83,11 +75,7 @@ impl AnalysisChange {
 
     pub fn remove_file(&mut self, root_id: SourceRootId, file_id: FileId, path: RelativePathBuf) {
         let file = RemoveFile { file_id, path };
-        self.roots_changed
-            .entry(root_id)
-            .or_default()
-            .removed
-            .push(file);
+        self.roots_changed.entry(root_id).or_default().removed.push(file);
     }
 
     pub fn add_library(&mut self, data: LibraryData) {
@@ -155,17 +143,9 @@ impl LibraryData {
         let mut root_change = RootChange::default();
         root_change.added = files
             .into_iter()
-            .map(|(file_id, path, text)| AddFile {
-                file_id,
-                path,
-                text,
-            })
+            .map(|(file_id, path, text)| AddFile { file_id, path, text })
             .collect();
-        LibraryData {
-            root_id,
-            root_change,
-            symbol_index,
-        }
+        LibraryData { root_id, root_change, symbol_index }
     }
 }
 
@@ -226,10 +206,7 @@ impl RootDatabase {
             self.last_gc_check = time::Instant::now();
             let retained_trees = syntax_tree_stats(self).retained;
             if retained_trees > 100 {
-                log::info!(
-                    "automatic garbadge collection, {} retained trees",
-                    retained_trees
-                );
+                log::info!("automatic garbadge collection, {} retained trees", retained_trees);
                 self.collect_garbage();
             }
         }
@@ -238,9 +215,7 @@ impl RootDatabase {
     pub(crate) fn collect_garbage(&mut self) {
         self.last_gc = time::Instant::now();
 
-        let sweep = SweepStrategy::default()
-            .discard_values()
-            .sweep_all_revisions();
+        let sweep = SweepStrategy::default().discard_values().sweep_all_revisions();
 
         self.query(ra_db::ParseQuery).sweep(sweep);
 

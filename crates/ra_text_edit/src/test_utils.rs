@@ -8,9 +8,7 @@ pub fn arb_text() -> proptest::string::RegexGeneratorStrategy<String> {
 }
 
 fn text_offsets(text: &str) -> Vec<TextUnit> {
-    text.char_indices()
-        .map(|(i, _)| TextUnit::from_usize(i))
-        .collect()
+    text.char_indices().map(|(i, _)| TextUnit::from_usize(i)).collect()
 }
 
 pub fn arb_offset(text: &str) -> BoxedStrategy<TextUnit> {
@@ -56,9 +54,7 @@ pub fn arb_text_edit(text: &str) -> BoxedStrategy<TextEdit> {
                             )
                             .boxed()
                     }
-                    &[x] => arb_text()
-                        .prop_map(move |text| AtomTextEdit::insert(x, text))
-                        .boxed(),
+                    &[x] => arb_text().prop_map(move |text| AtomTextEdit::insert(x, text)).boxed(),
                     _ => unreachable!(),
                 })
                 .collect();

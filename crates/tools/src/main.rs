@@ -15,10 +15,7 @@ fn main() -> Result<()> {
         .subcommand(SubCommand::with_name("format-hook"))
         .subcommand(SubCommand::with_name("fuzz-tests"))
         .get_matches();
-    match matches
-        .subcommand_name()
-        .expect("Subcommand must be specified")
-    {
+    match matches.subcommand_name().expect("Subcommand must be specified") {
         "install-code" => install_code_extension()?,
         "gen-tests" => gen_tests(Overwrite)?,
         "gen-syntax" => generate(Overwrite)?,
@@ -45,10 +42,7 @@ fn install_code_extension() -> Result<()> {
             "./editors/code",
         )?;
     } else {
-        run(
-            r"code --install-extension ./ra-lsp-0.0.1.vsix --force",
-            "./editors/code",
-        )?;
+        run(r"code --install-extension ./ra-lsp-0.0.1.vsix --force", "./editors/code")?;
     }
     Ok(())
 }

@@ -72,10 +72,7 @@ impl NavigationTarget {
 
     pub(crate) fn from_module(db: &RootDatabase, module: hir::Module) -> NavigationTarget {
         let (file_id, source) = module.definition_source(db);
-        let name = module
-            .name(db)
-            .map(|it| it.to_string().into())
-            .unwrap_or_default();
+        let name = module.name(db).map(|it| it.to_string().into()).unwrap_or_default();
         match source {
             ModuleSource::SourceFile(node) => {
                 NavigationTarget::from_syntax(file_id, name, None, node.syntax())
@@ -87,10 +84,7 @@ impl NavigationTarget {
     }
 
     pub(crate) fn from_module_to_decl(db: &RootDatabase, module: hir::Module) -> NavigationTarget {
-        let name = module
-            .name(db)
-            .map(|it| it.to_string().into())
-            .unwrap_or_default();
+        let name = module.name(db).map(|it| it.to_string().into()).unwrap_or_default();
         if let Some((file_id, source)) = module.declaration_source(db) {
             return NavigationTarget::from_syntax(file_id, name, None, source.syntax());
         }
