@@ -132,15 +132,22 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> 
                     BinOp::Sub
                 }, l, r)?;
                 let val = if overflowed {
-                    // For signed ints the saturated value depends on the
-                    // sign of the first term
-                    let first_term: u128 = l.to_scalar()?.to_bits(l.layout.size)?;
                     let num_bits = l.layout.size.bits();
                     if l.layout.abi.is_signed() {
-                        if first_term & (1 << (num_bits-1)) == 0 {  // first term is positive
+                        // For signed ints the saturated value depends on the sign of the first
+                        // term since the sign of the second term can be inferred from this and
+                        // the fact that the operation has overflowed (if either is 0 no
+                        // overflow can occur)
+                        let first_term: u128 = l.to_scalar()?.to_bits(l.layout.size)?;
+                        let first_term_pos = first_term & (1 << (num_bits-1)) == 0;
+                        if first_term_pos {
+                            // Negative overflow not possible since the positive first term
+                            // can only increase an (in range) negative term for addition
+                            // or corresponding negated positive term for subtraction
                             Scalar::from_uint((1u128 << (num_bits - 1)) - 1,  // max positive
                                 Size::from_bits(num_bits))
-                        } else {  // first term is negative
+                        } else {
+                            // Positive overflow not possible for similar reason
                             // max negative
                             Scalar::from_uint(1u128 << (num_bits - 1), Size::from_bits(num_bits))
                         }
