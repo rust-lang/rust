@@ -1039,24 +1039,19 @@ pub fn write(output: &mut dyn Write, args: Arguments) -> Result {
 /// Padding after the end of something. Returned by `Formatter::padding`.
 #[must_use = "don't forget to write the post padding"]
 struct PostPadding {
-    fill: [u8; 4],
-    fill_len: u32,
+    fill: char,
     padding: usize,
 }
 
 impl PostPadding {
-    /// Safety relies on `fill[..fill_len]` being a valid UTF-8 char.
-    unsafe fn new(fill: [u8; 4], fill_len: u32, padding: usize) -> PostPadding {
-        PostPadding { fill, fill_len, padding }
+    fn new(fill: char, padding: usize) -> PostPadding {
+        PostPadding { fill, padding }
     }
 
     /// Write this post padding.
     fn write(self, buf: &mut dyn Write) -> Result {
-        let fill = unsafe {
-            str::from_utf8_unchecked(&self.fill.get_unchecked(..self.fill_len as usize))
-        };
         for _ in 0..self.padding {
-            buf.write_str(fill)?;
+            buf.write_char(self.fill)?;
         }
         Ok(())
     }
@@ -1326,20 +1321,11 @@ impl<'a> Formatter<'a> {
             rt::v1::Alignment::Center => (padding / 2, (padding + 1) / 2),
         };
 
-        let mut fill = [0; 4];
-        let fill_len = {
-            let fill = self.fill.encode_utf8(&mut fill);
+        for _ in 0..pre_pad {
+            self.buf.write_char(self.fill)?;
+        }
 
-            for _ in 0..pre_pad {
-                self.buf.write_str(fill)?;
-            }
-
-            fill.len()
-        };
-
-        Ok(unsafe {
-            PostPadding::new(fill, fill_len as u32, post_pad)
-        })
+        Ok(PostPadding::new(self.fill, post_pad))
     }
 
     /// Takes the formatted parts and applies the padding.
