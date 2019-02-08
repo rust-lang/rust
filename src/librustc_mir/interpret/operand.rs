@@ -45,6 +45,11 @@ impl Immediate {
 
 impl<'tcx, Tag> Immediate<Tag> {
     #[inline]
+    pub fn from_scalar(val: Scalar<Tag>) -> Self {
+        Immediate::Scalar(ScalarMaybeUndef::Scalar(val))
+    }
+
+    #[inline]
     pub fn erase_tag(self) -> Immediate
     {
         match self {
@@ -115,7 +120,7 @@ impl<'tcx, Tag> Immediate<Tag> {
 // as input for binary and cast operations.
 #[derive(Copy, Clone, Debug)]
 pub struct ImmTy<'tcx, Tag=()> {
-    crate imm: Immediate<Tag>, // ideally we'd make this private, but const_prop needs this
+    pub imm: Immediate<Tag>,
     pub layout: TyLayout<'tcx>,
 }
 
@@ -212,6 +217,19 @@ impl<'tcx, Tag> From<ImmTy<'tcx, Tag>> for OpTy<'tcx, Tag> {
             op: Operand::Immediate(val.imm),
             layout: val.layout
         }
+    }
+}
+
+impl<'tcx, Tag: Copy> ImmTy<'tcx, Tag>
+{
+    #[inline]
+    pub fn from_scalar(val: Scalar<Tag>, layout: TyLayout<'tcx>) -> Self {
+        ImmTy { imm: Immediate::from_scalar(val), layout }
+    }
+
+    #[inline]
+    pub fn to_bits(self) -> EvalResult<'tcx, u128> {
+        self.to_scalar()?.to_bits(self.layout.size)
     }
 }
 

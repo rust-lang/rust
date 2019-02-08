@@ -11,7 +11,7 @@ use rustc::hir::def::Def;
 use rustc::mir::interpret::{ConstEvalErr, ErrorHandled};
 use rustc::mir;
 use rustc::ty::{self, TyCtxt, query::TyCtxtAt};
-use rustc::ty::layout::{self, LayoutOf, TyLayout, VariantIdx};
+use rustc::ty::layout::{self, LayoutOf, VariantIdx};
 use rustc::ty::subst::Subst;
 use rustc::traits::Reveal;
 use rustc_data_structures::fx::FxHashMap;
@@ -21,7 +21,8 @@ use syntax::ast::Mutability;
 use syntax::source_map::{Span, DUMMY_SP};
 
 use crate::interpret::{self,
-    PlaceTy, MPlaceTy, MemPlace, OpTy, Operand, Immediate, Scalar, RawConst, ConstValue, Pointer,
+    PlaceTy, MPlaceTy, MemPlace, OpTy, ImmTy, Operand, Immediate, Scalar, Pointer,
+    RawConst, ConstValue,
     EvalResult, EvalError, EvalErrorKind, GlobalId, EvalContext, StackPopCleanup,
     Allocation, AllocId, MemoryKind,
     snapshot, RefTracking,
@@ -379,10 +380,8 @@ impl<'a, 'mir, 'tcx> interpret::Machine<'a, 'mir, 'tcx>
     fn ptr_op(
         _ecx: &EvalContext<'a, 'mir, 'tcx, Self>,
         _bin_op: mir::BinOp,
-        _left: Scalar,
-        _left_layout: TyLayout<'tcx>,
-        _right: Scalar,
-        _right_layout: TyLayout<'tcx>,
+        _left: ImmTy<'tcx>,
+        _right: ImmTy<'tcx>,
     ) -> EvalResult<'tcx, (Scalar, bool)> {
         Err(
             ConstEvalError::NeedsRfc("pointer arithmetic or comparison".to_string()).into(),

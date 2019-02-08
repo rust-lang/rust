@@ -370,13 +370,12 @@ impl<'a, 'mir, 'tcx> ConstPropagator<'a, 'mir, 'tcx> {
 
                 let (arg, _) = self.eval_operand(arg, source_info)?;
                 let val = self.use_ecx(source_info, |this| {
-                    let prim = this.ecx.read_scalar(arg)?.not_undef()?;
+                    let prim = this.ecx.read_immediate(arg)?;
                     match op {
                         UnOp::Neg => {
                             // Need to do overflow check here: For actual CTFE, MIR
                             // generation emits code that does this before calling the op.
-                            let size = arg.layout.size;
-                            if prim.to_bits(size)? == (1 << (size.bits() - 1)) {
+                            if prim.to_bits()? == (1 << (prim.layout.size.bits() - 1)) {
                                 return err!(OverflowNeg);
                             }
                         }
@@ -385,7 +384,7 @@ impl<'a, 'mir, 'tcx> ConstPropagator<'a, 'mir, 'tcx> {
                         }
                     }
                     // Now run the actual operation.
-                    this.ecx.unary_op(op, prim, arg.layout)
+                    this.ecx.unary_op(op, prim)
                 })?;
                 let res = ImmTy {
                     imm: Immediate::Scalar(val.into()),
@@ -446,7 +445,7 @@ impl<'a, 'mir, 'tcx> ConstPropagator<'a, 'mir, 'tcx> {
                 })?;
                 trace!("const evaluating {:?} for {:?} and {:?}", op, left, right);
                 let (val, overflow) = self.use_ecx(source_info, |this| {
-                    this.ecx.binary_op_imm(op, l, r)
+                    this.ecx.binary_op(op, l, r)
                 })?;
                 let val = if let Rvalue::CheckedBinaryOp(..) = *rvalue {
                     Immediate::ScalarPair(

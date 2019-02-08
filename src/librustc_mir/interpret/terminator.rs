@@ -51,8 +51,8 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> 
                     // Compare using binary_op, to also support pointer values
                     let const_int = Scalar::from_uint(const_int, discr.layout.size);
                     let (res, _) = self.binary_op(mir::BinOp::Eq,
-                        discr.to_scalar()?, discr.layout,
-                        const_int, discr.layout,
+                        discr,
+                        ImmTy::from_scalar(const_int, discr.layout),
                     )?;
                     if res.to_bool()? {
                         target_block = targets[index];
