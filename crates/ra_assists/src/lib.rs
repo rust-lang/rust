@@ -109,7 +109,7 @@ mod helpers {
     use hir::mock::MockDatabase;
     use ra_syntax::TextRange;
     use ra_db::FileRange;
-    use test_utils::{extract_offset, assert_eq_text, add_cursor, extract_range};
+    use test_utils::{extract_offset, extract_range, assert_eq_text, add_cursor};
 
     use crate::{AssistCtx, Assist};
 
@@ -220,7 +220,7 @@ mod tests {
     use hir::mock::MockDatabase;
     use ra_syntax::TextRange;
     use ra_db::FileRange;
-    use test_utils::{extract_offset, extract_range};
+    use test_utils::{extract_offset};
 
     #[test]
     fn assist_order_field_struct() {
