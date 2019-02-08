@@ -7,7 +7,7 @@ use errors::Applicability;
 use std::slice;
 use syntax::ptr::P;
 
-use borrowck::BorrowckCtxt;
+use crate::borrowck::BorrowckCtxt;
 
 pub fn check<'a, 'tcx>(bccx: &BorrowckCtxt<'a, 'tcx>, body: &'tcx hir::Body) {
     let mut used_mut = bccx.used_mut_nodes.borrow().clone();
