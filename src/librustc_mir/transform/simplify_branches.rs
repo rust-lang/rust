@@ -2,7 +2,7 @@
 
 use rustc::ty::{TyCtxt, ParamEnv};
 use rustc::mir::*;
-use transform::{MirPass, MirSource};
+use crate::transform::{MirPass, MirSource};
 
 use std::borrow::Cow;
 

@@ -1,4 +1,4 @@
-use hair::*;
+use crate::hair::*;
 
 use rustc::hir;
 use syntax::ptr::P;

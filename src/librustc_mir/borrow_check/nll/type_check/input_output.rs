@@ -7,7 +7,7 @@
 //! `RETURN_PLACE` the MIR arguments) are always fully normalized (and
 //! contain revealed `impl Trait` values).
 
-use borrow_check::nll::universal_regions::UniversalRegions;
+use crate::borrow_check::nll::universal_regions::UniversalRegions;
 use rustc::infer::LateBoundRegionConversionTime;
 use rustc::mir::*;
 use rustc::ty::Ty;

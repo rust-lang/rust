@@ -25,7 +25,7 @@ use syntax::source_map::Span;
 
 use super::eval_context::{LocalState, StackPopCleanup};
 use super::{Frame, Memory, Operand, MemPlace, Place, Immediate, ScalarMaybeUndef, LocalValue};
-use const_eval::CompileTimeInterpreter;
+use crate::const_eval::CompileTimeInterpreter;
 
 #[derive(Default)]
 pub(crate) struct InfiniteLoopDetector<'a, 'mir, 'tcx: 'a + 'mir> {
@@ -200,7 +200,7 @@ impl_snapshot_for!(enum ScalarMaybeUndef {
     Undef,
 });
 
-impl_stable_hash_for!(struct ::interpret::MemPlace {
+impl_stable_hash_for!(struct crate::interpret::MemPlace {
     ptr,
     align,
     meta,
@@ -211,7 +211,7 @@ impl_snapshot_for!(struct MemPlace {
     align -> *align, // just copy alignment verbatim
 });
 
-impl_stable_hash_for!(enum ::interpret::Place {
+impl_stable_hash_for!(enum crate::interpret::Place {
     Ptr(mem_place),
     Local { frame, local },
 });
@@ -232,7 +232,7 @@ impl<'a, Ctx> Snapshot<'a, Ctx> for Place
     }
 }
 
-impl_stable_hash_for!(enum ::interpret::Immediate {
+impl_stable_hash_for!(enum crate::interpret::Immediate {
     Scalar(x),
     ScalarPair(x, y),
 });
@@ -241,7 +241,7 @@ impl_snapshot_for!(enum Immediate {
     ScalarPair(s, t),
 });
 
-impl_stable_hash_for!(enum ::interpret::Operand {
+impl_stable_hash_for!(enum crate::interpret::Operand {
     Immediate(x),
     Indirect(x),
 });
@@ -250,7 +250,7 @@ impl_snapshot_for!(enum Operand {
     Indirect(m),
 });
 
-impl_stable_hash_for!(enum ::interpret::LocalValue {
+impl_stable_hash_for!(enum crate::interpret::LocalValue {
     Dead,
     Live(x),
 });
@@ -298,7 +298,7 @@ impl<'a, Ctx> Snapshot<'a, Ctx> for &'a Allocation
     }
 }
 
-impl_stable_hash_for!(enum ::interpret::eval_context::StackPopCleanup {
+impl_stable_hash_for!(enum crate::interpret::eval_context::StackPopCleanup {
     Goto(block),
     None { cleanup },
 });

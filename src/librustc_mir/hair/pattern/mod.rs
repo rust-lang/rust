@@ -6,10 +6,10 @@ mod check_match;
 pub use self::check_match::check_crate;
 pub(crate) use self::check_match::check_match;
 
-use const_eval::{const_field, const_variant_index};
+use crate::const_eval::{const_field, const_variant_index};
 
-use hair::util::UserAnnotatedTyHelpers;
-use hair::constant::*;
+use crate::hair::util::UserAnnotatedTyHelpers;
+use crate::hair::constant::*;
 
 use rustc::mir::{fmt_const_val, Field, BorrowKind, Mutability};
 use rustc::mir::{UserTypeProjection};
@@ -187,7 +187,7 @@ pub struct PatternRange<'tcx> {
 }
 
 impl<'tcx> fmt::Display for Pattern<'tcx> {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match *self.kind {
             PatternKind::Wild => write!(f, "_"),
             PatternKind::AscribeUserType { ref subpattern, .. } =>

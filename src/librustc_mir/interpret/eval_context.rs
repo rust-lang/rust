@@ -322,7 +322,7 @@ impl<'a, 'mir, 'tcx: 'mir, M: Machine<'a, 'mir, 'tcx>> EvalContext<'a, 'mir, 'tc
     ) -> EvalResult<'tcx, TyLayout<'tcx>> {
         match frame.locals[local].layout.get() {
             None => {
-                let layout = ::interpret::operand::from_known_layout(layout, || {
+                let layout = crate::interpret::operand::from_known_layout(layout, || {
                     let local_ty = frame.mir.local_decls[local].ty;
                     let local_ty = self.monomorphize_with_substs(local_ty, frame.instance.substs);
                     self.layout_of(local_ty)

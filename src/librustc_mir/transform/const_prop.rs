@@ -18,12 +18,12 @@ use rustc::ty::layout::{
     HasTyCtxt, TargetDataLayout, HasDataLayout,
 };
 
-use interpret::{self, EvalContext, ScalarMaybeUndef, Immediate, OpTy, MemoryKind};
-use const_eval::{
+use crate::interpret::{self, EvalContext, ScalarMaybeUndef, Immediate, OpTy, MemoryKind};
+use crate::const_eval::{
     CompileTimeInterpreter, error_to_const_error, eval_promoted, mk_eval_cx,
     lazy_const_to_op,
 };
-use transform::{MirPass, MirSource};
+use crate::transform::{MirPass, MirSource};
 
 pub struct ConstProp;
 
@@ -486,7 +486,7 @@ struct CanConstProp {
 
 impl CanConstProp {
     /// returns true if `local` can be propagated
-    fn check(mir: &Mir) -> IndexVec<Local, bool> {
+    fn check(mir: &Mir<'_>) -> IndexVec<Local, bool> {
         let mut cpv = CanConstProp {
             can_const_prop: IndexVec::from_elem(true, &mir.local_decls),
             found_assignment: IndexVec::from_elem(false, &mir.local_decls),

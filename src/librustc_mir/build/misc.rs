@@ -1,7 +1,7 @@
 //! Miscellaneous builder routines that are not specific to building any particular
 //! kind of thing.
 
-use build::Builder;
+use crate::build::Builder;
 
 use rustc::ty::{self, Ty};
 

@@ -37,7 +37,7 @@ pub(crate) mod indexes {
             }
 
             impl fmt::Debug for $Index {
-                fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
+                fn fmt(&self, fmt: &mut fmt::Formatter<'_>) -> fmt::Result {
                     write!(fmt, "{}{}", $debug_name, self.index())
                 }
             }
@@ -62,7 +62,7 @@ pub use self::indexes::MoveOutIndex;
 pub use self::indexes::InitIndex;
 
 impl MoveOutIndex {
-    pub fn move_path_index(&self, move_data: &MoveData) -> MovePathIndex {
+    pub fn move_path_index(&self, move_data: &MoveData<'_>) -> MovePathIndex {
         move_data.moves[*self].path
     }
 }
@@ -88,7 +88,10 @@ pub struct MovePath<'tcx> {
 }
 
 impl<'tcx> MovePath<'tcx> {
-    pub fn parents(&self, move_paths: &IndexVec<MovePathIndex, MovePath>) -> Vec<MovePathIndex> {
+    pub fn parents(
+        &self,
+        move_paths: &IndexVec<MovePathIndex, MovePath<'_>>,
+    ) -> Vec<MovePathIndex> {
         let mut parents = Vec::new();
 
         let mut curr_parent = self.parent;
@@ -102,7 +105,7 @@ impl<'tcx> MovePath<'tcx> {
 }
 
 impl<'tcx> fmt::Debug for MovePath<'tcx> {
-    fn fmt(&self, w: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, w: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(w, "MovePath {{")?;
         if let Some(parent) = self.parent {
             write!(w, " parent: {:?},", parent)?;
@@ -118,7 +121,7 @@ impl<'tcx> fmt::Debug for MovePath<'tcx> {
 }
 
 impl<'tcx> fmt::Display for MovePath<'tcx> {
-    fn fmt(&self, w: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, w: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(w, "{:?}", self.place)
     }
 }
@@ -166,7 +169,7 @@ impl<T> IndexMut<Location> for LocationMap<T> {
 }
 
 impl<T> LocationMap<T> where T: Default + Clone {
-    fn new(mir: &Mir) -> Self {
+    fn new(mir: &Mir<'_>) -> Self {
         LocationMap {
             map: mir.basic_blocks().iter().map(|block| {
                 vec![T::default(); block.statements.len()+1]
@@ -190,7 +193,7 @@ pub struct MoveOut {
 }
 
 impl fmt::Debug for MoveOut {
-    fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, fmt: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(fmt, "{:?}@{:?}", self.path, self.source)
     }
 }
@@ -227,7 +230,7 @@ pub enum InitKind {
 }
 
 impl fmt::Debug for Init {
-    fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, fmt: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(fmt, "{:?}@{:?} ({:?})", self.path, self.location, self.kind)
     }
 }

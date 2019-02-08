@@ -1,4 +1,4 @@
-use monomorphize::Instance;
+use crate::monomorphize::Instance;
 use rustc::hir;
 use rustc::hir::def_id::{DefId, LOCAL_CRATE};
 use rustc::session::config::OptLevel;

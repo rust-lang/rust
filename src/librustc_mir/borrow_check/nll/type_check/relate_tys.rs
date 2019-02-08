@@ -1,5 +1,5 @@
-use borrow_check::nll::constraints::OutlivesConstraint;
-use borrow_check::nll::type_check::{BorrowCheckContext, Locations};
+use crate::borrow_check::nll::constraints::OutlivesConstraint;
+use crate::borrow_check::nll::type_check::{BorrowCheckContext, Locations};
 use rustc::infer::nll_relate::{TypeRelating, TypeRelatingDelegate, NormalizationStrategy};
 use rustc::infer::{InferCtxt, NLLRegionVariableOrigin};
 use rustc::mir::ConstraintCategory;

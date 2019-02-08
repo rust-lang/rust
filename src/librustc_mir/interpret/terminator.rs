@@ -112,7 +112,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> 
                 let ty = place.layout.ty;
                 trace!("TerminatorKind::drop: {:?}, type {}", location, ty);
 
-                let instance = ::monomorphize::resolve_drop_in_place(*self.tcx, ty);
+                let instance = crate::monomorphize::resolve_drop_in_place(*self.tcx, ty);
                 self.drop_in_place(
                     place,
                     instance,
@@ -326,7 +326,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> 
                     // last incoming argument.  These two iterators do not have the same type,
                     // so to keep the code paths uniform we accept an allocation
                     // (for RustCall ABI only).
-                    let caller_args : Cow<[OpTy<'tcx, M::PointerTag>]> =
+                    let caller_args : Cow<'_, [OpTy<'tcx, M::PointerTag>]> =
                         if caller_abi == Abi::RustCall && !args.is_empty() {
                             // Untuple
                             let (&untuple_arg, args) = args.split_last().unwrap();
@@ -335,7 +335,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> 
                                 .chain((0..untuple_arg.layout.fields.count()).into_iter()
                                     .map(|i| self.operand_field(untuple_arg, i as u64))
                                 )
-                                .collect::<EvalResult<Vec<OpTy<'tcx, M::PointerTag>>>>()?)
+                                .collect::<EvalResult<'_, Vec<OpTy<'tcx, M::PointerTag>>>>()?)
                         } else {
                             // Plain arg passing
                             Cow::from(args)

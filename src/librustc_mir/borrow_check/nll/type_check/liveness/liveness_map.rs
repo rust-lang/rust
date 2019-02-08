@@ -6,13 +6,13 @@
 //! liveness code so that it only operates over variables with regions in their
 //! types, instead of all variables.
 
-use borrow_check::nll::ToRegionVid;
-use borrow_check::nll::facts::{AllFacts, AllFactsExt};
+use crate::borrow_check::nll::ToRegionVid;
+use crate::borrow_check::nll::facts::{AllFacts, AllFactsExt};
+use crate::util::liveness::LiveVariableMap;
 use rustc::mir::{Local, Mir};
 use rustc::ty::{RegionVid, TyCtxt};
 use rustc_data_structures::fx::FxHashSet;
 use rustc_data_structures::indexed_vec::{Idx, IndexVec};
-use util::liveness::LiveVariableMap;
 
 /// Map between Local and LiveVar indices: the purpose of this
 /// map is to define the subset of local variables for which we need

@@ -1,13 +1,14 @@
-use borrow_check::borrow_set::BorrowSet;
-use borrow_check::location::{LocationIndex, LocationTable};
-use borrow_check::nll::facts::AllFactsExt;
-use borrow_check::nll::type_check::{MirTypeckResults, MirTypeckRegionConstraints};
-use borrow_check::nll::type_check::liveness::liveness_map::NllLivenessMap;
-use borrow_check::nll::region_infer::values::RegionValueElements;
-use dataflow::indexes::BorrowIndex;
-use dataflow::move_paths::MoveData;
-use dataflow::FlowAtLocation;
-use dataflow::MaybeInitializedPlaces;
+use crate::borrow_check::borrow_set::BorrowSet;
+use crate::borrow_check::location::{LocationIndex, LocationTable};
+use crate::borrow_check::nll::facts::AllFactsExt;
+use crate::borrow_check::nll::type_check::{MirTypeckResults, MirTypeckRegionConstraints};
+use crate::borrow_check::nll::type_check::liveness::liveness_map::NllLivenessMap;
+use crate::borrow_check::nll::region_infer::values::RegionValueElements;
+use crate::dataflow::indexes::BorrowIndex;
+use crate::dataflow::move_paths::MoveData;
+use crate::dataflow::FlowAtLocation;
+use crate::dataflow::MaybeInitializedPlaces;
+use crate::transform::MirSource;
 use rustc::hir::def_id::DefId;
 use rustc::infer::InferCtxt;
 use rustc::mir::{ClosureOutlivesSubject, ClosureRegionRequirements, Mir};
@@ -19,12 +20,11 @@ use std::io;
 use std::path::PathBuf;
 use std::rc::Rc;
 use std::str::FromStr;
-use transform::MirSource;
 
 use self::mir_util::PassWhere;
 use polonius_engine::{Algorithm, Output};
-use util as mir_util;
-use util::pretty;
+use crate::util as mir_util;
+use crate::util::pretty;
 
 mod constraint_generation;
 pub mod explain_borrow;
@@ -45,7 +45,7 @@ use self::universal_regions::UniversalRegions;
 /// scraping out the set of universal regions (e.g., region parameters)
 /// declared on the function. That set will need to be given to
 /// `compute_regions`.
-pub(in borrow_check) fn replace_regions_in_mir<'cx, 'gcx, 'tcx>(
+pub(in crate::borrow_check) fn replace_regions_in_mir<'cx, 'gcx, 'tcx>(
     infcx: &InferCtxt<'cx, 'gcx, 'tcx>,
     def_id: DefId,
     param_env: ty::ParamEnv<'tcx>,
@@ -68,7 +68,7 @@ pub(in borrow_check) fn replace_regions_in_mir<'cx, 'gcx, 'tcx>(
 /// Computes the (non-lexical) regions from the input MIR.
 ///
 /// This may result in errors being reported.
-pub(in borrow_check) fn compute_regions<'cx, 'gcx, 'tcx>(
+pub(in crate::borrow_check) fn compute_regions<'cx, 'gcx, 'tcx>(
     infcx: &InferCtxt<'cx, 'gcx, 'tcx>,
     def_id: DefId,
     universal_regions: UniversalRegions<'tcx>,
@@ -211,8 +211,8 @@ fn dump_mir_results<'a, 'gcx, 'tcx>(
     infcx: &InferCtxt<'a, 'gcx, 'tcx>,
     source: MirSource,
     mir: &Mir<'tcx>,
-    regioncx: &RegionInferenceContext,
-    closure_region_requirements: &Option<ClosureRegionRequirements>,
+    regioncx: &RegionInferenceContext<'_>,
+    closure_region_requirements: &Option<ClosureRegionRequirements<'_>>,
 ) {
     if !mir_util::dump_enabled(infcx.tcx, "nll", source) {
         return;
@@ -254,14 +254,14 @@ fn dump_mir_results<'a, 'gcx, 'tcx>(
     );
 
     // Also dump the inference graph constraints as a graphviz file.
-    let _: io::Result<()> = try_block! {
+    let _: io::Result<()> = try {
         let mut file =
             pretty::create_dump_file(infcx.tcx, "regioncx.all.dot", None, "nll", &0, source)?;
         regioncx.dump_graphviz_raw_constraints(&mut file)?;
     };
 
     // Also dump the inference graph constraints as a graphviz file.
-    let _: io::Result<()> = try_block! {
+    let _: io::Result<()> = try {
         let mut file =
             pretty::create_dump_file(infcx.tcx, "regioncx.scc.dot", None, "nll", &0, source)?;
         regioncx.dump_graphviz_scc_constraints(&mut file)?;
@@ -273,7 +273,7 @@ fn dump_annotation<'a, 'gcx, 'tcx>(
     mir: &Mir<'tcx>,
     mir_def_id: DefId,
     regioncx: &RegionInferenceContext<'tcx>,
-    closure_region_requirements: &Option<ClosureRegionRequirements>,
+    closure_region_requirements: &Option<ClosureRegionRequirements<'_>>,
     errors_buffer: &mut Vec<Diagnostic>,
 ) {
     let tcx = infcx.tcx;
@@ -322,7 +322,7 @@ fn dump_annotation<'a, 'gcx, 'tcx>(
 }
 
 fn for_each_region_constraint(
-    closure_region_requirements: &ClosureRegionRequirements,
+    closure_region_requirements: &ClosureRegionRequirements<'_>,
     with_msg: &mut dyn FnMut(&str) -> io::Result<()>,
 ) -> io::Result<()> {
     for req in &closure_region_requirements.outlives_requirements {

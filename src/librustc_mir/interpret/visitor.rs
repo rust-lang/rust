@@ -26,7 +26,7 @@ pub trait Value<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>>: Copy
     ) -> EvalResult<'tcx, OpTy<'tcx, M::PointerTag>>;
 
     /// Create this from an `MPlaceTy`.
-    fn from_mem_place(MPlaceTy<'tcx, M::PointerTag>) -> Self;
+    fn from_mem_place(mplace: MPlaceTy<'tcx, M::PointerTag>) -> Self;
 
     /// Project to the given enum variant.
     fn project_downcast(

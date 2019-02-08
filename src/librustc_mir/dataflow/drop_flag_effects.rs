@@ -1,6 +1,6 @@
 use rustc::mir::{self, Mir, Location};
 use rustc::ty::{self, TyCtxt};
-use util::elaborate_drops::DropFlagState;
+use crate::util::elaborate_drops::DropFlagState;
 
 use super::{MoveDataParamEnv};
 use super::indexes::MovePathIndex;

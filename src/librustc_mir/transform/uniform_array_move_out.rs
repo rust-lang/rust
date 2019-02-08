@@ -30,9 +30,9 @@ use rustc::ty;
 use rustc::ty::TyCtxt;
 use rustc::mir::*;
 use rustc::mir::visit::{Visitor, PlaceContext, NonUseContext};
-use transform::{MirPass, MirSource};
-use util::patch::MirPatch;
 use rustc_data_structures::indexed_vec::{IndexVec};
+use crate::transform::{MirPass, MirSource};
+use crate::util::patch::MirPatch;
 
 pub struct UniformArrayMoveOut;
 

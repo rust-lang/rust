@@ -1,6 +1,6 @@
-use hair::*;
-use hair::cx::Cx;
-use hair::cx::to_ref::ToRef;
+use crate::hair::*;
+use crate::hair::cx::Cx;
+use crate::hair::cx::to_ref::ToRef;
 use rustc::middle::region;
 use rustc::hir;
 use rustc::ty;

@@ -6,7 +6,7 @@
 
 use rustc::ty::{self, Ty, TyCtxt};
 use rustc::mir::*;
-use transform::{MirPass, MirSource};
+use crate::transform::{MirPass, MirSource};
 
 pub struct AddRetag;
 

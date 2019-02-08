@@ -1,8 +1,8 @@
-use borrow_check::borrow_set::BorrowSet;
-use borrow_check::location::LocationTable;
-use borrow_check::nll::ToRegionVid;
-use borrow_check::nll::facts::AllFacts;
-use borrow_check::nll::region_infer::values::LivenessValues;
+use crate::borrow_check::borrow_set::BorrowSet;
+use crate::borrow_check::location::LocationTable;
+use crate::borrow_check::nll::ToRegionVid;
+use crate::borrow_check::nll::facts::AllFacts;
+use crate::borrow_check::nll::region_infer::values::LivenessValues;
 use rustc::infer::InferCtxt;
 use rustc::mir::visit::TyContext;
 use rustc::mir::visit::Visitor;

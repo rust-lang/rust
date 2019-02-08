@@ -1,7 +1,7 @@
-use borrow_check::place_ext::PlaceExt;
-use borrow_check::nll::ToRegionVid;
-use dataflow::indexes::BorrowIndex;
-use dataflow::move_paths::MoveData;
+use crate::borrow_check::place_ext::PlaceExt;
+use crate::borrow_check::nll::ToRegionVid;
+use crate::dataflow::indexes::BorrowIndex;
+use crate::dataflow::move_paths::MoveData;
 use rustc::mir::traversal;
 use rustc::mir::visit::{
     PlaceContext, Visitor, NonUseContext, MutatingUseContext, NonMutatingUseContext
@@ -72,7 +72,7 @@ crate struct BorrowData<'tcx> {
 }
 
 impl<'tcx> fmt::Display for BorrowData<'tcx> {
-    fn fmt(&self, w: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, w: &mut fmt::Formatter<'_>) -> fmt::Result {
         let kind = match self.kind {
             mir::BorrowKind::Shared => "",
             mir::BorrowKind::Shallow => "shallow ",

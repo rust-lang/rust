@@ -1,9 +1,11 @@
 use super::universal_regions::UniversalRegions;
-use borrow_check::nll::constraints::graph::NormalConstraintGraph;
-use borrow_check::nll::constraints::{ConstraintSccIndex, ConstraintSet, OutlivesConstraint};
-use borrow_check::nll::region_infer::values::{PlaceholderIndices, RegionElement, ToElementIndex};
-use borrow_check::nll::type_check::free_region_relations::UniversalRegionRelations;
-use borrow_check::nll::type_check::Locations;
+use crate::borrow_check::nll::constraints::graph::NormalConstraintGraph;
+use crate::borrow_check::nll::constraints::{ConstraintSccIndex, ConstraintSet, OutlivesConstraint};
+use crate::borrow_check::nll::region_infer::values::{
+    PlaceholderIndices, RegionElement, ToElementIndex
+};
+use crate::borrow_check::nll::type_check::free_region_relations::UniversalRegionRelations;
+use crate::borrow_check::nll::type_check::Locations;
 use rustc::hir::def_id::DefId;
 use rustc::infer::canonical::QueryRegionConstraint;
 use rustc::infer::region_constraints::{GenericKind, VarInfos, VerifyBound};

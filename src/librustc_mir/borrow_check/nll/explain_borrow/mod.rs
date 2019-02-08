@@ -1,8 +1,8 @@
-use borrow_check::borrow_set::BorrowData;
-use borrow_check::error_reporting::UseSpans;
-use borrow_check::nll::ConstraintDescription;
-use borrow_check::nll::region_infer::{Cause, RegionName};
-use borrow_check::{Context, MirBorrowckCtxt, WriteKind};
+use crate::borrow_check::borrow_set::BorrowData;
+use crate::borrow_check::error_reporting::UseSpans;
+use crate::borrow_check::nll::ConstraintDescription;
+use crate::borrow_check::nll::region_infer::{Cause, RegionName};
+use crate::borrow_check::{Context, MirBorrowckCtxt, WriteKind};
 use rustc::ty::{self, TyCtxt};
 use rustc::mir::{
     CastKind, ConstraintCategory, FakeReadCause, Local, Location, Mir, Operand,
@@ -14,7 +14,7 @@ use syntax_pos::Span;
 
 mod find_use;
 
-pub(in borrow_check) enum BorrowExplanation {
+pub(in crate::borrow_check) enum BorrowExplanation {
     UsedLater(LaterUseKind, Span),
     UsedLaterInLoop(LaterUseKind, Span),
     UsedLaterWhenDropped {
@@ -33,7 +33,7 @@ pub(in borrow_check) enum BorrowExplanation {
 }
 
 #[derive(Clone, Copy)]
-pub(in borrow_check) enum LaterUseKind {
+pub(in crate::borrow_check) enum LaterUseKind {
     TraitCapture,
     ClosureCapture,
     Call,
@@ -42,13 +42,13 @@ pub(in borrow_check) enum LaterUseKind {
 }
 
 impl BorrowExplanation {
-    pub(in borrow_check) fn is_explained(&self) -> bool {
+    pub(in crate::borrow_check) fn is_explained(&self) -> bool {
         match self {
             BorrowExplanation::Unexplained => false,
             _ => true,
         }
     }
-    pub(in borrow_check) fn add_explanation_to_diagnostic<'cx, 'gcx, 'tcx>(
+    pub(in crate::borrow_check) fn add_explanation_to_diagnostic<'cx, 'gcx, 'tcx>(
         &self,
         tcx: TyCtxt<'cx, 'gcx, 'tcx>,
         mir: &Mir<'tcx>,
@@ -187,7 +187,7 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
     ///   - second half is the place being accessed
     ///
     /// [d]: https://rust-lang.github.io/rfcs/2094-nll.html#leveraging-intuition-framing-errors-in-terms-of-points
-    pub(in borrow_check) fn explain_why_borrow_contains_point(
+    pub(in crate::borrow_check) fn explain_why_borrow_contains_point(
         &self,
         context: Context,
         borrow: &BorrowData<'tcx>,

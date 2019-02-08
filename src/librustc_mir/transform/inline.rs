@@ -13,10 +13,10 @@ use rustc::ty::subst::{Subst,Substs};
 
 use std::collections::VecDeque;
 use std::iter;
-use transform::{MirPass, MirSource};
+use crate::transform::{MirPass, MirSource};
 use super::simplify::{remove_dead_blocks, CfgSimplifier};
 
-use syntax::{attr};
+use syntax::attr;
 use rustc_target::spec::abi::Abi;
 
 const DEFAULT_THRESHOLD: usize = 50;
@@ -426,7 +426,7 @@ impl<'a, 'tcx> Inliner<'a, 'tcx> {
                 // Place could result in two different locations if `f`
                 // writes to `i`. To prevent this we need to create a temporary
                 // borrow of the place and pass the destination as `*temp` instead.
-                fn dest_needs_borrow(place: &Place) -> bool {
+                fn dest_needs_borrow(place: &Place<'_>) -> bool {
                     match *place {
                         Place::Projection(ref p) => {
                             match p.elem {

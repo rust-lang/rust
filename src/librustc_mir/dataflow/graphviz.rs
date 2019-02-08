@@ -3,8 +3,6 @@
 use syntax::ast::NodeId;
 use rustc::mir::{BasicBlock, Mir};
 
-use dot;
-
 use std::fs;
 use std::io;
 use std::marker::PhantomData;
@@ -59,7 +57,7 @@ pub type Node = BasicBlock;
 #[derive(Copy, Clone, PartialEq, Eq, Debug)]
 pub struct Edge { source: BasicBlock, index: usize }
 
-fn outgoing(mir: &Mir, bb: BasicBlock) -> Vec<Edge> {
+fn outgoing(mir: &Mir<'_>, bb: BasicBlock) -> Vec<Edge> {
     (0..mir[bb].terminator().successors().count())
         .map(|index| Edge { source: bb, index: index}).collect()
 }
@@ -70,18 +68,18 @@ impl<'a, 'tcx, MWF, P> dot::Labeller<'a> for Graph<'a, 'tcx, MWF, P>
 {
     type Node = Node;
     type Edge = Edge;
-    fn graph_id(&self) -> dot::Id {
+    fn graph_id(&self) -> dot::Id<'_> {
         dot::Id::new(format!("graph_for_node_{}",
                              self.mbcx.node_id()))
             .unwrap()
     }
 
-    fn node_id(&self, n: &Node) -> dot::Id {
+    fn node_id(&self, n: &Node) -> dot::Id<'_> {
         dot::Id::new(format!("bb_{}", n.index()))
             .unwrap()
     }
 
-    fn node_label(&self, n: &Node) -> dot::LabelText {
+    fn node_label(&self, n: &Node) -> dot::LabelText<'_> {
         // Node label is something like this:
         // +---------+----------------------------------+------------------+------------------+
         // | ENTRY   | MIR                              | GEN              | KILL             |
@@ -105,7 +103,7 @@ impl<'a, 'tcx, MWF, P> dot::Labeller<'a> for Graph<'a, 'tcx, MWF, P>
     }
 
 
-    fn node_shape(&self, _n: &Node) -> Option<dot::LabelText> {
+    fn node_shape(&self, _n: &Node) -> Option<dot::LabelText<'_>> {
         Some(dot::LabelText::label("none"))
     }
 
@@ -125,7 +123,7 @@ where MWF: MirWithFlowState<'tcx>,
                                          n: &Node,
                                          w: &mut W,
                                          block: BasicBlock,
-                                         mir: &Mir) -> io::Result<()> {
+                                         mir: &Mir<'_>) -> io::Result<()> {
         // Header rows
         const HDRS: [&str; 4] = ["ENTRY", "MIR", "BLOCK GENS", "BLOCK KILLS"];
         const HDR_FMT: &str = "bgcolor=\"grey\"";
@@ -150,7 +148,7 @@ where MWF: MirWithFlowState<'tcx>,
                                             n: &Node,
                                             w: &mut W,
                                             block: BasicBlock,
-                                            mir: &Mir)
+                                            mir: &Mir<'_>)
                                             -> io::Result<()> {
         let i = n.index();
 
@@ -200,7 +198,7 @@ where MWF: MirWithFlowState<'tcx>,
                                           n: &Node,
                                           w: &mut W,
                                           block: BasicBlock,
-                                          mir: &Mir)
+                                          mir: &Mir<'_>)
                                           -> io::Result<()> {
         let i = n.index();
 
@@ -241,7 +239,7 @@ impl<'a, 'tcx, MWF, P> dot::GraphWalk<'a> for Graph<'a, 'tcx, MWF, P>
 {
     type Node = Node;
     type Edge = Edge;
-    fn nodes(&self) -> dot::Nodes<Node> {
+    fn nodes(&self) -> dot::Nodes<'_, Node> {
         self.mbcx.mir()
             .basic_blocks()
             .indices()
@@ -249,7 +247,7 @@ impl<'a, 'tcx, MWF, P> dot::GraphWalk<'a> for Graph<'a, 'tcx, MWF, P>
             .into()
     }
 
-    fn edges(&self) -> dot::Edges<Edge> {
+    fn edges(&self) -> dot::Edges<'_, Edge> {
         let mir = self.mbcx.mir();
 
         mir.basic_blocks()

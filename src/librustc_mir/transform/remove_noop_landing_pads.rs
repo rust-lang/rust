@@ -1,8 +1,8 @@
 use rustc::ty::TyCtxt;
 use rustc::mir::*;
 use rustc_data_structures::bit_set::BitSet;
-use transform::{MirPass, MirSource};
-use util::patch::MirPatch;
+use crate::transform::{MirPass, MirSource};
+use crate::util::patch::MirPatch;
 
 /// A pass that removes no-op landing pads and replaces jumps to them with
 /// `None`. This is important because otherwise LLVM generates terrible
@@ -34,7 +34,7 @@ impl RemoveNoopLandingPads {
     fn is_nop_landing_pad(
         &self,
         bb: BasicBlock,
-        mir: &Mir,
+        mir: &Mir<'_>,
         nop_landing_pads: &BitSet<BasicBlock>,
     ) -> bool {
         for stmt in &mir[bb].statements {
@@ -86,7 +86,7 @@ impl RemoveNoopLandingPads {
         }
     }
 
-    fn remove_nop_landing_pads(&self, mir: &mut Mir) {
+    fn remove_nop_landing_pads(&self, mir: &mut Mir<'_>) {
         // make sure there's a single resume block
         let resume_block = {
             let patch = MirPatch::new(mir);
