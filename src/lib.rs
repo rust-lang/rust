@@ -17,7 +17,7 @@ use std::collections::HashMap;
 use std::borrow::Cow;
 
 use rustc::ty::{self, TyCtxt, query::TyCtxtAt};
-use rustc::ty::layout::{TyLayout, LayoutOf, Size, Align};
+use rustc::ty::layout::{LayoutOf, Size, Align};
 use rustc::hir::{self, def_id::DefId};
 use rustc::mir;
 

@@ -1,6 +1,7 @@
 use std::cell::{Cell, RefCell};
 use std::rc::Rc;
 use std::sync::Arc;
+use std::fmt::Debug;
 
 fn rc_refcell() {
     let r = Rc::new(RefCell::new(42));
@@ -60,7 +61,16 @@ fn rc_from() {
     check_unique_rc::<str>(Rc::from("Hello, World!"));
 }
 
+fn rc_fat_ptr_eq() {
+    let p = Rc::new(1) as Rc<Debug>;
+    let a: *const Debug = &*p;
+    let r = Rc::into_raw(p);
+    let _b = a == r;
+    drop(unsafe { Rc::from_raw(r) });
+}
+
 fn main() {
+    rc_fat_ptr_eq();
     rc_refcell();
     rc_refcell2();
     rc_cell();
