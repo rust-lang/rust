@@ -1,22 +1,18 @@
 //! New recursive solver modeled on Chalk's recursive solver. Most of
 //! the guts are broken up into modules; see the comments in those modules.
 
+#![deny(rust_2018_idioms)]
+
 #![feature(crate_visibility_modifier)]
 #![feature(in_band_lifetimes)]
 #![feature(nll)]
 
 #![recursion_limit="256"]
 
-extern crate chalk_engine;
 #[macro_use]
 extern crate log;
 #[macro_use]
 extern crate rustc;
-extern crate rustc_data_structures;
-extern crate rustc_target;
-extern crate syntax;
-extern crate syntax_pos;
-extern crate smallvec;
 
 mod chalk_context;
 mod dropck_outlives;
@@ -30,7 +26,7 @@ mod type_op;
 
 use rustc::ty::query::Providers;
 
-pub fn provide(p: &mut Providers) {
+pub fn provide(p: &mut Providers<'_>) {
     dropck_outlives::provide(p);
     evaluate_obligation::provide(p);
     implied_outlives_bounds::provide(p);

@@ -17,7 +17,7 @@ use rustc::traits::FulfillmentContext;
 
 use rustc_data_structures::sync::Lrc;
 
-crate fn provide(p: &mut Providers) {
+crate fn provide(p: &mut Providers<'_>) {
     *p = Providers {
         implied_outlives_bounds,
         ..*p
