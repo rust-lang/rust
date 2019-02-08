@@ -5,7 +5,7 @@ use ra_syntax::{
     SourceFile, TextRange, AstNode, TextUnit, SyntaxNode,
     algo::{find_leaf_at_offset, find_node_at_offset, find_covering_node, LeafAtOffset},
 };
-use ra_ide_api_light::formatting::{leading_indent, reindent};
+use ra_fmt::{leading_indent, reindent};
 
 use crate::{AssistLabel, AssistAction};
 

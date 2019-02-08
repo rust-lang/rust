@@ -1,5 +1,5 @@
 use ra_syntax::{AstNode, ast};
-use ra_ide_api_light::formatting::extract_trivial_expression;
+use ra_fmt::extract_trivial_expression;
 use hir::db::HirDatabase;
 
 use crate::{AssistCtx, Assist};

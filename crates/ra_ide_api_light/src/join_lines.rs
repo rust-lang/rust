@@ -5,10 +5,11 @@ use ra_syntax::{
     algo::find_covering_node,
     ast,
 };
-
+use ra_fmt::{
+    compute_ws, extract_trivial_expression
+};
 use crate::{
     LocalEdit, TextEditBuilder,
-    formatting::{compute_ws, extract_trivial_expression},
 };
 
 pub fn join_lines(file: &SourceFile, range: TextRange) -> LocalEdit {

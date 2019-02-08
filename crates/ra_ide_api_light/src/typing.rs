@@ -4,8 +4,8 @@ use ra_syntax::{
     algo::{find_node_at_offset, find_leaf_at_offset, LeafAtOffset},
     ast::{self, AstToken},
 };
-
-use crate::{LocalEdit, TextEditBuilder, formatting::leading_indent};
+use ra_fmt::leading_indent;
+use crate::{LocalEdit, TextEditBuilder};
 
 pub fn on_enter(file: &SourceFile, offset: TextUnit) -> Option<LocalEdit> {
     let comment =
