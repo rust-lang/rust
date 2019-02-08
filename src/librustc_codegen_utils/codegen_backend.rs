@@ -31,7 +31,7 @@ use rustc::middle::cstore::EncodedMetadata;
 use rustc::middle::cstore::MetadataLoader;
 use rustc::dep_graph::DepGraph;
 use rustc_target::spec::Target;
-use link::out_filename;
+use crate::link::out_filename;
 
 pub use rustc_data_structures::sync::MetadataRef;
 
@@ -44,8 +44,8 @@ pub trait CodegenBackend {
     fn diagnostics(&self) -> &[(&'static str, &'static str)] { &[] }
 
     fn metadata_loader(&self) -> Box<dyn MetadataLoader + Sync>;
-    fn provide(&self, _providers: &mut Providers);
-    fn provide_extern(&self, _providers: &mut Providers);
+    fn provide(&self, _providers: &mut Providers<'_>);
+    fn provide_extern(&self, _providers: &mut Providers<'_>);
     fn codegen_crate<'a, 'tcx>(
         &self,
         tcx: TyCtxt<'a, 'tcx, 'tcx>,
@@ -111,8 +111,8 @@ impl CodegenBackend for MetadataOnlyCodegenBackend {
         box NoLlvmMetadataLoader
     }
 
-    fn provide(&self, providers: &mut Providers) {
-        ::symbol_names::provide(providers);
+    fn provide(&self, providers: &mut Providers<'_>) {
+        crate::symbol_names::provide(providers);
 
         providers.target_features_whitelist = |_tcx, _cnum| {
             Default::default() // Just a dummy
@@ -120,7 +120,7 @@ impl CodegenBackend for MetadataOnlyCodegenBackend {
         providers.is_reachable_non_generic = |_tcx, _defid| true;
         providers.exported_symbols = |_tcx, _crate| Arc::new(Vec::new());
     }
-    fn provide_extern(&self, providers: &mut Providers) {
+    fn provide_extern(&self, providers: &mut Providers<'_>) {
         providers.is_reachable_non_generic = |_tcx, _defid| true;
     }
 
@@ -131,12 +131,12 @@ impl CodegenBackend for MetadataOnlyCodegenBackend {
     ) -> Box<dyn Any> {
         use rustc_mir::monomorphize::item::MonoItem;
 
-        ::check_for_rustc_errors_attr(tcx);
-        ::symbol_names_test::report_symbol_names(tcx);
-        ::rustc_incremental::assert_dep_graph(tcx);
-        ::rustc_incremental::assert_module_sources::assert_module_sources(tcx);
+        crate::check_for_rustc_errors_attr(tcx);
+        crate::symbol_names_test::report_symbol_names(tcx);
+        rustc_incremental::assert_dep_graph(tcx);
+        rustc_incremental::assert_module_sources::assert_module_sources(tcx);
         // FIXME: Fix this
-        // ::rustc::middle::dependency_format::calculate(tcx);
+        // rustc::middle::dependency_format::calculate(tcx);
         let _ = tcx.link_args(LOCAL_CRATE);
         let _ = tcx.native_libraries(LOCAL_CRATE);
         let (_, cgus) = tcx.collect_and_partition_mono_items(LOCAL_CRATE);
