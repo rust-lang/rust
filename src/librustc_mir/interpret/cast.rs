@@ -9,7 +9,7 @@ use rustc::mir::interpret::{
 use rustc::mir::CastKind;
 use rustc_apfloat::Float;
 
-use super::{EvalContext, Machine, PlaceTy, OpTy, Immediate};
+use super::{EvalContext, Machine, PlaceTy, OpTy, ImmTy, Immediate};
 
 impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> {
     fn type_is_fat_ptr(&self, ty: Ty<'tcx>) -> bool {
@@ -372,7 +372,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> 
                             assert_eq!(src.layout.fields.offset(i).bytes(), 0);
                             assert_eq!(src_field_layout.size, src.layout.size);
                             // just sawp out the layout
-                            OpTy { op: src.op, layout: src_field_layout }
+                            OpTy::from(ImmTy { imm: src.to_immediate(), layout: src_field_layout })
                         }
                     };
                     if src_field.layout.ty == dst_field.layout.ty {

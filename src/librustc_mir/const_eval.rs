@@ -77,7 +77,7 @@ pub fn op_to_const<'tcx>(
     let normalized_op = if normalize {
         ecx.try_read_immediate(op)?
     } else {
-        match op.op {
+        match *op {
             Operand::Indirect(mplace) => Err(mplace),
             Operand::Immediate(val) => Ok(val)
         }
@@ -103,15 +103,6 @@ pub fn op_to_const<'tcx>(
             ConstValue::Slice(a.not_undef()?, b.to_usize(ecx)?),
     };
     Ok(ty::Const { val, ty: op.layout.ty })
-}
-
-pub fn lazy_const_to_op<'tcx>(
-    ecx: &CompileTimeEvalContext<'_, '_, 'tcx>,
-    cnst: ty::LazyConst<'tcx>,
-    ty: ty::Ty<'tcx>,
-) -> EvalResult<'tcx, OpTy<'tcx>> {
-    let op = ecx.const_value_to_op(cnst)?;
-    Ok(OpTy { op, layout: ecx.layout_of(ty)? })
 }
 
 fn eval_body_and_ecx<'a, 'mir, 'tcx>(
@@ -486,7 +477,7 @@ pub fn const_field<'a, 'tcx>(
     let ecx = mk_eval_cx(tcx, DUMMY_SP, param_env);
     let result = (|| {
         // get the operand again
-        let op = lazy_const_to_op(&ecx, ty::LazyConst::Evaluated(value), value.ty)?;
+        let op = ecx.lazy_const_to_op(ty::LazyConst::Evaluated(value), value.ty)?;
         // downcast
         let down = match variant {
             None => op,
@@ -512,7 +503,7 @@ pub fn const_variant_index<'a, 'tcx>(
 ) -> EvalResult<'tcx, VariantIdx> {
     trace!("const_variant_index: {:?}", val);
     let ecx = mk_eval_cx(tcx, DUMMY_SP, param_env);
-    let op = lazy_const_to_op(&ecx, ty::LazyConst::Evaluated(val), val.ty)?;
+    let op = ecx.lazy_const_to_op(ty::LazyConst::Evaluated(val), val.ty)?;
     Ok(ecx.read_discriminant(op)?.1)
 }
 
