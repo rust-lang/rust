@@ -2,7 +2,7 @@ fn main() {
     let foo = 100;
 
     static y: isize = foo + 1;
-    //~^ ERROR can't capture dynamic environment
+    //~^ ERROR attempt to use a non-constant value in a constant
 
     println!("{}", y);
 }

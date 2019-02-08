@@ -15,7 +15,7 @@
 use AttributeType::*;
 use AttributeGate::*;
 
-use crate::ast::{self, NodeId, PatKind, RangeEnd};
+use crate::ast::{self, NodeId, GenericParam, GenericParamKind, PatKind, RangeEnd};
 use crate::attr;
 use crate::early_buffered_lints::BufferedEarlyLintId;
 use crate::source_map::Spanned;
@@ -461,6 +461,9 @@ declare_features! (
 
     // Re-Rebalance coherence
     (active, re_rebalance_coherence, "1.32.0", Some(55437), None),
+
+    // Const generic types.
+    (active, const_generics, "1.34.0", Some(44580), None),
 
     // #[optimize(X)]
     (active, optimize_attribute, "1.34.0", Some(54882), None),
@@ -1899,6 +1902,14 @@ impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
         visit::walk_fn(self, fn_kind, fn_decl, span);
     }
 
+    fn visit_generic_param(&mut self, param: &'a GenericParam) {
+        if let GenericParamKind::Const { .. } = param.kind {
+            gate_feature_post!(&self, const_generics, param.ident.span,
+                "const generics are unstable");
+        }
+        visit::walk_generic_param(self, param);
+    }
+
     fn visit_trait_item(&mut self, ti: &'a ast::TraitItem) {
         match ti.node {
             ast::TraitItemKind::Method(ref sig, ref block) => {
@@ -1984,7 +1995,7 @@ pub fn get_features(span_handler: &Handler, krate_attrs: &[ast::Attribute],
     // Some features are known to be incomplete and using them is likely to have
     // unanticipated results, such as compiler crashes. We warn the user about these
     // to alert them.
-    let incomplete_features = ["generic_associated_types"];
+    let incomplete_features = ["generic_associated_types", "const_generics"];
 
     let mut features = Features::new();
     let mut edition_enabled_features = FxHashMap::default();

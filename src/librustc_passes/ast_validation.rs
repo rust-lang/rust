@@ -7,8 +7,10 @@
 // or type checking or some other kind of complex analysis.
 
 use std::mem;
+use syntax::print::pprust;
 use rustc::lint;
 use rustc::session::Session;
+use rustc_data_structures::fx::FxHashMap;
 use syntax::ast::*;
 use syntax::attr;
 use syntax::source_map::Spanned;
@@ -271,7 +273,74 @@ impl<'a> AstValidator<'a> {
             _ => None,
         }
     }
+}
 
+enum GenericPosition {
+    Param,
+    Arg,
+}
+
+fn validate_generics_order<'a>(
+    handler: &errors::Handler,
+    generics: impl Iterator<Item = (ParamKindOrd, Span, Option<String>)>,
+    pos: GenericPosition,
+    span: Span,
+) {
+    let mut max_param: Option<ParamKindOrd> = None;
+    let mut out_of_order = FxHashMap::default();
+    let mut param_idents = vec![];
+
+    for (kind, span, ident) in generics {
+        if let Some(ident) = ident {
+            param_idents.push((kind, param_idents.len(), ident));
+        }
+        let max_param = &mut max_param;
+        match max_param {
+            Some(max_param) if *max_param > kind => {
+                let entry = out_of_order.entry(kind).or_insert((*max_param, vec![]));
+                entry.1.push(span);
+            }
+            Some(_) | None => *max_param = Some(kind),
+        };
+    }
+
+    let mut ordered_params = "<".to_string();
+    if !out_of_order.is_empty() {
+        param_idents.sort_by_key(|&(po, i, _)| (po, i));
+        let mut first = true;
+        for (_, _, ident) in param_idents {
+            if !first {
+                ordered_params += ", ";
+            }
+            ordered_params += &ident;
+            first = false;
+        }
+    }
+    ordered_params += ">";
+
+    let pos_str = match pos {
+        GenericPosition::Param => "parameter",
+        GenericPosition::Arg => "argument",
+    };
+
+    for (param_ord, (max_param, spans)) in out_of_order {
+        let mut err = handler.struct_span_err(spans,
+            &format!(
+                "{} {pos}s must be declared prior to {} {pos}s",
+                param_ord,
+                max_param,
+                pos = pos_str,
+            ));
+        if let GenericPosition::Param = pos {
+            err.span_suggestion(
+                span,
+                &format!("reorder the {}s: lifetimes, then types, then consts", pos_str),
+                ordered_params.clone(),
+                Applicability::MachineApplicable,
+            );
+        }
+        err.emit();
+    }
 }
 
 impl<'a> Visitor<'a> for AstValidator<'a> {
@@ -412,6 +481,26 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
                         .note("only trait implementations may be annotated with default").emit();
                 }
             }
+            ItemKind::Fn(_, header, ref generics, _) => {
+                // We currently do not permit const generics in `const fn`, as
+                // this is tantamount to allowing compile-time dependent typing.
+                if header.constness.node == Constness::Const {
+                    // Look for const generics and error if we find any.
+                    for param in &generics.params {
+                        match param.kind {
+                            GenericParamKind::Const { .. } => {
+                                self.err_handler()
+                                    .struct_span_err(
+                                        item.span,
+                                        "const parameters are not permitted in `const fn`",
+                                    )
+                                    .emit();
+                            }
+                            _ => {}
+                        }
+                    }
+                }
+            }
             ItemKind::ForeignMod(..) => {
                 self.invalid_visibility(
                     &item.vis,
@@ -508,6 +597,13 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
         match *generic_args {
             GenericArgs::AngleBracketed(ref data) => {
                 walk_list!(self, visit_generic_arg, &data.args);
+                validate_generics_order(self.err_handler(), data.args.iter().map(|arg| {
+                    (match arg {
+                        GenericArg::Lifetime(..) => ParamKindOrd::Lifetime,
+                        GenericArg::Type(..) => ParamKindOrd::Type,
+                        GenericArg::Const(..) => ParamKindOrd::Const,
+                    }, arg.span(), None)
+                }), GenericPosition::Arg, generic_args.span());
                 // Type bindings such as `Item=impl Debug` in `Iterator<Item=Debug>`
                 // are allowed to contain nested `impl Trait`.
                 self.with_impl_trait(None, |this| {
@@ -526,27 +622,32 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
     }
 
     fn visit_generics(&mut self, generics: &'a Generics) {
-        let mut seen_non_lifetime_param = false;
-        let mut seen_default = None;
+        let mut prev_ty_default = None;
         for param in &generics.params {
-            match (&param.kind, seen_non_lifetime_param) {
-                (GenericParamKind::Lifetime { .. }, true) => {
+            if let GenericParamKind::Type { ref default, .. } = param.kind {
+                if default.is_some() {
+                    prev_ty_default = Some(param.ident.span);
+                } else if let Some(span) = prev_ty_default {
                     self.err_handler()
-                        .span_err(param.ident.span, "lifetime parameters must be leading");
-                },
-                (GenericParamKind::Lifetime { .. }, false) => {}
-                (GenericParamKind::Type { ref default, .. }, _) => {
-                    seen_non_lifetime_param = true;
-                    if default.is_some() {
-                        seen_default = Some(param.ident.span);
-                    } else if let Some(span) = seen_default {
-                        self.err_handler()
-                            .span_err(span, "type parameters with a default must be trailing");
-                        break;
-                    }
+                        .span_err(span, "type parameters with a default must be trailing");
+                    break;
                 }
             }
         }
+
+        validate_generics_order(self.err_handler(), generics.params.iter().map(|param| {
+            let span = param.ident.span;
+            let ident = Some(param.ident.to_string());
+            match &param.kind {
+                GenericParamKind::Lifetime { .. } => (ParamKindOrd::Lifetime, span, ident),
+                GenericParamKind::Type { .. } => (ParamKindOrd::Type, span, ident),
+                GenericParamKind::Const { ref ty } => {
+                    let ty = pprust::ty_to_string(ty);
+                    (ParamKindOrd::Const, span, Some(format!("const {}: {}", param.ident, ty)))
+                }
+            }
+        }), GenericPosition::Param, generics.span);
+
         for predicate in &generics.where_clause.predicates {
             if let WherePredicate::EqPredicate(ref predicate) = *predicate {
                 self.err_handler()
@@ -554,6 +655,7 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
                                                supported in where clauses (see #20041)");
             }
         }
+
         visit::walk_generics(self, generics)
     }
 

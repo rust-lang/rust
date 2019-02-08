@@ -397,6 +397,7 @@ crate enum TokenType {
     Ident,
     Path,
     Type,
+    Const,
 }
 
 impl TokenType {
@@ -409,6 +410,7 @@ impl TokenType {
             TokenType::Ident => "identifier".to_string(),
             TokenType::Path => "path".to_string(),
             TokenType::Type => "type".to_string(),
+            TokenType::Const => "const".to_string(),
         }
     }
 }
@@ -946,6 +948,15 @@ impl<'a> Parser<'a> {
         }
     }
 
+    fn check_const_arg(&mut self) -> bool {
+        if self.token.can_begin_const_arg() {
+            true
+        } else {
+            self.expected_tokens.push(TokenType::Const);
+            false
+        }
+    }
+
     /// Expect and consume a `+`. if `+=` is seen, replace it with a `=`
     /// and continue. If a `+` is not seen, return false.
     ///
@@ -1031,7 +1042,8 @@ impl<'a> Parser<'a> {
     }
 
     /// Attempt to consume a `<`. If `<<` is seen, replace it with a single
-    /// `<` and continue. If a `<` is not seen, return false.
+    /// `<` and continue. If `<-` is seen, replace it with a single `<`
+    /// and continue. If a `<` is not seen, return false.
     ///
     /// This is meant to be used when parsing generics on a path to get the
     /// starting token.
@@ -1045,6 +1057,11 @@ impl<'a> Parser<'a> {
             token::BinOp(token::Shl) => {
                 let span = self.span.with_lo(self.span.lo() + BytePos(1));
                 self.bump_with(token::Lt, span);
+                true
+            }
+            token::LArrow => {
+                let span = self.span.with_lo(self.span.lo() + BytePos(1));
+                self.bump_with(token::BinOp(token::Minus), span);
                 true
             }
             _ => false,
@@ -5482,15 +5499,27 @@ impl<'a> Parser<'a> {
         Ok((ident, TraitItemKind::Type(bounds, default), generics))
     }
 
+    fn parse_const_param(&mut self, preceding_attrs: Vec<Attribute>) -> PResult<'a, GenericParam> {
+        self.expect_keyword(keywords::Const)?;
+        let ident = self.parse_ident()?;
+        self.expect(&token::Colon)?;
+        let ty = self.parse_ty()?;
+
+        Ok(GenericParam {
+            ident,
+            id: ast::DUMMY_NODE_ID,
+            attrs: preceding_attrs.into(),
+            bounds: Vec::new(),
+            kind: GenericParamKind::Const {
+                ty,
+            }
+        })
+    }
+
     /// Parses (possibly empty) list of lifetime and type parameters, possibly including
     /// trailing comma and erroneous trailing attributes.
     crate fn parse_generic_params(&mut self) -> PResult<'a, Vec<ast::GenericParam>> {
-        let mut lifetimes = Vec::new();
         let mut params = Vec::new();
-        let mut seen_ty_param: Option<Span> = None;
-        let mut last_comma_span = None;
-        let mut bad_lifetime_pos = vec![];
-        let mut suggestions = vec![];
         loop {
             let attrs = self.parse_outer_attributes()?;
             if self.check_lifetime() {
@@ -5501,39 +5530,40 @@ impl<'a> Parser<'a> {
                 } else {
                     Vec::new()
                 };
-                lifetimes.push(ast::GenericParam {
+                params.push(ast::GenericParam {
                     ident: lifetime.ident,
                     id: lifetime.id,
                     attrs: attrs.into(),
                     bounds,
                     kind: ast::GenericParamKind::Lifetime,
                 });
-                if let Some(sp) = seen_ty_param {
-                    let remove_sp = last_comma_span.unwrap_or(self.prev_span).to(self.prev_span);
-                    bad_lifetime_pos.push(self.prev_span);
-                    if let Ok(snippet) = self.sess.source_map().span_to_snippet(self.prev_span) {
-                        suggestions.push((remove_sp, String::new()));
-                        suggestions.push((
-                            sp.shrink_to_lo(),
-                            format!("{}, ", snippet)));
-                    }
-                }
+            } else if self.check_keyword(keywords::Const) {
+                // Parse const parameter.
+                params.push(self.parse_const_param(attrs)?);
             } else if self.check_ident() {
                 // Parse type parameter.
                 params.push(self.parse_ty_param(attrs)?);
-                if seen_ty_param.is_none() {
-                    seen_ty_param = Some(self.prev_span);
-                }
             } else {
                 // Check for trailing attributes and stop parsing.
                 if !attrs.is_empty() {
-                    let param_kind = if seen_ty_param.is_some() { "type" } else { "lifetime" };
-                    self.struct_span_err(
-                        attrs[0].span,
-                        &format!("trailing attribute after {} parameters", param_kind),
-                    )
-                    .span_label(attrs[0].span, "attributes must go before parameters")
-                    .emit();
+                    if !params.is_empty() {
+                        self.struct_span_err(
+                            attrs[0].span,
+                            &format!("trailing attribute after generic parameter"),
+                        )
+                        .span_label(attrs[0].span, "attributes must go before parameters")
+                        .emit();
+                    } else {
+                        self.struct_span_err(
+                            attrs[0].span,
+                            &format!("attribute without generic parameters"),
+                        )
+                        .span_label(
+                            attrs[0].span,
+                            "attributes are only permitted when preceding parameters",
+                        )
+                        .emit();
+                    }
                 }
                 break
             }
@@ -5541,24 +5571,8 @@ impl<'a> Parser<'a> {
             if !self.eat(&token::Comma) {
                 break
             }
-            last_comma_span = Some(self.prev_span);
         }
-        if !bad_lifetime_pos.is_empty() {
-            let mut err = self.struct_span_err(
-                bad_lifetime_pos,
-                "lifetime parameters must be declared prior to type parameters",
-            );
-            if !suggestions.is_empty() {
-                err.multipart_suggestion(
-                    "move the lifetime parameter prior to the first type parameter",
-                    suggestions,
-                    Applicability::MachineApplicable,
-                );
-            }
-            err.emit();
-        }
-        lifetimes.extend(params);  // ensure the correct order of lifetimes and type params
-        Ok(lifetimes)
+        Ok(params)
     }
 
     /// Parse a set of optional generic type parameter declarations. Where
@@ -5740,35 +5754,16 @@ impl<'a> Parser<'a> {
     fn parse_generic_args(&mut self) -> PResult<'a, (Vec<GenericArg>, Vec<TypeBinding>)> {
         let mut args = Vec::new();
         let mut bindings = Vec::new();
+        let mut misplaced_assoc_ty_bindings: Vec<Span> = Vec::new();
+        let mut assoc_ty_bindings: Vec<Span> = Vec::new();
 
-        let mut seen_type = false;
-        let mut seen_binding = false;
+        let args_lo = self.span;
 
-        let mut last_comma_span = None;
-        let mut first_type_or_binding_span: Option<Span> = None;
-        let mut first_binding_span: Option<Span> = None;
-
-        let mut bad_lifetime_pos = vec![];
-        let mut bad_type_pos = vec![];
-
-        let mut lifetime_suggestions = vec![];
-        let mut type_suggestions = vec![];
         loop {
             if self.check_lifetime() && self.look_ahead(1, |t| !t.is_like_plus()) {
                 // Parse lifetime argument.
                 args.push(GenericArg::Lifetime(self.expect_lifetime()));
-
-                if seen_type || seen_binding {
-                    let remove_sp = last_comma_span.unwrap_or(self.prev_span).to(self.prev_span);
-                    bad_lifetime_pos.push(self.prev_span);
-
-                    if let Ok(snippet) = self.sess.source_map().span_to_snippet(self.prev_span) {
-                        lifetime_suggestions.push((remove_sp, String::new()));
-                        lifetime_suggestions.push((
-                            first_type_or_binding_span.unwrap().shrink_to_lo(),
-                            format!("{}, ", snippet)));
-                    }
-                }
+                misplaced_assoc_ty_bindings.append(&mut assoc_ty_bindings);
             } else if self.check_ident() && self.look_ahead(1, |t| t == &token::Eq) {
                 // Parse associated type binding.
                 let lo = self.span;
@@ -5782,131 +5777,64 @@ impl<'a> Parser<'a> {
                     ty,
                     span,
                 });
+                assoc_ty_bindings.push(span);
+            } else if self.check_const_arg() {
+                // FIXME(const_generics): to distinguish between idents for types and consts,
+                // we should introduce a GenericArg::Ident in the AST and distinguish when
+                // lowering to the HIR. For now, idents for const args are not permitted.
 
-                seen_binding = true;
-                if first_type_or_binding_span.is_none() {
-                    first_type_or_binding_span = Some(span);
-                }
-                if first_binding_span.is_none() {
-                    first_binding_span = Some(span);
-                }
+                // Parse const argument.
+                let expr = if let token::OpenDelim(token::Brace) = self.token {
+                    self.parse_block_expr(None, self.span, BlockCheckMode::Default, ThinVec::new())?
+                } else if self.token.is_ident() {
+                    // FIXME(const_generics): to distinguish between idents for types and consts,
+                    // we should introduce a GenericArg::Ident in the AST and distinguish when
+                    // lowering to the HIR. For now, idents for const args are not permitted.
+                    return Err(
+                        self.fatal("identifiers may currently not be used for const generics")
+                    );
+                } else {
+                    // FIXME(const_generics): this currently conflicts with emplacement syntax
+                    // with negative integer literals.
+                    self.parse_literal_maybe_minus()?
+                };
+                let value = AnonConst {
+                    id: ast::DUMMY_NODE_ID,
+                    value: expr,
+                };
+                args.push(GenericArg::Const(value));
+                misplaced_assoc_ty_bindings.append(&mut assoc_ty_bindings);
             } else if self.check_type() {
                 // Parse type argument.
-                let ty_param = self.parse_ty()?;
-                if seen_binding {
-                    let remove_sp = last_comma_span.unwrap_or(self.prev_span).to(self.prev_span);
-                    bad_type_pos.push(self.prev_span);
-
-                    if let Ok(snippet) = self.sess.source_map().span_to_snippet(self.prev_span) {
-                        type_suggestions.push((remove_sp, String::new()));
-                        type_suggestions.push((
-                            first_binding_span.unwrap().shrink_to_lo(),
-                            format!("{}, ", snippet)));
-                    }
-                }
-
-                if first_type_or_binding_span.is_none() {
-                    first_type_or_binding_span = Some(ty_param.span);
-                }
-                args.push(GenericArg::Type(ty_param));
-                seen_type = true;
+                args.push(GenericArg::Type(self.parse_ty()?));
+                misplaced_assoc_ty_bindings.append(&mut assoc_ty_bindings);
             } else {
                 break
             }
 
             if !self.eat(&token::Comma) {
                 break
-            } else {
-                last_comma_span = Some(self.prev_span);
             }
         }
 
-        self.maybe_report_incorrect_generic_argument_order(
-            bad_lifetime_pos, bad_type_pos, lifetime_suggestions, type_suggestions
-        );
+        // FIXME: we would like to report this in ast_validation instead, but we currently do not
+        // preserve ordering of generic parameters with respect to associated type binding, so we
+        // lose that information after parsing.
+        if misplaced_assoc_ty_bindings.len() > 0 {
+            let mut err = self.struct_span_err(
+                args_lo.to(self.prev_span),
+                "associated type bindings must be declared after generic parameters",
+            );
+            for span in misplaced_assoc_ty_bindings {
+                err.span_label(
+                    span,
+                    "this associated type binding should be moved after the generic parameters",
+                );
+            }
+            err.emit();
+        }
 
         Ok((args, bindings))
-    }
-
-    /// Maybe report an error about incorrect generic argument order - "lifetime parameters
-    /// must be declared before type parameters", "type parameters must be declared before
-    /// associated type bindings" or both.
-    fn maybe_report_incorrect_generic_argument_order(
-        &self,
-        bad_lifetime_pos: Vec<Span>,
-        bad_type_pos: Vec<Span>,
-        lifetime_suggestions: Vec<(Span, String)>,
-        type_suggestions: Vec<(Span, String)>,
-    ) {
-        let mut err = if !bad_lifetime_pos.is_empty() && !bad_type_pos.is_empty() {
-            let mut positions = bad_lifetime_pos.clone();
-            positions.extend_from_slice(&bad_type_pos);
-
-            self.struct_span_err(
-                positions,
-                "generic arguments must declare lifetimes, types and associated type bindings in \
-                 that order",
-            )
-        } else if !bad_lifetime_pos.is_empty() {
-            self.struct_span_err(
-                bad_lifetime_pos.clone(),
-                "lifetime parameters must be declared prior to type parameters"
-            )
-        } else if !bad_type_pos.is_empty() {
-            self.struct_span_err(
-                bad_type_pos.clone(),
-                "type parameters must be declared prior to associated type bindings"
-            )
-        } else {
-            return;
-        };
-
-        if !bad_lifetime_pos.is_empty() {
-            for sp in &bad_lifetime_pos {
-                err.span_label(*sp, "must be declared prior to type parameters");
-            }
-        }
-
-        if !bad_type_pos.is_empty() {
-            for sp in &bad_type_pos {
-                err.span_label(*sp, "must be declared prior to associated type bindings");
-            }
-        }
-
-        if !lifetime_suggestions.is_empty() && !type_suggestions.is_empty() {
-            let mut suggestions = lifetime_suggestions;
-            suggestions.extend_from_slice(&type_suggestions);
-
-            let plural = bad_lifetime_pos.len() + bad_type_pos.len() > 1;
-            err.multipart_suggestion(
-                &format!(
-                    "move the parameter{}",
-                    if plural { "s" } else { "" },
-                ),
-                suggestions,
-                Applicability::MachineApplicable,
-            );
-        } else if !lifetime_suggestions.is_empty() {
-            err.multipart_suggestion(
-                &format!(
-                    "move the lifetime parameter{} prior to the first type parameter",
-                    if bad_lifetime_pos.len() > 1 { "s" } else { "" },
-                ),
-                lifetime_suggestions,
-                Applicability::MachineApplicable,
-            );
-        } else if !type_suggestions.is_empty() {
-            err.multipart_suggestion(
-                &format!(
-                    "move the type parameter{} prior to the first associated type binding",
-                    if bad_type_pos.len() > 1 { "s" } else { "" },
-                ),
-                type_suggestions,
-                Applicability::MachineApplicable,
-            );
-        }
-
-        err.emit();
     }
 
     /// Parses an optional `where` clause and places it in `generics`.
@@ -6526,6 +6454,7 @@ impl<'a> Parser<'a> {
         //     `<` (LIFETIME|IDENT) `,` - first generic parameter in a list
         //     `<` (LIFETIME|IDENT) `:` - generic parameter with bounds
         //     `<` (LIFETIME|IDENT) `=` - generic parameter with a default
+        //     `<` const                - generic const parameter
         // The only truly ambiguous case is
         //     `<` IDENT `>` `::` IDENT ...
         // we disambiguate it in favor of generics (`impl<T> ::absolute::Path<T> { ... }`)
@@ -6535,7 +6464,8 @@ impl<'a> Parser<'a> {
             (self.look_ahead(1, |t| t == &token::Pound || t == &token::Gt) ||
              self.look_ahead(1, |t| t.is_lifetime() || t.is_ident()) &&
                 self.look_ahead(2, |t| t == &token::Gt || t == &token::Comma ||
-                                       t == &token::Colon || t == &token::Eq))
+                                       t == &token::Colon || t == &token::Eq) ||
+             self.look_ahead(1, |t| t.is_keyword(keywords::Const)))
     }
 
     fn parse_impl_body(&mut self) -> PResult<'a, (Vec<ImplItem>, Vec<Attribute>)> {

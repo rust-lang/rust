@@ -218,6 +218,7 @@ impl<'a> visit::Visitor<'a> for DefCollector<'a> {
         let def_path_data = match param.kind {
             GenericParamKind::Lifetime { .. } => DefPathData::LifetimeParam(name),
             GenericParamKind::Type { .. } => DefPathData::TypeParam(name),
+            GenericParamKind::Const { .. } => DefPathData::ConstParam(name),
         };
         self.create_def(param.id, def_path_data, REGULAR_SPACE, param.ident.span);
 

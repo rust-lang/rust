@@ -279,6 +279,20 @@ impl Token {
         }
     }
 
+    /// Returns `true` if the token can appear at the start of a const param.
+    pub fn can_begin_const_arg(&self) -> bool {
+        match self {
+            OpenDelim(Brace) => true,
+            Interpolated(ref nt) => match nt.0 {
+                NtExpr(..) => true,
+                NtBlock(..) => true,
+                NtLiteral(..) => true,
+                _ => false,
+            }
+            _ => self.can_begin_literal_or_bool(),
+        }
+    }
+
     /// Returns `true` if the token can appear at the start of a generic bound.
     crate fn can_begin_bound(&self) -> bool {
         self.is_path_start() || self.is_lifetime() || self.is_keyword(keywords::For) ||
@@ -293,7 +307,7 @@ impl Token {
         }
     }
 
-    /// Returns `true` if the token is any literal, a minus (which can follow a literal,
+    /// Returns `true` if the token is any literal, a minus (which can prefix a literal,
     /// for example a '-42', or one of the boolean idents).
     crate fn can_begin_literal_or_bool(&self) -> bool {
         match *self {

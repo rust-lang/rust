@@ -1025,6 +1025,7 @@ impl<'a> State<'a> {
         match generic_arg {
             GenericArg::Lifetime(lt) => self.print_lifetime(*lt),
             GenericArg::Type(ty) => self.print_type(ty),
+            GenericArg::Const(ct) => self.print_expr(&ct.value),
         }
     }
 
@@ -2929,7 +2930,7 @@ impl<'a> State<'a> {
                     s.print_outer_attributes_inline(&param.attrs)?;
                     let lt = ast::Lifetime { id: param.id, ident: param.ident };
                     s.print_lifetime_bounds(lt, &param.bounds)
-                },
+                }
                 ast::GenericParamKind::Type { ref default } => {
                     s.print_outer_attributes_inline(&param.attrs)?;
                     s.print_ident(param.ident)?;
@@ -2942,6 +2943,15 @@ impl<'a> State<'a> {
                         }
                         _ => Ok(())
                     }
+                }
+                ast::GenericParamKind::Const { ref ty } => {
+                    s.print_outer_attributes_inline(&param.attrs)?;
+                    s.word_space("const")?;
+                    s.print_ident(param.ident)?;
+                    s.s.space()?;
+                    s.word_space(":")?;
+                    s.print_type(ty)?;
+                    s.print_type_bounds(":", &param.bounds)
                 }
             }
         })?;

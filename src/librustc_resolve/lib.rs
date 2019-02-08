@@ -13,7 +13,7 @@ use rustc_errors as errors;
 
 pub use rustc::hir::def::{Namespace, PerNS};
 
-use TypeParameters::*;
+use GenericParameters::*;
 use RibKind::*;
 
 use rustc::hir::map::{Definitions, DefCollector};
@@ -140,10 +140,11 @@ impl Ord for BindingError {
 }
 
 enum ResolutionError<'a> {
-    /// error E0401: can't use type parameters from outer function
-    TypeParametersFromOuterFunction(Def),
-    /// error E0403: the name is already used for a type parameter in this type parameter list
-    NameAlreadyUsedInTypeParameterList(Name, &'a Span),
+    /// error E0401: can't use type or const parameters from outer function
+    GenericParamsFromOuterFunction(Def),
+    /// error E0403: the name is already used for a type/const parameter in this list of
+    /// generic parameters
+    NameAlreadyUsedInParameterList(Name, &'a Span),
     /// error E0407: method is not a member of trait
     MethodNotMemberOfTrait(Name, &'a str),
     /// error E0437: type is not a member of trait
@@ -175,7 +176,7 @@ enum ResolutionError<'a> {
     /// error E0530: X bindings cannot shadow Ys
     BindingShadowsSomethingUnacceptable(&'a str, Name, &'a NameBinding<'a>),
     /// error E0128: type parameters with a default cannot use forward declared identifiers
-    ForwardDeclaredTyParam,
+    ForwardDeclaredTyParam, // FIXME(const_generics:defaults)
 }
 
 /// Combines an error with provided span and emits it
@@ -193,12 +194,13 @@ fn resolve_struct_error<'sess, 'a>(resolver: &'sess Resolver<'_>,
                                    resolution_error: ResolutionError<'a>)
                                    -> DiagnosticBuilder<'sess> {
     match resolution_error {
-        ResolutionError::TypeParametersFromOuterFunction(outer_def) => {
+        ResolutionError::GenericParamsFromOuterFunction(outer_def) => {
             let mut err = struct_span_err!(resolver.session,
-                                           span,
-                                           E0401,
-                                           "can't use type parameters from outer function");
-            err.span_label(span, "use of type variable from outer function");
+                span,
+                E0401,
+                "can't use generic parameters from outer function",
+            );
+            err.span_label(span, format!("use of generic parameter from outer function"));
 
             let cm = resolver.session.source_map();
             match outer_def {
@@ -222,20 +224,25 @@ fn resolve_struct_error<'sess, 'a>(resolver: &'sess Resolver<'_>,
                     }
                     return err;
                 },
-                Def::TyParam(typaram_defid) => {
-                    if let Some(typaram_span) = resolver.definitions.opt_span(typaram_defid) {
-                        err.span_label(typaram_span, "type variable from outer function");
+                Def::TyParam(def_id) => {
+                    if let Some(span) = resolver.definitions.opt_span(def_id) {
+                        err.span_label(span, "type variable from outer function");
                     }
-                },
+                }
+                Def::ConstParam(def_id) => {
+                    if let Some(span) = resolver.definitions.opt_span(def_id) {
+                        err.span_label(span, "const variable from outer function");
+                    }
+                }
                 _ => {
-                    bug!("TypeParametersFromOuterFunction should only be used with Def::SelfTy or \
-                         Def::TyParam")
+                    bug!("GenericParamsFromOuterFunction should only be used with Def::SelfTy, \
+                         Def::TyParam");
                 }
             }
 
             // Try to retrieve the span of the function signature and generate a new message with
-            // a local type parameter
-            let sugg_msg = "try using a local type parameter instead";
+            // a local type or const parameter.
+            let sugg_msg = &format!("try using a local generic parameter instead");
             if let Some((sugg_span, new_snippet)) = cm.generate_local_type_param_snippet(span) {
                 // Suggest the modification to the user
                 err.span_suggestion(
@@ -245,19 +252,20 @@ fn resolve_struct_error<'sess, 'a>(resolver: &'sess Resolver<'_>,
                     Applicability::MachineApplicable,
                 );
             } else if let Some(sp) = cm.generate_fn_name_span(span) {
-                err.span_label(sp, "try adding a local type parameter in this method instead");
+                err.span_label(sp,
+                    format!("try adding a local generic parameter in this method instead"));
             } else {
-                err.help("try using a local type parameter instead");
+                err.help(&format!("try using a local generic parameter instead"));
             }
 
             err
         }
-        ResolutionError::NameAlreadyUsedInTypeParameterList(name, first_use_span) => {
+        ResolutionError::NameAlreadyUsedInParameterList(name, first_use_span) => {
              let mut err = struct_span_err!(resolver.session,
                                             span,
                                             E0403,
-                                            "the name `{}` is already used for a type parameter \
-                                            in this type parameter list",
+                                            "the name `{}` is already used for a generic \
+                                            parameter in this list of generic parameters",
                                             name);
              err.span_label(span, "already used");
              err.span_label(first_use_span.clone(), format!("first use of `{}`", name));
@@ -544,8 +552,7 @@ impl<'a> PathSource<'a> {
                 Def::Struct(..) | Def::Union(..) | Def::Enum(..) |
                 Def::Trait(..) | Def::TraitAlias(..) | Def::TyAlias(..) |
                 Def::AssociatedTy(..) | Def::PrimTy(..) | Def::TyParam(..) |
-                Def::SelfTy(..) | Def::Existential(..) |
-                Def::ForeignTy(..) => true,
+                Def::SelfTy(..) | Def::Existential(..) | Def::ForeignTy(..) => true,
                 _ => false,
             },
             PathSource::Trait(AliasPossibility::No) => match def {
@@ -562,7 +569,7 @@ impl<'a> PathSource<'a> {
                 Def::VariantCtor(_, CtorKind::Const) | Def::VariantCtor(_, CtorKind::Fn) |
                 Def::Const(..) | Def::Static(..) | Def::Local(..) | Def::Upvar(..) |
                 Def::Fn(..) | Def::Method(..) | Def::AssociatedConst(..) |
-                Def::SelfCtor(..) => true,
+                Def::SelfCtor(..) | Def::ConstParam(..) => true,
                 _ => false,
             },
             PathSource::Pat => match def {
@@ -746,6 +753,7 @@ impl<'a, 'tcx> Visitor<'tcx> for Resolver<'a> {
         self.resolve_block(block);
     }
     fn visit_anon_const(&mut self, constant: &'tcx ast::AnonConst) {
+        debug!("visit_anon_const {:?}", constant);
         self.with_constant_rib(|this| {
             visit::walk_anon_const(this, constant);
         });
@@ -779,15 +787,15 @@ impl<'a, 'tcx> Visitor<'tcx> for Resolver<'a> {
         visit::walk_poly_trait_ref(self, tref, m);
     }
     fn visit_foreign_item(&mut self, foreign_item: &'tcx ForeignItem) {
-        let type_parameters = match foreign_item.node {
+        let generic_params = match foreign_item.node {
             ForeignItemKind::Fn(_, ref generics) => {
-                HasTypeParameters(generics, ItemRibKind)
+                HasGenericParams(generics, ItemRibKind)
             }
-            ForeignItemKind::Static(..) => NoTypeParameters,
-            ForeignItemKind::Ty => NoTypeParameters,
-            ForeignItemKind::Macro(..) => NoTypeParameters,
+            ForeignItemKind::Static(..) => NoGenericParams,
+            ForeignItemKind::Ty => NoGenericParams,
+            ForeignItemKind::Macro(..) => NoGenericParams,
         };
-        self.with_type_parameter_rib(type_parameters, |this| {
+        self.with_generic_param_rib(generic_params, |this| {
             visit::walk_foreign_item(this, foreign_item);
         });
     }
@@ -797,6 +805,7 @@ impl<'a, 'tcx> Visitor<'tcx> for Resolver<'a> {
                 _: Span,
                 node_id: NodeId)
     {
+        debug!("(resolving function) entering function");
         let (rib_kind, asyncness) = match function_kind {
             FnKind::ItemFn(_, ref header, ..) =>
                 (ItemRibKind, header.asyncness),
@@ -853,6 +862,7 @@ impl<'a, 'tcx> Visitor<'tcx> for Resolver<'a> {
         self.label_ribs.pop();
         self.ribs[ValueNS].pop();
     }
+
     fn visit_generics(&mut self, generics: &'tcx Generics) {
         // For type parameter defaults, we have to ban access
         // to following type parameters, as the Substs can only
@@ -863,6 +873,7 @@ impl<'a, 'tcx> Visitor<'tcx> for Resolver<'a> {
         let mut found_default = false;
         default_ban_rib.bindings.extend(generics.params.iter()
             .filter_map(|param| match param.kind {
+                GenericParamKind::Const { .. } |
                 GenericParamKind::Lifetime { .. } => None,
                 GenericParamKind::Type { ref default, .. } => {
                     found_default |= default.is_some();
@@ -891,6 +902,13 @@ impl<'a, 'tcx> Visitor<'tcx> for Resolver<'a> {
                     // Allow all following defaults to refer to this type parameter.
                     default_ban_rib.bindings.remove(&Ident::with_empty_ctxt(param.ident.name));
                 }
+                GenericParamKind::Const { ref ty } => {
+                    for bound in &param.bounds {
+                        self.visit_param_bound(bound);
+                    }
+
+                    self.visit_ty(ty);
+                }
             }
         }
         for p in &generics.where_clause.predicates {
@@ -900,9 +918,9 @@ impl<'a, 'tcx> Visitor<'tcx> for Resolver<'a> {
 }
 
 #[derive(Copy, Clone)]
-enum TypeParameters<'a, 'b> {
-    NoTypeParameters,
-    HasTypeParameters(// Type parameters.
+enum GenericParameters<'a, 'b> {
+    NoGenericParams,
+    HasGenericParams(// Type parameters.
                       &'b Generics,
 
                       // The kind of the rib used for type parameters.
@@ -2038,6 +2056,7 @@ impl<'a> Resolver<'a> {
         let record_used = record_used_id.is_some();
         let mut module = self.graph_root;
         for i in (0 .. self.ribs[ns].len()).rev() {
+            debug!("walk rib\n{:?}", self.ribs[ns][i].bindings);
             if let Some(def) = self.ribs[ns][i].bindings.get(&ident).cloned() {
                 // The ident resolves to a type parameter or local variable.
                 return Some(LexicalScopeBinding::Def(
@@ -2359,8 +2378,9 @@ impl<'a> Resolver<'a> {
     }
 
     fn resolve_adt(&mut self, item: &Item, generics: &Generics) {
+        debug!("resolve_adt");
         self.with_current_self_item(item, |this| {
-            this.with_type_parameter_rib(HasTypeParameters(generics, ItemRibKind), |this| {
+            this.with_generic_param_rib(HasGenericParams(generics, ItemRibKind), |this| {
                 let item_def_id = this.definitions.local_def_id(item.id);
                 this.with_self_rib(Def::SelfTy(None, Some(item_def_id)), |this| {
                     visit::walk_item(this, item);
@@ -2413,13 +2433,13 @@ impl<'a> Resolver<'a> {
 
     fn resolve_item(&mut self, item: &Item) {
         let name = item.ident.name;
-        debug!("(resolving item) resolving {}", name);
+        debug!("(resolving item) resolving {} ({:?})", name, item.node);
 
         match item.node {
             ItemKind::Ty(_, ref generics) |
             ItemKind::Fn(_, _, ref generics, _) |
             ItemKind::Existential(_, ref generics) => {
-                self.with_type_parameter_rib(HasTypeParameters(generics, ItemRibKind),
+                self.with_generic_param_rib(HasGenericParams(generics, ItemRibKind),
                                              |this| visit::walk_item(this, item));
             }
 
@@ -2438,16 +2458,16 @@ impl<'a> Resolver<'a> {
 
             ItemKind::Trait(.., ref generics, ref bounds, ref trait_items) => {
                 // Create a new rib for the trait-wide type parameters.
-                self.with_type_parameter_rib(HasTypeParameters(generics, ItemRibKind), |this| {
+                self.with_generic_param_rib(HasGenericParams(generics, ItemRibKind), |this| {
                     let local_def_id = this.definitions.local_def_id(item.id);
                     this.with_self_rib(Def::SelfTy(Some(local_def_id), None), |this| {
                         this.visit_generics(generics);
                         walk_list!(this, visit_param_bound, bounds);
 
                         for trait_item in trait_items {
-                            let type_parameters = HasTypeParameters(&trait_item.generics,
+                            let generic_params = HasGenericParams(&trait_item.generics,
                                                                     TraitOrImplItemRibKind);
-                            this.with_type_parameter_rib(type_parameters, |this| {
+                            this.with_generic_param_rib(generic_params, |this| {
                                 match trait_item.node {
                                     TraitItemKind::Const(ref ty, ref default) => {
                                         this.visit_ty(ty);
@@ -2479,7 +2499,7 @@ impl<'a> Resolver<'a> {
 
             ItemKind::TraitAlias(ref generics, ref bounds) => {
                 // Create a new rib for the trait-wide type parameters.
-                self.with_type_parameter_rib(HasTypeParameters(generics, ItemRibKind), |this| {
+                self.with_generic_param_rib(HasGenericParams(generics, ItemRibKind), |this| {
                     let local_def_id = this.definitions.local_def_id(item.id);
                     this.with_self_rib(Def::SelfTy(Some(local_def_id), None), |this| {
                         this.visit_generics(generics);
@@ -2496,6 +2516,7 @@ impl<'a> Resolver<'a> {
 
             ItemKind::Static(ref ty, _, ref expr) |
             ItemKind::Const(ref ty, ref expr) => {
+                debug!("resolve_item ItemKind::Const");
                 self.with_item_rib(|this| {
                     this.visit_ty(ty);
                     this.with_constant_rib(|this| {
@@ -2517,23 +2538,25 @@ impl<'a> Resolver<'a> {
         }
     }
 
-    fn with_type_parameter_rib<'b, F>(&'b mut self, type_parameters: TypeParameters<'a, 'b>, f: F)
+    fn with_generic_param_rib<'b, F>(&'b mut self, generic_params: GenericParameters<'a, 'b>, f: F)
         where F: FnOnce(&mut Resolver<'_>)
     {
-        match type_parameters {
-            HasTypeParameters(generics, rib_kind) => {
+        debug!("with_generic_param_rib");
+        match generic_params {
+            HasGenericParams(generics, rib_kind) => {
                 let mut function_type_rib = Rib::new(rib_kind);
+                let mut function_value_rib = Rib::new(rib_kind);
                 let mut seen_bindings = FxHashMap::default();
                 for param in &generics.params {
                     match param.kind {
                         GenericParamKind::Lifetime { .. } => {}
                         GenericParamKind::Type { .. } => {
                             let ident = param.ident.modern();
-                            debug!("with_type_parameter_rib: {}", param.id);
+                            debug!("with_generic_param_rib: {}", param.id);
 
                             if seen_bindings.contains_key(&ident) {
                                 let span = seen_bindings.get(&ident).unwrap();
-                                let err = ResolutionError::NameAlreadyUsedInTypeParameterList(
+                                let err = ResolutionError::NameAlreadyUsedInParameterList(
                                     ident.name,
                                     span,
                                 );
@@ -2546,20 +2569,40 @@ impl<'a> Resolver<'a> {
                             function_type_rib.bindings.insert(ident, def);
                             self.record_def(param.id, PathResolution::new(def));
                         }
+                        GenericParamKind::Const { .. } => {
+                            let ident = param.ident.modern();
+                            debug!("with_generic_param_rib: {}", param.id);
+
+                            if seen_bindings.contains_key(&ident) {
+                                let span = seen_bindings.get(&ident).unwrap();
+                                let err = ResolutionError::NameAlreadyUsedInParameterList(
+                                    ident.name,
+                                    span,
+                                );
+                                resolve_error(self, param.ident.span, err);
+                            }
+                            seen_bindings.entry(ident).or_insert(param.ident.span);
+
+                            let def = Def::ConstParam(self.definitions.local_def_id(param.id));
+                            function_value_rib.bindings.insert(ident, def);
+                            self.record_def(param.id, PathResolution::new(def));
+                        }
                     }
                 }
+                self.ribs[ValueNS].push(function_value_rib);
                 self.ribs[TypeNS].push(function_type_rib);
             }
 
-            NoTypeParameters => {
+            NoGenericParams => {
                 // Nothing to do.
             }
         }
 
         f(self);
 
-        if let HasTypeParameters(..) = type_parameters {
+        if let HasGenericParams(..) = generic_params {
             self.ribs[TypeNS].pop();
+            self.ribs[ValueNS].pop();
         }
     }
 
@@ -2584,6 +2627,7 @@ impl<'a> Resolver<'a> {
     fn with_constant_rib<F>(&mut self, f: F)
         where F: FnOnce(&mut Resolver<'_>)
     {
+        debug!("with_constant_rib");
         self.ribs[ValueNS].push(Rib::new(ConstantItemRibKind));
         self.label_ribs.push(Rib::new(ConstantItemRibKind));
         f(self);
@@ -2677,8 +2721,9 @@ impl<'a> Resolver<'a> {
                               self_type: &Ty,
                               item_id: NodeId,
                               impl_items: &[ImplItem]) {
+        debug!("resolve_implementation");
         // If applicable, create a rib for the type parameters.
-        self.with_type_parameter_rib(HasTypeParameters(generics, ItemRibKind), |this| {
+        self.with_generic_param_rib(HasGenericParams(generics, ItemRibKind), |this| {
             // Dummy self type for better errors if `Self` is used in the trait path.
             this.with_self_rib(Def::SelfTy(None, None), |this| {
                 // Resolve the trait reference, if necessary.
@@ -2691,30 +2736,37 @@ impl<'a> Resolver<'a> {
                         }
                         // Resolve the self type.
                         this.visit_ty(self_type);
-                        // Resolve the type parameters.
+                        // Resolve the generic parameters.
                         this.visit_generics(generics);
                         // Resolve the items within the impl.
                         this.with_current_self_type(self_type, |this| {
                             this.with_self_struct_ctor_rib(item_def_id, |this| {
+                                debug!("resolve_implementation with_self_struct_ctor_rib");
                                 for impl_item in impl_items {
                                     this.resolve_visibility(&impl_item.vis);
 
                                     // We also need a new scope for the impl item type parameters.
-                                    let type_parameters = HasTypeParameters(&impl_item.generics,
-                                                                            TraitOrImplItemRibKind);
-                                    this.with_type_parameter_rib(type_parameters, |this| {
+                                    let generic_params = HasGenericParams(&impl_item.generics,
+                                                                          TraitOrImplItemRibKind);
+                                    this.with_generic_param_rib(generic_params, |this| {
                                         use self::ResolutionError::*;
                                         match impl_item.node {
                                             ImplItemKind::Const(..) => {
+                                                debug!(
+                                                    "resolve_implementation ImplItemKind::Const",
+                                                );
                                                 // If this is a trait impl, ensure the const
                                                 // exists in trait
-                                                this.check_trait_item(impl_item.ident,
-                                                                      ValueNS,
-                                                                      impl_item.span,
-                                                    |n, s| ConstNotMemberOfTrait(n, s));
-                                                this.with_constant_rib(|this|
-                                                    visit::walk_impl_item(this, impl_item)
+                                                this.check_trait_item(
+                                                    impl_item.ident,
+                                                    ValueNS,
+                                                    impl_item.span,
+                                                    |n, s| ConstNotMemberOfTrait(n, s),
                                                 );
+
+                                                this.with_constant_rib(|this| {
+                                                    visit::walk_impl_item(this, impl_item)
+                                                });
                                             }
                                             ImplItemKind::Method(..) => {
                                                 // If this is a trait impl, ensure the method
@@ -4093,6 +4145,7 @@ impl<'a> Resolver<'a> {
                         mut def: Def,
                         record_used: bool,
                         span: Span) -> Def {
+        debug!("adjust_local_def");
         let ribs = &self.ribs[ns][rib_index + 1..];
 
         // An invalid forward use of a type parameter from a previous default.
@@ -4109,6 +4162,9 @@ impl<'a> Resolver<'a> {
                 span_bug!(span, "unexpected {:?} in bindings", def)
             }
             Def::Local(node_id) => {
+                use ResolutionError::*;
+                let mut res_err = None;
+
                 for rib in ribs {
                     match rib.kind {
                         NormalRibKind | ModuleRibKind(..) | MacroDefinition(..) |
@@ -4144,20 +4200,25 @@ impl<'a> Resolver<'a> {
                             // named function item. This is not allowed, so we
                             // report an error.
                             if record_used {
-                                resolve_error(self, span,
-                                    ResolutionError::CannotCaptureDynamicEnvironmentInFnItem);
+                                // We don't immediately trigger a resolve error, because
+                                // we want certain other resolution errors (namely those
+                                // emitted for `ConstantItemRibKind` below) to take
+                                // precedence.
+                                res_err = Some(CannotCaptureDynamicEnvironmentInFnItem);
                             }
-                            return Def::Err;
                         }
                         ConstantItemRibKind => {
                             // Still doesn't deal with upvars
                             if record_used {
-                                resolve_error(self, span,
-                                    ResolutionError::AttemptToUseNonConstantValueInConstant);
+                                resolve_error(self, span, AttemptToUseNonConstantValueInConstant);
                             }
                             return Def::Err;
                         }
                     }
+                }
+                if let Some(res_err) = res_err {
+                     resolve_error(self, span, res_err);
+                     return Def::Err;
                 }
             }
             Def::TyParam(..) | Def::SelfTy(..) => {
@@ -4169,14 +4230,35 @@ impl<'a> Resolver<'a> {
                             // Nothing to do. Continue.
                         }
                         ItemRibKind => {
-                            // This was an attempt to use a type parameter outside
-                            // its scope.
+                            // This was an attempt to use a type parameter outside its scope.
                             if record_used {
-                                resolve_error(self, span,
-                                    ResolutionError::TypeParametersFromOuterFunction(def));
+                                resolve_error(
+                                    self,
+                                    span,
+                                    ResolutionError::GenericParamsFromOuterFunction(def),
+                                );
                             }
                             return Def::Err;
                         }
+                    }
+                }
+            }
+            Def::ConstParam(..) => {
+                // A const param is always declared in a signature, which is always followed by
+                // some kind of function rib kind (specifically, ItemRibKind in the case of a
+                // normal function), so we can skip the first rib as it will be guaranteed to
+                // (spuriously) conflict with the const param.
+                for rib in &ribs[1..] {
+                    if let ItemRibKind = rib.kind {
+                        // This was an attempt to use a const parameter outside its scope.
+                        if record_used {
+                            resolve_error(
+                                self,
+                                span,
+                                ResolutionError::GenericParamsFromOuterFunction(def),
+                            );
+                        }
+                        return Def::Err;
                     }
                 }
             }

@@ -1,10 +1,10 @@
-error[E0401]: can't use type parameters from outer function
+error[E0401]: can't use generic parameters from outer function
   --> $DIR/issue-12796.rs:3:22
    |
 LL |         fn inner(_: &Self) {
    |                      ^^^^
    |                      |
-   |                      use of type variable from outer function
+   |                      use of generic parameter from outer function
    |                      can't use `Self` here
 
 error: aborting due to previous error

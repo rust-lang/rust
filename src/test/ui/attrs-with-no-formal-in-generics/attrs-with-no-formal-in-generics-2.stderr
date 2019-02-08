@@ -1,4 +1,4 @@
-error: trailing attribute after type parameters
+error: trailing attribute after generic parameter
   --> $DIR/attrs-with-no-formal-in-generics-2.rs:9:35
    |
 LL | impl<#[rustc_1] 'a, #[rustc_2] T, #[oops]> RefAny<'a, T> {}

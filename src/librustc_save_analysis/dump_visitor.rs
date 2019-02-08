@@ -364,6 +364,7 @@ impl<'l, 'tcx: 'l, 'll, O: DumpOutput + 'll> DumpVisitor<'l, 'tcx, 'll, O> {
                         );
                     }
                 }
+                ast::GenericParamKind::Const { .. } => {}
             }
         }
         self.visit_generics(generics);
@@ -1447,9 +1448,16 @@ impl<'l, 'tcx: 'l, 'll, O: DumpOutput + 'll> Visitor<'l> for DumpVisitor<'l, 'tc
 
     fn visit_generics(&mut self, generics: &'l ast::Generics) {
         for param in &generics.params {
-            if let ast::GenericParamKind::Type { ref default, .. } = param.kind {
-                self.process_bounds(&param.bounds);
-                if let Some(ref ty) = default {
+            match param.kind {
+                ast::GenericParamKind::Lifetime { .. } => {}
+                ast::GenericParamKind::Type { ref default, .. } => {
+                    self.process_bounds(&param.bounds);
+                    if let Some(ref ty) = default {
+                        self.visit_ty(&ty);
+                    }
+                }
+                ast::GenericParamKind::Const { ref ty } => {
+                    self.process_bounds(&param.bounds);
                     self.visit_ty(&ty);
                 }
             }

@@ -414,8 +414,8 @@ https://doc.rust-lang.org/reference.html#use-declarations
 "##,
 
 E0401: r##"
-Inner items do not inherit type parameters from the functions they are embedded
-in.
+Inner items do not inherit type or const parameters from the functions
+they are embedded in.
 
 Erroneous code example:
 

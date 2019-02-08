@@ -167,6 +167,17 @@ impl GenericArgs {
 pub enum GenericArg {
     Lifetime(Lifetime),
     Type(P<Ty>),
+    Const(AnonConst),
+}
+
+impl GenericArg {
+    pub fn span(&self) -> Span {
+        match self {
+            GenericArg::Lifetime(lt) => lt.ident.span,
+            GenericArg::Type(ty) => ty.span,
+            GenericArg::Const(ct) => ct.value.span,
+        }
+    }
 }
 
 /// A path like `Foo<'a, T>`
@@ -296,13 +307,32 @@ impl GenericBound {
 
 pub type GenericBounds = Vec<GenericBound>;
 
+/// Specifies the enforced ordering for generic parameters. In the future,
+/// if we wanted to relax this order, we could override `PartialEq` and
+/// `PartialOrd`, to allow the kinds to be unordered.
+#[derive(PartialEq, Eq, PartialOrd, Ord, Hash, Clone, Copy)]
+pub enum ParamKindOrd {
+    Lifetime,
+    Type,
+    Const,
+}
+
+impl fmt::Display for ParamKindOrd {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            ParamKindOrd::Lifetime => "lifetime".fmt(f),
+            ParamKindOrd::Type => "type".fmt(f),
+            ParamKindOrd::Const => "const".fmt(f),
+        }
+    }
+}
+
 #[derive(Clone, RustcEncodable, RustcDecodable, Debug)]
 pub enum GenericParamKind {
     /// A lifetime definition (e.g., `'a: 'b + 'c + 'd`).
     Lifetime,
-    Type {
-        default: Option<P<Ty>>,
-    },
+    Type { default: Option<P<Ty>> },
+    Const { ty: P<Ty> },
 }
 
 #[derive(Clone, RustcEncodable, RustcDecodable, Debug)]

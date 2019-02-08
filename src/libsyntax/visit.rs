@@ -126,6 +126,7 @@ pub trait Visitor<'ast>: Sized {
         match generic_arg {
             GenericArg::Lifetime(lt) => self.visit_lifetime(lt),
             GenericArg::Type(ty) => self.visit_ty(ty),
+            GenericArg::Const(ct) => self.visit_anon_const(ct),
         }
     }
     fn visit_assoc_type_binding(&mut self, type_binding: &'ast TypeBinding) {
@@ -486,6 +487,7 @@ pub fn walk_generic_param<'a, V: Visitor<'a>>(visitor: &mut V, param: &'a Generi
     match param.kind {
         GenericParamKind::Lifetime => {}
         GenericParamKind::Type { ref default } => walk_list!(visitor, visit_ty, default),
+        GenericParamKind::Const { ref ty, .. } => visitor.visit_ty(ty),
     }
 }
 

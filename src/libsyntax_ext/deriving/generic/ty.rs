@@ -94,7 +94,7 @@ impl<'a> Path<'a> {
     }
 }
 
-/// A type. Supports pointers, Self, and literals
+/// A type. Supports pointers, Self, and literals.
 #[derive(Clone)]
 pub enum Ty<'a> {
     Self_,
@@ -105,6 +105,13 @@ pub enum Ty<'a> {
     Literal(Path<'a>),
     /// includes unit
     Tuple(Vec<Ty<'a>>),
+}
+
+/// A const expression. Supports literals and blocks.
+#[derive(Clone, Eq, PartialEq)]
+pub enum Const {
+    Literal,
+    Block,
 }
 
 pub fn borrowed_ptrty<'r>() -> PtrTy<'r> {
@@ -179,6 +186,9 @@ impl<'a> Ty<'a> {
                     }
                     GenericParamKind::Type { .. } => {
                         GenericArg::Type(cx.ty_ident(span, param.ident))
+                    }
+                    GenericParamKind::Const { .. } => {
+                        GenericArg::Const(cx.const_ident(span, param.ident))
                     }
                 }).collect();
 

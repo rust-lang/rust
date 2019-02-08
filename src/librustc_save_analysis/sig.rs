@@ -622,12 +622,20 @@ impl Sig for ast::Generics {
 
         let mut defs = Vec::with_capacity(self.params.len());
         for param in &self.params {
-            let mut param_text = param.ident.to_string();
+            let mut param_text = String::new();
+            if let ast::GenericParamKind::Const { .. } = param.kind {
+                param_text.push_str("const ");
+            }
+            param_text.push_str(&param.ident.as_str());
             defs.push(SigElement {
                 id: id_from_node_id(param.id, scx),
                 start: offset + text.len(),
-                end: offset + text.len() + param_text.len(),
+                end: offset + text.len() + param_text.as_str().len(),
             });
+            if let ast::GenericParamKind::Const { ref ty } = param.kind {
+                param_text.push_str(": ");
+                param_text.push_str(&pprust::ty_to_string(&ty));
+            }
             if !param.bounds.is_empty() {
                 param_text.push_str(": ");
                 match param.kind {
@@ -645,6 +653,9 @@ impl Sig for ast::Generics {
                     ast::GenericParamKind::Type { .. } => {
                         param_text.push_str(&pprust::bounds_to_string(&param.bounds));
                         // FIXME descend properly into bounds.
+                    }
+                    ast::GenericParamKind::Const { .. } => {
+                        // Const generics cannot contain bounds.
                     }
                 }
             }
