@@ -1,7 +1,7 @@
 #![unstable(reason = "not public", issue = "0", feature = "fd")]
 
 use cmp;
-use io::{self, Read, Initializer};
+use io::{self, Read, Initializer, IoVec, IoVecMut};
 use libc::{self, c_int, c_void, ssize_t};
 use mem;
 use sync::atomic::{AtomicBool, Ordering};
@@ -48,6 +48,15 @@ impl FileDesc {
             libc::read(self.fd,
                        buf.as_mut_ptr() as *mut c_void,
                        cmp::min(buf.len(), max_len()))
+        })?;
+        Ok(ret as usize)
+    }
+
+    pub fn read_vectored(&self, bufs: &mut [IoVecMut<'_>]) -> io::Result<usize> {
+        let ret = cvt(unsafe {
+            libc::readv(self.fd,
+                        bufs.as_ptr() as *const libc::iovec,
+                        cmp::min(bufs.len(), c_int::max_value() as usize) as c_int)
         })?;
         Ok(ret as usize)
     }
@@ -101,6 +110,15 @@ impl FileDesc {
             libc::write(self.fd,
                         buf.as_ptr() as *const c_void,
                         cmp::min(buf.len(), max_len()))
+        })?;
+        Ok(ret as usize)
+    }
+
+    pub fn write_vectored(&self, bufs: &[IoVec<'_>]) -> io::Result<usize> {
+        let ret = cvt(unsafe {
+            libc::writev(self.fd,
+                         bufs.as_ptr() as *const libc::iovec,
+                         cmp::min(bufs.len(), c_int::max_value() as usize) as c_int)
         })?;
         Ok(ret as usize)
     }

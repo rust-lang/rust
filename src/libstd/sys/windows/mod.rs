@@ -2,7 +2,7 @@
 
 use ptr;
 use ffi::{OsStr, OsString};
-use io::{self, ErrorKind};
+use io::ErrorKind;
 use os::windows::ffi::{OsStrExt, OsStringExt};
 use path::PathBuf;
 use time::Duration;
@@ -26,6 +26,7 @@ pub mod ext;
 pub mod fast_thread_local;
 pub mod fs;
 pub mod handle;
+pub mod io;
 pub mod memchr;
 pub mod mutex;
 pub mod net;
@@ -75,12 +76,12 @@ pub fn decode_error_kind(errno: i32) -> ErrorKind {
     }
 }
 
-pub fn to_u16s<S: AsRef<OsStr>>(s: S) -> io::Result<Vec<u16>> {
-    fn inner(s: &OsStr) -> io::Result<Vec<u16>> {
+pub fn to_u16s<S: AsRef<OsStr>>(s: S) -> ::io::Result<Vec<u16>> {
+    fn inner(s: &OsStr) -> ::io::Result<Vec<u16>> {
         let mut maybe_result: Vec<u16> = s.encode_wide().collect();
         if maybe_result.iter().any(|&u| u == 0) {
-            return Err(io::Error::new(io::ErrorKind::InvalidInput,
-                                      "strings passed to WinAPI cannot contain NULs"));
+            return Err(::io::Error::new(::io::ErrorKind::InvalidInput,
+                                        "strings passed to WinAPI cannot contain NULs"));
         }
         maybe_result.push(0);
         Ok(maybe_result)
@@ -102,7 +103,7 @@ pub fn to_u16s<S: AsRef<OsStr>>(s: S) -> io::Result<Vec<u16>> {
 // Once the syscall has completed (errors bail out early) the second closure is
 // yielded the data which has been read from the syscall. The return value
 // from this closure is then the return value of the function.
-fn fill_utf16_buf<F1, F2, T>(mut f1: F1, f2: F2) -> io::Result<T>
+fn fill_utf16_buf<F1, F2, T>(mut f1: F1, f2: F2) -> ::io::Result<T>
     where F1: FnMut(*mut u16, c::DWORD) -> c::DWORD,
           F2: FnOnce(&[u16]) -> T
 {
@@ -134,7 +135,7 @@ fn fill_utf16_buf<F1, F2, T>(mut f1: F1, f2: F2) -> io::Result<T>
             c::SetLastError(0);
             let k = match f1(buf.as_mut_ptr(), n as c::DWORD) {
                 0 if c::GetLastError() == 0 => 0,
-                0 => return Err(io::Error::last_os_error()),
+                0 => return Err(::io::Error::last_os_error()),
                 n => n,
             } as usize;
             if k == n && c::GetLastError() == c::ERROR_INSUFFICIENT_BUFFER {
@@ -157,7 +158,7 @@ fn wide_char_to_multi_byte(code_page: u32,
                            flags: u32,
                            s: &[u16],
                            no_default_char: bool)
-                           -> io::Result<Vec<i8>> {
+                           -> ::io::Result<Vec<i8>> {
     unsafe {
         let mut size = c::WideCharToMultiByte(code_page,
                                               flags,
@@ -168,7 +169,7 @@ fn wide_char_to_multi_byte(code_page: u32,
                                               ptr::null(),
                                               ptr::null_mut());
         if size == 0 {
-            return Err(io::Error::last_os_error());
+            return Err(::io::Error::last_os_error());
         }
 
         let mut buf = Vec::with_capacity(size as usize);
@@ -185,10 +186,10 @@ fn wide_char_to_multi_byte(code_page: u32,
                                       if no_default_char { &mut used_default_char }
                                       else { ptr::null_mut() });
         if size == 0 {
-            return Err(io::Error::last_os_error());
+            return Err(::io::Error::last_os_error());
         }
         if no_default_char && used_default_char == c::TRUE {
-            return Err(io::Error::new(io::ErrorKind::InvalidData,
+            return Err(::io::Error::new(::io::ErrorKind::InvalidData,
                                       "string cannot be converted to requested code page"));
         }
 
@@ -220,9 +221,9 @@ macro_rules! impl_is_zero {
 
 impl_is_zero! { i8 i16 i32 i64 isize u8 u16 u32 u64 usize }
 
-pub fn cvt<I: IsZero>(i: I) -> io::Result<I> {
+pub fn cvt<I: IsZero>(i: I) -> ::io::Result<I> {
     if i.is_zero() {
-        Err(io::Error::last_os_error())
+        Err(::io::Error::last_os_error())
     } else {
         Ok(i)
     }

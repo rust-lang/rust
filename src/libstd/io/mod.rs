@@ -265,6 +265,7 @@ use slice;
 use str;
 use memchr;
 use ptr;
+use sys;
 
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use self::buffered::{BufReader, BufWriter, LineWriter};
@@ -519,6 +520,22 @@ pub trait Read {
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     fn read(&mut self, buf: &mut [u8]) -> Result<usize>;
+
+    /// Like `read`, except that it reads into a slice of buffers.
+    ///
+    /// Data is copied to fill each buffer in order, with the final buffer
+    /// written to possibly being only partially filled. This method must behave
+    /// as a single call to `read` with the buffers concatenated would.
+    ///
+    /// The default implementation simply passes the first nonempty buffer to
+    /// `read`.
+    #[unstable(feature = "iovec", issue = "0")]
+    fn read_vectored(&mut self, bufs: &mut [IoVecMut<'_>]) -> Result<usize> {
+        match bufs.iter_mut().map(|b| b.as_mut_slice()).find(|b| !b.is_empty()) {
+            Some(buf) => self.read(buf),
+            None => Ok(0),
+        }
+    }
 
     /// Determines if this `Read`er can work with buffers of uninitialized
     /// memory.
@@ -867,6 +884,85 @@ pub trait Read {
     }
 }
 
+/// A buffer type used with `Read::read_vectored`.
+///
+/// It is semantically a wrapper around an `&mut [u8]`, but is guaranteed to be
+/// ABI compatible with the `iovec` type on Unix platforms and `WSABUF` on
+/// Windows.
+#[unstable(feature = "iovec", issue = "0")]
+#[repr(transparent)]
+pub struct IoVecMut<'a>(sys::io::IoVecMut<'a>);
+
+#[unstable(feature = "iovec", issue = "0")]
+impl<'a> fmt::Debug for IoVecMut<'a> {
+    fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
+        fmt::Debug::fmt(self.as_slice(), fmt)
+    }
+}
+
+impl<'a> IoVecMut<'a> {
+    /// Creates a new `IoVecMut` wrapping a byte slice.
+    ///
+    /// # Panics
+    ///
+    /// Panics on Windows if the slice is larger than 4GB.
+    #[unstable(feature = "iovec", issue = "0")]
+    #[inline]
+    pub fn new(buf: &'a mut [u8]) -> IoVecMut<'a> {
+        IoVecMut(sys::io::IoVecMut::new(buf))
+    }
+
+    /// Returns a shared reference to the inner slice.
+    #[unstable(feature = "iovec", issue = "0")]
+    #[inline]
+    pub fn as_slice(&self) -> &'a [u8] {
+        self.0.as_slice()
+    }
+
+    /// Returns a mutable reference to the inner slice.
+    #[unstable(feature = "iovec", issue = "0")]
+    #[inline]
+    pub fn as_mut_slice(&mut self) -> &'a mut [u8] {
+        self.0.as_mut_slice()
+    }
+}
+
+/// A buffer type used with `Write::write_vectored`.
+///
+/// It is semantically a wrapper around an `&[u8]`, but is guaranteed to be
+/// ABI compatible with the `iovec` type on Unix platforms and `WSABUF` on
+/// Windows.
+#[unstable(feature = "iovec", issue = "0")]
+#[repr(transparent)]
+pub struct IoVec<'a>(sys::io::IoVec<'a>);
+
+#[unstable(feature = "iovec", issue = "0")]
+impl<'a> fmt::Debug for IoVec<'a> {
+    fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
+        fmt::Debug::fmt(self.as_slice(), fmt)
+    }
+}
+
+impl<'a> IoVec<'a> {
+    /// Creates a new `IoVec` wrapping a byte slice.
+    ///
+    /// # Panics
+    ///
+    /// Panics on Windows if the slice is larger than 4GB.
+    #[unstable(feature = "iovec", issue = "0")]
+    #[inline]
+    pub fn new(buf: &'a [u8]) -> IoVec<'a> {
+        IoVec(sys::io::IoVec::new(buf))
+    }
+
+    /// Returns a shared reference to the inner slice.
+    #[unstable(feature = "iovec", issue = "0")]
+    #[inline]
+    pub fn as_slice(&self) -> &'a [u8] {
+        self.0.as_slice()
+    }
+}
+
 /// A type used to conditionally initialize buffers passed to `Read` methods.
 #[unstable(feature = "read_initializer", issue = "42788")]
 #[derive(Debug)]
@@ -996,6 +1092,22 @@ pub trait Write {
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     fn write(&mut self, buf: &[u8]) -> Result<usize>;
+
+    /// Like `write`, except that it writes from a slice of buffers.
+    ///
+    /// Data is copied to from each buffer in order, with the final buffer
+    /// read from possibly being only partially consumed. This method must
+    /// behave as a call to `write` with the buffers concatenated would.
+    ///
+    /// The default implementation simply passes the first nonempty buffer to
+    /// `write`.
+    #[unstable(feature = "iovec", issue = "0")]
+    fn write_vectored(&mut self, bufs: &[IoVec<'_>]) -> Result<usize> {
+        match bufs.iter().map(|b| b.as_slice()).find(|b| !b.is_empty()) {
+            Some(buf) => self.write(buf),
+            None => Ok(0),
+        }
+    }
 
     /// Flush this output stream, ensuring that all intermediately buffered
     /// contents reach their destination.
@@ -1691,11 +1803,21 @@ impl<T: Read, U: Read> Read for Chain<T, U> {
     fn read(&mut self, buf: &mut [u8]) -> Result<usize> {
         if !self.done_first {
             match self.first.read(buf)? {
-                0 if buf.len() != 0 => { self.done_first = true; }
+                0 if buf.len() != 0 => self.done_first = true,
                 n => return Ok(n),
             }
         }
         self.second.read(buf)
+    }
+
+    fn read_vectored(&mut self, bufs: &mut [IoVecMut<'_>]) -> Result<usize> {
+        if !self.done_first {
+            match self.first.read_vectored(bufs)? {
+                0 if bufs.iter().any(|b| !b.as_slice().is_empty()) => self.done_first = true,
+                n => return Ok(n),
+            }
+        }
+        self.second.read_vectored(bufs)
     }
 
     unsafe fn initializer(&self) -> Initializer {

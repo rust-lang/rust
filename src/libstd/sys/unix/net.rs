@@ -1,5 +1,5 @@
 use ffi::CStr;
-use io;
+use io::{self, IoVec, IoVecMut};
 use libc::{self, c_int, c_void, size_t, sockaddr, socklen_t, EAI_SYSTEM, MSG_PEEK};
 use mem;
 use net::{SocketAddr, Shutdown};
@@ -241,6 +241,10 @@ impl Socket {
         self.recv_with_flags(buf, MSG_PEEK)
     }
 
+    pub fn read_vectored(&self, bufs: &mut [IoVecMut<'_>]) -> io::Result<usize> {
+        self.0.read_vectored(bufs)
+    }
+
     fn recv_from_with_flags(&self, buf: &mut [u8], flags: c_int)
                             -> io::Result<(usize, SocketAddr)> {
         let mut storage: libc::sockaddr_storage = unsafe { mem::zeroed() };
@@ -267,6 +271,10 @@ impl Socket {
 
     pub fn write(&self, buf: &[u8]) -> io::Result<usize> {
         self.0.write(buf)
+    }
+
+    pub fn write_vectored(&self, bufs: &[IoVec<'_>]) -> io::Result<usize> {
+        self.0.write_vectored(bufs)
     }
 
     pub fn set_timeout(&self, dur: Option<Duration>, kind: libc::c_int) -> io::Result<()> {

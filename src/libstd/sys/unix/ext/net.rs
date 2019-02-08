@@ -18,7 +18,7 @@ mod libc {
 use ascii;
 use ffi::OsStr;
 use fmt;
-use io::{self, Initializer};
+use io::{self, Initializer, IoVec, IoVecMut};
 use mem;
 use net::{self, Shutdown};
 use os::unix::ffi::OsStrExt;
@@ -551,6 +551,10 @@ impl io::Read for UnixStream {
         io::Read::read(&mut &*self, buf)
     }
 
+    fn read_vectored(&mut self, bufs: &mut [IoVecMut<'_>]) -> io::Result<usize> {
+        io::Read::read_vectored(&mut &*self, bufs)
+    }
+
     #[inline]
     unsafe fn initializer(&self) -> Initializer {
         Initializer::nop()
@@ -561,6 +565,10 @@ impl io::Read for UnixStream {
 impl<'a> io::Read for &'a UnixStream {
     fn read(&mut self, buf: &mut [u8]) -> io::Result<usize> {
         self.0.read(buf)
+    }
+
+    fn read_vectored(&mut self, bufs: &mut [IoVecMut<'_>]) -> io::Result<usize> {
+        self.0.read_vectored(bufs)
     }
 
     #[inline]
@@ -575,6 +583,10 @@ impl io::Write for UnixStream {
         io::Write::write(&mut &*self, buf)
     }
 
+    fn write_vectored(&mut self, bufs: &[IoVec<'_>]) -> io::Result<usize> {
+        io::Write::write_vectored(&mut &*self, bufs)
+    }
+
     fn flush(&mut self) -> io::Result<()> {
         io::Write::flush(&mut &*self)
     }
@@ -584,6 +596,10 @@ impl io::Write for UnixStream {
 impl<'a> io::Write for &'a UnixStream {
     fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
         self.0.write(buf)
+    }
+
+    fn write_vectored(&mut self, bufs: &[IoVec<'_>]) -> io::Result<usize> {
+        self.0.write_vectored(bufs)
     }
 
     fn flush(&mut self) -> io::Result<()> {
@@ -1508,6 +1524,25 @@ mod test {
         drop(stream);
 
         thread.join().unwrap();
+    }
+
+    #[test]
+    fn vectored() {
+        let (mut s1, mut s2) = or_panic!(UnixStream::pair());
+
+        let len = or_panic!(s1.write_vectored(
+            &[IoVec::new(b"hello"), IoVec::new(b" "), IoVec::new(b"world!")],
+        ));
+        assert_eq!(len, 12);
+
+        let mut buf1 = [0; 6];
+        let mut buf2 = [0; 7];
+        let len = or_panic!(s2.read_vectored(
+            &mut [IoVecMut::new(&mut buf1), IoVecMut::new(&mut buf2)],
+        ));
+        assert_eq!(len, 12);
+        assert_eq!(&buf1, b"hello ");
+        assert_eq!(&buf2, b"world!\0");
     }
 
     #[test]

@@ -1,6 +1,6 @@
 #![allow(missing_docs, nonstandard_style)]
 
-use io::{self, ErrorKind};
+use io::ErrorKind;
 use libc;
 
 #[cfg(any(rustdoc, target_os = "linux"))] pub use os::linux as platform;
@@ -39,6 +39,7 @@ pub mod fast_thread_local;
 pub mod fd;
 pub mod fs;
 pub mod memchr;
+pub mod io;
 pub mod mutex;
 #[cfg(not(target_os = "l4re"))]
 pub mod net;
@@ -126,15 +127,15 @@ macro_rules! impl_is_minus_one {
 
 impl_is_minus_one! { i8 i16 i32 i64 isize }
 
-pub fn cvt<T: IsMinusOne>(t: T) -> io::Result<T> {
+pub fn cvt<T: IsMinusOne>(t: T) -> ::io::Result<T> {
     if t.is_minus_one() {
-        Err(io::Error::last_os_error())
+        Err(::io::Error::last_os_error())
     } else {
         Ok(t)
     }
 }
 
-pub fn cvt_r<T, F>(mut f: F) -> io::Result<T>
+pub fn cvt_r<T, F>(mut f: F) -> ::io::Result<T>
     where T: IsMinusOne,
           F: FnMut() -> T
 {

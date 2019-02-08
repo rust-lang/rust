@@ -14,7 +14,6 @@
 //! compiling for wasm. That way it's a compile time error for something that's
 //! guaranteed to be a runtime error!
 
-use io;
 use os::raw::c_char;
 use ptr;
 use sys::os_str::Buf;
@@ -29,6 +28,7 @@ pub mod backtrace;
 pub mod cmath;
 pub mod env;
 pub mod fs;
+pub mod io;
 pub mod memchr;
 pub mod net;
 pub mod os;
@@ -63,17 +63,17 @@ cfg_if! {
 pub fn init() {
 }
 
-pub fn unsupported<T>() -> io::Result<T> {
+pub fn unsupported<T>() -> ::io::Result<T> {
     Err(unsupported_err())
 }
 
-pub fn unsupported_err() -> io::Error {
-    io::Error::new(io::ErrorKind::Other,
+pub fn unsupported_err() -> ::io::Error {
+    ::io::Error::new(::io::ErrorKind::Other,
                    "operation not supported on wasm yet")
 }
 
-pub fn decode_error_kind(_code: i32) -> io::ErrorKind {
-    io::ErrorKind::Other
+pub fn decode_error_kind(_code: i32) -> ::io::ErrorKind {
+    ::io::ErrorKind::Other
 }
 
 // This enum is used as the storage for a bunch of types which can't actually

@@ -1,4 +1,3 @@
-use io;
 use libc;
 use mem;
 
@@ -10,6 +9,7 @@ pub mod backtrace;
 #[path = "../unix/cmath.rs"]
 pub mod cmath;
 pub mod condvar;
+pub mod io;
 #[path = "../unix/memchr.rs"]
 pub mod memchr;
 pub mod mutex;
@@ -32,24 +32,24 @@ pub use self::shims::*;
 #[allow(dead_code)]
 pub fn init() {}
 
-pub fn decode_error_kind(errno: i32) -> io::ErrorKind {
+pub fn decode_error_kind(errno: i32) -> ::io::ErrorKind {
     match errno {
-        x if x == abi::errno::ACCES as i32 => io::ErrorKind::PermissionDenied,
-        x if x == abi::errno::ADDRINUSE as i32 => io::ErrorKind::AddrInUse,
-        x if x == abi::errno::ADDRNOTAVAIL as i32 => io::ErrorKind::AddrNotAvailable,
-        x if x == abi::errno::AGAIN as i32 => io::ErrorKind::WouldBlock,
-        x if x == abi::errno::CONNABORTED as i32 => io::ErrorKind::ConnectionAborted,
-        x if x == abi::errno::CONNREFUSED as i32 => io::ErrorKind::ConnectionRefused,
-        x if x == abi::errno::CONNRESET as i32 => io::ErrorKind::ConnectionReset,
-        x if x == abi::errno::EXIST as i32 => io::ErrorKind::AlreadyExists,
-        x if x == abi::errno::INTR as i32 => io::ErrorKind::Interrupted,
-        x if x == abi::errno::INVAL as i32 => io::ErrorKind::InvalidInput,
-        x if x == abi::errno::NOENT as i32 => io::ErrorKind::NotFound,
-        x if x == abi::errno::NOTCONN as i32 => io::ErrorKind::NotConnected,
-        x if x == abi::errno::PERM as i32 => io::ErrorKind::PermissionDenied,
-        x if x == abi::errno::PIPE as i32 => io::ErrorKind::BrokenPipe,
-        x if x == abi::errno::TIMEDOUT as i32 => io::ErrorKind::TimedOut,
-        _ => io::ErrorKind::Other,
+        x if x == abi::errno::ACCES as i32 => ::io::ErrorKind::PermissionDenied,
+        x if x == abi::errno::ADDRINUSE as i32 => ::io::ErrorKind::AddrInUse,
+        x if x == abi::errno::ADDRNOTAVAIL as i32 => ::io::ErrorKind::AddrNotAvailable,
+        x if x == abi::errno::AGAIN as i32 => ::io::ErrorKind::WouldBlock,
+        x if x == abi::errno::CONNABORTED as i32 => ::io::ErrorKind::ConnectionAborted,
+        x if x == abi::errno::CONNREFUSED as i32 => ::io::ErrorKind::ConnectionRefused,
+        x if x == abi::errno::CONNRESET as i32 => ::io::ErrorKind::ConnectionReset,
+        x if x == abi::errno::EXIST as i32 => ::io::ErrorKind::AlreadyExists,
+        x if x == abi::errno::INTR as i32 => ::io::ErrorKind::Interrupted,
+        x if x == abi::errno::INVAL as i32 => ::io::ErrorKind::InvalidInput,
+        x if x == abi::errno::NOENT as i32 => ::io::ErrorKind::NotFound,
+        x if x == abi::errno::NOTCONN as i32 => ::io::ErrorKind::NotConnected,
+        x if x == abi::errno::PERM as i32 => ::io::ErrorKind::PermissionDenied,
+        x if x == abi::errno::PIPE as i32 => ::io::ErrorKind::BrokenPipe,
+        x if x == abi::errno::TIMEDOUT as i32 => ::io::ErrorKind::TimedOut,
+        _ => ::io::ErrorKind::Other,
     }
 }
 

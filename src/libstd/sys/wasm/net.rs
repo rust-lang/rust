@@ -1,5 +1,5 @@
 use fmt;
-use io;
+use io::{self, IoVec, IoVecMut};
 use net::{SocketAddr, Shutdown, Ipv4Addr, Ipv6Addr};
 use time::Duration;
 use sys::{unsupported, Void};
@@ -40,7 +40,15 @@ impl TcpStream {
         match self.0 {}
     }
 
+    pub fn read_vectored(&self, _: &mut [IoVecMut<'_>]) -> io::Result<usize> {
+        match self.0 {}
+    }
+
     pub fn write(&self, _: &[u8]) -> io::Result<usize> {
+        match self.0 {}
+    }
+
+    pub fn write_vectored(&self, _: &[IoVec<'_>]) -> io::Result<usize> {
         match self.0 {}
     }
 
