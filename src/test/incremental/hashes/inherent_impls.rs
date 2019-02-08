@@ -263,7 +263,7 @@ impl Foo {
 #[rustc_clean(cfg="cfail2")]
 #[rustc_clean(cfg="cfail3")]
 impl Foo {
-    #[rustc_clean(cfg="cfail2", except="Hir,HirBody,FnSignature,TypeckTables")]
+    #[rustc_clean(cfg="cfail2", except="Hir,HirBody,MirBuilt,FnSignature,TypeckTables")]
     #[rustc_clean(cfg="cfail3")]
     pub extern fn make_method_extern(&self) { }
 }
