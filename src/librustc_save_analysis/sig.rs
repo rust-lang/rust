@@ -25,7 +25,7 @@
 //
 // FIXME where clauses need implementing, defs/refs in generics are mostly missing.
 
-use {id_from_def_id, id_from_node_id, SaveContext};
+use crate::{id_from_def_id, id_from_node_id, SaveContext};
 
 use rls_data::{SigElement, Signature};
 
@@ -34,14 +34,17 @@ use syntax::ast::{self, NodeId};
 use syntax::print::pprust;
 
 
-pub fn item_signature(item: &ast::Item, scx: &SaveContext) -> Option<Signature> {
+pub fn item_signature(item: &ast::Item, scx: &SaveContext<'_, '_>) -> Option<Signature> {
     if !scx.config.signatures {
         return None;
     }
     item.make(0, None, scx).ok()
 }
 
-pub fn foreign_item_signature(item: &ast::ForeignItem, scx: &SaveContext) -> Option<Signature> {
+pub fn foreign_item_signature(
+    item: &ast::ForeignItem,
+    scx: &SaveContext<'_, '_>
+) -> Option<Signature> {
     if !scx.config.signatures {
         return None;
     }
@@ -50,7 +53,7 @@ pub fn foreign_item_signature(item: &ast::ForeignItem, scx: &SaveContext) -> Opt
 
 /// Signature for a struct or tuple field declaration.
 /// Does not include a trailing comma.
-pub fn field_signature(field: &ast::StructField, scx: &SaveContext) -> Option<Signature> {
+pub fn field_signature(field: &ast::StructField, scx: &SaveContext<'_, '_>) -> Option<Signature> {
     if !scx.config.signatures {
         return None;
     }
@@ -58,7 +61,7 @@ pub fn field_signature(field: &ast::StructField, scx: &SaveContext) -> Option<Si
 }
 
 /// Does not include a trailing comma.
-pub fn variant_signature(variant: &ast::Variant, scx: &SaveContext) -> Option<Signature> {
+pub fn variant_signature(variant: &ast::Variant, scx: &SaveContext<'_, '_>) -> Option<Signature> {
     if !scx.config.signatures {
         return None;
     }
@@ -70,7 +73,7 @@ pub fn method_signature(
     ident: ast::Ident,
     generics: &ast::Generics,
     m: &ast::MethodSig,
-    scx: &SaveContext,
+    scx: &SaveContext<'_, '_>,
 ) -> Option<Signature> {
     if !scx.config.signatures {
         return None;
@@ -83,7 +86,7 @@ pub fn assoc_const_signature(
     ident: ast::Name,
     ty: &ast::Ty,
     default: Option<&ast::Expr>,
-    scx: &SaveContext,
+    scx: &SaveContext<'_, '_>,
 ) -> Option<Signature> {
     if !scx.config.signatures {
         return None;
@@ -96,7 +99,7 @@ pub fn assoc_type_signature(
     ident: ast::Ident,
     bounds: Option<&ast::GenericBounds>,
     default: Option<&ast::Ty>,
-    scx: &SaveContext,
+    scx: &SaveContext<'_, '_>,
 ) -> Option<Signature> {
     if !scx.config.signatures {
         return None;
@@ -104,10 +107,10 @@ pub fn assoc_type_signature(
     make_assoc_type_signature(id, ident, bounds, default, scx).ok()
 }
 
-type Result = ::std::result::Result<Signature, &'static str>;
+type Result = std::result::Result<Signature, &'static str>;
 
 trait Sig {
-    fn make(&self, offset: usize, id: Option<NodeId>, scx: &SaveContext) -> Result;
+    fn make(&self, offset: usize, id: Option<NodeId>, scx: &SaveContext<'_, '_>) -> Result;
 }
 
 fn extend_sig(
@@ -155,7 +158,7 @@ fn text_sig(text: String) -> Signature {
 }
 
 impl Sig for ast::Ty {
-    fn make(&self, offset: usize, _parent_id: Option<NodeId>, scx: &SaveContext) -> Result {
+    fn make(&self, offset: usize, _parent_id: Option<NodeId>, scx: &SaveContext<'_, '_>) -> Result {
         let id = Some(self.id);
         match self.node {
             ast::TyKind::Slice(ref ty) => {
@@ -227,7 +230,7 @@ impl Sig for ast::Ty {
                 if f.unsafety == ast::Unsafety::Unsafe {
                     text.push_str("unsafe ");
                 }
-                if f.abi != ::rustc_target::spec::abi::Abi::Rust {
+                if f.abi != rustc_target::spec::abi::Abi::Rust {
                     text.push_str("extern");
                     text.push_str(&f.abi.to_string());
                     text.push(' ');
@@ -317,7 +320,7 @@ impl Sig for ast::Ty {
 }
 
 impl Sig for ast::Item {
-    fn make(&self, offset: usize, _parent_id: Option<NodeId>, scx: &SaveContext) -> Result {
+    fn make(&self, offset: usize, _parent_id: Option<NodeId>, scx: &SaveContext<'_, '_>) -> Result {
         let id = Some(self.id);
 
         match self.node {
@@ -381,7 +384,7 @@ impl Sig for ast::Item {
                 if header.unsafety == ast::Unsafety::Unsafe {
                     text.push_str("unsafe ");
                 }
-                if header.abi != ::rustc_target::spec::abi::Abi::Rust {
+                if header.abi != rustc_target::spec::abi::Abi::Rust {
                     text.push_str("extern");
                     text.push_str(&header.abi.to_string());
                     text.push(' ');
@@ -571,7 +574,7 @@ impl Sig for ast::Item {
 }
 
 impl Sig for ast::Path {
-    fn make(&self, offset: usize, id: Option<NodeId>, scx: &SaveContext) -> Result {
+    fn make(&self, offset: usize, id: Option<NodeId>, scx: &SaveContext<'_, '_>) -> Result {
         let def = scx.get_path_def(id.ok_or("Missing id for Path")?);
 
         let (name, start, end) = match def {
@@ -613,7 +616,7 @@ impl Sig for ast::Path {
 
 // This does not cover the where clause, which must be processed separately.
 impl Sig for ast::Generics {
-    fn make(&self, offset: usize, _parent_id: Option<NodeId>, scx: &SaveContext) -> Result {
+    fn make(&self, offset: usize, _parent_id: Option<NodeId>, scx: &SaveContext<'_, '_>) -> Result {
         if self.params.is_empty() {
             return Ok(text_sig(String::new()));
         }
@@ -673,7 +676,7 @@ impl Sig for ast::Generics {
 }
 
 impl Sig for ast::StructField {
-    fn make(&self, offset: usize, _parent_id: Option<NodeId>, scx: &SaveContext) -> Result {
+    fn make(&self, offset: usize, _parent_id: Option<NodeId>, scx: &SaveContext<'_, '_>) -> Result {
         let mut text = String::new();
         let mut defs = None;
         if let Some(ident) = self.ident {
@@ -696,7 +699,7 @@ impl Sig for ast::StructField {
 
 
 impl Sig for ast::Variant_ {
-    fn make(&self, offset: usize, _parent_id: Option<NodeId>, scx: &SaveContext) -> Result {
+    fn make(&self, offset: usize, _parent_id: Option<NodeId>, scx: &SaveContext<'_, '_>) -> Result {
         let mut text = self.ident.to_string();
         match self.data {
             ast::VariantData::Struct(ref fields, id) => {
@@ -754,7 +757,7 @@ impl Sig for ast::Variant_ {
 }
 
 impl Sig for ast::ForeignItem {
-    fn make(&self, offset: usize, _parent_id: Option<NodeId>, scx: &SaveContext) -> Result {
+    fn make(&self, offset: usize, _parent_id: Option<NodeId>, scx: &SaveContext<'_, '_>) -> Result {
         let id = Some(self.id);
         match self.node {
             ast::ForeignItemKind::Fn(ref decl, ref generics) => {
@@ -838,7 +841,7 @@ fn name_and_generics(
     generics: &ast::Generics,
     id: NodeId,
     name: ast::Ident,
-    scx: &SaveContext,
+    scx: &SaveContext<'_, '_>,
 ) -> Result {
     let name = name.to_string();
     let def = SigElement {
@@ -859,7 +862,7 @@ fn make_assoc_type_signature(
     ident: ast::Ident,
     bounds: Option<&ast::GenericBounds>,
     default: Option<&ast::Ty>,
-    scx: &SaveContext,
+    scx: &SaveContext<'_, '_>,
 ) -> Result {
     let mut text = "type ".to_owned();
     let name = ident.to_string();
@@ -893,7 +896,7 @@ fn make_assoc_const_signature(
     ident: ast::Name,
     ty: &ast::Ty,
     default: Option<&ast::Expr>,
-    scx: &SaveContext,
+    scx: &SaveContext<'_, '_>,
 ) -> Result {
     let mut text = "const ".to_owned();
     let name = ident.to_string();
@@ -926,7 +929,7 @@ fn make_method_signature(
     ident: ast::Ident,
     generics: &ast::Generics,
     m: &ast::MethodSig,
-    scx: &SaveContext,
+    scx: &SaveContext<'_, '_>,
 ) -> Result {
     // FIXME code dup with function signature
     let mut text = String::new();
@@ -939,7 +942,7 @@ fn make_method_signature(
     if m.header.unsafety == ast::Unsafety::Unsafe {
         text.push_str("unsafe ");
     }
-    if m.header.abi != ::rustc_target::spec::abi::Abi::Rust {
+    if m.header.abi != rustc_target::spec::abi::Abi::Rust {
         text.push_str("extern");
         text.push_str(&m.header.abi.to_string());
         text.push(' ');
