@@ -19,15 +19,10 @@
 
 #![recursion_limit="256"]
 
-#[macro_use]
-extern crate syntax;
+#![deny(rust_2018_idioms)]
+
 #[macro_use]
 extern crate rustc;
-#[macro_use]
-extern crate log;
-extern crate rustc_target;
-extern crate syntax_pos;
-extern crate rustc_data_structures;
 
 mod diagnostics;
 mod nonstandard_style;
@@ -49,7 +44,6 @@ use rustc::lint::builtin::{
     parser::ILL_FORMED_ATTRIBUTE_INPUT,
 };
 use rustc::session;
-use rustc::util;
 use rustc::hir;
 
 use syntax::ast;
