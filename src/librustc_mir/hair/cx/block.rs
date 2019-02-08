@@ -48,7 +48,7 @@ fn mirror_stmts<'a, 'gcx, 'tcx>(cx: &mut Cx<'a, 'gcx, 'tcx>,
     for (index, stmt) in stmts.iter().enumerate() {
         let hir_id = stmt.hir_id;
         let opt_dxn_ext = cx.region_scope_tree.opt_destruction_scope(hir_id.local_id);
-        let stmt_span = StatementSpan(cx.tcx.hir().span(stmt.id));
+        let stmt_span = StatementSpan(cx.tcx.hir().span_by_hir_id(hir_id));
         match stmt.node {
             hir::StmtKind::Expr(ref expr) |
             hir::StmtKind::Semi(ref expr) => {

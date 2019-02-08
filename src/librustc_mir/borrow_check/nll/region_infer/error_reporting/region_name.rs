@@ -10,7 +10,7 @@ use rustc::ty::subst::{Substs, UnpackedKind};
 use rustc::ty::{self, RegionKind, RegionVid, Ty, TyCtxt};
 use rustc::util::ppaux::RegionHighlightMode;
 use rustc_errors::DiagnosticBuilder;
-use syntax::ast::{Name, DUMMY_NODE_ID};
+use syntax::ast::Name;
 use syntax::symbol::keywords;
 use syntax_pos::Span;
 use syntax_pos::symbol::InternedString;
@@ -293,9 +293,9 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         name: &InternedString,
     ) -> Span {
         let scope = error_region.free_region_binding_scope(tcx);
-        let node = tcx.hir().as_local_node_id(scope).unwrap_or(DUMMY_NODE_ID);
+        let node = tcx.hir().as_local_hir_id(scope).unwrap_or(hir::DUMMY_HIR_ID);
 
-        let span = tcx.sess.source_map().def_span(tcx.hir().span(node));
+        let span = tcx.sess.source_map().def_span(tcx.hir().span_by_hir_id(node));
         if let Some(param) = tcx.hir()
             .get_generics(scope)
             .and_then(|generics| generics.get_named(name))
