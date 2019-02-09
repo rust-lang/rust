@@ -377,6 +377,10 @@ language_item_table! {
 
     Arc,                         "arc",                arc,                     Target::Struct;
     Rc,                          "rc",                 rc,                      Target::Struct;
+
+    DefaultTraitLangItem,        "default",            default_trait,           Target::Trait;
+    DisplayTraitLangItem,        "display",            display_trait,           Target::Trait;
+    HashTraitLangItem,           "hash",               hash_trait,              Target::Trait;
 }
 
 impl<'a, 'tcx, 'gcx> TyCtxt<'a, 'tcx, 'gcx> {
