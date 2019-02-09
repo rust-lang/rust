@@ -1,5 +1,5 @@
 use crate::print::pprust::token_to_string;
-use crate::parse::lexer::StringReader;
+use crate::parse::lexer::{StringReader, UnmatchedBrace};
 use crate::parse::{token, PResult};
 use crate::tokenstream::{DelimSpan, IsJoint::*, TokenStream, TokenTree, TreeAndJoint};
 
@@ -101,38 +101,38 @@ impl<'a> StringReader<'a> {
                     }
                     // Incorrect delimiter.
                     token::CloseDelim(other) => {
-                        let token_str = token_to_string(&self.token);
+                        let mut unclosed_delimiter = None;
+                        let mut candidate = None;
                         if self.last_unclosed_found_span != Some(self.span) {
                             // do not complain about the same unclosed delimiter multiple times
                             self.last_unclosed_found_span = Some(self.span);
-                            let msg = format!("incorrect close delimiter: `{}`", token_str);
-                            let mut err = self.sess.span_diagnostic.struct_span_err(
-                                self.span,
-                                &msg,
-                            );
-                            err.span_label(self.span, "incorrect close delimiter");
                             // This is a conservative error: only report the last unclosed
                             // delimiter. The previous unclosed delimiters could actually be
                             // closed! The parser just hasn't gotten to them yet.
                             if let Some(&(_, sp)) = self.open_braces.last() {
-                                err.span_label(sp, "un-closed delimiter");
+                                unclosed_delimiter = Some(sp);
                             };
                             if let Some(current_padding) = sm.span_to_margin(self.span) {
                                 for (brace, brace_span) in &self.open_braces {
                                     if let Some(padding) = sm.span_to_margin(*brace_span) {
                                         // high likelihood of these two corresponding
                                         if current_padding == padding && brace == &other {
-                                            err.span_label(
-                                                *brace_span,
-                                                "close delimiter possibly meant for this",
-                                            );
+                                            candidate = Some(*brace_span);
                                         }
                                     }
                                 }
                             }
-                            err.emit();
+                            let (tok, _) = self.open_braces.pop().unwrap();
+                            self.unmatched_braces.push(UnmatchedBrace {
+                                expected_delim: tok,
+                                found_delim: other,
+                                found_span: self.span,
+                                unclosed_span: unclosed_delimiter,
+                                candidate_span: candidate,
+                            });
+                        } else {
+                            self.open_braces.pop();
                         }
-                        self.open_braces.pop().unwrap();
 
                         // If the incorrect delimiter matches an earlier opening
                         // delimiter, then don't consume it (it can be used to

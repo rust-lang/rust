@@ -9,6 +9,7 @@ use crate::parse::parser::Parser;
 use crate::symbol::Symbol;
 use crate::tokenstream::{TokenStream, TokenTree};
 use crate::diagnostics::plugin::ErrorMap;
+use crate::print::pprust::token_to_string;
 
 use rustc_data_structures::sync::{Lrc, Lock};
 use syntax_pos::{Span, SourceFile, FileName, MultiSpan};
@@ -136,15 +137,17 @@ pub fn parse_crate_attrs_from_source_str(name: FileName, source: String, sess: &
     new_parser_from_source_str(sess, name, source).parse_inner_attributes()
 }
 
-pub fn parse_stream_from_source_str(name: FileName, source: String, sess: &ParseSess,
-                                    override_span: Option<Span>)
-                                    -> TokenStream {
+pub fn parse_stream_from_source_str(
+    name: FileName,
+    source: String,
+    sess: &ParseSess,
+    override_span: Option<Span>,
+) -> (TokenStream, Vec<lexer::UnmatchedBrace>) {
     source_file_to_stream(sess, sess.source_map().new_source_file(name, source), override_span)
 }
 
 /// Create a new parser from a source string
-pub fn new_parser_from_source_str(sess: &ParseSess, name: FileName, source: String)
-                                      -> Parser<'_> {
+pub fn new_parser_from_source_str(sess: &ParseSess, name: FileName, source: String) -> Parser<'_> {
     panictry_buffer!(&sess.span_diagnostic, maybe_new_parser_from_source_str(sess, name, source))
 }
 
@@ -195,12 +198,14 @@ fn source_file_to_parser(sess: &ParseSess, source_file: Lrc<SourceFile>) -> Pars
 
 /// Given a source_file and config, return a parser. Returns any buffered errors from lexing the
 /// initial token stream.
-fn maybe_source_file_to_parser(sess: &ParseSess, source_file: Lrc<SourceFile>)
-    -> Result<Parser<'_>, Vec<Diagnostic>>
-{
+fn maybe_source_file_to_parser(
+    sess: &ParseSess,
+    source_file: Lrc<SourceFile>,
+) -> Result<Parser<'_>, Vec<Diagnostic>> {
     let end_pos = source_file.end_pos;
-    let mut parser = stream_to_parser(sess, maybe_file_to_stream(sess, source_file, None)?);
-
+    let (stream, unclosed_delims) = maybe_file_to_stream(sess, source_file, None)?;
+    let mut parser = stream_to_parser(sess, stream);
+    parser.unclosed_delims = unclosed_delims;
     if parser.token == token::Eof && parser.span.is_dummy() {
         parser.span = Span::new(end_pos, end_pos, parser.span.ctxt());
     }
@@ -247,25 +252,44 @@ fn file_to_source_file(sess: &ParseSess, path: &Path, spanopt: Option<Span>)
 }
 
 /// Given a source_file, produce a sequence of token-trees
-pub fn source_file_to_stream(sess: &ParseSess,
-                             source_file: Lrc<SourceFile>,
-                             override_span: Option<Span>) -> TokenStream {
+pub fn source_file_to_stream(
+    sess: &ParseSess,
+    source_file: Lrc<SourceFile>,
+    override_span: Option<Span>,
+) -> (TokenStream, Vec<lexer::UnmatchedBrace>) {
     panictry_buffer!(&sess.span_diagnostic, maybe_file_to_stream(sess, source_file, override_span))
 }
 
 /// Given a source file, produce a sequence of token-trees. Returns any buffered errors from
 /// parsing the token tream.
-pub fn maybe_file_to_stream(sess: &ParseSess,
-                            source_file: Lrc<SourceFile>,
-                            override_span: Option<Span>) -> Result<TokenStream, Vec<Diagnostic>> {
+pub fn maybe_file_to_stream(
+    sess: &ParseSess,
+    source_file: Lrc<SourceFile>,
+    override_span: Option<Span>,
+) -> Result<(TokenStream, Vec<lexer::UnmatchedBrace>), Vec<Diagnostic>> {
     let mut srdr = lexer::StringReader::new_or_buffered_errs(sess, source_file, override_span)?;
     srdr.real_token();
 
     match srdr.parse_all_token_trees() {
-        Ok(stream) => Ok(stream),
+        Ok(stream) => Ok((stream, srdr.unmatched_braces)),
         Err(err) => {
             let mut buffer = Vec::with_capacity(1);
             err.buffer(&mut buffer);
+            // Not using `emit_unclosed_delims` to use `db.buffer`
+            for unmatched in srdr.unmatched_braces {
+                let mut db = sess.span_diagnostic.struct_span_err(unmatched.found_span, &format!(
+                    "incorrect close delimiter: `{}`",
+                    token_to_string(&token::Token::CloseDelim(unmatched.found_delim)),
+                ));
+                db.span_label(unmatched.found_span, "incorrect close delimiter");
+                if let Some(sp) = unmatched.candidate_span {
+                    db.span_label(sp, "close delimiter possibly meant for this");
+                }
+                if let Some(sp) = unmatched.unclosed_span {
+                    db.span_label(sp, "un-closed delimiter");
+                }
+                db.buffer(&mut buffer);
+            }
             Err(buffer)
         }
     }

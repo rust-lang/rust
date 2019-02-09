@@ -12,6 +12,7 @@ use syntax::ast;
 use syntax::ext::base::ExtCtxt;
 use syntax::parse::lexer::comments;
 use syntax::parse::{self, token, ParseSess};
+use syntax::parse::parser::emit_unclosed_delims;
 use syntax::tokenstream::{self, DelimSpan, IsJoint::*, TokenStream, TreeAndJoint};
 use syntax_pos::hygiene::{SyntaxContext, Transparency};
 use syntax_pos::symbol::{keywords, Symbol};
@@ -409,12 +410,14 @@ impl server::TokenStream for Rustc<'_> {
         stream.is_empty()
     }
     fn from_str(&mut self, src: &str) -> Self::TokenStream {
-        parse::parse_stream_from_source_str(
+        let (tokens, errors) = parse::parse_stream_from_source_str(
             FileName::proc_macro_source_code(src.clone()),
             src.to_string(),
             self.sess,
             Some(self.call_site),
-        )
+        );
+        emit_unclosed_delims(&errors, &self.sess.span_diagnostic);
+        tokens
     }
     fn to_string(&mut self, stream: &Self::TokenStream) -> String {
         stream.to_string()

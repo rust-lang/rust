@@ -33,6 +33,15 @@ impl Default for TokenAndSpan {
     }
 }
 
+#[derive(Clone, Debug)]
+pub struct UnmatchedBrace {
+    pub expected_delim: token::DelimToken,
+    pub found_delim: token::DelimToken,
+    pub found_span: Span,
+    pub unclosed_span: Option<Span>,
+    pub candidate_span: Option<Span>,
+}
+
 pub struct StringReader<'a> {
     pub sess: &'a ParseSess,
     /// The absolute offset within the source_map of the next character to read
@@ -58,6 +67,7 @@ pub struct StringReader<'a> {
     span_src_raw: Span,
     /// Stack of open delimiters and their spans. Used for error message.
     open_braces: Vec<(token::DelimToken, Span)>,
+    crate unmatched_braces: Vec<UnmatchedBrace>,
     /// The type and spans for all braces
     ///
     /// Used only for error recovery when arriving to EOF with mismatched braces.
@@ -222,6 +232,7 @@ impl<'a> StringReader<'a> {
             span: syntax_pos::DUMMY_SP,
             span_src_raw: syntax_pos::DUMMY_SP,
             open_braces: Vec::new(),
+            unmatched_braces: Vec::new(),
             matching_delim_spans: Vec::new(),
             override_span,
             last_unclosed_found_span: None,

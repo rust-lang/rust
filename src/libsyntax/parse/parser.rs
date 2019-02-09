@@ -35,7 +35,7 @@ use crate::ext::base::DummyResult;
 use crate::source_map::{self, SourceMap, Spanned, respan};
 use crate::errors::{self, Applicability, DiagnosticBuilder, DiagnosticId};
 use crate::parse::{self, SeqSep, classify, token};
-use crate::parse::lexer::TokenAndSpan;
+use crate::parse::lexer::{TokenAndSpan, UnmatchedBrace};
 use crate::parse::lexer::comments::{doc_comment_style, strip_doc_comment_decoration};
 use crate::parse::token::DelimToken;
 use crate::parse::{new_sub_parser_from_file, ParseSess, Directory, DirectoryOwnership};
@@ -251,6 +251,11 @@ pub struct Parser<'a> {
     ///
     /// See the comments in the `parse_path_segment` function for more details.
     crate unmatched_angle_bracket_count: u32,
+    crate max_angle_bracket_count: u32,
+    /// List of all unclosed delimiters found by the lexer. If an entry is used for error recovery
+    /// it gets removed from here. Every entry left at the end gets emitted as an independent
+    /// error.
+    crate unclosed_delims: Vec<UnmatchedBrace>,
 }
 
 
@@ -575,6 +580,8 @@ impl<'a> Parser<'a> {
             desugar_doc_comments,
             cfg_mods: true,
             unmatched_angle_bracket_count: 0,
+            max_angle_bracket_count: 0,
+            unclosed_delims: Vec::new(),
         };
 
         let tok = parser.next_tok();
@@ -644,11 +651,11 @@ impl<'a> Parser<'a> {
 
     /// Expect and consume the token t. Signal an error if
     /// the next token is not t.
-    pub fn expect(&mut self, t: &token::Token) -> PResult<'a,  ()> {
+    pub fn expect(&mut self, t: &token::Token) -> PResult<'a,  bool /* recovered */> {
         if self.expected_tokens.is_empty() {
             if self.token == *t {
                 self.bump();
-                Ok(())
+                Ok(false)
             } else {
                 let token_str = pprust::token_to_string(t);
                 let this_token_str = self.this_token_descr();
@@ -663,6 +670,12 @@ impl<'a> Parser<'a> {
                     self.sess.source_map().next_point(self.prev_span)
                 };
                 let label_exp = format!("expected `{}`", token_str);
+                match self.recover_closing_delimiter(&[t.clone()], err) {
+                    Err(e) => err = e,
+                    Ok(recovered) => {
+                        return Ok(recovered);
+                    }
+                }
                 let cm = self.sess.source_map();
                 match (cm.lookup_line(self.span.lo()), cm.lookup_line(sp.lo())) {
                     (Ok(ref a), Ok(ref b)) if a.line == b.line => {
@@ -682,12 +695,64 @@ impl<'a> Parser<'a> {
         }
     }
 
+    fn recover_closing_delimiter(
+        &mut self,
+        tokens: &[token::Token],
+        mut err: DiagnosticBuilder<'a>,
+    ) -> PResult<'a, bool> {
+        let mut pos = None;
+        // we want to use the last closing delim that would apply
+        for (i, unmatched) in self.unclosed_delims.iter().enumerate().rev() {
+            if tokens.contains(&token::CloseDelim(unmatched.expected_delim))
+                && Some(self.span) > unmatched.unclosed_span
+            {
+                pos = Some(i);
+            }
+        }
+        match pos {
+            Some(pos) => {
+                // Recover and assume that the detected unclosed delimiter was meant for
+                // this location. Emit the diagnostic and act as if the delimiter was
+                // present for the parser's sake.
+
+                 // Don't attempt to recover from this unclosed delimiter more than once.
+                let unmatched = self.unclosed_delims.remove(pos);
+                let delim = TokenType::Token(token::CloseDelim(unmatched.expected_delim));
+
+                 // We want to suggest the inclusion of the closing delimiter where it makes
+                // the most sense, which is immediately after the last token:
+                //
+                //  {foo(bar {}}
+                //      -      ^
+                //      |      |
+                //      |      help: `)` may belong here (FIXME: #58270)
+                //      |
+                //      unclosed delimiter
+                if let Some(sp) = unmatched.unclosed_span {
+                    err.span_label(sp, "unclosed delimiter");
+                }
+                err.span_suggestion_short(
+                    self.sess.source_map().next_point(self.prev_span),
+                    &format!("{} may belong here", delim.to_string()),
+                    delim.to_string(),
+                    Applicability::MaybeIncorrect,
+                );
+                err.emit();
+                self.expected_tokens.clear();  // reduce errors
+                Ok(true)
+            }
+            _ => Err(err),
+        }
+    }
+
     /// Expect next token to be edible or inedible token.  If edible,
     /// then consume it; if inedible, then return without consuming
     /// anything.  Signal a fatal error if next token is unexpected.
-    pub fn expect_one_of(&mut self,
-                         edible: &[token::Token],
-                         inedible: &[token::Token]) -> PResult<'a,  ()>{
+    pub fn expect_one_of(
+        &mut self,
+        edible: &[token::Token],
+        inedible: &[token::Token],
+    ) -> PResult<'a, bool /* recovered */> {
         fn tokens_to_string(tokens: &[TokenType]) -> String {
             let mut i = tokens.iter();
             // This might be a sign we need a connect method on Iterator.
@@ -707,10 +772,10 @@ impl<'a> Parser<'a> {
         }
         if edible.contains(&self.token) {
             self.bump();
-            Ok(())
+            Ok(false)
         } else if inedible.contains(&self.token) {
             // leave it in the input
-            Ok(())
+            Ok(false)
         } else {
             let mut expected = edible.iter()
                 .map(|x| TokenType::Token(x.clone()))
@@ -761,6 +826,15 @@ impl<'a> Parser<'a> {
             } else {
                 label_sp
             };
+            match self.recover_closing_delimiter(&expected.iter().filter_map(|tt| match tt {
+                TokenType::Token(t) => Some(t.clone()),
+                _ => None,
+            }).collect::<Vec<_>>(), err) {
+                Err(e) => err = e,
+                Ok(recovered) => {
+                    return Ok(recovered);
+                }
+            }
 
             let cm = self.sess.source_map();
             match (cm.lookup_line(self.span.lo()), cm.lookup_line(sp.lo())) {
@@ -1070,6 +1144,7 @@ impl<'a> Parser<'a> {
         if ate {
             // See doc comment for `unmatched_angle_bracket_count`.
             self.unmatched_angle_bracket_count += 1;
+            self.max_angle_bracket_count += 1;
             debug!("eat_lt: (increment) count={:?}", self.unmatched_angle_bracket_count);
         }
 
@@ -1110,12 +1185,12 @@ impl<'a> Parser<'a> {
         };
 
         match ate {
-            Some(x) => {
+            Some(_) => {
                 // See doc comment for `unmatched_angle_bracket_count`.
                 self.unmatched_angle_bracket_count -= 1;
                 debug!("expect_gt: (decrement) count={:?}", self.unmatched_angle_bracket_count);
 
-                Ok(x)
+                Ok(())
             },
             None => self.unexpected(),
         }
@@ -1144,19 +1219,22 @@ impl<'a> Parser<'a> {
                                   -> PResult<'a, Vec<T>> where
         F: FnMut(&mut Parser<'a>) -> PResult<'a,  T>,
     {
-        let val = self.parse_seq_to_before_end(ket, sep, f)?;
-        self.bump();
+        let (val, recovered) = self.parse_seq_to_before_end(ket, sep, f)?;
+        if !recovered {
+            self.bump();
+        }
         Ok(val)
     }
 
     /// Parse a sequence, not including the closing delimiter. The function
     /// f must consume tokens until reaching the next separator or
     /// closing bracket.
-    pub fn parse_seq_to_before_end<T, F>(&mut self,
-                                         ket: &token::Token,
-                                         sep: SeqSep,
-                                         f: F)
-                                         -> PResult<'a, Vec<T>>
+    pub fn parse_seq_to_before_end<T, F>(
+        &mut self,
+        ket: &token::Token,
+        sep: SeqSep,
+        f: F,
+    ) -> PResult<'a, (Vec<T>, bool)>
         where F: FnMut(&mut Parser<'a>) -> PResult<'a, T>
     {
         self.parse_seq_to_before_tokens(&[ket], sep, TokenExpectType::Expect, f)
@@ -1168,10 +1246,11 @@ impl<'a> Parser<'a> {
         sep: SeqSep,
         expect: TokenExpectType,
         mut f: F,
-    ) -> PResult<'a, Vec<T>>
+    ) -> PResult<'a, (Vec<T>, bool /* recovered */)>
         where F: FnMut(&mut Parser<'a>) -> PResult<'a, T>
     {
-        let mut first: bool = true;
+        let mut first = true;
+        let mut recovered = false;
         let mut v = vec![];
         while !kets.iter().any(|k| {
                 match expect {
@@ -1187,23 +1266,30 @@ impl<'a> Parser<'a> {
                 if first {
                     first = false;
                 } else {
-                    if let Err(mut e) = self.expect(t) {
-                        // Attempt to keep parsing if it was a similar separator
-                        if let Some(ref tokens) = t.similar_tokens() {
-                            if tokens.contains(&self.token) {
-                                self.bump();
-                            }
+                    match self.expect(t) {
+                        Ok(false) => {}
+                        Ok(true) => {
+                            recovered = true;
+                            break;
                         }
-                        e.emit();
-                        // Attempt to keep parsing if it was an omitted separator
-                        match f(self) {
-                            Ok(t) => {
-                                v.push(t);
-                                continue;
-                            },
-                            Err(mut e) => {
-                                e.cancel();
-                                break;
+                        Err(mut e) => {
+                            // Attempt to keep parsing if it was a similar separator
+                            if let Some(ref tokens) = t.similar_tokens() {
+                                if tokens.contains(&self.token) {
+                                    self.bump();
+                                }
+                            }
+                            e.emit();
+                            // Attempt to keep parsing if it was an omitted separator
+                            match f(self) {
+                                Ok(t) => {
+                                    v.push(t);
+                                    continue;
+                                },
+                                Err(mut e) => {
+                                    e.cancel();
+                                    break;
+                                }
                             }
                         }
                     }
@@ -1222,23 +1308,26 @@ impl<'a> Parser<'a> {
             v.push(t);
         }
 
-        Ok(v)
+        Ok((v, recovered))
     }
 
     /// Parse a sequence, including the closing delimiter. The function
     /// f must consume tokens until reaching the next separator or
     /// closing bracket.
-    fn parse_unspanned_seq<T, F>(&mut self,
-                                     bra: &token::Token,
-                                     ket: &token::Token,
-                                     sep: SeqSep,
-                                     f: F)
-                                     -> PResult<'a, Vec<T>> where
+    fn parse_unspanned_seq<T, F>(
+        &mut self,
+        bra: &token::Token,
+        ket: &token::Token,
+        sep: SeqSep,
+        f: F,
+    ) -> PResult<'a, Vec<T>> where
         F: FnMut(&mut Parser<'a>) -> PResult<'a, T>,
     {
         self.expect(bra)?;
-        let result = self.parse_seq_to_before_end(ket, sep, f)?;
-        self.eat(ket);
+        let (result, recovered) = self.parse_seq_to_before_end(ket, sep, f)?;
+        if !recovered {
+            self.eat(ket);
+        }
         Ok(result)
     }
 
@@ -2290,7 +2379,10 @@ impl<'a> Parser<'a> {
             // We use `style == PathStyle::Expr` to check if this is in a recursion or not. If
             // it isn't, then we reset the unmatched angle bracket count as we're about to start
             // parsing a new path.
-            if style == PathStyle::Expr { self.unmatched_angle_bracket_count = 0; }
+            if style == PathStyle::Expr {
+                self.unmatched_angle_bracket_count = 0;
+                self.max_angle_bracket_count = 0;
+            }
 
             let args = if self.eat_lt() {
                 // `<'a, T, A = U>`
@@ -2302,12 +2394,14 @@ impl<'a> Parser<'a> {
             } else {
                 // `(T, U) -> R`
                 self.bump(); // `(`
-                let inputs = self.parse_seq_to_before_tokens(
+                let (inputs, recovered) = self.parse_seq_to_before_tokens(
                     &[&token::CloseDelim(token::Paren)],
                     SeqSep::trailing_allowed(token::Comma),
                     TokenExpectType::Expect,
                     |p| p.parse_ty())?;
-                self.bump(); // `)`
+                if !recovered {
+                    self.bump(); // `)`
+                }
                 let span = lo.to(self.prev_span);
                 let output = if self.eat(&token::RArrow) {
                     Some(self.parse_ty_common(false, false)?)
@@ -2513,9 +2607,13 @@ impl<'a> Parser<'a> {
                 // (e,) is a tuple with only one field, e
                 let mut es = vec![];
                 let mut trailing_comma = false;
+                let mut recovered = false;
                 while self.token != token::CloseDelim(token::Paren) {
                     es.push(self.parse_expr()?);
-                    self.expect_one_of(&[], &[token::Comma, token::CloseDelim(token::Paren)])?;
+                    recovered = self.expect_one_of(
+                        &[],
+                        &[token::Comma, token::CloseDelim(token::Paren)],
+                    )?;
                     if self.eat(&token::Comma) {
                         trailing_comma = true;
                     } else {
@@ -2523,7 +2621,9 @@ impl<'a> Parser<'a> {
                         break;
                     }
                 }
-                self.bump();
+                if !recovered {
+                    self.bump();
+                }
 
                 hi = self.prev_span;
                 ex = if es.len() == 1 && !trailing_comma {
@@ -2720,6 +2820,21 @@ impl<'a> Parser<'a> {
                     hi = pth.span;
                     ex = ExprKind::Path(None, pth);
                 } else {
+                    if !self.unclosed_delims.is_empty() && self.check(&token::Semi) {
+                        // Don't complain about bare semicolons after unclosed braces
+                        // recovery in order to keep the error count down. Fixing the
+                        // delimiters will possibly also fix the bare semicolon found in
+                        // expression context. For example, silence the following error:
+                        // ```
+                        // error: expected expression, found `;`
+                        //  --> file.rs:2:13
+                        //   |
+                        // 2 |     foo(bar(;
+                        //   |             ^ expected expression
+                        // ```
+                        self.bump();
+                        return Ok(self.mk_expr(self.span, ExprKind::Err, ThinVec::new()));
+                    }
                     match self.parse_literal_maybe_minus() {
                         Ok(expr) => {
                             hi = expr.span;
@@ -2819,7 +2934,7 @@ impl<'a> Parser<'a> {
 
             match self.expect_one_of(&[token::Comma],
                                      &[token::CloseDelim(token::Brace)]) {
-                Ok(()) => if let Some(f) = parsed_field.or(recovery_field) {
+                Ok(_) => if let Some(f) = parsed_field.or(recovery_field) {
                     // only include the field if there's no parse error for the field name
                     fields.push(f);
                 }
@@ -5939,7 +6054,7 @@ impl<'a> Parser<'a> {
 
         let sp = self.span;
         let mut variadic = false;
-        let args: Vec<Option<Arg>> =
+        let (args, recovered): (Vec<Option<Arg>>, bool) =
             self.parse_seq_to_before_end(
                 &token::CloseDelim(token::Paren),
                 SeqSep::trailing_allowed(token::Comma),
@@ -5987,7 +6102,9 @@ impl<'a> Parser<'a> {
                 }
             )?;
 
-        self.eat(&token::CloseDelim(token::Paren));
+        if !recovered {
+            self.eat(&token::CloseDelim(token::Paren));
+        }
 
         let args: Vec<_> = args.into_iter().filter_map(|x| x).collect();
 
@@ -6132,15 +6249,15 @@ impl<'a> Parser<'a> {
 
         // Parse the rest of the function parameter list.
         let sep = SeqSep::trailing_allowed(token::Comma);
-        let fn_inputs = if let Some(self_arg) = self_arg {
+        let (fn_inputs, recovered) = if let Some(self_arg) = self_arg {
             if self.check(&token::CloseDelim(token::Paren)) {
-                vec![self_arg]
+                (vec![self_arg], false)
             } else if self.eat(&token::Comma) {
                 let mut fn_inputs = vec![self_arg];
-                fn_inputs.append(&mut self.parse_seq_to_before_end(
-                    &token::CloseDelim(token::Paren), sep, parse_arg_fn)?
-                );
-                fn_inputs
+                let (mut input, recovered) = self.parse_seq_to_before_end(
+                    &token::CloseDelim(token::Paren), sep, parse_arg_fn)?;
+                fn_inputs.append(&mut input);
+                (fn_inputs, recovered)
             } else {
                 return self.unexpected();
             }
@@ -6148,8 +6265,10 @@ impl<'a> Parser<'a> {
             self.parse_seq_to_before_end(&token::CloseDelim(token::Paren), sep, parse_arg_fn)?
         };
 
-        // Parse closing paren and return type.
-        self.expect(&token::CloseDelim(token::Paren))?;
+        if !recovered {
+            // Parse closing paren and return type.
+            self.expect(&token::CloseDelim(token::Paren))?;
+        }
         Ok(P(FnDecl {
             inputs: fn_inputs,
             output: self.parse_ret_ty(true)?,
@@ -6169,7 +6288,7 @@ impl<'a> Parser<'a> {
                     SeqSep::trailing_allowed(token::Comma),
                     TokenExpectType::NoExpect,
                     |p| p.parse_fn_block_arg()
-                )?;
+                )?.0;
                 self.expect_or()?;
                 args
             }
@@ -8168,7 +8287,7 @@ impl<'a> Parser<'a> {
             // eat a matched-delimiter token tree:
             let (delim, tts) = self.expect_delimited_token_tree()?;
             if delim != MacDelimiter::Brace {
-                self.expect(&token::Semi)?
+                self.expect(&token::Semi)?;
             }
 
             Ok(Some(respan(lo.to(self.prev_span), Mac_ { path: pth, tts, delim })))
@@ -8313,11 +8432,14 @@ impl<'a> Parser<'a> {
     /// entry point for the parser.
     pub fn parse_crate_mod(&mut self) -> PResult<'a, Crate> {
         let lo = self.span;
-        Ok(ast::Crate {
+        let krate = Ok(ast::Crate {
             attrs: self.parse_inner_attributes()?,
             module: self.parse_mod_items(&token::Eof, lo)?,
             span: lo.to(self.span),
-        })
+        });
+        emit_unclosed_delims(&self.unclosed_delims, self.diagnostic());
+        self.unclosed_delims.clear();
+        krate
     }
 
     pub fn parse_optional_str(&mut self) -> Option<(Symbol, ast::StrStyle, Option<ast::Name>)> {
@@ -8344,5 +8466,22 @@ impl<'a> Parser<'a> {
                 Err(err)
             }
         }
+    }
+}
+
+pub fn emit_unclosed_delims(unclosed_delims: &[UnmatchedBrace], handler: &errors::Handler) {
+    for unmatched in unclosed_delims {
+        let mut err = handler.struct_span_err(unmatched.found_span, &format!(
+            "incorrect close delimiter: `{}`",
+            pprust::token_to_string(&token::Token::CloseDelim(unmatched.found_delim)),
+        ));
+        err.span_label(unmatched.found_span, "incorrect close delimiter");
+        if let Some(sp) = unmatched.candidate_span {
+            err.span_label(sp, "close delimiter possibly meant for this");
+        }
+        if let Some(sp) = unmatched.unclosed_span {
+            err.span_label(sp, "un-closed delimiter");
+        }
+        err.emit();
     }
 }

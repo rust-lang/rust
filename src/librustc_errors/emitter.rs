@@ -672,8 +672,8 @@ impl EmitterWriter {
         //   | |  something about `foo`
         //   | something about `fn foo()`
         annotations_position.sort_by(|a, b| {
-            // Decreasing order
-            a.1.len().cmp(&b.1.len()).reverse()
+            // Decreasing order. When `a` and `b` are the same length, prefer `Primary`.
+            (a.1.len(), !a.1.is_primary).cmp(&(b.1.len(), !b.1.is_primary)).reverse()
         });
 
         // Write the underlines.
