@@ -33,6 +33,7 @@
 
 use crate::hir::def_id::DefId;
 use crate::ty::{self, Binder, Ty, TyCtxt, TypeFlags};
+use crate::ty::subst::SubstsRef;
 
 use std::collections::BTreeMap;
 use std::fmt;
@@ -162,6 +163,35 @@ pub trait TypeFolder<'gcx: 'tcx, 'tcx> : Sized {
         where T : TypeFoldable<'tcx>
     {
         t.super_fold_with(self)
+    }
+
+    #[inline]
+    /// If `false` - the default - then `ty::Invariant` might be used instead of the
+    /// correct variance when folding an item with a variance.
+    ///
+    /// Otherwise, the correct variance is looked up from the tcx, which can
+    /// be a performance and cycle hazard.
+    fn use_variances(&self) -> bool {
+        false
+    }
+
+    #[inline]
+    fn fold_item_substs(&mut self, item_def_id: DefId, substs: SubstsRef<'tcx>)
+                        -> Result<SubstsRef<'tcx>, Self::Error>
+    {
+        if self.use_variances() {
+            let variances = self.tcx().variances_of(item_def_id);
+            ty::subst::fold_with_variances(self, &variances, substs)
+        } else {
+            substs.fold_with(self)
+        }
+    }
+
+    #[inline]
+    fn fold_with_variance<T>(&mut self, _variance: ty::Variance, t: &T) -> Result<T, Self::Error>
+        where T : TypeFoldable<'tcx>
+    {
+        t.fold_with(self)
     }
 
     fn fold_ty(&mut self, t: Ty<'tcx>) -> Result<Ty<'tcx>, Self::Error> {

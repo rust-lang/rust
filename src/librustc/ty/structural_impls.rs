@@ -3,6 +3,7 @@
 //! hand, though we've recently added some macros (e.g.,
 //! `BraceStructLiftImpl!`) to help with the tedium.
 
+use crate::hir;
 use crate::mir::ProjectionKind;
 use crate::mir::interpret::ConstValue;
 use crate::ty::{self, Lift, Ty, TyCtxt};
@@ -12,6 +13,7 @@ use smallvec::SmallVec;
 use crate::mir::interpret;
 
 use std::rc::Rc;
+use std::iter;
 
 ///////////////////////////////////////////////////////////////////////////
 // Atomic structs
@@ -770,16 +772,24 @@ impl<'tcx> TypeFoldable<'tcx> for Ty<'tcx> {
             ty::RawPtr(tm) => ty::RawPtr(tm.fold_with(folder)?),
             ty::Array(typ, sz) => ty::Array(typ.fold_with(folder)?, sz.fold_with(folder)?),
             ty::Slice(typ) => ty::Slice(typ.fold_with(folder)?),
-            ty::Adt(tid, substs) => ty::Adt(tid, substs.fold_with(folder)?),
-            ty::Dynamic(ref trait_ty, ref region) =>
-                ty::Dynamic(trait_ty.fold_with(folder)?, region.fold_with(folder)?),
+            ty::Adt(tid, substs) => {
+                ty::Adt(tid, folder.fold_item_substs(tid.did, substs)?)
+            }
+            ty::Dynamic(ref trait_ty, ref region) => {
+                let principal = trait_ty.fold_with(folder)?;
+                let region_bound = folder.fold_with_variance(ty::Contravariant, region)?;
+                ty::Dynamic(principal, region_bound)
+            }
             ty::Tuple(ts) => ty::Tuple(ts.fold_with(folder)?),
             ty::FnDef(def_id, substs) => {
-                ty::FnDef(def_id, substs.fold_with(folder)?)
+                ty::FnDef(def_id, folder.fold_item_substs(def_id, substs)?)
             }
             ty::FnPtr(f) => ty::FnPtr(f.fold_with(folder)?),
             ty::Ref(ref r, ty, mutbl) => {
-                ty::Ref(r.fold_with(folder)?, ty.fold_with(folder)?, mutbl)
+                let r = folder.fold_with_variance(ty::Contravariant, r)?;
+                // Fold the type as a TypeAndMut to get the correct variance.
+                let mt = ty::TypeAndMut { ty, mutbl }.fold_with(folder)?;
+                ty::Ref(r, mt.ty, mt.mutbl)
             }
             ty::Generator(did, substs, movability) => {
                 ty::Generator(
@@ -864,9 +874,31 @@ impl<'tcx> TypeFoldable<'tcx> for Ty<'tcx> {
     }
 }
 
-BraceStructTypeFoldableImpl! {
-    impl<'tcx> TypeFoldable<'tcx> for ty::TypeAndMut<'tcx> {
-        ty, mutbl
+
+
+impl<'tcx> TypeFoldable<'tcx> for ty::TypeAndMut<'tcx> {
+    fn super_fold_with<'gcx: 'tcx, F: TypeFolder<'gcx, 'tcx>>(&self, folder: &mut F)
+                                                              -> Result<Self, F::Error>
+    {
+        let ty::TypeAndMut { ty, mutbl } = self;
+        let variance = match mutbl {
+            hir::Mutability::MutImmutable => ty::Covariant,
+            hir::Mutability::MutMutable => ty::Invariant,
+        };
+
+        Ok(ty::TypeAndMut {
+            ty: folder.fold_with_variance(variance, ty)?,
+            mutbl: mutbl.fold_with(folder)?,
+        })
+    }
+
+    fn super_visit_with<V: TypeVisitor<'tcx>>(&self, visitor: &mut V)
+                                              -> Result<(), V::Error>
+   {
+        let ty::TypeAndMut { ty, mutbl } = self;
+
+        ty.visit_with(visitor)?;
+        mutbl.visit_with(visitor)
     }
 }
 
@@ -876,9 +908,45 @@ BraceStructTypeFoldableImpl! {
     }
 }
 
-BraceStructTypeFoldableImpl! {
-    impl<'tcx> TypeFoldable<'tcx> for ty::FnSig<'tcx> {
-        inputs_and_output, c_variadic, unsafety, abi
+impl<'tcx> TypeFoldable<'tcx> for ty::FnSig<'tcx> {
+    fn super_fold_with<'gcx: 'tcx, F: TypeFolder<'gcx, 'tcx>>(&self, folder: &mut F)
+                                                              -> Result<Self, F::Error>
+    {
+        let ty::FnSig { inputs_and_output, c_variadic, unsafety, abi } = self;
+
+        let inputs_and_output = if folder.use_variances() {
+            let inputs_and_output = self.inputs().iter().cloned()
+                .map(|x| (x, false))
+                .chain(iter::once((self.output(), true)))
+                .map(|(a, is_output)| {
+                    if is_output {
+                        a.fold_with(folder)
+                    } else {
+                        folder.fold_with_variance(ty::Contravariant, &a)
+                    }
+                }).collect::<Result<SmallVec<[_; 8]>, _>>()?;
+            folder.tcx().intern_type_list(&inputs_and_output)
+        } else {
+            folder.fold_with_variance(ty::Invariant, inputs_and_output)?
+        };
+
+        Ok(ty::FnSig {
+            inputs_and_output,
+            c_variadic: *c_variadic,
+            unsafety: *unsafety,
+            abi: *abi,
+        })
+    }
+
+    fn super_visit_with<V: TypeVisitor<'tcx>>(&self, visitor: &mut V)
+                                              -> Result<(), V::Error>
+    {
+        let ty::FnSig { inputs_and_output, c_variadic, unsafety, abi } = self;
+
+        inputs_and_output.visit_with(visitor)?;
+        c_variadic.visit_with(visitor)?;
+        unsafety.visit_with(visitor)?;
+        abi.visit_with(visitor)
     }
 }
 
