@@ -18,7 +18,6 @@ cargo_metadata = "0.7.0"
 
 ra_arena = { path = "../ra_arena" }
 ra_db = { path = "../ra_db" }
-ra_vfs = { path = "../ra_vfs" }
 
 [dev-dependencies]
 test_utils = { path = "../test_utils" }

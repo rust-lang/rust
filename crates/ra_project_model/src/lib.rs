@@ -7,7 +7,6 @@ use failure::bail;
 use rustc_hash::FxHashMap;
 
 use ra_db::{CrateGraph, FileId};
-use ra_vfs::Vfs;
 
 pub use crate::{
     cargo_workspace::{CargoWorkspace, Package, Target, TargetKind},
@@ -32,12 +31,11 @@ impl ProjectWorkspace {
         Ok(res)
     }
 
-    pub fn to_crate_graph(&self, vfs: &mut Vfs) -> CrateGraph {
+    pub fn to_crate_graph(&self, load: &mut dyn FnMut(&Path) -> Option<FileId>) -> CrateGraph {
         let mut crate_graph = CrateGraph::default();
         let mut sysroot_crates = FxHashMap::default();
         for krate in self.sysroot.crates() {
-            if let Some(file_id) = vfs.load(krate.root(&self.sysroot)) {
-                let file_id = FileId(file_id.0.into());
+            if let Some(file_id) = load(krate.root(&self.sysroot)) {
                 sysroot_crates.insert(krate, crate_graph.add_crate_root(file_id));
             }
         }
@@ -63,8 +61,7 @@ impl ProjectWorkspace {
             let mut lib_tgt = None;
             for tgt in pkg.targets(&self.cargo) {
                 let root = tgt.root(&self.cargo);
-                if let Some(file_id) = vfs.load(root) {
-                    let file_id = FileId(file_id.0.into());
+                if let Some(file_id) = load(root) {
                     let crate_id = crate_graph.add_crate_root(file_id);
                     if tgt.kind(&self.cargo) == TargetKind::Lib {
                         lib_tgt = Some(crate_id);

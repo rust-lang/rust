@@ -58,8 +58,12 @@ impl ServerWorldState {
 
         // Create crate graph from all the workspaces
         let mut crate_graph = CrateGraph::default();
+        let mut load = |path: &std::path::Path| {
+            let vfs_file = vfs.load(path);
+            vfs_file.map(|f| FileId(f.0.into()))
+        };
         for ws in workspaces.iter() {
-            crate_graph.extend(ws.to_crate_graph(&mut vfs));
+            crate_graph.extend(ws.to_crate_graph(&mut load));
         }
         change.set_crate_graph(crate_graph);
 
