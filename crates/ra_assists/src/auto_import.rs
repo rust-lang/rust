@@ -5,42 +5,6 @@ use ra_syntax::{
 };
 use crate::assist_ctx::{AssistCtx, Assist, AssistBuilder};
 
-// TODO: refactor this before merge
-mod formatting {
-    use ra_syntax::{
-        AstNode, SyntaxNode,
-        ast::{self, AstToken},
-        algo::generate,
-};
-
-    /// If the node is on the beginning of the line, calculate indent.
-    pub fn leading_indent(node: &SyntaxNode) -> Option<&str> {
-        for leaf in prev_leaves(node) {
-            if let Some(ws) = ast::Whitespace::cast(leaf) {
-                let ws_text = ws.text();
-                if let Some(pos) = ws_text.rfind('\n') {
-                    return Some(&ws_text[pos + 1..]);
-                }
-            }
-            if leaf.leaf_text().unwrap().contains('\n') {
-                break;
-            }
-        }
-        None
-    }
-
-    fn prev_leaves(node: &SyntaxNode) -> impl Iterator<Item = &SyntaxNode> {
-        generate(prev_leaf(node), |&node| prev_leaf(node))
-    }
-
-    fn prev_leaf(node: &SyntaxNode) -> Option<&SyntaxNode> {
-        generate(node.ancestors().find_map(SyntaxNode::prev_sibling), |it| {
-            it.last_child()
-        })
-        .last()
-    }
-}
-
 fn collect_path_segments(path: &ast::Path) -> Option<Vec<&ast::PathSegment>> {
     let mut v = Vec::new();
     collect_path_segments_raw(&mut v, path)?;
@@ -102,11 +66,7 @@ fn fmt_segments_raw(segments: &[&ast::PathSegment], buf: &mut String) {
 
 // Returns the numeber of common segments.
 fn compare_path_segments(left: &[&ast::PathSegment], right: &[&ast::PathSegment]) -> usize {
-    return left
-        .iter()
-        .zip(right)
-        .filter(|(l, r)| compare_path_segment(l, r))
-        .count();
+    return left.iter().zip(right).filter(|(l, r)| compare_path_segment(l, r)).count();
 }
 
 fn compare_path_segment(a: &ast::PathSegment, b: &ast::PathSegment) -> bool {
@@ -166,10 +126,7 @@ enum ImportAction<'a> {
 
 impl<'a> ImportAction<'a> {
     fn add_new_use(anchor: Option<&'a SyntaxNode>, add_after_anchor: bool) -> Self {
-        ImportAction::AddNewUse {
-            anchor,
-            add_after_anchor,
-        }
+        ImportAction::AddNewUse { anchor, add_after_anchor }
     }
 
     fn add_nested_import(
@@ -191,11 +148,7 @@ impl<'a> ImportAction<'a> {
         tree_list: &'a ast::UseTreeList,
         add_self: bool,
     ) -> Self {
-        ImportAction::AddInTreeList {
-            common_segments,
-            tree_list,
-            add_self,
-        }
+        ImportAction::AddInTreeList { common_segments, tree_list, add_self }
     }
 
     fn better<'b>(left: &'b ImportAction<'a>, right: &'b ImportAction<'a>) -> &'b ImportAction<'a> {
@@ -211,20 +164,12 @@ impl<'a> ImportAction<'a> {
             (ImportAction::Nothing, _) => true,
             (ImportAction::AddInTreeList { .. }, ImportAction::Nothing) => false,
             (
-                ImportAction::AddNestedImport {
-                    common_segments: n, ..
-                },
-                ImportAction::AddInTreeList {
-                    common_segments: m, ..
-                },
+                ImportAction::AddNestedImport { common_segments: n, .. },
+                ImportAction::AddInTreeList { common_segments: m, .. },
             ) => n > m,
             (
-                ImportAction::AddInTreeList {
-                    common_segments: n, ..
-                },
-                ImportAction::AddNestedImport {
-                    common_segments: m, ..
-                },
+                ImportAction::AddInTreeList { common_segments: n, .. },
+                ImportAction::AddNestedImport { common_segments: m, .. },
             ) => n > m,
             (ImportAction::AddInTreeList { .. }, _) => true,
             (ImportAction::AddNestedImport { .. }, ImportAction::Nothing) => false,
@@ -283,11 +228,7 @@ fn walk_use_tree_for_best_action<'a>(
             // e.g: target is std::fmt and we can have
             // use foo::bar
             // We add a brand new use statement
-            current_use_tree
-                .syntax()
-                .ancestors()
-                .find_map(ast::UseItem::cast)
-                .map(AstNode::syntax),
+            current_use_tree.syntax().ancestors().find_map(ast::UseItem::cast).map(AstNode::syntax),
             true,
         ),
         common if common == left.len() && left.len() == right.len() => {
@@ -398,8 +339,7 @@ fn best_action_for_target<'b, 'a: 'b>(
         .filter_map(ast::UseItem::use_tree)
         .map(|u| walk_use_tree_for_best_action(&mut storage, None, u, target))
         .fold(None, |best, a| {
-            best.and_then(|best| Some(*ImportAction::better(&best, &a)))
-                .or(Some(a))
+            best.and_then(|best| Some(*ImportAction::better(&best, &a))).or(Some(a))
         });
 
     match best_action {
@@ -421,15 +361,10 @@ fn best_action_for_target<'b, 'a: 'b>(
 
 fn make_assist(action: &ImportAction, target: &[&ast::PathSegment], edit: &mut AssistBuilder) {
     match action {
-        ImportAction::AddNewUse {
-            anchor,
-            add_after_anchor,
-        } => make_assist_add_new_use(anchor, *add_after_anchor, target, edit),
-        ImportAction::AddInTreeList {
-            common_segments,
-            tree_list,
-            add_self,
-        } => {
+        ImportAction::AddNewUse { anchor, add_after_anchor } => {
+            make_assist_add_new_use(anchor, *add_after_anchor, target, edit)
+        }
+        ImportAction::AddInTreeList { common_segments, tree_list, add_self } => {
             // We know that the fist n segments already exists in the use statement we want
             // to modify, so we want to add only the last target.len() - n segments.
             let segments_to_add = target.split_at(*common_segments).1;
@@ -461,7 +396,7 @@ fn make_assist_add_new_use(
     edit: &mut AssistBuilder,
 ) {
     if let Some(anchor) = anchor {
-        let indent = formatting::leading_indent(anchor);
+        let indent = ra_fmt::leading_indent(anchor);
         let mut buf = String::new();
         if after {
             buf.push_str("\n");
@@ -478,11 +413,7 @@ fn make_assist_add_new_use(
                 buf.push_str(spaces);
             }
         }
-        let position = if after {
-            anchor.range().end()
-        } else {
-            anchor.range().start()
-        };
+        let position = if after { anchor.range().end() } else { anchor.range().start() };
         edit.insert(position, buf);
     }
 }
@@ -496,10 +427,7 @@ fn make_assist_add_in_tree_list(
     let last = tree_list.use_trees().last();
     if let Some(last) = last {
         let mut buf = String::new();
-        let comma = last
-            .syntax()
-            .siblings(Direction::Next)
-            .find(|n| n.kind() == COMMA);
+        let comma = last.syntax().siblings(Direction::Next).find(|n| n.kind() == COMMA);
         let offset = if let Some(comma) = comma {
             comma.range().end()
         } else {
@@ -558,12 +486,7 @@ pub(crate) fn auto_import(ctx: AssistCtx<impl HirDatabase>) -> Option<Assist> {
 
     let path = node.ancestors().find_map(ast::Path::cast)?;
     // We don't want to mess with use statements
-    if path
-        .syntax()
-        .ancestors()
-        .find_map(ast::UseItem::cast)
-        .is_some()
-    {
+    if path.syntax().ancestors().find_map(ast::UseItem::cast).is_some() {
         return None;
     }
 
@@ -572,21 +495,18 @@ pub(crate) fn auto_import(ctx: AssistCtx<impl HirDatabase>) -> Option<Assist> {
         return None;
     }
 
-    ctx.build(
-        format!("import {} in the current file", fmt_segments(&segments)),
-        |edit| {
-            let action = best_action_for_target(current_file.syntax(), path, &segments);
-            make_assist(&action, segments.as_slice(), edit);
-            if let Some(last_segment) = path.segment() {
-                // Here we are assuming the assist will provide a  correct use statement
-                // so we can delete the path qualifier
-                edit.delete(TextRange::from_to(
-                    path.syntax().range().start(),
-                    last_segment.syntax().range().start(),
-                ));
-            }
-        },
-    )
+    ctx.build(format!("import {} in the current file", fmt_segments(&segments)), |edit| {
+        let action = best_action_for_target(current_file.syntax(), path, &segments);
+        make_assist(&action, segments.as_slice(), edit);
+        if let Some(last_segment) = path.segment() {
+            // Here we are assuming the assist will provide a  correct use statement
+            // so we can delete the path qualifier
+            edit.delete(TextRange::from_to(
+                path.syntax().range().start(),
+                last_segment.syntax().range().start(),
+            ));
+        }
+    })
 }
 
 #[cfg(test)]
