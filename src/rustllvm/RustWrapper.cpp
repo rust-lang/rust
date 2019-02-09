@@ -170,6 +170,8 @@ static Attribute::AttrKind fromRust(LLVMRustAttribute Kind) {
     return Attribute::OptimizeForSize;
   case ReadOnly:
     return Attribute::ReadOnly;
+  case ReadNone:
+    return Attribute::ReadNone;
   case SExt:
     return Attribute::SExt;
   case StructRet:

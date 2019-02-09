@@ -2489,6 +2489,29 @@ bitflags! {
         /// #[used], indicates that LLVM can't eliminate this function (but the
         /// linker can!)
         const USED                      = 1 << 9;
+        /// #[ffi_pure], indicates that a function has no effects except for
+        /// its return value, that its return value depends only on the
+        /// parameters and/or global variables, and that its return value does
+        /// not change between two consecutive calls (for example, because of
+        /// volatile access to the global variables).
+        ///
+        /// Such a function can be subject to common sub-expression elimination
+        /// and loop optimization just as an arithmetic operator would be. Some
+        /// common examples of pure functions are `strlen` or `memcmp`.
+        const FFI_PURE = 1 << 10;
+        /// #[ffi_const], indicates that a function has no effects except for
+        /// its return value and that its return value depends only on the
+        /// value of the function parameters.
+        ///
+        /// This attribute is stricter than `#[ffi_pure]`, since the function
+        /// return value is not allowed to depend on anything that is not the
+        /// value of the function parameters, like global memory, or other
+        /// values, like dereferencing a pointer function parameter to read
+        /// another value.
+        ///
+        /// A `#[ffi_const]` function that returns void is a `nop` in the
+        /// abstract machine.
+        const FFI_CONST = 1 << 11;
     }
 }
 

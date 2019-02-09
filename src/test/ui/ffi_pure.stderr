@@ -1,0 +1,9 @@
+error[E0724]: `#[ffi_pure]` may only be used on `extern fn`s
+  --> $DIR/ffi_pure.rs:5:1
+   |
+LL | #[ffi_pure] //~ ERROR `#[ffi_pure]` may only be used on `extern fn`s [E0724]
+   | ^^^^^^^^^^^
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0724`.

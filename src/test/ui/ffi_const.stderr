@@ -1,0 +1,9 @@
+error[E0725]: `#[ffi_const]` may only be used on `extern fn`s
+  --> $DIR/ffi_const.rs:5:1
+   |
+LL | #[ffi_const] //~ ERROR `#[ffi_const]` may only be used on `extern fn`s [E0725]
+   | ^^^^^^^^^^^^
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0725`.

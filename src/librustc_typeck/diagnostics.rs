@@ -4720,4 +4720,6 @@ register_diagnostics! {
     E0698, // type inside generator must be known in this context
     E0719, // duplicate values for associated type binding
     E0722, // Malformed #[optimize] attribute
+    E0724, // `#[ffi_pure]` is only allowed `extern fn`s
+    E0725, // `#[ffi_const]` is only allowed `extern fn`s
 }

@@ -116,6 +116,7 @@ pub enum Attribute {
     SanitizeMemory  = 22,
     NonLazyBind     = 23,
     OptimizeNone    = 24,
+    ReadNone        = 25,
 }
 
 /// LLVMIntPredicate
