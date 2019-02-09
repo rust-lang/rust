@@ -68,7 +68,7 @@ pub fn dump_mir<'a, 'gcx, 'tcx, F>(
     pass_num: Option<&dyn Display>,
     pass_name: &str,
     disambiguator: &dyn Display,
-    source: MirSource,
+    source: MirSource<'tcx>,
     mir: &Mir<'tcx>,
     extra_data: F,
 ) where
@@ -97,7 +97,7 @@ pub fn dump_mir<'a, 'gcx, 'tcx, F>(
 pub fn dump_enabled<'a, 'gcx, 'tcx>(
     tcx: TyCtxt<'a, 'gcx, 'tcx>,
     pass_name: &str,
-    source: MirSource,
+    source: MirSource<'tcx>,
 ) -> bool {
     let filters = match tcx.sess.opts.debugging_opts.dump_mir {
         None => return false,
@@ -124,7 +124,7 @@ fn dump_matched_mir_node<'a, 'gcx, 'tcx, F>(
     pass_name: &str,
     node_path: &str,
     disambiguator: &dyn Display,
-    source: MirSource,
+    source: MirSource<'tcx>,
     mir: &Mir<'tcx>,
     mut extra_data: F,
 ) where
@@ -164,7 +164,7 @@ fn dump_path(
     pass_num: Option<&dyn Display>,
     pass_name: &str,
     disambiguator: &dyn Display,
-    source: MirSource,
+    source: MirSource<'tcx>,
 ) -> PathBuf {
     let promotion_id = match source.promoted {
         Some(id) => format!("-{:?}", id),
@@ -231,7 +231,7 @@ pub(crate) fn create_dump_file(
     pass_num: Option<&dyn Display>,
     pass_name: &str,
     disambiguator: &dyn Display,
-    source: MirSource,
+    source: MirSource<'tcx>,
 ) -> io::Result<fs::File> {
     let file_path = dump_path(tcx, extension, pass_num, pass_name, disambiguator, source);
     if let Some(parent) = file_path.parent() {
@@ -282,7 +282,7 @@ pub fn write_mir_pretty<'a, 'gcx, 'tcx>(
 
 pub fn write_mir_fn<'a, 'gcx, 'tcx, F>(
     tcx: TyCtxt<'a, 'gcx, 'tcx>,
-    src: MirSource,
+    src: MirSource<'tcx>,
     mir: &Mir<'tcx>,
     extra_data: &mut F,
     w: &mut dyn Write,
@@ -546,7 +546,7 @@ fn write_scope_tree(
 /// local variables (both user-defined bindings and compiler temporaries).
 pub fn write_mir_intro<'a, 'gcx, 'tcx>(
     tcx: TyCtxt<'a, 'gcx, 'tcx>,
-    src: MirSource,
+    src: MirSource<'tcx>,
     mir: &Mir<'_>,
     w: &mut dyn Write,
 ) -> io::Result<()> {
@@ -588,7 +588,7 @@ pub fn write_mir_intro<'a, 'gcx, 'tcx>(
 
 fn write_mir_sig(
     tcx: TyCtxt<'_, '_, '_>,
-    src: MirSource,
+    src: MirSource<'tcx>,
     mir: &Mir<'_>,
     w: &mut dyn Write,
 ) -> io::Result<()> {

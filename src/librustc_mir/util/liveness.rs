@@ -307,7 +307,7 @@ fn block<'tcx, V: Idx>(
 pub fn dump_mir<'a, 'tcx, V: Idx>(
     tcx: TyCtxt<'a, 'tcx, 'tcx>,
     pass_name: &str,
-    source: MirSource,
+    source: MirSource<'tcx>,
     mir: &Mir<'tcx>,
     map: &impl LiveVariableMap<LiveVar = V>,
     result: &LivenessResult<V>,
@@ -326,7 +326,7 @@ fn dump_matched_mir_node<'a, 'tcx, V: Idx>(
     tcx: TyCtxt<'a, 'tcx, 'tcx>,
     pass_name: &str,
     node_path: &str,
-    source: MirSource,
+    source: MirSource<'tcx>,
     mir: &Mir<'tcx>,
     map: &dyn LiveVariableMap<LiveVar = V>,
     result: &LivenessResult<V>,
@@ -348,7 +348,7 @@ fn dump_matched_mir_node<'a, 'tcx, V: Idx>(
 
 pub fn write_mir_fn<'a, 'tcx, V: Idx>(
     tcx: TyCtxt<'a, 'tcx, 'tcx>,
-    src: MirSource,
+    src: MirSource<'tcx>,
     mir: &Mir<'tcx>,
     map: &dyn LiveVariableMap<LiveVar = V>,
     w: &mut dyn Write,

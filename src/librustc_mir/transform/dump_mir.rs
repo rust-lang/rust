@@ -20,7 +20,7 @@ impl MirPass for Marker {
 
     fn run_pass<'a, 'tcx>(&self,
                           _tcx: TyCtxt<'a, 'tcx, 'tcx>,
-                          _source: MirSource,
+                          _source: MirSource<'tcx>,
                           _mir: &mut Mir<'tcx>)
     {
     }
@@ -41,7 +41,7 @@ impl fmt::Display for Disambiguator {
 pub fn on_mir_pass<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                              pass_num: &dyn fmt::Display,
                              pass_name: &str,
-                             source: MirSource,
+                             source: MirSource<'tcx>,
                              mir: &Mir<'tcx>,
                              is_after: bool) {
     if mir_util::dump_enabled(tcx, pass_name, source) {

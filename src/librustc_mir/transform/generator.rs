@@ -376,7 +376,7 @@ impl<'tcx> Visitor<'tcx> for StorageIgnored {
 fn locals_live_across_suspend_points(
     tcx: TyCtxt<'a, 'tcx, 'tcx>,
     mir: &Mir<'tcx>,
-    source: MirSource,
+    source: MirSource<'tcx>,
     movable: bool,
 ) -> (
     liveness::LiveVarSet<Local>,
@@ -484,7 +484,7 @@ fn locals_live_across_suspend_points(
 }
 
 fn compute_layout<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
-                            source: MirSource,
+                            source: MirSource<'tcx>,
                             upvars: Vec<Ty<'tcx>>,
                             interior: Ty<'tcx>,
                             movable: bool,
@@ -635,7 +635,7 @@ fn create_generator_drop_shim<'a, 'tcx>(
                 tcx: TyCtxt<'a, 'tcx, 'tcx>,
                 transform: &TransformVisitor<'a, 'tcx>,
                 def_id: DefId,
-                source: MirSource,
+                source: MirSource<'tcx>,
                 gen_ty: Ty<'tcx>,
                 mir: &Mir<'tcx>,
                 drop_clean: BasicBlock) -> Mir<'tcx> {
@@ -758,7 +758,7 @@ fn create_generator_resume_function<'a, 'tcx>(
         tcx: TyCtxt<'a, 'tcx, 'tcx>,
         transform: TransformVisitor<'a, 'tcx>,
         def_id: DefId,
-        source: MirSource,
+        source: MirSource<'tcx>,
         mir: &mut Mir<'tcx>) {
     // Poison the generator when it unwinds
     for block in mir.basic_blocks_mut() {
@@ -869,7 +869,7 @@ fn create_cases<'a, 'tcx, F>(mir: &mut Mir<'tcx>,
 impl MirPass for StateTransform {
     fn run_pass<'a, 'tcx>(&self,
                     tcx: TyCtxt<'a, 'tcx, 'tcx>,
-                    source: MirSource,
+                    source: MirSource<'tcx>,
                     mir: &mut Mir<'tcx>) {
         let yield_ty = if let Some(yield_ty) = mir.yield_ty {
             yield_ty

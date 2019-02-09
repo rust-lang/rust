@@ -23,7 +23,7 @@ pub struct ElaborateDrops;
 impl MirPass for ElaborateDrops {
     fn run_pass<'a, 'tcx>(&self,
                           tcx: TyCtxt<'a, 'tcx, 'tcx>,
-                          src: MirSource,
+                          src: MirSource<'tcx>,
                           mir: &mut Mir<'tcx>)
     {
         debug!("elaborate_drops({:?} @ {:?})", src, mir.span);

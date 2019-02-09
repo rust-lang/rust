@@ -2427,7 +2427,12 @@ impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
 pub struct TypeckMir;
 
 impl MirPass for TypeckMir {
-    fn run_pass<'a, 'tcx>(&self, tcx: TyCtxt<'a, 'tcx, 'tcx>, src: MirSource, mir: &mut Mir<'tcx>) {
+    fn run_pass<'a, 'tcx>(
+        &self,
+        tcx: TyCtxt<'a, 'tcx, 'tcx>,
+        src: MirSource<'tcx>,
+        mir: &mut Mir<'tcx>,
+    ) {
         let def_id = src.def_id();
         debug!("run_pass: {:?}", def_id);
 

@@ -1159,7 +1159,7 @@ pub struct QualifyAndPromoteConstants;
 impl MirPass for QualifyAndPromoteConstants {
     fn run_pass<'a, 'tcx>(&self,
                           tcx: TyCtxt<'a, 'tcx, 'tcx>,
-                          src: MirSource,
+                          src: MirSource<'tcx>,
                           mir: &mut Mir<'tcx>) {
         // There's not really any point in promoting errorful MIR.
         if mir.return_ty().references_error() {

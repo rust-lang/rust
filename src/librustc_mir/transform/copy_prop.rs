@@ -30,7 +30,7 @@ pub struct CopyPropagation;
 impl MirPass for CopyPropagation {
     fn run_pass<'a, 'tcx>(&self,
                           tcx: TyCtxt<'a, 'tcx, 'tcx>,
-                          _source: MirSource,
+                          _source: MirSource<'tcx>,
                           mir: &mut Mir<'tcx>) {
         // We only run when the MIR optimization level is > 1.
         // This avoids a slow pass, and messing up debug info.
