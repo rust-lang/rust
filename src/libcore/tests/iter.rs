@@ -255,7 +255,7 @@ fn test_iterator_step_by_nth_overflow() {
 
 #[test]
 #[should_panic]
-#[cfg(not(miri))]
+#[cfg(not(miri))] // Miri does not support panics
 fn test_iterator_step_by_zero() {
     let mut it = (0..).step_by(0);
     it.next();
@@ -1417,7 +1417,7 @@ fn test_rposition() {
 
 #[test]
 #[should_panic]
-#[cfg(not(miri))]
+#[cfg(not(miri))] // Miri does not support panics
 fn test_rposition_panic() {
     let v: [(Box<_>, Box<_>); 4] =
         [(box 0, box 0), (box 0, box 0),
