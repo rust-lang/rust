@@ -9,8 +9,8 @@ LL |     is_iterator_of::<Option<T>, _>(&adapter); //~ ERROR type mismatch
 note: required by `is_iterator_of`
   --> $DIR/associated-types-issue-20346.rs:15:1
    |
-LL | fn is_iterator_of<A, I: Iterator<Item=A>>(_: &I) {}
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+LL | fn is_iterator_of<A, I: Iterator<Item = A>>(_: &I) {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: aborting due to previous error
 

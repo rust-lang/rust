@@ -67,7 +67,7 @@ LL | | }
 error[E0277]: the trait bound `std::string::String: std::ops::Neg` is not satisfied
   --> $DIR/feature-gate-trivial_bounds.rs:36:1
    |
-LL | / fn use_op(s: String) -> String where String: ::std::ops::Neg<Output=String> { //~ ERROR
+LL | / fn use_op(s: String) -> String where String: ::std::ops::Neg<Output = String> { //~ ERROR
 LL | |     -s
 LL | | }
    | |_^ the trait `std::ops::Neg` is not implemented for `std::string::String`

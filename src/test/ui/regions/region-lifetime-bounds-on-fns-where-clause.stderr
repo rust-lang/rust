@@ -3,7 +3,7 @@ error[E0623]: lifetime mismatch
    |
 LL | fn b<'a, 'b>(x: &mut &'a isize, y: &mut &'b isize) {
    |                      ---------          --------- these two types are declared with different lifetimes...
-LL |     // Illegal now because there is no `'b:'a` declaration.
+LL |     // Illegal now because there is no `'b: 'a` declaration.
 LL |     *x = *y; //~ ERROR E0623
    |          ^^ ...but data from `y` flows into `x` here
 

@@ -7,7 +7,7 @@ LL |     let x = t.get(); //~ ERROR the size for values of type
    = help: the trait `std::marker::Sized` is not implemented for `<T as Get>::Value`
    = note: to learn more, visit <https://doc.rust-lang.org/book/ch19-04-advanced-types.html#dynamically-sized-types-and-the-sized-trait>
    = help: consider adding a `where <T as Get>::Value: std::marker::Sized` bound
-   = note: all local variables must have a statically known size
+   = note: all local variables must have a statically-known size
    = help: unsized locals are gated as an unstable feature
 
 error: aborting due to previous error

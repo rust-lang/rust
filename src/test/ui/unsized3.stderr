@@ -67,7 +67,7 @@ LL |     f5(&(32, *x1));
    = help: consider adding a `where X: std::marker::Sized` bound
    = note: required because it appears within the type `S<X>`
    = note: required because it appears within the type `({integer}, S<X>)`
-   = note: tuples must have a statically known size to be initialized
+   = note: tuples must have a statically-known size to be initialized
 
 error[E0277]: the size for values of type `X` cannot be known at compilation time
   --> $DIR/unsized3.rs:45:5

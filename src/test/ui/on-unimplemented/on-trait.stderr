@@ -8,8 +8,8 @@ LL |     let y: Option<Vec<u8>> = collect(x.iter()); // this should give approxi
 note: required by `collect`
   --> $DIR/on-trait.rs:22:1
    |
-LL | fn collect<A, I: Iterator<Item=A>, B: MyFromIterator<A>>(it: I) -> B {
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+LL | fn collect<A, I: Iterator<Item = A>, B: MyFromIterator<A>>(it: I) -> B {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error[E0277]: the trait bound `std::string::String: Bar::Foo<u8, _, u32>` is not satisfied
   --> $DIR/on-trait.rs:31:21

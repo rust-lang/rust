@@ -342,7 +342,7 @@ LL |     pub type Alias<T: PrivTr> = T; //~ ERROR private trait `traits::PrivTr`
    = note: #[warn(type_alias_bounds)] on by default
    = help: the bound will not be checked when the type alias is used, and should be removed
 
-warning: where clauses are not enforced in type aliases
+warning: where-clauses are not enforced in type aliases
   --> $DIR/private-in-public-warn.rs:75:29
    |
 LL |     pub type Alias<T> where T: PrivTr = T;

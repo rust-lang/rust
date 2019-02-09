@@ -96,7 +96,7 @@ note: External requirements
 LL |       with_signature(a, b, |x, y| {
    |  __________________________^
 LL | |         //~^ ERROR the parameter type `T` may not live long enough
-LL | |         // See `correct_region`
+LL | |         // See `correct_region`.
 LL | |         require(&x, &y)
 LL | |     })
    | |_____^
@@ -134,7 +134,7 @@ error[E0309]: the parameter type `T` may not live long enough
 LL |       with_signature(a, b, |x, y| {
    |  __________________________^
 LL | |         //~^ ERROR the parameter type `T` may not live long enough
-LL | |         // See `correct_region`
+LL | |         // See `correct_region`.
 LL | |         require(&x, &y)
 LL | |     })
    | |_____^
@@ -146,7 +146,7 @@ note: External requirements
    |
 LL |       with_signature(a, b, |x, y| {
    |  __________________________^
-LL | |         // See `correct_region`
+LL | |         // See `correct_region`.
 LL | |         require(&x, &y)
 LL | |     })
    | |_____^

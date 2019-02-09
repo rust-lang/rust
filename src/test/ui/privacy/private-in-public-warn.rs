@@ -75,7 +75,7 @@ mod traits_where {
     pub type Alias<T> where T: PrivTr = T;
         //~^ ERROR private trait `traits_where::PrivTr` in public interface
         //~| WARNING hard error
-        //~| WARNING where clauses are not enforced in type aliases
+        //~| WARNING where-clauses are not enforced in type aliases
     pub trait Tr2<T> where T: PrivTr {}
         //~^ ERROR private trait `traits_where::PrivTr` in public interface
         //~| WARNING hard error

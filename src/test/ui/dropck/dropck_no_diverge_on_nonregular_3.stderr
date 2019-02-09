@@ -1,24 +1,24 @@
-error[E0320]: overflow while adding drop-check rules for std::option::Option<Wrapper<u32>>
-  --> $DIR/dropck_no_diverge_on_nonregular_3.rs:32:9
+error[E0320]: overflow while adding drop-check rules for `std::option::Option<Wrapper<u32>>`
+  --> $DIR/dropck_no_diverge_on_nonregular_3.rs:34:9
    |
-LL |     let w = //~ ERROR overflow while adding drop-check rules for std::option
+LL |     let w = Some(Wrapper::Simple::<u32>);
    |         ^
    |
    = note: overflowed on FingerTree<Node<Node<Node<Node<Node<Node<Node<Node<Node<Node<Node<Node<Node<Node<Node<Node<Node<Node<Node<Node<Node<Node<Node<Node<Node<Node<Node<Node<Node<Node<Node<Node<Node<Node<Node<Node<Node<Node<Node<Node<Node<Node<Node<Node<Node<Node<Node<Node<Node<Node<Node<Node<Node<Node<Node<Node<Node<Node<Node<Node<Node<Node<Node<u32>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 
-error[E0320]: overflow while adding drop-check rules for std::option::Option<Wrapper<u32>>
-  --> $DIR/dropck_no_diverge_on_nonregular_3.rs:33:9
+error[E0320]: overflow while adding drop-check rules for `std::option::Option<Wrapper<u32>>`
+  --> $DIR/dropck_no_diverge_on_nonregular_3.rs:34:13
    |
-LL |         Some(Wrapper::Simple::<u32>);
-   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+LL |     let w = Some(Wrapper::Simple::<u32>);
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = note: overflowed on FingerTree<Node<Node<Node<Node<Node<Node<Node<Node<Node<Node<Node<Node<Node<Node<Node<Node<Node<Node<Node<Node<Node<Node<Node<Node<Node<Node<Node<Node<Node<Node<Node<Node<Node<Node<Node<Node<Node<Node<Node<Node<Node<Node<Node<Node<Node<Node<Node<Node<Node<Node<Node<Node<Node<Node<Node<Node<Node<Node<Node<Node<Node<Node<Node<u32>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 
-error[E0320]: overflow while adding drop-check rules for Wrapper<u32>
-  --> $DIR/dropck_no_diverge_on_nonregular_3.rs:33:14
+error[E0320]: overflow while adding drop-check rules for `Wrapper<u32>`
+  --> $DIR/dropck_no_diverge_on_nonregular_3.rs:34:18
    |
-LL |         Some(Wrapper::Simple::<u32>);
-   |              ^^^^^^^^^^^^^^^^^^^^^^
+LL |     let w = Some(Wrapper::Simple::<u32>);
+   |                  ^^^^^^^^^^^^^^^^^^^^^^
    |
    = note: overflowed on FingerTree<Node<Node<Node<Node<Node<Node<Node<Node<Node<Node<Node<Node<Node<Node<Node<Node<Node<Node<Node<Node<Node<Node<Node<Node<Node<Node<Node<Node<Node<Node<Node<Node<Node<Node<Node<Node<Node<Node<Node<Node<Node<Node<Node<Node<Node<Node<Node<Node<Node<Node<Node<Node<Node<Node<Node<Node<Node<Node<Node<Node<Node<Node<Node<Node<u32>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 

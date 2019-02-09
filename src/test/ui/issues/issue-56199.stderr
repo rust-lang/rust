@@ -4,7 +4,7 @@ error: the `Self` constructor can only be used with tuple or unit structs
 LL |         let _ = Self;
    |                 ^^^^
    |
-   = help: did you mean to use one of the enum's variants?
+   = note: did you mean to use one of the enum's variants?
 
 error: the `Self` constructor can only be used with tuple or unit structs
   --> $DIR/issue-56199.rs:8:17
@@ -12,7 +12,7 @@ error: the `Self` constructor can only be used with tuple or unit structs
 LL |         let _ = Self();
    |                 ^^^^
    |
-   = help: did you mean to use one of the enum's variants?
+   = note: did you mean to use one of the enum's variants?
 
 error: the `Self` constructor can only be used with tuple or unit structs
   --> $DIR/issue-56199.rs:15:17

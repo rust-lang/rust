@@ -24,7 +24,7 @@ warning: Trait bound i32: Foo does not depend on any type or lifetime parameters
 LL | union U where i32: Foo { f: i32 }
    |                    ^^^
 
-warning: where clauses are not enforced in type aliases
+warning: where-clauses are not enforced in type aliases
   --> $DIR/trivial-bounds-inconsistent.rs:22:14
    |
 LL | type Y where i32: Foo = ();
@@ -78,8 +78,8 @@ LL | fn return_str() -> str where str: Sized {
 warning: Trait bound std::string::String: std::ops::Neg does not depend on any type or lifetime parameters
   --> $DIR/trivial-bounds-inconsistent.rs:63:46
    |
-LL | fn use_op(s: String) -> String where String: ::std::ops::Neg<Output=String> {
-   |                                              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+LL | fn use_op(s: String) -> String where String: ::std::ops::Neg<Output = String> {
+   |                                              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 warning: Trait bound i32: std::iter::Iterator does not depend on any type or lifetime parameters
   --> $DIR/trivial-bounds-inconsistent.rs:67:25

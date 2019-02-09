@@ -18,8 +18,8 @@ LL |     foo1(a);
 note: required by `foo1`
   --> $DIR/associated-types-eq-3.rs:18:1
    |
-LL | fn foo1<I: Foo<A=Bar>>(x: I) {
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+LL | fn foo1<I: Foo<A = Bar>>(x: I) {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error[E0271]: type mismatch resolving `<isize as Foo>::A == Bar`
   --> $DIR/associated-types-eq-3.rs:41:9
