@@ -987,40 +987,7 @@ pub fn remove_blocks(expr: &Expr) -> &Expr {
 }
 
 pub fn opt_def_id(def: Def) -> Option<DefId> {
-    match def {
-        Def::Fn(id)
-        | Def::Mod(id)
-        | Def::Static(id, _)
-        | Def::Variant(id)
-        | Def::VariantCtor(id, ..)
-        | Def::Enum(id)
-        | Def::TyAlias(id)
-        | Def::AssociatedTy(id)
-        | Def::TyParam(id)
-        | Def::ConstParam(id)
-        | Def::ForeignTy(id)
-        | Def::Struct(id)
-        | Def::StructCtor(id, ..)
-        | Def::Union(id)
-        | Def::Trait(id)
-        | Def::TraitAlias(id)
-        | Def::Method(id)
-        | Def::Const(id)
-        | Def::AssociatedConst(id)
-        | Def::Macro(id, ..)
-        | Def::Existential(id)
-        | Def::AssociatedExistential(id)
-        | Def::SelfCtor(id) => Some(id),
-
-        Def::Upvar(..)
-        | Def::Local(_)
-        | Def::Label(..)
-        | Def::PrimTy(..)
-        | Def::SelfTy(..)
-        | Def::ToolMod
-        | Def::NonMacroAttr { .. }
-        | Def::Err => None,
-    }
+    def.opt_def_id()
 }
 
 pub fn is_self(slf: &Arg) -> bool {
