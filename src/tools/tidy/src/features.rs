@@ -173,7 +173,7 @@ pub fn collect_lang_features(base_src_path: &Path, bad: &mut bool) -> Features {
     let contents = t!(fs::read_to_string(base_src_path.join("libsyntax/feature_gate.rs")));
 
     // We allow rustc-internal features to omit a tracking issue.
-    // These features must be marked with a `// rustc internal` in its own group.
+    // These features must be marked with `// rustc internal` in its own group.
     let mut next_feature_is_rustc_internal = false;
 
     contents.lines().zip(1..)
@@ -327,7 +327,7 @@ fn map_lib_features(base_src_path: &Path,
             }
             becoming_feature = None;
             if line.contains("rustc_const_unstable(") {
-                // `const fn` features are handled specially.
+                // Const fn features are handled specially.
                 let feature_name = match find_attr_val(line, "feature") {
                     Some(name) => name,
                     None => err!("malformed stability attribute"),

@@ -145,101 +145,101 @@ pub struct Config {
     pub force_valgrind: bool,
 
     /// The path to the Clang executable to run Clang-based tests with. If
-    /// `None` then these tests will be ignored.
+    /// `None`, then these tests will be ignored.
     pub run_clang_based_tests_with: Option<String>,
 
-    /// The directory containing the tests to run
+    /// The directory containing the tests to run.
     pub src_base: PathBuf,
 
-    /// The directory where programs should be built
+    /// The directory where programs should be built.
     pub build_base: PathBuf,
 
-    /// The name of the stage being built (stage1, etc)
+    /// The name of the stage being built (stage1, etc.)
     pub stage_id: String,
 
-    /// The test mode, compile-fail, run-fail, run-pass
+    /// The test mode, compile-fail, run-fail, run-pass.
     pub mode: Mode,
 
-    /// Run ignored tests
+    /// Run ignored tests.
     pub run_ignored: bool,
 
-    /// Only run tests that match this filter
+    /// Only run tests that match this filter.
     pub filter: Option<String>,
 
-    /// Exactly match the filter, rather than a substring
+    /// Exactly match the filter, rather than a substring.
     pub filter_exact: bool,
 
-    /// Write out a parseable log of tests that were run
+    /// Write out a parseable log of tests that were run.
     pub logfile: Option<PathBuf>,
 
     /// A command line to prefix program execution with,
-    /// for running under valgrind
+    /// for running under valgrind.
     pub runtool: Option<String>,
 
     /// Flags to pass to the compiler when building for the host
     pub host_rustcflags: Option<String>,
 
-    /// Flags to pass to the compiler when building for the target
+    /// Flags to pass to the compiler when building for the target.
     pub target_rustcflags: Option<String>,
 
-    /// Target system to be tested
+    /// Target system to be tested.
     pub target: String,
 
-    /// Host triple for the compiler being invoked
+    /// Host triple for the compiler being invoked.
     pub host: String,
 
-    /// Path to / name of the GDB executable
+    /// Path to / name of the GDB executable.
     pub gdb: Option<String>,
 
-    /// Version of GDB, encoded as ((major * 1000) + minor) * 1000 + patch
+    /// Version of GDB, encoded as `((major * 1000) + minor) * 1000 + patch`.
     pub gdb_version: Option<u32>,
 
-    /// Whether GDB has native rust support
+    /// Whether GDB has native rust support.
     pub gdb_native_rust: bool,
 
-    /// Version of LLDB
+    /// Version of LLDB.
     pub lldb_version: Option<String>,
 
-    /// Whether LLDB has native rust support
+    /// `true` if LLDB has native rust support.
     pub lldb_native_rust: bool,
 
-    /// Version of LLVM
+    /// Version of LLVM.
     pub llvm_version: Option<String>,
 
-    /// Is LLVM a system LLVM
+    /// `true` if LLVM is system LLVM.
     pub system_llvm: bool,
 
-    /// Path to the android tools
+    /// Path to the Android tools.
     pub android_cross_path: PathBuf,
 
-    /// Extra parameter to run adb on arm-linux-androideabi
+    /// Extra parameter to run adb on arm-linux-androideabi.
     pub adb_path: String,
 
-    /// Extra parameter to run test suite on arm-linux-androideabi
+    /// Extra parameter to run test suite on arm-linux-androideabi.
     pub adb_test_dir: String,
 
-    /// status whether android device available or not
+    /// Status whether android device available or not.
     pub adb_device_status: bool,
 
-    /// the path containing LLDB's Python module
+    /// Path containing LLDB's Python module.
     pub lldb_python_dir: Option<String>,
 
-    /// Explain what's going on
+    /// `true` to enable verbose output.
     pub verbose: bool,
 
-    /// Print one character per test instead of one line
+    /// Print one character per test instead of one line.
     pub quiet: bool,
 
-    /// Whether to use colors in test.
+    /// `true` to use colors in test.
     pub color: ColorConfig,
 
-    /// where to find the remote test client process, if we're using it
+    /// Where to find the remote test client process, if we're using it.
     pub remote_test_client: Option<PathBuf>,
 
-    /// mode describing what file the actual ui output will be compared to
+    /// Mode describing what file the actual ui output will be compared to.
     pub compare_mode: Option<CompareMode>,
 
-    // Configuration for various run-make tests frobbing things like C compilers
+    // Configuration for various run-make tests-frobbing things like C compilers,
     // or querying about various LLVM component information.
     pub cc: String,
     pub cxx: String,

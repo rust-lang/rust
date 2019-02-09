@@ -470,14 +470,14 @@ pub fn run_tests(config: &Config) {
         _ => { /* proceed */ }
     }
 
-    // FIXME(#33435) Avoid spurious failures in codegen-units/partitioning tests.
+    // FIXME(#33435): avoid spurious failures in codegen-units/partitioning tests.
     if let Mode::CodegenUnits = config.mode {
         let _ = fs::remove_dir_all("tmp/partitioning-tests");
     }
 
     let opts = test_opts(config);
     let tests = make_tests(config);
-    // sadly osx needs some file descriptor limits raised for running tests in
+    // sadly macOS needs some file descriptor limits raised for running tests in
     // parallel (especially when we have lots and lots of child processes).
     // For context, see #8904
     unsafe {
@@ -619,7 +619,7 @@ pub fn make_test(config: &Config, testpaths: &TestPaths) -> Vec<test::TestDescAn
     };
 
     // The `should-fail` annotation doesn't apply to pretty tests,
-    // since we run the pretty printer across all tests by default.
+    // since we run the pretty-printer across all tests by default.
     // If desired, we could add a `should-fail-pretty` annotation.
     let should_panic = match config.mode {
         Pretty => test::ShouldPanic::No,
@@ -640,7 +640,7 @@ pub fn make_test(config: &Config, testpaths: &TestPaths) -> Vec<test::TestDescAn
     revisions
         .into_iter()
         .map(|revision| {
-            // Debugging emscripten code doesn't make sense today
+            // Debugging Emscripten code doesn't make sense today.
             let ignore = early_props.ignore == Ignore::Ignore
                 || !up_to_date(
                     config,
@@ -702,7 +702,7 @@ fn up_to_date(
                 Stamp::from_path(&testpaths.file.parent().unwrap().join("auxiliary").join(aux))
             }),
     );
-    // Relevant pretty printer files
+    // Relevant pretty-printer files.
     let pretty_printer_files = [
         "src/etc/debugger_pretty_printers_common.py",
         "src/etc/gdb_load_rust_pretty_printers.py",
@@ -949,7 +949,7 @@ fn extract_lldb_version(full_version_line: Option<String>) -> (Option<String>, b
     // There doesn't seem to be a way to correlate the Apple version
     // with the upstream version, and since the tests were originally
     // written against Apple versions, we make a fake Apple version by
-    // multiplying the first number by 100.  This is a hack, but
+    // multiplying the first number by 100. This is a hack, but
     // normally fine because the only non-Apple version we test is
     // rust-enabled.
 
