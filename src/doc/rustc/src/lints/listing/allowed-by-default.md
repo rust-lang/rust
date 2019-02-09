@@ -126,54 +126,11 @@ Lifetime elision elides this lifetime, but that is being deprecated.
 
 ## missing-copy-implementations
 
-This lint detects potentially-forgotten implementations of `Copy`. Some
-example code that triggers this lint:
-
-```rust
-pub struct Foo {
-    pub field: i32
-}
-```
-
-When set to 'deny', this will produce:
-
-```text
-error: type could implement `Copy`; consider adding `impl Copy`
- --> src/main.rs:3:1
-  |
-3 | / pub struct Foo { //~ ERROR type could implement `Copy`; consider adding `impl Copy`
-4 | |     pub field: i32
-5 | | }
-  | |_^
-  |
-```
-
-You can fix the lint by deriving `Copy`.
-
-This lint is set to 'allow' because this code isn't bad; it's common to write
-newtypes like this specifically so that a `Copy` type is no longer `Copy`.
+This lint is deprecated and no longer used.
 
 ## missing-debug-implementations
 
-This lint detects missing implementations of `fmt::Debug`. Some example code
-that triggers this lint:
-
-```rust
-pub struct Foo;
-```
-
-When set to 'deny', this will produce:
-
-```text
-error: type does not implement `fmt::Debug`; consider adding #[derive(Debug)] or a manual implementation
- --> src/main.rs:3:1
-  |
-3 | pub struct Foo;
-  | ^^^^^^^^^^^^^^^
-  |
-```
-
-You can fix the lint by deriving `Debug`.
+This lint is deprecated and no longer used.
 
 ## missing-docs
 

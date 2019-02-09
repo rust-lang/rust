@@ -532,7 +532,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for MissingDoc {
 declare_lint! {
     pub MISSING_COPY_IMPLEMENTATIONS,
     Allow,
-    "detects potentially-forgotten implementations of `Copy`"
+    "detects potentially-forgotten implementations of `Copy` (deprecated, do not use)"
 }
 
 #[derive(Copy, Clone)]
@@ -596,7 +596,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for MissingCopyImplementations {
 declare_lint! {
     MISSING_DEBUG_IMPLEMENTATIONS,
     Allow,
-    "detects missing implementations of fmt::Debug"
+    "detects missing implementations of fmt::Debug (deprecated, do not use)"
 }
 
 pub struct MissingDebugImplementations {
