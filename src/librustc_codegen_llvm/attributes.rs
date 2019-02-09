@@ -223,6 +223,9 @@ pub fn from_fn_attrs(
     if codegen_fn_attrs.flags.contains(CodegenFnAttrFlags::COLD) {
         Attribute::Cold.apply_llfn(Function, llfn);
     }
+    if codegen_fn_attrs.flags.contains(CodegenFnAttrFlags::FFI_RETURNS_TWICE) {
+        Attribute::ReturnsTwice.apply_llfn(Function, llfn);
+    }
     if codegen_fn_attrs.flags.contains(CodegenFnAttrFlags::NAKED) {
         naked(llfn, true);
     }
