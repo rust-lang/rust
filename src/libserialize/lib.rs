@@ -32,7 +32,3 @@ pub mod json;
 
 pub mod opaque;
 pub mod leb128;
-
-mod rustc_serialize {
-    pub use crate::serialize::*;
-}
