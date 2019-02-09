@@ -133,6 +133,8 @@ if (!DOMTokenList.prototype.remove) {
     // used for special search precedence
     var TY_PRIMITIVE = itemTypes.indexOf("primitive");
     var TY_KEYWORD = itemTypes.indexOf("keyword");
+    var TY_VARIANT = itemTypes.indexOf("variant");
+    var TY_STRUCTFIELD = itemTypes.indexOf("structfield");
 
     onEachLazy(document.getElementsByClassName("js-only"), function(e) {
         removeClass(e, "js-only");
@@ -222,7 +224,7 @@ if (!DOMTokenList.prototype.remove) {
     // given KeyboardEvent, ev.
     //
     // This function is meant as a polyfill for KeyboardEvent#key,
-    // since it is not supported in Trident.  We also test for
+    // since it is not supported in Trident. We also test for
     // KeyboardEvent#keyCode because the handleShortcut handler is
     // also registered for the keydown event, because Blink doesn't fire
     // keypress on hitting the Escape key.
@@ -466,6 +468,7 @@ if (!DOMTokenList.prototype.remove) {
                 val = valLower,
                 typeFilter = itemTypeFromName(query.type),
                 results = {}, results_in_args = {}, results_returned = {},
+                results_variants = {},
                 split = valLower.split("::");
 
             var length = split.length;
@@ -881,6 +884,14 @@ if (!DOMTokenList.prototype.remove) {
                                 index: -1,
                                 dontValidate: true,
                             };
+                            var it = searchIndex[i];
+                            if (it && (it.ty === TY_STRUCTFIELD || it.ty === TY_VARIANT)) {
+                                results_variants[fullId] = {
+                                    id: i,
+                                    index: -1,
+                                    dontValidate: true,
+                                };
+                            }
                         }
                     }
                 }
@@ -946,6 +957,14 @@ if (!DOMTokenList.prototype.remove) {
                                 index: -1,
                                 dontValidate: true,
                             };
+                            var it = searchIndex[i];
+                            if (it && (it.ty === TY_STRUCTFIELD || it.ty === TY_VARIANT)) {
+                                results_variants[fullId] = {
+                                    id: i,
+                                    index: -1,
+                                    dontValidate: true,
+                                };
+                            }
                         }
                     }
                 }
@@ -1067,6 +1086,14 @@ if (!DOMTokenList.prototype.remove) {
                             };
                         }
                         results[fullId].lev = Math.min(results[fullId].lev, lev);
+                        var it = searchIndex[j];
+                        if (it && (it.ty === TY_STRUCTFIELD || it.ty === TY_VARIANT)) {
+                            results_variants[fullId] = {
+                                id: j,
+                                index: index,
+                                lev: results[fullId].lev,
+                            };
+                        }
                     }
                 }
             }
@@ -1075,6 +1102,7 @@ if (!DOMTokenList.prototype.remove) {
                 "in_args": sortResults(results_in_args, true),
                 "returned": sortResults(results_returned, true),
                 "others": sortResults(results),
+                "variants": sortResults(results_variants),
             };
             if (ALIASES && ALIASES[window.currentCrate] &&
                     ALIASES[window.currentCrate][query.raw]) {
@@ -1194,7 +1222,7 @@ if (!DOMTokenList.prototype.remove) {
             search_input.onkeydown = function(e) {
                 // "actives" references the currently highlighted item in each search tab.
                 // Each array in "actives" represents a tab.
-                var actives = [[], [], []];
+                var actives = [[], [], [], []];
                 // "current" is used to know which tab we're looking into.
                 var current = 0;
                 onEachLazy(document.getElementsByClassName("search-results"), function(e) {
@@ -1232,9 +1260,9 @@ if (!DOMTokenList.prototype.remove) {
                     }
                 } else if (e.which === 9) { // tab
                     if (e.shiftKey) {
-                        printTab(currentTab > 0 ? currentTab - 1 : 2);
+                        printTab(currentTab > 0 ? currentTab - 1 : 3);
                     } else {
-                        printTab(currentTab > 1 ? 0 : currentTab + 1);
+                        printTab(currentTab > 2 ? 0 : currentTab + 1);
                     }
                     e.preventDefault();
                 } else if (e.which === 16) { // shift
@@ -1382,6 +1410,7 @@ if (!DOMTokenList.prototype.remove) {
             var ret_others = addTab(results.others, query);
             var ret_in_args = addTab(results.in_args, query, false);
             var ret_returned = addTab(results.returned, query, false);
+            var ret_variants = addTab(results.variants, query, false);
 
             var output = "<h1>Results for " + escape(query.query) +
                 (query.type ? " (type: " + escape(query.type) + ")" : "") + "</h1>" +
@@ -1389,8 +1418,9 @@ if (!DOMTokenList.prototype.remove) {
                 makeTabHeader(0, "In Names", ret_others[1]) +
                 makeTabHeader(1, "In Parameters", ret_in_args[1]) +
                 makeTabHeader(2, "In Return Types", ret_returned[1]) +
+                makeTabHeader(2, "In Variants/Fields", ret_variants[1]) +
                 "</div><div id=\"results\">" +
-                ret_others[0] + ret_in_args[0] + ret_returned[0] + "</div>";
+                ret_others[0] + ret_in_args[0] + ret_returned[0] + ret_variants[0] + "</div>";
 
             addClass(main, "hidden");
             var search = document.getElementById("search");
@@ -1410,6 +1440,7 @@ if (!DOMTokenList.prototype.remove) {
             elems[0].onclick = function() { printTab(0); };
             elems[1].onclick = function() { printTab(1); };
             elems[2].onclick = function() { printTab(2); };
+            elems[3].onclick = function() { printTab(3); };
             printTab(currentTab);
         }
 
@@ -1459,6 +1490,7 @@ if (!DOMTokenList.prototype.remove) {
                 "in_args": [],
                 "returned": [],
                 "others": [],
+                "variants": [],
             };
 
             for (var i = 0; i < queries.length; ++i) {
@@ -1469,6 +1501,7 @@ if (!DOMTokenList.prototype.remove) {
                     results.in_args.push(tmp.in_args);
                     results.returned.push(tmp.returned);
                     results.others.push(tmp.others);
+                    results.variants.push(tmp.variants);
                 }
             }
             if (queries.length > 1) {
@@ -1476,12 +1509,14 @@ if (!DOMTokenList.prototype.remove) {
                     "in_args": mergeArrays(results.in_args),
                     "returned": mergeArrays(results.returned),
                     "others": mergeArrays(results.others),
+                    "variants": mergeArrays(results.variants),
                 };
             } else {
                 return {
                     "in_args": results.in_args[0],
                     "returned": results.returned[0],
                     "others": results.others[0],
+                    "variants": results.variants[0],
                 };
             }
         }
@@ -2267,7 +2302,7 @@ if (!DOMTokenList.prototype.remove) {
 
     // In the search display, allows to switch between tabs.
     function printTab(nb) {
-        if (nb === 0 || nb === 1 || nb === 2) {
+        if (nb === 0 || nb === 1 || nb === 2 || nb === 3) {
             currentTab = nb;
         }
         var nb_copy = nb;
