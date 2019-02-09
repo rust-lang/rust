@@ -54,7 +54,7 @@ use crate::utils::indent_next_line;
 
 pub use crate::config::{
     load_config, CliOptions, Color, Config, Edition, EmitMode, FileLines, FileName, NewlineStyle,
-    Range, Verbosity, Version,
+    Range, Verbosity,
 };
 
 #[macro_use]
