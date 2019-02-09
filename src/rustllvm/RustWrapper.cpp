@@ -190,6 +190,8 @@ static Attribute::AttrKind fromRust(LLVMRustAttribute Kind) {
     return Attribute::NonLazyBind;
   case OptimizeNone:
     return Attribute::OptimizeNone;
+  case ReturnsTwice:
+    return Attribute::ReturnsTwice;
   }
   report_fatal_error("bad AttributeKind");
 }

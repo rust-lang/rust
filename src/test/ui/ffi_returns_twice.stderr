@@ -1,0 +1,9 @@
+error[E0723]: `#[ffi_returns_twice]` may only be used on `extern fn`s
+  --> $DIR/ffi_returns_twice.rs:5:1
+   |
+LL | #[ffi_returns_twice] //~ ERROR `#[ffi_returns_twice]` may only be used on `extern fn`s
+   | ^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0723`.
