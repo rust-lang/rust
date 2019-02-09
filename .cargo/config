@@ -1,0 +1,2 @@
+[alias]
+uitest = "test --test compile-test"

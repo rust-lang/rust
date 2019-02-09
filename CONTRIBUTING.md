@@ -101,7 +101,7 @@ fn main() {
 }
 ```
 
-Now you run `TESTNAME=ui/my_lint cargo test --test compile-test` to produce
+Now you run `TESTNAME=ui/my_lint cargo uitest` to produce
 a `.stdout` file with the generated code:
 
 ```rust
@@ -151,7 +151,7 @@ Use `cargo test` to run the whole testsuite.
 If you don't want to wait for all tests to finish, you can also execute a single test file by using `TESTNAME` to specify the test to run:
 
 ```bash
-TESTNAME=ui/empty_line_after_outer_attr cargo test --test compile-test
+TESTNAME=ui/empty_line_after_outer_attr cargo uitest
 ```
 
 Clippy uses UI tests. UI tests check that the output of the compiler is exactly as expected.
