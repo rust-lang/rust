@@ -29,13 +29,13 @@ use super::lub::Lub;
 use super::sub::Sub;
 use super::type_variable::TypeVariableValue;
 
-use crate::hir::def_id::DefId;
 use crate::ty::{IntType, UintType};
 use crate::ty::{self, Ty, TyCtxt};
+use crate::ty::fold::{TypeFoldable, TypeFolder};
 use crate::ty::error::TypeError;
-use crate::ty::relate::{self, Relate, RelateResult, TypeRelation};
-use crate::ty::subst::SubstsRef;
+use crate::ty::relate::{RelateResult, TypeRelation};
 use crate::traits::{Obligation, PredicateObligations};
+use crate::util::common::ErrorReported;
 
 use syntax::ast;
 use syntax_pos::Span;
@@ -278,7 +278,7 @@ impl<'infcx, 'gcx, 'tcx> CombineFields<'infcx, 'gcx, 'tcx> {
             root_ty: ty,
         };
 
-        let ty = match generalize.relate(&ty, &ty) {
+        let ty = match ty.fold_with(&mut generalize) {
             Ok(ty) => ty,
             Err(e) => {
                 debug!("generalize: failure {:?}", e);
@@ -351,60 +351,40 @@ struct Generalization<'tcx> {
     needs_wf: bool,
 }
 
-impl<'cx, 'gcx, 'tcx> TypeRelation<'cx, 'gcx, 'tcx> for Generalizer<'cx, 'gcx, 'tcx> {
-    fn tcx(&self) -> TyCtxt<'cx, 'gcx, 'tcx> {
+impl<'cx, 'gcx, 'tcx> TypeFolder<'gcx, 'tcx> for Generalizer<'cx, 'gcx, 'tcx> {
+    type Error = TypeError<'tcx>;
+
+    fn tcx(&self) -> TyCtxt<'_, 'gcx, 'tcx> {
         self.infcx.tcx
     }
 
-    fn tag(&self) -> &'static str {
-        "Generalizer"
-    }
-
-    fn a_is_expected(&self) -> bool {
-        true
-    }
-
-    fn binders<T>(&mut self, a: &ty::Binder<T>, b: &ty::Binder<T>)
-                  -> RelateResult<'tcx, ty::Binder<T>>
-        where T: Relate<'tcx>
-    {
-        Ok(ty::Binder::bind(self.relate(a.skip_binder(), b.skip_binder())?))
-    }
-
-    fn relate_item_substs(&mut self,
-                          item_def_id: DefId,
-                          a_subst: SubstsRef<'tcx>,
-                          b_subst: SubstsRef<'tcx>)
-                          -> RelateResult<'tcx, SubstsRef<'tcx>>
-    {
+    fn use_variances(&self) -> bool {
         if self.ambient_variance == ty::Variance::Invariant {
             // Avoid fetching the variance if we are in an invariant
             // context; no need, and it can induce dependency cycles
             // (e.g., #41849).
-            relate::relate_substs(self, None, a_subst, b_subst)
+            false
         } else {
-            let opt_variances = self.tcx().variances_of(item_def_id);
-            relate::relate_substs(self, Some(&opt_variances), a_subst, b_subst)
+            true
         }
     }
 
-    fn relate_with_variance<T: Relate<'tcx>>(&mut self,
-                                             variance: ty::Variance,
-                                             a: &T,
-                                             b: &T)
-                                             -> RelateResult<'tcx, T>
+    fn fold_with_variance<T: TypeFoldable<'tcx>>(&mut self,
+                                                 variance: ty::Variance,
+                                                 a: &T)
+                                                 -> RelateResult<'tcx, T>
     {
         let old_ambient_variance = self.ambient_variance;
+        debug!("Generalize: fold_with_variance({:?}, {:?}, old_variance={:?})", variance, a, old_ambient_variance);
         self.ambient_variance = self.ambient_variance.xform(variance);
 
-        let result = self.relate(a, b);
+        let result = a.fold_with(self);
         self.ambient_variance = old_ambient_variance;
         result
     }
 
-    fn tys(&mut self, t: Ty<'tcx>, t2: Ty<'tcx>) -> RelateResult<'tcx, Ty<'tcx>> {
-        assert_eq!(t, t2); // we are abusing TypeRelation here; both LHS and RHS ought to be ==
-
+    fn fold_ty(&mut self, t: Ty<'tcx>) -> RelateResult<'tcx, Ty<'tcx>> {
+        debug!("Generalize: fold_ty({:?}, variance={:?})", t, self.ambient_variance);
         debug!("generalize: t={:?}", t);
 
         // Check to see whether the type we are genealizing references
@@ -425,7 +405,7 @@ impl<'cx, 'gcx, 'tcx> TypeRelation<'cx, 'gcx, 'tcx> for Generalizer<'cx, 'gcx, '
                         TypeVariableValue::Known { value: u } => {
                             drop(variables);
                             debug!("generalize: known value {:?}", u);
-                            self.relate(&u, &u)
+                            u.fold_with(self)
                         }
                         TypeVariableValue::Unknown { universe } => {
                             match self.ambient_variance {
@@ -449,7 +429,7 @@ impl<'cx, 'gcx, 'tcx> TypeRelation<'cx, 'gcx, 'tcx> for Generalizer<'cx, 'gcx, '
 
                             let origin = *variables.var_origin(vid);
                             let new_var_id = variables.new_var(self.for_universe, false, origin);
-                            let u = self.tcx().mk_var(new_var_id);
+                            let u = self.infcx.tcx.mk_var(new_var_id);
                             debug!("generalize: replacing original vid={:?} with new={:?}",
                                    vid, u);
                             return Ok(u);
@@ -459,21 +439,33 @@ impl<'cx, 'gcx, 'tcx> TypeRelation<'cx, 'gcx, 'tcx> for Generalizer<'cx, 'gcx, '
             }
             ty::Infer(ty::IntVar(_)) |
             ty::Infer(ty::FloatVar(_)) => {
-                // No matter what mode we are in,
-                // integer/floating-point types must be equal to be
-                // relatable.
                 Ok(t)
             }
+            ty::Array(_, sz) => {
+                // HACK, not sure how desirable this is: propagate errors from
+                // array lengths to the array type itself. This makes error
+                // messages a bit nicer, and used to be the case before because
+                // we used `ty::relate` instead of `TypeFoldable`, so I'll keep
+                // it here.
+                //
+                // This does not serve any functional purpose, but it does
+                // avoid some "duplicate" errors.
+                match self.infcx.tcx.force_eval_array_length(*sz) {
+                    Ok(_) => t.super_fold_with(self),
+                    Err(ErrorReported) => {
+                        Ok(self.infcx.tcx.types.err)
+                    }
+                }
+            }
             _ => {
-                relate::super_relate_tys(self, t, t)
+                t.super_fold_with(self)
             }
         }
     }
 
-    fn regions(&mut self, r: ty::Region<'tcx>, r2: ty::Region<'tcx>)
+    fn fold_region(&mut self, r: ty::Region<'tcx>)
                -> RelateResult<'tcx, ty::Region<'tcx>> {
-        assert_eq!(r, r2); // we are abusing TypeRelation here; both LHS and RHS ought to be ==
-
+        debug!("Generalize: fold_region({:?}, variance={:?})", r, self.ambient_variance);
         debug!("generalize: regions r={:?}", r);
 
         match *r {

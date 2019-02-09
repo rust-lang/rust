@@ -8,9 +8,7 @@ use crate::hir::def_id::DefId;
 use crate::ty::subst::{Kind, UnpackedKind, SubstsRef};
 use crate::ty::{self, Ty, TyCtxt, TypeFoldable};
 use crate::ty::error::{ExpectedFound, TypeError};
-use crate::mir::interpret::GlobalId;
 use crate::util::common::ErrorReported;
-use syntax_pos::DUMMY_SP;
 use std::rc::Rc;
 use std::iter;
 use rustc_target::spec::abi;
@@ -468,42 +466,8 @@ pub fn super_relate_tys<'a, 'gcx, 'tcx, R>(relation: &mut R,
         (&ty::Array(a_t, sz_a), &ty::Array(b_t, sz_b)) =>
         {
             let t = relation.relate(&a_t, &b_t)?;
-            let to_u64 = |x: ty::LazyConst<'tcx>| -> Result<u64, ErrorReported> {
-                match x {
-                    ty::LazyConst::Unevaluated(def_id, substs) => {
-                        // FIXME(eddyb) get the right param_env.
-                        let param_env = ty::ParamEnv::empty();
-                        if let Some(substs) = tcx.lift_to_global(&substs) {
-                            let instance = ty::Instance::resolve(
-                                tcx.global_tcx(),
-                                param_env,
-                                def_id,
-                                substs,
-                            );
-                            if let Some(instance) = instance {
-                                let cid = GlobalId {
-                                    instance,
-                                    promoted: None
-                                };
-                                if let Some(s) = tcx.const_eval(param_env.and(cid))
-                                                    .ok()
-                                                    .map(|c| c.unwrap_usize(tcx)) {
-                                    return Ok(s)
-                                }
-                            }
-                        }
-                        tcx.sess.delay_span_bug(tcx.def_span(def_id),
-                            "array length could not be evaluated");
-                        Err(ErrorReported)
-                    }
-                    ty::LazyConst::Evaluated(c) => c.assert_usize(tcx).ok_or_else(|| {
-                        tcx.sess.delay_span_bug(DUMMY_SP,
-                            "array length could not be evaluated");
-                        ErrorReported
-                    })
-                }
-            };
-            match (to_u64(*sz_a), to_u64(*sz_b)) {
+            match (tcx.force_eval_array_length(*sz_a),
+                   tcx.force_eval_array_length(*sz_b)) {
                 (Ok(sz_a_u64), Ok(sz_b_u64)) => {
                     if sz_a_u64 == sz_b_u64 {
                         Ok(tcx.mk_ty(ty::Array(t, sz_a)))

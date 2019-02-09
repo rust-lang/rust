@@ -22,8 +22,8 @@
 //!   constituents)
 
 use crate::infer::InferCtxt;
-use crate::ty::fold::{TypeFoldable, TypeVisitor};
-use crate::ty::relate::{self, Relate, RelateResult, TypeRelation};
+use crate::ty::fold::{TypeFoldable, TypeFolder, TypeVisitor};
+use crate::ty::relate::{Relate, RelateResult, TypeRelation};
 use crate::ty::subst::Kind;
 use crate::ty::{self, Ty, TyCtxt};
 use crate::ty::error::TypeError;
@@ -344,7 +344,7 @@ where
         result
     }
 
-    fn generalize_value<T: Relate<'tcx>>(
+    fn generalize_value<T: TypeFoldable<'tcx>>(
         &mut self,
         value: T,
         for_vid: ty::TyVid
@@ -360,7 +360,7 @@ where
             universe,
         };
 
-        generalizer.relate(&value, &value)
+        value.fold_with(&mut generalizer)
     }
 }
 
@@ -680,54 +680,58 @@ where
     universe: ty::UniverseIndex,
 }
 
-impl<D> TypeRelation<'me, 'gcx, 'tcx> for TypeGeneralizer<'me, 'gcx, 'tcx, D>
+impl<D> TypeFolder<'gcx, 'tcx> for TypeGeneralizer<'me, 'gcx, 'tcx, D>
 where
     D: TypeRelatingDelegate<'tcx>,
 {
-    fn tcx(&self) -> TyCtxt<'me, 'gcx, 'tcx> {
+    type Error = TypeError<'tcx>;
+
+    fn tcx(&self) -> TyCtxt<'_, 'gcx, 'tcx> {
         self.infcx.tcx
     }
 
-    fn tag(&self) -> &'static str {
-        "nll::generalizer"
+    fn use_variances(&self) -> bool {
+        if self.ambient_variance == ty::Variance::Invariant {
+            // Avoid fetching the variance if we are in an invariant
+            // context; no need, and it can induce dependency cycles
+            // (e.g., #41849).
+            false
+        } else {
+            true
+        }
     }
 
-    fn a_is_expected(&self) -> bool {
-        true
-    }
-
-    fn relate_with_variance<T: Relate<'tcx>>(
+    fn fold_with_variance<T: TypeFoldable<'tcx>>(
         &mut self,
         variance: ty::Variance,
         a: &T,
-        b: &T,
     ) -> RelateResult<'tcx, T> {
         debug!(
-            "TypeGeneralizer::relate_with_variance(variance={:?}, a={:?}, b={:?})",
-            variance, a, b
+            "TypeGeneralizer::fold_with_variance(variance={:?}, a={:?})",
+            variance, a
         );
 
         let old_ambient_variance = self.ambient_variance;
         self.ambient_variance = self.ambient_variance.xform(variance);
 
         debug!(
-            "TypeGeneralizer::relate_with_variance: ambient_variance = {:?}",
+            "TypeGeneralizer::fold_with_variance: ambient_variance = {:?}",
             self.ambient_variance
         );
 
-        let r = self.relate(a, b)?;
+        let r = a.super_fold_with(self)?;
 
         self.ambient_variance = old_ambient_variance;
 
-        debug!("TypeGeneralizer::relate_with_variance: r={:?}", r);
+        debug!("TypeGeneralizer::fold_with_variance: r={:?}", r);
 
         Ok(r)
     }
 
-    fn tys(&mut self, a: Ty<'tcx>, _: Ty<'tcx>) -> RelateResult<'tcx, Ty<'tcx>> {
+    fn fold_ty(&mut self, a: Ty<'tcx>) -> RelateResult<'tcx, Ty<'tcx>> {
         use crate::infer::type_variable::TypeVariableValue;
 
-        debug!("TypeGeneralizer::tys(a={:?})", a,);
+        debug!("TypeGeneralizer::fold_ty(a={:?})", a,);
 
         match a.sty {
             ty::Infer(ty::TyVar(_)) | ty::Infer(ty::IntVar(_)) | ty::Infer(ty::FloatVar(_))
@@ -746,13 +750,13 @@ where
                 if sub_vid == self.for_vid_sub_root {
                     // If sub-roots are equal, then `for_vid` and
                     // `vid` are related via subtyping.
-                    debug!("TypeGeneralizer::tys: occurs check failed");
+                    debug!("TypeGeneralizer::fold_ty: occurs check failed");
                     return Err(TypeError::Mismatch);
                 } else {
                     match variables.probe(vid) {
                         TypeVariableValue::Known { value: u } => {
                             drop(variables);
-                            self.relate(&u, &u)
+                            u.fold_with(self)
                         }
                         TypeVariableValue::Unknown { universe: _universe } => {
                             if self.ambient_variance == ty::Bivariant {
@@ -789,7 +793,7 @@ where
             ty::Placeholder(placeholder) => {
                 if self.universe.cannot_name(placeholder.universe) {
                     debug!(
-                        "TypeGeneralizer::tys: root universe {:?} cannot name\
+                        "TypeGeneralizer::fold_ty: root universe {:?} cannot name\
                         placeholder in universe {:?}",
                         self.universe,
                         placeholder.universe
@@ -801,17 +805,16 @@ where
             }
 
             _ => {
-                relate::super_relate_tys(self, a, a)
+                a.super_fold_with(self)
             }
         }
     }
 
-    fn regions(
+    fn fold_region(
         &mut self,
         a: ty::Region<'tcx>,
-        _: ty::Region<'tcx>,
     ) -> RelateResult<'tcx, ty::Region<'tcx>> {
-        debug!("TypeGeneralizer::regions(a={:?})", a,);
+        debug!("TypeGeneralizer::fold_region(a={:?})", a,);
 
         if let ty::ReLateBound(debruijn, _) = a {
             if *debruijn < self.first_free_index {
@@ -840,18 +843,17 @@ where
         Ok(replacement_region_vid)
     }
 
-    fn binders<T>(
+    fn fold_binder<T>(
         &mut self,
         a: &ty::Binder<T>,
-        _: &ty::Binder<T>,
     ) -> RelateResult<'tcx, ty::Binder<T>>
     where
-        T: Relate<'tcx>,
+        T: TypeFoldable<'tcx>,
     {
-        debug!("TypeGeneralizer::binders(a={:?})", a,);
+        debug!("TypeGeneralizer::fold_binder(a={:?})", a,);
 
         self.first_free_index.shift_in(1);
-        let result = self.relate(a.skip_binder(), a.skip_binder())?;
+        let result = a.skip_binder().fold_with(self)?;
         self.first_free_index.shift_out(1);
         Ok(ty::Binder::bind(result))
     }
