@@ -613,6 +613,50 @@ impl Step for RustdocJS {
 }
 
 #[derive(Debug, Copy, Clone, Hash, PartialEq, Eq)]
+pub struct RustdocJSNotStd {
+    pub host: Interned<String>,
+    pub target: Interned<String>,
+    pub compiler: Compiler,
+}
+
+impl Step for RustdocJSNotStd {
+    type Output = ();
+    const DEFAULT: bool = true;
+    const ONLY_HOSTS: bool = true;
+
+    fn should_run(run: ShouldRun) -> ShouldRun {
+        run.path("src/test/rustdoc-js-not-std")
+    }
+
+    fn make_run(run: RunConfig) {
+        let compiler = run.builder.compiler(run.builder.top_stage, run.host);
+        run.builder.ensure(RustdocJSNotStd {
+            host: run.host,
+            target: run.target,
+            compiler,
+        });
+    }
+
+    fn run(self, builder: &Builder) {
+        if let Some(ref nodejs) = builder.config.nodejs {
+            let mut command = Command::new(nodejs);
+            command.args(&["src/tools/rustdoc-js-not-std/tester.js",
+                           &*self.host,
+                           builder.top_stage.to_string().as_str()]);
+            builder.ensure(crate::doc::Std {
+                target: self.target,
+                stage: builder.top_stage,
+            });
+            builder.run(&mut command);
+        } else {
+            builder.info(
+                "No nodejs found, skipping \"src/test/rustdoc-js-not-std\" tests"
+            );
+        }
+    }
+}
+
+#[derive(Debug, Copy, Clone, Hash, PartialEq, Eq)]
 pub struct RustdocUi {
     pub host: Interned<String>,
     pub target: Interned<String>,
