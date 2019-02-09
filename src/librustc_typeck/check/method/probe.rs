@@ -85,6 +85,37 @@ impl<'a, 'gcx, 'tcx> Deref for ProbeContext<'a, 'gcx, 'tcx> {
 
 #[derive(Debug)]
 struct Candidate<'tcx> {
+    // Candidates are (I'm not quite sure, but they are mostly) basically
+    // some metadata on top of a `ty::AssociatedItem` (without substs).
+    //
+    // However, method probing wants to be able to evaluate the predicates
+    // for a function with the substs applied - for example, if a function
+    // has `where Self: Sized`, we don't want to consider it unless `Self`
+    // is actually `Sized`, and similarly, return-type suggestions want
+    // to consider the "actual" return type.
+    //
+    // The way this is handled is through `xform_self_ty`. It contains
+    // the receiver type of this candidate, but `xform_self_ty`,
+    // `xform_ret_ty` and `kind` (which contains the predicates) have the
+    // generic parameters of this candidate substituted with the *same set*
+    // of inference variables, which acts as some weird sort of "query".
+    //
+    // When we check out a candidate, we require `xform_self_ty` to be
+    // a subtype of the passed-in self-type, and this equates the type
+    // variables in the rest of the fields.
+    //
+    // For example, if we have this candidate:
+    // ```
+    //    trait Foo {
+    //        fn foo(&self) where Self: Sized;
+    //    }
+    // ```
+    //
+    // Then `xform_self_ty` will be `&'erased ?X` and `kind` will contain
+    // the predicate `?X: Sized`, so if we are evaluating `Foo` for a
+    // the receiver `&T`, we'll do the subtyping which will make `?X`
+    // get the right value, then when we evaluate the predicate we'll check
+    // if `T: Sized`.
     xform_self_ty: Ty<'tcx>,
     xform_ret_ty: Option<Ty<'tcx>>,
     item: ty::AssociatedItem,
@@ -506,13 +537,28 @@ impl<'a, 'gcx, 'tcx> ProbeContext<'a, 'gcx, 'tcx> {
         match self_ty.value.value.sty {
             ty::Dynamic(ref data, ..) => {
                 if let Some(p) = data.principal() {
-                    let InferOk { value: instantiated_self_ty, obligations: _ } =
-                        self.fcx.probe_instantiate_query_response(
-                            self.span, &self.orig_steps_var_values, self_ty)
-                        .unwrap_or_else(|_| {
-                            span_bug!(self.span, "{:?} was applicable but now isn't?", self_ty)
-                        });
-                    self.assemble_inherent_candidates_from_object(instantiated_self_ty);
+                    // Subtle: we can't use `instantiate_query_response` here: using it will
+                    // commit to all of the type equalities assumed by inference going through
+                    // autoderef (see the `method-probe-no-guessing` test).
+                    //
+                    // However, in this code, it is OK if we end up with an object type that is
+                    // "more general" than the object type that we are evaluating. For *every*
+                    // object type `MY_OBJECT`, a function call that goes through a trait-ref
+                    // of the form `<MY_OBJECT as SuperTraitOf(MY_OBJECT)>::func` is a valid
+                    // `ObjectCandidate`, and it should be discoverable "exactly" through one
+                    // of the iterations in the autoderef loop, so there is no problem with it
+                    // being discoverable in another one of these iterations.
+                    //
+                    // Using `instantiate_canonical_with_fresh_inference_vars` on our
+                    // `Canonical<QueryResponse<Ty<'tcx>>>` and then *throwing away* the
+                    // `CanonicalVarValues` will exactly give us such a generalization - it
+                    // will still match the original object type, but it won't pollute our
+                    // type variables in any form, so just do that!
+                    let (QueryResponse { value: generalized_self_ty, .. }, _ignored_var_values) =
+                        self.fcx.instantiate_canonical_with_fresh_inference_vars(
+                            self.span, &self_ty);
+
+                    self.assemble_inherent_candidates_from_object(generalized_self_ty);
                     self.assemble_inherent_impl_candidates_for_type(p.def_id());
                 }
             }
