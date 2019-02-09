@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+#![deny(rust_2018_idioms)]
+
 #[macro_use]
 extern crate derive_new;
 #[cfg(test)]
