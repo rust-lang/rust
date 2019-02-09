@@ -1,8 +1,8 @@
 //! See docs in build/expr/mod.rs
 
-use build::expr::category::Category;
-use build::{BlockAnd, BlockAndExtension, Builder};
-use hair::*;
+use crate::build::expr::category::Category;
+use crate::build::{BlockAnd, BlockAndExtension, Builder};
+use crate::hair::*;
 use rustc::middle::region;
 use rustc::mir::*;
 

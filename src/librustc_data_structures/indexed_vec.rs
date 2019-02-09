@@ -257,7 +257,7 @@ macro_rules! newtype_index {
      @type         [$type:ident]
      @debug_format [$debug_format:tt]) => (
         impl ::std::fmt::Debug for $type {
-            fn fmt(&self, fmt: &mut ::std::fmt::Formatter) -> ::std::fmt::Result {
+            fn fmt(&self, fmt: &mut ::std::fmt::Formatter<'_>) -> ::std::fmt::Result {
                 write!(fmt, $debug_format, self.as_u32())
             }
         }
@@ -495,7 +495,7 @@ impl<I: Idx, T: serialize::Decodable> serialize::Decodable for IndexVec<I, T> {
 }
 
 impl<I: Idx, T: fmt::Debug> fmt::Debug for IndexVec<I, T> {
-    fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, fmt: &mut fmt::Formatter<'_>) -> fmt::Result {
         fmt::Debug::fmt(&self.raw, fmt)
     }
 }
@@ -573,7 +573,7 @@ impl<I: Idx, T> IndexVec<I, T> {
     }
 
     #[inline]
-    pub fn iter(&self) -> slice::Iter<T> {
+    pub fn iter(&self) -> slice::Iter<'_, T> {
         self.raw.iter()
     }
 
@@ -589,7 +589,7 @@ impl<I: Idx, T> IndexVec<I, T> {
     }
 
     #[inline]
-    pub fn iter_mut(&mut self) -> slice::IterMut<T> {
+    pub fn iter_mut(&mut self) -> slice::IterMut<'_, T> {
         self.raw.iter_mut()
     }
 

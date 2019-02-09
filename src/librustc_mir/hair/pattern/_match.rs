@@ -307,7 +307,7 @@ impl<'p, 'tcx> Matrix<'p, 'tcx> {
 /// + _     + [_, _, ..tail] +
 /// ++++++++++++++++++++++++++
 impl<'p, 'tcx> fmt::Debug for Matrix<'p, 'tcx> {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "\n")?;
 
         let &Matrix(ref m) = self;
@@ -442,7 +442,7 @@ impl<'tcx> Constructor<'tcx> {
                 VariantIdx::new(0)
             }
             &ConstantValue(c) => {
-                ::const_eval::const_variant_index(
+                crate::const_eval::const_variant_index(
                     cx.tcx,
                     cx.param_env,
                     c,
@@ -1115,7 +1115,7 @@ pub fn is_useful<'p, 'a: 'p, 'tcx: 'a>(cx: &mut MatchCheckCtxt<'a, 'tcx>,
     } else {
         debug!("is_useful - expanding wildcard");
 
-        let used_ctors: Vec<Constructor> = rows.iter().flat_map(|row| {
+        let used_ctors: Vec<Constructor<'_>> = rows.iter().flat_map(|row| {
             pat_constructors(cx, row[0], pcx).unwrap_or(vec![])
         }).collect();
         debug!("used_ctors = {:#?}", used_ctors);
@@ -1302,7 +1302,7 @@ fn is_useful_specialized<'p, 'a: 'p, 'tcx: 'a>(
 /// Returns None in case of a catch-all, which can't be specialized.
 fn pat_constructors<'tcx>(cx: &mut MatchCheckCtxt<'_, 'tcx>,
                           pat: &Pattern<'tcx>,
-                          pcx: PatternContext)
+                          pcx: PatternContext<'_>)
                           -> Option<Vec<Constructor<'tcx>>>
 {
     match *pat.kind {

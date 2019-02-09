@@ -1,3 +1,5 @@
+#![cfg(not(miri))]
+
 use core::cell::*;
 use core::default::Default;
 use std::mem::drop;

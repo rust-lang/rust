@@ -1,6 +1,6 @@
 use rustc::session::Session;
 
-use generated_code;
+use crate::generated_code;
 
 use std::cell::Cell;
 

@@ -217,7 +217,7 @@ fn check_paths<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     }
 }
 
-fn dump_graph(tcx: TyCtxt) {
+fn dump_graph(tcx: TyCtxt<'_, '_, '_>) {
     let path: String = env::var("RUST_DEP_GRAPH").unwrap_or_else(|_| "dep_graph".to_string());
     let query = tcx.dep_graph.query();
 
@@ -261,11 +261,11 @@ pub struct GraphvizDepGraph<'q>(FxHashSet<&'q DepNode>,
 impl<'a, 'tcx, 'q> dot::GraphWalk<'a> for GraphvizDepGraph<'q> {
     type Node = &'q DepNode;
     type Edge = (&'q DepNode, &'q DepNode);
-    fn nodes(&self) -> dot::Nodes<&'q DepNode> {
+    fn nodes(&self) -> dot::Nodes<'_, &'q DepNode> {
         let nodes: Vec<_> = self.0.iter().cloned().collect();
         nodes.into()
     }
-    fn edges(&self) -> dot::Edges<(&'q DepNode, &'q DepNode)> {
+    fn edges(&self) -> dot::Edges<'_, (&'q DepNode, &'q DepNode)> {
         self.1[..].into()
     }
     fn source(&self, edge: &(&'q DepNode, &'q DepNode)) -> &'q DepNode {
@@ -279,10 +279,10 @@ impl<'a, 'tcx, 'q> dot::GraphWalk<'a> for GraphvizDepGraph<'q> {
 impl<'a, 'tcx, 'q> dot::Labeller<'a> for GraphvizDepGraph<'q> {
     type Node = &'q DepNode;
     type Edge = (&'q DepNode, &'q DepNode);
-    fn graph_id(&self) -> dot::Id {
+    fn graph_id(&self) -> dot::Id<'_> {
         dot::Id::new("DependencyGraph").unwrap()
     }
-    fn node_id(&self, n: &&'q DepNode) -> dot::Id {
+    fn node_id(&self, n: &&'q DepNode) -> dot::Id<'_> {
         let s: String =
             format!("{:?}", n).chars()
                               .map(|c| if c == '_' || c.is_alphanumeric() { c } else { '_' })
@@ -290,7 +290,7 @@ impl<'a, 'tcx, 'q> dot::Labeller<'a> for GraphvizDepGraph<'q> {
         debug!("n={:?} s={:?}", n, s);
         dot::Id::new(s).unwrap()
     }
-    fn node_label(&self, n: &&'q DepNode) -> dot::LabelText {
+    fn node_label(&self, n: &&'q DepNode) -> dot::LabelText<'_> {
         dot::LabelText::label(format!("{:?}", n))
     }
 }

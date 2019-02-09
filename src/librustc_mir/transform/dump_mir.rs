@@ -8,8 +8,8 @@ use std::io;
 use rustc::mir::Mir;
 use rustc::session::config::{OutputFilenames, OutputType};
 use rustc::ty::TyCtxt;
-use transform::{MirPass, MirSource};
-use util as mir_util;
+use crate::transform::{MirPass, MirSource};
+use crate::util as mir_util;
 
 pub struct Marker(pub &'static str);
 
@@ -31,7 +31,7 @@ pub struct Disambiguator {
 }
 
 impl fmt::Display for Disambiguator {
-    fn fmt(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
         let title = if self.is_after { "after" } else { "before" };
         write!(formatter, "{}", title)
     }

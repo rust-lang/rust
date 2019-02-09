@@ -129,7 +129,7 @@ fn save_in<F>(sess: &Session, path_buf: PathBuf, encode: F)
     }
 }
 
-fn encode_dep_graph(tcx: TyCtxt,
+fn encode_dep_graph(tcx: TyCtxt<'_, '_, '_>,
                     encoder: &mut Encoder) {
     // First encode the commandline arguments hash
     tcx.sess.opts.dep_tracking_hash().encode(encoder).unwrap();
@@ -234,7 +234,7 @@ fn encode_work_product_index(work_products: &FxHashMap<WorkProductId, WorkProduc
     serialized_products.encode(encoder).unwrap();
 }
 
-fn encode_query_cache(tcx: TyCtxt,
+fn encode_query_cache(tcx: TyCtxt<'_, '_, '_>,
                       encoder: &mut Encoder) {
     time(tcx.sess, "serialize query result cache", || {
         tcx.serialize_query_result_cache(encoder).unwrap();

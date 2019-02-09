@@ -1,9 +1,9 @@
 //! Validates all used crates and extern libraries and loads their metadata
 
-use cstore::{self, CStore, CrateSource, MetadataBlob};
-use locator::{self, CratePaths};
-use decoder::proc_macro_def_path_table;
-use schema::CrateRoot;
+use crate::cstore::{self, CStore, CrateSource, MetadataBlob};
+use crate::locator::{self, CratePaths};
+use crate::decoder::proc_macro_def_path_table;
+use crate::schema::CrateRoot;
 use rustc_data_structures::sync::{Lrc, RwLock, Lock};
 
 use rustc::hir::def_id::CrateNum;
@@ -29,8 +29,9 @@ use syntax::attr;
 use syntax::ext::base::SyntaxExtension;
 use syntax::symbol::Symbol;
 use syntax::visit;
+use syntax::{span_err, span_fatal};
 use syntax_pos::{Span, DUMMY_SP};
-use log;
+use log::{debug, info, log_enabled};
 
 pub struct Library {
     pub dylib: Option<(PathBuf, PathKind)>,
@@ -342,7 +343,7 @@ impl<'a> CrateLoader<'a> {
         }
     }
 
-    fn load(&mut self, locate_ctxt: &mut locator::Context) -> Option<LoadResult> {
+    fn load(&mut self, locate_ctxt: &mut locator::Context<'_>) -> Option<LoadResult> {
         let library = locate_ctxt.maybe_load_library_crate()?;
 
         // In the case that we're loading a crate, but not matching
@@ -427,7 +428,7 @@ impl<'a> CrateLoader<'a> {
         // The map from crate numbers in the crate we're resolving to local crate numbers.
         // We map 0 and all other holes in the map to our parent crate. The "additional"
         // self-dependencies should be harmless.
-        ::std::iter::once(krate).chain(crate_root.crate_deps
+        std::iter::once(krate).chain(crate_root.crate_deps
                                                  .decode(metadata)
                                                  .map(|dep| {
             info!("resolving dep crate {} hash: `{}` extra filename: `{}`", dep.name, dep.hash,
@@ -522,7 +523,7 @@ impl<'a> CrateLoader<'a> {
     fn load_derive_macros(&mut self, root: &CrateRoot, dylib: Option<PathBuf>, span: Span)
                           -> Vec<(ast::Name, Lrc<SyntaxExtension>)> {
         use std::{env, mem};
-        use dynamic_lib::DynamicLibrary;
+        use crate::dynamic_lib::DynamicLibrary;
         use proc_macro::bridge::client::ProcMacro;
         use syntax_ext::deriving::custom::ProcMacroDerive;
         use syntax_ext::proc_macro_impl::{AttrProcMacro, BangProcMacro};
@@ -996,7 +997,7 @@ impl<'a> CrateLoader<'a> {
                        item.ident, orig_name);
                 let orig_name = match orig_name {
                     Some(orig_name) => {
-                        ::validate_crate_name(Some(self.sess), &orig_name.as_str(),
+                        crate::validate_crate_name(Some(self.sess), &orig_name.as_str(),
                                             Some(item.span));
                         orig_name
                     }

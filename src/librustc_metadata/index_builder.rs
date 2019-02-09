@@ -45,10 +45,10 @@
 //! give a callback fn, rather than taking a closure: it allows us to
 //! easily control precisely what data is given to that fn.
 
-use encoder::EncodeContext;
-use index::Index;
-use schema::*;
-use isolated_encoder::IsolatedEncoder;
+use crate::encoder::EncodeContext;
+use crate::index::Index;
+use crate::schema::*;
+use crate::isolated_encoder::IsolatedEncoder;
 
 use rustc::hir;
 use rustc::hir::def_id::DefId;
@@ -133,21 +133,21 @@ impl<'a, 'b, 'tcx> IndexBuilder<'a, 'b, 'tcx> {
 /// `DefId` index, or implement the `read` method so that it can add
 /// a read of whatever dep-graph nodes are appropriate.
 pub trait DepGraphRead {
-    fn read(&self, tcx: TyCtxt);
+    fn read(&self, tcx: TyCtxt<'_, '_, '_>);
 }
 
 impl DepGraphRead for DefId {
-    fn read(&self, _tcx: TyCtxt) {}
+    fn read(&self, _tcx: TyCtxt<'_, '_, '_>) {}
 }
 
 impl DepGraphRead for ast::NodeId {
-    fn read(&self, _tcx: TyCtxt) {}
+    fn read(&self, _tcx: TyCtxt<'_, '_, '_>) {}
 }
 
 impl<T> DepGraphRead for Option<T>
     where T: DepGraphRead
 {
-    fn read(&self, tcx: TyCtxt) {
+    fn read(&self, tcx: TyCtxt<'_, '_, '_>) {
         match *self {
             Some(ref v) => v.read(tcx),
             None => (),
@@ -158,7 +158,7 @@ impl<T> DepGraphRead for Option<T>
 impl<T> DepGraphRead for [T]
     where T: DepGraphRead
 {
-    fn read(&self, tcx: TyCtxt) {
+    fn read(&self, tcx: TyCtxt<'_, '_, '_>) {
         for i in self {
             i.read(tcx);
         }
@@ -171,7 +171,7 @@ macro_rules! read_tuple {
             where $($name: DepGraphRead),*
         {
             #[allow(non_snake_case)]
-            fn read(&self, tcx: TyCtxt) {
+            fn read(&self, tcx: TyCtxt<'_, '_, '_>) {
                 let &($(ref $name),*) = self;
                 $($name.read(tcx);)*
             }
@@ -184,7 +184,7 @@ read_tuple!(A, B, C);
 macro_rules! read_hir {
     ($t:ty) => {
         impl<'tcx> DepGraphRead for &'tcx $t {
-            fn read(&self, tcx: TyCtxt) {
+            fn read(&self, tcx: TyCtxt<'_, '_, '_>) {
                 tcx.hir().read(self.id);
             }
         }
@@ -208,7 +208,7 @@ read_hir!(hir::MacroDef);
 pub struct Untracked<T>(pub T);
 
 impl<T> DepGraphRead for Untracked<T> {
-    fn read(&self, _tcx: TyCtxt) {}
+    fn read(&self, _tcx: TyCtxt<'_, '_, '_>) {}
 }
 
 /// Newtype that can be used to package up misc data extracted from a
@@ -218,7 +218,7 @@ impl<T> DepGraphRead for Untracked<T> {
 pub struct FromId<T>(pub ast::NodeId, pub T);
 
 impl<T> DepGraphRead for FromId<T> {
-    fn read(&self, tcx: TyCtxt) {
+    fn read(&self, tcx: TyCtxt<'_, '_, '_>) {
         tcx.hir().read(self.0);
     }
 }

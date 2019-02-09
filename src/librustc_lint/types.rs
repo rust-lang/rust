@@ -4,6 +4,7 @@ use rustc::hir::Node;
 use rustc::ty::subst::Substs;
 use rustc::ty::{self, AdtKind, ParamEnv, Ty, TyCtxt};
 use rustc::ty::layout::{self, IntegerExt, LayoutOf, VariantIdx};
+use rustc::{lint, util};
 use rustc_data_structures::indexed_vec::Idx;
 use util::nodemap::FxHashSet;
 use lint::{LateContext, LintContext, LintArray};
@@ -22,6 +23,8 @@ use syntax::source_map;
 use rustc::hir;
 
 use rustc::mir::interpret::{sign_extend, truncate};
+
+use log::debug;
 
 declare_lint! {
     UNUSED_COMPARISONS,
@@ -241,7 +244,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for TypeLimits {
             }
         }
 
-        fn check_limits(cx: &LateContext,
+        fn check_limits(cx: &LateContext<'_, '_>,
                         binop: hir::BinOp,
                         l: &hir::Expr,
                         r: &hir::Expr)
@@ -298,7 +301,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for TypeLimits {
             }
         }
 
-        fn get_bin_hex_repr(cx: &LateContext, lit: &ast::Lit) -> Option<String> {
+        fn get_bin_hex_repr(cx: &LateContext<'_, '_>, lit: &ast::Lit) -> Option<String> {
             let src = cx.sess().source_map().span_to_snippet(lit.span).ok()?;
             let firstch = src.chars().next()?;
 
@@ -320,7 +323,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for TypeLimits {
         //
         // No suggestion for: `isize`, `usize`.
         fn get_type_suggestion<'a>(
-            t: &ty::TyKind,
+            t: &ty::TyKind<'_>,
             val: u128,
             negative: bool,
         ) -> Option<String> {
@@ -364,9 +367,9 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for TypeLimits {
         }
 
         fn report_bin_hex_error(
-            cx: &LateContext,
+            cx: &LateContext<'_, '_>,
             expr: &hir::Expr,
-            ty: ty::TyKind,
+            ty: ty::TyKind<'_>,
             repr_str: String,
             val: u128,
             negative: bool,
@@ -481,7 +484,7 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
     fn check_type_for_ffi(&self,
                           cache: &mut FxHashSet<Ty<'tcx>>,
                           ty: Ty<'tcx>) -> FfiResult<'tcx> {
-        use self::FfiResult::*;
+        use FfiResult::*;
 
         let cx = self.cx.tcx;
 
@@ -799,7 +802,7 @@ impl LintPass for ImproperCTypes {
 }
 
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for ImproperCTypes {
-    fn check_foreign_item(&mut self, cx: &LateContext, it: &hir::ForeignItem) {
+    fn check_foreign_item(&mut self, cx: &LateContext<'_, '_>, it: &hir::ForeignItem) {
         let mut vis = ImproperCTypesVisitor { cx };
         let abi = cx.tcx.hir().get_foreign_abi(it.id);
         if abi != Abi::RustIntrinsic && abi != Abi::PlatformIntrinsic {
@@ -829,7 +832,7 @@ impl LintPass for VariantSizeDifferences {
 }
 
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for VariantSizeDifferences {
-    fn check_item(&mut self, cx: &LateContext, it: &hir::Item) {
+    fn check_item(&mut self, cx: &LateContext<'_, '_>, it: &hir::Item) {
         if let hir::ItemKind::Enum(ref enum_definition, _) = it.node {
             let item_def_id = cx.tcx.hir().local_def_id(it.id);
             let t = cx.tcx.type_of(item_def_id);

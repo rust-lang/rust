@@ -107,7 +107,7 @@ impl<'tcx> Info<'tcx> {
 
     pub fn defs_not_including_drop(
         &self,
-    ) -> iter::Filter<slice::Iter<Use<'tcx>>, fn(&&Use<'tcx>) -> bool> {
+    ) -> iter::Filter<slice::Iter<'_, Use<'tcx>>, fn(&&Use<'tcx>) -> bool> {
         self.defs_and_uses.iter().filter(|place_use| {
             place_use.context.is_mutating_use() && !place_use.context.is_drop()
         })

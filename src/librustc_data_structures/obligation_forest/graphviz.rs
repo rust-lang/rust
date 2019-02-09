@@ -1,5 +1,5 @@
+use crate::obligation_forest::{ForestObligation, ObligationForest};
 use graphviz as dot;
-use obligation_forest::{ForestObligation, ObligationForest};
 use std::env::var_os;
 use std::fs::File;
 use std::path::Path;
@@ -41,22 +41,22 @@ impl<'a, O: ForestObligation + 'a> dot::Labeller<'a> for &'a ObligationForest<O>
     type Node = usize;
     type Edge = (usize, usize);
 
-    fn graph_id(&self) -> dot::Id {
+    fn graph_id(&self) -> dot::Id<'_> {
         dot::Id::new("trait_obligation_forest").unwrap()
     }
 
-    fn node_id(&self, index: &Self::Node) -> dot::Id {
+    fn node_id(&self, index: &Self::Node) -> dot::Id<'_> {
         dot::Id::new(format!("obligation_{}", index)).unwrap()
     }
 
-    fn node_label(&self, index: &Self::Node) -> dot::LabelText {
+    fn node_label(&self, index: &Self::Node) -> dot::LabelText<'_> {
         let node = &self.nodes[*index];
         let label = format!("{:?} ({:?})", node.obligation.as_predicate(), node.state.get());
 
         dot::LabelText::LabelStr(label.into())
     }
 
-    fn edge_label(&self, (_index_source, _index_target): &Self::Edge) -> dot::LabelText {
+    fn edge_label(&self, (_index_source, _index_target): &Self::Edge) -> dot::LabelText<'_> {
         dot::LabelText::LabelStr("".into())
     }
 }
@@ -65,11 +65,11 @@ impl<'a, O: ForestObligation + 'a> dot::GraphWalk<'a> for &'a ObligationForest<O
     type Node = usize;
     type Edge = (usize, usize);
 
-    fn nodes(&self) -> dot::Nodes<Self::Node> {
+    fn nodes(&self) -> dot::Nodes<'_, Self::Node> {
         (0..self.nodes.len()).collect()
     }
 
-    fn edges(&self) -> dot::Edges<Self::Edge> {
+    fn edges(&self) -> dot::Edges<'_, Self::Edge> {
         (0..self.nodes.len())
             .flat_map(|i| {
                 let node = &self.nodes[i];

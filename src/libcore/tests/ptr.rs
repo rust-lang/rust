@@ -1,3 +1,5 @@
+#![cfg(not(miri))]
+
 use core::ptr::*;
 use core::cell::RefCell;
 

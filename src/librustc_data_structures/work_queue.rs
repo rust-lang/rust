@@ -1,5 +1,5 @@
-use bit_set::BitSet;
-use indexed_vec::Idx;
+use crate::bit_set::BitSet;
+use crate::indexed_vec::Idx;
 use std::collections::VecDeque;
 
 /// A work queue is a handy data structure for tracking work left to

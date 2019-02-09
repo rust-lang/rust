@@ -5,18 +5,20 @@ use syntax_pos::Span;
 use rustc::ty::{self, TyCtxt};
 use rustc::mir::{self, Mir, Location};
 use rustc_data_structures::bit_set::BitSet;
-use transform::{MirPass, MirSource};
+use crate::transform::{MirPass, MirSource};
 
-use dataflow::{do_dataflow, DebugFormatted};
-use dataflow::MoveDataParamEnv;
-use dataflow::BitDenotation;
-use dataflow::DataflowResults;
-use dataflow::{DefinitelyInitializedPlaces, MaybeInitializedPlaces, MaybeUninitializedPlaces};
-use dataflow::move_paths::{MovePathIndex, LookupResult};
-use dataflow::move_paths::{HasMoveData, MoveData};
-use dataflow;
+use crate::dataflow::{do_dataflow, DebugFormatted};
+use crate::dataflow::MoveDataParamEnv;
+use crate::dataflow::BitDenotation;
+use crate::dataflow::DataflowResults;
+use crate::dataflow::{
+    DefinitelyInitializedPlaces, MaybeInitializedPlaces, MaybeUninitializedPlaces
+};
+use crate::dataflow::move_paths::{MovePathIndex, LookupResult};
+use crate::dataflow::move_paths::{HasMoveData, MoveData};
+use crate::dataflow;
 
-use dataflow::has_rustc_mir_with;
+use crate::dataflow::has_rustc_mir_with;
 
 pub struct SanityCheck;
 

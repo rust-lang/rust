@@ -3,9 +3,9 @@
 //! node in the graph. This uses Tarjan's algorithm that completes in
 //! O(n) time.
 
-use fx::FxHashSet;
-use graph::{DirectedGraph, WithNumNodes, WithSuccessors};
-use indexed_vec::{Idx, IndexVec};
+use crate::fx::FxHashSet;
+use crate::graph::{DirectedGraph, WithNumNodes, WithSuccessors};
+use crate::indexed_vec::{Idx, IndexVec};
 use std::ops::Range;
 
 mod test;
@@ -93,7 +93,7 @@ impl<S: Idx> SccData<S> {
     }
 }
 
-struct SccsConstruction<'c, G: DirectedGraph + WithNumNodes + WithSuccessors + 'c, S: Idx> {
+struct SccsConstruction<'c, G: DirectedGraph + WithNumNodes + WithSuccessors, S: Idx> {
     graph: &'c G,
 
     /// The state of each node; used during walk to record the stack

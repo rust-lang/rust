@@ -23,7 +23,7 @@ use syntax::ast;
 
 use std::iter;
 
-crate fn provide(p: &mut Providers) {
+crate fn provide(p: &mut Providers<'_>) {
     *p = Providers {
         program_clauses_for,
         program_clauses_for_env: environment::program_clauses_for_env,
@@ -193,7 +193,7 @@ fn program_clauses_for_trait<'a, 'tcx>(
     };
 
     // `Implemented(Self: Trait<P1..Pn>)`
-    let impl_trait: DomainGoal = trait_pred.lower();
+    let impl_trait: DomainGoal<'_> = trait_pred.lower();
 
     // `FromEnv(Self: Trait<P1..Pn>)`
     let from_env_goal = tcx.mk_goal(impl_trait.into_from_env_goal().into_goal());
@@ -575,7 +575,7 @@ pub fn program_clauses_for_associated_type_value<'a, 'tcx>(
     let ty = tcx.type_of(item_id);
 
     // `Implemented(A0: Trait<A1..An>)`
-    let trait_implemented: DomainGoal = ty::TraitPredicate { trait_ref }.lower();
+    let trait_implemented: DomainGoal<'_> = ty::TraitPredicate { trait_ref }.lower();
 
     // `<A0 as Trait<A1..An>>::AssocType<Pn+1..Pm>`
     let projection_ty = ty::ProjectionTy::from_ref_and_name(tcx, trait_ref, item.ident);

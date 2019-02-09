@@ -1,3 +1,5 @@
+#![cfg(not(miri))]
+
 mod map;
 mod set;
 

@@ -27,10 +27,10 @@ use syntax_pos::{Span, DUMMY_SP};
 use std::fmt;
 use std::usize;
 
-use transform::{MirPass, MirSource};
+use crate::transform::{MirPass, MirSource};
 use super::promote_consts::{self, Candidate, TempState};
 
-bitflags! {
+bitflags::bitflags! {
     // Borrows of temporaries can be promoted only if
     // they have none of these qualifications, with
     // the exception of `STATIC_REF` (in statics only).
@@ -84,7 +84,7 @@ enum Mode {
 }
 
 impl fmt::Display for Mode {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match *self {
             Mode::Const => write!(f, "constant"),
             Mode::Static | Mode::StaticMut => write!(f, "static"),
@@ -1128,7 +1128,7 @@ impl<'a, 'tcx> Visitor<'tcx> for Qualifier<'a, 'tcx, 'tcx> {
     }
 }
 
-pub fn provide(providers: &mut Providers) {
+pub fn provide(providers: &mut Providers<'_>) {
     *providers = Providers {
         mir_const_qualif,
         ..*providers
@@ -1317,7 +1317,7 @@ impl MirPass for QualifyAndPromoteConstants {
     }
 }
 
-fn args_required_const(tcx: TyCtxt, def_id: DefId) -> Option<FxHashSet<usize>> {
+fn args_required_const(tcx: TyCtxt<'_, '_, '_>, def_id: DefId) -> Option<FxHashSet<usize>> {
     let attrs = tcx.get_attrs(def_id);
     let attr = attrs.iter().find(|a| a.check_name("rustc_args_required_const"))?;
     let mut ret = FxHashSet::default();

@@ -1,7 +1,7 @@
 use std::fmt::{self, Display};
-use borrow_check::nll::region_infer::RegionInferenceContext;
-use borrow_check::nll::universal_regions::DefiningTy;
-use borrow_check::nll::ToRegionVid;
+use crate::borrow_check::nll::region_infer::RegionInferenceContext;
+use crate::borrow_check::nll::universal_regions::DefiningTy;
+use crate::borrow_check::nll::ToRegionVid;
 use rustc::hir;
 use rustc::hir::def_id::DefId;
 use rustc::infer::InferCtxt;
@@ -109,7 +109,7 @@ impl RegionName {
 }
 
 impl Display for RegionName {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "{}", self.name)
     }
 }

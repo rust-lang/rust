@@ -9,7 +9,7 @@ use rustc_data_structures::indexed_vec::Idx;
 
 use super::MoveDataParamEnv;
 
-use util::elaborate_drops::DropFlagState;
+use crate::util::elaborate_drops::DropFlagState;
 
 use super::move_paths::{HasMoveData, MoveData, MovePathIndex, InitIndex};
 use super::move_paths::{LookupResult, InitKind};
@@ -251,7 +251,7 @@ impl<'a, 'gcx, 'tcx> HasMoveData<'tcx> for EverInitializedPlaces<'a, 'gcx, 'tcx>
 
 
 impl<'a, 'gcx, 'tcx> MaybeInitializedPlaces<'a, 'gcx, 'tcx> {
-    fn update_bits(sets: &mut BlockSets<MovePathIndex>, path: MovePathIndex,
+    fn update_bits(sets: &mut BlockSets<'_, MovePathIndex>, path: MovePathIndex,
                    state: DropFlagState)
     {
         match state {
@@ -262,7 +262,7 @@ impl<'a, 'gcx, 'tcx> MaybeInitializedPlaces<'a, 'gcx, 'tcx> {
 }
 
 impl<'a, 'gcx, 'tcx> MaybeUninitializedPlaces<'a, 'gcx, 'tcx> {
-    fn update_bits(sets: &mut BlockSets<MovePathIndex>, path: MovePathIndex,
+    fn update_bits(sets: &mut BlockSets<'_, MovePathIndex>, path: MovePathIndex,
                    state: DropFlagState)
     {
         match state {
@@ -273,7 +273,7 @@ impl<'a, 'gcx, 'tcx> MaybeUninitializedPlaces<'a, 'gcx, 'tcx> {
 }
 
 impl<'a, 'gcx, 'tcx> DefinitelyInitializedPlaces<'a, 'gcx, 'tcx> {
-    fn update_bits(sets: &mut BlockSets<MovePathIndex>, path: MovePathIndex,
+    fn update_bits(sets: &mut BlockSets<'_, MovePathIndex>, path: MovePathIndex,
                    state: DropFlagState)
     {
         match state {
@@ -300,7 +300,7 @@ impl<'a, 'gcx, 'tcx> BitDenotation<'tcx> for MaybeInitializedPlaces<'a, 'gcx, 't
     }
 
     fn statement_effect(&self,
-                        sets: &mut BlockSets<MovePathIndex>,
+                        sets: &mut BlockSets<'_, MovePathIndex>,
                         location: Location)
     {
         drop_flag_effects_for_location(
@@ -311,7 +311,7 @@ impl<'a, 'gcx, 'tcx> BitDenotation<'tcx> for MaybeInitializedPlaces<'a, 'gcx, 't
     }
 
     fn terminator_effect(&self,
-                         sets: &mut BlockSets<MovePathIndex>,
+                         sets: &mut BlockSets<'_, MovePathIndex>,
                          location: Location)
     {
         drop_flag_effects_for_location(
@@ -358,7 +358,7 @@ impl<'a, 'gcx, 'tcx> BitDenotation<'tcx> for MaybeUninitializedPlaces<'a, 'gcx, 
     }
 
     fn statement_effect(&self,
-                        sets: &mut BlockSets<MovePathIndex>,
+                        sets: &mut BlockSets<'_, MovePathIndex>,
                         location: Location)
     {
         drop_flag_effects_for_location(
@@ -369,7 +369,7 @@ impl<'a, 'gcx, 'tcx> BitDenotation<'tcx> for MaybeUninitializedPlaces<'a, 'gcx, 
     }
 
     fn terminator_effect(&self,
-                         sets: &mut BlockSets<MovePathIndex>,
+                         sets: &mut BlockSets<'_, MovePathIndex>,
                          location: Location)
     {
         drop_flag_effects_for_location(
@@ -414,7 +414,7 @@ impl<'a, 'gcx, 'tcx> BitDenotation<'tcx> for DefinitelyInitializedPlaces<'a, 'gc
     }
 
     fn statement_effect(&self,
-                        sets: &mut BlockSets<MovePathIndex>,
+                        sets: &mut BlockSets<'_, MovePathIndex>,
                         location: Location)
     {
         drop_flag_effects_for_location(
@@ -425,7 +425,7 @@ impl<'a, 'gcx, 'tcx> BitDenotation<'tcx> for DefinitelyInitializedPlaces<'a, 'gc
     }
 
     fn terminator_effect(&self,
-                         sets: &mut BlockSets<MovePathIndex>,
+                         sets: &mut BlockSets<'_, MovePathIndex>,
                          location: Location)
     {
         drop_flag_effects_for_location(
@@ -464,7 +464,7 @@ impl<'a, 'gcx, 'tcx> BitDenotation<'tcx> for EverInitializedPlaces<'a, 'gcx, 'tc
     }
 
     fn statement_effect(&self,
-                        sets: &mut BlockSets<InitIndex>,
+                        sets: &mut BlockSets<'_, InitIndex>,
                         location: Location) {
         let (_, mir, move_data) = (self.tcx, self.mir, self.move_data());
         let stmt = &mir[location.block].statements[location.statement_index];
@@ -511,7 +511,7 @@ impl<'a, 'gcx, 'tcx> BitDenotation<'tcx> for EverInitializedPlaces<'a, 'gcx, 'tc
     }
 
     fn terminator_effect(&self,
-                         sets: &mut BlockSets<InitIndex>,
+                         sets: &mut BlockSets<'_, InitIndex>,
                          location: Location)
     {
         let (mir, move_data) = (self.mir, self.move_data());

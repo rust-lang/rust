@@ -111,9 +111,9 @@ use rustc::util::common::time;
 use rustc::util::nodemap::{DefIdSet, FxHashMap, FxHashSet};
 use rustc::mir::mono::MonoItem;
 
-use monomorphize::collector::InliningMap;
-use monomorphize::collector::{self, MonoItemCollectionMode};
-use monomorphize::item::{MonoItemExt, InstantiationMode};
+use crate::monomorphize::collector::InliningMap;
+use crate::monomorphize::collector::{self, MonoItemCollectionMode};
+use crate::monomorphize::item::{MonoItemExt, InstantiationMode};
 
 pub use rustc::mir::mono::CodegenUnit;
 
@@ -146,7 +146,7 @@ pub trait CodegenUnitExt<'tcx> {
         WorkProductId::from_cgu_name(&self.name().as_str())
     }
 
-    fn work_product(&self, tcx: TyCtxt) -> WorkProduct {
+    fn work_product(&self, tcx: TyCtxt<'_, '_, '_>) -> WorkProduct {
         let work_product_id = self.work_product_id();
         tcx.dep_graph
            .previous_work_product(&work_product_id)
@@ -213,7 +213,7 @@ impl<'tcx> CodegenUnitExt<'tcx> for CodegenUnit<'tcx> {
 }
 
 // Anything we can't find a proper codegen unit for goes into this.
-fn fallback_cgu_name(name_builder: &mut CodegenUnitNameBuilder) -> InternedString {
+fn fallback_cgu_name(name_builder: &mut CodegenUnitNameBuilder<'_, '_, '_>) -> InternedString {
     name_builder.build_cgu_name(LOCAL_CRATE, &["fallback"], Some("cgu"))
 }
 
@@ -536,7 +536,7 @@ fn mono_item_visibility(
     }
 }
 
-fn default_visibility(tcx: TyCtxt, id: DefId, is_generic: bool) -> Visibility {
+fn default_visibility(tcx: TyCtxt<'_, '_, '_>, id: DefId, is_generic: bool) -> Visibility {
     if !tcx.sess.target.target.options.default_hidden_visibility {
         return Visibility::Default
     }
@@ -795,8 +795,8 @@ fn characteristic_def_id_of_mono_item<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
 
 type CguNameCache = FxHashMap<(DefId, bool), InternedString>;
 
-fn compute_codegen_unit_name(tcx: TyCtxt,
-                             name_builder: &mut CodegenUnitNameBuilder,
+fn compute_codegen_unit_name(tcx: TyCtxt<'_, '_, '_>,
+                             name_builder: &mut CodegenUnitNameBuilder<'_, '_, '_>,
                              def_id: DefId,
                              volatile: bool,
                              cache: &mut CguNameCache)
@@ -855,7 +855,7 @@ fn compute_codegen_unit_name(tcx: TyCtxt,
     }).clone()
 }
 
-fn numbered_codegen_unit_name(name_builder: &mut CodegenUnitNameBuilder,
+fn numbered_codegen_unit_name(name_builder: &mut CodegenUnitNameBuilder<'_, '_, '_>,
                               index: usize)
                               -> InternedString {
     name_builder.build_cgu_name_no_mangle(LOCAL_CRATE, &["cgu"], Some(index))
@@ -929,7 +929,7 @@ fn collect_and_partition_mono_items<'a, 'tcx>(
 
     tcx.sess.abort_if_errors();
 
-    ::monomorphize::assert_symbols_are_distinct(tcx, items.iter());
+    crate::monomorphize::assert_symbols_are_distinct(tcx, items.iter());
 
     let strategy = if tcx.sess.opts.incremental.is_some() {
         PartitioningStrategy::PerModule
@@ -1013,7 +1013,7 @@ fn collect_and_partition_mono_items<'a, 'tcx>(
     (Arc::new(mono_items), Arc::new(codegen_units))
 }
 
-pub fn provide(providers: &mut Providers) {
+pub fn provide(providers: &mut Providers<'_>) {
     providers.collect_and_partition_mono_items =
         collect_and_partition_mono_items;
 

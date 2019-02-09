@@ -1,3 +1,5 @@
+#![cfg(not(miri))]
+
 use std::alloc::{Global, Alloc, Layout, System};
 
 /// https://github.com/rust-lang/rust/issues/45955

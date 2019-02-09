@@ -1,6 +1,6 @@
 //! This query borrow-checks the MIR to (further) ensure it is not broken.
 
-use borrow_check::nll::region_infer::RegionInferenceContext;
+use crate::borrow_check::nll::region_infer::RegionInferenceContext;
 use rustc::hir;
 use rustc::hir::Node;
 use rustc::hir::def_id::DefId;
@@ -25,16 +25,16 @@ use std::collections::BTreeMap;
 
 use syntax_pos::Span;
 
-use dataflow::indexes::{BorrowIndex, InitIndex, MoveOutIndex, MovePathIndex};
-use dataflow::move_paths::{HasMoveData, LookupResult, MoveData, MoveError};
-use dataflow::Borrows;
-use dataflow::DataflowResultsConsumer;
-use dataflow::FlowAtLocation;
-use dataflow::MoveDataParamEnv;
-use dataflow::{do_dataflow, DebugFormatted};
-use dataflow::EverInitializedPlaces;
-use dataflow::{MaybeInitializedPlaces, MaybeUninitializedPlaces};
-use util::borrowck_errors::{BorrowckErrors, Origin};
+use crate::dataflow::indexes::{BorrowIndex, InitIndex, MoveOutIndex, MovePathIndex};
+use crate::dataflow::move_paths::{HasMoveData, LookupResult, MoveData, MoveError};
+use crate::dataflow::Borrows;
+use crate::dataflow::DataflowResultsConsumer;
+use crate::dataflow::FlowAtLocation;
+use crate::dataflow::MoveDataParamEnv;
+use crate::dataflow::{do_dataflow, DebugFormatted};
+use crate::dataflow::EverInitializedPlaces;
+use crate::dataflow::{MaybeInitializedPlaces, MaybeUninitializedPlaces};
+use crate::util::borrowck_errors::{BorrowckErrors, Origin};
 
 use self::borrow_set::{BorrowData, BorrowSet};
 use self::flows::Flows;
@@ -59,7 +59,7 @@ mod used_muts;
 
 pub(crate) mod nll;
 
-pub fn provide(providers: &mut Providers) {
+pub fn provide(providers: &mut Providers<'_>) {
     *providers = Providers {
         mir_borrowck,
         ..*providers
@@ -108,7 +108,7 @@ fn mir_borrowck<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: DefId) -> BorrowC
     }
 
     let opt_closure_req = tcx.infer_ctxt().enter(|infcx| {
-        let input_mir: &Mir = &input_mir.borrow();
+        let input_mir: &Mir<'_> = &input_mir.borrow();
         do_mir_borrowck(&infcx, input_mir, def_id)
     });
     debug!("mir_borrowck done");

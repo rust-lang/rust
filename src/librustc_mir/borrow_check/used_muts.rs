@@ -3,7 +3,7 @@ use rustc::mir::{BasicBlock, Local, Location, Place, Statement, StatementKind, T
 
 use rustc_data_structures::fx::FxHashSet;
 
-use borrow_check::MirBorrowckCtxt;
+use crate::borrow_check::MirBorrowckCtxt;
 
 impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
     /// Walks the MIR adding to the set of `used_mut` locals that will be ignored for the purposes

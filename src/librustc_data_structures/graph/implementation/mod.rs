@@ -20,10 +20,10 @@
 //! the field `next_edge`). Each of those fields is an array that should
 //! be indexed by the direction (see the type `Direction`).
 
-use bit_set::BitSet;
+use crate::bit_set::BitSet;
+use crate::snapshot_vec::{SnapshotVec, SnapshotVecDelegate};
 use std::fmt::Debug;
 use std::usize;
-use snapshot_vec::{SnapshotVec, SnapshotVecDelegate};
 
 #[cfg(test)]
 mod tests;
@@ -212,15 +212,19 @@ impl<N: Debug, E: Debug> Graph<N, E> {
             .all(|(edge_idx, edge)| f(edge_idx, edge))
     }
 
-    pub fn outgoing_edges(&self, source: NodeIndex) -> AdjacentEdges<N, E> {
+    pub fn outgoing_edges(&self, source: NodeIndex) -> AdjacentEdges<'_, N, E> {
         self.adjacent_edges(source, OUTGOING)
     }
 
-    pub fn incoming_edges(&self, source: NodeIndex) -> AdjacentEdges<N, E> {
+    pub fn incoming_edges(&self, source: NodeIndex) -> AdjacentEdges<'_, N, E> {
         self.adjacent_edges(source, INCOMING)
     }
 
-    pub fn adjacent_edges(&self, source: NodeIndex, direction: Direction) -> AdjacentEdges<N, E> {
+    pub fn adjacent_edges(
+        &self,
+        source: NodeIndex,
+        direction: Direction
+    ) -> AdjacentEdges<'_, N, E> {
         let first_edge = self.node(source).first_edge[direction.repr];
         AdjacentEdges {
             graph: self,
@@ -291,11 +295,7 @@ impl<N: Debug, E: Debug> Graph<N, E> {
 
 // # Iterators
 
-pub struct AdjacentEdges<'g, N, E>
-where
-    N: 'g,
-    E: 'g,
-{
+pub struct AdjacentEdges<'g, N, E> {
     graph: &'g Graph<N, E>,
     direction: Direction,
     next: EdgeIndex,
@@ -331,11 +331,7 @@ impl<'g, N: Debug, E: Debug> Iterator for AdjacentEdges<'g, N, E> {
     }
 }
 
-pub struct DepthFirstTraversal<'g, N, E>
-where
-    N: 'g,
-    E: 'g,
-{
+pub struct DepthFirstTraversal<'g, N, E> {
     graph: &'g Graph<N, E>,
     stack: Vec<NodeIndex>,
     visited: BitSet<usize>,

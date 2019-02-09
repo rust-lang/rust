@@ -1,7 +1,7 @@
 //! This module implements the check that the lifetime of a borrow
 //! does not exceed the lifetime of the value being borrowed.
 
-use borrowck::*;
+use crate::borrowck::*;
 use rustc::middle::expr_use_visitor as euv;
 use rustc::middle::mem_categorization as mc;
 use rustc::middle::mem_categorization::Categorization;
@@ -10,6 +10,7 @@ use rustc::ty;
 
 use syntax::ast;
 use syntax_pos::Span;
+use log::debug;
 
 type R = Result<(),()>;
 

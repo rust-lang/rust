@@ -15,11 +15,11 @@
 #![feature(slice_patterns)]
 #![feature(step_trait)]
 
-#[macro_use]
-extern crate bitflags;
-extern crate serialize;
+#![deny(rust_2018_idioms)]
+
 #[macro_use] extern crate log;
 
+#[allow(unused_extern_crates)]
 extern crate serialize as rustc_serialize; // used by deriving
 
 // See librustc_cratesio_shim/Cargo.toml for a comment explaining this.

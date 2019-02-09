@@ -7,16 +7,13 @@
 
 #![recursion_limit="256"]
 
-extern crate graphviz;
+#![deny(rust_2018_idioms)]
+
 #[macro_use] extern crate rustc;
-extern crate rustc_data_structures;
-extern crate serialize as rustc_serialize;
-extern crate rand;
-extern crate rustc_fs_util;
+#[allow(unused_extern_crates)]
+extern crate serialize as rustc_serialize; // used by deriving
 
 #[macro_use] extern crate log;
-extern crate syntax;
-extern crate syntax_pos;
 
 mod assert_dep_graph;
 pub mod assert_module_sources;

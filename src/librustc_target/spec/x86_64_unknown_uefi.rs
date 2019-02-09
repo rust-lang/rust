@@ -5,7 +5,7 @@
 // The win64 ABI is used. It differs from the sysv64 ABI, so we must use a windows target with
 // LLVM. "x86_64-unknown-windows" is used to get the minimal subset of windows-specific features.
 
-use spec::{LinkerFlavor, LldFlavor, Target, TargetResult};
+use crate::spec::{LinkerFlavor, LldFlavor, Target, TargetResult};
 
 pub fn target() -> TargetResult {
     let mut base = super::uefi_base::opts();

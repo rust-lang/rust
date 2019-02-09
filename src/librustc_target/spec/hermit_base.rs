@@ -1,4 +1,4 @@
-use spec::{LinkArgs, LinkerFlavor, PanicStrategy, TargetOptions};
+use crate::spec::{LinkArgs, LinkerFlavor, PanicStrategy, TargetOptions};
 use std::default::Default;
 
 pub fn opts() -> TargetOptions {

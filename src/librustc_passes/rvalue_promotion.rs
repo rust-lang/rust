@@ -28,10 +28,11 @@ use rustc::hir;
 use rustc_data_structures::sync::Lrc;
 use syntax::ast;
 use syntax_pos::{Span, DUMMY_SP};
-use self::Promotability::*;
+use log::debug;
+use Promotability::*;
 use std::ops::{BitAnd, BitAndAssign, BitOr};
 
-pub fn provide(providers: &mut Providers) {
+pub fn provide(providers: &mut Providers<'_>) {
     *providers = Providers {
         rvalue_promotable_map,
         const_is_rvalue_promotable_to_static,
@@ -621,7 +622,7 @@ impl<'a, 'gcx, 'tcx> euv::Delegate<'tcx> for CheckCrateVisitor<'a, 'gcx> {
     fn consume(&mut self,
                _consume_id: ast::NodeId,
                _consume_span: Span,
-               _cmt: &mc::cmt_,
+               _cmt: &mc::cmt_<'_>,
                _mode: euv::ConsumeMode) {}
 
     fn borrow(&mut self,
@@ -680,11 +681,14 @@ impl<'a, 'gcx, 'tcx> euv::Delegate<'tcx> for CheckCrateVisitor<'a, 'gcx> {
     fn mutate(&mut self,
               _assignment_id: ast::NodeId,
               _assignment_span: Span,
-              _assignee_cmt: &mc::cmt_,
+              _assignee_cmt: &mc::cmt_<'_>,
               _mode: euv::MutateMode) {
     }
 
-    fn matched_pat(&mut self, _: &hir::Pat, _: &mc::cmt_, _: euv::MatchMode) {}
+    fn matched_pat(&mut self, _: &hir::Pat, _: &mc::cmt_<'_>, _: euv::MatchMode) {}
 
-    fn consume_pat(&mut self, _consume_pat: &hir::Pat, _cmt: &mc::cmt_, _mode: euv::ConsumeMode) {}
+    fn consume_pat(&mut self,
+                   _consume_pat: &hir::Pat,
+                   _cmt: &mc::cmt_<'_>,
+                   _mode: euv::ConsumeMode) {}
 }

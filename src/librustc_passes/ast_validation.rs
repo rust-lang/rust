@@ -17,10 +17,11 @@ use syntax::source_map::Spanned;
 use syntax::symbol::keywords;
 use syntax::ptr::P;
 use syntax::visit::{self, Visitor};
+use syntax::{span_err, struct_span_err, walk_list};
 use syntax_ext::proc_macro_decls::is_proc_macro_attr;
 use syntax_pos::Span;
-use errors;
 use errors::Applicability;
+use log::debug;
 
 struct AstValidator<'a> {
     session: &'a Session,

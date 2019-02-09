@@ -1,8 +1,8 @@
 #![allow(non_upper_case_globals)]
 
-use abi::call::{FnType, ArgType};
+use crate::abi::call::{FnType, ArgType};
 
-fn classify_ret_ty<Ty>(ret: &mut ArgType<Ty>) {
+fn classify_ret_ty<Ty>(ret: &mut ArgType<'_, Ty>) {
     if ret.layout.is_aggregate() && ret.layout.size.bits() > 64 {
         ret.make_indirect();
     } else {
@@ -10,7 +10,7 @@ fn classify_ret_ty<Ty>(ret: &mut ArgType<Ty>) {
     }
 }
 
-fn classify_arg_ty<Ty>(arg: &mut ArgType<Ty>) {
+fn classify_arg_ty<Ty>(arg: &mut ArgType<'_, Ty>) {
     if arg.layout.is_aggregate() && arg.layout.size.bits() > 64 {
         arg.make_indirect();
     } else {
@@ -18,7 +18,7 @@ fn classify_arg_ty<Ty>(arg: &mut ArgType<Ty>) {
     }
 }
 
-pub fn compute_abi_info<Ty>(fty: &mut FnType<Ty>) {
+pub fn compute_abi_info<Ty>(fty: &mut FnType<'_,Ty>) {
     if !fty.ret.is_ignore() {
         classify_ret_ty(&mut fty.ret);
     }

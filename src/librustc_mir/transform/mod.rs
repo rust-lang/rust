@@ -1,5 +1,5 @@
-use borrow_check::nll::type_check;
-use build;
+use crate::borrow_check::nll::type_check;
+use crate::build;
 use rustc::hir::def_id::{CrateNum, DefId, LOCAL_CRATE};
 use rustc::mir::{Mir, MirPhase, Promoted};
 use rustc::ty::TyCtxt;
@@ -38,7 +38,7 @@ pub mod inline;
 pub mod lower_128bit;
 pub mod uniform_array_move_out;
 
-pub(crate) fn provide(providers: &mut Providers) {
+pub(crate) fn provide(providers: &mut Providers<'_>) {
     self::qualify_consts::provide(providers);
     self::check_unsafety::provide(providers);
     *providers = Providers {

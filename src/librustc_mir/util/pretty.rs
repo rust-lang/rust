@@ -12,7 +12,7 @@ use std::fs;
 use std::io::{self, Write};
 use std::path::{Path, PathBuf};
 use super::graphviz::write_mir_fn_graphviz;
-use transform::MirSource;
+use crate::transform::MirSource;
 
 const INDENT: &str = "    ";
 /// Alignment for lining up comments following MIR statements
@@ -131,7 +131,7 @@ fn dump_matched_mir_node<'a, 'gcx, 'tcx, F>(
 ) where
     F: FnMut(PassWhere, &mut dyn Write) -> io::Result<()>,
 {
-    let _: io::Result<()> = try_block! {
+    let _: io::Result<()> = try {
         let mut file = create_dump_file(tcx, "mir", pass_num, pass_name, disambiguator, source)?;
         writeln!(file, "// MIR for `{}`", node_path)?;
         writeln!(file, "// source = {:?}", source)?;
@@ -148,7 +148,7 @@ fn dump_matched_mir_node<'a, 'gcx, 'tcx, F>(
     };
 
     if tcx.sess.opts.debugging_opts.dump_mir_graphviz {
-        let _: io::Result<()> = try_block! {
+        let _: io::Result<()> = try {
             let mut file =
                 create_dump_file(tcx, "dot", pass_num, pass_name, disambiguator, source)?;
             write_mir_fn_graphviz(tcx, source.def_id, mir, &mut file)?;
@@ -446,7 +446,7 @@ impl<'cx, 'gcx, 'tcx> Visitor<'tcx> for ExtraComments<'cx, 'gcx, 'tcx> {
     }
 }
 
-fn comment(tcx: TyCtxt, SourceInfo { span, scope }: SourceInfo) -> String {
+fn comment(tcx: TyCtxt<'_, '_, '_>, SourceInfo { span, scope }: SourceInfo) -> String {
     format!(
         "scope {} at {}",
         scope.index(),
@@ -458,8 +458,8 @@ fn comment(tcx: TyCtxt, SourceInfo { span, scope }: SourceInfo) -> String {
 ///
 /// Returns the total number of variables printed.
 fn write_scope_tree(
-    tcx: TyCtxt,
-    mir: &Mir,
+    tcx: TyCtxt<'_, '_, '_>,
+    mir: &Mir<'_>,
     scope_tree: &FxHashMap<SourceScope, Vec<SourceScope>>,
     w: &mut dyn Write,
     parent: SourceScope,
@@ -529,7 +529,7 @@ fn write_scope_tree(
 pub fn write_mir_intro<'a, 'gcx, 'tcx>(
     tcx: TyCtxt<'a, 'gcx, 'tcx>,
     src: MirSource,
-    mir: &Mir,
+    mir: &Mir<'_>,
     w: &mut dyn Write,
 ) -> io::Result<()> {
     write_mir_sig(tcx, src, mir, w)?;
@@ -568,7 +568,12 @@ pub fn write_mir_intro<'a, 'gcx, 'tcx>(
     Ok(())
 }
 
-fn write_mir_sig(tcx: TyCtxt, src: MirSource, mir: &Mir, w: &mut dyn Write) -> io::Result<()> {
+fn write_mir_sig(
+    tcx: TyCtxt<'_, '_, '_>,
+    src: MirSource,
+    mir: &Mir<'_>,
+    w: &mut dyn Write,
+) -> io::Result<()> {
     let id = tcx.hir().as_local_node_id(src.def_id).unwrap();
     let body_owner_kind = tcx.hir().body_owner_kind(id);
     match (body_owner_kind, src.promoted) {
@@ -614,7 +619,7 @@ fn write_mir_sig(tcx: TyCtxt, src: MirSource, mir: &Mir, w: &mut dyn Write) -> i
     Ok(())
 }
 
-fn write_temp_decls(mir: &Mir, w: &mut dyn Write) -> io::Result<()> {
+fn write_temp_decls(mir: &Mir<'_>, w: &mut dyn Write) -> io::Result<()> {
     // Compiler-introduced temporary types.
     for temp in mir.temps_iter() {
         writeln!(
@@ -630,7 +635,7 @@ fn write_temp_decls(mir: &Mir, w: &mut dyn Write) -> io::Result<()> {
     Ok(())
 }
 
-fn write_user_type_annotations(mir: &Mir, w: &mut dyn Write) -> io::Result<()> {
+fn write_user_type_annotations(mir: &Mir<'_>, w: &mut dyn Write) -> io::Result<()> {
     if !mir.user_type_annotations.is_empty() {
         writeln!(w, "| User Type Annotations")?;
     }
@@ -643,7 +648,7 @@ fn write_user_type_annotations(mir: &Mir, w: &mut dyn Write) -> io::Result<()> {
     Ok(())
 }
 
-pub fn dump_mir_def_ids(tcx: TyCtxt, single: Option<DefId>) -> Vec<DefId> {
+pub fn dump_mir_def_ids(tcx: TyCtxt<'_, '_, '_>, single: Option<DefId>) -> Vec<DefId> {
     if let Some(i) = single {
         vec![i]
     } else {

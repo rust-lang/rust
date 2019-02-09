@@ -1,7 +1,7 @@
-pub use self::Integer::*;
-pub use self::Primitive::*;
+pub use Integer::*;
+pub use Primitive::*;
 
-use spec::Target;
+use crate::spec::Target;
 
 use std::fmt;
 use std::ops::{Add, Deref, Sub, Mul, AddAssign, Range, RangeInclusive};
@@ -533,13 +533,13 @@ pub enum FloatTy {
 }
 
 impl fmt::Debug for FloatTy {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         fmt::Display::fmt(self, f)
     }
 }
 
 impl fmt::Display for FloatTy {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "{}", self.ty_to_string())
     }
 }

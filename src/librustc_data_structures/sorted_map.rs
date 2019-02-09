@@ -111,7 +111,7 @@ impl<K: Ord, V> SortedMap<K, V> {
 
     /// Iterate over elements, sorted by key
     #[inline]
-    pub fn iter(&self) -> ::std::slice::Iter<(K, V)> {
+    pub fn iter(&self) -> ::std::slice::Iter<'_, (K, V)> {
         self.data.iter()
     }
 

@@ -1,7 +1,7 @@
 // Decoding metadata from a single crate's metadata
 
-use cstore::{self, CrateMetadata, MetadataBlob, NativeLibrary, ForeignModule};
-use schema::*;
+use crate::cstore::{self, CrateMetadata, MetadataBlob, NativeLibrary, ForeignModule};
+use crate::schema::*;
 
 use rustc_data_structures::sync::{Lrc, ReadGuard};
 use rustc::hir::map::{DefKey, DefPath, DefPathData, DefPathHash, Definitions};
@@ -34,6 +34,7 @@ use syntax::symbol::InternedString;
 use syntax::ext::base::{MacroKind, SyntaxExtension};
 use syntax::ext::hygiene::Mark;
 use syntax_pos::{self, Span, BytePos, Pos, DUMMY_SP, NO_EXPANSION};
+use log::debug;
 
 pub struct DecodeContext<'a, 'tcx: 'a> {
     opaque: opaque::Decoder<'a>,
@@ -545,7 +546,7 @@ impl<'a, 'tcx> CrateMetadata {
 
     fn get_variant(&self,
                    tcx: TyCtxt<'a, 'tcx, 'tcx>,
-                   item: &Entry,
+                   item: &Entry<'_>,
                    index: DefIndex,
                    adt_kind: ty::AdtKind)
                    -> ty::VariantDef

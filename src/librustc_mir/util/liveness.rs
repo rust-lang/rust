@@ -35,8 +35,8 @@ use rustc_data_structures::work_queue::WorkQueue;
 use std::fs;
 use std::io::{self, Write};
 use std::path::{Path, PathBuf};
-use transform::MirSource;
-use util::pretty::{dump_enabled, write_basic_block, write_mir_intro};
+use crate::transform::MirSource;
+use crate::util::pretty::{dump_enabled, write_basic_block, write_mir_intro};
 
 pub type LiveVarSet<V> = BitSet<V>;
 

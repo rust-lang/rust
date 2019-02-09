@@ -4,11 +4,11 @@
 //! wrapped up as expressions (e.g., blocks). To make this ergonomic, we use this
 //! latter `EvalInto` trait.
 
-use build::{BlockAnd, Builder};
-use hair::*;
+use crate::build::{BlockAnd, Builder};
+use crate::hair::*;
 use rustc::mir::*;
 
-pub(in build) trait EvalInto<'tcx> {
+pub(in crate::build) trait EvalInto<'tcx> {
     fn eval_into<'a, 'gcx>(self,
                            builder: &mut Builder<'a, 'gcx, 'tcx>,
                            destination: &Place<'tcx>,
