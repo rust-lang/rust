@@ -65,13 +65,11 @@ where
                 Assist::Unresolved(..) => unreachable!(),
             })
             .collect::<Vec<(AssistLabel, AssistAction)>>();
-        a.sort_by(|a, b| match a {
-            // Some(y) < Some(x) < None for y < x
-            (_, AssistAction { target: Some(a), .. }) => match b {
-                (_, AssistAction { target: Some(b), .. }) => a.len().cmp(&b.len()),
-                _ => Ordering::Less,
-            },
-            _ => Ordering::Greater,
+        a.sort_by(|a, b| match (a.1.target, b.1.target) {
+            (Some(a), Some(b)) => a.len().cmp(&b.len()),
+            (Some(_), None) => Ordering::Less,
+            (None, Some(_)) => Ordering::Greater,
+            (None, None) => Ordering::Equal,
         });
         a
     })
