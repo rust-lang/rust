@@ -1,4 +1,4 @@
-#![cfg(not(miri))]
+#![cfg(not(miri))] // FIXME: A bug in Miri breaks padding in string formatting
 
 mod builders;
 mod float;

@@ -1661,9 +1661,7 @@ fn test_range_step() {
     assert_eq!((1..21).rev().step_by(5).collect::<Vec<isize>>(), [20, 15, 10, 5]);
     assert_eq!((1..21).rev().step_by(6).collect::<Vec<isize>>(), [20, 14, 8, 2]);
     assert_eq!((200..255).step_by(50).collect::<Vec<u8>>(), [200, 250]);
-    #[cfg(not(miri))] // Miri cannot compare empty slices
     assert_eq!((200..-5).step_by(1).collect::<Vec<isize>>(), []);
-    #[cfg(not(miri))] // Miri cannot compare empty slices
     assert_eq!((200..200).step_by(1).collect::<Vec<isize>>(), []);
 
     assert_eq!((0..20).step_by(1).size_hint(), (20, Some(20)));

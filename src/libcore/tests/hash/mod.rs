@@ -1,5 +1,3 @@
-#![cfg(not(miri))]
-
 mod sip;
 
 use std::hash::{Hash, Hasher};
@@ -75,9 +73,11 @@ fn test_writer_hasher() {
     let cs: &mut [u8] = &mut [1, 2, 3];
     let ptr = cs.as_ptr();
     let slice_ptr = cs as *const [u8];
+    #[cfg(not(miri))] // Miri cannot hash pointers
     assert_eq!(hash(&slice_ptr), hash(&ptr) + cs.len() as u64);
 
     let slice_ptr = cs as *mut [u8];
+    #[cfg(not(miri))] // Miri cannot hash pointers
     assert_eq!(hash(&slice_ptr), hash(&ptr) + cs.len() as u64);
 }
 
