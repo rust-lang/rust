@@ -1,0 +1,21 @@
+[package]
+edition = "2018"
+name = "ra_project_model"
+version = "0.1.0"
+authors = ["Aleksey Kladov <aleksey.kladov@gmail.com>"]
+
+[dependencies]
+log = "0.4.5"
+rustc-hash = "1.0"
+
+failure = "0.1.4"
+
+walkdir = "2.2.7"
+
+cargo_metadata = "0.7.0"
+
+ra_arena = { path = "../ra_arena" }
+ra_db = { path = "../ra_db" }
+
+[dev-dependencies]
+test_utils = { path = "../test_utils" }

@@ -1,17 +1,16 @@
 use std::path::{Path, PathBuf};
 
 use cargo_metadata::{MetadataCommand, CargoOpt};
-use ra_syntax::SmolStr;
 use ra_arena::{Arena, RawId, impl_arena_id};
 use rustc_hash::FxHashMap;
 use failure::format_err;
 
 use crate::Result;
 
-/// `CargoWorksapce` represents the logical structure of, well, a Cargo
+/// `CargoWorkspace` represents the logical structure of, well, a Cargo
 /// workspace. It pretty closely mirrors `cargo metadata` output.
 ///
-/// Note that internally, rust analyzer uses a differnet structure:
+/// Note that internally, rust analyzer uses a different structure:
 /// `CrateGraph`. `CrateGraph` is lower-level: it knows only about the crates,
 /// while this knows about `Pacakges` & `Targets`: purely cargo-related
 /// concepts.
@@ -31,7 +30,7 @@ impl_arena_id!(Target);
 
 #[derive(Debug, Clone)]
 struct PackageData {
-    name: SmolStr,
+    name: String,
     manifest: PathBuf,
     targets: Vec<Target>,
     is_member: bool,
@@ -41,13 +40,13 @@ struct PackageData {
 #[derive(Debug, Clone)]
 pub struct PackageDependency {
     pub pkg: Package,
-    pub name: SmolStr,
+    pub name: String,
 }
 
 #[derive(Debug, Clone)]
 struct TargetData {
     pkg: Package,
-    name: SmolStr,
+    name: String,
     root: PathBuf,
     kind: TargetKind,
 }
@@ -162,9 +161,11 @@ impl CargoWorkspace {
 
         Ok(CargoWorkspace { packages, targets })
     }
+
     pub fn packages<'a>(&'a self) -> impl Iterator<Item = Package> + 'a {
         self.packages.iter().map(|(id, _pkg)| id)
     }
+
     pub fn target_by_root(&self, root: &Path) -> Option<Target> {
         self.packages().filter_map(|pkg| pkg.targets(self).find(|it| it.root(self) == root)).next()
     }

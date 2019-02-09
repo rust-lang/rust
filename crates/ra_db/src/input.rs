@@ -91,6 +91,7 @@ impl CrateGraph {
         assert!(prev.is_none());
         crate_id
     }
+
     pub fn add_dep(
         &mut self,
         from: CrateId,
@@ -102,22 +103,40 @@ impl CrateGraph {
         }
         Ok(self.arena.get_mut(&from).unwrap().add_dep(name, to))
     }
+
     pub fn is_empty(&self) -> bool {
         self.arena.is_empty()
     }
+
     pub fn crate_root(&self, crate_id: CrateId) -> FileId {
         self.arena[&crate_id].file_id
     }
+
     pub fn crate_id_for_crate_root(&self, file_id: FileId) -> Option<CrateId> {
         let (&crate_id, _) = self.arena.iter().find(|(_crate_id, data)| data.file_id == file_id)?;
         Some(crate_id)
     }
+
     pub fn dependencies<'a>(
         &'a self,
         crate_id: CrateId,
     ) -> impl Iterator<Item = &'a Dependency> + 'a {
         self.arena[&crate_id].dependencies.iter()
     }
+
+    /// Extends this crate graph by adding a complete disjoint second crate
+    /// graph.
+    pub fn extend(&mut self, other: CrateGraph) {
+        let start = self.arena.len() as u32;
+        self.arena.extend(other.arena.into_iter().map(|(id, mut data)| {
+            let new_id = CrateId(id.0 + start);
+            for dep in &mut data.dependencies {
+                dep.crate_id = CrateId(dep.crate_id.0 + start);
+            }
+            (new_id, data)
+        }));
+    }
+
     fn dfs_find(&self, target: CrateId, from: CrateId, visited: &mut FxHashSet<CrateId>) -> bool {
         if !visited.insert(from) {
             return false;

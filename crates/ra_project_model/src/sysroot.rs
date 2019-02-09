@@ -3,7 +3,6 @@ use std::{
     process::Command,
 };
 
-use ra_syntax::SmolStr;
 use ra_arena::{Arena, RawId, impl_arena_id};
 
 use crate::Result;
@@ -19,21 +18,21 @@ impl_arena_id!(SysrootCrate);
 
 #[derive(Debug, Clone)]
 struct SysrootCrateData {
-    name: SmolStr,
+    name: String,
     root: PathBuf,
     deps: Vec<SysrootCrate>,
 }
 
 impl Sysroot {
-    pub(crate) fn std(&self) -> Option<SysrootCrate> {
+    pub fn std(&self) -> Option<SysrootCrate> {
         self.by_name("std")
     }
 
-    pub(crate) fn crates<'a>(&'a self) -> impl Iterator<Item = SysrootCrate> + 'a {
+    pub fn crates<'a>(&'a self) -> impl Iterator<Item = SysrootCrate> + 'a {
         self.crates.iter().map(|(id, _data)| id)
     }
 
-    pub(super) fn discover(cargo_toml: &Path) -> Result<Sysroot> {
+    pub fn discover(cargo_toml: &Path) -> Result<Sysroot> {
         let rustc_output = Command::new("rustc")
             .current_dir(cargo_toml.parent().unwrap())
             .args(&["--print", "sysroot"])
@@ -80,16 +79,16 @@ impl Sysroot {
 }
 
 impl SysrootCrate {
-    pub(crate) fn name(self, sysroot: &Sysroot) -> &SmolStr {
+    pub fn name(self, sysroot: &Sysroot) -> &str {
         &sysroot.crates[self].name
     }
-    pub(crate) fn root(self, sysroot: &Sysroot) -> &Path {
+    pub fn root(self, sysroot: &Sysroot) -> &Path {
         sysroot.crates[self].root.as_path()
     }
-    pub(crate) fn root_dir(self, sysroot: &Sysroot) -> &Path {
+    pub fn root_dir(self, sysroot: &Sysroot) -> &Path {
         self.root(sysroot).parent().unwrap()
     }
-    pub(crate) fn deps<'a>(self, sysroot: &'a Sysroot) -> impl Iterator<Item = SysrootCrate> + 'a {
+    pub fn deps<'a>(self, sysroot: &'a Sysroot) -> impl Iterator<Item = SysrootCrate> + 'a {
         sysroot.crates[self].deps.iter().map(|&it| it)
     }
 }
