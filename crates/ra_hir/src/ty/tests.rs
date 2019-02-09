@@ -630,6 +630,39 @@ fn test() {
     );
 }
 
+#[test]
+fn infer_std_crash_1() {
+    // caused stack overflow, taken from std
+    check_inference(
+        "infer_std_crash_1",
+        r#"
+enum Maybe<T> {
+    Real(T),
+    Fake,
+}
+
+fn write() {
+    match something_unknown {
+        Maybe::Real(ref mut something) => (),
+    }
+}
+"#,
+    );
+}
+
+#[test]
+fn infer_std_crash_2() {
+    // caused "equating two type variables, ...", taken from std
+    check_inference(
+        "infer_std_crash_2",
+        r#"
+fn test_line_buffer() {
+    &[0, b'\n', 1, b'\n'];
+}
+"#,
+    );
+}
+
 fn infer(content: &str) -> String {
     let (db, _, file_id) = MockDatabase::with_single_file(content);
     let source_file = db.parse(file_id);

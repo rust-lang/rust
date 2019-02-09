@@ -989,19 +989,24 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
     /// If `ty` is a type variable with known type, returns that type;
     /// otherwise, return ty.
     fn resolve_ty_shallow<'b>(&mut self, ty: &'b Ty) -> Cow<'b, Ty> {
-        match ty {
-            Ty::Infer(tv) => {
-                let inner = tv.to_inner();
-                match self.var_unification_table.probe_value(inner).known() {
-                    Some(known_ty) => {
-                        // The known_ty can't be a type var itself
-                        Cow::Owned(known_ty.clone())
+        let mut ty = Cow::Borrowed(ty);
+        for _ in 0..3 {
+            // the type variable could resolve to a int/float variable
+            match &*ty {
+                Ty::Infer(tv) => {
+                    let inner = tv.to_inner();
+                    match self.var_unification_table.probe_value(inner).known() {
+                        Some(known_ty) => {
+                            // The known_ty can't be a type var itself
+                            ty = Cow::Owned(known_ty.clone());
+                        }
+                        _ => return ty,
                     }
-                    _ => Cow::Borrowed(ty),
                 }
+                _ => return ty,
             }
-            _ => Cow::Borrowed(ty),
         }
+        ty
     }
 
     /// Resolves the type completely; type variables without known type are
@@ -1185,17 +1190,21 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
                 self.infer_path_expr(&resolver, &path).unwrap_or(Ty::Unknown)
             }
             Pat::Bind { mode, name: _name, subpat } => {
-                let subty = if let Some(subpat) = subpat {
+                let inner_ty = if let Some(subpat) = subpat {
                     self.infer_pat(*subpat, expected)
                 } else {
                     expected.clone()
                 };
+                let inner_ty = self.insert_type_vars_shallow(inner_ty);
 
-                match mode {
-                    BindingAnnotation::Ref => Ty::Ref(subty.into(), Mutability::Shared),
-                    BindingAnnotation::RefMut => Ty::Ref(subty.into(), Mutability::Mut),
-                    BindingAnnotation::Mutable | BindingAnnotation::Unannotated => subty,
-                }
+                let bound_ty = match mode {
+                    BindingAnnotation::Ref => Ty::Ref(inner_ty.clone().into(), Mutability::Shared),
+                    BindingAnnotation::RefMut => Ty::Ref(inner_ty.clone().into(), Mutability::Mut),
+                    BindingAnnotation::Mutable | BindingAnnotation::Unannotated => inner_ty.clone(),
+                };
+                let bound_ty = self.resolve_ty_as_possible(&mut vec![], bound_ty);
+                self.write_pat_ty(pat, bound_ty);
+                return inner_ty;
             }
             _ => Ty::Unknown,
         };
