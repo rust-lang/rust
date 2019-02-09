@@ -678,6 +678,21 @@ pub fn compute() {
     );
 }
 
+#[test]
+fn infer_std_crash_4() {
+    // taken from rustc
+    check_inference(
+        "infer_std_crash_4",
+        r#"
+pub fn primitive_type() {
+    match *self {
+        BorrowedRef { type_: box Primitive(p), ..} => {},
+    }
+}
+"#,
+    );
+}
+
 fn infer(content: &str) -> String {
     let (db, _, file_id) = MockDatabase::with_single_file(content);
     let source_file = db.parse(file_id);
