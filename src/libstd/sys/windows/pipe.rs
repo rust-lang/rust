@@ -37,9 +37,9 @@ pub struct Pipes {
 ///
 /// The ours/theirs pipes are *not* specifically readable or writable. Each
 /// one only supports a read or a write, but which is which depends on the
-/// boolean flag given. If `ours_readable` is true then `ours` is readable where
-/// `theirs` is writable. Conversely if `ours_readable` is false then `ours` is
-/// writable where `theirs` is readable.
+/// boolean flag given. If `ours_readable` is `true`, then `ours` is readable and
+/// `theirs` is writable. Conversely, if `ours_readable` is `false`, then `ours`
+/// is writable and `theirs` is readable.
 ///
 /// Also note that the `ours` pipe is always a handle opened up in overlapped
 /// mode. This means that technically speaking it should only ever be used

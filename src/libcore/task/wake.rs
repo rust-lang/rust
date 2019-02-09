@@ -108,7 +108,7 @@ impl Waker {
         unsafe { (self.waker.vtable.wake)(self.waker.data) }
     }
 
-    /// Returns whether or not this `Waker` and other `Waker` have awaken the same task.
+    /// Returns `true` if this `Waker` and another `Waker` have awoken the same task.
     ///
     /// This function works on a best-effort basis, and may return false even
     /// when the `Waker`s would awaken the same task. However, if this function

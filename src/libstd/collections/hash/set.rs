@@ -8,7 +8,7 @@ use super::Recover;
 use super::map::{self, HashMap, Keys, RandomState};
 
 // Future Optimization (FIXME!)
-// =============================
+// ============================
 //
 // Iteration over zero sized values is a noop. There is no need
 // for `bucket.val` in the case of HashSet. I suppose we would need HKT
