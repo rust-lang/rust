@@ -199,7 +199,6 @@ use std::ops::Index;
 use std::str::FromStr;
 use std::string;
 use std::{char, f64, fmt, str};
-use std;
 
 use crate::Encodable;
 

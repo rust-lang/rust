@@ -1,6 +1,6 @@
 use crate::leb128::{self, read_signed_leb128, write_signed_leb128};
-use std::borrow::Cow;
 use crate::serialize;
+use std::borrow::Cow;
 
 // -----------------------------------------------------------------------------
 // Encoder
