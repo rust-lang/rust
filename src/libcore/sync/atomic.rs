@@ -2432,7 +2432,7 @@ pub fn fence(order: Ordering) {
 /// # Examples
 ///
 /// Without `compiler_fence`, the `assert_eq!` in following code
-/// is *not* guaranteed to succeed, despite everything happening in a single thread.
+/// is **not** guaranteed to succeed, despite everything happening in a single thread.
 /// To see why, remember that the compiler is free to swap the stores to
 /// `IMPORTANT_VARIABLE` and `IS_READ` since they are both
 /// `Ordering::Relaxed`. If it does, and the signal handler is invoked right

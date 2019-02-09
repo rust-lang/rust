@@ -19,7 +19,8 @@ pub fn abort(args: fmt::Arguments) -> ! {
     unsafe { ::sys::abort_internal(); }
 }
 
-#[allow(dead_code)] // stack overflow detection not enabled on all platforms
+// Stack overflow detection not enabled on all platforms.
+#[allow(dead_code)]
 pub unsafe fn report_overflow() {
     dumb_print(format_args!("\nthread '{}' has overflowed its stack\n",
                             thread::current().name().unwrap_or("<unknown>")));

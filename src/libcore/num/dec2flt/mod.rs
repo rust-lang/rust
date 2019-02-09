@@ -264,7 +264,7 @@ fn convert<T: RawFloat>(mut decimal: Decimal) -> Result<T, ParseFloatError> {
 
     // Now the exponent certainly fits in 16 bit, which is used throughout the main algorithms.
     let e = e as i16;
-    // FIXME These bounds are rather conservative. A more careful analysis of the failure modes
+    // FIXME: These bounds are rather conservative. A more careful analysis of the failure modes
     // of Bellerophon could allow using it in more cases for a massive speed up.
     let exponent_in_range = table::MIN_E <= e && e <= table::MAX_E;
     let value_in_range = upper_bound <= T::MAX_NORMAL_DIGITS as u64;

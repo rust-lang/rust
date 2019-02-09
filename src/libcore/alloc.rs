@@ -27,7 +27,7 @@ fn size_align<T>() -> (usize, usize) {
 /// All layouts have an associated non-negative size and a
 /// power-of-two alignment.
 ///
-/// (Note however that layouts are *not* required to have positive
+/// (Note however that layouts are **not** required to have positive
 /// size, even though many allocators require that all memory
 /// requests have positive size. A caller to the `Alloc::alloc`
 /// method must either ensure that conditions like this are met, or
@@ -1057,7 +1057,7 @@ pub unsafe trait Alloc {
     /// `T` does not meet allocator's size or alignment constraints.
     ///
     /// For zero-sized `T`, may return either of `Ok` or `Err`, but
-    /// will *not* yield undefined behavior.
+    /// will **not** yield undefined behavior.
     ///
     /// Clients wishing to abort computation in response to an
     /// allocation error are encouraged to call the [`handle_alloc_error`] function,
@@ -1124,7 +1124,7 @@ pub unsafe trait Alloc {
     /// constraints.
     ///
     /// For zero-sized `T` or `n == 0`, may return either of `Ok` or
-    /// `Err`, but will *not* yield undefined behavior.
+    /// `Err`, but will **not** yield undefined behavior.
     ///
     /// Always returns `Err` on arithmetic overflow.
     ///
@@ -1171,7 +1171,7 @@ pub unsafe trait Alloc {
     /// constraints.
     ///
     /// For zero-sized `T` or `n_new == 0`, may return either of `Ok` or
-    /// `Err`, but will *not* yield undefined behavior.
+    /// `Err`, but will **not** yield undefined behavior.
     ///
     /// Always returns `Err` on arithmetic overflow.
     ///

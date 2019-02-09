@@ -49,7 +49,7 @@ use sys;
 ///
 /// Alternatively, you can obtain a `&[`[`u8`]`]` slice from a
 /// `CString` with the [`as_bytes`] method. Slices produced in this
-/// way do *not* contain the trailing nul terminator. This is useful
+/// way do **not** contain the trailing nul terminator. This is useful
 /// when you will be calling an extern function that takes a `*const
 /// u8` argument which is not necessarily nul-terminated, plus another
 /// argument with the length of the string — like C's `strndup()`.
@@ -406,7 +406,7 @@ impl CString {
     ///
     /// The pointer which this function returns must be returned to Rust and reconstituted using
     /// [`from_raw`] to be properly deallocated. Specifically, one
-    /// should *not* use the standard C `free()` function to deallocate
+    /// should **not** use the standard C `free()` function to deallocate
     /// this string.
     ///
     /// Failure to call [`from_raw`] will lead to a memory leak.

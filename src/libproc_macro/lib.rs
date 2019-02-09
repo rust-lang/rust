@@ -1065,7 +1065,7 @@ impl Literal {
     // was 'c' or whether it was '\u{63}'.
     #[unstable(feature = "proc_macro_span", issue = "54725")]
     pub fn subspan<R: RangeBounds<usize>>(&self, range: R) -> Option<Span> {
-        // HACK(eddyb) something akin to `Option::cloned`, but for `Bound<&T>`.
+        // HACK(eddyb): something akin to `Option::cloned`, but for `Bound<&T>`.
         fn cloned_bound<T: Clone>(bound: Bound<&T>) -> Bound<T> {
             match bound {
                 Bound::Included(x) => Bound::Included(x.clone()),

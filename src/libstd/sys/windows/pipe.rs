@@ -35,7 +35,7 @@ pub struct Pipes {
 /// processes in the standard library, so "ours" is the one that'll stay in our
 /// process whereas "theirs" will be inherited to a child.
 ///
-/// The ours/theirs pipes are *not* specifically readable or writable. Each
+/// The `ours`/`theirs` pipes are **not** specifically readable or writable. Each
 /// one only supports a read or a write, but which is which depends on the
 /// boolean flag given. If `ours_readable` is true then `ours` is readable where
 /// `theirs` is writable. Conversely if `ours_readable` is false then `ours` is
@@ -46,7 +46,7 @@ pub struct Pipes {
 /// with `OVERLAPPED` instances, but also works out ok if it's only ever used
 /// once at a time (which we do indeed guarantee).
 pub fn anon_pipe(ours_readable: bool) -> io::Result<Pipes> {
-    // Note that we specifically do *not* use `CreatePipe` here because
+    // Note that we specifically do **not** use `CreatePipe` here because
     // unfortunately the anonymous pipes returned do not support overlapped
     // operations. Instead, we create a "hopefully unique" name and create a
     // named pipe which has overlapped operations enabled.
@@ -106,7 +106,7 @@ pub fn anon_pipe(ours_readable: bool) -> io::Result<Pipes> {
             // Proper fix would increase the number of FFI imports and introduce
             // significant amount of Windows XP specific code with no clean
             // testing strategy
-            // For more info, see https://github.com/rust-lang/rust/pull/37677.
+            // For more info, see PR #37677.
             if handle == c::INVALID_HANDLE_VALUE {
                 let err = io::Error::last_os_error();
                 let raw_os_err = err.raw_os_error();

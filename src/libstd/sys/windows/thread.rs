@@ -28,7 +28,7 @@ impl Thread {
         // `PTHREAD_STACK_MIN` bytes big. Windows has no such lower limit, it's
         // just that below a certain threshold you can't do anything useful.
         // That threshold is application and architecture-specific, however.
-        // Round up to the next 64 kB because that's what the NT kernel does,
+        // Round up to the next 64kB because that's what the NT kernel does,
         // might as well make it explicit.
         let stack_size = (stack + 0xfffe) & (!0xfffe);
         let ret = c::CreateThread(ptr::null_mut(), stack_size,
@@ -39,7 +39,8 @@ impl Thread {
         return if ret as usize == 0 {
             Err(io::Error::last_os_error())
         } else {
-            mem::forget(p); // ownership passed to CreateThread
+            // Ownership passed to `CreateThread`.
+            mem::forget(p);
             Ok(Thread { handle: Handle::new(ret) })
         };
 

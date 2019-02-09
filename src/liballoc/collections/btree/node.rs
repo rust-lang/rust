@@ -1,4 +1,4 @@
-// This is an attempt at an implementation following the ideal
+// This is an attempt at an implementation of the following ideal:
 //
 // ```
 // struct BTreeMap<K, V> {
@@ -250,7 +250,7 @@ impl<K, V> Root<K, V> {
         NodeRef {
             height: self.height,
             node: self.node.as_ptr(),
-            root: ptr::null_mut(), // FIXME: Is there anything better to do here?
+            root: ptr::null_mut(), // FIXME: is there anything better to do here?
             _marker: PhantomData,
         }
     }
@@ -305,7 +305,7 @@ impl<K, V> Root<K, V> {
     }
 }
 
-// N.B. `NodeRef` is always covariant in `K` and `V`, even when the `BorrowType`
+// N.B., `NodeRef` is always covariant in `K` and `V`, even when the `BorrowType`
 // is `Mut`. This is technically wrong, but cannot result in any unsafety due to
 // internal use of `NodeRef` because we stay completely generic over `K` and `V`.
 // However, whenever a public type wraps `NodeRef`, make sure that it has the
@@ -322,8 +322,8 @@ impl<K, V> Root<K, V> {
 ///   `Leaf`, the `NodeRef` points to a leaf node, when this is `Internal` the
 ///   `NodeRef` points to an internal node, and when this is `LeafOrInternal` the
 ///   `NodeRef` could be pointing to either type of node.
-///   Note that in case of a leaf node, this might still be the shared root!  Only turn
-///   this into a `LeafNode` reference if you know it is not a root!  Shared references
+///   Note that in case of a leaf node, this might still be the shared root! Only turn
+///   this into a `LeafNode` reference if you know it is not a root! Shared references
 ///   must be dereferencable *for the entire size of their pointee*, so `&InternalNode`
 ///   pointing to the shared root is UB.
 ///   Turning this into a `NodeHeader` is always safe.
@@ -562,7 +562,7 @@ impl<'a, K, V, Type> NodeRef<marker::Mut<'a>, K, V, Type> {
 
     /// Returns a raw ptr to avoid asserting exclusive access to the entire node.
     fn as_leaf_mut(&mut self) -> *mut LeafNode<K, V> {
-        // We are mutable, so we cannot be the root, so accessing this as a leaf is okay.
+        // We are mutable, so we cannot be the root, so accessing this as a leaf is ok.
         self.node.as_ptr()
     }
 
@@ -585,7 +585,7 @@ impl<'a, K: 'a, V: 'a, Type> NodeRef<marker::Immut<'a>, K, V, Type> {
         // We can sometimes do this even for the shared root, as the slice will be
         // empty. We cannot *always* do this because if the type is too highly
         // aligned, the offset of `keys` in a "full node" might be outside the bounds
-        // of the header!  So we do an alignment check first, that will be
+        // of the header! So we do an alignment check first, that will be
         // evaluated at compile-time, and only do any run-time check in the rare case
         // that the alignment is very big.
         if mem::align_of::<K>() > mem::align_of::<LeafNode<(), ()>>() && self.is_shared_root() {
@@ -602,10 +602,10 @@ impl<'a, K: 'a, V: 'a, Type> NodeRef<marker::Immut<'a>, K, V, Type> {
             // and hence just adds a size-0-align-1 field, not affecting layout).
             // We know that we can transmute `NodeHeader<K, V, ()>` to `NodeHeader<K, V, K>`
             // because we did the alignment check above, and hence `NodeHeader<K, V, K>`
-            // is not bigger than `NodeHeader<K, V, ()>`!  Then we can use `NodeHeader<K, V, K>`
+            // is not bigger than `NodeHeader<K, V, ()>`! Then we can use `NodeHeader<K, V, K>`
             // to compute the pointer where the keys start.
             // This entire hack will become unnecessary once
-            // <https://github.com/rust-lang/rfcs/pull/2582> lands, then we can just take a raw
+            // RFC #2582 lands, then we can just take a raw
             // pointer to the `keys` field of `*const InternalNode<K, V>`.
 
             // This is a non-debug-assert because it can be completely compile-time evaluated.
@@ -620,7 +620,7 @@ impl<'a, K: 'a, V: 'a, Type> NodeRef<marker::Immut<'a>, K, V, Type> {
 
     fn into_val_slice(self) -> &'a [V] {
         debug_assert!(!self.is_shared_root());
-        // We cannot be the root, so `as_leaf` is okay
+        // We cannot be the root, so `as_leaf` is ok
         unsafe {
             slice::from_raw_parts(
                 MaybeUninit::first_ptr(&self.as_leaf().vals),

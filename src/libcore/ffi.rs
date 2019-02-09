@@ -10,7 +10,7 @@ use ::fmt;
 ///
 /// In essence, `*const c_void` is equivalent to C's `const void*`
 /// and `*mut c_void` is equivalent to C's `void*`. That said, this is
-/// *not* the same as C's `void` return type, which is Rust's `()` type.
+/// **not** the same as C's `void` return type, which is Rust's `()` type.
 ///
 /// To model pointers to opaque types in FFI, until `extern type` is
 /// stabilized, it is recommended to use a newtype wrapper around an empty

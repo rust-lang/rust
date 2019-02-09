@@ -91,7 +91,7 @@
 //! is just a synonym for [`Result`]`<T, `[`io::Error`]`>`.*
 //!
 //! This method doesn't produce a value, but the write may
-//! fail. It's crucial to handle the error case, and *not* write
+//! fail. It's crucial to handle the error case, and **not** write
 //! something like this:
 //!
 //! ```no_run

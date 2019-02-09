@@ -1647,7 +1647,7 @@ impl<T> [T] {
         // over all the elements, swapping as we go so that at the end
         // the elements we wish to keep are in the front, and those we
         // wish to reject are at the back. We can then split the slice.
-        // This operation is still O(n).
+        // This operation is still `O(n)`.
         //
         // Example: We start in this state, where `r` represents "next
         // read" and `w` represents "next_write`.
@@ -1658,9 +1658,9 @@ impl<T> [T] {
         //     +---+---+---+---+---+---+
         //           w
         //
-        // Comparing self[r] against self[w-1], this is not a duplicate, so
-        // we swap self[r] and self[w] (no effect as r==w) and then increment both
-        // r and w, leaving us with:
+        // Comparing `self[r]` against `self[w - 1]`, this is not a duplicate, so
+        // we swap `self[r]` and `self[w]` (no effect as `r == w`) and then increment both
+        // `r` and `w`, leaving us with:
         //
         //               r
         //     +---+---+---+---+---+---+
@@ -1668,7 +1668,7 @@ impl<T> [T] {
         //     +---+---+---+---+---+---+
         //               w
         //
-        // Comparing self[r] against self[w-1], this value is a duplicate,
+        // Comparing `self[r]` against `self[w - 1]`, this value is a duplicate,
         // so we increment `r` but leave everything else unchanged:
         //
         //                   r
@@ -1677,8 +1677,8 @@ impl<T> [T] {
         //     +---+---+---+---+---+---+
         //               w
         //
-        // Comparing self[r] against self[w-1], this is not a duplicate,
-        // so swap self[r] and self[w] and advance r and w:
+        // Comparing `self[r]` against `self[w - 1]`, this is not a duplicate,
+        // so swap `self[r]` and `self[w]` and advance `r` and `w`:
         //
         //                       r
         //     +---+---+---+---+---+---+
@@ -1694,7 +1694,7 @@ impl<T> [T] {
         //     +---+---+---+---+---+---+
         //                       w
         //
-        // Duplicate, advance r. End of slice. Split at w.
+        // Duplicate, advance `r`. End of slice. Split at `w`.
 
         let len = self.len();
         if len <= 1 {
@@ -1894,7 +1894,7 @@ impl<T> [T] {
     pub fn clone_from_slice(&mut self, src: &[T]) where T: Clone {
         assert!(self.len() == src.len(),
                 "destination and source slices have different lengths");
-        // NOTE: We need to explicitly slice them to the same length
+        // NOTE: we need to explicitly slice them to the same length
         // for bounds checking to be elided, and the optimizer will
         // generate memcpy for simple cases (for example T = u8).
         let len = self.len();
@@ -2176,19 +2176,19 @@ impl<T> [T] {
     pub unsafe fn align_to<U>(&self) -> (&[T], &[U], &[T]) {
         // Note that most of this function will be constant-evaluated,
         if ::mem::size_of::<U>() == 0 || ::mem::size_of::<T>() == 0 {
-            // handle ZSTs specially, which is – don't handle them at all.
+            // Handle ZSTs specially, which is -- don't handle them at all.
             return (self, &[], &[]);
         }
 
-        // First, find at what point do we split between the first and 2nd slice. Easy with
-        // ptr.align_offset.
+        // First, find at what point do we split between the first and 2nd slice -- easy with
+        // `ptr.align_offset`.
         let ptr = self.as_ptr();
         let offset = ::ptr::align_offset(ptr, ::mem::align_of::<U>());
         if offset > self.len() {
             (self, &[], &[])
         } else {
             let (left, rest) = self.split_at(offset);
-            // now `rest` is definitely aligned, so `from_raw_parts_mut` below is okay
+            // Now `rest` is definitely aligned, so `from_raw_parts_mut` below is ok.
             let (us_len, ts_len) = rest.align_to_offsets::<U>();
             (left,
              from_raw_parts(rest.as_ptr() as *const U, us_len),
@@ -2241,7 +2241,7 @@ impl<T> [T] {
             (self, &mut [], &mut [])
         } else {
             let (left, rest) = self.split_at_mut(offset);
-            // now `rest` is definitely aligned, so `from_raw_parts_mut` below is okay
+            // now `rest` is definitely aligned, so `from_raw_parts_mut` below is ok
             let (us_len, ts_len) = rest.align_to_offsets::<U>();
             let mut_ptr = rest.as_mut_ptr();
             (left,
@@ -3124,9 +3124,10 @@ macro_rules! iterator {
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct Iter<'a, T: 'a> {
     ptr: *const T,
-    end: *const T, // If T is a ZST, this is actually ptr+len.  This encoding is picked so that
-                   // ptr == end is a quick test for the Iterator being empty, that works
-                   // for both ZST and non-ZST.
+    // If `T` is a ZST, this is actually `ptr + len`. This encoding is picked so that
+    // `ptr == end` is a quick test for the `Iterator` being empty, which works
+    // for both ZST and non-ZST.
+    end: *const T,
     _marker: marker::PhantomData<&'a T>,
 }
 
@@ -3226,9 +3227,10 @@ impl<T> AsRef<[T]> for Iter<'_, T> {
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct IterMut<'a, T: 'a> {
     ptr: *mut T,
-    end: *mut T, // If T is a ZST, this is actually ptr+len.  This encoding is picked so that
-                 // ptr == end is a quick test for the Iterator being empty, that works
-                 // for both ZST and non-ZST.
+    // If `T` is a ZST, this is actually `ptr + len`. This encoding is picked so that
+    // `ptr == end` is a quick test for the `Iterator` being empty, that works
+    // for both ZST and non-ZST.
+    end: *mut T,
     _marker: marker::PhantomData<&'a mut T>,
 }
 
@@ -3432,7 +3434,8 @@ impl<'a, T, P> Iterator for SplitMut<'a, T, P> where P: FnMut(&T) -> bool {
     fn next(&mut self) -> Option<&'a mut [T]> {
         if self.finished { return None; }
 
-        let idx_opt = { // work around borrowck limitations
+        // Work around borrowck limitations.
+        let idx_opt = {
             let pred = &mut self.pred;
             self.v.iter().position(|x| (*pred)(x))
         };
@@ -3758,7 +3761,7 @@ pub struct Windows<'a, T:'a> {
     size: usize
 }
 
-// FIXME(#26925) Remove in favor of `#[derive(Clone)]`
+// FIXME(#26925): Remove in favor of `#[derive(Clone)]`.
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T> Clone for Windows<'_, T> {
     fn clone(&self) -> Self {
@@ -3871,7 +3874,7 @@ pub struct Chunks<'a, T:'a> {
     chunk_size: usize
 }
 
-// FIXME(#26925) Remove in favor of `#[derive(Clone)]`
+// FIXME(#26925): Remove in favor of `#[derive(Clone)]`.
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T> Clone for Chunks<'_, T> {
     fn clone(&self) -> Self {
@@ -4132,7 +4135,7 @@ impl<'a, T> ChunksExact<'a, T> {
     }
 }
 
-// FIXME(#26925) Remove in favor of `#[derive(Clone)]`
+// FIXME(#26925): Remove in favor of `#[derive(Clone)]`.
 #[stable(feature = "chunks_exact", since = "1.31.0")]
 impl<T> Clone for ChunksExact<'_, T> {
     fn clone(&self) -> Self {
@@ -4359,7 +4362,7 @@ pub struct RChunks<'a, T:'a> {
     chunk_size: usize
 }
 
-// FIXME(#26925) Remove in favor of `#[derive(Clone)]`
+// FIXME(#26925): Remove in favor of `#[derive(Clone)]`.
 #[stable(feature = "rchunks", since = "1.31.0")]
 impl<'a, T> Clone for RChunks<'a, T> {
     fn clone(&self) -> RChunks<'a, T> {
@@ -4628,7 +4631,7 @@ impl<'a, T> RChunksExact<'a, T> {
     }
 }
 
-// FIXME(#26925) Remove in favor of `#[derive(Clone)]`
+// FIXME(#26925): Remove in favor of `#[derive(Clone)]`.
 #[stable(feature = "rchunks", since = "1.31.0")]
 impl<'a, T> Clone for RChunksExact<'a, T> {
     fn clone(&self) -> RChunksExact<'a, T> {

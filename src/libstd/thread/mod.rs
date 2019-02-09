@@ -127,7 +127,7 @@
 //! * Set the `RUST_MIN_STACK` environment variable to an integer representing the desired stack
 //!   size (in bytes). Note that setting [`Builder::stack_size`] will override this.
 //!
-//! Note that the stack size of the main thread is *not* determined by Rust.
+//! Note that the stack size of the main thread is **not** determined by Rust.
 //!
 //! [channels]: ../../std/sync/mpsc/index.html
 //! [`Arc`]: ../../std/sync/struct.Arc.html

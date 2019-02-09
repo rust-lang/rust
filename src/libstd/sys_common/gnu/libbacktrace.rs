@@ -115,7 +115,7 @@ extern fn pcinfo_cb(data: *mut libc::c_void,
         let slot = data as *mut &mut [FileLine];
         let buffer = unsafe {ptr::read(slot)};
 
-        // If the buffer is not full, add "`file:line`" to the buffer
+        // If the buffer is not full, add `"file:line"` to the buffer
         // and adjust the buffer for next possible calls to `pcinfo_cb`.
         if !buffer.is_empty() {
             buffer[0] = (filename, lineno as u32);

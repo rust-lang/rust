@@ -131,7 +131,7 @@ impl Select {
     }
 
     /// Creates a new handle into this receiver set for a new receiver. Note
-    /// that this does *not* add the receiver to the receiver set, for that you
+    /// that this does **not** add the receiver to the receiver set, for that you
     /// must call the `add` method on the handle itself.
     pub fn handle<'a, T: Send>(&'a self, rx: &'a Receiver<T>) -> Handle<'a, T> {
         let id = self.next_id.get();
@@ -147,7 +147,7 @@ impl Select {
         }
     }
 
-    /// Waits for an event on this receiver set. The returned value is *not* an
+    /// Waits for an event on this receiver set. The returned value is **not** an
     /// index, but rather an ID. This ID can be queried against any active
     /// `Handle` structures (each one has an `id` method). The handle with
     /// the matching `id` will have some sort of event available on it. The

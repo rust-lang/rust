@@ -154,7 +154,7 @@ impl Once {
 
     /// Performs an initialization routine once and only once. The given closure
     /// will be executed if this is the first time `call_once` has been called,
-    /// and otherwise the routine will *not* be invoked.
+    /// and otherwise the routine will **not** be invoked.
     ///
     /// This method will block the calling thread if another initialization
     /// routine is currently running.

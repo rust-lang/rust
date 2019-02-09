@@ -284,7 +284,7 @@ pub fn algorithm_m<T: RawFloat>(f: &Big, e: i16) -> T {
         v = Big::from_small(1);
         v.mul_pow5(e_abs).mul_pow2(e_abs);
     } else {
-        // FIXME possible optimization: generalize big_to_fp so that we can do the equivalent of
+        // FIXME: possible optimization: generalize big_to_fp so that we can do the equivalent of
         // fp_to_float(big_to_fp(u)) here, only without the double rounding.
         u = f.clone();
         u.mul_pow5(e_abs).mul_pow2(e_abs);
@@ -301,7 +301,7 @@ pub fn algorithm_m<T: RawFloat>(f: &Big, e: i16) -> T {
             // We have to stop at the minimum exponent, if we wait until `k < T::MIN_EXP_INT`,
             // then we'd be off by a factor of two. Unfortunately this means we have to special-
             // case normal numbers with the minimum exponent.
-            // FIXME find a more elegant formulation, but run the `tiny-pow10` test to make sure
+            // FIXME: find a more elegant formulation, but run the `tiny-pow10` test to make sure
             // that it's actually correct!
             if x >= min_sig && x <= max_sig {
                 break;
@@ -330,11 +330,11 @@ pub fn algorithm_m<T: RawFloat>(f: &Big, e: i16) -> T {
 fn quick_start<T: RawFloat>(u: &mut Big, v: &mut Big, k: &mut i16) {
     // The bit length is an estimate of the base two logarithm, and log(u / v) = log(u) - log(v).
     // The estimate is off by at most 1, but always an under-estimate, so the error on log(u)
-    // and log(v) are of the same sign and cancel out (if both are large). Therefore the error
+    // and log(v) are of the same sign and cancel out (if both are large). Therefore, the error
     // for log(u / v) is at most one as well.
     // The target ratio is one where u/v is in an in-range significand. Thus our termination
     // condition is log2(u / v) being the significand bits, plus/minus one.
-    // FIXME Looking at the second bit could improve the estimate and avoid some more divisions.
+    // FIXME: Looking at the second bit could improve the estimate and avoid some more divisions.
     let target_ratio = T::SIG_BITS as i16;
     let log2_u = u.bit_length() as i16;
     let log2_v = v.bit_length() as i16;

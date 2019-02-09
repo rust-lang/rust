@@ -69,7 +69,7 @@ impl<T: fmt::Debug> fmt::Debug for Iter<'_, T> {
     }
 }
 
-// FIXME(#26925) Remove in favor of `#[derive(Clone)]`
+// FIXME(#26925): Remove in favor of `#[derive(Clone)]`.
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T> Clone for Iter<'_, T> {
     fn clone(&self) -> Self {
@@ -1383,7 +1383,7 @@ mod tests {
         // This caused the RHS's dtor to walk up into the LHS at drop and delete all of
         // its nodes.
         //
-        // https://github.com/rust-lang/rust/issues/26021
+        // Issue #26021.
         let mut v1 = LinkedList::new();
         v1.push_front(1);
         v1.push_front(1);

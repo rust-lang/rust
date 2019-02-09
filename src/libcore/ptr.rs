@@ -305,7 +305,7 @@ pub unsafe fn swap<T>(x: *mut T, y: *mut T) {
 }
 
 /// Swaps `count * size_of::<T>()` bytes between the two regions of memory
-/// beginning at `x` and `y`. The two regions must *not* overlap.
+/// beginning at `x` and `y`. The two regions must **not** overlap.
 ///
 /// # Safety
 ///
@@ -317,7 +317,7 @@ pub unsafe fn swap<T>(x: *mut T, y: *mut T) {
 /// * Both `x` and `y` must be properly aligned.
 ///
 /// * The region of memory beginning at `x` with a size of `count *
-///   size_of::<T>()` bytes must *not* overlap with the region of memory
+///   size_of::<T>()` bytes must **not** overlap with the region of memory
 ///   beginning at `y` with the same size.
 ///
 /// Note that even if the effectively copied size (`count * size_of::<T>()`) is `0`,
@@ -366,13 +366,13 @@ pub(crate) unsafe fn swap_nonoverlapping_one<T>(x: *mut T, y: *mut T) {
 
 #[inline]
 unsafe fn swap_nonoverlapping_bytes(x: *mut u8, y: *mut u8, len: usize) {
-    // The approach here is to utilize simd to swap x & y efficiently. Testing reveals
+    // The approach here is to utilize simd to swap `x` and `y` efficiently. Testing reveals
     // that swapping either 32 bytes or 64 bytes at a time is most efficient for Intel
     // Haswell E processors. LLVM is more able to optimize if we give a struct a
-    // #[repr(simd)], even if we don't actually use this struct directly.
+    // `#[repr(simd)]`, even if we don't actually use this struct directly.
     //
-    // FIXME repr(simd) broken on emscripten and redox
-    // It's also broken on big-endian powerpc64 and s390x. #42778
+    // FIXME: `repr(simd)` broken on emscripten and redox
+    // It's also broken on big-endian powerpc64 and s390x (see issue #42778).
     #[cfg_attr(not(any(target_os = "emscripten", target_os = "redox",
                        target_endian = "big")),
                repr(simd))]
@@ -381,20 +381,20 @@ unsafe fn swap_nonoverlapping_bytes(x: *mut u8, y: *mut u8, len: usize) {
 
     let block_size = mem::size_of::<Block>();
 
-    // Loop through x & y, copying them `Block` at a time
+    // Loop through `x` and `y`, copying them `Block` at a time
     // The optimizer should unroll the loop fully for most types
-    // N.B. We can't use a for loop as the `range` impl calls `mem::swap` recursively
+    // N.B., we can't use a for loop as the `range` impl calls `mem::swap` recursively.
     let mut i = 0;
     while i + block_size <= len {
         // Create some uninitialized memory as scratch space
-        // Declaring `t` here avoids aligning the stack when this loop is unused
+        // Declaring `t` here avoids aligning the stack when this loop is unused.
         let mut t = mem::MaybeUninit::<Block>::uninitialized();
         let t = t.as_mut_ptr() as *mut u8;
         let x = x.add(i);
         let y = y.add(i);
 
-        // Swap a block of bytes of x & y, using t as a temporary buffer
-        // This should be optimized into efficient SIMD operations where available
+        // Swap a block of bytes of x & y, using t as a temporary buffer.
+        // This should be optimized into efficient SIMD operations where available.
         copy_nonoverlapping(x, t, block_size);
         copy_nonoverlapping(y, x, block_size);
         copy_nonoverlapping(t, y, block_size);
@@ -402,7 +402,7 @@ unsafe fn swap_nonoverlapping_bytes(x: *mut u8, y: *mut u8, len: usize) {
     }
 
     if i < len {
-        // Swap any remaining bytes
+        // Swap any remaining bytes.
         let mut t = mem::MaybeUninit::<UnalignedBlock>::uninitialized();
         let rem = len - i;
 
@@ -1086,10 +1086,10 @@ impl<T: ?Sized> *const T {
     ///
     /// The resulting pointer does not need to be in bounds, but it is
     /// potentially hazardous to dereference (which requires `unsafe`).
-    /// In particular, the resulting pointer may *not* be used to access a
+    /// In particular, the resulting pointer may **not** be used to access a
     /// different allocated object than the one `self` points to. In other
     /// words, `x.wrapping_offset(y.wrapping_offset_from(x))` is
-    /// *not* the same as `y`, and dereferencing it is undefined behavior
+    /// **not** the same as `y`, and dereferencing it is undefined behavior
     /// unless `x` and `y` point into the same allocated object.
     ///
     /// Always use `.offset(count)` instead when possible, because `offset`
@@ -1501,7 +1501,7 @@ impl<T: ?Sized> *const T {
     }
 
     /// Copies `count * size_of<T>` bytes from `self` to `dest`. The source
-    /// and destination may *not* overlap.
+    /// and destination may **not** overlap.
     ///
     /// NOTE: this has the *same* argument order as [`ptr::copy_nonoverlapping`].
     ///
@@ -1705,10 +1705,10 @@ impl<T: ?Sized> *mut T {
     ///
     /// The resulting pointer does not need to be in bounds, but it is
     /// potentially hazardous to dereference (which requires `unsafe`).
-    /// In particular, the resulting pointer may *not* be used to access a
+    /// In particular, the resulting pointer may **not** be used to access a
     /// different allocated object than the one `self` points to. In other
     /// words, `x.wrapping_offset(y.wrapping_offset_from(x))` is
-    /// *not* the same as `y`, and dereferencing it is undefined behavior
+    /// **not** the same as `y`, and dereferencing it is undefined behavior
     /// unless `x` and `y` point into the same allocated object.
     ///
     /// Always use `.offset(count)` instead when possible, because `offset`
@@ -2139,7 +2139,7 @@ impl<T: ?Sized> *mut T {
     }
 
     /// Copies `count * size_of<T>` bytes from `self` to `dest`. The source
-    /// and destination may *not* overlap.
+    /// and destination may **not** overlap.
     ///
     /// NOTE: this has the *same* argument order as [`ptr::copy_nonoverlapping`].
     ///
@@ -2171,7 +2171,7 @@ impl<T: ?Sized> *mut T {
     }
 
     /// Copies `count * size_of<T>` bytes from `src` to `self`. The source
-    /// and destination may *not* overlap.
+    /// and destination may **not** overlap.
     ///
     /// NOTE: this has the *opposite* argument order of [`ptr::copy_nonoverlapping`].
     ///

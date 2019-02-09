@@ -14,8 +14,8 @@ pub trait LambdaL: for<'a> ApplyL<'a> {}
 
 impl<T: for<'a> ApplyL<'a>> LambdaL for T {}
 
-// HACK(eddyb) work around projection limitations with a newtype
-// FIXME(#52812) replace with `&'a mut <T as ApplyL<'b>>::Out`
+// HACK(eddyb): work around projection limitations with a newtype.
+// FIXME(#52812): replace with `&'a mut <T as ApplyL<'b>>::Out`.
 pub struct RefMutL<'a, 'b, T: LambdaL>(&'a mut <T as ApplyL<'b>>::Out);
 
 impl<'a, 'b, T: LambdaL> Deref for RefMutL<'a, 'b, T> {

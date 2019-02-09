@@ -747,7 +747,7 @@ extern "rust-intrinsic" {
     /// assert_eq!(bitpattern, 0x3F800000);
     /// ```
     ///
-    /// Turning a pointer into a function pointer. This is *not* portable to
+    /// Turning a pointer into a function pointer. This is **not** portable to
     /// machines where function pointers and data pointers have different sizes.
     ///
     /// ```
@@ -963,7 +963,7 @@ extern "rust-intrinsic" {
     pub fn arith_offset<T>(dst: *const T, offset: isize) -> *const T;
 
     /// Copies `count * size_of::<T>()` bytes from `src` to `dst`. The source
-    /// and destination must *not* overlap.
+    /// and destination must **not** overlap.
     ///
     /// For regions of memory which might overlap, use [`copy`] instead.
     ///
@@ -984,7 +984,7 @@ extern "rust-intrinsic" {
     /// * Both `src` and `dst` must be properly aligned.
     ///
     /// * The region of memory beginning at `src` with a size of `count *
-    ///   size_of::<T>()` bytes must *not* overlap with the region of memory
+    ///   size_of::<T>()` bytes must **not** overlap with the region of memory
     ///   beginning at `dst` with the same size.
     ///
     /// Like [`read`], `copy_nonoverlapping` creates a bitwise copy of `T`, regardless of

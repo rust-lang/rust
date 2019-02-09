@@ -607,7 +607,7 @@ pub trait Read {
     ///
     /// # Errors
     ///
-    /// If the data in this stream is *not* valid UTF-8 then an error is
+    /// If the data in this stream is **not** valid UTF-8 then an error is
     /// returned and `buf` is unchanged.
     ///
     /// See [`read_to_end`][readtoend] for other error semantics.
@@ -640,7 +640,7 @@ pub trait Read {
     /// [`std::fs::read_to_string`]: ../fs/fn.read_to_string.html
     #[stable(feature = "rust1", since = "1.0.0")]
     fn read_to_string(&mut self, buf: &mut String) -> Result<usize> {
-        // Note that we do *not* call `.read_to_end()` here. We are passing
+        // Note that we do **not** call `.read_to_end()` here. We are passing
         // `&mut Vec<u8>` (the raw contents of `buf`) into the `read_to_end`
         // method to fill it up. An arbitrary implementation could overwrite the
         // entire contents of the vector, not just append to it (which is what
@@ -1514,7 +1514,7 @@ pub trait BufRead: Read {
     /// `byte`.
     ///
     /// The iterator returned from this function will return instances of
-    /// [`io::Result`]`<`[`Vec<u8>`]`>`. Each vector returned will *not* have
+    /// [`io::Result`]`<`[`Vec<u8>`]`>`. Each vector returned will **not** have
     /// the delimiter byte at the end.
     ///
     /// This function will yield errors whenever [`read_until`] would have
@@ -1551,7 +1551,7 @@ pub trait BufRead: Read {
     /// Returns an iterator over the lines of this reader.
     ///
     /// The iterator returned from this function will yield instances of
-    /// [`io::Result`]`<`[`String`]`>`. Each string returned will *not* have a newline
+    /// [`io::Result`]`<`[`String`]`>`. Each string returned will **not** have a newline
     /// byte (the 0xA byte) or CRLF (0xD, 0xA bytes) at the end.
     ///
     /// [`io::Result`]: type.Result.html

@@ -577,7 +577,7 @@ mod slice_index {
             in mod rangeinclusive {
                 data: "hello";
                 // note: using 0 specifically ensures that the result of overflowing is 0..0,
-                //       so that `get` doesn't simply return None for the wrong reason.
+                //       so that `get` doesn't simply return `None` for the wrong reason.
                 bad: data[0..=usize::max_value()];
                 message: "maximum usize";
             }
@@ -1551,7 +1551,7 @@ fn to_lowercase() {
     assert_eq!("".to_lowercase(), "");
     assert_eq!("AÉǅaé ".to_lowercase(), "aéǆaé ");
 
-    // https://github.com/rust-lang/rust/issues/26035
+    // See issue #26035.
     assert_eq!("ΑΣ".to_lowercase(), "ας");
     assert_eq!("Α'Σ".to_lowercase(), "α'ς");
     assert_eq!("Α''Σ".to_lowercase(), "α''ς");

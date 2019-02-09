@@ -93,7 +93,7 @@ fn test_split_off() {
         }
     }
 
-    // no-op on the last index
+    // No-op on the last index.
     {
         let mut m = LinkedList::new();
         m.push_back(1);

@@ -5,13 +5,13 @@ use super::number::*;
 
 use core::{mem, ptr};
 
-// Signal restorer
+// Signal restorer.
 extern "C" fn restorer() -> ! {
     sigreturn().unwrap();
     unreachable!();
 }
 
-/// Set the end of the process's heap
+/// Sets the end of the process's heap.
 ///
 /// When `addr` is `0`, this function will return the current break.
 ///

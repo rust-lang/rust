@@ -509,7 +509,7 @@ fn test_rotate_left() {
     let expected: Vec<_> = (0..13).collect();
     let mut v = Vec::new();
 
-    // no-ops
+    // No-ops.
     v.clone_from(&expected);
     v.rotate_left(0);
     assert_eq!(v, expected);
@@ -518,14 +518,14 @@ fn test_rotate_left() {
     let mut zst_array = [(), (), ()];
     zst_array.rotate_left(2);
 
-    // happy path
+    // Happy path.
     v = (5..13).chain(0..5).collect();
     v.rotate_left(8);
     assert_eq!(v, expected);
 
     let expected: Vec<_> = (0..1000).collect();
 
-    // small rotations in large slice, uses ptr::copy
+    // Small rotations in large slice; uses `ptr::copy`.
     v = (2..1000).chain(0..2).collect();
     v.rotate_left(998);
     assert_eq!(v, expected);
@@ -533,7 +533,7 @@ fn test_rotate_left() {
     v.rotate_left(2);
     assert_eq!(v, expected);
 
-    // non-small prime rotation, has a few rounds of swapping
+    // Non-small prime rotation; has a few rounds of swapping.
     v = (389..1000).chain(0..389).collect();
     v.rotate_left(1000-389);
     assert_eq!(v, expected);
@@ -544,7 +544,7 @@ fn test_rotate_right() {
     let expected: Vec<_> = (0..13).collect();
     let mut v = Vec::new();
 
-    // no-ops
+    // No-ops.
     v.clone_from(&expected);
     v.rotate_right(0);
     assert_eq!(v, expected);
@@ -553,14 +553,14 @@ fn test_rotate_right() {
     let mut zst_array = [(), (), ()];
     zst_array.rotate_right(2);
 
-    // happy path
+    // Happy path.
     v = (5..13).chain(0..5).collect();
     v.rotate_right(5);
     assert_eq!(v, expected);
 
     let expected: Vec<_> = (0..1000).collect();
 
-    // small rotations in large slice, uses ptr::copy
+    // Small rotations in large slice; uses `ptr::copy`.
     v = (2..1000).chain(0..2).collect();
     v.rotate_right(2);
     assert_eq!(v, expected);
@@ -568,7 +568,7 @@ fn test_rotate_right() {
     v.rotate_right(998);
     assert_eq!(v, expected);
 
-    // non-small prime rotation, has a few rounds of swapping
+    // Non-small prime rotation; has a few rounds of swapping.
     v = (389..1000).chain(0..389).collect();
     v.rotate_right(389);
     assert_eq!(v, expected);

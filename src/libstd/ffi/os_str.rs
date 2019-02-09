@@ -25,7 +25,7 @@ use sys_common::{AsInner, IntoInner, FromInner};
 /// `OsString` and [`OsStr`] bridge this gap by simultaneously representing Rust
 /// and platform-native string values, and in particular allowing a Rust string
 /// to be converted into an "OS" string with no cost if possible. A consequence
-/// of this is that `OsString` instances are *not* `NUL` terminated; in order
+/// of this is that `OsString` instances are **not** `NUL` terminated; in order
 /// to pass to e.g., Unix system call, you should create a [`CStr`].
 ///
 /// `OsString` is to [`&OsStr`] as [`String`] is to [`&str`]: the former
@@ -834,7 +834,7 @@ impl PartialOrd<str> for OsStr {
     }
 }
 
-// FIXME (#19470): cannot provide PartialOrd<OsStr> for str until we
+// FIXME(#19470): cannot provide PartialOrd<OsStr> for str until we
 // have more flexible coherence rules.
 
 #[stable(feature = "rust1", since = "1.0.0")]

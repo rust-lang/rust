@@ -24,7 +24,7 @@ fn saturating_cast_to_time_t(value: u64) -> libc::time_t {
 impl Condvar {
     pub const fn new() -> Condvar {
         // Might be moved and address is changing it is better to avoid
-        // initialization of potentially opaque OS data before it landed
+        // initialization of potentially opaque OS data before it landed.
         Condvar { inner: UnsafeCell::new(libc::PTHREAD_COND_INITIALIZER) }
     }
 
@@ -71,7 +71,7 @@ impl Condvar {
         debug_assert_eq!(r, 0);
     }
 
-    // This implementation is used on systems that support pthread_condattr_setclock
+    // This implementation is used on systems that support `pthread_condattr_setclock`
     // where we configure condition variable to use monotonic clock (instead of
     // default system clock). This approach avoids all problems that result
     // from changes made to the system time.
@@ -105,9 +105,9 @@ impl Condvar {
     }
 
 
-    // This implementation is modeled after libcxx's condition_variable
-    // https://github.com/llvm-mirror/libcxx/blob/release_35/src/condition_variable.cpp#L46
-    // https://github.com/llvm-mirror/libcxx/blob/release_35/include/__mutex_base#L367
+    // This implementation is modeled after libcxx's `condition_variable`.
+    // <https://github.com/llvm-mirror/libcxx/blob/release_35/src/condition_variable.cpp#L46>
+    // <https://github.com/llvm-mirror/libcxx/blob/release_35/include/__mutex_base#L367>
     #[cfg(any(target_os = "macos", target_os = "ios", target_os = "android", target_os = "hermit"))]
     pub unsafe fn wait_timeout(&self, mutex: &Mutex, mut dur: Duration) -> bool {
         use ptr;
@@ -117,13 +117,13 @@ impl Condvar {
         let max_dur = Duration::from_secs(1000 * 365 * 86400);
 
         if dur > max_dur {
-            // OSX implementation of `pthread_cond_timedwait` is buggy
+            // macOS implementation of `pthread_cond_timedwait` is buggy
             // with super long durations. When duration is greater than
             // 0x100_0000_0000_0000 seconds, `pthread_cond_timedwait`
             // in macOS Sierra return error 316.
             //
             // This program demonstrates the issue:
-            // https://gist.github.com/stepancheg/198db4623a20aad2ad7cddb8fda4a63c
+            // <https://gist.github.com/stepancheg/198db4623a20aad2ad7cddb8fda4a63c>.
             //
             // To work around this issue, and possible bugs of other OSes, timeout
             // is clamped to 1000 years, which is allowable per the API of `wait_timeout`
@@ -133,7 +133,7 @@ impl Condvar {
         }
 
         // First, figure out what time it currently is, in both system and
-        // stable time. pthread_cond_timedwait uses system time, but we want to
+        // stable time. `pthread_cond_timedwait` uses system time, but we want to
         // report timeout based on stable time.
         let mut sys_now = libc::timeval { tv_sec: 0, tv_usec: 0 };
         let stable_now = Instant::now();
@@ -157,8 +157,8 @@ impl Condvar {
                                             &timeout);
         debug_assert!(r == libc::ETIMEDOUT || r == 0);
 
-        // ETIMEDOUT is not a totally reliable method of determining timeout due
-        // to clock shifts, so do the check ourselves
+        // `ETIMEDOUT` is not a totally reliable method of determining timeout due
+        // to clock shifts, so do the check ourselves.
         stable_now.elapsed() < dur
     }
 
@@ -173,10 +173,10 @@ impl Condvar {
     #[cfg(target_os = "dragonfly")]
     pub unsafe fn destroy(&self) {
         let r = libc::pthread_cond_destroy(self.inner.get());
-        // On DragonFly pthread_cond_destroy() returns EINVAL if called on
+        // On DragonFly `pthread_cond_destroy()` returns `EINVAL` if called on
         // a condvar that was just initialized with
-        // libc::PTHREAD_COND_INITIALIZER. Once it is used or
-        // pthread_cond_init() is called, this behaviour no longer occurs.
+        // `libc::PTHREAD_COND_INITIALIZER`. Once it is used or
+        // `pthread_cond_init()` is called, this behaviour no longer occurs.
         debug_assert!(r == 0 || r == libc::EINVAL);
     }
 }

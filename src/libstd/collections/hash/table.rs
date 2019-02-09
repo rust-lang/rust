@@ -655,7 +655,7 @@ fn calculate_layout<K, V>(capacity: usize) -> Result<(Layout, usize), LayoutErr>
         // possibly due to the use of NonZeroUsize. This little hack allows it
         // to generate optimal code.
         //
-        // See https://github.com/rust-lang/rust/issues/51346 for more details.
+        // See issue #51346 for more details.
         (
             layout,
             hashes.size() + hashes.padding_needed_for(mem::align_of::<(K, V)>()),
@@ -823,9 +823,9 @@ impl<K, V> RawTable<K, V> {
 
     /// Drops buckets in reverse order. It leaves the table in an inconsistent
     /// state and should only be used for dropping the table's remaining
-    /// entries. It's used in the implementation of Drop.
+    /// entries. It's used in the implementation of `Drop`.
     unsafe fn rev_drop_buckets(&mut self) {
-        // initialize the raw bucket past the end of the table
+        // Initialize the raw bucket past the end of the table.
         let mut raw = self.raw_bucket_at(self.capacity());
         let mut elems_left = self.size;
 
@@ -864,7 +864,7 @@ struct RawBuckets<'a, K, V> {
     marker: marker::PhantomData<&'a ()>,
 }
 
-// FIXME(#26925) Remove in favor of `#[derive(Clone)]`
+// FIXME(#26925): remove in favor of `#[derive(Clone)]`.
 impl<'a, K, V> Clone for RawBuckets<'a, K, V> {
     fn clone(&self) -> RawBuckets<'a, K, V> {
         RawBuckets {
@@ -915,7 +915,7 @@ pub struct Iter<'a, K: 'a, V: 'a> {
 unsafe impl<'a, K: Sync, V: Sync> Sync for Iter<'a, K, V> {}
 unsafe impl<'a, K: Sync, V: Sync> Send for Iter<'a, K, V> {}
 
-// FIXME(#26925) Remove in favor of `#[derive(Clone)]`
+// FIXME(#26925): remove in favor of `#[derive(Clone)]`.
 impl<'a, K, V> Clone for Iter<'a, K, V> {
     fn clone(&self) -> Iter<'a, K, V> {
         Iter {
@@ -932,8 +932,8 @@ pub struct IterMut<'a, K: 'a, V: 'a> {
 }
 
 unsafe impl<'a, K: Sync, V: Sync> Sync for IterMut<'a, K, V> {}
-// Both K: Sync and K: Send are correct for IterMut's Send impl,
-// but Send is the more useful bound
+// Both `K: Sync` and `K: Send` are correct for `IterMut`'s `Send` impl,
+// but `Send` is the more useful bound.
 unsafe impl<'a, K: Send, V: Send> Send for IterMut<'a, K, V> {}
 
 impl<'a, K: 'a, V: 'a> IterMut<'a, K, V> {

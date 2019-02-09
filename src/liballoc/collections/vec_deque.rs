@@ -151,7 +151,7 @@ impl<T> VecDeque<T> {
         wrap_index(idx.wrapping_sub(subtrahend), self.cap())
     }
 
-    /// Copies a contiguous block of memory len long from src to dst
+    /// Copies a contiguous block of memory len long from `src` to `dst`.
     #[inline]
     unsafe fn copy(&self, dst: usize, src: usize, len: usize) {
         debug_assert!(dst + len <= self.cap(),
@@ -171,7 +171,7 @@ impl<T> VecDeque<T> {
                   len);
     }
 
-    /// Copies a contiguous block of memory len long from src to dst
+    /// Copies a contiguous block of memory len long from `src` to `dst`.
     #[inline]
     unsafe fn copy_nonoverlapping(&self, dst: usize, src: usize, len: usize) {
         debug_assert!(dst + len <= self.cap(),
@@ -191,9 +191,9 @@ impl<T> VecDeque<T> {
                                  len);
     }
 
-    /// Copies a potentially wrapping block of memory len long from src to dest.
-    /// (abs(dst - src) + len) must be no larger than cap() (There must be at
-    /// most one continuous overlapping region between src and dest).
+    /// Copies a potentially wrapping block of memory len long from `src` to `dest`.
+    /// `abs(dst - src) + len` must be no larger than `cap()`. (There must be at
+    /// most one continuous overlapping region between `src` and `dest`).
     unsafe fn wrap_copy(&self, dst: usize, src: usize, len: usize) {
         #[allow(dead_code)]
         fn diff(a: usize, b: usize) -> usize {
@@ -219,7 +219,7 @@ impl<T> VecDeque<T> {
 
         match (dst_after_src, src_wraps, dst_wraps) {
             (_, false, false) => {
-                // src doesn't wrap, dst doesn't wrap
+                // `src` doesn't wrap, `dst` doesn't wrap.
                 //
                 //        S . . .
                 // 1 [_ _ A A B B C C _]
@@ -229,7 +229,7 @@ impl<T> VecDeque<T> {
                 self.copy(dst, src, len);
             }
             (false, false, true) => {
-                // dst before src, src doesn't wrap, dst wraps
+                // `dst` before `src`, `src` doesn't wrap, `dst` wraps.
                 //
                 //    S . . .
                 // 1 [A A B B _ _ _ C C]
@@ -241,7 +241,7 @@ impl<T> VecDeque<T> {
                 self.copy(0, src + dst_pre_wrap_len, len - dst_pre_wrap_len);
             }
             (true, false, true) => {
-                // src before dst, src doesn't wrap, dst wraps
+                // `src` before `dst`, `src` doesn't wrap, `dst` wraps.
                 //
                 //              S . . .
                 // 1 [C C _ _ _ A A B B]
@@ -253,7 +253,7 @@ impl<T> VecDeque<T> {
                 self.copy(dst, src, dst_pre_wrap_len);
             }
             (false, true, false) => {
-                // dst before src, src wraps, dst doesn't wrap
+                // `dst` before `src`, `src` wraps, `dst` doesn't wrap.
                 //
                 //    . .           S .
                 // 1 [C C _ _ _ A A B B]
@@ -265,7 +265,7 @@ impl<T> VecDeque<T> {
                 self.copy(dst + src_pre_wrap_len, 0, len - src_pre_wrap_len);
             }
             (true, true, false) => {
-                // src before dst, src wraps, dst doesn't wrap
+                // `src` before `dst`, `src` wraps, `dst` doesn't wrap.
                 //
                 //    . .           S .
                 // 1 [A A B B _ _ _ C C]
@@ -277,7 +277,7 @@ impl<T> VecDeque<T> {
                 self.copy(dst, src, src_pre_wrap_len);
             }
             (false, true, true) => {
-                // dst before src, src wraps, dst wraps
+                // `dst` before `src`, `src` wraps, `dst` wraps.
                 //
                 //    . . .         S .
                 // 1 [A B C D _ E F G H]
@@ -293,7 +293,7 @@ impl<T> VecDeque<T> {
                 self.copy(0, delta, len - dst_pre_wrap_len);
             }
             (true, true, true) => {
-                // src before dst, src wraps, dst wraps
+                // `src` before `dst`, `src` wraps, `dst` wraps.
                 //
                 //    . .         S . .
                 // 1 [A B C D _ E F G H]
@@ -312,7 +312,7 @@ impl<T> VecDeque<T> {
     }
 
     /// Frobs the head and tail sections around to handle the fact that we
-    /// just reallocated. Unsafe because it trusts old_cap.
+    /// just reallocated. Unsafe because it trusts `old_cap`.
     #[inline]
     unsafe fn handle_cap_increase(&mut self, old_cap: usize) {
         let new_cap = self.cap();
@@ -333,7 +333,7 @@ impl<T> VecDeque<T> {
 
         if self.tail <= self.head {
             // A
-            // Nop
+            // No-op.
         } else if self.head < old_cap - self.tail {
             // B
             self.copy_nonoverlapping(old_cap, 0, self.head);
@@ -2130,7 +2130,7 @@ impl<T: fmt::Debug> fmt::Debug for Iter<'_, T> {
     }
 }
 
-// FIXME(#26925) Remove in favor of `#[derive(Clone)]`
+// FIXME(#26925): Remove in favor of `#[derive(Clone)]`.
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<'a, T> Clone for Iter<'a, T> {
     fn clone(&self) -> Iter<'a, T> {
@@ -3125,5 +3125,4 @@ mod tests {
             assert_eq!(*a, 2);
         }
     }
-
 }

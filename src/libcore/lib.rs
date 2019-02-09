@@ -17,7 +17,7 @@
 //!
 //! Please note that all of these details are currently not considered stable.
 //!
-// FIXME: Fill me in with more detail when the interface settles
+// FIXME: fill me in with more detail when the interface settles.
 //! This library is built on the assumption of a few existing symbols:
 //!
 //! * `memcpy`, `memcmp`, `memset` - These are core memory routines which are

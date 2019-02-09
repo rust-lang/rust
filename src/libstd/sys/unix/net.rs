@@ -15,18 +15,18 @@ pub extern crate libc as netc;
 
 pub type wrlen_t = size_t;
 
-// See below for the usage of SOCK_CLOEXEC, but this constant is only defined on
+// See below for the usage of `SOCK_CLOEXEC`, but this constant is only defined on
 // Linux currently (e.g., support doesn't exist on other platforms). In order to
 // get name resolution to work and things to compile we just define a dummy
-// SOCK_CLOEXEC here for other platforms. Note that the dummy constant isn't
+// `SOCK_CLOEXEC` here for other platforms. Note that the dummy constant isn't
 // actually ever used (the blocks below are wrapped in `if cfg!` as well.
 #[cfg(target_os = "linux")]
 use libc::SOCK_CLOEXEC;
 #[cfg(not(target_os = "linux"))]
 const SOCK_CLOEXEC: c_int = 0;
 
-// Another conditional constant for name resolution: Macos et iOS use
-// SO_NOSIGPIPE as a setsockopt flag to disable SIGPIPE emission on socket.
+// Another conditional constant for name resolution: macOS and iOS use
+// `SO_NOSIGPIPE` as a setsockopt flag to disable `SIGPIPE` emission on socket.
 // Other platforms do otherwise.
 #[cfg(target_vendor = "apple")]
 use libc::SO_NOSIGPIPE;
@@ -42,7 +42,7 @@ pub fn cvt_gai(err: c_int) -> io::Result<()> {
         return Ok(())
     }
 
-    // We may need to trigger a glibc workaround. See on_resolver_failure() for details.
+    // We may need to trigger a glibc workaround. See `on_resolver_failure()` for details.
     on_resolver_failure();
 
     if err == EAI_SYSTEM {
@@ -69,10 +69,10 @@ impl Socket {
 
     pub fn new_raw(fam: c_int, ty: c_int) -> io::Result<Socket> {
         unsafe {
-            // On linux we first attempt to pass the SOCK_CLOEXEC flag to
-            // atomically create the socket and set it as CLOEXEC. Support for
+            // On Linux, we first attempt to pass the `SOCK_CLOEXEC` flag to
+            // atomically create the socket and set it as `CLOEXEC`. Support for
             // this option, however, was added in 2.6.27, and we still support
-            // 2.6.18 as a kernel, so if the returned error is EINVAL we
+            // 2.6.18 as a kernel, so if the returned error is `EINVAL` we
             // fallthrough to the fallback.
             if cfg!(target_os = "linux") {
                 match cvt(libc::socket(fam, ty | SOCK_CLOEXEC, 0)) {
@@ -97,7 +97,7 @@ impl Socket {
         unsafe {
             let mut fds = [0, 0];
 
-            // Like above, see if we can set cloexec atomically
+            // Like above, see if we can set `cloexec` atomically.
             if cfg!(target_os = "linux") {
                 match cvt(libc::socketpair(fam, ty | SOCK_CLOEXEC, 0, fds.as_mut_ptr())) {
                     Ok(_) => {
@@ -127,7 +127,7 @@ impl Socket {
 
         match r {
             Ok(_) => return Ok(()),
-            // there's no ErrorKind for EINPROGRESS :(
+            // There's no `ErrorKind` for `EINPROGRESS`, unfortunately.
             Err(ref e) if e.raw_os_error() == Some(libc::EINPROGRESS) => {}
             Err(e) => return Err(e),
         }
@@ -170,8 +170,8 @@ impl Socket {
                 }
                 0 => {}
                 _ => {
-                    // linux returns POLLOUT|POLLERR|POLLHUP for refused connections (!), so look
-                    // for POLLHUP rather than read readiness
+                    // Linux returns POLLOUT|POLLERR|POLLHUP for refused connections (!), so look
+                    // for `POLLHUP` rather than read readiness.
                     if pollfd.revents & libc::POLLHUP != 0 {
                         let e = self.take_error()?
                             .unwrap_or_else(|| {
@@ -188,10 +188,10 @@ impl Socket {
 
     pub fn accept(&self, storage: *mut sockaddr, len: *mut socklen_t)
                   -> io::Result<Socket> {
-        // Unfortunately the only known way right now to accept a socket and
-        // atomically set the CLOEXEC flag is to use the `accept4` syscall on
+        // Unfortunately, the only known way right now to accept a socket and
+        // atomically set the `CLOEXEC` flag is to use the `accept4` syscall on
         // Linux. This was added in 2.6.28, however, and because we support
-        // 2.6.18 we must detect this support dynamically.
+        // 2.6.18, we must detect this support dynamically.
         if cfg!(target_os = "linux") {
             syscall! {
                 fn accept4(
@@ -359,17 +359,17 @@ impl IntoInner<c_int> for Socket {
 }
 
 // In versions of glibc prior to 2.26, there's a bug where the DNS resolver
-// will cache the contents of /etc/resolv.conf, so changes to that file on disk
+// will cache the contents of `/etc/resolv.conf`, so changes to that file on disk
 // can be ignored by a long-running program. That can break DNS lookups on e.g.
 // laptops where the network comes and goes. See
-// https://sourceware.org/bugzilla/show_bug.cgi?id=984. Note however that some
+// <https://sourceware.org/bugzilla/show_bug.cgi?id=984>. Note however that some
 // distros including Debian have patched glibc to fix this for a long time.
 //
 // A workaround for this bug is to call the res_init libc function, to clear
 // the cached configs. Unfortunately, while we believe glibc's implementation
 // of res_init is thread-safe, we know that other implementations are not
-// (https://github.com/rust-lang/rust/issues/43592). Code here in libstd could
-// try to synchronize its res_init calls with a Mutex, but that wouldn't
+// (issue #43592). Code here in libstd could
+// try to synchronize its `res_init` calls with a `Mutex`, but that wouldn't
 // protect programs that call into libc in other ways. So instead of calling
 // res_init unconditionally, we call it only when we detect we're linking
 // against glibc version < 2.26. (That is, when we both know its needed and

@@ -1629,7 +1629,7 @@ mod tests {
     use str;
     use super::{Command, Output, Stdio};
 
-    // FIXME(#10380) these tests should not all be ignored on android.
+    // FIXME(#10380): these tests should not all be ignored on Android.
 
     #[test]
     #[cfg_attr(target_os = "android", ignore)]

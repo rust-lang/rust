@@ -194,8 +194,8 @@ pub trait MetadataExt {
     fn blocks(&self) -> u64;
 }
 
-// Hm, why are there casts here to the returned type, shouldn't the types always
-// be the same? Right you are! Turns out, however, on android at least the types
+// NOTE: why are there casts here to the returned type; shouldn't the types always
+// be the same? Right you are! It turns out, however, on Android at least the types
 // in the raw `stat` structure are not the same as the types being returned. Who
 // knew!
 //
@@ -258,26 +258,26 @@ impl MetadataExt for fs::Metadata {
 /// [`FileType`]: ../../../../std/fs/struct.FileType.html
 #[stable(feature = "file_type_ext", since = "1.5.0")]
 pub trait FileTypeExt {
-    /// Returns whether this file type is a block device.
+    /// Returns `true` if this file type is a block device.
     #[stable(feature = "file_type_ext", since = "1.5.0")]
     fn is_block_device(&self) -> bool;
-    /// Returns whether this file type is a char device.
+    /// Returns `true` if this file type is a char device.
     #[stable(feature = "file_type_ext", since = "1.5.0")]
     fn is_char_device(&self) -> bool;
-    /// Returns whether this file type is a fifo.
+    /// Returns `true` if this file type is a fifo.
     #[stable(feature = "file_type_ext", since = "1.5.0")]
     fn is_fifo(&self) -> bool;
-    /// Returns whether this file type is a socket.
+    /// Returns `true` if this file type is a socket.
     #[stable(feature = "file_type_ext", since = "1.5.0")]
     fn is_socket(&self) -> bool;
 }
 
 #[stable(feature = "file_type_ext", since = "1.5.0")]
 impl FileTypeExt for fs::FileType {
-    fn is_block_device(&self) -> bool { false /*FIXME: Implement block device mode*/ }
-    fn is_char_device(&self) -> bool { false /*FIXME: Implement char device mode*/ }
-    fn is_fifo(&self) -> bool { false /*FIXME: Implement fifo mode*/ }
-    fn is_socket(&self) -> bool { false /*FIXME: Implement socket mode*/ }
+    fn is_block_device(&self) -> bool { false /* FIXME: implement block device mode */ }
+    fn is_char_device(&self) -> bool { false /* FIXME: implement char device mode */ }
+    fn is_fifo(&self) -> bool { false /* FIXME: implement fifo mode */ }
+    fn is_socket(&self) -> bool { false /* FIXME: implement socket mode */ }
 }
 
 /// Creates a new symbolic link on the filesystem.

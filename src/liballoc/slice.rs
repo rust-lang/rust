@@ -122,12 +122,12 @@ pub use core::slice::{RChunks, RChunksMut, RChunksExact, RChunksExactMut};
 // Basic slice extension methods
 ////////////////////////////////////////////////////////////////////////////////
 
-// HACK(japaric) needed for the implementation of `vec!` macro during testing
+// HACK(japaric): needed for the implementation of `vec!` macro during testing
 // NB see the hack module in this file for more details
 #[cfg(test)]
 pub use hack::into_vec;
 
-// HACK(japaric) needed for the implementation of `Vec::clone` during testing
+// HACK(japaric): needed for the implementation of `Vec::clone` during testing
 // NB see the hack module in this file for more details
 #[cfg(test)]
 pub use hack::to_vec;
@@ -831,7 +831,7 @@ unsafe fn merge<T, F>(v: &mut [T], mid: usize, buf: *mut T, is_less: &mut F)
 
     impl<T> Drop for MergeHole<T> {
         fn drop(&mut self) {
-            // `T` is not a zero-sized type, so it's okay to divide by its size.
+            // `T` is not a zero-sized type, so it's ok to divide by its size.
             let len = (self.end as usize - self.start as usize) / mem::size_of::<T>();
             unsafe { ptr::copy_nonoverlapping(self.start, self.dest, len); }
         }

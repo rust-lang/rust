@@ -65,7 +65,7 @@ pub trait Future {
     /// it should only be called when the future indicates that it is ready to
     /// make progress (by calling `wake()`). If you're familiar with the
     /// `poll(2)` or `select(2)` syscalls on Unix it's worth noting that futures
-    /// typically do *not* suffer the same problems of "all wakeups must poll
+    /// typically do **not** suffer the same problems of "all wakeups must poll
     /// all events"; they are more like `epoll(4)`.
     ///
     /// An implementation of `poll` should strive to return quickly, and should

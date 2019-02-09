@@ -219,7 +219,7 @@
 //
 // The recv() method has a beginning call to pop(), and if successful, it needs
 // to decrement the count. It is a crucial implementation detail that this
-// decrement does *not* happen to the shared counter. If this were the case,
+// decrement does **not** happen to the shared counter. If this were the case,
 // then it would be possible for the counter to be very negative when there were
 // no receivers waiting, in which case the senders would have to determine when
 // it was actually appropriate to wake up a receiver.
@@ -791,7 +791,7 @@ impl<T> Sender<T> {
     /// the channel has not hung up already. An unsuccessful send would be one
     /// where the corresponding receiver has already been deallocated. Note
     /// that a return value of [`Err`] means that the data will never be
-    /// received, but a return value of [`Ok`] does *not* mean that the data
+    /// received, but a return value of [`Ok`] does **not** mean that the data
     /// will be received. It is possible for the corresponding receiver to
     /// hang up immediately after this function returns [`Ok`].
     ///
@@ -933,7 +933,7 @@ impl<T> SyncSender<T> {
     /// This function will *block* until space in the internal buffer becomes
     /// available or a receiver is available to hand off the message to.
     ///
-    /// Note that a successful send does *not* guarantee that the receiver will
+    /// Note that a successful send does **not** guarantee that the receiver will
     /// ever see the data if there is a buffer on this channel. Items may be
     /// enqueued in the internal buffer for the receiver to receive at a later
     /// time. If the buffer size is 0, however, the channel becomes a rendezvous

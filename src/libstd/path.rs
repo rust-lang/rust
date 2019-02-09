@@ -104,7 +104,7 @@ use sys::path::{is_sep_byte, is_verbatim_sep, MAIN_SEP_STR, parse_prefix};
 /// Windows uses a variety of path prefix styles, including references to drive
 /// volumes (like `C:`), network shared folders (like `\\server\share`), and
 /// others. In addition, some path prefixes are "verbatim" (i.e., prefixed with
-/// `\\?\`), in which case `/` is *not* treated as a separator and essentially
+/// `\\?\`), in which case `/` is **not** treated as a separator and essentially
 /// no normalization is performed.
 ///
 /// # Examples
@@ -597,19 +597,19 @@ impl<'a> AsRef<Path> for Component<'a> {
 #[derive(Clone)]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct Components<'a> {
-    // The path left to parse components from
+    // The path left to parse components from.
     path: &'a [u8],
 
-    // The prefix as it was originally parsed, if any
+    // The prefix as it was originally parsed, if any.
     prefix: Option<Prefix<'a>>,
 
-    // true if path *physically* has a root separator; for most Windows
-    // prefixes, it may have a "logical" rootseparator for the purposes of
-    // normalization, e.g.,  \\server\share == \\server\share\.
+    // `true` if path *physically* has a root separator; for most Windows
+    // prefixes, it may have a "logical" root separator for the purposes of
+    // normalization (e.g., `\\server\share == \\server\share\`).
     has_physical_root: bool,
 
     // The iterator is double-ended, and these two states keep track of what has
-    // been produced from either end
+    // been produced from either end.
     front: State,
     back: State,
 }
@@ -1202,7 +1202,7 @@ impl PathBuf {
         // in general, a separator is needed if the rightmost byte is not a separator
         let mut need_sep = self.as_mut_vec().last().map(|c| !is_sep_byte(*c)).unwrap_or(false);
 
-        // in the special case of `C:` on Windows, do *not* add a separator
+        // in the special case of `C:` on Windows, do **not** add a separator
         {
             let comps = self.components();
             if comps.prefix_len() > 0 && comps.prefix_len() == comps.path.len() &&
@@ -1822,7 +1822,7 @@ impl Path {
     #[allow(deprecated)]
     pub fn is_absolute(&self) -> bool {
         if cfg!(target_os = "redox") {
-            // FIXME: Allow Redox prefixes
+            // FIXME: allow Redox prefixes.
             self.has_root() || has_redox_scheme(self.as_u8_slice())
         } else {
             self.has_root() && (cfg!(unix) || self.prefix().is_some())
@@ -3789,7 +3789,7 @@ mod tests {
             tp!("\\\\?\\UNC\\server\\share", "C:\\a", "C:\\a");
             tp!("\\\\?\\UNC\\server\\share", "C:a", "C:a");
 
-            // Note: modified from old path API
+            // Note: modified from old path API.
             tp!("\\\\?\\UNC\\server", "foo", "\\\\?\\UNC\\server\\foo");
 
             tp!("C:\\a",
@@ -3797,10 +3797,11 @@ mod tests {
                 "\\\\?\\UNC\\server\\share");
             tp!("\\\\.\\foo\\bar", "baz", "\\\\.\\foo\\bar\\baz");
             tp!("\\\\.\\foo\\bar", "C:a", "C:a");
-            // again, not sure about the following, but I'm assuming \\.\ should be verbatim
+            // Again, not sure about the following, but I'm assuming `\\.\` should be verbatim.
             tp!("\\\\.\\foo", "..\\bar", "\\\\.\\foo\\..\\bar");
 
-            tp!("\\\\?\\C:", "foo", "\\\\?\\C:\\foo"); // this is a weird one
+            // This is a weird one.
+            tp!("\\\\?\\C:", "foo", "\\\\?\\C:\\foo");
         }
     }
 

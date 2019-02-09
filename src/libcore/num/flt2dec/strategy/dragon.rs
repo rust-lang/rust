@@ -275,7 +275,7 @@ pub fn format_exact(d: &Decoded, buf: &mut [u8], limit: i16) -> (/*#digits*/ usi
 
         for i in 0..len {
             if mant.is_zero() { // following digits are all zeroes, we stop here
-                // do *not* try to perform rounding! rather, fill remaining digits.
+                // do **not** try to perform rounding! rather, fill remaining digits.
                 for c in &mut buf[i..len] { *c = b'0'; }
                 return (len, k);
             }

@@ -24,7 +24,7 @@ pub fn errno() -> i32 {
 /// Gets a detailed string description for the given error number.
 pub fn error_string(mut errnum: i32) -> String {
     // This value is calculated from the macro
-    // MAKELANGID(LANG_SYSTEM_DEFAULT, SUBLANG_SYS_DEFAULT)
+    // `MAKELANGID(LANG_SYSTEM_DEFAULT, SUBLANG_SYS_DEFAULT)`.
     let langId = 0x0800 as c::DWORD;
 
     let mut buf = [0 as c::WCHAR; 2048];
@@ -33,11 +33,11 @@ pub fn error_string(mut errnum: i32) -> String {
         let mut module = ptr::null_mut();
         let mut flags = 0;
 
-        // NTSTATUS errors may be encoded as HRESULT, which may returned from
+        // `NTSTATUS` errors may be encoded as `HRESULT`, which may returned from
         // GetLastError. For more information about Windows error codes, see
         // `[MS-ERREF]`: https://msdn.microsoft.com/en-us/library/cc231198.aspx
         if (errnum & c::FACILITY_NT_BIT as i32) != 0 {
-            // format according to https://support.microsoft.com/en-us/help/259693
+            // Format according to <https://support.microsoft.com/en-us/help/259693>.
             const NTDLL_DLL: &[u16] = &['N' as _, 'T' as _, 'D' as _, 'L' as _, 'L' as _,
                                         '.' as _, 'D' as _, 'L' as _, 'L' as _, 0];
             module = c::GetModuleHandleW(NTDLL_DLL.as_ptr());
@@ -57,7 +57,7 @@ pub fn error_string(mut errnum: i32) -> String {
                                     buf.len() as c::DWORD,
                                     ptr::null()) as usize;
         if res == 0 {
-            // Sometimes FormatMessageW can fail e.g., system doesn't like langId,
+            // Sometimes `FormatMessageW` can fail (e.g., system doesn't like `langId`).
             let fm_err = errno();
             return format!("OS Error {} (FormatMessageW() returned error {})",
                            errnum, fm_err);
@@ -65,7 +65,7 @@ pub fn error_string(mut errnum: i32) -> String {
 
         match String::from_utf16(&buf[..res]) {
             Ok(mut msg) => {
-                // Trim trailing CRLF inserted by FormatMessageW
+                // Trim trailing CRLF inserted by `FormatMessageW`.
                 let len = msg.trim_end().len();
                 msg.truncate(len);
                 msg
@@ -98,7 +98,7 @@ impl Iterator for Env {
 
                 // Windows allows environment variables to start with an equals
                 // symbol (in any other position, this is the separator between
-                // variable name and value). Since`s` has at least length 1 at
+                // variable name and value). Since `s` has at least length one at
                 // this point (because the empty string terminates the array of
                 // environment variables), we can safely slice.
                 let pos = match s[1..].iter().position(|&u| u == b'=' as u16).map(|p| p + 1) {
@@ -146,15 +146,15 @@ pub fn split_paths(unparsed: &OsStr) -> SplitPaths {
 impl<'a> Iterator for SplitPaths<'a> {
     type Item = PathBuf;
     fn next(&mut self) -> Option<PathBuf> {
-        // On Windows, the PATH environment variable is semicolon separated.
+        // On Windows, the `PATH` environment variable is semicolon separated.
         // Double quotes are used as a way of introducing literal semicolons
-        // (since c:\some;dir is a valid Windows path). Double quotes are not
+        // (since `c:\some;dir` is a valid Windows path). Double quotes are not
         // themselves permitted in path names, so there is no way to escape a
         // double quote. Quoted regions can appear in arbitrary locations, so
         //
-        //   c:\foo;c:\som"e;di"r;c:\bar
+        //     c:\foo;c:\som"e;di"r;c:\bar
         //
-        // Should parse as [c:\foo, c:\some;dir, c:\bar].
+        // Should parse as `["c:\foo", "c:\some;dir", "c:\bar"]`.
         //
         // (The above is based on testing; there is no clear reference available
         // for the grammar.)
@@ -298,7 +298,8 @@ pub fn home_dir() -> Option<PathBuf> {
             match c::GetUserProfileDirectoryW(token, buf, &mut sz) {
                 0 if c::GetLastError() != c::ERROR_INSUFFICIENT_BUFFER => 0,
                 0 => sz,
-                _ => sz - 1, // sz includes the null terminator
+                // `sz` includes the null terminator.
+                _ => sz - 1,
             }
         }, super::os2path).ok()
     })
@@ -317,7 +318,7 @@ mod tests {
     use io::Error;
     use sys::c;
 
-    // tests `error_string` above
+    // Tests `error_string` above.
     #[test]
     fn ntstatus_error() {
         const STATUS_UNSUCCESSFUL: u32 = 0xc000_0001;

@@ -938,7 +938,7 @@ mod slice_index {
             data: [0, 1];
 
             // note: using 0 specifically ensures that the result of overflowing is 0..0,
-            //       so that `get` doesn't simply return None for the wrong reason.
+            //       so that `get` doesn't simply return `None` for the wrong reason.
             bad: data[0 ..= ::std::usize::MAX];
             message: "maximum usize";
         }

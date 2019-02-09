@@ -208,7 +208,7 @@ impl Command {
         }?;
 
         // We close the thread handle because we don't care about keeping
-        // the thread id valid, and we aren't keeping the thread handle
+        // the thread ID valid, and we aren't keeping the thread handle
         // around to be able to close it later.
         drop(Handle::new(pi.hThread));
 

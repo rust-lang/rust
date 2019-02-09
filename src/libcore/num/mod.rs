@@ -1224,7 +1224,7 @@ $EndFeature, "
             concat!("Panic-free bitwise shift-left; yields `self << mask(rhs)`, where `mask` removes
 any high-order bits of `rhs` that would cause the shift to exceed the bitwidth of the type.
 
-Note that this is *not* the same as a rotate-left; the RHS of a wrapping shift-left is restricted to
+Note that this is **not** the same as a rotate-left; the RHS of a wrapping shift-left is restricted to
 the range of the type, rather than the bits shifted out of the LHS being returned to the other end.
 The primitive integer types all implement a `rotate_left` function, which may be what you want
 instead.
@@ -1251,7 +1251,7 @@ $EndFeature, "
             concat!("Panic-free bitwise shift-right; yields `self >> mask(rhs)`, where `mask`
 removes any high-order bits of `rhs` that would cause the shift to exceed the bitwidth of the type.
 
-Note that this is *not* the same as a rotate-right; the RHS of a wrapping shift-right is restricted
+Note that this is **not** the same as a rotate-right; the RHS of a wrapping shift-right is restricted
 to the range of the type, rather than the bits shifted out of the LHS being returned to the other
 end. The primitive integer types all implement a `rotate_right` function, which may be what you want
 instead.
@@ -3101,7 +3101,7 @@ assert_eq!(100", stringify!($SelfT), ".wrapping_rem_euclid(10), 0);
 where `mask` removes any high-order bits of `rhs` that
 would cause the shift to exceed the bitwidth of the type.
 
-Note that this is *not* the same as a rotate-left; the
+Note that this is **not** the same as a rotate-left; the
 RHS of a wrapping shift-left is restricted to the range
 of the type, rather than the bits shifted out of the LHS
 being returned to the other end. The primitive integer
@@ -3130,7 +3130,7 @@ assert_eq!(1", stringify!($SelfT), ".wrapping_shl(128), 1);", $EndFeature, "
 where `mask` removes any high-order bits of `rhs` that
 would cause the shift to exceed the bitwidth of the type.
 
-Note that this is *not* the same as a rotate-right; the
+Note that this is **not** the same as a rotate-right; the
 RHS of a wrapping shift-right is restricted to the range
 of the type, rather than the bits shifted out of the LHS
 being returned to the other end. The primitive integer
@@ -3582,7 +3582,7 @@ assert_eq!(7", stringify!($SelfT), ".rem_euclid(4), 3); // or any other integer 
         }
 
         doc_comment! {
-            concat!("Returns `true` if and only if `self == 2^k` for some `k`.
+            concat!("Returns `true` if `self == 2^k` for some `k`.
 
 # Examples
 
@@ -4774,7 +4774,7 @@ fn from_str_radix<T: FromStrRadixHelper>(src: &str, radix: u32) -> Result<T, Par
     let is_signed_ty = T::from_u32(0) > T::min_value();
 
     // all valid digits are ascii, so we will just iterate over the utf8 bytes
-    // and cast them to chars. .to_digit() will safely return None for anything
+    // and cast them to chars. .to_digit() will safely return `None` for anything
     // other than a valid ascii digit for the given radix, including the first-byte
     // of multi-byte sequences
     let src = src.as_bytes();

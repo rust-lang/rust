@@ -275,7 +275,7 @@ impl<T: ?Sized> Box<T> {
 #[stable(feature = "rust1", since = "1.0.0")]
 unsafe impl<#[may_dangle] T: ?Sized> Drop for Box<T> {
     fn drop(&mut self) {
-        // FIXME: Do nothing, drop is currently performed by compiler.
+        // FIXME: do nothing; drop is currently performed by compiler.
     }
 }
 
