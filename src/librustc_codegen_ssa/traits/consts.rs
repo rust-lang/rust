@@ -1,5 +1,5 @@
 use super::BackendTypes;
-use mir::place::PlaceRef;
+use crate::mir::place::PlaceRef;
 use rustc::mir::interpret::Allocation;
 use rustc::mir::interpret::Scalar;
 use rustc::ty::layout;

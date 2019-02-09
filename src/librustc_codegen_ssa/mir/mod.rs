@@ -4,11 +4,11 @@ use rustc::ty::layout::{TyLayout, HasTyCtxt};
 use rustc::mir::{self, Mir};
 use rustc::ty::subst::Substs;
 use rustc::session::config::DebugInfo;
-use base;
-use debuginfo::{self, VariableAccess, VariableKind, FunctionDebugContext};
 use rustc_mir::monomorphize::Instance;
 use rustc_target::abi::call::{FnType, PassMode};
-use traits::*;
+use crate::base;
+use crate::debuginfo::{self, VariableAccess, VariableKind, FunctionDebugContext};
+use crate::traits::*;
 
 use syntax_pos::{DUMMY_SP, NO_EXPANSION, BytePos, Span};
 use syntax::symbol::keywords;

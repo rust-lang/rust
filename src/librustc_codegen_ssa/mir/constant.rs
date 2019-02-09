@@ -6,7 +6,7 @@ use rustc::mir::interpret::GlobalId;
 use rustc::ty::{self, Ty};
 use rustc::ty::layout;
 use syntax::source_map::Span;
-use traits::*;
+use crate::traits::*;
 
 use super::FunctionCx;
 

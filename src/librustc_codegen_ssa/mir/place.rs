@@ -2,11 +2,11 @@ use rustc::ty::{self, Ty};
 use rustc::ty::layout::{self, Align, TyLayout, LayoutOf, VariantIdx, HasTyCtxt};
 use rustc::mir;
 use rustc::mir::tcx::PlaceTy;
-use MemFlags;
-use common::IntPredicate;
-use glue;
+use crate::MemFlags;
+use crate::common::IntPredicate;
+use crate::glue;
 
-use traits::*;
+use crate::traits::*;
 
 use super::{FunctionCx, LocalRef};
 use super::operand::OperandValue;

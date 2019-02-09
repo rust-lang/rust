@@ -5,13 +5,13 @@ use rustc::mir;
 use rustc::mir::interpret::EvalErrorKind;
 use rustc_target::abi::call::{ArgType, FnType, PassMode};
 use rustc_target::spec::abi::Abi;
-use base;
-use MemFlags;
-use common::{self, IntPredicate};
-use meth;
 use rustc_mir::monomorphize;
+use crate::base;
+use crate::MemFlags;
+use crate::common::{self, IntPredicate};
+use crate::meth;
 
-use traits::*;
+use crate::traits::*;
 
 use syntax::symbol::Symbol;
 use syntax_pos::Pos;
