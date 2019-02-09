@@ -13,7 +13,7 @@ trait Baz {
 }
 
 trait Quux {
-    // Legal because of the where clause:
+    // Legal because of the where-clause:
     fn baz(self: Self) where Self : Sized;
 }
 

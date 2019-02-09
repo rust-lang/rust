@@ -3,7 +3,7 @@
 // ignore-gdb-version: 7.11.90 - 7.12.9
 
 // As long as LLVM 5 and LLVM 6 are supported, we want to test the
-// enum debuginfo fallback mode.  Once those are desupported, this
+// enum debuginfo fallback mode. Once those are desupported, this
 // test can be removed, as there is another (non-"legacy") test that
 // tests the new mode.
 // ignore-llvm-version: 7.0 - 9.9.9
@@ -59,7 +59,7 @@
 use self::Regular::{Case1, Case2, Case3};
 use self::Univariant::TheOnlyCase;
 
-// NOTE: This is a copy of the non-generic test case. The `Txx` type parameters have to be
+// NOTE: this is a copy of the non-generic test case. The `Txx` type parameters have to be
 // substituted with something of size `xx` bits and the same alignment as an integer type of the
 // same size.
 

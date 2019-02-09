@@ -21,7 +21,7 @@ struct Foo<T: StreamingIterator> {
 
 // Users can bound parameters by the type constructed by that trait's associated type constructor
 // of a trait using HRTB. Both type equality bounds and trait bounds of this kind are valid:
-//FIXME(sunjay): This next line should parse and be valid
+//FIXME(sunjay): this next line should parse and be valid
 //fn foo<T: for<'a> StreamingIterator<Item<'a>=&'a [i32]>>(iter: T) { /* ... */ }
 fn foo<T>(iter: T) where T: StreamingIterator, for<'a> T::Item<'a>: Display { /* ... */ }
 //~^ ERROR lifetime arguments are not allowed on this entity [E0110]
@@ -68,6 +68,5 @@ fn test_stream_enumerate() {
     }
     println!("{}", a);
 }
-
 
 fn main() {}

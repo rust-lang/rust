@@ -527,8 +527,9 @@ fn format_weeks(it: impl Iterator<Item = impl DateIterator>) -> impl Iterator<It
 
 fn test_format_weeks() {
     let jan_2013 = dates_in_year(2013)
-        .__(by_month).next() // pick January 2013 for testing purposes
-        // NOTE: This `map` is because `next` returns an `Option<_>`.
+        // Pick January 2013 for testing purposes.
+        .__(by_month).next()
+        // NOTE: this `map` is because `next` returns an `Option<_>`.
         .map(|(_, month)|
             month.__(by_week)
                  .map(|(_, weeks)| weeks)

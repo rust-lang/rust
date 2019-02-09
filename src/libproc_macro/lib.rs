@@ -177,7 +177,7 @@ impl Extend<TokenTree> for TokenStream {
 #[stable(feature = "token_stream_extend", since = "1.30.0")]
 impl Extend<TokenStream> for TokenStream {
     fn extend<I: IntoIterator<Item = TokenStream>>(&mut self, streams: I) {
-        // FIXME(eddyb) Use an optimized implementation if/when possible.
+        // FIXME(eddyb): use an optimized implementation if/when possible.
         *self = iter::once(mem::replace(self, Self::new())).chain(streams).collect();
     }
 }
@@ -1102,7 +1102,7 @@ impl fmt::Display for Literal {
 #[stable(feature = "proc_macro_lib2", since = "1.29.0")]
 impl fmt::Debug for Literal {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        // FIXME(eddyb) `Literal` should not expose internal `Debug` impls.
+        // FIXME(eddyb): `Literal` should not expose internal `Debug` impls.
         self.0.fmt(f)
     }
 }

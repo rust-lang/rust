@@ -103,7 +103,7 @@ macro_rules! with_api {
             Literal {
                 fn drop($self: $S::Literal);
                 fn clone($self: &$S::Literal) -> $S::Literal;
-                // FIXME(eddyb) `Literal` should not expose internal `Debug` impls.
+                // FIXME(eddyb): `Literal` should not expose internal `Debug` impls.
                 fn debug($self: &$S::Literal) -> String;
                 fn integer(n: &str) -> $S::Literal;
                 fn typed_integer(n: &str, kind: &str) -> $S::Literal;
@@ -160,7 +160,7 @@ macro_rules! with_api {
     };
 }
 
-// FIXME(eddyb) this calls `encode` for each argument, but in reverse,
+// FIXME(eddyb): this calls `encode` for each argument, but in reverse,
 // to avoid borrow conflicts from borrows started by `&mut` arguments.
 macro_rules! reverse_encode {
     ($writer:ident;) => {};
@@ -170,7 +170,7 @@ macro_rules! reverse_encode {
     }
 }
 
-// FIXME(eddyb) this calls `decode` for each argument, but in reverse,
+// FIXME(eddyb): this calls `decode` for each argument, but in reverse,
 // to avoid borrow conflicts from borrows started by `&mut` arguments.
 macro_rules! reverse_decode {
     ($reader:ident, $s:ident;) => {};

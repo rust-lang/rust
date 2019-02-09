@@ -1,7 +1,7 @@
 #![allow(unused_mut)]
-// This should typecheck even though the type of e is not fully
-// resolved when we finish typechecking the ||.
 
+// This should type-check even though the type of `e` is not fully
+// resolved when we finish type-checking the `||`.
 
 struct Refs { refs: Vec<isize> , n: isize }
 

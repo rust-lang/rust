@@ -13,9 +13,9 @@ pub fn foreach_symbol_fileline<F>(frame: Frame,
                                   _: &BacktraceContext) -> io::Result<bool>
 where F: FnMut(&[u8], u32) -> io::Result<()>
 {
-    // pcinfo may return an arbitrary number of file:line pairs,
+    // `pcinfo` may return an arbitrary number of "file:line" pairs,
     // in the order of stack trace (i.e., inlined calls first).
-    // in order to avoid allocation, we stack-allocate a fixed size of entries.
+    // In order to avoid allocation, we stack-allocate a fixed size of entries.
     const FILELINE_SIZE: usize = 32;
     let mut fileline_buf = [(ptr::null(), !0); FILELINE_SIZE];
     let ret;
@@ -89,14 +89,14 @@ pub fn resolve_symname<F>(frame: Frame,
 }
 
 ////////////////////////////////////////////////////////////////////////
-// helper callbacks
+// Helper callbacks
 ////////////////////////////////////////////////////////////////////////
 
 type FileLine = (*const libc::c_char, u32);
 
 extern fn error_cb(_data: *mut libc::c_void, _msg: *const libc::c_char,
                    _errnum: libc::c_int) {
-    // do nothing for now
+    // Do nothing for now.
 }
 extern fn syminfo_cb(data: *mut libc::c_void,
                      _pc: libc::uintptr_t,
@@ -115,8 +115,8 @@ extern fn pcinfo_cb(data: *mut libc::c_void,
         let slot = data as *mut &mut [FileLine];
         let buffer = unsafe {ptr::read(slot)};
 
-        // if the buffer is not full, add file:line to the buffer
-        // and adjust the buffer for next possible calls to pcinfo_cb.
+        // If the buffer is not full, add "`file:line`" to the buffer
+        // and adjust the buffer for next possible calls to `pcinfo_cb`.
         if !buffer.is_empty() {
             buffer[0] = (filename, lineno as u32);
             unsafe { ptr::write(slot, &mut buffer[1..]); }
@@ -155,9 +155,9 @@ unsafe fn init_state() -> *mut backtrace_state {
 
     let filename = match ::sys::backtrace::gnu::get_executable_filename() {
         Ok((filename, file)) => {
-            // filename is purposely leaked here since libbacktrace requires
+            // Filename is purposely leaked here since libbacktrace requires.
             // it to stay allocated permanently, file is also leaked so that
-            // the file stays locked
+            // the file stays locked.
             let filename_ptr = filename.as_ptr();
             mem::forget(filename);
             mem::forget(file);

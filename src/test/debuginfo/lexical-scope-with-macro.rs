@@ -1,5 +1,5 @@
 // min-lldb-version: 310
-// ignore-lldb FIXME #48807
+// ignore-lldb FIXME(#48807)
 
 // compile-flags:-g -Zdebug-macros
 

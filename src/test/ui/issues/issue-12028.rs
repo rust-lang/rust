@@ -1,6 +1,6 @@
 // Test an example where we fail to infer the type parameter H. This
 // is because there is really nothing constraining it. At one time, we
-// would infer based on the where clauses in scope, but that no longer
+// would infer based on the where-clauses in scope, but that no longer
 // works.
 
 trait Hash<H> {

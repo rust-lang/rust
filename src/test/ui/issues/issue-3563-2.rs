@@ -1,5 +1,5 @@
 // compile-pass
-// pretty-expanded FIXME #23616
+// pretty-expanded FIXME(#23616)
 
 trait Canvas {
     fn add_point(&self, point: &isize);

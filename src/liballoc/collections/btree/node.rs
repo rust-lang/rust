@@ -549,7 +549,7 @@ impl<'a, K, V, Type> NodeRef<marker::Mut<'a>, K, V, Type> {
     /// `into_root_mut`) mess with the root of the tree, the result of `reborrow_mut`
     /// can easily be used to make the original mutable pointer dangling, or, in the case
     /// of a reborrowed handle, out of bounds.
-    // FIXME(@gereeter) consider adding yet another type parameter to `NodeRef` that restricts
+    // FIXME(gereeter): consider adding yet another type parameter to `NodeRef` that restricts
     // the use of `ascend` and `into_root_mut` on reborrowed pointers, preventing this unsafety.
     unsafe fn reborrow_mut(&mut self) -> NodeRef<marker::Mut<'_>, K, V, Type> {
         NodeRef {
@@ -578,12 +578,12 @@ impl<'a, K, V, Type> NodeRef<marker::Mut<'a>, K, V, Type> {
 impl<'a, K: 'a, V: 'a, Type> NodeRef<marker::Immut<'a>, K, V, Type> {
     fn into_key_slice(self) -> &'a [K] {
         // We have to be careful here because we might be pointing to the shared root.
-        // In that case, we must not create an `&LeafNode`.  We could just return
+        // In that case, we must not create an `&LeafNode`. We could just return
         // an empty slice whenever the length is 0 (this includes the shared root),
         // but we want to avoid that run-time check.
         // Instead, we create a slice pointing into the node whenever possible.
         // We can sometimes do this even for the shared root, as the slice will be
-        // empty.  We cannot *always* do this because if the type is too highly
+        // empty. We cannot *always* do this because if the type is too highly
         // aligned, the offset of `keys` in a "full node" might be outside the bounds
         // of the header!  So we do an alignment check first, that will be
         // evaluated at compile-time, and only do any run-time check in the rare case
@@ -594,9 +594,9 @@ impl<'a, K: 'a, V: 'a, Type> NodeRef<marker::Immut<'a>, K, V, Type> {
             // Thanks to the alignment check above, we know that `keys` will be
             // in-bounds of some allocation even if this is the shared root!
             // (We might be one-past-the-end, but that is allowed by LLVM.)
-            // Getting the pointer is tricky though.  `NodeHeader` does not have a `keys`
+            // Getting the pointer is tricky though. `NodeHeader` does not have a `keys`
             // field because we want its size to not depend on the alignment of `K`
-            // (needed becuase `as_header` should be safe).  We cannot call `as_leaf`
+            // (needed becuase `as_header` should be safe). We cannot call `as_leaf`
             // because we might be the shared root.
             // For this reason, `NodeHeader` has this `K2` parameter (that's usually `()`
             // and hence just adds a size-0-align-1 field, not affecting layout).
@@ -950,7 +950,7 @@ impl<'a, K, V, NodeType, HandleType>
     /// `into_root_mut`) mess with the root of the tree, the result of `reborrow_mut`
     /// can easily be used to make the original mutable pointer dangling, or, in the case
     /// of a reborrowed handle, out of bounds.
-    // FIXME(@gereeter) consider adding yet another type parameter to `NodeRef` that restricts
+    // FIXME(gereeter): consider adding yet another type parameter to `NodeRef` that restricts
     // the use of `ascend` and `into_root_mut` on reborrowed pointers, preventing this unsafety.
     pub unsafe fn reborrow_mut(&mut self)
             -> Handle<NodeRef<marker::Mut<'_>, K, V, NodeType>, HandleType> {

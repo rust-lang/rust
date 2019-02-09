@@ -1,7 +1,7 @@
 #![allow(dead_code)]
 // Check that functions can modify local state.
 
-// pretty-expanded FIXME #23616
+// pretty-expanded FIXME(#23616)
 
 #![feature(box_syntax)]
 

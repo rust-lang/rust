@@ -1,4 +1,4 @@
-// Test equality constraints in a where clause where the type being
+// Test equality constraints in a where-clause where the type being
 // equated appears in a supertrait.
 
 pub trait Vehicle {

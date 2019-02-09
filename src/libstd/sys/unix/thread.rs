@@ -55,7 +55,7 @@ impl Thread {
             n => {
                 assert_eq!(n, libc::EINVAL);
                 // EINVAL means |stack_size| is either too small or not a
-                // multiple of the system page size.  Because it's definitely
+                // multiple of the system page size. Because it's definitely
                 // >= PTHREAD_STACK_MIN, it must be an alignment issue.
                 // Round up to the nearest page and try again.
                 let page_size = os::page_size();
@@ -303,10 +303,10 @@ pub mod guard {
         if cfg!(target_os = "linux") {
             // Linux doesn't allocate the whole stack right away, and
             // the kernel has its own stack-guard mechanism to fault
-            // when growing too close to an existing mapping.  If we map
+            // when growing too close to an existing mapping. If we map
             // our own guard, then the kernel starts enforcing a rather
             // large gap above that, rendering much of the possible
-            // stack space useless.  See #43052.
+            // stack space useless. See #43052.
             //
             // Instead, we'll just note where we expect rlimit to start
             // faulting, so our handler can report "stack overflow", and
@@ -383,9 +383,9 @@ pub mod guard {
                 Some(stackaddr - guardsize..stackaddr)
             } else if cfg!(all(target_os = "linux", target_env = "gnu")) {
                 // glibc used to include the guard area within the stack, as noted in the BUGS
-                // section of `man pthread_attr_getguardsize`.  This has been corrected starting
+                // section of `man pthread_attr_getguardsize`. This has been corrected starting
                 // with glibc 2.27, and in some distro backports, so the guard is now placed at the
-                // end (below) the stack.  There's no easy way for us to know which we have at
+                // end (below) the stack. There's no easy way for us to know which we have at
                 // runtime, so we'll just match any fault in the range right above or below the
                 // stack base to call that fault a stack overflow.
                 Some(stackaddr - guardsize..stackaddr + guardsize)
@@ -400,7 +400,7 @@ pub mod guard {
 
 // glibc >= 2.15 has a __pthread_get_minstack() function that returns
 // PTHREAD_STACK_MIN plus however many bytes are needed for thread-local
-// storage.  We need that information to avoid blowing up when a small stack
+// storage. We need that information to avoid blowing up when a small stack
 // is created in an application with big thread-local storage requirements.
 // See #6233 for rationale and details.
 #[cfg(target_os = "linux")]

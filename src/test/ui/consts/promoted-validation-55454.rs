@@ -1,4 +1,5 @@
-// https://github.com/rust-lang/rust/issues/55454
+// See issue #55454.
+
 // compile-pass
 
 #[derive(PartialEq)]

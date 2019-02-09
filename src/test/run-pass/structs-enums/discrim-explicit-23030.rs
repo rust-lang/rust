@@ -1,5 +1,5 @@
 // run-pass
-// Issue 23030: Workaround overflowing discriminant
+// Issue #23030: Workaround overflowing discriminant
 // with explicit assignments.
 
 // See also compile-fail/overflow-discrim.rs, which shows what

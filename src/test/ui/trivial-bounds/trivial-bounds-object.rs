@@ -1,6 +1,6 @@
 // run-pass
 // Check that the object bound dyn A + 'a: A is preferred over the
-// where clause bound dyn A + 'static: A.
+// where-clause bound dyn A + 'static: A.
 
 #![allow(unused)]
 

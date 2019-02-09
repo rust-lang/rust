@@ -28,7 +28,7 @@ mod mul5 {
 struct Foo;
 
 // When we comment the next line:
-//use mul1::Mul;
+// use mul1::Mul;
 
 // BEFORE, we got the following error for the `impl` below:
 //   error: use of undeclared trait name `Mul` [E0405]

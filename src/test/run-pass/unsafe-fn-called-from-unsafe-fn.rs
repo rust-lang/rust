@@ -2,7 +2,7 @@
 //
 // See also: compile-fail/unsafe-fn-called-from-safe.rs
 
-// pretty-expanded FIXME #23616
+// pretty-expanded FIXME(#23616)
 
 unsafe fn f() { return; }
 

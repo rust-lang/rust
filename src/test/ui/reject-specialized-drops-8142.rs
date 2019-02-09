@@ -1,4 +1,4 @@
-// Issue 8142: Test that Drop impls cannot be specialized beyond the
+// Issue #8142: test that `Drop` impls cannot be specialized beyond the
 // predicates attached to the struct/enum definition itself.
 
 trait Bound { fn foo(&self) { } }

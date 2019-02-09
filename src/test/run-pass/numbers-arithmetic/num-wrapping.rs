@@ -285,7 +285,7 @@ fn test_sh_ops() {
             assert_eq!(black_box(Wrapping($lhs).$op($rhs)), Wrapping($ans));
         }
     }
-    // NOTE: This will break for i8 if we ever get i/u128
+    // NOTE: this will break for `i8` if we ever get `i128`/`u128`.
     macro_rules! sh_test_all {
         ($t:ty) => {
             sh_test!(shl(i8::MAX, (i8::BITS + 1) as $t) == -2);

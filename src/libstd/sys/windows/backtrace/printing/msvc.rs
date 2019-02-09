@@ -105,7 +105,7 @@ where
     unsafe {
         let mut info: c::SYMBOL_INFO = mem::zeroed();
         info.MaxNameLen = c::MAX_SYM_NAME as c_ulong;
-        // the struct size in C.  the value is different to
+        // the struct size in C. the value is different to
         // `size_of::<SYMBOL_INFO>() - MAX_SYM_NAME + 1` (== 81)
         // due to struct alignment.
         info.SizeOfStruct = 88;

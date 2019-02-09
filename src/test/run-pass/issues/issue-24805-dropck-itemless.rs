@@ -55,7 +55,7 @@ fn f_send() { body!(D_Send) }
 fn f_sized() { body!(D_Sized) }
 fn f_sync() { body!(D_Sync) }
 
-// Issue 24895: Copy: Clone implies `impl<T:Copy> Drop for ...` can
+// Issue #24895: Copy: Clone implies `impl<T:Copy> Drop for ...` can
 // access a user-defined clone() method, which causes this test case
 // to fail.
 //

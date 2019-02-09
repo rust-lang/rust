@@ -6,7 +6,7 @@ use std::fmt::Debug;
 use std::default::Default;
 
 // Test that two blanket impls conflict (at least without negative
-// bounds).  After all, some other crate could implement Even or Odd
+// bounds). After all, some other crate could implement `Even` or `Odd`
 // for the same type (though this crate doesn't).
 
 trait MyTrait {

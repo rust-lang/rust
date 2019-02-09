@@ -1,4 +1,4 @@
-// https://github.com/rust-lang/rust/issues/49208
+// Test for issue #49208.
 
 trait Foo {
     fn foo();

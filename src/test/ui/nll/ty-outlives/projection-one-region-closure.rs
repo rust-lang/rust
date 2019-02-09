@@ -4,9 +4,9 @@
 // ways:
 //
 // - by ensuring that `T: 'a` and `'b: 'a`, or
-// - by something in the where clauses.
+// - by something in the where-clauses.
 //
-// As of this writing, the where clause option does not work because
+// As of this writing, the where-clause option does not work because
 // of limitations in our region inferencing system (this is true both
 // with and without NLL). See `projection_outlives`.
 //

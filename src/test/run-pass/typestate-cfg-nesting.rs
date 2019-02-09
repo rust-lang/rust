@@ -1,7 +1,7 @@
 #![allow(dead_code)]
 #![allow(unused_assignments)]
 #![allow(unknown_lints)]
-// pretty-expanded FIXME #23616
+// pretty-expanded FIXME(#23616)
 
 #![allow(dead_assignment)]
 #![allow(unused_variables)]

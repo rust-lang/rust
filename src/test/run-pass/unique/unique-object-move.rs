@@ -2,7 +2,7 @@
 #![allow(dead_code)]
 // Issue #5192
 
-// pretty-expanded FIXME #23616
+// pretty-expanded FIXME(#23616)
 
 #![feature(box_syntax)]
 

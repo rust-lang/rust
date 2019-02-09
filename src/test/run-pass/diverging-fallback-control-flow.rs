@@ -5,7 +5,7 @@
 // Test various cases where we permit an unconstrained variable
 // to fallback based on control-flow.
 //
-// These represent current behavior, but are pretty dubious.  I would
+// These represent current behavior, but are pretty dubious. I would
 // like to revisit these and potentially change them. --nmatsakis
 
 #![feature(never_type)]

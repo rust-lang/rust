@@ -19,7 +19,7 @@ mod mod1 {
     use super::{SomeType, SomeGenericType};
 
     // Even though the impl is in `mod1`, the methods should end up in the
-    // parent module, since that is where their self-type is.
+    // parent module, since that is where their self type is.
     impl SomeType {
         //~ MONO_ITEM fn methods_are_with_self_type::mod1[0]::{{impl}}[0]::method[0] @@ methods_are_with_self_type[External]
         fn method(&self) {}

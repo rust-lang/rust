@@ -1,4 +1,4 @@
-// https://github.com/rust-lang/rust/issues/55223
+// See issue #55223.
 
 union Foo<'a> {
     y: &'a (),

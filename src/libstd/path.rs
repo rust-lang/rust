@@ -91,7 +91,7 @@ use sys::path::{is_sep_byte, is_verbatim_sep, MAIN_SEP_STR, parse_prefix};
 //
 // Parsing in this module is done by directly transmuting OsStr to [u8] slices,
 // taking advantage of the fact that OsStr always encodes ASCII characters
-// as-is.  Eventually, this transmutation should be replaced by direct uses of
+// as-is. Eventually, this transmutation should be replaced by direct uses of
 // OsStr APIs for parsing, but it will take a while for those to become
 // available.
 

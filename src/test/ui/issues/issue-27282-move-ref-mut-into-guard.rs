@@ -1,4 +1,4 @@
-// Issue 27282: Example 1: This sidesteps the AST checks disallowing
+// Issue #27282: Example 1: this sidesteps the AST checks disallowing
 // mutable borrows in match guards by hiding the mutable borrow in a
 // guard behind a move (of the ref mut pattern id) within a closure.
 //

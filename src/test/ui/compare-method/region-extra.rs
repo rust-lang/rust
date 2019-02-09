@@ -1,4 +1,4 @@
-// Test that you cannot add an extra where clause in the impl relating
+// Test that you cannot add an extra where-clause in the impl relating
 // two regions.
 
 trait Master<'a, 'b> {

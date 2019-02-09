@@ -2,7 +2,7 @@
 // Regression test for issue #10682
 // Nested `proc` usage can't use outer owned data
 
-// pretty-expanded FIXME #23616
+// pretty-expanded FIXME(#23616)
 
 #![feature(box_syntax)]
 

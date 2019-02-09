@@ -3,7 +3,7 @@
 
 
 // This used to cause memory corruption in stage 0.
-// pretty-expanded FIXME #23616
+// pretty-expanded FIXME(#23616)
 
 enum thing<K> { some(K), }
 

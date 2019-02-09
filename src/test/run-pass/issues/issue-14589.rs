@@ -2,7 +2,7 @@
 // All 3 expressions should work in that the argument gets
 // coerced to a trait object
 
-// pretty-expanded FIXME #23616
+// pretty-expanded FIXME(#23616)
 
 fn main() {
     send::<Box<Foo>>(Box::new(Output(0)));

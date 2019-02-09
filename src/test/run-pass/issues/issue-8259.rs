@@ -4,7 +4,7 @@
 
 // aux-build:issue-8259.rs
 
-// pretty-expanded FIXME #23616
+// pretty-expanded FIXME(#23616)
 
 extern crate issue_8259 as other;
 static a: other::Foo<'static> = other::Foo::A;

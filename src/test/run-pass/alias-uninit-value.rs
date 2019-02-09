@@ -5,7 +5,7 @@
 
 // Regression test for issue #374
 
-// pretty-expanded FIXME #23616
+// pretty-expanded FIXME(#23616)
 
 enum sty { ty_nil, }
 

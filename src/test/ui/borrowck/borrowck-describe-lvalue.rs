@@ -36,7 +36,7 @@ impl Baz {
 }
 
 fn main() {
-    // Local and field from struct
+    // Local and field from struct.
     {
         let mut f = Foo { x: 22 };
         let x = f.x();
@@ -44,7 +44,7 @@ fn main() {
         //[mir]~^ ERROR cannot use `f.x` because it was mutably borrowed
         drop(x);
     }
-    // Local and field from tuple-struct
+    // Local and field from tuple struct.
     {
         let mut g = Bar(22);
         let x = g.x();
@@ -52,7 +52,7 @@ fn main() {
              //[mir]~^ ERROR cannot use `g.0` because it was mutably borrowed
         drop(x);
     }
-    // Local and field from tuple
+    // Local and field from tuple.
     {
         let mut h = (22, 23);
         let x = &mut h.0;
@@ -60,7 +60,7 @@ fn main() {
              //[mir]~^ ERROR cannot use `h.0` because it was mutably borrowed
         drop(x);
     }
-    // Local and field from enum
+    // Local and field from enum.
     {
         let mut e = Baz::X(2);
         let x = e.x();
@@ -71,7 +71,7 @@ fn main() {
         };
         drop(x);
     }
-    // Local and field from union
+    // Local and field from union.
     unsafe {
         let mut u = U { b: 0 };
         let x = &mut u.a;
@@ -79,7 +79,7 @@ fn main() {
              //[mir]~^ ERROR cannot use `u.a` because it was mutably borrowed
         drop(x);
     }
-    // Deref and field from struct
+    // Deref and field from struct.
     {
         let mut f = Box::new(Foo { x: 22 });
         let x = f.x();
@@ -87,7 +87,7 @@ fn main() {
              //[mir]~^ ERROR cannot use `f.x` because it was mutably borrowed
         drop(x);
     }
-    // Deref and field from tuple-struct
+    // Deref and field from tuple struct.
     {
         let mut g = Box::new(Bar(22));
         let x = g.x();
@@ -95,7 +95,7 @@ fn main() {
              //[mir]~^ ERROR cannot use `g.0` because it was mutably borrowed
         drop(x);
     }
-    // Deref and field from tuple
+    // Deref and field from tuple.
     {
         let mut h = Box::new((22, 23));
         let x = &mut h.0;
@@ -103,7 +103,7 @@ fn main() {
              //[mir]~^ ERROR cannot use `h.0` because it was mutably borrowed
         drop(x);
     }
-    // Deref and field from enum
+    // Deref and field from enum.
     {
         let mut e = Box::new(Baz::X(3));
         let x = e.x();
@@ -114,7 +114,7 @@ fn main() {
         };
         drop(x);
     }
-    // Deref and field from union
+    // Deref and field from union.
     unsafe {
         let mut u = Box::new(U { b: 0 });
         let x = &mut u.a;
@@ -122,7 +122,7 @@ fn main() {
              //[mir]~^ ERROR cannot use `u.a` because it was mutably borrowed
         drop(x);
     }
-    // Constant index
+    // Constant index.
     {
         let mut v = &[1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
         let x = &mut v;
@@ -152,7 +152,7 @@ fn main() {
         }
         drop(x);
     }
-    // Subslices
+    // Subslices.
     {
         let mut v = &[1, 2, 3, 4, 5];
         let x = &mut v;
@@ -182,7 +182,7 @@ fn main() {
         }
         drop(x);
     }
-    // Downcasted field
+    // Downcast field.
     {
         enum E<X> { A(X), B { x: X } }
 
@@ -201,7 +201,7 @@ fn main() {
         }
         drop(x);
     }
-    // Field in field
+    // Field in field.
     {
         struct F { x: u32, y: u32 };
         struct S { x: F, y: (u32, u32), };
@@ -223,7 +223,7 @@ fn main() {
         }
         drop(x);
     }
-    // Field of ref
+    // Field of ref.
     {
         struct Block<'a> {
             current: &'a u8,
@@ -238,7 +238,7 @@ fn main() {
             drop(x);
         }
     }
-    // Field of ptr
+    // Field of ptr.
     {
         struct Block2 {
             current: *const u8,
@@ -253,7 +253,7 @@ fn main() {
             drop(x);
         }
     }
-    // Field of index
+    // Field of index.
     {
         struct F {x: u32, y: u32};
         let mut v = &[F{x: 1, y: 2}, F{x: 3, y: 4}];
@@ -264,7 +264,7 @@ fn main() {
         //[mir]~| ERROR cannot use `*v` because it was mutably borrowed
         drop(x);
     }
-    // Field of constant index
+    // Field of constant index.
     {
         struct F {x: u32, y: u32};
         let mut v = &[F{x: 1, y: 2}, F{x: 3, y: 4}];
@@ -277,7 +277,7 @@ fn main() {
         }
         drop(x);
     }
-    // Field from upvar
+    // Field from upvar.
     {
         let mut x = 0;
         || {
@@ -287,7 +287,7 @@ fn main() {
             *y = 1;
         };
     }
-    // Field from upvar nested
+    // Field from upvar, nested.
     {
         let mut x = 0;
            || {

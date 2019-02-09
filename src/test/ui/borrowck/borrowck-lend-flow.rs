@@ -1,7 +1,7 @@
 // Note: the borrowck analysis is currently flow-insensitive.
 // Therefore, some of these errors are marked as spurious and could be
-// corrected by a simple change to the analysis.  The others are
-// either genuine or would require more advanced changes.  The latter
+// corrected by a simple change to the analysis. The others are
+// either genuine or would require more advanced changes. The latter
 // cases are noted.
 
 #![feature(box_syntax)]

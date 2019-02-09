@@ -5,7 +5,7 @@ trait PointerFamily<U> {
     //~^ ERROR generic associated types are unstable
     type Pointer2<T>: Deref<Target = T> where T: Clone, U: Clone;
     //~^ ERROR generic associated types are unstable
-    //~| ERROR where clauses on associated types are unstable
+    //~| ERROR where-clauses on associated types are unstable
 }
 
 struct Foo;
@@ -19,12 +19,12 @@ impl PointerFamily<u32> for Foo {
 
 trait Bar {
     type Assoc where Self: Sized;
-    //~^ ERROR where clauses on associated types are unstable
+    //~^ ERROR where-clauses on associated types are unstable
 }
 
 impl Bar for Foo {
     type Assoc where Self: Sized = Foo;
-    //~^ ERROR where clauses on associated types are unstable
+    //~^ ERROR where-clauses on associated types are unstable
 }
 
 fn main() {}

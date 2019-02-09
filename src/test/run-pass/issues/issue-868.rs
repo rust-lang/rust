@@ -1,6 +1,6 @@
 // run-pass
 #![allow(unused_parens)]
-// pretty-expanded FIXME #23616
+// pretty-expanded FIXME(#23616)
 
 fn f<T, F>(g: F) -> T where F: FnOnce() -> T { g() }
 

@@ -2,9 +2,9 @@
 // no-prefer-dynamic
 
 // The test copies itself into a subdirectory with a non-ASCII name and then
-// runs it as a child process within the subdirectory.  The parent process
+// runs it as a child process within the subdirectory. The parent process
 // also adds an environment variable and an argument, both containing
-// non-ASCII characters.  The child process ensures all the strings are
+// non-ASCII characters. The child process ensures all the strings are
 // intact.
 
 // ignore-cloudabi no processes

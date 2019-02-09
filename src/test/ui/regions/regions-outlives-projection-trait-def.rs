@@ -12,8 +12,8 @@ impl<'a: 'c, 'c, T> SomeTrait<'a> for &'c T where T: SomeTrait<'a> {
     type Type = <T as SomeTrait<'a>>::Type;
     //          ~~~~~~~~~~~~~~~~~~~~~~~~~~
     //                       |
-    // Note that this type must outlive 'a, due to the trait
-    // definition.  If we fall back to OutlivesProjectionComponents
+    // Note that this type must outlive `'a`, due to the trait
+    // definition. If we fall back to `OutlivesProjectionComponents`
     // here, then we would require that `T:'a`, which is too strong.
 }
 

@@ -44,11 +44,11 @@ impl From<Option<(usize, usize)>> for Step {
 
 // ignore-tidy-linelength
 
-// FIXME(Manishearth) these tests focus on single-character searching  (CharSearcher)
-// and on next()/next_match(), not next_reject(). This is because
-// the memchr changes make next_match() for single chars complex, but next_reject()
-// continues to use next() under the hood. We should add more test cases for all
-// of these, as well as tests for StrSearcher and higher level tests for str::find() (etc)
+// FIXME(Manishearth): these tests focus on single-character searching (`CharSearcher`),
+// and on `next()`/`next_match()`, not `next_reject()`. This is because
+// the `memchr` changes make `next_match()` for single chars complex, but `next_reject()`
+// continues to `use next()` under the hood. We should add more test cases for all
+// of these, as well as tests for `StrSearcher` and higher level tests for `str::find()`, etc.
 
 #[test]
 fn test_simple_iteration() {

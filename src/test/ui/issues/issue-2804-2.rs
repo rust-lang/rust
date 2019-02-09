@@ -1,7 +1,7 @@
 // compile-pass
 #![allow(dead_code)]
 // Minimized version of issue-2804.rs. Both check that callee IDs don't
-// clobber the previous node ID in a macro expr
+// clobber the previous `NodeId` in a macro expr
 
 use std::collections::HashMap;
 

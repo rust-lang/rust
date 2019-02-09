@@ -21,7 +21,7 @@ fn main() {
     };
 
     let x: Void = unsafe { std::mem::uninitialized() };
-    let _ = match x {}; // okay
+    let _ = match x {}; // ok
 
     let x: Result<u32, Void> = Ok(23);
     let _ = match x {   //~ ERROR non-exhaustive

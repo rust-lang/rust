@@ -1,6 +1,6 @@
 // Simple test case of implementing a trait with super-builtin-kinds.
 
-// pretty-expanded FIXME #23616
+// pretty-expanded FIXME(#23616)
 
 trait Foo : Send { }
 

@@ -29,7 +29,7 @@ mod y {
     pub fn use_char_assoc() {
         // Careful here: in the representation, <char as Foo>::T gets
         // normalized away, so at a certain point we had no edge to
-        // codegen.  (But now codegen just depends on typeck.)
+        // codegen. (But now codegen just depends on typeck.)
         let x: <char as Foo>::T = 'a';
     }
 

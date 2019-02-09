@@ -1,5 +1,5 @@
 // compile-pass
-// pretty-expanded FIXME #23616
+// pretty-expanded FIXME(#23616)
 
 #[deny(dead_code)]
 pub enum Foo {

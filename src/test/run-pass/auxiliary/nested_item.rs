@@ -6,7 +6,7 @@ pub fn foo<T>() -> isize {
     }
 }
 
-// issue 8134
+// issue #8134
 struct Foo;
 impl Foo {
     pub fn foo<T>(&self) {
@@ -14,7 +14,7 @@ impl Foo {
     }
 }
 
-// issue 8134
+// issue #8134
 pub struct Parser<T>(T);
 impl<T: std::iter::Iterator<Item=char>> Parser<T> {
     fn in_doctype(&mut self) {

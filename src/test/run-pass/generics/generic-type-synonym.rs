@@ -2,7 +2,7 @@
 #![allow(dead_code)]
 
 
-// pretty-expanded FIXME #23616
+// pretty-expanded FIXME(#23616)
 
 struct Foo<T> {
     a: T

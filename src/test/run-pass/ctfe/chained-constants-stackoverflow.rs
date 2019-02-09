@@ -1,7 +1,5 @@
 // run-pass
 
-// https://github.com/rust-lang/rust/issues/34997
-
 pub const CST_1: u32 = 0;
 pub const CST_2: u32 = CST_1+1;
 pub const CST_3: u32 = CST_2+1;

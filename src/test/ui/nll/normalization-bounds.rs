@@ -1,6 +1,6 @@
 // Check that lifetime bounds get checked the right way around with NLL enabled.
 
-//run-pass
+// run-pass
 
 #![feature(nll)]
 trait Visitor<'d> {

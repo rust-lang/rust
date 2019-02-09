@@ -332,7 +332,7 @@ pub mod change_trait_bound_indirectly {
 }
 
 
-// Change Trait Bound Indirectly In Where Clause -------------------------------
+// Change Trait Bound Indirectly In where-clause -------------------------------
 
 pub mod change_trait_bound_indirectly_in_where_clause {
     #[cfg(cfail1)]

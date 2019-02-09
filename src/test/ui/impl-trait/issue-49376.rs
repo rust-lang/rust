@@ -1,6 +1,6 @@
 // compile-pass
 
-// Tests for nested self-reference which caused a stack overflow.
+// Tests for nested self-reference that caused a stack overflow.
 
 use std::fmt::Debug;
 use std::ops::*;

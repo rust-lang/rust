@@ -15,7 +15,7 @@ fn want_foo<T>()
 }
 
 ///////////////////////////////////////////////////////////////////////////
-// Expressed as a where clause
+// Expressed as a where-clause
 
 struct SomeStruct<X> {
     x: X

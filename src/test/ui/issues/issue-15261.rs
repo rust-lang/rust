@@ -2,7 +2,7 @@
 #![allow(dead_code)]
 #![allow(non_upper_case_globals)]
 
-// pretty-expanded FIXME #23616
+// pretty-expanded FIXME(#23616)
 
 static mut n_mut: usize = 0;
 

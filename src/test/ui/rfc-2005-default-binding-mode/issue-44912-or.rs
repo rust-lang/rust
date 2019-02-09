@@ -1,4 +1,4 @@
-// FIXME(tschottdorf): This should compile. See #44912.
+// FIXME(tschottdorf): this should compile. See #44912.
 
 pub fn main() {
     let x = &Some((3, 3));

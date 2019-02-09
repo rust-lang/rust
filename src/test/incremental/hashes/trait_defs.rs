@@ -134,7 +134,7 @@ trait TraitChangeMethodParameterName {
 #[rustc_clean(label="Hir", cfg="cfail2")]
 #[rustc_clean(label="Hir", cfg="cfail3")]
 trait TraitChangeMethodParameterName {
-    // FIXME(#38501) This should preferably always be clean.
+    // FIXME(#38501): this should preferably always be clean.
     #[rustc_dirty(label="Hir", cfg="cfail2")]
     #[rustc_clean(label="Hir", cfg="cfail3")]
     fn method(b: u32);
@@ -852,7 +852,7 @@ struct ReferenceType1 {}
 
 
 
-// Add trait bound to type parameter of trait in where clause----------------------
+// Add trait bound to type parameter of trait in where-clause----------------------
 #[cfg(cfail1)]
 trait TraitAddTraitBoundToTypeParameterOfTraitWhere<T> { }
 
@@ -863,7 +863,7 @@ trait TraitAddTraitBoundToTypeParameterOfTraitWhere<T> where T: ReferencedTrait0
 
 
 
-// Add lifetime bound to type parameter of trait in where clause-------------------
+// Add lifetime bound to type parameter of trait in where-clause-------------------
 #[cfg(cfail1)]
 trait TraitAddLifetimeBoundToTypeParameterOfTraitWhere<'a, T> { }
 
@@ -874,7 +874,7 @@ trait TraitAddLifetimeBoundToTypeParameterOfTraitWhere<'a, T> where T: 'a { }
 
 
 
-// Add lifetime bound to lifetime parameter of trait in where clause---------------
+// Add lifetime bound to lifetime parameter of trait in where-clause---------------
 #[cfg(cfail1)]
 trait TraitAddLifetimeBoundToLifetimeParameterOfTraitWhere<'a, 'b> { }
 
@@ -885,7 +885,7 @@ trait TraitAddLifetimeBoundToLifetimeParameterOfTraitWhere<'a, 'b> where 'a: 'b 
 
 
 
-// Add builtin bound to type parameter of trait in where clause--------------------
+// Add builtin bound to type parameter of trait in where-clause--------------------
 #[cfg(cfail1)]
 trait TraitAddBuiltinBoundToTypeParameterOfTraitWhere<T> { }
 
@@ -896,7 +896,7 @@ trait TraitAddBuiltinBoundToTypeParameterOfTraitWhere<T> where T: Send { }
 
 
 
-// Add second trait bound to type parameter of trait in where clause---------------
+// Add second trait bound to type parameter of trait in where-clause---------------
 #[cfg(cfail1)]
 trait TraitAddSecondTraitBoundToTypeParameterOfTraitWhere<T> where T: ReferencedTrait0 { }
 
@@ -908,7 +908,7 @@ trait TraitAddSecondTraitBoundToTypeParameterOfTraitWhere<T>
 
 
 
-// Add second lifetime bound to type parameter of trait in where clause------------
+// Add second lifetime bound to type parameter of trait in where-clause------------
 #[cfg(cfail1)]
 trait TraitAddSecondLifetimeBoundToTypeParameterOfTraitWhere<'a, 'b, T> where T: 'a { }
 
@@ -919,7 +919,7 @@ trait TraitAddSecondLifetimeBoundToTypeParameterOfTraitWhere<'a, 'b, T> where T:
 
 
 
-// Add second lifetime bound to lifetime parameter of trait in where clause--------
+// Add second lifetime bound to lifetime parameter of trait in where-clause--------
 #[cfg(cfail1)]
 trait TraitAddSecondLifetimeBoundToLifetimeParameterOfTraitWhere<'a, 'b, 'c> where 'a: 'b { }
 
@@ -930,7 +930,7 @@ trait TraitAddSecondLifetimeBoundToLifetimeParameterOfTraitWhere<'a, 'b, 'c> whe
 
 
 
-// Add second builtin bound to type parameter of trait in where clause-------------
+// Add second builtin bound to type parameter of trait in where-clause-------------
 #[cfg(cfail1)]
 trait TraitAddSecondBuiltinBoundToTypeParameterOfTraitWhere<T> where T: Send { }
 
@@ -940,7 +940,7 @@ trait TraitAddSecondBuiltinBoundToTypeParameterOfTraitWhere<T> where T: Send { }
 trait TraitAddSecondBuiltinBoundToTypeParameterOfTraitWhere<T> where T: Send + Sync { }
 
 
-// Change return type of method indirectly by modifying a use statement------------
+// Change return type of method indirectly by modifying a use-statement------------
 mod change_return_type_of_method_indirectly_use {
     #[cfg(cfail1)]
     use super::ReferenceType0 as ReturnType;
@@ -958,7 +958,7 @@ mod change_return_type_of_method_indirectly_use {
 
 
 
-// Change type of method parameter indirectly by modifying a use statement---------
+// Change type of method parameter indirectly by modifying a use-statement---------
 mod change_method_parameter_type_indirectly_by_use {
     #[cfg(cfail1)]
     use super::ReferenceType0 as ArgType;
@@ -976,7 +976,7 @@ mod change_method_parameter_type_indirectly_by_use {
 
 
 
-// Change trait bound of method type parameter indirectly by modifying a use statement
+// Change trait bound of method type parameter indirectly by modifying a use-statement
 mod change_method_parameter_type_bound_indirectly_by_use {
     #[cfg(cfail1)]
     use super::ReferencedTrait0 as Bound;
@@ -994,8 +994,8 @@ mod change_method_parameter_type_bound_indirectly_by_use {
 
 
 
-// Change trait bound of method type parameter in where clause indirectly
-// by modifying a use statement
+// Change trait bound of method type parameter in where-clause indirectly
+// by modifying a use-statement
 mod change_method_parameter_type_bound_indirectly_by_use_where {
     #[cfg(cfail1)]
     use super::ReferencedTrait0 as Bound;
@@ -1013,7 +1013,7 @@ mod change_method_parameter_type_bound_indirectly_by_use_where {
 
 
 
-// Change trait bound of trait type parameter indirectly by modifying a use statement
+// Change trait bound of trait type parameter indirectly by modifying a use-statement
 mod change_method_type_parameter_bound_indirectly {
     #[cfg(cfail1)]
     use super::ReferencedTrait0 as Bound;
@@ -1029,8 +1029,8 @@ mod change_method_type_parameter_bound_indirectly {
 
 
 
-// Change trait bound of trait type parameter in where clause indirectly
-// by modifying a use statement
+// Change trait bound of trait type parameter in where-clause indirectly
+// by modifying a use-statement
 mod change_method_type_parameter_bound_indirectly_where {
     #[cfg(cfail1)]
     use super::ReferencedTrait0 as Bound;

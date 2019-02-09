@@ -4,7 +4,7 @@
 //
 // See issue #18209.
 
-// pretty-expanded FIXME #23616
+// pretty-expanded FIXME(#23616)
 
 pub trait Foo {
     fn load_from() -> Box<Self>;

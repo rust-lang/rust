@@ -7,9 +7,9 @@
 // mutual supertype of both sides of the `if` it would be faced with a
 // choice of tightening bounds or unifying variables and it took the
 // wrong path. The new algorithm avoids this problem and hence this
-// example typechecks correctly.
+// example type-checks correctly.
 
-// pretty-expanded FIXME #23616
+// pretty-expanded FIXME(#23616)
 
 enum ScopeChain<'a> {
     Link(Scope<'a>),

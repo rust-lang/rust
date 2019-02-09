@@ -437,7 +437,7 @@ mod change_trait_bound_indirectly {
     struct Struct<T: Trait>(T);
 }
 
-// Change Trait Bound Indirectly In Where Clause -------------------------------
+// Change Trait Bound Indirectly In where-clause -------------------------------
 mod change_trait_bound_indirectly_in_where_clause {
     #[cfg(cfail1)]
     use super::ReferencedTrait1 as Trait;

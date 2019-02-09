@@ -1,6 +1,6 @@
 #![allow(non_camel_case_types)]
 #![allow(stable_features)]
-// Issue 4691: Ensure that functional-struct-updates operates
+// Issue #4691: Ensure that functional-struct-updates operates
 // correctly and moves rather than copy when appropriate.
 
 #![feature(box_syntax, core)]
@@ -33,7 +33,7 @@ impl Drop for DropMoveFoo { fn drop(&mut self) { } }
 
 fn test0() {
     // just copy implicitly copyable fields from `f`, no moves
-    // (and thus it is okay that these are Drop; compare against
+    // (and thus it is ok that these are Drop; compare against
     // compile-fail test: borrowck-struct-update-with-dtor.rs).
 
     // Case 1: Nocopyable

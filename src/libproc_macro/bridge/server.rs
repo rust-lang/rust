@@ -2,7 +2,7 @@
 
 use super::*;
 
-// FIXME(eddyb) generate the definition of `HandleStore` in `server.rs`.
+// FIXME(eddyb): generate the definition of `HandleStore` in `server.rs`.
 use super::client::HandleStore;
 
 /// Declare an associated item of one of the traits below, optionally
@@ -83,7 +83,7 @@ macro_rules! define_dispatcher_impl {
     ($($name:ident {
         $(fn $method:ident($($arg:ident: $arg_ty:ty),* $(,)*) $(-> $ret_ty:ty)*;)*
     }),* $(,)*) => {
-        // FIXME(eddyb) `pub` only for `ExecutionStrategy` below.
+        // FIXME(eddyb): `pub` only for `ExecutionStrategy` below.
         pub trait DispatcherTrait {
             // HACK(eddyb) these are here to allow `Self::$name` to work below.
             $(type $name;)*

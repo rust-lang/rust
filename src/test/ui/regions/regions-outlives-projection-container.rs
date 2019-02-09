@@ -1,5 +1,5 @@
 // Test that we are imposing the requirement that every associated
-// type of a bound that appears in the where clause on a struct must
+// type of a bound that appears in the where-clause on a struct must
 // outlive the location in which the type appears. Issue #22246.
 
 #![allow(dead_code)]
@@ -35,7 +35,7 @@ fn with_assoc<'a,'b>() {
     // outlive 'a. In this case, that means TheType<'b>::TheAssocType,
     // which is &'b (), must outlive 'a.
 
-    // FIXME (#54943) NLL doesn't enforce WF condition in unreachable code if
+    // FIXME(#54943): NLL doesn't enforce WF condition in unreachable code if
     // `_x` is changed to `_`
     let _x: &'a WithAssoc<TheType<'b>> = loop { };
     //~^ ERROR reference has a longer lifetime
@@ -46,7 +46,7 @@ fn with_assoc1<'a,'b>() where 'b : 'a {
     // associated types of traits that appear in `WithAssoc` must
     // outlive 'a. In this case, that means TheType<'b>::TheAssocType,
     // which is &'b (), must outlive 'a, so 'b : 'a must hold, and
-    // that is in the where clauses, so we're fine.
+    // that is in the where-clauses, so we're fine.
 
     let _x: &'a WithAssoc<TheType<'b>> = loop { };
 }

@@ -1,6 +1,6 @@
 // run-pass
 // aux-build:issue2170lib.rs
-// pretty-expanded FIXME #23616
+// pretty-expanded FIXME(#23616)
 
 extern crate issue2170lib;
 

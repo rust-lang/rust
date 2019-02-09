@@ -1,5 +1,5 @@
 // run-pass
-// Issue 15523: derive(PartialOrd) should use the provided
+// Issue #15523: derive(PartialOrd) should use the provided
 // discriminant values for the derived ordering.
 //
 // This test is checking corner cases that arise when you have

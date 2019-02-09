@@ -9,7 +9,7 @@ pub struct Thread(Void);
 pub const DEFAULT_MIN_STACK_SIZE: usize = 4096;
 
 impl Thread {
-    // unsafe: see thread::Builder::spawn_unchecked for safety requirements
+    // Unsafe: see `thread::Builder::spawn_unchecked` for safety requirements.
     pub unsafe fn new(_stack: usize, _p: Box<dyn FnBox()>)
         -> io::Result<Thread>
     {
@@ -17,11 +17,11 @@ impl Thread {
     }
 
     pub fn yield_now() {
-        // do nothing
+        // Do nothing.
     }
 
     pub fn set_name(_name: &CStr) {
-        // nope
+        // Do nothing.
     }
 
     #[cfg(not(target_feature = "atomics"))]
@@ -86,7 +86,7 @@ cfg_if! {
         }
 
         // FIXME: still need something for hooking exiting a thread to free
-        // data...
+        // data.
 
     } else if #[cfg(target_feature = "atomics")] {
         pub fn my_id() -> u32 {
@@ -101,7 +101,7 @@ cfg_if! {
             panic!("thread local data not implemented on wasm with atomics yet")
         }
     } else {
-        // stubbed out because no functions actually access these intrinsics
-        // unless atomics are enabled
+        // Stubbed out because no functions actually access these intrinsics
+        // unless atomics are enabled.
     }
 }

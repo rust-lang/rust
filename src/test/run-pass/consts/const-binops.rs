@@ -39,7 +39,7 @@ static U: usize = 1 ^ 3;
 
 static V: isize = 1 << 3;
 
-// NOTE: better shr coverage
+// FIXME: add better `shr` coverage.
 static W: isize = 1024 >> 4;
 static X: usize = 1024 >> 4;
 

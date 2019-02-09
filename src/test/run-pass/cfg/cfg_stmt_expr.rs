@@ -28,7 +28,7 @@ fn main() {
     #[cfg(unset)]
     undefined_macro!{};
 
-    // pretty printer bug...
+    // pretty-printer bug...
     // #[cfg(unset)]
     // undefined_macro!{}
 

@@ -1,4 +1,4 @@
-// pretty-expanded FIXME #23616
+// pretty-expanded FIXME(#23616)
 
 mod m {
     pub fn f<T>(_: T, _: ()) { }

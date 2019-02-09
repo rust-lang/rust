@@ -20,7 +20,7 @@ impl HasInfo {
         r.get_size(width!(self))
     }
     // Above is like `self.get_size(width!(self))`, but it
-    // deliberately avoids NLL's two phase borrow feature.
+    // deliberately avoids NLL's two-phase borrow feature.
 }
 
 fn main() { }

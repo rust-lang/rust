@@ -27,7 +27,7 @@ fn foo() {
                                    //~^ WARN label name `'lt` shadows a label name that is already in scope
 }
 
-// Note however that it is okay for the same label to be reused in
+// Note however that it is ok for the same label to be reused in
 // different methods of one impl, as illustrated here.
 
 struct S;

@@ -12,7 +12,7 @@ const ONE: usize = 1;
 
 mod b {
     // Separate compilation always switches to the LLVM module with the fewest
-    // instructions.  Make sure we have some instructions in this module so
+    // instructions. Make sure we have some instructions in this module so
     // that `a` and `b` don't go into the same compilation unit.
     fn pad() -> usize { 0 }
 

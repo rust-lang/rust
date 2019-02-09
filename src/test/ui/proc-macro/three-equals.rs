@@ -8,7 +8,7 @@ extern crate three_equals;
 use three_equals::three_equals;
 
 fn main() {
-    // This one is okay.
+    // This one is ok.
     three_equals!(===);
 
     // Need exactly three equals.

@@ -1,4 +1,4 @@
-// This test was derived from the wasm and parsell crates.  They
+// This test was derived from the wasm and parsell crates. They
 // stopped compiling when #32330 is fixed.
 
 #![allow(dead_code, unused_variables)]

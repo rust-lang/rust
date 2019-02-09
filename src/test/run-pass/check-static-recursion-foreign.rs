@@ -4,7 +4,7 @@
 // aux-build:check_static_recursion_foreign_helper.rs
 // ignore-wasm32-bare no libc to test ffi with
 
-// pretty-expanded FIXME #23616
+// pretty-expanded FIXME(#23616)
 
 #![feature(custom_attribute, rustc_private)]
 

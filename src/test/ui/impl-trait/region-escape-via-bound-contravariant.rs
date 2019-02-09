@@ -3,7 +3,7 @@
 // appear in the bounds. This is because `&` is contravariant, and so
 // we are *actually* returning a `&'y u32`.
 //
-// See https://github.com/rust-lang/rust/issues/46541 for more details.
+// See issue #46541 for more details.
 
 // run-pass
 

@@ -53,7 +53,7 @@ fn should_be_ok_with_nll() {
     read(z);
     *y += 1;
     //[lxl_beyond]~^ ERROR cannot borrow `x` as mutable because it is also borrowed as immutable
-    // (okay with (generalized) nll today)
+    // (ok with (generalized) nll today)
 }
 
 fn should_also_eventually_be_ok_with_nll() {
@@ -63,7 +63,7 @@ fn should_also_eventually_be_ok_with_nll() {
     //[nll_target]~^ ERROR cannot borrow `x` as immutable because it is also borrowed as mutable
     *y += 1;
     //[lxl_beyond]~^ ERROR cannot borrow `x` as mutable because it is also borrowed as immutable
-    // (okay with (generalized) nll today)
+    // (ok with (generalized) nll today)
 }
 
 fn main() { }

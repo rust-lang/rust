@@ -2,7 +2,7 @@
 #![allow(non_camel_case_types)]
 #![allow(dead_code)]
 // pp-exact - Make sure we actually print the attributes
-// pretty-expanded FIXME #23616
+// pretty-expanded FIXME(#23616)
 
 #![feature(custom_attribute)]
 

@@ -2,7 +2,7 @@
 // aux-build:issue-13620-1.rs
 // aux-build:issue-13620-2.rs
 
-// pretty-expanded FIXME #23616
+// pretty-expanded FIXME(#23616)
 
 extern crate issue_13620_2 as crate2;
 

@@ -1,5 +1,5 @@
 // Tests that callees correctly infer an ordering between free regions
-// that appear in their parameter list.  See also
+// that appear in their parameter list. See also
 // regions-free-region-ordering-caller.rs
 
 fn ordering1<'a, 'b>(x: &'a &'b usize) -> &'a usize {

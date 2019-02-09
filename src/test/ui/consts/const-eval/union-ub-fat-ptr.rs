@@ -113,10 +113,10 @@ const H: &[bool] = &[unsafe { BoolTransmute { val: 3 }.bl }];
 
 // good MySliceBool
 const I1: &MySliceBool = &MySlice(true, [false]);
-// bad: sized field is not okay
+// bad: sized field is not ok
 const I2: &MySliceBool = &MySlice(unsafe { BoolTransmute { val: 3 }.bl }, [false]);
 //~^ ERROR it is undefined behavior to use this value
-// bad: unsized part is not okay
+// bad: unsized part is not ok
 const I3: &MySliceBool = &MySlice(true, [unsafe { BoolTransmute { val: 3 }.bl }]);
 //~^ ERROR it is undefined behavior to use this value
 

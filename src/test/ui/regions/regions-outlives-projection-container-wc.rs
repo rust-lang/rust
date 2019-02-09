@@ -1,7 +1,7 @@
 // Test that we are imposing the requirement that every associated
-// type of a bound that appears in the where clause on a struct must
+// type of a bound that appears in the where-clause on a struct must
 // outlive the location in which the type appears, even when the
-// constraint is in a where clause not a bound. Issue #22246.
+// constraint is in a where-clause not a bound. Issue #22246.
 
 // revisions: ast mir
 //[mir]compile-flags: -Z borrowck=mir

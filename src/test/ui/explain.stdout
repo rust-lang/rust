@@ -9,7 +9,7 @@ extern "C" { fn foo(x: S); }
 impl S { fn foo(self) { /* ... */ } }
 ```
 
-the type of `foo` is **not** `fn(S)`, as one might expect.
+the type of `foo` is *not* `fn(S)`, as one might expect.
 Rather, it is a unique, zero-sized marker type written here as `typeof(foo)`.
 However, `typeof(foo)` can be _coerced_ to a function pointer `fn(S)`,
 so you rarely notice this:

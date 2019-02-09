@@ -5,7 +5,7 @@
 // region variables contained within (otherwise, region inference will
 // give `x` a very short lifetime).
 
-// pretty-expanded FIXME #23616
+// pretty-expanded FIXME(#23616)
 
 static i: usize = 3;
 fn foo<F:FnOnce()+'static>(_: F) {}

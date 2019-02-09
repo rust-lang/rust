@@ -6,7 +6,7 @@
 // Currently, this test fails with lexical lifetimes, but succeeds
 // with non-lexical lifetimes. (The reason is because the activation
 // of the mutable borrow ends up overlapping with a lexically-scoped
-// shared borrow; but a non-lexical shared borrow can end before the
+// shared borrow, but a non-lexical shared borrow can end before the
 // activation occurs.)
 //
 // So this test is just making a note of the current behavior.

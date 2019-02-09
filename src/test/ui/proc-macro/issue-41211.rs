@@ -1,7 +1,7 @@
 // aux-build:issue-41211.rs
 
-// FIXME: https://github.com/rust-lang/rust/issues/41430
-// This is a temporary regression test for the ICE reported in #41211
+// FIXME: issue #41430.
+// This is a temporary regression test for the ICE reported in issue #41211.
 
 #![feature(custom_inner_attributes)]
 

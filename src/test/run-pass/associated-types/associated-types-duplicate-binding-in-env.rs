@@ -3,7 +3,7 @@
 // Check that we do not report ambiguities when the same predicate
 // appears in the environment twice. Issue #21965.
 
-// pretty-expanded FIXME #23616
+// pretty-expanded FIXME(#23616)
 
 trait Foo {
     type B;

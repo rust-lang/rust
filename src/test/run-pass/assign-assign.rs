@@ -1,4 +1,4 @@
-// Issue 483 - Assignment expressions result in nil
+// Issue #483: assignment expressions result in nil.
 
 fn test_assign() {
     let mut x: isize;

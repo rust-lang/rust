@@ -38,7 +38,7 @@ fn call_foo_e() {
 
 fn call_foo_f() {
     // This fn fails because `a` has type `usize`, and hence a
-    // reference to is it **not** considered to diverge.
+    // reference to is it *not* considered to diverge.
     let a: usize = return;
     let b = 22;
     let c = 44;

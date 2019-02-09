@@ -6,7 +6,7 @@ fn user(_i: isize) {}
 
 fn foo() {
     // Here, i is *copied* into the proc (heap closure).
-    // Requires allocation.  The proc's copy is not mutable.
+    // Requires allocation. The proc's copy is not mutable.
     let mut i = 0;
     let t = thread::spawn(move|| {
         user(i);

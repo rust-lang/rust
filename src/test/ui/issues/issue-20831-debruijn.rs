@@ -1,4 +1,4 @@
-// Regression test for #20831: debruijn index account was thrown off
+// Regression test for #20831: De Bruijn index account was thrown off
 // by the (anonymous) lifetime in `<Self as Publisher>::Output`
 // below. Note that changing to a named lifetime made the problem go
 // away.

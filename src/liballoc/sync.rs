@@ -234,7 +234,7 @@ pub struct Weak<T: ?Sized> {
     // This is a `NonNull` to allow optimizing the size of this type in enums,
     // but it is not necessarily a valid pointer.
     // `Weak::new` sets this to `usize::MAX` so that it doesn’t need
-    // to allocate space on the heap.  That's not a value a real pointer
+    // to allocate space on the heap. That's not a value a real pointer
     // will ever have because RcBox has alignment at least 2.
     ptr: NonNull<ArcInner<T>>,
 }
@@ -749,7 +749,7 @@ impl<T: ?Sized> Clone for Arc<T> {
         // [1]: (www.boost.org/doc/libs/1_55_0/doc/html/atomic/usage_examples.html)
         let old_size = self.inner().strong.fetch_add(1, Relaxed);
 
-        // However we need to guard against massive refcounts in case someone
+        // However we need to guard against massive ref counts in case someone
         // is `mem::forget`ing Arcs. If we don't do this the count can overflow
         // and users will use-after free. We racily saturate to `isize::MAX` on
         // the assumption that there aren't ~2 billion threads incrementing
@@ -920,7 +920,7 @@ impl<T: ?Sized> Arc<T> {
         //
         // The acquire label here ensures a happens-before relationship with any
         // writes to `strong` (in particular in `Weak::upgrade`) prior to decrements
-        // of the `weak` count (via `Weak::drop`, which uses release).  If the upgraded
+        // of the `weak` count (via `Weak::drop`, which uses release). If the upgraded
         // weak ref was never dropped, the CAS here will fail so we do not care to synchronize.
         if self.inner().weak.compare_exchange(1, usize::MAX, Acquire, Relaxed).is_ok() {
             // This needs to be an `Acquire` to synchronize with the decrement of the `strong`
@@ -978,7 +978,7 @@ unsafe impl<#[may_dangle] T: ?Sized> Drop for Arc<T> {
         }
 
         // This fence is needed to prevent reordering of use of the data and
-        // deletion of the data.  Because it is marked `Release`, the decreasing
+        // deletion of the data. Because it is marked `Release`, the decreasing
         // of the reference count synchronizes with this `Acquire` fence. This
         // means that use of the data happens before decreasing the reference
         // count, which happens before this fence, which happens before the
@@ -1270,13 +1270,13 @@ impl<T: ?Sized> Clone for Weak<T> {
         } else {
             return Weak { ptr: self.ptr };
         };
-        // See comments in Arc::clone() for why this is relaxed.  This can use a
-        // fetch_add (ignoring the lock) because the weak count is only locked
+        // See comments in `Arc::clone()` for why this is relaxed. This can use a
+        // `fetch_add` (ignoring the lock) because the weak count is only locked
         // where are *no other* weak pointers in existence. (So we can't be
         // running this code in that case).
         let old_size = inner.weak.fetch_add(1, Relaxed);
 
-        // See comments in Arc::clone() for why we do this (for mem::forget).
+        // See comments in `Arc::clone()` for why we do this (for `mem::forget`).
         if old_size > MAX_REFCOUNT {
             unsafe {
                 abort();

@@ -2,7 +2,7 @@
 #![allow(dead_code)]
 // Extending Num and using inherited static methods
 
-// pretty-expanded FIXME #23616
+// pretty-expanded FIXME(#23616)
 
 use std::cmp::PartialOrd;
 

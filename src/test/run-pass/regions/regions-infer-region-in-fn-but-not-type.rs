@@ -6,7 +6,7 @@
 
 // check that the &isize here does not cause us to think that `foo`
 // contains region pointers
-// pretty-expanded FIXME #23616
+// pretty-expanded FIXME(#23616)
 
 struct foo(Box<FnMut(&isize)+'static>);
 

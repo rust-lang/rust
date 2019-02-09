@@ -33,11 +33,11 @@ fn main() {
     assert!(g.join().is_err());
 
     // When the panic occurs, we will be in the midst of constructing the
-    // second inner vector.  Therefore, we drop the elements of the
+    // second inner vector. Therefore, we drop the elements of the
     // partially filled vector first, before we get around to dropping
     // the elements of the filled vector.
 
-    // Issue 23222: The order in which the elements actually get
+    // Issue #23222: The order in which the elements actually get
     // dropped is a little funky: as noted above, we'll drop the 9+10
     // first, but due to #23222, they get dropped in reverse
     // order. Likewise, again due to #23222, we will drop the second

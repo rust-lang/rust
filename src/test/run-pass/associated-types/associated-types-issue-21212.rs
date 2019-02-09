@@ -2,7 +2,7 @@
 #![allow(unused_variables)]
 // Regression test for #21212: an overflow occurred during trait
 // checking where normalizing `Self::Input` led to normalizing the
-// where clauses in the environment which in turn required normalizing
+// where-clauses in the environment which in turn required normalizing
 // `Self::Input`.
 
 

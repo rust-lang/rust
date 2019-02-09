@@ -1,4 +1,4 @@
-// FIXME(31528) we emit a bunch of silly errors here due to continuing past the
+// FIXME(31528): we emit a bunch of silly errors here due to continuing past the
 // first one. This would be easy-ish to address by better recovery in tokenisation.
 
 pub fn trace_option(option: Option<isize>) {

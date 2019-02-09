@@ -8,12 +8,12 @@
 //
 // However, those encounters were occurring within the lexical scope
 // of the binding for the late-bound lifetime; that is, the late-bound
-// lifetimes were perfectly valid.  The core problem was that the type
+// lifetimes were perfectly valid. The core problem was that the type
 // folding code was over-zealously passing back all lifetimes when
 // doing region-folding, when really all clients of the region-folding
 // case only want to see FREE lifetime variables, not bound ones.
 
-// pretty-expanded FIXME #23616
+// pretty-expanded FIXME(#23616)
 
 #![feature(box_syntax)]
 

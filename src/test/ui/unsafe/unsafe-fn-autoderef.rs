@@ -4,9 +4,9 @@ struct Rec {
 
 fn f(p: *const Rec) -> isize {
 
-    // Test that * ptrs do not autoderef.  There is a deeper reason for
+    // Test that `*` ptrs do not auto-deref. There is a deeper reason for
     // prohibiting this, beyond making unsafe things annoying (which doesn't
-    // actually seem desirable to me).  The deeper reason is that if you
+    // actually seem desirable to me). The deeper reason is that if you
     // have a type like:
     //
     //    enum foo = *foo;

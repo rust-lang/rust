@@ -125,13 +125,13 @@ fn double_access<X: Copy>(m: &mut [X], s: &[X]) {
 fn coerce_unsized() {
     let mut a = [1, 2, 3];
 
-    // This is not okay.
+    // This is not ok.
     double_access(&mut a, &a);
     //[nll]~^   ERROR cannot borrow `a` as immutable because it is also borrowed as mutable [E0502]
     //[g2p]~^^  ERROR cannot borrow `a` as immutable because it is also borrowed as mutable [E0502]
     //[ast]~^^^ ERROR cannot borrow `a` as immutable because it is also borrowed as mutable [E0502]
 
-    // But this is okay.
+    // But this is ok.
     a.m(a.i(10));
     //[ast]~^ ERROR cannot borrow `a` as immutable because it is also borrowed as mutable [E0502]
     // Above error is an expected limitation of AST borrowck

@@ -1,4 +1,4 @@
-// This test makes sure that the LLDB pretty printer does not throw an exception
+// This test makes sure that the LLDB pretty-printer does not throw an exception
 // when trying to handle a Vec<> or anything else that contains zero-sized
 // fields.
 

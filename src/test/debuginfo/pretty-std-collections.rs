@@ -4,7 +4,7 @@
 // ignore-android: FIXME(#10381)
 // compile-flags:-g
 
-// The pretty printers being tested here require the patch from
+// The pretty-printers being tested here require the patch from
 // https://sourceware.org/bugzilla/show_bug.cgi?id=21763
 // min-gdb-version 8.1
 

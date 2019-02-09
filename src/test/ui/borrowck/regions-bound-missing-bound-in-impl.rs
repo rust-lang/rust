@@ -28,9 +28,9 @@ impl<'a, 't> Foo<'a, 't> for &'a isize {
         //~^ ERROR method not compatible with trait
         //
         // Note: This is a terrible error message. It is caused
-        // because, in the trait, 'b is early bound, and in the impl,
-        // 'c is early bound, so -- after substitution -- the
-        // lifetimes themselves look isomorphic.  We fail because the
+        // because, in the trait, 'b is early-bound, and in the impl,
+        // 'c is early-bound, so -- after substitution -- the
+        // lifetimes themselves look isomorphic. We fail because the
         // lifetimes that appear in the types are in the wrong
         // order. This should really be fixed by keeping more
         // information about the lifetime declarations in the trait so

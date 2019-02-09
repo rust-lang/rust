@@ -2,7 +2,7 @@
 #![allow(dead_code)]
 
 
-// pretty-expanded FIXME #23616
+// pretty-expanded FIXME(#23616)
 
 enum option<T> { some(T), none, }
 

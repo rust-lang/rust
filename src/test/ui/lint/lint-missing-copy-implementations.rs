@@ -1,4 +1,4 @@
-// See issue 19712
+// Test for issue #19712.
 
 #![deny(missing_copy_implementations)]
 

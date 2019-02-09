@@ -2,7 +2,7 @@
 #![allow(dead_code)]
 // compile-flags: --cfg foo
 
-// pretty-expanded FIXME #23616
+// pretty-expanded FIXME(#23616)
 
 struct Foo {
     #[cfg(fail)]

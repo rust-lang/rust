@@ -1,4 +1,4 @@
-// Check that we test WF conditions for fn where clauses in a trait definition.
+// Check that we test WF conditions for fn where-clauses in a trait definition.
 
 
 #![allow(dead_code)]

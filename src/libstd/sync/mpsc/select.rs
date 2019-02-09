@@ -84,8 +84,8 @@ pub struct Handle<'rx, T:Send+'rx> {
     added: bool,
     packet: &'rx (dyn Packet+'rx),
 
-    // due to our fun transmutes, we be sure to place this at the end. (nothing
-    // previous relies on T)
+    // Due to our fun transmutes, we be sure to place this at the end. (Nothing
+    // previous relies on `T`).
     rx: &'rx Receiver<T>,
 }
 
@@ -180,7 +180,7 @@ impl Select {
         // Most notably, the iterations over all of the receivers shouldn't be
         // necessary.
         unsafe {
-            // Stage 1: preflight checks. Look for any packets ready to receive
+            // Stage 1: pre-flight checks. Look for any packets ready to receive.
             if do_preflight_checks {
                 for handle in self.iter() {
                     if (*handle).packet.can_recv() {
@@ -189,7 +189,7 @@ impl Select {
                 }
             }
 
-            // Stage 2: begin the blocking process
+            // Stage 2: begin the blocking process.
             //
             // Create a number of signal tokens, and install each one
             // sequentially until one fails. If one fails, then abort the
@@ -199,7 +199,7 @@ impl Select {
                 match (*handle).packet.start_selection(signal_token.clone()) {
                     StartResult::Installed => {}
                     StartResult::Abort => {
-                        // Go back and abort the already-begun selections
+                        // Go back and abort the already-begun selections.
                         for handle in self.iter().take(i) {
                             (*handle).packet.abort_selection();
                         }
@@ -208,7 +208,7 @@ impl Select {
                 }
             }
 
-            // Stage 3: no messages available, actually block
+            // Stage 3: no messages available, actually block.
             wait_token.wait();
 
             // Stage 4: there *must* be message available; find it.
@@ -220,13 +220,13 @@ impl Select {
             // woken us up (although the wakeup is guaranteed to fail).
             //
             // This situation happens in the window of where a sender invokes
-            // increment(), sees -1, and then decides to wake up the thread. After
+            // increment(), sees `-1`, and then decides to wake up the thread. After
             // all this is done, the sending thread will set `selecting` to
             // `false`. Until this is done, we cannot return. If we were to
             // return, then a sender could wake up a receiver which has gone
             // back to sleep after this call to `select`.
             //
-            // Note that it is a "fairly small window" in which an increment()
+            // Note that it is a "fairly small window" in which an `increment()`
             // views that it should wake a thread up until the `selecting` bit
             // is set to false. For now, the implementation currently just spins
             // in a yield loop. This is very distasteful, but this

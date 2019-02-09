@@ -474,7 +474,7 @@ enum EnumAddTraitBound<T: Sync> {
 
 
 
-// Add a lifetime bound to a lifetime parameter in where clause ---------------
+// Add a lifetime bound to a lifetime parameter in where-clause ---------------
 #[cfg(cfail1)]
 enum EnumAddLifetimeParameterBoundWhere<'a, 'b> {
     Variant1(&'a u32),
@@ -491,7 +491,7 @@ enum EnumAddLifetimeParameterBoundWhere<'a, 'b> where 'b: 'a {
 
 
 
-// Add a lifetime bound to a type parameter in where clause -------------------
+// Add a lifetime bound to a type parameter in where-clause -------------------
 #[cfg(cfail1)]
 enum EnumAddLifetimeBoundToParameterWhere<'a, T> {
     Variant1(T),
@@ -508,7 +508,7 @@ enum EnumAddLifetimeBoundToParameterWhere<'a, T> where T: 'a {
 
 
 
-// Add a trait bound to a type parameter in where clause ----------------------
+// Add a trait bound to a type parameter in where-clause ----------------------
 #[cfg(cfail1)]
 enum EnumAddTraitBoundWhere<S> {
     Variant1(S),
@@ -570,7 +570,7 @@ struct ReferencedType2;
 
 
 
-// Change field type in tuple-style variant indirectly by modifying a use statement
+// Change field type in tuple-style variant indirectly by modifying a use-statement
 mod change_field_type_indirectly_tuple_style {
     #[cfg(cfail1)]
     use super::ReferencedType1 as FieldType;
@@ -588,7 +588,7 @@ mod change_field_type_indirectly_tuple_style {
 
 
 
-// Change field type in record-style variant indirectly by modifying a use statement
+// Change field type in record-style variant indirectly by modifying a use-statement
 mod change_field_type_indirectly_struct_style {
     #[cfg(cfail1)]
     use super::ReferencedType1 as FieldType;
@@ -611,7 +611,7 @@ trait ReferencedTrait2 {}
 
 
 
-// Change trait bound of type parameter indirectly by modifying a use statement
+// Change trait bound of type parameter indirectly by modifying a use-statement
 mod change_trait_bound_indirectly {
     #[cfg(cfail1)]
     use super::ReferencedTrait1 as Trait;
@@ -627,7 +627,7 @@ mod change_trait_bound_indirectly {
 
 
 
-// Change trait bound of type parameter in where clause indirectly by modifying a use statement
+// Change trait bound of type parameter in where-clause indirectly by modifying a use-statement
 mod change_trait_bound_indirectly_where {
     #[cfg(cfail1)]
     use super::ReferencedTrait1 as Trait;

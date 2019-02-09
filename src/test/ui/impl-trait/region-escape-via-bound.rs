@@ -1,7 +1,7 @@
 // Test that we do not allow the region `'x` to escape in the impl
 // trait **even though** `'y` escapes, which outlives `'x`.
 //
-// See https://github.com/rust-lang/rust/issues/46541 for more details.
+// See issue #46541 for more details.
 
 #![allow(dead_code)]
 #![feature(in_band_lifetimes)]

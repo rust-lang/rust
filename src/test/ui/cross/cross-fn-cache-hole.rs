@@ -10,13 +10,13 @@ trait Foo<X,Y>: Bar<X> {
 
 trait Bar<X> { }
 
-// We don't always check where clauses for sanity, but in this case
+// We don't always check where-clauses for sanity, but in this case
 // wfcheck does report an error here:
 fn vacuous<A>() //~ ERROR the trait bound `i32: Bar<u32>` is not satisfied
     where i32: Foo<u32, A>
 {
     // ... the original intention was to check that we don't use that
-    // vacuous where clause (which could never be satisfied) to accept
+    // vacuous where-clause (which could never be satisfied) to accept
     // the following line and then mess up calls elsewhere.
     require::<i32, u32>();
 }

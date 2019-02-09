@@ -6,12 +6,12 @@
 //[ast]compile-flags: -Z borrowck=ast
 //[nll]compile-flags: -Z borrowck=migrate -Z two-phase-borrows
 
-// don't worry about the --compare-mode=nll on this test.
+// Don't worry about the `--compare-mode=nll` on this test.
 // ignore-compare-mode-nll
 #![feature(box_syntax, rustc_attrs)]
 
 struct Foo { a: isize, b: isize }
-#[rustc_error] // rust-lang/rust#49855
+#[rustc_error] // Issue #49855
 fn main() { //[nll]~ ERROR compilation successful
     let mut x: Box<_> = box Foo { a: 1, b: 2 };
     let (a, b) = (&mut x.a, &mut x.b);

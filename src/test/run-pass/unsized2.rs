@@ -54,7 +54,7 @@ impl T3 for S {
 }
 fn f7<X: ?Sized+T3>(x: &X) {
     // This is valid, but the unsized bound on X is irrelevant because any type
-    // which implements T3 must have statically known size.
+    // which implements T3 must have statically-known size.
     let _: Box<X> = T3::f();
 }
 

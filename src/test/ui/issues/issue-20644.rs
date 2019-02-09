@@ -6,7 +6,7 @@
 // A reduced version of the rustbook ice. The problem this encountered
 // had to do with codegen ignoring binders.
 
-// pretty-expanded FIXME #23616
+// pretty-expanded FIXME(#23616)
 // ignore-cloudabi no std::fs
 
 #![feature(os)]

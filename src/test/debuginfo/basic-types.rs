@@ -56,7 +56,7 @@
 // lldbg-check:[...]$1 = -1
 // lldbr-check:(isize) i = -1
 
-// NOTE: only rust-enabled lldb supports 32bit chars
+// NOTE: only Rust-enabled LLDB supports 32-bit chars.
 // lldbr-command:print c
 // lldbr-check:(char) c = 'a'
 

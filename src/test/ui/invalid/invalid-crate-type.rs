@@ -1,5 +1,6 @@
-// regression test for issue 11256
-#![crate_type="foo"]    //~ ERROR invalid `crate_type` value
+// Regression test for issue #11256.
+
+#![crate_type="foo"] //~ ERROR invalid `crate_type` value
 
 // Tests for suggestions (#53958)
 

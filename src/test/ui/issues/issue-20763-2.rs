@@ -1,6 +1,6 @@
 // compile-pass
 #![allow(dead_code)]
-// pretty-expanded FIXME #23616
+// pretty-expanded FIXME(#23616)
 
 trait T0 {
     type O;
@@ -11,7 +11,7 @@ struct S<A>(A);
 impl<A> T0 for S<A> { type O = A; }
 
 trait T1: T0 {
-    // this looks okay but as we see below, `f` is unusable
+    // this looks ok but as we see below, `f` is unusable
     fn m0<F: Fn(<Self as T0>::O) -> bool>(self, f: F) -> bool;
 }
 

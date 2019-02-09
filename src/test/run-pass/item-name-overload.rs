@@ -2,7 +2,7 @@
 
 
 
-// pretty-expanded FIXME #23616
+// pretty-expanded FIXME(#23616)
 
 mod foo {
     pub fn baz() { }
