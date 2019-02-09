@@ -1,7 +1,7 @@
 use std::sync::Arc;
 
 use relative_path::RelativePathBuf;
-use ra_db::{CrateId, FileId};
+use ra_db::{CrateId, FileId, SourceRootId};
 use ra_syntax::{ast::self, TreeArc, SyntaxNode};
 
 use crate::{
@@ -16,7 +16,7 @@ use crate::{
     docs::{Documentation, Docs, docs_from_ast},
     module_tree::ModuleId,
     ids::{FunctionId, StructId, EnumId, AstItemDef, ConstId, StaticId, TraitId, TypeId},
-    impl_block::ImplId,
+    impl_block::{ImplId, ImplBlock},
     resolve::Resolver,
 };
 
@@ -43,6 +43,15 @@ impl Crate {
     }
     pub fn root_module(&self, db: &impl PersistentHirDatabase) -> Option<Module> {
         self.root_module_impl(db)
+    }
+
+    // TODO: should this be in source_binder?
+    pub fn source_root_crates(
+        db: &impl PersistentHirDatabase,
+        source_root: SourceRootId,
+    ) -> Vec<Crate> {
+        let crate_ids = db.source_root_crates(source_root);
+        crate_ids.iter().map(|&crate_id| Crate { crate_id }).collect()
     }
 }
 
@@ -167,6 +176,27 @@ impl Module {
     pub fn resolver(&self, db: &impl HirDatabase) -> Resolver {
         let item_map = db.item_map(self.krate);
         Resolver::default().push_module_scope(item_map, *self)
+    }
+
+    pub fn declarations(self, db: &impl HirDatabase) -> Vec<ModuleDef> {
+        let (lowered_module, _) = db.lower_module(self);
+        lowered_module
+            .declarations
+            .values()
+            .cloned()
+            .flat_map(|per_ns| {
+                per_ns.take_types().into_iter().chain(per_ns.take_values().into_iter())
+            })
+            .collect()
+    }
+
+    pub fn impl_blocks(self, db: &impl HirDatabase) -> Vec<ImplBlock> {
+        let module_impl_blocks = db.impls_in_module(self);
+        module_impl_blocks
+            .impls
+            .iter()
+            .map(|(impl_id, _)| ImplBlock::from_id(module_impl_blocks.clone(), impl_id))
+            .collect()
     }
 }
 

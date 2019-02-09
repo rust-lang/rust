@@ -60,7 +60,11 @@ impl BatchDatabase {
                 match change {
                     VfsChange::AddRoot { root, files } => {
                         let source_root_id = vfs_root_to_id(root);
-                        log::debug!("loaded source root {:?} with path {:?}", source_root_id, vfs.root2path(root));
+                        log::debug!(
+                            "loaded source root {:?} with path {:?}",
+                            source_root_id,
+                            vfs.root2path(root)
+                        );
                         let mut file_map = FxHashMap::default();
                         for (vfs_file, path, text) in files {
                             let file_id = vfs_file_to_id(vfs_file);
@@ -111,7 +115,8 @@ impl BatchDatabase {
         let crate_graph = ws.to_crate_graph(&mut load);
         log::debug!("crate graph: {:?}", crate_graph);
 
-        let local_roots = roots.into_iter()
+        let local_roots = roots
+            .into_iter()
             .filter(|r| vfs.root2path(*r).starts_with(&root))
             .map(vfs_root_to_id)
             .collect();

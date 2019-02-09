@@ -449,6 +449,41 @@ impl Ty {
         Ty::Tuple(Arc::new([]))
     }
 
+    pub fn walk(&self, f: &mut impl FnMut(&Ty)) {
+        f(self);
+        match self {
+            Ty::Slice(t) | Ty::Array(t) => t.walk(f),
+            Ty::RawPtr(t, _) => t.walk(f),
+            Ty::Ref(t, _) => t.walk(f),
+            Ty::Tuple(ts) => {
+                for t in ts.iter() {
+                    t.walk(f);
+                }
+            }
+            Ty::FnPtr(sig) => {
+                for input in &sig.input {
+                    input.walk(f);
+                }
+                sig.output.walk(f);
+            }
+            Ty::FnDef { substs, sig, .. } => {
+                for input in &sig.input {
+                    input.walk(f);
+                }
+                sig.output.walk(f);
+                for t in substs.0.iter() {
+                    t.walk(f);
+                }
+            }
+            Ty::Adt { substs, .. } => {
+                for t in substs.0.iter() {
+                    t.walk(f);
+                }
+            }
+            _ => {}
+        }
+    }
+
     fn walk_mut(&mut self, f: &mut impl FnMut(&mut Ty)) {
         f(self);
         match self {
