@@ -3,7 +3,6 @@
 //! This usually means functions which take syntax tree as an input and produce
 //! an edit or some auxiliary info.
 
-pub mod formatting;
 mod extend_selection;
 mod folding_ranges;
 mod line_index;

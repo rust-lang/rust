@@ -1,0 +1,11 @@
+[package]
+edition = "2018"
+name = "ra_fmt"
+version = "0.1.0"
+authors = ["Aleksey Kladov <aleksey.kladov@gmail.com>"]
+publish = false
+
+[dependencies]
+itertools = "0.8.0"
+
+ra_syntax = { path = "../ra_syntax" }

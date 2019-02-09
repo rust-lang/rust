@@ -13,6 +13,7 @@ rustc-hash = "1.0"
 
 ra_syntax = { path = "../ra_syntax" }
 ra_text_edit = { path = "../ra_text_edit" }
+ra_fmt = { path = "../ra_fmt" }
 
 [dev-dependencies]
 test_utils = { path = "../test_utils" }

@@ -1,3 +1,5 @@
+//! This crate provides some utilities for indenting rust code.
+//!
 use itertools::Itertools;
 use ra_syntax::{
     AstNode,
@@ -50,7 +52,7 @@ pub fn extract_trivial_expression(block: &ast::Block) -> Option<&ast::Expr> {
     Some(expr)
 }
 
-pub(crate) fn compute_ws(left: &SyntaxNode, right: &SyntaxNode) -> &'static str {
+pub fn compute_ws(left: &SyntaxNode, right: &SyntaxNode) -> &'static str {
     match left.kind() {
         L_PAREN | L_BRACK => return "",
         L_CURLY => {
