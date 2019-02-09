@@ -2397,7 +2397,7 @@ fn codegen_fn_attrs<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, id: DefId) -> Codegen
                     tcx.sess,
                     attr.span,
                     E0723,
-                    "`#[ffi_returns_twice]` may only be used on `extern fn`s"
+                    "`#[ffi_returns_twice]` may only be used on foreign functions"
                 ).emit();
             }
         } else if attr.check_name("rustc_allocator_nounwind") {
