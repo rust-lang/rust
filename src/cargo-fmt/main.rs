@@ -16,7 +16,6 @@
 use cargo_metadata;
 use getopts;
 
-
 use std::collections::{HashMap, HashSet};
 use std::env;
 use std::fs;

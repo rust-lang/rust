@@ -758,7 +758,10 @@ fn no_long_items(list: &[ListItem]) -> bool {
 }
 
 /// In case special-case style is required, returns an offset from which we start horizontal layout.
-pub fn maybe_get_args_offset(callee_str: &str, args: &[OverflowableItem<'_>]) -> Option<(bool, usize)> {
+pub fn maybe_get_args_offset(
+    callee_str: &str,
+    args: &[OverflowableItem<'_>],
+) -> Option<(bool, usize)> {
     if let Some(&(_, num_args_before)) = args
         .get(0)?
         .whitelist()

@@ -1027,7 +1027,11 @@ fn wrap_macro_args_inner(
 //
 // We always try and format on one line.
 // FIXME: Use multi-line when every thing does not fit on one line.
-fn format_macro_args(context: &RewriteContext<'_>, toks: TokenStream, shape: Shape) -> Option<String> {
+fn format_macro_args(
+    context: &RewriteContext<'_>,
+    toks: TokenStream,
+    shape: Shape,
+) -> Option<String> {
     if !context.config.format_macro_matchers() {
         let token_stream: TokenStream = toks.into();
         let span = span_for_token_stream(&token_stream);
@@ -1340,7 +1344,11 @@ impl MacroBranch {
 ///     [pub] static ref NAME_N: TYPE_N = EXPR_N;
 /// }
 /// ```
-fn format_lazy_static(context: &RewriteContext<'_>, shape: Shape, ts: &TokenStream) -> Option<String> {
+fn format_lazy_static(
+    context: &RewriteContext<'_>,
+    shape: Shape,
+    ts: &TokenStream,
+) -> Option<String> {
     let mut result = String::with_capacity(1024);
     let mut parser = new_parser_from_tts(context.parse_session, ts.trees().collect());
     let nested_shape = shape

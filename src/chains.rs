@@ -84,7 +84,11 @@ use crate::utils::{
     trimmed_last_line_width, wrap_str,
 };
 
-pub fn rewrite_chain(expr: &ast::Expr, context: &RewriteContext<'_>, shape: Shape) -> Option<String> {
+pub fn rewrite_chain(
+    expr: &ast::Expr,
+    context: &RewriteContext<'_>,
+    shape: Shape,
+) -> Option<String> {
     let chain = Chain::from_ast(expr, context);
     debug!("rewrite_chain {:?} {:?}", chain, shape);
 
@@ -419,8 +423,12 @@ impl Rewrite for Chain {
         debug!("rewrite chain {:?} {:?}", self, shape);
 
         let mut formatter = match context.config.indent_style() {
-            IndentStyle::Block => Box::new(ChainFormatterBlock::new(self)) as Box<dyn ChainFormatter>,
-            IndentStyle::Visual => Box::new(ChainFormatterVisual::new(self)) as Box<dyn ChainFormatter>,
+            IndentStyle::Block => {
+                Box::new(ChainFormatterBlock::new(self)) as Box<dyn ChainFormatter>
+            }
+            IndentStyle::Visual => {
+                Box::new(ChainFormatterVisual::new(self)) as Box<dyn ChainFormatter>
+            }
         };
 
         formatter.format_root(&self.parent, context, shape)?;

@@ -590,7 +590,11 @@ impl Rewrite for ast::Stmt {
 }
 
 // Rewrite condition if the given expression has one.
-pub fn rewrite_cond(context: &RewriteContext<'_>, expr: &ast::Expr, shape: Shape) -> Option<String> {
+pub fn rewrite_cond(
+    context: &RewriteContext<'_>,
+    expr: &ast::Expr,
+    shape: Shape,
+) -> Option<String> {
     match expr.node {
         ast::ExprKind::Match(ref cond, _) => {
             // `match `cond` {`
@@ -1337,7 +1341,11 @@ pub fn is_every_expr_simple(lists: &[OverflowableItem<'_>]) -> bool {
     lists.iter().all(OverflowableItem::is_simple)
 }
 
-pub fn can_be_overflowed_expr(context: &RewriteContext<'_>, expr: &ast::Expr, args_len: usize) -> bool {
+pub fn can_be_overflowed_expr(
+    context: &RewriteContext<'_>,
+    expr: &ast::Expr,
+    args_len: usize,
+) -> bool {
     match expr.node {
         ast::ExprKind::Match(..) => {
             (context.use_block_indent() && args_len == 1)

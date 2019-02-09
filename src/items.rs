@@ -998,7 +998,11 @@ fn format_struct(
     }
 }
 
-pub fn format_trait(context: &RewriteContext<'_>, item: &ast::Item, offset: Indent) -> Option<String> {
+pub fn format_trait(
+    context: &RewriteContext<'_>,
+    item: &ast::Item,
+    offset: Indent,
+) -> Option<String> {
     if let ast::ItemKind::Trait(
         is_auto,
         unsafety,
@@ -1172,7 +1176,11 @@ pub fn format_trait_alias(
     rewrite_assign_rhs(context, lhs, generic_bounds, shape.sub_width(1)?).map(|s| s + ";")
 }
 
-fn format_unit_struct(context: &RewriteContext<'_>, p: &StructParts<'_>, offset: Indent) -> Option<String> {
+fn format_unit_struct(
+    context: &RewriteContext<'_>,
+    p: &StructParts<'_>,
+    offset: Indent,
+) -> Option<String> {
     let header_str = format_header(context, p.prefix, p.ident, p.vis);
     let generics_str = if let Some(generics) = p.generics {
         let hi = if generics.where_clause.predicates.is_empty() {

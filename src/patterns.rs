@@ -288,7 +288,11 @@ impl<'a> Spanned for TuplePatField<'a> {
     }
 }
 
-pub fn can_be_overflowed_pat(context: &RewriteContext<'_>, pat: &TuplePatField<'_>, len: usize) -> bool {
+pub fn can_be_overflowed_pat(
+    context: &RewriteContext<'_>,
+    pat: &TuplePatField<'_>,
+    len: usize,
+) -> bool {
     match *pat {
         TuplePatField::Pat(pat) => match pat.node {
             ast::PatKind::Path(..)
