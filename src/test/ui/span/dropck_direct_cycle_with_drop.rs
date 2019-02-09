@@ -5,7 +5,7 @@
 // name as well as the name of its sibling.
 //
 // By setting up a cyclic structure, the drop code cannot possibly
-// work. Therefore this code must be rejected.
+// work. Therefore, this code must be rejected.
 //
 // (As it turns out, essentially any attempt to install a sibling here
 //  will be rejected, regardless of whether it forms a cyclic

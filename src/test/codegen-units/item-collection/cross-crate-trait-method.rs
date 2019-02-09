@@ -13,7 +13,7 @@ use cgu_export_trait_method::Trait;
 #[start]
 fn start(_: isize, _: *const *const u8) -> isize {
     // The object code of these methods is contained in the external crate, so
-    // calling them should *not* introduce codegen items in the current crate.
+    // calling them should **not** introduce codegen items in the current crate.
     let _: (u32, u32) = Trait::without_default_impl(0);
     let _: (char, u32) = Trait::without_default_impl(0);
 

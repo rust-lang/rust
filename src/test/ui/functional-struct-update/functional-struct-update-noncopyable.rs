@@ -1,4 +1,4 @@
-// issue 7327
+// Test for issue #7327.
 
 use std::sync::Arc;
 

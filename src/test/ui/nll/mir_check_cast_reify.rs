@@ -8,7 +8,7 @@
 // This test is a bit tortured, let me explain:
 //
 
-// The `where 'a: 'a` clause here ensures that `'a` is early bound,
+// The `where 'a: 'a` clause here ensures that `'a` is early-bound,
 // which is needed below to ensure that this test hits the path we are
 // concerned with.
 fn foo<'a>(x: &'a u32) -> &'a u32

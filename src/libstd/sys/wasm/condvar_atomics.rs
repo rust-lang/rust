@@ -37,7 +37,7 @@ impl Condvar {
 
     #[inline]
     pub unsafe fn init(&mut self) {
-        // nothing to do
+        // Nothing to do.
     }
 
     pub unsafe fn notify_one(&self) {
@@ -83,7 +83,7 @@ impl Condvar {
 
     #[inline]
     pub unsafe fn destroy(&self) {
-        // nothing to do
+        // Nothing to do.
     }
 
     #[inline]

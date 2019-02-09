@@ -1,5 +1,6 @@
 // run-pass
-// pretty-expanded FIXME #23616
+
+// pretty-expanded FIXME(#23616)
 
 enum Flopsy {
     Bunny = 2

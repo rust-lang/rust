@@ -1,10 +1,10 @@
-// All lifetime parameters in struct constructors are currently considered early bound,
+// All lifetime parameters in struct constructors are currently considered early-bound,
 // i.e., `S::<ARGS>` is interpreted kinda like an associated item `S::<ARGS>::ctor`.
 // This behavior is a bit weird, because if equivalent constructor were written manually
-// it would get late bound lifetime parameters.
+// it would get late-bound lifetime parameters.
 // Variant constructors behave in the same way, lifetime parameters are considered
-// belonging to the enum and being early bound.
-// https://github.com/rust-lang/rust/issues/30904
+// belonging to the enum and being early-bound.
+// See issue #30904.
 
 struct S<'a, 'b>(&'a u8, &'b u8);
 enum E<'a, 'b> {

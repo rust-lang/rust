@@ -1,7 +1,7 @@
-// Test where we change a type definition by adding a field.  Fns with
-// this type in their signature are recompiled, as are their callers.
-// Fns with that type used only in their body are also recompiled, but
-// their callers are not.
+// Test where we change a type definition by adding a field. Functions
+// with this type in their signature are recompiled, as are their callers.
+// Functions with that type used only in their body are also recompiled,
+// but their callers are not.
 
 // revisions:cfail1 cfail2
 // compile-flags: -Z query-dep-graph

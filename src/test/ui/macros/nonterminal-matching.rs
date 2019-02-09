@@ -1,4 +1,4 @@
-// Check that we are refusing to match on complex nonterminals for which tokens are
+// Check that we are refusing to match on complex non-terminals for which tokens are
 // unavailable and we'd have to go through AST comparisons.
 
 #![feature(decl_macro)]

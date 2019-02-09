@@ -1,5 +1,5 @@
 // Regression test for #56128. When this `pub(super) use...` gets
-// exploded in the HIR, we were not handling ids correctly.
+// exploded in the HIR, we were not handling IDs correctly.
 //
 // compile-pass
 

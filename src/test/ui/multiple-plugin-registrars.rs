@@ -2,7 +2,7 @@
 
 #![feature(plugin_registrar)]
 
-// the registration function isn't typechecked yet
+// The registration function isn't type-checked yet.
 #[plugin_registrar]
 pub fn one() {}
 

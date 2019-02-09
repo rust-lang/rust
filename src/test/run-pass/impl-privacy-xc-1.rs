@@ -1,6 +1,6 @@
 // aux-build:impl_privacy_xc_1.rs
 
-// pretty-expanded FIXME #23616
+// pretty-expanded FIXME(#23616)
 
 extern crate impl_privacy_xc_1;
 

@@ -1,4 +1,4 @@
-// Regr. test that using HIR inlined from another krate does *not* add
+// Regr. test that using HIR inlined from another krate does **not** add
 // a dependency from the local Krate node. We can't easily test that
 // directly anymore, so now we test that we get reuse.
 

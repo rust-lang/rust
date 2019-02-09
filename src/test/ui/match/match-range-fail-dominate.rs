@@ -1,8 +1,8 @@
-//error-pattern: unreachable
-//error-pattern: unreachable
-//error-pattern: unreachable
-//error-pattern: unreachable
-//error-pattern: unreachable
+// error-pattern: unreachable
+// error-pattern: unreachable
+// error-pattern: unreachable
+// error-pattern: unreachable
+// error-pattern: unreachable
 
 #![deny(unreachable_patterns)]
 

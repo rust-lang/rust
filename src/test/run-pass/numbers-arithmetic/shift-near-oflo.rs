@@ -1,7 +1,7 @@
 // run-pass
 // compile-flags: -C debug-assertions
 
-// Check that we do *not* overflow on a number of edge cases.
+// Check that we do **not** overflow on a number of edge cases.
 // (compare with test/run-fail/overflowing-{lsh,rsh}*.rs)
 
 fn main() {
@@ -22,7 +22,7 @@ fn id<T>(x: T) -> T {
 }
 
 fn test_left_shift() {
-    // negative rhs can panic, but values in [0,N-1] are okay for iN
+    // negative rhs can panic, but values in [0,N-1] are ok for iN
 
     macro_rules! tests {
         ($iN:ty, $uN:ty, $max_rhs:expr, $expect_i:expr, $expect_u:expr) => { {
@@ -65,7 +65,7 @@ fn test_left_shift() {
 }
 
 fn test_right_shift() {
-    // negative rhs can panic, but values in [0,N-1] are okay for iN
+    // negative rhs can panic, but values in [0,N-1] are ok for iN
 
     macro_rules! tests {
         ($iN:ty, $uN:ty, $max_rhs:expr,

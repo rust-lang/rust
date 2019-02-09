@@ -5,7 +5,7 @@
 
 #![cfg_attr(re, feature(re_rebalance_coherence))]
 
-// pretty-expanded FIXME #23616
+// pretty-expanded FIXME(#23616)
 
 extern crate coherence_lib as lib;
 use lib::Remote1;

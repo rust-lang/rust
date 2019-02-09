@@ -1,4 +1,4 @@
-// Test for https://github.com/rust-lang/rust/issues/48463 issue.
+// Test for issue #48463.
 
 use std::any::Any;
 use std::ops::Deref;

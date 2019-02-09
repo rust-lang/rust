@@ -3,7 +3,7 @@
 
 #![cfg_attr(re, feature(re_rebalance_coherence))]
 #![allow(unused_imports)]
-// pretty-expanded FIXME #23616
+// pretty-expanded FIXME(#23616)
 
 use std::fmt::Debug;
 use std::default::Default;

@@ -159,7 +159,7 @@ pub const FDIO_SPAWN_ACTION_TRANSFER_FD: u32 = 0x0002;
 #[allow(unused)] pub const ERR_CALL_FAILED: zx_status_t = -5;
 
 // ERR_INTERRUPTED_RETRY: The system call was interrupted, but should be
-// retried.  This should not be seen outside of the VDSO.
+// retried. This should not be seen outside of the VDSO.
 #[allow(unused)] pub const ERR_INTERRUPTED_RETRY: zx_status_t = -6;
 
 // ======= Parameter errors =======

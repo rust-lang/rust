@@ -25,7 +25,7 @@ macro_rules! define_handles {
             }
         }
 
-        // FIXME(eddyb) generate the definition of `HandleStore` in `server.rs`.
+        // FIXME(eddyb): generate the definition of `HandleStore` in `server.rs`.
         #[repr(C)]
         #[allow(non_snake_case)]
         pub(super) struct HandleStore<S: server::Types> {
@@ -171,7 +171,7 @@ define_handles! {
     Span,
 }
 
-// FIXME(eddyb) generate these impls by pattern-matching on the
+// FIXME(eddyb): generate these impls by pattern-matching on the
 // names of methods - also could use the presence of `fn drop`
 // to distinguish between 'owned and 'interned, above.
 // Alternatively, special 'modes" could be listed of types in with_api
@@ -201,7 +201,7 @@ impl Clone for Literal {
     }
 }
 
-// FIXME(eddyb) `Literal` should not expose internal `Debug` impls.
+// FIXME(eddyb): `Literal` should not expose internal `Debug` impls.
 impl fmt::Debug for Literal {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.write_str(&self.debug())
@@ -291,7 +291,7 @@ impl BridgeState<'_> {
 impl Bridge<'_> {
     fn enter<R>(self, f: impl FnOnce() -> R) -> R {
         // Hide the default panic output within `proc_macro` expansions.
-        // NB. the server can't do this because it may use a different libstd.
+        // N.B., the server can't do this because it may use a different libstd.
         static HIDE_PANICS_DURING_EXPANSION: Once = Once::new();
         HIDE_PANICS_DURING_EXPANSION.call_once(|| {
             let prev = panic::take_hook();

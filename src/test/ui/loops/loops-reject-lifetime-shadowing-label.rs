@@ -7,7 +7,7 @@
 // Test rejection of lifetimes in *expressions* that shadow loop labels.
 
 fn foo() {
-    // Reusing lifetime `'a` in function item is okay.
+    // Reusing lifetime `'a` in function item is ok.
     fn foo<'a>(x: &'a i8) -> i8 { *x }
 
     // So is reusing `'a` in struct item

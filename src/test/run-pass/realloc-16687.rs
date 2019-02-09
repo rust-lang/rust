@@ -76,7 +76,7 @@ unsafe fn test_triangle() -> bool {
 
     fn idx_to_size(i: usize) -> usize { (i+1) * 10 }
 
-    // Allocate pairs of rows that form a triangle shape.  (Hope is
+    // Allocate pairs of rows that form a triangle shape. (Hope is
     // that at least two rows will be allocated near each other, so
     // that we trigger the bug (a buffer overrun) in an observable
     // way.)

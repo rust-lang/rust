@@ -1,5 +1,5 @@
 //
-// Test pretty printing of macro with braces but without terminating semicolon,
+// Test pretty-printing of macro with braces but without terminating semicolon,
 // this used to panic before fix.
 
 // pretty-compare-only

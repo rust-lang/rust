@@ -6,7 +6,7 @@
 // ignore-emscripten no dylib support
 // ignore-musl
 
-// pretty-expanded FIXME #23616
+// pretty-expanded FIXME(#23616)
 
 extern crate issue_12133_dylib2 as other;
 

@@ -1,7 +1,7 @@
 #![allow(non_shorthand_field_patterns)]
 #![allow(dead_code)]
 #![allow(unused_variables)]
-// pretty-expanded FIXME #23616
+// pretty-expanded FIXME(#23616)
 
 #![feature(slice_patterns)]
 

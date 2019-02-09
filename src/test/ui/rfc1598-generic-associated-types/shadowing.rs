@@ -1,6 +1,6 @@
 #![feature(generic_associated_types)]
 
-//FIXME(#44265): The lifetime shadowing and type parameter shadowing
+// FIXME(#44265): The lifetime shadowing and type parameter shadowing
 // should cause an error. Now it compiles (erroneously) and this will be addressed
 // by a future PR. Then remove the following:
 // compile-pass

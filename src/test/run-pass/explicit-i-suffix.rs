@@ -1,5 +1,5 @@
 #![allow(unused_must_use)]
-// pretty-expanded FIXME #23616
+// pretty-expanded FIXME(#23616)
 
 pub fn main() {
     let x: isize = 8;

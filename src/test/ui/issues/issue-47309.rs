@@ -1,6 +1,5 @@
 // Make sure that the mono-item collector does not crash when trying to
 // instantiate a default impl of a method with lifetime parameters.
-// See https://github.com/rust-lang/rust/issues/47309
 
 // compile-flags:-Clink-dead-code
 // compile-pass

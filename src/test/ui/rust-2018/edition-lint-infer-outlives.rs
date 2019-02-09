@@ -12,13 +12,13 @@ use std::fmt::{Debug, Display};
 // combinations—
 //
 // • one generic parameter (T) bound inline
-// • one parameter (T) with a where clause
+// • one parameter (T) with a where-clause
 // • two parameters (T and U), both bound inline
-// • two parameters (T and U), one bound inline, one with a where clause
-// • two parameters (T and U), both with where clauses
+// • two parameters (T and U), one bound inline, one with a where-clause
+// • two parameters (T and U), both with where-clauses
 //
 // —and for every permutation of 0, 1, or 2 lifetimes to outlive and 0 or 1
-// trait bounds distributed among said parameters (subject to no where clause
+// trait bounds distributed among said parameters (subject to no where-clause
 // being empty and the struct having at least one lifetime).
 
 
@@ -193,7 +193,7 @@ struct TeeWhereOutlivesAyBeeYooWhereIsDebug<'a, 'b, T, U> where T: 'a + 'b, U: D
 
 // But outlives inference for 'static lifetimes is under a separate
 // feature-gate for now
-// (https://github.com/rust-lang/rust/issues/44493#issuecomment-407846046).
+// (see <https://github.com/rust-lang/rust/issues/44493#issuecomment-407846046>).
 struct StaticRef<T: 'static> {
     field: &'static T
 }

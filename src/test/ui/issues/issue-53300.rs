@@ -1,4 +1,4 @@
-// issue 53300
+// Test for issue #53300.
 
 pub trait A {
     fn add(&self, b: i32) -> i32;

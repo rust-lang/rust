@@ -3,7 +3,7 @@
 //
 // This test is checking the count in an array expression.
 
-// FIXME (#23926): the error output is not consistent between a
+// FIXME(#23926): the error output is not consistent between a
 // self-hosted and a cross-compiled setup; therefore resorting to
 // error-pattern for now.
 

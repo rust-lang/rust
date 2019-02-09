@@ -1,4 +1,4 @@
-// https://github.com/rust-lang/rust/issues/21833#issuecomment-72353044
+// See <https://github.com/rust-lang/rust/issues/21833#issuecomment-72353044>.
 
 // compile-flags: --cfg broken
 

@@ -380,7 +380,7 @@ fn underflow<T: RawFloat>(x: Big, v: Big, rem: Big) -> T {
     // \-----/\-------/ \------------/
     //    q     trunc.    (represented by rem)
     //
-    // Therefore, when the rounded-off bits are != 0.5 ULP, they decide the rounding
+    // Therefore, when the rounded-off bits are not equal to half ULP, they decide the rounding
     // on their own. When they are equal and the remainder is non-zero, the value still
     // needs to be rounded up. Only when the rounded off bits are 1/2 and the remainder
     // is zero, we have a half-to-even situation.

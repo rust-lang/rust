@@ -40,7 +40,7 @@ impl <'a> SpanlessHash<'a> {
                 // Accepted by AST-borrowck for erroneous reasons
                 // (rust-lang/rust#38899).
                 //
-                // Not okay without two-phase borrows: the implicit
+                // Not ok without two-phase borrows: the implicit
                 // `&mut self` of the receiver is evaluated first, and
                 // that conflicts with the `self.cx`` access during
                 // argument evaluation, as demonstrated in `fn demo`
@@ -61,7 +61,7 @@ impl <'a> SpanlessHash<'a> {
     fn hash_expr_mut(&mut self, e: &Expr) {
         match *e {
             Expr::Closure(eid) => {
-                // Not okay: the call to `self.cx_mut.body(eid)` might
+                // Not ok: the call to `self.cx_mut.body(eid)` might
                 // hold on to some mutably borrowed state in
                 // `self.cx_mut`, which would then interfere with the
                 // eventual activation of the `self` mutable borrow
@@ -110,7 +110,7 @@ impl<'a> Registry<'a> {
 }
 
 fn register_plugins<'a>(mk_reg: impl Fn() -> &'a mut Registry<'a>) {
-    // Not okay without two-phase borrows: The implicit `&mut reg` of
+    // Not ok without two-phase borrows: The implicit `&mut reg` of
     // the receiver is evaluaated first, and that conflicts with the
     // `reg.sess_mut` access during argument evaluation.
     //
@@ -134,7 +134,7 @@ fn register_plugins<'a>(mk_reg: impl Fn() -> &'a mut Registry<'a>) {
     //[ast]~^ ERROR cannot borrow `reg.sess_mut`
     //[no2pb]~^^ ERROR cannot borrow `reg.sess_mut`
 
-    // These are not okay: the inner mutable borrows immediately
+    // These are not ok: the inner mutable borrows immediately
     // conflict with the outer borrow/reservation, even with support
     // for two-phase borrows.
     let reg = mk_reg();
@@ -158,7 +158,7 @@ fn register_plugins<'a>(mk_reg: impl Fn() -> &'a mut Registry<'a>) {
     //[no2pb]~^^ ERROR cannot borrow `reg.sess_mut`
     //[nll]~^^^ ERROR cannot borrow `reg.sess_mut`
 
-    // These are not okay: the inner borrows may reach the actual
+    // These are not ok: the inner borrows may reach the actual
     // method invocation, because `CapturePass::new` might (according
     // to its type) keep them alive.
     //
@@ -180,7 +180,7 @@ fn register_plugins<'a>(mk_reg: impl Fn() -> &'a mut Registry<'a>) {
     //[no2pb]~^^ ERROR cannot borrow `reg.sess_mut`
     //[nll]~^^^ ERROR cannot borrow `*reg` as mutable
 
-    // These are not okay: the inner mutable borrows immediately
+    // These are not ok: the inner mutable borrows immediately
     // conflict with the outer borrow/reservation, even with support
     // for two-phase borrows.
     //

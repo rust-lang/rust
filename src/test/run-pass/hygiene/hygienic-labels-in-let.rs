@@ -1,7 +1,7 @@
 // run-pass
 #![allow(unreachable_code)]
 
-// Test that labels injected by macros do not break hygiene.  This
+// Test that labels injected by macros do not break hygiene. This
 // checks cases where the macros invocations are under the rhs of a
 // let statement.
 

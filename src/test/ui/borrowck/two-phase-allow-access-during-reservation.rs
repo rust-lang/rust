@@ -11,7 +11,7 @@
 // smallcultfollowing.com/babysteps/blog/2017/03/01/nested-method-calls-via-two-phase-borrowing/
 //
 // It is "artificial". It is meant to illustrate directly that we
-// should allow an aliasing access during reservation, but *not* while
+// should allow an aliasing access during reservation, but **not** while
 // the mutable borrow is active.
 //
 // The convention for the listed revisions: "lxl" means lexical

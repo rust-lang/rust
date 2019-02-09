@@ -336,17 +336,17 @@ impl<T> Packet<T> {
         };
         mem::drop(guard);
 
-        // only outside of the lock do we wake up the pending threads
+        // Only outside of the lock do we wake up the pending threads.
         pending_sender1.map(|t| t.signal());
         pending_sender2.map(|t| t.signal());
     }
 
     // Prepares this shared packet for a channel clone, essentially just bumping
-    // a refcount.
+    // a ref count.
     pub fn clone_chan(&self) {
         let old_count = self.channels.fetch_add(1, Ordering::SeqCst);
 
-        // See comments on Arc::clone() on why we do this (for `mem::forget`).
+        // See comments on `Arc::clone()` on why we do this (for `mem::forget`).
         if old_count > MAX_REFCOUNT {
             unsafe {
                 abort();

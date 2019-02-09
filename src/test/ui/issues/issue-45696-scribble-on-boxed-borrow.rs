@@ -22,23 +22,23 @@ struct Scribble<'a>(&'a mut u32);
 
 impl<'a> Drop for Scribble<'a> { fn drop(&mut self) { *self.0 = 42; } }
 
-// this is okay, in both AST-borrowck and NLL: The `Scribble` here *has*
+// this is ok, in both AST-borrowck and NLL: The `Scribble` here *has*
 // to strictly outlive `'a`
 fn borrowed_scribble<'a>(s: &'a mut Scribble) -> &'a mut u32 {
     &mut *s.0
 }
 
-// this, by analogy to previous case, is also okay.
+// this, by analogy to previous case, is also ok.
 fn boxed_borrowed_scribble<'a>(s: Box<&'a mut Scribble>) -> &'a mut u32 {
     &mut *(*s).0
 }
 
-// this, by analogy to previous case, is also okay.
+// this, by analogy to previous case, is also ok.
 fn boxed_boxed_borrowed_scribble<'a>(s: Box<Box<&'a mut Scribble>>) -> &'a mut u32 {
     &mut *(**s).0
 }
 
-// this is not okay: in between the time that we take the mutable
+// this is not ok: in between the time that we take the mutable
 // borrow and the caller receives it as a return value, the drop of
 // `s` will scribble on it, violating our aliasing guarantees.
 //
@@ -56,7 +56,7 @@ fn scribbled<'a>(s: Scribble<'a>) -> &'a mut u32 {
     //[migrate]~| WARNING this represents potential undefined behavior in your code
 }
 
-// This, by analogy to previous case, is *also* not okay.
+// This, by analogy to previous case, is *also* not ok.
 //
 // (But again, AST-borrowck was not smart enogh to know that this
 // should be an error.)
@@ -67,7 +67,7 @@ fn boxed_scribbled<'a>(s: Box<Scribble<'a>>) -> &'a mut u32 {
     //[migrate]~| WARNING this represents potential undefined behavior in your code
 }
 
-// This, by analogy to previous case, is *also* not okay.
+// This, by analogy to previous case, is *also* not ok.
 //
 // (But again, AST-borrowck was not smart enogh to know that this
 // should be an error.)

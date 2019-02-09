@@ -8,13 +8,13 @@ use std::rc::Rc;
 type SVec<T: Send+Send> = Vec<T>;
 //~^ WARN bounds on generic parameters are not enforced in type aliases [type_alias_bounds]
 type S2Vec<T> where T: Send = Vec<T>;
-//~^ WARN where clauses are not enforced in type aliases [type_alias_bounds]
+//~^ WARN where-clauses are not enforced in type aliases [type_alias_bounds]
 type VVec<'b, 'a: 'b+'b> = (&'b u32, Vec<&'a i32>);
 //~^ WARN bounds on generic parameters are not enforced in type aliases [type_alias_bounds]
 type WVec<'b, T: 'b+'b> = (&'b u32, Vec<T>);
 //~^ WARN bounds on generic parameters are not enforced in type aliases [type_alias_bounds]
 type W2Vec<'b, T> where T: 'b, T: 'b = (&'b u32, Vec<T>);
-//~^ WARN where clauses are not enforced in type aliases [type_alias_bounds]
+//~^ WARN where-clauses are not enforced in type aliases [type_alias_bounds]
 
 static STATIC : u32 = 0;
 
@@ -47,9 +47,9 @@ trait Bound { type Assoc; }
 type T1<U: Bound> = U::Assoc; //~ WARN not enforced in type aliases
 type T2<U> where U: Bound = U::Assoc;  //~ WARN not enforced in type aliases
 
-// This errors
-// type T3<U> = U::Assoc;
-// Do this instead
+// This errors:
+// `type T3<U> = U::Assoc;`
+// Do this instead:
 type T4<U> = <U as Bound>::Assoc;
 
 // Make sure the help about associatd types is not shown incorrectly

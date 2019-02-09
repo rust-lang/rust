@@ -255,7 +255,7 @@ pub fn main() {
 
     // -------- move from tuple of &Either/&X --------
 
-    // FIXME: These should have suggestions.
+    // FIXME: these should have suggestions.
 
     let (&X(_t),) = (&x.clone(),);
     //~^ ERROR cannot move

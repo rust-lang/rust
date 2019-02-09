@@ -185,7 +185,7 @@ pub unsafe fn drop_in_place<T: ?Sized>(to_drop: *mut T) {
 
 // The real `drop_in_place` -- the one that gets called implicitly when variables go
 // out of scope -- should have a safe reference and not a raw pointer as argument
-// type.  When we drop a local variable, we access it with a pointer that behaves
+// type. When we drop a local variable, we access it with a pointer that behaves
 // like a safe reference; transmuting that to a raw pointer does not mean we can
 // actually access it with raw pointers.
 #[lang = "drop_in_place"]
@@ -372,7 +372,7 @@ unsafe fn swap_nonoverlapping_bytes(x: *mut u8, y: *mut u8, len: usize) {
     // #[repr(simd)], even if we don't actually use this struct directly.
     //
     // FIXME repr(simd) broken on emscripten and redox
-    // It's also broken on big-endian powerpc64 and s390x.  #42778
+    // It's also broken on big-endian powerpc64 and s390x. #42778
     #[cfg_attr(not(any(target_os = "emscripten", target_os = "redox",
                        target_endian = "big")),
                repr(simd))]

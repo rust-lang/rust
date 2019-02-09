@@ -2,7 +2,7 @@
 #![allow(dead_code)]
 #![allow(unused_variables)]
 // Test cleanup of rvalue temporary that occurs while `box` construction
-// is in progress. This scenario revealed a rather terrible bug.  The
+// is in progress. This scenario revealed a rather terrible bug. The
 // ingredients are:
 //
 // 1. Partial cleanup of `box` is in scope,

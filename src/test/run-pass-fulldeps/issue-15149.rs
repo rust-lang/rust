@@ -12,7 +12,7 @@ fn main() {
     // If we're the child, make sure we were invoked correctly
     let args: Vec<String> = env::args().collect();
     if args.len() > 1 && args[1] == "child" {
-        // FIXME: This should check the whole `args[0]` instead of just
+        // FIXME: this should check the whole `args[0]` instead of just
         // checking that it ends_with the executable name. This
         // is needed because of Windows, which has a different behavior.
         // See #15149 for more info.

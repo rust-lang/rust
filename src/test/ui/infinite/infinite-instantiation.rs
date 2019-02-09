@@ -24,7 +24,7 @@ fn function<T:ToOpt + Clone>(counter: usize, t: T) {
 //~^ ERROR reached the recursion limit while instantiating `function::<std::option::Option<
     if counter > 0 {
         function(counter - 1, t.to_option());
-        // FIXME(#4287) Error message should be here. It should be
+        // FIXME(#4287): error message should be here. It should be
         // a type error to instantiate `test` at a type other than T.
     }
 }

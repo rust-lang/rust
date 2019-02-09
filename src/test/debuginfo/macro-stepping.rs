@@ -50,8 +50,8 @@ extern crate macro_stepping; // exports new_scope!()
 
 // lldb-command:set set stop-line-count-before 0
 // lldb-command:set set stop-line-count-after 1
-// Can't set both to zero or lldb will stop printing source at all.  So it will output the current
-// line and the next.  We deal with this by having at least 2 lines between the #loc's
+// Can't set both to zero or lldb will stop printing source at all. So it will output the current
+// line and the next. We deal with this by having at least 2 lines between the #loc's
 
 // lldb-command:run
 // lldb-command:next

@@ -1,7 +1,7 @@
 // revisions: ast mir
 //[mir]compile-flags: -Z borrowck=mir
 
-// Issue 4691: Ensure that functional-struct-update can only copy, not
+// Issue #4691: Ensure that functional-struct-update can only copy, not
 // move, when the struct implements Drop.
 
 struct B;

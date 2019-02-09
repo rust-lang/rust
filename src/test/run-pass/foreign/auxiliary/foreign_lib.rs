@@ -23,7 +23,7 @@ pub mod rustrt3 {
     // Different type, but same ABI (on all supported platforms).
     // Ensures that we don't ICE or trigger LLVM asserts when
     // importing the same symbol under different types.
-    // See https://github.com/rust-lang/rust/issues/32740.
+    // See issue #32740.
     extern {
         pub fn rust_get_test_int() -> *const u8;
     }

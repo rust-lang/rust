@@ -1,4 +1,4 @@
-// Test that structs with higher-ranked where clauses don't generate
+// Test that structs with higher-ranked where-clauses don't generate
 // "outlives" requirements. Issue #22246.
 
 // revisions: ast mir

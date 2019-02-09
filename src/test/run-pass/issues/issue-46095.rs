@@ -9,7 +9,7 @@ fn identity<T>(t: T) -> T {
     t
 }
 
-// Issue 46095
+// Issue #46095
 // Built-in indexing should be used even when the index is not
 // trivially an integer
 // Overloaded indexing would cause wrapped to be borrowed mutably

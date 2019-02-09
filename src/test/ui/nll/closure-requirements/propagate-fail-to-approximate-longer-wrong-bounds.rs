@@ -19,7 +19,7 @@ use std::cell::Cell;
 // 'b: 'y
 //
 // but this doesn't really help us in proving that `'x: 'y`, so
-// closure gets an error.  In particular, we would need to know that
+// closure gets an error. In particular, we would need to know that
 // `'x: 'a`, so that we could approximate `'x` "downwards" to `'a`.
 fn establish_relationships<'a, 'b, F>(_cell_a: &Cell<&'a u32>, _cell_b: &Cell<&'b u32>, _closure: F)
 where

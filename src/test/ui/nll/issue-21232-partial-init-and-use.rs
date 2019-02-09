@@ -164,8 +164,8 @@ fn test_0201_local_void_init_and_use_tuple() {
     use_part!(tuple t);
 }
 
-// NOTE: uniform structure of tests here makes n21n (aka combining
-// Void with Reinit) an (even more) senseless case, as we cannot
+// NOTE: uniform structure of tests here makes n21n (i.e., combining
+// `Void` with `Reinit`) an (even more) senseless case, as we cannot
 // safely create initial instance containing Void to move out of and
 // then reinitialize. While I was tempted to sidestep this via some
 // unsafe code (eek), lets just instead not encode such tests.

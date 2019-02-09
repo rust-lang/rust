@@ -1,7 +1,7 @@
 // This test case tests the incremental compilation hash (ICH) implementation
 // for `type` definitions.
 
-// The general pattern followed here is: Change one thing between rev1 and rev2
+// The general pattern followed here is: change one thing between rev1 and rev2
 // and make sure that the hash has changed, then change nothing between rev2 and
 // rev3 and make sure that the hash has not changed.
 
@@ -141,7 +141,7 @@ type AddTypeParamBound<T1: Clone> = (T1, u32);
 
 
 
-// Add type param bound in where clause ----------------------------------------
+// Add type param bound in where-clause ----------------------------------------
 #[cfg(cfail1)]
 type AddTypeParamBoundWhereClause<T1> where T1: Clone = (T1, u32);
 
@@ -174,7 +174,7 @@ type AddLifetimeParamBound<'a, 'b: 'a> = (&'a u32, &'b u32);
 
 
 
-// Add lifetime param bound in where clause ------------------------------------
+// Add lifetime param bound in where-clause ------------------------------------
 #[cfg(cfail1)]
 type AddLifetimeParamBoundWhereClause<'a, 'b, 'c>
 where 'b: 'a
@@ -190,7 +190,7 @@ where 'b: 'a,
 
 
 
-// Change Trait Bound Indirectly -----------------------------------------------
+// Change trait bound Indirectly -----------------------------------------------
 trait ReferencedTrait1 {}
 trait ReferencedTrait2 {}
 
@@ -207,7 +207,7 @@ mod change_trait_bound_indirectly {
 
 
 
-// Change Trait Bound Indirectly In Where Clause -------------------------------
+// Change trait bound indirectly in where-clause -------------------------------
 mod change_trait_bound_indirectly_in_where_clause {
     #[cfg(cfail1)]
     use super::ReferencedTrait1 as Trait;

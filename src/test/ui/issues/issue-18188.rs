@@ -1,5 +1,5 @@
 // compile-pass
-// pretty-expanded FIXME #23616
+// pretty-expanded FIXME(#23616)
 
 pub trait Promisable: Send + Sync {}
 impl<T: Send + Sync> Promisable for T {}

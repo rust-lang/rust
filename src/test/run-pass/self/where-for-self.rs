@@ -1,7 +1,7 @@
 // run-pass
-// Test that we can quantify lifetimes outside a constraint (i.e., including
-// the self type) in a where clause.
 
+// Test that we can quantify lifetimes outside a constraint (i.e., including
+// the self type) in a where-clause.
 
 static mut COUNT: u32 = 1;
 

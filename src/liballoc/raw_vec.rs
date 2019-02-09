@@ -651,7 +651,7 @@ impl<T, A: Alloc> RawVec<T, A> {
                 return Ok(());
             }
 
-            // Nothing we can really do about these checks :(
+            // Nothing we can really do about these checks.
             let new_cap = match strategy {
                 Exact => used_cap.checked_add(needed_extra_cap).ok_or(CapacityOverflow)?,
                 Amortized => self.amortized_new_size(used_cap, needed_extra_cap)?,
@@ -794,7 +794,7 @@ mod tests {
     fn reserve_does_not_overallocate() {
         {
             let mut v: RawVec<u32> = RawVec::new();
-            // First `reserve` allocates like `reserve_exact`
+            // First `reserve` allocates like `reserve_exact`.
             v.reserve(0, 9);
             assert_eq!(9, v.cap());
         }
@@ -817,7 +817,7 @@ mod tests {
             // 3 is less than half of 12, so `reserve` must grow
             // exponentially. At the time of writing this test grow
             // factor is 2, so new capacity is 24, however, grow factor
-            // of 1.5 is OK too. Hence `>= 18` in assert.
+            // of 1.5 is ok too. Hence `>= 18` in assert.
             assert!(v.cap() >= 12 + 12 / 2);
         }
     }

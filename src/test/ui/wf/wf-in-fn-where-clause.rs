@@ -1,4 +1,4 @@
-// Check that we enforce WF conditions also for where clauses in fn items.
+// Check that we enforce WF conditions also for where-clauses in fn items.
 
 
 #![allow(dead_code)]

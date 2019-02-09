@@ -1,12 +1,12 @@
 // Check that method matching does not make "guesses" depending on
-// Deref impls that don't eventually end up being picked.
+// `Deref` impls that don't eventually end up being picked.
 
 use std::ops::Deref;
 
 // An impl with less derefs will get called over an impl with more derefs,
 // so `(t: Foo<_>).my_fn()` will use `<Foo<u32> as MyTrait1>::my_fn(t)`,
-// and does *not* force the `_` to equal `()`, because the Deref impl
-// was *not* used.
+// and does **not** force the `_` to equal `()`, because the `Deref` impl
+// was **not** used.
 
 trait MyTrait1 {
     fn my_fn(&self) {}
@@ -23,9 +23,9 @@ impl Deref for Foo<()> {
     }
 }
 
-// ...but if there is no impl with less derefs, the "guess" will be
+// ... but if there is no impl with less derefs, the "guess" will be
 // forced, so `(t: Bar<_>).my_fn2()` is `<dyn MyTrait2 as MyTrait2>::my_fn2(*t)`,
-// and because the deref impl is used, the `_` is forced to equal `u8`.
+// and because the `Deref` impl is used, the `_` is forced to equal `u8`.
 
 trait MyTrait2 {
     fn my_fn2(&self) {}
@@ -40,7 +40,7 @@ impl Deref for Bar<u8> {
     }
 }
 
-// actually invoke things
+// Actually invoke things.
 
 fn main() {
     let mut foo: Option<Foo<_>> = None;

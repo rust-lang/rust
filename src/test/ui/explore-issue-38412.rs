@@ -3,7 +3,7 @@
 #![feature(unused_feature)]
 
 // A big point of this test is that we *declare* `unstable_declared`,
-// but do *not* declare `unstable_undeclared`. This way we can check
+// but do **not** declare `unstable_undeclared`. This way we can check
 // that the compiler is letting in uses of declared feature-gated
 // stuff but still rejecting uses of undeclared feature-gated stuff.
 #![feature(unstable_declared)]

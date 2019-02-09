@@ -67,7 +67,7 @@ fn shared_close_sender_does_not_lose_messages() {
 }
 
 
-// https://github.com/rust-lang/rust/issues/39364
+// See issue #39364.
 fn concurrent_recv_timeout_and_upgrade_iter() {
     // 1 us
     let sleep = Duration::new(0, 1_000);

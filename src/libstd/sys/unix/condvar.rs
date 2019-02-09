@@ -133,7 +133,7 @@ impl Condvar {
         }
 
         // First, figure out what time it currently is, in both system and
-        // stable time.  pthread_cond_timedwait uses system time, but we want to
+        // stable time. pthread_cond_timedwait uses system time, but we want to
         // report timeout based on stable time.
         let mut sys_now = libc::timeval { tv_sec: 0, tv_usec: 0 };
         let stable_now = Instant::now();

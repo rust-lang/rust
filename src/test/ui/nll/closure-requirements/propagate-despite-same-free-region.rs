@@ -1,6 +1,6 @@
 // Test where we might in theory be able to see that the relationship
 // between two bound regions is true within closure and hence have no
-// need to propagate; but in fact we do because identity of free
+// need to propagate, but in fact we do because identity of free
 // regions is erased.
 
 // compile-flags:-Zborrowck=mir -Zverbose

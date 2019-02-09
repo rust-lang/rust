@@ -1,6 +1,6 @@
 // compile-pass
 #![allow(dead_code)]
-// pretty-expanded FIXME #23616
+// pretty-expanded FIXME(#23616)
 
 pub mod two_tuple {
     pub trait T { fn dummy(&self) { } }

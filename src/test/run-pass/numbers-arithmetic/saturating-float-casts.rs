@@ -51,7 +51,7 @@ macro_rules! common_fptoi_tests {
         test!($fty::INFINITY, $fty -> $ity, $ity::MAX);
         test!($fty::NEG_INFINITY, $fty -> $ity, $ity::MIN);
         // These two tests are not solely float->int tests, in particular the latter relies on
-        // `u128::MAX as f32` not being UB. But that's okay, since this file tests int->float
+        // `u128::MAX as f32` not being UB. But that's ok, since this file tests int->float
         // as well, the test is just slightly misplaced.
         test!($ity::MIN as $fty, $fty -> $ity, $ity::MIN);
         test!($ity::MAX as $fty, $fty -> $ity, $ity::MAX);
@@ -88,7 +88,7 @@ macro_rules! fptoui_tests {
 pub fn main() {
     common_fptoi_tests!(f* -> i8 i16 i32 i64 u8 u16 u32 u64);
     fptoui_tests!(f* -> u8 u16 u32 u64);
-    // FIXME emscripten does not support i128
+    // FIXME: emscripten does not support i128
     #[cfg(not(target_os="emscripten"))] {
         common_fptoi_tests!(f* -> i128 u128);
         fptoui_tests!(f* -> u128);

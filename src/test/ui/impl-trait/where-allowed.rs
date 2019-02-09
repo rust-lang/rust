@@ -181,14 +181,14 @@ impl InInherentImplAdt<impl Debug> {
     //~^ ERROR `impl Trait` not allowed outside of function and inherent method return types
 }
 
-// Disallowed in where clauses
+// Disallowed in where-clauses
 fn in_fn_where_clause()
     where impl Debug: Debug
 //~^ ERROR `impl Trait` not allowed outside of function and inherent method return types
 {
 }
 
-// Disallowed in where clauses
+// Disallowed in where-clauses
 fn in_adt_in_fn_where_clause()
     where Vec<impl Debug>: Debug
 //~^ ERROR `impl Trait` not allowed outside of function and inherent method return types

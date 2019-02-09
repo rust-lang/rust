@@ -3,7 +3,7 @@
 // A test for something that NLL enables. It sometimes happens that
 // the `while let` pattern makes some borrows from a variable (in this
 // case, `x`) that you need in order to compute the next value for
-// `x`.  The lexical checker makes this very painful. The NLL checker
+// `x`. The lexical checker makes this very painful. The NLL checker
 // does not.
 
 #![feature(nll)]

@@ -52,7 +52,7 @@ fn test_drop_tuple() {
     assert_eq!(*dropped_fields.borrow(), &[1, 2]);
 
     // Panic during construction means that fields are treated as local variables
-    // Therefore they are dropped in reverse order of initialization
+    // Therefore, they are dropped in reverse order of initialization
     let dropped_fields = Rc::new(RefCell::new(Vec::new()));
     let cloned = AssertUnwindSafe(dropped_fields.clone());
     panic::catch_unwind(|| {
@@ -83,7 +83,7 @@ fn test_drop_struct() {
     assert_eq!(*dropped_fields.borrow(), &[1, 2, 3]);
 
     // Panic during struct construction means that fields are treated as local variables
-    // Therefore they are dropped in reverse order of initialization
+    // Therefore, they are dropped in reverse order of initialization
     let dropped_fields = Rc::new(RefCell::new(Vec::new()));
     let cloned = AssertUnwindSafe(dropped_fields.clone());
     panic::catch_unwind(|| {
@@ -138,7 +138,7 @@ fn test_drop_enum() {
     assert_eq!(*dropped_fields.borrow(), &[1, 2, 3]);
 
     // Panic during enum construction means that fields are treated as local variables
-    // Therefore they are dropped in reverse order of initialization
+    // Therefore, they are dropped in reverse order of initialization
     let dropped_fields = Rc::new(RefCell::new(Vec::new()));
     let cloned = AssertUnwindSafe(dropped_fields.clone());
     panic::catch_unwind(|| {
@@ -191,7 +191,7 @@ fn test_drop_list() {
     assert_eq!(*dropped_fields.borrow(), &[1, 2, 3]);
 
     // Panic during vec construction means that fields are treated as local variables
-    // Therefore they are dropped in reverse order of initialization
+    // Therefore, they are dropped in reverse order of initialization
     let dropped_fields = Rc::new(RefCell::new(Vec::new()));
     let cloned = AssertUnwindSafe(dropped_fields.clone());
     panic::catch_unwind(|| {

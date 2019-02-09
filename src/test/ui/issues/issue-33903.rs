@@ -1,6 +1,6 @@
 // compile-pass
 #![allow(dead_code)]
-// Issue 33903:
+// Issue #33903:
 // Built-in indexing should be used even when the index is not
 // trivially an integer
 // Only built-in indexing can be used in constant expressions

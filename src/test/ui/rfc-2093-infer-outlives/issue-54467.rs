@@ -1,7 +1,7 @@
 // Regression test for #54467:
 //
 // Here, the trait object has an "inferred outlives" requirement that
-// `<Self as MyIterator<'a>>::Item: 'a`; but since we don't know what
+// `<Self as MyIterator<'a>>::Item: 'a`, but since we don't know what
 // `Self` is, we were (incorrectly) messing things up, leading to
 // strange errors. This test ensures that we do not give compilation
 // errors.

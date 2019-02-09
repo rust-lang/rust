@@ -1,4 +1,4 @@
-// Ref: https://stackoverflow.com/q/37347311
+// See <https://stackoverflow.com/q/37347311>.
 
 trait Storage {
     type Error;

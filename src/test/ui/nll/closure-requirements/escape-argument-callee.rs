@@ -8,7 +8,7 @@
 // error is reported by the closure itself and is not propagated to
 // its creator: this is because `'a` and `'b` are higher-ranked
 // (late-bound) regions and the closure is not allowed to propagate
-// additional where clauses between higher-ranked regions, only those
+// additional where-clauses between higher-ranked regions, only those
 // that appear free in its type (hence, we see it before the closure's
 // "external requirements" report).
 

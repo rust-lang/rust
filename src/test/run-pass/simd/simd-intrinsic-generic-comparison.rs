@@ -1,5 +1,5 @@
 // run-pass
-// ignore-emscripten FIXME(#45351) hits an LLVM assert
+// ignore-emscripten FIXME(#45351): hits an LLVM assert
 
 #![feature(repr_simd, platform_intrinsics, concat_idents)]
 #![allow(non_camel_case_types)]
@@ -30,7 +30,7 @@ macro_rules! cmp {
         let lhs = $lhs;
         let rhs = $rhs;
         let e: u32x4 = concat_idents!(simd_, $method)($lhs, $rhs);
-        // assume the scalar version is correct/the behaviour we want.
+        // Assume the scalar version is correct/the behaviour we want.
         assert!((e.0 != 0) == lhs.0 .$method(&rhs.0));
         assert!((e.1 != 0) == lhs.1 .$method(&rhs.1));
         assert!((e.2 != 0) == lhs.2 .$method(&rhs.2));
@@ -44,7 +44,7 @@ macro_rules! tests {
                 cmp!(eq($lhs, $rhs));
                 cmp!(ne($lhs, $rhs));
 
-                // test both directions
+                // Test both directions.
                 cmp!(lt($lhs, $rhs));
                 cmp!(lt($rhs, $lhs));
 
@@ -61,8 +61,8 @@ macro_rules! tests {
     }}
 }
 fn main() {
-    // 13 vs. -100 tests that we get signed vs. unsigned comparisons
-    // correct (i32: 13 > -100, u32: 13 < -100).    let i1 = i32x4(10, -11, 12, 13);
+    // 13 vs. -100 tests that we get signed vs. unsigned comparisons.
+    // Correct: (`i32: 13 > -100`, `u32: 13 < -100`).
     let i1 = i32x4(10, -11, 12, 13);
     let i2 = i32x4(5, -5, 20, -100);
     let i3 = i32x4(10, -11, 20, -100);

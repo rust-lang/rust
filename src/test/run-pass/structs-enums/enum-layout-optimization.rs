@@ -1,6 +1,6 @@
 // run-pass
 // Test that we will do various size optimizations to enum layout, but
-// *not* if `#[repr(u8)]` or `#[repr(C)]` is passed. See also #40029.
+// **not** if `#[repr(u8)]` or `#[repr(C)]` is passed. See also #40029.
 
 #![allow(dead_code)]
 

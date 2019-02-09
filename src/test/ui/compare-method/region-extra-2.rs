@@ -1,4 +1,4 @@
-// Regression test for issue #22779. An extra where clause was
+// Regression test for issue #22779. An extra where-clause was
 // permitted on the impl that is not present on the trait.
 
 trait Tr<'a, T> {

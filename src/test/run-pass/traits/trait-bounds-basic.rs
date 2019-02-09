@@ -2,7 +2,7 @@
 #![allow(dead_code)]
 #![allow(unconditional_recursion)]
 
-// pretty-expanded FIXME #23616
+// pretty-expanded FIXME(#23616)
 
 trait Foo {
 }

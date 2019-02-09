@@ -1,8 +1,8 @@
-// Issue 52126: With respect to variance, the assign-op's like += were
+// Issue #52126: with respect to variance, the assign-op's like `+=` were
 // accidentally lumped together with other binary op's. In both cases
 // we were coercing the LHS of the op to the expected supertype.
 //
-// The problem is that since the LHS of += is modified, we need the
+// The problem is that since the LHS of `+=` is modified, we need the
 // parameter to be invariant with respect to the overall type, not
 // covariant.
 

@@ -55,7 +55,7 @@ pub fn naked_recursive() {
     // CHECK-NEXT: {{.+}}:
     // CHECK-NEXT: call void @naked_empty()
 
-    // FIXME(#39685) Avoid one block per call.
+    // FIXME(#39685): avoid one block per call.
     // CHECK-NEXT: br label %bb1
     // CHECK: bb1:
 
@@ -63,19 +63,19 @@ pub fn naked_recursive() {
 
     // CHECK-NEXT: %{{[0-9]+}} = call i{{[0-9]+}} @naked_with_return()
 
-    // FIXME(#39685) Avoid one block per call.
+    // FIXME(#39685): avoid one block per call.
     // CHECK-NEXT: br label %bb2
     // CHECK: bb2:
 
     // CHECK-NEXT: %{{[0-9]+}} = call i{{[0-9]+}} @naked_with_args_and_return(i{{[0-9]+}} %{{[0-9]+}})
 
-    // FIXME(#39685) Avoid one block per call.
+    // FIXME(#39685): avoid one block per call.
     // CHECK-NEXT: br label %bb3
     // CHECK: bb3:
 
     // CHECK-NEXT: call void @naked_with_args(i{{[0-9]+}} %{{[0-9]+}})
 
-    // FIXME(#39685) Avoid one block per call.
+    // FIXME(#39685): avoid one block per call.
     // CHECK-NEXT: br label %bb4
     // CHECK: bb4:
 

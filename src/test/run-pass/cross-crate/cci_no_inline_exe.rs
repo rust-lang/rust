@@ -6,7 +6,7 @@ use cci_no_inline_lib::iter;
 
 pub fn main() {
     // Check that a cross-crate call function not marked as inline
-    // does not, in fact, get inlined.  Also, perhaps more
+    // does not, in fact, get inlined. Also, perhaps more
     // importantly, checks that our scheme of using
     // sys::frame_address() to determine if we are inlining is
     // actually working.

@@ -1,10 +1,11 @@
 // run-pass
+
 #![allow(dead_code)]
 #![allow(non_upper_case_globals)]
 #![allow(non_camel_case_types)]
 #![allow(improper_ctypes)]
 
-// Crate use statements
+// Crate `use` statements.
 
 #[cfg(bogus)]
 use flippity;
@@ -18,7 +19,7 @@ mod rustrt {
     #[cfg(bogus)]
     extern {
         // This symbol doesn't exist and would be a link error if this
-        // module was codegened
+        // module was codegen'ed.
         pub fn bogus();
     }
 
@@ -60,13 +61,13 @@ fn r(i:isize) -> r {
 #[cfg(bogus)]
 mod m {
     // This needs to parse but would fail in typeck. Since it's not in
-    // the current config it should not be typechecked.
+    // the current config it should not be type-checked.
     pub fn bogus() { return 0; }
 }
 
 mod m {
     // Submodules have slightly different code paths than the top-level
-    // module, so let's make sure this jazz works here as well
+    // module, so let's make sure this jazz works here as well.
     #[cfg(bogus)]
     pub fn f() { }
 
@@ -74,13 +75,13 @@ mod m {
 }
 
 // Since the bogus configuration isn't defined main will just be
-// parsed, but nothing further will be done with it
+// parsed, but nothing further will be done with it.
 #[cfg(bogus)]
 pub fn main() { panic!() }
 
 pub fn main() {
     // Exercise some of the configured items in ways that wouldn't be possible
-    // if they had the bogus definition
+    // if they had the bogus definition.
     assert!((b));
     let _x: t = true;
     let _y: tg = tg::bar;
@@ -145,5 +146,6 @@ mod test_methods {
     }
 }
 
+// Check that unconfigured non-inline modules are not loaded or parsed.
 #[cfg(any())]
-mod nonexistent_file; // Check that unconfigured non-inline modules are not loaded or parsed.
+mod nonexistent_file;

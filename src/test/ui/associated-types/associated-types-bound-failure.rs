@@ -1,4 +1,4 @@
-// Test equality constraints on associated types in a where clause.
+// Test equality constraints on associated types in a where-clause.
 
 pub trait ToInt {
     fn to_int(&self) -> isize;

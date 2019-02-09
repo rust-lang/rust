@@ -3,7 +3,7 @@
 // Test that the `wf` checker properly handles bound regions in object
 // types. Compiling this code used to trigger an ICE.
 
-// pretty-expanded FIXME #23616
+// pretty-expanded FIXME(#23616)
 
 pub struct Context<'tcx> {
     vec: &'tcx Vec<isize>

@@ -6,7 +6,7 @@ use std::pin::Pin;
 
 fn yield_during_iter_owned_data(x: Vec<i32>) {
     // The generator owns `x`, so we error out when yielding with a
-    // reference to it.  This winds up becoming a rather confusing
+    // reference to it. This winds up becoming a rather confusing
     // regionck error -- in particular, we would freeze with the
     // reference in scope, and it doesn't live long enough.
     let _b = move || {

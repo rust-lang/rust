@@ -1,6 +1,6 @@
 // run-pass
-// Test equality constrai32s on associated types in a where clause.
 
+// Test equality constrai32s on associated types in a where-clause.
 
 pub trait ToI32 {
     fn to_i32(&self) -> i32;

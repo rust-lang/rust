@@ -4,7 +4,7 @@
 // this case, we know that `x: Vec<_1>`, but we don't know what type
 // `_1` is (because the call to `push` comes later). To pick between
 // the impls, we would have to know `_1`, since we have to know
-// whether `_1: MyCopy` or `_1 == Box<i32>`.  However (and this is the
+// whether `_1: MyCopy` or `_1 == Box<i32>`. However (and this is the
 // point of the test), we don't have to pick between the two impls --
 // it is enough to know that `foo` comes from the `Foo` trait. We can
 // codegen the call as `Foo::foo(&x)` and let the specific impl get

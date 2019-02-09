@@ -2,7 +2,7 @@
 #![allow(dead_code)]
 // aux-build:issue_20389.rs
 
-// pretty-expanded FIXME #23616
+// pretty-expanded FIXME(#23616)
 
 extern crate issue_20389;
 

@@ -1,4 +1,4 @@
-// Test that the `'a` in the where clause correctly links the region
+// Test that the `'a` in the where-clause correctly links the region
 // of the output to the region of the input.
 
 // revisions: ast mir

@@ -1,7 +1,7 @@
-// Tests that ty params get matched correctly when comparing
-// an impl against a trait
+// Tests that type params get matched correctly when comparing
+// an impl against a trait.
 //
-// cc #26111
+// See issue #26111.
 
 trait A {
   fn b<C:Clone,D>(&self, x: C) -> C;

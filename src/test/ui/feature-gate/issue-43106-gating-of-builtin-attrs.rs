@@ -12,7 +12,7 @@
 // the change when it happens.
 //
 // At the time of authoring, the attributes here are listed in the
-// order that they occur in libsyntax/feature_gate.rs.
+// order that they occur in `libsyntax/feature_gate.rs`.
 //
 // Any builtin attributes that:
 //
@@ -20,7 +20,7 @@
 //
 //  - could not be included here covering the same cases as the other
 //    attributes without raising an *error* from rustc (note though
-//    that warnings are of course expected)
+//    that warnings are of course expected),
 //
 // have their own test case referenced by filename in an inline
 // comment.
@@ -39,44 +39,45 @@
 #![allow(x5300)] //~ WARN unknown lint: `x5300`
 #![forbid(x5200)] //~ WARN unknown lint: `x5200`
 #![deny(x5100)] //~ WARN unknown lint: `x5100`
-#![macro_use] // (allowed if no argument; see issue-43160-gating-of-macro_use.rs)
+#![macro_use] // (allowed if no argument; see `issue-43160-gating-of-macro_use.rs`)
 #![macro_export] //~ WARN unused attribute
 #![plugin_registrar] //~ WARN unused attribute
-// skipping testing of cfg
-// skipping testing of cfg_attr
+// Skipping testing of `cfg`.
+// Skipping testing of `cfg_attr`.
 #![main] //~ WARN unused attribute
 #![start] //~ WARN unused attribute
-// see issue-43106-gating-of-test.rs for crate-level; but non crate-level is below at "4200"
-// see issue-43106-gating-of-bench.rs for crate-level; but non crate-level is below at "4100"
+// See `issue-43106-gating-of-test.rs for crate-level, but non crate-level is below at "4200".
+// See `issue-43106-gating-of-bench.rs` for crate-level, but non crate-level is below at "4100".
 #![repr()]
 //~^ WARN unused attribute
 #![path = "3800"] //~ WARN unused attribute
 #![automatically_derived] //~ WARN unused attribute
 #![no_mangle]
 #![no_link] //~ WARN unused attribute
-// see issue-43106-gating-of-derive.rs
+// See `issue-43106-gating-of-derive.rs`.
 #![should_panic] //~ WARN unused attribute
 #![ignore] //~ WARN unused attribute
 #![no_implicit_prelude]
 #![reexport_test_harness_main = "2900"]
-// see gated-link-args.rs
-// see issue-43106-gating-of-macro_escape.rs for crate-level; but non crate-level is below at "2700"
-// (cannot easily test gating of crate-level #[no_std]; but non crate-level is below at "2600")
+// See `gated-link-args.rs`.
+// See `issue-43106-gating-of-macro_escape.rs` for crate-level, but non crate-level is below at
+// "2700".
+// (Cannot easily test gating of crate-level `#[no_std]`, but non crate-level is below at "2600".)
 #![proc_macro_derive()] //~ WARN unused attribute
 #![doc = "2400"]
 #![cold]
 #![export_name = "2200"]
-// see issue-43106-gating-of-inline.rs
+// See `issue-43106-gating-of-inline.rs`.
 #![link()]
 #![link_name = "1900"]
 #![link_section = "1800"]
-#![no_builtins] // Yikes, dupe'd on BUILTIN_ATTRIBUTES list (see "0300")
-#![no_mangle] // Yikes, dupe'd on BUILTIN_ATTRIBUTES list (see "3500")
+#![no_builtins] // Yikes, dupe'd on `BUILTIN_ATTRIBUTES` list (see "0300")
+#![no_mangle] // Yikes, dupe'd on `BUILTIN_ATTRIBUTES` list (see "3500")
 // see issue-43106-gating-of-rustc_deprecated.rs
 #![must_use]
-// see issue-43106-gating-of-stable.rs
-// see issue-43106-gating-of-unstable.rs
-// see issue-43106-gating-of-deprecated.rs
+// See `issue-43106-gating-of-stable.rs`.
+// See `issue-43106-gating-of-unstable.rs.
+// See issue-43106-gating-of-deprecated.rs`.
 #![windows_subsystem = "1000"]
 
 // UNGATED CRATE-LEVEL BUILT-IN ATTRIBUTES
@@ -84,14 +85,14 @@
 #![crate_name = "0900"]
 #![crate_type = "bin"] // cannot pass "0800" here
 
-// For #![crate_id], see issue #43142. (I cannot bear to enshrine current behavior in a test)
+// For `#![crate_id]`, see issue #43142. (I cannot bear to enshrine current behavior in a test.)
 
-// FIXME(#44232) we should warn that this isn't used.
+// FIXME(#44232): we should warn that this isn't used.
 #![feature(rust1)]
 
-// For #![no_start], see issue #43144. (I cannot bear to enshrine current behavior in a test)
+// For `#![no_start]`, see issue #43144. (I cannot bear to enshrine current behavior in a test.)
 
-// (cannot easily gating state of crate-level #[no_main]; but non crate-level is below at "0400")
+// (Cannot easily gate state of crate-level `#[no_main]`, but non crate-level is below at "0400")
 #![no_builtins]
 #![recursion_limit = "0200"]
 #![type_length_limit = "0100"]
@@ -216,7 +217,7 @@ mod plugin_registrar {
     mod inner { #![plugin_registrar] }
     //~^ WARN unused attribute
 
-    // for `fn f()` case, see gated-plugin_registrar.rs
+    // For `fn f()` case, see `gated-plugin_registrar.rs`.
 
     #[plugin_registrar] struct S;
     //~^ WARN unused attribute
@@ -234,7 +235,7 @@ mod main {
     mod inner { #![main] }
     //~^ WARN unused attribute
 
-    // for `fn f()` case, see feature-gate-main.rs
+    // For `fn f()` case, see `feature-gate-main.rs`.
 
     #[main] struct S;
     //~^ WARN unused attribute
@@ -252,7 +253,7 @@ mod start {
     mod inner { #![start] }
     //~^ WARN unused attribute
 
-    // for `fn f()` case, see feature-gate-start.rs
+    // For `fn f()` case, see `feature-gate-start.rs`.
 
     #[start] struct S;
     //~^ WARN unused attribute
@@ -265,7 +266,7 @@ mod start {
 }
 
 // At time of unit test authorship, if compiling without `--test` then
-// non-crate-level #[test] attributes seem to be ignored.
+// non-crate-level `#[test]` attributes seem to be ignored.
 
 #[test]
 mod test { mod inner { #![test] }
@@ -280,7 +281,7 @@ mod test { mod inner { #![test] }
 }
 
 // At time of unit test authorship, if compiling without `--test` then
-// non-crate-level #[bench] attributes seem to be ignored.
+// non-crate-level `#[bench]` attributes seem to be ignored.
 
 #[bench]
 mod bench {
@@ -455,10 +456,10 @@ mod reexport_test_harness_main {
 
 // Cannot feed "2700" to `#[macro_escape]` without signaling an error.
 #[macro_escape]
-//~^ WARN macro_escape is a deprecated synonym for macro_use
+//~^ WARN `macro_escape` is a deprecated synonym for `macro_use`
 mod macro_escape {
     mod inner { #![macro_escape] }
-    //~^ WARN macro_escape is a deprecated synonym for macro_use
+    //~^ WARN `macro_escape` is a deprecated synonym for `macro_use`
 
     #[macro_escape] fn f() { }
     //~^ WARN unused attribute
@@ -498,9 +499,9 @@ mod no_std {
     //~| WARN crate-level attribute should be an inner attribute
 }
 
-// At time of authorship, #[proc_macro_derive = "2500"] signals error
-// when it occurs on a mod (apart from crate-level). Therefore it goes
-// into its own file; see issue-43106-gating-of-proc_macro_derive.rs
+// At time of authorship, `#[proc_macro_derive = "2500"]` signals error
+// when it occurs on a mod (apart from crate-level). Therefore, it goes
+// into its own file; see `issue-43106-gating-of-proc_macro_derive.rs`.
 
 #[doc = "2400"]
 mod doc {

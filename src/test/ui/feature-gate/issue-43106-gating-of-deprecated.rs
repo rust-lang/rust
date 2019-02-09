@@ -3,7 +3,7 @@
 // crate-level `#![deprecated]` causes all that crate's item
 // definitions to be deprecated, which is a pain to work with.)
 //
-// (For non-crate-level cases, see issue-43106-gating-of-builtin-attrs.rs)
+// For non-crate-level cases, see `issue-43106-gating-of-builtin-attrs.rs`.
 
 // compile-pass
 // skip-codegen

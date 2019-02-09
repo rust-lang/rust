@@ -3,7 +3,7 @@
 
 // aux-build:namespaced_enum_emulate_flat.rs
 
-// pretty-expanded FIXME #23616
+// pretty-expanded FIXME(#23616)
 
 extern crate namespaced_enum_emulate_flat;
 

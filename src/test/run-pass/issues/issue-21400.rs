@@ -1,6 +1,7 @@
 // run-pass
+
 // Regression test for #21400 which itself was extracted from
-// stackoverflow.com/questions/28031155/is-my-borrow-checker-drunk/28031580
+// <stackoverflow.com/questions/28031155/is-my-borrow-checker-drunk/28031580>.
 
 fn main() {
     let mut t = Test;

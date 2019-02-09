@@ -2,7 +2,7 @@
 #![allow(unused_variables)]
 // Test that we correctly handle projection bounds appearing in the
 // supertrait list (and in conjunction with overloaded operators). In
-// this case, the `Result=Self` binding in the supertrait listing of
+// this case, the `Result = Self` binding in the supertrait listing of
 // `Int` was being ignored.
 
 trait Not {

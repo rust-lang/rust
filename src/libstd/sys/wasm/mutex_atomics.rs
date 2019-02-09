@@ -50,7 +50,7 @@ impl Mutex {
 
     #[inline]
     pub unsafe fn destroy(&self) {
-        // nothing to do
+        // Nothing to do.
     }
 
     #[inline]
@@ -88,7 +88,7 @@ impl ReentrantMutex {
     }
 
     pub unsafe fn init(&mut self) {
-        // nothing to do...
+        // Nothing to do.
     }
 
     pub unsafe fn lock(&self) {
@@ -133,14 +133,14 @@ impl ReentrantMutex {
         match *self.recursions.get() {
             0 => {
                 self.owner.swap(0, SeqCst);
-                wasm32::atomic_notify(self.ptr() as *mut i32, 1); // wake up one waiter, if any
+                wasm32::atomic_notify(self.ptr() as *mut i32, 1); // Wake up one waiter, if any.
             }
             ref mut n => *n -= 1,
         }
     }
 
     pub unsafe fn destroy(&self) {
-        // nothing to do...
+        // Nothing to do.
     }
 
     #[inline]

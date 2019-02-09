@@ -59,12 +59,12 @@
 // gdbg-check:$15 = {64, 65}
 // gdbr-check:$15 = [64, 65]
 
-//gdb-command:print mut_slice.length
-//gdb-check:$16 = 5
-//gdbg-command:print *((i64[5]*)(mut_slice.data_ptr))
-//gdbr-command:print *(mut_slice.data_ptr as &[i64; 5])
-//gdbg-check:$17 = {1, 2, 3, 4, 5}
-//gdbr-check:$17 = [1, 2, 3, 4, 5]
+// gdb-command:print mut_slice.length
+// gdb-check:$16 = 5
+// gdbg-command:print *((i64[5]*)(mut_slice.data_ptr))
+// gdbr-command:print *(mut_slice.data_ptr as &[i64; 5])
+// gdbg-check:$17 = {1, 2, 3, 4, 5}
+// gdbr-check:$17 = [1, 2, 3, 4, 5]
 
 
 // === LLDB TESTS ==================================================================================

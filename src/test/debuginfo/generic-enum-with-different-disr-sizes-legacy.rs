@@ -3,7 +3,7 @@
 // min-lldb-version: 310
 
 // As long as LLVM 5 and LLVM 6 are supported, we want to test the
-// enum debuginfo fallback mode.  Once those are desupported, this
+// enum debuginfo fallback mode. Once those are desupported, this
 // test can be removed, as there is another (non-"legacy") test that
 // tests the new mode.
 // ignore-llvm-version: 7.0 - 9.9.9

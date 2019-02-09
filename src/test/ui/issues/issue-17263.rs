@@ -6,12 +6,12 @@
 //[ast]compile-flags: -Z borrowck=ast
 //[nll]compile-flags: -Z borrowck=migrate -Z two-phase-borrows
 
-// don't worry about the --compare-mode=nll on this test.
+// Don't worry about the `--compare-mode=nll` on this test.
 // ignore-compare-mode-nll
 #![feature(box_syntax, rustc_attrs)]
 
 struct Foo { a: isize, b: isize }
-#[rustc_error] // rust-lang/rust#49855
+#[rustc_error] // Issue #49855
 fn main() { //[nll]~ ERROR compilation successful
     let mut x: Box<_> = box Foo { a: 1, b: 2 };
     let (a, b) = (&mut x.a, &mut x.b);
@@ -22,7 +22,7 @@ fn main() { //[nll]~ ERROR compilation successful
     //[ast]~^ ERROR cannot borrow `foo` (via `foo.b`) as immutable
 
     // We explicitly use the references created above to illustrate
-    // that NLL is accepting this code *not* because of artificially
+    // that NLL is accepting this code **not** because of artificially
     // short lifetimes, but rather because it understands that all the
     // references are of disjoint parts of memory.
     use_imm(d);

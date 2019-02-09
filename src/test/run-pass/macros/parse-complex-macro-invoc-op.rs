@@ -7,7 +7,7 @@
 
 // Test parsing binary operators after macro invocations.
 
-// pretty-expanded FIXME #23616
+// pretty-expanded FIXME(#23616)
 
 #![feature(macro_rules)]
 

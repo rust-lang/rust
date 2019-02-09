@@ -3,7 +3,7 @@
 // Doing it incorrectly causes massive slowdown in LLVM during
 // optimisation.
 
-// pretty-expanded FIXME #23616
+// pretty-expanded FIXME(#23616)
 // ignore-emscripten no threads support
 
 #![feature(intrinsics)]

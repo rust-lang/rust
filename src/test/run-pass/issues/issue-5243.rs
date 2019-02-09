@@ -4,7 +4,7 @@
 // enough for codegen to consider this as non-monomorphic,
 // which led to various assertions and failures in turn.
 
-// pretty-expanded FIXME #23616
+// pretty-expanded FIXME(#23616)
 
 struct S<'a> {
     v: &'a isize

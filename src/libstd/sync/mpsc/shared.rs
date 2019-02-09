@@ -58,8 +58,8 @@ pub enum Failure {
 }
 
 impl<T> Packet<T> {
-    // Creation of a packet *must* be followed by a call to postinit_lock
-    // and later by inherit_blocker
+    // Creation of a packet *must* be followed by a call to `postinit_lock`,
+    // and later by `inherit_blocker`.
     pub fn new() -> Packet<T> {
         Packet {
             queue: mpsc::Queue::new(),
@@ -74,19 +74,19 @@ impl<T> Packet<T> {
     }
 
     // This function should be used after newly created Packet
-    // was wrapped with an Arc
+    // was wrapped with an `Arc`
     // In other case mutex data will be duplicated while cloning
     // and that could cause problems on platforms where it is
-    // represented by opaque data structure
+    // represented by opaque data structure.
     pub fn postinit_lock(&self) -> MutexGuard<()> {
         self.select_lock.lock().unwrap()
     }
 
     // This function is used at the creation of a shared packet to inherit a
     // previously blocked thread. This is done to prevent spurious wakeups of
-    // threads in select().
+    // threads in `select()`.
     //
-    // This can only be called at channel-creation time
+    // This can only be called at channel-creation time.
     pub fn inherit_blocker(&self,
                            token: Option<SignalToken>,
                            guard: MutexGuard<()>) {
@@ -101,32 +101,32 @@ impl<T> Packet<T> {
             // this shared channel. In doing so, we never spuriously wake them
             // up and rather only wake them up at the appropriate time. This
             // implementation of shared channels assumes that any blocking
-            // recv() will undo the increment of steals performed in try_recv()
-            // once the recv is complete.  This thread that we're inheriting,
-            // however, is not in the middle of recv. Hence, the first time we
+            // `recv()` will undo the increment of steals performed in `try_recv()`
+            // once the `recv` is complete. This thread that we're inheriting,
+            // however, is not in the middle of `recv`. Hence, the first time we
             // wake them up, they're going to wake up from their old port, move
-            // on to the upgraded port, and then call the block recv() function.
+            // on to the upgraded port, and then call the block `recv()` function.
             //
             // When calling this function, they'll find there's data immediately
             // available, counting it as a steal. This in fact wasn't a steal
             // because we appropriately blocked them waiting for data.
             //
             // To offset this bad increment, we initially set the steal count to
-            // -1. You'll find some special code in abort_selection() as well to
-            // ensure that this -1 steal count doesn't escape too far.
+            // `-1`. You'll find some special code in `abort_selection()` as well to
+            // ensure that this `-1` steal count doesn't escape too far.
             unsafe { *self.steals.get() = -1; }
         });
 
         // When the shared packet is constructed, we grabbed this lock. The
-        // purpose of this lock is to ensure that abort_selection() doesn't
+        // purpose of this lock is to ensure that `abort_selection()` doesn't
         // interfere with this method. After we unlock this lock, we're
-        // signifying that we're done modifying self.cnt and self.to_wake and
+        // signifying that we're done modifying `self.cnt` and self.to_wake and
         // the port is ready for the world to continue using it.
         drop(guard);
     }
 
     pub fn send(&self, t: T) -> Result<(), T> {
-        // See Port::drop for what's going on
+        // See `Port::drop` for what's going on.
         if self.port_dropped.load(Ordering::SeqCst) { return Err(t) }
 
         // Note that the multiple sender case is a little trickier
@@ -174,14 +174,14 @@ impl<T> Packet<T> {
             // much as possible, and then can only exit when they are the
             // only pusher (otherwise they must try again).
             n if n < DISCONNECTED + FUDGE => {
-                // see the comment in 'try' for a shared channel for why this
+                // See the comment in 'try' for a shared channel for why this
                 // window of "not disconnected" is ok.
                 self.cnt.store(DISCONNECTED, Ordering::SeqCst);
 
                 if self.sender_drain.fetch_add(1, Ordering::SeqCst) == 0 {
                     loop {
-                        // drain the queue, for info on the thread yield see the
-                        // discussion in try_recv
+                        // Drain the queue. For info on the thread yield, see the
+                        // discussion in `try_recv`.
                         loop {
                             match self.queue.pop() {
                                 mpsc::Data(..) => {}
@@ -189,7 +189,7 @@ impl<T> Packet<T> {
                                 mpsc::Inconsistent => thread::yield_now(),
                             }
                         }
-                        // maybe we're done, if we're not the last ones
+                        // Maybe we're done. If we're not the last ones
                         // here, then we need to go try again.
                         if self.sender_drain.fetch_sub(1, Ordering::SeqCst) == 1 {
                             break
@@ -212,7 +212,7 @@ impl<T> Packet<T> {
 
     pub fn recv(&self, deadline: Option<Instant>) -> Result<T, Failure> {
         // This code is essentially the exact same as that found in the stream
-        // case (see stream.rs)
+        // case (see `stream.rs`).
         match self.try_recv() {
             Err(Empty) => {}
             data => return data,
@@ -237,7 +237,7 @@ impl<T> Packet<T> {
     }
 
     // Essentially the exact same thing as the stream decrement function.
-    // Returns true if blocking should proceed.
+    // Returns `true` if blocking should proceed.
     fn decrement(&self, token: SignalToken) -> StartResult {
         unsafe {
             assert_eq!(self.to_wake.load(Ordering::SeqCst), 0);
@@ -249,7 +249,7 @@ impl<T> Packet<T> {
             match self.cnt.fetch_sub(1 + steals, Ordering::SeqCst) {
                 DISCONNECTED => { self.cnt.store(DISCONNECTED, Ordering::SeqCst); }
                 // If we factor in our steals and notice that the channel has no
-                // data, we successfully sleep
+                // data, we successfully sleep.
                 n => {
                     assert!(n >= 0);
                     if n - steals <= 0 { return Installed }
@@ -268,8 +268,8 @@ impl<T> Packet<T> {
             mpsc::Empty => None,
 
             // This is a bit of an interesting case. The channel is reported as
-            // having data available, but our pop() has failed due to the queue
-            // being in an inconsistent state.  This means that there is some
+            // having data available, but our `pop()` has failed due to the queue
+            // being in an inconsistent state. This means that there is some
             // pusher somewhere which has yet to complete, but we are guaranteed
             // that a pop will eventually succeed. In this case, we spin in a
             // yield loop because the remote sender should finish their enqueue
@@ -333,11 +333,11 @@ impl<T> Packet<T> {
     }
 
     // Prepares this shared packet for a channel clone, essentially just bumping
-    // a refcount.
+    // a ref count.
     pub fn clone_chan(&self) {
         let old_count = self.channels.fetch_add(1, Ordering::SeqCst);
 
-        // See comments on Arc::clone() on why we do this (for `mem::forget`).
+        // See comments on `Arc::clone()` on why we do this (for `mem::forget`).
         if old_count > MAX_REFCOUNT {
             unsafe {
                 abort();
@@ -345,7 +345,7 @@ impl<T> Packet<T> {
         }
     }
 
-    // Decrement the reference count on a channel. This is called whenever a
+    // Decrements the reference count on a channel. This is called whenever a
     // Chan is dropped and may end up waking up a receiver. It's the receiver's
     // responsibility on the other end to figure out that we've disconnected.
     pub fn drop_chan(&self) {
@@ -362,7 +362,7 @@ impl<T> Packet<T> {
         }
     }
 
-    // See the long discussion inside of stream.rs for why the queue is drained,
+    // See the long discussion inside of `stream`.rs for why the queue is drained,
     // and why it is done in this fashion.
     pub fn drop_port(&self) {
         self.port_dropped.store(true, Ordering::SeqCst);
@@ -404,7 +404,7 @@ impl<T> Packet<T> {
         cnt == DISCONNECTED || cnt - unsafe { *self.steals.get() } > 0
     }
 
-    // increment the count on the channel (used for selection)
+    // Increments the count on the channel (used for selection).
     fn bump(&self, amt: isize) -> isize {
         match self.cnt.fetch_add(amt, Ordering::SeqCst) {
             DISCONNECTED => {
@@ -418,7 +418,7 @@ impl<T> Packet<T> {
     // Inserts the signal token for selection on this port, returning true if
     // blocking should proceed.
     //
-    // The code here is the same as in stream.rs, except that it doesn't need to
+    // The code here is the same as in `stream.rs`, except that it doesn't need to
     // peek at the channel to see if an upgrade is pending.
     pub fn start_selection(&self, token: SignalToken) -> StartResult {
         match self.decrement(token) {
@@ -441,14 +441,14 @@ impl<T> Packet<T> {
         // doing this is to ensure that any upgrade-in-progress is gone and
         // done with. Without this bounce, we can race with inherit_blocker
         // about looking at and dealing with to_wake. Once we have acquired the
-        // lock, we are guaranteed that inherit_blocker is done.
+        // lock, we are guaranteed that `inherit_blocker` is done.
         {
             let _guard = self.select_lock.lock().unwrap();
         }
 
         // Like the stream implementation, we want to make sure that the count
         // on the channel goes non-negative. We don't know how negative the
-        // stream currently is, so instead of using a steal value of 1, we load
+        // stream currently is, so instead of using a steal value of `1`, we load
         // the channel count and figure out what we should do to make it
         // positive.
         let steals = {
@@ -471,7 +471,7 @@ impl<T> Packet<T> {
                 }
             }
             unsafe {
-                // if the number of steals is -1, it was the pre-emptive -1 steal
+                // if the number of steals is `-1`, it was the pre-emptive `-1` steal.
                 // count from when we inherited a blocker. This is fine because
                 // we're just going to overwrite it with a real value.
                 let old = self.steals.get();

@@ -1,4 +1,4 @@
-//revisions: ast mir
+// revisions: ast mir
 //[mir] compile-flags: -Z borrowck=mir
 
 #![allow(unused_assignments)]

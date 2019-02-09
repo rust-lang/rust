@@ -2,7 +2,7 @@
 #![allow(unused_assignments)]
 #![allow(non_camel_case_types)]
 
-// pretty-expanded FIXME #23616
+// pretty-expanded FIXME(#23616)
 
 #![allow(unused_variables)]
 #![feature(box_syntax)]

@@ -52,7 +52,7 @@
 #![feature(omit_gdb_pretty_printer_section)]
 #![omit_gdb_pretty_printer_section]
 
-// N.B. These are `mut` only so they don't constant fold away.
+// N.B., these are `mut` only so they don't constant fold away.
 static mut B: bool = false;
 static mut I: isize = -1;
 static mut C: char = 'a';

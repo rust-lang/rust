@@ -1,6 +1,6 @@
 #![allow(unused_imports)]
 #![allow(unused_must_use)]
-// pretty-expanded FIXME #23616
+// pretty-expanded FIXME(#23616)
 
 #![feature(rustc_private)]
 

@@ -1,7 +1,7 @@
 // Issue #4036: Test for an issue that arose around fixing up type inference
 // byproducts in vtable records.
 
-// pretty-expanded FIXME #23616
+// pretty-expanded FIXME(#23616)
 
 #![feature(rustc_private)]
 

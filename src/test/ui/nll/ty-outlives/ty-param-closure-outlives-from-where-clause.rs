@@ -1,4 +1,4 @@
-// Test that we can propagate `T: 'a` obligations to our caller.  See
+// Test that we can propagate `T: 'a` obligations to our caller. See
 // `correct_region` for an explanation of how this test is setup; it's
 // somewhat intricate.
 
@@ -28,7 +28,7 @@ fn no_region<'a, T>(a: Cell<&'a ()>, b: T) {
         //~^ ERROR the parameter type `T` may not live long enough
         //
         // See `correct_region`, which explains the point of this
-        // test.  The only difference is that, in the case of this
+        // test. The only difference is that, in the case of this
         // function, there is no where clause *anywhere*, and hence we
         // get an error (but reported by the closure creator).
         require(&x, &y)
@@ -63,7 +63,7 @@ where
 {
     with_signature(a, b, |x, y| {
         //~^ ERROR the parameter type `T` may not live long enough
-        // See `correct_region`
+        // See `correct_region`.
         require(&x, &y)
     })
 }
@@ -75,7 +75,7 @@ where
     'b: 'a,
 {
     with_signature(a, b, |x, y| {
-        // See `correct_region`
+        // See `correct_region`.
         require(&x, &y)
     })
 }

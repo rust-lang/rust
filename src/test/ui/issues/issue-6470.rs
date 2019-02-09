@@ -2,7 +2,7 @@
 #![allow(dead_code)]
 #![allow(improper_ctypes)]
 
-// pretty-expanded FIXME #23616
+// pretty-expanded FIXME(#23616)
 #![allow(non_snake_case)]
 
 pub mod Bar {

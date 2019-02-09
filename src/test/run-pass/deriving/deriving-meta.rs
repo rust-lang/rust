@@ -1,7 +1,7 @@
 // run-pass
 #![allow(unused_must_use)]
 #![allow(unused_imports)]
-// pretty-expanded FIXME #23616
+// pretty-expanded FIXME(#23616)
 #![allow(deprecated)]
 
 use std::hash::{Hash, SipHasher};
@@ -17,7 +17,10 @@ fn hash<T: Hash>(_t: &T) {}
 pub fn main() {
     let a = Foo {bar: 4, baz: -3};
 
-    a == a;    // check for PartialEq impl w/o testing its correctness
-    a.clone(); // check for Clone impl w/o testing its correctness
-    hash(&a);  // check for Hash impl w/o testing its correctness
+    // Check for `PartialEq` impl without testing its correctness.
+    a == a;
+    // Check for `Clone` impl without testing its correctness.
+    a.clone();
+    // Check for `Hash` impl without testing its correctness.
+    hash(&a);
 }
