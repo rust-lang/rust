@@ -432,7 +432,7 @@ macro_rules! writeln {
 /// * Iterators that dynamically terminate.
 ///
 /// If the determination that the code is unreachable proves incorrect, the
-/// program immediately terminates with a [`panic!`].  The function [`unreachable_unchecked`],
+/// program immediately terminates with a [`panic!`]. The function [`unreachable_unchecked`],
 /// which belongs to the [`std::hint`] module, informs the compiler to
 /// optimize the code out of the release version entirely.
 ///

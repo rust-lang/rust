@@ -518,7 +518,7 @@ pub trait Rem<RHS=Self> {
 
 macro_rules! rem_impl_integer {
     ($($t:ty)*) => ($(
-        /// This operation satisfies `n % d == n - (n / d) * d`.  The
+        /// This operation satisfies `n % d == n - (n / d) * d`. The
         /// result has the same sign as the left operand.
         #[stable(feature = "rust1", since = "1.0.0")]
         impl Rem for $t {

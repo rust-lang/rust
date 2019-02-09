@@ -37,7 +37,7 @@
 //!
 //! In addition, there are numerous helper functions that are used in the paper but not available
 //! in Rust (or at least in core). Our version is additionally complicated by the need to handle
-//! overflow and underflow and the desire to handle subnormal numbers.  Bellerophon and
+//! overflow and underflow and the desire to handle subnormal numbers. Bellerophon and
 //! Algorithm R have trouble with overflow, subnormals, and underflow. We conservatively switch to
 //! Algorithm M (with the modifications described in section 8 of the paper) well before the
 //! inputs get into the critical region.
@@ -148,7 +148,7 @@ macro_rules! from_str_float_impl {
             /// # Return value
             ///
             /// `Err(ParseFloatError)` if the string did not represent a valid
-            /// number.  Otherwise, `Ok(n)` where `n` is the floating-point
+            /// number. Otherwise, `Ok(n)` where `n` is the floating-point
             /// number represented by `src`.
             #[inline]
             fn from_str(src: &str) -> Result<Self, ParseFloatError> {
@@ -209,7 +209,7 @@ fn pfe_invalid() -> ParseFloatError {
     ParseFloatError { kind: FloatErrorKind::Invalid }
 }
 
-/// Split decimal string into sign and the rest, without inspecting or validating the rest.
+/// Splits a decimal string into sign and the rest, without inspecting or validating the rest.
 fn extract_sign(s: &str) -> (Sign, &str) {
     match s.as_bytes()[0] {
         b'+' => (Sign::Positive, &s[1..]),

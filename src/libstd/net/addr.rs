@@ -671,7 +671,7 @@ impl hash::Hash for SocketAddrV6 {
 /// [`SocketAddr`] values.
 ///
 /// This trait is used for generic address resolution when constructing network
-/// objects.  By default it is implemented for the following types:
+/// objects. By default it is implemented for the following types:
 ///
 ///  * [`SocketAddr`]: [`to_socket_addrs`] is the identity function.
 ///

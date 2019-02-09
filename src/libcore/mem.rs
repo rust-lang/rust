@@ -1101,7 +1101,7 @@ impl<T> MaybeUninit<T> {
     }
 
     /// Create a new `MaybeUninit` in an uninitialized state, with the memory being
-    /// filled with `0` bytes.  It depends on `T` whether that already makes for
+    /// filled with `0` bytes. It depends on `T` whether that already makes for
     /// proper initialization. For example, `MaybeUninit<usize>::zeroed()` is initialized,
     /// but `MaybeUninit<&'static i32>::zeroed()` is not because references must not
     /// be null.
@@ -1130,7 +1130,7 @@ impl<T> MaybeUninit<T> {
         }
     }
 
-    /// Extract the value from the `MaybeUninit` container.  This is a great way
+    /// Extract the value from the `MaybeUninit` container. This is a great way
     /// to ensure that the data will get dropped, because the resulting `T` is
     /// subject to the usual drop handling.
     ///

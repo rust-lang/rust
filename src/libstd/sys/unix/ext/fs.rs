@@ -805,9 +805,9 @@ impl DirEntryExt for fs::DirEntry {
 /// # Note
 ///
 /// On Windows, you must specify whether a symbolic link points to a file
-/// or directory.  Use `os::windows::fs::symlink_file` to create a
+/// or directory. Use `os::windows::fs::symlink_file` to create a
 /// symbolic link to a file, or `os::windows::fs::symlink_dir` to create a
-/// symbolic link to a directory.  Additionally, the process must have
+/// symbolic link to a directory. Additionally, the process must have
 /// `SeCreateSymbolicLinkPrivilege` in order to be able to create a
 /// symbolic link.
 ///

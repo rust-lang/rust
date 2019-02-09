@@ -50,11 +50,11 @@ pub const CAPACITY: usize = 2 * B - 1;
 ///
 /// We have a separate type for the header and rely on it matching the prefix of `LeafNode`, in
 /// order to statically allocate a single dummy node to avoid allocations. This struct is
-/// `repr(C)` to prevent them from being reordered.  `LeafNode` does not just contain a
+/// `repr(C)` to prevent them from being reordered. `LeafNode` does not just contain a
 /// `NodeHeader` because we do not want unnecessary padding between `len` and the keys.
-/// Crucially, `NodeHeader` can be safely transmuted to different K and V.  (This is exploited
+/// Crucially, `NodeHeader` can be safely transmuted to different K and V. (This is exploited
 /// by `as_header`.)
-/// See `into_key_slice` for an explanation of K2.  K2 cannot be safely transmuted around
+/// See `into_key_slice` for an explanation of K2. K2 cannot be safely transmuted around
 /// because the size of `NodeHeader` depends on its alignment!
 #[repr(C)]
 struct NodeHeader<K, V, K2 = ()> {

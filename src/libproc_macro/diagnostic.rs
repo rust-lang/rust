@@ -56,7 +56,7 @@ pub struct Diagnostic {
 
 macro_rules! diagnostic_child_methods {
     ($spanned:ident, $regular:ident, $level:expr) => (
-        /// Add a new child diagnostic message to `self` with the level
+        /// Adds a new child diagnostic message to `self` with the level
         /// identified by this method's name with the given `spans` and
         /// `message`.
         #[unstable(feature = "proc_macro_diagnostic", issue = "54140")]
@@ -67,7 +67,7 @@ macro_rules! diagnostic_child_methods {
             self
         }
 
-        /// Add a new child diagnostic message to `self` with the level
+        /// Adds a new child diagnostic message to `self` with the level
         /// identified by this method's name with the given `message`.
         #[unstable(feature = "proc_macro_diagnostic", issue = "54140")]
         pub fn $regular<T: Into<String>>(mut self, message: T) -> Diagnostic {
@@ -93,7 +93,7 @@ impl<'a> Iterator for Children<'a> {
 
 #[unstable(feature = "proc_macro_diagnostic", issue = "54140")]
 impl Diagnostic {
-    /// Create a new diagnostic with the given `level` and `message`.
+    /// Creates a new diagnostic with the given `level` and `message`.
     #[unstable(feature = "proc_macro_diagnostic", issue = "54140")]
     pub fn new<T: Into<String>>(level: Level, message: T) -> Diagnostic {
         Diagnostic {
@@ -104,7 +104,7 @@ impl Diagnostic {
         }
     }
 
-    /// Create a new diagnostic with the given `level` and `message` pointing to
+    /// Creates a new diagnostic with the given `level` and `message` pointing to
     /// the given set of `spans`.
     #[unstable(feature = "proc_macro_diagnostic", issue = "54140")]
     pub fn spanned<S, T>(spans: S, level: Level, message: T) -> Diagnostic

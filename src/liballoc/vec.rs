@@ -738,7 +738,7 @@ impl<T> Vec<T> {
     /// Forces the length of the vector to `new_len`.
     ///
     /// This is a low-level operation that maintains none of the normal
-    /// invariants of the type.  Normally changing the length of a vector
+    /// invariants of the type. Normally changing the length of a vector
     /// is done using one of the safe operations instead, such as
     /// [`truncate`], [`resize`], [`extend`], or [`clear`].
     ///

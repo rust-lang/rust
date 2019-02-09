@@ -222,7 +222,7 @@ fn initial_buffer_size(file: &File) -> usize {
 /// Read the entire contents of a file into a bytes vector.
 ///
 /// This is a convenience function for using [`File::open`] and [`read_to_end`]
-/// with fewer imports and without an intermediate variable.  It pre-allocates a
+/// with fewer imports and without an intermediate variable. It pre-allocates a
 /// buffer based on the file size when available, so it is generally faster than
 /// reading into a vector created with `Vec::new()`.
 ///
@@ -263,7 +263,7 @@ pub fn read<P: AsRef<Path>>(path: P) -> io::Result<Vec<u8>> {
 /// Read the entire contents of a file into a string.
 ///
 /// This is a convenience function for using [`File::open`] and [`read_to_string`]
-/// with fewer imports and without an intermediate variable.  It pre-allocates a
+/// with fewer imports and without an intermediate variable. It pre-allocates a
 /// buffer based on the file size when available, so it is generally faster than
 /// reading into a string created with `String::new()`.
 ///

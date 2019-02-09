@@ -1,6 +1,6 @@
-//! rustc compiler intrinsics.
+//! Compiler intrinsics.
 //!
-//! The corresponding definitions are in librustc_codegen_llvm/intrinsic.rs.
+//! The corresponding definitions are in `librustc_codegen_llvm/intrinsic.rs`.
 //!
 //! # Volatiles
 //!
@@ -697,7 +697,7 @@ extern "rust-intrinsic" {
     /// Creates a value initialized to zero.
     ///
     /// `init` is unsafe because it returns a zeroed-out datum,
-    /// which is unsafe unless T is `Copy`.  Also, even if T is
+    /// which is unsafe unless `T` is `Copy`. Also, even if T is
     /// `Copy`, an all-zero value may not correspond to any legitimate
     /// state for the type in question.
     pub fn init<T>() -> T;
@@ -988,7 +988,7 @@ extern "rust-intrinsic" {
     ///   beginning at `dst` with the same size.
     ///
     /// Like [`read`], `copy_nonoverlapping` creates a bitwise copy of `T`, regardless of
-    /// whether `T` is [`Copy`].  If `T` is not [`Copy`], using *both* the values
+    /// whether `T` is [`Copy`]. If `T` is not [`Copy`], using *both* the values
     /// in the region beginning at `*src` and the region beginning at `*dst` can
     /// [violate memory safety][read-ownership].
     ///
@@ -1055,7 +1055,7 @@ extern "rust-intrinsic" {
     /// [`copy_nonoverlapping`] can be used instead.
     ///
     /// `copy` is semantically equivalent to C's [`memmove`], but with the argument
-    /// order swapped.  Copying takes place as if the bytes were copied from `src`
+    /// order swapped. Copying takes place as if the bytes were copied from `src`
     /// to a temporary array and then copied from the array to `dst`.
     ///
     /// [`copy_nonoverlapping`]: ./fn.copy_nonoverlapping.html
@@ -1072,7 +1072,7 @@ extern "rust-intrinsic" {
     /// * Both `src` and `dst` must be properly aligned.
     ///
     /// Like [`read`], `copy` creates a bitwise copy of `T`, regardless of
-    /// whether `T` is [`Copy`].  If `T` is not [`Copy`], using both the values
+    /// whether `T` is [`Copy`]. If `T` is not [`Copy`], using both the values
     /// in the region beginning at `*src` and the region beginning at `*dst` can
     /// [violate memory safety][read-ownership].
     ///

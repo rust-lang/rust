@@ -1922,7 +1922,7 @@ impl<T> VecDeque<T> {
     ///
     /// # Panics
     ///
-    /// If `mid` is greater than `len()`.  Note that `mid == len()`
+    /// If `mid` is greater than `len()`. Note that `mid == len()`
     /// does _not_ panic and is a no-op rotation.
     ///
     /// # Complexity
@@ -1967,7 +1967,7 @@ impl<T> VecDeque<T> {
     ///
     /// # Panics
     ///
-    /// If `k` is greater than `len()`.  Note that `k == len()`
+    /// If `k` is greater than `len()`. Note that `k == len()`
     /// does _not_ panic and is a no-op rotation.
     ///
     /// # Complexity

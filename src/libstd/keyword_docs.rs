@@ -627,7 +627,7 @@ mod loop_keyword { }
 /// directly accessed and modified.
 ///
 /// Tuple structs are similar to regular structs, but its fields have no names. They are used like
-/// tuples, with deconstruction possible via `let TupleStruct(x, y) = foo;` syntax.  For accessing
+/// tuples, with deconstruction possible via `let TupleStruct(x, y) = foo;` syntax. For accessing
 /// individual variables, the same syntax is used as with regular tuples, namely `foo.0`, `foo.1`,
 /// etc, starting at zero.
 ///

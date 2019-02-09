@@ -72,11 +72,11 @@ struct SelectInner {
 impl !marker::Send for Select {}
 
 /// A handle to a receiver which is currently a member of a `Select` set of
-/// receivers.  This handle is used to keep the receiver in the set as well as
+/// receivers. This handle is used to keep the receiver in the set as well as
 /// interact with the underlying receiver.
 pub struct Handle<'rx, T:Send+'rx> {
     /// The ID of this handle, used to compare against the return value of
-    /// `Select::wait()`
+    /// `Select::wait()`.
     id: usize,
     selector: *mut SelectInner,
     next: *mut Handle<'static, ()>,
