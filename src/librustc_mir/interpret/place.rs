@@ -823,6 +823,8 @@ where
         let src = match self.try_read_immediate(src)? {
             Ok(src_val) => {
                 // Yay, we got a value that we can write directly.
+                // FIXME: Add a check to make sure that if `src` is indirect,
+                // it does not overlap with `dest`.
                 return self.write_immediate_no_validate(src_val, dest);
             }
             Err(mplace) => mplace,
@@ -836,7 +838,8 @@ where
         self.memory.copy(
             src_ptr, src_align,
             dest_ptr, dest_align,
-            dest.layout.size, false
+            dest.layout.size,
+            /*nonoverlapping*/ true,
         )?;
 
         Ok(())
