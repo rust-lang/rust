@@ -93,7 +93,7 @@ pub fn parse_output(file_name: &str, output: &str, proc_res: &ProcRes) -> Vec<Er
 
 fn parse_line(file_name: &str, line: &str, output: &str, proc_res: &ProcRes) -> Vec<Error> {
     // The compiler sometimes intermingles non-JSON stuff into the
-    // output.  This hack just skips over such lines. Yuck.
+    // output. This hack just skips over such lines. Yuck.
     if line.starts_with('{') {
         match serde_json::from_str::<Diagnostic>(line) {
             Ok(diagnostic) => {
@@ -147,7 +147,7 @@ fn push_expected_errors(
     };
 
     // We break the output into multiple lines, and then append the
-    // [E123] to every line in the output. This may be overkill.  The
+    // [E123] to every line in the output. This may be overkill. The
     // intention was to match existing tests that do things like "//|
     // found `i32` [E123]" and expect to match that somewhere, and yet
     // also ensure that `//~ ERROR E123` *always* works. The
@@ -156,7 +156,7 @@ fn push_expected_errors(
     let with_code = |span: &DiagnosticSpan, text: &str| {
         match diagnostic.code {
             Some(ref code) =>
-                // FIXME(#33000) -- it'd be better to use a dedicated
+                // FIXME(#33000): it'd be better to use a dedicated
                 // UI harness than to include the line/col number like
                 // this, but some current tests rely on it.
                 //
@@ -169,7 +169,7 @@ fn push_expected_errors(
                         span.line_end, span.column_end,
                         text, code.code.clone()),
             None =>
-                // FIXME(#33000) -- it'd be better to use a dedicated UI harness
+                // FIXME(#33000): it'd be better to use a dedicated UI harness.
                 format!("{}:{}: {}:{}: {}",
                         span.line_start, span.column_start,
                         span.line_end, span.column_end,

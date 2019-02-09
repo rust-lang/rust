@@ -41,7 +41,7 @@ fn verify(tomlfile: &Path, libfile: &Path, bad: &mut bool) {
     //
     // We just look for:
     //
-    // ````
+    // ```toml
     // [dependencies]
     // name = ...
     // name2 = ...

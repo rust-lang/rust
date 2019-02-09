@@ -86,7 +86,7 @@ impl FileEntry {
                     *errors = true;
                     println!("{}:{}: id is not unique: `{}`", file.display(), i, fragment);
                 }
-                // Just in case, we also add the encoded id.
+                // Just in case, we also add the encoded ID.
                 self.ids.insert(encoded);
             });
         }
