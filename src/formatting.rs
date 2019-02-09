@@ -111,7 +111,7 @@ fn format_project<T: FormatHandler>(
 
 // Used for formatting files.
 #[derive(new)]
-struct FormatContext<'a, T: FormatHandler + 'a> {
+struct FormatContext<'a, T: FormatHandler> {
     krate: &'a ast::Crate,
     report: FormatReport,
     parse_session: ParseSess,

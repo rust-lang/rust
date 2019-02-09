@@ -42,7 +42,7 @@ impl<'a> PairParts<'a> {
 pub(crate) fn rewrite_all_pairs(
     expr: &ast::Expr,
     shape: Shape,
-    context: &RewriteContext,
+    context: &RewriteContext<'_>,
 ) -> Option<String> {
     // First we try formatting on one line.
     if let Some(list) = expr.flatten(false) {
@@ -62,9 +62,9 @@ pub(crate) fn rewrite_all_pairs(
 // This may return a multi-line result since we allow the last expression to go
 // multiline in a 'single line' formatting.
 fn rewrite_pairs_one_line<T: Rewrite>(
-    list: &PairList<T>,
+    list: &PairList<'_, '_, T>,
     shape: Shape,
-    context: &RewriteContext,
+    context: &RewriteContext<'_>,
 ) -> Option<String> {
     assert!(list.list.len() >= 2, "Not a pair?");
 
@@ -107,9 +107,9 @@ fn rewrite_pairs_one_line<T: Rewrite>(
 }
 
 fn rewrite_pairs_multiline<T: Rewrite>(
-    list: &PairList<T>,
+    list: &PairList<'_, '_, T>,
     shape: Shape,
-    context: &RewriteContext,
+    context: &RewriteContext<'_>,
 ) -> Option<String> {
     let rhs_offset = shape.rhs_overhead(&context.config);
     let nested_shape = (match context.config.indent_style() {
@@ -175,8 +175,8 @@ fn rewrite_pairs_multiline<T: Rewrite>(
 pub(crate) fn rewrite_pair<LHS, RHS>(
     lhs: &LHS,
     rhs: &RHS,
-    pp: PairParts,
-    context: &RewriteContext,
+    pp: PairParts<'_>,
+    context: &RewriteContext<'_>,
     shape: Shape,
     separator_place: SeparatorPlace,
 ) -> Option<String>
@@ -264,18 +264,18 @@ trait FlattenPair: Rewrite + Sized {
     // operator into the list. E.g,, if the source is `a * b + c`, if `_same_op`
     // is true, we make `[(a * b), c]` if `_same_op` is false, we make
     // `[a, b, c]`
-    fn flatten(&self, _same_op: bool) -> Option<PairList<Self>> {
+    fn flatten(&self, _same_op: bool) -> Option<PairList<'_, '_, Self>> {
         None
     }
 }
 
-struct PairList<'a, 'b, T: Rewrite + 'b> {
+struct PairList<'a, 'b, T: Rewrite> {
     list: Vec<&'b T>,
     separators: Vec<&'a str>,
 }
 
 impl FlattenPair for ast::Expr {
-    fn flatten(&self, same_op: bool) -> Option<PairList<ast::Expr>> {
+    fn flatten(&self, same_op: bool) -> Option<PairList<'_, '_, ast::Expr>> {
         let top_op = match self.node {
             ast::ExprKind::Binary(op, _, _) => op.node,
             _ => return None,

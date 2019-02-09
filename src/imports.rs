@@ -146,7 +146,7 @@ impl UseSegment {
     }
 
     fn from_path_segment(
-        context: &RewriteContext,
+        context: &RewriteContext<'_>,
         path_seg: &ast::PathSegment,
         modsep: bool,
     ) -> Option<UseSegment> {
@@ -193,19 +193,19 @@ fn merge_use_trees_inner(trees: &mut Vec<UseTree>, use_tree: UseTree) {
 }
 
 impl fmt::Debug for UseTree {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         fmt::Display::fmt(self, f)
     }
 }
 
 impl fmt::Debug for UseSegment {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         fmt::Display::fmt(self, f)
     }
 }
 
 impl fmt::Display for UseSegment {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match *self {
             UseSegment::Glob => write!(f, "*"),
             UseSegment::Ident(ref s, _) => write!(f, "{}", s),
@@ -227,7 +227,7 @@ impl fmt::Display for UseSegment {
     }
 }
 impl fmt::Display for UseTree {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         for (i, segment) in self.path.iter().enumerate() {
             let is_last = i == self.path.len() - 1;
             write!(f, "{}", segment)?;
@@ -241,7 +241,7 @@ impl fmt::Display for UseTree {
 
 impl UseTree {
     // Rewrite use tree with `use ` and a trailing `;`.
-    pub fn rewrite_top_level(&self, context: &RewriteContext, shape: Shape) -> Option<String> {
+    pub fn rewrite_top_level(&self, context: &RewriteContext<'_>, shape: Shape) -> Option<String> {
         let vis = self.visibility.as_ref().map_or(Cow::from(""), |vis| {
             crate::utils::format_visibility(context, &vis)
         });
@@ -281,7 +281,7 @@ impl UseTree {
     }
 
     pub fn from_ast_with_normalization(
-        context: &RewriteContext,
+        context: &RewriteContext<'_>,
         item: &ast::Item,
     ) -> Option<UseTree> {
         match item.node {
@@ -305,7 +305,7 @@ impl UseTree {
     }
 
     fn from_ast(
-        context: &RewriteContext,
+        context: &RewriteContext<'_>,
         a: &ast::UseTree,
         list_item: Option<ListItem>,
         visibility: Option<ast::Visibility>,
@@ -710,7 +710,7 @@ impl Ord for UseTree {
 }
 
 fn rewrite_nested_use_tree(
-    context: &RewriteContext,
+    context: &RewriteContext<'_>,
     use_tree_list: &[UseTree],
     shape: Shape,
 ) -> Option<String> {
@@ -786,7 +786,7 @@ fn rewrite_nested_use_tree(
 }
 
 impl Rewrite for UseSegment {
-    fn rewrite(&self, context: &RewriteContext, shape: Shape) -> Option<String> {
+    fn rewrite(&self, context: &RewriteContext<'_>, shape: Shape) -> Option<String> {
         Some(match self {
             UseSegment::Ident(ref ident, Some(ref rename)) => format!("{} as {}", ident, rename),
             UseSegment::Ident(ref ident, None) => ident.clone(),
@@ -809,7 +809,7 @@ impl Rewrite for UseSegment {
 
 impl Rewrite for UseTree {
     // This does NOT format attributes and visibility or add a trailing `;`.
-    fn rewrite(&self, context: &RewriteContext, mut shape: Shape) -> Option<String> {
+    fn rewrite(&self, context: &RewriteContext<'_>, mut shape: Shape) -> Option<String> {
         let mut result = String::with_capacity(256);
         let mut iter = self.path.iter().peekable();
         while let Some(ref segment) = iter.next() {

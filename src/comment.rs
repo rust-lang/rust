@@ -122,7 +122,7 @@ impl<'a> CommentStyle<'a> {
     }
 }
 
-fn comment_style(orig: &str, normalize_comments: bool) -> CommentStyle {
+fn comment_style(orig: &str, normalize_comments: bool) -> CommentStyle<'_> {
     if !normalize_comments {
         if orig.starts_with("/**") && !orig.starts_with("/**/") {
             CommentStyle::DoubleBullet
@@ -158,7 +158,7 @@ fn comment_style(orig: &str, normalize_comments: bool) -> CommentStyle {
 /// strings, then they will be put on a single line as long as doing so does not
 /// exceed max width.
 pub fn combine_strs_with_missing_comments(
-    context: &RewriteContext,
+    context: &RewriteContext<'_>,
     prev_str: &str,
     next_str: &str,
     span: Span,
@@ -286,7 +286,7 @@ fn identify_comment(
     // - a boolean indicating if there is a blank line
     // - a number indicating the size of the first group of comments
     fn consume_same_line_comments(
-        style: CommentStyle,
+        style: CommentStyle<'_>,
         orig: &str,
         line_start: &str,
     ) -> (bool, usize) {
@@ -459,7 +459,7 @@ impl ItemizedBlock {
     }
 
     /// Returns a `StringFormat` used for formatting the content of an item
-    fn create_string_format<'a>(&'a self, fmt: &'a StringFormat) -> StringFormat<'a> {
+    fn create_string_format<'a>(&'a self, fmt: &'a StringFormat<'_>) -> StringFormat<'a> {
         StringFormat {
             opener: "",
             closer: "",
@@ -777,7 +777,7 @@ impl<'a> CommentRewrite<'a> {
 fn rewrite_comment_inner(
     orig: &str,
     block_style: bool,
-    style: CommentStyle,
+    style: CommentStyle<'_>,
     shape: Shape,
     config: &Config,
     is_doc_comment: bool,
@@ -820,7 +820,7 @@ fn rewrite_comment_inner(
 
 const RUSTFMT_CUSTOM_COMMENT_PREFIX: &str = "//#### ";
 
-fn hide_sharp_behind_comment(s: &str) -> Cow<str> {
+fn hide_sharp_behind_comment(s: &str) -> Cow<'_, str> {
     if s.trim_start().starts_with("# ") {
         Cow::from(format!("{}{}", RUSTFMT_CUSTOM_COMMENT_PREFIX, s))
     } else {
@@ -853,7 +853,7 @@ fn has_url(s: &str) -> bool {
 pub fn rewrite_missing_comment(
     span: Span,
     shape: Shape,
-    context: &RewriteContext,
+    context: &RewriteContext<'_>,
 ) -> Option<String> {
     let missing_snippet = context.snippet(span);
     let trimmed_snippet = missing_snippet.trim();
@@ -870,7 +870,7 @@ pub fn rewrite_missing_comment(
 pub fn recover_missing_comment_in_span(
     span: Span,
     shape: Shape,
-    context: &RewriteContext,
+    context: &RewriteContext<'_>,
     used_width: usize,
 ) -> Option<String> {
     let missing_comment = rewrite_missing_comment(span, shape, context)?;
@@ -934,7 +934,7 @@ fn light_rewrite_comment(
 /// Trims comment characters and possibly a single space from the left of a string.
 /// Does not trim all whitespace. If a single space is trimmed from the left of the string,
 /// this function returns true.
-fn left_trim_comment_line<'a>(line: &'a str, style: &CommentStyle) -> (&'a str, bool) {
+fn left_trim_comment_line<'a>(line: &'a str, style: &CommentStyle<'_>) -> (&'a str, bool) {
     if line.starts_with("//! ")
         || line.starts_with("/// ")
         || line.starts_with("/*! ")
@@ -1544,7 +1544,7 @@ impl<'a> Iterator for CommentCodeSlices<'a> {
 pub fn recover_comment_removed(
     new: String,
     span: Span,
-    context: &RewriteContext,
+    context: &RewriteContext<'_>,
 ) -> Option<String> {
     let snippet = context.snippet(span);
     if snippet != new && changed_comment_content(snippet, &new) {

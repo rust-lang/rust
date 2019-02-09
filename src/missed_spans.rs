@@ -79,7 +79,7 @@ impl<'a> FmtVisitor<'a> {
         })
     }
 
-    fn format_missing_inner<F: Fn(&mut FmtVisitor, &str, &str)>(
+    fn format_missing_inner<F: Fn(&mut FmtVisitor<'_>, &str, &str)>(
         &mut self,
         end: BytePos,
         process_last_snippet: F,
@@ -144,7 +144,7 @@ impl<'a> FmtVisitor<'a> {
 
     fn write_snippet<F>(&mut self, span: Span, process_last_snippet: F)
     where
-        F: Fn(&mut FmtVisitor, &str, &str),
+        F: Fn(&mut FmtVisitor<'_>, &str, &str),
     {
         // Get a snippet from the file start to the span's hi without allocating.
         // We need it to determine what precedes the current comment. If the comment
@@ -172,7 +172,7 @@ impl<'a> FmtVisitor<'a> {
         span: Span,
         process_last_snippet: F,
     ) where
-        F: Fn(&mut FmtVisitor, &str, &str),
+        F: Fn(&mut FmtVisitor<'_>, &str, &str),
     {
         // Trim whitespace from the right hand side of each line.
         // Annoyingly, the library functions for splitting by lines etc. are not

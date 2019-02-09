@@ -89,7 +89,7 @@ pub enum OverflowableItem<'a> {
 }
 
 impl<'a> Rewrite for OverflowableItem<'a> {
-    fn rewrite(&self, context: &RewriteContext, shape: Shape) -> Option<String> {
+    fn rewrite(&self, context: &RewriteContext<'_>, shape: Shape) -> Option<String> {
         self.map(|item| item.rewrite(context, shape))
     }
 }
@@ -103,7 +103,7 @@ impl<'a> Spanned for OverflowableItem<'a> {
 impl<'a> OverflowableItem<'a> {
     pub fn map<F, T>(&self, f: F) -> T
     where
-        F: Fn(&IntoOverflowableItem<'a>) -> T,
+        F: Fn(&dyn IntoOverflowableItem<'a>) -> T,
     {
         match self {
             OverflowableItem::Expr(expr) => f(*expr),
@@ -159,7 +159,7 @@ impl<'a> OverflowableItem<'a> {
         }
     }
 
-    pub fn can_be_overflowed(&self, context: &RewriteContext, len: usize) -> bool {
+    pub fn can_be_overflowed(&self, context: &RewriteContext<'_>, len: usize) -> bool {
         match self {
             OverflowableItem::Expr(expr) => can_be_overflowed_expr(context, expr, len),
             OverflowableItem::MacroArg(macro_arg) => match macro_arg {
@@ -247,7 +247,7 @@ where
 }
 
 pub fn rewrite_with_parens<'a, T: 'a + IntoOverflowableItem<'a>>(
-    context: &'a RewriteContext,
+    context: &'a RewriteContext<'_>,
     ident: &'a str,
     items: impl Iterator<Item = &'a T>,
     shape: Shape,
@@ -271,7 +271,7 @@ pub fn rewrite_with_parens<'a, T: 'a + IntoOverflowableItem<'a>>(
 }
 
 pub fn rewrite_with_angle_brackets<'a, T: 'a + IntoOverflowableItem<'a>>(
-    context: &'a RewriteContext,
+    context: &'a RewriteContext<'_>,
     ident: &'a str,
     items: impl Iterator<Item = &'a T>,
     shape: Shape,
@@ -293,7 +293,7 @@ pub fn rewrite_with_angle_brackets<'a, T: 'a + IntoOverflowableItem<'a>>(
 }
 
 pub fn rewrite_with_square_brackets<'a, T: 'a + IntoOverflowableItem<'a>>(
-    context: &'a RewriteContext,
+    context: &'a RewriteContext<'_>,
     name: &'a str,
     items: impl Iterator<Item = &'a T>,
     shape: Shape,
@@ -338,7 +338,7 @@ struct Context<'a> {
 
 impl<'a> Context<'a> {
     pub fn new<T: 'a + IntoOverflowableItem<'a>>(
-        context: &'a RewriteContext,
+        context: &'a RewriteContext<'_>,
         items: impl Iterator<Item = &'a T>,
         ident: &'a str,
         shape: Shape,
@@ -375,7 +375,7 @@ impl<'a> Context<'a> {
         }
     }
 
-    fn last_item(&self) -> Option<&OverflowableItem> {
+    fn last_item(&self) -> Option<&OverflowableItem<'_>> {
         self.items.last()
     }
 
@@ -704,7 +704,7 @@ fn need_block_indent(s: &str, shape: Shape) -> bool {
     })
 }
 
-fn can_be_overflowed(context: &RewriteContext, items: &[OverflowableItem]) -> bool {
+fn can_be_overflowed(context: &RewriteContext<'_>, items: &[OverflowableItem<'_>]) -> bool {
     items
         .last()
         .map_or(false, |x| x.can_be_overflowed(context, items.len()))
@@ -712,7 +712,7 @@ fn can_be_overflowed(context: &RewriteContext, items: &[OverflowableItem]) -> bo
 
 /// Returns a shape for the last argument which is going to be overflowed.
 fn last_item_shape(
-    lists: &[OverflowableItem],
+    lists: &[OverflowableItem<'_>],
     items: &[ListItem],
     shape: Shape,
     args_max_width: usize,
@@ -732,7 +732,7 @@ fn last_item_shape(
 }
 
 fn shape_from_indent_style(
-    context: &RewriteContext,
+    context: &RewriteContext<'_>,
     shape: Shape,
     overhead: usize,
     offset: usize,
@@ -758,7 +758,7 @@ fn no_long_items(list: &[ListItem]) -> bool {
 }
 
 /// In case special-case style is required, returns an offset from which we start horizontal layout.
-pub fn maybe_get_args_offset(callee_str: &str, args: &[OverflowableItem]) -> Option<(bool, usize)> {
+pub fn maybe_get_args_offset(callee_str: &str, args: &[OverflowableItem<'_>]) -> Option<(bool, usize)> {
     if let Some(&(_, num_args_before)) = args
         .get(0)?
         .whitelist()

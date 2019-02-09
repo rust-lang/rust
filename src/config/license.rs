@@ -14,7 +14,7 @@ pub enum LicenseError {
 }
 
 impl fmt::Display for LicenseError {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match *self {
             LicenseError::IO(ref err) => err.fmt(f),
             LicenseError::Regex(ref err) => err.fmt(f),

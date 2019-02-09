@@ -173,11 +173,11 @@ macro_rules! create_config {
             }
             )+
 
-            pub fn set(&mut self) -> ConfigSetter {
+            pub fn set(&mut self) -> ConfigSetter<'_> {
                 ConfigSetter(self)
             }
 
-            pub fn was_set(&self) -> ConfigWasSet {
+            pub fn was_set(&self) -> ConfigWasSet<'_> {
                 ConfigWasSet(self)
             }
 
@@ -379,7 +379,7 @@ macro_rules! create_config {
                 HIDE_OPTIONS.contains(&name)
             }
 
-            pub fn print_docs(out: &mut Write, include_unstable: bool) {
+            pub fn print_docs(out: &mut dyn Write, include_unstable: bool) {
                 use std::cmp;
                 let max = 0;
                 $( let max = cmp::max(max, stringify!($i).len()+1); )+

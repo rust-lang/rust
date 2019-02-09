@@ -76,7 +76,7 @@ impl MacroArg {
 }
 
 impl Rewrite for ast::Item {
-    fn rewrite(&self, context: &RewriteContext, shape: Shape) -> Option<String> {
+    fn rewrite(&self, context: &RewriteContext<'_>, shape: Shape) -> Option<String> {
         let mut visitor = crate::visitor::FmtVisitor::from_context(context);
         visitor.block_indent = shape.indent;
         visitor.last_pos = self.span().lo();
@@ -86,7 +86,7 @@ impl Rewrite for ast::Item {
 }
 
 impl Rewrite for MacroArg {
-    fn rewrite(&self, context: &RewriteContext, shape: Shape) -> Option<String> {
+    fn rewrite(&self, context: &RewriteContext<'_>, shape: Shape) -> Option<String> {
         match *self {
             MacroArg::Expr(ref expr) => expr.rewrite(context, shape),
             MacroArg::Ty(ref ty) => ty.rewrite(context, shape),
@@ -145,7 +145,7 @@ fn parse_macro_arg<'a, 'b: 'a>(parser: &'a mut Parser<'b>) -> Option<MacroArg> {
 
 /// Rewrite macro name without using pretty-printer if possible.
 fn rewrite_macro_name(
-    context: &RewriteContext,
+    context: &RewriteContext<'_>,
     path: &ast::Path,
     extra_ident: Option<ast::Ident>,
 ) -> String {
@@ -163,7 +163,7 @@ fn rewrite_macro_name(
 
 // Use this on failing to format the macro call.
 fn return_macro_parse_failure_fallback(
-    context: &RewriteContext,
+    context: &RewriteContext<'_>,
     indent: Indent,
     span: Span,
 ) -> Option<String> {
@@ -197,7 +197,7 @@ struct InsideMacroGuard<'a> {
 }
 
 impl<'a> InsideMacroGuard<'a> {
-    fn inside_macro_context(context: &'a RewriteContext) -> InsideMacroGuard<'a> {
+    fn inside_macro_context(context: &'a RewriteContext<'_>) -> InsideMacroGuard<'a> {
         let is_nested = context.inside_macro.replace(true);
         InsideMacroGuard { context, is_nested }
     }
@@ -212,7 +212,7 @@ impl<'a> Drop for InsideMacroGuard<'a> {
 pub fn rewrite_macro(
     mac: &ast::Mac,
     extra_ident: Option<ast::Ident>,
-    context: &RewriteContext,
+    context: &RewriteContext<'_>,
     shape: Shape,
     position: MacroPosition,
 ) -> Option<String> {
@@ -227,7 +227,7 @@ pub fn rewrite_macro(
 pub fn rewrite_macro_inner(
     mac: &ast::Mac,
     extra_ident: Option<ast::Ident>,
-    context: &RewriteContext,
+    context: &RewriteContext<'_>,
     shape: Shape,
     position: MacroPosition,
     is_nested_macro: bool,
@@ -433,7 +433,7 @@ pub fn rewrite_macro_inner(
 }
 
 pub fn rewrite_macro_def(
-    context: &RewriteContext,
+    context: &RewriteContext<'_>,
     shape: Shape,
     indent: Indent,
     def: &ast::MacroDef,
@@ -604,7 +604,7 @@ enum MacroArgKind {
 }
 
 fn delim_token_to_str(
-    context: &RewriteContext,
+    context: &RewriteContext<'_>,
     delim_token: DelimToken,
     shape: Shape,
     use_multiple_lines: bool,
@@ -670,7 +670,7 @@ impl MacroArgKind {
 
     fn rewrite(
         &self,
-        context: &RewriteContext,
+        context: &RewriteContext<'_>,
         shape: Shape,
         use_multiple_lines: bool,
     ) -> Option<String> {
@@ -722,7 +722,7 @@ struct ParsedMacroArg {
 impl ParsedMacroArg {
     pub fn rewrite(
         &self,
-        context: &RewriteContext,
+        context: &RewriteContext<'_>,
         shape: Shape,
         use_multiple_lines: bool,
     ) -> Option<String> {
@@ -975,7 +975,7 @@ impl MacroArgParser {
 }
 
 fn wrap_macro_args(
-    context: &RewriteContext,
+    context: &RewriteContext<'_>,
     args: &[ParsedMacroArg],
     shape: Shape,
 ) -> Option<String> {
@@ -984,7 +984,7 @@ fn wrap_macro_args(
 }
 
 fn wrap_macro_args_inner(
-    context: &RewriteContext,
+    context: &RewriteContext<'_>,
     args: &[ParsedMacroArg],
     shape: Shape,
     use_multiple_lines: bool,
@@ -1027,7 +1027,7 @@ fn wrap_macro_args_inner(
 //
 // We always try and format on one line.
 // FIXME: Use multi-line when every thing does not fit on one line.
-fn format_macro_args(context: &RewriteContext, toks: TokenStream, shape: Shape) -> Option<String> {
+fn format_macro_args(context: &RewriteContext<'_>, toks: TokenStream, shape: Shape) -> Option<String> {
     if !context.config.format_macro_matchers() {
         let token_stream: TokenStream = toks.into();
         let span = span_for_token_stream(&token_stream);
@@ -1118,7 +1118,7 @@ fn next_space(tok: &Token) -> SpaceState {
 /// Tries to convert a macro use into a short hand try expression. Returns None
 /// when the macro is not an instance of try! (or parsing the inner expression
 /// failed).
-pub fn convert_try_mac(mac: &ast::Mac, context: &RewriteContext) -> Option<ast::Expr> {
+pub fn convert_try_mac(mac: &ast::Mac, context: &RewriteContext<'_>) -> Option<ast::Expr> {
     if &mac.node.path.to_string() == "try" {
         let ts: TokenStream = mac.node.tts.clone().into();
         let mut parser = new_parser_from_tts(context.parse_session, ts.trees().collect());
@@ -1134,7 +1134,7 @@ pub fn convert_try_mac(mac: &ast::Mac, context: &RewriteContext) -> Option<ast::
     }
 }
 
-fn macro_style(mac: &ast::Mac, context: &RewriteContext) -> DelimToken {
+fn macro_style(mac: &ast::Mac, context: &RewriteContext<'_>) -> DelimToken {
     let snippet = context.snippet(mac.span);
     let paren_pos = snippet.find_uncommented("(").unwrap_or(usize::max_value());
     let bracket_pos = snippet.find_uncommented("[").unwrap_or(usize::max_value());
@@ -1222,7 +1222,7 @@ struct MacroBranch {
 impl MacroBranch {
     fn rewrite(
         &self,
-        context: &RewriteContext,
+        context: &RewriteContext<'_>,
         shape: Shape,
         multi_branch_style: bool,
     ) -> Option<String> {
@@ -1340,7 +1340,7 @@ impl MacroBranch {
 ///     [pub] static ref NAME_N: TYPE_N = EXPR_N;
 /// }
 /// ```
-fn format_lazy_static(context: &RewriteContext, shape: Shape, ts: &TokenStream) -> Option<String> {
+fn format_lazy_static(context: &RewriteContext<'_>, shape: Shape, ts: &TokenStream) -> Option<String> {
     let mut result = String::with_capacity(1024);
     let mut parser = new_parser_from_tts(context.parse_session, ts.trees().collect());
     let nested_shape = shape
@@ -1409,7 +1409,7 @@ fn format_lazy_static(context: &RewriteContext, shape: Shape, ts: &TokenStream) 
 }
 
 fn rewrite_macro_with_items(
-    context: &RewriteContext,
+    context: &RewriteContext<'_>,
     items: &[MacroArg],
     macro_name: &str,
     shape: Shape,

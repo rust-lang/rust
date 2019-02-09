@@ -88,7 +88,7 @@ impl<'a> Drop for FmtVisitor<'a> {
 }
 
 impl<'b, 'a: 'b> FmtVisitor<'a> {
-    fn set_parent_context(&mut self, context: &'a RewriteContext) {
+    fn set_parent_context(&mut self, context: &'a RewriteContext<'_>) {
         self.parent_context = Some(context);
     }
 
@@ -255,7 +255,7 @@ impl<'b, 'a: 'b> FmtVisitor<'a> {
     // on traits do not get handled here.
     fn visit_fn(
         &mut self,
-        fk: visit::FnKind,
+        fk: visit::FnKind<'_>,
         generics: &ast::Generics,
         fd: &ast::FnDecl,
         s: Span,
@@ -593,7 +593,7 @@ impl<'b, 'a: 'b> FmtVisitor<'a> {
         self.skipped_range.push((lo, hi));
     }
 
-    pub fn from_context(ctx: &'a RewriteContext) -> FmtVisitor<'a> {
+    pub fn from_context(ctx: &'a RewriteContext<'_>) -> FmtVisitor<'a> {
         let mut visitor = FmtVisitor::from_source_map(
             ctx.parse_session,
             ctx.config,
@@ -607,7 +607,7 @@ impl<'b, 'a: 'b> FmtVisitor<'a> {
     pub(crate) fn from_source_map(
         parse_session: &'a ParseSess,
         config: &'a Config,
-        snippet_provider: &'a SnippetProvider,
+        snippet_provider: &'a SnippetProvider<'_>,
         report: FormatReport,
     ) -> FmtVisitor<'a> {
         FmtVisitor {
@@ -785,7 +785,7 @@ impl<'b, 'a: 'b> FmtVisitor<'a> {
 
     pub fn with_context<F>(&mut self, f: F) -> Option<String>
     where
-        F: Fn(&RewriteContext) -> Option<String>,
+        F: Fn(&RewriteContext<'_>) -> Option<String>,
     {
         // FIXME borrow checker fighting - can be simplified a lot with NLL.
         let (result, mrf) = {
@@ -799,7 +799,7 @@ impl<'b, 'a: 'b> FmtVisitor<'a> {
         result
     }
 
-    pub fn get_context(&self) -> RewriteContext {
+    pub fn get_context(&self) -> RewriteContext<'_> {
         RewriteContext {
             parse_session: self.parse_session,
             source_map: self.source_map,

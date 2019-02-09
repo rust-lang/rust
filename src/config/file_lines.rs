@@ -46,7 +46,7 @@ impl From<source_map::FileName> for FileName {
 }
 
 impl fmt::Display for FileName {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             FileName::Real(p) => write!(f, "{}", p.to_str().unwrap()),
             FileName::Stdin => write!(f, "stdin"),
@@ -202,7 +202,7 @@ impl FileLines {
     }
 
     /// Returns an iterator over the files contained in `self`.
-    pub fn files(&self) -> Files {
+    pub fn files(&self) -> Files<'_> {
         Files(self.0.as_ref().map(|m| m.keys()))
     }
 

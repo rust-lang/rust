@@ -30,7 +30,7 @@ use crate::shape::{Indent, Shape};
 pub const DEPR_SKIP_ANNOTATION: &str = "rustfmt_skip";
 pub const SKIP_ANNOTATION: &str = "rustfmt::skip";
 
-pub fn rewrite_ident<'a>(context: &'a RewriteContext, ident: ast::Ident) -> &'a str {
+pub fn rewrite_ident<'a>(context: &'a RewriteContext<'_>, ident: ast::Ident) -> &'a str {
     context.snippet(ident.span)
 }
 
@@ -64,7 +64,7 @@ pub fn is_same_visibility(a: &Visibility, b: &Visibility) -> bool {
 }
 
 // Uses Cow to avoid allocating in the common cases.
-pub fn format_visibility(context: &RewriteContext, vis: &Visibility) -> Cow<'static, str> {
+pub fn format_visibility(context: &RewriteContext<'_>, vis: &Visibility) -> Cow<'static, str> {
     match vis.node {
         VisibilityKind::Public => Cow::from("pub "),
         VisibilityKind::Inherited => Cow::from(""),
@@ -267,7 +267,7 @@ pub fn contains_skip(attrs: &[Attribute]) -> bool {
 }
 
 #[inline]
-pub fn semicolon_for_expr(context: &RewriteContext, expr: &ast::Expr) -> bool {
+pub fn semicolon_for_expr(context: &RewriteContext<'_>, expr: &ast::Expr) -> bool {
     match expr.node {
         ast::ExprKind::Ret(..) | ast::ExprKind::Continue(..) | ast::ExprKind::Break(..) => {
             context.config.trailing_semicolon()
@@ -277,7 +277,7 @@ pub fn semicolon_for_expr(context: &RewriteContext, expr: &ast::Expr) -> bool {
 }
 
 #[inline]
-pub fn semicolon_for_stmt(context: &RewriteContext, stmt: &ast::Stmt) -> bool {
+pub fn semicolon_for_stmt(context: &RewriteContext<'_>, stmt: &ast::Stmt) -> bool {
     match stmt.node {
         ast::StmtKind::Semi(ref expr) => match expr.node {
             ast::ExprKind::While(..)
@@ -424,7 +424,7 @@ pub fn first_line_ends_with(s: &str, c: char) -> bool {
 
 // States whether an expression's last line exclusively consists of closing
 // parens, braces, and brackets in its idiomatic formatting.
-pub fn is_block_expr(context: &RewriteContext, expr: &ast::Expr, repr: &str) -> bool {
+pub fn is_block_expr(context: &RewriteContext<'_>, expr: &ast::Expr, repr: &str) -> bool {
     match expr.node {
         ast::ExprKind::Mac(..)
         | ast::ExprKind::Call(..)

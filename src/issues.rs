@@ -48,7 +48,7 @@ pub struct Issue {
 }
 
 impl fmt::Display for Issue {
-    fn fmt(&self, fmt: &mut fmt::Formatter) -> Result<(), fmt::Error> {
+    fn fmt(&self, fmt: &mut fmt::Formatter<'_>) -> Result<(), fmt::Error> {
         let msg = match self.issue_type {
             IssueType::Todo => "TODO",
             IssueType::Fixme => "FIXME",

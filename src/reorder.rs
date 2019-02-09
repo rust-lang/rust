@@ -63,7 +63,7 @@ fn compare_items(a: &ast::Item, b: &ast::Item) -> Ordering {
 }
 
 fn wrap_reorderable_items(
-    context: &RewriteContext,
+    context: &RewriteContext<'_>,
     list_items: &[ListItem],
     shape: Shape,
 ) -> Option<String> {
@@ -74,7 +74,7 @@ fn wrap_reorderable_items(
 }
 
 fn rewrite_reorderable_item(
-    context: &RewriteContext,
+    context: &RewriteContext<'_>,
     item: &ast::Item,
     shape: Shape,
 ) -> Option<String> {
@@ -99,7 +99,7 @@ fn rewrite_reorderable_item(
 /// Rewrite a list of items with reordering. Every item in `items` must have
 /// the same `ast::ItemKind`.
 fn rewrite_reorderable_items(
-    context: &RewriteContext,
+    context: &RewriteContext<'_>,
     reorderable_items: &[&ast::Item],
     shape: Shape,
     span: Span,

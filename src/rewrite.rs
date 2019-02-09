@@ -23,11 +23,11 @@ use crate::FormatReport;
 
 pub trait Rewrite {
     /// Rewrite self into shape.
-    fn rewrite(&self, context: &RewriteContext, shape: Shape) -> Option<String>;
+    fn rewrite(&self, context: &RewriteContext<'_>, shape: Shape) -> Option<String>;
 }
 
 impl<T: Rewrite> Rewrite for ptr::P<T> {
-    fn rewrite(&self, context: &RewriteContext, shape: Shape) -> Option<String> {
+    fn rewrite(&self, context: &RewriteContext<'_>, shape: Shape) -> Option<String> {
         (**self).rewrite(context, shape)
     }
 }
