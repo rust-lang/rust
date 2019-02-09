@@ -9,6 +9,7 @@ use rustc::mir::interpret::{GlobalId, ErrorHandled};
 use rustc::ty::{self, AdtKind, Ty};
 use rustc::ty::adjustment::{Adjustment, Adjust, AutoBorrow, AutoBorrowMutability};
 use rustc::ty::cast::CastKind as TyCastKind;
+use rustc::ty::subst::{Substs, SubstsRef};
 use rustc::hir;
 use rustc::hir::def_id::LocalDefId;
 use rustc::mir::BorrowKind;
@@ -834,7 +835,7 @@ fn method_callee<'a, 'gcx, 'tcx>(
     cx: &mut Cx<'a, 'gcx, 'tcx>,
     expr: &hir::Expr,
     span: Span,
-    overloaded_callee: Option<(DefId, &'tcx Substs<'tcx>)>,
+    overloaded_callee: Option<(DefId, SubstsRef<'tcx>)>,
 ) -> Expr<'tcx> {
     let temp_lifetime = cx.region_scope_tree.temporary_scope(expr.hir_id.local_id);
     let (def_id, substs, user_ty) = match overloaded_callee {
@@ -1133,7 +1134,7 @@ fn overloaded_place<'a, 'gcx, 'tcx>(
     cx: &mut Cx<'a, 'gcx, 'tcx>,
     expr: &'tcx hir::Expr,
     place_ty: Ty<'tcx>,
-    overloaded_callee: Option<(DefId, &'tcx Substs<'tcx>)>,
+    overloaded_callee: Option<(DefId, SubstsRef<'tcx>)>,
     args: Vec<ExprRef<'tcx>>,
 ) -> ExprKind<'tcx> {
     // For an overloaded *x or x[y] expression of type T, the method

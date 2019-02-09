@@ -17,7 +17,7 @@ use rustc::hir::def_id::DefId;
 use rustc::hir::{self, BodyOwnerKind, HirId};
 use rustc::infer::{InferCtxt, NLLRegionVariableOrigin};
 use rustc::ty::fold::TypeFoldable;
-use rustc::ty::subst::Substs;
+use rustc::ty::subst::{Substs, SubstsRef};
 use rustc::ty::{self, ClosureSubsts, GeneratorSubsts, RegionVid, Ty, TyCtxt};
 use rustc::util::nodemap::FxHashMap;
 use rustc_data_structures::indexed_vec::{Idx, IndexVec};
@@ -94,12 +94,12 @@ pub enum DefiningTy<'tcx> {
 
     /// The MIR is a fn item with the given `DefId` and substs. The signature
     /// of the function can be bound then with the `fn_sig` query.
-    FnDef(DefId, &'tcx Substs<'tcx>),
+    FnDef(DefId, SubstsRef<'tcx>),
 
     /// The MIR represents some form of constant. The signature then
     /// is that it has no inputs and a single return value, which is
     /// the value of the constant.
-    Const(DefId, &'tcx Substs<'tcx>),
+    Const(DefId, SubstsRef<'tcx>),
 }
 
 impl<'tcx> DefiningTy<'tcx> {
@@ -222,7 +222,7 @@ impl<'tcx> UniversalRegions<'tcx> {
     /// `V[1]: V[2]`.
     pub fn closure_mapping(
         tcx: TyCtxt<'_, '_, 'tcx>,
-        closure_substs: &'tcx Substs<'tcx>,
+        closure_substs: SubstsRef<'tcx>,
         expected_num_vars: usize,
         closure_base_def_id: DefId,
     ) -> IndexVec<RegionVid, ty::Region<'tcx>> {

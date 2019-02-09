@@ -22,7 +22,7 @@ use rustc::middle::mem_categorization as mc;
 use rustc::middle::mem_categorization::Categorization;
 use rustc::ty::{self, Ty, TyCtxt};
 use rustc::ty::query::Providers;
-use rustc::ty::subst::Substs;
+use rustc::ty::subst::{Substs, SubstsRef};
 use rustc::util::nodemap::{ItemLocalSet, HirIdSet};
 use rustc::hir;
 use rustc_data_structures::sync::Lrc;
@@ -94,7 +94,7 @@ struct CheckCrateVisitor<'a, 'tcx: 'a> {
     in_static: bool,
     mut_rvalue_borrows: HirIdSet,
     param_env: ty::ParamEnv<'tcx>,
-    identity_substs: &'tcx Substs<'tcx>,
+    identity_substs: SubstsRef<'tcx>,
     tables: &'a ty::TypeckTables<'tcx>,
     result: ItemLocalSet,
 }

@@ -36,7 +36,7 @@ use rustc::traits::query::type_op::custom::CustomTypeOp;
 use rustc::traits::query::{Fallible, NoSolution};
 use rustc::traits::{ObligationCause, PredicateObligations};
 use rustc::ty::fold::TypeFoldable;
-use rustc::ty::subst::{Subst, Substs, UnpackedKind, UserSubsts};
+use rustc::ty::subst::{Subst, SubstsRef, UnpackedKind, UserSubsts};
 use rustc::ty::{
     self, RegionVid, ToPolyTraitRef, Ty, TyCtxt, TyKind, UserType,
     CanonicalUserTypeAnnotation, UserTypeAnnotationIndex,
@@ -2261,7 +2261,7 @@ impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
         &mut self,
         tcx: TyCtxt<'a, 'gcx, 'tcx>,
         def_id: DefId,
-        substs: &'tcx Substs<'tcx>,
+        substs: SubstsRef<'tcx>,
         location: Location,
     ) -> ty::InstantiatedPredicates<'tcx> {
         if let Some(closure_region_requirements) = tcx.mir_borrowck(def_id).closure_requirements {

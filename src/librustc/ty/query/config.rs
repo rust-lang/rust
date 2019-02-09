@@ -9,7 +9,7 @@ use crate::traits::query::{
     CanonicalTypeOpProvePredicateGoal, CanonicalTypeOpSubtypeGoal,
 };
 use crate::ty::{self, ParamEnvAnd, Ty, TyCtxt};
-use crate::ty::subst::Substs;
+use crate::ty::subst::SubstsRef;
 use crate::ty::query::queries;
 use crate::ty::query::Query;
 use crate::ty::query::QueryCache;
@@ -914,7 +914,7 @@ impl<'tcx> QueryDescription<'tcx> for queries::optimized_mir<'tcx> {
 }
 
 impl<'tcx> QueryDescription<'tcx> for queries::substitute_normalize_and_test_predicates<'tcx> {
-    fn describe(tcx: TyCtxt<'_, '_, '_>, key: (DefId, &'tcx Substs<'tcx>)) -> Cow<'static, str> {
+    fn describe(tcx: TyCtxt<'_, '_, '_>, key: (DefId, SubstsRef<'tcx>)) -> Cow<'static, str> {
         format!("testing substituted normalized predicates:`{}`", tcx.item_path_str(key.0)).into()
     }
 }

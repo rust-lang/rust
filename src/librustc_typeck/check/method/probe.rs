@@ -13,7 +13,7 @@ use rustc_data_structures::sync::Lrc;
 use rustc::hir;
 use rustc::lint;
 use rustc::session::config::nightly_options;
-use rustc::ty::subst::{Subst, Substs};
+use rustc::ty::subst::{Subst, Substs, SubstsRef};
 use rustc::traits::{self, ObligationCause};
 use rustc::traits::query::{CanonicalTyGoal};
 use rustc::traits::query::method_autoderef::{CandidateStep, MethodAutoderefStepsResult};
@@ -125,7 +125,7 @@ struct Candidate<'tcx> {
 
 #[derive(Debug)]
 enum CandidateKind<'tcx> {
-    InherentImplCandidate(&'tcx Substs<'tcx>,
+    InherentImplCandidate(SubstsRef<'tcx>,
                           // Normalize obligations
                           Vec<traits::PredicateObligation<'tcx>>),
     ObjectCandidate,
@@ -1537,11 +1537,11 @@ impl<'a, 'gcx, 'tcx> ProbeContext<'a, 'gcx, 'tcx> {
     }
 
     /// Gets the type of an impl and generate substitutions with placeholders.
-    fn impl_ty_and_substs(&self, impl_def_id: DefId) -> (Ty<'tcx>, &'tcx Substs<'tcx>) {
+    fn impl_ty_and_substs(&self, impl_def_id: DefId) -> (Ty<'tcx>, SubstsRef<'tcx>) {
         (self.tcx.type_of(impl_def_id), self.fresh_item_substs(impl_def_id))
     }
 
-    fn fresh_item_substs(&self, def_id: DefId) -> &'tcx Substs<'tcx> {
+    fn fresh_item_substs(&self, def_id: DefId) -> SubstsRef<'tcx> {
         Substs::for_item(self.tcx, def_id, |param, _| {
             match param.kind {
                 GenericParamDefKind::Lifetime => self.tcx.types.re_erased.into(),

@@ -105,7 +105,7 @@ use rustc::session;
 use rustc::session::CompileIncomplete;
 use rustc::session::config::{EntryFnType, nightly_options};
 use rustc::traits::{ObligationCause, ObligationCauseCode, TraitEngine, TraitEngineExt};
-use rustc::ty::subst::Substs;
+use rustc::ty::subst::SubstsRef;
 use rustc::ty::{self, Ty, TyCtxt};
 use rustc::ty::query::Providers;
 use rustc::util;
@@ -116,7 +116,7 @@ use util::common::time;
 use std::iter;
 
 pub struct TypeAndSubsts<'tcx> {
-    substs: &'tcx Substs<'tcx>,
+    substs: SubstsRef<'tcx>,
     ty: Ty<'tcx>,
 }
 

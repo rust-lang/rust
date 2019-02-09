@@ -29,7 +29,7 @@ use crate::mir::interpret::ErrorHandled;
 use rustc_data_structures::sync::Lrc;
 use syntax::ast;
 use syntax_pos::{Span, DUMMY_SP};
-use crate::ty::subst::Substs;
+use crate::ty::subst::{Substs, SubstsRef};
 use crate::ty::{self, AdtKind, List, Ty, TyCtxt, GenericParamDefKind, ToPredicate};
 use crate::ty::error::{ExpectedFound, TypeError};
 use crate::ty::fold::{TypeFolder, TypeFoldable, TypeVisitor};
@@ -565,7 +565,7 @@ pub enum Vtable<'tcx, N> {
 #[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable)]
 pub struct VtableImplData<'tcx, N> {
     pub impl_def_id: DefId,
-    pub substs: &'tcx Substs<'tcx>,
+    pub substs: SubstsRef<'tcx>,
     pub nested: Vec<N>
 }
 
@@ -622,7 +622,7 @@ pub struct VtableFnPointerData<'tcx, N> {
 #[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable)]
 pub struct VtableTraitAliasData<'tcx, N> {
     pub alias_def_id: DefId,
-    pub substs: &'tcx Substs<'tcx>,
+    pub substs: SubstsRef<'tcx>,
     pub nested: Vec<N>,
 }
 
@@ -963,7 +963,7 @@ fn normalize_and_test_predicates<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
 }
 
 fn substitute_normalize_and_test_predicates<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
-                                                      key: (DefId, &'tcx Substs<'tcx>))
+                                                      key: (DefId, SubstsRef<'tcx>))
                                                       -> bool
 {
     debug!("substitute_normalize_and_test_predicates(key={:?})",
@@ -983,7 +983,7 @@ fn substitute_normalize_and_test_predicates<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx
 fn vtable_methods<'a, 'tcx>(
     tcx: TyCtxt<'a, 'tcx, 'tcx>,
     trait_ref: ty::PolyTraitRef<'tcx>)
-    -> Lrc<Vec<Option<(DefId, &'tcx Substs<'tcx>)>>>
+    -> Lrc<Vec<Option<(DefId, SubstsRef<'tcx>)>>>
 {
     debug!("vtable_methods({:?})", trait_ref);
 

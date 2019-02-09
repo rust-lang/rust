@@ -94,7 +94,7 @@ use rustc::hir::map::definitions::DefPathData;
 use rustc::ich::NodeIdHashingMode;
 use rustc::ty::item_path::{self, ItemPathBuffer, RootMode};
 use rustc::ty::query::Providers;
-use rustc::ty::subst::Substs;
+use rustc::ty::subst::SubstsRef;
 use rustc::ty::{self, Ty, TyCtxt, TypeFoldable};
 use rustc::util::common::record_time;
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
@@ -134,7 +134,7 @@ fn get_symbol_hash<'a, 'tcx>(
 
     // values for generic type parameters,
     // if any.
-    substs: &'tcx Substs<'tcx>,
+    substs: SubstsRef<'tcx>,
 ) -> u64 {
     debug!(
         "get_symbol_hash(def_id={:?}, parameters={:?})",

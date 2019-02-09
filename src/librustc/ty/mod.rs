@@ -22,7 +22,7 @@ use crate::session::CrateDisambiguator;
 use crate::traits::{self, Reveal};
 use crate::ty;
 use crate::ty::layout::VariantIdx;
-use crate::ty::subst::{Subst, Substs};
+use crate::ty::subst::{Subst, Substs, SubstsRef};
 use crate::ty::util::{IntTypeExt, Discr};
 use crate::ty::walk::TypeWalker;
 use crate::util::captures::Captures;
@@ -1067,7 +1067,7 @@ pub enum Predicate<'tcx> {
     Subtype(PolySubtypePredicate<'tcx>),
 
     /// Constant initializer must evaluate successfully.
-    ConstEvaluatable(DefId, &'tcx Substs<'tcx>),
+    ConstEvaluatable(DefId, SubstsRef<'tcx>),
 }
 
 /// The crate outlives map is computed during typeck and contains the

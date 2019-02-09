@@ -2,7 +2,7 @@ use libc::c_uint;
 use rustc::ty::{self, Ty, TypeFoldable, UpvarSubsts};
 use rustc::ty::layout::{TyLayout, HasTyCtxt};
 use rustc::mir::{self, Mir};
-use rustc::ty::subst::Substs;
+use rustc::ty::subst::SubstsRef;
 use rustc::session::config::DebugInfo;
 use rustc_mir::monomorphize::Instance;
 use rustc_target::abi::call::{FnType, PassMode};
@@ -85,7 +85,7 @@ pub struct FunctionCx<'a, 'tcx: 'a, Bx: BuilderMethods<'a, 'tcx>> {
     scopes: IndexVec<mir::SourceScope, debuginfo::MirDebugScope<Bx::DIScope>>,
 
     /// If this function is being monomorphized, this contains the type substitutions used.
-    param_substs: &'tcx Substs<'tcx>,
+    param_substs: SubstsRef<'tcx>,
 }
 
 impl<'a, 'tcx: 'a, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {

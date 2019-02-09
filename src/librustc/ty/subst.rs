@@ -159,10 +159,12 @@ impl<'tcx> Decodable for Kind<'tcx> {
 /// A substitution mapping generic parameters to new values.
 pub type Substs<'tcx> = List<Kind<'tcx>>;
 
+pub type SubstsRef<'tcx> = &'tcx Substs<'tcx>;
+
 impl<'a, 'gcx, 'tcx> Substs<'tcx> {
     /// Creates a `Substs` that maps each generic parameter to itself.
     pub fn identity_for_item(tcx: TyCtxt<'a, 'gcx, 'tcx>, def_id: DefId)
-                             -> &'tcx Substs<'tcx> {
+                             -> SubstsRef<'tcx> {
         Substs::for_item(tcx, def_id, |param, _| {
             tcx.mk_param_from_def(param)
         })
@@ -175,7 +177,7 @@ impl<'a, 'gcx, 'tcx> Substs<'tcx> {
     pub fn bound_vars_for_item(
         tcx: TyCtxt<'a, 'gcx, 'tcx>,
         def_id: DefId
-    ) -> &'tcx Substs<'tcx> {
+    ) -> SubstsRef<'tcx> {
         Substs::for_item(tcx, def_id, |param, _| {
             match param.kind {
                 ty::GenericParamDefKind::Type { .. } => {
@@ -205,7 +207,7 @@ impl<'a, 'gcx, 'tcx> Substs<'tcx> {
     pub fn for_item<F>(tcx: TyCtxt<'a, 'gcx, 'tcx>,
                        def_id: DefId,
                        mut mk_kind: F)
-                       -> &'tcx Substs<'tcx>
+                       -> SubstsRef<'tcx>
     where F: FnMut(&ty::GenericParamDef, &[Kind<'tcx>]) -> Kind<'tcx>
     {
         let defs = tcx.generics_of(def_id);
@@ -219,7 +221,7 @@ impl<'a, 'gcx, 'tcx> Substs<'tcx> {
                         tcx: TyCtxt<'a, 'gcx, 'tcx>,
                         def_id: DefId,
                         mut mk_kind: F)
-                        -> &'tcx Substs<'tcx>
+                        -> SubstsRef<'tcx>
     where F: FnMut(&ty::GenericParamDef, &[Kind<'tcx>]) -> Kind<'tcx>
     {
         Substs::for_item(tcx, def_id, |param, substs| {
@@ -312,18 +314,18 @@ impl<'a, 'gcx, 'tcx> Substs<'tcx> {
     pub fn rebase_onto(&self, tcx: TyCtxt<'a, 'gcx, 'tcx>,
                        source_ancestor: DefId,
                        target_substs: &Substs<'tcx>)
-                       -> &'tcx Substs<'tcx> {
+                       -> SubstsRef<'tcx> {
         let defs = tcx.generics_of(source_ancestor);
         tcx.mk_substs(target_substs.iter().chain(&self[defs.params.len()..]).cloned())
     }
 
     pub fn truncate_to(&self, tcx: TyCtxt<'a, 'gcx, 'tcx>, generics: &ty::Generics)
-                       -> &'tcx Substs<'tcx> {
+                       -> SubstsRef<'tcx> {
         tcx.mk_substs(self.iter().take(generics.count()).cloned())
     }
 }
 
-impl<'tcx> TypeFoldable<'tcx> for &'tcx Substs<'tcx> {
+impl<'tcx> TypeFoldable<'tcx> for SubstsRef<'tcx> {
     fn super_fold_with<'gcx: 'tcx, F: TypeFolder<'gcx, 'tcx>>(&self, folder: &mut F) -> Self {
         let params: SmallVec<[_; 8]> = self.iter().map(|k| k.fold_with(folder)).collect();
 
@@ -341,7 +343,7 @@ impl<'tcx> TypeFoldable<'tcx> for &'tcx Substs<'tcx> {
     }
 }
 
-impl<'tcx> serialize::UseSpecializedDecodable for &'tcx Substs<'tcx> {}
+impl<'tcx> serialize::UseSpecializedDecodable for SubstsRef<'tcx> {}
 
 ///////////////////////////////////////////////////////////////////////////
 // Public trait `Subst`
@@ -563,7 +565,7 @@ pub type CanonicalUserSubsts<'tcx> = Canonical<'tcx, UserSubsts<'tcx>>;
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash, RustcEncodable, RustcDecodable)]
 pub struct UserSubsts<'tcx> {
     /// The substitutions for the item as given by the user.
-    pub substs: &'tcx Substs<'tcx>,
+    pub substs: SubstsRef<'tcx>,
 
     /// The self type, in the case of a `<T>::Item` path (when applied
     /// to an inherent impl). See `UserSelfTy` below.

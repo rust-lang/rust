@@ -34,7 +34,7 @@ use crate::ty::{IntType, UintType};
 use crate::ty::{self, Ty, TyCtxt};
 use crate::ty::error::TypeError;
 use crate::ty::relate::{self, Relate, RelateResult, TypeRelation};
-use crate::ty::subst::Substs;
+use crate::ty::subst::SubstsRef;
 use crate::traits::{Obligation, PredicateObligations};
 
 use syntax::ast;
@@ -373,9 +373,9 @@ impl<'cx, 'gcx, 'tcx> TypeRelation<'cx, 'gcx, 'tcx> for Generalizer<'cx, 'gcx, '
 
     fn relate_item_substs(&mut self,
                           item_def_id: DefId,
-                          a_subst: &'tcx Substs<'tcx>,
-                          b_subst: &'tcx Substs<'tcx>)
-                          -> RelateResult<'tcx, &'tcx Substs<'tcx>>
+                          a_subst: SubstsRef<'tcx>,
+                          b_subst: SubstsRef<'tcx>)
+                          -> RelateResult<'tcx, SubstsRef<'tcx>>
     {
         if self.ambient_variance == ty::Variance::Invariant {
             // Avoid fetching the variance if we are in an invariant

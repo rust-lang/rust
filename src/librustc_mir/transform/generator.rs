@@ -55,7 +55,7 @@ use rustc::mir::*;
 use rustc::mir::visit::{PlaceContext, Visitor, MutVisitor};
 use rustc::ty::{self, TyCtxt, AdtDef, Ty};
 use rustc::ty::layout::VariantIdx;
-use rustc::ty::subst::Substs;
+use rustc::ty::subst::SubstsRef;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::indexed_vec::Idx;
 use rustc_data_structures::bit_set::BitSet;
@@ -154,7 +154,7 @@ struct SuspensionPoint {
 struct TransformVisitor<'a, 'tcx: 'a> {
     tcx: TyCtxt<'a, 'tcx, 'tcx>,
     state_adt_ref: &'tcx AdtDef,
-    state_substs: &'tcx Substs<'tcx>,
+    state_substs: SubstsRef<'tcx>,
 
     // The index of the generator state in the generator struct
     state_field: usize,

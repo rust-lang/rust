@@ -11,7 +11,7 @@ use rustc::middle::mem_categorization::cmt_;
 use rustc::middle::region;
 use rustc::session::Session;
 use rustc::ty::{self, Ty, TyCtxt};
-use rustc::ty::subst::Substs;
+use rustc::ty::subst::{Substs, SubstsRef};
 use rustc::lint;
 use rustc_errors::{Applicability, DiagnosticBuilder};
 use rustc::util::common::ErrorReported;
@@ -64,7 +64,7 @@ struct MatchVisitor<'a, 'tcx: 'a> {
     tcx: TyCtxt<'a, 'tcx, 'tcx>,
     tables: &'a ty::TypeckTables<'tcx>,
     param_env: ty::ParamEnv<'tcx>,
-    identity_substs: &'tcx Substs<'tcx>,
+    identity_substs: SubstsRef<'tcx>,
     region_scope_tree: &'a region::ScopeTree,
 }
 

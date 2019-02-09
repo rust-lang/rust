@@ -16,7 +16,7 @@ use rustc::mir::{UserTypeProjection};
 use rustc::mir::interpret::{Scalar, GlobalId, ConstValue, sign_extend};
 use rustc::ty::{self, Region, TyCtxt, AdtDef, Ty, Lift, UserType};
 use rustc::ty::{CanonicalUserType, CanonicalUserTypeAnnotation, CanonicalUserTypeAnnotations};
-use rustc::ty::subst::{Substs, Kind};
+use rustc::ty::subst::{SubstsRef, Kind};
 use rustc::ty::layout::VariantIdx;
 use rustc::hir::{self, PatKind, RangeEnd};
 use rustc::hir::def::{Def, CtorKind};
@@ -135,7 +135,7 @@ pub enum PatternKind<'tcx> {
     /// multiple variants.
     Variant {
         adt_def: &'tcx AdtDef,
-        substs: &'tcx Substs<'tcx>,
+        substs: SubstsRef<'tcx>,
         variant_index: VariantIdx,
         subpatterns: Vec<FieldPattern<'tcx>>,
     },
@@ -330,13 +330,13 @@ pub struct PatternContext<'a, 'tcx: 'a> {
     pub tcx: TyCtxt<'a, 'tcx, 'tcx>,
     pub param_env: ty::ParamEnv<'tcx>,
     pub tables: &'a ty::TypeckTables<'tcx>,
-    pub substs: &'tcx Substs<'tcx>,
+    pub substs: SubstsRef<'tcx>,
     pub errors: Vec<PatternError>,
 }
 
 impl<'a, 'tcx> Pattern<'tcx> {
     pub fn from_hir(tcx: TyCtxt<'a, 'tcx, 'tcx>,
-                    param_env_and_substs: ty::ParamEnvAnd<'tcx, &'tcx Substs<'tcx>>,
+                    param_env_and_substs: ty::ParamEnvAnd<'tcx, SubstsRef<'tcx>>,
                     tables: &'a ty::TypeckTables<'tcx>,
                     pat: &'tcx hir::Pat) -> Self {
         let mut pcx = PatternContext::new(tcx, param_env_and_substs, tables);
@@ -352,7 +352,7 @@ impl<'a, 'tcx> Pattern<'tcx> {
 
 impl<'a, 'tcx> PatternContext<'a, 'tcx> {
     pub fn new(tcx: TyCtxt<'a, 'tcx, 'tcx>,
-               param_env_and_substs: ty::ParamEnvAnd<'tcx, &'tcx Substs<'tcx>>,
+               param_env_and_substs: ty::ParamEnvAnd<'tcx, SubstsRef<'tcx>>,
                tables: &'a ty::TypeckTables<'tcx>) -> Self {
         PatternContext {
             tcx,
@@ -1093,7 +1093,7 @@ macro_rules! CloneImpls {
 CloneImpls!{ <'tcx>
     Span, Field, Mutability, ast::Name, ast::NodeId, usize, ty::Const<'tcx>,
     Region<'tcx>, Ty<'tcx>, BindingMode, &'tcx AdtDef,
-    &'tcx Substs<'tcx>, &'tcx Kind<'tcx>, UserType<'tcx>,
+    SubstsRef<'tcx>, &'tcx Kind<'tcx>, UserType<'tcx>,
     UserTypeProjection<'tcx>, PatternTypeProjection<'tcx>
 }
 

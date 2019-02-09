@@ -7,7 +7,7 @@ use crate::mir::interpret::{ConstValue, truncate};
 use crate::middle::region;
 use polonius_engine::Atom;
 use rustc_data_structures::indexed_vec::Idx;
-use crate::ty::subst::{Substs, Subst, Kind, UnpackedKind};
+use crate::ty::subst::{Substs, Subst, SubstsRef, Kind, UnpackedKind};
 use crate::ty::{self, AdtDef, TypeFlags, Ty, TyCtxt, TypeFoldable};
 use crate::ty::{List, TyS, ParamEnvAnd, ParamEnv};
 use crate::util::captures::Captures;
@@ -105,7 +105,7 @@ pub enum TyKind<'tcx> {
     /// That is, even after substitution it is possible that there are type
     /// variables. This happens when the `Adt` corresponds to an ADT
     /// definition and not a concrete use of it.
-    Adt(&'tcx AdtDef, &'tcx Substs<'tcx>),
+    Adt(&'tcx AdtDef, SubstsRef<'tcx>),
 
     /// An unsized FFI type that is opaque to Rust. Written as `extern type T`.
     Foreign(DefId),
@@ -136,7 +136,7 @@ pub enum TyKind<'tcx> {
     /// fn foo() -> i32 { 1 }
     /// let bar = foo; // bar: fn() -> i32 {foo}
     /// ```
-    FnDef(DefId, &'tcx Substs<'tcx>),
+    FnDef(DefId, SubstsRef<'tcx>),
 
     /// A pointer to a function. Written as `fn() -> i32`.
     ///
@@ -184,7 +184,7 @@ pub enum TyKind<'tcx> {
     /// * or the `existential type` declaration
     /// The substitutions are for the generics of the function in question.
     /// After typeck, the concrete type can be found in the `types` map.
-    Opaque(DefId, &'tcx Substs<'tcx>),
+    Opaque(DefId, SubstsRef<'tcx>),
 
     /// A type parameter; for example, `T` in `fn f<T>(x: T) {}
     Param(ParamTy),
@@ -309,7 +309,7 @@ pub struct ClosureSubsts<'tcx> {
     ///
     /// These are separated out because codegen wants to pass them around
     /// when monomorphizing.
-    pub substs: &'tcx Substs<'tcx>,
+    pub substs: SubstsRef<'tcx>,
 }
 
 /// Struct returned by `split()`. Note that these are subslices of the
@@ -387,7 +387,7 @@ impl<'tcx> ClosureSubsts<'tcx> {
 
 #[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Debug, RustcEncodable, RustcDecodable)]
 pub struct GeneratorSubsts<'tcx> {
-    pub substs: &'tcx Substs<'tcx>,
+    pub substs: SubstsRef<'tcx>,
 }
 
 struct SplitGeneratorSubsts<'tcx> {
@@ -672,11 +672,11 @@ impl<'tcx> Binder<&'tcx List<ExistentialPredicate<'tcx>>> {
 #[derive(Copy, Clone, PartialEq, Eq, Hash, RustcEncodable, RustcDecodable)]
 pub struct TraitRef<'tcx> {
     pub def_id: DefId,
-    pub substs: &'tcx Substs<'tcx>,
+    pub substs: SubstsRef<'tcx>,
 }
 
 impl<'tcx> TraitRef<'tcx> {
-    pub fn new(def_id: DefId, substs: &'tcx Substs<'tcx>) -> TraitRef<'tcx> {
+    pub fn new(def_id: DefId, substs: SubstsRef<'tcx>) -> TraitRef<'tcx> {
         TraitRef { def_id: def_id, substs: substs }
     }
 
@@ -742,7 +742,7 @@ impl<'tcx> PolyTraitRef<'tcx> {
 #[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, RustcEncodable, RustcDecodable)]
 pub struct ExistentialTraitRef<'tcx> {
     pub def_id: DefId,
-    pub substs: &'tcx Substs<'tcx>,
+    pub substs: SubstsRef<'tcx>,
 }
 
 impl<'a, 'gcx, 'tcx> ExistentialTraitRef<'tcx> {
@@ -915,7 +915,7 @@ impl<T> Binder<T> {
 #[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Debug, RustcEncodable, RustcDecodable)]
 pub struct ProjectionTy<'tcx> {
     /// The parameters of the associated item.
-    pub substs: &'tcx Substs<'tcx>,
+    pub substs: SubstsRef<'tcx>,
 
     /// The `DefId` of the `TraitItem` for the associated type `N`.
     ///
@@ -1297,7 +1297,7 @@ impl From<BoundVar> for BoundTy {
 #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Debug, RustcEncodable, RustcDecodable)]
 pub struct ExistentialProjection<'tcx> {
     pub item_def_id: DefId,
-    pub substs: &'tcx Substs<'tcx>,
+    pub substs: SubstsRef<'tcx>,
     pub ty: Ty<'tcx>,
 }
 
@@ -2060,7 +2060,7 @@ impl<'a, 'gcx, 'tcx> TyS<'tcx> {
 /// Used in the HIR by using `Unevaluated` everywhere and later normalizing to `Evaluated` if the
 /// code is monomorphic enough for that.
 pub enum LazyConst<'tcx> {
-    Unevaluated(DefId, &'tcx Substs<'tcx>),
+    Unevaluated(DefId, SubstsRef<'tcx>),
     Evaluated(Const<'tcx>),
 }
 

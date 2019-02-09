@@ -1,6 +1,6 @@
 use crate::ty::context::TyCtxt;
 use crate::ty::{AdtDef, VariantDef, FieldDef, Ty, TyS};
-use crate::ty::{self, DefId, Substs};
+use crate::ty::{self, DefId, SubstsRef};
 use crate::ty::{AdtKind, Visibility};
 use crate::ty::TyKind::*;
 
@@ -108,7 +108,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
     pub fn is_enum_variant_uninhabited_from(self,
                                             module: DefId,
                                             variant: &'tcx VariantDef,
-                                            substs: &'tcx Substs<'tcx>)
+                                            substs: SubstsRef<'tcx>)
                                             -> bool
     {
         self.variant_inhabitedness_forest(variant, substs).contains(self, module)
@@ -116,13 +116,13 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
 
     pub fn is_variant_uninhabited_from_all_modules(self,
                                                    variant: &'tcx VariantDef,
-                                                   substs: &'tcx Substs<'tcx>)
+                                                   substs: SubstsRef<'tcx>)
                                                    -> bool
     {
         !self.variant_inhabitedness_forest(variant, substs).is_empty()
     }
 
-    fn variant_inhabitedness_forest(self, variant: &'tcx VariantDef, substs: &'tcx Substs<'tcx>)
+    fn variant_inhabitedness_forest(self, variant: &'tcx VariantDef, substs: SubstsRef<'tcx>)
                                     -> DefIdForest {
         // Determine the ADT kind:
         let adt_def_id = self.adt_def_id_of_variant(variant);
@@ -138,7 +138,7 @@ impl<'a, 'gcx, 'tcx> AdtDef {
     fn uninhabited_from(
         &self,
         tcx: TyCtxt<'a, 'gcx, 'tcx>,
-        substs: &'tcx Substs<'tcx>) -> DefIdForest
+        substs: SubstsRef<'tcx>) -> DefIdForest
     {
         DefIdForest::intersection(tcx, self.variants.iter().map(|v| {
             v.uninhabited_from(tcx, substs, self.adt_kind())
@@ -151,7 +151,7 @@ impl<'a, 'gcx, 'tcx> VariantDef {
     fn uninhabited_from(
         &self,
         tcx: TyCtxt<'a, 'gcx, 'tcx>,
-        substs: &'tcx Substs<'tcx>,
+        substs: SubstsRef<'tcx>,
         adt_kind: AdtKind) -> DefIdForest
     {
         let is_enum = match adt_kind {
@@ -172,7 +172,7 @@ impl<'a, 'gcx, 'tcx> FieldDef {
     fn uninhabited_from(
         &self,
         tcx: TyCtxt<'a, 'gcx, 'tcx>,
-        substs: &'tcx Substs<'tcx>,
+        substs: SubstsRef<'tcx>,
         is_enum: bool,
     ) -> DefIdForest {
         let data_uninhabitedness = move || {

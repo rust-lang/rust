@@ -109,7 +109,7 @@ use rustc::ty::{
 use rustc::ty::adjustment::{Adjust, Adjustment, AllowTwoPhase, AutoBorrow, AutoBorrowMutability};
 use rustc::ty::fold::TypeFoldable;
 use rustc::ty::query::Providers;
-use rustc::ty::subst::{UnpackedKind, Subst, Substs, UserSelfTy, UserSubsts};
+use rustc::ty::subst::{UnpackedKind, Subst, Substs, SubstsRef, UserSelfTy, UserSubsts};
 use rustc::ty::util::{Representability, IntTypeExt, Discr};
 use rustc::ty::layout::VariantIdx;
 use syntax_pos::{self, BytePos, Span, MultiSpan};
@@ -1318,7 +1318,7 @@ fn check_union<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
 fn check_opaque<'a, 'tcx>(
     tcx: TyCtxt<'a, 'tcx, 'tcx>,
     def_id: DefId,
-    substs: &'tcx Substs<'tcx>,
+    substs: SubstsRef<'tcx>,
     span: Span,
 ) {
     if let Err(partially_expanded_type) = tcx.try_expand_impl_trait_type(def_id, substs) {
@@ -2200,7 +2200,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         }
     }
 
-    pub fn write_substs(&self, node_id: hir::HirId, substs: &'tcx Substs<'tcx>) {
+    pub fn write_substs(&self, node_id: hir::HirId, substs: SubstsRef<'tcx>) {
         if !substs.is_noop() {
             debug!("write_substs({:?}, {:?}) in fcx {}",
                    node_id,
@@ -2222,7 +2222,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         &self,
         hir_id: hir::HirId,
         def_id: DefId,
-        substs: &'tcx Substs<'tcx>,
+        substs: SubstsRef<'tcx>,
         user_self_ty: Option<UserSelfTy<'tcx>>,
     ) {
         debug!(

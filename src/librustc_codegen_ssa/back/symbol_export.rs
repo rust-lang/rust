@@ -11,7 +11,7 @@ use rustc::middle::exported_symbols::{SymbolExportLevel, ExportedSymbol, metadat
 use rustc::session::config;
 use rustc::ty::{TyCtxt, SymbolName};
 use rustc::ty::query::Providers;
-use rustc::ty::subst::Substs;
+use rustc::ty::subst::SubstsRef;
 use rustc::util::nodemap::{FxHashMap, DefIdMap};
 use rustc_allocator::ALLOCATOR_METHODS;
 use rustc_data_structures::indexed_vec::IndexVec;
@@ -282,7 +282,7 @@ fn exported_symbols_provider_local<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
 fn upstream_monomorphizations_provider<'a, 'tcx>(
     tcx: TyCtxt<'a, 'tcx, 'tcx>,
     cnum: CrateNum)
-    -> Lrc<DefIdMap<Lrc<FxHashMap<&'tcx Substs<'tcx>, CrateNum>>>>
+    -> Lrc<DefIdMap<Lrc<FxHashMap<SubstsRef<'tcx>, CrateNum>>>>
 {
     debug_assert!(cnum == LOCAL_CRATE);
 
@@ -334,7 +334,7 @@ fn upstream_monomorphizations_provider<'a, 'tcx>(
 fn upstream_monomorphizations_for_provider<'a, 'tcx>(
     tcx: TyCtxt<'a, 'tcx, 'tcx>,
     def_id: DefId)
-    -> Option<Lrc<FxHashMap<&'tcx Substs<'tcx>, CrateNum>>>
+    -> Option<Lrc<FxHashMap<SubstsRef<'tcx>, CrateNum>>>
 {
     debug_assert!(!def_id.is_local());
     tcx.upstream_monomorphizations(LOCAL_CRATE)

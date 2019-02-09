@@ -5,7 +5,7 @@ use rustc::middle::lang_items;
 use rustc::traits::Reveal;
 use rustc::ty::{self, Ty, TyCtxt};
 use rustc::ty::layout::VariantIdx;
-use rustc::ty::subst::Substs;
+use rustc::ty::subst::SubstsRef;
 use rustc::ty::util::IntTypeExt;
 use rustc_data_structures::indexed_vec::Idx;
 use crate::util::patch::MirPatch;
@@ -189,7 +189,7 @@ impl<'l, 'b, 'tcx, D> DropCtxt<'l, 'b, 'tcx, D>
                              base_place: &Place<'tcx>,
                              variant_path: D::Path,
                              variant: &'tcx ty::VariantDef,
-                             substs: &'tcx Substs<'tcx>)
+                             substs: SubstsRef<'tcx>)
                              -> Vec<(Place<'tcx>, Option<D::Path>)>
     {
         variant.fields.iter().enumerate().map(|(i, f)| {
@@ -328,7 +328,7 @@ impl<'l, 'b, 'tcx, D> DropCtxt<'l, 'b, 'tcx, D>
         self.drop_ladder(fields, succ, unwind).0
     }
 
-    fn open_drop_for_box<'a>(&mut self, adt: &'tcx ty::AdtDef, substs: &'tcx Substs<'tcx>)
+    fn open_drop_for_box<'a>(&mut self, adt: &'tcx ty::AdtDef, substs: SubstsRef<'tcx>)
                              -> BasicBlock
     {
         debug!("open_drop_for_box({:?}, {:?}, {:?})", self, adt, substs);
@@ -346,7 +346,7 @@ impl<'l, 'b, 'tcx, D> DropCtxt<'l, 'b, 'tcx, D>
         self.drop_subpath(&interior, interior_path, succ, unwind_succ)
     }
 
-    fn open_drop_for_adt<'a>(&mut self, adt: &'tcx ty::AdtDef, substs: &'tcx Substs<'tcx>)
+    fn open_drop_for_adt<'a>(&mut self, adt: &'tcx ty::AdtDef, substs: SubstsRef<'tcx>)
                              -> BasicBlock {
         debug!("open_drop_for_adt({:?}, {:?}, {:?})", self, adt, substs);
         if adt.variants.len() == 0 {
@@ -376,7 +376,7 @@ impl<'l, 'b, 'tcx, D> DropCtxt<'l, 'b, 'tcx, D>
     }
 
     fn open_drop_for_adt_contents(&mut self, adt: &'tcx ty::AdtDef,
-                                  substs: &'tcx Substs<'tcx>)
+                                  substs: SubstsRef<'tcx>)
                                   -> (BasicBlock, Unwind) {
         let (succ, unwind) = self.drop_ladder_bottom();
         if !adt.is_enum() {
@@ -393,7 +393,7 @@ impl<'l, 'b, 'tcx, D> DropCtxt<'l, 'b, 'tcx, D>
     }
 
     fn open_drop_for_multivariant(&mut self, adt: &'tcx ty::AdtDef,
-                                  substs: &'tcx Substs<'tcx>,
+                                  substs: SubstsRef<'tcx>,
                                   succ: BasicBlock,
                                   unwind: Unwind)
                                   -> (BasicBlock, Unwind) {
@@ -867,7 +867,7 @@ impl<'l, 'b, 'tcx, D> DropCtxt<'l, 'b, 'tcx, D>
     fn box_free_block<'a>(
         &mut self,
         adt: &'tcx ty::AdtDef,
-        substs: &'tcx Substs<'tcx>,
+        substs: SubstsRef<'tcx>,
         target: BasicBlock,
         unwind: Unwind,
     ) -> BasicBlock {
@@ -878,7 +878,7 @@ impl<'l, 'b, 'tcx, D> DropCtxt<'l, 'b, 'tcx, D>
     fn unelaborated_free_block<'a>(
         &mut self,
         adt: &'tcx ty::AdtDef,
-        substs: &'tcx Substs<'tcx>,
+        substs: SubstsRef<'tcx>,
         target: BasicBlock,
         unwind: Unwind
     ) -> BasicBlock {

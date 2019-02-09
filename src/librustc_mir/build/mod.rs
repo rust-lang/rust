@@ -12,7 +12,7 @@ use rustc::middle::region;
 use rustc::mir::*;
 use rustc::mir::visit::{MutVisitor, TyContext};
 use rustc::ty::{self, Ty, TyCtxt};
-use rustc::ty::subst::Substs;
+use rustc::ty::subst::SubstsRef;
 use rustc::util::nodemap::NodeMap;
 use rustc_target::spec::PanicStrategy;
 use rustc_data_structures::indexed_vec::{IndexVec, Idx};
@@ -212,7 +212,7 @@ impl<'a, 'gcx: 'tcx, 'tcx> MutVisitor<'tcx> for GlobalizeMir<'a, 'gcx> {
         }
     }
 
-    fn visit_substs(&mut self, substs: &mut &'tcx Substs<'tcx>, _: Location) {
+    fn visit_substs(&mut self, substs: &mut SubstsRef<'tcx>, _: Location) {
         if let Some(lifted) = self.tcx.lift(substs) {
             *substs = lifted;
         } else {
