@@ -4597,7 +4597,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                 if element_ty.references_error() {
                     tcx.types.err
                 } else if let Ok(count) = count {
-                    tcx.mk_ty(ty::Array(t, tcx.intern_lazy_const(ty::LazyConst::Evaluated(count))))
+                    tcx.mk_ty(ty::Array(t, tcx.mk_lazy_const(ty::LazyConst::Evaluated(count))))
                 } else {
                     tcx.types.err
                 }

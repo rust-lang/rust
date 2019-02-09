@@ -110,7 +110,7 @@ impl<'a, 'gcx, 'tcx> Cx<'a, 'gcx, 'tcx> {
     }
 
     pub fn usize_literal(&mut self, value: u64) -> &'tcx ty::LazyConst<'tcx> {
-        self.tcx.intern_lazy_const(ty::LazyConst::Evaluated(ty::Const::from_usize(self.tcx, value)))
+        self.tcx.mk_lazy_const(ty::LazyConst::Evaluated(ty::Const::from_usize(self.tcx, value)))
     }
 
     pub fn bool_ty(&mut self) -> Ty<'tcx> {
@@ -122,11 +122,11 @@ impl<'a, 'gcx, 'tcx> Cx<'a, 'gcx, 'tcx> {
     }
 
     pub fn true_literal(&mut self) -> &'tcx ty::LazyConst<'tcx> {
-        self.tcx.intern_lazy_const(ty::LazyConst::Evaluated(ty::Const::from_bool(self.tcx, true)))
+        self.tcx.mk_lazy_const(ty::LazyConst::Evaluated(ty::Const::from_bool(self.tcx, true)))
     }
 
     pub fn false_literal(&mut self) -> &'tcx ty::LazyConst<'tcx> {
-        self.tcx.intern_lazy_const(ty::LazyConst::Evaluated(ty::Const::from_bool(self.tcx, false)))
+        self.tcx.mk_lazy_const(ty::LazyConst::Evaluated(ty::Const::from_bool(self.tcx, false)))
     }
 
     pub fn const_eval_literal(

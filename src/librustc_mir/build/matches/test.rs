@@ -302,7 +302,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                     }
                     let eq_def_id = self.hir.tcx().lang_items().eq_trait().unwrap();
                     let (mty, method) = self.hir.trait_method(eq_def_id, "eq", ty, &[ty.into()]);
-                    let method = self.hir.tcx().intern_lazy_const(ty::LazyConst::Evaluated(method));
+                    let method = self.hir.tcx().mk_lazy_const(ty::LazyConst::Evaluated(method));
 
                     let re_erased = self.hir.tcx().types.re_erased;
                     // take the argument by reference

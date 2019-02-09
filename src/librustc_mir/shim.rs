@@ -459,7 +459,7 @@ impl<'a, 'tcx> CloneShimBuilder<'a, 'tcx> {
             span: self.span,
             ty: func_ty,
             user_ty: None,
-            literal: tcx.intern_lazy_const(ty::LazyConst::Evaluated(
+            literal: tcx.mk_lazy_const(ty::LazyConst::Evaluated(
                 ty::Const::zero_sized(func_ty),
             )),
         });
@@ -521,7 +521,7 @@ impl<'a, 'tcx> CloneShimBuilder<'a, 'tcx> {
             span: self.span,
             ty: self.tcx.types.usize,
             user_ty: None,
-            literal: self.tcx.intern_lazy_const(ty::LazyConst::Evaluated(
+            literal: self.tcx.mk_lazy_const(ty::LazyConst::Evaluated(
                 ty::Const::from_usize(self.tcx, value),
             )),
         }
@@ -759,7 +759,7 @@ fn build_call_shim<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                 span,
                 ty,
                 user_ty: None,
-                literal: tcx.intern_lazy_const(ty::LazyConst::Evaluated(
+                literal: tcx.mk_lazy_const(ty::LazyConst::Evaluated(
                     ty::Const::zero_sized(ty)
                 )),
              }),
