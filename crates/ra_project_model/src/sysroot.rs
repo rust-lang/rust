@@ -3,8 +3,6 @@ use std::{
     process::Command,
 };
 
-use smol_str::SmolStr;
-
 use ra_arena::{Arena, RawId, impl_arena_id};
 
 use crate::Result;
@@ -20,7 +18,7 @@ impl_arena_id!(SysrootCrate);
 
 #[derive(Debug, Clone)]
 struct SysrootCrateData {
-    name: SmolStr,
+    name: String,
     root: PathBuf,
     deps: Vec<SysrootCrate>,
 }
@@ -81,7 +79,7 @@ impl Sysroot {
 }
 
 impl SysrootCrate {
-    pub fn name(self, sysroot: &Sysroot) -> &SmolStr {
+    pub fn name(self, sysroot: &Sysroot) -> &str {
         &sysroot.crates[self].name
     }
     pub fn root(self, sysroot: &Sysroot) -> &Path {

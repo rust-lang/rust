@@ -47,7 +47,7 @@ impl ProjectWorkspace {
                 if let (Some(&from), Some(&to)) =
                     (sysroot_crates.get(&from), sysroot_crates.get(&to))
                 {
-                    if let Err(_) = crate_graph.add_dep(from, name.clone(), to) {
+                    if let Err(_) = crate_graph.add_dep(from, name.into(), to) {
                         log::error!("cyclic dependency between sysroot crates")
                     }
                 }
@@ -101,7 +101,7 @@ impl ProjectWorkspace {
             for dep in pkg.dependencies(&self.cargo) {
                 if let Some(&to) = pkg_to_lib_crate.get(&dep.pkg) {
                     for &from in pkg_crates.get(&pkg).into_iter().flatten() {
-                        if let Err(_) = crate_graph.add_dep(from, dep.name.clone(), to) {
+                        if let Err(_) = crate_graph.add_dep(from, dep.name.clone().into(), to) {
                             log::error!(
                                 "cyclic dependency {} -> {}",
                                 pkg.name(&self.cargo),

@@ -1,7 +1,6 @@
 use std::path::{Path, PathBuf};
 
 use cargo_metadata::{MetadataCommand, CargoOpt};
-use smol_str::SmolStr;
 use ra_arena::{Arena, RawId, impl_arena_id};
 use rustc_hash::FxHashMap;
 use failure::format_err;
@@ -31,7 +30,7 @@ impl_arena_id!(Target);
 
 #[derive(Debug, Clone)]
 struct PackageData {
-    name: SmolStr,
+    name: String,
     manifest: PathBuf,
     targets: Vec<Target>,
     is_member: bool,
@@ -41,13 +40,13 @@ struct PackageData {
 #[derive(Debug, Clone)]
 pub struct PackageDependency {
     pub pkg: Package,
-    pub name: SmolStr,
+    pub name: String,
 }
 
 #[derive(Debug, Clone)]
 struct TargetData {
     pkg: Package,
-    name: SmolStr,
+    name: String,
     root: PathBuf,
     kind: TargetKind,
 }

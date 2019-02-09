@@ -5,21 +5,13 @@ version = "0.1.0"
 authors = ["Aleksey Kladov <aleksey.kladov@gmail.com>"]
 
 [dependencies]
-# itertools = "0.8.0"
-# join_to_string = "0.1.3"
 log = "0.4.5"
-# relative-path = "0.4.0"
-# rayon = "1.0.2"
-# fst = "0.3.1"
 rustc-hash = "1.0"
-# parking_lot = "0.7.0"
-# unicase = "2.2.0"
 
 # TODO get rid of these?
 failure = "0.1.4"
 failure_derive = "0.1.4"
 
-smol_str = { version = "0.1.9", features = ["serde"] }
 walkdir = "2.2.7"
 
 cargo_metadata = "0.7.0"
