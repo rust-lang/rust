@@ -317,7 +317,7 @@ impl<T, A: Alloc> RawVec<T, A> {
                     }
                 }
                 None => {
-                    // skip to 4 because tiny Vec's are dumb; but not if that
+                    // skip to 4 because tiny Vec's are dumb, but not if that
                     // would cause overflow
                     let new_cap = if elem_size > (!0) / 8 { 1 } else { 4 };
                     match self.a.alloc_array::<T>(new_cap) {
@@ -350,14 +350,15 @@ impl<T, A: Alloc> RawVec<T, A> {
             let elem_size = mem::size_of::<T>();
             let old_layout = match self.current_layout() {
                 Some(layout) => layout,
-                None => return false, // nothing to double
+                // Nothing to double.
+                None => return false,
             };
 
-            // since we set the capacity to usize::MAX when elem_size is
-            // 0, getting to here necessarily means the RawVec is overfull.
+            // Since we set the capacity to `usize::MAX` when `elem_size` is
+            // 0, getting to here necessarily means the `RawVec` is overfull.
             assert!(elem_size != 0, "capacity overflow");
 
-            // Since we guarantee that we never allocate more than isize::MAX
+            // Since we guarantee that we never allocate more than `isize::MAX`
             // bytes, `elem_size * self.cap <= isize::MAX` as a precondition, so
             // this can't overflow.
             //
@@ -533,11 +534,11 @@ impl<T, A: Alloc> RawVec<T, A> {
                 .unwrap_or_else(|_| capacity_overflow());
 
             // Here, `cap < used_cap + needed_extra_cap <= new_cap`
-            // (regardless of whether `self.cap - used_cap` wrapped).
-            // Therefore we can safely call grow_in_place.
+            // (regardless of whether `self.cap - used_cap` wrapped), therefore we can safely
+            // call `grow_in_place`.
 
             let new_layout = Layout::new::<T>().repeat(new_cap).unwrap().0;
-            // FIXME: may crash and burn on over-reserve
+            // FIXME: may crash and burn on over-reserving.
             alloc_guard(new_layout.size()).unwrap_or_else(|_| capacity_overflow());
             match self.a.grow_in_place(
                 NonNull::from(self.ptr).cast(), old_layout, new_layout.size(),
@@ -566,21 +567,21 @@ impl<T, A: Alloc> RawVec<T, A> {
     pub fn shrink_to_fit(&mut self, amount: usize) {
         let elem_size = mem::size_of::<T>();
 
-        // Set the `cap` because they might be about to promote to a `Box<[T]>`
+        // Set the `cap` because they might be about to promote to a `Box<[T]>`.
         if elem_size == 0 {
             self.cap = amount;
             return;
         }
 
-        // This check is my waterloo; it's the only thing Vec wouldn't have to do.
+        // This check is my waterloo; it's the only thing `Vec` wouldn't have to do.
         assert!(self.cap >= amount, "Tried to shrink to a larger capacity");
 
         if amount == 0 {
             // We want to create a new zero-length vector within the
-            // same allocator.  We use ptr::write to avoid an
+            // same allocator. We use `ptr::write` to avoid an
             // erroneous attempt to drop the contents, and we use
-            // ptr::read to sidestep condition against destructuring
-            // types that implement Drop.
+            // `ptr::read` to sidestep condition against destructuring
+            // types that implement `Drop`.
 
             unsafe {
                 let a = ptr::read(&self.a as *const A);
@@ -786,7 +787,8 @@ mod tests {
         let a = BoundedAlloc { fuel: 500 };
         let mut v: RawVec<u8, _> = RawVec::with_capacity_in(50, a);
         assert_eq!(v.a.fuel, 450);
-        v.reserve(50, 150); // (causes a realloc, thus using 50 + 150 = 200 units of fuel)
+        // Causes a realloc, thus using 50 + 150 = 200 units of fuel.
+        v.reserve(50, 150);
         assert_eq!(v.a.fuel, 250);
     }
 

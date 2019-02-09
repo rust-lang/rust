@@ -174,7 +174,8 @@ fn default_hook(info: &PanicInfo) {
         }
     };
 
-    let location = info.location().unwrap();  // The current implementation always returns Some
+    // The current implementation always returns `Some`.
+    let location = info.location().unwrap();
 
     let msg = match info.payload().downcast_ref::<&'static str>() {
         Some(s) => *s,

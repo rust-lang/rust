@@ -366,8 +366,8 @@ impl<P: fmt::Pointer> fmt::Pointer for Pin<P> {
 }
 
 // Note: this means that any impl of `CoerceUnsized` that allows coercing from
-// a type that impls `Deref<Target=impl !Unpin>` to a type that impls
-// `Deref<Target=Unpin>` is unsound. Any such impl would probably be unsound
+// a type that impls `Deref<Target = impl !Unpin>` to a type that impls
+// `Deref<Target = Unpin>` is unsound. Any such impl would probably be unsound
 // for other reasons, though, so we just need to take care not to allow such
 // impls to land in std.
 #[stable(feature = "pin", since = "1.33.0")]

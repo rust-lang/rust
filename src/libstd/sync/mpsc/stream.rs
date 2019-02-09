@@ -1,4 +1,4 @@
-/// Stream channels
+/// Stream channels.
 ///
 /// This is the flavor of channels which are optimized for one sender and one
 /// receiver. The sender will be upgraded to a shared channel if the channel is
@@ -31,19 +31,23 @@ const MAX_STEALS: isize = 5;
 const MAX_STEALS: isize = 1 << 20;
 
 pub struct Packet<T> {
-    // internal queue for all messages
+    // Internal queue for all messages.
     queue: spsc::Queue<Message<T>, ProducerAddition, ConsumerAddition>,
 }
 
 struct ProducerAddition {
-    cnt: AtomicIsize, // How many items are on this channel
-    to_wake: AtomicUsize, // SignalToken for the blocked thread to wake up
+    // The number of items on the channel.
+    cnt: AtomicIsize,
+    // `SignalToken` for the blocked thread to wake up.
+    to_wake: AtomicUsize,
 
-    port_dropped: AtomicBool, // flag if the channel has been destroyed.
+    // `true` if the channel has been destroyed.
+    port_dropped: AtomicBool,
 }
 
 struct ConsumerAddition {
-    steals: UnsafeCell<isize>,  // How many times has a port received without blocking?
+    // The number of times a port received without blocking.
+    steals: UnsafeCell<isize>,
 }
 
 
@@ -169,7 +173,7 @@ impl<T> Packet<T> {
                 self.queue.producer_addition().cnt.store(DISCONNECTED, Ordering::SeqCst);
             }
             // If we factor in our steals and notice that the channel has no
-            // data, we successfully sleep
+            // data, we successfully sleep.
             n => {
                 assert!(n >= 0);
                 if n - steals <= 0 { return Ok(()) }
@@ -187,8 +191,8 @@ impl<T> Packet<T> {
             data => return data,
         }
 
-        // Welp, our channel has no data. Deschedule the current thread and
-        // initiate the blocking protocol.
+        // Our channel has no data! Deschedule the current thread,
+        // and initiate the blocking protocol.
         let (wait_token, signal_token) = blocking::tokens();
         if self.decrement(signal_token).is_ok() {
             if let Some(deadline) = deadline {
@@ -292,7 +296,7 @@ impl<T> Packet<T> {
         // need to do is flag that we're disconnected and then everything else
         // can take over (we don't have anyone to wake up).
         //
-        // The catch for Ports is that we want to drop the entire contents of
+        // The catch for ports is that we want to drop the entire contents of
         // the queue. There are multiple reasons for having this property, the
         // largest of which is that if another chan is waiting in this channel
         // (but not received yet), then waiting on that port will cause a
@@ -358,7 +362,7 @@ impl<T> Packet<T> {
         }
     }
 
-    // increment the count on the channel (used for selection)
+    // Increments the count on the channel (used for selection).
     fn bump(&self, amt: isize) -> isize {
         match self.queue.producer_addition().cnt.fetch_add(amt, Ordering::SeqCst) {
             DISCONNECTED => {
@@ -426,22 +430,23 @@ impl<T> Packet<T> {
         // is no thread in to_wake, so just keep going
         let has_data = if prev == DISCONNECTED {
             assert_eq!(self.queue.producer_addition().to_wake.load(Ordering::SeqCst), 0);
-            true // there is data, that data is that we're disconnected
+            // There is data, that data is that we're disconnected.
+            true
         } else {
             let cur = prev + steals + 1;
             assert!(cur >= 0);
 
             // If the previous count was negative, then we just made things go
-            // positive, hence we passed the -1 boundary and we're responsible
-            // for removing the to_wake() field and trashing it.
+            // positive, hence we passed the `-1` boundary and we're responsible
+            // for removing the `to_wake()` field and trashing it.
             //
             // If the previous count was positive then we're in a tougher
             // situation. A possible race is that a sender just incremented
-            // through -1 (meaning it's going to try to wake a thread up), but it
+            // through `-1` (meaning it's going to try to wake a thread up), but it
             // hasn't yet read the to_wake. In order to prevent a future recv()
             // from waking up too early (this sender picking up the plastered
-            // over to_wake), we spin loop here waiting for to_wake to be 0.
-            // Note that this entire select() implementation needs an overhaul,
+            // over to_wake), we spin loop here waiting for `to_wake` to be `0`.
+            // Note that this entire `select()` implementation needs an overhaul,
             // and this is *not* the worst part of it, so this is not done as a
             // final solution but rather out of necessity for now to get
             // something working.
@@ -457,8 +462,7 @@ impl<T> Packet<T> {
                 *self.queue.consumer_addition().steals.get() = steals;
             }
 
-            // if we were previously positive, then there's surely data to
-            // receive
+            // If we were previously positive, then there's surely data to receive.
             prev >= 0
         };
 

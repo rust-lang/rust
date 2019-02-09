@@ -1,12 +1,12 @@
 //! Utility functions for bignums that don't make too much sense to turn into methods.
 
-// FIXME This module's name is a bit unfortunate, since other modules also import `core::num`.
+// FIXME: This module's name is a bit unfortunate, since other modules also import `core::num`.
 
 use cmp::Ordering::{self, Less, Equal, Greater};
 
 pub use num::bignum::Big32x40 as Big;
 
-/// Test whether truncating all bits less significant than `ones_place` introduces
+/// Tests whether truncating all bits less significant than `ones_place` introduces
 /// a relative error less, equal, or greater than 0.5 ULP.
 pub fn compare_with_half_ulp(f: &Big, ones_place: usize) -> Ordering {
     if ones_place == 0 {

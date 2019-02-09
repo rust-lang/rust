@@ -85,7 +85,7 @@ macro_rules! define_dispatcher_impl {
     }),* $(,)*) => {
         // FIXME(eddyb): `pub` only for `ExecutionStrategy` below.
         pub trait DispatcherTrait {
-            // HACK(eddyb) these are here to allow `Self::$name` to work below.
+            // HACK(eddyb): these are here to allow `Self::$name` to work below.
             $(type $name;)*
             fn dispatch(&mut self, b: Buffer<u8>) -> Buffer<u8>;
         }
@@ -103,7 +103,7 @@ macro_rules! define_dispatcher_impl {
                                 reverse_decode!(reader, handle_store; $($arg: $arg_ty),*);
                                 $name::$method(server, $($arg),*)
                             };
-                            // HACK(eddyb) don't use `panic::catch_unwind` in a panic.
+                            // HACK(eddyb): don't use `panic::catch_unwind` in a panic.
                             // If client and server happen to use the same `libstd`,
                             // `catch_unwind` asserts that the panic counter was 0,
                             // even when the closure passed to it didn't panic.

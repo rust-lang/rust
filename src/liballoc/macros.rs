@@ -46,7 +46,7 @@ macro_rules! vec {
     ($($x:expr,)*) => (vec![$($x),*])
 }
 
-// HACK(japaric): with cfg(test) the inherent `[T]::into_vec` method, which is
+// HACK(japaric): with `cfg(test)`, the inherent `[T]::into_vec` method, which is
 // required for this macro definition, is not available. Instead use the
 // `slice::into_vec`  function which is only available with cfg(test)
 // NB see the slice::hack module in slice.rs for more information

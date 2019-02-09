@@ -80,7 +80,7 @@ pub use core::panic::{PanicInfo, Location};
 ///
 /// ## Who implements `UnwindSafe`?
 ///
-/// Types such as `&mut T` and `&RefCell<T>` are examples which are **not**
+/// Types such as `&mut T` and `&RefCell<T>` are examples which are *not*
 /// unwind safe. The general idea is that any mutable state which can be shared
 /// across `catch_unwind` is not unwind safe by default. This is because it is very
 /// easy to witness a broken invariant outside of `catch_unwind` as the data is
@@ -340,7 +340,7 @@ impl<'a, F: Future> Future for AssertUnwindSafe<F> {
 /// another language (normally C). This can run arbitrary Rust code, capturing a
 /// panic and allowing a graceful handling of the error.
 ///
-/// It is **not** recommended to use this function for a general try/catch
+/// It is *not* recommended to use this function for a general try/catch
 /// mechanism. The [`Result`] type is more appropriate to use for functions that
 /// can fail on a regular basis. Additionally, this function is not guaranteed
 /// to catch all panics, see the "Notes" section below.

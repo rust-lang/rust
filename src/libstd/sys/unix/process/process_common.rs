@@ -488,7 +488,7 @@ mod tests {
             let _ = stdin_write.write(b"Hello");
             drop(stdin_write);
 
-            // Either EOF or failure (EPIPE) is okay.
+            // Either EOF or failure (EPIPE) is ok.
             let mut buf = [0; 5];
             if let Ok(ret) = stdout_read.read(&mut buf) {
                 assert_eq!(ret, 0);

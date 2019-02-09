@@ -35,20 +35,22 @@ const MAX_STEALS: isize = 1 << 20;
 
 pub struct Packet<T> {
     queue: mpsc::Queue<T>,
-    cnt: AtomicIsize, // How many items are on this channel
-    steals: UnsafeCell<isize>, // How many times has a port received without blocking?
-    to_wake: AtomicUsize, // SignalToken for wake up
+    // The number of items on this channel.
+    cnt: AtomicIsize,
+    // The number of times a port has received without blocking.
+    steals: UnsafeCell<isize>,
+    // `SignalToken` for wake up.
+    to_wake: AtomicUsize,
 
     // The number of channels which are currently using this packet.
     channels: AtomicUsize,
 
-    // See the discussion in Port::drop and the channel send methods for what
-    // these are used for
+    // See the discussion in `Port::drop` and the channel `send_*` methods for what
+    // these are used for.
     port_dropped: AtomicBool,
     sender_drain: AtomicIsize,
 
-    // this lock protects various portions of this implementation during
-    // select()
+    // This lock protects various portions of this implementation during `select()`.
     select_lock: Mutex<()>,
 }
 

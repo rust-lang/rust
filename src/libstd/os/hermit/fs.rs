@@ -16,7 +16,7 @@ pub trait MetadataExt {
     /// Gain a reference to the underlying `stat` structure which contains
     /// the raw information returned by the OS.
     ///
-    /// The contents of the returned [`stat`] are **not** consistent across
+    /// The contents of the returned [`stat`] are *not* consistent across
     /// Unix platforms. The `os::unix::fs::MetadataExt` trait contains the
     /// cross-Unix abstractions contained within the raw stat.
     ///

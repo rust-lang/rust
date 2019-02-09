@@ -502,21 +502,21 @@ pub fn next_code_point<'a, I: Iterator<Item = &'a u8>>(bytes: &mut I) -> Option<
         return Some(x as u32)
     }
 
-    // Multibyte case follows
-    // Decode from a byte combination out of: [[[x y] z] w]
-    // NOTE: Performance is sensitive to the exact formulation here
+    // Multibyte case follows.
+    // Decode from a byte combination out of: `[[[x y] z] w]`.
+    // NOTE: performance is sensitive to the exact formulation here
     let init = utf8_first_byte(x, 2);
     let y = unwrap_or_0(bytes.next());
     let mut ch = utf8_acc_cont_byte(init, y);
     if x >= 0xE0 {
-        // [[x y z] w] case
-        // 5th bit in 0xE0 .. 0xEF is always clear, so `init` is still valid
+        // `[[x y z] w]` case.
+        // 5th bit in `0xE0 .. 0xEF` is always clear, so `init` is still valid.
         let z = unwrap_or_0(bytes.next());
         let y_z = utf8_acc_cont_byte((y & CONT_MASK) as u32, z);
         ch = init << 12 | y_z;
         if x >= 0xF0 {
-            // [x y z w] case
-            // use only the lower 3 bits of `init`
+            // `[x y z w]` case.
+            // Use only the lower 3 bits of `init`.
             let w = unwrap_or_0(bytes.next());
             ch = (init & 7) << 18 | utf8_acc_cont_byte(y_z, w);
         }
@@ -531,14 +531,14 @@ pub fn next_code_point<'a, I: Iterator<Item = &'a u8>>(bytes: &mut I) -> Option<
 fn next_code_point_reverse<'a, I>(bytes: &mut I) -> Option<u32>
     where I: DoubleEndedIterator<Item = &'a u8>,
 {
-    // Decode UTF-8
+    // Decode UTF-8.
     let w = match *bytes.next_back()? {
         next_byte if next_byte < 128 => return Some(next_byte as u32),
         back_byte => back_byte,
     };
 
-    // Multibyte case follows
-    // Decode from a byte combination out of: [x [y [z w]]]
+    // Multibyte case follows.
+    // Decode from a byte combination out of: `[x [y [z w]]]`.
     let mut ch;
     let z = unwrap_or_0(bytes.next_back());
     ch = utf8_first_byte(z, 2);
@@ -564,7 +564,7 @@ impl<'a> Iterator for Chars<'a> {
     #[inline]
     fn next(&mut self) -> Option<char> {
         next_code_point(&mut self.iter).map(|ch| {
-            // str invariant says `ch` is a valid Unicode Scalar Value
+            // `str` invariant says `ch` is a valid Unicode Scalar Value.
             unsafe {
                 char::from_u32_unchecked(ch)
             }
@@ -573,7 +573,7 @@ impl<'a> Iterator for Chars<'a> {
 
     #[inline]
     fn count(self) -> usize {
-        // length in `char` is equal to the number of non-continuation bytes
+        // Length in `char`s is equal to the number of non-continuation bytes.
         let bytes_len = self.iter.len();
         let mut cont_bytes = 0;
         for &byte in self.iter {
@@ -603,7 +603,7 @@ impl<'a> DoubleEndedIterator for Chars<'a> {
     #[inline]
     fn next_back(&mut self) -> Option<char> {
         next_code_point_reverse(&mut self.iter).map(|ch| {
-            // str invariant says `ch` is a valid Unicode Scalar Value
+            // `str` invariant says `ch` is a valid Unicode Scalar Value.
             unsafe {
                 char::from_u32_unchecked(ch)
             }

@@ -3582,7 +3582,7 @@ assert_eq!(7", stringify!($SelfT), ".rem_euclid(4), 3); // or any other integer 
         }
 
         doc_comment! {
-            concat!("Returns `true` if and only if `self == 2^k` for some `k`.
+            concat!("Returns `true` if `self == 2^k` for some `k`.
 
 # Examples
 
@@ -4774,7 +4774,7 @@ fn from_str_radix<T: FromStrRadixHelper>(src: &str, radix: u32) -> Result<T, Par
     let is_signed_ty = T::from_u32(0) > T::min_value();
 
     // all valid digits are ascii, so we will just iterate over the utf8 bytes
-    // and cast them to chars. .to_digit() will safely return None for anything
+    // and cast them to chars. .to_digit() will safely return `None` for anything
     // other than a valid ascii digit for the given radix, including the first-byte
     // of multi-byte sequences
     let src = src.as_bytes();

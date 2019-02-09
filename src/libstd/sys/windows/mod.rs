@@ -152,7 +152,8 @@ fn os2path(s: &[u16]) -> PathBuf {
     PathBuf::from(OsString::from_wide(s))
 }
 
-#[allow(dead_code)] // Only used in backtrace::gnu::get_executable_filename()
+// Only used in `backtrace::gnu::get_executable_filename()`.
+#[allow(dead_code)]
 fn wide_char_to_multi_byte(code_page: u32,
                            flags: u32,
                            s: &[u16],
@@ -249,19 +250,20 @@ pub fn dur2timeout(dur: Duration) -> c::DWORD {
     }).unwrap_or(c::INFINITE)
 }
 
-// On Windows, use the processor-specific __fastfail mechanism.  In Windows 8
+// On Windows, use the processor-specific `__fastfail` mechanism. On Windows 8
 // and later, this will terminate the process immediately without running any
-// in-process exception handlers.  In earlier versions of Windows, this
+// in-process exception handlers. In earlier versions of Windows, this
 // sequence of instructions will be treated as an access violation,
 // terminating the process but without necessarily bypassing all exception
 // handlers.
 //
-// https://msdn.microsoft.com/en-us/library/dn774154.aspx
+// See <https://msdn.microsoft.com/en-us/library/dn774154.aspx> for details.
 #[allow(unreachable_code)]
 pub unsafe fn abort_internal() -> ! {
     #[cfg(any(target_arch = "x86", target_arch = "x86_64"))]
     {
-        asm!("int $$0x29" :: "{ecx}"(7) ::: volatile); // 7 is FAST_FAIL_FATAL_APP_EXIT
+        // `7` is `FAST_FAIL_FATAL_APP_EXIT`.
+        asm!("int $$0x29" :: "{ecx}"(7) ::: volatile);
         ::intrinsics::unreachable();
     }
     ::intrinsics::abort();

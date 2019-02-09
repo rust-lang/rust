@@ -201,7 +201,7 @@ impl Wtf8Buf {
     }
 
     /// Copied from String::push
-    /// This does **not** include the WTF-8 concatenation check.
+    /// This does *not* include the WTF-8 concatenation check.
     fn push_code_point_unchecked(&mut self, code_point: CodePoint) {
         let c = unsafe {
             char::from_u32_unchecked(code_point.value)

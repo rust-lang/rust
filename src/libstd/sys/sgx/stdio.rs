@@ -62,7 +62,7 @@ impl io::Write for Stderr {
 pub const STDIN_BUF_SIZE: usize = ::sys_common::io::DEFAULT_BUF_SIZE;
 
 pub fn is_ebadf(err: &io::Error) -> bool {
-    // FIXME: Rust normally maps Unix EBADF to `Other`
+    // FIXME: rust normally maps Unix EBADF to `Other`
     err.raw_os_error() == Some(abi::Error::BrokenPipe as _)
 }
 

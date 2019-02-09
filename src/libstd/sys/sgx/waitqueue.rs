@@ -402,7 +402,7 @@ mod unsafe_list {
 }
 
 /// Trivial spinlock-based implementation of `sync::Mutex`.
-// FIXME: Perhaps use Intel TSX to avoid locking?
+// FIXME: perhaps use Intel TSX to avoid locking?
 mod spin_mutex {
     use cell::UnsafeCell;
     use sync::atomic::{AtomicBool, Ordering, spin_loop_hint};

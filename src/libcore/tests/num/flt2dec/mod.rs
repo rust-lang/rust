@@ -831,7 +831,7 @@ pub fn to_exact_exp_str_test<F>(mut f_: F)
                  0000000000000000000000000000000000000000000000000000000000000000\
                  0000000000000000000000000000000000000000000000000000000000000000e308");
 
-    // okay, this is becoming tough. fortunately for us, this is almost the worst case.
+    // ok, this is becoming tough. fortunately for us, this is almost the worst case.
     let minf64 = ldexp_f64(1.0, -1074);
     assert_eq!(to_string(f, minf64, Minus,    1, false), "5e-324");
     assert_eq!(to_string(f, minf64, Minus,    2, false), "4.9e-324");

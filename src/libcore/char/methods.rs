@@ -172,12 +172,12 @@ impl char {
     pub fn escape_unicode(self) -> EscapeUnicode {
         let c = self as u32;
 
-        // or-ing 1 ensures that for c==0 the code computes that one
+        // Or-ing 1 ensures that for `c == 0` the code computes that one
         // digit should be printed and (which is the same) avoids the
-        // (31 - 32) underflow
+        // `31 - 32` underflow.
         let msb = 31 - (c | 1).leading_zeros();
 
-        // the index of the most significant hex digit
+        // The index of the most significant hex digit.
         let ms_hex_digit = msb / 4;
         EscapeUnicode {
             c: self,

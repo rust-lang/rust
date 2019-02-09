@@ -378,7 +378,7 @@ impl f32 {
         // When either x or y is a signalingNaN, then the result is according to 6.2.
         //
         // Since we do not support sNaN in Rust yet, we do not need to handle them.
-        // FIXME(nagisa): due to https://bugs.llvm.org/show_bug.cgi?id=33303 we canonicalize by
+        // FIXME(nagisa): due to <https://bugs.llvm.org/show_bug.cgi?id=33303>, we canonicalize by
         // multiplying by 1.0. Should switch to the `canonicalize` when it works.
         (if self.is_nan() || self < other { other } else { self }) * 1.0
     }
@@ -402,7 +402,7 @@ impl f32 {
         // When either x or y is a signalingNaN, then the result is according to 6.2.
         //
         // Since we do not support sNaN in Rust yet, we do not need to handle them.
-        // FIXME(nagisa): due to https://bugs.llvm.org/show_bug.cgi?id=33303 we canonicalize by
+        // FIXME(nagisa): due to <https://bugs.llvm.org/show_bug.cgi?id=33303>, we canonicalize by
         // multiplying by 1.0. Should switch to the `canonicalize` when it works.
         (if other.is_nan() || self < other { self } else { other }) * 1.0
     }

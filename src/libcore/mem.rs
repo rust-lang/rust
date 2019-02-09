@@ -831,7 +831,7 @@ pub unsafe fn transmute_copy<T, U>(src: &T) -> U {
 #[stable(feature = "discriminant_value", since = "1.21.0")]
 pub struct Discriminant<T>(u64, PhantomData<fn() -> T>);
 
-// N.B. These trait implementations cannot be derived because we don't want any bounds on T.
+// N.B., these trait implementations cannot be derived because we don't want any bounds on `T`.
 
 #[stable(feature = "discriminant_value", since = "1.21.0")]
 impl<T> Copy for Discriminant<T> {}
@@ -1053,7 +1053,7 @@ impl<T: ?Sized> DerefMut for ManuallyDrop<T> {
 /// This is exploited by the compiler for various optimizations, such as eliding
 /// run-time checks and optimizing `enum` layout.
 ///
-/// Not initializing memory at all (instead of zero--initializing it) causes the same
+/// Not initializing memory at all (instead of zero-initializing it) causes the same
 /// issue: after all, the initial value of the variable might just happen to be
 /// one that violates the invariant.
 ///
@@ -1077,14 +1077,14 @@ impl<T: ?Sized> DerefMut for ManuallyDrop<T> {
 /// The compiler then knows to not optimize this code.
 #[allow(missing_debug_implementations)]
 #[unstable(feature = "maybe_uninit", issue = "53491")]
-// NOTE after stabilizing `MaybeUninit` proceed to deprecate `mem::{uninitialized,zeroed}`
+// NOTE: after stabilizing `MaybeUninit`, proceed to deprecate `mem::{uninitialized,zeroed}`.
 pub union MaybeUninit<T> {
     uninit: (),
     value: ManuallyDrop<T>,
 }
 
 impl<T> MaybeUninit<T> {
-    /// Create a new `MaybeUninit` initialized with the given value.
+    /// Creates a new `MaybeUninit` initialized with the given value.
     ///
     /// Note that dropping a `MaybeUninit` will never call `T`'s drop code.
     /// It is your responsibility to make sure `T` gets dropped if it got initialized.
@@ -1192,7 +1192,7 @@ impl<T> MaybeUninit<T> {
         unsafe { &*self.value as *const T }
     }
 
-    /// Get sa mutable pointer to the contained value. Reading from this pointer or turning it
+    /// Gets a mutable pointer to the contained value. Reading from this pointer or turning it
     /// into a reference will be undefined behavior unless the `MaybeUninit` is initialized.
     #[unstable(feature = "maybe_uninit", issue = "53491")]
     #[inline(always)]

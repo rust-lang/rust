@@ -40,7 +40,7 @@ pub trait CommandExt {
     ///
     /// This closure will be run in the context of the child process after a
     /// `fork`. This primarily means that any modifications made to memory on
-    /// behalf of this closure will **not** be visible to the parent process.
+    /// behalf of this closure will *not* be visible to the parent process.
     /// This is often a very constrained environment where normal operations
     /// like `malloc` or acquiring a mutex are not guaranteed to work (due to
     /// other threads perhaps still running when the `fork` was run).
@@ -59,7 +59,7 @@ pub trait CommandExt {
     /// an error indicating why the exec (or another part of the setup of the
     /// `Command`) failed.
     ///
-    /// This function, unlike `spawn`, will **not** `fork` the process to create
+    /// This function, unlike `spawn`, will *not* `fork` the process to create
     /// a new child. Like spawn, however, the default behavior for the stdio
     /// descriptors will be to inherited from the current process.
     ///

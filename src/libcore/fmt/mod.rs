@@ -237,7 +237,7 @@ pub struct Formatter<'a> {
     args: &'a [ArgumentV1<'a>],
 }
 
-// NB. Argument is essentially an optimized partially applied formatting function,
+// N.B., argument is essentially an optimized partially applied formatting function,
 // equivalent to `exists T.(&T, fn(&T, &mut Formatter) -> Result`.
 
 struct Void {
@@ -1695,8 +1695,7 @@ impl<'a> Formatter<'a> {
         self.flags & (1 << FlagV1::SignAwareZeroPad as u32) != 0
     }
 
-    // FIXME: Decide what public API we want for these two flags.
-    // https://github.com/rust-lang/rust/issues/48584
+    // FIXME: decide what public API we want for these two flags. See issue #48584.
     fn debug_lower_hex(&self) -> bool { self.flags & (1 << FlagV1::DebugLowerHex as u32) != 0 }
 
     fn debug_upper_hex(&self) -> bool { self.flags & (1 << FlagV1::DebugUpperHex as u32) != 0 }

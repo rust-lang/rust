@@ -970,7 +970,7 @@ pub trait Write {
     /// operation could not be completed. If an error is returned then no bytes
     /// in the buffer were written to this writer.
     ///
-    /// It is **not** considered an error if the entire buffer could not be
+    /// It is *not* considered an error if the entire buffer could not be
     /// written to this writer.
     ///
     /// An error of the [`ErrorKind::Interrupted`] kind is non-fatal and the

@@ -33,16 +33,16 @@ pub unsafe fn register_dtor(t: *mut u8, dtor: unsafe extern fn(*mut u8)) {
     register_dtor_fallback(t, dtor);
 }
 
-// This implementation is very similar to register_dtor_fallback in
-// sys_common/thread_local.rs. The main difference is that we want to hook into
-// macOS's analog of the above linux function, _tlv_atexit. OSX will run the
+// This implementation is very similar to `register_dtor_fallback` in
+// `sys_common/thread_local.rs`. The main difference is that we want to hook into
+// macOS's analog of the above linux function, `_tlv_atexit`. macOS will run the
 // registered dtors before any TLS slots get freed, and when the main thread
 // exits.
 //
 // Unfortunately, calling _tlv_atexit while tls dtors are running is UB. The
-// workaround below is to register, via _tlv_atexit, a custom DTOR list once per
+// workaround below is to register, via `_tlv_atexit`, a custom DTOR list once per
 // thread. thread_local dtors are pushed to the DTOR list without calling
-// _tlv_atexit.
+// `_tlv_atexit`.
 #[cfg(target_os = "macos")]
 pub unsafe fn register_dtor(t: *mut u8, dtor: unsafe extern fn(*mut u8)) {
     use cell::Cell;

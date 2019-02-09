@@ -15,7 +15,7 @@ macro_rules! define_handles {
         }
 
         impl HandleCounters {
-            // FIXME(#53451) public to work around `Cannot create local mono-item` ICE.
+            // FIXME(#53451): public to work around `cannot create local mono-item` ICE.
             pub extern "C" fn get() -> &'static Self {
                 static COUNTERS: HandleCounters = HandleCounters {
                     $($oty: AtomicUsize::new(1),)*
@@ -281,7 +281,7 @@ impl BridgeState<'_> {
     fn with<R>(f: impl FnOnce(&mut BridgeState<'_>) -> R) -> R {
         BRIDGE_STATE.with(|state| {
             state.replace(BridgeState::InUse, |mut state| {
-                // FIXME(#52812) pass `f` directly to `replace` when `RefMutL` is gone
+                // FIXME(#52812): pass `f` directly to `replace` when `RefMutL` is gone
                 f(&mut *state)
             })
         })
@@ -338,7 +338,7 @@ pub struct Client<F> {
     pub(super) f: F,
 }
 
-// FIXME(#53451) public to work around `Cannot create local mono-item` ICE,
+// FIXME(#53451): public to work around `Cannot create local mono-item` ICE,
 // affecting not only the function itself, but also the `BridgeState` `thread_local!`.
 pub extern "C" fn __run_expand1(
     mut bridge: Bridge<'_>,
@@ -360,7 +360,7 @@ pub extern "C" fn __run_expand1(
             // Take the `cached_buffer` back out, for the output value.
             b = Bridge::with(|bridge| bridge.cached_buffer.take());
 
-            // HACK(eddyb) Separate encoding a success value (`Ok(output)`)
+            // HACK(eddyb): separate encoding a success value (`Ok(output)`)
             // from encoding a panic (`Err(e: PanicMessage)`) to avoid
             // having handles outside the `bridge.enter(|| ...)` scope, and
             // to catch panics that could happen while encoding the success.
@@ -391,7 +391,7 @@ impl Client<fn(crate::TokenStream) -> crate::TokenStream> {
     }
 }
 
-// FIXME(#53451) public to work around `Cannot create local mono-item` ICE,
+// FIXME(#53451): public to work around `Cannot create local mono-item` ICE,
 // affecting not only the function itself, but also the `BridgeState` `thread_local!`.
 pub extern "C" fn __run_expand2(
     mut bridge: Bridge<'_>,
@@ -414,7 +414,7 @@ pub extern "C" fn __run_expand2(
             // Take the `cached_buffer` back out, for the output value.
             b = Bridge::with(|bridge| bridge.cached_buffer.take());
 
-            // HACK(eddyb) Separate encoding a success value (`Ok(output)`)
+            // HACK(eddyb): separate encoding a success value (`Ok(output)`)
             // from encoding a panic (`Err(e: PanicMessage)`) to avoid
             // having handles outside the `bridge.enter(|| ...)` scope, and
             // to catch panics that could happen while encoding the success.

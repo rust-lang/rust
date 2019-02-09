@@ -371,7 +371,7 @@ impl<T> Vec<T> {
     /// * `capacity` needs to be the capacity that the pointer was allocated with.
     ///
     /// Violating these may cause problems like corrupting the allocator's
-    /// internal data structures. For example it is **not** safe
+    /// internal data structures. For example it is *not* safe
     /// to build a `Vec<u8>` from a pointer to a C `char` array and a `size_t`.
     ///
     /// The ownership of `ptr` is effectively transferred to the
@@ -688,11 +688,10 @@ impl<T> Vec<T> {
             let mut ptr = self.as_mut_ptr().add(self.len);
             // Set the final length at the end, keeping in mind that
             // dropping an element might panic. Works around a missed
-            // optimization, as seen in the following issue:
-            // https://github.com/rust-lang/rust/issues/51802
+            // optimization, as seen in issue #51802.
             let mut local_len = SetLenOnDrop::new(&mut self.len);
 
-            // drop any extra elements
+            // Drop any extra elements.
             for _ in len..current_len {
                 local_len.decrement_len(1);
                 ptr = ptr.offset(-1);
@@ -2579,7 +2578,7 @@ impl<I: Iterator> Drop for Splice<'_, I> {
             }
 
             // There may be more elements. Use the lower bound as an estimate.
-            // FIXME: Is the upper bound a better guess? Or something else?
+            // FIXME: is the upper bound a better guess? Or something else?
             let (lower_bound, _upper_bound) = self.replace_with.size_hint();
             if lower_bound > 0  {
                 self.drain.move_tail(lower_bound);

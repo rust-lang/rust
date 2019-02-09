@@ -376,7 +376,7 @@ pub mod guard {
 
             let stackaddr = stackaddr as usize;
             ret = if cfg!(target_os = "freebsd") {
-                // FIXME does freebsd really fault *below* the guard addr?
+                // FIXME: does freebsd really fault *below* the guard addr?
                 let guardaddr = stackaddr - guardsize;
                 Some(guardaddr - PAGE_SIZE..guardaddr)
             } else if cfg!(target_os = "netbsd") {

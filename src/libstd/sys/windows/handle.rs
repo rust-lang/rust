@@ -17,7 +17,7 @@ pub struct Handle(RawHandle);
 /// A wrapper type for `HANDLE` objects to give them proper Send/Sync inference
 /// as well as Rust-y methods.
 ///
-/// This does **not** drop the handle when it goes out of scope, use `Handle`
+/// This does *not* drop the handle when it goes out of scope, use `Handle`
 /// instead for that.
 #[derive(Copy, Clone)]
 pub struct RawHandle(c::HANDLE);

@@ -76,7 +76,7 @@ cfg_if! {
 #[cfg(rustdoc)]
 cfg_if! {
     if #[cfg(windows)] {
-        // On windows we'll just be documenting what's already available
+        // On Windows we'll just be documenting what's already available.
         #[allow(missing_docs)]
         #[stable(feature = "rust1", since = "1.0.0")]
         pub use self::ext as windows_ext;
@@ -84,13 +84,13 @@ cfg_if! {
                         target_arch = "wasm32",
                         all(target_vendor = "fortanix", target_env = "sgx")))] {
         // On CloudABI and wasm right now the shim below doesn't compile, so
-        // just omit it
+        // just omit it.
         #[unstable(issue = "0", feature = "std_internals")]
         #[allow(missing_docs)]
         pub mod windows_ext {}
     } else {
-        // On all other platforms (aka linux/osx/etc) then pull in a "minimal"
-        // amount of windows goop which ends up compiling
+        // On all other platforms (e.g. Linux, macOS, etc.), then pull in a "minimal"
+        // amount of Windows goop, which ends up compiling.
         #[macro_use]
         #[path = "windows/compat.rs"]
         mod compat;

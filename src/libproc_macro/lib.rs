@@ -646,7 +646,7 @@ impl Group {
     /// Configures the span for this `Group`'s delimiters, but not its internal
     /// tokens.
     ///
-    /// This method will **not** set the span of all the internal tokens spanned
+    /// This method will *not* set the span of all the internal tokens spanned
     /// by this group, but rather it will only set the span of the delimiter
     /// tokens at the level of the `Group`.
     #[stable(feature = "proc_macro_lib2", since = "1.29.0")]
@@ -1065,7 +1065,7 @@ impl Literal {
     // was 'c' or whether it was '\u{63}'.
     #[unstable(feature = "proc_macro_span", issue = "54725")]
     pub fn subspan<R: RangeBounds<usize>>(&self, range: R) -> Option<Span> {
-        // HACK(eddyb) something akin to `Option::cloned`, but for `Bound<&T>`.
+        // HACK(eddyb): something akin to `Option::cloned`, but for `Bound<&T>`.
         fn cloned_bound<T: Clone>(bound: Bound<&T>) -> Bound<T> {
             match bound {
                 Bound::Included(x) => Bound::Included(x.clone()),

@@ -369,7 +369,7 @@ pub fn current_exe() -> io::Result<PathBuf> {
 
         let mut info: image_info = mem::zeroed();
         let mut cookie: i32 = 0;
-        // the executable can be found at team id 0
+        // The executable can be found at team ID `0`.
         let result = _get_next_image_info(0, &mut cookie, &mut info,
             mem::size_of::<image_info>() as i32);
         if result != 0 {
@@ -570,7 +570,7 @@ fn glibc_version_cstr() -> Option<&'static CStr> {
 }
 
 // Returns Some((major, minor)) if the string is a valid "x.y" version,
-// ignoring any extra dot-separated parts. Otherwise return None.
+// ignoring any extra dot-separated parts. Otherwise return `None`.
 #[cfg(target_env = "gnu")]
 fn parse_glibc_version(version: &str) -> Option<(usize, usize)> {
     let mut parsed_ints = version.split('.').map(str::parse::<usize>).fuse();

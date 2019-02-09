@@ -36,8 +36,8 @@ pub fn read2(p1: AnonPipe,
              v1: &mut Vec<u8>,
              p2: AnonPipe,
              v2: &mut Vec<u8>) -> io::Result<()> {
-    //FIXME: Use event based I/O multiplexing
-    //unimplemented!()
+    // FIXME: use event based I/O multiplexing.
+    //unimplemented!();
 
     p1.0.read_to_end(v1)?;
     p2.0.read_to_end(v2)?;

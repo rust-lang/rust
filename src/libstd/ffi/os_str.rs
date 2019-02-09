@@ -605,7 +605,7 @@ impl OsStr {
 
     /// Returns the length of this `OsStr`.
     ///
-    /// Note that this does **not** return the number of bytes in the string in
+    /// Note that this does *not* return the number of bytes in the string in
     /// OS string form.
     ///
     /// The length returned is that of the underlying storage used by `OsStr`;
@@ -834,7 +834,7 @@ impl PartialOrd<str> for OsStr {
     }
 }
 
-// FIXME (#19470): cannot provide PartialOrd<OsStr> for str until we
+// FIXME(#19470): cannot provide PartialOrd<OsStr> for str until we
 // have more flexible coherence rules.
 
 #[stable(feature = "rust1", since = "1.0.0")]

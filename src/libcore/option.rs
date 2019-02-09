@@ -41,7 +41,7 @@
 //! ```
 //!
 //
-// FIXME: Show how `Option` is used in practice, with lots of methods
+// FIXME: show how `Option` is used in practice, with lots of methods
 //
 //! # Options and pointers ("nullable" pointers)
 //!

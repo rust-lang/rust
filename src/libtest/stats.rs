@@ -150,7 +150,7 @@ impl Summary {
 }
 
 impl Stats for [f64] {
-    // FIXME #11059 handle NaN, inf and overflow
+    // FIXME(#11059): handle NaN, inf and overflow.
     fn sum(&self) -> f64 {
         let mut partials = vec![];
 

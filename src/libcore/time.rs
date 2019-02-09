@@ -221,7 +221,7 @@ impl Duration {
 
     /// Returns the fractional part of this `Duration`, in whole milliseconds.
     ///
-    /// This method does **not** return the length of the duration when
+    /// This method does *not* return the length of the duration when
     /// represented by milliseconds. The returned number always represents a
     /// fractional portion of a second (i.e., it is less than one thousand).
     ///
@@ -240,7 +240,7 @@ impl Duration {
 
     /// Returns the fractional part of this `Duration`, in whole microseconds.
     ///
-    /// This method does **not** return the length of the duration when
+    /// This method does *not* return the length of the duration when
     /// represented by microseconds. The returned number always represents a
     /// fractional portion of a second (i.e., it is less than one million).
     ///
@@ -259,7 +259,7 @@ impl Duration {
 
     /// Returns the fractional part of this `Duration`, in nanoseconds.
     ///
-    /// This method does **not** return the length of the duration when
+    /// This method does *not* return the length of the duration when
     /// represented by nanoseconds. The returned number always represents a
     /// fractional portion of a second (i.e., it is less than one billion).
     ///

@@ -313,7 +313,7 @@ unsafe impl<'a> Searcher<'a> for CharSearcher<'a> {
                 // ꁁ (U+A041 YI SYLLABLE PA), utf-8 `EA 81 81` will have us always find
                 // the second byte when searching for the third.
                 //
-                // However, this is totally okay. While we have the invariant that
+                // However, this is totally ok. While we have the invariant that
                 // self.finger is on a UTF8 boundary, this invariant is not relied upon
                 // within this method (it is relied upon in CharSearcher::next()).
                 //

@@ -670,7 +670,7 @@ impl<T> RefCell<T> {
     pub fn into_inner(self) -> T {
         // Since this function takes `self` (the `RefCell`) by value, the
         // compiler statically verifies that it is not currently borrowed.
-        // Therefore the following assertion is just a `debug_assert!`.
+        // Therefore, the following assertion is just a `debug_assert!`.
         debug_assert!(self.borrow.get() == UNUSED);
         self.value.into_inner()
     }
@@ -1308,7 +1308,7 @@ impl Drop for BorrowRefMut<'_> {
 impl<'b> BorrowRefMut<'b> {
     #[inline]
     fn new(borrow: &'b Cell<BorrowFlag>) -> Option<BorrowRefMut<'b>> {
-        // NOTE: Unlike BorrowRefMut::clone, new is called to create the initial
+        // NOTE: unlike `BorrowRefMut::clone`, new is called to create the initial
         // mutable reference, and so there must currently be no existing
         // references. Thus, while clone increments the mutable ref count, here
         // we explicitly only allow going from `UNUSED` to `UNUSED - 1`.
@@ -1321,7 +1321,7 @@ impl<'b> BorrowRefMut<'b> {
         }
     }
 
-    // Clone a `BorrowRefMut`.
+    // Clones a `BorrowRefMut`.
     //
     // This is only valid if each `BorrowRefMut` is used to track a mutable
     // reference to a distinct, nonoverlapping range of the original object.

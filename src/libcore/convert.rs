@@ -17,7 +17,7 @@
 //! [`TryFrom<T>`][`TryFrom`] rather than [`Into<U>`][`Into`] or [`TryInto<U>`][`TryInto`],
 //! as [`From`] and [`TryFrom`] provide greater flexibility and offer
 //! equivalent [`Into`] or [`TryInto`] implementations for free, thanks to a
-//! blanket implementation in the standard library.  However, there are some cases
+//! blanket implementation in the standard library. However, there are some cases
 //! where this is not possible, such as creating conversions into a type defined
 //! outside your library, so implementing [`Into`] instead of [`From`] is
 //! sometimes necessary.
@@ -408,7 +408,7 @@ impl<T: ?Sized, U: ?Sized> AsRef<U> for &mut T where T: AsRef<U>
     }
 }
 
-// FIXME (#45742): replace the above impls for &/&mut with the following more general one:
+// FIXME(#45742): replace the above impls for `&`/`&mut` with the following more general one:
 // // As lifts over Deref
 // impl<D: ?Sized + Deref, U: ?Sized> AsRef<U> for D where D::Target: AsRef<U> {
 //     fn as_ref(&self) -> &U {
@@ -416,7 +416,7 @@ impl<T: ?Sized, U: ?Sized> AsRef<U> for &mut T where T: AsRef<U>
 //     }
 // }
 
-// AsMut lifts over &mut
+// `AsMut` lifts over `&mut`.
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T: ?Sized, U: ?Sized> AsMut<U> for &mut T where T: AsMut<U>
 {
@@ -425,7 +425,7 @@ impl<T: ?Sized, U: ?Sized> AsMut<U> for &mut T where T: AsMut<U>
     }
 }
 
-// FIXME (#45742): replace the above impl for &mut with the following more general one:
+// FIXME(#45742): replace the above impl for &mut with the following more general one:
 // // AsMut lifts over DerefMut
 // impl<D: ?Sized + Deref, U: ?Sized> AsMut<U> for D where D::Target: AsMut<U> {
 //     fn as_mut(&mut self) -> &mut U {
@@ -433,7 +433,7 @@ impl<T: ?Sized, U: ?Sized> AsMut<U> for &mut T where T: AsMut<U>
 //     }
 // }
 
-// From implies Into
+// `From` implies `Into`.
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T, U> Into<U> for T where U: From<T>
 {
@@ -442,14 +442,14 @@ impl<T, U> Into<U> for T where U: From<T>
     }
 }
 
-// From (and thus Into) is reflexive
+// `From` (and thus `Into`) is reflexive.
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T> From<T> for T {
     fn from(t: T) -> T { t }
 }
 
 
-// TryFrom implies TryInto
+// `TryFrom` implies `TryInto`.
 #[unstable(feature = "try_from", issue = "33417")]
 impl<T, U> TryInto<U> for T where U: TryFrom<T>
 {

@@ -887,7 +887,7 @@ impl<K: Ord, V> BTreeMap<K, V> {
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn entry(&mut self, key: K) -> Entry<'_, K, V> {
-        // FIXME(@porglezomp) Avoid allocating if we don't insert
+        // FIXME(porglezomp): avoid allocating if we don't insert.
         self.ensure_root_is_owned();
         match search::search_tree(self.root.as_mut(), &key) {
             Found(handle) => {

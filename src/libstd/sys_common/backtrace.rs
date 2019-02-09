@@ -108,7 +108,7 @@ fn filter_frames(frames: &[Frame],
         let mut is_marker = false;
         let _ = resolve_symname(*frame, |symname| {
             if let Some(mangled_symbol_name) = symname {
-                // Use grep to find the concerned functions
+                // Use grep to find the concerned functions.
                 if mangled_symbol_name.contains("__rust_begin_short_backtrace") {
                     is_marker = true;
                 }
@@ -119,7 +119,7 @@ fn filter_frames(frames: &[Frame],
     }).unwrap_or(frames.len());
 
     if skipped_before + skipped_after >= frames.len() {
-        // Avoid showing completely empty backtraces
+        // Avoid showing completely empty backtraces.
         return (0, 0);
     }
 
@@ -211,7 +211,7 @@ fn output_fileline(w: &mut dyn Write,
                    file: &[u8],
                    line: u32,
                    format: PrintFormat) -> io::Result<()> {
-    // prior line: "  ##: {:2$} - func"
+    // Prior line: "  ##: {:2$} - func"
     w.write_all(b"")?;
     match format {
         PrintFormat::Full => write!(w,

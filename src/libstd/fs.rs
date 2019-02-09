@@ -1120,7 +1120,7 @@ impl Permissions {
     /// using the resulting `Permission` will update file permissions to allow
     /// writing.
     ///
-    /// This operation does **not** modify the filesystem. To modify the
+    /// This operation does *not* modify the filesystem. To modify the
     /// filesystem use the [`fs::set_permissions`] function.
     ///
     /// [`fs::set_permissions`]: fn.set_permissions.html
@@ -1863,7 +1863,7 @@ pub fn remove_dir<P: AsRef<Path>>(path: P) -> io::Result<()> {
 /// Removes a directory at this path, after removing all its contents. Use
 /// carefully!
 ///
-/// This function does **not** follow symbolic links and it will simply remove the
+/// This function does *not* follow symbolic links and it will simply remove the
 /// symbolic link itself.
 ///
 /// # Platform-specific behavior

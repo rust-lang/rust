@@ -95,7 +95,7 @@ macro_rules! sh_impl_unsigned {
     )
 }
 
-// FIXME (#23545): uncomment the remaining impls
+// FIXME(#23545): uncomment the remaining impls
 macro_rules! sh_impl_all {
     ($($t:ident)*) => ($(
         //sh_impl_unsigned! { $t, u8 }
@@ -832,7 +832,7 @@ assert_eq!(n.leading_zeros(), 2);
             }
 
             doc_comment! {
-                concat!("Returns `true` if and only if `self == 2^k` for some `k`.
+                concat!("Returns `true` if `self == 2^k` for some `k`.
 
 # Examples
 

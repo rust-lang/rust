@@ -1,7 +1,6 @@
 use std::str::pattern::*;
 
-// This macro makes it easier to write
-// tests that do a series of iterations
+// This macro makes it easier to write tests that do a series of iterations.
 macro_rules! search_asserts {
     ($haystack:expr, $needle:expr, $testname:expr, [$($func:ident),*], $result:expr) => {
         let mut searcher = $needle.into_searcher($haystack);
@@ -10,11 +9,10 @@ macro_rules! search_asserts {
     }
 }
 
-/// Combined enum for the results of next() and next_match()/next_reject()
+/// Combined enum for the results of `next()` and `next_match()`/`next_reject()`.
 #[derive(Debug, PartialEq, Eq)]
 enum Step {
-    // variant names purposely chosen to
-    // be the same length for easy alignment
+    // Variant names purposely chosen to be the same length for easy alignment.
     Matches(usize, usize),
     Rejects(usize, usize),
     InRange(usize, usize),
@@ -106,21 +104,21 @@ fn test_simple_search() {
     );
 }
 
-// Á, 각, ก, 😀 all end in 0x81
-// 🁀, ᘀ do not end in 0x81 but contain the byte
-// ꁁ has 0x81 as its second and third bytes.
+// `Á`, `각`, `ก`, `😀` all end in `0x81`.
+// `🁀`, `ᘀ` do not end in `0x81`, but contain the byte.
+// `ꁁ` has `0x81` as its second and third bytes.
 //
-// The memchr-using implementation of next_match
-// and next_match_back temporarily violate
+// The `memchr`-using implementation of `next_match`
+// and `next_match_back` temporarily violate
 // the property that the search is always on a unicode boundary,
-// which is fine as long as this never reaches next() or next_back().
-// So we test if next() is correct after each next_match() as well.
+// which is fine as long as this never reaches `next()` or `next_back()`.
+// So we test if `next()` is correct after each `next_match()` as well.
 const STRESS: &str = "Áa🁀bÁꁁfg😁각กᘀ각aÁ각ꁁก😁a";
 
 #[test]
 fn test_stress_indices() {
-    // this isn't really a test, more of documentation on the indices of each character in the stresstest string
-
+    // This isn't really a test -- more of documentation on the indices of each character in the
+    // stress-test string.
     search_asserts!(STRESS, 'x', "Indices of characters in stress test",
         [next, next, next, next, next, next, next, next, next, next, next, next, next, next, next, next, next, next, next, next, next],
         [Rejects(0, 2), // Á
@@ -255,8 +253,7 @@ fn test_reverse_search_shared_bytes() {
 
 #[test]
 fn double_ended_regression_test() {
-    // https://github.com/rust-lang/rust/issues/47175
-    // Ensures that double ended searching comes to a convergence
+    // Issue #47175: ensure that double-ended searching comes to a convergence.
     search_asserts!("abcdeabcdeabcde", 'a', "alternating double ended search",
         [next_match,    next_match_back,    next_match,      next_match_back],
         [InRange(0, 1), InRange(10, 11), InRange(5, 6), Done]

@@ -70,8 +70,9 @@ pub fn panic_fmt(fmt: fmt::Arguments, file_line_col: &(&'static str, u32, u32)) 
         unsafe { super::intrinsics::abort() }
     }
 
-    // NOTE This function never crosses the FFI boundary; it's a Rust-to-Rust call
-    #[allow(improper_ctypes)] // PanicInfo contains a trait object which is not FFI safe
+    // NOTE: this function never crosses the FFI boundary; it's a Rust-to-Rust call.
+    // `PanicInfo` contains a trait object which is not FFI safe.
+    #[allow(improper_ctypes)]
     extern "Rust" {
         #[lang = "panic_impl"]
         fn panic_impl(pi: &PanicInfo) -> !;

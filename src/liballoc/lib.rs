@@ -135,7 +135,7 @@ pub mod alloc;
 // Primitive types using the heaps above
 
 // Need to conditionally define the mod from `boxed.rs` to avoid
-// duplicating the lang-items when building in test cfg; but also need
+// duplicating the lang-items when building in test cfg, but also need
 // to allow code to have `use boxed::Box;` declarations.
 #[cfg(not(test))]
 pub mod boxed;

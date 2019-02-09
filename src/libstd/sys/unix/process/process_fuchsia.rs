@@ -35,7 +35,7 @@ impl Command {
 
         match self.setup_io(default, true) {
             Ok((_, _)) => {
-                // FIXME: This is tough because we don't support the exec syscalls
+                // FIXME: this is tough because we don't support the exec syscalls
                 unimplemented!();
             },
             Err(e) => e,
@@ -89,7 +89,7 @@ impl Command {
             &mut process_handle,
             ptr::null_mut(),
         ))?;
-        // FIXME: See if we want to do something with that err_msg
+        // FIXME: see if we want to do something with that err_msg
 
         Ok(process_handle)
     }

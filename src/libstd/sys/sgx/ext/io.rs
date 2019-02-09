@@ -14,7 +14,7 @@ use sys::{self, AsInner, FromInner, IntoInner, TryIntoInner};
 pub trait AsRawFd {
     /// Extracts the raw file descriptor.
     ///
-    /// This method does **not** pass ownership of the raw file descriptor
+    /// This method does *not* pass ownership of the raw file descriptor
     /// to the caller. The descriptor is only guaranteed to be valid while
     /// the original object has not yet been destroyed.
     #[unstable(feature = "sgx_platform", issue = "56975")]

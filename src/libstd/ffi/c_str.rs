@@ -132,7 +132,7 @@ pub struct CString {
 /// in each pair are borrowed references; the latter are owned
 /// strings.
 ///
-/// Note that this structure is **not** `repr(C)` and is not recommended to be
+/// Note that this structure is *not* `repr(C)` and is not recommended to be
 /// placed in the signatures of FFI functions. Instead, safe wrappers of FFI
 /// functions may leverage the unsafe [`from_ptr`] constructor to provide a safe
 /// interface to other consumers.
@@ -470,7 +470,7 @@ impl CString {
 
     /// Consumes the `CString` and returns the underlying byte buffer.
     ///
-    /// The returned buffer does **not** contain the trailing nul
+    /// The returned buffer does *not* contain the trailing nul
     /// terminator, and it is guaranteed to not have any interior nul
     /// bytes.
     ///
@@ -512,7 +512,7 @@ impl CString {
 
     /// Returns the contents of this `CString` as a slice of bytes.
     ///
-    /// The returned slice does **not** contain the trailing nul
+    /// The returned slice does *not* contain the trailing nul
     /// terminator, and it is guaranteed to not have any interior nul
     /// bytes. If you need the nul terminator, use
     /// [`as_bytes_with_nul`] instead.
@@ -1087,7 +1087,7 @@ impl CStr {
 
     /// Converts this C string to a byte slice.
     ///
-    /// The returned slice will **not** contain the trailing nul terminator that this C
+    /// The returned slice will *not* contain the trailing nul terminator that this C
     /// string has.
     ///
     /// > **Note**: This method is currently implemented as a constant-time

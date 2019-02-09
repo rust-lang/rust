@@ -38,7 +38,7 @@ struct StderrRaw(stdio::Stderr);
 ///
 /// The returned handle does not interact with any other handles created nor
 /// handles returned by `std::io::stdin`. Data buffered by the `std::io::stdin`
-/// handles is **not** available to raw handles returned from this function.
+/// handles is *not* available to raw handles returned from this function.
 ///
 /// The returned handle has no external synchronization or buffering.
 fn stdin_raw() -> io::Result<StdinRaw> { stdio::Stdin::new().map(StdinRaw) }
