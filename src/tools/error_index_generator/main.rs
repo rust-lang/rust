@@ -194,7 +194,7 @@ impl Formatter for MarkdownFormatter {
     }
 }
 
-/// Load all the metadata files from `metadata_dir` into an in-memory map.
+/// Loads all the metadata files from `metadata_dir` into an in-memory map.
 fn load_all_errors(metadata_dir: &Path) -> Result<ErrorMetadataMap, Box<dyn Error>> {
     let mut all_errors = BTreeMap::new();
 

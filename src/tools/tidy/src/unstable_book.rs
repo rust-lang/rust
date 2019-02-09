@@ -56,7 +56,7 @@ pub fn collect_unstable_book_section_file_names(dir: &path::Path) -> BTreeSet<St
         .collect()
 }
 
-/// Retrieve file names of all library feature sections in the Unstable Book with:
+/// Retrieves file names of all library feature sections in the Unstable Book with:
 ///
 /// * hyphens replaced by underscores,
 /// * the markdown suffix ('.md') removed.
