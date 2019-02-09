@@ -10,17 +10,17 @@ trait Bar<X> {
 }
 
 impl<'a,X,F> Foo<X> for &'a mut F
-    where F : Foo<X> + Bar<X>
+    where F: Foo<X> + Bar<X>
 {
 }
 
 impl<'a,X,F> Bar<X> for &'a mut F
-    where F : Bar<X>
+    where F: Bar<X>
 {
 }
 
 fn no_hrtb<'b,T>(mut t: T)
-    where T : Bar<&'b isize>
+    where T: Bar<&'b isize>
 {
     // OK -- `T: Bar<&'b isize>`, and thus the impl above ensures that
     // `&mut T: Bar<&'b isize>`.
@@ -28,7 +28,7 @@ fn no_hrtb<'b,T>(mut t: T)
 }
 
 fn bar_hrtb<T>(mut t: T)
-    where T : for<'b> Bar<&'b isize>
+    where T: for<'b> Bar<&'b isize>
 {
     // OK -- `T: for<'b> Bar<&'b isize>`, and thus the impl above
     // ensures that `&mut T: for<'b> Bar<&'b isize>`. This is an
@@ -37,7 +37,7 @@ fn bar_hrtb<T>(mut t: T)
 }
 
 fn foo_hrtb_bar_not<'b,T>(mut t: T)
-    where T : for<'a> Foo<&'a isize> + Bar<&'b isize>
+    where T: for<'a> Foo<&'a isize> + Bar<&'b isize>
 {
     // Not OK -- The forwarding impl for `Foo` requires that `Bar` also
     // be implemented. Thus to satisfy `&mut T: for<'a> Foo<&'a
@@ -47,7 +47,7 @@ fn foo_hrtb_bar_not<'b,T>(mut t: T)
 }
 
 fn foo_hrtb_bar_hrtb<T>(mut t: T)
-    where T : for<'a> Foo<&'a isize> + for<'b> Bar<&'b isize>
+    where T: for<'a> Foo<&'a isize> + for<'b> Bar<&'b isize>
 {
     // OK -- now we have `T: for<'b> Bar&'b isize>`.
     foo_hrtb_bar_hrtb(&mut t);

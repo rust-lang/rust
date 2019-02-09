@@ -18,7 +18,7 @@ impl X {
     //~^ ERROR nested `impl Trait` is not allowed
 }
 
-fn allowed_in_assoc_type() -> impl Iterator<Item=impl Fn()> {
+fn allowed_in_assoc_type() -> impl Iterator<Item = impl Fn()> {
     vec![|| println!("woot")].into_iter()
 }
 

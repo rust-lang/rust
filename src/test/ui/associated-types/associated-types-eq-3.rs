@@ -15,7 +15,7 @@ impl Foo for isize {
     }
 }
 
-fn foo1<I: Foo<A=Bar>>(x: I) {
+fn foo1<I: Foo<A = Bar>>(x: I) {
     let _: Bar = x.boo();
 }
 
@@ -28,7 +28,7 @@ fn foo2<I: Foo>(x: I) {
 }
 
 
-pub fn baz(x: &Foo<A=Bar>) {
+pub fn baz(x: &Foo<A = Bar>) {
     let _: Bar = x.boo();
 }
 

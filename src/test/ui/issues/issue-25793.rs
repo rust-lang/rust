@@ -23,4 +23,4 @@ impl HasInfo {
     // deliberately avoids NLL's two-phase borrow feature.
 }
 
-fn main() { }
+fn main() {}

@@ -15,7 +15,7 @@ trait Future {
 }
 
 trait IntoFuture {
-    type Future: Future<Item=Self::Item, Error=Self::Error>;
+    type Future: Future<Item = Self::Item, Error = Self::Error>;
     type Item;
     type Error;
 

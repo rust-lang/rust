@@ -13,7 +13,7 @@ impl Foo for isize {
     fn boo(&self) -> usize { 42 }
 }
 
-fn baz<I: Foo>(x: &<I as Foo<A=Bar>>::A) {}
+fn baz<I: Foo>(x: &<I as Foo<A = Bar>>::A) {}
 //~^ ERROR associated type bindings are not allowed here
 
 pub fn main() {}

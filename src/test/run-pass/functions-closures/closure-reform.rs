@@ -1,4 +1,5 @@
 // run-pass
+
 #![allow(unused_variables)]
 
 fn call_it<F>(f: F)

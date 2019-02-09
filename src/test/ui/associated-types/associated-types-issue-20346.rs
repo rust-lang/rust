@@ -12,14 +12,14 @@ trait Iterator {
     fn next(&mut self) -> Option<Self::Item>;
 }
 
-fn is_iterator_of<A, I: Iterator<Item=A>>(_: &I) {}
+fn is_iterator_of<A, I: Iterator<Item = A>>(_: &I) {}
 
 struct Adapter<I> {
     iter: I,
     found_none: bool,
 }
 
-impl<T, I> Iterator for Adapter<I> where I: Iterator<Item=Option<T>> {
+impl<T, I> Iterator for Adapter<I> where I: Iterator<Item = Option<T>> {
     type Item = T;
 
     fn next(&mut self) -> Option<T> {
@@ -27,7 +27,7 @@ impl<T, I> Iterator for Adapter<I> where I: Iterator<Item=Option<T>> {
     }
 }
 
-fn test_adapter<T, I: Iterator<Item=Option<T>>>(it: I) {
+fn test_adapter<T, I: Iterator<Item = Option<T>>>(it: I) {
     is_iterator_of::<Option<T>, _>(&it);  // Sanity check
     let adapter = Adapter { iter: it, found_none: false };
     is_iterator_of::<T, _>(&adapter); // OK

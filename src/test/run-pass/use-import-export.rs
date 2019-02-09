@@ -8,4 +8,7 @@ mod bar {
     pub fn y() -> isize { return 1; }
 }
 
-pub fn main() { foo::x(); bar::y(); }
+pub fn main() {
+    foo::x();
+    bar::y();
+}

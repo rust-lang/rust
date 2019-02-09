@@ -3,6 +3,8 @@
 
 #![feature(repr_simd, platform_intrinsics)]
 
+#![allow(non_camel_case_types)]
+
 #[repr(simd)]
 #[derive(Copy, Clone)]
 struct i32x4(pub i32, pub i32, pub i32, pub i32);

@@ -4,7 +4,7 @@ static mut DROP: bool = false;
 
 struct ConnWrap(Conn);
 impl ::std::ops::Deref for ConnWrap {
-    type Target=Conn;
+    type Target = Conn;
     fn deref(&self) -> &Conn { &self.0 }
 }
 

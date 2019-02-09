@@ -1,5 +1,5 @@
 // run-pass
-#![allow(unused_imports)]
+
 // Test that we are able to compile calls to associated fns like
 // `decode()` where the bound on the `Self` parameter references a
 // lifetime parameter of the trait. This example indicates why trait
@@ -7,6 +7,8 @@
 // associated item.
 
 // pretty-expanded FIXME(#23616)
+
+#![allow(unused_imports)]
 
 use std::marker;
 
@@ -32,4 +34,4 @@ impl<'v, D: Decoder<'v>> Decodable<'v, D> for () {
     }
 }
 
-pub fn main() { }
+pub fn main() {}

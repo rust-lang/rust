@@ -330,7 +330,7 @@ fn test_spaces() {
 }
 
 /// Returns an iterator of dates in a given year.
-fn dates_in_year(year: i32) -> impl Iterator<Item=NaiveDate>+Clone {
+fn dates_in_year(year: i32) -> impl Iterator<Item = NaiveDate>+Clone {
     InGroup {
         it: NaiveDate::from_ymd(year, 1, 1)..,
         f: |d: &NaiveDate| d.year(),
@@ -376,8 +376,8 @@ fn test_dates_in_year() {
 
 /// Convenience trait for verifying that a given type iterates over
 /// `NaiveDate`s.
-trait DateIterator: Iterator<Item=NaiveDate> + Clone {}
-impl<It> DateIterator for It where It: Iterator<Item=NaiveDate> + Clone {}
+trait DateIterator: Iterator<Item = NaiveDate> + Clone {}
+impl<It> DateIterator for It where It: Iterator<Item = NaiveDate> + Clone {}
 
 fn test_group_by() {
     let input = [
@@ -412,8 +412,8 @@ fn test_group_by() {
 }
 
 /// Groups an iterator of dates by month.
-fn by_month(it: impl Iterator<Item=NaiveDate> + Clone)
-            ->  impl Iterator<Item=(u32, impl Iterator<Item=NaiveDate> + Clone)> + Clone
+fn by_month(it: impl Iterator<Item = NaiveDate> + Clone)
+            -> impl Iterator<Item=(u32, impl Iterator<Item = NaiveDate> + Clone)> + Clone
 {
     it.group_by(|d| d.month())
 }
@@ -499,7 +499,7 @@ const COLS_PER_DAY: u32 = 3;
 const COLS_PER_WEEK: u32 = 7 * COLS_PER_DAY;
 
 /// Formats an iterator of weeks into an iterator of strings.
-fn format_weeks(it: impl Iterator<Item = impl DateIterator>) -> impl Iterator<Item=String> {
+fn format_weeks(it: impl Iterator<Item = impl DateIterator>) -> impl Iterator<Item = String> {
     it.map(|week| {
         let mut buf = String::with_capacity((COLS_PER_DAY * COLS_PER_WEEK + 2) as usize);
 
@@ -574,7 +574,7 @@ fn test_month_title() {
 }
 
 /// Formats a month.
-fn format_month(it: impl DateIterator) -> impl Iterator<Item=String> {
+fn format_month(it: impl DateIterator) -> impl Iterator<Item = String> {
     let mut month_days = it.peekable();
     let title = month_title(month_days.peek().unwrap().month());
 
@@ -604,7 +604,7 @@ fn test_format_month() {
 
 /// Formats an iterator of months.
 fn format_months(it: impl Iterator<Item = impl DateIterator>)
-                -> impl Iterator<Item=impl Iterator<Item=String>>
+                -> impl Iterator<Item = impl Iterator<Item = String>>
 {
     it.map(format_month)
 }
@@ -623,10 +623,10 @@ where Self::Item: Iterator<Item = String> {
     }
 }
 
-impl<It> PasteBlocks for It where It: Iterator, It::Item: Iterator<Item=String> {}
+impl<It> PasteBlocks for It where It: Iterator, It::Item: Iterator<Item = String> {}
 
 struct PasteBlocksIter<StrIt>
-where StrIt: Iterator<Item=String> {
+where StrIt: Iterator<Item = String> {
     iters: Vec<StrIt>,
     cache: Vec<Option<String>>,
     col_widths: Option<Vec<usize>>,
@@ -634,7 +634,7 @@ where StrIt: Iterator<Item=String> {
 }
 
 impl<StrIt> Iterator for PasteBlocksIter<StrIt>
-where StrIt: Iterator<Item=String> {
+where StrIt: Iterator<Item = String> {
     type Item = String;
 
     fn next(&mut self) -> Option<String> {

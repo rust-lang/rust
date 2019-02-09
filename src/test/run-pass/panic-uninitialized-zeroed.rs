@@ -20,7 +20,7 @@ fn main() {
             panic::catch_unwind(|| {
                 mem::uninitialized::<!>()
             }).err().and_then(|a| a.downcast_ref::<String>().map(|s| {
-                s == "Attempted to instantiate uninhabited type !"
+                s == "attempted to instantiate uninhabited type `!`"
             })),
             Some(true)
         );
@@ -29,7 +29,7 @@ fn main() {
             panic::catch_unwind(|| {
                 mem::zeroed::<!>()
             }).err().and_then(|a| a.downcast_ref::<String>().map(|s| {
-                s == "Attempted to instantiate uninhabited type !"
+                s == "attempted to instantiate uninhabited type `!`"
             })),
             Some(true)
         );
@@ -38,7 +38,7 @@ fn main() {
             panic::catch_unwind(|| {
                 mem::MaybeUninit::<!>::uninitialized().into_initialized()
             }).err().and_then(|a| a.downcast_ref::<String>().map(|s| {
-                s == "Attempted to instantiate uninhabited type !"
+                s == "attempted to instantiate uninhabited type `!`"
             })),
             Some(true)
         );
@@ -47,7 +47,7 @@ fn main() {
             panic::catch_unwind(|| {
                 mem::uninitialized::<Foo>()
             }).err().and_then(|a| a.downcast_ref::<String>().map(|s| {
-                s == "Attempted to instantiate uninhabited type Foo"
+                s == "attempted to instantiate uninhabited type `Foo`"
             })),
             Some(true)
         );
@@ -56,7 +56,7 @@ fn main() {
             panic::catch_unwind(|| {
                 mem::zeroed::<Foo>()
             }).err().and_then(|a| a.downcast_ref::<String>().map(|s| {
-                s == "Attempted to instantiate uninhabited type Foo"
+                s == "attempted to instantiate uninhabited type `Foo`"
             })),
             Some(true)
         );
@@ -65,7 +65,7 @@ fn main() {
             panic::catch_unwind(|| {
                 mem::MaybeUninit::<Foo>::uninitialized().into_initialized()
             }).err().and_then(|a| a.downcast_ref::<String>().map(|s| {
-                s == "Attempted to instantiate uninhabited type Foo"
+                s == "attempted to instantiate uninhabited type `Foo`"
             })),
             Some(true)
         );
@@ -74,7 +74,7 @@ fn main() {
             panic::catch_unwind(|| {
                 mem::uninitialized::<Bar>()
             }).err().and_then(|a| a.downcast_ref::<String>().map(|s| {
-                s == "Attempted to instantiate uninhabited type Bar"
+                s == "attempted to instantiate uninhabited type `Bar`"
             })),
             Some(true)
         );
@@ -83,7 +83,7 @@ fn main() {
             panic::catch_unwind(|| {
                 mem::zeroed::<Bar>()
             }).err().and_then(|a| a.downcast_ref::<String>().map(|s| {
-                s == "Attempted to instantiate uninhabited type Bar"
+                s == "attempted to instantiate uninhabited type `Bar`"
             })),
             Some(true)
         );
@@ -92,7 +92,7 @@ fn main() {
             panic::catch_unwind(|| {
                 mem::MaybeUninit::<Bar>::uninitialized().into_initialized()
             }).err().and_then(|a| a.downcast_ref::<String>().map(|s| {
-                s == "Attempted to instantiate uninhabited type Bar"
+                s == "attempted to instantiate uninhabited type `Bar`"
             })),
             Some(true)
         );

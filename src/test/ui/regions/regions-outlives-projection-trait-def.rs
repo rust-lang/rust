@@ -17,5 +17,4 @@ impl<'a: 'c, 'c, T> SomeTrait<'a> for &'c T where T: SomeTrait<'a> {
     // here, then we would require that `T:'a`, which is too strong.
 }
 
-
-fn main() { }
+fn main() {}

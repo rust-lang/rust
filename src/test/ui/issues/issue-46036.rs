@@ -8,7 +8,7 @@ struct Foo { x: &'static u32 }
 fn foo() {
     let a = 3;
     let foo = Foo { x: &a }; //~ ERROR E0597
-    loop { }
+    loop {}
 }
 
-fn main() { }
+fn main() {}

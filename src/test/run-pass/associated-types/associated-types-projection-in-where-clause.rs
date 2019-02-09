@@ -17,7 +17,7 @@ trait NonZero
     fn non_zero(self) -> bool;
 }
 
-fn foo<I:Int<T=J>,J>(t: I) -> bool
+fn foo<I:Int<T = J>,J>(t: I) -> bool
     where <I as Int>::T : NonZero
     //    ^~~~~~~~~~~~~ canonical form is just J
 {

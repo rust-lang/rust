@@ -54,4 +54,4 @@ impl<One>         Drop for V<One,One>     { fn drop(&mut self) { } } // REJECT
 impl<'lw>         Drop for W<'lw,'lw>     { fn drop(&mut self) { } } // REJECT
 //~^ ERROR cannot infer an appropriate lifetime
 
-pub fn main() { }
+pub fn main() {}

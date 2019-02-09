@@ -39,5 +39,4 @@ fn with_assoc<'a,'b>() {
     //[mir]~^^ ERROR lifetime may not live long enough
 }
 
-fn main() {
-}
+fn main() {}

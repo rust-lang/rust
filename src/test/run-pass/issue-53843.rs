@@ -4,7 +4,7 @@ pub struct Pin<P>(P);
 
 impl<P, T> Deref for Pin<P>
 where
-    P: Deref<Target=T>,
+    P: Deref<Target = T>,
 {
     type Target = T;
 

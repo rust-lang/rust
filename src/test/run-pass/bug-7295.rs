@@ -8,6 +8,4 @@ pub trait Foo<T> {
     }
 }
 
-pub fn main() {
-
-}
+pub fn main() {}

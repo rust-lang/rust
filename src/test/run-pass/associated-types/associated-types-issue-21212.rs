@@ -1,10 +1,11 @@
 // run-pass
-#![allow(unused_variables)]
+
 // Regression test for #21212: an overflow occurred during trait
 // checking where normalizing `Self::Input` led to normalizing the
 // where-clauses in the environment which in turn required normalizing
 // `Self::Input`.
 
+#![allow(unused_variables)]
 
 pub trait Parser {
     type Input;
@@ -18,5 +19,4 @@ impl <P> Parser for P {
     type Input = ();
 }
 
-fn main() {
-}
+fn main() {}

@@ -11,7 +11,7 @@ trait Not {
     fn not(self) -> Self::Result;
 }
 
-trait Int: Not<Result=Self> + Sized {
+trait Int: Not<Result = Self> + Sized {
     fn count_ones(self) -> usize;
     fn count_zeros(self) -> usize {
         // neither works

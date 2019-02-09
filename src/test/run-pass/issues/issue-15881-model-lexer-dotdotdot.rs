@@ -1,8 +1,9 @@
 // run-pass
-#![allow(illegal_floating_point_literal_pattern)] // FIXME #41620
 
-// regression test for the model lexer handling the DOTDOTDOT syntax (#15877)
+// FIXME(#41620)
+#![allow(illegal_floating_point_literal_pattern)]
 
+// Regression test for the model lexer handling the DOTDOTDOT syntax (#15877).
 
 pub fn main() {
     match 5_usize {

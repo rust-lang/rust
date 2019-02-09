@@ -9,22 +9,22 @@ trait Foo {
 }
 
 #[cfg(angle)]
-fn angle<T: for<'a> Foo<Item=&'a i32>>() {
+fn angle<T: for<'a> Foo<Item = &'a i32>>() {
     //[angle]~^ ERROR binding for associated type `Item` references lifetime `'a`
 }
 
 #[cfg(angle)]
-fn angle1<T>() where T: for<'a> Foo<Item=&'a i32> {
+fn angle1<T>() where T: for<'a> Foo<Item = &'a i32> {
     //[angle]~^ ERROR binding for associated type `Item` references lifetime `'a`
 }
 
 #[cfg(angle)]
-fn angle2<T>() where for<'a> T: Foo<Item=&'a i32> {
+fn angle2<T>() where for<'a> T: Foo<Item = &'a i32> {
     //[angle]~^ ERROR binding for associated type `Item` references lifetime `'a`
 }
 
 #[cfg(angle)]
-fn angle3(_: &for<'a> Foo<Item=&'a i32>) {
+fn angle3(_: &for<'a> Foo<Item = &'a i32>) {
     //[angle]~^ ERROR binding for associated type `Item` references lifetime `'a`
 }
 
@@ -60,11 +60,11 @@ fn ok1<T: for<'a> Fn(&Parameterized<'a>) -> &'a i32>() {
 }
 
 #[cfg(ok)]
-fn ok2<T: for<'a,'b> Fn<(&'b Parameterized<'a>,), Output=&'a i32>>() {
+fn ok2<T: for<'a,'b> Fn<(&'b Parameterized<'a>,), Output = &'a i32>>() {
 }
 
 #[cfg(ok)]
-fn ok3<T>() where for<'a> Parameterized<'a>: Foo<Item=&'a i32> {
+fn ok3<T>() where for<'a> Parameterized<'a>: Foo<Item = &'a i32> {
 }
 
 #[rustc_error]

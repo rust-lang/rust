@@ -1,6 +1,6 @@
 // compile-pass
 pub trait LineFormatter<'a> {
-    type Iter: Iterator<Item=&'a str> + 'a;
+    type Iter: Iterator<Item = &'a str> + 'a;
     fn iter(&'a self, line: &'a str) -> Self::Iter;
 
     fn dimensions(&'a self, line: &'a str) {

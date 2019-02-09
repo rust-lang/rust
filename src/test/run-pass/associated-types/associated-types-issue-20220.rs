@@ -6,7 +6,7 @@ use std::vec;
 
 trait IntoIteratorX {
     type Item;
-    type IntoIter: Iterator<Item=Self::Item>;
+    type IntoIter: Iterator<Item = Self::Item>;
 
     fn into_iter_x(self) -> Self::IntoIter;
 }

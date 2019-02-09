@@ -2,7 +2,7 @@
 use std::cmp::PartialEq;
 use std::ops::{Add, Sub, Mul};
 
-trait MyNum : Add<Output=Self> + Sub<Output=Self> + Mul<Output=Self> + PartialEq + Clone { }
+trait MyNum : Add<Output = Self> + Sub<Output = Self> + Mul<Output = Self> + PartialEq + Clone { }
 
 #[derive(Clone, Debug)]
 struct MyInt { val: isize }

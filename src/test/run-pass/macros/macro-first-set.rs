@@ -250,7 +250,7 @@ test_path!();
 test_path!(,);
 test_path!(::std);
 test_path!(std::u8,);
-test_path!(any, super, super::super::self::path, X<Y>::Z<'a, T=U>);
+test_path!(any, super, super::super::self::path, X<Y>::Z<'a, T = U>);
 
 macro_rules! test_meta_block {
     ($($m:meta)* $b:block) => {};

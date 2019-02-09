@@ -12,4 +12,6 @@ mod foo {
     }
 }
 
-fn main() { foo::g(); }
+fn main() {
+    foo::g();
+}

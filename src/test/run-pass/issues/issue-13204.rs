@@ -5,7 +5,7 @@
 
 
 pub trait Foo {
-    fn bar<'a, I: Iterator<Item=&'a ()>>(&self, it: I) -> usize {
+    fn bar<'a, I: Iterator<Item = &'a ()>>(&self, it: I) -> usize {
         let mut xs = it.filter(|_| true);
         xs.count()
     }

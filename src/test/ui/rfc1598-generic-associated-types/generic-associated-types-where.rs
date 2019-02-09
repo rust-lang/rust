@@ -9,7 +9,7 @@ trait Foo {
     type Assoc where Self: Sized;
     type Assoc2<T> where T: Display;
     type Assoc3<T>;
-    type WithDefault<T> where T: Debug = Iterator<Item=T>;
+    type WithDefault<T> where T: Debug = Iterator<Item = T>;
     type NoGenerics;
 }
 

@@ -25,7 +25,7 @@ impl Foo for char {
     fn boo(&self) -> Bar { Bar }
 }
 
-fn foo1<I: Foo<A=Bar>>(x: I) -> Bar {
+fn foo1<I: Foo<A = Bar>>(x: I) -> Bar {
     x.boo()
 }
 

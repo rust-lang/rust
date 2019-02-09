@@ -1,12 +1,13 @@
 // run-pass
-#![allow(dead_code)]
-#![allow(unused_variables)]
+// pretty-expanded FIXME(#23616)
+
 // Test that when there is a conditional (but blanket) impl and a
 // where-clause, we don't get confused in trait resolution.
 //
 // Issue #18453.
 
-// pretty-expanded FIXME #23616
+#![allow(dead_code)]
+#![allow(unused_variables)]
 
 use std::rc::Rc;
 

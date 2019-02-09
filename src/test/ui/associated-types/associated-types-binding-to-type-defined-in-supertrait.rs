@@ -27,10 +27,10 @@ impl Car for ModelU { }
 
 ///////////////////////////////////////////////////////////////////////////
 
-fn black_car<C:Car<Color=Black>>(c: C) {
+fn black_car<C:Car<Color = Black>>(c: C) {
 }
 
-fn blue_car<C:Car<Color=Blue>>(c: C) {
+fn blue_car<C:Car<Color = Blue>>(c: C) {
 }
 
 fn a() { black_car(ModelT); }

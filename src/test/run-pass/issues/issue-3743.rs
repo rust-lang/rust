@@ -26,7 +26,7 @@ trait RhsOfVec2Mul {
 }
 
 // Vec2's implementation of Mul "from the other side" using the above trait
-impl<Res, Rhs: RhsOfVec2Mul<Result=Res>> Mul<Rhs> for Vec2 {
+impl<Res, Rhs: RhsOfVec2Mul<Result = Res>> Mul<Rhs> for Vec2 {
     type Output = Res;
 
     fn mul(self, rhs: Rhs) -> Res { rhs.mul_vec2_by(&self) }

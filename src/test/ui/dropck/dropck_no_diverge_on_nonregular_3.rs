@@ -22,7 +22,7 @@ enum FingerTree<T:'static> {
     Deep(
         Digit<T>,
         Box<FingerTree<Node<T>>>,
-        )
+    )
 }
 
 enum Wrapper<T:'static> {

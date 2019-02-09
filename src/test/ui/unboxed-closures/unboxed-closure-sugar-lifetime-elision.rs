@@ -18,7 +18,7 @@ impl<X: ?Sized> Eq<X> for X { }
 fn eq<A: ?Sized,B: ?Sized +Eq<A>>() { }
 
 fn main() {
-    eq::< for<'a> Foo<(&'a isize,), Output=&'a isize>,
+    eq::< for<'a> Foo<(&'a isize,), Output = &'a isize>,
           Foo(&isize) -> &isize                                   >();
     eq::< for<'a> Foo<(&'a isize,), Output=(&'a isize, &'a isize)>,
           Foo(&isize) -> (&isize, &isize)                           >();

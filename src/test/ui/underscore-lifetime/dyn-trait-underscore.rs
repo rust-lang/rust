@@ -3,16 +3,16 @@
 //
 // cc #48468
 
-fn a<T>(items: &[T]) -> Box<dyn Iterator<Item=&T>> {
+fn a<T>(items: &[T]) -> Box<dyn Iterator<Item = &T>> {
     //                      ^^^^^^^^^^^^^^^^^^^^^ bound *here* defaults to `'static`
     Box::new(items.iter()) //~ ERROR cannot infer an appropriate lifetime
 }
 
-fn b<T>(items: &[T]) -> Box<dyn Iterator<Item=&T> + '_> {
+fn b<T>(items: &[T]) -> Box<dyn Iterator<Item = &T> + '_> {
     Box::new(items.iter()) // OK, equivalent to c
 }
 
-fn c<'a, T>(items: &'a [T]) -> Box<dyn Iterator<Item=&'a T> + 'a> {
+fn c<'a, T>(items: &'a [T]) -> Box<dyn Iterator<Item = &'a T> + 'a> {
     Box::new(items.iter()) // OK, equivalent to b
 }
 

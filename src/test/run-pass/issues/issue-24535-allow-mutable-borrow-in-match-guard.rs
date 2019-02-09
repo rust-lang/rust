@@ -38,7 +38,7 @@ fn rfcs_issue_1006_1() {
 
 fn rfcs_issue_1006_2() {
     #[inline(always)]
-    fn check<'a, I: Iterator<Item=&'a i32>>(mut i: I) -> bool {
+    fn check<'a, I: Iterator<Item = &'a i32>>(mut i: I) -> bool {
         i.any(|&x| x == 2)
     }
 

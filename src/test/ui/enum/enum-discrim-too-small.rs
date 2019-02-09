@@ -35,4 +35,4 @@ enum Eu64 {
 // with a cast requires specifying the signedness, there is no loss of information in those cases.
 // This also applies to isize and usize on 64-bit targets.
 
-pub fn main() { }
+pub fn main() {}

@@ -9,7 +9,6 @@ struct Digit<T> {
 
 struct Node<T:'static> { m: PhantomData<&'static T> }
 
-
 enum FingerTree<T:'static> {
     Single(T),
     // Bug report indicated `Digit` after `Box` would stack-overflow (versus
@@ -17,7 +16,7 @@ enum FingerTree<T:'static> {
     Deep(
         Box<FingerTree<Node<T>>>,
         Digit<T>,
-        )
+    )
 }
 
 fn main() {

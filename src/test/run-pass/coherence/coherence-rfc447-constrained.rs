@@ -12,7 +12,7 @@ trait Mirror { type Image: ?Sized; }
 impl<T: ?Sized> Mirror for T { type Image = T; }
 
 trait Bar {}
-impl<U: Mirror, V: Mirror<Image=L>, L: Mirror<Image=U>> Bar for V
+impl<U: Mirror, V: Mirror<Image = L>, L: Mirror<Image = U>> Bar for V
     where U::Image: IsU32 {}
 
 trait Foo { fn name() -> &'static str; }

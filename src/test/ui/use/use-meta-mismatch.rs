@@ -2,4 +2,4 @@
 
 extern crate fake_crate as extra;
 
-fn main() { }
+fn main() {}

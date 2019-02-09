@@ -33,7 +33,7 @@ impl<'a, T> Index<(usize, usize)> for &'a Mat<T> {
 
 struct Row<M> { mat: M, row: usize, }
 
-impl<T, M: Index<(usize, usize), Output=T>> Index<usize> for Row<M> {
+impl<T, M: Index<(usize, usize), Output = T>> Index<usize> for Row<M> {
     type Output = T;
 
     fn index<'a>(&'a self, col: usize) -> &'a T {

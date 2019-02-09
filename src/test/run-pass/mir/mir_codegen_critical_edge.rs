@@ -18,7 +18,7 @@ pub struct Foo<A: Iterator, B: Iterator> {
 }
 
 impl<A, B> Foo<A, B>
-where A: Iterator, B: Iterator<Item=A::Item>
+where A: Iterator, B: Iterator<Item = A::Item>
 {
     // This is the function we care about
     fn next(&mut self) -> Option<A::Item> {

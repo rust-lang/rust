@@ -60,7 +60,7 @@ fn return_str() -> str where str: Sized {
     *"Sized".to_string().into_boxed_str()
 }
 
-fn use_op(s: String) -> String where String: ::std::ops::Neg<Output=String> {
+fn use_op(s: String) -> String where String: ::std::ops::Neg<Output = String> {
     -s
 }
 

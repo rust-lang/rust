@@ -5,4 +5,5 @@
 #[plugin_registrar]
 pub fn registrar() {}
 //~^ ERROR compiler plugins are experimental
+
 fn main() {}

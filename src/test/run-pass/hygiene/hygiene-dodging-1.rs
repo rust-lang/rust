@@ -10,6 +10,6 @@ pub fn main(){
     // Should **not** shadow the module `x`.
     let x = 9;
     // Use it to avoid warnings.
-    x+3;
-    assert_eq!(x::g(),14);
+    x + 3;
+    assert_eq!(x::g(), 14);
 }

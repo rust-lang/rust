@@ -14,7 +14,7 @@ trait WithAssoc {
     fn as_item(&self) -> &Self::Item;
 }
 
-impl<T, U> Trait<U> for T where T: WithAssoc<Item=U>, U: Clone {
+impl<T, U> Trait<U> for T where T: WithAssoc<Item = U>, U: Clone {
     fn convert(&self) -> U {
         self.as_item().clone()
     }

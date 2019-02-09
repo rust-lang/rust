@@ -1,9 +1,11 @@
 // run-pass
-#![allow(dead_code)]
-#![allow(unused_variables)]
+
 // Test what happens when a HR obligation is applied to an impl with
 // "outlives" bounds. Currently we're pretty conservative here; this
 // will probably improve in time.
+
+#![allow(dead_code)]
+#![allow(unused_variables)]
 
 trait Foo<X> {
     fn foo(&self, x: X) { }

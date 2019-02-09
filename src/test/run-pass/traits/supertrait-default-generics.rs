@@ -12,7 +12,7 @@ trait Positioned<S> {
   fn X(&self) -> S;
 }
 
-trait Movable<S: Add<Output=S>>: Positioned<S> {
+trait Movable<S: Add<Output = S>>: Positioned<S> {
   fn translate(&mut self, dx: S) {
     let x = self.X() + dx;
     self.SetX(x);
@@ -30,7 +30,7 @@ impl<S: Clone> Positioned<S> for Point<S> {
     }
 }
 
-impl<S: Clone + Add<Output=S>> Movable<S> for Point<S> {}
+impl<S: Clone + Add<Output = S>> Movable<S> for Point<S> {}
 
 pub fn main() {
     let mut p = Point{ x: 1, y: 2};

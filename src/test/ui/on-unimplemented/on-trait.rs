@@ -16,10 +16,10 @@ fn foobar<U: Clone, T: Foo<u8, U, u32>>() -> T {
 #[rustc_on_unimplemented="a collection of type `{Self}` cannot be built from an iterator over elements of type `{A}`"]
 trait MyFromIterator<A> {
     /// Builds a container with elements from an external iterator.
-    fn my_from_iter<T: Iterator<Item=A>>(iterator: T) -> Self;
+    fn my_from_iter<T: Iterator<Item = A>>(iterator: T) -> Self;
 }
 
-fn collect<A, I: Iterator<Item=A>, B: MyFromIterator<A>>(it: I) -> B {
+fn collect<A, I: Iterator<Item = A>, B: MyFromIterator<A>>(it: I) -> B {
     MyFromIterator::my_from_iter(it)
 }
 

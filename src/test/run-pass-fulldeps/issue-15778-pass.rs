@@ -10,4 +10,4 @@
 #![rustc_crate_grey]
 #![rustc_crate_green]
 
-pub fn main() { }
+pub fn main() {}

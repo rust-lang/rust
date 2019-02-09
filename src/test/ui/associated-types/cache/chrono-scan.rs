@@ -16,7 +16,7 @@ pub fn timezone_offset_zulu<F>(s: &str, colon: F) -> ParseResult<(&str, i32)>
 }
 
 pub fn parse<'a, I>(mut s: &str, items: I) -> ParseResult<()>
-        where I: Iterator<Item=Item<'a>> {
+        where I: Iterator<Item = Item<'a>> {
     macro_rules! try_consume {
         ($e:expr) => ({ let (s_, v) = try!($e); s = s_; v })
     }

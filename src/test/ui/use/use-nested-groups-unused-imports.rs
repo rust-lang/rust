@@ -14,11 +14,11 @@ mod foo {
 }
 
 use foo::{Foo, bar::{baz::{}, foobar::*}, *};
-    //~^ ERROR unused imports: `*`, `Foo`, `baz::{}`, `foobar::*`
+//~^ ERROR unused imports: `*`, `Foo`, `baz::{}`, `foobar::*`
 use foo::bar::baz::{*, *};
-    //~^ ERROR unused import: `*`
+//~^ ERROR unused import: `*`
 use foo::{};
-    //~^ ERROR unused import: `foo::{}`
+//~^ ERROR unused import: `foo::{}`
 
 fn main() {
     let _: Bar;

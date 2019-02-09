@@ -32,8 +32,8 @@ fn foo() {
 
 struct S;
 impl S {
-    fn m1(&self) { 'okay: loop { break 'okay; } }
-    fn m2(&self) { 'okay: loop { break 'okay; } }
+    fn m1(&self) { 'ok: loop { break 'ok; } }
+    fn m2(&self) { 'ok: loop { break 'ok; } }
 }
 
 

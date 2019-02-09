@@ -33,10 +33,9 @@ fn bar<F>(t: F)
 fn baz<F>(t: F)
     // No type can satisfy this requirement, since `'a` does not
     // appear in any of the input types:
-    where F: for<'a> Iterator<Item=&'a i32>
+    where F: for<'a> Iterator<Item = &'a i32>
     //~^ ERROR E0582
 {
 }
 
-fn main() {
-}
+fn main() {}

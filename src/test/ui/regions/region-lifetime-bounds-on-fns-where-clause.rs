@@ -26,4 +26,4 @@ fn e() {
     let _: fn(&mut &isize, &mut &isize) = b;
 }
 
-fn main() { }
+fn main() {}

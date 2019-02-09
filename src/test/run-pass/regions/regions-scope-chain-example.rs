@@ -1,4 +1,5 @@
 // run-pass
+
 #![allow(dead_code)]
 #![allow(unused_variables)]
 // This is an example where the older inference algorithm failed. The

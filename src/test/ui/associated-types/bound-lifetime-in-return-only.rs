@@ -42,7 +42,7 @@ fn ok1(_: &for<'a> Fn(&Parameterized<'a>) -> &'a i32) {
 }
 
 #[cfg(ok)]
-fn ok2(_: &for<'a,'b> Fn<(&'b Parameterized<'a>,), Output=&'a i32>) {
+fn ok2(_: &for<'a,'b> Fn<(&'b Parameterized<'a>,), Output = &'a i32>) {
 }
 
 #[rustc_error]

@@ -5,12 +5,12 @@
 // `Target=[A]`, then the impl marked with `(*)` is seen to conflict
 // with all the others.
 
-// pretty-expanded FIXME #23616
+// pretty-expanded FIXME(#23616)
 
 use std::marker::PhantomData;
 use std::ops::Deref;
 
-pub trait MyEq<U: ?Sized=Self> {
+pub trait MyEq<U: ?Sized = Self> {
     fn eq(&self, u: &U) -> bool;
 }
 

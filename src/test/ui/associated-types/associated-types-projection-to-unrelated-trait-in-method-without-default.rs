@@ -6,7 +6,7 @@ trait Get {
 }
 
 trait Other {
-    fn okay<U:Get>(&self, foo: U, bar: <Self as Get>::Value);
+    fn ok<U:Get>(&self, foo: U, bar: <Self as Get>::Value);
     //~^ ERROR E0277
 }
 
@@ -19,11 +19,11 @@ impl Get for f64 {
 }
 
 impl Other for () {
-    fn okay<U:Get>(&self, _foo: U, _bar: <Self as Get>::Value) { }
+    fn ok<U:Get>(&self, _foo: U, _bar: <Self as Get>::Value) { }
 }
 
 impl Other for f64 {
-    fn okay<U:Get>(&self, _foo: U, _bar: <Self as Get>::Value) { }
+    fn ok<U:Get>(&self, _foo: U, _bar: <Self as Get>::Value) { }
 }
 
 fn main() { }

@@ -19,5 +19,4 @@ impl<'a> Foo<'a> for &'a str {
     fn bar<T: Bar<'a>>(self) -> &'a str { panic!() } //~ ERROR lifetime
 }
 
-fn main() {
-}
+fn main() {}

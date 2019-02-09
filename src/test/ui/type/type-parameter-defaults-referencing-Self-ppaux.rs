@@ -3,7 +3,7 @@
 // the user, but pretty-printing the type during the error message
 // caused an ICE.
 
-trait MyAdd<Rhs=Self> { fn add(&self, other: &Rhs) -> Self; }
+trait MyAdd<Rhs = Self> { fn add(&self, other: &Rhs) -> Self; }
 
 impl MyAdd for i32 {
     fn add(&self, other: &i32) -> i32 { *self + *other }
