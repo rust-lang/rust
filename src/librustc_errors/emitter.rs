@@ -1363,7 +1363,9 @@ impl EmitterWriter {
                         }
                     }
                     for sugg in suggestions {
-                        if sugg.style == SuggestionStyle::HideCodeAlways {
+                        if sugg.style == SuggestionStyle::CompletelyHidden {
+                            // do not display this suggestion, it is meant only for tools
+                        } else if sugg.style == SuggestionStyle::HideCodeAlways {
                             match self.emit_message_default(
                                 &MultiSpan::new(),
                                 &[(sugg.msg.to_owned(), Style::HeaderMsg)],

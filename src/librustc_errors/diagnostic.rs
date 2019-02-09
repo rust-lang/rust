@@ -346,6 +346,27 @@ impl Diagnostic {
         self
     }
 
+    /// Adds a suggestion to the json output, but otherwise remains silent/undisplayed in the cli.
+    ///
+    /// This is intended to be used for suggestions that are *very* obvious in what the changes
+    /// need to be from the message, but we still want other tools to be able to apply them.
+    pub fn tool_only_span_suggestion(
+        &mut self, sp: Span, msg: &str, suggestion: String, applicability: Applicability
+    ) -> &mut Self {
+        self.suggestions.push(CodeSuggestion {
+            substitutions: vec![Substitution {
+                parts: vec![SubstitutionPart {
+                    snippet: suggestion,
+                    span: sp,
+                }],
+            }],
+            msg: msg.to_owned(),
+            style: SuggestionStyle::CompletelyHidden,
+            applicability: applicability,
+        });
+        self
+    }
+
     pub fn set_span<S: Into<MultiSpan>>(&mut self, sp: S) -> &mut Self {
         self.span = sp.into();
         self
