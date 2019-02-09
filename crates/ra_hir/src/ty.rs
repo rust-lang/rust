@@ -879,11 +879,22 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
         ty
     }
 
-    fn unify_substs(&mut self, substs1: &Substs, substs2: &Substs) -> bool {
-        substs1.0.iter().zip(substs2.0.iter()).all(|(t1, t2)| self.unify(t1, t2))
+    fn unify_substs(&mut self, substs1: &Substs, substs2: &Substs, depth: usize) -> bool {
+        substs1.0.iter().zip(substs2.0.iter()).all(|(t1, t2)| self.unify_inner(t1, t2, depth))
     }
 
     fn unify(&mut self, ty1: &Ty, ty2: &Ty) -> bool {
+        self.unify_inner(ty1, ty2, 0)
+    }
+
+    fn unify_inner(&mut self, ty1: &Ty, ty2: &Ty, depth: usize) -> bool {
+        if depth > 1000 {
+            // prevent stackoverflows
+            panic!("infinite recursion in unification");
+        }
+        if ty1 == ty2 {
+            return true;
+        }
         // try to resolve type vars first
         let ty1 = self.resolve_ty_shallow(ty1);
         let ty2 = self.resolve_ty_shallow(ty2);
@@ -904,13 +915,15 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
             (
                 Ty::Adt { def_id: def_id1, substs: substs1, .. },
                 Ty::Adt { def_id: def_id2, substs: substs2, .. },
-            ) if def_id1 == def_id2 => self.unify_substs(substs1, substs2),
-            (Ty::Slice(t1), Ty::Slice(t2)) => self.unify(t1, t2),
-            (Ty::RawPtr(t1, m1), Ty::RawPtr(t2, m2)) if m1 == m2 => self.unify(t1, t2),
-            (Ty::Ref(t1, m1), Ty::Ref(t2, m2)) if m1 == m2 => self.unify(t1, t2),
+            ) if def_id1 == def_id2 => self.unify_substs(substs1, substs2, depth + 1),
+            (Ty::Slice(t1), Ty::Slice(t2)) => self.unify_inner(t1, t2, depth + 1),
+            (Ty::RawPtr(t1, m1), Ty::RawPtr(t2, m2)) if m1 == m2 => {
+                self.unify_inner(t1, t2, depth + 1)
+            }
+            (Ty::Ref(t1, m1), Ty::Ref(t2, m2)) if m1 == m2 => self.unify_inner(t1, t2, depth + 1),
             (Ty::FnPtr(sig1), Ty::FnPtr(sig2)) if sig1 == sig2 => true,
             (Ty::Tuple(ts1), Ty::Tuple(ts2)) if ts1.len() == ts2.len() => {
-                ts1.iter().zip(ts2.iter()).all(|(t1, t2)| self.unify(t1, t2))
+                ts1.iter().zip(ts2.iter()).all(|(t1, t2)| self.unify_inner(t1, t2, depth + 1))
             }
             (Ty::Infer(InferTy::TypeVar(tv1)), Ty::Infer(InferTy::TypeVar(tv2)))
             | (Ty::Infer(InferTy::IntVar(tv1)), Ty::Infer(InferTy::IntVar(tv2)))

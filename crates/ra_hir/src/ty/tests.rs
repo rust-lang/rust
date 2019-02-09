@@ -693,6 +693,31 @@ pub fn primitive_type() {
     );
 }
 
+#[test]
+fn infer_std_crash_5() {
+    // taken from rustc
+    check_inference(
+        "infer_std_crash_5",
+        r#"
+fn extra_compiler_flags() {
+    for content in doesnt_matter {
+        let name = if doesnt_matter {
+            first
+        } else {
+            &content
+        };
+
+        let content = if ICE_REPORT_COMPILER_FLAGS_STRIP_VALUE.contains(&name) {
+            name
+        } else {
+            content
+        };
+    }
+}
+"#,
+    );
+}
+
 fn infer(content: &str) -> String {
     let (db, _, file_id) = MockDatabase::with_single_file(content);
     let source_file = db.parse(file_id);
