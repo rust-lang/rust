@@ -54,7 +54,7 @@
 //! operations as well, if you want 0.5 ULP accuracy you need to do *everything* in full precision
 //! and round *exactly once, at the end*, by considering all truncated bits at once.
 //!
-//! FIXME Although some code duplication is necessary, perhaps parts of the code could be shuffled
+//! FIXME: Although some code duplication is necessary, perhaps parts of the code could be shuffled
 //! around such that less code is duplicated. Large parts of the algorithms are independent of the
 //! float type to output, or only needs access to a few constants, which could be passed in as
 //! parameters.
@@ -219,7 +219,7 @@ fn extract_sign(s: &str) -> (Sign, &str) {
     }
 }
 
-/// Convert a decimal string into a floating point number.
+/// Converts a decimal string into a floating point number.
 fn dec2flt<T: RawFloat>(s: &str) -> Result<T, ParseFloatError> {
     if s.is_empty() {
         return Err(pfe_empty())

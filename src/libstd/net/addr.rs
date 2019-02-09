@@ -510,7 +510,7 @@ impl SocketAddrV6 {
         self.inner.sin6_scope_id
     }
 
-    /// Change the scope ID associated with this socket address.
+    /// Changes the scope ID associated with this socket address.
     ///
     /// See the [`scope_id`] method's documentation for more details.
     ///

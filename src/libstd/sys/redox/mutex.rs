@@ -50,7 +50,7 @@ pub struct Mutex {
 }
 
 impl Mutex {
-    /// Create a new mutex.
+    /// Creates a new mutex.
     pub const fn new() -> Self {
         Mutex {
             lock: UnsafeCell::new(0),

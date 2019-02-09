@@ -881,7 +881,7 @@ fn test_iterator_flat_map() {
     assert_eq!(i, ys.len());
 }
 
-/// Test `FlatMap::fold` with items already picked off the front and back,
+/// Tests `FlatMap::fold` with items already picked off the front and back,
 /// to make sure all parts of the `FlatMap` are folded correctly.
 #[test]
 fn test_iterator_flat_map_fold() {
@@ -919,7 +919,7 @@ fn test_iterator_flatten() {
     assert_eq!(i, ys.len());
 }
 
-/// Test `Flatten::fold` with items already picked off the front and back,
+/// Tests `Flatten::fold` with items already picked off the front and back,
 /// to make sure all parts of the `Flatten` are folded correctly.
 #[test]
 fn test_iterator_flatten_fold() {

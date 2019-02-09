@@ -226,7 +226,7 @@ impl Utf8Error {
     #[stable(feature = "utf8_error", since = "1.5.0")]
     pub fn valid_up_to(&self) -> usize { self.valid_up_to }
 
-    /// Provide more information about the failure:
+    /// Provides more information about the failure:
     ///
     /// * `None`: the end of the input was reached unexpectedly.
     ///   `self.valid_up_to()` is 1 to 3 bytes from the end of the input.
@@ -3504,7 +3504,7 @@ impl str {
     ///
     /// A string is a sequence of bytes. `start` in this context means the first
     /// position of that byte string; for a left-to-right language like English or
-    /// Russian, this will be left side; and for right-to-left languages like
+    /// Russian, this will be left side, and for right-to-left languages like
     /// like Arabic or Hebrew, this will be the right side.
     ///
     /// # Examples
@@ -3541,7 +3541,7 @@ impl str {
     ///
     /// A string is a sequence of bytes. `end` in this context means the last
     /// position of that byte string; for a left-to-right language like English or
-    /// Russian, this will be right side; and for right-to-left languages like
+    /// Russian, this will be right side, and for right-to-left languages like
     /// like Arabic or Hebrew, this will be the left side.
     ///
     /// # Examples
@@ -3787,7 +3787,7 @@ impl str {
     ///
     /// A string is a sequence of bytes. `start` in this context means the first
     /// position of that byte string; for a left-to-right language like English or
-    /// Russian, this will be left side; and for right-to-left languages like
+    /// Russian, this will be left side, and for right-to-left languages like
     /// like Arabic or Hebrew, this will be the right side.
     ///
     /// # Examples
@@ -3819,7 +3819,7 @@ impl str {
     ///
     /// A string is a sequence of bytes. `end` in this context means the last
     /// position of that byte string; for a left-to-right language like English or
-    /// Russian, this will be right side; and for right-to-left languages like
+    /// Russian, this will be right side, and for right-to-left languages like
     /// like Arabic or Hebrew, this will be the left side.
     ///
     /// # Examples

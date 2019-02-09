@@ -49,7 +49,7 @@
 /// }
 ///
 /// // Notice that the implementation uses the associated type `Output`.
-/// impl<T: Add<Output=T>> Add for Point<T> {
+/// impl<T: Add<Output = T>> Add for Point<T> {
 ///     type Output = Point<T>;
 ///
 ///     fn add(self, other: Point<T>) -> Point<T> {
@@ -157,7 +157,7 @@ add_impl! { usize u8 u16 u32 u64 u128 isize i8 i16 i32 i64 i128 f32 f64 }
 /// }
 ///
 /// // Notice that the implementation uses the associated type `Output`.
-/// impl<T: Sub<Output=T>> Sub for Point<T> {
+/// impl<T: Sub<Output = T>> Sub for Point<T> {
 ///     type Output = Point<T>;
 ///
 ///     fn sub(self, other: Point<T>) -> Point<T> {

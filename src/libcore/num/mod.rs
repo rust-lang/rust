@@ -52,7 +52,7 @@ assert_eq!(size_of::<Option<core::num::", stringify!($Ty), ">>(), size_of::<", s
             }
 
             impl $Ty {
-                /// Create a non-zero without checking the value.
+                /// Creates a non-zero without checking the value.
                 ///
                 /// # Safety
                 ///
@@ -63,7 +63,7 @@ assert_eq!(size_of::<Option<core::num::", stringify!($Ty), ">>(), size_of::<", s
                     $Ty(n)
                 }
 
-                /// Create a non-zero if the given value is not zero.
+                /// Creates a non-zero if the given value is not zero.
                 #[$stability]
                 #[inline]
                 pub fn new(n: $Int) -> Option<Self> {

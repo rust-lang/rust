@@ -182,7 +182,7 @@ mod sync_bitset {
             self.0[hi].fetch_and(!lo, Ordering::Relaxed);
         }
 
-        /// Set any unset bit. Not atomic. Returns `None` if all bits were
+        /// Sets any unset bit. Not atomic. Returns `None` if all bits were
         /// observed to be set.
         pub fn set(&self) -> Option<usize> {
             'elems: for (idx, elem) in self.0.iter().enumerate() {

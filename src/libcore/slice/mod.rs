@@ -4123,7 +4123,7 @@ pub struct ChunksExact<'a, T:'a> {
 }
 
 impl<'a, T> ChunksExact<'a, T> {
-    /// Return the remainder of the original slice that is not going to be
+    /// Returns the remainder of the original slice that is not going to be
     /// returned by the iterator. The returned slice has at most `chunk_size-1`
     /// elements.
     #[stable(feature = "chunks_exact", since = "1.31.0")]
@@ -4247,7 +4247,7 @@ pub struct ChunksExactMut<'a, T:'a> {
 }
 
 impl<'a, T> ChunksExactMut<'a, T> {
-    /// Return the remainder of the original slice that is not going to be
+    /// Returns the remainder of the original slice that is not going to be
     /// returned by the iterator. The returned slice has at most `chunk_size-1`
     /// elements.
     #[stable(feature = "chunks_exact", since = "1.31.0")]
@@ -4619,7 +4619,7 @@ pub struct RChunksExact<'a, T:'a> {
 }
 
 impl<'a, T> RChunksExact<'a, T> {
-    /// Return the remainder of the original slice that is not going to be
+    /// Returns the remainder of the original slice that is not going to be
     /// returned by the iterator. The returned slice has at most `chunk_size-1`
     /// elements.
     #[stable(feature = "rchunks", since = "1.31.0")]
@@ -4744,7 +4744,7 @@ pub struct RChunksExactMut<'a, T:'a> {
 }
 
 impl<'a, T> RChunksExactMut<'a, T> {
-    /// Return the remainder of the original slice that is not going to be
+    /// Returns the remainder of the original slice that is not going to be
     /// returned by the iterator. The returned slice has at most `chunk_size-1`
     /// elements.
     #[stable(feature = "rchunks", since = "1.31.0")]

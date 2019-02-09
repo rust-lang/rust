@@ -1295,7 +1295,7 @@ impl<'a, K, V> Handle<NodeRef<marker::Mut<'a>, K, V, marker::Internal>, marker::
         }
     }
 
-    /// Returns whether it is valid to call `.merge()`, i.e., whether there is enough room in
+    /// Returns `true` if it is valid to call `.merge()`, i.e., whether there is enough room in
     /// a node to hold the combination of the nodes to the left and right of this handle along
     /// with the key/value pair at this handle.
     pub fn can_merge(&self) -> bool {
@@ -1573,7 +1573,7 @@ unsafe fn move_edges<K, V>(
 impl<BorrowType, K, V, HandleType>
         Handle<NodeRef<BorrowType, K, V, marker::LeafOrInternal>, HandleType> {
 
-    /// Check whether the underlying node is an `Internal` node or a `Leaf` node.
+    /// Checks whether the underlying node is an `Internal` node or a `Leaf` node.
     pub fn force(self) -> ForceResult<
         Handle<NodeRef<BorrowType, K, V, marker::Leaf>, HandleType>,
         Handle<NodeRef<BorrowType, K, V, marker::Internal>, HandleType>

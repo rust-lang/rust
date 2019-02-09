@@ -17,7 +17,7 @@ use time::{Duration, Instant};
 pub struct WaitTimeoutResult(bool);
 
 impl WaitTimeoutResult {
-    /// Returns whether the wait was known to have timed out.
+    /// Returns `true` if the wait was known to have timed out.
     ///
     /// # Examples
     ///

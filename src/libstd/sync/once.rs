@@ -228,7 +228,7 @@ impl Once {
     /// result in an immediate panic. If `f` panics, the `Once` will remain
     /// in a poison state. If `f` does _not_ panic, the `Once` will no
     /// longer be in a poison state and all future calls to `call_once` or
-    /// `call_one_force` will no-op.
+    /// `call_one_force` will be no-ops.
     ///
     /// The closure `f` is yielded a [`OnceState`] structure which can be used
     /// to query the poison status of the `Once`.
@@ -279,7 +279,7 @@ impl Once {
         });
     }
 
-    /// Returns true if some `call_once` call has completed
+    /// Returns `true` if some `call_once` call has completed
     /// successfully. Specifically, `is_completed` will return false in
     /// the following situations:
     ///   * `call_once` was not called at all,
@@ -465,7 +465,7 @@ impl<'a> Drop for Finish<'a> {
 }
 
 impl OnceState {
-    /// Returns whether the associated [`Once`] was poisoned prior to the
+    /// Returns `true` if the associated [`Once`] was poisoned prior to the
     /// invocation of the closure passed to [`call_once_force`].
     ///
     /// [`call_once_force`]: struct.Once.html#method.call_once_force

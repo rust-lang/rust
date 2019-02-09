@@ -2368,7 +2368,7 @@ impl<'a, K: Ord, V> OccupiedEntry<'a, K, V> {
 
     /// Gets a mutable reference to the value in the entry.
     ///
-    /// If you need a reference to the `OccupiedEntry` which may outlive the
+    /// If you need a reference to the `OccupiedEntry` that may outlive the
     /// destruction of the `Entry` value, see [`into_mut`].
     ///
     /// [`into_mut`]: #method.into_mut

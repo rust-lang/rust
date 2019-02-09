@@ -67,7 +67,7 @@ macro_rules! vec {
 ///
 /// Additional parameters passed to `format!` replace the `{}`s within the
 /// formatting string in the order given unless named or positional parameters
-/// are used, see [`std::fmt`][fmt] for more information.
+/// are used; see [`std::fmt`][fmt] for more information.
 ///
 /// A common use for `format!` is concatenation and interpolation of strings.
 /// The same convention is used with [`print!`] and [`write!`] macros,

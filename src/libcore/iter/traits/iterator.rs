@@ -120,7 +120,7 @@ pub trait Iterator {
     /// // ... and then None once it's over.
     /// assert_eq!(None, iter.next());
     ///
-    /// // More calls may or may not return None. Here, they always will.
+    /// // More calls may or may not return `None`. Here, they always will.
     /// assert_eq!(None, iter.next());
     /// assert_eq!(None, iter.next());
     /// ```
@@ -1215,7 +1215,7 @@ pub trait Iterator {
     /// assert_eq!(iter.next(), Some(4));
     /// assert_eq!(iter.next(), None);
     ///
-    /// // it will always return None after the first time.
+    /// // it will always return `None` after the first time.
     /// assert_eq!(iter.next(), None);
     /// assert_eq!(iter.next(), None);
     /// assert_eq!(iter.next(), None);

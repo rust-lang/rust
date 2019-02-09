@@ -524,7 +524,7 @@ impl char {
         }
     }
 
-    /// Returns true if this `char` is an alphabetic code point, and false if not.
+    /// Returns `true` if this `char` is an alphabetic code point, and false if not.
     ///
     /// # Examples
     ///
@@ -548,7 +548,7 @@ impl char {
         }
     }
 
-    /// Returns true if this `char` satisfies the 'XID_Start' Unicode property, and false
+    /// Returns `true` if this `char` satisfies the 'XID_Start' Unicode property, and false
     /// otherwise.
     ///
     /// 'XID_Start' is a Unicode Derived Property specified in
@@ -562,7 +562,7 @@ impl char {
         derived_property::XID_Start(self)
     }
 
-    /// Returns true if this `char` satisfies the 'XID_Continue' Unicode property, and false
+    /// Returns `true` if this `char` satisfies the 'XID_Continue' Unicode property, and false
     /// otherwise.
     ///
     /// 'XID_Continue' is a Unicode Derived Property specified in
@@ -576,7 +576,7 @@ impl char {
         derived_property::XID_Continue(self)
     }
 
-    /// Returns true if this `char` is lowercase, and false otherwise.
+    /// Returns `true` if this `char` is lowercase.
     ///
     /// 'Lowercase' is defined according to the terms of the Unicode Derived Core
     /// Property `Lowercase`.
@@ -604,7 +604,7 @@ impl char {
         }
     }
 
-    /// Returns true if this `char` is uppercase, and false otherwise.
+    /// Returns `true` if this `char` is uppercase.
     ///
     /// 'Uppercase' is defined according to the terms of the Unicode Derived Core
     /// Property `Uppercase`.
@@ -632,7 +632,7 @@ impl char {
         }
     }
 
-    /// Returns true if this `char` is whitespace, and false otherwise.
+    /// Returns `true` if this `char` is whitespace.
     ///
     /// 'Whitespace' is defined according to the terms of the Unicode Derived Core
     /// Property `White_Space`.
@@ -659,7 +659,7 @@ impl char {
         }
     }
 
-    /// Returns true if this `char` is alphanumeric, and false otherwise.
+    /// Returns `true` if this `char` is alphanumeric.
     ///
     /// 'Alphanumeric'-ness is defined in terms of the Unicode General Categories
     /// 'Nd', 'Nl', 'No' and the Derived Core Property 'Alphabetic'.
@@ -684,7 +684,7 @@ impl char {
         self.is_alphabetic() || self.is_numeric()
     }
 
-    /// Returns true if this `char` is a control code point, and false otherwise.
+    /// Returns `true` if this `char` is a control code point.
     ///
     /// 'Control code point' is defined in terms of the Unicode General
     /// Category `Cc`.
@@ -704,7 +704,7 @@ impl char {
         general_category::Cc(self)
     }
 
-    /// Returns true if this `char` is an extended grapheme character, and false otherwise.
+    /// Returns `true` if this `char` is an extended grapheme character.
     ///
     /// 'Extended grapheme character' is defined in terms of the Unicode Shaping and Rendering
     /// Category `Grapheme_Extend`.
@@ -713,7 +713,7 @@ impl char {
         derived_property::Grapheme_Extend(self)
     }
 
-    /// Returns true if this `char` is numeric, and false otherwise.
+    /// Returns `true` if this `char` is numeric.
     ///
     /// 'Numeric'-ness is defined in terms of the Unicode General Categories
     /// 'Nd', 'Nl', 'No'.

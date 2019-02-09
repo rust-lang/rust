@@ -556,7 +556,7 @@ impl<T: Ord> BTreeSet<T> {
         Recover::replace(&mut self.map, value)
     }
 
-    /// Removes a value from the set. Returns `true` if the value was
+    /// Removes a value from the set. Returns whether the value was
     /// present in the set.
     ///
     /// The value may be any borrowed form of the set's value type,
@@ -988,7 +988,7 @@ impl<'a, T> DoubleEndedIterator for Range<'a, T> {
 #[stable(feature = "fused", since = "1.26.0")]
 impl<T> FusedIterator for Range<'_, T> {}
 
-/// Compare `x` and `y`, but return `short` if x is None and `long` if y is None
+/// Compares `x` and `y`, but return `short` if x is None and `long` if y is None
 fn cmp_opt<T: Ord>(x: Option<&T>, y: Option<&T>, short: Ordering, long: Ordering) -> Ordering {
     match (x, y) {
         (None, _) => short,

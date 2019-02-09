@@ -515,7 +515,7 @@ impl Duration {
         }
     }
 
-    /// Multiply `Duration` by `f64`.
+    /// Multiplies `Duration` by `f64`.
     ///
     /// # Panics
     /// This method will panic if result is not finite, negative or overflows `Duration`.

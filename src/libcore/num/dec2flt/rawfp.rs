@@ -240,7 +240,7 @@ impl RawFloat for f64 {
     fn from_bits(v: Self::Bits) -> Self { Self::from_bits(v) }
 }
 
-/// Convert an Fp to the closest machine float type.
+/// Converts an `Fp` to the closest machine float type.
 /// Does not handle subnormal results.
 pub fn fp_to_float<T: RawFloat>(x: Fp) -> T {
     let x = x.normalize();
@@ -319,7 +319,7 @@ pub fn big_to_fp(f: &Big) -> Fp {
     }
 }
 
-/// Find the largest floating point number strictly smaller than the argument.
+/// Finds the largest floating point number strictly smaller than the argument.
 /// Does not handle subnormals, zero, or exponent underflow.
 pub fn prev_float<T: RawFloat>(x: T) -> T {
     match x.classify() {

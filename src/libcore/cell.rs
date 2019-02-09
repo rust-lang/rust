@@ -130,7 +130,7 @@
 //!
 //! This is simply a special - but common - case of the previous: hiding mutability for operations
 //! that appear to be immutable. The `clone` method is expected to not change the source value, and
-//! is declared to take `&self`, not `&mut self`. Therefore any mutation that happens in the
+//! is declared to take `&self`, not `&mut self`. Therefore, any mutation that happens in the
 //! `clone` method must use cell types. For example, `Rc<T>` maintains its reference counts within a
 //! `Cell<T>`.
 //!
@@ -1145,7 +1145,7 @@ impl<'b, T: ?Sized> Ref<'b, T> {
         }
     }
 
-    /// Make a new `Ref` for a component of the borrowed data.
+    /// Makes a new `Ref` for a component of the borrowed data.
     ///
     /// The `RefCell` is already immutably borrowed, so this cannot fail.
     ///
@@ -1217,7 +1217,7 @@ impl<T: ?Sized + fmt::Display> fmt::Display for Ref<'_, T> {
 }
 
 impl<'b, T: ?Sized> RefMut<'b, T> {
-    /// Make a new `RefMut` for a component of the borrowed data, e.g., an enum
+    /// Makes a new `RefMut` for a component of the borrowed data, e.g., an enum
     /// variant.
     ///
     /// The `RefCell` is already mutably borrowed, so this cannot fail.
@@ -1416,7 +1416,7 @@ impl<T: ?Sized + fmt::Display> fmt::Display for RefMut<'_, T> {
 /// co-exist with it. A `&mut T` must always be unique.
 ///
 /// Note that while mutating or mutably aliasing the contents of an `&UnsafeCell<T>` is
-/// okay (provided you enforce the invariants some other way), it is still undefined behavior
+/// ok (provided you enforce the invariants some other way), it is still undefined behavior
 /// to have multiple `&mut UnsafeCell<T>` aliases.
 ///
 /// # Examples

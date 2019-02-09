@@ -2393,7 +2393,7 @@ impl Path {
         fs::read_dir(self)
     }
 
-    /// Returns whether the path points at an existing entity.
+    /// Returns `true` if the path points at an existing entity.
     ///
     /// This function will traverse symbolic links to query information about the
     /// destination file. In case of broken symbolic links this will return `false`.
@@ -2419,7 +2419,7 @@ impl Path {
         fs::metadata(self).is_ok()
     }
 
-    /// Returns whether the path exists on disk and is pointing at a regular file.
+    /// Returns `true` if the path exists on disk and is pointing at a regular file.
     ///
     /// This function will traverse symbolic links to query information about the
     /// destination file. In case of broken symbolic links this will return `false`.
@@ -2448,7 +2448,7 @@ impl Path {
         fs::metadata(self).map(|m| m.is_file()).unwrap_or(false)
     }
 
-    /// Returns whether the path exists on disk and is pointing at a directory.
+    /// Returns `true` if the path exists on disk and is pointing at a directory.
     ///
     /// This function will traverse symbolic links to query information about the
     /// destination file. In case of broken symbolic links this will return `false`.

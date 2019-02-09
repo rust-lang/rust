@@ -148,7 +148,7 @@ impl Select {
     }
 
     /// Waits for an event on this receiver set. The returned value is *not* an
-    /// index, but rather an id. This id can be queried against any active
+    /// index, but rather an ID. This ID can be queried against any active
     /// `Handle` structures (each one has an `id` method). The handle with
     /// the matching `id` will have some sort of event available on it. The
     /// event could either be that data is available or the corresponding
@@ -251,7 +251,7 @@ impl Select {
 }
 
 impl<'rx, T: Send> Handle<'rx, T> {
-    /// Retrieves the id of this handle.
+    /// Retrieves the ID of this handle.
     #[inline]
     pub fn id(&self) -> usize { self.id }
 

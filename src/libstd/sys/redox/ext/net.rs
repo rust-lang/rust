@@ -60,7 +60,7 @@ impl SocketAddr {
         None
     }
 
-    /// Returns true if and only if the address is unnamed.
+    /// Returns `true` if the address is unnamed.
     ///
     /// # Examples
     ///
@@ -374,7 +374,7 @@ impl UnixStream {
     /// ```
     ///
     /// # Platform specific
-    /// On Redox this always returns None.
+    /// On Redox this always returns `None`.
     #[stable(feature = "unix_socket_redox", since = "1.29")]
     pub fn take_error(&self) -> io::Result<Option<io::Error>> {
         Ok(None)
@@ -635,7 +635,7 @@ impl UnixListener {
     /// ```
     ///
     /// # Platform specific
-    /// On Redox this always returns None.
+    /// On Redox this always returns `None`.
     #[stable(feature = "unix_socket_redox", since = "1.29")]
     pub fn take_error(&self) -> io::Result<Option<io::Error>> {
         Ok(None)

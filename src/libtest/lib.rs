@@ -328,7 +328,7 @@ pub fn test_main_static(tests: &[&TestDescAndFn]) {
 }
 
 /// Invoked when unit tests terminate. Should panic if the unit
-/// test is considered a failure. By default, invokes `report()`
+/// Tests is considered a failure. By default, invokes `report()`
 /// and checks for a `0` result.
 pub fn assert_test_result<T: Termination>(result: T) {
     let code = result.report();

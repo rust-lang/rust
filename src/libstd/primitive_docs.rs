@@ -126,7 +126,7 @@ mod prim_bool { }
 ///
 /// ```ignore (string-from-str-error-type-is-not-never-yet)
 /// #[feature(exhaustive_patterns)]
-/// // NOTE: This does not work today!
+/// // NOTE: this does not work today!
 /// let Ok(s) = String::from_str("hello");
 /// ```
 ///
