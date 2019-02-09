@@ -7,10 +7,9 @@ use std::marker::PhantomData;
 use syntax::source_map::FileName;
 
 use gimli::write::{
-    Address, AttributeValue, CompilationUnit, DebugAbbrev, DebugInfo, DebugLine, DebugRanges,
-    DebugRngLists, DebugStr, EndianVec, LineProgram, LineProgramId, LineProgramTable, Range,
-    RangeList, Result, SectionId, StringTable, UnitEntryId, UnitId, UnitTable,
-    Writer, FileId, LineStringTable, DebugLineStr, LineString,
+    Address, AttributeValue, DwarfUnit, EndianVec, LineProgram, Range,
+    RangeList, Result, SectionId, UnitEntryId,
+    Writer, FileId, LineStringTable, LineString, Sections,
 };
 use gimli::{Encoding, Format, RunTimeEndian};
 
@@ -51,29 +50,34 @@ fn line_program_add_file(line_program: &mut LineProgram, line_strings: &mut Line
     }
 }
 
+#[derive(Clone)]
 struct DebugReloc {
     offset: u32,
     size: u8,
-    name: String,
+    name: DebugRelocName,
     addend: i64,
 }
 
+#[derive(Clone)]
+enum DebugRelocName {
+    Section(SectionId),
+    Symbol(usize),
+}
+
+impl DebugReloc {
+    fn name<'a>(&self, ctx: &'a DebugContext) -> &'a str {
+        match self.name {
+            DebugRelocName::Section(id) => id.name(),
+            DebugRelocName::Symbol(index) => ctx.symbols.get_index(index).unwrap(),
+        }
+    }
+}
+
 pub struct DebugContext<'tcx> {
-    // Encoding info
     endian: RunTimeEndian,
     symbols: indexmap::IndexSet<String>,
 
-    // Main data
-    units: UnitTable,
-    line_programs: LineProgramTable,
-
-    // Side tables
-    strings: StringTable,
-    line_strings: LineStringTable,
-
-    // Global ids
-    unit_id: UnitId,
-    global_line_program: LineProgramId,
+    dwarf: DwarfUnit,
     unit_range_list: RangeList,
 
     _dummy: PhantomData<&'tcx ()>,
@@ -89,6 +93,8 @@ impl<'a, 'tcx: 'a> DebugContext<'tcx> {
             address_size,
         };
 
+        let mut dwarf = DwarfUnit::new(encoding);
+
         // FIXME: how to get version when building out of tree?
         // Normally this would use option_env!("CFG_VERSION").
         let producer = format!("cranelift fn (rustc version {})", "unknown version");
@@ -98,34 +104,27 @@ impl<'a, 'tcx: 'a> DebugContext<'tcx> {
             None => tcx.crate_name(LOCAL_CRATE).to_string(),
         };
 
-        let mut strings = StringTable::default();
-        let mut line_strings = LineStringTable::default();
-
-        let mut units = UnitTable::default();
-        let mut line_programs = LineProgramTable::default();
-
-        let global_line_program = line_programs.add(LineProgram::new(
+        let line_program = LineProgram::new(
             encoding,
             1,
             1,
             -5,
             14,
-            LineString::new(comp_dir.as_bytes(), encoding, &mut line_strings),
-            LineString::new(name.as_bytes(), encoding, &mut line_strings),
+            LineString::new(comp_dir.as_bytes(), encoding, &mut dwarf.line_strings),
+            LineString::new(name.as_bytes(), encoding, &mut dwarf.line_strings),
             None,
-        ));
+        );
+        dwarf.unit.line_program = line_program;
 
-        let unit_id = units.add(CompilationUnit::new(encoding));
         {
-            let name = strings.add(&*name);
-            let comp_dir = strings.add(&*comp_dir);
+            let name = dwarf.strings.add(&*name);
+            let comp_dir = dwarf.strings.add(&*comp_dir);
 
-            let unit = units.get_mut(unit_id);
-            let root = unit.root();
-            let root = unit.get_mut(root);
+            let root = dwarf.unit.root();
+            let root = dwarf.unit.get_mut(root);
             root.set(
                 gimli::DW_AT_producer,
-                AttributeValue::StringRef(strings.add(producer)),
+                AttributeValue::StringRef(dwarf.strings.add(producer)),
             );
             root.set(
                 gimli::DW_AT_language,
@@ -133,10 +132,6 @@ impl<'a, 'tcx: 'a> DebugContext<'tcx> {
             );
             root.set(gimli::DW_AT_name, AttributeValue::StringRef(name));
             root.set(gimli::DW_AT_comp_dir, AttributeValue::StringRef(comp_dir));
-            root.set(
-                gimli::DW_AT_stmt_list,
-                AttributeValue::LineProgramRef(global_line_program),
-            );
             root.set(
                 gimli::DW_AT_low_pc,
                 AttributeValue::Address(Address::Absolute(0)),
@@ -147,14 +142,7 @@ impl<'a, 'tcx: 'a> DebugContext<'tcx> {
             endian: target_endian(tcx),
             symbols: indexmap::IndexSet::new(),
 
-            strings,
-            line_strings,
-
-            units,
-            line_programs,
-
-            unit_id,
-            global_line_program,
+            dwarf,
             unit_range_list: RangeList(Vec::new()),
 
             _dummy: PhantomData,
@@ -164,11 +152,13 @@ impl<'a, 'tcx: 'a> DebugContext<'tcx> {
     fn emit_location(&mut self, tcx: TyCtxt<'a, 'tcx, 'tcx>, entry_id: UnitEntryId, span: Span) {
         let loc = tcx.sess.source_map().lookup_char_pos(span.lo());
 
-        let line_program = self.line_programs.get_mut(self.global_line_program);
-        let file_id = line_program_add_file(line_program, &mut self.line_strings, &loc.file.name);
+        let file_id = line_program_add_file(
+            &mut self.dwarf.unit.line_program,
+            &mut self.dwarf.line_strings,
+            &loc.file.name,
+        );
 
-        let unit = self.units.get_mut(self.unit_id);
-        let entry = unit.get_mut(entry_id);
+        let entry = self.dwarf.unit.get_mut(entry_id);
 
         entry.set(gimli::DW_AT_decl_file, AttributeValue::FileIndex(file_id));
         entry.set(
@@ -183,73 +173,37 @@ impl<'a, 'tcx: 'a> DebugContext<'tcx> {
     }
 
     pub fn emit(&mut self, artifact: &mut Artifact) {
-        let unit = self.units.get_mut(self.unit_id);
-        let unit_range_list_id = unit.ranges.add(self.unit_range_list.clone());
-        let root = unit.root();
-        let root = unit.get_mut(root);
+        let unit_range_list_id = self.dwarf.unit.ranges.add(self.unit_range_list.clone());
+        let root = self.dwarf.unit.root();
+        let root = self.dwarf.unit.get_mut(root);
         root.set(
             gimli::DW_AT_ranges,
             AttributeValue::RangeListRef(unit_range_list_id),
         );
 
-        let mut debug_abbrev = DebugAbbrev::from(WriterRelocate::new(self));
-        let mut debug_info = DebugInfo::from(WriterRelocate::new(self));
-        let mut debug_str = DebugStr::from(WriterRelocate::new(self));
-        let mut debug_line_str = DebugLineStr::from(WriterRelocate::new(self));
-        let mut debug_line = DebugLine::from(WriterRelocate::new(self));
-        let mut debug_ranges = DebugRanges::from(WriterRelocate::new(self));
-        let mut debug_rnglists = DebugRngLists::from(WriterRelocate::new(self));
+        let mut sections = Sections::new(WriterRelocate::new(self));
+        self.dwarf.write(&mut sections).unwrap();
 
-        let debug_str_offsets = self.strings.write(&mut debug_str).unwrap();
-        let debug_line_str_offsets = self.line_strings.write(&mut debug_line_str).unwrap();
+        let _: Result<()> = sections.for_each_mut(|id, section| {
+            if !section.writer.slice().is_empty() {
+                artifact
+                    .declare_with(
+                        id.name(),
+                        Decl::DebugSection,
+                        section.writer.take(),
+                    )
+                    .unwrap();
+            }
+            Ok(())
+        });
 
-        let debug_line_offsets = self.line_programs.write(&mut debug_line, &debug_line_str_offsets, &debug_str_offsets).unwrap();
-
-        self.units
-            .write(
-                &mut debug_abbrev,
-                &mut debug_info,
-                &mut debug_ranges,
-                &mut debug_rnglists,
-                &debug_line_offsets,
-                &debug_line_str_offsets,
-                &debug_str_offsets,
-            )
-            .unwrap();
-
-        macro decl_section($section:ident = $name:ident) {
-            artifact
-                .declare_with(
-                    SectionId::$section.name(),
-                    Decl::DebugSection,
-                    $name.0.writer.into_vec(),
-                )
-                .unwrap();
-        }
-
-        decl_section!(DebugAbbrev = debug_abbrev);
-        decl_section!(DebugInfo = debug_info);
-        decl_section!(DebugStr = debug_str);
-        decl_section!(DebugLine = debug_line);
-        decl_section!(DebugLineStr = debug_line_str);
-
-        let debug_ranges_not_empty = !debug_ranges.0.writer.slice().is_empty();
-        if debug_ranges_not_empty {
-            decl_section!(DebugRanges = debug_ranges);
-        }
-
-        let debug_rnglists_not_empty = !debug_rnglists.0.writer.slice().is_empty();
-        if debug_rnglists_not_empty {
-            decl_section!(DebugRngLists = debug_rnglists);
-        }
-
-        macro sect_relocs($section:ident = $name:ident) {
-            for reloc in $name.0.relocs {
+        let _: Result<()> = sections.for_each(|id, section| {
+            for reloc in &section.relocs {
                 artifact
                     .link_with(
                         faerie::Link {
-                            from: SectionId::$section.name(),
-                            to: &reloc.name,
+                            from: id.name(),
+                            to: reloc.name(self),
                             at: u64::from(reloc.offset),
                         },
                         faerie::Reloc::Debug {
@@ -259,25 +213,8 @@ impl<'a, 'tcx: 'a> DebugContext<'tcx> {
                     )
                     .expect("faerie relocation error");
             }
-        }
-
-        sect_relocs!(DebugAbbrev = debug_abbrev);
-        sect_relocs!(DebugInfo = debug_info);
-        sect_relocs!(DebugStr = debug_str);
-        sect_relocs!(DebugLine = debug_line);
-        sect_relocs!(DebugLineStr = debug_line_str);
-
-        if debug_ranges_not_empty {
-            sect_relocs!(DebugRanges = debug_ranges);
-        }
-
-        if debug_rnglists_not_empty {
-            sect_relocs!(DebugRngLists = debug_rnglists);
-        }
-    }
-
-    fn section_name(&self, id: SectionId) -> String {
-        id.name().to_string()
+            Ok(())
+        });
     }
 }
 
@@ -298,13 +235,12 @@ impl<'a, 'b, 'tcx: 'b> FunctionDebugContext<'a, 'tcx> {
     ) -> Self {
         let (symbol, _) = debug_context.symbols.insert_full(name.to_string());
 
-        let unit = debug_context.units.get_mut(debug_context.unit_id);
         // FIXME: add to appropriate scope intead of root
-        let scope = unit.root();
+        let scope = debug_context.dwarf.unit.root();
 
-        let entry_id = unit.add(scope, gimli::DW_TAG_subprogram);
-        let entry = unit.get_mut(entry_id);
-        let name_id = debug_context.strings.add(name);
+        let entry_id = debug_context.dwarf.unit.add(scope, gimli::DW_TAG_subprogram);
+        let entry = debug_context.dwarf.unit.get_mut(entry_id);
+        let name_id = debug_context.dwarf.strings.add(name);
         entry.set(
             gimli::DW_AT_linkage_name,
             AttributeValue::StringRef(name_id),
@@ -334,8 +270,7 @@ impl<'a, 'b, 'tcx: 'b> FunctionDebugContext<'a, 'tcx> {
         isa: &cranelift::codegen::isa::TargetIsa,
         source_info_set: &indexmap::IndexSet<SourceInfo>,
     ) {
-        let unit = self.debug_context.units.get_mut(self.debug_context.unit_id);
-        let entry = unit.get_mut(self.entry_id);
+        let entry = self.debug_context.dwarf.unit.get_mut(self.entry_id);
         entry.set(gimli::DW_AT_high_pc, AttributeValue::Udata(code_size as u64));
 
         self.debug_context.unit_range_list.0.push(Range::StartLength {
@@ -346,10 +281,7 @@ impl<'a, 'b, 'tcx: 'b> FunctionDebugContext<'a, 'tcx> {
             length: code_size as u64,
         });
 
-        let line_program = self
-            .debug_context
-            .line_programs
-            .get_mut(self.debug_context.global_line_program);
+        let line_program = &mut self.debug_context.dwarf.unit.line_program;
 
         line_program.begin_sequence(Some(Address::Relative {
             symbol: self.symbol,
@@ -361,7 +293,7 @@ impl<'a, 'b, 'tcx: 'b> FunctionDebugContext<'a, 'tcx> {
         let mut ebbs = func.layout.ebbs().collect::<Vec<_>>();
         ebbs.sort_by_key(|ebb| func.offsets[*ebb]); // Ensure inst offsets always increase
 
-        let line_strings = &mut self.debug_context.line_strings;
+        let line_strings = &mut self.debug_context.dwarf.line_strings;
         let mut create_row_for_span = |line_program: &mut LineProgram, span: Span| {
             let loc = tcx.sess.source_map().lookup_char_pos(span.lo());
             let file_id = line_program_add_file(line_program, line_strings, &loc.file.name);
@@ -404,23 +336,22 @@ impl<'a, 'b, 'tcx: 'b> FunctionDebugContext<'a, 'tcx> {
     }
 }
 
-struct WriterRelocate<'a, 'tcx> {
-    ctx: &'a DebugContext<'tcx>,
+#[derive(Clone)]
+struct WriterRelocate {
     relocs: Vec<DebugReloc>,
     writer: EndianVec<RunTimeEndian>,
 }
 
-impl<'a, 'tcx> WriterRelocate<'a, 'tcx> {
-    fn new(ctx: &'a DebugContext<'tcx>) -> Self {
+impl WriterRelocate {
+    fn new(ctx: & DebugContext) -> Self {
         WriterRelocate {
-            ctx,
             relocs: Vec::new(),
             writer: EndianVec::new(ctx.endian),
         }
     }
 }
 
-impl<'a, 'tcx> Writer for WriterRelocate<'a, 'tcx> {
+impl Writer for WriterRelocate {
     type Endian = RunTimeEndian;
 
     fn endian(&self) -> Self::Endian {
@@ -447,7 +378,7 @@ impl<'a, 'tcx> Writer for WriterRelocate<'a, 'tcx> {
                 self.relocs.push(DebugReloc {
                     offset: offset as u32,
                     size,
-                    name: self.ctx.symbols.get_index(symbol).unwrap().clone(),
+                    name: DebugRelocName::Symbol(symbol),
                     addend: addend as i64,
                 });
                 self.write_word(0, size)
@@ -457,11 +388,10 @@ impl<'a, 'tcx> Writer for WriterRelocate<'a, 'tcx> {
 
     fn write_offset(&mut self, val: usize, section: SectionId, size: u8) -> Result<()> {
         let offset = self.len() as u32;
-        let name = self.ctx.section_name(section);
         self.relocs.push(DebugReloc {
             offset,
             size,
-            name,
+            name: DebugRelocName::Section(section),
             addend: val as i64,
         });
         self.write_word(0, size)
@@ -474,11 +404,10 @@ impl<'a, 'tcx> Writer for WriterRelocate<'a, 'tcx> {
         section: SectionId,
         size: u8,
     ) -> Result<()> {
-        let name = self.ctx.section_name(section);
         self.relocs.push(DebugReloc {
             offset: offset as u32,
             size,
-            name,
+            name: DebugRelocName::Section(section),
             addend: val as i64,
         });
         self.write_word_at(offset, 0, size)
