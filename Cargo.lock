@@ -913,20 +913,15 @@ dependencies = [
 name = "ra_batch"
 version = "0.1.0"
 dependencies = [
- "fst 0.3.3 (registry+https://github.com/rust-lang/crates.io-index)",
- "insta 0.6.1 (registry+https://github.com/rust-lang/crates.io-index)",
- "itertools 0.8.0 (registry+https://github.com/rust-lang/crates.io-index)",
- "join_to_string 0.1.3 (registry+https://github.com/rust-lang/crates.io-index)",
+ "failure 0.1.5 (registry+https://github.com/rust-lang/crates.io-index)",
  "log 0.4.6 (registry+https://github.com/rust-lang/crates.io-index)",
- "parking_lot 0.7.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "ra_db 0.1.0",
  "ra_hir 0.1.0",
+ "ra_project_model 0.1.0",
  "ra_syntax 0.1.0",
- "rayon 1.0.3 (registry+https://github.com/rust-lang/crates.io-index)",
- "relative-path 0.4.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "ra_vfs 0.1.0",
  "rustc-hash 1.0.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "test_utils 0.1.0",
- "unicase 2.2.0 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
 
 [[package]]

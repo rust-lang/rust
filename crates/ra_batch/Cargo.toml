@@ -5,20 +5,16 @@ version = "0.1.0"
 authors = ["Aleksey Kladov <aleksey.kladov@gmail.com>"]
 
 [dependencies]
-itertools = "0.8.0"
-join_to_string = "0.1.3"
 log = "0.4.5"
-relative-path = "0.4.0"
-rayon = "1.0.2"
-fst = "0.3.1"
 rustc-hash = "1.0"
-parking_lot = "0.7.0"
-unicase = "2.2.0"
+
+failure = "0.1.4"
 
 ra_syntax = { path = "../ra_syntax" }
 ra_db = { path = "../ra_db" }
 ra_hir = { path = "../ra_hir" }
+ra_vfs = { path = "../ra_vfs" }
+ra_project_model = { path = "../ra_project_model" }
 
 [dev-dependencies]
 test_utils = { path = "../test_utils" }
-insta = "0.6.1"

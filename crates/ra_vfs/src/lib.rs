@@ -94,6 +94,7 @@ impl Roots {
         let mut roots = Arena::default();
         // A hack to make nesting work.
         paths.sort_by_key(|it| Reverse(it.as_os_str().len()));
+        paths.dedup();
         for (i, path) in paths.iter().enumerate() {
             let nested_roots = paths[..i]
                 .iter()
@@ -161,6 +162,13 @@ impl Vfs {
         self.roots[root].root.clone()
     }
 
+    pub fn path2root(&self, path: &Path) -> Option<VfsRoot> {
+        match self.find_root(path) {
+            Some((root, _path, _file)) => Some(root),
+            _ => None,
+        }
+    }
+
     pub fn path2file(&self, path: &Path) -> Option<VfsFile> {
         if let Some((_root, _path, Some(file))) = self.find_root(path) {
             return Some(file);
@@ -179,6 +187,10 @@ impl Vfs {
             return Some(file);
         }
         None
+    }
+
+    pub fn num_roots(&self) -> usize {
+        self.roots.len()
     }
 
     pub fn load(&mut self, path: &Path) -> Option<VfsFile> {
