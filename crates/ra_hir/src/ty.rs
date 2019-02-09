@@ -1003,8 +1003,13 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
     /// otherwise, return ty.
     fn resolve_ty_shallow<'b>(&mut self, ty: &'b Ty) -> Cow<'b, Ty> {
         let mut ty = Cow::Borrowed(ty);
-        for _ in 0..3 {
-            // the type variable could resolve to a int/float variable
+        // The type variable could resolve to a int/float variable. Hence try
+        // resolving up to three times; each type of variable shouldn't occur
+        // more than once
+        for i in 0..3 {
+            if i > 0 {
+                tested_by!(type_var_resolves_to_int_var);
+            }
             match &*ty {
                 Ty::Infer(tv) => {
                     let inner = tv.to_inner();
@@ -1019,6 +1024,7 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
                 _ => return ty,
             }
         }
+        log::error!("Inference variable still not resolved: {:?}", ty);
         ty
     }
 

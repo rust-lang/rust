@@ -652,6 +652,7 @@ fn write() {
 
 #[test]
 fn infer_std_crash_2() {
+    covers!(type_var_resolves_to_int_var);
     // caused "equating two type variables, ...", taken from std
     check_inference(
         "infer_std_crash_2",
