@@ -479,7 +479,7 @@ pub struct JoinPathsError {
 /// ```
 #[stable(feature = "env", since = "1.0.0")]
 pub fn join_paths<I, T>(paths: I) -> Result<OsString, JoinPathsError>
-    where I: IntoIterator<Item=T>, T: AsRef<OsStr>
+    where I: IntoIterator<Item = T>, T: AsRef<OsStr>
 {
     os_imp::join_paths(paths.into_iter()).map_err(|e| {
         JoinPathsError { inner: e }

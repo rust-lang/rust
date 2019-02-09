@@ -787,7 +787,7 @@ pub trait ToSocketAddrs {
     /// Returned iterator over socket addresses which this type may correspond
     /// to.
     #[stable(feature = "rust1", since = "1.0.0")]
-    type Iter: Iterator<Item=SocketAddr>;
+    type Iter: Iterator<Item = SocketAddr>;
 
     /// Converts this object to an iterator of resolved `SocketAddr`s.
     ///

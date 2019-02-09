@@ -1321,7 +1321,7 @@ impl<A, V: FromIterator<A>> FromIterator<Option<A>> for Option<V> {
     ///
     /// [`Iterator`]: ../iter/trait.Iterator.html
     #[inline]
-    fn from_iter<I: IntoIterator<Item=Option<A>>>(iter: I) -> Option<V> {
+    fn from_iter<I: IntoIterator<Item = Option<A>>>(iter: I) -> Option<V> {
         // FIXME(#11084): This could be replaced with Iterator::scan when this
         // performance bug is closed.
 
@@ -1330,7 +1330,7 @@ impl<A, V: FromIterator<A>> FromIterator<Option<A>> for Option<V> {
             found_none: bool,
         }
 
-        impl<T, Iter: Iterator<Item=Option<T>>> Iterator for Adapter<Iter> {
+        impl<T, Iter: Iterator<Item = Option<T>>> Iterator for Adapter<Iter> {
             type Item = T;
 
             #[inline]

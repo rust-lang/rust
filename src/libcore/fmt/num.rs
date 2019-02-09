@@ -9,8 +9,8 @@ use ptr;
 use mem::MaybeUninit;
 
 #[doc(hidden)]
-trait Int: PartialEq + PartialOrd + Div<Output=Self> + Rem<Output=Self> +
-           Sub<Output=Self> + Copy {
+trait Int: PartialEq + PartialOrd + Div<Output = Self> + Rem<Output = Self> +
+           Sub<Output = Self> + Copy {
     fn zero() -> Self;
     fn from_u8(u: u8) -> Self;
     fn to_u8(&self) -> u8;

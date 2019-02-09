@@ -200,7 +200,7 @@ fn default_hook(info: &PanicInfo) {
             if let Some(format) = log_backtrace {
                 let _ = backtrace::print(err, format);
             } else if FIRST_PANIC.compare_and_swap(true, false, Ordering::SeqCst) {
-                let _ = writeln!(err, "note: Run with `RUST_BACKTRACE=1` \
+                let _ = writeln!(err, "note: run with `RUST_BACKTRACE=1` \
                                        environment variable to display a backtrace.");
             }
         }

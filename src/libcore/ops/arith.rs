@@ -78,7 +78,7 @@
     label="no implementation for `{Self} + {RHS}`",
 )]
 #[doc(alias = "+")]
-pub trait Add<RHS=Self> {
+pub trait Add<RHS = Self> {
     /// The resulting type after applying the `+` operator.
     #[stable(feature = "rust1", since = "1.0.0")]
     type Output;
@@ -176,7 +176,7 @@ add_impl! { usize u8 u16 u32 u64 u128 isize i8 i16 i32 i64 i128 f32 f64 }
 #[rustc_on_unimplemented(message="cannot subtract `{RHS}` from `{Self}`",
                          label="no implementation for `{Self} - {RHS}`")]
 #[doc(alias = "-")]
-pub trait Sub<RHS=Self> {
+pub trait Sub<RHS = Self> {
     /// The resulting type after applying the `-` operator.
     #[stable(feature = "rust1", since = "1.0.0")]
     type Output;
@@ -296,7 +296,7 @@ sub_impl! { usize u8 u16 u32 u64 u128 isize i8 i16 i32 i64 i128 f32 f64 }
 #[rustc_on_unimplemented(message="cannot multiply `{RHS}` to `{Self}`",
                          label="no implementation for `{Self} * {RHS}`")]
 #[doc(alias = "*")]
-pub trait Mul<RHS=Self> {
+pub trait Mul<RHS = Self> {
     /// The resulting type after applying the `*` operator.
     #[stable(feature = "rust1", since = "1.0.0")]
     type Output;
@@ -420,7 +420,7 @@ mul_impl! { usize u8 u16 u32 u64 u128 isize i8 i16 i32 i64 i128 f32 f64 }
 #[rustc_on_unimplemented(message="cannot divide `{Self}` by `{RHS}`",
                          label="no implementation for `{Self} / {RHS}`")]
 #[doc(alias = "/")]
-pub trait Div<RHS=Self> {
+pub trait Div<RHS = Self> {
     /// The resulting type after applying the `/` operator.
     #[stable(feature = "rust1", since = "1.0.0")]
     type Output;
@@ -505,7 +505,7 @@ div_impl_float! { f32 f64 }
 #[rustc_on_unimplemented(message="cannot mod `{Self}` by `{RHS}`",
                          label="no implementation for `{Self} % {RHS}`")]
 #[doc(alias = "%")]
-pub trait Rem<RHS=Self> {
+pub trait Rem<RHS = Self> {
     /// The resulting type after applying the `%` operator.
     #[stable(feature = "rust1", since = "1.0.0")]
     type Output = Self;
@@ -668,7 +668,7 @@ neg_impl_numeric! { isize i8 i16 i32 i64 i128 f32 f64 }
                          label="no implementation for `{Self} += {Rhs}`")]
 #[doc(alias = "+")]
 #[doc(alias = "+=")]
-pub trait AddAssign<Rhs=Self> {
+pub trait AddAssign<Rhs = Self> {
     /// Performs the `+=` operation.
     #[stable(feature = "op_assign_traits", since = "1.8.0")]
     fn add_assign(&mut self, rhs: Rhs);
@@ -724,7 +724,7 @@ add_assign_impl! { usize u8 u16 u32 u64 u128 isize i8 i16 i32 i64 i128 f32 f64 }
                          label="no implementation for `{Self} -= {Rhs}`")]
 #[doc(alias = "-")]
 #[doc(alias = "-=")]
-pub trait SubAssign<Rhs=Self> {
+pub trait SubAssign<Rhs = Self> {
     /// Performs the `-=` operation.
     #[stable(feature = "op_assign_traits", since = "1.8.0")]
     fn sub_assign(&mut self, rhs: Rhs);
@@ -771,7 +771,7 @@ sub_assign_impl! { usize u8 u16 u32 u64 u128 isize i8 i16 i32 i64 i128 f32 f64 }
                          label="no implementation for `{Self} *= {Rhs}`")]
 #[doc(alias = "*")]
 #[doc(alias = "*=")]
-pub trait MulAssign<Rhs=Self> {
+pub trait MulAssign<Rhs = Self> {
     /// Performs the `*=` operation.
     #[stable(feature = "op_assign_traits", since = "1.8.0")]
     fn mul_assign(&mut self, rhs: Rhs);
@@ -818,7 +818,7 @@ mul_assign_impl! { usize u8 u16 u32 u64 u128 isize i8 i16 i32 i64 i128 f32 f64 }
                          label="no implementation for `{Self} /= {Rhs}`")]
 #[doc(alias = "/")]
 #[doc(alias = "/=")]
-pub trait DivAssign<Rhs=Self> {
+pub trait DivAssign<Rhs = Self> {
     /// Performs the `/=` operation.
     #[stable(feature = "op_assign_traits", since = "1.8.0")]
     fn div_assign(&mut self, rhs: Rhs);
@@ -868,7 +868,7 @@ div_assign_impl! { usize u8 u16 u32 u64 u128 isize i8 i16 i32 i64 i128 f32 f64 }
                          label="no implementation for `{Self} %= {Rhs}`")]
 #[doc(alias = "%")]
 #[doc(alias = "%=")]
-pub trait RemAssign<Rhs=Self> {
+pub trait RemAssign<Rhs = Self> {
     /// Performs the `%=` operation.
     #[stable(feature = "op_assign_traits", since = "1.8.0")]
     fn rem_assign(&mut self, rhs: Rhs);

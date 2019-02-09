@@ -679,14 +679,14 @@ macro_rules! sum_durations {
 
 #[stable(feature = "duration_sum", since = "1.16.0")]
 impl Sum for Duration {
-    fn sum<I: Iterator<Item=Duration>>(iter: I) -> Duration {
+    fn sum<I: Iterator<Item = Duration>>(iter: I) -> Duration {
         sum_durations!(iter)
     }
 }
 
 #[stable(feature = "duration_sum", since = "1.16.0")]
 impl<'a> Sum<&'a Duration> for Duration {
-    fn sum<I: Iterator<Item=&'a Duration>>(iter: I) -> Duration {
+    fn sum<I: Iterator<Item = &'a Duration>>(iter: I) -> Duration {
         sum_durations!(iter)
     }
 }

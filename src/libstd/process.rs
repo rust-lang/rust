@@ -507,7 +507,7 @@ impl Command {
     /// ```
     #[stable(feature = "process", since = "1.0.0")]
     pub fn args<I, S>(&mut self, args: I) -> &mut Command
-        where I: IntoIterator<Item=S>, S: AsRef<OsStr>
+        where I: IntoIterator<Item = S>, S: AsRef<OsStr>
     {
         for arg in args {
             self.arg(arg.as_ref());

@@ -52,9 +52,9 @@ macro_rules! assume_usize_width {
 /// Helper function for testing numeric operations
 pub fn test_num<T>(ten: T, two: T) where
     T: PartialEq
-     + Add<Output=T> + Sub<Output=T>
-     + Mul<Output=T> + Div<Output=T>
-     + Rem<Output=T> + Debug
+     + Add<Output = T> + Sub<Output = T>
+     + Mul<Output = T> + Div<Output = T>
+     + Rem<Output = T> + Debug
      + Copy
 {
     assert_eq!(ten.add(two),  ten + two);

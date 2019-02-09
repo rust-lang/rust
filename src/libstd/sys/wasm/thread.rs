@@ -90,7 +90,7 @@ cfg_if! {
 
     } else if #[cfg(target_feature = "atomics")] {
         pub fn my_id() -> u32 {
-            panic!("thread ids not implemented on wasm with atomics yet")
+            panic!("thread IDs not implemented on wasm with atomics yet")
         }
 
         pub fn tcb_get() -> *mut u8 {

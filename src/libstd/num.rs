@@ -21,9 +21,9 @@ pub use core::num::{NonZeroU8, NonZeroU16, NonZeroU32, NonZeroU64, NonZeroU128, 
 #[cfg(test)]
 pub fn test_num<T>(ten: T, two: T) where
     T: PartialEq
-     + Add<Output=T> + Sub<Output=T>
-     + Mul<Output=T> + Div<Output=T>
-     + Rem<Output=T> + fmt::Debug
+     + Add<Output = T> + Sub<Output = T>
+     + Mul<Output = T> + Div<Output = T>
+     + Rem<Output = T> + fmt::Debug
      + Copy
 {
     assert_eq!(ten.add(two),  ten + two);
@@ -188,7 +188,7 @@ mod tests {
 
     #[test]
     fn test_pow() {
-        fn naive_pow<T: Mul<Output=T> + Copy>(one: T, base: T, exp: usize) -> T {
+        fn naive_pow<T: Mul<Output = T> + Copy>(one: T, base: T, exp: usize) -> T {
             (0..exp).fold(one, |acc, _| acc * base)
         }
         macro_rules! assert_pow {

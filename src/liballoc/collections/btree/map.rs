@@ -1835,12 +1835,12 @@ fn range_search<BorrowType, K, V, Q: ?Sized, R: RangeBounds<Q>>(
         where Q: Ord, K: Borrow<Q>
 {
     match (range.start_bound(), range.end_bound()) {
-        (Excluded(s), Excluded(e)) if s==e =>
+        (Excluded(s), Excluded(e)) if s == e =>
             panic!("range start and end are equal and excluded in BTreeMap"),
         (Included(s), Included(e)) |
         (Included(s), Excluded(e)) |
         (Excluded(s), Included(e)) |
-        (Excluded(s), Excluded(e)) if s>e =>
+        (Excluded(s), Excluded(e)) if s > e =>
             panic!("range start is greater than range end in BTreeMap"),
         _ => {},
     };

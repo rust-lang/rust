@@ -114,7 +114,7 @@ not_impl! { bool usize u8 u16 u32 u64 u128 isize i8 i16 i32 i64 i128 }
 #[stable(feature = "rust1", since = "1.0.0")]
 #[rustc_on_unimplemented(message="no implementation for `{Self} & {RHS}`",
                          label="no implementation for `{Self} & {RHS}`")]
-pub trait BitAnd<RHS=Self> {
+pub trait BitAnd<RHS = Self> {
     /// The resulting type after applying the `&` operator.
     #[stable(feature = "rust1", since = "1.0.0")]
     type Output;
@@ -198,7 +198,7 @@ bitand_impl! { bool usize u8 u16 u32 u64 u128 isize i8 i16 i32 i64 i128 }
 #[stable(feature = "rust1", since = "1.0.0")]
 #[rustc_on_unimplemented(message="no implementation for `{Self} | {RHS}`",
                          label="no implementation for `{Self} | {RHS}`")]
-pub trait BitOr<RHS=Self> {
+pub trait BitOr<RHS = Self> {
     /// The resulting type after applying the `|` operator.
     #[stable(feature = "rust1", since = "1.0.0")]
     type Output;
@@ -285,7 +285,7 @@ bitor_impl! { bool usize u8 u16 u32 u64 u128 isize i8 i16 i32 i64 i128 }
 #[stable(feature = "rust1", since = "1.0.0")]
 #[rustc_on_unimplemented(message="no implementation for `{Self} ^ {RHS}`",
                          label="no implementation for `{Self} ^ {RHS}`")]
-pub trait BitXor<RHS=Self> {
+pub trait BitXor<RHS = Self> {
     /// The resulting type after applying the `^` operator.
     #[stable(feature = "rust1", since = "1.0.0")]
     type Output;
@@ -373,7 +373,7 @@ bitxor_impl! { bool usize u8 u16 u32 u64 u128 isize i8 i16 i32 i64 i128 }
 #[stable(feature = "rust1", since = "1.0.0")]
 #[rustc_on_unimplemented(message="no implementation for `{Self} << {RHS}`",
                          label="no implementation for `{Self} << {RHS}`")]
-pub trait Shl<RHS=Self> {
+pub trait Shl<RHS = Self> {
     /// The resulting type after applying the `<<` operator.
     #[stable(feature = "rust1", since = "1.0.0")]
     type Output;
@@ -482,7 +482,7 @@ shl_impl_all! { u8 u16 u32 u64 u128 usize i8 i16 i32 i64 isize i128 }
 #[stable(feature = "rust1", since = "1.0.0")]
 #[rustc_on_unimplemented(message="no implementation for `{Self} >> {RHS}`",
                          label="no implementation for `{Self} >> {RHS}`")]
-pub trait Shr<RHS=Self> {
+pub trait Shr<RHS = Self> {
     /// The resulting type after applying the `>>` operator.
     #[stable(feature = "rust1", since = "1.0.0")]
     type Output;
@@ -598,7 +598,7 @@ shr_impl_all! { u8 u16 u32 u64 u128 usize i8 i16 i32 i64 i128 isize }
 #[stable(feature = "op_assign_traits", since = "1.8.0")]
 #[rustc_on_unimplemented(message="no implementation for `{Self} &= {Rhs}`",
                          label="no implementation for `{Self} &= {Rhs}`")]
-pub trait BitAndAssign<Rhs=Self> {
+pub trait BitAndAssign<Rhs = Self> {
     /// Performs the `&=` operation.
     #[stable(feature = "op_assign_traits", since = "1.8.0")]
     fn bitand_assign(&mut self, rhs: Rhs);
@@ -647,7 +647,7 @@ bitand_assign_impl! { bool usize u8 u16 u32 u64 u128 isize i8 i16 i32 i64 i128 }
 #[stable(feature = "op_assign_traits", since = "1.8.0")]
 #[rustc_on_unimplemented(message="no implementation for `{Self} |= {Rhs}`",
                          label="no implementation for `{Self} |= {Rhs}`")]
-pub trait BitOrAssign<Rhs=Self> {
+pub trait BitOrAssign<Rhs = Self> {
     /// Performs the `|=` operation.
     #[stable(feature = "op_assign_traits", since = "1.8.0")]
     fn bitor_assign(&mut self, rhs: Rhs);
@@ -696,7 +696,7 @@ bitor_assign_impl! { bool usize u8 u16 u32 u64 u128 isize i8 i16 i32 i64 i128 }
 #[stable(feature = "op_assign_traits", since = "1.8.0")]
 #[rustc_on_unimplemented(message="no implementation for `{Self} ^= {Rhs}`",
                          label="no implementation for `{Self} ^= {Rhs}`")]
-pub trait BitXorAssign<Rhs=Self> {
+pub trait BitXorAssign<Rhs = Self> {
     /// Performs the `^=` operation.
     #[stable(feature = "op_assign_traits", since = "1.8.0")]
     fn bitxor_assign(&mut self, rhs: Rhs);
@@ -743,7 +743,7 @@ bitxor_assign_impl! { bool usize u8 u16 u32 u64 u128 isize i8 i16 i32 i64 i128 }
 #[stable(feature = "op_assign_traits", since = "1.8.0")]
 #[rustc_on_unimplemented(message="no implementation for `{Self} <<= {Rhs}`",
                          label="no implementation for `{Self} <<= {Rhs}`")]
-pub trait ShlAssign<Rhs=Self> {
+pub trait ShlAssign<Rhs = Self> {
     /// Performs the `<<=` operation.
     #[stable(feature = "op_assign_traits", since = "1.8.0")]
     fn shl_assign(&mut self, rhs: Rhs);
@@ -811,7 +811,7 @@ shl_assign_impl_all! { u8 u16 u32 u64 u128 usize i8 i16 i32 i64 i128 isize }
 #[stable(feature = "op_assign_traits", since = "1.8.0")]
 #[rustc_on_unimplemented(message="no implementation for `{Self} >>= {Rhs}`",
                          label="no implementation for `{Self} >>= {Rhs}`")]
-pub trait ShrAssign<Rhs=Self> {
+pub trait ShrAssign<Rhs = Self> {
     /// Performs the `>>=` operation.
     #[stable(feature = "op_assign_traits", since = "1.8.0")]
     fn shr_assign(&mut self, rhs: Rhs);

@@ -2970,7 +2970,7 @@ macro_rules! iterator {
 
             #[inline]
             fn try_fold<B, F, R>(&mut self, init: B, mut f: F) -> R where
-                Self: Sized, F: FnMut(B, Self::Item) -> R, R: Try<Ok=B>
+                Self: Sized, F: FnMut(B, Self::Item) -> R, R: Try<Ok = B>
             {
                 // manual unrolling is needed when there are conditional exits from the loop
                 let mut accum = init;
@@ -3060,7 +3060,7 @@ macro_rules! iterator {
 
             #[inline]
             fn try_rfold<B, F, R>(&mut self, init: B, mut f: F) -> R where
-                Self: Sized, F: FnMut(B, Self::Item) -> R, R: Try<Ok=B>
+                Self: Sized, F: FnMut(B, Self::Item) -> R, R: Try<Ok = B>
             {
                 // manual unrolling is needed when there are conditional exits from the loop
                 let mut accum = init;
@@ -3613,7 +3613,7 @@ struct GenericSplitN<I> {
     count: usize,
 }
 
-impl<T, I: SplitIter<Item=T>> Iterator for GenericSplitN<I> {
+impl<T, I: SplitIter<Item = T>> Iterator for GenericSplitN<I> {
     type Item = T;
 
     #[inline]
