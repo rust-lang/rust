@@ -14,16 +14,16 @@
 
 #![deny(warnings)]
 
-extern crate env_logger;
+use env_logger;
 #[macro_use]
 extern crate failure;
-extern crate getopts;
+use getopts;
 #[macro_use]
 extern crate log;
-extern crate regex;
+use regex;
 #[macro_use]
 extern crate serde_derive;
-extern crate serde_json as json;
+use serde_json as json;
 
 use std::collections::HashSet;
 use std::io::{self, BufRead};

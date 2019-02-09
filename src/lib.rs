@@ -10,29 +10,13 @@
 
 #[macro_use]
 extern crate derive_new;
-extern crate atty;
-extern crate bytecount;
-extern crate diff;
-extern crate dirs;
-extern crate failure;
-extern crate itertools;
 #[cfg(test)]
 #[macro_use]
 extern crate lazy_static;
 #[macro_use]
 extern crate log;
-extern crate regex;
-extern crate rustc_target;
-extern crate serde;
 #[macro_use]
 extern crate serde_derive;
-extern crate serde_json;
-extern crate syntax;
-extern crate syntax_pos;
-extern crate toml;
-extern crate unicode_categories;
-extern crate unicode_segmentation;
-extern crate unicode_width;
 
 use std::cell::RefCell;
 use std::collections::HashMap;
