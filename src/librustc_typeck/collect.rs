@@ -2279,7 +2279,7 @@ fn codegen_fn_attrs<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, id: DefId) -> Codegen
                     tcx.sess,
                     attr.span,
                     E0724,
-                    "`#[ffi_pure]` may only be used on `extern fn`s"
+                    "`#[ffi_pure]` may only be used on foreign functions"
                 ).emit();
             }
         } else if attr.check_name("ffi_const") {
@@ -2291,7 +2291,7 @@ fn codegen_fn_attrs<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, id: DefId) -> Codegen
                     tcx.sess,
                     attr.span,
                     E0725,
-                    "`#[ffi_const]` may only be used on `extern fn`s"
+                    "`#[ffi_const]` may only be used on foreign functions"
                 ).emit();
             }
         } else if attr.check_name("rustc_allocator_nounwind") {
