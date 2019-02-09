@@ -1,5 +1,3 @@
-#![cfg(not(miri))]
-
 use core::time::Duration;
 
 #[test]
@@ -109,12 +107,14 @@ fn checked_sub() {
 
 #[test]
 #[should_panic]
+#[cfg(not(miri))] // Miri does not support panics
 fn sub_bad1() {
     let _ = Duration::new(0, 0) - Duration::new(0, 1);
 }
 
 #[test]
 #[should_panic]
+#[cfg(not(miri))] // Miri does not support panics
 fn sub_bad2() {
     let _ = Duration::new(0, 0) - Duration::new(1, 0);
 }
@@ -287,6 +287,7 @@ fn debug_formatting_precision_two() {
 }
 
 #[test]
+#[cfg(not(miri))] // FIXME: A bug in Miri breaks padding in string formatting
 fn debug_formatting_precision_high() {
     assert_eq!(format!("{:.5?}",  Duration::new(0, 23_678)), "23.67800µs");
 

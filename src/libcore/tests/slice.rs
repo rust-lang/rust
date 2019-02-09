@@ -1015,7 +1015,7 @@ fn test_rotate_right() {
 
 #[test]
 #[cfg(not(target_arch = "wasm32"))]
-#[cfg(not(miri))]
+#[cfg(not(miri))] // Miri does not support entropy
 fn sort_unstable() {
     use core::cmp::Ordering::{Equal, Greater, Less};
     use core::slice::heapsort;
@@ -1171,7 +1171,7 @@ pub mod memchr {
 }
 
 #[test]
-#[cfg(not(miri))]
+#[cfg(not(miri))] // Miri cannot compute actual alignment of an allocation
 fn test_align_to_simple() {
     let bytes = [1u8, 2, 3, 4, 5, 6, 7];
     let (prefix, aligned, suffix) = unsafe { bytes.align_to::<u16>() };
@@ -1187,7 +1187,6 @@ fn test_align_to_simple() {
 }
 
 #[test]
-#[cfg(not(miri))]
 fn test_align_to_zst() {
     let bytes = [1, 2, 3, 4, 5, 6, 7];
     let (prefix, aligned, suffix) = unsafe { bytes.align_to::<()>() };
@@ -1196,7 +1195,7 @@ fn test_align_to_zst() {
 }
 
 #[test]
-#[cfg(not(miri))]
+#[cfg(not(miri))] // Miri cannot compute actual alignment of an allocation
 fn test_align_to_non_trivial() {
     #[repr(align(8))] struct U64(u64, u64);
     #[repr(align(8))] struct U64U64U32(u64, u64, u32);
@@ -1208,7 +1207,6 @@ fn test_align_to_non_trivial() {
 }
 
 #[test]
-#[cfg(not(miri))]
 fn test_align_to_empty_mid() {
     use core::mem;
 

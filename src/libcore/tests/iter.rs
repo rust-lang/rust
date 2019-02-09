@@ -190,7 +190,6 @@ fn test_iterator_step_by() {
 }
 
 #[test]
-#[cfg(not(miri))]
 fn test_iterator_step_by_nth() {
     let mut it = (0..16).step_by(5);
     assert_eq!(it.nth(0), Some(0));
@@ -209,7 +208,6 @@ fn test_iterator_step_by_nth() {
 }
 
 #[test]
-#[cfg(not(miri))]
 fn test_iterator_step_by_nth_overflow() {
     #[cfg(target_pointer_width = "8")]
     type Bigger = u16;
@@ -262,7 +260,6 @@ fn test_iterator_step_by_zero() {
 }
 
 #[test]
-#[cfg(not(miri))]
 fn test_iterator_step_by_size_hint() {
     struct StubSizeHint(usize, Option<usize>);
     impl Iterator for StubSizeHint {
@@ -1657,7 +1654,6 @@ fn test_range_inclusive_nth() {
 }
 
 #[test]
-#[cfg(not(miri))]
 fn test_range_step() {
     #![allow(deprecated)]
 
@@ -1665,7 +1661,9 @@ fn test_range_step() {
     assert_eq!((1..21).rev().step_by(5).collect::<Vec<isize>>(), [20, 15, 10, 5]);
     assert_eq!((1..21).rev().step_by(6).collect::<Vec<isize>>(), [20, 14, 8, 2]);
     assert_eq!((200..255).step_by(50).collect::<Vec<u8>>(), [200, 250]);
+    #[cfg(not(miri))] // Miri cannot compare empty slices
     assert_eq!((200..-5).step_by(1).collect::<Vec<isize>>(), []);
+    #[cfg(not(miri))] // Miri cannot compare empty slices
     assert_eq!((200..200).step_by(1).collect::<Vec<isize>>(), []);
 
     assert_eq!((0..20).step_by(1).size_hint(), (20, Some(20)));
@@ -1681,7 +1679,6 @@ fn test_range_step() {
 }
 
 #[test]
-#[cfg(not(miri))]
 fn test_step_by_skip() {
     assert_eq!((0..640).step_by(128).skip(1).collect::<Vec<_>>(), [128, 256, 384, 512]);
     assert_eq!((0..=50).step_by(10).nth(3), Some(30));
@@ -1689,7 +1686,6 @@ fn test_step_by_skip() {
 }
 
 #[test]
-#[cfg(not(miri))]
 fn test_range_inclusive_step() {
     assert_eq!((0..=50).step_by(10).collect::<Vec<_>>(), [0, 10, 20, 30, 40, 50]);
     assert_eq!((0..=5).step_by(1).collect::<Vec<_>>(), [0, 1, 2, 3, 4, 5]);
