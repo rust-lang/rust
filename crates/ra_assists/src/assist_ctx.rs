@@ -16,7 +16,7 @@ pub(crate) enum Assist {
 
 /// `AssistCtx` allows to apply an assist or check if it could be applied.
 ///
-/// Assists use a somewhat overengineered approach, given the current needs. The
+/// Assists use a somewhat over-engineered approach, given the current needs. The
 /// assists workflow consists of two phases. In the first phase, a user asks for
 /// the list of available assists. In the second phase, the user picks a
 /// particular assist and it gets applied.
@@ -106,6 +106,7 @@ impl<'a, DB: HirDatabase> AssistCtx<'a, DB> {
 pub(crate) struct AssistBuilder {
     edit: TextEditBuilder,
     cursor_position: Option<TextUnit>,
+    target: Option<TextRange>,
 }
 
 impl AssistBuilder {
@@ -138,7 +139,15 @@ impl AssistBuilder {
         self.cursor_position = Some(offset)
     }
 
+    pub(crate) fn target(&mut self, target: TextRange) {
+        self.target = Some(target)
+    }
+
     fn build(self) -> AssistAction {
-        AssistAction { edit: self.edit.finish(), cursor_position: self.cursor_position }
+        AssistAction {
+            edit: self.edit.finish(),
+            cursor_position: self.cursor_position,
+            target: self.target,
+        }
     }
 }

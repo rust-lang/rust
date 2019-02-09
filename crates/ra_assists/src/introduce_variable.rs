@@ -45,6 +45,7 @@ pub(crate) fn introduce_variable(ctx: AssistCtx<impl HirDatabase>) -> Option<Ass
         } else {
             buf.push_str(";");
             indent.text().push_to(&mut buf);
+            edit.target(expr.syntax().range());
             edit.replace(expr.syntax().range(), "var_name".to_string());
             edit.insert(anchor_stmt.range().start(), buf);
             if wrap_in_block {
@@ -58,7 +59,7 @@ pub(crate) fn introduce_variable(ctx: AssistCtx<impl HirDatabase>) -> Option<Ass
 fn valid_covering_node(node: &SyntaxNode) -> bool {
     node.kind() != COMMENT
 }
-/// Check wether the node is a valid expression which can be extracted to a variable.
+/// Check whether the node is a valid expression which can be extracted to a variable.
 /// In general that's true for any expression, but in some cases that would produce invalid code.
 fn valid_target_expr(node: &SyntaxNode) -> Option<&ast::Expr> {
     match node.kind() {
@@ -74,7 +75,7 @@ fn valid_target_expr(node: &SyntaxNode) -> Option<&ast::Expr> {
 /// and a boolean indicating whether we have to wrap it within a { } block
 /// to produce correct code.
 /// It can be a statement, the last in a block expression or a wanna be block
-/// expression like a lamba or match arm.
+/// expression like a lambda or match arm.
 fn anchor_stmt(expr: &ast::Expr) -> Option<(&SyntaxNode, bool)> {
     expr.syntax().ancestors().find_map(|node| {
         if ast::Stmt::cast(node).is_some() {
@@ -100,7 +101,7 @@ fn anchor_stmt(expr: &ast::Expr) -> Option<(&SyntaxNode, bool)> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::helpers::{check_assist, check_assist_not_applicable, check_assist_range};
+    use crate::helpers::{check_assist, check_assist_not_applicable, check_assist_range, check_assist_target, check_assist_range_target};
 
     #[test]
     fn test_introduce_var_simple() {
@@ -423,6 +424,34 @@ fn main() {
     };
 }
 ",
+        );
+    }
+
+    // FIXME: This is not quite correct, but good enough(tm) for the sorting heuristic
+    #[test]
+    fn introduce_var_target() {
+        check_assist_target(
+            introduce_variable,
+            "
+fn foo() -> u32 {
+    r<|>eturn 2 + 2;
+}
+",
+            "2 + 2",
+        );
+
+        check_assist_range_target(
+            introduce_variable,
+            "
+fn main() {
+    let x = true;
+    let tuple = match x {
+        true => (<|>2 + 2<|>, true)
+        _ => (0, false)
+    };
+}
+",
+            "2 + 2",
         );
     }
 }

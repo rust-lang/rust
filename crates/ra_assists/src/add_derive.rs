@@ -24,6 +24,7 @@ pub(crate) fn add_derive(ctx: AssistCtx<impl HirDatabase>) -> Option<Assist> {
             }
             Some(tt) => tt.syntax().range().end() - TextUnit::of_char(')'),
         };
+        edit.target(nominal.syntax().range());
         edit.set_cursor(offset)
     })
 }
@@ -38,7 +39,7 @@ fn derive_insertion_offset(nominal: &ast::NominalDef) -> Option<TextUnit> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::helpers::check_assist;
+    use crate::helpers::{check_assist, check_assist_target};
 
     #[test]
     fn add_derive_new() {
@@ -78,6 +79,23 @@ struct Foo { a: i32<|>, }
 #[derive(<|>)]
 struct Foo { a: i32, }
             ",
+        );
+    }
+
+    #[test]
+    fn add_derive_target() {
+        check_assist_target(
+            add_derive,
+            "
+struct SomeThingIrrelevant;
+/// `Foo` is a pretty important struct.
+/// It does stuff.
+struct Foo { a: i32<|>, }
+struct EvenMoreIrrelevant;
+            ",
+            "/// `Foo` is a pretty important struct.
+/// It does stuff.
+struct Foo { a: i32, }",
         );
     }
 }

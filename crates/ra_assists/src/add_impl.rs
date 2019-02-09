@@ -11,6 +11,7 @@ pub(crate) fn add_impl(ctx: AssistCtx<impl HirDatabase>) -> Option<Assist> {
     let nominal = ctx.node_at_offset::<ast::NominalDef>()?;
     let name = nominal.name()?;
     ctx.build("add impl", |edit| {
+        edit.target(nominal.syntax().range());
         let type_params = nominal.type_param_list();
         let start_offset = nominal.syntax().range().end();
         let mut buf = String::new();
@@ -37,7 +38,7 @@ pub(crate) fn add_impl(ctx: AssistCtx<impl HirDatabase>) -> Option<Assist> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::helpers::check_assist;
+    use crate::helpers::{check_assist, check_assist_target};
 
     #[test]
     fn test_add_impl() {
@@ -54,4 +55,18 @@ mod tests {
         );
     }
 
+    #[test]
+    fn add_impl_target() {
+        check_assist_target(
+            add_impl,
+            "
+struct SomeThingIrrelevant;
+/// Has a lifetime parameter
+struct Foo<'a, T: Foo<'a>> {<|>}
+struct EvenMoreIrrelevant;
+",
+            "/// Has a lifetime parameter
+struct Foo<'a, T: Foo<'a>> {}",
+        );
+    }
 }

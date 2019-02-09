@@ -20,7 +20,7 @@ fn add_vis(ctx: AssistCtx<impl HirDatabase>) -> Option<Assist> {
         _ => false,
     });
 
-    let offset = if let Some(keyword) = item_keyword {
+    let (offset, target) = if let Some(keyword) = item_keyword {
         let parent = keyword.parent()?;
         let def_kws = vec![FN_DEF, MODULE, STRUCT_DEF, ENUM_DEF, TRAIT_DEF];
         // Parent is not a definition, can't add visibility
@@ -31,17 +31,18 @@ fn add_vis(ctx: AssistCtx<impl HirDatabase>) -> Option<Assist> {
         if parent.children().any(|child| child.kind() == VISIBILITY) {
             return None;
         }
-        vis_offset(parent)
+        (vis_offset(parent), keyword.range())
     } else {
         let ident = ctx.leaf_at_offset().find(|leaf| leaf.kind() == IDENT)?;
         let field = ident.ancestors().find_map(ast::NamedFieldDef::cast)?;
         if field.name()?.syntax().range() != ident.range() && field.visibility().is_some() {
             return None;
         }
-        vis_offset(field.syntax())
+        (vis_offset(field.syntax()), ident.range())
     };
 
     ctx.build("make pub(crate)", |edit| {
+        edit.target(target);
         edit.insert(offset, "pub(crate) ");
         edit.set_cursor(offset);
     })
@@ -60,13 +61,15 @@ fn vis_offset(node: &SyntaxNode) -> TextUnit {
 
 fn change_vis(ctx: AssistCtx<impl HirDatabase>, vis: &ast::Visibility) -> Option<Assist> {
     if vis.syntax().text() == "pub" {
-        return ctx.build("chage to pub(crate)", |edit| {
+        return ctx.build("change to pub(crate)", |edit| {
+            edit.target(vis.syntax().range());
             edit.replace(vis.syntax().range(), "pub(crate)");
             edit.set_cursor(vis.syntax().range().start());
         });
     }
     if vis.syntax().text() == "pub(crate)" {
-        return ctx.build("chage to pub", |edit| {
+        return ctx.build("change to pub", |edit| {
+            edit.target(vis.syntax().range());
             edit.replace(vis.syntax().range(), "pub");
             edit.set_cursor(vis.syntax().range().start());
         });
@@ -77,7 +80,7 @@ fn change_vis(ctx: AssistCtx<impl HirDatabase>, vis: &ast::Visibility) -> Option
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::helpers::check_assist;
+    use crate::helpers::{check_assist, check_assist_target};
 
     #[test]
     fn change_visibility_adds_pub_crate_to_items() {
@@ -134,5 +137,12 @@ mod tests {
             <|>pub(crate) struct Foo;
             ",
         )
+    }
+
+    #[test]
+    fn change_visibility_target() {
+        check_assist_target(change_visibility, "<|>fn foo() {}", "fn");
+        check_assist_target(change_visibility, "pub(crate)<|> fn foo() {}", "pub(crate)");
+        check_assist_target(change_visibility, "struct S { <|>field: u32 }", "field");
     }
 }

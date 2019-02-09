@@ -47,6 +47,7 @@ pub(crate) fn remove_dbg(ctx: AssistCtx<impl HirDatabase>) -> Option<Assist> {
     };
 
     ctx.build("remove dbg!()", |edit| {
+        edit.target(macro_call.syntax().range());
         edit.replace(macro_range, macro_content);
         edit.set_cursor(cursor_pos);
     })
@@ -78,7 +79,7 @@ fn is_valid_macrocall(macro_call: &ast::MacroCall, macro_name: &str) -> Option<b
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::helpers::{check_assist, check_assist_not_applicable};
+    use crate::helpers::{check_assist, check_assist_not_applicable, check_assist_target};
 
     #[test]
     fn test_remove_dbg() {
@@ -119,5 +120,20 @@ fn foo(n: usize) {
         check_assist_not_applicable(remove_dbg, "<|>vec![1, 2, 3]");
         check_assist_not_applicable(remove_dbg, "<|>dbg(5, 6, 7)");
         check_assist_not_applicable(remove_dbg, "<|>dbg!(5, 6, 7");
+    }
+
+    #[test]
+    fn remove_dbg_target() {
+        check_assist_target(
+            remove_dbg,
+            "
+fn foo(n: usize) {
+    if let Some(_) = dbg!(n.<|>checked_sub(4)) {
+        // ...
+    }
+}
+",
+            "dbg!(n.checked_sub(4))",
+        );
     }
 }

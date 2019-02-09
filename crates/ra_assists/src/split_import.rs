@@ -24,6 +24,7 @@ pub(crate) fn split_import(ctx: AssistCtx<impl HirDatabase>) -> Option<Assist> {
     };
 
     ctx.build("split import", |edit| {
+        edit.target(colon_colon.range());
         edit.insert(l_curly, "{");
         edit.insert(r_curly, "}");
         edit.set_cursor(l_curly + TextUnit::of_str("{"));
@@ -33,7 +34,7 @@ pub(crate) fn split_import(ctx: AssistCtx<impl HirDatabase>) -> Option<Assist> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::helpers::check_assist;
+    use crate::helpers::{check_assist, check_assist_target};
 
     #[test]
     fn test_split_import() {
@@ -51,5 +52,10 @@ mod tests {
             "use algo:<|>:visitor::{Visitor, visit}",
             "use algo::{<|>visitor::{Visitor, visit}}",
         )
+    }
+
+    #[test]
+    fn split_import_target() {
+        check_assist_target(split_import, "use algo::<|>visitor::{Visitor, visit}", "::");
     }
 }
