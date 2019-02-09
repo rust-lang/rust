@@ -17,10 +17,10 @@ use crate::parse::token::Token::*;
 use crate::symbol::Symbol;
 use crate::tokenstream::{DelimSpan, TokenStream, TokenTree};
 
-use syntax_pos::{Span, DUMMY_SP};
+use syntax_pos::{Span, DUMMY_SP, symbol::Ident};
 use log::debug;
 
-use rustc_data_structures::fx::FxHashMap;
+use rustc_data_structures::fx::{FxHashMap};
 use std::borrow::Cow;
 use std::collections::hash_map::Entry;
 
@@ -246,8 +246,12 @@ fn generic_extension<'cx>(cx: &'cx mut ExtCtxt<'_>,
 // Holy self-referential!
 
 /// Converts a `macro_rules!` invocation into a syntax extension.
-pub fn compile(sess: &ParseSess, features: &Features, def: &ast::Item, edition: Edition)
-               -> SyntaxExtension {
+pub fn compile(
+    sess: &ParseSess,
+    features: &Features,
+    def: &ast::Item,
+    edition: Edition
+) -> SyntaxExtension {
     let lhs_nm = ast::Ident::with_empty_ctxt(Symbol::gensym("lhs"));
     let rhs_nm = ast::Ident::with_empty_ctxt(Symbol::gensym("rhs"));
 
@@ -355,7 +359,13 @@ pub fn compile(sess: &ParseSess, features: &Features, def: &ast::Item, edition: 
 
     // don't abort iteration early, so that errors for multiple lhses can be reported
     for lhs in &lhses {
-        valid &= check_lhs_no_empty_seq(sess, &[lhs.clone()])
+        valid &= check_lhs_no_empty_seq(sess, &[lhs.clone()]);
+        valid &= check_lhs_duplicate_matcher_bindings(
+            sess,
+            &[lhs.clone()],
+            &mut FxHashMap::default(),
+            def.id
+        );
     }
 
     let expander: Box<_> = Box::new(MacroRulesMacroExpander {
@@ -450,6 +460,53 @@ fn check_lhs_no_empty_seq(sess: &ParseSess, tts: &[quoted::TokenTree]) -> bool {
                     return false;
                 }
             }
+        }
+    }
+
+    true
+}
+
+/// Check that the LHS contains no duplicate matcher bindings. e.g. `$a:expr, $a:expr` would be
+/// illegal, since it would be ambiguous which `$a` to use if we ever needed to.
+fn check_lhs_duplicate_matcher_bindings(
+    sess: &ParseSess,
+    tts: &[quoted::TokenTree],
+    metavar_names: &mut FxHashMap<Ident, Span>,
+    node_id: ast::NodeId,
+) -> bool {
+    use self::quoted::TokenTree;
+    use crate::early_buffered_lints::BufferedEarlyLintId;
+    for tt in tts {
+        match *tt {
+            TokenTree::MetaVarDecl(span, name, _kind) => {
+                if let Some(&prev_span) = metavar_names.get(&name) {
+                    // FIXME(mark-i-m): in a few cycles, make this a hard error.
+                    // sess.span_diagnostic
+                    //     .struct_span_err(span, "duplicate matcher binding")
+                    //     .span_note(prev_span, "previous declaration was here")
+                    //     .emit();
+                    sess.buffer_lint(
+                        BufferedEarlyLintId::DuplicateMacroMatcherBindingName,
+                        crate::source_map::MultiSpan::from(vec![prev_span, span]),
+                        node_id,
+                        "duplicate matcher binding"
+                    );
+                    return false;
+                } else {
+                    metavar_names.insert(name, span);
+                }
+            }
+            TokenTree::Delimited(_, ref del) => {
+                if !check_lhs_duplicate_matcher_bindings(sess, &del.tts, metavar_names, node_id) {
+                    return false;
+                }
+            },
+            TokenTree::Sequence(_, ref seq) => {
+                if !check_lhs_duplicate_matcher_bindings(sess, &seq.tts, metavar_names, node_id) {
+                    return false;
+                }
+            }
+            _ => {}
         }
     }
 
