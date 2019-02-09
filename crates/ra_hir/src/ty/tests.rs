@@ -663,6 +663,21 @@ fn test_line_buffer() {
     );
 }
 
+#[test]
+fn infer_std_crash_3() {
+    // taken from rustc
+    check_inference(
+        "infer_std_crash_3",
+        r#"
+pub fn compute() {
+    match _ {
+        SizeSkeleton::Pointer { non_zero: true, tail } => {}
+    }
+}
+"#,
+    );
+}
+
 fn infer(content: &str) -> String {
     let (db, _, file_id) = MockDatabase::with_single_file(content);
     let source_file = db.parse(file_id);

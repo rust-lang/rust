@@ -850,6 +850,7 @@ impl ExprCollector {
             }
 
             // TODO: implement
+            ast::PatKind::LiteralPat(_) => Pat::Missing,
             ast::PatKind::SlicePat(_) | ast::PatKind::RangePat(_) => Pat::Missing,
         };
         let syntax_ptr = SyntaxNodePtr::new(pat.syntax());

@@ -22,13 +22,15 @@ SOURCE_FILE@[0; 112)
           WHITESPACE@[26; 35)
           MATCH_ARM@[35; 50)
             RANGE_PAT@[35; 44)
-              LITERAL@[35; 36)
-                INT_NUMBER@[35; 36) "0"
+              LITERAL_PAT@[35; 36)
+                LITERAL@[35; 36)
+                  INT_NUMBER@[35; 36) "0"
               WHITESPACE@[36; 37)
               DOTDOTDOT@[37; 40)
               WHITESPACE@[40; 41)
-              LITERAL@[41; 44)
-                INT_NUMBER@[41; 44) "100"
+              LITERAL_PAT@[41; 44)
+                LITERAL@[41; 44)
+                  INT_NUMBER@[41; 44) "100"
             WHITESPACE@[44; 45)
             FAT_ARROW@[45; 47)
             WHITESPACE@[47; 48)
@@ -39,13 +41,15 @@ SOURCE_FILE@[0; 112)
           WHITESPACE@[51; 60)
           MATCH_ARM@[60; 77)
             RANGE_PAT@[60; 71)
-              LITERAL@[60; 63)
-                INT_NUMBER@[60; 63) "101"
+              LITERAL_PAT@[60; 63)
+                LITERAL@[60; 63)
+                  INT_NUMBER@[60; 63) "101"
               WHITESPACE@[63; 64)
               DOTDOTEQ@[64; 67)
               WHITESPACE@[67; 68)
-              LITERAL@[68; 71)
-                INT_NUMBER@[68; 71) "200"
+              LITERAL_PAT@[68; 71)
+                LITERAL@[68; 71)
+                  INT_NUMBER@[68; 71) "200"
             WHITESPACE@[71; 72)
             FAT_ARROW@[72; 74)
             WHITESPACE@[74; 75)
@@ -56,13 +60,15 @@ SOURCE_FILE@[0; 112)
           WHITESPACE@[78; 87)
           MATCH_ARM@[87; 102)
             RANGE_PAT@[87; 97)
-              LITERAL@[87; 90)
-                INT_NUMBER@[87; 90) "200"
+              LITERAL_PAT@[87; 90)
+                LITERAL@[87; 90)
+                  INT_NUMBER@[87; 90) "200"
               WHITESPACE@[90; 91)
               DOTDOT@[91; 93)
               WHITESPACE@[93; 94)
-              LITERAL@[94; 97)
-                INT_NUMBER@[94; 97) "301"
+              LITERAL_PAT@[94; 97)
+                LITERAL@[94; 97)
+                  INT_NUMBER@[94; 97) "301"
             FAT_ARROW@[97; 99)
             WHITESPACE@[99; 100)
             TUPLE_EXPR@[100; 102)

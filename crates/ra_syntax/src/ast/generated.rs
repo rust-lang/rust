@@ -1821,6 +1821,38 @@ impl LiteralExpr {
 
 impl LiteralExpr {}
 
+// LiteralPat
+#[derive(Debug, PartialEq, Eq, Hash)]
+#[repr(transparent)]
+pub struct LiteralPat {
+    pub(crate) syntax: SyntaxNode,
+}
+unsafe impl TransparentNewType for LiteralPat {
+    type Repr = rowan::SyntaxNode<RaTypes>;
+}
+
+impl AstNode for LiteralPat {
+    fn cast(syntax: &SyntaxNode) -> Option<&Self> {
+        match syntax.kind() {
+            LITERAL_PAT => Some(LiteralPat::from_repr(syntax.into_repr())),
+            _ => None,
+        }
+    }
+    fn syntax(&self) -> &SyntaxNode { &self.syntax }
+}
+
+impl ToOwned for LiteralPat {
+    type Owned = TreeArc<LiteralPat>;
+    fn to_owned(&self) -> TreeArc<LiteralPat> { TreeArc::cast(self.syntax.to_owned()) }
+}
+
+
+impl LiteralPat {
+    pub fn literal(&self) -> Option<&Literal> {
+        super::child_opt(self)
+    }
+}
+
 // LoopExpr
 #[derive(Debug, PartialEq, Eq, Hash)]
 #[repr(transparent)]
@@ -2594,6 +2626,7 @@ pub enum PatKind<'a> {
     TuplePat(&'a TuplePat),
     SlicePat(&'a SlicePat),
     RangePat(&'a RangePat),
+    LiteralPat(&'a LiteralPat),
 }
 
 impl AstNode for Pat {
@@ -2607,7 +2640,8 @@ impl AstNode for Pat {
             | TUPLE_STRUCT_PAT
             | TUPLE_PAT
             | SLICE_PAT
-            | RANGE_PAT => Some(Pat::from_repr(syntax.into_repr())),
+            | RANGE_PAT
+            | LITERAL_PAT => Some(Pat::from_repr(syntax.into_repr())),
             _ => None,
         }
     }
@@ -2631,6 +2665,7 @@ impl Pat {
             TUPLE_PAT => PatKind::TuplePat(TuplePat::cast(&self.syntax).unwrap()),
             SLICE_PAT => PatKind::SlicePat(SlicePat::cast(&self.syntax).unwrap()),
             RANGE_PAT => PatKind::RangePat(RangePat::cast(&self.syntax).unwrap()),
+            LITERAL_PAT => PatKind::LiteralPat(LiteralPat::cast(&self.syntax).unwrap()),
             _ => unreachable!(),
         }
     }
