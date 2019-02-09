@@ -5,10 +5,10 @@
 // (unlike lang features), which means we need to collect them instead.
 
 use crate::ty::TyCtxt;
+use crate::hir::intravisit::{self, NestedVisitorMap, Visitor};
 use syntax::symbol::Symbol;
 use syntax::ast::{Attribute, MetaItem, MetaItemKind};
 use syntax_pos::Span;
-use crate::hir::intravisit::{self, NestedVisitorMap, Visitor};
 use rustc_data_structures::fx::{FxHashSet, FxHashMap};
 use errors::DiagnosticId;
 

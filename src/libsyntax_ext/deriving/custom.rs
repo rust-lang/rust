@@ -1,7 +1,7 @@
-use errors::FatalError;
 use crate::proc_macro_impl::EXEC_STRATEGY;
 use crate::proc_macro_server;
 
+use errors::FatalError;
 use syntax::ast::{self, ItemKind, Attribute, Mac};
 use syntax::attr::{mark_used, mark_known};
 use syntax::source_map::Span;

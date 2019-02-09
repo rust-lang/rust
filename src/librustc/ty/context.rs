@@ -2,7 +2,6 @@
 
 use crate::dep_graph::DepGraph;
 use crate::dep_graph::{self, DepNode, DepConstructor};
-use errors::DiagnosticBuilder;
 use crate::session::Session;
 use crate::session::config::{BorrowckMode, OutputFilenames};
 use crate::session::config::CrateType;
@@ -43,6 +42,7 @@ use crate::ty::{BoundVar, BindingMode};
 use crate::ty::CanonicalPolyFnSig;
 use crate::util::nodemap::{DefIdMap, DefIdSet, ItemLocalMap};
 use crate::util::nodemap::{FxHashMap, FxHashSet};
+use errors::DiagnosticBuilder;
 use rustc_data_structures::interner::HashInterner;
 use smallvec::SmallVec;
 use rustc_data_structures::stable_hasher::{HashStable, hash_stable_hashmap,
