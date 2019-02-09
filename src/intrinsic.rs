@@ -245,7 +245,13 @@ pub trait EvalContextExt<'a, 'mir, 'tcx: 'a+'mir>: crate::MiriEvalContextExt<'a,
                 this.binop_ignore_overflow(mir::BinOp::Div, a, b, dest)?;
             },
 
-            "likely" | "unlikely" | "forget" => {}
+            "forget" => {}
+
+            "likely" | "unlikely" => {
+                // These just return their argument
+                let b = this.read_immediate(args[0])?;
+                this.write_immediate(*b, dest)?;
+            }
 
             "init" => {
                 // Check fast path: we don't want to force an allocation in case the destination is a simple value,
