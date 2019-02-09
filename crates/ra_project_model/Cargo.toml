@@ -8,9 +8,7 @@ authors = ["Aleksey Kladov <aleksey.kladov@gmail.com>"]
 log = "0.4.5"
 rustc-hash = "1.0"
 
-# TODO get rid of these?
 failure = "0.1.4"
-failure_derive = "0.1.4"
 
 walkdir = "2.2.7"
 

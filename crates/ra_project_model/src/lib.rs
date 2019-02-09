@@ -13,7 +13,7 @@ pub use crate::{
     sysroot::Sysroot,
 };
 
-// TODO use own error enum?
+// TODO use proper error enum
 pub type Result<T> = ::std::result::Result<T, ::failure::Error>;
 
 #[derive(Debug, Clone)]
