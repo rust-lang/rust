@@ -290,7 +290,7 @@ declare_features! (
     // The `repr(i128)` annotation for enums.
     (active, repr128, "1.16.0", Some(35118), None),
 
-    // Allows the use of `#[ffi_returns_twice]` on extern functions.
+    // Allows the use of `#[ffi_returns_twice]` on foreign functions.
     (active, ffi_returns_twice, "1.34.0", Some(58314), None),
 
     // The `unadjusted` ABI; perma-unstable.
