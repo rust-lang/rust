@@ -68,7 +68,8 @@ if (!DOMTokenList.prototype.remove) {
                      "keyword",
                      "existential",
                      "attr",
-                     "derive"];
+                     "derive",
+                     "traitalias"];
 
     var search_input = document.getElementsByClassName("search-input")[0];
 
@@ -1786,6 +1787,7 @@ if (!DOMTokenList.prototype.remove) {
         block("type", "Type Definitions");
         block("foreigntype", "Foreign Types");
         block("keyword", "Keywords");
+        block("traitalias", "Trait Aliases");
     }
 
     window.initSidebarItems = initSidebarItems;
