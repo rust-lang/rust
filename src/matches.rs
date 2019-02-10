@@ -67,13 +67,13 @@ impl<'a> Spanned for ArmWrapper<'a> {
 }
 
 impl<'a> Rewrite for ArmWrapper<'a> {
-    fn rewrite(&self, context: &RewriteContext, shape: Shape) -> Option<String> {
+    fn rewrite(&self, context: &RewriteContext<'_>, shape: Shape) -> Option<String> {
         rewrite_match_arm(context, self.arm, shape, self.is_last)
     }
 }
 
 pub fn rewrite_match(
-    context: &RewriteContext,
+    context: &RewriteContext<'_>,
     cond: &ast::Expr,
     arms: &[ast::Arm],
     shape: Shape,
@@ -168,7 +168,7 @@ fn arm_comma(config: &Config, body: &ast::Expr, is_last: bool) -> &'static str {
 
 /// Collect a byte position of the beginning `|` for each arm, if available.
 fn collect_beginning_verts(
-    context: &RewriteContext,
+    context: &RewriteContext<'_>,
     arms: &[ast::Arm],
     span: Span,
 ) -> Vec<Option<BytePos>> {
@@ -184,7 +184,7 @@ fn collect_beginning_verts(
 }
 
 fn rewrite_match_arms(
-    context: &RewriteContext,
+    context: &RewriteContext<'_>,
     arms: &[ast::Arm],
     shape: Shape,
     span: Span,
@@ -224,7 +224,7 @@ fn rewrite_match_arms(
 }
 
 fn rewrite_match_arm(
-    context: &RewriteContext,
+    context: &RewriteContext<'_>,
     arm: &ast::Arm,
     shape: Shape,
     is_last: bool,
@@ -286,7 +286,7 @@ fn rewrite_match_arm(
 }
 
 fn block_can_be_flattened<'a>(
-    context: &RewriteContext,
+    context: &RewriteContext<'_>,
     expr: &'a ast::Expr,
 ) -> Option<&'a ast::Block> {
     match expr.node {
@@ -304,7 +304,7 @@ fn block_can_be_flattened<'a>(
 // @extend: true if the arm body can be put next to `=>`
 // @body: flattened body, if the body is block with a single expression
 fn flatten_arm_body<'a>(
-    context: &'a RewriteContext,
+    context: &'a RewriteContext<'_>,
     body: &'a ast::Expr,
     opt_shape: Option<Shape>,
 ) -> (bool, &'a ast::Expr) {
@@ -334,7 +334,7 @@ fn flatten_arm_body<'a>(
 }
 
 fn rewrite_match_body(
-    context: &RewriteContext,
+    context: &RewriteContext<'_>,
     body: &ptr::P<ast::Expr>,
     pats_str: &str,
     shape: Shape,
@@ -499,7 +499,7 @@ fn rewrite_match_body(
 }
 
 impl Rewrite for ast::Guard {
-    fn rewrite(&self, context: &RewriteContext, shape: Shape) -> Option<String> {
+    fn rewrite(&self, context: &RewriteContext<'_>, shape: Shape) -> Option<String> {
         match self {
             ast::Guard::If(ref expr) => expr.rewrite(context, shape),
         }
@@ -508,7 +508,7 @@ impl Rewrite for ast::Guard {
 
 // The `if ...` guard on a match arm.
 fn rewrite_guard(
-    context: &RewriteContext,
+    context: &RewriteContext<'_>,
     guard: &Option<ast::Guard>,
     shape: Shape,
     // The amount of space used up on this line for the pattern in

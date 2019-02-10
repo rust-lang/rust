@@ -46,7 +46,7 @@ impl Mismatch {
 // This struct handles writing output to stdout and abstracts away the logic
 // of printing in color, if it's possible in the executing environment.
 pub struct OutputWriter {
-    terminal: Option<Box<term::Terminal<Output = io::Stdout>>>,
+    terminal: Option<Box<dyn term::Terminal<Output = io::Stdout>>>,
 }
 
 impl OutputWriter {

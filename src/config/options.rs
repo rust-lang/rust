@@ -64,7 +64,7 @@ macro_rules! impl_enum_serialize_and_deserialize {
                 impl<'de, T> Visitor<'de> for StringOnly<T>
                         where T: ::serde::Deserializer<'de> {
                     type Value = String;
-                    fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
+                    fn expecting(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
                         formatter.write_str("string")
                     }
                     fn visit_str<E>(self, value: &str) -> Result<String, E> {
@@ -120,7 +120,7 @@ macro_rules! configuration_option_enum {
         }
 
         impl ::std::fmt::Debug for $e {
-            fn fmt(&self, f: &mut ::std::fmt::Formatter) -> ::std::fmt::Result {
+            fn fmt(&self, f: &mut ::std::fmt::Formatter<'_>) -> ::std::fmt::Result {
                 f.write_str(match self {
                     $(
                         $e::$name => configuration_option_enum_stringify!($name $(: $value)*),

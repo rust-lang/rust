@@ -208,7 +208,7 @@ fn get_toml_path(dir: &Path) -> Result<Option<PathBuf>, Error> {
     Ok(None)
 }
 
-fn config_path(options: &CliOptions) -> Result<Option<PathBuf>, Error> {
+fn config_path(options: &dyn CliOptions) -> Result<Option<PathBuf>, Error> {
     let config_path_not_found = |path: &str| -> Result<Option<PathBuf>, Error> {
         Err(Error::new(
             ErrorKind::NotFound,

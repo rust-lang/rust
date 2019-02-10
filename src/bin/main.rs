@@ -8,11 +8,11 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-extern crate env_logger;
+use env_logger;
 #[macro_use]
 extern crate failure;
-extern crate getopts;
-extern crate rustfmt_nightly as rustfmt;
+
+use rustfmt_nightly as rustfmt;
 
 use std::env;
 use std::fs::File;
@@ -296,7 +296,7 @@ fn format(
     Ok(exit_code)
 }
 
-fn format_and_emit_report<T: Write>(session: &mut Session<T>, input: Input) {
+fn format_and_emit_report<T: Write>(session: &mut Session<'_, T>, input: Input) {
     match session.format(input) {
         Ok(report) => {
             if report.has_warnings() {

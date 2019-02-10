@@ -8,31 +8,17 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+#![deny(rust_2018_idioms)]
+
 #[macro_use]
 extern crate derive_new;
-extern crate atty;
-extern crate bytecount;
-extern crate diff;
-extern crate dirs;
-extern crate failure;
-extern crate itertools;
 #[cfg(test)]
 #[macro_use]
 extern crate lazy_static;
 #[macro_use]
 extern crate log;
-extern crate regex;
-extern crate rustc_target;
-extern crate serde;
 #[macro_use]
 extern crate serde_derive;
-extern crate serde_json;
-extern crate syntax;
-extern crate syntax_pos;
-extern crate toml;
-extern crate unicode_categories;
-extern crate unicode_segmentation;
-extern crate unicode_width;
 
 use std::cell::RefCell;
 use std::collections::HashMap;
@@ -264,7 +250,7 @@ impl FormatReport {
     /// fancy output.
     pub fn fancy_print(
         &self,
-        mut t: Box<term::Terminal<Output = io::Stderr>>,
+        mut t: Box<dyn term::Terminal<Output = io::Stderr>>,
     ) -> Result<(), term::Error> {
         for (file, errors) in &self.internal.borrow().0 {
             for error in errors {
@@ -335,7 +321,7 @@ impl FormatReport {
 
 impl fmt::Display for FormatReport {
     // Prints all the formatting errors.
-    fn fmt(&self, fmt: &mut fmt::Formatter) -> Result<(), fmt::Error> {
+    fn fmt(&self, fmt: &mut fmt::Formatter<'_>) -> Result<(), fmt::Error> {
         for (file, errors) in &self.internal.borrow().0 {
             for error in errors {
                 let prefix_space_len = error.line.to_string().len();
@@ -509,7 +495,7 @@ fn format_code_block(code_snippet: &str, config: &Config) -> Option<FormattedSni
 }
 
 /// A session is a run of rustfmt across a single or multiple inputs.
-pub struct Session<'b, T: Write + 'b> {
+pub struct Session<'b, T: Write> {
     pub config: Config,
     pub out: Option<&'b mut T>,
     pub(crate) errors: ReportedErrors,

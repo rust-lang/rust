@@ -270,7 +270,7 @@ where
 }
 
 // Format a list of commented items into a string.
-pub fn write_list<I, T>(items: I, formatting: &ListFormatting) -> Option<String>
+pub fn write_list<I, T>(items: I, formatting: &ListFormatting<'_>) -> Option<String>
 where
     I: IntoIterator<Item = T> + Clone,
     T: AsRef<ListItem>,
@@ -771,7 +771,7 @@ where
 #[allow(clippy::too_many_arguments)]
 // Creates an iterator over a list's items with associated comments.
 pub fn itemize_list<'a, T, I, F1, F2, F3>(
-    snippet_provider: &'a SnippetProvider,
+    snippet_provider: &'a SnippetProvider<'_>,
     inner: I,
     terminator: &'a str,
     separator: &'a str,
@@ -838,7 +838,7 @@ fn comment_len(comment: Option<&str>) -> usize {
 // Compute horizontal and vertical shapes for a struct-lit-like thing.
 pub fn struct_lit_shape(
     shape: Shape,
-    context: &RewriteContext,
+    context: &RewriteContext<'_>,
     prefix_width: usize,
     suffix_width: usize,
 ) -> Option<(Option<Shape>, Shape)> {
@@ -867,7 +867,7 @@ pub fn struct_lit_shape(
 // Compute the tactic for the internals of a struct-lit-like thing.
 pub fn struct_lit_tactic(
     h_shape: Option<Shape>,
-    context: &RewriteContext,
+    context: &RewriteContext<'_>,
     items: &[ListItem],
 ) -> DefinitiveListTactic {
     if let Some(h_shape) = h_shape {
@@ -900,7 +900,7 @@ pub fn shape_for_tactic(
 pub fn struct_lit_formatting<'a>(
     shape: Shape,
     tactic: DefinitiveListTactic,
-    context: &'a RewriteContext,
+    context: &'a RewriteContext<'_>,
     force_no_trailing_comma: bool,
 ) -> ListFormatting<'a> {
     let ends_with_newline = context.config.indent_style() != IndentStyle::Visual

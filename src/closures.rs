@@ -39,7 +39,7 @@ pub fn rewrite_closure(
     fn_decl: &ast::FnDecl,
     body: &ast::Expr,
     span: Span,
-    context: &RewriteContext,
+    context: &RewriteContext<'_>,
     shape: Shape,
 ) -> Option<String> {
     debug!("rewrite_closure {:?}", body);
@@ -81,7 +81,7 @@ pub fn rewrite_closure(
 fn try_rewrite_without_block(
     expr: &ast::Expr,
     prefix: &str,
-    context: &RewriteContext,
+    context: &RewriteContext<'_>,
     shape: Shape,
     body_shape: Shape,
 ) -> Option<String> {
@@ -97,7 +97,7 @@ fn try_rewrite_without_block(
 fn get_inner_expr<'a>(
     expr: &'a ast::Expr,
     prefix: &str,
-    context: &RewriteContext,
+    context: &RewriteContext<'_>,
 ) -> &'a ast::Expr {
     if let ast::ExprKind::Block(ref block, _) = expr.node {
         if !needs_block(block, prefix, context) {
@@ -112,7 +112,7 @@ fn get_inner_expr<'a>(
 }
 
 // Figure out if a block is necessary.
-fn needs_block(block: &ast::Block, prefix: &str, context: &RewriteContext) -> bool {
+fn needs_block(block: &ast::Block, prefix: &str, context: &RewriteContext<'_>) -> bool {
     is_unsafe_block(block)
         || block.stmts.len() > 1
         || block_contains_comment(block, context.source_map)
@@ -139,7 +139,7 @@ fn veto_block(e: &ast::Expr) -> bool {
 fn rewrite_closure_with_block(
     body: &ast::Expr,
     prefix: &str,
-    context: &RewriteContext,
+    context: &RewriteContext<'_>,
     shape: Shape,
 ) -> Option<String> {
     let left_most = left_most_sub_expr(body);
@@ -167,7 +167,7 @@ fn rewrite_closure_with_block(
 fn rewrite_closure_expr(
     expr: &ast::Expr,
     prefix: &str,
-    context: &RewriteContext,
+    context: &RewriteContext<'_>,
     shape: Shape,
 ) -> Option<String> {
     fn allow_multi_line(expr: &ast::Expr) -> bool {
@@ -207,7 +207,7 @@ fn rewrite_closure_expr(
 fn rewrite_closure_block(
     block: &ast::Block,
     prefix: &str,
-    context: &RewriteContext,
+    context: &RewriteContext<'_>,
     shape: Shape,
 ) -> Option<String> {
     Some(format!("{} {}", prefix, block.rewrite(context, shape)?))
@@ -221,7 +221,7 @@ fn rewrite_closure_fn_decl(
     fn_decl: &ast::FnDecl,
     body: &ast::Expr,
     span: Span,
-    context: &RewriteContext,
+    context: &RewriteContext<'_>,
     shape: Shape,
 ) -> Option<(String, usize)> {
     let is_async = if asyncness.is_async() { "async " } else { "" };
@@ -296,7 +296,7 @@ fn rewrite_closure_fn_decl(
 // Rewriting closure which is placed at the end of the function call's arg.
 // Returns `None` if the reformatted closure 'looks bad'.
 pub fn rewrite_last_closure(
-    context: &RewriteContext,
+    context: &RewriteContext<'_>,
     expr: &ast::Expr,
     shape: Shape,
 ) -> Option<String> {
@@ -360,7 +360,7 @@ pub fn rewrite_last_closure(
 }
 
 /// Returns true if the given vector of arguments has more than one `ast::ExprKind::Closure`.
-pub fn args_have_many_closure(args: &[OverflowableItem]) -> bool {
+pub fn args_have_many_closure(args: &[OverflowableItem<'_>]) -> bool {
     args.iter()
         .filter_map(|arg| arg.to_expr())
         .filter(|expr| match expr.node {
@@ -371,7 +371,7 @@ pub fn args_have_many_closure(args: &[OverflowableItem]) -> bool {
         > 1
 }
 
-fn is_block_closure_forced(context: &RewriteContext, expr: &ast::Expr) -> bool {
+fn is_block_closure_forced(context: &RewriteContext<'_>, expr: &ast::Expr) -> bool {
     // If we are inside macro, we do not want to add or remove block from closure body.
     if context.inside_macro() {
         false

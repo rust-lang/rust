@@ -54,7 +54,7 @@ fn type_annotation_separator(config: &Config) -> &str {
 // Statements of the form
 // let pat: ty = init;
 impl Rewrite for ast::Local {
-    fn rewrite(&self, context: &RewriteContext, shape: Shape) -> Option<String> {
+    fn rewrite(&self, context: &RewriteContext<'_>, shape: Shape) -> Option<String> {
         debug!(
             "Local::rewrite {:?} {} {:?}",
             self, shape.width, shape.indent
@@ -214,7 +214,7 @@ impl<'a> FnSig<'a> {
     }
 
     pub fn from_fn_kind(
-        fn_kind: &'a visit::FnKind,
+        fn_kind: &'a visit::FnKind<'_>,
         generics: &'a ast::Generics,
         decl: &'a ast::FnDecl,
         defaultness: ast::Defaultness,
@@ -242,7 +242,7 @@ impl<'a> FnSig<'a> {
         }
     }
 
-    fn to_str(&self, context: &RewriteContext) -> String {
+    fn to_str(&self, context: &RewriteContext<'_>) -> String {
         let mut result = String::with_capacity(128);
         // Vis defaultness constness unsafety abi.
         result.push_str(&*format_visibility(context, &self.visibility));
@@ -260,7 +260,7 @@ impl<'a> FnSig<'a> {
 }
 
 impl<'a> FmtVisitor<'a> {
-    fn format_item(&mut self, item: &Item) {
+    fn format_item(&mut self, item: &Item<'_>) {
         self.buffer.push_str(&item.abi);
 
         let snippet = self.snippet(item.span);
@@ -292,7 +292,7 @@ impl<'a> FmtVisitor<'a> {
         self.last_pos = item.span.hi();
     }
 
-    fn format_body_element(&mut self, element: &BodyElement) {
+    fn format_body_element(&mut self, element: &BodyElement<'_>) {
         match *element {
             BodyElement::ForeignItem(item) => self.format_foreign_item(item),
         }
@@ -313,7 +313,7 @@ impl<'a> FmtVisitor<'a> {
         &mut self,
         indent: Indent,
         ident: ast::Ident,
-        fn_sig: &FnSig,
+        fn_sig: &FnSig<'_>,
         span: Span,
         block: &ast::Block,
         inner_attrs: Option<&[ast::Attribute]>,
@@ -427,12 +427,12 @@ impl<'a> FmtVisitor<'a> {
         }
     }
 
-    pub fn visit_static(&mut self, static_parts: &StaticParts) {
+    pub fn visit_static(&mut self, static_parts: &StaticParts<'_>) {
         let rewrite = rewrite_static(&self.get_context(), static_parts, self.block_indent);
         self.push_rewrite(static_parts.span, rewrite);
     }
 
-    pub fn visit_struct(&mut self, struct_parts: &StructParts) {
+    pub fn visit_struct(&mut self, struct_parts: &StructParts<'_>) {
         let is_tuple = struct_parts.def.is_tuple();
         let rewrite = format_struct(&self.get_context(), struct_parts, self.block_indent, None)
             .map(|s| if is_tuple { s + ";" } else { s });
@@ -672,7 +672,7 @@ impl<'a> FmtVisitor<'a> {
 }
 
 pub fn format_impl(
-    context: &RewriteContext,
+    context: &RewriteContext<'_>,
     item: &ast::Item,
     offset: Indent,
     where_span_end: Option<BytePos>,
@@ -800,7 +800,7 @@ pub fn format_impl(
 }
 
 fn is_impl_single_line(
-    context: &RewriteContext,
+    context: &RewriteContext<'_>,
     items: &[ast::ImplItem],
     result: &str,
     where_clause_str: &str,
@@ -819,7 +819,7 @@ fn is_impl_single_line(
 }
 
 fn format_impl_ref_and_type(
-    context: &RewriteContext,
+    context: &RewriteContext<'_>,
     item: &ast::Item,
     offset: Indent,
 ) -> Option<String> {
@@ -913,7 +913,7 @@ fn format_impl_ref_and_type(
 }
 
 fn rewrite_trait_ref(
-    context: &RewriteContext,
+    context: &RewriteContext<'_>,
     trait_ref: &ast::TraitRef,
     offset: Indent,
     polarity_str: &str,
@@ -949,7 +949,7 @@ pub struct StructParts<'a> {
 }
 
 impl<'a> StructParts<'a> {
-    fn format_header(&self, context: &RewriteContext) -> String {
+    fn format_header(&self, context: &RewriteContext<'_>) -> String {
         format_header(context, self.prefix, self.ident, self.vis)
     }
 
@@ -982,8 +982,8 @@ impl<'a> StructParts<'a> {
 }
 
 fn format_struct(
-    context: &RewriteContext,
-    struct_parts: &StructParts,
+    context: &RewriteContext<'_>,
+    struct_parts: &StructParts<'_>,
     offset: Indent,
     one_line_width: Option<usize>,
 ) -> Option<String> {
@@ -998,7 +998,11 @@ fn format_struct(
     }
 }
 
-pub fn format_trait(context: &RewriteContext, item: &ast::Item, offset: Indent) -> Option<String> {
+pub fn format_trait(
+    context: &RewriteContext<'_>,
+    item: &ast::Item,
+    offset: Indent,
+) -> Option<String> {
     if let ast::ItemKind::Trait(
         is_auto,
         unsafety,
@@ -1157,7 +1161,7 @@ pub fn format_trait(context: &RewriteContext, item: &ast::Item, offset: Indent) 
 }
 
 pub fn format_trait_alias(
-    context: &RewriteContext,
+    context: &RewriteContext<'_>,
     ident: ast::Ident,
     generics: &ast::Generics,
     generic_bounds: &ast::GenericBounds,
@@ -1172,7 +1176,11 @@ pub fn format_trait_alias(
     rewrite_assign_rhs(context, lhs, generic_bounds, shape.sub_width(1)?).map(|s| s + ";")
 }
 
-fn format_unit_struct(context: &RewriteContext, p: &StructParts, offset: Indent) -> Option<String> {
+fn format_unit_struct(
+    context: &RewriteContext<'_>,
+    p: &StructParts<'_>,
+    offset: Indent,
+) -> Option<String> {
     let header_str = format_header(context, p.prefix, p.ident, p.vis);
     let generics_str = if let Some(generics) = p.generics {
         let hi = if generics.where_clause.predicates.is_empty() {
@@ -1197,8 +1205,8 @@ fn format_unit_struct(context: &RewriteContext, p: &StructParts, offset: Indent)
 }
 
 pub fn format_struct_struct(
-    context: &RewriteContext,
-    struct_parts: &StructParts,
+    context: &RewriteContext<'_>,
+    struct_parts: &StructParts<'_>,
     fields: &[ast::StructField],
     offset: Indent,
     one_line_width: Option<usize>,
@@ -1301,7 +1309,7 @@ fn get_bytepos_after_visibility(vis: &ast::Visibility, default_span: Span) -> By
 // Format tuple or struct without any fields. We need to make sure that the comments
 // inside the delimiters are preserved.
 fn format_empty_struct_or_tuple(
-    context: &RewriteContext,
+    context: &RewriteContext<'_>,
     span: Span,
     offset: Indent,
     result: &mut String,
@@ -1334,8 +1342,8 @@ fn format_empty_struct_or_tuple(
 }
 
 fn format_tuple_struct(
-    context: &RewriteContext,
-    struct_parts: &StructParts,
+    context: &RewriteContext<'_>,
+    struct_parts: &StructParts<'_>,
     fields: &[ast::StructField],
     offset: Indent,
 ) -> Option<String> {
@@ -1429,7 +1437,7 @@ fn format_tuple_struct(
 }
 
 fn rewrite_type_prefix(
-    context: &RewriteContext,
+    context: &RewriteContext<'_>,
     indent: Indent,
     prefix: &str,
     ident: ast::Ident,
@@ -1470,7 +1478,7 @@ fn rewrite_type_prefix(
 }
 
 fn rewrite_type_item<R: Rewrite>(
-    context: &RewriteContext,
+    context: &RewriteContext<'_>,
     indent: Indent,
     prefix: &str,
     suffix: &str,
@@ -1501,7 +1509,7 @@ fn rewrite_type_item<R: Rewrite>(
 }
 
 pub fn rewrite_type_alias(
-    context: &RewriteContext,
+    context: &RewriteContext<'_>,
     indent: Indent,
     ident: ast::Ident,
     ty: &ast::Ty,
@@ -1512,7 +1520,7 @@ pub fn rewrite_type_alias(
 }
 
 pub fn rewrite_existential_type(
-    context: &RewriteContext,
+    context: &RewriteContext<'_>,
     indent: Indent,
     ident: ast::Ident,
     generic_bounds: &ast::GenericBounds,
@@ -1539,7 +1547,7 @@ fn type_annotation_spacing(config: &Config) -> (&str, &str) {
 }
 
 pub fn rewrite_struct_field_prefix(
-    context: &RewriteContext,
+    context: &RewriteContext<'_>,
     field: &ast::StructField,
 ) -> Option<String> {
     let vis = format_visibility(context, &field.vis);
@@ -1556,13 +1564,13 @@ pub fn rewrite_struct_field_prefix(
 }
 
 impl Rewrite for ast::StructField {
-    fn rewrite(&self, context: &RewriteContext, shape: Shape) -> Option<String> {
+    fn rewrite(&self, context: &RewriteContext<'_>, shape: Shape) -> Option<String> {
         rewrite_struct_field(context, self, shape, 0)
     }
 }
 
 pub fn rewrite_struct_field(
-    context: &RewriteContext,
+    context: &RewriteContext<'_>,
     field: &ast::StructField,
     shape: Shape,
     lhs_max_width: usize,
@@ -1693,8 +1701,8 @@ impl<'a> StaticParts<'a> {
 }
 
 fn rewrite_static(
-    context: &RewriteContext,
-    static_parts: &StaticParts,
+    context: &RewriteContext<'_>,
+    static_parts: &StaticParts<'_>,
     offset: Indent,
 ) -> Option<String> {
     let colon = colon_spaces(
@@ -1752,7 +1760,7 @@ pub fn rewrite_associated_type(
     ty_opt: Option<&ptr::P<ast::Ty>>,
     generics: &ast::Generics,
     generic_bounds_opt: Option<&ast::GenericBounds>,
-    context: &RewriteContext,
+    context: &RewriteContext<'_>,
     indent: Indent,
 ) -> Option<String> {
     let ident_str = rewrite_ident(context, ident);
@@ -1784,7 +1792,7 @@ pub fn rewrite_associated_type(
 }
 
 pub fn rewrite_existential_impl_type(
-    context: &RewriteContext,
+    context: &RewriteContext<'_>,
     ident: ast::Ident,
     generics: &ast::Generics,
     generic_bounds: &ast::GenericBounds,
@@ -1799,7 +1807,7 @@ pub fn rewrite_associated_impl_type(
     defaultness: ast::Defaultness,
     ty_opt: Option<&ptr::P<ast::Ty>>,
     generics: &ast::Generics,
-    context: &RewriteContext,
+    context: &RewriteContext<'_>,
     indent: Indent,
 ) -> Option<String> {
     let result = rewrite_associated_type(ident, ty_opt, generics, None, context, indent)?;
@@ -1811,7 +1819,7 @@ pub fn rewrite_associated_impl_type(
 }
 
 impl Rewrite for ast::FunctionRetTy {
-    fn rewrite(&self, context: &RewriteContext, shape: Shape) -> Option<String> {
+    fn rewrite(&self, context: &RewriteContext<'_>, shape: Shape) -> Option<String> {
         match *self {
             ast::FunctionRetTy::Default(_) => Some(String::new()),
             ast::FunctionRetTy::Ty(ref ty) => {
@@ -1831,7 +1839,7 @@ fn is_empty_infer(ty: &ast::Ty, pat_span: Span) -> bool {
 }
 
 impl Rewrite for ast::Arg {
-    fn rewrite(&self, context: &RewriteContext, shape: Shape) -> Option<String> {
+    fn rewrite(&self, context: &RewriteContext<'_>, shape: Shape) -> Option<String> {
         if is_named_arg(self) {
             let mut result = self
                 .pat
@@ -1863,7 +1871,7 @@ impl Rewrite for ast::Arg {
 fn rewrite_explicit_self(
     explicit_self: &ast::ExplicitSelf,
     args: &[ast::Arg],
-    context: &RewriteContext,
+    context: &RewriteContext<'_>,
 ) -> Option<String> {
     match explicit_self.node {
         ast::SelfKind::Region(lt, m) => {
@@ -1922,7 +1930,7 @@ pub fn span_lo_for_arg(arg: &ast::Arg) -> BytePos {
     }
 }
 
-pub fn span_hi_for_arg(context: &RewriteContext, arg: &ast::Arg) -> BytePos {
+pub fn span_hi_for_arg(context: &RewriteContext<'_>, arg: &ast::Arg) -> BytePos {
     match arg.ty.node {
         ast::TyKind::Infer if context.snippet(arg.ty.span) == "_" => arg.ty.span.hi(),
         ast::TyKind::Infer if is_named_arg(arg) => arg.pat.span.hi(),
@@ -1940,10 +1948,10 @@ pub fn is_named_arg(arg: &ast::Arg) -> bool {
 
 // Return type is (result, force_new_line_for_brace)
 fn rewrite_fn_base(
-    context: &RewriteContext,
+    context: &RewriteContext<'_>,
     indent: Indent,
     ident: ast::Ident,
-    fn_sig: &FnSig,
+    fn_sig: &FnSig<'_>,
     span: Span,
     newline_brace: bool,
     has_body: bool,
@@ -2269,7 +2277,7 @@ impl WhereClauseOption {
 }
 
 fn rewrite_args(
-    context: &RewriteContext,
+    context: &RewriteContext<'_>,
     args: &[ast::Arg],
     explicit_self: Option<&ast::ExplicitSelf>,
     one_line_budget: usize,
@@ -2427,7 +2435,7 @@ fn arg_has_pattern(arg: &ast::Arg) -> bool {
 }
 
 fn compute_budgets_for_args(
-    context: &RewriteContext,
+    context: &RewriteContext<'_>,
     result: &str,
     indent: Indent,
     ret_str_len: usize,
@@ -2500,7 +2508,7 @@ fn newline_for_brace(config: &Config, where_clause: &ast::WhereClause) -> bool {
 }
 
 fn rewrite_generics(
-    context: &RewriteContext,
+    context: &RewriteContext<'_>,
     ident: &str,
     generics: &ast::Generics,
     shape: Shape,
@@ -2531,7 +2539,7 @@ pub fn generics_shape_from_config(config: &Config, shape: Shape, offset: usize) 
 }
 
 fn rewrite_where_clause_rfc_style(
-    context: &RewriteContext,
+    context: &RewriteContext<'_>,
     where_clause: &ast::WhereClause,
     shape: Shape,
     terminator: &str,
@@ -2631,7 +2639,7 @@ fn rewrite_where_clause_rfc_style(
 }
 
 fn rewrite_where_clause(
-    context: &RewriteContext,
+    context: &RewriteContext<'_>,
     where_clause: &ast::WhereClause,
     brace_style: BraceStyle,
     shape: Shape,
@@ -2743,7 +2751,7 @@ fn missing_span_before_after_where(
 }
 
 fn rewrite_comments_before_after_where(
-    context: &RewriteContext,
+    context: &RewriteContext<'_>,
     span_before_where: Span,
     span_after_where: Span,
     shape: Shape,
@@ -2758,7 +2766,7 @@ fn rewrite_comments_before_after_where(
 }
 
 fn format_header(
-    context: &RewriteContext,
+    context: &RewriteContext<'_>,
     item_name: &str,
     ident: ast::Ident,
     vis: &ast::Visibility,
@@ -2779,7 +2787,7 @@ enum BracePos {
 }
 
 fn format_generics(
-    context: &RewriteContext,
+    context: &RewriteContext<'_>,
     generics: &ast::Generics,
     brace_style: BraceStyle,
     brace_pos: BracePos,
@@ -2853,7 +2861,7 @@ fn format_generics(
 }
 
 impl Rewrite for ast::ForeignItem {
-    fn rewrite(&self, context: &RewriteContext, shape: Shape) -> Option<String> {
+    fn rewrite(&self, context: &RewriteContext<'_>, shape: Shape) -> Option<String> {
         let attrs_str = self.attrs.rewrite(context, shape)?;
         // Drop semicolon or it will be interpreted as comment.
         // FIXME: this may be a faulty span from libsyntax.
@@ -2914,7 +2922,7 @@ impl Rewrite for ast::ForeignItem {
 }
 
 /// Rewrite an inline mod.
-pub fn rewrite_mod(context: &RewriteContext, item: &ast::Item) -> String {
+pub fn rewrite_mod(context: &RewriteContext<'_>, item: &ast::Item) -> String {
     let mut result = String::with_capacity(32);
     result.push_str(&*format_visibility(context, &item.vis));
     result.push_str("mod ");
@@ -2924,7 +2932,7 @@ pub fn rewrite_mod(context: &RewriteContext, item: &ast::Item) -> String {
 }
 
 /// Rewrite `extern crate foo;` WITHOUT attributes.
-pub fn rewrite_extern_crate(context: &RewriteContext, item: &ast::Item) -> Option<String> {
+pub fn rewrite_extern_crate(context: &RewriteContext<'_>, item: &ast::Item) -> Option<String> {
     assert!(is_extern_crate(item));
     let new_str = context.snippet(item.span);
     Some(if contains_comment(new_str) {

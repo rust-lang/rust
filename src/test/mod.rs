@@ -785,7 +785,7 @@ impl ConfigCodeBlock {
         true
     }
 
-    fn has_parsing_errors<T: Write>(&self, session: &Session<T>) -> bool {
+    fn has_parsing_errors<T: Write>(&self, session: &Session<'_, T>) -> bool {
         if session.has_parsing_errors() {
             write_message(&format!(
                 "\u{261d}\u{1f3fd} Cannot format {}:{}",

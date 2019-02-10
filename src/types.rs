@@ -40,7 +40,7 @@ pub enum PathContext {
 
 // Does not wrap on simple segments.
 pub fn rewrite_path(
-    context: &RewriteContext,
+    context: &RewriteContext<'_>,
     path_context: PathContext,
     qself: Option<&ast::QSelf>,
     path: &ast::Path,
@@ -103,7 +103,7 @@ fn rewrite_path_segments<'a, I>(
     iter: I,
     mut span_lo: BytePos,
     span_hi: BytePos,
-    context: &RewriteContext,
+    context: &RewriteContext<'_>,
     shape: Shape,
 ) -> Option<String>
 where
@@ -148,7 +148,7 @@ pub enum SegmentParam<'a> {
 }
 
 impl<'a> SegmentParam<'a> {
-    fn from_generic_arg(arg: &ast::GenericArg) -> SegmentParam {
+    fn from_generic_arg(arg: &ast::GenericArg) -> SegmentParam<'_> {
         match arg {
             ast::GenericArg::Lifetime(ref lt) => SegmentParam::LifeTime(lt),
             ast::GenericArg::Type(ref ty) => SegmentParam::Type(ty),
@@ -167,7 +167,7 @@ impl<'a> Spanned for SegmentParam<'a> {
 }
 
 impl<'a> Rewrite for SegmentParam<'a> {
-    fn rewrite(&self, context: &RewriteContext, shape: Shape) -> Option<String> {
+    fn rewrite(&self, context: &RewriteContext<'_>, shape: Shape) -> Option<String> {
         match *self {
             SegmentParam::LifeTime(lt) => lt.rewrite(context, shape),
             SegmentParam::Type(ty) => ty.rewrite(context, shape),
@@ -204,7 +204,7 @@ fn rewrite_segment(
     segment: &ast::PathSegment,
     span_lo: &mut BytePos,
     span_hi: BytePos,
-    context: &RewriteContext,
+    context: &RewriteContext<'_>,
     shape: Shape,
 ) -> Option<String> {
     let mut result = String::with_capacity(128);
@@ -285,7 +285,7 @@ fn format_function_type<'a, I>(
     output: &FunctionRetTy,
     variadic: bool,
     span: Span,
-    context: &RewriteContext,
+    context: &RewriteContext<'_>,
     shape: Shape,
 ) -> Option<String>
 where
@@ -410,7 +410,7 @@ where
     }
 }
 
-fn type_bound_colon(context: &RewriteContext) -> &'static str {
+fn type_bound_colon(context: &RewriteContext<'_>) -> &'static str {
     colon_spaces(
         context.config.space_before_colon(),
         context.config.space_after_colon(),
@@ -418,7 +418,7 @@ fn type_bound_colon(context: &RewriteContext) -> &'static str {
 }
 
 impl Rewrite for ast::WherePredicate {
-    fn rewrite(&self, context: &RewriteContext, shape: Shape) -> Option<String> {
+    fn rewrite(&self, context: &RewriteContext<'_>, shape: Shape) -> Option<String> {
         // FIXME: dead spans?
         let result = match *self {
             ast::WherePredicate::BoundPredicate(ast::WhereBoundPredicate {
@@ -459,7 +459,7 @@ impl Rewrite for ast::WherePredicate {
 }
 
 impl Rewrite for ast::GenericArg {
-    fn rewrite(&self, context: &RewriteContext, shape: Shape) -> Option<String> {
+    fn rewrite(&self, context: &RewriteContext<'_>, shape: Shape) -> Option<String> {
         match *self {
             ast::GenericArg::Lifetime(ref lt) => lt.rewrite(context, shape),
             ast::GenericArg::Type(ref ty) => ty.rewrite(context, shape),
@@ -470,7 +470,7 @@ impl Rewrite for ast::GenericArg {
 fn rewrite_bounded_lifetime(
     lt: &ast::Lifetime,
     bounds: &[ast::GenericBound],
-    context: &RewriteContext,
+    context: &RewriteContext<'_>,
     shape: Shape,
 ) -> Option<String> {
     let result = lt.rewrite(context, shape)?;
@@ -491,13 +491,13 @@ fn rewrite_bounded_lifetime(
 }
 
 impl Rewrite for ast::Lifetime {
-    fn rewrite(&self, context: &RewriteContext, _: Shape) -> Option<String> {
+    fn rewrite(&self, context: &RewriteContext<'_>, _: Shape) -> Option<String> {
         Some(rewrite_ident(context, self.ident).to_owned())
     }
 }
 
 impl Rewrite for ast::GenericBound {
-    fn rewrite(&self, context: &RewriteContext, shape: Shape) -> Option<String> {
+    fn rewrite(&self, context: &RewriteContext<'_>, shape: Shape) -> Option<String> {
         match *self {
             ast::GenericBound::Trait(ref poly_trait_ref, trait_bound_modifier) => {
                 let snippet = context.snippet(self.span());
@@ -516,7 +516,7 @@ impl Rewrite for ast::GenericBound {
 }
 
 impl Rewrite for ast::GenericBounds {
-    fn rewrite(&self, context: &RewriteContext, shape: Shape) -> Option<String> {
+    fn rewrite(&self, context: &RewriteContext<'_>, shape: Shape) -> Option<String> {
         if self.is_empty() {
             return Some(String::new());
         }
@@ -526,7 +526,7 @@ impl Rewrite for ast::GenericBounds {
 }
 
 impl Rewrite for ast::GenericParam {
-    fn rewrite(&self, context: &RewriteContext, shape: Shape) -> Option<String> {
+    fn rewrite(&self, context: &RewriteContext<'_>, shape: Shape) -> Option<String> {
         let mut result = String::with_capacity(128);
         // FIXME: If there are more than one attributes, this will force multiline.
         match self.attrs.rewrite(context, shape) {
@@ -558,7 +558,7 @@ impl Rewrite for ast::GenericParam {
 }
 
 impl Rewrite for ast::PolyTraitRef {
-    fn rewrite(&self, context: &RewriteContext, shape: Shape) -> Option<String> {
+    fn rewrite(&self, context: &RewriteContext<'_>, shape: Shape) -> Option<String> {
         if let Some(lifetime_str) =
             rewrite_lifetime_param(context, shape, &self.bound_generic_params)
         {
@@ -576,13 +576,13 @@ impl Rewrite for ast::PolyTraitRef {
 }
 
 impl Rewrite for ast::TraitRef {
-    fn rewrite(&self, context: &RewriteContext, shape: Shape) -> Option<String> {
+    fn rewrite(&self, context: &RewriteContext<'_>, shape: Shape) -> Option<String> {
         rewrite_path(context, PathContext::Type, None, &self.path, shape)
     }
 }
 
 impl Rewrite for ast::Ty {
-    fn rewrite(&self, context: &RewriteContext, shape: Shape) -> Option<String> {
+    fn rewrite(&self, context: &RewriteContext<'_>, shape: Shape) -> Option<String> {
         match self.node {
             ast::TyKind::TraitObject(ref bounds, tobj_syntax) => {
                 // we have to consider 'dyn' keyword is used or not!!!
@@ -695,7 +695,7 @@ impl Rewrite for ast::Ty {
 fn rewrite_bare_fn(
     bare_fn: &ast::BareFnTy,
     span: Span,
-    context: &RewriteContext,
+    context: &RewriteContext<'_>,
     shape: Shape,
 ) -> Option<String> {
     debug!("rewrite_bare_fn {:#?}", shape);
@@ -759,7 +759,7 @@ fn is_generic_bounds_in_order(generic_bounds: &[ast::GenericBound]) -> bool {
 }
 
 fn join_bounds(
-    context: &RewriteContext,
+    context: &RewriteContext<'_>,
     shape: Shape,
     items: &[ast::GenericBound],
     need_indent: bool,
@@ -815,7 +815,7 @@ fn join_bounds(
     Some(result)
 }
 
-pub fn can_be_overflowed_type(context: &RewriteContext, ty: &ast::Ty, len: usize) -> bool {
+pub fn can_be_overflowed_type(context: &RewriteContext<'_>, ty: &ast::Ty, len: usize) -> bool {
     match ty.node {
         ast::TyKind::Tup(..) => context.use_block_indent() && len == 1,
         ast::TyKind::Rptr(_, ref mutty) | ast::TyKind::Ptr(ref mutty) => {
@@ -827,7 +827,7 @@ pub fn can_be_overflowed_type(context: &RewriteContext, ty: &ast::Ty, len: usize
 
 /// Returns `None` if there is no `LifetimeDef` in the given generic parameters.
 fn rewrite_lifetime_param(
-    context: &RewriteContext,
+    context: &RewriteContext<'_>,
     shape: Shape,
     generic_params: &[ast::GenericParam],
 ) -> Option<String> {
