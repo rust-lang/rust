@@ -18,7 +18,9 @@ mod libc {
 use ascii;
 use ffi::OsStr;
 use fmt;
-use io::{self, Initializer};
+use io;
+#[allow(deprecated)]
+use io::Initializer;
 use mem;
 use net::{self, Shutdown};
 use os::unix::ffi::OsStrExt;
@@ -552,6 +554,7 @@ impl io::Read for UnixStream {
     }
 
     #[inline]
+    #[allow(deprecated)]
     unsafe fn initializer(&self) -> Initializer {
         Initializer::nop()
     }
@@ -564,6 +567,7 @@ impl<'a> io::Read for &'a UnixStream {
     }
 
     #[inline]
+    #[allow(deprecated)]
     unsafe fn initializer(&self) -> Initializer {
         Initializer::nop()
     }

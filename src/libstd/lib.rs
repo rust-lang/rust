@@ -264,6 +264,7 @@
 #![feature(panic_unwind)]
 #![feature(prelude_import)]
 #![feature(ptr_internals)]
+#![feature(ptr_freeze)]
 #![feature(raw)]
 #![feature(hash_raw_entry)]
 #![feature(rustc_attrs)]

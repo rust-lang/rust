@@ -111,7 +111,9 @@ use io::prelude::*;
 use ffi::OsStr;
 use fmt;
 use fs;
-use io::{self, Initializer};
+use io;
+#[allow(deprecated)]
+use io::Initializer;
 use path::Path;
 use str;
 use sys::pipe::{read2, AnonPipe};
@@ -272,6 +274,7 @@ impl Read for ChildStdout {
         self.inner.read(buf)
     }
     #[inline]
+    #[allow(deprecated)]
     unsafe fn initializer(&self) -> Initializer {
         Initializer::nop()
     }
@@ -319,6 +322,7 @@ impl Read for ChildStderr {
         self.inner.read(buf)
     }
     #[inline]
+    #[allow(deprecated)]
     unsafe fn initializer(&self) -> Initializer {
         Initializer::nop()
     }

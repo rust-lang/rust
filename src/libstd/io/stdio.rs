@@ -3,7 +3,9 @@ use io::prelude::*;
 use cell::RefCell;
 use fmt;
 use io::lazy::Lazy;
-use io::{self, Initializer, BufReader, LineWriter};
+use io::{self, BufReader, LineWriter};
+#[allow(deprecated)]
+use io::Initializer;
 use sync::{Arc, Mutex, MutexGuard};
 use sys::stdio;
 use sys_common::remutex::{ReentrantMutex, ReentrantMutexGuard};
@@ -67,6 +69,7 @@ impl Read for StdinRaw {
     fn read(&mut self, buf: &mut [u8]) -> io::Result<usize> { self.0.read(buf) }
 
     #[inline]
+    #[allow(deprecated)]
     unsafe fn initializer(&self) -> Initializer {
         Initializer::nop()
     }
@@ -297,6 +300,7 @@ impl Read for Stdin {
         self.lock().read(buf)
     }
     #[inline]
+    #[allow(deprecated)]
     unsafe fn initializer(&self) -> Initializer {
         Initializer::nop()
     }
@@ -317,6 +321,7 @@ impl<'a> Read for StdinLock<'a> {
         self.inner.read(buf)
     }
     #[inline]
+    #[allow(deprecated)]
     unsafe fn initializer(&self) -> Initializer {
         Initializer::nop()
     }

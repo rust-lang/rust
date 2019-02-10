@@ -1,7 +1,9 @@
 use io::prelude::*;
 
 use fmt;
-use io::{self, Initializer};
+use io;
+#[allow(deprecated)]
+use io::Initializer;
 use net::{ToSocketAddrs, SocketAddr, Shutdown};
 use sys_common::net as net_imp;
 use sys_common::{AsInner, FromInner, IntoInner};
@@ -570,6 +572,7 @@ impl Read for TcpStream {
     fn read(&mut self, buf: &mut [u8]) -> io::Result<usize> { self.0.read(buf) }
 
     #[inline]
+    #[allow(deprecated)]
     unsafe fn initializer(&self) -> Initializer {
         Initializer::nop()
     }
@@ -584,6 +587,7 @@ impl<'a> Read for &'a TcpStream {
     fn read(&mut self, buf: &mut [u8]) -> io::Result<usize> { self.0.read(buf) }
 
     #[inline]
+    #[allow(deprecated)]
     unsafe fn initializer(&self) -> Initializer {
         Initializer::nop()
     }

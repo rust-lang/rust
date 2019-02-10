@@ -1,7 +1,9 @@
 #![unstable(reason = "not public", issue = "0", feature = "fd")]
 
 use cmp;
-use io::{self, Read, Initializer};
+use io::{self, Read};
+#[allow(deprecated)]
+use io::Initializer;
 use libc::{self, c_int, c_void, ssize_t};
 use mem;
 use sync::atomic::{AtomicBool, Ordering};
@@ -262,6 +264,7 @@ impl<'a> Read for &'a FileDesc {
     }
 
     #[inline]
+    #[allow(deprecated)]
     unsafe fn initializer(&self) -> Initializer {
         Initializer::nop()
     }

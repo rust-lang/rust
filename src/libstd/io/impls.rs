@@ -1,5 +1,7 @@
 use cmp;
-use io::{self, SeekFrom, Read, Initializer, Write, Seek, BufRead, Error, ErrorKind};
+use io::{self, SeekFrom, Read, Write, Seek, BufRead, Error, ErrorKind};
+#[allow(deprecated)]
+use io::Initializer;
 use fmt;
 use mem;
 
@@ -14,6 +16,7 @@ impl<'a, R: Read + ?Sized> Read for &'a mut R {
     }
 
     #[inline]
+    #[allow(deprecated)]
     unsafe fn initializer(&self) -> Initializer {
         (**self).initializer()
     }
@@ -83,6 +86,7 @@ impl<R: Read + ?Sized> Read for Box<R> {
     }
 
     #[inline]
+    #[allow(deprecated)]
     unsafe fn initializer(&self) -> Initializer {
         (**self).initializer()
     }
@@ -172,6 +176,7 @@ impl<'a> Read for &'a [u8] {
     }
 
     #[inline]
+    #[allow(deprecated)]
     unsafe fn initializer(&self) -> Initializer {
         Initializer::nop()
     }

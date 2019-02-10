@@ -3,7 +3,9 @@
 //! Unix-specific networking functionality
 
 use fmt;
-use io::{self, Error, ErrorKind, Initializer};
+use io::{self, Error, ErrorKind};
+#[allow(deprecated)]
+use io::Initializer;
 use net::Shutdown;
 use os::unix::io::{RawFd, AsRawFd, FromRawFd, IntoRawFd};
 use path::Path;
@@ -410,6 +412,7 @@ impl io::Read for UnixStream {
     }
 
     #[inline]
+    #[allow(deprecated)]
     unsafe fn initializer(&self) -> Initializer {
         Initializer::nop()
     }
@@ -422,6 +425,7 @@ impl<'a> io::Read for &'a UnixStream {
     }
 
     #[inline]
+    #[allow(deprecated)]
     unsafe fn initializer(&self) -> Initializer {
         Initializer::nop()
     }

@@ -946,6 +946,56 @@ pub unsafe fn write_volatile<T>(dst: *mut T, src: T) {
     intrinsics::volatile_store(dst, src);
 }
 
+/// Freezes `count * size_of::<T>()` bytes of memory, converting undefined data into
+/// defined-but-arbitrary data.
+///
+/// Uninitialized memory has undefined contents, and interation with that data
+/// can easily cause undefined behavior. This function "freezes" memory
+/// contents, converting uninitialized memory to initialized memory with
+/// arbitrary conents so that use of it is well defined.
+///
+/// This function has no runtime effect; it is purely an instruction to the
+/// compiler. In particular, it does not actually write anything to the memory.
+///
+/// # Safety
+///
+/// Behavior is undefined if any of the following conditions are violated:
+///
+/// * `dst` must be [valid] for reads.
+///
+/// Note that even if `T` has size `0`, the pointer must be non-NULL and properly aligned.
+///
+/// [valid]: ../ptr/index.html#safety
+///
+/// # Examples
+///
+/// ```ignore (io-is-in-std)
+/// use std::io::{self, Read};
+/// use std::mem;
+/// use std::ptr;
+///
+/// pub fn read_le_u32<R>(reader: &mut R) -> io::Result<u32>
+/// where
+///     R: Read,
+/// {
+///     unsafe {
+///         // We're passing this buffer to an arbitrary reader and aren't
+///         // guaranteed they won't read from it, so freeze to avoid UB.
+///         let mut buf: [u8; 4] = mem::uninitialized();
+///         ptr::freeze(&mut buf, 1);
+///         reader.read_exact(&mut buf)?;
+///
+///         Ok(u32::from_le_bytes(buf))
+///     }
+/// }
+/// ```
+#[inline]
+#[unstable(feature = "ptr_freeze", issue = "0")]
+pub unsafe fn freeze<T>(dst: *mut T, count: usize) {
+    let _ = count;
+    asm!("" : "=*m"(dst) : );
+}
+
 #[lang = "const_ptr"]
 impl<T: ?Sized> *const T {
     /// Returns `true` if the pointer is null.

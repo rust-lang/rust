@@ -367,7 +367,7 @@ fn read_to_end_with_reservation<R: Read + ?Sized>(r: &mut R,
                 g.buf.reserve(reservation_size);
                 let capacity = g.buf.capacity();
                 g.buf.set_len(capacity);
-                r.initializer().initialize(&mut g.buf[g.len..]);
+                ptr::freeze(g.buf.as_mut_ptr().add(g.len), g.buf.len() - g.len);
             }
         }
 
@@ -543,6 +543,8 @@ pub trait Read {
     /// [`Initializer::nop()`]: ../../std/io/struct.Initializer.html#method.nop
     /// [`Initializer`]: ../../std/io/struct.Initializer.html
     #[unstable(feature = "read_initializer", issue = "42788")]
+    #[rustc_deprecated(since = "1.33.0", reason = "use std::ptr::freeze instead")]
+    #[allow(deprecated)]
     #[inline]
     unsafe fn initializer(&self) -> Initializer {
         Initializer::zeroing()
@@ -869,12 +871,22 @@ pub trait Read {
 
 /// A type used to conditionally initialize buffers passed to `Read` methods.
 #[unstable(feature = "read_initializer", issue = "42788")]
-#[derive(Debug)]
+#[rustc_deprecated(since = "1.33.0", reason = "use std::ptr::freeze instead")]
 pub struct Initializer(bool);
 
+#[allow(deprecated)]
+#[unstable(feature = "read_initializer", issue = "42788")]
+impl fmt::Debug for Initializer {
+    fn fmt(&self, fmt: &mut fmt::Formatter<'_>) -> fmt::Result {
+        fmt.debug_tuple("Initializer").field(&self.0).finish()
+    }
+}
+
+#[allow(deprecated)]
 impl Initializer {
     /// Returns a new `Initializer` which will zero out buffers.
     #[unstable(feature = "read_initializer", issue = "42788")]
+    #[rustc_deprecated(since = "1.33.0", reason = "use std::ptr::freeze instead")]
     #[inline]
     pub fn zeroing() -> Initializer {
         Initializer(true)
@@ -889,6 +901,7 @@ impl Initializer {
     /// the method accurately reflects the number of bytes that have been
     /// written to the head of the buffer.
     #[unstable(feature = "read_initializer", issue = "42788")]
+    #[rustc_deprecated(since = "1.33.0", reason = "use std::ptr::freeze instead")]
     #[inline]
     pub unsafe fn nop() -> Initializer {
         Initializer(false)
@@ -896,6 +909,7 @@ impl Initializer {
 
     /// Indicates if a buffer should be initialized.
     #[unstable(feature = "read_initializer", issue = "42788")]
+    #[rustc_deprecated(since = "1.33.0", reason = "use std::ptr::freeze instead")]
     #[inline]
     pub fn should_initialize(&self) -> bool {
         self.0
@@ -903,6 +917,7 @@ impl Initializer {
 
     /// Initializes a buffer if necessary.
     #[unstable(feature = "read_initializer", issue = "42788")]
+    #[rustc_deprecated(since = "1.33.0", reason = "use std::ptr::freeze instead")]
     #[inline]
     pub fn initialize(&self, buf: &mut [u8]) {
         if self.should_initialize() {
@@ -1698,6 +1713,7 @@ impl<T: Read, U: Read> Read for Chain<T, U> {
         self.second.read(buf)
     }
 
+    #[allow(deprecated)]
     unsafe fn initializer(&self) -> Initializer {
         let initializer = self.first.initializer();
         if initializer.should_initialize() {
@@ -1895,6 +1911,7 @@ impl<T: Read> Read for Take<T> {
         Ok(n)
     }
 
+    #[allow(deprecated)]
     unsafe fn initializer(&self) -> Initializer {
         self.inner.initializer()
     }

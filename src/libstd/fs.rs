@@ -9,7 +9,9 @@
 
 use fmt;
 use ffi::OsString;
-use io::{self, SeekFrom, Seek, Read, Initializer, Write};
+use io::{self, SeekFrom, Seek, Read, Write};
+#[allow(deprecated)]
+use io::Initializer;
 use path::{Path, PathBuf};
 use sys::fs as fs_imp;
 use sys_common::{AsInnerMut, FromInner, AsInner, IntoInner};
@@ -600,6 +602,7 @@ impl Read for File {
     }
 
     #[inline]
+    #[allow(deprecated)]
     unsafe fn initializer(&self) -> Initializer {
         Initializer::nop()
     }
@@ -624,6 +627,7 @@ impl<'a> Read for &'a File {
     }
 
     #[inline]
+    #[allow(deprecated)]
     unsafe fn initializer(&self) -> Initializer {
         Initializer::nop()
     }

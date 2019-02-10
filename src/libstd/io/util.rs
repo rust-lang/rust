@@ -1,8 +1,11 @@
 #![allow(missing_copy_implementations)]
 
 use fmt;
-use io::{self, Read, Initializer, Write, ErrorKind, BufRead};
+use io::{self, Read, Write, ErrorKind, BufRead};
+#[allow(deprecated)]
+use io::Initializer;
 use mem;
+use ptr;
 
 /// Copies the entire contents of a reader into a writer.
 ///
@@ -45,7 +48,7 @@ pub fn copy<R: ?Sized, W: ?Sized>(reader: &mut R, writer: &mut W) -> io::Result<
 {
     let mut buf = unsafe {
         let mut buf: [u8; super::DEFAULT_BUF_SIZE] = mem::uninitialized();
-        reader.initializer().initialize(&mut buf);
+        ptr::freeze(&mut buf, 1);
         buf
     };
 
@@ -97,6 +100,7 @@ impl Read for Empty {
     fn read(&mut self, _buf: &mut [u8]) -> io::Result<usize> { Ok(0) }
 
     #[inline]
+    #[allow(deprecated)]
     unsafe fn initializer(&self) -> Initializer {
         Initializer::nop()
     }
@@ -153,6 +157,7 @@ impl Read for Repeat {
     }
 
     #[inline]
+    #[allow(deprecated)]
     unsafe fn initializer(&self) -> Initializer {
         Initializer::nop()
     }

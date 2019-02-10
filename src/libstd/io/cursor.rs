@@ -2,7 +2,9 @@ use io::prelude::*;
 
 use core::convert::TryInto;
 use cmp;
-use io::{self, Initializer, SeekFrom, Error, ErrorKind};
+use io::{self, SeekFrom, Error, ErrorKind};
+#[allow(deprecated)]
+use io::Initializer;
 
 /// A `Cursor` wraps an in-memory buffer and provides it with a
 /// [`Seek`] implementation.
@@ -229,6 +231,7 @@ impl<T> Read for Cursor<T> where T: AsRef<[u8]> {
     }
 
     #[inline]
+    #[allow(deprecated)]
     unsafe fn initializer(&self) -> Initializer {
         Initializer::nop()
     }
