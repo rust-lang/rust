@@ -375,7 +375,8 @@ impl<'cx, 'gcx, 'tcx> TypeFolder<'gcx, 'tcx> for Generalizer<'cx, 'gcx, 'tcx> {
                                                  -> RelateResult<'tcx, T>
     {
         let old_ambient_variance = self.ambient_variance;
-        debug!("Generalize: fold_with_variance({:?}, {:?}, old_variance={:?})", variance, a, old_ambient_variance);
+        debug!("Generalize: fold_with_variance({:?}, {:?}, old_variance={:?})",
+               variance, a, old_ambient_variance);
         self.ambient_variance = self.ambient_variance.xform(variance);
 
         let result = a.fold_with(self);

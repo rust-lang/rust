@@ -759,7 +759,9 @@ where
 // TypeFoldable implementations.
 
 impl<'tcx, O: TypeFoldable<'tcx>> TypeFoldable<'tcx> for traits::Obligation<'tcx, O> {
-    fn super_fold_with<'gcx: 'tcx, F: TypeFolder<'gcx, 'tcx>>(&self, folder: &mut F) -> Result<Self, F::Error> {
+    fn super_fold_with<'gcx: 'tcx, F: TypeFolder<'gcx, 'tcx>>(&self, folder: &mut F)
+                                                              -> Result<Self, F::Error>
+    {
         Ok(traits::Obligation {
             cause: self.cause.clone(),
             recursion_depth: self.recursion_depth,
@@ -893,7 +895,9 @@ EnumTypeFoldableImpl! {
 }
 
 impl<'tcx> TypeFoldable<'tcx> for &'tcx ty::List<traits::Goal<'tcx>> {
-    fn super_fold_with<'gcx: 'tcx, F: TypeFolder<'gcx, 'tcx>>(&self, folder: &mut F) -> Result<Self, F::Error> {
+    fn super_fold_with<'gcx: 'tcx, F: TypeFolder<'gcx, 'tcx>>(&self, folder: &mut F)
+                                                              -> Result<Self, F::Error>
+    {
         let v = self.iter()
             .map(|t| t.fold_with(folder))
             .collect::<Result<SmallVec<[_; 8]>, _>>()?;
@@ -909,7 +913,9 @@ impl<'tcx> TypeFoldable<'tcx> for &'tcx ty::List<traits::Goal<'tcx>> {
 }
 
 impl<'tcx> TypeFoldable<'tcx> for traits::Goal<'tcx> {
-    fn super_fold_with<'gcx: 'tcx, F: TypeFolder<'gcx, 'tcx>>(&self, folder: &mut F) -> Result<Self, F::Error> {
+    fn super_fold_with<'gcx: 'tcx, F: TypeFolder<'gcx, 'tcx>>(&self, folder: &mut F)
+                                                              -> Result<Self, F::Error>
+    {
         let v = (**self).fold_with(folder);
         Ok(folder.tcx().mk_goal(v?))
     }
@@ -950,7 +956,9 @@ BraceStructTypeFoldableImpl! {
 }
 
 impl<'tcx> TypeFoldable<'tcx> for traits::Clauses<'tcx> {
-    fn super_fold_with<'gcx: 'tcx, F: TypeFolder<'gcx, 'tcx>>(&self, folder: &mut F) -> Result<Self, F::Error> {
+    fn super_fold_with<'gcx: 'tcx, F: TypeFolder<'gcx, 'tcx>>(&self, folder: &mut F)
+                                                              -> Result<Self, F::Error>
+    {
         let v = self.iter()
             .map(|t| t.fold_with(folder))
             .collect::<Result<SmallVec<[_; 8]>, _>>();
@@ -971,7 +979,9 @@ where
     C::Substitution: Clone,
     C::RegionConstraint: Clone,
 {
-    fn super_fold_with<'gcx: 'tcx, F: TypeFolder<'gcx, 'tcx>>(&self, folder: &mut F) -> Result<Self, F::Error> {
+    fn super_fold_with<'gcx: 'tcx, F: TypeFolder<'gcx, 'tcx>>(&self, folder: &mut F)
+                                                              -> Result<Self, F::Error>
+    {
         <C as traits::ExClauseFold>::fold_ex_clause_with(
             self,
             folder,

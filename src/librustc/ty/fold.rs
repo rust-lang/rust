@@ -45,8 +45,11 @@ use crate::util::nodemap::FxHashSet;
 /// To implement this conveniently, use the
 /// `BraceStructTypeFoldableImpl` etc macros found in `macros.rs`.
 pub trait TypeFoldable<'tcx>: fmt::Debug + Clone {
-    fn super_fold_with<'gcx: 'tcx, F: TypeFolder<'gcx, 'tcx>>(&self, folder: &mut F) -> Result<Self, F::Error>;
-    fn fold_with<'gcx: 'tcx, F: TypeFolder<'gcx, 'tcx>>(&self, folder: &mut F) -> Result<Self, F::Error> {
+    fn super_fold_with<'gcx: 'tcx, F: TypeFolder<'gcx, 'tcx>>
+        (&self, folder: &mut F) -> Result<Self, F::Error>;
+    fn fold_with<'gcx: 'tcx, F: TypeFolder<'gcx, 'tcx>>
+        (&self, folder: &mut F) -> Result<Self, F::Error>
+    {
         self.super_fold_with(folder)
     }
 
@@ -188,7 +191,8 @@ pub trait TypeFolder<'gcx: 'tcx, 'tcx> : Sized {
     }
 
     #[inline]
-    fn fold_with_variance<T>(&mut self, _variance: ty::Variance, t: &T) -> Result<T, Self::Error>
+    fn fold_with_variance<T>(&mut self, _variance: ty::Variance, t: &T)
+                             -> Result<T, Self::Error>
         where T : TypeFoldable<'tcx>
     {
         t.fold_with(self)
@@ -202,7 +206,9 @@ pub trait TypeFolder<'gcx: 'tcx, 'tcx> : Sized {
         r.super_fold_with(self)
     }
 
-    fn fold_const(&mut self, c: &'tcx ty::LazyConst<'tcx>) -> Result<&'tcx ty::LazyConst<'tcx>, Self::Error> {
+    fn fold_const(&mut self, c: &'tcx ty::LazyConst<'tcx>)
+                  -> Result<&'tcx ty::LazyConst<'tcx>, Self::Error>
+    {
         c.super_fold_with(self)
     }
 }
@@ -432,7 +438,9 @@ impl<'a, 'gcx, 'tcx> TypeFolder<'gcx, 'tcx> for RegionFolder<'a, 'gcx, 'tcx> {
 
     fn tcx<'b>(&'b self) -> TyCtxt<'b, 'gcx, 'tcx> { self.tcx }
 
-    fn fold_binder<T: TypeFoldable<'tcx>>(&mut self, t: &ty::Binder<T>) -> Result<ty::Binder<T>, !> {
+    fn fold_binder<T: TypeFoldable<'tcx>>(&mut self, t: &ty::Binder<T>)
+                                          -> Result<ty::Binder<T>, !>
+    {
         self.current_index.shift_in(1);
         let t = t.super_fold_with(self);
         self.current_index.shift_out(1);
@@ -494,7 +502,9 @@ impl<'a, 'gcx, 'tcx> TypeFolder<'gcx, 'tcx> for BoundVarReplacer<'a, 'gcx, 'tcx>
 
     fn tcx<'b>(&'b self) -> TyCtxt<'b, 'gcx, 'tcx> { self.tcx }
 
-    fn fold_binder<T: TypeFoldable<'tcx>>(&mut self, t: &ty::Binder<T>) -> Result<ty::Binder<T>, !> {
+    fn fold_binder<T: TypeFoldable<'tcx>>(&mut self, t: &ty::Binder<T>)
+                                          -> Result<ty::Binder<T>, !>
+    {
         self.current_index.shift_in(1);
         let t = t.super_fold_with(self);
         self.current_index.shift_out(1);
@@ -732,7 +742,9 @@ impl TypeFolder<'gcx, 'tcx> for Shifter<'a, 'gcx, 'tcx> {
 
     fn tcx<'b>(&'b self) -> TyCtxt<'b, 'gcx, 'tcx> { self.tcx }
 
-    fn fold_binder<T: TypeFoldable<'tcx>>(&mut self, t: &ty::Binder<T>) -> Result<ty::Binder<T>, !> {
+    fn fold_binder<T: TypeFoldable<'tcx>>(&mut self, t: &ty::Binder<T>)
+                                          -> Result<ty::Binder<T>, !>
+    {
         self.current_index.shift_in(1);
         let t = t.super_fold_with(self);
         self.current_index.shift_out(1);

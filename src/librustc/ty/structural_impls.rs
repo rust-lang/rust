@@ -602,7 +602,10 @@ impl<'tcx, T: TypeFoldable<'tcx>> TypeFoldable<'tcx> for Box<[T]> {
     fn super_fold_with<'gcx: 'tcx, F: TypeFolder<'gcx, 'tcx>>(&self, folder: &mut F)
                                                               -> Result<Self, F::Error>
     {
-        Ok(self.iter().map(|t| t.fold_with(folder)).collect::<Result<Vec<_>, _>>()?.into_boxed_slice())
+        Ok(self.iter()
+           .map(|t| t.fold_with(folder))
+           .collect::<Result<Vec<_>, _>>()?
+           .into_boxed_slice())
     }
 
     fn super_visit_with<V: TypeVisitor<'tcx>>(&self, visitor: &mut V) -> Result<(), V::Error> {
@@ -827,7 +830,9 @@ impl<'tcx> TypeFoldable<'tcx> for Ty<'tcx> {
         }
     }
 
-    fn fold_with<'gcx: 'tcx, F: TypeFolder<'gcx, 'tcx>>(&self, folder: &mut F) -> Result<Self, F::Error> {
+    fn fold_with<'gcx: 'tcx, F: TypeFolder<'gcx, 'tcx>>(&self, folder: &mut F)
+                                                        -> Result<Self, F::Error>
+    {
         folder.fold_ty(*self)
     }
 
@@ -974,7 +979,9 @@ impl<'tcx> TypeFoldable<'tcx> for ty::Region<'tcx> {
         Ok(*self)
     }
 
-    fn fold_with<'gcx: 'tcx, F: TypeFolder<'gcx, 'tcx>>(&self, folder: &mut F) -> Result<Self, F::Error> {
+    fn fold_with<'gcx: 'tcx, F: TypeFolder<'gcx, 'tcx>>(&self, folder: &mut F)
+                                                        -> Result<Self, F::Error>
+    {
         folder.fold_region(*self)
     }
 
@@ -1181,7 +1188,9 @@ impl<'tcx> TypeFoldable<'tcx> for &'tcx ty::LazyConst<'tcx> {
         Ok(folder.tcx().mk_lazy_const(new))
     }
 
-    fn fold_with<'gcx: 'tcx, F: TypeFolder<'gcx, 'tcx>>(&self, folder: &mut F) -> Result<Self, F::Error> {
+    fn fold_with<'gcx: 'tcx, F: TypeFolder<'gcx, 'tcx>>(&self, folder: &mut F)
+                                                        -> Result<Self, F::Error>
+    {
         folder.fold_const(*self)
     }
 

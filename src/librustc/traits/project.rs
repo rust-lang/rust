@@ -398,7 +398,9 @@ impl<'a, 'b, 'gcx, 'tcx> TypeFolder<'gcx, 'tcx> for AssociatedTypeNormalizer<'a,
         })
     }
 
-    fn fold_const(&mut self, constant: &'tcx ty::LazyConst<'tcx>) -> Result<&'tcx ty::LazyConst<'tcx>, !> {
+    fn fold_const(&mut self, constant: &'tcx ty::LazyConst<'tcx>)
+                  -> Result<&'tcx ty::LazyConst<'tcx>, !>
+    {
         if let ty::LazyConst::Unevaluated(def_id, substs) = *constant {
             let tcx = self.selcx.tcx().global_tcx();
             if let Some(param_env) = self.tcx().lift_to_global(&self.param_env) {

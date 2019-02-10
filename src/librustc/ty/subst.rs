@@ -129,7 +129,9 @@ impl<'a, 'tcx> Lift<'tcx> for Kind<'a> {
 }
 
 impl<'tcx> TypeFoldable<'tcx> for Kind<'tcx> {
-    fn super_fold_with<'gcx: 'tcx, F: TypeFolder<'gcx, 'tcx>>(&self, folder: &mut F) -> Result<Self, F::Error> {
+    fn super_fold_with<'gcx: 'tcx, F: TypeFolder<'gcx, 'tcx>>(&self, folder: &mut F)
+                                                              -> Result<Self, F::Error>
+    {
         match self.unpack() {
             UnpackedKind::Lifetime(lt) => lt.fold_with(folder).map(|a| a.into()),
             UnpackedKind::Type(ty) => ty.fold_with(folder).map(|a| a.into()),
@@ -434,7 +436,9 @@ impl<'a, 'gcx, 'tcx> TypeFolder<'gcx, 'tcx> for SubstFolder<'a, 'gcx, 'tcx> {
 
     fn tcx<'b>(&'b self) -> TyCtxt<'b, 'gcx, 'tcx> { self.tcx }
 
-    fn fold_binder<T: TypeFoldable<'tcx>>(&mut self, t: &ty::Binder<T>) -> Result<ty::Binder<T>, !> {
+    fn fold_binder<T: TypeFoldable<'tcx>>(&mut self, t: &ty::Binder<T>)
+                                          -> Result<ty::Binder<T>, !>
+    {
         self.binders_passed += 1;
         let t = t.super_fold_with(self);
         self.binders_passed -= 1;
