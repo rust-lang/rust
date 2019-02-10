@@ -327,7 +327,7 @@ impl Enum {
         db.enum_data(*self).name.clone()
     }
 
-    pub fn variants(&self, db: &impl HirDatabase) -> Vec<EnumVariant> {
+    pub fn variants(&self, db: &impl PersistentHirDatabase) -> Vec<EnumVariant> {
         db.enum_data(*self)
             .variants
             .iter()
@@ -389,7 +389,7 @@ impl EnumVariant {
         self.parent
     }
 
-    pub fn name(&self, db: &impl HirDatabase) -> Option<Name> {
+    pub fn name(&self, db: &impl PersistentHirDatabase) -> Option<Name> {
         db.enum_data(self.parent).variants[self.id].name.clone()
     }
 

@@ -61,7 +61,7 @@ impl ModuleScope {
 
 /// `Resolution` is basically `DefId` atm, but it should account for stuff like
 /// multiple namespaces, ambiguity and errors.
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Default)]
 pub struct Resolution {
     /// None for unresolved
     pub def: PerNs<ModuleDef>,
@@ -154,6 +154,8 @@ struct Resolver<'a, DB> {
     krate: Crate,
     module_tree: Arc<ModuleTree>,
     processed_imports: FxHashSet<(ModuleId, ImportId)>,
+    /// If module `a` has `use b::*`, then this contains the mapping b -> a (and the import)
+    glob_imports: FxHashMap<ModuleId, Vec<(ModuleId, ImportId)>>,
     result: ItemMap,
 }
 
@@ -173,6 +175,7 @@ where
             krate,
             module_tree,
             processed_imports: FxHashSet::default(),
+            glob_imports: FxHashMap::default(),
             result: ItemMap::default(),
         }
     }
@@ -264,14 +267,72 @@ where
         import: &ImportData,
     ) -> ReachedFixedPoint {
         log::debug!("resolving import: {:?}", import);
-        if import.is_glob {
-            return ReachedFixedPoint::Yes;
-        };
         let original_module = Module { krate: self.krate, module_id };
         let (def, reached_fixedpoint) =
             self.result.resolve_path_fp(self.db, original_module, &import.path);
 
-        if reached_fixedpoint == ReachedFixedPoint::Yes {
+        if reached_fixedpoint != ReachedFixedPoint::Yes {
+            return reached_fixedpoint;
+        }
+
+        if import.is_glob {
+            log::debug!("glob import: {:?}", import);
+            match def.take_types() {
+                Some(ModuleDef::Module(m)) => {
+                    if m.krate != self.krate {
+                        tested_by!(glob_across_crates);
+                        // glob import from other crate => we can just import everything once
+                        let item_map = self.db.item_map(m.krate);
+                        let scope = &item_map[m.module_id];
+                        let items = scope
+                            .items
+                            .iter()
+                            .map(|(name, res)| (name.clone(), res.clone()))
+                            .collect::<Vec<_>>();
+                        self.update(module_id, Some(import_id), &items);
+                    } else {
+                        // glob import from same crate => we do an initial
+                        // import, and then need to propagate any further
+                        // additions
+                        let scope = &self.result[m.module_id];
+                        let items = scope
+                            .items
+                            .iter()
+                            .map(|(name, res)| (name.clone(), res.clone()))
+                            .collect::<Vec<_>>();
+                        self.update(module_id, Some(import_id), &items);
+                        // record the glob import in case we add further items
+                        self.glob_imports
+                            .entry(m.module_id)
+                            .or_default()
+                            .push((module_id, import_id));
+                    }
+                }
+                Some(ModuleDef::Enum(e)) => {
+                    tested_by!(glob_enum);
+                    // glob import from enum => just import all the variants
+                    let variants = e.variants(self.db);
+                    let resolutions = variants
+                        .into_iter()
+                        .filter_map(|variant| {
+                            let res = Resolution {
+                                def: PerNs::both(variant.into(), e.into()),
+                                import: Some(import_id),
+                            };
+                            let name = variant.name(self.db)?;
+                            Some((name, res))
+                        })
+                        .collect::<Vec<_>>();
+                    self.update(module_id, Some(import_id), &resolutions);
+                }
+                Some(d) => {
+                    log::debug!("glob import {:?} from non-module/enum {:?}", import, d);
+                }
+                None => {
+                    log::debug!("glob import {:?} didn't resolve as type", import);
+                }
+            }
+        } else {
             let last_segment = import.path.segments.last().unwrap();
             let name = import.alias.clone().unwrap_or_else(|| last_segment.name.clone());
             log::debug!("resolved import {:?} ({:?}) to {:?}", name, import, def);
@@ -284,17 +345,61 @@ where
                     }
                 }
             }
-            self.update(module_id, |items| {
-                let res = Resolution { def, import: Some(import_id) };
-                items.items.insert(name, res);
-            });
+            let resolution = Resolution { def, import: Some(import_id) };
+            self.update(module_id, None, &[(name, resolution)]);
         }
         reached_fixedpoint
     }
 
-    fn update(&mut self, module_id: ModuleId, f: impl FnOnce(&mut ModuleScope)) {
+    fn update(
+        &mut self,
+        module_id: ModuleId,
+        import: Option<ImportId>,
+        resolutions: &[(Name, Resolution)],
+    ) {
+        self.update_recursive(module_id, import, resolutions, 0)
+    }
+
+    fn update_recursive(
+        &mut self,
+        module_id: ModuleId,
+        import: Option<ImportId>,
+        resolutions: &[(Name, Resolution)],
+        depth: usize,
+    ) {
+        if depth > 100 {
+            // prevent stack overflows (but this shouldn't be possible)
+            panic!("infinite recursion in glob imports!");
+        }
         let module_items = self.result.per_module.get_mut(module_id).unwrap();
-        f(module_items)
+        let mut changed = false;
+        for (name, res) in resolutions {
+            let existing = module_items.items.entry(name.clone()).or_default();
+            if existing.def.types.is_none() && res.def.types.is_some() {
+                existing.def.types = res.def.types;
+                existing.import = import.or(res.import);
+                changed = true;
+            }
+            if existing.def.values.is_none() && res.def.values.is_some() {
+                existing.def.values = res.def.values;
+                existing.import = import.or(res.import);
+                changed = true;
+            }
+        }
+        if !changed {
+            return;
+        }
+        let glob_imports = self
+            .glob_imports
+            .get(&module_id)
+            .into_iter()
+            .flat_map(|v| v.iter())
+            .cloned()
+            .collect::<Vec<_>>();
+        for (glob_importing_module, glob_import) in glob_imports {
+            // We pass the glob import so that the tracked import in those modules is that glob import
+            self.update_recursive(glob_importing_module, Some(glob_import), resolutions, depth + 1);
+        }
     }
 }
 
