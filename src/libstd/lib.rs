@@ -260,6 +260,7 @@
 #![feature(linkage)]
 #![feature(needs_panic_runtime)]
 #![feature(never_type)]
+#![feature(nll)]
 #![feature(exhaustive_patterns)]
 #![feature(on_unimplemented)]
 #![feature(optin_builtin_traits)]
