@@ -3,6 +3,7 @@ use std::{sync::Arc, panic};
 use parking_lot::Mutex;
 use ra_db::{
     FilePosition, FileId, CrateGraph, SourceRoot, SourceRootId, SourceDatabase, salsa,
+    Edition,
 };
 use relative_path::RelativePathBuf;
 use test_utils::{parse_fixture, CURSOR_MARKER, extract_offset};
@@ -60,7 +61,7 @@ impl MockDatabase {
         let mut crate_graph = CrateGraph::default();
         for (crate_name, (crate_root, _)) in graph.0.iter() {
             let crate_root = self.file_id_of(&crate_root);
-            let crate_id = crate_graph.add_crate_root(crate_root);
+            let crate_id = crate_graph.add_crate_root(crate_root, Edition::Edition2018);
             ids.insert(crate_name, crate_id);
         }
         for (crate_name, (_, deps)) in graph.0.iter() {
@@ -144,7 +145,7 @@ impl MockDatabase {
 
         if is_crate_root {
             let mut crate_graph = CrateGraph::default();
-            crate_graph.add_crate_root(file_id);
+            crate_graph.add_crate_root(file_id, Edition::Edition2018);
             self.set_crate_graph(Arc::new(crate_graph));
         }
         file_id

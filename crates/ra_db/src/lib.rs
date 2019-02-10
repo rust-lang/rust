@@ -14,7 +14,7 @@ pub use ::salsa as salsa;
 pub use crate::{
     cancellation::Canceled,
     input::{
-        FileId, CrateId, SourceRoot, SourceRootId, CrateGraph, Dependency,
+        FileId, CrateId, SourceRoot, SourceRootId, CrateGraph, Dependency, Edition,
     },
     loc2id::LocationIntener,
 };

@@ -6,7 +6,7 @@ use std::path::{Path, PathBuf};
 use failure::bail;
 use rustc_hash::FxHashMap;
 
-use ra_db::{CrateGraph, FileId};
+use ra_db::{CrateGraph, FileId, Edition};
 
 pub use crate::{
     cargo_workspace::{CargoWorkspace, Package, Target, TargetKind},
@@ -36,7 +36,8 @@ impl ProjectWorkspace {
         let mut sysroot_crates = FxHashMap::default();
         for krate in self.sysroot.crates() {
             if let Some(file_id) = load(krate.root(&self.sysroot)) {
-                sysroot_crates.insert(krate, crate_graph.add_crate_root(file_id));
+                sysroot_crates
+                    .insert(krate, crate_graph.add_crate_root(file_id, Edition::Edition2015));
             }
         }
         for from in self.sysroot.crates() {
@@ -62,7 +63,12 @@ impl ProjectWorkspace {
             for tgt in pkg.targets(&self.cargo) {
                 let root = tgt.root(&self.cargo);
                 if let Some(file_id) = load(root) {
-                    let crate_id = crate_graph.add_crate_root(file_id);
+                    let edition = if pkg.edition(&self.cargo) == "2015" {
+                        Edition::Edition2015
+                    } else {
+                        Edition::Edition2018
+                    };
+                    let crate_id = crate_graph.add_crate_root(file_id, edition);
                     if tgt.kind(&self.cargo) == TargetKind::Lib {
                         lib_tgt = Some(crate_id);
                         pkg_to_lib_crate.insert(pkg, crate_id);

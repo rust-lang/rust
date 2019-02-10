@@ -35,6 +35,7 @@ struct PackageData {
     targets: Vec<Target>,
     is_member: bool,
     dependencies: Vec<PackageDependency>,
+    edition: String,
 }
 
 #[derive(Debug, Clone)]
@@ -83,6 +84,9 @@ impl Package {
     }
     pub fn root(self, ws: &CargoWorkspace) -> &Path {
         ws.packages[self].manifest.parent().unwrap()
+    }
+    pub fn edition(self, ws: &CargoWorkspace) -> &str {
+        &ws.packages[self].edition
     }
     pub fn targets<'a>(self, ws: &'a CargoWorkspace) -> impl Iterator<Item = Target> + 'a {
         ws.packages[self].targets.iter().cloned()
@@ -135,6 +139,7 @@ impl CargoWorkspace {
                 manifest: meta_pkg.manifest_path.clone(),
                 targets: Vec::new(),
                 is_member,
+                edition: meta_pkg.edition,
                 dependencies: Vec::new(),
             });
             let pkg_data = &mut packages[pkg];
