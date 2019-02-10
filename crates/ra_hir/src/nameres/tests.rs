@@ -165,6 +165,125 @@ fn re_exports() {
 }
 
 #[test]
+fn glob_1() {
+    let (item_map, module_id) = item_map(
+        "
+        //- /lib.rs
+        mod foo;
+        use foo::*;
+        <|>
+
+        //- /foo/mod.rs
+        pub mod bar;
+        pub use self::bar::Baz;
+        pub struct Foo;
+
+        //- /foo/bar.rs
+        pub struct Baz;
+    ",
+    );
+    check_module_item_map(
+        &item_map,
+        module_id,
+        "
+            Baz: t v
+            Foo: t v
+            bar: t
+            foo: t
+        ",
+    );
+}
+
+#[test]
+fn glob_2() {
+    let (item_map, module_id) = item_map(
+        "
+        //- /lib.rs
+        mod foo;
+        use foo::*;
+        <|>
+
+        //- /foo/mod.rs
+        pub mod bar;
+        pub use self::bar::*;
+        pub struct Foo;
+
+        //- /foo/bar.rs
+        pub struct Baz;
+        pub use super::*;
+    ",
+    );
+    check_module_item_map(
+        &item_map,
+        module_id,
+        "
+            Baz: t v
+            Foo: t v
+            bar: t
+            foo: t
+        ",
+    );
+}
+
+#[test]
+fn glob_enum() {
+    covers!(glob_enum);
+    let (item_map, module_id) = item_map(
+        "
+        //- /lib.rs
+        enum Foo {
+            Bar, Baz
+        }
+        use self::Foo::*;
+        <|>
+    ",
+    );
+    check_module_item_map(
+        &item_map,
+        module_id,
+        "
+            Bar: t v
+            Baz: t v
+            Foo: t
+        ",
+    );
+}
+
+#[test]
+fn glob_across_crates() {
+    let (mut db, sr) = MockDatabase::with_files(
+        "
+        //- /main.rs
+        use test_crate::*;
+
+        //- /lib.rs
+        pub struct Baz;
+    ",
+    );
+    let main_id = sr.files[RelativePath::new("/main.rs")];
+    let lib_id = sr.files[RelativePath::new("/lib.rs")];
+
+    let mut crate_graph = CrateGraph::default();
+    let main_crate = crate_graph.add_crate_root(main_id);
+    let lib_crate = crate_graph.add_crate_root(lib_id);
+    crate_graph.add_dep(main_crate, "test_crate".into(), lib_crate).unwrap();
+
+    db.set_crate_graph(Arc::new(crate_graph));
+
+    let module = crate::source_binder::module_from_file_id(&db, main_id).unwrap();
+    let krate = module.krate(&db).unwrap();
+    let item_map = db.item_map(krate);
+
+    check_module_item_map(
+        &item_map,
+        module.module_id,
+        "
+            Baz: t v
+        ",
+    );
+}
+
+#[test]
 fn module_resolution_works_for_non_standard_filenames() {
     let (item_map, module_id) = item_map_custom_crate_root(
         "
