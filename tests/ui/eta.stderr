@@ -33,40 +33,40 @@ LL |     let e = Some(1u8).map(|a| generic(a));
    |                           ^^^^^^^^^^^^^^ help: remove closure as shown: `generic`
 
 error: redundant closure found
-  --> $DIR/eta.rs:60:48
+  --> $DIR/eta.rs:69:51
    |
-LL |     let e = Some(TestStruct{some_ref: &i}).map(|a| a.foo());
-   |                                                ^^^^^^^^^^^ help: remove closure as shown: `TestStruct::foo`
+LL |     let e = Some(TestStruct { some_ref: &i }).map(|a| a.foo());
+   |                                                   ^^^^^^^^^^^ help: remove closure as shown: `TestStruct::foo`
 
 error: redundant closure found
-  --> $DIR/eta.rs:62:48
+  --> $DIR/eta.rs:71:51
    |
-LL |     let e = Some(TestStruct{some_ref: &i}).map(|a| a.trait_foo());
-   |                                                ^^^^^^^^^^^^^^^^^ help: remove closure as shown: `TestTrait::trait_foo`
+LL |     let e = Some(TestStruct { some_ref: &i }).map(|a| a.trait_foo());
+   |                                                   ^^^^^^^^^^^^^^^^^ help: remove closure as shown: `TestTrait::trait_foo`
 
 error: redundant closure found
-  --> $DIR/eta.rs:65:40
+  --> $DIR/eta.rs:74:42
    |
-LL |     let e = Some(&mut vec!(1,2,3)).map(|v| v.clear());
-   |                                        ^^^^^^^^^^^^^ help: remove closure as shown: `std::vec::Vec::clear`
+LL |     let e = Some(&mut vec![1, 2, 3]).map(|v| v.clear());
+   |                                          ^^^^^^^^^^^^^ help: remove closure as shown: `std::vec::Vec::clear`
 
 error: redundant closure found
-  --> $DIR/eta.rs:70:29
+  --> $DIR/eta.rs:79:29
    |
 LL |     let e = Some("str").map(|s| s.to_string());
    |                             ^^^^^^^^^^^^^^^^^ help: remove closure as shown: `std::string::ToString::to_string`
 
 error: redundant closure found
-  --> $DIR/eta.rs:72:27
+  --> $DIR/eta.rs:81:27
    |
 LL |     let e = Some('a').map(|s| s.to_uppercase());
    |                           ^^^^^^^^^^^^^^^^^^^^ help: remove closure as shown: `char::to_uppercase`
 
 error: redundant closure found
-  --> $DIR/eta.rs:75:63
+  --> $DIR/eta.rs:84:65
    |
-LL |     let e: std::vec::Vec<char> = vec!('a','b','c').iter().map(|c| c.to_ascii_uppercase()).collect();
-   |                                                               ^^^^^^^^^^^^^^^^^^^^^^^^^^ help: remove closure as shown: `char::to_ascii_uppercase`
+LL |     let e: std::vec::Vec<char> = vec!['a', 'b', 'c'].iter().map(|c| c.to_ascii_uppercase()).collect();
+   |                                                                 ^^^^^^^^^^^^^^^^^^^^^^^^^^ help: remove closure as shown: `char::to_ascii_uppercase`
 
 error: aborting due to 11 previous errors
 
