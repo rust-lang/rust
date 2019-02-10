@@ -8,7 +8,7 @@
     clippy::never_loop,
     clippy::no_effect,
     clippy::zero_divided_by_zero,
-    clippy::unused_unit,
+    clippy::unused_unit
 )]
 
 struct Foo {
