@@ -126,3 +126,27 @@ impl BatchDatabase {
         Ok((db, local_roots))
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use ra_hir::Crate;
+    use super::*;
+
+    #[test]
+    fn test_loading_rust_analyzer() {
+        let mut path = std::env::current_exe().unwrap();
+        while !path.join("Cargo.toml").is_file() {
+            path = path.parent().unwrap().to_owned();
+        }
+        let (db, roots) = BatchDatabase::load_cargo(path).unwrap();
+        let mut num_crates = 0;
+        for root in roots {
+            for _krate in Crate::source_root_crates(&db, root) {
+                num_crates += 1;
+            }
+        }
+
+        // RA has quite a few crates, but the exact count doesn't matter
+        assert!(num_crates > 20);
+    }
+}
