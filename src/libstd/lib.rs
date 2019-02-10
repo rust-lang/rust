@@ -276,6 +276,7 @@
 #![feature(maybe_uninit)]
 #![feature(needs_panic_runtime)]
 #![feature(never_type)]
+#![feature(nll)]
 #![feature(non_exhaustive)]
 #![feature(on_unimplemented)]
 #![feature(optin_builtin_traits)]
