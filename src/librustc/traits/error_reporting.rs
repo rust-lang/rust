@@ -1035,7 +1035,8 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
                  ).collect::<Vec<_>>())
             }
             Node::StructCtor(ref variant_data) => {
-                (self.tcx.sess.source_map().def_span(self.tcx.hir().span(variant_data.id())),
+                (self.tcx.sess.source_map().def_span(
+                    self.tcx.hir().span_by_hir_id(variant_data.hir_id())),
                  vec![ArgKind::empty(); variant_data.fields().len()])
             }
             _ => panic!("non-FnLike node found: {:?}", node),
