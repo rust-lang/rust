@@ -576,7 +576,6 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpretCx<'mir, 'tcx, M> {
                     self.place_to_op(return_place)?,
                     vec![],
                     None,
-                    /*const_mode*/false,
                 )?;
             }
         } else {

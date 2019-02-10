@@ -14,6 +14,7 @@ mod traits;
 mod validity;
 mod intrinsics;
 mod visitor;
+mod intern;
 
 pub use rustc::mir::interpret::*; // have all the `interpret` symbols in one place: here
 
@@ -34,3 +35,5 @@ pub use self::visitor::{ValueVisitor, MutValueVisitor};
 pub use self::validity::RefTracking;
 
 pub(super) use self::intrinsics::type_name;
+
+pub use self::intern::intern_const_alloc_recursive;
