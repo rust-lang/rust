@@ -480,7 +480,15 @@ impl Ty {
                     t.walk(f);
                 }
             }
-            _ => {}
+            Ty::Bool
+            | Ty::Char
+            | Ty::Int(_)
+            | Ty::Float(_)
+            | Ty::Str
+            | Ty::Never
+            | Ty::Param { .. }
+            | Ty::Infer(_)
+            | Ty::Unknown => {}
         }
     }
 
@@ -526,7 +534,15 @@ impl Ty {
                 }
                 substs.0 = v.into();
             }
-            _ => {}
+            Ty::Bool
+            | Ty::Char
+            | Ty::Int(_)
+            | Ty::Float(_)
+            | Ty::Str
+            | Ty::Never
+            | Ty::Param { .. }
+            | Ty::Infer(_)
+            | Ty::Unknown => {}
         }
     }
 
