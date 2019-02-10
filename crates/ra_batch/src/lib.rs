@@ -22,7 +22,6 @@ type Result<T> = std::result::Result<T, failure::Error>;
 pub struct BatchDatabase {
     runtime: salsa::Runtime<BatchDatabase>,
     interner: Arc<HirInterner>,
-    // file_counter: u32,
 }
 
 impl salsa::Database for BatchDatabase {
@@ -83,7 +82,7 @@ impl BatchDatabase {
                     VfsChange::AddFile { .. }
                     | VfsChange::RemoveFile { .. }
                     | VfsChange::ChangeFile { .. } => {
-                        // log::warn!("VFS changed while loading");
+                        // We just need the first scan, so just ignore these
                     }
                 }
             }
