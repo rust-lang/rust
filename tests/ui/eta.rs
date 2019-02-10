@@ -9,6 +9,8 @@
 )]
 #![warn(clippy::redundant_closure, clippy::needless_borrow)]
 
+use std::path::PathBuf;
+
 fn main() {
     let a = Some(1u8).map(|a| foo(a));
     meta(|a| foo(a));
@@ -26,6 +28,57 @@ fn main() {
     // See #515
     let a: Option<Box<::std::ops::Deref<Target = [i32]>>> =
         Some(vec![1i32, 2]).map(|v| -> Box<::std::ops::Deref<Target = [i32]>> { Box::new(v) });
+
+}
+
+trait TestTrait {
+    fn trait_foo(self) -> bool;
+    fn trait_foo_ref(&self) -> bool;
+}
+
+struct TestStruct<'a> {
+    some_ref: &'a i32
+}
+
+impl<'a> TestStruct<'a> {
+    fn foo(self) -> bool { false }
+    unsafe fn foo_unsafe(self) -> bool { true }
+}
+
+impl<'a> TestTrait for TestStruct<'a> {
+    fn trait_foo(self) -> bool { false }
+    fn trait_foo_ref(&self) -> bool { false }
+}
+
+impl<'a> std::ops::Deref for TestStruct<'a> {
+    type Target = char;
+    fn deref(&self) -> &char { &'a' }
+}
+
+fn test_redundant_closures_containing_method_calls() {
+    let i = 10;
+    let e = Some(TestStruct{some_ref: &i}).map(|a| a.foo());
+    let e = Some(TestStruct{some_ref: &i}).map(TestStruct::foo);
+    let e = Some(TestStruct{some_ref: &i}).map(|a| a.trait_foo());
+    let e = Some(TestStruct{some_ref: &i}).map(|a| a.trait_foo_ref());
+    let e = Some(TestStruct{some_ref: &i}).map(TestTrait::trait_foo);
+    let e = Some(&mut vec!(1,2,3)).map(|v| v.clear());
+    let e = Some(&mut vec!(1,2,3)).map(std::vec::Vec::clear);
+    unsafe {
+        let e = Some(TestStruct{some_ref: &i}).map(|a| a.foo_unsafe());
+    }
+    let e = Some("str").map(|s| s.to_string());
+    let e = Some("str").map(str::to_string);
+    let e = Some('a').map(|s| s.to_uppercase());
+    let e = Some('a').map(char::to_uppercase);
+    let e: std::vec::Vec<usize> = vec!('a','b','c').iter().map(|c| c.len_utf8()).collect();
+    let e: std::vec::Vec<char> = vec!('a','b','c').iter().map(|c| c.to_ascii_uppercase()).collect();
+    let e: std::vec::Vec<char> = vec!('a','b','c').iter().map(char::to_ascii_uppercase).collect();
+    let p = Some(PathBuf::new());
+    let e = p.as_ref().and_then(|s| s.to_str());
+    //let e = p.as_ref().and_then(std::path::Path::to_str);
+    let c = Some(TestStruct{some_ref: &i}).as_ref().map(|c| c.to_ascii_uppercase());
+    //let c = Some(TestStruct{some_ref: &i}).as_ref().map(char::to_ascii_uppercase);
 }
 
 fn meta<F>(f: F)
@@ -61,3 +114,4 @@ fn divergent(_: u8) -> ! {
 fn generic<T>(_: T) -> u8 {
     0
 }
+
