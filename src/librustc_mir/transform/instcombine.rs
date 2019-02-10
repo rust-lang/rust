@@ -13,7 +13,7 @@ pub struct InstCombine;
 impl MirPass for InstCombine {
     fn run_pass<'a, 'tcx>(&self,
                           tcx: TyCtxt<'a, 'tcx, 'tcx>,
-                          _: MirSource,
+                          _: MirSource<'tcx>,
                           mir: &mut Mir<'tcx>) {
         // We only run when optimizing MIR (at any level).
         if tcx.sess.opts.debugging_opts.mir_opt_level == 0 {

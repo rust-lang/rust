@@ -371,8 +371,12 @@ impl<'hir> Map<'hir> {
                 let def_id = self.local_def_id(variant.node.data.id());
                 Some(Def::Variant(def_id))
             }
-            Node::Field(_) |
+            Node::StructCtor(variant) => {
+                let def_id = self.local_def_id(variant.id());
+                Some(Def::StructCtor(def_id, def::CtorKind::from_hir(variant)))
+            }
             Node::AnonConst(_) |
+            Node::Field(_) |
             Node::Expr(_) |
             Node::Stmt(_) |
             Node::PathSegment(_) |
@@ -380,7 +384,6 @@ impl<'hir> Map<'hir> {
             Node::TraitRef(_) |
             Node::Pat(_) |
             Node::Binding(_) |
-            Node::StructCtor(_) |
             Node::Lifetime(_) |
             Node::Visibility(_) |
             Node::Block(_) |

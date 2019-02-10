@@ -8,7 +8,7 @@ pub struct Deaggregator;
 impl MirPass for Deaggregator {
     fn run_pass<'a, 'tcx>(&self,
                           tcx: TyCtxt<'a, 'tcx, 'tcx>,
-                          _source: MirSource,
+                          _source: MirSource<'tcx>,
                           mir: &mut Mir<'tcx>) {
         let (basic_blocks, local_decls) = mir.basic_blocks_and_local_decls_mut();
         let local_decls = &*local_decls;

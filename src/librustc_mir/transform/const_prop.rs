@@ -30,7 +30,7 @@ pub struct ConstProp;
 impl MirPass for ConstProp {
     fn run_pass<'a, 'tcx>(&self,
                           tcx: TyCtxt<'a, 'tcx, 'tcx>,
-                          source: MirSource,
+                          source: MirSource<'tcx>,
                           mir: &mut Mir<'tcx>) {
         // will be evaluated by miri and produce its errors there
         if source.promoted.is_some() {
@@ -38,11 +38,11 @@ impl MirPass for ConstProp {
         }
 
         use rustc::hir::map::blocks::FnLikeNode;
-        let node_id = tcx.hir().as_local_node_id(source.def_id)
+        let node_id = tcx.hir().as_local_node_id(source.def_id())
                              .expect("Non-local call to local provider is_const_fn");
 
         let is_fn_like = FnLikeNode::from_node(tcx.hir().get(node_id)).is_some();
-        let is_assoc_const = match tcx.describe_def(source.def_id) {
+        let is_assoc_const = match tcx.describe_def(source.def_id()) {
             Some(Def::AssociatedConst(_)) => true,
             _ => false,
         };
@@ -50,11 +50,11 @@ impl MirPass for ConstProp {
         // Only run const prop on functions, methods, closures and associated constants
         if !is_fn_like && !is_assoc_const  {
             // skip anon_const/statics/consts because they'll be evaluated by miri anyway
-            trace!("ConstProp skipped for {:?}", source.def_id);
+            trace!("ConstProp skipped for {:?}", source.def_id());
             return
         }
 
-        trace!("ConstProp starting for {:?}", source.def_id);
+        trace!("ConstProp starting for {:?}", source.def_id());
 
         // FIXME(oli-obk, eddyb) Optimize locals (or even local paths) to hold
         // constants, instead of just checking for const-folding succeeding.
@@ -63,7 +63,7 @@ impl MirPass for ConstProp {
         let mut optimization_finder = ConstPropagator::new(mir, tcx, source);
         optimization_finder.visit_mir(mir);
 
-        trace!("ConstProp done for {:?}", source.def_id);
+        trace!("ConstProp done for {:?}", source.def_id());
     }
 }
 
@@ -74,7 +74,7 @@ struct ConstPropagator<'a, 'mir, 'tcx:'a+'mir> {
     ecx: EvalContext<'a, 'mir, 'tcx, CompileTimeInterpreter<'a, 'mir, 'tcx>>,
     mir: &'mir Mir<'tcx>,
     tcx: TyCtxt<'a, 'tcx, 'tcx>,
-    source: MirSource,
+    source: MirSource<'tcx>,
     places: IndexVec<Local, Option<Const<'tcx>>>,
     can_const_prop: IndexVec<Local, bool>,
     param_env: ParamEnv<'tcx>,
@@ -107,10 +107,10 @@ impl<'a, 'mir, 'tcx> ConstPropagator<'a, 'mir, 'tcx> {
     fn new(
         mir: &'mir Mir<'tcx>,
         tcx: TyCtxt<'a, 'tcx, 'tcx>,
-        source: MirSource,
+        source: MirSource<'tcx>,
     ) -> ConstPropagator<'a, 'mir, 'tcx> {
-        let param_env = tcx.param_env(source.def_id);
-        let ecx = mk_eval_cx(tcx, tcx.def_span(source.def_id), param_env);
+        let param_env = tcx.param_env(source.def_id());
+        let ecx = mk_eval_cx(tcx, tcx.def_span(source.def_id()), param_env);
         ConstPropagator {
             ecx,
             mir,
@@ -284,13 +284,13 @@ impl<'a, 'mir, 'tcx> ConstPropagator<'a, 'mir, 'tcx> {
                 _ => None,
             },
             Place::Promoted(ref promoted) => {
-                let generics = self.tcx.generics_of(self.source.def_id);
+                let generics = self.tcx.generics_of(self.source.def_id());
                 if generics.requires_monomorphization(self.tcx) {
                     // FIXME: can't handle code with generics
                     return None;
                 }
-                let substs = Substs::identity_for_item(self.tcx, self.source.def_id);
-                let instance = Instance::new(self.source.def_id, substs);
+                let substs = Substs::identity_for_item(self.tcx, self.source.def_id());
+                let instance = Instance::new(self.source.def_id(), substs);
                 let cid = GlobalId {
                     instance,
                     promoted: Some(promoted.0),
@@ -358,10 +358,10 @@ impl<'a, 'mir, 'tcx> ConstPropagator<'a, 'mir, 'tcx> {
                 )))
             }
             Rvalue::UnaryOp(op, ref arg) => {
-                let def_id = if self.tcx.is_closure(self.source.def_id) {
-                    self.tcx.closure_base_def_id(self.source.def_id)
+                let def_id = if self.tcx.is_closure(self.source.def_id()) {
+                    self.tcx.closure_base_def_id(self.source.def_id())
                 } else {
-                    self.source.def_id
+                    self.source.def_id()
                 };
                 let generics = self.tcx.generics_of(def_id);
                 if generics.requires_monomorphization(self.tcx) {
@@ -398,10 +398,10 @@ impl<'a, 'mir, 'tcx> ConstPropagator<'a, 'mir, 'tcx> {
             Rvalue::BinaryOp(op, ref left, ref right) => {
                 trace!("rvalue binop {:?} for {:?} and {:?}", op, left, right);
                 let right = self.eval_operand(right, source_info)?;
-                let def_id = if self.tcx.is_closure(self.source.def_id) {
-                    self.tcx.closure_base_def_id(self.source.def_id)
+                let def_id = if self.tcx.is_closure(self.source.def_id()) {
+                    self.tcx.closure_base_def_id(self.source.def_id())
                 } else {
-                    self.source.def_id
+                    self.source.def_id()
                 };
                 let generics = self.tcx.generics_of(def_id);
                 if generics.requires_monomorphization(self.tcx) {
@@ -608,7 +608,7 @@ impl<'b, 'a, 'tcx> Visitor<'tcx> for ConstPropagator<'b, 'a, 'tcx> {
                     let node_id = self
                         .tcx
                         .hir()
-                        .as_local_node_id(self.source.def_id)
+                        .as_local_node_id(self.source.def_id())
                         .expect("some part of a failing const eval must be local");
                     use rustc::mir::interpret::EvalErrorKind::*;
                     let msg = match msg {

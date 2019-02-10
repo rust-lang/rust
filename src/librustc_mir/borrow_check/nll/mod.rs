@@ -209,7 +209,7 @@ pub(in crate::borrow_check) fn compute_regions<'cx, 'gcx, 'tcx>(
 
 fn dump_mir_results<'a, 'gcx, 'tcx>(
     infcx: &InferCtxt<'a, 'gcx, 'tcx>,
-    source: MirSource,
+    source: MirSource<'tcx>,
     mir: &Mir<'tcx>,
     regioncx: &RegionInferenceContext<'_>,
     closure_region_requirements: &Option<ClosureRegionRequirements<'_>>,

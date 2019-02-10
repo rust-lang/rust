@@ -40,7 +40,7 @@ struct CallSite<'tcx> {
 impl MirPass for Inline {
     fn run_pass<'a, 'tcx>(&self,
                           tcx: TyCtxt<'a, 'tcx, 'tcx>,
-                          source: MirSource,
+                          source: MirSource<'tcx>,
                           mir: &mut Mir<'tcx>) {
         if tcx.sess.opts.debugging_opts.mir_opt_level >= 2 {
             Inliner { tcx, source }.run_pass(mir);
@@ -50,7 +50,7 @@ impl MirPass for Inline {
 
 struct Inliner<'a, 'tcx: 'a> {
     tcx: TyCtxt<'a, 'tcx, 'tcx>,
-    source: MirSource,
+    source: MirSource<'tcx>,
 }
 
 impl<'a, 'tcx> Inliner<'a, 'tcx> {
@@ -69,10 +69,10 @@ impl<'a, 'tcx> Inliner<'a, 'tcx> {
 
         let mut callsites = VecDeque::new();
 
-        let param_env = self.tcx.param_env(self.source.def_id);
+        let param_env = self.tcx.param_env(self.source.def_id());
 
         // Only do inlining into fn bodies.
-        let id = self.tcx.hir().as_local_node_id(self.source.def_id).unwrap();
+        let id = self.tcx.hir().as_local_node_id(self.source.def_id()).unwrap();
         if self.tcx.hir().body_owner_kind(id).is_fn_or_closure() && self.source.promoted.is_none() {
             for (bb, bb_data) in caller_mir.basic_blocks().iter_enumerated() {
                 if let Some(callsite) = self.get_valid_function_call(bb,
@@ -274,7 +274,7 @@ impl<'a, 'tcx> Inliner<'a, 'tcx> {
 
         // FIXME: Give a bonus to functions with only a single caller
 
-        let param_env = tcx.param_env(self.source.def_id);
+        let param_env = tcx.param_env(self.source.def_id());
 
         let mut first_block = true;
         let mut cost = 0;

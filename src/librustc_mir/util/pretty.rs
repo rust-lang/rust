@@ -1,4 +1,3 @@
-use rustc::hir;
 use rustc::hir::def_id::{DefId, LOCAL_CRATE};
 use rustc::mir::*;
 use rustc::mir::visit::Visitor;
@@ -69,7 +68,7 @@ pub fn dump_mir<'a, 'gcx, 'tcx, F>(
     pass_num: Option<&dyn Display>,
     pass_name: &str,
     disambiguator: &dyn Display,
-    source: MirSource,
+    source: MirSource<'tcx>,
     mir: &Mir<'tcx>,
     extra_data: F,
 ) where
@@ -81,7 +80,7 @@ pub fn dump_mir<'a, 'gcx, 'tcx, F>(
 
     let node_path = item_path::with_forced_impl_filename_line(|| {
         // see notes on #41697 below
-        tcx.item_path_str(source.def_id)
+        tcx.item_path_str(source.def_id())
     });
     dump_matched_mir_node(
         tcx,
@@ -98,7 +97,7 @@ pub fn dump_mir<'a, 'gcx, 'tcx, F>(
 pub fn dump_enabled<'a, 'gcx, 'tcx>(
     tcx: TyCtxt<'a, 'gcx, 'tcx>,
     pass_name: &str,
-    source: MirSource,
+    source: MirSource<'tcx>,
 ) -> bool {
     let filters = match tcx.sess.opts.debugging_opts.dump_mir {
         None => return false,
@@ -106,7 +105,7 @@ pub fn dump_enabled<'a, 'gcx, 'tcx>(
     };
     let node_path = item_path::with_forced_impl_filename_line(|| {
         // see notes on #41697 below
-        tcx.item_path_str(source.def_id)
+        tcx.item_path_str(source.def_id())
     });
     filters.split('|').any(|or_filter| {
         or_filter.split('&').all(|and_filter| {
@@ -125,7 +124,7 @@ fn dump_matched_mir_node<'a, 'gcx, 'tcx, F>(
     pass_name: &str,
     node_path: &str,
     disambiguator: &dyn Display,
-    source: MirSource,
+    source: MirSource<'tcx>,
     mir: &Mir<'tcx>,
     mut extra_data: F,
 ) where
@@ -151,7 +150,7 @@ fn dump_matched_mir_node<'a, 'gcx, 'tcx, F>(
         let _: io::Result<()> = try {
             let mut file =
                 create_dump_file(tcx, "dot", pass_num, pass_name, disambiguator, source)?;
-            write_mir_fn_graphviz(tcx, source.def_id, mir, &mut file)?;
+            write_mir_fn_graphviz(tcx, source.def_id(), mir, &mut file)?;
         };
     }
 }
@@ -165,7 +164,7 @@ fn dump_path(
     pass_num: Option<&dyn Display>,
     pass_name: &str,
     disambiguator: &dyn Display,
-    source: MirSource,
+    source: MirSource<'tcx>,
 ) -> PathBuf {
     let promotion_id = match source.promoted {
         Some(id) => format!("-{:?}", id),
@@ -184,13 +183,32 @@ fn dump_path(
     let mut file_path = PathBuf::new();
     file_path.push(Path::new(&tcx.sess.opts.debugging_opts.dump_mir_dir));
 
-    let item_name = tcx.hir()
-        .def_path(source.def_id)
+    let item_name = tcx
+        .def_path(source.def_id())
         .to_filename_friendly_no_crate();
+    // All drop shims have the same DefId, so we have to add the type
+    // to get unique file names.
+    let shim_disambiguator = match source.instance {
+        ty::InstanceDef::DropGlue(_, Some(ty)) => {
+            // Unfortunately, pretty-printed typed are not very filename-friendly.
+            // We dome some filtering.
+            let mut s = ".".to_owned();
+            s.extend(ty.to_string()
+                .chars()
+                .filter_map(|c| match c {
+                    ' ' => None,
+                    ':' => Some('_'),
+                    c => Some(c)
+                }));
+            s
+        }
+        _ => String::new(),
+    };
 
     let file_name = format!(
-        "rustc.{}{}{}.{}.{}.{}",
+        "rustc.{}{}{}{}.{}.{}.{}",
         item_name,
+        shim_disambiguator,
         promotion_id,
         pass_num,
         pass_name,
@@ -213,7 +231,7 @@ pub(crate) fn create_dump_file(
     pass_num: Option<&dyn Display>,
     pass_name: &str,
     disambiguator: &dyn Display,
-    source: MirSource,
+    source: MirSource<'tcx>,
 ) -> io::Result<fs::File> {
     let file_path = dump_path(tcx, extension, pass_num, pass_name, disambiguator, source);
     if let Some(parent) = file_path.parent() {
@@ -253,7 +271,7 @@ pub fn write_mir_pretty<'a, 'gcx, 'tcx>(
         for (i, mir) in mir.promoted.iter_enumerated() {
             writeln!(w, "")?;
             let src = MirSource {
-                def_id,
+                instance: ty::InstanceDef::Item(def_id),
                 promoted: Some(i),
             };
             write_mir_fn(tcx, src, mir, &mut |_, _| Ok(()), w)?;
@@ -264,7 +282,7 @@ pub fn write_mir_pretty<'a, 'gcx, 'tcx>(
 
 pub fn write_mir_fn<'a, 'gcx, 'tcx, F>(
     tcx: TyCtxt<'a, 'gcx, 'tcx>,
-    src: MirSource,
+    src: MirSource<'tcx>,
     mir: &Mir<'tcx>,
     extra_data: &mut F,
     w: &mut dyn Write,
@@ -528,7 +546,7 @@ fn write_scope_tree(
 /// local variables (both user-defined bindings and compiler temporaries).
 pub fn write_mir_intro<'a, 'gcx, 'tcx>(
     tcx: TyCtxt<'a, 'gcx, 'tcx>,
-    src: MirSource,
+    src: MirSource<'tcx>,
     mir: &Mir<'_>,
     w: &mut dyn Write,
 ) -> io::Result<()> {
@@ -570,51 +588,58 @@ pub fn write_mir_intro<'a, 'gcx, 'tcx>(
 
 fn write_mir_sig(
     tcx: TyCtxt<'_, '_, '_>,
-    src: MirSource,
+    src: MirSource<'tcx>,
     mir: &Mir<'_>,
     w: &mut dyn Write,
 ) -> io::Result<()> {
-    let id = tcx.hir().as_local_node_id(src.def_id).unwrap();
-    let body_owner_kind = tcx.hir().body_owner_kind(id);
-    match (body_owner_kind, src.promoted) {
-        (_, Some(i)) => write!(w, "{:?} in", i)?,
-        (hir::BodyOwnerKind::Closure, _) |
-        (hir::BodyOwnerKind::Fn, _) => write!(w, "fn")?,
-        (hir::BodyOwnerKind::Const, _) => write!(w, "const")?,
-        (hir::BodyOwnerKind::Static(hir::MutImmutable), _) => write!(w, "static")?,
-        (hir::BodyOwnerKind::Static(hir::MutMutable), _) => write!(w, "static mut")?,
+    use rustc::hir::def::Def;
+
+    trace!("write_mir_sig: {:?}", src.instance);
+    let descr = tcx.describe_def(src.def_id());
+    let is_function = match descr {
+        Some(Def::Fn(_)) | Some(Def::Method(_)) | Some(Def::StructCtor(..)) => true,
+        _ => tcx.is_closure(src.def_id()),
+    };
+    match (descr, src.promoted) {
+        (_, Some(i)) => write!(w, "{:?} in ", i)?,
+        (Some(Def::StructCtor(..)), _) => write!(w, "struct ")?,
+        (Some(Def::Const(_)), _) => write!(w, "const ")?,
+        (Some(Def::Static(_, /*is_mutbl*/false)), _) => write!(w, "static ")?,
+        (Some(Def::Static(_, /*is_mutbl*/true)), _) => write!(w, "static mut ")?,
+        (_, _) if is_function => write!(w, "fn ")?,
+        (None, _) => {}, // things like anon const, not an item
+        _ => bug!("Unexpected def description {:?}", descr),
     }
 
     item_path::with_forced_impl_filename_line(|| {
         // see notes on #41697 elsewhere
-        write!(w, " {}", tcx.item_path_str(src.def_id))
+        write!(w, "{}", tcx.item_path_str(src.def_id()))
     })?;
 
-    match (body_owner_kind, src.promoted) {
-        (hir::BodyOwnerKind::Closure, None) |
-        (hir::BodyOwnerKind::Fn, None) => {
-            write!(w, "(")?;
+    if src.promoted.is_none() && is_function {
+        write!(w, "(")?;
 
-            // fn argument types.
-            for (i, arg) in mir.args_iter().enumerate() {
-                if i != 0 {
-                    write!(w, ", ")?;
-                }
-                write!(w, "{:?}: {}", Place::Local(arg), mir.local_decls[arg].ty)?;
+        // fn argument types.
+        for (i, arg) in mir.args_iter().enumerate() {
+            if i != 0 {
+                write!(w, ", ")?;
             }
+            write!(w, "{:?}: {}", Place::Local(arg), mir.local_decls[arg].ty)?;
+        }
 
-            write!(w, ") -> {}", mir.return_ty())?;
-        }
-        (hir::BodyOwnerKind::Const, _) | (hir::BodyOwnerKind::Static(_), _) | (_, Some(_)) => {
-            assert_eq!(mir.arg_count, 0);
-            write!(w, ": {} =", mir.return_ty())?;
-        }
+        write!(w, ") -> {}", mir.return_ty())?;
+    } else {
+        assert_eq!(mir.arg_count, 0);
+        write!(w, ": {} =", mir.return_ty())?;
     }
 
     if let Some(yield_ty) = mir.yield_ty {
         writeln!(w)?;
         writeln!(w, "yields {}", yield_ty)?;
     }
+
+    write!(w, " ")?;
+    // Next thing that gets printed is the opening {
 
     Ok(())
 }

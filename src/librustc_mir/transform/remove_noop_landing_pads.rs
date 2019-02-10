@@ -24,7 +24,7 @@ pub fn remove_noop_landing_pads<'a, 'tcx>(
 impl MirPass for RemoveNoopLandingPads {
     fn run_pass<'a, 'tcx>(&self,
                           tcx: TyCtxt<'a, 'tcx, 'tcx>,
-                          _src: MirSource,
+                          _src: MirSource<'tcx>,
                           mir: &mut Mir<'tcx>) {
         remove_noop_landing_pads(tcx, mir);
     }

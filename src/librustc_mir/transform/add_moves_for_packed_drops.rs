@@ -42,11 +42,11 @@ pub struct AddMovesForPackedDrops;
 impl MirPass for AddMovesForPackedDrops {
     fn run_pass<'a, 'tcx>(&self,
                           tcx: TyCtxt<'a, 'tcx, 'tcx>,
-                          src: MirSource,
+                          src: MirSource<'tcx>,
                           mir: &mut Mir<'tcx>)
     {
         debug!("add_moves_for_packed_drops({:?} @ {:?})", src, mir.span);
-        add_moves_for_packed_drops(tcx, mir, src.def_id);
+        add_moves_for_packed_drops(tcx, mir, src.def_id());
     }
 }
 

@@ -16,8 +16,10 @@ use syntax_pos::Span;
 use std::fmt;
 use std::iter;
 
-use crate::transform::{add_moves_for_packed_drops, add_call_guards};
-use crate::transform::{remove_noop_landing_pads, no_landing_pads, simplify};
+use crate::transform::{
+    add_moves_for_packed_drops, add_call_guards,
+    remove_noop_landing_pads, no_landing_pads, simplify, run_passes
+};
 use crate::util::elaborate_drops::{self, DropElaborator, DropStyle, DropFlagMode};
 use crate::util::patch::MirPatch;
 
@@ -113,12 +115,15 @@ fn make_shim<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         }
     };
     debug!("make_shim({:?}) = untransformed {:?}", instance, result);
-    add_moves_for_packed_drops::add_moves_for_packed_drops(
-        tcx, &mut result, instance.def_id());
-    no_landing_pads::no_landing_pads(tcx, &mut result);
-    remove_noop_landing_pads::remove_noop_landing_pads(tcx, &mut result);
-    simplify::simplify_cfg(&mut result);
-    add_call_guards::CriticalCallEdges.add_call_guards(&mut result);
+
+    run_passes(tcx, &mut result, instance, MirPhase::Const, &[
+        &add_moves_for_packed_drops::AddMovesForPackedDrops,
+        &no_landing_pads::NoLandingPads,
+        &remove_noop_landing_pads::RemoveNoopLandingPads,
+        &simplify::SimplifyCfg::new("make_shim"),
+        &add_call_guards::CriticalCallEdges,
+    ]);
+
     debug!("make_shim({:?}) = {:?}", instance, result);
 
     tcx.alloc_mir(result)

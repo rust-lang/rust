@@ -1159,7 +1159,7 @@ pub struct QualifyAndPromoteConstants;
 impl MirPass for QualifyAndPromoteConstants {
     fn run_pass<'a, 'tcx>(&self,
                           tcx: TyCtxt<'a, 'tcx, 'tcx>,
-                          src: MirSource,
+                          src: MirSource<'tcx>,
                           mir: &mut Mir<'tcx>) {
         // There's not really any point in promoting errorful MIR.
         if mir.return_ty().references_error() {
@@ -1171,7 +1171,7 @@ impl MirPass for QualifyAndPromoteConstants {
             return;
         }
 
-        let def_id = src.def_id;
+        let def_id = src.def_id();
         let id = tcx.hir().as_local_node_id(def_id).unwrap();
         let mut const_promoted_temps = None;
         let mode = match tcx.hir().body_owner_kind(id) {

@@ -12,7 +12,7 @@ pub struct Lower128Bit;
 impl MirPass for Lower128Bit {
     fn run_pass<'a, 'tcx>(&self,
                           tcx: TyCtxt<'a, 'tcx, 'tcx>,
-                          _src: MirSource,
+                          _src: MirSource<'tcx>,
                           mir: &mut Mir<'tcx>) {
         let debugging_override = tcx.sess.opts.debugging_opts.lower_128bit_ops;
         let target_default = tcx.sess.host.options.i128_lowering;

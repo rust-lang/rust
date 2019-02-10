@@ -35,7 +35,7 @@ pub struct DeleteAscribeUserType;
 impl MirPass for CleanAscribeUserType {
     fn run_pass<'a, 'tcx>(&self,
                           _tcx: TyCtxt<'a, 'tcx, 'tcx>,
-                          _source: MirSource,
+                          _source: MirSource<'tcx>,
                           mir: &mut Mir<'tcx>) {
         let mut delete = DeleteAscribeUserType;
         delete.visit_mir(mir);
@@ -69,7 +69,7 @@ pub struct DeleteFakeBorrows {
 impl MirPass for CleanFakeReadsAndBorrows {
     fn run_pass<'a, 'tcx>(&self,
                           _tcx: TyCtxt<'a, 'tcx, 'tcx>,
-                          _source: MirSource,
+                          _source: MirSource<'tcx>,
                           mir: &mut Mir<'tcx>) {
         let mut delete_reads = DeleteAndRecordFakeReads::default();
         delete_reads.visit_mir(mir);
