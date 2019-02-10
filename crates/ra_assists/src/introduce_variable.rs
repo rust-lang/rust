@@ -44,7 +44,22 @@ pub(crate) fn introduce_variable(ctx: AssistCtx<impl HirDatabase>) -> Option<Ass
             edit.replace(expr.syntax().range(), buf);
         } else {
             buf.push_str(";");
-            indent.text().push_to(&mut buf);
+
+            // We want to maintain the indent level,
+            // but we do not want to duplicate possible
+            // extra newlines in the indent block
+            for chunk in indent.text().chunks() {
+                if chunk.starts_with("\r\n") {
+                    buf.push_str("\r\n");
+                    buf.push_str(chunk.trim_start_matches("\r\n"));
+                } else if chunk.starts_with("\n") {
+                    buf.push_str("\n");
+                    buf.push_str(chunk.trim_start_matches("\n"));
+                } else {
+                    buf.push_str(chunk);
+                }
+            }
+
             edit.target(expr.syntax().range());
             edit.replace(expr.syntax().range(), "var_name".to_string());
             edit.insert(anchor_stmt.range().start(), buf);
@@ -337,6 +352,70 @@ fn foo() -> u32 {
 ",
             "
 fn foo() -> u32 {
+    let <|>var_name = 2 + 2;
+    return var_name;
+}
+",
+        );
+    }
+
+    #[test]
+    fn test_introduce_var_does_not_add_extra_whitespace() {
+        check_assist(
+            introduce_variable,
+            "
+fn foo() -> u32 {
+
+
+    r<|>eturn 2 + 2;
+}
+",
+            "
+fn foo() -> u32 {
+
+
+    let <|>var_name = 2 + 2;
+    return var_name;
+}
+",
+        );
+
+        check_assist(
+            introduce_variable,
+            "
+fn foo() -> u32 {
+
+        r<|>eturn 2 + 2;
+}
+",
+            "
+fn foo() -> u32 {
+
+        let <|>var_name = 2 + 2;
+        return var_name;
+}
+",
+        );
+
+        check_assist(
+            introduce_variable,
+            "
+fn foo() -> u32 {
+    let foo = 1;
+
+    // bar
+
+
+    r<|>eturn 2 + 2;
+}
+",
+            "
+fn foo() -> u32 {
+    let foo = 1;
+
+    // bar
+
+
     let <|>var_name = 2 + 2;
     return var_name;
 }
