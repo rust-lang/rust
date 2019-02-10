@@ -69,12 +69,7 @@ impl CategoryResultData {
     }
 
     fn total_time(&self) -> u64 {
-        let mut total = 0;
-        for (_, time) in &self.query_times {
-            total += time;
-        }
-
-        total
+        self.query_times.iter().map(|(_, time)| time).sum()
     }
 
     fn total_cache_data(&self) -> (u64, u64) {
@@ -133,13 +128,7 @@ impl CalculatedResults {
     }
 
     fn total_time(&self) -> u64 {
-        let mut total = 0;
-
-        for (_, data) in &self.categories {
-            total += data.total_time();
-        }
-
-        total
+        self.categories.iter().map(|(_, data)| data.total_time()).sum()
     }
 
     fn with_options(mut self, opts: &Options) -> CalculatedResults {
@@ -411,9 +400,9 @@ impl SelfProfiler {
             .unwrap();
 
         let mut categories: Vec<_> = results.categories.iter().collect();
-        categories.sort_by(|(_, data1), (_, data2)| data2.total_time().cmp(&data1.total_time()));
+        categories.sort_by_cached_key(|(_, d)| d.total_time());
 
-        for (category, data) in categories {
+        for (category, data) in categories.iter().rev() {
             let (category_hits, category_total) = data.total_cache_data();
             let category_hit_percent = calculate_percent(category_hits, category_total);
 
