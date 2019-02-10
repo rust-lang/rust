@@ -400,6 +400,7 @@ impl<'a> Builder<'a> {
                 test::TheBook,
                 test::UnstableBook,
                 test::RustcBook,
+                test::EmbeddedBook,
                 test::Rustfmt,
                 test::Miri,
                 test::Clippy,
