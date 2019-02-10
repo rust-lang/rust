@@ -1,3 +1,5 @@
+mod analysis_stats;
+
 use std::{fs, io::Read, path::Path, time::Instant};
 
 use clap::{App, Arg, SubCommand};
@@ -5,10 +7,12 @@ use join_to_string::join;
 use ra_ide_api_light::{extend_selection, file_structure, syntax_tree};
 use ra_syntax::{SourceFile, TextRange, TreeArc, AstNode};
 use tools::collect_tests;
+use flexi_logger::Logger;
 
 type Result<T> = ::std::result::Result<T, failure::Error>;
 
 fn main() -> Result<()> {
+    Logger::with_env().start()?;
     let matches = App::new("ra-cli")
         .setting(clap::AppSettings::SubcommandRequiredElseHelp)
         .subcommand(
@@ -22,6 +26,9 @@ fn main() -> Result<()> {
             SubCommand::with_name("extend-selection")
                 .arg(Arg::with_name("start"))
                 .arg(Arg::with_name("end")),
+        )
+        .subcommand(
+            SubCommand::with_name("analysis-stats").arg(Arg::with_name("verbose").short("v")),
         )
         .get_matches();
     match matches.subcommand() {
@@ -55,6 +62,10 @@ fn main() -> Result<()> {
             let file = file()?;
             let sels = selections(&file, start, end);
             println!("{}", sels)
+        }
+        ("analysis-stats", Some(matches)) => {
+            let verbose = matches.is_present("verbose");
+            analysis_stats::run(verbose)?;
         }
         _ => unreachable!(),
     }

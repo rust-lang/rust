@@ -70,6 +70,14 @@ impl Body {
         self.owner
     }
 
+    pub fn exprs(&self) -> impl Iterator<Item = (ExprId, &Expr)> {
+        self.exprs.iter()
+    }
+
+    pub fn pats(&self) -> impl Iterator<Item = (PatId, &Pat)> {
+        self.pats.iter()
+    }
+
     pub fn syntax_mapping(&self, db: &impl HirDatabase) -> Arc<BodySyntaxMapping> {
         db.body_syntax_mapping(self.owner)
     }

@@ -1,0 +1,20 @@
+[package]
+edition = "2018"
+name = "ra_batch"
+version = "0.1.0"
+authors = ["Aleksey Kladov <aleksey.kladov@gmail.com>"]
+
+[dependencies]
+log = "0.4.5"
+rustc-hash = "1.0"
+
+failure = "0.1.4"
+
+ra_syntax = { path = "../ra_syntax" }
+ra_db = { path = "../ra_db" }
+ra_hir = { path = "../ra_hir" }
+ra_vfs = { path = "../ra_vfs" }
+ra_project_model = { path = "../ra_project_model" }
+
+[dev-dependencies]
+test_utils = { path = "../test_utils" }

@@ -112,6 +112,7 @@ impl CrateGraph {
         self.arena[&crate_id].file_id
     }
 
+    // TODO: this only finds one crate with the given root; we could have multiple
     pub fn crate_id_for_crate_root(&self, file_id: FileId) -> Option<CrateId> {
         let (&crate_id, _) = self.arena.iter().find(|(_crate_id, data)| data.file_id == file_id)?;
         Some(crate_id)

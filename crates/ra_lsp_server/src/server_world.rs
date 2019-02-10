@@ -47,10 +47,8 @@ impl ServerWorldState {
                 roots.push(krate.root_dir(&ws.sysroot).to_path_buf())
             }
         }
-        roots.sort();
-        roots.dedup();
-        let roots_to_scan = roots.len();
         let (mut vfs, roots) = Vfs::new(roots);
+        let roots_to_scan = roots.len();
         for r in roots {
             let is_local = vfs.root2path(r).starts_with(&root);
             change.add_root(SourceRootId(r.0.into()), is_local);
