@@ -79,6 +79,16 @@ struct DepGraphData {
     loaded_from_cache: Lock<FxHashMap<DepNodeIndex, bool>>,
 }
 
+pub fn hash_result<R>(hcx: &mut StableHashingContext<'_>, result: &R) -> Option<Fingerprint>
+where
+    R: for<'a> HashStable<StableHashingContext<'a>>,
+{
+    let mut stable_hasher = StableHasher::new();
+    result.hash_stable(hcx, &mut stable_hasher);
+
+    Some(stable_hasher.finish())
+}
+
 impl DepGraph {
 
     pub fn new(prev_graph: PreviousDepGraph,
@@ -178,14 +188,16 @@ impl DepGraph {
     ///   `arg` parameter.
     ///
     /// [rustc guide]: https://rust-lang.github.io/rustc-guide/incremental-compilation.html
-    pub fn with_task<'gcx, C, A, R>(&self,
-                                   key: DepNode,
-                                   cx: C,
-                                   arg: A,
-                                   task: fn(C, A) -> R)
-                                   -> (R, DepNodeIndex)
-        where C: DepGraphSafe + StableHashingContextProvider<'gcx>,
-              R: HashStable<StableHashingContext<'gcx>>,
+    pub fn with_task<'a, C, A, R>(
+        &self,
+        key: DepNode,
+        cx: C,
+        arg: A,
+        task: fn(C, A) -> R,
+        hash_result: impl FnOnce(&mut StableHashingContext<'_>, &R) -> Option<Fingerprint>,
+    ) -> (R, DepNodeIndex)
+    where
+        C: DepGraphSafe + StableHashingContextProvider<'a>,
     {
         self.with_task_impl(key, cx, arg, false, task,
             |_key| Some(TaskDeps {
@@ -196,17 +208,18 @@ impl DepGraph {
             }),
             |data, key, fingerprint, task| {
                 data.borrow_mut().complete_task(key, task.unwrap(), fingerprint)
-            })
+            },
+            hash_result)
     }
 
     /// Creates a new dep-graph input with value `input`
-    pub fn input_task<'gcx, C, R>(&self,
+    pub fn input_task<'a, C, R>(&self,
                                    key: DepNode,
                                    cx: C,
                                    input: R)
                                    -> (R, DepNodeIndex)
-        where C: DepGraphSafe + StableHashingContextProvider<'gcx>,
-              R: HashStable<StableHashingContext<'gcx>>,
+        where C: DepGraphSafe + StableHashingContextProvider<'a>,
+              R: for<'b> HashStable<StableHashingContext<'b>>,
     {
         fn identity_fn<C, A>(_: C, arg: A) -> A {
             arg
@@ -216,10 +229,11 @@ impl DepGraph {
             |_| None,
             |data, key, fingerprint, _| {
                 data.borrow_mut().alloc_node(key, SmallVec::new(), fingerprint)
-            })
+            },
+            hash_result::<R>)
     }
 
-    fn with_task_impl<'gcx, C, A, R>(
+    fn with_task_impl<'a, C, A, R>(
         &self,
         key: DepNode,
         cx: C,
@@ -230,11 +244,11 @@ impl DepGraph {
         finish_task_and_alloc_depnode: fn(&Lock<CurrentDepGraph>,
                                           DepNode,
                                           Fingerprint,
-                                          Option<TaskDeps>) -> DepNodeIndex
+                                          Option<TaskDeps>) -> DepNodeIndex,
+        hash_result: impl FnOnce(&mut StableHashingContext<'_>, &R) -> Option<Fingerprint>,
     ) -> (R, DepNodeIndex)
     where
-        C: DepGraphSafe + StableHashingContextProvider<'gcx>,
-        R: HashStable<StableHashingContext<'gcx>>,
+        C: DepGraphSafe + StableHashingContextProvider<'a>,
     {
         if let Some(ref data) = self.data {
             let task_deps = create_task(key).map(|deps| Lock::new(deps));
@@ -269,15 +283,12 @@ impl DepGraph {
                 profq_msg(hcx.sess(), ProfileQueriesMsg::TaskEnd)
             };
 
-            let mut stable_hasher = StableHasher::new();
-            result.hash_stable(&mut hcx, &mut stable_hasher);
-
-            let current_fingerprint = stable_hasher.finish();
+            let current_fingerprint = hash_result(&mut hcx, &result);
 
             let dep_node_index = finish_task_and_alloc_depnode(
                 &data.current,
                 key,
-                current_fingerprint,
+                current_fingerprint.unwrap_or(Fingerprint::ZERO),
                 task_deps.map(|lock| lock.into_inner()),
             );
 
@@ -285,15 +296,20 @@ impl DepGraph {
             if let Some(prev_index) = data.previous.node_to_index_opt(&key) {
                 let prev_fingerprint = data.previous.fingerprint_by_index(prev_index);
 
-                let color = if current_fingerprint == prev_fingerprint {
-                    DepNodeColor::Green(dep_node_index)
+                let color = if let Some(current_fingerprint) = current_fingerprint {
+                    if current_fingerprint == prev_fingerprint {
+                        DepNodeColor::Green(dep_node_index)
+                    } else {
+                        DepNodeColor::Red
+                    }
                 } else {
+                    // Mark the node as Red if we can't hash the result
                     DepNodeColor::Red
                 };
 
                 debug_assert!(data.colors.get(prev_index).is_none(),
-                              "DepGraph::with_task() - Duplicate DepNodeColor \
-                               insertion for {:?}", key);
+                            "DepGraph::with_task() - Duplicate DepNodeColor \
+                            insertion for {:?}", key);
 
                 data.colors.insert(prev_index, color);
             }
@@ -342,14 +358,16 @@ impl DepGraph {
 
     /// Execute something within an "eval-always" task which is a task
     // that runs whenever anything changes.
-    pub fn with_eval_always_task<'gcx, C, A, R>(&self,
-                                   key: DepNode,
-                                   cx: C,
-                                   arg: A,
-                                   task: fn(C, A) -> R)
-                                   -> (R, DepNodeIndex)
-        where C: DepGraphSafe + StableHashingContextProvider<'gcx>,
-              R: HashStable<StableHashingContext<'gcx>>,
+    pub fn with_eval_always_task<'a, C, A, R>(
+        &self,
+        key: DepNode,
+        cx: C,
+        arg: A,
+        task: fn(C, A) -> R,
+        hash_result: impl FnOnce(&mut StableHashingContext<'_>, &R) -> Option<Fingerprint>,
+    ) -> (R, DepNodeIndex)
+    where
+        C: DepGraphSafe + StableHashingContextProvider<'a>,
     {
         self.with_task_impl(key, cx, arg, false, task,
             |_| None,
@@ -359,7 +377,8 @@ impl DepGraph {
                     &DepNode::new_no_params(DepKind::Krate)
                 ];
                 current.alloc_node(key, smallvec![krate_idx], fingerprint)
-            })
+            },
+            hash_result)
     }
 
     #[inline]

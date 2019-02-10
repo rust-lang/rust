@@ -20,7 +20,7 @@ use std::hash::Hash;
 use std::fmt::Debug;
 use syntax_pos::symbol::InternedString;
 use rustc_data_structures::sync::Lock;
-use rustc_data_structures::stable_hasher::HashStable;
+use rustc_data_structures::fingerprint::Fingerprint;
 use crate::ich::StableHashingContext;
 
 // Query configuration and description traits.
@@ -30,7 +30,7 @@ pub trait QueryConfig<'tcx> {
     const CATEGORY: ProfileCategory;
 
     type Key: Eq + Hash + Clone + Debug;
-    type Value: Clone + for<'a> HashStable<StableHashingContext<'a>>;
+    type Value: Clone;
 }
 
 pub(super) trait QueryAccessors<'tcx>: QueryConfig<'tcx> {
@@ -43,6 +43,11 @@ pub(super) trait QueryAccessors<'tcx>: QueryConfig<'tcx> {
 
     // Don't use this method to compute query results, instead use the methods on TyCtxt
     fn compute(tcx: TyCtxt<'_, 'tcx, '_>, key: Self::Key) -> Self::Value;
+
+    fn hash_result(
+        hcx: &mut StableHashingContext<'_>,
+        result: &Self::Value
+    ) -> Option<Fingerprint>;
 
     fn handle_cycle_error(tcx: TyCtxt<'_, 'tcx, '_>) -> Self::Value;
 }

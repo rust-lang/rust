@@ -67,11 +67,11 @@ const BASE_IMPL: &[&str] = &[
     label_strs::ImplTraitRef,
 ];
 
-/// DepNodes for MirValidated/Optimized, which is relevant in "executable"
+/// DepNodes for MirBuilt/Optimized, which is relevant in "executable"
 /// code, i.e., functions+methods
 const BASE_MIR: &[&str] = &[
     label_strs::MirOptimized,
-    label_strs::MirValidated,
+    label_strs::MirBuilt,
 ];
 
 /// Struct, Enum and Union DepNodes

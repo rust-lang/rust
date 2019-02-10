@@ -20,6 +20,7 @@ use super::LlvmCodegenBackend;
 
 use llvm;
 use metadata;
+use rustc::dep_graph;
 use rustc::mir::mono::{Linkage, Visibility, Stats};
 use rustc::middle::cstore::{EncodedMetadata};
 use rustc::ty::TyCtxt;
@@ -145,7 +146,8 @@ pub fn compile_codegen_unit<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     let ((stats, module), _) = tcx.dep_graph.with_task(dep_node,
                                                        tcx,
                                                        cgu_name,
-                                                       module_codegen);
+                                                       module_codegen,
+                                                       dep_graph::hash_result);
     let time_to_codegen = start_time.elapsed();
 
     // We assume that the cost to run LLVM on a CGU is proportional to

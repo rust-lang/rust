@@ -48,14 +48,14 @@ pub(super) struct NodeCollector<'a, 'hir> {
     hir_body_nodes: Vec<(DefPathHash, Fingerprint)>,
 }
 
-fn input_dep_node_and_hash<'a, I>(
+fn input_dep_node_and_hash<I>(
     dep_graph: &DepGraph,
-    hcx: &mut StableHashingContext<'a>,
+    hcx: &mut StableHashingContext<'_>,
     dep_node: DepNode,
     input: I,
 ) -> (DepNodeIndex, Fingerprint)
 where
-    I: HashStable<StableHashingContext<'a>>,
+    I: for<'a> HashStable<StableHashingContext<'a>>,
 {
     let dep_node_index = dep_graph.input_task(dep_node, &mut *hcx, &input).1;
 
@@ -70,15 +70,15 @@ where
     (dep_node_index, hash)
 }
 
-fn alloc_hir_dep_nodes<'a, I>(
+fn alloc_hir_dep_nodes<I>(
     dep_graph: &DepGraph,
-    hcx: &mut StableHashingContext<'a>,
+    hcx: &mut StableHashingContext<'_>,
     def_path_hash: DefPathHash,
     item_like: I,
     hir_body_nodes: &mut Vec<(DefPathHash, Fingerprint)>,
 ) -> (DepNodeIndex, DepNodeIndex)
 where
-    I: HashStable<StableHashingContext<'a>>,
+    I: for<'a> HashStable<StableHashingContext<'a>>,
 {
     let sig = dep_graph.input_task(
         def_path_hash.to_dep_node(DepKind::Hir),
@@ -286,7 +286,7 @@ impl<'a, 'hir> NodeCollector<'a, 'hir> {
         self.parent_node = parent_node;
     }
 
-    fn with_dep_node_owner<T: HashStable<StableHashingContext<'a>>,
+    fn with_dep_node_owner<T: for<'b> HashStable<StableHashingContext<'b>>,
                            F: FnOnce(&mut Self)>(&mut self,
                                                  dep_node_owner: DefIndex,
                                                  item_like: &T,

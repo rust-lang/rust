@@ -1,4 +1,4 @@
-use crate::dep_graph::{DepConstructor, DepNode};
+use crate::dep_graph::{self, DepConstructor, DepNode};
 use crate::errors::DiagnosticBuilder;
 use crate::hir::def_id::{CrateNum, DefId, DefIndex};
 use crate::hir::def::{Def, Export};
@@ -49,6 +49,7 @@ use rustc_data_structures::indexed_vec::IndexVec;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_data_structures::stable_hasher::StableVec;
 use rustc_data_structures::sync::Lrc;
+use rustc_data_structures::fingerprint::Fingerprint;
 use rustc_target::spec::PanicStrategy;
 
 use std::borrow::Cow;
@@ -233,9 +234,9 @@ define_queries! { <'tcx>
         /// ready for const evaluation.
         ///
         /// See the README for the `mir` module for details.
-        [] fn mir_const: MirConst(DefId) -> &'tcx Steal<mir::Mir<'tcx>>,
+        [no_hash] fn mir_const: MirConst(DefId) -> &'tcx Steal<mir::Mir<'tcx>>,
 
-        [] fn mir_validated: MirValidated(DefId) -> &'tcx Steal<mir::Mir<'tcx>>,
+        [no_hash] fn mir_validated: MirValidated(DefId) -> &'tcx Steal<mir::Mir<'tcx>>,
 
         /// MIR after our optimization passes have run. This is MIR that is ready
         /// for codegen. This is also the only query that can fetch non-local MIR, at present.
