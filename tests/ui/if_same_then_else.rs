@@ -1,9 +1,9 @@
+#![warn(clippy::if_same_then_else)]
 #![allow(
     clippy::blacklisted_name,
     clippy::collapsible_if,
     clippy::cyclomatic_complexity,
     clippy::eq_op,
-    clippy::needless_continue,
     clippy::needless_return,
     clippy::never_loop,
     clippy::no_effect,
@@ -11,24 +11,14 @@
     clippy::unused_unit
 )]
 
-fn bar<T>(_: T) {}
-fn foo() -> bool {
-    unimplemented!()
-}
-
 struct Foo {
     bar: u8,
 }
 
-pub enum Abc {
-    A,
-    B,
-    C,
+fn foo() -> bool {
+    unimplemented!()
 }
 
-#[warn(clippy::if_same_then_else)]
-#[warn(clippy::match_same_arms)]
-#[allow(clippy::unused_unit)]
 fn if_same_then_else() -> Result<&'static str, ()> {
     if true {
         Foo { bar: 42 };
@@ -74,33 +64,24 @@ fn if_same_then_else() -> Result<&'static str, ()> {
         foo();
     }
 
-    let _ = match 42 {
-        42 => {
-            foo();
-            let mut a = 42 + [23].len() as i32;
-            if true {
-                a += 7;
-            }
-            a = -31 - a;
-            a
-        },
-        _ => {
-            //~ ERROR match arms have same body
-            foo();
-            let mut a = 42 + [23].len() as i32;
-            if true {
-                a += 7;
-            }
-            a = -31 - a;
-            a
-        },
+    let _ = if true {
+        0.0
+    } else {
+        //~ ERROR same body as `if` block
+        0.0
     };
 
-    let _ = match Abc::A {
-        Abc::A => 0,
-        Abc::B => 1,
-        _ => 0, //~ ERROR match arms have same body
+    let _ = if true {
+        -0.0
+    } else {
+        //~ ERROR same body as `if` block
+        -0.0
     };
+
+    let _ = if true { 0.0 } else { -0.0 };
+
+    // Different NaNs
+    let _ = if true { 0.0 / 0.0 } else { std::f32::NAN };
 
     if true {
         foo();
@@ -225,71 +206,6 @@ fn if_same_then_else() -> Result<&'static str, ()> {
         if let Some(a) = Some(43) {}
     }
 
-    let _ = match 42 {
-        42 => foo(),
-        51 => foo(), //~ ERROR match arms have same body
-        _ => true,
-    };
-
-    let _ = match Some(42) {
-        Some(_) => 24,
-        None => 24, //~ ERROR match arms have same body
-    };
-
-    let _ = match Some(42) {
-        Some(foo) => 24,
-        None => 24,
-    };
-
-    let _ = match Some(42) {
-        Some(42) => 24,
-        Some(a) => 24, // bindings are different
-        None => 0,
-    };
-
-    let _ = match Some(42) {
-        Some(a) if a > 0 => 24,
-        Some(a) => 24, // one arm has a guard
-        None => 0,
-    };
-
-    match (Some(42), Some(42)) {
-        (Some(a), None) => bar(a),
-        (None, Some(a)) => bar(a), //~ ERROR match arms have same body
-        _ => (),
-    }
-
-    match (Some(42), Some(42)) {
-        (Some(a), ..) => bar(a),
-        (.., Some(a)) => bar(a), //~ ERROR match arms have same body
-        _ => (),
-    }
-
-    match (1, 2, 3) {
-        (1, .., 3) => 42,
-        (.., 3) => 42, //~ ERROR match arms have same body
-        _ => 0,
-    };
-
-    let _ = if true {
-        0.0
-    } else {
-        //~ ERROR same body as `if` block
-        0.0
-    };
-
-    let _ = if true {
-        -0.0
-    } else {
-        //~ ERROR same body as `if` block
-        -0.0
-    };
-
-    let _ = if true { 0.0 } else { -0.0 };
-
-    // Different NaNs
-    let _ = if true { 0.0 / 0.0 } else { std::f32::NAN };
-
     // Same NaNs
     let _ = if true {
         std::f32::NAN
@@ -297,17 +213,6 @@ fn if_same_then_else() -> Result<&'static str, ()> {
         //~ ERROR same body as `if` block
         std::f32::NAN
     };
-
-    let _ = match Some(()) {
-        Some(()) => 0.0,
-        None => -0.0,
-    };
-
-    match (Some(42), Some("")) {
-        (Some(a), None) => bar(a),
-        (None, Some(a)) => bar(a), // bindings have different types
-        _ => (),
-    }
 
     if true {
         try!(Ok("foo"));
@@ -339,8 +244,6 @@ fn if_same_then_else() -> Result<&'static str, ()> {
     }
 }
 
-fn main() {}
-
 // Issue #2423. This was causing an ICE
 fn func() {
     if true {
@@ -355,3 +258,5 @@ fn func() {
 }
 
 fn f(val: &[u8]) {}
+
+fn main() {}
