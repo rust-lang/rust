@@ -1,5 +1,6 @@
 import * as lc from 'vscode-languageclient';
 
+import { window } from 'vscode';
 import { Config } from './config';
 import { Highlighter } from './highlighting';
 
@@ -19,16 +20,18 @@ export class Server {
             run,
             debug: run
         };
+        const traceOutputChannel = window.createOutputChannel('Rust Analyzer Language Server Trace');
         const clientOptions: lc.LanguageClientOptions = {
             documentSelector: [{ scheme: 'file', language: 'rust' }],
             initializationOptions: {
                 publishDecorations: true
-            }
+            },
+            traceOutputChannel
         };
 
         Server.client = new lc.LanguageClient(
             'ra-lsp',
-            'rust-analyzer language server',
+            'Rust Analyzer Language Server',
             serverOptions,
             clientOptions
         );
