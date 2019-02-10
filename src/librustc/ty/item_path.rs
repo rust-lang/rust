@@ -462,8 +462,8 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
         // only occur very early in the compiler pipeline.
         let parent_def_id = self.parent_def_id(impl_def_id).unwrap();
         self.push_item_path(buffer, parent_def_id, pushed_prelude_crate);
-        let node_id = self.hir().as_local_node_id(impl_def_id).unwrap();
-        let item = self.hir().expect_item(node_id);
+        let hir_id = self.hir().as_local_hir_id(impl_def_id).unwrap();
+        let item = self.hir().expect_item_by_hir_id(hir_id);
         let span_str = self.sess.source_map().span_to_string(item.span);
         buffer.push(&format!("<impl at {}>", span_str));
     }
