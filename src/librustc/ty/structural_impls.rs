@@ -41,6 +41,7 @@ CloneTypeFoldableAndLiftImpls! {
     ::rustc_target::spec::abi::Abi,
     crate::mir::Local,
     crate::mir::Promoted,
+    crate::mir::Field,
     crate::traits::Reveal,
     crate::ty::adjustment::AutoBorrowMutability,
     crate::ty::AdtKind,
