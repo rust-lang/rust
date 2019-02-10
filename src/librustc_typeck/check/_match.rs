@@ -1,5 +1,6 @@
-use check::{FnCtxt, Expectation, Diverges, Needs};
-use check::coercion::CoerceMany;
+use crate::check::{FnCtxt, Expectation, Diverges, Needs};
+use crate::check::coercion::CoerceMany;
+use crate::util::nodemap::FxHashMap;
 use errors::Applicability;
 use rustc::hir::{self, PatKind};
 use rustc::hir::def::{Def, CtorKind};
@@ -13,7 +14,6 @@ use syntax::source_map::Spanned;
 use syntax::ptr::P;
 use syntax::util::lev_distance::find_best_match_for_name;
 use syntax_pos::Span;
-use util::nodemap::FxHashMap;
 
 use std::collections::hash_map::Entry::{Occupied, Vacant};
 use std::cmp;

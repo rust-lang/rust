@@ -1,13 +1,13 @@
-use check::regionck::RegionCtxt;
+use crate::check::regionck::RegionCtxt;
 
-use hir::def_id::DefId;
+use crate::hir::def_id::DefId;
 use rustc::infer::outlives::env::OutlivesEnvironment;
 use rustc::infer::{self, InferOk, SuppressRegionErrors};
 use rustc::middle::region;
 use rustc::traits::{ObligationCause, TraitEngine, TraitEngineExt};
 use rustc::ty::subst::{Subst, Substs, UnpackedKind};
 use rustc::ty::{self, Ty, TyCtxt};
-use util::common::ErrorReported;
+use crate::util::common::ErrorReported;
 
 use syntax::ast;
 use syntax_pos::Span;
