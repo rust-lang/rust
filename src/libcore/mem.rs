@@ -1035,7 +1035,42 @@ impl<T: ?Sized> DerefMut for ManuallyDrop<T> {
     }
 }
 
-/// A newtype to construct uninitialized instances of `T`
+/// A newtype to construct uninitialized instances of `T`.
+///
+/// The compiler, in general, assumes that variables are properly initialized
+/// at their respective type.  For example, a variable of reference type must
+/// be aligned and non-NULL.  This is an invariant that must *always* be upheld,
+/// even in unsafe code.  As a consequence, 0-initializing a variable of reference
+/// type causes instantaneous undefined behavior, no matter whether that reference
+/// ever gets used to access memory:
+/// ```rust,no_run
+/// use std::mem;
+///
+/// let x: &i32 = unsafe { mem::zeroed() }; // undefined behavior!
+/// ```
+/// This is exploited by the compiler for various optimizations, such as eliding
+/// run-time checks and optimizing `enum` layout.
+///
+/// Not initializing memory at all (instead of 0-initializing it) causes the same
+/// issue: after all, the initial value of the variable might just happen to be
+/// one that violates the invariant.
+///
+/// `MaybeUninit` serves to enable unsafe code to deal with uninitialized data:
+/// it is a signal to the compiler indicating that the data here might *not*
+/// be initialized:
+/// ```rust
+/// #![feature(maybe_uninit)]
+/// use std::mem::MaybeUninit;
+///
+/// // Create an explicitly uninitialized reference.
+/// let mut x = MaybeUninit::<&i32>::uninitialized();
+/// // Set it to a valid value.
+/// x.set(&0);
+/// // Extract the initialized data -- this is only allowed *after* properly
+/// // initializing `x`!
+/// let x = unsafe { x.into_initialized() };
+/// ```
+/// The compiler then knows to not optimize this code.
 #[allow(missing_debug_implementations)]
 #[unstable(feature = "maybe_uninit", issue = "53491")]
 // NOTE after stabilizing `MaybeUninit` proceed to deprecate `mem::{uninitialized,zeroed}`
@@ -1084,11 +1119,14 @@ impl<T> MaybeUninit<T> {
     }
 
     /// Set the value of the `MaybeUninit`. This overwrites any previous value without dropping it.
+    /// For your convenience, this also returns a mutable reference to the (now
+    /// safely initialized) content of `self`.
     #[unstable(feature = "maybe_uninit", issue = "53491")]
     #[inline(always)]
-    pub fn set(&mut self, val: T) {
+    pub fn set(&mut self, val: T) -> &mut T {
         unsafe {
             self.value = ManuallyDrop::new(val);
+            self.get_mut()
         }
     }
 
@@ -1102,9 +1140,17 @@ impl<T> MaybeUninit<T> {
     /// state, otherwise this will immediately cause undefined behavior.
     #[unstable(feature = "maybe_uninit", issue = "53491")]
     #[inline(always)]
-    pub unsafe fn into_inner(self) -> T {
+    pub unsafe fn into_initialized(self) -> T {
         intrinsics::panic_if_uninhabited::<T>();
         ManuallyDrop::into_inner(self.value)
+    }
+
+    /// Deprecated alternative to `into_initialized`.  Will never get stabilized.
+    /// Exists only to transition stdsimd to `into_initialized`.
+    #[inline(always)]
+    #[allow(unused)]
+    pub(crate) unsafe fn into_inner(self) -> T {
+        self.into_initialized()
     }
 
     /// Get a reference to the contained value.
@@ -1134,16 +1180,16 @@ impl<T> MaybeUninit<T> {
         &mut *self.value
     }
 
-    /// Get a pointer to the contained value. Reading from this pointer will be undefined
-    /// behavior unless the `MaybeUninit` is initialized.
+    /// Get a pointer to the contained value. Reading from this pointer or turning it
+    /// into a reference will be undefined behavior unless the `MaybeUninit` is initialized.
     #[unstable(feature = "maybe_uninit", issue = "53491")]
     #[inline(always)]
     pub fn as_ptr(&self) -> *const T {
         unsafe { &*self.value as *const T }
     }
 
-    /// Get a mutable pointer to the contained value. Reading from this pointer will be undefined
-    /// behavior unless the `MaybeUninit` is initialized.
+    /// Get a mutable pointer to the contained value. Reading from this pointer or turning it
+    /// into a reference will be undefined behavior unless the `MaybeUninit` is initialized.
     #[unstable(feature = "maybe_uninit", issue = "53491")]
     #[inline(always)]
     pub fn as_mut_ptr(&mut self) -> *mut T {
