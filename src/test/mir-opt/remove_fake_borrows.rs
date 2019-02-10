@@ -24,10 +24,10 @@ fn main() {
 //     switchInt(move _3) -> [1isize: bb5, otherwise: bb2];
 // }
 // bb1: {
-//     goto -> bb8;
+//     goto -> bb7;
 // }
 // bb2: {
-//     goto -> bb9;
+//     goto -> bb8;
 // }
 // bb3: {
 //     unreachable;
@@ -39,14 +39,10 @@ fn main() {
 //     switchInt((*(*((_1 as Some).0: &'<empty> &'<empty> i32)))) -> [0i32: bb1, otherwise: bb2];
 // }
 // bb6: {
-//     StorageDead(_8);
-//     return;
+//     _0 = const 0i32;
+//     goto -> bb9;
 // }
 // bb7: {
-//     _0 = const 0i32;
-//     goto -> bb6;
-// }
-// bb8: {
 //     _4 = &shallow _1;
 //     _5 = &shallow ((_1 as Some).0: &'<empty> &'<empty> i32);
 //     _6 = &shallow (*((_1 as Some).0: &'<empty> &'<empty> i32));
@@ -57,11 +53,15 @@ fn main() {
 //     FakeRead(ForMatchGuard, _5);
 //     FakeRead(ForMatchGuard, _6);
 //     FakeRead(ForMatchGuard, _7);
-//     switchInt(move _8) -> [false: bb4, otherwise: bb7];
+//     switchInt(move _8) -> [false: bb4, otherwise: bb6];
+// }
+// bb8: {
+//     _0 = const 1i32;
+//     goto -> bb9;
 // }
 // bb9: {
-//     _0 = const 1i32;
-//     goto -> bb6;
+//     StorageDead(_8);
+//     return;
 // }
 // bb10: {
 //     resume;
@@ -75,10 +75,10 @@ fn main() {
 //     switchInt(move _3) -> [1isize: bb5, otherwise: bb2];
 // }
 // bb1: {
-//     goto -> bb8;
+//     goto -> bb7;
 // }
 // bb2: {
-//     goto -> bb9;
+//     goto -> bb8;
 // }
 // bb3: {
 //     unreachable;
@@ -90,14 +90,10 @@ fn main() {
 //     switchInt((*(*((_1 as Some).0: &'<empty> &'<empty> i32)))) -> [0i32: bb1, otherwise: bb2];
 // }
 // bb6: {
-//     StorageDead(_8);
-//     return;
+//     _0 = const 0i32;
+//     goto -> bb9;
 // }
 // bb7: {
-//     _0 = const 0i32;
-//     goto -> bb6;
-// }
-// bb8: {
 //     nop;
 //     nop;
 //     nop;
@@ -108,11 +104,15 @@ fn main() {
 //     nop;
 //     nop;
 //     nop;
-//     switchInt(move _8) -> [false: bb4, otherwise: bb7];
+//     switchInt(move _8) -> [false: bb4, otherwise: bb6];
+// }
+// bb8: {
+//     _0 = const 1i32;
+//     goto -> bb9;
 // }
 // bb9: {
-//     _0 = const 1i32;
-//     goto -> bb6;
+//     StorageDead(_8);
+//     return;
 // }
 // bb10: {
 //     resume;

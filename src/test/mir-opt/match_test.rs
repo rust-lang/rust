@@ -23,16 +23,16 @@ fn main() {
 //        switchInt(move _4) -> [false: bb7, otherwise: bb8];
 //    }
 //    bb1: {
-//        falseEdges -> [real: bb13, imaginary: bb2];
+//        falseEdges -> [real: bb12, imaginary: bb2];
 //    }
 //    bb2: {
-//        falseEdges -> [real: bb14, imaginary: bb3];
+//        falseEdges -> [real: bb13, imaginary: bb3];
 //    }
 //    bb3: {
-//        falseEdges -> [real: bb15, imaginary: bb4];
+//        falseEdges -> [real: bb14, imaginary: bb4];
 //    }
 //    bb4: {
-//        falseEdges -> [real: bb16, imaginary: bb5];
+//        falseEdges -> [real: bb15, imaginary: bb5];
 //    }
 //    bb5: {
 //        unreachable;
@@ -56,31 +56,31 @@ fn main() {
 //        switchInt(move _7) -> [false: bb9, otherwise: bb2];
 //    }
 //    bb11: {
+//        _3 = const 0i32;
+//        goto -> bb16;
+//    }
+//    bb12: {
+//        StorageLive(_8);
+//        _8 = _2;
+//        switchInt(move _8) -> [false: bb6, otherwise: bb11];
+//    }
+//    bb13: {
+//        _3 = const 1i32;
+//        goto -> bb16;
+//    }
+//    bb14: {
+//        _3 = const 2i32;
+//        goto -> bb16;
+//    }
+//    bb15: {
+//        _3 = const 3i32;
+//        goto -> bb16;
+//    }
+//    bb16: {
 //        StorageDead(_8);
 //        _0 = ();
 //        StorageDead(_2);
 //        StorageDead(_1);
 //        return;
-//    }
-//    bb12: {
-//        _3 = const 0i32;
-//        goto -> bb11;
-//    }
-//    bb13: {
-//        StorageLive(_8);
-//        _8 = _2;
-//        switchInt(move _8) -> [false: bb6, otherwise: bb12];
-//    }
-//    bb14: {
-//        _3 = const 1i32;
-//        goto -> bb11;
-//    }
-//    bb15: {
-//        _3 = const 2i32;
-//        goto -> bb11;
-//    }
-//    bb16: {
-//        _3 = const 3i32;
-//        goto -> bb11;
 //    }
 // END rustc.main.SimplifyCfg-initial.after.mir

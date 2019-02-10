@@ -47,10 +47,10 @@ fn main() {
 //         resume;
 //     }
 //     bb5: {
-//         falseEdges -> [real: bb12, imaginary: bb6];
+//         falseEdges -> [real: bb11, imaginary: bb6];
 //     }
 //     bb6: {
-//         falseEdges -> [real: bb14, imaginary: bb7];
+//         falseEdges -> [real: bb13, imaginary: bb7];
 //     }
 //     bb7: {
 //         unreachable;
@@ -62,41 +62,41 @@ fn main() {
 //         goto -> bb5;
 //     }
 //     bb10: {
+//         _2 = const 4i32;
+//         goto -> bb18;
+//     }
+//     bb11: {
+//         goto -> bb10;
+//     }
+//     bb12: {
+//         _0 = ();
+//         goto -> bb14;
+//     }
+//     bb13: {
+//         goto -> bb12;
+//     }
+//     bb14: {
+//         StorageDead(_3);
+//         goto -> bb15;
+//     }
+//     bb15: {
+//         StorageDead(_2);
+//         goto -> bb2;
+//     }
+//     bb16: {
+//         _4 = ();
+//         unreachable;
+//     }
+//     bb17: {
+//         StorageDead(_4);
+//         goto -> bb18;
+//     }
+//     bb18: {
 //         FakeRead(ForLet, _2);
 //         StorageDead(_3);
 //         StorageLive(_6);
 //         _6 = &_2;
 //         _5 = const std::mem::drop(move _6) -> [return: bb19, unwind: bb4];
-//     }
-//     bb11: {
-//         _2 = const 4i32;
-//         goto -> bb10;
-//     }
-//     bb12: {
-//         goto -> bb11;
-//     }
-//     bb13: {
-//         _0 = ();
-//         goto -> bb15;
-//     }
-//     bb14: {
-//         goto -> bb13;
-//     }
-//     bb15: {
-//         StorageDead(_3);
-//         goto -> bb16;
-//     }
-//     bb16: {
-//         StorageDead(_2);
-//         goto -> bb2;
-//     }
-//     bb17: {
-//         _4 = ();
-//         unreachable;
-//     }
-//     bb18: {
-//         StorageDead(_4);
-//         goto -> bb10;
 //     }
 //     bb19: {
 //         StorageDead(_6);

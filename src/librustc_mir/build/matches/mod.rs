@@ -250,12 +250,8 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
 
         // Step 5. Create everything else: the guards and the arms.
 
-        // all the arm blocks will rejoin here
-        let end_block = self.cfg.start_new_block();
-
         let outer_source_info = self.source_info(span);
-
-        for (arm, candidates) in arm_candidates {
+        let arm_end_blocks: Vec<_> = arm_candidates.into_iter().map(|(arm, candidates)| {
             let mut arm_block = self.cfg.start_new_block();
 
             let body = self.hir.mirror(arm.body.clone());
@@ -283,6 +279,14 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
             }
 
             unpack!(arm_block = self.into(destination, arm_block, body));
+
+            arm_block
+        }).collect();
+
+        // all the arm blocks will rejoin here
+        let end_block = self.cfg.start_new_block();
+
+        for arm_block in arm_end_blocks {
             self.cfg.terminate(
                 arm_block,
                 outer_source_info,
