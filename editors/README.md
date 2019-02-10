@@ -1,4 +1,12 @@
-To install experimental VS Code plugin:
+
+Preqrequisites:
+
+In order to build the VS Code plugin, you need to have node.js and npm with
+a minimum version of 10 installed. Please refer to
+[node.js and npm documentation](https://nodejs.org) for installation instructions.
+
+The experimental VS Code plugin can then be built and installed by executing the
+following commands:
 
 ```
 $ git clone https://github.com/rust-analyzer/rust-analyzer.git --depth 1
