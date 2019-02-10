@@ -25,6 +25,8 @@ use rustc::ty::TyCtxt;
 use syntax::ast;
 use rustc::hir::def_id::LOCAL_CRATE;
 
+use miri::MiriConfig;
+
 struct MiriCompilerCalls {
     default: Box<RustcDefaultCalls>,
     /// whether we are building for the host
@@ -94,9 +96,10 @@ fn after_analysis<'a, 'tcx>(state: &mut CompileState<'a, 'tcx>) {
             fn visit_item(&mut self, i: &'hir hir::Item) {
                 if let hir::ItemKind::Fn(.., body_id) = i.node {
                     if i.attrs.iter().any(|attr| attr.name() == "test") {
+                        let config = MiriConfig { validate: true, args: vec![] };
                         let did = self.0.hir().body_owner_def_id(body_id);
                         println!("running test: {}", self.0.def_path_debug_str(did));
-                        miri::eval_main(self.0, did, /*validate*/true);
+                        miri::eval_main(self.0, did, config);
                         self.1.session.abort_if_errors();
                     }
                 }
@@ -106,7 +109,8 @@ fn after_analysis<'a, 'tcx>(state: &mut CompileState<'a, 'tcx>) {
         }
         state.hir_crate.unwrap().visit_all_item_likes(&mut Visitor(tcx, state));
     } else if let Some((entry_def_id, _)) = tcx.entry_fn(LOCAL_CRATE) {
-        miri::eval_main(tcx, entry_def_id, /*validate*/true);
+        let config = MiriConfig { validate: true, args: vec![] };
+        miri::eval_main(tcx, entry_def_id, config);
 
         state.session.abort_if_errors();
     } else {
