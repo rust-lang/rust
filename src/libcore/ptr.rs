@@ -573,7 +573,7 @@ pub unsafe fn replace<T>(dst: *mut T, mut src: T) -> T {
 pub unsafe fn read<T>(src: *const T) -> T {
     let mut tmp = MaybeUninit::<T>::uninitialized();
     copy_nonoverlapping(src, tmp.as_mut_ptr(), 1);
-    tmp.into_inner()
+    tmp.into_initialized()
 }
 
 /// Reads the value from `src` without moving it. This leaves the
@@ -642,7 +642,7 @@ pub unsafe fn read_unaligned<T>(src: *const T) -> T {
     copy_nonoverlapping(src as *const u8,
                         tmp.as_mut_ptr() as *mut u8,
                         mem::size_of::<T>());
-    tmp.into_inner()
+    tmp.into_initialized()
 }
 
 /// Overwrites a memory location with the given value without reading or
