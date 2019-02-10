@@ -2339,6 +2339,11 @@ pub struct OccupiedEntry<'a, K: 'a, V: 'a> {
     elem: FullBucket<K, V, &'a mut RawTable<K, V>>,
 }
 
+#[stable(feature = "rust1", since = "1.0.0")]
+unsafe impl<'a, K: 'a + Send, V: 'a + Send> Send for OccupiedEntry<'a, K, V> {}
+#[stable(feature = "rust1", since = "1.0.0")]
+unsafe impl<'a, K: 'a + Sync, V: 'a + Sync> Sync for OccupiedEntry<'a, K, V> {}
+
 #[stable(feature= "debug_hash_map", since = "1.12.0")]
 impl<'a, K: 'a + Debug, V: 'a + Debug> Debug for OccupiedEntry<'a, K, V> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
@@ -2359,6 +2364,11 @@ pub struct VacantEntry<'a, K: 'a, V: 'a> {
     key: K,
     elem: VacantEntryState<K, V, &'a mut RawTable<K, V>>,
 }
+
+#[stable(feature = "rust1", since = "1.0.0")]
+unsafe impl<'a, K: 'a + Send, V: 'a + Send> Send for VacantEntry<'a, K, V> {}
+#[stable(feature = "rust1", since = "1.0.0")]
+unsafe impl<'a, K: 'a + Sync, V: 'a + Sync> Sync for VacantEntry<'a, K, V> {}
 
 #[stable(feature= "debug_hash_map", since = "1.12.0")]
 impl<'a, K: 'a + Debug, V: 'a> Debug for VacantEntry<'a, K, V> {
