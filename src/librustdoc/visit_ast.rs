@@ -547,8 +547,19 @@ impl<'a, 'tcx, 'rcx> RustdocVisitor<'a, 'tcx, 'rcx> {
                 };
                 om.traits.push(t);
             },
-            hir::ItemKind::TraitAlias(..) => {
-                unimplemented!("trait objects are not yet implemented")
+            hir::ItemKind::TraitAlias(ref gen, ref b) => {
+                let t = TraitAlias {
+                    name: ident.name,
+                    generics: gen.clone(),
+                    bounds: b.iter().cloned().collect(),
+                    id: item.id,
+                    attrs: item.attrs.clone(),
+                    whence: item.span,
+                    vis: item.vis.clone(),
+                    stab: self.stability(item.id),
+                    depr: self.deprecation(item.id),
+                };
+                om.trait_aliases.push(t);
             },
 
             hir::ItemKind::Impl(unsafety,

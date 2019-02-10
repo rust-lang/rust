@@ -62,7 +62,7 @@ use fold::DocFolder;
 use html::escape::Escape;
 use html::format::{AsyncSpace, ConstnessSpace};
 use html::format::{GenericBounds, WhereClause, href, AbiSpace};
-use html::format::{VisSpace, Method, UnsafetySpace, MutableSpace};
+use html::format::{VisSpace, Function, UnsafetySpace, MutableSpace};
 use html::format::fmt_impl_for_trait_page;
 use html::item_type::ItemType;
 use html::markdown::{self, Markdown, MarkdownHtml, MarkdownSummaryLine, ErrorCodes, IdMap};
@@ -1836,6 +1836,7 @@ struct AllTypes {
     keywords: FxHashSet<ItemEntry>,
     attributes: FxHashSet<ItemEntry>,
     derives: FxHashSet<ItemEntry>,
+    trait_aliases: FxHashSet<ItemEntry>,
 }
 
 impl AllTypes {
@@ -1856,6 +1857,7 @@ impl AllTypes {
             keywords: new_set(100),
             attributes: new_set(100),
             derives: new_set(100),
+            trait_aliases: new_set(100),
         }
     }
 
@@ -1879,6 +1881,7 @@ impl AllTypes {
                 ItemType::Constant => self.constants.insert(ItemEntry::new(new_url, name)),
                 ItemType::ProcAttribute => self.attributes.insert(ItemEntry::new(new_url, name)),
                 ItemType::ProcDerive => self.derives.insert(ItemEntry::new(new_url, name)),
+                ItemType::TraitAlias => self.trait_aliases.insert(ItemEntry::new(new_url, name)),
                 _ => true,
             };
         }
@@ -1922,6 +1925,7 @@ impl fmt::Display for AllTypes {
         print_entries(f, &self.derives, "Derive Macros", "derives")?;
         print_entries(f, &self.functions, "Functions", "functions")?;
         print_entries(f, &self.typedefs, "Typedefs", "typedefs")?;
+        print_entries(f, &self.trait_aliases, "Trait Aliases", "trait-aliases")?;
         print_entries(f, &self.existentials, "Existentials", "existentials")?;
         print_entries(f, &self.statics, "Statics", "statics")?;
         print_entries(f, &self.constants, "Constants", "constants")
@@ -2419,6 +2423,7 @@ impl<'a> fmt::Display for Item<'a> {
             clean::ForeignTypeItem => write!(fmt, "Foreign Type ")?,
             clean::KeywordItem(..) => write!(fmt, "Keyword ")?,
             clean::ExistentialItem(..) => write!(fmt, "Existential Type ")?,
+            clean::TraitAliasItem(..) => write!(fmt, "Trait Alias ")?,
             _ => {
                 // We don't generate pages for any other type.
                 unreachable!();
@@ -2457,6 +2462,7 @@ impl<'a> fmt::Display for Item<'a> {
             clean::ForeignTypeItem => item_foreign_type(fmt, self.cx, self.item),
             clean::KeywordItem(ref k) => item_keyword(fmt, self.cx, self.item, k),
             clean::ExistentialItem(ref e, _) => item_existential(fmt, self.cx, self.item, e),
+            clean::TraitAliasItem(ref ta) => item_trait_alias(fmt, self.cx, self.item, ta),
             _ => {
                 // We don't generate pages for any other type.
                 unreachable!();
@@ -2977,10 +2983,11 @@ fn item_function(w: &mut fmt::Formatter, cx: &Context, it: &clean::Item,
            name = it.name.as_ref().unwrap(),
            generics = f.generics,
            where_clause = WhereClause { gens: &f.generics, indent: 0, end_newline: true },
-           decl = Method {
+           decl = Function {
               decl: &f.decl,
               name_len,
               indent: 0,
+              asyncness: f.header.asyncness,
            })?;
     document(w, cx, it)
 }
@@ -3014,23 +3021,17 @@ fn render_impls(cx: &Context, w: &mut fmt::Formatter,
     Ok(())
 }
 
-fn bounds(t_bounds: &[clean::GenericBound]) -> String {
+fn bounds(t_bounds: &[clean::GenericBound], trait_alias: bool) -> String {
     let mut bounds = String::new();
-    let mut bounds_plain = String::new();
     if !t_bounds.is_empty() {
-        if !bounds.is_empty() {
-            bounds.push(' ');
-            bounds_plain.push(' ');
+        if !trait_alias {
+            bounds.push_str(": ");
         }
-        bounds.push_str(": ");
-        bounds_plain.push_str(": ");
         for (i, p) in t_bounds.iter().enumerate() {
             if i > 0 {
                 bounds.push_str(" + ");
-                bounds_plain.push_str(" + ");
             }
             bounds.push_str(&(*p).to_string());
-            bounds_plain.push_str(&format!("{:#}", *p));
         }
     }
     bounds
@@ -3050,7 +3051,7 @@ fn item_trait(
     it: &clean::Item,
     t: &clean::Trait,
 ) -> fmt::Result {
-    let bounds = bounds(&t.bounds);
+    let bounds = bounds(&t.bounds, false);
     let types = t.items.iter().filter(|m| m.is_associated_type()).collect::<Vec<_>>();
     let consts = t.items.iter().filter(|m| m.is_associated_const()).collect::<Vec<_>>();
     let required = t.items.iter().filter(|m| m.is_ty_method()).collect::<Vec<_>>();
@@ -3424,10 +3425,11 @@ fn render_assoc_item(w: &mut fmt::Formatter,
                href = href,
                name = name,
                generics = *g,
-               decl = Method {
+               decl = Function {
                    decl: d,
                    name_len: head_len,
                    indent,
+                   asyncness: header.asyncness,
                },
                where_clause = WhereClause {
                    gens: g,
@@ -4280,7 +4282,26 @@ fn item_existential(
            it.name.as_ref().unwrap(),
            t.generics,
            where_clause = WhereClause { gens: &t.generics, indent: 0, end_newline: true },
-           bounds = bounds(&t.bounds))?;
+           bounds = bounds(&t.bounds, false))?;
+
+    document(w, cx, it)?;
+
+    // Render any items associated directly to this alias, as otherwise they
+    // won't be visible anywhere in the docs. It would be nice to also show
+    // associated items from the aliased type (see discussion in #32077), but
+    // we need #14072 to make sense of the generics.
+    render_assoc_items(w, cx, it, it.def_id, AssocItemRender::All)
+}
+
+fn item_trait_alias(w: &mut fmt::Formatter, cx: &Context, it: &clean::Item,
+                    t: &clean::TraitAlias) -> fmt::Result {
+    write!(w, "<pre class='rust trait-alias'>")?;
+    render_attributes(w, it)?;
+    write!(w, "trait {}{}{} = {};</pre>",
+           it.name.as_ref().unwrap(),
+           t.generics,
+           WhereClause { gens: &t.generics, indent: 0, end_newline: true },
+           bounds(&t.bounds, true))?;
 
     document(w, cx, it)?;
 
@@ -4844,6 +4865,7 @@ fn item_ty_to_strs(ty: &ItemType) -> (&'static str, &'static str) {
         ItemType::Existential     => ("existentials", "Existentials"),
         ItemType::ProcAttribute   => ("attributes", "Attribute Macros"),
         ItemType::ProcDerive      => ("derives", "Derive Macros"),
+        ItemType::TraitAlias      => ("trait-aliases", "Trait aliases"),
     }
 }
 

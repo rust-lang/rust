@@ -517,6 +517,7 @@ pub enum ItemEnum {
     StaticItem(Static),
     ConstantItem(Constant),
     TraitItem(Trait),
+    TraitAliasItem(TraitAlias),
     ImplItem(Impl),
     /// A method signature only. Used for required methods in traits (ie,
     /// non-default-methods).
@@ -554,6 +555,7 @@ impl ItemEnum {
             ItemEnum::TyMethodItem(ref i) => &i.generics,
             ItemEnum::MethodItem(ref i) => &i.generics,
             ItemEnum::ForeignFunctionItem(ref f) => &f.generics,
+            ItemEnum::TraitAliasItem(ref ta) => &ta.generics,
             _ => return None,
         })
     }
@@ -603,6 +605,7 @@ impl Clean<Item> for doctree::Module {
         items.extend(self.impls.iter().flat_map(|x| x.clean(cx)));
         items.extend(self.macros.iter().map(|x| x.clean(cx)));
         items.extend(self.proc_macros.iter().map(|x| x.clean(cx)));
+        items.extend(self.trait_aliases.iter().map(|x| x.clean(cx)));
 
         // determine if we should display the inner contents or
         // the outer `mod` item for the source code.
@@ -1724,6 +1727,30 @@ impl FnDecl {
     pub fn self_type(&self) -> Option<SelfTy> {
         self.inputs.values.get(0).and_then(|v| v.to_self())
     }
+
+    /// Returns the sugared return type for an async function.
+    ///
+    /// For example, if the return type is `impl std::future::Future<Output = i32>`, this function
+    /// will return `i32`.
+    ///
+    /// # Panics
+    ///
+    /// This function will panic if the return type does not match the expected sugaring for async
+    /// functions.
+    pub fn sugared_async_return_type(&self) -> FunctionRetTy {
+        match &self.output {
+            FunctionRetTy::Return(Type::ImplTrait(bounds)) => {
+                match &bounds[0] {
+                    GenericBound::TraitBound(PolyTrait { trait_, .. }, ..) => {
+                        let bindings = trait_.bindings().unwrap();
+                        FunctionRetTy::Return(bindings[0].ty.clone())
+                    }
+                    _ => panic!("unexpected desugaring of async function"),
+                }
+            }
+            _ => panic!("unexpected desugaring of async function"),
+        }
+    }
 }
 
 #[derive(Clone, RustcEncodable, RustcDecodable, PartialEq, Eq, Debug, Hash)]
@@ -1885,8 +1912,33 @@ impl Clean<Item> for doctree::Trait {
                 items: self.items.clean(cx),
                 generics: self.generics.clean(cx),
                 bounds: self.bounds.clean(cx),
-                is_spotlight: is_spotlight,
+                is_spotlight,
                 is_auto: self.is_auto.clean(cx),
+            }),
+        }
+    }
+}
+
+#[derive(Clone, RustcEncodable, RustcDecodable, Debug)]
+pub struct TraitAlias {
+    pub generics: Generics,
+    pub bounds: Vec<GenericBound>,
+}
+
+impl Clean<Item> for doctree::TraitAlias {
+    fn clean(&self, cx: &DocContext) -> Item {
+        let attrs = self.attrs.clean(cx);
+        Item {
+            name: Some(self.name.clean(cx)),
+            attrs,
+            source: self.whence.clean(cx),
+            def_id: cx.tcx.hir().local_def_id(self.id),
+            visibility: self.vis.clean(cx),
+            stability: self.stab.clean(cx),
+            deprecation: self.depr.clean(cx),
+            inner: TraitAliasItem(TraitAlias {
+                generics: self.generics.clean(cx),
+                bounds: self.bounds.clean(cx),
             }),
         }
     }
@@ -2223,6 +2275,7 @@ pub enum TypeKind {
     Macro,
     Attr,
     Derive,
+    TraitAlias,
 }
 
 pub trait GetDefId {
@@ -2280,6 +2333,21 @@ impl Type {
                 })
             }
             _ => None,
+        }
+    }
+
+    pub fn bindings(&self) -> Option<&[TypeBinding]> {
+        match *self {
+            ResolvedPath { ref path, .. } => {
+                path.segments.last().and_then(|seg| {
+                    if let GenericArgs::AngleBracketed { ref bindings, .. } = seg.args {
+                        Some(&**bindings)
+                    } else {
+                        None
+                    }
+                })
+            }
+            _ => None
         }
     }
 }
@@ -3819,10 +3887,9 @@ pub fn register_def(cx: &DocContext, def: Def) -> DefId {
             MacroKind::Derive => (i, TypeKind::Derive),
             MacroKind::ProcMacroStub => unreachable!(),
         },
+        Def::TraitAlias(i) => (i, TypeKind::TraitAlias),
         Def::SelfTy(Some(def_id), _) => (def_id, TypeKind::Trait),
-        Def::SelfTy(_, Some(impl_def_id)) => {
-            return impl_def_id
-        }
+        Def::SelfTy(_, Some(impl_def_id)) => return impl_def_id,
         _ => return def.def_id()
     };
     if did.is_local() { return did }

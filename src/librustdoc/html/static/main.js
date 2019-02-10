@@ -68,7 +68,8 @@ if (!DOMTokenList.prototype.remove) {
                      "keyword",
                      "existential",
                      "attr",
-                     "derive"];
+                     "derive",
+                     "traitalias"];
 
     var search_input = document.getElementsByClassName("search-input")[0];
 
@@ -78,8 +79,6 @@ if (!DOMTokenList.prototype.remove) {
     // 1 for "In Parameters"
     // 2 for "In Return Types"
     var currentTab = 0;
-
-    var themesWidth = null;
 
     var titleBeforeSearch = document.title;
 
@@ -240,7 +239,7 @@ if (!DOMTokenList.prototype.remove) {
         return String.fromCharCode(c);
     }
 
-    function displayHelp(display, ev) {
+    function displayHelp(display, ev, help) {
         if (display === true) {
             if (hasClass(help, "hidden")) {
                 ev.preventDefault();
@@ -258,7 +257,7 @@ if (!DOMTokenList.prototype.remove) {
         hideModal();
         var search = document.getElementById("search");
         if (hasClass(help, "hidden") === false) {
-            displayHelp(false, ev);
+            displayHelp(false, ev, help);
         } else if (hasClass(search, "hidden") === false) {
             ev.preventDefault();
             addClass(search, "hidden");
@@ -289,7 +288,7 @@ if (!DOMTokenList.prototype.remove) {
 
             case "s":
             case "S":
-                displayHelp(false, ev);
+                displayHelp(false, ev, help);
                 hideModal();
                 ev.preventDefault();
                 focusSearchBar();
@@ -304,7 +303,7 @@ if (!DOMTokenList.prototype.remove) {
             case "?":
                 if (ev.shiftKey) {
                     hideModal();
-                    displayHelp(true, ev);
+                    displayHelp(true, ev, help);
                 }
                 break;
             }
@@ -654,7 +653,7 @@ if (!DOMTokenList.prototype.remove) {
                                 return MAX_LEV_DISTANCE + 1;
                             }
                         }
-                        return lev_distance;//Math.ceil(total / done);
+                        return Math.ceil(total / done);
                     }
                 }
                 return MAX_LEV_DISTANCE + 1;
@@ -1786,6 +1785,7 @@ if (!DOMTokenList.prototype.remove) {
         block("type", "Type Definitions");
         block("foreigntype", "Foreign Types");
         block("keyword", "Keywords");
+        block("traitalias", "Trait Aliases");
     }
 
     window.initSidebarItems = initSidebarItems;
@@ -2432,7 +2432,7 @@ if (!DOMTokenList.prototype.remove) {
             // for vertical layout (column-oriented flex layout for divs caused
             // errors in mobile browsers).
             if (e.tagName === "H2" || e.tagName === "H3") {
-                let nextTagName = e.nextElementSibling.tagName;
+                var nextTagName = e.nextElementSibling.tagName;
                 if (nextTagName == "H2" || nextTagName == "H3") {
                     e.nextElementSibling.style.display = "flex";
                 } else {
