@@ -879,11 +879,22 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
         ty
     }
 
-    fn unify_substs(&mut self, substs1: &Substs, substs2: &Substs) -> bool {
-        substs1.0.iter().zip(substs2.0.iter()).all(|(t1, t2)| self.unify(t1, t2))
+    fn unify_substs(&mut self, substs1: &Substs, substs2: &Substs, depth: usize) -> bool {
+        substs1.0.iter().zip(substs2.0.iter()).all(|(t1, t2)| self.unify_inner(t1, t2, depth))
     }
 
     fn unify(&mut self, ty1: &Ty, ty2: &Ty) -> bool {
+        self.unify_inner(ty1, ty2, 0)
+    }
+
+    fn unify_inner(&mut self, ty1: &Ty, ty2: &Ty, depth: usize) -> bool {
+        if depth > 1000 {
+            // prevent stackoverflows
+            panic!("infinite recursion in unification");
+        }
+        if ty1 == ty2 {
+            return true;
+        }
         // try to resolve type vars first
         let ty1 = self.resolve_ty_shallow(ty1);
         let ty2 = self.resolve_ty_shallow(ty2);
@@ -904,13 +915,15 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
             (
                 Ty::Adt { def_id: def_id1, substs: substs1, .. },
                 Ty::Adt { def_id: def_id2, substs: substs2, .. },
-            ) if def_id1 == def_id2 => self.unify_substs(substs1, substs2),
-            (Ty::Slice(t1), Ty::Slice(t2)) => self.unify(t1, t2),
-            (Ty::RawPtr(t1, m1), Ty::RawPtr(t2, m2)) if m1 == m2 => self.unify(t1, t2),
-            (Ty::Ref(t1, m1), Ty::Ref(t2, m2)) if m1 == m2 => self.unify(t1, t2),
+            ) if def_id1 == def_id2 => self.unify_substs(substs1, substs2, depth + 1),
+            (Ty::Slice(t1), Ty::Slice(t2)) => self.unify_inner(t1, t2, depth + 1),
+            (Ty::RawPtr(t1, m1), Ty::RawPtr(t2, m2)) if m1 == m2 => {
+                self.unify_inner(t1, t2, depth + 1)
+            }
+            (Ty::Ref(t1, m1), Ty::Ref(t2, m2)) if m1 == m2 => self.unify_inner(t1, t2, depth + 1),
             (Ty::FnPtr(sig1), Ty::FnPtr(sig2)) if sig1 == sig2 => true,
             (Ty::Tuple(ts1), Ty::Tuple(ts2)) if ts1.len() == ts2.len() => {
-                ts1.iter().zip(ts2.iter()).all(|(t1, t2)| self.unify(t1, t2))
+                ts1.iter().zip(ts2.iter()).all(|(t1, t2)| self.unify_inner(t1, t2, depth + 1))
             }
             (Ty::Infer(InferTy::TypeVar(tv1)), Ty::Infer(InferTy::TypeVar(tv2)))
             | (Ty::Infer(InferTy::IntVar(tv1)), Ty::Infer(InferTy::IntVar(tv2)))
@@ -989,19 +1002,30 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
     /// If `ty` is a type variable with known type, returns that type;
     /// otherwise, return ty.
     fn resolve_ty_shallow<'b>(&mut self, ty: &'b Ty) -> Cow<'b, Ty> {
-        match ty {
-            Ty::Infer(tv) => {
-                let inner = tv.to_inner();
-                match self.var_unification_table.probe_value(inner).known() {
-                    Some(known_ty) => {
-                        // The known_ty can't be a type var itself
-                        Cow::Owned(known_ty.clone())
-                    }
-                    _ => Cow::Borrowed(ty),
-                }
+        let mut ty = Cow::Borrowed(ty);
+        // The type variable could resolve to a int/float variable. Hence try
+        // resolving up to three times; each type of variable shouldn't occur
+        // more than once
+        for i in 0..3 {
+            if i > 0 {
+                tested_by!(type_var_resolves_to_int_var);
             }
-            _ => Cow::Borrowed(ty),
+            match &*ty {
+                Ty::Infer(tv) => {
+                    let inner = tv.to_inner();
+                    match self.var_unification_table.probe_value(inner).known() {
+                        Some(known_ty) => {
+                            // The known_ty can't be a type var itself
+                            ty = Cow::Owned(known_ty.clone());
+                        }
+                        _ => return ty,
+                    }
+                }
+                _ => return ty,
+            }
         }
+        log::error!("Inference variable still not resolved: {:?}", ty);
+        ty
     }
 
     /// Resolves the type completely; type variables without known type are
@@ -1185,17 +1209,21 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
                 self.infer_path_expr(&resolver, &path).unwrap_or(Ty::Unknown)
             }
             Pat::Bind { mode, name: _name, subpat } => {
-                let subty = if let Some(subpat) = subpat {
+                let inner_ty = if let Some(subpat) = subpat {
                     self.infer_pat(*subpat, expected)
                 } else {
                     expected.clone()
                 };
+                let inner_ty = self.insert_type_vars_shallow(inner_ty);
 
-                match mode {
-                    BindingAnnotation::Ref => Ty::Ref(subty.into(), Mutability::Shared),
-                    BindingAnnotation::RefMut => Ty::Ref(subty.into(), Mutability::Mut),
-                    BindingAnnotation::Mutable | BindingAnnotation::Unannotated => subty,
-                }
+                let bound_ty = match mode {
+                    BindingAnnotation::Ref => Ty::Ref(inner_ty.clone().into(), Mutability::Shared),
+                    BindingAnnotation::RefMut => Ty::Ref(inner_ty.clone().into(), Mutability::Mut),
+                    BindingAnnotation::Mutable | BindingAnnotation::Unannotated => inner_ty.clone(),
+                };
+                let bound_ty = self.resolve_ty_as_possible(&mut vec![], bound_ty);
+                self.write_pat_ty(pat, bound_ty);
+                return inner_ty;
             }
             _ => Ty::Unknown,
         };

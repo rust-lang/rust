@@ -831,18 +831,18 @@ impl ExprCollector {
                     p.field_pat_list().expect("every struct should have a field list");
                 let mut fields: Vec<_> = field_pat_list
                     .bind_pats()
-                    .map(|bind_pat| {
+                    .filter_map(|bind_pat| {
                         let ast_pat = ast::Pat::cast(bind_pat.syntax()).expect("bind pat is a pat");
                         let pat = self.collect_pat(ast_pat);
-                        let name = bind_pat.name().expect("bind pat has a name").as_name();
-                        FieldPat { name, pat }
+                        let name = bind_pat.name()?.as_name();
+                        Some(FieldPat { name, pat })
                     })
                     .collect();
-                let iter = field_pat_list.field_pats().map(|f| {
-                    let ast_pat = f.pat().expect("field pat always contains a pattern");
+                let iter = field_pat_list.field_pats().filter_map(|f| {
+                    let ast_pat = f.pat()?;
                     let pat = self.collect_pat(ast_pat);
-                    let name = f.name().expect("field pats always have a name").as_name();
-                    FieldPat { name, pat }
+                    let name = f.name()?.as_name();
+                    Some(FieldPat { name, pat })
                 });
                 fields.extend(iter);
 
@@ -850,6 +850,7 @@ impl ExprCollector {
             }
 
             // TODO: implement
+            ast::PatKind::LiteralPat(_) => Pat::Missing,
             ast::PatKind::SlicePat(_) | ast::PatKind::RangePat(_) => Pat::Missing,
         };
         let syntax_ptr = SyntaxNodePtr::new(pat.syntax());

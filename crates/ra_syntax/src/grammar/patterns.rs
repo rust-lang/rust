@@ -43,21 +43,8 @@ fn atom_pat(p: &mut Parser, recovery_set: TokenSet) -> Option<CompletedMarker> {
         return Some(path_pat(p));
     }
 
-    // test literal_pattern
-    // fn main() {
-    //     match () {
-    //         -1 => (),
-    //         92 => (),
-    //         'c' => (),
-    //         "hello" => (),
-    //     }
-    // }
-    if p.at(MINUS) && (p.nth(1) == INT_NUMBER || p.nth(1) == FLOAT_NUMBER) {
-        p.bump();
-    }
-
-    if let Some(m) = expressions::literal(p) {
-        return Some(m);
+    if is_literal_pat_start(p) {
+        return Some(literal_pat(p));
     }
 
     let m = match la0 {
@@ -71,6 +58,30 @@ fn atom_pat(p: &mut Parser, recovery_set: TokenSet) -> Option<CompletedMarker> {
         }
     };
     Some(m)
+}
+
+fn is_literal_pat_start(p: &mut Parser) -> bool {
+    p.at(MINUS) && (p.nth(1) == INT_NUMBER || p.nth(1) == FLOAT_NUMBER)
+        || p.at_ts(expressions::LITERAL_FIRST)
+}
+
+// test literal_pattern
+// fn main() {
+//     match () {
+//         -1 => (),
+//         92 => (),
+//         'c' => (),
+//         "hello" => (),
+//     }
+// }
+fn literal_pat(p: &mut Parser) -> CompletedMarker {
+    assert!(is_literal_pat_start(p));
+    let m = p.start();
+    if p.at(MINUS) {
+        p.bump();
+    }
+    expressions::literal(p);
+    m.complete(p, LITERAL_PAT)
 }
 
 // test path_part

@@ -1,0 +1,30 @@
+---
+created: "2019-02-09T20:28:37.294693728Z"
+creator: insta@0.6.1
+source: crates/ra_hir/src/ty/tests.rs
+expression: "&result"
+---
+[27; 323) '{     ...   } }': ()
+[33; 321) 'for co...     }': ()
+[37; 44) 'content': &[unknown]
+[48; 61) 'doesnt_matter': [unknown]
+[62; 321) '{     ...     }': ()
+[76; 80) 'name': &&[unknown]
+[83; 167) 'if doe...     }': &&[unknown]
+[86; 99) 'doesnt_matter': bool
+[100; 129) '{     ...     }': &&[unknown]
+[114; 119) 'first': &&[unknown]
+[135; 167) '{     ...     }': &&[unknown]
+[149; 157) '&content': &&[unknown]
+[150; 157) 'content': &[unknown]
+[182; 189) 'content': &&[unknown]
+[192; 314) 'if ICE...     }': &&[unknown]
+[195; 232) 'ICE_RE..._VALUE': [unknown]
+[195; 248) 'ICE_RE...&name)': bool
+[242; 247) '&name': &&&[unknown]
+[243; 247) 'name': &&[unknown]
+[249; 277) '{     ...     }': &&[unknown]
+[263; 267) 'name': &&[unknown]
+[283; 314) '{     ...     }': &[unknown]
+[297; 304) 'content': &[unknown]
+

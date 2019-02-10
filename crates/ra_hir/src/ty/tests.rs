@@ -630,6 +630,95 @@ fn test() {
     );
 }
 
+#[test]
+fn infer_std_crash_1() {
+    // caused stack overflow, taken from std
+    check_inference(
+        "infer_std_crash_1",
+        r#"
+enum Maybe<T> {
+    Real(T),
+    Fake,
+}
+
+fn write() {
+    match something_unknown {
+        Maybe::Real(ref mut something) => (),
+    }
+}
+"#,
+    );
+}
+
+#[test]
+fn infer_std_crash_2() {
+    covers!(type_var_resolves_to_int_var);
+    // caused "equating two type variables, ...", taken from std
+    check_inference(
+        "infer_std_crash_2",
+        r#"
+fn test_line_buffer() {
+    &[0, b'\n', 1, b'\n'];
+}
+"#,
+    );
+}
+
+#[test]
+fn infer_std_crash_3() {
+    // taken from rustc
+    check_inference(
+        "infer_std_crash_3",
+        r#"
+pub fn compute() {
+    match _ {
+        SizeSkeleton::Pointer { non_zero: true, tail } => {}
+    }
+}
+"#,
+    );
+}
+
+#[test]
+fn infer_std_crash_4() {
+    // taken from rustc
+    check_inference(
+        "infer_std_crash_4",
+        r#"
+pub fn primitive_type() {
+    match *self {
+        BorrowedRef { type_: box Primitive(p), ..} => {},
+    }
+}
+"#,
+    );
+}
+
+#[test]
+fn infer_std_crash_5() {
+    // taken from rustc
+    check_inference(
+        "infer_std_crash_5",
+        r#"
+fn extra_compiler_flags() {
+    for content in doesnt_matter {
+        let name = if doesnt_matter {
+            first
+        } else {
+            &content
+        };
+
+        let content = if ICE_REPORT_COMPILER_FLAGS_STRIP_VALUE.contains(&name) {
+            name
+        } else {
+            content
+        };
+    }
+}
+"#,
+    );
+}
+
 fn infer(content: &str) -> String {
     let (db, _, file_id) = MockDatabase::with_single_file(content);
     let source_file = db.parse(file_id);

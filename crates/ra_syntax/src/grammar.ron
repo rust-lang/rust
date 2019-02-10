@@ -161,6 +161,7 @@ Grammar(
         "TUPLE_PAT",
         "SLICE_PAT",
         "RANGE_PAT",
+        "LITERAL_PAT",
 
         // atoms
         "TUPLE_EXPR",
@@ -524,6 +525,7 @@ Grammar(
         "TuplePat": ( collections: [["args", "Pat"]] ),
         "SlicePat": (),
         "RangePat": (),
+        "LiteralPat": (options: ["Literal"]),
 
         "Pat": (
             enum: [
@@ -536,6 +538,7 @@ Grammar(
                 "TuplePat",
                 "SlicePat",
                 "RangePat",
+                "LiteralPat",
             ],
         ),
 
