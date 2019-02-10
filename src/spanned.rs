@@ -198,6 +198,7 @@ impl Spanned for MacroArg {
             MacroArg::Ty(ref ty) => ty.span(),
             MacroArg::Pat(ref pat) => pat.span(),
             MacroArg::Item(ref item) => item.span(),
+            MacroArg::Keyword(_, span) => span,
         }
     }
 }

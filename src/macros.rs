@@ -26,7 +26,7 @@ use syntax::parse::parser::Parser;
 use syntax::parse::token::{BinOpToken, DelimToken, Token};
 use syntax::print::pprust;
 use syntax::source_map::{BytePos, Span};
-use syntax::symbol;
+use syntax::symbol::keywords;
 use syntax::tokenstream::{Cursor, TokenStream, TokenTree};
 use syntax::ThinVec;
 use syntax::{ast, parse, ptr};
@@ -64,6 +64,7 @@ pub enum MacroArg {
     Ty(ptr::P<ast::Ty>),
     Pat(ptr::P<ast::Pat>),
     Item(ptr::P<ast::Item>),
+    Keyword(ast::Ident, Span),
 }
 
 impl MacroArg {
@@ -92,6 +93,7 @@ impl Rewrite for MacroArg {
             MacroArg::Ty(ref ty) => ty.rewrite(context, shape),
             MacroArg::Pat(ref pat) => pat.rewrite(context, shape),
             MacroArg::Item(ref item) => item.rewrite(context, shape),
+            MacroArg::Keyword(ident, _) => Some(ident.to_string()),
         }
     }
 }
@@ -156,7 +158,7 @@ fn rewrite_macro_name(
         format!("{}!", path)
     };
     match extra_ident {
-        Some(ident) if ident != symbol::keywords::Invalid.ident() => format!("{} {}", name, ident),
+        Some(ident) if ident != keywords::Invalid.ident() => format!("{} {}", name, ident),
         _ => name,
     }
 }
@@ -224,6 +226,23 @@ pub fn rewrite_macro(
     result
 }
 
+fn check_keyword<'a, 'b: 'a>(parser: &'a mut Parser<'b>) -> Option<MacroArg> {
+    for &keyword in RUST_KEYWORDS.iter() {
+        if parser.token.is_keyword(keyword)
+            && parser.look_ahead(1, |t| {
+                *t == Token::Eof
+                    || *t == Token::Comma
+                    || *t == Token::CloseDelim(DelimToken::NoDelim)
+            })
+        {
+            let macro_arg = MacroArg::Keyword(keyword.ident(), parser.span);
+            parser.bump();
+            return Some(macro_arg);
+        }
+    }
+    None
+}
+
 pub fn rewrite_macro_inner(
     mac: &ast::Mac,
     extra_ident: Option<ast::Ident>,
@@ -276,11 +295,12 @@ pub fn rewrite_macro_inner(
 
     if DelimToken::Brace != style {
         loop {
-            match parse_macro_arg(&mut parser) {
-                Some(arg) => arg_vec.push(arg),
-                None => {
-                    return return_macro_parse_failure_fallback(context, shape.indent, mac.span);
-                }
+            if let Some(arg) = parse_macro_arg(&mut parser) {
+                arg_vec.push(arg);
+            } else if let Some(arg) = check_keyword(&mut parser) {
+                arg_vec.push(arg);
+            } else {
+                return return_macro_parse_failure_fallback(context, shape.indent, mac.span);
             }
 
             match parser.token {
@@ -1373,8 +1393,8 @@ fn format_lazy_static(context: &RewriteContext, shape: Shape, ts: &TokenStream) 
     while parser.token != Token::Eof {
         // Parse a `lazy_static!` item.
         let vis = crate::utils::format_visibility(context, &parse_or!(parse_visibility, false));
-        parser.eat_keyword(symbol::keywords::Static);
-        parser.eat_keyword(symbol::keywords::Ref);
+        parser.eat_keyword(keywords::Static);
+        parser.eat_keyword(keywords::Ref);
         let id = parse_or!(parse_ident);
         parser.eat(&Token::Colon);
         let ty = parse_or!(parse_ty);
@@ -1449,3 +1469,66 @@ fn rewrite_macro_with_items(
     result.push_str(trailing_semicolon);
     Some(result)
 }
+
+const RUST_KEYWORDS: [keywords::Keyword; 60] = [
+    keywords::PathRoot,
+    keywords::DollarCrate,
+    keywords::Underscore,
+    keywords::As,
+    keywords::Box,
+    keywords::Break,
+    keywords::Const,
+    keywords::Continue,
+    keywords::Crate,
+    keywords::Else,
+    keywords::Enum,
+    keywords::Extern,
+    keywords::False,
+    keywords::Fn,
+    keywords::For,
+    keywords::If,
+    keywords::Impl,
+    keywords::In,
+    keywords::Let,
+    keywords::Loop,
+    keywords::Match,
+    keywords::Mod,
+    keywords::Move,
+    keywords::Mut,
+    keywords::Pub,
+    keywords::Ref,
+    keywords::Return,
+    keywords::SelfLower,
+    keywords::SelfUpper,
+    keywords::Static,
+    keywords::Struct,
+    keywords::Super,
+    keywords::Trait,
+    keywords::True,
+    keywords::Type,
+    keywords::Unsafe,
+    keywords::Use,
+    keywords::Where,
+    keywords::While,
+    keywords::Abstract,
+    keywords::Become,
+    keywords::Do,
+    keywords::Final,
+    keywords::Macro,
+    keywords::Override,
+    keywords::Priv,
+    keywords::Typeof,
+    keywords::Unsized,
+    keywords::Virtual,
+    keywords::Yield,
+    keywords::Dyn,
+    keywords::Async,
+    keywords::Try,
+    keywords::UnderscoreLifetime,
+    keywords::StaticLifetime,
+    keywords::Auto,
+    keywords::Catch,
+    keywords::Default,
+    keywords::Existential,
+    keywords::Union,
+];

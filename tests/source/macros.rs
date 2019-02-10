@@ -463,3 +463,11 @@ fn issue3004() {
     foo!(|_| { (  ) });
     stringify!(( foo+ ));
 }
+
+// #3331
+pub fn fold_abi<V: Fold + ?Sized>(_visitor: &mut V, _i: Abi) -> Abi {
+    Abi {
+        extern_token: Token ! [ extern ](tokens_helper(_visitor, &_i.extern_token.span)),
+        name: (_i.name).map(|it| _visitor.fold_lit_str(it)),
+    }
+}
