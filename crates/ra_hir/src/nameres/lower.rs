@@ -2,7 +2,7 @@ use std::sync::Arc;
 
 use ra_syntax::{
     AstNode, SourceFile, TreeArc, AstPtr,
-    ast::{self, ModuleItemOwner, NameOwner},
+    ast::{self, ModuleItemOwner, NameOwner, AttrsOwner},
 };
 use ra_arena::{Arena, RawId, impl_arena_id, map::ArenaMap};
 use rustc_hash::FxHashMap;
@@ -23,6 +23,7 @@ pub(super) struct ImportData {
     pub(super) path: Path,
     pub(super) alias: Option<Name>,
     pub(super) is_glob: bool,
+    pub(super) is_prelude: bool,
     pub(super) is_extern_crate: bool,
 }
 
@@ -191,6 +192,7 @@ impl LoweredModule {
                         path,
                         alias,
                         is_glob: false,
+                        is_prelude: false,
                         is_extern_crate: true,
                     });
                 }
@@ -214,11 +216,14 @@ impl LoweredModule {
     }
 
     fn add_use_item(&mut self, source_map: &mut ImportSourceMap, item: &ast::UseItem) {
+        let is_prelude =
+            item.attrs().any(|attr| attr.as_atom().map(|s| s == "prelude_import").unwrap_or(false));
         Path::expand_use_item(item, |path, segment, alias| {
             let import = self.imports.alloc(ImportData {
                 path,
                 alias,
                 is_glob: segment.is_none(),
+                is_prelude,
                 is_extern_crate: false,
             });
             if let Some(segment) = segment {

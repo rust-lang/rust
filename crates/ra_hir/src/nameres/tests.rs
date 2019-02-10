@@ -297,6 +297,43 @@ fn module_resolution_works_for_non_standard_filenames() {
 }
 
 #[test]
+fn std_prelude() {
+    covers!(std_prelude);
+    let mut db = MockDatabase::with_files(
+        "
+        //- /main.rs
+        use Foo::*;
+
+        //- /lib.rs
+        mod prelude;
+        #[prelude_import]
+        use prelude::*;
+
+        //- /prelude.rs
+        pub enum Foo { Bar, Baz };
+    ",
+    );
+    db.set_crate_graph_from_fixture(crate_graph! {
+        "main": ("/main.rs", ["test_crate"]),
+        "test_crate": ("/lib.rs", []),
+    });
+    let main_id = db.file_id_of("/main.rs");
+
+    let module = crate::source_binder::module_from_file_id(&db, main_id).unwrap();
+    let krate = module.krate(&db).unwrap();
+    let item_map = db.item_map(krate);
+
+    check_module_item_map(
+        &item_map,
+        module.module_id,
+        "
+            Bar: t v
+            Baz: t v
+        ",
+    );
+}
+
+#[test]
 fn name_res_works_for_broken_modules() {
     covers!(name_res_works_for_broken_modules);
     let (item_map, module_id) = item_map(

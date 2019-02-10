@@ -34,6 +34,10 @@ use crate::{
 /// module, the set of visible items.
 #[derive(Default, Debug, PartialEq, Eq)]
 pub struct ItemMap {
+    /// The prelude module for this crate. This either comes from an import
+    /// marked with the `prelude_import` attribute, or (in the normal case) from
+    /// a dependency (`std` or `core`).
+    prelude: Option<Module>,
     pub(crate) extern_prelude: FxHashMap<Name, ModuleDef>,
     per_module: ArenaMap<ModuleId, ModuleScope>,
 }
@@ -211,6 +215,13 @@ where
             if let Some(module) = dep.krate.root_module(self.db) {
                 self.result.extern_prelude.insert(dep.name.clone(), module.into());
             }
+            // look for the prelude
+            if self.result.prelude.is_none() {
+                let item_map = self.db.item_map(dep.krate);
+                if item_map.prelude.is_some() {
+                    self.result.prelude = item_map.prelude;
+                }
+            }
         }
     }
 
@@ -279,7 +290,10 @@ where
             log::debug!("glob import: {:?}", import);
             match def.take_types() {
                 Some(ModuleDef::Module(m)) => {
-                    if m.krate != self.krate {
+                    if import.is_prelude {
+                        tested_by!(std_prelude);
+                        self.result.prelude = Some(m);
+                    } else if m.krate != self.krate {
                         tested_by!(glob_across_crates);
                         // glob import from other crate => we can just import everything once
                         let item_map = self.db.item_map(m.krate);
@@ -434,12 +448,40 @@ impl ItemMap {
         self.resolve_path_fp(db, original_module, path).0
     }
 
-    pub(crate) fn resolve_name_in_module(&self, module: Module, name: &Name) -> PerNs<ModuleDef> {
+    fn resolve_in_prelude(
+        &self,
+        db: &impl PersistentHirDatabase,
+        original_module: Module,
+        name: &Name,
+    ) -> PerNs<ModuleDef> {
+        if let Some(prelude) = self.prelude {
+            let resolution = if prelude.krate == original_module.krate {
+                self[prelude.module_id].items.get(name).cloned()
+            } else {
+                db.item_map(prelude.krate)[prelude.module_id].items.get(name).cloned()
+            };
+            resolution.map(|r| r.def).unwrap_or_else(PerNs::none)
+        } else {
+            PerNs::none()
+        }
+    }
+
+    pub(crate) fn resolve_name_in_module(
+        &self,
+        db: &impl PersistentHirDatabase,
+        module: Module,
+        name: &Name,
+    ) -> PerNs<ModuleDef> {
+        // Resolve in:
+        //  - current module / scope
+        //  - extern prelude
+        //  - std prelude
         let from_scope = self[module.module_id].items.get(name).map_or(PerNs::none(), |it| it.def);
         let from_extern_prelude =
             self.extern_prelude.get(name).map_or(PerNs::none(), |&it| PerNs::types(it));
+        let from_prelude = self.resolve_in_prelude(db, module, name);
 
-        from_scope.or(from_extern_prelude)
+        from_scope.or(from_extern_prelude).or(from_prelude)
     }
 
     // Returns Yes if we are sure that additions to `ItemMap` wouldn't change
@@ -459,7 +501,7 @@ impl ItemMap {
                     Some((_, segment)) => segment,
                     None => return (PerNs::none(), ReachedFixedPoint::Yes),
                 };
-                self.resolve_name_in_module(original_module, &segment.name)
+                self.resolve_name_in_module(db, original_module, &segment.name)
             }
             PathKind::Super => {
                 if let Some(p) = original_module.parent(db) {

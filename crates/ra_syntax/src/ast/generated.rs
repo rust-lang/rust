@@ -4210,6 +4210,7 @@ impl ToOwned for UseItem {
 }
 
 
+impl ast::AttrsOwner for UseItem {}
 impl UseItem {
     pub fn use_tree(&self) -> Option<&UseTree> {
         super::child_opt(self)

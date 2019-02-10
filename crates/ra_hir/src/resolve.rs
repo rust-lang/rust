@@ -56,10 +56,10 @@ pub enum Resolution {
 }
 
 impl Resolver {
-    pub fn resolve_name(&self, name: &Name) -> PerNs<Resolution> {
+    pub fn resolve_name(&self, db: &impl HirDatabase, name: &Name) -> PerNs<Resolution> {
         let mut resolution = PerNs::none();
         for scope in self.scopes.iter().rev() {
-            resolution = resolution.or(scope.resolve_name(name));
+            resolution = resolution.or(scope.resolve_name(db, name));
             if resolution.is_both() {
                 return resolution;
             }
@@ -69,9 +69,9 @@ impl Resolver {
 
     pub fn resolve_path(&self, db: &impl HirDatabase, path: &Path) -> PerNs<Resolution> {
         if let Some(name) = path.as_ident() {
-            self.resolve_name(name)
+            self.resolve_name(db, name)
         } else if path.is_self() {
-            self.resolve_name(&Name::self_param())
+            self.resolve_name(db, &Name::self_param())
         } else {
             let (item_map, module) = match self.module() {
                 Some(m) => m,
@@ -143,13 +143,13 @@ impl Resolver {
 }
 
 impl Scope {
-    fn resolve_name(&self, name: &Name) -> PerNs<Resolution> {
+    fn resolve_name(&self, db: &impl HirDatabase, name: &Name) -> PerNs<Resolution> {
         match self {
             Scope::ModuleScope(m) => {
                 if let Some(KnownName::SelfParam) = name.as_known_name() {
                     PerNs::types(Resolution::Def(m.module.into()))
                 } else {
-                    m.item_map.resolve_name_in_module(m.module, name).map(Resolution::Def)
+                    m.item_map.resolve_name_in_module(db, m.module, name).map(Resolution::Def)
                 }
             }
             Scope::GenericParams(gp) => match gp.find_by_name(name) {
