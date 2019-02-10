@@ -276,6 +276,7 @@
 
 #![deny(rust_2018_idioms)]
 
+#![feature(nll)]
 #![feature(str_escape)]
 
 use LabelText::*;

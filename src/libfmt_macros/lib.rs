@@ -10,6 +10,7 @@
 
 #![deny(rust_2018_idioms)]
 
+#![feature(nll)]
 #![feature(rustc_private)]
 
 pub use Piece::*;
