@@ -101,9 +101,8 @@ macro_rules! __impl_snapshot_field {
 // This assumes the type has two type parameters, first for the tag (set to `()`),
 // then for the id
 macro_rules! impl_snapshot_for {
-    // FIXME(mark-i-m): Some of these should be `?` rather than `*`.
     (enum $enum_name:ident {
-        $( $variant:ident $( ( $($field:ident $(-> $delegate:expr)*),* ) )* ),* $(,)*
+        $( $variant:ident $( ( $($field:ident $(-> $delegate:expr)?),* ) )? ),* $(,)?
     }) => {
 
         impl<'a, Ctx> self::Snapshot<'a, Ctx> for $enum_name
@@ -115,18 +114,17 @@ macro_rules! impl_snapshot_for {
             fn snapshot(&self, __ctx: &'a Ctx) -> Self::Item {
                 match *self {
                     $(
-                        $enum_name::$variant $( ( $(ref $field),* ) )* =>
+                        $enum_name::$variant $( ( $(ref $field),* ) )? =>
                             $enum_name::$variant $(
-                                ( $( __impl_snapshot_field!($field, __ctx $(, $delegate)*) ),* ),
-                            )*
+                                ( $( __impl_snapshot_field!($field, __ctx $(, $delegate)?) ),* ),
+                            )?
                     )*
                 }
             }
         }
     };
 
-    // FIXME(mark-i-m): same here.
-    (struct $struct_name:ident { $($field:ident $(-> $delegate:expr)*),*  $(,)* }) => {
+    (struct $struct_name:ident { $($field:ident $(-> $delegate:expr)?),*  $(,)? }) => {
         impl<'a, Ctx> self::Snapshot<'a, Ctx> for $struct_name
             where Ctx: self::SnapshotContext<'a>,
         {
@@ -139,7 +137,7 @@ macro_rules! impl_snapshot_for {
                 } = *self;
 
                 $struct_name {
-                    $( $field: __impl_snapshot_field!($field, __ctx $(, $delegate)*) ),*
+                    $( $field: __impl_snapshot_field!($field, __ctx $(, $delegate)?) ),*
                 }
             }
         }
