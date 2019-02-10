@@ -526,8 +526,10 @@ pub fn trim_left_preserve_layout(orig: &str, indent: Indent, config: &Config) ->
                 Some(get_prefix_space_width(config, &line))
             };
 
-            let new_veto_trim_value = (kind.is_string()
-                || (config.version() == Version::Two && kind.is_commented_string()))
+            // just InString{Commented} in order to allow the start of a string to be indented
+            let new_veto_trim_value = (kind == FullCodeCharKind::InString
+                || (config.version() == Version::Two
+                    && kind == FullCodeCharKind::InStringCommented))
                 && !line.ends_with('\\');
             let line = if veto_trim || new_veto_trim_value {
                 veto_trim = new_veto_trim_value;
@@ -572,6 +574,13 @@ pub fn trim_left_preserve_layout(orig: &str, indent: Indent, config: &Config) ->
                 .collect::<Vec<_>>()
                 .join("\n"),
     )
+}
+
+/// Based on the given line, determine if the next line can be indented or not.
+/// This allows to preserve the indentation of multi-line literals.
+pub fn indent_next_line(kind: FullCodeCharKind, line: &str, config: &Config) -> bool {
+    !(kind.is_string() || (config.version() == Version::Two && kind.is_commented_string()))
+        || line.ends_with('\\')
 }
 
 pub fn is_empty_line(s: &str) -> bool {
