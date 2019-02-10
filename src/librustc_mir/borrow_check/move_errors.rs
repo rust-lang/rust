@@ -308,9 +308,8 @@ impl<'a, 'gcx, 'tcx> MirBorrowckCtxt<'a, 'gcx, 'tcx> {
                                         let upvar_decl = &self.mir.upvar_decls[field.index()];
                                         let upvar_hir_id =
                                             upvar_decl.var_hir_id.assert_crate_local();
-                                        let upvar_node_id =
-                                            self.infcx.tcx.hir().hir_to_node_id(upvar_hir_id);
-                                        let upvar_span = self.infcx.tcx.hir().span(upvar_node_id);
+                                        let upvar_span = self.infcx.tcx.hir().span_by_hir_id(
+                                            upvar_hir_id);
                                         diag.span_label(upvar_span, "captured outer variable");
                                         break;
                                     }
