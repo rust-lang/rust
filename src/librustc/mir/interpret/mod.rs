@@ -27,7 +27,7 @@ pub use self::pointer::{Pointer, PointerArithmetic};
 use std::fmt;
 use crate::mir;
 use crate::hir::def_id::DefId;
-use crate::ty::{self, TyCtxt, Instance};
+use crate::ty::{self, TyCtxt, Instance, subst::UnpackedKind};
 use crate::ty::layout::{self, Size};
 use std::io;
 use crate::rustc_serialize::{Encoder, Decodable, Encodable};
@@ -318,14 +318,29 @@ impl<'tcx> AllocMap<'tcx> {
         id
     }
 
-    /// Functions cannot be identified by pointers, as asm-equal functions can get deduplicated
-    /// by the linker and functions can be duplicated across crates.
-    /// We thus generate a new `AllocId` for every mention of a function. This means that
-    /// `main as fn() == main as fn()` is false, while `let x = main as fn(); x == x` is true.
     pub fn create_fn_alloc(&mut self, instance: Instance<'tcx>) -> AllocId {
-        let id = self.reserve();
-        self.id_to_kind.insert(id, AllocKind::Function(instance));
-        id
+        // Functions cannot be identified by pointers, as asm-equal functions can get deduplicated
+        // by the linker (we set the "unnamed_addr" attribute for LLVM) and functions can be
+        // duplicated across crates.
+        // We thus generate a new `AllocId` for every mention of a function. This means that
+        // `main as fn() == main as fn()` is false, while `let x = main as fn(); x == x` is true.
+        // However, formatting code relies on function identity (see #58320), so we only do
+        // this for generic functions.  Lifetime parameters are ignored.
+        let is_generic = instance.substs.into_iter().any(|kind| {
+            match kind.unpack() {
+                UnpackedKind::Lifetime(_) => false,
+                _ => true,
+            }
+        });
+        if is_generic {
+            // Get a fresh ID
+            let id = self.reserve();
+            self.id_to_kind.insert(id, AllocKind::Function(instance));
+            id
+        } else {
+            // Deduplicate
+            self.intern(AllocKind::Function(instance))
+        }
     }
 
     /// Returns `None` in case the `AllocId` is dangling. An `EvalContext` can still have a
