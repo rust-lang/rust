@@ -8,6 +8,7 @@
 )]
 
 use std::borrow::Borrow;
+use std::collections::HashSet;
 use std::convert::AsRef;
 
 // `v` should be warned
@@ -145,4 +146,14 @@ trait Club<'a, A> {}
 impl<T> Club<'static, T> for T {}
 fn more_fun(_item: impl Club<'static, i32>) {}
 
-fn main() {}
+fn is_sync<T>(_: T)
+where
+    T: Sync,
+{
+}
+
+fn main() {
+    // This should not cause an ICE either
+    // https://github.com/rust-lang/rust-clippy/issues/3144
+    is_sync(HashSet::<usize>::new());
+}
