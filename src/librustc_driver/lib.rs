@@ -838,7 +838,15 @@ impl<'a> CompilerCalls<'a> for RustcDefaultCalls {
                 early_error(sopts.error_format, "no input filename given");
             }
             1 => panic!("make_input should have provided valid inputs"),
-            _ => early_error(sopts.error_format, "multiple input filenames provided"),
+            _ =>
+                early_error(
+                    sopts.error_format,
+                    &format!(
+                        "multiple input filenames provided (first two filenames are `{}` and `{}`)",
+                        matches.free[0],
+                        matches.free[1],
+                    ),
+                )
         }
     }
 
