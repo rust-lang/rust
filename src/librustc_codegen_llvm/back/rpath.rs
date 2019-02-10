@@ -101,9 +101,9 @@ fn get_rpath_relative_to_output(config: &mut RPathConfig, lib: &Path) -> String 
 
     let cwd = env::current_dir().unwrap();
     let mut lib = fs::canonicalize(&cwd.join(lib)).unwrap_or_else(|_| cwd.join(lib));
-    lib.pop();
+    lib.pop(); // strip filename
     let mut output = cwd.join(&config.out_filename);
-    output.pop();
+    output.pop(); // strip filename
     let output = fs::canonicalize(&output).unwrap_or(output);
     let relative = path_relative_from(&lib, &output).unwrap_or_else(||
         panic!("couldn't create relative path from {:?} to {:?}", output, lib));
