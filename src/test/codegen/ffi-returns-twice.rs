@@ -5,7 +5,8 @@
 pub fn bar() { unsafe { foo() } }
 
 extern {
+    // CHECK-LABEL: declare void @foo()
+    // CHECK-SAME: [[ATTRS:#[0-9]+]]
+    // CHECK-DAG: attributes [[ATTRS]] = { {{.*}}returns_twice{{.*}} }
     #[ffi_returns_twice] pub fn foo();
 }
-// CHECK: declare void @foo(){{.*}}#1{{.*}}
-// CHECK: attributes #1 = { {{.*}}returns_twice{{.*}} }
