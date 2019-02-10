@@ -56,7 +56,7 @@ pub(crate) fn eval_promoted<'a, 'mir, 'tcx>(
     cid: GlobalId<'tcx>,
     mir: &'mir mir::Mir<'tcx>,
     param_env: ty::ParamEnv<'tcx>,
-) -> EvalResult<'tcx, MPlaceTy<'tcx>> {
+) -> EvalResult<'tcx, (MPlaceTy<'tcx>, &'tcx Allocation)> {
     let span = tcx.def_span(cid.instance.def_id());
     let mut ecx = mk_eval_cx(tcx, span, param_env);
     eval_body_using_ecx(&mut ecx, cid, Some(mir), param_env)
@@ -111,7 +111,10 @@ fn eval_body_and_ecx<'a, 'mir, 'tcx>(
     cid: GlobalId<'tcx>,
     mir: Option<&'mir mir::Mir<'tcx>>,
     param_env: ty::ParamEnv<'tcx>,
-) -> (EvalResult<'tcx, MPlaceTy<'tcx>>, CompileTimeEvalContext<'a, 'mir, 'tcx>) {
+) -> (
+    EvalResult<'tcx, (MPlaceTy<'tcx>, &'tcx Allocation)>,
+    CompileTimeEvalContext<'a, 'mir, 'tcx>,
+) {
     // we start out with the best span we have
     // and try improving it down the road when more information is available
     let span = tcx.def_span(cid.instance.def_id());
@@ -127,7 +130,7 @@ fn eval_body_using_ecx<'mir, 'tcx>(
     cid: GlobalId<'tcx>,
     mir: Option<&'mir mir::Mir<'tcx>>,
     param_env: ty::ParamEnv<'tcx>,
-) -> EvalResult<'tcx, MPlaceTy<'tcx>> {
+) -> EvalResult<'tcx, (MPlaceTy<'tcx>, &'tcx Allocation)> {
     debug!("eval_body_using_ecx: {:?}, {:?}", cid, param_env);
     let tcx = ecx.tcx.tcx;
     let mut mir = match mir {
@@ -164,10 +167,10 @@ fn eval_body_using_ecx<'mir, 'tcx>(
     } else {
         Mutability::Immutable
     };
-    ecx.memory.intern_static(ret.ptr.to_ptr()?.alloc_id, mutability)?;
+    let alloc = ecx.memory.intern_static(ret.ptr.to_ptr()?.alloc_id, mutability)?;
 
     debug!("eval_body_using_ecx done: {:?}", *ret);
-    Ok(ret)
+    Ok((ret, alloc))
 }
 
 impl<'tcx> Into<EvalError<'tcx>> for ConstEvalError {
@@ -634,9 +637,10 @@ pub fn const_eval_raw_provider<'a, 'tcx>(
     };
 
     let (res, ecx) = eval_body_and_ecx(tcx, cid, None, key.param_env);
-    res.and_then(|place| {
+    res.and_then(|(place, alloc)| {
         Ok(RawConst {
             alloc_id: place.to_ptr().expect("we allocated this ptr!").alloc_id,
+            alloc,
             ty: place.layout.ty
         })
     }).map_err(|error| {

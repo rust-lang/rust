@@ -621,7 +621,7 @@ where
         &mut self,
         alloc_id: AllocId,
         mutability: Mutability,
-    ) -> EvalResult<'tcx> {
+    ) -> EvalResult<'tcx, &'tcx Allocation> {
         trace!(
             "mark_static_initialized {:?}, mutability: {:?}",
             alloc_id,
@@ -647,7 +647,7 @@ where
             // does not permit code that would break this!
             if self.alloc_map.contains_key(&alloc) {
                 // Not yet interned, so proceed recursively
-                self.intern_static(alloc, mutability)?;
+                let _alloc = self.intern_static(alloc, mutability)?;
             } else if self.dead_alloc_map.contains_key(&alloc) {
                 // dangling pointer
                 return err!(ValidationFailure(
@@ -655,7 +655,7 @@ where
                 ))
             }
         }
-        Ok(())
+        Ok(alloc)
     }
 }
 

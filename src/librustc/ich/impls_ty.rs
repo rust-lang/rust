@@ -308,8 +308,10 @@ impl_stable_hash_for!(
 );
 
 impl_stable_hash_for!(struct crate::mir::interpret::RawConst<'tcx> {
+    // FIXME(oli-obk): is ignoring the `alloc_id` for perf reasons ok?
     alloc_id,
     ty,
+    alloc,
 });
 
 impl_stable_hash_for! {

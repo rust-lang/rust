@@ -2,15 +2,18 @@ use std::fmt;
 
 use crate::ty::{Ty, layout::{HasDataLayout, Size}};
 
-use super::{EvalResult, Pointer, PointerArithmetic, AllocId, sign_extend, truncate};
+use super::{EvalResult, Pointer, PointerArithmetic, AllocId, sign_extend, truncate, Allocation};
 
 /// Represents the result of a raw const operation, pre-validation.
 #[derive(Copy, Clone, Debug, Eq, PartialEq, RustcEncodable, RustcDecodable, Hash)]
 pub struct RawConst<'tcx> {
-    // the value lives here, at offset 0, and that allocation definitely is a `AllocKind::Memory`
-    // (so you can use `AllocMap::unwrap_memory`).
+    /// the value lives here, at offset 0, and the allocation that it refers to is the one in the
+    /// `alloc` field
     pub alloc_id: AllocId,
     pub ty: Ty<'tcx>,
+    /// the allocation that would be returned by using
+    /// `tcx.alloc_map.lock().unwrap_memory(self.alloc_id)`
+    pub alloc: &'tcx Allocation,
 }
 
 /// Represents a constant value in Rust. `Scalar` and `ScalarPair` are optimizations that
