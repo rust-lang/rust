@@ -1,5 +1,5 @@
-use string::String;
-use vec::Vec;
+use crate::string::String;
+use crate::vec::Vec;
 
 #[derive(Clone, Debug)]
 pub struct DnsAnswer {

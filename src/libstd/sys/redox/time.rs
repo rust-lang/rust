@@ -1,8 +1,9 @@
-use cmp::Ordering;
-use fmt;
-use sys::{cvt, syscall};
-use time::Duration;
-use convert::TryInto;
+use crate::cmp::Ordering;
+use crate::fmt;
+use crate::sys::{cvt, syscall};
+use crate::time::Duration;
+use crate::convert::TryInto;
+
 use core::hash::{Hash, Hasher};
 
 const NSEC_PER_SEC: u64 = 1_000_000_000;

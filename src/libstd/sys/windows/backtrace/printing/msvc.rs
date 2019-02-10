@@ -1,12 +1,13 @@
-use ffi::CStr;
-use io;
+use crate::ffi::CStr;
+use crate::io;
+use crate::mem;
+use crate::sys::backtrace::BacktraceContext;
+use crate::sys::backtrace::StackWalkVariant;
+use crate::sys::c;
+use crate::sys::dynamic_lib::DynamicLibrary;
+use crate::sys_common::backtrace::Frame;
+
 use libc::{c_char, c_ulong};
-use mem;
-use sys::backtrace::BacktraceContext;
-use sys::backtrace::StackWalkVariant;
-use sys::c;
-use sys::dynamic_lib::DynamicLibrary;
-use sys_common::backtrace::Frame;
 
 // Structs holding printing functions and loaders for them
 // Two versions depending on whether dbghelp.dll has StackWalkEx or not
@@ -190,7 +191,7 @@ where
 {
     unsafe {
         let mut line: c::IMAGEHLP_LINE64 = mem::zeroed();
-        line.SizeOfStruct = ::mem::size_of::<c::IMAGEHLP_LINE64>() as u32;
+        line.SizeOfStruct = mem::size_of::<c::IMAGEHLP_LINE64>() as u32;
 
         let ret = line_getter(
             context.handle,

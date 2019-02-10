@@ -1,12 +1,11 @@
-use libc;
-use backtrace_sys::{self, backtrace_state};
+use backtrace_sys::backtrace_state;
 
-use ffi::CStr;
-use io;
-use mem;
-use ptr;
-use sys::backtrace::BacktraceContext;
-use sys_common::backtrace::Frame;
+use crate::ffi::CStr;
+use crate::io;
+use crate::mem;
+use crate::ptr;
+use crate::sys::backtrace::BacktraceContext;
+use crate::sys_common::backtrace::Frame;
 
 pub fn foreach_symbol_fileline<F>(frame: Frame,
                                   mut f: F,
@@ -153,7 +152,7 @@ unsafe fn init_state() -> *mut backtrace_state {
     static mut STATE: *mut backtrace_state = ptr::null_mut();
     if !STATE.is_null() { return STATE  }
 
-    let filename = match ::sys::backtrace::gnu::get_executable_filename() {
+    let filename = match crate::sys::backtrace::gnu::get_executable_filename() {
         Ok((filename, file)) => {
             // filename is purposely leaked here since libbacktrace requires
             // it to stay allocated permanently, file is also leaked so that

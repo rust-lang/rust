@@ -1,8 +1,8 @@
 #![allow(dead_code)] // not used on all platforms
 
-use collections::BTreeMap;
-use ptr;
-use sync::atomic::{AtomicUsize, Ordering};
+use crate::collections::BTreeMap;
+use crate::ptr;
+use crate::sync::atomic::{AtomicUsize, Ordering};
 
 pub type Key = usize;
 

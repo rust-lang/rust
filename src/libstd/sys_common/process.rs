@@ -1,10 +1,10 @@
 #![allow(dead_code)]
 #![unstable(feature = "process_internals", issue = "0")]
 
-use ffi::{OsStr, OsString};
-use env;
-use collections::BTreeMap;
-use borrow::Borrow;
+use crate::ffi::{OsStr, OsString};
+use crate::env;
+use crate::collections::BTreeMap;
+use crate::borrow::Borrow;
 
 pub trait EnvKey:
     From<OsString> + Into<OsString> +

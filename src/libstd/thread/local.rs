@@ -2,10 +2,10 @@
 
 #![unstable(feature = "thread_local_internals", issue = "0")]
 
-use cell::UnsafeCell;
-use fmt;
-use hint;
-use mem;
+use crate::cell::UnsafeCell;
+use crate::fmt;
+use crate::hint;
+use crate::mem;
 
 /// A thread local storage key which owns its contents.
 ///
@@ -310,14 +310,14 @@ impl<T: 'static> LocalKey<T> {
 #[doc(hidden)]
 #[cfg(all(target_arch = "wasm32", not(target_feature = "atomics")))]
 pub mod statik {
-    use cell::UnsafeCell;
-    use fmt;
+    use crate::cell::UnsafeCell;
+    use crate::fmt;
 
     pub struct Key<T> {
         inner: UnsafeCell<Option<T>>,
     }
 
-    unsafe impl<T> ::marker::Sync for Key<T> { }
+    unsafe impl<T> Sync for Key<T> { }
 
     impl<T> fmt::Debug for Key<T> {
         fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
@@ -341,11 +341,11 @@ pub mod statik {
 #[doc(hidden)]
 #[cfg(target_thread_local)]
 pub mod fast {
-    use cell::{Cell, UnsafeCell};
-    use fmt;
-    use mem;
-    use ptr;
-    use sys::fast_thread_local::{register_dtor, requires_move_before_drop};
+    use crate::cell::{Cell, UnsafeCell};
+    use crate::fmt;
+    use crate::mem;
+    use crate::ptr;
+    use crate::sys::fast_thread_local::{register_dtor, requires_move_before_drop};
 
     pub struct Key<T> {
         inner: UnsafeCell<Option<T>>,
@@ -412,11 +412,11 @@ pub mod fast {
 
 #[doc(hidden)]
 pub mod os {
-    use cell::{Cell, UnsafeCell};
-    use fmt;
-    use marker;
-    use ptr;
-    use sys_common::thread_local::StaticKey as OsStaticKey;
+    use crate::cell::{Cell, UnsafeCell};
+    use crate::fmt;
+    use crate::marker;
+    use crate::ptr;
+    use crate::sys_common::thread_local::StaticKey as OsStaticKey;
 
     pub struct Key<T> {
         // OS-TLS key that we'll use to key off.
@@ -430,7 +430,7 @@ pub mod os {
         }
     }
 
-    unsafe impl<T> ::marker::Sync for Key<T> { }
+    unsafe impl<T> Sync for Key<T> { }
 
     struct Value<T: 'static> {
         key: &'static Key<T>,
@@ -484,9 +484,9 @@ pub mod os {
 
 #[cfg(all(test, not(target_os = "emscripten")))]
 mod tests {
-    use sync::mpsc::{channel, Sender};
-    use cell::{Cell, UnsafeCell};
-    use thread;
+    use crate::sync::mpsc::{channel, Sender};
+    use crate::cell::{Cell, UnsafeCell};
+    use crate::thread;
 
     struct Foo(Sender<()>);
 
@@ -632,8 +632,8 @@ mod tests {
 
 #[cfg(test)]
 mod dynamic_tests {
-    use cell::RefCell;
-    use collections::HashMap;
+    use crate::cell::RefCell;
+    use crate::collections::HashMap;
 
     #[test]
     fn smoke() {

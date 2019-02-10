@@ -1,18 +1,18 @@
 use self::Entry::*;
 use self::VacantEntryState::*;
 
-use intrinsics::unlikely;
-use collections::CollectionAllocErr;
-use cell::Cell;
-use borrow::Borrow;
-use cmp::max;
-use fmt::{self, Debug};
+use crate::intrinsics::unlikely;
+use crate::collections::CollectionAllocErr;
+use crate::cell::Cell;
+use crate::borrow::Borrow;
+use crate::cmp::max;
+use crate::fmt::{self, Debug};
 #[allow(deprecated)]
-use hash::{Hash, Hasher, BuildHasher, SipHasher13};
-use iter::{FromIterator, FusedIterator};
-use mem::{self, replace};
-use ops::{Deref, DerefMut, Index};
-use sys;
+use crate::hash::{Hash, Hasher, BuildHasher, SipHasher13};
+use crate::iter::{FromIterator, FusedIterator};
+use crate::mem::{self, replace};
+use crate::ops::{Deref, DerefMut, Index};
+use crate::sys;
 
 use super::table::{self, Bucket, EmptyBucket, Fallibility, FullBucket, FullBucketMut, RawTable,
                    SafeHash};
@@ -3328,7 +3328,7 @@ mod test_map {
     use super::HashMap;
     use super::Entry::{Occupied, Vacant};
     use super::RandomState;
-    use cell::RefCell;
+    use crate::cell::RefCell;
     use rand::{thread_rng, Rng};
     use realstd::collections::CollectionAllocErr::*;
     use realstd::mem::size_of;

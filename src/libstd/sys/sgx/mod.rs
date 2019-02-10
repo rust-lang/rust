@@ -3,8 +3,9 @@
 //! This module contains the facade (aka platform-specific) implementations of
 //! OS level functionality for Fortanix SGX.
 
-use os::raw::c_char;
-use sync::atomic::{AtomicBool, Ordering};
+use crate::io::ErrorKind;
+use crate::os::raw::c_char;
+use crate::sync::atomic::{AtomicBool, Ordering};
 
 pub mod abi;
 mod waitqueue;
@@ -41,12 +42,12 @@ pub fn init() {
 
 /// This function is used to implement functionality that simply doesn't exist.
 /// Programs relying on this functionality will need to deal with the error.
-pub fn unsupported<T>() -> ::io::Result<T> {
+pub fn unsupported<T>() -> crate::io::Result<T> {
     Err(unsupported_err())
 }
 
-pub fn unsupported_err() -> ::io::Error {
-    ::io::Error::new(::io::ErrorKind::Other,
+pub fn unsupported_err() -> crate::io::Error {
+    crate::io::Error::new(ErrorKind::Other,
                    "operation not supported on SGX yet")
 }
 
@@ -55,58 +56,58 @@ pub fn unsupported_err() -> ::io::Error {
 /// returned, the program might very well be able to function normally. This is
 /// what happens when `SGX_INEFFECTIVE_ERROR` is set to `true`. If it is
 /// `false`, the behavior is the same as `unsupported`.
-pub fn sgx_ineffective<T>(v: T) -> ::io::Result<T> {
+pub fn sgx_ineffective<T>(v: T) -> crate::io::Result<T> {
     static SGX_INEFFECTIVE_ERROR: AtomicBool = AtomicBool::new(false);
     if SGX_INEFFECTIVE_ERROR.load(Ordering::Relaxed) {
-        Err(::io::Error::new(::io::ErrorKind::Other,
+        Err(crate::io::Error::new(ErrorKind::Other,
                        "operation can't be trusted to have any effect on SGX"))
     } else {
         Ok(v)
     }
 }
 
-pub fn decode_error_kind(code: i32) -> ::io::ErrorKind {
+pub fn decode_error_kind(code: i32) -> ErrorKind {
     use fortanix_sgx_abi::Error;
 
     // FIXME: not sure how to make sure all variants of Error are covered
     if code == Error::NotFound as _ {
-        ::io::ErrorKind::NotFound
+        ErrorKind::NotFound
     } else if code == Error::PermissionDenied as _ {
-        ::io::ErrorKind::PermissionDenied
+        ErrorKind::PermissionDenied
     } else if code == Error::ConnectionRefused as _ {
-        ::io::ErrorKind::ConnectionRefused
+        ErrorKind::ConnectionRefused
     } else if code == Error::ConnectionReset as _ {
-        ::io::ErrorKind::ConnectionReset
+        ErrorKind::ConnectionReset
     } else if code == Error::ConnectionAborted as _ {
-        ::io::ErrorKind::ConnectionAborted
+        ErrorKind::ConnectionAborted
     } else if code == Error::NotConnected as _ {
-        ::io::ErrorKind::NotConnected
+        ErrorKind::NotConnected
     } else if code == Error::AddrInUse as _ {
-        ::io::ErrorKind::AddrInUse
+        ErrorKind::AddrInUse
     } else if code == Error::AddrNotAvailable as _ {
-        ::io::ErrorKind::AddrNotAvailable
+        ErrorKind::AddrNotAvailable
     } else if code == Error::BrokenPipe as _ {
-        ::io::ErrorKind::BrokenPipe
+        ErrorKind::BrokenPipe
     } else if code == Error::AlreadyExists as _ {
-        ::io::ErrorKind::AlreadyExists
+        ErrorKind::AlreadyExists
     } else if code == Error::WouldBlock as _ {
-        ::io::ErrorKind::WouldBlock
+        ErrorKind::WouldBlock
     } else if code == Error::InvalidInput as _ {
-        ::io::ErrorKind::InvalidInput
+        ErrorKind::InvalidInput
     } else if code == Error::InvalidData as _ {
-        ::io::ErrorKind::InvalidData
+        ErrorKind::InvalidData
     } else if code == Error::TimedOut as _ {
-        ::io::ErrorKind::TimedOut
+        ErrorKind::TimedOut
     } else if code == Error::WriteZero as _ {
-        ::io::ErrorKind::WriteZero
+        ErrorKind::WriteZero
     } else if code == Error::Interrupted as _ {
-        ::io::ErrorKind::Interrupted
+        ErrorKind::Interrupted
     } else if code == Error::Other as _ {
-        ::io::ErrorKind::Other
+        ErrorKind::Other
     } else if code == Error::UnexpectedEof as _ {
-        ::io::ErrorKind::UnexpectedEof
+        ErrorKind::UnexpectedEof
     } else {
-        ::io::ErrorKind::Other
+        ErrorKind::Other
     }
 }
 
@@ -131,9 +132,9 @@ pub unsafe fn abort_internal() -> ! {
 pub fn hashmap_random_keys() -> (u64, u64) {
     fn rdrand64() -> u64 {
         unsafe {
-            let mut ret: u64 = ::mem::uninitialized();
+            let mut ret: u64 = crate::mem::uninitialized();
             for _ in 0..10 {
-                if ::arch::x86_64::_rdrand64_step(&mut ret) == 1 {
+                if crate::arch::x86_64::_rdrand64_step(&mut ret) == 1 {
                     return ret;
                 }
             }
@@ -143,7 +144,7 @@ pub fn hashmap_random_keys() -> (u64, u64) {
     (rdrand64(), rdrand64())
 }
 
-pub use sys_common::{AsInner, FromInner, IntoInner};
+pub use crate::sys_common::{AsInner, FromInner, IntoInner};
 
 pub trait TryIntoInner<Inner>: Sized {
     fn try_into_inner(self) -> Result<Inner, Self>;

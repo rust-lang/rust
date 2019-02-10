@@ -1,13 +1,13 @@
-use io::prelude::*;
+use crate::io::prelude::*;
 
-use cell::RefCell;
-use fmt;
-use io::lazy::Lazy;
-use io::{self, Initializer, BufReader, LineWriter};
-use sync::{Arc, Mutex, MutexGuard};
-use sys::stdio;
-use sys_common::remutex::{ReentrantMutex, ReentrantMutexGuard};
-use thread::LocalKey;
+use crate::cell::RefCell;
+use crate::fmt;
+use crate::io::lazy::Lazy;
+use crate::io::{self, Initializer, BufReader, LineWriter};
+use crate::sync::{Arc, Mutex, MutexGuard};
+use crate::sys::stdio;
+use crate::sys_common::remutex::{ReentrantMutex, ReentrantMutexGuard};
+use crate::thread::LocalKey;
 
 /// Stdout used by print! and println! macros
 thread_local! {
@@ -668,8 +668,8 @@ impl fmt::Debug for StderrLock<'_> {
            issue = "0")]
 #[doc(hidden)]
 pub fn set_panic(sink: Option<Box<dyn Write + Send>>) -> Option<Box<dyn Write + Send>> {
-    use panicking::LOCAL_STDERR;
-    use mem;
+    use crate::panicking::LOCAL_STDERR;
+    use crate::mem;
     LOCAL_STDERR.with(move |slot| {
         mem::replace(&mut *slot.borrow_mut(), sink)
     }).and_then(|mut s| {
@@ -692,7 +692,7 @@ pub fn set_panic(sink: Option<Box<dyn Write + Send>>) -> Option<Box<dyn Write + 
            issue = "0")]
 #[doc(hidden)]
 pub fn set_print(sink: Option<Box<dyn Write + Send>>) -> Option<Box<dyn Write + Send>> {
-    use mem;
+    use crate::mem;
     LOCAL_STDOUT.with(move |slot| {
         mem::replace(&mut *slot.borrow_mut(), sink)
     }).and_then(|mut s| {
@@ -749,14 +749,14 @@ pub fn _print(args: fmt::Arguments) {
            issue = "0")]
 #[doc(hidden)]
 pub fn _eprint(args: fmt::Arguments) {
-    use panicking::LOCAL_STDERR;
+    use crate::panicking::LOCAL_STDERR;
     print_to(args, &LOCAL_STDERR, stderr, "stderr");
 }
 
 #[cfg(test)]
 mod tests {
-    use panic::{UnwindSafe, RefUnwindSafe};
-    use thread;
+    use crate::panic::{UnwindSafe, RefUnwindSafe};
+    use crate::thread;
     use super::*;
 
     #[test]

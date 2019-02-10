@@ -333,7 +333,7 @@ macro_rules! dbg {
 #[cfg_attr(stage0, allow_internal_unstable)]
 #[cfg_attr(not(stage0), allow_internal_unstable(gen_future, generators))]
 #[allow_internal_unsafe]
-macro_rules! await {
+macro_rules! r#await {
     ($e:expr) => { {
         let mut pinned = $e;
         loop {

@@ -3,8 +3,8 @@
 #[unstable(feature = "sgx_platform", issue = "56975")]
 pub use fortanix_sgx_abi::*;
 
-use ptr::NonNull;
-use num::NonZeroU64;
+use crate::ptr::NonNull;
+use crate::num::NonZeroU64;
 
 #[repr(C)]
 struct UsercallReturn(u64, u64);
@@ -35,7 +35,7 @@ pub unsafe fn do_usercall(nr: NonZeroU64, p1: u64, p2: u64, p3: u64, p4: u64, ab
 type Register = u64;
 
 trait RegisterArgument {
-    fn from_register(Register) -> Self;
+    fn from_register(_: Register) -> Self;
     fn into_register(self) -> Register;
 }
 

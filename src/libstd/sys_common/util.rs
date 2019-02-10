@@ -1,7 +1,7 @@
-use fmt;
-use io::prelude::*;
-use sys::stdio::panic_output;
-use thread;
+use crate::fmt;
+use crate::io::prelude::*;
+use crate::sys::stdio::panic_output;
+use crate::thread;
 
 pub fn dumb_print(args: fmt::Arguments) {
     if let Some(mut out) = panic_output() {
@@ -16,7 +16,7 @@ pub fn dumb_print(args: fmt::Arguments) {
 
 pub fn abort(args: fmt::Arguments) -> ! {
     dumb_print(format_args!("fatal runtime error: {}\n", args));
-    unsafe { ::sys::abort_internal(); }
+    unsafe { crate::sys::abort_internal(); }
 }
 
 #[allow(dead_code)] // stack overflow detection not enabled on all platforms

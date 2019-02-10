@@ -8,22 +8,22 @@
 //! * Shims around "try"
 
 use core::panic::BoxMeUp;
-
-use io::prelude::*;
-
-use any::Any;
-use cell::RefCell;
 use core::panic::{PanicInfo, Location};
-use fmt;
-use intrinsics;
-use mem;
-use ptr;
-use raw;
-use sys::stdio::panic_output;
-use sys_common::rwlock::RWLock;
-use sys_common::thread_info;
-use sys_common::util;
-use thread;
+
+use crate::io::prelude::*;
+
+use crate::any::Any;
+use crate::cell::RefCell;
+use crate::fmt;
+use crate::intrinsics;
+use crate::mem;
+use crate::ptr;
+use crate::raw;
+use crate::sys::stdio::panic_output;
+use crate::sys_common::rwlock::RWLock;
+use crate::sys_common::thread_info;
+use crate::sys_common::util;
+use crate::thread;
 
 thread_local! {
     pub static LOCAL_STDERR: RefCell<Option<Box<dyn Write + Send>>> = {
@@ -159,7 +159,7 @@ pub fn take_hook() -> Box<dyn Fn(&PanicInfo) + 'static + Sync + Send> {
 
 fn default_hook(info: &PanicInfo) {
     #[cfg(feature = "backtrace")]
-    use sys_common::backtrace;
+    use crate::sys_common::backtrace;
 
     // If this is a double panic, make sure that we print a backtrace
     // for this panic. Otherwise only print it if logging is enabled.
@@ -186,13 +186,13 @@ fn default_hook(info: &PanicInfo) {
     let thread = thread_info::current_thread();
     let name = thread.as_ref().and_then(|t| t.name()).unwrap_or("<unnamed>");
 
-    let write = |err: &mut dyn (::io::Write)| {
+    let write = |err: &mut dyn crate::io::Write| {
         let _ = writeln!(err, "thread '{}' panicked at '{}', {}",
                          name, msg, location);
 
         #[cfg(feature = "backtrace")]
         {
-            use sync::atomic::{AtomicBool, Ordering};
+            use crate::sync::atomic::{AtomicBool, Ordering};
 
             static FIRST_PANIC: AtomicBool = AtomicBool::new(true);
 
@@ -221,7 +221,7 @@ fn default_hook(info: &PanicInfo) {
 #[doc(hidden)]
 #[unstable(feature = "update_panic_count", issue = "0")]
 pub fn update_panic_count(amt: isize) -> usize {
-    use cell::Cell;
+    use crate::cell::Cell;
     thread_local! { static PANIC_COUNT: Cell<usize> = Cell::new(0) }
 
     PANIC_COUNT.with(|c| {
@@ -235,7 +235,7 @@ pub fn update_panic_count(amt: isize) -> usize {
 pub use realstd::rt::update_panic_count;
 
 /// Invoke a closure, capturing the cause of an unwinding panic if one occurs.
-pub unsafe fn try<R, F: FnOnce() -> R>(f: F) -> Result<R, Box<dyn Any + Send>> {
+pub unsafe fn r#try<R, F: FnOnce() -> R>(f: F) -> Result<R, Box<dyn Any + Send>> {
     #[allow(unions_with_drop_fields)]
     union Data<F, R> {
         f: F,
@@ -352,7 +352,7 @@ fn continue_panic_fmt(info: &PanicInfo) -> ! {
         }
 
         fn fill(&mut self) -> &mut String {
-            use fmt::Write;
+            use crate::fmt::Write;
 
             let inner = self.inner;
             self.string.get_or_insert_with(|| {

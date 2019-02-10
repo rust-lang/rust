@@ -1,14 +1,14 @@
-use os::unix::prelude::*;
+use crate::os::unix::prelude::*;
 
-use ffi::{OsString, OsStr};
-use fmt;
-use io::{self, Error, ErrorKind, SeekFrom};
-use path::{Path, PathBuf};
-use sync::Arc;
-use sys::fd::FileDesc;
-use sys::time::SystemTime;
-use sys::{cvt, syscall};
-use sys_common::{AsInner, FromInner};
+use crate::ffi::{OsString, OsStr};
+use crate::fmt;
+use crate::io::{self, Error, ErrorKind, SeekFrom};
+use crate::path::{Path, PathBuf};
+use crate::sync::Arc;
+use crate::sys::fd::FileDesc;
+use crate::sys::time::SystemTime;
+use crate::sys::{cvt, syscall};
+use crate::sys_common::{AsInner, FromInner};
 
 pub struct File(FileDesc);
 
@@ -457,7 +457,7 @@ pub fn canonicalize(p: &Path) -> io::Result<PathBuf> {
 }
 
 pub fn copy(from: &Path, to: &Path) -> io::Result<u64> {
-    use fs::{File, set_permissions};
+    use crate::fs::{File, set_permissions};
     if !from.is_file() {
         return Err(Error::new(ErrorKind::InvalidInput,
                               "the source path is not an existing regular file"))

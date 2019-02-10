@@ -1,11 +1,11 @@
 #![allow(unused)]
 
-use ptr::{self, NonNull};
-use mem;
-use cell::UnsafeCell;
-use slice;
-use ops::{Deref, DerefMut, Index, IndexMut, CoerceUnsized};
-use slice::SliceIndex;
+use crate::ptr::{self, NonNull};
+use crate::mem;
+use crate::cell::UnsafeCell;
+use crate::slice;
+use crate::ops::{Deref, DerefMut, Index, IndexMut, CoerceUnsized};
+use crate::slice::SliceIndex;
 
 use fortanix_sgx_abi::*;
 use super::super::mem::is_user_range;

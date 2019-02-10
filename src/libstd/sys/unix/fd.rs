@@ -1,12 +1,13 @@
 #![unstable(reason = "not public", issue = "0", feature = "fd")]
 
-use cmp;
-use io::{self, Read, Initializer, IoVec, IoVecMut};
-use libc::{self, c_int, c_void, ssize_t};
-use mem;
-use sync::atomic::{AtomicBool, Ordering};
-use sys::cvt;
-use sys_common::AsInner;
+use crate::cmp;
+use crate::io::{self, Read, Initializer, IoVec, IoVecMut};
+use crate::mem;
+use crate::sync::atomic::{AtomicBool, Ordering};
+use crate::sys::cvt;
+use crate::sys_common::AsInner;
+
+use libc::{c_int, c_void, ssize_t};
 
 #[derive(Debug)]
 pub struct FileDesc {
@@ -74,7 +75,7 @@ impl FileDesc {
         unsafe fn cvt_pread64(fd: c_int, buf: *mut c_void, count: usize, offset: i64)
             -> io::Result<isize>
         {
-            use convert::TryInto;
+            use crate::convert::TryInto;
             use libc::pread64;
             // pread64 on emscripten actually takes a 32 bit offset
             if let Ok(o) = offset.try_into() {
@@ -131,7 +132,7 @@ impl FileDesc {
         unsafe fn cvt_pwrite64(fd: c_int, buf: *const c_void, count: usize, offset: i64)
             -> io::Result<isize>
         {
-            use convert::TryInto;
+            use crate::convert::TryInto;
             use libc::pwrite64;
             // pwrite64 on emscripten actually takes a 32 bit offset
             if let Ok(o) = offset.try_into() {

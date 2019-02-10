@@ -1,9 +1,9 @@
-use fmt;
-use io::{self, Error, ErrorKind};
-use net::{ToSocketAddrs, SocketAddr, Ipv4Addr, Ipv6Addr};
-use sys_common::net as net_imp;
-use sys_common::{AsInner, FromInner, IntoInner};
-use time::Duration;
+use crate::fmt;
+use crate::io::{self, Error, ErrorKind};
+use crate::net::{ToSocketAddrs, SocketAddr, Ipv4Addr, Ipv6Addr};
+use crate::sys_common::net as net_imp;
+use crate::sys_common::{AsInner, FromInner, IntoInner};
+use crate::time::Duration;
 
 /// A UDP socket.
 ///
@@ -808,13 +808,13 @@ impl fmt::Debug for UdpSocket {
 
 #[cfg(all(test, not(any(target_os = "cloudabi", target_os = "emscripten"))))]
 mod tests {
-    use io::ErrorKind;
-    use net::*;
-    use net::test::{next_test_ip4, next_test_ip6};
-    use sync::mpsc::channel;
-    use sys_common::AsInner;
-    use time::{Instant, Duration};
-    use thread;
+    use crate::io::ErrorKind;
+    use crate::net::*;
+    use crate::net::test::{next_test_ip4, next_test_ip6};
+    use crate::sync::mpsc::channel;
+    use crate::sys_common::AsInner;
+    use crate::time::{Instant, Duration};
+    use crate::thread;
 
     fn each_ip(f: &mut dyn FnMut(SocketAddr, SocketAddr)) {
         f(next_test_ip4(), next_test_ip4());

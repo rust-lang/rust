@@ -209,6 +209,10 @@
 #![deny(intra_doc_link_resolution_failure)]
 #![deny(missing_debug_implementations)]
 
+#![deny(rust_2018_idioms)]
+#![allow(explicit_outlives_requirements)]
+#![allow(elided_lifetimes_in_paths)]
+
 // Tell the compiler to link to either panic_abort or panic_unwind
 #![needs_panic_runtime]
 
@@ -272,7 +276,6 @@
 #![feature(maybe_uninit)]
 #![feature(needs_panic_runtime)]
 #![feature(never_type)]
-#![feature(nll)]
 #![feature(non_exhaustive)]
 #![feature(on_unimplemented)]
 #![feature(optin_builtin_traits)]
@@ -313,28 +316,24 @@ use prelude::v1::*;
 
 // Access to Bencher, etc.
 #[cfg(test)] extern crate test;
-#[cfg(test)] extern crate rand;
 
 // Re-export a few macros from core
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use core::{assert_eq, assert_ne, debug_assert, debug_assert_eq, debug_assert_ne};
 #[stable(feature = "rust1", since = "1.0.0")]
-pub use core::{unreachable, unimplemented, write, writeln, try};
+pub use core::{unreachable, unimplemented, write, writeln, r#try};
 
 #[allow(unused_imports)] // macros from `alloc` are not used on all platforms
 #[macro_use]
 extern crate alloc as alloc_crate;
 #[doc(masked)]
+#[allow(unused_extern_crates)]
 extern crate libc;
-extern crate rustc_demangle;
 
 // We always need an unwinder currently for backtraces
 #[doc(masked)]
 #[allow(unused_extern_crates)]
 extern crate unwind;
-
-#[cfg(feature = "backtrace")]
-extern crate backtrace_sys;
 
 // During testing, this crate is not actually the "real" std library, but rather
 // it links to the real std library, which was compiled from this same source

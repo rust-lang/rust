@@ -3,10 +3,10 @@
 //! This module is "publicly exported" through the `FromStr` implementations
 //! below.
 
-use error::Error;
-use fmt;
-use net::{IpAddr, Ipv4Addr, Ipv6Addr, SocketAddr, SocketAddrV4, SocketAddrV6};
-use str::FromStr;
+use crate::error::Error;
+use crate::fmt;
+use crate::net::{IpAddr, Ipv4Addr, Ipv6Addr, SocketAddr, SocketAddrV4, SocketAddrV6};
+use crate::str::FromStr;
 
 struct Parser<'a> {
     // parsing as ASCII, so can use byte array

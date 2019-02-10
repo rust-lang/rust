@@ -12,9 +12,8 @@
 // Due to rust-lang/rust#18804, make sure this is not generic!
 #[cfg(any(target_os = "linux", target_os = "fuchsia", target_os = "hermit"))]
 pub unsafe fn register_dtor(t: *mut u8, dtor: unsafe extern fn(*mut u8)) {
-    use libc;
-    use mem;
-    use sys_common::thread_local::register_dtor_fallback;
+    use crate::mem;
+    use crate::sys_common::thread_local::register_dtor_fallback;
 
     extern {
         #[linkage = "extern_weak"]
@@ -45,8 +44,8 @@ pub unsafe fn register_dtor(t: *mut u8, dtor: unsafe extern fn(*mut u8)) {
 // _tlv_atexit.
 #[cfg(target_os = "macos")]
 pub unsafe fn register_dtor(t: *mut u8, dtor: unsafe extern fn(*mut u8)) {
-    use cell::Cell;
-    use ptr;
+    use crate::cell::Cell;
+    use crate::ptr;
 
     #[thread_local]
     static REGISTERED: Cell<bool> = Cell::new(false);

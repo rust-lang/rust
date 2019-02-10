@@ -1,5 +1,3 @@
-extern crate rand;
-
 use std::env::*;
 use std::ffi::{OsString, OsStr};
 

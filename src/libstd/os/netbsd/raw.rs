@@ -8,8 +8,8 @@
                               definitions")]
 #![allow(deprecated)]
 
-use os::raw::c_long;
-use os::unix::raw::{uid_t, gid_t};
+use crate::os::raw::c_long;
+use crate::os::unix::raw::{uid_t, gid_t};
 
 #[stable(feature = "raw_ext", since = "1.1.0")] pub type blkcnt_t = u64;
 #[stable(feature = "raw_ext", since = "1.1.0")] pub type blksize_t = u64;

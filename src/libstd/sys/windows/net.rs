@@ -1,26 +1,27 @@
 #![unstable(issue = "0", feature = "windows_net")]
 
-use cmp;
-use io::{self, Read, IoVec, IoVecMut};
+use crate::cmp;
+use crate::io::{self, Read, IoVec, IoVecMut};
+use crate::mem;
+use crate::net::{SocketAddr, Shutdown};
+use crate::ptr;
+use crate::sync::Once;
+use crate::sys::c;
+use crate::sys;
+use crate::sys_common::{self, AsInner, FromInner, IntoInner};
+use crate::sys_common::net;
+use crate::time::Duration;
+
 use libc::{c_int, c_void, c_ulong, c_long};
-use mem;
-use net::{SocketAddr, Shutdown};
-use ptr;
-use sync::Once;
-use sys::c;
-use sys;
-use sys_common::{self, AsInner, FromInner, IntoInner};
-use sys_common::net;
-use time::Duration;
 
 pub type wrlen_t = i32;
 
 pub mod netc {
-    pub use sys::c::*;
-    pub use sys::c::SOCKADDR as sockaddr;
-    pub use sys::c::SOCKADDR_STORAGE_LH as sockaddr_storage;
-    pub use sys::c::ADDRINFOA as addrinfo;
-    pub use sys::c::ADDRESS_FAMILY as sa_family_t;
+    pub use crate::sys::c::*;
+    pub use crate::sys::c::SOCKADDR as sockaddr;
+    pub use crate::sys::c::SOCKADDR_STORAGE_LH as sockaddr_storage;
+    pub use crate::sys::c::ADDRINFOA as addrinfo;
+    pub use crate::sys::c::ADDRESS_FAMILY as sa_family_t;
 }
 
 pub struct Socket(c::SOCKET);

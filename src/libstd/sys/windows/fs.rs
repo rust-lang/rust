@@ -1,17 +1,17 @@
-use os::windows::prelude::*;
+use crate::os::windows::prelude::*;
 
-use ffi::OsString;
-use fmt;
-use io::{self, Error, SeekFrom};
-use mem;
-use path::{Path, PathBuf};
-use ptr;
-use slice;
-use sync::Arc;
-use sys::handle::Handle;
-use sys::time::SystemTime;
-use sys::{c, cvt};
-use sys_common::FromInner;
+use crate::ffi::OsString;
+use crate::fmt;
+use crate::io::{self, Error, SeekFrom};
+use crate::mem;
+use crate::path::{Path, PathBuf};
+use crate::ptr;
+use crate::slice;
+use crate::sync::Arc;
+use crate::sys::handle::Handle;
+use crate::sys::time::SystemTime;
+use crate::sys::{c, cvt};
+use crate::sys_common::FromInner;
 
 use super::to_u16s;
 

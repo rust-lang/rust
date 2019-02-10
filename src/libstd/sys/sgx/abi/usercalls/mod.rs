@@ -1,5 +1,5 @@
-use io::{Error as IoError, Result as IoResult};
-use time::Duration;
+use crate::io::{Error as IoError, Result as IoResult};
+use crate::time::Duration;
 
 pub(crate) mod alloc;
 #[macro_use]
