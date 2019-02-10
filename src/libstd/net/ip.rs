@@ -392,8 +392,7 @@ impl Ipv4Addr {
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn octets(&self) -> [u8; 4] {
-        let bits = u32::from_be(self.inner.s_addr);
-        [(bits >> 24) as u8, (bits >> 16) as u8, (bits >> 8) as u8, bits as u8]
+        self.inner.s_addr.to_ne_bytes()
     }
 
     /// Returns [`true`] for the special 'unspecified' address (0.0.0.0).
