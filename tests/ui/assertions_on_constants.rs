@@ -1,3 +1,10 @@
+macro_rules! assert_const {
+    ($len:expr) => {
+        assert!($len > 0);
+        debug_assert!($len < 0);
+    };
+}
+
 fn main() {
     assert!(true);
     assert!(false);
@@ -9,4 +16,8 @@ fn main() {
 
     const C: bool = false;
     assert!(C);
+
+    debug_assert!(true);
+    assert_const!(3);
+    assert_const!(-1);
 }

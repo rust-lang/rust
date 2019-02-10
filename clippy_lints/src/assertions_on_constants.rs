@@ -3,7 +3,7 @@ use crate::rustc::hir::{Expr, ExprKind};
 use crate::rustc::lint::{LateContext, LateLintPass, LintArray, LintPass};
 use crate::rustc::{declare_tool_lint, lint_array};
 use crate::syntax::ast::LitKind;
-use crate::utils::{is_direct_expn_of, span_help_and_lint};
+use crate::utils::{in_macro, is_direct_expn_of, span_help_and_lint};
 use if_chain::if_chain;
 
 /// **What it does:** Check to call assert!(true/false)
@@ -43,7 +43,9 @@ impl LintPass for AssertionsOnConstants {
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for AssertionsOnConstants {
     fn check_expr(&mut self, cx: &LateContext<'a, 'tcx>, e: &'tcx Expr) {
         if_chain! {
-            if is_direct_expn_of(e.span, "assert").is_some();
+            if let Some(assert_span) = is_direct_expn_of(e.span, "assert");
+            if !in_macro(assert_span)
+                || is_direct_expn_of(assert_span, "debug_assert").map_or(false, |span| !in_macro(span));
             if let ExprKind::Unary(_, ref lit) = e.node;
             then {
                 if let ExprKind::Lit(ref inner) = lit.node {
