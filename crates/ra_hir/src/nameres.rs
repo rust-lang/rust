@@ -276,12 +276,25 @@ where
             log::debug!("glob import: {:?}", import);
             match def.take_types() {
                 Some(ModuleDef::Module(m)) => {
-                    // TODO
+                    if m.krate != self.krate {
+                        tested_by!(glob_across_crates);
+                        // glob import from other crate => we can just import everything once
+                        let item_map = self.db.item_map(m.krate);
+                        let scope = &item_map[m.module_id];
+                        self.update(module_id, |items| {
+                            // TODO: handle shadowing and visibility
+                            items.items.extend(
+                                scope.items.iter().map(|(name, res)| (name.clone(), res.clone())),
+                            );
+                        });
+                    }
                 }
                 Some(ModuleDef::Enum(e)) => {
                     tested_by!(glob_enum);
+                    // glob import from enum => just import all the variants
                     let variants = e.variants(self.db);
-                    let resolutions = variants.into_iter()
+                    let resolutions = variants
+                        .into_iter()
                         .filter_map(|variant| {
                             let res = Resolution {
                                 def: PerNs::both(variant.into(), e.into()),

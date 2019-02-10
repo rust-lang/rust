@@ -251,6 +251,7 @@ fn glob_enum() {
 
 #[test]
 fn glob_across_crates() {
+    covers!(glob_across_crates);
     let (mut db, sr) = MockDatabase::with_files(
         "
         //- /main.rs
