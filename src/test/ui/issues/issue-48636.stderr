@@ -3,7 +3,7 @@ error[E0585]: found a documentation comment that doesn't document anything
    |
 LL |     x: u8
    |          - help: missing comma here: `,`
-LL |     /// The id of the parent core
+LL |     /// The ID of the parent core
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = help: doc comments must come before what they document, maybe a comment was intended with `//`?
