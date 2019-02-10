@@ -1,6 +1,6 @@
-use back::lto::{LtoModuleCodegen, SerializedModule, ThinModule};
-use back::write::{CodegenContext, ModuleConfig};
-use {CompiledModule, ModuleCodegen};
+use crate::back::lto::{LtoModuleCodegen, SerializedModule, ThinModule};
+use crate::back::write::{CodegenContext, ModuleConfig};
+use crate::{CompiledModule, ModuleCodegen};
 
 use rustc::dep_graph::WorkProduct;
 use rustc::util::time_graph::Timeline;

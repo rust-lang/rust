@@ -1,10 +1,10 @@
-use base;
 use rustc::hir;
 use rustc::hir::def::Def;
 use rustc::mir::mono::{Linkage, Visibility};
 use rustc::ty::layout::HasTyCtxt;
 use std::fmt;
-use traits::*;
+use crate::base;
+use crate::traits::*;
 
 pub use rustc::mir::mono::MonoItem;
 
