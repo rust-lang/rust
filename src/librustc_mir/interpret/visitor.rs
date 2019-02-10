@@ -125,14 +125,14 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> Value<'a, 'mir, 'tcx, M>
 }
 
 macro_rules! make_value_visitor {
-    ($visitor_trait_name:ident, $($mutability:ident)*) => {
+    ($visitor_trait_name:ident, $($mutability:ident)?) => {
         // How to traverse a value and what to do when we are at the leaves.
         pub trait $visitor_trait_name<'a, 'mir, 'tcx: 'mir+'a, M: Machine<'a, 'mir, 'tcx>>: Sized {
             type V: Value<'a, 'mir, 'tcx, M>;
 
             /// The visitor must have an `EvalContext` in it.
-            fn ecx(&$($mutability)* self)
-                -> &$($mutability)* EvalContext<'a, 'mir, 'tcx, M>;
+            fn ecx(&$($mutability)? self)
+                -> &$($mutability)? EvalContext<'a, 'mir, 'tcx, M>;
 
             // Recursive actions, ready to be overloaded.
             /// Visit the given value, dispatching as appropriate to more specialized visitors.
