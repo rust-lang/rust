@@ -83,7 +83,7 @@ pub fn op_to_const<'tcx>(
             Operand::Immediate(val) => Ok(val)
         }
     };
-    let val = match normalized_op {
+    let (val, alloc) = match normalized_op {
         Err(MemPlace { ptr, align, meta }) => {
             // extract alloc-offset pair
             assert!(meta.is_none());
@@ -96,14 +96,14 @@ pub fn op_to_const<'tcx>(
             // FIXME shouldn't it be the case that `mark_static_initialized` has already
             // interned this?  I thought that is the entire point of that `FinishStatic` stuff?
             let alloc = ecx.tcx.intern_const_alloc(alloc);
-            ConstValue::ByRef(ptr.alloc_id, alloc, ptr.offset)
+            (ConstValue::ByRef, Some((alloc, ptr)))
         },
         Ok(Immediate::Scalar(x)) =>
-            ConstValue::Scalar(x.not_undef()?),
+            (ConstValue::Scalar(x.not_undef()?), None),
         Ok(Immediate::ScalarPair(a, b)) =>
-            ConstValue::Slice(a.not_undef()?, b.to_usize(ecx)?),
+            (ConstValue::Slice(a.not_undef()?, b.to_usize(ecx)?), None),
     };
-    Ok(ty::Const { val, ty: op.layout.ty })
+    Ok(ty::Const { val, ty: op.layout.ty, alloc })
 }
 
 fn eval_body_and_ecx<'a, 'mir, 'tcx>(

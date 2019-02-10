@@ -11,7 +11,7 @@ use crate::ty::subst::{Substs, Subst, Kind, UnpackedKind};
 use crate::ty::{self, AdtDef, TypeFlags, Ty, TyCtxt, TypeFoldable};
 use crate::ty::{List, TyS, ParamEnvAnd, ParamEnv};
 use crate::util::captures::Captures;
-use crate::mir::interpret::{Scalar, Pointer};
+use crate::mir::interpret::{Scalar, Pointer, Allocation};
 
 use smallvec::SmallVec;
 use std::iter;
@@ -2065,7 +2065,7 @@ pub enum LazyConst<'tcx> {
 }
 
 #[cfg(target_arch = "x86_64")]
-static_assert!(LAZY_CONST_SIZE: ::std::mem::size_of::<LazyConst<'static>>() == 56);
+static_assert!(LAZY_CONST_SIZE: ::std::mem::size_of::<LazyConst<'static>>() == 80);
 
 impl<'tcx> LazyConst<'tcx> {
     pub fn map_evaluated<R>(self, f: impl FnOnce(Const<'tcx>) -> Option<R>) -> Option<R> {
@@ -2090,11 +2090,22 @@ impl<'tcx> LazyConst<'tcx> {
 pub struct Const<'tcx> {
     pub ty: Ty<'tcx>,
 
-    pub val: ConstValue<'tcx>,
+    /// This field is an optimization for caching commonly needed values of constants like `usize`
+    /// (or other integers for enum discriminants) and slices (e.g. from `b"foo"` and `"foo"`
+    /// literals)
+    pub val: ConstValue,
+
+    /// The actual backing storage of the constant and a pointer which can be resolved back to the
+    /// `allocation` field
+    ///
+    /// Can be `None` for trivial constants created from literals or directly. Is always `Some` for
+    /// aggregate constants or any named constant that you can actually end up taking a reference
+    /// to. This will get unwrapped in situations where we do know that it's a referencable
+    pub alloc: Option<(&'tcx Allocation, Pointer)>,
 }
 
 #[cfg(target_arch = "x86_64")]
-static_assert!(CONST_SIZE: ::std::mem::size_of::<Const<'static>>() == 48);
+static_assert!(CONST_SIZE: ::std::mem::size_of::<Const<'static>>() == 72);
 
 impl<'tcx> Const<'tcx> {
     #[inline]
@@ -2105,6 +2116,7 @@ impl<'tcx> Const<'tcx> {
         Self {
             val: ConstValue::Scalar(val),
             ty,
+            alloc: None,
         }
     }
 

@@ -4,7 +4,6 @@
 //! `BraceStructLiftImpl!`) to help with the tedium.
 
 use crate::mir::ProjectionKind;
-use crate::mir::interpret::ConstValue;
 use crate::ty::{self, Lift, Ty, TyCtxt};
 use crate::ty::fold::{TypeFoldable, TypeFolder, TypeVisitor};
 use rustc_data_structures::indexed_vec::{IndexVec, Idx};
@@ -486,23 +485,20 @@ BraceStructLiftImpl! {
     }
 }
 
-BraceStructLiftImpl! {
-    impl<'a, 'tcx> Lift<'tcx> for ty::Const<'a> {
-        type Lifted = ty::Const<'tcx>;
-        val, ty
-    }
-}
-
-impl<'a, 'tcx> Lift<'tcx> for ConstValue<'a> {
-    type Lifted = ConstValue<'tcx>;
+impl<'a, 'tcx> Lift<'tcx> for ty::Const<'a> {
+    type Lifted = ty::Const<'tcx>;
     fn lift_to_tcx<'b, 'gcx>(&self, tcx: TyCtxt<'b, 'gcx, 'tcx>) -> Option<Self::Lifted> {
-        match *self {
-            ConstValue::Scalar(x) => Some(ConstValue::Scalar(x)),
-            ConstValue::Slice(x, y) => Some(ConstValue::Slice(x, y)),
-            ConstValue::ByRef(x, alloc, z) => Some(ConstValue::ByRef(
-                x, alloc.lift_to_tcx(tcx)?, z,
-            )),
-        }
+        let ty = self.ty.lift_to_tcx(tcx)?;
+        let alloc = match self.alloc {
+            // can't use `and_then` or `map`, because the inner `lift_to_tcx` needs to early return
+            Some((a, p)) => Some((a.lift_to_tcx(tcx)?, p)),
+            None => None,
+        };
+        Some(ty::Const {
+            val: self.val,
+            ty,
+            alloc,
+        })
     }
 }
 
@@ -1064,24 +1060,14 @@ impl<'tcx> TypeFoldable<'tcx> for &'tcx ty::LazyConst<'tcx> {
 impl<'tcx> TypeFoldable<'tcx> for ty::Const<'tcx> {
     fn super_fold_with<'gcx: 'tcx, F: TypeFolder<'gcx, 'tcx>>(&self, folder: &mut F) -> Self {
         let ty = self.ty.fold_with(folder);
-        let val = self.val.fold_with(folder);
         ty::Const {
             ty,
-            val
+            val: self.val,
+            alloc: self.alloc,
         }
     }
 
     fn super_visit_with<V: TypeVisitor<'tcx>>(&self, visitor: &mut V) -> bool {
-        self.ty.visit_with(visitor) || self.val.visit_with(visitor)
-    }
-}
-
-impl<'tcx> TypeFoldable<'tcx> for ConstValue<'tcx> {
-    fn super_fold_with<'gcx: 'tcx, F: TypeFolder<'gcx, 'tcx>>(&self, _folder: &mut F) -> Self {
-        *self
-    }
-
-    fn super_visit_with<V: TypeVisitor<'tcx>>(&self, _visitor: &mut V) -> bool {
-        false
+        self.ty.visit_with(visitor)
     }
 }

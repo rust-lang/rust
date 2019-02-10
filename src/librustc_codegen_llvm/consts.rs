@@ -69,11 +69,12 @@ pub fn codegen_static_initializer(
     };
     let param_env = ty::ParamEnv::reveal_all();
     let static_ = cx.tcx.const_eval(param_env.and(cid))?;
-
-    let alloc = match static_.val {
-        ConstValue::ByRef(_, alloc, n) if n.bytes() == 0 => alloc,
+    let (alloc, ptr) = static_.alloc.unwrap();
+    assert_eq!(ptr.offset.bytes(), 0);
+    match static_.val {
+        ConstValue::ByRef => {},
         _ => bug!("static const eval returned {:#?}", static_),
-    };
+    }
     Ok((const_alloc_to_llvm(cx, alloc), alloc))
 }
 

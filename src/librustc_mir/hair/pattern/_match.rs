@@ -172,7 +172,7 @@ use rustc::ty::{self, Ty, TyCtxt, TypeFoldable, Const};
 use rustc::ty::layout::{Integer, IntegerExt, VariantIdx, Size};
 
 use rustc::mir::Field;
-use rustc::mir::interpret::{ConstValue, Pointer, Scalar};
+use rustc::mir::interpret::{ConstValue, Scalar, Allocation, Pointer};
 use rustc::util::common::ErrorReported;
 
 use syntax::attr::{SignedInt, UnsignedInt};
@@ -205,32 +205,41 @@ impl<'a, 'tcx> LiteralExpander<'a, 'tcx> {
     /// the array to a slice in that case.
     fn fold_const_value_deref(
         &mut self,
-        val: ConstValue<'tcx>,
+        val: ConstValue,
+        alloc: Option<(&'tcx Allocation, Pointer)>,
         // the pattern's pointee type
         rty: Ty<'tcx>,
         // the constant's pointee type
         crty: Ty<'tcx>,
-    ) -> ConstValue<'tcx> {
+    ) -> ty::Const<'tcx> {
         match (val, &crty.sty, &rty.sty) {
             // the easy case, deref a reference
-            (ConstValue::Scalar(Scalar::Ptr(p)), x, y) if x == y => ConstValue::ByRef(
-                p.alloc_id,
-                self.tcx.alloc_map.lock().unwrap_memory(p.alloc_id),
-                p.offset,
-            ),
+            (ConstValue::Scalar(Scalar::Ptr(p)), x, y) if x == y => ty::Const {
+                val: ConstValue::ByRef,
+                alloc: Some((self.tcx.alloc_map.lock().unwrap_memory(p.alloc_id), p)),
+                ty: rty,
+            },
             // unsize array to slice if pattern is array but match value or other patterns are slice
             (ConstValue::Scalar(Scalar::Ptr(p)), ty::Array(t, n), ty::Slice(u)) => {
                 assert_eq!(t, u);
-                ConstValue::Slice(
-                    Scalar::Ptr(p),
-                    n.map_evaluated(|val| val.val.try_to_scalar())
-                        .unwrap()
-                        .to_usize(&self.tcx)
-                        .unwrap(),
-                )
+                ty::Const {
+                    val: ConstValue::Slice(
+                        Scalar::Ptr(p),
+                        n.map_evaluated(|val| val.val.try_to_scalar())
+                            .unwrap()
+                            .to_usize(&self.tcx)
+                            .unwrap(),
+                    ),
+                    ty: rty,
+                    alloc: None,
+                }
             },
             // fat pointers stay the same
-            (ConstValue::Slice(..), _, _) => val,
+            (ConstValue::Slice(..), _, _) => ty::Const {
+                val,
+                alloc,
+                ty: rty,
+            },
             // FIXME(oli-obk): this is reachable for `const FOO: &&&u32 = &&&42;` being used
             _ => bug!("cannot deref {:#?}, {} -> {}", val, crty, rty),
         }
@@ -244,6 +253,7 @@ impl<'a, 'tcx> PatternFolder<'tcx> for LiteralExpander<'a, 'tcx> {
                 &ty::Ref(_, rty, _),
                 &PatternKind::Constant { value: Const {
                     val,
+                    alloc,
                     ty: ty::TyS { sty: ty::Ref(_, crty, _), .. },
                 } },
             ) => {
@@ -254,10 +264,9 @@ impl<'a, 'tcx> PatternFolder<'tcx> for LiteralExpander<'a, 'tcx> {
                         subpattern: Pattern {
                             ty: rty,
                             span: pat.span,
-                            kind: box PatternKind::Constant { value: Const {
-                                val: self.fold_const_value_deref(val, rty, crty),
-                                ty: rty,
-                            } },
+                            kind: box PatternKind::Constant {
+                                value: self.fold_const_value_deref(val, alloc, rty, crty),
+                            },
                         }
                     }
                 }
@@ -1428,7 +1437,7 @@ fn slice_pat_covered_by_const<'tcx>(
     suffix: &[Pattern<'tcx>]
 ) -> Result<bool, ErrorReported> {
     let data: &[u8] = match (const_val.val, &const_val.ty.sty) {
-        (ConstValue::ByRef(id, alloc, offset), ty::Array(t, n)) => {
+        (ConstValue::ByRef, ty::Array(t, n)) => {
             if *t != tcx.types.u8 {
                 // FIXME(oli-obk): can't mix const patterns with slice patterns and get
                 // any sort of exhaustiveness/unreachable check yet
@@ -1436,7 +1445,7 @@ fn slice_pat_covered_by_const<'tcx>(
                 // are definitely unreachable.
                 return Ok(false);
             }
-            let ptr = Pointer::new(id, offset);
+            let (alloc, ptr) = const_val.alloc.expect("ByRef ty::Const with None alloc field");
             let n = n.assert_usize(tcx).unwrap();
             alloc.get_bytes(&tcx, ptr, Size::from_bytes(n)).unwrap()
         },
@@ -1778,8 +1787,8 @@ fn specialize<'p, 'a: 'p, 'tcx: 'a>(
                     let (opt_ptr, n, ty) = match value.ty.sty {
                         ty::TyKind::Array(t, n) => {
                             match value.val {
-                                ConstValue::ByRef(id, alloc, offset) => (
-                                    Some((Pointer::new(id, offset), alloc)),
+                                ConstValue::ByRef => (
+                                    value.alloc,
                                     n.unwrap_usize(cx.tcx),
                                     t,
                                 ),
@@ -1793,8 +1802,8 @@ fn specialize<'p, 'a: 'p, 'tcx: 'a>(
                             match value.val {
                                 ConstValue::Slice(ptr, n) => (
                                     ptr.to_ptr().ok().map(|ptr| (
-                                        ptr,
                                         cx.tcx.alloc_map.lock().unwrap_memory(ptr.alloc_id),
+                                        ptr,
                                     )),
                                     n,
                                     t,
@@ -1817,7 +1826,7 @@ fn specialize<'p, 'a: 'p, 'tcx: 'a>(
                         // convert a constant slice/array pattern to a list of patterns.
                         match (n, opt_ptr) {
                             (0, _) => Some(SmallVec::new()),
-                            (_, Some((ptr, alloc))) => {
+                            (_, Some((alloc, ptr))) => {
                                 let layout = cx.tcx.layout_of(cx.param_env.and(ty)).ok()?;
                                 (0..n).map(|i| {
                                     let ptr = ptr.offset(layout.size * i, &cx.tcx).ok()?;

@@ -1665,6 +1665,7 @@ impl<'tcx> TerminatorKind<'tcx> {
                                 }.into(),
                             ),
                             ty: switch_ty,
+                            alloc: None,
                         };
                         fmt_const_val(&mut s, c).unwrap();
                         s.into()

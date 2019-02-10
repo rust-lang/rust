@@ -300,12 +300,13 @@ impl_stable_hash_for!(struct ty::FieldDef {
 });
 
 impl_stable_hash_for!(
-    impl<'tcx> for enum mir::interpret::ConstValue<'tcx> [ mir::interpret::ConstValue ] {
+    impl<'tcx> for enum mir::interpret::ConstValue [ mir::interpret::ConstValue ] {
         Scalar(val),
         Slice(a, b),
-        ByRef(id, alloc, offset),
+        ByRef,
     }
 );
+
 impl_stable_hash_for!(struct crate::mir::interpret::RawConst<'tcx> {
     alloc_id,
     ty,
@@ -374,6 +375,7 @@ impl_stable_hash_for!(enum ::syntax::ast::Mutability {
 
 impl_stable_hash_for!(struct ty::Const<'tcx> {
     ty,
+    alloc,
     val
 });
 

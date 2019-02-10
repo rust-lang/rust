@@ -42,6 +42,7 @@ crate fn lit_to_const<'a, 'gcx, 'tcx>(
             let id = tcx.allocate_bytes(s.as_bytes());
             return Ok(ty::Const {
                 val: ConstValue::new_slice(Scalar::Ptr(id.into()), s.len() as u64),
+                alloc: None,
                 ty: tcx.types.err,
             });
         },
@@ -72,14 +73,14 @@ crate fn lit_to_const<'a, 'gcx, 'tcx>(
         LitKind::Bool(b) => ConstValue::Scalar(Scalar::from_bool(b)),
         LitKind::Char(c) => ConstValue::Scalar(Scalar::from_char(c)),
     };
-    Ok(ty::Const { val: lit, ty })
+    Ok(ty::Const { val: lit, ty, alloc: None })
 }
 
 fn parse_float<'tcx>(
     num: Symbol,
     fty: ast::FloatTy,
     neg: bool,
-) -> Result<ConstValue<'tcx>, ()> {
+) -> Result<ConstValue, ()> {
     let num = num.as_str();
     use rustc_apfloat::ieee::{Single, Double};
     use rustc_apfloat::Float;

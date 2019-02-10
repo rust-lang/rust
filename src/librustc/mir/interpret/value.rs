@@ -2,7 +2,7 @@ use std::fmt;
 
 use crate::ty::{Ty, layout::{HasDataLayout, Size}};
 
-use super::{EvalResult, Pointer, PointerArithmetic, Allocation, AllocId, sign_extend, truncate};
+use super::{EvalResult, Pointer, PointerArithmetic, AllocId, sign_extend, truncate};
 
 /// Represents the result of a raw const operation, pre-validation.
 #[derive(Copy, Clone, Debug, Eq, PartialEq, RustcEncodable, RustcDecodable, Hash)]
@@ -16,7 +16,7 @@ pub struct RawConst<'tcx> {
 /// Represents a constant value in Rust. `Scalar` and `ScalarPair` are optimizations that
 /// match the `LocalState` optimizations for easy conversions between `Value` and `ConstValue`.
 #[derive(Copy, Clone, Debug, Eq, PartialEq, PartialOrd, Ord, RustcEncodable, RustcDecodable, Hash)]
-pub enum ConstValue<'tcx> {
+pub enum ConstValue {
     /// Used only for types with `layout::abi::Scalar` ABI and ZSTs.
     ///
     /// Not using the enum `Value` to encode that this must not be `Undef`.
@@ -31,19 +31,17 @@ pub enum ConstValue<'tcx> {
     /// it.
     Slice(Scalar, u64),
 
-    /// An allocation together with an offset into the allocation.
-    /// Invariant: the `AllocId` matches the allocation.
-    ByRef(AllocId, &'tcx Allocation, Size),
+    ByRef,
 }
 
 #[cfg(target_arch = "x86_64")]
-static_assert!(CONST_SIZE: ::std::mem::size_of::<ConstValue<'static>>() == 40);
+static_assert!(CONST_SIZE: ::std::mem::size_of::<ConstValue>() == 40);
 
-impl<'tcx> ConstValue<'tcx> {
+impl ConstValue {
     #[inline]
     pub fn try_to_scalar(&self) -> Option<Scalar> {
         match *self {
-            ConstValue::ByRef(..) |
+            ConstValue::ByRef |
             ConstValue::Slice(..) => None,
             ConstValue::Scalar(val) => Some(val),
         }
