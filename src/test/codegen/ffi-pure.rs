@@ -10,5 +10,3 @@ extern {
     // CHECK-DAG: attributes [[ATTRS]] = { {{.*}}readonly{{.*}} }
     #[ffi_pure] pub fn foo();
 }
-
-
