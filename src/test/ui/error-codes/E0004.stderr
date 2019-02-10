@@ -1,8 +1,17 @@
 error[E0004]: non-exhaustive patterns: `HastaLaVistaBaby` not covered
   --> $DIR/E0004.rs:9:11
    |
-LL |     match x { //~ ERROR E0004
-   |           ^ pattern `HastaLaVistaBaby` not covered
+LL | / enum Terminator {
+LL | |     HastaLaVistaBaby,
+   | |     ---------------- not covered
+LL | |     TalkToMyHand,
+LL | | }
+   | |_- `Terminator` defined here
+...
+LL |       match x { //~ ERROR E0004
+   |             ^ pattern `HastaLaVistaBaby` not covered
+   |
+   = help: ensure that all possible cases are being handled, possibly by adding wildcards or more match arms
 
 error: aborting due to previous error
 

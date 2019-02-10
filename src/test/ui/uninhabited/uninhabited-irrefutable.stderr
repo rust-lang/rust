@@ -1,8 +1,16 @@
 error[E0005]: refutable pattern in local binding: `A(_)` not covered
   --> $DIR/uninhabited-irrefutable.rs:27:9
    |
-LL |     let Foo::D(_y) = x; //~ ERROR refutable pattern in local binding: `A(_)` not covered
-   |         ^^^^^^^^^^ pattern `A(_)` not covered
+LL | / enum Foo {
+LL | |     A(foo::SecretlyEmpty),
+LL | |     B(foo::NotSoSecretlyEmpty),
+LL | |     C(NotSoSecretlyEmpty),
+LL | |     D(u32),
+LL | | }
+   | |_- `Foo` defined here
+...
+LL |       let Foo::D(_y) = x; //~ ERROR refutable pattern in local binding: `A(_)` not covered
+   |           ^^^^^^^^^^ pattern `A(_)` not covered
 
 error: aborting due to previous error
 
