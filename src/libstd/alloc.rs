@@ -64,7 +64,8 @@
 use core::sync::atomic::{AtomicPtr, Ordering};
 use core::{mem, ptr};
 use core::ptr::NonNull;
-use sys_common::util::dumb_print;
+
+use crate::sys_common::util::dumb_print;
 
 #[stable(feature = "alloc_module", since = "1.28.0")]
 #[doc(inline)]
@@ -208,7 +209,7 @@ pub fn rust_oom(layout: Layout) -> ! {
         unsafe { mem::transmute(hook) }
     };
     hook(layout);
-    unsafe { ::sys::abort_internal(); }
+    unsafe { crate::sys::abort_internal(); }
 }
 
 #[cfg(not(test))]

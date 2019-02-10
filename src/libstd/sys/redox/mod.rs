@@ -1,6 +1,6 @@
 #![allow(dead_code, missing_docs, nonstandard_style)]
 
-use io::{self, ErrorKind};
+use crate::io::{self, ErrorKind};
 
 pub use libc::strlen;
 pub use self::rand::hashmap_random_keys;
@@ -92,5 +92,5 @@ pub fn cvt_libc<T: IsMinusOne>(t: T) -> io::Result<T> {
 
 /// On Redox, use an illegal instruction to abort
 pub unsafe fn abort_internal() -> ! {
-    ::core::intrinsics::abort();
+    core::intrinsics::abort();
 }

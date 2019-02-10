@@ -1,19 +1,19 @@
-use ascii;
-use borrow::{Cow, Borrow};
-use cmp::Ordering;
-use error::Error;
-use fmt::{self, Write};
-use io;
-use mem;
-use memchr;
-use ops;
-use os::raw::c_char;
-use ptr;
-use rc::Rc;
-use slice;
-use str::{self, Utf8Error};
-use sync::Arc;
-use sys;
+use crate::ascii;
+use crate::borrow::{Cow, Borrow};
+use crate::cmp::Ordering;
+use crate::error::Error;
+use crate::fmt::{self, Write};
+use crate::io;
+use crate::mem;
+use crate::memchr;
+use crate::ops;
+use crate::os::raw::c_char;
+use crate::ptr;
+use crate::rc::Rc;
+use crate::slice;
+use crate::str::{self, Utf8Error};
+use crate::sync::Arc;
+use crate::sys;
 
 /// A type representing an owned, C-compatible, nul-terminated string with no nul bytes in the
 /// middle.
@@ -1303,12 +1303,12 @@ impl AsRef<CStr> for CString {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use os::raw::c_char;
-    use borrow::Cow::{Borrowed, Owned};
-    use hash::{Hash, Hasher};
-    use collections::hash_map::DefaultHasher;
-    use rc::Rc;
-    use sync::Arc;
+    use crate::os::raw::c_char;
+    use crate::borrow::Cow::{Borrowed, Owned};
+    use crate::hash::{Hash, Hasher};
+    use crate::collections::hash_map::DefaultHasher;
+    use crate::rc::Rc;
+    use crate::sync::Arc;
 
     #[test]
     fn c_to_rust() {

@@ -3,9 +3,9 @@
 //! This module contains the facade (aka platform-specific) implementations of
 //! OS level functionality for Fortanix SGX.
 
-use io;
-use os::raw::c_char;
-use sync::atomic::{AtomicBool, Ordering};
+use crate::io;
+use crate::os::raw::c_char;
+use crate::sync::atomic::{AtomicBool, Ordering};
 
 pub mod abi;
 mod waitqueue;
@@ -131,9 +131,9 @@ pub unsafe fn abort_internal() -> ! {
 pub fn hashmap_random_keys() -> (u64, u64) {
     fn rdrand64() -> u64 {
         unsafe {
-            let mut ret: u64 = ::mem::uninitialized();
+            let mut ret: u64 = crate::mem::uninitialized();
             for _ in 0..10 {
-                if ::arch::x86_64::_rdrand64_step(&mut ret) == 1 {
+                if crate::arch::x86_64::_rdrand64_step(&mut ret) == 1 {
                     return ret;
                 }
             }
@@ -143,7 +143,7 @@ pub fn hashmap_random_keys() -> (u64, u64) {
     (rdrand64(), rdrand64())
 }
 
-pub use sys_common::{AsInner, FromInner, IntoInner};
+pub use crate::sys_common::{AsInner, FromInner, IntoInner};
 
 pub trait TryIntoInner<Inner>: Sized {
     fn try_into_inner(self) -> Result<Inner, Self>;

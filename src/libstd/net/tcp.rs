@@ -1,11 +1,11 @@
-use io::prelude::*;
+use crate::io::prelude::*;
 
-use fmt;
-use io::{self, Initializer};
-use net::{ToSocketAddrs, SocketAddr, Shutdown};
-use sys_common::net as net_imp;
-use sys_common::{AsInner, FromInner, IntoInner};
-use time::Duration;
+use crate::fmt;
+use crate::io::{self, Initializer};
+use crate::net::{ToSocketAddrs, SocketAddr, Shutdown};
+use crate::sys_common::net as net_imp;
+use crate::sys_common::{AsInner, FromInner, IntoInner};
+use crate::time::Duration;
 
 /// A TCP stream between a local and a remote socket.
 ///
@@ -911,14 +911,14 @@ impl fmt::Debug for TcpListener {
 
 #[cfg(all(test, not(any(target_os = "cloudabi", target_os = "emscripten"))))]
 mod tests {
-    use io::ErrorKind;
-    use io::prelude::*;
-    use net::*;
-    use net::test::{next_test_ip4, next_test_ip6};
-    use sync::mpsc::channel;
-    use sys_common::AsInner;
-    use time::{Instant, Duration};
-    use thread;
+    use crate::io::ErrorKind;
+    use crate::io::prelude::*;
+    use crate::net::*;
+    use crate::net::test::{next_test_ip4, next_test_ip6};
+    use crate::sync::mpsc::channel;
+    use crate::sys_common::AsInner;
+    use crate::time::{Instant, Duration};
+    use crate::thread;
 
     fn each_ip(f: &mut dyn FnMut(SocketAddr)) {
         f(next_test_ip4());

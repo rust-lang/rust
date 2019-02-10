@@ -1,8 +1,8 @@
-use mem;
-use ptr;
-use sync::atomic::AtomicPtr;
-use sync::atomic::Ordering::SeqCst;
-use sys::c;
+use crate::mem;
+use crate::ptr;
+use crate::sync::atomic::AtomicPtr;
+use crate::sync::atomic::Ordering::SeqCst;
+use crate::sys::c;
 
 pub type Key = c::DWORD;
 pub type Dtor = unsafe extern fn(*mut u8);
@@ -211,7 +211,7 @@ unsafe extern "system" fn on_tls_callback(h: c::LPVOID,
     #[cfg(target_env = "msvc")]
     unsafe fn reference_tls_used() {
         extern { static _tls_used: u8; }
-        ::intrinsics::volatile_load(&_tls_used);
+        crate::intrinsics::volatile_load(&_tls_used);
     }
     #[cfg(not(target_env = "msvc"))]
     unsafe fn reference_tls_used() {}

@@ -1,9 +1,9 @@
 #![cfg(target_thread_local)]
 #![unstable(feature = "thread_local_internals", issue = "0")]
 
-use cell::{Cell, UnsafeCell};
-use mem;
-use ptr;
+use crate::cell::{Cell, UnsafeCell};
+use crate::mem;
+use crate::ptr;
 
 
 pub struct Key<T> {
@@ -15,7 +15,7 @@ pub struct Key<T> {
     dtor_running: Cell<bool>,
 }
 
-unsafe impl<T> ::marker::Sync for Key<T> { }
+unsafe impl<T> Sync for Key<T> { }
 
 impl<T> Key<T> {
     pub const fn new() -> Key<T> {
@@ -57,7 +57,7 @@ pub unsafe fn register_dtor(t: *mut u8, dtor: unsafe extern fn(*mut u8)) {
     // *should* be the case that this loop always terminates because we
     // provide the guarantee that a TLS key cannot be set after it is
     // flagged for destruction.
-    use sys_common::thread_local as os;
+    use crate::sys_common::thread_local as os;
 
     static DTORS: os::StaticKey = os::StaticKey::new(Some(run_dtors));
     type List = Vec<(*mut u8, unsafe extern fn(*mut u8))>;

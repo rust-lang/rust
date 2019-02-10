@@ -1,10 +1,10 @@
-use cell::UnsafeCell;
-use fmt;
-use mem;
-use ops::{Deref, DerefMut};
-use ptr;
-use sys_common::mutex as sys;
-use sys_common::poison::{self, TryLockError, TryLockResult, LockResult};
+use crate::cell::UnsafeCell;
+use crate::fmt;
+use crate::mem;
+use crate::ops::{Deref, DerefMut};
+use crate::ptr;
+use crate::sys_common::mutex as sys;
+use crate::sys_common::poison::{self, TryLockError, TryLockResult, LockResult};
 
 /// A mutual exclusion primitive useful for protecting shared data
 ///
@@ -471,10 +471,10 @@ pub fn guard_poison<'a, T: ?Sized>(guard: &MutexGuard<'a, T>) -> &'a poison::Fla
 
 #[cfg(all(test, not(target_os = "emscripten")))]
 mod tests {
-    use sync::mpsc::channel;
-    use sync::{Arc, Mutex, Condvar};
-    use sync::atomic::{AtomicUsize, Ordering};
-    use thread;
+    use crate::sync::mpsc::channel;
+    use crate::sync::{Arc, Mutex, Condvar};
+    use crate::sync::atomic::{AtomicUsize, Ordering};
+    use crate::thread;
 
     struct Packet<T>(Arc<(Mutex<T>, Condvar)>);
 

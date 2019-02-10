@@ -1,8 +1,8 @@
-use arch::wasm32;
-use cell::UnsafeCell;
-use mem;
-use sync::atomic::{AtomicUsize, AtomicU32, Ordering::SeqCst};
-use sys::thread;
+use crate::arch::wasm32;
+use crate::cell::UnsafeCell;
+use crate::mem;
+use crate::sync::atomic::{AtomicUsize, AtomicU32, Ordering::SeqCst};
+use crate::sys::thread;
 
 pub struct Mutex {
     locked: AtomicUsize,

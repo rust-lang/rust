@@ -2,10 +2,10 @@
 //!
 //! Documentation can be found on the `rt::at_exit` function.
 
-use boxed::FnBox;
-use ptr;
-use mem;
-use sys_common::mutex::Mutex;
+use crate::boxed::FnBox;
+use crate::ptr;
+use crate::mem;
+use crate::sys_common::mutex::Mutex;
 
 type Queue = Vec<Box<dyn FnBox()>>;
 

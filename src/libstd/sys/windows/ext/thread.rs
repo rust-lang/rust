@@ -2,9 +2,9 @@
 
 #![stable(feature = "thread_extensions", since = "1.9.0")]
 
-use os::windows::io::{RawHandle, AsRawHandle, IntoRawHandle};
-use thread;
-use sys_common::{AsInner, IntoInner};
+use crate::os::windows::io::{RawHandle, AsRawHandle, IntoRawHandle};
+use crate::thread;
+use crate::sys_common::{AsInner, IntoInner};
 
 #[stable(feature = "thread_extensions", since = "1.9.0")]
 impl<T> AsRawHandle for thread::JoinHandle<T> {

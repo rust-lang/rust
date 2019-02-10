@@ -1,6 +1,5 @@
-use io;
-use libc;
-use mem;
+use crate::io;
+use crate::mem;
 
 #[path = "../unix/alloc.rs"]
 pub mod alloc;
@@ -54,7 +53,7 @@ pub fn decode_error_kind(errno: i32) -> io::ErrorKind {
 }
 
 pub unsafe fn abort_internal() -> ! {
-    ::core::intrinsics::abort();
+    core::intrinsics::abort();
 }
 
 pub use libc::strlen;

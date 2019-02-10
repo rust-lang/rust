@@ -67,7 +67,7 @@ cfg_if! {
         pub mod unix_ext {}
     } else {
         // On other platforms like Windows document the bare bones of unix
-        use os::linux as platform;
+        use crate::os::linux as platform;
         #[path = "unix/ext/mod.rs"]
         pub mod unix_ext;
     }

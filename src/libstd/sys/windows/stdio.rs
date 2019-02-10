@@ -1,15 +1,15 @@
 #![unstable(issue = "0", feature = "windows_stdio")]
 
-use io::prelude::*;
+use crate::io::prelude::*;
 
-use cmp;
-use io::{self, Cursor};
-use ptr;
-use str;
-use sync::Mutex;
-use sys::c;
-use sys::cvt;
-use sys::handle::Handle;
+use crate::cmp;
+use crate::io::{self, Cursor};
+use crate::ptr;
+use crate::str;
+use crate::sync::Mutex;
+use crate::sys::c;
+use crate::sys::cvt;
+use crate::sys::handle::Handle;
 
 pub enum Output {
     Console(c::HANDLE),
@@ -195,7 +195,7 @@ fn invalid_encoding() -> io::Error {
 
 fn readconsole_input_control(wakeup_mask: c::ULONG) -> c::CONSOLE_READCONSOLE_CONTROL {
     c::CONSOLE_READCONSOLE_CONTROL {
-        nLength: ::mem::size_of::<c::CONSOLE_READCONSOLE_CONTROL>() as c::ULONG,
+        nLength: crate::mem::size_of::<c::CONSOLE_READCONSOLE_CONTROL>() as c::ULONG,
         nInitialChars: 0,
         dwCtrlWakeupMask: wakeup_mask,
         dwControlKeyState: 0,

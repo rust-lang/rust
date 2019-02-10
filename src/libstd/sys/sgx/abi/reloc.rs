@@ -1,4 +1,4 @@
-use slice::from_raw_parts;
+use crate::slice::from_raw_parts;
 use super::mem;
 
 const R_X86_64_RELATIVE: u32 = 8;

@@ -1,10 +1,11 @@
-use fmt;
-use io;
-use net::{Ipv4Addr, Ipv6Addr, Shutdown, SocketAddr};
-use time::Duration;
-use sys::{unsupported, Void};
-use convert::TryFrom;
+use crate::fmt;
+use crate::io;
+use crate::net::{Ipv4Addr, Ipv6Addr, Shutdown, SocketAddr};
+use crate::time::Duration;
+use crate::sys::{unsupported, Void};
+use crate::convert::TryFrom;
 
+#[allow(unused_extern_crates)]
 pub extern crate libc as netc;
 
 pub struct TcpStream(Void);

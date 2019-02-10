@@ -1,5 +1,5 @@
-use sys::thread;
-use sync::atomic::{AtomicUsize, Ordering::SeqCst};
+use crate::sys::thread;
+use crate::sync::atomic::{AtomicUsize, Ordering::SeqCst};
 
 const MAX_KEYS: usize = 128;
 static NEXT_KEY: AtomicUsize = AtomicUsize::new(0);
