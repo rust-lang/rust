@@ -1147,6 +1147,7 @@ impl<T> MaybeUninit<T> {
     /// Deprecated alternative to `into_initialized`.  Will never get stabilized.
     /// Exists only to transition stdsimd to `into_initialized`.
     #[inline(always)]
+    #[allow(unused)]
     pub(crate) unsafe fn into_inner(self) -> T {
         self.into_initialized()
     }
