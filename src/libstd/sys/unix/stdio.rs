@@ -12,7 +12,7 @@ impl Stdin {
     pub fn read(&self, data: &mut [u8]) -> io::Result<usize> {
         let fd = FileDesc::new(libc::STDIN_FILENO);
         let ret = fd.read(data);
-        fd.into_raw();
+        fd.into_raw(); // do not close this FD
         ret
     }
 }
@@ -23,7 +23,7 @@ impl Stdout {
     pub fn write(&self, data: &[u8]) -> io::Result<usize> {
         let fd = FileDesc::new(libc::STDOUT_FILENO);
         let ret = fd.write(data);
-        fd.into_raw();
+        fd.into_raw(); // do not close this FD
         ret
     }
 
@@ -38,7 +38,7 @@ impl Stderr {
     pub fn write(&self, data: &[u8]) -> io::Result<usize> {
         let fd = FileDesc::new(libc::STDERR_FILENO);
         let ret = fd.write(data);
-        fd.into_raw();
+        fd.into_raw(); // do not close this FD
         ret
     }
 
