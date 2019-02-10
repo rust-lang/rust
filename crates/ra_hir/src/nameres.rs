@@ -264,14 +264,45 @@ where
         import: &ImportData,
     ) -> ReachedFixedPoint {
         log::debug!("resolving import: {:?}", import);
-        if import.is_glob {
-            return ReachedFixedPoint::Yes;
-        };
         let original_module = Module { krate: self.krate, module_id };
         let (def, reached_fixedpoint) =
             self.result.resolve_path_fp(self.db, original_module, &import.path);
 
-        if reached_fixedpoint == ReachedFixedPoint::Yes {
+        if reached_fixedpoint != ReachedFixedPoint::Yes {
+            return reached_fixedpoint;
+        }
+
+        if import.is_glob {
+            log::debug!("glob import: {:?}", import);
+            match def.take_types() {
+                Some(ModuleDef::Module(m)) => {
+                    // TODO
+                }
+                Some(ModuleDef::Enum(e)) => {
+                    tested_by!(glob_enum);
+                    let variants = e.variants(self.db);
+                    let resolutions = variants.into_iter()
+                        .filter_map(|variant| {
+                            let res = Resolution {
+                                def: PerNs::both(variant.into(), e.into()),
+                                import: Some(import_id),
+                            };
+                            let name = variant.name(self.db)?;
+                            Some((name, res))
+                        })
+                        .collect::<Vec<_>>();
+                    self.update(module_id, |items| {
+                        items.items.extend(resolutions);
+                    });
+                }
+                Some(d) => {
+                    log::debug!("glob import {:?} from non-module/enum {:?}", import, d);
+                }
+                None => {
+                    log::debug!("glob import {:?} didn't resolve as type", import);
+                }
+            }
+        } else {
             let last_segment = import.path.segments.last().unwrap();
             let name = import.alias.clone().unwrap_or_else(|| last_segment.name.clone());
             log::debug!("resolved import {:?} ({:?}) to {:?}", name, import, def);
