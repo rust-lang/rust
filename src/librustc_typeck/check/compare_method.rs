@@ -736,8 +736,8 @@ fn compare_synthetic_generics<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         in impl_m_type_params.zip(trait_m_type_params)
     {
         if impl_synthetic != trait_synthetic {
-            let impl_node_id = tcx.hir().as_local_node_id(impl_def_id).unwrap();
-            let impl_span = tcx.hir().span(impl_node_id);
+            let impl_hir_id = tcx.hir().as_local_hir_id(impl_def_id).unwrap();
+            let impl_span = tcx.hir().span_by_hir_id(impl_hir_id);
             let trait_span = tcx.def_span(trait_def_id);
             let mut err = struct_span_err!(tcx.sess,
                                            impl_span,
@@ -840,7 +840,7 @@ fn compare_synthetic_generics<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                             match param.kind {
                                 GenericParamKind::Lifetime { .. } => None,
                                 GenericParamKind::Type { .. } => {
-                                    if param.id == impl_node_id {
+                                    if param.hir_id == impl_hir_id {
                                         Some(&param.bounds)
                                     } else {
                                         None

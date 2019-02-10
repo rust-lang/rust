@@ -111,7 +111,7 @@ impl<'o, 'gcx: 'tcx, 'tcx> dyn AstConv<'gcx, 'tcx> + 'o {
     {
         let tcx = self.tcx();
         let lifetime_name = |def_id| {
-            tcx.hir().name(tcx.hir().as_local_node_id(def_id).unwrap()).as_interned_str()
+            tcx.hir().name_by_hir_id(tcx.hir().as_local_hir_id(def_id).unwrap()).as_interned_str()
         };
 
         let r = match tcx.named_region(lifetime.hir_id) {
@@ -1682,12 +1682,13 @@ impl<'o, 'gcx: 'tcx, 'tcx> dyn AstConv<'gcx, 'tcx> + 'o {
                 assert_eq!(opt_self_ty, None);
                 self.prohibit_generics(&path.segments);
 
-                let node_id = tcx.hir().as_local_node_id(did).unwrap();
-                let item_id = tcx.hir().get_parent_node(node_id);
-                let item_def_id = tcx.hir().local_def_id(item_id);
+                let hir_id = tcx.hir().as_local_hir_id(did).unwrap();
+                let item_id = tcx.hir().get_parent_node_by_hir_id(hir_id);
+                let item_def_id = tcx.hir().local_def_id_from_hir_id(item_id);
                 let generics = tcx.generics_of(item_def_id);
-                let index = generics.param_def_id_to_index[&tcx.hir().local_def_id(node_id)];
-                tcx.mk_ty_param(index, tcx.hir().name(node_id).as_interned_str())
+                let index = generics.param_def_id_to_index[
+                    &tcx.hir().local_def_id_from_hir_id(hir_id)];
+                tcx.mk_ty_param(index, tcx.hir().name_by_hir_id(hir_id).as_interned_str())
             }
             Def::SelfTy(_, Some(def_id)) => {
                 // `Self` in impl (we know the concrete type).

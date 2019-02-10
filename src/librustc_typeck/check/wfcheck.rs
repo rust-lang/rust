@@ -62,11 +62,11 @@ impl<'a, 'gcx, 'tcx> CheckWfFcxBuilder<'a, 'gcx, 'tcx> {
 /// not included it frequently leads to confusing errors in fn bodies. So it's better to check
 /// the types first.
 pub fn check_item_well_formed<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: DefId) {
-    let node_id = tcx.hir().as_local_node_id(def_id).unwrap();
-    let item = tcx.hir().expect_item(node_id);
+    let hir_id = tcx.hir().as_local_hir_id(def_id).unwrap();
+    let item = tcx.hir().expect_item_by_hir_id(hir_id);
 
-    debug!("check_item_well_formed(it.id={}, it.name={})",
-           item.id,
+    debug!("check_item_well_formed(it.hir_id={:?}, it.name={})",
+           item.hir_id,
            tcx.item_path_str(def_id));
 
     match item.node {
@@ -88,7 +88,7 @@ pub fn check_item_well_formed<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: Def
         // won't be allowed unless there's an *explicit* implementation of `Send`
         // for `T`
         hir::ItemKind::Impl(_, polarity, defaultness, _, ref trait_ref, ref self_ty, _) => {
-            let is_auto = tcx.impl_trait_ref(tcx.hir().local_def_id(item.id))
+            let is_auto = tcx.impl_trait_ref(tcx.hir().local_def_id_from_hir_id(item.hir_id))
                                 .map_or(false, |trait_ref| tcx.trait_is_auto(trait_ref.def_id));
             if let (hir::Defaultness::Default { .. }, true) = (defaultness, is_auto) {
                 tcx.sess.span_err(item.span, "impls of auto traits cannot be default");
