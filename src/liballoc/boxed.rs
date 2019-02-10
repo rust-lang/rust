@@ -694,7 +694,6 @@ impl<I: ExactSizeIterator + ?Sized> ExactSizeIterator for Box<I> {
 #[stable(feature = "fused", since = "1.26.0")]
 impl<I: FusedIterator + ?Sized> FusedIterator for Box<I> {}
 
-#[cfg(not(stage0))]
 #[unstable(feature = "boxed_closure_impls",
            reason = "Box<FnOnce> relies on unsized rvalues and needs to be tested more",
            issue = "48055")]
@@ -706,7 +705,6 @@ impl<A, F: FnOnce<A> + ?Sized> FnOnce<A> for Box<F> {
     }
 }
 
-#[cfg(not(stage0))]
 #[unstable(feature = "boxed_closure_impls",
            reason = "Box<FnOnce> relies on unsized rvalues and needs to be tested more",
            issue = "48055")]
@@ -716,7 +714,6 @@ impl<A, F: FnMut<A> + ?Sized> FnMut<A> for Box<F> {
     }
 }
 
-#[cfg(not(stage0))]
 #[unstable(feature = "boxed_closure_impls",
            reason = "Box<FnOnce> relies on unsized rvalues and needs to be tested more",
            issue = "48055")]
@@ -783,9 +780,6 @@ impl<A, F> FnBox<A> for F
 #[unstable(feature = "fnbox",
            reason = "will be deprecated if and when `Box<FnOnce>` becomes usable", issue = "28796")]
 impl<A, R> FnOnce<A> for Box<dyn FnBox<A, Output = R> + '_> {
-    #[cfg(stage0)]
-    type Output = R;
-
     extern "rust-call" fn call_once(self, args: A) -> R {
         self.call_box(args)
     }
@@ -794,9 +788,6 @@ impl<A, R> FnOnce<A> for Box<dyn FnBox<A, Output = R> + '_> {
 #[unstable(feature = "fnbox",
            reason = "will be deprecated if and when `Box<FnOnce>` becomes usable", issue = "28796")]
 impl<A, R> FnOnce<A> for Box<dyn FnBox<A, Output = R> + Send + '_> {
-    #[cfg(stage0)]
-    type Output = R;
-
     extern "rust-call" fn call_once(self, args: A) -> R {
         self.call_box(args)
     }
