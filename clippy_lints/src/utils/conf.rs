@@ -14,7 +14,7 @@ use toml;
 pub fn file_from_args(
     args: &[source_map::Spanned<ast::NestedMetaItemKind>],
 ) -> Result<Option<path::PathBuf>, (&'static str, source_map::Span)> {
-    for arg in args.iter().filter_map(|a| a.meta_item()) {
+    for arg in args.iter().filter_map(syntax::source_map::Spanned::meta_item) {
         if arg.name() == "conf_file" {
             return match arg.node {
                 ast::MetaItemKind::Word | ast::MetaItemKind::List(_) => {

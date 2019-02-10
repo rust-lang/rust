@@ -32,7 +32,7 @@ fn explore_directory(dir: &Path) -> Vec<String> {
     let mut missing_files: Vec<String> = Vec::new();
     let mut current_file = String::new();
     let mut files: Vec<DirEntry> = fs::read_dir(dir).unwrap().filter_map(Result::ok).collect();
-    files.sort_by_key(|e| e.path());
+    files.sort_by_key(std::fs::DirEntry::path);
     for entry in &files {
         let path = entry.path();
         if path.is_dir() {

@@ -267,7 +267,7 @@ pub fn read_conf(reg: &rustc_plugin::Registry<'_>) -> Conf {
                 }
             });
 
-            let (conf, errors) = utils::conf::read(file_name.as_ref().map(|p| p.as_ref()));
+            let (conf, errors) = utils::conf::read(file_name.as_ref().map(std::convert::AsRef::as_ref));
 
             // all conf errors are non-fatal, we just use the default conf in case of error
             for error in errors {

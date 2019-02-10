@@ -241,7 +241,7 @@ impl<'a, 'tcx, 'b> SimilarNamesNameVisitor<'a, 'tcx, 'b> {
                         // or too many chars differ (x_foo, y_boo) or (xfoo, yboo)
                         continue;
                     }
-                    split_at = interned_name.chars().next().map(|c| c.len_utf8());
+                    split_at = interned_name.chars().next().map(char::len_utf8);
                 }
             }
             span_lint_and_then(
