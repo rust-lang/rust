@@ -1899,13 +1899,11 @@ impl Clean<Item> for doctree::Trait {
 pub struct TraitAlias {
     pub generics: Generics,
     pub bounds: Vec<GenericBound>,
-    pub is_spotlight: bool,
 }
 
 impl Clean<Item> for doctree::TraitAlias {
     fn clean(&self, cx: &DocContext) -> Item {
         let attrs = self.attrs.clean(cx);
-        let is_spotlight = attrs.has_doc_flag("spotlight");
         Item {
             name: Some(self.name.clean(cx)),
             attrs,
@@ -1917,7 +1915,6 @@ impl Clean<Item> for doctree::TraitAlias {
             inner: TraitAliasItem(TraitAlias {
                 generics: self.generics.clean(cx),
                 bounds: self.bounds.clean(cx),
-                is_spotlight,
             }),
         }
     }

@@ -1925,7 +1925,7 @@ impl fmt::Display for AllTypes {
         print_entries(f, &self.derives, "Derive Macros", "derives")?;
         print_entries(f, &self.functions, "Functions", "functions")?;
         print_entries(f, &self.typedefs, "Typedefs", "typedefs")?;
-        print_entries(f, &self.trait_aliases, "Trait Aliases", "trait-alias")?;
+        print_entries(f, &self.trait_aliases, "Trait Aliases", "trait-aliases")?;
         print_entries(f, &self.existentials, "Existentials", "existentials")?;
         print_entries(f, &self.statics, "Statics", "statics")?;
         print_entries(f, &self.constants, "Constants", "constants")
@@ -4863,7 +4863,7 @@ fn item_ty_to_strs(ty: &ItemType) -> (&'static str, &'static str) {
         ItemType::Existential     => ("existentials", "Existentials"),
         ItemType::ProcAttribute   => ("attributes", "Attribute Macros"),
         ItemType::ProcDerive      => ("derives", "Derive Macros"),
-        ItemType::TraitAlias      => ("trait-alias", "Trait aliases"),
+        ItemType::TraitAlias      => ("trait-aliases", "Trait aliases"),
     }
 }
 
