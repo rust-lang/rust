@@ -5,7 +5,11 @@ mod macros;
 
 mod simd;
 
-#[doc(include = "core_arch_docs.md")]
+#[cfg_attr(
+    not(core_arch_docs),
+    doc(include = "../stdsimd/crates/core_arch/src/core_arch_docs.md")
+)]
+#[cfg_attr(core_arch_docs, doc(include = "core_arch_docs.md"))]
 #[stable(feature = "simd_arch", since = "1.27.0")]
 pub mod arch {
     /// Platform-specific intrinsics for the `x86` platform.

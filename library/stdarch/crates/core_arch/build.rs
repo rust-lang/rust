@@ -1,6 +1,3 @@
-use std::env;
-
 fn main() {
-    println!("cargo:rustc-env=TARGET={}", env::var("TARGET").unwrap());
-    println!("cargo:rerurn-if-changed=build.rs");
+    println!("cargo:rustc-cfg=core_arch_docs");
 }

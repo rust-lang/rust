@@ -14,6 +14,7 @@ readme = "README.md"
 keywords = ["core", "simd", "arch", "intrinsics"]
 categories = ["hardware-support", "no-std"]
 license = "MIT/Apache-2.0"
+build = "build.rs"
 
 [badges]
 travis-ci = { repository = "rust-lang-nursery/stdsimd" }
