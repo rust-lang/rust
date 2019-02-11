@@ -473,6 +473,7 @@ pub enum BuiltinLintDiagnostics {
     MacroExpandedMacroExportsAccessedByAbsolutePaths(Span),
     ElidedLifetimesInPaths(usize, Span, bool, Span, String),
     UnknownCrateTypes(Span, String, String),
+    UnusedImports(String, Vec<(Span, String)>),
 }
 
 impl BuiltinLintDiagnostics {
@@ -553,6 +554,15 @@ impl BuiltinLintDiagnostics {
             }
             BuiltinLintDiagnostics::UnknownCrateTypes(span, note, sugg) => {
                 db.span_suggestion(span, &note, sugg, Applicability::MaybeIncorrect);
+            }
+            BuiltinLintDiagnostics::UnusedImports(message, replaces) => {
+                if !replaces.is_empty() {
+                    db.multipart_suggestion(
+                        &message,
+                        replaces,
+                        Applicability::MachineApplicable,
+                    );
+                }
             }
         }
     }
