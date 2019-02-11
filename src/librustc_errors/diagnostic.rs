@@ -250,6 +250,32 @@ impl Diagnostic {
         self
     }
 
+    /// Prints out a message with for a multipart suggestion without showing the suggested code.
+    ///
+    /// This is intended to be used for suggestions that are obvious in what the changes need to
+    /// be from the message, showing the span label inline would be visually unpleasant
+    /// (marginally overlapping spans or multiline spans) and showing the snippet window wouldn't
+    /// improve understandability.
+    pub fn tool_only_multipart_suggestion(
+        &mut self,
+        msg: &str,
+        suggestion: Vec<(Span, String)>,
+        applicability: Applicability,
+    ) -> &mut Self {
+        self.suggestions.push(CodeSuggestion {
+            substitutions: vec![Substitution {
+                parts: suggestion
+                    .into_iter()
+                    .map(|(span, snippet)| SubstitutionPart { snippet, span })
+                    .collect(),
+            }],
+            msg: msg.to_owned(),
+            style: SuggestionStyle::CompletelyHidden,
+            applicability,
+        });
+        self
+    }
+
     /// Prints out a message with a suggested edit of the code.
     ///
     /// In case of short messages and a simple suggestion, rustc displays it as a label:
@@ -318,7 +344,7 @@ impl Diagnostic {
             }],
             msg: msg.to_owned(),
             style: SuggestionStyle::HideCodeInline,
-            applicability: applicability,
+            applicability,
         });
         self
     }
@@ -341,7 +367,7 @@ impl Diagnostic {
             }],
             msg: msg.to_owned(),
             style: SuggestionStyle::HideCodeInline,
-            applicability: applicability,
+            applicability,
         });
         self
     }

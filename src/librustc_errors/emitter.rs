@@ -48,7 +48,9 @@ impl Emitter for EmitterWriter {
                // don't display multiline suggestions as labels
                !sugg.substitutions[0].parts[0].snippet.contains('\n') &&
                // when this style is set we want the suggestion to be a message, not inline
-               sugg.style != SuggestionStyle::HideCodeAlways
+               sugg.style != SuggestionStyle::HideCodeAlways &&
+               // trivial suggestion for tooling's sake, never shown
+               sugg.style != SuggestionStyle::CompletelyHidden
             {
                 let substitution = &sugg.substitutions[0].parts[0].snippet.trim();
                 let msg = if substitution.len() == 0 || sugg.style.hide_inline() {
