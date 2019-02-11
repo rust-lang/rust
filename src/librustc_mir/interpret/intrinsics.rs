@@ -139,8 +139,8 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> 
                         // the fact that the operation has overflowed (if either is 0 no
                         // overflow can occur)
                         let first_term: u128 = l.to_scalar()?.to_bits(l.layout.size)?;
-                        let first_term_pos = first_term & (1 << (num_bits-1)) == 0;
-                        if first_term_pos {
+                        let first_term_positive = first_term & (1 << (num_bits-1)) == 0;
+                        if first_term_positive {
                             // Negative overflow not possible since the positive first term
                             // can only increase an (in range) negative term for addition
                             // or corresponding negated positive term for subtraction
