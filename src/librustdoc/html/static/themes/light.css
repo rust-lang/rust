@@ -67,21 +67,11 @@ pre {
 }
 
 .docblock h1, .docblock h2, .docblock h3, .docblock h4, .docblock h5 {
-	border-bottom-color: #DDD;
+	border-bottom-color: #ddd;
 }
 
-.docblock table {
+.docblock table, .docblock table td, .docblock table th {
 	border-color: #ddd;
-}
-
-.docblock table td {
-	border-top-color: #ddd;
-	border-bottom-color: #ddd;
-}
-
-.docblock table th {
-	border-top-color: #ddd;
-	border-bottom-color: #ddd;
 }
 
 .content .method .where,

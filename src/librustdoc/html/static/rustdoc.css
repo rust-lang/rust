@@ -424,7 +424,8 @@ h4 > code, h3 > code, .invisible > code {
 
 .docblock table {
 	margin: .5em 0;
-	width: 100%;
+	width: calc(100% - 2px);
+	border: 1px dashed;
 }
 
 .docblock table td {
@@ -657,7 +658,7 @@ a {
 	transition: border-color 300ms ease;
 	transition: border-radius 300ms ease-in-out;
 	transition: box-shadow 300ms ease-in-out;
-	width: 100%;
+	width: calc(100% - 32px);
 }
 
 #crate-search + .search-input {
