@@ -1,4 +1,4 @@
-/// This module takes a (parsed) defenition of `macro_rules` invocation, a
+/// This module takes a (parsed) definition of `macro_rules` invocation, a
 /// `tt::TokenTree` representing an argument of macro invocation, and produces a
 /// `tt::TokenTree` for the result of the expansion.
 use rustc_hash::FxHashMap;

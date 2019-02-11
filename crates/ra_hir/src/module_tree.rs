@@ -115,7 +115,7 @@ pub struct ModuleTree {
     links: Arena<LinkId, LinkData>,
 }
 
-#[derive(Debug, PartialEq, Eq, Hash)]
+#[derive(Debug, PartialEq, Eq)]
 pub struct ModuleData {
     file_id: HirFileId,
     /// Points to `ast::Module`, `None` for the whole file.
