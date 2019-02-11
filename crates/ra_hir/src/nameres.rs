@@ -135,7 +135,7 @@ impl<T> PerNs<T> {
         PerNs { types: self.types.as_ref(), values: self.values.as_ref() }
     }
 
-    pub fn combine(self, other: PerNs<T>) -> PerNs<T> {
+    pub fn or(self, other: PerNs<T>) -> PerNs<T> {
         PerNs { types: self.types.or(other.types), values: self.values.or(other.values) }
     }
 
@@ -439,7 +439,7 @@ impl ItemMap {
         let from_extern_prelude =
             self.extern_prelude.get(name).map_or(PerNs::none(), |&it| PerNs::types(it));
 
-        from_scope.combine(from_extern_prelude)
+        from_scope.or(from_extern_prelude)
     }
 
     // Returns Yes if we are sure that additions to `ItemMap` wouldn't change

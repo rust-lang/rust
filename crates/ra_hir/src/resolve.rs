@@ -59,7 +59,7 @@ impl Resolver {
     pub fn resolve_name(&self, name: &Name) -> PerNs<Resolution> {
         let mut resolution = PerNs::none();
         for scope in self.scopes.iter().rev() {
-            resolution = resolution.combine(scope.resolve_name(name));
+            resolution = resolution.or(scope.resolve_name(name));
             if resolution.is_both() {
                 return resolution;
             }
