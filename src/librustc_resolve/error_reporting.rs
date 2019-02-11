@@ -106,7 +106,15 @@ impl<'a> Resolver<'a> {
 
         // Try to lookup name in more relaxed fashion for better error reporting.
         let ident = path.last().unwrap().ident;
-        let candidates = self.lookup_import_candidates(ident, ns, is_expected);
+        let candidates = self.lookup_import_candidates(ident, ns, is_expected)
+            .drain(..)
+            .filter(|ImportSuggestion { did, .. }| {
+                match (did, def.and_then(|def| def.opt_def_id())) {
+                    (Some(suggestion_did), Some(actual_did)) => *suggestion_did != actual_did,
+                    _ => true,
+                }
+            })
+            .collect::<Vec<_>>();
         if candidates.is_empty() && is_expected(Def::Enum(DefId::local(CRATE_DEF_INDEX))) {
             let enum_candidates =
                 self.lookup_import_candidates(ident, ns, is_enum_variant);
