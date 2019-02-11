@@ -7,7 +7,7 @@
 //! However, IDE specific bits of the analysis (most notably completion) happen
 //! in this crate.
 //!
-//! The sibling `ra_ide_api_light` handles thouse bits of IDE functionality
+//! The sibling `ra_ide_api_light` handles those bits of IDE functionality
 //! which are restricted to a single file and need only syntax.
 
 // For proving that RootDatabase is RefUnwindSafe.
@@ -67,7 +67,7 @@ pub use ra_db::{
 pub use hir::Documentation;
 
 // We use jemalloc mainly to get heap usage statistics, actual performance
-// differnece is not measures.
+// difference is not measures.
 #[cfg(feature = "jemalloc")]
 #[global_allocator]
 static ALLOC: jemallocator::Jemalloc = jemallocator::Jemalloc;
@@ -221,12 +221,12 @@ impl Analysis {
         self.db.line_index(file_id)
     }
 
-    /// Selects the next syntactic nodes encopasing the range.
+    /// Selects the next syntactic nodes encompassing the range.
     pub fn extend_selection(&self, frange: FileRange) -> Cancelable<TextRange> {
         self.with_db(|db| extend_selection::extend_selection(db, frange))
     }
 
-    /// Returns position of the mathcing brace (all types of braces are
+    /// Returns position of the matching brace (all types of braces are
     /// supported).
     pub fn matching_brace(&self, position: FilePosition) -> Option<TextUnit> {
         let file = self.db.parse(position.file_id);
@@ -316,7 +316,7 @@ impl Analysis {
         self.with_db(|db| references::find_all_refs(db, position))
     }
 
-    /// Returns a short text descrbing element at position.
+    /// Returns a short text describing element at position.
     pub fn hover(&self, position: FilePosition) -> Cancelable<Option<RangeInfo<String>>> {
         self.with_db(|db| hover::hover(db, position))
     }

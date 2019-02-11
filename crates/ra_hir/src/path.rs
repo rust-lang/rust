@@ -97,7 +97,7 @@ impl Path {
                 return Some(q);
             }
             // TODO: this bottom up traversal is not too precise.
-            // Should we handle do a top-down analysiss, recording results?
+            // Should we handle do a top-down analysis, recording results?
             let use_tree_list = path.syntax().ancestors().find_map(ast::UseTreeList::cast)?;
             let use_tree = use_tree_list.parent_use_tree();
             use_tree.path()

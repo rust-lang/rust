@@ -12,7 +12,7 @@ use crate::Result;
 ///
 /// Note that internally, rust analyzer uses a different structure:
 /// `CrateGraph`. `CrateGraph` is lower-level: it knows only about the crates,
-/// while this knows about `Pacakges` & `Targets`: purely cargo-related
+/// while this knows about `Packages` & `Targets`: purely cargo-related
 /// concepts.
 #[derive(Debug, Clone)]
 pub struct CargoWorkspace {

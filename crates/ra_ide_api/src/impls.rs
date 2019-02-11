@@ -78,8 +78,8 @@ fn impls_for_trait(
 mod tests {
     use crate::mock_analysis::analysis_and_position;
 
-    fn check_goto(fixuture: &str, expected: &[&str]) {
-        let (analysis, pos) = analysis_and_position(fixuture);
+    fn check_goto(fixture: &str, expected: &[&str]) {
+        let (analysis, pos) = analysis_and_position(fixture);
 
         let navs = analysis.goto_implementation(pos).unwrap().unwrap().info;
         assert_eq!(navs.len(), expected.len());

@@ -113,9 +113,9 @@ pub struct FixtureEntry {
     pub text: String,
 }
 
-/// Parses text wich looks like this:
+/// Parses text which looks like this:
 ///
-///  ```notrust
+///  ```rust,ignore
 ///  //- some meta
 ///  line 1
 ///  line 2

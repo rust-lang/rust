@@ -46,24 +46,24 @@ impl HirInterner {
 /// This module defines a bunch of ids we are using. The most important ones are
 /// probably `HirFileId` and `DefId`.
 
-/// Input to the analyzer is a set of files, where each file is indentified by
+/// Input to the analyzer is a set of files, where each file is identified by
 /// `FileId` and contains source code. However, another source of source code in
 /// Rust are macros: each macro can be thought of as producing a "temporary
 /// file". To assign an id to such a file, we use the id of the macro call that
 /// produced the file. So, a `HirFileId` is either a `FileId` (source code
 /// written by user), or a `MacroCallId` (source code produced by macro).
 ///
-/// What is a `MacroCallId`? Simplifying, it's a `HirFileId` of a file containin
-/// the call plus the offset of the macro call in the file. Note that this is a
-/// recursive definition! However, the size_of of `HirFileId` is finite
-/// (because everything bottoms out at the real `FileId`) and small
+/// What is a `MacroCallId`? Simplifying, it's a `HirFileId` of a file
+/// containing the call plus the offset of the macro call in the file. Note that
+/// this is a recursive definition! However, the size_of of `HirFileId` is
+/// finite (because everything bottoms out at the real `FileId`) and small
 /// (`MacroCallId` uses the location interner).
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct HirFileId(HirFileIdRepr);
 
 impl HirFileId {
     /// For macro-expansion files, returns the file original source file the
-    /// expansionoriginated from.
+    /// expansion originated from.
     pub fn original_file(self, db: &impl PersistentHirDatabase) -> FileId {
         match self.0 {
             HirFileIdRepr::File(file_id) => file_id,
@@ -324,9 +324,9 @@ impl SourceFileItems {
 
     fn init(&mut self, source_file: &SourceFile) {
         // By walking the tree in bread-first order we make sure that parents
-        // get lower ids then children. That is, addding a new child does not
+        // get lower ids then children. That is, adding a new child does not
         // change parent's id. This means that, say, adding a new function to a
-        // trait does not chage ids of top-level items, which helps caching.
+        // trait does not change ids of top-level items, which helps caching.
         bfs(source_file.syntax(), |it| {
             if let Some(module_item) = ast::ModuleItem::cast(it) {
                 self.alloc(module_item.syntax());

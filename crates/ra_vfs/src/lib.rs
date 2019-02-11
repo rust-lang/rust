@@ -7,8 +7,10 @@
 //!
 //! It is also responsible for watching the disk for changes, and for merging
 //! editor state (modified, unsaved files) with disk state.
-//! TODO: Some LSP clients support watching the disk, so this crate should
-//! to support custom watcher events (related to https://github.com/rust-analyzer/rust-analyzer/issues/131)
+//!
+//! TODO: Some LSP clients support watching the disk, so this crate should to
+//! support custom watcher events (related to
+//! <https://github.com/rust-analyzer/rust-analyzer/issues/131>)
 //!
 //! VFS is based on a concept of roots: a set of directories on the file system
 //! which are watched for changes. Typically, there will be a root for each
@@ -212,12 +214,12 @@ impl Vfs {
                 let mut cur_files = Vec::new();
                 // While we were scanning the root in the background, a file might have
                 // been open in the editor, so we need to account for that.
-                let exising = self.root2files[root]
+                let existing = self.root2files[root]
                     .iter()
                     .map(|&file| (self.files[file].path.clone(), file))
                     .collect::<FxHashMap<_, _>>();
                 for (path, text) in files {
-                    if let Some(&file) = exising.get(&path) {
+                    if let Some(&file) = existing.get(&path) {
                         let text = Arc::clone(&self.files[file].text);
                         cur_files.push((file, path, text));
                         continue;
@@ -322,7 +324,7 @@ impl Vfs {
         mem::replace(&mut self.pending_changes, Vec::new())
     }
 
-    /// Sutdown the VFS and terminate the background watching thread.
+    /// Shutdown the VFS and terminate the background watching thread.
     pub fn shutdown(self) -> thread::Result<()> {
         self.worker.shutdown()
     }
@@ -347,7 +349,7 @@ impl Vfs {
     }
 
     fn remove_file(&mut self, file: VfsFile) {
-        //FIXME: use arena with removal
+        // FIXME: use arena with removal
         self.files[file].text = Default::default();
         self.files[file].path = Default::default();
         let root = self.files[file].root;

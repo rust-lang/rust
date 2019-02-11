@@ -1,10 +1,10 @@
 //! This module implements manually tracked test coverage, which useful for
 //! quickly finding a test responsible for testing a particular bit of code.
 //!
-//! See https://matklad.github.io/2018/06/18/a-trick-for-test-maintenance.html
+//! See <https://matklad.github.io/2018/06/18/a-trick-for-test-maintenance.html>
 //! for details, but the TL;DR is that you write your test as
 //!
-//! ```no-run
+//! ```rust,no_run
 //! #[test]
 //! fn test_foo() {
 //!     covers!(test_foo);
@@ -13,7 +13,9 @@
 //!
 //! and in the code under test you write
 //!
-//! ```no-run
+//! ```rust,no_run
+//! # use test_utils::tested_by;
+//! # fn some_condition() -> bool { true }
 //! fn foo() {
 //!     if some_condition() {
 //!         tested_by!(test_foo);

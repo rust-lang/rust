@@ -93,10 +93,10 @@ pub(crate) fn reference_definition(
                 return Exact(nav);
             }
             Some(Resolution::GenericParam(..)) => {
-                // TODO go to the generic param def
+                // TODO: go to the generic param def
             }
             Some(Resolution::SelfType(_impl_block)) => {
-                // TODO go to the implemented type
+                // TODO: go to the implemented type
             }
             None => {}
         }
@@ -133,8 +133,8 @@ mod tests {
 
     use crate::mock_analysis::analysis_and_position;
 
-    fn check_goto(fixuture: &str, expected: &str) {
-        let (analysis, pos) = analysis_and_position(fixuture);
+    fn check_goto(fixture: &str, expected: &str) {
+        let (analysis, pos) = analysis_and_position(fixture);
 
         let mut navs = analysis.goto_definition(pos).unwrap().unwrap().info;
         assert_eq!(navs.len(), 1);

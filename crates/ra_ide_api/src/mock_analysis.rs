@@ -18,7 +18,7 @@ impl MockAnalysis {
     }
     /// Creates `MockAnalysis` using a fixture data in the following format:
     ///
-    /// ```notrust
+    /// ```rust,ignore
     /// //- /main.rs
     /// mod foo;
     /// fn main() {}

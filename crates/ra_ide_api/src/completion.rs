@@ -30,7 +30,7 @@ pub use crate::completion::completion_item::{CompletionItem, CompletionItemKind,
 /// incomplete and can look really weird.
 ///
 /// Once the context is collected, we run a series of completion routines which
-/// look at the context and produce completion items. One subtelty about this
+/// look at the context and produce completion items. One subtlety about this
 /// phase is that completion engine should not filter by the substring which is
 /// already present, it should give all possible variants for the identifier at
 /// the caret. In other words, for

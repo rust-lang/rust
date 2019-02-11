@@ -65,7 +65,7 @@ impl WorkerHandle {
     }
 }
 
-/// Sets up worker channels in a deadlock-avoind way.
+/// Sets up worker channels in a deadlock-avoiding way.
 /// If one sets both input and output buffers to a fixed size,
 /// a worker might get stuck.
 fn worker_chan<I, O>(buf: usize) -> (Worker<I, O>, Receiver<I>, Sender<O>) {

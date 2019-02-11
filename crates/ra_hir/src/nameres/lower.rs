@@ -208,7 +208,7 @@ impl LoweredModule {
                 }
             }
             ast::ModuleItemKind::Module(_) => {
-                // modules are handled separately direclty by nameres
+                // modules are handled separately directly by name res
             }
         };
     }
