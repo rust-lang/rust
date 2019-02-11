@@ -1883,14 +1883,14 @@ pub fn check_enum<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         // Check for duplicate discriminant values
         if let Some(i) = disr_vals.iter().position(|&x| x.val == discr.val) {
             let variant_did = def.variants[VariantIdx::new(i)].did;
-            let variant_i_node_id = tcx.hir().as_local_node_id(variant_did).unwrap();
-            let variant_i = tcx.hir().expect_variant(variant_i_node_id);
+            let variant_i_hir_id = tcx.hir().as_local_hir_id(variant_did).unwrap();
+            let variant_i = tcx.hir().expect_variant(variant_i_hir_id);
             let i_span = match variant_i.node.disr_expr {
-                Some(ref expr) => tcx.hir().span(expr.id),
-                None => tcx.hir().span(variant_i_node_id)
+                Some(ref expr) => tcx.hir().span_by_hir_id(expr.hir_id),
+                None => tcx.hir().span_by_hir_id(variant_i_hir_id)
             };
             let span = match v.node.disr_expr {
-                Some(ref expr) => tcx.hir().span(expr.id),
+                Some(ref expr) => tcx.hir().span_by_hir_id(expr.hir_id),
                 None => v.span
             };
             struct_span_err!(tcx.sess, span, E0081,
@@ -5703,8 +5703,8 @@ pub fn check_bounds_are_used<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     });
     for (&used, param) in types_used.iter().zip(types) {
         if !used {
-            let id = tcx.hir().as_local_node_id(param.def_id).unwrap();
-            let span = tcx.hir().span(id);
+            let id = tcx.hir().as_local_hir_id(param.def_id).unwrap();
+            let span = tcx.hir().span_by_hir_id(id);
             struct_span_err!(tcx.sess, span, E0091, "type parameter `{}` is unused", param.name)
                 .span_label(span, "unused type parameter")
                 .emit();

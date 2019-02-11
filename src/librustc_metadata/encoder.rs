@@ -674,7 +674,7 @@ impl<'a, 'b: 'a, 'tcx: 'b> IsolatedEncoder<'a, 'b, 'tcx> {
         let def_id = field.did;
         debug!("IsolatedEncoder::encode_field({:?})", def_id);
 
-        let variant_id = tcx.hir().as_local_node_id(variant.did).unwrap();
+        let variant_id = tcx.hir().as_local_hir_id(variant.did).unwrap();
         let variant_data = tcx.hir().expect_variant_data(variant_id);
 
         Entry {

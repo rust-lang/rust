@@ -184,7 +184,7 @@ fn ensure_drop_predicates_are_implied_by_item_defn<'a, 'tcx>(
     // absent. So we report an error that the Drop impl injected a
     // predicate that is not present on the struct definition.
 
-    let self_type_node_id = tcx.hir().as_local_node_id(self_type_did).unwrap();
+    let self_type_hir_id = tcx.hir().as_local_hir_id(self_type_did).unwrap();
 
     let drop_impl_span = tcx.def_span(drop_impl_did);
 
@@ -216,7 +216,7 @@ fn ensure_drop_predicates_are_implied_by_item_defn<'a, 'tcx>(
         // repeated `contains` calls.
 
         if !assumptions_in_impl_context.contains(&predicate) {
-            let item_span = tcx.hir().span(self_type_node_id);
+            let item_span = tcx.hir().span_by_hir_id(self_type_hir_id);
             struct_span_err!(
                 tcx.sess,
                 drop_impl_span,

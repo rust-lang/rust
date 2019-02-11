@@ -650,6 +650,5 @@ impl<'a, 'gcx, 'tcx> euv::Delegate<'tcx> for InferBorrowKind<'a, 'gcx, 'tcx> {
 }
 
 fn var_name(tcx: TyCtxt, var_hir_id: hir::HirId) -> ast::Name {
-    let var_node_id = tcx.hir().hir_to_node_id(var_hir_id);
-    tcx.hir().name(var_node_id)
+    tcx.hir().name_by_hir_id(var_hir_id)
 }
