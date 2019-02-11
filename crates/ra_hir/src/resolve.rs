@@ -149,10 +149,7 @@ impl Scope {
                 if let Some(KnownName::SelfParam) = name.as_known_name() {
                     PerNs::types(Resolution::Def(m.module.into()))
                 } else {
-                    match m.item_map[m.module.module_id].get(name) {
-                        Some(res) => res.def.map(Resolution::Def),
-                        None => PerNs::none(),
-                    }
+                    m.item_map.resolve_name_in_module(m.module, name).map(Resolution::Def)
                 }
             }
             Scope::GenericParams(gp) => match gp.find_by_name(name) {
@@ -177,7 +174,7 @@ impl Scope {
         }
     }
 
-    fn collect_names(&self, f: &mut FnMut(Name, PerNs<Resolution>)) {
+    fn collect_names(&self, f: &mut dyn FnMut(Name, PerNs<Resolution>)) {
         match self {
             Scope::ModuleScope(m) => {
                 // TODO: should we provide `self` here?

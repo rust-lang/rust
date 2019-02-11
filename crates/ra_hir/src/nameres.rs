@@ -434,6 +434,14 @@ impl ItemMap {
         self.resolve_path_fp(db, original_module, path).0
     }
 
+    pub(crate) fn resolve_name_in_module(&self, module: Module, name: &Name) -> PerNs<ModuleDef> {
+        let from_scope = self[module.module_id].items.get(name).map_or(PerNs::none(), |it| it.def);
+        let from_extern_prelude =
+            self.extern_prelude.get(name).map_or(PerNs::none(), |&it| PerNs::types(it));
+
+        from_scope.combine(from_extern_prelude)
+    }
+
     // Returns Yes if we are sure that additions to `ItemMap` wouldn't change
     // the result.
     fn resolve_path_fp(
@@ -451,19 +459,7 @@ impl ItemMap {
                     Some((_, segment)) => segment,
                     None => return (PerNs::none(), ReachedFixedPoint::Yes),
                 };
-                // Resolve in:
-                //  - current module / scope
-                //  - extern prelude
-                match self[original_module.module_id].items.get(&segment.name) {
-                    Some(res) if !res.def.is_none() => res.def,
-                    _ => {
-                        if let Some(def) = self.extern_prelude.get(&segment.name) {
-                            PerNs::types(*def)
-                        } else {
-                            return (PerNs::none(), ReachedFixedPoint::No);
-                        }
-                    }
-                }
+                self.resolve_name_in_module(original_module, &segment.name)
             }
             PathKind::Super => {
                 if let Some(p) = original_module.parent(db) {

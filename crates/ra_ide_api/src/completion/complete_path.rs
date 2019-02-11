@@ -186,4 +186,20 @@ mod tests {
             ",
         );
     }
+
+    #[test]
+    fn completes_use_paths_across_crates() {
+        check_reference_completion(
+            "completes_use_paths_across_crates",
+            "
+            //- /main.rs
+            use foo::<|>;
+
+            //- /foo/lib.rs
+            pub mod bar {
+                pub struct S;
+            }
+            ",
+        );
+    }
 }
