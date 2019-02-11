@@ -127,6 +127,9 @@ pub fn codegen_intrinsic_call<'a, 'tcx: 'a>(
         likely | unlikely, (c a) {
             ret.write_cvalue(fx, a);
         };
+        breakpoint, () {
+            fx.bcx.ins().debugtrap();
+        };
         copy | copy_nonoverlapping, <elem_ty> (v src, v dst, v count) {
             let elem_size: u64 = fx.layout_of(elem_ty).size.bytes();
             let elem_size = fx
@@ -286,8 +289,12 @@ pub fn codegen_intrinsic_call<'a, 'tcx: 'a>(
             let res = fx.bcx.ins().rotr(x, y);
             ret.write_cvalue(fx, CValue::ByVal(res, layout));
         };
-        offset, (v base, v offset) {
-            let res = fx.bcx.ins().iadd(base, offset);
+        offset, (c base, v offset) {
+            let pointee_ty = base.layout().ty.builtin_deref(true).unwrap().ty;
+            let pointee_size = fx.layout_of(pointee_ty).size.bytes();
+            let ptr_diff = fx.bcx.ins().imul_imm(offset, pointee_size as i64);
+            let base_val = base.load_scalar(fx);
+            let res = fx.bcx.ins().iadd(base_val, ptr_diff);
             ret.write_cvalue(fx, CValue::ByVal(res, args[0].layout()));
         };
         transmute, <src_ty, dst_ty> (c from) {
