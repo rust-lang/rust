@@ -1,4 +1,4 @@
-/// `tt` crate defines a `TokenTree` datastructure: this is the interface (both
+/// `tt` crate defines a `TokenTree` data structure: this is the interface (both
 /// input and output) of macros. It closely mirrors `proc_macro` crate's
 /// `TokenTree`.
 
@@ -18,6 +18,12 @@ use std::fmt;
 
 use smol_str::SmolStr;
 
+/// Represents identity of the token.
+///
+/// For hygiene purposes, we need to track which expanded tokens originated from
+/// which source tokens. We do it by assigning an distinct identity to each
+/// source token and making sure that identities are preserved during macro
+/// expansion.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct TokenId(pub u32);
 

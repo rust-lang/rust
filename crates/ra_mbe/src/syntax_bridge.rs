@@ -3,12 +3,15 @@ use ra_syntax::{
     ast, SyntaxKind::*, TextUnit
 };
 
+/// Maps `tt::TokenId` to the relative range of the original token.
 #[derive(Default)]
 pub struct TokenMap {
     /// Maps `tt::TokenId` to the *relative* source range.
     toknes: Vec<TextRange>,
 }
 
+/// Convert the syntax tree (what user has written) to a `TokenTree` (what macro
+/// will consume).
 pub fn ast_to_token_tree(ast: &ast::TokenTree) -> Option<(tt::Subtree, TokenMap)> {
     let mut token_map = TokenMap::default();
     let node = ast.syntax();
@@ -17,6 +20,11 @@ pub fn ast_to_token_tree(ast: &ast::TokenTree) -> Option<(tt::Subtree, TokenMap)
 }
 
 impl TokenMap {
+    pub fn relative_range_of(&self, tt: tt::TokenId) -> Option<TextRange> {
+        let idx = tt.0 as usize;
+        self.toknes.get(idx).map(|&it| it)
+    }
+
     fn alloc(&mut self, relative_range: TextRange) -> tt::TokenId {
         let id = self.toknes.len();
         self.toknes.push(relative_range);
