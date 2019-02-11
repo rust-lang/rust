@@ -545,7 +545,10 @@ Grammar(
         "Visibility": (),
         "Name": (),
         "NameRef": (),
-        "MacroCall": ( options: [ "TokenTree", "Path" ] ),
+        "MacroCall": (
+            traits: [ "NameOwner" ],
+            options: [ "TokenTree", "Path" ],
+        ),
         "Attr": ( options: [ ["value", "TokenTree"] ] ),
         "TokenTree": (),
         "TypeParamList": (

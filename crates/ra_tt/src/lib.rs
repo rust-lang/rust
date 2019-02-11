@@ -39,7 +39,7 @@ pub struct Subtree {
     pub token_trees: Vec<TokenTree>,
 }
 
-#[derive(Clone, Copy, Debug)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Delimiter {
     Parenthesis,
     Brace,
