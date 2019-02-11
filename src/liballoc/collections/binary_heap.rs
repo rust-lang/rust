@@ -294,7 +294,7 @@ impl<T: Ord> Default for BinaryHeap<T> {
 }
 
 #[stable(feature = "binaryheap_debug", since = "1.4.0")]
-impl<T: fmt::Debug + Ord> fmt::Debug for BinaryHeap<T> {
+impl<T: fmt::Debug> fmt::Debug for BinaryHeap<T> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_list().entries(self.iter()).finish()
     }
@@ -336,6 +336,258 @@ impl<T: Ord> BinaryHeap<T> {
         BinaryHeap { data: Vec::with_capacity(capacity) }
     }
 
+    /// Returns a mutable reference to the greatest item in the binary heap, or
+    /// `None` if it is empty.
+    ///
+    /// Note: If the `PeekMut` value is leaked, the heap may be in an
+    /// inconsistent state.
+    ///
+    /// # Examples
+    ///
+    /// Basic usage:
+    ///
+    /// ```
+    /// use std::collections::BinaryHeap;
+    /// let mut heap = BinaryHeap::new();
+    /// assert!(heap.peek_mut().is_none());
+    ///
+    /// heap.push(1);
+    /// heap.push(5);
+    /// heap.push(2);
+    /// {
+    ///     let mut val = heap.peek_mut().unwrap();
+    ///     *val = 0;
+    /// }
+    /// assert_eq!(heap.peek(), Some(&2));
+    /// ```
+    #[stable(feature = "binary_heap_peek_mut", since = "1.12.0")]
+    pub fn peek_mut(&mut self) -> Option<PeekMut<'_, T>> {
+        if self.is_empty() {
+            None
+        } else {
+            Some(PeekMut {
+                heap: self,
+                sift: true,
+            })
+        }
+    }
+
+    /// Removes the greatest item from the binary heap and returns it, or `None` if it
+    /// is empty.
+    ///
+    /// # Examples
+    ///
+    /// Basic usage:
+    ///
+    /// ```
+    /// use std::collections::BinaryHeap;
+    /// let mut heap = BinaryHeap::from(vec![1, 3]);
+    ///
+    /// assert_eq!(heap.pop(), Some(3));
+    /// assert_eq!(heap.pop(), Some(1));
+    /// assert_eq!(heap.pop(), None);
+    /// ```
+    #[stable(feature = "rust1", since = "1.0.0")]
+    pub fn pop(&mut self) -> Option<T> {
+        self.data.pop().map(|mut item| {
+            if !self.is_empty() {
+                swap(&mut item, &mut self.data[0]);
+                self.sift_down_to_bottom(0);
+            }
+            item
+        })
+    }
+
+    /// Pushes an item onto the binary heap.
+    ///
+    /// # Examples
+    ///
+    /// Basic usage:
+    ///
+    /// ```
+    /// use std::collections::BinaryHeap;
+    /// let mut heap = BinaryHeap::new();
+    /// heap.push(3);
+    /// heap.push(5);
+    /// heap.push(1);
+    ///
+    /// assert_eq!(heap.len(), 3);
+    /// assert_eq!(heap.peek(), Some(&5));
+    /// ```
+    #[stable(feature = "rust1", since = "1.0.0")]
+    pub fn push(&mut self, item: T) {
+        let old_len = self.len();
+        self.data.push(item);
+        self.sift_up(0, old_len);
+    }
+
+    /// Consumes the `BinaryHeap` and returns a vector in sorted
+    /// (ascending) order.
+    ///
+    /// # Examples
+    ///
+    /// Basic usage:
+    ///
+    /// ```
+    /// use std::collections::BinaryHeap;
+    ///
+    /// let mut heap = BinaryHeap::from(vec![1, 2, 4, 5, 7]);
+    /// heap.push(6);
+    /// heap.push(3);
+    ///
+    /// let vec = heap.into_sorted_vec();
+    /// assert_eq!(vec, [1, 2, 3, 4, 5, 6, 7]);
+    /// ```
+    #[stable(feature = "binary_heap_extras_15", since = "1.5.0")]
+    pub fn into_sorted_vec(mut self) -> Vec<T> {
+        let mut end = self.len();
+        while end > 1 {
+            end -= 1;
+            self.data.swap(0, end);
+            self.sift_down_range(0, end);
+        }
+        self.into_vec()
+    }
+
+    // The implementations of sift_up and sift_down use unsafe blocks in
+    // order to move an element out of the vector (leaving behind a
+    // hole), shift along the others and move the removed element back into the
+    // vector at the final location of the hole.
+    // The `Hole` type is used to represent this, and make sure
+    // the hole is filled back at the end of its scope, even on panic.
+    // Using a hole reduces the constant factor compared to using swaps,
+    // which involves twice as many moves.
+    fn sift_up(&mut self, start: usize, pos: usize) -> usize {
+        unsafe {
+            // Take out the value at `pos` and create a hole.
+            let mut hole = Hole::new(&mut self.data, pos);
+
+            while hole.pos() > start {
+                let parent = (hole.pos() - 1) / 2;
+                if hole.element() <= hole.get(parent) {
+                    break;
+                }
+                hole.move_to(parent);
+            }
+            hole.pos()
+        }
+    }
+
+    /// Take an element at `pos` and move it down the heap,
+    /// while its children are larger.
+    fn sift_down_range(&mut self, pos: usize, end: usize) {
+        unsafe {
+            let mut hole = Hole::new(&mut self.data, pos);
+            let mut child = 2 * pos + 1;
+            while child < end {
+                let right = child + 1;
+                // compare with the greater of the two children
+                if right < end && !(hole.get(child) > hole.get(right)) {
+                    child = right;
+                }
+                // if we are already in order, stop.
+                if hole.element() >= hole.get(child) {
+                    break;
+                }
+                hole.move_to(child);
+                child = 2 * hole.pos() + 1;
+            }
+        }
+    }
+
+    fn sift_down(&mut self, pos: usize) {
+        let len = self.len();
+        self.sift_down_range(pos, len);
+    }
+
+    /// Take an element at `pos` and move it all the way down the heap,
+    /// then sift it up to its position.
+    ///
+    /// Note: This is faster when the element is known to be large / should
+    /// be closer to the bottom.
+    fn sift_down_to_bottom(&mut self, mut pos: usize) {
+        let end = self.len();
+        let start = pos;
+        unsafe {
+            let mut hole = Hole::new(&mut self.data, pos);
+            let mut child = 2 * pos + 1;
+            while child < end {
+                let right = child + 1;
+                // compare with the greater of the two children
+                if right < end && !(hole.get(child) > hole.get(right)) {
+                    child = right;
+                }
+                hole.move_to(child);
+                child = 2 * hole.pos() + 1;
+            }
+            pos = hole.pos;
+        }
+        self.sift_up(start, pos);
+    }
+
+    fn rebuild(&mut self) {
+        let mut n = self.len() / 2;
+        while n > 0 {
+            n -= 1;
+            self.sift_down(n);
+        }
+    }
+
+    /// Moves all the elements of `other` into `self`, leaving `other` empty.
+    ///
+    /// # Examples
+    ///
+    /// Basic usage:
+    ///
+    /// ```
+    /// use std::collections::BinaryHeap;
+    ///
+    /// let v = vec![-10, 1, 2, 3, 3];
+    /// let mut a = BinaryHeap::from(v);
+    ///
+    /// let v = vec![-20, 5, 43];
+    /// let mut b = BinaryHeap::from(v);
+    ///
+    /// a.append(&mut b);
+    ///
+    /// assert_eq!(a.into_sorted_vec(), [-20, -10, 1, 2, 3, 3, 5, 43]);
+    /// assert!(b.is_empty());
+    /// ```
+    #[stable(feature = "binary_heap_append", since = "1.11.0")]
+    pub fn append(&mut self, other: &mut Self) {
+        if self.len() < other.len() {
+            swap(self, other);
+        }
+
+        if other.is_empty() {
+            return;
+        }
+
+        #[inline(always)]
+        fn log2_fast(x: usize) -> usize {
+            8 * size_of::<usize>() - (x.leading_zeros() as usize) - 1
+        }
+
+        // `rebuild` takes O(len1 + len2) operations
+        // and about 2 * (len1 + len2) comparisons in the worst case
+        // while `extend` takes O(len2 * log_2(len1)) operations
+        // and about 1 * len2 * log_2(len1) comparisons in the worst case,
+        // assuming len1 >= len2.
+        #[inline]
+        fn better_to_rebuild(len1: usize, len2: usize) -> bool {
+            2 * (len1 + len2) < len2 * log2_fast(len1)
+        }
+
+        if better_to_rebuild(self.len(), other.len()) {
+            self.data.append(&mut other.data);
+            self.rebuild();
+        } else {
+            self.extend(other.drain());
+        }
+    }
+}
+
+impl<T> BinaryHeap<T> {
     /// Returns an iterator visiting all values in the underlying vector, in
     /// arbitrary order.
     ///
@@ -377,42 +629,6 @@ impl<T: Ord> BinaryHeap<T> {
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn peek(&self) -> Option<&T> {
         self.data.get(0)
-    }
-
-    /// Returns a mutable reference to the greatest item in the binary heap, or
-    /// `None` if it is empty.
-    ///
-    /// Note: If the `PeekMut` value is leaked, the heap may be in an
-    /// inconsistent state.
-    ///
-    /// # Examples
-    ///
-    /// Basic usage:
-    ///
-    /// ```
-    /// use std::collections::BinaryHeap;
-    /// let mut heap = BinaryHeap::new();
-    /// assert!(heap.peek_mut().is_none());
-    ///
-    /// heap.push(1);
-    /// heap.push(5);
-    /// heap.push(2);
-    /// {
-    ///     let mut val = heap.peek_mut().unwrap();
-    ///     *val = 0;
-    /// }
-    /// assert_eq!(heap.peek(), Some(&2));
-    /// ```
-    #[stable(feature = "binary_heap_peek_mut", since = "1.12.0")]
-    pub fn peek_mut(&mut self) -> Option<PeekMut<'_, T>> {
-        if self.is_empty() {
-            None
-        } else {
-            Some(PeekMut {
-                heap: self,
-                sift: true,
-            })
-        }
     }
 
     /// Returns the number of elements the binary heap can hold without reallocating.
@@ -528,55 +744,6 @@ impl<T: Ord> BinaryHeap<T> {
         self.data.shrink_to(min_capacity)
     }
 
-    /// Removes the greatest item from the binary heap and returns it, or `None` if it
-    /// is empty.
-    ///
-    /// # Examples
-    ///
-    /// Basic usage:
-    ///
-    /// ```
-    /// use std::collections::BinaryHeap;
-    /// let mut heap = BinaryHeap::from(vec![1, 3]);
-    ///
-    /// assert_eq!(heap.pop(), Some(3));
-    /// assert_eq!(heap.pop(), Some(1));
-    /// assert_eq!(heap.pop(), None);
-    /// ```
-    #[stable(feature = "rust1", since = "1.0.0")]
-    pub fn pop(&mut self) -> Option<T> {
-        self.data.pop().map(|mut item| {
-            if !self.is_empty() {
-                swap(&mut item, &mut self.data[0]);
-                self.sift_down_to_bottom(0);
-            }
-            item
-        })
-    }
-
-    /// Pushes an item onto the binary heap.
-    ///
-    /// # Examples
-    ///
-    /// Basic usage:
-    ///
-    /// ```
-    /// use std::collections::BinaryHeap;
-    /// let mut heap = BinaryHeap::new();
-    /// heap.push(3);
-    /// heap.push(5);
-    /// heap.push(1);
-    ///
-    /// assert_eq!(heap.len(), 3);
-    /// assert_eq!(heap.peek(), Some(&5));
-    /// ```
-    #[stable(feature = "rust1", since = "1.0.0")]
-    pub fn push(&mut self, item: T) {
-        let old_len = self.len();
-        self.data.push(item);
-        self.sift_up(0, old_len);
-    }
-
     /// Consumes the `BinaryHeap` and returns the underlying vector
     /// in arbitrary order.
     ///
@@ -597,110 +764,6 @@ impl<T: Ord> BinaryHeap<T> {
     #[stable(feature = "binary_heap_extras_15", since = "1.5.0")]
     pub fn into_vec(self) -> Vec<T> {
         self.into()
-    }
-
-    /// Consumes the `BinaryHeap` and returns a vector in sorted
-    /// (ascending) order.
-    ///
-    /// # Examples
-    ///
-    /// Basic usage:
-    ///
-    /// ```
-    /// use std::collections::BinaryHeap;
-    ///
-    /// let mut heap = BinaryHeap::from(vec![1, 2, 4, 5, 7]);
-    /// heap.push(6);
-    /// heap.push(3);
-    ///
-    /// let vec = heap.into_sorted_vec();
-    /// assert_eq!(vec, [1, 2, 3, 4, 5, 6, 7]);
-    /// ```
-    #[stable(feature = "binary_heap_extras_15", since = "1.5.0")]
-    pub fn into_sorted_vec(mut self) -> Vec<T> {
-        let mut end = self.len();
-        while end > 1 {
-            end -= 1;
-            self.data.swap(0, end);
-            self.sift_down_range(0, end);
-        }
-        self.into_vec()
-    }
-
-    // The implementations of sift_up and sift_down use unsafe blocks in
-    // order to move an element out of the vector (leaving behind a
-    // hole), shift along the others and move the removed element back into the
-    // vector at the final location of the hole.
-    // The `Hole` type is used to represent this, and make sure
-    // the hole is filled back at the end of its scope, even on panic.
-    // Using a hole reduces the constant factor compared to using swaps,
-    // which involves twice as many moves.
-    fn sift_up(&mut self, start: usize, pos: usize) -> usize {
-        unsafe {
-            // Take out the value at `pos` and create a hole.
-            let mut hole = Hole::new(&mut self.data, pos);
-
-            while hole.pos() > start {
-                let parent = (hole.pos() - 1) / 2;
-                if hole.element() <= hole.get(parent) {
-                    break;
-                }
-                hole.move_to(parent);
-            }
-            hole.pos()
-        }
-    }
-
-    /// Take an element at `pos` and move it down the heap,
-    /// while its children are larger.
-    fn sift_down_range(&mut self, pos: usize, end: usize) {
-        unsafe {
-            let mut hole = Hole::new(&mut self.data, pos);
-            let mut child = 2 * pos + 1;
-            while child < end {
-                let right = child + 1;
-                // compare with the greater of the two children
-                if right < end && !(hole.get(child) > hole.get(right)) {
-                    child = right;
-                }
-                // if we are already in order, stop.
-                if hole.element() >= hole.get(child) {
-                    break;
-                }
-                hole.move_to(child);
-                child = 2 * hole.pos() + 1;
-            }
-        }
-    }
-
-    fn sift_down(&mut self, pos: usize) {
-        let len = self.len();
-        self.sift_down_range(pos, len);
-    }
-
-    /// Take an element at `pos` and move it all the way down the heap,
-    /// then sift it up to its position.
-    ///
-    /// Note: This is faster when the element is known to be large / should
-    /// be closer to the bottom.
-    fn sift_down_to_bottom(&mut self, mut pos: usize) {
-        let end = self.len();
-        let start = pos;
-        unsafe {
-            let mut hole = Hole::new(&mut self.data, pos);
-            let mut child = 2 * pos + 1;
-            while child < end {
-                let right = child + 1;
-                // compare with the greater of the two children
-                if right < end && !(hole.get(child) > hole.get(right)) {
-                    child = right;
-                }
-                hole.move_to(child);
-                child = 2 * hole.pos() + 1;
-            }
-            pos = hole.pos;
-        }
-        self.sift_up(start, pos);
     }
 
     /// Returns the length of the binary heap.
@@ -788,67 +851,6 @@ impl<T: Ord> BinaryHeap<T> {
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn clear(&mut self) {
         self.drain();
-    }
-
-    fn rebuild(&mut self) {
-        let mut n = self.len() / 2;
-        while n > 0 {
-            n -= 1;
-            self.sift_down(n);
-        }
-    }
-
-    /// Moves all the elements of `other` into `self`, leaving `other` empty.
-    ///
-    /// # Examples
-    ///
-    /// Basic usage:
-    ///
-    /// ```
-    /// use std::collections::BinaryHeap;
-    ///
-    /// let v = vec![-10, 1, 2, 3, 3];
-    /// let mut a = BinaryHeap::from(v);
-    ///
-    /// let v = vec![-20, 5, 43];
-    /// let mut b = BinaryHeap::from(v);
-    ///
-    /// a.append(&mut b);
-    ///
-    /// assert_eq!(a.into_sorted_vec(), [-20, -10, 1, 2, 3, 3, 5, 43]);
-    /// assert!(b.is_empty());
-    /// ```
-    #[stable(feature = "binary_heap_append", since = "1.11.0")]
-    pub fn append(&mut self, other: &mut Self) {
-        if self.len() < other.len() {
-            swap(self, other);
-        }
-
-        if other.is_empty() {
-            return;
-        }
-
-        #[inline(always)]
-        fn log2_fast(x: usize) -> usize {
-            8 * size_of::<usize>() - (x.leading_zeros() as usize) - 1
-        }
-
-        // `rebuild` takes O(len1 + len2) operations
-        // and about 2 * (len1 + len2) comparisons in the worst case
-        // while `extend` takes O(len2 * log_2(len1)) operations
-        // and about 1 * len2 * log_2(len1) comparisons in the worst case,
-        // assuming len1 >= len2.
-        #[inline]
-        fn better_to_rebuild(len1: usize, len2: usize) -> bool {
-            2 * (len1 + len2) < len2 * log2_fast(len1)
-        }
-
-        if better_to_rebuild(self.len(), other.len()) {
-            self.data.append(&mut other.data);
-            self.rebuild();
-        } else {
-            self.extend(other.drain());
-        }
     }
 }
 
@@ -1111,7 +1113,7 @@ impl<T: Ord> FromIterator<T> for BinaryHeap<T> {
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<T: Ord> IntoIterator for BinaryHeap<T> {
+impl<T> IntoIterator for BinaryHeap<T> {
     type Item = T;
     type IntoIter = IntoIter<T>;
 
@@ -1139,9 +1141,7 @@ impl<T: Ord> IntoIterator for BinaryHeap<T> {
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<'a, T> IntoIterator for &'a BinaryHeap<T>
-    where T: Ord
-{
+impl<'a, T> IntoIterator for &'a BinaryHeap<T> {
     type Item = &'a T;
     type IntoIter = Iter<'a, T>;
 
