@@ -952,7 +952,7 @@ pub unsafe fn write_volatile<T>(dst: *mut T, src: T) {
 /// Uninitialized memory has undefined contents, and interation with that data
 /// can easily cause undefined behavior. This function "freezes" memory
 /// contents, converting uninitialized memory to initialized memory with
-/// arbitrary conents so that use of it is well defined.
+/// arbitrary contents so that use of it is well defined.
 ///
 /// This function has no runtime effect; it is purely an instruction to the
 /// compiler. In particular, it does not actually write anything to the memory.
