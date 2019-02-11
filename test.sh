@@ -1,41 +1,36 @@
 #!/bin/bash
 source config.sh
 
-build_example_bin() {
-    $RUSTC $2 --crate-name $1 --crate-type bin
-    sh -c ./target/out/$1 || true
-}
-
 rm -r target/out || true
 mkdir -p target/out/clif
 
 echo "[BUILD] mini_core"
-$RUSTC example/mini_core.rs --crate-name mini_core --crate-type lib -g
+$RUSTC example/mini_core.rs --crate-name mini_core --crate-type lib
 
 echo "[BUILD] example"
-$RUSTC example/example.rs --crate-type lib -g
+$RUSTC example/example.rs --crate-type lib
 
 echo "[JIT] mini_core_hello_world"
 SHOULD_RUN=1 $RUSTC --crate-type bin example/mini_core_hello_world.rs --cfg jit
 
 echo "[AOT] mini_core_hello_world"
-$RUSTC example/mini_core_hello_world.rs --crate-name mini_core_hello_world --crate-type bin -g
-sh -c ./target/out/mini_core_hello_world || true
+$RUSTC example/mini_core_hello_world.rs --crate-name mini_core_hello_world --crate-type bin
+sh -c ./target/out/mini_core_hello_world
 
 echo "[BUILD] sysroot"
 time ./build_sysroot/build_sysroot.sh
 
 echo "[BUILD+RUN] alloc_example"
-$RUSTC --sysroot ./build_sysroot/sysroot example/alloc_example.rs --crate-type bin -g
+$RUSTC --sysroot ./build_sysroot/sysroot example/alloc_example.rs --crate-type bin
 ./target/out/alloc_example
 
 echo "[BUILD] mod_bench"
-$RUSTC --sysroot ./build_sysroot/sysroot example/mod_bench.rs --crate-type bin -g
+$RUSTC --sysroot ./build_sysroot/sysroot example/mod_bench.rs --crate-type bin
 
 echo "[BUILD] sysroot in release mode"
 ./build_sysroot/build_sysroot.sh --release
 
-COMPILE_MOD_BENCH_INLINE="$RUSTC --sysroot ./build_sysroot/sysroot example/mod_bench.rs --crate-type bin -Zmir-opt-level=3 -Og --crate-name mod_bench_inline"
+COMPILE_MOD_BENCH_INLINE="$RUSTC --sysroot ./build_sysroot/sysroot example/mod_bench.rs --crate-type bin -Zmir-opt-level=3 -O --crate-name mod_bench_inline"
 COMPILE_MOD_BENCH_LLVM_0="rustc example/mod_bench.rs --crate-type bin -Copt-level=0 -o target/out/mod_bench_llvm_0 -Cpanic=abort"
 COMPILE_MOD_BENCH_LLVM_1="rustc example/mod_bench.rs --crate-type bin -Copt-level=1 -o target/out/mod_bench_llvm_1 -Cpanic=abort"
 COMPILE_MOD_BENCH_LLVM_2="rustc example/mod_bench.rs --crate-type bin -Copt-level=2 -o target/out/mod_bench_llvm_2 -Cpanic=abort"

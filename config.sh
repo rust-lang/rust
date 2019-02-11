@@ -18,5 +18,5 @@ else
     cargo build
 fi
 
-export RUSTFLAGS='-Zalways-encode-mir -Cpanic=abort -Zcodegen-backend='$(pwd)'/target/'$channel'/librustc_codegen_cranelift.'$dylib_ext
+export RUSTFLAGS='-Zalways-encode-mir -Cpanic=abort -Cdebuginfo=2 -Zcodegen-backend='$(pwd)'/target/'$channel'/librustc_codegen_cranelift.'$dylib_ext
 RUSTC="rustc $RUSTFLAGS -L crate=target/out --out-dir target/out"
