@@ -306,10 +306,9 @@ fn function_item_label(ctx: &CompletionContext, function: hir::Function) -> Opti
 }
 
 #[cfg(test)]
-pub(crate) fn check_completion(test_name: &str, code: &str, kind: CompletionKind) {
+pub(crate) fn do_completion(code: &str, kind: CompletionKind) -> Vec<CompletionItem> {
     use crate::mock_analysis::{single_file_with_position, analysis_and_position};
     use crate::completion::completions;
-    use insta::assert_debug_snapshot_matches;
     let (analysis, position) = if code.contains("//-") {
         analysis_and_position(code)
     } else {
@@ -320,6 +319,13 @@ pub(crate) fn check_completion(test_name: &str, code: &str, kind: CompletionKind
     let mut kind_completions: Vec<CompletionItem> =
         completion_items.into_iter().filter(|c| c.completion_kind == kind).collect();
     kind_completions.sort_by_key(|c| c.label.clone());
+    kind_completions
+}
+
+#[cfg(test)]
+pub(crate) fn check_completion(test_name: &str, code: &str, kind: CompletionKind) {
+    use insta::assert_debug_snapshot_matches;
+    let kind_completions = do_completion(code, kind);
     assert_debug_snapshot_matches!(test_name, kind_completions);
 }
 

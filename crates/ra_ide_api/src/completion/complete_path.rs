@@ -1,10 +1,9 @@
 use join_to_string::join;
-
 use hir::{Docs, Resolution};
+use ra_syntax::AstNode;
+use test_utils::tested_by;
 
-use crate::{
-    completion::{CompletionItem, CompletionItemKind, Completions, CompletionKind, CompletionContext},
-};
+use crate::completion::{CompletionItem, CompletionItemKind, Completions, CompletionKind, CompletionContext};
 
 pub(super) fn complete_path(acc: &mut Completions, ctx: &CompletionContext) {
     let path = match &ctx.path_prefix {
@@ -19,6 +18,17 @@ pub(super) fn complete_path(acc: &mut Completions, ctx: &CompletionContext) {
         hir::ModuleDef::Module(module) => {
             let module_scope = module.scope(ctx.db);
             for (name, res) in module_scope.entries() {
+                if Some(module) == ctx.module {
+                    if let Some(import) = res.import {
+                        let path = module.import_source(ctx.db, import);
+                        if path.syntax().range().contains_inclusive(ctx.offset) {
+                            // for `use self::foo<|>`, don't suggest `foo` as a completion
+                            tested_by!(dont_complete_current_use);
+                            continue;
+                        }
+                    }
+                }
+
                 CompletionItem::new(
                     CompletionKind::Reference,
                     ctx.source_range(),
@@ -54,22 +64,22 @@ pub(super) fn complete_path(acc: &mut Completions, ctx: &CompletionContext) {
 
 #[cfg(test)]
 mod tests {
-    use crate::completion::CompletionKind;
-    use crate::completion::completion_item::check_completion;
+    use crate::completion::{
+        CompletionKind,
+        completion_item::{check_completion, do_completion},
+};
+
+    use test_utils::covers;
 
     fn check_reference_completion(code: &str, expected_completions: &str) {
         check_completion(code, expected_completions, CompletionKind::Reference);
     }
 
     #[test]
-    #[ignore] // should not complete foo, which currently doesn't work
     fn dont_complete_current_use() {
-        check_reference_completion(
-            "dont_complete_current_use",
-            r"
-            use self::foo<|>;
-            ",
-        );
+        covers!(dont_complete_current_use);
+        let completions = do_completion(r"use self::foo<|>;", CompletionKind::Reference);
+        assert!(completions.is_empty());
     }
 
     #[test]
