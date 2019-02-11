@@ -17,7 +17,7 @@ use ra_syntax::{
 use crate::{MacroCallId, PersistentHirDatabase};
 
 // Hard-coded defs for now :-(
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum MacroDef {
     Vec,
     QueryGroup,
