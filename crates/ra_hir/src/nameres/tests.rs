@@ -1,7 +1,6 @@
 use std::sync::Arc;
 
-use ra_db::{CrateGraph, SourceRootId, SourceDatabase};
-use relative_path::RelativePath;
+use ra_db::{CrateGraph, SourceDatabase};
 use test_utils::{assert_eq_text, covers};
 
 use crate::{
@@ -252,7 +251,7 @@ fn glob_enum() {
 #[test]
 fn glob_across_crates() {
     covers!(glob_across_crates);
-    let (mut db, sr) = MockDatabase::with_files(
+    let mut db = MockDatabase::with_files(
         "
         //- /main.rs
         use test_crate::*;
@@ -261,8 +260,8 @@ fn glob_across_crates() {
         pub struct Baz;
     ",
     );
-    let main_id = sr.files[RelativePath::new("/main.rs")];
-    let lib_id = sr.files[RelativePath::new("/lib.rs")];
+    let main_id = db.file_id_of("/main.rs");
+    let lib_id = db.file_id_of("/lib.rs");
 
     let mut crate_graph = CrateGraph::default();
     let main_crate = crate_graph.add_crate_root(main_id);
@@ -411,7 +410,7 @@ fn item_map_enum_importing() {
 
 #[test]
 fn item_map_across_crates() {
-    let (mut db, sr) = MockDatabase::with_files(
+    let mut db = MockDatabase::with_files(
         "
         //- /main.rs
         use test_crate::Baz;
@@ -420,8 +419,8 @@ fn item_map_across_crates() {
         pub struct Baz;
     ",
     );
-    let main_id = sr.files[RelativePath::new("/main.rs")];
-    let lib_id = sr.files[RelativePath::new("/lib.rs")];
+    let main_id = db.file_id_of("/main.rs");
+    let lib_id = db.file_id_of("/lib.rs");
 
     let mut crate_graph = CrateGraph::default();
     let main_crate = crate_graph.add_crate_root(main_id);
@@ -445,7 +444,7 @@ fn item_map_across_crates() {
 
 #[test]
 fn extern_crate_rename() {
-    let (mut db, sr) = MockDatabase::with_files(
+    let mut db = MockDatabase::with_files(
         "
         //- /main.rs
         extern crate alloc as alloc_crate;
@@ -460,9 +459,9 @@ fn extern_crate_rename() {
         struct Arc;
     ",
     );
-    let main_id = sr.files[RelativePath::new("/main.rs")];
-    let sync_id = sr.files[RelativePath::new("/sync.rs")];
-    let lib_id = sr.files[RelativePath::new("/lib.rs")];
+    let main_id = db.file_id_of("/main.rs");
+    let sync_id = db.file_id_of("/sync.rs");
+    let lib_id = db.file_id_of("/lib.rs");
 
     let mut crate_graph = CrateGraph::default();
     let main_crate = crate_graph.add_crate_root(main_id);
@@ -486,7 +485,7 @@ fn extern_crate_rename() {
 
 #[test]
 fn import_across_source_roots() {
-    let (mut db, sr) = MockDatabase::with_files(
+    let mut db = MockDatabase::with_files(
         "
         //- /lib.rs
         pub mod a {
@@ -494,22 +493,15 @@ fn import_across_source_roots() {
                 pub struct C;
             }
         }
-    ",
-    );
-    let lib_id = sr.files[RelativePath::new("/lib.rs")];
 
-    let source_root = SourceRootId(1);
+        //- root /test_crate/
 
-    let (sr2, pos) = db.add_fixture(
-        source_root,
-        "
-        //- /main.rs
+        //- /test_crate/main.rs
         use test_crate::a::b::C;
-    ",
+        ",
     );
-    assert!(pos.is_none());
-
-    let main_id = sr2.files[RelativePath::new("/main.rs")];
+    let lib_id = db.file_id_of("/lib.rs");
+    let main_id = db.file_id_of("/test_crate/main.rs");
 
     let mut crate_graph = CrateGraph::default();
     let main_crate = crate_graph.add_crate_root(main_id);
@@ -533,7 +525,7 @@ fn import_across_source_roots() {
 
 #[test]
 fn reexport_across_crates() {
-    let (mut db, sr) = MockDatabase::with_files(
+    let mut db = MockDatabase::with_files(
         "
         //- /main.rs
         use test_crate::Baz;
@@ -547,8 +539,8 @@ fn reexport_across_crates() {
         pub struct Baz;
     ",
     );
-    let main_id = sr.files[RelativePath::new("/main.rs")];
-    let lib_id = sr.files[RelativePath::new("/lib.rs")];
+    let main_id = db.file_id_of("/main.rs");
+    let lib_id = db.file_id_of("/lib.rs");
 
     let mut crate_graph = CrateGraph::default();
     let main_crate = crate_graph.add_crate_root(main_id);
