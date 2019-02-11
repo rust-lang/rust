@@ -694,9 +694,7 @@ impl<I: ExactSizeIterator + ?Sized> ExactSizeIterator for Box<I> {
 #[stable(feature = "fused", since = "1.26.0")]
 impl<I: FusedIterator + ?Sized> FusedIterator for Box<I> {}
 
-#[unstable(feature = "boxed_closure_impls",
-           reason = "Box<FnOnce> relies on unsized rvalues and needs to be tested more",
-           issue = "48055")]
+#[stable(feature = "boxed_closure_impls", since = "1.35.0")]
 impl<A, F: FnOnce<A> + ?Sized> FnOnce<A> for Box<F> {
     type Output = <F as FnOnce<A>>::Output;
 
@@ -705,18 +703,14 @@ impl<A, F: FnOnce<A> + ?Sized> FnOnce<A> for Box<F> {
     }
 }
 
-#[unstable(feature = "boxed_closure_impls",
-           reason = "Box<FnOnce> relies on unsized rvalues and needs to be tested more",
-           issue = "48055")]
+#[stable(feature = "boxed_closure_impls", since = "1.35.0")]
 impl<A, F: FnMut<A> + ?Sized> FnMut<A> for Box<F> {
     extern "rust-call" fn call_mut(&mut self, args: A) -> Self::Output {
         <F as FnMut<A>>::call_mut(self, args)
     }
 }
 
-#[unstable(feature = "boxed_closure_impls",
-           reason = "Box<FnOnce> relies on unsized rvalues and needs to be tested more",
-           issue = "48055")]
+#[stable(feature = "boxed_closure_impls", since = "1.35.0")]
 impl<A, F: Fn<A> + ?Sized> Fn<A> for Box<F> {
     extern "rust-call" fn call(&self, args: A) -> Self::Output {
         <F as Fn<A>>::call(self, args)
