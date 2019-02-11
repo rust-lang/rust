@@ -266,6 +266,51 @@ fn glob_across_crates() {
 }
 
 #[test]
+fn edition_2015_imports() {
+    use ra_db::{CrateGraph, Edition};
+    let mut db = MockDatabase::with_files(
+        "
+        //- /main.rs
+        mod foo;
+        mod bar;
+
+        //- /bar.rs
+        struct Bar;
+
+        //- /foo.rs
+        use bar::Bar;
+        use other_crate::FromLib;
+
+        //- /lib.rs
+        struct FromLib;
+    ",
+    );
+    let main_id = db.file_id_of("/main.rs");
+    let lib_id = db.file_id_of("/lib.rs");
+    let foo_id = db.file_id_of("/foo.rs");
+
+    let mut crate_graph = CrateGraph::default();
+    let main_crate = crate_graph.add_crate_root(main_id, Edition::Edition2015);
+    let lib_crate = crate_graph.add_crate_root(lib_id, Edition::Edition2018);
+    crate_graph.add_dep(main_crate, "other_crate".into(), lib_crate).unwrap();
+
+    db.set_crate_graph(Arc::new(crate_graph));
+
+    let module = crate::source_binder::module_from_file_id(&db, foo_id).unwrap();
+    let krate = module.krate(&db).unwrap();
+    let item_map = db.item_map(krate);
+
+    check_module_item_map(
+        &item_map,
+        module.module_id,
+        "
+            Bar: t v
+            FromLib: t v
+        ",
+    );
+}
+
+#[test]
 fn module_resolution_works_for_non_standard_filenames() {
     let mut db = MockDatabase::with_files(
         "

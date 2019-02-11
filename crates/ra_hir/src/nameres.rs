@@ -18,9 +18,11 @@ pub(crate) mod lower;
 
 use std::{time, sync::Arc};
 
-use ra_arena::map::ArenaMap;
-use test_utils::tested_by;
 use rustc_hash::{FxHashMap, FxHashSet};
+
+use ra_arena::map::ArenaMap;
+use ra_db::Edition;
+use test_utils::tested_by;
 
 use crate::{
     Module, ModuleDef,
@@ -32,8 +34,9 @@ use crate::{
 
 /// `ItemMap` is the result of module name resolution. It contains, for each
 /// module, the set of visible items.
-#[derive(Default, Debug, PartialEq, Eq)]
+#[derive(Debug, PartialEq, Eq)]
 pub struct ItemMap {
+    edition: Edition,
     /// The prelude module for this crate. This either comes from an import
     /// marked with the `prelude_import` attribute, or (in the normal case) from
     /// a dependency (`std` or `core`).
@@ -180,7 +183,12 @@ where
             module_tree,
             processed_imports: FxHashSet::default(),
             glob_imports: FxHashMap::default(),
-            result: ItemMap::default(),
+            result: ItemMap {
+                edition: krate.edition(db),
+                prelude: None,
+                extern_prelude: FxHashMap::default(),
+                per_module: ArenaMap::default(),
+            },
         }
     }
 
@@ -277,10 +285,14 @@ where
         import_id: ImportId,
         import: &ImportData,
     ) -> ReachedFixedPoint {
-        log::debug!("resolving import: {:?}", import);
+        log::debug!("resolving import: {:?} ({:?})", import, self.result.edition);
         let original_module = Module { krate: self.krate, module_id };
-        let (def, reached_fixedpoint) =
-            self.result.resolve_path_fp(self.db, original_module, &import.path);
+        let (def, reached_fixedpoint) = self.result.resolve_path_fp(
+            self.db,
+            ResolveMode::Import,
+            original_module,
+            &import.path,
+        );
 
         if reached_fixedpoint != ReachedFixedPoint::Yes {
             return reached_fixedpoint;
@@ -418,6 +430,12 @@ where
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum ResolveMode {
+    Import,
+    Other,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 enum ReachedFixedPoint {
     Yes,
     No,
@@ -445,7 +463,7 @@ impl ItemMap {
         original_module: Module,
         path: &Path,
     ) -> PerNs<ModuleDef> {
-        self.resolve_path_fp(db, original_module, path).0
+        self.resolve_path_fp(db, ResolveMode::Other, original_module, path).0
     }
 
     fn resolve_in_prelude(
@@ -484,11 +502,27 @@ impl ItemMap {
         from_scope.or(from_extern_prelude).or(from_prelude)
     }
 
+    fn resolve_name_in_crate_root_or_extern_prelude(
+        &self,
+        db: &impl PersistentHirDatabase,
+        module: Module,
+        name: &Name,
+    ) -> PerNs<ModuleDef> {
+        let crate_root = module.crate_root(db);
+        let from_crate_root =
+            self[crate_root.module_id].items.get(name).map_or(PerNs::none(), |it| it.def);
+        let from_extern_prelude =
+            self.extern_prelude.get(name).map_or(PerNs::none(), |&it| PerNs::types(it));
+
+        from_crate_root.or(from_extern_prelude)
+    }
+
     // Returns Yes if we are sure that additions to `ItemMap` wouldn't change
     // the result.
     fn resolve_path_fp(
         &self,
         db: &impl PersistentHirDatabase,
+        mode: ResolveMode,
         original_module: Module,
         path: &Path,
     ) -> (PerNs<ModuleDef>, ReachedFixedPoint) {
@@ -496,11 +530,31 @@ impl ItemMap {
         let mut curr_per_ns: PerNs<ModuleDef> = match path.kind {
             PathKind::Crate => PerNs::types(original_module.crate_root(db).into()),
             PathKind::Self_ => PerNs::types(original_module.into()),
+            // plain import or absolute path in 2015: crate-relative with
+            // fallback to extern prelude (with the simplification in
+            // rust-lang/rust#57745)
+            // TODO there must be a nicer way to write this condition
+            PathKind::Plain | PathKind::Abs
+                if self.edition == Edition::Edition2015
+                    && (path.kind == PathKind::Abs || mode == ResolveMode::Import) =>
+            {
+                let segment = match segments.next() {
+                    Some((_, segment)) => segment,
+                    None => return (PerNs::none(), ReachedFixedPoint::Yes),
+                };
+                log::debug!("resolving {:?} in crate root (+ extern prelude)", segment);
+                self.resolve_name_in_crate_root_or_extern_prelude(
+                    db,
+                    original_module,
+                    &segment.name,
+                )
+            }
             PathKind::Plain => {
                 let segment = match segments.next() {
                     Some((_, segment)) => segment,
                     None => return (PerNs::none(), ReachedFixedPoint::Yes),
                 };
+                log::debug!("resolving {:?} in module", segment);
                 self.resolve_name_in_module(db, original_module, &segment.name)
             }
             PathKind::Super => {
