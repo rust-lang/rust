@@ -1804,7 +1804,7 @@ extern "C" {
         CallbackPayload: *mut c_void,
     );
     pub fn LLVMRustFreeThinLTOData(Data: &'static mut ThinLTOData);
-    pub fn LLVMRustParseBitcodeForThinLTO(
+    pub fn LLVMRustParseBitcodeForLTO(
         Context: &Context,
         Data: *const u8,
         len: usize,

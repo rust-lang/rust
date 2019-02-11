@@ -9,7 +9,7 @@ use crate::lint;
 use crate::lint::builtin::BuiltinLintDiagnostics;
 use crate::middle::allocator::AllocatorKind;
 use crate::middle::dependency_format;
-use crate::session::config::{OutputType, Lto};
+use crate::session::config::OutputType;
 use crate::session::search_paths::{PathKind, SearchPath};
 use crate::util::nodemap::{FxHashMap, FxHashSet};
 use crate::util::common::{duration_to_secs_str, ErrorReported};
@@ -1246,20 +1246,6 @@ pub fn build_session_(
 // If it is useful to have a Session available already for validating a
 // commandline argument, you can do so here.
 fn validate_commandline_args_with_session_available(sess: &Session) {
-
-    if sess.opts.incremental.is_some() {
-        match sess.lto() {
-            Lto::Thin |
-            Lto::Fat => {
-                sess.err("can't perform LTO when compiling incrementally");
-            }
-            Lto::ThinLocal |
-            Lto::No => {
-                // This is fine
-            }
-        }
-    }
-
     // Since we don't know if code in an rlib will be linked to statically or
     // dynamically downstream, rustc generates `__imp_` symbols that help the
     // MSVC linker deal with this lack of knowledge (#27438). Unfortunately,
