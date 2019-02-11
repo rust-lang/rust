@@ -18,6 +18,7 @@ macro_rules! impl_froms {
 }
 
 pub mod db;
+#[macro_use]
 pub mod mock;
 mod query_definitions;
 mod path;

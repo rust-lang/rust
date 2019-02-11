@@ -55,6 +55,24 @@ impl MockDatabase {
         }
     }
 
+    pub fn set_crate_graph_from_fixture(&mut self, graph: CrateGraphFixture) {
+        let mut ids = FxHashMap::default();
+        let mut crate_graph = CrateGraph::default();
+        for (crate_name, (crate_root, _)) in graph.0.iter() {
+            let crate_root = self.file_id_of(&crate_root);
+            let crate_id = crate_graph.add_crate_root(crate_root);
+            ids.insert(crate_name, crate_id);
+        }
+        for (crate_name, (_, deps)) in graph.0.iter() {
+            let from = ids[crate_name];
+            for dep in deps {
+                let to = ids[dep];
+                crate_graph.add_dep(from, dep.as_str().into(), to).unwrap();
+            }
+        }
+        self.set_crate_graph(Arc::new(crate_graph))
+    }
+
     fn from_fixture(fixture: &str) -> (MockDatabase, Option<FilePosition>) {
         let mut db = MockDatabase::default();
 
@@ -211,4 +229,21 @@ impl MockDatabase {
             })
             .collect()
     }
+}
+
+#[derive(Default)]
+pub struct CrateGraphFixture(pub FxHashMap<String, (String, Vec<String>)>);
+
+#[macro_export]
+macro_rules! crate_graph {
+    ($($crate_name:literal: ($crate_path:literal, [$($dep:literal),*]),)*) => {{
+        let mut res = $crate::mock::CrateGraphFixture::default();
+        $(
+            res.0.insert(
+                $crate_name.to_string(),
+                ($crate_path.to_string(), vec![$($dep.to_string()),*])
+            );
+        )*
+        res
+    }}
 }
