@@ -1,5 +1,3 @@
-#![feature(boxed_closure_impls)]
-
 fn call_it<T>(f: Box<dyn FnOnce() -> T>) -> T {
     f()
 }
