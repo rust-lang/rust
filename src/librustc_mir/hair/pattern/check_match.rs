@@ -484,7 +484,7 @@ fn check_exhaustive<'p, 'a: 'p, 'tcx: 'a>(
                     err.span_label(sp, format!("`{}` defined here", scrut_ty));
                 }
             }
-            let patterns = witnesses.iter().map(|p| (**p).clone()).collect::<Vec<Pattern>>();
+            let patterns = witnesses.iter().map(|p| (**p).clone()).collect::<Vec<Pattern<'_>>>();
             if patterns.len() < 4 {
                 for sp in maybe_point_at_variant(cx, &scrut_ty.sty, patterns.as_slice()) {
                     err.span_label(sp, "not covered");
@@ -504,13 +504,13 @@ fn check_exhaustive<'p, 'a: 'p, 'tcx: 'a>(
 fn maybe_point_at_variant(
     cx: &mut MatchCheckCtxt<'a, 'tcx>,
     sty: &TyKind<'tcx>,
-    patterns: &[Pattern],
+    patterns: &[Pattern<'_>],
 ) -> Vec<Span> {
     let mut covered = vec![];
     if let ty::Adt(def, _) = sty {
         // Don't point at the variants if they are too many to avoid visual clutter
         for pattern in patterns {
-            let pk: &PatternKind = &pattern.kind;
+            let pk: &PatternKind<'_> = &pattern.kind;
             if let PatternKind::Variant { adt_def, variant_index, subpatterns, .. } = pk {
                 if adt_def.did == def.did {
                     let sp = def.variants[*variant_index].ident.span;
