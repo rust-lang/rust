@@ -8,7 +8,7 @@ use ra_syntax::ast::{self, AstNode};
 
 use crate::{AssistCtx, Assist};
 
-pub(crate) fn fill_match_arms(ctx: AssistCtx<impl HirDatabase>) -> Option<Assist> {
+pub(crate) fn fill_match_arms(mut ctx: AssistCtx<impl HirDatabase>) -> Option<Assist> {
     let match_expr = ctx.node_at_offset::<ast::MatchExpr>()?;
 
     // We already have some match arms, so we don't provide any assists.
@@ -33,7 +33,7 @@ pub(crate) fn fill_match_arms(ctx: AssistCtx<impl HirDatabase>) -> Option<Assist
     let enum_name = enum_def.name(ctx.db)?;
     let db = ctx.db;
 
-    ctx.build("fill match arms", |edit| {
+    ctx.add_action("fill match arms", |edit| {
         let mut buf = format!("match {} {{\n", expr.syntax().text().to_string());
         let variants = enum_def.variants(db);
         for variant in variants {
@@ -68,7 +68,9 @@ pub(crate) fn fill_match_arms(ctx: AssistCtx<impl HirDatabase>) -> Option<Assist
         edit.target(match_expr.syntax().range());
         edit.set_cursor(expr.syntax().range().start());
         edit.replace_node_and_indent(match_expr.syntax(), buf);
-    })
+    });
+
+    ctx.build()
 }
 
 #[cfg(test)]

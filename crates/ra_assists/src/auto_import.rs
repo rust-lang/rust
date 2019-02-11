@@ -480,7 +480,7 @@ fn make_assist_add_nested_import(
     }
 }
 
-pub(crate) fn auto_import(ctx: AssistCtx<impl HirDatabase>) -> Option<Assist> {
+pub(crate) fn auto_import(mut ctx: AssistCtx<impl HirDatabase>) -> Option<Assist> {
     let node = ctx.covering_node();
     let current_file = node.ancestors().find_map(ast::SourceFile::cast)?;
 
@@ -495,7 +495,7 @@ pub(crate) fn auto_import(ctx: AssistCtx<impl HirDatabase>) -> Option<Assist> {
         return None;
     }
 
-    ctx.build(format!("import {} in the current file", fmt_segments(&segments)), |edit| {
+    ctx.add_action(format!("import {} in the current file", fmt_segments(&segments)), |edit| {
         let action = best_action_for_target(current_file.syntax(), path, &segments);
         make_assist(&action, segments.as_slice(), edit);
         if let Some(last_segment) = path.segment() {
@@ -506,7 +506,9 @@ pub(crate) fn auto_import(ctx: AssistCtx<impl HirDatabase>) -> Option<Assist> {
                 last_segment.syntax().range().start(),
             ));
         }
-    })
+    });
+
+    ctx.build()
 }
 
 #[cfg(test)]

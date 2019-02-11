@@ -8,7 +8,7 @@ use ra_syntax::{
 };
 use crate::{AssistCtx, Assist};
 
-pub(crate) fn remove_dbg(ctx: AssistCtx<impl HirDatabase>) -> Option<Assist> {
+pub(crate) fn remove_dbg(mut ctx: AssistCtx<impl HirDatabase>) -> Option<Assist> {
     let macro_call = ctx.node_at_offset::<ast::MacroCall>()?;
 
     if !is_valid_macrocall(macro_call, "dbg")? {
@@ -46,11 +46,13 @@ pub(crate) fn remove_dbg(ctx: AssistCtx<impl HirDatabase>) -> Option<Assist> {
         macro_args.text().slice(start..end).to_string()
     };
 
-    ctx.build("remove dbg!()", |edit| {
+    ctx.add_action("remove dbg!()", |edit| {
         edit.target(macro_call.syntax().range());
         edit.replace(macro_range, macro_content);
         edit.set_cursor(cursor_pos);
-    })
+    });
+
+    ctx.build()
 }
 
 /// Verifies that the given macro_call actually matches the given name

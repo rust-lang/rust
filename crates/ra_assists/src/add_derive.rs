@@ -7,10 +7,10 @@ use ra_syntax::{
 
 use crate::{AssistCtx, Assist};
 
-pub(crate) fn add_derive(ctx: AssistCtx<impl HirDatabase>) -> Option<Assist> {
+pub(crate) fn add_derive(mut ctx: AssistCtx<impl HirDatabase>) -> Option<Assist> {
     let nominal = ctx.node_at_offset::<ast::NominalDef>()?;
     let node_start = derive_insertion_offset(nominal)?;
-    ctx.build("add `#[derive]`", |edit| {
+    ctx.add_action("add `#[derive]`", |edit| {
         let derive_attr = nominal
             .attrs()
             .filter_map(|x| x.as_call())
@@ -26,7 +26,9 @@ pub(crate) fn add_derive(ctx: AssistCtx<impl HirDatabase>) -> Option<Assist> {
         };
         edit.target(nominal.syntax().range());
         edit.set_cursor(offset)
-    })
+    });
+
+    ctx.build()
 }
 
 // Insert `derive` after doc comments.

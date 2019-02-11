@@ -4,7 +4,7 @@ use hir::db::HirDatabase;
 
 use crate::{AssistCtx, Assist};
 
-pub(crate) fn replace_if_let_with_match(ctx: AssistCtx<impl HirDatabase>) -> Option<Assist> {
+pub(crate) fn replace_if_let_with_match(mut ctx: AssistCtx<impl HirDatabase>) -> Option<Assist> {
     let if_expr: &ast::IfExpr = ctx.node_at_offset()?;
     let cond = if_expr.condition()?;
     let pat = cond.pat()?;
@@ -15,12 +15,14 @@ pub(crate) fn replace_if_let_with_match(ctx: AssistCtx<impl HirDatabase>) -> Opt
         ast::ElseBranchFlavor::IfExpr(_) => return None,
     };
 
-    ctx.build("replace with match", |edit| {
+    ctx.add_action("replace with match", |edit| {
         let match_expr = build_match_expr(expr, pat, then_block, else_block);
         edit.target(if_expr.syntax().range());
         edit.replace_node_and_indent(if_expr.syntax(), match_expr);
         edit.set_cursor(if_expr.syntax().range().start())
-    })
+    });
+
+    ctx.build()
 }
 
 fn build_match_expr(

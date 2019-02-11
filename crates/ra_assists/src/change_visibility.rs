@@ -14,7 +14,7 @@ pub(crate) fn change_visibility(ctx: AssistCtx<impl HirDatabase>) -> Option<Assi
     add_vis(ctx)
 }
 
-fn add_vis(ctx: AssistCtx<impl HirDatabase>) -> Option<Assist> {
+fn add_vis(mut ctx: AssistCtx<impl HirDatabase>) -> Option<Assist> {
     let item_keyword = ctx.leaf_at_offset().find(|leaf| match leaf.kind() {
         FN_KW | MOD_KW | STRUCT_KW | ENUM_KW | TRAIT_KW => true,
         _ => false,
@@ -41,11 +41,13 @@ fn add_vis(ctx: AssistCtx<impl HirDatabase>) -> Option<Assist> {
         (vis_offset(field.syntax()), ident.range())
     };
 
-    ctx.build("make pub(crate)", |edit| {
+    ctx.add_action("make pub(crate)", |edit| {
         edit.target(target);
         edit.insert(offset, "pub(crate) ");
         edit.set_cursor(offset);
-    })
+    });
+
+    ctx.build()
 }
 
 fn vis_offset(node: &SyntaxNode) -> TextUnit {
@@ -59,20 +61,24 @@ fn vis_offset(node: &SyntaxNode) -> TextUnit {
         .unwrap_or(node.range().start())
 }
 
-fn change_vis(ctx: AssistCtx<impl HirDatabase>, vis: &ast::Visibility) -> Option<Assist> {
+fn change_vis(mut ctx: AssistCtx<impl HirDatabase>, vis: &ast::Visibility) -> Option<Assist> {
     if vis.syntax().text() == "pub" {
-        return ctx.build("change to pub(crate)", |edit| {
+        ctx.add_action("change to pub(crate)", |edit| {
             edit.target(vis.syntax().range());
             edit.replace(vis.syntax().range(), "pub(crate)");
-            edit.set_cursor(vis.syntax().range().start());
+            edit.set_cursor(vis.syntax().range().start())
         });
+
+        return ctx.build();
     }
     if vis.syntax().text() == "pub(crate)" {
-        return ctx.build("change to pub", |edit| {
+        ctx.add_action("change to pub", |edit| {
             edit.target(vis.syntax().range());
             edit.replace(vis.syntax().range(), "pub");
             edit.set_cursor(vis.syntax().range().start());
         });
+
+        return ctx.build();
     }
     None
 }
