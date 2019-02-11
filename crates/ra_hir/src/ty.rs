@@ -450,7 +450,6 @@ impl Ty {
     }
 
     pub fn walk(&self, f: &mut impl FnMut(&Ty)) {
-        f(self);
         match self {
             Ty::Slice(t) | Ty::Array(t) => t.walk(f),
             Ty::RawPtr(t, _) => t.walk(f),
@@ -490,10 +489,10 @@ impl Ty {
             | Ty::Infer(_)
             | Ty::Unknown => {}
         }
+        f(self);
     }
 
     fn walk_mut(&mut self, f: &mut impl FnMut(&mut Ty)) {
-        f(self);
         match self {
             Ty::Slice(t) | Ty::Array(t) => Arc::make_mut(t).walk_mut(f),
             Ty::RawPtr(t, _) => Arc::make_mut(t).walk_mut(f),
@@ -544,6 +543,7 @@ impl Ty {
             | Ty::Infer(_)
             | Ty::Unknown => {}
         }
+        f(self);
     }
 
     fn fold(mut self, f: &mut impl FnMut(Ty) -> Ty) -> Ty {
