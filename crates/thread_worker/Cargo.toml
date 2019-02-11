@@ -2,7 +2,7 @@
 edition = "2018"
 name = "thread_worker"
 version = "0.1.0"
-authors = ["Aleksey Kladov <aleksey.kladov@gmail.com>"]
+authors = ["rust-analyzer deverlopers"]
 
 [dependencies]
 drop_bomb = "0.1.0"

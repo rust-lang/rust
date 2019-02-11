@@ -2,7 +2,7 @@
 edition = "2018"
 name = "ra_ide_api"
 version = "0.1.0"
-authors = ["Aleksey Kladov <aleksey.kladov@gmail.com>"]
+authors = ["rust-analyzer deverlopers"]
 
 [dependencies]
 itertools = "0.8.0"

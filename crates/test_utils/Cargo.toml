@@ -2,7 +2,7 @@
 edition = "2018"
 name = "test_utils"
 version = "0.1.0"
-authors = ["Aleksey Kladov <aleksey.kladov@gmail.com>"]
+authors = ["rust-analyzer deverlopers"]
 
 [dependencies]
 difference = "2.0.0"

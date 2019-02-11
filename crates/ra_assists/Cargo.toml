@@ -2,7 +2,7 @@
 edition = "2018"
 name = "ra_assists"
 version = "0.1.0"
-authors = ["Aleksey Kladov <aleksey.kladov@gmail.com>"]
+authors = ["rust-analyzer deverlopers"]
 
 [dependencies]
 join_to_string = "0.1.3"
