@@ -37,8 +37,53 @@ extern crate syntax_pos;
 
 use toml;
 
-// Currently, categories "style", "correctness", "complexity" and "perf" are enabled by default,
-// as said in the README.md of this repository. If this changes, please update README.md.
+/// Macro used to declare a Clippy lint.
+///
+/// Every lint declaration consists of 4 parts:
+///
+/// 1. The documentation above the lint, which is used for the website
+/// 2. The `LINT_NAME`. See [lint naming][lint_naming] on lint naming conventions.
+/// 3. The `lint_level`, which is a mapping from *one* of our lint groups to `Allow`, `Warn` or
+///    `Deny`. The lint level here has nothing to do with what lint groups the lint is a part of.
+/// 4. The `description` that contains a short explanation on what's wrong with code where the
+///    lint is triggered.
+///
+/// Currently the categories `style`, `correctness`, `complexity` and `perf` are enabled by default.
+/// As said in the README.md of this repository, if the lint level mapping changes, please update
+/// README.md.
+///
+/// # Example
+///
+/// ```
+/// # #![feature(rustc_private)]
+/// # #[allow(unused_extern_crates)]
+/// # extern crate rustc;
+/// # #[macro_use]
+/// # use clippy_lints::declare_clippy_lint;
+/// use rustc::declare_tool_lint;
+///
+/// /// **What it does:** Checks for ... (describe what the lint matches).
+/// ///
+/// /// **Why is this bad?** Supply the reason for linting the code.
+/// ///
+/// /// **Known problems:** None. (Or describe where it could go wrong.)
+/// ///
+/// /// **Example:**
+/// ///
+/// /// ```rust
+/// /// // Bad
+/// /// Insert a short example of code that triggers the lint
+/// ///
+/// /// // Good
+/// /// Insert a short example of improved code that doesn't trigger the lint
+/// /// ```
+/// declare_clippy_lint! {
+///     pub LINT_NAME,
+///     pedantic,
+///     "description"
+/// }
+/// ```
+/// [lint_naming]: https://rust-lang.github.io/rfcs/0344-conventions-galore.html#lints
 #[macro_export]
 macro_rules! declare_clippy_lint {
     { pub $name:tt, style, $description:tt } => {
@@ -211,6 +256,14 @@ mod reexport {
     crate use syntax::ast::{Name, NodeId};
 }
 
+/// Register all pre expansion lints
+///
+/// Pre-expansion lints run before any macro expansion has happened.
+///
+/// Note that due to the architechture of the compiler, currently `cfg_attr` attributes on crate
+/// level (i.e `#![cfg_attr(...)]`) will still be expanded even when using a pre-expansion pass.
+///
+/// Used in `./src/driver.rs`.
 pub fn register_pre_expansion_lints(
     session: &rustc::session::Session,
     store: &mut rustc::lint::LintStore,
@@ -235,6 +288,7 @@ pub fn register_pre_expansion_lints(
     store.register_pre_expansion_pass(Some(session), true, false, box dbg_macro::Pass);
 }
 
+#[doc(hidden)]
 pub fn read_conf(reg: &rustc_plugin::Registry<'_>) -> Conf {
     match utils::conf::file_from_args(reg.args()) {
         Ok(file_name) => {
@@ -292,6 +346,9 @@ pub fn read_conf(reg: &rustc_plugin::Registry<'_>) -> Conf {
     }
 }
 
+/// Register all lints and lint groups with the rustc plugin registry
+///
+/// Used in `./src/driver.rs`.
 #[allow(clippy::too_many_lines)]
 #[rustfmt::skip]
 pub fn register_plugins(reg: &mut rustc_plugin::Registry<'_>, conf: &Conf) {
@@ -1046,6 +1103,9 @@ pub fn register_plugins(reg: &mut rustc_plugin::Registry<'_>, conf: &Conf) {
     ]);
 }
 
+/// Register renamed lints.
+///
+/// Used in `./src/driver.rs`.
 pub fn register_renamed(ls: &mut rustc::lint::LintStore) {
     ls.register_renamed("clippy::stutter", "clippy::module_name_repetitions");
     ls.register_renamed("clippy::new_without_default_derive", "clippy::new_without_default");
