@@ -2509,7 +2509,7 @@ bitflags! {
         /// values, like dereferencing a pointer function parameter to read
         /// another value.
         ///
-        /// A `#[ffi_const]` function that returns void is a `nop` in the
+        /// A `#[ffi_const]` function that returns a unit type has no effect on the abstract machine's state.
         /// abstract machine.
         const FFI_CONST = 1 << 11;
     }
