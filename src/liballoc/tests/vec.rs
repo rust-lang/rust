@@ -1151,3 +1151,11 @@ fn test_try_reserve_exact() {
     }
 
 }
+
+#[test]
+fn macro_fn_pointer_coercion() {
+    fn foo() {}
+    fn bar() {}
+
+    let _v = vec![foo, bar];
+}

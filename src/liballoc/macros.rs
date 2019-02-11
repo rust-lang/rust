@@ -39,9 +39,20 @@ macro_rules! vec {
     ($elem:expr; $n:expr) => (
         $crate::vec::from_elem($elem, $n)
     );
-    ($($x:expr),*) => (
-        <[_]>::into_vec(box [$($x),*])
-    );
+    ($($x:expr),*) => ({
+        // We use a temporary let binding to work around a coercion
+        // bug/strangness with `box [a, b]` syntax. Example:
+        //
+        //     fn foo() {}
+        //     fn bar() {}
+        //
+        //     let _ = [foo, bar]; // works: fn items coerced to fn pointers
+        //     let _ = <[_]>::into_vec(box [foo, bar]);  // doesn't work
+        //
+        // See the `macro_fn_pointer_coercion` test.
+        let tmp = [$($x),*];
+        <[_]>::into_vec(box tmp)
+    });
     ($($x:expr,)*) => (vec![$($x),*])
 }
 
