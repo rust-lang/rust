@@ -833,13 +833,13 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
                 format!("`{}` would have to be valid for `{}`...", name, region_name),
             );
 
-            if let Some(fn_node_id) = self.infcx.tcx.hir().as_local_node_id(self.mir_def_id) {
+            if let Some(fn_hir_id) = self.infcx.tcx.hir().as_local_hir_id(self.mir_def_id) {
                 err.span_label(
                     drop_span,
                     format!(
                         "...but `{}` will be dropped here, when the function `{}` returns",
                         name,
-                        self.infcx.tcx.hir().name(fn_node_id),
+                        self.infcx.tcx.hir().name_by_hir_id(fn_hir_id),
                     ),
                 );
 
