@@ -1,0 +1,22 @@
+---
+created: "2019-02-11T11:53:02.410665254Z"
+creator: insta@0.6.1
+source: crates/ra_ide_api/src/completion/completion_item.rs
+expression: kind_completions
+---
+[
+    CompletionItem {
+        completion_kind: Reference,
+        label: "bar",
+        kind: Some(
+            Module
+        ),
+        detail: None,
+        documentation: None,
+        lookup: None,
+        insert_text: None,
+        insert_text_format: PlainText,
+        source_range: [9; 9),
+        text_edit: None
+    }
+]

@@ -536,6 +536,38 @@ fn reexport_across_crates() {
     );
 }
 
+#[test]
+fn values_dont_shadow_extern_crates() {
+    let mut db = MockDatabase::with_files(
+        "
+        //- /main.rs
+        fn foo() {}
+        use foo::Bar;
+
+        //- /foo/lib.rs
+        pub struct Bar;
+        ",
+    );
+    db.set_crate_graph_from_fixture(crate_graph! {
+        "main": ("/main.rs", ["foo"]),
+        "foo": ("/foo/lib.rs", []),
+    });
+    let main_id = db.file_id_of("/main.rs");
+
+    let module = crate::source_binder::module_from_file_id(&db, main_id).unwrap();
+    let krate = module.krate(&db).unwrap();
+    let item_map = db.item_map(krate);
+
+    check_module_item_map(
+        &item_map,
+        module.module_id,
+        "
+        Bar: t v
+        foo: v
+        ",
+    );
+}
+
 fn check_item_map_is_not_recomputed(initial: &str, file_change: &str) {
     let (mut db, pos) = MockDatabase::with_position(initial);
     let module = crate::source_binder::module_from_file_id(&db, pos.file_id).unwrap();
