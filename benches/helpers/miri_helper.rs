@@ -4,11 +4,13 @@ extern crate rustc;
 extern crate rustc_driver;
 extern crate test;
 
-use self::miri::eval_main;
-use self::rustc_driver::{driver, Compilation};
+use rustc_driver::{driver, Compilation};
 use rustc::hir::def_id::LOCAL_CRATE;
 use std::cell::RefCell;
 use std::rc::Rc;
+
+use miri::{MiriConfig, eval_main};
+
 use crate::test::Bencher;
 
 pub struct MiriCompilerCalls<'a>(Rc<RefCell<&'a mut Bencher>>);
@@ -50,7 +52,8 @@ pub fn run(filename: &str, bencher: &mut Bencher) {
         );
 
         bencher.borrow_mut().iter(|| {
-            eval_main(tcx, entry_def_id, false);
+            let config = MiriConfig { validate: true, args: vec![] };
+            eval_main(tcx, entry_def_id, config);
         });
 
         state.session.abort_if_errors();

@@ -37,10 +37,19 @@ def test(name, cmd, stdout_ref, stderr_ref):
 
 def test_cargo_miri_run():
     test("cargo miri run", ["cargo", "miri", "run", "-q"], "stdout.ref", "stderr.ref")
+    test("cargo miri run (with arguments)",
+        ["cargo", "miri", "run", "-q", "--", "--", "hello world", '"hello world"'],
+        "stdout.ref", "stderr.ref2"
+    )
 
 def test_cargo_miri_test():
     test("cargo miri test", ["cargo", "miri", "test", "-q"], "test.stdout.ref", "test.stderr.ref")
+    test("cargo miri test (with filter)",
+        ["cargo", "miri", "test", "-q", "--", "--", "impl"],
+        "test.stdout.ref2", "test.stderr.ref"
+    )
 
 test_cargo_miri_run()
 test_cargo_miri_test()
+print("TEST SUCCESSFUL!")
 sys.exit(0)
