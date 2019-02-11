@@ -2,7 +2,7 @@
 edition = "2018"
 name = "gen_lsp_server"
 version = "0.1.0"
-authors = ["rust-analyzer deverlopers"]
+authors = ["rust-analyzer developers"]
 repository = "https://github.com/rust-analyzer/rust-analyzer"
 license = "MIT OR Apache-2.0"
 description = "Generic LSP server scaffold."

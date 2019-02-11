@@ -2,7 +2,7 @@
 [package]
 name = "ra_syntax-fuzz"
 version = "0.0.1"
-authors = ["rust-analyzer deverlopers"]
+authors = ["rust-analyzer developers"]
 publish = false
 
 [package.metadata]

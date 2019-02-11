@@ -2,7 +2,7 @@
 edition = "2018"
 name = "ra_lsp_server"
 version = "0.1.0"
-authors = ["rust-analyzer deverlopers"]
+authors = ["rust-analyzer developers"]
 
 [dependencies]
 threadpool = "1.7.1"

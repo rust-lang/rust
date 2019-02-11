@@ -2,7 +2,7 @@
 edition = "2018"
 name = "ra_project_model"
 version = "0.1.0"
-authors = ["rust-analyzer deverlopers"]
+authors = ["rust-analyzer developers"]
 
 [dependencies]
 log = "0.4.5"
