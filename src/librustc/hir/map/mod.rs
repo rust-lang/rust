@@ -934,9 +934,7 @@ impl<'hir> Map<'hir> {
         }
     }
 
-    pub fn expect_variant_data(&self, id: HirId) -> &'hir VariantData {
-        let id = self.hir_to_node_id(id); // FIXME(@ljedrz): remove when possible
-
+    pub fn expect_variant_data(&self, id: NodeId) -> &'hir VariantData {
         match self.find(id) {
             Some(Node::Item(i)) => {
                 match i.node {
@@ -951,9 +949,7 @@ impl<'hir> Map<'hir> {
         }
     }
 
-    pub fn expect_variant(&self, id: HirId) -> &'hir Variant {
-        let id = self.hir_to_node_id(id); // FIXME(@ljedrz): remove when possible
-
+    pub fn expect_variant(&self, id: NodeId) -> &'hir Variant {
         match self.find(id) {
             Some(Node::Variant(variant)) => variant,
             _ => bug!("expected variant, found {}", self.node_to_string(id)),
