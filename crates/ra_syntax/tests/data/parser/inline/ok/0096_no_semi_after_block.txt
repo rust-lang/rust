@@ -92,7 +92,8 @@ SOURCE_FILE@[0; 167)
                 IDENT@[109; 120) "macro_rules"
           EXCL@[120; 121)
           WHITESPACE@[121; 122)
-          IDENT@[122; 126) "test"
+          NAME@[122; 126)
+            IDENT@[122; 126) "test"
           WHITESPACE@[126; 127)
           TOKEN_TREE@[127; 152)
             L_CURLY@[127; 128)

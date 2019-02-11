@@ -6,7 +6,8 @@ SOURCE_FILE@[0; 349)
           IDENT@[0; 5) "macro"
           err: `expected EXCL`
     WHITESPACE@[5; 6)
-    IDENT@[6; 21) "parse_use_trees"
+    NAME@[6; 21)
+      IDENT@[6; 21) "parse_use_trees"
     TOKEN_TREE@[21; 41)
       L_PAREN@[21; 22)
       DOLLAR@[22; 23)

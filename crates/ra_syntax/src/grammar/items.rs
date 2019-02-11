@@ -347,7 +347,9 @@ fn macro_call(p: &mut Parser) -> BlockLike {
 
 pub(super) fn macro_call_after_excl(p: &mut Parser) -> BlockLike {
     p.expect(EXCL);
-    p.eat(IDENT);
+    if p.at(IDENT) {
+        name(p);
+    }
     match p.current() {
         L_CURLY => {
             token_tree(p);

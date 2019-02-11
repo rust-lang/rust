@@ -19,7 +19,8 @@ SOURCE_FILE@[0; 70)
           IDENT@[12; 23) "macro_rules"
     EXCL@[23; 24)
     WHITESPACE@[24; 25)
-    IDENT@[25; 28) "foo"
+    NAME@[25; 28)
+      IDENT@[25; 28) "foo"
     WHITESPACE@[28; 29)
     TOKEN_TREE@[29; 31)
       L_CURLY@[29; 30)
