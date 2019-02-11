@@ -947,7 +947,7 @@ pub unsafe fn write_volatile<T>(dst: *mut T, src: T) {
 }
 
 /// Freezes `count * size_of::<T>()` bytes of memory, converting undefined data into
-/// defined-but-arbitrary data.
+/// arbitrary but fixed data.
 ///
 /// Uninitialized memory has undefined contents, and interation with that data
 /// can easily cause undefined behavior. This function "freezes" memory
@@ -961,7 +961,9 @@ pub unsafe fn write_volatile<T>(dst: *mut T, src: T) {
 ///
 /// Behavior is undefined if any of the following conditions are violated:
 ///
-/// * `dst` must be [valid] for reads.
+/// * `dst` must be [valid] for writes.
+///
+/// * Every bit representation of `T` must be a valid value.
 ///
 /// Note that even if `T` has size `0`, the pointer must be non-NULL and properly aligned.
 ///
