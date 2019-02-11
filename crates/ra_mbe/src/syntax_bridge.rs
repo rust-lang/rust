@@ -37,7 +37,7 @@ fn convert_tt(tt: &SyntaxNode) -> Option<tt::Subtree> {
                 convert_tt(child)?.into()
             } else if child.kind().is_keyword() || child.kind() == IDENT {
                 let text = child.leaf_text().unwrap().clone();
-                tt::Leaf::from(tt::Ident { text }).into()
+                tt::Leaf::from(tt::Ident { text, id: tt::TokenId::unspecified() }).into()
             } else if child.kind().is_literal() {
                 tt::Leaf::from(tt::Literal { text: child.leaf_text().unwrap().clone() }).into()
             } else {

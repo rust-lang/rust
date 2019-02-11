@@ -18,6 +18,15 @@ use std::fmt;
 
 use smol_str::SmolStr;
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub struct TokenId(pub u32);
+
+impl TokenId {
+    pub const fn unspecified() -> TokenId {
+        TokenId(!0)
+    }
+}
+
 #[derive(Debug, Clone)]
 pub enum TokenTree {
     Leaf(Leaf),
@@ -67,6 +76,7 @@ pub enum Spacing {
 #[derive(Debug, Clone)]
 pub struct Ident {
     pub text: SmolStr,
+    pub id: TokenId,
 }
 
 impl fmt::Display for TokenTree {
