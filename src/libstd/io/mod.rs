@@ -286,6 +286,9 @@ pub use self::stdio::{_print, _eprint};
 #[doc(no_inline, hidden)]
 pub use self::stdio::{set_panic, set_print};
 
+// Used inside the standard library for panic output.
+pub(crate) use self::stdio::stderr_raw;
+
 pub mod prelude;
 mod buffered;
 mod cursor;
