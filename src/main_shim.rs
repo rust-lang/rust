@@ -53,8 +53,7 @@ pub fn maybe_create_entry_wrapper<'a, 'tcx: 'a>(
 
         let instance = Instance::mono(tcx, rust_main_def_id);
 
-        let (main_name, main_sig) = get_function_name_and_sig(tcx, instance);
-
+        let (main_name, main_sig) = get_function_name_and_sig(tcx, instance, false);
         let main_func_id = m
             .declare_function(&main_name, Linkage::Import, &main_sig)
             .unwrap();

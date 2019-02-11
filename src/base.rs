@@ -65,7 +65,7 @@ fn trans_fn<'a, 'clif, 'tcx: 'a, B: Backend + 'static>(
     let mir = tcx.instance_mir(instance.def);
 
     // Step 2. Declare function
-    let (name, sig) = get_function_name_and_sig(tcx, instance);
+    let (name, sig) = get_function_name_and_sig(tcx, instance, false);
     let func_id = cx.module
         .declare_function(&name, linkage, &sig)
         .unwrap();

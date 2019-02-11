@@ -121,6 +121,8 @@ fn main() {
     //return;
 
     unsafe {
+        printf("Hello %s\n\0" as *const str as *const char, "printf\0" as *const str as *const char);
+
         let hello: &[u8] = b"Hello\0" as &[u8; 6];
         let ptr: *const u8 = hello as *const [u8] as *const u8;
         puts(ptr);

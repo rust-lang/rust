@@ -338,6 +338,7 @@ pub mod libc {
     #[link(name = "c")]
     extern "C" {
         pub fn puts(s: *const u8);
+        pub fn printf(format: *const char, ...) -> i32;
         pub fn malloc(size: usize) -> *mut u8;
         pub fn free(ptr: *mut u8);
         pub fn memcpy(dst: *mut u8, src: *const u8, size: usize);
