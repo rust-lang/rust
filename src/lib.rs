@@ -296,7 +296,9 @@ impl CodegenBackend for CraneliftCodegenBackend {
 
             let mut faerie_module = new_module("some_file".to_string());
 
-            let mut debug = if tcx.sess.opts.debuginfo != DebugInfo::None {
+            let mut debug = if tcx.sess.opts.debuginfo != DebugInfo::None
+                && !tcx.sess.target.target.options.is_like_osx // macOS debuginfo doesn't work yet (see #303)
+            {
                 let debug = DebugContext::new(tcx, faerie_module.target_config().pointer_type().bytes() as u8);
                 Some(debug)
             } else {
@@ -372,7 +374,8 @@ fn build_isa(sess: &Session) -> Box<isa::TargetIsa + 'static> {
         "false"
     }).unwrap();
 
-    match sess.opts.optimize {
+    // FIXME enable again when https://github.com/CraneStation/cranelift/issues/664 is fixed
+    /*match sess.opts.optimize {
         OptLevel::No => {
             flags_builder.set("opt_level", "fastest").unwrap();
         }
@@ -383,7 +386,7 @@ fn build_isa(sess: &Session) -> Box<isa::TargetIsa + 'static> {
         OptLevel::Size | OptLevel::SizeMin => {
             sess.warn("Optimizing for size is not supported. Just ignoring the request");
         }
-    }
+    }*/
 
     let flags = settings::Flags::new(flags_builder);
     cranelift::codegen::isa::lookup(sess.target.target.llvm_target.parse().unwrap())
