@@ -25,10 +25,9 @@ sh -c ./target/out/mini_core_hello_world || true
 echo "[BUILD] sysroot"
 time ./build_sysroot/build_sysroot.sh
 
-# TODO linux linker doesn't accept duplicate definitions
-# echo "[BUILD+RUN] alloc_example"
-#$RUSTC --sysroot ./build_sysroot/sysroot example/alloc_example.rs --crate-type bin
-#./target/out/alloc_example
+echo "[BUILD+RUN] alloc_example"
+$RUSTC --sysroot ./build_sysroot/sysroot example/alloc_example.rs --crate-type bin -g
+./target/out/alloc_example
 
 echo "[BUILD] mod_bench"
 $RUSTC --sysroot ./build_sysroot/sysroot example/mod_bench.rs --crate-type bin -g

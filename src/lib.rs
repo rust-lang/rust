@@ -426,7 +426,7 @@ fn codegen_mono_items<'a, 'tcx: 'a>(
                     (RLinkage::Internal, Visibility::Default) => Linkage::Local,
                     // FIXME this should get external linkage, but hidden visibility,
                     // not internal linkage and default visibility
-                    | (RLinkage::External, Visibility::Hidden) => Linkage::Local,
+                    | (RLinkage::External, Visibility::Hidden) => Linkage::Export,
                     _ => panic!("{:?} = {:?} {:?}", mono_item, linkage, vis),
                 };
                 base::trans_mono_item(&mut cx, mono_item, linkage);
