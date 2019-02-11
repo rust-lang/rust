@@ -326,6 +326,7 @@ fn name_res_works_for_broken_modules() {
 }
 
 #[test]
+#[ignore]
 fn item_map_contains_items_from_expansions() {
     let (item_map, module_id) = item_map(
         "

@@ -41,19 +41,4 @@ mod tests {
         let highlights = analysis.highlight(file_id).unwrap();
         assert_debug_snapshot_matches!("highlights_code_inside_macros", &highlights);
     }
-
-    // FIXME: this test is not really necessary: artifact of the inital hacky
-    // macros implementation.
-    #[test]
-    fn highlight_query_group_macro() {
-        let (analysis, file_id) = single_file(
-            "
-            salsa::query_group! {
-                pub trait HirDatabase: SyntaxDatabase {}
-            }
-            ",
-        );
-        let highlights = analysis.highlight(file_id).unwrap();
-        assert_debug_snapshot_matches!("highlight_query_group_macro", &highlights);
-    }
 }

@@ -91,6 +91,7 @@ fn test_find_all_refs_for_fn_param() {
 }
 
 #[test]
+#[ignore]
 fn world_symbols_include_stuff_from_macros() {
     let (analysis, _) = single_file(
         "
