@@ -144,7 +144,7 @@ fn trans_const_place<'a, 'tcx: 'a>(
                 span: DUMMY_SP,
                 ty: const_.ty,
                 user_ty: None,
-                literal: fx.tcx.intern_lazy_const(LazyConst::Evaluated(const_)),
+                literal: fx.tcx.mk_lazy_const(LazyConst::Evaluated(const_)),
             })),
             None,
         )?;
