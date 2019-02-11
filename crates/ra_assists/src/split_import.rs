@@ -7,7 +7,7 @@ use ra_syntax::{
 
 use crate::{AssistCtx, Assist};
 
-pub(crate) fn split_import(ctx: AssistCtx<impl HirDatabase>) -> Option<Assist> {
+pub(crate) fn split_import(mut ctx: AssistCtx<impl HirDatabase>) -> Option<Assist> {
     let colon_colon = ctx.leaf_at_offset().find(|leaf| leaf.kind() == COLONCOLON)?;
     let path = colon_colon.parent().and_then(ast::Path::cast)?;
     let top_path = generate(Some(path), |it| it.parent_path()).last()?;
@@ -23,12 +23,14 @@ pub(crate) fn split_import(ctx: AssistCtx<impl HirDatabase>) -> Option<Assist> {
         None => top_path.syntax().range().end(),
     };
 
-    ctx.build("split import", |edit| {
+    ctx.add_action("split import", |edit| {
         edit.target(colon_colon.range());
         edit.insert(l_curly, "{");
         edit.insert(r_curly, "}");
         edit.set_cursor(l_curly + TextUnit::of_str("{"));
-    })
+    });
+
+    ctx.build()
 }
 
 #[cfg(test)]

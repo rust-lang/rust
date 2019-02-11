@@ -9,9 +9,10 @@ use ra_fmt::{leading_indent, reindent};
 
 use crate::{AssistLabel, AssistAction};
 
+#[derive(Clone, Debug)]
 pub(crate) enum Assist {
-    Unresolved(AssistLabel),
-    Resolved(AssistLabel, AssistAction),
+    Unresolved(Vec<AssistLabel>),
+    Resolved(Vec<(AssistLabel, AssistAction)>),
 }
 
 /// `AssistCtx` allows to apply an assist or check if it could be applied.
@@ -50,6 +51,7 @@ pub(crate) struct AssistCtx<'a, DB> {
     pub(crate) frange: FileRange,
     source_file: &'a SourceFile,
     should_compute_edit: bool,
+    assist: Assist,
 }
 
 impl<'a, DB> Clone for AssistCtx<'a, DB> {
@@ -59,6 +61,7 @@ impl<'a, DB> Clone for AssistCtx<'a, DB> {
             frange: self.frange,
             source_file: self.source_file,
             should_compute_edit: self.should_compute_edit,
+            assist: self.assist.clone(),
         }
     }
 }
@@ -69,25 +72,35 @@ impl<'a, DB: HirDatabase> AssistCtx<'a, DB> {
         F: FnOnce(AssistCtx<DB>) -> T,
     {
         let source_file = &db.parse(frange.file_id);
-        let ctx = AssistCtx { db, frange, source_file, should_compute_edit };
+        let assist =
+            if should_compute_edit { Assist::Resolved(vec![]) } else { Assist::Unresolved(vec![]) };
+
+        let ctx = AssistCtx { db, frange, source_file, should_compute_edit, assist };
         f(ctx)
     }
 
-    pub(crate) fn build(
-        self,
+    pub(crate) fn add_action(
+        &mut self,
         label: impl Into<String>,
         f: impl FnOnce(&mut AssistBuilder),
-    ) -> Option<Assist> {
+    ) -> &mut Self {
         let label = AssistLabel { label: label.into() };
-        if !self.should_compute_edit {
-            return Some(Assist::Unresolved(label));
+        match &mut self.assist {
+            Assist::Unresolved(labels) => labels.push(label),
+            Assist::Resolved(labels_actions) => {
+                let action = {
+                    let mut edit = AssistBuilder::default();
+                    f(&mut edit);
+                    edit.build()
+                };
+                labels_actions.push((label, action));
+            }
         }
-        let action = {
-            let mut edit = AssistBuilder::default();
-            f(&mut edit);
-            edit.build()
-        };
-        Some(Assist::Resolved(label, action))
+        self
+    }
+
+    pub(crate) fn build(self) -> Option<Assist> {
+        Some(self.assist)
     }
 
     pub(crate) fn leaf_at_offset(&self) -> LeafAtOffset<&'a SyntaxNode> {
