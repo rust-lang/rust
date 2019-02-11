@@ -1,6 +1,7 @@
 use std::{
     marker::PhantomData,
     hash::{Hash, Hasher},
+    sync::Arc,
 };
 
 use ra_db::{LocationIntener, FileId};
@@ -301,10 +302,24 @@ pub struct SourceFileItems {
 }
 
 impl SourceFileItems {
-    pub(crate) fn new(file_id: HirFileId, source_file: &SourceFile) -> SourceFileItems {
+    pub(crate) fn file_items_query(
+        db: &impl PersistentHirDatabase,
+        file_id: HirFileId,
+    ) -> Arc<SourceFileItems> {
+        let source_file = db.hir_parse(file_id);
         let mut res = SourceFileItems { file_id, arena: Arena::default() };
-        res.init(source_file);
-        res
+        res.init(&source_file);
+        Arc::new(res)
+    }
+
+    pub(crate) fn file_item_query(
+        db: &impl PersistentHirDatabase,
+        source_item_id: SourceItemId,
+    ) -> TreeArc<SyntaxNode> {
+        let source_file = db.hir_parse(source_item_id.file_id);
+        db.file_items(source_item_id.file_id)[source_item_id.item_id]
+            .to_node(&source_file)
+            .to_owned()
     }
 
     fn init(&mut self, source_file: &SourceFile) {

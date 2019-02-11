@@ -6,7 +6,6 @@ use ra_db::{SourceDatabase, salsa};
 use crate::{
     MacroCallId, HirFileId,
     SourceFileItems, SourceItemId, Crate, Module, HirInterner,
-    query_definitions,
     Function, FnSignature, ExprScopes,
     Struct, Enum, StructField,
     macros::MacroExpansion,
@@ -33,10 +32,10 @@ pub trait PersistentHirDatabase: SourceDatabase + AsRef<HirInterner> {
     #[salsa::invoke(crate::adt::EnumData::enum_data_query)]
     fn enum_data(&self, e: Enum) -> Arc<EnumData>;
 
-    #[salsa::invoke(query_definitions::file_items)]
+    #[salsa::invoke(crate::ids::SourceFileItems::file_items_query)]
     fn file_items(&self, file_id: HirFileId) -> Arc<SourceFileItems>;
 
-    #[salsa::invoke(query_definitions::file_item)]
+    #[salsa::invoke(crate::ids::SourceFileItems::file_item_query)]
     fn file_item(&self, source_item_id: SourceItemId) -> TreeArc<SyntaxNode>;
 
     #[salsa::invoke(crate::module_tree::Submodule::submodules_query)]
