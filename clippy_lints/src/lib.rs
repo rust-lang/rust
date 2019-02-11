@@ -256,6 +256,14 @@ mod reexport {
     crate use syntax::ast::{Name, NodeId};
 }
 
+/// Register all pre expansion lints
+///
+/// Pre-expansion lints run before any macro expansion has happened.
+///
+/// Note that due to the architechture of the compiler, currently `cfg_attr` attributes will still
+/// be expanded even when using a pre-expansion pass.
+///
+/// Used in `./src/driver.rs`.
 pub fn register_pre_expansion_lints(
     session: &rustc::session::Session,
     store: &mut rustc::lint::LintStore,
@@ -280,6 +288,7 @@ pub fn register_pre_expansion_lints(
     store.register_pre_expansion_pass(Some(session), true, false, box dbg_macro::Pass);
 }
 
+#[doc(hidden)]
 pub fn read_conf(reg: &rustc_plugin::Registry<'_>) -> Conf {
     match utils::conf::file_from_args(reg.args()) {
         Ok(file_name) => {
@@ -337,6 +346,9 @@ pub fn read_conf(reg: &rustc_plugin::Registry<'_>) -> Conf {
     }
 }
 
+/// Register all lints and lint groups with the rustc plugin registry
+///
+/// Used in `./src/driver.rs`.
 #[allow(clippy::too_many_lines)]
 #[rustfmt::skip]
 pub fn register_plugins(reg: &mut rustc_plugin::Registry<'_>, conf: &Conf) {
@@ -1091,6 +1103,9 @@ pub fn register_plugins(reg: &mut rustc_plugin::Registry<'_>, conf: &Conf) {
     ]);
 }
 
+/// Register renamed lints.
+///
+/// Used in `./src/driver.rs`.
 pub fn register_renamed(ls: &mut rustc::lint::LintStore) {
     ls.register_renamed("clippy::stutter", "clippy::module_name_repetitions");
     ls.register_renamed("clippy::new_without_default_derive", "clippy::new_without_default");
