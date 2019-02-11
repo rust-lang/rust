@@ -1,7 +1,7 @@
 use core_arch::simd::*;
 use core_arch::simd_llvm::*;
 use core_arch::x86::*;
-use mem::{self, MaybeUninit};
+use mem;
 
 #[cfg(test)]
 use stdsimd_test::assert_instr;
@@ -15,7 +15,7 @@ use stdsimd_test::assert_instr;
 pub unsafe fn _mm512_abs_epi32(a: __m512i) -> __m512i {
     let a = a.as_i32x16();
     // all-0 is a properly initialized i32x16
-    let zero: i32x16 = MaybeUninit::zeroed().into_inner();
+    let zero: i32x16 = mem::zeroed();
     let sub = simd_sub(zero, a);
     let cmp: i32x16 = simd_gt(a, zero);
     mem::transmute(simd_select(cmp, a, sub))
@@ -56,7 +56,7 @@ pub unsafe fn _mm512_maskz_abs_epi32(k: __mmask16, a: __m512i) -> __m512i {
 #[cfg_attr(test, assert_instr(vxorps))]
 pub unsafe fn _mm512_setzero_si512() -> __m512i {
     // All-0 is a properly initialized __m512i
-    MaybeUninit::zeroed().into_inner()
+    mem::zeroed()
 }
 
 /// Set packed 32-bit integers in `dst` with the supplied values in reverse
