@@ -144,8 +144,8 @@ impl_froms!(TokenTree: Leaf, Subtree);
         let macro_invocation =
             source_file.syntax().descendants().find_map(ast::MacroCall::cast).unwrap();
 
-        let definition_tt = ast_to_token_tree(macro_definition.token_tree().unwrap()).unwrap();
-        let invocation_tt = ast_to_token_tree(macro_invocation.token_tree().unwrap()).unwrap();
+        let (definition_tt, _) = ast_to_token_tree(macro_definition.token_tree().unwrap()).unwrap();
+        let (invocation_tt, _) = ast_to_token_tree(macro_invocation.token_tree().unwrap()).unwrap();
         let rules = crate::MacroRules::parse(&definition_tt).unwrap();
         let expansion = rules.expand(&invocation_tt).unwrap();
         assert_eq!(
@@ -160,7 +160,7 @@ impl_froms!(TokenTree: Leaf, Subtree);
         let macro_definition =
             source_file.syntax().descendants().find_map(ast::MacroCall::cast).unwrap();
 
-        let definition_tt = ast_to_token_tree(macro_definition.token_tree().unwrap()).unwrap();
+        let (definition_tt, _) = ast_to_token_tree(macro_definition.token_tree().unwrap()).unwrap();
         crate::MacroRules::parse(&definition_tt).unwrap()
     }
 
@@ -169,7 +169,7 @@ impl_froms!(TokenTree: Leaf, Subtree);
         let macro_invocation =
             source_file.syntax().descendants().find_map(ast::MacroCall::cast).unwrap();
 
-        let invocation_tt = ast_to_token_tree(macro_invocation.token_tree().unwrap()).unwrap();
+        let (invocation_tt, _) = ast_to_token_tree(macro_invocation.token_tree().unwrap()).unwrap();
 
         let expaned = rules.expand(&invocation_tt).unwrap();
         assert_eq!(expaned.to_string(), expansion);
