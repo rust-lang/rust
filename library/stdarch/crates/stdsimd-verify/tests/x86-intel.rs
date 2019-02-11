@@ -369,7 +369,7 @@ fn matches(rust: &Function, intel: &Intrinsic) -> Result<(), String> {
         // Apparently all of clang/msvc/gcc accept these intrinsics on
         // 32-bit, so let's do the same
         "_mm_set_epi64x" | "_mm_set1_epi64x" | "_mm256_set_epi64x" | "_mm256_setr_epi64x"
-        | "_mm256_set1_epi64x" => true,
+        | "_mm256_set1_epi64x" | "_mm512_set1_epi64" => true,
 
         // These return a 64-bit argument but they're assembled from other
         // 32-bit registers, so these work on 32-bit just fine. See #308 for
