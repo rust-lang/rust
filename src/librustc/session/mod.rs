@@ -1131,11 +1131,8 @@ pub fn build_session_(
     source_map: Lrc<source_map::SourceMap>,
     driver_lint_caps: FxHashMap<lint::LintId, lint::Level>,
 ) -> Session {
-    let self_profiling_active = sopts.debugging_opts.self_profile ||
-                                sopts.debugging_opts.profile_json;
-
     let self_profiler =
-        if self_profiling_active { Some(Arc::new(PlMutex::new(SelfProfiler::new()))) }
+        if sopts.debugging_opts.self_profile { Some(Arc::new(PlMutex::new(SelfProfiler::new()))) }
         else { None };
 
     let host_triple = TargetTriple::from_triple(config::host_triple());
