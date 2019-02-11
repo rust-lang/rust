@@ -1,4 +1,4 @@
-use crate::hair::*;
+use crate::hair::{self, *};
 use crate::hair::cx::Cx;
 use crate::hair::cx::to_ref::ToRef;
 use rustc::middle::region;
@@ -83,10 +83,12 @@ fn mirror_stmts<'a, 'gcx, 'tcx>(cx: &mut Cx<'a, 'gcx, 'tcx>,
                             ty: pattern.ty,
                             span: pattern.span,
                             kind: Box::new(PatternKind::AscribeUserType {
-                                user_ty: PatternTypeProjection::from_user_type(user_ty),
-                                user_ty_span: ty.span,
+                                ascription: hair::pattern::Ascription {
+                                    user_ty: PatternTypeProjection::from_user_type(user_ty),
+                                    user_ty_span: ty.span,
+                                    variance: ty::Variance::Covariant,
+                                },
                                 subpattern: pattern,
-                                variance: ty::Variance::Covariant,
                             })
                         };
                     }
