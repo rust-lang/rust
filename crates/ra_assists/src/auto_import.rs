@@ -345,9 +345,9 @@ fn best_action_for_target<'b, 'a: 'b>(
     match best_action {
         Some(action) => return action,
         None => {
-            // We have no action we no use item was found in container so we find
+            // We have no action and no UseItem was found in container so we find
             // another item and we use it as anchor.
-            // If there are not items, we choose the target path itself as anchor.
+            // If there are no items, we choose the target path itself as anchor.
             let anchor = container
                 .children()
                 .find_map(ast::ModuleItem::cast)
@@ -480,6 +480,24 @@ fn make_assist_add_nested_import(
     }
 }
 
+fn apply_auto_import<'a>(
+    container: &SyntaxNode,
+    path: &ast::Path,
+    target: &[&'a ast::PathSegment],
+    edit: &mut AssistBuilder,
+) {
+    let action = best_action_for_target(container, path, target);
+    make_assist(&action, target, edit);
+    if let (Some(first), Some(last)) = (target.first(), target.last()) {
+        // Here we are assuming the assist will provide a  correct use statement
+        // so we can delete the path qualifier
+        edit.delete(TextRange::from_to(
+            first.syntax().range().start(),
+            last.syntax().range().start(),
+        ));
+    }
+}
+
 pub(crate) fn auto_import(mut ctx: AssistCtx<impl HirDatabase>) -> Option<Assist> {
     let node = ctx.covering_node();
     let current_file = node.ancestors().find_map(ast::SourceFile::cast)?;
@@ -496,16 +514,7 @@ pub(crate) fn auto_import(mut ctx: AssistCtx<impl HirDatabase>) -> Option<Assist
     }
 
     ctx.add_action(format!("import {} in the current file", fmt_segments(&segments)), |edit| {
-        let action = best_action_for_target(current_file.syntax(), path, &segments);
-        make_assist(&action, segments.as_slice(), edit);
-        if let Some(last_segment) = path.segment() {
-            // Here we are assuming the assist will provide a  correct use statement
-            // so we can delete the path qualifier
-            edit.delete(TextRange::from_to(
-                path.syntax().range().start(),
-                last_segment.syntax().range().start(),
-            ));
-        }
+        apply_auto_import(current_file.syntax(), path, &segments, edit);
     });
 
     ctx.build()
@@ -527,6 +536,21 @@ std::fmt::Debug<|>
 use std::fmt::Debug;
 
 Debug<|>
+    ",
+        );
+    }
+
+    #[test]
+    fn test_auto_import_file_add_use_no_anchor_2seg() {
+        check_assist(
+            auto_import,
+            "
+std::fmt<|>::Debug
+    ",
+            "
+use std::fmt;
+
+fmt<|>::Debug
     ",
         );
     }
@@ -725,6 +749,16 @@ impl Debug<|> for Foo {
             "
 impl foo<|> for Foo {
 }
+",
+        );
+    }
+
+    #[test]
+    fn test_auto_import_not_applicable_in_use() {
+        check_assist_not_applicable(
+            auto_import,
+            "
+use std::fmt<|>;
 ",
         );
     }
