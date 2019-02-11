@@ -700,7 +700,7 @@ impl<I: FusedIterator + ?Sized> FusedIterator for Box<I> {}
 impl<A, F: FnOnce<A> + ?Sized> FnOnce<A> for Box<F> {
     type Output = <F as FnOnce<A>>::Output;
 
-    default extern "rust-call" fn call_once(self, args: A) -> Self::Output {
+    extern "rust-call" fn call_once(self, args: A) -> Self::Output {
         <F as FnOnce<A>>::call_once(*self, args)
     }
 }
@@ -774,22 +774,6 @@ impl<A, F> FnBox<A> for F
 {
     fn call_box(self: Box<F>, args: A) -> F::Output {
         self.call_once(args)
-    }
-}
-
-#[unstable(feature = "fnbox",
-           reason = "will be deprecated if and when `Box<FnOnce>` becomes usable", issue = "28796")]
-impl<A, R> FnOnce<A> for Box<dyn FnBox<A, Output = R> + '_> {
-    extern "rust-call" fn call_once(self, args: A) -> R {
-        self.call_box(args)
-    }
-}
-
-#[unstable(feature = "fnbox",
-           reason = "will be deprecated if and when `Box<FnOnce>` becomes usable", issue = "28796")]
-impl<A, R> FnOnce<A> for Box<dyn FnBox<A, Output = R> + Send + '_> {
-    extern "rust-call" fn call_once(self, args: A) -> R {
-        self.call_box(args)
     }
 }
 
