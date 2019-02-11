@@ -1,7 +1,6 @@
 use std::sync::Arc;
 
-use ra_db::{CrateGraph, SourceRootId, SourceDatabase};
-use relative_path::RelativePath;
+use ra_db::SourceDatabase;
 use test_utils::{assert_eq_text, covers};
 
 use crate::{
@@ -14,20 +13,6 @@ use super::Resolution;
 
 fn item_map(fixture: &str) -> (Arc<ItemMap>, ModuleId) {
     let (db, pos) = MockDatabase::with_position(fixture);
-    let module = crate::source_binder::module_from_position(&db, pos).unwrap();
-    let krate = module.krate(&db).unwrap();
-    let module_id = module.module_id;
-    (db.item_map(krate), module_id)
-}
-
-/// Sets the crate root to the file of the cursor marker
-fn item_map_custom_crate_root(fixture: &str) -> (Arc<ItemMap>, ModuleId) {
-    let (mut db, pos) = MockDatabase::with_position(fixture);
-
-    let mut crate_graph = CrateGraph::default();
-    crate_graph.add_crate_root(pos.file_id);
-    db.set_crate_graph(Arc::new(crate_graph));
-
     let module = crate::source_binder::module_from_position(&db, pos).unwrap();
     let krate = module.krate(&db).unwrap();
     let module_id = module.module_id;
@@ -252,24 +237,20 @@ fn glob_enum() {
 #[test]
 fn glob_across_crates() {
     covers!(glob_across_crates);
-    let (mut db, sr) = MockDatabase::with_files(
+    let mut db = MockDatabase::with_files(
         "
         //- /main.rs
         use test_crate::*;
 
         //- /lib.rs
         pub struct Baz;
-    ",
+        ",
     );
-    let main_id = sr.files[RelativePath::new("/main.rs")];
-    let lib_id = sr.files[RelativePath::new("/lib.rs")];
-
-    let mut crate_graph = CrateGraph::default();
-    let main_crate = crate_graph.add_crate_root(main_id);
-    let lib_crate = crate_graph.add_crate_root(lib_id);
-    crate_graph.add_dep(main_crate, "test_crate".into(), lib_crate).unwrap();
-
-    db.set_crate_graph(Arc::new(crate_graph));
+    db.set_crate_graph_from_fixture(crate_graph! {
+        "main": ("/main.rs", ["test_crate"]),
+        "test_crate": ("/lib.rs", []),
+    });
+    let main_id = db.file_id_of("/main.rs");
 
     let module = crate::source_binder::module_from_file_id(&db, main_id).unwrap();
     let krate = module.krate(&db).unwrap();
@@ -286,22 +267,31 @@ fn glob_across_crates() {
 
 #[test]
 fn module_resolution_works_for_non_standard_filenames() {
-    let (item_map, module_id) = item_map_custom_crate_root(
+    let mut db = MockDatabase::with_files(
         "
         //- /my_library.rs
         mod foo;
         use self::foo::Bar;
-        <|>
+
         //- /foo/mod.rs
         pub struct Bar;
-    ",
+        ",
     );
+    db.set_crate_graph_from_fixture(crate_graph! {
+        "my_library": ("/my_library.rs", []),
+    });
+    let file_id = db.file_id_of("/my_library.rs");
+
+    let module = crate::source_binder::module_from_file_id(&db, file_id).unwrap();
+    let krate = module.krate(&db).unwrap();
+    let module_id = module.module_id;
+    let item_map = db.item_map(krate);
     check_module_item_map(
         &item_map,
         module_id,
         "
-            Bar: t v
-            foo: t
+        Bar: t v
+        foo: t
         ",
     );
 }
@@ -411,24 +401,20 @@ fn item_map_enum_importing() {
 
 #[test]
 fn item_map_across_crates() {
-    let (mut db, sr) = MockDatabase::with_files(
+    let mut db = MockDatabase::with_files(
         "
         //- /main.rs
         use test_crate::Baz;
 
         //- /lib.rs
         pub struct Baz;
-    ",
+        ",
     );
-    let main_id = sr.files[RelativePath::new("/main.rs")];
-    let lib_id = sr.files[RelativePath::new("/lib.rs")];
-
-    let mut crate_graph = CrateGraph::default();
-    let main_crate = crate_graph.add_crate_root(main_id);
-    let lib_crate = crate_graph.add_crate_root(lib_id);
-    crate_graph.add_dep(main_crate, "test_crate".into(), lib_crate).unwrap();
-
-    db.set_crate_graph(Arc::new(crate_graph));
+    db.set_crate_graph_from_fixture(crate_graph! {
+        "main": ("/main.rs", ["test_crate"]),
+        "test_crate": ("/lib.rs", []),
+    });
+    let main_id = db.file_id_of("/main.rs");
 
     let module = crate::source_binder::module_from_file_id(&db, main_id).unwrap();
     let krate = module.krate(&db).unwrap();
@@ -438,14 +424,14 @@ fn item_map_across_crates() {
         &item_map,
         module.module_id,
         "
-            Baz: t v
+        Baz: t v
         ",
     );
 }
 
 #[test]
 fn extern_crate_rename() {
-    let (mut db, sr) = MockDatabase::with_files(
+    let mut db = MockDatabase::with_files(
         "
         //- /main.rs
         extern crate alloc as alloc_crate;
@@ -458,18 +444,13 @@ fn extern_crate_rename() {
 
         //- /lib.rs
         struct Arc;
-    ",
+        ",
     );
-    let main_id = sr.files[RelativePath::new("/main.rs")];
-    let sync_id = sr.files[RelativePath::new("/sync.rs")];
-    let lib_id = sr.files[RelativePath::new("/lib.rs")];
-
-    let mut crate_graph = CrateGraph::default();
-    let main_crate = crate_graph.add_crate_root(main_id);
-    let lib_crate = crate_graph.add_crate_root(lib_id);
-    crate_graph.add_dep(main_crate, "alloc".into(), lib_crate).unwrap();
-
-    db.set_crate_graph(Arc::new(crate_graph));
+    db.set_crate_graph_from_fixture(crate_graph! {
+        "main": ("/main.rs", ["alloc"]),
+        "alloc": ("/lib.rs", []),
+    });
+    let sync_id = db.file_id_of("/sync.rs");
 
     let module = crate::source_binder::module_from_file_id(&db, sync_id).unwrap();
     let krate = module.krate(&db).unwrap();
@@ -479,14 +460,14 @@ fn extern_crate_rename() {
         &item_map,
         module.module_id,
         "
-            Arc: t v
+        Arc: t v
         ",
     );
 }
 
 #[test]
 fn import_across_source_roots() {
-    let (mut db, sr) = MockDatabase::with_files(
+    let mut db = MockDatabase::with_files(
         "
         //- /lib.rs
         pub mod a {
@@ -494,29 +475,18 @@ fn import_across_source_roots() {
                 pub struct C;
             }
         }
-    ",
-    );
-    let lib_id = sr.files[RelativePath::new("/lib.rs")];
 
-    let source_root = SourceRootId(1);
+        //- root /main/
 
-    let (sr2, pos) = db.add_fixture(
-        source_root,
-        "
-        //- /main.rs
+        //- /main/main.rs
         use test_crate::a::b::C;
-    ",
+        ",
     );
-    assert!(pos.is_none());
-
-    let main_id = sr2.files[RelativePath::new("/main.rs")];
-
-    let mut crate_graph = CrateGraph::default();
-    let main_crate = crate_graph.add_crate_root(main_id);
-    let lib_crate = crate_graph.add_crate_root(lib_id);
-    crate_graph.add_dep(main_crate, "test_crate".into(), lib_crate).unwrap();
-
-    db.set_crate_graph(Arc::new(crate_graph));
+    db.set_crate_graph_from_fixture(crate_graph! {
+        "main": ("/main/main.rs", ["test_crate"]),
+        "test_crate": ("/lib.rs", []),
+    });
+    let main_id = db.file_id_of("/main/main.rs");
 
     let module = crate::source_binder::module_from_file_id(&db, main_id).unwrap();
     let krate = module.krate(&db).unwrap();
@@ -533,7 +503,7 @@ fn import_across_source_roots() {
 
 #[test]
 fn reexport_across_crates() {
-    let (mut db, sr) = MockDatabase::with_files(
+    let mut db = MockDatabase::with_files(
         "
         //- /main.rs
         use test_crate::Baz;
@@ -545,17 +515,13 @@ fn reexport_across_crates() {
 
         //- /foo.rs
         pub struct Baz;
-    ",
+        ",
     );
-    let main_id = sr.files[RelativePath::new("/main.rs")];
-    let lib_id = sr.files[RelativePath::new("/lib.rs")];
-
-    let mut crate_graph = CrateGraph::default();
-    let main_crate = crate_graph.add_crate_root(main_id);
-    let lib_crate = crate_graph.add_crate_root(lib_id);
-    crate_graph.add_dep(main_crate, "test_crate".into(), lib_crate).unwrap();
-
-    db.set_crate_graph(Arc::new(crate_graph));
+    db.set_crate_graph_from_fixture(crate_graph! {
+        "main": ("/main.rs", ["test_crate"]),
+        "test_crate": ("/lib.rs", []),
+    });
+    let main_id = db.file_id_of("/main.rs");
 
     let module = crate::source_binder::module_from_file_id(&db, main_id).unwrap();
     let krate = module.krate(&db).unwrap();
@@ -565,7 +531,7 @@ fn reexport_across_crates() {
         &item_map,
         module.module_id,
         "
-            Baz: t v
+        Baz: t v
         ",
     );
 }
