@@ -1,1 +1,0 @@
-../stdsimd/crates/core_arch/src/core_arch_docs.md
