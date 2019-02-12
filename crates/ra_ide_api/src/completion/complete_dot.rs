@@ -180,6 +180,26 @@ mod tests {
     }
 
     #[test]
+    fn test_method_attr_filtering() {
+        check_ref_completion(
+            "method_attr_filtering",
+            r"
+            struct A {}
+            impl A {
+                #[inline]
+                fn the_method(&self) {
+                    let x = 1;
+                    let y = 2;
+                }
+            }
+            fn foo(a: A) {
+               a.<|>
+            }
+            ",
+        );
+    }
+
+    #[test]
     fn test_tuple_field_completion() {
         check_ref_completion(
             "tuple_field_completion",
