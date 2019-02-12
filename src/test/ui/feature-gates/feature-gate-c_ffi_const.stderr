@@ -1,10 +1,10 @@
-error[E0658]: the `#[ffi_const]` attribute is an experimental feature (see issue #58328)
-  --> $DIR/feature-gate-ffi_const.rs:5:5
+error[E0658]: the `#[c_ffi_const]` attribute is an experimental feature (see issue #58328)
+  --> $DIR/feature-gate-c_ffi_const.rs:5:5
    |
-LL |     #[ffi_const] //~ ERROR the `#[ffi_const]` attribute is an experimental feature (see issue #58328)
-   |     ^^^^^^^^^^^^
+LL |     #[c_ffi_const] //~ ERROR the `#[c_ffi_const]` attribute is an experimental feature (see issue #58328)
+   |     ^^^^^^^^^^^^^^
    |
-   = help: add #![feature(ffi_const)] to the crate attributes to enable
+   = help: add #![feature(c_ffi_const)] to the crate attributes to enable
 
 error: aborting due to previous error
 

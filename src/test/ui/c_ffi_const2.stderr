@@ -1,0 +1,9 @@
+error[E0726]: `#[c_ffi_const]` function cannot be`#[c_ffi_pure]`
+  --> $DIR/c_ffi_const2.rs:5:5
+   |
+LL |     #[c_ffi_pure] //~ ERROR `#[c_ffi_const]` function cannot be`#[c_ffi_pure]` [E0726]
+   |     ^^^^^^^^^^^^^
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0726`.

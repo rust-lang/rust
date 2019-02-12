@@ -2272,6 +2272,15 @@ fn codegen_fn_attrs<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, id: DefId) -> Codegen
             codegen_fn_attrs.flags |= CodegenFnAttrFlags::UNWIND;
         } else if attr.check_name("c_ffi_pure") {
             if tcx.is_foreign_item(id) {
+                if attrs.iter().any(|a| a.check_name("c_ffi_const")) {
+                    // `#[c_ffi_const]` functions cannot be `#[c_ffi_pure]`
+                    struct_span_err!(
+                        tcx.sess,
+                        attr.span,
+                        E0726,
+                        "`#[c_ffi_const]` function cannot be`#[c_ffi_pure]`"
+                    ).emit();
+                }
                 codegen_fn_attrs.flags |= CodegenFnAttrFlags::C_FFI_PURE;
             } else {
                 // `#[c_ffi_pure]` is only allowed on foreign functions
@@ -2294,16 +2303,7 @@ fn codegen_fn_attrs<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, id: DefId) -> Codegen
                     "`#[c_ffi_const]` may only be used on foreign functions"
                 ).emit();
             }
-            if attrs.iter().any(|a| a.check_name("c_ffi_pure")) {
-                // `#[c_ffi_const]` functions cannot be `#[c_ffi_pure]`
-                struct_span_err!(
-                    tcx.sess,
-                    attr.span,
-                    E0726,
-                    "`#[c_ffi_const]` function cannot be`#[c_ffi_pure]`"
-                ).emit();
-            }
-        } else if attr.check_name("rustc_allocator_nounwind") {
+      } else if attr.check_name("rustc_allocator_nounwind") {
             codegen_fn_attrs.flags |= CodegenFnAttrFlags::RUSTC_ALLOCATOR_NOUNWIND;
         } else if attr.check_name("naked") {
             codegen_fn_attrs.flags |= CodegenFnAttrFlags::NAKED;
