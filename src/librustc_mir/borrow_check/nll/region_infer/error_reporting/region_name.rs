@@ -681,10 +681,13 @@ impl<'tcx> RegionInferenceContext<'tcx> {
 
         let (return_span, mir_description) = match tcx.hir().get(mir_node_id) {
             hir::Node::Expr(hir::Expr {
-                node: hir::ExprKind::Closure(_, _, _, span, gen_move),
+                node: hir::ExprKind::Closure(_, return_ty, _, span, gen_move),
                 ..
             }) => (
-                tcx.sess.source_map().end_point(*span),
+                match return_ty.output {
+                    hir::FunctionRetTy::DefaultReturn(_) => tcx.sess.source_map().end_point(*span),
+                    hir::FunctionRetTy::Return(_) => return_ty.output.span(),
+                },
                 if gen_move.is_some() {
                     " of generator"
                 } else {
