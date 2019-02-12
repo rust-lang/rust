@@ -68,7 +68,6 @@
 #![warn(intra_doc_link_resolution_failure)]
 #![warn(missing_debug_implementations)]
 
-#![cfg_attr(not(test), feature(fn_traits))]
 #![cfg_attr(not(test), feature(generator_trait))]
 #![cfg_attr(test, feature(test))]
 
@@ -86,6 +85,7 @@
 #![feature(dropck_eyepatch)]
 #![feature(exact_size_is_empty)]
 #![feature(fmt_internals)]
+#![feature(fn_traits)]
 #![feature(fundamental)]
 #![feature(futures_api)]
 #![feature(lang_items)]
@@ -100,6 +100,7 @@
 #![feature(receiver_trait)]
 #![feature(specialization)]
 #![feature(staged_api)]
+#![feature(std_internals)]
 #![feature(str_internals)]
 #![feature(trusted_len)]
 #![feature(try_reserve)]

@@ -8,10 +8,13 @@ use self::pattern::Pattern;
 use self::pattern::{Searcher, ReverseSearcher, DoubleEndedSearcher};
 
 use char;
-use fmt;
+use fmt::{self, Write};
 use iter::{Map, Cloned, FusedIterator, TrustedLen, TrustedRandomAccess, Filter};
+use iter::{Flatten, FlatMap, Chain};
 use slice::{self, SliceIndex, Split as SliceSplit};
 use mem;
+use ops::Try;
+use option;
 
 pub mod pattern;
 
@@ -1345,33 +1348,14 @@ impl FusedIterator for Lines<'_> {}
 #[allow(deprecated)]
 pub struct LinesAny<'a>(Lines<'a>);
 
-/// A nameable, cloneable fn type
-#[derive(Clone)]
-struct LinesAnyMap;
-
-impl<'a> Fn<(&'a str,)> for LinesAnyMap {
-    #[inline]
-    extern "rust-call" fn call(&self, (line,): (&'a str,)) -> &'a str {
+impl_fn_for_zst! {
+    /// A nameable, cloneable fn type
+    #[derive(Clone)]
+    struct LinesAnyMap impl<'a> Fn = |line: &'a str| -> &'a str {
         let l = line.len();
         if l > 0 && line.as_bytes()[l - 1] == b'\r' { &line[0 .. l - 1] }
         else { line }
-    }
-}
-
-impl<'a> FnMut<(&'a str,)> for LinesAnyMap {
-    #[inline]
-    extern "rust-call" fn call_mut(&mut self, (line,): (&'a str,)) -> &'a str {
-        Fn::call(&*self, (line,))
-    }
-}
-
-impl<'a> FnOnce<(&'a str,)> for LinesAnyMap {
-    type Output = &'a str;
-
-    #[inline]
-    extern "rust-call" fn call_once(self, (line,): (&'a str,)) -> &'a str {
-        Fn::call(&self, (line,))
-    }
+    };
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -2727,7 +2711,7 @@ impl str {
         let inner = self
             .as_bytes()
             .split(IsAsciiWhitespace)
-            .filter(IsNotEmpty)
+            .filter(BytesIsNotEmpty)
             .map(UnsafeBytesToStr);
         SplitAsciiWhitespace { inner }
     }
@@ -3964,6 +3948,146 @@ impl str {
         let me = unsafe { self.as_bytes_mut() };
         me.make_ascii_lowercase()
     }
+
+    /// Return an iterator that escapes each char in `s` with [`char::escape_debug`].
+    ///
+    /// Note: only extended grapheme codepoints that begin the string will be
+    /// escaped.
+    ///
+    /// [`char::escape_debug`]: ../std/primitive.char.html#method.escape_debug
+    ///
+    /// # Examples
+    ///
+    /// As an iterator:
+    ///
+    /// ```
+    /// for c in "❤\n!".escape_debug() {
+    ///     print!("{}", c);
+    /// }
+    /// println!();
+    /// ```
+    ///
+    /// Using `println!` directly:
+    ///
+    /// ```
+    /// println!("{}", "❤\n!".escape_debug());
+    /// ```
+    ///
+    ///
+    /// Both are equivalent to:
+    ///
+    /// ```
+    /// println!("❤\\n!");
+    /// ```
+    ///
+    /// Using `to_string`:
+    ///
+    /// ```
+    /// assert_eq!("❤\n!".escape_debug().to_string(), "❤\\n!");
+    /// ```
+    #[stable(feature = "str_escape", since = "1.34.0")]
+    pub fn escape_debug(&self) -> EscapeDebug {
+        let mut chars = self.chars();
+        EscapeDebug {
+            inner: chars.next()
+                .map(|first| first.escape_debug_ext(true))
+                .into_iter()
+                .flatten()
+                .chain(chars.flat_map(CharEscapeDebugContinue))
+        }
+    }
+
+    /// Return an iterator that escapes each char in `s` with [`char::escape_default`].
+    ///
+    /// [`char::escape_default`]: ../std/primitive.char.html#method.escape_default
+    ///
+    /// # Examples
+    ///
+    /// As an iterator:
+    ///
+    /// ```
+    /// for c in "❤\n!".escape_default() {
+    ///     print!("{}", c);
+    /// }
+    /// println!();
+    /// ```
+    ///
+    /// Using `println!` directly:
+    ///
+    /// ```
+    /// println!("{}", "❤\n!".escape_default());
+    /// ```
+    ///
+    ///
+    /// Both are equivalent to:
+    ///
+    /// ```
+    /// println!("\\u{{2764}}\n!");
+    /// ```
+    ///
+    /// Using `to_string`:
+    ///
+    /// ```
+    /// assert_eq!("❤\n!".escape_default().to_string(), "\\u{2764}\\n!");
+    /// ```
+    #[stable(feature = "str_escape", since = "1.34.0")]
+    pub fn escape_default(&self) -> EscapeDefault {
+        EscapeDefault { inner: self.chars().flat_map(CharEscapeDefault) }
+    }
+
+    /// Return an iterator that escapes each char in `s` with [`char::escape_unicode`].
+    ///
+    /// [`char::escape_unicode`]: ../std/primitive.char.html#method.escape_unicode
+    ///
+    /// # Examples
+    ///
+    /// As an iterator:
+    ///
+    /// ```
+    /// for c in "❤\n!".escape_unicode() {
+    ///     print!("{}", c);
+    /// }
+    /// println!();
+    /// ```
+    ///
+    /// Using `println!` directly:
+    ///
+    /// ```
+    /// println!("{}", "❤\n!".escape_unicode());
+    /// ```
+    ///
+    ///
+    /// Both are equivalent to:
+    ///
+    /// ```
+    /// println!("\\u{{2764}}\\u{{a}}\\u{{21}}");
+    /// ```
+    ///
+    /// Using `to_string`:
+    ///
+    /// ```
+    /// assert_eq!("❤\n!".escape_unicode().to_string(), "\\u{2764}\\u{a}\\u{21}");
+    /// ```
+    #[stable(feature = "str_escape", since = "1.34.0")]
+    pub fn escape_unicode(&self) -> EscapeUnicode {
+        EscapeUnicode { inner: self.chars().flat_map(CharEscapeUnicode) }
+    }
+}
+
+impl_fn_for_zst! {
+    #[derive(Clone)]
+    struct CharEscapeDebugContinue impl Fn = |c: char| -> char::EscapeDebug {
+        c.escape_debug_ext(false)
+    };
+
+    #[derive(Clone)]
+    struct CharEscapeUnicode impl Fn = |c: char| -> char::EscapeUnicode {
+        c.escape_unicode()
+    };
+    #[derive(Clone)]
+    struct CharEscapeDefault impl Fn = |c: char| -> char::EscapeDefault {
+        c.escape_default()
+    };
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -4011,101 +4135,35 @@ pub struct SplitWhitespace<'a> {
 #[stable(feature = "split_ascii_whitespace", since = "1.34.0")]
 #[derive(Clone, Debug)]
 pub struct SplitAsciiWhitespace<'a> {
-    inner: Map<Filter<SliceSplit<'a, u8, IsAsciiWhitespace>, IsNotEmpty>, UnsafeBytesToStr>,
+    inner: Map<Filter<SliceSplit<'a, u8, IsAsciiWhitespace>, BytesIsNotEmpty>, UnsafeBytesToStr>,
 }
 
-#[derive(Clone)]
-struct IsWhitespace;
+impl_fn_for_zst! {
+    #[derive(Clone)]
+    struct IsWhitespace impl Fn = |c: char| -> bool {
+        c.is_whitespace()
+    };
 
-impl FnOnce<(char, )> for IsWhitespace {
-    type Output = bool;
+    #[derive(Clone)]
+    struct IsAsciiWhitespace impl Fn = |byte: &u8| -> bool {
+        byte.is_ascii_whitespace()
+    };
 
-    #[inline]
-    extern "rust-call" fn call_once(mut self, arg: (char, )) -> bool {
-        self.call_mut(arg)
-    }
+    #[derive(Clone)]
+    struct IsNotEmpty impl<'a, 'b> Fn = |s: &'a &'b str| -> bool {
+        !s.is_empty()
+    };
+
+    #[derive(Clone)]
+    struct BytesIsNotEmpty impl<'a, 'b> Fn = |s: &'a &'b [u8]| -> bool {
+        !s.is_empty()
+    };
+
+    #[derive(Clone)]
+    struct UnsafeBytesToStr impl<'a> Fn = |bytes: &'a [u8]| -> &'a str {
+        unsafe { from_utf8_unchecked(bytes) }
+    };
 }
-
-impl FnMut<(char, )> for IsWhitespace {
-    #[inline]
-    extern "rust-call" fn call_mut(&mut self, arg: (char, )) -> bool {
-        arg.0.is_whitespace()
-    }
-}
-
-#[derive(Clone)]
-struct IsAsciiWhitespace;
-
-impl<'a> FnOnce<(&'a u8, )> for IsAsciiWhitespace {
-    type Output = bool;
-
-    #[inline]
-    extern "rust-call" fn call_once(mut self, arg: (&u8, )) -> bool {
-        self.call_mut(arg)
-    }
-}
-
-impl<'a> FnMut<(&'a u8, )> for IsAsciiWhitespace {
-    #[inline]
-    extern "rust-call" fn call_mut(&mut self, arg: (&u8, )) -> bool {
-        arg.0.is_ascii_whitespace()
-    }
-}
-
-#[derive(Clone)]
-struct IsNotEmpty;
-
-impl<'a, 'b> FnOnce<(&'a &'b str, )> for IsNotEmpty {
-    type Output = bool;
-
-    #[inline]
-    extern "rust-call" fn call_once(mut self, arg: (&'a &'b str, )) -> bool {
-        self.call_mut(arg)
-    }
-}
-
-impl<'a, 'b> FnMut<(&'a &'b str, )> for IsNotEmpty {
-    #[inline]
-    extern "rust-call" fn call_mut(&mut self, arg: (&'a &'b str, )) -> bool {
-        !arg.0.is_empty()
-    }
-}
-
-impl<'a, 'b> FnOnce<(&'a &'b [u8], )> for IsNotEmpty {
-    type Output = bool;
-
-    #[inline]
-    extern "rust-call" fn call_once(mut self, arg: (&'a &'b [u8], )) -> bool {
-        self.call_mut(arg)
-    }
-}
-
-impl<'a, 'b> FnMut<(&'a &'b [u8], )> for IsNotEmpty {
-    #[inline]
-    extern "rust-call" fn call_mut(&mut self, arg: (&'a &'b [u8], )) -> bool {
-        !arg.0.is_empty()
-    }
-}
-
-#[derive(Clone)]
-struct UnsafeBytesToStr;
-
-impl<'a> FnOnce<(&'a [u8], )> for UnsafeBytesToStr {
-    type Output = &'a str;
-
-    #[inline]
-    extern "rust-call" fn call_once(mut self, arg: (&'a [u8], )) -> &'a str {
-        self.call_mut(arg)
-    }
-}
-
-impl<'a> FnMut<(&'a [u8], )> for UnsafeBytesToStr {
-    #[inline]
-    extern "rust-call" fn call_mut(&mut self, arg: (&'a [u8], )) -> &'a str {
-        unsafe { from_utf8_unchecked(arg.0) }
-    }
-}
-
 
 #[stable(feature = "split_whitespace", since = "1.1.0")]
 impl<'a> Iterator for SplitWhitespace<'a> {
@@ -4216,3 +4274,74 @@ impl<'a> Iterator for EncodeUtf16<'a> {
 
 #[stable(feature = "fused", since = "1.26.0")]
 impl FusedIterator for EncodeUtf16<'_> {}
+
+/// The return type of [`str::escape_debug`].
+///
+/// [`str::escape_debug`]: ../../std/primitive.str.html#method.escape_debug
+#[stable(feature = "str_escape", since = "1.34.0")]
+#[derive(Clone, Debug)]
+pub struct EscapeDebug<'a> {
+    inner: Chain<
+        Flatten<option::IntoIter<char::EscapeDebug>>,
+        FlatMap<Chars<'a>, char::EscapeDebug, CharEscapeDebugContinue>
+    >,
+}
+
+/// The return type of [`str::escape_default`].
+///
+/// [`str::escape_default`]: ../../std/primitive.str.html#method.escape_default
+#[stable(feature = "str_escape", since = "1.34.0")]
+#[derive(Clone, Debug)]
+pub struct EscapeDefault<'a> {
+    inner: FlatMap<Chars<'a>, char::EscapeDefault, CharEscapeDefault>,
+}
+
+/// The return type of [`str::escape_unicode`].
+///
+/// [`str::escape_unicode`]: ../../std/primitive.str.html#method.escape_unicode
+#[stable(feature = "str_escape", since = "1.34.0")]
+#[derive(Clone, Debug)]
+pub struct EscapeUnicode<'a> {
+    inner: FlatMap<Chars<'a>, char::EscapeUnicode, CharEscapeUnicode>,
+}
+
+macro_rules! escape_types_impls {
+    ($( $Name: ident ),+) => {$(
+        #[stable(feature = "str_escape", since = "1.34.0")]
+        impl<'a> fmt::Display for $Name<'a> {
+            fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+                self.clone().try_for_each(|c| f.write_char(c))
+            }
+        }
+
+        #[stable(feature = "str_escape", since = "1.34.0")]
+        impl<'a> Iterator for $Name<'a> {
+            type Item = char;
+
+            #[inline]
+            fn next(&mut self) -> Option<char> { self.inner.next() }
+
+            #[inline]
+            fn size_hint(&self) -> (usize, Option<usize>) { self.inner.size_hint() }
+
+            #[inline]
+            fn try_fold<Acc, Fold, R>(&mut self, init: Acc, fold: Fold) -> R where
+                Self: Sized, Fold: FnMut(Acc, Self::Item) -> R, R: Try<Ok=Acc>
+            {
+                self.inner.try_fold(init, fold)
+            }
+
+            #[inline]
+            fn fold<Acc, Fold>(self, init: Acc, fold: Fold) -> Acc
+                where Fold: FnMut(Acc, Self::Item) -> Acc,
+            {
+                self.inner.fold(init, fold)
+            }
+        }
+
+        #[stable(feature = "str_escape", since = "1.34.0")]
+        impl<'a> FusedIterator for $Name<'a> {}
+    )+}
+}
+
+escape_types_impls!(EscapeDebug, EscapeDefault, EscapeUnicode);

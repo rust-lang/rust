@@ -29,8 +29,6 @@
 #![allow(unused_imports)]
 
 use core::borrow::Borrow;
-use core::fmt;
-use core::str as core_str;
 use core::str::pattern::{Pattern, Searcher, ReverseSearcher, DoubleEndedSearcher};
 use core::mem;
 use core::ptr;
@@ -443,45 +441,6 @@ impl str {
         return s;
     }
 
-    /// Escapes each char in `s` with [`char::escape_debug`].
-    ///
-    /// Note: only extended grapheme codepoints that begin the string will be
-    /// escaped.
-    ///
-    /// [`char::escape_debug`]: primitive.char.html#method.escape_debug
-    #[unstable(feature = "str_escape",
-               reason = "return type may change to be an iterator",
-               issue = "27791")]
-    pub fn escape_debug(&self) -> String {
-        let mut string = String::with_capacity(self.len());
-        let mut chars = self.chars();
-        if let Some(first) = chars.next() {
-            string.extend(first.escape_debug_ext(true))
-        }
-        string.extend(chars.flat_map(|c| c.escape_debug_ext(false)));
-        string
-    }
-
-    /// Escapes each char in `s` with [`char::escape_default`].
-    ///
-    /// [`char::escape_default`]: primitive.char.html#method.escape_default
-    #[unstable(feature = "str_escape",
-               reason = "return type may change to be an iterator",
-               issue = "27791")]
-    pub fn escape_default(&self) -> String {
-        self.chars().flat_map(|c| c.escape_default()).collect()
-    }
-
-    /// Escapes each char in `s` with [`char::escape_unicode`].
-    ///
-    /// [`char::escape_unicode`]: primitive.char.html#method.escape_unicode
-    #[unstable(feature = "str_escape",
-               reason = "return type may change to be an iterator",
-               issue = "27791")]
-    pub fn escape_unicode(&self) -> String {
-        self.chars().flat_map(|c| c.escape_unicode()).collect()
-    }
-
     /// Converts a [`Box<str>`] into a [`String`] without copying or allocating.
     ///
     /// [`String`]: string/struct.String.html
@@ -612,3 +571,4 @@ impl str {
 pub unsafe fn from_boxed_utf8_unchecked(v: Box<[u8]>) -> Box<str> {
     Box::from_raw(Box::into_raw(v) as *mut str)
 }
+

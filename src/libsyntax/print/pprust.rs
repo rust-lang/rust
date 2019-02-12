@@ -606,7 +606,7 @@ pub trait PrintState<'a> {
         match lit.node {
             ast::LitKind::Str(st, style) => self.print_string(&st.as_str(), style),
             ast::LitKind::Err(st) => {
-                let st = st.as_str().escape_debug();
+                let st = st.as_str().escape_debug().to_string();
                 let mut res = String::with_capacity(st.len() + 2);
                 res.push('\'');
                 res.push_str(&st);

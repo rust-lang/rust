@@ -10,7 +10,6 @@
 #![feature(proc_macro_span)]
 #![feature(decl_macro)]
 #![feature(nll)]
-#![feature(str_escape)]
 #![feature(rustc_diagnostic_macros)]
 
 #![recursion_limit="256"]

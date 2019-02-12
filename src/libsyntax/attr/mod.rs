@@ -634,7 +634,7 @@ impl LitKind {
 
         match *self {
             LitKind::Str(string, ast::StrStyle::Cooked) => {
-                let escaped = string.as_str().escape_default();
+                let escaped = string.as_str().escape_default().to_string();
                 Token::Literal(token::Lit::Str_(Symbol::intern(&escaped)), None)
             }
             LitKind::Str(string, ast::StrStyle::Raw(n)) => {

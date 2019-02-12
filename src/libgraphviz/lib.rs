@@ -277,7 +277,6 @@
 #![deny(rust_2018_idioms)]
 
 #![feature(nll)]
-#![feature(str_escape)]
 
 use LabelText::*;
 
@@ -538,7 +537,7 @@ impl<'a> LabelText<'a> {
             EscStr(s) => s,
             LabelStr(s) => {
                 if s.contains('\\') {
-                    (&*s).escape_default().into()
+                    (&*s).escape_default().to_string().into()
                 } else {
                     s
                 }

@@ -15,7 +15,6 @@
 #![feature(rustc_attrs)]
 #![feature(rustc_diagnostic_macros)]
 #![feature(slice_sort_by_cached_key)]
-#![feature(str_escape)]
 #![feature(step_trait)]
 #![feature(try_trait)]
 #![feature(unicode_internals)]

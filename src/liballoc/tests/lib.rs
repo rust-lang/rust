@@ -5,7 +5,6 @@
 #![feature(pattern)]
 #![feature(repeat_generic_slice)]
 #![feature(slice_sort_by_cached_key)]
-#![feature(str_escape)]
 #![feature(try_reserve)]
 #![feature(unboxed_closures)]
 #![feature(vecdeque_rotate)]
