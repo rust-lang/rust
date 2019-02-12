@@ -11,7 +11,7 @@ use crate::{
         input::{InputPosition, ParserInput},
     },
     SmolStr,
-    yellow::syntax_error::{
+    syntax_node::syntax_error::{
         ParseError,
         SyntaxError,
     },

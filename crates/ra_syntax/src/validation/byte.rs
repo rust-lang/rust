@@ -5,7 +5,7 @@ use crate::{
     string_lexing::{self, StringComponentKind},
     TextRange,
     validation::char,
-    yellow::{
+    syntax_node::{
         SyntaxError,
         SyntaxErrorKind::*,
     },

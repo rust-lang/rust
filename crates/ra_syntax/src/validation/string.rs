@@ -1,7 +1,7 @@
 use crate::{
     ast::{self, AstNode, AstToken},
     string_lexing,
-    yellow::{
+    syntax_node::{
         SyntaxError,
         SyntaxErrorKind::*,
     },

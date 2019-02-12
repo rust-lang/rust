@@ -6,7 +6,7 @@ use itertools::Itertools;
 
 pub use self::generated::*;
 use crate::{
-    yellow::{SyntaxNode, SyntaxNodeChildren, TreeArc, RaTypes},
+    syntax_node::{SyntaxNode, SyntaxNodeChildren, TreeArc, RaTypes},
     SmolStr,
     SyntaxKind::*,
 };

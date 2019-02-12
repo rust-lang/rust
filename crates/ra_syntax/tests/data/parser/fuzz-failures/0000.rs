@@ -5,7 +5,7 @@
     }
     pub fn parse(text: &str) -> File {
         let tokens = tokenize(&text);
-        let (green, errors) = parser_impl::parse_with::<yellow::GreenBuilder>(
+        let (green, errors) = parser_impl::parse_with::<syntax_node::GreenBuilder>(
             text, &tokens, grammar::root,
         );
         File::new(green, errors)
@@ -24,7 +24,7 @@
         if !is_balanced(&tokens) {
             return None;
         }
-        let (green, new_errors) = parser_impl::parse_with::<yellow::GreenBuilder>(
+        let (green, new_errors) = parser_impl::parse_with::<syntax_node::GreenBuilder>(
             &te2t, &tokens, reparser,
         );
         let green_root = node.replace_with(green);
