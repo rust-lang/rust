@@ -25,7 +25,7 @@ Language
 - [You can now have irrefutable `if let` and `while let` patterns.][57535] Using
   this feature will by default produce a warning as this behaviour can be
   unintuitive. E.g. `if let _ = 5 {}`
-- [You can now use `let` bindings and pattern destructuring in
+- [You can now use `let` bindings, assignments, expression statements, and pattern destructuring in
   constant functions.][57175]
 - [You can now specify multiple attributes in a `cfg_attr` attribute.][57332]
   E.g. `#[cfg_attr(all(), must_use, optimize)]`
