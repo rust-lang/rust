@@ -70,7 +70,7 @@ Libraries
 - [The functions `count_ones`, `count_zeros`, `leading_zeros`, `trailing_zeros`,
   `swap_bytes`, `from_be`, `from_le`, `to_be`, `to_le` are now const for all
   numeric types.][57234]
-- [`Ipv4Addr::new` is now a constant function][57234]
+- [`Ipv4Addr::new` is now a const function][57234]
 
 Stabilized APIs
 ---------------
