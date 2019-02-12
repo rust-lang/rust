@@ -719,6 +719,25 @@ fn extra_compiler_flags() {
     );
 }
 
+#[test]
+fn infer_nested_generics_crash() {
+    // another crash found typechecking rustc
+    check_inference(
+        "infer_nested_generics_crash",
+        r#"
+struct Canonical<V> {
+    value: V,
+}
+struct QueryResponse<V> {
+    value: V,
+}
+fn test<R>(query_response: Canonical<QueryResponse<R>>) {
+    &query_response.value;
+}
+"#,
+    );
+}
+
 fn infer(content: &str) -> String {
     let (db, _, file_id) = MockDatabase::with_single_file(content);
     let source_file = db.parse(file_id);
