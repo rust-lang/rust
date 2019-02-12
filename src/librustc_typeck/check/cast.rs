@@ -31,8 +31,8 @@
 use super::FnCtxt;
 
 use errors::{DiagnosticBuilder,Applicability};
-use hir::def_id::DefId;
-use lint;
+use crate::hir::def_id::DefId;
+use crate::lint;
 use rustc::hir;
 use rustc::session::Session;
 use rustc::traits;
@@ -43,7 +43,7 @@ use rustc::ty::subst::Substs;
 use rustc::middle::lang_items;
 use syntax::ast;
 use syntax_pos::Span;
-use util::common::ErrorReported;
+use crate::util::common::ErrorReported;
 
 /// Reifies a cast check to be checked once we have full type information for
 /// a function context.
@@ -294,7 +294,7 @@ impl<'a, 'gcx, 'tcx> CastCheck<'tcx> {
                                   .emit();
             }
             CastError::SizedUnsizedCast => {
-                use structured_errors::{SizedUnsizedCastError, StructuredDiagnostic};
+                use crate::structured_errors::{SizedUnsizedCastError, StructuredDiagnostic};
                 SizedUnsizedCastError::new(&fcx.tcx.sess,
                                            self.span,
                                            self.expr_ty,

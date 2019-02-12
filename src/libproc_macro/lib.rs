@@ -17,6 +17,7 @@
 
 #![deny(rust_2018_idioms)]
 
+#![feature(nll)]
 #![feature(staged_api)]
 #![feature(const_fn)]
 #![feature(extern_types)]

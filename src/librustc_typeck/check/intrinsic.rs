@@ -4,7 +4,7 @@
 use rustc::traits::{ObligationCause, ObligationCauseCode};
 use rustc::ty::{self, TyCtxt, Ty};
 use rustc::ty::subst::Subst;
-use require_same_types;
+use crate::require_same_types;
 
 use rustc_target::spec::abi::Abi;
 use syntax::symbol::Symbol;

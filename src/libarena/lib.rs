@@ -11,17 +11,17 @@
 #![doc(html_root_url = "https://doc.rust-lang.org/nightly/",
        test(no_crate_inject, attr(deny(warnings))))]
 
+#![deny(rust_2018_idioms)]
+
 #![feature(alloc)]
 #![feature(core_intrinsics)]
 #![feature(dropck_eyepatch)]
-#![feature(nll)]
 #![feature(raw_vec_internals)]
 #![cfg_attr(test, feature(test))]
 
 #![allow(deprecated)]
 
 extern crate alloc;
-extern crate rustc_data_structures;
 
 use rustc_data_structures::sync::MTLock;
 
@@ -476,7 +476,7 @@ impl SyncDroplessArena {
 #[cfg(test)]
 mod tests {
     extern crate test;
-    use self::test::Bencher;
+    use test::Bencher;
     use super::TypedArena;
     use std::cell::Cell;
 
@@ -511,15 +511,15 @@ mod tests {
 
         impl<'a> Wrap<'a> {
             fn alloc_inner<F: Fn() -> Inner>(&self, f: F) -> &Inner {
-                let r: &EI = self.0.alloc(EI::I(f()));
+                let r: &EI<'_> = self.0.alloc(EI::I(f()));
                 if let &EI::I(ref i) = r {
                     i
                 } else {
                     panic!("mismatch");
                 }
             }
-            fn alloc_outer<F: Fn() -> Outer<'a>>(&self, f: F) -> &Outer {
-                let r: &EI = self.0.alloc(EI::O(f()));
+            fn alloc_outer<F: Fn() -> Outer<'a>>(&self, f: F) -> &Outer<'_> {
+                let r: &EI<'_> = self.0.alloc(EI::O(f()));
                 if let &EI::O(ref o) = r {
                     o
                 } else {
@@ -609,7 +609,7 @@ mod tests {
         count: &'a Cell<u32>,
     }
 
-    impl<'a> Drop for DropCounter<'a> {
+    impl Drop for DropCounter<'_> {
         fn drop(&mut self) {
             self.count.set(self.count.get() + 1);
         }
@@ -619,7 +619,7 @@ mod tests {
     fn test_typed_arena_drop_count() {
         let counter = Cell::new(0);
         {
-            let arena: TypedArena<DropCounter> = TypedArena::default();
+            let arena: TypedArena<DropCounter<'_>> = TypedArena::default();
             for _ in 0..100 {
                 // Allocate something with drop glue to make sure it doesn't leak.
                 arena.alloc(DropCounter { count: &counter });
@@ -631,7 +631,7 @@ mod tests {
     #[test]
     fn test_typed_arena_drop_on_clear() {
         let counter = Cell::new(0);
-        let mut arena: TypedArena<DropCounter> = TypedArena::default();
+        let mut arena: TypedArena<DropCounter<'_>> = TypedArena::default();
         for i in 0..10 {
             for _ in 0..100 {
                 // Allocate something with drop glue to make sure it doesn't leak.

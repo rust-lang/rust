@@ -1,9 +1,9 @@
 use super::{probe, MethodCallee};
 
-use astconv::AstConv;
-use check::{FnCtxt, PlaceOp, callee, Needs};
-use hir::GenericArg;
-use hir::def_id::DefId;
+use crate::astconv::AstConv;
+use crate::check::{FnCtxt, PlaceOp, callee, Needs};
+use crate::hir::GenericArg;
+use crate::hir::def_id::DefId;
 use rustc::ty::subst::Substs;
 use rustc::traits;
 use rustc::ty::{self, Ty, GenericParamDefKind};

@@ -14,13 +14,13 @@
 //! At present, however, we do run collection across all items in the
 //! crate as a kind of pass. This should eventually be factored away.
 
-use astconv::{AstConv, Bounds};
-use constrained_type_params as ctp;
-use check::intrinsic::intrisic_operation_unsafety;
-use lint;
-use middle::lang_items::SizedTraitLangItem;
-use middle::resolve_lifetime as rl;
-use middle::weak_lang_items;
+use crate::astconv::{AstConv, Bounds};
+use crate::constrained_type_params as ctp;
+use crate::check::intrinsic::intrisic_operation_unsafety;
+use crate::lint;
+use crate::middle::lang_items::SizedTraitLangItem;
+use crate::middle::resolve_lifetime as rl;
+use crate::middle::weak_lang_items;
 use rustc::mir::mono::Linkage;
 use rustc::ty::query::Providers;
 use rustc::ty::subst::Substs;
@@ -68,7 +68,7 @@ fn collect_mod_item_types<'tcx>(tcx: TyCtxt<'_, 'tcx, 'tcx>, module_def_id: DefI
     );
 }
 
-pub fn provide(providers: &mut Providers) {
+pub fn provide(providers: &mut Providers<'_>) {
     *providers = Providers {
         type_of,
         generics_of,

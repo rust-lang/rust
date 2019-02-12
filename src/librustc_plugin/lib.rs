@@ -52,6 +52,7 @@
 
 #![doc(html_root_url = "https://doc.rust-lang.org/nightly/")]
 
+#![feature(nll)]
 #![feature(rustc_diagnostic_macros)]
 
 #![recursion_limit="256"]

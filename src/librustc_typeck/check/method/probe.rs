@@ -3,11 +3,11 @@ use super::NoMatchData;
 use super::{CandidateSource, ImplSource, TraitSource};
 use super::suggest;
 
-use check::autoderef::{self, Autoderef};
-use check::FnCtxt;
-use hir::def_id::DefId;
-use hir::def::Def;
-use namespace::Namespace;
+use crate::check::autoderef::{self, Autoderef};
+use crate::check::FnCtxt;
+use crate::hir::def_id::DefId;
+use crate::hir::def::Def;
+use crate::namespace::Namespace;
 
 use rustc_data_structures::sync::Lrc;
 use rustc::hir;

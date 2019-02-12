@@ -1291,14 +1291,6 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
         value.visit_with(&mut r)
     }
 
-    pub fn resolve_type_and_region_vars_if_possible<T>(&self, value: &T) -> T
-    where
-        T: TypeFoldable<'tcx>,
-    {
-        let mut r = resolve::OpportunisticTypeAndRegionResolver::new(self);
-        value.fold_with(&mut r)
-    }
-
     pub fn fully_resolve<T: TypeFoldable<'tcx>>(&self, value: &T) -> FixupResult<T> {
         /*!
          * Attempts to resolve all type/region variables in

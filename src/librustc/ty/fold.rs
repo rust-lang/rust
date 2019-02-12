@@ -586,31 +586,6 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
         }).0
     }
 
-    /// Flattens multiple binding levels into one. So `for<'a> for<'b> Foo`
-    /// becomes `for<'a,'b> Foo`.
-    pub fn flatten_late_bound_regions<T>(self, bound2_value: &Binder<Binder<T>>)
-                                         -> Binder<T>
-        where T: TypeFoldable<'tcx>
-    {
-        let bound0_value = bound2_value.skip_binder().skip_binder();
-        let value = self.fold_regions(bound0_value, &mut false, |region, current_depth| {
-            match *region {
-                ty::ReLateBound(debruijn, br) => {
-                    // We assume no regions bound *outside* of the
-                    // binders in `bound2_value` (nmatsakis added in
-                    // the course of this PR; seems like a reasonable
-                    // sanity check though).
-                    assert!(debruijn == current_depth);
-                    self.mk_region(ty::ReLateBound(current_depth, br))
-                }
-                _ => {
-                    region
-                }
-            }
-        });
-        Binder::bind(value)
-    }
-
     /// Returns a set of all late-bound regions that are constrained
     /// by `value`, meaning that if we instantiate those LBR with
     /// variables and equate `value` with something else, those

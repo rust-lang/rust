@@ -3,11 +3,11 @@ use rustc::mir;
 use rustc::ty;
 use rustc::ty::layout::{self, Align, LayoutOf, TyLayout};
 
-use base;
-use MemFlags;
-use glue;
+use crate::base;
+use crate::MemFlags;
+use crate::glue;
 
-use traits::*;
+use crate::traits::*;
 
 use std::fmt;
 

@@ -1,4 +1,5 @@
 #![sanitizer_runtime]
+#![feature(nll)]
 #![feature(sanitizer_runtime)]
 #![feature(staged_api)]
 #![no_std]
