@@ -16,6 +16,7 @@ RUN sh /scripts/rustbuild-setup.sh
 USER rustbuild
 WORKDIR /tmp
 
+COPY dist-armv7-linux/patches/ /tmp/patches/
 COPY dist-armv7-linux/build-toolchains.sh dist-armv7-linux/armv7-linux-gnueabihf.config /tmp/
 RUN ./build-toolchains.sh
 

@@ -1,0 +1,48 @@
+commit bdb24c2851fd5f0ad9b82d7ea1db911d334b02d2
+Author: Joseph Myers <joseph@codesourcery.com>
+Date:   Tue May 20 21:27:13 2014 +0000
+
+    Fix ARM build with GCC trunk.
+    
+    sysdeps/unix/sysv/linux/arm/unwind-resume.c and
+    sysdeps/unix/sysv/linux/arm/unwind-forcedunwind.c have static
+    variables that are written in C code but only read from toplevel asms.
+    Current GCC trunk now optimizes away such apparently write-only static
+    variables, so causing a build failure.  This patch marks those
+    variables with __attribute_used__ to avoid that optimization.
+    
+    Tested that this fixes the build for ARM.
+    
+            * sysdeps/unix/sysv/linux/arm/unwind-forcedunwind.c
+            (libgcc_s_resume): Use __attribute_used__.
+            * sysdeps/unix/sysv/linux/arm/unwind-resume.c (libgcc_s_resume):
+            Likewise.
+
+diff --git a/sysdeps/unix/sysv/linux/arm/nptl/unwind-forcedunwind.c b/sysdeps/unix/sysv/linux/arm/nptl/unwind-forcedunwind.c
+index 29e2c2b00b04..e848bfeffdcb 100644
+--- a/ports/sysdeps/unix/sysv/linux/arm/nptl/unwind-forcedunwind.c
++++ b/ports/sysdeps/unix/sysv/linux/arm/nptl/unwind-forcedunwind.c
+@@ -22,7 +22,8 @@
+ #include <pthreadP.h>
+ 
+ static void *libgcc_s_handle;
+-static void (*libgcc_s_resume) (struct _Unwind_Exception *exc);
++static void (*libgcc_s_resume) (struct _Unwind_Exception *exc)
++  __attribute_used__;
+ static _Unwind_Reason_Code (*libgcc_s_personality)
+   (_Unwind_State, struct _Unwind_Exception *, struct _Unwind_Context *);
+ static _Unwind_Reason_Code (*libgcc_s_forcedunwind)
+diff --git a/sysdeps/unix/sysv/linux/arm/nptl/unwind-resume.c b/sysdeps/unix/sysv/linux/arm/nptl/unwind-resume.c
+index 285b99b5ed0d..48d00fc83641 100644
+--- a/ports/sysdeps/unix/sysv/linux/arm/nptl/unwind-resume.c
++++ b/ports/sysdeps/unix/sysv/linux/arm/nptl/unwind-resume.c
+@@ -20,7 +20,8 @@
+ #include <stdio.h>
+ #include <unwind.h>
+ 
+-static void (*libgcc_s_resume) (struct _Unwind_Exception *exc);
++static void (*libgcc_s_resume) (struct _Unwind_Exception *exc)
++  __attribute_used__;
+ static _Unwind_Reason_Code (*libgcc_s_personality)
+   (_Unwind_State, struct _Unwind_Exception *, struct _Unwind_Context *);
+ 
