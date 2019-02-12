@@ -223,10 +223,10 @@ pub fn from_fn_attrs(
     if codegen_fn_attrs.flags.contains(CodegenFnAttrFlags::COLD) {
         Attribute::Cold.apply_llfn(Function, llfn);
     }
-    if codegen_fn_attrs.flags.contains(CodegenFnAttrFlags::FFI_PURE) {
+    if codegen_fn_attrs.flags.contains(CodegenFnAttrFlags::C_FFI_PURE) {
         Attribute::ReadOnly.apply_llfn(Function, llfn);
     }
-    if codegen_fn_attrs.flags.contains(CodegenFnAttrFlags::FFI_CONST) {
+    if codegen_fn_attrs.flags.contains(CodegenFnAttrFlags::C_FFI_CONST) {
         Attribute::ReadNone.apply_llfn(Function, llfn);
     }
     if codegen_fn_attrs.flags.contains(CodegenFnAttrFlags::NAKED) {

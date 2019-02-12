@@ -290,11 +290,11 @@ declare_features! (
     // The `repr(i128)` annotation for enums.
     (active, repr128, "1.16.0", Some(35118), None),
 
-    // Allows the use of `#[ffi_pure]` on foreign functions.
-    (active, ffi_pure, "1.34.0", Some(58329), None),
+    // Allows the use of `#[c_ffi_pure]` on foreign functions.
+    (active, c_ffi_pure, "1.34.0", Some(58329), None),
 
-    // Allows the use of `#[ffi_const]` on foreign functions.
-    (active, ffi_const, "1.34.0", Some(58328), None),
+    // Allows the use of `#[c_ffi_const]` on foreign functions.
+    (active, c_ffi_const, "1.34.0", Some(58328), None),
 
     // The `unadjusted` ABI; perma-unstable.
     //
@@ -1130,16 +1130,16 @@ pub const BUILTIN_ATTRIBUTES: &[(&str, AttributeType, AttributeTemplate, Attribu
                                  "the `#[naked]` attribute \
                                   is an experimental feature",
                                  cfg_fn!(naked_functions))),
-    ("ffi_pure", Whitelisted, template!(Word), Gated(Stability::Unstable,
-                                                     "ffi_pure",
-                                                     "the `#[ffi_pure]` attribute \
+    ("c_ffi_pure", Whitelisted, template!(Word), Gated(Stability::Unstable,
+                                                     "c_ffi_pure",
+                                                     "the `#[c_ffi_pure]` attribute \
                                                       is an experimental feature",
-                                                     cfg_fn!(ffi_pure))),
-    ("ffi_const", Whitelisted, template!(Word), Gated(Stability::Unstable,
-                                                      "ffi_const",
-                                                      "the `#[ffi_const]` attribute \
+                                                     cfg_fn!(c_ffi_pure))),
+    ("c_ffi_const", Whitelisted, template!(Word), Gated(Stability::Unstable,
+                                                      "c_ffi_const",
+                                                      "the `#[c_ffi_const]` attribute \
                                                        is an experimental feature",
-                                                      cfg_fn!(ffi_const))),
+                                                      cfg_fn!(c_ffi_const))),
     ("target_feature", Whitelisted, template!(List: r#"enable = "name""#), Ungated),
     ("export_name", Whitelisted, template!(NameValueStr: "name"), Ungated),
     ("inline", Whitelisted, template!(Word, List: "always|never"), Ungated),

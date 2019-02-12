@@ -2270,28 +2270,37 @@ fn codegen_fn_attrs<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, id: DefId) -> Codegen
             codegen_fn_attrs.flags |= CodegenFnAttrFlags::ALLOCATOR;
         } else if attr.check_name("unwind") {
             codegen_fn_attrs.flags |= CodegenFnAttrFlags::UNWIND;
-        } else if attr.check_name("ffi_pure") {
+        } else if attr.check_name("c_ffi_pure") {
             if tcx.is_foreign_item(id) {
-                codegen_fn_attrs.flags |= CodegenFnAttrFlags::FFI_PURE;
+                codegen_fn_attrs.flags |= CodegenFnAttrFlags::C_FFI_PURE;
             } else {
-                // `#[ffi_pure]` is only allowed `extern fn`s
+                // `#[c_ffi_pure]` is only allowed on foreign functions
                 struct_span_err!(
                     tcx.sess,
                     attr.span,
                     E0724,
-                    "`#[ffi_pure]` may only be used on foreign functions"
+                    "`#[c_ffi_pure]` may only be used on foreign functions"
                 ).emit();
             }
-        } else if attr.check_name("ffi_const") {
+        } else if attr.check_name("c_ffi_const") {
             if tcx.is_foreign_item(id) {
-                codegen_fn_attrs.flags |= CodegenFnAttrFlags::FFI_CONST;
+                codegen_fn_attrs.flags |= CodegenFnAttrFlags::C_FFI_CONST;
             } else {
-                // `#[ffi_const]` is only allowed `extern fn`s
+                // `#[c_ffi_const]` is only allowed on foreign functions
                 struct_span_err!(
                     tcx.sess,
                     attr.span,
                     E0725,
-                    "`#[ffi_const]` may only be used on foreign functions"
+                    "`#[c_ffi_const]` may only be used on foreign functions"
+                ).emit();
+            }
+            if attrs.iter().any(|a| a.check_name("c_ffi_pure")) {
+                // `#[c_ffi_const]` functions cannot be `#[c_ffi_pure]`
+                struct_span_err!(
+                    tcx.sess,
+                    attr.span,
+                    E0726,
+                    "`#[c_ffi_const]` function cannot be`#[c_ffi_pure]`"
                 ).emit();
             }
         } else if attr.check_name("rustc_allocator_nounwind") {
