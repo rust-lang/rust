@@ -1830,17 +1830,29 @@ impl<'a, 'tcx> Visitor<'tcx> for VarVisitor<'a, 'tcx> {
             if let ExprKind::Path(ref qpath) = expr.node;
             if let QPath::Resolved(None, ref path) = *qpath;
             if path.segments.len() == 1;
-            if let Def::Local(local_id) = self.cx.tables.qpath_def(qpath, expr.hir_id);
             then {
-                if local_id == self.var {
-                    // we are not indexing anything, record that
-                    self.nonindex = true;
-                } else {
-                    // not the correct variable, but still a variable
-                    self.referenced.insert(path.segments[0].ident.name);
+                match self.cx.tables.qpath_def(qpath, expr.hir_id) {
+                    Def::Upvar(local_id, ..) => {
+                        if local_id == self.var {
+                            // we are not indexing anything, record that
+                            self.nonindex = true;
+                        }
+                    }
+                    Def::Local(local_id) =>
+                    {
+
+                        if local_id == self.var {
+                            self.nonindex = true;
+                        } else {
+                            // not the correct variable, but still a variable
+                            self.referenced.insert(path.segments[0].ident.name);
+                        }
+                    }
+                    _ => {}
                 }
             }
         }
+
         let old = self.prefer_mutable;
         match expr.node {
             ExprKind::AssignOp(_, ref lhs, ref rhs) | ExprKind::Assign(ref lhs, ref rhs) => {
@@ -1879,6 +1891,10 @@ impl<'a, 'tcx> Visitor<'tcx> for VarVisitor<'a, 'tcx> {
                     }
                     self.visit_expr(expr);
                 }
+            },
+            ExprKind::Closure(_, _, body_id, ..) => {
+                let body = self.cx.tcx.hir().body(body_id);
+                self.visit_expr(&body.value);
             },
             _ => walk_expr(self, expr),
         }

@@ -80,5 +80,15 @@ help: consider using an iterator
 LL |     for <item> in arr.iter().skip(1) {
    |         ^^^^^^    ^^^^^^^^^^^^^^^^^^
 
-error: aborting due to 8 previous errors
+error: the loop variable `i` is used to index `vec`
+  --> $DIR/needless_range_loop.rs:85:14
+   |
+LL |     for i in 0..vec.len() {
+   |              ^^^^^^^^^^^^
+help: consider using an iterator
+   |
+LL |     for (i, <item>) in vec.iter_mut().enumerate() {
+   |         ^^^^^^^^^^^    ^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 9 previous errors
 

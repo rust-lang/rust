@@ -80,4 +80,9 @@ fn main() {
     for i in 1..3 {
         println!("{}", arr[i]);
     }
+
+    // #2542
+    for i in 0..vec.len() {
+        vec[i] = Some(1).unwrap_or_else(|| panic!("error on {}", i));
+    }
 }
