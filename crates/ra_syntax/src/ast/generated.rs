@@ -13,7 +13,7 @@ use rowan::TransparentNewType;
 
 use crate::{
     SyntaxNode, SyntaxKind::*,
-    yellow::{RaTypes, TreeArc},
+    syntax_node::{RaTypes, TreeArc},
     ast::{self, AstNode},
 };
 

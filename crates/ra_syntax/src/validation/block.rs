@@ -1,6 +1,6 @@
 use crate::{SyntaxKind::*,
     ast::{self, AttrsOwner, AstNode},
-    yellow::{
+    syntax_node::{
         SyntaxError,
         SyntaxErrorKind::*,
     },

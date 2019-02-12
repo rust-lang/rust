@@ -5,7 +5,7 @@ mod string;
 mod block;
 
 use crate::{
-    SourceFile, yellow::SyntaxError, AstNode,
+    SourceFile, syntax_node::SyntaxError, AstNode,
     ast,
     algo::visit::{visitor_ctx, VisitorCtx},
 };

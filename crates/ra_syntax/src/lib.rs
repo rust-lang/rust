@@ -30,7 +30,7 @@ mod syntax_kinds;
 /// Utilities for simple uses of the parser.
 pub mod utils;
 mod validation;
-mod yellow;
+mod syntax_node;
 mod ptr;
 
 pub use rowan::{SmolStr, TextRange, TextUnit};
@@ -38,12 +38,12 @@ pub use crate::{
     ast::AstNode,
     lexer::{tokenize, Token},
     syntax_kinds::SyntaxKind,
-    yellow::{Direction, SyntaxError, SyntaxNode, WalkEvent, Location, TreeArc},
+    syntax_node::{Direction, SyntaxError, SyntaxNode, WalkEvent, Location, TreeArc},
     ptr::{SyntaxNodePtr, AstPtr},
 };
 
 use ra_text_edit::AtomTextEdit;
-use crate::yellow::GreenNode;
+use crate::syntax_node::GreenNode;
 
 /// `SourceFile` represents a parse tree for a single Rust file.
 pub use crate::ast::SourceFile;
@@ -61,7 +61,7 @@ impl SourceFile {
     pub fn parse(text: &str) -> TreeArc<SourceFile> {
         let tokens = tokenize(&text);
         let (green, errors) =
-            parser_impl::parse_with(yellow::GreenBuilder::new(), text, &tokens, grammar::root);
+            parser_impl::parse_with(syntax_node::GreenBuilder::new(), text, &tokens, grammar::root);
         SourceFile::new(green, errors)
     }
 

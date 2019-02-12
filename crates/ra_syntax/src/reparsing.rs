@@ -3,7 +3,7 @@ use crate::grammar;
 use crate::lexer::{tokenize, Token};
 use crate::parser_api::Parser;
 use crate::parser_impl;
-use crate::yellow::{self, GreenNode, SyntaxError, SyntaxNode};
+use crate::syntax_node::{self, GreenNode, SyntaxError, SyntaxNode};
 use crate::{SyntaxKind::*, TextRange, TextUnit};
 use ra_text_edit::AtomTextEdit;
 
@@ -56,7 +56,7 @@ fn reparse_block<'node>(
         return None;
     }
     let (green, new_errors) =
-        parser_impl::parse_with(yellow::GreenBuilder::new(), &text, &tokens, reparser);
+        parser_impl::parse_with(syntax_node::GreenBuilder::new(), &text, &tokens, reparser);
     Some((node, green, new_errors))
 }
 

@@ -1,6 +1,6 @@
 use crate::{
     parser_impl::Sink,
-    yellow::{GreenNode, RaTypes, SyntaxError},
+    syntax_node::{GreenNode, RaTypes, SyntaxError},
     SmolStr, SyntaxKind,
 };
 use rowan::GreenNodeBuilder;

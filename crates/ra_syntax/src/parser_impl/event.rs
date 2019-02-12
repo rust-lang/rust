@@ -13,7 +13,7 @@ use crate::{
     SmolStr,
     SyntaxKind::{self, *},
     TextRange, TextUnit,
-    yellow::syntax_error::{
+    syntax_node::syntax_error::{
         ParseError,
         SyntaxError,
         SyntaxErrorKind,
