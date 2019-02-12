@@ -188,40 +188,6 @@ impl<'a, 'tcx, Q: QueryDescription<'tcx>> JobOwner<'a, 'tcx, Q> {
 
         job.signal_complete();
     }
-
-    /// Executes a job by changing the ImplicitCtxt to point to the
-    /// new query job while it executes. It returns the diagnostics
-    /// captured during execution and the actual result.
-    #[inline(always)]
-    pub(super) fn start<'lcx, F, R>(
-        &self,
-        tcx: TyCtxt<'_, 'tcx, 'lcx>,
-        diagnostics: Option<&Lock<ThinVec<Diagnostic>>>,
-        compute: F)
-    -> R
-    where
-        F: for<'b> FnOnce(TyCtxt<'b, 'tcx, 'lcx>) -> R
-    {
-        // The TyCtxt stored in TLS has the same global interner lifetime
-        // as `tcx`, so we use `with_related_context` to relate the 'gcx lifetimes
-        // when accessing the ImplicitCtxt
-        tls::with_related_context(tcx, move |current_icx| {
-            // Update the ImplicitCtxt to point to our new query job
-            let new_icx = tls::ImplicitCtxt {
-                tcx: tcx.global_tcx(),
-                query: Some(self.job.clone()),
-                diagnostics,
-                layout_depth: current_icx.layout_depth,
-                task_deps: current_icx.task_deps,
-            };
-
-            // Use the ImplicitCtxt while we execute the query
-            tls::enter_context(&new_icx, |_| {
-                compute(tcx)
-            })
-        })
-    }
-
 }
 
 #[inline(always)]
@@ -265,6 +231,39 @@ pub(super) enum TryGetJob<'a, 'tcx: 'a, D: QueryDescription<'tcx> + 'a> {
 }
 
 impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
+    /// Executes a job by changing the ImplicitCtxt to point to the
+    /// new query job while it executes. It returns the diagnostics
+    /// captured during execution and the actual result.
+    #[inline(always)]
+    pub(super) fn start_query<F, R>(
+        self,
+        job: Lrc<QueryJob<'gcx>>,
+        diagnostics: Option<&Lock<ThinVec<Diagnostic>>>,
+        compute: F)
+    -> R
+    where
+        F: for<'b, 'lcx> FnOnce(TyCtxt<'b, 'gcx, 'lcx>) -> R
+    {
+        // The TyCtxt stored in TLS has the same global interner lifetime
+        // as `self`, so we use `with_related_context` to relate the 'gcx lifetimes
+        // when accessing the ImplicitCtxt
+        tls::with_related_context(self, move |current_icx| {
+            // Update the ImplicitCtxt to point to our new query job
+            let new_icx = tls::ImplicitCtxt {
+                tcx: self.global_tcx(),
+                query: Some(job),
+                diagnostics,
+                layout_depth: current_icx.layout_depth,
+                task_deps: current_icx.task_deps,
+            };
+
+            // Use the ImplicitCtxt while we execute the query
+            tls::enter_context(&new_icx, |_| {
+                compute(self.global_tcx())
+            })
+        })
+    }
+
     #[inline(never)]
     #[cold]
     pub(super) fn report_cycle(
@@ -378,7 +377,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
             self.sess.profiler(|p| p.start_query(Q::NAME, Q::CATEGORY));
 
             let ((result, dep_node_index), diagnostics) = with_diagnostics(|diagnostics| {
-                job.start(self, diagnostics, |tcx| {
+                self.start_query(job.job.clone(), diagnostics, |tcx| {
                     tcx.dep_graph.with_anon_task(dep_node.kind, || {
                         Q::compute(tcx.global_tcx(), key)
                     })
@@ -401,16 +400,23 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
         }
 
         if !dep_node.kind.is_input() {
-            if let Some((prev_dep_node_index,
-                         dep_node_index)) = self.dep_graph.try_mark_green_and_read(self,
-                                                                                   &dep_node) {
-                return Ok(self.load_from_disk_and_cache_in_memory::<Q>(
-                    key,
-                    job,
-                    prev_dep_node_index,
-                    dep_node_index,
-                    &dep_node
-                ))
+            // The diagnostics for this query will be
+            // promoted to the current session during
+            // try_mark_green(), so we can ignore them here.
+            let loaded = self.start_query(job.job.clone(), None, |tcx| {
+                let marked = tcx.dep_graph.try_mark_green_and_read(tcx, &dep_node);
+                marked.map(|(prev_dep_node_index, dep_node_index)| {
+                    (tcx.load_from_disk_and_cache_in_memory::<Q>(
+                        key.clone(),
+                        prev_dep_node_index,
+                        dep_node_index,
+                        &dep_node
+                    ), dep_node_index)
+                })
+            });
+            if let Some((result, dep_node_index)) = loaded {
+                job.complete(&result, dep_node_index);
+                return Ok(result);
             }
         }
 
@@ -422,7 +428,6 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
     fn load_from_disk_and_cache_in_memory<Q: QueryDescription<'gcx>>(
         self,
         key: Q::Key,
-        job: JobOwner<'a, 'gcx, Q>,
         prev_dep_node_index: SerializedDepNodeIndex,
         dep_node_index: DepNodeIndex,
         dep_node: &DepNode
@@ -461,15 +466,10 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
 
             self.sess.profiler(|p| p.start_query(Q::NAME, Q::CATEGORY));
 
-            // The diagnostics for this query have already been
-            // promoted to the current session during
-            // try_mark_green(), so we can ignore them here.
-            let result = job.start(self, None, |tcx| {
-                // The dep-graph for this computation is already in
-                // place
-                tcx.dep_graph.with_ignore(|| {
-                    Q::compute(tcx, key)
-                })
+            // The dep-graph for this computation is already in
+            // place
+            let result = self.dep_graph.with_ignore(|| {
+                Q::compute(self, key)
             });
 
             self.sess.profiler(|p| p.end_query(Q::NAME, Q::CATEGORY));
@@ -485,8 +485,6 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
         if unlikely!(self.sess.opts.debugging_opts.query_dep_graph) {
             self.dep_graph.mark_loaded_from_cache(dep_node_index, true);
         }
-
-        job.complete(&result, dep_node_index);
 
         result
     }
@@ -540,7 +538,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
         self.sess.profiler(|p| p.start_query(Q::NAME, Q::CATEGORY));
 
         let ((result, dep_node_index), diagnostics) = with_diagnostics(|diagnostics| {
-            job.start(self, diagnostics, |tcx| {
+            self.start_query(job.job.clone(), diagnostics, |tcx| {
                 if dep_node.kind.is_eval_always() {
                     tcx.dep_graph.with_eval_always_task(dep_node,
                                                         tcx,
