@@ -10,7 +10,7 @@ use rustc::mir::traversal;
 use rustc::ty;
 use rustc::ty::layout::{LayoutOf, HasTyCtxt};
 use super::FunctionCx;
-use traits::*;
+use crate::traits::*;
 
 pub fn non_ssa_locals<'a, 'tcx: 'a, Bx: BuilderMethods<'a, 'tcx>>(
     fx: &FunctionCx<'a, 'tcx, Bx>

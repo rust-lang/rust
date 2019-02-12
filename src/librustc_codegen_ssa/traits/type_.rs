@@ -1,8 +1,8 @@
 use super::misc::MiscMethods;
 use super::Backend;
 use super::HasCodegen;
-use common::{self, TypeKind};
-use mir::place::PlaceRef;
+use crate::common::{self, TypeKind};
+use crate::mir::place::PlaceRef;
 use rustc::ty::layout::{self, Align, Size, TyLayout};
 use rustc::ty::{self, Ty};
 use rustc::util::nodemap::FxHashMap;

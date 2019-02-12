@@ -1,5 +1,5 @@
 use super::BackendTypes;
-use mir::place::PlaceRef;
+use crate::mir::place::PlaceRef;
 use rustc::hir::{GlobalAsm, InlineAsm};
 
 pub trait AsmBuilderMethods<'tcx>: BackendTypes {

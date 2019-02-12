@@ -5,11 +5,11 @@ use syntax_pos::{DUMMY_SP, Span};
 
 use rustc::hir::def_id::DefId;
 use rustc::middle::lang_items::LangItem;
-use base;
-use traits::*;
+use crate::base;
+use crate::traits::*;
 
 use rustc::hir;
-use traits::BuilderMethods;
+use crate::traits::BuilderMethods;
 
 pub fn type_needs_drop<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, ty: Ty<'tcx>) -> bool {
     ty.needs_drop(tcx, ty::ParamEnv::reveal_all())
@@ -123,7 +123,7 @@ pub enum TypeKind {
 mod temp_stable_hash_impls {
     use rustc_data_structures::stable_hasher::{StableHasherResult, StableHasher,
                                                HashStable};
-    use ModuleCodegen;
+    use crate::ModuleCodegen;
 
     impl<HCX, M> HashStable<HCX> for ModuleCodegen<M> {
         fn hash_stable<W: StableHasherResult>(&self,

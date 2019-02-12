@@ -1,8 +1,8 @@
 use rustc_target::abi::call::FnType;
-use callee;
 use rustc_mir::monomorphize;
 
-use traits::*;
+use crate::callee;
+use crate::traits::*;
 
 use rustc::ty::{self, Ty};
 

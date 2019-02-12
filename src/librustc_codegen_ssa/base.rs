@@ -13,7 +13,7 @@
 //!     but one llvm::Type corresponds to many `Ty`s; for instance, tup(int, int,
 //!     int) and rec(x=int, y=int, z=int) will have the same llvm::Type.
 
-use {ModuleCodegen, ModuleKind, CachedModuleCodegen};
+use crate::{ModuleCodegen, ModuleKind, CachedModuleCodegen};
 
 use rustc::dep_graph::cgu_reuse_tracker::CguReuse;
 use rustc::hir::def_id::{CrateNum, DefId, LOCAL_CRATE};
@@ -28,26 +28,26 @@ use rustc::util::common::{time, print_time_passes_entry};
 use rustc::util::profiling::ProfileCategory;
 use rustc::session::config::{self, EntryFnType, Lto};
 use rustc::session::Session;
-use mir::place::PlaceRef;
-use back::write::{OngoingCodegen, start_async_codegen, submit_pre_lto_module_to_llvm,
-    submit_post_lto_module_to_llvm};
-use {MemFlags, CrateInfo};
-use callee;
 use rustc_mir::monomorphize::item::DefPathBasedNames;
-use common::{RealPredicate, TypeKind, IntPredicate};
-use meth;
-use mir;
 use rustc::util::time_graph;
 use rustc_mir::monomorphize::Instance;
 use rustc_mir::monomorphize::partitioning::{CodegenUnit, CodegenUnitExt};
-use mono_item::MonoItem;
 use rustc::util::nodemap::FxHashMap;
 use rustc_data_structures::indexed_vec::Idx;
 use rustc_data_structures::sync::Lrc;
 use rustc_codegen_utils::{symbol_names_test, check_for_rustc_errors_attr};
 use rustc::ty::layout::{FAT_PTR_ADDR, FAT_PTR_EXTRA};
+use crate::mir::place::PlaceRef;
+use crate::back::write::{OngoingCodegen, start_async_codegen, submit_pre_lto_module_to_llvm,
+    submit_post_lto_module_to_llvm};
+use crate::{MemFlags, CrateInfo};
+use crate::callee;
+use crate::common::{RealPredicate, TypeKind, IntPredicate};
+use crate::meth;
+use crate::mir;
+use crate::mono_item::MonoItem;
 
-use traits::*;
+use crate::traits::*;
 
 use std::any::Any;
 use std::cmp;
@@ -58,7 +58,7 @@ use syntax_pos::Span;
 use syntax::attr;
 use rustc::hir;
 
-use mir::operand::OperandValue;
+use crate::mir::operand::OperandValue;
 
 use std::marker::PhantomData;
 
