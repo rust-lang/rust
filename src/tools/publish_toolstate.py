@@ -145,10 +145,18 @@ def update_latest(
                         build_failed = True
 
             if build_failed:
-                issue(
-                    tool, MAINTAINERS.get(tool),
-                    relevant_pr_number, relevant_pr_user, pr_reviewer,
-                )
+                try:
+                    issue(
+                        tool, MAINTAINERS.get(tool),
+                        relevant_pr_number, relevant_pr_user, pr_reviewer,
+                    )
+                except IOError as (errno, strerror):
+                    # network errors will simply end up not creating an issue, but that's better
+                    # than failing the entire build job
+                    print "I/O error({0}): {1}".format(errno, strerror)
+                except:
+                    print "Unexpected error:", sys.exc_info()[0]
+                    raise
 
             if changed:
                 status['commit'] = current_commit
