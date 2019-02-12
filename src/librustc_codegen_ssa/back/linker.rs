@@ -1207,6 +1207,6 @@ impl<'a> Linker for PtxLinker<'a> {
     fn group_end(&mut self) {
     }
 
-    fn cross_lang_lto(&mut self) {
+    fn linker_plugin_lto(&mut self) {
     }
 }
