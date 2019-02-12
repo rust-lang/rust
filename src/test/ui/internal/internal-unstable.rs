@@ -13,7 +13,7 @@ macro_rules! foo {
     }}
 }
 
-#[allow_internal_unstable]
+#[allow_internal_unstable(function)]
 macro_rules! bar {
     ($e: expr) => {{
         foo!($e,

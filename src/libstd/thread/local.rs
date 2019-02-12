@@ -126,7 +126,8 @@ impl<T: 'static> fmt::Debug for LocalKey<T> {
 /// [`std::thread::LocalKey`]: ../std/thread/struct.LocalKey.html
 #[macro_export]
 #[stable(feature = "rust1", since = "1.0.0")]
-#[allow_internal_unstable]
+#[cfg_attr(stage0, allow_internal_unstable)]
+#[cfg_attr(not(stage0), allow_internal_unstable(thread_local_internals))]
 macro_rules! thread_local {
     // empty (base case for the recursion)
     () => {};
@@ -148,7 +149,10 @@ macro_rules! thread_local {
            reason = "should not be necessary",
            issue = "0")]
 #[macro_export]
-#[allow_internal_unstable]
+#[cfg_attr(stage0, allow_internal_unstable)]
+#[cfg_attr(not(stage0), allow_internal_unstable(
+    thread_local_internals, cfg_target_thread_local, thread_local,
+))]
 #[allow_internal_unsafe]
 macro_rules! __thread_local_inner {
     (@key $(#[$attr:meta])* $vis:vis $name:ident, $t:ty, $init:expr) => {

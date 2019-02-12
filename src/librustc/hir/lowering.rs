@@ -44,6 +44,7 @@ use crate::middle::cstore::CrateStore;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_data_structures::indexed_vec::IndexVec;
 use rustc_data_structures::thin_vec::ThinVec;
+use rustc_data_structures::sync::Lrc;
 use crate::session::Session;
 use crate::session::config::nightly_options;
 use crate::util::common::FN_OUTPUT_NAME;
@@ -681,13 +682,20 @@ impl<'a> LoweringContext<'a> {
         Ident::with_empty_ctxt(Symbol::gensym(s))
     }
 
-    fn allow_internal_unstable(&self, reason: CompilerDesugaringKind, span: Span) -> Span {
+    /// Reuses the span but adds information like the kind of the desugaring and features that are
+    /// allowed inside this span.
+    fn mark_span_with_reason(
+        &self,
+        reason: CompilerDesugaringKind,
+        span: Span,
+        allow_internal_unstable: Option<Lrc<[Symbol]>>,
+    ) -> Span {
         let mark = Mark::fresh(Mark::root());
         mark.set_expn_info(source_map::ExpnInfo {
             call_site: span,
             def_site: Some(span),
             format: source_map::CompilerDesugaring(reason),
-            allow_internal_unstable: true,
+            allow_internal_unstable,
             allow_internal_unsafe: false,
             local_inner_macros: false,
             edition: source_map::hygiene::default_edition(),
@@ -964,7 +972,13 @@ impl<'a> LoweringContext<'a> {
             attrs: ThinVec::new(),
         };
 
-        let unstable_span = self.allow_internal_unstable(CompilerDesugaringKind::Async, span);
+        let unstable_span = self.mark_span_with_reason(
+            CompilerDesugaringKind::Async,
+            span,
+            Some(vec![
+                Symbol::intern("gen_future"),
+            ].into()),
+        );
         let gen_future = self.expr_std_path(
             unstable_span, &["future", "from_generator"], None, ThinVec::new());
         hir::ExprKind::Call(P(gen_future), hir_vec![generator])
@@ -1360,9 +1374,10 @@ impl<'a> LoweringContext<'a> {
         // desugaring that explicitly states that we don't want to track that.
         // Not tracking it makes lints in rustc and clippy very fragile as
         // frequently opened issues show.
-        let exist_ty_span = self.allow_internal_unstable(
+        let exist_ty_span = self.mark_span_with_reason(
             CompilerDesugaringKind::ExistentialReturnType,
             span,
+            None,
         );
 
         let exist_ty_def_index = self
@@ -3927,8 +3942,13 @@ impl<'a> LoweringContext<'a> {
             }),
             ExprKind::TryBlock(ref body) => {
                 self.with_catch_scope(body.id, |this| {
-                    let unstable_span =
-                        this.allow_internal_unstable(CompilerDesugaringKind::TryBlock, body.span);
+                    let unstable_span = this.mark_span_with_reason(
+                        CompilerDesugaringKind::TryBlock,
+                        body.span,
+                        Some(vec![
+                            Symbol::intern("try_trait"),
+                        ].into()),
+                    );
                     let mut block = this.lower_block(body, true).into_inner();
                     let tail = block.expr.take().map_or_else(
                         || {
@@ -4360,9 +4380,10 @@ impl<'a> LoweringContext<'a> {
                 // expand <head>
                 let head = self.lower_expr(head);
                 let head_sp = head.span;
-                let desugared_span = self.allow_internal_unstable(
+                let desugared_span = self.mark_span_with_reason(
                     CompilerDesugaringKind::ForLoop,
                     head_sp,
+                    None,
                 );
 
                 let iter = self.str_to_ident("iter");
@@ -4525,8 +4546,13 @@ impl<'a> LoweringContext<'a> {
                 //                 return Try::from_error(From::from(err)),
                 // }
 
-                let unstable_span =
-                    self.allow_internal_unstable(CompilerDesugaringKind::QuestionMark, e.span);
+                let unstable_span = self.mark_span_with_reason(
+                    CompilerDesugaringKind::QuestionMark,
+                    e.span,
+                    Some(vec![
+                        Symbol::intern("try_trait")
+                    ].into()),
+                );
 
                 // `Try::into_result(<expr>)`
                 let discr = {

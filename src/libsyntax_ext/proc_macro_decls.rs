@@ -333,7 +333,10 @@ fn mk_decls(
         call_site: DUMMY_SP,
         def_site: None,
         format: MacroAttribute(Symbol::intern("proc_macro")),
-        allow_internal_unstable: true,
+        allow_internal_unstable: Some(vec![
+            Symbol::intern("rustc_attrs"),
+            Symbol::intern("proc_macro_internals"),
+        ].into()),
         allow_internal_unsafe: false,
         local_inner_macros: false,
         edition: hygiene::default_edition(),

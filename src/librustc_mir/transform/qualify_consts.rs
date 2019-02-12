@@ -909,7 +909,7 @@ impl<'a, 'tcx> Visitor<'tcx> for Qualifier<'a, 'tcx, 'tcx> {
                                     // Check `#[unstable]` const fns or `#[rustc_const_unstable]`
                                     // functions without the feature gate active in this crate in
                                     // order to report a better error message than the one below.
-                                    if self.span.allows_unstable() {
+                                    if self.span.allows_unstable(&feature.as_str()) {
                                         // `allow_internal_unstable` can make such calls stable.
                                         is_const_fn = true;
                                     } else {

@@ -53,7 +53,8 @@
 /// ```
 #[macro_export]
 #[stable(feature = "rust1", since = "1.0.0")]
-#[allow_internal_unstable]
+#[cfg_attr(stage0, allow_internal_unstable)]
+#[cfg_attr(not(stage0), allow_internal_unstable(__rust_unstable_column, libstd_sys_internals))]
 macro_rules! panic {
     () => ({
         panic!("explicit panic")
@@ -111,7 +112,8 @@ macro_rules! panic {
 /// ```
 #[macro_export]
 #[stable(feature = "rust1", since = "1.0.0")]
-#[allow_internal_unstable]
+#[cfg_attr(stage0, allow_internal_unstable)]
+#[cfg_attr(not(stage0), allow_internal_unstable(print_internals))]
 macro_rules! print {
     ($($arg:tt)*) => ($crate::io::_print(format_args!($($arg)*)));
 }
@@ -143,7 +145,8 @@ macro_rules! print {
 /// ```
 #[macro_export]
 #[stable(feature = "rust1", since = "1.0.0")]
-#[allow_internal_unstable]
+#[cfg_attr(stage0, allow_internal_unstable)]
+#[cfg_attr(not(stage0), allow_internal_unstable(print_internals, format_args_nl))]
 macro_rules! println {
     () => (print!("\n"));
     ($($arg:tt)*) => ({
@@ -174,7 +177,8 @@ macro_rules! println {
 /// ```
 #[macro_export]
 #[stable(feature = "eprint", since = "1.19.0")]
-#[allow_internal_unstable]
+#[cfg_attr(stage0, allow_internal_unstable)]
+#[cfg_attr(not(stage0), allow_internal_unstable(print_internals))]
 macro_rules! eprint {
     ($($arg:tt)*) => ($crate::io::_eprint(format_args!($($arg)*)));
 }
@@ -202,7 +206,8 @@ macro_rules! eprint {
 /// ```
 #[macro_export]
 #[stable(feature = "eprint", since = "1.19.0")]
-#[allow_internal_unstable]
+#[cfg_attr(stage0, allow_internal_unstable)]
+#[cfg_attr(not(stage0), allow_internal_unstable(print_internals, format_args_nl))]
 macro_rules! eprintln {
     () => (eprint!("\n"));
     ($($arg:tt)*) => ({
@@ -325,7 +330,8 @@ macro_rules! dbg {
 /// A macro to await on an async call.
 #[macro_export]
 #[unstable(feature = "await_macro", issue = "50547")]
-#[allow_internal_unstable]
+#[cfg_attr(stage0, allow_internal_unstable)]
+#[cfg_attr(not(stage0), allow_internal_unstable(gen_future, generators))]
 #[allow_internal_unsafe]
 macro_rules! await {
     ($e:expr) => { {

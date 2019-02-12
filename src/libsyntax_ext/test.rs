@@ -66,7 +66,10 @@ pub fn expand_test_or_bench(
             call_site: DUMMY_SP,
             def_site: None,
             format: MacroAttribute(Symbol::intern("test")),
-            allow_internal_unstable: true,
+            allow_internal_unstable: Some(vec![
+                Symbol::intern("rustc_attrs"),
+                Symbol::intern("test"),
+            ].into()),
             allow_internal_unsafe: false,
             local_inner_macros: false,
             edition: hygiene::default_edition(),

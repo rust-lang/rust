@@ -34,7 +34,8 @@
 #[cfg(not(test))]
 #[macro_export]
 #[stable(feature = "rust1", since = "1.0.0")]
-#[allow_internal_unstable]
+#[cfg_attr(not(stage0), allow_internal_unstable(box_syntax))]
+#[cfg_attr(stage0, allow_internal_unstable)]
 macro_rules! vec {
     ($elem:expr; $n:expr) => (
         $crate::vec::from_elem($elem, $n)

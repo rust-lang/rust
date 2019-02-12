@@ -12,6 +12,7 @@ use crate::symbol::{keywords, Symbol};
 
 use serialize::{Encodable, Decodable, Encoder, Decoder};
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
+use rustc_data_structures::sync::Lrc;
 use std::{fmt, mem};
 
 /// A SyntaxContext represents a chain of macro expansions (represented by marks).
@@ -550,10 +551,10 @@ pub struct ExpnInfo {
     pub def_site: Option<Span>,
     /// The format with which the macro was invoked.
     pub format: ExpnFormat,
-    /// Whether the macro is allowed to use #[unstable]/feature-gated
-    /// features internally without forcing the whole crate to opt-in
+    /// List of #[unstable]/feature-gated features that the macro is allowed to use
+    /// internally without forcing the whole crate to opt-in
     /// to them.
-    pub allow_internal_unstable: bool,
+    pub allow_internal_unstable: Option<Lrc<[Symbol]>>,
     /// Whether the macro is allowed to use `unsafe` internally
     /// even if the user crate has `#![forbid(unsafe_code)]`.
     pub allow_internal_unsafe: bool,

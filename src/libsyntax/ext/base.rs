@@ -621,7 +621,8 @@ pub enum SyntaxExtension {
     /// A function-like procedural macro. TokenStream -> TokenStream.
     ProcMacro {
         expander: Box<dyn ProcMacro + sync::Sync + sync::Send>,
-        allow_internal_unstable: bool,
+        /// Whitelist of unstable features that are treated as stable inside this macro
+        allow_internal_unstable: Option<Lrc<[Symbol]>>,
         edition: Edition,
     },
 
@@ -638,8 +639,10 @@ pub enum SyntaxExtension {
         expander: Box<dyn TTMacroExpander + sync::Sync + sync::Send>,
         def_info: Option<(ast::NodeId, Span)>,
         /// Whether the contents of the macro can
-        /// directly use `#[unstable]` things (true == yes).
-        allow_internal_unstable: bool,
+        /// directly use `#[unstable]` things.
+        ///
+        /// Only allows things that require a feature gate in the given whitelist
+        allow_internal_unstable: Option<Lrc<[Symbol]>>,
         /// Whether the contents of the macro can use `unsafe`
         /// without triggering the `unsafe_code` lint.
         allow_internal_unsafe: bool,
@@ -654,8 +657,11 @@ pub enum SyntaxExtension {
 
     /// A function-like syntax extension that has an extra ident before
     /// the block.
-    ///
-    IdentTT(Box<dyn IdentMacroExpander + sync::Sync + sync::Send>, Option<Span>, bool),
+    IdentTT {
+        expander: Box<dyn IdentMacroExpander + sync::Sync + sync::Send>,
+        span: Option<Span>,
+        allow_internal_unstable: Option<Lrc<[Symbol]>>,
+    },
 
     /// An attribute-like procedural macro. TokenStream -> TokenStream.
     /// The input is the annotated item.
@@ -682,7 +688,7 @@ impl SyntaxExtension {
         match *self {
             SyntaxExtension::DeclMacro { .. } |
             SyntaxExtension::NormalTT { .. } |
-            SyntaxExtension::IdentTT(..) |
+            SyntaxExtension::IdentTT { .. } |
             SyntaxExtension::ProcMacro { .. } =>
                 MacroKind::Bang,
             SyntaxExtension::NonMacroAttr { .. } |
@@ -716,7 +722,7 @@ impl SyntaxExtension {
             SyntaxExtension::ProcMacroDerive(.., edition) => edition,
             // Unstable legacy stuff
             SyntaxExtension::NonMacroAttr { .. } |
-            SyntaxExtension::IdentTT(..) |
+            SyntaxExtension::IdentTT { .. } |
             SyntaxExtension::MultiDecorator(..) |
             SyntaxExtension::MultiModifier(..) |
             SyntaxExtension::BuiltinDerive(..) => hygiene::default_edition(),

@@ -558,7 +558,7 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
             call_site: attr.span,
             def_site: None,
             format: MacroAttribute(Symbol::intern(&attr.path.to_string())),
-            allow_internal_unstable: false,
+            allow_internal_unstable: None,
             allow_internal_unsafe: false,
             local_inner_macros: false,
             edition: ext.edition(),
@@ -725,7 +725,8 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
                 // don't stability-check macros in the same crate
                 // (the only time this is null is for syntax extensions registered as macros)
                 if def_site_span.map_or(false, |def_span| !crate_span.contains(def_span))
-                    && !span.allows_unstable() && this.cx.ecfg.features.map_or(true, |feats| {
+                    && !span.allows_unstable(&feature.as_str())
+                    && this.cx.ecfg.features.map_or(true, |feats| {
                     // macro features will count as lib features
                     !feats.declared_lib_features.iter().any(|&(feat, _)| feat == feature)
                 }) {
@@ -757,7 +758,7 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
         let opt_expanded = match *ext {
             DeclMacro { ref expander, def_info, edition, .. } => {
                 if let Err(dummy_span) = validate_and_set_expn_info(self, def_info.map(|(_, s)| s),
-                                                                    false, false, false, None,
+                                                                    None, false, false, None,
                                                                     edition) {
                     dummy_span
                 } else {
@@ -768,14 +769,14 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
             NormalTT {
                 ref expander,
                 def_info,
-                allow_internal_unstable,
+                ref allow_internal_unstable,
                 allow_internal_unsafe,
                 local_inner_macros,
                 unstable_feature,
                 edition,
             } => {
                 if let Err(dummy_span) = validate_and_set_expn_info(self, def_info.map(|(_, s)| s),
-                                                                    allow_internal_unstable,
+                                                                    allow_internal_unstable.clone(),
                                                                     allow_internal_unsafe,
                                                                     local_inner_macros,
                                                                     unstable_feature,
@@ -791,7 +792,7 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
                 }
             }
 
-            IdentTT(ref expander, tt_span, allow_internal_unstable) => {
+            IdentTT { ref expander, span: tt_span, ref allow_internal_unstable } => {
                 if ident.name == keywords::Invalid.name() {
                     self.cx.span_err(path.span,
                                     &format!("macro {}! expects an ident argument", path));
@@ -802,7 +803,7 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
                         call_site: span,
                         def_site: tt_span,
                         format: macro_bang_format(path),
-                        allow_internal_unstable,
+                        allow_internal_unstable: allow_internal_unstable.clone(),
                         allow_internal_unsafe: false,
                         local_inner_macros: false,
                         edition: hygiene::default_edition(),
@@ -827,7 +828,7 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
                 kind.dummy(span)
             }
 
-            SyntaxExtension::ProcMacro { ref expander, allow_internal_unstable, edition } => {
+            SyntaxExtension::ProcMacro { ref expander, ref allow_internal_unstable, edition } => {
                 if ident.name != keywords::Invalid.name() {
                     let msg =
                         format!("macro {}! expects no ident argument, given '{}'", path, ident);
@@ -843,7 +844,7 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
                         def_site: None,
                         format: macro_bang_format(path),
                         // FIXME probably want to follow macro_rules macros here.
-                        allow_internal_unstable,
+                        allow_internal_unstable: allow_internal_unstable.clone(),
                         allow_internal_unsafe: false,
                         local_inner_macros: false,
                         edition,
@@ -918,7 +919,7 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
             call_site: span,
             def_site: None,
             format: MacroAttribute(pretty_name),
-            allow_internal_unstable: false,
+            allow_internal_unstable: None,
             allow_internal_unsafe: false,
             local_inner_macros: false,
             edition: ext.edition(),
@@ -937,7 +938,12 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
                 Some(invoc.fragment_kind.expect_from_annotatables(items))
             }
             BuiltinDerive(func) => {
-                expn_info.allow_internal_unstable = true;
+                expn_info.allow_internal_unstable = Some(vec![
+                    Symbol::intern("rustc_attrs"),
+                    Symbol::intern("derive_clone_copy"),
+                    Symbol::intern("derive_eq"),
+                    Symbol::intern("libstd_sys_internals"), // RustcDeserialize and RustcSerialize
+                ].into());
                 invoc.expansion_data.mark.set_expn_info(expn_info);
                 let span = span.with_ctxt(self.cx.backtrace());
                 let mut items = Vec::new();

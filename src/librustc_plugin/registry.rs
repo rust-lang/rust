@@ -110,8 +110,8 @@ impl<'a> Registry<'a> {
                     edition,
                 }
             }
-            IdentTT(ext, _, allow_internal_unstable) => {
-                IdentTT(ext, Some(self.krate_span), allow_internal_unstable)
+            IdentTT { expander, span: _, allow_internal_unstable } => {
+                IdentTT { expander, span: Some(self.krate_span), allow_internal_unstable }
             }
             _ => extension,
         }));
@@ -126,7 +126,7 @@ impl<'a> Registry<'a> {
         self.register_syntax_extension(Symbol::intern(name), NormalTT {
             expander: Box::new(expander),
             def_info: None,
-            allow_internal_unstable: false,
+            allow_internal_unstable: None,
             allow_internal_unsafe: false,
             local_inner_macros: false,
             unstable_feature: None,

@@ -570,7 +570,7 @@ impl<'a> CrateLoader<'a> {
                 ProcMacro::Bang { name, client } => {
                     (name, SyntaxExtension::ProcMacro {
                         expander: Box::new(BangProcMacro { client }),
-                        allow_internal_unstable: false,
+                        allow_internal_unstable: None,
                         edition: root.edition,
                     })
                 }

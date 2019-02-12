@@ -41,7 +41,10 @@ pub fn expand(
             call_site: DUMMY_SP,
             def_site: None,
             format: MacroAttribute(Symbol::intern("test_case")),
-            allow_internal_unstable: true,
+            allow_internal_unstable: Some(vec![
+                Symbol::intern("test"),
+                Symbol::intern("rustc_attrs"),
+            ].into()),
             allow_internal_unsafe: false,
             local_inner_macros: false,
             edition: hygiene::default_edition(),
