@@ -1,6 +1,6 @@
 use hir::db::HirDatabase;
 use ra_syntax::{
-    ast, AstNode, SyntaxNode, Direction, TextRange,
+    ast::{ self, NameOwner }, AstNode, SyntaxNode, Direction, TextRange,
     SyntaxKind::{ PATH, PATH_SEGMENT, COLONCOLON, COMMA }
 };
 use crate::assist_ctx::{AssistCtx, Assist, AssistBuilder};
@@ -513,9 +513,20 @@ pub(crate) fn auto_import(mut ctx: AssistCtx<impl HirDatabase>) -> Option<Assist
         return None;
     }
 
-    ctx.add_action(format!("import {} in the current file", fmt_segments(&segments)), |edit| {
-        apply_auto_import(current_file.syntax(), path, &segments, edit);
-    });
+    if let Some(module) = path.syntax().ancestors().find_map(ast::Module::cast) {
+        if let (Some(item_list), Some(name)) = (module.item_list(), module.name()) {
+            ctx.add_action(
+                format!("import {} in mod {}", fmt_segments(&segments), name.text()),
+                |edit| {
+                    apply_auto_import(item_list.syntax(), path, &segments, edit);
+                },
+            );
+        }
+    } else {
+        ctx.add_action(format!("import {} in the current file", fmt_segments(&segments)), |edit| {
+            apply_auto_import(current_file.syntax(), path, &segments, edit);
+        });
+    }
 
     ctx.build()
 }
@@ -760,6 +771,29 @@ impl foo<|> for Foo {
             "
 use std::fmt<|>;
 ",
+        );
+    }
+
+    #[test]
+    fn test_auto_import_file_add_use_no_anchor_in_mod_mod() {
+        check_assist(
+            auto_import,
+            "
+mod foo {
+    mod bar {
+        std::fmt::Debug<|>
+    }
+}
+    ",
+            "
+mod foo {
+    mod bar {
+        use std::fmt::Debug;
+
+        Debug<|>
+    }
+}
+    ",
         );
     }
 }
