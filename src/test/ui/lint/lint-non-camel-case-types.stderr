@@ -1,8 +1,8 @@
-error: type `ONE_TWO_THREE` should have a camel case name
+error: type `ONE_TWO_THREE` should have an upper camel case name
   --> $DIR/lint-non-camel-case-types.rs:4:8
    |
 LL | struct ONE_TWO_THREE;
-   |        ^^^^^^^^^^^^^ help: convert the identifier to camel case: `OneTwoThree`
+   |        ^^^^^^^^^^^^^ help: convert the identifier to upper camel case: `OneTwoThree`
    |
 note: lint level defined here
   --> $DIR/lint-non-camel-case-types.rs:1:11
@@ -10,65 +10,47 @@ note: lint level defined here
 LL | #![forbid(non_camel_case_types)]
    |           ^^^^^^^^^^^^^^^^^^^^
 
-error: type `foo` should have a camel case name
+error: type `foo` should have an upper camel case name
   --> $DIR/lint-non-camel-case-types.rs:7:8
    |
-LL | struct foo { //~ ERROR type `foo` should have a camel case name
-   |        ^^^ help: convert the identifier to camel case: `Foo`
+LL | struct foo { //~ ERROR type `foo` should have an upper camel case name
+   |        ^^^ help: convert the identifier to upper camel case: `Foo`
 
-error: type `foo2` should have a camel case name
+error: type `foo2` should have an upper camel case name
   --> $DIR/lint-non-camel-case-types.rs:11:6
    |
-LL | enum foo2 { //~ ERROR type `foo2` should have a camel case name
-   |      ^^^^ help: convert the identifier to camel case: `Foo2`
+LL | enum foo2 { //~ ERROR type `foo2` should have an upper camel case name
+   |      ^^^^ help: convert the identifier to upper camel case: `Foo2`
 
-error: type `foo3` should have a camel case name
+error: type `foo3` should have an upper camel case name
   --> $DIR/lint-non-camel-case-types.rs:15:8
    |
-LL | struct foo3 { //~ ERROR type `foo3` should have a camel case name
-   |        ^^^^ help: convert the identifier to camel case: `Foo3`
+LL | struct foo3 { //~ ERROR type `foo3` should have an upper camel case name
+   |        ^^^^ help: convert the identifier to upper camel case: `Foo3`
 
-error: type `foo4` should have a camel case name
+error: type `foo4` should have an upper camel case name
   --> $DIR/lint-non-camel-case-types.rs:19:6
    |
-LL | type foo4 = isize; //~ ERROR type `foo4` should have a camel case name
-   |      ^^^^ help: convert the identifier to camel case: `Foo4`
+LL | type foo4 = isize; //~ ERROR type `foo4` should have an upper camel case name
+   |      ^^^^ help: convert the identifier to upper camel case: `Foo4`
 
-error: variant `bar` should have a camel case name
+error: variant `bar` should have an upper camel case name
   --> $DIR/lint-non-camel-case-types.rs:22:5
    |
-LL |     bar //~ ERROR variant `bar` should have a camel case name
-   |     ^^^ help: convert the identifier to camel case: `Bar`
+LL |     bar //~ ERROR variant `bar` should have an upper camel case name
+   |     ^^^ help: convert the identifier to upper camel case: `Bar`
 
-error: trait `foo6` should have a camel case name
+error: trait `foo6` should have an upper camel case name
   --> $DIR/lint-non-camel-case-types.rs:25:7
    |
-LL | trait foo6 { //~ ERROR trait `foo6` should have a camel case name
-   |       ^^^^ help: convert the identifier to camel case: `Foo6`
+LL | trait foo6 { //~ ERROR trait `foo6` should have an upper camel case name
+   |       ^^^^ help: convert the identifier to upper camel case: `Foo6`
 
-error: type parameter `ty` should have a camel case name
+error: type parameter `ty` should have an upper camel case name
   --> $DIR/lint-non-camel-case-types.rs:29:6
    |
-LL | fn f<ty>(_: ty) {} //~ ERROR type parameter `ty` should have a camel case name
-   |      ^^ help: convert the identifier to camel case: `Ty`
+LL | fn f<ty>(_: ty) {} //~ ERROR type parameter `ty` should have an upper camel case name
+   |      ^^ help: convert the identifier to upper camel case: `Ty`
 
-error: type `X86__64` should have a camel case name
-  --> $DIR/lint-non-camel-case-types.rs:38:8
-   |
-LL | struct X86__64; //~ ERROR type `X86__64` should have a camel case name
-   |        ^^^^^^^ help: convert the identifier to camel case: `X86_64`
-
-error: type `Abc_123` should have a camel case name
-  --> $DIR/lint-non-camel-case-types.rs:40:8
-   |
-LL | struct Abc_123; //~ ERROR type `Abc_123` should have a camel case name
-   |        ^^^^^^^ help: convert the identifier to camel case: `Abc123`
-
-error: type `A1_b2_c3` should have a camel case name
-  --> $DIR/lint-non-camel-case-types.rs:42:8
-   |
-LL | struct A1_b2_c3; //~ ERROR type `A1_b2_c3` should have a camel case name
-   |        ^^^^^^^^ help: convert the identifier to camel case: `A1B2C3`
-
-error: aborting due to 11 previous errors
+error: aborting due to 8 previous errors
 
