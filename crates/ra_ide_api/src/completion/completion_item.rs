@@ -8,6 +8,8 @@ use test_utils::tested_by;
 use crate::completion::{
     completion_context::CompletionContext,
     function_label,
+    const_label,
+    type_label
 };
 
 /// `CompletionItem` describes a single completion variant in the editor pop-up.
@@ -267,6 +269,28 @@ impl Builder {
         self.kind = Some(CompletionItemKind::Function);
         self
     }
+
+    pub(super) fn from_const(mut self, ctx: &CompletionContext, ct: hir::Const) -> Builder {
+        if let Some(docs) = ct.docs(ctx.db) {
+            self.documentation = Some(docs);
+        }
+
+        self.detail = Some(const_item_label(ctx, ct));
+        self.kind = Some(CompletionItemKind::Const);
+
+        self
+    }
+
+    pub(super) fn from_type(mut self, ctx: &CompletionContext, ty: hir::Type) -> Builder {
+        if let Some(docs) = ty.docs(ctx.db) {
+            self.documentation = Some(docs);
+        }
+
+        self.detail = Some(type_item_label(ctx, ty));
+        self.kind = Some(CompletionItemKind::TypeAlias);
+
+        self
+    }
 }
 
 impl<'a> Into<CompletionItem> for Builder {
@@ -303,6 +327,16 @@ impl Into<Vec<CompletionItem>> for Completions {
 fn function_item_label(ctx: &CompletionContext, function: hir::Function) -> Option<String> {
     let node = function.source(ctx.db).1;
     function_label(&node)
+}
+
+fn const_item_label(ctx: &CompletionContext, ct: hir::Const) -> String {
+    let node = ct.source(ctx.db).1;
+    const_label(&node)
+}
+
+fn type_item_label(ctx: &CompletionContext, ty: hir::Type) -> String {
+    let node = ty.source(ctx.db).1;
+    type_label(&node)
 }
 
 #[cfg(test)]

@@ -80,3 +80,25 @@ pub fn function_label(node: &ast::FnDef) -> Option<String> {
 
     Some(label.trim().to_owned())
 }
+
+pub fn const_label(node: &ast::ConstDef) -> String {
+    let label: String = node
+        .syntax()
+        .children()
+        .filter(|child| ast::Comment::cast(child).is_none())
+        .map(|node| node.text().to_string())
+        .collect();
+
+    label.trim().to_owned()
+}
+
+pub fn type_label(node: &ast::TypeDef) -> String {
+    let label: String = node
+        .syntax()
+        .children()
+        .filter(|child| ast::Comment::cast(child).is_none())
+        .map(|node| node.text().to_string())
+        .collect();
+
+    label.trim().to_owned()
+}
