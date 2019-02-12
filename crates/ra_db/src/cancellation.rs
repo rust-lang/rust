@@ -15,7 +15,7 @@
 //! any background processing (this bit is handled by salsa, see the
 //! `BaseDatabase::check_canceled` method).
 
-/// An "error" signifing that the operation was canceled.
+/// An "error" signifying that the operation was canceled.
 #[derive(Clone, PartialEq, Eq, Hash)]
 pub struct Canceled {
     _private: (),

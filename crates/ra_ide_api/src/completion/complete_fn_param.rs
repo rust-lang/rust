@@ -7,7 +7,7 @@ use rustc_hash::FxHashMap;
 
 use crate::completion::{CompletionContext, Completions, CompletionKind, CompletionItem};
 
-/// Complete repeated parametes, both name and type. For example, if all
+/// Complete repeated parameters, both name and type. For example, if all
 /// functions in a file have a `spam: &mut Spam` parameter, a completion with
 /// `spam: &mut Spam` insert text/label and `spam` lookup string will be
 /// suggested.

@@ -84,7 +84,7 @@ impl ExprScopes {
     fn add_bindings(&mut self, body: &Body, scope: ScopeId, pat: PatId) {
         match &body[pat] {
             Pat::Bind { name, .. } => {
-                // bind can have a subpattern, but it's actually not allowed
+                // bind can have a sub pattern, but it's actually not allowed
                 // to bind to things in there
                 let entry = ScopeEntry { name: name.clone(), pat };
                 self.scopes[scope].entries.push(entry)

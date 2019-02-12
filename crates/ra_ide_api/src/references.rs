@@ -295,17 +295,17 @@ mod tests {
     fn test_rename(text: &str, new_name: &str, expected: &str) {
         let (analysis, position) = single_file_with_position(text);
         let source_change = analysis.rename(position, new_name).unwrap();
-        let mut text_edit_bulder = ra_text_edit::TextEditBuilder::default();
+        let mut text_edit_builder = ra_text_edit::TextEditBuilder::default();
         let mut file_id: Option<FileId> = None;
         if let Some(change) = source_change {
             for edit in change.source_file_edits {
                 file_id = Some(edit.file_id);
                 for atom in edit.edit.as_atoms() {
-                    text_edit_bulder.replace(atom.delete, atom.insert.clone());
+                    text_edit_builder.replace(atom.delete, atom.insert.clone());
                 }
             }
         }
-        let result = text_edit_bulder.finish().apply(&*analysis.file_text(file_id.unwrap()));
+        let result = text_edit_builder.finish().apply(&*analysis.file_text(file_id.unwrap()));
         assert_eq_text!(expected, &*result);
     }
 }

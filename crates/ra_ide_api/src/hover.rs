@@ -71,8 +71,8 @@ pub(crate) fn type_of(db: &RootDatabase, frange: FileRange) -> Option<String> {
     }
 }
 
-// FIXME: this should not really use navigation target. Rather, approximatelly
-// resovled symbol should return a `DefId`.
+// FIXME: this should not really use navigation target. Rather, approximately
+// resolved symbol should return a `DefId`.
 fn doc_text_for(db: &RootDatabase, nav: NavigationTarget) -> Option<String> {
     match (nav.description(db), nav.docs(db)) {
         (Some(desc), Some(docs)) => Some("```rust\n".to_string() + &*desc + "\n```\n\n" + &*docs),

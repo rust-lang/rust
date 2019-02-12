@@ -490,7 +490,7 @@ impl ItemMap {
                 None => {
                     // we still have path segments left, but the path so far
                     // didn't resolve in the types namespace => no resolution
-                    // (don't break here because curr_per_ns might contain
+                    // (don't break here because `curr_per_ns` might contain
                     // something in the value namespace, and it would be wrong
                     // to return that)
                     return (PerNs::none(), ReachedFixedPoint::No);

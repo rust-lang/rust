@@ -134,7 +134,7 @@ impl Module {
 
     /// Topmost parent of this module. Every module has a `crate_root`, but some
     /// might be missing `krate`. This can happen if a module's file is not included
-    /// in the module tree of any target in Cargo.toml.
+    /// in the module tree of any target in `Cargo.toml`.
     pub fn crate_root(&self, db: &impl PersistentHirDatabase) -> Module {
         self.crate_root_impl(db)
     }
@@ -351,7 +351,7 @@ impl Enum {
         db.type_for_def((*self).into())
     }
 
-    // TODO move to a more general type
+    // TODO: move to a more general type
     /// Builds a resolver for type references inside this struct.
     pub fn resolver(&self, db: &impl HirDatabase) -> Resolver {
         // take the outer scope...
@@ -495,7 +495,7 @@ impl Function {
         db.generic_params((*self).into())
     }
 
-    // TODO move to a more general type for 'body-having' items
+    // TODO: move to a more general type for 'body-having' items
     /// Builds a resolver for code inside this item.
     pub fn resolver(&self, db: &impl HirDatabase) -> Resolver {
         // take the outer scope...

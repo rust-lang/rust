@@ -17,9 +17,9 @@ pub(crate) fn remove_dbg(mut ctx: AssistCtx<impl HirDatabase>) -> Option<Assist>
 
     let macro_range = macro_call.syntax().range();
 
-    // If the cursor is inside the macrocall, we'll try to maintain
-    // the cursor position by subtracting the length of dbg!( from the start
-    // of the filerange, otherwise we'll default to using the start of the macrocall
+    // If the cursor is inside the macro call, we'll try to maintain the cursor
+    // position by subtracting the length of dbg!( from the start of the file
+    // range, otherwise we'll default to using the start of the macro call
     let cursor_pos = {
         let file_range = ctx.frange.range;
 
@@ -61,7 +61,7 @@ fn is_valid_macrocall(macro_call: &ast::MacroCall, macro_name: &str) -> Option<b
     let path = macro_call.path()?;
     let name_ref = path.segment()?.name_ref()?;
 
-    // Make sure it is actually a dbg-macrocall, dbg followed by !
+    // Make sure it is actually a dbg-macro call, dbg followed by !
     let excl = path.syntax().next_sibling()?;
 
     if name_ref.text() != macro_name || excl.kind() != EXCL {

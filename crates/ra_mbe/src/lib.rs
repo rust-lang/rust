@@ -109,7 +109,7 @@ mod tests {
 
     use super::*;
 
-    // Good first issue (although a slightly chellegning one):
+    // Good first issue (although a slightly challenging one):
     //
     // * Pick a random test from here
     //   https://github.com/intellij-rust/intellij-rust/blob/c4e9feee4ad46e7953b1948c112533360b6087bb/src/test/kotlin/org/rust/lang/core/macros/RsMacroExpansionTest.kt
@@ -171,8 +171,8 @@ impl_froms!(TokenTree: Leaf, Subtree);
 
         let (invocation_tt, _) = ast_to_token_tree(macro_invocation.token_tree().unwrap()).unwrap();
 
-        let expaned = rules.expand(&invocation_tt).unwrap();
-        assert_eq!(expaned.to_string(), expansion);
+        let expanded = rules.expand(&invocation_tt).unwrap();
+        assert_eq!(expanded.to_string(), expansion);
     }
 
     #[test]

@@ -169,7 +169,7 @@ fn convert_notify_event(event: DebouncedEvent, sender: &Sender<(PathBuf, ChangeK
             // ignore
         }
         DebouncedEvent::Rescan => {
-            // TODO rescan all roots
+            // TODO: rescan all roots
         }
         DebouncedEvent::Create(path) => {
             sender.send((path, ChangeKind::Create)).unwrap();
@@ -185,7 +185,7 @@ fn convert_notify_event(event: DebouncedEvent, sender: &Sender<(PathBuf, ChangeK
             sender.send((dst, ChangeKind::Create)).unwrap();
         }
         DebouncedEvent::Error(err, path) => {
-            // TODO should we reload the file contents?
+            // TODO: should we reload the file contents?
             log::warn!("watcher error \"{}\", {:?}", err, path);
         }
     }

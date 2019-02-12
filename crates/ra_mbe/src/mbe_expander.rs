@@ -58,7 +58,7 @@ fn expand_rule(rule: &crate::Rule, input: &tt::Subtree) -> Option<tt::Subtree> {
 ///
 /// The other side of the puzzle is `expand_subtree`, where we use the bindings
 /// to substitute meta variables in the output template. When expanding, we
-/// maintain a `nesteing` stack of indicies whihc tells us which occurence from
+/// maintain a `nesting` stack of indices which tells us which occurrence from
 /// the `Bindings` we should take. We push to the stack when we enter a
 /// repetition.
 ///
