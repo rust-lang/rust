@@ -71,6 +71,7 @@ pub fn function_label(node: &ast::FnDef) -> Option<String> {
             .children()
             .filter(|child| !child.range().is_subrange(&body_range)) // Filter out body
             .filter(|child| ast::Comment::cast(child).is_none()) // Filter out comments
+            .filter(|child| ast::Attr::cast(child).is_none()) // Filter out attributes
             .map(|node| node.text().to_string())
             .collect();
         label
@@ -86,6 +87,7 @@ pub fn const_label(node: &ast::ConstDef) -> String {
         .syntax()
         .children()
         .filter(|child| ast::Comment::cast(child).is_none())
+        .filter(|child| ast::Attr::cast(child).is_none())
         .map(|node| node.text().to_string())
         .collect();
 
@@ -97,6 +99,7 @@ pub fn type_label(node: &ast::TypeDef) -> String {
         .syntax()
         .children()
         .filter(|child| ast::Comment::cast(child).is_none())
+        .filter(|child| ast::Attr::cast(child).is_none())
         .map(|node| node.text().to_string())
         .collect();
 
