@@ -191,12 +191,13 @@ pub fn ty_fn_sig<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, ty: Ty<'tcx>) -> ty::FnS
 pub fn get_function_name_and_sig<'a, 'tcx>(
     tcx: TyCtxt<'a, 'tcx, 'tcx>,
     inst: Instance<'tcx>,
+    support_vararg: bool
 ) -> (String, Signature) {
     assert!(!inst.substs.needs_infer() && !inst.substs.has_param_types());
     let fn_ty = inst.ty(tcx);
     let fn_sig = ty_fn_sig(tcx, fn_ty);
-    if fn_sig.variadic {
-        unimpl!("Variadic functions are not yet supported");
+    if fn_sig.variadic && !support_vararg {
+        unimpl!("Variadic function definitions are not yet supported");
     }
     let sig = clif_sig_from_fn_sig(tcx, fn_sig);
     (tcx.symbol_name(inst).as_str().to_string(), sig)
@@ -208,7 +209,7 @@ pub fn import_function<'a, 'tcx: 'a>(
     module: &mut Module<impl Backend>,
     inst: Instance<'tcx>,
 ) -> FuncId {
-    let (name, sig) = get_function_name_and_sig(tcx, inst);
+    let (name, sig) = get_function_name_and_sig(tcx, inst, true);
     module
         .declare_function(&name, Linkage::Import, &sig)
         .unwrap()
@@ -658,6 +659,23 @@ pub fn codegen_call_inner<'a, 'tcx: 'a>(
         let func_ref = fx.get_function_ref(instance.expect("non-indirect call on non-FnDef type"));
         fx.bcx.ins().call(func_ref, &call_args)
     };
+
+    // FIXME find a cleaner way to support varargs
+    if fn_sig.variadic {
+        if fn_sig.abi != Abi::C {
+            unimpl!("Variadic call for non-C abi {:?}", fn_sig.abi);
+        }
+        let sig_ref = fx.bcx.func.dfg.call_signature(call_inst).unwrap();
+        let abi_params = call_args.into_iter().map(|arg| {
+            let ty = fx.bcx.func.dfg.value_type(arg);
+            if !ty.is_int() {
+                // FIXME set %al to upperbound on float args once floats are supported
+                unimpl!("Non int ty {:?} for variadic call", ty);
+            }
+            AbiParam::new(ty)
+        }).collect::<Vec<AbiParam>>();
+        fx.bcx.func.dfg.signatures[sig_ref].params = abi_params;
+    }
 
     match output_pass_mode {
         PassMode::NoPass => {}
