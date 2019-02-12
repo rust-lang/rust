@@ -136,8 +136,8 @@ impl Ty {
         })
     }
 
-    // This would be nicer if it just returned an iterator, but that's really
-    // complicated with all the cancelable operations
+    // This would be nicer if it just returned an iterator, but that runs into
+    // lifetime problems, because we need to borrow temp `CrateImplBlocks`.
     pub fn iterate_methods<T>(
         self,
         db: &impl HirDatabase,
