@@ -7,7 +7,7 @@ publish = false
 
 [dependencies]
 itertools = "0.8.0"
-superslice = "0.1.0"
+superslice = "1.0.0"
 join_to_string = "0.1.1"
 rustc-hash = "1.0"
 
