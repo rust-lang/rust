@@ -13,7 +13,7 @@ fn main() {
     let xref2 = &mut *xref1; // derived from xref1, so using raw is still okay...
     callee(xref1_sneaky);
     let _val = *xref2; // ...but any use of it will invalidate our ref.
-    //~^ ERROR: does not exist on the stack
+    //~^ ERROR: does not exist on the borrow stack
 }
 
 fn callee(xref1: usize) {
