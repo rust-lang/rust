@@ -829,7 +829,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Pass {
 
         let (method_names, arg_lists) = method_calls(expr, 2);
         let method_names: Vec<LocalInternedString> = method_names.iter().map(|s| s.as_str()).collect();
-        let method_names: Vec<&str> = method_names.iter().map(|s| s.as_ref()).collect();
+        let method_names: Vec<&str> = method_names.iter().map(std::convert::AsRef::as_ref).collect();
 
         match method_names.as_slice() {
             ["unwrap", "get"] => lint_get_unwrap(cx, expr, arg_lists[1], false),
@@ -1695,7 +1695,7 @@ fn derefs_to_slice(cx: &LateContext<'_, '_>, expr: &hir::Expr, ty: Ty<'_>) -> Op
 
     if let hir::ExprKind::MethodCall(ref path, _, ref args) = expr.node {
         if path.ident.name == "iter" && may_slice(cx, cx.tables.expr_ty(&args[0])) {
-            sugg::Sugg::hir_opt(cx, &args[0]).map(|sugg| sugg.addr())
+            sugg::Sugg::hir_opt(cx, &args[0]).map(sugg::Sugg::addr)
         } else {
             None
         }

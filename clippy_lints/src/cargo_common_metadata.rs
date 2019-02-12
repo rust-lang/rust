@@ -53,7 +53,7 @@ fn is_empty_str(value: &Option<String>) -> bool {
 
 fn is_empty_vec(value: &[String]) -> bool {
     // This works because empty iterators return true
-    value.iter().all(|v| v.is_empty())
+    value.iter().all(std::string::String::is_empty)
 }
 
 pub struct Pass;

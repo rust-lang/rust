@@ -9,8 +9,8 @@ macro_rules! get_version_info {
         let crate_name = String::from(env!("CARGO_PKG_NAME"));
 
         let host_compiler = $crate::get_channel();
-        let commit_hash = option_env!("GIT_HASH").map(|s| s.to_string());
-        let commit_date = option_env!("COMMIT_DATE").map(|s| s.to_string());
+        let commit_hash = option_env!("GIT_HASH").map(str::to_string);
+        let commit_date = option_env!("COMMIT_DATE").map(str::to_string);
 
         VersionInfo {
             major,

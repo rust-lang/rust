@@ -47,7 +47,7 @@ impl Lint {
             name: name.to_lowercase(),
             group: group.to_string(),
             desc: NL_ESCAPE_RE.replace(&desc.replace("\\\"", "\""), "").to_string(),
-            deprecation: deprecation.map(|d| d.to_string()),
+            deprecation: deprecation.map(std::string::ToString::to_string),
             module: module.to_string(),
         }
     }
@@ -178,7 +178,7 @@ fn lint_files() -> impl Iterator<Item = walkdir::DirEntry> {
     // Otherwise we would not collect all the lints, for example in `clippy_lints/src/methods/`.
     WalkDir::new("../clippy_lints/src")
         .into_iter()
-        .filter_map(|f| f.ok())
+        .filter_map(std::result::Result::ok)
         .filter(|f| f.path().extension() == Some(OsStr::new("rs")))
 }
 

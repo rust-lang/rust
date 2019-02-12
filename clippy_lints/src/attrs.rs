@@ -326,7 +326,7 @@ fn check_clippy_lint_names(cx: &LateContext<'_, '_>, items: &[NestedMetaItem]) {
                     lint.span,
                     &format!("unknown clippy lint: clippy::{}", name),
                     |db| {
-                        if name.as_str().chars().any(|c| c.is_uppercase()) {
+                        if name.as_str().chars().any(char::is_uppercase) {
                             let name_lower = name.as_str().to_lowercase();
                             match lint_store.check_lint_name(
                                 &name_lower,
