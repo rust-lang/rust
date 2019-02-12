@@ -190,7 +190,7 @@ pub fn handle_workspace_symbol(
                 name: nav.name().to_string(),
                 kind: nav.kind().conv(),
                 location: nav.try_conv_with(world)?,
-                container_name: None,
+                container_name: nav.container_name().map(|v| v.to_string()),
                 deprecated: None,
             };
             res.push(info);

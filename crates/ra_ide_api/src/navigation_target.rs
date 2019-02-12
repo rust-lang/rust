@@ -19,11 +19,16 @@ pub struct NavigationTarget {
     kind: SyntaxKind,
     full_range: TextRange,
     focus_range: Option<TextRange>,
+    container_name: Option<SmolStr>,
 }
 
 impl NavigationTarget {
     pub fn name(&self) -> &SmolStr {
         &self.name
+    }
+
+    pub fn container_name(&self) -> Option<&SmolStr> {
+        self.container_name.as_ref()
     }
 
     pub fn kind(&self) -> SyntaxKind {
@@ -53,6 +58,7 @@ impl NavigationTarget {
             kind: symbol.ptr.kind(),
             full_range: symbol.ptr.range(),
             focus_range: None,
+            container_name: symbol.container_name.map(|v| v.clone()),
         }
     }
 
@@ -67,6 +73,7 @@ impl NavigationTarget {
             full_range: ptr.range(),
             focus_range: None,
             kind: NAME,
+            container_name: None,
         }
     }
 
@@ -170,6 +177,9 @@ impl NavigationTarget {
         if let Some(focus_range) = self.focus_range() {
             buf.push_str(&format!(" {:?}", focus_range))
         }
+        if let Some(container_name) = self.container_name() {
+            buf.push_str(&format!(" {:?}", container_name))
+        }
         buf
     }
 
@@ -192,6 +202,7 @@ impl NavigationTarget {
             full_range: node.range(),
             focus_range,
             // ptr: Some(LocalSyntaxPtr::new(node)),
+            container_name: None,
         }
     }
 }

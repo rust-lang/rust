@@ -32,6 +32,7 @@ use ra_syntax::{
     algo::{visit::{visitor, Visitor}, find_covering_node},
     SyntaxKind::{self, *},
     ast::{self, NameOwner},
+    WalkEvent,
 };
 use ra_db::{
     SourceRootId, SourceDatabase,
@@ -62,17 +63,14 @@ pub(crate) trait SymbolsDatabase: hir::db::HirDatabase {
 fn file_symbols(db: &impl SymbolsDatabase, file_id: FileId) -> Arc<SymbolIndex> {
     db.check_canceled();
     let source_file = db.parse(file_id);
-    let mut symbols = source_file
-        .syntax()
-        .descendants()
-        .filter_map(to_symbol)
-        .map(move |(name, ptr)| FileSymbol { name, ptr, file_id })
-        .collect::<Vec<_>>();
+
+    let mut symbols = source_file_to_file_symbols(&source_file, file_id);
 
     for (name, text_range) in hir::source_binder::macro_symbols(db, file_id) {
         let node = find_covering_node(source_file.syntax(), text_range);
         let ptr = SyntaxNodePtr::new(node);
-        symbols.push(FileSymbol { file_id, name, ptr })
+        // TODO: Should we get container name for macro symbols?
+        symbols.push(FileSymbol { file_id, name, ptr, container_name: None })
     }
 
     Arc::new(SymbolIndex::new(symbols))
@@ -158,13 +156,7 @@ impl SymbolIndex {
         files: impl ParallelIterator<Item = (FileId, TreeArc<SourceFile>)>,
     ) -> SymbolIndex {
         let symbols = files
-            .flat_map(|(file_id, file)| {
-                file.syntax()
-                    .descendants()
-                    .filter_map(to_symbol)
-                    .map(move |(name, ptr)| FileSymbol { name, ptr, file_id })
-                    .collect::<Vec<_>>()
-            })
+            .flat_map(|(file_id, file)| source_file_to_file_symbols(&file, file_id))
             .collect::<Vec<_>>();
         SymbolIndex::new(symbols)
     }
@@ -208,6 +200,16 @@ fn is_type(kind: SyntaxKind) -> bool {
     }
 }
 
+fn is_symbol_def(kind: SyntaxKind) -> bool {
+    match kind {
+        FN_DEF | STRUCT_DEF | ENUM_DEF | TRAIT_DEF | MODULE | TYPE_DEF | CONST_DEF | STATIC_DEF => {
+            true
+        }
+
+        _ => false,
+    }
+}
+
 /// The actual data that is stored in the index. It should be as compact as
 /// possible.
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -215,12 +217,40 @@ pub(crate) struct FileSymbol {
     pub(crate) file_id: FileId,
     pub(crate) name: SmolStr,
     pub(crate) ptr: SyntaxNodePtr,
+    pub(crate) container_name: Option<SmolStr>,
+}
+
+fn source_file_to_file_symbols(source_file: &SourceFile, file_id: FileId) -> Vec<FileSymbol> {
+    let mut symbols = Vec::new();
+    let mut stack = Vec::new();
+
+    for event in source_file.syntax().preorder() {
+        match event {
+            WalkEvent::Enter(node) => {
+                if let Some(mut symbol) = to_file_symbol(node, file_id) {
+                    symbol.container_name = stack.last().map(|v: &SmolStr| v.clone());
+
+                    stack.push(symbol.name.clone());
+                    symbols.push(symbol);
+                }
+            }
+
+            WalkEvent::Leave(node) => {
+                if is_symbol_def(node.kind()) {
+                    stack.pop();
+                }
+            }
+        }
+    }
+
+    symbols
 }
 
 fn to_symbol(node: &SyntaxNode) -> Option<(SmolStr, SyntaxNodePtr)> {
     fn decl<N: NameOwner>(node: &N) -> Option<(SmolStr, SyntaxNodePtr)> {
         let name = node.name()?.text().clone();
         let ptr = SyntaxNodePtr::new(node.syntax());
+
         Some((name, ptr))
     }
     visitor()
@@ -233,4 +263,8 @@ fn to_symbol(node: &SyntaxNode) -> Option<(SmolStr, SyntaxNodePtr)> {
         .visit(decl::<ast::ConstDef>)
         .visit(decl::<ast::StaticDef>)
         .accept(node)?
+}
+
+fn to_file_symbol(node: &SyntaxNode, file_id: FileId) -> Option<FileSymbol> {
+    to_symbol(node).map(move |(name, ptr)| FileSymbol { name, ptr, file_id, container_name: None })
 }
