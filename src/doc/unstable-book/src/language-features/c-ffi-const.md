@@ -16,7 +16,7 @@ function with the same argument values regardless of other operations being
 performed in between these functions calls (as opposed to `#[c_ffi_pure]`
 functions).
 
-## Pitfals
+## Pitfalls
 
 A `#[c_ffi_const]` function can only read global memory that would not affect
 its return value for the whole execution of the program (e.g. immutable global

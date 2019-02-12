@@ -20,7 +20,7 @@ functions, altering their result. The `#[c_ffi_const]` attribute allows
 sub-expression elimination regardless of any operations in between the function
 calls.
 
-## Pitfals
+## Pitfalls
 
 A `#[c_ffi_pure]` function can read global memory through the function
 parameters (e.g. pointers), globals, etc. `#[c_ffi_pure]` functions are not
