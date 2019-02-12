@@ -6534,8 +6534,14 @@ impl<'a> Parser<'a> {
             let bounds = self.parse_generic_bounds()?;
             tps.where_clause = self.parse_where_clause()?;
             self.expect(&token::Semi)?;
+            if is_auto == IsAuto::Yes {
+                let msg = "trait aliases cannot be `auto`";
+                self.struct_span_err(self.prev_span, msg)
+                    .span_label(self.prev_span, msg)
+                    .emit();
+            }
             if unsafety != Unsafety::Normal {
-                let msg = "trait aliases cannot be unsafe";
+                let msg = "trait aliases cannot be `unsafe`";
                 self.struct_span_err(self.prev_span, msg)
                     .span_label(self.prev_span, msg)
                     .emit();
