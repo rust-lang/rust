@@ -221,7 +221,7 @@ impl<'tcx> Stack {
             }
         }
         // If we got here, we did not find our item.  We have to error to satisfy U3.
-        Err(format!("Borrow being dereferenced ({:?}) does not exist on the stack", bor))
+        Err(format!("Borrow being dereferenced ({:?}) does not exist on the borrow stack", bor))
     }
 
     /// Perform an actual memory access using `bor`.  We do not know any types here
@@ -294,7 +294,7 @@ impl<'tcx> Stack {
         }
         // If we got here, we did not find our item.
         err!(MachineError(format!(
-            "Borrow being accessed ({:?}) does not exist on the stack",
+            "Borrow being accessed ({:?}) does not exist on the borrow stack",
             bor
         )))
     }

@@ -7,7 +7,7 @@ fn main() {
     let xref = unsafe { &mut *xraw }; // derived from raw, so using raw is still okay...
     callee(xraw);
     let _val = *xref; // ...but any use of raw will invalidate our ref.
-    //~^ ERROR: does not exist on the stack
+    //~^ ERROR: does not exist on the borrow stack
 }
 
 fn callee(xraw: *mut i32) {
