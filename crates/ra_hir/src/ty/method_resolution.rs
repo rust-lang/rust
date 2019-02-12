@@ -174,4 +174,24 @@ impl Ty {
         }
         None
     }
+
+    // This would be nicer if it just returned an iterator, but that runs into
+    // lifetime problems, because we need to borrow temp `CrateImplBlocks`.
+    pub fn iterate_impl_items<T>(
+        self,
+        db: &impl HirDatabase,
+        mut callback: impl FnMut(ImplItem) -> Option<T>,
+    ) -> Option<T> {
+        let krate = def_crate(db, &self)?;
+        let impls = db.impls_in_crate(krate);
+
+        for (_, impl_block) in impls.lookup_impl_blocks(db, &self) {
+            for item in impl_block.items() {
+                if let Some(result) = callback(*item) {
+                    return Some(result);
+                }
+            }
+        }
+        None
+    }
 }

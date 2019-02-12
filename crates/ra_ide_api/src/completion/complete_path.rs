@@ -1,6 +1,6 @@
 use join_to_string::join;
 use hir::{Docs, Resolution};
-use ra_syntax::AstNode;
+use ra_syntax::{AstNode, ast::NameOwner};
 use test_utils::tested_by;
 
 use crate::completion::{CompletionItem, CompletionItemKind, Completions, CompletionKind, CompletionContext};
@@ -55,6 +55,51 @@ pub(super) fn complete_path(acc: &mut Completions, ctx: &CompletionContext) {
                     .set_documentation(variant.docs(ctx.db))
                     .set_detail(Some(detail))
                     .add_to(acc)
+                }
+            });
+        }
+        hir::ModuleDef::Struct(s) => {
+            let ty = s.ty(ctx.db);
+            ty.iterate_impl_items(ctx.db, |item| match item {
+                hir::ImplItem::Method(func) => {
+                    let sig = func.signature(ctx.db);
+                    if !sig.has_self_param() {
+                        CompletionItem::new(
+                            CompletionKind::Reference,
+                            ctx.source_range(),
+                            sig.name().to_string(),
+                        )
+                        .from_function(ctx, func)
+                        .kind(CompletionItemKind::Method)
+                        .add_to(acc);
+                    }
+                    None::<()>
+                }
+                hir::ImplItem::Const(ct) => {
+                    let source = ct.source(ctx.db);
+                    if let Some(name) = source.1.name() {
+                        CompletionItem::new(
+                            CompletionKind::Reference,
+                            ctx.source_range(),
+                            name.text().to_string(),
+                        )
+                        .from_const(ctx, ct)
+                        .add_to(acc);
+                    }
+                    None::<()>
+                }
+                hir::ImplItem::Type(ty) => {
+                    let source = ty.source(ctx.db);
+                    if let Some(name) = source.1.name() {
+                        CompletionItem::new(
+                            CompletionKind::Reference,
+                            ctx.source_range(),
+                            name.text().to_string(),
+                        )
+                        .from_type(ctx, ty)
+                        .add_to(acc);
+                    }
+                    None::<()>
                 }
             });
         }
@@ -193,6 +238,63 @@ mod tests {
                 S(S),
             }
             fn foo() { let _ = E::<|> }
+            ",
+        );
+    }
+
+    #[test]
+    fn completes_struct_associated_method() {
+        check_reference_completion(
+            "struct_associated_method",
+            "
+            //- /lib.rs
+            /// A Struct
+            struct S;
+
+            impl S {
+                /// An associated method
+                fn m() { }
+            }
+
+            fn foo() { let _ = S::<|> }
+            ",
+        );
+    }
+
+    #[test]
+    fn completes_struct_associated_const() {
+        check_reference_completion(
+            "struct_associated_const",
+            "
+            //- /lib.rs
+            /// A Struct
+            struct S;
+
+            impl S {
+                /// An associated const
+                const C: i32 = 42;
+            }
+
+            fn foo() { let _ = S::<|> }
+            ",
+        );
+    }
+
+    #[test]
+    fn completes_struct_associated_type() {
+        check_reference_completion(
+            "struct_associated_type",
+            "
+            //- /lib.rs
+            /// A Struct
+            struct S;
+
+            impl S {
+                /// An associated type
+                type T = i32;
+            }
+
+            fn foo() { let _ = S::<|> }
             ",
         );
     }
