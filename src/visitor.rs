@@ -363,6 +363,7 @@ impl<'b, 'a: 'b> FmtVisitor<'a> {
                 let rw = format_trait_alias(
                     &self.get_context(),
                     item.ident,
+                    &item.vis,
                     generics,
                     generic_bounds,
                     shape,
