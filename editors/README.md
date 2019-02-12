@@ -5,6 +5,9 @@ In order to build the VS Code plugin, you need to have node.js and npm with
 a minimum version of 10 installed. Please refer to
 [node.js and npm documentation](https://nodejs.org) for installation instructions.
 
+You will also need the most recent version of VS Code: we don't try to
+maintain compatibility with older versions yet.
+
 The experimental VS Code plugin can then be built and installed by executing the
 following commands:
 
