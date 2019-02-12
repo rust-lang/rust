@@ -1163,6 +1163,7 @@ pub fn format_trait(
 pub fn format_trait_alias(
     context: &RewriteContext<'_>,
     ident: ast::Ident,
+    vis: &ast::Visibility,
     generics: &ast::Generics,
     generic_bounds: &ast::GenericBounds,
     shape: Shape,
@@ -1171,7 +1172,8 @@ pub fn format_trait_alias(
     // 6 = "trait ", 2 = " ="
     let g_shape = shape.offset_left(6)?.sub_width(2)?;
     let generics_str = rewrite_generics(context, &alias, generics, g_shape)?;
-    let lhs = format!("trait {} =", generics_str);
+    let vis_str = format_visibility(context, vis);
+    let lhs = format!("{}trait {} =", vis_str, generics_str);
     // 1 = ";"
     rewrite_assign_rhs(context, lhs, generic_bounds, shape.sub_width(1)?).map(|s| s + ";")
 }
