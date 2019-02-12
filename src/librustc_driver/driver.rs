@@ -296,6 +296,11 @@ pub fn compile_input(
                         (control.after_analysis.callback)(&mut state);
                     });
 
+                    // Plugins like clippy and rust-semverver stop the analysis early,
+                    // but want to still return an error if errors during the analysis
+                    // happened:
+                    tcx.sess.compile_status()?;
+
                     if control.after_analysis.stop == Compilation::Stop {
                         return result.and_then(|_| Err(CompileIncomplete::Stopped));
                     }
