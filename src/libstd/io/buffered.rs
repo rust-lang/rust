@@ -236,7 +236,7 @@ impl<R: Read> Read for BufReader<R> {
     }
 
     fn read_vectored(&mut self, bufs: &mut [IoVecMut<'_>]) -> io::Result<usize> {
-        let total_len = bufs.iter().map(|b| b.as_slice().len()).sum::<usize>();
+        let total_len = bufs.iter().map(|b| b.len()).sum::<usize>();
         if self.pos == self.cap && total_len >= self.buf.len() {
             return self.inner.read_vectored(bufs);
         }
@@ -595,7 +595,7 @@ impl<W: Write> Write for BufWriter<W> {
     }
 
     fn write_vectored(&mut self, bufs: &[IoVec<'_>]) -> io::Result<usize> {
-        let total_len = bufs.iter().map(|b| b.as_slice().len()).sum::<usize>();
+        let total_len = bufs.iter().map(|b| b.len()).sum::<usize>();
         if self.buf.len() + total_len > self.buf.capacity() {
             self.flush_buf()?;
         }

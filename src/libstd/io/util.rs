@@ -156,7 +156,7 @@ impl Read for Repeat {
     fn read_vectored(&mut self, bufs: &mut [IoVecMut<'_>]) -> io::Result<usize> {
         let mut nwritten = 0;
         for buf in bufs {
-            nwritten += self.read(buf.as_mut_slice())?;
+            nwritten += self.read(buf)?;
         }
         Ok(nwritten)
     }
@@ -207,7 +207,7 @@ impl Write for Sink {
 
     #[inline]
     fn write_vectored(&mut self, bufs: &[IoVec<'_>]) -> io::Result<usize> {
-        let total_len = bufs.iter().map(|b| b.as_slice().len()).sum();
+        let total_len = bufs.iter().map(|b| b.len()).sum();
         Ok(total_len)
     }
 

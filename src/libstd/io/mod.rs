@@ -264,6 +264,7 @@ use fmt;
 use slice;
 use str;
 use memchr;
+use ops::{Deref, DerefMut};
 use ptr;
 use sys;
 
@@ -531,7 +532,7 @@ pub trait Read {
     /// `read`.
     #[unstable(feature = "iovec", issue = "0")]
     fn read_vectored(&mut self, bufs: &mut [IoVecMut<'_>]) -> Result<usize> {
-        match bufs.iter_mut().map(|b| b.as_mut_slice()).find(|b| !b.is_empty()) {
+        match bufs.iter_mut().find(|b| !b.is_empty()) {
             Some(buf) => self.read(buf),
             None => Ok(0),
         }
@@ -896,7 +897,7 @@ pub struct IoVecMut<'a>(sys::io::IoVecMut<'a>);
 #[unstable(feature = "iovec", issue = "0")]
 impl<'a> fmt::Debug for IoVecMut<'a> {
     fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
-        fmt::Debug::fmt(self.as_slice(), fmt)
+        fmt::Debug::fmt(self.0.as_slice(), fmt)
     }
 }
 
@@ -911,18 +912,22 @@ impl<'a> IoVecMut<'a> {
     pub fn new(buf: &'a mut [u8]) -> IoVecMut<'a> {
         IoVecMut(sys::io::IoVecMut::new(buf))
     }
+}
 
-    /// Returns a shared reference to the inner slice.
-    #[unstable(feature = "iovec", issue = "0")]
+#[unstable(feature = "iovec", issue = "0")]
+impl<'a> Deref for IoVecMut<'a> {
+    type Target = [u8];
+
     #[inline]
-    pub fn as_slice(&self) -> &'a [u8] {
+    fn deref(&self) -> &[u8] {
         self.0.as_slice()
     }
+}
 
-    /// Returns a mutable reference to the inner slice.
-    #[unstable(feature = "iovec", issue = "0")]
+#[unstable(feature = "iovec", issue = "0")]
+impl<'a> DerefMut for IoVecMut<'a> {
     #[inline]
-    pub fn as_mut_slice(&mut self) -> &'a mut [u8] {
+    fn deref_mut(&mut self) -> &mut [u8] {
         self.0.as_mut_slice()
     }
 }
@@ -939,7 +944,7 @@ pub struct IoVec<'a>(sys::io::IoVec<'a>);
 #[unstable(feature = "iovec", issue = "0")]
 impl<'a> fmt::Debug for IoVec<'a> {
     fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
-        fmt::Debug::fmt(self.as_slice(), fmt)
+        fmt::Debug::fmt(self.0.as_slice(), fmt)
     }
 }
 
@@ -954,11 +959,14 @@ impl<'a> IoVec<'a> {
     pub fn new(buf: &'a [u8]) -> IoVec<'a> {
         IoVec(sys::io::IoVec::new(buf))
     }
+}
 
-    /// Returns a shared reference to the inner slice.
-    #[unstable(feature = "iovec", issue = "0")]
+#[unstable(feature = "iovec", issue = "0")]
+impl<'a> Deref for IoVec<'a> {
+    type Target = [u8];
+
     #[inline]
-    pub fn as_slice(&self) -> &'a [u8] {
+    fn deref(&self) -> &[u8] {
         self.0.as_slice()
     }
 }
@@ -1103,7 +1111,7 @@ pub trait Write {
     /// `write`.
     #[unstable(feature = "iovec", issue = "0")]
     fn write_vectored(&mut self, bufs: &[IoVec<'_>]) -> Result<usize> {
-        match bufs.iter().map(|b| b.as_slice()).find(|b| !b.is_empty()) {
+        match bufs.iter().find(|b| !b.is_empty()) {
             Some(buf) => self.write(buf),
             None => Ok(0),
         }
@@ -1813,7 +1821,7 @@ impl<T: Read, U: Read> Read for Chain<T, U> {
     fn read_vectored(&mut self, bufs: &mut [IoVecMut<'_>]) -> Result<usize> {
         if !self.done_first {
             match self.first.read_vectored(bufs)? {
-                0 if bufs.iter().any(|b| !b.as_slice().is_empty()) => self.done_first = true,
+                0 if bufs.iter().any(|b| !b.is_empty()) => self.done_first = true,
                 n => return Ok(n),
             }
         }

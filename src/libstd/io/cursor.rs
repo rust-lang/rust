@@ -224,7 +224,6 @@ impl<T> Read for Cursor<T> where T: AsRef<[u8]> {
     fn read_vectored(&mut self, bufs: &mut [IoVecMut<'_>]) -> io::Result<usize> {
         let mut nread = 0;
         for buf in bufs {
-            let buf = buf.as_mut_slice();
             let n = self.read(buf)?;
             nread += n;
             if n < buf.len() {
@@ -272,7 +271,6 @@ fn slice_write_vectored(
 {
     let mut nwritten = 0;
     for buf in bufs {
-        let buf = buf.as_slice();
         let n = slice_write(pos_mut, slice, buf)?;
         nwritten += n;
         if n < buf.len() {
@@ -317,7 +315,7 @@ fn vec_write_vectored(
 {
     let mut nwritten = 0;
     for buf in bufs {
-        nwritten += vec_write(pos_mut, vec, buf.as_slice())?;
+        nwritten += vec_write(pos_mut, vec, buf)?;
     }
     Ok(nwritten)
 }

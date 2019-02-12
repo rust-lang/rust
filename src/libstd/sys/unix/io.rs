@@ -21,7 +21,7 @@ impl<'a> IoVec<'a> {
     }
 
     #[inline]
-    pub fn as_slice(&self) -> &'a [u8] {
+    pub fn as_slice(&self) -> &[u8] {
         unsafe {
             slice::from_raw_parts(self.vec.iov_base as *mut u8, self.vec.iov_len)
         }
@@ -46,14 +46,14 @@ impl<'a> IoVecMut<'a> {
     }
 
     #[inline]
-    pub fn as_slice(&self) -> &'a [u8] {
+    pub fn as_slice(&self) -> &[u8] {
         unsafe {
             slice::from_raw_parts(self.vec.iov_base as *mut u8, self.vec.iov_len)
         }
     }
 
     #[inline]
-    pub fn as_mut_slice(&mut self) -> &'a mut [u8] {
+    pub fn as_mut_slice(&mut self) -> &mut [u8] {
         unsafe {
             slice::from_raw_parts_mut(self.vec.iov_base as *mut u8, self.vec.iov_len)
         }

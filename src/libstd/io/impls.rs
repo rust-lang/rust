@@ -196,7 +196,7 @@ impl<'a> Read for &'a [u8] {
     fn read_vectored(&mut self, bufs: &mut [IoVecMut<'_>]) -> io::Result<usize> {
         let mut nread = 0;
         for buf in bufs {
-            nread += self.read(buf.as_mut_slice())?;
+            nread += self.read(buf)?;
             if self.is_empty() {
                 break;
             }
@@ -269,7 +269,7 @@ impl<'a> Write for &'a mut [u8] {
     fn write_vectored(&mut self, bufs: &[IoVec<'_>]) -> io::Result<usize> {
         let mut nwritten = 0;
         for buf in bufs {
-            nwritten += self.write(buf.as_slice())?;
+            nwritten += self.write(buf)?;
             if self.is_empty() {
                 break;
             }
@@ -303,10 +303,10 @@ impl Write for Vec<u8> {
 
     #[inline]
     fn write_vectored(&mut self, bufs: &[IoVec<'_>]) -> io::Result<usize> {
-        let len = bufs.iter().map(|b| b.as_slice().len()).sum();
+        let len = bufs.iter().map(|b| b.len()).sum();
         self.reserve(len);
         for buf in bufs {
-            self.extend_from_slice(buf.as_slice());
+            self.extend_from_slice(buf);
         }
         Ok(len)
     }

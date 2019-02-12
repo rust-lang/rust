@@ -105,7 +105,7 @@ impl TcpStream {
 
     pub fn read_vectored(&self, buf: &mut [IoVecMut<'_>]) -> io::Result<usize> {
         let buf = match buf.get(0) {
-            Some(buf) => buf.as_mut_slice(),
+            Some(buf) => buf,
             None => return Ok(0),
         };
         self.read(buf)
@@ -117,7 +117,7 @@ impl TcpStream {
 
     pub fn write_vectored(&self, buf: &[IoVec<'_>]) -> io::Result<usize> {
         let buf = match buf.get(0) {
-            Some(buf) => buf.as_slice(),
+            Some(buf) => buf,
             None => return Ok(0),
         };
         self.read(buf)
