@@ -4,6 +4,7 @@
 #![allow(unused_attributes)]
 #![feature(range_contains)]
 #![cfg_attr(unix, feature(libc))]
+#![feature(nll)]
 #![feature(optin_builtin_traits)]
 #![deny(rust_2018_idioms)]
 

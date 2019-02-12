@@ -2,6 +2,7 @@
 
 #![deny(rust_2018_idioms)]
 
+#![feature(nll)]
 #![feature(rustc_diagnostic_macros)]
 
 #![recursion_limit="256"]
