@@ -752,12 +752,11 @@ fn compute_all_traits<'a, 'gcx, 'tcx>(tcx: TyCtxt<'a, 'gcx, 'tcx>) -> Vec<DefId>
                            traits: &mut Vec<DefId>,
                            external_mods: &mut FxHashSet<DefId>,
                            def: Def) {
-        let def_id = def.def_id();
         match def {
-            Def::Trait(..) => {
+            Def::Trait(def_id) => {
                 traits.push(def_id);
             }
-            Def::Mod(..) => {
+            Def::Mod(def_id) => {
                 if !external_mods.insert(def_id) {
                     return;
                 }
