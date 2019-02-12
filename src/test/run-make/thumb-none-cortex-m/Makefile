@@ -10,8 +10,10 @@
 # - thumbv7em-none-eabihf (Bare Cortex-M4F, M7F, FPU, hardfloat)
 # - thumbv7m-none-eabi (Bare Cortex-M3)
 
-# See https://stackoverflow.com/questions/7656425/makefile-ifeq-logical-or
-ifneq (,$(filter $(TARGET),thumbv6m-none-eabi thumbv7em-none-eabi thumbv7em-none-eabihf thumbv7m-none-eabi))
+# only-thumbv6m-none-eabi
+# only-thumbv7em-none-eabi
+# only-thumbv7em-none-eabihf
+# only-thumbv7m-none-eabi
 
 # For cargo setting
 RUSTC := $(RUSTC_ORIGINAL)
@@ -36,8 +38,3 @@ all:
 	# These come from the top-level Rust workspace, that this crate is not a
 	# member of, but Cargo tries to load the workspace `Cargo.toml` anyway.
 	cd $(WORK_DIR) && cd $(CRATE) && env RUSTC_BOOTSTRAP=1 $(CARGO) build --target $(TARGET) -v
-else
-
-all:
-
-endif

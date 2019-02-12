@@ -1,8 +1,6 @@
 -include ../tools.mk
 
-ifdef IS_WINDOWS
-all:
-else
+# ignore-windows
 
 NAME := $(shell $(RUSTC) --print file-names foo.rs)
 
@@ -11,4 +9,3 @@ all:
 	$(RUSTC) foo.rs -o $(TMPDIR)/outdir/$(NAME)
 	ln -nsf outdir/$(NAME) $(TMPDIR)
 	RUST_LOG=rustc_metadata::loader $(RUSTC) bar.rs
-endif
