@@ -72,17 +72,15 @@ This API is completely unstable and subject to change.
 
 #![recursion_limit="256"]
 
+#![deny(rust_2018_idioms)]
+#![allow(explicit_outlives_requirements)]
+
+#![allow(elided_lifetimes_in_paths)] // WIP
+
 #[macro_use] extern crate log;
 #[macro_use] extern crate syntax;
-extern crate syntax_pos;
-
-extern crate arena;
 
 #[macro_use] extern crate rustc;
-extern crate rustc_data_structures;
-extern crate rustc_errors as errors;
-extern crate rustc_target;
-extern crate smallvec;
 
 // N.B., this module needs to be declared first so diagnostics are
 // registered before they are used.
@@ -141,7 +139,7 @@ fn check_type_alias_enum_variants_enabled<'a, 'gcx, 'tcx>(tcx: TyCtxt<'a, 'gcx, 
     }
 }
 
-fn require_c_abi_if_variadic(tcx: TyCtxt,
+fn require_c_abi_if_variadic(tcx: TyCtxt<'_, '_, '_>,
                              decl: &hir::FnDecl,
                              abi: Abi,
                              span: Span) {
@@ -310,7 +308,7 @@ fn check_for_entry_fn<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>) {
     }
 }
 
-pub fn provide(providers: &mut Providers) {
+pub fn provide(providers: &mut Providers<'_>) {
     collect::provide(providers);
     coherence::provide(providers);
     check::provide(providers);

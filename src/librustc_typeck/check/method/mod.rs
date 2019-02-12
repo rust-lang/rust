@@ -10,9 +10,9 @@ pub use self::MethodError::*;
 pub use self::CandidateSource::*;
 pub use self::suggest::{SelfSource, TraitInfo};
 
-use check::FnCtxt;
+use crate::check::FnCtxt;
+use crate::namespace::Namespace;
 use errors::{Applicability, DiagnosticBuilder};
-use namespace::Namespace;
 use rustc_data_structures::sync::Lrc;
 use rustc::hir;
 use rustc::hir::def::Def;
@@ -29,7 +29,7 @@ use syntax_pos::Span;
 use crate::{check_type_alias_enum_variants_enabled};
 use self::probe::{IsSuggestion, ProbeScope};
 
-pub fn provide(providers: &mut ty::query::Providers) {
+pub fn provide(providers: &mut ty::query::Providers<'_>) {
     suggest::provide(providers);
     probe::provide(providers);
 }

@@ -2,7 +2,7 @@
 // unresolved type variables and replaces "ty_var" types with their
 // substitutions.
 
-use check::FnCtxt;
+use crate::check::FnCtxt;
 use errors::DiagnosticBuilder;
 use rustc::hir;
 use rustc::hir::def_id::{DefId, DefIndex};

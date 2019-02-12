@@ -1,4 +1,4 @@
-use check::FnCtxt;
+use crate::check::FnCtxt;
 use rustc::infer::InferOk;
 use rustc::traits::{ObligationCause, ObligationCauseCode};
 
