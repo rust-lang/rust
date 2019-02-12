@@ -163,7 +163,7 @@ impl Ty {
                 for item in impl_block.items() {
                     match item {
                         ImplItem::Method(f) => {
-                            if let Some(result) = callback(f.clone()) {
+                            if let Some(result) = callback(*f) {
                                 return Some(result);
                             }
                         }
