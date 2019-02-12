@@ -68,7 +68,7 @@ Libraries
   functions for all numeric types.][57566]
 - [The `get` method for all `NonZero` types is now constant.][57167]
 - [The functions `count_ones`, `count_zeros`, `leading_zeros`, `trailing_zeros`,
-  `swap_bytes`, `from_be`, `from_le`, `to_be`, `to_le` are now constant for all
+  `swap_bytes`, `from_be`, `from_le`, `to_be`, `to_le` are now const for all
   numeric types.][57234]
 - [`Ipv4Addr::new` is now a constant function][57234]
 
