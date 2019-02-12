@@ -17,14 +17,28 @@ pub(crate) enum Task {
     AddRoot { root: VfsRoot, config: Arc<RootConfig> },
 }
 
+/// `TaskResult` transfers files read on the IO thread to the VFS on the main
+/// thread.
 #[derive(Debug)]
 pub enum TaskResult {
+    /// Emitted when we've recursively scanned a source root during the initial
+    /// load.
     BulkLoadRoot { root: VfsRoot, files: Vec<(RelativePathBuf, String)> },
-    AddSingleFile { root: VfsRoot, path: RelativePathBuf, text: String },
-    ChangeSingleFile { root: VfsRoot, path: RelativePathBuf, text: String },
-    RemoveSingleFile { root: VfsRoot, path: RelativePathBuf },
+    /// Emitted when we've noticed that a single file has changed.
+    ///
+    /// Note that this by design does not distinguish between
+    /// create/delete/write events, and instead specifies the *current* state of
+    /// the file. The idea is to guarantee that in the quiescent state the sum
+    /// of all results equals to the current state of the file system, while
+    /// allowing to skip intermediate events in non-quiescent states.
+    SingleFile { root: VfsRoot, path: RelativePathBuf, text: Option<String> },
 }
 
+/// The kind of raw notification we've received from the notify library.
+///
+/// Note that these are not necessary 100% precise (for example we might receive
+/// `Create` instead of `Write`, see #734), but we try do distinguish `Create`s
+/// to implement recursive watching of directories.
 #[derive(Debug)]
 enum ChangeKind {
     Create,
@@ -45,7 +59,7 @@ impl Worker {
         // explained by the following concerns:
         //    * we need to burn a thread translating from notify's mpsc to
         //      crossbeam_channel.
-        //    * we want to read all files from a single thread, to gurantee that
+        //    * we want to read all files from a single thread, to guarantee that
         //      we always get fresher versions and never go back in time.
         //    * we want to tear down everything neatly during shutdown.
         let (worker, worker_handle) = thread_worker::spawn(
@@ -63,7 +77,7 @@ impl Worker {
                 let mut watcher = notify::watcher(notify_sender, WATCHER_DELAY)
                     .map_err(|e| log::error!("failed to spawn notify {}", e))
                     .ok();
-                // Start a silly thread to tranform between two channels
+                // Start a silly thread to transform between two channels
                 let thread = thread::spawn(move || {
                     notify_receiver
                         .into_iter()
@@ -98,7 +112,7 @@ impl Worker {
                 }
                 // Stopped the watcher
                 drop(watcher.take());
-                // Drain pending events: we are not inrerested in them anyways!
+                // Drain pending events: we are not interested in them anyways!
                 watcher_receiver.into_iter().for_each(|_| ());
 
                 let res = thread.join();
@@ -199,23 +213,16 @@ fn handle_change(
             }
             paths
                 .into_iter()
-                .filter_map(|rel_path| {
+                .try_for_each(|rel_path| {
                     let abs_path = rel_path.to_path(&config.root);
-                    let text = read_to_string(&abs_path)?;
-                    Some((rel_path, text))
-                })
-                .try_for_each(|(path, text)| {
-                    sender.send(TaskResult::AddSingleFile { root, path, text })
+                    let text = read_to_string(&abs_path);
+                    sender.send(TaskResult::SingleFile { root, path: rel_path, text })
                 })
                 .unwrap()
         }
-        ChangeKind::Write => {
-            if let Some(text) = read_to_string(&path) {
-                sender.send(TaskResult::ChangeSingleFile { root, path: rel_path, text }).unwrap();
-            }
-        }
-        ChangeKind::Remove => {
-            sender.send(TaskResult::RemoveSingleFile { root, path: rel_path }).unwrap()
+        ChangeKind::Write | ChangeKind::Remove => {
+            let text = read_to_string(&path);
+            sender.send(TaskResult::SingleFile { root, path: rel_path, text }).unwrap();
         }
     }
 }

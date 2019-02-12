@@ -37,8 +37,8 @@ impl_arena_id!(VfsRoot);
 
 /// Describes the contents of a single source root.
 ///
-/// `RootConfig` can be thought of as a glob pattern like `src/**.rs` whihc
-/// specifes the source root or as a function whihc takes a `PathBuf` and
+/// `RootConfig` can be thought of as a glob pattern like `src/**.rs` which
+/// specifies the source root or as a function which takes a `PathBuf` and
 /// returns `true` iff path belongs to the source root
 pub(crate) struct RootConfig {
     root: PathBuf,
@@ -60,7 +60,7 @@ impl RootConfig {
     fn new(root: PathBuf, excluded_dirs: Vec<PathBuf>) -> RootConfig {
         RootConfig { root, excluded_dirs }
     }
-    /// Cheks if root contains a path and returns a root-relative path.
+    /// Checks if root contains a path and returns a root-relative path.
     pub(crate) fn contains(&self, path: &Path) -> Option<RelativePathBuf> {
         // First, check excluded dirs
         if self.excluded_dirs.iter().any(|it| path.starts_with(it)) {
@@ -210,7 +210,7 @@ impl Vfs {
         match task {
             TaskResult::BulkLoadRoot { root, files } => {
                 let mut cur_files = Vec::new();
-                // While we were scanning the root in the backgound, a file might have
+                // While we were scanning the root in the background, a file might have
                 // been open in the editor, so we need to account for that.
                 let exising = self.root2files[root]
                     .iter()
@@ -230,21 +230,18 @@ impl Vfs {
                 let change = VfsChange::AddRoot { root, files: cur_files };
                 self.pending_changes.push(change);
             }
-            TaskResult::AddSingleFile { root, path, text } => {
-                if self.find_file(root, &path).is_none() {
-                    self.do_add_file(root, path, text, false);
-                }
-            }
-            TaskResult::ChangeSingleFile { root, path, text } => {
-                if let Some(file) = self.find_file(root, &path) {
-                    self.do_change_file(file, text, false);
-                } else {
-                    self.do_add_file(root, path, text, false);
-                }
-            }
-            TaskResult::RemoveSingleFile { root, path } => {
-                if let Some(file) = self.find_file(root, &path) {
-                    self.do_remove_file(root, path, file, false);
+            TaskResult::SingleFile { root, path, text } => {
+                match (self.find_file(root, &path), text) {
+                    (Some(file), None) => {
+                        self.do_remove_file(root, path, file, false);
+                    }
+                    (None, Some(text)) => {
+                        self.do_add_file(root, path, text, false);
+                    }
+                    (Some(file), Some(text)) => {
+                        self.do_change_file(file, text, false);
+                    }
+                    (None, None) => (),
                 }
             }
         }
