@@ -27,7 +27,7 @@
 //!
 //! The reason for this is that any of B's types could be composed of C's types,
 //! any function in B could return a type from C, etc. To be able to guarantee
-//! that we can always typecheck/translate any function, we have to have
+//! that we can always type-check/translate any function, we have to have
 //! complete knowledge of the whole ecosystem, not just our immediate
 //! dependencies.
 //!
@@ -918,7 +918,7 @@ fn get_metadata_section_imp(target: &Target,
     }
 }
 
-// A diagnostic function for dumping crate metadata to an output stream
+/// A diagnostic function for dumping crate metadata to an output stream.
 pub fn list_file_metadata(target: &Target,
                           path: &Path,
                           loader: &dyn MetadataLoader,

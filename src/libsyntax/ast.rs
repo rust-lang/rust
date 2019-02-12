@@ -129,14 +129,14 @@ impl PathSegment {
     }
 }
 
-/// Arguments of a path segment.
+/// The arguments of a path segment.
 ///
 /// E.g., `<A, B>` as in `Foo<A, B>` or `(A, B)` as in `Foo(A, B)`.
 #[derive(Clone, RustcEncodable, RustcDecodable, Debug)]
 pub enum GenericArgs {
-    /// The `<'a, A,B,C>` in `foo::bar::baz::<'a, A,B,C>`
+    /// The `<'a, A, B, C>` in `foo::bar::baz::<'a, A, B, C>`.
     AngleBracketed(AngleBracketedArgs),
-    /// The `(A,B)` and `C` in `Foo(A,B) -> C`
+    /// The `(A, B)` and `C` in `Foo(A, B) -> C`.
     Parenthesized(ParenthesizedArgs),
 }
 
@@ -180,16 +180,15 @@ impl GenericArg {
     }
 }
 
-/// A path like `Foo<'a, T>`
+/// A path like `Foo<'a, T>`.
 #[derive(Clone, RustcEncodable, RustcDecodable, Debug, Default)]
 pub struct AngleBracketedArgs {
-    /// Overall span
+    /// The overall span.
     pub span: Span,
     /// The arguments for this path segment.
     pub args: Vec<GenericArg>,
     /// Bindings (equality constraints) on associated types, if present.
-    ///
-    /// E.g., `Foo<A=Bar>`.
+    /// E.g., `Foo<A = Bar>`.
     pub bindings: Vec<TypeBinding>,
 }
 
@@ -205,7 +204,7 @@ impl Into<Option<P<GenericArgs>>> for ParenthesizedArgs {
     }
 }
 
-/// A path like `Foo(A,B) -> C`
+/// A path like `Foo(A, B) -> C`.
 #[derive(Clone, RustcEncodable, RustcDecodable, Debug)]
 pub struct ParenthesizedArgs {
     /// Overall span
@@ -270,7 +269,7 @@ impl serialize::UseSpecializedDecodable for NodeId {
     }
 }
 
-/// Node id used to represent the root of the crate.
+/// `NodeId` used to represent the root of the crate.
 pub const CRATE_NODE_ID: NodeId = NodeId::from_u32_const(0);
 
 /// When parsing and doing expansions, we initially give all AST nodes this AST
@@ -369,7 +368,7 @@ impl Default for Generics {
     }
 }
 
-/// A `where` clause in a definition
+/// A where-clause in a definition.
 #[derive(Clone, RustcEncodable, RustcDecodable, Debug)]
 pub struct WhereClause {
     pub id: NodeId,
@@ -377,7 +376,7 @@ pub struct WhereClause {
     pub span: Span,
 }
 
-/// A single predicate in a `where` clause
+/// A single predicate in a where-clause.
 #[derive(Clone, RustcEncodable, RustcDecodable, Debug)]
 pub enum WherePredicate {
     /// A type binding (e.g., `for<'c> Foo: Send + Clone + 'c`).
@@ -1592,7 +1591,7 @@ pub struct BareFnTy {
     pub decl: P<FnDecl>,
 }
 
-/// The different kinds of types recognized by the compiler.
+/// The various kinds of type recognized by the compiler.
 #[derive(Clone, RustcEncodable, RustcDecodable, Debug)]
 pub enum TyKind {
     /// A variable-length slice (`[T]`).
@@ -1894,7 +1893,7 @@ impl fmt::Debug for ImplPolarity {
 
 #[derive(Clone, RustcEncodable, RustcDecodable, Debug)]
 pub enum FunctionRetTy {
-    /// Return type is not specified.
+    /// Returns type is not specified.
     ///
     /// Functions default to `()` and closures default to inference.
     /// Span points to where return type would be inserted.
@@ -2036,10 +2035,10 @@ pub struct Attribute {
 
 /// `TraitRef`s appear in impls.
 ///
-/// Resolve maps each `TraitRef`'s `ref_id` to its defining trait; that's all
+/// Resolution maps each `TraitRef`'s `ref_id` to its defining trait; that's all
 /// that the `ref_id` is for. The `impl_id` maps to the "self type" of this impl.
 /// If this impl is an `ItemKind::Impl`, the `impl_id` is redundant (it could be the
-/// same as the impl's node-id).
+/// same as the impl's `NodeId`).
 #[derive(Clone, RustcEncodable, RustcDecodable, Debug)]
 pub struct TraitRef {
     pub path: Path,

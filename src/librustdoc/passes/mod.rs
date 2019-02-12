@@ -404,7 +404,7 @@ pub fn look_for_tests<'a, 'tcx: 'a, 'rcx: 'a>(
     }
 }
 
-/// Return a span encompassing all the given attributes.
+/// Returns a span encompassing all the given attributes.
 crate fn span_of_attrs(attrs: &clean::Attributes) -> Span {
     if attrs.doc_strings.is_empty() {
         return DUMMY_SP;

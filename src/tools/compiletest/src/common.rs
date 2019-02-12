@@ -113,31 +113,31 @@ impl CompareMode {
 
 #[derive(Clone)]
 pub struct Config {
-    /// Whether to overwrite stderr/stdout files instead of complaining about changes in output
+    /// `true` to to overwrite stderr/stdout files instead of complaining about changes in output.
     pub bless: bool,
 
-    /// The library paths required for running the compiler
+    /// The library paths required for running the compiler.
     pub compile_lib_path: PathBuf,
 
-    /// The library paths required for running compiled programs
+    /// The library paths required for running compiled programs.
     pub run_lib_path: PathBuf,
 
-    /// The rustc executable
+    /// The rustc executable.
     pub rustc_path: PathBuf,
 
-    /// The rustdoc executable
+    /// The rustdoc executable.
     pub rustdoc_path: Option<PathBuf>,
 
-    /// The python executable to use for LLDB
+    /// The Python executable to use for LLDB.
     pub lldb_python: String,
 
-    /// The python executable to use for htmldocck
+    /// The Python executable to use for htmldocck.
     pub docck_python: String,
 
-    /// The llvm FileCheck binary path
+    /// The LLVM `FileCheck` binary path.
     pub llvm_filecheck: Option<PathBuf>,
 
-    /// The valgrind path
+    /// The valgrind path.
     pub valgrind_path: Option<String>,
 
     /// Whether to fail if we can't run run-pass-valgrind tests under valgrind
@@ -305,7 +305,7 @@ pub fn output_testname_unique(
 }
 
 /// Absolute path to the directory where all output for the given
-/// test/revision should reside.  Example:
+/// test/revision should reside. Example:
 ///   /path/to/build/host-triple/test/ui/relative/testname.revision.mode/
 pub fn output_base_dir(config: &Config, testpaths: &TestPaths, revision: Option<&str>) -> PathBuf {
     output_relative_path(config, &testpaths.relative_dir)
@@ -313,7 +313,7 @@ pub fn output_base_dir(config: &Config, testpaths: &TestPaths, revision: Option<
 }
 
 /// Absolute path to the base filename used as output for the given
-/// test/revision.  Example:
+/// test/revision. Example:
 ///   /path/to/build/host-triple/test/ui/relative/testname.revision.mode/testname
 pub fn output_base_name(config: &Config, testpaths: &TestPaths, revision: Option<&str>) -> PathBuf {
     output_base_dir(config, testpaths, revision).join(testpaths.file.file_stem().unwrap())

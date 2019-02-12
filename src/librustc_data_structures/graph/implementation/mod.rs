@@ -14,7 +14,7 @@
 //! stored. The edges are stored in a central array, but they are also
 //! threaded onto two linked lists for each node, one for incoming edges
 //! and one for outgoing edges. Note that every edge is a member of some
-//! incoming list and some outgoing list.  Basically you can load the
+//! incoming list and some outgoing list. Basically you can load the
 //! first index of the linked list from the node data structures (the
 //! field `first_edge`) and then, for each edge, load the next index from
 //! the field `next_edge`). Each of those fields is an array that should
@@ -79,7 +79,7 @@ pub const OUTGOING: Direction = Direction { repr: 0 };
 pub const INCOMING: Direction = Direction { repr: 1 };
 
 impl NodeIndex {
-    /// Returns unique id (unique with respect to the graph holding associated node).
+    /// Returns unique ID (unique with respect to the graph holding associated node).
     pub fn node_id(self) -> usize {
         self.0
     }

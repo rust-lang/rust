@@ -1,5 +1,5 @@
 //! Intrinsics and other functions that the miri engine executes without
-//! looking at their MIR.  Intrinsics/functions supported here are shared by CTFE
+//! looking at their MIR. Intrinsics/functions supported here are shared by CTFE
 //! and miri.
 
 use syntax::symbol::Symbol;
@@ -37,7 +37,7 @@ fn numeric_intrinsic<'tcx, Tag>(
 }
 
 impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> {
-    /// Returns whether emulation happened.
+    /// Returns `true` if emulation happened.
     pub fn emulate_intrinsic(
         &mut self,
         instance: ty::Instance<'tcx>,
@@ -212,7 +212,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> 
     }
 
     /// "Intercept" a function call because we have something special to do for it.
-    /// Returns whether an intercept happened.
+    /// Returns `true` if an intercept happened.
     pub fn hook_fn(
         &mut self,
         instance: ty::Instance<'tcx>,

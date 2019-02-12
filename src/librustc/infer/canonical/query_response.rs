@@ -119,7 +119,7 @@ impl<'cx, 'gcx, 'tcx> InferCtxt<'cx, 'gcx, 'tcx> {
     /// If you DO want to keep track of pending obligations (which
     /// include all region obligations, so this includes all cases
     /// that care about regions) with this function, you have to
-    /// do it yourself, by e.g. having them be a part of the answer.
+    /// do it yourself, by e.g., having them be a part of the answer.
     pub fn make_query_response_ignoring_pending_obligations<T>(
         &self,
         inference_vars: CanonicalVarValues<'tcx>,
@@ -267,7 +267,7 @@ impl<'cx, 'gcx, 'tcx> InferCtxt<'cx, 'gcx, 'tcx> {
     ///   they should be ignored).
     /// - It **can happen** (though it rarely does currently) that
     ///   equating types and things will give rise to subobligations
-    ///   that must be processed.  In this case, those subobligations
+    ///   that must be processed. In this case, those subobligations
     ///   are propagated back in the return value.
     /// - Finally, the query result (of type `R`) is propagated back,
     ///   after applying the substitution `S`.
@@ -506,7 +506,7 @@ impl<'cx, 'gcx, 'tcx> InferCtxt<'cx, 'gcx, 'tcx> {
 
     /// Given a "guess" at the values for the canonical variables in
     /// the input, try to unify with the *actual* values found in the
-    /// query result.  Often, but not always, this is a no-op, because
+    /// query result. Often, but not always, this is a no-op, because
     /// we already found the mapping in the "guessing" step.
     ///
     /// See also: `query_response_substitution_guess`

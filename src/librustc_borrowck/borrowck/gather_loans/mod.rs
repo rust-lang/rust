@@ -285,7 +285,7 @@ impl<'a, 'tcx> GatherLoanCtxt<'a, 'tcx> {
     }
 
     /// Guarantees that `addr_of(cmt)` will be valid for the duration of `static_scope_r`, or
-    /// reports an error.  This may entail taking out loans, which will be added to the
+    /// reports an error. This may entail taking out loans, which will be added to the
     /// `req_loan_map`.
     fn guarantee_valid(&mut self,
                        borrow_id: hir::ItemLocalId,

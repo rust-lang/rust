@@ -1,9 +1,9 @@
 //! This module provides a simplified abstraction for working with
-//! code blocks identified by their integer node-id.  In particular,
+//! code blocks identified by their integer `NodeId`. In particular,
 //! it captures a common set of attributes that all "function-like
-//! things" (represented by `FnLike` instances) share.  For example,
+//! things" (represented by `FnLike` instances) share. For example,
 //! all `FnLike` instances have a type signature (be it explicit or
-//! inferred).  And all `FnLike` instances have a body, i.e., the code
+//! inferred). And all `FnLike` instances have a body, i.e., the code
 //! that is run when the function-like thing it represents is invoked.
 //!
 //! With the above abstraction in place, one can treat the program

@@ -1,4 +1,4 @@
-//! The AST pointer
+//! The AST pointer.
 //!
 //! Provides `P<T>`, a frozen owned smart pointer, as a replacement for `@T` in
 //! the AST.

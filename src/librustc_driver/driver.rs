@@ -711,7 +711,7 @@ pub struct InnerExpansionResult<'a> {
     pub hir_forest: hir_map::Forest,
 }
 
-/// Run the "early phases" of the compiler: initial `cfg` processing,
+/// Runs the "early phases" of the compiler: initial `cfg` processing,
 /// loading compiler plugins (including those from `addl_plugins`),
 /// syntax expansion, secondary `cfg` expansion, synthesis of a test
 /// harness if one is to be provided, injection of a dependency on the
@@ -1167,7 +1167,7 @@ pub fn default_provide_extern(providers: &mut ty::query::Providers) {
     cstore::provide_extern(providers);
 }
 
-/// Run the resolution, typechecking, region checking and other
+/// Runs the resolution, typec-hecking, region checking and other
 /// miscellaneous analysis passes on the crate. Return various
 /// structures carrying the results of the analysis.
 pub fn phase_3_run_analysis_passes<'tcx, F, R>(
@@ -1334,7 +1334,7 @@ where
     )
 }
 
-/// Run the codegen backend, after which the AST and analysis can
+/// Runs the codegen backend, after which the AST and analysis can
 /// be discarded.
 pub fn phase_4_codegen<'a, 'tcx>(
     codegen_backend: &dyn CodegenBackend,

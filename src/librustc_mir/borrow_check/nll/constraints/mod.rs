@@ -31,7 +31,7 @@ impl ConstraintSet {
     /// easy to find the constraints affecting a particular region.
     ///
     /// N.B., this graph contains a "frozen" view of the current
-    /// constraints.  any new constraints added to the `ConstraintSet`
+    /// constraints. Any new constraints added to the `ConstraintSet`
     /// after the graph is built will not be present in the graph.
     crate fn graph(&self, num_region_vars: usize) -> graph::NormalConstraintGraph {
         graph::ConstraintGraph::new(graph::Normal, self, num_region_vars)
@@ -43,7 +43,7 @@ impl ConstraintSet {
         graph::ConstraintGraph::new(graph::Reverse, self, num_region_vars)
     }
 
-    /// Compute cycles (SCCs) in the graph of regions. In particular,
+    /// Computes cycles (SCCs) in the graph of regions. In particular,
     /// find all regions R1, R2 such that R1: R2 and R2: R1 and group
     /// them into an SCC, and find the relationships between SCCs.
     crate fn compute_sccs(

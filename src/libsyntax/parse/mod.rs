@@ -1,4 +1,4 @@
-//! The main parser interface
+//! The main parser interface.
 
 use crate::ast::{self, CrateConfig, NodeId};
 use crate::early_buffered_lints::{BufferedEarlyLint, BufferedEarlyLintId};
@@ -38,12 +38,11 @@ pub struct ParseSess {
     pub unstable_features: UnstableFeatures,
     pub config: CrateConfig,
     pub missing_fragment_specifiers: Lock<FxHashSet<Span>>,
-    /// Places where raw identifiers were used. This is used for feature gating
-    /// raw identifiers
+    /// Places where raw identifiers were used. This is used for feature-gating raw identifiers.
     pub raw_identifier_spans: Lock<Vec<Span>>,
-    /// The registered diagnostics codes
+    /// The registered diagnostics codes.
     crate registered_diagnostics: Lock<ErrorMap>,
-    /// Used to determine and report recursive mod inclusions
+    /// Used to determine and report recursive module inclusions.
     included_mod_stack: Lock<Vec<PathBuf>>,
     source_map: Lrc<SourceMap>,
     pub buffered_lints: Lock<Vec<BufferedEarlyLint>>,
@@ -146,12 +145,12 @@ pub fn parse_stream_from_source_str(
     source_file_to_stream(sess, sess.source_map().new_source_file(name, source), override_span)
 }
 
-/// Create a new parser from a source string
+/// Creates a new parser from a source string.
 pub fn new_parser_from_source_str(sess: &ParseSess, name: FileName, source: String) -> Parser<'_> {
     panictry_buffer!(&sess.span_diagnostic, maybe_new_parser_from_source_str(sess, name, source))
 }
 
-/// Create a new parser from a source string. Returns any buffered errors from lexing the initial
+/// Creates a new parser from a source string. Returns any buffered errors from lexing the initial
 /// token stream.
 pub fn maybe_new_parser_from_source_str(sess: &ParseSess, name: FileName, source: String)
     -> Result<Parser<'_>, Vec<Diagnostic>>
@@ -162,13 +161,13 @@ pub fn maybe_new_parser_from_source_str(sess: &ParseSess, name: FileName, source
     Ok(parser)
 }
 
-/// Create a new parser, handling errors as appropriate
+/// Creates a new parser, handling errors as appropriate
 /// if the file doesn't exist
 pub fn new_parser_from_file<'a>(sess: &'a ParseSess, path: &Path) -> Parser<'a> {
     source_file_to_parser(sess, file_to_source_file(sess, path, None))
 }
 
-/// Create a new parser, returning buffered diagnostics if the file doesn't
+/// Creates a new parser, returning buffered diagnostics if the file doesn't
 /// exist or from lexing the initial token stream.
 pub fn maybe_new_parser_from_file<'a>(sess: &'a ParseSess, path: &Path)
     -> Result<Parser<'a>, Vec<Diagnostic>> {
@@ -239,7 +238,7 @@ fn try_file_to_source_file(sess: &ParseSess, path: &Path, spanopt: Option<Span>)
 }
 
 /// Given a session and a path and an optional span (for error reporting),
-/// add the path to the session's source_map and return the new source_file.
+/// add the path to the session's `source_map` and return the new `source_file`.
 fn file_to_source_file(sess: &ParseSess, path: &Path, spanopt: Option<Span>)
                    -> Lrc<SourceFile> {
     match try_file_to_source_file(sess, path, spanopt) {
@@ -251,7 +250,7 @@ fn file_to_source_file(sess: &ParseSess, path: &Path, spanopt: Option<Span>)
     }
 }
 
-/// Given a source_file, produce a sequence of token-trees
+/// Given a source_file, produces a sequence of token trees.
 pub fn source_file_to_stream(
     sess: &ParseSess,
     source_file: Lrc<SourceFile>,
@@ -260,7 +259,7 @@ pub fn source_file_to_stream(
     panictry_buffer!(&sess.span_diagnostic, maybe_file_to_stream(sess, source_file, override_span))
 }
 
-/// Given a source file, produce a sequence of token-trees. Returns any buffered errors from
+/// Given a source file, produces a sequence of token trees. Returns any buffered errors from
 /// parsing the token tream.
 pub fn maybe_file_to_stream(
     sess: &ParseSess,
@@ -295,12 +294,12 @@ pub fn maybe_file_to_stream(
     }
 }
 
-/// Given stream and the `ParseSess`, produce a parser
+/// Given stream and the `ParseSess`, produces a parser.
 pub fn stream_to_parser(sess: &ParseSess, stream: TokenStream) -> Parser<'_> {
     Parser::new(sess, stream, None, true, false)
 }
 
-/// Parse a string representing a character literal into its final form.
+/// Parses a string representing a character literal into its final form.
 /// Rather than just accepting/rejecting a given literal, unescapes it as
 /// well. Can take any slice prefixed by a character escape. Returns the
 /// character and the number of characters consumed.
@@ -359,15 +358,14 @@ fn char_lit(lit: &str, diag: Option<(Span, &Handler)>) -> (char, isize) {
     }
 }
 
-/// Parse a string representing a string literal into its final form. Does
-/// unescaping.
+/// Parses a string representing a string literal into its final form. Does unescaping.
 pub fn str_lit(lit: &str, diag: Option<(Span, &Handler)>) -> String {
     debug!("str_lit: given {}", lit.escape_default());
     let mut res = String::with_capacity(lit.len());
 
     let error = |i| format!("lexer should have rejected {} at {}", lit, i);
 
-    /// Eat everything up to a non-whitespace
+    /// Eat everything up to a non-whitespace.
     fn eat<'a>(it: &mut iter::Peekable<str::CharIndices<'a>>) {
         loop {
             match it.peek().map(|x| x.1) {
@@ -428,7 +426,7 @@ pub fn str_lit(lit: &str, diag: Option<(Span, &Handler)>) -> String {
     res
 }
 
-/// Parse a string representing a raw string literal into its final form. The
+/// Parses a string representing a raw string literal into its final form. The
 /// only operation this does is convert embedded CRLF into a single LF.
 fn raw_str_lit(lit: &str) -> String {
     debug!("raw_str_lit: given {}", lit.escape_default());
@@ -554,7 +552,7 @@ fn float_lit(s: &str, suffix: Option<Symbol>, diag: Option<(Span, &Handler)>)
     filtered_float_lit(Symbol::intern(s), suffix, diag)
 }
 
-/// Parse a string representing a byte literal into its final form. Similar to `char_lit`
+/// Parses a string representing a byte literal into its final form. Similar to `char_lit`.
 fn byte_lit(lit: &str) -> (u8, usize) {
     let err = |i| format!("lexer accepted invalid byte literal {} step {}", lit, i);
 
@@ -591,7 +589,7 @@ fn byte_str_lit(lit: &str) -> Lrc<Vec<u8>> {
 
     let error = |i| panic!("lexer should have rejected {} at {}", lit, i);
 
-    /// Eat everything up to a non-whitespace
+    /// Eat everything up to a non-whitespace.
     fn eat<I: Iterator<Item=(usize, u8)>>(it: &mut iter::Peekable<I>) {
         loop {
             match it.peek().map(|x| x.1) {
@@ -758,10 +756,11 @@ fn integer_lit(s: &str, suffix: Option<Symbol>, diag: Option<(Span, &Handler)>)
     })
 }
 
-/// `SeqSep` : a sequence separator (token)
-/// and whether a trailing separator is allowed.
+/// A sequence separator.
 pub struct SeqSep {
+    /// The seperator token.
     pub sep: Option<token::Token>,
+    /// `true` if a trailing separator is allowed.
     pub trailing_sep_allowed: bool,
 }
 

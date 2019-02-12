@@ -120,7 +120,7 @@ pub trait Iterator {
     /// // ... and then None once it's over.
     /// assert_eq!(None, iter.next());
     ///
-    /// // More calls may or may not return None. Here, they always will.
+    /// // More calls may or may not return `None`. Here, they always will.
     /// assert_eq!(None, iter.next());
     /// assert_eq!(None, iter.next());
     /// ```
@@ -564,9 +564,9 @@ pub trait Iterator {
     /// Calls a closure on each element of an iterator.
     ///
     /// This is equivalent to using a [`for`] loop on the iterator, although
-    /// `break` and `continue` are not possible from a closure.  It's generally
+    /// `break` and `continue` are not possible from a closure. It's generally
     /// more idiomatic to use a `for` loop, but `for_each` may be more legible
-    /// when processing items at the end of longer iterator chains.  In some
+    /// when processing items at the end of longer iterator chains. In some
     /// cases `for_each` may also be faster than a loop, because it will use
     /// internal iteration on adaptors like `Chain`.
     ///
@@ -1215,7 +1215,7 @@ pub trait Iterator {
     /// assert_eq!(iter.next(), Some(4));
     /// assert_eq!(iter.next(), None);
     ///
-    /// // it will always return None after the first time.
+    /// // it will always return `None` after the first time.
     /// assert_eq!(iter.next(), None);
     /// assert_eq!(iter.next(), None);
     /// assert_eq!(iter.next(), None);
@@ -1515,7 +1515,7 @@ pub trait Iterator {
     /// is propagated back to the caller immediately (short-circuiting).
     ///
     /// The initial value is the value the accumulator will have on the first
-    /// call.  If applying the closure succeeded against every element of the
+    /// call. If applying the closure succeeded against every element of the
     /// iterator, `try_fold()` returns the final accumulator as success.
     ///
     /// Folding is useful whenever you have a collection of something, and want
@@ -1528,10 +1528,10 @@ pub trait Iterator {
     /// do something better than the default `for` loop implementation.
     ///
     /// In particular, try to have this call `try_fold()` on the internal parts
-    /// from which this iterator is composed.  If multiple calls are needed,
+    /// from which this iterator is composed. If multiple calls are needed,
     /// the `?` operator may be convenient for chaining the accumulator value
     /// along, but beware any invariants that need to be upheld before those
-    /// early returns.  This is a `&mut self` method, so iteration needs to be
+    /// early returns. This is a `&mut self` method, so iteration needs to be
     /// resumable after hitting an error here.
     ///
     /// # Examples

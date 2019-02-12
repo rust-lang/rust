@@ -1,4 +1,4 @@
-/// Entry point of thread panic, for details, see std::macros
+/// Entry point of thread panic. For details, see `std::macros`.
 #[macro_export]
 #[cfg_attr(not(stage0), allow_internal_unstable(core_panic, __rust_unstable_column))]
 #[cfg_attr(stage0, allow_internal_unstable)]
@@ -434,7 +434,7 @@ macro_rules! writeln {
 /// * Iterators that dynamically terminate.
 ///
 /// If the determination that the code is unreachable proves incorrect, the
-/// program immediately terminates with a [`panic!`].  The function [`unreachable_unchecked`],
+/// program immediately terminates with a [`panic!`]. The function [`unreachable_unchecked`],
 /// which belongs to the [`std::hint`] module, informs the compiler to
 /// optimize the code out of the release version entirely.
 ///
@@ -495,7 +495,7 @@ macro_rules! unreachable {
 /// A standardized placeholder for marking unfinished code.
 ///
 /// This can be useful if you are prototyping and are just looking to have your
-/// code typecheck, or if you're implementing a trait that requires multiple
+/// code type-check, or if you're implementing a trait that requires multiple
 /// methods, and you're only planning on using one of them.
 ///
 /// # Panics

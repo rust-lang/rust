@@ -137,11 +137,11 @@ impl<T> ToOwned for T
 /// ```
 /// use std::borrow::{Cow, ToOwned};
 ///
-/// struct Items<'a, X: 'a> where [X]: ToOwned<Owned=Vec<X>> {
+/// struct Items<'a, X: 'a> where [X]: ToOwned<Owned = Vec<X>> {
 ///     values: Cow<'a, [X]>,
 /// }
 ///
-/// impl<'a, X: Clone + 'a> Items<'a, X> where [X]: ToOwned<Owned=Vec<X>> {
+/// impl<'a, X: Clone + 'a> Items<'a, X> where [X]: ToOwned<Owned = Vec<X>> {
 ///     fn new(v: Cow<'a, [X]>) -> Self {
 ///         Items { values: v }
 ///     }

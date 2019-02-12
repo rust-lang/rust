@@ -24,7 +24,7 @@ use sys_common::{AsInner, IntoInner, FromInner};
 ///
 /// `OsString` and [`OsStr`] bridge this gap by simultaneously representing Rust
 /// and platform-native string values, and in particular allowing a Rust string
-/// to be converted into an "OS" string with no cost if possible.  A consequence
+/// to be converted into an "OS" string with no cost if possible. A consequence
 /// of this is that `OsString` instances are *not* `NUL` terminated; in order
 /// to pass to e.g., Unix system call, you should create a [`CStr`].
 ///
@@ -259,7 +259,7 @@ impl OsString {
     /// already sufficient.
     ///
     /// Note that the allocator may give the collection more space than it
-    /// requests. Therefore capacity can not be relied upon to be precisely
+    /// requests. Therefore, capacity can not be relied upon to be precisely
     /// minimal. Prefer reserve if future insertions are expected.
     ///
     /// # Examples

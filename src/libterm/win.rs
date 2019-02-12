@@ -11,7 +11,7 @@ use crate::Attr;
 use crate::color;
 use crate::Terminal;
 
-/// A Terminal implementation which uses the Win32 Console API.
+/// A Terminal implementation that uses the Win32 Console API.
 pub struct WinConsole<T> {
     buf: T,
     def_foreground: color::Color,
@@ -103,8 +103,7 @@ impl<T: Write + Send + 'static> WinConsole<T> {
         }
     }
 
-    /// Returns `None` whenever the terminal cannot be created for some
-    /// reason.
+    /// Returns `None` whenever the terminal cannot be created for some reason.
     pub fn new(out: T) -> io::Result<WinConsole<T>> {
         let fg;
         let bg;

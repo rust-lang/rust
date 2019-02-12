@@ -3,24 +3,24 @@
 //! Since the AST and HIR are fairly similar, this is mostly a simple procedure,
 //! much like a fold. Where lowering involves a bit more work things get more
 //! interesting and there are some invariants you should know about. These mostly
-//! concern spans and ids.
+//! concern spans and IDs.
 //!
 //! Spans are assigned to AST nodes during parsing and then are modified during
 //! expansion to indicate the origin of a node and the process it went through
-//! being expanded. Ids are assigned to AST nodes just before lowering.
+//! being expanded. IDs are assigned to AST nodes just before lowering.
 //!
-//! For the simpler lowering steps, ids and spans should be preserved. Unlike
+//! For the simpler lowering steps, IDs and spans should be preserved. Unlike
 //! expansion we do not preserve the process of lowering in the spans, so spans
 //! should not be modified here. When creating a new node (as opposed to
-//! 'folding' an existing one), then you create a new id using `next_id()`.
+//! 'folding' an existing one), then you create a new ID using `next_id()`.
 //!
-//! You must ensure that ids are unique. That means that you should only use the
-//! id from an AST node in a single HIR node (you can assume that AST node ids
-//! are unique). Every new node must have a unique id. Avoid cloning HIR nodes.
-//! If you do, you must then set the new node's id to a fresh one.
+//! You must ensure that IDs are unique. That means that you should only use the
+//! ID from an AST node in a single HIR node (you can assume that AST node IDs
+//! are unique). Every new node must have a unique ID. Avoid cloning HIR nodes.
+//! If you do, you must then set the new node's ID to a fresh one.
 //!
 //! Spans are used for error messages and for tools to map semantics back to
-//! source code. It is therefore not as important with spans as ids to be strict
+//! source code. It is therefore not as important with spans as IDs to be strict
 //! about use (you can't break the compiler by screwing up a span). Obviously, a
 //! HIR node can only have a single span. But multiple nodes can have the same
 //! span and spans don't need to be kept in order, etc. Where code is preserved
@@ -145,7 +145,7 @@ pub trait Resolver {
         is_value: bool,
     ) -> hir::Path;
 
-    /// Obtain the resolution for a node-id.
+    /// Obtain the resolution for a `NodeId`.
     fn get_resolution(&mut self, id: NodeId) -> Option<PathResolution>;
 
     /// Obtain the possible resolutions for the given `use` statement.
@@ -274,10 +274,10 @@ enum ParenthesizedGenericArgs {
 }
 
 /// What to do when we encounter an **anonymous** lifetime
-/// reference. Anonymous lifetime references come in two flavors.  You
+/// reference. Anonymous lifetime references come in two flavors. You
 /// have implicit, or fully elided, references to lifetimes, like the
 /// one in `&T` or `Ref<T>`, and you have `'_` lifetimes, like `&'_ T`
-/// or `Ref<'_, T>`.  These often behave the same, but not always:
+/// or `Ref<'_, T>`. These often behave the same, but not always:
 ///
 /// - certain usages of implicit references are deprecated, like
 ///   `Ref<T>`, and we sometimes just give hard errors in those cases
@@ -3302,7 +3302,7 @@ impl<'a> LoweringContext<'a> {
 
     /// Paths like the visibility path in `pub(super) use foo::{bar, baz}` are repeated
     /// many times in the HIR tree; for each occurrence, we need to assign distinct
-    /// node-ids. (See e.g., #56128.)
+    /// `NodeId`s. (See, e.g., #56128.)
     fn renumber_segment_ids(&mut self, path: &P<hir::Path>) -> P<hir::Path> {
         debug!("renumber_segment_ids(path = {:?})", path);
         let mut path = path.clone();

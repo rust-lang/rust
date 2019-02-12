@@ -16,7 +16,7 @@ use rustc_data_structures::indexed_vec::{Idx, IndexVec};
 
 use syntax_pos::BytePos;
 
-/// Produce DIScope DIEs for each MIR Scope which has variables defined in it.
+/// Produces DIScope DIEs for each MIR Scope which has variables defined in it.
 /// If debuginfo is disabled, the returned vector is empty.
 pub fn create_mir_scopes(
     cx: &CodegenCx<'ll, '_>,

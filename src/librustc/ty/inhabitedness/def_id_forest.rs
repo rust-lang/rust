@@ -22,14 +22,14 @@ pub struct DefIdForest {
 }
 
 impl<'a, 'gcx, 'tcx> DefIdForest {
-    /// Create an empty forest.
+    /// Creates an empty forest.
     pub fn empty() -> DefIdForest {
         DefIdForest {
             root_ids: SmallVec::new(),
         }
     }
 
-    /// Create a forest consisting of a single tree representing the entire
+    /// Creates a forest consisting of a single tree representing the entire
     /// crate.
     #[inline]
     pub fn full(tcx: TyCtxt<'a, 'gcx, 'tcx>) -> DefIdForest {
@@ -37,7 +37,7 @@ impl<'a, 'gcx, 'tcx> DefIdForest {
         DefIdForest::from_id(crate_id)
     }
 
-    /// Create a forest containing a DefId and all its descendants.
+    /// Creates a forest containing a DefId and all its descendants.
     pub fn from_id(id: DefId) -> DefIdForest {
         let mut root_ids = SmallVec::new();
         root_ids.push(id);
@@ -46,12 +46,12 @@ impl<'a, 'gcx, 'tcx> DefIdForest {
         }
     }
 
-    /// Test whether the forest is empty.
+    /// Tests whether the forest is empty.
     pub fn is_empty(&self) -> bool {
         self.root_ids.is_empty()
     }
 
-    /// Test whether the forest contains a given DefId.
+    /// Tests whether the forest contains a given DefId.
     pub fn contains(&self,
                     tcx: TyCtxt<'a, 'gcx, 'tcx>,
                     id: DefId) -> bool

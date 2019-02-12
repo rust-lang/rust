@@ -97,7 +97,7 @@ impl<'a, 'gcx, 'tcx> Children {
         }
     }
 
-    /// Remove an impl from this set of children. Used when replacing
+    /// Removes an impl from this set of children. Used when replacing
     /// an impl with a parent. The impl must be present in the list of
     /// children already.
     fn remove_existing(&mut self,
@@ -399,7 +399,7 @@ impl<'a, 'gcx, 'tcx> Graph {
         self.children.entry(parent).or_default().insert_blindly(tcx, child);
     }
 
-    /// The parent of a given impl, which is the def id of the trait when the
+    /// The parent of a given impl, which is the `DefId` of the trait when the
     /// impl is a "specialization root".
     pub fn parent(&self, child: DefId) -> DefId {
         *self.parent.get(&child).unwrap()

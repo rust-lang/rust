@@ -662,7 +662,7 @@ pub enum WorkItem<B: WriteBackendMethods> {
     /// Copy the post-LTO artifacts from the incremental cache to the output
     /// directory.
     CopyPostLtoArtifacts(CachedModuleCodegen),
-    /// Perform (Thin)LTO on the given module.
+    /// Performs (Thin)LTO on the given module.
     LTO(lto::LtoModuleCodegen<B>),
 }
 
@@ -1797,7 +1797,7 @@ impl<B: ExtraBackendMethods> OngoingCodegen<B> {
         drop(self.coordinator_send.send(Box::new(Message::CodegenComplete::<B>)));
     }
 
-    /// Consume this context indicating that codegen was entirely aborted, and
+    /// Consumes this context indicating that codegen was entirely aborted, and
     /// we need to exit as quickly as possible.
     ///
     /// This method blocks the current thread until all worker threads have

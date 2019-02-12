@@ -144,9 +144,9 @@ impl<'l, 'b, 'tcx, D> DropCtxt<'l, 'b, 'tcx, D>
     /// joined together under the `rest` subpath. They are all controlled
     /// by the primary drop flag, but only the last rest-field dropped
     /// should clear it (and it must also not clear anything else).
-    ///
-    /// FIXME: I think we should just control the flags externally
-    /// and then we do not need this machinery.
+    //
+    // FIXME: I think we should just control the flags externally,
+    // and then we do not need this machinery.
     pub fn elaborate_drop<'a>(&mut self, bb: BasicBlock) {
         debug!("elaborate_drop({:?})", self);
         let style = self.elaborator.drop_style(self.path, DropFlagMode::Deep);
@@ -183,7 +183,7 @@ impl<'l, 'b, 'tcx, D> DropCtxt<'l, 'b, 'tcx, D>
         }
     }
 
-    /// Return the place and move path for each field of `variant`,
+    /// Returns the place and move path for each field of `variant`,
     /// (the move path is `None` if the field is a rest field).
     fn move_paths_for_fields(&self,
                              base_place: &Place<'tcx>,
@@ -234,7 +234,7 @@ impl<'l, 'b, 'tcx, D> DropCtxt<'l, 'b, 'tcx, D>
         }
     }
 
-    /// Create one-half of the drop ladder for a list of fields, and return
+    /// Creates one-half of the drop ladder for a list of fields, and return
     /// the list of steps in it in reverse order, with the first step
     /// dropping 0 fields and so on.
     ///
@@ -268,7 +268,7 @@ impl<'l, 'b, 'tcx, D> DropCtxt<'l, 'b, 'tcx, D>
         )
     }
 
-    /// Create a full drop ladder, consisting of 2 connected half-drop-ladders
+    /// Creates a full drop ladder, consisting of 2 connected half-drop-ladders
     ///
     /// For example, with 3 fields, the drop ladder is
     ///
@@ -818,7 +818,7 @@ impl<'l, 'b, 'tcx, D> DropCtxt<'l, 'b, 'tcx, D>
         }
     }
 
-    /// Return a basic block that drop a place using the context
+    /// Returns a basic block that drop a place using the context
     /// and path in `c`. If `mode` is something, also clear `c`
     /// according to it.
     ///

@@ -66,7 +66,7 @@ pub fn string_to_pat(source_str: String) -> P<ast::Pat> {
     })
 }
 
-/// Convert a vector of strings to a vector of Ident's
+/// Converts a vector of strings to a vector of Ident's
 pub fn strs_to_idents(ids: Vec<&str> ) -> Vec<Ident> {
     ids.iter().map(|u| Ident::from_str(*u)).collect()
 }

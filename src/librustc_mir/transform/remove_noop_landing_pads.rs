@@ -4,7 +4,7 @@ use rustc_data_structures::bit_set::BitSet;
 use crate::transform::{MirPass, MirSource};
 use crate::util::patch::MirPatch;
 
-/// A pass that removes no-op landing pads and replaces jumps to them with
+/// A pass that removes noop landing pads and replaces jumps to them with
 /// `None`. This is important because otherwise LLVM generates terrible
 /// code for these.
 pub struct RemoveNoopLandingPads;

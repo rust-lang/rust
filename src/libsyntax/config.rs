@@ -88,7 +88,7 @@ impl<'a> StripUnconfigured<'a> {
     ///
     /// Gives a compiler warning when the `cfg_attr` contains no attributes and
     /// is in the original source file. Gives a compiler error if the syntax of
-    /// the attribute is incorrect
+    /// the attribute is incorrect.
     fn process_cfg_attr(&mut self, attr: ast::Attribute) -> Vec<ast::Attribute> {
         if !attr.check_name("cfg_attr") {
             return vec![attr];
@@ -146,7 +146,7 @@ impl<'a> StripUnconfigured<'a> {
         }
     }
 
-    /// Determine if a node with the given attributes should be included in this configuration.
+    /// Determines if a node with the given attributes should be included in this configuration.
     pub fn in_cfg(&mut self, attrs: &[ast::Attribute]) -> bool {
         attrs.iter().all(|attr| {
             if !is_cfg(attr) {
@@ -282,8 +282,8 @@ impl<'a> StripUnconfigured<'a> {
         }
     }
 
-    // deny #[cfg] on generic parameters until we decide what to do with it.
-    // see issue #51279.
+    /// Denies `#[cfg]` on generic parameters until we decide what to do with it.
+    /// See issue #51279.
     pub fn disallow_cfg_on_generic_param(&mut self, param: &ast::GenericParam) {
         for attr in param.attrs() {
             let offending_attr = if attr.check_name("cfg") {

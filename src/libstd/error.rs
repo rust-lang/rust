@@ -195,7 +195,7 @@ pub trait Error: Debug + Display {
     #[stable(feature = "error_source", since = "1.30.0")]
     fn source(&self) -> Option<&(dyn Error + 'static)> { None }
 
-    /// Get the `TypeId` of `self`
+    /// Gets the `TypeId` of `self`
     #[doc(hidden)]
     #[stable(feature = "error_type_id", since = "1.34.0")]
     fn type_id(&self) -> TypeId where Self: 'static {
@@ -564,7 +564,7 @@ impl Error for char::ParseCharError {
 
 // copied from any.rs
 impl dyn Error + 'static {
-    /// Returns true if the boxed type is the same as `T`
+    /// Returns `true` if the boxed type is the same as `T`
     #[stable(feature = "error_downcast", since = "1.3.0")]
     #[inline]
     pub fn is<T: Error + 'static>(&self) -> bool {

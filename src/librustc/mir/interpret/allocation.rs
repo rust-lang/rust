@@ -1,4 +1,4 @@
-//! The virtual memory representation of the MIR interpreter
+//! The virtual memory representation of the MIR interpreter.
 
 use super::{
     Pointer, EvalResult, AllocId, ScalarMaybeUndef, write_target_uint, read_target_uint, Scalar,
@@ -54,7 +54,7 @@ pub trait AllocationExtra<Tag, MemoryExtra>: ::std::fmt::Debug + Clone {
     /// Hook for performing extra checks on a memory read access.
     ///
     /// Takes read-only access to the allocation so we can keep all the memory read
-    /// operations take `&self`.  Use a `RefCell` in `AllocExtra` if you
+    /// operations take `&self`. Use a `RefCell` in `AllocExtra` if you
     /// need to mutate.
     #[inline(always)]
     fn memory_read(
@@ -133,7 +133,7 @@ impl<'tcx> ::serialize::UseSpecializedDecodable for &'tcx Allocation {}
 
 /// Alignment and bounds checks
 impl<'tcx, Tag, Extra> Allocation<Tag, Extra> {
-    /// Check if the pointer is "in-bounds". Notice that a pointer pointing at the end
+    /// Checks if the pointer is "in-bounds". Notice that a pointer pointing at the end
     /// of an allocation (i.e., at the first *inaccessible* location) *is* considered
     /// in-bounds!  This follows C's/LLVM's rules.
     /// If you want to check bounds before doing a memory access, better use `check_bounds`.
@@ -145,7 +145,7 @@ impl<'tcx, Tag, Extra> Allocation<Tag, Extra> {
         ptr.check_in_alloc(Size::from_bytes(allocation_size), InboundsCheck::Live)
     }
 
-    /// Check if the memory range beginning at `ptr` and of size `Size` is "in-bounds".
+    /// Checks if the memory range beginning at `ptr` and of size `Size` is "in-bounds".
     #[inline(always)]
     pub fn check_bounds(
         &self,
@@ -161,7 +161,7 @@ impl<'tcx, Tag, Extra> Allocation<Tag, Extra> {
 /// Byte accessors
 impl<'tcx, Tag: Copy, Extra> Allocation<Tag, Extra> {
     /// The last argument controls whether we error out when there are undefined
-    /// or pointer bytes.  You should never call this, call `get_bytes` or
+    /// or pointer bytes. You should never call this, call `get_bytes` or
     /// `get_bytes_with_undef_and_ptr` instead,
     ///
     /// This function also guarantees that the resulting pointer will remain stable
@@ -462,7 +462,7 @@ impl<'tcx, Tag: Copy, Extra> Allocation<Tag, Extra> {
 
 /// Relocations
 impl<'tcx, Tag: Copy, Extra> Allocation<Tag, Extra> {
-    /// Return all relocations overlapping with the given ptr-offset pair.
+    /// Returns all relocations overlapping with the given ptr-offset pair.
     pub fn relocations(
         &self,
         cx: &impl HasDataLayout,
@@ -476,7 +476,7 @@ impl<'tcx, Tag: Copy, Extra> Allocation<Tag, Extra> {
         self.relocations.range(Size::from_bytes(start)..end)
     }
 
-    /// Check that there are no relocations overlapping with the given range.
+    /// Checks that there are no relocations overlapping with the given range.
     #[inline(always)]
     fn check_relocations(
         &self,
@@ -491,10 +491,10 @@ impl<'tcx, Tag: Copy, Extra> Allocation<Tag, Extra> {
         }
     }
 
-    /// Remove all relocations inside the given range.
+    /// Removes all relocations inside the given range.
     /// If there are relocations overlapping with the edges, they
     /// are removed as well *and* the bytes they cover are marked as
-    /// uninitialized.  This is a somewhat odd "spooky action at a distance",
+    /// uninitialized. This is a somewhat odd "spooky action at a distance",
     /// but it allows strictly more code to run than if we would just error
     /// immediately in that case.
     fn clear_relocations(
@@ -633,7 +633,7 @@ impl UndefMask {
         m
     }
 
-    /// Check whether the range `start..end` (end-exclusive) is entirely defined.
+    /// Checks whether the range `start..end` (end-exclusive) is entirely defined.
     ///
     /// Returns `Ok(())` if it's defined. Otherwise returns the index of the byte
     /// at which the first undefined access begins.

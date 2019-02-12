@@ -73,14 +73,14 @@ pub use self::FulfillmentErrorCode::*;
 pub use self::SelectionError::*;
 pub use self::Vtable::*;
 
-// Whether to enable bug compatibility with issue #43355
+/// Whether to enable bug compatibility with issue #43355.
 #[derive(Copy, Clone, PartialEq, Eq, Debug)]
 pub enum IntercrateMode {
     Issue43355,
     Fixed
 }
 
-// The mode that trait queries run in
+/// The mode that trait queries run in.
 #[derive(Copy, Clone, PartialEq, Eq, Debug)]
 pub enum TraitQueryMode {
     // Standard/un-canonicalized queries get accurate
@@ -93,45 +93,45 @@ pub enum TraitQueryMode {
     Canonical,
 }
 
-/// An `Obligation` represents some trait reference (e.g., `int:Eq`) for
-/// which the vtable must be found.  The process of finding a vtable is
+/// An `Obligation` represents some trait reference (e.g., `int: Eq`) for
+/// which the vtable must be found. The process of finding a vtable is
 /// called "resolving" the `Obligation`. This process consists of
 /// either identifying an `impl` (e.g., `impl Eq for int`) that
 /// provides the required vtable, or else finding a bound that is in
 /// scope. The eventual result is usually a `Selection` (defined below).
 #[derive(Clone, PartialEq, Eq, Hash)]
 pub struct Obligation<'tcx, T> {
-    /// Why do we have to prove this thing?
+    /// The reason we have to prove this thing.
     pub cause: ObligationCause<'tcx>,
 
-    /// In which environment should we prove this thing?
+    /// The environment in which we should prove this thing.
     pub param_env: ty::ParamEnv<'tcx>,
 
-    /// What are we trying to prove?
+    /// The thing we are trying to prove.
     pub predicate: T,
 
     /// If we started proving this as a result of trying to prove
     /// something else, track the total depth to ensure termination.
     /// If this goes over a certain threshold, we abort compilation --
     /// in such cases, we can not say whether or not the predicate
-    /// holds for certain. Stupid halting problem. Such a drag.
+    /// holds for certain. Stupid halting problem; such a drag.
     pub recursion_depth: usize,
 }
 
 pub type PredicateObligation<'tcx> = Obligation<'tcx, ty::Predicate<'tcx>>;
 pub type TraitObligation<'tcx> = Obligation<'tcx, ty::PolyTraitPredicate<'tcx>>;
 
-/// Why did we incur this obligation? Used for error reporting.
+/// The reason why we incurred this obligation; used for error reporting.
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub struct ObligationCause<'tcx> {
     pub span: Span,
 
-    // The id of the fn body that triggered this obligation. This is
-    // used for region obligations to determine the precise
-    // environment in which the region obligation should be evaluated
-    // (in particular, closures can add new assumptions). See the
-    // field `region_obligations` of the `FulfillmentContext` for more
-    // information.
+    /// The ID of the fn body that triggered this obligation. This is
+    /// used for region obligations to determine the precise
+    /// environment in which the region obligation should be evaluated
+    /// (in particular, closures can add new assumptions). See the
+    /// field `region_obligations` of the `FulfillmentContext` for more
+    /// information.
     pub body_id: ast::NodeId,
 
     pub code: ObligationCauseCode<'tcx>
@@ -152,20 +152,20 @@ impl<'tcx> ObligationCause<'tcx> {
 
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub enum ObligationCauseCode<'tcx> {
-    /// Not well classified or should be obvious from span.
+    /// Not well classified or should be obvious from the span.
     MiscObligation,
 
-    /// A slice or array is WF only if `T: Sized`
+    /// A slice or array is WF only if `T: Sized`.
     SliceOrArrayElem,
 
-    /// A tuple is WF only if its middle elements are Sized
+    /// A tuple is WF only if its middle elements are `Sized`.
     TupleElem,
 
-    /// This is the trait reference from the given projection
+    /// This is the trait reference from the given projection.
     ProjectionWf(ty::ProjectionTy<'tcx>),
 
-    /// In an impl of trait X for type Y, type Y must
-    /// also implement all supertraits of X.
+    /// In an impl of trait `X` for type `Y`, type `Y` must
+    /// also implement all supertraits of `X`.
     ItemObligation(DefId),
 
     /// A type like `&'a T` is WF only if `T: 'a`.
@@ -271,7 +271,7 @@ pub struct DerivedObligationCause<'tcx> {
     /// directly.
     parent_trait_ref: ty::PolyTraitRef<'tcx>,
 
-    /// The parent trait had this cause
+    /// The parent trait had this cause.
     parent_code: Rc<ObligationCauseCode<'tcx>>
 }
 
@@ -280,14 +280,14 @@ pub type PredicateObligations<'tcx> = Vec<PredicateObligation<'tcx>>;
 pub type TraitObligations<'tcx> = Vec<TraitObligation<'tcx>>;
 
 /// The following types:
-/// * `WhereClause`
-/// * `WellFormed`
-/// * `FromEnv`
-/// * `DomainGoal`
-/// * `Goal`
-/// * `Clause`
-/// * `Environment`
-/// * `InEnvironment`
+/// * `WhereClause`,
+/// * `WellFormed`,
+/// * `FromEnv`,
+/// * `DomainGoal`,
+/// * `Goal`,
+/// * `Clause`,
+/// * `Environment`,
+/// * `InEnvironment`,
 /// are used for representing the trait system in the form of
 /// logic programming clauses. They are part of the interface
 /// for the chalk SLG solver.
@@ -399,10 +399,10 @@ pub type Clauses<'tcx> = &'tcx List<Clause<'tcx>>;
 /// with the goal to solve and proceeds from there).
 #[derive(Copy, Clone, PartialEq, Eq, Hash, Debug)]
 pub struct ProgramClause<'tcx> {
-    /// This goal will be considered true...
+    /// This goal will be considered true ...
     pub goal: DomainGoal<'tcx>,
 
-    /// ...if we can prove these hypotheses (there may be no hypotheses at all):
+    /// ... if we can prove these hypotheses (there may be no hypotheses at all):
     pub hypotheses: Goals<'tcx>,
 
     /// Useful for filtering clauses.
@@ -485,7 +485,6 @@ pub type SelectionResult<'tcx, T> = Result<Option<T>, SelectionError<'tcx>>;
 /// For example, the vtable may be tied to a specific impl (case A),
 /// or it may be relative to some bound that is in scope (case B).
 ///
-///
 /// ```
 /// impl<T:Clone> Clone<T> for Option<T> { ... } // Impl_1
 /// impl<T:Clone> Clone<T> for Box<T> { ... }    // Impl_2
@@ -517,7 +516,7 @@ pub enum Vtable<'tcx, N> {
     /// Vtable identifying a particular impl.
     VtableImpl(VtableImplData<'tcx, N>),
 
-    /// Vtable for auto trait implementations
+    /// Vtable for auto trait implementations.
     /// This carries the information and nested obligations with regards
     /// to an auto implementation for a trait `Trait`. The nested obligations
     /// ensure the trait implementation holds for all the constituent types.
@@ -529,18 +528,18 @@ pub enum Vtable<'tcx, N> {
     /// any).
     VtableParam(Vec<N>),
 
-    /// Virtual calls through an object
+    /// Virtual calls through an object.
     VtableObject(VtableObjectData<'tcx, N>),
 
     /// Successful resolution for a builtin trait.
     VtableBuiltin(VtableBuiltinData<N>),
 
-    /// Vtable automatically generated for a closure. The def ID is the ID
+    /// Vtable automatically generated for a closure. The `DefId` is the ID
     /// of the closure expression. This is a `VtableImpl` in spirit, but the
     /// impl is generated by the compiler and does not appear in the source.
     VtableClosure(VtableClosureData<'tcx, N>),
 
-    /// Same as above, but for a fn pointer type with the given signature.
+    /// Same as above, but for a function pointer type with the given signature.
     VtableFnPointer(VtableFnPointerData<'tcx, N>),
 
     /// Vtable automatically generated for a generator.

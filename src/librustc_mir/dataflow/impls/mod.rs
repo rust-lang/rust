@@ -143,13 +143,6 @@ impl<'a, 'gcx, 'tcx> HasMoveData<'tcx> for MaybeUninitializedPlaces<'a, 'gcx, 't
 /// initialized upon reaching a particular point in the control flow
 /// for a function.
 ///
-/// FIXME: Note that once flow-analysis is complete, this should be
-/// the set-complement of MaybeUninitializedPlaces; thus we can get rid
-/// of one or the other of these two. I'm inclined to get rid of
-/// MaybeUninitializedPlaces, simply because the sets will tend to be
-/// smaller in this analysis and thus easier for humans to process
-/// when debugging.
-///
 /// For example, in code like the following, we have corresponding
 /// dataflow information shown in the right-hand comments.
 ///

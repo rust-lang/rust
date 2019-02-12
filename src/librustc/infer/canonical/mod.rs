@@ -289,7 +289,7 @@ impl<'cx, 'gcx, 'tcx> InferCtxt<'cx, 'gcx, 'tcx> {
     ///
     /// This is only meant to be invoked as part of constructing an
     /// inference context at the start of a query (see
-    /// `InferCtxtBuilder::enter_with_canonical`).  It basically
+    /// `InferCtxtBuilder::enter_with_canonical`). It basically
     /// brings the canonical value "into scope" within your new infcx.
     ///
     /// At the end of processing, the substitution S (once
@@ -424,7 +424,7 @@ impl<'tcx> CanonicalVarValues<'tcx> {
         self.var_values.len()
     }
 
-    /// Make an identity substitution from this one: each bound var
+    /// Makes an identity substitution from this one: each bound var
     /// is matched to the same bound var, preserving the original kinds.
     /// For example, if we have:
     /// `self.var_values == [Type(u32), Lifetime('a), Type(u64)]`

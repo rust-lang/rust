@@ -574,21 +574,21 @@ pub trait BitDenotation<'tcx>: BitSetOperator {
     /// the block's start, not necessarily the state immediately prior
     /// to the statement/terminator under analysis.
     ///
-    /// In either case, the passed reference is mutable; but this is a
+    /// In either case, the passed reference is mutable, but this is a
     /// wart from using the `BlockSets` type in the API; the intention
     /// is that the `statement_effect` and `terminator_effect` methods
     /// mutate only the gen/kill sets.
-    ///
-    /// FIXME: We should consider enforcing the intention described in
-    /// the previous paragraph by passing the three sets in separate
-    /// parameters to encode their distinct mutabilities.
+    //
+    // FIXME: we should consider enforcing the intention described in
+    // the previous paragraph by passing the three sets in separate
+    // parameters to encode their distinct mutabilities.
     fn accumulates_intrablock_state() -> bool { false }
 
     /// A name describing the dataflow analysis that this
-    /// BitDenotation is supporting.  The name should be something
-    /// suitable for plugging in as part of a filename e.g., avoid
+    /// `BitDenotation` is supporting. The name should be something
+    /// suitable for plugging in as part of a filename (i.e., avoid
     /// space-characters or other things that tend to look bad on a
-    /// file system, like slashes or periods. It is also better for
+    /// file system, like slashes or periods). It is also better for
     /// the name to be reasonably short, again because it will be
     /// plugged into a filename.
     fn name() -> &'static str;
@@ -676,11 +676,11 @@ pub trait BitDenotation<'tcx>: BitSetOperator {
     /// flow-dependent, the current MIR cannot encode them via just
     /// GEN and KILL sets attached to the block, and so instead we add
     /// this extra machinery to represent the flow-dependent effect.
-    ///
-    /// FIXME: Right now this is a bit of a wart in the API. It might
-    /// be better to represent this as an additional gen- and
-    /// kill-sets associated with each edge coming out of the basic
-    /// block.
+    //
+    // FIXME: right now this is a bit of a wart in the API. It might
+    // be better to represent this as an additional gen- and
+    // kill-sets associated with each edge coming out of the basic
+    // block.
     fn propagate_call_return(
         &self,
         in_out: &mut BitSet<Self::Idx>,

@@ -118,7 +118,7 @@ impl Diagnostic {
         self.level == Level::Cancelled
     }
 
-    /// Add a span/label to be included in the resulting snippet.
+    /// Adds a span/label to be included in the resulting snippet.
     /// This is pushed onto the `MultiSpan` that was created when the
     /// diagnostic was first built. If you don't call this function at
     /// all, and you just supplied a `Span` to create the diagnostic,

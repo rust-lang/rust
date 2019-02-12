@@ -19,7 +19,7 @@ crate struct UniversalRegionRelations<'tcx> {
     universal_regions: Rc<UniversalRegions<'tcx>>,
 
     /// Stores the outlives relations that are known to hold from the
-    /// implied bounds, in-scope where clauses, and that sort of
+    /// implied bounds, in-scope where-clauses, and that sort of
     /// thing.
     outlives: TransitiveRelation<RegionVid>,
 
@@ -35,7 +35,7 @@ crate struct UniversalRegionRelations<'tcx> {
 /// added via implicit bounds.
 ///
 /// Each region here is guaranteed to be a key in the `indices`
-/// map.  We use the "original" regions (i.e., the keys from the
+/// map. We use the "original" regions (i.e., the keys from the
 /// map, and not the values) because the code in
 /// `process_registered_region_obligations` has some special-cased
 /// logic expecting to see (e.g.) `ReStatic`, and if we supplied
@@ -44,7 +44,7 @@ type RegionBoundPairs<'tcx> = Vec<(ty::Region<'tcx>, GenericKind<'tcx>)>;
 
 /// As part of computing the free region relations, we also have to
 /// normalize the input-output types, which we then need later. So we
-/// return those.  This vector consists of first the input types and
+/// return those. This vector consists of first the input types and
 /// then the output type as the last element.
 type NormalizedInputsAndOutput<'tcx> = Vec<Ty<'tcx>>;
 
@@ -129,8 +129,8 @@ impl UniversalRegionRelations<'tcx> {
     }
 
     /// Helper for `non_local_upper_bound` and
-    /// `non_local_lower_bound`.  Repeatedly invokes `postdom_parent`
-    /// until we find something that is not local. Returns None if we
+    /// `non_local_lower_bound`. Repeatedly invokes `postdom_parent`
+    /// until we find something that is not local. Returns `None` if we
     /// never do so.
     fn non_local_bound(
         &self,
@@ -177,7 +177,7 @@ impl UniversalRegionRelations<'tcx> {
         })
     }
 
-    /// True if fr1 is known to outlive fr2.
+    /// Returns `true` if fr1 is known to outlive fr2.
     ///
     /// This will only ever be true for universally quantified regions.
     crate fn outlives(&self, fr1: RegionVid, fr2: RegionVid) -> bool {

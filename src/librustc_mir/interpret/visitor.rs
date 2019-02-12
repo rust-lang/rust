@@ -16,26 +16,26 @@ use super::{
 // that's just more convenient to work with (avoids repeating all the `Machine` bounds).
 pub trait Value<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>>: Copy
 {
-    /// Get this value's layout.
+    /// Gets this value's layout.
     fn layout(&self) -> TyLayout<'tcx>;
 
-    /// Make this into an `OpTy`.
+    /// Makes this into an `OpTy`.
     fn to_op(
         self,
         ecx: &EvalContext<'a, 'mir, 'tcx, M>,
     ) -> EvalResult<'tcx, OpTy<'tcx, M::PointerTag>>;
 
-    /// Create this from an `MPlaceTy`.
+    /// Creates this from an `MPlaceTy`.
     fn from_mem_place(mplace: MPlaceTy<'tcx, M::PointerTag>) -> Self;
 
-    /// Project to the given enum variant.
+    /// Projects to the given enum variant.
     fn project_downcast(
         self,
         ecx: &EvalContext<'a, 'mir, 'tcx, M>,
         variant: VariantIdx,
     ) -> EvalResult<'tcx, Self>;
 
-    /// Project to the n-th field.
+    /// Projects to the n-th field.
     fn project_field(
         self,
         ecx: &EvalContext<'a, 'mir, 'tcx, M>,
@@ -135,19 +135,19 @@ macro_rules! make_value_visitor {
                 -> &$($mutability)? EvalContext<'a, 'mir, 'tcx, M>;
 
             // Recursive actions, ready to be overloaded.
-            /// Visit the given value, dispatching as appropriate to more specialized visitors.
+            /// Visits the given value, dispatching as appropriate to more specialized visitors.
             #[inline(always)]
             fn visit_value(&mut self, v: Self::V) -> EvalResult<'tcx>
             {
                 self.walk_value(v)
             }
-            /// Visit the given value as a union.  No automatic recursion can happen here.
+            /// Visits the given value as a union. No automatic recursion can happen here.
             #[inline(always)]
             fn visit_union(&mut self, _v: Self::V) -> EvalResult<'tcx>
             {
                 Ok(())
             }
-            /// Visit this vale as an aggregate, you are even getting an iterator yielding
+            /// Visits this vale as an aggregate, you are even getting an iterator yielding
             /// all the fields (still in an `EvalResult`, you have to do error handling yourself).
             /// Recurses into the fields.
             #[inline(always)]
@@ -173,7 +173,7 @@ macro_rules! make_value_visitor {
                 self.visit_value(new_val)
             }
 
-            /// Called for recursing into the field of a generator.  These are not known to be
+            /// Called for recursing into the field of a generator. These are not known to be
             /// initialized, so we treat them like unions.
             #[inline(always)]
             fn visit_generator_field(
@@ -215,8 +215,8 @@ macro_rules! make_value_visitor {
             fn visit_scalar(&mut self, _v: Self::V, _layout: &layout::Scalar) -> EvalResult<'tcx>
             { Ok(()) }
 
-            /// Called whenever we reach a value of primitive type.  There can be no recursion
-            /// below such a value.  This is the leaf function.
+            /// Called whenever we reach a value of primitive type. There can be no recursion
+            /// below such a value. This is the leaf function.
             /// We do *not* provide an `ImmTy` here because some implementations might want
             /// to write to the place this primitive lives in.
             #[inline(always)]

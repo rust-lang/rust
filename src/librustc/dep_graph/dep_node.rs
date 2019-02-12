@@ -302,7 +302,7 @@ macro_rules! define_dep_nodes {
                 }
             }
 
-            /// Create a new, parameterless DepNode. This method will assert
+            /// Creates a new, parameterless DepNode. This method will assert
             /// that the DepNode corresponding to the given DepKind actually
             /// does not require any parameters.
             #[inline(always)]
@@ -314,7 +314,7 @@ macro_rules! define_dep_nodes {
                 }
             }
 
-            /// Extract the DefId corresponding to this DepNode. This will work
+            /// Extracts the DefId corresponding to this DepNode. This will work
             /// if two conditions are met:
             ///
             /// 1. The Fingerprint of the DepNode actually is a DefPathHash, and
@@ -798,7 +798,7 @@ impl<'a, 'gcx: 'tcx + 'a, 'tcx: 'a> DepNodeParams<'a, 'gcx, 'tcx> for HirId {
 }
 
 /// A "work product" corresponds to a `.o` (or other) file that we
-/// save in between runs. These ids do not have a DefId but rather
+/// save in between runs. These IDs do not have a `DefId` but rather
 /// some independent path or string that persists between runs without
 /// the need to be mapped or unmapped. (This ensures we can serialize
 /// them even in the absence of a tcx.)

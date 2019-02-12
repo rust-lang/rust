@@ -1537,7 +1537,7 @@ impl<'a, 'gcx, 'tcx> ProbeContext<'a, 'gcx, 'tcx> {
         }
     }
 
-    /// Get the type of an impl and generate substitutions with placeholders.
+    /// Gets the type of an impl and generate substitutions with placeholders.
     fn impl_ty_and_substs(&self, impl_def_id: DefId) -> (Ty<'tcx>, &'tcx Substs<'tcx>) {
         (self.tcx.type_of(impl_def_id), self.fresh_item_substs(impl_def_id))
     }
@@ -1554,7 +1554,7 @@ impl<'a, 'gcx, 'tcx> ProbeContext<'a, 'gcx, 'tcx> {
         })
     }
 
-    /// Replace late-bound-regions bound by `value` with `'static` using
+    /// Replaces late-bound-regions bound by `value` with `'static` using
     /// `ty::erase_late_bound_regions`.
     ///
     /// This is only a reasonable thing to do during the *probe* phase, not the *confirm* phase, of
@@ -1578,7 +1578,7 @@ impl<'a, 'gcx, 'tcx> ProbeContext<'a, 'gcx, 'tcx> {
         self.tcx.erase_late_bound_regions(value)
     }
 
-    /// Find the method with the appropriate name (or return type, as the case may be). If
+    /// Finds the method with the appropriate name (or return type, as the case may be). If
     /// `allow_similar_names` is set, find methods with close-matching names.
     fn impl_or_trait_item(&self, def_id: DefId) -> Vec<ty::AssociatedItem> {
         if let Some(name) = self.method_name {

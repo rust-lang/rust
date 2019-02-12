@@ -792,7 +792,7 @@ impl<T> Sender<T> {
     /// where the corresponding receiver has already been deallocated. Note
     /// that a return value of [`Err`] means that the data will never be
     /// received, but a return value of [`Ok`] does *not* mean that the data
-    /// will be received.  It is possible for the corresponding receiver to
+    /// will be received. It is possible for the corresponding receiver to
     /// hang up immediately after this function returns [`Ok`].
     ///
     /// [`Err`]: ../../../std/result/enum.Result.html#variant.Err

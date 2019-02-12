@@ -347,7 +347,7 @@ impl<'a> AstBuilder for ExtCtxt<'a> {
 
     /// Constructs a qualified path.
     ///
-    /// Constructs a path like `<self_type as trait_path>::ident<'a, T, A=Bar>`.
+    /// Constructs a path like `<self_type as trait_path>::ident<'a, T, A = Bar>`.
     fn qpath_all(&self,
                  self_type: P<ast::Ty>,
                  trait_path: ast::Path,

@@ -772,7 +772,7 @@ impl FromInner<c::in_addr> for Ipv4Addr {
 
 #[stable(feature = "ip_u32", since = "1.1.0")]
 impl From<Ipv4Addr> for u32 {
-    /// Convert an `Ipv4Addr` into a host byte order `u32`.
+    /// Converts an `Ipv4Addr` into a host byte order `u32`.
     ///
     /// # Examples
     ///
@@ -790,7 +790,7 @@ impl From<Ipv4Addr> for u32 {
 
 #[stable(feature = "ip_u32", since = "1.1.0")]
 impl From<u32> for Ipv4Addr {
-    /// Convert a host byte order `u32` into an `Ipv4Addr`.
+    /// Converts a host byte order `u32` into an `Ipv4Addr`.
     ///
     /// # Examples
     ///
@@ -822,7 +822,7 @@ impl From<[u8; 4]> for Ipv4Addr {
 
 #[stable(feature = "ip_from_slice", since = "1.17.0")]
 impl From<[u8; 4]> for IpAddr {
-    /// Create an `IpAddr::V4` from a four element byte array.
+    /// Creates an `IpAddr::V4` from a four element byte array.
     ///
     /// # Examples
     ///
@@ -1419,7 +1419,7 @@ impl From<[u16; 8]> for Ipv6Addr {
 
 #[stable(feature = "ip_from_slice", since = "1.17.0")]
 impl From<[u8; 16]> for IpAddr {
-    /// Create an `IpAddr::V6` from a sixteen element byte array.
+    /// Creates an `IpAddr::V6` from a sixteen element byte array.
     ///
     /// # Examples
     ///
@@ -1447,7 +1447,7 @@ impl From<[u8; 16]> for IpAddr {
 
 #[stable(feature = "ip_from_slice", since = "1.17.0")]
 impl From<[u16; 8]> for IpAddr {
-    /// Create an `IpAddr::V6` from an eight element 16-bit array.
+    /// Creates an `IpAddr::V6` from an eight element 16-bit array.
     ///
     /// # Examples
     ///

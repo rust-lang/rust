@@ -260,23 +260,23 @@ impl fmt::Display for AllocId {
 
 #[derive(Debug, Clone, Eq, PartialEq, Hash, RustcDecodable, RustcEncodable)]
 pub enum AllocKind<'tcx> {
-    /// The alloc id is used as a function pointer
+    /// The alloc ID is used as a function pointer
     Function(Instance<'tcx>),
-    /// The alloc id points to a "lazy" static variable that did not get computed (yet).
+    /// The alloc ID points to a "lazy" static variable that did not get computed (yet).
     /// This is also used to break the cycle in recursive statics.
     Static(DefId),
-    /// The alloc id points to memory
+    /// The alloc ID points to memory.
     Memory(&'tcx Allocation),
 }
 
 pub struct AllocMap<'tcx> {
-    /// Lets you know what an AllocId refers to
+    /// Lets you know what an `AllocId` refers to.
     id_to_kind: FxHashMap<AllocId, AllocKind<'tcx>>,
 
-    /// Used to ensure that statics only get one associated AllocId
+    /// Used to ensure that statics only get one associated `AllocId`.
     type_interner: FxHashMap<AllocKind<'tcx>, AllocId>,
 
-    /// The AllocId to assign to the next requested id.
+    /// The `AllocId` to assign to the next requested ID.
     /// Always incremented, never gets smaller.
     next_id: AllocId,
 }
@@ -360,7 +360,7 @@ impl<'tcx> AllocMap<'tcx> {
         }
     }
 
-    /// Generate an `AllocId` for a static or return a cached one in case this function has been
+    /// Generates an `AllocId` for a static or return a cached one in case this function has been
     /// called on the same static before.
     pub fn intern_static(&mut self, static_id: DefId) -> AllocId {
         self.intern(AllocKind::Static(static_id))

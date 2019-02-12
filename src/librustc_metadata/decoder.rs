@@ -434,7 +434,7 @@ impl<'tcx> EntryKind<'tcx> {
     }
 }
 
-/// Create the "fake" DefPathTable for a given proc macro crate.
+/// Creates the "fake" DefPathTable for a given proc macro crate.
 ///
 /// The DefPathTable is as follows:
 ///

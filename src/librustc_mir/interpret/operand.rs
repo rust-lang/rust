@@ -87,7 +87,7 @@ impl<'tcx, Tag> Immediate<Tag> {
         }
     }
 
-    /// Convert the immediate into a pointer (or a pointer-sized integer).
+    /// Converts the immediate into a pointer (or a pointer-sized integer).
     /// Throws away the second half of a ScalarPair!
     #[inline]
     pub fn to_scalar_ptr(self) -> EvalResult<'tcx, Scalar<Tag>> {
@@ -97,7 +97,7 @@ impl<'tcx, Tag> Immediate<Tag> {
         }
     }
 
-    /// Convert the value into its metadata.
+    /// Converts the value into its metadata.
     /// Throws away the first half of a ScalarPair!
     #[inline]
     pub fn to_meta(self) -> EvalResult<'tcx, Option<Scalar<Tag>>> {
@@ -125,7 +125,7 @@ impl<'tcx, Tag> ::std::ops::Deref for ImmTy<'tcx, Tag> {
 }
 
 /// An `Operand` is the result of computing a `mir::Operand`. It can be immediate,
-/// or still in memory.  The latter is an optimization, to delay reading that chunk of
+/// or still in memory. The latter is an optimization, to delay reading that chunk of
 /// memory and to avoid having to store arbitrary-sized data here.
 #[derive(Copy, Clone, Debug, Hash, PartialEq, Eq)]
 pub enum Operand<Tag=(), Id=AllocId> {
@@ -247,7 +247,7 @@ pub(super) fn from_known_layout<'tcx>(
 
 impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> {
     /// Try reading an immediate in memory; this is interesting particularly for ScalarPair.
-    /// Return None if the layout does not permit loading this as a value.
+    /// Returns `None` if the layout does not permit loading this as a value.
     pub(super) fn try_read_immediate_from_mplace(
         &self,
         mplace: MPlaceTy<'tcx, M::PointerTag>,

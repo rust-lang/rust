@@ -92,7 +92,7 @@ pub fn provide(providers: &mut Providers<'_>) {
 ///////////////////////////////////////////////////////////////////////////
 
 /// Context specific to some particular item. This is what implements
-/// AstConv. It has information about the predicates that are defined
+/// `AstConv`. It has information about the predicates that are defined
 /// on the trait. Unfortunately, this predicate information is
 /// available in various different forms at various points in the
 /// process. So we can't just store a pointer to e.g., the AST or the
@@ -325,7 +325,7 @@ fn type_param_predicates<'a, 'tcx>(
 }
 
 impl<'a, 'tcx> ItemCtxt<'a, 'tcx> {
-    /// Find bounds from `hir::Generics`. This requires scanning through the
+    /// Finds bounds from `hir::Generics`. This requires scanning through the
     /// AST. We do this to avoid having to convert *all* the bounds, which
     /// would create artificial cycles. Instead we can only convert the
     /// bounds for a type parameter `X` if `X::Foo` is used.
@@ -371,7 +371,7 @@ impl<'a, 'tcx> ItemCtxt<'a, 'tcx> {
 }
 
 /// Tests whether this is the AST for a reference to the type
-/// parameter with id `param_id`. We use this so as to avoid running
+/// parameter with ID `param_id`. We use this so as to avoid running
 /// `ast_ty_to_ty`, because we want to avoid triggering an all-out
 /// conversion of the type to avoid inducing unnecessary cycles.
 fn is_param<'a, 'tcx>(
@@ -680,7 +680,7 @@ fn adt_def<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: DefId) -> &'tcx ty::Ad
     tcx.alloc_adt_def(def_id, kind, variants, repr)
 }
 
-/// Ensures that the super-predicates of the trait with def-id
+/// Ensures that the super-predicates of the trait with `DefId`
 /// trait_def_id are converted and stored. This also ensures that
 /// the transitive super-predicates are converted;
 fn super_predicates_of<'a, 'tcx>(
@@ -1581,7 +1581,7 @@ fn is_unsized<'gcx: 'tcx, 'tcx>(
 }
 
 /// Returns the early-bound lifetimes declared in this generics
-/// listing.  For anything other than fns/methods, this is just all
+/// listing. For anything other than fns/methods, this is just all
 /// the lifetimes that are declared. For fns or methods, we have to
 /// screen out those that do not appear in any where-clauses etc using
 /// `resolve_lifetime::early_bound_lifetimes`.
@@ -1601,6 +1601,9 @@ fn early_bound_lifetimes_from_generics<'a, 'tcx>(
         })
 }
 
+/// Returns a list of type predicates for the definition with ID `def_id`, including inferred
+/// lifetime constraints. This includes all predicates returned by `explicit_predicates_of`, plus
+/// inferred constraints concerning which regions outlive other regions.
 fn predicates_defined_on<'a, 'tcx>(
     tcx: TyCtxt<'a, 'tcx, 'tcx>,
     def_id: DefId,
@@ -1628,6 +1631,9 @@ fn predicates_defined_on<'a, 'tcx>(
     result
 }
 
+/// Returns a list of all type predicates (explicit and implicit) for the definition with
+/// ID `def_id`. This includes all predicates returned by `predicates_defined_on`, plus
+/// `Self: Trait` predicates for traits.
 fn predicates_of<'a, 'tcx>(
     tcx: TyCtxt<'a, 'tcx, 'tcx>,
     def_id: DefId,
@@ -1656,6 +1662,8 @@ fn predicates_of<'a, 'tcx>(
     result
 }
 
+/// Returns a list of user-specified type predicates for the definition with ID `def_id`.
+/// N.B., this does not include any implied/inferred constraints.
 fn explicit_predicates_of<'a, 'tcx>(
     tcx: TyCtxt<'a, 'tcx, 'tcx>,
     def_id: DefId,
@@ -2051,9 +2059,9 @@ pub fn compute_bounds<'gcx: 'tcx, 'tcx>(
 }
 
 /// Converts a specific `GenericBound` from the AST into a set of
-/// predicates that apply to the self-type. A vector is returned
-/// because this can be anywhere from zero predicates (`T : ?Sized` adds no
-/// predicates) to one (`T : Foo`) to many (`T : Bar<X=i32>` adds `T : Bar`
+/// predicates that apply to the self type. A vector is returned
+/// because this can be anywhere from zero predicates (`T: ?Sized` adds no
+/// predicates) to one (`T: Foo`) to many (`T: Bar<X=i32>` adds `T: Bar`
 /// and `<T as Bar>::X == i32`).
 fn predicates_from_bound<'tcx>(
     astconv: &dyn AstConv<'tcx, 'tcx>,

@@ -278,7 +278,7 @@ impl<'tcx> Rvalue<'tcx> {
     }
 
     #[inline]
-    /// Returns whether this rvalue is deeply initialized (most rvalues) or
+    /// Returns `true` if this rvalue is deeply initialized (most rvalues) or
     /// whether its only shallowly initialized (`Rvalue::Box`).
     pub fn initialization_state(&self) -> RvalueInitializationState {
         match *self {

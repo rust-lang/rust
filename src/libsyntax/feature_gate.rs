@@ -737,7 +737,7 @@ pub struct AttributeTemplate {
 }
 
 impl AttributeTemplate {
-    /// Check that the given meta-item is compatible with this template.
+    /// Checks that the given meta-item is compatible with this template.
     fn compatible(&self, meta_item_kind: &ast::MetaItemKind) -> bool {
         match meta_item_kind {
             ast::MetaItemKind::Word => self.word,
@@ -749,7 +749,7 @@ impl AttributeTemplate {
 }
 
 /// A convenience macro for constructing attribute templates.
-/// E.g. `template!(Word, List: "description")` means that the attribute
+/// E.g., `template!(Word, List: "description")` means that the attribute
 /// supports forms `#[attr]` and `#[attr(description)]`.
 macro_rules! template {
     (Word) => { template!(@ true, None, None) };
@@ -2148,8 +2148,7 @@ pub fn check_crate(krate: &ast::Crate,
 
 #[derive(Clone, Copy, Hash)]
 pub enum UnstableFeatures {
-    /// Hard errors for unstable features are active, as on
-    /// beta/stable channels.
+    /// Hard errors for unstable features are active, as on beta/stable channels.
     Disallow,
     /// Allow features to be activated, as on nightly.
     Allow,

@@ -91,7 +91,7 @@ impl LinkerInfo {
     }
 }
 
-/// Linker abstraction used by back::link to build up the command to invoke a
+/// Linker abstraction used by `back::link` to build up the command to invoke a
 /// linker.
 ///
 /// This trait is the total list of requirements needed by `back::link` and
@@ -145,7 +145,7 @@ pub struct GccLinker<'a> {
 impl<'a> GccLinker<'a> {
     /// Argument that must be passed *directly* to the linker
     ///
-    /// These arguments need to be prepended with '-Wl,' when a gcc-style linker is used
+    /// These arguments need to be prepended with `-Wl`, when a GCC-style linker is used.
     fn linker_arg<S>(&mut self, arg: S) -> &mut Self
         where S: AsRef<OsStr>
     {

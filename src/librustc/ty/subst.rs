@@ -171,7 +171,7 @@ impl<'a, 'gcx, 'tcx> Substs<'tcx> {
     /// Creates a `Substs` that maps each generic parameter to a higher-ranked
     /// var bound at index `0`. For types, we use a `BoundVar` index equal to
     /// the type parameter index. For regions, we use the `BoundRegion::BrNamed`
-    /// variant (which has a def-id).
+    /// variant (which has a `DefId`).
     pub fn bound_vars_for_item(
         tcx: TyCtxt<'a, 'gcx, 'tcx>,
         def_id: DefId
@@ -492,7 +492,7 @@ impl<'a, 'gcx, 'tcx> SubstFolder<'a, 'gcx, 'tcx> {
         self.shift_vars_through_binders(ty)
     }
 
-    /// It is sometimes necessary to adjust the debruijn indices during substitution. This occurs
+    /// It is sometimes necessary to adjust the De Bruijn indices during substitution. This occurs
     /// when we are substituting a type with escaping bound vars into a context where we have
     /// passed through binders. That's quite a mouthful. Let's see an example:
     ///
@@ -511,9 +511,9 @@ impl<'a, 'gcx, 'tcx> SubstFolder<'a, 'gcx, 'tcx> {
     ///
     /// Here the `'a` lifetime is bound in the outer function, but appears as an argument of the
     /// inner one. Therefore, that appearance will have a DebruijnIndex of 2, because we must skip
-    /// over the inner binder (remember that we count Debruijn indices from 1). However, in the
+    /// over the inner binder (remember that we count De Bruijn indices from 1). However, in the
     /// definition of `MetaFunc`, the binder is not visible, so the type `&'a int` will have a
-    /// debruijn index of 1. It's only during the substitution that we can see we must increase the
+    /// De Bruijn index of 1. It's only during the substitution that we can see we must increase the
     /// depth by 1 to account for the binder that we passed through.
     ///
     /// As a second example, consider this twist:
@@ -532,7 +532,7 @@ impl<'a, 'gcx, 'tcx> SubstFolder<'a, 'gcx, 'tcx> {
     ///                      DebruijnIndex of 2
     ///
     /// As indicated in the diagram, here the same type `&'a int` is substituted once, but in the
-    /// first case we do not increase the Debruijn index and in the second case we do. The reason
+    /// first case we do not increase the De Bruijn index and in the second case we do. The reason
     /// is that only in the second case have we passed through a fn binder.
     fn shift_vars_through_binders(&self, ty: Ty<'tcx>) -> Ty<'tcx> {
         debug!("shift_vars(ty={:?}, binders_passed={:?}, has_escaping_bound_vars={:?})",
@@ -565,7 +565,7 @@ pub struct UserSubsts<'tcx> {
     /// The substitutions for the item as given by the user.
     pub substs: &'tcx Substs<'tcx>,
 
-    /// The self-type, in the case of a `<T>::Item` path (when applied
+    /// The self type, in the case of a `<T>::Item` path (when applied
     /// to an inherent impl). See `UserSelfTy` below.
     pub user_self_ty: Option<UserSelfTy<'tcx>>,
 }
@@ -585,8 +585,8 @@ BraceStructLiftImpl! {
     }
 }
 
-/// Specifies the user-given self-type. In the case of a path that
-/// refers to a member in an inherent impl, this self-type is
+/// Specifies the user-given self type. In the case of a path that
+/// refers to a member in an inherent impl, this self type is
 /// sometimes needed to constrain the type parameters on the impl. For
 /// example, in this code:
 ///
@@ -596,11 +596,11 @@ BraceStructLiftImpl! {
 /// ```
 ///
 /// when you then have a path like `<Foo<&'static u32>>::method`,
-/// this struct would carry the def-id of the impl along with the
-/// self-type `Foo<u32>`. Then we can instantiate the parameters of
+/// this struct would carry the `DefId` of the impl along with the
+/// self type `Foo<u32>`. Then we can instantiate the parameters of
 /// the impl (with the substs from `UserSubsts`) and apply those to
-/// the self-type, giving `Foo<?A>`. Finally, we unify that with
-/// the self-type here, which contains `?A` to be `&'static u32`
+/// the self type, giving `Foo<?A>`. Finally, we unify that with
+/// the self type here, which contains `?A` to be `&'static u32`
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash, RustcEncodable, RustcDecodable)]
 pub struct UserSelfTy<'tcx> {
     pub impl_def_id: DefId,

@@ -102,12 +102,12 @@ define_queries! { <'tcx>
         /// Records the type of every item.
         [] fn type_of: TypeOfItem(DefId) -> Ty<'tcx>,
 
-        /// Maps from the def-id of an item (trait/struct/enum/fn) to its
+        /// Maps from the `DefId` of an item (trait/struct/enum/fn) to its
         /// associated generics.
         [] fn generics_of: GenericsOfItem(DefId) -> &'tcx ty::Generics,
 
-        /// Maps from the def-id of an item (trait/struct/enum/fn) to the
-        /// predicates (where clauses) that must be proven true in order
+        /// Maps from the `DefId` of an item (trait/struct/enum/fn) to the
+        /// predicates (where-clauses) that must be proven true in order
         /// to reference it. This is almost always the "predicates query"
         /// that you want.
         ///
@@ -123,8 +123,8 @@ define_queries! { <'tcx>
         /// user.)
         [] fn predicates_of: PredicatesOfItem(DefId) -> Lrc<ty::GenericPredicates<'tcx>>,
 
-        /// Maps from the def-id of an item (trait/struct/enum/fn) to the
-        /// predicates (where clauses) directly defined on it. This is
+        /// Maps from the `DefId` of an item (trait/struct/enum/fn) to the
+        /// predicates (where-clauses) directly defined on it. This is
         /// equal to the `explicit_predicates_of` predicates plus the
         /// `inferred_outlives_of` predicates.
         [] fn predicates_defined_on: PredicatesDefinedOnItem(DefId)
@@ -138,7 +138,7 @@ define_queries! { <'tcx>
         /// Foo<'a, T> { x: &'a T }`, this would return `T: 'a`).
         [] fn inferred_outlives_of: InferredOutlivesOf(DefId) -> Lrc<Vec<ty::Predicate<'tcx>>>,
 
-        /// Maps from the def-id of a trait to the list of
+        /// Maps from the `DefId` of a trait to the list of
         /// super-predicates. This is a subset of the full list of
         /// predicates. We store these in a separate map because we must
         /// evaluate them even during type conversion, often before the
@@ -216,7 +216,7 @@ define_queries! { <'tcx>
     },
 
     Codegen {
-        /// Set of all the def-ids in this crate that have MIR associated with
+        /// Set of all the `DefId`s in this crate that have MIR associated with
         /// them. This includes all the body owners, but also things like struct
         /// constructors.
         [] fn mir_keys: mir_keys(CrateNum) -> Lrc<DefIdSet>,
@@ -226,11 +226,11 @@ define_queries! { <'tcx>
         /// the value isn't known except to the pass itself.
         [] fn mir_const_qualif: MirConstQualif(DefId) -> (u8, Lrc<BitSet<mir::Local>>),
 
-        /// Fetch the MIR for a given def-id right after it's built - this includes
+        /// Fetch the MIR for a given `DefId` right after it's built - this includes
         /// unreachable code.
         [] fn mir_built: MirBuilt(DefId) -> &'tcx Steal<mir::Mir<'tcx>>,
 
-        /// Fetch the MIR for a given def-id up till the point where it is
+        /// Fetch the MIR for a given `DefId` up till the point where it is
         /// ready for const evaluation.
         ///
         /// See the README for the `mir` module for details.
@@ -244,7 +244,7 @@ define_queries! { <'tcx>
     },
 
     TypeChecking {
-        /// The result of unsafety-checking this def-id.
+        /// The result of unsafety-checking this `DefId`.
         [] fn unsafety_check_result: UnsafetyCheckResult(DefId) -> mir::UnsafetyCheckResult,
 
         /// HACK: when evaluated, this reports a "unsafe derive on repr(packed)" error
@@ -307,13 +307,13 @@ define_queries! { <'tcx>
     TypeChecking {
         /// Gets a complete map from all types to their inherent impls.
         /// Not meant to be used directly outside of coherence.
-        /// (Defined only for LOCAL_CRATE)
+        /// (Defined only for `LOCAL_CRATE`.)
         [] fn crate_inherent_impls: crate_inherent_impls_dep_node(CrateNum)
             -> Lrc<CrateInherentImpls>,
 
-        /// Checks all types in the krate for overlap in their inherent impls. Reports errors.
+        /// Checks all types in the crate for overlap in their inherent impls. Reports errors.
         /// Not meant to be used directly outside of coherence.
-        /// (Defined only for LOCAL_CRATE)
+        /// (Defined only for `LOCAL_CRATE`.)
         [] fn crate_inherent_impls_overlap_check: inherent_impls_overlap_check_dep_node(CrateNum)
             -> (),
     },
@@ -321,9 +321,9 @@ define_queries! { <'tcx>
     Other {
         /// Evaluate a constant without running sanity checks
         ///
-        /// DO NOT USE THIS outside const eval. Const eval uses this to break query cycles during
-        /// validation. Please add a comment to every use site explaining why using `const_eval`
-        /// isn't sufficient
+        /// **Do not use this** outside const eval. Const eval uses this to break query cycles
+        /// during validation. Please add a comment to every use site explaining why using
+        /// `const_eval` isn't sufficient
         [] fn const_eval_raw: const_eval_raw_dep_node(ty::ParamEnvAnd<'tcx, GlobalId<'tcx>>)
             -> ConstEvalRawResult<'tcx>,
 
@@ -344,7 +344,7 @@ define_queries! { <'tcx>
     Other {
         [] fn reachable_set: reachability_dep_node(CrateNum) -> ReachableSet,
 
-        /// Per-body `region::ScopeTree`. The `DefId` should be the owner-def-id for the body;
+        /// Per-body `region::ScopeTree`. The `DefId` should be the owner `DefId` for the body;
         /// in the case of closures, this will be redirected to the enclosing function.
         [] fn region_scope_tree: RegionScopeTree(DefId) -> Lrc<region::ScopeTree>,
 
@@ -398,7 +398,7 @@ define_queries! { <'tcx>
             -> Lrc<specialization_graph::Graph>,
         [] fn is_object_safe: ObjectSafety(DefId) -> bool,
 
-        /// Get the ParameterEnvironment for a given item; this environment
+        /// Gets the ParameterEnvironment for a given item; this environment
         /// will be in "user-facing" mode, meaning that it is suitabe for
         /// type-checking etc, and it does not normalize specializable
         /// associated types. This is almost always what you want,
@@ -485,7 +485,7 @@ define_queries! { <'tcx>
 
         [] fn foreign_modules: ForeignModules(CrateNum) -> Lrc<Vec<ForeignModule>>,
 
-        /// Identifies the entry-point (e.g. the `main` function) for a given
+        /// Identifies the entry-point (e.g., the `main` function) for a given
         /// crate, returning `None` if there is no entry point (such as for library crates).
         [] fn entry_fn: EntryFn(CrateNum) -> Option<(DefId, EntryFnType)>,
         [] fn plugin_registrar_fn: PluginRegistrarFn(CrateNum) -> Option<DefId>,

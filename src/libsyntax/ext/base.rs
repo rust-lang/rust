@@ -327,34 +327,34 @@ macro_rules! make_stmts_default {
 /// The result of a macro expansion. The return values of the various
 /// methods are spliced into the AST at the callsite of the macro.
 pub trait MacResult {
-    /// Create an expression.
+    /// Creates an expression.
     fn make_expr(self: Box<Self>) -> Option<P<ast::Expr>> {
         None
     }
-    /// Create zero or more items.
+    /// Creates zero or more items.
     fn make_items(self: Box<Self>) -> Option<SmallVec<[P<ast::Item>; 1]>> {
         None
     }
 
-    /// Create zero or more impl items.
+    /// Creates zero or more impl items.
     fn make_impl_items(self: Box<Self>) -> Option<SmallVec<[ast::ImplItem; 1]>> {
         None
     }
 
-    /// Create zero or more trait items.
+    /// Creates zero or more trait items.
     fn make_trait_items(self: Box<Self>) -> Option<SmallVec<[ast::TraitItem; 1]>> {
         None
     }
 
-    /// Create zero or more items in an `extern {}` block
+    /// Creates zero or more items in an `extern {}` block
     fn make_foreign_items(self: Box<Self>) -> Option<SmallVec<[ast::ForeignItem; 1]>> { None }
 
-    /// Create a pattern.
+    /// Creates a pattern.
     fn make_pat(self: Box<Self>) -> Option<P<ast::Pat>> {
         None
     }
 
-    /// Create zero or more statements.
+    /// Creates zero or more statements.
     ///
     /// By default this attempts to create an expression statement,
     /// returning None if that fails.
@@ -461,7 +461,7 @@ pub struct DummyResult {
 }
 
 impl DummyResult {
-    /// Create a default MacResult that can be anything.
+    /// Creates a default MacResult that can be anything.
     ///
     /// Use this as a return value after hitting any errors and
     /// calling `span_err`.
@@ -474,7 +474,7 @@ impl DummyResult {
         Box::new(DummyResult { expr_only: false, is_error: false, span })
     }
 
-    /// Create a default MacResult that can only be an expression.
+    /// Creates a default MacResult that can only be an expression.
     ///
     /// Use this for macros that must expand to an expression, so even
     /// if an error is encountered internally, the user will receive
@@ -683,7 +683,7 @@ pub enum SyntaxExtension {
 }
 
 impl SyntaxExtension {
-    /// Return which kind of macro calls this syntax extension.
+    /// Returns which kind of macro calls this syntax extension.
     pub fn kind(&self) -> MacroKind {
         match *self {
             SyntaxExtension::DeclMacro { .. } |
@@ -841,8 +841,8 @@ impl<'a> ExtCtxt<'a> {
         expand::MacroExpander::new(self, false)
     }
 
-    /// Returns a `Folder` that deeply expands all macros and assigns all node ids in an AST node.
-    /// Once node ids are assigned, the node may not be expanded, removed, or otherwise modified.
+    /// Returns a `Folder` that deeply expands all macros and assigns all `NodeId`s in an AST node.
+    /// Once `NodeId`s are assigned, the node may not be expanded, removed, or otherwise modified.
     pub fn monotonic_expander<'b>(&'b mut self) -> expand::MacroExpander<'b, 'a> {
         expand::MacroExpander::new(self, true)
     }
@@ -982,9 +982,9 @@ impl<'a> ExtCtxt<'a> {
     }
 }
 
-/// Extract a string literal from the macro expanded version of `expr`,
+/// Extracts a string literal from the macro expanded version of `expr`,
 /// emitting `err_msg` if `expr` is not a string literal. This does not stop
-/// compilation on error, merely emits a non-fatal error and returns None.
+/// compilation on error, merely emits a non-fatal error and returns `None`.
 pub fn expr_to_spanned_string<'a>(
     cx: &'a mut ExtCtxt<'_>,
     mut expr: P<ast::Expr>,
@@ -1028,7 +1028,7 @@ pub fn check_zero_tts(cx: &ExtCtxt<'_>,
 }
 
 /// Interpreting `tts` as a comma-separated sequence of expressions,
-/// expect exactly one string literal, or emit an error and return None.
+/// expect exactly one string literal, or emit an error and return `None`.
 pub fn get_single_str_from_tts(cx: &mut ExtCtxt<'_>,
                                sp: Span,
                                tts: &[tokenstream::TokenTree],
@@ -1050,8 +1050,8 @@ pub fn get_single_str_from_tts(cx: &mut ExtCtxt<'_>,
     })
 }
 
-/// Extract comma-separated expressions from `tts`. If there is a
-/// parsing error, emit a non-fatal error and return None.
+/// Extracts comma-separated expressions from `tts`. If there is a
+/// parsing error, emit a non-fatal error and return `None`.
 pub fn get_exprs_from_tts(cx: &mut ExtCtxt<'_>,
                           sp: Span,
                           tts: &[tokenstream::TokenTree]) -> Option<Vec<P<ast::Expr>>> {

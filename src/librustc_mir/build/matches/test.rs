@@ -443,7 +443,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
     /// appropriate.
     ///
     /// So, for example, if this candidate is `x @ Some(P0)` and the
-    /// test is a variant test, then we would add `(x as Option).0 @
+    /// Tests is a variant test, then we would add `(x as Option).0 @
     /// P0` to the `resulting_candidates` entry corresponding to the
     /// variant `Some`.
     ///

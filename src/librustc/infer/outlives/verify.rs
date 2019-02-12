@@ -74,7 +74,7 @@ impl<'cx, 'gcx, 'tcx> VerifyBoundCx<'cx, 'gcx, 'tcx> {
     /// This is an "approximate" check -- it may not find all
     /// applicable bounds, and not all the bounds it returns can be
     /// relied upon. In particular, this check ignores region
-    /// identity.  So, for example, if we have `<T as
+    /// identity. So, for example, if we have `<T as
     /// Trait<'0>>::Item` where `'0` is a region variable, and the
     /// user has `<T as Trait<'a>>::Item: 'b` in the environment, then
     /// the clause from the environment only applies if `'0 = 'a`,
@@ -96,7 +96,7 @@ impl<'cx, 'gcx, 'tcx> VerifyBoundCx<'cx, 'gcx, 'tcx> {
         })
     }
 
-    /// Searches the where clauses in scope for regions that
+    /// Searches the where-clauses in scope for regions that
     /// `projection_ty` is known to outlive. Currently requires an
     /// exact match.
     pub fn projection_declared_bounds_from_trait(
@@ -251,7 +251,7 @@ impl<'cx, 'gcx, 'tcx> VerifyBoundCx<'cx, 'gcx, 'tcx> {
             .map(move |r| r.subst(tcx, projection_ty.substs))
     }
 
-    /// Given the def-id of an associated item, returns any region
+    /// Given the `DefId` of an associated item, returns any region
     /// bounds attached to that associated item from the trait definition.
     ///
     /// For example:
@@ -262,7 +262,7 @@ impl<'cx, 'gcx, 'tcx> VerifyBoundCx<'cx, 'gcx, 'tcx> {
     /// }
     /// ```
     ///
-    /// If we were given the def-id of `Foo::Bar`, we would return
+    /// If we were given the `DefId` of `Foo::Bar`, we would return
     /// `'a`. You could then apply the substitutions from the
     /// projection to convert this into your namespace. This also
     /// works if the user writes `where <Self as Foo<'a>>::Bar: 'a` on

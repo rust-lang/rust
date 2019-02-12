@@ -41,9 +41,9 @@ mod diagnostics;
 /// Implemented to visit all `DefId`s in a type.
 /// Visiting `DefId`s is useful because visibilities and reachabilities are attached to them.
 /// The idea is to visit "all components of a type", as documented in
-/// https://github.com/rust-lang/rfcs/blob/master/text/2145-type-privacy.md#how-to-determine-visibility-of-a-type
-/// Default type visitor (`TypeVisitor`) does most of the job, but it has some shortcomings.
-/// First, it doesn't have overridable `fn visit_trait_ref`, so we have to catch trait def-ids
+/// https://github.com/rust-lang/rfcs/blob/master/text/2145-type-privacy.md#how-to-determine-visibility-of-a-type.
+/// The default type visitor (`TypeVisitor`) does most of the job, but it has some shortcomings.
+/// First, it doesn't have overridable `fn visit_trait_ref`, so we have to catch trait `DefId`s
 /// manually. Second, it doesn't visit some type components like signatures of fn types, or traits
 /// in `impl Trait`, see individual comments in `DefIdVisitorSkeleton::visit_ty`.
 trait DefIdVisitor<'a, 'tcx: 'a> {
@@ -387,7 +387,7 @@ impl VisibilityLike for Option<AccessLevel> {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// The embargo visitor, used to determine the exports of the ast
+/// The embargo visitor, used to determine the exports of the AST.
 ////////////////////////////////////////////////////////////////////////////////
 
 struct EmbargoVisitor<'a, 'tcx: 'a> {

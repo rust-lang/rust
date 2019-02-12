@@ -365,7 +365,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
     ///
     /// # Arguments
     ///
-    /// - `expr_def_id`: the def-id of the closure expression
+    /// - `expr_def_id`: the `DefId` of the closure expression
     /// - `decl`: the HIR declaration of the closure
     /// - `body`: the body of the closure
     /// - `expected_sig`: the expected signature (if any). Note that
@@ -458,7 +458,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         self.closure_sigs(expr_def_id, body, error_sig)
     }
 
-    /// Enforce the user's types against the expectation.  See
+    /// Enforce the user's types against the expectation. See
     /// `sig_of_closure_with_expectation` for details on the overall
     /// strategy.
     fn check_supplied_sig_against_expectation(

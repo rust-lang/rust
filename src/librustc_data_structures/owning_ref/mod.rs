@@ -286,7 +286,7 @@ impl<T> Erased for T {}
 pub unsafe trait IntoErased<'a> {
     /// Owner with the dereference type substituted to `Erased`.
     type Erased;
-    /// Perform the type erasure.
+    /// Performs the type erasure.
     fn into_erased(self) -> Self::Erased;
 }
 
@@ -296,7 +296,7 @@ pub unsafe trait IntoErased<'a> {
 pub unsafe trait IntoErasedSend<'a> {
     /// Owner with the dereference type substituted to `Erased + Send`.
     type Erased: Send;
-    /// Perform the type erasure.
+    /// Performs the type erasure.
     fn into_erased_send(self) -> Self::Erased;
 }
 
@@ -306,7 +306,7 @@ pub unsafe trait IntoErasedSend<'a> {
 pub unsafe trait IntoErasedSendSync<'a> {
     /// Owner with the dereference type substituted to `Erased + Send + Sync`.
     type Erased: Send + Sync;
-    /// Perform the type erasure.
+    /// Performs the type erasure.
     fn into_erased_send_sync(self) -> Self::Erased;
 }
 
@@ -844,7 +844,7 @@ pub trait ToHandleMut {
 impl<O, H> OwningHandle<O, H>
     where O: StableAddress, O::Target: ToHandle<Handle = H>, H: Deref,
 {
-    /// Create a new `OwningHandle` for a type that implements `ToHandle`. For types
+    /// Creates a new `OwningHandle` for a type that implements `ToHandle`. For types
     /// that don't implement `ToHandle`, callers may invoke `new_with_fn`, which accepts
     /// a callback to perform the conversion.
     pub fn new(o: O) -> Self {
@@ -855,7 +855,7 @@ impl<O, H> OwningHandle<O, H>
 impl<O, H> OwningHandle<O, H>
     where O: StableAddress, O::Target: ToHandleMut<HandleMut = H>, H: DerefMut,
 {
-    /// Create a new mutable `OwningHandle` for a type that implements `ToHandleMut`.
+    /// Creates a new mutable `OwningHandle` for a type that implements `ToHandleMut`.
     pub fn new_mut(o: O) -> Self {
         OwningHandle::new_with_fn(o, |x| unsafe { O::Target::to_handle_mut(x) })
     }
@@ -864,7 +864,7 @@ impl<O, H> OwningHandle<O, H>
 impl<O, H> OwningHandle<O, H>
     where O: StableAddress, H: Deref,
 {
-    /// Create a new OwningHandle. The provided callback will be invoked with
+    /// Creates a new OwningHandle. The provided callback will be invoked with
     /// a pointer to the object owned by `o`, and the returned value is stored
     /// as the object to which this `OwningHandle` will forward `Deref` and
     /// `DerefMut`.
@@ -882,7 +882,7 @@ impl<O, H> OwningHandle<O, H>
         }
     }
 
-    /// Create a new OwningHandle. The provided callback will be invoked with
+    /// Creates a new OwningHandle. The provided callback will be invoked with
     /// a pointer to the object owned by `o`, and the returned value is stored
     /// as the object to which this `OwningHandle` will forward `Deref` and
     /// `DerefMut`.

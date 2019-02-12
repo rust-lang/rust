@@ -14,8 +14,8 @@ use crate::ty::{self, Ty, TyCtxt};
 use crate::ty::subst::{Subst, Substs};
 use crate::ty::fold::TypeFoldable;
 
-/// Attempts to resolve an obligation to a vtable.. The result is
-/// a shallow vtable resolution -- meaning that we do not
+/// Attempts to resolve an obligation to a vtable. The result is
+/// a shallow vtable resolution, meaning that we do not
 /// (necessarily) resolve all nested obligations on the impl. Note
 /// that type check should guarantee to us that all nested
 /// obligations *could be* resolved if we wanted to.

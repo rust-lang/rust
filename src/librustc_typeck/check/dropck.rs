@@ -12,7 +12,7 @@ use crate::util::common::ErrorReported;
 use syntax::ast;
 use syntax_pos::Span;
 
-/// check_drop_impl confirms that the Drop implementation identified by
+/// This function confirms that the `Drop` implementation identified by
 /// `drop_impl_did` is not any more specialized than the type it is
 /// attached to (Issue #8142).
 ///
@@ -21,7 +21,7 @@ use syntax_pos::Span;
 /// 1. The self type must be nominal (this is already checked during
 ///    coherence),
 ///
-/// 2. The generic region/type parameters of the impl's self-type must
+/// 2. The generic region/type parameters of the impl's self type must
 ///    all be parameters of the Drop impl itself (i.e., no
 ///    specialization like `impl Drop for Foo<i32>`), and,
 ///
@@ -236,9 +236,9 @@ fn ensure_drop_predicates_are_implied_by_item_defn<'a, 'tcx>(
     result
 }
 
-/// check_safety_of_destructor_if_necessary confirms that the type
+/// This function confirms that the type
 /// expression `typ` conforms to the "Drop Check Rule" from the Sound
-/// Generic Drop (RFC 769).
+/// Generic Drop RFC (#769).
 ///
 /// ----
 ///
@@ -276,7 +276,7 @@ fn ensure_drop_predicates_are_implied_by_item_defn<'a, 'tcx>(
 /// expected to break the needed parametricity property beyond
 /// repair.)
 ///
-/// Therefore we have scaled back Drop-Check to a more conservative
+/// Therefore, we have scaled back Drop-Check to a more conservative
 /// rule that does not attempt to deduce whether a `Drop`
 /// implementation could not possible access data of a given lifetime;
 /// instead Drop-Check now simply assumes that if a destructor has
@@ -287,7 +287,6 @@ fn ensure_drop_predicates_are_implied_by_item_defn<'a, 'tcx>(
 /// this conservative assumption (and thus assume the obligation of
 /// ensuring that they do not access data nor invoke methods of
 /// values that have been previously dropped).
-///
 pub fn check_safety_of_destructor_if_necessary<'a, 'gcx, 'tcx>(
     rcx: &mut RegionCtxt<'a, 'gcx, 'tcx>,
     ty: Ty<'tcx>,

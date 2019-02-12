@@ -60,7 +60,7 @@ pub mod point {
     }
 }
 
-/// A fn that has the changed type in its signature; must currently be
+/// A function that has the changed type in its signature; must currently be
 /// rebuilt.
 ///
 /// You could imagine that, in the future, if the change were
@@ -76,7 +76,7 @@ pub mod fn_with_type_in_sig {
     }
 }
 
-/// Call a fn that has the changed type in its signature; this
+/// Call a function that has the changed type in its signature; this
 /// currently must also be rebuilt.
 ///
 /// You could imagine that, in the future, if the change were
@@ -92,7 +92,7 @@ pub mod call_fn_with_type_in_sig {
     }
 }
 
-/// A fn that uses the changed type, but only in its body, not its
+/// A function that uses the changed type, but only in its body, not its
 /// signature.
 ///
 /// You could imagine that, in the future, if the change were
@@ -108,10 +108,10 @@ pub mod fn_with_type_in_body {
     }
 }
 
-/// A fn X that calls a fn Y, where Y uses the changed type in its
+/// A function `X` that calls a function `Y`, where `Y` uses the changed type in its
 /// body. In this case, the effects of the change should be contained
-/// to Y; X should not have to be rebuilt, nor should it need to be
-/// typechecked again.
+/// to `Y`; `X` should not have to be rebuilt, nor should it need to be
+/// type-checked again.
 pub mod call_fn_with_type_in_body {
     use fn_with_type_in_body;
 
@@ -121,7 +121,7 @@ pub mod call_fn_with_type_in_body {
     }
 }
 
-/// A fn item that makes an instance of `Point` but does not invoke methods
+/// A function item that makes an instance of `Point` but does not invoke methods.
 pub mod fn_make_struct {
     use point::Point;
 
@@ -131,7 +131,7 @@ pub mod fn_make_struct {
     }
 }
 
-/// A fn item that reads fields from `Point` but does not invoke methods
+/// A function item that reads fields from `Point` but does not invoke methods.
 pub mod fn_read_field {
     use point::Point;
 
@@ -141,7 +141,7 @@ pub mod fn_read_field {
     }
 }
 
-/// A fn item that writes to a field of `Point` but does not invoke methods
+/// A function item that writes to a field of `Point` but does not invoke methods.
 pub mod fn_write_field {
     use point::Point;
 

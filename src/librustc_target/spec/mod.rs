@@ -525,7 +525,7 @@ pub struct TargetOptions {
     pub pre_link_objects_exe_crt: Vec<String>, // ... when linking an executable with a bundled crt
     pub pre_link_objects_dll: Vec<String>, // ... when linking a dylib
     /// Linker arguments that are unconditionally passed after any
-    /// user-defined but before post_link_objects.  Standard platform
+    /// user-defined but before post_link_objects. Standard platform
     /// libraries that should be always be linked to, usually go here.
     pub late_link_args: LinkArgs,
     /// Objects to link after all others, always found within the
@@ -641,7 +641,7 @@ pub struct TargetOptions {
     pub allow_asm: bool,
     /// Whether the target uses a custom unwind resumption routine.
     /// By default LLVM lowers `resume` instructions into calls to `_Unwind_Resume`
-    /// defined in libgcc.  If this option is enabled, the target must provide
+    /// defined in libgcc. If this option is enabled, the target must provide
     /// `eh_unwind_resume` lang item.
     pub custom_unwind_resume: bool,
 
@@ -705,7 +705,7 @@ pub struct TargetOptions {
     /// for this target unconditionally.
     pub no_builtins: bool,
 
-    /// Whether to lower 128-bit operations to compiler_builtins calls.  Use if
+    /// Whether to lower 128-bit operations to compiler_builtins calls. Use if
     /// your backend only supports 64-bit and smaller math.
     pub i128_lowering: bool,
 
@@ -747,7 +747,7 @@ pub struct TargetOptions {
 }
 
 impl Default for TargetOptions {
-    /// Create a set of "sane defaults" for any target. This is still
+    /// Creates a set of "sane defaults" for any target. This is still
     /// incomplete, and if used for compilation, will certainly not work.
     fn default() -> TargetOptions {
         TargetOptions {
@@ -872,7 +872,7 @@ impl Target {
         abi.generic() || !self.options.abi_blacklist.contains(&abi)
     }
 
-    /// Load a target descriptor from a JSON object.
+    /// Loads a target descriptor from a JSON object.
     pub fn from_json(obj: Json) -> TargetResult {
         // While ugly, this code must remain this way to retain
         // compatibility with existing JSON fields and the internal

@@ -1,7 +1,7 @@
 use std::cmp;
 use crate::symbol::Symbol;
 
-/// Find the Levenshtein distance between two strings
+/// Finds the Levenshtein distance between two strings
 pub fn lev_distance(a: &str, b: &str) -> usize {
     // cases which don't require further computation
     if a.is_empty() {
@@ -32,7 +32,7 @@ pub fn lev_distance(a: &str, b: &str) -> usize {
     dcol[t_last + 1]
 }
 
-/// Find the best match for a given word in the given iterator
+/// Finds the best match for a given word in the given iterator
 ///
 /// As a loose rule to avoid the obviously incorrect suggestions, it takes
 /// an optional limit for the maximum allowable edit distance, which defaults

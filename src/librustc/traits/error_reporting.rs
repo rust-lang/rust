@@ -583,7 +583,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
     }
 
 
-    /// Get the parent trait chain start
+    /// Gets the parent trait chain start
     fn get_parent_trait_ref(&self, code: &ObligationCauseCode<'tcx>) -> Option<String> {
         match code {
             &ObligationCauseCode::BuiltinDerivedObligation(ref data) => {
@@ -1376,7 +1376,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
         }
     }
 
-    /// Returns whether the trait predicate may apply for *some* assignment
+    /// Returns `true` if the trait predicate may apply for *some* assignment
     /// to the type parameters.
     fn predicate_can_apply(&self,
                            param_env: ty::ParamEnv<'tcx>,

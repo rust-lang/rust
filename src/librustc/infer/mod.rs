@@ -221,7 +221,7 @@ pub struct InferCtxt<'a, 'gcx: 'a + 'tcx, 'tcx: 'a> {
 /// replaced with.
 pub type PlaceholderMap<'tcx> = BTreeMap<ty::BoundRegion, ty::Region<'tcx>>;
 
-/// See `error_reporting` module for more details
+/// See the `error_reporting` module for more details.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum ValuePairs<'tcx> {
     Types(ExpectedFound<Ty<'tcx>>),
@@ -233,7 +233,7 @@ pub enum ValuePairs<'tcx> {
 /// The trace designates the path through inference that we took to
 /// encounter an error or subtyping constraint.
 ///
-/// See `error_reporting` module for more details.
+/// See the `error_reporting` module for more details.
 #[derive(Clone)]
 pub struct TypeTrace<'tcx> {
     cause: ObligationCause<'tcx>,
@@ -454,9 +454,9 @@ impl fmt::Display for FixupError {
     }
 }
 
-/// Helper type of a temporary returned by tcx.infer_ctxt().
+/// Helper type of a temporary returned by `tcx.infer_ctxt()`.
 /// Necessary because we can't write the following bound:
-/// F: for<'b, 'tcx> where 'gcx: 'tcx FnOnce(InferCtxt<'b, 'gcx, 'tcx>).
+/// `F: for<'b, 'tcx> where 'gcx: 'tcx FnOnce(InferCtxt<'b, 'gcx, 'tcx>)`.
 pub struct InferCtxtBuilder<'a, 'gcx: 'a + 'tcx, 'tcx: 'a> {
     global_tcx: TyCtxt<'a, 'gcx, 'gcx>,
     arena: SyncDroplessArena,
@@ -487,7 +487,7 @@ impl<'a, 'gcx, 'tcx> InferCtxtBuilder<'a, 'gcx, 'tcx> {
     /// inference context that contains each of the bound values
     /// within instantiated as a fresh variable. The `f` closure is
     /// invoked with the new infcx, along with the instantiated value
-    /// `V` and a substitution `S`.  This substitution `S` maps from
+    /// `V` and a substitution `S`. This substitution `S` maps from
     /// the bound values in `C` to their instantiated values in `V`
     /// (in other words, `S(C) = V`).
     pub fn enter_with_canonical<T, R>(
@@ -563,7 +563,7 @@ impl<'tcx, T> InferOk<'tcx, T> {
         }
     }
 
-    /// Extract `value`, registering any obligations into `fulfill_cx`
+    /// Extracts `value`, registering any obligations into `fulfill_cx`.
     pub fn into_value_registering_obligations(
         self,
         infcx: &InferCtxt<'_, '_, 'tcx>,
@@ -794,7 +794,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
             .commit(region_constraints_snapshot);
     }
 
-    /// Execute `f` and commit the bindings
+    /// Executes `f` and commit the bindings.
     pub fn commit_unconditionally<R, F>(&self, f: F) -> R
     where
         F: FnOnce() -> R,
@@ -806,7 +806,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
         r
     }
 
-    /// Execute `f` and commit the bindings if closure `f` returns `Ok(_)`
+    /// Executes `f` and commit the bindings if closure `f` returns `Ok(_)`.
     pub fn commit_if_ok<T, E, F>(&self, f: F) -> Result<T, E>
     where
         F: FnOnce(&CombinedSnapshot<'a, 'tcx>) -> Result<T, E>,
@@ -838,7 +838,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
         r
     }
 
-    /// Execute `f` then unroll any bindings it creates
+    /// Executes `f` then unroll any bindings it creates.
     pub fn probe<R, F>(&self, f: F) -> R
     where
         F: FnOnce(&CombinedSnapshot<'a, 'tcx>) -> R,
@@ -996,14 +996,14 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
         self.float_unification_table.borrow_mut().new_key(None)
     }
 
-    /// Create a fresh region variable with the next available index.
+    /// Creates a fresh region variable with the next available index.
     /// The variable will be created in the maximum universe created
     /// thus far, allowing it to name any region created thus far.
     pub fn next_region_var(&self, origin: RegionVariableOrigin) -> ty::Region<'tcx> {
         self.next_region_var_in_universe(origin, self.universe())
     }
 
-    /// Create a fresh region variable with the next available index
+    /// Creates a fresh region variable with the next available index
     /// in the given universe; typically, you can use
     /// `next_region_var` and just use the maximal universe.
     pub fn next_region_var_in_universe(
@@ -1069,8 +1069,8 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
         Substs::for_item(self.tcx, def_id, |param, _| self.var_for_def(span, param))
     }
 
-    /// True if errors have been reported since this infcx was
-    /// created.  This is sometimes used as a heuristic to skip
+    /// Returns `true` if errors have been reported since this infcx was
+    /// created. This is sometimes used as a heuristic to skip
     /// reporting errors that often occur as a result of earlier
     /// errors, but where it's hard to be 100% sure (e.g., unresolved
     /// inference variables, regionck errors).
@@ -1278,7 +1278,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
         value.fold_with(&mut r)
     }
 
-    /// Returns true if `T` contains unresolved type variables. In the
+    /// Returns `true` if `T` contains unresolved type variables. In the
     /// process of visiting `T`, this will resolve (where possible)
     /// type variables in `T`, but it never constructs the final,
     /// resolved type, so it's more efficient than
@@ -1361,7 +1361,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
         self.tcx.replace_bound_vars(value, fld_r, fld_t)
     }
 
-    /// See `verify_generic_bound` method in `region_constraints`
+    /// See the [`region_constraints::verify_generic_bound`] method.
     pub fn verify_generic_bound(
         &self,
         origin: SubregionOrigin<'tcx>,
@@ -1413,7 +1413,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
         closure_kind_ty.to_opt_closure_kind()
     }
 
-    /// Obtain the signature of a closure.  For closures, unlike
+    /// Obtain the signature of a closure. For closures, unlike
     /// `tcx.fn_sig(def_id)`, this method will work during the
     /// type-checking of the enclosing function and return the closure
     /// signature in its partially inferred state.
@@ -1458,8 +1458,8 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
     }
 
     /// Clears the selection, evaluation, and projection caches. This is useful when
-    /// repeatedly attempting to select an Obligation while changing only
-    /// its ParamEnv, since FulfillmentContext doesn't use 'probe'
+    /// repeatedly attempting to select an `Obligation` while changing only
+    /// its `ParamEnv`, since `FulfillmentContext` doesn't use probing.
     pub fn clear_caches(&self) {
         self.selection_cache.clear();
         self.evaluation_cache.clear();
@@ -1470,7 +1470,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
         self.universe.get()
     }
 
-    /// Create and return a fresh universe that extends all previous
+    /// Creates and return a fresh universe that extends all previous
     /// universes. Updates `self.universe` to that new universe.
     pub fn create_next_universe(&self) -> ty::UniverseIndex {
         let u = self.universe.get().next_universe();

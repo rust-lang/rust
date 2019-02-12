@@ -248,11 +248,11 @@ impl<K, V, M> FullBucket<K, V, M> {
     pub fn into_table(self) -> M {
         self.table
     }
-    /// Get the raw index.
+    /// Gets the raw index.
     pub fn index(&self) -> usize {
         self.raw.idx
     }
-    /// Get the raw bucket.
+    /// Gets the raw bucket.
     pub fn raw(&self) -> RawBucket<K, V> {
         self.raw
     }
@@ -270,7 +270,7 @@ impl<K, V, M> EmptyBucket<K, V, M> {
 }
 
 impl<K, V, M> Bucket<K, V, M> {
-    /// Get the raw index.
+    /// Gets the raw index.
     pub fn index(&self) -> usize {
         self.raw.idx
     }
@@ -503,7 +503,7 @@ impl<K, V, M: Deref<Target = RawTable<K, V>>> FullBucket<K, V, M> {
         }
     }
 
-    /// Get the distance between this bucket and the 'ideal' location
+    /// Gets the distance between this bucket and the 'ideal' location
     /// as determined by the key's hash stored in it.
     ///
     /// In the cited blog posts above, this is called the "distance to
@@ -839,12 +839,12 @@ impl<K, V> RawTable<K, V> {
         }
     }
 
-    /// Set the table tag
+    /// Sets the table tag.
     pub fn set_tag(&mut self, value: bool) {
         self.hashes.set_tag(value)
     }
 
-    /// Get the table tag
+    /// Gets the table tag.
     pub fn tag(&self) -> bool {
         self.hashes.tag()
     }

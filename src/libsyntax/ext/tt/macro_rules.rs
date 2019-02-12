@@ -449,7 +449,7 @@ fn check_lhs_nt_follows(sess: &ParseSess,
     // after parsing/expansion. we can report every error in every macro this way.
 }
 
-/// Check that the lhs contains no repetition which could match an empty token
+/// Checks that the lhs contains no repetition which could match an empty token
 /// tree, because then the matcher would hang indefinitely.
 fn check_lhs_no_empty_seq(sess: &ParseSess, tts: &[quoted::TokenTree]) -> bool {
     use quoted::TokenTree;
@@ -977,8 +977,8 @@ fn token_can_be_followed_by_any(tok: &quoted::TokenTree) -> bool {
     }
 }
 
-/// True if a fragment of type `frag` can be followed by any sort of
-/// token.  We use this (among other things) as a useful approximation
+/// Returns `true` if a fragment of type `frag` can be followed by any sort of
+/// token. We use this (among other things) as a useful approximation
 /// for when `frag` can be followed by a repetition like `$(...)*` or
 /// `$(...)+`. In general, these can be a bit tricky to reason about,
 /// so we adopt a conservative position that says that any fragment
@@ -1007,7 +1007,7 @@ enum IsInFollow {
     Invalid(String, &'static str),
 }
 
-/// True if `frag` can legally be followed by the token `tok`. For
+/// Returns `true` if `frag` can legally be followed by the token `tok`. For
 /// fragments that can consume an unbounded number of tokens, `tok`
 /// must be within a well-defined follow set. This is intended to
 /// guarantee future compatibility: for example, without this rule, if

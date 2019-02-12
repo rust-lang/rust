@@ -33,7 +33,7 @@ struct MoveSite {
     /// then tell us where the move occurred.
     moi: MoveOutIndex,
 
-    /// True if we traversed a back edge while walking from the point
+    /// `true` if we traversed a back edge while walking from the point
     /// of error to the move site.
     traversed_back_edge: bool
 }
@@ -1793,7 +1793,7 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
         }
     }
 
-    /// Check if a place is a thread-local static.
+    /// Checks if a place is a thread-local static.
     pub fn is_place_thread_local(&self, place: &Place<'tcx>) -> bool {
         if let Place::Static(statik) = place {
             let attrs = self.infcx.tcx.get_attrs(statik.def_id);
@@ -2314,7 +2314,7 @@ impl<'tcx> AnnotatedBorrowFnSignature<'tcx> {
         }
     }
 
-    /// Return the name of the provided `Ty` (that must be a reference)'s region with a
+    /// Returns the name of the provided `Ty` (that must be a reference)'s region with a
     /// synthesized lifetime name where required.
     fn get_region_name_for_ty(&self, ty: ty::Ty<'tcx>, counter: usize) -> String {
         match ty.sty {
@@ -2389,7 +2389,7 @@ impl UseSpans {
         }
     }
 
-    /// Return `false` if this place is not used in a closure.
+    /// Returns `false` if this place is not used in a closure.
     fn for_closure(&self) -> bool {
         match *self {
             UseSpans::ClosureUse { is_generator, .. } => !is_generator,
@@ -2397,7 +2397,7 @@ impl UseSpans {
         }
     }
 
-    /// Return `false` if this place is not used in a generator.
+    /// Returns `false` if this place is not used in a generator.
     fn for_generator(&self) -> bool {
         match *self {
             UseSpans::ClosureUse { is_generator, .. } => is_generator,

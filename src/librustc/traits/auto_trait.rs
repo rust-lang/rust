@@ -57,7 +57,7 @@ impl<'a, 'tcx> AutoTraitFinder<'a, 'tcx> {
         AutoTraitFinder { tcx }
     }
 
-    /// Make a best effort to determine whether and under which conditions an auto trait is
+    /// Makes a best effort to determine whether and under which conditions an auto trait is
     /// implemented for a type. For example, if you have
     ///
     /// ```

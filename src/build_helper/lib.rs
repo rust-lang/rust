@@ -163,7 +163,7 @@ pub fn mtime(path: &Path) -> SystemTime {
         .unwrap_or(UNIX_EPOCH)
 }
 
-/// Returns whether `dst` is up to date given that the file or files in `src`
+/// Returns `true` if `dst` is up to date given that the file or files in `src`
 /// are used to generate it.
 ///
 /// Uses last-modified time checks to verify this.
@@ -190,12 +190,12 @@ pub struct NativeLibBoilerplate {
 }
 
 impl NativeLibBoilerplate {
-    /// On OSX we don't want to ship the exact filename that compiler-rt builds.
+    /// On macOS we don't want to ship the exact filename that compiler-rt builds.
     /// This conflicts with the system and ours is likely a wildly different
     /// version, so they can't be substituted.
     ///
     /// As a result, we rename it here but we need to also use
-    /// `install_name_tool` on OSX to rename the commands listed inside of it to
+    /// `install_name_tool` on macOS to rename the commands listed inside of it to
     /// ensure it's linked against correctly.
     pub fn fixup_sanitizer_lib_name(&self, sanitizer_name: &str) {
         if env::var("TARGET").unwrap() != "x86_64-apple-darwin" {

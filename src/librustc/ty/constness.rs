@@ -37,7 +37,7 @@ impl<'a, 'tcx> TyCtxt<'a, 'tcx, 'tcx> {
         }
     }
 
-    /// Returns true if this function must conform to `min_const_fn`
+    /// Returns `true` if this function must conform to `min_const_fn`
     pub fn is_min_const_fn(self, def_id: DefId) -> bool {
         // Bail out if the signature doesn't contain `const`
         if !self.is_const_fn_raw(def_id) {

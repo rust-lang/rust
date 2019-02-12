@@ -72,11 +72,11 @@ struct SelectInner {
 impl !marker::Send for Select {}
 
 /// A handle to a receiver which is currently a member of a `Select` set of
-/// receivers.  This handle is used to keep the receiver in the set as well as
+/// receivers. This handle is used to keep the receiver in the set as well as
 /// interact with the underlying receiver.
 pub struct Handle<'rx, T:Send+'rx> {
     /// The ID of this handle, used to compare against the return value of
-    /// `Select::wait()`
+    /// `Select::wait()`.
     id: usize,
     selector: *mut SelectInner,
     next: *mut Handle<'static, ()>,
@@ -148,7 +148,7 @@ impl Select {
     }
 
     /// Waits for an event on this receiver set. The returned value is *not* an
-    /// index, but rather an id. This id can be queried against any active
+    /// index, but rather an ID. This ID can be queried against any active
     /// `Handle` structures (each one has an `id` method). The handle with
     /// the matching `id` will have some sort of event available on it. The
     /// event could either be that data is available or the corresponding
@@ -251,7 +251,7 @@ impl Select {
 }
 
 impl<'rx, T: Send> Handle<'rx, T> {
-    /// Retrieves the id of this handle.
+    /// Retrieves the ID of this handle.
     #[inline]
     pub fn id(&self) -> usize { self.id }
 

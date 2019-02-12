@@ -497,7 +497,7 @@ impl TcpStream {
         self.0.ttl()
     }
 
-    /// Get the value of the `SO_ERROR` option on this socket.
+    /// Gets the value of the `SO_ERROR` option on this socket.
     ///
     /// This will retrieve the stored error in the underlying socket, clearing
     /// the field in the process. This can be useful for checking errors between
@@ -636,7 +636,7 @@ impl TcpListener {
     ///
     /// # Examples
     ///
-    /// Create a TCP listener bound to `127.0.0.1:80`:
+    /// Creates a TCP listener bound to `127.0.0.1:80`:
     ///
     /// ```no_run
     /// use std::net::TcpListener;
@@ -644,7 +644,7 @@ impl TcpListener {
     /// let listener = TcpListener::bind("127.0.0.1:80").unwrap();
     /// ```
     ///
-    /// Create a TCP listener bound to `127.0.0.1:80`. If that fails, create a
+    /// Creates a TCP listener bound to `127.0.0.1:80`. If that fails, create a
     /// TCP listener bound to `127.0.0.1:443`:
     ///
     /// ```no_run
@@ -811,7 +811,7 @@ impl TcpListener {
         self.0.only_v6()
     }
 
-    /// Get the value of the `SO_ERROR` option on this socket.
+    /// Gets the value of the `SO_ERROR` option on this socket.
     ///
     /// This will retrieve the stored error in the underlying socket, clearing
     /// the field in the process. This can be useful for checking errors between

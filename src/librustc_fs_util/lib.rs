@@ -58,7 +58,7 @@ pub enum LinkOrCopy {
     Copy,
 }
 
-/// Copy `p` into `q`, preferring to use hard-linking if possible. If
+/// Copies `p` into `q`, preferring to use hard-linking if possible. If
 /// `q` already exists, it is removed first.
 /// The result indicates which of the two operations has been performed.
 pub fn link_or_copy<P: AsRef<Path>, Q: AsRef<Path>>(p: P, q: Q) -> io::Result<LinkOrCopy> {

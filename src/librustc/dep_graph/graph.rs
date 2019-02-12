@@ -61,13 +61,13 @@ struct DepGraphData {
 
     colors: DepNodeColorMap,
 
-    /// A set of loaded diagnostics which has been emitted.
+    /// A set of loaded diagnostics that have been emitted.
     emitted_diagnostics: Mutex<FxHashSet<DepNodeIndex>>,
 
     /// Used to wait for diagnostics to be emitted.
     emitted_diagnostics_cond_var: Condvar,
 
-    /// When we load, there may be `.o` files, cached mir, or other such
+    /// When we load, there may be `.o` files, cached MIR, or other such
     /// things available to us. If we find that they are not dirty, we
     /// load the path to the file storing those work-products here into
     /// this map. We can later look for and extract that data.
@@ -115,7 +115,7 @@ impl DepGraph {
         }
     }
 
-    /// True if we are actually building the full dep-graph.
+    /// Returns `true` if we are actually building the full dep-graph, and `false` otherwise.
     #[inline]
     pub fn is_fully_enabled(&self) -> bool {
         self.data.is_some()
@@ -320,8 +320,8 @@ impl DepGraph {
         }
     }
 
-    /// Execute something within an "anonymous" task, that is, a task the
-    /// DepNode of which is determined by the list of inputs it read from.
+    /// Executes something within an "anonymous" task, that is, a task the
+    /// `DepNode` of which is determined by the list of inputs it read from.
     pub fn with_anon_task<OP,R>(&self, dep_kind: DepKind, op: OP) -> (R, DepNodeIndex)
         where OP: FnOnce() -> R
     {
@@ -356,8 +356,8 @@ impl DepGraph {
         }
     }
 
-    /// Execute something within an "eval-always" task which is a task
-    // that runs whenever anything changes.
+    /// Executes something within an "eval-always" task which is a task
+    /// that runs whenever anything changes.
     pub fn with_eval_always_task<'a, C, A, R>(
         &self,
         key: DepNode,
@@ -438,7 +438,7 @@ impl DepGraph {
         self.data.as_ref().unwrap().previous.node_to_index(dep_node)
     }
 
-    /// Check whether a previous work product exists for `v` and, if
+    /// Checks whether a previous work product exists for `v` and, if
     /// so, return the path that leads to it. Used to skip doing work.
     pub fn previous_work_product(&self, v: &WorkProductId) -> Option<WorkProduct> {
         self.data
@@ -589,7 +589,7 @@ impl DepGraph {
         }
     }
 
-    /// Try to mark a dep-node which existed in the previous compilation session as green
+    /// Try to mark a dep-node which existed in the previous compilation session as green.
     fn try_mark_previous_green<'tcx>(
         &self,
         tcx: TyCtxt<'_, 'tcx, 'tcx>,
@@ -773,8 +773,8 @@ impl DepGraph {
         Some(dep_node_index)
     }
 
-    /// Atomically emits some loaded diagnotics assuming that this only gets called with
-    /// did_allocation set to true on one thread
+    /// Atomically emits some loaded diagnotics, assuming that this only gets called with
+    /// `did_allocation` set to `true` on a single thread.
     #[cold]
     #[inline(never)]
     fn emit_diagnostics<'tcx>(
@@ -913,7 +913,7 @@ impl DepGraph {
 #[derive(Clone, Debug, RustcEncodable, RustcDecodable)]
 pub struct WorkProduct {
     pub cgu_name: String,
-    /// Saved files associated with this CGU
+    /// Saved files associated with this CGU.
     pub saved_files: Vec<(WorkProductFileKind, String)>,
 }
 
@@ -937,17 +937,17 @@ pub(super) struct CurrentDepGraph {
     #[allow(dead_code)]
     forbidden_edge: Option<EdgeFilter>,
 
-    // Anonymous DepNodes are nodes the ID of which we compute from the list of
-    // their edges. This has the beneficial side-effect that multiple anonymous
-    // nodes can be coalesced into one without changing the semantics of the
-    // dependency graph. However, the merging of nodes can lead to a subtle
-    // problem during red-green marking: The color of an anonymous node from
-    // the current session might "shadow" the color of the node with the same
-    // ID from the previous session. In order to side-step this problem, we make
-    // sure that anon-node IDs allocated in different sessions don't overlap.
-    // This is implemented by mixing a session-key into the ID fingerprint of
-    // each anon node. The session-key is just a random number generated when
-    // the DepGraph is created.
+    /// Anonymous `DepNode`s are nodes whose IDs we compute from the list of
+    /// their edges. This has the beneficial side-effect that multiple anonymous
+    /// nodes can be coalesced into one without changing the semantics of the
+    /// dependency graph. However, the merging of nodes can lead to a subtle
+    /// problem during red-green marking: The color of an anonymous node from
+    /// the current session might "shadow" the color of the node with the same
+    /// ID from the previous session. In order to side-step this problem, we make
+    /// sure that anonymous `NodeId`s allocated in different sessions don't overlap.
+    /// This is implemented by mixing a session-key into the ID fingerprint of
+    /// each anon node. The session-key is just a random number generated when
+    /// the `DepGraph` is created.
     anon_id_seed: Fingerprint,
 
     total_read_count: u64,

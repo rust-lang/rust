@@ -184,7 +184,7 @@ impl_stable_hash_for!(struct DtorckConstraint<'tcx> {
 /// outlive. This is similar but not *quite* the same as the
 /// `needs_drop` test in the compiler already -- that is, for every
 /// type T for which this function return true, needs-drop would
-/// return false. But the reverse does not hold: in particular,
+/// return `false`. But the reverse does not hold: in particular,
 /// `needs_drop` returns false for `PhantomData`, but it is not
 /// trivial for dropck-outlives.
 ///

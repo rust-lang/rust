@@ -3,7 +3,7 @@
 //!
 //! ```
 //! <common::data> // big list of item-like things...
-//!    <common::data_item> // ...for most def-ids, there is an entry.
+//!    <common::data_item> // ...for most `DefId`s, there is an entry.
 //!    </common::data_item>
 //! </common::data>
 //! ```
@@ -85,7 +85,7 @@ impl<'a, 'b, 'tcx> IndexBuilder<'a, 'b, 'tcx> {
         }
     }
 
-    /// Emit the data for a def-id to the metadata. The function to
+    /// Emit the data for a `DefId` to the metadata. The function to
     /// emit the data is `op`, and it will be given `data` as
     /// arguments. This `record` function will call `op` to generate
     /// the `Entry` (which may point to other encoded information)
@@ -129,7 +129,7 @@ impl<'a, 'b, 'tcx> IndexBuilder<'a, 'b, 'tcx> {
 }
 
 /// Trait used for data that can be passed from outside a dep-graph
-/// task.  The data must either be of some safe type, such as a
+/// task. The data must either be of some safe type, such as a
 /// `DefId` index, or implement the `read` method so that it can add
 /// a read of whatever dep-graph nodes are appropriate.
 pub trait DepGraphRead {
@@ -212,9 +212,9 @@ impl<T> DepGraphRead for Untracked<T> {
 }
 
 /// Newtype that can be used to package up misc data extracted from a
-/// HIR node that doesn't carry its own id. This will allow an
+/// HIR node that doesn't carry its own ID. This will allow an
 /// arbitrary `T` to be passed in, but register a read on the given
-/// node-id.
+/// `NodeId`.
 pub struct FromId<T>(pub ast::NodeId, pub T);
 
 impl<T> DepGraphRead for FromId<T> {

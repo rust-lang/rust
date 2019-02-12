@@ -103,7 +103,7 @@ impl AbsoluteBytePos {
 }
 
 impl<'sess> OnDiskCache<'sess> {
-    /// Create a new OnDiskCache instance from the serialized data in `data`.
+    /// Creates a new OnDiskCache instance from the serialized data in `data`.
     pub fn new(sess: &'sess Session, data: Vec<u8>, start_pos: usize) -> OnDiskCache<'sess> {
         debug_assert!(sess.opts.incremental.is_some());
 
@@ -325,7 +325,7 @@ impl<'sess> OnDiskCache<'sess> {
         })
     }
 
-    /// Load a diagnostic emitted during the previous compilation session.
+    /// Loads a diagnostic emitted during the previous compilation session.
     pub fn load_diagnostics<'a, 'tcx>(&self,
                                       tcx: TyCtxt<'a, 'tcx, 'tcx>,
                                       dep_node_index: SerializedDepNodeIndex)
@@ -339,7 +339,7 @@ impl<'sess> OnDiskCache<'sess> {
         diagnostics.unwrap_or_default()
     }
 
-    /// Store a diagnostic emitted during the current compilation session.
+    /// Stores a diagnostic emitted during the current compilation session.
     /// Anything stored like this will be available via `load_diagnostics` in
     /// the next compilation session.
     #[inline(never)]
@@ -353,7 +353,7 @@ impl<'sess> OnDiskCache<'sess> {
     }
 
     /// Returns the cached query result if there is something in the cache for
-    /// the given SerializedDepNodeIndex. Otherwise returns None.
+    /// the given `SerializedDepNodeIndex`; otherwise returns `None`.
     pub fn try_load_query_result<'tcx, T>(&self,
                                           tcx: TyCtxt<'_, 'tcx, 'tcx>,
                                           dep_node_index: SerializedDepNodeIndex)
@@ -366,7 +366,7 @@ impl<'sess> OnDiskCache<'sess> {
                           "query result")
     }
 
-    /// Store a diagnostic emitted during computation of an anonymous query.
+    /// Stores a diagnostic emitted during computation of an anonymous query.
     /// Since many anonymous queries can share the same `DepNode`, we aggregate
     /// them -- as opposed to regular queries where we assume that there is a
     /// 1:1 relationship between query-key and `DepNode`.

@@ -3,7 +3,7 @@
 //! The lint checking is mostly consolidated into one pass which runs
 //! after all other analyses. Throughout compilation, lint warnings
 //! can be added via the `add_lint` method on the Session structure. This
-//! requires a span and an id of the node that the lint is being added to. The
+//! requires a span and an ID of the node that the lint is being added to. The
 //! lint isn't actually emitted at that time because it is unknown what the
 //! actual lint level at that location is.
 //!
@@ -11,7 +11,7 @@
 //! A context keeps track of the current state of all lint levels.
 //! Upon entering a node of the ast which can modify the lint settings, the
 //! previous lint state is pushed onto a stack and the ast is then recursed
-//! upon.  As the ast is traversed, this keeps track of the current lint level
+//! upon. As the ast is traversed, this keeps track of the current lint level
 //! for all lint attributes.
 
 use self::TargetLint::*;
@@ -703,7 +703,7 @@ impl<'a, T: EarlyLintPass> EarlyContextAndPass<'a, T> {
 impl<'a, 'tcx> LintContext<'tcx> for LateContext<'a, 'tcx> {
     type PassObject = LateLintPassObject;
 
-    /// Get the overall compiler `Session` object.
+    /// Gets the overall compiler `Session` object.
     fn sess(&self) -> &Session {
         &self.tcx.sess
     }
@@ -736,7 +736,7 @@ impl<'a, 'tcx> LintContext<'tcx> for LateContext<'a, 'tcx> {
 impl<'a> LintContext<'a> for EarlyContext<'a> {
     type PassObject = EarlyLintPassObject;
 
-    /// Get the overall compiler `Session` object.
+    /// Gets the overall compiler `Session` object.
     fn sess(&self) -> &Session {
         &self.sess
     }
@@ -1200,7 +1200,7 @@ impl<'a, T: EarlyLintPass> ast_visit::Visitor<'a> for EarlyContextAndPass<'a, T>
 }
 
 
-/// Perform lint checking on a crate.
+/// Performs lint checking on a crate.
 ///
 /// Consumes the `lint_store` field of the `Session`.
 pub fn check_crate<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>) {

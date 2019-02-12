@@ -54,7 +54,7 @@ impl<'a, 'gcx, 'tcx> CombineFields<'a, 'gcx, 'tcx> {
 }
 
 impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
-    /// Replace all regions (resp. types) bound by `binder` with placeholder
+    /// Replaces all regions (resp. types) bound by `binder` with placeholder
     /// regions (resp. types) and return a map indicating which bound-region
     /// placeholder region. This is the first step of checking subtyping
     /// when higher-ranked things are involved.

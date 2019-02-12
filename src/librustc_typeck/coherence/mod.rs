@@ -151,7 +151,7 @@ pub fn check_coherence<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>) {
     tcx.ensure().crate_inherent_impls_overlap_check(LOCAL_CRATE);
 }
 
-/// Overlap: No two impls for the same trait are implemented for the
+/// Overlap: no two impls for the same trait are implemented for the
 /// same type. Likewise, no two inherent impls for a given type
 /// constructor provide a method with the same name.
 fn check_impl_overlap<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, node_id: ast::NodeId) {

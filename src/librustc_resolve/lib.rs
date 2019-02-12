@@ -140,46 +140,46 @@ impl Ord for BindingError {
 }
 
 enum ResolutionError<'a> {
-    /// error E0401: can't use type or const parameters from outer function
+    /// Error E0401: can't use type or const parameters from outer function.
     GenericParamsFromOuterFunction(Def),
-    /// error E0403: the name is already used for a type/const parameter in this list of
-    /// generic parameters
+    /// Error E0403: the name is already used for a type or const parameter in this generic
+    /// parameter list.
     NameAlreadyUsedInParameterList(Name, &'a Span),
-    /// error E0407: method is not a member of trait
+    /// Error E0407: method is not a member of trait.
     MethodNotMemberOfTrait(Name, &'a str),
-    /// error E0437: type is not a member of trait
+    /// Error E0437: type is not a member of trait.
     TypeNotMemberOfTrait(Name, &'a str),
-    /// error E0438: const is not a member of trait
+    /// Error E0438: const is not a member of trait.
     ConstNotMemberOfTrait(Name, &'a str),
-    /// error E0408: variable `{}` is not bound in all patterns
+    /// Error E0408: variable `{}` is not bound in all patterns.
     VariableNotBoundInPattern(&'a BindingError),
-    /// error E0409: variable `{}` is bound in inconsistent ways within the same match arm
+    /// Error E0409: variable `{}` is bound in inconsistent ways within the same match arm.
     VariableBoundWithDifferentMode(Name, Span),
-    /// error E0415: identifier is bound more than once in this parameter list
+    /// Error E0415: identifier is bound more than once in this parameter list.
     IdentifierBoundMoreThanOnceInParameterList(&'a str),
-    /// error E0416: identifier is bound more than once in the same pattern
+    /// Error E0416: identifier is bound more than once in the same pattern.
     IdentifierBoundMoreThanOnceInSamePattern(&'a str),
-    /// error E0426: use of undeclared label
+    /// Error E0426: use of undeclared label.
     UndeclaredLabel(&'a str, Option<Name>),
-    /// error E0429: `self` imports are only allowed within a { } list
+    /// Error E0429: `self` imports are only allowed within a `{ }` list.
     SelfImportsOnlyAllowedWithin,
-    /// error E0430: `self` import can only appear once in the list
+    /// Error E0430: `self` import can only appear once in the list.
     SelfImportCanOnlyAppearOnceInTheList,
-    /// error E0431: `self` import can only appear in an import list with a non-empty prefix
+    /// Error E0431: `self` import can only appear in an import list with a non-empty prefix.
     SelfImportOnlyInImportListWithNonEmptyPrefix,
-    /// error E0433: failed to resolve
+    /// Error E0433: failed to resolve.
     FailedToResolve(&'a str),
-    /// error E0434: can't capture dynamic environment in a fn item
+    /// Error E0434: can't capture dynamic environment in a fn item.
     CannotCaptureDynamicEnvironmentInFnItem,
-    /// error E0435: attempt to use a non-constant value in a constant
+    /// Error E0435: attempt to use a non-constant value in a constant.
     AttemptToUseNonConstantValueInConstant,
-    /// error E0530: X bindings cannot shadow Ys
+    /// Error E0530: `X` bindings cannot shadow `Y`s.
     BindingShadowsSomethingUnacceptable(&'a str, Name, &'a NameBinding<'a>),
-    /// error E0128: type parameters with a default cannot use forward declared identifiers
+    /// Error E0128: type parameters with a default cannot use forward-declared identifiers.
     ForwardDeclaredTyParam, // FIXME(const_generics:defaults)
 }
 
-/// Combines an error with provided span and emits it
+/// Combines an error with provided span and emits it.
 ///
 /// This takes the error provided, combines it with the span and any additional spans inside the
 /// error and emits it.
@@ -427,11 +427,11 @@ fn resolve_struct_error<'sess, 'a>(resolver: &'sess Resolver<'_>,
 
 /// Adjust the impl span so that just the `impl` keyword is taken by removing
 /// everything after `<` (`"impl<T> Iterator for A<T> {}" -> "impl"`) and
-/// everything after the first whitespace (`"impl Iterator for A" -> "impl"`)
+/// everything after the first whitespace (`"impl Iterator for A" -> "impl"`).
 ///
-/// Attention: The method used is very fragile since it essentially duplicates the work of the
+/// *Attention*: the method used is very fragile since it essentially duplicates the work of the
 /// parser. If you need to use this function or something similar, please consider updating the
-/// source_map functions and this function to something more robust.
+/// `source_map` functions and this function to something more robust.
 fn reduce_impl_span_to_impl_keyword(cm: &SourceMap, impl_span: Span) -> Span {
     let impl_span = cm.span_until_char(impl_span, '<');
     let impl_span = cm.span_until_whitespace(impl_span);
@@ -741,7 +741,7 @@ impl<'tcx> Visitor<'tcx> for UsePlacementFinder {
     }
 }
 
-/// This thing walks the whole crate in DFS manner, visiting each item, resolving names as it goes.
+/// Walks the whole crate in DFS order, visiting each item, resolving names as it goes.
 impl<'a, 'tcx> Visitor<'tcx> for Resolver<'a> {
     fn visit_item(&mut self, item: &'tcx Item) {
         self.resolve_item(item);
@@ -934,7 +934,7 @@ enum RibKind<'a> {
     /// No translation needs to be applied.
     NormalRibKind,
 
-    /// We passed through a closure scope at the given node ID.
+    /// We passed through a closure scope at the given `NodeId`.
     /// Translate upvars as appropriate.
     ClosureRibKind(NodeId /* func id */),
 
@@ -962,7 +962,7 @@ enum RibKind<'a> {
     ForwardTyParamBanRibKind,
 }
 
-/// One local scope.
+/// A single local scope.
 ///
 /// A rib represents a scope names can live in. Note that these appear in many places, not just
 /// around braces. At any place where the list of accessible names (of the given namespace)
@@ -1056,7 +1056,7 @@ enum PathResult<'a> {
 }
 
 enum ModuleKind {
-    /// An anonymous module, eg. just a block.
+    /// An anonymous module; e.g., just a block.
     ///
     /// ```
     /// fn main() {
@@ -1251,11 +1251,11 @@ struct PrivacyError<'a>(Span, Ident, &'a NameBinding<'a>);
 
 struct UseError<'a> {
     err: DiagnosticBuilder<'a>,
-    /// Attach `use` statements for these candidates
+    /// Attach `use` statements for these candidates.
     candidates: Vec<ImportSuggestion>,
-    /// The node id of the module to place the use statements in
+    /// The `NodeId` of the module to place the use-statements in.
     node_id: NodeId,
-    /// Whether the diagnostic should state that it's "better"
+    /// Whether the diagnostic should state that it's "better".
     better: bool,
 }
 
@@ -1497,7 +1497,7 @@ pub struct Resolver<'a> {
     prelude: Option<Module<'a>>,
     pub extern_prelude: FxHashMap<Ident, ExternPreludeEntry<'a>>,
 
-    /// n.b. This is used only for better diagnostics, not name resolution itself.
+    /// N.B., this is used only for better diagnostics, not name resolution itself.
     has_self: FxHashSet<DefId>,
 
     /// Names of fields of an item `DefId` accessible with dot syntax.
@@ -1576,13 +1576,13 @@ pub struct Resolver<'a> {
     /// they are used (in a `break` or `continue` statement)
     pub unused_labels: FxHashMap<NodeId, Span>,
 
-    /// privacy errors are delayed until the end in order to deduplicate them
+    /// Privacy errors are delayed until the end in order to deduplicate them.
     privacy_errors: Vec<PrivacyError<'a>>,
-    /// ambiguity errors are delayed for deduplication
+    /// Ambiguity errors are delayed for deduplication.
     ambiguity_errors: Vec<AmbiguityError<'a>>,
-    /// `use` injections are delayed for better placement and deduplication
+    /// `use` injections are delayed for better placement and deduplication.
     use_injections: Vec<UseError<'a>>,
-    /// crate-local macro expanded `macro_export` referred to by a module-relative path
+    /// Crate-local macro expanded `macro_export` referred to by a module-relative path.
     macro_expanded_macro_export_errors: BTreeSet<(Span, Span)>,
 
     arenas: &'a ResolverArenas<'a>,
@@ -1609,17 +1609,17 @@ pub struct Resolver<'a> {
 
     potentially_unused_imports: Vec<&'a ImportDirective<'a>>,
 
-    /// This table maps struct IDs into struct constructor IDs,
+    /// Table for mapping struct IDs into struct constructor IDs,
     /// it's not used during normal resolution, only for better error reporting.
     struct_constructors: DefIdMap<(Def, ty::Visibility)>,
 
-    /// Only used for better errors on `fn(): fn()`
+    /// Only used for better errors on `fn(): fn()`.
     current_type_ascription: Vec<Span>,
 
     injected_crate: Option<Module<'a>>,
 }
 
-/// Nothing really interesting here, it just provides memory for the rest of the crate.
+/// Nothing really interesting here; it just provides memory for the rest of the crate.
 #[derive(Default)]
 pub struct ResolverArenas<'a> {
     modules: arena::TypedArena<ModuleData<'a>>,
@@ -1719,7 +1719,7 @@ impl<'a> hir::lowering::Resolver for Resolver<'a> {
 }
 
 impl<'a> Resolver<'a> {
-    /// Rustdoc uses this to resolve things in a recoverable way. ResolutionError<'a>
+    /// Rustdoc uses this to resolve things in a recoverable way. `ResolutionError<'a>`
     /// isn't something that can be returned because it can't be made to live that long,
     /// and also it's a private type. Fortunately rustdoc doesn't need to know the error,
     /// just that an error occurred.
@@ -2347,7 +2347,7 @@ impl<'a> Resolver<'a> {
         }
     }
 
-    /// Searches the current set of local scopes for labels. Returns the first non-None label that
+    /// Searches the current set of local scopes for labels. Returns the first non-`None` label that
     /// is returned by the given predicate function
     ///
     /// Stops after meeting a closure.
@@ -2654,7 +2654,7 @@ impl<'a> Resolver<'a> {
         result
     }
 
-    /// This is called to resolve a trait reference from an `impl` (i.e., `impl Trait for Foo`)
+    /// This is called to resolve a trait reference from an `impl` (i.e., `impl Trait for Foo`).
     fn with_optional_trait_ref<T, F>(&mut self, opt_trait_ref: Option<&TraitRef>, f: F) -> T
         where F: FnOnce(&mut Resolver<'_>, Option<DefId>) -> T
     {
@@ -3155,7 +3155,7 @@ impl<'a> Resolver<'a> {
     /// sometimes needed for the lint that recommends rewriting
     /// absolute paths to `crate`, so that it knows how to frame the
     /// suggestion. If you are just resolving a path like `foo::bar`
-    /// that appears...somewhere, though, then you just want
+    /// that appears in an arbitrary location, then you just want
     /// `CrateLint::SimplePath`, which is what `smart_resolve_path`
     /// already provides.
     fn smart_resolve_path_with_crate_lint(
@@ -4452,9 +4452,9 @@ impl<'a> Resolver<'a> {
     /// When name resolution fails, this method can be used to look up candidate
     /// entities with the expected name. It allows filtering them using the
     /// supplied predicate (which should be used to only accept the types of
-    /// definitions expected e.g., traits). The lookup spans across all crates.
+    /// definitions expected, e.g., traits). The lookup spans across all crates.
     ///
-    /// NOTE: The method does not look into imports, but this is not a problem,
+    /// N.B., the method does not look into imports, but this is not a problem,
     /// since we report the definitions (thus, the de-aliased imports).
     fn lookup_import_candidates<FilterFn>(&mut self,
                                           lookup_ident: Ident,
@@ -5134,7 +5134,7 @@ fn path_names_to_string(path: &Path) -> String {
                         .collect::<Vec<_>>())
 }
 
-/// Get the stringified path for an enum from an `ImportSuggestion` for an enum variant.
+/// Gets the stringified path for an enum from an `ImportSuggestion` for an enum variant.
 fn import_candidate_to_enum_paths(suggestion: &ImportSuggestion) -> (String, String) {
     let variant_path = &suggestion.path;
     let variant_path_string = path_names_to_string(variant_path);
@@ -5232,11 +5232,11 @@ fn err_path_resolution() -> PathResolution {
 
 #[derive(Copy, Clone, Debug)]
 enum CrateLint {
-    /// Do not issue the lint
+    /// Do not issue the lint.
     No,
 
-    /// This lint applies to some random path like `impl ::foo::Bar`
-    /// or whatever. In this case, we can take the span of that path.
+    /// This lint applies to some arbitrary path; e.g., `impl ::foo::Bar`.
+    /// In this case, we can take the span of that path.
     SimplePath(NodeId),
 
     /// This lint comes from a `use` statement. In this case, what we

@@ -826,7 +826,7 @@ impl<'l, 'tcx: 'l> SaveContext<'l, 'tcx> {
     /// Attempt to return MacroRef for any AST node.
     ///
     /// For a given piece of AST defined by the supplied Span and NodeId,
-    /// returns None if the node is not macro-generated or the span is malformed,
+    /// returns `None` if the node is not macro-generated or the span is malformed,
     /// else uses the expansion callsite and callee to return some MacroRef.
     pub fn get_macro_use_data(&self, span: Span) -> Option<MacroRef> {
         if !generated_code(span) {

@@ -182,7 +182,7 @@ impl<T> ::std::ops::IndexMut<Namespace> for PerNS<T> {
 }
 
 impl<T> PerNS<Option<T>> {
-    /// Returns whether all the items in this collection are `None`.
+    /// Returns `true` if all the items in this collection are `None`.
     pub fn is_empty(&self) -> bool {
         self.type_ns.is_none() && self.value_ns.is_none() && self.macro_ns.is_none()
     }

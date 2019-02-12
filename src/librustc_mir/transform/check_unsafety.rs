@@ -28,7 +28,7 @@ pub struct UnsafetyChecker<'a, 'tcx: 'a> {
     source_info: SourceInfo,
     tcx: TyCtxt<'a, 'tcx, 'tcx>,
     param_env: ty::ParamEnv<'tcx>,
-    /// mark an `unsafe` block as used, so we don't lint it
+    /// Mark an `unsafe` block as used, so we don't lint it.
     used_unsafe: FxHashSet<ast::NodeId>,
     inherited_blocks: Vec<(ast::NodeId, bool)>,
 }
@@ -574,7 +574,7 @@ fn unsafe_derive_on_repr_packed<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: D
                   &message);
 }
 
-/// Return the NodeId for an enclosing scope that is also `unsafe`
+/// Returns the `NodeId` for an enclosing scope that is also `unsafe`.
 fn is_enclosed(tcx: TyCtxt<'_, '_, '_>,
                used_unsafe: &FxHashSet<ast::NodeId>,
                id: ast::NodeId) -> Option<(String, ast::NodeId)> {

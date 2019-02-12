@@ -41,11 +41,11 @@ impl Waker {
         unsafe { self.inner.as_ref().wake() }
     }
 
-    /// Returns whether or not this `Waker` and `other` awaken the same task.
+    /// Returns `true` if or not this `Waker` and `other` awaken the same task.
     ///
     /// This function works on a best-effort basis, and may return false even
     /// when the `Waker`s would awaken the same task. However, if this function
-    /// returns true, it is guaranteed that the `Waker`s will awaken the same
+    /// returns `true`, it is guaranteed that the `Waker`s will awaken the same
     /// task.
     ///
     /// This function is primarily used for optimization purposes.
@@ -54,7 +54,7 @@ impl Waker {
         self.inner == other.inner
     }
 
-    /// Returns whether or not this `Waker` and `other` `LocalWaker` awaken
+    /// Returns `true` if or not this `Waker` and `other` `LocalWaker` awaken
     /// the same task.
     ///
     /// This function works on a best-effort basis, and may return false even
@@ -150,7 +150,7 @@ impl LocalWaker {
         unsafe { self.0.inner.as_ref().wake_local() }
     }
 
-    /// Returns whether or not this `LocalWaker` and `other` `LocalWaker` awaken the same task.
+    /// Returns `true` if or not this `LocalWaker` and `other` `LocalWaker` awaken the same task.
     ///
     /// This function works on a best-effort basis, and may return false even
     /// when the `LocalWaker`s would awaken the same task. However, if this function
@@ -163,7 +163,7 @@ impl LocalWaker {
         self.0.will_wake(&other.0)
     }
 
-    /// Returns whether or not this `LocalWaker` and `other` `Waker` awaken the same task.
+    /// Returns `true` if or not this `LocalWaker` and `other` `Waker` awaken the same task.
     ///
     /// This function works on a best-effort basis, and may return false even
     /// when the `Waker`s would awaken the same task. However, if this function
@@ -223,14 +223,14 @@ pub unsafe trait UnsafeWake: Send + Sync {
     /// Drops this instance of `UnsafeWake`, deallocating resources
     /// associated with it.
     ///
-    /// FIXME(cramertj)
+    // FIXME(cramertj):
     /// This method is intended to have a signature such as:
     ///
     /// ```ignore (not-a-doctest)
     /// fn drop_raw(self: *mut Self);
     /// ```
     ///
-    /// Unfortunately in Rust today that signature is not object safe.
+    /// Unfortunately, in Rust today that signature is not object safe.
     /// Nevertheless it's recommended to implement this function *as if* that
     /// were its signature. As such it is not safe to call on an invalid
     /// pointer, nor is the validity of the pointer guaranteed after this

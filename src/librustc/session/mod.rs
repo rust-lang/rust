@@ -51,7 +51,7 @@ pub mod filesearch;
 pub mod search_paths;
 
 pub struct OptimizationFuel {
-    /// If -zfuel=crate=n is specified, initially set to n. Otherwise 0.
+    /// If `-zfuel=crate=n` is specified, initially set to `n`, otherwise `0`.
     remaining: u64,
     /// We're rejecting all further optimizations.
     out_of_fuel: bool,
@@ -64,7 +64,7 @@ pub struct Session {
     pub host: Target,
     pub opts: config::Options,
     pub host_tlib_path: SearchPath,
-    /// This is `None` if the host and target are the same.
+    /// `None` if the host and target are the same.
     pub target_tlib_path: Option<SearchPath>,
     pub parse_sess: ParseSess,
     pub sysroot: PathBuf,
@@ -104,7 +104,7 @@ pub struct Session {
     /// The maximum length of types during monomorphization.
     pub type_length_limit: Once<usize>,
 
-    /// The maximum number of stackframes allowed in const eval
+    /// The maximum number of stackframes allowed in const eval.
     pub const_eval_stack_frame_limit: usize,
 
     /// The metadata::creader module may inject an allocator/panic_runtime
@@ -123,13 +123,13 @@ pub struct Session {
     /// `-Zquery-dep-graph` is specified.
     pub cgu_reuse_tracker: CguReuseTracker,
 
-    /// Used by -Z profile-queries in util::common
+    /// Used by `-Z profile-queries` in `util::common`.
     pub profile_channel: Lock<Option<mpsc::Sender<ProfileQueriesMsg>>>,
 
-    /// Used by -Z self-profile
+    /// Used by `-Z self-profile`.
     pub self_profiling_active: bool,
 
-    /// Used by -Z self-profile
+    /// Used by `-Z self-profile`.
     pub self_profiling: Lock<SelfProfiler>,
 
     /// Some measurements that are being gathered during compilation.
@@ -140,14 +140,14 @@ pub struct Session {
 
     next_node_id: OneThread<Cell<ast::NodeId>>,
 
-    /// If -zfuel=crate=n is specified, Some(crate).
+    /// If `-zfuel=crate=n` is specified, `Some(crate)`.
     optimization_fuel_crate: Option<String>,
 
-    /// Tracks fuel info if If -zfuel=crate=n is specified
+    /// Tracks fuel info if `-zfuel=crate=n` is specified.
     optimization_fuel: Lock<OptimizationFuel>,
 
     // The next two are public because the driver needs to read them.
-    /// If -zprint-fuel=crate, Some(crate).
+    /// If `-zprint-fuel=crate`, `Some(crate)`.
     pub print_fuel_crate: Option<String>,
     /// Always set to zero and incremented so that we can print fuel expended by a crate.
     pub print_fuel: AtomicU64,
@@ -156,10 +156,10 @@ pub struct Session {
     /// false positives about a job server in our environment.
     pub jobserver: Client,
 
-    /// Metadata about the allocators for the current crate being compiled
+    /// Metadata about the allocators for the current crate being compiled.
     pub has_global_allocator: Once<bool>,
 
-    /// Metadata about the panic handlers for the current crate being compiled
+    /// Metadata about the panic handlers for the current crate being compiled.
     pub has_panic_handler: Once<bool>,
 
     /// Cap lint level specified by a driver specifically.
@@ -167,9 +167,9 @@ pub struct Session {
 }
 
 pub struct PerfStats {
-    /// The accumulated time spent on computing symbol hashes
+    /// The accumulated time spent on computing symbol hashes.
     pub symbol_hash_time: Lock<Duration>,
-    /// The accumulated time spent decoding def path tables from metadata
+    /// The accumulated time spent decoding def path tables from metadata.
     pub decode_def_path_tables_time: Lock<Duration>,
     /// Total number of values canonicalized queries constructed.
     pub queries_canonicalized: AtomicUsize,
@@ -539,7 +539,7 @@ impl Session {
         self.opts.debugging_opts.print_llvm_passes
     }
 
-    /// Get the features enabled for the current compilation session.
+    /// Gets the features enabled for the current compilation session.
     /// DO NOT USE THIS METHOD if there is a TyCtxt available, as it circumvents
     /// dependency tracking. Use tcx.features() instead.
     #[inline]
@@ -989,7 +989,7 @@ impl Session {
         self.opts.edition
     }
 
-    /// True if we cannot skip the PLT for shared library calls.
+    /// Returns `true` if we cannot skip the PLT for shared library calls.
     pub fn needs_plt(&self) -> bool {
         // Check if the current target usually needs PLT to be enabled.
         // The user can use the command line flag to override it.

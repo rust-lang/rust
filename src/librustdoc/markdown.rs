@@ -127,7 +127,7 @@ pub fn render(input: PathBuf, options: RenderOptions, diag: &errors::Handler) ->
     }
 }
 
-/// Run any tests/code examples in the markdown file `input`.
+/// Runs any tests/code examples in the markdown file `input`.
 pub fn test(mut options: Options, diag: &errors::Handler) -> isize {
     let input_str = match load_string(&options.input, diag) {
         Ok(s) => s,

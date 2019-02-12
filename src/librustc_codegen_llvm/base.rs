@@ -7,11 +7,11 @@
 //!
 //! Hopefully useful general knowledge about codegen:
 //!
-//!   * There's no way to find out the Ty type of a Value.  Doing so
-//!     would be "trying to get the eggs out of an omelette" (credit:
-//!     pcwalton).  You can, instead, find out its llvm::Type by calling val_ty,
-//!     but one llvm::Type corresponds to many `Ty`s; for instance, tup(int, int,
-//!     int) and rec(x=int, y=int, z=int) will have the same llvm::Type.
+//! * There's no way to find out the `Ty` type of a Value. Doing so
+//!   would be "trying to get the eggs out of an omelette" (credit:
+//!   pcwalton). You can, instead, find out its `llvm::Type` by calling `val_ty`,
+//!   but one `llvm::Type` corresponds to many `Ty`s; for instance, `tup(int, int,
+//!   int)` and `rec(x=int, y=int, z=int)` will have the same `llvm::Type`.
 
 use super::ModuleLlvm;
 use rustc_codegen_ssa::{ModuleCodegen, ModuleKind};

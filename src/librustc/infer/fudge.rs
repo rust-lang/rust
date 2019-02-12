@@ -22,13 +22,13 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
     /// closure `f`. In our example above, what this closure will do
     /// is to unify the expectation (`Option<&[u32]>`) with the actual
     /// return type (`Option<?T>`, where `?T` represents the variable
-    /// instantiated for `T`).  This will cause `?T` to be unified
+    /// instantiated for `T`). This will cause `?T` to be unified
     /// with `&?a [u32]`, where `?a` is a fresh lifetime variable. The
     /// input type (`?T`) is then returned by `f()`.
     ///
     /// At this point, `fudge_regions_if_ok` will normalize all type
     /// variables, converting `?T` to `&?a [u32]` and end the
-    /// snapshot.  The problem is that we can't just return this type
+    /// snapshot. The problem is that we can't just return this type
     /// out, because it references the region variable `?a`, and that
     /// region variable was popped when we popped the snapshot.
     ///

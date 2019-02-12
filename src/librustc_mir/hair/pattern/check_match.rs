@@ -537,10 +537,9 @@ fn check_legality_of_move_bindings(cx: &MatchVisitor<'_, '_>,
     }
 }
 
-/// Ensures that a pattern guard doesn't borrow by mutable reference or
-/// assign.
-///
-/// FIXME: this should be done by borrowck.
+/// Ensures that a pattern guard doesn't borrow by mutable reference or assign.
+//
+// FIXME: this should be done by borrowck.
 fn check_for_mutation_in_guard(cx: &MatchVisitor<'_, '_>, guard: &hir::Guard) {
     let mut checker = MutationChecker {
         cx,

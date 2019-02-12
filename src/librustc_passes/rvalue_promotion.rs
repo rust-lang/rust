@@ -160,11 +160,11 @@ impl<'a, 'gcx> CheckCrateVisitor<'a, 'gcx> {
     }
 
     /// While the `ExprUseVisitor` walks, we will identify which
-    /// expressions are borrowed, and insert their ids into this
+    /// expressions are borrowed, and insert their IDs into this
     /// table. Actually, we insert the "borrow-id", which is normally
-    /// the id of the expression being borrowed: but in the case of
+    /// the ID of the expression being borrowed: but in the case of
     /// `ref mut` borrows, the `id` of the pattern is
-    /// inserted. Therefore later we remove that entry from the table
+    /// inserted. Therefore, later we remove that entry from the table
     /// and transfer it over to the value being matched. This will
     /// then prevent said value from being promoted.
     fn remove_mut_rvalue_borrow(&mut self, pat: &hir::Pat) -> bool {
@@ -588,7 +588,7 @@ fn check_expr_kind<'a, 'tcx>(
     ty_result & node_result
 }
 
-/// Check the adjustments of an expression
+/// Checks the adjustments of an expression.
 fn check_adjustments<'a, 'tcx>(
     v: &mut CheckCrateVisitor<'a, 'tcx>,
     e: &hir::Expr) -> Promotability {

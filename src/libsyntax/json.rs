@@ -342,7 +342,7 @@ impl DiagnosticSpanLine {
         }
     }
 
-    /// Create a list of DiagnosticSpanLines from span - each line with any part
+    /// Creates a list of DiagnosticSpanLines from span - each line with any part
     /// of `span` gets a DiagnosticSpanLine, with the highlight indicating the
     /// `span` within the line.
     fn from_span(span: Span, je: &JsonEmitter) -> Vec<DiagnosticSpanLine> {

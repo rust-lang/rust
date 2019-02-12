@@ -313,7 +313,7 @@ pub fn parse(file: &mut dyn io::Read, longnames: bool) -> Result<TermInfo, Strin
     })
 }
 
-/// Create a dummy TermInfo struct for msys terminals
+/// Creates a dummy TermInfo struct for msys terminals
 pub fn msys_terminfo() -> TermInfo {
     let mut strings = HashMap::new();
     strings.insert("sgr0".to_string(), b"\x1B[0m".to_vec());

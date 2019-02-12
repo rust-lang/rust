@@ -33,7 +33,7 @@ pub use core::time::{SECOND, MILLISECOND, MICROSECOND, NANOSECOND};
 /// instant when created, and are often useful for tasks such as measuring
 /// benchmarks or timing how long an operation takes.
 ///
-/// Note, however, that instants are not guaranteed to be **steady**.  In other
+/// Note, however, that instants are not guaranteed to be **steady**. In other
 /// words, each tick of the underlying clock may not be the same length (e.g.
 /// some seconds may be longer than others). An instant may jump forwards or
 /// experience time dilation (slow down or speed up), but it will never go

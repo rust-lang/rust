@@ -718,7 +718,7 @@ pub mod printf {
             );
         }
 
-        /// Check that the translations are what we expect.
+        /// Checks that the translations are what we expect.
         #[test]
         fn test_translation() {
             assert_eq_pnsat!("%c", Some("{}"));

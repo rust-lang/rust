@@ -85,7 +85,7 @@ impl NestedMetaItem {
         self.span
     }
 
-    /// Returns true if this list item is a MetaItem with a name of `name`.
+    /// Returns `true` if this list item is a MetaItem with a name of `name`.
     pub fn check_name(&self, name: &str) -> bool {
         self.meta_item().map_or(false, |meta_item| meta_item.check_name(name))
     }
@@ -272,7 +272,7 @@ impl MetaItem {
 }
 
 impl Attribute {
-    /// Extract the MetaItem from inside this Attribute.
+    /// Extracts the MetaItem from inside this Attribute.
     pub fn meta(&self) -> Option<MetaItem> {
         let mut tokens = self.tokens.trees().peekable();
         Some(MetaItem {
@@ -328,7 +328,7 @@ impl Attribute {
         })
     }
 
-    /// Convert self to a normal #[doc="foo"] comment, if it is a
+    /// Converts self to a normal #[doc="foo"] comment, if it is a
     /// comment like `///` or `/** */`. (Returns self unchanged for
     /// non-sugared doc attributes.)
     pub fn with_desugared_doc<T, F>(&self, f: F) -> T where

@@ -688,7 +688,7 @@ impl AttributesExt for [ast::Attribute] {
 }
 
 pub trait NestedAttributesExt {
-    /// Returns whether the attribute list contains a specific `Word`
+    /// Returns `true` if the attribute list contains a specific `Word`
     fn has_word(self, word: &str) -> bool;
 }
 
@@ -940,7 +940,7 @@ impl Attributes {
         }
     }
 
-    /// Get links as a vector
+    /// Gets links as a vector
     ///
     /// Cache must be populated before call
     pub fn links(&self, krate: &CrateNum) -> Vec<(String, String)> {
@@ -2199,12 +2199,12 @@ pub struct PolyTrait {
 /// it does not preserve mutability or boxes.
 #[derive(Clone, RustcEncodable, RustcDecodable, PartialEq, Eq, Debug, Hash)]
 pub enum Type {
-    /// structs/enums/traits (most that'd be an hir::TyKind::Path)
+    /// Structs/enums/traits (most that'd be an `hir::TyKind::Path`).
     ResolvedPath {
         path: Path,
         typarams: Option<Vec<GenericBound>>,
         did: DefId,
-        /// true if is a `T::Name` path for associated types
+        /// `true` if is a `T::Name` path for associated types.
         is_generic: bool,
     },
     /// For parameterized types, so the consumer of the JSON don't go
@@ -4022,7 +4022,7 @@ impl Clean<Deprecation> for attr::Deprecation {
     }
 }
 
-/// An equality constraint on an associated type, e.g., `A=Bar` in `Foo<A=Bar>`
+/// An equality constraint on an associated type, e.g., `A = Bar` in `Foo<A = Bar>`
 #[derive(Clone, PartialEq, Eq, RustcDecodable, RustcEncodable, Debug, Hash)]
 pub struct TypeBinding {
     pub name: String,

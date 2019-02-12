@@ -285,7 +285,7 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
         }
     }
 
-    /// Check if a borrow location is within a loop.
+    /// Checks if a borrow location is within a loop.
     fn is_borrow_location_in_loop(
         &self,
         borrow_location: Location,
@@ -407,7 +407,7 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
         }
     }
 
-    /// Check if a borrowed value was captured by a trait object. We do this by
+    /// Checks if a borrowed value was captured by a trait object. We do this by
     /// looking forward in the MIR from the reserve location and checking if we see
     /// a unsized cast to a trait object on our data.
     fn was_captured_by_trait_object(&self, borrow: &BorrowData<'tcx>) -> bool {

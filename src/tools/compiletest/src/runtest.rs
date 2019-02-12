@@ -1379,7 +1379,7 @@ impl<'test> TestCx<'test> {
         }
     }
 
-    /// Returns true if we should report an error about `actual_error`,
+    /// Returns `true` if we should report an error about `actual_error`,
     /// which did not match any of the expected error. We always require
     /// errors/warnings to be explicitly listed, but only require
     /// helps/notes if there are explicit helps/notes given.
@@ -1974,14 +1974,14 @@ impl<'test> TestCx<'test> {
         fs::write(&outfile, out).unwrap();
     }
 
-    /// Create a filename for output with the given extension.  Example:
-    ///   /.../testname.revision.mode/testname.extension
+    /// Creates a filename for output with the given extension.
+    /// E.g., `/.../testname.revision.mode/testname.extension`.
     fn make_out_name(&self, extension: &str) -> PathBuf {
         self.output_base_name().with_extension(extension)
     }
 
-    /// Directory where auxiliary files are written.  Example:
-    ///   /.../testname.revision.mode/auxiliary/
+    /// Gets the directory where auxiliary files are written.
+    /// E.g., `/.../testname.revision.mode/auxiliary/`.
     fn aux_output_dir_name(&self) -> PathBuf {
         self.output_base_dir()
             .join("auxiliary")
@@ -1993,7 +1993,7 @@ impl<'test> TestCx<'test> {
         output_testname_unique(self.config, self.testpaths, self.safe_revision())
     }
 
-    /// The revision, ignored for Incremental since it wants all revisions in
+    /// The revision, ignored for incremental compilation since it wants all revisions in
     /// the same directory.
     fn safe_revision(&self) -> Option<&str> {
         if self.config.mode == Incremental {
@@ -2003,16 +2003,16 @@ impl<'test> TestCx<'test> {
         }
     }
 
-    /// Absolute path to the directory where all output for the given
-    /// test/revision should reside.  Example:
-    ///   /path/to/build/host-triple/test/ui/relative/testname.revision.mode/
+    /// Gets the absolute path to the directory where all output for the given
+    /// test/revision should reside.
+    /// E.g., `/path/to/build/host-triple/test/ui/relative/testname.revision.mode/`.
     fn output_base_dir(&self) -> PathBuf {
         output_base_dir(self.config, self.testpaths, self.safe_revision())
     }
 
-    /// Absolute path to the base filename used as output for the given
-    /// test/revision.  Example:
-    ///   /.../relative/testname.revision.mode/testname
+    /// Gets the absolute path to the base filename used as output for the given
+    /// test/revision.
+    /// E.g., `/.../relative/testname.revision.mode/testname`.
     fn output_base_name(&self) -> PathBuf {
         output_base_name(self.config, self.testpaths, self.safe_revision())
     }

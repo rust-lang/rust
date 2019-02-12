@@ -34,7 +34,7 @@ const UTF8_REPLACEMENT_CHARACTER: &str = "\u{FFFD}";
 
 /// A Unicode code point: from U+0000 to U+10FFFF.
 ///
-/// Compare with the `char` type,
+/// Compares with the `char` type,
 /// which represents a Unicode scalar value:
 /// a code point that is not a surrogate (U+D800 to U+DFFF).
 #[derive(Eq, PartialEq, Ord, PartialOrd, Clone, Copy)]
@@ -366,7 +366,7 @@ impl Wtf8Buf {
     }
 }
 
-/// Create a new WTF-8 string from an iterator of code points.
+/// Creates a new WTF-8 string from an iterator of code points.
 ///
 /// This replaces surrogate code point pairs with supplementary code points,
 /// like concatenating ill-formed UTF-16 strings effectively would.
@@ -664,7 +664,7 @@ impl Wtf8 {
 }
 
 
-/// Return a slice of the given string for the byte range [`begin`..`end`).
+/// Returns a slice of the given string for the byte range [`begin`..`end`).
 ///
 /// # Panics
 ///
@@ -686,7 +686,7 @@ impl ops::Index<ops::Range<usize>> for Wtf8 {
     }
 }
 
-/// Return a slice of the given string from byte `begin` to its end.
+/// Returns a slice of the given string from byte `begin` to its end.
 ///
 /// # Panics
 ///
@@ -706,7 +706,7 @@ impl ops::Index<ops::RangeFrom<usize>> for Wtf8 {
     }
 }
 
-/// Return a slice of the given string from its beginning to byte `end`.
+/// Returns a slice of the given string from its beginning to byte `end`.
 ///
 /// # Panics
 ///

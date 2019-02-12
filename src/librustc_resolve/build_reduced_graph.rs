@@ -1,4 +1,4 @@
-//! Reduced graph building
+//! Reduced graph building.
 //!
 //! Here we build the "reduced graph": the graph of the module tree without
 //! any imports resolved.
@@ -790,7 +790,7 @@ impl<'a> Resolver<'a> {
         }
     }
 
-    // This returns true if we should consider the underlying `extern crate` to be used.
+    /// Returns `true` if we should consider the underlying `extern crate` to be used.
     fn process_legacy_macro_imports(&mut self, item: &Item, module: Module<'a>,
                                     parent_scope: &ParentScope<'a>) -> bool {
         let mut import_all = None;
@@ -876,7 +876,7 @@ impl<'a> Resolver<'a> {
         import_all.is_some() || !single_imports.is_empty()
     }
 
-    // does this attribute list contain "macro_use"?
+    /// Returns `true` if this attribute list contains `macro_use`.
     fn contains_macro_use(&mut self, attrs: &[ast::Attribute]) -> bool {
         for attr in attrs {
             if attr.check_name("macro_escape") {

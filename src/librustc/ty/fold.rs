@@ -4,7 +4,7 @@
 //! instance of a "folder" (a type which implements `TypeFolder`). Then
 //! the setup is intended to be:
 //!
-//!   T.fold_with(F) --calls--> F.fold_T(T) --calls--> T.super_fold_with(F)
+//!     T.fold_with(F) --calls--> F.fold_T(T) --calls--> T.super_fold_with(F)
 //!
 //! This way, when you define a new folder F, you can override
 //! `fold_T()` to customize the behavior, and invoke `T.super_fold_with()`
@@ -25,9 +25,11 @@
 //! proper thing.
 //!
 //! A `TypeFoldable` T can also be visited by a `TypeVisitor` V using similar setup:
-//!   T.visit_with(V) --calls--> V.visit_T(T) --calls--> T.super_visit_with(V).
-//! These methods return true to indicate that the visitor has found what it is looking for
-//! and does not need to visit anything else.
+//!
+//!     T.visit_with(V) --calls--> V.visit_T(T) --calls--> T.super_visit_with(V).
+//!
+//! These methods return true to indicate that the visitor has found what it is
+//! looking for, and does not need to visit anything else.
 
 use crate::hir::def_id::DefId;
 use crate::ty::{self, Binder, Ty, TyCtxt, TypeFlags};
@@ -52,7 +54,7 @@ pub trait TypeFoldable<'tcx>: fmt::Debug + Clone {
         self.super_visit_with(visitor)
     }
 
-    /// True if `self` has any late-bound regions that are either
+    /// Returns `true` if `self` has any late-bound regions that are either
     /// bound by `binder` or bound by some binder outside of `binder`.
     /// If `binder` is `ty::INNERMOST`, this indicates whether
     /// there are any late-bound regions that appear free.
@@ -60,7 +62,7 @@ pub trait TypeFoldable<'tcx>: fmt::Debug + Clone {
         self.visit_with(&mut HasEscapingVarsVisitor { outer_index: binder })
     }
 
-    /// True if this `self` has any regions that escape `binder` (and
+    /// Returns `true` if this `self` has any regions that escape `binder` (and
     /// hence are not bound by it).
     fn has_vars_bound_above(&self, binder: ty::DebruijnIndex) -> bool {
         self.has_vars_bound_at_or_above(binder.shifted_in(1))
@@ -141,7 +143,7 @@ pub trait TypeFoldable<'tcx>: fmt::Debug + Clone {
     }
 }
 
-/// The TypeFolder trait defines the actual *folding*. There is a
+/// The `TypeFolder` trait defines the actual *folding*. There is a
 /// method defined for every foldable type. Each of these has a
 /// default implementation that does an "identity" fold. Within each
 /// identity fold, it should invoke `foo.fold_with(self)` to fold each
@@ -262,7 +264,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
         });
     }
 
-    /// True if `callback` returns true for every region appearing free in `value`.
+    /// Returns `true` if `callback` returns true for every region appearing free in `value`.
     pub fn all_free_regions_meet(
         self,
         value: &impl TypeFoldable<'tcx>,
@@ -271,7 +273,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
         !self.any_free_region_meets(value, |r| !callback(r))
     }
 
-    /// True if `callback` returns true for some region appearing free in `value`.
+    /// Returns `true` if `callback` returns true for some region appearing free in `value`.
     pub fn any_free_region_meets(
         self,
         value: &impl TypeFoldable<'tcx>,
@@ -292,8 +294,8 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
             /// ^          ^          ^     ^
             /// |          |          |     | here, would be shifted in 1
             /// |          |          | here, would be shifted in 2
-            /// |          | here, would be INNERMOST shifted in by 1
-            /// | here, initially, binder would be INNERMOST
+            /// |          | here, would be `INNERMOST` shifted in by 1
+            /// | here, initially, binder would be `INNERMOST`
             /// ```
             ///
             /// You see that, initially, *any* bound value is free,
@@ -496,12 +498,12 @@ impl<'a, 'gcx, 'tcx> TypeFolder<'gcx, 'tcx> for BoundVarReplacer<'a, 'gcx, 'tcx>
 }
 
 impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
-    /// Replace all regions bound by the given `Binder` with the
+    /// Replaces all regions bound by the given `Binder` with the
     /// results returned by the closure; the closure is expected to
     /// return a free region (relative to this binder), and hence the
     /// binder is removed in the return type. The closure is invoked
     /// once for each unique `BoundRegion`; multiple references to the
-    /// same `BoundRegion` will reuse the previous result.  A map is
+    /// same `BoundRegion` will reuse the previous result. A map is
     /// returned at the end with each bound region and the free region
     /// that replaced it.
     ///
@@ -520,7 +522,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
         self.replace_escaping_bound_vars(value.skip_binder(), fld_r, fld_t)
     }
 
-    /// Replace all escaping bound vars. The `fld_r` closure replaces escaping
+    /// Replaces all escaping bound vars. The `fld_r` closure replaces escaping
     /// bound regions while the `fld_t` closure replaces escaping bound types.
     pub fn replace_escaping_bound_vars<T, F, G>(
         self,
@@ -554,7 +556,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
         }
     }
 
-    /// Replace all types or regions bound by the given `Binder`. The `fld_r`
+    /// Replaces all types or regions bound by the given `Binder`. The `fld_r`
     /// closure replaces bound regions while the `fld_t` closure replaces bound
     /// types.
     pub fn replace_bound_vars<T, F, G>(
@@ -570,7 +572,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
         self.replace_escaping_bound_vars(value.skip_binder(), fld_r, fld_t)
     }
 
-    /// Replace any late-bound regions bound in `value` with
+    /// Replaces any late-bound regions bound in `value` with
     /// free variants attached to `all_outlive_scope`.
     pub fn liberate_late_bound_regions<T>(
         &self,
@@ -615,7 +617,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
         collector.regions
     }
 
-    /// Replace any late-bound regions bound in `value` with `'erased`. Useful in codegen but also
+    /// Replaces any late-bound regions bound in `value` with `'erased`. Useful in codegen but also
     /// method lookup and a few other places where precise region relationships are not required.
     pub fn erase_late_bound_regions<T>(self, value: &Binder<T>) -> T
         where T : TypeFoldable<'tcx>
@@ -623,13 +625,13 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
         self.replace_late_bound_regions(value, |_| self.types.re_erased).0
     }
 
-    /// Rewrite any late-bound regions so that they are anonymous.  Region numbers are
+    /// Rewrite any late-bound regions so that they are anonymous. Region numbers are
     /// assigned starting at 1 and increasing monotonically in the order traversed
     /// by the fold operation.
     ///
     /// The chief purpose of this function is to canonicalize regions so that two
     /// `FnSig`s or `TraitRef`s which are equivalent up to region naming will become
-    /// structurally identical.  For example, `for<'a, 'b> fn(&'a isize, &'b isize)` and
+    /// structurally identical. For example, `for<'a, 'b> fn(&'a isize, &'b isize)` and
     /// `for<'a, 'b> fn(&'b isize, &'a isize)` will become identical after anonymization.
     pub fn anonymize_late_bound_regions<T>(self, sig: &Binder<T>) -> Binder<T>
         where T : TypeFoldable<'tcx>,
@@ -793,7 +795,7 @@ pub fn shift_out_vars<'a, 'gcx, 'tcx, T>(
 /// scope to which it is attached, etc. An escaping var represents
 /// a bound var for which this processing has not yet been done.
 struct HasEscapingVarsVisitor {
-    /// Anything bound by `outer_index` or "above" is escaping
+    /// Anything bound by `outer_index` or "above" is escaping.
     outer_index: ty::DebruijnIndex,
 }
 
@@ -856,10 +858,10 @@ struct LateBoundRegionsCollector {
     current_index: ty::DebruijnIndex,
     regions: FxHashSet<ty::BoundRegion>,
 
-    /// If true, we only want regions that are known to be
+    /// `true` if we only want regions that are known to be
     /// "constrained" when you equate this type with another type. In
     /// particular, if you have e.g., `&'a u32` and `&'b u32`, equating
-    /// them constraints `'a == 'b`.  But if you have `<&'a u32 as
+    /// them constraints `'a == 'b`. But if you have `<&'a u32 as
     /// Trait>::Foo` and `<&'b u32 as Trait>::Foo`, normalizing those
     /// types may mean that `'a` and `'b` don't appear in the results,
     /// so they are not considered *constrained*.

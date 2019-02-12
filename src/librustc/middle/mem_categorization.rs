@@ -3,7 +3,7 @@
 //! The job of the categorization module is to analyze an expression to
 //! determine what kind of memory is used in evaluating it (for example,
 //! where dereferences occur and what kind of pointer is dereferenced;
-//! whether the memory is mutable; etc)
+//! whether the memory is mutable, etc.).
 //!
 //! Categorization effectively transforms all of our expressions into
 //! expressions of the following forms (the actual enum has many more
@@ -16,21 +16,21 @@
 //!       | E.comp    // access to an interior component
 //!
 //! Imagine a routine ToAddr(Expr) that evaluates an expression and returns an
-//! address where the result is to be found.  If Expr is a place, then this
-//! is the address of the place.  If Expr is an rvalue, this is the address of
+//! address where the result is to be found. If Expr is a place, then this
+//! is the address of the place. If `Expr` is an rvalue, this is the address of
 //! some temporary spot in memory where the result is stored.
 //!
-//! Now, cat_expr() classifies the expression Expr and the address A=ToAddr(Expr)
+//! Now, `cat_expr()` classifies the expression `Expr` and the address `A = ToAddr(Expr)`
 //! as follows:
 //!
-//! - cat: what kind of expression was this?  This is a subset of the
+//! - `cat`: what kind of expression was this? This is a subset of the
 //!   full expression forms which only includes those that we care about
 //!   for the purpose of the analysis.
-//! - mutbl: mutability of the address A
-//! - ty: the type of data found at the address A
+//! - `mutbl`: mutability of the address `A`.
+//! - `ty`: the type of data found at the address `A`.
 //!
 //! The resulting categorization tree differs somewhat from the expressions
-//! themselves.  For example, auto-derefs are explicit.  Also, an index a[b] is
+//! themselves. For example, auto-derefs are explicit. Also, an index a[b] is
 //! decomposed into two operations: a dereference to reach the array data and
 //! then an index to jump forward to the relevant item.
 //!

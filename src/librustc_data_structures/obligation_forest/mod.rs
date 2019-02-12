@@ -64,7 +64,7 @@
 //! #### Snapshots
 //!
 //! The `ObligationForest` supports a limited form of snapshots; see
-//! `start_snapshot`; `commit_snapshot`; and `rollback_snapshot`. In
+//! `start_snapshot`, `commit_snapshot`, and `rollback_snapshot`. In
 //! particular, you can use a snapshot to roll back new root
 //! obligations. However, it is an error to attempt to
 //! `process_obligations` during a snapshot.
@@ -72,7 +72,7 @@
 //! ### Implementation details
 //!
 //! For the most part, comments specific to the implementation are in the
-//! code.  This file only contains a very high-level overview. Basically,
+//! code. This file only contains a very high-level overview. Basically,
 //! the forest is stored in a vector. Each element of the vector is a node
 //! in some tree. Each node in the vector has the index of an (optional)
 //! parent and (for convenience) its root (which may be itself). It also
@@ -163,7 +163,7 @@ pub struct ObligationForest<O: ForestObligation> {
 
     obligation_tree_id_generator: ObligationTreeIdGenerator,
 
-    /// Per tree error cache.  This is used to deduplicate errors,
+    /// Per tree error cache. This is used to deduplicate errors,
     /// which is necessary to avoid trait resolution overflow in
     /// some cases.
     ///
@@ -268,13 +268,13 @@ impl<O: ForestObligation> ObligationForest<O> {
         }
     }
 
-    /// Return the total number of nodes in the forest that have not
+    /// Returns the total number of nodes in the forest that have not
     /// yet been fully resolved.
     pub fn len(&self) -> usize {
         self.nodes.len()
     }
 
-    /// Registers an obligation
+    /// Registers an obligation.
     ///
     /// This CAN be done in a snapshot
     pub fn register_obligation(&mut self, obligation: O) {
@@ -341,7 +341,7 @@ impl<O: ForestObligation> ObligationForest<O> {
         }
     }
 
-    /// Convert all remaining obligations to the given error.
+    /// Converts all remaining obligations to the given error.
     ///
     /// This cannot be done during a snapshot.
     pub fn to_errors<E: Clone>(&mut self, error: E) -> Vec<Error<O, E>> {
@@ -380,10 +380,10 @@ impl<O: ForestObligation> ObligationForest<O> {
             .insert(node.obligation.as_predicate().clone());
     }
 
-    /// Perform a pass through the obligation list. This must
+    /// Performs a pass through the obligation list. This must
     /// be called in a loop until `outcome.stalled` is false.
     ///
-    /// This CANNOT be unrolled (presently, at least).
+    /// This _cannot_ be unrolled (presently, at least).
     pub fn process_obligations<P>(&mut self, processor: &mut P, do_completed: DoCompleted)
                                   -> Outcome<O, P::Error>
         where P: ObligationProcessor<Obligation=O>
@@ -461,7 +461,7 @@ impl<O: ForestObligation> ObligationForest<O> {
         }
     }
 
-    /// Mark all NodeState::Success nodes as NodeState::Done and
+    /// Mark all `NodeState::Success` nodes as `NodeState::Done` and
     /// report all cycles between them. This should be called
     /// after `mark_as_waiting` marks all nodes with pending
     /// subobligations as NodeState::Waiting.
@@ -566,7 +566,7 @@ impl<O: ForestObligation> ObligationForest<O> {
         }
     }
 
-    /// Marks all nodes that depend on a pending node as NodeState::Waiting.
+    /// Marks all nodes that depend on a pending node as `NodeState::Waiting`.
     fn mark_as_waiting(&self) {
         for node in &self.nodes {
             if node.state.get() == NodeState::Waiting {

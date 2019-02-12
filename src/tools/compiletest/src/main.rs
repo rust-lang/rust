@@ -808,7 +808,7 @@ fn make_test_closure(
     }))
 }
 
-/// Returns true if the given target is an Android target for the
+/// Returns `true` if the given target is an Android target for the
 /// purposes of GDB testing.
 fn is_android_gdb_target(target: &String) -> bool {
     match &target[..] {

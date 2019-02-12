@@ -2,7 +2,7 @@
 /*!
  * On x86_64-linux-gnu and possibly other platforms, structs get 8-byte "preferred" alignment,
  * but their "ABI" alignment (i.e., what actually matters for data layout) is the largest alignment
- * of any field.  (Also, u64 has 8-byte ABI alignment; this is not always true).
+ * of any field. (Also, `u64` has 8-byte ABI alignment; this is not always true).
  *
  * On such platforms, if monomorphize uses the "preferred" alignment, then it will unify
  * `A` and `B`, even though `S<A>` and `S<B>` have the field `t` at different offsets,

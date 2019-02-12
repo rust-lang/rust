@@ -1,9 +1,9 @@
 //! Write the output of rustc's analysis to an implementor of Dump.
 //!
 //! Dumping the analysis is implemented by walking the AST and getting a bunch of
-//! info out from all over the place. We use Def IDs to identify objects. The
+//! info out from all over the place. We use `DefId`s to identify objects. The
 //! tricky part is getting syntactic (span, source text) and semantic (reference
-//! Def IDs) information for parts of expressions which the compiler has discarded.
+//! `DefId`s) information for parts of expressions which the compiler has discarded.
 //! E.g., in a path `foo::bar::baz`, the compiler only keeps a span for the whole
 //! path and a reference to `baz`, but we want spans and references for all three
 //! idents.
@@ -1021,7 +1021,7 @@ impl<'l, 'tcx: 'l, 'll, O: DumpOutput + 'll> DumpVisitor<'l, 'tcx, 'll, O> {
         }
     }
 
-    /// Extract macro use and definition information from the AST node defined
+    /// Extracts macro use and definition information from the AST node defined
     /// by the given NodeId, using the expansion information from the node's
     /// span.
     ///
@@ -1184,7 +1184,7 @@ impl<'l, 'tcx: 'l, 'll, O: DumpOutput + 'll> DumpVisitor<'l, 'tcx, 'll, O> {
     ///
     /// A use tree is an import that may contain nested braces (RFC 2128). The `use_tree` parameter
     /// is the current use tree under scrutiny, while `id` and `prefix` are its corresponding node
-    /// id and path. `root_item` is the topmost use tree in the hierarchy.
+    /// ID and path. `root_item` is the topmost use tree in the hierarchy.
     ///
     /// If `use_tree` is a simple or glob import, it is dumped into the analysis data. Otherwise,
     /// each child use tree is dumped recursively.

@@ -160,11 +160,11 @@ pub struct Uniform {
     pub unit: Reg,
 
     /// The total size of the argument, which can be:
-    /// * equal to `unit.size` (one scalar/vector)
-    /// * a multiple of `unit.size` (an array of scalar/vectors)
+    /// * equal to `unit.size` (one scalar/vector),
+    /// * a multiple of `unit.size` (an array of scalar/vectors),
     /// * if `unit.kind` is `Integer`, the last element
     ///   can be shorter, i.e., `{ i64, i64, i32 }` for
-    ///   64-bit integers with a total size of 20 bytes
+    ///   64-bit integers with a total size of 20 bytes.
     pub total: Size,
 }
 
@@ -228,7 +228,7 @@ impl CastTarget {
     }
 }
 
-/// Return value from the `homogeneous_aggregate` test function.
+/// Returns value from the `homogeneous_aggregate` test function.
 #[derive(Copy, Clone, Debug)]
 pub enum HomogeneousAggregate {
     /// Yes, all the "leaf fields" of this struct are passed in the
@@ -266,12 +266,12 @@ impl<'a, Ty> TyLayout<'a, Ty> {
         }
     }
 
-    /// True if this layout is an aggregate containing fields of only
+    /// Returns `true` if this layout is an aggregate containing fields of only
     /// a single type (e.g., `(u32, u32)`). Such aggregates are often
     /// special-cased in ABIs.
     ///
     /// Note: We generally ignore fields of zero-sized type when computing
-    /// this value (cc #56877).
+    /// this value (see #56877).
     ///
     /// This is public so that it can be used in unit tests, but
     /// should generally only be relevant to the ABI details of

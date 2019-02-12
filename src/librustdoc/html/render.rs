@@ -1,4 +1,4 @@
-//! Rustdoc's HTML Rendering module
+//! Rustdoc's HTML rendering module.
 //!
 //! This modules contains the bulk of the logic necessary for rendering a
 //! rustdoc `clean::Crate` instance to a set of static HTML pages. This
@@ -163,7 +163,7 @@ impl SharedContext {
 }
 
 impl SharedContext {
-    /// Returns whether the `collapse-docs` pass was run on this crate.
+    /// Returns `true` if the `collapse-docs` pass was run on this crate.
     pub fn was_collapsed(&self) -> bool {
         self.passes.contains("collapse-docs")
     }
@@ -267,11 +267,11 @@ macro_rules! try_err {
 #[derive(Default)]
 pub struct Cache {
     /// Mapping of typaram ids to the name of the type parameter. This is used
-    /// when pretty-printing a type (so pretty printing doesn't have to
+    /// when pretty-printing a type (so pretty-printing doesn't have to
     /// painfully maintain a context like this)
     pub typarams: FxHashMap<DefId, String>,
 
-    /// Maps a type id to all known implementations for that type. This is only
+    /// Maps a type ID to all known implementations for that type. This is only
     /// recognized for intra-crate `ResolvedPath` types, and is used to print
     /// out extra documentation on the page of an enum/struct.
     ///
@@ -279,7 +279,7 @@ pub struct Cache {
     /// found on that implementation.
     pub impls: FxHashMap<DefId, Vec<Impl>>,
 
-    /// Maintains a mapping of local crate node ids to the fully qualified name
+    /// Maintains a mapping of local crate `NodeId`s to the fully qualified name
     /// and "short type description" of that node. This is used when generating
     /// URLs when a type is being linked to. External paths are not located in
     /// this map because the `External` type itself has all the information
@@ -290,7 +290,7 @@ pub struct Cache {
     /// generating explicit hyperlinks to other crates.
     pub external_paths: FxHashMap<DefId, (Vec<String>, ItemType)>,
 
-    /// Maps local def ids of exported types to fully qualified paths.
+    /// Maps local `DefId`s of exported types to fully qualified paths.
     /// Unlike 'paths', this mapping ignores any renames that occur
     /// due to 'use' statements.
     ///
@@ -692,7 +692,7 @@ pub fn run(mut krate: clean::Crate,
     cx.krate(krate)
 }
 
-/// Build the search index from the collected metadata
+/// Builds the search index from the collected metadata
 fn build_index(krate: &clean::Crate, cache: &mut Cache) -> String {
     let mut nodeid_to_pathid = FxHashMap::default();
     let mut crate_items = Vec::with_capacity(cache.search_index.len());
@@ -2297,7 +2297,7 @@ impl Context {
 }
 
 impl<'a> Item<'a> {
-    /// Generate a url appropriate for an `href` attribute back to the source of
+    /// Generates a url appropriate for an `href` attribute back to the source of
     /// this item.
     ///
     /// The url generated, when clicked, will redirect the browser back to the

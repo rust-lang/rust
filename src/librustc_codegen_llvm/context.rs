@@ -75,7 +75,7 @@ pub struct CodegenCx<'ll, 'tcx: 'll> {
     pub statics_to_rauw: RefCell<Vec<(&'ll Value, &'ll Value)>>,
 
     /// Statics that will be placed in the llvm.used variable
-    /// See http://llvm.org/docs/LangRef.html#the-llvm-used-global-variable for details
+    /// See <http://llvm.org/docs/LangRef.html#the-llvm-used-global-variable> for details
     pub used_statics: RefCell<Vec<&'ll Value>>,
 
     pub lltypes: RefCell<FxHashMap<(Ty<'tcx>, Option<VariantIdx>), &'ll Type>>,
@@ -807,7 +807,7 @@ impl CodegenCx<'b, 'tcx> {
 }
 
 impl<'b, 'tcx> CodegenCx<'b, 'tcx> {
-    /// Generate a new symbol name with the given prefix. This symbol name must
+    /// Generates a new symbol name with the given prefix. This symbol name must
     /// only be used for definitions with `internal` or `private` linkage.
     pub fn generate_local_symbol_name(&self, prefix: &str) -> String {
         let idx = self.local_gen_sym_counter.get();

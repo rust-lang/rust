@@ -10,7 +10,7 @@ use mem;
 /// An implementation of SipHash 1-3.
 ///
 /// This is currently the default hashing function used by standard library
-/// (eg. `collections::HashMap` uses it by default).
+/// (e.g., `collections::HashMap` uses it by default).
 ///
 /// See: <https://131002.net/siphash>
 #[unstable(feature = "hashmap_internals", issue = "0")]
@@ -90,7 +90,7 @@ macro_rules! compress {
     });
 }
 
-/// Load an integer of the desired type from a byte stream, in LE order. Uses
+/// Loads an integer of the desired type from a byte stream, in LE order. Uses
 /// `copy_nonoverlapping` to let the compiler generate the most efficient way
 /// to load it from a possibly unaligned address.
 ///
@@ -107,7 +107,7 @@ macro_rules! load_int_le {
     });
 }
 
-/// Load an u64 using up to 7 bytes of a byte slice.
+/// Loads an u64 using up to 7 bytes of a byte slice.
 ///
 /// Unsafe because: unchecked indexing at start..start+len
 #[inline]

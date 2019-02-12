@@ -36,7 +36,7 @@ mod hir_id_validator;
 pub const ITEM_LIKE_SPACE: DefIndexAddressSpace = DefIndexAddressSpace::Low;
 pub const REGULAR_SPACE: DefIndexAddressSpace = DefIndexAddressSpace::High;
 
-/// Represents an entry and its parent NodeId.
+/// Represents an entry and its parent `NodeId`.
 #[derive(Copy, Clone, Debug)]
 pub struct Entry<'hir> {
     parent: NodeId,
@@ -162,8 +162,7 @@ impl Forest {
     }
 }
 
-/// Represents a mapping from Node IDs to AST elements and their parent
-/// Node IDs
+/// Represents a mapping from `NodeId`s to AST elements and their parent `NodeId`s.
 #[derive(Clone)]
 pub struct Map<'hir> {
     /// The backing storage for all the AST nodes.
@@ -473,7 +472,7 @@ impl<'hir> Map<'hir> {
         self.local_def_id(self.body_owner(id))
     }
 
-    /// Given a node id, returns the `BodyId` associated with it,
+    /// Given a `NodeId`, returns the `BodyId` associated with it,
     /// if the node is a body owner, otherwise returns `None`.
     pub fn maybe_body_owned_by(&self, id: NodeId) -> Option<BodyId> {
         if let Some(entry) = self.find_entry(id) {
@@ -558,7 +557,7 @@ impl<'hir> Map<'hir> {
         self.trait_auto_impl(trait_did).is_some()
     }
 
-    /// Get the attributes on the krate. This is preferable to
+    /// Gets the attributes on the crate. This is preferable to
     /// invoking `krate.attrs` because it registers a tighter
     /// dep-graph access.
     pub fn krate_attrs(&self) -> &'hir [ast::Attribute] {
@@ -653,8 +652,7 @@ impl<'hir> Map<'hir> {
         self.get_generics(id).map(|generics| generics.span).filter(|sp| *sp != DUMMY_SP)
     }
 
-    /// Retrieve the Node corresponding to `id`, returning None if
-    /// cannot be found.
+    /// Retrieves the `Node` corresponding to `id`, returning `None` if cannot be found.
     pub fn find(&self, id: NodeId) -> Option<Node<'hir>> {
         let result = self.find_entry(id).and_then(|entry| {
             if let Node::Crate = entry.node {
@@ -683,8 +681,8 @@ impl<'hir> Map<'hir> {
     /// returns the enclosing item. Note that this might not be the actual parent
     /// node in the AST - some kinds of nodes are not in the map and these will
     /// never appear as the parent_node. So you can always walk the `parent_nodes`
-    /// from a node to the root of the ast (unless you get the same id back here
-    /// that can happen if the id is not in the map itself or is just weird).
+    /// from a node to the root of the ast (unless you get the same ID back here
+    /// that can happen if the ID is not in the map itself or is just weird).
     pub fn get_parent_node(&self, id: NodeId) -> NodeId {
         if self.dep_graph.is_fully_enabled() {
             let hir_id_owner = self.node_to_hir_id(id).owner;
@@ -725,7 +723,7 @@ impl<'hir> Map<'hir> {
 
     /// If there is some error when walking the parents (e.g., a node does not
     /// have a parent in the map or a node can't be found), then we return the
-    /// last good node id we found. Note that reaching the crate root (`id == 0`),
+    /// last good `NodeId` we found. Note that reaching the crate root (`id == 0`),
     /// is not an error, since items in the crate module have the crate root as
     /// parent.
     fn walk_parent_nodes<F, F2>(&self,
@@ -761,7 +759,7 @@ impl<'hir> Map<'hir> {
         }
     }
 
-    /// Retrieve the `NodeId` for `id`'s enclosing method, unless there's a
+    /// Retrieves the `NodeId` for `id`'s enclosing method, unless there's a
     /// `while` or `loop` before reaching it, as block tail returns are not
     /// available in them.
     ///
@@ -809,7 +807,7 @@ impl<'hir> Map<'hir> {
         self.walk_parent_nodes(id, match_fn, match_non_returning_block).ok()
     }
 
-    /// Retrieve the `NodeId` for `id`'s parent item, or `id` itself if no
+    /// Retrieves the `NodeId` for `id`'s parent item, or `id` itself if no
     /// parent item is in this map. The "parent item" is the closest parent node
     /// in the HIR which is recorded by the map and is an item, either an item
     /// in a module, trait, or impl.
@@ -1126,7 +1124,7 @@ pub struct NodesMatchingSuffix<'a, 'hir:'a> {
 }
 
 impl<'a, 'hir> NodesMatchingSuffix<'a, 'hir> {
-    /// Returns true only if some suffix of the module path for parent
+    /// Returns `true` only if some suffix of the module path for parent
     /// matches `self.in_which`.
     ///
     /// In other words: let `[x_0,x_1,...,x_k]` be `self.in_which`;

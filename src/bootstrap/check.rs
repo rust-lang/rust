@@ -66,7 +66,7 @@ impl Step for Rustc {
         });
     }
 
-    /// Build the compiler.
+    /// Builds the compiler.
     ///
     /// This will build the compiler for a particular stage of the build using
     /// the `compiler` targeting the `target` architecture. The artifacts

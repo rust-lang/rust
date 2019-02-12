@@ -176,18 +176,18 @@ impl<'a, 'tcx> Qualifier<'a, 'tcx, 'tcx> {
         }
     }
 
-    /// Add the given qualification to self.qualif.
+    /// Adds the given qualification to `self.qualif`.
     fn add(&mut self, qualif: Qualif) {
         self.qualif = self.qualif | qualif;
     }
 
-    /// Add the given type's qualification to self.qualif.
+    /// Adds the given type's qualification to `self.qualif`.
     fn add_type(&mut self, ty: Ty<'tcx>) {
         self.add(Qualif::MUTABLE_INTERIOR | Qualif::NEEDS_DROP);
         self.qualif.restrict(ty, self.tcx, self.param_env);
     }
 
-    /// Within the provided closure, self.qualif will start
+    /// Within the provided closure, `self.qualif` will start
     /// out empty, and its value after the closure returns will
     /// be combined with the value before the call to nest.
     fn nest<F: FnOnce(&mut Self)>(&mut self, f: F) {

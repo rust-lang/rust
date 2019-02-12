@@ -1,6 +1,6 @@
-//! String manipulation
+//! String manipulation.
 //!
-//! For more details, see std::str
+//! For more details, see the `std::str` module.
 
 #![stable(feature = "rust1", since = "1.0.0")]
 
@@ -226,7 +226,7 @@ impl Utf8Error {
     #[stable(feature = "utf8_error", since = "1.5.0")]
     pub fn valid_up_to(&self) -> usize { self.valid_up_to }
 
-    /// Provide more information about the failure:
+    /// Provides more information about the failure:
     ///
     /// * `None`: the end of the input was reached unexpectedly.
     ///   `self.valid_up_to()` is 1 to 3 bytes from the end of the input.
@@ -612,7 +612,7 @@ impl<'a> DoubleEndedIterator for Chars<'a> {
 impl FusedIterator for Chars<'_> {}
 
 impl<'a> Chars<'a> {
-    /// View the underlying data as a subslice of the original data.
+    /// Views the underlying data as a subslice of the original data.
     ///
     /// This has the same lifetime as the original slice, and so the
     /// iterator can continue to be used while this exists.
@@ -702,7 +702,7 @@ impl<'a> DoubleEndedIterator for CharIndices<'a> {
 impl FusedIterator for CharIndices<'_> {}
 
 impl<'a> CharIndices<'a> {
-    /// View the underlying data as a subslice of the original data.
+    /// Views the underlying data as a subslice of the original data.
     ///
     /// This has the same lifetime as the original slice, and so the
     /// iterator can continue to be used while this exists.
@@ -1579,9 +1579,9 @@ mod traits {
 
     /// Implements ordering of strings.
     ///
-    /// Strings are ordered  lexicographically by their byte values.  This orders Unicode code
-    /// points based on their positions in the code charts.  This is not necessarily the same as
-    /// "alphabetical" order, which varies by language and locale.  Sorting strings according to
+    /// Strings are ordered  lexicographically by their byte values. This orders Unicode code
+    /// points based on their positions in the code charts. This is not necessarily the same as
+    /// "alphabetical" order, which varies by language and locale. Sorting strings according to
     /// culturally-accepted standards requires locale-specific data that is outside the scope of
     /// the `str` type.
     #[stable(feature = "rust1", since = "1.0.0")]
@@ -1607,9 +1607,9 @@ mod traits {
 
     /// Implements comparison operations on strings.
     ///
-    /// Strings are compared lexicographically by their byte values.  This compares Unicode code
-    /// points based on their positions in the code charts.  This is not necessarily the same as
-    /// "alphabetical" order, which varies by language and locale.  Comparing strings according to
+    /// Strings are compared lexicographically by their byte values. This compares Unicode code
+    /// points based on their positions in the code charts. This is not necessarily the same as
+    /// "alphabetical" order, which varies by language and locale. Comparing strings according to
     /// culturally-accepted standards requires locale-specific data that is outside the scope of
     /// the `str` type.
     #[stable(feature = "rust1", since = "1.0.0")]
@@ -2643,7 +2643,7 @@ impl str {
         Bytes(self.as_bytes().iter().cloned())
     }
 
-    /// Split a string slice by whitespace.
+    /// Splits a string slice by whitespace.
     ///
     /// The iterator returned will return string slices that are sub-slices of
     /// the original string slice, separated by any amount of whitespace.
@@ -2686,7 +2686,7 @@ impl str {
         SplitWhitespace { inner: self.split(IsWhitespace).filter(IsNotEmpty) }
     }
 
-    /// Split a string slice by ASCII whitespace.
+    /// Splits a string slice by ASCII whitespace.
     ///
     /// The iterator returned will return string slices that are sub-slices of
     /// the original string slice, separated by any amount of ASCII whitespace.
@@ -3504,7 +3504,7 @@ impl str {
     ///
     /// A string is a sequence of bytes. `start` in this context means the first
     /// position of that byte string; for a left-to-right language like English or
-    /// Russian, this will be left side; and for right-to-left languages like
+    /// Russian, this will be left side, and for right-to-left languages like
     /// like Arabic or Hebrew, this will be the right side.
     ///
     /// # Examples
@@ -3541,7 +3541,7 @@ impl str {
     ///
     /// A string is a sequence of bytes. `end` in this context means the last
     /// position of that byte string; for a left-to-right language like English or
-    /// Russian, this will be right side; and for right-to-left languages like
+    /// Russian, this will be right side, and for right-to-left languages like
     /// like Arabic or Hebrew, this will be the left side.
     ///
     /// # Examples
@@ -3787,7 +3787,7 @@ impl str {
     ///
     /// A string is a sequence of bytes. `start` in this context means the first
     /// position of that byte string; for a left-to-right language like English or
-    /// Russian, this will be left side; and for right-to-left languages like
+    /// Russian, this will be left side, and for right-to-left languages like
     /// like Arabic or Hebrew, this will be the right side.
     ///
     /// # Examples
@@ -3819,7 +3819,7 @@ impl str {
     ///
     /// A string is a sequence of bytes. `end` in this context means the last
     /// position of that byte string; for a left-to-right language like English or
-    /// Russian, this will be right side; and for right-to-left languages like
+    /// Russian, this will be right side, and for right-to-left languages like
     /// like Arabic or Hebrew, this will be the left side.
     ///
     /// # Examples

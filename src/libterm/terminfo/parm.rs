@@ -46,7 +46,7 @@ pub struct Variables {
 }
 
 impl Variables {
-    /// Return a new zero-initialized Variables
+    /// Returns a new zero-initialized Variables
     pub fn new() -> Variables {
         Variables {
             sta_va: [

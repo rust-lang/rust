@@ -7,7 +7,7 @@
 //! primitives](#primitives), [standard macros](#macros), [I/O] and
 //! [multithreading], among [many other things][other].
 //!
-//! `std` is available to all Rust crates by default. Therefore the
+//! `std` is available to all Rust crates by default. Therefore, the
 //! standard library can be accessed in [`use`] statements through the path
 //! `std`, as in [`use std::env`].
 //!

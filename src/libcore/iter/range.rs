@@ -20,19 +20,19 @@ pub trait Step: Clone + PartialOrd + Sized {
     /// without overflow.
     fn steps_between(start: &Self, end: &Self) -> Option<usize>;
 
-    /// Replaces this step with `1`, returning itself
+    /// Replaces this step with `1`, returning itself.
     fn replace_one(&mut self) -> Self;
 
-    /// Replaces this step with `0`, returning itself
+    /// Replaces this step with `0`, returning itself.
     fn replace_zero(&mut self) -> Self;
 
-    /// Adds one to this step, returning the result
+    /// Adds one to this step, returning the result.
     fn add_one(&self) -> Self;
 
-    /// Subtracts one to this step, returning the result
+    /// Subtracts one to this step, returning the result.
     fn sub_one(&self) -> Self;
 
-    /// Add an usize, returning None on overflow
+    /// Adds a `usize`, returning `None` on overflow.
     fn add_usize(&self, n: usize) -> Option<Self>;
 }
 

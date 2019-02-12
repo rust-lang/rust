@@ -13,13 +13,13 @@ use sys_common::{AsInnerMut, AsInner, FromInner, IntoInner};
 /// [`process::Command`]: ../../../../std/process/struct.Command.html
 #[stable(feature = "rust1", since = "1.0.0")]
 pub trait CommandExt {
-    /// Sets the child process's user id. This translates to a
+    /// Sets the child process's user ID. This translates to a
     /// `setuid` call in the child process. Failure in the `setuid`
     /// call will cause the spawn to fail.
     #[stable(feature = "rust1", since = "1.0.0")]
     fn uid(&mut self, id: u32) -> &mut process::Command;
 
-    /// Similar to `uid`, but sets the group id of the child process. This has
+    /// Similar to `uid`, but sets the group ID of the child process. This has
     /// the same semantics as the `uid` field.
     #[stable(feature = "rust1", since = "1.0.0")]
     fn gid(&mut self, id: u32) -> &mut process::Command;

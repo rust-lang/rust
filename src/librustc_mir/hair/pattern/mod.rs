@@ -1,4 +1,4 @@
-//! Code to validate patterns/matches
+//! Validation of patterns/matches.
 
 mod _match;
 mod check_match;
@@ -116,7 +116,7 @@ pub enum PatternKind<'tcx> {
         user_ty_span: Span,
     },
 
-    /// x, ref x, x @ P, etc
+    /// `x`, `ref x`, `x @ P`, etc.
     Binding {
         mutability: Mutability,
         name: ast::Name,
@@ -126,7 +126,8 @@ pub enum PatternKind<'tcx> {
         subpattern: Option<Pattern<'tcx>>,
     },
 
-    /// Foo(...) or Foo{...} or Foo, where `Foo` is a variant name from an adt with >1 variants
+    /// `Foo(...)` or `Foo{...}` or `Foo`, where `Foo` is a variant name from an ADT with
+    /// multiple variants.
     Variant {
         adt_def: &'tcx AdtDef,
         substs: &'tcx Substs<'tcx>,
@@ -134,12 +135,13 @@ pub enum PatternKind<'tcx> {
         subpatterns: Vec<FieldPattern<'tcx>>,
     },
 
-    /// (...), Foo(...), Foo{...}, or Foo, where `Foo` is a variant name from an adt with 1 variant
+    /// `(...)`, `Foo(...)`, `Foo{...}`, or `Foo`, where `Foo` is a variant name from an ADT with
+    /// a single variant.
     Leaf {
         subpatterns: Vec<FieldPattern<'tcx>>,
     },
 
-    /// box P, &P, &mut P, etc
+    /// `box P`, `&P`, `&mut P`, etc.
     Deref {
         subpattern: Pattern<'tcx>,
     },
@@ -150,7 +152,7 @@ pub enum PatternKind<'tcx> {
 
     Range(PatternRange<'tcx>),
 
-    /// matches against a slice, checking the length and extracting elements.
+    /// Matches against a slice, checking the length and extracting elements.
     /// irrefutable when there is a slice pattern and both `prefix` and `suffix` are empty.
     /// e.g., `&[ref xs..]`.
     Slice {
@@ -159,7 +161,7 @@ pub enum PatternKind<'tcx> {
         suffix: Vec<Pattern<'tcx>>,
     },
 
-    /// fixed match against an array, irrefutable
+    /// Fixed match against an array; irrefutable.
     Array {
         prefix: Vec<Pattern<'tcx>>,
         slice: Option<Pattern<'tcx>>,
@@ -767,7 +769,7 @@ impl<'a, 'tcx> PatternContext<'a, 'tcx> {
 
     /// Takes a HIR Path. If the path is a constant, evaluates it and feeds
     /// it to `const_to_pat`. Any other path (like enum variants without fields)
-    /// is converted to the corresponding pattern via `lower_variant_or_leaf`
+    /// is converted to the corresponding pattern via `lower_variant_or_leaf`.
     fn lower_path(&mut self,
                   qpath: &hir::QPath,
                   id: hir::HirId,
@@ -851,8 +853,8 @@ impl<'a, 'tcx> PatternContext<'a, 'tcx> {
     }
 
     /// Converts literals, paths and negation of literals to patterns.
-    /// The special case for negation exists to allow things like -128i8
-    /// which would overflow if we tried to evaluate 128i8 and then negate
+    /// The special case for negation exists to allow things like `-128_i8`
+    /// which would overflow if we tried to evaluate `128_i8` and then negate
     /// afterwards.
     fn lower_lit(&mut self, expr: &'tcx hir::Expr) -> PatternKind<'tcx> {
         match expr.node {
@@ -901,7 +903,7 @@ impl<'a, 'tcx> PatternContext<'a, 'tcx> {
 
     /// Converts an evaluated constant to a pattern (if possible).
     /// This means aggregate values (like structs and enums) are converted
-    /// to a pattern that matches the value (as if you'd compare via eq).
+    /// to a pattern that matches the value (as if you'd compared via equality).
     fn const_to_pat(
         &self,
         instance: ty::Instance<'tcx>,

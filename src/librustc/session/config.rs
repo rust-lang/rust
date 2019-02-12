@@ -475,7 +475,7 @@ impl BorrowckMode {
 }
 
 pub enum Input {
-    /// Load source from file
+    /// Loads source from file
     File(PathBuf),
     Str {
         /// String that is shown in place of a filename
@@ -523,7 +523,7 @@ impl OutputFilenames {
             .unwrap_or_else(|| self.temp_path(flavor, None))
     }
 
-    /// Get the path where a compilation artifact of the given type for the
+    /// Gets the path where a compilation artifact of the given type for the
     /// given codegen unit should be placed on disk. If codegen_unit_name is
     /// None, a path distinct from those of any codegen unit will be generated.
     pub fn temp_path(&self, flavor: OutputType, codegen_unit_name: Option<&str>) -> PathBuf {
@@ -532,7 +532,7 @@ impl OutputFilenames {
     }
 
     /// Like temp_path, but also supports things where there is no corresponding
-    /// OutputType, like no-opt-bitcode or lto-bitcode.
+    /// OutputType, like noopt-bitcode or lto-bitcode.
     pub fn temp_path_ext(&self, ext: &str, codegen_unit_name: Option<&str>) -> PathBuf {
         let base = self.out_directory.join(&self.filestem());
 
@@ -616,7 +616,7 @@ impl Default for Options {
 }
 
 impl Options {
-    /// True if there is a reason to build the dep graph.
+    /// Returns `true` if there is a reason to build the dep graph.
     pub fn build_dep_graph(&self) -> bool {
         self.incremental.is_some() || self.debugging_opts.dump_dep_graph
             || self.debugging_opts.query_dep_graph
@@ -632,7 +632,7 @@ impl Options {
         FilePathMapping::new(self.remap_path_prefix.clone())
     }
 
-    /// True if there will be an output file generated
+    /// Returns `true` if there will be an output file generated
     pub fn will_create_output_file(&self) -> bool {
         !self.debugging_opts.parse_only && // The file is just being parsed
             !self.debugging_opts.ls // The file is just being queried

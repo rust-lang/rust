@@ -424,7 +424,7 @@ impl<'a, 'b> Context<'a, 'b> {
         self.ecx.expr_str(sp, s)
     }
 
-    /// Build a static `rt::Argument` from a `parse::Piece` or append
+    /// Builds a static `rt::Argument` from a `parse::Piece` or append
     /// to the `literal` string.
     fn build_piece(&mut self,
                    piece: &parse::Piece<'_>,
@@ -545,7 +545,7 @@ impl<'a, 'b> Context<'a, 'b> {
     }
 
     /// Actually builds the expression which the format_args! block will be
-    /// expanded to
+    /// expanded to.
     fn into_expr(self) -> P<ast::Expr> {
         let mut locals = Vec::with_capacity(
             (0..self.args.len()).map(|i| self.arg_unique_types[i].len()).sum()
@@ -788,7 +788,7 @@ pub fn expand_preparsed_format_args(ecx: &mut ExtCtxt<'_>,
         },
     };
 
-    /// Find the indices of all characters that have been processed and differ between the actual
+    /// Finds the indices of all characters that have been processed and differ between the actual
     /// written code (code snippet) and the `InternedString` that get's processed in the `Parser`
     /// in order to properly synthethise the intra-string `Span`s for error diagnostics.
     fn find_skips(snippet: &str, is_raw: bool) -> Vec<usize> {

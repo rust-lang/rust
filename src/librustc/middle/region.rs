@@ -85,11 +85,11 @@ use rustc_data_structures::stable_hasher::{HashStable, StableHasher,
 /// values live long enough; phrased another way, the starting point
 /// of each range is not really the important thing in the above
 /// picture, but rather the ending point.
-///
-/// FIXME (pnkfelix): This currently derives `PartialOrd` and `Ord` to
-/// placate the same deriving in `ty::FreeRegion`, but we may want to
-/// actually attach a more meaningful ordering to scopes than the one
-/// generated via deriving here.
+//
+// FIXME(pnkfelix): this currently derives `PartialOrd` and `Ord` to
+// placate the same deriving in `ty::FreeRegion`, but we may want to
+// actually attach a more meaningful ordering to scopes than the one
+// generated via deriving here.
 #[derive(Clone, PartialEq, PartialOrd, Eq, Ord, Hash, Copy, RustcEncodable, RustcDecodable)]
 pub struct Scope {
     pub id: hir::ItemLocalId,
@@ -140,14 +140,14 @@ pub enum ScopeData {
 ///
 /// For example, given `{ let (a, b) = EXPR_1; let c = EXPR_2; ... }`:
 ///
-/// * the subscope with `first_statement_index == 0` is scope of both
+/// * The subscope with `first_statement_index == 0` is scope of both
 ///   `a` and `b`; it does not include EXPR_1, but does include
 ///   everything after that first `let`. (If you want a scope that
 ///   includes EXPR_1 as well, then do not use `Scope::Remainder`,
 ///   but instead another `Scope` that encompasses the whole block,
 ///   e.g., `Scope::Node`.
 ///
-/// * the subscope with `first_statement_index == 1` is scope of `c`,
+/// * The subscope with `first_statement_index == 1` is scope of `c`,
 ///   and thus does not include EXPR_2, but covers the `...`.
 
 newtype_index! {
@@ -160,7 +160,7 @@ impl_stable_hash_for!(struct crate::middle::region::FirstStatementIndex { privat
 static_assert!(ASSERT_SCOPE_DATA: mem::size_of::<ScopeData>() == 4);
 
 impl Scope {
-    /// Returns a item-local id associated with this scope.
+    /// Returns a item-local ID associated with this scope.
     ///
     /// N.B., likely to be replaced as API is refined; e.g., pnkfelix
     /// anticipates `fn entry_node_id` and `fn each_exit_node_id`.
@@ -180,8 +180,8 @@ impl Scope {
         }
     }
 
-    /// Returns the span of this Scope.  Note that in general the
-    /// returned span may not correspond to the span of any node id in
+    /// Returns the span of this `Scope`. Note that in general the
+    /// returned span may not correspond to the span of any `NodeId` in
     /// the AST.
     pub fn span(&self, tcx: TyCtxt<'_, '_, '_>, scope_tree: &ScopeTree) -> Span {
         let node_id = self.node_id(tcx, scope_tree);
@@ -225,19 +225,19 @@ pub struct ScopeTree {
     /// have lifetime parameters free in this body.
     root_parent: Option<ast::NodeId>,
 
-    /// `parent_map` maps from a scope id to the enclosing scope id;
+    /// `parent_map` maps from a scope ID to the enclosing scope id;
     /// this is usually corresponding to the lexical nesting, though
     /// in the case of closures the parent scope is the innermost
     /// conditional expression or repeating block. (Note that the
-    /// enclosing scope id for the block associated with a closure is
+    /// enclosing scope ID for the block associated with a closure is
     /// the closure itself.)
     parent_map: FxHashMap<Scope, (Scope, ScopeDepth)>,
 
-    /// `var_map` maps from a variable or binding id to the block in
+    /// `var_map` maps from a variable or binding ID to the block in
     /// which that variable is declared.
     var_map: FxHashMap<hir::ItemLocalId, Scope>,
 
-    /// maps from a node-id to the associated destruction scope (if any)
+    /// maps from a `NodeId` to the associated destruction scope (if any)
     destruction_scopes: FxHashMap<hir::ItemLocalId, Scope>,
 
     /// `rvalue_scopes` includes entries for those expressions whose cleanup scope is
@@ -252,8 +252,8 @@ pub struct ScopeTree {
 
     /// Encodes the hierarchy of fn bodies. Every fn body (including
     /// closures) forms its own distinct region hierarchy, rooted in
-    /// the block that is the fn body. This map points from the id of
-    /// that root block to the id of the root block for the enclosing
+    /// the block that is the fn body. This map points from the ID of
+    /// that root block to the ID of the root block for the enclosing
     /// fn, if any. Thus the map structures the fn bodies into a
     /// hierarchy based on their lexical mapping. This is used to
     /// handle the relationships between regions in a fn and in a
@@ -382,7 +382,7 @@ struct RegionResolutionVisitor<'a, 'tcx: 'a> {
     /// upon exiting the parent scope, we cannot statically know how
     /// many times the expression executed, and thus if the expression
     /// creates temporaries we cannot know statically how many such
-    /// temporaries we would have to cleanup. Therefore we ensure that
+    /// temporaries we would have to cleanup. Therefore, we ensure that
     /// the temporaries never outlast the conditional/repeating
     /// expression, preventing the need for dynamic checks and/or
     /// arbitrary amounts of stack space. Terminating scopes end
@@ -465,7 +465,7 @@ impl<'tcx> ScopeTree {
     }
 
     /// Records that `sub_closure` is defined within `sup_closure`. These ids
-    /// should be the id of the block that is the fn body, which is
+    /// should be the ID of the block that is the fn body, which is
     /// also the root of the region hierarchy for that fn.
     fn record_closure_parent(&mut self,
                              sub_closure: hir::ItemLocalId,
@@ -551,8 +551,8 @@ impl<'tcx> ScopeTree {
         self.is_subscope_of(scope2, scope1)
     }
 
-    /// Returns true if `subscope` is equal to or is lexically nested inside `superscope` and false
-    /// otherwise.
+    /// Returns `true` if `subscope` is equal to or is lexically nested inside `superscope`, and
+    /// `false` otherwise.
     pub fn is_subscope_of(&self,
                           subscope: Scope,
                           superscope: Scope)
@@ -575,7 +575,7 @@ impl<'tcx> ScopeTree {
         return true;
     }
 
-    /// Returns the id of the innermost containing body
+    /// Returns the ID of the innermost containing body
     pub fn containing_body(&self, mut scope: Scope) -> Option<hir::ItemLocalId> {
         loop {
             if let ScopeData::CallSite = scope.data {
@@ -586,7 +586,7 @@ impl<'tcx> ScopeTree {
         }
     }
 
-    /// Finds the nearest common ancestor of two scopes.  That is, finds the
+    /// Finds the nearest common ancestor of two scopes. That is, finds the
     /// smallest scope which is greater than or equal to both `scope_a` and
     /// `scope_b`.
     pub fn nearest_common_ancestor(&self, scope_a: Scope, scope_b: Scope) -> Scope {
@@ -1051,7 +1051,7 @@ fn resolve_local<'a, 'tcx>(visitor: &mut RegionResolutionVisitor<'a, 'tcx>,
         visitor.visit_pat(pat);
     }
 
-    /// True if `pat` match the `P&` nonterminal:
+    /// Returns `true` if `pat` match the `P&` non-terminal.
     ///
     ///     P& = ref X
     ///        | StructName { ..., P&, ... }

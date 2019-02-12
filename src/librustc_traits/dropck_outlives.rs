@@ -145,7 +145,7 @@ fn dropck_outlives<'tcx>(
     )
 }
 
-/// Return a set of constraints that needs to be satisfied in
+/// Returns a set of constraints that needs to be satisfied in
 /// order for `ty` to be valid for destruction.
 fn dtorck_constraint_for_ty<'a, 'gcx, 'tcx>(
     tcx: TyCtxt<'a, 'gcx, 'tcx>,

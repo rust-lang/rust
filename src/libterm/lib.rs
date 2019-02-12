@@ -60,14 +60,14 @@ pub type StdoutTerminal = dyn Terminal<Output = Stdout> + Send;
 pub type StderrTerminal = dyn Terminal<Output = Stderr> + Send;
 
 #[cfg(not(windows))]
-/// Return a Terminal wrapping stdout, or None if a terminal couldn't be
+/// Returns a Terminal wrapping stdout, or None if a terminal couldn't be
 /// opened.
 pub fn stdout() -> Option<Box<StdoutTerminal>> {
     TerminfoTerminal::new(io::stdout()).map(|t| Box::new(t) as Box<StdoutTerminal>)
 }
 
 #[cfg(windows)]
-/// Return a Terminal wrapping stdout, or None if a terminal couldn't be
+/// Returns a Terminal wrapping stdout, or None if a terminal couldn't be
 /// opened.
 pub fn stdout() -> Option<Box<StdoutTerminal>> {
     TerminfoTerminal::new(io::stdout())
@@ -76,14 +76,14 @@ pub fn stdout() -> Option<Box<StdoutTerminal>> {
 }
 
 #[cfg(not(windows))]
-/// Return a Terminal wrapping stderr, or None if a terminal couldn't be
+/// Returns a Terminal wrapping stderr, or None if a terminal couldn't be
 /// opened.
 pub fn stderr() -> Option<Box<StderrTerminal>> {
     TerminfoTerminal::new(io::stderr()).map(|t| Box::new(t) as Box<StderrTerminal>)
 }
 
 #[cfg(windows)]
-/// Return a Terminal wrapping stderr, or None if a terminal couldn't be
+/// Returns a Terminal wrapping stderr, or None if a terminal couldn't be
 /// opened.
 pub fn stderr() -> Option<Box<StderrTerminal>> {
     TerminfoTerminal::new(io::stderr())
@@ -170,12 +170,12 @@ pub trait Terminal: Write {
     /// if there was an I/O error.
     fn bg(&mut self, color: color::Color) -> io::Result<bool>;
 
-    /// Sets the given terminal attribute, if supported.  Returns `Ok(true)`
+    /// Sets the given terminal attribute, if supported. Returns `Ok(true)`
     /// if the attribute was supported, `Ok(false)` otherwise, and `Err(e)` if
     /// there was an I/O error.
     fn attr(&mut self, attr: Attr) -> io::Result<bool>;
 
-    /// Returns whether the given terminal attribute is supported.
+    /// Returns `true` if the given terminal attribute is supported.
     fn supports_attr(&self, attr: Attr) -> bool;
 
     /// Resets all terminal attributes and colors to their defaults.

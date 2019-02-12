@@ -1197,7 +1197,7 @@ impl<T> [T] {
 
     /// Returns an iterator over subslices separated by elements that match
     /// `pred` limited to returning at most `n` items. This starts at the end of
-    /// the slice and works backwards.  The matched element is not contained in
+    /// the slice and works backwards. The matched element is not contained in
     /// the subslices.
     ///
     /// The last element returned, if any, will contain the remainder of the
@@ -3145,7 +3145,7 @@ unsafe impl<T: Sync> Sync for Iter<'_, T> {}
 unsafe impl<T: Sync> Send for Iter<'_, T> {}
 
 impl<'a, T> Iter<'a, T> {
-    /// View the underlying data as a subslice of the original data.
+    /// Views the underlying data as a subslice of the original data.
     ///
     /// This has the same lifetime as the original slice, and so the
     /// iterator can continue to be used while this exists.
@@ -3247,7 +3247,7 @@ unsafe impl<T: Sync> Sync for IterMut<'_, T> {}
 unsafe impl<T: Send> Send for IterMut<'_, T> {}
 
 impl<'a, T> IterMut<'a, T> {
-    /// View the underlying data as a subslice of the original data.
+    /// Views the underlying data as a subslice of the original data.
     ///
     /// To avoid creating `&mut` references that alias, this is forced
     /// to consume the iterator.
@@ -4123,7 +4123,7 @@ pub struct ChunksExact<'a, T:'a> {
 }
 
 impl<'a, T> ChunksExact<'a, T> {
-    /// Return the remainder of the original slice that is not going to be
+    /// Returns the remainder of the original slice that is not going to be
     /// returned by the iterator. The returned slice has at most `chunk_size-1`
     /// elements.
     #[stable(feature = "chunks_exact", since = "1.31.0")]
@@ -4247,7 +4247,7 @@ pub struct ChunksExactMut<'a, T:'a> {
 }
 
 impl<'a, T> ChunksExactMut<'a, T> {
-    /// Return the remainder of the original slice that is not going to be
+    /// Returns the remainder of the original slice that is not going to be
     /// returned by the iterator. The returned slice has at most `chunk_size-1`
     /// elements.
     #[stable(feature = "chunks_exact", since = "1.31.0")]
@@ -4619,7 +4619,7 @@ pub struct RChunksExact<'a, T:'a> {
 }
 
 impl<'a, T> RChunksExact<'a, T> {
-    /// Return the remainder of the original slice that is not going to be
+    /// Returns the remainder of the original slice that is not going to be
     /// returned by the iterator. The returned slice has at most `chunk_size-1`
     /// elements.
     #[stable(feature = "rchunks", since = "1.31.0")]
@@ -4744,7 +4744,7 @@ pub struct RChunksExactMut<'a, T:'a> {
 }
 
 impl<'a, T> RChunksExactMut<'a, T> {
-    /// Return the remainder of the original slice that is not going to be
+    /// Returns the remainder of the original slice that is not going to be
     /// returned by the iterator. The returned slice has at most `chunk_size-1`
     /// elements.
     #[stable(feature = "rchunks", since = "1.31.0")]

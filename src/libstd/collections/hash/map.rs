@@ -370,7 +370,7 @@ const DISPLACEMENT_THRESHOLD: usize = 128;
 /// }
 ///
 /// impl Viking {
-///     /// Create a new Viking.
+///     /// Creates a new Viking.
 ///     fn new(name: &str, country: &str) -> Viking {
 ///         Viking { name: name.to_string(), country: country.to_string() }
 ///     }
@@ -556,7 +556,7 @@ fn pop_internal<K, V>(starting_bucket: FullBucketMut<K, V>)
     (retkey, retval, gap.into_table())
 }
 
-/// Perform robin hood bucket stealing at the given `bucket`. You must
+/// Performs robin hood bucket stealing at the given `bucket`. You must
 /// also pass that bucket's displacement so we don't have to recalculate it.
 ///
 /// `hash`, `key`, and `val` are the elements to "robin hood" into the hashtable.
@@ -1214,7 +1214,7 @@ impl<K, V, S> HashMap<K, V, S>
         self.table.size()
     }
 
-    /// Returns true if the map contains no elements.
+    /// Returns `true` if the map contains no elements.
     ///
     /// # Examples
     ///
@@ -1332,7 +1332,7 @@ impl<K, V, S> HashMap<K, V, S>
         self.search(k).map(|bucket| bucket.into_refs())
     }
 
-    /// Returns true if the map contains a value for the specified key.
+    /// Returns `true` if the map contains a value for the specified key.
     ///
     /// The key may be any borrowed form of the map's key type, but
     /// [`Hash`] and [`Eq`] on the borrowed form *must* match those for
@@ -1896,7 +1896,7 @@ impl<'a, K, V, S> RawEntryBuilderMut<'a, K, V, S>
     where S: BuildHasher,
           K: Eq + Hash,
 {
-    /// Create a `RawEntryMut` from the given key.
+    /// Creates a `RawEntryMut` from the given key.
     #[unstable(feature = "hash_raw_entry", issue = "56167")]
     pub fn from_key<Q: ?Sized>(self, k: &Q) -> RawEntryMut<'a, K, V, S>
         where K: Borrow<Q>,
@@ -1907,7 +1907,7 @@ impl<'a, K, V, S> RawEntryBuilderMut<'a, K, V, S>
         self.from_key_hashed_nocheck(hasher.finish(), k)
     }
 
-    /// Create a `RawEntryMut` from the given key and its hash.
+    /// Creates a `RawEntryMut` from the given key and its hash.
     #[inline]
     #[unstable(feature = "hash_raw_entry", issue = "56167")]
     pub fn from_key_hashed_nocheck<Q: ?Sized>(self, hash: u64, k: &Q) -> RawEntryMut<'a, K, V, S>
@@ -1939,7 +1939,7 @@ impl<'a, K, V, S> RawEntryBuilderMut<'a, K, V, S>
             }
         }
     }
-    /// Create a `RawEntryMut` from the given hash.
+    /// Creates a `RawEntryMut` from the given hash.
     #[inline]
     #[unstable(feature = "hash_raw_entry", issue = "56167")]
     pub fn from_hash<F>(self, hash: u64, is_match: F) -> RawEntryMut<'a, K, V, S>

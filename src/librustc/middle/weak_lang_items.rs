@@ -54,7 +54,7 @@ pub fn link_name(attrs: &[ast::Attribute]) -> Option<Symbol> {
     })
 }
 
-/// Returns whether the specified `lang_item` doesn't actually need to be
+/// Returns `true` if the specified `lang_item` doesn't actually need to be
 /// present for this compilation.
 ///
 /// Not all lang items are always required for each compilation, particularly in

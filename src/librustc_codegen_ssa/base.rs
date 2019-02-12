@@ -7,11 +7,11 @@
 //!
 //! Hopefully useful general knowledge about codegen:
 //!
-//!   * There's no way to find out the Ty type of a Value.  Doing so
-//!     would be "trying to get the eggs out of an omelette" (credit:
-//!     pcwalton).  You can, instead, find out its llvm::Type by calling val_ty,
-//!     but one llvm::Type corresponds to many `Ty`s; for instance, tup(int, int,
-//!     int) and rec(x=int, y=int, z=int) will have the same llvm::Type.
+//! * There's no way to find out the `Ty` type of a Value. Doing so
+//!   would be "trying to get the eggs out of an omelette" (credit:
+//!   pcwalton). You can, instead, find out its `llvm::Type` by calling `val_ty`,
+//!   but one `llvm::Type` corresponds to many `Ty`s; for instance, `tup(int, int,
+//!   int)` and `rec(x=int, y=int, z=int)` will have the same `llvm::Type`.
 
 use crate::{ModuleCodegen, ModuleKind, CachedModuleCodegen};
 
@@ -156,7 +156,7 @@ pub fn compare_simd_types<'a, 'tcx: 'a, Bx: BuilderMethods<'a, 'tcx>>(
     bx.sext(cmp, ret_ty)
 }
 
-/// Retrieve the information we are losing (making dynamic) in an unsizing
+/// Retrieves the information we are losing (making dynamic) in an unsizing
 /// adjustment.
 ///
 /// The `old_info` argument is a bit funny. It is intended for use
@@ -347,7 +347,7 @@ fn cast_shift_rhs<'a, 'tcx: 'a, Bx: BuilderMethods<'a, 'tcx>>(
     }
 }
 
-/// Returns whether this session's target will use SEH-based unwinding.
+/// Returns `true` if this session's target will use SEH-based unwinding.
 ///
 /// This is only true for MSVC targets, and even then the 64-bit MSVC target
 /// currently uses SEH-ish unwinding with DWARF info tables to the side (same as
@@ -436,7 +436,7 @@ pub fn codegen_instance<'a, 'tcx: 'a, Bx: BuilderMethods<'a, 'tcx>>(
     mir::codegen_mir::<Bx>(cx, lldecl, &mir, instance, sig);
 }
 
-/// Create the `main` function which will initialize the rust runtime and call
+/// Creates the `main` function which will initialize the rust runtime and call
 /// users main function.
 pub fn maybe_create_entry_wrapper<'a, 'tcx: 'a, Bx: BuilderMethods<'a, 'tcx>>(
     cx: &'a Bx::CodegenCx

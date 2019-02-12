@@ -9,7 +9,7 @@ use rustc::mir::*;
 use syntax_pos::{Span, DUMMY_SP};
 
 impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
-    /// Add a new temporary value of type `ty` storing the result of
+    /// Adds a new temporary value of type `ty` storing the result of
     /// evaluating `expr`.
     ///
     /// N.B., **No cleanup is scheduled for this temporary.** You should

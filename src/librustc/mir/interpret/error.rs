@@ -19,7 +19,7 @@ use syntax::symbol::Symbol;
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
 pub enum ErrorHandled {
-    /// Already reported a lint or an error for this evaluation
+    /// Already reported a lint or an error for this evaluation.
     Reported,
     /// Don't emit an error, the evaluation failed because the MIR was generic
     /// and the substs didn't fully monomorphize it.
@@ -212,7 +212,7 @@ pub type AssertMessage<'tcx> = EvalErrorKind<'tcx, mir::Operand<'tcx>>;
 #[derive(Clone, RustcEncodable, RustcDecodable)]
 pub enum EvalErrorKind<'tcx, O> {
     /// This variant is used by machines to signal their own errors that do not
-    /// match an existing variant
+    /// match an existing variant.
     MachineError(String),
 
     FunctionAbiMismatch(Abi, Abi),

@@ -34,7 +34,7 @@ pub struct ErrorLocation {
 }
 
 impl ErrorLocation {
-    /// Create an error location from a span.
+    /// Creates an error location from a span.
     pub fn from_span(ecx: &ExtCtxt<'_>, sp: Span) -> ErrorLocation {
         let loc = ecx.source_map().lookup_char_pos_adj(sp.lo());
         ErrorLocation {
@@ -44,7 +44,7 @@ impl ErrorLocation {
     }
 }
 
-/// Get the directory where metadata for a given `prefix` should be stored.
+/// Gets the directory where metadata for a given `prefix` should be stored.
 ///
 /// See `output_metadata`.
 pub fn get_metadata_dir(prefix: &str) -> PathBuf {

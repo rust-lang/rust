@@ -43,7 +43,7 @@ pub fn with_forced_impl_filename_line<F: FnOnce() -> R, R>(f: F) -> R {
     })
 }
 
-/// Add the `crate::` prefix to paths where appropriate.
+/// Adds the `crate::` prefix to paths where appropriate.
 pub fn with_crate_prefix<F: FnOnce() -> R, R>(f: F) -> R {
     SHOULD_PREFIX_WITH_CRATE.with(|flag| {
         let old = flag.get();
@@ -55,7 +55,7 @@ pub fn with_crate_prefix<F: FnOnce() -> R, R>(f: F) -> R {
 }
 
 impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
-    /// Returns a string identifying this def-id. This string is
+    /// Returns a string identifying this `DefId`. This string is
     /// suitable for user output. It is relative to the current crate
     /// root, unless with_forced_absolute_paths was used.
     pub fn item_path_str(self, def_id: DefId) -> String {
@@ -468,7 +468,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
         buffer.push(&format!("<impl at {}>", span_str));
     }
 
-    /// Returns the def-id of `def_id`'s parent in the def tree. If
+    /// Returns the `DefId` of `def_id`'s parent in the def tree. If
     /// this returns `None`, then `def_id` represents a crate root or
     /// inlined root.
     pub fn parent_def_id(self, def_id: DefId) -> Option<DefId> {
@@ -478,9 +478,9 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
 }
 
 /// As a heuristic, when we see an impl, if we see that the
-/// 'self-type' is a type defined in the same module as the impl,
+/// 'self type' is a type defined in the same module as the impl,
 /// we can omit including the path to the impl itself. This
-/// function tries to find a "characteristic def-id" for a
+/// function tries to find a "characteristic `DefId`" for a
 /// type. It's just a heuristic so it makes some questionable
 /// decisions and we may want to adjust it later.
 pub fn characteristic_def_id_of_type(ty: Ty<'_>) -> Option<DefId> {
@@ -535,7 +535,7 @@ pub trait ItemPathBuffer {
 
 #[derive(Debug)]
 pub enum RootMode {
-    /// Try to make a path relative to the local crate.  In
+    /// Try to make a path relative to the local crate. In
     /// particular, local paths have no prefix, and if the path comes
     /// from an extern crate, start with the path to the `extern
     /// crate` declaration.

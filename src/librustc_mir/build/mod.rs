@@ -26,7 +26,7 @@ use syntax_pos::Span;
 
 use super::lints;
 
-/// Construct the MIR for a given def-id.
+/// Construct the MIR for a given `DefId`.
 pub fn mir_build<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: DefId) -> Mir<'tcx> {
     let id = tcx.hir().as_local_node_id(def_id).unwrap();
 
@@ -173,9 +173,9 @@ pub fn mir_build<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: DefId) -> Mir<'t
     })
 }
 
-/// A pass to lift all the types and substitutions in a Mir
+/// A pass to lift all the types and substitutions in a MIR
 /// to the global tcx. Sadly, we don't have a "folder" that
-/// can change 'tcx so we have to transmute afterwards.
+/// can change `'tcx` so we have to transmute afterwards.
 struct GlobalizeMir<'a, 'gcx: 'a> {
     tcx: TyCtxt<'a, 'gcx, 'gcx>,
     span: Span
@@ -335,47 +335,47 @@ struct Builder<'a, 'gcx: 'a+'tcx, 'tcx: 'a> {
     fn_span: Span,
     arg_count: usize,
 
-    /// the current set of scopes, updated as we traverse;
-    /// see the `scope` module for more details
+    /// The current set of scopes, updated as we traverse;
+    /// see the `scope` module for more details.
     scopes: Vec<scope::Scope<'tcx>>,
 
-    /// the block-context: each time we build the code within an hair::Block,
+    /// The block-context: each time we build the code within an hair::Block,
     /// we push a frame here tracking whether we are building a statement or
     /// if we are pushing the tail expression of the block. This is used to
     /// embed information in generated temps about whether they were created
     /// for a block tail expression or not.
     ///
     /// It would be great if we could fold this into `self.scopes`
-    /// somehow; but right now I think that is very tightly tied to
+    /// somehow, but right now I think that is very tightly tied to
     /// the code generation in ways that we cannot (or should not)
     /// start just throwing new entries onto that vector in order to
     /// distinguish the context of EXPR1 from the context of EXPR2 in
-    /// `{ STMTS; EXPR1 } + EXPR2`
+    /// `{ STMTS; EXPR1 } + EXPR2`.
     block_context: BlockContext,
 
     /// The current unsafe block in scope, even if it is hidden by
-    /// a PushUnsafeBlock
+    /// a `PushUnsafeBlock`.
     unpushed_unsafe: Safety,
 
-    /// The number of `push_unsafe_block` levels in scope
+    /// The number of `push_unsafe_block` levels in scope.
     push_unsafe_count: usize,
 
-    /// the current set of breakables; see the `scope` module for more
-    /// details
+    /// The current set of breakables; see the `scope` module for more
+    /// details.
     breakable_scopes: Vec<scope::BreakableScope<'tcx>>,
 
-    /// the vector of all scopes that we have created thus far;
-    /// we track this for debuginfo later
+    /// The vector of all scopes that we have created thus far;
+    /// we track this for debuginfo later.
     source_scopes: IndexVec<SourceScope, SourceScopeData>,
     source_scope_local_data: IndexVec<SourceScope, SourceScopeLocalData>,
     source_scope: SourceScope,
 
-    /// the guard-context: each time we build the guard expression for
+    /// The guard-context: each time we build the guard expression for
     /// a match arm, we push onto this stack, and then pop when we
     /// finish building it.
     guard_context: Vec<GuardFrame>,
 
-    /// Maps node ids of variable bindings to the `Local`s created for them.
+    /// Maps `NodeId`s of variable bindings to the `Local`s created for them.
     /// (A match binding can have two locals; the 2nd is for the arm's guard.)
     var_indices: NodeMap<LocalsForNode>,
     local_decls: IndexVec<Local, LocalDecl<'tcx>>,
@@ -383,12 +383,12 @@ struct Builder<'a, 'gcx: 'a+'tcx, 'tcx: 'a> {
     upvar_decls: Vec<UpvarDecl>,
     unit_temp: Option<Place<'tcx>>,
 
-    /// cached block with the RESUME terminator; this is created
+    /// Cached block with the `RESUME` terminator; this is created
     /// when first set of cleanups are built.
     cached_resume_block: Option<BasicBlock>,
-    /// cached block with the RETURN terminator
+    /// Cached block with the `RETURN` terminator.
     cached_return_block: Option<BasicBlock>,
-    /// cached block with the UNREACHABLE terminator
+    /// Cached block with the `UNREACHABLE` terminator.
     cached_unreachable_block: Option<BasicBlock>,
 }
 
@@ -407,7 +407,7 @@ impl BlockContext {
     fn push(&mut self, bf: BlockFrame) { self.0.push(bf); }
     fn pop(&mut self) -> Option<BlockFrame> { self.0.pop() }
 
-    /// Traverses the frames on the BlockContext, searching for either
+    /// Traverses the frames on the `BlockContext`, searching for either
     /// the first block-tail expression frame with no intervening
     /// statement frame.
     ///
@@ -453,13 +453,13 @@ impl BlockContext {
 
 #[derive(Debug)]
 enum LocalsForNode {
-    /// In the usual case, a node-id for an identifier maps to at most
-    /// one Local declaration.
+    /// In the usual case, a `NodeId` for an identifier maps to at most
+    /// one `Local` declaration.
     One(Local),
 
     /// The exceptional case is identifiers in a match arm's pattern
     /// that are referenced in a guard of that match arm. For these,
-    /// we can have `2+k` Locals, where `k` is the number of candidate
+    /// we can have `2 + k` Locals, where `k` is the number of candidate
     /// patterns (separated by `|`) in the arm.
     ///
     /// * `for_arm_body` is the Local used in the arm body (which is
@@ -505,11 +505,11 @@ struct GuardFrame {
     ///      P1(id1) if (... (match E2 { P2(id2) if ... => B2 })) => B1,
     /// }
     ///
-    /// here, when building for FIXME
+    /// here, when building for FIXME.
     locals: Vec<GuardFrameLocal>,
 }
 
-/// ForGuard indicates whether we are talking about:
+/// `ForGuard` indicates whether we are talking about:
 ///   1. the temp for a local binding used solely within guard expressions,
 ///   2. the temp that holds reference to (1.), which is actually what the
 ///      guard expressions see, or

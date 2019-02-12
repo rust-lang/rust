@@ -393,7 +393,7 @@ impl<'a> Id<'a> {
     /// digit (i.e., the regular expression `[a-zA-Z_][a-zA-Z_0-9]*`).
     ///
     /// (Note: this format is a strict subset of the `ID` format
-    /// defined by the DOT language.  This function may change in the
+    /// defined by the DOT language. This function may change in the
     /// future to accept a broader subset, or the entirety, of DOT's
     /// `ID` format.)
     ///
@@ -530,7 +530,7 @@ impl<'a> LabelText<'a> {
     }
 
     /// Decomposes content into string suitable for making EscStr that
-    /// yields same content as self.  The result obeys the law
+    /// yields same content as self. The result obeys the law
     /// render(`lt`) == render(`EscStr(lt.pre_escaped_content())`) for
     /// all `lt: LabelText`.
     fn pre_escaped_content(self) -> Cow<'a, str> {

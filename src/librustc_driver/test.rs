@@ -1,4 +1,4 @@
-//! # Standalone Tests for the Inference Module
+//! Standalone tests for the inference module.
 
 use driver;
 use errors;
@@ -508,8 +508,8 @@ fn subst_ty_renumber_bound() {
     })
 }
 
-/// Test substituting a bound region into a function, which introduces another level of binding.
-/// This requires adjusting the Debruijn index.
+/// Tests substituting a bound region into a function, which introduces another level of binding.
+/// This requires adjusting the De Bruijn index.
 #[test]
 fn subst_ty_renumber_some_bounds() {
     test_env(EMPTY_SOURCE_STR, errors(&[]), |env| {
@@ -544,7 +544,7 @@ fn subst_ty_renumber_some_bounds() {
     })
 }
 
-/// Test that we correctly compute whether a type has escaping regions or not.
+/// Tests that we correctly compute whether a type has escaping regions or not.
 #[test]
 fn escaping() {
     test_env(EMPTY_SOURCE_STR, errors(&[]), |mut env| {
@@ -571,7 +571,7 @@ fn escaping() {
     })
 }
 
-/// Test applying a substitution where the value being substituted for an early-bound region is a
+/// Tests applying a substitution where the value being substituted for an early-bound region is a
 /// late-bound region.
 #[test]
 fn subst_region_renumber_region() {

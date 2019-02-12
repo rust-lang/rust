@@ -118,7 +118,7 @@ use crate::monomorphize::item::{MonoItemExt, InstantiationMode};
 pub use rustc::mir::mono::CodegenUnit;
 
 pub enum PartitioningStrategy {
-    /// Generate one codegen unit per source-level module.
+    /// Generates one codegen unit per source-level module.
     PerModule,
 
     /// Partition the whole crate into a fixed number of codegen units.

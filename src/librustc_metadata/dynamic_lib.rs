@@ -32,7 +32,7 @@ impl DynamicLibrary {
         }
     }
 
-    /// Load a dynamic library into the global namespace (RTLD_GLOBAL on Unix)
+    /// Loads a dynamic library into the global namespace (RTLD_GLOBAL on Unix)
     /// and do it now (don't use RTLD_LAZY on Unix).
     pub fn open_global_now(filename: &Path) -> Result<DynamicLibrary, String> {
         let maybe_library = dl::open_global_now(filename.as_os_str());

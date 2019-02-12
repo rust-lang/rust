@@ -408,7 +408,7 @@ fn check_impl<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     });
 }
 
-/// Checks where clauses and inline bounds that are declared on def_id.
+/// Checks where-clauses and inline bounds that are declared on `def_id`.
 fn check_where_clauses<'a, 'gcx, 'fcx, 'tcx>(
     tcx: TyCtxt<'a, 'gcx, 'gcx>,
     fcx: &FnCtxt<'fcx, 'gcx, 'tcx>,
@@ -790,7 +790,7 @@ fn check_method_receiver<'fcx, 'gcx, 'tcx>(fcx: &FnCtxt<'fcx, 'gcx, 'tcx>,
 /// through a `*const/mut T` raw pointer. If the feature is not enabled, the requirements are more
 /// strict: `receiver_ty` must implement `Receiver` and directly implement `Deref<Target=self_ty>`.
 ///
-/// NB: there are cases this function returns `true` but causes an error to be emitted,
+/// N.B., there are cases this function returns `true` but causes an error to be emitted,
 /// particularly when `receiver_ty` derefs to a type that is the same as `self_ty` but has the
 /// wrong lifetime. Be careful of this if you are calling this function speculatively.
 fn receiver_is_valid<'fcx, 'tcx, 'gcx>(
@@ -963,7 +963,7 @@ fn reject_shadowing_parameters(tcx: TyCtxt, def_id: DefId) {
     }
 }
 
-/// Feature gates RFC 2056 - trivial bounds, checking for global bounds that
+/// Feature gates RFC 2056 -- trivial bounds, checking for global bounds that
 /// aren't true.
 fn check_false_global_bounds<'a, 'gcx, 'tcx>(
     fcx: &FnCtxt<'a, 'gcx, 'tcx>,

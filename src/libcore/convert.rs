@@ -220,7 +220,7 @@ pub trait AsMut<T: ?Sized> {
 ///
 /// There is one exception to implementing `Into`, and it's kind of esoteric.
 /// If the destination type is not part of the current crate, and it uses a
-/// generic variable, then you can't implement `From` directly.  For example,
+/// generic variable, then you can't implement `From` directly. For example,
 /// take this crate:
 ///
 /// ```compile_fail

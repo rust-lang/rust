@@ -1,6 +1,6 @@
-//! The implementation of the query system itself. Defines the macros
-//! that generate the actual methods on tcx which find and execute the
-//! provider, manage the caches, and so forth.
+//! The implementation of the query system itself. This defines the macros that
+//! generate the actual methods on tcx which find and execute the provider,
+//! manage the caches, and so forth.
 
 use crate::dep_graph::{DepNodeIndex, DepNode, DepKind, SerializedDepNodeIndex};
 use crate::errors::DiagnosticBuilder;
@@ -1017,8 +1017,8 @@ macro_rules! define_queries_inner {
         }
 
         impl<'a, $tcx, 'lcx> TyCtxt<'a, $tcx, 'lcx> {
-            /// Return a transparent wrapper for `TyCtxt` which ensures queries
-            /// are executed instead of returing their result
+            /// Returns a transparent wrapper for `TyCtxt`, which ensures queries
+            /// are executed instead of just returing their results.
             #[inline(always)]
             pub fn ensure(self) -> TyCtxtEnsure<'a, $tcx, 'lcx> {
                 TyCtxtEnsure {
@@ -1026,7 +1026,7 @@ macro_rules! define_queries_inner {
                 }
             }
 
-            /// Return a transparent wrapper for `TyCtxt` which uses
+            /// Returns a transparent wrapper for `TyCtxt` which uses
             /// `span` as the location of queries performed through it.
             #[inline(always)]
             pub fn at(self, span: Span) -> TyCtxtAt<'a, $tcx, 'lcx> {
@@ -1067,7 +1067,7 @@ macro_rules! define_queries_struct {
     (tcx: $tcx:tt,
      input: ($(([$($modifiers:tt)*] [$($attr:tt)*] [$name:ident]))*)) => {
         pub struct Queries<$tcx> {
-            /// This provides access to the incr. comp. on-disk cache for query results.
+            /// This provides access to the incrimental comilation on-disk cache for query results.
             /// Do not access this directly. It is only meant to be used by
             /// `DepGraph::try_mark_green()` and the query infrastructure.
             pub(crate) on_disk_cache: OnDiskCache<'tcx>,
@@ -1123,22 +1123,22 @@ macro_rules! define_provider_struct {
 ///
 /// Now, if force_from_dep_node() would always fail, it would be pretty useless.
 /// Fortunately, we can use some contextual information that will allow us to
-/// reconstruct query-keys for certain kinds of DepNodes. In particular, we
-/// enforce by construction that the GUID/fingerprint of certain DepNodes is a
-/// valid DefPathHash. Since we also always build a huge table that maps every
-/// DefPathHash in the current codebase to the corresponding DefId, we have
+/// reconstruct query-keys for certain kinds of `DepNode`s. In particular, we
+/// enforce by construction that the GUID/fingerprint of certain `DepNode`s is a
+/// valid `DefPathHash`. Since we also always build a huge table that maps every
+/// `DefPathHash` in the current codebase to the corresponding `DefId`, we have
 /// everything we need to re-run the query.
 ///
 /// Take the `mir_validated` query as an example. Like many other queries, it
-/// just has a single parameter: the DefId of the item it will compute the
-/// validated MIR for. Now, when we call `force_from_dep_node()` on a dep-node
-/// with kind `MirValidated`, we know that the GUID/fingerprint of the dep-node
-/// is actually a DefPathHash, and can therefore just look up the corresponding
-/// DefId in `tcx.def_path_hash_to_def_id`.
+/// just has a single parameter: the `DefId` of the item it will compute the
+/// validated MIR for. Now, when we call `force_from_dep_node()` on a `DepNode`
+/// with kind `MirValidated`, we know that the GUID/fingerprint of the `DepNode`
+/// is actually a `DefPathHash`, and can therefore just look up the corresponding
+/// `DefId` in `tcx.def_path_hash_to_def_id`.
 ///
 /// When you implement a new query, it will likely have a corresponding new
-/// DepKind, and you'll have to support it here in `force_from_dep_node()`. As
-/// a rule of thumb, if your query takes a DefId or DefIndex as sole parameter,
+/// `DepKind`, and you'll have to support it here in `force_from_dep_node()`. As
+/// a rule of thumb, if your query takes a `DefId` or `DefIndex` as sole parameter,
 /// then `force_from_dep_node()` should not fail for it. Otherwise, you can just
 /// add it to the "We don't have enough information to reconstruct..." group in
 /// the match below.

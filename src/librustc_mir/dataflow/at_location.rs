@@ -26,14 +26,14 @@ pub trait FlowsAtLocation {
     /// effects don't apply to the unwind edge).
     fn reset_to_exit_of(&mut self, bb: BasicBlock);
 
-    /// Build gen + kill sets for statement at `loc`.
+    /// Builds gen and kill sets for statement at `loc`.
     ///
     /// Note that invoking this method alone does not change the
     /// `curr_state` -- you must invoke `apply_local_effect`
     /// afterwards.
     fn reconstruct_statement_effect(&mut self, loc: Location);
 
-    /// Build gen + kill sets for terminator for `loc`.
+    /// Builds gen and kill sets for terminator for `loc`.
     ///
     /// Note that invoking this method alone does not change the
     /// `curr_state` -- you must invoke `apply_local_effect`

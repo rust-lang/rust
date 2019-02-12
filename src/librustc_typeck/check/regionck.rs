@@ -1,6 +1,6 @@
 //! The region check is a final pass that runs over the AST after we have
 //! inferred the type constraints but before we have actually finalized
-//! the types.  Its purpose is to embed a variety of region constraints.
+//! the types. Its purpose is to embed a variety of region constraints.
 //! Inserting these constraints as a separate pass is good because (1) it
 //! localizes the code that has to do with region inference and (2) often
 //! we cannot know what constraints are needed until the basic types have
@@ -34,17 +34,17 @@
 //! #### Reborrows
 //!
 //! Generally speaking, `regionck` does NOT try to ensure that the data
-//! `data` will outlive the pointer `x`. That is the job of borrowck.  The
+//! `data` will outlive the pointer `x`. That is the job of borrowck. The
 //! one exception is when "re-borrowing" the contents of another borrowed
 //! pointer. For example, imagine you have a borrowed pointer `b` with
-//! lifetime L1 and you have an expression `&*b`. The result of this
-//! expression will be another borrowed pointer with lifetime L2 (which is
+//! lifetime `L1` and you have an expression `&*b`. The result of this
+//! expression will be another borrowed pointer with lifetime `L2` (which is
 //! an inference variable). The borrow checker is going to enforce the
-//! constraint that L2 < L1, because otherwise you are re-borrowing data
-//! for a lifetime larger than the original loan.  However, without the
+//! constraint that `L2 < L1`, because otherwise you are re-borrowing data
+//! for a lifetime larger than the original loan. However, without the
 //! routines in this module, the region inferencer would not know of this
-//! dependency and thus it might infer the lifetime of L2 to be greater
-//! than L1 (issue #3148).
+//! dependency and thus it might infer the lifetime of `L2` to be greater
+//! than `L1` (issue #3148).
 //!
 //! There are a number of troublesome scenarios in the tests
 //! `region-dependent-*.rs`, but here is one example:
@@ -62,13 +62,13 @@
 //!
 //! The key point here is that when you are borrowing a value that
 //! is "guaranteed" by a borrowed pointer, you must link the
-//! lifetime of that borrowed pointer (L1, here) to the lifetime of
-//! the borrow itself (L2).  What do I mean by "guaranteed" by a
+//! lifetime of that borrowed pointer (`L1`, here) to the lifetime of
+//! the borrow itself (`L2`). What do I mean by "guaranteed" by a
 //! borrowed pointer? I mean any data that is reached by first
 //! dereferencing a borrowed pointer and then either traversing
-//! interior offsets or boxes.  We say that the guarantor
+//! interior offsets or boxes. We say that the guarantor
 //! of such data is the region of the borrowed pointer that was
-//! traversed.  This is essentially the same as the ownership
+//! traversed. This is essentially the same as the ownership
 //! relation, except that a borrowed pointer never owns its
 //! contents.
 
@@ -248,11 +248,11 @@ impl<'a, 'gcx, 'tcx> RegionCtxt<'a, 'gcx, 'tcx> {
         mem::replace(&mut self.repeating_scope, scope)
     }
 
-    /// Try to resolve the type for the given node, returning t_err if an error results.  Note that
+    /// Try to resolve the type for the given node, returning `t_err` if an error results. Note that
     /// we never care about the details of the error, the same error will be detected and reported
     /// in the writeback phase.
     ///
-    /// Note one important point: we do not attempt to resolve *region variables* here.  This is
+    /// Note one important point: we do not attempt to resolve *region variables* here. This is
     /// because regionck is essentially adding constraints to those region variables and so may yet
     /// influence how they are resolved.
     ///
@@ -266,9 +266,9 @@ impl<'a, 'gcx, 'tcx> RegionCtxt<'a, 'gcx, 'tcx> {
     /// }
     /// ```
     ///
-    /// Here, the region of `b` will be `<R0>`.  `<R0>` is constrained to be some subregion of the
-    /// block B and some superregion of the call.  If we forced it now, we'd choose the smaller
-    /// region (the call).  But that would make the *b illegal.  Since we don't resolve, the type
+    /// Here, the region of `b` will be `<R0>`. `<R0>` is constrained to be some subregion of the
+    /// block B and some superregion of the call. If we forced it now, we'd choose the smaller
+    /// region (the call). But that would make the *b illegal. Since we don't resolve, the type
     /// of b will be `&<R0>.i32` and then `*b` will require that `<R0>` be bigger than the let and
     /// the `*b` expression, so we will effectively resolve `<R0>` to be the block B.
     pub fn resolve_type(&self, unresolved_ty: Ty<'tcx>) -> Ty<'tcx> {
@@ -826,7 +826,7 @@ impl<'a, 'gcx, 'tcx> RegionCtxt<'a, 'gcx, 'tcx> {
         }
     }
 
-    /// Create a temporary `MemCategorizationContext` and pass it to the closure.
+    /// Creates a temporary `MemCategorizationContext` and pass it to the closure.
     fn with_mc<F, R>(&self, f: F) -> R
     where
         F: for<'b> FnOnce(mc::MemCategorizationContext<'b, 'gcx, 'tcx>) -> R,

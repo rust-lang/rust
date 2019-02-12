@@ -1,5 +1,5 @@
 //! The compiler code necessary to implement the `#[derive(Encodable)]`
-//! (and `Decodable`, in decodable.rs) extension.  The idea here is that
+//! (and `Decodable`, in `decodable.rs`) extension. The idea here is that
 //! type-defining items may be tagged with `#[derive(Encodable, Decodable)]`.
 //!
 //! For example, a type like:
@@ -37,7 +37,7 @@
 //! ```
 //!
 //! Other interesting scenarios are when the item has type parameters or
-//! references other non-built-in types.  A type definition like:
+//! references other non-built-in types. A type definition like:
 //!
 //! ```
 //! # #[derive(Encodable, Decodable)] struct Span;

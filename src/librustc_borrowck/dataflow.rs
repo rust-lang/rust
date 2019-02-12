@@ -178,7 +178,7 @@ fn build_local_id_to_index(body: Option<&hir::Body>,
 
     return index;
 
-    /// Add mappings from the ast nodes for the formal bindings to
+    /// Adds mappings from the ast nodes for the formal bindings to
     /// the entry-node in the graph.
     fn add_entries_from_fn_body(index: &mut FxHashMap<hir::ItemLocalId, Vec<CFGIndex>>,
                                 body: &hir::Body,

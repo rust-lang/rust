@@ -53,7 +53,7 @@ pub mod back;
 pub struct ModuleCodegen<M> {
     /// The name of the module. When the crate may be saved between
     /// compilations, incremental compilation requires that name be
-    /// unique amongst **all** crates.  Therefore, it should contain
+    /// unique amongst **all** crates. Therefore, it should contain
     /// something unique to this crate (e.g., a module path) as well
     /// as the crate name and disambiguator.
     /// We currently generate these names via CodegenUnit::build_cgu_name().
@@ -126,7 +126,7 @@ bitflags::bitflags! {
     }
 }
 
-/// Misc info we load from metadata to persist beyond the tcx
+/// Misc info we load from metadata to persist beyond the tcx.
 pub struct CrateInfo {
     pub panic_runtime: Option<CrateNum>,
     pub compiler_builtins: Option<CrateNum>,

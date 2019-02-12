@@ -35,7 +35,7 @@ use self::values::{LivenessValues, RegionValueElements, RegionValues};
 use super::ToRegionVid;
 
 pub struct RegionInferenceContext<'tcx> {
-    /// Contains the definition for every region variable.  Region
+    /// Contains the definition for every region variable. Region
     /// variables are identified by their index (`RegionVid`). The
     /// definition contains information about where the region came
     /// from as well as its final inferred value.
@@ -124,7 +124,7 @@ pub(crate) enum Cause {
 }
 
 /// A "type test" corresponds to an outlives constraint between a type
-/// and a lifetime, like `T: 'x` or `<T as Foo>::Bar: 'x`.  They are
+/// and a lifetime, like `T: 'x` or `<T as Foo>::Bar: 'x`. They are
 /// translated from the `Verify` region constraints in the ordinary
 /// inference context.
 ///
@@ -137,10 +137,10 @@ pub(crate) enum Cause {
 ///
 /// In some cases, however, there are outlives relationships that are
 /// not converted into a region constraint, but rather into one of
-/// these "type tests".  The distinction is that a type test does not
+/// these "type tests". The distinction is that a type test does not
 /// influence the inference result, but instead just examines the
 /// values that we ultimately inferred for each region variable and
-/// checks that they meet certain extra criteria.  If not, an error
+/// checks that they meet certain extra criteria. If not, an error
 /// can be issued.
 ///
 /// One reason for this is that these type tests typically boil down
@@ -286,7 +286,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
     /// Initializes the region variables for each universally
     /// quantified region (lifetime parameter). The first N variables
     /// always correspond to the regions appearing in the function
-    /// signature (both named and anonymous) and where clauses. This
+    /// signature (both named and anonymous) and where-clauses. This
     /// function iterates over those regions and initializes them with
     /// minimum values.
     ///
@@ -368,12 +368,12 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         self.universal_regions.to_region_vid(r)
     }
 
-    /// Add annotations for `#[rustc_regions]`; see `UniversalRegions::annotate`.
+    /// Adds annotations for `#[rustc_regions]`; see `UniversalRegions::annotate`.
     crate fn annotate(&self, tcx: TyCtxt<'_, '_, 'tcx>, err: &mut DiagnosticBuilder<'_>) {
         self.universal_regions.annotate(tcx, err)
     }
 
-    /// Returns true if the region `r` contains the point `p`.
+    /// Returns `true` if the region `r` contains the point `p`.
     ///
     /// Panics if called before `solve()` executes,
     crate fn region_contains(&self, r: impl ToRegionVid, p: impl ToElementIndex) -> bool {
@@ -393,7 +393,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         self.scc_universes[scc]
     }
 
-    /// Perform region inference and report errors if we see any
+    /// Performs region inference and report errors if we see any
     /// unsatisfiable constraints. If this is a closure, returns the
     /// region requirements to propagate to our creator, if any.
     pub(super) fn solve<'gcx>(
@@ -533,7 +533,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         );
     }
 
-    /// True if all the elements in the value of `scc_b` are nameable
+    /// Returns `true` if all the elements in the value of `scc_b` are nameable
     /// in `scc_a`. Used during constraint propagation, and only once
     /// the value of `scc_b` has been computed.
     fn universe_compatible(&self, scc_b: ConstraintSccIndex, scc_a: ConstraintSccIndex) -> bool {
@@ -928,8 +928,8 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         lub
     }
 
-    /// Test if `test` is true when applied to `lower_bound` at
-    /// `point`, and returns true or false.
+    /// Tests if `test` is true when applied to `lower_bound` at
+    /// `point`.
     fn eval_verify_bound(
         &self,
         tcx: TyCtxt<'_, '_, 'tcx>,
@@ -990,7 +990,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
     /// different results. (For example, there might be two regions
     /// with the same value that are not in the same SCC).
     ///
-    /// NB. This is not an ideal approach and I would like to revisit
+    /// N.B., this is not an ideal approach and I would like to revisit
     /// it. However, it works pretty well in practice. In particular,
     /// this is needed to deal with projection outlives bounds like
     ///
@@ -998,7 +998,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
     ///
     /// In particular, this routine winds up being important when
     /// there are bounds like `where <T as Foo<'a>>::Item: 'b` in the
-    /// environment.  In this case, if we can show that `'0 == 'a`,
+    /// environment. In this case, if we can show that `'0 == 'a`,
     /// and that `'b: '1`, then we know that the clause is
     /// satisfied. In such cases, particularly due to limitations of
     /// the trait solver =), we usually wind up with a where-clause like
@@ -1077,7 +1077,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
     /// Once regions have been propagated, this method is used to see
     /// whether any of the constraints were too strong. In particular,
     /// we want to check for a case where a universally quantified
-    /// region exceeded its bounds.  Consider:
+    /// region exceeded its bounds. Consider:
     ///
     ///     fn foo<'a, 'b>(x: &'a u32) -> &'b u32 { x }
     ///
@@ -1126,7 +1126,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         }
     }
 
-    /// Check the final value for the free region `fr` to see if it
+    /// Checks the final value for the free region `fr` to see if it
     /// grew too large. In particular, examine what `end(X)` points
     /// wound up in `fr`'s final value; for each `end(X)` where `X !=
     /// fr`, we want to check that `fr: X`. If not, that's either an

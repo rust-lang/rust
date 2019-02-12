@@ -17,7 +17,7 @@ pub struct Svh {
 }
 
 impl Svh {
-    /// Create a new `Svh` given the hash. If you actually want to
+    /// Creates a new `Svh` given the hash. If you actually want to
     /// compute the SVH from some HIR, you want the `calculate_svh`
     /// function found in `librustc_incremental`.
     pub fn new(hash: u64) -> Svh {

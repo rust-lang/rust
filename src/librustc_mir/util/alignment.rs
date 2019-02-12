@@ -1,7 +1,7 @@
 use rustc::ty::{self, TyCtxt};
 use rustc::mir::*;
 
-/// Return `true` if this place is allowed to be less aligned
+/// Returns `true` if this place is allowed to be less aligned
 /// than its containing struct (because it is within a packed
 /// struct).
 pub fn is_disaligned<'a, 'tcx, L>(tcx: TyCtxt<'a, 'tcx, 'tcx>,

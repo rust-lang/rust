@@ -51,7 +51,7 @@ fn is_relevant_child(c: &Child) -> bool {
 }
 
 impl<'a> ArchiveBuilder<'a> {
-    /// Create a new static archive, ready for modifying the archive specified
+    /// Creates a new static archive, ready for modifying the archive specified
     /// by `config`.
     pub fn new(config: ArchiveConfig<'a>) -> ArchiveBuilder<'a> {
         ArchiveBuilder {

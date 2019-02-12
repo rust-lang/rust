@@ -4,7 +4,7 @@
 //! `super::itemlikevisit::ItemLikeVisitor` trait.**
 //!
 //! If you have decided to use this visitor, here are some general
-//! notes on how to do it:
+//! notes on how to do so:
 //!
 //! Each overridden visit method has full control over what
 //! happens with its node, it can do its own traversal of the node's children,
@@ -86,7 +86,7 @@ pub enum NestedVisitorMap<'this, 'tcx: 'this> {
     /// using this setting.
     OnlyBodies(&'this Map<'tcx>),
 
-    /// Visit all nested things, including item-likes.
+    /// Visits all nested things, including item-likes.
     ///
     /// **This is an unusual choice.** It is used when you want to
     /// process everything within their lexical context. Typically you
@@ -96,7 +96,7 @@ pub enum NestedVisitorMap<'this, 'tcx: 'this> {
 
 impl<'this, 'tcx> NestedVisitorMap<'this, 'tcx> {
     /// Returns the map to use for an "intra item-like" thing (if any).
-    /// e.g., function body.
+    /// E.g., function body.
     pub fn intra(self) -> Option<&'this Map<'tcx>> {
         match self {
             NestedVisitorMap::None => None,
@@ -106,7 +106,7 @@ impl<'this, 'tcx> NestedVisitorMap<'this, 'tcx> {
     }
 
     /// Returns the map to use for an "item-like" thing (if any).
-    /// e.g., item, impl-item.
+    /// E.g., item, impl-item.
     pub fn inter(self) -> Option<&'this Map<'tcx>> {
         match self {
             NestedVisitorMap::None => None,
@@ -117,7 +117,7 @@ impl<'this, 'tcx> NestedVisitorMap<'this, 'tcx> {
 }
 
 /// Each method of the Visitor trait is a hook to be potentially
-/// overridden.  Each method's default implementation recursively visits
+/// overridden. Each method's default implementation recursively visits
 /// the substructure of the input via the corresponding `walk` method;
 /// e.g., the `visit_mod` method by default calls `intravisit::walk_mod`.
 ///
@@ -129,7 +129,7 @@ impl<'this, 'tcx> NestedVisitorMap<'this, 'tcx> {
 /// on `visit_nested_item` for details on how to visit nested items.
 ///
 /// If you want to ensure that your code handles every variant
-/// explicitly, you need to override each method.  (And you also need
+/// explicitly, you need to override each method. (And you also need
 /// to monitor future changes to `Visitor` in case a new method with a
 /// new default implementation gets introduced.)
 pub trait Visitor<'v> : Sized {
@@ -203,7 +203,7 @@ pub trait Visitor<'v> : Sized {
         }
     }
 
-    /// Visit the top-level item and (optionally) nested items / impl items. See
+    /// Visits the top-level item and (optionally) nested items / impl items. See
     /// `visit_nested_item` for details.
     fn visit_item(&mut self, i: &'v Item) {
         walk_item(self, i)
@@ -214,7 +214,7 @@ pub trait Visitor<'v> : Sized {
     }
 
     /// When invoking `visit_all_item_likes()`, you need to supply an
-    /// item-like visitor.  This method converts a "intra-visit"
+    /// item-like visitor. This method converts a "intra-visit"
     /// visitor into an item-like visitor that walks the entire tree.
     /// If you use this, you probably don't want to process the
     /// contents of nested item-like things, since the outer loop will

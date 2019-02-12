@@ -82,7 +82,7 @@ impl<T: Clone + Debug + Eq + Hash> TransitiveRelation<T> {
     }
 
     /// Applies the (partial) function to each edge and returns a new
-    /// relation.  If `f` returns `None` for any end-point, returns
+    /// relation. If `f` returns `None` for any end-point, returns
     /// `None`.
     pub fn maybe_map<F, U>(&self, mut f: F) -> Option<TransitiveRelation<U>>
         where F: FnMut(&T) -> Option<U>,
@@ -111,7 +111,7 @@ impl<T: Clone + Debug + Eq + Hash> TransitiveRelation<T> {
         }
     }
 
-    /// Check whether `a < target` (transitively)
+    /// Checks whether `a < target` (transitively)
     pub fn contains(&self, a: &T, b: &T) -> bool {
         match (self.index(a), self.index(b)) {
             (Some(a), Some(b)) => self.with_closure(|closure| closure.contains(a.0, b.0)),
@@ -122,7 +122,7 @@ impl<T: Clone + Debug + Eq + Hash> TransitiveRelation<T> {
     /// Thinking of `x R y` as an edge `x -> y` in a graph, this
     /// returns all things reachable from `a`.
     ///
-    /// Really this probably ought to be `impl Iterator<Item=&T>`, but
+    /// Really this probably ought to be `impl Iterator<Item = &T>`, but
     /// I'm too lazy to make that work, and -- given the caching
     /// strategy -- it'd be a touch tricky anyhow.
     pub fn reachable_from(&self, a: &T) -> Vec<&T> {
@@ -152,20 +152,20 @@ impl<T: Clone + Debug + Eq + Hash> TransitiveRelation<T> {
     /// the query is `postdom_upper_bound(a, b)`:
     ///
     /// ```text
-    /// // returns Some(x), which is also LUB
+    /// // Returns Some(x), which is also LUB.
     /// a -> a1 -> x
     ///            ^
     ///            |
     /// b -> b1 ---+
     ///
-    /// // returns Some(x), which is not LUB (there is none)
-    /// // diagonal edges run left-to-right
+    /// // Returns `Some(x)`, which is not LUB (there is none)
+    /// // diagonal edges run left-to-right.
     /// a -> a1 -> x
     ///   \/       ^
     ///   /\       |
     /// b -> b1 ---+
     ///
-    /// // returns None
+    /// // Returns `None`.
     /// a -> a1
     /// b -> b1
     /// ```

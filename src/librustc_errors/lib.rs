@@ -390,7 +390,7 @@ impl Handler {
 
     /// Resets the diagnostic error count as well as the cached emitted diagnostics.
     ///
-    /// NOTE: DO NOT call this function from rustc. It is only meant to be called from external
+    /// NOTE: *do not* call this function from rustc. It is only meant to be called from external
     /// tools that want to reuse a `Parser` cleaning the previously emitted diagnostics as well as
     /// the overall count of emitted error diagnostics.
     pub fn reset_err_count(&self) {

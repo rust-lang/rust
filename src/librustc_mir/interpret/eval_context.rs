@@ -55,7 +55,7 @@ pub struct Frame<'mir, 'tcx: 'mir, Tag=(), Extra=()> {
     /// The MIR for the function called on this frame.
     pub mir: &'mir mir::Mir<'tcx>,
 
-    /// The def_id and substs of the current function
+    /// The def_id and substs of the current function.
     pub instance: ty::Instance<'tcx>,
 
     /// The span of the call site.
@@ -64,7 +64,7 @@ pub struct Frame<'mir, 'tcx: 'mir, Tag=(), Extra=()> {
     ////////////////////////////////////////////////////////////////////////////////
     // Return place and locals
     ////////////////////////////////////////////////////////////////////////////////
-    /// Work to perform when returning from this function
+    /// Work to perform when returning from this function.
     pub return_to_block: StackPopCleanup,
 
     /// The location where the result of the current stack frame should be written to,
@@ -88,7 +88,7 @@ pub struct Frame<'mir, 'tcx: 'mir, Tag=(), Extra=()> {
     /// The index of the currently evaluated statement.
     pub stmt: usize,
 
-    /// Extra data for the machine
+    /// Extra data for the machine.
     pub extra: Extra,
 }
 
@@ -99,7 +99,7 @@ pub enum StackPopCleanup {
     /// we can validate it at that layout.
     Goto(Option<mir::BasicBlock>),
     /// Just do nohing: Used by Main and for the box_alloc hook in miri.
-    /// `cleanup` says whether locals are deallocated.  Static computation
+    /// `cleanup` says whether locals are deallocated. Static computation
     /// wants them leaked to intern what they need (and just throw away
     /// the entire `ecx` when it is done).
     None { cleanup: bool },
@@ -339,7 +339,7 @@ impl<'a, 'mir, 'tcx: 'mir, M: Machine<'a, 'mir, 'tcx>> EvalContext<'a, 'mir, 'tc
         Ok(Immediate::new_slice(Scalar::Ptr(ptr), s.len() as u64, self))
     }
 
-    /// Return the actual dynamic size and alignment of the place at the given type.
+    /// Returns the actual dynamic size and alignment of the place at the given type.
     /// Only the "meta" (metadata) part of the place matters.
     /// This can fail to provide an answer for extern types.
     pub(super) fn size_and_align_of(
