@@ -1,9 +1,7 @@
 use crate::dep_graph::{self, DepConstructor, DepNode};
-use crate::errors::DiagnosticBuilder;
 use crate::hir::def_id::{CrateNum, DefId, DefIndex};
 use crate::hir::def::{Def, Export};
 use crate::hir::{self, TraitCandidate, ItemLocalId, CodegenFnAttrs};
-use rustc_data_structures::svh::Svh;
 use crate::infer::canonical::{self, Canonical};
 use crate::lint;
 use crate::middle::borrowck::BorrowCheckResult;
@@ -44,6 +42,8 @@ use crate::util::common::{ErrorReported};
 use crate::util::profiling::ProfileCategory::*;
 use crate::session::Session;
 
+use errors::DiagnosticBuilder;
+use rustc_data_structures::svh::Svh;
 use rustc_data_structures::bit_set::BitSet;
 use rustc_data_structures::indexed_vec::IndexVec;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};

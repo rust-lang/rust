@@ -19,7 +19,7 @@ use syntax::parse;
 use syntax::symbol::Symbol;
 use syntax::feature_gate::UnstableFeatures;
 
-use crate::errors::{ColorConfig, FatalError, Handler};
+use errors::{ColorConfig, FatalError, Handler};
 
 use getopts;
 use std::collections::{BTreeMap, BTreeSet};
@@ -96,18 +96,18 @@ pub enum LtoCli {
 }
 
 #[derive(Clone, PartialEq, Hash)]
-pub enum CrossLangLto {
+pub enum LinkerPluginLto {
     LinkerPlugin(PathBuf),
     LinkerPluginAuto,
     Disabled
 }
 
-impl CrossLangLto {
+impl LinkerPluginLto {
     pub fn enabled(&self) -> bool {
         match *self {
-            CrossLangLto::LinkerPlugin(_) |
-            CrossLangLto::LinkerPluginAuto => true,
-            CrossLangLto::Disabled => false,
+            LinkerPluginLto::LinkerPlugin(_) |
+            LinkerPluginLto::LinkerPluginAuto => true,
+            LinkerPluginLto::Disabled => false,
         }
     }
 }
@@ -812,7 +812,7 @@ macro_rules! options {
         pub const parse_lto: Option<&str> =
             Some("either a boolean (`yes`, `no`, `on`, `off`, etc), `thin`, \
                   `fat`, or omitted");
-        pub const parse_cross_lang_lto: Option<&str> =
+        pub const parse_linker_plugin_lto: Option<&str> =
             Some("either a boolean (`yes`, `no`, `on`, `off`, etc), \
                   or the path to the linker plugin");
         pub const parse_merge_functions: Option<&str> =
@@ -821,7 +821,7 @@ macro_rules! options {
 
     #[allow(dead_code)]
     mod $mod_set {
-        use super::{$struct_name, Passes, Sanitizer, LtoCli, CrossLangLto};
+        use super::{$struct_name, Passes, Sanitizer, LtoCli, LinkerPluginLto};
         use rustc_target::spec::{LinkerFlavor, MergeFunctions, PanicStrategy, RelroLevel};
         use std::path::PathBuf;
         use std::str::FromStr;
@@ -1037,22 +1037,22 @@ macro_rules! options {
             true
         }
 
-        fn parse_cross_lang_lto(slot: &mut CrossLangLto, v: Option<&str>) -> bool {
+        fn parse_linker_plugin_lto(slot: &mut LinkerPluginLto, v: Option<&str>) -> bool {
             if v.is_some() {
                 let mut bool_arg = None;
                 if parse_opt_bool(&mut bool_arg, v) {
                     *slot = if bool_arg.unwrap() {
-                        CrossLangLto::LinkerPluginAuto
+                        LinkerPluginLto::LinkerPluginAuto
                     } else {
-                        CrossLangLto::Disabled
+                        LinkerPluginLto::Disabled
                     };
                     return true
                 }
             }
 
             *slot = match v {
-                None => CrossLangLto::LinkerPluginAuto,
-                Some(path) => CrossLangLto::LinkerPlugin(PathBuf::from(path)),
+                None => LinkerPluginLto::LinkerPluginAuto,
+                Some(path) => LinkerPluginLto::LinkerPlugin(PathBuf::from(path)),
             };
             true
         }
@@ -1145,6 +1145,10 @@ options! {CodegenOptions, CodegenSetter, basic_codegen_options,
         "allow the linker to link its default libraries"),
     linker_flavor: Option<LinkerFlavor> = (None, parse_linker_flavor, [UNTRACKED],
                                            "Linker flavor"),
+    linker_plugin_lto: LinkerPluginLto = (LinkerPluginLto::Disabled,
+        parse_linker_plugin_lto, [TRACKED],
+        "generate build artifacts that are compatible with linker-based LTO."),
+
 }
 
 options! {DebuggingOptions, DebuggingSetter, basic_debugging_options,
@@ -1383,8 +1387,6 @@ options! {DebuggingOptions, DebuggingSetter, basic_debugging_options,
         "make the current crate share its generic instantiations"),
     chalk: bool = (false, parse_bool, [TRACKED],
         "enable the experimental Chalk-based trait solving engine"),
-    cross_lang_lto: CrossLangLto = (CrossLangLto::Disabled, parse_cross_lang_lto, [TRACKED],
-        "generate build artifacts that are compatible with linker-based LTO."),
     no_parallel_llvm: bool = (false, parse_bool, [UNTRACKED],
         "don't run LLVM in parallel (while keeping codegen-units and ThinLTO)"),
     no_leak_check: bool = (false, parse_bool, [UNTRACKED],
@@ -2440,7 +2442,7 @@ mod dep_tracking {
     use std::path::PathBuf;
     use std::collections::hash_map::DefaultHasher;
     use super::{CrateType, DebugInfo, ErrorOutputType, OptLevel, OutputTypes,
-                Passes, Sanitizer, LtoCli, CrossLangLto};
+                Passes, Sanitizer, LtoCli, LinkerPluginLto};
     use syntax::feature_gate::UnstableFeatures;
     use rustc_target::spec::{MergeFunctions, PanicStrategy, RelroLevel, TargetTriple};
     use syntax::edition::Edition;
@@ -2507,7 +2509,7 @@ mod dep_tracking {
     impl_dep_tracking_hash_via_hash!(Option<Sanitizer>);
     impl_dep_tracking_hash_via_hash!(TargetTriple);
     impl_dep_tracking_hash_via_hash!(Edition);
-    impl_dep_tracking_hash_via_hash!(CrossLangLto);
+    impl_dep_tracking_hash_via_hash!(LinkerPluginLto);
 
     impl_dep_tracking_hash_for_sortable_vec_of!(String);
     impl_dep_tracking_hash_for_sortable_vec_of!(PathBuf);
@@ -2567,12 +2569,11 @@ mod dep_tracking {
 
 #[cfg(test)]
 mod tests {
-    use crate::errors;
     use getopts;
     use crate::lint;
     use crate::middle::cstore;
     use crate::session::config::{build_configuration, build_session_options_and_crate_config};
-    use crate::session::config::{LtoCli, CrossLangLto};
+    use crate::session::config::{LtoCli, LinkerPluginLto};
     use crate::session::build_session;
     use crate::session::search_paths::SearchPath;
     use std::collections::{BTreeMap, BTreeSet};
@@ -3105,6 +3106,10 @@ mod tests {
         opts = reference.clone();
         opts.cg.panic = Some(PanicStrategy::Abort);
         assert!(reference.dep_tracking_hash() != opts.dep_tracking_hash());
+
+        opts = reference.clone();
+        opts.cg.linker_plugin_lto = LinkerPluginLto::LinkerPluginAuto;
+        assert!(reference.dep_tracking_hash() != opts.dep_tracking_hash());
     }
 
     #[test]
@@ -3229,10 +3234,6 @@ mod tests {
 
         opts = reference.clone();
         opts.debugging_opts.relro_level = Some(RelroLevel::Full);
-        assert!(reference.dep_tracking_hash() != opts.dep_tracking_hash());
-
-        opts = reference.clone();
-        opts.debugging_opts.cross_lang_lto = CrossLangLto::LinkerPluginAuto;
         assert!(reference.dep_tracking_hash() != opts.dep_tracking_hash());
 
         opts = reference.clone();

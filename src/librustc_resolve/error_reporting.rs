@@ -1,5 +1,6 @@
 use std::cmp::Reverse;
 
+use errors::{Applicability, DiagnosticBuilder, DiagnosticId};
 use log::debug;
 use rustc::hir::def::*;
 use rustc::hir::def::Namespace::*;
@@ -9,7 +10,6 @@ use syntax::ast::{ExprKind};
 use syntax::symbol::keywords;
 use syntax_pos::Span;
 
-use crate::errors::{Applicability, DiagnosticBuilder, DiagnosticId};
 use crate::macros::ParentScope;
 use crate::resolve_imports::ImportResolver;
 use crate::{import_candidate_to_enum_paths, is_self_type, is_self_value, path_names_to_string};

@@ -5,7 +5,7 @@ use crate::infer::type_variable::TypeVariableOrigin;
 use crate::ty::{self, Ty, Infer, TyVar};
 use syntax::source_map::CompilerDesugaringKind;
 use syntax_pos::Span;
-use crate::errors::DiagnosticBuilder;
+use errors::DiagnosticBuilder;
 
 struct FindLocalByTypeVisitor<'a, 'gcx: 'a + 'tcx, 'tcx: 'a> {
     infcx: &'a InferCtxt<'a, 'gcx, 'tcx>,
@@ -16,9 +16,9 @@ struct FindLocalByTypeVisitor<'a, 'gcx: 'a + 'tcx, 'tcx: 'a> {
 }
 
 impl<'a, 'gcx, 'tcx> FindLocalByTypeVisitor<'a, 'gcx, 'tcx> {
-    fn node_matches_type(&mut self, node_id: HirId) -> bool {
+    fn node_matches_type(&mut self, hir_id: HirId) -> bool {
         let ty_opt = self.infcx.in_progress_tables.and_then(|tables| {
-            tables.borrow().node_id_to_type_opt(node_id)
+            tables.borrow().node_type_opt(hir_id)
         });
         match ty_opt {
             Some(ty) => {

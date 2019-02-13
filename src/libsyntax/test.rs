@@ -12,11 +12,10 @@ use std::vec;
 
 use log::debug;
 use smallvec::{smallvec, SmallVec};
-use syntax_pos::{self, DUMMY_SP, NO_EXPANSION, Span, SourceFile, BytePos};
+use syntax_pos::{DUMMY_SP, NO_EXPANSION, Span, SourceFile, BytePos};
 
 use crate::attr::{self, HasAttrs};
 use crate::source_map::{self, SourceMap, ExpnInfo, MacroAttribute, dummy_spanned, respan};
-use crate::errors;
 use crate::config;
 use crate::entry::{self, EntryPointType};
 use crate::ext::base::{ExtCtxt, Resolver};

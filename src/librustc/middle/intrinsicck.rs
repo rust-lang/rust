@@ -165,7 +165,7 @@ impl<'a, 'tcx> Visitor<'tcx> for ExprVisitor<'a, 'tcx> {
         };
         if let Def::Fn(did) = def {
             if self.def_id_is_transmute(did) {
-                let typ = self.tables.node_id_to_type(expr.hir_id);
+                let typ = self.tables.node_type(expr.hir_id);
                 let sig = typ.fn_sig(self.tcx);
                 let from = sig.inputs().skip_binder()[0];
                 let to = *sig.output().skip_binder();

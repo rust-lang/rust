@@ -4,7 +4,7 @@ use State::*;
 
 use rustc_data_structures::thin_vec::ThinVec;
 
-use crate::errors::DiagnosticBuilder;
+use errors::DiagnosticBuilder;
 
 use syntax::ast;
 use syntax::ext::base::{self, *};

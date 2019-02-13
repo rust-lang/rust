@@ -244,7 +244,7 @@ impl<'a, 'tcx> CheckCrateVisitor<'a, 'tcx> {
     }
 
     fn check_expr(&mut self, ex: &'tcx hir::Expr) -> Promotability {
-        let node_ty = self.tables.node_id_to_type(ex.hir_id);
+        let node_ty = self.tables.node_type(ex.hir_id);
         let mut outer = check_expr_kind(self, ex, node_ty);
         outer &= check_adjustments(self, ex);
 
@@ -306,7 +306,7 @@ fn check_expr_kind<'a, 'tcx>(
             if v.tables.is_method_call(e) {
                 return NotPromotable;
             }
-            match v.tables.node_id_to_type(lhs.hir_id).sty {
+            match v.tables.node_type(lhs.hir_id).sty {
                 ty::RawPtr(_) | ty::FnPtr(..) => {
                     assert!(op.node == hir::BinOpKind::Eq || op.node == hir::BinOpKind::Ne ||
                             op.node == hir::BinOpKind::Le || op.node == hir::BinOpKind::Lt ||

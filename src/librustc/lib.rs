@@ -153,8 +153,6 @@ mod rustc {
     pub use crate::lint;
 }
 
-use rustc_errors as errors;
-
 // FIXME(#27438): right now the unit tests of librustc don't refer to any actual
 //                functions generated in librustc_data_structures (all
 //                references are through generic functions), but statics are

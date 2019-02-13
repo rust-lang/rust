@@ -16,8 +16,6 @@
 
 extern crate proc_macro;
 
-use rustc_errors as errors;
-
 mod diagnostics;
 
 mod asm;

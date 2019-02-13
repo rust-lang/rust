@@ -6,7 +6,6 @@
 use std::str::FromStr;
 
 use crate::ast;
-use crate::errors;
 use crate::visit;
 use crate::visit::Visitor;
 

@@ -8,7 +8,7 @@
 ///
 /// This allows a program to terminate immediately and provide feedback
 /// to the caller of the program. `panic!` should be used when a program reaches
-/// an unrecoverable problem.
+/// an unrecoverable state.
 ///
 /// This macro is the perfect way to assert conditions in example code and in
 /// tests. `panic!` is closely tied with the `unwrap` method of both [`Option`]

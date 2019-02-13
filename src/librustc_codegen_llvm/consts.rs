@@ -275,12 +275,12 @@ impl CodegenCx<'ll, 'tcx> {
                 self.use_dll_storage_attrs && !self.tcx.is_foreign_item(def_id) &&
                 // ThinLTO can't handle this workaround in all cases, so we don't
                 // emit the attrs. Instead we make them unnecessary by disallowing
-                // dynamic linking when cross-language LTO is enabled.
-                !self.tcx.sess.opts.debugging_opts.cross_lang_lto.enabled();
+                // dynamic linking when linker plugin based LTO is enabled.
+                !self.tcx.sess.opts.cg.linker_plugin_lto.enabled();
 
             // If this assertion triggers, there's something wrong with commandline
             // argument validation.
-            debug_assert!(!(self.tcx.sess.opts.debugging_opts.cross_lang_lto.enabled() &&
+            debug_assert!(!(self.tcx.sess.opts.cg.linker_plugin_lto.enabled() &&
                             self.tcx.sess.target.target.options.is_like_msvc &&
                             self.tcx.sess.opts.cg.prefer_dynamic));
 

@@ -21,8 +21,8 @@ use rustc_data_structures::sync::{
     Ordering::SeqCst,
 };
 
-use crate::errors::{self, DiagnosticBuilder, DiagnosticId, Applicability};
-use crate::errors::emitter::{Emitter, EmitterWriter};
+use errors::{DiagnosticBuilder, DiagnosticId, Applicability};
+use errors::emitter::{Emitter, EmitterWriter};
 use syntax::ast::{self, NodeId};
 use syntax::edition::Edition;
 use syntax::feature_gate::{self, AttributeType};
@@ -1267,7 +1267,7 @@ fn validate_commandline_args_with_session_available(sess: &Session) {
     // bitcode during ThinLTO. Therefore we disallow dynamic linking on MSVC
     // when compiling for LLD ThinLTO. This way we can validly just not generate
     // the `dllimport` attributes and `__imp_` symbols in that case.
-    if sess.opts.debugging_opts.cross_lang_lto.enabled() &&
+    if sess.opts.cg.linker_plugin_lto.enabled() &&
        sess.opts.cg.prefer_dynamic &&
        sess.target.target.options.is_like_msvc {
         sess.err("Linker plugin based LTO is not supported together with \

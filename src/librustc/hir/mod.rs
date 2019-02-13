@@ -10,12 +10,12 @@ pub use self::PrimTy::*;
 pub use self::UnOp::*;
 pub use self::UnsafeSource::*;
 
-use crate::errors::FatalError;
 use crate::hir::def::Def;
 use crate::hir::def_id::{DefId, DefIndex, LocalDefId, CRATE_DEF_INDEX};
 use crate::util::nodemap::{NodeMap, FxHashSet};
 use crate::mir::mono::Linkage;
 
+use errors::FatalError;
 use syntax_pos::{Span, DUMMY_SP, symbol::InternedString};
 use syntax::source_map::Spanned;
 use rustc_target::spec::abi::Abi;

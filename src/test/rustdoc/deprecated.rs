@@ -28,3 +28,8 @@ pub struct V;
 //      'Deprecated$'
 #[deprecated]
 pub struct W;
+
+// @matches deprecated/struct.X.html '//*[@class="stab deprecated"]' \
+//      'Deprecated: shorthand reason$'
+#[deprecated = "shorthand reason"]
+pub struct X;

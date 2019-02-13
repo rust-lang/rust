@@ -1,7 +1,8 @@
 use crate::source_map::{SourceMap, FilePathMapping};
-use crate::errors::Handler;
-use crate::errors::emitter::EmitterWriter;
 use crate::with_globals;
+
+use errors::Handler;
+use errors::emitter::EmitterWriter;
 
 use std::io;
 use std::io::prelude::*;

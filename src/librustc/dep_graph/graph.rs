@@ -1,4 +1,4 @@
-use crate::errors::{Diagnostic, DiagnosticBuilder};
+use errors::{Diagnostic, DiagnosticBuilder};
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_data_structures::indexed_vec::{Idx, IndexVec};

@@ -11,10 +11,11 @@ use crate::hir::map::Map;
 use crate::hir::{GenericArg, GenericParam, ItemLocalId, LifetimeName, Node, ParamName};
 use crate::ty::{self, DefIdTree, GenericParamDefKind, TyCtxt};
 
-use crate::errors::{Applicability, DiagnosticBuilder};
 use crate::rustc::lint;
-use rustc_data_structures::sync::Lrc;
 use crate::session::Session;
+use crate::util::nodemap::{DefIdMap, FxHashMap, FxHashSet, NodeMap, NodeSet};
+use errors::{Applicability, DiagnosticBuilder};
+use rustc_data_structures::sync::Lrc;
 use std::borrow::Cow;
 use std::cell::Cell;
 use std::mem::replace;
@@ -23,7 +24,6 @@ use syntax::attr;
 use syntax::ptr::P;
 use syntax::symbol::keywords;
 use syntax_pos::Span;
-use crate::util::nodemap::{DefIdMap, FxHashMap, FxHashSet, NodeMap, NodeSet};
 
 use crate::hir::intravisit::{self, NestedVisitorMap, Visitor};
 use crate::hir::{self, GenericParamKind, LifetimeParamKind};

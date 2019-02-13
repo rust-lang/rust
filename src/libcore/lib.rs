@@ -227,20 +227,6 @@ mod unit;
 // `core_arch` depends on libcore, but the contents of this module are
 // set up in such a way that directly pulling it here works such that the
 // crate uses the this crate as its libcore.
-#[allow(unused_macros)]
-macro_rules! test_v16 { ($item:item) => {}; }
-#[allow(unused_macros)]
-macro_rules! test_v32 { ($item:item) => {}; }
-#[allow(unused_macros)]
-macro_rules! test_v64 { ($item:item) => {}; }
-#[allow(unused_macros)]
-macro_rules! test_v128 { ($item:item) => {}; }
-#[allow(unused_macros)]
-macro_rules! test_v256 { ($item:item) => {}; }
-#[allow(unused_macros)]
-macro_rules! test_v512 { ($item:item) => {}; }
-#[allow(unused_macros)]
-macro_rules! vector_impl { ($([$f:ident, $($args:tt)*]),*) => { $($f!($($args)*);)* } }
 #[path = "../stdsimd/crates/core_arch/src/mod.rs"]
 #[allow(missing_docs, missing_debug_implementations, dead_code, unused_imports)]
 #[unstable(feature = "stdsimd", issue = "48556")]

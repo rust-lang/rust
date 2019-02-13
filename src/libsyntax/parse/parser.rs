@@ -33,7 +33,6 @@ use crate::ast::{RangeEnd, RangeSyntax};
 use crate::{ast, attr};
 use crate::ext::base::DummyResult;
 use crate::source_map::{self, SourceMap, Spanned, respan};
-use crate::errors::{self, Applicability, DiagnosticBuilder, DiagnosticId};
 use crate::parse::{self, SeqSep, classify, token};
 use crate::parse::lexer::{TokenAndSpan, UnmatchedBrace};
 use crate::parse::lexer::comments::{doc_comment_style, strip_doc_comment_decoration};
@@ -47,8 +46,9 @@ use crate::ThinVec;
 use crate::tokenstream::{self, DelimSpan, TokenTree, TokenStream, TreeAndJoint};
 use crate::symbol::{Symbol, keywords};
 
+use errors::{Applicability, DiagnosticBuilder, DiagnosticId};
 use rustc_target::spec::abi::{self, Abi};
-use syntax_pos::{self, Span, MultiSpan, BytePos, FileName};
+use syntax_pos::{Span, MultiSpan, BytePos, FileName};
 use log::{debug, trace};
 
 use std::borrow::Cow;
@@ -6538,8 +6538,14 @@ impl<'a> Parser<'a> {
             let bounds = self.parse_generic_bounds()?;
             tps.where_clause = self.parse_where_clause()?;
             self.expect(&token::Semi)?;
+            if is_auto == IsAuto::Yes {
+                let msg = "trait aliases cannot be `auto`";
+                self.struct_span_err(self.prev_span, msg)
+                    .span_label(self.prev_span, msg)
+                    .emit();
+            }
             if unsafety != Unsafety::Normal {
-                let msg = "trait aliases cannot be unsafe";
+                let msg = "trait aliases cannot be `unsafe`";
                 self.struct_span_err(self.prev_span, msg)
                     .span_label(self.prev_span, msg)
                     .emit();

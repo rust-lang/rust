@@ -15,7 +15,7 @@ use syntax_pos::Span;
 
 use crate::diagnostics::metadata::output_metadata;
 
-pub use crate::errors::*;
+pub use errors::*;
 
 // Maximum width of any line in an extended error description (inclusive).
 const MAX_DESCRIPTION_WIDTH: usize = 80;

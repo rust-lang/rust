@@ -1,10 +1,10 @@
 //! Parsing and validation of builtin attributes
 
 use crate::ast::{self, Attribute, MetaItem, Name, NestedMetaItemKind};
-use crate::errors::{Applicability, Handler};
 use crate::feature_gate::{Features, GatedCfg};
 use crate::parse::ParseSess;
 
+use errors::{Applicability, Handler};
 use syntax_pos::{symbol::Symbol, Span};
 
 use super::{list_contains_name, mark_used, MetaItemKind};
@@ -596,81 +596,86 @@ fn find_deprecation_generic<'a, I>(sess: &ParseSess,
     let diagnostic = &sess.span_diagnostic;
 
     'outer: for attr in attrs_iter {
-        if attr.path != "deprecated" {
-            continue
+        if !attr.check_name("deprecated") {
+            continue;
         }
-
-        mark_used(attr);
 
         if depr.is_some() {
             span_err!(diagnostic, item_sp, E0550, "multiple deprecated attributes");
             break
         }
 
-        depr = if let Some(metas) = attr.meta_item_list() {
-            let get = |meta: &MetaItem, item: &mut Option<Symbol>| {
-                if item.is_some() {
-                    handle_errors(sess, meta.span, AttrError::MultipleItem(meta.name()));
-                    return false
-                }
-                if let Some(v) = meta.value_str() {
-                    *item = Some(v);
-                    true
-                } else {
-                    if let Some(lit) = meta.name_value_literal() {
-                        handle_errors(
-                            sess,
-                            lit.span,
-                            AttrError::UnsupportedLiteral(
-                                "literal in `deprecated` \
-                                value must be a string",
-                                lit.node.is_bytestr()
-                            ),
-                        );
-                    } else {
-                        span_err!(diagnostic, meta.span, E0551, "incorrect meta item");
+        let meta = attr.meta().unwrap();
+        depr = match &meta.node {
+            MetaItemKind::Word => Some(Deprecation { since: None, note: None }),
+            MetaItemKind::NameValue(..) => {
+                meta.value_str().map(|note| {
+                    Deprecation { since: None, note: Some(note) }
+                })
+            }
+            MetaItemKind::List(list) => {
+                let get = |meta: &MetaItem, item: &mut Option<Symbol>| {
+                    if item.is_some() {
+                        handle_errors(sess, meta.span, AttrError::MultipleItem(meta.name()));
+                        return false
                     }
+                    if let Some(v) = meta.value_str() {
+                        *item = Some(v);
+                        true
+                    } else {
+                        if let Some(lit) = meta.name_value_literal() {
+                            handle_errors(
+                                sess,
+                                lit.span,
+                                AttrError::UnsupportedLiteral(
+                                    "literal in `deprecated` \
+                                    value must be a string",
+                                    lit.node.is_bytestr()
+                                ),
+                            );
+                        } else {
+                            span_err!(diagnostic, meta.span, E0551, "incorrect meta item");
+                        }
 
-                    false
-                }
-            };
+                        false
+                    }
+                };
 
-            let mut since = None;
-            let mut note = None;
-            for meta in metas {
-                match &meta.node {
-                    NestedMetaItemKind::MetaItem(mi) => {
-                        match &*mi.name().as_str() {
-                            "since" => if !get(mi, &mut since) { continue 'outer },
-                            "note" => if !get(mi, &mut note) { continue 'outer },
-                            _ => {
-                                handle_errors(
-                                    sess,
-                                    meta.span,
-                                    AttrError::UnknownMetaItem(mi.name(), &["since", "note"]),
-                                );
-                                continue 'outer
+                let mut since = None;
+                let mut note = None;
+                for meta in list {
+                    match &meta.node {
+                        NestedMetaItemKind::MetaItem(mi) => {
+                            match &*mi.name().as_str() {
+                                "since" => if !get(mi, &mut since) { continue 'outer },
+                                "note" => if !get(mi, &mut note) { continue 'outer },
+                                _ => {
+                                    handle_errors(
+                                        sess,
+                                        meta.span,
+                                        AttrError::UnknownMetaItem(mi.name(), &["since", "note"]),
+                                    );
+                                    continue 'outer
+                                }
                             }
                         }
-                    }
-                    NestedMetaItemKind::Literal(lit) => {
-                        handle_errors(
-                            sess,
-                            lit.span,
-                            AttrError::UnsupportedLiteral(
-                                "item in `deprecated` must be a key/value pair",
-                                false,
-                            ),
-                        );
-                        continue 'outer
+                        NestedMetaItemKind::Literal(lit) => {
+                            handle_errors(
+                                sess,
+                                lit.span,
+                                AttrError::UnsupportedLiteral(
+                                    "item in `deprecated` must be a key/value pair",
+                                    false,
+                                ),
+                            );
+                            continue 'outer
+                        }
                     }
                 }
-            }
 
-            Some(Deprecation {since: since, note: note})
-        } else {
-            Some(Deprecation{since: None, note: None})
-        }
+                Some(Deprecation { since, note })
+            }
+        };
     }
 
     depr

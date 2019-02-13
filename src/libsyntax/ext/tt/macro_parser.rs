@@ -75,7 +75,6 @@ pub use ParseResult::*;
 use TokenTreeOrTokenTreeSlice::*;
 
 use crate::ast::Ident;
-use crate::errors::FatalError;
 use crate::ext::tt::quoted::{self, TokenTree};
 use crate::parse::{Directory, ParseSess};
 use crate::parse::parser::{Parser, PathStyle};
@@ -84,8 +83,9 @@ use crate::print::pprust;
 use crate::symbol::keywords;
 use crate::tokenstream::{DelimSpan, TokenStream};
 
+use errors::FatalError;
 use smallvec::{smallvec, SmallVec};
-use syntax_pos::{self, Span};
+use syntax_pos::Span;
 
 use rustc_data_structures::fx::FxHashMap;
 use std::collections::hash_map::Entry::{Occupied, Vacant};
