@@ -193,18 +193,21 @@ fn setup(ask_user: bool) {
         }
     }
 
-    // Then, we also need rust-src.  Let's see if it is already installed.
-    let sysroot = Command::new("rustc").args(&["--print", "sysroot"]).output().unwrap().stdout;
-    let sysroot = std::str::from_utf8(&sysroot[..]).unwrap();
-    let src = Path::new(sysroot.trim_end_matches('\n')).join("lib").join("rustlib").join("src");
-    if !src.exists() {
-        if ask_user {
-            ask("It seems you do not have the rust-src component installed. I will run `rustup component add rust-src`. Proceed?");
-        } else {
-            println!("Installing rust-src component: `rustup component add rust-src`");
-        }
-        if !Command::new("rustup").args(&["component", "add", "rust-src"]).status().unwrap().success() {
-            show_error(format!("Failed to install rust-src component"));
+    // Then, unless XARGO_RUST_SRC is set, we also need rust-src.
+    // Let's see if it is already installed.
+    if std::env::var("XARGO_RUST_SRC").is_err() {
+        let sysroot = Command::new("rustc").args(&["--print", "sysroot"]).output().unwrap().stdout;
+        let sysroot = std::str::from_utf8(&sysroot[..]).unwrap();
+        let src = Path::new(sysroot.trim_end_matches('\n')).join("lib").join("rustlib").join("src");
+        if !src.exists() {
+            if ask_user {
+                ask("It seems you do not have the rust-src component installed. I will run `rustup component add rust-src`. Proceed?");
+            } else {
+                println!("Installing rust-src component: `rustup component add rust-src`");
+            }
+            if !Command::new("rustup").args(&["component", "add", "rust-src"]).status().unwrap().success() {
+                show_error(format!("Failed to install rust-src component"));
+            }
         }
     }
 
