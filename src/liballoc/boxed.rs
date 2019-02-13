@@ -64,7 +64,7 @@ use core::fmt;
 use core::future::Future;
 use core::hash::{Hash, Hasher};
 use core::iter::{Iterator, FromIterator, FusedIterator};
-use core::marker::{Unpin, Unsize};
+use core::marker::{PhantomData, Unpin, Unsize};
 use core::mem;
 use core::pin::Pin;
 use core::ops::{
@@ -73,6 +73,7 @@ use core::ops::{
 use core::ptr::{self, NonNull, Unique};
 use core::task::{LocalWaker, Poll};
 
+use crate::alloc::{Alloc, Global};
 use crate::vec::Vec;
 use crate::raw_vec::RawVec;
 use crate::str::from_boxed_utf8_unchecked;
@@ -83,7 +84,7 @@ use crate::str::from_boxed_utf8_unchecked;
 #[lang = "owned_box"]
 #[fundamental]
 #[stable(feature = "rust1", since = "1.0.0")]
-pub struct Box<T: ?Sized>(Unique<T>);
+pub struct Box<T: ?Sized, A: Alloc + Default = Global>(Unique<T>, PhantomData<A>);
 
 impl<T> Box<T> {
     /// Allocates memory on the heap and then places `x` into it.
@@ -136,7 +137,7 @@ impl<T: ?Sized> Box<T> {
     #[stable(feature = "box_raw", since = "1.4.0")]
     #[inline]
     pub unsafe fn from_raw(raw: *mut T) -> Self {
-        Box(Unique::new_unchecked(raw))
+        Box(Unique::new_unchecked(raw), PhantomData)
     }
 
     /// Consumes the `Box`, returning a wrapped raw pointer.
@@ -273,7 +274,7 @@ impl<T: ?Sized> Box<T> {
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-unsafe impl<#[may_dangle] T: ?Sized> Drop for Box<T> {
+unsafe impl<#[may_dangle] T: ?Sized, A: Alloc + Default> Drop for Box<T, A> {
     fn drop(&mut self) {
         // FIXME: Do nothing, drop is currently performed by compiler.
     }

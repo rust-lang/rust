@@ -713,7 +713,7 @@ impl<T: ?Sized> Rc<T> {
                 value_size);
 
             // Free the allocation without dropping its contents
-            box_free(box_unique);
+            box_free::<_, Global>(box_unique, PhantomData);
 
             Rc { ptr: NonNull::new_unchecked(ptr), phantom: PhantomData }
         }

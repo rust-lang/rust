@@ -3,6 +3,7 @@
 #![stable(feature = "alloc_module", since = "1.28.0")]
 
 use core::intrinsics::{min_align_of_val, size_of_val};
+use core::marker::PhantomData;
 use core::ptr::{NonNull, Unique};
 use core::usize;
 
@@ -190,14 +191,14 @@ unsafe fn exchange_malloc(size: usize, align: usize) -> *mut u8 {
 
 #[cfg_attr(not(test), lang = "box_free")]
 #[inline]
-pub(crate) unsafe fn box_free<T: ?Sized>(ptr: Unique<T>) {
+pub(crate) unsafe fn box_free<T: ?Sized, A: Alloc + Default>(ptr: Unique<T>, _a: PhantomData<A>) {
     let ptr = ptr.as_ptr();
     let size = size_of_val(&*ptr);
     let align = min_align_of_val(&*ptr);
     // We do not allocate for Box<T> when T is ZST, so deallocation is also not necessary.
     if size != 0 {
         let layout = Layout::from_size_align_unchecked(size, align);
-        dealloc(ptr as *mut u8, layout);
+        A::default().dealloc(NonNull::new_unchecked(ptr).cast(), layout);
     }
 }
 
