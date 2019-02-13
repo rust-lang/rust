@@ -149,7 +149,7 @@ impl<'a, 'tcx> euv::Delegate<'tcx> for GatherLoanCtxt<'a, 'tcx> {
     fn decl_without_init(&mut self, id: ast::NodeId, _span: Span) {
         let ty = self.bccx
                      .tables
-                     .node_id_to_type(self.bccx.tcx.hir().node_to_hir_id(id));
+                     .node_type(self.bccx.tcx.hir().node_to_hir_id(id));
         gather_moves::gather_decl(self.bccx, &self.move_data, id, ty);
     }
 }

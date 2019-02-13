@@ -408,7 +408,7 @@ impl<'a, 'tcx> PatternContext<'a, 'tcx> {
     }
 
     fn lower_pattern_unadjusted(&mut self, pat: &'tcx hir::Pat) -> Pattern<'tcx> {
-        let mut ty = self.tables.node_id_to_type(pat.hir_id);
+        let mut ty = self.tables.node_type(pat.hir_id);
 
         let kind = match pat.node {
             PatKind::Wild => PatternKind::Wild,
@@ -541,7 +541,7 @@ impl<'a, 'tcx> PatternContext<'a, 'tcx> {
             }
 
             PatKind::Binding(_, id, _, ident, ref sub) => {
-                let var_ty = self.tables.node_id_to_type(pat.hir_id);
+                let var_ty = self.tables.node_type(pat.hir_id);
                 if let ty::Error = var_ty.sty {
                     // Avoid ICE
                     return Pattern { span: pat.span, ty, kind: Box::new(PatternKind::Wild) };
@@ -775,7 +775,7 @@ impl<'a, 'tcx> PatternContext<'a, 'tcx> {
                   id: hir::HirId,
                   span: Span)
                   -> Pattern<'tcx> {
-        let ty = self.tables.node_id_to_type(id);
+        let ty = self.tables.node_type(id);
         let def = self.tables.qpath_def(qpath, id);
         let is_associated_const = match def {
             Def::AssociatedConst(_) => true,

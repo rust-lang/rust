@@ -92,7 +92,7 @@ pub fn mir_build<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: DefId) -> Mir<'t
                     Some(ArgInfo(liberated_closure_env_ty(tcx, id, body_id), None, None, None))
                 }
                 ty::Generator(..) => {
-                    let gen_ty = tcx.body_tables(body_id).node_id_to_type(fn_hir_id);
+                    let gen_ty = tcx.body_tables(body_id).node_type(fn_hir_id);
                     Some(ArgInfo(gen_ty, None, None, None))
                 }
                 _ => None,
@@ -263,7 +263,7 @@ fn liberated_closure_env_ty<'a, 'gcx, 'tcx>(tcx: TyCtxt<'a, 'gcx, 'tcx>,
                                             body_id: hir::BodyId)
                                             -> Ty<'tcx> {
     let closure_expr_hir_id = tcx.hir().node_to_hir_id(closure_expr_id);
-    let closure_ty = tcx.body_tables(body_id).node_id_to_type(closure_expr_hir_id);
+    let closure_ty = tcx.body_tables(body_id).node_type(closure_expr_hir_id);
 
     let (closure_def_id, closure_substs) = match closure_ty.sty {
         ty::Closure(closure_def_id, closure_substs) => (closure_def_id, closure_substs),
