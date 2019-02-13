@@ -126,7 +126,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> 
                 let l = self.read_immediate(args[0])?;
                 let r = self.read_immediate(args[1])?;
                 let is_add = intrinsic_name == "saturating_add";
-                let (val, overflowed) = self.binary_op_imm(if is_add {
+                let (val, overflowed) = self.binary_op(if is_add {
                     BinOp::Add
                 } else {
                     BinOp::Sub
