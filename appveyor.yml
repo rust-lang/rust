@@ -209,7 +209,7 @@ test_script:
   - set NO_CCACHE=1
   # Try specifically using git's `sh.exe` instead of the one in PATH which is
   # the msys64 sh.exe. Trying to debug rust-lang/rust#58160
-  - "C:\Program Files\Git\usr\bin\sh.exe" src/ci/run.sh
+  - "\"C:\\Program Files\\Git\\usr\\bin\\sh.exe\" src/ci/run.sh"
 
 on_failure:
   # Dump crash log
