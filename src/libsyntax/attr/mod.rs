@@ -165,6 +165,10 @@ fn name_from_path(path: &Path) -> Name {
 }
 
 impl Attribute {
+    /// Returns `true` if the attribute's path matches the argument. If it matches, then the
+    /// attribute is marked as used.
+    ///
+    /// To check the attribute name without marking it used, use the `path` field directly.
     pub fn check_name(&self, name: &str) -> bool {
         let matches = self.path == name;
         if matches {

@@ -15,6 +15,12 @@ mod bogus_attribute_types_1 {
 
     #[deprecated(since(b), note = "a")] //~ ERROR incorrect meta item
     fn f6() { }
+
+    #[deprecated(note = b"test")] //~ ERROR literal in `deprecated` value must be a string
+    fn f7() { }
+
+    #[deprecated("test")] //~ ERROR item in `deprecated` must be a key/value pair
+    fn f8() { }
 }
 
 #[deprecated(since = "a", note = "b")]
