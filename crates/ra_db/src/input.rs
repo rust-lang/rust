@@ -62,6 +62,15 @@ pub enum Edition {
     Edition2015,
 }
 
+impl Edition {
+    pub fn from_string(s: &str) -> Edition {
+        match s {
+            "2015" => Edition::Edition2015,
+            "2018" | _ => Edition::Edition2018,
+        }
+    }
+}
+
 #[derive(Debug, Clone, PartialEq, Eq)]
 struct CrateData {
     file_id: FileId,

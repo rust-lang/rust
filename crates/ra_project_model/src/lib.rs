@@ -63,11 +63,7 @@ impl ProjectWorkspace {
             for tgt in pkg.targets(&self.cargo) {
                 let root = tgt.root(&self.cargo);
                 if let Some(file_id) = load(root) {
-                    let edition = if pkg.edition(&self.cargo) == "2015" {
-                        Edition::Edition2015
-                    } else {
-                        Edition::Edition2018
-                    };
+                    let edition = pkg.edition(&self.cargo);
                     let crate_id = crate_graph.add_crate_root(file_id, edition);
                     if tgt.kind(&self.cargo) == TargetKind::Lib {
                         lib_tgt = Some(crate_id);
