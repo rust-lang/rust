@@ -34,6 +34,9 @@ COPY dist-various-2/build-x86_64-fortanix-unknown-sgx-toolchain.sh /tmp/
 # Any update to the commit id here, should cause the container image to be re-built from this point on.
 RUN /tmp/build-x86_64-fortanix-unknown-sgx-toolchain.sh "53b586346f2c7870e20b170decdc30729d97c42b"
 
+COPY dist-various-2/build-wasi-toolchain.sh /tmp/
+RUN /tmp/build-wasi-toolchain.sh
+
 COPY scripts/sccache.sh /scripts/
 RUN sh /scripts/sccache.sh
 
@@ -66,6 +69,7 @@ ENV TARGETS=x86_64-fuchsia
 ENV TARGETS=$TARGETS,aarch64-fuchsia
 ENV TARGETS=$TARGETS,sparcv9-sun-solaris
 ENV TARGETS=$TARGETS,wasm32-unknown-unknown
+ENV TARGETS=$TARGETS,wasm32-unknown-wasi
 ENV TARGETS=$TARGETS,x86_64-sun-solaris
 ENV TARGETS=$TARGETS,x86_64-unknown-linux-gnux32
 ENV TARGETS=$TARGETS,x86_64-unknown-cloudabi
@@ -74,5 +78,6 @@ ENV TARGETS=$TARGETS,nvptx64-nvidia-cuda
 
 ENV X86_FORTANIX_SGX_LIBS="/x86_64-fortanix-unknown-sgx/lib/"
 
-ENV RUST_CONFIGURE_ARGS --enable-extended --enable-lld --disable-docs
+ENV RUST_CONFIGURE_ARGS --enable-extended --enable-lld --disable-docs \
+  --set target.wasm32-unknown-wasi.wasi-root=/wasm32-unknown-wasi
 ENV SCRIPT python2.7 ../x.py dist --target $TARGETS

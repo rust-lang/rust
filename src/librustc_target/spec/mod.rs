@@ -444,6 +444,7 @@ supported_targets! {
     ("asmjs-unknown-emscripten", asmjs_unknown_emscripten),
     ("wasm32-unknown-emscripten", wasm32_unknown_emscripten),
     ("wasm32-unknown-unknown", wasm32_unknown_unknown),
+    ("wasm32-unknown-wasi", wasm32_unknown_wasi),
     ("wasm32-experimental-emscripten", wasm32_experimental_emscripten),
 
     ("thumbv6m-none-eabi", thumbv6m_none_eabi),
