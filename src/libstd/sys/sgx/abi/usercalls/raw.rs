@@ -4,12 +4,13 @@
 pub use fortanix_sgx_abi::*;
 
 use ptr::NonNull;
+use num::NonZeroU64;
 
 #[repr(C)]
 struct UsercallReturn(u64, u64);
 
 extern "C" {
-    fn usercall(nr: u64, p1: u64, p2: u64, _ignore: u64, p3: u64, p4: u64) -> UsercallReturn;
+    fn usercall(nr: NonZeroU64, p1: u64, p2: u64, abort: u64, p3: u64, p4: u64) -> UsercallReturn;
 }
 
 /// Performs the raw usercall operation as defined in the ABI calling convention.
@@ -23,9 +24,11 @@ extern "C" {
 ///
 /// Panics if `nr` is `0`.
 #[unstable(feature = "sgx_platform", issue = "56975")]
-pub unsafe fn do_usercall(nr: u64, p1: u64, p2: u64, p3: u64, p4: u64) -> (u64, u64) {
-    if nr==0 { panic!("Invalid usercall number {}",nr) }
-    let UsercallReturn(a, b) = usercall(nr,p1,p2,0,p3,p4);
+#[inline]
+pub unsafe fn do_usercall(nr: NonZeroU64, p1: u64, p2: u64, p3: u64, p4: u64, abort: bool)
+    -> (u64, u64)
+{
+    let UsercallReturn(a, b) = usercall(nr, p1, p2, abort as _, p3, p4);
     (a, b)
 }
 
@@ -41,7 +44,6 @@ trait ReturnValue {
 }
 
 macro_rules! define_usercalls {
-    // Using `$r:tt` because `$r:ty` doesn't match ! in `clobber_diverging`
     ($(fn $f:ident($($n:ident: $t:ty),*) $(-> $r:tt)*; )*) => {
         /// Usercall numbers as per the ABI.
         #[repr(u64)]
@@ -56,22 +58,6 @@ macro_rules! define_usercalls {
         }
 
         $(enclave_usercalls_internal_define_usercalls!(def fn $f($($n: $t),*) $(-> $r)*);)*
-    };
-}
-
-macro_rules! define_usercalls_asm {
-    ($(fn $f:ident($($n:ident: $t:ty),*) $(-> $r:ty)*; )*) => {
-        macro_rules! usercalls_asm {
-            () => {
-                concat!(
-                    ".equ usercall_nr_LAST, 0\n",
-                    $(
-                    ".equ usercall_nr_", stringify!($f), ", usercall_nr_LAST+1\n",
-                    ".equ usercall_nr_LAST, usercall_nr_", stringify!($f), "\n"
-                    ),*
-                )
-            }
-        }
     };
 }
 
@@ -173,74 +159,90 @@ impl<T: RegisterArgument, U: RegisterArgument> ReturnValue for (T, U) {
     }
 }
 
+macro_rules! return_type_is_abort {
+    (!) => { true };
+    ($r:ty) => { false };
+}
+
+// In this macro: using `$r:tt` because `$r:ty` doesn't match ! in `return_type_is_abort`
 macro_rules! enclave_usercalls_internal_define_usercalls {
     (def fn $f:ident($n1:ident: $t1:ty, $n2:ident: $t2:ty,
-                     $n3:ident: $t3:ty, $n4:ident: $t4:ty) -> $r:ty) => (
+                     $n3:ident: $t3:ty, $n4:ident: $t4:ty) -> $r:tt) => (
         /// This is the raw function definition, see the ABI documentation for
         /// more information.
         #[unstable(feature = "sgx_platform", issue = "56975")]
         #[inline(always)]
         pub unsafe fn $f($n1: $t1, $n2: $t2, $n3: $t3, $n4: $t4) -> $r {
             ReturnValue::from_registers(stringify!($f), do_usercall(
-                Usercalls::$f as Register,
+                NonZeroU64::new(Usercalls::$f as Register)
+                    .expect("Usercall number must be non-zero"),
                 RegisterArgument::into_register($n1),
                 RegisterArgument::into_register($n2),
                 RegisterArgument::into_register($n3),
                 RegisterArgument::into_register($n4),
+                return_type_is_abort!($r)
             ))
         }
     );
-    (def fn $f:ident($n1:ident: $t1:ty, $n2:ident: $t2:ty, $n3:ident: $t3:ty) -> $r:ty) => (
+    (def fn $f:ident($n1:ident: $t1:ty, $n2:ident: $t2:ty, $n3:ident: $t3:ty) -> $r:tt) => (
         /// This is the raw function definition, see the ABI documentation for
         /// more information.
         #[unstable(feature = "sgx_platform", issue = "56975")]
         #[inline(always)]
         pub unsafe fn $f($n1: $t1, $n2: $t2, $n3: $t3) -> $r {
             ReturnValue::from_registers(stringify!($f), do_usercall(
-                Usercalls::$f as Register,
+                NonZeroU64::new(Usercalls::$f as Register)
+                    .expect("Usercall number must be non-zero"),
                 RegisterArgument::into_register($n1),
                 RegisterArgument::into_register($n2),
                 RegisterArgument::into_register($n3),
-                0
+                0,
+                return_type_is_abort!($r)
             ))
         }
     );
-    (def fn $f:ident($n1:ident: $t1:ty, $n2:ident: $t2:ty) -> $r:ty) => (
+    (def fn $f:ident($n1:ident: $t1:ty, $n2:ident: $t2:ty) -> $r:tt) => (
         /// This is the raw function definition, see the ABI documentation for
         /// more information.
         #[unstable(feature = "sgx_platform", issue = "56975")]
         #[inline(always)]
         pub unsafe fn $f($n1: $t1, $n2: $t2) -> $r {
             ReturnValue::from_registers(stringify!($f), do_usercall(
-                Usercalls::$f as Register,
+                NonZeroU64::new(Usercalls::$f as Register)
+                    .expect("Usercall number must be non-zero"),
                 RegisterArgument::into_register($n1),
                 RegisterArgument::into_register($n2),
-                0,0
+                0,0,
+                return_type_is_abort!($r)
             ))
         }
     );
-    (def fn $f:ident($n1:ident: $t1:ty) -> $r:ty) => (
+    (def fn $f:ident($n1:ident: $t1:ty) -> $r:tt) => (
         /// This is the raw function definition, see the ABI documentation for
         /// more information.
         #[unstable(feature = "sgx_platform", issue = "56975")]
         #[inline(always)]
         pub unsafe fn $f($n1: $t1) -> $r {
             ReturnValue::from_registers(stringify!($f), do_usercall(
-                Usercalls::$f as Register,
+                NonZeroU64::new(Usercalls::$f as Register)
+                    .expect("Usercall number must be non-zero"),
                 RegisterArgument::into_register($n1),
-                0,0,0
+                0,0,0,
+                return_type_is_abort!($r)
             ))
         }
     );
-    (def fn $f:ident() -> $r:ty) => (
+    (def fn $f:ident() -> $r:tt) => (
         /// This is the raw function definition, see the ABI documentation for
         /// more information.
         #[unstable(feature = "sgx_platform", issue = "56975")]
         #[inline(always)]
         pub unsafe fn $f() -> $r {
             ReturnValue::from_registers(stringify!($f), do_usercall(
-                Usercalls::$f as Register,
-                0,0,0,0
+                NonZeroU64::new(Usercalls::$f as Register)
+                    .expect("Usercall number must be non-zero"),
+                0,0,0,0,
+                return_type_is_abort!($r)
             ))
         }
     );
@@ -250,4 +252,3 @@ macro_rules! enclave_usercalls_internal_define_usercalls {
 }
 
 invoke_with_usercalls!(define_usercalls);
-invoke_with_usercalls!(define_usercalls_asm);

@@ -341,9 +341,6 @@ extern crate backtrace_sys;
 #[cfg(test)] extern crate std as realstd;
 
 #[cfg(all(target_vendor = "fortanix", target_env = "sgx"))]
-#[macro_use]
-#[allow(unused_imports)] // FIXME: without `#[macro_use]`, get error: “cannot
-                         // determine resolution for the macro `usercalls_asm`”
 extern crate fortanix_sgx_abi;
 
 // The standard macros that are not built-in to the compiler.
