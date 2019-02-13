@@ -1,6 +1,7 @@
 use rustc::infer::at::ToTrace;
 use rustc::infer::canonical::{Canonical, QueryResponse};
 use rustc::infer::InferCtxt;
+use rustc::hir;
 use rustc::hir::def_id::DefId;
 use rustc::traits::query::type_op::ascribe_user_type::AscribeUserType;
 use rustc::traits::query::type_op::eq::Eq;
@@ -18,7 +19,6 @@ use rustc::ty::{
 };
 use rustc_data_structures::sync::Lrc;
 use std::fmt;
-use syntax::ast;
 use syntax_pos::DUMMY_SP;
 
 crate fn provide(p: &mut Providers<'_>) {
@@ -71,7 +71,7 @@ impl AscribeUserTypeCx<'me, 'gcx, 'tcx> {
         self.infcx
             .partially_normalize_associated_types_in(
                 DUMMY_SP,
-                ast::CRATE_NODE_ID,
+                hir::CRATE_HIR_ID,
                 self.param_env,
                 &value,
             )

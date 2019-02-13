@@ -72,7 +72,7 @@ pub mod print;
 /// the `local_id` part of the `HirId` changing, which is a very useful property in
 /// incremental compilation where we have to persist things through changes to
 /// the code base.
-#[derive(Copy, Clone, PartialEq, Eq, Hash, Debug)]
+#[derive(Copy, Clone, PartialEq, Eq, Hash, Debug, PartialOrd, Ord)]
 pub struct HirId {
     pub owner: DefIndex,
     pub local_id: ItemLocalId,
@@ -1234,7 +1234,7 @@ pub enum UnsafeSource {
 
 #[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, RustcEncodable, RustcDecodable, Hash, Debug)]
 pub struct BodyId {
-    pub node_id: NodeId,
+    pub hir_id: HirId,
 }
 
 /// The body of a function, closure, or constant value. In the case of
@@ -1268,7 +1268,7 @@ pub struct Body {
 impl Body {
     pub fn id(&self) -> BodyId {
         BodyId {
-            node_id: self.value.id
+            hir_id: self.value.hir_id,
         }
     }
 }
@@ -2290,7 +2290,7 @@ impl ItemKind {
             ItemKind::Union(..) => "union",
             ItemKind::Trait(..) => "trait",
             ItemKind::TraitAlias(..) => "trait alias",
-            ItemKind::Impl(..) => "item",
+            ItemKind::Impl(..) => "impl",
         }
     }
 

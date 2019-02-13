@@ -346,7 +346,8 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                                     };
 
                                     let field_ty = field.ty(tcx, substs);
-                                    let scope = self.tcx.hir().get_module_parent(self.body_id);
+                                    let scope = self.tcx.hir().get_module_parent_by_hir_id(
+                                        self.body_id);
                                     if field.vis.is_accessible_from(scope, self.tcx) {
                                         if self.is_fn_ty(&field_ty, span) {
                                             err.help(&format!("use `({0}.{1})(...)` if you \
@@ -499,7 +500,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                               err: &mut DiagnosticBuilder,
                               mut msg: String,
                               candidates: Vec<DefId>) {
-        let module_did = self.tcx.hir().get_module_parent(self.body_id);
+        let module_did = self.tcx.hir().get_module_parent_by_hir_id(self.body_id);
         let module_id = self.tcx.hir().as_local_node_id(module_did).unwrap();
         let krate = self.tcx.hir().krate();
         let (span, found_use) = UsePlacementFinder::check(self.tcx, krate, module_id);
@@ -752,12 +753,11 @@ fn compute_all_traits<'a, 'gcx, 'tcx>(tcx: TyCtxt<'a, 'gcx, 'tcx>) -> Vec<DefId>
                            traits: &mut Vec<DefId>,
                            external_mods: &mut FxHashSet<DefId>,
                            def: Def) {
-        let def_id = def.def_id();
         match def {
-            Def::Trait(..) => {
+            Def::Trait(def_id) => {
                 traits.push(def_id);
             }
-            Def::Mod(..) => {
+            Def::Mod(def_id) => {
                 if !external_mods.insert(def_id) {
                     return;
                 }

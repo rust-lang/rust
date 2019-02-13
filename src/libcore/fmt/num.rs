@@ -178,7 +178,8 @@ integer! { i32, u32 }
 integer! { i64, u64 }
 integer! { i128, u128 }
 
-const DEC_DIGITS_LUT: &'static[u8] =
+
+static DEC_DIGITS_LUT: &[u8; 200] =
     b"0001020304050607080910111213141516171819\
       2021222324252627282930313233343536373839\
       4041424344454647484950515253545556575859\
@@ -186,18 +187,8 @@ const DEC_DIGITS_LUT: &'static[u8] =
       8081828384858687888990919293949596979899";
 
 macro_rules! impl_Display {
-    ($($t:ident),*: $conv_fn:ident) => ($(
-    #[stable(feature = "rust1", since = "1.0.0")]
-    impl fmt::Display for $t {
-        #[allow(unused_comparisons)]
-        fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-            let is_nonnegative = *self >= 0;
-            let mut n = if is_nonnegative {
-                self.$conv_fn()
-            } else {
-                // convert the negative num to positive by summing 1 to it's 2 complement
-                (!self.$conv_fn()).wrapping_add(1)
-            };
+    ($($t:ident),* as $u:ident via $conv_fn:ident named $name:ident) => {
+        fn $name(mut n: $u, is_nonnegative: bool, f: &mut fmt::Formatter) -> fmt::Result {
             let mut buf = uninitialized_array![u8; 39];
             let mut curr = buf.len() as isize;
             let buf_ptr = MaybeUninit::first_ptr_mut(&mut buf);
@@ -205,18 +196,18 @@ macro_rules! impl_Display {
 
             unsafe {
                 // need at least 16 bits for the 4-characters-at-a-time to work.
-                if ::mem::size_of::<$t>() >= 2 {
-                    // eagerly decode 4 characters at a time
-                    while n >= 10000 {
-                        let rem = (n % 10000) as isize;
-                        n /= 10000;
+                assert!(::mem::size_of::<$u>() >= 2);
 
-                        let d1 = (rem / 100) << 1;
-                        let d2 = (rem % 100) << 1;
-                        curr -= 4;
-                        ptr::copy_nonoverlapping(lut_ptr.offset(d1), buf_ptr.offset(curr), 2);
-                        ptr::copy_nonoverlapping(lut_ptr.offset(d2), buf_ptr.offset(curr + 2), 2);
-                    }
+                // eagerly decode 4 characters at a time
+                while n >= 10000 {
+                    let rem = (n % 10000) as isize;
+                    n /= 10000;
+
+                    let d1 = (rem / 100) << 1;
+                    let d2 = (rem % 100) << 1;
+                    curr -= 4;
+                    ptr::copy_nonoverlapping(lut_ptr.offset(d1), buf_ptr.offset(curr), 2);
+                    ptr::copy_nonoverlapping(lut_ptr.offset(d2), buf_ptr.offset(curr + 2), 2);
                 }
 
                 // if we reach here numbers are <= 9999, so at most 4 chars long
@@ -247,15 +238,41 @@ macro_rules! impl_Display {
             };
             f.pad_integral(is_nonnegative, "", buf_slice)
         }
-    })*);
+
+        $(
+            #[stable(feature = "rust1", since = "1.0.0")]
+            impl fmt::Display for $t {
+                #[allow(unused_comparisons)]
+                fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+                    let is_nonnegative = *self >= 0;
+                    let n = if is_nonnegative {
+                        self.$conv_fn()
+                    } else {
+                        // convert the negative num to positive by summing 1 to it's 2 complement
+                        (!self.$conv_fn()).wrapping_add(1)
+                    };
+                    $name(n, is_nonnegative, f)
+                }
+            })*
+    };
 }
 
-impl_Display!(i8, u8, i16, u16, i32, u32: to_u32);
-impl_Display!(i64, u64: to_u64);
-impl_Display!(i128, u128: to_u128);
-#[cfg(target_pointer_width = "16")]
-impl_Display!(isize, usize: to_u16);
-#[cfg(target_pointer_width = "32")]
-impl_Display!(isize, usize: to_u32);
-#[cfg(target_pointer_width = "64")]
-impl_Display!(isize, usize: to_u64);
+// Include wasm32 in here since it doesn't reflect the native pointer size, and
+// often cares strongly about getting a smaller code size.
+#[cfg(any(target_pointer_width = "64", target_arch = "wasm32"))]
+mod imp {
+    use super::*;
+    impl_Display!(
+        i8, u8, i16, u16, i32, u32, i64, u64, usize, isize
+            as u64 via to_u64 named fmt_u64
+    );
+}
+
+#[cfg(not(any(target_pointer_width = "64", target_arch = "wasm32")))]
+mod imp {
+    use super::*;
+    impl_Display!(i8, u8, i16, u16, i32, u32, isize, usize as u32 via to_u32 named fmt_u32);
+    impl_Display!(i64, u64 as u64 via to_u64 named fmt_u64);
+}
+
+impl_Display!(i128, u128 as u128 via to_u128 named fmt_u128);

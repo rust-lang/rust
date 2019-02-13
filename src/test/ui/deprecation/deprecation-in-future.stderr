@@ -1,14 +1,8 @@
-error: use of item 'deprecated_future' that will be deprecated in future version 99.99.99: text
-  --> $DIR/deprecation-in-future.rs:9:5
+warning: use of deprecated item 'deprecated_future': text
+  --> $DIR/deprecation-in-future.rs:11:5
    |
-LL |     deprecated_future(); //~ ERROR use of item 'deprecated_future' that will be deprecated in future version 99.99.99: text
+LL |     deprecated_future(); // ok; deprecated_in_future only applies to rustc_deprecated
    |     ^^^^^^^^^^^^^^^^^
    |
-note: lint level defined here
-  --> $DIR/deprecation-in-future.rs:3:9
-   |
-LL | #![deny(deprecated_in_future)]
-   |         ^^^^^^^^^^^^^^^^^^^^
-
-error: aborting due to previous error
+   = note: #[warn(deprecated)] on by default
 

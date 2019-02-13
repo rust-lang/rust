@@ -10,10 +10,10 @@
 
 use core::any::Any;
 use core::ptr;
+use core::mem;
 use alloc::boxed::Box;
 use libc::{self, c_int};
 use unwind as uw;
-use core::mem;
 
 pub fn payload() -> *mut u8 {
     ptr::null_mut()

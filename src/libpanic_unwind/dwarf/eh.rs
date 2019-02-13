@@ -11,7 +11,7 @@
 #![allow(non_upper_case_globals)]
 #![allow(unused)]
 
-use dwarf::DwarfReader;
+use crate::dwarf::DwarfReader;
 use core::mem;
 
 pub const DW_EH_PE_omit: u8 = 0xFF;
@@ -51,7 +51,7 @@ pub enum EHAction {
 
 pub const USING_SJLJ_EXCEPTIONS: bool = cfg!(all(target_os = "ios", target_arch = "arm"));
 
-pub unsafe fn find_eh_action(lsda: *const u8, context: &EHContext)
+pub unsafe fn find_eh_action(lsda: *const u8, context: &EHContext<'_>)
     -> Result<EHAction, ()>
 {
     if lsda.is_null() {
@@ -145,7 +145,7 @@ fn round_up(unrounded: usize, align: usize) -> Result<usize, ()> {
 }
 
 unsafe fn read_encoded_pointer(reader: &mut DwarfReader,
-                               context: &EHContext,
+                               context: &EHContext<'_>,
                                encoding: u8)
                                -> Result<usize, ()> {
     if encoding == DW_EH_PE_omit {

@@ -12,13 +12,15 @@ pub fn target() -> TargetResult {
     base.cpu = "x86-64".to_string();
     base.max_atomic_width = Some(64);
 
-    // We disable MMX and SSE for now. UEFI does not prevent these from being used, but there have
-    // been reports to GRUB that some firmware does not initialize the FP exception handlers
-    // properly. Therefore, using FP coprocessors will end you up at random memory locations when
-    // you throw FP exceptions.
-    // To be safe, we disable them for now and force soft-float. This can be revisited when we
-    // have more test coverage. Disabling FP served GRUB well so far, so it should be good for us
-    // as well.
+    // We disable MMX and SSE for now, even though UEFI allows using them. Problem is, you have to
+    // enable these CPU features explicitly before their first use, otherwise their instructions
+    // will trigger an exception. Rust does not inject any code that enables AVX/MMX/SSE
+    // instruction sets, so this must be done by the firmware. However, existing firmware is known
+    // to leave these uninitialized, thus triggering exceptions if we make use of them. Which is
+    // why we avoid them and instead use soft-floats. This is also what GRUB and friends did so
+    // far.
+    // If you initialize FP units yourself, you can override these flags with custom linker
+    // arguments, thus giving you access to full MMX/SSE acceleration.
     base.features = "-mmx,-sse,+soft-float".to_string();
 
     // UEFI systems run without a host OS, hence we cannot assume any code locality. We must tell
@@ -26,9 +28,9 @@ pub fn target() -> TargetResult {
     // places no locality-restrictions, so it fits well here.
     base.code_model = Some("large".to_string());
 
-    // UEFI mostly mirrors the calling-conventions used on windows. In case of x86-64 this means
-    // small structs will be returned as int. This shouldn't matter much, since the restrictions
-    // placed by the UEFI specifications forbid any ABI to return structures.
+    // UEFI mirrors the calling-conventions used on windows. In case of x86-64 this means small
+    // structs will be returned as int. This shouldn't matter much, since the restrictions placed
+    // by the UEFI specifications forbid any ABI to return structures.
     base.abi_return_struct_as_int = true;
 
     Ok(Target {

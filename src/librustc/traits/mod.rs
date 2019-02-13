@@ -132,7 +132,7 @@ pub struct ObligationCause<'tcx> {
     /// (in particular, closures can add new assumptions). See the
     /// field `region_obligations` of the `FulfillmentContext` for more
     /// information.
-    pub body_id: ast::NodeId,
+    pub body_id: hir::HirId,
 
     pub code: ObligationCauseCode<'tcx>
 }
@@ -654,7 +654,7 @@ pub fn type_known_to_meet_bound_modulo_regions<'a, 'gcx, 'tcx>(
     };
     let obligation = Obligation {
         param_env,
-        cause: ObligationCause::misc(span, ast::DUMMY_NODE_ID),
+        cause: ObligationCause::misc(span, hir::DUMMY_HIR_ID),
         recursion_depth: 0,
         predicate: trait_ref.to_predicate(),
     };
@@ -677,7 +677,7 @@ pub fn type_known_to_meet_bound_modulo_regions<'a, 'gcx, 'tcx>(
         // We can use a dummy node-id here because we won't pay any mind
         // to region obligations that arise (there shouldn't really be any
         // anyhow).
-        let cause = ObligationCause::misc(span, ast::DUMMY_NODE_ID);
+        let cause = ObligationCause::misc(span, hir::DUMMY_HIR_ID);
 
         fulfill_cx.register_bound(infcx, param_env, ty, def_id, cause);
 
@@ -1057,7 +1057,7 @@ impl<'tcx,O> Obligation<'tcx,O> {
     }
 
     pub fn misc(span: Span,
-                body_id: ast::NodeId,
+                body_id: hir::HirId,
                 param_env: ty::ParamEnv<'tcx>,
                 trait_ref: O)
                 -> Obligation<'tcx, O> {
@@ -1075,18 +1075,18 @@ impl<'tcx,O> Obligation<'tcx,O> {
 impl<'tcx> ObligationCause<'tcx> {
     #[inline]
     pub fn new(span: Span,
-               body_id: ast::NodeId,
+               body_id: hir::HirId,
                code: ObligationCauseCode<'tcx>)
                -> ObligationCause<'tcx> {
-        ObligationCause { span: span, body_id: body_id, code: code }
+        ObligationCause { span, body_id, code }
     }
 
-    pub fn misc(span: Span, body_id: ast::NodeId) -> ObligationCause<'tcx> {
-        ObligationCause { span: span, body_id: body_id, code: MiscObligation }
+    pub fn misc(span: Span, body_id: hir::HirId) -> ObligationCause<'tcx> {
+        ObligationCause { span, body_id, code: MiscObligation }
     }
 
     pub fn dummy() -> ObligationCause<'tcx> {
-        ObligationCause { span: DUMMY_SP, body_id: ast::CRATE_NODE_ID, code: MiscObligation }
+        ObligationCause { span: DUMMY_SP, body_id: hir::CRATE_HIR_ID, code: MiscObligation }
     }
 }
 
