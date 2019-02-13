@@ -3,7 +3,7 @@
 
 // no-prefer-dynamic
 // ignore-tidy-linelength
-// compile-flags: -C no-prepopulate-passes -C panic=abort -Z cross-lang-lto -Cpasses=name-anon-globals
+// compile-flags: -C no-prepopulate-passes -C panic=abort -C linker-plugin-lto -Cpasses=name-anon-globals
 
 #![crate_type = "staticlib"]
 
