@@ -97,51 +97,45 @@ fn test_find_all_refs_for_fn_param() {
 
 #[test]
 fn test_world_symbols_with_no_container() {
-    {
-        let code = r#"
-        enum FooInner { }
-        "#;
+    let code = r#"
+    enum FooInner { }
+    "#;
 
-        let mut symbols = get_symbols_matching(code, "FooInner");
+    let mut symbols = get_symbols_matching(code, "FooInner");
 
-        let s = symbols.pop().unwrap();
+    let s = symbols.pop().unwrap();
 
-        assert_eq!(s.name(), "FooInner");
-        assert!(s.container_name().is_none());
-    }
+    assert_eq!(s.name(), "FooInner");
+    assert!(s.container_name().is_none());
 }
 
 #[test]
 fn test_world_symbols_include_container_name() {
-    {
-        let code = r#"
-    fn foo() {
-        enum FooInner { }
-    }
-        "#;
+    let code = r#"
+fn foo() {
+    enum FooInner { }
+}
+    "#;
 
-        let mut symbols = get_symbols_matching(code, "FooInner");
+    let mut symbols = get_symbols_matching(code, "FooInner");
 
-        let s = symbols.pop().unwrap();
+    let s = symbols.pop().unwrap();
 
-        assert_eq!(s.name(), "FooInner");
-        assert_eq!(s.container_name(), Some(&SmolStr::new("foo")));
-    }
+    assert_eq!(s.name(), "FooInner");
+    assert_eq!(s.container_name(), Some(&SmolStr::new("foo")));
 
-    {
-        let code = r#"
-    mod foo {
-        struct FooInner;
-    }
-        "#;
+    let code = r#"
+mod foo {
+    struct FooInner;
+}
+    "#;
 
-        let mut symbols = get_symbols_matching(code, "FooInner");
+    let mut symbols = get_symbols_matching(code, "FooInner");
 
-        let s = symbols.pop().unwrap();
+    let s = symbols.pop().unwrap();
 
-        assert_eq!(s.name(), "FooInner");
-        assert_eq!(s.container_name(), Some(&SmolStr::new("foo")));
-    }
+    assert_eq!(s.name(), "FooInner");
+    assert_eq!(s.container_name(), Some(&SmolStr::new("foo")));
 }
 
 #[test]
