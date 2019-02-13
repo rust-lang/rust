@@ -200,16 +200,6 @@ fn is_type(kind: SyntaxKind) -> bool {
     }
 }
 
-fn is_symbol_def(kind: SyntaxKind) -> bool {
-    match kind {
-        FN_DEF | STRUCT_DEF | ENUM_DEF | TRAIT_DEF | MODULE | TYPE_DEF | CONST_DEF | STATIC_DEF => {
-            true
-        }
-
-        _ => false,
-    }
-}
-
 /// The actual data that is stored in the index. It should be as compact as
 /// possible.
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -236,7 +226,7 @@ fn source_file_to_file_symbols(source_file: &SourceFile, file_id: FileId) -> Vec
             }
 
             WalkEvent::Leave(node) => {
-                if is_symbol_def(node.kind()) {
+                if to_symbol(node).is_some() {
                     stack.pop();
                 }
             }
