@@ -158,7 +158,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for BoxPointers {
     }
 
     fn check_expr(&mut self, cx: &LateContext<'_, '_>, e: &hir::Expr) {
-        let ty = cx.tables.node_id_to_type(e.hir_id);
+        let ty = cx.tables.node_type(e.hir_id);
         self.check_heap_type(cx, e.span, ty);
     }
 }
@@ -1002,7 +1002,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for MutableTransmutes {
                 if !def_id_is_transmute(cx, did) {
                     return None;
                 }
-                let sig = cx.tables.node_id_to_type(expr.hir_id).fn_sig(cx.tcx);
+                let sig = cx.tables.node_type(expr.hir_id).fn_sig(cx.tcx);
                 let from = sig.inputs().skip_binder()[0];
                 let to = *sig.output().skip_binder();
                 return Some((&from.sty, &to.sty));

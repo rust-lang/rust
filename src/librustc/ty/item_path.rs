@@ -1,4 +1,3 @@
-use crate::hir;
 use crate::hir::map::DefPathData;
 use crate::hir::def_id::{CrateNum, DefId, CRATE_DEF_INDEX, LOCAL_CRATE};
 use crate::ty::{self, DefIdTree, Ty, TyCtxt};
@@ -75,11 +74,6 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
     /// Returns a string identifying this local node-id.
     pub fn node_path_str(self, id: ast::NodeId) -> String {
         self.item_path_str(self.hir().local_def_id(id))
-    }
-
-    // FIXME(@ljedrz): replace the NodeId variant
-    pub fn hir_path_str(self, id: hir::HirId) -> String {
-        self.item_path_str(self.hir().local_def_id_from_hir_id(id))
     }
 
     /// Returns a string identifying this def-id. This string is
