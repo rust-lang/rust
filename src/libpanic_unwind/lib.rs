@@ -34,9 +34,6 @@
 #![panic_runtime]
 #![feature(panic_runtime)]
 
-#[cfg(not(any(target_env = "msvc", all(windows, target_arch = "x86_64", target_env = "gnu"))))]
-extern crate unwind;
-
 use alloc::boxed::Box;
 use core::intrinsics;
 use core::mem;
