@@ -1,5 +1,6 @@
 use crate::check::regionck::RegionCtxt;
 
+use crate::hir;
 use crate::hir::def_id::DefId;
 use rustc::infer::outlives::env::OutlivesEnvironment;
 use rustc::infer::{self, InferOk, SuppressRegionErrors};
@@ -9,7 +10,6 @@ use rustc::ty::subst::{Subst, Substs, UnpackedKind};
 use rustc::ty::{self, Ty, TyCtxt};
 use crate::util::common::ErrorReported;
 
-use syntax::ast;
 use syntax_pos::Span;
 
 /// This function confirms that the `Drop` implementation identified by
@@ -70,7 +70,7 @@ fn ensure_drop_params_and_item_params_correspond<'a, 'tcx>(
     drop_impl_ty: Ty<'tcx>,
     self_type_did: DefId,
 ) -> Result<(), ErrorReported> {
-    let drop_impl_node_id = tcx.hir().as_local_node_id(drop_impl_did).unwrap();
+    let drop_impl_hir_id = tcx.hir().as_local_hir_id(drop_impl_did).unwrap();
 
     // check that the impl type can be made to match the trait type.
 
@@ -85,7 +85,7 @@ fn ensure_drop_params_and_item_params_correspond<'a, 'tcx>(
         let fresh_impl_substs = infcx.fresh_substs_for_item(drop_impl_span, drop_impl_did);
         let fresh_impl_self_ty = drop_impl_ty.subst(tcx, fresh_impl_substs);
 
-        let cause = &ObligationCause::misc(drop_impl_span, drop_impl_node_id);
+        let cause = &ObligationCause::misc(drop_impl_span, drop_impl_hir_id);
         match infcx
             .at(cause, impl_param_env)
             .eq(named_type, fresh_impl_self_ty)
@@ -291,7 +291,7 @@ pub fn check_safety_of_destructor_if_necessary<'a, 'gcx, 'tcx>(
     rcx: &mut RegionCtxt<'a, 'gcx, 'tcx>,
     ty: Ty<'tcx>,
     span: Span,
-    body_id: ast::NodeId,
+    body_id: hir::HirId,
     scope: region::Scope,
 ) -> Result<(), ErrorReported> {
     debug!("check_safety_of_destructor_if_necessary typ: {:?} scope: {:?}",

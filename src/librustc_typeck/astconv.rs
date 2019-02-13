@@ -878,8 +878,9 @@ impl<'o, 'gcx: 'tcx, 'tcx> dyn AstConv<'gcx, 'tcx> + 'o {
                                           binding.item_name, binding.span)
         }?;
 
+        let hir_ref_id = self.tcx().hir().node_to_hir_id(ref_id);
         let (assoc_ident, def_scope) =
-            tcx.adjust_ident(binding.item_name, candidate.def_id(), ref_id);
+            tcx.adjust_ident(binding.item_name, candidate.def_id(), hir_ref_id);
         let assoc_ty = tcx.associated_items(candidate.def_id()).find(|i| {
             i.kind == ty::AssociatedKind::Type && i.ident.modern() == assoc_ident
         }).expect("missing associated type");
@@ -1373,7 +1374,8 @@ impl<'o, 'gcx: 'tcx, 'tcx> dyn AstConv<'gcx, 'tcx> + 'o {
         };
 
         let trait_did = bound.def_id();
-        let (assoc_ident, def_scope) = tcx.adjust_ident(assoc_ident, trait_did, ref_id);
+        let hir_ref_id = self.tcx().hir().node_to_hir_id(ref_id);
+        let (assoc_ident, def_scope) = tcx.adjust_ident(assoc_ident, trait_did, hir_ref_id);
         let item = tcx.associated_items(trait_did).find(|i| {
             Namespace::from(i.kind) == Namespace::Type &&
                 i.ident.modern() == assoc_ident

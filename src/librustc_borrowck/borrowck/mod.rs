@@ -404,7 +404,7 @@ fn closure_to_block(closure_id: LocalDefId,
     match tcx.hir().get(closure_id) {
         Node::Expr(expr) => match expr.node {
             hir::ExprKind::Closure(.., body_id, _, _) => {
-                body_id.node_id
+                tcx.hir().hir_to_node_id(body_id.hir_id)
             }
             _ => {
                 bug!("encountered non-closure id: {}", closure_id)

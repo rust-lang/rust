@@ -641,7 +641,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
             .liberate_late_bound_regions(expr_def_id, &bound_sig);
         let liberated_sig = self.inh.normalize_associated_types_in(
             body.value.span,
-            body.value.id,
+            body.value.hir_id,
             self.param_env,
             &liberated_sig,
         );
