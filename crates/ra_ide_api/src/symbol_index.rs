@@ -228,7 +228,7 @@ fn source_file_to_file_symbols(source_file: &SourceFile, file_id: FileId) -> Vec
         match event {
             WalkEvent::Enter(node) => {
                 if let Some(mut symbol) = to_file_symbol(node, file_id) {
-                    symbol.container_name = stack.last().map(|v: &SmolStr| v.clone());
+                    symbol.container_name = stack.last().cloned();
 
                     stack.push(symbol.name.clone());
                     symbols.push(symbol);
