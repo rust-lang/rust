@@ -2280,8 +2280,9 @@ fn codegen_fn_attrs<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, id: DefId) -> Codegen
                         E0726,
                         "`#[c_ffi_const]` function cannot be`#[c_ffi_pure]`"
                     ).emit();
+                } else {
+                    codegen_fn_attrs.flags |= CodegenFnAttrFlags::C_FFI_PURE;
                 }
-                codegen_fn_attrs.flags |= CodegenFnAttrFlags::C_FFI_PURE;
             } else {
                 // `#[c_ffi_pure]` is only allowed on foreign functions
                 struct_span_err!(
