@@ -86,17 +86,17 @@ mod dsp;
 pub use self::dsp::*;
 
 // Deprecated in ACLE 2.0 for the A profile but fully supported on the M and R profiles, says
-// Section 5.4.9 of ACLE.
+// Section 5.4.9 of ACLE. We'll expose these for the A profile even if deprecated
 #[cfg(any(
-    // v7-R
-    target_feature = "rclass",
+    // v7-A, v7-R
+    all(target_feature = "v6", not(target_feature = "mclass")),
     // v7E-M
     all(target_feature = "mclass", target_feature = "dsp")
 ))]
 mod simd32;
 
 #[cfg(any(
-    target_feature = "rclass",
+    all(target_feature = "v6", not(target_feature = "mclass")),
     all(target_feature = "mclass", target_feature = "dsp")
 ))]
 pub use self::simd32::*;
