@@ -1,5 +1,5 @@
-use borrow_check::nll::constraints::OutlivesConstraint;
-use borrow_check::nll::type_check::{BorrowCheckContext, Locations};
+use crate::borrow_check::nll::constraints::OutlivesConstraint;
+use crate::borrow_check::nll::type_check::{BorrowCheckContext, Locations};
 use rustc::infer::nll_relate::{TypeRelating, TypeRelatingDelegate, NormalizationStrategy};
 use rustc::infer::{InferCtxt, NLLRegionVariableOrigin};
 use rustc::mir::ConstraintCategory;
@@ -14,7 +14,7 @@ use rustc::ty::{self, Ty};
 /// - "Invariant" `a == b`
 /// - "Contravariant" `a :> b`
 ///
-/// NB. The type `a` is permitted to have unresolved inference
+/// N.B., the type `a` is permitted to have unresolved inference
 /// variables, but not the type `b`.
 pub(super) fn relate_types<'tcx>(
     infcx: &InferCtxt<'_, '_, 'tcx>,

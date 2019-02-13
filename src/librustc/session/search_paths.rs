@@ -1,6 +1,6 @@
 use std::path::{Path, PathBuf};
-use session::{early_error, config};
-use session::filesearch::make_target_lib_path;
+use crate::session::{early_error, config};
+use crate::session::filesearch::make_target_lib_path;
 
 #[derive(Clone, Debug)]
 pub struct SearchPath {

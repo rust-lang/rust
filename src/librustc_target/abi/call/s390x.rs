@@ -1,10 +1,10 @@
 // FIXME: The assumes we're using the non-vector ABI, i.e., compiling
 // for a pre-z13 machine or using -mno-vx.
 
-use abi::call::{FnType, ArgType, Reg};
-use abi::{self, HasDataLayout, LayoutOf, TyLayout, TyLayoutMethods};
+use crate::abi::call::{FnType, ArgType, Reg};
+use crate::abi::{self, HasDataLayout, LayoutOf, TyLayout, TyLayoutMethods};
 
-fn classify_ret_ty<'a, Ty, C>(ret: &mut ArgType<Ty>)
+fn classify_ret_ty<'a, Ty, C>(ret: &mut ArgType<'_, Ty>)
     where Ty: TyLayoutMethods<'a, C>, C: LayoutOf<Ty = Ty> + HasDataLayout
 {
     if !ret.layout.is_aggregate() && ret.layout.size.bits() <= 64 {

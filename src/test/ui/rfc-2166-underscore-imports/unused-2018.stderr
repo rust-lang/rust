@@ -2,7 +2,7 @@ error: unused import: `core::any`
   --> $DIR/unused-2018.rs:6:9
    |
 LL |     use core::any; //~ ERROR unused import: `core::any`
-   |         ^^^^^^^^^
+   |     ----^^^^^^^^^- help: remove the whole `use` item
    |
 note: lint level defined here
   --> $DIR/unused-2018.rs:3:9
@@ -14,7 +14,7 @@ error: unused import: `core`
   --> $DIR/unused-2018.rs:10:9
    |
 LL |     use core; //~ ERROR unused import: `core`
-   |         ^^^^
+   |     ----^^^^- help: remove the whole `use` item
 
 error: aborting due to 2 previous errors
 

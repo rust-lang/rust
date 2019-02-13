@@ -1,13 +1,14 @@
-use ast::NodeId;
-use early_buffered_lints::BufferedEarlyLintId;
-use ext::tt::macro_parser;
-use feature_gate::Features;
-use parse::{token, ParseSess};
-use print::pprust;
-use symbol::keywords;
+use crate::ast::NodeId;
+use crate::early_buffered_lints::BufferedEarlyLintId;
+use crate::ext::tt::macro_parser;
+use crate::feature_gate::Features;
+use crate::parse::{token, ParseSess};
+use crate::print::pprust;
+use crate::tokenstream::{self, DelimSpan};
+use crate::ast;
+use crate::symbol::keywords;
+
 use syntax_pos::{edition::Edition, BytePos, Span};
-use tokenstream::{self, DelimSpan};
-use ast;
 
 use rustc_data_structures::sync::Lrc;
 use std::iter::Peekable;
@@ -21,17 +22,17 @@ pub struct Delimited {
 }
 
 impl Delimited {
-    /// Return the opening delimiter (possibly `NoDelim`).
+    /// Returns the opening delimiter (possibly `NoDelim`).
     pub fn open_token(&self) -> token::Token {
         token::OpenDelim(self.delim)
     }
 
-    /// Return the closing delimiter (possibly `NoDelim`).
+    /// Returns the closing delimiter (possibly `NoDelim`).
     pub fn close_token(&self) -> token::Token {
         token::CloseDelim(self.delim)
     }
 
-    /// Return a `self::TokenTree` with a `Span` corresponding to the opening delimiter.
+    /// Returns a `self::TokenTree` with a `Span` corresponding to the opening delimiter.
     pub fn open_tt(&self, span: Span) -> TokenTree {
         let open_span = if span.is_dummy() {
             span
@@ -41,7 +42,7 @@ impl Delimited {
         TokenTree::Token(open_span, self.open_token())
     }
 
-    /// Return a `self::TokenTree` with a `Span` corresponding to the closing delimiter.
+    /// Returns a `self::TokenTree` with a `Span` corresponding to the closing delimiter.
     pub fn close_tt(&self, span: Span) -> TokenTree {
         let close_span = if span.is_dummy() {
             span
@@ -106,7 +107,7 @@ impl TokenTree {
         }
     }
 
-    /// Returns true if the given token tree contains no other tokens. This is vacuously true for
+    /// Returns `true` if the given token tree contains no other tokens. This is vacuously true for
     /// single tokens or metavar/decls, but may be false for delimited trees or sequences.
     pub fn is_empty(&self) -> bool {
         match *self {
@@ -119,7 +120,7 @@ impl TokenTree {
         }
     }
 
-    /// Get the `index`-th sub-token-tree. This only makes sense for delimited trees and sequences.
+    /// Gets the `index`-th sub-token-tree. This only makes sense for delimited trees and sequences.
     pub fn get_tt(&self, index: usize) -> TokenTree {
         match (self, index) {
             (&TokenTree::Delimited(_, ref delimed), _) if delimed.delim == token::NoDelim => {
@@ -139,7 +140,7 @@ impl TokenTree {
         }
     }
 
-    /// Retrieve the `TokenTree`'s span.
+    /// Retrieves the `TokenTree`'s span.
     pub fn span(&self) -> Span {
         match *self {
             TokenTree::Token(sp, _)
@@ -410,8 +411,8 @@ where
 /// operator and separator, then a tuple with `(separator, KleeneOp)` is returned. Otherwise, an
 /// error with the appropriate span is emitted to `sess` and a dummy value is returned.
 ///
-/// NOTE: In 2015 edition, * and + are the only Kleene operators and `?` is a separator. In 2018,
-/// `?` is a Kleene op and not a separator.
+/// N.B., in the 2015 edition, `*` and `+` are the only Kleene operators, and `?` is a separator.
+/// In the 2018 edition however, `?` is a Kleene operator, and not a separator.
 fn parse_sep_and_kleene_op<I>(
     input: &mut Peekable<I>,
     span: Span,

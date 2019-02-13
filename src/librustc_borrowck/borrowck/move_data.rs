@@ -1,11 +1,11 @@
 //! Data structures used for tracking moves. Please see the extensive
 //! comments in the section "Moves and initialization" in `README.md`.
 
-pub use self::MoveKind::*;
+pub use MoveKind::*;
 
-use dataflow::{DataFlowContext, BitwiseOperator, DataFlowOperator, KillFrom};
+use crate::dataflow::{DataFlowContext, BitwiseOperator, DataFlowOperator, KillFrom};
 
-use borrowck::*;
+use crate::borrowck::*;
 use rustc::cfg;
 use rustc::ty::{self, TyCtxt};
 use rustc::util::nodemap::FxHashMap;
@@ -15,6 +15,7 @@ use std::rc::Rc;
 use std::usize;
 use syntax_pos::Span;
 use rustc::hir;
+use log::debug;
 
 #[derive(Default)]
 pub struct MoveData<'tcx> {
@@ -113,7 +114,7 @@ pub struct Move {
     /// Path being moved.
     pub path: MovePathIndex,
 
-    /// id of node that is doing the move.
+    /// ID of node that is doing the move.
     pub id: hir::ItemLocalId,
 
     /// Kind of move, for error messages.
@@ -128,7 +129,7 @@ pub struct Assignment {
     /// Path being assigned.
     pub path: MovePathIndex,
 
-    /// id where assignment occurs
+    /// ID where assignment occurs
     pub id: hir::ItemLocalId,
 
     /// span of node where assignment occurs
@@ -145,7 +146,7 @@ pub struct AssignDataFlowOperator;
 
 pub type AssignDataFlow<'a, 'tcx> = DataFlowContext<'a, 'tcx, AssignDataFlowOperator>;
 
-fn loan_path_is_precise(loan_path: &LoanPath) -> bool {
+fn loan_path_is_precise(loan_path: &LoanPath<'_>) -> bool {
     match loan_path.kind {
         LpVar(_) | LpUpvar(_) => {
             true
@@ -167,8 +168,8 @@ fn loan_path_is_precise(loan_path: &LoanPath) -> bool {
 }
 
 impl<'a, 'tcx> MoveData<'tcx> {
-    /// return true if there are no trackable assignments or moves
-    /// in this move data - that means that there is nothing that
+    /// Returns `true` if there are no trackable assignments or moves
+    /// in this move data -- that means that there is nothing that
     /// could cause a borrow error.
     pub fn is_empty(&self) -> bool {
         self.moves.borrow().is_empty() &&
@@ -428,8 +429,8 @@ impl<'a, 'tcx> MoveData<'tcx> {
     /// killed by scoping. See `README.md` for more details.
     fn add_gen_kills(&self,
                      bccx: &BorrowckCtxt<'a, 'tcx>,
-                     dfcx_moves: &mut MoveDataFlow,
-                     dfcx_assign: &mut AssignDataFlow) {
+                     dfcx_moves: &mut MoveDataFlow<'_, '_>,
+                     dfcx_assign: &mut AssignDataFlow<'_, '_>) {
         for (i, the_move) in self.moves.borrow().iter().enumerate() {
             dfcx_moves.add_gen(the_move.id, i);
         }
@@ -537,7 +538,7 @@ impl<'a, 'tcx> MoveData<'tcx> {
                   path: MovePathIndex,
                   kill_id: hir::ItemLocalId,
                   kill_kind: KillFrom,
-                  dfcx_moves: &mut MoveDataFlow) {
+                  dfcx_moves: &mut MoveDataFlow<'_, '_>) {
         // We can only perform kills for paths that refer to a unique location,
         // since otherwise we may kill a move from one location with an
         // assignment referring to another location.

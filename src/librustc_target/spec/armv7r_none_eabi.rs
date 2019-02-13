@@ -1,7 +1,7 @@
 // Targets the Little-endian Cortex-R4/R5 processor (ARMv7-R)
 
 use std::default::Default;
-use spec::{LinkerFlavor, LldFlavor, PanicStrategy, Target, TargetOptions, TargetResult};
+use crate::spec::{LinkerFlavor, LldFlavor, PanicStrategy, Target, TargetOptions, TargetResult};
 
 pub fn target() -> TargetResult {
     Ok(Target {

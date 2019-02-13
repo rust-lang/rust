@@ -1,6 +1,3 @@
-extern crate build_helper;
-extern crate cmake;
-
 use std::env;
 use build_helper::sanitizer_lib_boilerplate;
 

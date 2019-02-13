@@ -1,7 +1,7 @@
-use index::Index;
-use index_builder::{FromId, IndexBuilder, Untracked};
-use isolated_encoder::IsolatedEncoder;
-use schema::*;
+use crate::index::Index;
+use crate::index_builder::{FromId, IndexBuilder, Untracked};
+use crate::isolated_encoder::IsolatedEncoder;
+use crate::schema::*;
 
 use rustc::middle::cstore::{LinkagePreference, NativeLibrary,
                             EncodedMetadata, ForeignModule};
@@ -34,6 +34,7 @@ use syntax::attr;
 use syntax::source_map::Spanned;
 use syntax::symbol::keywords;
 use syntax_pos::{self, hygiene, FileName, SourceFile, Span};
+use log::{debug, trace};
 
 use rustc::hir::{self, PatKind};
 use rustc::hir::itemlikevisit::ItemLikeVisitor;
@@ -673,7 +674,7 @@ impl<'a, 'b: 'a, 'tcx: 'b> IsolatedEncoder<'a, 'b, 'tcx> {
         let def_id = field.did;
         debug!("IsolatedEncoder::encode_field({:?})", def_id);
 
-        let variant_id = tcx.hir().as_local_node_id(variant.did).unwrap();
+        let variant_id = tcx.hir().as_local_hir_id(variant.did).unwrap();
         let variant_data = tcx.hir().expect_variant_data(variant_id);
 
         Entry {
@@ -1521,7 +1522,7 @@ impl<'a, 'b: 'a, 'tcx: 'b> IsolatedEncoder<'a, 'b, 'tcx> {
     // symbol associated with them (they weren't translated) or if they're an FFI
     // definition (as that's not defined in this crate).
     fn encode_exported_symbols(&mut self,
-                               exported_symbols: &[(ExportedSymbol, SymbolExportLevel)])
+                               exported_symbols: &[(ExportedSymbol<'_>, SymbolExportLevel)])
                                -> EncodedExportedSymbols {
         // The metadata symbol name is special. It should not show up in
         // downstream crates.

@@ -319,8 +319,8 @@ pub fn winsorize(samples: &mut [f64], pct: f64) {
 
 #[cfg(test)]
 mod tests {
-    use stats::Stats;
-    use stats::Summary;
+    use crate::stats::Stats;
+    use crate::stats::Summary;
     use std::f64;
     use std::io::prelude::*;
     use std::io;
@@ -899,7 +899,7 @@ mod tests {
 mod bench {
     extern crate test;
     use self::test::Bencher;
-    use stats::Stats;
+    use crate::stats::Stats;
 
     #[bench]
     pub fn sum_three_items(b: &mut Bencher) {

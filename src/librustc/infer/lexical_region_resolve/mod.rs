@@ -1,13 +1,13 @@
-//! The code to do lexical region resolution.
+//! Lexical region resolution.
 
-use infer::region_constraints::Constraint;
-use infer::region_constraints::GenericKind;
-use infer::region_constraints::RegionConstraintData;
-use infer::region_constraints::VarInfos;
-use infer::region_constraints::VerifyBound;
-use infer::RegionVariableOrigin;
-use infer::SubregionOrigin;
-use middle::free_region::RegionRelations;
+use crate::infer::region_constraints::Constraint;
+use crate::infer::region_constraints::GenericKind;
+use crate::infer::region_constraints::RegionConstraintData;
+use crate::infer::region_constraints::VarInfos;
+use crate::infer::region_constraints::VerifyBound;
+use crate::infer::RegionVariableOrigin;
+use crate::infer::SubregionOrigin;
+use crate::middle::free_region::RegionRelations;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_data_structures::graph::implementation::{
     Direction, Graph, NodeIndex, INCOMING, OUTGOING,
@@ -16,11 +16,11 @@ use rustc_data_structures::indexed_vec::{Idx, IndexVec};
 use smallvec::SmallVec;
 use std::fmt;
 use std::u32;
-use ty::fold::TypeFoldable;
-use ty::{self, Ty, TyCtxt};
-use ty::{ReEarlyBound, ReEmpty, ReErased, ReFree, ReStatic};
-use ty::{ReLateBound, ReScope, RePlaceholder, ReVar};
-use ty::{Region, RegionVid};
+use crate::ty::fold::TypeFoldable;
+use crate::ty::{self, Ty, TyCtxt};
+use crate::ty::{ReEarlyBound, ReEmpty, ReErased, ReFree, ReStatic};
+use crate::ty::{ReLateBound, ReScope, RePlaceholder, ReVar};
+use crate::ty::{Region, RegionVid};
 
 mod graphviz;
 
@@ -492,20 +492,20 @@ impl<'cx, 'gcx, 'tcx> LexicalResolver<'cx, 'gcx, 'tcx> {
             match *value {
                 VarValue::Value(_) => { /* Inference successful */ }
                 VarValue::ErrorValue => {
-                    /* Inference impossible, this value contains
+                    /* Inference impossible: this value contains
                        inconsistent constraints.
 
                        I think that in this case we should report an
-                       error now---unlike the case above, we can't
+                       error now -- unlike the case above, we can't
                        wait to see whether the user needs the result
-                       of this variable.  The reason is that the mere
+                       of this variable. The reason is that the mere
                        existence of this variable implies that the
                        region graph is inconsistent, whether or not it
                        is used.
 
                        For example, we may have created a region
                        variable that is the GLB of two other regions
-                       which do not have a GLB.  Even if that variable
+                       which do not have a GLB. Even if that variable
                        is not used, it implies that those two regions
                        *should* have a GLB.
 

@@ -1,8 +1,8 @@
-use infer::canonical::{Canonical, Canonicalized, CanonicalizedQueryResponse, QueryResponse};
-use traits::query::dropck_outlives::trivial_dropck_outlives;
-use traits::query::dropck_outlives::DropckOutlivesResult;
-use traits::query::Fallible;
-use ty::{ParamEnvAnd, Ty, TyCtxt};
+use crate::infer::canonical::{Canonical, Canonicalized, CanonicalizedQueryResponse, QueryResponse};
+use crate::traits::query::dropck_outlives::trivial_dropck_outlives;
+use crate::traits::query::dropck_outlives::DropckOutlivesResult;
+use crate::traits::query::Fallible;
+use crate::ty::{ParamEnvAnd, Ty, TyCtxt};
 
 #[derive(Copy, Clone, Debug)]
 pub struct DropckOutlives<'tcx> {

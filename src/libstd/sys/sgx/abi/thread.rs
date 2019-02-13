@@ -1,6 +1,6 @@
 use fortanix_sgx_abi::Tcs;
 
-/// Get the ID for the current thread. The ID is guaranteed to be unique among
+/// Gets the ID for the current thread. The ID is guaranteed to be unique among
 /// all currently running threads in the enclave, and it is guaranteed to be
 /// constant for the lifetime of the thread. More specifically for SGX, there
 /// is a one-to-one correspondence of the ID to the address of the TCS.

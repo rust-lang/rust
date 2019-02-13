@@ -1,11 +1,9 @@
-//! This module contains the code to convert from the wacky tcx data
-//! structures into the hair. The `builder` is generally ignorant of
-//! the tcx etc, and instead goes through the `Cx` for most of its
-//! work.
-//!
+//! This module contains the fcuntaiontliy to convert from the wacky tcx data
+//! structures into the HAIR. The `builder` is generally ignorant of the tcx,
+//! etc., and instead goes through the `Cx` for most of its work.
 
-use hair::*;
-use hair::util::UserAnnotatedTyHelpers;
+use crate::hair::*;
+use crate::hair::util::UserAnnotatedTyHelpers;
 
 use rustc_data_structures::indexed_vec::Idx;
 use rustc::hir::def_id::{DefId, LOCAL_CRATE};
@@ -21,7 +19,7 @@ use syntax::attr;
 use syntax::symbol::Symbol;
 use rustc::hir;
 use rustc_data_structures::sync::Lrc;
-use hair::constant::{lit_to_const, LitToConstError};
+use crate::hair::constant::{lit_to_const, LitToConstError};
 
 #[derive(Clone)]
 pub struct Cx<'a, 'gcx: 'a + 'tcx, 'tcx: 'a> {
@@ -44,10 +42,10 @@ pub struct Cx<'a, 'gcx: 'a + 'tcx, 'tcx: 'a> {
     /// What kind of body is being compiled.
     pub body_owner_kind: hir::BodyOwnerKind,
 
-    /// True if this constant/function needs overflow checks.
+    /// Whether this constant/function needs overflow checks.
     check_overflow: bool,
 
-    /// See field with the same name on `Mir`
+    /// See field with the same name on `Mir`.
     control_flow_destroyed: Vec<(Span, String)>,
 }
 
@@ -100,7 +98,7 @@ impl<'a, 'gcx, 'tcx> Cx<'a, 'gcx, 'tcx> {
 }
 
 impl<'a, 'gcx, 'tcx> Cx<'a, 'gcx, 'tcx> {
-    /// Normalizes `ast` into the appropriate `mirror` type.
+    /// Normalizes `ast` into the appropriate "mirror" type.
     pub fn mirror<M: Mirror<'tcx>>(&mut self, ast: M) -> M::Output {
         ast.make_mirror(self)
     }
@@ -110,7 +108,7 @@ impl<'a, 'gcx, 'tcx> Cx<'a, 'gcx, 'tcx> {
     }
 
     pub fn usize_literal(&mut self, value: u64) -> &'tcx ty::LazyConst<'tcx> {
-        self.tcx.intern_lazy_const(ty::LazyConst::Evaluated(ty::Const::from_usize(self.tcx, value)))
+        self.tcx.mk_lazy_const(ty::LazyConst::Evaluated(ty::Const::from_usize(self.tcx, value)))
     }
 
     pub fn bool_ty(&mut self) -> Ty<'tcx> {
@@ -122,11 +120,11 @@ impl<'a, 'gcx, 'tcx> Cx<'a, 'gcx, 'tcx> {
     }
 
     pub fn true_literal(&mut self) -> &'tcx ty::LazyConst<'tcx> {
-        self.tcx.intern_lazy_const(ty::LazyConst::Evaluated(ty::Const::from_bool(self.tcx, true)))
+        self.tcx.mk_lazy_const(ty::LazyConst::Evaluated(ty::Const::from_bool(self.tcx, true)))
     }
 
     pub fn false_literal(&mut self) -> &'tcx ty::LazyConst<'tcx> {
-        self.tcx.intern_lazy_const(ty::LazyConst::Evaluated(ty::Const::from_bool(self.tcx, false)))
+        self.tcx.mk_lazy_const(ty::LazyConst::Evaluated(ty::Const::from_bool(self.tcx, false)))
     }
 
     pub fn const_eval_literal(
@@ -239,7 +237,7 @@ impl UserAnnotatedTyHelpers<'gcx, 'tcx> for Cx<'_, 'gcx, 'tcx> {
     }
 }
 
-fn lint_level_for_hir_id(tcx: TyCtxt, mut id: ast::NodeId) -> ast::NodeId {
+fn lint_level_for_hir_id(tcx: TyCtxt<'_, '_, '_>, mut id: ast::NodeId) -> ast::NodeId {
     // Right now we insert a `with_ignore` node in the dep graph here to
     // ignore the fact that `lint_levels` below depends on the entire crate.
     // For now this'll prevent false positives of recompiling too much when

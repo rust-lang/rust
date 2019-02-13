@@ -1,5 +1,5 @@
-use borrow_check::nll::region_infer::RegionInferenceContext;
-use borrow_check::nll::ToRegionVid;
+use crate::borrow_check::nll::region_infer::RegionInferenceContext;
+use crate::borrow_check::nll::ToRegionVid;
 use rustc::mir::{Local, Mir};
 use rustc::ty::{RegionVid, TyCtxt};
 use rustc_data_structures::indexed_vec::Idx;
@@ -71,11 +71,10 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         upvar_index: usize,
     ) -> (Symbol, Span) {
         let upvar_hir_id = mir.upvar_decls[upvar_index].var_hir_id.assert_crate_local();
-        let upvar_node_id = tcx.hir().hir_to_node_id(upvar_hir_id);
-        debug!("get_upvar_name_and_span_for_region: upvar_node_id={:?}", upvar_node_id);
+        debug!("get_upvar_name_and_span_for_region: upvar_hir_id={:?}", upvar_hir_id);
 
-        let upvar_name = tcx.hir().name(upvar_node_id);
-        let upvar_span = tcx.hir().span(upvar_node_id);
+        let upvar_name = tcx.hir().name_by_hir_id(upvar_hir_id);
+        let upvar_span = tcx.hir().span_by_hir_id(upvar_hir_id);
         debug!("get_upvar_name_and_span_for_region: upvar_name={:?} upvar_span={:?}",
                upvar_name, upvar_span);
 

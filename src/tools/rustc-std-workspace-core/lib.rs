@@ -1,6 +1,5 @@
 #![feature(no_core)]
 #![no_core]
-
-extern crate core;
+#![deny(rust_2018_idioms)]
 
 pub use core::*;

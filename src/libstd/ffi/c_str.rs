@@ -377,7 +377,7 @@ impl CString {
     ///
     /// # Examples
     ///
-    /// Create a `CString`, pass ownership to an `extern` function (via raw pointer), then retake
+    /// Creates a `CString`, pass ownership to an `extern` function (via raw pointer), then retake
     /// ownership with `from_raw`:
     ///
     /// ```ignore (extern-declaration)

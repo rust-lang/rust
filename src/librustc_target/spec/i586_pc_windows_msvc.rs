@@ -1,4 +1,4 @@
-use spec::TargetResult;
+use crate::spec::TargetResult;
 
 pub fn target() -> TargetResult {
     let mut base = super::i686_pc_windows_msvc::target()?;

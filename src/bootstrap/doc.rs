@@ -61,6 +61,7 @@ macro_rules! book {
 // adding a build step in `src/bootstrap/builder.rs`!
 book!(
     EditionGuide, "src/doc/edition-guide", "edition-guide", RustbookVersion::MdBook1;
+    EmbeddedBook, "src/doc/embedded-book", "embedded-book", RustbookVersion::MdBook2;
     Nomicon, "src/doc/nomicon", "nomicon", RustbookVersion::MdBook1;
     Reference, "src/doc/reference", "reference", RustbookVersion::MdBook1;
     RustByExample, "src/doc/rust-by-example", "rust-by-example", RustbookVersion::MdBook1;
@@ -71,10 +72,6 @@ book!(
 #[derive(Debug, Copy, Clone, Hash, PartialEq, Eq)]
 enum RustbookVersion {
     MdBook1,
-
-    /// Note: Currently no books use mdBook v2, but we want the option
-    /// to be available
-    #[allow(dead_code)]
     MdBook2,
 }
 
@@ -262,7 +259,7 @@ impl Step for TheBook {
         });
     }
 
-    /// Build the book and associated stuff.
+    /// Builds the book and associated stuff.
     ///
     /// We need to build:
     ///
@@ -614,7 +611,7 @@ impl Step for WhitelistedRustc {
         });
     }
 
-    /// Generate whitelisted compiler crate documentation.
+    /// Generates whitelisted compiler crate documentation.
     ///
     /// This will generate all documentation for crates that are whitelisted
     /// to be included in the standard documentation. This documentation is
@@ -686,7 +683,7 @@ impl Step for Rustc {
         });
     }
 
-    /// Generate compiler documentation.
+    /// Generates compiler documentation.
     ///
     /// This will generate all documentation for compiler and dependencies.
     /// Compiler documentation is distributed separately, so we make sure
@@ -787,7 +784,7 @@ impl Step for Rustdoc {
         });
     }
 
-    /// Generate compiler documentation.
+    /// Generates compiler documentation.
     ///
     /// This will generate all documentation for compiler and dependencies.
     /// Compiler documentation is distributed separately, so we make sure

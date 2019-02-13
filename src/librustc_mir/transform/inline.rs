@@ -13,10 +13,10 @@ use rustc::ty::subst::{Subst,Substs};
 
 use std::collections::VecDeque;
 use std::iter;
-use transform::{MirPass, MirSource};
+use crate::transform::{MirPass, MirSource};
 use super::simplify::{remove_dead_blocks, CfgSimplifier};
 
-use syntax::{attr};
+use syntax::attr;
 use rustc_target::spec::abi::Abi;
 
 const DEFAULT_THRESHOLD: usize = 50;
@@ -40,7 +40,7 @@ struct CallSite<'tcx> {
 impl MirPass for Inline {
     fn run_pass<'a, 'tcx>(&self,
                           tcx: TyCtxt<'a, 'tcx, 'tcx>,
-                          source: MirSource,
+                          source: MirSource<'tcx>,
                           mir: &mut Mir<'tcx>) {
         if tcx.sess.opts.debugging_opts.mir_opt_level >= 2 {
             Inliner { tcx, source }.run_pass(mir);
@@ -50,7 +50,7 @@ impl MirPass for Inline {
 
 struct Inliner<'a, 'tcx: 'a> {
     tcx: TyCtxt<'a, 'tcx, 'tcx>,
-    source: MirSource,
+    source: MirSource<'tcx>,
 }
 
 impl<'a, 'tcx> Inliner<'a, 'tcx> {
@@ -69,10 +69,10 @@ impl<'a, 'tcx> Inliner<'a, 'tcx> {
 
         let mut callsites = VecDeque::new();
 
-        let param_env = self.tcx.param_env(self.source.def_id);
+        let param_env = self.tcx.param_env(self.source.def_id());
 
         // Only do inlining into fn bodies.
-        let id = self.tcx.hir().as_local_node_id(self.source.def_id).unwrap();
+        let id = self.tcx.hir().as_local_node_id(self.source.def_id()).unwrap();
         if self.tcx.hir().body_owner_kind(id).is_fn_or_closure() && self.source.promoted.is_none() {
             for (bb, bb_data) in caller_mir.basic_blocks().iter_enumerated() {
                 if let Some(callsite) = self.get_valid_function_call(bb,
@@ -274,7 +274,7 @@ impl<'a, 'tcx> Inliner<'a, 'tcx> {
 
         // FIXME: Give a bonus to functions with only a single caller
 
-        let param_env = tcx.param_env(self.source.def_id);
+        let param_env = tcx.param_env(self.source.def_id());
 
         let mut first_block = true;
         let mut cost = 0;
@@ -426,7 +426,7 @@ impl<'a, 'tcx> Inliner<'a, 'tcx> {
                 // Place could result in two different locations if `f`
                 // writes to `i`. To prevent this we need to create a temporary
                 // borrow of the place and pass the destination as `*temp` instead.
-                fn dest_needs_borrow(place: &Place) -> bool {
+                fn dest_needs_borrow(place: &Place<'_>) -> bool {
                     match *place {
                         Place::Projection(ref p) => {
                             match p.elem {

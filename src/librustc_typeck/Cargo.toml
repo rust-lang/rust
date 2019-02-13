@@ -2,6 +2,7 @@
 authors = ["The Rust Project Developers"]
 name = "rustc_typeck"
 version = "0.0.0"
+edition = "2018"
 
 [lib]
 name = "rustc_typeck"
@@ -14,7 +15,7 @@ arena = { path = "../libarena" }
 log = "0.4"
 rustc = { path = "../librustc" }
 rustc_data_structures = { path = "../librustc_data_structures" }
-rustc_errors = { path = "../librustc_errors" }
+errors = { path = "../librustc_errors", package = "rustc_errors" }
 rustc_target = { path = "../librustc_target" }
 smallvec = { version = "0.6.7", features = ["union", "may_dangle"] }
 syntax = { path = "../libsyntax" }

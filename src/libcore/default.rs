@@ -54,7 +54,7 @@
 ///
 /// ## How can I implement `Default`?
 ///
-/// Provide an implementation for the `default()` method that returns the value of
+/// Provides an implementation for the `default()` method that returns the value of
 /// your type that should be the default:
 ///
 /// ```

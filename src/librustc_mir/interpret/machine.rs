@@ -21,23 +21,23 @@ pub trait MayLeak: Copy {
 
 /// The functionality needed by memory to manage its allocations
 pub trait AllocMap<K: Hash + Eq, V> {
-    /// Test if the map contains the given key.
+    /// Tests if the map contains the given key.
     /// Deliberately takes `&mut` because that is sufficient, and some implementations
     /// can be more efficient then (using `RefCell::get_mut`).
     fn contains_key<Q: ?Sized + Hash + Eq>(&mut self, k: &Q) -> bool
         where K: Borrow<Q>;
 
-    /// Insert new entry into the map.
+    /// Inserts a new entry into the map.
     fn insert(&mut self, k: K, v: V) -> Option<V>;
 
-    /// Remove entry from the map.
+    /// Removes an entry from the map.
     fn remove<Q: ?Sized + Hash + Eq>(&mut self, k: &Q) -> Option<V>
         where K: Borrow<Q>;
 
-    /// Return data based the keys and values in the map.
+    /// Returns data based the keys and values in the map.
     fn filter_map_collect<T>(&self, f: impl FnMut(&K, &V) -> Option<T>) -> Vec<T>;
 
-    /// Return a reference to entry `k`.  If no such entry exists, call
+    /// Returns a reference to entry `k`. If no such entry exists, call
     /// `vacant` and either forward its error, or add its result to the map
     /// and return a reference to *that*.
     fn get_or<E>(
@@ -46,7 +46,7 @@ pub trait AllocMap<K: Hash + Eq, V> {
         vacant: impl FnOnce() -> Result<V, E>
     ) -> Result<&V, E>;
 
-    /// Return a mutable reference to entry `k`.  If no such entry exists, call
+    /// Returns a mutable reference to entry `k`. If no such entry exists, call
     /// `vacant` and either forward its error, or add its result to the map
     /// and return a reference to *that*.
     fn get_mut_or<E>(
@@ -62,7 +62,7 @@ pub trait Machine<'a, 'mir, 'tcx>: Sized {
     /// Additional memory kinds a machine wishes to distinguish from the builtin ones
     type MemoryKinds: ::std::fmt::Debug + MayLeak + Eq + 'static;
 
-    /// Tag tracked alongside every pointer.  This is used to implement "Stacked Borrows"
+    /// Tag tracked alongside every pointer. This is used to implement "Stacked Borrows"
     /// <https://www.ralfj.de/blog/2018/08/07/stacked-borrows.html>.
     /// The `default()` is used for pointers to consts, statics, vtables and functions.
     type PointerTag: ::std::fmt::Debug + Default + Copy + Eq + Hash + 'static;
@@ -70,7 +70,7 @@ pub trait Machine<'a, 'mir, 'tcx>: Sized {
     /// Extra data stored in every call frame.
     type FrameExtra;
 
-    /// Extra data stored in memory.  A reference to this is available when `AllocExtra`
+    /// Extra data stored in memory. A reference to this is available when `AllocExtra`
     /// gets initialized, so you can e.g., have an `Rc` here if there is global state you
     /// need access to in the `AllocExtra` hooks.
     type MemoryExtra: Default;
@@ -105,7 +105,7 @@ pub trait Machine<'a, 'mir, 'tcx>: Sized {
     ///
     /// Returns either the mir to use for the call, or `None` if execution should
     /// just proceed (which usually means this hook did all the work that the
-    /// called function should usually have done).  In the latter case, it is
+    /// called function should usually have done). In the latter case, it is
     /// this hook's responsibility to call `goto_block(ret)` to advance the instruction pointer!
     /// (This is to support functions like `__rust_maybe_catch_panic` that neither find a MIR
     /// nor just jump to `ret`, but instead push their own stack frame.)
@@ -170,7 +170,7 @@ pub trait Machine<'a, 'mir, 'tcx>: Sized {
         dest: PlaceTy<'tcx, Self::PointerTag>,
     ) -> EvalResult<'tcx>;
 
-    /// Add the tag for a newly allocated pointer.
+    /// Adds the tag for a newly allocated pointer.
     fn tag_new_allocation(
         ecx: &mut EvalContext<'a, 'mir, 'tcx, Self>,
         ptr: Pointer,
@@ -178,7 +178,7 @@ pub trait Machine<'a, 'mir, 'tcx>: Sized {
     ) -> Pointer<Self::PointerTag>;
 
     /// Executed when evaluating the `*` operator: Following a reference.
-    /// This has the chance to adjust the tag.  It should not change anything else!
+    /// This has the chance to adjust the tag. It should not change anything else!
     /// `mutability` can be `None` in case a raw ptr is being dereferenced.
     #[inline]
     fn tag_dereference(
@@ -189,7 +189,7 @@ pub trait Machine<'a, 'mir, 'tcx>: Sized {
         Ok(place.ptr)
     }
 
-    /// Execute a retagging operation
+    /// Executes a retagging operation
     #[inline]
     fn retag(
         _ecx: &mut EvalContext<'a, 'mir, 'tcx, Self>,

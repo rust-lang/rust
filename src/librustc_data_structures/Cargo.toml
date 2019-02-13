@@ -2,6 +2,7 @@
 authors = ["The Rust Project Developers"]
 name = "rustc_data_structures"
 version = "0.0.0"
+edition = "2018"
 
 [lib]
 name = "rustc_data_structures"
@@ -16,8 +17,8 @@ serialize = { path = "../libserialize" }
 graphviz = { path = "../libgraphviz" }
 cfg-if = "0.1.2"
 stable_deref_trait = "1.0.0"
-rustc-rayon = "0.1.1"
-rustc-rayon-core = "0.1.1"
+rayon = { version = "0.1.1", package = "rustc-rayon" }
+rayon-core = { version = "0.1.1", package = "rustc-rayon-core" }
 rustc-hash = "1.0.1"
 smallvec = { version = "0.6.7", features = ["union", "may_dangle"] }
 

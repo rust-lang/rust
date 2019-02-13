@@ -40,7 +40,7 @@ impl Step for ToolBuild {
         run.never()
     }
 
-    /// Build a tool in `src/tools`
+    /// Builds a tool in `src/tools`
     ///
     /// This will build the specified tool with the specified `host` compiler in
     /// `stage` into the normal cargo output directory.
@@ -621,7 +621,7 @@ tool_extended!((self, builder),
 );
 
 impl<'a> Builder<'a> {
-    /// Get a `Command` which is ready to run `tool` in `stage` built for
+    /// Gets a `Command` which is ready to run `tool` in `stage` built for
     /// `host`.
     pub fn tool_cmd(&self, tool: Tool) -> Command {
         let mut cmd = Command::new(self.tool_exe(tool));

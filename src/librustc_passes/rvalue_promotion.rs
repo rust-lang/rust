@@ -28,10 +28,11 @@ use rustc::hir;
 use rustc_data_structures::sync::Lrc;
 use syntax::ast;
 use syntax_pos::{Span, DUMMY_SP};
-use self::Promotability::*;
+use log::debug;
+use Promotability::*;
 use std::ops::{BitAnd, BitAndAssign, BitOr};
 
-pub fn provide(providers: &mut Providers) {
+pub fn provide(providers: &mut Providers<'_>) {
     *providers = Providers {
         rvalue_promotable_map,
         const_is_rvalue_promotable_to_static,
@@ -44,7 +45,6 @@ pub fn check_crate<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>) {
         let def_id = tcx.hir().body_owner_def_id(body_id);
         tcx.const_is_rvalue_promotable_to_static(def_id);
     }
-    tcx.sess.abort_if_errors();
 }
 
 fn const_is_rvalue_promotable_to_static<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
@@ -160,11 +160,11 @@ impl<'a, 'gcx> CheckCrateVisitor<'a, 'gcx> {
     }
 
     /// While the `ExprUseVisitor` walks, we will identify which
-    /// expressions are borrowed, and insert their ids into this
+    /// expressions are borrowed, and insert their IDs into this
     /// table. Actually, we insert the "borrow-id", which is normally
-    /// the id of the expression being borrowed: but in the case of
+    /// the ID of the expression being borrowed: but in the case of
     /// `ref mut` borrows, the `id` of the pattern is
-    /// inserted. Therefore later we remove that entry from the table
+    /// inserted. Therefore, later we remove that entry from the table
     /// and transfer it over to the value being matched. This will
     /// then prevent said value from being promoted.
     fn remove_mut_rvalue_borrow(&mut self, pat: &hir::Pat) -> bool {
@@ -588,7 +588,7 @@ fn check_expr_kind<'a, 'tcx>(
     ty_result & node_result
 }
 
-/// Check the adjustments of an expression
+/// Checks the adjustments of an expression.
 fn check_adjustments<'a, 'tcx>(
     v: &mut CheckCrateVisitor<'a, 'tcx>,
     e: &hir::Expr) -> Promotability {
@@ -622,7 +622,7 @@ impl<'a, 'gcx, 'tcx> euv::Delegate<'tcx> for CheckCrateVisitor<'a, 'gcx> {
     fn consume(&mut self,
                _consume_id: ast::NodeId,
                _consume_span: Span,
-               _cmt: &mc::cmt_,
+               _cmt: &mc::cmt_<'_>,
                _mode: euv::ConsumeMode) {}
 
     fn borrow(&mut self,
@@ -681,11 +681,14 @@ impl<'a, 'gcx, 'tcx> euv::Delegate<'tcx> for CheckCrateVisitor<'a, 'gcx> {
     fn mutate(&mut self,
               _assignment_id: ast::NodeId,
               _assignment_span: Span,
-              _assignee_cmt: &mc::cmt_,
+              _assignee_cmt: &mc::cmt_<'_>,
               _mode: euv::MutateMode) {
     }
 
-    fn matched_pat(&mut self, _: &hir::Pat, _: &mc::cmt_, _: euv::MatchMode) {}
+    fn matched_pat(&mut self, _: &hir::Pat, _: &mc::cmt_<'_>, _: euv::MatchMode) {}
 
-    fn consume_pat(&mut self, _consume_pat: &hir::Pat, _cmt: &mc::cmt_, _mode: euv::ConsumeMode) {}
+    fn consume_pat(&mut self,
+                   _consume_pat: &hir::Pat,
+                   _cmt: &mc::cmt_<'_>,
+                   _mode: euv::ConsumeMode) {}
 }

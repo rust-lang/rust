@@ -1,27 +1,27 @@
-use errors::FatalError;
+use crate::errors::FatalError;
+use crate::proc_macro_server;
 
 use syntax::source_map::Span;
-use syntax::ext::base::*;
+use syntax::ext::base::{self, *};
 use syntax::tokenstream::TokenStream;
-use syntax::ext::base;
 
-pub const EXEC_STRATEGY: ::proc_macro::bridge::server::SameThread =
-    ::proc_macro::bridge::server::SameThread;
+pub const EXEC_STRATEGY: proc_macro::bridge::server::SameThread =
+    proc_macro::bridge::server::SameThread;
 
 pub struct AttrProcMacro {
-    pub client: ::proc_macro::bridge::client::Client<
-        fn(::proc_macro::TokenStream, ::proc_macro::TokenStream) -> ::proc_macro::TokenStream,
+    pub client: proc_macro::bridge::client::Client<
+        fn(proc_macro::TokenStream, proc_macro::TokenStream) -> proc_macro::TokenStream,
     >,
 }
 
 impl base::AttrProcMacro for AttrProcMacro {
     fn expand<'cx>(&self,
-                   ecx: &'cx mut ExtCtxt,
+                   ecx: &'cx mut ExtCtxt<'_>,
                    span: Span,
                    annotation: TokenStream,
                    annotated: TokenStream)
                    -> TokenStream {
-        let server = ::proc_macro_server::Rustc::new(ecx);
+        let server = proc_macro_server::Rustc::new(ecx);
         match self.client.run(&EXEC_STRATEGY, server, annotation, annotated) {
             Ok(stream) => stream,
             Err(e) => {
@@ -39,18 +39,18 @@ impl base::AttrProcMacro for AttrProcMacro {
 }
 
 pub struct BangProcMacro {
-    pub client: ::proc_macro::bridge::client::Client<
-        fn(::proc_macro::TokenStream) -> ::proc_macro::TokenStream,
+    pub client: proc_macro::bridge::client::Client<
+        fn(proc_macro::TokenStream) -> proc_macro::TokenStream,
     >,
 }
 
 impl base::ProcMacro for BangProcMacro {
     fn expand<'cx>(&self,
-                   ecx: &'cx mut ExtCtxt,
+                   ecx: &'cx mut ExtCtxt<'_>,
                    span: Span,
                    input: TokenStream)
                    -> TokenStream {
-        let server = ::proc_macro_server::Rustc::new(ecx);
+        let server = proc_macro_server::Rustc::new(ecx);
         match self.client.run(&EXEC_STRATEGY, server, input) {
             Ok(stream) => stream,
             Err(e) => {

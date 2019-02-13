@@ -259,7 +259,7 @@ impl<'a, 'tcx, 'rcx> RustdocVisitor<'a, 'tcx, 'rcx> {
     /// Cross-crate inlining occurs later on during crate cleaning
     /// and follows different rules.
     ///
-    /// Returns true if the target has been inlined.
+    /// Returns `true` if the target has been inlined.
     fn maybe_inline_local(&mut self,
                           id: ast::NodeId,
                           def: Def,
@@ -284,10 +284,11 @@ impl<'a, 'tcx, 'rcx> RustdocVisitor<'a, 'tcx, 'rcx> {
         debug!("maybe_inline_local def: {:?}", def);
 
         let tcx = self.cx.tcx;
-        if def == Def::Err {
+        let def_did = if let Some(did) = def.opt_def_id() {
+            did
+        } else {
             return false;
-        }
-        let def_did = def.def_id();
+        };
 
         let use_attrs = tcx.hir().attrs(id);
         // Don't inline `doc(hidden)` imports so they can be stripped at a later stage.
@@ -546,8 +547,19 @@ impl<'a, 'tcx, 'rcx> RustdocVisitor<'a, 'tcx, 'rcx> {
                 };
                 om.traits.push(t);
             },
-            hir::ItemKind::TraitAlias(..) => {
-                unimplemented!("trait objects are not yet implemented")
+            hir::ItemKind::TraitAlias(ref gen, ref b) => {
+                let t = TraitAlias {
+                    name: ident.name,
+                    generics: gen.clone(),
+                    bounds: b.iter().cloned().collect(),
+                    id: item.id,
+                    attrs: item.attrs.clone(),
+                    whence: item.span,
+                    vis: item.vis.clone(),
+                    stab: self.stability(item.id),
+                    depr: self.deprecation(item.id),
+                };
+                om.trait_aliases.push(t);
             },
 
             hir::ItemKind::Impl(unsafety,

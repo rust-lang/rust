@@ -145,7 +145,7 @@ impl<T: Write> OutputFormatter for JsonFormatter<T> {
 struct EscapedString<S: AsRef<str>>(S);
 
 impl<S: AsRef<str>> ::std::fmt::Display for EscapedString<S> {
-    fn fmt(&self, f: &mut ::std::fmt::Formatter) -> ::std::fmt::Result {
+    fn fmt(&self, f: &mut ::std::fmt::Formatter<'_>) -> ::std::fmt::Result {
         let mut start = 0;
 
         for (i, byte) in self.0.as_ref().bytes().enumerate() {

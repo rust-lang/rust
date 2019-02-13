@@ -1,6 +1,6 @@
-//! rustc compiler intrinsics.
+//! Compiler intrinsics.
 //!
-//! The corresponding definitions are in librustc_codegen_llvm/intrinsic.rs.
+//! The corresponding definitions are in `librustc_codegen_llvm/intrinsic.rs`.
 //!
 //! # Volatiles
 //!
@@ -315,35 +315,35 @@ extern "rust-intrinsic" {
     /// [`AtomicBool::swap`](../../std/sync/atomic/struct.AtomicBool.html#method.swap).
     pub fn atomic_xchg_relaxed<T>(dst: *mut T, src: T) -> T;
 
-    /// Add to the current value, returning the previous value.
+    /// Adds to the current value, returning the previous value.
     /// The stabilized version of this intrinsic is available on the
     /// `std::sync::atomic` types via the `fetch_add` method by passing
     /// [`Ordering::SeqCst`](../../std/sync/atomic/enum.Ordering.html)
     /// as the `order`. For example,
     /// [`AtomicIsize::fetch_add`](../../std/sync/atomic/struct.AtomicIsize.html#method.fetch_add).
     pub fn atomic_xadd<T>(dst: *mut T, src: T) -> T;
-    /// Add to the current value, returning the previous value.
+    /// Adds to the current value, returning the previous value.
     /// The stabilized version of this intrinsic is available on the
     /// `std::sync::atomic` types via the `fetch_add` method by passing
     /// [`Ordering::Acquire`](../../std/sync/atomic/enum.Ordering.html)
     /// as the `order`. For example,
     /// [`AtomicIsize::fetch_add`](../../std/sync/atomic/struct.AtomicIsize.html#method.fetch_add).
     pub fn atomic_xadd_acq<T>(dst: *mut T, src: T) -> T;
-    /// Add to the current value, returning the previous value.
+    /// Adds to the current value, returning the previous value.
     /// The stabilized version of this intrinsic is available on the
     /// `std::sync::atomic` types via the `fetch_add` method by passing
     /// [`Ordering::Release`](../../std/sync/atomic/enum.Ordering.html)
     /// as the `order`. For example,
     /// [`AtomicIsize::fetch_add`](../../std/sync/atomic/struct.AtomicIsize.html#method.fetch_add).
     pub fn atomic_xadd_rel<T>(dst: *mut T, src: T) -> T;
-    /// Add to the current value, returning the previous value.
+    /// Adds to the current value, returning the previous value.
     /// The stabilized version of this intrinsic is available on the
     /// `std::sync::atomic` types via the `fetch_add` method by passing
     /// [`Ordering::AcqRel`](../../std/sync/atomic/enum.Ordering.html)
     /// as the `order`. For example,
     /// [`AtomicIsize::fetch_add`](../../std/sync/atomic/struct.AtomicIsize.html#method.fetch_add).
     pub fn atomic_xadd_acqrel<T>(dst: *mut T, src: T) -> T;
-    /// Add to the current value, returning the previous value.
+    /// Adds to the current value, returning the previous value.
     /// The stabilized version of this intrinsic is available on the
     /// `std::sync::atomic` types via the `fetch_add` method by passing
     /// [`Ordering::Relaxed`](../../std/sync/atomic/enum.Ordering.html)
@@ -556,7 +556,7 @@ extern "rust-intrinsic" {
     pub fn atomic_umax_relaxed<T>(dst: *mut T, src: T) -> T;
 
     /// The `prefetch` intrinsic is a hint to the code generator to insert a prefetch instruction
-    /// if supported; otherwise, it is a noop.
+    /// if supported; otherwise, it is a no-op.
     /// Prefetches have no effect on the behavior of the program but can change its performance
     /// characteristics.
     ///
@@ -564,7 +564,7 @@ extern "rust-intrinsic" {
     /// ranging from (0) - no locality, to (3) - extremely local keep in cache
     pub fn prefetch_read_data<T>(data: *const T, locality: i32);
     /// The `prefetch` intrinsic is a hint to the code generator to insert a prefetch instruction
-    /// if supported; otherwise, it is a noop.
+    /// if supported; otherwise, it is a no-op.
     /// Prefetches have no effect on the behavior of the program but can change its performance
     /// characteristics.
     ///
@@ -572,7 +572,7 @@ extern "rust-intrinsic" {
     /// ranging from (0) - no locality, to (3) - extremely local keep in cache
     pub fn prefetch_write_data<T>(data: *const T, locality: i32);
     /// The `prefetch` intrinsic is a hint to the code generator to insert a prefetch instruction
-    /// if supported; otherwise, it is a noop.
+    /// if supported; otherwise, it is a no-op.
     /// Prefetches have no effect on the behavior of the program but can change its performance
     /// characteristics.
     ///
@@ -580,7 +580,7 @@ extern "rust-intrinsic" {
     /// ranging from (0) - no locality, to (3) - extremely local keep in cache
     pub fn prefetch_read_instruction<T>(data: *const T, locality: i32);
     /// The `prefetch` intrinsic is a hint to the code generator to insert a prefetch instruction
-    /// if supported; otherwise, it is a noop.
+    /// if supported; otherwise, it is a no-op.
     /// Prefetches have no effect on the behavior of the program but can change its performance
     /// characteristics.
     ///
@@ -697,7 +697,7 @@ extern "rust-intrinsic" {
     /// Creates a value initialized to zero.
     ///
     /// `init` is unsafe because it returns a zeroed-out datum,
-    /// which is unsafe unless T is `Copy`.  Also, even if T is
+    /// which is unsafe unless `T` is `Copy`. Also, even if T is
     /// `Copy`, an all-zero value may not correspond to any legitimate
     /// state for the type in question.
     pub fn init<T>() -> T;
@@ -857,7 +857,7 @@ extern "rust-intrinsic" {
     ///
     /// // The no-copy, unsafe way, still using transmute, but not UB.
     /// // This is equivalent to the original, but safer, and reuses the
-    /// // same Vec internals. Therefore the new inner type must have the
+    /// // same `Vec` internals. Therefore, the new inner type must have the
     /// // exact same size, and the same alignment, as the old type.
     /// // The same caveats exist for this method as transmute, for
     /// // the original inner type (`&i32`) to the converted inner type
@@ -875,8 +875,8 @@ extern "rust-intrinsic" {
     /// ```
     /// use std::{slice, mem};
     ///
-    /// // There are multiple ways to do this; and there are multiple problems
-    /// // with the following, transmute, way.
+    /// // There are multiple ways to do this, and there are multiple problems
+    /// // with the following (transmute) way.
     /// fn split_at_mut_transmute<T>(slice: &mut [T], mid: usize)
     ///                              -> (&mut [T], &mut [T]) {
     ///     let len = slice.len();
@@ -988,7 +988,7 @@ extern "rust-intrinsic" {
     ///   beginning at `dst` with the same size.
     ///
     /// Like [`read`], `copy_nonoverlapping` creates a bitwise copy of `T`, regardless of
-    /// whether `T` is [`Copy`].  If `T` is not [`Copy`], using *both* the values
+    /// whether `T` is [`Copy`]. If `T` is not [`Copy`], using *both* the values
     /// in the region beginning at `*src` and the region beginning at `*dst` can
     /// [violate memory safety][read-ownership].
     ///
@@ -1055,7 +1055,7 @@ extern "rust-intrinsic" {
     /// [`copy_nonoverlapping`] can be used instead.
     ///
     /// `copy` is semantically equivalent to C's [`memmove`], but with the argument
-    /// order swapped.  Copying takes place as if the bytes were copied from `src`
+    /// order swapped. Copying takes place as if the bytes were copied from `src`
     /// to a temporary array and then copied from the array to `dst`.
     ///
     /// [`copy_nonoverlapping`]: ./fn.copy_nonoverlapping.html
@@ -1072,7 +1072,7 @@ extern "rust-intrinsic" {
     /// * Both `src` and `dst` must be properly aligned.
     ///
     /// Like [`read`], `copy` creates a bitwise copy of `T`, regardless of
-    /// whether `T` is [`Copy`].  If `T` is not [`Copy`], using both the values
+    /// whether `T` is [`Copy`]. If `T` is not [`Copy`], using both the values
     /// in the region beginning at `*src` and the region beginning at `*dst` can
     /// [violate memory safety][read-ownership].
     ///
@@ -1200,19 +1200,19 @@ extern "rust-intrinsic" {
     /// unless size is equal to zero.
     pub fn volatile_set_memory<T>(dst: *mut T, val: u8, count: usize);
 
-    /// Perform a volatile load from the `src` pointer.
+    /// Performs a volatile load from the `src` pointer.
     /// The stabilized version of this intrinsic is
     /// [`std::ptr::read_volatile`](../../std/ptr/fn.read_volatile.html).
     pub fn volatile_load<T>(src: *const T) -> T;
-    /// Perform a volatile store to the `dst` pointer.
+    /// Performs a volatile store to the `dst` pointer.
     /// The stabilized version of this intrinsic is
     /// [`std::ptr::write_volatile`](../../std/ptr/fn.write_volatile.html).
     pub fn volatile_store<T>(dst: *mut T, val: T);
 
-    /// Perform a volatile load from the `src` pointer
+    /// Performs a volatile load from the `src` pointer
     /// The pointer is not required to be aligned.
     pub fn unaligned_volatile_load<T>(src: *const T) -> T;
-    /// Perform a volatile store to the `dst` pointer.
+    /// Performs a volatile store to the `dst` pointer.
     /// The pointer is not required to be aligned.
     pub fn unaligned_volatile_store<T>(dst: *mut T, val: T);
 

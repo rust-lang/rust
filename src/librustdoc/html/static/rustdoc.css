@@ -767,11 +767,14 @@ body.blur > :not(#help) {
 }
 
 .module-item .stab {
-	display: inline;
-	border-width: 0;
-	padding: 0;
-	margin: 0;
-	background: inherit !important;
+	border-radius: 3px;
+	display: inline-block;
+	font-size: 80%;
+	line-height: 1.2;
+	margin-bottom: 0;
+	margin-right: .3em;
+	padding: 2px;
+	vertical-align: text-bottom;
 }
 
 .module-item.unstable {
@@ -1570,5 +1573,6 @@ div.name::before {
 }
 div.name.expand::before {
 	transform: rotate(90deg);
-	left: -14px;
+	left: -15px;
+	top: 2px;
 }

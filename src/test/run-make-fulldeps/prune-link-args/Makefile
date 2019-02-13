@@ -1,11 +1,9 @@
 -include ../tools.mk
-ifdef IS_WINDOWS
-# ignore windows
-RUSTC_FLAGS =
-else
+
+# ignore-windows
+
 # Notice the space in the end, this emulates the output of pkg-config
 RUSTC_FLAGS = -C link-args="-lc "
-endif
 
 all:
 	$(RUSTC) $(RUSTC_FLAGS) empty.rs

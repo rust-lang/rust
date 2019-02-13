@@ -130,7 +130,8 @@ impl<'tcx> Visitor<'tcx> for TempCollector<'tcx> {
     }
 }
 
-pub fn collect_temps(mir: &Mir, rpo: &mut ReversePostorder) -> IndexVec<Local, TempState> {
+pub fn collect_temps(mir: &Mir<'_>,
+                     rpo: &mut ReversePostorder<'_, '_>) -> IndexVec<Local, TempState> {
     let mut collector = TempCollector {
         temps: IndexVec::from_elem(TempState::Undefined, &mir.local_decls),
         span: mir.span,
@@ -181,7 +182,7 @@ impl<'a, 'tcx> Promoter<'a, 'tcx> {
         });
     }
 
-    /// Copy the initialization of this temp to the
+    /// Copies the initialization of this temp to the
     /// promoted MIR, recursing through temps.
     fn promote_temp(&mut self, temp: Local) -> Local {
         let old_keep_original = self.keep_original;

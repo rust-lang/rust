@@ -4,20 +4,20 @@
 //! Parsing does not happen at runtime: structures of `std::fmt::rt` are
 //! generated instead.
 
-#![doc(html_logo_url = "https://www.rust-lang.org/logos/rust-logo-128x128-blk-v2.png",
-       html_favicon_url = "https://doc.rust-lang.org/favicon.ico",
-       html_root_url = "https://doc.rust-lang.org/nightly/",
+#![doc(html_root_url = "https://doc.rust-lang.org/nightly/",
        html_playground_url = "https://play.rust-lang.org/",
        test(attr(deny(warnings))))]
+
+#![deny(rust_2018_idioms)]
 
 #![feature(nll)]
 #![feature(rustc_private)]
 
-pub use self::Piece::*;
-pub use self::Position::*;
-pub use self::Alignment::*;
-pub use self::Flag::*;
-pub use self::Count::*;
+pub use Piece::*;
+pub use Position::*;
+pub use Alignment::*;
+pub use Flag::*;
+pub use Count::*;
 
 use std::str;
 use std::string;

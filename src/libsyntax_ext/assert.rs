@@ -1,4 +1,5 @@
-use errors::DiagnosticBuilder;
+use crate::errors::DiagnosticBuilder;
+
 use syntax::ast::{self, *};
 use syntax::source_map::Spanned;
 use syntax::ext::base::*;
@@ -11,7 +12,7 @@ use syntax::tokenstream::{TokenStream, TokenTree};
 use syntax_pos::{Span, DUMMY_SP};
 
 pub fn expand_assert<'cx>(
-    cx: &'cx mut ExtCtxt,
+    cx: &'cx mut ExtCtxt<'_>,
     sp: Span,
     tts: &[TokenTree],
 ) -> Box<dyn MacResult + 'cx> {

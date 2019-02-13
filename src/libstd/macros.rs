@@ -11,8 +11,8 @@
 /// an unrecoverable problem.
 ///
 /// This macro is the perfect way to assert conditions in example code and in
-/// tests.  `panic!` is closely tied with the `unwrap` method of both [`Option`]
-/// and [`Result`][runwrap] enums.  Both implementations call `panic!` when they are set
+/// tests. `panic!` is closely tied with the `unwrap` method of both [`Option`]
+/// and [`Result`][runwrap] enums. Both implementations call `panic!` when they are set
 /// to None or Err variants.
 ///
 /// This macro is used to inject panic into a Rust thread, causing the thread to
@@ -21,7 +21,7 @@
 /// is transmitted.
 ///
 /// [`Result`] enum is often a better solution for recovering from errors than
-/// using the `panic!` macro.  This macro should be used to avoid proceeding using
+/// using the `panic!` macro. This macro should be used to avoid proceeding using
 /// incorrect values, such as from external sources. Detailed information about
 /// error handling is found in the [book].
 ///
@@ -53,7 +53,8 @@
 /// ```
 #[macro_export]
 #[stable(feature = "rust1", since = "1.0.0")]
-#[allow_internal_unstable]
+#[cfg_attr(stage0, allow_internal_unstable)]
+#[cfg_attr(not(stage0), allow_internal_unstable(__rust_unstable_column, libstd_sys_internals))]
 macro_rules! panic {
     () => ({
         panic!("explicit panic")
@@ -79,7 +80,7 @@ macro_rules! panic {
 /// necessary to use [`io::stdout().flush()`][flush] to ensure the output is emitted
 /// immediately.
 ///
-/// Use `print!` only for the primary output of your program.  Use
+/// Use `print!` only for the primary output of your program. Use
 /// [`eprint!`] instead to print error and progress messages.
 ///
 /// [`println!`]: ../std/macro.println.html
@@ -111,7 +112,8 @@ macro_rules! panic {
 /// ```
 #[macro_export]
 #[stable(feature = "rust1", since = "1.0.0")]
-#[allow_internal_unstable]
+#[cfg_attr(stage0, allow_internal_unstable)]
+#[cfg_attr(not(stage0), allow_internal_unstable(print_internals))]
 macro_rules! print {
     ($($arg:tt)*) => ($crate::io::_print(format_args!($($arg)*)));
 }
@@ -124,7 +126,7 @@ macro_rules! print {
 /// Use the [`format!`] syntax to write data to the standard output.
 /// See [`std::fmt`] for more information.
 ///
-/// Use `println!` only for the primary output of your program.  Use
+/// Use `println!` only for the primary output of your program. Use
 /// [`eprintln!`] instead to print error and progress messages.
 ///
 /// [`format!`]: ../std/macro.format.html
@@ -143,7 +145,8 @@ macro_rules! print {
 /// ```
 #[macro_export]
 #[stable(feature = "rust1", since = "1.0.0")]
-#[allow_internal_unstable]
+#[cfg_attr(stage0, allow_internal_unstable)]
+#[cfg_attr(not(stage0), allow_internal_unstable(print_internals, format_args_nl))]
 macro_rules! println {
     () => (print!("\n"));
     ($($arg:tt)*) => ({
@@ -154,10 +157,10 @@ macro_rules! println {
 /// Macro for printing to the standard error.
 ///
 /// Equivalent to the [`print!`] macro, except that output goes to
-/// [`io::stderr`] instead of `io::stdout`.  See [`print!`] for
+/// [`io::stderr`] instead of `io::stdout`. See [`print!`] for
 /// example usage.
 ///
-/// Use `eprint!` only for error and progress messages.  Use `print!`
+/// Use `eprint!` only for error and progress messages. Use `print!`
 /// instead for the primary output of your program.
 ///
 /// [`io::stderr`]: ../std/io/struct.Stderr.html
@@ -174,7 +177,8 @@ macro_rules! println {
 /// ```
 #[macro_export]
 #[stable(feature = "eprint", since = "1.19.0")]
-#[allow_internal_unstable]
+#[cfg_attr(stage0, allow_internal_unstable)]
+#[cfg_attr(not(stage0), allow_internal_unstable(print_internals))]
 macro_rules! eprint {
     ($($arg:tt)*) => ($crate::io::_eprint(format_args!($($arg)*)));
 }
@@ -182,10 +186,10 @@ macro_rules! eprint {
 /// Macro for printing to the standard error, with a newline.
 ///
 /// Equivalent to the [`println!`] macro, except that output goes to
-/// [`io::stderr`] instead of `io::stdout`.  See [`println!`] for
+/// [`io::stderr`] instead of `io::stdout`. See [`println!`] for
 /// example usage.
 ///
-/// Use `eprintln!` only for error and progress messages.  Use `println!`
+/// Use `eprintln!` only for error and progress messages. Use `println!`
 /// instead for the primary output of your program.
 ///
 /// [`io::stderr`]: ../std/io/struct.Stderr.html
@@ -202,7 +206,8 @@ macro_rules! eprint {
 /// ```
 #[macro_export]
 #[stable(feature = "eprint", since = "1.19.0")]
-#[allow_internal_unstable]
+#[cfg_attr(stage0, allow_internal_unstable)]
+#[cfg_attr(not(stage0), allow_internal_unstable(print_internals, format_args_nl))]
 macro_rules! eprintln {
     () => (eprint!("\n"));
     ($($arg:tt)*) => ({
@@ -325,7 +330,8 @@ macro_rules! dbg {
 /// A macro to await on an async call.
 #[macro_export]
 #[unstable(feature = "await_macro", issue = "50547")]
-#[allow_internal_unstable]
+#[cfg_attr(stage0, allow_internal_unstable)]
+#[cfg_attr(not(stage0), allow_internal_unstable(gen_future, generators))]
 #[allow_internal_unsafe]
 macro_rules! await {
     ($e:expr) => { {
@@ -462,16 +468,16 @@ mod builtin {
     /// The core macro for formatted string creation & output.
     ///
     /// This macro functions by taking a formatting string literal containing
-    /// `{}` for each additional argument passed.  `format_args!` prepares the
+    /// `{}` for each additional argument passed. `format_args!` prepares the
     /// additional parameters to ensure the output can be interpreted as a string
-    /// and canonicalizes the arguments into a single type.  Any value that implements
+    /// and canonicalizes the arguments into a single type. Any value that implements
     /// the [`Display`] trait can be passed to `format_args!`, as can any
     /// [`Debug`] implementation be passed to a `{:?}` within the formatting string.
     ///
     /// This macro produces a value of type [`fmt::Arguments`]. This value can be
     /// passed to the macros within [`std::fmt`] for performing useful redirection.
     /// All other formatting macros ([`format!`], [`write!`], [`println!`], etc) are
-    /// proxied through this one.  `format_args!`, unlike its derived macros, avoids
+    /// proxied through this one. `format_args!`, unlike its derived macros, avoids
     /// heap allocations.
     ///
     /// You can use the [`fmt::Arguments`] value that `format_args!` returns
@@ -554,7 +560,7 @@ mod builtin {
     /// If the named environment variable is present at compile time, this will
     /// expand into an expression of type `Option<&'static str>` whose value is
     /// `Some` of the value of the environment variable. If the environment
-    /// variable is not present, then this will expand to `None`.  See
+    /// variable is not present, then this will expand to `None`. See
     /// [`Option<T>`][option] for more information on this type.
     ///
     /// A compile time error is never emitted when using this macro regardless
@@ -904,7 +910,7 @@ mod builtin {
     /// # Custom Messages
     ///
     /// This macro has a second form, where a custom panic message can
-    /// be provided with or without arguments for formatting.  See [`std::fmt`]
+    /// be provided with or without arguments for formatting. See [`std::fmt`]
     /// for syntax for this form.
     ///
     /// [`panic!`]: macro.panic.html

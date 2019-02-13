@@ -1,6 +1,6 @@
 /*!
 
-# check.rs
+# typeck: check phase
 
 Within the check phase of type check, we check each item one at a time
 (bodies of function expressions are checked as part of the containing
@@ -83,15 +83,15 @@ mod generator_interior;
 pub mod intrinsic;
 mod op;
 
-use astconv::{AstConv, PathSeg};
+use crate::astconv::{AstConv, PathSeg};
 use errors::{Applicability, DiagnosticBuilder, DiagnosticId};
 use rustc::hir::{self, ExprKind, GenericArg, ItemKind, Node, PatKind, QPath};
 use rustc::hir::def::{CtorKind, Def};
 use rustc::hir::def_id::{CrateNum, DefId, LOCAL_CRATE};
 use rustc::hir::intravisit::{self, Visitor, NestedVisitorMap};
 use rustc::hir::itemlikevisit::ItemLikeVisitor;
-use middle::lang_items;
-use namespace::Namespace;
+use crate::middle::lang_items;
+use crate::namespace::Namespace;
 use rustc::infer::{self, InferCtxt, InferOk, InferResult, RegionVariableOrigin};
 use rustc::infer::canonical::{Canonical, OriginalQueryValues, QueryResponse};
 use rustc_data_structures::indexed_vec::Idx;
@@ -130,14 +130,14 @@ use std::mem::replace;
 use std::ops::{self, Deref};
 use std::slice;
 
-use require_c_abi_if_variadic;
-use session::{CompileIncomplete, Session};
-use session::config::EntryFnType;
-use TypeAndSubsts;
-use lint;
-use util::captures::Captures;
-use util::common::{ErrorReported, indenter};
-use util::nodemap::{DefIdMap, DefIdSet, FxHashMap, FxHashSet, NodeMap};
+use crate::require_c_abi_if_variadic;
+use crate::session::{CompileIncomplete, Session};
+use crate::session::config::EntryFnType;
+use crate::TypeAndSubsts;
+use crate::lint;
+use crate::util::captures::Captures;
+use crate::util::common::{ErrorReported, indenter};
+use crate::util::nodemap::{DefIdMap, DefIdSet, FxHashMap, FxHashSet, NodeMap};
 
 pub use self::Expectation::*;
 use self::autoderef::Autoderef;
@@ -154,7 +154,7 @@ pub struct LocalTy<'tcx> {
     revealed_ty: Ty<'tcx>
 }
 
-/// A wrapper for InferCtxt's `in_progress_tables` field.
+/// A wrapper for `InferCtxt`'s `in_progress_tables` field.
 #[derive(Copy, Clone)]
 struct MaybeInProgressTables<'a, 'tcx: 'a> {
     maybe_tables: Option<&'a RefCell<ty::TypeckTables<'tcx>>>,
@@ -180,7 +180,7 @@ impl<'a, 'tcx> MaybeInProgressTables<'a, 'tcx> {
     }
 }
 
-/// closures defined within the function.  For example:
+/// Closures defined within the function. For example:
 ///
 ///     fn foo() {
 ///         bar(move|| { ... })
@@ -249,10 +249,10 @@ pub enum Expectation<'tcx> {
     /// This expression is an `if` condition, it must resolve to `bool`.
     ExpectIfCondition,
 
-    /// This expression should have the type given (or some subtype)
+    /// This expression should have the type given (or some subtype).
     ExpectHasType(Ty<'tcx>),
 
-    /// This expression will be cast to the `Ty`
+    /// This expression will be cast to the `Ty`.
     ExpectCastableToType(Ty<'tcx>),
 
     /// This rvalue expression will be wrapped in `&` or `Box` and coerced
@@ -294,7 +294,7 @@ impl<'a, 'gcx, 'tcx> Expectation<'tcx> {
         }
     }
 
-    /// Provide an expectation for an rvalue expression given an *optional*
+    /// Provides an expectation for an rvalue expression given an *optional*
     /// hint, which is not required for type safety (the resulting type might
     /// be checked higher up, as is the case with `&expr` and `box expr`), but
     /// is useful in determining the concrete type.
@@ -449,7 +449,7 @@ pub enum Diverges {
     Always,
 
     /// Same as `Always` but with a reachability
-    /// warning already emitted
+    /// warning already emitted.
     WarnedAlways
 }
 
@@ -534,16 +534,16 @@ pub struct FnCtxt<'a, 'gcx: 'a+'tcx, 'tcx: 'a> {
     ps: RefCell<UnsafetyState>,
 
     /// Whether the last checked node generates a divergence (e.g.,
-    /// `return` will set this to Always). In general, when entering
+    /// `return` will set this to `Always`). In general, when entering
     /// an expression or other node in the tree, the initial value
     /// indicates whether prior parts of the containing expression may
     /// have diverged. It is then typically set to `Maybe` (and the
     /// old value remembered) for processing the subparts of the
     /// current expression. As each subpart is processed, they may set
-    /// the flag to `Always` etc.  Finally, at the end, we take the
+    /// the flag to `Always`, etc. Finally, at the end, we take the
     /// result and "union" it with the original value, so that when we
     /// return the flag indicates if any subpart of the parent
-    /// expression (up to and including this part) has diverged.  So,
+    /// expression (up to and including this part) has diverged. So,
     /// if you read it after evaluating a subexpression `X`, the value
     /// you get indicates whether any subexpression that was
     /// evaluating up to and including `X` diverged.
@@ -562,7 +562,7 @@ pub struct FnCtxt<'a, 'gcx: 'a+'tcx, 'tcx: 'a> {
     ///   foo();}` or `{return; 22}`, where we would warn on the
     ///   `foo()` or `22`.
     ///
-    /// An expression represents dead-code if, after checking it,
+    /// An expression represents dead code if, after checking it,
     /// the diverges flag is set to something other than `Maybe`.
     diverges: Cell<Diverges>,
 
@@ -581,9 +581,9 @@ impl<'a, 'gcx, 'tcx> Deref for FnCtxt<'a, 'gcx, 'tcx> {
     }
 }
 
-/// Helper type of a temporary returned by Inherited::build(...).
+/// Helper type of a temporary returned by `Inherited::build(...)`.
 /// Necessary because we can't write the following bound:
-/// F: for<'b, 'tcx> where 'gcx: 'tcx FnOnce(Inherited<'b, 'gcx, 'tcx>).
+/// `F: for<'b, 'tcx> where 'gcx: 'tcx FnOnce(Inherited<'b, 'gcx, 'tcx>)`.
 pub struct InheritedBuilder<'a, 'gcx: 'a+'tcx, 'tcx: 'a> {
     infcx: infer::InferCtxtBuilder<'a, 'gcx, 'tcx>,
     def_id: DefId,
@@ -760,13 +760,13 @@ fn adt_destructor<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     tcx.calculate_dtor(def_id, &mut dropck::check_drop_impl)
 }
 
-/// If this def-id is a "primary tables entry", returns `Some((body_id, decl))`
+/// If this `DefId` is a "primary tables entry", returns `Some((body_id, decl))`
 /// with information about it's body-id and fn-decl (if any). Otherwise,
 /// returns `None`.
 ///
 /// If this function returns "some", then `typeck_tables(def_id)` will
 /// succeed; if it returns `None`, then `typeck_tables(def_id)` may or
-/// may not succeed.  In some cases where this function returns `None`
+/// may not succeed. In some cases where this function returns `None`
 /// (notably closures), `typeck_tables(def_id)` would wind up
 /// redirecting to the owning function.
 fn primary_body_of<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
@@ -1037,7 +1037,7 @@ struct GeneratorTypes<'tcx> {
     /// Types that are captured (see `GeneratorInterior` for more).
     interior: ty::Ty<'tcx>,
 
-    /// Indicates if the generator is movable or static (immovable)
+    /// Indicates if the generator is movable or static (immovable).
     movability: hir::GeneratorMovability,
 }
 
@@ -1883,14 +1883,14 @@ pub fn check_enum<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         // Check for duplicate discriminant values
         if let Some(i) = disr_vals.iter().position(|&x| x.val == discr.val) {
             let variant_did = def.variants[VariantIdx::new(i)].did;
-            let variant_i_node_id = tcx.hir().as_local_node_id(variant_did).unwrap();
-            let variant_i = tcx.hir().expect_variant(variant_i_node_id);
+            let variant_i_hir_id = tcx.hir().as_local_hir_id(variant_did).unwrap();
+            let variant_i = tcx.hir().expect_variant(variant_i_hir_id);
             let i_span = match variant_i.node.disr_expr {
-                Some(ref expr) => tcx.hir().span(expr.id),
-                None => tcx.hir().span(variant_i_node_id)
+                Some(ref expr) => tcx.hir().span_by_hir_id(expr.hir_id),
+                None => tcx.hir().span_by_hir_id(variant_i_hir_id)
             };
             let span = match v.node.disr_expr {
-                Some(ref expr) => tcx.hir().span(expr.id),
+                Some(ref expr) => tcx.hir().span_by_hir_id(expr.hir_id),
                 None => v.span
             };
             struct_span_err!(tcx.sess, span, E0081,
@@ -2051,7 +2051,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         self.tcx.sess.err_count() - self.err_count_on_creation
     }
 
-    /// Produce warning on the given node, if the current point in the
+    /// Produces warning on the given node, if the current point in the
     /// function is unreachable, and there hasn't been another warning.
     fn warn_if_unreachable(&self, id: ast::NodeId, span: Span, kind: &str) {
         if self.diverges.get() == Diverges::Always {
@@ -2336,7 +2336,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         result
     }
 
-    /// Replace the opaque types from the given value with type variables,
+    /// Replaces the opaque types from the given value with type variables,
     /// and records the `OpaqueTypeMap` for later use during writeback. See
     /// `InferCtxt::instantiate_opaque_types` for more details.
     fn instantiate_opaque_types_from_value<T: TypeFoldable<'tcx>>(
@@ -3044,7 +3044,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         // arguments which we skipped above.
         if variadic {
             fn variadic_error<'tcx>(s: &Session, span: Span, t: Ty<'tcx>, cast_ty: &str) {
-                use structured_errors::{VariadicError, StructuredDiagnostic};
+                use crate::structured_errors::{VariadicError, StructuredDiagnostic};
                 VariadicError::new(s, span, t, cast_ty).diagnostic().emit();
             }
 
@@ -3685,8 +3685,8 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         display
     }
 
-    fn no_such_field_err<T: Display>(&self, span: Span, field: T, expr_t: &ty::TyS)
-        -> DiagnosticBuilder {
+    fn no_such_field_err<T: Display>(&self, span: Span, field: T, expr_t: &ty::TyS<'_>)
+        -> DiagnosticBuilder<'_> {
         type_error_struct!(self.tcx().sess, span, expr_t, E0609,
                            "no field `{}` on type `{}`",
                            field, expr_t)
@@ -4597,7 +4597,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                 if element_ty.references_error() {
                     tcx.types.err
                 } else if let Ok(count) = count {
-                    tcx.mk_ty(ty::Array(t, tcx.intern_lazy_const(ty::LazyConst::Evaluated(count))))
+                    tcx.mk_ty(ty::Array(t, tcx.mk_lazy_const(ty::LazyConst::Evaluated(count))))
                 } else {
                     tcx.types.err
                 }
@@ -4742,8 +4742,8 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         }
     }
 
-    // Resolve associated value path into a base type and associated constant or method definition.
-    // The newly resolved definition is written into `type_dependent_defs`.
+    /// Resolves associated value path into a base type and associated constant or method
+    /// definition. The newly resolved definition is written into `type_dependent_defs`.
     pub fn resolve_ty_and_def_ufcs<'b>(&self,
                                        qpath: &'b QPath,
                                        node_id: ast::NodeId,
@@ -5032,7 +5032,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         None
     }
 
-    /// Given a function block's `NodeId`, return its `FnDecl` if it exists, or `None` otherwise.
+    /// Given a function block's `NodeId`, returns its `FnDecl` if it exists, or `None` otherwise.
     fn get_parent_fn_decl(&self, blk_id: ast::NodeId) -> Option<(hir::FnDecl, ast::Ident)> {
         let parent = self.tcx.hir().get(self.tcx.hir().get_parent(blk_id));
         self.get_node_fn_decl(parent).map(|(fn_decl, ident, _)| (fn_decl, ident))
@@ -5074,11 +5074,11 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         })
     }
 
-    /// On implicit return expressions with mismatched types, provide the following suggestions:
+    /// On implicit return expressions with mismatched types, provides the following suggestions:
     ///
-    ///  - Point out the method's return type as the reason for the expected type
-    ///  - Possible missing semicolon
-    ///  - Possible missing return type if the return type is the default, and not `fn main()`
+    /// - Points out the method's return type as the reason for the expected type.
+    /// - Possible missing semicolon.
+    /// - Possible missing return type if the return type is the default, and not `fn main()`.
     pub fn suggest_mismatched_types_on_tail(
         &self,
         err: &mut DiagnosticBuilder<'tcx>,
@@ -5144,7 +5144,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         }
     }
 
-    /// A common error is to forget to add a semicolon at the end of a block:
+    /// A common error is to forget to add a semicolon at the end of a block, e.g.,
     ///
     /// ```
     /// fn foo() {
@@ -5257,7 +5257,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         &self,
         blk: &'gcx hir::Block,
         expected_ty: Ty<'tcx>,
-        err: &mut DiagnosticBuilder,
+        err: &mut DiagnosticBuilder<'_>,
     ) {
         if let Some(span_semi) = self.could_remove_semicolon(blk, expected_ty) {
             err.span_suggestion(
@@ -5650,7 +5650,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
             query_result)
     }
 
-    /// Returns whether an expression is contained inside the LHS of an assignment expression.
+    /// Returns `true` if an expression is contained inside the LHS of an assignment expression.
     fn expr_in_place(&self, mut expr_id: ast::NodeId) -> bool {
         let mut contained_in_place = false;
 
@@ -5703,8 +5703,8 @@ pub fn check_bounds_are_used<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     });
     for (&used, param) in types_used.iter().zip(types) {
         if !used {
-            let id = tcx.hir().as_local_node_id(param.def_id).unwrap();
-            let span = tcx.hir().span(id);
+            let id = tcx.hir().as_local_hir_id(param.def_id).unwrap();
+            let span = tcx.hir().span_by_hir_id(id);
             struct_span_err!(tcx.sess, span, E0091, "type parameter `{}` is unused", param.name)
                 .span_label(span, "unused type parameter")
                 .emit();
@@ -5725,7 +5725,7 @@ fn fatally_break_rust(sess: &Session) {
     );
     handler.note_without_error(&format!("rustc {} running on {}",
         option_env!("CFG_VERSION").unwrap_or("unknown_version"),
-        ::session::config::host_triple(),
+        crate::session::config::host_triple(),
     ));
 }
 

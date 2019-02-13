@@ -18,7 +18,7 @@ use foo::{Foo, bar::{baz::{}, foobar::*}, *};
 use foo::bar::baz::{*, *};
     //~^ ERROR unused import: `*`
 use foo::{};
-    //~^ ERROR unused import: `use foo::{};`
+    //~^ ERROR unused import: `foo::{}`
 
 fn main() {
     let _: Bar;

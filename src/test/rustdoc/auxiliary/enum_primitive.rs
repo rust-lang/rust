@@ -22,7 +22,7 @@
 //! This crate exports a macro `enum_from_primitive!` that wraps an
 //! `enum` declaration and automatically adds an implementation of
 //! `num::FromPrimitive` (reexported here), to allow conversion from
-//! primitive integers to the enum.  It therefore provides an
+//! primitive integers to the enum. It therefore provides an
 //! alternative to the built-in `#[derive(FromPrimitive)]`, which
 //! requires the unstable `std::num::FromPrimitive` and is disabled in
 //! Rust 1.0.

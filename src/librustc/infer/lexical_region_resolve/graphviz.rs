@@ -8,14 +8,14 @@
 /// For clarity, rename the graphviz crate locally to dot.
 use graphviz as dot;
 
-use hir::def_id::DefIndex;
-use ty;
-use middle::free_region::RegionRelations;
-use middle::region;
+use crate::hir::def_id::DefIndex;
+use crate::ty;
+use crate::middle::free_region::RegionRelations;
+use crate::middle::region;
 use super::Constraint;
-use infer::SubregionOrigin;
-use infer::region_constraints::RegionConstraintData;
-use util::nodemap::{FxHashMap, FxHashSet};
+use crate::infer::SubregionOrigin;
+use crate::infer::region_constraints::RegionConstraintData;
+use crate::util::nodemap::{FxHashMap, FxHashSet};
 
 use std::borrow::Cow;
 use std::collections::hash_map::Entry::Vacant;

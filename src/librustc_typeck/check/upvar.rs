@@ -32,9 +32,9 @@
 
 use super::FnCtxt;
 
-use middle::expr_use_visitor as euv;
-use middle::mem_categorization as mc;
-use middle::mem_categorization::Categorization;
+use crate::middle::expr_use_visitor as euv;
+use crate::middle::mem_categorization as mc;
+use crate::middle::mem_categorization::Categorization;
 use rustc::hir;
 use rustc::hir::def_id::DefId;
 use rustc::hir::def_id::LocalDefId;
@@ -650,6 +650,5 @@ impl<'a, 'gcx, 'tcx> euv::Delegate<'tcx> for InferBorrowKind<'a, 'gcx, 'tcx> {
 }
 
 fn var_name(tcx: TyCtxt, var_hir_id: hir::HirId) -> ast::Name {
-    let var_node_id = tcx.hir().hir_to_node_id(var_hir_id);
-    tcx.hir().name(var_node_id)
+    tcx.hir().name_by_hir_id(var_hir_id)
 }

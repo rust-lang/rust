@@ -1,5 +1,5 @@
 fn f<T>() -> bool {
-    struct S(T); //~ ERROR can't use type parameters from outer function
+    struct S(T); //~ ERROR can't use generic parameters from outer function
 
     true
 }

@@ -32,7 +32,7 @@ use rustc_typeck as typeck;
 use syntax::{self, ast, attr, diagnostics, visit};
 use syntax::early_buffered_lints::BufferedEarlyLint;
 use syntax::ext::base::ExtCtxt;
-use syntax::fold::Folder;
+use syntax::mut_visit::MutVisitor;
 use syntax::parse::{self, PResult};
 use syntax::util::node_count::NodeCounter;
 use syntax::util::lev_distance::find_best_match_for_name;
@@ -711,7 +711,7 @@ pub struct InnerExpansionResult<'a> {
     pub hir_forest: hir_map::Forest,
 }
 
-/// Run the "early phases" of the compiler: initial `cfg` processing,
+/// Runs the "early phases" of the compiler: initial `cfg` processing,
 /// loading compiler plugins (including those from `addl_plugins`),
 /// syntax expansion, secondary `cfg` expansion, synthesis of a test
 /// harness if one is to be provided, injection of a dependency on the
@@ -1000,12 +1000,12 @@ where
     });
     sess.profiler(|p| p.end_activity(ProfileCategory::Expansion));
 
-    krate = time(sess, "maybe building test harness", || {
+    time(sess, "maybe building test harness", || {
         syntax::test::modify_for_testing(
             &sess.parse_sess,
             &mut resolver,
             sess.opts.test,
-            krate,
+            &mut krate,
             sess.diagnostic(),
             &sess.features_untracked(),
         )
@@ -1014,7 +1014,7 @@ where
     // If we're actually rustdoc then there's no need to actually compile
     // anything, so switch everything to just looping
     if sess.opts.actually_rustdoc {
-        krate = ReplaceBodyWithLoop::new(sess).fold_crate(krate);
+        ReplaceBodyWithLoop::new(sess).visit_crate(&mut krate);
     }
 
     let (has_proc_macro_decls, has_global_allocator) = time(sess, "AST validation", || {
@@ -1045,11 +1045,11 @@ where
 
     if has_global_allocator {
         // Expand global allocators, which are treated as an in-tree proc macro
-        krate = time(sess, "creating allocators", || {
+        time(sess, "creating allocators", || {
             allocator::expand::modify(
                 &sess.parse_sess,
                 &mut resolver,
-                krate,
+                &mut krate,
                 crate_name.to_string(),
                 sess.diagnostic(),
             )
@@ -1167,7 +1167,7 @@ pub fn default_provide_extern(providers: &mut ty::query::Providers) {
     cstore::provide_extern(providers);
 }
 
-/// Run the resolution, typechecking, region checking and other
+/// Runs the resolution, typec-hecking, region checking and other
 /// miscellaneous analysis passes on the crate. Return various
 /// structures carrying the results of the analysis.
 pub fn phase_3_run_analysis_passes<'tcx, F, R>(
@@ -1222,26 +1222,28 @@ where
             // tcx available.
             time(sess, "dep graph tcx init", || rustc_incremental::dep_graph_tcx_init(tcx));
 
-            time(sess, "looking for entry point", || {
-                middle::entry::find_entry_point(tcx)
-            });
+            parallel!({
+                time(sess, "looking for entry point", || {
+                    middle::entry::find_entry_point(tcx)
+                });
 
-            time(sess, "looking for plugin registrar", || {
-                plugin::build::find_plugin_registrar(tcx)
-            });
+                time(sess, "looking for plugin registrar", || {
+                    plugin::build::find_plugin_registrar(tcx)
+                });
 
-            time(sess, "looking for derive registrar", || {
-                proc_macro_decls::find(tcx)
-            });
-
-            time(sess, "loop checking", || loops::check_crate(tcx));
-
-            time(sess, "attribute checking", || {
-                hir::check_attr::check_crate(tcx)
-            });
-
-            time(sess, "stability checking", || {
-                stability::check_unstable_api_usage(tcx)
+                time(sess, "looking for derive registrar", || {
+                    proc_macro_decls::find(tcx)
+                });
+            }, {
+                time(sess, "loop checking", || loops::check_crate(tcx));
+            }, {
+                time(sess, "attribute checking", || {
+                    hir::check_attr::check_crate(tcx)
+                });
+            }, {
+                time(sess, "stability checking", || {
+                    stability::check_unstable_api_usage(tcx)
+                });
             });
 
             // passes are timed inside typeck
@@ -1253,27 +1255,31 @@ where
                 }
             }
 
-            time(sess, "rvalue promotion", || {
-                rvalue_promotion::check_crate(tcx)
+            time(sess, "misc checking", || {
+                parallel!({
+                    time(sess, "rvalue promotion", || {
+                        rvalue_promotion::check_crate(tcx)
+                    });
+                }, {
+                    time(sess, "intrinsic checking", || {
+                        middle::intrinsicck::check_crate(tcx)
+                    });
+                }, {
+                    time(sess, "match checking", || mir::matchck_crate(tcx));
+                }, {
+                    // this must run before MIR dump, because
+                    // "not all control paths return a value" is reported here.
+                    //
+                    // maybe move the check to a MIR pass?
+                    time(sess, "liveness checking", || {
+                        middle::liveness::check_crate(tcx)
+                    });
+                });
             });
 
-            time(sess, "privacy checking", || {
-                rustc_privacy::check_crate(tcx)
-            });
-
-            time(sess, "intrinsic checking", || {
-                middle::intrinsicck::check_crate(tcx)
-            });
-
-            time(sess, "match checking", || mir::matchck_crate(tcx));
-
-            // this must run before MIR dump, because
-            // "not all control paths return a value" is reported here.
-            //
-            // maybe move the check to a MIR pass?
-            time(sess, "liveness checking", || {
-                middle::liveness::check_crate(tcx)
-            });
+            // Abort so we don't try to construct MIR with liveness errors.
+            // We also won't want to continue with errors from rvalue promotion
+            tcx.sess.abort_if_errors();
 
             time(sess, "borrow checking", || {
                 if tcx.use_ast_borrowck() {
@@ -1297,7 +1303,7 @@ where
 
             time(sess, "layout testing", || layout_test::test_layout(tcx));
 
-            // Avoid overwhelming user with errors if type checking failed.
+            // Avoid overwhelming user with errors if borrow checking failed.
             // I'm not sure how helpful this is, to be honest, but it avoids
             // a
             // lot of annoying errors in the compile-fail tests (basically,
@@ -1307,20 +1313,28 @@ where
                 return Ok(f(tcx, rx, sess.compile_status()));
             }
 
-            time(sess, "death checking", || middle::dead::check_crate(tcx));
-
-            time(sess, "unused lib feature checking", || {
-                stability::check_unused_or_stable_features(tcx)
+            time(sess, "misc checking", || {
+                parallel!({
+                    time(sess, "privacy checking", || {
+                        rustc_privacy::check_crate(tcx)
+                    });
+                }, {
+                    time(sess, "death checking", || middle::dead::check_crate(tcx));
+                },  {
+                    time(sess, "unused lib feature checking", || {
+                        stability::check_unused_or_stable_features(tcx)
+                    });
+                }, {
+                    time(sess, "lint checking", || lint::check_crate(tcx));
+                });
             });
-
-            time(sess, "lint checking", || lint::check_crate(tcx));
 
             return Ok(f(tcx, rx, tcx.sess.compile_status()));
         },
     )
 }
 
-/// Run the codegen backend, after which the AST and analysis can
+/// Runs the codegen backend, after which the AST and analysis can
 /// be discarded.
 pub fn phase_4_codegen<'a, 'tcx>(
     codegen_backend: &dyn CodegenBackend,

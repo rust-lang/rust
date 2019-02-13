@@ -1,13 +1,13 @@
-use self::ImportDirectiveSubclass::*;
+use ImportDirectiveSubclass::*;
 
-use {AmbiguityError, AmbiguityKind, AmbiguityErrorMisc};
-use {CrateLint, Module, ModuleOrUniformRoot, PerNS, ScopeSet, Weak};
-use Namespace::{self, TypeNS, MacroNS};
-use {NameBinding, NameBindingKind, ToNameBinding, PathResult, PrivacyError};
-use {Resolver, Segment};
-use {names_to_string, module_to_string};
-use {resolve_error, ResolutionError};
-use macros::ParentScope;
+use crate::{AmbiguityError, AmbiguityKind, AmbiguityErrorMisc};
+use crate::{CrateLint, Module, ModuleOrUniformRoot, PerNS, ScopeSet, Weak};
+use crate::Namespace::{self, TypeNS, MacroNS};
+use crate::{NameBinding, NameBindingKind, ToNameBinding, PathResult, PrivacyError};
+use crate::{Resolver, Segment};
+use crate::{names_to_string, module_to_string};
+use crate::{resolve_error, ResolutionError};
+use crate::macros::ParentScope;
 
 use rustc_data_structures::ptr_key::PtrKey;
 use rustc::ty;
@@ -17,13 +17,17 @@ use rustc::hir::def_id::{CrateNum, DefId};
 use rustc::hir::def::*;
 use rustc::session::DiagnosticMessageId;
 use rustc::util::nodemap::FxHashSet;
+use rustc::{bug, span_bug};
 
-use syntax::ast::{Ident, Name, NodeId, CRATE_NODE_ID};
+use syntax::ast::{self, Ident, Name, NodeId, CRATE_NODE_ID};
 use syntax::ext::base::Determinacy::{self, Determined, Undetermined};
 use syntax::ext::hygiene::Mark;
 use syntax::symbol::keywords;
 use syntax::util::lev_distance::find_best_match_for_name;
+use syntax::{struct_span_err, unwrap_or};
 use syntax_pos::{MultiSpan, Span};
+
+use log::debug;
 
 use std::cell::{Cell, RefCell};
 use std::{mem, ptr};
@@ -42,6 +46,8 @@ pub enum ImportDirectiveSubclass<'a> {
         target_bindings: PerNS<Cell<Option<&'a NameBinding<'a>>>>,
         /// `true` for `...::{self [as target]}` imports, `false` otherwise.
         type_ns_only: bool,
+        /// Did this import result from a nested import? ie. `use foo::{bar, baz};`
+        nested: bool,
     },
     GlobImport {
         is_prelude: bool,
@@ -58,25 +64,34 @@ pub enum ImportDirectiveSubclass<'a> {
 /// One import directive.
 #[derive(Debug,Clone)]
 crate struct ImportDirective<'a> {
-    /// The id of the `extern crate`, `UseTree` etc that imported this `ImportDirective`.
+    /// The ID of the `extern crate`, `UseTree` etc that imported this `ImportDirective`.
     ///
     /// In the case where the `ImportDirective` was expanded from a "nested" use tree,
-    /// this id is the id of the leaf tree. For example:
+    /// this id is the ID of the leaf tree. For example:
     ///
     /// ```ignore (pacify the mercilous tidy)
     /// use foo::bar::{a, b}
     /// ```
     ///
-    /// If this is the import directive for `foo::bar::a`, we would have the id of the `UseTree`
+    /// If this is the import directive for `foo::bar::a`, we would have the ID of the `UseTree`
     /// for `a` in this field.
     pub id: NodeId,
 
     /// The `id` of the "root" use-kind -- this is always the same as
     /// `id` except in the case of "nested" use trees, in which case
     /// it will be the `id` of the root use tree. e.g., in the example
-    /// from `id`, this would be the id of the `use foo::bar`
+    /// from `id`, this would be the ID of the `use foo::bar`
     /// `UseTree` node.
     pub root_id: NodeId,
+
+    /// Span of the entire use statement.
+    pub use_span: Span,
+
+    /// Span of the entire use statement with attributes.
+    pub use_span_with_attributes: Span,
+
+    /// Did the use statement have any attributes?
+    pub has_attributes: bool,
 
     /// Span of this use tree.
     pub span: Span,
@@ -96,6 +111,13 @@ crate struct ImportDirective<'a> {
 impl<'a> ImportDirective<'a> {
     pub fn is_glob(&self) -> bool {
         match self.subclass { ImportDirectiveSubclass::GlobImport { .. } => true, _ => false }
+    }
+
+    pub fn is_nested(&self) -> bool {
+        match self.subclass {
+            ImportDirectiveSubclass::SingleImport { nested, .. } => nested,
+            _ => false
+        }
     }
 
     crate fn crate_lint(&self) -> CrateLint {
@@ -390,6 +412,7 @@ impl<'a> Resolver<'a> {
                                 subclass: ImportDirectiveSubclass<'a>,
                                 span: Span,
                                 id: NodeId,
+                                item: &ast::Item,
                                 root_span: Span,
                                 root_id: NodeId,
                                 vis: ty::Visibility,
@@ -402,6 +425,9 @@ impl<'a> Resolver<'a> {
             subclass,
             span,
             id,
+            use_span: item.span,
+            use_span_with_attributes: item.span_with_attributes(),
+            has_attributes: !item.attrs.is_empty(),
             root_span,
             root_id,
             vis: Cell::new(vis),
@@ -601,14 +627,14 @@ pub struct ImportResolver<'a, 'b: 'a> {
     pub resolver: &'a mut Resolver<'b>,
 }
 
-impl<'a, 'b: 'a> ::std::ops::Deref for ImportResolver<'a, 'b> {
+impl<'a, 'b: 'a> std::ops::Deref for ImportResolver<'a, 'b> {
     type Target = Resolver<'b>;
     fn deref(&self) -> &Resolver<'b> {
         self.resolver
     }
 }
 
-impl<'a, 'b: 'a> ::std::ops::DerefMut for ImportResolver<'a, 'b> {
+impl<'a, 'b: 'a> std::ops::DerefMut for ImportResolver<'a, 'b> {
     fn deref_mut(&mut self) -> &mut Resolver<'b> {
         self.resolver
     }
@@ -784,7 +810,7 @@ impl<'a, 'b:'a> ImportResolver<'a, 'b> {
         let (source, target, source_bindings, target_bindings, type_ns_only) =
                 match directive.subclass {
             SingleImport { source, target, ref source_bindings,
-                           ref target_bindings, type_ns_only } =>
+                           ref target_bindings, type_ns_only, .. } =>
                 (source, target, source_bindings, target_bindings, type_ns_only),
             GlobImport { .. } => {
                 self.resolve_glob_import(directive);
@@ -905,7 +931,7 @@ impl<'a, 'b:'a> ImportResolver<'a, 'b> {
         let (ident, target, source_bindings, target_bindings, type_ns_only) =
                 match directive.subclass {
             SingleImport { source, target, ref source_bindings,
-                           ref target_bindings, type_ns_only } =>
+                           ref target_bindings, type_ns_only, .. } =>
                 (source, target, source_bindings, target_bindings, type_ns_only),
             GlobImport { is_prelude, ref max_vis } => {
                 if directive.module_path.len() <= 1 {
@@ -1294,7 +1320,7 @@ impl<'a, 'b:'a> ImportResolver<'a, 'b> {
 }
 
 fn import_path_to_string(names: &[Ident],
-                         subclass: &ImportDirectiveSubclass,
+                         subclass: &ImportDirectiveSubclass<'_>,
                          span: Span) -> String {
     let pos = names.iter()
         .position(|p| span == p.span && p.name != keywords::PathRoot.name());
@@ -1314,7 +1340,7 @@ fn import_path_to_string(names: &[Ident],
     }
 }
 
-fn import_directive_subclass_to_string(subclass: &ImportDirectiveSubclass) -> String {
+fn import_directive_subclass_to_string(subclass: &ImportDirectiveSubclass<'_>) -> String {
     match *subclass {
         SingleImport { source, .. } => source.to_string(),
         GlobImport { .. } => "*".to_string(),

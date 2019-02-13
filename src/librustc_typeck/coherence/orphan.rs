@@ -17,7 +17,7 @@ struct OrphanChecker<'cx, 'tcx: 'cx> {
 
 impl<'cx, 'tcx, 'v> ItemLikeVisitor<'v> for OrphanChecker<'cx, 'tcx> {
     /// Checks exactly one impl for orphan rules and other such
-    /// restrictions.  In this fn, it can happen that multiple errors
+    /// restrictions. In this fn, it can happen that multiple errors
     /// apply to a specific impl, so just return after reporting one
     /// to prevent inundating the user with a bunch of similar error
     /// reports.

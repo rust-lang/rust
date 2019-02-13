@@ -11,7 +11,7 @@ use rustc::ty::{self, Ty};
 use rustc_data_structures::sync::Lrc;
 use syntax_pos::Span;
 use super::FnCtxt;
-use util::nodemap::FxHashMap;
+use crate::util::nodemap::FxHashMap;
 
 struct InteriorVisitor<'a, 'gcx: 'a+'tcx, 'tcx: 'a> {
     fcx: &'a FnCtxt<'a, 'gcx, 'tcx>,

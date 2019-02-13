@@ -16,7 +16,7 @@ pub type RawHandle = raw::HANDLE;
 #[stable(feature = "rust1", since = "1.0.0")]
 pub type RawSocket = raw::SOCKET;
 
-/// Extract raw handles.
+/// Extracts raw handles.
 #[stable(feature = "rust1", since = "1.0.0")]
 pub trait AsRawHandle {
     /// Extracts the raw handle, without taking any ownership.
@@ -98,7 +98,7 @@ impl IntoRawHandle for fs::File {
     }
 }
 
-/// Extract raw sockets.
+/// Extracts raw sockets.
 #[stable(feature = "rust1", since = "1.0.0")]
 pub trait AsRawSocket {
     /// Extracts the underlying raw socket from this object.
@@ -106,7 +106,7 @@ pub trait AsRawSocket {
     fn as_raw_socket(&self) -> RawSocket;
 }
 
-/// Create I/O objects from raw sockets.
+/// Creates I/O objects from raw sockets.
 #[stable(feature = "from_raw_os", since = "1.1.0")]
 pub trait FromRawSocket {
     /// Creates a new I/O object from the given raw socket.

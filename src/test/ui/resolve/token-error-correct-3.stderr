@@ -1,19 +1,11 @@
-error: incorrect close delimiter: `}`
-  --> $DIR/token-error-correct-3.rs:20:9
-   |
-LL |         if !is_directory(path.as_ref()) { //~ ERROR: cannot find function `is_directory`
-   |                                         - close delimiter possibly meant for this
-LL |             callback(path.as_ref(); //~ ERROR expected one of
-   |                     - un-closed delimiter
-...
-LL |         } else { //~ ERROR: incorrect close delimiter: `}`
-   |         ^ incorrect close delimiter
-
 error: expected one of `)`, `,`, `.`, `?`, or an operator, found `;`
   --> $DIR/token-error-correct-3.rs:14:35
    |
 LL |             callback(path.as_ref(); //~ ERROR expected one of
-   |                                   ^ expected one of `)`, `,`, `.`, `?`, or an operator here
+   |                     -             ^
+   |                     |             |
+   |                     |             help: `)` may belong here
+   |                     unclosed delimiter
 
 error: expected one of `.`, `;`, `?`, `}`, or an operator, found `)`
   --> $DIR/token-error-correct-3.rs:20:9
@@ -21,7 +13,7 @@ error: expected one of `.`, `;`, `?`, `}`, or an operator, found `)`
 LL |             fs::create_dir_all(path.as_ref()).map(|()| true) //~ ERROR: mismatched types
    |                                                             - expected one of `.`, `;`, `?`, `}`, or an operator here
 ...
-LL |         } else { //~ ERROR: incorrect close delimiter: `}`
+LL |         } else {
    |         ^ unexpected token
 
 error[E0425]: cannot find function `is_directory` in this scope
@@ -41,7 +33,7 @@ LL |             fs::create_dir_all(path.as_ref()).map(|()| true) //~ ERROR: mis
    = note: expected type `()`
               found type `std::result::Result<bool, std::io::Error>`
 
-error: aborting due to 5 previous errors
+error: aborting due to 4 previous errors
 
 Some errors occurred: E0308, E0425.
 For more information about an error, try `rustc --explain E0308`.

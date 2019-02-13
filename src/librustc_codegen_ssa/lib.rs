@@ -1,6 +1,4 @@
-#![doc(html_logo_url = "https://www.rust-lang.org/logos/rust-logo-128x128-blk-v2.png",
-      html_favicon_url = "https://doc.rust-lang.org/favicon.ico",
-      html_root_url = "https://doc.rust-lang.org/nightly/")]
+#![doc(html_root_url = "https://doc.rust-lang.org/nightly/")]
 
 #![feature(box_patterns)]
 #![feature(box_syntax)]
@@ -12,6 +10,9 @@
 #![feature(nll)]
 #![allow(unused_attributes)]
 #![allow(dead_code)]
+#![deny(rust_2018_idioms)]
+#![allow(explicit_outlives_requirements)]
+#![allow(elided_lifetimes_in_paths)]
 
 #![recursion_limit="256"]
 
@@ -19,27 +20,9 @@
 //! The backend-agnostic functions of this crate use functions defined in various traits that
 //! have to be implemented by each backends.
 
-#[macro_use] extern crate bitflags;
 #[macro_use] extern crate log;
-extern crate rustc_apfloat;
-#[macro_use]  extern crate rustc;
-extern crate rustc_target;
-extern crate rustc_mir;
+#[macro_use] extern crate rustc;
 #[macro_use] extern crate syntax;
-extern crate syntax_pos;
-extern crate rustc_incremental;
-extern crate rustc_codegen_utils;
-extern crate rustc_data_structures;
-extern crate rustc_allocator;
-extern crate rustc_fs_util;
-extern crate serialize;
-extern crate rustc_errors;
-extern crate rustc_demangle;
-extern crate cc;
-extern crate libc;
-extern crate jobserver;
-extern crate memmap;
-extern crate num_cpus;
 
 use std::path::PathBuf;
 use rustc::dep_graph::WorkProduct;
@@ -70,7 +53,7 @@ pub mod back;
 pub struct ModuleCodegen<M> {
     /// The name of the module. When the crate may be saved between
     /// compilations, incremental compilation requires that name be
-    /// unique amongst **all** crates.  Therefore, it should contain
+    /// unique amongst **all** crates. Therefore, it should contain
     /// something unique to this crate (e.g., a module path) as well
     /// as the crate name and disambiguator.
     /// We currently generate these names via CodegenUnit::build_cgu_name().
@@ -135,7 +118,7 @@ pub enum ModuleKind {
     Allocator,
 }
 
-bitflags! {
+bitflags::bitflags! {
     pub struct MemFlags: u8 {
         const VOLATILE = 1 << 0;
         const NONTEMPORAL = 1 << 1;
@@ -143,7 +126,7 @@ bitflags! {
     }
 }
 
-/// Misc info we load from metadata to persist beyond the tcx
+/// Misc info we load from metadata to persist beyond the tcx.
 pub struct CrateInfo {
     pub panic_runtime: Option<CrateNum>,
     pub compiler_builtins: Option<CrateNum>,

@@ -50,11 +50,11 @@ pub const CAPACITY: usize = 2 * B - 1;
 ///
 /// We have a separate type for the header and rely on it matching the prefix of `LeafNode`, in
 /// order to statically allocate a single dummy node to avoid allocations. This struct is
-/// `repr(C)` to prevent them from being reordered.  `LeafNode` does not just contain a
+/// `repr(C)` to prevent them from being reordered. `LeafNode` does not just contain a
 /// `NodeHeader` because we do not want unnecessary padding between `len` and the keys.
-/// Crucially, `NodeHeader` can be safely transmuted to different K and V.  (This is exploited
+/// Crucially, `NodeHeader` can be safely transmuted to different K and V. (This is exploited
 /// by `as_header`.)
-/// See `into_key_slice` for an explanation of K2.  K2 cannot be safely transmuted around
+/// See `into_key_slice` for an explanation of K2. K2 cannot be safely transmuted around
 /// because the size of `NodeHeader` depends on its alignment!
 #[repr(C)]
 struct NodeHeader<K, V, K2 = ()> {
@@ -1295,7 +1295,7 @@ impl<'a, K, V> Handle<NodeRef<marker::Mut<'a>, K, V, marker::Internal>, marker::
         }
     }
 
-    /// Returns whether it is valid to call `.merge()`, i.e., whether there is enough room in
+    /// Returns `true` if it is valid to call `.merge()`, i.e., whether there is enough room in
     /// a node to hold the combination of the nodes to the left and right of this handle along
     /// with the key/value pair at this handle.
     pub fn can_merge(&self) -> bool {
@@ -1573,7 +1573,7 @@ unsafe fn move_edges<K, V>(
 impl<BorrowType, K, V, HandleType>
         Handle<NodeRef<BorrowType, K, V, marker::LeafOrInternal>, HandleType> {
 
-    /// Check whether the underlying node is an `Internal` node or a `Leaf` node.
+    /// Checks whether the underlying node is an `Internal` node or a `Leaf` node.
     pub fn force(self) -> ForceResult<
         Handle<NodeRef<BorrowType, K, V, marker::Leaf>, HandleType>,
         Handle<NodeRef<BorrowType, K, V, marker::Internal>, HandleType>

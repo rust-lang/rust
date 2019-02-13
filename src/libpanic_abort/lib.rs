@@ -5,12 +5,12 @@
 
 #![no_std]
 #![unstable(feature = "panic_abort", issue = "32837")]
-#![doc(html_logo_url = "https://www.rust-lang.org/logos/rust-logo-128x128-blk-v2.png",
-       html_favicon_url = "https://doc.rust-lang.org/favicon.ico",
-       html_root_url = "https://doc.rust-lang.org/nightly/",
+#![doc(html_root_url = "https://doc.rust-lang.org/nightly/",
        issue_tracker_base_url = "https://github.com/rust-lang/rust/issues/")]
 #![panic_runtime]
+
 #![allow(unused_features)]
+#![deny(rust_2018_idioms)]
 
 #![feature(core_intrinsics)]
 #![feature(libc)]
@@ -46,7 +46,6 @@ pub unsafe extern fn __rust_start_panic(_payload: usize) -> u32 {
 
     #[cfg(any(unix, target_os = "cloudabi"))]
     unsafe fn abort() -> ! {
-        extern crate libc;
         libc::abort();
     }
 

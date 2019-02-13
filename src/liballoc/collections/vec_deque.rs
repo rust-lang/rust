@@ -124,7 +124,7 @@ impl<T> VecDeque<T> {
         ptr::write(self.ptr().add(off), value);
     }
 
-    /// Returns `true` if and only if the buffer is at full capacity.
+    /// Returns `true` if the buffer is at full capacity.
     #[inline]
     fn is_full(&self) -> bool {
         self.cap() - self.len() == 1
@@ -560,7 +560,7 @@ impl<T> VecDeque<T> {
     /// Does nothing if the capacity is already sufficient.
     ///
     /// Note that the allocator may give the collection more space than it
-    /// requests. Therefore capacity can not be relied upon to be precisely
+    /// requests. Therefore, capacity can not be relied upon to be precisely
     /// minimal. Prefer `reserve` if future insertions are expected.
     ///
     /// # Errors
@@ -924,7 +924,7 @@ impl<T> VecDeque<T> {
         self.tail == self.head
     }
 
-    /// Create a draining iterator that removes the specified range in the
+    /// Creates a draining iterator that removes the specified range in the
     /// `VecDeque` and yields the removed items.
     ///
     /// Note 1: The element range is removed even if the iterator is not
@@ -932,7 +932,7 @@ impl<T> VecDeque<T> {
     ///
     /// Note 2: It is unspecified how many elements are removed from the deque,
     /// if the `Drain` value is not dropped, but the borrow it holds expires
-    /// (eg. due to mem::forget).
+    /// (e.g., due to `mem::forget`).
     ///
     /// # Panics
     ///
@@ -1922,7 +1922,7 @@ impl<T> VecDeque<T> {
     ///
     /// # Panics
     ///
-    /// If `mid` is greater than `len()`.  Note that `mid == len()`
+    /// If `mid` is greater than `len()`. Note that `mid == len()`
     /// does _not_ panic and is a no-op rotation.
     ///
     /// # Complexity
@@ -1967,7 +1967,7 @@ impl<T> VecDeque<T> {
     ///
     /// # Panics
     ///
-    /// If `k` is greater than `len()`.  Note that `k == len()`
+    /// If `k` is greater than `len()`. Note that `k == len()`
     /// does _not_ panic and is a no-op rotation.
     ///
     /// # Complexity

@@ -5,9 +5,9 @@
 //! The providers for the queries defined here can be found in
 //! `librustc_traits`.
 
-use infer::canonical::Canonical;
-use ty::error::TypeError;
-use ty::{self, Ty};
+use crate::infer::canonical::Canonical;
+use crate::ty::error::TypeError;
+use crate::ty::{self, Ty};
 
 pub mod dropck_outlives;
 pub mod evaluate_obligation;

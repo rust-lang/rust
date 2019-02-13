@@ -1,6 +1,6 @@
-//! Unwinding for wasm32
+//! Unwinding for *wasm32* target.
 //!
-//! Right now we don't support this, so this is just stubs
+//! Right now we don't support this, so this is just stubs.
 
 use alloc::boxed::Box;
 use core::any::Any;

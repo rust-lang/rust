@@ -1,20 +1,21 @@
 use std::collections::BTreeMap;
 use std::env;
 
-use ast;
-use ast::{Ident, Name};
-use source_map;
+use crate::ast::{self, Ident, Name};
+use crate::source_map;
+use crate::ext::base::{ExtCtxt, MacEager, MacResult};
+use crate::ext::build::AstBuilder;
+use crate::parse::token;
+use crate::ptr::P;
+use crate::symbol::{keywords, Symbol};
+use crate::tokenstream::{TokenTree};
+
+use smallvec::smallvec;
 use syntax_pos::Span;
-use ext::base::{ExtCtxt, MacEager, MacResult};
-use ext::build::AstBuilder;
-use parse::token;
-use ptr::P;
-use symbol::{keywords, Symbol};
-use tokenstream::{TokenTree};
 
-use diagnostics::metadata::output_metadata;
+use crate::diagnostics::metadata::output_metadata;
 
-pub use errors::*;
+pub use crate::errors::*;
 
 // Maximum width of any line in an extended error description (inclusive).
 const MAX_DESCRIPTION_WIDTH: usize = 80;
@@ -28,7 +29,7 @@ pub struct ErrorInfo {
 /// Mapping from error codes to metadata.
 pub type ErrorMap = BTreeMap<Name, ErrorInfo>;
 
-pub fn expand_diagnostic_used<'cx>(ecx: &'cx mut ExtCtxt,
+pub fn expand_diagnostic_used<'cx>(ecx: &'cx mut ExtCtxt<'_>,
                                    span: Span,
                                    token_tree: &[TokenTree])
                                    -> Box<dyn MacResult+'cx> {
@@ -61,7 +62,7 @@ pub fn expand_diagnostic_used<'cx>(ecx: &'cx mut ExtCtxt,
     MacEager::expr(ecx.expr_tuple(span, Vec::new()))
 }
 
-pub fn expand_register_diagnostic<'cx>(ecx: &'cx mut ExtCtxt,
+pub fn expand_register_diagnostic<'cx>(ecx: &'cx mut ExtCtxt<'_>,
                                        span: Span,
                                        token_tree: &[TokenTree])
                                        -> Box<dyn MacResult+'cx> {
@@ -134,7 +135,7 @@ pub fn expand_register_diagnostic<'cx>(ecx: &'cx mut ExtCtxt,
 }
 
 #[allow(deprecated)]
-pub fn expand_build_diagnostic_array<'cx>(ecx: &'cx mut ExtCtxt,
+pub fn expand_build_diagnostic_array<'cx>(ecx: &'cx mut ExtCtxt<'_>,
                                           span: Span,
                                           token_tree: &[TokenTree])
                                           -> Box<dyn MacResult+'cx> {

@@ -1,5 +1,5 @@
-use spec::{LinkerFlavor, Target, TargetOptions, TargetResult, PanicStrategy, MergeFunctions};
-use spec::abi::Abi;
+use crate::spec::{LinkerFlavor, Target, TargetOptions, TargetResult, PanicStrategy, MergeFunctions};
+use crate::spec::abi::Abi;
 
 pub fn target() -> TargetResult {
     Ok(Target {

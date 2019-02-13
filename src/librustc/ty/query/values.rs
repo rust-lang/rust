@@ -1,4 +1,4 @@
-use ty::{self, Ty, TyCtxt};
+use crate::ty::{self, Ty, TyCtxt};
 
 use syntax::symbol::Symbol;
 

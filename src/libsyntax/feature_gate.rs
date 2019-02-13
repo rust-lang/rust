@@ -12,21 +12,23 @@
 //! gate usage is added, *do not remove it again* even once the feature
 //! becomes stable.
 
-use self::AttributeType::*;
-use self::AttributeGate::*;
+use AttributeType::*;
+use AttributeGate::*;
+
+use crate::ast::{self, NodeId, GenericParam, GenericParamKind, PatKind, RangeEnd};
+use crate::attr;
+use crate::early_buffered_lints::BufferedEarlyLintId;
+use crate::source_map::Spanned;
+use crate::edition::{ALL_EDITIONS, Edition};
+use crate::errors::{DiagnosticBuilder, Handler};
+use crate::visit::{self, FnKind, Visitor};
+use crate::parse::ParseSess;
+use crate::symbol::Symbol;
 
 use rustc_data_structures::fx::FxHashMap;
 use rustc_target::spec::abi::Abi;
-use ast::{self, NodeId, PatKind, RangeEnd};
-use attr;
-use early_buffered_lints::BufferedEarlyLintId;
-use source_map::Spanned;
-use edition::{ALL_EDITIONS, Edition};
 use syntax_pos::{Span, DUMMY_SP};
-use errors::{DiagnosticBuilder, Handler};
-use visit::{self, FnKind, Visitor};
-use parse::ParseSess;
-use symbol::Symbol;
+use log::debug;
 
 use std::env;
 
@@ -460,8 +462,14 @@ declare_features! (
     // Re-Rebalance coherence
     (active, re_rebalance_coherence, "1.32.0", Some(55437), None),
 
+    // Const generic types.
+    (active, const_generics, "1.34.0", Some(44580), None),
+
     // #[optimize(X)]
     (active, optimize_attribute, "1.34.0", Some(54882), None),
+
+    // #[repr(align(X))] on enums
+    (active, repr_align_enum, "1.34.0", Some(57996), None),
 );
 
 declare_features! (
@@ -729,7 +737,7 @@ pub struct AttributeTemplate {
 }
 
 impl AttributeTemplate {
-    /// Check that the given meta-item is compatible with this template.
+    /// Checks that the given meta-item is compatible with this template.
     fn compatible(&self, meta_item_kind: &ast::MetaItemKind) -> bool {
         match meta_item_kind {
             ast::MetaItemKind::Word => self.word,
@@ -741,7 +749,7 @@ impl AttributeTemplate {
 }
 
 /// A convenience macro for constructing attribute templates.
-/// E.g. `template!(Word, List: "description")` means that the attribute
+/// E.g., `template!(Word, List: "description")` means that the attribute
 /// supports forms `#[attr]` and `#[attr(description)]`.
 macro_rules! template {
     (Word) => { template!(@ true, None, None) };
@@ -778,8 +786,8 @@ pub enum Stability {
 }
 
 // fn() is not Debug
-impl ::std::fmt::Debug for AttributeGate {
-    fn fmt(&self, fmt: &mut ::std::fmt::Formatter) -> ::std::fmt::Result {
+impl std::fmt::Debug for AttributeGate {
+    fn fmt(&self, fmt: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match *self {
             Gated(ref stab, name, expl, _) =>
                 write!(fmt, "Gated({:?}, {}, {})", stab, name, expl),
@@ -1083,7 +1091,8 @@ pub const BUILTIN_ATTRIBUTES: &[(&str, AttributeType, AttributeTemplate, Attribu
                                               stable",
                                              cfg_fn!(profiler_runtime))),
 
-    ("allow_internal_unstable", Normal, template!(Word), Gated(Stability::Unstable,
+    ("allow_internal_unstable", Normal, template!(Word, List: "feat1, feat2, ..."),
+                                              Gated(Stability::Unstable,
                                               "allow_internal_unstable",
                                               EXPLAIN_ALLOW_INTERNAL_UNSTABLE,
                                               cfg_fn!(allow_internal_unstable))),
@@ -1191,7 +1200,7 @@ pub const BUILTIN_ATTRIBUTES: &[(&str, AttributeType, AttributeTemplate, Attribu
     ("proc_macro", Normal, template!(Word), Ungated),
 
     ("rustc_proc_macro_decls", Normal, template!(Word), Gated(Stability::Unstable,
-                                             "rustc_proc_macro_decls",
+                                             "rustc_attrs",
                                              "used internally by rustc",
                                              cfg_fn!(rustc_attrs))),
 
@@ -1276,7 +1285,7 @@ impl GatedCfg {
 
     pub fn check_and_emit(&self, sess: &ParseSess, features: &Features) {
         let (cfg, feature, has_feature) = GATED_CFGS[self.index];
-        if !has_feature(features) && !self.span.allows_unstable() {
+        if !has_feature(features) && !self.span.allows_unstable(feature) {
             let explain = format!("`cfg({})` is experimental and subject to change", cfg);
             emit_feature_err(sess, feature, self.span, GateIssue::Language, &explain);
         }
@@ -1295,7 +1304,7 @@ macro_rules! gate_feature_fn {
              name, explain, level) = ($cx, $has_feature, $span, $name, $explain, $level);
         let has_feature: bool = has_feature(&$cx.features);
         debug!("gate_feature(feature = {:?}, span = {:?}); has? {}", name, span, has_feature);
-        if !has_feature && !span.allows_unstable() {
+        if !has_feature && !span.allows_unstable($name) {
             leveled_feature_err(cx.parse_sess, name, span, GateIssue::Language, explain, level)
                 .emit();
         }
@@ -1320,7 +1329,11 @@ impl<'a> Context<'a> {
         for &(n, ty, _template, ref gateage) in BUILTIN_ATTRIBUTES {
             if name == n {
                 if let Gated(_, name, desc, ref has_feature) = *gateage {
-                    gate_feature_fn!(self, has_feature, attr.span, name, desc, GateStrength::Hard);
+                    if !attr.span.allows_unstable(name) {
+                        gate_feature_fn!(
+                            self, has_feature, attr.span, name, desc, GateStrength::Hard
+                        );
+                    }
                 } else if name == "doc" {
                     if let Some(content) = attr.meta_item_list() {
                         if content.iter().any(|c| c.check_name("include")) {
@@ -1485,13 +1498,13 @@ struct PostExpansionVisitor<'a> {
 macro_rules! gate_feature_post {
     ($cx: expr, $feature: ident, $span: expr, $explain: expr) => {{
         let (cx, span) = ($cx, $span);
-        if !span.allows_unstable() {
+        if !span.allows_unstable(stringify!($feature)) {
             gate_feature!(cx.context, $feature, span, $explain)
         }
     }};
     ($cx: expr, $feature: ident, $span: expr, $explain: expr, $level: expr) => {{
         let (cx, span) = ($cx, $span);
-        if !span.allows_unstable() {
+        if !span.allows_unstable(stringify!($feature)) {
             gate_feature!(cx.context, $feature, span, $explain, $level)
         }
     }}
@@ -1602,10 +1615,8 @@ impl<'a> PostExpansionVisitor<'a> {
 
 impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
     fn visit_attribute(&mut self, attr: &ast::Attribute) {
-        if !attr.span.allows_unstable() {
-            // check for gated attributes
-            self.context.check_attribute(attr, false);
-        }
+        // check for gated attributes
+        self.context.check_attribute(attr, false);
 
         if attr.check_name("doc") {
             if let Some(content) = attr.meta_item_list() {
@@ -1693,6 +1704,17 @@ impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
                         if item.check_name("simd") {
                             gate_feature_post!(&self, repr_simd, attr.span,
                                                "SIMD types are experimental and possibly buggy");
+                        }
+                    }
+                }
+            }
+
+            ast::ItemKind::Enum(..) => {
+                for attr in attr::filter_by_name(&i.attrs[..], "repr") {
+                    for item in attr.meta_item_list().unwrap_or_else(Vec::new) {
+                        if item.check_name("align") {
+                            gate_feature_post!(&self, repr_align_enum, attr.span,
+                                               "`#[repr(align(x))]` on enums is experimental");
                         }
                     }
                 }
@@ -1883,6 +1905,14 @@ impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
         visit::walk_fn(self, fn_kind, fn_decl, span);
     }
 
+    fn visit_generic_param(&mut self, param: &'a GenericParam) {
+        if let GenericParamKind::Const { .. } = param.kind {
+            gate_feature_post!(&self, const_generics, param.ident.span,
+                "const generics are unstable");
+        }
+        visit::walk_generic_param(self, param);
+    }
+
     fn visit_trait_item(&mut self, ti: &'a ast::TraitItem) {
         match ti.node {
             ast::TraitItemKind::Method(ref sig, ref block) => {
@@ -1968,7 +1998,7 @@ pub fn get_features(span_handler: &Handler, krate_attrs: &[ast::Attribute],
     // Some features are known to be incomplete and using them is likely to have
     // unanticipated results, such as compiler crashes. We warn the user about these
     // to alert them.
-    let incomplete_features = ["generic_associated_types"];
+    let incomplete_features = ["generic_associated_types", "const_generics"];
 
     let mut features = Features::new();
     let mut edition_enabled_features = FxHashMap::default();
@@ -2118,8 +2148,7 @@ pub fn check_crate(krate: &ast::Crate,
 
 #[derive(Clone, Copy, Hash)]
 pub enum UnstableFeatures {
-    /// Hard errors for unstable features are active, as on
-    /// beta/stable channels.
+    /// Hard errors for unstable features are active, as on beta/stable channels.
     Disallow,
     /// Allow features to be activated, as on nightly.
     Allow,

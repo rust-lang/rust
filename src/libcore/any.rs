@@ -18,7 +18,7 @@
 //!
 //! Consider a situation where we want to log out a value passed to a function.
 //! We know the value we're working on implements Debug, but we don't know its
-//! concrete type.  We want to give special treatment to certain types: in this
+//! concrete type. We want to give special treatment to certain types: in this
 //! case printing out the length of String values prior to their value.
 //! We don't know the concrete type of our value at compile time, so we need to
 //! use runtime reflection instead.
@@ -31,8 +31,8 @@
 //! fn log<T: Any + Debug>(value: &T) {
 //!     let value_any = value as &dyn Any;
 //!
-//!     // try to convert our value to a String.  If successful, we want to
-//!     // output the String's length as well as its value.  If not, it's a
+//!     // Try to convert our value to a `String`. If successful, we want to
+//!     // output the String`'s length as well as its value. If not, it's a
 //!     // different type: just print it out unadorned.
 //!     match value_any.downcast_ref::<String>() {
 //!         Some(as_string) => {

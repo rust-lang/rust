@@ -1,11 +1,11 @@
-use hir::{self, Local, Pat, Body, HirId};
-use hir::intravisit::{self, Visitor, NestedVisitorMap};
-use infer::InferCtxt;
-use infer::type_variable::TypeVariableOrigin;
-use ty::{self, Ty, Infer, TyVar};
+use crate::hir::{self, Local, Pat, Body, HirId};
+use crate::hir::intravisit::{self, Visitor, NestedVisitorMap};
+use crate::infer::InferCtxt;
+use crate::infer::type_variable::TypeVariableOrigin;
+use crate::ty::{self, Ty, Infer, TyVar};
 use syntax::source_map::CompilerDesugaringKind;
 use syntax_pos::Span;
-use errors::DiagnosticBuilder;
+use crate::errors::DiagnosticBuilder;
 
 struct FindLocalByTypeVisitor<'a, 'gcx: 'a + 'tcx, 'tcx: 'a> {
     infcx: &'a InferCtxt<'a, 'gcx, 'tcx>,

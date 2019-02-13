@@ -7,6 +7,7 @@ use result::Result;
 
 /// Indicates whether a value is available or if the current task has been
 /// scheduled to receive a wakeup instead.
+#[must_use = "this `Poll` may be a `Pending` variant, which should be handled"]
 #[derive(Copy, Clone, Debug, Eq, PartialEq, Ord, PartialOrd, Hash)]
 pub enum Poll<T> {
     /// Represents that a value is immediately ready.
@@ -21,7 +22,7 @@ pub enum Poll<T> {
 }
 
 impl<T> Poll<T> {
-    /// Change the ready value of this `Poll` with the closure provided
+    /// Changes the ready value of this `Poll` with the closure provided.
     pub fn map<U, F>(self, f: F) -> Poll<U>
         where F: FnOnce(T) -> U
     {
@@ -31,7 +32,7 @@ impl<T> Poll<T> {
         }
     }
 
-    /// Returns whether this is `Poll::Ready`
+    /// Returns `true` if this is `Poll::Ready`
     #[inline]
     pub fn is_ready(&self) -> bool {
         match *self {
@@ -40,7 +41,7 @@ impl<T> Poll<T> {
         }
     }
 
-    /// Returns whether this is `Poll::Pending`
+    /// Returns `true` if this is `Poll::Pending`
     #[inline]
     pub fn is_pending(&self) -> bool {
         !self.is_ready()
@@ -48,7 +49,7 @@ impl<T> Poll<T> {
 }
 
 impl<T, E> Poll<Result<T, E>> {
-    /// Change the success value of this `Poll` with the closure provided
+    /// Changes the success value of this `Poll` with the closure provided.
     pub fn map_ok<U, F>(self, f: F) -> Poll<Result<U, E>>
         where F: FnOnce(T) -> U
     {
@@ -59,7 +60,7 @@ impl<T, E> Poll<Result<T, E>> {
         }
     }
 
-    /// Change the error value of this `Poll` with the closure provided
+    /// Changes the error value of this `Poll` with the closure provided.
     pub fn map_err<U, F>(self, f: F) -> Poll<Result<T, U>>
         where F: FnOnce(E) -> U
     {

@@ -1,18 +1,18 @@
-use common::CompareMode;
-use common::{expected_output_path, UI_EXTENSIONS, UI_FIXED, UI_STDERR, UI_STDOUT};
-use common::{output_base_dir, output_base_name, output_testname_unique};
-use common::{Codegen, CodegenUnits, DebugInfoBoth, DebugInfoGdb, DebugInfoLldb, Rustdoc};
-use common::{CompileFail, Pretty, RunFail, RunPass, RunPassValgrind};
-use common::{Config, TestPaths};
-use common::{Incremental, MirOpt, RunMake, Ui};
+use crate::common::CompareMode;
+use crate::common::{expected_output_path, UI_EXTENSIONS, UI_FIXED, UI_STDERR, UI_STDOUT};
+use crate::common::{output_base_dir, output_base_name, output_testname_unique};
+use crate::common::{Codegen, CodegenUnits, DebugInfoBoth, DebugInfoGdb, DebugInfoLldb, Rustdoc};
+use crate::common::{CompileFail, Pretty, RunFail, RunPass, RunPassValgrind};
+use crate::common::{Config, TestPaths};
+use crate::common::{Incremental, MirOpt, RunMake, Ui};
 use diff;
-use errors::{self, Error, ErrorKind};
+use crate::errors::{self, Error, ErrorKind};
 use filetime::FileTime;
-use header::TestProps;
-use json;
+use crate::header::TestProps;
+use crate::json;
 use regex::Regex;
 use rustfix::{apply_suggestions, get_suggestions_from_json, Filter};
-use util::{logv, PathBufExt};
+use crate::util::{logv, PathBufExt};
 
 use std::collections::hash_map::DefaultHasher;
 use std::collections::{HashMap, HashSet, VecDeque};
@@ -27,8 +27,8 @@ use std::path::{Path, PathBuf};
 use std::process::{Child, Command, ExitStatus, Output, Stdio};
 use std::str;
 
-use extract_gdb_version;
-use is_android_gdb_target;
+use crate::extract_gdb_version;
+use crate::is_android_gdb_target;
 
 #[cfg(windows)]
 fn disable_error_reporting<F: FnOnce() -> R, R>(f: F) -> R {
@@ -1379,7 +1379,7 @@ impl<'test> TestCx<'test> {
         }
     }
 
-    /// Returns true if we should report an error about `actual_error`,
+    /// Returns `true` if we should report an error about `actual_error`,
     /// which did not match any of the expected error. We always require
     /// errors/warnings to be explicitly listed, but only require
     /// helps/notes if there are explicit helps/notes given.
@@ -1937,7 +1937,7 @@ impl<'test> TestCx<'test> {
     }
 
     fn make_cmdline(&self, command: &Command, libpath: &str) -> String {
-        use util;
+        use crate::util;
 
         // Linux and mac don't require adjusting the library search path
         if cfg!(unix) {
@@ -1974,14 +1974,14 @@ impl<'test> TestCx<'test> {
         fs::write(&outfile, out).unwrap();
     }
 
-    /// Create a filename for output with the given extension.  Example:
-    ///   /.../testname.revision.mode/testname.extension
+    /// Creates a filename for output with the given extension.
+    /// E.g., `/.../testname.revision.mode/testname.extension`.
     fn make_out_name(&self, extension: &str) -> PathBuf {
         self.output_base_name().with_extension(extension)
     }
 
-    /// Directory where auxiliary files are written.  Example:
-    ///   /.../testname.revision.mode/auxiliary/
+    /// Gets the directory where auxiliary files are written.
+    /// E.g., `/.../testname.revision.mode/auxiliary/`.
     fn aux_output_dir_name(&self) -> PathBuf {
         self.output_base_dir()
             .join("auxiliary")
@@ -1993,7 +1993,7 @@ impl<'test> TestCx<'test> {
         output_testname_unique(self.config, self.testpaths, self.safe_revision())
     }
 
-    /// The revision, ignored for Incremental since it wants all revisions in
+    /// The revision, ignored for incremental compilation since it wants all revisions in
     /// the same directory.
     fn safe_revision(&self) -> Option<&str> {
         if self.config.mode == Incremental {
@@ -2003,16 +2003,16 @@ impl<'test> TestCx<'test> {
         }
     }
 
-    /// Absolute path to the directory where all output for the given
-    /// test/revision should reside.  Example:
-    ///   /path/to/build/host-triple/test/ui/relative/testname.revision.mode/
+    /// Gets the absolute path to the directory where all output for the given
+    /// test/revision should reside.
+    /// E.g., `/path/to/build/host-triple/test/ui/relative/testname.revision.mode/`.
     fn output_base_dir(&self) -> PathBuf {
         output_base_dir(self.config, self.testpaths, self.safe_revision())
     }
 
-    /// Absolute path to the base filename used as output for the given
-    /// test/revision.  Example:
-    ///   /.../relative/testname.revision.mode/testname
+    /// Gets the absolute path to the base filename used as output for the given
+    /// test/revision.
+    /// E.g., `/.../relative/testname.revision.mode/testname`.
     fn output_base_name(&self) -> PathBuf {
         output_base_name(self.config, self.testpaths, self.safe_revision())
     }
@@ -3255,7 +3255,7 @@ impl<'test> TestCx<'test> {
     }
 
     fn create_stamp(&self) {
-        let stamp = ::stamp(&self.config, self.testpaths, self.revision);
+        let stamp = crate::stamp(&self.config, self.testpaths, self.revision);
         fs::write(&stamp, compute_stamp_hash(&self.config)).unwrap();
     }
 }
@@ -3311,7 +3311,7 @@ impl<T> fmt::Debug for ExpectedLine<T>
 where
     T: AsRef<str> + fmt::Debug,
 {
-    fn fmt(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
         if let &ExpectedLine::Text(ref t) = self {
             write!(formatter, "{:?}", t)
         } else {
@@ -3334,7 +3334,7 @@ fn nocomment_mir_line(line: &str) -> &str {
 }
 
 fn read2_abbreviated(mut child: Child) -> io::Result<Output> {
-    use read2::read2;
+    use crate::read2::read2;
     use std::mem::replace;
 
     const HEAD_LEN: usize = 160 * 1024;

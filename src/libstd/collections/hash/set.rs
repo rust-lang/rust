@@ -471,7 +471,7 @@ impl<T, S> HashSet<T, S>
         self.map.len()
     }
 
-    /// Returns true if the set contains no elements.
+    /// Returns `true` if the set contains no elements.
     ///
     /// # Examples
     ///
@@ -696,7 +696,7 @@ impl<T, S> HashSet<T, S>
         Recover::replace(&mut self.map, value)
     }
 
-    /// Removes a value from the set. Returns `true` if the value was
+    /// Removes a value from the set. Returns whether the value was
     /// present in the set.
     ///
     /// The value may be any borrowed form of the set's value type, but

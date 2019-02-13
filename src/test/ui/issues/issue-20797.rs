@@ -17,7 +17,7 @@ impl PathExtensions for PathBuf {}
 /// A strategy for acquiring more subpaths to walk.
 pub trait Strategy {
     type P: PathExtensions;
-    /// Get additional subpaths from a given path.
+    /// Gets additional subpaths from a given path.
     fn get_more(&self, item: &Self::P) -> io::Result<Vec<Self::P>>;
     /// Determine whether a path should be walked further.
     /// This is run against each item from `get_more()`.
@@ -44,7 +44,7 @@ pub struct Subpaths<S: Strategy> {
 }
 
 impl<S: Strategy> Subpaths<S> {
-    /// Create a directory walker with a root path and strategy.
+    /// Creates a directory walker with a root path and strategy.
     pub fn new(p: &S::P, strategy: S) -> io::Result<Subpaths<S>> {
         let stack = strategy.get_more(p)?;
         Ok(Subpaths { stack: stack, strategy: strategy })
@@ -52,7 +52,7 @@ impl<S: Strategy> Subpaths<S> {
 }
 
 impl<S: Default + Strategy> Subpaths<S> {
-    /// Create a directory walker with a root path and a default strategy.
+    /// Creates a directory walker with a root path and a default strategy.
     pub fn walk(p: &S::P) -> io::Result<Subpaths<S>> {
         Subpaths::new(p, Default::default())
     }

@@ -250,7 +250,7 @@ impl f64 {
     /// Calculates the least nonnegative remainder of `self (mod rhs)`.
     ///
     /// In particular, the return value `r` satisfies `0.0 <= r < rhs.abs()` in
-    /// most cases.  However, due to a floating point round-off error it can
+    /// most cases. However, due to a floating point round-off error it can
     /// result in `r == rhs.abs()`, violating the mathematical definition, if
     /// `self` is much smaller than `rhs.abs()` in magnitude and `self < 0.0`.
     /// This result is not an element of the function's codomain, but it is the

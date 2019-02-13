@@ -6,17 +6,18 @@
 //! Note: it is an important invariant that the default visitor walks the body
 //! of a function in "execution order" (more concretely, reverse post-order
 //! with respect to the CFG implied by the AST), meaning that if AST node A may
-//! execute before AST node B, then A is visited first.  The borrow checker in
+//! execute before AST node B, then A is visited first. The borrow checker in
 //! particular relies on this property.
 //!
 //! Note: walking an AST before macro expansion is probably a bad idea. For
 //! instance, a walker looking for item names in a module will miss all of
 //! those that are created by the expansion of a macro.
 
-use ast::*;
+use crate::ast::*;
+use crate::parse::token::Token;
+use crate::tokenstream::{TokenTree, TokenStream};
+
 use syntax_pos::Span;
-use parse::token::Token;
-use tokenstream::{TokenTree, TokenStream};
 
 #[derive(Copy, Clone)]
 pub enum FnKind<'a> {
@@ -31,12 +32,12 @@ pub enum FnKind<'a> {
 }
 
 /// Each method of the Visitor trait is a hook to be potentially
-/// overridden.  Each method's default implementation recursively visits
+/// overridden. Each method's default implementation recursively visits
 /// the substructure of the input via the corresponding `walk` method;
 /// e.g., the `visit_mod` method by default calls `visit::walk_mod`.
 ///
 /// If you want to ensure that your code handles every variant
-/// explicitly, you need to override each method.  (And you also need
+/// explicitly, you need to override each method. (And you also need
 /// to monitor future changes to `Visitor` in case a new method with a
 /// new default implementation gets introduced.)
 pub trait Visitor<'ast>: Sized {
@@ -125,6 +126,7 @@ pub trait Visitor<'ast>: Sized {
         match generic_arg {
             GenericArg::Lifetime(lt) => self.visit_lifetime(lt),
             GenericArg::Type(ty) => self.visit_ty(ty),
+            GenericArg::Const(ct) => self.visit_anon_const(ct),
         }
     }
     fn visit_assoc_type_binding(&mut self, type_binding: &'ast TypeBinding) {
@@ -485,6 +487,7 @@ pub fn walk_generic_param<'a, V: Visitor<'a>>(visitor: &mut V, param: &'a Generi
     match param.kind {
         GenericParamKind::Lifetime => {}
         GenericParamKind::Type { ref default } => walk_list!(visitor, visit_ty, default),
+        GenericParamKind::Const { ref ty, .. } => visitor.visit_ty(ty),
     }
 }
 

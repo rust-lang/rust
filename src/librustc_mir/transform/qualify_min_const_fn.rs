@@ -358,7 +358,7 @@ fn check_terminator(
     }
 }
 
-/// Returns true if the `def_id` refers to an intrisic which we've whitelisted
+/// Returns `true` if the `def_id` refers to an intrisic which we've whitelisted
 /// for being called from stable `const fn`s (`min_const_fn`).
 ///
 /// Adding more intrinsics requires sign-off from @rust-lang/lang.
@@ -374,6 +374,8 @@ fn is_intrinsic_whitelisted(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: DefId) -> bool 
         | "overflowing_add" // ~> .wrapping_add
         | "overflowing_sub" // ~> .wrapping_sub
         | "overflowing_mul" // ~> .wrapping_mul
+        | "saturating_add" // ~> .saturating_add
+        | "saturating_sub" // ~> .saturating_sub
         | "unchecked_shl" // ~> .wrapping_shl
         | "unchecked_shr" // ~> .wrapping_shr
         | "rotate_left" // ~> .rotate_left

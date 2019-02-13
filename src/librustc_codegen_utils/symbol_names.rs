@@ -103,10 +103,12 @@ use rustc_mir::monomorphize::Instance;
 
 use syntax_pos::symbol::Symbol;
 
+use log::debug;
+
 use std::fmt::Write;
 use std::mem::discriminant;
 
-pub fn provide(providers: &mut Providers) {
+pub fn provide(providers: &mut Providers<'_>) {
     *providers = Providers {
         def_symbol_name,
         symbol_name,

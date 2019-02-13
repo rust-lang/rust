@@ -483,12 +483,12 @@ impl Display for Arguments<'_> {
 /// implementations, such as [`debug_struct`][debug_struct].
 ///
 /// `Debug` implementations using either `derive` or the debug builder API
-/// on [`Formatter`] support pretty printing using the alternate flag: `{:#?}`.
+/// on [`Formatter`] support pretty-printing using the alternate flag: `{:#?}`.
 ///
 /// [debug_struct]: ../../std/fmt/struct.Formatter.html#method.debug_struct
 /// [`Formatter`]: ../../std/fmt/struct.Formatter.html
 ///
-/// Pretty printing with `#?`:
+/// Pretty-printing with `#?`:
 ///
 /// ```
 /// #[derive(Debug)]

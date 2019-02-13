@@ -1,25 +1,27 @@
 #![allow(warnings)]
 
 use std::mem;
+use std::process;
+use std::{fmt, ptr};
+
 use rustc_data_structures::fx::FxHashSet;
 use rustc_data_structures::sync::{Lock, LockGuard, Lrc, Weak};
 use rustc_data_structures::OnDrop;
 use syntax_pos::Span;
-use ty::tls;
-use ty::query::Query;
-use ty::query::plumbing::CycleError;
+
+use crate::ty::tls;
+use crate::ty::query::Query;
+use crate::ty::query::plumbing::CycleError;
 #[cfg(not(parallel_compiler))]
-use ty::query::{
+use crate::ty::query::{
     plumbing::TryGetJob,
     config::QueryDescription,
 };
-use ty::context::TyCtxt;
-use std::process;
-use std::{fmt, ptr};
+use crate::ty::context::TyCtxt;
 
 #[cfg(parallel_compiler)]
 use {
-    rayon_core,
+    rustc_rayon_core as rayon_core,
     parking_lot::{Mutex, Condvar},
     std::sync::atomic::Ordering,
     std::thread,
@@ -29,37 +31,38 @@ use {
     rustc_data_structures::stable_hasher::{StableHasherResult, StableHasher, HashStable},
 };
 
-/// Indicates the state of a query for a given key in a query map
+/// Indicates the state of a query for a given key in a query map.
 pub(super) enum QueryResult<'tcx> {
-    /// An already executing query. The query job can be used to await for its completion
+    /// An already executing query. The query job can be used to await for its completion.
     Started(Lrc<QueryJob<'tcx>>),
 
-    /// The query panicked. Queries trying to wait on this will raise a fatal error / silently panic
+    /// The query panicked. Queries trying to wait on this will raise a fatal error or
+    /// silently panic.
     Poisoned,
 }
 
-/// A span and a query key
+/// Represents a span and a query key.
 #[derive(Clone, Debug)]
 pub struct QueryInfo<'tcx> {
-    /// The span for a reason this query was required
+    /// The span corresponding to the reason for which this query was required.
     pub span: Span,
     pub query: Query<'tcx>,
 }
 
-/// A object representing an active query job.
+/// Representss an object representing an active query job.
 pub struct QueryJob<'tcx> {
     pub info: QueryInfo<'tcx>,
 
     /// The parent query job which created this job and is implicitly waiting on it.
     pub parent: Option<Lrc<QueryJob<'tcx>>>,
 
-    /// The latch which is used to wait on this job
+    /// The latch that is used to wait on this job.
     #[cfg(parallel_compiler)]
     latch: QueryLatch<'tcx>,
 }
 
 impl<'tcx> QueryJob<'tcx> {
-    /// Creates a new query job
+    /// Creates a new query job.
     pub fn new(info: QueryInfo<'tcx>, parent: Option<Lrc<QueryJob<'tcx>>>) -> Self {
         QueryJob {
             info,
@@ -89,7 +92,7 @@ impl<'tcx> QueryJob<'tcx> {
     /// For single threaded rustc there's no concurrent jobs running, so if we are waiting for any
     /// query that means that there is a query cycle, thus this always running a cycle error.
     #[cfg(parallel_compiler)]
-    pub(super) fn await<'lcx>(
+    pub(super) fn r#await<'lcx>(
         &self,
         tcx: TyCtxt<'_, 'tcx, 'lcx>,
         span: Span,
@@ -101,7 +104,7 @@ impl<'tcx> QueryJob<'tcx> {
                 cycle: Lock::new(None),
                 condvar: Condvar::new(),
             });
-            self.latch.await(&waiter);
+            self.latch.r#await(&waiter);
             // FIXME: Get rid of this lock. We have ownership of the QueryWaiter
             // although another thread may still have a Lrc reference so we cannot
             // use Lrc::get_mut
@@ -200,7 +203,7 @@ impl<'tcx> QueryLatch<'tcx> {
     }
 
     /// Awaits the caller on this latch by blocking the current thread.
-    fn await(&self, waiter: &Lrc<QueryWaiter<'tcx>>) {
+    fn r#await(&self, waiter: &Lrc<QueryWaiter<'tcx>>) {
         let mut info = self.info.lock();
         if !info.complete {
             // We push the waiter on to the `waiters` list. It can be accessed inside
@@ -228,7 +231,7 @@ impl<'tcx> QueryLatch<'tcx> {
         }
     }
 
-    /// Remove a single waiter from the list of waiters.
+    /// Removes a single waiter from the list of waiters.
     /// This is used to break query cycles.
     fn extract_waiter(
         &self,

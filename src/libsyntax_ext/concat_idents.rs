@@ -1,8 +1,7 @@
 use rustc_data_structures::thin_vec::ThinVec;
 
 use syntax::ast;
-use syntax::ext::base::*;
-use syntax::ext::base;
+use syntax::ext::base::{self, *};
 use syntax::feature_gate;
 use syntax::parse::token;
 use syntax::ptr::P;
@@ -10,7 +9,7 @@ use syntax_pos::Span;
 use syntax_pos::symbol::Symbol;
 use syntax::tokenstream::TokenTree;
 
-pub fn expand_syntax_ext<'cx>(cx: &'cx mut ExtCtxt,
+pub fn expand_syntax_ext<'cx>(cx: &'cx mut ExtCtxt<'_>,
                               sp: Span,
                               tts: &[TokenTree])
                               -> Box<dyn base::MacResult + 'cx> {

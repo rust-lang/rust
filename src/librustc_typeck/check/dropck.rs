@@ -1,18 +1,18 @@
-use check::regionck::RegionCtxt;
+use crate::check::regionck::RegionCtxt;
 
-use hir::def_id::DefId;
+use crate::hir::def_id::DefId;
 use rustc::infer::outlives::env::OutlivesEnvironment;
 use rustc::infer::{self, InferOk, SuppressRegionErrors};
 use rustc::middle::region;
 use rustc::traits::{ObligationCause, TraitEngine, TraitEngineExt};
 use rustc::ty::subst::{Subst, Substs, UnpackedKind};
 use rustc::ty::{self, Ty, TyCtxt};
-use util::common::ErrorReported;
+use crate::util::common::ErrorReported;
 
 use syntax::ast;
 use syntax_pos::Span;
 
-/// check_drop_impl confirms that the Drop implementation identified by
+/// This function confirms that the `Drop` implementation identified by
 /// `drop_impl_did` is not any more specialized than the type it is
 /// attached to (Issue #8142).
 ///
@@ -21,7 +21,7 @@ use syntax_pos::Span;
 /// 1. The self type must be nominal (this is already checked during
 ///    coherence),
 ///
-/// 2. The generic region/type parameters of the impl's self-type must
+/// 2. The generic region/type parameters of the impl's self type must
 ///    all be parameters of the Drop impl itself (i.e., no
 ///    specialization like `impl Drop for Foo<i32>`), and,
 ///
@@ -184,7 +184,7 @@ fn ensure_drop_predicates_are_implied_by_item_defn<'a, 'tcx>(
     // absent. So we report an error that the Drop impl injected a
     // predicate that is not present on the struct definition.
 
-    let self_type_node_id = tcx.hir().as_local_node_id(self_type_did).unwrap();
+    let self_type_hir_id = tcx.hir().as_local_hir_id(self_type_did).unwrap();
 
     let drop_impl_span = tcx.def_span(drop_impl_did);
 
@@ -216,7 +216,7 @@ fn ensure_drop_predicates_are_implied_by_item_defn<'a, 'tcx>(
         // repeated `contains` calls.
 
         if !assumptions_in_impl_context.contains(&predicate) {
-            let item_span = tcx.hir().span(self_type_node_id);
+            let item_span = tcx.hir().span_by_hir_id(self_type_hir_id);
             struct_span_err!(
                 tcx.sess,
                 drop_impl_span,
@@ -236,9 +236,9 @@ fn ensure_drop_predicates_are_implied_by_item_defn<'a, 'tcx>(
     result
 }
 
-/// check_safety_of_destructor_if_necessary confirms that the type
+/// This function confirms that the type
 /// expression `typ` conforms to the "Drop Check Rule" from the Sound
-/// Generic Drop (RFC 769).
+/// Generic Drop RFC (#769).
 ///
 /// ----
 ///
@@ -276,7 +276,7 @@ fn ensure_drop_predicates_are_implied_by_item_defn<'a, 'tcx>(
 /// expected to break the needed parametricity property beyond
 /// repair.)
 ///
-/// Therefore we have scaled back Drop-Check to a more conservative
+/// Therefore, we have scaled back Drop-Check to a more conservative
 /// rule that does not attempt to deduce whether a `Drop`
 /// implementation could not possible access data of a given lifetime;
 /// instead Drop-Check now simply assumes that if a destructor has
@@ -287,7 +287,6 @@ fn ensure_drop_predicates_are_implied_by_item_defn<'a, 'tcx>(
 /// this conservative assumption (and thus assume the obligation of
 /// ensuring that they do not access data nor invoke methods of
 /// values that have been previously dropped).
-///
 pub fn check_safety_of_destructor_if_necessary<'a, 'gcx, 'tcx>(
     rcx: &mut RegionCtxt<'a, 'gcx, 'tcx>,
     ty: Ty<'tcx>,

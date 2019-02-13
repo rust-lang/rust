@@ -1,10 +1,11 @@
 -include ../../run-make-fulldeps/tools.mk
 
+# only-thumbv7m-none-eabi
+# only-thumbv6m-none-eabi
+
 # How to run this
 # $ ./x.py clean
 # $ ./x.py test --target thumbv7m-none-eabi src/test/run-make
-
-ifneq (,$(filter $(TARGET),thumbv6m-none-eabi thumbv7m-none-eabi))
 
 # For cargo setting
 export RUSTC := $(RUSTC_ORIGINAL)
@@ -25,6 +26,3 @@ unexport CXX
 
 all:
 	bash script.sh
-else
-all:
-endif

@@ -5,6 +5,7 @@
 //! which are themselves a single `Token` or a `Delimited` subsequence of tokens.
 //!
 //! ## Ownership
+//!
 //! `TokenStreams` are persistent data structures constructed as ropes with reference
 //! counted-children. In general, this means that calling an operation on a `TokenStream`
 //! (such as `slice`) produces an entirely new `TokenStream` from the borrowed reference to
@@ -12,12 +13,15 @@
 //! and a borrowed `TokenStream` is sufficient to build an owned `TokenStream` without taking
 //! ownership of the original.
 
+use crate::ext::base;
+use crate::ext::tt::{macro_parser, quoted};
+use crate::parse::Directory;
+use crate::parse::token::{self, DelimToken, Token};
+use crate::print::pprust;
+
 use syntax_pos::{BytePos, Mark, Span, DUMMY_SP};
-use ext::base;
-use ext::tt::{macro_parser, quoted};
-use parse::Directory;
-use parse::token::{self, DelimToken, Token};
-use print::pprust;
+#[cfg(target_arch = "x86_64")]
+use rustc_data_structures::static_assert;
 use rustc_data_structures::sync::Lrc;
 use serialize::{Decoder, Decodable, Encoder, Encodable};
 
@@ -46,7 +50,7 @@ pub enum TokenTree {
 
 impl TokenTree {
     /// Use this token tree as a matcher to parse given tts.
-    pub fn parse(cx: &base::ExtCtxt, mtch: &[quoted::TokenTree], tts: TokenStream)
+    pub fn parse(cx: &base::ExtCtxt<'_>, mtch: &[quoted::TokenTree], tts: TokenStream)
                  -> macro_parser::NamedParseResult {
         // `None` is because we're not interpolating
         let directory = Directory {
@@ -56,7 +60,7 @@ impl TokenTree {
         macro_parser::parse(cx.parse_sess(), tts, mtch, Some(directory), true)
     }
 
-    /// Check if this TokenTree is equal to the other, regardless of span information.
+    /// Checks if this TokenTree is equal to the other, regardless of span information.
     pub fn eq_unspanned(&self, other: &TokenTree) -> bool {
         match (self, other) {
             (&TokenTree::Token(_, ref tk), &TokenTree::Token(_, ref tk2)) => tk == tk2,
@@ -86,7 +90,7 @@ impl TokenTree {
         }
     }
 
-    /// Retrieve the TokenTree's span.
+    /// Retrieves the TokenTree's span.
     pub fn span(&self) -> Span {
         match *self {
             TokenTree::Token(sp, _) => sp,
@@ -147,7 +151,7 @@ impl TokenTree {
 /// empty stream is represented with `None`; it may be represented as a `Some`
 /// around an empty `Vec`.
 #[derive(Clone, Debug)]
-pub struct TokenStream(Option<Lrc<Vec<TreeAndJoint>>>);
+pub struct TokenStream(pub Option<Lrc<Vec<TreeAndJoint>>>);
 
 pub type TreeAndJoint = (TokenTree, IsJoint);
 
@@ -161,7 +165,7 @@ pub enum IsJoint {
     NonJoint
 }
 
-use self::IsJoint::*;
+use IsJoint::*;
 
 impl TokenStream {
     /// Given a `TokenStream` with a `Stream` of only two arguments, return a new `TokenStream`
@@ -255,7 +259,13 @@ impl TokenStream {
             0 => TokenStream::empty(),
             1 => streams.pop().unwrap(),
             _ => {
-                let mut vec = vec![];
+                // rust-lang/rust#57735: pre-allocate vector to avoid
+                // quadratic blow-up due to on-the-fly reallocations.
+                let tree_count = streams.iter()
+                    .map(|ts| match &ts.0 { None => 0, Some(s) => s.len() })
+                    .sum();
+                let mut vec = Vec::with_capacity(tree_count);
+
                 for stream in streams {
                     match stream.0 {
                         None => {},
@@ -486,7 +496,7 @@ impl Cursor {
 }
 
 impl fmt::Display for TokenStream {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.write_str(&pprust::tokens_to_string(self.clone()))
     }
 }
@@ -540,11 +550,11 @@ impl DelimSpan {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use syntax::ast::Ident;
-    use with_globals;
+    use crate::syntax::ast::Ident;
+    use crate::with_globals;
+    use crate::parse::token::Token;
+    use crate::util::parser_testing::string_to_stream;
     use syntax_pos::{Span, BytePos, NO_EXPANSION};
-    use parse::token::Token;
-    use util::parser_testing::string_to_stream;
 
     fn string_to_ts(string: &str) -> TokenStream {
         string_to_stream(string.to_owned())

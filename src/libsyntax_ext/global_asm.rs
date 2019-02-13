@@ -8,21 +8,22 @@
 /// LLVM's `module asm "some assembly here"`. All of LLVM's caveats
 /// therefore apply.
 
-use errors::DiagnosticBuilder;
+use crate::errors::DiagnosticBuilder;
+
 use syntax::ast;
 use syntax::source_map::respan;
-use syntax::ext::base;
-use syntax::ext::base::*;
+use syntax::ext::base::{self, *};
 use syntax::feature_gate;
 use syntax::parse::token;
 use syntax::ptr::P;
 use syntax::symbol::Symbol;
 use syntax_pos::Span;
 use syntax::tokenstream;
+use smallvec::smallvec;
 
 pub const MACRO: &str = "global_asm";
 
-pub fn expand_global_asm<'cx>(cx: &'cx mut ExtCtxt,
+pub fn expand_global_asm<'cx>(cx: &'cx mut ExtCtxt<'_>,
                               sp: Span,
                               tts: &[tokenstream::TokenTree]) -> Box<dyn base::MacResult + 'cx> {
     if !cx.ecfg.enable_global_asm() {

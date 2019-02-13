@@ -1,4 +1,4 @@
-//! A different sort of visitor for walking fn bodies.  Unlike the
+//! A different sort of visitor for walking fn bodies. Unlike the
 //! normal visitor, which just walks the entire body in one shot, the
 //! `ExprUseVisitor` determines how expressions are being used.
 
@@ -9,20 +9,20 @@ pub use self::MatchMode::*;
 use self::TrackMatchMode::*;
 use self::OverloadedCallType::*;
 
-use hir::def::Def;
-use hir::def_id::DefId;
-use infer::InferCtxt;
-use middle::mem_categorization as mc;
-use middle::region;
-use ty::{self, TyCtxt, adjustment};
+use crate::hir::def::Def;
+use crate::hir::def_id::DefId;
+use crate::infer::InferCtxt;
+use crate::middle::mem_categorization as mc;
+use crate::middle::region;
+use crate::ty::{self, TyCtxt, adjustment};
 
-use hir::{self, PatKind};
+use crate::hir::{self, PatKind};
 use rustc_data_structures::sync::Lrc;
 use std::rc::Rc;
 use syntax::ast;
 use syntax::ptr::P;
 use syntax_pos::Span;
-use util::nodemap::ItemLocalSet;
+use crate::util::nodemap::ItemLocalSet;
 
 ///////////////////////////////////////////////////////////////////////////
 // The Delegate trait
@@ -800,8 +800,8 @@ impl<'a, 'gcx, 'tcx> ExprUseVisitor<'a, 'gcx, 'tcx> {
         self.consume_expr(&arm.body);
     }
 
-    /// Walks a pat that occurs in isolation (i.e., top-level of fn
-    /// arg or let binding.  *Not* a match arm or nested pat.)
+    /// Walks a pat that occurs in isolation (i.e., top-level of fn argument or
+    /// let binding, and *not* a match arm or nested pat.)
     fn walk_irrefutable_pat(&mut self, cmt_discr: mc::cmt<'tcx>, pat: &hir::Pat) {
         let mut mode = Unknown;
         self.determine_pat_move_mode(cmt_discr.clone(), pat, &mut mode);

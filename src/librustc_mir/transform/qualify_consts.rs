@@ -27,10 +27,10 @@ use syntax_pos::{Span, DUMMY_SP};
 use std::fmt;
 use std::usize;
 
-use transform::{MirPass, MirSource};
+use crate::transform::{MirPass, MirSource};
 use super::promote_consts::{self, Candidate, TempState};
 
-bitflags! {
+bitflags::bitflags! {
     // Borrows of temporaries can be promoted only if
     // they have none of these qualifications, with
     // the exception of `STATIC_REF` (in statics only).
@@ -84,7 +84,7 @@ enum Mode {
 }
 
 impl fmt::Display for Mode {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match *self {
             Mode::Const => write!(f, "constant"),
             Mode::Static | Mode::StaticMut => write!(f, "static"),
@@ -106,6 +106,15 @@ struct Qualifier<'a, 'gcx: 'a+'tcx, 'tcx: 'a> {
     qualif: Qualif,
     temp_promotion_state: IndexVec<Local, TempState>,
     promotion_candidates: Vec<Candidate>
+}
+
+macro_rules! unleash_miri {
+    ($this:expr) => {{
+        if $this.tcx.sess.opts.debugging_opts.unleash_the_miri_inside_of_you {
+            $this.tcx.sess.span_warn($this.span, "skipping const checks");
+            return;
+        }
+    }}
 }
 
 impl<'a, 'tcx> Qualifier<'a, 'tcx, 'tcx> {
@@ -147,6 +156,7 @@ impl<'a, 'tcx> Qualifier<'a, 'tcx, 'tcx> {
     // categories, but enabling full miri would make that
     // slightly pointless (even with feature-gating).
     fn not_const(&mut self) {
+        unleash_miri!(self);
         self.add(Qualif::NOT_CONST);
         if self.mode != Mode::Fn {
             let mut err = struct_span_err!(
@@ -166,18 +176,18 @@ impl<'a, 'tcx> Qualifier<'a, 'tcx, 'tcx> {
         }
     }
 
-    /// Add the given qualification to self.qualif.
+    /// Adds the given qualification to `self.qualif`.
     fn add(&mut self, qualif: Qualif) {
         self.qualif = self.qualif | qualif;
     }
 
-    /// Add the given type's qualification to self.qualif.
+    /// Adds the given type's qualification to `self.qualif`.
     fn add_type(&mut self, ty: Ty<'tcx>) {
         self.add(Qualif::MUTABLE_INTERIOR | Qualif::NEEDS_DROP);
         self.qualif.restrict(ty, self.tcx, self.param_env);
     }
 
-    /// Within the provided closure, self.qualif will start
+    /// Within the provided closure, `self.qualif` will start
     /// out empty, and its value after the closure returns will
     /// be combined with the value before the call to nest.
     fn nest<F: FnOnce(&mut Self)>(&mut self, f: F) {
@@ -419,6 +429,7 @@ impl<'a, 'tcx> Visitor<'tcx> for Qualifier<'a, 'tcx, 'tcx> {
                     }
                     return;
                 }
+                unleash_miri!(self);
                 self.add(Qualif::NOT_CONST);
 
                 if self.mode != Mode::Fn {
@@ -618,6 +629,7 @@ impl<'a, 'tcx> Visitor<'tcx> for Qualifier<'a, 'tcx, 'tcx> {
                     }
 
                     if forbidden_mut {
+                        unleash_miri!(self);
                         self.add(Qualif::NOT_CONST);
                         if self.mode != Mode::Fn {
                             let mut err = struct_span_err!(self.tcx.sess,  self.span, E0017,
@@ -660,6 +672,7 @@ impl<'a, 'tcx> Visitor<'tcx> for Qualifier<'a, 'tcx, 'tcx> {
 
                 debug!("visit_rvalue: forbidden_mut={:?}", forbidden_mut);
                 if forbidden_mut {
+                    unleash_miri!(self);
                     self.add(Qualif::NOT_CONST);
                 } else {
                     // We might have a candidate for promotion.
@@ -700,6 +713,7 @@ impl<'a, 'tcx> Visitor<'tcx> for Qualifier<'a, 'tcx, 'tcx> {
                 match (cast_in, cast_out) {
                     (CastTy::Ptr(_), CastTy::Int(_)) |
                     (CastTy::FnPtr, CastTy::Int(_)) => {
+                        unleash_miri!(self);
                         if let Mode::Fn = self.mode {
                             // in normal functions, mark such casts as not promotable
                             self.add(Qualif::NOT_CONST);
@@ -727,6 +741,7 @@ impl<'a, 'tcx> Visitor<'tcx> for Qualifier<'a, 'tcx, 'tcx> {
                             op == BinOp::Ge || op == BinOp::Gt ||
                             op == BinOp::Offset);
 
+                    unleash_miri!(self);
                     if let Mode::Fn = self.mode {
                         // raw pointer operations are not allowed inside promoteds
                         self.add(Qualif::NOT_CONST);
@@ -745,6 +760,7 @@ impl<'a, 'tcx> Visitor<'tcx> for Qualifier<'a, 'tcx, 'tcx> {
             }
 
             Rvalue::NullaryOp(NullOp::Box, _) => {
+                unleash_miri!(self);
                 self.add(Qualif::NOT_CONST);
                 if self.mode != Mode::Fn {
                     let mut err = struct_span_err!(self.tcx.sess, self.span, E0010,
@@ -820,6 +836,8 @@ impl<'a, 'tcx> Visitor<'tcx> for Qualifier<'a, 'tcx, 'tcx> {
                                 | "add_with_overflow"
                                 | "sub_with_overflow"
                                 | "mul_with_overflow"
+                                | "saturating_add"
+                                | "saturating_sub"
                                 // no need to check feature gates, intrinsics are only callable
                                 // from the libstd or with forever unstable feature gates
                                 => is_const_fn = true,
@@ -861,7 +879,13 @@ impl<'a, 'tcx> Visitor<'tcx> for Qualifier<'a, 'tcx, 'tcx> {
                             } else {
                                 // stable const fns or unstable const fns with their feature gate
                                 // active
-                                if self.tcx.is_const_fn(def_id) {
+                                let unleash_miri = self
+                                    .tcx
+                                    .sess
+                                    .opts
+                                    .debugging_opts
+                                    .unleash_the_miri_inside_of_you;
+                                if self.tcx.is_const_fn(def_id) || unleash_miri {
                                     is_const_fn = true;
                                 } else if self.is_const_panic_fn(def_id) {
                                     // Check the const_panic feature gate.
@@ -885,7 +909,7 @@ impl<'a, 'tcx> Visitor<'tcx> for Qualifier<'a, 'tcx, 'tcx> {
                                     // Check `#[unstable]` const fns or `#[rustc_const_unstable]`
                                     // functions without the feature gate active in this crate in
                                     // order to report a better error message than the one below.
-                                    if self.span.allows_unstable() {
+                                    if self.span.allows_unstable(&feature.as_str()) {
                                         // `allow_internal_unstable` can make such calls stable.
                                         is_const_fn = true;
                                     } else {
@@ -1030,6 +1054,7 @@ impl<'a, 'tcx> Visitor<'tcx> for Qualifier<'a, 'tcx, 'tcx> {
 
             // Deny *any* live drops anywhere other than functions.
             if self.mode != Mode::Fn {
+                unleash_miri!(self);
                 // HACK(eddyb): emulate a bit of dataflow analysis,
                 // conservatively, that drop elaboration will do.
                 let needs_drop = if let Place::Local(local) = *place {
@@ -1105,7 +1130,7 @@ impl<'a, 'tcx> Visitor<'tcx> for Qualifier<'a, 'tcx, 'tcx> {
     }
 }
 
-pub fn provide(providers: &mut Providers) {
+pub fn provide(providers: &mut Providers<'_>) {
     *providers = Providers {
         mir_const_qualif,
         ..*providers
@@ -1136,7 +1161,7 @@ pub struct QualifyAndPromoteConstants;
 impl MirPass for QualifyAndPromoteConstants {
     fn run_pass<'a, 'tcx>(&self,
                           tcx: TyCtxt<'a, 'tcx, 'tcx>,
-                          src: MirSource,
+                          src: MirSource<'tcx>,
                           mir: &mut Mir<'tcx>) {
         // There's not really any point in promoting errorful MIR.
         if mir.return_ty().references_error() {
@@ -1148,7 +1173,7 @@ impl MirPass for QualifyAndPromoteConstants {
             return;
         }
 
-        let def_id = src.def_id;
+        let def_id = src.def_id();
         let id = tcx.hir().as_local_node_id(def_id).unwrap();
         let mut const_promoted_temps = None;
         let mode = match tcx.hir().body_owner_kind(id) {
@@ -1175,7 +1200,9 @@ impl MirPass for QualifyAndPromoteConstants {
             let (temps, candidates) = {
                 let mut qualifier = Qualifier::new(tcx, def_id, mir, mode);
                 if mode == Mode::ConstFn {
-                    if tcx.is_min_const_fn(def_id) {
+                    if tcx.sess.opts.debugging_opts.unleash_the_miri_inside_of_you {
+                        qualifier.qualify_const();
+                    } else if tcx.is_min_const_fn(def_id) {
                         // enforce `min_const_fn` for stable const fns
                         use super::qualify_min_const_fn::is_min_const_fn;
                         if let Err((span, err)) = is_min_const_fn(tcx, def_id, mir) {
@@ -1292,7 +1319,7 @@ impl MirPass for QualifyAndPromoteConstants {
     }
 }
 
-fn args_required_const(tcx: TyCtxt, def_id: DefId) -> Option<FxHashSet<usize>> {
+fn args_required_const(tcx: TyCtxt<'_, '_, '_>, def_id: DefId) -> Option<FxHashSet<usize>> {
     let attrs = tcx.get_attrs(def_id);
     let attr = attrs.iter().find(|a| a.check_name("rustc_args_required_const"))?;
     let mut ret = FxHashSet::default();

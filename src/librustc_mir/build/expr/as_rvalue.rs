@@ -3,9 +3,9 @@
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::indexed_vec::Idx;
 
-use build::expr::category::{Category, RvalueFunc};
-use build::{BlockAnd, BlockAndExtension, Builder};
-use hair::*;
+use crate::build::expr::category::{Category, RvalueFunc};
+use crate::build::{BlockAnd, BlockAndExtension, Builder};
+use crate::hair::*;
 use rustc::middle::region;
 use rustc::mir::interpret::EvalErrorKind;
 use rustc::mir::*;
@@ -268,7 +268,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                             span: expr_span,
                             ty: this.hir.tcx().types.u32,
                             user_ty: None,
-                            literal: this.hir.tcx().intern_lazy_const(ty::LazyConst::Evaluated(
+                            literal: this.hir.tcx().mk_lazy_const(ty::LazyConst::Evaluated(
                                 ty::Const::from_bits(
                                     this.hir.tcx(),
                                     0,

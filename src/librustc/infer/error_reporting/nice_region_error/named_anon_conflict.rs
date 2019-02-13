@@ -1,9 +1,9 @@
 //! Error Reporting for Anonymous Region Lifetime Errors
 //! where one region is named and the other is anonymous.
-use infer::error_reporting::nice_region_error::NiceRegionError;
-use ty;
-use util::common::ErrorReported;
-use errors::Applicability;
+use crate::infer::error_reporting::nice_region_error::NiceRegionError;
+use crate::ty;
+use crate::util::common::ErrorReported;
+use crate::errors::Applicability;
 
 impl<'a, 'gcx, 'tcx> NiceRegionError<'a, 'gcx, 'tcx> {
     /// When given a `ConcreteFailure` for a function with arguments containing a named region and

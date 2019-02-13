@@ -25,7 +25,7 @@ use time::SystemTime;
 ///
 /// # Examples
 ///
-/// Create a new file and write bytes to it:
+/// Creates a new file and write bytes to it:
 ///
 /// ```no_run
 /// use std::fs::File;
@@ -222,7 +222,7 @@ fn initial_buffer_size(file: &File) -> usize {
 /// Read the entire contents of a file into a bytes vector.
 ///
 /// This is a convenience function for using [`File::open`] and [`read_to_end`]
-/// with fewer imports and without an intermediate variable.  It pre-allocates a
+/// with fewer imports and without an intermediate variable. It pre-allocates a
 /// buffer based on the file size when available, so it is generally faster than
 /// reading into a vector created with `Vec::new()`.
 ///
@@ -263,7 +263,7 @@ pub fn read<P: AsRef<Path>>(path: P) -> io::Result<Vec<u8>> {
 /// Read the entire contents of a file into a string.
 ///
 /// This is a convenience function for using [`File::open`] and [`read_to_string`]
-/// with fewer imports and without an intermediate variable.  It pre-allocates a
+/// with fewer imports and without an intermediate variable. It pre-allocates a
 /// buffer based on the file size when available, so it is generally faster than
 /// reading into a string created with `String::new()`.
 ///
@@ -488,13 +488,13 @@ impl File {
         self.inner.file_attr().map(Metadata)
     }
 
-    /// Create a new `File` instance that shares the same underlying file handle
+    /// Creates a new `File` instance that shares the same underlying file handle
     /// as the existing `File` instance. Reads, writes, and seeks will affect
     /// both `File` instances simultaneously.
     ///
     /// # Examples
     ///
-    /// Create two handles for a file named `foo.txt`:
+    /// Creates two handles for a file named `foo.txt`:
     ///
     /// ```no_run
     /// use std::fs::File;
@@ -896,7 +896,7 @@ impl Metadata {
         FileType(self.0.file_type())
     }
 
-    /// Returns whether this metadata is for a directory. The
+    /// Returns `true` if this metadata is for a directory. The
     /// result is mutually exclusive to the result of
     /// [`is_file`], and will be false for symlink metadata
     /// obtained from [`symlink_metadata`].
@@ -919,7 +919,7 @@ impl Metadata {
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn is_dir(&self) -> bool { self.file_type().is_dir() }
 
-    /// Returns whether this metadata is for a regular file. The
+    /// Returns `true` if this metadata is for a regular file. The
     /// result is mutually exclusive to the result of
     /// [`is_dir`], and will be false for symlink metadata
     /// obtained from [`symlink_metadata`].
@@ -1096,7 +1096,7 @@ impl AsInner<fs_imp::FileAttr> for Metadata {
 }
 
 impl Permissions {
-    /// Returns whether these permissions describe a readonly (unwritable) file.
+    /// Returns `true` if these permissions describe a readonly (unwritable) file.
     ///
     /// # Examples
     ///
@@ -1152,7 +1152,7 @@ impl Permissions {
 }
 
 impl FileType {
-    /// Test whether this file type represents a directory. The
+    /// Tests whether this file type represents a directory. The
     /// result is mutually exclusive to the results of
     /// [`is_file`] and [`is_symlink`]; only zero or one of these
     /// tests may pass.
@@ -1176,7 +1176,7 @@ impl FileType {
     #[stable(feature = "file_type", since = "1.1.0")]
     pub fn is_dir(&self) -> bool { self.0.is_dir() }
 
-    /// Test whether this file type represents a regular file.
+    /// Tests whether this file type represents a regular file.
     /// The result is  mutually exclusive to the results of
     /// [`is_dir`] and [`is_symlink`]; only zero or one of these
     /// tests may pass.
@@ -1200,7 +1200,7 @@ impl FileType {
     #[stable(feature = "file_type", since = "1.1.0")]
     pub fn is_file(&self) -> bool { self.0.is_file() }
 
-    /// Test whether this file type represents a symbolic link.
+    /// Tests whether this file type represents a symbolic link.
     /// The result is mutually exclusive to the results of
     /// [`is_dir`] and [`is_file`]; only zero or one of these
     /// tests may pass.
@@ -1209,7 +1209,7 @@ impl FileType {
     /// with the [`fs::symlink_metadata`] function and not the
     /// [`fs::metadata`] function. The [`fs::metadata`] function
     /// follows symbolic links, so [`is_symlink`] would always
-    /// return false for the target file.
+    /// return `false` for the target file.
     ///
     /// [`Metadata`]: struct.Metadata.html
     /// [`fs::metadata`]: fn.metadata.html
@@ -1290,7 +1290,7 @@ impl DirEntry {
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn path(&self) -> PathBuf { self.0.path() }
 
-    /// Return the metadata for the file that this entry points at.
+    /// Returns the metadata for the file that this entry points at.
     ///
     /// This function will not traverse symlinks if this entry points at a
     /// symlink.
@@ -1325,7 +1325,7 @@ impl DirEntry {
         self.0.metadata().map(Metadata)
     }
 
-    /// Return the file type for the file that this entry points at.
+    /// Returns the file type for the file that this entry points at.
     ///
     /// This function will not traverse symlinks if this entry points at a
     /// symlink.
@@ -2025,7 +2025,7 @@ impl DirBuilder {
         self
     }
 
-    /// Create the specified directory with the options configured in this
+    /// Creates the specified directory with the options configured in this
     /// builder.
     ///
     /// It is considered an error if the directory already exists unless

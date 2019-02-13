@@ -44,7 +44,7 @@ macro_rules! compress {
     });
 }
 
-/// Load an integer of the desired type from a byte stream, in LE order. Uses
+/// Loads an integer of the desired type from a byte stream, in LE order. Uses
 /// `copy_nonoverlapping` to let the compiler generate the most efficient way
 /// to load it from a possibly unaligned address.
 ///
@@ -61,7 +61,7 @@ macro_rules! load_int_le {
     });
 }
 
-/// Load an u64 using up to 7 bytes of a byte slice.
+/// Loads an u64 using up to 7 bytes of a byte slice.
 ///
 /// Unsafe because: unchecked indexing at start..start+len
 #[inline]

@@ -673,11 +673,11 @@ bitflags! {
   /// Methods of synchronizing memory with physical storage.
   #[repr(C)]
   pub struct msflags: u8 {
-    /// Perform asynchronous writes.
+    /// Performs asynchronous writes.
     const ASYNC      = 0x01;
-    /// Invalidate cached data.
+    /// Invalidates cached data.
     const INVALIDATE = 0x02;
-    /// Perform synchronous writes.
+    /// Performs synchronous writes.
     const SYNC       = 0x04;
   }
 }
@@ -1750,11 +1750,9 @@ fn tcb_layout_test_64() {
 
 /// Entry point for additionally created threads.
 ///
-/// **tid**:
-/// Thread ID of the current thread.
+/// `tid`: thread ID of the current thread.
 ///
-/// **aux**:
-/// Copy of the value stored in
+/// `aux`: copy of the value stored in
 /// [`threadattr.argument`](struct.threadattr.html#structfield.argument).
 pub type threadentry = unsafe extern "C" fn(
   tid: tid,
@@ -2590,7 +2588,7 @@ pub unsafe fn mem_map(addr_: *mut (), len_: usize, prot_: mprot, flags_: mflags,
   cloudabi_sys_mem_map(addr_, len_, prot_, flags_, fd_, off_, mem_)
 }
 
-/// Change the protection of a memory mapping.
+/// Changes the protection of a memory mapping.
 ///
 /// ## Parameters
 ///
@@ -2604,7 +2602,7 @@ pub unsafe fn mem_protect(mapping_: &mut [u8], prot_: mprot) -> errno {
   cloudabi_sys_mem_protect(mapping_.as_mut_ptr() as *mut (), mapping_.len(), prot_)
 }
 
-/// Synchronize a region of memory with its physical storage.
+/// Synchronizes a region of memory with its physical storage.
 ///
 /// ## Parameters
 ///

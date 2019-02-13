@@ -1,19 +1,15 @@
-#![doc(html_logo_url = "https://www.rust-lang.org/logos/rust-logo-128x128-blk-v2.png",
-       html_favicon_url = "https://doc.rust-lang.org/favicon.ico",
-       html_root_url = "https://doc.rust-lang.org/nightly/")]
+#![doc(html_root_url = "https://doc.rust-lang.org/nightly/")]
+
+#![deny(rust_2018_idioms)]
 
 #![feature(nll)]
 #![feature(rustc_diagnostic_macros)]
 
 #![recursion_limit="256"]
 
-#[macro_use] extern crate rustc;
 #[macro_use] extern crate syntax;
-#[macro_use] extern crate log;
-extern crate rustc_typeck;
-extern crate syntax_pos;
-extern crate rustc_data_structures;
 
+use rustc::bug;
 use rustc::hir::{self, Node, PatKind, AssociatedItemKind};
 use rustc::hir::def::Def;
 use rustc::hir::def_id::{CRATE_DEF_INDEX, LOCAL_CRATE, CrateNum, DefId};
@@ -45,9 +41,9 @@ mod diagnostics;
 /// Implemented to visit all `DefId`s in a type.
 /// Visiting `DefId`s is useful because visibilities and reachabilities are attached to them.
 /// The idea is to visit "all components of a type", as documented in
-/// https://github.com/rust-lang/rfcs/blob/master/text/2145-type-privacy.md#how-to-determine-visibility-of-a-type
-/// Default type visitor (`TypeVisitor`) does most of the job, but it has some shortcomings.
-/// First, it doesn't have overridable `fn visit_trait_ref`, so we have to catch trait def-ids
+/// https://github.com/rust-lang/rfcs/blob/master/text/2145-type-privacy.md#how-to-determine-visibility-of-a-type.
+/// The default type visitor (`TypeVisitor`) does most of the job, but it has some shortcomings.
+/// First, it doesn't have overridable `fn visit_trait_ref`, so we have to catch trait `DefId`s
 /// manually. Second, it doesn't visit some type components like signatures of fn types, or traits
 /// in `impl Trait`, see individual comments in `DefIdVisitorSkeleton::visit_ty`.
 trait DefIdVisitor<'a, 'tcx: 'a> {
@@ -391,7 +387,7 @@ impl VisibilityLike for Option<AccessLevel> {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// The embargo visitor, used to determine the exports of the ast
+/// The embargo visitor, used to determine the exports of the AST.
 ////////////////////////////////////////////////////////////////////////////////
 
 struct EmbargoVisitor<'a, 'tcx: 'a> {
@@ -1584,7 +1580,7 @@ impl<'a, 'tcx: 'a> SearchInterfaceForPrivateItemsVisitor<'a, 'tcx> {
         let ret = self.required_visibility == ty::Visibility::Public &&
             self.private_crates.contains(&item_id.krate);
 
-        debug!("leaks_private_dep(item_id={:?})={}", item_id, ret);
+        log::debug!("leaks_private_dep(item_id={:?})={}", item_id, ret);
         return ret;
     }
 }
@@ -1748,7 +1744,7 @@ impl<'a, 'tcx> Visitor<'tcx> for PrivateItemsInPublicInterfacesVisitor<'a, 'tcx>
     }
 }
 
-pub fn provide(providers: &mut Providers) {
+pub fn provide(providers: &mut Providers<'_>) {
     *providers = Providers {
         privacy_access_levels,
         check_mod_privacy,

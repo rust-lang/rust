@@ -1,12 +1,12 @@
-use {ModuleCodegen, ModuleKind, CachedModuleCodegen, CompiledModule, CrateInfo, CodegenResults,
-    RLIB_BYTECODE_EXTENSION};
+use crate::{ModuleCodegen, ModuleKind, CachedModuleCodegen, CompiledModule, CrateInfo,
+    CodegenResults, RLIB_BYTECODE_EXTENSION};
 use super::linker::LinkerInfo;
 use super::lto::{self, SerializedModule};
 use super::link::{self, remove, get_linker};
 use super::command::Command;
 use super::symbol_export::ExportedSymbols;
 
-use memmap;
+use crate::traits::*;
 use rustc_incremental::{copy_cgu_workproducts_to_incr_comp_cache_dir,
                         in_incr_comp_dir, in_incr_comp_dir_sess};
 use rustc::dep_graph::{WorkProduct, WorkProductId, WorkProductFileKind};
@@ -16,7 +16,6 @@ use rustc::session::config::{self, OutputFilenames, OutputType, Passes, Sanitize
 use rustc::session::Session;
 use rustc::util::nodemap::FxHashMap;
 use rustc::util::time_graph::{self, TimeGraph, Timeline};
-use traits::*;
 use rustc::hir::def_id::{CrateNum, LOCAL_CRATE};
 use rustc::ty::TyCtxt;
 use rustc::util::common::{time_depth, set_time_depth, print_time_passes_entry};
@@ -663,7 +662,7 @@ pub enum WorkItem<B: WriteBackendMethods> {
     /// Copy the post-LTO artifacts from the incremental cache to the output
     /// directory.
     CopyPostLtoArtifacts(CachedModuleCodegen),
-    /// Perform (Thin)LTO on the given module.
+    /// Performs (Thin)LTO on the given module.
     LTO(lto::LtoModuleCodegen<B>),
 }
 
@@ -1798,7 +1797,7 @@ impl<B: ExtraBackendMethods> OngoingCodegen<B> {
         drop(self.coordinator_send.send(Box::new(Message::CodegenComplete::<B>)));
     }
 
-    /// Consume this context indicating that codegen was entirely aborted, and
+    /// Consumes this context indicating that codegen was entirely aborted, and
     /// we need to exit as quickly as possible.
     ///
     /// This method blocks the current thread until all worker threads have

@@ -1,5 +1,7 @@
 #![allow(non_snake_case)]
 
+use syntax::{register_diagnostic, register_diagnostics, register_long_diagnostics};
+
 // Error messages for EXXXX errors.  Each message should start and end with a
 // new line, and be wrapped to 80 characters.  In vim you can `:set tw=80` and
 // use `gq` to wrap paragraphs. Use `:set tw=0` to disable.
@@ -412,8 +414,8 @@ https://doc.rust-lang.org/reference.html#use-declarations
 "##,
 
 E0401: r##"
-Inner items do not inherit type parameters from the functions they are embedded
-in.
+Inner items do not inherit type or const parameters from the functions
+they are embedded in.
 
 Erroneous code example:
 

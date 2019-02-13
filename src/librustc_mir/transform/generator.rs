@@ -56,19 +56,19 @@ use rustc::mir::visit::{PlaceContext, Visitor, MutVisitor};
 use rustc::ty::{self, TyCtxt, AdtDef, Ty};
 use rustc::ty::layout::VariantIdx;
 use rustc::ty::subst::Substs;
-use util::dump_mir;
-use util::liveness::{self, IdentityMap};
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::indexed_vec::Idx;
 use rustc_data_structures::bit_set::BitSet;
 use std::borrow::Cow;
 use std::iter::once;
 use std::mem;
-use transform::{MirPass, MirSource};
-use transform::simplify;
-use transform::no_landing_pads::no_landing_pads;
-use dataflow::{do_dataflow, DebugFormatted, state_for_location};
-use dataflow::{MaybeStorageLive, HaveBeenBorrowedLocals};
+use crate::transform::{MirPass, MirSource};
+use crate::transform::simplify;
+use crate::transform::no_landing_pads::no_landing_pads;
+use crate::dataflow::{do_dataflow, DebugFormatted, state_for_location};
+use crate::dataflow::{MaybeStorageLive, HaveBeenBorrowedLocals};
+use crate::util::dump_mir;
+use crate::util::liveness::{self, IdentityMap};
 
 pub struct StateTransform;
 
@@ -198,7 +198,7 @@ impl<'a, 'tcx> TransformVisitor<'a, 'tcx> {
             span: source_info.span,
             ty: self.tcx.types.u32,
             user_ty: None,
-            literal: self.tcx.intern_lazy_const(ty::LazyConst::Evaluated(ty::Const::from_bits(
+            literal: self.tcx.mk_lazy_const(ty::LazyConst::Evaluated(ty::Const::from_bits(
                 self.tcx,
                 state_disc.into(),
                 ty::ParamEnv::empty().and(self.tcx.types.u32)
@@ -376,14 +376,14 @@ impl<'tcx> Visitor<'tcx> for StorageIgnored {
 fn locals_live_across_suspend_points(
     tcx: TyCtxt<'a, 'tcx, 'tcx>,
     mir: &Mir<'tcx>,
-    source: MirSource,
+    source: MirSource<'tcx>,
     movable: bool,
 ) -> (
     liveness::LiveVarSet<Local>,
     FxHashMap<BasicBlock, liveness::LiveVarSet<Local>>,
 ) {
     let dead_unwinds = BitSet::new_empty(mir.basic_blocks().len());
-    let node_id = tcx.hir().as_local_node_id(source.def_id).unwrap();
+    let node_id = tcx.hir().as_local_node_id(source.def_id()).unwrap();
 
     // Calculate when MIR locals have live storage. This gives us an upper bound of their
     // lifetimes.
@@ -484,7 +484,7 @@ fn locals_live_across_suspend_points(
 }
 
 fn compute_layout<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
-                            source: MirSource,
+                            source: MirSource<'tcx>,
                             upvars: Vec<Ty<'tcx>>,
                             interior: Ty<'tcx>,
                             movable: bool,
@@ -581,9 +581,9 @@ fn insert_switch<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
 fn elaborate_generator_drops<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                                        def_id: DefId,
                                        mir: &mut Mir<'tcx>) {
-    use util::elaborate_drops::{elaborate_drop, Unwind};
-    use util::patch::MirPatch;
-    use shim::DropShimElaborator;
+    use crate::util::elaborate_drops::{elaborate_drop, Unwind};
+    use crate::util::patch::MirPatch;
+    use crate::shim::DropShimElaborator;
 
     // Note that `elaborate_drops` only drops the upvars of a generator, and
     // this is ok because `open_drop` can only be reached within that own
@@ -635,7 +635,7 @@ fn create_generator_drop_shim<'a, 'tcx>(
                 tcx: TyCtxt<'a, 'tcx, 'tcx>,
                 transform: &TransformVisitor<'a, 'tcx>,
                 def_id: DefId,
-                source: MirSource,
+                source: MirSource<'tcx>,
                 gen_ty: Ty<'tcx>,
                 mir: &Mir<'tcx>,
                 drop_clean: BasicBlock) -> Mir<'tcx> {
@@ -731,7 +731,7 @@ fn insert_panic_block<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
             span: mir.span,
             ty: tcx.types.bool,
             user_ty: None,
-            literal: tcx.intern_lazy_const(ty::LazyConst::Evaluated(
+            literal: tcx.mk_lazy_const(ty::LazyConst::Evaluated(
                 ty::Const::from_bool(tcx, false),
             )),
         }),
@@ -758,7 +758,7 @@ fn create_generator_resume_function<'a, 'tcx>(
         tcx: TyCtxt<'a, 'tcx, 'tcx>,
         transform: TransformVisitor<'a, 'tcx>,
         def_id: DefId,
-        source: MirSource,
+        source: MirSource<'tcx>,
         mir: &mut Mir<'tcx>) {
     // Poison the generator when it unwinds
     for block in mir.basic_blocks_mut() {
@@ -869,7 +869,7 @@ fn create_cases<'a, 'tcx, F>(mir: &mut Mir<'tcx>,
 impl MirPass for StateTransform {
     fn run_pass<'a, 'tcx>(&self,
                     tcx: TyCtxt<'a, 'tcx, 'tcx>,
-                    source: MirSource,
+                    source: MirSource<'tcx>,
                     mir: &mut Mir<'tcx>) {
         let yield_ty = if let Some(yield_ty) = mir.yield_ty {
             yield_ty
@@ -880,7 +880,7 @@ impl MirPass for StateTransform {
 
         assert!(mir.generator_drop.is_none());
 
-        let def_id = source.def_id;
+        let def_id = source.def_id();
 
         // The first argument is the generator type passed by value
         let gen_ty = mir.local_decls.raw[1].ty;

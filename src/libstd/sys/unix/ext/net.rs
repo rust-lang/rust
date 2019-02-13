@@ -134,7 +134,7 @@ impl SocketAddr {
         })
     }
 
-    /// Returns true if and only if the address is unnamed.
+    /// Returns `true` if the address is unnamed.
     ///
     /// # Examples
     ///
@@ -516,7 +516,7 @@ impl UnixStream {
     /// ```
     ///
     /// # Platform specific
-    /// On Redox this always returns None.
+    /// On Redox this always returns `None`.
     #[stable(feature = "unix_socket", since = "1.10.0")]
     pub fn take_error(&self) -> io::Result<Option<io::Error>> {
         self.0.take_error()
@@ -841,7 +841,7 @@ impl UnixListener {
     /// ```
     ///
     /// # Platform specific
-    /// On Redox this always returns None.
+    /// On Redox this always returns `None`.
     #[stable(feature = "unix_socket", since = "1.10.0")]
     pub fn take_error(&self) -> io::Result<Option<io::Error>> {
         self.0.take_error()
@@ -1047,7 +1047,7 @@ impl UnixDatagram {
         Ok(UnixDatagram(inner))
     }
 
-    /// Create an unnamed pair of connected sockets.
+    /// Creates an unnamed pair of connected sockets.
     ///
     /// Returns two `UnixDatagrams`s which are connected to each other.
     ///

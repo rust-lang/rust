@@ -177,7 +177,7 @@ impl context::AggregateOps<ChalkArenas<'gcx>> for ChalkContext<'cx, 'gcx> {
 }
 
 impl context::ContextOps<ChalkArenas<'gcx>> for ChalkContext<'cx, 'gcx> {
-    /// True if this is a coinductive goal: basically proving that an auto trait
+    /// Returns `true` if this is a coinductive goal: basically proving that an auto trait
     /// is implemented or proving that a trait reference is well-formed.
     fn is_coinductive(
         &self,
@@ -202,7 +202,7 @@ impl context::ContextOps<ChalkArenas<'gcx>> for ChalkContext<'cx, 'gcx> {
         }
     }
 
-    /// Create an inference table for processing a new goal and instantiate that goal
+    /// Creates an inference table for processing a new goal and instantiate that goal
     /// in that context, returning "all the pieces".
     ///
     /// More specifically: given a u-canonical goal `arg`, creates a
@@ -211,9 +211,9 @@ impl context::ContextOps<ChalkArenas<'gcx>> for ChalkContext<'cx, 'gcx> {
     /// each bound variable in `arg` to a fresh inference variable
     /// from T. Returns:
     ///
-    /// - the table `T`
-    /// - the substitution `S`
-    /// - the environment and goal found by substitution `S` into `arg`
+    /// - the table `T`,
+    /// - the substitution `S`,
+    /// - the environment and goal found by substitution `S` into `arg`.
     fn instantiate_ucanonical_goal<R>(
         &self,
         arg: &Canonical<'gcx, InEnvironment<'gcx, Goal<'gcx>>>,
@@ -241,7 +241,7 @@ impl context::ContextOps<ChalkArenas<'gcx>> for ChalkContext<'cx, 'gcx> {
         })
     }
 
-    /// True if this solution has no region constraints.
+    /// Returns `true` if this solution has no region constraints.
     fn empty_constraints(ccs: &Canonical<'gcx, ConstrainedSubst<'gcx>>) -> bool {
         ccs.value.constraints.is_empty()
     }
@@ -502,13 +502,13 @@ type ChalkHhGoal<'tcx> = HhGoal<ChalkArenas<'tcx>>;
 type ChalkExClause<'tcx> = ExClause<ChalkArenas<'tcx>>;
 
 impl Debug for ChalkContext<'cx, 'gcx> {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "ChalkContext")
     }
 }
 
 impl Debug for ChalkInferenceContext<'cx, 'gcx, 'tcx> {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "ChalkInferenceContext")
     }
 }
@@ -658,7 +658,7 @@ impl<'tcx, 'gcx: 'tcx, T> Upcast<'tcx, 'gcx> for Canonical<'gcx, T>
     }
 }
 
-crate fn provide(p: &mut Providers) {
+crate fn provide(p: &mut Providers<'_>) {
     *p = Providers {
         evaluate_goal,
         ..*p

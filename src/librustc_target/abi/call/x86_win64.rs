@@ -1,10 +1,10 @@
-use abi::call::{ArgType, FnType, Reg};
-use abi::Abi;
+use crate::abi::call::{ArgType, FnType, Reg};
+use crate::abi::Abi;
 
 // Win64 ABI: http://msdn.microsoft.com/en-us/library/zthk2dkh.aspx
 
-pub fn compute_abi_info<Ty>(fty: &mut FnType<Ty>) {
-    let fixup = |a: &mut ArgType<Ty>| {
+pub fn compute_abi_info<Ty>(fty: &mut FnType<'_, Ty>) {
+    let fixup = |a: &mut ArgType<'_, Ty>| {
         match a.layout.abi {
             Abi::Uninhabited => {}
             Abi::ScalarPair(..) |

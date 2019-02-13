@@ -220,7 +220,7 @@ fn wf_clause_for_slice<'tcx>(tcx: ty::TyCtxt<'_, '_, 'tcx>) -> Clauses<'tcx> {
         def_id: sized_trait,
         substs: tcx.mk_substs_trait(ty, ty::List::empty()),
     };
-    let sized_implemented: DomainGoal = ty::TraitPredicate {
+    let sized_implemented: DomainGoal<'_> = ty::TraitPredicate {
         trait_ref: sized_implemented
     }.lower();
 
@@ -252,7 +252,7 @@ fn wf_clause_for_array<'tcx>(
         def_id: sized_trait,
         substs: tcx.mk_substs_trait(ty, ty::List::empty()),
     };
-    let sized_implemented: DomainGoal = ty::TraitPredicate {
+    let sized_implemented: DomainGoal<'_> = ty::TraitPredicate {
         trait_ref: sized_implemented
     }.lower();
 
@@ -326,7 +326,7 @@ fn wf_clause_for_ref<'tcx>(
         mutbl,
     });
 
-    let _outlives: DomainGoal = ty::OutlivesPredicate(ty, region).lower();
+    let _outlives: DomainGoal<'_> = ty::OutlivesPredicate(ty, region).lower();
     let wf_clause = ProgramClause {
         goal: DomainGoal::WellFormed(WellFormed::Ty(ref_ty)),
         hypotheses: ty::List::empty(),

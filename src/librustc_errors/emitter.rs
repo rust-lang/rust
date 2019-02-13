@@ -1,37 +1,35 @@
-use self::Destination::*;
+use Destination::*;
 
 use syntax_pos::{SourceFile, Span, MultiSpan};
 
-use {Level, CodeSuggestion, DiagnosticBuilder, SubDiagnostic, SourceMapperDyn, DiagnosticId};
-use snippet::{Annotation, AnnotationType, Line, MultilineAnnotation, StyledString, Style};
-use styled_buffer::StyledBuffer;
+use crate::{Level, CodeSuggestion, DiagnosticBuilder, SubDiagnostic, SourceMapperDyn, DiagnosticId};
+use crate::snippet::{Annotation, AnnotationType, Line, MultilineAnnotation, StyledString, Style};
+use crate::styled_buffer::StyledBuffer;
 
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::sync::Lrc;
-use atty;
 use std::borrow::Cow;
 use std::io::prelude::*;
 use std::io;
 use std::cmp::{min, Reverse};
 use termcolor::{StandardStream, ColorChoice, ColorSpec, BufferWriter};
 use termcolor::{WriteColor, Color, Buffer};
-use unicode_width;
 
 const ANONYMIZED_LINE_NUM: &str = "LL";
 
 /// Emitter trait for emitting errors.
 pub trait Emitter {
     /// Emit a structured diagnostic.
-    fn emit(&mut self, db: &DiagnosticBuilder);
+    fn emit(&mut self, db: &DiagnosticBuilder<'_>);
 
-    /// Check if should show explanations about "rustc --explain"
+    /// Checks if should show explanations about "rustc --explain"
     fn should_show_explain(&self) -> bool {
         true
     }
 }
 
 impl Emitter for EmitterWriter {
-    fn emit(&mut self, db: &DiagnosticBuilder) {
+    fn emit(&mut self, db: &DiagnosticBuilder<'_>) {
         let mut primary_span = db.span.clone();
         let mut children = db.children.clone();
         let mut suggestions: &[_] = &[];
@@ -674,8 +672,8 @@ impl EmitterWriter {
         //   | |  something about `foo`
         //   | something about `fn foo()`
         annotations_position.sort_by(|a, b| {
-            // Decreasing order
-            a.1.len().cmp(&b.1.len()).reverse()
+            // Decreasing order. When `a` and `b` are the same length, prefer `Primary`.
+            (a.1.len(), !a.1.is_primary).cmp(&(b.1.len(), !b.1.is_primary)).reverse()
         });
 
         // Write the underlines.
@@ -870,7 +868,7 @@ impl EmitterWriter {
         }
     }
 
-    /// Add a left margin to every line but the first, given a padding length and the label being
+    /// Adds a left margin to every line but the first, given a padding length and the label being
     /// displayed, keeping the provided highlighting.
     fn msg_to_buffer(&self,
                      buffer: &mut StyledBuffer,
@@ -897,7 +895,7 @@ impl EmitterWriter {
         //    `max_line_num_len`
         let padding = " ".repeat(padding + label.len() + 5);
 
-        /// Return whether `style`, or the override if present and the style is `NoStyle`.
+        /// Returns `true` if `style`, or the override if present and the style is `NoStyle`.
         fn style_or_override(style: Style, override_style: Option<Style>) -> Style {
             if let Some(o) = override_style {
                 if style == Style::NoStyle {
@@ -1431,7 +1429,7 @@ fn emit_to_destination(rendered_buffer: &[Vec<StyledString>],
                        dst: &mut Destination,
                        short_message: bool)
                        -> io::Result<()> {
-    use lock;
+    use crate::lock;
 
     let mut dst = dst.writable();
 

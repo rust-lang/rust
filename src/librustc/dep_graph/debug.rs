@@ -22,7 +22,7 @@ impl DepNodeFilter {
         }
     }
 
-    /// True if all nodes always pass the filter.
+    /// Returns `true` if all nodes always pass the filter.
     pub fn accepts_all(&self) -> bool {
         self.text.is_empty()
     }

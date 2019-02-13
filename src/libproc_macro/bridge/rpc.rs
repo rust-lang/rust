@@ -40,7 +40,7 @@ macro_rules! rpc_encode_decode {
         }
 
         impl<S> DecodeMut<'_, '_, S> for $ty {
-            fn decode(r: &mut Reader, s: &mut S) -> Self {
+            fn decode(r: &mut Reader<'_>, s: &mut S) -> Self {
                 let mut byte = 0x80;
                 let mut v = 0;
                 let mut shift = 0;
@@ -61,7 +61,7 @@ macro_rules! rpc_encode_decode {
         }
 
         impl<S> DecodeMut<'_, '_, S> for $name {
-            fn decode(r: &mut Reader, s: &mut S) -> Self {
+            fn decode(r: &mut Reader<'_>, s: &mut S) -> Self {
                 $name {
                     $($field: DecodeMut::decode(r, s)),*
                 }
@@ -119,7 +119,7 @@ impl<S> Encode<S> for () {
 }
 
 impl<S> DecodeMut<'_, '_, S> for () {
-    fn decode(_: &mut Reader, _: &mut S) -> Self {}
+    fn decode(_: &mut Reader<'_>, _: &mut S) -> Self {}
 }
 
 impl<S> Encode<S> for u8 {
@@ -129,7 +129,7 @@ impl<S> Encode<S> for u8 {
 }
 
 impl<S> DecodeMut<'_, '_, S> for u8 {
-    fn decode(r: &mut Reader, _: &mut S) -> Self {
+    fn decode(r: &mut Reader<'_>, _: &mut S) -> Self {
         let x = r[0];
         *r = &r[1..];
         x
@@ -146,7 +146,7 @@ impl<S> Encode<S> for bool {
 }
 
 impl<S> DecodeMut<'_, '_, S> for bool {
-    fn decode(r: &mut Reader, s: &mut S) -> Self {
+    fn decode(r: &mut Reader<'_>, s: &mut S) -> Self {
         match u8::decode(r, s) {
             0 => false,
             1 => true,
@@ -162,7 +162,7 @@ impl<S> Encode<S> for char {
 }
 
 impl<S> DecodeMut<'_, '_, S> for char {
-    fn decode(r: &mut Reader, s: &mut S) -> Self {
+    fn decode(r: &mut Reader<'_>, s: &mut S) -> Self {
         char::from_u32(u32::decode(r, s)).unwrap()
     }
 }
@@ -174,7 +174,7 @@ impl<S> Encode<S> for NonZeroU32 {
 }
 
 impl<S> DecodeMut<'_, '_, S> for NonZeroU32 {
-    fn decode(r: &mut Reader, s: &mut S) -> Self {
+    fn decode(r: &mut Reader<'_>, s: &mut S) -> Self {
         Self::new(u32::decode(r, s)).unwrap()
     }
 }
@@ -251,7 +251,7 @@ impl<S> Encode<S> for String {
 }
 
 impl<S> DecodeMut<'_, '_, S> for String {
-    fn decode(r: &mut Reader, s: &mut S) -> Self {
+    fn decode(r: &mut Reader<'_>, s: &mut S) -> Self {
         <&str>::decode(r, s).to_string()
     }
 }
@@ -306,7 +306,7 @@ impl<S> Encode<S> for PanicMessage {
 }
 
 impl<S> DecodeMut<'_, '_, S> for PanicMessage {
-    fn decode(r: &mut Reader, s: &mut S) -> Self {
+    fn decode(r: &mut Reader<'_>, s: &mut S) -> Self {
         match Option::<String>::decode(r, s) {
             Some(s) => PanicMessage::String(s),
             None => PanicMessage::Unknown,

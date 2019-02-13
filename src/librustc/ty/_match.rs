@@ -1,6 +1,6 @@
-use ty::{self, Ty, TyCtxt};
-use ty::error::TypeError;
-use ty::relate::{self, Relate, TypeRelation, RelateResult};
+use crate::ty::{self, Ty, TyCtxt};
+use crate::ty::error::TypeError;
+use crate::ty::relate::{self, Relate, TypeRelation, RelateResult};
 
 /// A type "A" *matches* "B" if the fresh types in B could be
 /// substituted with values so as to make it equal to A. Matching is

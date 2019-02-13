@@ -1,7 +1,7 @@
 //! See docs in build/expr/mod.rs
 
-use build::Builder;
-use hair::*;
+use crate::build::Builder;
+use crate::hair::*;
 use rustc::mir::*;
 use rustc::ty::CanonicalUserTypeAnnotation;
 

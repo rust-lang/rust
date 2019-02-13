@@ -3,7 +3,7 @@
 //! Since we cannot have a dependency on `librustc`, we implement some types here that are somewhat
 //! redundant. Later, these types can be converted to types for use by the rest of the compiler.
 
-use syntax::ast::NodeId;
+use crate::syntax::ast::NodeId;
 use syntax_pos::MultiSpan;
 
 /// Since we cannot import `LintId`s from `rustc::lint`, we define some Ids here which can later be
@@ -12,6 +12,8 @@ pub enum BufferedEarlyLintId {
     /// Usage of `?` as a macro separator is deprecated.
     QuestionMarkMacroSep,
     IllFormedAttributeInput,
+    /// Usage of a duplicate macro matcher binding name.
+    DuplicateMacroMatcherBindingName,
 }
 
 /// Stores buffered lint info which can later be passed to `librustc`.

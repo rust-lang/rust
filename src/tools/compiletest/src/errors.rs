@@ -33,7 +33,7 @@ impl FromStr for ErrorKind {
 }
 
 impl fmt::Display for ErrorKind {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match *self {
             ErrorKind::Help => write!(f, "help message"),
             ErrorKind::Error => write!(f, "error"),

@@ -5,10 +5,10 @@
 
 use std::str::FromStr;
 
-use ast;
-use errors;
-use visit;
-use visit::Visitor;
+use crate::ast;
+use crate::errors;
+use crate::visit;
+use crate::visit::Visitor;
 
 enum Mode {
     Expression,

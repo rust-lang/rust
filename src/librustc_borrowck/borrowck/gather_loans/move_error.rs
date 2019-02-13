@@ -1,4 +1,4 @@
-use borrowck::BorrowckCtxt;
+use crate::borrowck::BorrowckCtxt;
 use rustc::middle::mem_categorization as mc;
 use rustc::middle::mem_categorization::Categorization;
 use rustc::middle::mem_categorization::NoteClosureEnv;
@@ -8,7 +8,8 @@ use rustc_mir::util::borrowck_errors::{BorrowckErrors, Origin};
 use syntax::ast;
 use syntax_pos;
 use errors::{DiagnosticBuilder, Applicability};
-use borrowck::gather_loans::gather_moves::PatternSource;
+use crate::borrowck::gather_loans::gather_moves::PatternSource;
+use log::debug;
 
 pub struct MoveErrorCollector<'tcx> {
     errors: Vec<MoveError<'tcx>>
@@ -167,10 +168,10 @@ fn report_cannot_move_out_of<'a, 'tcx>(bccx: &'a BorrowckCtxt<'a, 'tcx>,
     }
 }
 
-fn note_move_destination(mut err: DiagnosticBuilder,
+fn note_move_destination(mut err: DiagnosticBuilder<'_>,
                          move_to_span: syntax_pos::Span,
                          pat_name: ast::Name,
-                         is_first_note: bool) -> DiagnosticBuilder {
+                         is_first_note: bool) -> DiagnosticBuilder<'_> {
     if is_first_note {
         err.span_label(
             move_to_span,

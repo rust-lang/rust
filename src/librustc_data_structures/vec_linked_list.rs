@@ -1,4 +1,4 @@
-use indexed_vec::{Idx, IndexVec};
+use crate::indexed_vec::{Idx, IndexVec};
 
 pub fn iter<Ls>(
     first: Option<Ls::LinkIndex>,

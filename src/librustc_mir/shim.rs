@@ -16,12 +16,14 @@ use syntax_pos::Span;
 use std::fmt;
 use std::iter;
 
-use transform::{add_moves_for_packed_drops, add_call_guards};
-use transform::{remove_noop_landing_pads, no_landing_pads, simplify};
-use util::elaborate_drops::{self, DropElaborator, DropStyle, DropFlagMode};
-use util::patch::MirPatch;
+use crate::transform::{
+    add_moves_for_packed_drops, add_call_guards,
+    remove_noop_landing_pads, no_landing_pads, simplify, run_passes
+};
+use crate::util::elaborate_drops::{self, DropElaborator, DropStyle, DropFlagMode};
+use crate::util::patch::MirPatch;
 
-pub fn provide(providers: &mut Providers) {
+pub fn provide(providers: &mut Providers<'_>) {
     providers.mir_shims = make_shim;
 }
 
@@ -113,12 +115,15 @@ fn make_shim<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         }
     };
     debug!("make_shim({:?}) = untransformed {:?}", instance, result);
-    add_moves_for_packed_drops::add_moves_for_packed_drops(
-        tcx, &mut result, instance.def_id());
-    no_landing_pads::no_landing_pads(tcx, &mut result);
-    remove_noop_landing_pads::remove_noop_landing_pads(tcx, &mut result);
-    simplify::simplify_cfg(&mut result);
-    add_call_guards::CriticalCallEdges.add_call_guards(&mut result);
+
+    run_passes(tcx, &mut result, instance, MirPhase::Const, &[
+        &add_moves_for_packed_drops::AddMovesForPackedDrops,
+        &no_landing_pads::NoLandingPads,
+        &remove_noop_landing_pads::RemoveNoopLandingPads,
+        &simplify::SimplifyCfg::new("make_shim"),
+        &add_call_guards::CriticalCallEdges,
+    ]);
+
     debug!("make_shim({:?}) = {:?}", instance, result);
 
     tcx.alloc_mir(result)
@@ -138,7 +143,7 @@ enum CallKind {
     Direct(DefId),
 }
 
-fn temp_decl(mutability: Mutability, ty: Ty, span: Span) -> LocalDecl {
+fn temp_decl(mutability: Mutability, ty: Ty<'_>, span: Span) -> LocalDecl<'_> {
     let source_info = SourceInfo { scope: OUTERMOST_SOURCE_SCOPE, span };
     LocalDecl {
         mutability,
@@ -259,7 +264,7 @@ pub struct DropShimElaborator<'a, 'tcx: 'a> {
 }
 
 impl<'a, 'tcx> fmt::Debug for DropShimElaborator<'a, 'tcx> {
-    fn fmt(&self, _f: &mut fmt::Formatter) -> Result<(), fmt::Error> {
+    fn fmt(&self, _f: &mut fmt::Formatter<'_>) -> Result<(), fmt::Error> {
         Ok(())
     }
 }
@@ -301,7 +306,7 @@ impl<'a, 'tcx> DropElaborator<'a, 'tcx> for DropShimElaborator<'a, 'tcx> {
     }
 }
 
-/// Build a `Clone::clone` shim for `self_ty`. Here, `def_id` is `Clone::clone`.
+/// Builds a `Clone::clone` shim for `self_ty`. Here, `def_id` is `Clone::clone`.
 fn build_clone_shim<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                               def_id: DefId,
                               self_ty: Ty<'tcx>)
@@ -459,7 +464,7 @@ impl<'a, 'tcx> CloneShimBuilder<'a, 'tcx> {
             span: self.span,
             ty: func_ty,
             user_ty: None,
-            literal: tcx.intern_lazy_const(ty::LazyConst::Evaluated(
+            literal: tcx.mk_lazy_const(ty::LazyConst::Evaluated(
                 ty::Const::zero_sized(func_ty),
             )),
         });
@@ -521,7 +526,7 @@ impl<'a, 'tcx> CloneShimBuilder<'a, 'tcx> {
             span: self.span,
             ty: self.tcx.types.usize,
             user_ty: None,
-            literal: self.tcx.intern_lazy_const(ty::LazyConst::Evaluated(
+            literal: self.tcx.mk_lazy_const(ty::LazyConst::Evaluated(
                 ty::Const::from_usize(self.tcx, value),
             )),
         }
@@ -686,7 +691,7 @@ impl<'a, 'tcx> CloneShimBuilder<'a, 'tcx> {
     }
 }
 
-/// Build a "call" shim for `def_id`. The shim calls the
+/// Builds a "call" shim for `def_id`. The shim calls the
 /// function specified by `call_kind`, first adjusting its first
 /// argument according to `rcvr_adjustment`.
 ///
@@ -759,7 +764,7 @@ fn build_call_shim<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                 span,
                 ty,
                 user_ty: None,
-                literal: tcx.intern_lazy_const(ty::LazyConst::Evaluated(
+                literal: tcx.mk_lazy_const(ty::LazyConst::Evaluated(
                     ty::Const::zero_sized(ty)
                 )),
              }),

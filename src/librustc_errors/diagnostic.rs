@@ -1,11 +1,11 @@
-use CodeSuggestion;
-use SubstitutionPart;
-use Substitution;
-use Applicability;
-use Level;
+use crate::CodeSuggestion;
+use crate::SubstitutionPart;
+use crate::Substitution;
+use crate::Applicability;
+use crate::Level;
+use crate::snippet::Style;
 use std::fmt;
 use syntax_pos::{MultiSpan, Span};
-use snippet::Style;
 
 #[must_use]
 #[derive(Clone, Debug, PartialEq, Hash, RustcEncodable, RustcDecodable)]
@@ -118,7 +118,7 @@ impl Diagnostic {
         self.level == Level::Cancelled
     }
 
-    /// Add a span/label to be included in the resulting snippet.
+    /// Adds a span/label to be included in the resulting snippet.
     /// This is pushed onto the `MultiSpan` that was created when the
     /// diagnostic was first built. If you don't call this function at
     /// all, and you just supplied a `Span` to create the diagnostic,

@@ -55,9 +55,7 @@
             reason = "this library is unlikely to be stabilized in its current \
                       form or name",
             issue = "27783")]
-#![doc(html_logo_url = "https://www.rust-lang.org/logos/rust-logo-128x128-blk-v2.png",
-       html_favicon_url = "https://doc.rust-lang.org/favicon.ico",
-       html_root_url = "https://doc.rust-lang.org/nightly/",
+#![doc(html_root_url = "https://doc.rust-lang.org/nightly/",
        issue_tracker_base_url = "https://github.com/rust-lang/rust/issues/",
        test(no_crate_inject, attr(allow(unused_variables), deny(warnings))))]
 #![no_std]
@@ -70,7 +68,6 @@
 #![warn(intra_doc_link_resolution_failure)]
 #![warn(missing_debug_implementations)]
 
-#![cfg_attr(not(test), feature(fn_traits))]
 #![cfg_attr(not(test), feature(generator_trait))]
 #![cfg_attr(test, feature(test))]
 
@@ -88,6 +85,7 @@
 #![feature(dropck_eyepatch)]
 #![feature(exact_size_is_empty)]
 #![feature(fmt_internals)]
+#![feature(fn_traits)]
 #![feature(fundamental)]
 #![feature(futures_api)]
 #![feature(lang_items)]
@@ -102,6 +100,7 @@
 #![feature(receiver_trait)]
 #![feature(specialization)]
 #![feature(staged_api)]
+#![feature(std_internals)]
 #![feature(str_internals)]
 #![feature(trusted_len)]
 #![feature(try_reserve)]

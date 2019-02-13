@@ -1,15 +1,15 @@
-use hir::map as hir_map;
-use hir::def_id::{CrateNum, CRATE_DEF_INDEX, DefId, LOCAL_CRATE};
-use session::{config, Session};
-use session::config::EntryFnType;
+use crate::hir::map as hir_map;
+use crate::hir::def_id::{CrateNum, CRATE_DEF_INDEX, DefId, LOCAL_CRATE};
+use crate::session::{config, Session};
+use crate::session::config::EntryFnType;
 use syntax::ast::NodeId;
 use syntax::attr;
 use syntax::entry::EntryPointType;
 use syntax_pos::Span;
-use hir::{Item, ItemKind, ImplItem, TraitItem};
-use hir::itemlikevisit::ItemLikeVisitor;
-use ty::TyCtxt;
-use ty::query::Providers;
+use crate::hir::{Item, ItemKind, ImplItem, TraitItem};
+use crate::hir::itemlikevisit::ItemLikeVisitor;
+use crate::ty::TyCtxt;
+use crate::ty::query::Providers;
 
 struct EntryContext<'a, 'tcx: 'a> {
     session: &'a Session,

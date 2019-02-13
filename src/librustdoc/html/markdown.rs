@@ -1,8 +1,8 @@
-//! Markdown formatting for rustdoc
+//! Markdown formatting for rustdoc.
 //!
 //! This module implements markdown formatting through the pulldown-cmark
 //! rust-library. This module exposes all of the
-//! functionality through a unit-struct, `Markdown`, which has an implementation
+//! functionality through a unit struct, `Markdown`, which has an implementation
 //! of `fmt::Display`. Example usage:
 //!
 //! ```
@@ -139,7 +139,7 @@ thread_local!(pub static PLAYGROUND: RefCell<Option<(Option<String>, String)>> =
     RefCell::new(None)
 });
 
-/// Adds syntax highlighting and playground Run buttons to rust code blocks.
+/// Adds syntax highlighting and playground Run buttons to Rust code blocks.
 struct CodeBlocks<'a, I: Iterator<Item = Event<'a>>> {
     inner: I,
     check_error_codes: ErrorCodes,
@@ -277,7 +277,7 @@ impl<'a, I: Iterator<Item = Event<'a>>> Iterator for CodeBlocks<'a, I> {
     }
 }
 
-/// Make headings links with anchor ids and build up TOC.
+/// Make headings links with anchor IDs and build up TOC.
 struct LinkReplacer<'a, 'b, I: Iterator<Item = Event<'a>>> {
     inner: I,
     links: &'b [(String, String)],
@@ -310,7 +310,7 @@ impl<'a, 'b, I: Iterator<Item = Event<'a>>> Iterator for LinkReplacer<'a, 'b, I>
     }
 }
 
-/// Make headings links with anchor ids and build up TOC.
+/// Make headings links with anchor IDs and build up TOC.
 struct HeadingLinks<'a, 'b, 'ids, I: Iterator<Item = Event<'a>>> {
     inner: I,
     toc: Option<&'b mut TocBuilder>,

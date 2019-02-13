@@ -6,13 +6,13 @@ use rustc::ty;
 use rustc_errors::{DiagnosticBuilder,Applicability};
 use syntax_pos::Span;
 
-use borrow_check::MirBorrowckCtxt;
-use borrow_check::prefixes::PrefixSet;
-use dataflow::move_paths::{
+use crate::borrow_check::MirBorrowckCtxt;
+use crate::borrow_check::prefixes::PrefixSet;
+use crate::dataflow::move_paths::{
     IllegalMoveOrigin, IllegalMoveOriginKind, InitLocation,
     LookupResult, MoveError, MovePathIndex,
 };
-use util::borrowck_errors::{BorrowckErrors, Origin};
+use crate::util::borrowck_errors::{BorrowckErrors, Origin};
 
 // Often when desugaring a pattern match we may have many individual moves in
 // MIR that are all part of one operation from the user's point-of-view. For
@@ -63,7 +63,7 @@ enum BorrowedContentSource {
 }
 
 impl Display for BorrowedContentSource {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match *self {
             BorrowedContentSource::Arc => write!(f, "an `Arc`"),
             BorrowedContentSource::Rc => write!(f, "an `Rc`"),
@@ -240,7 +240,7 @@ impl<'a, 'gcx, 'tcx> MirBorrowckCtxt<'a, 'gcx, 'tcx> {
 
     fn report(&mut self, error: GroupedMoveError<'tcx>) {
         let (mut err, err_span) = {
-            let (span, original_path, kind): (Span, &Place<'tcx>, &IllegalMoveOriginKind) =
+            let (span, original_path, kind): (Span, &Place<'tcx>, &IllegalMoveOriginKind<'_>) =
                 match error {
                     GroupedMoveError::MovesFromPlace {
                         span,
@@ -308,9 +308,8 @@ impl<'a, 'gcx, 'tcx> MirBorrowckCtxt<'a, 'gcx, 'tcx> {
                                         let upvar_decl = &self.mir.upvar_decls[field.index()];
                                         let upvar_hir_id =
                                             upvar_decl.var_hir_id.assert_crate_local();
-                                        let upvar_node_id =
-                                            self.infcx.tcx.hir().hir_to_node_id(upvar_hir_id);
-                                        let upvar_span = self.infcx.tcx.hir().span(upvar_node_id);
+                                        let upvar_span = self.infcx.tcx.hir().span_by_hir_id(
+                                            upvar_hir_id);
                                         diag.span_label(upvar_span, "captured outer variable");
                                         break;
                                     }

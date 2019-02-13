@@ -184,7 +184,7 @@ impl<'a> VaList<'a> {
         va_arg(self)
     }
 
-    /// Copy the `va_list` at the current location.
+    /// Copies the `va_list` at the current location.
     #[unstable(feature = "c_variadic",
                reason = "the `c_variadic` feature has not been properly tested on \
                          all supported platforms",
@@ -213,7 +213,7 @@ extern "rust-intrinsic" {
     /// `va_copy`.
     fn va_end(ap: &mut VaList);
 
-    /// Copy the current location of arglist `src` to the arglist `dst`.
+    /// Copies the current location of arglist `src` to the arglist `dst`.
     #[cfg(any(all(not(target_arch = "aarch64"), not(target_arch = "powerpc"),
                   not(target_arch = "x86_64")),
               windows))]

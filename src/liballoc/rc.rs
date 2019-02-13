@@ -512,7 +512,7 @@ impl<T: ?Sized> Rc<T> {
         this.strong()
     }
 
-    /// Returns true if there are no other `Rc` or [`Weak`][weak] pointers to
+    /// Returns `true` if there are no other `Rc` or [`Weak`][weak] pointers to
     /// this inner value.
     ///
     /// [weak]: struct.Weak.html
@@ -561,7 +561,7 @@ impl<T: ?Sized> Rc<T> {
 
     #[inline]
     #[stable(feature = "ptr_eq", since = "1.17.0")]
-    /// Returns true if the two `Rc`s point to the same value (not
+    /// Returns `true` if the two `Rc`s point to the same value (not
     /// just values that compare as equal).
     ///
     /// # Examples
@@ -1334,8 +1334,8 @@ impl<T: ?Sized> Weak<T> {
         })
     }
 
-    /// Return `None` when the pointer is dangling and there is no allocated `RcBox`,
-    /// i.e., this `Weak` was created by `Weak::new`
+    /// Returns `None` when the pointer is dangling and there is no allocated `RcBox`
+    /// (i.e., when this `Weak` was created by `Weak::new`).
     #[inline]
     fn inner(&self) -> Option<&RcBox<T>> {
         if is_dangling(self.ptr) {
@@ -1345,7 +1345,7 @@ impl<T: ?Sized> Weak<T> {
         }
     }
 
-    /// Returns true if the two `Weak`s point to the same value (not just values
+    /// Returns `true` if the two `Weak`s point to the same value (not just values
     /// that compare as equal).
     ///
     /// # Notes

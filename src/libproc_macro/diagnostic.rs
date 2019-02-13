@@ -1,4 +1,4 @@
-use Span;
+use crate::Span;
 
 /// An enum representing a diagnostic level.
 #[unstable(feature = "proc_macro_diagnostic", issue = "54140")]
@@ -56,7 +56,7 @@ pub struct Diagnostic {
 
 macro_rules! diagnostic_child_methods {
     ($spanned:ident, $regular:ident, $level:expr) => (
-        /// Add a new child diagnostic message to `self` with the level
+        /// Adds a new child diagnostic message to `self` with the level
         /// identified by this method's name with the given `spans` and
         /// `message`.
         #[unstable(feature = "proc_macro_diagnostic", issue = "54140")]
@@ -67,7 +67,7 @@ macro_rules! diagnostic_child_methods {
             self
         }
 
-        /// Add a new child diagnostic message to `self` with the level
+        /// Adds a new child diagnostic message to `self` with the level
         /// identified by this method's name with the given `message`.
         #[unstable(feature = "proc_macro_diagnostic", issue = "54140")]
         pub fn $regular<T: Into<String>>(mut self, message: T) -> Diagnostic {
@@ -80,7 +80,7 @@ macro_rules! diagnostic_child_methods {
 /// Iterator over the children diagnostics of a `Diagnostic`.
 #[derive(Debug, Clone)]
 #[unstable(feature = "proc_macro_diagnostic", issue = "54140")]
-pub struct Children<'a>(::std::slice::Iter<'a, Diagnostic>);
+pub struct Children<'a>(std::slice::Iter<'a, Diagnostic>);
 
 #[unstable(feature = "proc_macro_diagnostic", issue = "54140")]
 impl<'a> Iterator for Children<'a> {
@@ -93,7 +93,7 @@ impl<'a> Iterator for Children<'a> {
 
 #[unstable(feature = "proc_macro_diagnostic", issue = "54140")]
 impl Diagnostic {
-    /// Create a new diagnostic with the given `level` and `message`.
+    /// Creates a new diagnostic with the given `level` and `message`.
     #[unstable(feature = "proc_macro_diagnostic", issue = "54140")]
     pub fn new<T: Into<String>>(level: Level, message: T) -> Diagnostic {
         Diagnostic {
@@ -104,7 +104,7 @@ impl Diagnostic {
         }
     }
 
-    /// Create a new diagnostic with the given `level` and `message` pointing to
+    /// Creates a new diagnostic with the given `level` and `message` pointing to
     /// the given set of `spans`.
     #[unstable(feature = "proc_macro_diagnostic", issue = "54140")]
     pub fn spanned<S, T>(spans: S, level: Level, message: T) -> Diagnostic
@@ -161,22 +161,22 @@ impl Diagnostic {
 
     /// Returns an iterator over the children diagnostics of `self`.
     #[unstable(feature = "proc_macro_diagnostic", issue = "54140")]
-    pub fn children(&self) -> Children {
+    pub fn children(&self) -> Children<'_> {
         Children(self.children.iter())
     }
 
     /// Emit the diagnostic.
     #[unstable(feature = "proc_macro_diagnostic", issue = "54140")]
     pub fn emit(self) {
-        fn to_internal(spans: Vec<Span>) -> ::bridge::client::MultiSpan {
-            let mut multi_span = ::bridge::client::MultiSpan::new();
+        fn to_internal(spans: Vec<Span>) -> crate::bridge::client::MultiSpan {
+            let mut multi_span = crate::bridge::client::MultiSpan::new();
             for span in spans {
                 multi_span.push(span.0);
             }
             multi_span
         }
 
-        let mut diag = ::bridge::client::Diagnostic::new(
+        let mut diag = crate::bridge::client::Diagnostic::new(
             self.level,
             &self.message[..],
             to_internal(self.spans),

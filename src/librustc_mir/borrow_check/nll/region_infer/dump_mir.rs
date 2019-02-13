@@ -57,7 +57,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
     }
 
     /// Debugging aid: Invokes the `with_msg` callback repeatedly with
-    /// our internal region constraints.  These are dumped into the
+    /// our internal region constraints. These are dumped into the
     /// -Zdump-mir file so that we can figure out why the region
     /// inference resulted in the values that it did when debugging.
     fn for_each_constraint(

@@ -1,5 +1,5 @@
+use crate::stable_hasher;
 use std::mem;
-use stable_hasher;
 use serialize;
 use serialize::opaque::{EncodeResult, Encoder, Decoder};
 
@@ -70,7 +70,7 @@ impl Fingerprint {
 }
 
 impl ::std::fmt::Display for Fingerprint {
-    fn fmt(&self, formatter: &mut ::std::fmt::Formatter) -> ::std::fmt::Result {
+    fn fmt(&self, formatter: &mut ::std::fmt::Formatter<'_>) -> ::std::fmt::Result {
         write!(formatter, "{:x}-{:x}", self.0, self.1)
     }
 }

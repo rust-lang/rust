@@ -1,4 +1,4 @@
-//! Experimental extensions to `std` for Unix platforms.
+//! Platform-specific extensions to `std` for Unix platforms.
 //!
 //! Provides access to platform-level information on Unix platforms, and
 //! exposes Unix-specific functions that would otherwise be inappropriate as

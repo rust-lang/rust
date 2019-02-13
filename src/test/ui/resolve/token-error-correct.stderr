@@ -5,15 +5,16 @@ LL | fn main() {
    |           - close delimiter possibly meant for this
 LL |     foo(bar(;
    |            - un-closed delimiter
-LL |     //~^ ERROR: expected expression, found `;`
+LL |     //~^ ERROR cannot find function `bar` in this scope
 LL | }
    | ^ incorrect close delimiter
 
-error: expected expression, found `;`
-  --> $DIR/token-error-correct.rs:4:13
+error[E0425]: cannot find function `bar` in this scope
+  --> $DIR/token-error-correct.rs:4:9
    |
 LL |     foo(bar(;
-   |             ^ expected expression
+   |         ^^^ not found in this scope
 
 error: aborting due to 2 previous errors
 
+For more information about this error, try `rustc --explain E0425`.

@@ -126,7 +126,7 @@ mod prim_bool { }
 ///
 /// ```ignore (string-from-str-error-type-is-not-never-yet)
 /// #[feature(exhaustive_patterns)]
-/// // NOTE: This does not work today!
+/// // NOTE: this does not work today!
 /// let Ok(s) = String::from_str("hello");
 /// ```
 ///
@@ -1062,7 +1062,7 @@ mod prim_ref { }
 /// On top of that, function pointers can vary based on what ABI they use. This is achieved by
 /// adding the `extern` keyword to the type name, followed by the ABI in question. For example,
 /// `fn()` is different from `extern "C" fn()`, which itself is different from `extern "stdcall"
-/// fn()`, and so on for the various ABIs that Rust supports.  Non-`extern` functions have an ABI
+/// fn()`, and so on for the various ABIs that Rust supports. Non-`extern` functions have an ABI
 /// of `"Rust"`, and `extern` functions without an explicit ABI have an ABI of `"C"`. For more
 /// information, see [the nomicon's section on foreign calling conventions][nomicon-abi].
 ///

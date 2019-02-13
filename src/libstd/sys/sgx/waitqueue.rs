@@ -3,7 +3,7 @@
 /// This queue is used to implement condition variable and mutexes.
 ///
 /// Users of this API are expected to use the `WaitVariable<T>` type. Since
-/// that type is not `Sync`, it needs to be protected by e.g. a `SpinMutex` to
+/// that type is not `Sync`, it needs to be protected by e.g., a `SpinMutex` to
 /// allow shared access.
 ///
 /// Since userspace may send spurious wake-ups, the wakeup event state is
@@ -136,7 +136,7 @@ impl WaitQueue {
         self.inner.is_empty()
     }
 
-    /// Add the calling thread to the WaitVariable's wait queue, then wait
+    /// Adds the calling thread to the `WaitVariable`'s wait queue, then wait
     /// until a wakeup event.
     ///
     /// This function does not return until this thread has been awoken.

@@ -17,10 +17,10 @@ use super::{Inherited, FnCtxt, potentially_plural_count};
 ///
 /// # Parameters
 ///
-/// - impl_m: type of the method we are checking
-/// - impl_m_span: span to use for reporting errors
-/// - trait_m: the method in the trait
-/// - impl_trait_ref: the TraitRef corresponding to the trait implementation
+/// - `impl_m`: type of the method we are checking
+/// - `impl_m_span`: span to use for reporting errors
+/// - `trait_m`: the method in the trait
+/// - `impl_trait_ref`: the TraitRef corresponding to the trait implementation
 
 pub fn compare_impl_method<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                                      impl_m: &ty::AssociatedItem,
@@ -736,8 +736,8 @@ fn compare_synthetic_generics<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         in impl_m_type_params.zip(trait_m_type_params)
     {
         if impl_synthetic != trait_synthetic {
-            let impl_node_id = tcx.hir().as_local_node_id(impl_def_id).unwrap();
-            let impl_span = tcx.hir().span(impl_node_id);
+            let impl_hir_id = tcx.hir().as_local_hir_id(impl_def_id).unwrap();
+            let impl_span = tcx.hir().span_by_hir_id(impl_hir_id);
             let trait_span = tcx.def_span(trait_def_id);
             let mut err = struct_span_err!(tcx.sess,
                                            impl_span,
@@ -840,7 +840,7 @@ fn compare_synthetic_generics<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                             match param.kind {
                                 GenericParamKind::Lifetime { .. } => None,
                                 GenericParamKind::Type { .. } => {
-                                    if param.id == impl_node_id {
+                                    if param.hir_id == impl_hir_id {
                                         Some(&param.bounds)
                                     } else {
                                         None

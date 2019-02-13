@@ -18,7 +18,7 @@ pub fn check(tcx: TyCtxt<'a, 'tcx, 'tcx>,
 }
 
 fn check_fn_for_unconditional_recursion(tcx: TyCtxt<'a, 'tcx, 'tcx>,
-                                        fn_kind: FnKind,
+                                        fn_kind: FnKind<'_>,
                                         mir: &Mir<'tcx>,
                                         def_id: DefId) {
     if let FnKind::Closure(_) = fn_kind {

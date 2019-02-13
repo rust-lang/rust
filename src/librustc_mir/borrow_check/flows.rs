@@ -7,16 +7,16 @@ use rustc::mir::{BasicBlock, Location};
 use rustc::ty::RegionVid;
 use rustc_data_structures::bit_set::BitIter;
 
-use borrow_check::location::LocationIndex;
+use crate::borrow_check::location::LocationIndex;
 
 use polonius_engine::Output;
 
-use dataflow::move_paths::indexes::BorrowIndex;
-use dataflow::move_paths::HasMoveData;
-use dataflow::Borrows;
-use dataflow::EverInitializedPlaces;
-use dataflow::{FlowAtLocation, FlowsAtLocation};
-use dataflow::MaybeUninitializedPlaces;
+use crate::dataflow::move_paths::indexes::BorrowIndex;
+use crate::dataflow::move_paths::HasMoveData;
+use crate::dataflow::Borrows;
+use crate::dataflow::EverInitializedPlaces;
+use crate::dataflow::{FlowAtLocation, FlowsAtLocation};
+use crate::dataflow::MaybeUninitializedPlaces;
 use either::Either;
 use std::fmt;
 use std::rc::Rc;
@@ -57,7 +57,7 @@ impl<'b, 'gcx, 'tcx> Flows<'b, 'gcx, 'tcx> {
         }
     }
 
-    crate fn with_outgoing_borrows(&self, op: impl FnOnce(BitIter<BorrowIndex>)) {
+    crate fn with_outgoing_borrows(&self, op: impl FnOnce(BitIter<'_, BorrowIndex>)) {
         self.borrows.with_iter_outgoing(op)
     }
 }
@@ -93,7 +93,7 @@ impl<'b, 'gcx, 'tcx> FlowsAtLocation for Flows<'b, 'gcx, 'tcx> {
 }
 
 impl<'b, 'gcx, 'tcx> fmt::Display for Flows<'b, 'gcx, 'tcx> {
-    fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, fmt: &mut fmt::Formatter<'_>) -> fmt::Result {
         let mut s = String::new();
 
         s.push_str("borrows in effect: [");

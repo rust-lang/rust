@@ -1,5 +1,5 @@
-use ty::subst::Substs;
-use ty::{self, Ty, TypeFlags, TypeFoldable};
+use crate::ty::subst::Substs;
+use crate::ty::{self, Ty, TypeFlags, TypeFoldable};
 
 #[derive(Debug)]
 pub struct FlagComputation {

@@ -41,7 +41,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> 
         Ok(())
     }
 
-    /// Returns true as long as there are more things to do.
+    /// Returns `true` as long as there are more things to do.
     ///
     /// This is used by [priroda](https://github.com/oli-obk/priroda)
     pub fn step(&mut self) -> EvalResult<'tcx, bool> {

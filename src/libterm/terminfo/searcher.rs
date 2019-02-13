@@ -1,4 +1,4 @@
-//! ncurses-compatible database discovery
+//! ncurses-compatible database discovery.
 //!
 //! Does not support hashed database, only filesystem!
 

@@ -6,9 +6,7 @@
 //!
 //! This API is completely unstable and subject to change.
 
-#![doc(html_logo_url = "https://www.rust-lang.org/logos/rust-logo-128x128-blk-v2.png",
-      html_favicon_url = "https://www.rust-lang.org/favicon.ico",
-      html_root_url = "https://doc.rust-lang.org/nightly/")]
+#![doc(html_root_url = "https://doc.rust-lang.org/nightly/")]
 
 #![feature(in_band_lifetimes)]
 #![feature(unboxed_closures)]
@@ -26,23 +24,16 @@
 #![cfg_attr(unix, feature(libc))]
 #![cfg_attr(test, feature(test))]
 
-extern crate core;
-extern crate ena;
+#![deny(rust_2018_idioms)]
+
 #[macro_use]
 extern crate log;
+#[allow(unused_extern_crates)]
 extern crate serialize as rustc_serialize; // used by deriving
 #[cfg(unix)]
 extern crate libc;
-extern crate parking_lot;
 #[macro_use]
 extern crate cfg_if;
-extern crate stable_deref_trait;
-extern crate rustc_rayon as rayon;
-extern crate rustc_rayon_core as rayon_core;
-extern crate rustc_hash;
-extern crate serialize;
-extern crate graphviz;
-extern crate smallvec;
 
 // See librustc_cratesio_shim/Cargo.toml for a comment explaining this.
 #[allow(unused_extern_crates)]

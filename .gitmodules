@@ -44,3 +44,6 @@
 	path = src/llvm-project
 	url = https://github.com/rust-lang/llvm-project.git
 	branch = rustc/8.0-2019-01-16
+[submodule "src/doc/embedded-book"]
+	path = src/doc/embedded-book
+	url = https://github.com/rust-embedded/book.git

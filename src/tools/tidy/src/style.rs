@@ -44,7 +44,7 @@ enum LIUState {
     EXP_END,
 }
 
-/// Returns whether `line` appears to be a line comment containing an URL,
+/// Returns `true` if `line` appears to be a line comment containing an URL,
 /// possibly with a Markdown link label in front, and nothing else.
 /// The Markdown link label, if present, may not contain whitespace.
 /// Lines of this form are allowed to be overlength, because Markdown
@@ -79,7 +79,7 @@ fn line_is_url(line: &str) -> bool {
     state == EXP_END
 }
 
-/// Returns whether `line` is allowed to be longer than the normal limit.
+/// Returns `true` if `line` is allowed to be longer than the normal limit.
 /// Currently there is only one exception, for long URLs, but more
 /// may be added in the future.
 fn long_line_is_ok(line: &str) -> bool {

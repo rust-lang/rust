@@ -144,7 +144,7 @@ pub mod consts {
 #[lang = "f32"]
 #[cfg(not(test))]
 impl f32 {
-    /// Returns `true` if this value is `NaN` and false otherwise.
+    /// Returns `true` if this value is `NaN`.
     ///
     /// ```
     /// use std::f32;
@@ -169,8 +169,8 @@ impl f32 {
         f32::from_bits(self.to_bits() & 0x7fff_ffff)
     }
 
-    /// Returns `true` if this value is positive infinity or negative infinity and
-    /// false otherwise.
+    /// Returns `true` if this value is positive infinity or negative infinity, and
+    /// `false` otherwise.
     ///
     /// ```
     /// use std::f32;
@@ -272,7 +272,7 @@ impl f32 {
         }
     }
 
-    /// Returns `true` if and only if `self` has a positive sign, including `+0.0`, `NaN`s with
+    /// Returns `true` if `self` has a positive sign, including `+0.0`, `NaN`s with
     /// positive sign bit and positive infinity.
     ///
     /// ```
@@ -288,7 +288,7 @@ impl f32 {
         !self.is_sign_negative()
     }
 
-    /// Returns `true` if and only if `self` has a negative sign, including `-0.0`, `NaN`s with
+    /// Returns `true` if `self` has a negative sign, including `-0.0`, `NaN`s with
     /// negative sign bit and negative infinity.
     ///
     /// ```

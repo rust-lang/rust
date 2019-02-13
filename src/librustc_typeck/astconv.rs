@@ -3,13 +3,13 @@
 //! instance of `AstConv`.
 
 use errors::{Applicability, DiagnosticId};
-use hir::{self, GenericArg, GenericArgs};
-use hir::def::Def;
-use hir::def_id::DefId;
-use hir::HirVec;
-use lint;
-use middle::resolve_lifetime as rl;
-use namespace::Namespace;
+use crate::hir::{self, GenericArg, GenericArgs};
+use crate::hir::def::Def;
+use crate::hir::def_id::DefId;
+use crate::hir::HirVec;
+use crate::lint;
+use crate::middle::resolve_lifetime as rl;
+use crate::namespace::Namespace;
 use rustc::lint::builtin::AMBIGUOUS_ASSOCIATED_ITEMS;
 use rustc::traits;
 use rustc::ty::{self, Ty, TyCtxt, ToPredicate, TypeFoldable};
@@ -18,15 +18,15 @@ use rustc::ty::subst::{Kind, Subst, Substs};
 use rustc::ty::wf::object_region_bounds;
 use rustc_data_structures::sync::Lrc;
 use rustc_target::spec::abi;
-use require_c_abi_if_variadic;
+use crate::require_c_abi_if_variadic;
 use smallvec::SmallVec;
 use syntax::ast;
 use syntax::feature_gate::{GateIssue, emit_feature_err};
 use syntax::ptr::P;
 use syntax::util::lev_distance::find_best_match_for_name;
 use syntax_pos::{DUMMY_SP, Span, MultiSpan};
-use util::common::ErrorReported;
-use util::nodemap::FxHashMap;
+use crate::util::common::ErrorReported;
+use crate::util::nodemap::FxHashMap;
 
 use std::collections::BTreeSet;
 use std::iter;
@@ -111,11 +111,10 @@ impl<'o, 'gcx: 'tcx, 'tcx> dyn AstConv<'gcx, 'tcx> + 'o {
     {
         let tcx = self.tcx();
         let lifetime_name = |def_id| {
-            tcx.hir().name(tcx.hir().as_local_node_id(def_id).unwrap()).as_interned_str()
+            tcx.hir().name_by_hir_id(tcx.hir().as_local_hir_id(def_id).unwrap()).as_interned_str()
         };
 
-        let hir_id = tcx.hir().node_to_hir_id(lifetime.id);
-        let r = match tcx.named_region(hir_id) {
+        let r = match tcx.named_region(lifetime.hir_id) {
             Some(rl::Region::Static) => {
                 tcx.types.re_static
             }
@@ -225,7 +224,7 @@ impl<'o, 'gcx: 'tcx, 'tcx> dyn AstConv<'gcx, 'tcx> + 'o {
         impl_trait
     }
 
-    /// Check that the correct number of generic arguments have been provided.
+    /// Checks that the correct number of generic arguments have been provided.
     /// Used specifically for function calls.
     pub fn check_generic_arg_count_for_call(
         tcx: TyCtxt,
@@ -257,7 +256,7 @@ impl<'o, 'gcx: 'tcx, 'tcx> dyn AstConv<'gcx, 'tcx> + 'o {
         ).0
     }
 
-    /// Check that the correct number of generic arguments have been provided.
+    /// Checks that the correct number of generic arguments have been provided.
     /// This is used both for datatypes and function calls.
     fn check_generic_arg_count(
         tcx: TyCtxt,
@@ -401,8 +400,8 @@ impl<'o, 'gcx: 'tcx, 'tcx> dyn AstConv<'gcx, 'tcx> + 'o {
 
     /// Creates the relevant generic argument substitutions
     /// corresponding to a set of generic parameters. This is a
-    /// rather complex little function. Let me try to explain the
-    /// role of each of its parameters:
+    /// rather complex function. Let us try to explain the role
+    /// of each of its parameters:
     ///
     /// To start, we are given the `def_id` of the thing we are
     /// creating the substitutions for, and a partial set of
@@ -418,9 +417,9 @@ impl<'o, 'gcx: 'tcx, 'tcx> dyn AstConv<'gcx, 'tcx> + 'o {
     /// we can append those and move on. Otherwise, it invokes the
     /// three callback functions:
     ///
-    /// - `args_for_def_id`: given the def-id `P`, supplies back the
+    /// - `args_for_def_id`: given the `DefId` `P`, supplies back the
     ///   generic arguments that were given to that parent from within
-    ///   the path; so e.g., if you have `<T as Foo>::Bar`, the def-id
+    ///   the path; so e.g., if you have `<T as Foo>::Bar`, the `DefId`
     ///   might refer to the trait `Foo`, and the arguments might be
     ///   `[T]`. The boolean value indicates whether to infer values
     ///   for arguments whose values were not explicitly provided.
@@ -681,7 +680,7 @@ impl<'o, 'gcx: 'tcx, 'tcx> dyn AstConv<'gcx, 'tcx> + 'o {
     /// bound to a valid trait type. Returns the def_id for the defining trait.
     /// The type _cannot_ be a type other than a trait type.
     ///
-    /// If the `projections` argument is `None`, then assoc type bindings like `Foo<T=X>`
+    /// If the `projections` argument is `None`, then assoc type bindings like `Foo<T = X>`
     /// are disallowed. Otherwise, they are pushed onto the vector given.
     pub fn instantiate_mono_trait_ref(&self,
         trait_ref: &hir::TraitRef,
@@ -1145,8 +1144,7 @@ impl<'o, 'gcx: 'tcx, 'tcx> dyn AstConv<'gcx, 'tcx> + 'o {
             self.ast_region_to_region(lifetime, None)
         } else {
             self.compute_object_lifetime_bound(span, existential_predicates).unwrap_or_else(|| {
-                let hir_id = tcx.hir().node_to_hir_id(lifetime.id);
-                if tcx.named_region(hir_id).is_some() {
+                if tcx.named_region(lifetime.hir_id).is_some() {
                     self.ast_region_to_region(lifetime, None)
                 } else {
                     self.re_infer(span, None).unwrap_or_else(|| {
@@ -1684,12 +1682,13 @@ impl<'o, 'gcx: 'tcx, 'tcx> dyn AstConv<'gcx, 'tcx> + 'o {
                 assert_eq!(opt_self_ty, None);
                 self.prohibit_generics(&path.segments);
 
-                let node_id = tcx.hir().as_local_node_id(did).unwrap();
-                let item_id = tcx.hir().get_parent_node(node_id);
-                let item_def_id = tcx.hir().local_def_id(item_id);
+                let hir_id = tcx.hir().as_local_hir_id(did).unwrap();
+                let item_id = tcx.hir().get_parent_node_by_hir_id(hir_id);
+                let item_def_id = tcx.hir().local_def_id_from_hir_id(item_id);
                 let generics = tcx.generics_of(item_def_id);
-                let index = generics.param_def_id_to_index[&tcx.hir().local_def_id(node_id)];
-                tcx.mk_ty_param(index, tcx.hir().name(node_id).as_interned_str())
+                let index = generics.param_def_id_to_index[
+                    &tcx.hir().local_def_id_from_hir_id(hir_id)];
+                tcx.mk_ty_param(index, tcx.hir().name_by_hir_id(hir_id).as_interned_str())
             }
             Def::SelfTy(_, Some(def_id)) => {
                 // `Self` in impl (we know the concrete type).
@@ -1795,7 +1794,7 @@ impl<'o, 'gcx: 'tcx, 'tcx> dyn AstConv<'gcx, 'tcx> + 'o {
                 let length_def_id = tcx.hir().local_def_id(length.id);
                 let substs = Substs::identity_for_item(tcx, length_def_id);
                 let length = ty::LazyConst::Unevaluated(length_def_id, substs);
-                let length = tcx.intern_lazy_const(length);
+                let length = tcx.mk_lazy_const(length);
                 let array_ty = tcx.mk_ty(ty::Array(self.ast_ty_to_ty(&ty), length));
                 self.normalize_ty(ast_ty.span, array_ty)
             }

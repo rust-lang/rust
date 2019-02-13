@@ -1,6 +1,8 @@
-use source_map::{SourceMap, FilePathMapping};
-use errors::Handler;
-use errors::emitter::EmitterWriter;
+use crate::source_map::{SourceMap, FilePathMapping};
+use crate::errors::Handler;
+use crate::errors::emitter::EmitterWriter;
+use crate::with_globals;
+
 use std::io;
 use std::io::prelude::*;
 use rustc_data_structures::sync::Lrc;
@@ -8,7 +10,6 @@ use std::str;
 use std::sync::{Arc, Mutex};
 use std::path::Path;
 use syntax_pos::{BytePos, NO_EXPANSION, Span, MultiSpan};
-use with_globals;
 
 /// Identify a position in the text by the Nth occurrence of a string.
 struct Position {

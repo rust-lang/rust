@@ -1,4 +1,4 @@
-use hair::*;
+use crate::hair::*;
 
 #[derive(Debug, PartialEq)]
 pub enum Category {

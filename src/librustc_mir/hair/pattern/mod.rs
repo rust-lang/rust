@@ -1,4 +1,4 @@
-//! Code to validate patterns/matches
+//! Validation of patterns/matches.
 
 mod _match;
 mod check_match;
@@ -6,10 +6,10 @@ mod check_match;
 pub use self::check_match::check_crate;
 pub(crate) use self::check_match::check_match;
 
-use const_eval::{const_field, const_variant_index};
+use crate::const_eval::{const_field, const_variant_index};
 
-use hair::util::UserAnnotatedTyHelpers;
-use hair::constant::*;
+use crate::hair::util::UserAnnotatedTyHelpers;
+use crate::hair::constant::*;
 
 use rustc::mir::{fmt_const_val, Field, BorrowKind, Mutability};
 use rustc::mir::{UserTypeProjection};
@@ -116,7 +116,7 @@ pub enum PatternKind<'tcx> {
         user_ty_span: Span,
     },
 
-    /// x, ref x, x @ P, etc
+    /// `x`, `ref x`, `x @ P`, etc.
     Binding {
         mutability: Mutability,
         name: ast::Name,
@@ -126,7 +126,8 @@ pub enum PatternKind<'tcx> {
         subpattern: Option<Pattern<'tcx>>,
     },
 
-    /// Foo(...) or Foo{...} or Foo, where `Foo` is a variant name from an adt with >1 variants
+    /// `Foo(...)` or `Foo{...}` or `Foo`, where `Foo` is a variant name from an ADT with
+    /// multiple variants.
     Variant {
         adt_def: &'tcx AdtDef,
         substs: &'tcx Substs<'tcx>,
@@ -134,12 +135,13 @@ pub enum PatternKind<'tcx> {
         subpatterns: Vec<FieldPattern<'tcx>>,
     },
 
-    /// (...), Foo(...), Foo{...}, or Foo, where `Foo` is a variant name from an adt with 1 variant
+    /// `(...)`, `Foo(...)`, `Foo{...}`, or `Foo`, where `Foo` is a variant name from an ADT with
+    /// a single variant.
     Leaf {
         subpatterns: Vec<FieldPattern<'tcx>>,
     },
 
-    /// box P, &P, &mut P, etc
+    /// `box P`, `&P`, `&mut P`, etc.
     Deref {
         subpattern: Pattern<'tcx>,
     },
@@ -150,7 +152,7 @@ pub enum PatternKind<'tcx> {
 
     Range(PatternRange<'tcx>),
 
-    /// matches against a slice, checking the length and extracting elements.
+    /// Matches against a slice, checking the length and extracting elements.
     /// irrefutable when there is a slice pattern and both `prefix` and `suffix` are empty.
     /// e.g., `&[ref xs..]`.
     Slice {
@@ -159,12 +161,23 @@ pub enum PatternKind<'tcx> {
         suffix: Vec<Pattern<'tcx>>,
     },
 
-    /// fixed match against an array, irrefutable
+    /// Fixed match against an array; irrefutable.
     Array {
         prefix: Vec<Pattern<'tcx>>,
         slice: Option<Pattern<'tcx>>,
         suffix: Vec<Pattern<'tcx>>,
     },
+}
+
+impl<'tcx> PatternKind<'tcx> {
+    /// If this is a `PatternKind::AscribeUserType` then return the subpattern kind, otherwise
+    /// return this pattern kind.
+    fn with_user_type_ascription_subpattern(self) -> Self {
+        match self {
+            PatternKind::AscribeUserType { subpattern: Pattern { box kind, ..  }, ..  } => kind,
+            kind => kind,
+        }
+    }
 }
 
 #[derive(Clone, Copy, Debug, PartialEq)]
@@ -176,7 +189,7 @@ pub struct PatternRange<'tcx> {
 }
 
 impl<'tcx> fmt::Display for Pattern<'tcx> {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match *self.kind {
             PatternKind::Wild => write!(f, "_"),
             PatternKind::AscribeUserType { ref subpattern, .. } =>
@@ -403,9 +416,15 @@ impl<'a, 'tcx> PatternContext<'a, 'tcx> {
             PatKind::Lit(ref value) => self.lower_lit(value),
 
             PatKind::Range(ref lo_expr, ref hi_expr, end) => {
-                match (self.lower_lit(lo_expr), self.lower_lit(hi_expr)) {
-                    (PatternKind::Constant { value: lo },
-                     PatternKind::Constant { value: hi }) => {
+                match (
+                    // Look for `PatternKind::Constant` patterns inside of any
+                    // `PatternKind::AscribeUserType` patterns. Type ascriptions can be safely
+                    // ignored for the purposes of lowering a range correctly - these are checked
+                    // elsewhere for well-formedness.
+                    self.lower_lit(lo_expr).with_user_type_ascription_subpattern(),
+                    self.lower_lit(hi_expr).with_user_type_ascription_subpattern(),
+                ) {
+                    (PatternKind::Constant { value: lo }, PatternKind::Constant { value: hi }) => {
                         use std::cmp::Ordering;
                         let cmp = compare_const_vals(
                             self.tcx,
@@ -454,7 +473,15 @@ impl<'a, 'tcx> PatternContext<'a, 'tcx> {
                             }
                         }
                     }
-                    _ => PatternKind::Wild
+                    ref pats => {
+                        self.tcx.sess.delay_span_bug(
+                            pat.span,
+                            &format!("found bad range pattern `{:?}` outside of error recovery",
+                                     pats),
+                        );
+
+                        PatternKind::Wild
+                    }
                 }
             }
 
@@ -742,7 +769,7 @@ impl<'a, 'tcx> PatternContext<'a, 'tcx> {
 
     /// Takes a HIR Path. If the path is a constant, evaluates it and feeds
     /// it to `const_to_pat`. Any other path (like enum variants without fields)
-    /// is converted to the corresponding pattern via `lower_variant_or_leaf`
+    /// is converted to the corresponding pattern via `lower_variant_or_leaf`.
     fn lower_path(&mut self,
                   qpath: &hir::QPath,
                   id: hir::HirId,
@@ -826,8 +853,8 @@ impl<'a, 'tcx> PatternContext<'a, 'tcx> {
     }
 
     /// Converts literals, paths and negation of literals to patterns.
-    /// The special case for negation exists to allow things like -128i8
-    /// which would overflow if we tried to evaluate 128i8 and then negate
+    /// The special case for negation exists to allow things like `-128_i8`
+    /// which would overflow if we tried to evaluate `128_i8` and then negate
     /// afterwards.
     fn lower_lit(&mut self, expr: &'tcx hir::Expr) -> PatternKind<'tcx> {
         match expr.node {
@@ -876,7 +903,7 @@ impl<'a, 'tcx> PatternContext<'a, 'tcx> {
 
     /// Converts an evaluated constant to a pattern (if possible).
     /// This means aggregate values (like structs and enums) are converted
-    /// to a pattern that matches the value (as if you'd compare via eq).
+    /// to a pattern that matches the value (as if you'd compared via equality).
     fn const_to_pat(
         &self,
         instance: ty::Instance<'tcx>,

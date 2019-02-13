@@ -31,9 +31,9 @@
 //! variable only once, and it does so as soon as it can, so it is reasonable to ask what the type
 //! inferencer knows "so far".
 
-use ty::{self, Ty, TyCtxt, TypeFoldable};
-use ty::fold::TypeFolder;
-use util::nodemap::FxHashMap;
+use crate::ty::{self, Ty, TyCtxt, TypeFoldable};
+use crate::ty::fold::TypeFolder;
+use crate::util::nodemap::FxHashMap;
 
 use std::collections::hash_map::Entry;
 

@@ -130,7 +130,7 @@
 //!
 //! This is simply a special - but common - case of the previous: hiding mutability for operations
 //! that appear to be immutable. The `clone` method is expected to not change the source value, and
-//! is declared to take `&self`, not `&mut self`. Therefore any mutation that happens in the
+//! is declared to take `&self`, not `&mut self`. Therefore, any mutation that happens in the
 //! `clone` method must use cell types. For example, `Rc<T>` maintains its reference counts within a
 //! `Cell<T>`.
 //!
@@ -1133,7 +1133,7 @@ impl<'b, T: ?Sized> Ref<'b, T> {
     /// The `RefCell` is already immutably borrowed, so this cannot fail.
     ///
     /// This is an associated function that needs to be used as
-    /// `Ref::clone(...)`.  A `Clone` implementation or a method would interfere
+    /// `Ref::clone(...)`. A `Clone` implementation or a method would interfere
     /// with the widespread use of `r.borrow().clone()` to clone the contents of
     /// a `RefCell`.
     #[stable(feature = "cell_extras", since = "1.15.0")]
@@ -1145,7 +1145,7 @@ impl<'b, T: ?Sized> Ref<'b, T> {
         }
     }
 
-    /// Make a new `Ref` for a component of the borrowed data.
+    /// Makes a new `Ref` for a component of the borrowed data.
     ///
     /// The `RefCell` is already immutably borrowed, so this cannot fail.
     ///
@@ -1174,7 +1174,7 @@ impl<'b, T: ?Sized> Ref<'b, T> {
         }
     }
 
-    /// Split a `Ref` into multiple `Ref`s for different components of the
+    /// Splits a `Ref` into multiple `Ref`s for different components of the
     /// borrowed data.
     ///
     /// The `RefCell` is already immutably borrowed, so this cannot fail.
@@ -1217,13 +1217,13 @@ impl<T: ?Sized + fmt::Display> fmt::Display for Ref<'_, T> {
 }
 
 impl<'b, T: ?Sized> RefMut<'b, T> {
-    /// Make a new `RefMut` for a component of the borrowed data, e.g., an enum
+    /// Makes a new `RefMut` for a component of the borrowed data, e.g., an enum
     /// variant.
     ///
     /// The `RefCell` is already mutably borrowed, so this cannot fail.
     ///
     /// This is an associated function that needs to be used as
-    /// `RefMut::map(...)`.  A method would interfere with methods of the same
+    /// `RefMut::map(...)`. A method would interfere with methods of the same
     /// name on the contents of a `RefCell` used through `Deref`.
     ///
     /// # Examples
@@ -1253,7 +1253,7 @@ impl<'b, T: ?Sized> RefMut<'b, T> {
         }
     }
 
-    /// Split a `RefMut` into multiple `RefMut`s for different components of the
+    /// Splits a `RefMut` into multiple `RefMut`s for different components of the
     /// borrowed data.
     ///
     /// The underlying `RefCell` will remain mutably borrowed until both
@@ -1416,7 +1416,7 @@ impl<T: ?Sized + fmt::Display> fmt::Display for RefMut<'_, T> {
 /// co-exist with it. A `&mut T` must always be unique.
 ///
 /// Note that while mutating or mutably aliasing the contents of an `&UnsafeCell<T>` is
-/// okay (provided you enforce the invariants some other way), it is still undefined behavior
+/// ok (provided you enforce the invariants some other way), it is still undefined behavior
 /// to have multiple `&mut UnsafeCell<T>` aliases.
 ///
 /// # Examples

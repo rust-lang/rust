@@ -37,8 +37,11 @@ use super::Clean;
 /// and `Some` of a vector of items if it was successfully expanded.
 pub fn try_inline(cx: &DocContext, def: Def, name: ast::Name, visited: &mut FxHashSet<DefId>)
                   -> Option<Vec<clean::Item>> {
-    if def == Def::Err { return None }
-    let did = def.def_id();
+    let did = if let Some(did) = def.opt_def_id() {
+        did
+    } else {
+        return None;
+    };
     if did.is_local() { return None }
     let mut ret = Vec::new();
     let inner = match def {

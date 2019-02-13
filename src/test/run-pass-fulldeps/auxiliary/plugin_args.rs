@@ -43,7 +43,7 @@ pub fn plugin_registrar(reg: &mut Registry) {
         NormalTT {
             expander: Box::new(Expander { args: args, }),
             def_info: None,
-            allow_internal_unstable: false,
+            allow_internal_unstable: None,
             allow_internal_unsafe: false,
             local_inner_macros: false,
             unstable_feature: None,

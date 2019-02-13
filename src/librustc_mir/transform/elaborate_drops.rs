@@ -1,10 +1,14 @@
-use dataflow::move_paths::{HasMoveData, MoveData, MovePathIndex, LookupResult};
-use dataflow::{MaybeInitializedPlaces, MaybeUninitializedPlaces};
-use dataflow::{DataflowResults};
-use dataflow::{on_all_children_bits, on_all_drop_children_bits};
-use dataflow::{drop_flag_effects_for_location, on_lookup_result_bits};
-use dataflow::MoveDataParamEnv;
-use dataflow::{self, do_dataflow, DebugFormatted};
+use crate::dataflow::move_paths::{HasMoveData, MoveData, MovePathIndex, LookupResult};
+use crate::dataflow::{MaybeInitializedPlaces, MaybeUninitializedPlaces};
+use crate::dataflow::{DataflowResults};
+use crate::dataflow::{on_all_children_bits, on_all_drop_children_bits};
+use crate::dataflow::{drop_flag_effects_for_location, on_lookup_result_bits};
+use crate::dataflow::MoveDataParamEnv;
+use crate::dataflow::{self, do_dataflow, DebugFormatted};
+use crate::transform::{MirPass, MirSource};
+use crate::util::patch::MirPatch;
+use crate::util::elaborate_drops::{DropFlagState, Unwind, elaborate_drop};
+use crate::util::elaborate_drops::{DropElaborator, DropStyle, DropFlagMode};
 use rustc::ty::{self, TyCtxt};
 use rustc::ty::layout::VariantIdx;
 use rustc::mir::*;
@@ -13,23 +17,19 @@ use rustc_data_structures::bit_set::BitSet;
 use std::fmt;
 use syntax::ast;
 use syntax_pos::Span;
-use transform::{MirPass, MirSource};
-use util::patch::MirPatch;
-use util::elaborate_drops::{DropFlagState, Unwind, elaborate_drop};
-use util::elaborate_drops::{DropElaborator, DropStyle, DropFlagMode};
 
 pub struct ElaborateDrops;
 
 impl MirPass for ElaborateDrops {
     fn run_pass<'a, 'tcx>(&self,
                           tcx: TyCtxt<'a, 'tcx, 'tcx>,
-                          src: MirSource,
+                          src: MirSource<'tcx>,
                           mir: &mut Mir<'tcx>)
     {
         debug!("elaborate_drops({:?} @ {:?})", src, mir.span);
 
-        let id = tcx.hir().as_local_node_id(src.def_id).unwrap();
-        let param_env = tcx.param_env(src.def_id).with_reveal_all();
+        let id = tcx.hir().as_local_node_id(src.def_id()).unwrap();
+        let param_env = tcx.param_env(src.def_id()).with_reveal_all();
         let move_data = match MoveData::gather_moves(mir, tcx) {
             Ok(move_data) => move_data,
             Err((move_data, _move_errors)) => {
@@ -74,7 +74,7 @@ impl MirPass for ElaborateDrops {
     }
 }
 
-/// Return the set of basic blocks whose unwind edges are known
+/// Returns the set of basic blocks whose unwind edges are known
 /// to not be reachable, because they are `drop` terminators
 /// that can't drop anything.
 fn find_dead_unwinds<'a, 'tcx>(
@@ -174,7 +174,7 @@ struct Elaborator<'a, 'b: 'a, 'tcx: 'b> {
 }
 
 impl<'a, 'b, 'tcx> fmt::Debug for Elaborator<'a, 'b, 'tcx> {
-    fn fmt(&self, _f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, _f: &mut fmt::Formatter<'_>) -> fmt::Result {
         Ok(())
     }
 }
@@ -533,7 +533,7 @@ impl<'b, 'tcx> ElaborateDropsCtxt<'b, 'tcx> {
             span,
             ty: self.tcx.types.bool,
             user_ty: None,
-            literal: self.tcx.intern_lazy_const(ty::LazyConst::Evaluated(
+            literal: self.tcx.mk_lazy_const(ty::LazyConst::Evaluated(
                 ty::Const::from_bool(self.tcx, val),
             )),
         })))

@@ -104,7 +104,7 @@ pub trait ExactSizeIterator: Iterator {
         lower
     }
 
-    /// Returns whether the iterator is empty.
+    /// Returns `true` if the iterator is empty.
     ///
     /// This method has a default implementation using `self.len()`, so you
     /// don't need to implement it yourself.

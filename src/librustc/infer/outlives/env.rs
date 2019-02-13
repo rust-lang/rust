@@ -1,10 +1,10 @@
-use infer::outlives::free_region_map::FreeRegionMap;
-use infer::{GenericKind, InferCtxt};
+use crate::infer::outlives::free_region_map::FreeRegionMap;
+use crate::infer::{GenericKind, InferCtxt};
 use rustc_data_structures::fx::FxHashMap;
 use syntax::ast;
 use syntax_pos::Span;
-use traits::query::outlives_bounds::{self, OutlivesBound};
-use ty::{self, Ty};
+use crate::traits::query::outlives_bounds::{self, OutlivesBound};
+use crate::ty::{self, Ty};
 
 /// The `OutlivesEnvironment` collects information about what outlives
 /// what in a given type-checking setting. For example, if we have a
@@ -63,7 +63,7 @@ pub struct OutlivesEnvironment<'tcx> {
 }
 
 /// "Region-bound pairs" tracks outlives relations that are known to
-/// be true, either because of explicit where clauses like `T: 'a` or
+/// be true, either because of explicit where-clauses like `T: 'a` or
 /// because of implied bounds.
 pub type RegionBoundPairs<'tcx> = Vec<(ty::Region<'tcx>, GenericKind<'tcx>)>;
 

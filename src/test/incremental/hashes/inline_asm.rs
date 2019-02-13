@@ -33,7 +33,7 @@ pub fn change_template(a: i32) -> i32 {
 }
 
 #[cfg(not(cfail1))]
-#[rustc_clean(cfg="cfail2", except="HirBody, MirValidated, MirOptimized")]
+#[rustc_clean(cfg="cfail2", except="HirBody, MirBuilt, MirOptimized")]
 #[rustc_clean(cfg="cfail3")]
 #[cfg(any(target_arch = "x86", target_arch = "x86_64"))]
 pub fn change_template(a: i32) -> i32 {
@@ -69,7 +69,7 @@ pub fn change_output(a: i32) -> i32 {
 }
 
 #[cfg(not(cfail1))]
-#[rustc_clean(cfg="cfail2", except="HirBody, MirValidated, MirOptimized")]
+#[rustc_clean(cfg="cfail2", except="HirBody, MirBuilt, MirOptimized")]
 #[rustc_clean(cfg="cfail3")]
 #[cfg(any(target_arch = "x86", target_arch = "x86_64"))]
 pub fn change_output(a: i32) -> i32 {
@@ -105,7 +105,7 @@ pub fn change_input(_a: i32, _b: i32) -> i32 {
 }
 
 #[cfg(not(cfail1))]
-#[rustc_clean(cfg="cfail2", except="HirBody, MirValidated, MirOptimized")]
+#[rustc_clean(cfg="cfail2", except="HirBody, MirBuilt, MirOptimized")]
 #[rustc_clean(cfg="cfail3")]
 #[cfg(any(target_arch = "x86", target_arch = "x86_64"))]
 pub fn change_input(_a: i32, _b: i32) -> i32 {
@@ -140,7 +140,7 @@ pub fn change_input_constraint(_a: i32, _b: i32) -> i32 {
 }
 
 #[cfg(not(cfail1))]
-#[rustc_clean(cfg="cfail2", except="HirBody, MirValidated, MirOptimized")]
+#[rustc_clean(cfg="cfail2", except="HirBody, MirBuilt, MirOptimized")]
 #[rustc_clean(cfg="cfail3")]
 #[cfg(any(target_arch = "x86", target_arch = "x86_64"))]
 pub fn change_input_constraint(_a: i32, _b: i32) -> i32 {
@@ -175,7 +175,7 @@ pub fn change_clobber(_a: i32) -> i32 {
 }
 
 #[cfg(not(cfail1))]
-#[rustc_clean(cfg="cfail2", except="HirBody, MirValidated, MirOptimized")]
+#[rustc_clean(cfg="cfail2", except="HirBody, MirBuilt, MirOptimized")]
 #[rustc_clean(cfg="cfail3")]
 #[cfg(any(target_arch = "x86", target_arch = "x86_64"))]
 pub fn change_clobber(_a: i32) -> i32 {
@@ -210,7 +210,7 @@ pub fn change_options(_a: i32) -> i32 {
 }
 
 #[cfg(not(cfail1))]
-#[rustc_clean(cfg="cfail2", except="HirBody, MirValidated, MirOptimized")]
+#[rustc_clean(cfg="cfail2", except="HirBody, MirBuilt, MirOptimized")]
 #[rustc_clean(cfg="cfail3")]
 #[cfg(any(target_arch = "x86", target_arch = "x86_64"))]
 pub fn change_options(_a: i32) -> i32 {

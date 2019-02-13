@@ -94,7 +94,7 @@ function createSidebarToggle() {
     inner1.style.position = "relative";
 
     var inner2 = document.createElement("div");
-    inner2.style.marginTop = "-2px";
+    inner2.style.paddingTop = "3px";
     if (getCurrentValue("rustdoc-source-sidebar-show") === "true") {
         inner2.innerText = "<";
     } else {

@@ -1,11 +1,11 @@
-use cfg::*;
-use middle::region;
+use crate::cfg::*;
+use crate::middle::region;
 use rustc_data_structures::graph::implementation as graph;
 use syntax::ptr::P;
-use ty::{self, TyCtxt};
+use crate::ty::{self, TyCtxt};
 
-use hir::{self, PatKind};
-use hir::def_id::DefId;
+use crate::hir::{self, PatKind};
+use crate::hir::def_id::DefId;
 
 struct CFGBuilder<'a, 'tcx: 'a> {
     tcx: TyCtxt<'a, 'tcx, 'tcx>,
@@ -99,7 +99,6 @@ impl<'a, 'tcx> CFGBuilder<'a, 'tcx> {
     }
 
     fn stmt(&mut self, stmt: &hir::Stmt, pred: CFGIndex) -> CFGIndex {
-        let hir_id = self.tcx.hir().node_to_hir_id(stmt.id);
         let exit = match stmt.node {
             hir::StmtKind::Local(ref local) => {
                 let init_exit = self.opt_expr(&local.init, pred);
@@ -113,7 +112,7 @@ impl<'a, 'tcx> CFGBuilder<'a, 'tcx> {
                 self.expr(&expr, pred)
             }
         };
-        self.add_ast_node(hir_id.local_id, &[exit])
+        self.add_ast_node(stmt.hir_id.local_id, &[exit])
     }
 
     fn pat(&mut self, pat: &hir::Pat, pred: CFGIndex) -> CFGIndex {

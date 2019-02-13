@@ -6,8 +6,8 @@
 // their associated scopes.  In phase two, checking loans, we will then make
 // sure that all of these loans are honored.
 
-use borrowck::*;
-use borrowck::move_data::MoveData;
+use crate::borrowck::*;
+use crate::borrowck::move_data::MoveData;
 use rustc::middle::expr_use_visitor as euv;
 use rustc::middle::mem_categorization as mc;
 use rustc::middle::mem_categorization::Categorization;
@@ -17,8 +17,9 @@ use rustc::ty::{self, TyCtxt};
 use syntax::ast;
 use syntax_pos::Span;
 use rustc::hir;
+use log::debug;
 
-use self::restrictions::RestrictionResult;
+use restrictions::RestrictionResult;
 
 mod lifetime;
 mod restrictions;
@@ -284,7 +285,7 @@ impl<'a, 'tcx> GatherLoanCtxt<'a, 'tcx> {
     }
 
     /// Guarantees that `addr_of(cmt)` will be valid for the duration of `static_scope_r`, or
-    /// reports an error.  This may entail taking out loans, which will be added to the
+    /// reports an error. This may entail taking out loans, which will be added to the
     /// `req_loan_map`.
     fn guarantee_valid(&mut self,
                        borrow_id: hir::ItemLocalId,
@@ -427,7 +428,7 @@ impl<'a, 'tcx> GatherLoanCtxt<'a, 'tcx> {
         // }
     }
 
-    pub fn mark_loan_path_as_mutated(&self, loan_path: &LoanPath) {
+    pub fn mark_loan_path_as_mutated(&self, loan_path: &LoanPath<'_>) {
         //! For mutable loans of content whose mutability derives
         //! from a local variable, mark the mutability decl as necessary.
 

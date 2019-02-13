@@ -3,7 +3,7 @@
 //! Generally, we use `Pointer` to denote memory addresses. However, some operations
 //! have a "size"-like parameter, and they take `Scalar` for the address because
 //! if the size is 0, then the pointer can also be a (properly aligned, non-NULL)
-//! integer.  It is crucial that these operations call `check_align` *before*
+//! integer. It is crucial that these operations call `check_align` *before*
 //! short-circuiting the empty case!
 
 use std::collections::VecDeque;
@@ -47,10 +47,10 @@ impl<T: MayLeak> MayLeak for MemoryKind<T> {
 // `Memory` has to depend on the `Machine` because some of its operations
 // (e.g., `get`) call a `Machine` hook.
 pub struct Memory<'a, 'mir, 'tcx: 'a + 'mir, M: Machine<'a, 'mir, 'tcx>> {
-    /// Allocations local to this instance of the miri engine.  The kind
+    /// Allocations local to this instance of the miri engine. The kind
     /// helps ensure that the same mechanism is used for allocation and
-    /// deallocation.  When an allocation is not found here, it is a
-    /// static and looked up in the `tcx` for read access.  Some machines may
+    /// deallocation. When an allocation is not found here, it is a
+    /// static and looked up in the `tcx` for read access. Some machines may
     /// have to mutate this map even on a read-only access to a static (because
     /// they do pointer provenance tracking and the allocations in `tcx` have
     /// the wrong type), so we let the machine override this type.
@@ -240,7 +240,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> Memory<'a, 'mir, 'tcx, M> {
         Ok(())
     }
 
-    /// Check that the pointer is aligned AND non-NULL. This supports ZSTs in two ways:
+    /// Checks that the pointer is aligned AND non-NULL. This supports ZSTs in two ways:
     /// You can pass a scalar, and a `Pointer` does not have to actually still be allocated.
     pub fn check_align(
         &self,
@@ -284,7 +284,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> Memory<'a, 'mir, 'tcx, M> {
         }
     }
 
-    /// Check if the pointer is "in-bounds". Notice that a pointer pointing at the end
+    /// Checks if the pointer is "in-bounds". Notice that a pointer pointing at the end
     /// of an allocation (i.e., at the first *inaccessible* location) *is* considered
     /// in-bounds!  This follows C's/LLVM's rules.
     /// If you want to check bounds before doing a memory access, better first obtain
@@ -659,7 +659,7 @@ where
     }
 }
 
-/// Reading and writing
+/// Reading and writing.
 impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> Memory<'a, 'mir, 'tcx, M> {
     pub fn copy(
         &mut self,

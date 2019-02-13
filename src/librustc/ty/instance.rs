@@ -1,9 +1,9 @@
-use hir::Unsafety;
-use hir::def_id::DefId;
-use ty::{self, Ty, PolyFnSig, TypeFoldable, Substs, TyCtxt};
-use traits;
+use crate::hir::Unsafety;
+use crate::hir::def_id::DefId;
+use crate::ty::{self, Ty, PolyFnSig, TypeFoldable, Substs, TyCtxt};
+use crate::traits;
 use rustc_target::spec::abi::Abi;
-use util::ppaux;
+use crate::util::ppaux;
 
 use std::fmt;
 use std::iter;
@@ -22,17 +22,17 @@ pub enum InstanceDef<'tcx> {
     /// `<T as Trait>::method` where `method` receives unsizeable `self: Self`.
     VtableShim(DefId),
 
-    /// \<fn() as FnTrait>::call_*
-    /// def-id is FnTrait::call_*
+    /// `<fn() as FnTrait>::call_*`
+    /// `DefId` is `FnTrait::call_*`
     FnPtrShim(DefId, Ty<'tcx>),
 
-    /// <Trait as Trait>::fn
+    /// `<Trait as Trait>::fn`
     Virtual(DefId, usize),
 
-    /// <[mut closure] as FnOnce>::call_once
+    /// `<[mut closure] as FnOnce>::call_once`
     ClosureOnceShim { call_once: DefId },
 
-    /// drop_in_place::<T>; None for empty drop glue.
+    /// `drop_in_place::<T>; None` for empty drop glue.
     DropGlue(DefId, Option<Ty<'tcx>>),
 
     ///`<T as Clone>::clone` shim.
@@ -141,7 +141,7 @@ impl<'tcx> InstanceDef<'tcx> {
         &self,
         tcx: TyCtxt<'a, 'tcx, 'tcx>
     ) -> bool {
-        use hir::map::DefPathData;
+        use crate::hir::map::DefPathData;
         let def_id = match *self {
             ty::InstanceDef::Item(def_id) => def_id,
             ty::InstanceDef::DropGlue(_, Some(_)) => return false,
@@ -220,7 +220,7 @@ impl<'a, 'b, 'tcx> Instance<'tcx> {
         self.def.def_id()
     }
 
-    /// Resolve a (def_id, substs) pair to an (optional) instance -- most commonly,
+    /// Resolves a `(def_id, substs)` pair to an (optional) instance -- most commonly,
     /// this is used to find the precise code that will run for a trait method invocation,
     /// if known.
     ///

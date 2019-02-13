@@ -17,7 +17,10 @@
 //! [`TryFrom<T>`][`TryFrom`] rather than [`Into<U>`][`Into`] or [`TryInto<U>`][`TryInto`],
 //! as [`From`] and [`TryFrom`] provide greater flexibility and offer
 //! equivalent [`Into`] or [`TryInto`] implementations for free, thanks to a
-//! blanket implementation in the standard library.
+//! blanket implementation in the standard library.  However, there are some cases
+//! where this is not possible, such as creating conversions into a type defined
+//! outside your library, so implementing [`Into`] instead of [`From`] is
+//! sometimes necessary.
 //!
 //! # Generic Implementations
 //!
@@ -217,7 +220,7 @@ pub trait AsMut<T: ?Sized> {
 ///
 /// There is one exception to implementing `Into`, and it's kind of esoteric.
 /// If the destination type is not part of the current crate, and it uses a
-/// generic variable, then you can't implement `From` directly.  For example,
+/// generic variable, then you can't implement `From` directly. For example,
 /// take this crate:
 ///
 /// ```compile_fail

@@ -175,7 +175,7 @@ pub trait Decoder {
     fn read_f64(&mut self) -> Result<f64, Self::Error>;
     fn read_f32(&mut self) -> Result<f32, Self::Error>;
     fn read_char(&mut self) -> Result<char, Self::Error>;
-    fn read_str(&mut self) -> Result<Cow<str>, Self::Error>;
+    fn read_str(&mut self) -> Result<Cow<'_, str>, Self::Error>;
 
     // Compound types:
     fn read_enum<T, F>(&mut self, _name: &str, f: F) -> Result<T, Self::Error>
@@ -824,7 +824,7 @@ impl<T:Decodable> Decodable for Arc<T> {
 /// Implement this trait on your `{Encodable,Decodable}::Error` types
 /// to override the default panic behavior for missing specializations.
 pub trait SpecializationError {
-    /// Create an error for a missing method specialization.
+    /// Creates an error for a missing method specialization.
     /// Defaults to panicking with type, trait & method names.
     /// `S` is the encoder/decoder state type,
     /// `T` is the type being encoded/decoded, and

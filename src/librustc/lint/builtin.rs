@@ -4,9 +4,9 @@
 //! compiler code, rather than using their own custom pass. Those
 //! lints are all available in `rustc_lint::builtin`.
 
-use errors::{Applicability, DiagnosticBuilder};
-use lint::{LintPass, LateLintPass, LintArray};
-use session::Session;
+use crate::errors::{Applicability, DiagnosticBuilder};
+use crate::lint::{LintPass, LateLintPass, LintArray};
+use crate::session::Session;
 use syntax::ast;
 use syntax::source_map::Span;
 
@@ -352,6 +352,12 @@ declare_lint! {
     "outlives requirements can be inferred"
 }
 
+declare_lint! {
+    pub DUPLICATE_MATCHER_BINDING_NAME,
+    Warn,
+    "duplicate macro matcher binding name"
+}
+
 /// Some lints that are buffered from `libsyntax`. See `syntax::early_buffered_lints`.
 pub mod parser {
     declare_lint! {
@@ -467,6 +473,7 @@ pub enum BuiltinLintDiagnostics {
     MacroExpandedMacroExportsAccessedByAbsolutePaths(Span),
     ElidedLifetimesInPaths(usize, Span, bool, Span, String),
     UnknownCrateTypes(Span, String, String),
+    UnusedImports(String, Vec<(Span, String)>),
 }
 
 impl BuiltinLintDiagnostics {
@@ -547,6 +554,15 @@ impl BuiltinLintDiagnostics {
             }
             BuiltinLintDiagnostics::UnknownCrateTypes(span, note, sugg) => {
                 db.span_suggestion(span, &note, sugg, Applicability::MaybeIncorrect);
+            }
+            BuiltinLintDiagnostics::UnusedImports(message, replaces) => {
+                if !replaces.is_empty() {
+                    db.multipart_suggestion(
+                        &message,
+                        replaces,
+                        Applicability::MachineApplicable,
+                    );
+                }
             }
         }
     }

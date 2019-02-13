@@ -1,10 +1,11 @@
 //! Give useful errors and suggestions to users when an item can't be
 //! found or is otherwise invalid.
 
-use check::FnCtxt;
+use crate::check::FnCtxt;
+use crate::middle::lang_items::FnOnceTraitLangItem;
+use crate::namespace::Namespace;
+use crate::util::nodemap::FxHashSet;
 use errors::{Applicability, DiagnosticBuilder};
-use middle::lang_items::FnOnceTraitLangItem;
-use namespace::Namespace;
 use rustc_data_structures::sync::Lrc;
 use rustc::hir::{self, ExprKind, Node, QPath};
 use rustc::hir::def::Def;
@@ -15,7 +16,6 @@ use rustc::infer::type_variable::TypeVariableOrigin;
 use rustc::traits::Obligation;
 use rustc::ty::{self, Adt, Ty, TyCtxt, ToPolyTraitRef, ToPredicate, TypeFoldable};
 use rustc::ty::item_path::with_crate_prefix;
-use util::nodemap::FxHashSet;
 use syntax_pos::{Span, FileName};
 use syntax::ast;
 use syntax::util::lev_distance::find_best_match_for_name;
@@ -709,12 +709,12 @@ impl Ord for TraitInfo {
     }
 }
 
-/// Retrieve all traits in this crate and any dependent crates.
+/// Retrieves all traits in this crate and any dependent crates.
 pub fn all_traits<'a, 'gcx, 'tcx>(tcx: TyCtxt<'a, 'gcx, 'tcx>) -> Vec<TraitInfo> {
     tcx.all_traits(LOCAL_CRATE).iter().map(|&def_id| TraitInfo { def_id }).collect()
 }
 
-/// Compute all traits in this crate and any dependent crates.
+/// Computes all traits in this crate and any dependent crates.
 fn compute_all_traits<'a, 'gcx, 'tcx>(tcx: TyCtxt<'a, 'gcx, 'tcx>) -> Vec<DefId> {
     use hir::itemlikevisit;
 

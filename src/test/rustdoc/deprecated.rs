@@ -1,7 +1,9 @@
 #![feature(deprecated)]
 
-// @matches deprecated/index.html '//*[@class="docblock-short"]' \
-//      '^\[Deprecated\] Deprecated docs'
+// @has deprecated/index.html '//*[@class="docblock-short"]/span[@class="stab deprecated"]' \
+//      'Deprecated'
+// @has - '//*[@class="docblock-short"]' 'Deprecated docs'
+
 // @has deprecated/struct.S.html '//*[@class="stab deprecated"]' \
 //      'Deprecated since 1.0.0: text'
 /// Deprecated docs

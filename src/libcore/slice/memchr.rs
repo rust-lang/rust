@@ -11,7 +11,7 @@ const HI_U64: u64 = 0x8080808080808080;
 const LO_USIZE: usize = LO_U64 as usize;
 const HI_USIZE: usize = HI_U64 as usize;
 
-/// Returns whether `x` contains any zero byte.
+/// Returns `true` if `x` contains any zero byte.
 ///
 /// From *Matters Computational*, J. Arndt:
 ///

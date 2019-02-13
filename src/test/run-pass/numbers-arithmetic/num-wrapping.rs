@@ -175,7 +175,7 @@ fn test_op_assigns() {
                 assert_eq!(black_box(tmp), Wrapping($ans));
             }
 
-            // FIXME(30524): Uncomment this test
+            // FIXME(30524): uncomment this test
             /*
             {
                 let mut tmp = Wrapping($initial);

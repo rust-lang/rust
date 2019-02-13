@@ -199,7 +199,7 @@ impl<P: Deref> Pin<P> {
         Pin { pointer }
     }
 
-    /// Get a pinned shared reference from this pinned pointer.
+    /// Gets a pinned shared reference from this pinned pointer.
     #[stable(feature = "pin", since = "1.33.0")]
     #[inline(always)]
     pub fn as_ref(self: &Pin<P>) -> Pin<&P::Target> {
@@ -208,7 +208,7 @@ impl<P: Deref> Pin<P> {
 }
 
 impl<P: DerefMut> Pin<P> {
-    /// Get a pinned mutable reference from this pinned pointer.
+    /// Gets a pinned mutable reference from this pinned pointer.
     #[stable(feature = "pin", since = "1.33.0")]
     #[inline(always)]
     pub fn as_mut(self: &mut Pin<P>) -> Pin<&mut P::Target> {
@@ -247,7 +247,7 @@ impl<'a, T: ?Sized> Pin<&'a T> {
         Pin::new_unchecked(new_pointer)
     }
 
-    /// Get a shared reference out of a pin.
+    /// Gets a shared reference out of a pin.
     ///
     /// Note: `Pin` also implements `Deref` to the target, which can be used
     /// to access the inner value. However, `Deref` only provides a reference
@@ -262,14 +262,14 @@ impl<'a, T: ?Sized> Pin<&'a T> {
 }
 
 impl<'a, T: ?Sized> Pin<&'a mut T> {
-    /// Convert this `Pin<&mut T>` into a `Pin<&T>` with the same lifetime.
+    /// Converts this `Pin<&mut T>` into a `Pin<&T>` with the same lifetime.
     #[stable(feature = "pin", since = "1.33.0")]
     #[inline(always)]
     pub fn into_ref(self: Pin<&'a mut T>) -> Pin<&'a T> {
         Pin { pointer: self.pointer }
     }
 
-    /// Get a mutable reference to the data inside of this `Pin`.
+    /// Gets a mutable reference to the data inside of this `Pin`.
     ///
     /// This requires that the data inside this `Pin` is `Unpin`.
     ///
@@ -286,7 +286,7 @@ impl<'a, T: ?Sized> Pin<&'a mut T> {
         self.pointer
     }
 
-    /// Get a mutable reference to the data inside of this `Pin`.
+    /// Gets a mutable reference to the data inside of this `Pin`.
     ///
     /// # Safety
     ///
