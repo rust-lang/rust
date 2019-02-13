@@ -3,10 +3,6 @@
 //! manage the caches, and so forth.
 
 use crate::dep_graph::{DepNodeIndex, DepNode, DepKind, SerializedDepNodeIndex};
-use crate::errors::DiagnosticBuilder;
-use crate::errors::Level;
-use crate::errors::Diagnostic;
-use crate::errors::FatalError;
 use crate::ty::tls;
 use crate::ty::{TyCtxt};
 use crate::ty::query::Query;
@@ -16,6 +12,10 @@ use crate::ty::item_path;
 
 use crate::util::common::{profq_msg, ProfileQueriesMsg, QueryMsg};
 
+use errors::DiagnosticBuilder;
+use errors::Level;
+use errors::Diagnostic;
+use errors::FatalError;
 use rustc_data_structures::fx::{FxHashMap};
 use rustc_data_structures::sync::{Lrc, Lock};
 use rustc_data_structures::thin_vec::ThinVec;

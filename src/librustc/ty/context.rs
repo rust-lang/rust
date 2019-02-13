@@ -2,7 +2,6 @@
 
 use crate::dep_graph::DepGraph;
 use crate::dep_graph::{self, DepNode, DepConstructor};
-use crate::errors::DiagnosticBuilder;
 use crate::session::Session;
 use crate::session::config::{BorrowckMode, OutputFilenames};
 use crate::session::config::CrateType;
@@ -43,6 +42,7 @@ use crate::ty::{BoundVar, BindingMode};
 use crate::ty::CanonicalPolyFnSig;
 use crate::util::nodemap::{DefIdMap, DefIdSet, ItemLocalMap};
 use crate::util::nodemap::{FxHashMap, FxHashSet};
+use errors::DiagnosticBuilder;
 use rustc_data_structures::interner::HashInterner;
 use smallvec::SmallVec;
 use rustc_data_structures::stable_hasher::{HashStable, hash_stable_hashmap,
@@ -1816,7 +1816,7 @@ pub mod tls {
     use std::ptr;
     use syntax_pos;
     use crate::ty::query;
-    use crate::errors::{Diagnostic, TRACK_DIAGNOSTICS};
+    use errors::{Diagnostic, TRACK_DIAGNOSTICS};
     use rustc_data_structures::OnDrop;
     use rustc_data_structures::sync::{self, Lrc, Lock};
     use rustc_data_structures::thin_vec::ThinVec;

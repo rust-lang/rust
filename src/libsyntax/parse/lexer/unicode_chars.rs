@@ -2,7 +2,7 @@
 // http://www.unicode.org/Public/security/10.0.0/confusables.txt
 
 use syntax_pos::{Span, NO_EXPANSION};
-use crate::errors::{Applicability, DiagnosticBuilder};
+use errors::{Applicability, DiagnosticBuilder};
 use super::StringReader;
 
 const UNICODE_ARRAY: &[(char, &str, char)] = &[

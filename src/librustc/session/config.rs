@@ -19,7 +19,7 @@ use syntax::parse;
 use syntax::symbol::Symbol;
 use syntax::feature_gate::UnstableFeatures;
 
-use crate::errors::{ColorConfig, FatalError, Handler};
+use errors::{ColorConfig, FatalError, Handler};
 
 use getopts;
 use std::collections::{BTreeMap, BTreeSet};
@@ -2569,7 +2569,6 @@ mod dep_tracking {
 
 #[cfg(test)]
 mod tests {
-    use crate::errors;
     use getopts;
     use crate::lint;
     use crate::middle::cstore;

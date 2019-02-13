@@ -4,7 +4,6 @@ use crate::ast::{self, Attribute, Name, PatKind, MetaItem};
 use crate::attr::HasAttrs;
 use crate::source_map::{SourceMap, Spanned, respan};
 use crate::edition::Edition;
-use crate::errors::{DiagnosticBuilder, DiagnosticId};
 use crate::ext::expand::{self, AstFragment, Invocation};
 use crate::ext::hygiene::{self, Mark, SyntaxContext, Transparency};
 use crate::mut_visit::{self, MutVisitor};
@@ -15,6 +14,7 @@ use crate::symbol::{keywords, Ident, Symbol};
 use crate::ThinVec;
 use crate::tokenstream::{self, TokenStream};
 
+use errors::{DiagnosticBuilder, DiagnosticId};
 use smallvec::{smallvec, SmallVec};
 use syntax_pos::{Span, MultiSpan, DUMMY_SP};
 
