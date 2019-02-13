@@ -65,22 +65,18 @@ mod registers;
 pub use self::registers::*;
 
 // Supported arches: 5TE, 7E-M. See Section 10.1 of ACLE (e.g. QADD)
-// But we also exclude the A profile because DSP is deprecated on that profile as of ACLE 2.0 (see
+// We also include the A profile even though DSP is deprecated on that profile as of ACLE 2.0 (see
 // section 5.4.7)
 #[cfg(any(
     // >= v5TE but excludes v7-A
-    all(target_feature = "v5te", not(target_feature = "mclass"), not(target_feature = "aclass")),
+    all(target_feature = "v5te", not(target_feature = "mclass")),
     // v7E-M
     all(target_feature = "mclass", target_feature = "dsp"),
 ))]
 mod dsp;
 
 #[cfg(any(
-    all(
-        target_feature = "v5te",
-        not(target_feature = "mclass"),
-        not(target_feature = "aclass")
-    ),
+    all(target_feature = "v5te", not(target_feature = "mclass")),
     all(target_feature = "mclass", target_feature = "dsp"),
 ))]
 pub use self::dsp::*;
