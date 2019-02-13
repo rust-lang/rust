@@ -1,9 +1,9 @@
 use insta::assert_debug_snapshot_matches;
 use ra_ide_api::{
     mock_analysis::{single_file, single_file_with_position, MockAnalysis},
-    AnalysisChange, CrateGraph, FileId, Query,
+    AnalysisChange, CrateGraph, FileId, Query, NavigationTarget,
 };
-use ra_syntax::TextRange;
+use ra_syntax::{TextRange, SmolStr};
 
 #[test]
 fn test_unresolved_module_diagnostic() {
@@ -49,6 +49,11 @@ fn get_all_refs(text: &str) -> Vec<(FileId, TextRange)> {
     analysis.find_all_refs(position).unwrap()
 }
 
+fn get_symbols_matching(text: &str, query: &str) -> Vec<NavigationTarget> {
+    let (analysis, _) = single_file(text);
+    analysis.symbol_search(Query::new(query.into())).unwrap()
+}
+
 #[test]
 fn test_find_all_refs_for_local() {
     let code = r#"
@@ -88,6 +93,49 @@ fn test_find_all_refs_for_fn_param() {
 
     let refs = get_all_refs(code);
     assert_eq!(refs.len(), 2);
+}
+
+#[test]
+fn test_world_symbols_with_no_container() {
+    let code = r#"
+    enum FooInner { }
+    "#;
+
+    let mut symbols = get_symbols_matching(code, "FooInner");
+
+    let s = symbols.pop().unwrap();
+
+    assert_eq!(s.name(), "FooInner");
+    assert!(s.container_name().is_none());
+}
+
+#[test]
+fn test_world_symbols_include_container_name() {
+    let code = r#"
+fn foo() {
+    enum FooInner { }
+}
+    "#;
+
+    let mut symbols = get_symbols_matching(code, "FooInner");
+
+    let s = symbols.pop().unwrap();
+
+    assert_eq!(s.name(), "FooInner");
+    assert_eq!(s.container_name(), Some(&SmolStr::new("foo")));
+
+    let code = r#"
+mod foo {
+    struct FooInner;
+}
+    "#;
+
+    let mut symbols = get_symbols_matching(code, "FooInner");
+
+    let s = symbols.pop().unwrap();
+
+    assert_eq!(s.name(), "FooInner");
+    assert_eq!(s.container_name(), Some(&SmolStr::new("foo")));
 }
 
 #[test]
