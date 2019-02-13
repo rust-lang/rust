@@ -27,11 +27,11 @@ use rustc_codegen_utils::codegen_backend::CodegenBackend;
 use rustc::hir::def_id::LOCAL_CRATE;
 use syntax::ast;
 
+use miri::MiriConfig;
+
 struct MiriCompilerCalls {
     default: Box<RustcDefaultCalls>,
-
-    /// Whether to enforce the validity invariant.
-    validate: bool,
+    miri_config: MiriConfig,
 }
 
 impl<'a> CompilerCalls<'a> for MiriCompilerCalls {
@@ -79,6 +79,8 @@ impl<'a> CompilerCalls<'a> for MiriCompilerCalls {
         odir: &Option<PathBuf>,
         ofile: &Option<PathBuf>,
     ) -> Compilation {
+        // Called *before* build_controller. Add filename to miri arguments.
+        self.miri_config.args.insert(0, input.filestem().to_string());
         self.default.late_callback(codegen_backend, matches, sess, cstore, input, odir, ofile)
     }
     fn build_controller(
@@ -89,9 +91,9 @@ impl<'a> CompilerCalls<'a> for MiriCompilerCalls {
         let this = *self;
         let mut control = this.default.build_controller(sess, matches);
         control.after_hir_lowering.callback = Box::new(after_hir_lowering);
-        let validate = this.validate;
+        let miri_config = this.miri_config;
         control.after_analysis.callback =
-            Box::new(move |state| after_analysis(state, validate));
+            Box::new(move |state| after_analysis(state, miri_config.clone()));
         control.after_analysis.stop = Compilation::Stop;
         control
     }
@@ -107,7 +109,7 @@ fn after_hir_lowering(state: &mut CompileState) {
 
 fn after_analysis<'a, 'tcx>(
     state: &mut CompileState<'a, 'tcx>,
-    validate: bool,
+    miri_config: MiriConfig,
 ) {
     init_late_loggers();
     state.session.abort_if_errors();
@@ -117,7 +119,7 @@ fn after_analysis<'a, 'tcx>(
 
     let (entry_def_id, _) = tcx.entry_fn(LOCAL_CRATE).expect("no main function found!");
 
-    miri::eval_main(tcx, entry_def_id, validate);
+    miri::eval_main(tcx, entry_def_id, miri_config);
 
     state.session.abort_if_errors();
 }
@@ -188,34 +190,51 @@ fn find_sysroot() -> String {
 
 fn main() {
     init_early_loggers();
-    let mut args: Vec<String> = std::env::args().collect();
 
-    // Parse our own -Z flags and remove them before rustc gets their hand on them.
+    // Parse our arguments and split them across rustc and miri
     let mut validate = true;
-    args.retain(|arg| {
-        match arg.as_str() {
-            "-Zmiri-disable-validation" => {
-                validate = false;
-                false
-            },
-            _ => true
+    let mut rustc_args = vec![];
+    let mut miri_args = vec![];
+    let mut after_dashdash = false;
+    for arg in std::env::args() {
+        if rustc_args.is_empty() {
+            // Very first arg: for rustc
+            rustc_args.push(arg);
         }
-    });
+        else if after_dashdash {
+            // Everything that comes is Miri args
+            miri_args.push(arg);
+        } else {
+            match arg.as_str() {
+                "-Zmiri-disable-validation" => {
+                    validate = false;
+                },
+                "--" => {
+                    after_dashdash = true;
+                }
+                _ => {
+                    rustc_args.push(arg);
+                }
+            }
+        }
+    }
 
     // Determine sysroot and let rustc know about it
     let sysroot_flag = String::from("--sysroot");
-    if !args.contains(&sysroot_flag) {
-        args.push(sysroot_flag);
-        args.push(find_sysroot());
+    if !rustc_args.contains(&sysroot_flag) {
+        rustc_args.push(sysroot_flag);
+        rustc_args.push(find_sysroot());
     }
     // Finally, add the default flags all the way in the beginning, but after the binary name.
-    args.splice(1..1, miri::miri_default_args().iter().map(ToString::to_string));
+    rustc_args.splice(1..1, miri::miri_default_args().iter().map(ToString::to_string));
 
-    trace!("rustc arguments: {:?}", args);
+    debug!("rustc arguments: {:?}", rustc_args);
+    debug!("miri arguments: {:?}", miri_args);
+    let miri_config = MiriConfig { validate, args: miri_args };
     let result = rustc_driver::run(move || {
-        rustc_driver::run_compiler(&args, Box::new(MiriCompilerCalls {
+        rustc_driver::run_compiler(&rustc_args, Box::new(MiriCompilerCalls {
             default: Box::new(RustcDefaultCalls),
-            validate,
+            miri_config,
         }), None, None)
     });
     std::process::exit(result as i32);

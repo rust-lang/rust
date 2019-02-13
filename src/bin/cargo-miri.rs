@@ -10,7 +10,7 @@ use std::fs::{self, File};
 const CARGO_MIRI_HELP: &str = r#"Interprets bin crates and tests in Miri
 
 Usage:
-    cargo miri [subcommand] [options] [--] [<miri opts>...]
+    cargo miri [subcommand] [options] [--] [<miri opts>...] [--] [<program opts>...]
 
 Subcommands:
     run                      Run binaries (default)
@@ -22,8 +22,9 @@ Common options:
     --features               Features to compile for the package
     -V, --version            Print version info and exit
 
-Other [options] are the same as `cargo rustc`.  Everything after the "--" is
-passed verbatim to Miri.
+Other [options] are the same as `cargo rustc`.  Everything after the first "--" is
+passed verbatim to Miri, which will pass everything after the second "--" verbatim
+to the interpreted program.
 
 The config flag `miri` is automatically defined for convenience. You can use
 it to configure the resource limits
@@ -355,11 +356,13 @@ fn in_cargo_miri() {
             }
             cmd.arg(arg);
         }
-        // add "--" "-Zcargo-miri-marker" and the remaining user flags
+        // Add "--" (to end the cargo flags), and then the user flags.  We add markers around the user flags
+        // to be able to identify them later.
         cmd
             .arg("--")
-            .arg("cargo-miri-marker")
-            .args(args);
+            .arg("cargo-miri-marker-begin")
+            .args(args)
+            .arg("cargo-miri-marker-end");
         let path = std::env::current_exe().expect("current executable path invalid");
         cmd.env("RUSTC_WRAPPER", path);
         if verbose {
@@ -413,10 +416,19 @@ fn inside_cargo_rustc() {
     };
     args.splice(0..0, miri::miri_default_args().iter().map(ToString::to_string));
 
-    // see if we have cargo-miri-marker, which means we want to interpret this crate in Miri
-    // (and remove the marker).
-    let needs_miri = if let Some(pos) = args.iter().position(|arg| arg == "cargo-miri-marker") {
-        args.remove(pos);
+    // See if we can find the cargo-miri markers.  Those only get added to the binary we want to
+    // run.  They also serve to mark the user-defined arguments, which we have to move all the way to the
+    // end (they get added somewhere in the middle).
+    let needs_miri = if let Some(begin) = args.iter().position(|arg| arg == "cargo-miri-marker-begin") {
+        let end = args.iter().position(|arg| arg == "cargo-miri-marker-end").expect("Cannot find end marker");
+        // These mark the user arguments.  We remove the first and last as they are the markers.
+        let mut user_args = args.drain(begin..=end);
+        assert_eq!(user_args.next().unwrap(), "cargo-miri-marker-begin");
+        assert_eq!(user_args.next_back().unwrap(), "cargo-miri-marker-end");
+        // Collect the rest and add it back at the end
+        let mut user_args = user_args.collect::<Vec<String>>();
+        args.append(&mut user_args);
+        // Run this in Miri
         true
     } else {
         false

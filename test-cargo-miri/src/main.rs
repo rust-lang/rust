@@ -9,7 +9,9 @@ fn main() {
     let n = <BigEndian as ByteOrder>::read_u32(buf);
     assert_eq!(n, 0x01020304);
     println!("{:#010x}", n);
-    eprintln!("standard error");
+    for arg in std::env::args() {
+        eprintln!("{}", arg);
+    }
 }
 
 #[cfg(test)]
