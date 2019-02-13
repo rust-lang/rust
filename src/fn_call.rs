@@ -93,6 +93,32 @@ pub trait EvalContextExt<'a, 'mir, 'tcx: 'a+'mir>: crate::MiriEvalContextExt<'a,
                     this.write_scalar(Scalar::Ptr(ptr.with_default_tag()), dest)?;
                 }
             }
+            "posix_memalign" => {
+                let ret = this.deref_operand(args[0])?;
+                let align = this.read_scalar(args[1])?.to_usize(this)?;
+                let size = this.read_scalar(args[2])?.to_usize(this)?;
+                // align must be a power of 2, and also at least ptr-sized (wtf, POSIX)
+                if !align.is_power_of_two() {
+                    return err!(HeapAllocNonPowerOfTwoAlignment(align));
+                }
+                if align < this.pointer_size().bytes() {
+                    return err!(MachineError(format!(
+                        "posix_memalign: alignment must be at least the size of a pointer, but is {}",
+                        align,
+                    )));
+                }
+                if size == 0 {
+                    this.write_null(ret.into())?;
+                } else {
+                    let ptr = this.memory_mut().allocate(
+                        Size::from_bytes(size),
+                        Align::from_bytes(align).unwrap(),
+                        MiriMemoryKind::C.into()
+                    );
+                    this.write_scalar(Scalar::Ptr(ptr.with_default_tag()), ret.into())?;
+                }
+                this.write_null(dest)?;
+            }
 
             "free" => {
                 let ptr = this.read_scalar(args[0])?.not_undef()?;
