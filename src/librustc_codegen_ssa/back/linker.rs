@@ -13,7 +13,7 @@ use rustc::hir::def_id::{LOCAL_CRATE, CrateNum};
 use rustc::middle::dependency_format::Linkage;
 use rustc::session::Session;
 use rustc::session::config::{self, CrateType, OptLevel, DebugInfo,
-                             CrossLangLto, Lto};
+                             LinkerPluginLto, Lto};
 use rustc::ty::TyCtxt;
 use rustc_target::spec::{LinkerFlavor, LldFlavor};
 use serialize::{json, Encoder};
@@ -127,7 +127,7 @@ pub trait Linker {
     fn subsystem(&mut self, subsystem: &str);
     fn group_start(&mut self);
     fn group_end(&mut self);
-    fn cross_lang_lto(&mut self);
+    fn linker_plugin_lto(&mut self);
     // Should have been finalize(self), but we don't support self-by-value on trait objects (yet?).
     fn finalize(&mut self) -> Command;
 }
@@ -183,7 +183,7 @@ impl<'a> GccLinker<'a> {
         }
     }
 
-    fn push_cross_lang_lto_args(&mut self, plugin_path: Option<&OsStr>) {
+    fn push_linker_plugin_lto_args(&mut self, plugin_path: Option<&OsStr>) {
         if let Some(plugin_path) = plugin_path {
             let mut arg = OsString::from("-plugin=");
             arg.push(plugin_path);
@@ -454,16 +454,16 @@ impl<'a> Linker for GccLinker<'a> {
         }
     }
 
-    fn cross_lang_lto(&mut self) {
-        match self.sess.opts.debugging_opts.cross_lang_lto {
-            CrossLangLto::Disabled => {
+    fn linker_plugin_lto(&mut self) {
+        match self.sess.opts.cg.linker_plugin_lto {
+            LinkerPluginLto::Disabled => {
                 // Nothing to do
             }
-            CrossLangLto::LinkerPluginAuto => {
-                self.push_cross_lang_lto_args(None);
+            LinkerPluginLto::LinkerPluginAuto => {
+                self.push_linker_plugin_lto_args(None);
             }
-            CrossLangLto::LinkerPlugin(ref path) => {
-                self.push_cross_lang_lto_args(Some(path.as_os_str()));
+            LinkerPluginLto::LinkerPlugin(ref path) => {
+                self.push_linker_plugin_lto_args(Some(path.as_os_str()));
             }
         }
     }
@@ -697,7 +697,7 @@ impl<'a> Linker for MsvcLinker<'a> {
     fn group_start(&mut self) {}
     fn group_end(&mut self) {}
 
-    fn cross_lang_lto(&mut self) {
+    fn linker_plugin_lto(&mut self) {
         // Do nothing
     }
 }
@@ -865,7 +865,7 @@ impl<'a> Linker for EmLinker<'a> {
     fn group_start(&mut self) {}
     fn group_end(&mut self) {}
 
-    fn cross_lang_lto(&mut self) {
+    fn linker_plugin_lto(&mut self) {
         // Do nothing
     }
 }
@@ -1047,7 +1047,7 @@ impl<'a> Linker for WasmLd<'a> {
     fn group_start(&mut self) {}
     fn group_end(&mut self) {}
 
-    fn cross_lang_lto(&mut self) {
+    fn linker_plugin_lto(&mut self) {
         // Do nothing for now
     }
 }
@@ -1207,6 +1207,6 @@ impl<'a> Linker for PtxLinker<'a> {
     fn group_end(&mut self) {
     }
 
-    fn cross_lang_lto(&mut self) {
+    fn linker_plugin_lto(&mut self) {
     }
 }

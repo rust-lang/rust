@@ -3,7 +3,7 @@
 
 // no-prefer-dynamic
 // only-msvc
-// compile-flags: -Z cross-lang-lto
+// compile-flags: -C linker-plugin-lto
 
 #![crate_type = "rlib"]
 
