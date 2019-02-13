@@ -4,7 +4,7 @@ use std::borrow::Cow;
 use std::fmt;
 use rustc_target::spec::abi;
 use syntax::ast;
-use crate::errors::{Applicability, DiagnosticBuilder};
+use errors::{Applicability, DiagnosticBuilder};
 use syntax_pos::Span;
 
 use crate::hir;

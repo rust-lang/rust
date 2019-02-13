@@ -27,7 +27,7 @@ use syntax::symbol::{Symbol, keywords};
 use syntax::visit::Visitor;
 use syntax::util::lev_distance::find_best_match_for_name;
 use syntax_pos::{Span, DUMMY_SP};
-use crate::errors::Applicability;
+use errors::Applicability;
 
 use std::cell::Cell;
 use std::{mem, ptr};

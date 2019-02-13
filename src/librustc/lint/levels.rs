@@ -1,20 +1,20 @@
 use std::cmp;
 
-use crate::errors::{Applicability, DiagnosticBuilder};
 use crate::hir::HirId;
 use crate::ich::StableHashingContext;
 use crate::lint::builtin;
 use crate::lint::context::CheckLintNameResult;
 use crate::lint::{self, Lint, LintId, Level, LintSource};
+use crate::session::Session;
+use crate::util::nodemap::FxHashMap;
+use errors::{Applicability, DiagnosticBuilder};
 use rustc_data_structures::stable_hasher::{HashStable, ToStableHashKey,
                                            StableHasher, StableHasherResult};
-use crate::session::Session;
 use syntax::ast;
 use syntax::attr;
 use syntax::feature_gate;
 use syntax::source_map::MultiSpan;
 use syntax::symbol::Symbol;
-use crate::util::nodemap::FxHashMap;
 
 pub struct LintLevelSets {
     list: Vec<LintSet>,

@@ -1,10 +1,10 @@
 use crate::ast::{self, Ident};
 use crate::source_map::{SourceMap, FilePathMapping};
-use crate::errors::{Applicability, FatalError, Diagnostic, DiagnosticBuilder};
 use crate::parse::{token, ParseSess};
 use crate::symbol::{Symbol, keywords};
 
-use syntax_pos::{self, BytePos, CharPos, Pos, Span, NO_EXPANSION};
+use errors::{Applicability, FatalError, Diagnostic, DiagnosticBuilder};
+use syntax_pos::{BytePos, CharPos, Pos, Span, NO_EXPANSION};
 use core::unicode::property::Pattern_White_Space;
 
 use std::borrow::Cow;
@@ -1882,7 +1882,6 @@ mod tests {
     use crate::ast::{Ident, CrateConfig};
     use crate::symbol::Symbol;
     use crate::source_map::SourceMap;
-    use crate::errors;
     use crate::feature_gate::UnstableFeatures;
     use crate::parse::token;
     use crate::diagnostics::plugin::ErrorMap;

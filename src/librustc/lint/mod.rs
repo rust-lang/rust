@@ -23,13 +23,16 @@ pub use self::LintSource::*;
 
 use rustc_data_structures::sync::{self, Lrc};
 
-use crate::errors::{DiagnosticBuilder, DiagnosticId};
 use crate::hir::def_id::{CrateNum, LOCAL_CRATE};
 use crate::hir::intravisit;
 use crate::hir;
 use crate::lint::builtin::{BuiltinLintDiagnostics, DUPLICATE_MATCHER_BINDING_NAME};
 use crate::lint::builtin::parser::{QUESTION_MARK_MACRO_SEP, ILL_FORMED_ATTRIBUTE_INPUT};
 use crate::session::{Session, DiagnosticMessageId};
+use crate::ty::TyCtxt;
+use crate::ty::query::Providers;
+use crate::util::nodemap::NodeMap;
+use errors::{DiagnosticBuilder, DiagnosticId};
 use std::{hash, ptr};
 use syntax::ast;
 use syntax::source_map::{MultiSpan, ExpnFormat};
@@ -37,9 +40,6 @@ use syntax::early_buffered_lints::BufferedEarlyLintId;
 use syntax::edition::Edition;
 use syntax::symbol::Symbol;
 use syntax_pos::Span;
-use crate::ty::TyCtxt;
-use crate::ty::query::Providers;
-use crate::util::nodemap::NodeMap;
 
 pub use crate::lint::context::{LateContext, EarlyContext, LintContext, LintStore,
                         check_crate, check_ast_crate, CheckLintNameResult,

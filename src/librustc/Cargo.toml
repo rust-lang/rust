@@ -25,7 +25,7 @@ rustc-rayon-core = "0.1.1"
 rustc_apfloat = { path = "../librustc_apfloat" }
 rustc_target = { path = "../librustc_target" }
 rustc_data_structures = { path = "../librustc_data_structures" }
-rustc_errors = { path = "../librustc_errors" }
+errors = { path = "../librustc_errors", package = "rustc_errors" }
 serialize = { path = "../libserialize" }
 syntax = { path = "../libsyntax" }
 syntax_pos = { path = "../libsyntax_pos" }

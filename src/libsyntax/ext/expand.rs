@@ -3,7 +3,6 @@ use crate::ast::{MacStmtStyle, StmtKind, ItemKind};
 use crate::attr::{self, HasAttrs};
 use crate::source_map::{ExpnInfo, MacroBang, MacroAttribute, dummy_spanned, respan};
 use crate::config::StripUnconfigured;
-use crate::errors::{Applicability, FatalError};
 use crate::ext::base::*;
 use crate::ext::derive::{add_derived_markers, collect_derives};
 use crate::ext::hygiene::{self, Mark, SyntaxContext};
@@ -20,6 +19,7 @@ use crate::tokenstream::{TokenStream, TokenTree};
 use crate::visit::{self, Visitor};
 use crate::util::map_in_place::MapInPlace;
 
+use errors::{Applicability, FatalError};
 use smallvec::{smallvec, SmallVec};
 use syntax_pos::{Span, DUMMY_SP, FileName};
 use syntax_pos::hygiene::ExpnFormat;

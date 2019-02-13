@@ -50,16 +50,16 @@ use super::region_constraints::GenericKind;
 use super::{InferCtxt, RegionVariableOrigin, SubregionOrigin, TypeTrace, ValuePairs};
 use crate::infer::{self, SuppressRegionErrors};
 
-use crate::errors::{Applicability, DiagnosticBuilder, DiagnosticStyledString};
 use crate::hir;
 use crate::hir::def_id::DefId;
 use crate::hir::Node;
 use crate::middle::region;
-use std::{cmp, fmt};
-use syntax_pos::{Pos, Span};
 use crate::traits::{ObligationCause, ObligationCauseCode};
 use crate::ty::error::TypeError;
 use crate::ty::{self, subst::Subst, Region, Ty, TyCtxt, TyKind, TypeFoldable};
+use errors::{Applicability, DiagnosticBuilder, DiagnosticStyledString};
+use std::{cmp, fmt};
+use syntax_pos::{Pos, Span};
 
 mod note;
 

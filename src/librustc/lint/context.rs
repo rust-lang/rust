@@ -34,7 +34,7 @@ use std::default::Default as StdDefault;
 use syntax::ast;
 use syntax::edition;
 use syntax_pos::{MultiSpan, Span, symbol::{LocalInternedString, Symbol}};
-use crate::errors::DiagnosticBuilder;
+use errors::DiagnosticBuilder;
 use crate::hir;
 use crate::hir::def_id::LOCAL_CRATE;
 use crate::hir::intravisit as hir_visit;

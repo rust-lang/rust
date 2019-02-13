@@ -1,6 +1,5 @@
 use crate::{ast, attr};
 use crate::edition::Edition;
-use crate::errors::FatalError;
 use crate::ext::base::{DummyResult, ExtCtxt, MacResult, SyntaxExtension};
 use crate::ext::base::{NormalTT, TTMacroExpander};
 use crate::ext::expand::{AstFragment, AstFragmentKind};
@@ -17,6 +16,7 @@ use crate::parse::token::Token::*;
 use crate::symbol::Symbol;
 use crate::tokenstream::{DelimSpan, TokenStream, TokenTree};
 
+use errors::FatalError;
 use syntax_pos::{Span, DUMMY_SP, symbol::Ident};
 use log::debug;
 
@@ -25,7 +25,7 @@ use std::borrow::Cow;
 use std::collections::hash_map::Entry;
 
 use rustc_data_structures::sync::Lrc;
-use crate::errors::Applicability;
+use errors::Applicability;
 
 const VALID_FRAGMENT_NAMES_MSG: &str = "valid fragment specifiers are \
     `ident`, `block`, `stmt`, `expr`, `pat`, `ty`, `lifetime`, `literal`, \

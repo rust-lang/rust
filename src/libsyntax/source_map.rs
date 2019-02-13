@@ -24,7 +24,7 @@ use std::fs;
 use std::io;
 use log::debug;
 
-use crate::errors::SourceMapper;
+use errors::SourceMapper;
 
 /// Returns the span itself if it doesn't come from a macro expansion,
 /// otherwise return the call site span up to the `enclosing_sp` by

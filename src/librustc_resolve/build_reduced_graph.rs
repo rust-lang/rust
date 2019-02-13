@@ -22,7 +22,7 @@ use std::cell::Cell;
 use std::ptr;
 use rustc_data_structures::sync::Lrc;
 
-use crate::errors::Applicability;
+use errors::Applicability;
 
 use syntax::ast::{Name, Ident};
 use syntax::attr;

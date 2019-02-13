@@ -5,12 +5,12 @@
 // (unlike lang features), which means we need to collect them instead.
 
 use crate::ty::TyCtxt;
+use crate::hir::intravisit::{self, NestedVisitorMap, Visitor};
 use syntax::symbol::Symbol;
 use syntax::ast::{Attribute, MetaItem, MetaItemKind};
 use syntax_pos::Span;
-use crate::hir::intravisit::{self, NestedVisitorMap, Visitor};
 use rustc_data_structures::fx::{FxHashSet, FxHashMap};
-use crate::errors::DiagnosticId;
+use errors::DiagnosticId;
 
 pub struct LibFeatures {
     // A map from feature to stabilisation version.

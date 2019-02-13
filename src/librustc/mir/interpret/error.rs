@@ -11,7 +11,7 @@ use super::{RawConst, Pointer, InboundsCheck, ScalarMaybeUndef};
 use backtrace::Backtrace;
 
 use crate::ty::query::TyCtxtAt;
-use crate::errors::DiagnosticBuilder;
+use errors::DiagnosticBuilder;
 
 use syntax_pos::{Pos, Span};
 use syntax::ast;

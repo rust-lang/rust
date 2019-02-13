@@ -17,14 +17,11 @@ use super::{
     Overflow,
 };
 
-use crate::errors::{Applicability, DiagnosticBuilder};
 use crate::hir;
 use crate::hir::Node;
 use crate::hir::def_id::DefId;
 use crate::infer::{self, InferCtxt};
 use crate::infer::type_variable::TypeVariableOrigin;
-use std::fmt;
-use syntax::ast;
 use crate::session::DiagnosticMessageId;
 use crate::ty::{self, AdtKind, ToPredicate, ToPolyTraitRef, Ty, TyCtxt, TypeFoldable};
 use crate::ty::GenericParamDefKind;
@@ -35,6 +32,9 @@ use crate::ty::subst::Subst;
 use crate::ty::SubtypePredicate;
 use crate::util::nodemap::{FxHashMap, FxHashSet};
 
+use errors::{Applicability, DiagnosticBuilder};
+use std::fmt;
+use syntax::ast;
 use syntax_pos::{DUMMY_SP, Span, ExpnInfo, ExpnFormat};
 
 impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {

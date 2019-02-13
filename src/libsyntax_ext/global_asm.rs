@@ -8,7 +8,7 @@
 /// LLVM's `module asm "some assembly here"`. All of LLVM's caveats
 /// therefore apply.
 
-use crate::errors::DiagnosticBuilder;
+use errors::DiagnosticBuilder;
 
 use syntax::ast;
 use syntax::source_map::respan;
