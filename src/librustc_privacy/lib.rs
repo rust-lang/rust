@@ -933,7 +933,7 @@ impl<'a, 'tcx> TypePrivacyVisitor<'a, 'tcx> {
     // Take node-id of an expression or pattern and check its type for privacy.
     fn check_expr_pat_type(&mut self, id: hir::HirId, span: Span) -> bool {
         self.span = span;
-        if self.visit(self.tables.node_id_to_type(id)) || self.visit(self.tables.node_substs(id)) {
+        if self.visit(self.tables.node_type(id)) || self.visit(self.tables.node_substs(id)) {
             return true;
         }
         if let Some(adjustments) = self.tables.adjustments().get(id) {
@@ -980,7 +980,7 @@ impl<'a, 'tcx> Visitor<'tcx> for TypePrivacyVisitor<'a, 'tcx> {
         self.span = hir_ty.span;
         if self.in_body {
             // Types in bodies.
-            if self.visit(self.tables.node_id_to_type(hir_ty.hir_id)) {
+            if self.visit(self.tables.node_type(hir_ty.hir_id)) {
                 return;
             }
         } else {

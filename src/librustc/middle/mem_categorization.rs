@@ -174,7 +174,7 @@ pub enum Note {
 // which the value is stored.
 //
 // *WARNING* The field `cmt.type` is NOT necessarily the same as the
-// result of `node_id_to_type(cmt.id)`.
+// result of `node_type(cmt.id)`.
 //
 // (FIXME: rewrite the following comment given that `@x` managed
 // pointers have been obsolete for quite some time.)
@@ -497,7 +497,7 @@ impl<'a, 'gcx, 'tcx> MemCategorizationContext<'a, 'gcx, 'tcx> {
                    hir_id: hir::HirId)
                    -> McResult<Ty<'tcx>> {
         self.resolve_type_vars_or_error(hir_id,
-                                        self.tables.node_id_to_type_opt(hir_id))
+                                        self.tables.node_type_opt(hir_id))
     }
 
     pub fn expr_ty(&self, expr: &hir::Expr) -> McResult<Ty<'tcx>> {
