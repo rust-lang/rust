@@ -7,10 +7,12 @@ use std::iter::FromIterator;
 use super::DeterministicRng;
 
 #[test]
-#[cfg(not(miri))] // Miri is too slow
 fn test_basic_large() {
     let mut map = BTreeMap::new();
+    #[cfg(not(miri))] // Miri is too slow
     let size = 10000;
+    #[cfg(miri)]
+    let size = 200;
     assert_eq!(map.len(), 0);
 
     for i in 0..size {
@@ -73,7 +75,7 @@ fn test_iter() {
     #[cfg(not(miri))] // Miri is too slow
     let size = 10000;
     #[cfg(miri)]
-    let size = 100;
+    let size = 200;
 
     // Forwards
     let mut map: BTreeMap<_, _> = (0..size).map(|i| (i, i)).collect();
@@ -98,7 +100,7 @@ fn test_iter_rev() {
     #[cfg(not(miri))] // Miri is too slow
     let size = 10000;
     #[cfg(miri)]
-    let size = 100;
+    let size = 200;
 
     // Forwards
     let mut map: BTreeMap<_, _> = (0..size).map(|i| (i, i)).collect();
@@ -137,7 +139,7 @@ fn test_iter_mixed() {
     #[cfg(not(miri))] // Miri is too slow
     let size = 10000;
     #[cfg(miri)]
-    let size = 100;
+    let size = 200;
 
     // Forwards
     let mut map: BTreeMap<_, _> = (0..size).map(|i| (i, i)).collect();
@@ -267,7 +269,7 @@ fn test_range_1000() {
     #[cfg(not(miri))] // Miri is too slow
     let size = 1000;
     #[cfg(miri)]
-    let size = 100;
+    let size = 200;
     let map: BTreeMap<_, _> = (0..size).map(|i| (i, i)).collect();
 
     fn test(map: &BTreeMap<u32, u32>, size: u32, min: Bound<&u32>, max: Bound<&u32>) {
@@ -307,7 +309,7 @@ fn test_range() {
     #[cfg(not(miri))] // Miri is too slow
     let size = 200;
     #[cfg(miri)]
-    let size = 20;
+    let size = 30;
     let map: BTreeMap<_, _> = (0..size).map(|i| (i, i)).collect();
 
     for i in 0..size {
@@ -329,7 +331,7 @@ fn test_range_mut() {
     #[cfg(not(miri))] // Miri is too slow
     let size = 200;
     #[cfg(miri)]
-    let size = 20;
+    let size = 30;
     let mut map: BTreeMap<_, _> = (0..size).map(|i| (i, i)).collect();
 
     for i in 0..size {
@@ -506,7 +508,7 @@ fn test_clone() {
     #[cfg(not(miri))] // Miri is too slow
     let size = 100;
     #[cfg(miri)]
-    let size = 20;
+    let size = 30;
     assert_eq!(map.len(), 0);
 
     for i in 0..size {
