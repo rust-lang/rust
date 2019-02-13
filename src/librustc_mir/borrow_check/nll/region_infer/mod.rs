@@ -403,8 +403,9 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         mir_def_id: DefId,
         errors_buffer: &mut Vec<Diagnostic>,
     ) -> Option<ClosureRegionRequirements<'gcx>> {
-        common::time(
-            infcx.tcx.sess,
+        common::time_ext(
+            infcx.tcx.sess.time_extended(),
+            Some(infcx.tcx.sess),
             &format!("solve_nll_region_constraints({:?})", mir_def_id),
             || self.solve_inner(infcx, mir, mir_def_id, errors_buffer),
         )
