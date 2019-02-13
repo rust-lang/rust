@@ -1,0 +1,14 @@
+error: trait aliases cannot be `auto`
+  --> $DIR/trait-alias-syntax.rs:4:19
+   |
+LL | auto trait A = Foo; //~ ERROR trait aliases cannot be `auto`
+   |                   ^ trait aliases cannot be `auto`
+
+error: trait aliases cannot be `unsafe`
+  --> $DIR/trait-alias-syntax.rs:5:21
+   |
+LL | unsafe trait B = Foo; //~ ERROR trait aliases cannot be `unsafe`
+   |                     ^ trait aliases cannot be `unsafe`
+
+error: aborting due to 2 previous errors
+
