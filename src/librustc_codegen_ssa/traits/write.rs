@@ -3,7 +3,6 @@ use crate::back::write::{CodegenContext, ModuleConfig, FatLTOInput};
 use crate::{CompiledModule, ModuleCodegen};
 
 use rustc::dep_graph::WorkProduct;
-use rustc::util::time_graph::Timeline;
 use rustc_errors::{FatalError, Handler};
 
 pub trait WriteBackendMethods: 'static + Sized + Clone {
@@ -20,7 +19,6 @@ pub trait WriteBackendMethods: 'static + Sized + Clone {
         cgcx: &CodegenContext<Self>,
         modules: Vec<FatLTOInput<Self>>,
         cached_modules: Vec<(SerializedModule<Self::ModuleBuffer>, WorkProduct)>,
-        timeline: &mut Timeline,
     ) -> Result<LtoModuleCodegen<Self>, FatalError>;
     /// Performs thin LTO by performing necessary global analysis and returning two
     /// lists, one of the modules that need optimization and another for modules that
@@ -29,7 +27,6 @@ pub trait WriteBackendMethods: 'static + Sized + Clone {
         cgcx: &CodegenContext<Self>,
         modules: Vec<(String, Self::ThinBuffer)>,
         cached_modules: Vec<(SerializedModule<Self::ModuleBuffer>, WorkProduct)>,
-        timeline: &mut Timeline,
     ) -> Result<(Vec<LtoModuleCodegen<Self>>, Vec<WorkProduct>), FatalError>;
     fn print_pass_timings(&self);
     unsafe fn optimize(
@@ -37,19 +34,16 @@ pub trait WriteBackendMethods: 'static + Sized + Clone {
         diag_handler: &Handler,
         module: &ModuleCodegen<Self::Module>,
         config: &ModuleConfig,
-        timeline: &mut Timeline,
     ) -> Result<(), FatalError>;
     unsafe fn optimize_thin(
         cgcx: &CodegenContext<Self>,
         thin: &mut ThinModule<Self>,
-        timeline: &mut Timeline,
     ) -> Result<ModuleCodegen<Self::Module>, FatalError>;
     unsafe fn codegen(
         cgcx: &CodegenContext<Self>,
         diag_handler: &Handler,
         module: ModuleCodegen<Self::Module>,
         config: &ModuleConfig,
-        timeline: &mut Timeline,
     ) -> Result<CompiledModule, FatalError>;
     fn prepare_thin(
         module: ModuleCodegen<Self::Module>

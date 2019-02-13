@@ -67,7 +67,7 @@ pub fn parse<'a>(sess: &'a Session, input: &Input) -> PResult<'a, ast::Crate> {
         .set_continue_after_error(sess.opts.debugging_opts.continue_parse_after_error);
     hygiene::set_default_edition(sess.edition());
 
-    sess.profiler(|p| p.start_activity(ProfileCategory::Parsing));
+    sess.profiler(|p| p.start_activity(ProfileCategory::Parsing, "parsing"));
     let krate = time(sess, "parsing", || match *input {
         Input::File(ref file) => parse::parse_crate_from_file(file, &sess.parse_sess),
         Input::Str {
@@ -75,7 +75,7 @@ pub fn parse<'a>(sess: &'a Session, input: &Input) -> PResult<'a, ast::Crate> {
             ref name,
         } => parse::parse_crate_from_source_str(name.clone(), input.clone(), &sess.parse_sess),
     })?;
-    sess.profiler(|p| p.end_activity(ProfileCategory::Parsing));
+    sess.profiler(|p| p.end_activity(ProfileCategory::Parsing, "parsing"));
 
     sess.diagnostic().set_continue_after_error(true);
 
@@ -374,7 +374,7 @@ fn configure_and_expand_inner<'a>(
     syntax_ext::register_builtins(&mut resolver, plugin_info.syntax_exts);
 
     // Expand all macros
-    sess.profiler(|p| p.start_activity(ProfileCategory::Expansion));
+    sess.profiler(|p| p.start_activity(ProfileCategory::Expansion, "macro expansion"));
     krate = time(sess, "expansion", || {
         // Windows dlls do not have rpaths, so they don't know how to find their
         // dependencies. It's up to us to tell the system where to find all the
@@ -449,7 +449,7 @@ fn configure_and_expand_inner<'a>(
         }
         krate
     });
-    sess.profiler(|p| p.end_activity(ProfileCategory::Expansion));
+    sess.profiler(|p| p.end_activity(ProfileCategory::Expansion, "macro expansion"));
 
     time(sess, "maybe building test harness", || {
         syntax::test::modify_for_testing(
@@ -1018,9 +1018,9 @@ pub fn start_codegen<'tcx>(
         ::rustc::middle::dependency_format::calculate(tcx)
     });
 
-    tcx.sess.profiler(|p| p.start_activity(ProfileCategory::Codegen));
+    tcx.sess.profiler(|p| p.start_activity(ProfileCategory::Codegen, "codegen crate"));
     let codegen = time(tcx.sess, "codegen", move || codegen_backend.codegen_crate(tcx, rx));
-    tcx.sess.profiler(|p| p.end_activity(ProfileCategory::Codegen));
+    tcx.sess.profiler(|p| p.end_activity(ProfileCategory::Codegen, "codegen crate"));
 
     if log_enabled!(::log::Level::Info) {
         println!("Post-codegen");
