@@ -39,7 +39,7 @@ Language
     unsafe { foo() }
   }
   ```
-- [You can now import an item from a module as a `_`.][56303] This allows you to
+- [You can now import an item from a module as an `_`.][56303] This allows you to
   import a trait's impls, and not have the name in the namespace. E.g.
   ```rust
   use std::io::Read as _;
