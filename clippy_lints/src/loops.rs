@@ -1781,7 +1781,7 @@ impl<'a, 'tcx> VarVisitor<'a, 'tcx> {
                             if index_used_directly {
                                 self.indexed_directly.insert(
                                     seqvar.segments[0].ident.name,
-                                    (Some(extent), self.cx.tables.node_id_to_type(seqexpr.hir_id)),
+                                    (Some(extent), self.cx.tables.node_type(seqexpr.hir_id)),
                                 );
                             }
                             return false;  // no need to walk further *on the variable*
@@ -1793,7 +1793,7 @@ impl<'a, 'tcx> VarVisitor<'a, 'tcx> {
                             if index_used_directly {
                                 self.indexed_directly.insert(
                                     seqvar.segments[0].ident.name,
-                                    (None, self.cx.tables.node_id_to_type(seqexpr.hir_id)),
+                                    (None, self.cx.tables.node_type(seqexpr.hir_id)),
                                 );
                             }
                             return false;  // no need to walk further *on the variable*
@@ -2418,7 +2418,7 @@ fn check_needless_collect<'a, 'tcx>(expr: &'tcx Expr, cx: &LateContext<'a, 'tcx>
         if let Some(ref generic_args) = chain_method.args;
         if let Some(GenericArg::Type(ref ty)) = generic_args.args.get(0);
         then {
-            let ty = cx.tables.node_id_to_type(ty.hir_id);
+            let ty = cx.tables.node_type(ty.hir_id);
             if match_type(cx, ty, &paths::VEC) ||
                 match_type(cx, ty, &paths::VEC_DEQUE) ||
                 match_type(cx, ty, &paths::BTREEMAP) ||

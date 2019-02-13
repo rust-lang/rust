@@ -127,7 +127,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Pass {
         }
         match stmt.node {
             hir::StmtKind::Local(ref local) => {
-                println!("local variable of type {}", cx.tables.node_id_to_type(local.hir_id));
+                println!("local variable of type {}", cx.tables.node_type(local.hir_id));
                 println!("pattern:");
                 print_pat(cx, &local.pat, 0);
                 if let Some(ref e) = local.init {
