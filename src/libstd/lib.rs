@@ -338,7 +338,9 @@ extern crate backtrace_sys;
 // would generate duplicate lang item errors), and any globals it defines are
 // _not_ the globals used by "real" std. So this import, defined only during
 // testing gives test-std access to real-std lang items and globals. See #2912
-#[cfg(test)] extern crate std as realstd;
+#[cfg(test)]
+#[macro_use]
+extern crate std as realstd;
 
 #[cfg(all(target_vendor = "fortanix", target_env = "sgx"))]
 #[macro_use]
@@ -442,7 +444,13 @@ pub mod f32;
 pub mod f64;
 
 #[macro_use]
+#[cfg(not(test))]
 pub mod thread;
+#[cfg(test)]
+pub use realstd::thread;
+#[cfg(test)]
+#[path = "thread/tests.rs"]
+mod thread_tests;
 pub mod ascii;
 pub mod collections;
 pub mod env;

@@ -1,3 +1,5 @@
+#![cfg_attr(test, allow(dead_code))]
+
 use boxed::FnBox;
 use ffi::CStr;
 use io;
@@ -10,8 +12,7 @@ pub struct Thread(task_queue::JoinHandle);
 pub const DEFAULT_MIN_STACK_SIZE: usize = 4096;
 
 mod task_queue {
-    use sync::{Mutex, MutexGuard, Once};
-    use sync::mpsc;
+    use sync::{MutexGuard, mpsc};
     use boxed::FnBox;
 
     pub type JoinHandle = mpsc::Receiver<()>;
@@ -33,14 +34,22 @@ mod task_queue {
         }
     }
 
-    static TASK_QUEUE_INIT: Once = Once::new();
-    static mut TASK_QUEUE: Option<Mutex<Vec<Task>>> = None;
-
+    #[cfg(not(test))]
     pub(super) fn lock() -> MutexGuard<'static, Vec<Task>> {
+        use sync::{Mutex, Once};
+
+        static TASK_QUEUE_INIT: Once = Once::new();
+        static mut TASK_QUEUE: Option<Mutex<Vec<Task>>> = None;
+
         unsafe {
             TASK_QUEUE_INIT.call_once(|| TASK_QUEUE = Some(Default::default()) );
             TASK_QUEUE.as_ref().unwrap().lock().unwrap()
         }
+    }
+
+    #[cfg(test)]
+    pub(super) fn lock() -> MutexGuard<'static, Vec<Task>> {
+        rtabort!("Calling cfg-test version of threading internals")
     }
 }
 

@@ -1,3 +1,4 @@
+#![cfg_attr(test, allow(dead_code))]
 #![cfg(target_thread_local)]
 #![unstable(feature = "thread_local_internals", issue = "0")]
 

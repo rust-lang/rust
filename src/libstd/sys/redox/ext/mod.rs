@@ -25,7 +25,10 @@ pub mod fs;
 pub mod io;
 pub mod net;
 pub mod process;
+#[cfg(not(test))]
 pub mod thread;
+#[cfg(test)]
+pub use realstd::os::redox::thread;
 
 /// A prelude for conveniently writing platform-specific code.
 ///

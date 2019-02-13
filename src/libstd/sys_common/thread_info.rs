@@ -12,6 +12,7 @@ struct ThreadInfo {
 thread_local! { static THREAD_INFO: RefCell<Option<ThreadInfo>> = RefCell::new(None) }
 
 impl ThreadInfo {
+    #[cfg(not(test))]
     fn with<R, F>(f: F) -> Option<R> where F: FnOnce(&mut ThreadInfo) -> R {
         THREAD_INFO.try_with(move |c| {
             if c.borrow().is_none() {
@@ -22,6 +23,11 @@ impl ThreadInfo {
             }
             f(c.borrow_mut().as_mut().unwrap())
         }).ok()
+    }
+
+    #[cfg(test)]
+    fn with<R, F>(_f: F) -> Option<R> where F: FnOnce(&mut ThreadInfo) -> R {
+        None
     }
 }
 

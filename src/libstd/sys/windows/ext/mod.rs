@@ -15,7 +15,10 @@ pub mod fs;
 pub mod io;
 pub mod raw;
 pub mod process;
+#[cfg(not(test))]
 pub mod thread;
+#[cfg(test)]
+pub use realstd::os::windows::thread;
 
 /// A prelude for conveniently writing platform-specific code.
 ///

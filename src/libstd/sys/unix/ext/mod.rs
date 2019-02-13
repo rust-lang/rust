@@ -32,7 +32,10 @@ pub mod ffi;
 pub mod fs;
 pub mod process;
 pub mod raw;
+#[cfg(not(test))]
 pub mod thread;
+#[cfg(test)]
+pub use realstd::os::unix::thread;
 pub mod net;
 
 /// A prelude for conveniently writing platform-specific code.

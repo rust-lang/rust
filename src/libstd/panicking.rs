@@ -300,6 +300,7 @@ pub unsafe fn try<R, F: FnOnce() -> R>(f: F) -> Result<R, Box<dyn Any + Send>> {
 }
 
 /// Determines whether the current thread is unwinding because of panic.
+#[cfg(not(test))]
 pub fn panicking() -> bool {
     update_panic_count(0) != 0
 }

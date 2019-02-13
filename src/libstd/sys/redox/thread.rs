@@ -1,3 +1,5 @@
+#![cfg_attr(test, allow(dead_code))]
+
 use boxed::FnBox;
 use ffi::CStr;
 use io;
