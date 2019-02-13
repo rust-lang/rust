@@ -956,7 +956,7 @@ pub unsafe fn write_volatile<T>(dst: *mut T, src: T) {
 ///
 /// While this function does not actually physically write to memory, it acts as if it
 /// does. For example, calling this method on data which is concurrently accessible
-/// elsewhere is undefined behavior just as it would be to `ptr::write`.
+/// elsewhere is undefined behavior just as it would be to use `ptr::write`.
 ///
 /// # Warning
 ///
