@@ -7,16 +7,8 @@ set -ex
 
 run() {
     target=$(echo "${1}" | sed 's/-emulated//')
-    cross="0"
-    if [ -z "${2}" ]; then
-        echo "Building docker container for TARGET=${1}"
-        docker build -t stdsimd -f "ci/docker/${1}/Dockerfile" ci/
-    else
-        target=$(echo "${2}" | sed 's/-cross//')
-        cross="1"
-        echo "Building docker container for CROSS_TARGET=${2}"
-        docker build -t stdsimd -f "ci/docker/${2}/Dockerfile" ci/
-    fi
+    echo "Building docker container for TARGET=${1}"
+    docker build -t stdsimd -f "ci/docker/${1}/Dockerfile" ci/
     mkdir -p target
     echo "Running docker"
     # shellcheck disable=SC2016
@@ -26,8 +18,6 @@ run() {
       --init \
       --volume "${HOME}"/.cargo:/cargo-h \
       --env CARGO_HOME=/cargo-h \
-      --volume "${HOME}"/.xargo:/xargo-h \
-      --env XARGO_HOME=/xargo-h \
       --volume "$(rustc --print sysroot)":/rust:ro \
       --env TARGET="${target}" \
       --env STDSIMD_TEST_EVERYTHING \
@@ -37,7 +27,6 @@ run() {
       --env NORUN \
       --env RUSTFLAGS \
       --env STDSIMD_TEST_NORUN \
-      --env CROSS="${cross}" \
       --volume "$(pwd)":/checkout:ro \
       --volume "$(pwd)"/target:/checkout/target \
       --workdir /checkout \
@@ -52,5 +41,5 @@ if [ -z "$1" ]; then
     run "${d}"
   done
 else
-  run "${1}" "${2}"
+  run "${1}"
 fi

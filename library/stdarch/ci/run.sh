@@ -30,58 +30,17 @@ echo "FEATURES=${FEATURES}"
 echo "OBJDUMP=${OBJDUMP}"
 echo "STDSIMD_DISABLE_ASSERT_INSTR=${STDSIMD_DISABLE_ASSERT_INSTR}"
 echo "STDSIMD_TEST_EVERYTHING=${STDSIMD_TEST_EVERYTHING}"
-echo "CROSS=${CROSS}"
-
-cargo_setup() {
-    if [ "$CROSS" = "1" ]
-    then
-        export RUST_TARGET_PATH="/checkout/ci/cross"
-        echo "RUST_TARGET_PATH=${RUST_TARGET_PATH}"
-    fi
-}
 
 cargo_test() {
-    if [ "$CROSS" = "1" ]
-    then
-        cmd="/cargo-h/bin/xargo"
-    else
-        cmd="cargo"
-    fi
+    cmd="cargo"
     subcmd="test"
-    if [ "$NORUN" = "1" ]
-    then
-        if [ "$CROSS" = "1" ]
-        then
-            export subcmd="rustc"
-        else
-            export subcmd="build"
-        fi
+    if [ "$NORUN" = "1" ]; then
+        export subcmd="build"
     fi
     cmd="$cmd ${subcmd} --target=$TARGET $1"
     cmd="$cmd -- $2"
-    # Un-commenting this disables the test output and shows only a summary:
-    #if [ "$NORUN" != "1" ]
-    #then
-    #  if [ "$TARGET" != "wasm32-unknown-unknown" ]
-    #  then
-    #    cmd="$cmd --quiet"
-    #  fi
-    #fi
-    if [ "$CROSS" = "1" ]
-    then
-        cmd="$cmd --emit=asm"
-    fi
     $cmd
 }
-
-cargo_output() {
-    if [ "$CROSS" = "1" ]
-    then
-        find /checkout/target -name "*.s"
-    fi
-}
-
-cargo_setup
 
 CORE_ARCH="--manifest-path=crates/core_arch/Cargo.toml"
 STD_DETECT="--manifest-path=crates/std_detect/Cargo.toml"
@@ -100,8 +59,6 @@ if [ "$NOSTD" != "1" ]; then
     cargo_test "${STDSIMD_EXAMPLES}"
     cargo_test "${STDSIMD_EXAMPLES} --release"
 fi
-
-cargo_output
 
 # Test targets compiled with extra features.
 case ${TARGET} in
@@ -123,9 +80,11 @@ case ${TARGET} in
 
 esac
 
-# Test examples
-(
-    cd examples
-    cargo test
-    echo test | cargo run --release hex
-)
+if [ "$NORUN" != "1" ] && [ "$NOSTD" != 1 ]; then
+    # Test examples
+    (
+        cd examples
+        cargo test --target "$TARGET"
+        echo test | cargo run --release hex
+    )
+fi
