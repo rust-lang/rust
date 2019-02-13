@@ -2780,7 +2780,7 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
             Ok(obligations) => obligations,
             Err(()) => {
                 bug!(
-                    "Where clause `{:?}` was applicable to `{:?}` but now is not",
+                    "where-clause `{:?}` was applicable to `{:?}` but now is not",
                     param,
                     obligation
                 );

@@ -323,7 +323,7 @@ declare_lint! {
 declare_lint! {
     pub WHERE_CLAUSES_OBJECT_SAFETY,
     Warn,
-    "checks the object safety of where clauses"
+    "checks the object safety of where-clauses"
 }
 
 declare_lint! {

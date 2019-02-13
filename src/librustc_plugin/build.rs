@@ -63,7 +63,6 @@ fn plugin_registrar_fn<'tcx>(
     }
 }
 
-
 pub fn provide(providers: &mut Providers<'_>) {
     *providers = Providers {
         plugin_registrar_fn,

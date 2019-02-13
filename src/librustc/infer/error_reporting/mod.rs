@@ -81,7 +81,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
                 let new_string;
                 let unknown_scope = || {
                     format!(
-                        "{}unknown scope: {:?}{}.  Please report a bug.",
+                        "{}unknown scope: {:?}{}. Please report a bug.",
                         prefix, scope, suffix
                     )
                 };

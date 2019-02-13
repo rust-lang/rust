@@ -271,7 +271,7 @@ impl<'cx, 'gcx, 'tcx> LexicalResolver<'cx, 'gcx, 'tcx> {
                 }
 
                 debug!(
-                    "Expanding value of {:?} from {:?} to {:?}",
+                    "expanding value of {:?} from {:?} to {:?}",
                     b_vid, cur_region, lub
                 );
 

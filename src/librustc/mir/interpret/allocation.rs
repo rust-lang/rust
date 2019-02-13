@@ -580,7 +580,7 @@ impl<'tcx, Tag, Extra> Allocation<Tag, Extra> {
 
 /// Relocations
 #[derive(Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Debug, RustcEncodable, RustcDecodable)]
-pub struct Relocations<Tag=(), Id=AllocId>(SortedMap<Size, (Tag, Id)>);
+pub struct Relocations<Tag=(), Id = AllocId>(SortedMap<Size, (Tag, Id)>);
 
 impl<Tag, Id> Relocations<Tag, Id> {
     pub fn new() -> Self {

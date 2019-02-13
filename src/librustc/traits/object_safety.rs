@@ -51,7 +51,7 @@ impl ObjectSafetyViolation {
                          in its arguments or return type", name).into(),
             ObjectSafetyViolation::Method(name,
                                             MethodViolationCode::WhereClauseReferencesSelf(_)) =>
-                format!("method `{}` references the `Self` type in where clauses", name).into(),
+                format!("method `{}` references the `Self` type in where-clauses", name).into(),
             ObjectSafetyViolation::Method(name, MethodViolationCode::Generic) =>
                 format!("method `{}` has generic type parameters", name).into(),
             ObjectSafetyViolation::Method(name, MethodViolationCode::UndispatchableReceiver) =>

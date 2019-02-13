@@ -68,7 +68,7 @@ pub(super) trait QueryDescription<'tcx>: QueryAccessors<'tcx> {
     }
 }
 
-impl<'tcx, M: QueryAccessors<'tcx, Key=DefId>> QueryDescription<'tcx> for M {
+impl<'tcx, M: QueryAccessors<'tcx, Key = DefId>> QueryDescription<'tcx> for M {
     default fn describe(tcx: TyCtxt<'_, '_, '_>, def_id: DefId) -> Cow<'static, str> {
         if !tcx.sess.verbose() {
             format!("processing `{}`", tcx.item_path_str(def_id)).into()

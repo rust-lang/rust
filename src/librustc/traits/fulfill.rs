@@ -498,7 +498,7 @@ impl<'a, 'b, 'gcx, 'tcx> ObligationProcessor for FulfillProcessor<'a, 'b, 'gcx, 
 
     fn process_backedge<'c, I>(&mut self, cycle: I,
                                _marker: PhantomData<&'c PendingPredicateObligation<'tcx>>)
-        where I: Clone + Iterator<Item=&'c PendingPredicateObligation<'tcx>>,
+        where I: Clone + Iterator<Item = &'c PendingPredicateObligation<'tcx>>,
     {
         if self.selcx.coinductive_match(cycle.clone().map(|s| s.obligation.predicate)) {
             debug!("process_child_obligations: coinductive match");

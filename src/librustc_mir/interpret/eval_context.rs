@@ -115,7 +115,7 @@ pub struct LocalState<'tcx, Tag=(), Id=AllocId> {
 
 /// State of a local variable
 #[derive(Copy, Clone, PartialEq, Eq, Hash)]
-pub enum LocalValue<Tag=(), Id=AllocId> {
+pub enum LocalValue<Tag=(), Id = AllocId> {
     Dead,
     // Mostly for convenience, we re-use the `Operand` type here.
     // This is an optimization over just always having a pointer here;

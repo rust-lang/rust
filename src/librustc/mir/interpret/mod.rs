@@ -236,7 +236,7 @@ impl<'s> AllocDecodingSession<'s> {
                 },
                 AllocDiscriminant::Static => {
                     assert!(alloc_id.is_none());
-                    trace!("creating extern static alloc id at");
+                    trace!("creating extern static alloc ID at");
                     let did = DefId::decode(decoder)?;
                     let alloc_id = decoder.tcx().alloc_map.lock().intern_static(did);
                     Ok(alloc_id)
@@ -312,7 +312,7 @@ impl<'tcx> AllocMap<'tcx> {
             return alloc_id;
         }
         let id = self.reserve();
-        debug!("creating alloc_kind {:?} with id {}", alloc_kind, id);
+        debug!("creating alloc_kind {:?} with ID {}", alloc_kind, id);
         self.id_to_kind.insert(id, alloc_kind.clone());
         self.type_interner.insert(alloc_kind, id);
         id
@@ -381,7 +381,7 @@ impl<'tcx> AllocMap<'tcx> {
     /// call this function twice, even with the same `Allocation` will ICE the compiler.
     pub fn set_alloc_id_memory(&mut self, id: AllocId, mem: &'tcx Allocation) {
         if let Some(old) = self.id_to_kind.insert(id, AllocKind::Memory(mem)) {
-            bug!("tried to set allocation id {}, but it was already existing as {:#?}", id, old);
+            bug!("tried to set allocation ID {}, but it was already existing as {:#?}", id, old);
         }
     }
 

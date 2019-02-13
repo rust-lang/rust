@@ -287,7 +287,7 @@ match x {
 
 E0030: r##"
 When matching against a range, the compiler verifies that the range is
-non-empty.  Range patterns include both end-points, so this is equivalent to
+non-empty. Range patterns include both end-points, so this is equivalent to
 requiring the start of the range to be less than or equal to the end of the
 range.
 
@@ -538,7 +538,7 @@ match Some("hi".to_string()) {
 
 The `op_string_ref` binding has type `&Option<&String>` in both cases.
 
-See also https://github.com/rust-lang/rust/issues/14587
+See also <https://github.com/rust-lang/rust/issues/14587>.
 "##,
 
 E0010: r##"
@@ -690,7 +690,7 @@ fn main() {
 }
 ```
 
-See also https://doc.rust-lang.org/book/ch19-01-unsafe-rust.html
+See also <https://doc.rust-lang.org/book/ch19-01-unsafe-rust.html>.
 "##,
 
 E0373: r##"
@@ -828,7 +828,7 @@ with `#[derive(Clone)]`.
 
 Some types have no ownership semantics at all and are trivial to duplicate. An
 example is `i32` and the other number types. We don't have to call `.clone()` to
-clone them, because they are marked `Copy` in addition to `Clone`.  Implicit
+clone them, because they are marked `Copy` in addition to `Clone`. Implicit
 cloning is more convenient in this case. We can mark our own types `Copy` if
 all their members also are marked `Copy`.
 
@@ -2255,8 +2255,8 @@ gets called when they go out of scope. This destructor gets exclusive
 access to the fields of the struct when it runs.
 
 This means that when `s` reaches the end of `demo`, its destructor
-gets exclusive access to its `&mut`-borrowed string data.  allowing
-another borrow of that string data (`p`), to exist across the drop of
+gets exclusive access to its `&mut`-borrowed string data. Allowing
+another borrow of that string data (`p`) to exist across the drop of
 `s` would be a violation of the principle that `&mut`-borrows have
 exclusive, unaliased access to their referenced data.
 

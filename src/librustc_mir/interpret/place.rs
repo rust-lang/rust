@@ -18,7 +18,7 @@ use super::{
 };
 
 #[derive(Copy, Clone, Debug, Hash, PartialEq, Eq)]
-pub struct MemPlace<Tag=(), Id=AllocId> {
+pub struct MemPlace<Tag=(), Id = AllocId> {
     /// A place may have an integral pointer for ZSTs, and since it might
     /// be turned back into a reference before ever being dereferenced.
     /// However, it may never be undef.
@@ -31,7 +31,7 @@ pub struct MemPlace<Tag=(), Id=AllocId> {
 }
 
 #[derive(Copy, Clone, Debug, Hash, PartialEq, Eq)]
-pub enum Place<Tag=(), Id=AllocId> {
+pub enum Place<Tag=(), Id = AllocId> {
     /// A place referring to a value allocated in the `Memory` system.
     Ptr(MemPlace<Tag, Id>),
 
@@ -417,7 +417,7 @@ where
         &self,
         base: MPlaceTy<'tcx, Tag>,
     ) ->
-        EvalResult<'tcx, impl Iterator<Item=EvalResult<'tcx, MPlaceTy<'tcx, Tag>>> + 'a>
+        EvalResult<'tcx, impl Iterator<Item = EvalResult<'tcx, MPlaceTy<'tcx, Tag>>> + 'a>
     {
         let len = base.len(self)?; // also asserts that we have a type where this makes sense
         let stride = match base.layout.fields {

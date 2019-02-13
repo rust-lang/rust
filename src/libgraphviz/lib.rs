@@ -612,7 +612,7 @@ pub fn default_options() -> Vec<RenderOption> {
 pub fn render<'a,N,E,G,W>(g: &'a G, w: &mut W) -> io::Result<()>
     where N: Clone + 'a,
           E: Clone + 'a,
-          G: Labeller<'a, Node=N, Edge=E> + GraphWalk<'a, Node=N, Edge=E>,
+          G: Labeller<'a, Node = N, Edge = E> + GraphWalk<'a, Node = N, Edge = E>,
           W: Write
 {
     render_opts(g, w, &[])
@@ -626,7 +626,7 @@ pub fn render_opts<'a, N, E, G, W>(g: &'a G,
                                    -> io::Result<()>
     where N: Clone + 'a,
           E: Clone + 'a,
-          G: Labeller<'a, Node=N, Edge=E> + GraphWalk<'a, Node=N, Edge=E>,
+          G: Labeller<'a, Node = N, Edge = E> + GraphWalk<'a, Node = N, Edge = E>,
           W: Write
 {
     writeln!(w, "digraph {} {{", g.graph_id().as_slice())?;
@@ -1053,7 +1053,7 @@ r#"digraph syntax_tree {
         let id1 = Id::new("hello");
         match id1 {
             Ok(_) => {}
-            Err(..) => panic!("'hello' is not a valid value for id anymore"),
+            Err(..) => panic!("'hello' is not a valid value for ID anymore"),
         }
     }
 
@@ -1061,7 +1061,7 @@ r#"digraph syntax_tree {
     fn badly_formatted_id() {
         let id2 = Id::new("Weird { struct : ure } !!!");
         match id2 {
-            Ok(_) => panic!("graphviz id suddenly allows spaces, brackets and stuff"),
+            Ok(_) => panic!("graphviz ID suddenly allows spaces, brackets and stuff"),
             Err(..) => {}
         }
     }

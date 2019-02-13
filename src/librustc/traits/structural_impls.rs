@@ -23,13 +23,13 @@ impl<'tcx, O: fmt::Debug> fmt::Debug for traits::Obligation<'tcx, O> {
         if ty::tls::with(|tcx| tcx.sess.verbose()) {
             write!(
                 f,
-                "Obligation(predicate={:?},cause={:?},param_env={:?},depth={})",
+                "Obligation(predicate={:?}, cause={:?}, param_env={:?}, depth={})",
                 self.predicate, self.cause, self.param_env, self.recursion_depth
             )
         } else {
             write!(
                 f,
-                "Obligation(predicate={:?},depth={})",
+                "Obligation(predicate={:?}, depth={})",
                 self.predicate, self.recursion_depth
             )
         }

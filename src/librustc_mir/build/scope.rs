@@ -47,7 +47,7 @@ loop {
 ```
 
 When processing the `let x`, we will add one drop to the scope for
-`x`.  The break will then insert a drop for `x`. When we process `let
+`x`. The break will then insert a drop for `x`. When we process `let
 y`, we will add another drop (in fact, to a subscope, but let's ignore
 that for now); any later drops would also drop `y`.
 

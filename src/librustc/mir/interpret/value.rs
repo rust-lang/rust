@@ -73,7 +73,7 @@ impl<'tcx> ConstValue<'tcx> {
 /// size. Like a range of bytes in an `Allocation`, a `Scalar` can either represent the raw bytes
 /// of a simple value or a pointer into another `Allocation`
 #[derive(Clone, Copy, Debug, Eq, PartialEq, Ord, PartialOrd, RustcEncodable, RustcDecodable, Hash)]
-pub enum Scalar<Tag=(), Id=AllocId> {
+pub enum Scalar<Tag=(), Id = AllocId> {
     /// The raw bytes of a simple value.
     Bits {
         /// The first `size` bytes are the value.
@@ -394,7 +394,7 @@ impl<Tag> From<Pointer<Tag>> for Scalar<Tag> {
 }
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq, Ord, PartialOrd, RustcEncodable, RustcDecodable, Hash)]
-pub enum ScalarMaybeUndef<Tag=(), Id=AllocId> {
+pub enum ScalarMaybeUndef<Tag=(), Id = AllocId> {
     Scalar(Scalar<Tag, Id>),
     Undef,
 }

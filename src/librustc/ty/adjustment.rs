@@ -3,7 +3,6 @@ use crate::hir::def_id::DefId;
 use crate::ty::{self, Ty, TyCtxt};
 use crate::ty::subst::Substs;
 
-
 /// Represents coercing a value to a different type of value.
 ///
 /// We transform values by following a number of `Adjust` steps in order.

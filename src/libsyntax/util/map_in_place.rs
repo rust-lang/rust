@@ -8,23 +8,24 @@ pub trait MapInPlace<T>: Sized {
 
     fn flat_map_in_place<F, I>(&mut self, f: F)
         where F: FnMut(T) -> I,
-              I: IntoIterator<Item=T>;
+              I: IntoIterator<Item = T>;
 }
 
 impl<T> MapInPlace<T> for Vec<T> {
     fn flat_map_in_place<F, I>(&mut self, mut f: F)
         where F: FnMut(T) -> I,
-              I: IntoIterator<Item=T>
+              I: IntoIterator<Item = T>
     {
         let mut read_i = 0;
         let mut write_i = 0;
         unsafe {
             let mut old_len = self.len();
-            self.set_len(0); // make sure we just leak elements in case of panic
+            // Make sure we just leak elements in case of panic.
+            self.set_len(0);
 
             while read_i < old_len {
-                // move the read_i'th item out of the vector and map it
-                // to an iterator
+                // Move the `read_i`'th item out of the vector and map it
+                // to an iterator.
                 let e = ptr::read(self.get_unchecked(read_i));
                 let iter = f(e).into_iter();
                 read_i += 1;
@@ -59,17 +60,18 @@ impl<T> MapInPlace<T> for Vec<T> {
 impl<T, A: Array<Item = T>> MapInPlace<T> for SmallVec<A> {
     fn flat_map_in_place<F, I>(&mut self, mut f: F)
         where F: FnMut(T) -> I,
-              I: IntoIterator<Item=T>
+              I: IntoIterator<Item = T>
     {
         let mut read_i = 0;
         let mut write_i = 0;
         unsafe {
             let mut old_len = self.len();
-            self.set_len(0); // make sure we just leak elements in case of panic
+            // Make sure we just leak elements in case of panic.
+            self.set_len(0);
 
             while read_i < old_len {
-                // move the read_i'th item out of the vector and map it
-                // to an iterator
+                // Move the `read_i'th item out of the vector and map it
+                // to an iterator.
                 let e = ptr::read(self.get_unchecked(read_i));
                 let iter = f(e).into_iter();
                 read_i += 1;
@@ -95,7 +97,7 @@ impl<T, A: Array<Item = T>> MapInPlace<T> for SmallVec<A> {
                 }
             }
 
-            // write_i tracks the number of actually written new items.
+            // `write_i` tracks the number of actually written new items.
             self.set_len(write_i);
         }
     }

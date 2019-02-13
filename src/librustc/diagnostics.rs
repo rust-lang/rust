@@ -1264,7 +1264,7 @@ where
 }
 ```
 
-Here, the where clause `T: 'a` that appears on the impl is not known to be
+Here, the where-clause `T: 'a` that appears on the impl is not known to be
 satisfied on the struct. To make this example compile, you have to add
 a where-clause like `T: 'a` to the struct definition:
 
@@ -1495,7 +1495,7 @@ impl<'a, T> SomeTrait<'a> for T {
 Here, the problem is that a reference type like `&'a T` is only valid
 if all the data in T outlives the lifetime `'a`. But this impl as written
 is applicable to any lifetime `'a` and any type `T` -- we have no guarantee
-that `T` outlives `'a`. To fix this, you can add a where clause like
+that `T` outlives `'a`. To fix this, you can add a where-clause like
 `where T: 'a`.
 
 ```

@@ -1941,7 +1941,7 @@ impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
                 }
                 if !ti.generics.where_clause.predicates.is_empty() {
                     gate_feature_post!(&self, generic_associated_types, ti.span,
-                                       "where clauses on associated types are unstable");
+                                       "where-clauses on associated types are unstable");
                 }
             }
             _ => {}
@@ -1973,7 +1973,7 @@ impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
                 }
                 if !ii.generics.where_clause.predicates.is_empty() {
                     gate_feature_post!(&self, generic_associated_types, ii.span,
-                                       "where clauses on associated types are unstable");
+                                       "where-clauses on associated types are unstable");
                 }
             }
             _ => {}

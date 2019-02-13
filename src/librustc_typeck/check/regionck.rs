@@ -322,9 +322,7 @@ impl<'a, 'gcx, 'tcx> RegionCtxt<'a, 'gcx, 'tcx> {
         let fn_sig = {
             match self.tables.borrow().liberated_fn_sigs().get(id) {
                 Some(f) => f.clone(),
-                None => {
-                    bug!("No fn-sig entry for id={:?}", id);
-                }
+                None => bug!("no fn-sig entry for id={:?}", id),
             }
         };
 
@@ -478,8 +476,7 @@ impl<'a, 'gcx, 'tcx> Visitor<'gcx> for RegionCtxt<'a, 'gcx, 'tcx> {
         self.visit_fn_body(hir_id, body, span);
 
         // Restore state from previous function.
-        self.outlives_environment
-            .pop_snapshot_post_closure(env_snapshot);
+        self.outlives_environment.pop_snapshot_post_closure(env_snapshot);
         self.call_site_scope = old_call_site_scope;
         self.body_id = old_body_id;
     }

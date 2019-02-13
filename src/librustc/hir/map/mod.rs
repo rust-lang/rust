@@ -485,7 +485,7 @@ impl<'hir> Map<'hir> {
 
             entry.associated_body()
         } else {
-            bug!("no entry for id `{}`", id)
+            bug!("no entry for ID `{}`", id)
         }
     }
 
@@ -749,24 +749,24 @@ impl<'hir> Map<'hir> {
     {
         let mut id = start_id;
         loop {
-            let parent_node = self.get_parent_node(id);
-            if parent_node == CRATE_NODE_ID {
+            let parent_id = self.get_parent_node(id);
+            if parent_id == CRATE_NODE_ID {
                 return Ok(CRATE_NODE_ID);
             }
-            if parent_node == id {
+            if parent_id == id {
                 return Err(id);
             }
 
-            if let Some(entry) = self.find_entry(parent_node) {
+            if let Some(entry) = self.find_entry(parent_id) {
                 if let Node::Crate = entry.node {
                     return Err(id);
                 }
                 if found(&entry.node) {
-                    return Ok(parent_node);
+                    return Ok(parent_id);
                 } else if bail_early(&entry.node) {
-                    return Err(parent_node);
+                    return Err(parent_id);
                 }
-                id = parent_node;
+                id = parent_id;
             } else {
                 return Err(id);
             }
@@ -1098,7 +1098,7 @@ impl<'hir> Map<'hir> {
             Some(Node::Local(local)) => local.span,
             Some(Node::MacroDef(macro_def)) => macro_def.span,
             Some(Node::Crate) => self.forest.krate.span,
-            None => bug!("hir::map::Map::span: id not in map: {:?}", id),
+            None => bug!("hir::map::Map::span: ID not in map: {:?}", id),
         }
     }
 

@@ -47,7 +47,7 @@ impl<'a, 'tcx> Checker<'a, 'tcx> {
 
 fn visit_implementation_of_drop<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, impl_did: DefId) {
     if let ty::Adt(..) = tcx.type_of(impl_did).sty {
-        /* do nothing */
+        // Do nothing.
     } else {
         // Destructors only work on nominal types.
         if let Some(impl_node_id) = tcx.hir().as_local_node_id(impl_did) {

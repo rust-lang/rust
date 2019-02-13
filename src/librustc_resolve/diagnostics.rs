@@ -12,7 +12,7 @@ Type parameter defaults can only use parameters that occur before them.
 Erroneous code example:
 
 ```compile_fail,E0128
-struct Foo<T=U, U=()> {
+struct Foo<T = U, U=()> {
     field1: T,
     filed2: U,
 }
@@ -24,7 +24,7 @@ Since type parameters are evaluated in-order, you may be able to fix this issue
 by doing:
 
 ```
-struct Foo<U=(), T=U> {
+struct Foo<U=(), T = U> {
     field1: T,
     filed2: U,
 }

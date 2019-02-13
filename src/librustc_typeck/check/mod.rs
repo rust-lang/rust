@@ -9,31 +9,31 @@ function). Inference is used to supply types wherever they are unknown.
 By far the most complex case is checking the body of a function. This
 can be broken down into several distinct phases:
 
-- gather: creates type variables to represent the type of each local
+- *gather*: creates type variables to represent the type of each local
   variable and pattern binding.
 
-- main: the main pass does the lion's share of the work: it
+- *main*: the main pass does the lion's share of the work: it
   determines the types of all expressions, resolves
-  methods, checks for most invalid conditions, and so forth.  In
+  methods, checks for most invalid conditions, and so forth. In
   some cases, where a type is unknown, it may create a type or region
   variable and use that as the type of an expression.
 
   In the process of checking, various constraints will be placed on
   these type variables through the subtyping relationships requested
-  through the `demand` module.  The `infer` module is in charge
+  through the `demand` module. The `infer` module is in charge
   of resolving those constraints.
 
-- regionck: after main is complete, the regionck pass goes over all
+- *regionck*: after main is complete, the regionck pass goes over all
   types looking for regions and making sure that they did not escape
-  into places they are not in scope.  This may also influence the
+  into places they are not in scope. This may also influence the
   final assignments of the various region variables if there is some
   flexibility.
 
-- vtable: find and records the impls to use for each trait bound that
+- *vtable*: find and records the impls to use for each trait bound that
   appears on a type parameter.
 
-- writeback: writes the final types within a function body, replacing
-  type variables with their final inferred types.  These final types
+- *writeback*: writes the final types within a function body, replacing
+  type variables with their final inferred types. These final types
   are written into the `tcx.node_types` table, which should *never* contain
   any reference to a type variable.
 
@@ -41,8 +41,8 @@ can be broken down into several distinct phases:
 
 While type checking a function, the intermediate types for the
 expressions, blocks, and so forth contained within the function are
-stored in `fcx.node_types` and `fcx.node_substs`.  These types
-may contain unresolved type variables.  After type checking is
+stored in `fcx.node_types` and `fcx.node_substs`. These types
+may contain unresolved type variables. After type checking is
 complete, the functions in the writeback module are used to take the
 types from this table, resolve them, and then write them into their
 permanent home in the type context `tcx`.
@@ -54,12 +54,12 @@ nodes within the function.
 The types of top-level items, which never contain unbound type
 variables, are stored directly into the `tcx` tables.
 
-N.B., a type variable is not the same thing as a type parameter.  A
+N.B., a type variable is not the same thing as a type parameter. A
 type variable is rather an "instance" of a type parameter: that is,
 given a generic function `fn foo<T>(t: T)`: while checking the
 function `foo`, the type `ty_param(0)` refers to the type `T`, which
-is treated in abstract.  When `foo()` is called, however, `T` will be
-substituted for a fresh type variable `N`.  This variable will
+is treated in abstract. When `foo()` is called, however, `T` will be
+substituted for a fresh type variable `N`. This variable will
 eventually be resolved to some concrete type (which might itself be
 type parameter).
 
@@ -3877,7 +3877,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
     pub fn check_struct_path(&self,
                              qpath: &QPath,
                              node_id: ast::NodeId)
-                             -> Option<(&'tcx ty::VariantDef,  Ty<'tcx>)> {
+                             -> Option<(&'tcx ty::VariantDef, Ty<'tcx>)> {
         let path_span = match *qpath {
             QPath::Resolved(_, ref path) => path.span,
             QPath::TypeRelative(ref qself, _) => qself.span
@@ -5457,7 +5457,6 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
             }
             _ => {
                 let def_id = def.def_id();
-
                 // The things we are substituting into the type should not contain
                 // escaping late-bound regions, and nor should the base type scheme.
                 let ty = tcx.type_of(def_id);

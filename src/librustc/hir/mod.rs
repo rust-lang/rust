@@ -528,7 +528,7 @@ pub enum GenericParamKind {
     Type {
         default: Option<P<Ty>>,
         synthetic: Option<SyntheticTyParamKind>,
-    }
+    },
 }
 
 #[derive(Clone, RustcEncodable, RustcDecodable, Debug)]
@@ -540,7 +540,6 @@ pub struct GenericParam {
     pub bounds: GenericBounds,
     pub span: Span,
     pub pure_wrt_drop: bool,
-
     pub kind: GenericParamKind,
 }
 

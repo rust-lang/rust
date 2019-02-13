@@ -201,9 +201,10 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for NonShorthandFieldPatterns {
                 if let PatKind::Binding(_, _, _, ident, None) = fieldpat.node.pat.node {
                     if cx.tcx.find_field_index(ident, &variant) ==
                        Some(cx.tcx.field_index(fieldpat.node.id, cx.tables)) {
-                        let mut err = cx.struct_span_lint(NON_SHORTHAND_FIELD_PATTERNS,
-                                     fieldpat.span,
-                                     &format!("the `{}:` in this pattern is redundant", ident));
+                        let mut err = cx.struct_span_lint(
+                            NON_SHORTHAND_FIELD_PATTERNS,
+                            fieldpat.span,
+                            &format!("the `{}:` in this pattern is redundant", ident));
                         let subspan = cx.tcx.sess.source_map().span_through_char(fieldpat.span,
                                                                                  ':');
                         err.span_suggestion_short(
@@ -800,7 +801,7 @@ impl LintPass for UnusedDocComment {
 
 impl UnusedDocComment {
     fn warn_if_doc<'a, 'tcx,
-                   I: Iterator<Item=&'a ast::Attribute>,
+                   I: Iterator<Item = &'a ast::Attribute>,
                    C: LintContext<'tcx>>(&self, mut attrs: I, cx: &C) {
         if let Some(attr) = attrs.find(|a| a.is_value_str() && a.check_name("doc")) {
             cx.struct_span_lint(UNUSED_DOC_COMMENTS, attr.span, "doc comment not used by rustdoc")
@@ -1242,7 +1243,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for TypeAliasBounds {
             let spans : Vec<_> = type_alias_generics.where_clause.predicates.iter()
                 .map(|pred| pred.span()).collect();
             let mut err = cx.struct_span_lint(TYPE_ALIAS_BOUNDS, spans,
-                "where clauses are not enforced in type aliases");
+                "where-clauses are not enforced in type aliases");
             err.help("the clause will not be checked when the type alias is used, \
                       and should be removed");
             if !suggested_changing_assoc_types {
@@ -1287,6 +1288,7 @@ impl LintPass for UnusedBrokenConst {
         lint_array!()
     }
 }
+
 fn check_const(cx: &LateContext<'_, '_>, body_id: hir::BodyId) {
     let def_id = cx.tcx.hir().body_owner_def_id(body_id);
     let is_static = cx.tcx.is_static(def_id).is_some();
@@ -1346,7 +1348,6 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for TrivialConstraints {
     ) {
         use rustc::ty::fold::TypeFoldable;
         use rustc::ty::Predicate::*;
-
 
         if cx.tcx.features().trivial_bounds {
             let def_id = cx.tcx.hir().local_def_id(item.id);
@@ -1410,7 +1411,7 @@ impl LintPass for SoftLints {
             UNIONS_WITH_DROP_FIELDS,
             UNREACHABLE_PUB,
             TYPE_ALIAS_BOUNDS,
-            TRIVIAL_BOUNDS
+            TRIVIAL_BOUNDS,
         )
     }
 }
@@ -1735,7 +1736,7 @@ impl ExplicitOutlivesRequirements {
             return Vec::new();
         }
         if bound_spans.len() == bounds.len() {
-            let (_, last_bound_span) = bound_spans[bound_spans.len()-1];
+            let (_, last_bound_span) = bound_spans[bound_spans.len() - 1];
             // If all bounds are inferable, we want to delete the colon, so
             // start from just after the parameter (span passed as argument).
             vec![lo.to(last_bound_span)]
@@ -1751,13 +1752,13 @@ impl ExplicitOutlivesRequirements {
                         merged.push(bound_span.to(bounds[1].span().shrink_to_lo()));
                         last_merged_i = Some(0);
                     },
-                    // If consecutive bounds are inferable, merge their spans
-                    Some(h) if i == h+1 => {
+                    // If consecutive bounds are inferable, merge their spans.
+                    Some(h) if i == h + 1 => {
                         if let Some(tail) = merged.last_mut() {
                             // Also eat the trailing `+` if the first
                             // more-than-one bound is inferable.
                             let to_span = if from_start && i < bounds.len() {
-                                bounds[i+1].span().shrink_to_lo()
+                                bounds[i + 1].span().shrink_to_lo()
                             } else {
                                 bound_span
                             };
@@ -1772,7 +1773,7 @@ impl ExplicitOutlivesRequirements {
                         // won't be consecutive from the start (and we'll eat the leading
                         // `+` rather than the trailing one).
                         from_start = false;
-                        merged.push(bounds[i-1].span().shrink_to_hi().to(bound_span));
+                        merged.push(bounds[i - 1].span().shrink_to_hi().to(bound_span));
                         last_merged_i = Some(i);
                     }
                 }
@@ -1861,7 +1862,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for ExplicitOutlivesRequirements {
             if num_predicates > 0 && dropped_predicate_count == num_predicates {
                 let full_where_span = generics.span.shrink_to_hi()
                     .to(generics.where_clause.span()
-                    .expect("span of (nonempty) where clause should exist"));
+                    .expect("span of (nonempty) where-clause should exist"));
                 lint_spans.push(
                     full_where_span
                 );
@@ -1886,8 +1887,6 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for ExplicitOutlivesRequirements {
                 );
                 err.emit();
             }
-
         }
     }
-
 }

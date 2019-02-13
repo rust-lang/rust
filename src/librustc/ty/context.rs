@@ -2949,7 +2949,7 @@ pub trait InternAs<T: ?Sized, R> {
 
 impl<I, T, R, E> InternAs<[T], R> for I
     where E: InternIteratorElement<T, R>,
-          I: Iterator<Item=E> {
+          I: Iterator<Item = E> {
     type Output = E::Output;
     fn intern_with<F>(self, f: F) -> Self::Output
         where F: FnOnce(&[T]) -> R {
@@ -2959,12 +2959,12 @@ impl<I, T, R, E> InternAs<[T], R> for I
 
 pub trait InternIteratorElement<T, R>: Sized {
     type Output;
-    fn intern_with<I: Iterator<Item=Self>, F: FnOnce(&[T]) -> R>(iter: I, f: F) -> Self::Output;
+    fn intern_with<I: Iterator<Item = Self>, F: FnOnce(&[T]) -> R>(iter: I, f: F) -> Self::Output;
 }
 
 impl<T, R> InternIteratorElement<T, R> for T {
     type Output = R;
-    fn intern_with<I: Iterator<Item=Self>, F: FnOnce(&[T]) -> R>(iter: I, f: F) -> Self::Output {
+    fn intern_with<I: Iterator<Item = Self>, F: FnOnce(&[T]) -> R>(iter: I, f: F) -> Self::Output {
         f(&iter.collect::<SmallVec<[_; 8]>>())
     }
 }
@@ -2973,14 +2973,14 @@ impl<'a, T, R> InternIteratorElement<T, R> for &'a T
     where T: Clone + 'a
 {
     type Output = R;
-    fn intern_with<I: Iterator<Item=Self>, F: FnOnce(&[T]) -> R>(iter: I, f: F) -> Self::Output {
+    fn intern_with<I: Iterator<Item = Self>, F: FnOnce(&[T]) -> R>(iter: I, f: F) -> Self::Output {
         f(&iter.cloned().collect::<SmallVec<[_; 8]>>())
     }
 }
 
 impl<T, R, E> InternIteratorElement<T, R> for Result<T, E> {
     type Output = Result<R, E>;
-    fn intern_with<I: Iterator<Item=Self>, F: FnOnce(&[T]) -> R>(iter: I, f: F) -> Self::Output {
+    fn intern_with<I: Iterator<Item = Self>, F: FnOnce(&[T]) -> R>(iter: I, f: F) -> Self::Output {
         Ok(f(&iter.collect::<Result<SmallVec<[_; 8]>, _>>()?))
     }
 }

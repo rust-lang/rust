@@ -128,7 +128,7 @@ impl<'tcx> StructuredDiagnostic<'tcx> for SizedUnsizedCastError<'tcx> {
 memory address.
 
 Fat pointers are pointers referencing \"Dynamically Sized Types\" (also
-called DST). DST don't have a statically known size, therefore they can
+called DST). DST don't have a statically-known size, therefore they can
 only exist behind some kind of pointers that contain additional
 information. Slices and trait objects are DSTs. In the case of slices,
 the additional information the fat pointer holds is their size.

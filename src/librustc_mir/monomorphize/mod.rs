@@ -14,7 +14,7 @@ pub use self::item::{MonoItem, MonoItemExt};
 // Give this a place in the profiler.
 #[inline(never)]
 pub fn assert_symbols_are_distinct<'a, 'tcx, I>(tcx: TyCtxt<'a, 'tcx, 'tcx>, mono_items: I)
-    where I: Iterator<Item=&'a MonoItem<'tcx>>
+    where I: Iterator<Item = &'a MonoItem<'tcx>>
 {
     let mut symbols: Vec<_> = mono_items.map(|mono_item| {
         (mono_item, mono_item.symbol_name(tcx))

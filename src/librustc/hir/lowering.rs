@@ -776,8 +776,7 @@ impl<'a> LoweringContext<'a> {
                     DefPathData::LifetimeParam(str_name),
                     DefIndexAddressSpace::High,
                     Mark::root(),
-                    span,
-                );
+                    span);
 
                 hir::GenericParam {
                     id: node_id,
@@ -1556,8 +1555,7 @@ impl<'a> LoweringContext<'a> {
                         DefPathData::LifetimeParam(name.ident().as_interned_str()),
                         DefIndexAddressSpace::High,
                         Mark::root(),
-                        lifetime.span,
-                    );
+                        lifetime.span);
 
                     let (name, kind) = match name {
                         hir::LifetimeName::Underscore => (
@@ -1957,12 +1955,16 @@ impl<'a> LoweringContext<'a> {
             ast::GenericArg::Type(_) => true,
             _ => false,
         });
-        (hir::GenericArgs {
-            args: args.iter().map(|a| self.lower_generic_arg(a, itctx.reborrow())).collect(),
-            bindings: bindings.iter().map(|b| self.lower_ty_binding(b, itctx.reborrow())).collect(),
-            parenthesized: false,
-        },
-        !has_types && param_mode == ParamMode::Optional)
+        (
+            hir::GenericArgs {
+                args: args.iter().map(|a| self.lower_generic_arg(a, itctx.reborrow()))
+                          .collect(),
+                bindings: bindings.iter().map(|b| self.lower_ty_binding(b, itctx.reborrow()))
+                                  .collect(),
+                parenthesized: false,
+            },
+            !has_types && param_mode == ParamMode::Optional
+        )
     }
 
     fn lower_parenthesized_parameter_data(
@@ -2336,9 +2338,9 @@ impl<'a> LoweringContext<'a> {
             let future_params = P(hir::GenericArgs {
                 args: hir_vec![],
                 bindings: hir_vec![hir::TypeBinding {
+                    id: node_id,
                     ident: Ident::from_str(FN_OUTPUT_NAME),
                     ty: output_ty,
-                    id: node_id,
                     hir_id,
                     span,
                 }],
@@ -3054,7 +3056,7 @@ impl<'a> LoweringContext<'a> {
                 self.lower_generics(generics, ImplTraitContext::disallowed()),
                 self.lower_param_bounds(bounds, ImplTraitContext::disallowed()),
             ),
-            ItemKind::MacroDef(..) | ItemKind::Mac(..) => panic!("Shouldn't still be around"),
+            ItemKind::MacroDef(..) | ItemKind::Mac(..) => panic!("shouldn't still be around"),
         }
 
         // [1] `defaultness.has_value()` is never called for an `impl`, always `true` in order to
@@ -3362,7 +3364,7 @@ impl<'a> LoweringContext<'a> {
                         .map(|x| self.lower_ty(x, ImplTraitContext::disallowed())),
                 ),
             ),
-            TraitItemKind::Macro(..) => panic!("Shouldn't exist any more"),
+            TraitItemKind::Macro(..) => panic!("shouldn't exist any more"),
         };
 
         hir::TraitItem {
@@ -3438,7 +3440,7 @@ impl<'a> LoweringContext<'a> {
                     self.lower_param_bounds(bounds, ImplTraitContext::disallowed()),
                 ),
             ),
-            ImplItemKind::Macro(..) => panic!("Shouldn't exist any more"),
+            ImplItemKind::Macro(..) => panic!("shouldn't exist any more"),
         };
 
         hir::ImplItem {
@@ -5075,7 +5077,6 @@ impl<'a> LoweringContext<'a> {
         let mut path = self.resolver
             .resolve_str_path(span, self.crate_root, components, is_value);
         path.segments.last_mut().unwrap().args = params;
-
 
         for seg in path.segments.iter_mut() {
             if let Some(id) = seg.id {

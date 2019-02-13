@@ -2794,7 +2794,7 @@ fn insert_late_bound_lifetimes(
         }
 
         debug!(
-            "insert_late_bound_lifetimes: lifetime {:?} with id {:?} is late-bound",
+            "insert_late_bound_lifetimes: lifetime {:?} with ID {:?} is late-bound",
             param.name.ident(),
             param.id
         );

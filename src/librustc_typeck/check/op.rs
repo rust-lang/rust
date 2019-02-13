@@ -164,7 +164,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                 // in `&'a T <: &'x T` and `&'b T <: &'x T`, instead of `'a = 'b = 'x`.
                 let lhs_ty = self.check_expr_with_needs(lhs_expr, Needs::None);
                 let fresh_var = self.next_ty_var(TypeVariableOrigin::MiscVariable(lhs_expr.span));
-                self.demand_coerce(lhs_expr, lhs_ty, fresh_var,  AllowTwoPhase::No)
+                self.demand_coerce(lhs_expr, lhs_ty, fresh_var, AllowTwoPhase::No)
             }
             IsAssign::Yes => {
                 // rust-lang/rust#52126: We have to use strict

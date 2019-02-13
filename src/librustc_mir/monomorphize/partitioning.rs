@@ -864,7 +864,7 @@ fn numbered_codegen_unit_name(name_builder: &mut CodegenUnitNameBuilder<'_, '_, 
 fn debug_dump<'a, 'b, 'tcx, I>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                                label: &str,
                                cgus: I)
-    where I: Iterator<Item=&'b CodegenUnit<'tcx>>,
+    where I: Iterator<Item = &'b CodegenUnit<'tcx>>,
           'tcx: 'a + 'b
 {
     if cfg!(debug_assertions) {

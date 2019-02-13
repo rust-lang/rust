@@ -653,7 +653,7 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
             if let WherePredicate::EqPredicate(ref predicate) = *predicate {
                 self.err_handler()
                     .span_err(predicate.span, "equality constraints are not yet \
-                                               supported in where clauses (see #20041)");
+                                               supported in where-clauses (see #20041)");
             }
         }
 

@@ -505,7 +505,7 @@ impl<'rt, 'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>>
     fn visit_aggregate(
         &mut self,
         op: OpTy<'tcx, M::PointerTag>,
-        fields: impl Iterator<Item=EvalResult<'tcx, Self::V>>,
+        fields: impl Iterator<Item = EvalResult<'tcx, Self::V>>,
     ) -> EvalResult<'tcx> {
         match op.layout.ty.sty {
             ty::Str => {

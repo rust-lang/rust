@@ -154,7 +154,7 @@ macro_rules! make_value_visitor {
             fn visit_aggregate(
                 &mut self,
                 v: Self::V,
-                fields: impl Iterator<Item=EvalResult<'tcx, Self::V>>,
+                fields: impl Iterator<Item = EvalResult<'tcx, Self::V>>,
             ) -> EvalResult<'tcx> {
                 self.walk_aggregate(v, fields)
             }
@@ -227,7 +227,7 @@ macro_rules! make_value_visitor {
             fn walk_aggregate(
                 &mut self,
                 v: Self::V,
-                fields: impl Iterator<Item=EvalResult<'tcx, Self::V>>,
+                fields: impl Iterator<Item = EvalResult<'tcx, Self::V>>,
             ) -> EvalResult<'tcx> {
                 // Now iterate over it.
                 for (idx, field_val) in fields.enumerate() {

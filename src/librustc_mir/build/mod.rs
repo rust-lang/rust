@@ -635,7 +635,7 @@ fn construct_fn<'a, 'gcx, 'tcx, A>(hir: Cx<'a, 'gcx, 'tcx>,
                                    return_ty_span: Span,
                                    body: &'gcx hir::Body)
                                    -> Mir<'tcx>
-    where A: Iterator<Item=ArgInfo<'gcx>>
+    where A: Iterator<Item = ArgInfo<'gcx>>
 {
     let arguments: Vec<_> = arguments.collect();
 

@@ -836,12 +836,9 @@ pub fn may_define_existential_type(
     def_id: DefId,
     opaque_node_id: ast::NodeId,
 ) -> bool {
-    let mut node_id = tcx
-        .hir()
-        .as_local_node_id(def_id)
-        .unwrap();
-    // named existential types can be defined by any siblings or
-    // children of siblings
+    let mut node_id = tcx.hir().as_local_node_id(def_id).unwrap();
+    // Named existential types can be defined by any siblings or
+    // children of siblings.
     let mod_id = tcx.hir().get_parent(opaque_node_id);
     // We walk up the node tree until we hit the root or the parent
     // of the opaque type.

@@ -152,7 +152,7 @@ impl<'a, 'gcx, 'tcx> TypeFolder<'gcx, 'tcx> for TypeFreshener<'a, 'gcx, 'tcx> {
             ty::Infer(ty::FreshIntTy(c)) |
             ty::Infer(ty::FreshFloatTy(c)) => {
                 if c >= self.freshen_count {
-                    bug!("Encountered a freshend type with id {} \
+                    bug!("Encountered a freshend type with ID {} \
                           but our counter is only at {}",
                          c,
                          self.freshen_count);

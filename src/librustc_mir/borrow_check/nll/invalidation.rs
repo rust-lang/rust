@@ -203,7 +203,7 @@ impl<'cx, 'tcx, 'gcx> Visitor<'tcx> for InvalidationGenerator<'cx, 'tcx, 'gcx> {
                 for arg in args {
                     self.consume_operand(ContextKind::CallOperand.new(location), arg);
                 }
-                if let Some((ref dest, _ /*bb*/)) = *destination {
+                if let Some((ref dest, _ /* bb */)) = *destination {
                     self.mutate_place(
                         ContextKind::CallDest.new(location),
                         dest,
@@ -315,14 +315,14 @@ impl<'cg, 'cx, 'tcx, 'gcx> InvalidationGenerator<'cx, 'tcx, 'gcx> {
         }
     }
 
-    // Simulates consumption of an rvalue
+    // Simulates consumption of an rvalue.
     fn consume_rvalue(
         &mut self,
         context: Context,
         rvalue: &Rvalue<'tcx>,
     ) {
         match *rvalue {
-            Rvalue::Ref(_ /*rgn*/, bk, ref place) => {
+            Rvalue::Ref(_ /* rgn */, bk, ref place) => {
                 let access_kind = match bk {
                     BorrowKind::Shallow => {
                         (Shallow(Some(ArtificialField::ShallowBorrow)), Read(ReadKind::Borrow(bk)))
@@ -348,8 +348,8 @@ impl<'cg, 'cx, 'tcx, 'gcx> InvalidationGenerator<'cx, 'tcx, 'gcx> {
 
             Rvalue::Use(ref operand)
             | Rvalue::Repeat(ref operand, _)
-            | Rvalue::UnaryOp(_ /*un_op*/, ref operand)
-            | Rvalue::Cast(_ /*cast_kind*/, ref operand, _ /*ty*/) => {
+            | Rvalue::UnaryOp(_ /* un_op */, ref operand)
+            | Rvalue::Cast(_ /* cast_kind */, ref operand, _ /* ty */) => {
                 self.consume_operand(context, operand)
             }
 

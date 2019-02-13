@@ -601,7 +601,7 @@ impl<I: Idx, T> IndexVec<I, T> {
 
     #[inline]
     pub fn drain<'a, R: RangeBounds<usize>>(
-        &'a mut self, range: R) -> impl Iterator<Item=T> + 'a {
+        &'a mut self, range: R) -> impl Iterator<Item = T> + 'a {
         self.raw.drain(range)
     }
 
@@ -731,7 +731,7 @@ impl<I: Idx, T> Extend<T> for IndexVec<I, T> {
 
 impl<I: Idx, T> FromIterator<T> for IndexVec<I, T> {
     #[inline]
-    fn from_iter<J>(iter: J) -> Self where J: IntoIterator<Item=T> {
+    fn from_iter<J>(iter: J) -> Self where J: IntoIterator<Item = T> {
         IndexVec { raw: FromIterator::from_iter(iter), _marker: PhantomData }
     }
 }

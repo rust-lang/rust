@@ -22,7 +22,7 @@ several major phases:
 4. Finally, the check phase then checks function bodies and so forth.
    Within the check phase, we check each function body one at a time
    (bodies of function expressions are checked as part of the
-   containing function).  Inference is used to supply types wherever
+   containing function). Inference is used to supply types wherever
    they are unknown. The actual checking of a function itself has
    several phases (check, regionck, writeback), as discussed in the
    documentation for the `check` module.
@@ -43,10 +43,10 @@ independently:
 - outlives: outlives inference
 
 - check: walks over function bodies and type checks them, inferring types for
-  local variables, type parameters, etc as necessary.
+  local variables, type parameters, etc., as necessary.
 
 - infer: finds the types to use for each type variable such that
-  all subtyping and assignment constraints are met.  In essence, the check
+  all subtyping and assignment constraints are met. In essence, the check
   module specifies the constraints, and the infer module solves them.
 
 ## Note

@@ -72,8 +72,7 @@ fn ensure_drop_params_and_item_params_correspond<'a, 'tcx>(
 ) -> Result<(), ErrorReported> {
     let drop_impl_hir_id = tcx.hir().as_local_hir_id(drop_impl_did).unwrap();
 
-    // check that the impl type can be made to match the trait type.
-
+    // Check that the impl type can be made to match the trait type.
     tcx.infer_ctxt().enter(|ref infcx| {
         let impl_param_env = tcx.param_env(self_type_did);
         let tcx = infcx.tcx;

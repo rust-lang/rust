@@ -340,7 +340,7 @@ impl<'p, 'tcx> fmt::Debug for Matrix<'p, 'tcx> {
 
 impl<'p, 'tcx> FromIterator<SmallVec<[&'p Pattern<'tcx>; 2]>> for Matrix<'p, 'tcx> {
     fn from_iter<T>(iter: T) -> Self
-        where T: IntoIterator<Item=SmallVec<[&'p Pattern<'tcx>; 2]>>
+        where T: IntoIterator<Item = SmallVec<[&'p Pattern<'tcx>; 2]>>
     {
         Matrix(iter.into_iter().collect())
     }
@@ -712,7 +712,7 @@ fn all_constructors<'a, 'tcx: 'a>(cx: &mut MatchCheckCtxt<'a, 'tcx>,
 fn max_slice_length<'p, 'a: 'p, 'tcx: 'a, I>(
     cx: &mut MatchCheckCtxt<'a, 'tcx>,
     patterns: I) -> u64
-    where I: Iterator<Item=&'p Pattern<'tcx>>
+    where I: Iterator<Item = &'p Pattern<'tcx>>
 {
     // The exhaustiveness-checking paper does not include any details on
     // checking variable-length slice patterns. However, they are matched

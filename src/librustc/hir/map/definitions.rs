@@ -46,7 +46,6 @@ impl Clone for DefPathTable {
 }
 
 impl DefPathTable {
-
     fn allocate(&mut self,
                 key: DefKey,
                 def_path_hash: DefPathHash,
@@ -294,7 +293,7 @@ impl DefPath {
                        "{}[{}]",
                        component.data.as_interned_str(),
                        component.disambiguator)
-                    .unwrap();
+                       .unwrap();
             }
         }
 
@@ -318,7 +317,7 @@ impl DefPath {
                        "{}[{}]",
                        component.data.as_interned_str(),
                        component.disambiguator)
-                    .unwrap();
+                       .unwrap();
             }
         }
         s

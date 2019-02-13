@@ -145,7 +145,6 @@ pub struct CrateInfo {
     pub missing_lang_items: FxHashMap<CrateNum, Vec<LangItem>>,
 }
 
-
 pub struct CodegenResults {
     pub crate_name: Symbol,
     pub modules: Vec<CompiledModule>,

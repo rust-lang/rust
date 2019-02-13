@@ -109,7 +109,7 @@ impl<'a, 'gcx, 'tcx> Children {
             debug!("remove_existing: impl_def_id={:?} sty={:?}", impl_def_id, sty);
             vec = self.nonblanket_impls.get_mut(&sty).unwrap();
         } else {
-            debug!("remove_existing: impl_def_id={:?} sty=None", impl_def_id);
+            debug!("remove_existing: impl_def_id={:?} sty = None", impl_def_id);
             vec = &mut self.blanket_impls;
         }
 

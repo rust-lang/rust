@@ -44,16 +44,16 @@ fn panic_hook(info: &panic::PanicInfo<'_>) {
         TyCtxt::try_print_query_stack();
     }
 
-        #[cfg(windows)]
-        unsafe {
-            if env::var("RUSTC_BREAK_ON_ICE").is_ok() {
-                extern "system" {
-                    fn DebugBreak();
-                }
-                // Trigger a debugger if we crashed during bootstrap
-                DebugBreak();
+    #[cfg(windows)]
+    unsafe {
+        if env::var("RUSTC_BREAK_ON_ICE").is_ok() {
+            extern "system" {
+                fn DebugBreak();
             }
+            // Trigger a debugger if we crashed during bootstrap.
+            DebugBreak();
         }
+    }
 }
 
 pub fn install_panic_hook() {

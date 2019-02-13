@@ -1038,7 +1038,7 @@ impl IdMap {
         IdMap::default()
     }
 
-    pub fn populate<I: IntoIterator<Item=String>>(&mut self, ids: I) {
+    pub fn populate<I: IntoIterator<Item = String>>(&mut self, ids: I) {
         for id in ids {
             let _ = self.derive(id);
         }

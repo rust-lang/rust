@@ -564,7 +564,6 @@ impl LintPassObject for EarlyLintPassObject {}
 
 impl LintPassObject for LateLintPassObject {}
 
-
 pub trait LintContext<'tcx>: Sized {
     type PassObject: LintPassObject;
 

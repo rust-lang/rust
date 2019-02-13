@@ -193,7 +193,7 @@ want to capture values of an orderable type between two end-points, you can use
 a guard.
 
 ```compile_fail,E0029
-let string = "salutations !";
+let string = "salutations!";
 
 // The ordering relation for strings can't be evaluated at compile time,
 // so this doesn't work:
@@ -1432,7 +1432,7 @@ impl LiveLongAndProsper for (u8, u8) {
 }
 ```
 
-Alternatively, you can create a newtype. A newtype is a wrapping tuple-struct.
+Alternatively, you can create a newtype. A newtype is a wrapping tuple struct.
 For example, `NewType` is a newtype over `Foo` in `struct NewType(Foo)`.
 Example:
 
@@ -1681,7 +1681,7 @@ information see the [opt-in builtin traits RFC][RFC 19].
 E0193: r##"
 #### Note: this error code is no longer emitted by the compiler.
 
-`where` clauses must use generic type parameters: it does not make sense to use
+where-clauses must use generic type parameters: it does not make sense to use
 them otherwise. An example causing this error:
 
 ```
@@ -1699,7 +1699,7 @@ impl Foo for Wrapper<u32> where Wrapper<u32>: Clone {
 }
 ```
 
-This use of a `where` clause is strange - a more common usage would look
+This use of a where-clause is strange -- a more common usage would look
 something like the following:
 
 ```
@@ -1717,12 +1717,12 @@ impl <T> Foo for Wrapper<T> where Wrapper<T>: Clone {
 ```
 
 Here, we're saying that the implementation exists on Wrapper only when the
-wrapped type `T` implements `Clone`. The `where` clause is important because
+wrapped type `T` implements `Clone`. The where-clause is important because
 some types will not implement `Clone`, and thus will not get this method.
 
 In our erroneous example, however, we're referencing a single concrete type.
 Since we know for certain that `Wrapper<u32>` implements `Clone`, there's no
-reason to also specify it in a `where` clause.
+reason to also specify it in a where-clause.
 "##,
 
 E0194: r##"
@@ -2377,7 +2377,7 @@ fn main() {
 
 E0229: r##"
 An associated type binding was done outside of the type parameter declaration
-and `where` clause. Erroneous code example:
+and where-clause. Erroneous code example:
 
 ```compile_fail,E0229
 pub trait Foo {
@@ -2392,7 +2392,7 @@ impl Foo for isize {
     fn boo(&self) -> usize { 42 }
 }
 
-fn baz<I>(x: &<I as Foo<A=Bar>>::A) {}
+fn baz<I>(x: &<I as Foo<A = Bar>>::A) {}
 // error: associated type bindings are not allowed here
 ```
 
@@ -2402,15 +2402,15 @@ declaration:
 ```
 # struct Bar;
 # trait Foo { type A; }
-fn baz<I: Foo<A=Bar>>(x: &<I as Foo>::A) {} // ok!
+fn baz<I: Foo<A = Bar>>(x: &<I as Foo>::A) {} // ok!
 ```
 
-Or in the `where` clause:
+Or in the where-clause:
 
 ```
 # struct Bar;
 # trait Foo { type A; }
-fn baz<I>(x: &<I as Foo>::A) where I: Foo<A=Bar> {}
+fn baz<I>(x: &<I as Foo>::A) where I: Foo<A = Bar> {}
 ```
 "##,
 
@@ -3236,7 +3236,7 @@ A type parameter which references `Self` in its default value was not specified.
 Example of erroneous code:
 
 ```compile_fail,E0393
-trait A<T=Self> {}
+trait A<T = Self> {}
 
 fn together_we_will_rule_the_galaxy(son: &A) {}
 // error: the type parameter `T` must be explicitly specified in an
@@ -3256,7 +3256,7 @@ disallowed. Making the trait concrete by explicitly specifying the value of the
 defaulted parameter will fix this issue. Fixed example:
 
 ```
-trait A<T=Self> {}
+trait A<T = Self> {}
 
 fn together_we_will_rule_the_galaxy(son: &A<i32>) {} // Ok!
 ```
@@ -3965,7 +3965,7 @@ Thin pointers are "simple" pointers: they are purely a reference to a memory
 address.
 
 Fat pointers are pointers referencing Dynamically Sized Types (also called DST).
-DST don't have a statically known size, therefore they can only exist behind
+DST don't have a statically-known size, therefore they can only exist behind
 some kind of pointers that contain additional information. Slices and trait
 objects are DSTs. In the case of slices, the additional information the fat
 pointer holds is their size.
@@ -4419,18 +4419,18 @@ impl Foo for () {
 "##,
 
 E0646: r##"
-It is not possible to define `main` with a where clause.
+It is not possible to define `main` with a where-clause.
 Erroneous code example:
 
 ```compile_fail,E0646
 fn main() where i32: Copy { // error: main function is not allowed to have
-                            // a where clause
+                            // a where-clause
 }
 ```
 "##,
 
 E0647: r##"
-It is not possible to define `start` with a where clause.
+It is not possible to define `start` with a where-clause.
 Erroneous code example:
 
 ```compile_fail,E0647
@@ -4621,7 +4621,7 @@ E0714: r##"
 A `#[marker]` trait contained an associated item.
 
 The items of marker traits cannot be overridden, so there's no need to have them
-when they cannot be changed per-type anyway.  If you wanted them for ergonomic
+when they cannot be changed per-type anyway. If you wanted them for ergonomic
 reasons, consider making an extension trait instead.
 "##,
 

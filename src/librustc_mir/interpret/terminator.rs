@@ -203,7 +203,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> 
     fn pass_argument(
         &mut self,
         rust_abi: bool,
-        caller_arg: &mut impl Iterator<Item=OpTy<'tcx, M::PointerTag>>,
+        caller_arg: &mut impl Iterator<Item = OpTy<'tcx, M::PointerTag>>,
         callee_arg: PlaceTy<'tcx, M::PointerTag>,
     ) -> EvalResult<'tcx> {
         if rust_abi && callee_arg.layout.is_zst() {

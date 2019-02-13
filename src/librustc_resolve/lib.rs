@@ -745,24 +745,30 @@ impl<'a, 'tcx> Visitor<'tcx> for Resolver<'a> {
     fn visit_item(&mut self, item: &'tcx Item) {
         self.resolve_item(item);
     }
+
     fn visit_arm(&mut self, arm: &'tcx Arm) {
         self.resolve_arm(arm);
     }
+
     fn visit_block(&mut self, block: &'tcx Block) {
         self.resolve_block(block);
     }
+
     fn visit_anon_const(&mut self, constant: &'tcx ast::AnonConst) {
         debug!("visit_anon_const {:?}", constant);
         self.with_constant_rib(|this| {
             visit::walk_anon_const(this, constant);
         });
     }
+
     fn visit_expr(&mut self, expr: &'tcx Expr) {
         self.resolve_expr(expr, None);
     }
+
     fn visit_local(&mut self, local: &'tcx Local) {
         self.resolve_local(local);
     }
+
     fn visit_ty(&mut self, ty: &'tcx Ty) {
         match ty.node {
             TyKind::Path(ref qself, ref path) => {
@@ -778,13 +784,15 @@ impl<'a, 'tcx> Visitor<'tcx> for Resolver<'a> {
         }
         visit::walk_ty(self, ty);
     }
+
     fn visit_poly_trait_ref(&mut self,
-                            tref: &'tcx ast::PolyTraitRef,
+                            tr: &'tcx ast::PolyTraitRef,
                             m: &'tcx ast::TraitBoundModifier) {
-        self.smart_resolve_path(tref.trait_ref.ref_id, None,
-                                &tref.trait_ref.path, PathSource::Trait(AliasPossibility::Maybe));
-        visit::walk_poly_trait_ref(self, tref, m);
+        self.smart_resolve_path(tr.trait_ref.ref_id, None,
+                                &tr.trait_ref.path, PathSource::Trait(AliasPossibility::Maybe));
+        visit::walk_poly_trait_ref(self, tr, m);
     }
+
     fn visit_foreign_item(&mut self, foreign_item: &'tcx ForeignItem) {
         let generic_params = match foreign_item.node {
             ForeignItemKind::Fn(_, ref generics) => {
@@ -798,6 +806,7 @@ impl<'a, 'tcx> Visitor<'tcx> for Resolver<'a> {
             visit::walk_foreign_item(this, foreign_item);
         });
     }
+
     fn visit_fn(&mut self,
                 function_kind: FnKind<'tcx>,
                 declaration: &'tcx FnDecl,
@@ -919,11 +928,12 @@ impl<'a, 'tcx> Visitor<'tcx> for Resolver<'a> {
 #[derive(Copy, Clone)]
 enum GenericParameters<'a, 'b> {
     NoGenericParams,
-    HasGenericParams(// Type parameters.
-                      &'b Generics,
-
-                      // The kind of the rib used for type parameters.
-                      RibKind<'a>),
+    HasGenericParams(
+        // Type parameters.
+        &'b Generics,
+        // The kind of the rib used for type parameters.
+        RibKind<'a>,
+    ),
 }
 
 /// The rib kind controls the translation of local
@@ -1529,9 +1539,10 @@ pub struct Resolver<'a> {
     /// The current self item if inside an ADT (used for better errors).
     current_self_item: Option<NodeId>,
 
-    /// FIXME: Refactor things so that these fields are passed through arguments and not resolver.
-    /// We are resolving a last import segment during import validation.
+    // FIXME: refactor things so that these fields are passed through arguments and not resolver.
+    // We are resolving a last import segment during import validation.
     last_import_segment: bool,
+
     /// This binding should be ignored during in-module resolution, so that we don't get
     /// "self-confirming" import resolutions during import validation.
     blacklisted_binding: Option<&'a NameBinding<'a>>,
@@ -2038,7 +2049,7 @@ impl<'a> Resolver<'a> {
                                       record_used_id: Option<NodeId>,
                                       path_span: Span)
                                       -> Option<LexicalScopeBinding<'a>> {
-        assert!(ns == TypeNS  || ns == ValueNS);
+        assert!(ns == TypeNS || ns == ValueNS);
         if ident.name == keywords::Invalid.name() {
             return Some(LexicalScopeBinding::Def(Def::Err));
         }
@@ -4090,7 +4101,6 @@ impl<'a> Resolver<'a> {
     fn resolve_expr(&mut self, expr: &Expr, parent: Option<&Expr>) {
         // First, record candidate traits for this expression if it could
         // result in the invocation of a method call.
-
         self.record_candidate_traits_for_expr_if_necessary(expr);
 
         // Next, resolve the node.
@@ -4370,12 +4380,12 @@ impl<'a> Resolver<'a> {
     }
 
     fn lookup_import_candidates_from_module<FilterFn>(&mut self,
-                                          lookup_ident: Ident,
-                                          namespace: Namespace,
-                                          start_module: &'a ModuleData<'a>,
-                                          crate_name: Ident,
-                                          filter_fn: FilterFn)
-                                          -> Vec<ImportSuggestion>
+                                                      lookup_ident: Ident,
+                                                      namespace: Namespace,
+                                                      start_module: &'a ModuleData<'a>,
+                                                      crate_name: Ident,
+                                                      filter_fn: FilterFn)
+                                                      -> Vec<ImportSuggestion>
         where FilterFn: Fn(Def) -> bool
     {
         let mut candidates = Vec::new();
@@ -4542,7 +4552,7 @@ impl<'a> Resolver<'a> {
 
     fn collect_enum_variants(&mut self, enum_def: Def) -> Option<Vec<Path>> {
         if let Def::Enum(..) = enum_def {} else {
-            panic!("Non-enum def passed to collect_enum_variants: {:?}", enum_def)
+            panic!("non-enum def passed to collect_enum_variants: {:?}", enum_def)
         }
 
         self.find_module(enum_def).map(|(enum_module, enum_import_suggestion)| {

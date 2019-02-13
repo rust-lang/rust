@@ -522,7 +522,7 @@ impl<'a, 'b> Context<'a, 'b> {
                 let path = self.ecx.path_global(sp, Context::rtpath(self.ecx, "FormatSpec"));
                 let fmt = self.ecx.expr_struct(
                     sp,
-                                         path,
+                    path,
                     vec![
                         self.ecx.field_imm(sp, self.ecx.ident_of("fill"), fill),
                         self.ecx.field_imm(sp, self.ecx.ident_of("align"), align),
@@ -535,7 +535,7 @@ impl<'a, 'b> Context<'a, 'b> {
                 let path = self.ecx.path_global(sp, Context::rtpath(self.ecx, "Argument"));
                 Some(self.ecx.expr_struct(
                     sp,
-                                          path,
+                    path,
                     vec![
                         self.ecx.field_imm(sp, self.ecx.ident_of("position"), pos),
                         self.ecx.field_imm(sp, self.ecx.ident_of("format"), fmt),

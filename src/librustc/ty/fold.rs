@@ -75,33 +75,43 @@ pub trait TypeFoldable<'tcx>: fmt::Debug + Clone {
     fn has_type_flags(&self, flags: TypeFlags) -> bool {
         self.visit_with(&mut HasTypeFlagsVisitor { flags })
     }
+
     fn has_projections(&self) -> bool {
         self.has_type_flags(TypeFlags::HAS_PROJECTION)
     }
+
     fn references_error(&self) -> bool {
         self.has_type_flags(TypeFlags::HAS_TY_ERR)
     }
+
     fn has_param_types(&self) -> bool {
         self.has_type_flags(TypeFlags::HAS_PARAMS)
     }
+
     fn has_self_ty(&self) -> bool {
         self.has_type_flags(TypeFlags::HAS_SELF)
     }
+
     fn has_infer_types(&self) -> bool {
         self.has_type_flags(TypeFlags::HAS_TY_INFER)
     }
+
     fn needs_infer(&self) -> bool {
         self.has_type_flags(TypeFlags::HAS_TY_INFER | TypeFlags::HAS_RE_INFER)
     }
+
     fn has_placeholders(&self) -> bool {
         self.has_type_flags(TypeFlags::HAS_RE_PLACEHOLDER | TypeFlags::HAS_TY_PLACEHOLDER)
     }
+
     fn needs_subst(&self) -> bool {
         self.has_type_flags(TypeFlags::NEEDS_SUBST)
     }
+
     fn has_re_placeholders(&self) -> bool {
         self.has_type_flags(TypeFlags::HAS_RE_PLACEHOLDER)
     }
+
     fn has_closure_types(&self) -> bool {
         self.has_type_flags(TypeFlags::HAS_TY_CLOSURE)
     }
@@ -132,7 +142,6 @@ pub trait TypeFoldable<'tcx>: fmt::Debug + Clone {
 
     /// A visitor that does not recurse into types, works like `fn walk_shallow` in `Ty`.
     fn visit_tys_shallow(&self, visit: impl FnMut(Ty<'tcx>) -> bool) -> bool {
-
         pub struct Visitor<F>(F);
 
         impl<'tcx, F: FnMut(Ty<'tcx>) -> bool> TypeVisitor<'tcx> for Visitor<F> {

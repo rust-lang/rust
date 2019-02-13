@@ -188,7 +188,7 @@ impl<T> PerNS<Option<T>> {
     }
 
     /// Returns an iterator over the items which are `Some`.
-    pub fn present_items(self) -> impl Iterator<Item=T> {
+    pub fn present_items(self) -> impl Iterator<Item = T> {
         use std::iter::once;
 
         once(self.type_ns)

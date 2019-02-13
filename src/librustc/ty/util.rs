@@ -779,7 +779,7 @@ impl<'a, 'tcx> ty::TyS<'tcx> {
                             -> Representability
     {
         // Iterate until something non-representable is found.
-        fn fold_repr<It: Iterator<Item=Representability>>(iter: It) -> Representability {
+        fn fold_repr<It: Iterator<Item = Representability>>(iter: It) -> Representability {
             iter.fold(Representability::Representable, |r1, r2| {
                 match (r1, r2) {
                     (Representability::SelfRecursive(v1),

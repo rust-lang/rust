@@ -121,7 +121,7 @@ pub trait ObligationProcessor {
     fn process_backedge<'c, I>(&mut self,
                                cycle: I,
                                _marker: PhantomData<&'c Self::Obligation>)
-        where I: Clone + Iterator<Item=&'c Self::Obligation>;
+        where I: Clone + Iterator<Item = &'c Self::Obligation>;
 }
 
 /// The result type used by `process_obligation`.
@@ -386,7 +386,7 @@ impl<O: ForestObligation> ObligationForest<O> {
     /// This _cannot_ be unrolled (presently, at least).
     pub fn process_obligations<P>(&mut self, processor: &mut P, do_completed: DoCompleted)
                                   -> Outcome<O, P::Error>
-        where P: ObligationProcessor<Obligation=O>
+        where P: ObligationProcessor<Obligation = O>
     {
         debug!("process_obligations(len={})", self.nodes.len());
 
@@ -466,7 +466,7 @@ impl<O: ForestObligation> ObligationForest<O> {
     /// after `mark_as_waiting` marks all nodes with pending
     /// subobligations as NodeState::Waiting.
     fn process_cycles<P>(&mut self, processor: &mut P)
-        where P: ObligationProcessor<Obligation=O>
+        where P: ObligationProcessor<Obligation = O>
     {
         let mut stack = self.scratch.take().unwrap();
         debug_assert!(stack.is_empty());
@@ -493,7 +493,7 @@ impl<O: ForestObligation> ObligationForest<O> {
 
     fn find_cycles_from_node<P>(&self, stack: &mut Vec<usize>,
                                 processor: &mut P, index: usize)
-        where P: ObligationProcessor<Obligation=O>
+        where P: ObligationProcessor<Obligation = O>
     {
         let node = &self.nodes[index];
         let state = node.state.get();

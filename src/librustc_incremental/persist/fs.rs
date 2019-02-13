@@ -524,7 +524,7 @@ fn find_source_directory(crate_dir: &Path,
 fn find_source_directory_in_iter<I>(iter: I,
                                     source_directories_already_tried: &FxHashSet<PathBuf>)
                                     -> Option<PathBuf>
-    where I: Iterator<Item=PathBuf>
+    where I: Iterator<Item = PathBuf>
 {
     let mut best_candidate = (UNIX_EPOCH, None);
 

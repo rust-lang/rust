@@ -103,17 +103,17 @@ pub struct Directory<'a> {
 #[derive(Copy, Clone)]
 pub enum DirectoryOwnership {
     Owned {
-        // None if `mod.rs`, `Some("foo")` if we're in `foo.rs`
+        // None if `mod.rs`, `Some("foo")` if we're in `foo.rs`.
         relative: Option<ast::Ident>,
     },
     UnownedViaBlock,
     UnownedViaMod(bool /* legacy warnings? */),
 }
 
-// a bunch of utility functions of the form parse_<thing>_from_<source>
-// where <thing> includes crate, expr, item, stmt, tts, and one that
-// uses a HOF to parse anything, and <source> includes file and
-// source_str.
+// A bunch of utility functions of the form `parse_<thing>_from_<source>`
+// where `<thing>` includes `crate`, `expr`, `item`, `stmt`, `tts`, and one that
+// uses a HOF to parse anything, and `<source>` includes `file` and
+// `source_str`.
 
 pub fn parse_crate_from_file<'a>(input: &Path, sess: &'a ParseSess) -> PResult<'a, ast::Crate> {
     let mut parser = new_parser_from_file(sess, input);
@@ -274,7 +274,7 @@ pub fn maybe_file_to_stream(
         Err(err) => {
             let mut buffer = Vec::with_capacity(1);
             err.buffer(&mut buffer);
-            // Not using `emit_unclosed_delims` to use `db.buffer`
+            // Not using `emit_unclosed_delims` to use `db.buffer`.
             for unmatched in srdr.unmatched_braces {
                 let mut db = sess.span_diagnostic.struct_span_err(unmatched.found_span, &format!(
                     "incorrect close delimiter: `{}`",
@@ -480,10 +480,10 @@ crate fn lit_token(lit: token::Lit, suf: Option<Symbol>, diag: Option<(Span, &Ha
         token::Float(s) => (false, float_lit(&s.as_str(), suf, diag)),
 
         token::Str_(mut sym) => {
-            // If there are no characters requiring special treatment we can
-            // reuse the symbol from the Token. Otherwise, we must generate a
-            // new symbol because the string in the LitKind is different to the
-            // string in the Token.
+            // If there are no characters requiring special treatment, we can
+            // reuse the symbol from the `Token`. Otherwise, we must generate a
+            // new symbol because the string in the `LitKind` is different to the
+            // string in the `Token`.
             let s = &sym.as_str();
             if s.as_bytes().iter().any(|&c| c == b'\\' || c == b'\r') {
                 sym = Symbol::intern(&str_lit(s, diag));
@@ -521,7 +521,7 @@ fn filtered_float_lit(data: Symbol, suffix: Option<Symbol>, diag: Option<(Span, 
         suf => {
             err!(diag, |span, diag| {
                 if suf.len() >= 2 && looks_like_width_suffix(&['f'], suf) {
-                    // if it looks like a width, lets try to be helpful.
+                    // If it looks like a width, lets try to be helpful.
                     let msg = format!("invalid width `{}` for float literal", &suf[1..]);
                     diag.struct_span_err(span, &msg).help("valid widths are 32 and 64").emit()
                 } else {
@@ -604,7 +604,7 @@ fn byte_str_lit(lit: &str) -> Lrc<Vec<u8>> {
         }
     }
 
-    // byte string literals *must* be ASCII, but the escapes don't have to be
+    // Byte string literals *must* be ASCII, but the escapes don't have to be.
     let mut chars = lit.bytes().enumerate().peekable();
     loop {
         match chars.next() {
@@ -619,9 +619,9 @@ fn byte_str_lit(lit: &str) -> Lrc<Vec<u8>> {
                         eat(&mut chars);
                     }
                     _ => {
-                        // otherwise, a normal escape
+                        // Otherwise, a normal escape.
                         let (c, n) = byte_lit(&lit[i..]);
-                        // we don't need to move past the first \
+                        // We don't need to move past the first `\`.
                         for _ in 0..n - 1 {
                             chars.next();
                         }
@@ -646,9 +646,9 @@ fn byte_str_lit(lit: &str) -> Lrc<Vec<u8>> {
 
 fn integer_lit(s: &str, suffix: Option<Symbol>, diag: Option<(Span, &Handler)>)
                    -> Option<ast::LitKind> {
-    // s can only be ascii, byte indexing is fine
+    // `s` can only be ASCII; byte indexing is fine.
 
-    // Strip underscores without allocating a new String unless necessary.
+    // Strip underscores without allocating a new `String` unless necessary.
     let s2;
     let mut s = if s.chars().any(|c| c == '_') {
         s2 = s.chars().filter(|&c| c != '_').collect::<String>();
@@ -698,7 +698,7 @@ fn integer_lit(s: &str, suffix: Option<Symbol>, diag: Option<(Span, &Handler)>)
 
     if let Some(suf) = suffix {
         if suf.as_str().is_empty() {
-            err!(diag, |span, diag| diag.span_bug(span, "found empty literal suffix in Some"));
+            err!(diag, |span, diag| diag.span_bug(span, "found empty literal suffix in `Some`"));
         }
         ty = match &*suf.as_str() {
             "isize" => ast::LitIntType::Signed(ast::IntTy::Isize),
@@ -714,8 +714,8 @@ fn integer_lit(s: &str, suffix: Option<Symbol>, diag: Option<(Span, &Handler)>)
             "u64" => ast::LitIntType::Unsigned(ast::UintTy::U64),
             "u128" => ast::LitIntType::Unsigned(ast::UintTy::U128),
             suf => {
-                // i<digits> and u<digits> look like widths, so lets
-                // give an error message along those lines
+                // `i<digits>` and `u<digits>` look like widths, so lets
+                // give an error message along those lines.
                 err!(diag, |span, diag| {
                     if looks_like_width_suffix(&['i', 'u'], suf) {
                         let msg = format!("invalid width `{}` for integer literal", &suf[1..]);
@@ -738,12 +738,12 @@ fn integer_lit(s: &str, suffix: Option<Symbol>, diag: Option<(Span, &Handler)>)
     }
 
     debug!("integer_lit: the type is {:?}, base {:?}, the new string is {:?}, the original \
-           string was {:?}, the original suffix was {:?}", ty, base, s, orig, suffix);
+            string was {:?}, the original suffix was {:?}", ty, base, s, orig, suffix);
 
     Some(match u128::from_str_radix(s, base) {
         Ok(r) => ast::LitKind::Int(r, ty),
         Err(_) => {
-            // small bases are lexed as if they were base 10, e.g, the string
+            // Small bases are lexed as if they were base 10, e.g, the string
             // might be `0b10201`. This will cause the conversion above to fail,
             // but these cases have errors in the lexer: we don't want to emit
             // two errors, and we especially don't want to emit this error since
@@ -980,7 +980,7 @@ mod tests {
 
     #[test] fn parse_exprs () {
         with_globals(|| {
-            // just make sure that they parse....
+            // Just make sure that they parse.
             string_to_expr("3 + 4".to_string());
             string_to_expr("a::z.froob(b,&(987+3))".to_string());
         })
