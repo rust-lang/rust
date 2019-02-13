@@ -1,8 +1,11 @@
-error: function pointers in const fn are unstable
+error[E0723]: function pointers in const fn are unstable (see issue #57563)
   --> $DIR/issue-37550.rs:3:9
    |
 LL |     let x = || t; //~ ERROR function pointers in const fn are unstable
    |         ^
+   |
+   = help: add #![feature(const_fn)] to the crate attributes to enable
 
 error: aborting due to previous error
 
+For more information about this error, try `rustc --explain E0723`.
