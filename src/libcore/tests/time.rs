@@ -287,7 +287,6 @@ fn debug_formatting_precision_two() {
 }
 
 #[test]
-#[cfg(not(miri))] // FIXME: A bug in Miri breaks padding in string formatting
 fn debug_formatting_precision_high() {
     assert_eq!(format!("{:.5?}",  Duration::new(0, 23_678)), "23.67800µs");
 
