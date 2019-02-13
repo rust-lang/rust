@@ -130,7 +130,15 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
             );
 
             let mut is_loop_move = false;
-            let mut is_partial_move = false;
+            let is_partial_move = move_site_vec.iter().any(|move_site| {
+                let move_out = self.move_data.moves[(*move_site).moi];
+                let moved_place = &self.move_data.move_paths[move_out.path].place;
+//                dbg!(moved_place);
+//                dbg!(used_place);
+//                if used_place != moved_place {
+                    used_place.is_prefix_of(moved_place)
+//                } else { false }
+            });
             for move_site in &move_site_vec {
                 let move_out = self.move_data.moves[(*move_site).moi];
                 let moved_place = &self.move_data.move_paths[move_out.path].place;
@@ -138,7 +146,6 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
                 let move_spans = self.move_spans(moved_place, move_out.source);
                 let move_span = move_spans.args_or_use();
 
-                is_partial_move = used_place.is_prefix_of(moved_place);
                 let move_msg = if move_spans.for_closure() {
                     " into closure"
                 } else {
