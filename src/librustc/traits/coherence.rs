@@ -39,7 +39,7 @@ pub struct OverlapResult<'tcx> {
     pub involves_placeholder: bool,
 }
 
-pub fn add_placeholder_note(err: &mut crate::errors::DiagnosticBuilder<'_>) {
+pub fn add_placeholder_note(err: &mut errors::DiagnosticBuilder<'_>) {
     err.note(&format!(
         "this behavior recently changed as a result of a bug fix; \
          see rust-lang/rust#56105 for details"

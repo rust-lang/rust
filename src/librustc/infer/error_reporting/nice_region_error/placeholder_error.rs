@@ -1,4 +1,4 @@
-use crate::errors::DiagnosticBuilder;
+use errors::DiagnosticBuilder;
 use crate::hir::def_id::DefId;
 use crate::infer::error_reporting::nice_region_error::NiceRegionError;
 use crate::infer::lexical_region_resolve::RegionResolutionError;

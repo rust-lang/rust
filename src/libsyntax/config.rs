@@ -9,12 +9,12 @@ use crate::feature_gate::{
 use crate::attr;
 use crate::ast;
 use crate::edition::Edition;
-use crate::errors::Applicability;
 use crate::mut_visit::*;
 use crate::parse::{token, ParseSess};
 use crate::ptr::P;
 use crate::util::map_in_place::MapInPlace;
 
+use errors::Applicability;
 use smallvec::SmallVec;
 
 /// A folder that strips out items that do not belong in the current configuration.

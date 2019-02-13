@@ -31,7 +31,6 @@
 //! in the HIR, especially for multiple identifiers.
 
 use crate::dep_graph::DepGraph;
-use crate::errors::Applicability;
 use crate::hir::{self, ParamName};
 use crate::hir::HirVec;
 use crate::hir::map::{DefKey, DefPathData, Definitions};
@@ -41,14 +40,15 @@ use crate::hir::GenericArg;
 use crate::lint::builtin::{self, PARENTHESIZED_PARAMS_IN_TYPES_AND_MODULES,
                     ELIDED_LIFETIMES_IN_PATHS};
 use crate::middle::cstore::CrateStore;
-use rustc_data_structures::fx::FxHashSet;
-use rustc_data_structures::indexed_vec::IndexVec;
-use rustc_data_structures::thin_vec::ThinVec;
-use rustc_data_structures::sync::Lrc;
 use crate::session::Session;
 use crate::session::config::nightly_options;
 use crate::util::common::FN_OUTPUT_NAME;
 use crate::util::nodemap::{DefIdMap, NodeMap};
+use errors::Applicability;
+use rustc_data_structures::fx::FxHashSet;
+use rustc_data_structures::indexed_vec::IndexVec;
+use rustc_data_structures::thin_vec::ThinVec;
+use rustc_data_structures::sync::Lrc;
 
 use std::collections::{BTreeSet, BTreeMap};
 use std::fmt::Debug;

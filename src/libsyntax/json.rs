@@ -10,12 +10,13 @@
 // FIXME: spec the JSON output properly.
 
 use crate::source_map::{SourceMap, FilePathMapping};
-use crate::errors::registry::Registry;
-use crate::errors::{DiagnosticBuilder, SubDiagnostic, CodeSuggestion, SourceMapper};
-use crate::errors::{DiagnosticId, Applicability};
-use crate::errors::emitter::{Emitter, EmitterWriter};
 
-use syntax_pos::{self, MacroBacktrace, Span, SpanLabel, MultiSpan};
+use errors::registry::Registry;
+use errors::{DiagnosticBuilder, SubDiagnostic, CodeSuggestion, SourceMapper};
+use errors::{DiagnosticId, Applicability};
+use errors::emitter::{Emitter, EmitterWriter};
+
+use syntax_pos::{MacroBacktrace, Span, SpanLabel, MultiSpan};
 use rustc_data_structures::sync::{self, Lrc};
 use std::io::{self, Write};
 use std::vec;

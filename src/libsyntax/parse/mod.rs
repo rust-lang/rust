@@ -3,7 +3,6 @@
 use crate::ast::{self, CrateConfig, NodeId};
 use crate::early_buffered_lints::{BufferedEarlyLint, BufferedEarlyLintId};
 use crate::source_map::{SourceMap, FilePathMapping};
-use crate::errors::{FatalError, Level, Handler, ColorConfig, Diagnostic, DiagnosticBuilder};
 use crate::feature_gate::UnstableFeatures;
 use crate::parse::parser::Parser;
 use crate::symbol::Symbol;
@@ -11,6 +10,7 @@ use crate::tokenstream::{TokenStream, TokenTree};
 use crate::diagnostics::plugin::ErrorMap;
 use crate::print::pprust::token_to_string;
 
+use errors::{FatalError, Level, Handler, ColorConfig, Diagnostic, DiagnosticBuilder};
 use rustc_data_structures::sync::{Lrc, Lock};
 use syntax_pos::{Span, SourceFile, FileName, MultiSpan};
 use log::debug;

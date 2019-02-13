@@ -1,6 +1,6 @@
-use crate::errors::FatalError;
 use crate::proc_macro_server;
 
+use errors::FatalError;
 use syntax::source_map::Span;
 use syntax::ext::base::{self, *};
 use syntax::tokenstream::TokenStream;
