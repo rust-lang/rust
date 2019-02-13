@@ -18,7 +18,7 @@
 
 use libc;
 
-use ffi::CString;
+use ffi::CStr;
 use marker;
 use mem;
 use sync::atomic::{AtomicUsize, Ordering};
@@ -26,7 +26,7 @@ use sync::atomic::{AtomicUsize, Ordering};
 macro_rules! weak {
     (fn $name:ident($($t:ty),*) -> $ret:ty) => (
         static $name: ::sys::weak::Weak<unsafe extern fn($($t),*) -> $ret> =
-            ::sys::weak::Weak::new(stringify!($name));
+            ::sys::weak::Weak::new(concat!(stringify!($name), '\0'));
     )
 }
 
@@ -61,7 +61,7 @@ impl<F> Weak<F> {
 }
 
 unsafe fn fetch(name: &str) -> usize {
-    let name = match CString::new(name) {
+    let name = match CStr::from_bytes_with_nul(name.as_bytes()) {
         Ok(cstr) => cstr,
         Err(..) => return 0,
     };
