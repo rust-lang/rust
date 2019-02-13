@@ -3,7 +3,7 @@ use std::sync::Arc;
 use relative_path::RelativePathBuf;
 use test_utils::{extract_offset, extract_range, parse_fixture, CURSOR_MARKER};
 
-use crate::{Analysis, AnalysisChange, AnalysisHost, CrateGraph, FileId, FilePosition, FileRange, SourceRootId};
+use crate::{Analysis, AnalysisChange, AnalysisHost, CrateGraph, FileId, FilePosition, FileRange, SourceRootId, Edition::Edition2018};
 
 /// Mock analysis is used in test to bootstrap an AnalysisHost/Analysis
 /// from a set of in-memory files.
@@ -89,9 +89,9 @@ impl MockAnalysis {
             let path = RelativePathBuf::from_path(&path[1..]).unwrap();
             let file_id = FileId(i as u32 + 1);
             if path == "/lib.rs" || path == "/main.rs" {
-                root_crate = Some(crate_graph.add_crate_root(file_id));
+                root_crate = Some(crate_graph.add_crate_root(file_id, Edition2018));
             } else if path.ends_with("/lib.rs") {
-                let other_crate = crate_graph.add_crate_root(file_id);
+                let other_crate = crate_graph.add_crate_root(file_id, Edition2018);
                 let crate_name = path.parent().unwrap().file_name().unwrap();
                 if let Some(root_crate) = root_crate {
                     crate_graph.add_dep(root_crate, crate_name.into(), other_crate).unwrap();

@@ -4,6 +4,7 @@ use cargo_metadata::{MetadataCommand, CargoOpt};
 use ra_arena::{Arena, RawId, impl_arena_id};
 use rustc_hash::FxHashMap;
 use failure::format_err;
+use ra_db::Edition;
 
 use crate::Result;
 
@@ -35,6 +36,7 @@ struct PackageData {
     targets: Vec<Target>,
     is_member: bool,
     dependencies: Vec<PackageDependency>,
+    edition: Edition,
 }
 
 #[derive(Debug, Clone)]
@@ -83,6 +85,9 @@ impl Package {
     }
     pub fn root(self, ws: &CargoWorkspace) -> &Path {
         ws.packages[self].manifest.parent().unwrap()
+    }
+    pub fn edition(self, ws: &CargoWorkspace) -> Edition {
+        ws.packages[self].edition
     }
     pub fn targets<'a>(self, ws: &'a CargoWorkspace) -> impl Iterator<Item = Target> + 'a {
         ws.packages[self].targets.iter().cloned()
@@ -135,6 +140,7 @@ impl CargoWorkspace {
                 manifest: meta_pkg.manifest_path.clone(),
                 targets: Vec::new(),
                 is_member,
+                edition: Edition::from_string(&meta_pkg.edition),
                 dependencies: Vec::new(),
             });
             let pkg_data = &mut packages[pkg];

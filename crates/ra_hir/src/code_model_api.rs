@@ -1,7 +1,7 @@
 use std::sync::Arc;
 
 use relative_path::RelativePathBuf;
-use ra_db::{CrateId, FileId, SourceRootId};
+use ra_db::{CrateId, FileId, SourceRootId, Edition};
 use ra_syntax::{ast::self, TreeArc, SyntaxNode};
 
 use crate::{
@@ -38,11 +38,18 @@ impl Crate {
     pub fn crate_id(&self) -> CrateId {
         self.crate_id
     }
+
     pub fn dependencies(&self, db: &impl PersistentHirDatabase) -> Vec<CrateDependency> {
         self.dependencies_impl(db)
     }
+
     pub fn root_module(&self, db: &impl PersistentHirDatabase) -> Option<Module> {
         self.root_module_impl(db)
+    }
+
+    pub fn edition(&self, db: &impl PersistentHirDatabase) -> Edition {
+        let crate_graph = db.crate_graph();
+        crate_graph.edition(self.crate_id)
     }
 
     // TODO: should this be in source_binder?

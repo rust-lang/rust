@@ -4,7 +4,7 @@ pub(super) fn complete_scope(acc: &mut Completions, ctx: &CompletionContext) {
     if !ctx.is_trivial_path {
         return;
     }
-    let names = ctx.resolver.all_names();
+    let names = ctx.resolver.all_names(ctx.db);
 
     names.into_iter().for_each(|(name, res)| {
         CompletionItem::new(CompletionKind::Reference, ctx.source_range(), name.to_string())
@@ -164,5 +164,24 @@ mod tests {
     #[test]
     fn completes_self_in_methods() {
         check_reference_completion("self_in_methods", r"impl S { fn foo(&self) { <|> } }")
+    }
+
+    #[test]
+    fn completes_prelude() {
+        check_reference_completion(
+            "completes_prelude",
+            "
+            //- /main.rs
+            fn foo() { let x: <|> }
+
+            //- /std/lib.rs
+            #[prelude_import]
+            use prelude::*;
+
+            mod prelude {
+                struct Option;
+            }
+            ",
+        );
     }
 }

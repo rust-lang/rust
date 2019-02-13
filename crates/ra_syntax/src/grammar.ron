@@ -596,7 +596,8 @@ Grammar(
             options: [ "Pat", "TypeRef" ],
         ),
         "UseItem": (
-            options: [ "UseTree" ]
+            traits: ["AttrsOwner"],
+            options: [ "UseTree" ],
         ),
         "UseTree": (
             options: [ "Path", "UseTreeList", "Alias" ]

@@ -56,10 +56,10 @@ pub enum Resolution {
 }
 
 impl Resolver {
-    pub fn resolve_name(&self, name: &Name) -> PerNs<Resolution> {
+    pub fn resolve_name(&self, db: &impl HirDatabase, name: &Name) -> PerNs<Resolution> {
         let mut resolution = PerNs::none();
         for scope in self.scopes.iter().rev() {
-            resolution = resolution.or(scope.resolve_name(name));
+            resolution = resolution.or(scope.resolve_name(db, name));
             if resolution.is_both() {
                 return resolution;
             }
@@ -69,9 +69,9 @@ impl Resolver {
 
     pub fn resolve_path(&self, db: &impl HirDatabase, path: &Path) -> PerNs<Resolution> {
         if let Some(name) = path.as_ident() {
-            self.resolve_name(name)
+            self.resolve_name(db, name)
         } else if path.is_self() {
-            self.resolve_name(&Name::self_param())
+            self.resolve_name(db, &Name::self_param())
         } else {
             let (item_map, module) = match self.module() {
                 Some(m) => m,
@@ -82,10 +82,10 @@ impl Resolver {
         }
     }
 
-    pub fn all_names(&self) -> FxHashMap<Name, PerNs<Resolution>> {
+    pub fn all_names(&self, db: &impl HirDatabase) -> FxHashMap<Name, PerNs<Resolution>> {
         let mut names = FxHashMap::default();
         for scope in self.scopes.iter().rev() {
-            scope.collect_names(&mut |name, res| {
+            scope.collect_names(db, &mut |name, res| {
                 let current: &mut PerNs<Resolution> = names.entry(name).or_default();
                 if current.types.is_none() {
                     current.types = res.types;
@@ -143,13 +143,13 @@ impl Resolver {
 }
 
 impl Scope {
-    fn resolve_name(&self, name: &Name) -> PerNs<Resolution> {
+    fn resolve_name(&self, db: &impl HirDatabase, name: &Name) -> PerNs<Resolution> {
         match self {
             Scope::ModuleScope(m) => {
                 if let Some(KnownName::SelfParam) = name.as_known_name() {
                     PerNs::types(Resolution::Def(m.module.into()))
                 } else {
-                    m.item_map.resolve_name_in_module(m.module, name).map(Resolution::Def)
+                    m.item_map.resolve_name_in_module(db, m.module, name).map(Resolution::Def)
                 }
             }
             Scope::GenericParams(gp) => match gp.find_by_name(name) {
@@ -174,7 +174,7 @@ impl Scope {
         }
     }
 
-    fn collect_names(&self, f: &mut dyn FnMut(Name, PerNs<Resolution>)) {
+    fn collect_names(&self, db: &impl HirDatabase, f: &mut dyn FnMut(Name, PerNs<Resolution>)) {
         match self {
             Scope::ModuleScope(m) => {
                 // TODO: should we provide `self` here?
@@ -190,6 +190,12 @@ impl Scope {
                 m.item_map.extern_prelude.iter().for_each(|(name, def)| {
                     f(name.clone(), PerNs::types(Resolution::Def(*def)));
                 });
+                if let Some(prelude) = m.item_map.prelude {
+                    let prelude_item_map = db.item_map(prelude.krate);
+                    prelude_item_map[prelude.module_id].entries().for_each(|(name, res)| {
+                        f(name.clone(), res.def.map(Resolution::Def));
+                    });
+                }
             }
             Scope::GenericParams(gp) => {
                 for param in &gp.params {

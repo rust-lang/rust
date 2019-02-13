@@ -1,0 +1,54 @@
+---
+created: "2019-02-13T19:52:43.734834624Z"
+creator: insta@0.6.2
+source: crates/ra_ide_api/src/completion/completion_item.rs
+expression: kind_completions
+---
+[
+    CompletionItem {
+        completion_kind: Reference,
+        label: "Option",
+        kind: Some(
+            Struct
+        ),
+        detail: None,
+        documentation: None,
+        lookup: None,
+        insert_text: None,
+        insert_text_format: PlainText,
+        source_range: [18; 18),
+        text_edit: None
+    },
+    CompletionItem {
+        completion_kind: Reference,
+        label: "foo",
+        kind: Some(
+            Function
+        ),
+        detail: Some(
+            "fn foo()"
+        ),
+        documentation: None,
+        lookup: None,
+        insert_text: Some(
+            "foo()$0"
+        ),
+        insert_text_format: Snippet,
+        source_range: [18; 18),
+        text_edit: None
+    },
+    CompletionItem {
+        completion_kind: Reference,
+        label: "std",
+        kind: Some(
+            Module
+        ),
+        detail: None,
+        documentation: None,
+        lookup: None,
+        insert_text: None,
+        insert_text_format: PlainText,
+        source_range: [18; 18),
+        text_edit: None
+    }
+]

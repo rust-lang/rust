@@ -62,7 +62,8 @@ pub use ra_ide_api_light::{
     LineIndex, LineCol, translate_offset_with_edit,
 };
 pub use ra_db::{
-    Canceled, CrateGraph, CrateId, FileId, FilePosition, FileRange, SourceRootId
+    Canceled, CrateGraph, CrateId, FileId, FilePosition, FileRange, SourceRootId,
+    Edition
 };
 pub use hir::Documentation;
 

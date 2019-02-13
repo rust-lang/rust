@@ -266,6 +266,45 @@ fn glob_across_crates() {
 }
 
 #[test]
+fn edition_2015_imports() {
+    let mut db = MockDatabase::with_files(
+        "
+        //- /main.rs
+        mod foo;
+        mod bar;
+
+        //- /bar.rs
+        struct Bar;
+
+        //- /foo.rs
+        use bar::Bar;
+        use other_crate::FromLib;
+
+        //- /lib.rs
+        struct FromLib;
+    ",
+    );
+    db.set_crate_graph_from_fixture(crate_graph! {
+        "main": ("/main.rs", "2015", ["other_crate"]),
+        "other_crate": ("/lib.rs", "2018", []),
+    });
+    let foo_id = db.file_id_of("/foo.rs");
+
+    let module = crate::source_binder::module_from_file_id(&db, foo_id).unwrap();
+    let krate = module.krate(&db).unwrap();
+    let item_map = db.item_map(krate);
+
+    check_module_item_map(
+        &item_map,
+        module.module_id,
+        "
+            Bar: t v
+            FromLib: t v
+        ",
+    );
+}
+
+#[test]
 fn module_resolution_works_for_non_standard_filenames() {
     let mut db = MockDatabase::with_files(
         "
@@ -292,6 +331,43 @@ fn module_resolution_works_for_non_standard_filenames() {
         "
         Bar: t v
         foo: t
+        ",
+    );
+}
+
+#[test]
+fn std_prelude() {
+    covers!(std_prelude);
+    let mut db = MockDatabase::with_files(
+        "
+        //- /main.rs
+        use Foo::*;
+
+        //- /lib.rs
+        mod prelude;
+        #[prelude_import]
+        use prelude::*;
+
+        //- /prelude.rs
+        pub enum Foo { Bar, Baz };
+    ",
+    );
+    db.set_crate_graph_from_fixture(crate_graph! {
+        "main": ("/main.rs", ["test_crate"]),
+        "test_crate": ("/lib.rs", []),
+    });
+    let main_id = db.file_id_of("/main.rs");
+
+    let module = crate::source_binder::module_from_file_id(&db, main_id).unwrap();
+    let krate = module.krate(&db).unwrap();
+    let item_map = db.item_map(krate);
+
+    check_module_item_map(
+        &item_map,
+        module.module_id,
+        "
+            Bar: t v
+            Baz: t v
         ",
     );
 }
@@ -449,6 +525,42 @@ fn extern_crate_rename() {
     );
     db.set_crate_graph_from_fixture(crate_graph! {
         "main": ("/main.rs", ["alloc"]),
+        "alloc": ("/lib.rs", []),
+    });
+    let sync_id = db.file_id_of("/sync.rs");
+
+    let module = crate::source_binder::module_from_file_id(&db, sync_id).unwrap();
+    let krate = module.krate(&db).unwrap();
+    let item_map = db.item_map(krate);
+
+    check_module_item_map(
+        &item_map,
+        module.module_id,
+        "
+        Arc: t v
+        ",
+    );
+}
+
+#[test]
+fn extern_crate_rename_2015_edition() {
+    let mut db = MockDatabase::with_files(
+        "
+        //- /main.rs
+        extern crate alloc as alloc_crate;
+
+        mod alloc;
+        mod sync;
+
+        //- /sync.rs
+        use alloc_crate::Arc;
+
+        //- /lib.rs
+        struct Arc;
+        ",
+    );
+    db.set_crate_graph_from_fixture(crate_graph! {
+        "main": ("/main.rs", "2015", ["alloc"]),
         "alloc": ("/lib.rs", []),
     });
     let sync_id = db.file_id_of("/sync.rs");

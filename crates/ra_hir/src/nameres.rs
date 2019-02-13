@@ -18,9 +18,11 @@ pub(crate) mod lower;
 
 use std::{time, sync::Arc};
 
-use ra_arena::map::ArenaMap;
-use test_utils::tested_by;
 use rustc_hash::{FxHashMap, FxHashSet};
+
+use ra_arena::map::ArenaMap;
+use ra_db::Edition;
+use test_utils::tested_by;
 
 use crate::{
     Module, ModuleDef,
@@ -32,8 +34,13 @@ use crate::{
 
 /// `ItemMap` is the result of module name resolution. It contains, for each
 /// module, the set of visible items.
-#[derive(Default, Debug, PartialEq, Eq)]
+#[derive(Debug, PartialEq, Eq)]
 pub struct ItemMap {
+    edition: Edition,
+    /// The prelude module for this crate. This either comes from an import
+    /// marked with the `prelude_import` attribute, or (in the normal case) from
+    /// a dependency (`std` or `core`).
+    pub(crate) prelude: Option<Module>,
     pub(crate) extern_prelude: FxHashMap<Name, ModuleDef>,
     per_module: ArenaMap<ModuleId, ModuleScope>,
 }
@@ -176,7 +183,12 @@ where
             module_tree,
             processed_imports: FxHashSet::default(),
             glob_imports: FxHashMap::default(),
-            result: ItemMap::default(),
+            result: ItemMap {
+                edition: krate.edition(db),
+                prelude: None,
+                extern_prelude: FxHashMap::default(),
+                per_module: ArenaMap::default(),
+            },
         }
     }
 
@@ -210,6 +222,13 @@ where
             log::debug!("crate dep {:?} -> {:?}", dep.name, dep.krate);
             if let Some(module) = dep.krate.root_module(self.db) {
                 self.result.extern_prelude.insert(dep.name.clone(), module.into());
+            }
+            // look for the prelude
+            if self.result.prelude.is_none() {
+                let item_map = self.db.item_map(dep.krate);
+                if item_map.prelude.is_some() {
+                    self.result.prelude = item_map.prelude;
+                }
             }
         }
     }
@@ -266,10 +285,20 @@ where
         import_id: ImportId,
         import: &ImportData,
     ) -> ReachedFixedPoint {
-        log::debug!("resolving import: {:?}", import);
+        log::debug!("resolving import: {:?} ({:?})", import, self.result.edition);
         let original_module = Module { krate: self.krate, module_id };
-        let (def, reached_fixedpoint) =
-            self.result.resolve_path_fp(self.db, original_module, &import.path);
+
+        let (def, reached_fixedpoint) = if import.is_extern_crate {
+            let res = self.result.resolve_name_in_extern_prelude(
+                &import
+                    .path
+                    .as_ident()
+                    .expect("extern crate should have been desugared to one-element path"),
+            );
+            (res, if res.is_none() { ReachedFixedPoint::No } else { ReachedFixedPoint::Yes })
+        } else {
+            self.result.resolve_path_fp(self.db, ResolveMode::Import, original_module, &import.path)
+        };
 
         if reached_fixedpoint != ReachedFixedPoint::Yes {
             return reached_fixedpoint;
@@ -279,7 +308,10 @@ where
             log::debug!("glob import: {:?}", import);
             match def.take_types() {
                 Some(ModuleDef::Module(m)) => {
-                    if m.krate != self.krate {
+                    if import.is_prelude {
+                        tested_by!(std_prelude);
+                        self.result.prelude = Some(m);
+                    } else if m.krate != self.krate {
                         tested_by!(glob_across_crates);
                         // glob import from other crate => we can just import everything once
                         let item_map = self.db.item_map(m.krate);
@@ -404,6 +436,12 @@ where
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum ResolveMode {
+    Import,
+    Other,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 enum ReachedFixedPoint {
     Yes,
     No,
@@ -431,15 +469,61 @@ impl ItemMap {
         original_module: Module,
         path: &Path,
     ) -> PerNs<ModuleDef> {
-        self.resolve_path_fp(db, original_module, path).0
+        self.resolve_path_fp(db, ResolveMode::Other, original_module, path).0
     }
 
-    pub(crate) fn resolve_name_in_module(&self, module: Module, name: &Name) -> PerNs<ModuleDef> {
+    fn resolve_in_prelude(
+        &self,
+        db: &impl PersistentHirDatabase,
+        original_module: Module,
+        name: &Name,
+    ) -> PerNs<ModuleDef> {
+        if let Some(prelude) = self.prelude {
+            let resolution = if prelude.krate == original_module.krate {
+                self[prelude.module_id].items.get(name).cloned()
+            } else {
+                db.item_map(prelude.krate)[prelude.module_id].items.get(name).cloned()
+            };
+            resolution.map(|r| r.def).unwrap_or_else(PerNs::none)
+        } else {
+            PerNs::none()
+        }
+    }
+
+    pub(crate) fn resolve_name_in_module(
+        &self,
+        db: &impl PersistentHirDatabase,
+        module: Module,
+        name: &Name,
+    ) -> PerNs<ModuleDef> {
+        // Resolve in:
+        //  - current module / scope
+        //  - extern prelude
+        //  - std prelude
         let from_scope = self[module.module_id].items.get(name).map_or(PerNs::none(), |it| it.def);
         let from_extern_prelude =
             self.extern_prelude.get(name).map_or(PerNs::none(), |&it| PerNs::types(it));
+        let from_prelude = self.resolve_in_prelude(db, module, name);
 
-        from_scope.or(from_extern_prelude)
+        from_scope.or(from_extern_prelude).or(from_prelude)
+    }
+
+    fn resolve_name_in_extern_prelude(&self, name: &Name) -> PerNs<ModuleDef> {
+        self.extern_prelude.get(name).map_or(PerNs::none(), |&it| PerNs::types(it))
+    }
+
+    fn resolve_name_in_crate_root_or_extern_prelude(
+        &self,
+        db: &impl PersistentHirDatabase,
+        module: Module,
+        name: &Name,
+    ) -> PerNs<ModuleDef> {
+        let crate_root = module.crate_root(db);
+        let from_crate_root =
+            self[crate_root.module_id].items.get(name).map_or(PerNs::none(), |it| it.def);
+        let from_extern_prelude = self.resolve_name_in_extern_prelude(name);
+
+        from_crate_root.or(from_extern_prelude)
     }
 
     // Returns Yes if we are sure that additions to `ItemMap` wouldn't change
@@ -447,6 +531,7 @@ impl ItemMap {
     fn resolve_path_fp(
         &self,
         db: &impl PersistentHirDatabase,
+        mode: ResolveMode,
         original_module: Module,
         path: &Path,
     ) -> (PerNs<ModuleDef>, ReachedFixedPoint) {
@@ -454,12 +539,32 @@ impl ItemMap {
         let mut curr_per_ns: PerNs<ModuleDef> = match path.kind {
             PathKind::Crate => PerNs::types(original_module.crate_root(db).into()),
             PathKind::Self_ => PerNs::types(original_module.into()),
+            // plain import or absolute path in 2015: crate-relative with
+            // fallback to extern prelude (with the simplification in
+            // rust-lang/rust#57745)
+            // TODO there must be a nicer way to write this condition
+            PathKind::Plain | PathKind::Abs
+                if self.edition == Edition::Edition2015
+                    && (path.kind == PathKind::Abs || mode == ResolveMode::Import) =>
+            {
+                let segment = match segments.next() {
+                    Some((_, segment)) => segment,
+                    None => return (PerNs::none(), ReachedFixedPoint::Yes),
+                };
+                log::debug!("resolving {:?} in crate root (+ extern prelude)", segment);
+                self.resolve_name_in_crate_root_or_extern_prelude(
+                    db,
+                    original_module,
+                    &segment.name,
+                )
+            }
             PathKind::Plain => {
                 let segment = match segments.next() {
                     Some((_, segment)) => segment,
                     None => return (PerNs::none(), ReachedFixedPoint::Yes),
                 };
-                self.resolve_name_in_module(original_module, &segment.name)
+                log::debug!("resolving {:?} in module", segment);
+                self.resolve_name_in_module(db, original_module, &segment.name)
             }
             PathKind::Super => {
                 if let Some(p) = original_module.parent(db) {

@@ -1,7 +1,7 @@
 use insta::assert_debug_snapshot_matches;
 use ra_ide_api::{
     mock_analysis::{single_file, single_file_with_position, MockAnalysis},
-    AnalysisChange, CrateGraph, FileId, Query, NavigationTarget,
+    AnalysisChange, CrateGraph, Edition::Edition2018, FileId, Query, NavigationTarget
 };
 use ra_syntax::{TextRange, SmolStr};
 
@@ -36,7 +36,7 @@ fn test_resolve_crate_root() {
     assert!(host.analysis().crate_for(mod_file).unwrap().is_empty());
 
     let mut crate_graph = CrateGraph::default();
-    let crate_id = crate_graph.add_crate_root(root_file);
+    let crate_id = crate_graph.add_crate_root(root_file, Edition2018);
     let mut change = AnalysisChange::new();
     change.set_crate_graph(crate_graph);
     host.apply_change(change);
