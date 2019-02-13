@@ -1,0 +1,166 @@
+From a84d00b816c1b771f3990ad5f7ba78981ab9c151 Mon Sep 17 00:00:00 2001
+From: bjorn3 <bjorn3@users.noreply.github.com>
+Date: Wed, 13 Feb 2019 14:54:20 +0100
+Subject: [PATCH] Workaround missing saturating_{add,sub} intrinsic impl
+
+---
+ src/libcore/num/mod.rs | 94 --------------------------------------------------
+ 1 file changed, 94 deletions(-)
+
+diff --git a/src/libcore/num/mod.rs b/src/libcore/num/mod.rs
+index 4871b2e..5d5cd61 100644
+--- a/src/libcore/num/mod.rs
++++ b/src/libcore/num/mod.rs
+@@ -880,7 +880,6 @@ $EndFeature, "
+ ```"),
+             #[stable(feature = "rust1", since = "1.0.0")]
+             #[inline]
+-            #[cfg(stage0)]
+             pub fn saturating_add(self, rhs: Self) -> Self {
+                 match self.checked_add(rhs) {
+                     Some(x) => x,
+@@ -892,30 +891,6 @@ $EndFeature, "
+         }
+ 
+         doc_comment! {
+-            concat!("Saturating integer addition. Computes `self + rhs`, saturating at the numeric
+-bounds instead of overflowing.
+-
+-# Examples
+-
+-Basic usage:
+-
+-```
+-", $Feature, "assert_eq!(100", stringify!($SelfT), ".saturating_add(1), 101);
+-assert_eq!(", stringify!($SelfT), "::max_value().saturating_add(100), ", stringify!($SelfT),
+-"::max_value());",
+-$EndFeature, "
+-```"),
+-
+-            #[stable(feature = "rust1", since = "1.0.0")]
+-            #[rustc_const_unstable(feature = "const_saturating_int_methods")]
+-            #[inline]
+-            #[cfg(not(stage0))]
+-            pub const fn saturating_add(self, rhs: Self) -> Self {
+-                intrinsics::saturating_add(self, rhs)
+-            }
+-        }
+-
+-        doc_comment! {
+             concat!("Saturating integer subtraction. Computes `self - rhs`, saturating at the
+ numeric bounds instead of overflowing.
+ 
+@@ -931,7 +906,6 @@ $EndFeature, "
+ ```"),
+             #[stable(feature = "rust1", since = "1.0.0")]
+             #[inline]
+-            #[cfg(stage0)]
+             pub fn saturating_sub(self, rhs: Self) -> Self {
+                 match self.checked_sub(rhs) {
+                     Some(x) => x,
+@@ -942,29 +916,6 @@ $EndFeature, "
+         }
+ 
+         doc_comment! {
+-            concat!("Saturating integer subtraction. Computes `self - rhs`, saturating at the
+-numeric bounds instead of overflowing.
+-
+-# Examples
+-
+-Basic usage:
+-
+-```
+-", $Feature, "assert_eq!(100", stringify!($SelfT), ".saturating_sub(127), -27);
+-assert_eq!(", stringify!($SelfT), "::min_value().saturating_sub(100), ", stringify!($SelfT),
+-"::min_value());",
+-$EndFeature, "
+-```"),
+-            #[stable(feature = "rust1", since = "1.0.0")]
+-            #[rustc_const_unstable(feature = "const_saturating_int_methods")]
+-            #[inline]
+-            #[cfg(not(stage0))]
+-            pub const fn saturating_sub(self, rhs: Self) -> Self {
+-                intrinsics::saturating_sub(self, rhs)
+-            }
+-        }
+-
+-        doc_comment! {
+             concat!("Saturating integer multiplication. Computes `self * rhs`, saturating at the
+ numeric bounds instead of overflowing.
+ 
+@@ -2779,7 +2730,6 @@ assert_eq!(200u8.saturating_add(127), 255);", $EndFeature, "
+ ```"),
+             #[stable(feature = "rust1", since = "1.0.0")]
+             #[inline]
+-            #[cfg(stage0)]
+             pub fn saturating_add(self, rhs: Self) -> Self {
+                 match self.checked_add(rhs) {
+                     Some(x) => x,
+@@ -2789,28 +2739,6 @@ assert_eq!(200u8.saturating_add(127), 255);", $EndFeature, "
+         }
+ 
+         doc_comment! {
+-            concat!("Saturating integer addition. Computes `self + rhs`, saturating at
+-the numeric bounds instead of overflowing.
+-
+-# Examples
+-
+-Basic usage:
+-
+-```
+-", $Feature, "assert_eq!(100", stringify!($SelfT), ".saturating_add(1), 101);
+-assert_eq!(200u8.saturating_add(127), 255);", $EndFeature, "
+-```"),
+-
+-            #[stable(feature = "rust1", since = "1.0.0")]
+-            #[rustc_const_unstable(feature = "const_saturating_int_methods")]
+-            #[inline]
+-            #[cfg(not(stage0))]
+-            pub const fn saturating_add(self, rhs: Self) -> Self {
+-                intrinsics::saturating_add(self, rhs)
+-            }
+-        }
+-
+-        doc_comment! {
+             concat!("Saturating integer subtraction. Computes `self - rhs`, saturating
+ at the numeric bounds instead of overflowing.
+ 
+@@ -2824,7 +2752,6 @@ assert_eq!(13", stringify!($SelfT), ".saturating_sub(127), 0);", $EndFeature, "
+ ```"),
+             #[stable(feature = "rust1", since = "1.0.0")]
+             #[inline]
+-            #[cfg(stage0)]
+             pub fn saturating_sub(self, rhs: Self) -> Self {
+                 match self.checked_sub(rhs) {
+                     Some(x) => x,
+@@ -2834,27 +2761,6 @@ assert_eq!(13", stringify!($SelfT), ".saturating_sub(127), 0);", $EndFeature, "
+         }
+ 
+         doc_comment! {
+-            concat!("Saturating integer subtraction. Computes `self - rhs`, saturating
+-at the numeric bounds instead of overflowing.
+-
+-# Examples
+-
+-Basic usage:
+-
+-```
+-", $Feature, "assert_eq!(100", stringify!($SelfT), ".saturating_sub(27), 73);
+-assert_eq!(13", stringify!($SelfT), ".saturating_sub(127), 0);", $EndFeature, "
+-```"),
+-            #[stable(feature = "rust1", since = "1.0.0")]
+-            #[rustc_const_unstable(feature = "const_saturating_int_methods")]
+-            #[inline]
+-            #[cfg(not(stage0))]
+-            pub const fn saturating_sub(self, rhs: Self) -> Self {
+-                intrinsics::saturating_sub(self, rhs)
+-            }
+-        }
+-
+-        doc_comment! {
+             concat!("Saturating integer multiplication. Computes `self * rhs`,
+ saturating at the numeric bounds instead of overflowing.
+ 
+-- 
+2.11.0
+
