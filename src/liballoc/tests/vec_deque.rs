@@ -921,7 +921,6 @@ fn test_append() {
 }
 
 #[test]
-#[cfg(not(miri))] // Miri is too slow
 fn test_append_permutations() {
     fn construct_vec_deque(
         push_back: usize,
@@ -945,7 +944,10 @@ fn test_append_permutations() {
         out
     }
 
+    #[cfg(not(miri))] // Miri is too slow
     const MAX: usize = 5;
+    #[cfg(miri)]
+    const MAX: usize = 3;
 
     // Many different permutations of both the `VecDeque` getting appended to
     // and the one getting appended are generated to check `append`.

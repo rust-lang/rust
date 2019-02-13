@@ -488,7 +488,6 @@ mod debug_list {
 }
 
 #[test]
-#[cfg(not(miri))] // FIXME uses code in liballoc, investigate Stacked Borrows failure
 fn test_formatting_parameters_are_forwarded() {
     use std::collections::{BTreeMap, BTreeSet};
     #[derive(Debug)]
