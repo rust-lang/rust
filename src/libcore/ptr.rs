@@ -1010,7 +1010,7 @@ pub unsafe fn freeze<T>(dst: *mut T, count: usize) {
 #[cfg(stage0)]
 pub unsafe fn freeze<T>(dst: *mut T, count: usize) {
     let _ = count;
-    asm!("" : "=*m"(dst) : );
+    asm!("" :: "r"(dst) : "memory" : "volatile");
 }
 
 #[lang = "const_ptr"]
