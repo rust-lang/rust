@@ -857,7 +857,7 @@ fn link_args(cmd: &mut dyn Linker,
              codegen_results: &CodegenResults) {
 
     // Linker plugins should be specified early in the list of arguments
-    cmd.cross_lang_lto();
+    cmd.linker_plugin_lto();
 
     // The default library location, we need this to find the runtime.
     // The location of crates will be determined as needed.
@@ -1491,7 +1491,7 @@ fn are_upstream_rust_objects_already_included(sess: &Session) -> bool {
         Lto::Thin => {
             // If we defer LTO to the linker, we haven't run LTO ourselves, so
             // any upstream object files have not been copied yet.
-            !sess.opts.debugging_opts.cross_lang_lto.enabled()
+            !sess.opts.cg.linker_plugin_lto.enabled()
         }
         Lto::No |
         Lto::ThinLocal => false,
