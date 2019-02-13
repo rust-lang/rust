@@ -45,16 +45,15 @@ impl<F> Weak<F> {
         }
     }
 
-    pub fn get(&self) -> Option<&F> {
+    pub fn get(&self) -> Option<F> {
         assert_eq!(mem::size_of::<F>(), mem::size_of::<usize>());
         unsafe {
             if self.addr.load(Ordering::SeqCst) == 1 {
                 self.addr.store(fetch(self.name), Ordering::SeqCst);
             }
-            if self.addr.load(Ordering::SeqCst) == 0 {
-                None
-            } else {
-                mem::transmute::<&AtomicUsize, Option<&F>>(&self.addr)
+            match self.addr.load(Ordering::SeqCst) {
+                0 => None,
+                addr => Some(mem::transmute_copy::<usize, F>(&addr)),
             }
         }
     }
