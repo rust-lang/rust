@@ -79,7 +79,7 @@
 /// [docs]: https://software.intel.com/sites/landingpage/IntrinsicsGuide
 #[macro_export]
 #[stable(feature = "simd_x86", since = "1.27.0")]
-#[allow_internal_unstable]
+#[allow_internal_unstable(stdsimd_internal)]
 macro_rules! is_x86_feature_detected {
     ("aes") => {
         cfg!(target_feature = "aes") || $crate::detect::check_for(

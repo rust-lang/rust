@@ -3,7 +3,7 @@
 /// Checks if `mips` feature is enabled.
 #[macro_export]
 #[unstable(feature = "stdsimd", issue = "27731")]
-#[allow_internal_unstable]
+#[allow_internal_unstable(stdsimd_internal)]
 macro_rules! is_mips_feature_detected {
     ("msa") => {
         cfg!(target_feature = "msa") ||
