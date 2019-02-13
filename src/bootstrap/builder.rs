@@ -677,10 +677,9 @@ impl<'a> Builder<'a> {
         let compiler = self.compiler(self.top_stage, host);
         cmd.env("RUSTC_STAGE", compiler.stage.to_string())
             .env("RUSTC_SYSROOT", self.sysroot(compiler))
-            .env(
-                "RUSTDOC_LIBDIR",
-                self.sysroot_libdir(compiler, self.config.build),
-            )
+            // Note that this is *not* the sysroot_libdir because rustdoc must be linked
+            // equivalently to rustc.
+            .env("RUSTDOC_LIBDIR", self.rustc_libdir(compiler))
             .env("CFG_RELEASE_CHANNEL", &self.config.channel)
             .env("RUSTDOC_REAL", self.rustdoc(host))
             .env("RUSTDOC_CRATE_VERSION", self.rust_version())
@@ -874,7 +873,7 @@ impl<'a> Builder<'a> {
         } else {
             &maybe_sysroot
         };
-        let libdir = sysroot.join(libdir(&compiler.host));
+        let libdir = self.rustc_libdir(compiler);
 
         // Customize the compiler we're running. Specify the compiler to cargo
         // as our shim and then pass it some various options used to configure
@@ -916,7 +915,7 @@ impl<'a> Builder<'a> {
             cargo.env("RUSTC_ERROR_FORMAT", error_format);
         }
         if cmd != "build" && cmd != "check" && cmd != "rustc" && want_rustdoc {
-            cargo.env("RUSTDOC_LIBDIR", self.sysroot_libdir(compiler, self.config.build));
+            cargo.env("RUSTDOC_LIBDIR", self.rustc_libdir(compiler));
         }
 
         if mode.is_tool() {

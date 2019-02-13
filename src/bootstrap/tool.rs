@@ -418,25 +418,25 @@ impl Step for Rustdoc {
 
     fn run(self, builder: &Builder) -> PathBuf {
         let target_compiler = builder.compiler(builder.top_stage, self.host);
+        if target_compiler.stage == 0 {
+            if !target_compiler.is_snapshot(builder) {
+                panic!("rustdoc in stage 0 must be snapshot rustdoc");
+            }
+            return builder.initial_rustc.with_file_name(exe("rustdoc", &target_compiler.host));
+        }
         let target = target_compiler.host;
-        let build_compiler = if target_compiler.stage == 0 {
-            builder.compiler(0, builder.config.build)
-        } else if target_compiler.stage >= 2 {
-            // Past stage 2, we consider the compiler to be ABI-compatible and hence capable of
-            // building rustdoc itself.
-            builder.compiler(target_compiler.stage, builder.config.build)
-        } else {
-            // Similar to `compile::Assemble`, build with the previous stage's compiler. Otherwise
-            // we'd have stageN/bin/rustc and stageN/bin/rustdoc be effectively different stage
-            // compilers, which isn't what we want.
-            builder.compiler(target_compiler.stage - 1, builder.config.build)
-        };
+        // Similar to `compile::Assemble`, build with the previous stage's compiler. Otherwise
+        // we'd have stageN/bin/rustc and stageN/bin/rustdoc be effectively different stage
+        // compilers, which isn't what we want. Rustdoc should be linked in the same way as the
+        // rustc compiler it's paired with, so it must be built with the previous stage compiler.
+        let build_compiler = builder.compiler(target_compiler.stage - 1, builder.config.build);
 
-        builder.ensure(compile::Rustc { compiler: build_compiler, target });
-        builder.ensure(compile::Rustc {
-            compiler: build_compiler,
-            target: builder.config.build,
-        });
+        // The presence of `target_compiler` ensures that the necessary libraries (codegen backends,
+        // compiler libraries, ...) are built. Rustdoc does not require the presence of any
+        // libraries within sysroot_libdir (i.e., rustlib), though doctests may want it (since
+        // they'll be linked to those libraries). As such, don't explicitly `ensure` any additional
+        // libraries here. The intuition here is that If we've built a compiler, we should be able
+        // to build rustdoc.
 
         let mut cargo = prepare_tool_cargo(
             builder,
