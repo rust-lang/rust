@@ -2370,6 +2370,37 @@ let value = (&foo(), &foo());
 ```
 "##,
 
+E0723: r##"
+An feature unstable in `const` contexts was used.
+
+Erroneous code example:
+
+```compile_fail,E0723
+trait T {}
+
+impl T for () {}
+
+const fn foo() -> impl T { // error: `impl Trait` in const fn is unstable
+    ()
+}
+```
+
+To enable this feature on a nightly version of rustc, add the `const_fn`
+feature flag:
+
+```
+#![feature(const_fn)]
+
+trait T {}
+
+impl T for () {}
+
+const fn foo() -> impl T {
+    ()
+}
+```
+"##,
+
 }
 
 register_diagnostics! {
