@@ -8,7 +8,7 @@ use ra_arena::{Arena, RawId, impl_arena_id, map::ArenaMap};
 use rustc_hash::FxHashMap;
 
 use crate::{
-    SourceItemId, Path, PathKind, ModuleSource, Name,
+    SourceItemId, Path, ModuleSource, Name,
     HirFileId, MacroCallLoc, AsName, PerNs, Function,
     ModuleDef, Module, Struct, Enum, Const, Static, Trait, Type,
     ids::LocationCtx, PersistentHirDatabase,
@@ -180,13 +180,8 @@ impl LoweredModule {
                 self.add_use_item(source_map, it);
             }
             ast::ModuleItemKind::ExternCrateItem(it) => {
-                // Lower `extern crate x` to `use ::x`. This is kind of cheating
-                // and only works if we always interpret absolute paths in the
-                // 2018 style; otherwise `::x` could also refer to a module in
-                // the crate root.
                 if let Some(name_ref) = it.name_ref() {
-                    let mut path = Path::from_name_ref(name_ref);
-                    path.kind = PathKind::Abs;
+                    let path = Path::from_name_ref(name_ref);
                     let alias = it.alias().and_then(|a| a.name()).map(AsName::as_name);
                     self.imports.alloc(ImportData {
                         path,

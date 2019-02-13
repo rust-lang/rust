@@ -287,12 +287,18 @@ where
     ) -> ReachedFixedPoint {
         log::debug!("resolving import: {:?} ({:?})", import, self.result.edition);
         let original_module = Module { krate: self.krate, module_id };
-        let (def, reached_fixedpoint) = self.result.resolve_path_fp(
-            self.db,
-            ResolveMode::Import,
-            original_module,
-            &import.path,
-        );
+
+        let (def, reached_fixedpoint) = if import.is_extern_crate {
+            let res = self.result.resolve_name_in_extern_prelude(
+                &import
+                    .path
+                    .as_ident()
+                    .expect("extern crate should have been desugared to one-element path"),
+            );
+            (res, if res.is_none() { ReachedFixedPoint::No } else { ReachedFixedPoint::Yes })
+        } else {
+            self.result.resolve_path_fp(self.db, ResolveMode::Import, original_module, &import.path)
+        };
 
         if reached_fixedpoint != ReachedFixedPoint::Yes {
             return reached_fixedpoint;
@@ -502,6 +508,10 @@ impl ItemMap {
         from_scope.or(from_extern_prelude).or(from_prelude)
     }
 
+    fn resolve_name_in_extern_prelude(&self, name: &Name) -> PerNs<ModuleDef> {
+        self.extern_prelude.get(name).map_or(PerNs::none(), |&it| PerNs::types(it))
+    }
+
     fn resolve_name_in_crate_root_or_extern_prelude(
         &self,
         db: &impl PersistentHirDatabase,
@@ -511,8 +521,7 @@ impl ItemMap {
         let crate_root = module.crate_root(db);
         let from_crate_root =
             self[crate_root.module_id].items.get(name).map_or(PerNs::none(), |it| it.def);
-        let from_extern_prelude =
-            self.extern_prelude.get(name).map_or(PerNs::none(), |&it| PerNs::types(it));
+        let from_extern_prelude = self.resolve_name_in_extern_prelude(name);
 
         from_crate_root.or(from_extern_prelude)
     }
