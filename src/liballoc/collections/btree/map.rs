@@ -1634,9 +1634,11 @@ impl<'a, K, V> RangeMut<'a, K, V> {
 
         let mut cur_handle = match handle.right_kv() {
             Ok(kv) => {
-                let (k, v) = ptr::read(&kv).into_kv_mut();
-                self.front = kv.right_edge();
-                return (k, v);
+                self.front = ptr::read(&kv).right_edge();
+                // Doing the descend invalidates the references returned by `into_kv_mut`,
+                // so we have to do this last.
+                let (k, v) = kv.into_kv_mut();
+                return (k, v); // coerce k from `&mut K` to `&K`
             }
             Err(last_edge) => {
                 let next_level = last_edge.into_node().ascend().ok();
@@ -1647,9 +1649,11 @@ impl<'a, K, V> RangeMut<'a, K, V> {
         loop {
             match cur_handle.right_kv() {
                 Ok(kv) => {
-                    let (k, v) = ptr::read(&kv).into_kv_mut();
-                    self.front = first_leaf_edge(kv.right_edge().descend());
-                    return (k, v);
+                    self.front = first_leaf_edge(ptr::read(&kv).right_edge().descend());
+                    // Doing the descend invalidates the references returned by `into_kv_mut`,
+                    // so we have to do this last.
+                    let (k, v) = kv.into_kv_mut();
+                    return (k, v); // coerce k from `&mut K` to `&K`
                 }
                 Err(last_edge) => {
                     let next_level = last_edge.into_node().ascend().ok();
@@ -1680,9 +1684,11 @@ impl<'a, K, V> RangeMut<'a, K, V> {
 
         let mut cur_handle = match handle.left_kv() {
             Ok(kv) => {
-                let (k, v) = ptr::read(&kv).into_kv_mut();
-                self.back = kv.left_edge();
-                return (k, v);
+                self.back = ptr::read(&kv).left_edge();
+                // Doing the descend invalidates the references returned by `into_kv_mut`,
+                // so we have to do this last.
+                let (k, v) = kv.into_kv_mut();
+                return (k, v); // coerce k from `&mut K` to `&K`
             }
             Err(last_edge) => {
                 let next_level = last_edge.into_node().ascend().ok();
@@ -1693,9 +1699,11 @@ impl<'a, K, V> RangeMut<'a, K, V> {
         loop {
             match cur_handle.left_kv() {
                 Ok(kv) => {
-                    let (k, v) = ptr::read(&kv).into_kv_mut();
-                    self.back = last_leaf_edge(kv.left_edge().descend());
-                    return (k, v);
+                    self.back = last_leaf_edge(ptr::read(&kv).left_edge().descend());
+                    // Doing the descend invalidates the references returned by `into_kv_mut`,
+                    // so we have to do this last.
+                    let (k, v) = kv.into_kv_mut();
+                    return (k, v); // coerce k from `&mut K` to `&K`
                 }
                 Err(last_edge) => {
                     let next_level = last_edge.into_node().ascend().ok();

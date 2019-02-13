@@ -675,7 +675,7 @@ impl<'a, K: 'a, V: 'a, Type> NodeRef<marker::Mut<'a>, K, V, Type> {
         // invalidates the reference returned by the first.
         // More precisely, it is the call to `len` that is the culprit,
         // because that creates a shared reference to the header, which *can*
-        // overlap with the keys.
+        // overlap with the keys (and even the values, for ZST keys).
         unsafe {
             let len = self.len();
             let leaf = self.as_leaf_mut();
