@@ -12,7 +12,7 @@
 #[cfg(any(target_feature = "v6k", target_arch = "aarch64"))]
 #[inline(always)]
 pub unsafe fn __wfi() {
-    asm!("WFI" : : : : "volatile")
+    hint(HINT_WFI);
 }
 
 /// Generates a WFE (wait for event) hint instruction, or nothing.
@@ -25,7 +25,7 @@ pub unsafe fn __wfi() {
 #[cfg(any(target_feature = "v6k", target_arch = "aarch64"))]
 #[inline(always)]
 pub unsafe fn __wfe() {
-    asm!("WFE" : : : : "volatile")
+    hint(HINT_WFE);
 }
 
 /// Generates a SEV (send a global event) hint instruction.
@@ -37,7 +37,7 @@ pub unsafe fn __wfe() {
 #[cfg(any(target_feature = "v6k", target_arch = "aarch64"))]
 #[inline(always)]
 pub unsafe fn __sev() {
-    asm!("SEV" : : : : "volatile")
+    hint(HINT_SEV);
 }
 
 /// Generates a send a local event hint instruction.
@@ -49,7 +49,7 @@ pub unsafe fn __sev() {
 #[cfg(target_arch = "aarch64")]
 #[inline(always)]
 pub unsafe fn __sevl() {
-    asm!("SEVL" : : : : "volatile")
+    hint(HINT_SEVL);
 }
 
 /// Generates a YIELD hint instruction.
@@ -62,7 +62,7 @@ pub unsafe fn __sevl() {
 #[cfg(any(target_feature = "v6k", target_arch = "aarch64"))]
 #[inline(always)]
 pub unsafe fn __yield() {
-    asm!("YIELD" : : : : "volatile")
+    hint(HINT_YIELD);
 }
 
 /// Generates a DBG instruction.
@@ -111,5 +111,19 @@ pub unsafe fn __dbg(imm4: u32) {
 /// will increase execution time.
 #[inline(always)]
 pub unsafe fn __nop() {
-    asm!("NOP" : : : : "volatile")
+    hint(HINT_NOP);
 }
+
+extern "C" {
+    #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.hint")]
+    #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.hint")]
+    fn hint(_: i32);
+}
+
+// from LLVM 7.0.1's lib/Target/ARM/{ARMInstrThumb,ARMInstrInfo,ARMInstrThumb2}.td
+const HINT_NOP: i32 = 0;
+const HINT_YIELD: i32 = 1;
+const HINT_WFE: i32 = 2;
+const HINT_WFI: i32 = 3;
+const HINT_SEV: i32 = 4;
+const HINT_SEVL: i32 = 5;
