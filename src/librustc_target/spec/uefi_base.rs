@@ -5,7 +5,7 @@
 // UEFI uses COFF/PE32+ format for binaries. All binaries must be statically linked. No dynamic
 // linker is supported. As native to COFF, binaries are position-dependent, but will be relocated
 // by the loader if the pre-chosen memory location is already in use.
-// UEFI forbids running code on anything but the boot-CPU. Not interrupts are allowed other than
+// UEFI forbids running code on anything but the boot-CPU. No interrupts are allowed other than
 // the timer-interrupt. Device-drivers are required to use polling-based models. Furthermore, all
 // code runs in the same environment, no process separation is supported.
 
@@ -21,7 +21,10 @@ pub fn opts() -> TargetOptions {
             "/NOLOGO".to_string(),
 
             // UEFI is fully compatible to non-executable data pages. Tell the compiler that
-            // non-code sections can be marked as non-executable, including stack pages.
+            // non-code sections can be marked as non-executable, including stack pages. In fact,
+            // firmware might enforce this, so we better let the linker know about this, so it
+            // will fail if the compiler ever tries placing code on the stack (e.g., trampoline
+            // constructs and alike).
             "/NXCOMPAT".to_string(),
 
             // There is no runtime for UEFI targets, prevent them from being linked. UEFI targets
