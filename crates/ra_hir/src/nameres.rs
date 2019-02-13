@@ -40,7 +40,7 @@ pub struct ItemMap {
     /// The prelude module for this crate. This either comes from an import
     /// marked with the `prelude_import` attribute, or (in the normal case) from
     /// a dependency (`std` or `core`).
-    prelude: Option<Module>,
+    pub(crate) prelude: Option<Module>,
     pub(crate) extern_prelude: FxHashMap<Name, ModuleDef>,
     per_module: ArenaMap<ModuleId, ModuleScope>,
 }

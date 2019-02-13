@@ -82,10 +82,10 @@ impl Resolver {
         }
     }
 
-    pub fn all_names(&self) -> FxHashMap<Name, PerNs<Resolution>> {
+    pub fn all_names(&self, db: &impl HirDatabase) -> FxHashMap<Name, PerNs<Resolution>> {
         let mut names = FxHashMap::default();
         for scope in self.scopes.iter().rev() {
-            scope.collect_names(&mut |name, res| {
+            scope.collect_names(db, &mut |name, res| {
                 let current: &mut PerNs<Resolution> = names.entry(name).or_default();
                 if current.types.is_none() {
                     current.types = res.types;
@@ -174,7 +174,7 @@ impl Scope {
         }
     }
 
-    fn collect_names(&self, f: &mut dyn FnMut(Name, PerNs<Resolution>)) {
+    fn collect_names(&self, db: &impl HirDatabase, f: &mut dyn FnMut(Name, PerNs<Resolution>)) {
         match self {
             Scope::ModuleScope(m) => {
                 // TODO: should we provide `self` here?
@@ -190,6 +190,12 @@ impl Scope {
                 m.item_map.extern_prelude.iter().for_each(|(name, def)| {
                     f(name.clone(), PerNs::types(Resolution::Def(*def)));
                 });
+                if let Some(prelude) = m.item_map.prelude {
+                    let prelude_item_map = db.item_map(prelude.krate);
+                    prelude_item_map[prelude.module_id].entries().for_each(|(name, res)| {
+                        f(name.clone(), res.def.map(Resolution::Def));
+                    });
+                }
             }
             Scope::GenericParams(gp) => {
                 for param in &gp.params {
