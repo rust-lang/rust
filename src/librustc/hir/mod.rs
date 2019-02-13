@@ -2290,7 +2290,7 @@ impl ItemKind {
             ItemKind::Union(..) => "union",
             ItemKind::Trait(..) => "trait",
             ItemKind::TraitAlias(..) => "trait alias",
-            ItemKind::Impl(..) => "item",
+            ItemKind::Impl(..) => "impl",
         }
     }
 
