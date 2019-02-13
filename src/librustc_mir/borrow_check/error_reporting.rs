@@ -133,9 +133,7 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
             let is_partial_move = move_site_vec.iter().any(|move_site| {
                 let move_out = self.move_data.moves[(*move_site).moi];
                 let moved_place = &self.move_data.move_paths[move_out.path].place;
-                if used_place != moved_place {
-                    used_place.is_prefix_of(moved_place)
-                } else { false }
+                used_place != moved_place && used_place.is_prefix_of(moved_place)
             });
             for move_site in &move_site_vec {
                 let move_out = self.move_data.moves[(*move_site).moi];
