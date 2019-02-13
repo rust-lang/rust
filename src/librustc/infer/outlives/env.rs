@@ -1,7 +1,7 @@
 use crate::infer::outlives::free_region_map::FreeRegionMap;
 use crate::infer::{GenericKind, InferCtxt};
+use crate::hir;
 use rustc_data_structures::fx::FxHashMap;
-use syntax::ast;
 use syntax_pos::Span;
 use crate::traits::query::outlives_bounds::{self, OutlivesBound};
 use crate::ty::{self, Ty};
@@ -55,7 +55,7 @@ pub struct OutlivesEnvironment<'tcx> {
     // results when proving outlives obligations like `T: 'x` later
     // (e.g., if `T: 'x` must be proven within the body B1, then we
     // know it is true if either `'a: 'x` or `'b: 'x`).
-    region_bound_pairs_map: FxHashMap<ast::NodeId, RegionBoundPairs<'tcx>>,
+    region_bound_pairs_map: FxHashMap<hir::HirId, RegionBoundPairs<'tcx>>,
 
     // Used to compute `region_bound_pairs_map`: contains the set of
     // in-scope region-bound pairs thus far.
@@ -87,7 +87,7 @@ impl<'a, 'gcx: 'tcx, 'tcx: 'a> OutlivesEnvironment<'tcx> {
     }
 
     /// Borrows current value of the `region_bound_pairs`.
-    pub fn region_bound_pairs_map(&self) -> &FxHashMap<ast::NodeId, RegionBoundPairs<'tcx>> {
+    pub fn region_bound_pairs_map(&self) -> &FxHashMap<hir::HirId, RegionBoundPairs<'tcx>> {
         &self.region_bound_pairs_map
     }
 
@@ -162,7 +162,7 @@ impl<'a, 'gcx: 'tcx, 'tcx: 'a> OutlivesEnvironment<'tcx> {
         &mut self,
         infcx: &InferCtxt<'a, 'gcx, 'tcx>,
         fn_sig_tys: &[Ty<'tcx>],
-        body_id: ast::NodeId,
+        body_id: hir::HirId,
         span: Span,
     ) {
         debug!("add_implied_bounds()");
@@ -176,7 +176,7 @@ impl<'a, 'gcx: 'tcx, 'tcx: 'a> OutlivesEnvironment<'tcx> {
     }
 
     /// Save the current set of region-bound pairs under the given `body_id`.
-    pub fn save_implied_bounds(&mut self, body_id: ast::NodeId) {
+    pub fn save_implied_bounds(&mut self, body_id: hir::HirId) {
         let old = self.region_bound_pairs_map.insert(
             body_id,
             self.region_bound_pairs_accum.clone(),

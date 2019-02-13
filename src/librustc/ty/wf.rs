@@ -1,10 +1,10 @@
+use crate::hir;
 use crate::hir::def_id::DefId;
 use crate::infer::InferCtxt;
 use crate::ty::subst::Substs;
 use crate::traits;
 use crate::ty::{self, ToPredicate, Ty, TyCtxt, TypeFoldable};
 use std::iter::once;
-use syntax::ast;
 use syntax_pos::Span;
 use crate::middle::lang_items;
 
@@ -16,7 +16,7 @@ use crate::middle::lang_items;
 /// say "$0 is WF if $0 is WF".
 pub fn obligations<'a, 'gcx, 'tcx>(infcx: &InferCtxt<'a, 'gcx, 'tcx>,
                                    param_env: ty::ParamEnv<'tcx>,
-                                   body_id: ast::NodeId,
+                                   body_id: hir::HirId,
                                    ty: Ty<'tcx>,
                                    span: Span)
                                    -> Option<Vec<traits::PredicateObligation<'tcx>>>
@@ -42,7 +42,7 @@ pub fn obligations<'a, 'gcx, 'tcx>(infcx: &InferCtxt<'a, 'gcx, 'tcx>,
 /// if `Bar: Eq`.
 pub fn trait_obligations<'a, 'gcx, 'tcx>(infcx: &InferCtxt<'a, 'gcx, 'tcx>,
                                          param_env: ty::ParamEnv<'tcx>,
-                                         body_id: ast::NodeId,
+                                         body_id: hir::HirId,
                                          trait_ref: &ty::TraitRef<'tcx>,
                                          span: Span)
                                          -> Vec<traits::PredicateObligation<'tcx>>
@@ -54,7 +54,7 @@ pub fn trait_obligations<'a, 'gcx, 'tcx>(infcx: &InferCtxt<'a, 'gcx, 'tcx>,
 
 pub fn predicate_obligations<'a, 'gcx, 'tcx>(infcx: &InferCtxt<'a, 'gcx, 'tcx>,
                                              param_env: ty::ParamEnv<'tcx>,
-                                             body_id: ast::NodeId,
+                                             body_id: hir::HirId,
                                              predicate: &ty::Predicate<'tcx>,
                                              span: Span)
                                              -> Vec<traits::PredicateObligation<'tcx>>
@@ -103,7 +103,7 @@ pub fn predicate_obligations<'a, 'gcx, 'tcx>(infcx: &InferCtxt<'a, 'gcx, 'tcx>,
 struct WfPredicates<'a, 'gcx: 'a+'tcx, 'tcx: 'a> {
     infcx: &'a InferCtxt<'a, 'gcx, 'tcx>,
     param_env: ty::ParamEnv<'tcx>,
-    body_id: ast::NodeId,
+    body_id: hir::HirId,
     span: Span,
     out: Vec<traits::PredicateObligation<'tcx>>,
 }

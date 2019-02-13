@@ -7,6 +7,7 @@ pub use self::SubregionOrigin::*;
 pub use self::ValuePairs::*;
 pub use crate::ty::IntVarValue;
 
+use crate::hir;
 use crate::hir::def_id::DefId;
 use crate::infer::canonical::{Canonical, CanonicalVarValues};
 use crate::middle::free_region::RegionRelations;
@@ -203,7 +204,7 @@ pub struct InferCtxt<'a, 'gcx: 'a + 'tcx, 'tcx: 'a> {
     // for each body-id in this map, which will process the
     // obligations within. This is expected to be done 'late enough'
     // that all type inference variables have been bound and so forth.
-    pub region_obligations: RefCell<Vec<(ast::NodeId, RegionObligation<'tcx>)>>,
+    pub region_obligations: RefCell<Vec<(hir::HirId, RegionObligation<'tcx>)>>,
 
     /// What is the innermost universe we have created? Starts out as
     /// `UniverseIndex::root()` but grows from there as we enter
@@ -1433,7 +1434,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
     pub fn partially_normalize_associated_types_in<T>(
         &self,
         span: Span,
-        body_id: ast::NodeId,
+        body_id: hir::HirId,
         param_env: ty::ParamEnv<'tcx>,
         value: &T,
     ) -> InferOk<'tcx, T>

@@ -3830,7 +3830,7 @@ fn print_const(cx: &DocContext, n: ty::LazyConst) -> String {
 }
 
 fn print_const_expr(cx: &DocContext, body: hir::BodyId) -> String {
-    cx.tcx.hir().node_to_pretty_string(body.node_id)
+    cx.tcx.hir().hir_to_pretty_string(body.hir_id)
 }
 
 /// Given a type Path, resolve it to a Type using the TyCtxt

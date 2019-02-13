@@ -127,9 +127,9 @@ impl<'hir> Entry<'hir> {
         }
     }
 
-    fn is_body_owner(self, node_id: NodeId) -> bool {
+    fn is_body_owner(self, hir_id: HirId) -> bool {
         match self.associated_body() {
-            Some(b) => b.node_id == node_id,
+            Some(b) => b.hir_id == hir_id,
             None => false,
         }
     }
@@ -438,7 +438,7 @@ impl<'hir> Map<'hir> {
     }
 
     pub fn body(&self, id: BodyId) -> &'hir Body {
-        self.read(id.node_id);
+        self.read_by_hir_id(id.hir_id);
 
         // N.B., intentionally bypass `self.forest.krate()` so that we
         // do not trigger a read of the whole krate here
@@ -462,9 +462,10 @@ impl<'hir> Map<'hir> {
     /// Returns the `NodeId` that corresponds to the definition of
     /// which this is the body of, i.e., a `fn`, `const` or `static`
     /// item (possibly associated), a closure, or a `hir::AnonConst`.
-    pub fn body_owner(&self, BodyId { node_id }: BodyId) -> NodeId {
+    pub fn body_owner(&self, BodyId { hir_id }: BodyId) -> NodeId {
+        let node_id = self.hir_to_node_id(hir_id);
         let parent = self.get_parent_node(node_id);
-        assert!(self.map[parent.as_usize()].map_or(false, |e| e.is_body_owner(node_id)));
+        assert!(self.map[parent.as_usize()].map_or(false, |e| e.is_body_owner(hir_id)));
         parent
     }
 
@@ -486,6 +487,12 @@ impl<'hir> Map<'hir> {
         } else {
             bug!("no entry for id `{}`", id)
         }
+    }
+
+    // FIXME(@ljedrz): replace the NodeId variant
+    pub fn maybe_body_owned_by_by_hir_id(&self, id: HirId) -> Option<BodyId> {
+        let node_id = self.hir_to_node_id(id);
+        self.maybe_body_owned_by(node_id)
     }
 
     /// Given a body owner's id, returns the `BodyId` associated with it.
@@ -519,6 +526,12 @@ impl<'hir> Map<'hir> {
             }
             node => bug!("{:#?} is not a body node", node),
         }
+    }
+
+    // FIXME(@ljedrz): replace the NodeId variant
+    pub fn body_owner_kind_by_hir_id(&self, id: HirId) -> BodyOwnerKind {
+        let node_id = self.hir_to_node_id(id);
+        self.body_owner_kind(node_id)
     }
 
     pub fn ty_param_owner(&self, id: NodeId) -> NodeId {
@@ -835,6 +848,12 @@ impl<'hir> Map<'hir> {
     /// module parent is in this map.
     pub fn get_module_parent(&self, id: NodeId) -> DefId {
         self.local_def_id(self.get_module_parent_node(id))
+    }
+
+    // FIXME(@ljedrz): replace the NodeId variant
+    pub fn get_module_parent_by_hir_id(&self, id: HirId) -> DefId {
+        let node_id = self.hir_to_node_id(id);
+        self.get_module_parent(node_id)
     }
 
     /// Returns the `NodeId` of `id`'s nearest module parent, or `id` itself if no

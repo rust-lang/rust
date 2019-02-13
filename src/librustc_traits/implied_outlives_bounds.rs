@@ -1,6 +1,7 @@
 //! Provider for the `implied_outlives_bounds` query.
 //! Do not call this query directory. See [`rustc::traits::query::implied_outlives_bounds`].
 
+use rustc::hir;
 use rustc::infer::InferCtxt;
 use rustc::infer::canonical::{self, Canonical};
 use rustc::traits::{TraitEngine, TraitEngineExt};
@@ -11,7 +12,6 @@ use rustc::ty::outlives::Component;
 use rustc::ty::query::Providers;
 use rustc::ty::wf;
 use smallvec::{SmallVec, smallvec};
-use syntax::ast::DUMMY_NODE_ID;
 use syntax::source_map::DUMMY_SP;
 use rustc::traits::FulfillmentContext;
 
@@ -65,7 +65,7 @@ fn compute_implied_outlives_bounds<'tcx>(
         // unresolved inference variables here anyway, but there might be
         // during typeck under some circumstances.)
         let obligations =
-            wf::obligations(infcx, param_env, DUMMY_NODE_ID, ty, DUMMY_SP).unwrap_or(vec![]);
+            wf::obligations(infcx, param_env, hir::DUMMY_HIR_ID, ty, DUMMY_SP).unwrap_or(vec![]);
 
         // N.B., all of these predicates *ought* to be easily proven
         // true. In fact, their correctness is (mostly) implied by
