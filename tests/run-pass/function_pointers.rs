@@ -1,5 +1,16 @@
-fn f() -> i32 {
-    42
+trait Answer {
+    fn answer() -> Self;
+}
+
+impl Answer for i32 {
+    fn answer() -> i32 {
+        42
+    }
+}
+
+// A generic function, to make its address unstable
+fn f<T: Answer>() -> T {
+    Answer::answer()
 }
 
 fn g(i: i32) -> i32 {
