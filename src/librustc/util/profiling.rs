@@ -4,7 +4,7 @@ use std::io::{BufWriter, Write};
 use std::mem;
 use std::process;
 use std::thread::ThreadId;
-use std::time::Instant;
+use std::time::{Duration, Instant, SystemTime};
 
 use crate::session::config::Options;
 
@@ -21,20 +21,20 @@ pub enum ProfileCategory {
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum ProfilerEvent {
-    QueryStart { query_name: &'static str, category: ProfileCategory, time: Instant },
-    QueryEnd { query_name: &'static str, category: ProfileCategory, time: Instant },
-    GenericActivityStart { category: ProfileCategory, time: Instant },
-    GenericActivityEnd { category: ProfileCategory, time: Instant },
-    IncrementalLoadResultStart { query_name: &'static str, time: Instant },
-    IncrementalLoadResultEnd { query_name: &'static str, time: Instant },
-    QueryCacheHit { query_name: &'static str, category: ProfileCategory, time: Instant },
-    QueryCount { query_name: &'static str, category: ProfileCategory, count: usize, time: Instant },
-    QueryBlockedStart { query_name: &'static str, category: ProfileCategory, time: Instant },
-    QueryBlockedEnd { query_name: &'static str, category: ProfileCategory, time: Instant },
+    QueryStart { query_name: &'static str, category: ProfileCategory, time: u64 },
+    QueryEnd { query_name: &'static str, category: ProfileCategory, time: u64 },
+    GenericActivityStart { category: ProfileCategory, time: u64 },
+    GenericActivityEnd { category: ProfileCategory, time: u64 },
+    IncrementalLoadResultStart { query_name: &'static str, time: u64 },
+    IncrementalLoadResultEnd { query_name: &'static str, time: u64 },
+    QueryCacheHit { query_name: &'static str, category: ProfileCategory, time: u64 },
+    QueryCount { query_name: &'static str, category: ProfileCategory, count: usize, time: u64 },
+    QueryBlockedStart { query_name: &'static str, category: ProfileCategory, time: u64 },
+    QueryBlockedEnd { query_name: &'static str, category: ProfileCategory, time: u64 },
 }
 
 impl ProfilerEvent {
-    fn timestamp(&self) -> Instant {
+    fn timestamp(&self) -> u64 {
         use self::ProfilerEvent::*;
 
         match self {
@@ -58,15 +58,17 @@ fn thread_id_to_u64(tid: ThreadId) -> u64 {
 
 pub struct SelfProfiler {
     events: HashMap<ThreadId, Vec<ProfilerEvent>>,
+    start_time: SystemTime,
+    start_instant: Instant,
 }
 
 impl SelfProfiler {
     pub fn new() -> SelfProfiler {
-        let mut profiler = SelfProfiler {
+        let profiler = SelfProfiler {
             events: HashMap::new(),
+            start_time: SystemTime::now(),
+            start_instant: Instant::now(),
         };
-
-        profiler.start_activity(ProfileCategory::Other);
 
         profiler
     }
@@ -75,7 +77,7 @@ impl SelfProfiler {
     pub fn start_activity(&mut self, category: ProfileCategory) {
         self.record(ProfilerEvent::GenericActivityStart {
             category,
-            time: Instant::now(),
+            time: self.get_time_from_start(),
         })
     }
 
@@ -83,7 +85,7 @@ impl SelfProfiler {
     pub fn end_activity(&mut self, category: ProfileCategory) {
         self.record(ProfilerEvent::GenericActivityEnd {
             category,
-            time: Instant::now(),
+            time: self.get_time_from_start(),
         })
     }
 
@@ -98,7 +100,7 @@ impl SelfProfiler {
             query_name,
             category,
             count,
-            time: Instant::now(),
+            time: self.get_time_from_start(),
         })
     }
 
@@ -107,7 +109,7 @@ impl SelfProfiler {
         self.record(ProfilerEvent::QueryCacheHit {
             query_name,
             category,
-            time: Instant::now(),
+            time: self.get_time_from_start(),
         })
     }
 
@@ -116,7 +118,7 @@ impl SelfProfiler {
         self.record(ProfilerEvent::QueryStart {
             query_name,
             category,
-            time: Instant::now(),
+            time: self.get_time_from_start(),
         });
     }
 
@@ -125,7 +127,7 @@ impl SelfProfiler {
         self.record(ProfilerEvent::QueryEnd {
             query_name,
             category,
-            time: Instant::now(),
+            time: self.get_time_from_start(),
         })
     }
 
@@ -133,7 +135,7 @@ impl SelfProfiler {
     pub fn incremental_load_result_start(&mut self, query_name: &'static str) {
         self.record(ProfilerEvent::IncrementalLoadResultStart {
             query_name,
-            time: Instant::now(),
+            time: self.get_time_from_start(),
         })
     }
 
@@ -141,7 +143,7 @@ impl SelfProfiler {
     pub fn incremental_load_result_end(&mut self, query_name: &'static str) {
         self.record(ProfilerEvent::IncrementalLoadResultEnd {
             query_name,
-            time: Instant::now(),
+            time: self.get_time_from_start(),
         })
     }
 
@@ -150,7 +152,7 @@ impl SelfProfiler {
         self.record(ProfilerEvent::QueryBlockedStart {
             query_name,
             category,
-            time: Instant::now(),
+            time: self.get_time_from_start(),
         })
     }
 
@@ -159,7 +161,7 @@ impl SelfProfiler {
         self.record(ProfilerEvent::QueryBlockedEnd {
             query_name,
             category,
-            time: Instant::now(),
+            time: self.get_time_from_start(),
         })
     }
 
@@ -171,18 +173,14 @@ impl SelfProfiler {
         events.push(event);
     }
 
+    #[inline]
+    fn get_time_from_start(&self) -> u64 {
+        let duration = Instant::now() - self.start_instant;
+        duration.as_nanos() as u64
+    }
+
     pub fn dump_raw_events(&self, opts: &Options) {
         use self::ProfilerEvent::*;
-
-        //find the earliest Instant to use as t=0
-        //when serializing the events, we'll calculate a Duration
-        //using (instant - min_instant)
-        let min_instant =
-            self.events
-                .iter()
-                .map(|(_, values)| values[0].timestamp())
-                .min()
-                .unwrap();
 
         let pid = process::id();
 
@@ -229,8 +227,10 @@ impl SelfProfiler {
                 }
 
                 let (secs, nanos) = {
-                    let duration = event.timestamp() - min_instant;
-                    (duration.as_secs(), duration.subsec_nanos())
+                    let time = self.start_time + Duration::from_nanos(event.timestamp());
+                    let time_since_unix =
+                        time.duration_since(SystemTime::UNIX_EPOCH).unwrap_or_default();
+                    (time_since_unix.as_secs(), time_since_unix.subsec_nanos())
                 };
 
                 match event {
