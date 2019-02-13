@@ -58,7 +58,7 @@ impl NavigationTarget {
             kind: symbol.ptr.kind(),
             full_range: symbol.ptr.range(),
             focus_range: None,
-            container_name: symbol.container_name.map(|v| v.clone()),
+            container_name: symbol.container_name.clone(),
         }
     }
 
