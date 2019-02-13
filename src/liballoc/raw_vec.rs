@@ -682,8 +682,8 @@ impl<T, A: Alloc> RawVec<T, A> {
 
 }
 
-impl<T> RawVec<T, Global> {
-    /// Converts the entire buffer into `Box<[T]>`.
+impl<T, A: Alloc> RawVec<T, A> {
+    /// Converts the entire buffer into `Box<[T], A>`.
     ///
     /// Note that this will correctly reconstitute any `cap` changes
     /// that may have been performed. (see description of type for details)
@@ -693,10 +693,11 @@ impl<T> RawVec<T, Global> {
     /// All elements of `RawVec<T, Global>` must be initialized. Notice that
     /// the rules around uninitialized boxed values are not finalized yet,
     /// but until they are, it is advisable to avoid them.
-    pub unsafe fn into_box(self) -> Box<[T]> {
+    pub unsafe fn into_box(self) -> Box<[T], A> {
         // NOTE: not calling `cap()` here, actually using the real `cap` field!
         let slice = slice::from_raw_parts_mut(self.ptr(), self.cap);
-        let output: Box<[T]> = Box::from_raw(slice);
+        let a = ptr::read(&self.a);
+        let output: Box<[T], A> = Box::from_raw_in(slice, a);
         mem::forget(self);
         output
     }
