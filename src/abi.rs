@@ -285,7 +285,7 @@ impl<'a, 'tcx: 'a, B: Backend + 'a> FunctionCx<'a, 'tcx, B> {
         if let Some(val) = self.lib_call(name, input_tys, return_ty, &args) {
             CValue::ByVal(val, return_layout)
         } else {
-            CValue::ByRef(self.bcx.ins().iconst(self.pointer_type, 0), return_layout)
+            CValue::ByRef(self.bcx.ins().iconst(self.pointer_type, self.pointer_type.bytes() as i64), return_layout)
         }
     }
 
@@ -608,7 +608,7 @@ pub fn codegen_call_inner<'a, 'tcx: 'a>(
         PassMode::NoPass => None,
         PassMode::ByRef => match ret_place {
             Some(ret_place) => Some(ret_place.to_addr(fx)),
-            None => Some(fx.bcx.ins().iconst(fx.pointer_type, 0)),
+            None => Some(fx.bcx.ins().iconst(fx.pointer_type, 43)),
         },
         PassMode::ByVal(_) => None,
     };

@@ -285,7 +285,7 @@ impl<'a, 'tcx: 'a> CPlace<'tcx> {
                 CValue::ByRef(fx.bcx.ins().stack_addr(fx.pointer_type, stack_slot, 0), layout)
             }
             CPlace::NoPlace(layout) => {
-                CValue::ByRef(fx.bcx.ins().iconst(fx.pointer_type, 0), layout)
+                CValue::ByRef(fx.bcx.ins().iconst(fx.pointer_type, fx.pointer_type.bytes() as i64), layout)
             }
         }
     }
@@ -306,7 +306,7 @@ impl<'a, 'tcx: 'a> CPlace<'tcx> {
             CPlace::Stack(stack_slot, _layout) => {
                 (fx.bcx.ins().stack_addr(fx.pointer_type, stack_slot, 0), None)
             }
-            CPlace::NoPlace(_) => (fx.bcx.ins().iconst(fx.pointer_type, 0), None),
+            CPlace::NoPlace(_) => (fx.bcx.ins().iconst(fx.pointer_type, 45), None),
             CPlace::Var(_, _) => bug!("Expected CPlace::Addr, found CPlace::Var"),
         }
     }

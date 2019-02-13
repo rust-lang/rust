@@ -112,7 +112,7 @@ fn trans_const_value<'a, 'tcx: 'a>(
         }
         ty::FnDef(_def_id, _substs) => {
             CValue::ByRef(
-                fx.bcx.ins().iconst(fx.pointer_type, 0),
+                fx.bcx.ins().iconst(fx.pointer_type, fx.pointer_type.bytes() as i64),
                 layout
             )
         }
