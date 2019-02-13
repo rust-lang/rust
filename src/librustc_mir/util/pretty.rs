@@ -197,7 +197,7 @@ fn dump_path(
                 .chars()
                 .filter_map(|c| match c {
                     ' ' => None,
-                    ':' => Some('_'),
+                    ':' | '<' | '>' => Some('_'),
                     c => Some(c)
                 }));
             s
@@ -603,7 +603,8 @@ fn write_mir_sig(
     match (descr, src.promoted) {
         (_, Some(i)) => write!(w, "{:?} in ", i)?,
         (Some(Def::StructCtor(..)), _) => write!(w, "struct ")?,
-        (Some(Def::Const(_)), _) => write!(w, "const ")?,
+        (Some(Def::Const(_)), _)
+        | (Some(Def::AssociatedConst(_)), _) => write!(w, "const ")?,
         (Some(Def::Static(_, /*is_mutbl*/false)), _) => write!(w, "static ")?,
         (Some(Def::Static(_, /*is_mutbl*/true)), _) => write!(w, "static mut ")?,
         (_, _) if is_function => write!(w, "fn ")?,
