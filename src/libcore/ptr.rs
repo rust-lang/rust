@@ -949,7 +949,7 @@ pub unsafe fn write_volatile<T>(dst: *mut T, src: T) {
 /// Freezes `count * size_of::<T>()` bytes of memory, converting uninitialized data into
 /// arbitrary but fixed data.
 ///
-/// Uninitialized memory has undefined contents, and interation with those contents
+/// Uninitialized memory has undefined contents, and interaction with those contents
 /// can easily cause undefined behavior. Freezing the memory avoids those issues by
 /// converting the memory to an initialized state without actually needing to write to
 /// all of it. This function has no effect on memory which is already initialized.
