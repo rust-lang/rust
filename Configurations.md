@@ -18,7 +18,7 @@ To enable unstable options, set `unstable_features = true` in `rustfmt.toml` or 
 Below you find a detailed visual guide on all the supported configuration options of rustfmt:
 
 
-## `indent_style`
+## `indent_style` (tracking issue #3346)
 
 Indent on expressions or items.
 
@@ -355,7 +355,7 @@ fn main() {
 }
 ```
 
-## `binop_separator`
+## `binop_separator` (tracking issue #3368)
 
 Where to put a binary operator when a binary expression goes multiline.
 
@@ -395,7 +395,7 @@ fn main() {
 }
 ```
 
-## `combine_control_expr`
+## `combine_control_expr` (tracking issue #3369)
 
 Combine control expressions with function calls.
 
@@ -503,7 +503,7 @@ fn example() {
 }
 ```
 
-## `comment_width`
+## `comment_width` (tracking issue #3349)
 
 Maximum length of comments. No effect unless`wrap_comments = true`.
 
@@ -526,7 +526,7 @@ Maximum length of comments. No effect unless`wrap_comments = true`.
 
 See also [`wrap_comments`](#wrap_comments).
 
-## `condense_wildcard_suffixes`
+## `condense_wildcard_suffixes` (tracking issue #3384)
 
 Replace strings of _ wildcards by a single .. in tuple patterns
 
@@ -551,7 +551,7 @@ fn main() {
 }
 ```
 
-## `control_brace_style`
+## `control_brace_style` (tracking issue #3377)
 
 Brace style for control flow constructs
 
@@ -599,7 +599,7 @@ fn main() {
 }
 ```
 
-## `disable_all_formatting`
+## `disable_all_formatting` (tracking issue #3388)
 
 Don't reformat anything
 
@@ -607,7 +607,7 @@ Don't reformat anything
 - **Possible values**: `true`, `false`
 - **Stable**: No
 
-## `error_on_line_overflow`
+## `error_on_line_overflow` (tracking issue #3391)
 
 Error if Rustfmt is unable to get all lines within `max_width`, except for comments and string
 literals. If this happens, then it is a bug in Rustfmt. You might be able to work around the bug by
@@ -620,7 +620,7 @@ using a shorter name.
 
 See also [`max_width`](#max_width).
 
-## `error_on_unformatted`
+## `error_on_unformatted` (tracking issue #3392)
 
 Error if unable to get comments or string literals within `max_width`, or they are left with
 trailing whitespaces.
@@ -629,7 +629,7 @@ trailing whitespaces.
 - **Possible values**: `true`, `false`
 - **Stable**: No
 
-## `fn_args_density`
+## `fn_args_density` (tracking issue #3375)
 
 Argument density in functions
 
@@ -740,7 +740,7 @@ trait Lorem {
 ```
 
 
-## `brace_style`
+## `brace_style` (tracking issue #3376)
 
 Brace style for items
 
@@ -856,7 +856,7 @@ where
 ```
 
 
-## `empty_item_single_line`
+## `empty_item_single_line` (tracking issue #3356)
 
 Put empty-body functions and impls on a single line
 
@@ -885,7 +885,7 @@ impl Lorem {
 See also [`brace_style`](#brace_style), [`control_brace_style`](#control_brace_style).
 
 
-## `enum_discrim_align_threshold`
+## `enum_discrim_align_threshold` (tracking issue #3372)
 
 The maximum length of enum variant having discriminant, that gets vertically aligned with others.
 Variants without discriminants would be ignored for the purpose of alignment.
@@ -932,7 +932,7 @@ enum Bar {
 ```
 
 
-## `fn_single_line`
+## `fn_single_line` (tracking issue #3358)
 
 Put single-expression functions on a single line
 
@@ -967,7 +967,7 @@ fn lorem() -> usize {
 See also [`control_brace_style`](#control_brace_style).
 
 
-## `where_single_line`
+## `where_single_line` (tracking issue #3359)
 
 Forces the `where` clause to be laid out on a single line.
 
@@ -1025,7 +1025,7 @@ extern {
 }
 ```
 
-## `format_strings`
+## `format_strings` (tracking issue #3353)
 
 Format string literals where necessary
 
@@ -1052,7 +1052,7 @@ fn main() {
 
 See also [`max_width`](#max_width).
 
-## `format_macro_matchers`
+## `format_macro_matchers` (tracking issue #3354)
 
 Format the metavariable matching patterns in macros.
 
@@ -1089,7 +1089,7 @@ macro_rules! foo {
 See also [`format_macro_bodies`](#format_macro_bodies).
 
 
-## `format_macro_bodies`
+## `format_macro_bodies` (tracking issue #3355)
 
 Format the bodies of macros.
 
@@ -1149,7 +1149,7 @@ fn lorem() -> usize {
 See also: [`tab_spaces`](#tab_spaces).
 
 
-## `imports_indent`
+## `imports_indent` (tracking issue #3360)
 
 Indent style of imports
 
@@ -1175,7 +1175,7 @@ use foo::{xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx, yyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyy,
 
 See also: [`imports_layout`](#imports_layout).
 
-## `imports_layout`
+## `imports_layout` (tracking issue #3361)
 
 Item layout inside a imports block
 
@@ -1238,7 +1238,7 @@ use foo::{
 };
 ```
 
-## `merge_imports`
+## `merge_imports` (tracking issue #3362)
 
 Merge multiple imports into a single nested import.
 
@@ -1261,7 +1261,7 @@ use foo::{a, b, c, d, e, f, g};
 ```
 
 
-## `match_block_trailing_comma`
+## `match_block_trailing_comma` (tracking issue #3380)
 
 Put a trailing comma after a block based match arm (non-block arms are not affected)
 
@@ -1331,7 +1331,7 @@ pub enum Foo {}
 pub enum Foo {}
 ```
 
-## `force_multiline_blocks`
+## `force_multiline_blocks` (tracking issue #3374)
 
 Force multiline closure and match arm bodies to be wrapped in a block
 
@@ -1407,7 +1407,7 @@ Line endings will be converted to `\n`.
 
 Line endings will be converted to `\r\n`.
 
-## `normalize_comments`
+## `normalize_comments` (tracking issue #3350)
 
 Convert /* */ comments to // comments where possible
 
@@ -1522,7 +1522,7 @@ mod sit;
 **Note** `mod` with `#[macro_export]` will not be reordered since that could change the semantics
 of the original source code.
 
-## `reorder_impl_items`
+## `reorder_impl_items` (tracking issue #3363)
 
 Reorder impl items. `type` and `const` are put first, then macros and methods.
 
@@ -1558,7 +1558,7 @@ impl Iterator for Dummy {
 }
 ```
 
-## `report_todo`
+## `report_todo` (tracking issue #3393)
 
 Report `TODO` items in comments.
 
@@ -1572,7 +1572,7 @@ it contains a `#X` (with `X` being a number) in parentheses following the
 
 See also [`report_fixme`](#report_fixme).
 
-## `report_fixme`
+## `report_fixme` (tracking issue #3394)
 
 Report `FIXME` items in comments.
 
@@ -1587,7 +1587,7 @@ it contains a `#X` (with `X` being a number) in parentheses following the
 See also [`report_todo`](#report_todo).
 
 
-## `skip_children`
+## `skip_children` (tracking issue #3389)
 
 Don't reformat out of line modules
 
@@ -1595,7 +1595,7 @@ Don't reformat out of line modules
 - **Possible values**: `true`, `false`
 - **Stable**: No
 
-## `space_after_colon`
+## `space_after_colon` (tracking issue #3366)
 
 Leave a space after the colon.
 
@@ -1627,7 +1627,7 @@ fn lorem<T:Eq>(t:T) {
 
 See also: [`space_before_colon`](#space_before_colon).
 
-## `space_before_colon`
+## `space_before_colon` (tracking issue #3365)
 
 Leave a space before the colon.
 
@@ -1659,7 +1659,7 @@ fn lorem<T : Eq>(t : T) {
 
 See also: [`space_after_colon`](#space_after_colon).
 
-## `struct_field_align_threshold`
+## `struct_field_align_threshold` (tracking issue #3371)
 
 The maximum diff of width between struct fields to be aligned with each other.
 
@@ -1687,7 +1687,7 @@ struct Foo {
 }
 ```
 
-## `spaces_around_ranges`
+## `spaces_around_ranges` (tracking issue #3367)
 
 Put spaces around the .., ..=, and ... range operators
 
@@ -1743,7 +1743,7 @@ fn main() {
 }
 ```
 
-## `struct_lit_single_line`
+## `struct_lit_single_line` (tracking issue #3357)
 
 Put small struct literals on a single line
 
@@ -1808,7 +1808,7 @@ fn lorem() {
 See also: [`hard_tabs`](#hard_tabs).
 
 
-## `trailing_comma`
+## `trailing_comma` (tracking issue #3379)
 
 How to handle trailing commas for lists
 
@@ -1866,7 +1866,7 @@ fn main() {
 
 See also: [`match_block_trailing_comma`](#match_block_trailing_comma).
 
-## `trailing_semicolon`
+## `trailing_semicolon` (tracking issue #3378)
 
 Add trailing semicolon after break, continue and return
 
@@ -1888,7 +1888,7 @@ fn foo() -> usize {
 }
 ```
 
-## `type_punctuation_density`
+## `type_punctuation_density` (tracking issue #3364)
 
 Determines if `+` or `=` are wrapped in spaces in the punctuation of types
 
@@ -1978,7 +1978,7 @@ fn main() {
 }
 ```
 
-## `format_doc_comments`
+## `format_doc_comments` (tracking issue #3348)
 
 Format doc comments.
 
@@ -2029,7 +2029,7 @@ fn add_one(x: i32) -> i32 {
 }
 ```
 
-## `wrap_comments`
+## `wrap_comments` (tracking issue #3347)
 
 Break comments to fit on the line
 
@@ -2053,7 +2053,7 @@ Break comments to fit on the line
 // commodo consequat.
 ```
 
-## `match_arm_blocks`
+## `match_arm_blocks`` (tracking issue #3373)
 
 Wrap the body of arms in blocks when it does not fit on the same line with the pattern of arms
 
@@ -2088,7 +2088,7 @@ fn main() {
 
 See also: [`match_block_trailing_comma`](#match_block_trailing_comma).
 
-## `overflow_delimited_expr`
+## `overflow_delimited_expr` (tracking issue #3370)
 
 When structs, slices, arrays, and block/array-like macros are used as the last
 argument in an expression list, allow them to overflow (like blocks/closures)
@@ -2171,7 +2171,7 @@ fn example() {
 }
 ```
 
-## `blank_lines_upper_bound`
+## `blank_lines_upper_bound` (tracking issue #3381)
 
 Maximum number of blank lines which can be put between items. If more than this number of consecutive empty
 lines are found, they are trimmed down to match this integer.
@@ -2230,7 +2230,7 @@ fn bar() {
 
 See also: [`blank_lines_lower_bound`](#blank_lines_lower_bound)
 
-## `blank_lines_lower_bound`
+## `blank_lines_lower_bound` (tracking issue #3382)
 
 Minimum number of blank lines which must be put between items. If two items have fewer blank lines between
 them, additional blank lines are inserted.
@@ -2270,7 +2270,7 @@ fn bar() {
 ```
 
 
-## `required_version`
+## `required_version` (tracking issue #3386)
 
 Require a specific version of rustfmt. If you want to make sure that the
 specific version of rustfmt is used in your CI, use this option.
@@ -2279,7 +2279,7 @@ specific version of rustfmt is used in your CI, use this option.
 - **Possible values**: any published version (e.g. `"0.3.8"`)
 - **Stable**: No
 
-## `hide_parse_errors`
+## `hide_parse_errors` (tracking issue #3390)
 
 Do not show parse errors if the parser failed to parse files.
 
@@ -2287,7 +2287,7 @@ Do not show parse errors if the parser failed to parse files.
 - **Possible values**: `true`, `false`
 - **Stable**: No
 
-## `color`
+## `color` (tracking issue #3385)
 
 Whether to use colored output or not.
 
@@ -2295,7 +2295,7 @@ Whether to use colored output or not.
 - **Possible values**: "Auto", "Always", "Never"
 - **Stable**: No
 
-## `unstable_features`
+## `unstable_features` (tracking issue #3387)
 
 Enable unstable features on the unstable channel.
 
@@ -2303,7 +2303,7 @@ Enable unstable features on the unstable channel.
 - **Possible values**: `true`, `false`
 - **Stable**: No
 
-## `license_template_path`
+## `license_template_path` (tracking issue #3352)
 
 Check whether beginnings of files match a license template.
 
@@ -2323,7 +2323,7 @@ Copyright 2018 The Rust Project Developers.`, etc.:
 
 `\{`, `\}` and `\\` match literal braces / backslashes.
 
-## `ignore`
+## `ignore` (tracking issue #3395)
 
 Skip formatting the specified files and directories.
 
@@ -2366,7 +2366,7 @@ If you want to format code that requires edition 2018, add the following to your
 edition = "2018"
 ```
 
-## `version`
+## `version` (tracking issue #3383)
 
 Which version of the formatting rules to use. `Version::One` is backwards-compatible
 with Rustfmt 1.0. Other versions are only backwards compatible within a major
@@ -2382,7 +2382,7 @@ version number.
 version = "Two"
 ```
 
-## `normalize_doc_attributes`
+## `normalize_doc_attributes` (tracking issue #3351)
 
 Convert `#![doc]` and `#[doc]` attributes to `//!` and `///` doc comments.
 
@@ -2408,10 +2408,10 @@ pub enum Foo {}
 pub enum Foo {}
 ```
 
-## `emit_mode`
+## `emit_mode` (tracking issue #3399)
 
 Internal option
 
-## `make_backup`
+## `make_backup` (tracking issue #3400)
 
 Internal option, use `--backup`
