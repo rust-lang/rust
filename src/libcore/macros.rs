@@ -46,9 +46,12 @@ macro_rules! assert_eq {
         match (&$left, &$right) {
             (left_val, right_val) => {
                 if !(*left_val == *right_val) {
+                    // The reborrows below are intentional. Without them, the stack slot for the
+                    // borrow is initialized even before the values are compared, leading to a
+                    // noticeable slow down.
                     panic!(r#"assertion failed: `(left == right)`
   left: `{:?}`,
- right: `{:?}`"#, left_val, right_val)
+ right: `{:?}`"#, &*left_val, &*right_val)
                 }
             }
         }
@@ -60,9 +63,12 @@ macro_rules! assert_eq {
         match (&($left), &($right)) {
             (left_val, right_val) => {
                 if !(*left_val == *right_val) {
+                    // The reborrows below are intentional. Without them, the stack slot for the
+                    // borrow is initialized even before the values are compared, leading to a
+                    // noticeable slow down.
                     panic!(r#"assertion failed: `(left == right)`
   left: `{:?}`,
- right: `{:?}`: {}"#, left_val, right_val,
+ right: `{:?}`: {}"#, &*left_val, &*right_val,
                            format_args!($($arg)+))
                 }
             }
@@ -97,9 +103,12 @@ macro_rules! assert_ne {
         match (&$left, &$right) {
             (left_val, right_val) => {
                 if *left_val == *right_val {
+                    // The reborrows below are intentional. Without them, the stack slot for the
+                    // borrow is initialized even before the values are compared, leading to a
+                    // noticeable slow down.
                     panic!(r#"assertion failed: `(left != right)`
   left: `{:?}`,
- right: `{:?}`"#, left_val, right_val)
+ right: `{:?}`"#, &*left_val, &*right_val)
                 }
             }
         }
@@ -111,9 +120,12 @@ macro_rules! assert_ne {
         match (&($left), &($right)) {
             (left_val, right_val) => {
                 if *left_val == *right_val {
+                    // The reborrows below are intentional. Without them, the stack slot for the
+                    // borrow is initialized even before the values are compared, leading to a
+                    // noticeable slow down.
                     panic!(r#"assertion failed: `(left != right)`
   left: `{:?}`,
- right: `{:?}`: {}"#, left_val, right_val,
+ right: `{:?}`: {}"#, &*left_val, &*right_val,
                            format_args!($($arg)+))
                 }
             }
