@@ -224,6 +224,7 @@ impl Instant {
     /// # Examples
     ///
     /// ```no_run
+    /// #![feature(checked_duration_since)]
     /// use std::time::{Duration, Instant};
     /// use std::thread::sleep;
     ///
@@ -653,7 +654,8 @@ mod tests {
     #[test]
     fn checked_instant_duration_nopanic() {
         let a = Instant::now();
-        (a - Duration::new(1, 0)).checked_duration_since(a);
+        let ret = (a - Duration::new(1, 0)).checked_duration_since(a);
+        assert_eq!(ret, None);
     }
 
     #[test]
