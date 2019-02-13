@@ -596,3 +596,10 @@ impl PartialEq for Infallible {
 
 #[stable(feature = "convert_infallible", since = "1.34.0")]
 impl Eq for Infallible {}
+
+#[stable(feature = "convert_infallible", since = "1.34.0")]
+impl From<!> for Infallible {
+    fn from(x: !) -> Self {
+        x
+    }
+}
