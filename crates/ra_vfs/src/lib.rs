@@ -42,6 +42,8 @@ impl_arena_id!(VfsRoot);
 /// returns `true` iff path belongs to the source root
 pub(crate) struct RootConfig {
     root: PathBuf,
+    // result of `root.canonicalize()` if that differs from `root`; `None` otherwise.
+    canonical_root: Option<PathBuf>,
     excluded_dirs: Vec<PathBuf>,
 }
 
@@ -58,7 +60,11 @@ impl std::ops::Deref for Roots {
 
 impl RootConfig {
     fn new(root: PathBuf, excluded_dirs: Vec<PathBuf>) -> RootConfig {
-        RootConfig { root, excluded_dirs }
+        let mut canonical_root = root.canonicalize().ok();
+        if Some(&root) == canonical_root.as_ref() {
+            canonical_root = None;
+        }
+        RootConfig { root, canonical_root, excluded_dirs }
     }
     /// Checks if root contains a path and returns a root-relative path.
     pub(crate) fn contains(&self, path: &Path) -> Option<RelativePathBuf> {
@@ -66,7 +72,14 @@ impl RootConfig {
         if self.excluded_dirs.iter().any(|it| path.starts_with(it)) {
             return None;
         }
-        let rel_path = path.strip_prefix(&self.root).ok()?;
+        let rel_path = path.strip_prefix(&self.root)
+            .or_else(|err_payload| {
+                self.canonical_root
+                    .as_ref()
+                    .map_or(Err(err_payload),
+                            |canonical_root| path.strip_prefix(canonical_root))
+            })
+            .ok()?;
         let rel_path = RelativePathBuf::from_path(rel_path).ok()?;
 
         // Ignore some common directories.
