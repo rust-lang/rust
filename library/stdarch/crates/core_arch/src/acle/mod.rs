@@ -79,6 +79,19 @@ mod dsp;
 ))]
 pub use self::dsp::*;
 
+// Supported arches: 6, 7-M. See Section 10.1 of ACLE (e.g. SSAT)
+#[cfg(all(
+    not(target_arch = "aarch64"),
+    target_feature = "v6",
+))]
+mod sat;
+
+#[cfg(all(
+    not(target_arch = "aarch64"),
+    target_feature = "v6",
+))]
+pub use self::sat::*;
+
 // Deprecated in ACLE 2.0 for the A profile but fully supported on the M and R profiles, says
 // Section 5.4.9 of ACLE. We'll expose these for the A profile even if deprecated
 #[cfg(all(
