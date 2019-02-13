@@ -9,6 +9,6 @@ dmb_dsb!(SY);
 impl super::super::sealed::Isb for SY {
     #[inline(always)]
     unsafe fn __isb(&self) {
-        asm!("ISB SY" : : : "memory" : "volatile")
+        super::isb(super::arg::SY)
     }
 }

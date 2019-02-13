@@ -1,31 +1,66 @@
 // Reference: Section 7.4 "Hints" of ACLE
 
+// CP15 instruction
+#[cfg(not(any(
+    // v8
+    target_arch = "aarch64",
+    // v7
+    target_feature = "v7",
+    // v6-M
+    target_feature = "mclass"
+)))]
+mod cp15;
+
+#[cfg(not(any(
+    target_arch = "aarch64",
+    target_feature = "v7",
+    target_feature = "mclass"
+)))]
+pub use self::cp15::*;
+
+// Dedicated instructions
 macro_rules! dmb_dsb {
     ($A:ident) => {
         impl super::super::sealed::Dmb for $A {
             #[inline(always)]
             unsafe fn __dmb(&self) {
-                asm!(concat!("DMB ", stringify!($A)) : : : "memory" : "volatile")
+                super::dmb(super::arg::$A)
             }
         }
 
         impl super::super::sealed::Dsb for $A {
             #[inline(always)]
             unsafe fn __dsb(&self) {
-                asm!(concat!("DSB ", stringify!($A)) : : : "memory" : "volatile")
+                super::dsb(super::arg::$A)
             }
         }
     };
 }
 
+#[cfg(any(
+    target_arch = "aarch64",
+    target_feature = "v7",
+    target_feature = "mclass"
+))]
 mod common;
 
+#[cfg(any(
+    target_arch = "aarch64",
+    target_feature = "v7",
+    target_feature = "mclass"
+))]
 pub use self::common::*;
 
-#[cfg(not(target_feature = "mclass"))]
+#[cfg(any(
+    target_arch = "aarch64",
+    target_feature = "v7",
+))]
 mod not_mclass;
 
-#[cfg(not(target_feature = "mclass"))]
+#[cfg(any(
+    target_arch = "aarch64",
+    target_feature = "v7",
+))]
 pub use self::not_mclass::*;
 
 #[cfg(target_arch = "aarch64")]
@@ -86,4 +121,35 @@ where
     A: super::sealed::Isb,
 {
     arg.__isb()
+}
+
+extern "C" {
+    #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.dmb")]
+    #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.dmb")]
+    fn dmb(_: i32);
+
+    #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.dsb")]
+    #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.dsb")]
+    fn dsb(_: i32);
+
+    #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.isb")]
+    #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.isb")]
+    fn isb(_: i32);
+}
+
+// we put these in a module to prevent weirdness with glob re-exports
+mod arg {
+    // See Section 7.3  Memory barriers of ACLE
+    pub const SY: i32 = 15;
+    pub const ST: i32 = 14;
+    pub const LD: i32 = 13;
+    pub const ISH: i32 = 11;
+    pub const ISHST: i32 = 10;
+    pub const ISHLD: i32 = 9;
+    pub const NSH: i32 = 7;
+    pub const NSHST: i32 = 6;
+    pub const NSHLD: i32 = 5;
+    pub const OSH: i32 = 3;
+    pub const OSHST: i32 = 2;
+    pub const OSHLD: i32 = 1;
 }
