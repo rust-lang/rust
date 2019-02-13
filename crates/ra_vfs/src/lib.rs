@@ -72,12 +72,12 @@ impl RootConfig {
         if self.excluded_dirs.iter().any(|it| path.starts_with(it)) {
             return None;
         }
-        let rel_path = path.strip_prefix(&self.root)
+        let rel_path = path
+            .strip_prefix(&self.root)
             .or_else(|err_payload| {
                 self.canonical_root
                     .as_ref()
-                    .map_or(Err(err_payload),
-                            |canonical_root| path.strip_prefix(canonical_root))
+                    .map_or(Err(err_payload), |canonical_root| path.strip_prefix(canonical_root))
             })
             .ok()?;
         let rel_path = RelativePathBuf::from_path(rel_path).ok()?;
