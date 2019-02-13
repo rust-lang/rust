@@ -946,16 +946,23 @@ pub unsafe fn write_volatile<T>(dst: *mut T, src: T) {
     intrinsics::volatile_store(dst, src);
 }
 
-/// Freezes `count * size_of::<T>()` bytes of memory, converting undefined data into
+/// Freezes `count * size_of::<T>()` bytes of memory, converting uninitialized data into
 /// arbitrary but fixed data.
 ///
-/// Uninitialized memory has undefined contents, and interation with that data
-/// can easily cause undefined behavior. This function "freezes" memory
-/// contents, converting uninitialized memory to initialized memory with
-/// arbitrary contents so that use of it is well defined.
+/// Uninitialized memory has undefined contents, and interation with those contents
+/// can easily cause undefined behavior. Freezing the memory avoids those issues by
+/// converting the memory to an initialized state without actually needing to write to
+/// all of it. This function has no effect on memory which is already initialized.
 ///
-/// This function has no runtime effect; it is purely an instruction to the
-/// compiler. In particular, it does not actually write anything to the memory.
+/// While this function does not actually physically write to memory, it acts as if it
+/// does. For example, calling this method on data which is concurrently accessible
+/// elsewhere is undefined behavior just as it would be to `ptr::write`.
+///
+/// # Warning
+///
+/// Take care when using this function as the uninitialized memory being frozen can
+/// contain bits and pieces of previously discarded data, including sensitive
+/// information such as cryptographic keys.
 ///
 /// # Safety
 ///
@@ -993,6 +1000,14 @@ pub unsafe fn write_volatile<T>(dst: *mut T, src: T) {
 /// ```
 #[inline]
 #[unstable(feature = "ptr_freeze", issue = "0")]
+#[cfg(not(stage0))]
+pub unsafe fn freeze<T>(dst: *mut T, count: usize) {
+    intrinsics::freeze(dst, count)
+}
+///
+#[inline]
+#[unstable(feature = "ptr_freeze", issue = "0")]
+#[cfg(stage0)]
 pub unsafe fn freeze<T>(dst: *mut T, count: usize) {
     let _ = count;
     asm!("" : "=*m"(dst) : );

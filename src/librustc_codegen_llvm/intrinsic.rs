@@ -16,7 +16,8 @@ use rustc::ty::{self, Ty};
 use rustc::ty::layout::{self, LayoutOf, HasTyCtxt, Primitive};
 use rustc_codegen_ssa::common::{IntPredicate, TypeKind};
 use rustc::hir;
-use syntax::ast::{self, FloatTy};
+use std::ffi::CStr;
+use syntax::ast::{self, FloatTy, AsmDialect};
 use syntax::symbol::Symbol;
 use builder::Builder;
 use value::Value;
@@ -692,6 +693,23 @@ impl IntrinsicCallMethods<'tcx> for Builder<'a, 'll, 'tcx> {
             "nontemporal_store" => {
                 let dst = args[0].deref(self.cx());
                 args[1].val.nontemporal_store(self, dst);
+                return;
+            }
+
+            "freeze" => {
+                let dst = args[0].immediate();
+                let r = self.inline_asm_call(
+                    CStr::from_bytes_with_nul(b"\0").unwrap(),
+                    CStr::from_bytes_with_nul(b"r,~{memory}\0").unwrap(),
+                    &[dst],
+                    self.type_void(),
+                    true,
+                    false,
+                    AsmDialect::Att,
+                );
+                if r.is_none() {
+                    bug!("broken freeze ASM");
+                }
                 return;
             }
 

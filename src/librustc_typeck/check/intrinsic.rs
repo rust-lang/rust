@@ -379,6 +379,18 @@ pub fn check_intrinsic_type<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                 (1, vec![ tcx.mk_mut_ptr(param(0)), param(0) ], tcx.mk_unit())
             }
 
+            "freeze" => {
+                (1,
+                 vec![
+                     tcx.mk_ptr(ty::TypeAndMut {
+                         ty: param(0),
+                         mutbl: hir::MutMutable
+                     }),
+                     tcx.types.usize,
+                 ],
+                 tcx.mk_unit())
+            }
+
             ref other => {
                 struct_span_err!(tcx.sess, it.span, E0093,
                                  "unrecognized intrinsic function: `{}`",
