@@ -9,7 +9,7 @@
 /// low-power state until one of a number of asynchronous events occurs.
 // Section 10.1 of ACLE says that the supported arches are: 8, 6K, 6-M
 // LLVM says "instruction requires: armv6k"
-#[cfg(any(target_feature = "v6k", target_arch = "aarch64"))]
+#[cfg(any(target_feature = "v6", target_arch = "aarch64"))]
 #[inline(always)]
 pub unsafe fn __wfi() {
     hint(HINT_WFI);
@@ -22,7 +22,7 @@ pub unsafe fn __wfi() {
 /// another processor.
 // Section 10.1 of ACLE says that the supported arches are: 8, 6K, 6-M
 // LLVM says "instruction requires: armv6k"
-#[cfg(any(target_feature = "v6k", target_arch = "aarch64"))]
+#[cfg(any(target_feature = "v6", target_arch = "aarch64"))]
 #[inline(always)]
 pub unsafe fn __wfe() {
     hint(HINT_WFE);
@@ -34,7 +34,7 @@ pub unsafe fn __wfe() {
 /// system. It is a NOP on a uniprocessor system.
 // Section 10.1 of ACLE says that the supported arches are: 8, 6K, 6-M, 7-M
 // LLVM says "instruction requires: armv6k"
-#[cfg(any(target_feature = "v6k", target_arch = "aarch64"))]
+#[cfg(any(target_feature = "v6", target_arch = "aarch64"))]
 #[inline(always)]
 pub unsafe fn __sev() {
     hint(HINT_SEV);
@@ -59,7 +59,7 @@ pub unsafe fn __sevl() {
 /// improve overall system performance.
 // Section 10.1 of ACLE says that the supported arches are: 8, 6K, 6-M
 // LLVM says "instruction requires: armv6k"
-#[cfg(any(target_feature = "v6k", target_arch = "aarch64"))]
+#[cfg(any(target_feature = "v6", target_arch = "aarch64"))]
 #[inline(always)]
 pub unsafe fn __yield() {
     hint(HINT_YIELD);
