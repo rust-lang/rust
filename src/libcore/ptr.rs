@@ -991,7 +991,7 @@ pub unsafe fn write_volatile<T>(dst: *mut T, src: T) {
 ///         // We're passing this buffer to an arbitrary reader and aren't
 ///         // guaranteed they won't read from it, so freeze to avoid UB.
 ///         let mut buf: [u8; 4] = mem::uninitialized();
-///         ptr::freeze(&mut buf, 1);
+///         ptr::freeze(buf.as_mut_ptr(), buf.len());
 ///         reader.read_exact(&mut buf)?;
 ///
 ///         Ok(u32::from_le_bytes(buf))
