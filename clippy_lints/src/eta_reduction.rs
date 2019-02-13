@@ -126,7 +126,7 @@ fn get_ufcs_type_name(
     self_arg: &Expr,
 ) -> std::option::Option<String> {
     let expected_type_of_self = &cx.tcx.fn_sig(method_def_id).inputs_and_output().skip_binder()[0].sty;
-    let actual_type_of_self = &cx.tables.node_id_to_type(self_arg.hir_id).sty;
+    let actual_type_of_self = &cx.tables.node_type(self_arg.hir_id).sty;
 
     if let Some(trait_id) = cx.tcx.trait_of_item(method_def_id) {
         //if the method expectes &self, ufcs requires explicit borrowing so closure can't be removed

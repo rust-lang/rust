@@ -2343,7 +2343,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for RefToMut {
             if let TyKind::Ptr(MutTy { mutbl: Mutability::MutMutable, .. }) = t.node;
             if let ExprKind::Cast(e, t) = &e.node;
             if let TyKind::Ptr(MutTy { mutbl: Mutability::MutImmutable, .. }) = t.node;
-            if let ty::Ref(..) = cx.tables.node_id_to_type(e.hir_id).sty;
+            if let ty::Ref(..) = cx.tables.node_type(e.hir_id).sty;
             then {
                 span_lint(
                     cx,
