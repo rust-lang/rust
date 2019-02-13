@@ -80,7 +80,7 @@ case ${TARGET} in
 
 esac
 
-if [ "$NORUN" != "1" ] && [ "$NOSTD" != 1 ]; then
+if [ "$NORUN" != "1" ] && [ "$NOSTD" != 1 ] && [ "$TARGET" != "wasm32-unknown-unknown" ]; then
     # Test examples
     (
         cd examples

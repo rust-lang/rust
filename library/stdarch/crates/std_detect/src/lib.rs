@@ -20,6 +20,8 @@
 )]
 #![cfg_attr(target_os = "linux", feature(linkage))]
 #![cfg_attr(all(target_os = "freebsd", target_arch = "aarch64"), feature(asm))]
+#![cfg_attr(stdsimd_strict, deny(warnings))]
+#![cfg_attr(test, allow(unused_imports))]
 #![no_std]
 
 #[macro_use]

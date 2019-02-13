@@ -30,9 +30,5 @@ std_detect = { version = "0.*", path = "../std_detect" }
 [target.wasm32-unknown-unknown.dev-dependencies]
 wasm-bindgen-test = "=0.2.19"
 
-[features]
-# Internal-usage only: denies all warnings.
-strict = []
-
 [package.metadata.docs.rs]
 rustdoc-args = [ "--cfg", "dox" ]
