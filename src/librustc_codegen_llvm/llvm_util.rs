@@ -100,6 +100,7 @@ const ARM_WHITELIST: &[(&str, Option<&str>)] = &[
     ("dsp", Some("arm_target_feature")),
     ("neon", Some("arm_target_feature")),
     ("v5te", Some("arm_target_feature")),
+    ("v6", Some("arm_target_feature")),
     ("v6k", Some("arm_target_feature")),
     ("v6t2", Some("arm_target_feature")),
     ("v7", Some("arm_target_feature")),
