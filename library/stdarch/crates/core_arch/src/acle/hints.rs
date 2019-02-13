@@ -114,7 +114,7 @@ pub unsafe fn __dbg(imm4: u32) {
 /// will increase execution time.
 #[inline(always)]
 pub unsafe fn __nop() {
-    hint(HINT_NOP);
+    asm!("NOP" : : : : "volatile")
 }
 
 extern "C" {
