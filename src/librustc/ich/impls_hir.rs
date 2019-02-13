@@ -989,8 +989,8 @@ impl<'a> ToStableHashKey<StableHashingContext<'a>> for hir::BodyId {
     fn to_stable_hash_key(&self,
                           hcx: &StableHashingContext<'a>)
                           -> (DefPathHash, hir::ItemLocalId) {
-        let hir::BodyId { node_id } = *self;
-        node_id.to_stable_hash_key(hcx)
+        let hir::BodyId { hir_id } = *self;
+        hir_id.to_stable_hash_key(hcx)
     }
 }
 

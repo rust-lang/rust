@@ -63,7 +63,7 @@ use crate::infer::outlives::env::RegionBoundPairs;
 use crate::infer::outlives::verify::VerifyBoundCx;
 use crate::infer::{self, GenericKind, InferCtxt, RegionObligation, SubregionOrigin, VerifyBound};
 use rustc_data_structures::fx::FxHashMap;
-use syntax::ast;
+use crate::hir;
 use crate::traits::ObligationCause;
 use crate::ty::outlives::Component;
 use crate::ty::{self, Region, Ty, TyCtxt, TypeFoldable};
@@ -76,7 +76,7 @@ impl<'cx, 'gcx, 'tcx> InferCtxt<'cx, 'gcx, 'tcx> {
     /// information).
     pub fn register_region_obligation(
         &self,
-        body_id: ast::NodeId,
+        body_id: hir::HirId,
         obligation: RegionObligation<'tcx>,
     ) {
         debug!(
@@ -110,7 +110,7 @@ impl<'cx, 'gcx, 'tcx> InferCtxt<'cx, 'gcx, 'tcx> {
     }
 
     /// Trait queries just want to pass back type obligations "as is"
-    pub fn take_registered_region_obligations(&self) -> Vec<(ast::NodeId, RegionObligation<'tcx>)> {
+    pub fn take_registered_region_obligations(&self) -> Vec<(hir::HirId, RegionObligation<'tcx>)> {
         ::std::mem::replace(&mut *self.region_obligations.borrow_mut(), vec![])
     }
 
@@ -149,7 +149,7 @@ impl<'cx, 'gcx, 'tcx> InferCtxt<'cx, 'gcx, 'tcx> {
     /// processed.
     pub fn process_registered_region_obligations(
         &self,
-        region_bound_pairs_map: &FxHashMap<ast::NodeId, RegionBoundPairs<'tcx>>,
+        region_bound_pairs_map: &FxHashMap<hir::HirId, RegionBoundPairs<'tcx>>,
         implicit_region_bound: Option<ty::Region<'tcx>>,
         param_env: ty::ParamEnv<'tcx>,
     ) {

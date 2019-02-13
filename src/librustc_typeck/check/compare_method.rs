@@ -84,10 +84,11 @@ fn compare_predicate_entailment<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     // `ObligationCause` (and the `FnCtxt`). This is what
     // `regionck_item` expects.
     let impl_m_node_id = tcx.hir().as_local_node_id(impl_m.def_id).unwrap();
+    let impl_m_hir_id = tcx.hir().node_to_hir_id(impl_m_node_id);
 
     let cause = ObligationCause {
         span: impl_m_span,
-        body_id: impl_m_node_id,
+        body_id: impl_m_hir_id,
         code: ObligationCauseCode::CompareImplMethodObligation {
             item_name: impl_m.ident.name,
             impl_item_def_id: impl_m.def_id,
@@ -205,7 +206,7 @@ fn compare_predicate_entailment<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     // Construct trait parameter environment and then shift it into the placeholder viewpoint.
     // The key step here is to update the caller_bounds's predicates to be
     // the new hybrid bounds we computed.
-    let normalize_cause = traits::ObligationCause::misc(impl_m_span, impl_m_node_id);
+    let normalize_cause = traits::ObligationCause::misc(impl_m_span, impl_m_hir_id);
     let param_env = ty::ParamEnv::new(
         tcx.intern_predicates(&hybrid_preds.predicates),
         Reveal::UserFacing,
@@ -262,7 +263,7 @@ fn compare_predicate_entailment<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         );
         let impl_sig =
             inh.normalize_associated_types_in(impl_m_span,
-                                              impl_m_node_id,
+                                              impl_m_hir_id,
                                               param_env,
                                               &impl_sig);
         let impl_fty = tcx.mk_fn_ptr(ty::Binder::bind(impl_sig));
@@ -275,7 +276,7 @@ fn compare_predicate_entailment<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
             trait_sig.subst(tcx, trait_to_skol_substs);
         let trait_sig =
             inh.normalize_associated_types_in(impl_m_span,
-                                              impl_m_node_id,
+                                              impl_m_hir_id,
                                               param_env,
                                               &trait_sig);
         let trait_fty = tcx.mk_fn_ptr(ty::Binder::bind(trait_sig));
@@ -347,8 +348,8 @@ fn compare_predicate_entailment<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
 
         // Finally, resolve all regions. This catches wily misuses of
         // lifetime parameters.
-        let fcx = FnCtxt::new(&inh, param_env, impl_m_node_id);
-        fcx.regionck_item(impl_m_node_id, impl_m_span, &[]);
+        let fcx = FnCtxt::new(&inh, param_env, impl_m_hir_id);
+        fcx.regionck_item(impl_m_hir_id, impl_m_span, &[]);
 
         Ok(())
     })
@@ -903,22 +904,23 @@ pub fn compare_const_impl<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         // Create a parameter environment that represents the implementation's
         // method.
         let impl_c_node_id = tcx.hir().as_local_node_id(impl_c.def_id).unwrap();
+        let impl_c_hir_id = tcx.hir().node_to_hir_id(impl_c_node_id);
 
         // Compute placeholder form of impl and trait const tys.
         let impl_ty = tcx.type_of(impl_c.def_id);
         let trait_ty = tcx.type_of(trait_c.def_id).subst(tcx, trait_to_impl_substs);
-        let mut cause = ObligationCause::misc(impl_c_span, impl_c_node_id);
+        let mut cause = ObligationCause::misc(impl_c_span, impl_c_hir_id);
 
         // There is no "body" here, so just pass dummy id.
         let impl_ty = inh.normalize_associated_types_in(impl_c_span,
-                                                        impl_c_node_id,
+                                                        impl_c_hir_id,
                                                         param_env,
                                                         &impl_ty);
 
         debug!("compare_const_impl: impl_ty={:?}", impl_ty);
 
         let trait_ty = inh.normalize_associated_types_in(impl_c_span,
-                                                         impl_c_node_id,
+                                                         impl_c_hir_id,
                                                          param_env,
                                                          &trait_ty);
 
@@ -973,7 +975,7 @@ pub fn compare_const_impl<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
             return;
         }
 
-        let fcx = FnCtxt::new(&inh, param_env, impl_c_node_id);
-        fcx.regionck_item(impl_c_node_id, impl_c_span, &[]);
+        let fcx = FnCtxt::new(&inh, param_env, impl_c_hir_id);
+        fcx.regionck_item(impl_c_hir_id, impl_c_span, &[]);
     });
 }
