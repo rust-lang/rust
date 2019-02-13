@@ -24,7 +24,7 @@ use rustc::hir::def::*;
 use rustc::hir::def::Namespace::*;
 use rustc::hir::def_id::{CRATE_DEF_INDEX, LOCAL_CRATE, DefId};
 use rustc::hir::{Freevar, FreevarMap, TraitCandidate, TraitMap, GlobMap};
-use rustc::ty;
+use rustc::ty::{self, DefIdTree};
 use rustc::util::nodemap::{NodeMap, NodeSet, FxHashMap, FxHashSet, DefIdMap};
 use rustc::{bug, span_bug};
 
@@ -92,6 +92,7 @@ enum ScopeSet {
 
 /// A free importable items suggested in case of resolution failure.
 struct ImportSuggestion {
+    did: Option<DefId>,
     path: Path,
 }
 
@@ -4391,7 +4392,8 @@ impl<'a> Resolver<'a> {
 
                 // collect results based on the filter function
                 if ident.name == lookup_ident.name && ns == namespace {
-                    if filter_fn(name_binding.def()) {
+                    let def = name_binding.def();
+                    if filter_fn(def) {
                         // create the path
                         let mut segms = path_segments.clone();
                         if lookup_ident.span.rust_2018() {
@@ -4415,7 +4417,12 @@ impl<'a> Resolver<'a> {
                         // declared as public (due to pruning, we don't explore
                         // outside crate private modules => no need to check this)
                         if !in_module_is_extern || name_binding.vis == ty::Visibility::Public {
-                            candidates.push(ImportSuggestion { path });
+                            let did = match def {
+                                Def::StructCtor(did, _) | Def::VariantCtor(did, _) =>
+                                    self.parent(did),
+                                _ => def.opt_def_id(),
+                            };
+                            candidates.push(ImportSuggestion { did, path });
                         }
                     }
                 }
@@ -4512,7 +4519,8 @@ impl<'a> Resolver<'a> {
                             span: name_binding.span,
                             segments: path_segments,
                         };
-                        result = Some((module, ImportSuggestion { path }));
+                        let did = module.def().and_then(|def| def.opt_def_id());
+                        result = Some((module, ImportSuggestion { did, path }));
                     } else {
                         // add the module to the lookup
                         if seen_modules.insert(module.def_id().unwrap()) {
