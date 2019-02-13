@@ -593,37 +593,11 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
         // Deprecated attributes apply in-crate and cross-crate.
         if let Some(id) = id {
             if let Some(depr_entry) = self.lookup_deprecation_entry(def_id) {
-                // If the deprecation is scheduled for a future Rust
-                // version, then we should display no warning message.
-                let deprecated_in_future_version = if let Some(sym) = depr_entry.attr.since {
-                    let since = sym.as_str();
-                    if !deprecation_in_effect(&since) {
-                        Some(since)
-                    } else {
-                        None
-                    }
-                } else {
-                    None
-                };
-
                 let parent_def_id = self.hir().local_def_id(self.hir().get_parent(id));
                 let skip = self.lookup_deprecation_entry(parent_def_id)
                                .map_or(false, |parent_depr| parent_depr.same_origin(&depr_entry));
 
-                if let Some(since) = deprecated_in_future_version {
-                    let path = self.item_path_str(def_id);
-                    let message = format!("use of item '{}' \
-                                           that will be deprecated in future version {}",
-                                          path,
-                                          since);
-
-                    lint_deprecated(def_id,
-                                    id,
-                                    depr_entry.attr.note,
-                                    None,
-                                    &message,
-                                    lint::builtin::DEPRECATED_IN_FUTURE);
-                } else if !skip {
+                if !skip {
                     let path = self.item_path_str(def_id);
                     let message = format!("use of deprecated item '{}'", path);
                     lint_deprecated(def_id,
