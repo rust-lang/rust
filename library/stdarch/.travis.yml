@@ -57,7 +57,7 @@ matrix:
     - name: "wasm32-unknown-unknown"
       env: TARGET=wasm32-unknown-unknown
     - name: "nvptx64-nvidia-cuda - cross compiled, build libcore only"
-      env: TARGET=x86_64-unknown-linux-gnu NORUN=1 NOSTD=1
+      env: TARGET=nvptx64-nvidia-cuda NORUN=1 NOSTD=1
     - name: "thumbv6m-none-eabi - build libcore only"
       env: TARGET=thumbv6m-none-eabi NORUN=1 NOSTD=1
       script: ci/run.sh
