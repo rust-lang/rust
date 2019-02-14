@@ -17,7 +17,7 @@ use rustc::ty::{
     Binder, Ty, TyCtxt,
 };
 use rustc_data_structures::sync::Lrc;
-use rustc_errors::{Applicability, CodeSuggestion, Substitution, SubstitutionPart};
+use rustc_errors::{Applicability, CodeSuggestion, Substitution, SubstitutionPart, SuggestionStyle};
 use std::borrow::Cow;
 use std::env;
 use std::mem;
@@ -745,7 +745,7 @@ where
                 .collect(),
         }],
         msg: help_msg,
-        show_code_when_inline: true,
+        style: SuggestionStyle::ShowCode,
         applicability: Applicability::Unspecified,
     };
     db.suggestions.push(sugg);
