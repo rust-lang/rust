@@ -1,5 +1,5 @@
 use crate::back::lto::{LtoModuleCodegen, SerializedModule, ThinModule};
-use crate::back::write::{CodegenContext, ModuleConfig};
+use crate::back::write::{CodegenContext, ModuleConfig, FatLTOInput};
 use crate::{CompiledModule, ModuleCodegen};
 
 use rustc::dep_graph::WorkProduct;
@@ -18,7 +18,8 @@ pub trait WriteBackendMethods: 'static + Sized + Clone {
     /// for further optimization.
     fn run_fat_lto(
         cgcx: &CodegenContext<Self>,
-        modules: Vec<ModuleCodegen<Self::Module>>,
+        modules: Vec<FatLTOInput<Self>>,
+        cached_modules: Vec<(SerializedModule<Self::ModuleBuffer>, WorkProduct)>,
         timeline: &mut Timeline,
     ) -> Result<LtoModuleCodegen<Self>, FatalError>;
     /// Performs thin LTO by performing necessary global analysis and returning two
@@ -51,9 +52,11 @@ pub trait WriteBackendMethods: 'static + Sized + Clone {
         timeline: &mut Timeline,
     ) -> Result<CompiledModule, FatalError>;
     fn prepare_thin(
-        cgcx: &CodegenContext<Self>,
         module: ModuleCodegen<Self::Module>
     ) -> (String, Self::ThinBuffer);
+    fn serialize_module(
+        module: ModuleCodegen<Self::Module>
+    ) -> (String, Self::ModuleBuffer);
     fn run_lto_pass_manager(
         cgcx: &CodegenContext<Self>,
         llmod: &ModuleCodegen<Self::Module>,

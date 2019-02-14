@@ -1,9 +1,7 @@
-//
-
 fn foo<
     'β, //~ ERROR non-ascii idents are not fully supported
     γ  //~ ERROR non-ascii idents are not fully supported
-       //~^ WARN type parameter `γ` should have a camel case name
+       //~^ WARN type parameter `γ` should have an upper camel case name
 >() {}
 
 struct X {

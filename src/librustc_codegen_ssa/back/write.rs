@@ -41,7 +41,7 @@ use std::sync::mpsc::{channel, Sender, Receiver};
 use std::time::Instant;
 use std::thread;
 
-const PRE_THIN_LTO_BC_EXT: &str = "pre-thin-lto.bc";
+const PRE_LTO_BC_EXT: &str = "pre-lto.bc";
 
 /// Module-specific configuration for `optimize_and_codegen`.
 pub struct ModuleConfig {
@@ -58,7 +58,7 @@ pub struct ModuleConfig {
     pub pgo_use: String,
 
     // Flags indicating which outputs to produce.
-    pub emit_pre_thin_lto_bc: bool,
+    pub emit_pre_lto_bc: bool,
     pub emit_no_opt_bc: bool,
     pub emit_bc: bool,
     pub emit_bc_compressed: bool,
@@ -96,7 +96,7 @@ impl ModuleConfig {
             pgo_use: String::new(),
 
             emit_no_opt_bc: false,
-            emit_pre_thin_lto_bc: false,
+            emit_pre_lto_bc: false,
             emit_bc: false,
             emit_bc_compressed: false,
             emit_lto_bc: false,
@@ -258,7 +258,7 @@ impl<B: WriteBackendMethods> CodegenContext<B> {
 
 fn generate_lto_work<B: ExtraBackendMethods>(
     cgcx: &CodegenContext<B>,
-    needs_fat_lto: Vec<ModuleCodegen<B::Module>>,
+    needs_fat_lto: Vec<FatLTOInput<B>>,
     needs_thin_lto: Vec<(String, B::ThinBuffer)>,
     import_only_modules: Vec<(SerializedModule<B::ModuleBuffer>, WorkProduct)>
 ) -> Vec<(WorkItem<B>, u64)> {
@@ -270,9 +270,13 @@ fn generate_lto_work<B: ExtraBackendMethods>(
 
     let (lto_modules, copy_jobs) = if !needs_fat_lto.is_empty() {
         assert!(needs_thin_lto.is_empty());
-        assert!(import_only_modules.is_empty());
-        let lto_module = B::run_fat_lto(cgcx, needs_fat_lto, &mut timeline)
-            .unwrap_or_else(|e| e.raise());
+        let lto_module = B::run_fat_lto(
+            cgcx,
+            needs_fat_lto,
+            import_only_modules,
+            &mut timeline,
+        )
+        .unwrap_or_else(|e| e.raise());
         (vec![lto_module], vec![])
     } else {
         assert!(needs_fat_lto.is_empty());
@@ -302,14 +306,14 @@ fn need_crate_bitcode_for_rlib(sess: &Session) -> bool {
     sess.opts.output_types.contains_key(&OutputType::Exe)
 }
 
-fn need_pre_thin_lto_bitcode_for_incr_comp(sess: &Session) -> bool {
+fn need_pre_lto_bitcode_for_incr_comp(sess: &Session) -> bool {
     if sess.opts.incremental.is_none() {
         return false
     }
 
     match sess.lto() {
-        Lto::Fat |
         Lto::No => false,
+        Lto::Fat |
         Lto::Thin |
         Lto::ThinLocal => true,
     }
@@ -375,7 +379,7 @@ pub fn start_async_codegen<B: ExtraBackendMethods>(
     // Save all versions of the bytecode if we're saving our temporaries.
     if sess.opts.cg.save_temps {
         modules_config.emit_no_opt_bc = true;
-        modules_config.emit_pre_thin_lto_bc = true;
+        modules_config.emit_pre_lto_bc = true;
         modules_config.emit_bc = true;
         modules_config.emit_lto_bc = true;
         metadata_config.emit_bc = true;
@@ -390,8 +394,8 @@ pub fn start_async_codegen<B: ExtraBackendMethods>(
         allocator_config.emit_bc_compressed = true;
     }
 
-    modules_config.emit_pre_thin_lto_bc =
-        need_pre_thin_lto_bitcode_for_incr_comp(sess);
+    modules_config.emit_pre_lto_bc =
+        need_pre_lto_bitcode_for_incr_comp(sess);
 
     modules_config.no_integrated_as = tcx.sess.opts.cg.no_integrated_as ||
         tcx.sess.target.target.options.no_integrated_as;
@@ -686,8 +690,16 @@ impl<B: WriteBackendMethods> WorkItem<B> {
 
 enum WorkItemResult<B: WriteBackendMethods> {
     Compiled(CompiledModule),
-    NeedsFatLTO(ModuleCodegen<B::Module>),
+    NeedsFatLTO(FatLTOInput<B>),
     NeedsThinLTO(String, B::ThinBuffer),
+}
+
+pub enum FatLTOInput<B: WriteBackendMethods> {
+    Serialized {
+        name: String,
+        buffer: B::ModuleBuffer,
+    },
+    InMemory(ModuleCodegen<B::Module>),
 }
 
 fn execute_work_item<B: ExtraBackendMethods>(
@@ -771,6 +783,15 @@ fn execute_optimize_work_item<B: ExtraBackendMethods>(
         }
     };
 
+    // If we're doing some form of incremental LTO then we need to be sure to
+    // save our module to disk first.
+    let bitcode = if cgcx.config(module.kind).emit_pre_lto_bc {
+        let filename = pre_lto_bitcode_filename(&module.name);
+        cgcx.incr_comp_session_dir.as_ref().map(|path| path.join(&filename))
+    } else {
+        None
+    };
+
     Ok(match lto_type {
         ComputedLtoType::No => {
             let module = unsafe {
@@ -779,10 +800,30 @@ fn execute_optimize_work_item<B: ExtraBackendMethods>(
             WorkItemResult::Compiled(module)
         }
         ComputedLtoType::Thin => {
-            let (name, thin_buffer) = B::prepare_thin(cgcx, module);
+            let (name, thin_buffer) = B::prepare_thin(module);
+            if let Some(path) = bitcode {
+                fs::write(&path, thin_buffer.data()).unwrap_or_else(|e| {
+                    panic!("Error writing pre-lto-bitcode file `{}`: {}",
+                           path.display(),
+                           e);
+                });
+            }
             WorkItemResult::NeedsThinLTO(name, thin_buffer)
         }
-        ComputedLtoType::Fat => WorkItemResult::NeedsFatLTO(module),
+        ComputedLtoType::Fat => {
+            match bitcode {
+                Some(path) => {
+                    let (name, buffer) = B::serialize_module(module);
+                    fs::write(&path, buffer.data()).unwrap_or_else(|e| {
+                        panic!("Error writing pre-lto-bitcode file `{}`: {}",
+                               path.display(),
+                               e);
+                    });
+                    WorkItemResult::NeedsFatLTO(FatLTOInput::Serialized { name, buffer })
+                }
+                None => WorkItemResult::NeedsFatLTO(FatLTOInput::InMemory(module)),
+            }
+        }
     })
 }
 
@@ -866,7 +907,7 @@ fn execute_lto_work_item<B: ExtraBackendMethods>(
 pub enum Message<B: WriteBackendMethods> {
     Token(io::Result<Acquired>),
     NeedsFatLTO {
-        result: ModuleCodegen<B::Module>,
+        result: FatLTOInput<B>,
         worker_id: usize,
     },
     NeedsThinLTO {
@@ -1877,7 +1918,7 @@ pub fn submit_pre_lto_module_to_llvm<B: ExtraBackendMethods>(
 }
 
 pub fn pre_lto_bitcode_filename(module_name: &str) -> String {
-    format!("{}.{}", module_name, PRE_THIN_LTO_BC_EXT)
+    format!("{}.{}", module_name, PRE_LTO_BC_EXT)
 }
 
 fn msvc_imps_needed(tcx: TyCtxt) -> bool {

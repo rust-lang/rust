@@ -7,7 +7,7 @@ use crate::build::scope::{CachedBlock, DropKind};
 use crate::build::ForGuard::{self, OutsideGuard, RefWithinGuard, ValWithinGuard};
 use crate::build::{BlockAnd, BlockAndExtension, Builder};
 use crate::build::{GuardFrame, GuardFrameLocal, LocalsForNode};
-use crate::hair::*;
+use crate::hair::{self, *};
 use rustc::mir::*;
 use rustc::ty::{self, CanonicalUserTypeAnnotation, Ty};
 use rustc::ty::layout::VariantIdx;
@@ -283,9 +283,11 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                     },
                     ..
                 },
-                user_ty: pat_ascription_ty,
-                variance: _,
-                user_ty_span,
+                ascription: hair::pattern::Ascription {
+                    user_ty: pat_ascription_ty,
+                    variance: _,
+                    user_ty_span,
+                },
             } => {
                 let place =
                     self.storage_live_binding(block, var, irrefutable_pat.span, OutsideGuard);
@@ -560,9 +562,11 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
             }
             PatternKind::AscribeUserType {
                 ref subpattern,
-                ref user_ty,
-                user_ty_span,
-                variance: _,
+                ascription: hair::pattern::Ascription {
+                    ref user_ty,
+                    user_ty_span,
+                    variance: _,
+                },
             } => {
                 // This corresponds to something like
                 //

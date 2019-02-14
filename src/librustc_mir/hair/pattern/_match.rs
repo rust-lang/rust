@@ -871,18 +871,24 @@ impl<'tcx> IntRange<'tcx> {
     }
 
     fn from_pat(tcx: TyCtxt<'_, 'tcx, 'tcx>,
-                pat: &Pattern<'tcx>)
+                mut pat: &Pattern<'tcx>)
                 -> Option<IntRange<'tcx>> {
-        Self::from_ctor(tcx, &match pat.kind {
-            box PatternKind::Constant { value } => ConstantValue(value),
-            box PatternKind::Range(PatternRange { lo, hi, ty, end }) => ConstantRange(
-                lo.to_bits(tcx, ty::ParamEnv::empty().and(ty)).unwrap(),
-                hi.to_bits(tcx, ty::ParamEnv::empty().and(ty)).unwrap(),
-                ty,
-                end,
-            ),
-            _ => return None,
-        })
+        let range = loop {
+            match pat.kind {
+                box PatternKind::Constant { value } => break ConstantValue(value),
+                box PatternKind::Range(PatternRange { lo, hi, ty, end }) => break ConstantRange(
+                    lo.to_bits(tcx, ty::ParamEnv::empty().and(ty)).unwrap(),
+                    hi.to_bits(tcx, ty::ParamEnv::empty().and(ty)).unwrap(),
+                    ty,
+                    end,
+                ),
+                box PatternKind::AscribeUserType { ref subpattern, .. } => {
+                    pat = subpattern;
+                },
+                _ => return None,
+            }
+        };
+        Self::from_ctor(tcx, &range)
     }
 
     // The return value of `signed_bias` should be XORed with an endpoint to encode/decode it.

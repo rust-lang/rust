@@ -17,7 +17,7 @@ MAINTAINERS = {
     'miri': '@oli-obk @RalfJung @eddyb',
     'clippy-driver': '@Manishearth @llogiq @mcarton @oli-obk',
     'rls': '@nrc @Xanewok',
-    'rustfmt': '@nrc',
+    'rustfmt': '@nrc @topecongiro',
     'book': '@carols10cents @steveklabnik',
     'nomicon': '@frewsxcv @Gankro',
     'reference': '@steveklabnik @Havvy @matthewjasper @alercah',

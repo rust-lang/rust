@@ -15,7 +15,7 @@ use rustc::mir::{
     ConstraintCategory, Local, Location, Mir,
 };
 use rustc::ty::{self, RegionVid, Ty, TyCtxt, TypeFoldable};
-use rustc::util::common;
+use rustc::util::common::{self, ErrorReported};
 use rustc_data_structures::bit_set::BitSet;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_data_structures::graph::scc::Sccs;
@@ -763,20 +763,26 @@ impl<'tcx> RegionInferenceContext<'tcx> {
 
             debug!("try_promote_type_test: ur={:?}", ur);
 
-            let non_local_ub = self.universal_region_relations.non_local_upper_bound(ur);
+            let non_local_ub = self.universal_region_relations.non_local_upper_bounds(&ur);
             debug!("try_promote_type_test: non_local_ub={:?}", non_local_ub);
 
-            assert!(self.universal_regions.is_universal_region(non_local_ub));
-            assert!(!self.universal_regions.is_local_free_region(non_local_ub));
+            // This is slightly too conservative. To show T: '1, given `'2: '1`
+            // and `'3: '1` we only need to prove that T: '2 *or* T: '3, but to
+            // avoid potential non-determinism we approximate this by requiring
+            // T: '1 and T: '2.
+            for &upper_bound in non_local_ub {
+                debug_assert!(self.universal_regions.is_universal_region(upper_bound));
+                debug_assert!(!self.universal_regions.is_local_free_region(upper_bound));
 
-            let requirement = ClosureOutlivesRequirement {
-                subject,
-                outlived_free_region: non_local_ub,
-                blame_span: locations.span(mir),
-                category: ConstraintCategory::Boring,
-            };
-            debug!("try_promote_type_test: pushing {:#?}", requirement);
-            propagated_outlives_requirements.push(requirement);
+                let requirement = ClosureOutlivesRequirement {
+                    subject,
+                    outlived_free_region: upper_bound,
+                    blame_span: locations.span(mir),
+                    category: ConstraintCategory::Boring,
+                };
+                debug!("try_promote_type_test: pushing {:#?}", requirement);
+                propagated_outlives_requirements.push(requirement);
+            }
         }
         true
     }
@@ -1157,63 +1163,109 @@ impl<'tcx> RegionInferenceContext<'tcx> {
                 .is_none()
         );
 
+        // Only check all of the relations for the main representative of each
+        // SCC, otherwise just check that we outlive said representative. This
+        // reduces the number of redundant relations propagated out of
+        // closures.
+        // Note that the representative will be a universal region if there is
+        // one in this SCC, so we will always check the representative here.
+        let representative = self.scc_representatives[longer_fr_scc];
+        if representative != longer_fr {
+            self.check_universal_region_relation(
+                longer_fr,
+                representative,
+                infcx,
+                mir,
+                mir_def_id,
+                propagated_outlives_requirements,
+                errors_buffer,
+            );
+            return;
+        }
+
         // Find every region `o` such that `fr: o`
         // (because `fr` includes `end(o)`).
         for shorter_fr in self.scc_values.universal_regions_outlived_by(longer_fr_scc) {
-            // If it is known that `fr: o`, carry on.
-            if self.universal_region_relations
-                .outlives(longer_fr, shorter_fr)
-            {
-                continue;
+            if let Some(ErrorReported) = self.check_universal_region_relation(
+                longer_fr,
+                shorter_fr,
+                infcx,
+                mir,
+                mir_def_id,
+                propagated_outlives_requirements,
+                errors_buffer,
+            ) {
+                // continuing to iterate just reports more errors than necessary
+                return;
             }
+        }
+    }
 
-            debug!(
-                "check_universal_region: fr={:?} does not outlive shorter_fr={:?}",
-                longer_fr, shorter_fr,
-            );
+    fn check_universal_region_relation(
+        &self,
+        longer_fr: RegionVid,
+        shorter_fr: RegionVid,
+        infcx: &InferCtxt<'_, 'gcx, 'tcx>,
+        mir: &Mir<'tcx>,
+        mir_def_id: DefId,
+        propagated_outlives_requirements: &mut Option<&mut Vec<ClosureOutlivesRequirement<'gcx>>>,
+        errors_buffer: &mut Vec<Diagnostic>,
+    ) -> Option<ErrorReported> {
+        // If it is known that `fr: o`, carry on.
+        if self.universal_region_relations
+            .outlives(longer_fr, shorter_fr)
+        {
+            return None;
+        }
 
-            let blame_span_category = self.find_outlives_blame_span(mir, longer_fr, shorter_fr);
+        debug!(
+            "check_universal_region_relation: fr={:?} does not outlive shorter_fr={:?}",
+            longer_fr, shorter_fr,
+        );
 
-            if let Some(propagated_outlives_requirements) = propagated_outlives_requirements {
-                // Shrink `fr` until we find a non-local region (if we do).
-                // We'll call that `fr-` -- it's ever so slightly smaller than `fr`.
-                if let Some(fr_minus) = self.universal_region_relations
-                    .non_local_lower_bound(longer_fr)
-                {
-                    debug!("check_universal_region: fr_minus={:?}", fr_minus);
+        if let Some(propagated_outlives_requirements) = propagated_outlives_requirements {
+            // Shrink `longer_fr` until we find a non-local region (if we do).
+            // We'll call it `fr-` -- it's ever so slightly smaller than
+            // `longer_fr`.
 
-                    // Grow `shorter_fr` until we find a non-local
-                    // region. (We always will.)  We'll call that
-                    // `shorter_fr+` -- it's ever so slightly larger than
-                    // `fr`.
-                    let shorter_fr_plus = self.universal_region_relations
-                        .non_local_upper_bound(shorter_fr);
-                    debug!(
-                        "check_universal_region: shorter_fr_plus={:?}",
-                        shorter_fr_plus
-                    );
+            if let Some(fr_minus) = self
+                .universal_region_relations
+                .non_local_lower_bound(longer_fr)
+            {
+                debug!("check_universal_region: fr_minus={:?}", fr_minus);
 
+                let blame_span_category = self.find_outlives_blame_span(mir, longer_fr, shorter_fr);
+
+                // Grow `shorter_fr` until we find some non-local regions. (We
+                // always will.)  We'll call them `shorter_fr+` -- they're ever
+                // so slightly larger than `shorter_fr`.
+                let shorter_fr_plus = self.universal_region_relations
+                    .non_local_upper_bounds(&shorter_fr);
+                debug!(
+                    "check_universal_region: shorter_fr_plus={:?}",
+                    shorter_fr_plus
+                );
+                for &&fr in &shorter_fr_plus {
                     // Push the constraint `fr-: shorter_fr+`
                     propagated_outlives_requirements.push(ClosureOutlivesRequirement {
                         subject: ClosureOutlivesSubject::Region(fr_minus),
-                        outlived_free_region: shorter_fr_plus,
+                        outlived_free_region: fr,
                         blame_span: blame_span_category.1,
                         category: blame_span_category.0,
                     });
-                    continue;
                 }
+                return None;
             }
-
-            // If we are not in a context where we can propagate
-            // errors, or we could not shrink `fr` to something
-            // smaller, then just report an error.
-            //
-            // Note: in this case, we use the unapproximated regions
-            // to report the error. This gives better error messages
-            // in some cases.
-            self.report_error(mir, infcx, mir_def_id, longer_fr, shorter_fr, errors_buffer);
-            return; // continuing to iterate just reports more errors than necessary
         }
+
+        // If we are not in a context where we can't propagate errors, or we
+        // could not shrink `fr` to something smaller, then just report an
+        // error.
+        //
+        // Note: in this case, we use the unapproximated regions to report the
+        // error. This gives better error messages in some cases.
+        self.report_error(mir, infcx, mir_def_id, longer_fr, shorter_fr, errors_buffer);
+        Some(ErrorReported)
     }
 
     fn check_bound_universal_region<'gcx>(

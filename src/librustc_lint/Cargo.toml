@@ -8,7 +8,6 @@ edition = "2018"
 name = "rustc_lint"
 path = "lib.rs"
 crate-type = ["dylib"]
-test = false
 
 [dependencies]
 log = "0.4"
