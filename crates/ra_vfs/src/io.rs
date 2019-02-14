@@ -1,13 +1,11 @@
 use std::{
     fs,
-    thread,
     path::{Path, PathBuf},
     sync::{mpsc, Arc},
     time::Duration,
 };
-use crossbeam_channel::{Receiver, Sender, unbounded, RecvError, select};
+use crossbeam_channel::{Sender, unbounded, RecvError, select};
 use relative_path::RelativePathBuf;
-use thread_worker::WorkerHandle;
 use walkdir::WalkDir;
 use notify::{DebouncedEvent, RecommendedWatcher, RecursiveMode, Watcher as _Watcher};
 
@@ -48,37 +46,42 @@ enum ChangeKind {
 
 const WATCHER_DELAY: Duration = Duration::from_millis(250);
 
-pub(crate) struct Worker {
-    worker: thread_worker::Worker<Task, TaskResult>,
-    worker_handle: WorkerHandle,
-}
+pub(crate) type Worker = thread_worker::Worker<Task, TaskResult>;
+pub(crate) fn start(roots: Arc<Roots>) -> Worker {
+    // This is a pretty elaborate setup of threads & channels! It is
+    // explained by the following concerns:
+    //    * we need to burn a thread translating from notify's mpsc to
+    //      crossbeam_channel.
+    //    * we want to read all files from a single thread, to guarantee that
+    //      we always get fresher versions and never go back in time.
+    //    * we want to tear down everything neatly during shutdown.
+    Worker::spawn(
+        "vfs",
+        128,
+        // This are the channels we use to communicate with outside world.
+        // If `input_receiver` is closed we need to tear ourselves down.
+        // `output_sender` should not be closed unless the parent died.
+        move |input_receiver, output_sender| {
+            // Make sure that the destruction order is
+            //
+            // * notify_sender
+            // * _thread
+            // * watcher_sender
+            //
+            // this is required to avoid deadlocks.
 
-impl Worker {
-    pub(crate) fn start(roots: Arc<Roots>) -> Worker {
-        // This is a pretty elaborate setup of threads & channels! It is
-        // explained by the following concerns:
-        //    * we need to burn a thread translating from notify's mpsc to
-        //      crossbeam_channel.
-        //    * we want to read all files from a single thread, to guarantee that
-        //      we always get fresher versions and never go back in time.
-        //    * we want to tear down everything neatly during shutdown.
-        let (worker, worker_handle) = thread_worker::spawn(
-            "vfs",
-            128,
-            // This are the channels we use to communicate with outside world.
-            // If `input_receiver` is closed we need to tear ourselves down.
-            // `output_sender` should not be closed unless the parent died.
-            move |input_receiver, output_sender| {
+            // These are the corresponding crossbeam channels
+            let (watcher_sender, watcher_receiver) = unbounded();
+            let _thread;
+            {
                 // These are `std` channels notify will send events to
                 let (notify_sender, notify_receiver) = mpsc::channel();
-                // These are the corresponding crossbeam channels
-                let (watcher_sender, watcher_receiver) = unbounded();
 
                 let mut watcher = notify::watcher(notify_sender, WATCHER_DELAY)
                     .map_err(|e| log::error!("failed to spawn notify {}", e))
                     .ok();
                 // Start a silly thread to transform between two channels
-                let thread = thread::spawn(move || {
+                _thread = thread_worker::ScopedThread::spawn("notify-convertor", move || {
                     notify_receiver
                         .into_iter()
                         .for_each(|event| convert_notify_event(event, &watcher_sender))
@@ -110,35 +113,11 @@ impl Worker {
                         },
                     }
                 }
-                // Stopped the watcher
-                drop(watcher.take());
-                // Drain pending events: we are not interested in them anyways!
-                watcher_receiver.into_iter().for_each(|_| ());
-
-                let res = thread.join();
-                match &res {
-                    Ok(()) => log::info!("... Watcher terminated with ok"),
-                    Err(_) => log::error!("... Watcher terminated with err"),
-                }
-                res.unwrap();
-            },
-        );
-
-        Worker { worker, worker_handle }
-    }
-
-    pub(crate) fn sender(&self) -> &Sender<Task> {
-        &self.worker.inp
-    }
-
-    pub(crate) fn receiver(&self) -> &Receiver<TaskResult> {
-        &self.worker.out
-    }
-
-    pub(crate) fn shutdown(self) -> thread::Result<()> {
-        let _ = self.worker.shutdown();
-        self.worker_handle.shutdown()
-    }
+            }
+            // Drain pending events: we are not interested in them anyways!
+            watcher_receiver.into_iter().for_each(|_| ());
+        },
+    )
 }
 
 fn watch_root(

@@ -158,6 +158,5 @@ fn test_vfs_works() -> std::io::Result<()> {
         Err(RecvTimeoutError::Timeout)
     );
 
-    vfs.shutdown().unwrap();
     Ok(())
 }

@@ -22,7 +22,6 @@ use std::{
     fmt, fs, mem,
     path::{Path, PathBuf},
     sync::Arc,
-    thread,
 };
 
 use crossbeam_channel::Receiver;
@@ -160,7 +159,7 @@ impl fmt::Debug for Vfs {
 impl Vfs {
     pub fn new(roots: Vec<PathBuf>) -> (Vfs, Vec<VfsRoot>) {
         let roots = Arc::new(Roots::new(roots));
-        let worker = io::Worker::start(Arc::clone(&roots));
+        let worker = io::start(Arc::clone(&roots));
         let mut root2files = ArenaMap::default();
 
         for (root, config) in roots.iter() {
@@ -335,11 +334,6 @@ impl Vfs {
 
     pub fn commit_changes(&mut self) -> Vec<VfsChange> {
         mem::replace(&mut self.pending_changes, Vec::new())
-    }
-
-    /// Shutdown the VFS and terminate the background watching thread.
-    pub fn shutdown(self) -> thread::Result<()> {
-        self.worker.shutdown()
     }
 
     fn add_file(
