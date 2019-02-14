@@ -7,10 +7,10 @@ use std::io::{self, Write, BufRead};
 use std::process::Command;
 use std::fs::{self, File};
 
-const CARGO_MIRI_HELP: &str = r#"Interprets bin crates
+const CARGO_MIRI_HELP: &str = r#"Interprets bin crates and tests in Miri
 
 Usage:
-    cargo miri [subcommand] [options] [--] [<opts>...]
+    cargo miri [subcommand] [options] [--] [<miri opts>...] [--] [<program opts>...]
 
 Subcommands:
     run                      Run binaries (default)
@@ -22,12 +22,14 @@ Common options:
     --features               Features to compile for the package
     -V, --version            Print version info and exit
 
-Other options are the same as `cargo rustc`.
+Other [options] are the same as `cargo rustc`.  Everything after the first "--" is
+passed verbatim to Miri, which will pass everything after the second "--" verbatim
+to the interpreted program.
 
-The feature `cargo-miri` is automatically defined for convenience. You can use
+The config flag `miri` is automatically defined for convenience. You can use
 it to configure the resource limits
 
-    #![cfg_attr(feature = "cargo-miri", memory_size = 42)]
+    #![cfg_attr(miri, memory_size = 42)]
 
 available resource limits are `memory_size`, `step_limit`, `stack_limit`
 "#;
@@ -53,23 +55,32 @@ fn show_error(msg: String) -> ! {
     std::process::exit(1)
 }
 
+// Determines whether a --flag is present
+fn has_arg_flag(name: &str) -> bool {
+    let mut args = std::env::args().take_while(|val| val != "--");
+    args.any(|val| val == name)
+}
+
+/// Gets the value of a --flag
 fn get_arg_flag_value(name: &str) -> Option<String> {
     // stop searching at `--`
-    let mut args = std::env::args().skip_while(|val| !(val.starts_with(name) || val == "--"));
-
-    match args.next() {
-        Some(ref p) if p == "--" => None,
-        Some(ref p) if p == name => args.next(),
-        Some(p) => {
-            // Make sure this really starts with `$name=`, we didn't test for the `=` yet.
-            let v = &p[name.len()..]; // strip leading `$name`
-            if v.starts_with('=') {
-                Some(v[1..].to_owned()) // strip leading `=`
-            } else {
-                None
-            }
-        },
-        None => None,
+    let mut args = std::env::args().take_while(|val| val != "--");
+    loop {
+        let arg = match args.next() {
+            Some(arg) => arg,
+            None => return None,
+        };
+        if !arg.starts_with(name) {
+            continue;
+        }
+        let suffix = &arg[name.len()..]; // strip leading `name`
+        if suffix.is_empty() {
+            // This argument is exactly `name`, the next one is the value
+            return args.next();
+        } else if suffix.starts_with('=') {
+            // This argument is `name=value`, get the value
+            return Some(suffix[1..].to_owned()); // strip leading `=`
+        }
     }
 }
 
@@ -182,18 +193,21 @@ fn setup(ask_user: bool) {
         }
     }
 
-    // Then, we also need rust-src.  Let's see if it is already installed.
-    let sysroot = Command::new("rustc").args(&["--print", "sysroot"]).output().unwrap().stdout;
-    let sysroot = std::str::from_utf8(&sysroot[..]).unwrap();
-    let src = Path::new(sysroot.trim_end_matches('\n')).join("lib").join("rustlib").join("src");
-    if !src.exists() {
-        if ask_user {
-            ask("It seems you do not have the rust-src component installed. I will run `rustup component add rust-src`. Proceed?");
-        } else {
-            println!("Installing rust-src component: `rustup component add rust-src`");
-        }
-        if !Command::new("rustup").args(&["component", "add", "rust-src"]).status().unwrap().success() {
-            show_error(format!("Failed to install rust-src component"));
+    // Then, unless XARGO_RUST_SRC is set, we also need rust-src.
+    // Let's see if it is already installed.
+    if std::env::var("XARGO_RUST_SRC").is_err() {
+        let sysroot = Command::new("rustc").args(&["--print", "sysroot"]).output().unwrap().stdout;
+        let sysroot = std::str::from_utf8(&sysroot[..]).unwrap();
+        let src = Path::new(sysroot.trim_end_matches('\n')).join("lib").join("rustlib").join("src");
+        if !src.exists() {
+            if ask_user {
+                ask("It seems you do not have the rust-src component installed. I will run `rustup component add rust-src`. Proceed?");
+            } else {
+                println!("Installing rust-src component: `rustup component add rust-src`");
+            }
+            if !Command::new("rustup").args(&["component", "add", "rust-src"]).status().unwrap().success() {
+                show_error(format!("Failed to install rust-src component"));
+            }
         }
     }
 
@@ -272,167 +286,177 @@ fn main() {
         // each applicable target, but with the RUSTC env var set to the `cargo-miri`
         // binary so that we come back in the other branch, and dispatch
         // the invocations to rustc and miri, respectively.
-
-        let (subcommand, skip) = match std::env::args().nth(2).deref() {
-            Some("test") => (MiriCommand::Test, 3),
-            Some("run") => (MiriCommand::Run, 3),
-            Some("setup") => (MiriCommand::Setup, 3),
-            // Default command, if there is an option or nothing
-            Some(s) if s.starts_with("-") => (MiriCommand::Run, 2),
-            None => (MiriCommand::Run, 2),
-            // Unvalid command
-            Some(s) => {
-                show_error(format!("Unknown command `{}`", s))
-            }
-        };
-
-        // We always setup
-        let ask = subcommand != MiriCommand::Setup;
-        setup(ask);
-        if subcommand == MiriCommand::Setup {
-            // Stop here.
-            return;
-        }
-
-        // Now run the command.
-        for target in list_targets() {
-            let args = std::env::args().skip(skip);
-            let kind = target.kind.get(0).expect(
-                "badly formatted cargo metadata: target::kind is an empty array",
-            );
-            match (subcommand, &kind[..]) {
-                (MiriCommand::Test, "test") => {
-                    // For test binaries we call `cargo rustc --test target -- <rustc args>`
-                    if let Err(code) = process(
-                        vec!["--test".to_string(), target.name].into_iter().chain(
-                            args,
-                        ),
-                    )
-                    {
-                        std::process::exit(code);
-                    }
-                }
-                (MiriCommand::Test, "lib") => {
-                    // For libraries we call `cargo rustc -- --test <rustc args>`
-                    // Notice now that `--test` is a rustc arg rather than a cargo arg. This tells
-                    // rustc to build a test harness which calls all #[test] functions.
-                    // We then execute that harness just like any other binary.
-                    if let Err(code) = process(
-                        vec!["--".to_string(), "--test".to_string()].into_iter().chain(
-                            args,
-                        ),
-                    )
-                    {
-                        std::process::exit(code);
-                    }
-                }
-                (MiriCommand::Run, "bin") => {
-                    // For ordinary binaries we call `cargo rustc --bin target -- <rustc args>`
-                    if let Err(code) = process(
-                        vec!["--bin".to_string(), target.name].into_iter().chain(
-                            args,
-                        ),
-                    )
-                    {
-                        std::process::exit(code);
-                    }
-                }
-                _ => {}
-            }
-        }
+        in_cargo_miri();
     } else if let Some("rustc") = std::env::args().nth(1).as_ref().map(AsRef::as_ref) {
         // This arm is executed when cargo-miri runs `cargo rustc` with the `RUSTC_WRAPPER` env var set to itself:
         // Dependencies get dispatched to rustc, the final test/binary to miri.
-
-        let home = option_env!("RUSTUP_HOME").or(option_env!("MULTIRUST_HOME"));
-        let toolchain = option_env!("RUSTUP_TOOLCHAIN").or(option_env!("MULTIRUST_TOOLCHAIN"));
-        let sys_root = if let Ok(sysroot) = ::std::env::var("MIRI_SYSROOT") {
-            sysroot
-        } else if let (Some(home), Some(toolchain)) = (home, toolchain) {
-            format!("{}/toolchains/{}", home, toolchain)
-        } else {
-            option_env!("RUST_SYSROOT")
-                .map(|s| s.to_owned())
-                .or_else(|| {
-                    Command::new("rustc")
-                        .arg("--print")
-                        .arg("sysroot")
-                        .output()
-                        .ok()
-                        .and_then(|out| String::from_utf8(out.stdout).ok())
-                        .map(|s| s.trim().to_owned())
-                })
-                .expect("need to specify RUST_SYSROOT env var during miri compilation, or use rustup or multirust")
-        };
-
-        // this conditional check for the --sysroot flag is there so users can call `cargo-miri` directly
-        // without having to pass --sysroot or anything
-        let rustc_args = std::env::args().skip(2);
-        let mut args: Vec<String> = if std::env::args().any(|s| s == "--sysroot") {
-            rustc_args.collect()
-        } else {
-            rustc_args
-                .chain(Some("--sysroot".to_owned()))
-                .chain(Some(sys_root))
-                .collect()
-        };
-        args.splice(0..0, miri::miri_default_args().iter().map(ToString::to_string));
-        args.extend_from_slice(&["--cfg".to_owned(), r#"feature="cargo-miri""#.to_owned()]);
-
-        // this check ensures that dependencies are built but not interpreted and the final crate is
-        // interpreted but not built
-        let miri_enabled = std::env::args().any(|s| s == "--emit=dep-info,metadata");
-        let mut command = if miri_enabled {
-            let mut path = std::env::current_exe().expect("current executable path invalid");
-            path.set_file_name("miri");
-            Command::new(path)
-        } else {
-            Command::new("rustc")
-        };
-        command.args(&args);
-
-        match command.status() {
-            Ok(exit) => {
-                if !exit.success() {
-                    std::process::exit(exit.code().unwrap_or(42));
-                }
-            }
-            Err(ref e) if miri_enabled => panic!("error during miri run: {:?}", e),
-            Err(ref e) => panic!("error during rustc call: {:?}", e),
-        }
+        inside_cargo_rustc();
     } else {
         show_error(format!("Must be called with either `miri` or `rustc` as first argument."))
     }
 }
 
-fn process<I>(old_args: I) -> Result<(), i32>
-where
-    I: Iterator<Item = String>,
-{
-    let mut args = vec!["rustc".to_owned()];
+fn in_cargo_miri() {
+    let (subcommand, skip) = match std::env::args().nth(2).deref() {
+        Some("test") => (MiriCommand::Test, 3),
+        Some("run") => (MiriCommand::Run, 3),
+        Some("setup") => (MiriCommand::Setup, 3),
+        // Default command, if there is an option or nothing
+        Some(s) if s.starts_with("-") => (MiriCommand::Run, 2),
+        None => (MiriCommand::Run, 2),
+        // Unvalid command
+        Some(s) => {
+            show_error(format!("Unknown command `{}`", s))
+        }
+    };
+    let verbose = has_arg_flag("-v");
 
-    let mut found_dashes = false;
-    for arg in old_args {
-        found_dashes |= arg == "--";
-        args.push(arg);
+    // We always setup
+    let ask = subcommand != MiriCommand::Setup;
+    setup(ask);
+    if subcommand == MiriCommand::Setup {
+        // Stop here.
+        return;
     }
-    if !found_dashes {
-        args.push("--".to_owned());
+
+    // Now run the command.
+    for target in list_targets() {
+        let mut args = std::env::args().skip(skip);
+        let kind = target.kind.get(0).expect(
+            "badly formatted cargo metadata: target::kind is an empty array",
+        );
+        // Now we run `cargo rustc $FLAGS $ARGS`, giving the user the
+        // change to add additional flags.  "FLAGS" is set to identify
+        // this target.  The user gets to control what gets actually passed to Miri.
+        // However, we need to add a flag to what gets passed to rustc for the finaly
+        // binary, so that we know to interpret that with Miri.
+        // So after the first "--", we add "-Zcargo-miri-marker".
+        let mut cmd = Command::new("cargo");
+        cmd.arg("rustc");
+        match (subcommand, &kind[..]) {
+            (MiriCommand::Run, "bin") => {
+                // FIXME: We just run all the binaries here.
+                // We should instead support `cargo miri --bin foo`.
+                cmd.arg("--bin").arg(target.name);
+            }
+            (MiriCommand::Test, "test") => {
+                cmd.arg("--test").arg(target.name);
+            }
+            (MiriCommand::Test, "lib") => {
+                // There can be only one lib
+                cmd.arg("--lib").arg("--profile").arg("test");
+            }
+            (MiriCommand::Test, "bin") => {
+                cmd.arg("--bin").arg(target.name).arg("--profile").arg("test");
+            }
+            // The remaining targets we do not even want to build
+            _ => continue,
+        }
+        // add user-defined args until first "--"
+        while let Some(arg) = args.next() {
+            if arg == "--" {
+                break;
+            }
+            cmd.arg(arg);
+        }
+        // Add "--" (to end the cargo flags), and then the user flags.  We add markers around the user flags
+        // to be able to identify them later.
+        cmd
+            .arg("--")
+            .arg("cargo-miri-marker-begin")
+            .args(args)
+            .arg("cargo-miri-marker-end");
+        let path = std::env::current_exe().expect("current executable path invalid");
+        cmd.env("RUSTC_WRAPPER", path);
+        if verbose {
+            eprintln!("+ {:?}", cmd);
+        }
+
+        let exit_status = cmd
+            .spawn()
+            .expect("could not run cargo")
+            .wait()
+            .expect("failed to wait for cargo?");
+
+        if !exit_status.success() {
+            std::process::exit(exit_status.code().unwrap_or(-1))
+        }
     }
-    args.push("--emit=dep-info,metadata".to_owned());
+}
 
-    let path = std::env::current_exe().expect("current executable path invalid");
-    let exit_status = Command::new("cargo")
-        .args(&args)
-        .env("RUSTC_WRAPPER", path)
-        .spawn()
-        .expect("could not run cargo")
-        .wait()
-        .expect("failed to wait for cargo?");
-
-    if exit_status.success() {
-        Ok(())
+fn inside_cargo_rustc() {
+    let home = option_env!("RUSTUP_HOME").or(option_env!("MULTIRUST_HOME"));
+    let toolchain = option_env!("RUSTUP_TOOLCHAIN").or(option_env!("MULTIRUST_TOOLCHAIN"));
+    let sys_root = if let Ok(sysroot) = ::std::env::var("MIRI_SYSROOT") {
+        sysroot
+    } else if let (Some(home), Some(toolchain)) = (home, toolchain) {
+        format!("{}/toolchains/{}", home, toolchain)
     } else {
-        Err(exit_status.code().unwrap_or(-1))
+        option_env!("RUST_SYSROOT")
+            .map(|s| s.to_owned())
+            .or_else(|| {
+                Command::new("rustc")
+                    .arg("--print")
+                    .arg("sysroot")
+                    .output()
+                    .ok()
+                    .and_then(|out| String::from_utf8(out.stdout).ok())
+                    .map(|s| s.trim().to_owned())
+            })
+            .expect("need to specify RUST_SYSROOT env var during miri compilation, or use rustup or multirust")
+    };
+
+    // this conditional check for the --sysroot flag is there so users can call `cargo-miri` directly
+    // without having to pass --sysroot or anything
+    let rustc_args = std::env::args().skip(2);
+    let mut args: Vec<String> = if std::env::args().any(|s| s == "--sysroot") {
+        rustc_args.collect()
+    } else {
+        rustc_args
+            .chain(Some("--sysroot".to_owned()))
+            .chain(Some(sys_root))
+            .collect()
+    };
+    args.splice(0..0, miri::miri_default_args().iter().map(ToString::to_string));
+
+    // See if we can find the cargo-miri markers.  Those only get added to the binary we want to
+    // run.  They also serve to mark the user-defined arguments, which we have to move all the way to the
+    // end (they get added somewhere in the middle).
+    let needs_miri = if let Some(begin) = args.iter().position(|arg| arg == "cargo-miri-marker-begin") {
+        let end = args.iter().position(|arg| arg == "cargo-miri-marker-end").expect("Cannot find end marker");
+        // These mark the user arguments.  We remove the first and last as they are the markers.
+        let mut user_args = args.drain(begin..=end);
+        assert_eq!(user_args.next().unwrap(), "cargo-miri-marker-begin");
+        assert_eq!(user_args.next_back().unwrap(), "cargo-miri-marker-end");
+        // Collect the rest and add it back at the end
+        let mut user_args = user_args.collect::<Vec<String>>();
+        args.append(&mut user_args);
+        // Run this in Miri
+        true
+    } else {
+        false
+    };
+
+
+    let mut command = if needs_miri {
+        let mut path = std::env::current_exe().expect("current executable path invalid");
+        path.set_file_name("miri");
+        Command::new(path)
+    } else {
+        Command::new("rustc")
+    };
+    command.args(&args);
+    if has_arg_flag("-v") {
+        eprintln!("+ {:?}", command);
+    }
+
+    match command.status() {
+        Ok(exit) => {
+            if !exit.success() {
+                std::process::exit(exit.code().unwrap_or(42));
+            }
+        }
+        Err(ref e) if needs_miri => panic!("error during miri run: {:?}", e),
+        Err(ref e) => panic!("error during rustc call: {:?}", e),
     }
 }

@@ -39,6 +39,7 @@ directories = { version = "1.0", optional = true }
 rustc_version = { version = "0.2.3", optional = true }
 env_logger = "0.6"
 log = "0.4"
+shell-escape = "0.1.4"
 # A noop dependency that changes in the Rust repository, it's a bit of a hack.
 # See the `src/tools/rustc-workspace-hack/README.md` file in `rust-lang/rust`
 # for more information.
@@ -55,3 +56,6 @@ rustc_tests = []
 [dev-dependencies]
 compiletest_rs = { version = "0.3.17", features = ["tmp"] }
 colored = "1.6"
+
+[profile.release]
+debug = true

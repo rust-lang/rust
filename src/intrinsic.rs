@@ -108,6 +108,11 @@ pub trait EvalContextExt<'a, 'mir, 'tcx: 'a+'mir>: crate::MiriEvalContextExt<'a,
             "atomic_and_rel" |
             "atomic_and_acqrel" |
             "atomic_and_relaxed" |
+            "atomic_nand" |
+            "atomic_nand_acq" |
+            "atomic_nand_rel" |
+            "atomic_nand_acqrel" |
+            "atomic_nand_relaxed" |
             "atomic_xadd" |
             "atomic_xadd_acq" |
             "atomic_xadd_rel" |
@@ -125,16 +130,23 @@ pub trait EvalContextExt<'a, 'mir, 'tcx: 'a+'mir>: crate::MiriEvalContextExt<'a,
                 let rhs = this.read_immediate(args[1])?;
                 let old = this.read_immediate(ptr.into())?;
                 this.write_immediate(*old, dest)?; // old value is returned
-                let op = match intrinsic_name.split('_').nth(1).unwrap() {
-                    "or" => mir::BinOp::BitOr,
-                    "xor" => mir::BinOp::BitXor,
-                    "and" => mir::BinOp::BitAnd,
-                    "xadd" => mir::BinOp::Add,
-                    "xsub" => mir::BinOp::Sub,
+                let (op, neg) = match intrinsic_name.split('_').nth(1).unwrap() {
+                    "or" => (mir::BinOp::BitOr, false),
+                    "xor" => (mir::BinOp::BitXor, false),
+                    "and" => (mir::BinOp::BitAnd, false),
+                    "xadd" => (mir::BinOp::Add, false),
+                    "xsub" => (mir::BinOp::Sub, false),
+                    "nand" => (mir::BinOp::BitAnd, true),
                     _ => bug!(),
                 };
                 // Atomics wrap around on overflow.
-                this.binop_ignore_overflow(op, old, rhs, ptr.into())?;
+                let (val, _overflowed) = this.binary_op_imm(op, old, rhs)?;
+                let val = if neg {
+                    this.unary_op(mir::UnOp::Not, val, old.layout)?
+                } else {
+                    val
+                };
+                this.write_scalar(val, ptr.into())?;
             }
 
             "breakpoint" => unimplemented!(), // halt miri
@@ -233,7 +245,13 @@ pub trait EvalContextExt<'a, 'mir, 'tcx: 'a+'mir>: crate::MiriEvalContextExt<'a,
                 this.binop_ignore_overflow(mir::BinOp::Div, a, b, dest)?;
             },
 
-            "likely" | "unlikely" | "forget" => {}
+            "forget" => {}
+
+            "likely" | "unlikely" => {
+                // These just return their argument
+                let b = this.read_immediate(args[0])?;
+                this.write_immediate(*b, dest)?;
+            }
 
             "init" => {
                 // Check fast path: we don't want to force an allocation in case the destination is a simple value,

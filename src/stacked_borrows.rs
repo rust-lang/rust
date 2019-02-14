@@ -21,19 +21,19 @@ pub type CallId = u64;
 pub enum Borrow {
     /// A unique (mutable) reference.
     Uniq(Timestamp),
-    /// A shared reference.  This is also used by raw pointers, which do not track details
+    /// An aliasing reference.  This is also used by raw pointers, which do not track details
     /// of how or when they were created, hence the timestamp is optional.
     /// Shr(Some(_)) does NOT mean that the destination of this reference is frozen;
     /// that depends on the type!  Only those parts outside of an `UnsafeCell` are actually
     /// frozen.
-    Shr(Option<Timestamp>),
+    Alias(Option<Timestamp>),
 }
 
 impl Borrow {
     #[inline(always)]
-    pub fn is_shared(self) -> bool {
+    pub fn is_aliasing(self) -> bool {
         match self {
-            Borrow::Shr(_) => true,
+            Borrow::Alias(_) => true,
             _ => false,
         }
     }
@@ -49,7 +49,7 @@ impl Borrow {
 
 impl Default for Borrow {
     fn default() -> Self {
-        Borrow::Shr(None)
+        Borrow::Alias(None)
     }
 }
 
@@ -58,10 +58,9 @@ impl Default for Borrow {
 pub enum BorStackItem {
     /// Indicates the unique reference that may mutate.
     Uniq(Timestamp),
-    /// Indicates that the location has been shared.  Used for raw pointers, but
-    /// also for shared references.  The latter *additionally* get frozen
-    /// when there is no `UnsafeCell`.
-    Shr,
+    /// Indicates that the location has been mutably shared.  Used for raw pointers as
+    /// well as for unfrozen shared references.
+    Raw,
     /// A barrier, tracking the function it belongs to by its index on the call stack
     FnBarrier(CallId)
 }
@@ -186,19 +185,19 @@ impl<'tcx> Stack {
         kind: RefKind,
     ) -> Result<Option<usize>, String> {
         // Exclude unique ref with frozen tag.
-        if let (RefKind::Unique, Borrow::Shr(Some(_))) = (kind, bor) {
+        if let (RefKind::Unique, Borrow::Alias(Some(_))) = (kind, bor) {
             return Err(format!("Encountered mutable reference with frozen tag ({:?})", bor));
         }
         // Checks related to freezing
         match bor {
-            Borrow::Shr(Some(bor_t)) if kind == RefKind::Frozen => {
+            Borrow::Alias(Some(bor_t)) if kind == RefKind::Frozen => {
                 // We need the location to be frozen. This ensures F3.
                 let frozen = self.frozen_since.map_or(false, |itm_t| itm_t <= bor_t);
                 return if frozen { Ok(None) } else {
                     Err(format!("Location is not frozen long enough"))
                 }
             }
-            Borrow::Shr(_) if self.frozen_since.is_some() => {
+            Borrow::Alias(_) if self.frozen_since.is_some() => {
                 return Ok(None) // Shared deref to frozen location, looking good
             }
             _ => {} // Not sufficient, go on looking.
@@ -210,8 +209,8 @@ impl<'tcx> Stack {
                     // Found matching unique item.  This satisfies U3.
                     return Ok(Some(idx))
                 }
-                (BorStackItem::Shr, Borrow::Shr(_)) => {
-                    // Found matching shared/raw item.
+                (BorStackItem::Raw, Borrow::Alias(_)) => {
+                    // Found matching aliasing/raw item.
                     return Ok(Some(idx))
                 }
                 // Go on looking.  We ignore barriers!  When an `&mut` and an `&` alias,
@@ -221,7 +220,7 @@ impl<'tcx> Stack {
             }
         }
         // If we got here, we did not find our item.  We have to error to satisfy U3.
-        Err(format!("Borrow being dereferenced ({:?}) does not exist on the stack", bor))
+        Err(format!("Borrow being dereferenced ({:?}) does not exist on the borrow stack", bor))
     }
 
     /// Perform an actual memory access using `bor`.  We do not know any types here
@@ -258,14 +257,15 @@ impl<'tcx> Stack {
                 (BorStackItem::Uniq(itm_t), Borrow::Uniq(bor_t)) if itm_t == bor_t => {
                     // Found matching unique item.  Continue after the match.
                 }
-                (BorStackItem::Shr, _) if kind == AccessKind::Read => {
-                    // When reading, everything can use a shared item!
+                (BorStackItem::Raw, _) if kind == AccessKind::Read => {
+                    // When reading, everything can use a raw item!
                     // We do not want to do this when writing: Writing to an `&mut`
                     // should reaffirm its exclusivity (i.e., make sure it is
-                    // on top of the stack).  Continue after the match.
+                    // on top of the stack).
+                    // Continue after the match.
                 }
-                (BorStackItem::Shr, Borrow::Shr(_)) => {
-                    // Found matching shared item.  Continue after the match.
+                (BorStackItem::Raw, Borrow::Alias(_)) => {
+                    // Found matching raw item.  Continue after the match.
                 }
                 _ => {
                     // Pop this, go on.  This ensures U2.
@@ -294,7 +294,7 @@ impl<'tcx> Stack {
         }
         // If we got here, we did not find our item.
         err!(MachineError(format!(
-            "Borrow being accessed ({:?}) does not exist on the stack",
+            "Borrow being accessed ({:?}) does not exist on the borrow stack",
             bor
         )))
     }
@@ -309,7 +309,7 @@ impl<'tcx> Stack {
         // of access (like writing through raw pointers) is permitted.
         if kind == RefKind::Frozen {
             let bor_t = match bor {
-                Borrow::Shr(Some(t)) => t,
+                Borrow::Alias(Some(t)) => t,
                 _ => bug!("Creating illegal borrow {:?} for frozen ref", bor),
             };
             // It is possible that we already are frozen (e.g. if we just pushed a barrier,
@@ -328,12 +328,12 @@ impl<'tcx> Stack {
         // Push new item to the stack.
         let itm = match bor {
             Borrow::Uniq(t) => BorStackItem::Uniq(t),
-            Borrow::Shr(_) => BorStackItem::Shr,
+            Borrow::Alias(_) => BorStackItem::Raw,
         };
         if *self.borrows.last().unwrap() == itm {
             // This is just an optimization, no functional change: Avoid stacking
             // multiple `Shr` on top of each other.
-            assert!(bor.is_shared());
+            assert!(bor.is_aliasing());
             trace!("create: Sharing a shared location is a NOP");
         } else {
             // This ensures U1.
@@ -440,7 +440,7 @@ impl<'tcx> Stacks {
                     _ => false,
                 };
             if bor_redundant {
-                assert!(new_bor.is_shared(), "A unique reborrow can never be redundant");
+                assert!(new_bor.is_aliasing(), "A unique reborrow can never be redundant");
                 trace!("reborrow is redundant");
                 continue;
             }
@@ -465,7 +465,7 @@ impl AllocationExtra<Borrow, MemoryState> for Stacks {
     #[inline(always)]
     fn memory_allocated<'tcx>(size: Size, extra: &MemoryState) -> Self {
         let stack = Stack {
-            borrows: vec![BorStackItem::Shr],
+            borrows: vec![BorStackItem::Raw],
             frozen_since: None,
         };
         Stacks {
@@ -511,7 +511,7 @@ impl<'tcx> Stacks {
     ) {
         for stack in self.stacks.get_mut().iter_mut(Size::ZERO, size) {
             assert!(stack.borrows.len() == 1);
-            assert_eq!(stack.borrows.pop().unwrap(), BorStackItem::Shr);
+            assert_eq!(stack.borrows.pop().unwrap(), BorStackItem::Raw);
             stack.borrows.push(itm);
         }
     }
@@ -536,7 +536,7 @@ trait EvalContextPrivExt<'a, 'mir, 'tcx: 'a+'mir>: crate::MiriEvalContextExt<'a,
         let alloc = this.memory().get(ptr.alloc_id)?;
         alloc.check_bounds(this, ptr, size)?;
         // Update the stacks.
-        if let Borrow::Shr(Some(_)) = new_bor {
+        if let Borrow::Alias(Some(_)) = new_bor {
             // Reference that cares about freezing. We need a frozen-sensitive reborrow.
             this.visit_freeze_sensitive(place, size, |cur_ptr, size, frozen| {
                 let kind = if frozen { RefKind::Frozen } else { RefKind::Raw };
@@ -574,7 +574,7 @@ trait EvalContextPrivExt<'a, 'mir, 'tcx: 'a+'mir>: crate::MiriEvalContextExt<'a,
         let time = this.machine.stacked_borrows.increment_clock();
         let new_bor = match mutbl {
             Some(MutMutable) => Borrow::Uniq(time),
-            Some(MutImmutable) => Borrow::Shr(Some(time)),
+            Some(MutImmutable) => Borrow::Alias(Some(time)),
             None => Borrow::default(),
         };
 
@@ -586,7 +586,7 @@ trait EvalContextPrivExt<'a, 'mir, 'tcx: 'a+'mir>: crate::MiriEvalContextExt<'a,
             assert!(mutbl == Some(MutMutable), "two-phase shared borrows make no sense");
             // We immediately share it, to allow read accesses
             let two_phase_time = this.machine.stacked_borrows.increment_clock();
-            let two_phase_bor = Borrow::Shr(Some(two_phase_time));
+            let two_phase_bor = Borrow::Alias(Some(two_phase_time));
             this.reborrow(new_place, size, /*fn_barrier*/false, two_phase_bor)?;
         }
 
@@ -651,7 +651,7 @@ pub trait EvalContextExt<'a, 'mir, 'tcx: 'a+'mir>: crate::MiriEvalContextExt<'a,
         let alloc = this.memory().get(ptr.alloc_id)?;
         alloc.check_bounds(this, ptr, size)?;
         // If we got here, we do some checking, *but* we leave the tag unchanged.
-        if let Borrow::Shr(Some(_)) = ptr.tag {
+        if let Borrow::Alias(Some(_)) = ptr.tag {
             assert_eq!(mutability, Some(MutImmutable));
             // We need a frozen-sensitive check
             this.visit_freeze_sensitive(place, size, |cur_ptr, size, frozen| {

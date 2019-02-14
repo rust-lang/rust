@@ -54,19 +54,26 @@ pub use crate::stacked_borrows::{Borrow, Stack, Stacks, BorStackItem};
 pub fn miri_default_args() -> &'static [&'static str] {
     // The flags here should be kept in sync with what bootstrap adds when `test-miri` is
     // set, which happens in `bootstrap/bin/rustc.rs` in the rustc sources.
-    &["-Zalways-encode-mir", "-Zmir-emit-retag", "-Zmir-opt-level=0"]
+    &["-Zalways-encode-mir", "-Zmir-emit-retag", "-Zmir-opt-level=0", "--cfg=miri"]
+}
+
+/// Configuration needed to spawn a Miri instance
+#[derive(Clone)]
+pub struct MiriConfig {
+    pub validate: bool,
+    pub args: Vec<String>,
 }
 
 // Used by priroda
 pub fn create_ecx<'a, 'mir: 'a, 'tcx: 'mir>(
     tcx: TyCtxt<'a, 'tcx, 'tcx>,
     main_id: DefId,
-    validate: bool,
+    config: MiriConfig,
 ) -> EvalResult<'tcx, EvalContext<'a, 'mir, 'tcx, Evaluator<'tcx>>> {
     let mut ecx = EvalContext::new(
         tcx.at(syntax::source_map::DUMMY_SP),
         ty::ParamEnv::reveal_all(),
-        Evaluator::new(validate),
+        Evaluator::new(config.validate),
     );
 
     let main_instance = ty::Instance::mono(ecx.tcx.tcx, main_id);
@@ -120,7 +127,7 @@ pub fn create_ecx<'a, 'mir: 'a, 'tcx: 'mir>(
 
     // Second argument (argc): 1
     let dest = ecx.eval_place(&mir::Place::Local(args.next().unwrap()))?;
-    let argc = Scalar::from_int(1, dest.layout.size);
+    let argc = Scalar::from_uint(config.args.len() as u128, dest.layout.size);
     ecx.write_scalar(argc, dest)?;
     // Store argc for macOS _NSGetArgc
     {
@@ -130,18 +137,38 @@ pub fn create_ecx<'a, 'mir: 'a, 'tcx: 'mir>(
     }
 
     // FIXME: extract main source file path
-    // Third argument (argv): &[b"foo"]
-    const CMD: &str = "running-in-miri\0";
+    // Third argument (argv): Created from config.args
     let dest = ecx.eval_place(&mir::Place::Local(args.next().unwrap()))?;
-    let cmd = ecx.memory_mut().allocate_static_bytes(CMD.as_bytes()).with_default_tag();
-    let raw_str_layout = ecx.layout_of(ecx.tcx.mk_imm_ptr(ecx.tcx.types.u8))?;
-    let cmd_place = ecx.allocate(raw_str_layout, MiriMemoryKind::Env.into());
-    ecx.write_scalar(Scalar::Ptr(cmd), cmd_place.into())?;
-    ecx.memory_mut().mark_immutable(cmd_place.to_ptr()?.alloc_id)?;
+    // For Windows, construct a command string with all the aguments
+    let mut cmd = String::new();
+    for arg in config.args.iter() {
+        if !cmd.is_empty() {
+            cmd.push(' ');
+        }
+        cmd.push_str(&*shell_escape::windows::escape(arg.as_str().into()));
+    }
+    cmd.push(std::char::from_u32(0).unwrap()); // don't forget 0 terminator
+    // Collect the pointers to the individual strings.
+    let mut argvs = Vec::<Pointer<Borrow>>::new();
+    for arg in config.args {
+        // Add 0 terminator
+        let mut arg = arg.into_bytes();
+        arg.push(0);
+        argvs.push(ecx.memory_mut().allocate_static_bytes(arg.as_slice()).with_default_tag());
+    }
+    // Make an array with all these pointers, in the Miri memory.
+    let argvs_layout = ecx.layout_of(ecx.tcx.mk_array(ecx.tcx.mk_imm_ptr(ecx.tcx.types.u8), argvs.len() as u64))?;
+    let argvs_place = ecx.allocate(argvs_layout, MiriMemoryKind::Env.into());
+    for (idx, arg) in argvs.into_iter().enumerate() {
+        let place = ecx.mplace_field(argvs_place, idx as u64)?;
+        ecx.write_scalar(Scalar::Ptr(arg), place.into())?;
+    }
+    ecx.memory_mut().mark_immutable(argvs_place.to_ptr()?.alloc_id)?;
+    // Write a pointe to that place as the argument.
+    let argv = argvs_place.ptr;
+    ecx.write_scalar(argv, dest)?;
     // Store argv for macOS _NSGetArgv
     {
-        let argv = cmd_place.ptr;
-        ecx.write_scalar(argv, dest)?;
         let argv_place = ecx.allocate(dest.layout, MiriMemoryKind::Env.into());
         ecx.write_scalar(argv, argv_place.into())?;
         ecx.machine.argv = Some(argv_place.ptr.to_ptr()?);
@@ -149,7 +176,7 @@ pub fn create_ecx<'a, 'mir: 'a, 'tcx: 'mir>(
     // Store cmdline as UTF-16 for Windows GetCommandLineW
     {
         let tcx = &{ecx.tcx.tcx};
-        let cmd_utf16: Vec<u16> = CMD.encode_utf16().collect();
+        let cmd_utf16: Vec<u16> = cmd.encode_utf16().collect();
         let cmd_ptr = ecx.memory_mut().allocate(
             Size::from_bytes(cmd_utf16.len() as u64 * 2),
             Align::from_bytes(2).unwrap(),
@@ -179,9 +206,9 @@ pub fn create_ecx<'a, 'mir: 'a, 'tcx: 'mir>(
 pub fn eval_main<'a, 'tcx: 'a>(
     tcx: TyCtxt<'a, 'tcx, 'tcx>,
     main_id: DefId,
-    validate: bool,
+    config: MiriConfig,
 ) {
-    let mut ecx = create_ecx(tcx, main_id, validate).expect("Couldn't create ecx");
+    let mut ecx = create_ecx(tcx, main_id, config).expect("Couldn't create ecx");
 
     // Run! The main execution.
     let res: EvalResult = (|| {

@@ -39,12 +39,7 @@ pub trait EvalContextExt<'a, 'mir, 'tcx: 'a+'mir>: crate::MiriEvalContextExt<'a,
         if this.tcx.is_foreign_item(instance.def_id()) {
             // An external function that we cannot find MIR for, but we can still run enough
             // of them to make miri viable.
-            this.emulate_foreign_item(
-                instance.def_id(),
-                args,
-                dest.unwrap(),
-                ret.unwrap(),
-            )?;
+            this.emulate_foreign_item(instance.def_id(), args, dest, ret)?;
             // `goto_block` already handled
             return Ok(None);
         }
@@ -59,8 +54,8 @@ pub trait EvalContextExt<'a, 'mir, 'tcx: 'a+'mir>: crate::MiriEvalContextExt<'a,
         &mut self,
         def_id: DefId,
         args: &[OpTy<'tcx, Borrow>],
-        dest: PlaceTy<'tcx, Borrow>,
-        ret: mir::BasicBlock,
+        dest: Option<PlaceTy<'tcx, Borrow>>,
+        ret: Option<mir::BasicBlock>,
     ) -> EvalResult<'tcx> {
         let this = self.eval_context_mut();
         let attrs = this.tcx.get_attrs(def_id);
@@ -70,9 +65,23 @@ pub trait EvalContextExt<'a, 'mir, 'tcx: 'a+'mir>: crate::MiriEvalContextExt<'a,
         };
         // Strip linker suffixes (seen on 32bit macOS)
         let link_name = link_name.trim_end_matches("$UNIX2003");
-
         let tcx = &{this.tcx.tcx};
 
+        // first: functions that could diverge
+        match &link_name[..] {
+            "__rust_start_panic" | "panic_impl" => {
+                return err!(MachineError("the evaluated program panicked".to_string()));
+            }
+            _ => if dest.is_none() {
+                return err!(Unimplemented(
+                    format!("can't call diverging foreign function: {}", link_name),
+                ));
+            }
+        }
+
+        // now: functions that assume a ret and dest
+        let dest = dest.expect("we already checked for a dest");
+        let ret = ret.expect("dest is Some but ret is None");
         match &link_name[..] {
             "malloc" => {
                 let size = this.read_scalar(args[0])?.to_usize(this)?;
@@ -83,6 +92,32 @@ pub trait EvalContextExt<'a, 'mir, 'tcx: 'a+'mir>: crate::MiriEvalContextExt<'a,
                     let ptr = this.memory_mut().allocate(Size::from_bytes(size), align, MiriMemoryKind::C.into());
                     this.write_scalar(Scalar::Ptr(ptr.with_default_tag()), dest)?;
                 }
+            }
+            "posix_memalign" => {
+                let ret = this.deref_operand(args[0])?;
+                let align = this.read_scalar(args[1])?.to_usize(this)?;
+                let size = this.read_scalar(args[2])?.to_usize(this)?;
+                // align must be a power of 2, and also at least ptr-sized (wtf, POSIX)
+                if !align.is_power_of_two() {
+                    return err!(HeapAllocNonPowerOfTwoAlignment(align));
+                }
+                if align < this.pointer_size().bytes() {
+                    return err!(MachineError(format!(
+                        "posix_memalign: alignment must be at least the size of a pointer, but is {}",
+                        align,
+                    )));
+                }
+                if size == 0 {
+                    this.write_null(ret.into())?;
+                } else {
+                    let ptr = this.memory_mut().allocate(
+                        Size::from_bytes(size),
+                        Align::from_bytes(align).unwrap(),
+                        MiriMemoryKind::C.into()
+                    );
+                    this.write_scalar(Scalar::Ptr(ptr.with_default_tag()), ret.into())?;
+                }
+                this.write_null(dest)?;
             }
 
             "free" => {
@@ -245,9 +280,6 @@ pub trait EvalContextExt<'a, 'mir, 'tcx: 'a+'mir>: crate::MiriEvalContextExt<'a,
                 return Ok(());
             }
 
-            "__rust_start_panic" =>
-                return err!(MachineError("the evaluated program panicked".to_string())),
-
             "memcmp" => {
                 let left = this.read_scalar(args[0])?.not_undef()?;
                 let right = this.read_scalar(args[1])?.not_undef()?;
@@ -384,9 +416,17 @@ pub trait EvalContextExt<'a, 'mir, 'tcx: 'a+'mir>: crate::MiriEvalContextExt<'a,
                     use std::io::{self, Write};
 
                     let buf_cont = this.memory().read_bytes(buf, Size::from_bytes(n))?;
+                    // We need to flush to make sure this actually appears on the screen
                     let res = if fd == 1 {
-                        io::stdout().write(buf_cont)
+                        // Stdout is buffered, flush to make sure it appears on the screen.
+                        // This is the write() syscall of the interpreted program, we want it
+                        // to correspond to a write() syscall on the host -- there is no good
+                        // in adding extra buffering here.
+                        let res = io::stdout().write(buf_cont);
+                        io::stdout().flush().unwrap();
+                        res
                     } else {
+                        // No need to flush, stderr is not buffered.
                         io::stderr().write(buf_cont)
                     };
                     match res {
