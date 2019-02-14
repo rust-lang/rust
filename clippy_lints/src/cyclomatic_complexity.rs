@@ -94,7 +94,7 @@ impl CyclomaticComplexity {
                 short_circuits,
                 ret_adjust,
                 span,
-                body.id().node_id,
+                body.id().hir_id,
             );
         } else {
             let mut rust_cc = cc + divergence - match_arms - short_circuits;
@@ -197,7 +197,7 @@ fn report_cc_bug(
     shorts: u64,
     returns: u64,
     span: Span,
-    _: NodeId,
+    _: HirId,
 ) {
     span_bug!(
         span,
@@ -220,9 +220,10 @@ fn report_cc_bug(
     shorts: u64,
     returns: u64,
     span: Span,
-    id: NodeId,
+    id: HirId,
 ) {
-    if !is_allowed(cx, CYCLOMATIC_COMPLEXITY, id) {
+    let node_id = cx.tcx.hir().hir_to_node_id(id);
+    if !is_allowed(cx, CYCLOMATIC_COMPLEXITY, node_id) {
         cx.sess().span_note_without_error(
             span,
             &format!(
