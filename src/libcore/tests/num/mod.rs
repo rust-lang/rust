@@ -1,5 +1,3 @@
-#![cfg(not(miri))]
-
 use core::convert::{TryFrom, TryInto};
 use core::cmp::PartialEq;
 use core::fmt::Debug;

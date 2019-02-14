@@ -1,3 +1,5 @@
+#![cfg(not(miri))] // Miri does not implement ldexp, which most tests here need
+
 use std::prelude::v1::*;
 use std::{str, i16, f32, f64, fmt};
 

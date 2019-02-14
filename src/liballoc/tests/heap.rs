@@ -1,5 +1,3 @@
-#![cfg(not(miri))]
-
 use std::alloc::{Global, Alloc, Layout, System};
 
 /// Issue #45955.

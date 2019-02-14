@@ -282,7 +282,7 @@ fn assert_covariance() {
 //
 // Destructors must be called exactly once per element.
 #[test]
-#[cfg(not(miri))]
+#[cfg(not(miri))] // Miri does not support panics
 fn panic_safe() {
     static DROP_COUNTER: AtomicUsize = AtomicUsize::new(0);
 
