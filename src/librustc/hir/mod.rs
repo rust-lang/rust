@@ -1319,6 +1319,10 @@ pub struct Expr {
     pub hir_id: HirId,
 }
 
+// `Expr` is used a lot. Make sure it doesn't unintentionally get bigger.
+#[cfg(target_arch = "x86_64")]
+static_assert!(MEM_SIZE_OF_EXPR: std::mem::size_of::<Expr>() == 72);
+
 impl Expr {
     pub fn precedence(&self) -> ExprPrecedence {
         match self.node {
@@ -1438,7 +1442,7 @@ pub enum ExprKind {
     /// and the remaining elements are the rest of the arguments.
     /// Thus, `x.foo::<Bar, Baz>(a, b, c, d)` is represented as
     /// `ExprKind::MethodCall(PathSegment { foo, [Bar, Baz] }, [x, a, b, c, d])`.
-    MethodCall(PathSegment, Span, HirVec<Expr>),
+    MethodCall(P<PathSegment>, Span, HirVec<Expr>),
     /// A tuple (e.g., `(a, b, c ,d)`).
     Tup(HirVec<Expr>),
     /// A binary operation (e.g., `a + b`, `a * b`).
@@ -1506,7 +1510,7 @@ pub enum ExprKind {
     ///
     /// For example, `Foo {x: 1, y: 2}`, or
     /// `Foo {x: 1, .. base}`, where `base` is the `Option<Expr>`.
-    Struct(QPath, HirVec<Field>, Option<P<Expr>>),
+    Struct(P<QPath>, HirVec<Field>, Option<P<Expr>>),
 
     /// An array literal constructed from one repeated element.
     ///

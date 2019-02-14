@@ -435,7 +435,11 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
 
         match expr.node {
             // All built-in range literals but `..=` and `..` desugar to Structs
-            ExprKind::Struct(QPath::Resolved(None, ref path), _, _) |
+            ExprKind::Struct(ref qpath, _, _) => {
+                if let QPath::Resolved(None, ref path) = **qpath {
+                    return is_range_path(&path) && span_is_range_literal(&expr.span);
+                }
+            }
             // `..` desugars to its struct path
             ExprKind::Path(QPath::Resolved(None, ref path)) => {
                 return is_range_path(&path) && span_is_range_literal(&expr.span);
