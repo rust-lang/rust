@@ -1,4 +1,5 @@
 use hir::db::HirDatabase;
+
 use ra_syntax::{
     ast::{ self, NameOwner }, AstNode, SyntaxNode, Direction, TextRange,
     SyntaxKind::{ PATH, PATH_SEGMENT, COLONCOLON, COMMA }
@@ -267,7 +268,7 @@ fn walk_use_tree_for_best_action<'a>(
                 false,
             )
         }
-        common if left.len() > right.len() => {
+        common if common == right.len() && left.len() > right.len() => {
             // e.g: target is std::fmt and we can have
             // 1- use std;
             // 2- use std::{ ... };
@@ -294,12 +295,12 @@ fn walk_use_tree_for_best_action<'a>(
                     }
                 }
             } else {
-                // Case 1, split
+                // Case 1, split adding self
                 better_action = ImportAction::add_nested_import(prev_len + common, path, None, true)
             }
             better_action
         }
-        common if left.len() < right.len() => {
+        common if common == left.len() && left.len() < right.len() => {
             // e.g: target is std::fmt and we can have
             // use std::fmt::Debug;
             let segments_to_split = current_path_segments.split_at(prev_len + common).1;
@@ -308,6 +309,17 @@ fn walk_use_tree_for_best_action<'a>(
                 path,
                 Some(segments_to_split[0]),
                 true,
+            )
+        }
+        common if common < left.len() && common < right.len() => {
+            // e.g: target is std::fmt::nested::Debug
+            // use std::fmt::Display
+            let segments_to_split = current_path_segments.split_at(prev_len + common).1;
+            ImportAction::add_nested_import(
+                prev_len + common,
+                path,
+                Some(segments_to_split[0]),
+                false,
             )
         }
         _ => unreachable!(),
@@ -500,8 +512,6 @@ fn apply_auto_import<'a>(
 
 pub(crate) fn auto_import(mut ctx: AssistCtx<impl HirDatabase>) -> Option<Assist> {
     let node = ctx.covering_node();
-    let current_file = node.ancestors().find_map(ast::SourceFile::cast)?;
-
     let path = node.ancestors().find_map(ast::Path::cast)?;
     // We don't want to mess with use statements
     if path.syntax().ancestors().find_map(ast::UseItem::cast).is_some() {
@@ -523,6 +533,7 @@ pub(crate) fn auto_import(mut ctx: AssistCtx<impl HirDatabase>) -> Option<Assist
             );
         }
     } else {
+        let current_file = node.ancestors().find_map(ast::SourceFile::cast)?;
         ctx.add_action(format!("import {} in the current file", fmt_segments(&segments)), |edit| {
             apply_auto_import(current_file.syntax(), path, &segments, edit);
         });
@@ -537,7 +548,7 @@ mod tests {
     use crate::helpers::{ check_assist, check_assist_not_applicable };
 
     #[test]
-    fn test_auto_import_file_add_use_no_anchor() {
+    fn test_auto_import_add_use_no_anchor() {
         check_assist(
             auto_import,
             "
@@ -552,7 +563,7 @@ Debug<|>
     }
 
     #[test]
-    fn test_auto_import_file_add_use_no_anchor_2seg() {
+    fn test_auto_import_add_use_no_anchor_2seg() {
         check_assist(
             auto_import,
             "
@@ -567,7 +578,7 @@ fmt<|>::Debug
     }
 
     #[test]
-    fn test_auto_import_file_add_use() {
+    fn test_auto_import_add_use() {
         check_assist(
             auto_import,
             "
@@ -587,7 +598,7 @@ impl Debug<|> for Foo {
     }
 
     #[test]
-    fn test_auto_import_file_add_use_other_anchor() {
+    fn test_auto_import_file_use_other_anchor() {
         check_assist(
             auto_import,
             "
@@ -604,7 +615,7 @@ impl Debug<|> for Foo {
     }
 
     #[test]
-    fn test_auto_import_file_add_use_other_anchor_indent() {
+    fn test_auto_import_add_use_other_anchor_indent() {
         check_assist(
             auto_import,
             "
@@ -621,7 +632,7 @@ impl Debug<|> for Foo {
     }
 
     #[test]
-    fn test_auto_import_file_split_different() {
+    fn test_auto_import_split_different() {
         check_assist(
             auto_import,
             "
@@ -640,7 +651,7 @@ impl io<|> for Foo {
     }
 
     #[test]
-    fn test_auto_import_file_split_self_for_use() {
+    fn test_auto_import_split_self_for_use() {
         check_assist(
             auto_import,
             "
@@ -659,7 +670,7 @@ impl Debug<|> for Foo {
     }
 
     #[test]
-    fn test_auto_import_file_split_self_for_target() {
+    fn test_auto_import_split_self_for_target() {
         check_assist(
             auto_import,
             "
@@ -678,7 +689,7 @@ impl fmt<|> for Foo {
     }
 
     #[test]
-    fn test_auto_import_file_add_to_nested_self_nested() {
+    fn test_auto_import_add_to_nested_self_nested() {
         check_assist(
             auto_import,
             "
@@ -697,7 +708,7 @@ impl nested<|> for Foo {
     }
 
     #[test]
-    fn test_auto_import_file_add_to_nested_self_already_included() {
+    fn test_auto_import_add_to_nested_self_already_included() {
         check_assist(
             auto_import,
             "
@@ -716,7 +727,7 @@ impl nested<|> for Foo {
     }
 
     #[test]
-    fn test_auto_import_file_add_to_nested_nested() {
+    fn test_auto_import_add_to_nested_nested() {
         check_assist(
             auto_import,
             "
@@ -735,7 +746,45 @@ impl Debug<|> for Foo {
     }
 
     #[test]
-    fn test_auto_import_file_alias() {
+    fn test_auto_import_split_common_target_longer() {
+        check_assist(
+            auto_import,
+            "
+use std::fmt::Debug;
+
+impl std::fmt::nested::Display<|> for Foo {
+}
+",
+            "
+use std::fmt::{ nested::Display, Debug};
+
+impl Display<|> for Foo {
+}
+",
+        );
+    }
+
+    #[test]
+    fn test_auto_import_split_common_use_longer() {
+        check_assist(
+            auto_import,
+            "
+use std::fmt::nested::Debug;
+
+impl std::fmt::Display<|> for Foo {
+}
+",
+            "
+use std::fmt::{ Display, nested::Debug};
+
+impl Display<|> for Foo {
+}
+",
+        );
+    }
+
+    #[test]
+    fn test_auto_import_alias() {
         check_assist(
             auto_import,
             "
@@ -775,7 +824,7 @@ use std::fmt<|>;
     }
 
     #[test]
-    fn test_auto_import_file_add_use_no_anchor_in_mod_mod() {
+    fn test_auto_import_add_use_no_anchor_in_mod_mod() {
         check_assist(
             auto_import,
             "
