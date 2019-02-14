@@ -523,7 +523,6 @@ fn validate_and_turn_into_const<'a, 'tcx>(
     constant: RawConst<'tcx>,
     key: ty::ParamEnvAnd<'tcx, GlobalId<'tcx>>,
 ) -> ::rustc::mir::interpret::ConstEvalResult<'tcx> {
-    let cid = key.value;
     let ecx = mk_eval_cx(tcx, tcx.def_span(key.value.instance.def_id()), key.param_env);
     let val = (|| {
         let op = ecx.raw_const_to_mplace(constant)?.into();
@@ -539,9 +538,17 @@ fn validate_and_turn_into_const<'a, 'tcx>(
             )?;
         }
         // Now that we validated, turn this into a proper constant.
-        let def_id = cid.instance.def.def_id();
-        let normalize = tcx.is_static(def_id).is_none() && cid.promoted.is_none();
-        op_to_const(&ecx, op, normalize)
+        let val = match op.layout.abi {
+            layout::Abi::Scalar(..) => ConstValue::Scalar(ecx.read_immediate(op)?.to_scalar()?),
+            layout::Abi::ScalarPair(..) if op.layout.ty.is_slice() => {
+                let (a, b) = ecx.read_immediate(op)?.to_scalar_pair()?;
+                ConstValue::Slice(a, b.to_usize(&ecx)?)
+            },
+            _ => ConstValue::ByRef,
+        };
+        let ptr = Pointer::from(constant.alloc_id);
+        let alloc = constant.alloc;
+        Ok(ty::Const { val, ty: op.layout.ty, alloc: Some((alloc, ptr))})
     })();
 
     val.map_err(|error| {
