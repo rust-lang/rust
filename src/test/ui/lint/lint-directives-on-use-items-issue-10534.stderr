@@ -2,7 +2,7 @@ error: unused import: `a::x`
   --> $DIR/lint-directives-on-use-items-issue-10534.rs:12:9
    |
 LL |     use a::x; //~ ERROR: unused import
-   |     ----^^^^- help: remove the whole `use` item
+   |         ^^^^
    |
 note: lint level defined here
   --> $DIR/lint-directives-on-use-items-issue-10534.rs:1:9
@@ -14,7 +14,7 @@ error: unused import: `a::y`
   --> $DIR/lint-directives-on-use-items-issue-10534.rs:21:9
    |
 LL |     use a::y; //~ ERROR: unused import
-   |     ----^^^^- help: remove the whole `use` item
+   |         ^^^^
    |
 note: lint level defined here
   --> $DIR/lint-directives-on-use-items-issue-10534.rs:20:12

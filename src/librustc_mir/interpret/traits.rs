@@ -22,6 +22,10 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> 
         let (ty, poly_trait_ref) = self.tcx.erase_regions(&(ty, poly_trait_ref));
 
         if let Some(&vtable) = self.vtables.get(&(ty, poly_trait_ref)) {
+            // This means we guarantee that there are no duplicate vtables, we will
+            // always use the same vtable for the same (Type, Trait) combination.
+            // That's not what happens in rustc, but emulating per-crate deduplication
+            // does not sound like it actually makes anything any better.
             return Ok(Pointer::from(vtable).with_default_tag());
         }
 

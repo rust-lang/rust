@@ -1,4 +1,5 @@
 use crate::CodeSuggestion;
+use crate::SuggestionStyle;
 use crate::SubstitutionPart;
 use crate::Substitution;
 use crate::Applicability;
@@ -243,7 +244,33 @@ impl Diagnostic {
                     .collect(),
             }],
             msg: msg.to_owned(),
-            show_code_when_inline: true,
+            style: SuggestionStyle::ShowCode,
+            applicability,
+        });
+        self
+    }
+
+    /// Prints out a message with for a multipart suggestion without showing the suggested code.
+    ///
+    /// This is intended to be used for suggestions that are obvious in what the changes need to
+    /// be from the message, showing the span label inline would be visually unpleasant
+    /// (marginally overlapping spans or multiline spans) and showing the snippet window wouldn't
+    /// improve understandability.
+    pub fn tool_only_multipart_suggestion(
+        &mut self,
+        msg: &str,
+        suggestion: Vec<(Span, String)>,
+        applicability: Applicability,
+    ) -> &mut Self {
+        self.suggestions.push(CodeSuggestion {
+            substitutions: vec![Substitution {
+                parts: suggestion
+                    .into_iter()
+                    .map(|(span, snippet)| SubstitutionPart { snippet, span })
+                    .collect(),
+            }],
+            msg: msg.to_owned(),
+            style: SuggestionStyle::CompletelyHidden,
             applicability,
         });
         self
@@ -277,7 +304,7 @@ impl Diagnostic {
                 }],
             }],
             msg: msg.to_owned(),
-            show_code_when_inline: true,
+            style: SuggestionStyle::ShowCode,
             applicability,
         });
         self
@@ -295,7 +322,7 @@ impl Diagnostic {
                 }],
             }).collect(),
             msg: msg.to_owned(),
-            show_code_when_inline: true,
+            style: SuggestionStyle::ShowCode,
             applicability,
         });
         self
@@ -316,7 +343,51 @@ impl Diagnostic {
                 }],
             }],
             msg: msg.to_owned(),
-            show_code_when_inline: false,
+            style: SuggestionStyle::HideCodeInline,
+            applicability,
+        });
+        self
+    }
+
+    /// Prints out a message with for a suggestion without showing the suggested code.
+    ///
+    /// This is intended to be used for suggestions that are obvious in what the changes need to
+    /// be from the message, showing the span label inline would be visually unpleasant
+    /// (marginally overlapping spans or multiline spans) and showing the snippet window wouldn't
+    /// improve understandability.
+    pub fn span_suggestion_hidden(
+        &mut self, sp: Span, msg: &str, suggestion: String, applicability: Applicability
+    ) -> &mut Self {
+        self.suggestions.push(CodeSuggestion {
+            substitutions: vec![Substitution {
+                parts: vec![SubstitutionPart {
+                    snippet: suggestion,
+                    span: sp,
+                }],
+            }],
+            msg: msg.to_owned(),
+            style: SuggestionStyle::HideCodeInline,
+            applicability,
+        });
+        self
+    }
+
+    /// Adds a suggestion to the json output, but otherwise remains silent/undisplayed in the cli.
+    ///
+    /// This is intended to be used for suggestions that are *very* obvious in what the changes
+    /// need to be from the message, but we still want other tools to be able to apply them.
+    pub fn tool_only_span_suggestion(
+        &mut self, sp: Span, msg: &str, suggestion: String, applicability: Applicability
+    ) -> &mut Self {
+        self.suggestions.push(CodeSuggestion {
+            substitutions: vec![Substitution {
+                parts: vec![SubstitutionPart {
+                    snippet: suggestion,
+                    span: sp,
+                }],
+            }],
+            msg: msg.to_owned(),
+            style: SuggestionStyle::CompletelyHidden,
             applicability: applicability,
         });
         self

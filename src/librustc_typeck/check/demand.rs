@@ -210,7 +210,10 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
     /// ```
     /// opt.map(|arg| { takes_ref(arg) });
     /// ```
-    fn can_use_as_ref(&self, expr: &hir::Expr) -> Option<(Span, &'static str, String)> {
+    fn can_use_as_ref(
+        &self,
+        expr: &hir::Expr,
+    ) -> Option<(Span, &'static str, String)> {
         if let hir::ExprKind::Path(hir::QPath::Resolved(_, ref path)) = expr.node {
             if let hir::def::Def::Local(id) = path.def {
                 let parent = self.tcx.hir().get_parent_node(id);
@@ -233,10 +236,12 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                             self_ty.starts_with("std::option::Option") ||
                             self_ty.starts_with("std::result::Result")
                         ) && (name == "map" || name == "and_then");
-                        if is_as_ref_able {
-                            return Some((span.shrink_to_lo(),
-                                         "consider using `as_ref` instead",
-                                         "as_ref().".into()));
+                        match (is_as_ref_able, self.sess().source_map().span_to_snippet(*span)) {
+                            (true, Ok(src)) => {
+                                return Some((*span, "consider using `as_ref` instead",
+                                             format!("as_ref().{}", src)));
+                            },
+                            _ => ()
                         }
                     }
                 }
@@ -430,7 +435,11 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
 
         match expr.node {
             // All built-in range literals but `..=` and `..` desugar to Structs
-            ExprKind::Struct(QPath::Resolved(None, ref path), _, _) |
+            ExprKind::Struct(ref qpath, _, _) => {
+                if let QPath::Resolved(None, ref path) = **qpath {
+                    return is_range_path(&path) && span_is_range_literal(&expr.span);
+                }
+            }
             // `..` desugars to its struct path
             ExprKind::Path(QPath::Resolved(None, ref path)) => {
                 return is_range_path(&path) && span_is_range_literal(&expr.span);

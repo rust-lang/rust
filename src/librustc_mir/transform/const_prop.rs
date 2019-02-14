@@ -18,10 +18,9 @@ use rustc::ty::layout::{
     HasTyCtxt, TargetDataLayout, HasDataLayout,
 };
 
-use crate::interpret::{self, EvalContext, ScalarMaybeUndef, Immediate, OpTy, MemoryKind};
+use crate::interpret::{EvalContext, ScalarMaybeUndef, Immediate, OpTy, ImmTy, MemoryKind};
 use crate::const_eval::{
     CompileTimeInterpreter, error_to_const_error, eval_promoted, mk_eval_cx,
-    lazy_const_to_op,
 };
 use crate::transform::{MirPass, MirSource};
 
@@ -254,7 +253,7 @@ impl<'a, 'mir, 'tcx> ConstPropagator<'a, 'mir, 'tcx> {
         source_info: SourceInfo,
     ) -> Option<Const<'tcx>> {
         self.ecx.tcx.span = source_info.span;
-        match lazy_const_to_op(&self.ecx, *c.literal, c.ty) {
+        match self.ecx.lazy_const_to_op(*c.literal, c.ty) {
             Ok(op) => {
                 Some((op, c.span))
             },
@@ -345,15 +344,15 @@ impl<'a, 'mir, 'tcx> ConstPropagator<'a, 'mir, 'tcx> {
             Rvalue::Len(_) => None,
             Rvalue::NullaryOp(NullOp::SizeOf, ty) => {
                 type_size_of(self.tcx, self.param_env, ty).and_then(|n| Some((
-                    OpTy {
-                        op: interpret::Operand::Immediate(Immediate::Scalar(
+                    ImmTy {
+                        imm: Immediate::Scalar(
                             Scalar::Bits {
                                 bits: n as u128,
                                 size: self.tcx.data_layout.pointer_size.bytes() as u8,
                             }.into()
-                        )),
+                        ),
                         layout: self.tcx.layout_of(self.param_env.and(self.tcx.types.usize)).ok()?,
-                    },
+                    }.into(),
                     span,
                 )))
             }
@@ -371,13 +370,12 @@ impl<'a, 'mir, 'tcx> ConstPropagator<'a, 'mir, 'tcx> {
 
                 let (arg, _) = self.eval_operand(arg, source_info)?;
                 let val = self.use_ecx(source_info, |this| {
-                    let prim = this.ecx.read_scalar(arg)?.not_undef()?;
+                    let prim = this.ecx.read_immediate(arg)?;
                     match op {
                         UnOp::Neg => {
                             // Need to do overflow check here: For actual CTFE, MIR
                             // generation emits code that does this before calling the op.
-                            let size = arg.layout.size;
-                            if prim.to_bits(size)? == (1 << (size.bits() - 1)) {
+                            if prim.to_bits()? == (1 << (prim.layout.size.bits() - 1)) {
                                 return err!(OverflowNeg);
                             }
                         }
@@ -386,13 +384,13 @@ impl<'a, 'mir, 'tcx> ConstPropagator<'a, 'mir, 'tcx> {
                         }
                     }
                     // Now run the actual operation.
-                    this.ecx.unary_op(op, prim, arg.layout)
+                    this.ecx.unary_op(op, prim)
                 })?;
-                let res = OpTy {
-                    op: interpret::Operand::Immediate(Immediate::Scalar(val.into())),
+                let res = ImmTy {
+                    imm: Immediate::Scalar(val.into()),
                     layout: place_layout,
                 };
-                Some((res, span))
+                Some((res.into(), span))
             }
             Rvalue::CheckedBinaryOp(op, ref left, ref right) |
             Rvalue::BinaryOp(op, ref left, ref right) => {
@@ -447,7 +445,7 @@ impl<'a, 'mir, 'tcx> ConstPropagator<'a, 'mir, 'tcx> {
                 })?;
                 trace!("const evaluating {:?} for {:?} and {:?}", op, left, right);
                 let (val, overflow) = self.use_ecx(source_info, |this| {
-                    this.ecx.binary_op_imm(op, l, r)
+                    this.ecx.binary_op(op, l, r)
                 })?;
                 let val = if let Rvalue::CheckedBinaryOp(..) = *rvalue {
                     Immediate::ScalarPair(
@@ -462,11 +460,11 @@ impl<'a, 'mir, 'tcx> ConstPropagator<'a, 'mir, 'tcx> {
                     }
                     Immediate::Scalar(val.into())
                 };
-                let res = OpTy {
-                    op: interpret::Operand::Immediate(val),
+                let res = ImmTy {
+                    imm: val,
                     layout: place_layout,
                 };
-                Some((res, span))
+                Some((res.into(), span))
             },
         }
     }

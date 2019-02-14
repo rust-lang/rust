@@ -4,7 +4,7 @@
 use std::iter::Iterator;
 use std::future::Future;
 
-use std::task::{Poll, LocalWaker};
+use std::task::{Poll, Waker};
 use std::pin::Pin;
 use std::unimplemented;
 
@@ -13,7 +13,7 @@ struct MyFuture;
 impl Future for MyFuture {
    type Output = u32;
 
-   fn poll(self: Pin<&mut Self>, lw: &LocalWaker) -> Poll<u32> {
+   fn poll(self: Pin<&mut Self>, waker: &Waker) -> Poll<u32> {
       Poll::Pending
    }
 }

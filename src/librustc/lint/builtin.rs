@@ -557,7 +557,7 @@ impl BuiltinLintDiagnostics {
             }
             BuiltinLintDiagnostics::UnusedImports(message, replaces) => {
                 if !replaces.is_empty() {
-                    db.multipart_suggestion(
+                    db.tool_only_multipart_suggestion(
                         &message,
                         replaces,
                         Applicability::MachineApplicable,

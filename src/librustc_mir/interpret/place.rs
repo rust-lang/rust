@@ -244,10 +244,10 @@ impl<'tcx, Tag> MPlaceTy<'tcx, Tag> {
     }
 }
 
-impl<'tcx, Tag: ::std::fmt::Debug> OpTy<'tcx, Tag> {
+impl<'tcx, Tag: ::std::fmt::Debug + Copy> OpTy<'tcx, Tag> {
     #[inline(always)]
     pub fn try_as_mplace(self) -> Result<MPlaceTy<'tcx, Tag>, Immediate<Tag>> {
-        match self.op {
+        match *self {
             Operand::Indirect(mplace) => Ok(MPlaceTy { mplace, layout: self.layout }),
             Operand::Immediate(imm) => Err(imm),
         }
@@ -487,9 +487,9 @@ where
             Deref => self.deref_operand(base.into())?,
 
             Index(local) => {
-                let n = *self.frame().locals[local].access()?;
-                let n_layout = self.layout_of(self.tcx.types.usize)?;
-                let n = self.read_scalar(OpTy { op: n, layout: n_layout })?;
+                let layout = self.layout_of(self.tcx.types.usize)?;
+                let n = self.access_local(self.frame(), local, Some(layout))?;
+                let n = self.read_scalar(n)?;
                 let n = n.to_bits(self.tcx.data_layout.pointer_size)?;
                 self.mplace_field(base, u64::try_from(n).unwrap())?
             }
@@ -989,22 +989,6 @@ where
         }
 
         Ok(())
-    }
-
-    /// Every place can be read from, so we can turm them into an operand
-    #[inline(always)]
-    pub fn place_to_op(
-        &self,
-        place: PlaceTy<'tcx, M::PointerTag>
-    ) -> EvalResult<'tcx, OpTy<'tcx, M::PointerTag>> {
-        let op = match place.place {
-            Place::Ptr(mplace) => {
-                Operand::Indirect(mplace)
-            }
-            Place::Local { frame, local } =>
-                *self.stack[frame].locals[local].access()?
-        };
-        Ok(OpTy { op, layout: place.layout })
     }
 
     pub fn raw_const_to_mplace(

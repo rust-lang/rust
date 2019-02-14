@@ -299,7 +299,7 @@ pub const fn size_of<T>() -> usize {
 /// then `size_of_val` can be used to get the dynamically-known size.
 ///
 /// [slice]: ../../std/primitive.slice.html
-/// [trait object]: ../../book/first-edition/trait-objects.html
+/// [trait object]: ../../book/ch17-02-trait-objects.html
 ///
 /// # Examples
 ///

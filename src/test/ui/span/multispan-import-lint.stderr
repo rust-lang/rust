@@ -10,8 +10,4 @@ note: lint level defined here
 LL | #![warn(unused)]
    |         ^^^^^^
    = note: #[warn(unused_imports)] implied by #[warn(unused)]
-help: remove the unused imports
-   |
-LL | use std::cmp::{min};
-   |               -- --
 

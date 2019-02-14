@@ -689,6 +689,8 @@ https://doc.rust-lang.org/reference/types.html#trait-objects");
             CoerceMany::with_coercion_sites(coerce_first, arms)
         };
 
+        let mut other_arms = vec![];  // used only for diagnostics
+        let mut prior_arm_ty = None;
         for (i, (arm, pats_diverge)) in arms.iter().zip(all_arm_pats_diverge).enumerate() {
             if let Some(ref g) = arm.guard {
                 self.diverges.set(pats_diverge);
@@ -709,17 +711,36 @@ https://doc.rust-lang.org/reference/types.html#trait-objects");
                 _ => false
             };
 
+            let arm_span = if let hir::ExprKind::Block(ref blk, _) = arm.body.node {
+                // Point at the block expr instead of the entire block
+                blk.expr.as_ref().map(|e| e.span).unwrap_or(arm.body.span)
+            } else {
+                arm.body.span
+            };
             if is_if_let_fallback {
                 let cause = self.cause(expr.span, ObligationCauseCode::IfExpressionWithNoElse);
                 assert!(arm_ty.is_unit());
                 coercion.coerce_forced_unit(self, &cause, &mut |_| (), true);
             } else {
-                let cause = self.cause(expr.span, ObligationCauseCode::MatchExpressionArm {
-                    arm_span: arm.body.span,
-                    source: match_src
-                });
+                let cause = if i == 0 {
+                    // The reason for the first arm to fail is not that the match arms diverge,
+                    // but rather that there's a prior obligation that doesn't hold.
+                    self.cause(arm_span, ObligationCauseCode::BlockTailExpression(arm.body.id))
+                } else {
+                    self.cause(expr.span, ObligationCauseCode::MatchExpressionArm {
+                        arm_span,
+                        source: match_src,
+                        prior_arms: other_arms.clone(),
+                        last_ty: prior_arm_ty.unwrap(),
+                    })
+                };
                 coercion.coerce(self, &cause, &arm.body, arm_ty);
             }
+            other_arms.push(arm_span);
+            if other_arms.len() > 5 {
+                other_arms.remove(0);
+            }
+            prior_arm_ty = Some(arm_ty);
         }
 
         // We won't diverge unless the discriminant or all arms diverge.

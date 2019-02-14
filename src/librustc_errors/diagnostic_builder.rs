@@ -205,6 +205,24 @@ impl<'a> DiagnosticBuilder<'a> {
         self
     }
 
+    pub fn tool_only_multipart_suggestion(
+        &mut self,
+        msg: &str,
+        suggestion: Vec<(Span, String)>,
+        applicability: Applicability,
+    ) -> &mut Self {
+        if !self.allow_suggestions {
+            return self
+        }
+        self.diagnostic.tool_only_multipart_suggestion(
+            msg,
+            suggestion,
+            applicability,
+        );
+        self
+    }
+
+
     pub fn span_suggestion(
         &mut self,
         sp: Span,
@@ -261,6 +279,45 @@ impl<'a> DiagnosticBuilder<'a> {
         );
         self
     }
+
+    pub fn span_suggestion_hidden(
+        &mut self,
+        sp: Span,
+        msg: &str,
+        suggestion: String,
+        applicability: Applicability,
+    ) -> &mut Self {
+        if !self.allow_suggestions {
+            return self
+        }
+        self.diagnostic.span_suggestion_hidden(
+            sp,
+            msg,
+            suggestion,
+            applicability,
+        );
+        self
+    }
+
+    pub fn tool_only_span_suggestion(
+        &mut self,
+        sp: Span,
+        msg: &str,
+        suggestion: String,
+        applicability: Applicability,
+    ) -> &mut Self {
+        if !self.allow_suggestions {
+            return self
+        }
+        self.diagnostic.tool_only_span_suggestion(
+            sp,
+            msg,
+            suggestion,
+            applicability,
+        );
+        self
+    }
+
     forward!(pub fn set_span<S: Into<MultiSpan>>(&mut self, sp: S) -> &mut Self);
     forward!(pub fn code(&mut self, s: DiagnosticId) -> &mut Self);
 

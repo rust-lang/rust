@@ -37,7 +37,7 @@ extern {}
 ```
 
 See more:
-https://doc.rust-lang.org/book/first-edition/conditional-compilation.html
+https://doc.rust-lang.org/reference/attributes.html#conditional-compilation
 "##,
 
 E0458: r##"

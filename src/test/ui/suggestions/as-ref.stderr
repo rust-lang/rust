@@ -2,9 +2,9 @@ error[E0308]: mismatched types
   --> $DIR/as-ref.rs:6:27
    |
 LL |   opt.map(|arg| takes_ref(arg));
-   |       -                   ^^^ expected &Foo, found struct `Foo`
+   |       ---                 ^^^ expected &Foo, found struct `Foo`
    |       |
-   |       help: consider using `as_ref` instead: `as_ref().`
+   |       help: consider using `as_ref` instead: `as_ref().map`
    |
    = note: expected type `&Foo`
               found type `Foo`
@@ -13,9 +13,9 @@ error[E0308]: mismatched types
   --> $DIR/as-ref.rs:8:37
    |
 LL |   opt.and_then(|arg| Some(takes_ref(arg)));
-   |       -                             ^^^ expected &Foo, found struct `Foo`
+   |       --------                      ^^^ expected &Foo, found struct `Foo`
    |       |
-   |       help: consider using `as_ref` instead: `as_ref().`
+   |       help: consider using `as_ref` instead: `as_ref().and_then`
    |
    = note: expected type `&Foo`
               found type `Foo`
@@ -24,9 +24,9 @@ error[E0308]: mismatched types
   --> $DIR/as-ref.rs:11:27
    |
 LL |   opt.map(|arg| takes_ref(arg));
-   |       -                   ^^^ expected &Foo, found struct `Foo`
+   |       ---                 ^^^ expected &Foo, found struct `Foo`
    |       |
-   |       help: consider using `as_ref` instead: `as_ref().`
+   |       help: consider using `as_ref` instead: `as_ref().map`
    |
    = note: expected type `&Foo`
               found type `Foo`
@@ -35,9 +35,9 @@ error[E0308]: mismatched types
   --> $DIR/as-ref.rs:13:35
    |
 LL |   opt.and_then(|arg| Ok(takes_ref(arg)));
-   |       -                           ^^^ expected &Foo, found struct `Foo`
+   |       --------                    ^^^ expected &Foo, found struct `Foo`
    |       |
-   |       help: consider using `as_ref` instead: `as_ref().`
+   |       help: consider using `as_ref` instead: `as_ref().and_then`
    |
    = note: expected type `&Foo`
               found type `Foo`

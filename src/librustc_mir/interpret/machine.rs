@@ -7,11 +7,11 @@ use std::hash::Hash;
 
 use rustc::hir::{self, def_id::DefId};
 use rustc::mir;
-use rustc::ty::{self, layout::TyLayout, query::TyCtxtAt};
+use rustc::ty::{self, query::TyCtxtAt};
 
 use super::{
     Allocation, AllocId, EvalResult, Scalar, AllocationExtra,
-    EvalContext, PlaceTy, MPlaceTy, OpTy, Pointer, MemoryKind,
+    EvalContext, PlaceTy, MPlaceTy, OpTy, ImmTy, Pointer, MemoryKind,
 };
 
 /// Whether this kind of memory is allowed to leak
@@ -158,10 +158,8 @@ pub trait Machine<'a, 'mir, 'tcx>: Sized {
     fn ptr_op(
         ecx: &EvalContext<'a, 'mir, 'tcx, Self>,
         bin_op: mir::BinOp,
-        left: Scalar<Self::PointerTag>,
-        left_layout: TyLayout<'tcx>,
-        right: Scalar<Self::PointerTag>,
-        right_layout: TyLayout<'tcx>,
+        left: ImmTy<'tcx, Self::PointerTag>,
+        right: ImmTy<'tcx, Self::PointerTag>,
     ) -> EvalResult<'tcx, (Scalar<Self::PointerTag>, bool)>;
 
     /// Heap allocations via the `box` keyword.

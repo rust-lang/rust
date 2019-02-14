@@ -132,10 +132,6 @@ mod macros;
 
 pub mod alloc;
 
-#[unstable(feature = "futures_api",
-           reason = "futures in libcore are unstable",
-           issue = "50547")]
-pub mod task;
 // Primitive types using the heaps above
 
 // Need to conditionally define the mod from `boxed.rs` to avoid
