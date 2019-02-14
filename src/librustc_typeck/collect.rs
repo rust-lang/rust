@@ -1385,10 +1385,19 @@ fn find_existential_constraints<'a, 'tcx>(
                     .subst(self.tcx, substs)
                     .walk()
                     .filter_map(|t| match &t.sty {
-                    ty::Param(p) => Some(*index_map.get(p).unwrap()),
-                    _ => None,
-                }).collect();
-                if let Some((prev_span, prev_ty, ref prev_indices)) = self.found {
+                        ty::Param(p) => Some(*index_map.get(p).unwrap()),
+                        _ => None,
+                    }).collect();
+                let is_param = |ty: ty::Ty| match ty.sty {
+                    ty::Param(_) => true,
+                    _ => false,
+                };
+                if !substs.types().all(is_param) {
+                    self.tcx.sess.span_err(
+                        span,
+                        "defining existential type use does not fully define existential type",
+                    );
+                } else if let Some((prev_span, prev_ty, ref prev_indices)) = self.found {
                     let mut ty = concrete_type.walk().fuse();
                     let mut p_ty = prev_ty.walk().fuse();
                     let iter_eq = (&mut ty).zip(&mut p_ty).all(|(t, p)| match (&t.sty, &p.sty) {

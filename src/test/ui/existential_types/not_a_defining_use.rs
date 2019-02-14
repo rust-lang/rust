@@ -7,6 +7,7 @@ fn main() {}
 existential type Two<T, U>: Debug;
 
 fn two<T: Debug>(t: T) -> Two<T, u32> {
+    //~^ ERROR defining existential type use does not fully define existential type
     (t, 4i8)
 }
 

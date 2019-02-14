@@ -1,0 +1,18 @@
+error: concrete type differs from previous defining existential type use
+  --> $DIR/generic_duplicate_param_use9.rs:18:1
+   |
+LL | / fn three<T: Debug, U: Debug>(t: T, u: U) -> Two<T, U> {
+LL | |     (t, u, 42) //~^ ERROR concrete type differs from previous
+LL | | }
+   | |_^ expected `(A, B, <A as Foo>::Bar)`, got `(A, B, i32)`
+   |
+note: previous use here
+  --> $DIR/generic_duplicate_param_use9.rs:14:1
+   |
+LL | / fn two<T: Debug + Foo, U: Debug>(t: T, u: U) -> Two<T, U> {
+LL | |     (t, u, T::BAR)
+LL | | }
+   | |_^
+
+error: aborting due to previous error
+
