@@ -46,7 +46,7 @@ pub unsafe fn __sev() {
 /// instruction. In a multiprocessor system, it is not required to affect the
 /// other processors.
 // LLVM says "instruction requires: armv8"
-#[cfg(target_arch = "aarch64")]
+#[cfg(target_feature = "v8")]
 #[inline(always)]
 pub unsafe fn __sevl() {
     hint(HINT_SEVL);
