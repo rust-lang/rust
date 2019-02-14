@@ -1,3 +1,4 @@
+// ignore-tidy-linelength
 #![allow(non_snake_case)]
 
 register_long_diagnostics! {
@@ -1544,7 +1545,9 @@ fn f<T>() {}
 
 It is not possible to declare type parameters on a function that has the `start`
 attribute. Such a function must have the following type signature (for more
-information: http://doc.rust-lang.org/stable/book/first-edition/no-stdlib.html):
+information, view [the unstable book][1]):
+
+[1]: https://doc.rust-lang.org/unstable-book/language-features/lang-items.html#writing-an-executable-without-stdlib
 
 ```
 # let _:
@@ -2918,10 +2921,11 @@ impl Baz for Bar { } // Note: This is OK
 
 E0374: r##"
 A struct without a field containing an unsized type cannot implement
-`CoerceUnsized`. An
-[unsized type](https://doc.rust-lang.org/book/first-edition/unsized-types.html)
-is any type that the compiler doesn't know the length or alignment of at
-compile time. Any struct containing an unsized type is also unsized.
+`CoerceUnsized`. An [unsized type][1] is any type that the compiler
+doesn't know the length or alignment of at compile time. Any struct
+containing an unsized type is also unsized.
+
+[1]: https://doc.rust-lang.org/book/ch19-04-advanced-types.html#dynamically-sized-types-and-the-sized-trait
 
 Example of erroneous code:
 
@@ -2978,9 +2982,9 @@ A struct with more than one field containing an unsized type cannot implement
 `CoerceUnsized`. This only occurs when you are trying to coerce one of the
 types in your struct to another type in the struct. In this case we try to
 impl `CoerceUnsized` from `T` to `U` which are both types that the struct
-takes. An [unsized type] is any type that the compiler doesn't know the length
-or alignment of at compile time. Any struct containing an unsized type is also
-unsized.
+takes. An [unsized type][1] is any type that the compiler doesn't know the
+length or alignment of at compile time. Any struct containing an unsized type
+is also unsized.
 
 Example of erroneous code:
 
@@ -3025,7 +3029,7 @@ fn coerce_foo<T: CoerceUnsized<U>, U>(t: T) -> Foo<U> {
 }
 ```
 
-[unsized type]: https://doc.rust-lang.org/book/first-edition/unsized-types.html
+[1]: https://doc.rust-lang.org/book/ch19-04-advanced-types.html#dynamically-sized-types-and-the-sized-trait
 "##,
 
 E0376: r##"
@@ -3033,10 +3037,11 @@ The type you are trying to impl `CoerceUnsized` for is not a struct.
 `CoerceUnsized` can only be implemented for a struct. Unsized types are
 already able to be coerced without an implementation of `CoerceUnsized`
 whereas a struct containing an unsized type needs to know the unsized type
-field it's containing is able to be coerced. An
-[unsized type](https://doc.rust-lang.org/book/first-edition/unsized-types.html)
+field it's containing is able to be coerced. An [unsized type][1]
 is any type that the compiler doesn't know the length or alignment of at
 compile time. Any struct containing an unsized type is also unsized.
+
+[1]: https://doc.rust-lang.org/book/ch19-04-advanced-types.html#dynamically-sized-types-and-the-sized-trait
 
 Example of erroneous code:
 
@@ -3883,8 +3888,10 @@ let c = 86u8 as char; // ok!
 assert_eq!(c, 'V');
 ```
 
-For more information about casts, take a look at The Book:
-https://doc.rust-lang.org/book/first-edition/casting-between-types.html
+For more information about casts, take a look at the Type cast section in
+[The Reference Book][1].
+
+[1]: https://doc.rust-lang.org/reference/expressions/operator-expr.html#type-cast-expressions
 "##,
 
 E0605: r##"
@@ -3912,8 +3919,10 @@ let v = 0 as *const u8;
 v as *const i8; // ok!
 ```
 
-For more information about casts, take a look at The Book:
-https://doc.rust-lang.org/book/first-edition/casting-between-types.html
+For more information about casts, take a look at the Type cast section in
+[The Reference Book][1].
+
+[1]: https://doc.rust-lang.org/reference/expressions/operator-expr.html#type-cast-expressions
 "##,
 
 E0606: r##"
@@ -3934,8 +3943,10 @@ let x = &0u8;
 let y: u32 = *x as u32; // We dereference it first and then cast it.
 ```
 
-For more information about casts, take a look at The Book:
-https://doc.rust-lang.org/book/first-edition/casting-between-types.html
+For more information about casts, take a look at the Type cast section in
+[The Reference Book][1].
+
+[1]: https://doc.rust-lang.org/reference/expressions/operator-expr.html#type-cast-expressions
 "##,
 
 E0607: r##"
@@ -3961,8 +3972,10 @@ pointer holds is their size.
 
 To fix this error, don't try to cast directly between thin and fat pointers.
 
-For more information about casts, take a look at The Book:
-https://doc.rust-lang.org/book/first-edition/casting-between-types.html
+For more information about casts, take a look at the Type cast section in
+[The Reference Book][1].
+
+[1]: https://doc.rust-lang.org/reference/expressions/operator-expr.html#type-cast-expressions
 "##,
 
 E0609: r##"
@@ -4020,8 +4033,8 @@ println!("x: {}, y: {}", variable.x, variable.y);
 ```
 
 For more information about primitives and structs, take a look at The Book:
-https://doc.rust-lang.org/book/first-edition/primitive-types.html
-https://doc.rust-lang.org/book/first-edition/structs.html
+https://doc.rust-lang.org/book/ch03-02-data-types.html
+https://doc.rust-lang.org/book/ch05-00-structs.html
 "##,
 
 E0614: r##"
