@@ -13,6 +13,8 @@
 //! - `armv7r-none-eabi` - **ARMv7-R** - `+v4t +v5te +v6 +v6k +v6t2  +v7 +dsp +thumb2 +rclass`
 //! - `thumbv7m-none-eabi` - **ARMv7-M** - `+v4t +v5te +v6 +v6k +v6t2 +v7 +thumb2 +thumb-mode +mclass`
 //! - `thumbv7em-none-eabi` - **ARMv7E-M** - `+v4t +v5te +v6 +v6k +v6t2 +v7 +dsp +thumb2 +thumb-mode +mclass`
+//! - `thumbv8m.main-none-eabi` - **ARMv8-M** - `+v4t +v5te +v6 +v6k +v6t2 +v7 +thumb2 +thumb-mode +mclass`
+//! - `armv8r-none-eabi` - **ARMv8-R** - `+v4t +v5te +v6 +v6k +v6t2 +v7 +v8 +thumb2 +rclass`
 //! - `aarch64-unknown-linux-gnu` - **ARMv8-A (AArch64)** - `+fp +neon`
 //!
 //! Section 10.1 of ACLE says:
