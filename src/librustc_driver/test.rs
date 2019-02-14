@@ -16,6 +16,7 @@ use rustc::ty::query::OnDiskCache;
 use rustc::ty::subst::Subst;
 use rustc::ty::{self, Ty, TyCtxt, TypeFoldable};
 use rustc_data_structures::sync::{self, Lrc};
+use rustc_interface::util;
 use rustc_lint;
 use rustc_metadata::cstore::CStore;
 use rustc_target::spec::abi::Abi;
@@ -91,6 +92,13 @@ where
         options.debugging_opts.verbose = true;
         options.unstable_features = UnstableFeatures::Allow;
 
+        // When we're compiling this library with `--test` it'll run as a binary but
+        // not actually exercise much functionality.
+        // As a result most of the logic loading the codegen backend is defunkt
+        // (it assumes we're a dynamic library in a sysroot)
+        // so let's just use the metadata only backend which doesn't need to load any libraries.
+        options.debugging_opts.codegen_backend = Some("metadata_only".to_owned());
+
         driver::spawn_thread_pool(options, |options| {
             test_env_with_pool(options, source_string, args, body)
         })
@@ -111,8 +119,9 @@ fn test_env_with_pool<F>(
         None,
         diagnostic_handler,
         Lrc::new(SourceMap::new(FilePathMapping::empty())),
+        Default::default(),
     );
-    let cstore = CStore::new(::get_codegen_backend(&sess).metadata_loader());
+    let cstore = CStore::new(util::get_codegen_backend(&sess).metadata_loader());
     rustc_lint::register_builtins(&mut sess.lint_store.borrow_mut(), Some(&sess));
     let input = config::Input::Str {
         name: FileName::anon_source_code(&source_string),

@@ -499,6 +499,13 @@ impl Input {
             Input::Str { ref mut input, .. } => Some(input),
         }
     }
+
+    pub fn source_name(&self) -> FileName {
+        match *self {
+            Input::File(ref ifile) => ifile.clone().into(),
+            Input::Str { ref name, .. } => name.clone(),
+        }
+    }
 }
 
 #[derive(Clone, Hash)]
