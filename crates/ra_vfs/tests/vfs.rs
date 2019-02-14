@@ -118,7 +118,9 @@ fn test_vfs_works() -> std::io::Result<()> {
 
     fs::rename(&dir.path().join("a/sub1/sub2/new.rs"), &dir.path().join("a/sub1/sub2/new1.rs"))
         .unwrap();
-    process_tasks(&mut vfs, 2);
+    // NOTE: Windows generates extra `Write` events when renaming?
+    // meaning we have extra tasks to process
+    process_tasks(&mut vfs, if cfg!(windows) { 4 } else { 2 });
     assert_match!(
         vfs.commit_changes().as_slice(),
         [VfsChange::RemoveFile { path: removed_path, .. }, VfsChange::AddFile { text, path: added_path, .. }],
