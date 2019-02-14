@@ -33,6 +33,14 @@
 //! - `v6 < v8m < v6t2`
 //! - `v7 < v8m.main`
 //!
+//! *NOTE*: Section 5.4.7 of ACLE says:
+//!
+//! - "__ARM_FEATURE_DSP is defined to 1 if the DSP (v5E) instructions are supported and the
+//! intrinsics defined in Saturating intrinsics are available."
+//!
+//! This does *not* match how LLVM uses the '+dsp' feature; this feature is not set for v5te
+//! targets so we have to work around this difference.
+//!
 //! # References
 //!
 //! - [ACLE Q2 2018](https://developer.arm.com/docs/101028/latest)
@@ -54,6 +62,8 @@ pub use self::registers::*;
 // Supported arches: 5TE, 7E-M. See Section 10.1 of ACLE (e.g. QADD)
 // We also include the A profile even though DSP is deprecated on that profile as of ACLE 2.0 (see
 // section 5.4.7)
+// Here we workaround the difference between LLVM's +dsp and ACLE's __ARM_FEATURE_DSP by gating on
+// '+v5te' rather than on '+dsp'
 #[cfg(all(
     not(target_arch = "aarch64"),
     any(
