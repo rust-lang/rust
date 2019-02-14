@@ -1,5 +1,5 @@
 ---
-created: "2019-02-14T17:12:57.412523988Z"
+created: "2019-02-14T17:38:20.322102467Z"
 creator: insta@0.6.2
 source: crates/ra_ide_api/src/completion/completion_item.rs
 expression: kind_completions
@@ -9,7 +9,9 @@ expression: kind_completions
         completion_kind: Postfix,
         label: "dbg",
         kind: None,
-        detail: None,
+        detail: Some(
+            "dbg!(expr)"
+        ),
         documentation: None,
         lookup: None,
         insert_text: Some(
@@ -32,7 +34,9 @@ expression: kind_completions
         completion_kind: Postfix,
         label: "if",
         kind: None,
-        detail: None,
+        detail: Some(
+            "if expr {}"
+        ),
         documentation: None,
         lookup: None,
         insert_text: Some(
@@ -55,7 +59,9 @@ expression: kind_completions
         completion_kind: Postfix,
         label: "match",
         kind: None,
-        detail: None,
+        detail: Some(
+            "match expr {}"
+        ),
         documentation: None,
         lookup: None,
         insert_text: Some(
@@ -76,9 +82,36 @@ expression: kind_completions
     },
     CompletionItem {
         completion_kind: Postfix,
+        label: "mref",
+        kind: None,
+        detail: Some(
+            "&mut expr"
+        ),
+        documentation: None,
+        lookup: None,
+        insert_text: Some(
+            "&mut bar"
+        ),
+        insert_text_format: Snippet,
+        source_range: [76; 76),
+        text_edit: Some(
+            TextEdit {
+                atoms: [
+                    AtomTextEdit {
+                        delete: [72; 76),
+                        insert: ""
+                    }
+                ]
+            }
+        )
+    },
+    CompletionItem {
+        completion_kind: Postfix,
         label: "not",
         kind: None,
-        detail: None,
+        detail: Some(
+            "!expr"
+        ),
         documentation: None,
         lookup: None,
         insert_text: Some(
@@ -101,7 +134,9 @@ expression: kind_completions
         completion_kind: Postfix,
         label: "ref",
         kind: None,
-        detail: None,
+        detail: Some(
+            "&expr"
+        ),
         documentation: None,
         lookup: None,
         insert_text: Some(
@@ -124,7 +159,9 @@ expression: kind_completions
         completion_kind: Postfix,
         label: "while",
         kind: None,
-        detail: None,
+        detail: Some(
+            "while expr {}"
+        ),
         documentation: None,
         lookup: None,
         insert_text: Some(
