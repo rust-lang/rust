@@ -178,8 +178,8 @@ impl FromInternal<(TreeAndJoint, &'_ ParseSess, &'_ mut Vec<Self>)>
                 tt!(Punct::new('#', false))
             }
 
-            Interpolated(_) => {
-                let stream = token.interpolated_to_tokenstream(sess, span);
+            Interpolated(nt) => {
+                let stream = Token::interpolated_to_tokenstream(sess, nt, span);
                 TokenTree::Group(Group {
                     delimiter: Delimiter::None,
                     stream,

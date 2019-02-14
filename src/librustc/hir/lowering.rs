@@ -1131,12 +1131,12 @@ impl<'a> LoweringContext<'a> {
 
     fn lower_token(&mut self, token: Token, span: Span) -> TokenStream {
         match token {
-            Token::Interpolated(_) => {}
-            other => return TokenTree::Token(span, other).into(),
+            Token::Interpolated(nt) => {
+                let tts = Token::interpolated_to_tokenstream(&self.sess.parse_sess, nt, span);
+                self.lower_token_stream(tts)
+            }
+            other => TokenTree::Token(span, other).into(),
         }
-
-        let tts = token.interpolated_to_tokenstream(&self.sess.parse_sess, span);
-        self.lower_token_stream(tts)
     }
 
     fn lower_arm(&mut self, arm: &Arm) -> hir::Arm {

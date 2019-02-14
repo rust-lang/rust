@@ -508,14 +508,8 @@ impl Token {
         }
     }
 
-    pub fn interpolated_to_tokenstream(&self, sess: &ParseSess, span: Span)
-        -> TokenStream
-    {
-        let nt = match *self {
-            Token::Interpolated(ref nt) => nt,
-            _ => panic!("only works on interpolated tokens"),
-        };
-
+    pub fn interpolated_to_tokenstream(sess: &ParseSess, nt: Lrc<(Nonterminal, LazyTokenStream)>,
+                                       span: Span) -> TokenStream {
         // An `Interpolated` token means that we have a `Nonterminal`
         // which is often a parsed AST item. At this point we now need
         // to convert the parsed AST to an actual token stream, e.g.
@@ -558,7 +552,7 @@ impl Token {
 
         let tokens_for_real = nt.1.force(|| {
             // FIXME(#43081): Avoid this pretty-print + reparse hack
-            let source = pprust::token_to_string(self);
+            let source = pprust::nonterminal_to_string(&nt.0);
             let filename = FileName::macro_expansion_source_code(&source);
             let (tokens, errors) = parse_stream_from_source_str(
                 filename, source, sess, Some(span));
