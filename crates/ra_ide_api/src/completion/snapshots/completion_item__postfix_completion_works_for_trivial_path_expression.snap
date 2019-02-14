@@ -1,5 +1,5 @@
 ---
-created: "2019-02-14T17:38:20.322102467Z"
+created: "2019-02-14T18:33:26.102469493Z"
 creator: insta@0.6.2
 source: crates/ra_ide_api/src/completion/completion_item.rs
 expression: kind_completions
@@ -82,31 +82,6 @@ expression: kind_completions
     },
     CompletionItem {
         completion_kind: Postfix,
-        label: "mref",
-        kind: None,
-        detail: Some(
-            "&mut expr"
-        ),
-        documentation: None,
-        lookup: None,
-        insert_text: Some(
-            "&mut bar"
-        ),
-        insert_text_format: Snippet,
-        source_range: [76; 76),
-        text_edit: Some(
-            TextEdit {
-                atoms: [
-                    AtomTextEdit {
-                        delete: [72; 76),
-                        insert: ""
-                    }
-                ]
-            }
-        )
-    },
-    CompletionItem {
-        completion_kind: Postfix,
         label: "not",
         kind: None,
         detail: Some(
@@ -141,6 +116,31 @@ expression: kind_completions
         lookup: None,
         insert_text: Some(
             "&bar"
+        ),
+        insert_text_format: Snippet,
+        source_range: [76; 76),
+        text_edit: Some(
+            TextEdit {
+                atoms: [
+                    AtomTextEdit {
+                        delete: [72; 76),
+                        insert: ""
+                    }
+                ]
+            }
+        )
+    },
+    CompletionItem {
+        completion_kind: Postfix,
+        label: "refm",
+        kind: None,
+        detail: Some(
+            "&mut expr"
+        ),
+        documentation: None,
+        lookup: None,
+        insert_text: Some(
+            "&mut bar"
         ),
         insert_text_format: Snippet,
         source_range: [76; 76),

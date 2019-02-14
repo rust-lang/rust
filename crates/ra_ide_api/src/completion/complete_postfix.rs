@@ -32,7 +32,7 @@ pub(super) fn complete_postfix(acc: &mut Completions, ctx: &CompletionContext) {
         let receiver_text = dot_receiver.syntax().text().to_string();
         postfix_snippet(ctx, "not", "!expr", &format!("!{}", receiver_text)).add_to(acc);
         postfix_snippet(ctx, "ref", "&expr", &format!("&{}", receiver_text)).add_to(acc);
-        postfix_snippet(ctx, "mref", "&mut expr", &format!("&mut {}", receiver_text)).add_to(acc);
+        postfix_snippet(ctx, "refm", "&mut expr", &format!("&mut {}", receiver_text)).add_to(acc);
         postfix_snippet(ctx, "if", "if expr {}", &format!("if {} {{$0}}", receiver_text))
             .add_to(acc);
         postfix_snippet(
