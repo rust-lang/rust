@@ -152,6 +152,7 @@ impl<'a> SegmentParam<'a> {
         match arg {
             ast::GenericArg::Lifetime(ref lt) => SegmentParam::LifeTime(lt),
             ast::GenericArg::Type(ref ty) => SegmentParam::Type(ty),
+            ast::GenericArg::Const(..) => unreachable!(), // FIXME(#3336)
         }
     }
 }
@@ -463,6 +464,7 @@ impl Rewrite for ast::GenericArg {
         match *self {
             ast::GenericArg::Lifetime(ref lt) => lt.rewrite(context, shape),
             ast::GenericArg::Type(ref ty) => ty.rewrite(context, shape),
+            ast::GenericArg::Const(..) => unreachable!(), // FIXME(#3336)
         }
     }
 }
