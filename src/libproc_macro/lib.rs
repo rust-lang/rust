@@ -5,7 +5,9 @@
 //! function-like macros `#[proc_macro]`, macro attributes `#[proc_macro_attribute]` and
 //! custom derive attributes`#[proc_macro_derive]`.
 //!
-//! See [the book](../book/first-edition/procedural-macros.html) for more.
+//! See [the book] for more.
+//!
+//! [the book]: ../book/ch19-06-macros.html#procedural-macros-for-generating-code-from-attributes
 
 #![stable(feature = "proc_macro_lib", since = "1.15.0")]
 #![deny(missing_docs)]

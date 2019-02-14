@@ -137,7 +137,7 @@ To fix this error, don't try to cast directly between thin and fat
 pointers.
 
 For more information about casts, take a look at The Book:
-https://doc.rust-lang.org/book/first-edition/casting-between-types.html");
+https://doc.rust-lang.org/reference/expressions/operator-expr.html#type-cast-expressions");
         err
     }
 }
