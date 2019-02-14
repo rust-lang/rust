@@ -567,7 +567,7 @@ macro_rules! unimplemented {
 ///
 /// [`MaybeUninit`]: mem/union.MaybeUninit.html
 #[macro_export]
-#[unstable(feature = "maybe_uninit_slice", issue = "53491")]
+#[unstable(feature = "maybe_uninit_array", issue = "53491")]
 macro_rules! uninitialized_array {
     // This `into_initialized` is safe because an array of `MaybeUninit` does not
     // require initialization.
