@@ -2,7 +2,7 @@ warning: unused import: `std::option`
   --> $DIR/bad-lint-cap3.rs:7:5
    |
 LL | use std::option; //~ WARN
-   | ----^^^^^^^^^^^- help: remove the whole `use` item
+   |     ^^^^^^^^^^^
    |
 note: lint level defined here
   --> $DIR/bad-lint-cap3.rs:4:9

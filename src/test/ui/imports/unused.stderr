@@ -2,7 +2,7 @@ error: unused import: `super::f`
   --> $DIR/unused.rs:7:24
    |
 LL |         pub(super) use super::f; //~ ERROR unused
-   |         ---------------^^^^^^^^- help: remove the whole `use` item
+   |                        ^^^^^^^^
    |
 note: lint level defined here
   --> $DIR/unused.rs:1:9

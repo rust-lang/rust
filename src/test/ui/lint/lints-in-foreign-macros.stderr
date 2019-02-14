@@ -2,7 +2,7 @@ warning: unused import: `std::string::ToString`
   --> $DIR/lints-in-foreign-macros.rs:11:16
    |
 LL |     () => {use std::string::ToString;} //~ WARN: unused import
-   |            ----^^^^^^^^^^^^^^^^^^^^^- help: remove the whole `use` item
+   |                ^^^^^^^^^^^^^^^^^^^^^
 ...
 LL | mod a { foo!(); }
    |         ------- in this macro invocation
@@ -17,13 +17,13 @@ warning: unused import: `std::string::ToString`
   --> $DIR/lints-in-foreign-macros.rs:16:18
    |
 LL | mod c { baz!(use std::string::ToString;); } //~ WARN: unused import
-   |              ----^^^^^^^^^^^^^^^^^^^^^- help: remove the whole `use` item
+   |                  ^^^^^^^^^^^^^^^^^^^^^
 
 warning: unused import: `std::string::ToString`
   --> $DIR/lints-in-foreign-macros.rs:17:19
    |
 LL | mod d { baz2!(use std::string::ToString;); } //~ WARN: unused import
-   |               ----^^^^^^^^^^^^^^^^^^^^^- help: remove the whole `use` item
+   |                   ^^^^^^^^^^^^^^^^^^^^^
 
 warning: missing documentation for crate
   --> $DIR/lints-in-foreign-macros.rs:4:1

@@ -2,7 +2,10 @@ use Destination::*;
 
 use syntax_pos::{SourceFile, Span, MultiSpan};
 
-use crate::{Level, CodeSuggestion, DiagnosticBuilder, SubDiagnostic, SourceMapperDyn, DiagnosticId};
+use crate::{
+    Level, CodeSuggestion, DiagnosticBuilder, SubDiagnostic,
+    SuggestionStyle, SourceMapperDyn, DiagnosticId,
+};
 use crate::snippet::{Annotation, AnnotationType, Line, MultilineAnnotation, StyledString, Style};
 use crate::styled_buffer::StyledBuffer;
 
@@ -43,9 +46,14 @@ impl Emitter for EmitterWriter {
                // don't display long messages as labels
                sugg.msg.split_whitespace().count() < 10 &&
                // don't display multiline suggestions as labels
-               !sugg.substitutions[0].parts[0].snippet.contains('\n') {
+               !sugg.substitutions[0].parts[0].snippet.contains('\n') &&
+               // when this style is set we want the suggestion to be a message, not inline
+               sugg.style != SuggestionStyle::HideCodeAlways &&
+               // trivial suggestion for tooling's sake, never shown
+               sugg.style != SuggestionStyle::CompletelyHidden
+            {
                 let substitution = &sugg.substitutions[0].parts[0].snippet.trim();
-                let msg = if substitution.len() == 0 || !sugg.show_code_when_inline {
+                let msg = if substitution.len() == 0 || sugg.style.hide_inline() {
                     // This substitution is only removal or we explicitly don't want to show the
                     // code inline, don't show it
                     format!("help: {}", sugg.msg)
@@ -942,14 +950,15 @@ impl EmitterWriter {
         }
     }
 
-    fn emit_message_default(&mut self,
-                            msp: &MultiSpan,
-                            msg: &[(String, Style)],
-                            code: &Option<DiagnosticId>,
-                            level: &Level,
-                            max_line_num_len: usize,
-                            is_secondary: bool)
-                            -> io::Result<()> {
+    fn emit_message_default(
+        &mut self,
+        msp: &MultiSpan,
+        msg: &[(String, Style)],
+        code: &Option<DiagnosticId>,
+        level: &Level,
+        max_line_num_len: usize,
+        is_secondary: bool,
+    ) -> io::Result<()> {
         let mut buffer = StyledBuffer::new();
         let header_style = if is_secondary {
             Style::HeaderMsg
@@ -1184,11 +1193,12 @@ impl EmitterWriter {
 
     }
 
-    fn emit_suggestion_default(&mut self,
-                               suggestion: &CodeSuggestion,
-                               level: &Level,
-                               max_line_num_len: usize)
-                               -> io::Result<()> {
+    fn emit_suggestion_default(
+        &mut self,
+        suggestion: &CodeSuggestion,
+        level: &Level,
+        max_line_num_len: usize,
+    ) -> io::Result<()> {
         if let Some(ref sm) = self.sm {
             let mut buffer = StyledBuffer::new();
 
@@ -1198,11 +1208,13 @@ impl EmitterWriter {
                 buffer.append(0, &level_str, Style::Level(level.clone()));
                 buffer.append(0, ": ", Style::HeaderMsg);
             }
-            self.msg_to_buffer(&mut buffer,
-                               &[(suggestion.msg.to_owned(), Style::NoStyle)],
-                               max_line_num_len,
-                               "suggestion",
-                               Some(Style::HeaderMsg));
+            self.msg_to_buffer(
+                &mut buffer,
+                &[(suggestion.msg.to_owned(), Style::NoStyle)],
+                max_line_num_len,
+                "suggestion",
+                Some(Style::HeaderMsg),
+            );
 
             // Render the replacements for each suggestion
             let suggestions = suggestion.splice_lines(&**sm);
@@ -1340,22 +1352,42 @@ impl EmitterWriter {
                 if !self.short_message {
                     for child in children {
                         let span = child.render_span.as_ref().unwrap_or(&child.span);
-                        match self.emit_message_default(&span,
-                                                        &child.styled_message(),
-                                                        &None,
-                                                        &child.level,
-                                                        max_line_num_len,
-                                                        true) {
+                        match self.emit_message_default(
+                            &span,
+                            &child.styled_message(),
+                            &None,
+                            &child.level,
+                            max_line_num_len,
+                            true,
+                        ) {
                             Err(e) => panic!("failed to emit error: {}", e),
                             _ => ()
                         }
                     }
                     for sugg in suggestions {
-                        match self.emit_suggestion_default(sugg,
-                                                           &Level::Help,
-                                                           max_line_num_len) {
-                            Err(e) => panic!("failed to emit error: {}", e),
-                            _ => ()
+                        if sugg.style == SuggestionStyle::CompletelyHidden {
+                            // do not display this suggestion, it is meant only for tools
+                        } else if sugg.style == SuggestionStyle::HideCodeAlways {
+                            match self.emit_message_default(
+                                &MultiSpan::new(),
+                                &[(sugg.msg.to_owned(), Style::HeaderMsg)],
+                                &None,
+                                &Level::Help,
+                                max_line_num_len,
+                                true,
+                            ) {
+                                Err(e) => panic!("failed to emit error: {}", e),
+                                _ => ()
+                            }
+                        } else {
+                            match self.emit_suggestion_default(
+                                sugg,
+                                &Level::Help,
+                                max_line_num_len,
+                            ) {
+                                Err(e) => panic!("failed to emit error: {}", e),
+                                _ => ()
+                            }
                         }
                     }
                 }
