@@ -12,11 +12,12 @@ use core::panic::{BoxMeUp, PanicInfo, Location};
 use crate::any::Any;
 use crate::fmt;
 use crate::intrinsics;
+use crate::lock_api::RawRwLock as _;
 use crate::mem;
+use crate::parking_lot::RawRwLock;
 use crate::ptr;
 use crate::raw;
 use crate::sys::stdio::panic_output;
-use crate::sys_common::rwlock::RWLock;
 use crate::sys_common::thread_info;
 use crate::sys_common::util;
 use crate::thread;
@@ -54,7 +55,7 @@ enum Hook {
     Custom(*mut (dyn Fn(&PanicInfo<'_>) + 'static + Sync + Send)),
 }
 
-static HOOK_LOCK: RWLock = RWLock::new();
+static HOOK_LOCK: RawRwLock = RawRwLock::INIT;
 static mut HOOK: Hook = Hook::Default;
 
 /// Registers a custom panic hook, replacing any that was previously registered.
@@ -97,10 +98,10 @@ pub fn set_hook(hook: Box<dyn Fn(&PanicInfo<'_>) + 'static + Sync + Send>) {
     }
 
     unsafe {
-        HOOK_LOCK.write();
+        HOOK_LOCK.lock_exclusive();
         let old_hook = HOOK;
         HOOK = Hook::Custom(Box::into_raw(hook));
-        HOOK_LOCK.write_unlock();
+        HOOK_LOCK.unlock_exclusive();
 
         if let Hook::Custom(ptr) = old_hook {
             Box::from_raw(ptr);
@@ -142,10 +143,10 @@ pub fn take_hook() -> Box<dyn Fn(&PanicInfo<'_>) + 'static + Sync + Send> {
     }
 
     unsafe {
-        HOOK_LOCK.write();
+        HOOK_LOCK.lock_exclusive();
         let hook = HOOK;
         HOOK = Hook::Default;
-        HOOK_LOCK.write_unlock();
+        HOOK_LOCK.unlock_exclusive();
 
         match hook {
             Hook::Default => Box::new(default_hook),
@@ -463,7 +464,7 @@ fn rust_panic_with_hook(payload: &mut dyn BoxMeUp,
             message,
             Location::internal_constructor(file, line, col),
         );
-        HOOK_LOCK.read();
+        HOOK_LOCK.lock_shared();
         match HOOK {
             // Some platforms know that printing to stderr won't ever actually
             // print anything, and if that's the case we can skip the default
@@ -478,7 +479,7 @@ fn rust_panic_with_hook(payload: &mut dyn BoxMeUp,
                 (*ptr)(&info);
             }
         };
-        HOOK_LOCK.read_unlock();
+        HOOK_LOCK.unlock_shared();
     }
 
     if panics > 1 {
