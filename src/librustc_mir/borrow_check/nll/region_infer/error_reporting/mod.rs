@@ -244,7 +244,8 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         if let (Some(f), Some(o)) = (self.to_error_region(fr), self.to_error_region(outlived_fr)) {
             let tables = infcx.tcx.typeck_tables_of(mir_def_id);
             let nice = NiceRegionError::new_from_span(infcx, span, o, f, Some(tables));
-            if let Some(_error_reported) = nice.try_report_from_nll() {
+            if let Some(diag) = nice.try_report_from_nll() {
+                diag.buffer(errors_buffer);
                 return;
             }
         }

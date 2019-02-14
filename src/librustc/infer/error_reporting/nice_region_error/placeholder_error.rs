@@ -8,13 +8,12 @@ use crate::traits::{ObligationCause, ObligationCauseCode};
 use crate::ty;
 use crate::ty::error::ExpectedFound;
 use crate::ty::subst::Substs;
-use crate::util::common::ErrorReported;
 use crate::util::ppaux::RegionHighlightMode;
 
 impl NiceRegionError<'me, 'gcx, 'tcx> {
     /// When given a `ConcreteFailure` for a function with arguments containing a named region and
     /// an anonymous region, emit a descriptive diagnostic error.
-    pub(super) fn try_report_placeholder_conflict(&self) -> Option<ErrorReported> {
+    pub(super) fn try_report_placeholder_conflict(&self) -> Option<DiagnosticBuilder<'me>> {
         match &self.error {
             ///////////////////////////////////////////////////////////////////////////
             // NB. The ordering of cases in this match is very
@@ -178,7 +177,7 @@ impl NiceRegionError<'me, 'gcx, 'tcx> {
         trait_def_id: DefId,
         expected_substs: &'tcx Substs<'tcx>,
         actual_substs: &'tcx Substs<'tcx>,
-    ) -> ErrorReported {
+    ) -> DiagnosticBuilder<'me> {
         debug!(
             "try_report_placeholders_trait(\
              vid={:?}, \
@@ -295,8 +294,7 @@ impl NiceRegionError<'me, 'gcx, 'tcx> {
             any_self_ty_has_vid,
         );
 
-        err.emit();
-        ErrorReported
+        err
     }
 
     /// Add notes with details about the expected and actual trait refs, with attention to cases

@@ -1,9 +1,10 @@
 use crate::infer::InferCtxt;
 use crate::infer::lexical_region_resolve::RegionResolutionError;
 use crate::infer::lexical_region_resolve::RegionResolutionError::*;
-use syntax::source_map::Span;
 use crate::ty::{self, TyCtxt};
 use crate::util::common::ErrorReported;
+use errors::DiagnosticBuilder;
+use syntax::source_map::Span;
 
 mod different_lifetimes;
 mod find_anon_type;
@@ -59,7 +60,7 @@ impl<'cx, 'gcx, 'tcx> NiceRegionError<'cx, 'gcx, 'tcx> {
         self.infcx.tcx
     }
 
-    pub fn try_report_from_nll(&self) -> Option<ErrorReported> {
+    pub fn try_report_from_nll(&self) -> Option<DiagnosticBuilder<'cx>> {
         // Due to the improved diagnostics returned by the MIR borrow checker, only a subset of
         // the nice region errors are required when running under the MIR borrow checker.
         self.try_report_named_anon_conflict()
@@ -68,6 +69,7 @@ impl<'cx, 'gcx, 'tcx> NiceRegionError<'cx, 'gcx, 'tcx> {
 
     pub fn try_report(&self) -> Option<ErrorReported> {
         self.try_report_from_nll()
+            .map(|mut diag| { diag.emit(); ErrorReported })
             .or_else(|| self.try_report_anon_anon_conflict())
             .or_else(|| self.try_report_outlives_closure())
             .or_else(|| self.try_report_static_impl_trait())
