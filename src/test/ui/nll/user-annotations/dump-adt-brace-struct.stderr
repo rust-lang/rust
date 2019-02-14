@@ -1,8 +1,8 @@
-error: user substs: UserSubsts { substs: [u32], user_self_ty: None }
-  --> $DIR/dump-adt-brace-struct.rs:18:5
+error: user substs: UserSubsts { substs: [&ReStatic u32], user_self_ty: None }
+  --> $DIR/dump-adt-brace-struct.rs:20:5
    |
-LL |     SomeStruct::<u32> { t: 22 }; //~ ERROR [u32]
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+LL |     SomeStruct::<&'static u32> { t: &22 }; //~ ERROR [&ReStatic u32]
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: aborting due to previous error
 
