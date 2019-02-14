@@ -57,7 +57,7 @@ pub use self::registers::*;
 #[cfg(all(
     not(target_arch = "aarch64"),
     any(
-        // >= v5TE but excludes v7-A
+        // >= v5TE but excludes v7-M
         all(target_feature = "v5te", not(target_feature = "mclass")),
         // v7E-M
         all(target_feature = "mclass", target_feature = "dsp"),
