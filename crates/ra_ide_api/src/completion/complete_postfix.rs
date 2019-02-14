@@ -30,6 +30,7 @@ pub(super) fn complete_postfix(acc: &mut Completions, ctx: &CompletionContext) {
     if let Some(dot_receiver) = ctx.dot_receiver {
         let receiver_text = dot_receiver.syntax().text().to_string();
         postfix_snippet(ctx, "not", &format!("!{}", receiver_text)).add_to(acc);
+        postfix_snippet(ctx, "ref", &format!("&{}", receiver_text)).add_to(acc);
         postfix_snippet(ctx, "if", &format!("if {} {{$0}}", receiver_text)).add_to(acc);
         postfix_snippet(
             ctx,
