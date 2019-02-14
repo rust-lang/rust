@@ -1,14 +1,19 @@
-error: function pointers in const fn are unstable
+error[E0723]: function pointers in const fn are unstable (see issue #57563)
   --> $DIR/min_const_fn_fn_ptr.rs:11:5
    |
 LL |     x.0.field;
    |     ^^^^^^^^^
+   |
+   = help: add #![feature(const_fn)] to the crate attributes to enable
 
-error: function pointers in const fn are unstable
+error[E0723]: function pointers in const fn are unstable (see issue #57563)
   --> $DIR/min_const_fn_fn_ptr.rs:14:59
    |
 LL | const fn no_inner_dyn_trait_ret() -> Hide { Hide(HasPtr { field }) }
    |                                                           ^^^^^
+   |
+   = help: add #![feature(const_fn)] to the crate attributes to enable
 
 error: aborting due to 2 previous errors
 
+For more information about this error, try `rustc --explain E0723`.
