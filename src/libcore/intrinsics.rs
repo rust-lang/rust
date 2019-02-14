@@ -1524,6 +1524,7 @@ extern "rust-intrinsic" {
     /// Probably will never become stable.
     pub fn nontemporal_store<T>(ptr: *mut T, val: T);
 
+    /// Freezes undefined data. Exposed as ptr::freeze.
     #[cfg(not(stage0))]
     pub fn freeze<T>(ptr: *mut T, count: usize);
 }
