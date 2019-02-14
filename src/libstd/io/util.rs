@@ -48,7 +48,7 @@ pub fn copy<R: ?Sized, W: ?Sized>(reader: &mut R, writer: &mut W) -> io::Result<
 {
     let mut buf = unsafe {
         let mut buf: [u8; super::DEFAULT_BUF_SIZE] = mem::uninitialized();
-        ptr::freeze(&mut buf, 1);
+        ptr::freeze(buf.as_mut_ptr(), buf.len());
         buf
     };
 
