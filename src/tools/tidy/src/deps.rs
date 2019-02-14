@@ -16,6 +16,7 @@ const LICENSES: &[&str] = &[
     "MIT",
     "Unlicense/MIT",
     "Unlicense OR MIT",
+    "CC0-1.0",
 ];
 
 /// These are exceptions to Rust's permissive licensing policy, and
