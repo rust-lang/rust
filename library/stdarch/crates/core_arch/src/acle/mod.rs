@@ -59,6 +59,10 @@ mod registers;
 
 pub use self::registers::*;
 
+mod ex;
+
+pub use self::ex::*;
+
 // Supported arches: 5TE, 7E-M. See Section 10.1 of ACLE (e.g. QADD)
 // We also include the A profile even though DSP is deprecated on that profile as of ACLE 2.0 (see
 // section 5.4.7)
