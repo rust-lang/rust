@@ -616,7 +616,7 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
                 if let Some(ref type_) = data.output {
                     // `-> Foo` syntax is essentially an associated type binding,
                     // so it is also allowed to contain nested `impl Trait`.
-                    self.with_impl_trait(None, |this| visit::walk_ty(this, type_));
+                    self.with_impl_trait(None, |this| this.visit_ty(type_));
                 }
             }
         }
