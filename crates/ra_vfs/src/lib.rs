@@ -159,7 +159,7 @@ impl fmt::Debug for Vfs {
 impl Vfs {
     pub fn new(roots: Vec<PathBuf>) -> (Vfs, Vec<VfsRoot>) {
         let roots = Arc::new(Roots::new(roots));
-        let worker = io::Worker::start(Arc::clone(&roots));
+        let worker = io::start(Arc::clone(&roots));
         let mut root2files = ArenaMap::default();
 
         for (root, config) in roots.iter() {
