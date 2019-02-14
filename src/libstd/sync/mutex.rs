@@ -3,7 +3,7 @@ use fmt;
 use mem;
 use ops::{Deref, DerefMut};
 use ptr;
-use sys_common::mutex as sys;
+use sys_common::{mutex as sys, AsInner};
 use sys_common::poison::{self, TryLockError, TryLockResult, LockResult};
 
 /// A mutual exclusion primitive useful for protecting shared data
@@ -360,6 +360,12 @@ impl<T: ?Sized> Mutex<T> {
     }
 }
 
+impl<T: ?Sized> AsInner<sys::Mutex> for Mutex<T> {
+    fn as_inner(&self) -> &sys::Mutex {
+        &self.inner
+    }
+}
+
 #[stable(feature = "rust1", since = "1.0.0")]
 unsafe impl<#[may_dangle] T: ?Sized> Drop for Mutex<T> {
     fn drop(&mut self) {
@@ -410,13 +416,24 @@ impl<T: ?Sized + fmt::Debug> fmt::Debug for Mutex<T> {
 }
 
 impl<'mutex, T: ?Sized> MutexGuard<'mutex, T> {
-    unsafe fn new(lock: &'mutex Mutex<T>) -> LockResult<MutexGuard<'mutex, T>> {
+    /// # Safety
+    ///
+    /// The mutex must be locked when passed to this function.
+    pub(super) unsafe fn new(lock: &'mutex Mutex<T>) -> LockResult<MutexGuard<'mutex, T>> {
         poison::map_result(lock.poison.borrow(), |guard| {
             MutexGuard {
                 __lock: lock,
                 __poison: guard,
             }
         })
+    }
+
+    /// Removes the poison guard, but keeps the mutex locked.
+    pub(super) fn into_mutex(guard: MutexGuard<'mutex, T>) -> &'mutex Mutex<T> {
+        guard.__lock.poison.done(&guard.__poison);
+        let lock = guard.__lock;
+        mem::forget(guard);
+        lock
     }
 }
 
@@ -459,14 +476,6 @@ impl<'a, T: ?Sized + fmt::Display> fmt::Display for MutexGuard<'a, T> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         (**self).fmt(f)
     }
-}
-
-pub fn guard_lock<'a, T: ?Sized>(guard: &MutexGuard<'a, T>) -> &'a sys::Mutex {
-    &guard.__lock.inner
-}
-
-pub fn guard_poison<'a, T: ?Sized>(guard: &MutexGuard<'a, T>) -> &'a poison::Flag {
-    &guard.__lock.poison
 }
 
 #[cfg(all(test, not(target_os = "emscripten")))]

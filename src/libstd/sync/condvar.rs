@@ -1,7 +1,7 @@
 use fmt;
 use sync::atomic::{AtomicUsize, Ordering};
-use sync::{mutex, MutexGuard, PoisonError};
-use sys_common::condvar as sys;
+use sync::{MutexGuard, PoisonError};
+use sys_common::{condvar as sys, AsInner};
 use sys_common::mutex as sys_mutex;
 use sys_common::poison::{self, LockResult};
 use time::{Duration, Instant};
@@ -198,16 +198,11 @@ impl Condvar {
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn wait<'a, T>(&self, guard: MutexGuard<'a, T>)
                        -> LockResult<MutexGuard<'a, T>> {
-        let poisoned = unsafe {
-            let lock = mutex::guard_lock(&guard);
-            self.verify(lock);
-            self.inner.wait(lock);
-            mutex::guard_poison(&guard).get()
-        };
-        if poisoned {
-            Err(PoisonError::new(guard))
-        } else {
-            Ok(guard)
+        unsafe {
+            let lock = MutexGuard::into_mutex(guard);
+            self.verify(lock.as_inner());
+            self.inner.wait(lock.as_inner());
+            MutexGuard::new(lock)
         }
     }
 
@@ -399,16 +394,15 @@ impl Condvar {
     pub fn wait_timeout<'a, T>(&self, guard: MutexGuard<'a, T>,
                                dur: Duration)
                                -> LockResult<(MutexGuard<'a, T>, WaitTimeoutResult)> {
-        let (poisoned, result) = unsafe {
-            let lock = mutex::guard_lock(&guard);
-            self.verify(lock);
-            let success = self.inner.wait_timeout(lock, dur);
-            (mutex::guard_poison(&guard).get(), WaitTimeoutResult(!success))
+        let (guard, result) = unsafe {
+            let lock = MutexGuard::into_mutex(guard);
+            self.verify(lock.as_inner());
+            let success = self.inner.wait_timeout(lock.as_inner(), dur);
+            (MutexGuard::new(lock), WaitTimeoutResult(!success))
         };
-        if poisoned {
-            Err(PoisonError::new((guard, result)))
-        } else {
-            Ok((guard, result))
+        match guard {
+            Ok(g) => Ok((g, result)),
+            Err(p) => Err(PoisonError::new((p.into_inner(), result)))
         }
     }
 
@@ -568,7 +562,10 @@ impl Condvar {
         unsafe { self.inner.notify_all() }
     }
 
-    fn verify(&self, mutex: &sys_mutex::Mutex) {
+    /// # Safety
+    ///
+    /// The mutex must be locked when passed to this function.
+    unsafe fn verify(&self, mutex: &sys_mutex::Mutex) {
         let addr = mutex as *const _ as usize;
         match self.mutex.compare_and_swap(0, addr, Ordering::SeqCst) {
             // If we got out 0, then we have successfully bound the mutex to
@@ -581,8 +578,12 @@ impl Condvar {
 
             // Anything else and we're using more than one mutex on this cvar,
             // which is currently disallowed.
-            _ => panic!("attempted to use a condition variable with two \
-                         mutexes"),
+            _ => {
+                // unlock the mutex before panicking
+                mutex.raw_unlock();
+                panic!("attempted to use a condition variable with two \
+                         mutexes")
+            }
         }
     }
 }
