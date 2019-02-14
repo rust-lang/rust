@@ -1,10 +1,9 @@
-use crate::cell::UnsafeCell;
 use crate::fmt;
 use crate::mem;
 use crate::ops::{Deref, DerefMut};
+use crate::parking_lot;
 use crate::ptr;
 use crate::sys_common::poison::{self, LockResult, TryLockError, TryLockResult};
-use crate::sys_common::rwlock as sys;
 
 /// A reader-writer lock
 ///
@@ -65,9 +64,8 @@ use crate::sys_common::rwlock as sys;
 /// [`Mutex`]: struct.Mutex.html
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct RwLock<T: ?Sized> {
-    inner: Box<sys::RWLock>,
     poison: poison::Flag,
-    data: UnsafeCell<T>,
+    inner: parking_lot::RwLock<T>,
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -87,7 +85,7 @@ unsafe impl<T: ?Sized + Send + Sync> Sync for RwLock<T> {}
 #[must_use = "if unused the RwLock will immediately unlock"]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct RwLockReadGuard<'a, T: ?Sized + 'a> {
-    __lock: &'a RwLock<T>,
+    __inner: parking_lot::RwLockReadGuard<'a, T>,
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -110,6 +108,7 @@ unsafe impl<T: ?Sized + Sync> Sync for RwLockReadGuard<'_, T> {}
 pub struct RwLockWriteGuard<'a, T: ?Sized + 'a> {
     __lock: &'a RwLock<T>,
     __poison: poison::Guard,
+    __inner: parking_lot::RwLockWriteGuard<'a, T>,
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -131,9 +130,8 @@ impl<T> RwLock<T> {
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn new(t: T) -> RwLock<T> {
         RwLock {
-            inner: box sys::RWLock::new(),
             poison: poison::Flag::new(),
-            data: UnsafeCell::new(t),
+            inner: parking_lot::RwLock::new(t),
         }
     }
 }
@@ -181,10 +179,8 @@ impl<T: ?Sized> RwLock<T> {
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn read(&self) -> LockResult<RwLockReadGuard<'_, T>> {
-        unsafe {
-            self.inner.read();
-            RwLockReadGuard::new(self)
-        }
+        let inner_guard = self.inner.read();
+        unsafe { RwLockReadGuard::new(self, inner_guard) }
     }
 
     /// Attempts to acquire this rwlock with shared read access.
@@ -220,12 +216,10 @@ impl<T: ?Sized> RwLock<T> {
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn try_read(&self) -> TryLockResult<RwLockReadGuard<'_, T>> {
-        unsafe {
-            if self.inner.try_read() {
-                Ok(RwLockReadGuard::new(self)?)
-            } else {
-                Err(TryLockError::WouldBlock)
-            }
+        if let Some(inner_guard) = self.inner.try_read() {
+            Ok(unsafe { RwLockReadGuard::new(self, inner_guard)? })
+        } else {
+            Err(TryLockError::WouldBlock)
         }
     }
 
@@ -263,10 +257,8 @@ impl<T: ?Sized> RwLock<T> {
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn write(&self) -> LockResult<RwLockWriteGuard<'_, T>> {
-        unsafe {
-            self.inner.write();
-            RwLockWriteGuard::new(self)
-        }
+        let inner_guard = self.inner.write();
+        unsafe { RwLockWriteGuard::new(self, inner_guard) }
     }
 
     /// Attempts to lock this rwlock with exclusive write access.
@@ -302,12 +294,10 @@ impl<T: ?Sized> RwLock<T> {
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn try_write(&self) -> TryLockResult<RwLockWriteGuard<'_, T>> {
-        unsafe {
-            if self.inner.try_write() {
-                Ok(RwLockWriteGuard::new(self)?)
-            } else {
-                Err(TryLockError::WouldBlock)
-            }
+        if let Some(inner_guard) = self.inner.try_write() {
+            Ok(unsafe { RwLockWriteGuard::new(self, inner_guard)? })
+        } else {
+            Err(TryLockError::WouldBlock)
         }
     }
 
@@ -369,15 +359,13 @@ impl<T: ?Sized> RwLock<T> {
         // we'll have to destructure it manually instead.
         unsafe {
             // Like `let RwLock { inner, poison, data } = self`.
-            let (inner, poison, data) = {
-                let RwLock { ref inner, ref poison, ref data } = self;
-                (ptr::read(inner), ptr::read(poison), ptr::read(data))
+            let (poison, inner) = {
+                let RwLock { ref poison, ref inner } = self;
+                (ptr::read(poison), ptr::read(inner))
             };
             mem::forget(self);
-            inner.destroy(); // Keep in sync with the `Drop` impl.
-            drop(inner);
 
-            poison::map_result(poison.borrow(), |_| data.into_inner())
+            poison::map_result(poison.borrow(), |_| inner.into_inner())
         }
     }
 
@@ -406,17 +394,14 @@ impl<T: ?Sized> RwLock<T> {
     pub fn get_mut(&mut self) -> LockResult<&mut T> {
         // We know statically that there are no other references to `self`, so
         // there's no need to lock the inner lock.
-        let data = unsafe { &mut *self.data.get() };
+        let data = self.inner.get_mut();
         poison::map_result(self.poison.borrow(), |_| data)
     }
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
 unsafe impl<#[may_dangle] T: ?Sized> Drop for RwLock<T> {
-    fn drop(&mut self) {
-        // IMPORTANT: This code needs to be kept in sync with `RwLock::into_inner`.
-        unsafe { self.inner.destroy() }
-    }
+    fn drop(&mut self) {}
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -459,23 +444,24 @@ impl<T> From<T> for RwLock<T> {
 }
 
 impl<'rwlock, T: ?Sized> RwLockReadGuard<'rwlock, T> {
-    unsafe fn new(lock: &'rwlock RwLock<T>)
+    unsafe fn new(lock: &'rwlock RwLock<T>, inner: parking_lot::RwLockReadGuard<'rwlock, T>)
                   -> LockResult<RwLockReadGuard<'rwlock, T>> {
         poison::map_result(lock.poison.borrow(), |_| {
             RwLockReadGuard {
-                __lock: lock,
+                __inner: inner,
             }
         })
     }
 }
 
 impl<'rwlock, T: ?Sized> RwLockWriteGuard<'rwlock, T> {
-    unsafe fn new(lock: &'rwlock RwLock<T>)
+    unsafe fn new(lock: &'rwlock RwLock<T>, inner: parking_lot::RwLockWriteGuard<'rwlock, T>)
                   -> LockResult<RwLockWriteGuard<'rwlock, T>> {
         poison::map_result(lock.poison.borrow(), |guard| {
             RwLockWriteGuard {
                 __lock: lock,
                 __poison: guard,
+                __inner: inner,
             }
         })
     }
@@ -485,7 +471,7 @@ impl<'rwlock, T: ?Sized> RwLockWriteGuard<'rwlock, T> {
 impl<T: fmt::Debug> fmt::Debug for RwLockReadGuard<'_, T> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("RwLockReadGuard")
-            .field("lock", &self.__lock)
+            .field("inner", &self.__inner)
             .finish()
     }
 }
@@ -501,7 +487,7 @@ impl<T: ?Sized + fmt::Display> fmt::Display for RwLockReadGuard<'_, T> {
 impl<T: fmt::Debug> fmt::Debug for RwLockWriteGuard<'_, T> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("RwLockWriteGuard")
-            .field("lock", &self.__lock)
+            .field("inner", &self.__inner)
             .finish()
     }
 }
@@ -518,7 +504,7 @@ impl<T: ?Sized> Deref for RwLockReadGuard<'_, T> {
     type Target = T;
 
     fn deref(&self) -> &T {
-        unsafe { &*self.__lock.data.get() }
+        self.__inner.deref()
     }
 }
 
@@ -527,29 +513,26 @@ impl<T: ?Sized> Deref for RwLockWriteGuard<'_, T> {
     type Target = T;
 
     fn deref(&self) -> &T {
-        unsafe { &*self.__lock.data.get() }
+        self.__inner.deref()
     }
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T: ?Sized> DerefMut for RwLockWriteGuard<'_, T> {
     fn deref_mut(&mut self) -> &mut T {
-        unsafe { &mut *self.__lock.data.get() }
+        self.__inner.deref_mut()
     }
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T: ?Sized> Drop for RwLockReadGuard<'_, T> {
-    fn drop(&mut self) {
-        unsafe { self.__lock.inner.read_unlock(); }
-    }
+    fn drop(&mut self) {}
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T: ?Sized> Drop for RwLockWriteGuard<'_, T> {
     fn drop(&mut self) {
         self.__lock.poison.done(&self.__poison);
-        unsafe { self.__lock.inner.write_unlock(); }
     }
 }
 
