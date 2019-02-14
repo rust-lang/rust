@@ -1025,7 +1025,7 @@ impl<'a, 'b> Visitor<'a> for BuildReducedGraphVisitor<'a, 'b> {
 
     fn visit_token(&mut self, t: Token) {
         if let Token::Interpolated(nt) = t {
-            if let token::NtExpr(ref expr) = nt.0 {
+            if let token::NtExpr(ref expr) = *nt {
                 if let ast::ExprKind::Mac(..) = expr.node {
                     self.visit_invoc(expr.id);
                 }

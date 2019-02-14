@@ -13,16 +13,15 @@ use crate::syntax::parse::parse_stream_from_source_str;
 use crate::syntax::parse::parser::emit_unclosed_delims;
 use crate::tokenstream::{self, DelimSpan, TokenStream, TokenTree};
 
-use serialize::{Decodable, Decoder, Encodable, Encoder};
 use syntax_pos::symbol::{self, Symbol};
 use syntax_pos::{self, Span, FileName};
 use log::info;
 
-use std::{cmp, fmt};
+use std::fmt;
 use std::mem;
 #[cfg(target_arch = "x86_64")]
 use rustc_data_structures::static_assert;
-use rustc_data_structures::sync::{Lrc, Lock};
+use rustc_data_structures::sync::Lrc;
 
 #[derive(Clone, PartialEq, RustcEncodable, RustcDecodable, Hash, Debug, Copy)]
 pub enum BinOpToken {
@@ -184,9 +183,8 @@ pub enum Token {
     Ident(ast::Ident, /* is_raw */ bool),
     Lifetime(ast::Ident),
 
-    // The `LazyTokenStream` is a pure function of the `Nonterminal`,
-    // and so the `LazyTokenStream` can be ignored by Eq, Hash, etc.
-    Interpolated(Lrc<(Nonterminal, LazyTokenStream)>),
+    Interpolated(Lrc<Nonterminal>),
+
     // Can be expanded into several tokens.
     /// A doc comment.
     DocComment(ast::Name),
@@ -209,10 +207,6 @@ pub enum Token {
 static_assert!(MEM_SIZE_OF_STATEMENT: mem::size_of::<Token>() == 16);
 
 impl Token {
-    pub fn interpolated(nt: Nonterminal) -> Token {
-        Token::Interpolated(Lrc::new((nt, LazyTokenStream::new())))
-    }
-
     /// Recovers a `Token` from an `ast::Ident`. This creates a raw identifier if necessary.
     pub fn from_ast_ident(ident: ast::Ident) -> Token {
         Ident(ident, ident.is_raw_guess())
@@ -244,7 +238,7 @@ impl Token {
             ModSep                            | // global path
             Lifetime(..)                      | // labeled loop
             Pound                             => true, // expression attributes
-            Interpolated(ref nt) => match nt.0 {
+            Interpolated(ref nt) => match **nt {
                 NtLiteral(..) |
                 NtIdent(..)   |
                 NtExpr(..)    |
@@ -272,7 +266,7 @@ impl Token {
             Lifetime(..)                | // lifetime bound in trait object
             Lt | BinOp(Shl)             | // associated path
             ModSep                      => true, // global path
-            Interpolated(ref nt) => match nt.0 {
+            Interpolated(ref nt) => match **nt {
                 NtIdent(..) | NtTy(..) | NtPath(..) | NtLifetime(..) => true,
                 _ => false,
             },
@@ -284,7 +278,7 @@ impl Token {
     pub fn can_begin_const_arg(&self) -> bool {
         match self {
             OpenDelim(Brace) => true,
-            Interpolated(ref nt) => match nt.0 {
+            Interpolated(ref nt) => match **nt {
                 NtExpr(..) => true,
                 NtBlock(..) => true,
                 NtLiteral(..) => true,
@@ -316,7 +310,7 @@ impl Token {
             BinOp(Minus) => true,
             Ident(ident, false) if ident.name == keywords::True.name() => true,
             Ident(ident, false) if ident.name == keywords::False.name() => true,
-            Interpolated(ref nt) => match nt.0 {
+            Interpolated(ref nt) => match **nt {
                 NtLiteral(..) => true,
                 _             => false,
             },
@@ -328,7 +322,7 @@ impl Token {
     pub fn ident(&self) -> Option<(ast::Ident, /* is_raw */ bool)> {
         match *self {
             Ident(ident, is_raw) => Some((ident, is_raw)),
-            Interpolated(ref nt) => match nt.0 {
+            Interpolated(ref nt) => match **nt {
                 NtIdent(ident, is_raw) => Some((ident, is_raw)),
                 _ => None,
             },
@@ -339,7 +333,7 @@ impl Token {
     pub fn lifetime(&self) -> Option<ast::Ident> {
         match *self {
             Lifetime(ident) => Some(ident),
-            Interpolated(ref nt) => match nt.0 {
+            Interpolated(ref nt) => match **nt {
                 NtLifetime(ident) => Some(ident),
                 _ => None,
             },
@@ -367,7 +361,7 @@ impl Token {
     /// Returns `true` if the token is an interpolated path.
     fn is_path(&self) -> bool {
         if let Interpolated(ref nt) = *self {
-            if let NtPath(..) = nt.0 {
+            if let NtPath(..) = **nt {
                 return true;
             }
         }
@@ -508,8 +502,8 @@ impl Token {
         }
     }
 
-    pub fn interpolated_to_tokenstream(sess: &ParseSess, nt: Lrc<(Nonterminal, LazyTokenStream)>,
-                                       span: Span) -> TokenStream {
+    pub fn interpolated_to_tokenstream(sess: &ParseSess, nt: Lrc<Nonterminal>, span: Span)
+                                       -> TokenStream {
         // An `Interpolated` token means that we have a `Nonterminal`
         // which is often a parsed AST item. At this point we now need
         // to convert the parsed AST to an actual token stream, e.g.
@@ -524,41 +518,36 @@ impl Token {
         // stream they came from. Here we attempt to extract these
         // lossless token streams before we fall back to the
         // stringification.
-        let mut tokens = None;
-
-        match nt.0 {
+        let tokens = match *nt {
             Nonterminal::NtItem(ref item) => {
-                tokens = prepend_attrs(sess, &item.attrs, item.tokens.as_ref(), span);
+                prepend_attrs(sess, &item.attrs, item.tokens.as_ref(), span)
             }
             Nonterminal::NtTraitItem(ref item) => {
-                tokens = prepend_attrs(sess, &item.attrs, item.tokens.as_ref(), span);
+                prepend_attrs(sess, &item.attrs, item.tokens.as_ref(), span)
             }
             Nonterminal::NtImplItem(ref item) => {
-                tokens = prepend_attrs(sess, &item.attrs, item.tokens.as_ref(), span);
+                prepend_attrs(sess, &item.attrs, item.tokens.as_ref(), span)
             }
             Nonterminal::NtIdent(ident, is_raw) => {
                 let token = Token::Ident(ident, is_raw);
-                tokens = Some(TokenTree::Token(ident.span, token).into());
+                Some(TokenTree::Token(ident.span, token).into())
             }
             Nonterminal::NtLifetime(ident) => {
                 let token = Token::Lifetime(ident);
-                tokens = Some(TokenTree::Token(ident.span, token).into());
+                Some(TokenTree::Token(ident.span, token).into())
             }
             Nonterminal::NtTT(ref tt) => {
-                tokens = Some(tt.clone().into());
+                Some(tt.clone().into())
             }
-            _ => {}
-        }
+            _ => None,
+        };
 
-        let tokens_for_real = nt.1.force(|| {
-            // FIXME(#43081): Avoid this pretty-print + reparse hack
-            let source = pprust::nonterminal_to_string(&nt.0);
-            let filename = FileName::macro_expansion_source_code(&source);
-            let (tokens, errors) = parse_stream_from_source_str(
-                filename, source, sess, Some(span));
-            emit_unclosed_delims(&errors, &sess.span_diagnostic);
-            tokens
-        });
+        // FIXME(#43081): Avoid this pretty-print + reparse hack
+        let source = pprust::nonterminal_to_string(&nt);
+        let filename = FileName::macro_expansion_source_code(&source);
+        let (tokens_for_real, errors) =
+            parse_stream_from_source_str(filename, source, sess, Some(span));
+        emit_unclosed_delims(&errors, &sess.span_diagnostic);
 
         // During early phases of the compiler the AST could get modified
         // directly (e.g., attributes added or removed) and the internal cache
@@ -732,52 +721,6 @@ crate fn is_op(tok: &Token) -> bool {
         Whitespace | Comment | Shebang(..) | Eof => false,
         _ => true,
     }
-}
-
-#[derive(Clone)]
-pub struct LazyTokenStream(Lock<Option<TokenStream>>);
-
-impl cmp::Eq for LazyTokenStream {}
-impl PartialEq for LazyTokenStream {
-    fn eq(&self, _other: &LazyTokenStream) -> bool {
-        true
-    }
-}
-
-impl fmt::Debug for LazyTokenStream {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        fmt::Debug::fmt(&self.clone().0.into_inner(), f)
-    }
-}
-
-impl LazyTokenStream {
-    pub fn new() -> Self {
-        LazyTokenStream(Lock::new(None))
-    }
-
-    fn force<F: FnOnce() -> TokenStream>(&self, f: F) -> TokenStream {
-        let mut opt_stream = self.0.lock();
-        if opt_stream.is_none() {
-            *opt_stream = Some(f());
-        }
-        opt_stream.clone().unwrap()
-    }
-}
-
-impl Encodable for LazyTokenStream {
-    fn encode<S: Encoder>(&self, _: &mut S) -> Result<(), S::Error> {
-        Ok(())
-    }
-}
-
-impl Decodable for LazyTokenStream {
-    fn decode<D: Decoder>(_: &mut D) -> Result<LazyTokenStream, D::Error> {
-        Ok(LazyTokenStream::new())
-    }
-}
-
-impl ::std::hash::Hash for LazyTokenStream {
-    fn hash<H: ::std::hash::Hasher>(&self, _hasher: &mut H) {}
 }
 
 fn prepend_attrs(sess: &ParseSess,

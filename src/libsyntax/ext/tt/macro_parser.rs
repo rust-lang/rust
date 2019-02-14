@@ -829,7 +829,7 @@ fn may_begin_with(name: &str, token: &Token) -> bool {
         },
         "block" => match *token {
             Token::OpenDelim(token::Brace) => true,
-            Token::Interpolated(ref nt) => match nt.0 {
+            Token::Interpolated(ref nt) => match **nt {
                 token::NtItem(_)
                 | token::NtPat(_)
                 | token::NtTy(_)
@@ -843,9 +843,9 @@ fn may_begin_with(name: &str, token: &Token) -> bool {
         },
         "path" | "meta" => match *token {
             Token::ModSep | Token::Ident(..) => true,
-            Token::Interpolated(ref nt) => match nt.0 {
+            Token::Interpolated(ref nt) => match **nt {
                 token::NtPath(_) | token::NtMeta(_) => true,
-                _ => may_be_ident(&nt.0),
+                _ => may_be_ident(&nt),
             },
             _ => false,
         },
@@ -862,12 +862,12 @@ fn may_begin_with(name: &str, token: &Token) -> bool {
             Token::ModSep |                     // path
             Token::Lt |                         // path (UFCS constant)
             Token::BinOp(token::Shl) => true,   // path (double UFCS)
-            Token::Interpolated(ref nt) => may_be_ident(&nt.0),
+            Token::Interpolated(ref nt) => may_be_ident(nt),
             _ => false,
         },
         "lifetime" => match *token {
             Token::Lifetime(_) => true,
-            Token::Interpolated(ref nt) => match nt.0 {
+            Token::Interpolated(ref nt) => match **nt {
                 token::NtLifetime(_) | token::NtTT(_) => true,
                 _ => false,
             },
