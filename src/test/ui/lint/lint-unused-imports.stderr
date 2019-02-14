@@ -2,7 +2,7 @@ error: unused import: `std::fmt::{}`
   --> $DIR/lint-unused-imports.rs:8:5
    |
 LL | use std::fmt::{};
-   | ----^^^^^^^^^^^^- help: remove the whole `use` item
+   |     ^^^^^^^^^^^^
    |
 note: lint level defined here
   --> $DIR/lint-unused-imports.rs:1:9
@@ -14,39 +14,37 @@ error: unused imports: `None`, `Some`
   --> $DIR/lint-unused-imports.rs:12:27
    |
 LL | use std::option::Option::{Some, None};
-   | --------------------------^^^^--^^^^-- help: remove the whole `use` item
+   |                           ^^^^  ^^^^
 
 error: unused import: `test::A`
   --> $DIR/lint-unused-imports.rs:15:5
    |
 LL | use test::A;       //~ ERROR unused import: `test::A`
-   | ----^^^^^^^- help: remove the whole `use` item
+   |     ^^^^^^^
 
 error: unused import: `bar`
   --> $DIR/lint-unused-imports.rs:24:18
    |
 LL | use test2::{foo, bar}; //~ ERROR unused import: `bar`
-   |                --^^^
-   |                |
-   |                help: remove the unused import
+   |                  ^^^
 
 error: unused import: `foo::Square`
   --> $DIR/lint-unused-imports.rs:52:13
    |
 LL |         use foo::Square; //~ ERROR unused import: `foo::Square`
-   |         ----^^^^^^^^^^^- help: remove the whole `use` item
+   |             ^^^^^^^^^^^
 
 error: unused import: `self::g`
   --> $DIR/lint-unused-imports.rs:68:9
    |
 LL |     use self::g; //~ ERROR unused import: `self::g`
-   |     ----^^^^^^^- help: remove the whole `use` item
+   |         ^^^^^^^
 
 error: unused import: `test2::foo`
   --> $DIR/lint-unused-imports.rs:77:9
    |
 LL |     use test2::foo; //~ ERROR unused import: `test2::foo`
-   |     ----^^^^^^^^^^- help: remove the whole `use` item
+   |         ^^^^^^^^^^
 
 error: unused import: `test::B2`
   --> $DIR/lint-unused-imports.rs:20:5
