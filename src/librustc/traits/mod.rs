@@ -145,6 +145,7 @@ impl<'tcx> ObligationCause<'tcx> {
             ObligationCauseCode::StartFunctionType => {
                 tcx.sess.source_map().def_span(self.span)
             }
+            ObligationCauseCode::MatchExpressionArm { arm_span, .. } => arm_span,
             _ => self.span,
         }
     }
@@ -223,6 +224,8 @@ pub enum ObligationCauseCode<'tcx> {
     MatchExpressionArm {
         arm_span: Span,
         source: hir::MatchSource,
+        prior_arms: Vec<Span>,
+        last_ty: Ty<'tcx>,
     },
 
     /// Computing common supertype in the pattern guard for the arms of a match expression

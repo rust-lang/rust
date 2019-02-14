@@ -508,22 +508,31 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
                     }
                 }
             }
-            ObligationCauseCode::MatchExpressionArm { arm_span, source } => match source {
+            ObligationCauseCode::MatchExpressionArm {
+                source,
+                ref prior_arms,
+                last_ty,
+                ..
+            } => match source {
                 hir::MatchSource::IfLetDesugar { .. } => {
-                    let msg = "`if let` arm with an incompatible type";
-                    if self.tcx.sess.source_map().is_multiline(arm_span) {
-                        err.span_note(arm_span, msg);
-                    } else {
-                        err.span_label(arm_span, msg);
-                    }
+                    let msg = "`if let` arms have incompatible types";
+                    err.span_label(cause.span, msg);
                 }
                 hir::MatchSource::TryDesugar => {}
                 _ => {
-                    let msg = "match arm with an incompatible type";
-                    if self.tcx.sess.source_map().is_multiline(arm_span) {
-                        err.span_note(arm_span, msg);
-                    } else {
-                        err.span_label(arm_span, msg);
+                    let msg = "`match` arms have incompatible types";
+                    err.span_label(cause.span, msg);
+                    if prior_arms.len() <= 4 {
+                        for sp in prior_arms {
+                            err.span_label(*sp, format!(
+                                "this is found to be of type `{}`",
+                                last_ty,
+                            ));
+                        }
+                    } else if let Some(sp) = prior_arms.last() {
+                        err.span_label(*sp, format!(
+                            "this and all prior arms are found to be of type `{}`", last_ty,
+                        ));
                     }
                 }
             },

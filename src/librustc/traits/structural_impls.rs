@@ -513,10 +513,21 @@ impl<'a, 'tcx> Lift<'tcx> for traits::ObligationCauseCode<'a> {
                 trait_item_def_id,
             }),
             super::ExprAssignable => Some(super::ExprAssignable),
-            super::MatchExpressionArm { arm_span, source } => Some(super::MatchExpressionArm {
+            super::MatchExpressionArm {
                 arm_span,
-                source: source,
-            }),
+                source,
+                ref prior_arms,
+                last_ty,
+            } => {
+                tcx.lift(&last_ty).map(|last_ty| {
+                    super::MatchExpressionArm {
+                        arm_span,
+                        source,
+                        prior_arms: prior_arms.clone(),
+                        last_ty,
+                    }
+                })
+            }
             super::MatchExpressionArmPattern { span, ty } => {
                 tcx.lift(&ty).map(|ty| super::MatchExpressionArmPattern { span, ty })
             }
