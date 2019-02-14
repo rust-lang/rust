@@ -178,6 +178,7 @@ impl Spanned for ast::GenericArg {
         match *self {
             ast::GenericArg::Lifetime(ref lt) => lt.ident.span,
             ast::GenericArg::Type(ref ty) => ty.span(),
+            ast::GenericArg::Const(..) => unreachable!(), // FIXME(#3336)
         }
     }
 }
