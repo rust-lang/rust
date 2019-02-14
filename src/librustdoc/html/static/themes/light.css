@@ -425,3 +425,29 @@ div.files > a:hover, div.name:hover {
 div.files > .selected {
 	background-color: #fff;
 }
+
+.token-vis {
+    background: #89b389;
+    color: white;
+    padding: 0px 2px;
+}
+.token-unsafe {
+    background: #870000;
+    color: white;
+    padding: 0px 2px;
+}
+.token-const {
+    background: yellow;
+    color: black;
+    padding: 0px 2px;
+}
+.token-async {
+    background: orange;
+    color: black;
+    padding: 0px 2px;
+}
+.token-abi {
+    background: blue;
+    color: white;
+    padding: 0px 2px;
+}

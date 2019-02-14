@@ -934,10 +934,14 @@ impl<'a> fmt::Display for Function<'a> {
 
 impl<'a> fmt::Display for VisSpace<'a> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        if let Some(clean::Inherited) | None = *self.get(){
+            return Ok(());
+        }
+
+        write!(f, "<div class='token token-vis'>")?;
         match *self.get() {
-            Some(clean::Public) => f.write_str("pub "),
-            Some(clean::Inherited) | None => Ok(()),
-            Some(clean::Visibility::Crate) => write!(f, "pub(crate) "),
+            Some(clean::Public) => f.write_str("pub"),
+            Some(clean::Visibility::Crate) => write!(f, "pub(crate)"),
             Some(clean::Visibility::Restricted(did, ref path)) => {
                 f.write_str("pub(")?;
                 if path.segments.len() != 1
@@ -946,16 +950,22 @@ impl<'a> fmt::Display for VisSpace<'a> {
                     f.write_str("in ")?;
                 }
                 resolved_path(f, did, path, true, false)?;
-                f.write_str(") ")
+                f.write_str(")")
             }
-        }
+            Some(clean::Inherited) | None => unreachable!(),
+        }?;
+        write!(f, "</div>")
     }
 }
 
 impl fmt::Display for UnsafetySpace {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self.get() {
-            hir::Unsafety::Unsafe => write!(f, "unsafe "),
+            hir::Unsafety::Unsafe => {
+                write!(f, "<div class='token token-unsafe'>")?;
+                write!(f, "unsafe")?;
+                write!(f, "</div>")
+            }
             hir::Unsafety::Normal => Ok(())
         }
     }
@@ -964,7 +974,11 @@ impl fmt::Display for UnsafetySpace {
 impl fmt::Display for ConstnessSpace {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self.get() {
-            hir::Constness::Const => write!(f, "const "),
+            hir::Constness::Const => {
+                write!(f, "<div class='token token-const'>")?;
+                write!(f, "const")?;
+                write!(f, "</div>")
+            }
             hir::Constness::NotConst => Ok(())
         }
     }
@@ -973,7 +987,11 @@ impl fmt::Display for ConstnessSpace {
 impl fmt::Display for AsyncSpace {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self.0 {
-            hir::IsAsync::Async => write!(f, "async "),
+            hir::IsAsync::Async => {
+                write!(f, "<div class='token token-async'>")?;
+                write!(f, "async")?;
+                write!(f, "</div>")
+            }
             hir::IsAsync::NotAsync => Ok(()),
         }
     }
@@ -1050,7 +1068,11 @@ impl fmt::Display for AbiSpace {
         let quot = if f.alternate() { "\"" } else { "&quot;" };
         match self.0 {
             Abi::Rust => Ok(()),
-            abi => write!(f, "extern {0}{1}{0} ", quot, abi.name()),
+            abi => {
+                write!(f, "<div class='token token-abi'>")?;
+                write!(f, "extern {0}{1}{0} ", quot, abi.name())?;
+                write!(f, "</div>")
+            }
         }
     }
 }

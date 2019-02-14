@@ -1576,3 +1576,11 @@ div.name.expand::before {
 	left: -15px;
 	top: 2px;
 }
+
+div.token {
+    display: inline-block;
+    border-radius: 3px;
+    font-size: 8pt;
+    margin: 1px;
+    border: 1px solid black;
+}
