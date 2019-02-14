@@ -95,7 +95,7 @@ impl BatchDatabase {
     }
 
     pub fn load_cargo(root: impl AsRef<Path>) -> Result<(BatchDatabase, Vec<SourceRootId>)> {
-        let root = root.as_ref().canonicalize()?;
+        let root = std::env::current_dir()?.join(root);
         let ws = ProjectWorkspace::discover(root.as_ref())?;
         let mut roots = Vec::new();
         roots.push(root.clone());
