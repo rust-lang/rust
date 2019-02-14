@@ -1045,17 +1045,34 @@ impl<T: ?Sized> DerefMut for ManuallyDrop<T> {
 /// ever gets used to access memory:
 ///
 /// ```rust,no_run
-/// use std::mem;
+/// #![feature(maybe_uninit)]
+/// use std::mem::{self, MaybeUninit};
 ///
 /// let x: &i32 = unsafe { mem::zeroed() }; // undefined behavior!
+/// // equivalent code with `MaybeUninit`
+/// let x: &i32 = unsafe { MaybeUninit::zeroed().into_initialized() }; // undefined behavior!
 /// ```
 ///
 /// This is exploited by the compiler for various optimizations, such as eliding
 /// run-time checks and optimizing `enum` layout.
 ///
-/// Not initializing memory at all (instead of zero--initializing it) causes the same
+/// Not initializing memory at all (instead of zero-initializing it) causes the same
 /// issue: after all, the initial value of the variable might just happen to be
-/// one that violates the invariant.
+/// one that violates the invariant. Moreover, uninitialized memory is special
+/// in that the compiler knows that it does not have a fixed value. This makes
+/// it undefined behavior to have uninitialized data in a variable even if that
+/// variable has otherwise no restrictions about which values are valid:
+///
+/// ```rust,no_run
+/// #![feature(maybe_uninit)]
+/// use std::mem::{self, MaybeUninit};
+///
+/// let x: i32 = unsafe { mem::uninitialized() }; // undefined behavior!
+/// // equivalent code with `MaybeUninit`
+/// let x: i32 = unsafe { MaybeUninit::uninitialized().into_initialized() }; // undefined behavior!
+/// ```
+/// (Notice that the rules around uninitialized integers are not finalized yet, but
+/// until they are, it is advisable to avoid them.)
 ///
 /// `MaybeUninit` serves to enable unsafe code to deal with uninitialized data:
 /// it is a signal to the compiler indicating that the data here might *not*
@@ -1065,7 +1082,8 @@ impl<T: ?Sized> DerefMut for ManuallyDrop<T> {
 /// #![feature(maybe_uninit)]
 /// use std::mem::MaybeUninit;
 ///
-/// // Create an explicitly uninitialized reference.
+/// // Create an explicitly uninitialized reference. The compiler knows that data inside
+/// // a `MaybeUninit` may be invalid, and hence this is not UB:
 /// let mut x = MaybeUninit::<&i32>::uninitialized();
 /// // Set it to a valid value.
 /// x.set(&0);
@@ -1075,6 +1093,7 @@ impl<T: ?Sized> DerefMut for ManuallyDrop<T> {
 /// ```
 ///
 /// The compiler then knows to not optimize this code.
+// FIXME before stabilizing, explain how to initialize a struct field-by-field.
 #[allow(missing_debug_implementations)]
 #[unstable(feature = "maybe_uninit", issue = "53491")]
 // NOTE after stabilizing `MaybeUninit` proceed to deprecate `mem::{uninitialized,zeroed}`
@@ -1134,6 +1153,22 @@ impl<T> MaybeUninit<T> {
         }
     }
 
+    /// Gets a pointer to the contained value. Reading from this pointer or turning it
+    /// into a reference will be undefined behavior unless the `MaybeUninit` is initialized.
+    #[unstable(feature = "maybe_uninit", issue = "53491")]
+    #[inline(always)]
+    pub fn as_ptr(&self) -> *const T {
+        unsafe { &*self.value as *const T }
+    }
+
+    /// Gets a mutable pointer to the contained value. Reading from this pointer or turning it
+    /// into a reference will be undefined behavior unless the `MaybeUninit` is initialized.
+    #[unstable(feature = "maybe_uninit", issue = "53491")]
+    #[inline(always)]
+    pub fn as_mut_ptr(&mut self) -> *mut T {
+        unsafe { &mut *self.value as *mut T }
+    }
+
     /// Extracts the value from the `MaybeUninit` container. This is a great way
     /// to ensure that the data will get dropped, because the resulting `T` is
     /// subject to the usual drop handling.
@@ -1141,7 +1176,8 @@ impl<T> MaybeUninit<T> {
     /// # Unsafety
     ///
     /// It is up to the caller to guarantee that the `MaybeUninit` really is in an initialized
-    /// state, otherwise this will immediately cause undefined behavior.
+    /// state. Calling this when the content is not yet fully initialized causes undefined
+    /// behavior.
     #[unstable(feature = "maybe_uninit", issue = "53491")]
     #[inline(always)]
     pub unsafe fn into_initialized(self) -> T {
@@ -1162,8 +1198,9 @@ impl<T> MaybeUninit<T> {
     /// # Unsafety
     ///
     /// It is up to the caller to guarantee that the `MaybeUninit` really is in an initialized
-    /// state, otherwise this will immediately cause undefined behavior.
-    #[unstable(feature = "maybe_uninit", issue = "53491")]
+    /// state. Calling this when the content is not yet fully initialized causes undefined
+    /// behavior.
+    #[unstable(feature = "maybe_uninit_ref", issue = "53491")]
     #[inline(always)]
     pub unsafe fn get_ref(&self) -> &T {
         &*self.value
@@ -1174,41 +1211,26 @@ impl<T> MaybeUninit<T> {
     /// # Unsafety
     ///
     /// It is up to the caller to guarantee that the `MaybeUninit` really is in an initialized
-    /// state, otherwise this will immediately cause undefined behavior.
+    /// state. Calling this when the content is not yet fully initialized causes undefined
+    /// behavior.
     // FIXME(#53491): We currently rely on the above being incorrect, i.e., we have references
     // to uninitialized data (e.g., in `libcore/fmt/float.rs`).  We should make
     // a final decision about the rules before stabilization.
-    #[unstable(feature = "maybe_uninit", issue = "53491")]
+    #[unstable(feature = "maybe_uninit_ref", issue = "53491")]
     #[inline(always)]
     pub unsafe fn get_mut(&mut self) -> &mut T {
         &mut *self.value
     }
 
-    /// Gets a pointer to the contained value. Reading from this pointer or turning it
-    /// into a reference will be undefined behavior unless the `MaybeUninit` is initialized.
-    #[unstable(feature = "maybe_uninit", issue = "53491")]
-    #[inline(always)]
-    pub fn as_ptr(&self) -> *const T {
-        unsafe { &*self.value as *const T }
-    }
-
-    /// Get sa mutable pointer to the contained value. Reading from this pointer or turning it
-    /// into a reference will be undefined behavior unless the `MaybeUninit` is initialized.
-    #[unstable(feature = "maybe_uninit", issue = "53491")]
-    #[inline(always)]
-    pub fn as_mut_ptr(&mut self) -> *mut T {
-        unsafe { &mut *self.value as *mut T }
-    }
-
     /// Gets a pointer to the first element of the array.
-    #[unstable(feature = "maybe_uninit", issue = "53491")]
+    #[unstable(feature = "maybe_uninit_slice", issue = "53491")]
     #[inline(always)]
     pub fn first_ptr(this: &[MaybeUninit<T>]) -> *const T {
         this as *const [MaybeUninit<T>] as *const T
     }
 
     /// Gets a mutable pointer to the first element of the array.
-    #[unstable(feature = "maybe_uninit", issue = "53491")]
+    #[unstable(feature = "maybe_uninit_slice", issue = "53491")]
     #[inline(always)]
     pub fn first_ptr_mut(this: &mut [MaybeUninit<T>]) -> *mut T {
         this as *mut [MaybeUninit<T>] as *mut T

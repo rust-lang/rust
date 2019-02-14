@@ -453,7 +453,7 @@ impl<BorrowType, K, V, Type> NodeRef<BorrowType, K, V, Type> {
                     root: self.root,
                     _marker: PhantomData
                 },
-                idx: unsafe { usize::from(*self.as_header().parent_idx.get_ref()) },
+                idx: unsafe { usize::from(*self.as_header().parent_idx.as_ptr()) },
                 _marker: PhantomData
             })
         } else {
@@ -1143,7 +1143,7 @@ impl<BorrowType, K, V>
         NodeRef {
             height: self.node.height - 1,
             node: unsafe {
-                self.node.as_internal().edges.get_unchecked(self.idx).get_ref().as_ptr()
+                (&*self.node.as_internal().edges.get_unchecked(self.idx).as_ptr()).as_ptr()
             },
             root: self.node.root,
             _marker: PhantomData
