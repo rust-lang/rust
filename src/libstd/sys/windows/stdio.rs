@@ -1,7 +1,5 @@
 #![unstable(issue = "0", feature = "windows_stdio")]
 
-use io::prelude::*;
-
 use cmp;
 use io::{self, Cursor};
 use ptr;
@@ -127,13 +125,6 @@ impl Stdin {
 
         // MemReader shouldn't error here since we just filled it
         utf8.read(buf)
-    }
-}
-
-#[unstable(reason = "not public", issue = "0", feature = "fd_read")]
-impl<'a> Read for &'a Stdin {
-    fn read(&mut self, buf: &mut [u8]) -> io::Result<usize> {
-        (**self).read(buf)
     }
 }
 
