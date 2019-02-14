@@ -281,8 +281,7 @@ impl Command {
         use mem;
         use sys;
 
-        if self.get_cwd().is_some() ||
-            self.get_gid().is_some() ||
+        if self.get_gid().is_some() ||
             self.get_uid().is_some() ||
             self.env_saw_path() ||
             self.get_closures().len() != 0 {
@@ -300,6 +299,24 @@ impl Command {
                 return Ok(None)
             }
         }
+
+        // Solaris and glibc 2.29+ can set a new working directory, and maybe
+        // others will gain this non-POSIX function too. We'll check for this
+        // weak symbol as soon as it's needed, so we can return early otherwise
+        // to do a manual chdir before exec.
+        weak! {
+            fn posix_spawn_file_actions_addchdir_np(
+                *mut libc::posix_spawn_file_actions_t,
+                *const libc::c_char
+            ) -> libc::c_int
+        }
+        let addchdir = match self.get_cwd() {
+            Some(cwd) => match posix_spawn_file_actions_addchdir_np.get() {
+                Some(f) => Some((f, cwd)),
+                None => return Ok(None),
+            },
+            None => None,
+        };
 
         let mut p = Process { pid: 0, status: None };
 
@@ -344,6 +361,9 @@ impl Command {
                 cvt(libc::posix_spawn_file_actions_adddup2(&mut file_actions.0,
                                                            fd,
                                                            libc::STDERR_FILENO))?;
+            }
+            if let Some((f, cwd)) = addchdir {
+                cvt(f(&mut file_actions.0, cwd.as_ptr()))?;
             }
 
             let mut set: libc::sigset_t = mem::uninitialized();
