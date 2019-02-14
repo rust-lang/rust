@@ -1,7 +1,7 @@
 use test_utils::tested_by;
 use ra_db::SourceDatabase;
 use ra_syntax::{
-    AstNode, SyntaxNode, TextUnit, TextRange,
+    AstNode, SyntaxNode, TextUnit,
     SyntaxKind::FN_DEF,
     ast::{self, ArgListOwner},
     algo::find_node_at_offset,
@@ -38,28 +38,20 @@ pub(crate) fn call_info(db: &RootDatabase, position: FilePosition) -> Option<Cal
         }
     } else if num_params > 1 {
         // Count how many parameters into the call we are.
-        // TODO: This is best effort for now and should be fixed at some point.
-        // It may be better to see where we are in the arg_list and then check
-        // where offset is in that list (or beyond).
-        // Revisit this after we get documentation comments in.
         if let Some(ref arg_list) = calling_node.arg_list() {
             let arg_list_range = arg_list.syntax().range();
             if !arg_list_range.contains_inclusive(position.offset) {
                 tested_by!(call_info_bad_offset);
                 return None;
             }
-            let start = arg_list_range.start();
 
-            let range_search = TextRange::from_to(start, position.offset);
-            let mut commas: usize =
-                arg_list.syntax().text().slice(range_search).to_string().matches(',').count();
+            let param = arg_list
+                .args()
+                .position(|arg| arg.syntax().range().contains(position.offset))
+                .or(Some(num_params - 1))
+                .unwrap();
 
-            // If we have a method call eat the first param since it's just self.
-            if has_self {
-                commas += 1;
-            }
-
-            call_info.active_parameter = Some(commas);
+            call_info.active_parameter = Some(param);
         }
     }
 
