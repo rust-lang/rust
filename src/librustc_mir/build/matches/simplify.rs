@@ -14,7 +14,7 @@
 
 use crate::build::Builder;
 use crate::build::matches::{Ascription, Binding, MatchPair, Candidate};
-use crate::hair::*;
+use crate::hair::{self, *};
 use rustc::ty;
 use rustc::ty::layout::{Integer, IntegerExt, Size};
 use syntax::attr::{SignedInt, UnsignedInt};
@@ -58,9 +58,11 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
         match *match_pair.pattern.kind {
             PatternKind::AscribeUserType {
                 ref subpattern,
-                variance,
-                ref user_ty,
-                user_ty_span
+                ascription: hair::pattern::Ascription {
+                    variance,
+                    ref user_ty,
+                    user_ty_span,
+                },
             } => {
                 // Apply the type ascription to the value at `match_pair.place`, which is the
                 // value being matched, taking the variance field into account.
