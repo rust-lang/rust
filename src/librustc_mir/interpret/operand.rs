@@ -11,7 +11,10 @@ use rustc::mir::interpret::{
     ConstValue, Pointer, Scalar,
     EvalResult, EvalErrorKind,
 };
-use super::{EvalContext, Machine, MemPlace, MPlaceTy, MemoryKind};
+use super::{
+    EvalContext, Machine, AllocMap, Allocation, AllocationExtra,
+    MemPlace, MPlaceTy, PlaceTy, Place, MemoryKind,
+};
 pub use rustc::mir::interpret::ScalarMaybeUndef;
 
 /// A `Value` represents a single immediate self-contained Rust value.
@@ -41,6 +44,11 @@ impl Immediate {
 }
 
 impl<'tcx, Tag> Immediate<Tag> {
+    #[inline]
+    pub fn from_scalar(val: Scalar<Tag>) -> Self {
+        Immediate::Scalar(ScalarMaybeUndef::Scalar(val))
+    }
+
     #[inline]
     pub fn erase_tag(self) -> Immediate
     {
@@ -112,7 +120,7 @@ impl<'tcx, Tag> Immediate<Tag> {
 // as input for binary and cast operations.
 #[derive(Copy, Clone, Debug)]
 pub struct ImmTy<'tcx, Tag=()> {
-    immediate: Immediate<Tag>,
+    pub imm: Immediate<Tag>,
     pub layout: TyLayout<'tcx>,
 }
 
@@ -120,7 +128,7 @@ impl<'tcx, Tag> ::std::ops::Deref for ImmTy<'tcx, Tag> {
     type Target = Immediate<Tag>;
     #[inline(always)]
     fn deref(&self) -> &Immediate<Tag> {
-        &self.immediate
+        &self.imm
     }
 }
 
@@ -180,7 +188,7 @@ impl<Tag> Operand<Tag> {
 
 #[derive(Copy, Clone, Debug, Hash, PartialEq, Eq)]
 pub struct OpTy<'tcx, Tag=()> {
-    crate op: Operand<Tag>, // ideally we'd make this private, but const_prop needs this
+    op: Operand<Tag>,
     pub layout: TyLayout<'tcx>,
 }
 
@@ -206,9 +214,22 @@ impl<'tcx, Tag> From<ImmTy<'tcx, Tag>> for OpTy<'tcx, Tag> {
     #[inline(always)]
     fn from(val: ImmTy<'tcx, Tag>) -> Self {
         OpTy {
-            op: Operand::Immediate(val.immediate),
+            op: Operand::Immediate(val.imm),
             layout: val.layout
         }
+    }
+}
+
+impl<'tcx, Tag: Copy> ImmTy<'tcx, Tag>
+{
+    #[inline]
+    pub fn from_scalar(val: Scalar<Tag>, layout: TyLayout<'tcx>) -> Self {
+        ImmTy { imm: Immediate::from_scalar(val), layout }
+    }
+
+    #[inline]
+    pub fn to_bits(self) -> EvalResult<'tcx, u128> {
+        self.to_scalar()?.to_bits(self.layout.size)
     }
 }
 
@@ -324,8 +345,8 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> 
         &self,
         op: OpTy<'tcx, M::PointerTag>
     ) -> EvalResult<'tcx, ImmTy<'tcx, M::PointerTag>> {
-        if let Ok(immediate) = self.try_read_immediate(op)? {
-            Ok(ImmTy { immediate, layout: op.layout })
+        if let Ok(imm) = self.try_read_immediate(op)? {
+            Ok(ImmTy { imm, layout: op.layout })
         } else {
             bug!("primitive read failed for type: {:?}", op.layout.ty);
         }
@@ -469,6 +490,22 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> 
         Ok(OpTy { op, layout })
     }
 
+    /// Every place can be read from, so we can turm them into an operand
+    #[inline(always)]
+    pub fn place_to_op(
+        &self,
+        place: PlaceTy<'tcx, M::PointerTag>
+    ) -> EvalResult<'tcx, OpTy<'tcx, M::PointerTag>> {
+        let op = match *place {
+            Place::Ptr(mplace) => {
+                Operand::Indirect(mplace)
+            }
+            Place::Local { frame, local } =>
+                *self.stack[frame].locals[local].access()?
+        };
+        Ok(OpTy { op, layout: place.layout })
+    }
+
     // Evaluate a place with the goal of reading from it.  This lets us sometimes
     // avoid allocations.
     fn eval_place_to_op(
@@ -531,10 +568,8 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> 
             .collect()
     }
 
-    // Used when miri runs into a constant, and by CTFE.
-    // FIXME: CTFE should use allocations, then we can make this private (embed it into
-    // `eval_operand`, ideally).
-    pub(crate) fn const_value_to_op(
+    // Used when Miri runs into a constant, and (indirectly through lazy_const_to_op) by CTFE.
+    fn const_value_to_op(
         &self,
         val: ty::LazyConst<'tcx>,
     ) -> EvalResult<'tcx, Operand<M::PointerTag>> {
@@ -665,4 +700,22 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> 
         })
     }
 
+}
+
+impl<'a, 'mir, 'tcx, M> EvalContext<'a, 'mir, 'tcx, M>
+where
+    M: Machine<'a, 'mir, 'tcx, PointerTag=()>,
+    // FIXME: Working around https://github.com/rust-lang/rust/issues/24159
+    M::MemoryMap: AllocMap<AllocId, (MemoryKind<M::MemoryKinds>, Allocation<(), M::AllocExtra>)>,
+    M::AllocExtra: AllocationExtra<(), M::MemoryExtra>,
+{
+    // FIXME: CTFE should use allocations, then we can remove this.
+    pub(crate) fn lazy_const_to_op(
+        &self,
+        cnst: ty::LazyConst<'tcx>,
+        ty: ty::Ty<'tcx>,
+    ) -> EvalResult<'tcx, OpTy<'tcx>> {
+        let op = self.const_value_to_op(cnst)?;
+        Ok(OpTy { op, layout: self.layout_of(ty)? })
+    }
 }
