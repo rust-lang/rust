@@ -19,7 +19,7 @@ mod test {
 
         fn CamelCase() {} //~ WARN should have a snake
 
-        struct snake_case; //~ WARN should have a camel
+        struct snake_case; //~ WARN should have an upper camel
     }
 }
 
