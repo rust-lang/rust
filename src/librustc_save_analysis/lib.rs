@@ -614,11 +614,16 @@ impl<'l, 'tcx: 'l> SaveContext<'l, 'tcx> {
                     Some(def) if def != HirDef::Err => def,
                     _ => self.get_path_def(self.tcx.hir().get_parent_node(id)),
                 }
-            },
+            }
+
             Node::Expr(&hir::Expr {
                 node: hir::ExprKind::Struct(ref qpath, ..),
                 ..
-            }) |
+            }) => {
+                let hir_id = self.tcx.hir().node_to_hir_id(id);
+                self.tables.qpath_def(qpath, hir_id)
+            }
+
             Node::Expr(&hir::Expr {
                 node: hir::ExprKind::Path(ref qpath),
                 ..

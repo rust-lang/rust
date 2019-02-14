@@ -3859,7 +3859,7 @@ impl<'a> LoweringContext<'a> {
                 hir::ExprKind::Call(f, args.iter().map(|x| self.lower_expr(x)).collect())
             }
             ExprKind::MethodCall(ref seg, ref args) => {
-                let hir_seg = self.lower_path_segment(
+                let hir_seg = P(self.lower_path_segment(
                     e.span,
                     seg,
                     ParamMode::Optional,
@@ -3867,7 +3867,7 @@ impl<'a> LoweringContext<'a> {
                     ParenthesizedGenericArgs::Err,
                     ImplTraitContext::disallowed(),
                     None,
-                );
+                ));
                 let args = args.iter().map(|x| self.lower_expr(x)).collect();
                 hir::ExprKind::MethodCall(hir_seg, seg.ident.span, args)
             }
@@ -4148,7 +4148,7 @@ impl<'a> LoweringContext<'a> {
                     node: if is_unit {
                         hir::ExprKind::Path(struct_path)
                     } else {
-                        hir::ExprKind::Struct(struct_path, fields, None)
+                        hir::ExprKind::Struct(P(struct_path), fields, None)
                     },
                     span: e.span,
                     attrs: e.attrs.clone(),
@@ -4220,13 +4220,13 @@ impl<'a> LoweringContext<'a> {
                 hir::ExprKind::InlineAsm(P(hir_asm), outputs, inputs)
             }
             ExprKind::Struct(ref path, ref fields, ref maybe_expr) => hir::ExprKind::Struct(
-                self.lower_qpath(
+                P(self.lower_qpath(
                     e.id,
                     &None,
                     path,
                     ParamMode::Optional,
                     ImplTraitContext::disallowed(),
-                ),
+                )),
                 fields.iter().map(|x| self.lower_field(x)).collect(),
                 maybe_expr.as_ref().map(|x| P(self.lower_expr(x))),
             ),
