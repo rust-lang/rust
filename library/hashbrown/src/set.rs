@@ -155,6 +155,120 @@ impl<T: Hash + Eq> HashSet<T, DefaultHashBuilder> {
     }
 }
 
+impl<T, S> HashSet<T, S> {
+    /// Returns the number of elements the set can hold without reallocating.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use hashbrown::HashSet;
+    /// let set: HashSet<i32> = HashSet::with_capacity(100);
+    /// assert!(set.capacity() >= 100);
+    /// ```
+    #[inline]
+    pub fn capacity(&self) -> usize {
+        self.map.capacity()
+    }
+
+    /// An iterator visiting all elements in arbitrary order.
+    /// The iterator element type is `&'a T`.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use hashbrown::HashSet;
+    /// let mut set = HashSet::new();
+    /// set.insert("a");
+    /// set.insert("b");
+    ///
+    /// // Will print in an arbitrary order.
+    /// for x in set.iter() {
+    ///     println!("{}", x);
+    /// }
+    /// ```
+    #[inline]
+    pub fn iter(&self) -> Iter<T> {
+        Iter {
+            iter: self.map.keys(),
+        }
+    }
+
+    /// Returns the number of elements in the set.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use hashbrown::HashSet;
+    ///
+    /// let mut v = HashSet::new();
+    /// assert_eq!(v.len(), 0);
+    /// v.insert(1);
+    /// assert_eq!(v.len(), 1);
+    /// ```
+    #[inline]
+    pub fn len(&self) -> usize {
+        self.map.len()
+    }
+
+    /// Returns `true` if the set contains no elements.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use hashbrown::HashSet;
+    ///
+    /// let mut v = HashSet::new();
+    /// assert!(v.is_empty());
+    /// v.insert(1);
+    /// assert!(!v.is_empty());
+    /// ```
+    #[inline]
+    pub fn is_empty(&self) -> bool {
+        self.map.is_empty()
+    }
+
+    /// Clears the set, returning all elements in an iterator.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use hashbrown::HashSet;
+    ///
+    /// let mut set: HashSet<_> = [1, 2, 3].iter().cloned().collect();
+    /// assert!(!set.is_empty());
+    ///
+    /// // print 1, 2, 3 in an arbitrary order
+    /// for i in set.drain() {
+    ///     println!("{}", i);
+    /// }
+    ///
+    /// assert!(set.is_empty());
+    /// ```
+    #[inline]
+    pub fn drain(&mut self) -> Drain<T> {
+        Drain {
+            iter: self.map.drain(),
+        }
+    }
+
+    /// Clears the set, removing all values.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use hashbrown::HashSet;
+    ///
+    /// let mut v = HashSet::new();
+    /// v.insert(1);
+    /// v.clear();
+    /// assert!(v.is_empty());
+    /// ```
+    #[inline]
+    pub fn clear(&mut self) {
+        self.map.clear()
+    }
+}
+
 impl<T, S> HashSet<T, S>
 where
     T: Eq + Hash,
@@ -232,20 +346,6 @@ where
     #[inline]
     pub fn hasher(&self) -> &S {
         self.map.hasher()
-    }
-
-    /// Returns the number of elements the set can hold without reallocating.
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// use hashbrown::HashSet;
-    /// let set: HashSet<i32> = HashSet::with_capacity(100);
-    /// assert!(set.capacity() >= 100);
-    /// ```
-    #[inline]
-    pub fn capacity(&self) -> usize {
-        self.map.capacity()
     }
 
     /// Reserves capacity for at least `additional` more elements to be inserted
@@ -335,29 +435,6 @@ where
     #[inline]
     pub fn shrink_to(&mut self, min_capacity: usize) {
         self.map.shrink_to(min_capacity)
-    }
-
-    /// An iterator visiting all elements in arbitrary order.
-    /// The iterator element type is `&'a T`.
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// use hashbrown::HashSet;
-    /// let mut set = HashSet::new();
-    /// set.insert("a");
-    /// set.insert("b");
-    ///
-    /// // Will print in an arbitrary order.
-    /// for x in set.iter() {
-    ///     println!("{}", x);
-    /// }
-    /// ```
-    #[inline]
-    pub fn iter(&self) -> Iter<T> {
-        Iter {
-            iter: self.map.keys(),
-        }
     }
 
     /// Visits the values representing the difference,
@@ -468,81 +545,6 @@ where
         Union {
             iter: self.iter().chain(other.difference(self)),
         }
-    }
-
-    /// Returns the number of elements in the set.
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// use hashbrown::HashSet;
-    ///
-    /// let mut v = HashSet::new();
-    /// assert_eq!(v.len(), 0);
-    /// v.insert(1);
-    /// assert_eq!(v.len(), 1);
-    /// ```
-    #[inline]
-    pub fn len(&self) -> usize {
-        self.map.len()
-    }
-
-    /// Returns true if the set contains no elements.
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// use hashbrown::HashSet;
-    ///
-    /// let mut v = HashSet::new();
-    /// assert!(v.is_empty());
-    /// v.insert(1);
-    /// assert!(!v.is_empty());
-    /// ```
-    #[inline]
-    pub fn is_empty(&self) -> bool {
-        self.map.is_empty()
-    }
-
-    /// Clears the set, returning all elements in an iterator.
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// use hashbrown::HashSet;
-    ///
-    /// let mut set: HashSet<_> = [1, 2, 3].iter().cloned().collect();
-    /// assert!(!set.is_empty());
-    ///
-    /// // print 1, 2, 3 in an arbitrary order
-    /// for i in set.drain() {
-    ///     println!("{}", i);
-    /// }
-    ///
-    /// assert!(set.is_empty());
-    /// ```
-    #[inline]
-    pub fn drain(&mut self) -> Drain<T> {
-        Drain {
-            iter: self.map.drain(),
-        }
-    }
-
-    /// Clears the set, removing all values.
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// use hashbrown::HashSet;
-    ///
-    /// let mut v = HashSet::new();
-    /// v.insert(1);
-    /// v.clear();
-    /// assert!(v.is_empty());
-    /// ```
-    #[inline]
-    pub fn clear(&mut self) {
-        self.map.clear()
     }
 
     /// Returns `true` if the set contains a value.
@@ -714,7 +716,7 @@ where
         }
     }
 
-    /// Removes a value from the set. Returns `true` if the value was
+    /// Removes a value from the set. Returns whether the value was
     /// present in the set.
     ///
     /// The value may be any borrowed form of the set's value type, but
@@ -1084,11 +1086,7 @@ pub struct Union<'a, T: 'a, S: 'a> {
     iter: Chain<Iter<'a, T>, Difference<'a, T, S>>,
 }
 
-impl<'a, T, S> IntoIterator for &'a HashSet<T, S>
-where
-    T: Eq + Hash,
-    S: BuildHasher,
-{
+impl<'a, T, S> IntoIterator for &'a HashSet<T, S> {
     type Item = &'a T;
     type IntoIter = Iter<'a, T>;
 
@@ -1098,11 +1096,7 @@ where
     }
 }
 
-impl<T, S> IntoIterator for HashSet<T, S>
-where
-    T: Eq + Hash,
-    S: BuildHasher,
-{
+impl<T, S> IntoIterator for HashSet<T, S> {
     type Item = T;
     type IntoIter = IntoIter<T>;
 

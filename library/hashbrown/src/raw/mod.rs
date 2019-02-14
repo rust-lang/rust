@@ -7,7 +7,6 @@ use core::mem;
 use core::mem::ManuallyDrop;
 use core::ops::Range;
 use core::ptr::NonNull;
-use scopeguard::guard;
 use CollectionAllocErr;
 
 // Branch prediction hint. This is currently only available on nightly but it
@@ -60,6 +59,9 @@ cfg_if! {
 
 mod bitmask;
 
+mod scopeguard;
+
+use self::scopeguard::guard;
 use self::bitmask::BitMask;
 use self::imp::Group;
 
@@ -714,8 +716,10 @@ impl<T> RawTable<T> {
                 // This may panic.
                 let hash = hasher(item.as_ref());
 
-                // We can use a simpler version of insert() here since there are no
-                // DELETED entries.
+                // We can use a simpler version of insert() here since:
+                // - there are no DELETED entries.
+                // - we know there is enough space in the table.
+                // - all elements are unique.
                 let index = new_table.find_insert_slot(hash);
                 new_table.set_ctrl(index, h2(hash));
                 new_table.bucket(index).write(item.read());
@@ -737,7 +741,16 @@ impl<T> RawTable<T> {
     #[inline]
     pub fn insert(&mut self, hash: u64, value: T, hasher: impl Fn(&T) -> u64) -> Bucket<T> {
         self.reserve(1, hasher);
+        self.insert_no_grow(hash, value)
+    }
 
+    /// Inserts a new element into the table, without growing the table.
+    ///
+    /// There must be enough space in the table to insert the new element.
+    ///
+    /// This does not check if the given element already exists in the table.
+    #[inline]
+    pub fn insert_no_grow(&mut self, hash: u64, value: T) -> Bucket<T> {
         unsafe {
             let index = self.find_insert_slot(hash);
             let bucket = self.bucket(index);
@@ -941,7 +954,7 @@ impl<T> IntoIterator for RawTable<T> {
     }
 }
 
-/// Iterator over a a sub-range of a table. Unlike `RawIter` this iterator does
+/// Iterator over a sub-range of a table. Unlike `RawIter` this iterator does
 /// not track an item count.
 pub struct RawIterRange<T> {
     // Using *const here for covariance

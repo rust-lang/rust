@@ -26,8 +26,7 @@
 #![allow(clippy::module_name_repetitions)]
 
 #[cfg(test)]
-#[macro_use]
-#[allow(unused_imports)]
+#[cfg_attr(feature = "rayon", macro_use)]
 extern crate std;
 #[cfg(test)]
 extern crate rand;
@@ -35,10 +34,8 @@ extern crate rand;
 #[cfg(feature = "nightly")]
 #[cfg_attr(test, macro_use)]
 extern crate alloc;
-extern crate byteorder;
 #[cfg(feature = "rayon")]
 extern crate rayon;
-extern crate scopeguard;
 #[cfg(feature = "serde")]
 extern crate serde;
 #[cfg(not(feature = "nightly"))]
@@ -53,10 +50,15 @@ mod fx;
 mod map;
 mod raw;
 mod set;
+#[cfg(feature = "rustc-dep-of-std")]
+mod rustc_entry;
 
 pub mod hash_map {
     //! A hash map implemented with quadratic probing and SIMD lookup.
     pub use map::*;
+
+    #[cfg(feature = "rustc-dep-of-std")]
+    pub use rustc_entry::*;
 
     #[cfg(feature = "rayon")]
     /// [rayon]-based parallel iterator types for hash maps.

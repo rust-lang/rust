@@ -150,7 +150,7 @@ pub use fx::FxHashBuilder as DefaultHashBuilder;
 /// }
 ///
 /// impl Viking {
-///     /// Create a new Viking.
+///     /// Creates a new Viking.
 ///     fn new(name: &str, country: &str) -> Viking {
 ///         Viking { name: name.to_string(), country: country.to_string() }
 ///     }
@@ -186,12 +186,12 @@ pub use fx::FxHashBuilder as DefaultHashBuilder;
 
 #[derive(Clone)]
 pub struct HashMap<K, V, S = DefaultHashBuilder> {
-    hash_builder: S,
+    pub(crate) hash_builder: S,
     pub(crate) table: RawTable<(K, V)>,
 }
 
 #[inline]
-fn make_hash<K: Hash + ?Sized>(hash_builder: &impl BuildHasher, val: &K) -> u64 {
+pub(crate) fn make_hash<K: Hash + ?Sized>(hash_builder: &impl BuildHasher, val: &K) -> u64 {
     let mut state = hash_builder.build_hasher();
     val.hash(&mut state);
     state.finish()
@@ -232,8 +232,6 @@ impl<K, V> HashMap<K, V, DefaultHashBuilder> {
 }
 
 impl<K, V, S> HashMap<K, V, S>
-where
-    S: BuildHasher,
 {
     /// Creates an empty `HashMap` which will use the given hash builder to hash
     /// keys.
@@ -486,7 +484,7 @@ where
         self.table.len()
     }
 
-    /// Returns true if the map contains no elements.
+    /// Returns `true` if the map contains no elements.
     ///
     /// # Examples
     ///
@@ -757,7 +755,7 @@ where
             })
     }
 
-    /// Returns true if the map contains a value for the specified key.
+    /// Returns `true` if the map contains a value for the specified key.
     ///
     /// The key may be any borrowed form of the map's key type, but
     /// [`Hash`] and [`Eq`] on the borrowed form *must* match those for
@@ -1220,7 +1218,7 @@ impl<'a, K, V: Debug> fmt::Debug for Values<'a, K, V> {
 /// [`drain`]: struct.HashMap.html#method.drain
 /// [`HashMap`]: struct.HashMap.html
 pub struct Drain<'a, K: 'a, V: 'a> {
-    pub(super) inner: RawDrain<'a, (K, V)>,
+    inner: RawDrain<'a, (K, V)>,
 }
 
 impl<'a, K, V> Drain<'a, K, V> {
@@ -1300,9 +1298,8 @@ pub struct RawEntryBuilder<'a, K: 'a, V: 'a, S: 'a> {
 impl<'a, K, V, S> RawEntryBuilderMut<'a, K, V, S>
 where
     S: BuildHasher,
-    K: Eq + Hash,
 {
-    /// Create a `RawEntryMut` from the given key.
+    /// Creates a `RawEntryMut` from the given key.
     #[inline]
     #[allow(clippy::wrong_self_convention)]
     pub fn from_key<Q: ?Sized>(self, k: &Q) -> RawEntryMut<'a, K, V, S>
@@ -1315,7 +1312,7 @@ where
         self.from_key_hashed_nocheck(hasher.finish(), k)
     }
 
-    /// Create a `RawEntryMut` from the given key and its hash.
+    /// Creates a `RawEntryMut` from the given key and its hash.
     #[inline]
     #[allow(clippy::wrong_self_convention)]
     pub fn from_key_hashed_nocheck<Q: ?Sized>(self, hash: u64, k: &Q) -> RawEntryMut<'a, K, V, S>
@@ -1331,7 +1328,7 @@ impl<'a, K, V, S> RawEntryBuilderMut<'a, K, V, S>
 where
     S: BuildHasher,
 {
-    /// Create a `RawEntryMut` from the given hash.
+    /// Creates a `RawEntryMut` from the given hash.
     #[inline]
     #[allow(clippy::wrong_self_convention)]
     pub fn from_hash<F>(self, hash: u64, is_match: F) -> RawEntryMut<'a, K, V, S>
@@ -1706,7 +1703,7 @@ pub enum Entry<'a, K: 'a, V: 'a, S: 'a> {
     Vacant(VacantEntry<'a, K, V, S>),
 }
 
-impl<'a, K: 'a + Debug + Eq + Hash, V: 'a + Debug, S: 'a> Debug for Entry<'a, K, V, S> {
+impl<'a, K: 'a + Debug, V: 'a + Debug, S: 'a> Debug for Entry<'a, K, V, S> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match *self {
             Entry::Vacant(ref v) => f.debug_tuple("Entry").field(v).finish(),
@@ -1759,17 +1756,13 @@ pub struct VacantEntry<'a, K: 'a, V: 'a, S: 'a> {
     table: &'a mut HashMap<K, V, S>,
 }
 
-impl<'a, K: 'a + Debug + Eq + Hash, V: 'a, S> Debug for VacantEntry<'a, K, V, S> {
+impl<'a, K: 'a + Debug, V: 'a, S> Debug for VacantEntry<'a, K, V, S> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         f.debug_tuple("VacantEntry").field(self.key()).finish()
     }
 }
 
-impl<'a, K, V, S> IntoIterator for &'a HashMap<K, V, S>
-where
-    K: Eq + Hash,
-    S: BuildHasher,
-{
+impl<'a, K, V, S> IntoIterator for &'a HashMap<K, V, S> {
     type Item = (&'a K, &'a V);
     type IntoIter = Iter<'a, K, V>;
 
@@ -1779,11 +1772,7 @@ where
     }
 }
 
-impl<'a, K, V, S> IntoIterator for &'a mut HashMap<K, V, S>
-where
-    K: Eq + Hash,
-    S: BuildHasher,
-{
+impl<'a, K, V, S> IntoIterator for &'a mut HashMap<K, V, S> {
     type Item = (&'a K, &'a mut V);
     type IntoIter = IterMut<'a, K, V>;
 
@@ -1793,11 +1782,7 @@ where
     }
 }
 
-impl<K, V, S> IntoIterator for HashMap<K, V, S>
-where
-    K: Eq + Hash,
-    S: BuildHasher,
-{
+impl<K, V, S> IntoIterator for HashMap<K, V, S> {
     type Item = (K, V);
     type IntoIter = IntoIter<K, V>;
 

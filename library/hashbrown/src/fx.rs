@@ -5,8 +5,6 @@ use core::hash::{BuildHasherDefault, Hasher};
 use core::mem::size_of;
 use core::ops::BitXor;
 
-use byteorder::{ByteOrder, NativeEndian};
-
 /// Type alias for a `HashBuilder` using the `fx` hash algorithm.
 pub type FxHashBuilder = BuildHasherDefault<FxHasher>;
 
@@ -47,25 +45,29 @@ impl FxHasher {
 impl Hasher for FxHasher {
     #[inline]
     fn write(&mut self, mut bytes: &[u8]) {
-        #[cfg(target_pointer_width = "32")]
-        #[allow(clippy::cast_possible_truncation)]
-        let read_usize = |bytes| NativeEndian::read_u32(bytes) as usize;
-        #[cfg(target_pointer_width = "64")]
-        #[allow(clippy::cast_possible_truncation)]
-        let read_usize = |bytes| NativeEndian::read_u64(bytes) as usize;
+        macro_rules! read_bytes {
+            ($ty:ty, $src:expr) => {{
+                assert!(size_of::<$ty>() <= $src.len());
+                let mut data: $ty = 0;
+                unsafe {
+                    $src.as_ptr().copy_to_nonoverlapping(&mut data as *mut $ty as *mut u8, size_of::<$ty>());
+                }
+                data
+            }};
+        }
 
         let mut hash = Self { hash: self.hash };
         assert!(size_of::<usize>() <= 8);
         while bytes.len() >= size_of::<usize>() {
-            hash.add_to_hash(read_usize(bytes));
+            hash.add_to_hash(read_bytes!(usize, bytes) as usize);
             bytes = &bytes[size_of::<usize>()..];
         }
         if (size_of::<usize>() > 4) && (bytes.len() >= 4) {
-            hash.add_to_hash(NativeEndian::read_u32(bytes) as usize);
+            hash.add_to_hash(read_bytes!(u32, bytes) as usize);
             bytes = &bytes[4..];
         }
         if (size_of::<usize>() > 2) && bytes.len() >= 2 {
-            hash.add_to_hash(NativeEndian::read_u16(bytes) as usize);
+            hash.add_to_hash(read_bytes!(u16, bytes) as usize);
             bytes = &bytes[2..];
         }
         if (size_of::<usize>() > 1) && !bytes.is_empty() {
