@@ -296,7 +296,7 @@ pub unsafe fn _mm256_min_ps(a: __m256, b: __m256) -> __m256 {
     minps256(a, b)
 }
 
-/// Add packed double-precision (64-bit) floating-point elements
+/// Multiply packed double-precision (64-bit) floating-point elements
 /// in `a` and `b`.
 ///
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm256_mul_pd)
@@ -308,7 +308,7 @@ pub unsafe fn _mm256_mul_pd(a: __m256d, b: __m256d) -> __m256d {
     simd_mul(a, b)
 }
 
-/// Add packed single-precision (32-bit) floating-point elements in `a` and
+/// Multiply packed single-precision (32-bit) floating-point elements in `a` and
 /// `b`.
 ///
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm256_mul_ps)
