@@ -41,11 +41,6 @@
 // via CP15 instructions. See Section 10.1 of ACLE
 mod barrier;
 
-#[cfg(any(
-    target_arch = "aarch64",
-    target_feature = "v7",
-    target_feature = "mclass"
-))]
 pub use self::barrier::*;
 
 mod hints;
