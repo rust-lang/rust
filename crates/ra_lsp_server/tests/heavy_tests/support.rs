@@ -17,7 +17,7 @@ use lsp_types::{
 use serde::Serialize;
 use serde_json::{to_string_pretty, Value};
 use tempfile::TempDir;
-use thread_worker::{WorkerHandle, Worker};
+use thread_worker::Worker;
 use test_utils::{parse_fixture, find_mismatch};
 
 use ra_lsp_server::{
@@ -45,13 +45,12 @@ pub struct Server {
     messages: RefCell<Vec<RawMessage>>,
     dir: TempDir,
     worker: Option<Worker<RawMessage, RawMessage>>,
-    watcher: Option<WorkerHandle>,
 }
 
 impl Server {
     fn new(dir: TempDir, files: Vec<(PathBuf, String)>) -> Server {
         let path = dir.path().to_path_buf();
-        let (worker, watcher) = thread_worker::spawn::<RawMessage, RawMessage, _>(
+        let worker = Worker::<RawMessage, RawMessage>::spawn(
             "test server",
             128,
             move |mut msg_receiver, mut msg_sender| {
@@ -63,7 +62,6 @@ impl Server {
             dir,
             messages: Default::default(),
             worker: Some(worker),
-            watcher: Some(watcher),
         };
 
         for (path, text) in files {
@@ -117,7 +115,7 @@ impl Server {
     }
     fn send_request_(&self, r: RawRequest) -> Value {
         let id = r.id;
-        self.worker.as_ref().unwrap().send(RawMessage::Request(r)).unwrap();
+        self.worker.as_ref().unwrap().sender().send(RawMessage::Request(r)).unwrap();
         while let Some(msg) = self.recv() {
             match msg {
                 RawMessage::Request(req) => panic!("unexpected request: {:?}", req),
@@ -157,24 +155,19 @@ impl Server {
         }
     }
     fn recv(&self) -> Option<RawMessage> {
-        recv_timeout(&self.worker.as_ref().unwrap().out).map(|msg| {
+        recv_timeout(&self.worker.as_ref().unwrap().receiver()).map(|msg| {
             self.messages.borrow_mut().push(msg.clone());
             msg
         })
     }
     fn send_notification(&self, not: RawNotification) {
-        self.worker.as_ref().unwrap().send(RawMessage::Notification(not)).unwrap();
+        self.worker.as_ref().unwrap().sender().send(RawMessage::Notification(not)).unwrap();
     }
 }
 
 impl Drop for Server {
     fn drop(&mut self) {
         self.send_request::<Shutdown>(());
-        let receiver = self.worker.take().unwrap().shutdown();
-        while let Some(msg) = recv_timeout(&receiver) {
-            drop(msg);
-        }
-        self.watcher.take().unwrap().shutdown().unwrap();
     }
 }
 

@@ -54,19 +54,20 @@ pub fn main_loop(
 ) -> Result<()> {
     let pool = ThreadPool::new(THREADPOOL_SIZE);
     let (task_sender, task_receiver) = unbounded::<Task>();
-    let (ws_worker, ws_watcher) = workspace_loader();
 
-    ws_worker.send(ws_root.clone()).unwrap();
     // FIXME: support dynamic workspace loading.
-    let workspaces = match ws_worker.recv().unwrap() {
-        Ok(ws) => vec![ws],
-        Err(e) => {
-            log::error!("loading workspace failed: {}", e);
-            Vec::new()
+    let workspaces = {
+        let ws_worker = workspace_loader();
+        ws_worker.sender().send(ws_root.clone()).unwrap();
+        match ws_worker.receiver().recv().unwrap() {
+            Ok(ws) => vec![ws],
+            Err(e) => {
+                log::error!("loading workspace failed: {}", e);
+                Vec::new()
+            }
         }
     };
-    ws_worker.shutdown();
-    ws_watcher.shutdown().map_err(|_| format_err!("ws watcher died"))?;
+
     let mut state = ServerWorldState::new(ws_root.clone(), workspaces);
 
     log::info!("server initialized, serving requests");
@@ -94,12 +95,9 @@ pub fn main_loop(
     log::info!("...threadpool has finished");
 
     let vfs = Arc::try_unwrap(state.vfs).expect("all snapshots should be dead");
-    let vfs_res = vfs.into_inner().shutdown();
+    drop(vfs);
 
-    main_res?;
-    vfs_res.map_err(|_| format_err!("fs watcher died"))?;
-
-    Ok(())
+    main_res
 }
 
 enum Event {

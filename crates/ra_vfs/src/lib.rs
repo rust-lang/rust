@@ -22,7 +22,6 @@ use std::{
     fmt, fs, mem,
     path::{Path, PathBuf},
     sync::Arc,
-    thread,
 };
 
 use crossbeam_channel::Receiver;
@@ -335,11 +334,6 @@ impl Vfs {
 
     pub fn commit_changes(&mut self) -> Vec<VfsChange> {
         mem::replace(&mut self.pending_changes, Vec::new())
-    }
-
-    /// Shutdown the VFS and terminate the background watching thread.
-    pub fn shutdown(self) -> thread::Result<()> {
-        self.worker.shutdown()
     }
 
     fn add_file(

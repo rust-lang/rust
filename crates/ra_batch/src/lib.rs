@@ -121,7 +121,6 @@ impl BatchDatabase {
             .collect();
 
         let db = BatchDatabase::load(crate_graph, &mut vfs);
-        let _ = vfs.shutdown();
         Ok((db, local_roots))
     }
 }
