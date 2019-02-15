@@ -70,10 +70,10 @@ pub unsafe fn __ldrex(p: *const u32) -> u32 {
 #[cfg(
     target_feature = "v6k", // includes v7-M but excludes v6-M
 )]
-pub unsafe fn __strexb(value: u32, addr: *const u8) -> u32 {
+pub unsafe fn __strexb(value: u32, addr: *mut u8) -> u32 {
     extern "C" {
         #[link_name = "llvm.arm.strex.p0i8"]
-        fn strex8(value: u32, addr: *const u8) -> u32;
+        fn strex8(value: u32, addr: *mut u8) -> u32;
     }
 
     strex8(value, addr)
@@ -87,10 +87,10 @@ pub unsafe fn __strexb(value: u32, addr: *const u8) -> u32 {
 #[cfg(
     target_feature = "v6k", // includes v7-M but excludes v6-M
 )]
-pub unsafe fn __strexh(value: u16, addr: *const u16) -> u32 {
+pub unsafe fn __strexh(value: u16, addr: *mut u16) -> u32 {
     extern "C" {
         #[link_name = "llvm.arm.strex.p0i16"]
-        fn strex16(value: u32, addr: *const u16) -> u32;
+        fn strex16(value: u32, addr: *mut u16) -> u32;
     }
 
     strex16(value as u32, addr)
@@ -105,10 +105,10 @@ pub unsafe fn __strexh(value: u16, addr: *const u16) -> u32 {
     all(target_feature = "v6", not(target_feature = "mclass")), // excludes v6-M
     all(target_feature = "v7", target_feature = "mclass"), // v7-M
 ))]
-pub unsafe fn __strex(value: u32, addr: *const u32) -> u32 {
+pub unsafe fn __strex(value: u32, addr: *mut u32) -> u32 {
     extern "C" {
         #[link_name = "llvm.arm.strex.p0i32"]
-        fn strex32(value: u32, addr: *const u32) -> u32;
+        fn strex32(value: u32, addr: *mut u32) -> u32;
     }
 
     strex32(value, addr)
