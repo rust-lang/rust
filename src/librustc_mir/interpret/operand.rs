@@ -548,7 +548,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> 
 
             Constant(ref constant) => {
                 let layout = from_known_layout(layout, || {
-                    let ty = self.monomorphize(mir_op.ty(self.mir(), *self.tcx))?;
+                    let ty = self.monomorphize(constant.ty)?;
                     self.layout_of(ty)
                 })?;
                 let op = self.const_value_to_op(*constant.literal)?;
