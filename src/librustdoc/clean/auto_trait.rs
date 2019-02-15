@@ -773,6 +773,7 @@ impl<'a, 'tcx, 'rcx> AutoTraitFinder<'a, 'tcx, 'rcx> {
                     }
                 }
                 GenericParamDefKind::Lifetime => {}
+                GenericParamDefKind::Const { .. } => {}
             }
         }
 

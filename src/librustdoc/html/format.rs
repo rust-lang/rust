@@ -138,6 +138,16 @@ impl fmt::Display for clean::GenericParamDef {
 
                 Ok(())
             }
+            clean::GenericParamDefKind::Const { ref ty, .. } => {
+                f.write_str("const ")?;
+                f.write_str(&self.name)?;
+
+                if f.alternate() {
+                    write!(f, ": {:#}", ty)
+                } else {
+                    write!(f, ":&nbsp;{}", ty)
+                }
+            }
         }
     }
 }
