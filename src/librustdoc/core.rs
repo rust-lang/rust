@@ -218,7 +218,7 @@ impl<'a, 'tcx, 'rcx> DocContext<'a, 'tcx, 'rcx> {
                         name: hir::LifetimeName::Param(name),
                     }));
                 }
-                ty::GenericParamDefKind::Type {..} => {
+                ty::GenericParamDefKind::Type { .. } => {
                     args.push(hir::GenericArg::Type(self.ty_param_to_ty(param.clone())));
                 }
             }

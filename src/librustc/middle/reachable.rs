@@ -315,8 +315,11 @@ impl<'a, 'tcx> ReachableContext<'a, 'tcx> {
             Node::Ty(_) |
             Node::MacroDef(_) => {}
             _ => {
-                bug!("found unexpected thingy in worklist: {}",
-                     self.tcx.hir().node_to_string(search_item))
+                bug!(
+                    "found unexpected node kind in worklist: {} ({:?})",
+                    self.tcx.hir().node_to_string(search_item),
+                    node,
+                );
             }
         }
     }

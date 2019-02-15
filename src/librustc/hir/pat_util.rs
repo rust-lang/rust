@@ -64,19 +64,6 @@ impl hir::Pat {
         }
     }
 
-    pub fn is_const(&self) -> bool {
-        match self.node {
-            PatKind::Path(hir::QPath::TypeRelative(..)) => true,
-            PatKind::Path(hir::QPath::Resolved(_, ref path)) => {
-                match path.def {
-                    Def::Const(..) | Def::AssociatedConst(..) => true,
-                    _ => false
-                }
-            }
-            _ => false
-        }
-    }
-
     /// Call `f` on every "binding" in a pattern, e.g., on `a` in
     /// `match foo() { Some(a) => (), None => () }`
     pub fn each_binding<F>(&self, mut f: F)

@@ -52,13 +52,13 @@ pub enum Def {
     AssociatedExistential(DefId),
     PrimTy(hir::PrimTy),
     TyParam(DefId),
-    ConstParam(DefId),
     SelfTy(Option<DefId> /* trait */, Option<DefId> /* impl */),
     ToolMod, // e.g., `rustfmt` in `#[rustfmt::skip]`
 
     // Value namespace
     Fn(DefId),
     Const(DefId),
+    ConstParam(DefId),
     Static(DefId, bool /* is_mutbl */),
     StructCtor(DefId, CtorKind), // `DefId` refers to `NodeId` of the struct's constructor
     VariantCtor(DefId, CtorKind), // `DefId` refers to the enum variant
