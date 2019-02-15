@@ -40,6 +40,7 @@ pub(super) struct NodeCollector<'a, 'hir> {
 
     dep_graph: &'a DepGraph,
     definitions: &'a definitions::Definitions,
+    hir_to_node_id: &'a FxHashMap<HirId, NodeId>,
 
     hcx: StableHashingContext<'a>,
 
@@ -100,6 +101,7 @@ impl<'a, 'hir> NodeCollector<'a, 'hir> {
                        krate: &'hir Crate,
                        dep_graph: &'a DepGraph,
                        definitions: &'a definitions::Definitions,
+                       hir_to_node_id: &'a FxHashMap<HirId, NodeId>,
                        mut hcx: StableHashingContext<'a>)
                 -> NodeCollector<'a, 'hir> {
         let root_mod_def_path_hash = definitions.def_path_hash(CRATE_DEF_INDEX);
@@ -155,6 +157,7 @@ impl<'a, 'hir> NodeCollector<'a, 'hir> {
             currently_in_body: false,
             dep_graph,
             definitions,
+            hir_to_node_id,
             hcx,
             hir_body_nodes,
         };
@@ -228,8 +231,7 @@ impl<'a, 'hir> NodeCollector<'a, 'hir> {
         self.map[id.as_usize()] = Some(entry);
     }
 
-    // FIXME(ljedrz): devise a way to get rid of this NodeId
-    fn insert(&mut self, span: Span, node_id: NodeId, hir_id: HirId, node: Node<'hir>) {
+    fn insert(&mut self, span: Span, hir_id: HirId, node: Node<'hir>) {
         let entry = Entry {
             parent: self.parent_node,
             parent_hir: self.parent_hir,
@@ -240,6 +242,8 @@ impl<'a, 'hir> NodeCollector<'a, 'hir> {
             },
             node,
         };
+
+        let node_id = self.hir_to_node_id[&hir_id];
 
         // Make sure that the DepNode of some node coincides with the HirId
         // owner of that node.
@@ -361,13 +365,12 @@ impl<'a, 'hir> Visitor<'hir> for NodeCollector<'a, 'hir> {
         debug_assert_eq!(i.hir_id.owner,
                          self.definitions.opt_def_index(i.id).unwrap());
         self.with_dep_node_owner(i.hir_id.owner, i, |this| {
-            this.insert(i.span, i.id, i.hir_id, Node::Item(i));
+            this.insert(i.span, i.hir_id, Node::Item(i));
             this.with_parent(i.id, i.hir_id, |this| {
                 if let ItemKind::Struct(ref struct_def, _) = i.node {
                     // If this is a tuple-like struct, register the constructor.
                     if !struct_def.is_struct() {
-                        this.insert(i.span, struct_def.id(), struct_def.hir_id(),
-                            Node::StructCtor(struct_def));
+                        this.insert(i.span, struct_def.hir_id(), Node::StructCtor(struct_def));
                     }
                 }
                 intravisit::walk_item(this, i);
@@ -376,8 +379,7 @@ impl<'a, 'hir> Visitor<'hir> for NodeCollector<'a, 'hir> {
     }
 
     fn visit_foreign_item(&mut self, foreign_item: &'hir ForeignItem) {
-        self.insert(foreign_item.span, foreign_item.id, foreign_item.hir_id,
-            Node::ForeignItem(foreign_item));
+        self.insert(foreign_item.span, foreign_item.hir_id, Node::ForeignItem(foreign_item));
 
         self.with_parent(foreign_item.id, foreign_item.hir_id, |this| {
             intravisit::walk_foreign_item(this, foreign_item);
@@ -385,7 +387,7 @@ impl<'a, 'hir> Visitor<'hir> for NodeCollector<'a, 'hir> {
     }
 
     fn visit_generic_param(&mut self, param: &'hir GenericParam) {
-        self.insert(param.span, param.id, param.hir_id, Node::GenericParam(param));
+        self.insert(param.span, param.hir_id, Node::GenericParam(param));
         intravisit::walk_generic_param(self, param);
     }
 
@@ -393,7 +395,7 @@ impl<'a, 'hir> Visitor<'hir> for NodeCollector<'a, 'hir> {
         debug_assert_eq!(ti.hir_id.owner,
                          self.definitions.opt_def_index(ti.id).unwrap());
         self.with_dep_node_owner(ti.hir_id.owner, ti, |this| {
-            this.insert(ti.span, ti.id, ti.hir_id, Node::TraitItem(ti));
+            this.insert(ti.span, ti.hir_id, Node::TraitItem(ti));
 
             this.with_parent(ti.id, ti.hir_id, |this| {
                 intravisit::walk_trait_item(this, ti);
@@ -405,7 +407,7 @@ impl<'a, 'hir> Visitor<'hir> for NodeCollector<'a, 'hir> {
         debug_assert_eq!(ii.hir_id.owner,
                          self.definitions.opt_def_index(ii.id).unwrap());
         self.with_dep_node_owner(ii.hir_id.owner, ii, |this| {
-            this.insert(ii.span, ii.id, ii.hir_id, Node::ImplItem(ii));
+            this.insert(ii.span, ii.hir_id, Node::ImplItem(ii));
 
             this.with_parent(ii.id, ii.hir_id, |this| {
                 intravisit::walk_impl_item(this, ii);
@@ -419,7 +421,7 @@ impl<'a, 'hir> Visitor<'hir> for NodeCollector<'a, 'hir> {
         } else {
             Node::Pat(pat)
         };
-        self.insert(pat.span, pat.id, pat.hir_id, node);
+        self.insert(pat.span, pat.hir_id, node);
 
         self.with_parent(pat.id, pat.hir_id, |this| {
             intravisit::walk_pat(this, pat);
@@ -427,7 +429,7 @@ impl<'a, 'hir> Visitor<'hir> for NodeCollector<'a, 'hir> {
     }
 
     fn visit_anon_const(&mut self, constant: &'hir AnonConst) {
-        self.insert(DUMMY_SP, constant.id, constant.hir_id, Node::AnonConst(constant));
+        self.insert(DUMMY_SP, constant.hir_id, Node::AnonConst(constant));
 
         self.with_parent(constant.id, constant.hir_id, |this| {
             intravisit::walk_anon_const(this, constant);
@@ -435,7 +437,7 @@ impl<'a, 'hir> Visitor<'hir> for NodeCollector<'a, 'hir> {
     }
 
     fn visit_expr(&mut self, expr: &'hir Expr) {
-        self.insert(expr.span, expr.id, expr.hir_id, Node::Expr(expr));
+        self.insert(expr.span, expr.hir_id, Node::Expr(expr));
 
         self.with_parent(expr.id, expr.hir_id, |this| {
             intravisit::walk_expr(this, expr);
@@ -443,7 +445,7 @@ impl<'a, 'hir> Visitor<'hir> for NodeCollector<'a, 'hir> {
     }
 
     fn visit_stmt(&mut self, stmt: &'hir Stmt) {
-        self.insert(stmt.span, stmt.id, stmt.hir_id, Node::Stmt(stmt));
+        self.insert(stmt.span, stmt.hir_id, Node::Stmt(stmt));
 
         self.with_parent(stmt.id, stmt.hir_id, |this| {
             intravisit::walk_stmt(this, stmt);
@@ -451,15 +453,15 @@ impl<'a, 'hir> Visitor<'hir> for NodeCollector<'a, 'hir> {
     }
 
     fn visit_path_segment(&mut self, path_span: Span, path_segment: &'hir PathSegment) {
-        if let Some(node_id) = path_segment.id {
+        if path_segment.id.is_some() {
             let hir_id = path_segment.hir_id.unwrap();
-            self.insert(path_span, node_id, hir_id, Node::PathSegment(path_segment));
+            self.insert(path_span, hir_id, Node::PathSegment(path_segment));
         }
         intravisit::walk_path_segment(self, path_span, path_segment);
     }
 
     fn visit_ty(&mut self, ty: &'hir Ty) {
-        self.insert(ty.span, ty.id, ty.hir_id, Node::Ty(ty));
+        self.insert(ty.span, ty.hir_id, Node::Ty(ty));
 
         self.with_parent(ty.id, ty.hir_id, |this| {
             intravisit::walk_ty(this, ty);
@@ -467,7 +469,7 @@ impl<'a, 'hir> Visitor<'hir> for NodeCollector<'a, 'hir> {
     }
 
     fn visit_trait_ref(&mut self, tr: &'hir TraitRef) {
-        self.insert(tr.path.span, tr.ref_id, tr.hir_ref_id, Node::TraitRef(tr));
+        self.insert(tr.path.span, tr.hir_ref_id, Node::TraitRef(tr));
 
         self.with_parent(tr.ref_id, tr.hir_ref_id, |this| {
             intravisit::walk_trait_ref(this, tr);
@@ -481,21 +483,21 @@ impl<'a, 'hir> Visitor<'hir> for NodeCollector<'a, 'hir> {
     }
 
     fn visit_block(&mut self, block: &'hir Block) {
-        self.insert(block.span, block.id, block.hir_id, Node::Block(block));
+        self.insert(block.span, block.hir_id, Node::Block(block));
         self.with_parent(block.id, block.hir_id, |this| {
             intravisit::walk_block(this, block);
         });
     }
 
     fn visit_local(&mut self, l: &'hir Local) {
-        self.insert(l.span, l.id, l.hir_id, Node::Local(l));
+        self.insert(l.span, l.hir_id, Node::Local(l));
         self.with_parent(l.id, l.hir_id, |this| {
             intravisit::walk_local(this, l)
         })
     }
 
     fn visit_lifetime(&mut self, lifetime: &'hir Lifetime) {
-        self.insert(lifetime.span, lifetime.id, lifetime.hir_id, Node::Lifetime(lifetime));
+        self.insert(lifetime.span, lifetime.hir_id, Node::Lifetime(lifetime));
     }
 
     fn visit_vis(&mut self, visibility: &'hir Visibility) {
@@ -504,7 +506,7 @@ impl<'a, 'hir> Visitor<'hir> for NodeCollector<'a, 'hir> {
             VisibilityKind::Crate(_) |
             VisibilityKind::Inherited => {}
             VisibilityKind::Restricted { id, hir_id, .. } => {
-                self.insert(visibility.span, id, hir_id, Node::Visibility(visibility));
+                self.insert(visibility.span, hir_id, Node::Visibility(visibility));
                 self.with_parent(id, hir_id, |this| {
                     intravisit::walk_vis(this, visibility);
                 });
@@ -516,19 +518,19 @@ impl<'a, 'hir> Visitor<'hir> for NodeCollector<'a, 'hir> {
         let def_index = self.definitions.opt_def_index(macro_def.id).unwrap();
 
         self.with_dep_node_owner(def_index, macro_def, |this| {
-            this.insert(macro_def.span, macro_def.id, macro_def.hir_id, Node::MacroDef(macro_def));
+            this.insert(macro_def.span, macro_def.hir_id, Node::MacroDef(macro_def));
         });
     }
 
     fn visit_variant(&mut self, v: &'hir Variant, g: &'hir Generics, item_id: HirId) {
-        self.insert(v.span, v.node.data.id(), v.node.data.hir_id(), Node::Variant(v));
+        self.insert(v.span, v.node.data.hir_id(), Node::Variant(v));
         self.with_parent(v.node.data.id(), v.node.data.hir_id(), |this| {
             intravisit::walk_variant(this, v, g, item_id);
         });
     }
 
     fn visit_struct_field(&mut self, field: &'hir StructField) {
-        self.insert(field.span, field.id, field.hir_id, Node::Field(field));
+        self.insert(field.span, field.hir_id, Node::Field(field));
         self.with_parent(field.id, field.hir_id, |this| {
             intravisit::walk_struct_field(this, field);
         });
