@@ -1563,6 +1563,10 @@ impl<T> [T] {
     /// randomization to avoid degenerate cases, but with a fixed seed to always provide
     /// deterministic behavior.
     ///
+    /// Due to its key calling strategy, [`sort_unstable_by_key`](#method.sort_unstable_by_key)
+    /// is likely to be slower than [`sort_by_cached_key`](#method.sort_by_cached_key) in
+    /// cases where the key function is expensive.
+    ///
     /// # Examples
     ///
     /// ```

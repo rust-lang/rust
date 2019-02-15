@@ -257,6 +257,10 @@ impl<T> [T] {
     /// This sort is stable (i.e., does not reorder equal elements) and `O(m n log(m n))`
     /// worst-case, where the key function is `O(m)`.
     ///
+    /// For expensive key functions (e.g. functions that are not simple property accesses or
+    /// basic operations), [`sort_by_cached_key`](#method.sort_by_cached_key) is likely to be
+    /// significantly faster, as it does not recompute element keys.
+    ///
     /// When applicable, unstable sorting is preferred because it is generally faster than stable
     /// sorting and it doesn't allocate auxiliary memory.
     /// See [`sort_unstable_by_key`](#method.sort_unstable_by_key).
@@ -312,7 +316,6 @@ impl<T> [T] {
     /// # Examples
     ///
     /// ```
-    /// #![feature(slice_sort_by_cached_key)]
     /// let mut v = [-5i32, 4, 32, -3, 2];
     ///
     /// v.sort_by_cached_key(|k| k.to_string());
@@ -320,7 +323,7 @@ impl<T> [T] {
     /// ```
     ///
     /// [pdqsort]: https://github.com/orlp/pdqsort
-    #[unstable(feature = "slice_sort_by_cached_key", issue = "34447")]
+    #[stable(feature = "slice_sort_by_cached_key", since = "1.34.0")]
     #[inline]
     pub fn sort_by_cached_key<K, F>(&mut self, f: F)
         where F: FnMut(&T) -> K, K: Ord

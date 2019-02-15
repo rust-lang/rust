@@ -6,7 +6,6 @@
 #![feature(libc)]
 #![feature(rustc_diagnostic_macros)]
 #![feature(in_band_lifetimes)]
-#![feature(slice_sort_by_cached_key)]
 #![feature(nll)]
 #![allow(unused_attributes)]
 #![allow(dead_code)]
