@@ -416,11 +416,8 @@ impl<'a, 'tcx: 'a, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 };
                 let layout = cx.layout_of(self.monomorphize(&ty));
                 match bx.tcx().const_eval(param_env.and(cid)) {
-                    Ok(val) => match val.val {
-                        mir::interpret::ConstValue::ByRef => {
-                            let (alloc, ptr) = val.alloc.unwrap();
-                            bx.cx().from_const_alloc(layout, alloc, ptr.offset)
-                        }
+                    Ok(val) => match val.alloc {
+                        Some((alloc, ptr)) => bx.cx().from_const_alloc(layout, alloc, ptr.offset),
                         _ => bug!("promoteds should have an allocation: {:?}", val),
                     },
                     Err(_) => {
