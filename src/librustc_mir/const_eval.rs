@@ -509,13 +509,11 @@ fn validate_and_turn_into_const<'a, 'tcx>(
 ) -> ::rustc::mir::interpret::ConstEvalResult<'tcx> {
     let ecx = mk_eval_cx(tcx, tcx.def_span(key.value.instance.def_id()), key.param_env);
     let val = (|| {
-        let op = ecx.raw_const_to_mplace(constant)?.into();
-        // FIXME: Once the visitor infrastructure landed, change validation to
-        // work directly on `MPlaceTy`.
-        let mut ref_tracking = RefTracking::new(op);
-        while let Some((op, path)) = ref_tracking.todo.pop() {
+        let mplace = ecx.raw_const_to_mplace(constant)?;
+        let mut ref_tracking = RefTracking::new(mplace);
+        while let Some((mplace, path)) = ref_tracking.todo.pop() {
             ecx.validate_operand(
-                op,
+                mplace.into(),
                 path,
                 Some(&mut ref_tracking),
                 true, // const mode
@@ -530,17 +528,20 @@ fn validate_and_turn_into_const<'a, 'tcx>(
 
         // FIXME(oli-obk): see if creating a query to go from an `Allocation` + offset to a
         // `ConstValue` is just as effective as proactively generating the `ConstValue`.
-        let val = match op.layout.abi {
-            layout::Abi::Scalar(..) => ConstValue::Scalar(ecx.read_immediate(op)?.to_scalar()?),
-            layout::Abi::ScalarPair(..) if op.layout.ty.is_slice() => {
-                let (a, b) = ecx.read_immediate(op)?.to_scalar_pair()?;
+        let val = match mplace.layout.abi {
+            layout::Abi::Scalar(..) => {
+                let scalar = ecx.try_read_immediate_from_mplace(mplace)?.unwrap().to_scalar()?;
+                ConstValue::Scalar(scalar)
+            }
+            layout::Abi::ScalarPair(..) if mplace.layout.ty.is_slice() => {
+                let (a, b) = ecx.try_read_immediate_from_mplace(mplace)?.unwrap().to_scalar_pair()?;
                 ConstValue::Slice(a, b.to_usize(&ecx)?)
             },
             _ => ConstValue::ByRef,
         };
         let ptr = Pointer::from(constant.alloc_id);
         let alloc = constant.alloc;
-        Ok(ty::Const { val, ty: op.layout.ty, alloc: Some((alloc, ptr))})
+        Ok(ty::Const { val, ty: mplace.layout.ty, alloc: Some((alloc, ptr))})
     })();
 
     val.map_err(|error| {
