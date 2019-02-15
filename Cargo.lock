@@ -2822,7 +2822,6 @@ name = "rustc_mir"
 version = "0.0.0"
 dependencies = [
  "arena 0.0.0",
- "bitflags 1.0.4 (registry+https://github.com/rust-lang/crates.io-index)",
  "byteorder 1.2.7 (registry+https://github.com/rust-lang/crates.io-index)",
  "either 1.5.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "graphviz 0.0.0",

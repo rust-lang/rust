@@ -11,7 +11,6 @@ crate-type = ["dylib"]
 
 [dependencies]
 arena = { path = "../libarena" }
-bitflags = "1.0"
 either = "1.5.0"
 dot = { path = "../libgraphviz", package = "graphviz" }
 log = "0.4"
