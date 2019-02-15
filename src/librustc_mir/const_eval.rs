@@ -68,18 +68,13 @@ fn op_to_const<'tcx>(
     op: OpTy<'tcx>,
 ) -> EvalResult<'tcx, ty::Const<'tcx>> {
     // We do not normalize just any data.  Only scalar layout and slices.
-    let normalize = match op.layout.abi {
-        layout::Abi::Scalar(..) => true,
-        layout::Abi::ScalarPair(..) => op.layout.ty.is_slice(),
-        _ => false,
-    };
-    let normalized_op = if normalize {
-        ecx.try_read_immediate(op)?
-    } else {
-        match *op {
+    let normalized_op = match op.layout.abi {
+        layout::Abi::Scalar(..) => ecx.try_read_immediate(op)?,
+        layout::Abi::ScalarPair(..) if op.layout.ty.is_slice() => ecx.try_read_immediate(op)?,
+        _ => match *op {
             Operand::Indirect(mplace) => Err(mplace),
             Operand::Immediate(val) => Ok(val)
-        }
+        },
     };
     let (val, alloc) = match normalized_op {
         Err(MemPlace { ptr, align, meta }) => {
