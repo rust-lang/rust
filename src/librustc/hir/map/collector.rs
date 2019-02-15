@@ -27,7 +27,7 @@ pub(super) struct NodeCollector<'a, 'hir> {
     /// The node map
     map: Vec<Option<Entry<'hir>>>,
     /// The parent of this node
-    parent_hir: hir::HirId,
+    parent_node: hir::HirId,
 
     // These fields keep track of the currently relevant DepNodes during
     // the visitor's traversal.
@@ -147,7 +147,7 @@ impl<'a, 'hir> NodeCollector<'a, 'hir> {
             krate,
             source_map: sess.source_map(),
             map: repeat(None).take(sess.current_node_id_count()).collect(),
-            parent_hir: hir::CRATE_HIR_ID,
+            parent_node: hir::CRATE_HIR_ID,
             current_signature_dep_index: root_mod_sig_dep_index,
             current_full_dep_index: root_mod_full_dep_index,
             current_dep_node_owner: CRATE_DEF_INDEX,
@@ -230,8 +230,8 @@ impl<'a, 'hir> NodeCollector<'a, 'hir> {
 
     fn insert(&mut self, span: Span, hir_id: HirId, node: Node<'hir>) {
         let entry = Entry {
-            parent: self.hir_to_node_id[&self.parent_hir],
-            parent_hir: self.parent_hir,
+            parent: self.hir_to_node_id[&self.parent_node],
+            parent_hir: self.parent_node,
             dep_node: if self.currently_in_body {
                 self.current_full_dep_index
             } else {
@@ -283,13 +283,13 @@ impl<'a, 'hir> NodeCollector<'a, 'hir> {
 
     fn with_parent<F: FnOnce(&mut Self)>(
         &mut self,
-        parent_hir_id: HirId,
+        parent_node_id: HirId,
         f: F,
     ) {
-        let parent_hir = self.parent_hir;
-        self.parent_hir = parent_hir_id;
+        let parent_node = self.parent_node;
+        self.parent_node = parent_node_id;
         f(self);
-        self.parent_hir = parent_hir;
+        self.parent_node = parent_node;
     }
 
     fn with_dep_node_owner<T: for<'b> HashStable<StableHashingContext<'b>>,
@@ -446,8 +446,7 @@ impl<'a, 'hir> Visitor<'hir> for NodeCollector<'a, 'hir> {
     }
 
     fn visit_path_segment(&mut self, path_span: Span, path_segment: &'hir PathSegment) {
-        if path_segment.id.is_some() {
-            let hir_id = path_segment.hir_id.unwrap();
+        if let Some(hir_id) = path_segment.hir_id {
             self.insert(path_span, hir_id, Node::PathSegment(path_segment));
         }
         intravisit::walk_path_segment(self, path_span, path_segment);
@@ -471,7 +470,7 @@ impl<'a, 'hir> Visitor<'hir> for NodeCollector<'a, 'hir> {
 
     fn visit_fn(&mut self, fk: intravisit::FnKind<'hir>, fd: &'hir FnDecl,
                 b: BodyId, s: Span, id: HirId) {
-        assert_eq!(self.parent_hir, id);
+        assert_eq!(self.parent_node, id);
         intravisit::walk_fn(self, fk, fd, b, s, id);
     }
 
