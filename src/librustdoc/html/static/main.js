@@ -1597,7 +1597,7 @@ if (!DOMTokenList.prototype.remove) {
                 clearTimeout(searchTimeout);
                 if (search_input.value.length === 0) {
                     if (browserSupportsHistoryApi()) {
-                        history.replaceState("", "std - Rust", "?search=");
+                        history.replaceState("", window.currentCrate + " - Rust", "?search=");
                     }
                     if (hasClass(main, "content")) {
                         removeClass(main, "hidden");
