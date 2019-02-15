@@ -13,6 +13,7 @@ use syntax::source_map::Span;
 use syntax::{ast, ptr};
 
 use crate::config::lists::*;
+use crate::config::Version;
 use crate::expr::{block_contains_comment, is_simple_block, is_unsafe_block, rewrite_cond};
 use crate::items::{span_hi_for_arg, span_lo_for_arg};
 use crate::lists::{definitive_tactic, itemize_list, write_list, ListFormatting, Separator};
@@ -376,22 +377,23 @@ fn is_block_closure_forced(context: &RewriteContext<'_>, expr: &ast::Expr) -> bo
     if context.inside_macro() {
         false
     } else {
-        is_block_closure_forced_inner(expr)
+        is_block_closure_forced_inner(expr, context.config.version())
     }
 }
 
-fn is_block_closure_forced_inner(expr: &ast::Expr) -> bool {
+fn is_block_closure_forced_inner(expr: &ast::Expr, version: Version) -> bool {
     match expr.node {
         ast::ExprKind::If(..)
         | ast::ExprKind::IfLet(..)
         | ast::ExprKind::While(..)
         | ast::ExprKind::WhileLet(..)
         | ast::ExprKind::ForLoop(..) => true,
+        ast::ExprKind::Loop(..) if version == Version::Two => true,
         ast::ExprKind::AddrOf(_, ref expr)
         | ast::ExprKind::Box(ref expr)
         | ast::ExprKind::Try(ref expr)
         | ast::ExprKind::Unary(_, ref expr)
-        | ast::ExprKind::Cast(ref expr, _) => is_block_closure_forced_inner(expr),
+        | ast::ExprKind::Cast(ref expr, _) => is_block_closure_forced_inner(expr, version),
         _ => false,
     }
 }
