@@ -83,7 +83,7 @@ fn test_vfs_works() -> std::io::Result<()> {
     }
 
     // rust-analyzer#734: fsevents has a bunch of events still sitting around.
-    process_tasks_in_range(&mut vfs, 0, 7);
+    process_tasks_in_range(&mut vfs, 0, if cfg!(target_os = "macos") { 7 } else { 0 });
     match vfs.commit_changes().as_slice() {
         [] => {}
 
