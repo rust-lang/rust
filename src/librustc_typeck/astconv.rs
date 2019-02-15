@@ -500,18 +500,19 @@ impl<'o, 'gcx: 'tcx, 'tcx> dyn AstConv<'gcx, 'tcx> + 'o {
                                 args.next();
                                 params.next();
                             }
-                            (GenericArg::Lifetime(_), GenericParamDefKind::Type { .. }) => {
-                                // We expected a type argument, but got a lifetime
-                                // argument. This is an error, but we need to handle it
-                                // gracefully so we can report sensible errors. In this
-                                // case, we're simply going to infer this argument.
-                                args.next();
-                            }
-                            (GenericArg::Type(_), GenericParamDefKind::Lifetime) => {
-                                // We expected a lifetime argument, but got a type
+                            (GenericArg::Type(_), GenericParamDefKind::Lifetime)
+                            | (GenericArg::Const(_), GenericParamDefKind::Lifetime) => {
+                                // We expected a lifetime argument, but got a type or const
                                 // argument. That means we're inferring the lifetimes.
                                 substs.push(inferred_kind(None, param, infer_types));
                                 params.next();
+                            }
+                            (_, _) => {
+                                // We expected one kind of parameter, but the user provided
+                                // another. This is an error, but we need to handle it
+                                // gracefully so we can report sensible errors.
+                                // In this case, we're simply going to infer this argument.
+                                args.next();
                             }
                         }
                     }
@@ -524,12 +525,7 @@ impl<'o, 'gcx: 'tcx, 'tcx> dyn AstConv<'gcx, 'tcx> + 'o {
                     (None, Some(&param)) => {
                         // If there are fewer arguments than parameters, it means
                         // we're inferring the remaining arguments.
-                        match param.kind {
-                            GenericParamDefKind::Lifetime | GenericParamDefKind::Type { .. } => {
-                                let kind = inferred_kind(Some(&substs), param, infer_types);
-                                substs.push(kind);
-                            }
-                        }
+                        substs.push(inferred_kind(Some(&substs), param, infer_types));
                         args.next();
                         params.next();
                     }
@@ -1459,9 +1455,10 @@ impl<'o, 'gcx: 'tcx, 'tcx> dyn AstConv<'gcx, 'tcx> + 'o {
         let mut has_err = false;
         for segment in segments {
             segment.with_generic_args(|generic_args| {
-                let (mut err_for_lt, mut err_for_ty) = (false, false);
+                let (mut err_for_lt, mut err_for_ty, mut err_for_ct) = (false, false, false);
                 for arg in &generic_args.args {
                     let (mut span_err, span, kind) = match arg {
+                        // FIXME(varkor): unify E0109, E0110 and E0111.
                         hir::GenericArg::Lifetime(lt) => {
                             if err_for_lt { continue }
                             err_for_lt = true;
@@ -1480,10 +1477,18 @@ impl<'o, 'gcx: 'tcx, 'tcx> dyn AstConv<'gcx, 'tcx> + 'o {
                              ty.span,
                              "type")
                         }
+                        hir::GenericArg::Const(ct) => {
+                            if err_for_ct { continue }
+                            err_for_ct = true;
+                            (struct_span_err!(self.tcx().sess, ct.span, E0111,
+                                              "const parameters are not allowed on this type"),
+                             ct.span,
+                             "const")
+                        }
                     };
                     span_err.span_label(span, format!("{} argument not allowed", kind))
                             .emit();
-                    if err_for_lt && err_for_ty {
+                    if err_for_lt && err_for_ty && err_for_ct {
                         break;
                     }
                 }

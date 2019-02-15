@@ -398,6 +398,7 @@ impl<'hir> Map<'hir> {
                 Some(match param.kind {
                     GenericParamKind::Lifetime { .. } => Def::Local(param.id),
                     GenericParamKind::Type { .. } => Def::TyParam(self.local_def_id(param.id)),
+                    GenericParamKind::Const { .. } => Def::ConstParam(self.local_def_id(param.id)),
                 })
             }
         }

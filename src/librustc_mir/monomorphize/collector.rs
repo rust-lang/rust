@@ -1090,7 +1090,10 @@ fn create_mono_items_for_default_impls<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
             for param in &generics.params {
                 match param.kind {
                     hir::GenericParamKind::Lifetime { .. } => {}
-                    hir::GenericParamKind::Type { .. } => return,
+                    hir::GenericParamKind::Type { .. } |
+                    hir::GenericParamKind::Const { .. } => {
+                        return
+                    }
                 }
             }
 
