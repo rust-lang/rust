@@ -4,7 +4,7 @@
 use std::vec::Vec;
 
 fn last<T>(v: Vec<&T> ) -> std::option::Option<T> {
-    panic!();
+    ::std::panic!();
 }
 
 fn main() {
