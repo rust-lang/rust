@@ -13,6 +13,7 @@ use crate::ty::{List, TyS, ParamEnvAnd, ParamEnv};
 use crate::util::captures::Captures;
 use crate::mir::interpret::{Scalar, Pointer, Allocation};
 
+use std::hash::{Hash, Hasher};
 use smallvec::SmallVec;
 use std::iter;
 use std::cmp::Ordering;
@@ -2086,7 +2087,7 @@ impl<'tcx> LazyConst<'tcx> {
 }
 
 /// Typed constant value.
-#[derive(Copy, Clone, Debug, Hash, RustcEncodable, RustcDecodable, Eq, PartialEq, Ord, PartialOrd)]
+#[derive(Copy, Clone, Debug, RustcEncodable, RustcDecodable, Eq, Ord, PartialOrd)]
 pub struct Const<'tcx> {
     pub ty: Ty<'tcx>,
 
@@ -2102,6 +2103,46 @@ pub struct Const<'tcx> {
     /// aggregate constants or any named constant that you can actually end up taking a reference
     /// to. This will get unwrapped in situations where we do know that it's a referencable
     pub alloc: Option<(&'tcx Allocation, Pointer)>,
+}
+
+impl<'tcx> PartialEq for Const<'tcx> {
+    fn eq(&self, other: &Self) -> bool {
+
+        self.ty == other.ty && match (self.val, other.val) {
+            (ConstValue::ByRef, ConstValue::ByRef) => {
+                let (a, pa) = self.alloc.unwrap();
+                let (b, pb) = other.alloc.unwrap();
+                // only use the alloc ids to not have to compare the full allocations
+                // the ids may differ if the allocation is the same
+                (pa.offset == pb.offset) && (pa.alloc_id == pb.alloc_id || a == b)
+            },
+            // ignore the actual allocation, just compare the values
+            (ConstValue::Scalar(a), ConstValue::Scalar(b)) => a == b,
+            (ConstValue::Slice(a, an), ConstValue::Slice(b, bn)) => an == bn && a == b,
+            // if the values don't match, the consts can't be equal and the type equality should
+            // have already failed, because we make the decision for non-byref solely based on the
+            // type
+            _ => bug!("same type but different value kind in constant: {:#?} {:#?}", self, other),
+        }
+    }
+}
+
+impl<'tcx> Hash for Const<'tcx> {
+    fn hash<H: Hasher>(&self, hasher: &mut H) {
+        let Const { ty, val, alloc } = self;
+        ty.hash(hasher);
+        val.hash(hasher);
+        if let ConstValue::ByRef = val {
+            let (alloc, ptr) = alloc.unwrap();
+            // type check for future changes
+            let alloc: &'tcx Allocation = alloc;
+            alloc.hash(hasher);
+            ptr.offset.hash(hasher);
+            // do not hash the alloc id in the pointer. It does not add anything new to the hash.
+            // If the hash of the alloc id is the same, then the hash of the allocation would also
+            // be the same.
+        }
+    }
 }
 
 #[cfg(target_arch = "x86_64")]
