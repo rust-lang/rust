@@ -98,11 +98,8 @@ impl<'a, 'hir: 'a> HirIdValidator<'a, 'hir> {
         if max != self.hir_ids_seen.len() - 1 {
             // Collect the missing ItemLocalIds
             let missing: Vec<_> = (0 ..= max as u32)
-              .filter(|&i| !self.hir_ids_seen
-                                .iter()
-                                .find(|&local_id| local_id == &ItemLocalId::from_u32(i))
-                                .is_some()
-            ).collect();
+              .filter(|&i| !self.hir_ids_seen.contains(&ItemLocalId::from_u32(i)))
+              .collect();
 
             // Try to map those to something more useful
             let mut missing_items = Vec::with_capacity(missing.len());
