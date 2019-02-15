@@ -713,7 +713,7 @@ where
     M::MemoryMap: AllocMap<AllocId, (MemoryKind<M::MemoryKinds>, Allocation<(), M::AllocExtra>)>,
     M::AllocExtra: AllocationExtra<(), M::MemoryExtra>,
 {
-    // FIXME: CTFE should use allocations, then we can remove this.
+    /// FIXME: still used by const propagation, do not add new uses of this!
     pub(crate) fn lazy_const_to_op(
         &self,
         cnst: ty::LazyConst<'tcx>,
