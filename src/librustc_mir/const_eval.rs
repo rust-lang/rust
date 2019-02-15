@@ -63,7 +63,7 @@ pub(crate) fn eval_promoted<'a, 'mir, 'tcx>(
 }
 
 // FIXME: These two conversion functions are bad hacks.  We should just always use allocations.
-pub fn op_to_const<'tcx>(
+fn op_to_const<'tcx>(
     ecx: &CompileTimeEvalContext<'_, '_, 'tcx>,
     op: OpTy<'tcx>,
 ) -> EvalResult<'tcx, ty::Const<'tcx>> {
