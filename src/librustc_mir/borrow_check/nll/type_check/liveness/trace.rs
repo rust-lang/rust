@@ -1,6 +1,5 @@
 use crate::borrow_check::location::LocationTable;
 use crate::borrow_check::nll::region_infer::values::{self, PointIndex, RegionValueElements};
-use crate::borrow_check::nll::type_check::liveness::liveness_map::NllLivenessMap;
 use crate::borrow_check::nll::type_check::liveness::local_use_map::LocalUseMap;
 use crate::borrow_check::nll::type_check::NormalizeLocation;
 use crate::borrow_check::nll::type_check::TypeChecker;
@@ -37,16 +36,11 @@ pub(super) fn trace(
     elements: &Rc<RegionValueElements>,
     flow_inits: &mut FlowAtLocation<'tcx, MaybeInitializedPlaces<'_, 'gcx, 'tcx>>,
     move_data: &MoveData<'tcx>,
-    liveness_map: &NllLivenessMap,
+    live_locals: Vec<Local>,
     location_table: &LocationTable,
 ) {
     debug!("trace()");
 
-    if liveness_map.is_empty() {
-        return;
-    }
-
-    let live_locals: Vec<Local> = liveness_map.to_local.clone().into_iter().collect();
     let local_use_map = &LocalUseMap::build(&live_locals, elements, mir);
 
     let cx = LivenessContext {
