@@ -538,6 +538,14 @@ fn validate_and_turn_into_const<'a, 'tcx>(
             )?;
         }
         // Now that we validated, turn this into a proper constant.
+
+        // We also store a simpler version of certain constants in the `val` field of `ty::Const`
+        // This helps us reduce the effort required to access e.g. the `usize` constant value for
+        // array lengths. Since array lengths make up a non-insignificant amount of all of the
+        // constants in the compiler, this caching has a very noticeable effect.
+
+        // FIXME(oli-obk): see if creating a query to go from an `Allocation` + offset to a
+        // `ConstValue` is just as effective as proactively generating the `ConstValue`.
         let val = match op.layout.abi {
             layout::Abi::Scalar(..) => ConstValue::Scalar(ecx.read_immediate(op)?.to_scalar()?),
             layout::Abi::ScalarPair(..) if op.layout.ty.is_slice() => {
