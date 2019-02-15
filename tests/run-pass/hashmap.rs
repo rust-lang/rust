@@ -21,5 +21,5 @@ fn main() {
     }
     assert_eq!(map.values().fold(0, |x, y| x+y), num*(num-1)/2);
 
-    // TODO: Test Entry API
+    // TODO: Test Entry API, Iterators, ...
 }

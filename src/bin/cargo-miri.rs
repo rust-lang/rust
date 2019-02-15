@@ -266,7 +266,7 @@ path = "lib.rs"
     let sysroot = if is_host { dir.join("HOST") } else { PathBuf::from(dir) };
     std::env::set_var("MIRI_SYSROOT", &sysroot);
     if !ask_user {
-        println!("A libstd for miri is now available in `{}`", sysroot.display());
+        println!("A libstd for Miri is now available in `{}`", sysroot.display());
     }
 }
 

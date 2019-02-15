@@ -1,4 +1,4 @@
-use rustc::ty::{Ty, layout::TyLayout};
+use rustc::ty::Ty;
 use rustc::mir;
 
 use crate::*;
@@ -7,10 +7,8 @@ pub trait EvalContextExt<'tcx> {
     fn ptr_op(
         &self,
         bin_op: mir::BinOp,
-        left: Scalar<Borrow>,
-        left_layout: TyLayout<'tcx>,
-        right: Scalar<Borrow>,
-        right_layout: TyLayout<'tcx>,
+        left: ImmTy<'tcx, Borrow>,
+        right: ImmTy<'tcx, Borrow>,
     ) -> EvalResult<'tcx, (Scalar<Borrow>, bool)>;
 
     fn ptr_int_arithmetic(
@@ -25,7 +23,6 @@ pub trait EvalContextExt<'tcx> {
         &self,
         left: Scalar<Borrow>,
         right: Scalar<Borrow>,
-        size: Size,
     ) -> EvalResult<'tcx, bool>;
 
     fn pointer_offset_inbounds(
@@ -40,14 +37,34 @@ impl<'a, 'mir, 'tcx> EvalContextExt<'tcx> for super::MiriEvalContext<'a, 'mir, '
     fn ptr_op(
         &self,
         bin_op: mir::BinOp,
-        left: Scalar<Borrow>,
-        left_layout: TyLayout<'tcx>,
-        right: Scalar<Borrow>,
-        right_layout: TyLayout<'tcx>,
+        left: ImmTy<'tcx, Borrow>,
+        right: ImmTy<'tcx, Borrow>,
     ) -> EvalResult<'tcx, (Scalar<Borrow>, bool)> {
         use rustc::mir::BinOp::*;
 
-        trace!("ptr_op: {:?} {:?} {:?}", left, bin_op, right);
+        trace!("ptr_op: {:?} {:?} {:?}", *left, bin_op, *right);
+
+        // Operations that support fat pointers
+        match bin_op {
+            Eq | Ne => {
+                let eq = match (*left, *right) {
+                    (Immediate::Scalar(left), Immediate::Scalar(right)) =>
+                        self.ptr_eq(left.not_undef()?, right.not_undef()?)?,
+                    (Immediate::ScalarPair(left1, left2), Immediate::ScalarPair(right1, right2)) =>
+                        self.ptr_eq(left1.not_undef()?, right1.not_undef()?)? &&
+                        self.ptr_eq(left2.not_undef()?, right2.not_undef()?)?,
+                    _ => bug!("Type system should not allow comparing Scalar with ScalarPair"),
+                };
+                return Ok((Scalar::from_bool(if bin_op == Eq { eq } else { !eq }), false));
+            }
+            _ => {},
+        }
+
+        // Now we expect no more fat pointers
+        let left_layout = left.layout;
+        let left = left.to_scalar()?;
+        let right_layout = right.layout;
+        let right = right.to_scalar()?;
         debug_assert!(left.is_ptr() || right.is_ptr() || bin_op == Offset);
 
         match bin_op {
@@ -63,11 +80,6 @@ impl<'a, 'mir, 'tcx> EvalContextExt<'tcx> for super::MiriEvalContext<'a, 'mir, '
                 )?;
                 Ok((ptr, false))
             }
-            // These work on anything
-            Eq =>
-                Ok((Scalar::from_bool(self.ptr_eq(left, right, left_layout.size)?), false)),
-            Ne =>
-                Ok((Scalar::from_bool(!self.ptr_eq(left, right, left_layout.size)?), false)),
             // These need both to be pointer, and fail if they are not in the same location
             Lt | Le | Gt | Ge | Sub if left.is_ptr() && right.is_ptr() => {
                 let left = left.to_ptr().expect("we checked is_ptr");
@@ -85,8 +97,8 @@ impl<'a, 'mir, 'tcx> EvalContextExt<'tcx> for super::MiriEvalContext<'a, 'mir, '
                             let layout = self.layout_of(self.tcx.types.usize)?;
                             return self.binary_op(
                                 Sub,
-                                left_offset, layout,
-                                right_offset, layout,
+                                ImmTy::from_scalar(left_offset, layout),
+                                ImmTy::from_scalar(right_offset, layout),
                             )
                         }
                         _ => bug!("We already established it has to be one of these operators."),
@@ -126,8 +138,8 @@ impl<'a, 'mir, 'tcx> EvalContextExt<'tcx> for super::MiriEvalContext<'a, 'mir, '
         &self,
         left: Scalar<Borrow>,
         right: Scalar<Borrow>,
-        size: Size,
     ) -> EvalResult<'tcx, bool> {
+        let size = self.pointer_size();
         Ok(match (left, right) {
             (Scalar::Bits { .. }, Scalar::Bits { .. }) =>
                 left.to_bits(size)? == right.to_bits(size)?,
