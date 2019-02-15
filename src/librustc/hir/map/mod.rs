@@ -11,7 +11,6 @@ use crate::middle::cstore::CrateStoreDyn;
 
 use rustc_target::spec::abi::Abi;
 use rustc_data_structures::svh::Svh;
-use rustc_data_structures::sync::join;
 use syntax::ast::{self, Name, NodeId, CRATE_NODE_ID};
 use syntax::source_map::Spanned;
 use syntax::ext::base::MacroKind;
@@ -1242,13 +1241,18 @@ pub fn map_crate<'hir>(sess: &crate::session::Session,
                        forest: &'hir Forest,
                        definitions: &'hir Definitions)
                        -> Map<'hir> {
-    let ((map, crate_hash), hir_to_node_id) = join(|| {
+    // Build the reverse mapping of `node_to_hir_id`.
+    let hir_to_node_id = definitions.node_to_hir_id.iter_enumerated()
+        .map(|(node_id, &hir_id)| (hir_id, node_id)).collect();
+
+    let (map, crate_hash) = {
         let hcx = crate::ich::StableHashingContext::new(sess, &forest.krate, definitions, cstore);
 
         let mut collector = NodeCollector::root(sess,
                                                 &forest.krate,
                                                 &forest.dep_graph,
                                                 &definitions,
+                                                &hir_to_node_id,
                                                 hcx);
         intravisit::walk_crate(&mut collector, &forest.krate);
 
@@ -1259,11 +1263,7 @@ pub fn map_crate<'hir>(sess: &crate::session::Session,
             cstore,
             cmdline_args
         )
-    }, || {
-        // Build the reverse mapping of `node_to_hir_id`.
-        definitions.node_to_hir_id.iter_enumerated()
-                    .map(|(node_id, &hir_id)| (hir_id, node_id)).collect()
-    });
+    };
 
     if log_enabled!(::log::Level::Debug) {
         // This only makes sense for ordered stores; note the
