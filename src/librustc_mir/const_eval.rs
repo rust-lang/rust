@@ -489,8 +489,12 @@ pub fn const_variant_index<'a, 'tcx>(
 ) -> EvalResult<'tcx, VariantIdx> {
     trace!("const_variant_index: {:?}", val);
     let ecx = mk_eval_cx(tcx, DUMMY_SP, param_env);
-    let op = ecx.lazy_const_to_op(ty::LazyConst::Evaluated(val), val.ty)?;
-    Ok(ecx.read_discriminant(op)?.1)
+    let (_, ptr) = val.alloc.expect(
+        "const_variant_index can only be called on aggregates, which should never be created without
+        a corresponding allocation",
+    );
+    let mplace = MPlaceTy::from_aligned_ptr(ptr, ecx.layout_of(val.ty)?);
+    Ok(ecx.read_discriminant(mplace.into())?.1)
 }
 
 pub fn error_to_const_error<'a, 'mir, 'tcx>(
