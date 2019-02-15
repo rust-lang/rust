@@ -33,40 +33,42 @@ use std::{mem, ptr, slice, vec};
 
 use serialize::{Encodable, Decodable, Encoder, Decoder};
 
+use rustc_data_structures::sync::Lrc;
 use rustc_data_structures::stable_hasher::{StableHasher, StableHasherResult,
                                            HashStable};
 /// An owned smart pointer.
 #[derive(Hash, PartialEq, Eq)]
 pub struct P<T: ?Sized> {
-    ptr: Box<T>
+    ptr: Lrc<T>
 }
 
 #[allow(non_snake_case)]
 /// Construct a `P<T>` from a `T` value.
 pub fn P<T: 'static>(value: T) -> P<T> {
     P {
-        ptr: Box::new(value)
+        ptr: Lrc::new(value)
     }
 }
 
-impl<T: 'static> P<T> {
+impl<T: 'static + Clone> P<T> {
     /// Move out of the pointer.
     /// Intended for chaining transformations not covered by `map`.
     pub fn and_then<U, F>(self, f: F) -> U where
         F: FnOnce(T) -> U,
     {
-        f(*self.ptr)
+        f(self.into_inner())
     }
     /// Equivalent to and_then(|x| x)
     pub fn into_inner(self) -> T {
-        *self.ptr
+        Lrc::try_unwrap(self.ptr).unwrap_or_else(|ptr| (*ptr).clone())
     }
 
     /// Produce a new `P<T>` from `self` without reallocating.
     pub fn map<F>(mut self, f: F) -> P<T> where
         F: FnOnce(T) -> T,
     {
-        let p: *mut T = &mut *self.ptr;
+        // FIXME(eddyb) How can we reuse the original if unchanged?
+        let p: *mut T = Lrc::make_mut(&mut self.ptr);
 
         // Leak self in case of panic.
         // FIXME(eddyb) Use some sort of "free guard" that
@@ -78,7 +80,7 @@ impl<T: 'static> P<T> {
             ptr::write(p, f(ptr::read(p)));
 
             // Recreate self from the raw pointer.
-            P { ptr: Box::from_raw(p) }
+            P { ptr: Lrc::from_raw(p) }
         }
     }
 
@@ -86,7 +88,8 @@ impl<T: 'static> P<T> {
     pub fn filter_map<F>(mut self, f: F) -> Option<P<T>> where
         F: FnOnce(T) -> Option<T>,
     {
-        let p: *mut T = &mut *self.ptr;
+        // FIXME(eddyb) How can we reuse the original if unchanged?
+        let p: *mut T = Lrc::make_mut(&mut self.ptr);
 
         // Leak self in case of panic.
         // FIXME(eddyb) Use some sort of "free guard" that
@@ -99,9 +102,9 @@ impl<T: 'static> P<T> {
                 ptr::write(p, v);
 
                 // Recreate self from the raw pointer.
-                Some(P { ptr: Box::from_raw(p) })
+                Some(P { ptr: Lrc::from_raw(p) })
             } else {
-                drop(Box::from_raw(p));
+                drop(Lrc::from_raw(p));
                 None
             }
         }
@@ -116,15 +119,17 @@ impl<T: ?Sized> Deref for P<T> {
     }
 }
 
-impl<T: ?Sized> DerefMut for P<T> {
+impl<T: Clone> DerefMut for P<T> {
     fn deref_mut(&mut self) -> &mut T {
-        &mut self.ptr
+        Lrc::make_mut(&mut self.ptr)
     }
 }
 
-impl<T: 'static + Clone> Clone for P<T> {
+impl<T: ?Sized> Clone for P<T> {
     fn clone(&self) -> P<T> {
-        P((**self).clone())
+        P {
+            ptr: self.ptr.clone(),
+        }
     }
 }
 
@@ -160,17 +165,21 @@ impl<T: Encodable> Encodable for P<T> {
 
 impl<T> P<[T]> {
     pub fn new() -> P<[T]> {
-        P { ptr: Default::default() }
+        P { ptr: Lrc::new([]) }
     }
 
+    // FIXME(eddyb) this is inefficient because it needs to
+    // move all the elements to accomodate `Lrc`'s allocation.
     #[inline(never)]
     pub fn from_vec(v: Vec<T>) -> P<[T]> {
-        P { ptr: v.into_boxed_slice() }
+        P { ptr: v.into() }
     }
 
+    // FIXME(eddyb) this is inefficient because it needs to
+    // clone all the elements out of the `Lrc<[T]>`.
     #[inline(never)]
-    pub fn into_vec(self) -> Vec<T> {
-        self.ptr.into_vec()
+    pub fn into_vec(self) -> Vec<T> where T: Clone {
+        self.ptr.to_vec()
     }
 }
 
@@ -181,21 +190,29 @@ impl<T> Default for P<[T]> {
     }
 }
 
-impl<T: Clone> Clone for P<[T]> {
-    fn clone(&self) -> P<[T]> {
-        P::from_vec(self.to_vec())
-    }
-}
-
 impl<T> From<Vec<T>> for P<[T]> {
     fn from(v: Vec<T>) -> Self {
         P::from_vec(v)
     }
 }
 
-impl<T> Into<Vec<T>> for P<[T]> {
+// FIXME(eddyb) this is inefficient because it needs to
+// clone all the elements out of the `Lrc<[T]>`.
+impl<T: Clone> Into<Vec<T>> for P<[T]> {
     fn into(self) -> Vec<T> {
         self.into_vec()
+    }
+}
+
+// FIXME(eddyb) this is inefficient because it needs to
+// clone all the elements out of the `Lrc<[T]>`.
+impl<T: Clone> DerefMut for P<[T]> {
+    fn deref_mut(&mut self) -> &mut [T] {
+        // HACK(eddyb) this emulates `make_mut` for `Lrc<[T]>`.
+        if Lrc::get_mut(&mut self.ptr).is_none() {
+            self.ptr = self.ptr.to_vec().into();
+        }
+        Lrc::get_mut(&mut self.ptr).unwrap()
     }
 }
 
@@ -205,7 +222,9 @@ impl<T> FromIterator<T> for P<[T]> {
     }
 }
 
-impl<T> IntoIterator for P<[T]> {
+// FIXME(eddyb) this is inefficient because it needs to
+// clone all the elements out of the `Lrc<[T]>`.
+impl<T: Clone> IntoIterator for P<[T]> {
     type Item = T;
     type IntoIter = vec::IntoIter<T>;
 

@@ -735,7 +735,7 @@ impl HasAttrs for ThinVec<Attribute> {
     }
 }
 
-impl<T: HasAttrs + 'static> HasAttrs for P<T> {
+impl<T: Clone + HasAttrs + 'static> HasAttrs for P<T> {
     fn attrs(&self) -> &[Attribute] {
         (**self).attrs()
     }
