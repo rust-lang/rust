@@ -12,13 +12,15 @@ use type_of::PointeeInfo;
 use rustc_codegen_ssa::traits::*;
 use libc::c_uint;
 
+use syntax::ast;
+
 use rustc_data_structures::base_n;
 use rustc_data_structures::small_c_str::SmallCStr;
 use rustc::mir::mono::Stats;
 use rustc::session::config::{self, DebugInfo};
 use rustc::session::Session;
 use rustc::ty::layout::{LayoutError, LayoutOf, Size, TyLayout, VariantIdx};
-use rustc::ty::{self, Ty, TyCtxt};
+use rustc::ty::{self, Ty, TyCtxt, TyKind};
 use rustc::util::nodemap::FxHashMap;
 use rustc_target::spec::{HasTargetSpec, Target};
 use rustc_codegen_ssa::callee::resolve_and_get_fn;
@@ -409,8 +411,14 @@ impl MiscMethods<'tcx> for CodegenCx<'ll, 'tcx> {
         &self.tcx.sess
     }
 
-    fn check_overflow(&self) -> bool {
-        self.check_overflow
+    fn check_overflow(&self, ty: Option<Ty<'tcx>>) -> bool {
+        let type_specific_overflow = match ty {
+            Some(ty) => {
+                ty.sty == TyKind::Uint(ast::UintTy::Usize)
+            },
+            None => false
+        };
+        self.check_overflow || type_specific_overflow
     }
 
     fn stats(&self) -> &RefCell<Stats> {

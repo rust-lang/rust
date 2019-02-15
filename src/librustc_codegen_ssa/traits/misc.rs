@@ -12,7 +12,7 @@ pub trait MiscMethods<'tcx>: BackendTypes {
     fn vtables(
         &self,
     ) -> &RefCell<FxHashMap<(Ty<'tcx>, Option<ty::PolyExistentialTraitRef<'tcx>>), Self::Value>>;
-    fn check_overflow(&self) -> bool;
+    fn check_overflow(&self, ty: Option<Ty<'tcx>>) -> bool;
     fn instances(&self) -> &RefCell<FxHashMap<Instance<'tcx>, Self::Value>>;
     fn get_fn(&self, instance: Instance<'tcx>) -> Self::Value;
     fn get_param(&self, llfn: Self::Value, index: c_uint) -> Self::Value;

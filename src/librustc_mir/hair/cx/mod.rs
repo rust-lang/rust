@@ -11,7 +11,7 @@ use rustc::hir::Node;
 use rustc::middle::region;
 use rustc::infer::InferCtxt;
 use rustc::ty::subst::Subst;
-use rustc::ty::{self, Ty, TyCtxt};
+use rustc::ty::{self, Ty, TyCtxt, TyKind};
 use rustc::ty::subst::{Kind, Substs};
 use rustc::ty::layout::VariantIdx;
 use syntax::ast;
@@ -218,8 +218,8 @@ impl<'a, 'gcx, 'tcx> Cx<'a, 'gcx, 'tcx> {
         self.tables
     }
 
-    pub fn check_overflow(&self) -> bool {
-        self.check_overflow
+    pub fn check_overflow(&self, ty: Ty<'tcx>) -> bool {
+        self.check_overflow || ty.sty == TyKind::Uint(ast::UintTy::Usize)
     }
 
     pub fn type_is_copy_modulo_regions(&self, ty: Ty<'tcx>, span: Span) -> bool {

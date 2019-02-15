@@ -84,7 +84,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
             ExprKind::Unary { op, arg } => {
                 let arg = unpack!(block = this.as_operand(block, scope, arg));
                 // Check for -MIN on signed integers
-                if this.hir.check_overflow() && op == UnOp::Neg && expr.ty.is_signed() {
+                if this.hir.check_overflow(expr.ty) && op == UnOp::Neg && expr.ty.is_signed() {
                     let bool_ty = this.hir.bool_ty();
 
                     let minval = this.minval_literal(expr_span, expr.ty);
@@ -410,7 +410,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
     ) -> BlockAnd<Rvalue<'tcx>> {
         let source_info = self.source_info(span);
         let bool_ty = self.hir.bool_ty();
-        if self.hir.check_overflow() && op.is_checkable() && ty.is_integral() {
+        if self.hir.check_overflow(ty) && op.is_checkable() && ty.is_integral() {
             let result_tup = self.hir.tcx().intern_tup(&[ty, bool_ty]);
             let result_value = self.temp(result_tup, span);
 

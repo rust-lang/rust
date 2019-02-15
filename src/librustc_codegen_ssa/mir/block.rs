@@ -339,7 +339,7 @@ impl<'a, 'tcx: 'a, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 // NOTE: Unlike binops, negation doesn't have its own
                 // checked operation, just a comparison with the minimum
                 // value, so we have to check for the assert message.
-                if !bx.check_overflow() {
+                if !bx.check_overflow(None) {
                     if let mir::interpret::EvalErrorKind::OverflowNeg = *msg {
                         const_cond = Some(expected);
                     }
