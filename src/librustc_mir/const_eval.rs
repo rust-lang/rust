@@ -523,13 +523,11 @@ fn validate_and_turn_into_const<'a, 'tcx>(
     let cid = key.value;
     let ecx = mk_eval_cx(tcx, tcx.def_span(key.value.instance.def_id()), key.param_env);
     let val = (|| {
-        let op = ecx.raw_const_to_mplace(constant)?.into();
-        // FIXME: Once the visitor infrastructure landed, change validation to
-        // work directly on `MPlaceTy`.
-        let mut ref_tracking = RefTracking::new(op);
-        while let Some((op, path)) = ref_tracking.todo.pop() {
+        let mplace = ecx.raw_const_to_mplace(constant)?;
+        let mut ref_tracking = RefTracking::new(mplace);
+        while let Some((mplace, path)) = ref_tracking.todo.pop() {
             ecx.validate_operand(
-                op,
+                mplace.into(),
                 path,
                 Some(&mut ref_tracking),
                 true, // const mode
@@ -538,7 +536,7 @@ fn validate_and_turn_into_const<'a, 'tcx>(
         // Now that we validated, turn this into a proper constant.
         let def_id = cid.instance.def.def_id();
         let normalize = tcx.is_static(def_id).is_none() && cid.promoted.is_none();
-        op_to_const(&ecx, op, normalize)
+        op_to_const(&ecx, mplace.into(), normalize)
     })();
 
     val.map_err(|error| {
