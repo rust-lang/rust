@@ -1,9 +1,9 @@
-error: functions generic over types must be mangled
+error: functions generic over types or consts must be mangled
   --> $DIR/generic-no-mangle.rs:4:1
    |
 LL | #[no_mangle]
    | ------------ help: remove this attribute
-LL | pub fn foo<T>() {} //~ ERROR functions generic over types must be mangled
+LL | pub fn foo<T>() {} //~ ERROR functions generic over types or consts must be mangled
    | ^^^^^^^^^^^^^^^^^^
    |
 note: lint level defined here
@@ -12,12 +12,12 @@ note: lint level defined here
 LL | #![deny(no_mangle_generic_items)]
    |         ^^^^^^^^^^^^^^^^^^^^^^^
 
-error: functions generic over types must be mangled
+error: functions generic over types or consts must be mangled
   --> $DIR/generic-no-mangle.rs:7:1
    |
 LL | #[no_mangle]
    | ------------ help: remove this attribute
-LL | pub extern fn bar<T>() {} //~ ERROR functions generic over types must be mangled
+LL | pub extern fn bar<T>() {} //~ ERROR functions generic over types or consts must be mangled
    | ^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: aborting due to 2 previous errors
