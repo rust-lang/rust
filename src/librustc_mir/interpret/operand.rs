@@ -569,7 +569,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> 
             .collect()
     }
 
-    // Used when Miri runs into a constant, and (indirectly through lazy_const_to_op) by CTFE.
+    // Used when Miri runs into a constant.
     fn const_value_to_op(
         &self,
         val: ty::LazyConst<'tcx>,
