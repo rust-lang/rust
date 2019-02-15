@@ -66,15 +66,13 @@ pub(crate) fn eval_promoted<'a, 'mir, 'tcx>(
 pub fn op_to_const<'tcx>(
     ecx: &CompileTimeEvalContext<'_, '_, 'tcx>,
     op: OpTy<'tcx>,
-    may_normalize: bool,
 ) -> EvalResult<'tcx, ty::Const<'tcx>> {
     // We do not normalize just any data.  Only scalar layout and slices.
-    let normalize = may_normalize
-        && match op.layout.abi {
-            layout::Abi::Scalar(..) => true,
-            layout::Abi::ScalarPair(..) => op.layout.ty.is_slice(),
-            _ => false,
-        };
+    let normalize = match op.layout.abi {
+        layout::Abi::Scalar(..) => true,
+        layout::Abi::ScalarPair(..) => op.layout.ty.is_slice(),
+        _ => false,
+    };
     let normalized_op = if normalize {
         ecx.try_read_immediate(op)?
     } else {
@@ -489,7 +487,7 @@ pub fn const_field<'a, 'tcx>(
         let field = ecx.operand_field(down, field.index() as u64)?;
         // and finally move back to the const world, always normalizing because
         // this is not called for statics.
-        op_to_const(&ecx, field, true)
+        op_to_const(&ecx, field)
     })();
     result.map_err(|error| {
         let err = error_to_const_error(&ecx, error);
