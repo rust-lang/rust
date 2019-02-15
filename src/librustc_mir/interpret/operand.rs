@@ -12,7 +12,7 @@ use rustc::mir::interpret::{
     EvalResult, EvalErrorKind,
 };
 use super::{
-    EvalContext, Machine, AllocMap, Allocation, AllocationExtra,
+    EvalContext, Machine,
     MemPlace, MPlaceTy, PlaceTy, Place, MemoryKind,
 };
 pub use rustc::mir::interpret::ScalarMaybeUndef;
@@ -704,22 +704,4 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> 
         })
     }
 
-}
-
-impl<'a, 'mir, 'tcx, M> EvalContext<'a, 'mir, 'tcx, M>
-where
-    M: Machine<'a, 'mir, 'tcx, PointerTag=()>,
-    // FIXME: Working around https://github.com/rust-lang/rust/issues/24159
-    M::MemoryMap: AllocMap<AllocId, (MemoryKind<M::MemoryKinds>, Allocation<(), M::AllocExtra>)>,
-    M::AllocExtra: AllocationExtra<(), M::MemoryExtra>,
-{
-    /// FIXME: still used by const propagation, do not add new uses of this!
-    pub(crate) fn lazy_const_to_op(
-        &self,
-        cnst: ty::LazyConst<'tcx>,
-        ty: ty::Ty<'tcx>,
-    ) -> EvalResult<'tcx, OpTy<'tcx>> {
-        let op = self.const_value_to_op(cnst)?;
-        Ok(OpTy { op, layout: self.layout_of(ty)? })
-    }
 }

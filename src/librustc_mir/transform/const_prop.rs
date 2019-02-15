@@ -3,7 +3,7 @@
 
 
 use rustc::hir::def::Def;
-use rustc::mir::{Constant, Location, Place, Mir, Operand, Rvalue, Local};
+use rustc::mir::{Location, Place, Mir, Operand, Rvalue, Local};
 use rustc::mir::{NullOp, UnOp, StatementKind, Statement, BasicBlock, LocalKind};
 use rustc::mir::{TerminatorKind, ClearCrossCrate, SourceInfo, BinOp, ProjectionElem};
 use rustc::mir::visit::{Visitor, PlaceContext, MutatingUseContext, NonMutatingUseContext};
@@ -249,13 +249,13 @@ impl<'a, 'mir, 'tcx> ConstPropagator<'a, 'mir, 'tcx> {
 
     fn eval_constant(
         &mut self,
-        c: &Constant<'tcx>,
+        op: &Operand<'tcx>,
         source_info: SourceInfo,
     ) -> Option<Const<'tcx>> {
         self.ecx.tcx.span = source_info.span;
-        match self.ecx.lazy_const_to_op(*c.literal, c.ty) {
+        match self.ecx.eval_operand(op, None) {
             Ok(op) => {
-                Some((op, c.span))
+                Some((op, source_info.span))
             },
             Err(error) => {
                 let err = error_to_const_error(&self.ecx, error);
@@ -308,7 +308,7 @@ impl<'a, 'mir, 'tcx> ConstPropagator<'a, 'mir, 'tcx> {
 
     fn eval_operand(&mut self, op: &Operand<'tcx>, source_info: SourceInfo) -> Option<Const<'tcx>> {
         match *op {
-            Operand::Constant(ref c) => self.eval_constant(c, source_info),
+            Operand::Constant(_) => self.eval_constant(op, source_info),
             | Operand::Move(ref place)
             | Operand::Copy(ref place) => self.eval_place(place, source_info),
         }
@@ -532,15 +532,17 @@ impl<'tcx> Visitor<'tcx> for CanConstProp {
 }
 
 impl<'b, 'a, 'tcx> Visitor<'tcx> for ConstPropagator<'b, 'a, 'tcx> {
-    fn visit_constant(
+    fn visit_operand(
         &mut self,
-        constant: &Constant<'tcx>,
+        op: &Operand<'tcx>,
         location: Location,
     ) {
-        trace!("visit_constant: {:?}", constant);
-        self.super_constant(constant, location);
+        trace!("visit_operand: {:?}", op);
+        self.super_operand(op, location);
         let source_info = *self.mir.source_info(location);
-        self.eval_constant(constant, source_info);
+        if let Operand::Constant(_) = op {
+            self.eval_constant(op, source_info);
+        }
     }
 
     fn visit_statement(
