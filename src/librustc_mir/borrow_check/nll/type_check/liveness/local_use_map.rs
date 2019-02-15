@@ -73,18 +73,21 @@ impl LocalUseMap<'me> {
         local_use_map
     }
 
-    crate fn defs(&self, local: LiveVar) -> impl Iterator<Item = PointIndex> + '_ {
-        vll::iter(self.first_def_at[local], &self.appearances)
+    crate fn defs(&self, local: Local) -> impl Iterator<Item = PointIndex> + '_ {
+        let live_var = self.liveness_map.from_local(local).unwrap();
+        vll::iter(self.first_def_at[live_var], &self.appearances)
             .map(move |aa| self.appearances[aa].point_index)
     }
 
-    crate fn uses(&self, local: LiveVar) -> impl Iterator<Item = PointIndex> + '_ {
-        vll::iter(self.first_use_at[local], &self.appearances)
+    crate fn uses(&self, local: Local) -> impl Iterator<Item = PointIndex> + '_ {
+        let live_var = self.liveness_map.from_local(local).unwrap();
+        vll::iter(self.first_use_at[live_var], &self.appearances)
             .map(move |aa| self.appearances[aa].point_index)
     }
 
-    crate fn drops(&self, local: LiveVar) -> impl Iterator<Item = PointIndex> + '_ {
-        vll::iter(self.first_drop_at[local], &self.appearances)
+    crate fn drops(&self, local: Local) -> impl Iterator<Item = PointIndex> + '_ {
+        let live_var = self.liveness_map.from_local(local).unwrap();
+        vll::iter(self.first_drop_at[live_var], &self.appearances)
             .map(move |aa| self.appearances[aa].point_index)
     }
 }
