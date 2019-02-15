@@ -132,6 +132,10 @@ impl<'a, 'tcx> Visitor<'tcx> for CollectItemTypesVisitor<'a, 'tcx> {
                     self.tcx.type_of(def_id);
                 }
                 hir::GenericParamKind::Type { .. } => {}
+                hir::GenericParamKind::Const { .. } => {
+                    let def_id = self.tcx.hir().local_def_id(param.id);
+                    self.tcx.type_of(def_id);
+                }
             }
         }
         intravisit::walk_generics(self, generics);
@@ -1040,6 +1044,21 @@ fn generics_of<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: DefId) -> &'tcx ty
                     };
                     i += 1;
                     Some(ty_param)
+                }
+                GenericParamKind::Const { .. } => {
+                    if param.name.ident().name == keywords::SelfUpper.name() {
+                        span_bug!(
+                            param.span,
+                            "`Self` should not be the name of a regular parameter",
+                        );
+                    }
+
+                    tcx.sess.struct_span_err(
+                        param.span,
+                        "const generics in any position are currently unsupported",
+                    ).emit();
+                    tcx.sess.abort_if_errors();
+                    bug!();
                 }
                 _ => None,
             }),

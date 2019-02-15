@@ -36,7 +36,7 @@ use crate::hir::HirVec;
 use crate::hir::map::{DefKey, DefPathData, Definitions};
 use crate::hir::def_id::{DefId, DefIndex, DefIndexAddressSpace, CRATE_DEF_INDEX};
 use crate::hir::def::{Def, PathResolution, PerNS};
-use crate::hir::GenericArg;
+use crate::hir::{GenericArg, ConstArg};
 use crate::lint::builtin::{self, PARENTHESIZED_PARAMS_IN_TYPES_AND_MODULES,
                     ELIDED_LIFETIMES_IN_PATHS};
 use crate::middle::cstore::CrateStore;
@@ -1172,13 +1172,10 @@ impl<'a> LoweringContext<'a> {
             ast::GenericArg::Lifetime(lt) => GenericArg::Lifetime(self.lower_lifetime(&lt)),
             ast::GenericArg::Type(ty) => GenericArg::Type(self.lower_ty_direct(&ty, itctx)),
             ast::GenericArg::Const(ct) => {
-                // FIXME(const_generics): const generics are not yet defined in the HIR.
-                self.sess.struct_span_err(
-                    ct.value.span,
-                    "const generics in any position are currently unsupported",
-                ).emit();
-                self.sess.abort_if_errors();
-                bug!();
+                GenericArg::Const(ConstArg {
+                    value: self.lower_anon_const(&ct),
+                    span: ct.value.span,
+                })
             }
         }
     }
@@ -2520,14 +2517,10 @@ impl<'a> LoweringContext<'a> {
 
                 (hir::ParamName::Plain(ident), kind)
             }
-            GenericParamKind::Const { .. } => {
-                // FIXME(const_generics): const generics are not yet defined in the HIR.
-                self.sess.struct_span_err(
-                    param.ident.span,
-                    "const generics in any position are currently unsupported",
-                ).emit();
-                self.sess.abort_if_errors();
-                bug!();
+            GenericParamKind::Const { ref ty } => {
+                (hir::ParamName::Plain(param.ident), hir::GenericParamKind::Const {
+                    ty: self.lower_ty(&ty, ImplTraitContext::disallowed()),
+                })
             }
         };
 
