@@ -15,6 +15,8 @@ for example:
   or an invalid enum discriminant)
 * WIP: Violations of the rules governing aliasing for reference types
 
+Miri has already discovered some [real-world bugs](#bugs-found-by-miri).
+
 [rust]: https://www.rust-lang.org/
 [mir]: https://github.com/rust-lang/rfcs/blob/master/text/1211-mir.md
 [`unreachable_unchecked`]: https://doc.rust-lang.org/stable/std/hint/fn.unreachable_unchecked.html
@@ -256,7 +258,7 @@ used according to their aliasing restrictions.
 
 Miri has already found a number of bugs in the Rust standard library, which we collect here.
 
-* [`vec_deque::Iter` having an unsound `Debug` implementation](https://github.com/rust-lang/rust/issues/53566)
+* [`Debug for vec_deque::Iter` accessing uninitialized memory](https://github.com/rust-lang/rust/issues/53566)
 * [`From<&[T]> for Rc` creating a not sufficiently aligned reference](https://github.com/rust-lang/rust/issues/54908)
 * [`BTreeMap` creating a shared reference pointing to a too small allocation](https://github.com/rust-lang/rust/issues/54957)
 * [`VecDeque` creating overlapping mutable references](https://github.com/rust-lang/rust/pull/56161)
