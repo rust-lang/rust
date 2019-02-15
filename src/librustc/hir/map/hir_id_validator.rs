@@ -2,7 +2,7 @@ use crate::hir::def_id::{DefId, DefIndex, CRATE_DEF_INDEX};
 use crate::hir::{self, intravisit, HirId, ItemLocalId};
 use syntax::ast::NodeId;
 use crate::hir::itemlikevisit::ItemLikeVisitor;
-use rustc_data_structures::fx::FxHashMap;
+use rustc_data_structures::fx::FxHashSet;
 use rustc_data_structures::sync::{Lock, ParallelIterator, par_iter};
 
 pub fn check_crate<'hir>(hir_map: &hir::map::Map<'hir>) {
@@ -30,7 +30,7 @@ pub fn check_crate<'hir>(hir_map: &hir::map::Map<'hir>) {
 struct HirIdValidator<'a, 'hir: 'a> {
     hir_map: &'a hir::map::Map<'hir>,
     owner_def_index: Option<DefIndex>,
-    hir_ids_seen: FxHashMap<ItemLocalId, NodeId>,
+    hir_ids_seen: FxHashSet<ItemLocalId>,
     errors: &'a Lock<Vec<String>>,
 }
 
@@ -90,7 +90,7 @@ impl<'a, 'hir: 'a> HirIdValidator<'a, 'hir> {
 
         // There's always at least one entry for the owning item itself
         let max = self.hir_ids_seen
-                      .keys()
+                      .iter()
                       .map(|local_id| local_id.as_usize())
                       .max()
                       .expect("owning item has no entry");
@@ -98,8 +98,11 @@ impl<'a, 'hir: 'a> HirIdValidator<'a, 'hir> {
         if max != self.hir_ids_seen.len() - 1 {
             // Collect the missing ItemLocalIds
             let missing: Vec<_> = (0 ..= max as u32)
-              .filter(|&i| !self.hir_ids_seen.contains_key(&ItemLocalId::from_u32(i)))
-              .collect();
+              .filter(|&i| !self.hir_ids_seen
+                                .iter()
+                                .find(|&local_id| local_id == &ItemLocalId::from_u32(i))
+                                .is_some()
+            ).collect();
 
             // Try to map those to something more useful
             let mut missing_items = Vec::with_capacity(missing.len());
@@ -133,8 +136,12 @@ impl<'a, 'hir: 'a> HirIdValidator<'a, 'hir> {
                 max,
                 missing_items,
                 self.hir_ids_seen
-                    .values()
-                    .map(|n| format!("({:?} {})", n, self.hir_map.node_to_string(*n)))
+                    .iter()
+                    .map(|&local_id| HirId {
+                        owner: owner_def_index,
+                        local_id,
+                    })
+                    .map(|h| format!("({:?} {})", h, self.hir_map.hir_to_string(h)))
                     .collect::<Vec<_>>()));
         }
     }
@@ -164,9 +171,7 @@ impl<'a, 'hir: 'a> intravisit::Visitor<'hir> for HirIdValidator<'a, 'hir> {
                 self.hir_map.def_path(DefId::local(owner)).to_string_no_crate()));
         }
 
-        let node_id = self.hir_map.hir_to_node_id(hir_id);
-
-        self.hir_ids_seen.insert(hir_id.local_id, node_id);
+        self.hir_ids_seen.insert(hir_id.local_id);
     }
 
     fn visit_impl_item_ref(&mut self, _: &'hir hir::ImplItemRef) {
