@@ -46,7 +46,8 @@ pub(super) fn trace(
         return;
     }
 
-    let local_use_map = &LocalUseMap::build(liveness_map, elements, mir);
+    let live_locals: Vec<Local> = liveness_map.to_local.clone().into_iter().collect();
+    let local_use_map = &LocalUseMap::build(&live_locals, elements, mir);
 
     let cx = LivenessContext {
         typeck,
@@ -59,7 +60,6 @@ pub(super) fn trace(
         location_table,
     };
 
-    let live_locals: Vec<Local> = liveness_map.to_local.clone().into_iter().collect();
     LivenessResults::new(cx).compute_for_all_locals(live_locals);
 }
 
@@ -92,7 +92,7 @@ where
 
     /// Index indicating where each variable is assigned, used, or
     /// dropped.
-    local_use_map: &'me LocalUseMap<'me>,
+    local_use_map: &'me LocalUseMap,
 
     /// Maps between a MIR Location and a LocationIndex
     location_table: &'me LocationTable,
