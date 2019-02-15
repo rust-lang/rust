@@ -265,6 +265,7 @@ pub mod swap;
 pub mod temporary_assignment;
 pub mod transmute;
 pub mod transmuting_null;
+pub mod trait_bounds;
 pub mod trivially_copy_pass_by_ref;
 pub mod try_err;
 pub mod types;
@@ -588,6 +589,7 @@ pub fn register_plugins(reg: &mut rustc_plugin::Registry<'_>, conf: &Conf) {
     reg.register_late_lint_pass(box checked_conversions::CheckedConversions);
     reg.register_late_lint_pass(box integer_division::IntegerDivision);
     reg.register_late_lint_pass(box inherent_to_string::InherentToString);
+    reg.register_late_lint_pass(box trait_bounds::TraitBounds);
 
     reg.register_lint_group("clippy::restriction", Some("clippy_restriction"), vec![
         arithmetic::FLOAT_ARITHMETIC,
@@ -868,6 +870,7 @@ pub fn register_plugins(reg: &mut rustc_plugin::Registry<'_>, conf: &Conf) {
         transmute::USELESS_TRANSMUTE,
         transmute::WRONG_TRANSMUTE,
         transmuting_null::TRANSMUTING_NULL,
+        trait_bounds::TYPE_REPETITION_IN_BOUNDS,
         trivially_copy_pass_by_ref::TRIVIALLY_COPY_PASS_BY_REF,
         try_err::TRY_ERR,
         types::ABSURD_EXTREME_COMPARISONS,

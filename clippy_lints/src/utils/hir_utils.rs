@@ -3,7 +3,7 @@ use crate::utils::differing_macro_contexts;
 use rustc::hir::ptr::P;
 use rustc::hir::*;
 use rustc::lint::LateContext;
-use rustc::ty::TypeckTables;
+use rustc::ty::{Ty, TypeckTables};
 use std::collections::hash_map::DefaultHasher;
 use std::hash::{Hash, Hasher};
 use syntax::ast::Name;
@@ -438,9 +438,11 @@ impl<'a, 'tcx> SpanlessHash<'a, 'tcx> {
                 self.hash_expr(fun);
                 self.hash_exprs(args);
             },
-            ExprKind::Cast(ref e, ref _ty) | ExprKind::Type(ref e, ref _ty) => {
+            ExprKind::Cast(ref e, ref ty) => {
+                let c: fn(_, _) -> _ = ExprKind::Cast;
+                c.hash(&mut self.s);
                 self.hash_expr(e);
-                // TODO: _ty
+                self.hash_ty(ty);
             },
             ExprKind::Closure(cap, _, eid, _, _) => {
                 match cap {
@@ -512,8 +514,21 @@ impl<'a, 'tcx> SpanlessHash<'a, 'tcx> {
                     self.hash_expr(e);
                 }
             },
-            ExprKind::Tup(ref v) | ExprKind::Array(ref v) => {
+            ExprKind::Tup(ref tup) => {
+                let c: fn(_) -> _ = ExprKind::Tup;
+                c.hash(&mut self.s);
+                self.hash_exprs(tup);
+            },
+            ExprKind::Array(ref v) => {
+                let c: fn(_) -> _ = ExprKind::Array;
+                c.hash(&mut self.s);
                 self.hash_exprs(v);
+            },
+            ExprKind::Type(ref e, ref ty) => {
+                let c: fn(_, _) -> _ = ExprKind::Type;
+                c.hash(&mut self.s);
+                self.hash_expr(e);
+                self.hash_ty(ty);
             },
             ExprKind::Unary(lop, ref le) => {
                 lop.hash(&mut self.s);
@@ -572,6 +587,102 @@ impl<'a, 'tcx> SpanlessHash<'a, 'tcx> {
             Guard::If(ref expr) => {
                 self.hash_expr(expr);
             },
+        }
+    }
+
+    pub fn hash_lifetime(&mut self, lifetime: &Lifetime) {
+        if let LifetimeName::Param(ref name) = lifetime.name {
+            match name {
+                ParamName::Plain(ref ident) => {
+                    ident.name.hash(&mut self.s);
+                },
+                ParamName::Fresh(ref size) => {
+                    size.hash(&mut self.s);
+                },
+                _ => {},
+            }
+        }
+    }
+
+    pub fn hash_ty(&mut self, ty: &Ty) {
+        std::mem::discriminant(&ty.node).hash(&mut self.s);
+        match ty.node {
+            Ty::Slice(ty) => {
+                self.hash_ty(ty);
+            },
+            Ty::Array(ty, anon_const) => {
+                self.hash_ty(ty);
+                self.hash_expr(&self.cx.tcx.hir().body(anon_const.body).value);
+            },
+            Ty::Ptr(mut_ty) => {
+                self.hash_ty(&mut_ty.ty);
+                mut_ty.mutbl.hash(&mut self.s);
+            },
+            Ty::Rptr(lifetime, mut_ty) => {
+                self.hash_lifetime(lifetime);
+                self.hash_ty(&mut_ty.ty);
+                mut_ty.mutbl.hash(&mut self.s);
+            },
+            Ty::BareFn(bfn) => {
+                bfn.unsafety.hash(&mut self.s);
+                bfn.abi.hash(&mut self.s);
+                for arg in &bfn.decl.inputs {
+                    self.hash_ty(&arg);
+                }
+                match bfn.decl.output {
+                    FunctionRetTy::DefaultReturn(_) => {
+                        ().hash(&mut self.s);
+                    },
+                    FunctionRetTy::Return(ref ty) => {
+                        self.hash_ty(ty);
+                    },
+                }
+                bfn.decl.c_variadic.hash(&mut self.s);
+            },
+            Ty::Tup(ty_list) => {
+                for ty in ty_list {
+                    self.hash_ty(ty);
+                }
+
+            },
+            Ty::Path(qpath) => {
+                match qpath {
+                    QPath::Resolved(ref maybe_ty, ref path) => {
+                        if let Some(ref ty) = maybe_ty {
+                            self.hash_ty(ty);
+                        }
+                        for segment in &path.segments {
+                            segment.ident.name.hash(&mut self.s);
+                        }
+                    }, 
+                    QPath::TypeRelative(ref ty, ref segment) => {
+                        self.hash_ty(ty);
+                        segment.ident.name.hash(&mut self.s);
+                    },
+                }
+            },
+            Ty::Def(_, arg_list) => {
+                for arg in arg_list {
+                    match arg {
+                        GenericArg::Lifetime(ref l) => self.hash_lifetime(l),
+                        GenericArg::Type(ref ty) => self.hash_ty(ty),
+                        GenericArg::Const(ref ca) => {
+                            self.hash_expr(&self.cx.tcx.hir().body(ca.value.body).value);
+                        },
+                    }
+                }
+            },
+            Ty::TraitObject(_, lifetime) => {
+                self.hash_lifetime(lifetime);
+
+            },
+            Ty::Typeof(anon_const) => {
+                self.hash_expr(&self.cx.tcx.hir().body(anon_const.body).value);
+            },
+            Ty::CVarArgs(lifetime) => {
+                self.hash_lifetime(lifetime);
+            },
+            Ty::Err | Ty::Infer | Ty::Never => {},
         }
     }
 }
