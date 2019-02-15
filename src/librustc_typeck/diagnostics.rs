@@ -1326,6 +1326,10 @@ type X = u32; // ok!
 ```
 "##,
 
+E0111: r##"
+You tried to give a const parameter to a type which doesn't need it.
+"##,
+
 E0116: r##"
 You can only define an inherent implementation for a type in the same crate
 where the type was defined. For example, an `impl` block as below is not allowed
