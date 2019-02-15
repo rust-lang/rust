@@ -212,7 +212,7 @@ impl<'tcx, Tag> MPlaceTy<'tcx, Tag> {
     }
 
     #[inline]
-    crate fn from_aligned_ptr(ptr: Pointer<Tag>, layout: TyLayout<'tcx>) -> Self {
+    fn from_aligned_ptr(ptr: Pointer<Tag>, layout: TyLayout<'tcx>) -> Self {
         MPlaceTy { mplace: MemPlace::from_ptr(ptr, layout.align.abi), layout }
     }
 
@@ -989,6 +989,18 @@ where
         }
 
         Ok(())
+    }
+
+    /// Do not call on compiler generated constants (e.g. constants created via `Const::from_bool`)
+    pub fn const_to_mplace(
+        &self,
+        value: ty::Const<'tcx>,
+    ) -> EvalResult<'tcx, (MPlaceTy<'tcx, M::PointerTag>, &'tcx Allocation)> {
+        let (alloc, ptr) = value.alloc.expect(
+            "const_to_mplace can only be called on user written constants, which should never be
+            created without a corresponding allocation",
+        );
+        Ok((MPlaceTy::from_aligned_ptr(ptr.with_default_tag(), self.layout_of(value.ty)?), alloc))
     }
 
     pub fn raw_const_to_mplace(

@@ -434,11 +434,7 @@ pub fn const_field<'a, 'tcx>(
     trace!("const_field: {:?}, {:?}", field, value);
     let ecx = mk_eval_cx(tcx, DUMMY_SP, param_env);
     let result = (|| {
-        let (alloc, ptr) = value.alloc.expect(
-            "const_field can only be called on aggregates, which should never be created without
-            a corresponding allocation",
-        );
-        let mplace = MPlaceTy::from_aligned_ptr(ptr, ecx.layout_of(value.ty)?);
+        let (mplace, alloc) = ecx.const_to_mplace(value)?;
         // downcast
         let down = match variant {
             None => mplace,
@@ -458,8 +454,8 @@ pub fn const_field<'a, 'tcx>(
             _ => ConstValue::ByRef,
         };
         let field_ptr = field.to_ptr().unwrap();
-        assert_eq!(
-            ptr.alloc_id,
+        debug_assert_eq!(
+            mplace.to_ptr().unwrap().alloc_id,
             field_ptr.alloc_id,
             "field access of aggregate moved to different allocation",
         );
@@ -489,11 +485,7 @@ pub fn const_variant_index<'a, 'tcx>(
 ) -> EvalResult<'tcx, VariantIdx> {
     trace!("const_variant_index: {:?}", val);
     let ecx = mk_eval_cx(tcx, DUMMY_SP, param_env);
-    let (_, ptr) = val.alloc.expect(
-        "const_variant_index can only be called on aggregates, which should never be created without
-        a corresponding allocation",
-    );
-    let mplace = MPlaceTy::from_aligned_ptr(ptr, ecx.layout_of(val.ty)?);
+    let (mplace, _) = ecx.const_to_mplace(val)?;
     Ok(ecx.read_discriminant(mplace.into())?.1)
 }
 
