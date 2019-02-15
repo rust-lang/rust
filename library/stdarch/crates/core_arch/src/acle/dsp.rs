@@ -20,6 +20,9 @@
 //! - [ ] __smlawb
 //! - [ ] __smlawt
 
+#[cfg(test)]
+use stdsimd_test::assert_instr;
+
 extern "C" {
     #[link_name = "llvm.arm.qadd"]
     fn arm_qadd(a: i32, b: i32) -> i32;

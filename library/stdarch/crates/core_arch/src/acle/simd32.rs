@@ -62,6 +62,9 @@
 //! - [x] __smusd
 //! - [x] __smusdx
 
+#[cfg(test)]
+use stdsimd_test::assert_instr;
+
 types! {
     /// ARM-specific 32-bit wide vector of four packed `i8`.
     pub struct int8x4_t(i8, i8, i8, i8);
