@@ -508,7 +508,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> 
 
     // Evaluate a place with the goal of reading from it.  This lets us sometimes
     // avoid allocations.
-    fn eval_place_to_op(
+    pub(super) fn eval_place_to_op(
         &self,
         mir_place: &mir::Place<'tcx>,
         layout: Option<TyLayout<'tcx>>,
@@ -522,7 +522,8 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> 
                 let op = self.eval_place_to_op(&proj.base, None)?;
                 self.operand_projection(op, &proj.elem)?
             }
-
+            // FIXME(oli-obk): statics and promoteds have preevaluated `val` fields nowadays
+            // add nonallocating variants here
             _ => self.eval_place_to_mplace(mir_place)?.into(),
         };
 

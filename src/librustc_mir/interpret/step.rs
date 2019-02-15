@@ -266,8 +266,8 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> 
             }
 
             Discriminant(ref place) => {
-                let place = self.eval_place(place)?;
-                let discr_val = self.read_discriminant(self.place_to_op(place)?)?.0;
+                let op = self.eval_place_to_op(place, None)?;
+                let discr_val = self.read_discriminant(op)?.0;
                 let size = dest.layout.size;
                 self.write_scalar(Scalar::from_uint(discr_val, size), dest)?;
             }
