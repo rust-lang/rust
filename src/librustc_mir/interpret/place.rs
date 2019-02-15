@@ -995,11 +995,14 @@ where
         &self,
         raw: RawConst<'tcx>,
     ) -> EvalResult<'tcx, MPlaceTy<'tcx, M::PointerTag>> {
-        // This must be an allocation in `tcx`
-        assert!(self.tcx.alloc_map.lock().get(raw.alloc_id).is_some());
+        // This must be an allocation in `tcx` and match the `alloc` field
+        debug_assert_eq!(
+            self.tcx.alloc_map.lock().unwrap_memory(raw.alloc_id) as *const _,
+            raw.alloc as *const _,
+        );
         let layout = self.layout_of(raw.ty)?;
         Ok(MPlaceTy::from_aligned_ptr(
-            Pointer::new(raw.alloc_id, Size::ZERO).with_default_tag(),
+            Pointer::from(raw.alloc_id).with_default_tag(),
             layout,
         ))
     }
