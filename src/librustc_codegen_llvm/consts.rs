@@ -1,7 +1,7 @@
 use libc::c_uint;
 use llvm::{self, SetUnnamedAddr, True};
 use rustc::hir::def_id::DefId;
-use rustc::mir::interpret::{ConstValue, Allocation, read_target_uint,
+use rustc::mir::interpret::{Allocation, read_target_uint,
     Pointer, ErrorHandled, GlobalId};
 use rustc::hir::Node;
 use debuginfo;
@@ -69,12 +69,11 @@ pub fn codegen_static_initializer(
     };
     let param_env = ty::ParamEnv::reveal_all();
     let static_ = cx.tcx.const_eval(param_env.and(cid))?;
-    let (alloc, ptr) = static_.alloc.unwrap();
-    assert_eq!(ptr.offset.bytes(), 0);
-    match static_.val {
-        ConstValue::ByRef => {},
+    let (alloc, ptr) = match static_.alloc {
+        Some(alloc) => alloc,
         _ => bug!("static const eval returned {:#?}", static_),
-    }
+    };
+    assert_eq!(ptr.offset.bytes(), 0);
     Ok((const_alloc_to_llvm(cx, alloc), alloc))
 }
 
