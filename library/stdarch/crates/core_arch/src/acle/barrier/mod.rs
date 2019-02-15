@@ -19,6 +19,11 @@ mod cp15;
 pub use self::cp15::*;
 
 // Dedicated instructions
+#[cfg(any(
+    target_arch = "aarch64",
+    target_feature = "v7",
+    target_feature = "mclass"
+))]
 macro_rules! dmb_dsb {
     ($A:ident) => {
         impl super::super::sealed::Dmb for $A {
