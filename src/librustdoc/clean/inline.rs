@@ -296,8 +296,8 @@ pub fn build_impl(cx: &DocContext, did: DefId, ret: &mut Vec<clean::Item>) {
         }
     }
 
-    let for_ = if let Some(nodeid) = tcx.hir().as_local_node_id(did) {
-        match tcx.hir().expect_item(nodeid).node {
+    let for_ = if let Some(hir_id) = tcx.hir().as_local_hir_id(did) {
+        match tcx.hir().expect_item_by_hir_id(hir_id).node {
             hir::ItemKind::Impl(.., ref t, _) => {
                 t.clean(cx)
             }
@@ -318,8 +318,8 @@ pub fn build_impl(cx: &DocContext, did: DefId, ret: &mut Vec<clean::Item>) {
     }
 
     let predicates = tcx.predicates_of(did);
-    let (trait_items, generics) = if let Some(nodeid) = tcx.hir().as_local_node_id(did) {
-        match tcx.hir().expect_item(nodeid).node {
+    let (trait_items, generics) = if let Some(hir_id) = tcx.hir().as_local_hir_id(did) {
+        match tcx.hir().expect_item_by_hir_id(hir_id).node {
             hir::ItemKind::Impl(.., ref gen, _, _, ref item_ids) => {
                 (
                     item_ids.iter()

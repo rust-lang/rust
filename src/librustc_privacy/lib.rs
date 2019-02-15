@@ -454,8 +454,8 @@ impl<'a, 'tcx> EmbargoVisitor<'a, 'tcx> {
         if let Some([module, segment]) = segments.rchunks_exact(2).next() {
             if let Some(item) = module.def
                 .and_then(|def| def.mod_def_id())
-                .and_then(|def_id| self.tcx.hir().as_local_node_id(def_id))
-                .map(|module_node_id| self.tcx.hir().expect_item(module_node_id))
+                .and_then(|def_id| self.tcx.hir().as_local_hir_id(def_id))
+                .map(|module_hir_id| self.tcx.hir().expect_item_by_hir_id(module_hir_id))
              {
                 if let hir::ItemKind::Mod(m) = &item.node {
                     for item_id in m.item_ids.as_ref() {
