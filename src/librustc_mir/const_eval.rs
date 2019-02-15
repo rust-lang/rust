@@ -21,7 +21,7 @@ use syntax::ast::Mutability;
 use syntax::source_map::{Span, DUMMY_SP};
 
 use crate::interpret::{self,
-    PlaceTy, MPlaceTy, MemPlace, OpTy, ImmTy, Operand, Immediate, Scalar, Pointer,
+    PlaceTy, MPlaceTy, OpTy, ImmTy, Scalar, Pointer,
     RawConst, ConstValue,
     EvalResult, EvalError, EvalErrorKind, GlobalId, EvalContext, StackPopCleanup,
     Allocation, AllocId, MemoryKind,
@@ -60,43 +60,6 @@ pub(crate) fn eval_promoted<'a, 'mir, 'tcx>(
     let span = tcx.def_span(cid.instance.def_id());
     let mut ecx = mk_eval_cx(tcx, span, param_env);
     eval_body_using_ecx(&mut ecx, cid, Some(mir), param_env)
-}
-
-// FIXME: These two conversion functions are bad hacks.  We should just always use allocations.
-fn op_to_const<'tcx>(
-    ecx: &CompileTimeEvalContext<'_, '_, 'tcx>,
-    op: OpTy<'tcx>,
-) -> EvalResult<'tcx, ty::Const<'tcx>> {
-    // We do not normalize just any data.  Only scalar layout and slices.
-    let normalized_op = match op.layout.abi {
-        layout::Abi::Scalar(..) => ecx.try_read_immediate(op)?,
-        layout::Abi::ScalarPair(..) if op.layout.ty.is_slice() => ecx.try_read_immediate(op)?,
-        _ => match *op {
-            Operand::Indirect(mplace) => Err(mplace),
-            Operand::Immediate(val) => Ok(val)
-        },
-    };
-    let (val, alloc) = match normalized_op {
-        Err(MemPlace { ptr, align, meta }) => {
-            // extract alloc-offset pair
-            assert!(meta.is_none());
-            let ptr = ptr.to_ptr()?;
-            let alloc = ecx.memory.get(ptr.alloc_id)?;
-            assert!(alloc.align >= align);
-            assert!(alloc.bytes.len() as u64 - ptr.offset.bytes() >= op.layout.size.bytes());
-            let mut alloc = alloc.clone();
-            alloc.align = align;
-            // FIXME shouldn't it be the case that `mark_static_initialized` has already
-            // interned this?  I thought that is the entire point of that `FinishStatic` stuff?
-            let alloc = ecx.tcx.intern_const_alloc(alloc);
-            (ConstValue::ByRef, Some((alloc, ptr)))
-        },
-        Ok(Immediate::Scalar(x)) =>
-            (ConstValue::Scalar(x.not_undef()?), None),
-        Ok(Immediate::ScalarPair(a, b)) =>
-            (ConstValue::Slice(a.not_undef()?, b.to_usize(ecx)?), None),
-    };
-    Ok(ty::Const { val, ty: op.layout.ty, alloc })
 }
 
 fn eval_body_and_ecx<'a, 'mir, 'tcx>(
@@ -471,18 +434,43 @@ pub fn const_field<'a, 'tcx>(
     trace!("const_field: {:?}, {:?}", field, value);
     let ecx = mk_eval_cx(tcx, DUMMY_SP, param_env);
     let result = (|| {
-        // get the operand again
-        let op = ecx.lazy_const_to_op(ty::LazyConst::Evaluated(value), value.ty)?;
+        let (alloc, ptr) = value.alloc.expect(
+            "const_field can only be called on aggregates, which should never be created without
+            a corresponding allocation",
+        );
+        let mplace = MPlaceTy::from_aligned_ptr(ptr, ecx.layout_of(value.ty)?);
         // downcast
         let down = match variant {
-            None => op,
-            Some(variant) => ecx.operand_downcast(op, variant)?
+            None => mplace,
+            Some(variant) => ecx.mplace_downcast(mplace, variant)?,
         };
         // then project
-        let field = ecx.operand_field(down, field.index() as u64)?;
-        // and finally move back to the const world, always normalizing because
-        // this is not called for statics.
-        op_to_const(&ecx, field)
+        let field = ecx.mplace_field(down, field.index() as u64)?;
+        let val = match field.layout.abi {
+            layout::Abi::Scalar(..) => {
+                let scalar = ecx.try_read_immediate_from_mplace(field)?.unwrap().to_scalar()?;
+                ConstValue::Scalar(scalar)
+            }
+            layout::Abi::ScalarPair(..) if field.layout.ty.is_slice() => {
+                let (a, b) = ecx.try_read_immediate_from_mplace(field)?.unwrap().to_scalar_pair()?;
+                ConstValue::Slice(a, b.to_usize(&ecx)?)
+            },
+            _ => ConstValue::ByRef,
+        };
+        let field_ptr = field.to_ptr().unwrap();
+        assert_eq!(
+            ptr.alloc_id,
+            field_ptr.alloc_id,
+            "field access of aggregate moved to different allocation",
+        );
+        Ok(ty::Const {
+            val,
+            ty: field.layout.ty,
+            alloc: Some((
+                alloc,
+                field_ptr,
+            )),
+        })
     })();
     result.map_err(|error| {
         let err = error_to_const_error(&ecx, error);

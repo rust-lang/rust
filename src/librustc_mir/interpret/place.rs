@@ -212,7 +212,7 @@ impl<'tcx, Tag> MPlaceTy<'tcx, Tag> {
     }
 
     #[inline]
-    fn from_aligned_ptr(ptr: Pointer<Tag>, layout: TyLayout<'tcx>) -> Self {
+    crate fn from_aligned_ptr(ptr: Pointer<Tag>, layout: TyLayout<'tcx>) -> Self {
         MPlaceTy { mplace: MemPlace::from_ptr(ptr, layout.align.abi), layout }
     }
 
