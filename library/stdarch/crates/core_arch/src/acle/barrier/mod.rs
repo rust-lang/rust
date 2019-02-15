@@ -51,16 +51,10 @@ mod common;
 ))]
 pub use self::common::*;
 
-#[cfg(any(
-    target_arch = "aarch64",
-    target_feature = "v7",
-))]
+#[cfg(any(target_arch = "aarch64", target_feature = "v7",))]
 mod not_mclass;
 
-#[cfg(any(
-    target_arch = "aarch64",
-    target_feature = "v7",
-))]
+#[cfg(any(target_arch = "aarch64", target_feature = "v7",))]
 pub use self::not_mclass::*;
 
 #[cfg(target_arch = "aarch64")]
