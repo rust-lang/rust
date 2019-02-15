@@ -1,10 +1,9 @@
-#![cfg(not(miri))]
-
 mod builders;
 mod float;
 mod num;
 
 #[test]
+#[cfg(not(miri))] // Miri cannot print pointers
 fn test_format_flags() {
     // No residual flags left by pointer formatting
     let p = "".as_ptr();
@@ -14,6 +13,7 @@ fn test_format_flags() {
 }
 
 #[test]
+#[cfg(not(miri))] // Miri cannot print pointers
 fn test_pointer_formats_data_pointer() {
     let b: &[u8] = b"";
     let s: &str = "";

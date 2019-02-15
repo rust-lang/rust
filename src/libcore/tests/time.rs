@@ -1,5 +1,3 @@
-#![cfg(not(miri))]
-
 use core::time::Duration;
 
 #[test]
@@ -109,12 +107,14 @@ fn checked_sub() {
 
 #[test]
 #[should_panic]
+#[cfg(not(miri))] // Miri does not support panics
 fn sub_bad1() {
     let _ = Duration::new(0, 0) - Duration::new(0, 1);
 }
 
 #[test]
 #[should_panic]
+#[cfg(not(miri))] // Miri does not support panics
 fn sub_bad2() {
     let _ = Duration::new(0, 0) - Duration::new(1, 0);
 }
