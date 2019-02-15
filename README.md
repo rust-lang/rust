@@ -252,6 +252,18 @@ used according to their aliasing restrictions.
 [slides]: https://solson.me/miri-slides.pdf
 [report]: https://solson.me/miri-report.pdf
 
+## Bugs found by Miri
+
+Miri has already found a number of bugs in the Rust standard library, which we collect here.
+
+* [`vec_deque::Iter` having an unsound `Debug` implementation](https://github.com/rust-lang/rust/issues/53566)
+* [`From<&[T]> for Rc` creating a not sufficiently aligned reference](https://github.com/rust-lang/rust/issues/54908)
+* [`BTreeMap` creating a shared reference pointing to a too small allocation](https://github.com/rust-lang/rust/issues/54957)
+* [`VecDeque` creating overlapping mutable references](https://github.com/rust-lang/rust/pull/56161)
+* [Futures turning a shared reference into a mutable one](https://github.com/rust-lang/rust/pull/56319)
+* [`str` turning a shared reference into a mutable one](https://github.com/rust-lang/rust/pull/58200)
+* [`BTreeMap` creating mutable references that overlap with shared references](https://github.com/rust-lang/rust/pull/58431)
+
 ## License
 
 Licensed under either of
