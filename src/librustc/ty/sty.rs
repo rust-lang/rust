@@ -2132,6 +2132,8 @@ impl<'tcx> Hash for Const<'tcx> {
         let Const { ty, val, alloc } = self;
         ty.hash(hasher);
         val.hash(hasher);
+        // don't hash the memory for `Scalar` and `Slice`. There's nothing to be gained
+        // by it. All the relevant info is contained in the value.
         if let ConstValue::ByRef = val {
             let (alloc, ptr) = alloc.unwrap();
             // type check for future changes
