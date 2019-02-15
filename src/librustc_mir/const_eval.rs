@@ -486,6 +486,9 @@ pub fn const_field<'a, 'tcx>(
     })();
     result.map_err(|error| {
         let err = error_to_const_error(&ecx, error);
+        // FIXME(oli-obk): I believe this is unreachable and we can just ICE here. Since a constant
+        // is checked for validity before being in a place that could pass it to `const_field`,
+        // we can't possibly have errors. All fields have already been checked.
         err.report_as_error(ecx.tcx, "could not access field of constant");
         ErrorHandled::Reported
     })
