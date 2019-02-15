@@ -39,7 +39,7 @@ use std::path::{Path, PathBuf};
 use crate::transform::MirSource;
 use crate::util::pretty::{dump_enabled, write_basic_block, write_mir_intro};
 
-pub type LiveVarSet<V> = BitSet<V>;
+pub type LiveVarSet = BitSet<Local>;
 
 /// This gives the result of the liveness analysis at the boundary of
 /// basic blocks.
@@ -48,66 +48,27 @@ pub type LiveVarSet<V> = BitSet<V>;
 /// liveness for. This is often `Local`, in which case we computed
 /// liveness for all variables -- but it can also be some other type,
 /// which indicates a subset of the variables within the graph.
-pub struct LivenessResult<V: Idx> {
+pub struct LivenessResult {
     /// Live variables on exit to each basic block. This is equal to
     /// the union of the `ins` for each successor.
-    pub outs: IndexVec<BasicBlock, LiveVarSet<V>>,
-}
-
-/// Defines the mapping to/from the MIR local variables (`Local`) to
-/// the "live variable indices" we are using in a particular
-/// computation.
-pub trait LiveVariableMap {
-    type LiveVar;
-
-    fn from_local(&self, local: Local) -> Option<Self::LiveVar>;
-    fn from_live_var(&self, local: Self::LiveVar) -> Local;
-    fn num_variables(&self) -> usize;
-}
-
-#[derive(Debug)]
-pub struct IdentityMap<'a, 'tcx: 'a> {
-    mir: &'a Mir<'tcx>,
-}
-
-impl<'a, 'tcx> IdentityMap<'a, 'tcx> {
-    pub fn new(mir: &'a Mir<'tcx>) -> Self {
-        Self { mir }
-    }
-}
-
-impl<'a, 'tcx> LiveVariableMap for IdentityMap<'a, 'tcx> {
-    type LiveVar = Local;
-
-    fn from_local(&self, local: Local) -> Option<Self::LiveVar> {
-        Some(local)
-    }
-
-    fn from_live_var(&self, local: Self::LiveVar) -> Local {
-        local
-    }
-
-    fn num_variables(&self) -> usize {
-        self.mir.local_decls.len()
-    }
+    pub outs: IndexVec<BasicBlock, LiveVarSet>,
 }
 
 /// Computes which local variables are live within the given function
 /// `mir`. The liveness mode `mode` determines what sorts of uses are
 /// considered to make a variable live (e.g., do drops count?).
-pub fn liveness_of_locals<'tcx, V: Idx>(
+pub fn liveness_of_locals<'tcx>(
     mir: &Mir<'tcx>,
-    map: &impl LiveVariableMap<LiveVar = V>,
-) -> LivenessResult<V> {
-    let num_live_vars = map.num_variables();
+) -> LivenessResult {
+    let num_live_vars = mir.local_decls.len();
 
-    let def_use: IndexVec<_, DefsUses<V>> = mir
+    let def_use: IndexVec<_, DefsUses> = mir
         .basic_blocks()
         .iter()
-        .map(|b| block(map, b, num_live_vars))
+        .map(|b| block(b, num_live_vars))
         .collect();
 
-    let mut outs: IndexVec<_, LiveVarSet<V>> = mir
+    let mut outs: IndexVec<_, LiveVarSet> = mir
         .basic_blocks()
         .indices()
         .map(|_| LiveVarSet::new_empty(num_live_vars))
@@ -211,27 +172,23 @@ pub fn categorize<'tcx>(context: PlaceContext<'tcx>) -> Option<DefUse> {
     }
 }
 
-struct DefsUsesVisitor<'lv, V, M>
-where
-    V: Idx,
-    M: LiveVariableMap<LiveVar = V> + 'lv,
+struct DefsUsesVisitor
 {
-    map: &'lv M,
-    defs_uses: DefsUses<V>,
+    defs_uses: DefsUses,
 }
 
 #[derive(Eq, PartialEq, Clone)]
-struct DefsUses<V: Idx> {
-    defs: LiveVarSet<V>,
-    uses: LiveVarSet<V>,
+struct DefsUses {
+    defs: LiveVarSet,
+    uses: LiveVarSet,
 }
 
-impl<V: Idx> DefsUses<V> {
-    fn apply(&self, bits: &mut LiveVarSet<V>) -> bool {
+impl DefsUses {
+    fn apply(&self, bits: &mut LiveVarSet) -> bool {
         bits.subtract(&self.defs) | bits.union(&self.uses)
     }
 
-    fn add_def(&mut self, index: V) {
+    fn add_def(&mut self, index: Local) {
         // If it was used already in the block, remove that use
         // now that we found a definition.
         //
@@ -245,7 +202,7 @@ impl<V: Idx> DefsUses<V> {
         self.defs.insert(index);
     }
 
-    fn add_use(&mut self, index: V) {
+    fn add_use(&mut self, index: Local) {
         // Inverse of above.
         //
         // Example:
@@ -261,29 +218,22 @@ impl<V: Idx> DefsUses<V> {
     }
 }
 
-impl<'tcx, 'lv, V, M> Visitor<'tcx> for DefsUsesVisitor<'lv, V, M>
-where
-    V: Idx,
-    M: LiveVariableMap<LiveVar = V>,
+impl<'tcx> Visitor<'tcx> for DefsUsesVisitor
 {
     fn visit_local(&mut self, &local: &Local, context: PlaceContext<'tcx>, _: Location) {
-        if let Some(v_index) = self.map.from_local(local) {
-            match categorize(context) {
-                Some(DefUse::Def) => self.defs_uses.add_def(v_index),
-                Some(DefUse::Use) | Some(DefUse::Drop) => self.defs_uses.add_use(v_index),
-                _ => (),
-            }
+        match categorize(context) {
+            Some(DefUse::Def) => self.defs_uses.add_def(local),
+            Some(DefUse::Use) | Some(DefUse::Drop) => self.defs_uses.add_use(local),
+            _ => (),
         }
     }
 }
 
-fn block<'tcx, V: Idx>(
-    map: &impl LiveVariableMap<LiveVar = V>,
+fn block<'tcx>(
     b: &BasicBlockData<'tcx>,
     locals: usize,
-) -> DefsUses<V> {
+) -> DefsUses {
     let mut visitor = DefsUsesVisitor {
-        map,
         defs_uses: DefsUses {
             defs: LiveVarSet::new_empty(locals),
             uses: LiveVarSet::new_empty(locals),
@@ -305,13 +255,12 @@ fn block<'tcx, V: Idx>(
     visitor.defs_uses
 }
 
-pub fn dump_mir<'a, 'tcx, V: Idx>(
+pub fn dump_mir<'a, 'tcx>(
     tcx: TyCtxt<'a, 'tcx, 'tcx>,
     pass_name: &str,
     source: MirSource<'tcx>,
     mir: &Mir<'tcx>,
-    map: &impl LiveVariableMap<LiveVar = V>,
-    result: &LivenessResult<V>,
+    result: &LivenessResult,
 ) {
     if !dump_enabled(tcx, pass_name, source) {
         return;
@@ -320,17 +269,16 @@ pub fn dump_mir<'a, 'tcx, V: Idx>(
         // see notes on #41697 below
         tcx.item_path_str(source.def_id())
     });
-    dump_matched_mir_node(tcx, pass_name, &node_path, source, mir, map, result);
+    dump_matched_mir_node(tcx, pass_name, &node_path, source, mir, result);
 }
 
-fn dump_matched_mir_node<'a, 'tcx, V: Idx>(
+fn dump_matched_mir_node<'a, 'tcx>(
     tcx: TyCtxt<'a, 'tcx, 'tcx>,
     pass_name: &str,
     node_path: &str,
     source: MirSource<'tcx>,
     mir: &Mir<'tcx>,
-    map: &dyn LiveVariableMap<LiveVar = V>,
-    result: &LivenessResult<V>,
+    result: &LivenessResult,
 ) {
     let mut file_path = PathBuf::new();
     file_path.push(Path::new(&tcx.sess.opts.debugging_opts.dump_mir_dir));
@@ -342,25 +290,23 @@ fn dump_matched_mir_node<'a, 'tcx, V: Idx>(
         writeln!(file, "// source = {:?}", source)?;
         writeln!(file, "// pass_name = {}", pass_name)?;
         writeln!(file, "")?;
-        write_mir_fn(tcx, source, mir, map, &mut file, result)?;
+        write_mir_fn(tcx, source, mir, &mut file, result)?;
         Ok(())
     });
 }
 
-pub fn write_mir_fn<'a, 'tcx, V: Idx>(
+pub fn write_mir_fn<'a, 'tcx>(
     tcx: TyCtxt<'a, 'tcx, 'tcx>,
     src: MirSource<'tcx>,
     mir: &Mir<'tcx>,
-    map: &dyn LiveVariableMap<LiveVar = V>,
     w: &mut dyn Write,
-    result: &LivenessResult<V>,
+    result: &LivenessResult,
 ) -> io::Result<()> {
     write_mir_intro(tcx, src, mir, w)?;
     for block in mir.basic_blocks().indices() {
-        let print = |w: &mut dyn Write, prefix, result: &IndexVec<BasicBlock, LiveVarSet<V>>| {
+        let print = |w: &mut dyn Write, prefix, result: &IndexVec<BasicBlock, LiveVarSet>| {
             let live: Vec<String> = result[block]
                 .iter()
-                .map(|v| map.from_live_var(v))
                 .map(|local| format!("{:?}", local))
                 .collect();
             writeln!(w, "{} {{{}}}", prefix, live.join(", "))

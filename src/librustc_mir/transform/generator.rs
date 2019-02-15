@@ -68,7 +68,7 @@ use crate::transform::no_landing_pads::no_landing_pads;
 use crate::dataflow::{do_dataflow, DebugFormatted, state_for_location};
 use crate::dataflow::{MaybeStorageLive, HaveBeenBorrowedLocals};
 use crate::util::dump_mir;
-use crate::util::liveness::{self, IdentityMap};
+use crate::util::liveness;
 
 pub struct StateTransform;
 
@@ -148,7 +148,7 @@ struct SuspensionPoint {
     state: u32,
     resume: BasicBlock,
     drop: Option<BasicBlock>,
-    storage_liveness: liveness::LiveVarSet<Local>,
+    storage_liveness: liveness::LiveVarSet,
 }
 
 struct TransformVisitor<'a, 'tcx: 'a> {
@@ -165,7 +165,7 @@ struct TransformVisitor<'a, 'tcx: 'a> {
 
     // A map from a suspension point in a block to the locals which have live storage at that point
     // FIXME(eddyb) This should use `IndexVec<BasicBlock, Option<_>>`.
-    storage_liveness: FxHashMap<BasicBlock, liveness::LiveVarSet<Local>>,
+    storage_liveness: FxHashMap<BasicBlock, liveness::LiveVarSet>,
 
     // A list of suspension points, generated during the transform
     suspension_points: Vec<SuspensionPoint>,
@@ -358,7 +358,7 @@ fn replace_result_variable<'tcx>(
     new_ret_local
 }
 
-struct StorageIgnored(liveness::LiveVarSet<Local>);
+struct StorageIgnored(liveness::LiveVarSet);
 
 impl<'tcx> Visitor<'tcx> for StorageIgnored {
     fn visit_statement(&mut self,
@@ -379,8 +379,8 @@ fn locals_live_across_suspend_points(
     source: MirSource<'tcx>,
     movable: bool,
 ) -> (
-    liveness::LiveVarSet<Local>,
-    FxHashMap<BasicBlock, liveness::LiveVarSet<Local>>,
+    liveness::LiveVarSet,
+    FxHashMap<BasicBlock, liveness::LiveVarSet>,
 ) {
     let dead_unwinds = BitSet::new_empty(mir.basic_blocks().len());
     let node_id = tcx.hir().as_local_node_id(source.def_id()).unwrap();
@@ -414,14 +414,12 @@ fn locals_live_across_suspend_points(
     let mut set = liveness::LiveVarSet::new_empty(mir.local_decls.len());
     let mut liveness = liveness::liveness_of_locals(
         mir,
-        &IdentityMap::new(mir),
     );
     liveness::dump_mir(
         tcx,
         "generator_liveness",
         source,
         mir,
-        &IdentityMap::new(mir),
         &liveness,
     );
 
@@ -491,7 +489,7 @@ fn compute_layout<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                             mir: &mut Mir<'tcx>)
     -> (FxHashMap<Local, (Ty<'tcx>, usize)>,
         GeneratorLayout<'tcx>,
-        FxHashMap<BasicBlock, liveness::LiveVarSet<Local>>)
+        FxHashMap<BasicBlock, liveness::LiveVarSet>)
 {
     // Use a liveness analysis to compute locals which are live across a suspension point
     let (live_locals, storage_liveness) = locals_live_across_suspend_points(tcx,
