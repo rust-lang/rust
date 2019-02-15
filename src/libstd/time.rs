@@ -670,10 +670,9 @@ mod tests {
         // checked_add_duration will not panic on overflow
         let mut maybe_t = Some(SystemTime::UNIX_EPOCH);
         let max_duration = Duration::from_secs(u64::max_value());
-        // in case `SystemTime` can store `>= UNIX_EPOCH + max_duration`.
-        for _ in 0..2 {
-            maybe_t = maybe_t.and_then(|t| t.checked_add(max_duration));
-        }
+        // `SystemTime` can store <= `UNIX_EPOCH + `libc::time_t::max_value()`,
+        // `libc::time_t` is a signed value and its size is platform dependent
+        maybe_t = maybe_t.and_then(|t| t.checked_add(max_duration));
         assert_eq!(maybe_t, None);
 
         // checked_add_duration calculates the right time and will work for another year
