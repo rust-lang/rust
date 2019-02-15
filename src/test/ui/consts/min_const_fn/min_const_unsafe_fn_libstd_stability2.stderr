@@ -1,20 +1,27 @@
-error: can only call other `min_const_fn` within a `min_const_fn`
+error[E0723]: can only call other `min_const_fn` within a `min_const_fn` (see issue #57563)
   --> $DIR/min_const_unsafe_fn_libstd_stability2.rs:15:32
    |
 LL | const unsafe fn bar() -> u32 { foo() } //~ ERROR can only call other `min_const_fn`
    |                                ^^^^^
+   |
+   = help: add #![feature(const_fn)] to the crate attributes to enable
 
-error: can only call other `min_const_fn` within a `min_const_fn`
+error[E0723]: can only call other `min_const_fn` within a `min_const_fn` (see issue #57563)
   --> $DIR/min_const_unsafe_fn_libstd_stability2.rs:22:33
    |
 LL | const unsafe fn bar2() -> u32 { foo2() } //~ ERROR can only call other `min_const_fn`
    |                                 ^^^^^^
+   |
+   = help: add #![feature(const_fn)] to the crate attributes to enable
 
-error: can only call other `min_const_fn` within a `min_const_fn`
+error[E0723]: can only call other `min_const_fn` within a `min_const_fn` (see issue #57563)
   --> $DIR/min_const_unsafe_fn_libstd_stability2.rs:30:39
    |
 LL | const unsafe fn bar2_gated() -> u32 { foo2_gated() } //~ ERROR can only call other `min_const_fn`
    |                                       ^^^^^^^^^^^^
+   |
+   = help: add #![feature(const_fn)] to the crate attributes to enable
 
 error: aborting due to 3 previous errors
 
+For more information about this error, try `rustc --explain E0723`.
