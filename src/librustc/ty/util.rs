@@ -755,7 +755,7 @@ impl<'a, 'tcx> ty::TyS<'tcx> {
                       tcx: TyCtxt<'a, 'tcx, 'tcx>,
                       param_env: ty::ParamEnv<'tcx>)
                       -> bool {
-        tcx.needs_drop_raw(param_env.and(self))
+        tcx.needs_drop_raw(param_env.and(self)).0
     }
 
     pub fn same_type(a: Ty<'tcx>, b: Ty<'tcx>) -> bool {
@@ -992,29 +992,22 @@ fn is_freeze_raw<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         ))
 }
 
+#[derive(Clone)]
+pub struct NeedsDrop(pub bool);
+
 fn needs_drop_raw<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                             query: ty::ParamEnvAnd<'tcx, Ty<'tcx>>)
-                            -> bool
+                            -> NeedsDrop
 {
     let (param_env, ty) = query.into_parts();
 
     let needs_drop = |ty: Ty<'tcx>| -> bool {
-        tcx.try_needs_drop_raw(DUMMY_SP, param_env.and(ty)).unwrap_or_else(|mut bug| {
-            // Cycles should be reported as an error by `check_representable`.
-            //
-            // Consider the type as not needing drop in the meanwhile to
-            // avoid further errors.
-            //
-            // In case we forgot to emit a bug elsewhere, delay our
-            // diagnostic to get emitted as a compiler bug.
-            bug.delay_as_bug();
-            false
-        })
+        tcx.needs_drop_raw(param_env.and(ty)).0
     };
 
     assert!(!ty.needs_infer());
 
-    match ty.sty {
+    NeedsDrop(match ty.sty {
         // Fast-path for primitive types
         ty::Infer(ty::FreshIntTy(_)) | ty::Infer(ty::FreshFloatTy(_)) |
         ty::Bool | ty::Int(_) | ty::Uint(_) | ty::Float(_) | ty::Never |
@@ -1072,7 +1065,7 @@ fn needs_drop_raw<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
             def.variants.iter().any(
                 |variant| variant.fields.iter().any(
                     |field| needs_drop(field.ty(tcx, substs)))),
-    }
+    })
 }
 
 pub enum ExplicitSelf<'tcx> {

@@ -13,6 +13,7 @@ use crate::ty::subst::Substs;
 use crate::ty::query::queries;
 use crate::ty::query::Query;
 use crate::ty::query::QueryCache;
+use crate::ty::query::plumbing::CycleError;
 use crate::util::profiling::ProfileCategory;
 
 use std::borrow::Cow;
@@ -49,7 +50,7 @@ pub(super) trait QueryAccessors<'tcx>: QueryConfig<'tcx> {
         result: &Self::Value
     ) -> Option<Fingerprint>;
 
-    fn handle_cycle_error(tcx: TyCtxt<'_, 'tcx, '_>) -> Self::Value;
+    fn handle_cycle_error(tcx: TyCtxt<'_, 'tcx, '_>, error: CycleError<'tcx>) -> Self::Value;
 }
 
 pub(super) trait QueryDescription<'tcx>: QueryAccessors<'tcx> {

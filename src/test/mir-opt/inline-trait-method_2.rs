@@ -1,12 +1,12 @@
 // compile-flags: -Z span_free_formats -Z mir-opt-level=3
 
+fn test2(x: &dyn X) -> bool {
+    test(x)
+}
+
 #[inline]
 fn test(x: &dyn X) -> bool {
     x.y()
-}
-
-fn test2(x: &dyn X) -> bool {
-    test(x)
 }
 
 trait X {
