@@ -842,7 +842,7 @@ fn compare_synthetic_generics<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                                 GenericParamKind::Lifetime { .. } => None,
                                 GenericParamKind::Type { .. } |
                                 GenericParamKind::Const { .. } => {
-                                    if param.hir_id == impl_node_id {
+                                    if param.hir_id == impl_hir_id {
                                         Some(&param.bounds)
                                     } else {
                                         None
