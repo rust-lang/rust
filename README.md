@@ -15,6 +15,8 @@ for example:
   or an invalid enum discriminant)
 * WIP: Violations of the rules governing aliasing for reference types
 
+Miri has already discovered some [real-world bugs](#bugs-found-by-miri).
+
 [rust]: https://www.rust-lang.org/
 [mir]: https://github.com/rust-lang/rfcs/blob/master/text/1211-mir.md
 [`unreachable_unchecked`]: https://doc.rust-lang.org/stable/std/hint/fn.unreachable_unchecked.html
@@ -251,6 +253,18 @@ used according to their aliasing restrictions.
 [usask]: https://www.usask.ca/
 [slides]: https://solson.me/miri-slides.pdf
 [report]: https://solson.me/miri-report.pdf
+
+## Bugs found by Miri
+
+Miri has already found a number of bugs in the Rust standard library, which we collect here.
+
+* [`Debug for vec_deque::Iter` accessing uninitialized memory](https://github.com/rust-lang/rust/issues/53566)
+* [`From<&[T]> for Rc` creating a not sufficiently aligned reference](https://github.com/rust-lang/rust/issues/54908)
+* [`BTreeMap` creating a shared reference pointing to a too small allocation](https://github.com/rust-lang/rust/issues/54957)
+* [`VecDeque` creating overlapping mutable references](https://github.com/rust-lang/rust/pull/56161)
+* [Futures turning a shared reference into a mutable one](https://github.com/rust-lang/rust/pull/56319)
+* [`str` turning a shared reference into a mutable one](https://github.com/rust-lang/rust/pull/58200)
+* [`BTreeMap` creating mutable references that overlap with shared references](https://github.com/rust-lang/rust/pull/58431)
 
 ## License
 
