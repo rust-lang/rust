@@ -13,6 +13,9 @@ pub struct RawConst<'tcx> {
     pub ty: Ty<'tcx>,
     /// the allocation that would be returned by using
     /// `tcx.alloc_map.lock().unwrap_memory(self.alloc_id)`
+    ///
+    /// This is an optimization so we don't actually have to go fetch said allocation from the
+    /// `alloc_map` at most use sites of the `const_eval_raw` query
     pub alloc: &'tcx Allocation,
 }
 

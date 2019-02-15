@@ -348,10 +348,9 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> Memory<'a, 'mir, 'tcx, M> {
                 ErrorHandled::TooGeneric => EvalErrorKind::TooGeneric.into(),
             }
         }).map(|raw_const| {
-            let allocation = tcx.alloc_map.lock().unwrap_memory(raw_const.alloc_id);
             // We got tcx memory. Let the machine figure out whether and how to
             // turn that into memory with the right pointer tag.
-            M::adjust_static_allocation(allocation, memory_extra)
+            M::adjust_static_allocation(raw_const.alloc, memory_extra)
         })
     }
 
