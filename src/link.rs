@@ -291,7 +291,7 @@ fn link_args(cmd: &mut dyn Linker,
              codegen_results: &CodegenResults) {
 
     // Linker plugins should be specified early in the list of arguments
-    cmd.cross_lang_lto();
+    cmd.linker_plugin_lto();
 
     // The default library location, we need this to find the runtime.
     // The location of crates will be determined as needed.
@@ -306,11 +306,28 @@ fn link_args(cmd: &mut dyn Linker,
     }
     cmd.output_filename(out_filename);
 
+    if crate_type == config::CrateType::Executable &&
+       sess.target.target.options.is_like_windows {
+        if let Some(ref s) = codegen_results.windows_subsystem {
+            cmd.subsystem(s);
+        }
+    }
+
     // If we're building a dynamic library then some platforms need to make sure
     // that all symbols are exported correctly from the dynamic library.
     if crate_type != config::CrateType::Executable ||
        sess.target.target.options.is_like_emscripten {
         cmd.export_symbols(tmpdir, crate_type);
+    }
+
+    // When linking a dynamic library, we put the metadata into a section of the
+    // executable. This metadata is in a separate object file from the main
+    // object file, so we link that in here.
+    if crate_type == config::CrateType::Dylib ||
+       crate_type == config::CrateType::ProcMacro {
+        if let Some(obj) = codegen_results.metadata_module.object.as_ref() {
+            cmd.add_object(obj);
+        }
     }
 
     let obj = codegen_results.allocator_module
@@ -409,7 +426,7 @@ fn link_args(cmd: &mut dyn Linker,
     //
     // The rationale behind this ordering is that those items lower down in the
     // list can't depend on items higher up in the list. For example nothing can
-    // depend on what we just generated (e.g. that'd be a circular dependency).
+    // depend on what we just generated (e.g., that'd be a circular dependency).
     // Upstream rust libraries are not allowed to depend on our local native
     // libraries as that would violate the structure of the DAG, in that
     // scenario they are required to link to them as well in a shared fashion.
@@ -418,7 +435,7 @@ fn link_args(cmd: &mut dyn Linker,
     // well, but they also can't depend on what we just started to add to the
     // link line. And finally upstream native libraries can't depend on anything
     // in this DAG so far because they're only dylibs and dylibs can only depend
-    // on other dylibs (e.g. other native deps).
+    // on other dylibs (e.g., other native deps).
     add_local_native_libraries(cmd, sess, codegen_results);
     add_upstream_rust_crates(cmd, sess, codegen_results, crate_type, tmpdir);
     add_upstream_native_libraries(cmd, sess, codegen_results, crate_type);

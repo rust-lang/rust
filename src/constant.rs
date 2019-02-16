@@ -5,7 +5,7 @@ use rustc::mir::interpret::{
 };
 use rustc::ty::{Const, LazyConst};
 use rustc_mir::interpret::{
-    EvalContext, MPlaceTy, Machine, Memory, MemoryKind, OpTy, PlaceTy, Pointer, StackPopCleanup,
+    EvalContext, MPlaceTy, Machine, Memory, MemoryKind, OpTy, PlaceTy, Pointer, StackPopCleanup, ImmTy,
 };
 
 use cranelift_module::*;
@@ -337,10 +337,8 @@ impl<'a, 'mir, 'tcx> Machine<'a, 'mir, 'tcx> for TransPlaceInterpreter {
     fn ptr_op(
         _: &EvalContext<'a, 'mir, 'tcx, Self>,
         _: mir::BinOp,
-        _: Scalar,
-        _: TyLayout<'tcx>,
-        _: Scalar,
-        _: TyLayout<'tcx>,
+        _: ImmTy<'tcx>,
+        _: ImmTy<'tcx>,
     ) -> EvalResult<'tcx, (Scalar, bool)> {
         panic!();
     }

@@ -1,32 +1,32 @@
-From 1119ae3f160d7e89064583f1d9d6685bc2e6928b Mon Sep 17 00:00:00 2001
+From 8080d322c8396b7b234cc92eb675f697c55f7298 Mon Sep 17 00:00:00 2001
 From: bjorn3 <bjorn3@users.noreply.github.com>
-Date: Wed, 13 Feb 2019 14:37:22 +0100
+Date: Sat, 16 Feb 2019 12:09:42 +0100
 Subject: [PATCH] Disable u128 and i128 in libcore
 
 ---
  src/libcore/clone.rs             |   4 +-
  src/libcore/cmp.rs               |   6 +-
  src/libcore/default.rs           |   2 -
- src/libcore/fmt/num.rs           |   6 +-
- src/libcore/hash/mod.rs          |  20 -------
+ src/libcore/fmt/num.rs           |   8 +-
+ src/libcore/hash/mod.rs          |  20 -----
  src/libcore/iter/range.rs        |   1 -
  src/libcore/iter/traits/accum.rs |   2 +-
  src/libcore/lib.rs               |   2 -
  src/libcore/marker.rs            |   4 +-
  src/libcore/mem.rs               |   2 -
- src/libcore/num/mod.rs           | 100 +++++++++----------------------
- src/libcore/num/wrapping.rs      |  14 ++---
- src/libcore/ops/arith.rs         |  22 +++----
- src/libcore/ops/bit.rs           |  30 ++++------
- src/libcore/sync/atomic.rs       |  30 ----------
- src/libcore/tests/iter.rs        |  15 -----
- src/libcore/tests/num/mod.rs     |  18 ------
- src/libcore/time.rs              | 123 ---------------------------------------
- src/libstd/lib.rs                |   4 --
- src/libstd/net/ip.rs             |  20 -------
+ src/libcore/num/mod.rs           | 100 +++++++------------------
+ src/libcore/num/wrapping.rs      |  14 ++--
+ src/libcore/ops/arith.rs         |  22 +++---
+ src/libcore/ops/bit.rs           |  30 +++-----
+ src/libcore/sync/atomic.rs       |  30 --------
+ src/libcore/tests/iter.rs        |  15 ----
+ src/libcore/tests/num/mod.rs     |  18 -----
+ src/libcore/time.rs              | 123 -------------------------------
+ src/libstd/lib.rs                |   4 -
+ src/libstd/net/ip.rs             |  20 -----
  src/libstd/num.rs                |   2 +-
  src/libstd/panic.rs              |   6 --
- 22 files changed, 63 insertions(+), 370 deletions(-)
+ 22 files changed, 63 insertions(+), 372 deletions(-)
 
 diff --git a/src/libcore/clone.rs b/src/libcore/clone.rs
 index ed90b7d..1739f91 100644
@@ -94,7 +94,7 @@ index 5ad05b3..1b5a1d1 100644
  default_impl! { f32, 0.0f32, "Returns the default value of `0.0`" }
  default_impl! { f64, 0.0f64, "Returns the default value of `0.0`" }
 diff --git a/src/libcore/fmt/num.rs b/src/libcore/fmt/num.rs
-index 3a81233..f889d57 100644
+index b9fa364..cd9ee01 100644
 --- a/src/libcore/fmt/num.rs
 +++ b/src/libcore/fmt/num.rs
 @@ -17,7 +17,6 @@ trait Int: PartialEq + PartialOrd + Div<Output=Self> + Rem<Output=Self> +
@@ -117,22 +117,21 @@ index 3a81233..f889d57 100644
  
  /// A type that represents a specific radix
  #[doc(hidden)]
-@@ -176,7 +174,6 @@ integer! { i8, u8 }
+@@ -176,8 +174,6 @@ integer! { i8, u8 }
  integer! { i16, u16 }
  integer! { i32, u32 }
  integer! { i64, u64 }
 -integer! { i128, u128 }
+-
  
- const DEC_DIGITS_LUT: &'static[u8] =
+ static DEC_DIGITS_LUT: &[u8; 200] =
      b"0001020304050607080910111213141516171819\
-@@ -252,7 +249,6 @@ macro_rules! impl_Display {
- 
- impl_Display!(i8, u8, i16, u16, i32, u32: to_u32);
- impl_Display!(i64, u64: to_u64);
--impl_Display!(i128, u128: to_u128);
- #[cfg(target_pointer_width = "16")]
- impl_Display!(isize, usize: to_u16);
- #[cfg(target_pointer_width = "32")]
+@@ -274,5 +270,3 @@ mod imp {
+     impl_Display!(i8, u8, i16, u16, i32, u32, isize, usize as u32 via to_u32 named fmt_u32);
+     impl_Display!(i64, u64 as u64 via to_u64 named fmt_u64);
+ }
+-
+-impl_Display!(i128, u128 as u128 via to_u128 named fmt_u128);
 diff --git a/src/libcore/hash/mod.rs b/src/libcore/hash/mod.rs
 index d5d29c9..f98f382 100644
 --- a/src/libcore/hash/mod.rs
@@ -218,10 +217,10 @@ index dfe1d2a..06cc578 100644
  
  /// An iterator adapter that produces output as long as the underlying
 diff --git a/src/libcore/lib.rs b/src/libcore/lib.rs
-index 9b37104..787b10b 100644
+index cd88d3e..532d680 100644
 --- a/src/libcore/lib.rs
 +++ b/src/libcore/lib.rs
-@@ -147,14 +147,12 @@ mod uint_macros;
+@@ -148,14 +148,12 @@ mod uint_macros;
  #[path = "num/i16.rs"]   pub mod i16;
  #[path = "num/i32.rs"]   pub mod i32;
  #[path = "num/i64.rs"]   pub mod i64;
@@ -237,7 +236,7 @@ index 9b37104..787b10b 100644
  #[path = "num/f32.rs"]   pub mod f32;
  #[path = "num/f64.rs"]   pub mod f64;
 diff --git a/src/libcore/marker.rs b/src/libcore/marker.rs
-index 457d556..91425fb 100644
+index c4b41f1..0ade53b 100644
 --- a/src/libcore/marker.rs
 +++ b/src/libcore/marker.rs
 @@ -664,8 +664,8 @@ mod copy_impls {
@@ -252,7 +251,7 @@ index 457d556..91425fb 100644
          bool char
      }
 diff --git a/src/libcore/mem.rs b/src/libcore/mem.rs
-index 2a493e8..a7dba54 100644
+index 3f7455a..7a0c44a 100644
 --- a/src/libcore/mem.rs
 +++ b/src/libcore/mem.rs
 @@ -164,12 +164,10 @@ pub fn forget_unsized<T: ?Sized>(t: T) {
@@ -898,10 +897,11 @@ index 51a6017..e6631db 100644
  
      #[derive(Clone)]
      struct Test(Bigger);
-@@ -1977,19 +1975,6 @@ fn test_step_replace_signed() {
+@@ -1976,19 +1974,6 @@ fn test_step_replace_signed() {
+     assert_eq!(y, 5);
  }
  
- #[test]
+-#[test]
 -fn test_step_replace_no_between() {
 -    let mut x = 4u128;
 -    let y = x.replace_zero();
@@ -914,10 +914,9 @@ index 51a6017..e6631db 100644
 -    assert_eq!(y, 5);
 -}
 -
--#[test]
+ #[test]
  fn test_rev_try_folds() {
      let f = &|acc, x| i32::checked_add(2*acc, x);
-     assert_eq!((1..10).rev().try_fold(7, f), (1..10).try_rfold(7, f));
 diff --git a/src/libcore/tests/num/mod.rs b/src/libcore/tests/num/mod.rs
 index ab638e0..4a2aa4c 100644
 --- a/src/libcore/tests/num/mod.rs
@@ -1136,10 +1135,10 @@ index ac7e117..0dfd856 100644
      ///
      /// # Examples
 diff --git a/src/libstd/lib.rs b/src/libstd/lib.rs
-index 3c358dc..2dd5699 100644
+index 9a4232d..592fea0 100644
 --- a/src/libstd/lib.rs
 +++ b/src/libstd/lib.rs
-@@ -395,8 +395,6 @@ pub use core::i16;
+@@ -392,8 +392,6 @@ pub use core::i16;
  pub use core::i32;
  #[stable(feature = "rust1", since = "1.0.0")]
  pub use core::i64;
@@ -1148,7 +1147,7 @@ index 3c358dc..2dd5699 100644
  #[stable(feature = "rust1", since = "1.0.0")]
  pub use core::usize;
  #[stable(feature = "rust1", since = "1.0.0")]
-@@ -429,8 +427,6 @@ pub use alloc_crate::string;
+@@ -426,8 +424,6 @@ pub use alloc_crate::string;
  pub use alloc_crate::vec;
  #[stable(feature = "rust1", since = "1.0.0")]
  pub use core::char;
@@ -1202,7 +1201,7 @@ index c80b9a5..e32a6b3 100644
  #[cfg(test)] use fmt;
  #[cfg(test)] use ops::{Add, Sub, Mul, Div, Rem};
 diff --git a/src/libstd/panic.rs b/src/libstd/panic.rs
-index d27f6ca..8ac2a44 100644
+index 862fdf0..171ebeb 100644
 --- a/src/libstd/panic.rs
 +++ b/src/libstd/panic.rs
 @@ -254,9 +254,6 @@ impl RefUnwindSafe for atomic::AtomicI32 {}
@@ -1226,5 +1225,4 @@ index d27f6ca..8ac2a44 100644
  #[cfg(target_has_atomic = "8")]
  #[stable(feature = "unwind_safe_atomic_refs", since = "1.14.0")]
 -- 
-2.11.0
-
+2.17.2 (Apple Git-113)

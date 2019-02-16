@@ -177,8 +177,7 @@ pub fn exec_linker(sess: &Session, cmd: &mut Command, out_filename: &Path, tmpdi
                 // ensure the line is interpreted as one whole argument.
                 for c in self.arg.chars() {
                     match c {
-                        '\\' |
-                        ' ' => write!(f, "\\{}", c)?,
+                        '\\' | ' ' => write!(f, "\\{}", c)?,
                         c => write!(f, "{}", c)?,
                     }
                 }
@@ -298,7 +297,7 @@ pub fn add_upstream_rust_crates(cmd: &mut dyn Linker,
     // compiler-builtins are always placed last to ensure that they're
     // linked correctly.
     // We must always link the `compiler_builtins` crate statically. Even if it
-    // was already "included" in a dylib (e.g. `libstd` when `-C prefer-dynamic`
+    // was already "included" in a dylib (e.g., `libstd` when `-C prefer-dynamic`
     // is used)
     if let Some(cnum) = compiler_builtins {
         add_static_crate(cmd, sess, codegen_results, tmpdir, crate_type, cnum);
@@ -345,7 +344,6 @@ pub fn add_upstream_rust_crates(cmd: &mut dyn Linker,
         for f in archive.src_files() {
             if f.ends_with(RLIB_BYTECODE_EXTENSION) || f == METADATA_FILENAME {
                 archive.remove_file(&f);
-                continue
             }
         }
 
@@ -479,7 +477,7 @@ pub fn add_upstream_rust_crates(cmd: &mut dyn Linker,
             // because a `dylib` can be reused as an intermediate artifact.
             //
             // Note, though, that we don't want to include the whole of a
-            // compiler-builtins crate (e.g. compiler-rt) because it'll get
+            // compiler-builtins crate (e.g., compiler-rt) because it'll get
             // repeatedly linked anyway.
             if crate_type == config::CrateType::Dylib &&
                 codegen_results.crate_info.compiler_builtins != Some(cnum) {
@@ -628,7 +626,7 @@ fn are_upstream_rust_objects_already_included(sess: &Session) -> bool {
         Lto::Thin => {
             // If we defer LTO to the linker, we haven't run LTO ourselves, so
             // any upstream object files have not been copied yet.
-            !sess.opts.debugging_opts.cross_lang_lto.enabled()
+            !sess.opts.cg.linker_plugin_lto.enabled()
         }
         Lto::No |
         Lto::ThinLocal => false,
