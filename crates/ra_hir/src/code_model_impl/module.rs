@@ -1,13 +1,12 @@
-use ra_db::FileId;
 use ra_syntax::{ast, SyntaxNode, TreeArc};
 
 use crate::{
     Module, ModuleSource, Problem,
     Name,
     module_tree::ModuleId,
-    impl_block::ImplId,
-    nameres::{lower::ImportId},
+    nameres::lower::ImportId,
     HirDatabase, PersistentHirDatabase,
+    HirFileId
 };
 
 impl Module {
@@ -24,22 +23,21 @@ impl Module {
     pub(crate) fn definition_source_impl(
         &self,
         db: &impl PersistentHirDatabase,
-    ) -> (FileId, ModuleSource) {
+    ) -> (HirFileId, ModuleSource) {
         let module_tree = db.module_tree(self.krate);
         let file_id = self.module_id.file_id(&module_tree);
         let decl_id = self.module_id.decl_id(&module_tree);
         let module_source = ModuleSource::new(db, file_id, decl_id);
-        let file_id = file_id.as_original_file();
         (file_id, module_source)
     }
 
     pub(crate) fn declaration_source_impl(
         &self,
         db: &impl HirDatabase,
-    ) -> Option<(FileId, TreeArc<ast::Module>)> {
+    ) -> Option<(HirFileId, TreeArc<ast::Module>)> {
         let module_tree = db.module_tree(self.krate);
         let link = self.module_id.parent_link(&module_tree)?;
-        let file_id = link.owner(&module_tree).file_id(&module_tree).as_original_file();
+        let file_id = link.owner(&module_tree).file_id(&module_tree);
         let src = link.source(&module_tree, db);
         Some((file_id, src))
     }
@@ -52,16 +50,6 @@ impl Module {
         let source_map = db.lower_module_source_map(*self);
         let (_, source) = self.definition_source(db);
         source_map.get(&source, import)
-    }
-
-    pub(crate) fn impl_source_impl(
-        &self,
-        db: &impl HirDatabase,
-        impl_id: ImplId,
-    ) -> TreeArc<ast::ImplBlock> {
-        let source_map = db.impls_in_module_source_map(*self);
-        let (_, source) = self.definition_source(db);
-        source_map.get(&source, impl_id)
     }
 
     pub(crate) fn crate_root_impl(&self, db: &impl PersistentHirDatabase) -> Module {

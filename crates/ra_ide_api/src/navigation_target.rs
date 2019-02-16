@@ -79,6 +79,7 @@ impl NavigationTarget {
 
     pub(crate) fn from_module(db: &RootDatabase, module: hir::Module) -> NavigationTarget {
         let (file_id, source) = module.definition_source(db);
+        let file_id = file_id.as_original_file();
         let name = module.name(db).map(|it| it.to_string().into()).unwrap_or_default();
         match source {
             ModuleSource::SourceFile(node) => {
@@ -93,6 +94,7 @@ impl NavigationTarget {
     pub(crate) fn from_module_to_decl(db: &RootDatabase, module: hir::Module) -> NavigationTarget {
         let name = module.name(db).map(|it| it.to_string().into()).unwrap_or_default();
         if let Some((file_id, source)) = module.declaration_source(db) {
+            let file_id = file_id.as_original_file();
             return NavigationTarget::from_syntax(file_id, name, None, source.syntax());
         }
         NavigationTarget::from_module(db, module)
@@ -151,12 +153,15 @@ impl NavigationTarget {
 
     pub(crate) fn from_impl_block(
         db: &RootDatabase,
-        module: hir::Module,
-        impl_block: &hir::ImplBlock,
+        impl_block: hir::ImplBlock,
     ) -> NavigationTarget {
-        let (file_id, _) = module.definition_source(db);
-        let node = module.impl_source(db, impl_block.id());
-        NavigationTarget::from_syntax(file_id, "impl".into(), None, node.syntax())
+        let (file_id, node) = impl_block.source(db);
+        NavigationTarget::from_syntax(
+            file_id.as_original_file(),
+            "impl".into(),
+            None,
+            node.syntax(),
+        )
     }
 
     #[cfg(test)]
