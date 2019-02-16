@@ -421,7 +421,8 @@ impl Ty {
                 (var.parent_enum(db).generic_params(db), segment)
             }
         };
-        // substs_from_path
+        let parent_param_count = def_generics.count_parent_params();
+        substs.extend((0..parent_param_count).map(|_| Ty::Unknown));
         if let Some(generic_args) = &segment.args_and_bindings {
             // if args are provided, it should be all of them, but we can't rely on that
             let param_count = def_generics.params.len();
@@ -436,9 +437,8 @@ impl Ty {
         }
         // add placeholders for args that were not provided
         // TODO: handle defaults
-        let supplied_params =
-            segment.args_and_bindings.as_ref().map(|ga| ga.args.len()).unwrap_or(0);
-        for _ in supplied_params..def_generics.params.len() {
+        let supplied_params = substs.len();
+        for _ in supplied_params..def_generics.count_params_including_parent() {
             substs.push(Ty::Unknown);
         }
         assert_eq!(substs.len(), def_generics.params.len());
@@ -666,7 +666,12 @@ fn type_for_fn(db: &impl HirDatabase, def: Function) -> Ty {
 }
 
 fn make_substs(generics: &GenericParams) -> Substs {
-    Substs(generics.params.iter().map(|_p| Ty::Unknown).collect::<Vec<_>>().into())
+    Substs(
+        (0..generics.count_params_including_parent())
+            .map(|_p| Ty::Unknown)
+            .collect::<Vec<_>>()
+            .into(),
+    )
 }
 
 fn type_for_struct(db: &impl HirDatabase, s: Struct) -> Ty {

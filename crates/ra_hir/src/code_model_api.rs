@@ -463,7 +463,7 @@ impl Function {
         self.id.source(db)
     }
 
-    pub fn module(&self, db: &impl HirDatabase) -> Module {
+    pub fn module(&self, db: &impl PersistentHirDatabase) -> Module {
         self.id.module(db)
     }
 
@@ -497,6 +497,12 @@ impl Function {
         db.generic_params((*self).into())
     }
 
+    /// The containing impl block, if this is a method.
+    pub fn impl_block(&self, db: &impl PersistentHirDatabase) -> Option<ImplBlock> {
+        let module_impls = db.impls_in_module(self.module(db));
+        ImplBlock::containing(module_impls, (*self).into())
+    }
+
     // TODO: move to a more general type for 'body-having' items
     /// Builds a resolver for code inside this item.
     pub fn resolver(&self, db: &impl HirDatabase) -> Resolver {
@@ -527,6 +533,16 @@ impl Const {
     pub fn source(&self, db: &impl PersistentHirDatabase) -> (HirFileId, TreeArc<ast::ConstDef>) {
         self.id.source(db)
     }
+
+    pub fn module(&self, db: &impl PersistentHirDatabase) -> Module {
+        self.id.module(db)
+    }
+
+    /// The containing impl block, if this is a method.
+    pub fn impl_block(&self, db: &impl PersistentHirDatabase) -> Option<ImplBlock> {
+        let module_impls = db.impls_in_module(self.module(db));
+        ImplBlock::containing(module_impls, (*self).into())
+    }
 }
 
 impl Docs for Const {
@@ -544,6 +560,10 @@ impl Static {
     pub fn source(&self, db: &impl PersistentHirDatabase) -> (HirFileId, TreeArc<ast::StaticDef>) {
         self.id.source(db)
     }
+
+    pub fn module(&self, db: &impl PersistentHirDatabase) -> Module {
+        self.id.module(db)
+    }
 }
 
 impl Docs for Static {
@@ -560,6 +580,10 @@ pub struct Trait {
 impl Trait {
     pub fn source(&self, db: &impl PersistentHirDatabase) -> (HirFileId, TreeArc<ast::TraitDef>) {
         self.id.source(db)
+    }
+
+    pub fn module(&self, db: &impl PersistentHirDatabase) -> Module {
+        self.id.module(db)
     }
 
     pub fn generic_params(&self, db: &impl PersistentHirDatabase) -> Arc<GenericParams> {
@@ -585,6 +609,16 @@ impl Type {
 
     pub fn generic_params(&self, db: &impl PersistentHirDatabase) -> Arc<GenericParams> {
         db.generic_params((*self).into())
+    }
+
+    pub fn module(&self, db: &impl PersistentHirDatabase) -> Module {
+        self.id.module(db)
+    }
+
+    /// The containing impl block, if this is a method.
+    pub fn impl_block(&self, db: &impl PersistentHirDatabase) -> Option<ImplBlock> {
+        let module_impls = db.impls_in_module(self.module(db));
+        ImplBlock::containing(module_impls, (*self).into())
     }
 }
 

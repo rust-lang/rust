@@ -1,25 +1,25 @@
 ---
-created: "2019-02-16T19:27:11.573533475Z"
+created: "2019-02-16T20:53:59.657979128Z"
 creator: insta@0.6.2
 source: crates/ra_hir/src/ty/tests.rs
 expression: "&result"
 ---
-[74; 78) 'self': A<[unknown], [unknown]>
-[85; 107) '{     ...     }': [unknown]
-[95; 99) 'self': A<[unknown], [unknown]>
-[95; 101) 'self.x': [unknown]
-[117; 121) 'self': A<[unknown], [unknown]>
-[128; 150) '{     ...     }': [unknown]
-[138; 142) 'self': A<[unknown], [unknown]>
-[138; 144) 'self.y': [unknown]
-[163; 167) 'self': A<[unknown], [unknown]>
+[74; 78) 'self': A<X, Y>
+[85; 107) '{     ...     }': X
+[95; 99) 'self': A<X, Y>
+[95; 101) 'self.x': X
+[117; 121) 'self': A<X, Y>
+[128; 150) '{     ...     }': Y
+[138; 142) 'self': A<X, Y>
+[138; 144) 'self.y': Y
+[163; 167) 'self': A<X, Y>
 [169; 170) 't': T
-[188; 223) '{     ...     }': ([unknown], [unknown], T)
-[198; 217) '(self.....y, t)': ([unknown], [unknown], T)
-[199; 203) 'self': A<[unknown], [unknown]>
-[199; 205) 'self.x': [unknown]
-[207; 211) 'self': A<[unknown], [unknown]>
-[207; 213) 'self.y': [unknown]
+[188; 223) '{     ...     }': (X, Y, T)
+[198; 217) '(self.....y, t)': (X, Y, T)
+[199; 203) 'self': A<X, Y>
+[199; 205) 'self.x': X
+[207; 211) 'self': A<X, Y>
+[207; 213) 'self.y': Y
 [215; 216) 't': T
 [245; 342) '{     ...(1); }': ()
 [255; 256) 'a': A<u64, i64>
@@ -27,13 +27,13 @@ expression: "&result"
 [266; 270) '1u64': u64
 [275; 279) '1i64': i64
 [287; 288) 'a': A<u64, i64>
-[287; 292) 'a.x()': [unknown]
+[287; 292) 'a.x()': u64
 [298; 299) 'a': A<u64, i64>
-[298; 303) 'a.y()': [unknown]
+[298; 303) 'a.y()': i64
 [309; 310) 'a': A<u64, i64>
-[309; 319) 'a.z(1i128)': ([unknown], [unknown], i128)
+[309; 319) 'a.z(1i128)': (u64, i64, i128)
 [313; 318) '1i128': i128
 [325; 326) 'a': A<u64, i64>
-[325; 339) 'a.z::<u128>(1)': ([unknown], [unknown], i32)
+[325; 339) 'a.z::<u128>(1)': (u64, i64, i32)
 [337; 338) '1': i32
 

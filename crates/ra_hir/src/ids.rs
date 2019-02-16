@@ -9,7 +9,6 @@ use ra_syntax::{TreeArc, SyntaxNode, SourceFile, AstNode, SyntaxNodePtr, ast};
 use ra_arena::{Arena, RawId, ArenaId, impl_arena_id};
 
 use crate::{
-    HirDatabase,
     Module,
     PersistentHirDatabase,
 };
@@ -215,7 +214,7 @@ pub(crate) trait AstItemDef<N: AstNode>: ArenaId + Clone {
             N::cast(&syntax).unwrap_or_else(|| panic!("invalid ItemLoc: {:?}", loc.raw)).to_owned();
         (loc.raw.file_id, ast)
     }
-    fn module(self, db: &impl HirDatabase) -> Module {
+    fn module(self, db: &impl PersistentHirDatabase) -> Module {
         let int = Self::interner(db.as_ref());
         let loc = int.id2loc(self);
         loc.module
