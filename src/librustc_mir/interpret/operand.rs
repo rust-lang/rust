@@ -545,7 +545,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> 
             Move(ref place) =>
                 self.eval_place_to_op(place, layout)?,
 
-            Constant(ref constant) => self.lazy_const_to_op(*constant.literal, layout)?,
+            Constant(ref constant) => self.eval_lazy_const_to_op(*constant.literal, layout)?,
         };
         trace!("{:?}: {:?}", mir_op, *op);
         Ok(op)
@@ -562,7 +562,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> 
     }
 
     // Used when Miri runs into a constant, and by CTFE.
-    pub fn lazy_const_to_op(
+    pub fn eval_lazy_const_to_op(
         &self,
         val: ty::LazyConst<'tcx>,
         layout: Option<TyLayout<'tcx>>,
