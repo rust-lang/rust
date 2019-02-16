@@ -76,7 +76,7 @@ pub fn op_to_const<'tcx>(
             _ => false,
         };
     let normalized_op = if normalize {
-        ecx.try_read_immediate(op)?
+        Ok(*ecx.read_immediate(op).expect("normalization works on validated constants"))
     } else {
         match *op {
             Operand::Indirect(mplace) => Err(mplace),
