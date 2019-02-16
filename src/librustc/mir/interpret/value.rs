@@ -32,6 +32,7 @@ pub enum ConstValue<'tcx> {
     Slice(Scalar, u64),
 
     /// An allocation together with a pointer into the allocation.
+    /// Invariant: the pointer's `AllocId` resolves to the allocation.
     ByRef(Pointer, &'tcx Allocation),
 }
 
