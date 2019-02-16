@@ -141,7 +141,9 @@ pub fn codegen_intrinsic_call<'a, 'tcx: 'a>(
             }
         };
         discriminant_value, (c val) {
-            let discr = crate::base::trans_get_discriminant(fx, val, ret.layout());
+            let pointee_layout = fx.layout_of(val.layout().ty.builtin_deref(true).unwrap().ty);
+            let place = CPlace::Addr(val.load_scalar(fx), None, pointee_layout);
+            let discr = crate::base::trans_get_discriminant(fx, place, ret.layout());
             ret.write_cvalue(fx, discr);
         };
         size_of, <T> () {

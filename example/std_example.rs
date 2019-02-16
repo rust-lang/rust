@@ -15,4 +15,12 @@ fn main() {
 
     static ONCE: std::sync::Once = std::sync::ONCE_INIT;
     ONCE.call_once(|| {});
+
+    LoopState::Continue(()) == LoopState::Break(());
+}
+
+#[derive(PartialEq)]
+enum LoopState {
+    Continue(()),
+    Break(())
 }

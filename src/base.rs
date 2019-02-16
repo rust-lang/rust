@@ -570,7 +570,9 @@ fn trans_stmt<'a, 'tcx: 'a>(
                             lval.write_cvalue(fx, CValue::ByVal(res, dest_layout));
                         }
                         (ty::Adt(adt_def, _substs), ty::Uint(_)) | (ty::Adt(adt_def, _substs), ty::Int(_)) if adt_def.is_enum() => {
-                            let discr = trans_get_discriminant(fx, operand, fx.layout_of(to_ty));
+                            // FIXME avoid forcing to stack
+                            let place = CPlace::Addr(operand.force_stack(fx), None, operand.layout());
+                            let discr = trans_get_discriminant(fx, place, fx.layout_of(to_ty));
                             lval.write_cvalue(fx, discr);
                         }
                         _ => unimpl!("rval misc {:?} {:?}", from_ty, to_ty),
@@ -584,7 +586,7 @@ fn trans_stmt<'a, 'tcx: 'a>(
                     operand.unsize_value(fx, lval);
                 }
                 Rvalue::Discriminant(place) => {
-                    let place = trans_place(fx, place).to_cvalue(fx);
+                    let place = trans_place(fx, place);
                     let discr = trans_get_discriminant(fx, place, dest_layout);
                     lval.write_cvalue(fx, discr);
                 }
@@ -680,10 +682,10 @@ fn codegen_array_len<'a, 'tcx: 'a>(
 
 pub fn trans_get_discriminant<'a, 'tcx: 'a>(
     fx: &mut FunctionCx<'a, 'tcx, impl Backend>,
-    value: CValue<'tcx>,
+    place: CPlace<'tcx>,
     dest_layout: TyLayout<'tcx>,
 ) -> CValue<'tcx> {
-    let layout = value.layout();
+    let layout = place.layout();
 
     if layout.abi == layout::Abi::Uninhabited {
         trap_unreachable(&mut fx.bcx);
@@ -701,7 +703,7 @@ pub fn trans_get_discriminant<'a, 'tcx: 'a>(
         layout::Variants::Tagged { .. } | layout::Variants::NicheFilling { .. } => {}
     }
 
-    let discr = value.value_field(fx, mir::Field::new(0));
+    let discr = place.place_field(fx, mir::Field::new(0)).to_cvalue(fx);
     let discr_ty = discr.layout().ty;
     let lldiscr = discr.load_scalar(fx);
     match layout.variants {
