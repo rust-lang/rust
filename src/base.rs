@@ -482,6 +482,9 @@ fn trans_stmt<'a, 'tcx: 'a>(
                         (ty::Uint(_), ty::RawPtr(..)) if from_ty.sty == fx.tcx.types.usize.sty => {
                             lval.write_cvalue(fx, operand.unchecked_cast_to(dest_layout));
                         }
+                        (ty::Int(_), ty::RawPtr(..)) if from_ty.sty == fx.tcx.types.isize.sty => {
+                            lval.write_cvalue(fx, operand.unchecked_cast_to(dest_layout));
+                        }
                         (ty::Char, ty::Uint(_))
                         | (ty::Uint(_), ty::Char)
                         | (ty::Uint(_), ty::Int(_))
