@@ -80,12 +80,15 @@ impl<'a> Sugg<'a> {
         })
     }
 
+    /// Same as `hir`, but will use the pre expansion span if the `expr` was in a macro.
     pub fn hir_with_macro_callsite(cx: &LateContext<'_, '_>, expr: &hir::Expr, default: &'a str) -> Self {
         let snippet = snippet_with_macro_callsite(cx, expr.span, default);
 
         Self::hir_from_snippet(expr, snippet)
     }
 
+    /// Generate a suggestion for an expression with the given snippet. This is used by the `hir_*`
+    /// function variants of `Sugg`, since these use different snippet functions.
     fn hir_from_snippet(expr: &hir::Expr, snippet: Cow<'a, str>) -> Self {
         match expr.node {
             hir::ExprKind::AddrOf(..)
