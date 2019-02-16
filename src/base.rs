@@ -518,6 +518,18 @@ fn trans_stmt<'a, 'tcx: 'a>(
                             };
                             lval.write_cvalue(fx, CValue::ByVal(res, dest_layout));
                         }
+                        (ty::Float(_), ty::Int(_)) => {
+                            let from = operand.load_scalar(fx);
+                            let i_type = fx.clif_type(to_ty).unwrap();
+                            let res = fx.bcx.ins().fcvt_to_sint_sat(i_type, from);
+                            lval.write_cvalue(fx, CValue::ByVal(res, dest_layout));
+                        }
+                        (ty::Float(_), ty::Uint(_)) => {
+                            let from = operand.load_scalar(fx);
+                            let i_type = fx.clif_type(to_ty).unwrap();
+                            let res = fx.bcx.ins().fcvt_to_uint_sat(i_type, from);
+                            lval.write_cvalue(fx, CValue::ByVal(res, dest_layout));
+                        }
                         (ty::Int(_), ty::Float(_)) => {
                             let from_ty = fx.clif_type(from_ty).unwrap();
                             let from = operand.load_scalar(fx);
