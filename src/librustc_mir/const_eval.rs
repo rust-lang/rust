@@ -476,7 +476,7 @@ pub fn const_field<'a, 'tcx>(
     let ecx = mk_eval_cx(tcx, DUMMY_SP, param_env);
     let result = (|| {
         // get the operand again
-        let op = ecx.lazy_const_to_op(ty::LazyConst::Evaluated(value), value.ty)?;
+        let op = ecx.const_to_op(value, None)?;
         // downcast
         let down = match variant {
             None => op,
@@ -502,7 +502,7 @@ pub fn const_variant_index<'a, 'tcx>(
 ) -> EvalResult<'tcx, VariantIdx> {
     trace!("const_variant_index: {:?}", val);
     let ecx = mk_eval_cx(tcx, DUMMY_SP, param_env);
-    let op = ecx.lazy_const_to_op(ty::LazyConst::Evaluated(val), val.ty)?;
+    let op = ecx.const_to_op(val, None)?;
     Ok(ecx.read_discriminant(op)?.1)
 }
 
