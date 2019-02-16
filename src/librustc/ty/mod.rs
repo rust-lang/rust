@@ -43,7 +43,7 @@ use syntax::ast::{self, Name, Ident, NodeId};
 use syntax::attr;
 use syntax::ext::hygiene::Mark;
 use syntax::symbol::{keywords, Symbol, LocalInternedString, InternedString};
-use syntax_pos::{DUMMY_SP, Span};
+use syntax_pos::Span;
 
 use smallvec;
 use rustc_data_structures::indexed_vec::{Idx, IndexVec};
@@ -2379,20 +2379,7 @@ impl<'a, 'gcx, 'tcx> AdtDef {
     /// Due to normalization being eager, this applies even if
     /// the associated type is behind a pointer (e.g., issue #31299).
     pub fn sized_constraint(&self, tcx: TyCtxt<'a, 'gcx, 'tcx>) -> &'tcx [Ty<'tcx>] {
-        match tcx.try_adt_sized_constraint(DUMMY_SP, self.did) {
-            Ok(tys) => tys,
-            Err(mut bug) => {
-                debug!("adt_sized_constraint: {:?} is recursive", self);
-                // This should be reported as an error by `check_representable`.
-                //
-                // Consider the type as Sized in the meanwhile to avoid
-                // further errors. Delay our `bug` diagnostic here to get
-                // emitted later as well in case we accidentally otherwise don't
-                // emit an error.
-                bug.delay_as_bug();
-                tcx.intern_type_list(&[tcx.types.err])
-            }
-        }
+        tcx.adt_sized_constraint(self.did).0
     }
 
     fn sized_constraint_for_ty(&self,
@@ -3083,6 +3070,9 @@ fn associated_item<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: DefId) -> Asso
               parent_item.node)
 }
 
+#[derive(Clone)]
+pub struct AdtSizedConstraint<'tcx>(pub &'tcx [Ty<'tcx>]);
+
 /// Calculates the `Sized` constraint.
 ///
 /// In fact, there are only a few options for the types in the constraint:
@@ -3094,7 +3084,7 @@ fn associated_item<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: DefId) -> Asso
 ///       check should catch this case.
 fn adt_sized_constraint<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                                   def_id: DefId)
-                                  -> &'tcx [Ty<'tcx>] {
+                                  -> AdtSizedConstraint<'tcx> {
     let def = tcx.adt_def(def_id);
 
     let result = tcx.mk_type_list(def.variants.iter().flat_map(|v| {
@@ -3105,7 +3095,7 @@ fn adt_sized_constraint<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
 
     debug!("adt_sized_constraint: {:?} => {:?}", def, result);
 
-    result
+    AdtSizedConstraint(result)
 }
 
 fn associated_item_def_ids<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,

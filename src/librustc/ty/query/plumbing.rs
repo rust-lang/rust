@@ -19,6 +19,8 @@ use errors::FatalError;
 use rustc_data_structures::fx::{FxHashMap};
 use rustc_data_structures::sync::{Lrc, Lock};
 use rustc_data_structures::thin_vec::ThinVec;
+#[cfg(not(parallel_compiler))]
+use rustc_data_structures::cold_path;
 use std::mem;
 use std::ptr;
 use std::collections::hash_map::Entry;
@@ -114,7 +116,7 @@ impl<'a, 'tcx, Q: QueryDescription<'tcx>> JobOwner<'a, 'tcx, Q> {
             if let Some(value) = lock.results.get(key) {
                 profq_msg!(tcx, ProfileQueriesMsg::CacheHit);
                 tcx.sess.profiler(|p| p.record_query_hit(Q::NAME, Q::CATEGORY));
-                let result = Ok((value.value.clone(), value.index));
+                let result = (value.value.clone(), value.index);
                 #[cfg(debug_assertions)]
                 {
                     lock.cache_hits += 1;
@@ -160,9 +162,11 @@ impl<'a, 'tcx, Q: QueryDescription<'tcx>> JobOwner<'a, 'tcx, Q> {
             mem::drop(lock);
 
             // If we are single-threaded we know that we have cycle error,
-            // so we just turn the errror
+            // so we just return the error
             #[cfg(not(parallel_compiler))]
-            return job.cycle_error(tcx, span);
+            return TryGetJob::Cycle(cold_path(|| {
+                Q::handle_cycle_error(tcx, job.find_cycle_in_stack(tcx, span))
+            }));
 
             // With parallel queries we might just have to wait on some other
             // thread
@@ -172,7 +176,7 @@ impl<'a, 'tcx, Q: QueryDescription<'tcx>> JobOwner<'a, 'tcx, Q> {
                 tcx.sess.profiler(|p| p.query_blocked_end(Q::NAME, Q::CATEGORY));
 
                 if let Err(cycle) = result {
-                    return TryGetJob::JobCompleted(Err(cycle));
+                    return TryGetJob::Cycle(Q::handle_cycle_error(tcx, cycle));
                 }
             }
         }
@@ -238,7 +242,10 @@ pub(super) enum TryGetJob<'a, 'tcx: 'a, D: QueryDescription<'tcx> + 'a> {
     /// The query was already completed.
     /// Returns the result of the query and its dep node index
     /// if it succeeded or a cycle error if it failed
-    JobCompleted(Result<(D::Value, DepNodeIndex), Box<CycleError<'tcx>>>),
+    JobCompleted((D::Value, DepNodeIndex)),
+
+    /// Trying to execute the query resulted in a cycle.
+    Cycle(D::Value),
 }
 
 impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
@@ -279,8 +286,8 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
     #[cold]
     pub(super) fn report_cycle(
         self,
-        box CycleError { usage, cycle: stack }: Box<CycleError<'gcx>>
-    ) -> Box<DiagnosticBuilder<'a>>
+        CycleError { usage, cycle: stack }: CycleError<'gcx>
+    ) -> DiagnosticBuilder<'a>
     {
         assert!(!stack.is_empty());
 
@@ -314,7 +321,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
                               &format!("cycle used when {}", query.describe(self)));
             }
 
-            return Box::new(err)
+            err
         })
     }
 
@@ -346,13 +353,12 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
     }
 
     #[inline(never)]
-    fn try_get_with<Q: QueryDescription<'gcx>>(
+    pub(super) fn get_query<Q: QueryDescription<'gcx>>(
         self,
         span: Span,
         key: Q::Key)
-    -> Result<Q::Value, Box<CycleError<'gcx>>>
-    {
-        debug!("ty::queries::{}::try_get_with(key={:?}, span={:?})",
+    -> Q::Value {
+        debug!("ty::query::get_query<{}>(key={:?}, span={:?})",
                Q::NAME,
                key,
                span);
@@ -366,11 +372,10 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
 
         let job = match JobOwner::try_get(self, span, &key) {
             TryGetJob::NotYetStarted(job) => job,
-            TryGetJob::JobCompleted(result) => {
-                return result.map(|(v, index)| {
-                    self.dep_graph.read_index(index);
-                    v
-                })
+            TryGetJob::Cycle(result) => return result,
+            TryGetJob::JobCompleted((v, index)) => {
+                self.dep_graph.read_index(index);
+                return v
             }
         };
 
@@ -378,7 +383,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
         // expensive for some DepKinds.
         if !self.dep_graph.is_fully_enabled() {
             let null_dep_node = DepNode::new_no_params(crate::dep_graph::DepKind::Null);
-            return Ok(self.force_query_with_job::<Q>(key, job, null_dep_node).0);
+            return self.force_query_with_job::<Q>(key, job, null_dep_node).0;
         }
 
         let dep_node = Q::to_dep_node(self, &key);
@@ -407,7 +412,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
 
             job.complete(&result, dep_node_index);
 
-            return Ok(result);
+            return result;
         }
 
         if !dep_node.kind.is_input() {
@@ -427,13 +432,13 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
             });
             if let Some((result, dep_node_index)) = loaded {
                 job.complete(&result, dep_node_index);
-                return Ok(result);
+                return result;
             }
         }
 
         let (result, dep_node_index) = self.force_query_with_job::<Q>(key, job, dep_node);
         self.dep_graph.read_index(dep_node_index);
-        Ok(result)
+        result
     }
 
     fn load_from_disk_and_cache_in_memory<Q: QueryDescription<'gcx>>(
@@ -631,57 +636,28 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
         // Ensure that only one of them runs the query
         let job = match JobOwner::try_get(self, span, &key) {
             TryGetJob::NotYetStarted(job) => job,
-            TryGetJob::JobCompleted(result) => {
-                if let Err(e) = result {
-                    self.report_cycle(e).emit();
-                }
+            TryGetJob::Cycle(_) |
+            TryGetJob::JobCompleted(_) => {
                 return
             }
         };
         self.force_query_with_job::<Q>(key, job, dep_node);
     }
-
-    pub(super) fn try_get_query<Q: QueryDescription<'gcx>>(
-        self,
-        span: Span,
-        key: Q::Key,
-    ) -> Result<Q::Value, Box<DiagnosticBuilder<'a>>> {
-        match self.try_get_with::<Q>(span, key) {
-            Ok(e) => Ok(e),
-            Err(e) => Err(self.report_cycle(e)),
-        }
-    }
-
-    // FIXME: Try uninlining this
-    #[inline(always)]
-    pub(super) fn get_query<Q: QueryDescription<'gcx>>(
-        self,
-        span: Span,
-        key: Q::Key,
-    ) -> Q::Value {
-        self.try_get_with::<Q>(span, key).unwrap_or_else(|e| {
-            self.emit_error::<Q>(e)
-        })
-    }
-
-    #[inline(never)]
-    #[cold]
-    fn emit_error<Q: QueryDescription<'gcx>>(
-        self,
-        e: Box<CycleError<'gcx>>,
-    ) -> Q::Value {
-        self.report_cycle(e).emit();
-        Q::handle_cycle_error(self)
-    }
 }
 
 macro_rules! handle_cycle_error {
-    ([][$this: expr]) => {{
-        Value::from_cycle_error($this.global_tcx())
+    ([][$tcx: expr, $error:expr]) => {{
+        $tcx.report_cycle($error).emit();
+        Value::from_cycle_error($tcx.global_tcx())
     }};
-    ([fatal_cycle$(, $modifiers:ident)*][$this:expr]) => {{
-        $this.sess.abort_if_errors();
-        unreachable!();
+    ([fatal_cycle$(, $modifiers:ident)*][$tcx:expr, $error:expr]) => {{
+        $tcx.report_cycle($error).emit();
+        $tcx.sess.abort_if_errors();
+        unreachable!()
+    }};
+    ([cycle_delay_bug$(, $modifiers:ident)*][$tcx:expr, $error:expr]) => {{
+        $tcx.report_cycle($error).delay_as_bug();
+        Value::from_cycle_error($tcx.global_tcx())
     }};
     ([$other:ident$(, $modifiers:ident)*][$($args:tt)*]) => {
         handle_cycle_error!([$($modifiers),*][$($args)*])
@@ -995,8 +971,11 @@ macro_rules! define_queries_inner {
                 hash_result!([$($modifiers)*][_hcx, _result])
             }
 
-            fn handle_cycle_error(tcx: TyCtxt<'_, 'tcx, '_>) -> Self::Value {
-                handle_cycle_error!([$($modifiers)*][tcx])
+            fn handle_cycle_error(
+                tcx: TyCtxt<'_, 'tcx, '_>,
+                error: CycleError<'tcx>
+            ) -> Self::Value {
+                handle_cycle_error!([$($modifiers)*][tcx, error])
             }
         })*
 

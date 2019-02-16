@@ -34,15 +34,15 @@ use crate::traits::query::normalize::NormalizationResult;
 use crate::traits::query::outlives_bounds::OutlivesBound;
 use crate::traits::specialization_graph;
 use crate::traits::Clauses;
-use crate::ty::{self, CrateInherentImpls, ParamEnvAnd, Ty, TyCtxt};
+use crate::ty::{self, CrateInherentImpls, ParamEnvAnd, Ty, TyCtxt, AdtSizedConstraint};
 use crate::ty::steal::Steal;
 use crate::ty::subst::Substs;
+use crate::ty::util::NeedsDrop;
 use crate::util::nodemap::{DefIdSet, DefIdMap, ItemLocalSet};
 use crate::util::common::{ErrorReported};
 use crate::util::profiling::ProfileCategory::*;
 use crate::session::Session;
 
-use errors::DiagnosticBuilder;
 use rustc_data_structures::svh::Svh;
 use rustc_data_structures::bit_set::BitSet;
 use rustc_data_structures::indexed_vec::IndexVec;
@@ -154,7 +154,16 @@ define_queries! { <'tcx>
         [] fn trait_def: TraitDefOfItem(DefId) -> &'tcx ty::TraitDef,
         [] fn adt_def: AdtDefOfItem(DefId) -> &'tcx ty::AdtDef,
         [] fn adt_destructor: AdtDestructor(DefId) -> Option<ty::Destructor>,
-        [] fn adt_sized_constraint: SizedConstraint(DefId) -> &'tcx [Ty<'tcx>],
+
+        // The cycle error here should be reported as an error by `check_representable`.
+        // We consider the type as Sized in the meanwhile to avoid
+        // further errors (done in impl Value for AdtSizedConstraint).
+        // Use `cycle_delay_bug` to delay the cycle error here to be emitted later
+        // in case we accidentally otherwise don't emit an error.
+        [cycle_delay_bug] fn adt_sized_constraint: SizedConstraint(
+            DefId
+        ) -> AdtSizedConstraint<'tcx>,
+
         [] fn adt_dtorck_constraint: DtorckConstraint(
             DefId
         ) -> Result<DtorckConstraint<'tcx>, NoSolution>,
@@ -411,7 +420,16 @@ define_queries! { <'tcx>
         [] fn is_copy_raw: is_copy_dep_node(ty::ParamEnvAnd<'tcx, Ty<'tcx>>) -> bool,
         [] fn is_sized_raw: is_sized_dep_node(ty::ParamEnvAnd<'tcx, Ty<'tcx>>) -> bool,
         [] fn is_freeze_raw: is_freeze_dep_node(ty::ParamEnvAnd<'tcx, Ty<'tcx>>) -> bool,
-        [] fn needs_drop_raw: needs_drop_dep_node(ty::ParamEnvAnd<'tcx, Ty<'tcx>>) -> bool,
+
+        // The cycle error here should be reported as an error by `check_representable`.
+        // We consider the type as not needing drop in the meanwhile to avoid
+        // further errors (done in impl Value for NeedsDrop).
+        // Use `cycle_delay_bug` to delay the cycle error here to be emitted later
+        // in case we accidentally otherwise don't emit an error.
+        [cycle_delay_bug] fn needs_drop_raw: needs_drop_dep_node(
+            ty::ParamEnvAnd<'tcx, Ty<'tcx>>
+        ) -> NeedsDrop,
+
         [] fn layout_raw: layout_dep_node(ty::ParamEnvAnd<'tcx, Ty<'tcx>>)
                                     -> Result<&'tcx ty::layout::LayoutDetails,
                                                 ty::layout::LayoutError<'tcx>>,
@@ -729,32 +747,6 @@ define_queries! { <'tcx>
         [] fn wasm_import_module_map: WasmImportModuleMap(CrateNum)
             -> Lrc<FxHashMap<DefId, String>>,
     },
-}
-
-// `try_get_query` can't be public because it uses the private query
-// implementation traits, so we provide access to it selectively.
-impl<'a, 'tcx, 'lcx> TyCtxt<'a, 'tcx, 'lcx> {
-    pub fn try_adt_sized_constraint(
-        self,
-        span: Span,
-        key: DefId,
-    ) -> Result<&'tcx [Ty<'tcx>], Box<DiagnosticBuilder<'a>>> {
-        self.try_get_query::<queries::adt_sized_constraint<'_>>(span, key)
-    }
-    pub fn try_needs_drop_raw(
-        self,
-        span: Span,
-        key: ty::ParamEnvAnd<'tcx, Ty<'tcx>>,
-    ) -> Result<bool, Box<DiagnosticBuilder<'a>>> {
-        self.try_get_query::<queries::needs_drop_raw<'_>>(span, key)
-    }
-    pub fn try_optimized_mir(
-        self,
-        span: Span,
-        key: DefId,
-    ) -> Result<&'tcx mir::Mir<'tcx>, Box<DiagnosticBuilder<'a>>> {
-        self.try_get_query::<queries::optimized_mir<'_>>(span, key)
-    }
 }
 
 //////////////////////////////////////////////////////////////////////

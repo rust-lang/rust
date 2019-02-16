@@ -1,4 +1,5 @@
-use crate::ty::{self, Ty, TyCtxt};
+use crate::ty::{self, Ty, TyCtxt, AdtSizedConstraint};
+use crate::ty::util::NeedsDrop;
 
 use syntax::symbol::Symbol;
 
@@ -31,3 +32,14 @@ impl<'tcx> Value<'tcx> for ty::SymbolName {
     }
 }
 
+impl<'tcx> Value<'tcx> for NeedsDrop {
+    fn from_cycle_error(_: TyCtxt<'_, 'tcx, 'tcx>) -> Self {
+        NeedsDrop(false)
+    }
+}
+
+impl<'tcx> Value<'tcx> for AdtSizedConstraint<'tcx> {
+    fn from_cycle_error(tcx: TyCtxt<'_, 'tcx, 'tcx>) -> Self {
+        AdtSizedConstraint(tcx.intern_type_list(&[tcx.types.err]))
+    }
+}
