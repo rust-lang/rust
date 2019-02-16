@@ -155,7 +155,7 @@ impl<'tcx> TraitEngine<'tcx> for FulfillmentContext<'tcx> {
 
         debug_assert!(!projection_ty.has_escaping_bound_vars());
 
-        // FIXME(#20304) -- cache
+        // FIXME(#20304): cache.
 
         let mut selcx = SelectionContext::new(infcx);
         let mut obligations = vec![];
@@ -176,7 +176,7 @@ impl<'tcx> TraitEngine<'tcx> for FulfillmentContext<'tcx> {
                                      infcx: &InferCtxt<'a, 'gcx, 'tcx>,
                                      obligation: PredicateObligation<'tcx>)
     {
-        // this helps to reduce duplicate errors, as well as making
+        // This helps to reduce duplicate errors, as well as making
         // debug output much nicer to read and so on.
         let obligation = infcx.resolve_type_vars_if_possible(&obligation);
 
@@ -311,7 +311,7 @@ impl<'a, 'b, 'gcx, 'tcx> ObligationProcessor for FulfillProcessor<'a, 'b, 'gcx, 
                         // of its type, and those types are resolved at
                         // the same time.
                         //
-                        // FIXME(#32286) logic seems false if no upvars
+                        // FIXME(#32286): logic seems wrong in case of no upvars.
                         pending_obligation.stalled_on =
                             trait_ref_type_vars(self.selcx, data.to_poly_trait_ref());
 

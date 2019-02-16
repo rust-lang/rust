@@ -178,49 +178,52 @@ pub enum ObligationCauseCode<'tcx> {
     /// Obligation incurred due to an object cast.
     ObjectCastObligation(/* Object type */ Ty<'tcx>),
 
-    // Various cases where expressions must be sized/copy/etc:
-    /// L = X implies that L is Sized
+    // Various cases where expressions must be `Sized`/`Copy`/etc.
+
+    /// `L = X` implies that `L` is `Sized`.
     AssignmentLhsSized,
-    /// (x1, .., xn) must be Sized
+    /// `(x1, .., xn)` must be `Sized`.
     TupleInitializerSized,
-    /// S { ... } must be Sized
+    /// `S { ... }` must be `Sized`.
     StructInitializerSized,
-    /// Type of each variable must be Sized
+    /// Type of each variable must be `Sized`.
     VariableType(ast::NodeId),
-    /// Argument type must be Sized
+    /// Argument type must be `Sized`.
     SizedArgumentType,
-    /// Return type must be Sized
+    /// Returns type must be `Sized`.
     SizedReturnType,
-    /// Yield type must be Sized
+    /// Yield type must be `Sized`.
     SizedYieldType,
-    /// [T,..n] --> T must be Copy
+    /// `[T,..n] --> T` must be `Copy`.
     RepeatVec,
 
-    /// Types of fields (other than the last, except for packed structs) in a struct must be sized.
+    /// Types of fields (other than the last, except for packed structs) in a struct must be
+    /// `Sized`.
     FieldSized { adt_kind: AdtKind, last: bool },
 
-    /// Constant expressions must be sized.
+    /// Constant expressions must be `Sized`.
     ConstSized,
 
-    /// static items must have `Sync` type
+    /// Static items must be `Sync`.
     SharedStatic,
 
     BuiltinDerivedObligation(DerivedObligationCause<'tcx>),
 
     ImplDerivedObligation(DerivedObligationCause<'tcx>),
 
-    /// error derived when matching traits/impls; see ObligationCause for more details
+    /// Error derived when matching traits/impls; see `ObligationCause` for more details.
     CompareImplMethodObligation {
         item_name: ast::Name,
         impl_item_def_id: DefId,
         trait_item_def_id: DefId,
     },
 
-    /// Checking that this expression can be assigned where it needs to be
-    // FIXME(eddyb) #11161 is the original Expr required?
+    /// Checking that this expression can be assigned where it needs to be.
+    //
+    // FIXME(eddyb): #11161 is the original `Expr` required?
     ExprAssignable,
 
-    /// Computing common supertype in the arms of a match expression
+    /// Computing common supertype in the arms of a match expression.
     MatchExpressionArm {
         arm_span: Span,
         source: hir::MatchSource,
@@ -228,41 +231,41 @@ pub enum ObligationCauseCode<'tcx> {
         last_ty: Ty<'tcx>,
     },
 
-    /// Computing common supertype in the pattern guard for the arms of a match expression
+    /// Computing common supertype in the pattern guard for the arms of a match expression.
     MatchExpressionArmPattern { span: Span, ty: Ty<'tcx> },
 
-    /// Computing common supertype in an if expression
+    /// Computing common supertype in an if expression.
     IfExpression {
         then: Span,
         outer: Option<Span>,
         semicolon: Option<Span>,
     },
 
-    /// Computing common supertype of an if expression with no else counter-part
+    /// Computing common supertype of an if expression with no else counter-part.
     IfExpressionWithNoElse,
 
-    /// `main` has wrong type
+    /// `main` has wrong type.
     MainFunctionType,
 
-    /// `start` has wrong type
+    /// `start` has wrong type.
     StartFunctionType,
 
-    /// intrinsic has wrong type
+    /// Intrinsic has wrong type.
     IntrinsicType,
 
-    /// method receiver
+    /// Method receiver.
     MethodReceiver,
 
-    /// `return` with no expression
+    /// `return` with no expression.
     ReturnNoExpression,
 
-    /// `return` with an expression
+    /// `return` with an expression.
     ReturnType(ast::NodeId),
 
-    /// Block implicit return
+    /// Block implicit return.
     BlockTailExpression(ast::NodeId),
 
-    /// #[feature(trivial_bounds)] is not enabled
+    /// `#[feature(trivial_bounds)]` is not enabled.
     TrivialBound,
 }
 
@@ -463,18 +466,19 @@ pub struct FulfillmentError<'tcx> {
 pub enum FulfillmentErrorCode<'tcx> {
     CodeSelectionError(SelectionError<'tcx>),
     CodeProjectionError(MismatchedProjectionTypes<'tcx>),
+    // Always comes from a `SubtypePredicate`.
     CodeSubtypeError(ExpectedFound<Ty<'tcx>>,
-                     TypeError<'tcx>), // always comes from a SubtypePredicate
+                     TypeError<'tcx>),
     CodeAmbiguity,
 }
 
 /// When performing resolution, it is typically the case that there
 /// can be one of three outcomes:
 ///
-/// - `Ok(Some(r))`: success occurred with result `r`
+/// - `Ok(Some(r))`: success occurred with result `r`.
 /// - `Ok(None)`: could not definitely determine anything, usually due
 ///   to inconclusive type inference.
-/// - `Err(e)`: error `e` occurred
+/// - `Err(e)`: error `e` occurred.
 pub type SelectionResult<'tcx, T> = Result<Option<T>, SelectionError<'tcx>>;
 
 /// Given the successful resolution of an obligation, the `Vtable`
@@ -672,14 +676,13 @@ pub fn type_known_to_meet_bound_modulo_regions<'a, 'gcx, 'tcx>(
         // this function's result remains infallible, we must confirm
         // that guess. While imperfect, I believe this is sound.
 
-        // The handling of regions in this area of the code is terrible,
+        // The handling of regions in this area of the code is terrible;
         // see issue #29149. We should be able to improve on this with
         // NLL.
         let mut fulfill_cx = FulfillmentContext::new_ignoring_regions();
 
-        // We can use a dummy node-id here because we won't pay any mind
-        // to region obligations that arise (there shouldn't really be any
-        // anyhow).
+        // We can use a dummy `NodeId` here because we won't pay any mind
+        // to region obligations that arise (there shouldn't really be any anyhow).
         let cause = ObligationCause::misc(span, hir::DUMMY_HIR_ID);
 
         fulfill_cx.register_bound(infcx, param_env, ty, def_id, cause);
@@ -722,17 +725,17 @@ fn do_normalize_predicates<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     );
     let span = cause.span;
     tcx.infer_ctxt().enter(|infcx| {
-        // FIXME. We should really... do something with these region
-        // obligations. But this call just continues the older
+        // FIXME(nmatsakis): we should really do something with these
+        // region obligations. But this call just continues the older
         // behavior (i.e., doesn't cause any new bugs), and it would
         // take some further refactoring to actually solve them. In
         // particular, we would have to handle implied bounds
         // properly, and that code is currently largely confined to
         // regionck (though I made some efforts to extract it
-        // out). -nmatsakis
+        // out).
         //
-        // @arielby: In any case, these obligations are checked
-        // by wfcheck anyway, so I'm not sure we have to check
+        // NOTE(arielby): in any case, these obligations are checked
+        // by wfcheck, so I'm not sure we have to check
         // them here too, and we will remove this function when
         // we move over to lazy normalization *anyway*.
         let fulfill_cx = FulfillmentContext::new_ignoring_regions();
@@ -783,15 +786,16 @@ fn do_normalize_predicates<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         match tcx.lift_to_global(&predicates) {
             Some(predicates) => Ok(predicates),
             None => {
-                // FIXME: shouldn't we, you know, actually report an error here? or an ICE?
+                // FIXME: shouldn't we actually report an error/ICE here?
                 Err(ErrorReported)
             }
         }
     })
 }
 
-// FIXME: this is gonna need to be removed ...
 /// Normalizes the parameter environment, reporting errors if they occur.
+//
+// FIXME: this is gonna need to be removed.
 pub fn normalize_param_env_or_error<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                                               region_context: DefId,
                                               unnormalized_env: ty::ParamEnv<'tcx>,
@@ -979,7 +983,9 @@ fn substitute_normalize_and_test_predicates<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx
 
 /// Given a trait `trait_ref`, iterates the vtable entries
 /// that come from `trait_ref`, including its supertraits.
-#[inline] // FIXME(#35870): avoid closures being unexported due to `impl Trait`.
+//
+// FIXME(#35870): avoid closures being unexported due to `impl Trait`.
+#[inline]
 fn vtable_methods<'a, 'tcx>(
     tcx: TyCtxt<'a, 'tcx, 'tcx>,
     trait_ref: ty::PolyTraitRef<'tcx>)
@@ -1017,15 +1023,15 @@ fn vtable_methods<'a, 'tcx>(
                     )
                 );
 
-                // the trait type may have higher-ranked lifetimes in it;
-                // so erase them if they appear, so that we get the type
-                // at some particular call site
+                // The trait type may have higher-ranked lifetimes in it.
+                // Erase them if they appear, so that we get the type at some particular
+                // call site.
                 let substs = tcx.normalize_erasing_late_bound_regions(
                     ty::ParamEnv::reveal_all(),
                     &substs
                 );
 
-                // It's possible that the method relies on where clauses that
+                // It's possible that the method relies on where-clauses that
                 // do not hold for this particular set of type parameters.
                 // Note that this method could then never be called, so we
                 // do not want to try and codegen it, in that case (see #23435).

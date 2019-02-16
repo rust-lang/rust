@@ -43,10 +43,10 @@ fn prepare_lto(cgcx: &CodegenContext<LlvmCodegenBackend>,
     -> Result<(Vec<CString>, Vec<(SerializedModule<ModuleBuffer>, CString)>), FatalError>
 {
     let export_threshold = match cgcx.lto {
-        // We're just doing LTO for our one crate
+        // We're just doing LTO for our one crate.
         Lto::ThinLocal => SymbolExportLevel::Rust,
 
-        // We're doing LTO for the entire crate graph
+        // We're doing LTO for the entire crate graph.
         Lto::Fat | Lto::Thin => {
             symbol_export::crates_export_threshold(&cgcx.crate_types)
         }
@@ -76,8 +76,8 @@ fn prepare_lto(cgcx: &CodegenContext<LlvmCodegenBackend>,
     // upstream dependencies, find the corresponding rlib and load the bitcode
     // from the archive.
     //
-    // We save off all the bytecode and LLVM module ids for later processing
-    // with either fat or thin LTO
+    // We save off all the bytecode and LLVM module IDs for later processing
+    // with either fat or thin LTO.
     let mut upstream_modules = Vec::new();
     if cgcx.lto != Lto::ThinLocal {
         if cgcx.opts.cg.prefer_dynamic {
@@ -88,7 +88,7 @@ fn prepare_lto(cgcx: &CodegenContext<LlvmCodegenBackend>,
             return Err(FatalError)
         }
 
-        // Make sure we actually can run LTO
+        // Make sure we can actually run LTO.
         for crate_type in cgcx.crate_types.iter() {
             if !crate_type_allows_lto(*crate_type) {
                 let e = diag_handler.fatal("lto can only be run for executables, cdylibs and \
@@ -155,7 +155,7 @@ pub(crate) fn run_fat(cgcx: &CodegenContext<LlvmCodegenBackend>,
 
 /// Performs thin LTO by performing necessary global analysis and returning two
 /// lists, one of the modules that need optimization and another for modules that
-/// can simply be copied over from the incr. comp. cache.
+/// can simply be copied over from the incrimental compilation cache.
 pub(crate) fn run_thin(cgcx: &CodegenContext<LlvmCodegenBackend>,
                        modules: Vec<(String, ThinBuffer)>,
                        cached_modules: Vec<(SerializedModule<ModuleBuffer>, WorkProduct)>,
@@ -361,7 +361,7 @@ impl Drop for Linker<'a> {
     }
 }
 
-/// Prepare "thin" LTO to get run on these modules.
+/// Prepares "thin" LTO to get run on these modules.
 ///
 /// The general structure of ThinLTO is quite different from the structure of
 /// "fat" LTO above. With "fat" LTO all LLVM modules in question are merged into
@@ -426,7 +426,7 @@ fn thin_lto(cgcx: &CodegenContext<LlvmCodegenBackend>,
             timeline.record(&name);
         }
 
-        // FIXME: All upstream crates are deserialized internally in the
+        // FIXME: all upstream crates are deserialized internally in the
         //        function below to extract their summary and modules. Note that
         //        unlike the loop above we *must* decode and/or read something
         //        here as these are all just serialized files on disk. An
@@ -545,8 +545,8 @@ pub(crate) fn run_pass_manager(cgcx: &CodegenContext<LlvmCodegenBackend>,
     // Now we have one massive module inside of llmod. Time to run the
     // LTO-specific optimization passes that LLVM provides.
     //
-    // This code is based off the code found in llvm's LTO code generator:
-    //      tools/lto/LTOCodeGenerator.cpp
+    // This code is based off the code found in LLVM's LTO code generator
+    // (see `tools/lto/LTOCodeGenerator.cpp`).
     debug!("running the pass manager");
     unsafe {
         let pm = llvm::LLVMCreatePassManager();
@@ -557,7 +557,7 @@ pub(crate) fn run_pass_manager(cgcx: &CodegenContext<LlvmCodegenBackend>,
             llvm::LLVMRustAddPass(pm, pass.unwrap());
         }
 
-        // When optimizing for LTO we don't actually pass in `-O0`, but we force
+        // When optimizing for LTO, we don't actually pass in `-O0`, but we force
         // it to always happen at least with `-O1`.
         //
         // With ThinLTO we mess around a lot with symbol visibility in a way

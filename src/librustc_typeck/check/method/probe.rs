@@ -281,8 +281,8 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
             self.tcx.method_autoderef_steps(param_env_and_self_ty)
         } else {
             self.infcx.probe(|_| {
-                // Mode::Path - the deref steps is "trivial". This turns
-                // our CanonicalQuery into a "trivial" QueryResponse. This
+                // `Mode::Path` -- the deref steps is "trivial". This turns
+                // our `CanonicalQuery` into a "trivial" `QueryResponse`. This
                 // is a bit inefficient, but I don't think that writing
                 // special handling for this "trivial case" is a good idea.
 
@@ -329,12 +329,12 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         // ambiguous.
         if let Some(bad_ty) = &steps.opt_bad_ty {
             if is_suggestion.0 {
-                // Ambiguity was encountered during a suggestion. Just keep going.
+                // Ambiguity was encountered during a suggestion; just keep going.
                 debug!("ProbeContext: encountered ambiguity in suggestion");
             } else if bad_ty.reached_raw_pointer && !self.tcx.features().arbitrary_self_types {
-                // this case used to be allowed by the compiler,
-                // so we do a future-compat lint here for the 2015 edition
-                // (see https://github.com/rust-lang/rust/issues/46906)
+                // Rhis case used to be allowed by the compiler,
+                // so we do a future-compat lint here for the 2015 edition.
+                // (See issue #46906.)
                 if self.tcx.sess.rust_2018() {
                     span_err!(self.tcx.sess, span, E0699,
                               "the type of this value must be known \
@@ -367,9 +367,8 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                self_ty,
                steps);
 
-
-        // this creates one big transaction so that all type variables etc
-        // that we create during the probe process are removed later
+        // This creates one big transaction so that all type variables, etc.,
+        // that we create during the probe process are removed later.
         self.probe(|_| {
             let mut probe_cx = ProbeContext::new(
                 self, span, mode, method_name, return_type, orig_values,
@@ -755,7 +754,7 @@ impl<'a, 'gcx, 'tcx> ProbeContext<'a, 'gcx, 'tcx> {
 
     fn assemble_inherent_candidates_from_param(&mut self,
                                                param_ty: ty::ParamTy) {
-        // FIXME -- Do we want to commit to this behavior for param bounds?
+        // FIXME: do we want to commit to this behavior for param bounds?
 
         let bounds = self.param_env
             .caller_bounds
@@ -1190,10 +1189,9 @@ impl<'a, 'gcx, 'tcx> ProbeContext<'a, 'gcx, 'tcx> {
             "a method with this name may be added to the standard library in the future",
         );
 
-        // FIXME: This should be a `span_suggestion` instead of `help`
-        // However `self.span` only
-        // highlights the method name, so we can't use it. Also consider reusing the code from
-        // `report_method_error()`.
+        // FIXME: this should be a `span_suggestion` instead of `help`.
+        // However, `self.span` only highlights the method name, so we can't use it.
+        // Also consider reusing the code from `report_method_error()`.
         diag.help(&format!(
             "call with fully qualified syntax `{}(...)` to keep using the current method",
             self.tcx.item_path_str(stable_pick.item.def_id),
@@ -1466,7 +1464,7 @@ impl<'a, 'gcx, 'tcx> ProbeContext<'a, 'gcx, 'tcx> {
                 ty::AssociatedKind::Method | ty::AssociatedKind::Const => true
             },
         }
-        // FIXME -- check for types that deref to `Self`,
+        // FIXME: check for types that deref to `Self`,
         // like `Rc<Self>` and so on.
         //
         // Note also that the current code will break if this type

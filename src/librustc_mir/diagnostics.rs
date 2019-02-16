@@ -573,7 +573,7 @@ const Y: i32 = A;
 ```
 "##,
 
-// FIXME(#57563) Change the language here when const fn stabilizes
+// FIXME(#57563): change the language here when const fn feature stabilizes.
 E0015: r##"
 The only functions that can be called in static or constant expressions are
 `const` functions, and struct/enum constructors. `const` functions are only
@@ -981,7 +981,7 @@ fn mutable() {
     foo(|| x = 2);
 }
 
-// Attempts to take a mutable reference to closed-over data.  Error message
+// Attempts to take a mutable reference to closed-over data. Error message
 // reads: `cannot borrow data mutably in a captured outer variable...`
 fn mut_addr() {
     let mut x = 0u32;

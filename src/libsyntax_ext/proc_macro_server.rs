@@ -303,7 +303,7 @@ pub struct Group {
 #[derive(Copy, Clone, PartialEq, Eq, Hash)]
 pub struct Punct {
     ch: char,
-    // NB. not using `Spacing` here because it doesn't implement `Hash`.
+    // N.B., not using `Spacing` here because it doesn't implement `Hash`.
     joint: bool,
     span: Span,
 }
@@ -356,7 +356,7 @@ impl Ident {
     }
 }
 
-// FIXME(eddyb) `Literal` should not expose internal `Debug` impls.
+// FIXME(eddyb): `Literal` should not expose internal `Debug` impls.
 #[derive(Clone, Debug)]
 pub struct Literal {
     lit: token::Lit,
@@ -538,7 +538,7 @@ impl server::Ident for Rustc<'_> {
 }
 
 impl server::Literal for Rustc<'_> {
-    // FIXME(eddyb) `Literal` should not expose internal `Debug` impls.
+    // FIXME(eddyb): `Literal` should not expose internal `Debug` impls.
     fn debug(&mut self, literal: &Self::Literal) -> String {
         format!("{:?}", literal)
     }

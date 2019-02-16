@@ -208,7 +208,7 @@ impl<'hir> Map<'hir> {
         }
     }
 
-    // FIXME(@ljedrz): replace the NodeId variant
+    // FIXME(ljedrz): replace the `NodeId` variant.
     pub fn read_by_hir_id(&self, hir_id: HirId) {
         let node_id = self.hir_to_node_id(hir_id);
         self.read(node_id);
@@ -230,7 +230,7 @@ impl<'hir> Map<'hir> {
         })
     }
 
-    // FIXME(@ljedrz): replace the NodeId variant
+    // FIXME(ljedrz): replace the `NodeId` variant.
     pub fn def_path_from_hir_id(&self, id: HirId) -> DefPath {
         self.def_path(self.local_def_id_from_hir_id(id))
     }
@@ -248,7 +248,7 @@ impl<'hir> Map<'hir> {
         })
     }
 
-    // FIXME(@ljedrz): replace the NodeId variant
+    // FIXME(ljedrz): replace the `NodeId` variant.
     #[inline]
     pub fn local_def_id_from_hir_id(&self, hir_id: HirId) -> DefId {
         let node_id = self.hir_to_node_id(hir_id);
@@ -258,7 +258,7 @@ impl<'hir> Map<'hir> {
         })
     }
 
-    // FIXME(@ljedrz): replace the NodeId variant
+    // FIXME(ljedrz): replace the `NodeId` variant.
     #[inline]
     pub fn opt_local_def_id_from_hir_id(&self, hir_id: HirId) -> Option<DefId> {
         let node_id = self.hir_to_node_id(hir_id);
@@ -275,7 +275,7 @@ impl<'hir> Map<'hir> {
         self.definitions.as_local_node_id(def_id)
     }
 
-    // FIXME(@ljedrz): replace the NodeId variant
+    // FIXME(ljedrz): replace the `NodeId` variant.
     #[inline]
     pub fn as_local_hir_id(&self, def_id: DefId) -> Option<HirId> {
         self.definitions.as_local_hir_id(def_id)
@@ -603,7 +603,7 @@ impl<'hir> Map<'hir> {
         // Read the module so we'll be re-executed if new items
         // appear immediately under in the module. If some new item appears
         // in some nested item in the module, we'll be re-executed due to reads
-        // in the expect_* calls the loops below
+        // in the `expect_*` calls the loops below.
         self.read(node_id);
 
         let module = &self.forest.krate.modules[&node_id];
@@ -621,21 +621,22 @@ impl<'hir> Map<'hir> {
         }
     }
 
-    /// Retrieve the Node corresponding to `id`, panicking if it cannot
+    /// Retrieves the `Node` corresponding to `id`, panicking if it cannot
     /// be found.
     pub fn get(&self, id: NodeId) -> Node<'hir> {
         // read recorded by `find`
         self.find(id).unwrap_or_else(|| bug!("couldn't find node id {} in the AST map", id))
     }
 
-    // FIXME(@ljedrz): replace the NodeId variant
+    // FIXME(ljedrz): replace the `NodeId` variant.
     pub fn get_by_hir_id(&self, id: HirId) -> Node<'hir> {
         let node_id = self.hir_to_node_id(id);
         self.get(node_id)
     }
 
     pub fn get_if_local(&self, id: DefId) -> Option<Node<'hir>> {
-        self.as_local_node_id(id).map(|id| self.get(id)) // read recorded by `get`
+        // Read is recorded by `get`.
+        self.as_local_node_id(id).map(|id| self.get(id))
     }
 
     pub fn get_generics(&self, id: DefId) -> Option<&'hir Generics> {
@@ -680,13 +681,13 @@ impl<'hir> Map<'hir> {
         result
     }
 
-    // FIXME(@ljedrz): replace the NodeId variant
+    // FIXME(ljedrz): replace the `NodeId` variant.
     pub fn find_by_hir_id(&self, hir_id: HirId) -> Option<Node<'hir>> {
         let node_id = self.hir_to_node_id(hir_id);
         self.find(node_id)
     }
 
-    /// Similar to `get_parent`; returns the parent node-id, or own `id` if there is
+    /// Similar to `get_parent`; returns the parent `NodeId`, or own `id` if there is
     /// no parent. Note that the parent may be `CRATE_NODE_ID`, which is not itself
     /// present in the map -- so passing the return value of get_parent_node to
     /// get may actually panic.
@@ -706,14 +707,14 @@ impl<'hir> Map<'hir> {
         self.find_entry(id).and_then(|x| x.parent_node()).unwrap_or(id)
     }
 
-    // FIXME(@ljedrz): replace the NodeId variant
+    // FIXME(ljedrz): replace the `NodeId` variant.
     pub fn get_parent_node_by_hir_id(&self, id: HirId) -> HirId {
         let node_id = self.hir_to_node_id(id);
         let parent_node_id = self.get_parent_node(node_id);
         self.node_to_hir_id(parent_node_id)
     }
 
-    /// Check if the node is an argument. An argument is a local variable whose
+    /// Checks if the node is an argument. An argument is a local variable whose
     /// immediate parent is an item or a closure.
     pub fn is_argument(&self, id: NodeId) -> bool {
         match self.find(id) {
@@ -837,7 +838,7 @@ impl<'hir> Map<'hir> {
         }
     }
 
-    // FIXME(@ljedrz): replace the NodeId variant
+    // FIXME(ljedrz): replace the `NodeId` variant.
     pub fn get_parent_item(&self, id: HirId) -> HirId {
         let node_id = self.hir_to_node_id(id);
         let parent_node_id = self.get_parent(node_id);
@@ -869,9 +870,10 @@ impl<'hir> Map<'hir> {
     }
 
     /// Returns the nearest enclosing scope. A scope is an item or block.
-    /// FIXME: it is not clear to me that all items qualify as scopes -- statics
-    /// and associated types probably shouldn't, for example. Behavior in this
-    /// regard should be expected to be highly unstable.
+    //
+    // FIXME: it is not clear to me that all items qualify as scopes -- statics
+    // and associated types probably shouldn't, for example. Behavior in this
+    // regard should be expected to be highly unstable.
     pub fn get_enclosing_scope(&self, id: NodeId) -> Option<NodeId> {
         self.walk_parent_nodes(id, |node| match *node {
             Node::Item(_) |
@@ -899,7 +901,8 @@ impl<'hir> Map<'hir> {
             if let Entry {
                 node: Node::Item(Item { node: ItemKind::ForeignMod(ref nm), .. }), .. } = entry
             {
-                self.read(id); // reveals some of the content of a node
+                // Reveals some of the content of a node.
+                self.read(id);
                 return nm.abi;
             }
         }
@@ -913,13 +916,14 @@ impl<'hir> Map<'hir> {
     }
 
     pub fn expect_item(&self, id: NodeId) -> &'hir Item {
-        match self.find(id) { // read recorded by `find`
+        // Read recorded by `find` method.
+        match self.find(id) {
             Some(Node::Item(item)) => item,
             _ => bug!("expected item, found {}", self.node_to_string(id))
         }
     }
 
-    // FIXME(@ljedrz): replace the NodeId variant
+    // FIXME(ljedrz): replace the `NodeId` variant.
     pub fn expect_item_by_hir_id(&self, id: HirId) -> &'hir Item {
         let node_id = self.hir_to_node_id(id);
         self.expect_item(node_id)
@@ -985,19 +989,20 @@ impl<'hir> Map<'hir> {
     }
 
     pub fn expect_expr(&self, id: NodeId) -> &'hir Expr {
-        match self.find(id) { // read recorded by find
+        // Read recorded by `find` method.
+        match self.find(id) {
             Some(Node::Expr(expr)) => expr,
             _ => bug!("expected expr, found {}", self.node_to_string(id))
         }
     }
 
-    // FIXME(@ljedrz): replace the NodeId variant
+    // FIXME(ljedrz): replace the `NodeId` variant.
     pub fn expect_expr_by_hir_id(&self, id: HirId) -> &'hir Expr {
         let node_id = self.hir_to_node_id(id);
         self.expect_expr(node_id)
     }
 
-    /// Returns the name associated with the given NodeId's AST.
+    /// Returns the name associated with the given `NodeId`'s AST.
     pub fn name(&self, id: NodeId) -> Name {
         match self.get(id) {
             Node::Item(i) => i.ident.name,
@@ -1014,14 +1019,14 @@ impl<'hir> Map<'hir> {
         }
     }
 
-    // FIXME(@ljedrz): replace the NodeId variant
+    // FIXME(ljedrz): replace the `NodeId` variant.
     pub fn name_by_hir_id(&self, id: HirId) -> Name {
         let node_id = self.hir_to_node_id(id);
         self.name(node_id)
     }
 
-    /// Given a node ID, get a list of attributes associated with the AST
-    /// corresponding to the Node ID
+    /// Given a `NodeId`, get a list of attributes associated with the AST
+    /// corresponding to the `NodeId`.
     pub fn attrs(&self, id: NodeId) -> &'hir [ast::Attribute] {
         self.read(id); // reveals attributes on the node
         let attrs = match self.find(id) {
@@ -1034,25 +1039,24 @@ impl<'hir> Map<'hir> {
             Some(Node::Expr(ref e)) => Some(&*e.attrs),
             Some(Node::Stmt(ref s)) => Some(s.node.attrs()),
             Some(Node::GenericParam(param)) => Some(&param.attrs[..]),
-            // unit/tuple structs take the attributes straight from
-            // the struct definition.
+            // Unit/tuple structs take the attributes straight from the struct definition.
             Some(Node::StructCtor(_)) => return self.attrs(self.get_parent(id)),
             _ => None
         };
         attrs.unwrap_or(&[])
     }
 
-    // FIXME(@ljedrz): replace the NodeId variant
+    // FIXME(ljedrz): replace the `NodeId` variant.
     pub fn attrs_by_hir_id(&self, id: HirId) -> &'hir [ast::Attribute] {
         let node_id = self.hir_to_node_id(id);
         self.attrs(node_id)
     }
 
-    /// Returns an iterator that yields the node id's with paths that
-    /// match `parts`.  (Requires `parts` is non-empty.)
+    /// Returns an iterator that yields the `NodeId`'s with paths that
+    /// match `parts`. (Requires that `parts` is non-empty.)
     ///
     /// For example, if given `parts` equal to `["bar", "quux"]`, then
-    /// the iterator will produce node id's for items with paths
+    /// the iterator will produce `NodeId`'s for items with paths
     /// such as `foo::bar::quux`, `bar::quux`, `other::bar::quux`, and
     /// any other such items it can find in the map.
     pub fn nodes_matching_suffix<'a>(&'a self, parts: &'a [String])
@@ -1066,7 +1070,8 @@ impl<'hir> Map<'hir> {
     }
 
     pub fn span(&self, id: NodeId) -> Span {
-        self.read(id); // reveals span from node
+        // Reveals span from node.
+        self.read(id);
         match self.find_entry(id).map(|entry| entry.node) {
             Some(Node::Item(item)) => item.span,
             Some(Node::ForeignItem(foreign_item)) => foreign_item.span,
@@ -1111,7 +1116,7 @@ impl<'hir> Map<'hir> {
         node_id_to_string(self, id, true)
     }
 
-    // FIXME(@ljedrz): replace the NodeId variant
+    // FIXME(ljedrz): replace the `NodeId` variant.
     pub fn hir_to_string(&self, id: HirId) -> String {
         hir_id_to_string(self, id, true)
     }
@@ -1120,7 +1125,7 @@ impl<'hir> Map<'hir> {
         node_id_to_string(self, id, false)
     }
 
-    // FIXME(@ljedrz): replace the NodeId variant
+    // FIXME(ljedrz): replace the `NodeId` variant.
     pub fn hir_to_user_string(&self, id: HirId) -> String {
         hir_id_to_string(self, id, false)
     }
@@ -1129,7 +1134,7 @@ impl<'hir> Map<'hir> {
         print::to_string(self, |s| s.print_node(self.get(id)))
     }
 
-    // FIXME(@ljedrz): replace the NodeId variant
+    // FIXME(ljedrz): replace the `NodeId` variant.
     pub fn hir_to_pretty_string(&self, id: HirId) -> String {
         print::to_string(self, |s| s.print_node(self.get_by_hir_id(id)))
     }
@@ -1167,7 +1172,7 @@ impl<'a, 'hir> NodesMatchingSuffix<'a, 'hir> {
         // that mod's name.
         //
         // If `id` itself is a mod named `m` with parent `p`, then
-        // returns `Some(id, m, p)`.  If `id` has no mod in its parent
+        // returns `Some(id, m, p)`. If `id` has no mod in its parent
         // chain, then returns `None`.
         fn find_first_mod_parent<'a>(map: &'a Map<'_>, mut id: NodeId) -> Option<(NodeId, Name)> {
             loop {
@@ -1325,9 +1330,9 @@ impl<'a> print::State<'a> {
             Node::Block(a)        => {
                 use syntax::print::pprust::PrintState;
 
-                // containing cbox, will be closed by print-block at }
+                // Containing cbox -- will be closed by print-block at `}`.
                 self.cbox(print::indent_unit)?;
-                // head-ibox, will be closed by print-block after {
+                // Head-ibox -- will be closed by print-block after `{`.
                 self.ibox(0)?;
                 self.print_block(&a)
             }
@@ -1335,8 +1340,8 @@ impl<'a> print::State<'a> {
             Node::Visibility(a)   => self.print_visibility(&a),
             Node::GenericParam(_) => bug!("cannot print Node::GenericParam"),
             Node::Field(_)        => bug!("cannot print StructField"),
-            // these cases do not carry enough information in the
-            // hir_map to reconstruct their full structure for pretty
+            // These cases do not carry enough information in the
+            // `hir_map` to reconstruct their full structure for pretty
             // printing.
             Node::StructCtor(_)   => bug!("cannot print isolated StructCtor"),
             Node::Local(a)        => self.print_local_decl(&a),
@@ -1476,7 +1481,7 @@ fn node_id_to_string(map: &Map<'_>, id: NodeId, include_id: bool) -> String {
     }
 }
 
-// FIXME(@ljedrz): replace the NodeId variant
+// FIXME(ljedrz): replace the `NodeId` variant.
 fn hir_id_to_string(map: &Map<'_>, id: HirId, include_id: bool) -> String {
     let node_id = map.hir_to_node_id(id);
     node_id_to_string(map, node_id, include_id)

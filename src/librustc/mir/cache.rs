@@ -29,7 +29,7 @@ impl<'a> HashStable<StableHashingContext<'a>> for Cache {
     fn hash_stable<W: StableHasherResult>(&self,
                                           _: &mut StableHashingContext<'a>,
                                           _: &mut StableHasher<W>) {
-        // do nothing
+        // Do nothing.
     }
 }
 
@@ -41,7 +41,7 @@ impl Cache {
     }
 
     pub fn invalidate(&self) {
-        // FIXME: consider being more fine-grained
+        // FIXME: consider being more fine-grained.
         *self.predecessors.borrow_mut() = None;
     }
 

@@ -764,7 +764,7 @@ fn characteristic_def_id_of_mono_item<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
             };
 
             // If this is a method, we want to put it into the same module as
-            // its self-type. If the self-type does not provide a characteristic
+            // its self type. If the self type does not provide a characteristic
             // DefId, we use the location of the impl after all.
 
             if tcx.trait_of_item(def_id).is_some() {
@@ -775,7 +775,7 @@ fn characteristic_def_id_of_mono_item<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
 
             if let Some(impl_def_id) = tcx.impl_of_method(def_id) {
                 // This is a method within an inherent impl, find out what the
-                // self-type is:
+                // self type is:
                 let impl_self_ty = tcx.subst_and_normalize_erasing_regions(
                     instance.substs,
                     ty::ParamEnv::reveal_all(),

@@ -106,7 +106,7 @@ impl<'tcx, Tag> Immediate<Tag> {
     }
 
     /// Converts the value into its metadata.
-    /// Throws away the first half of a ScalarPair!
+    /// Throws away the first half of a `ScalarPair`.
     #[inline]
     pub fn to_meta(self) -> EvalResult<'tcx, Option<Scalar<Tag>>> {
         Ok(match self {
@@ -116,7 +116,7 @@ impl<'tcx, Tag> Immediate<Tag> {
     }
 }
 
-// ScalarPair needs a type to interpret, so we often have an immediate and a type together
+// `ScalarPair` needs a type to interpret, so we often have an immediate and a type together
 // as input for binary and cast operations.
 #[derive(Copy, Clone, Debug)]
 pub struct ImmTy<'tcx, Tag=()> {
@@ -267,14 +267,14 @@ pub(super) fn from_known_layout<'tcx>(
 }
 
 impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> {
-    /// Try reading an immediate in memory; this is interesting particularly for ScalarPair.
+    /// Try reading an immediate in memory; this is interesting particularly for `ScalarPair`.
     /// Returns `None` if the layout does not permit loading this as a value.
     pub(super) fn try_read_immediate_from_mplace(
         &self,
         mplace: MPlaceTy<'tcx, M::PointerTag>,
     ) -> EvalResult<'tcx, Option<Immediate<M::PointerTag>>> {
         if mplace.layout.is_unsized() {
-            // Don't touch unsized
+            // Don't touch unsized places.
             return Ok(None);
         }
         let (ptr, ptr_align) = mplace.to_scalar_ptr_align();
@@ -286,7 +286,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> 
             return Ok(Some(Immediate::Scalar(Scalar::zst().into())));
         }
 
-        // check for integer pointers before alignment to report better errors
+        // Check for integer pointers before alignment to report better errors.
         let ptr = ptr.to_ptr()?;
         self.memory.check_align(ptr.into(), ptr_align)?;
         match mplace.layout.abi {
@@ -301,7 +301,8 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> 
                 let (a_size, b_size) = (a.size(self), b.size(self));
                 let a_ptr = ptr;
                 let b_offset = a_size.align_to(b.align(self).abi);
-                assert!(b_offset.bytes() > 0); // we later use the offset to test which field to use
+                // We later use the offset to test which field to use.
+                assert!(b_offset.bytes() > 0);
                 let b_ptr = ptr.offset(b_offset, self)?;
                 let a_val = self.memory
                     .get(ptr.alloc_id)?
@@ -317,11 +318,11 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> 
         }
     }
 
-    /// Try returning an immediate for the operand.
-    /// If the layout does not permit loading this as an immediate, return where in memory
+    /// Tries returning an `Immediate` for the operand.
+    /// If the layout does not permit loading this as an `Immediate`, return where in memory
     /// we can find the data.
     /// Note that for a given layout, this operation will either always fail or always
-    /// succeed!  Whether it succeeds depends on whether the layout can be represented
+    /// succeed! Whether it succeeds depends on whether the layout can be represented
     /// in a `Immediate`, not on which data is stored there currently.
     pub(crate) fn try_read_immediate(
         &self,
@@ -339,7 +340,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> 
         })
     }
 
-    /// Read an immediate from a place, asserting that that is possible with the given layout.
+    /// Reads an immediate from a place, asserting that that is possible with the given layout.
     #[inline(always)]
     pub fn read_immediate(
         &self,
@@ -352,7 +353,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> 
         }
     }
 
-    /// Read a scalar from a place
+    /// Reads a scalar from a place.
     pub fn read_scalar(
         &self,
         op: OpTy<'tcx, M::PointerTag>
@@ -360,7 +361,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> 
         Ok(self.read_immediate(op)?.to_scalar_or_undef())
     }
 
-    // Turn the MPlace into a string (must already be dereferenced!)
+    // Turns the `MPlace` into a string. Must already be dereferenced!
     pub fn read_str(
         &self,
         mplace: MPlaceTy<'tcx, M::PointerTag>,
@@ -376,7 +377,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> 
         &mut self,
         layout: TyLayout<'tcx>
     ) -> EvalResult<'tcx, Operand<M::PointerTag>> {
-        // This decides which types we will use the Immediate optimization for, and hence should
+        // This decides which types we will use the `Immediate` optimization for, and hence should
         // match what `try_read_immediate` and `eval_place_to_op` support.
         if layout.is_zst() {
             return Ok(Operand::Immediate(Immediate::Scalar(Scalar::zst().into())));
@@ -399,7 +400,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> 
         })
     }
 
-    /// Projection functions
+    /// Projection functions.
     pub fn operand_field(
         &self,
         op: OpTy<'tcx, M::PointerTag>,
@@ -407,7 +408,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> 
     ) -> EvalResult<'tcx, OpTy<'tcx, M::PointerTag>> {
         let base = match op.try_as_mplace() {
             Ok(mplace) => {
-                // The easy case
+                // The easy case.
                 let field = self.mplace_field(mplace, field)?;
                 return Ok(field.into());
             },
@@ -422,9 +423,9 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> 
         }
         let offset = op.layout.fields.offset(field);
         let immediate = match base {
-            // the field covers the entire type
+            // The field covers the entire type.
             _ if offset.bytes() == 0 && field_layout.size == op.layout.size => base,
-            // extract fields from types with `ScalarPair` ABI
+            // Extract fields from types with `ScalarPair` ABI.
             Immediate::ScalarPair(a, b) => {
                 let val = if offset.bytes() == 0 { a } else { b };
                 Immediate::Scalar(val)
@@ -440,7 +441,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> 
         op: OpTy<'tcx, M::PointerTag>,
         variant: VariantIdx,
     ) -> EvalResult<'tcx, OpTy<'tcx, M::PointerTag>> {
-        // Downcasts only change the layout
+        // Downcasts only change the layout.
         Ok(match op.try_as_mplace() {
             Ok(mplace) => {
                 self.mplace_downcast(mplace, variant)?.into()
@@ -465,19 +466,19 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> 
             Subslice { .. } | ConstantIndex { .. } | Index(_) => if base.layout.is_zst() {
                 OpTy {
                     op: Operand::Immediate(Immediate::Scalar(Scalar::zst().into())),
-                    // the actual index doesn't matter, so we just pick a convenient one like 0
+                    // The actual index doesn't matter, so we just pick a convenient one like 0.
                     layout: base.layout.field(self, 0)?,
                 }
             } else {
-                // The rest should only occur as mplace, we do not use Immediates for types
-                // allowing such operations.  This matches place_projection forcing an allocation.
+                // The rest should only occur as mplace, we do not use `Immediate`s for types
+                // allowing such operations. This matches `place_projection` forcing an allocation.
                 let mplace = base.to_mem_place();
                 self.mplace_projection(mplace, proj_elem)?.into()
             }
         })
     }
 
-    /// This is used by [priroda](https://github.com/oli-obk/priroda) to get an OpTy from a local
+    /// This is used by [priroda](https://github.com/oli-obk/priroda) to get an `OpTy` from a local.
     pub fn access_local(
         &self,
         frame: &super::Frame<'mir, 'tcx, M::PointerTag, M::FrameExtra>,
@@ -490,7 +491,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> 
         Ok(OpTy { op, layout })
     }
 
-    /// Every place can be read from, so we can turm them into an operand
+    /// Converts a place into an operator. Always possible, since every place can be read from.
     #[inline(always)]
     pub fn place_to_op(
         &self,
@@ -506,7 +507,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> 
         Ok(OpTy { op, layout: place.layout })
     }
 
-    // Evaluate a place with the goal of reading from it.  This lets us sometimes
+    // Evaluates a place with the goal of reading from it. This lets us sometimes
     // avoid allocations.
     fn eval_place_to_op(
         &self,
@@ -530,7 +531,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> 
         Ok(op)
     }
 
-    /// Evaluate the operand, returning a place where you can then find the data.
+    /// Evaluates the operand, returning a place where you can then find the data.
     /// if you already know the layout, you can save two some table lookups
     /// by passing it in here.
     pub fn eval_operand(
@@ -540,7 +541,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> 
     ) -> EvalResult<'tcx, OpTy<'tcx, M::PointerTag>> {
         use rustc::mir::Operand::*;
         let op = match *mir_op {
-            // FIXME: do some more logic on `move` to invalidate the old location
+            // FIXME: do some more logic on `move` to invalidate the old location.
             Copy(ref place) |
             Move(ref place) =>
                 self.eval_place_to_op(place, layout)?,
@@ -558,7 +559,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> 
         Ok(op)
     }
 
-    /// Evaluate a bunch of operands at once
+    /// Evaluates a collection of operands at once.
     pub(super) fn eval_operands(
         &self,
         ops: &[mir::Operand<'tcx>],
@@ -568,7 +569,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> 
             .collect()
     }
 
-    // Used when Miri runs into a constant, and (indirectly through lazy_const_to_op) by CTFE.
+    // Used when Miri runs into a constant, and (indirectly through `lazy_const_to_op`) by CTFE.
     fn const_value_to_op(
         &self,
         val: ty::LazyConst<'tcx>,
@@ -602,7 +603,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> 
         }
     }
 
-    /// Read discriminant, return the runtime value as well as the variant index.
+    /// Reads discriminant, return the runtime value as well as the variant index.
     pub fn read_discriminant(
         &self,
         rval: OpTy<'tcx, M::PointerTag>,
@@ -619,12 +620,12 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> 
             layout::Variants::Tagged { .. } |
             layout::Variants::NicheFilling { .. } => {},
         }
-        // read raw discriminant value
+        // Read raw discriminant value.
         let discr_op = self.operand_field(rval, 0)?;
         let discr_val = self.read_immediate(discr_op)?;
         let raw_discr = discr_val.to_scalar_or_undef();
         trace!("discr value: {:?}", raw_discr);
-        // post-process
+        // Post-process.
         Ok(match rval.layout.variants {
             layout::Variants::Single { .. } => bug!(),
             layout::Variants::Tagged { .. } => {
@@ -634,11 +635,11 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> 
                 };
                 let real_discr = if discr_val.layout.ty.is_signed() {
                     let i = bits_discr as i128;
-                    // going from layout tag type to typeck discriminant type
-                    // requires first sign extending with the layout discriminant
+                    // Going from layout tag type to typeck discriminant type
+                    // requires first sign extending with the layout discriminant, ...
                     let shift = 128 - discr_val.layout.size.bits();
                     let sexted = (i << shift) >> shift;
-                    // and then zeroing with the typeck discriminant type
+                    // ... and then zeroing with the typeck discriminant type.
                     let discr_ty = rval.layout.ty
                         .ty_adt_def().expect("tagged layout corresponds to adt")
                         .repr
@@ -650,7 +651,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> 
                 } else {
                     bits_discr
                 };
-                // Make sure we catch invalid discriminants
+                // Make sure we catch invalid discriminants.
                 let index = rval.layout.ty
                     .ty_adt_def()
                     .expect("tagged layout for non adt")
@@ -669,7 +670,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> 
                 let variants_end = niche_variants.end().as_u32() as u128;
                 match raw_discr {
                     ScalarMaybeUndef::Scalar(Scalar::Ptr(ptr)) => {
-                        // The niche must be just 0 (which an inbounds pointer value never is)
+                        // The niche must be just 0 (which an inbounds pointer value never is).
                         let ptr_valid = niche_start == 0 && variants_start == variants_end &&
                             self.memory.check_bounds_ptr(ptr, InboundsCheck::MaybeDead).is_ok();
                         if !ptr_valid {
@@ -705,7 +706,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> 
 impl<'a, 'mir, 'tcx, M> EvalContext<'a, 'mir, 'tcx, M>
 where
     M: Machine<'a, 'mir, 'tcx, PointerTag=()>,
-    // FIXME: Working around https://github.com/rust-lang/rust/issues/24159
+    // FIXME: working around issue #24159.
     M::MemoryMap: AllocMap<AllocId, (MemoryKind<M::MemoryKinds>, Allocation<(), M::AllocExtra>)>,
     M::AllocExtra: AllocationExtra<(), M::MemoryExtra>,
 {

@@ -75,20 +75,20 @@ pub struct Session {
     /// if the value stored here has been affected by path remapping.
     pub working_dir: (PathBuf, bool),
 
-    // FIXME: lint_store and buffered_lints are not thread-safe,
-    // but are only used in a single thread
+    // FIXME: `lint_store` and buffered_lints are not thread-safe,
+    // but are only used in a single thread.
     pub lint_store: RwLock<lint::LintStore>,
     pub buffered_lints: Lock<Option<lint::LintBuffer>>,
 
-    /// Set of (DiagnosticId, Option<Span>, message) tuples tracking
+    /// Set of `(DiagnosticId, Option<Span>, message)` tuples tracking
     /// (sub)diagnostics that have been set once, but should not be set again,
-    /// in order to avoid redundantly verbose output (Issue #24690, #44953).
+    /// in order to avoid redundantly verbose output (issues #24690, #44953).
     pub one_time_diagnostics: Lock<FxHashSet<(DiagnosticMessageId, Option<Span>, String)>>,
     pub plugin_llvm_passes: OneThread<RefCell<Vec<String>>>,
     pub plugin_attributes: Lock<Vec<(String, AttributeType)>>,
     pub crate_types: Once<Vec<config::CrateType>>,
     pub dependency_formats: Once<dependency_format::Dependencies>,
-    /// The crate_disambiguator is constructed out of all the `-C metadata`
+    /// The `crate_disambiguator` is constructed out of all the `-C metadata`
     /// arguments passed to the compiler. Its value together with the crate-name
     /// forms a unique global identifier for the crate. It is used to allow
     /// multiple crates with the same name to coexist. See the
@@ -179,21 +179,21 @@ pub struct PerfStats {
     pub normalize_projection_ty: AtomicUsize,
 }
 
-/// Enum to support dispatch of one-time diagnostics (in Session.diag_once)
+/// Enum to support dispatch of one-time diagnostics (in `Session.diag_once`).
 enum DiagnosticBuilderMethod {
     Note,
     SpanNote,
-    SpanSuggestion(String), // suggestion
-                            // add more variants as needed to support one-time diagnostics
+    SpanSuggestion(String),
+    // Add more variants as needed to support one-time diagnostics.
 }
 
 /// Diagnostic message ID—used by `Session.one_time_diagnostics` to avoid
 /// emitting the same message more than once
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub enum DiagnosticMessageId {
-    ErrorId(u16), // EXXXX error code as integer
+    ErrorId(u16 /* EXXXX error code */),
     LintId(lint::LintId),
-    StabilityId(u32), // issue number
+    StabilityId(u32 /* issue number */),
 }
 
 impl From<&'static lint::Lint> for DiagnosticMessageId {
@@ -240,7 +240,7 @@ impl Session {
     ) -> DiagnosticBuilder<'a> {
         self.diagnostic().struct_span_err_with_code(sp, msg, code)
     }
-    // FIXME: This method should be removed (every error should have an associated error code).
+    // FIXME: this method should be removed (every error should have an associated error code).
     pub fn struct_err<'a>(&'a self, msg: &str) -> DiagnosticBuilder<'a> {
         self.diagnostic().struct_err(msg)
     }
@@ -709,7 +709,7 @@ impl Session {
             &self.sysroot,
             self.opts.target_triple.triple(),
             &self.opts.search_paths,
-            // target_tlib_path==None means it's the same as host_tlib_path.
+            // `target_tlib_path == None` means it's the same as `host_tlib_path`.
             self.target_tlib_path.as_ref().unwrap_or(&self.host_tlib_path),
             kind,
         )
@@ -774,7 +774,7 @@ impl Session {
             )
         }
 
-        // Note: This will also drop the lock file, thus unlocking the directory
+        // Note: this will also drop the lock file, thus unlocking the directory.
         *incr_comp_session = IncrCompSession::Finalized {
             session_directory: new_directory_path,
         };
@@ -1034,7 +1034,7 @@ pub fn build_session_with_source_map(
     source_map: Lrc<source_map::SourceMap>,
     emitter_dest: Option<Box<dyn Write + Send>>,
 ) -> Session {
-    // FIXME: This is not general enough to make the warning lint completely override
+    // FIXME: this is not general enough to make the warning lint completely override
     // normal diagnostic warnings, since the warning lint can also be denied and changed
     // later via the source code.
     let warnings_allow = sopts
@@ -1250,7 +1250,7 @@ fn validate_commandline_args_with_session_available(sess: &Session) {
     // dynamically downstream, rustc generates `__imp_` symbols that help the
     // MSVC linker deal with this lack of knowledge (#27438). Unfortunately,
     // these manually generated symbols confuse LLD when it tries to merge
-    // bitcode during ThinLTO. Therefore we disallow dynamic linking on MSVC
+    // bitcode during ThinLTO. Therefore, we disallow dynamic linking on MSVC
     // when compiling for LLD ThinLTO. This way we can validly just not generate
     // the `dllimport` attributes and `__imp_` symbols in that case.
     if sess.opts.cg.linker_plugin_lto.enabled() &&

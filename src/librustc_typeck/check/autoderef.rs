@@ -113,7 +113,7 @@ impl<'a, 'gcx, 'tcx> Autoderef<'a, 'gcx, 'tcx> {
 
         let tcx = self.infcx.tcx;
 
-        // <cur_ty as Deref>
+        // `<cur_ty as Deref>`
         let trait_ref = TraitRef {
             def_id: tcx.lang_items().deref_trait()?,
             substs: tcx.mk_substs_trait(self.cur_ty, &[]),

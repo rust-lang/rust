@@ -294,21 +294,23 @@ impl context::ContextOps<ChalkArenas<'gcx>> for ChalkContext<'cx, 'gcx> {
         canon.max_universe.index() + 1
     }
 
-    /// Convert a goal G *from* the canonical universes *into* our
+    /// Converts a goal G *from* the canonical universes *into* our
     /// local universes. This will yield a goal G' that is the same
     /// but for the universes of universally quantified names.
     fn map_goal_from_canonical(
         _map: &UniverseMap,
         value: &Canonical<'gcx, InEnvironment<'gcx, Goal<'gcx>>>,
     ) -> Canonical<'gcx, InEnvironment<'gcx, Goal<'gcx>>> {
-        *value // FIXME universe maps not implemented yet
+        // FIXME: universe maps not implemented yet
+        *value
     }
 
     fn map_subst_from_canonical(
         _map: &UniverseMap,
         value: &Canonical<'gcx, ConstrainedSubst<'gcx>>,
     ) -> Canonical<'gcx, ConstrainedSubst<'gcx>> {
-        value.clone() // FIXME universe maps not implemented yet
+        // FIXME: universe maps not implemented yet
+        value.clone()
     }
 }
 
@@ -363,14 +365,14 @@ impl context::TruncateOps<ChalkArenas<'gcx>, ChalkArenas<'tcx>>
         &mut self,
         _subgoal: &InEnvironment<'tcx, Goal<'tcx>>,
     ) -> Option<InEnvironment<'tcx, Goal<'tcx>>> {
-        None // FIXME we should truncate at some point!
+        None // FIXME: we should truncate at some point!
     }
 
     fn truncate_answer(
         &mut self,
         _subst: &CanonicalVarValues<'tcx>,
     ) -> Option<CanonicalVarValues<'tcx>> {
-        None // FIXME we should truncate at some point!
+        None // FIXME: we should truncate at some point!
     }
 }
 

@@ -232,7 +232,7 @@ impl SyntaxContext {
 
     // Allocate a new SyntaxContext with the given ExpnInfo. This is used when
     // deserializing Spans from the incr. comp. cache.
-    // FIXME(mw): This method does not restore MarkData::parent or
+    // FIXME(mw): this method does not restore MarkData::parent or
     // SyntaxContextData::prev_ctxt or SyntaxContextData::opaque. These things
     // don't seem to be used after HIR lowering, so everything should be fine
     // as long as incremental compilation does not kick in before that.
@@ -612,12 +612,12 @@ impl CompilerDesugaringKind {
 
 impl Encodable for SyntaxContext {
     fn encode<E: Encoder>(&self, _: &mut E) -> Result<(), E::Error> {
-        Ok(()) // FIXME(jseyfried) intercrate hygiene
+        Ok(()) // FIXME(jseyfried): intercrate hygiene
     }
 }
 
 impl Decodable for SyntaxContext {
     fn decode<D: Decoder>(_: &mut D) -> Result<SyntaxContext, D::Error> {
-        Ok(SyntaxContext::empty()) // FIXME(jseyfried) intercrate hygiene
+        Ok(SyntaxContext::empty()) // FIXME(jseyfried): intercrate hygiene
     }
 }

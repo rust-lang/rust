@@ -33,7 +33,7 @@ pub struct Flags {
     pub rustc_error_format: Option<String>,
     pub dry_run: bool,
 
-    // true => deny
+    // `true` => deny
     pub warnings: Option<bool>,
 }
 
@@ -139,8 +139,8 @@ To learn more about a subcommand, run `./x.py <subcommand> -h`"
 
         // We can't use getopt to parse the options until we have completed specifying which
         // options are valid, but under the current implementation, some options are conditional on
-        // the subcommand. Therefore we must manually identify the subcommand first, so that we can
-        // complete the definition of the options.  Then we can use the getopt::Matches object from
+        // the subcommand. Therefore, we must manually identify the subcommand first, so that we can
+        // complete the definition of the options. Then we can use the `getopt::Matches` object from
         // there on out.
         let subcommand = args.iter().find(|&s| {
             (s == "build")

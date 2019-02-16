@@ -96,27 +96,27 @@ impl<'a> Line<'a> {
     }
 }
 
-// FIXME: There is a minor inconsistency here. For lines that start with ##, we
+// FIXME: there is a minor inconsistency here. For lines that start with `##`, we
 // have no easy way of removing a potential single space after the hashes, which
-// is done in the single # case. This inconsistency seems okay, if non-ideal. In
-// order to fix it we'd have to iterate to find the first non-# character, and
+// is done in the single `#` case. This inconsistency seems ok, if non-ideal. In
+// order to fix it we'd have to iterate to find the first non-`#` character, and
 // then reallocate to remove it; which would make us return a String.
 fn map_line(s: &str) -> Line {
     let trimmed = s.trim();
     if trimmed.starts_with("##") {
         Line::Shown(Cow::Owned(s.replacen("##", "#", 1)))
     } else if trimmed.starts_with("# ") {
-        // # text
+        // `# text`
         Line::Hidden(&trimmed[2..])
     } else if trimmed == "#" {
-        // We cannot handle '#text' because it could be #[attr].
+        // We cannot handle `#text` because it could be `#[attr]`.
         Line::Hidden("")
     } else {
         Line::Shown(Cow::Borrowed(s))
     }
 }
 
-/// Convert chars from a title for an id.
+/// Converts chars from a title, for use as an ID.
 ///
 /// "Hello, world!" -> "hello-world"
 fn slugify(c: char) -> Option<char> {

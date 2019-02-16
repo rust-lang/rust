@@ -26,7 +26,7 @@ use log::debug;
 
 use std::rc::Rc;
 
-// FIXME (#16118): These functions are intended to allow the borrow checker to
+// FIXME(#16118): These functions are intended to allow the borrow checker to
 // be less precise in its handling of Box while still allowing moves out of a
 // Box. They should be removed when Unique is removed from LoanPath.
 

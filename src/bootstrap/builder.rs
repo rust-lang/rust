@@ -80,7 +80,7 @@ pub trait Step: 'static + Clone + Debug + PartialEq + Eq + Hash {
         // It is reasonable to not have an implementation of make_run for rules
         // who do not want to get called from the root context. This means that
         // they are likely dependencies (e.g., sysroot creation) or similar, and
-        // as such calling them from ./x.py isn't logical.
+        // as such calling them from `./x.py` isn't logical.
         unimplemented!()
     }
 }
@@ -236,11 +236,11 @@ impl StepDescription {
 #[derive(Clone)]
 pub struct ShouldRun<'a> {
     pub builder: &'a Builder<'a>,
-    // use a BTreeSet to maintain sort order
+    // Use a `BTreeSet` to maintain sort order.
     paths: BTreeSet<PathSet>,
 
     // If this is a default rule, this is an additional constraint placed on
-    // its run. Generally something like compiler docs being enabled.
+    // its run (generally something like compiler docs being enabled).
     is_really_default: bool,
 }
 
@@ -249,7 +249,8 @@ impl<'a> ShouldRun<'a> {
         ShouldRun {
             builder,
             paths: BTreeSet::new(),
-            is_really_default: true, // by default no additional conditions
+            // By default no additional conditions.
+            is_really_default: true,
         }
     }
 
@@ -277,12 +278,12 @@ impl<'a> ShouldRun<'a> {
         self
     }
 
-    // single, non-aliased path
+    // Single, non-aliased path.
     pub fn path(self, path: &str) -> Self {
         self.paths(&[path])
     }
 
-    // multiple aliases for the same job
+    // Multiple aliases for the same job.
     pub fn paths(mut self, paths: &[&str]) -> Self {
         self.paths
             .insert(PathSet::Set(paths.iter().map(PathBuf::from).collect()));
@@ -301,7 +302,7 @@ impl<'a> ShouldRun<'a> {
         self
     }
 
-    // allows being more explicit about why should_run in Step returns the value passed to it
+    // Allows being more explicit about why `Step::should_run` returns the value passed to it.
     pub fn never(mut self) -> ShouldRun<'a> {
         self.paths.insert(PathSet::empty());
         self
@@ -677,7 +678,7 @@ impl<'a> Builder<'a> {
         let compiler = self.compiler(self.top_stage, host);
         cmd.env("RUSTC_STAGE", compiler.stage.to_string())
             .env("RUSTC_SYSROOT", self.sysroot(compiler))
-            // Note that this is *not* the sysroot_libdir because rustdoc must be linked
+            // Note that this is *not* the `sysroot_libdir` because rustdoc must be linked
             // equivalently to rustc.
             .env("RUSTDOC_LIBDIR", self.rustc_libdir(compiler))
             .env("CFG_RELEASE_CHANNEL", &self.config.channel)
@@ -813,12 +814,12 @@ impl<'a> Builder<'a> {
         }
 
         cargo.arg("-j").arg(self.jobs().to_string());
-        // Remove make-related flags to ensure Cargo can correctly set things up
+        // Remove make-related flags to ensure Cargo can correctly set things up.
         cargo.env_remove("MAKEFLAGS");
         cargo.env_remove("MFLAGS");
 
-        // FIXME: Temporary fix for https://github.com/rust-lang/cargo/issues/3005
-        // Force cargo to output binaries with disambiguating hashes in the name
+        // FIXME: temporary fix for rust-lang/cargo#3005.
+        // Force cargo to output binaries with disambiguating hashes in the name.
         let metadata = if compiler.stage == 0 {
             // Treat stage0 like special channel, whether it's a normal prior-
             // release rustc or a local rebuild with the same version, so we
@@ -863,7 +864,7 @@ impl<'a> Builder<'a> {
         // "raw" compiler in that it's the exact snapshot we download. Normally
         // the stage0 build means it uses libraries build by the stage0
         // compiler, but for tools we just use the precompiled libraries that
-        // we've downloaded
+        // we've downloaded.
         let use_snapshot = mode == Mode::ToolBootstrap;
         assert!(!use_snapshot || stage == 0 || self.local_rebuild);
 
@@ -920,7 +921,7 @@ impl<'a> Builder<'a> {
 
         if mode.is_tool() {
             // Tools like cargo and rls don't get debuginfo by default right now, but this can be
-            // enabled in the config.  Adding debuginfo makes them several times larger.
+            // enabled in the config. Adding debuginfo makes them several times larger.
             if self.config.rust_debuginfo_tools {
                 cargo.env("RUSTC_DEBUGINFO", self.config.rust_debuginfo.to_string());
                 cargo.env(
@@ -1028,7 +1029,7 @@ impl<'a> Builder<'a> {
         // Build scripts use either the `cc` crate or `configure/make` so we pass
         // the options through environment variables that are fetched and understood by both.
         //
-        // FIXME: the guard against msvc shouldn't need to be here
+        // FIXME: the guard against MSVC shouldn't need to be here.
         if target.contains("msvc") {
             if let Some(ref cl) = self.config.llvm_clang_cl {
                 cargo.env("CC", cl).env("CXX", cl);
@@ -1040,7 +1041,7 @@ impl<'a> Builder<'a> {
                     Some(ref s) => s,
                     None => return s.display().to_string(),
                 };
-                // FIXME: the cc-rs crate only recognizes the literal strings
+                // FIXME: the cc-rs crate only recognizes the literal strings.
                 // `ccache` and `sccache` when doing caching compilations, so we
                 // mirror that here. It should probably be fixed upstream to
                 // accept a new env var or otherwise work with custom ccache
@@ -1080,12 +1081,12 @@ impl<'a> Builder<'a> {
             cargo.env("RUSTC_SAVE_ANALYSIS", "api".to_string());
         }
 
-        // For `cargo doc` invocations, make rustdoc print the Rust version into the docs
+        // For `cargo doc` invocations, make rustdoc print the Rust version into the docs.
         cargo.env("RUSTDOC_CRATE_VERSION", self.rust_version());
 
-        // Environment variables *required* throughout the build
+        // Environment variables *required* throughout the build.
         //
-        // FIXME: should update code to not require this env var
+        // FIXME: should update code to not require this env var.
         cargo.env("CFG_COMPILER_HOST_TRIPLE", target);
 
         // Set this for all builds to make sure doc builds also get it.
@@ -1476,7 +1477,7 @@ mod __test {
     #[test]
     fn dist_with_target_flag() {
         let mut config = configure(&["B"], &["C"]);
-        config.run_host_only = false; // as-if --target=C was passed
+        config.run_host_only = false; // as if `--target=C` were passed
         let build = Build::new(config);
         let mut builder = Builder::new(&build);
         builder.run_step_descriptions(&Builder::get_step_descriptions(Kind::Dist), &[]);

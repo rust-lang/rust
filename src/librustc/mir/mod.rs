@@ -593,19 +593,19 @@ newtype_index! {
 /// Classifies locals into categories. See `Mir::local_kind`.
 #[derive(PartialEq, Eq, Debug)]
 pub enum LocalKind {
-    /// User-declared variable binding
+    /// A user-declared variable binding.
     Var,
-    /// Compiler-introduced temporary
+    /// A compiler-introduced temporary.
     Temp,
-    /// Function argument
+    /// A function argument.
     Arg,
-    /// Location of function's return value
+    /// The `Location` of the function's return value.
     ReturnPointer,
 }
 
 #[derive(Clone, PartialEq, Eq, Hash, Debug, RustcEncodable, RustcDecodable)]
 pub struct VarBindingForm<'tcx> {
-    /// Is variable bound via `x`, `mut x`, `ref x`, or `ref mut x`?
+    /// Whether a variable is bound via `x`, `mut x`, `ref x`, or `ref mut x`.
     pub binding_mode: ty::BindingMode,
     /// If an explicit type was provided for this variable binding,
     /// this holds the source Span of that type.
@@ -614,24 +614,24 @@ pub struct VarBindingForm<'tcx> {
     /// doing so breaks incremental compilation (as of this writing),
     /// while a `Span` does not cause our tests to fail.
     pub opt_ty_info: Option<Span>,
-    /// Place of the RHS of the =, or the subject of the `match` where this
-    /// variable is initialized. None in the case of `let PATTERN;`.
-    /// Some((None, ..)) in the case of and `let [mut] x = ...` because
-    /// (a) the right-hand side isn't evaluated as a place expression.
+    /// The `Place` of the RHS of the `=`, or the subject of the `match` where
+    /// this variable is initialized. `None` in the case of `let PATTERN;`.
+    /// `Some((None, ..))` in the case of and `let [mut] x = ...` because
+    /// (a) the right-hand side isn't evaluated as a place expression,
     /// (b) it gives a way to separate this case from the remaining cases
     ///     for diagnostics.
     pub opt_match_place: Option<(Option<Place<'tcx>>, Span)>,
-    /// Span of the pattern in which this variable was bound.
+    /// The span of the pattern in which this variable was bound.
     pub pat_span: Span,
 }
 
 #[derive(Clone, PartialEq, Eq, Hash, Debug, RustcEncodable, RustcDecodable)]
 pub enum BindingForm<'tcx> {
-    /// This is a binding for a non-`self` binding, or a `self` that has an explicit type.
+    /// A binding for a non-`self` binding, or a `self` that has an explicit type.
     Var(VarBindingForm<'tcx>),
-    /// Binding for a `self`/`&self`/`&mut self` binding where the type is implicit.
+    /// A binding for a `self`/`&self`/`&mut self` binding where the type is implicit.
     ImplicitSelf(ImplicitSelfKind),
-    /// Reference used in a guard expression to ensure immutability.
+    /// A reference used in a guard expression to ensure immutability.
     RefForGuard,
 }
 
@@ -970,7 +970,7 @@ impl<'tcx> LocalDecl<'tcx> {
             visibility_scope: OUTERMOST_SOURCE_SCOPE,
             internal: false,
             is_block_tail: None,
-            name: None, // FIXME maybe we do want some name here?
+            name: None, // FIXME: maybe we do want some name here?
             is_user_variable: None,
         }
     }
@@ -1516,7 +1516,7 @@ impl<'tcx> BasicBlockData<'tcx> {
         }
 
         // Splice in the new statements, from the end of the block.
-        // FIXME(eddyb) This could be more efficient with a "gap buffer"
+        // FIXME(eddyb): this could be more efficient with a "gap buffer"
         // where a range of elements ("gap") is left uninitialized, with
         // splicing adding new elements to the end of that gap and moving
         // existing elements from before the gap to the end of the gap.

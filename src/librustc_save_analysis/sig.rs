@@ -1,5 +1,5 @@
 // A signature is a string representation of an item's type signature, excluding
-// any body. It also includes ids for any defs or refs in the signature. For
+// any body. It also includes IDs for any defs or refs in the signature. For
 // example:
 //
 // ```
@@ -23,7 +23,7 @@
 // Signatures do not include visibility info. I'm not sure if this is a feature
 // or an ommission (FIXME).
 //
-// FIXME where clauses need implementing, defs/refs in generics are mostly missing.
+// FIXME: where-clauses need implementing, defs/refs in generics are mostly missing.
 
 use crate::{id_from_def_id, id_from_node_id, SaveContext};
 
@@ -212,7 +212,7 @@ impl Sig for ast::Ty {
             ast::TyKind::BareFn(ref f) => {
                 let mut text = String::new();
                 if !f.generic_params.is_empty() {
-                    // FIXME defs, bounds on lifetimes
+                    // FIXME: defs, bounds on lifetimes
                     text.push_str("for<");
                     text.push_str(&f.generic_params
                         .iter()
@@ -267,7 +267,7 @@ impl Sig for ast::Ty {
                     let first = pprust::path_segment_to_string(&path.segments[0]);
                     format!("<{} as {}>::", nested_ty.text, first)
                 } else {
-                    // FIXME handle path instead of elipses.
+                    // FIXME: handle path instead of elipses.
                     format!("<{} as ...>::", nested_ty.text)
                 };
 
@@ -286,7 +286,7 @@ impl Sig for ast::Ty {
                 } else {
                     let start = offset + prefix.len() + 5;
                     let end = start + name.len();
-                    // FIXME should put the proper path in there, not elipses.
+                    // FIXME: should put the proper path in there, not elipses.
                     Ok(Signature {
                         text: prefix + "...::" + &name,
                         defs: vec![],
@@ -295,12 +295,12 @@ impl Sig for ast::Ty {
                 }
             }
             ast::TyKind::TraitObject(ref bounds, ..) => {
-                // FIXME recurse into bounds
+                // FIXME: recurse into bounds
                 let nested = pprust::bounds_to_string(bounds);
                 Ok(text_sig(nested))
             }
             ast::TyKind::ImplTrait(_, ref bounds) => {
-                // FIXME recurse into bounds
+                // FIXME: recurse into bounds
                 let nested = pprust::bounds_to_string(bounds);
                 Ok(text_sig(format!("impl {}", nested)))
             }
@@ -395,7 +395,7 @@ impl Sig for ast::Item {
 
                 sig.text.push('(');
                 for i in &decl.inputs {
-                    // FIXME should descend into patterns to add defs.
+                    // FIXME: should descend into patterns to add defs.
                     sig.text.push_str(&pprust::pat_to_string(&i.pat));
                     sig.text.push_str(": ");
                     let nested = i.ty.make(offset + sig.text.len(), Some(i.id), scx)?;
@@ -495,7 +495,7 @@ impl Sig for ast::Item {
                     sig.text.push_str(": ");
                     sig.text.push_str(&pprust::bounds_to_string(bounds));
                 }
-                // FIXME where clause
+                // FIXME: where-clause
                 sig.text.push_str(" {}");
 
                 Ok(sig)
@@ -514,7 +514,7 @@ impl Sig for ast::Item {
                     sig.text.push_str(" = ");
                     sig.text.push_str(&pprust::bounds_to_string(bounds));
                 }
-                // FIXME where clause
+                // FIXME: where-clause
                 sig.text.push_str(";");
 
                 Ok(sig)
@@ -561,12 +561,12 @@ impl Sig for ast::Item {
 
                 Ok(merge_sigs(text, vec![generics_sig, trait_sig, ty_sig]))
 
-                // FIXME where clause
+                // FIXME: where-clause
             }
             ast::ItemKind::ForeignMod(_) => Err("extern mod"),
             ast::ItemKind::GlobalAsm(_) => Err("glboal asm"),
             ast::ItemKind::ExternCrate(_) => Err("extern crate"),
-            // FIXME should implement this (e.g., pub use).
+            // FIXME: should implement this (e.g., pub use).
             ast::ItemKind::Use(_) => Err("import"),
             ast::ItemKind::Mac(..) | ast::ItemKind::MacroDef(_) => Err("Macro"),
         }
@@ -614,7 +614,7 @@ impl Sig for ast::Path {
     }
 }
 
-// This does not cover the where clause, which must be processed separately.
+// This does not cover the where-clause, which must be processed separately.
 impl Sig for ast::Generics {
     fn make(&self, offset: usize, _parent_id: Option<NodeId>, scx: &SaveContext<'_, '_>) -> Result {
         if self.params.is_empty() {
@@ -651,11 +651,11 @@ impl Sig for ast::Generics {
                             .collect::<Vec<_>>()
                             .join(" + ");
                         param_text.push_str(&bounds);
-                        // FIXME add lifetime bounds refs.
+                        // FIXME: add lifetime bounds refs.
                     }
                     ast::GenericParamKind::Type { .. } => {
                         param_text.push_str(&pprust::bounds_to_string(&param.bounds));
-                        // FIXME descend properly into bounds.
+                        // FIXME: descend properly into bounds.
                     }
                     ast::GenericParamKind::Const { .. } => {
                         // Const generics cannot contain bounds.
@@ -768,7 +768,7 @@ impl Sig for ast::ForeignItem {
 
                 sig.text.push('(');
                 for i in &decl.inputs {
-                    // FIXME should descend into patterns to add defs.
+                    // FIXME: should descend into patterns to add defs.
                     sig.text.push_str(&pprust::pat_to_string(&i.pat));
                     sig.text.push_str(": ");
                     let nested = i.ty.make(offset + sig.text.len(), Some(i.id), scx)?;
@@ -851,7 +851,7 @@ fn name_and_generics(
     };
     text.push_str(&name);
     let generics: Signature = generics.make(offset + text.len(), Some(id), scx)?;
-    // FIXME where clause
+    // FIXME: where-clause
     let text = format!("{}{}", text, generics.text);
     Ok(extend_sig(generics, text, vec![def], vec![]))
 }
@@ -877,7 +877,7 @@ fn make_assoc_type_signature(
     text.push_str(&name);
     if let Some(bounds) = bounds {
         text.push_str(": ");
-        // FIXME should descend into bounds
+        // FIXME: should descend into bounds
         text.push_str(&pprust::bounds_to_string(bounds));
     }
     if let Some(default) = default {
@@ -931,7 +931,7 @@ fn make_method_signature(
     m: &ast::MethodSig,
     scx: &SaveContext<'_, '_>,
 ) -> Result {
-    // FIXME code dup with function signature
+    // FIXME: code dup with function signature
     let mut text = String::new();
     if m.header.constness.node == ast::Constness::Const {
         text.push_str("const ");
@@ -953,7 +953,7 @@ fn make_method_signature(
 
     sig.text.push('(');
     for i in &m.decl.inputs {
-        // FIXME should descend into patterns to add defs.
+        // FIXME: should descend into patterns to add defs.
         sig.text.push_str(&pprust::pat_to_string(&i.pat));
         sig.text.push_str(": ");
         let nested = i.ty.make(sig.text.len(), Some(i.id), scx)?;

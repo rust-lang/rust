@@ -235,7 +235,8 @@ lazy_static! {
 pub struct Cache(
     RefCell<HashMap<
         TypeId,
-        Box<dyn Any>, // actually a HashMap<Step, Interned<Step::Output>>
+        // Actually a `HashMap<Step, Interned<Step::Output>>`.
+        Box<dyn Any>,
     >>
 );
 

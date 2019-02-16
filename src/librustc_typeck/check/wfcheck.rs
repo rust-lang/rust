@@ -96,7 +96,7 @@ pub fn check_item_well_formed<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: Def
             if polarity == hir::ImplPolarity::Positive {
                 check_impl(tcx, item, self_ty, trait_ref);
             } else {
-                // FIXME(#27579) what amount of WF checking do we need for neg impls?
+                // FIXME(#27579): what amount of WF checking do we need for neg impls?
                 if trait_ref.is_some() && !is_auto {
                     span_err!(tcx.sess, item.span, E0192,
                               "negative impls are only allowed for \
@@ -210,7 +210,7 @@ fn check_associated_item<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                 }
             }
             ty::AssociatedKind::Existential => {
-                // do nothing, existential types check themselves
+                // Do nothing; existential types check themselves.
             }
         }
 
@@ -298,7 +298,8 @@ fn check_type_defn<'a, 'tcx, F>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
 
         check_where_clauses(tcx, fcx, item.span, def_id, None);
 
-        vec![] // no implied bounds in a struct def'n
+        // No implied bounds in a struct definiton.
+        vec![]
     });
 }
 
@@ -365,7 +366,8 @@ fn check_item_type<'a, 'tcx>(
             );
         }
 
-        vec![] // no implied bounds in a const etc
+        // No implied bounds in a const, etc.
+        vec![]
     });
 }
 
@@ -432,7 +434,7 @@ fn check_where_clauses<'a, 'gcx, 'fcx, 'tcx>(
         }
     };
 
-    // Check that concrete defaults are well-formed. See test `type-check-defaults.rs`.
+    // Checks that concrete defaults are well-formed. See test `type-check-defaults.rs`.
     // For example this forbids the declaration:
     // struct Foo<T = Vec<[u32]>> { .. }
     // Here the default `Vec<[u32]>` is not WF because `[u32]: Sized` does not hold.
@@ -451,10 +453,10 @@ fn check_where_clauses<'a, 'gcx, 'fcx, 'tcx>(
         }
     }
 
-    // Check that trait predicates are WF when params are substituted by their defaults.
+    // Checks that trait predicates are WF when params are substituted by their defaults.
     // We don't want to overly constrain the predicates that may be written but we want to
     // catch cases where a default my never be applied such as `struct Foo<T: Copy = String>`.
-    // Therefore we check if a predicate which contains a single type param
+    // Therefore, we check if a predicate which contains a single type param
     // with a concrete default is WF with that default substituted.
     // For more examples see tests `defaults-well-formedness.rs` and `type-check-defaults.rs`.
     //
@@ -568,7 +570,7 @@ fn check_fn_or_method<'a, 'fcx, 'gcx, 'tcx>(tcx: TyCtxt<'a, 'gcx, 'gcx>,
 
     fcx.register_wf_obligation(sig.output(), span, ObligationCauseCode::MiscObligation);
 
-    // FIXME(#25759) return types should not be implied bounds
+    // FIXME(#25759): return types should not be implied bounds.
     implied_bounds.push(sig.output());
 
     check_where_clauses(tcx, fcx, span, def_id, Some(sig.output()));
@@ -929,7 +931,7 @@ fn report_bivariance<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     let mut err = error_392(tcx, span, param_name);
 
     let suggested_marker_id = tcx.lang_items().phantom_data();
-    // help is available only in presence of lang items
+    // Help is available only in presence of lang items.
     if let Some(def_id) = suggested_marker_id {
         err.help(&format!("consider removing `{}` or using a marker such as `{}`",
                           param_name,
@@ -947,16 +949,16 @@ fn reject_shadowing_parameters(tcx: TyCtxt, def_id: DefId) {
     }).collect();
 
     for method_param in &generics.params {
-        // Shadowing is checked in resolve_lifetime.
+        // Shadowing is checked in `resolve_lifetime`.
         if let GenericParamDefKind::Lifetime = method_param.kind {
             continue
         }
         if impl_params.contains_key(&method_param.name) {
-            // Tighten up the span to focus on only the shadowing type
+            // Tighten up the span to focus on only the shadowing type.
             let type_span = tcx.def_span(method_param.def_id);
 
             // The expectation here is that the original trait declaration is
-            // local so it should be okay to just unwrap everything.
+            // local so it should be ok to just unwrap everything.
             let trait_def_id = impl_params[&method_param.name];
             let trait_decl_span = tcx.def_span(trait_def_id);
             error_194(tcx, type_span, trait_decl_span, &method_param.name.as_str()[..]);
@@ -980,7 +982,7 @@ fn check_false_global_bounds<'a, 'gcx, 'tcx>(
         .iter()
         .map(|(p, _)| *p)
         .collect();
-    // Check elaborated bounds
+    // Check elaborated bounds.
     let implied_obligations = traits::elaborate_predicates(fcx.tcx, predicates);
 
     for pred in implied_obligations {

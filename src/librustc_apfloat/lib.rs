@@ -258,19 +258,19 @@ pub trait Float
     const INFINITY: Self;
 
     /// NaN (Not a Number).
-    // FIXME(eddyb) provide a default when qnan becomes const fn.
+    // FIXME(eddyb): provide a default when qnan becomes const fn.
     const NAN: Self;
 
     /// Factory for QNaN values.
-    // FIXME(eddyb) should be const fn.
+    // FIXME(eddyb): should be const fn.
     fn qnan(payload: Option<u128>) -> Self;
 
     /// Factory for SNaN values.
-    // FIXME(eddyb) should be const fn.
+    // FIXME(eddyb): should be const fn.
     fn snan(payload: Option<u128>) -> Self;
 
     /// Largest finite number.
-    // FIXME(eddyb) should be const (but FloatPair::largest is nontrivial).
+    // FIXME(eddyb): should be const (but FloatPair::largest is nontrivial).
     fn largest() -> Self;
 
     /// Smallest (by magnitude) finite number.
@@ -278,7 +278,7 @@ pub trait Float
     const SMALLEST: Self;
 
     /// Smallest (by magnitude) normalized finite number.
-    // FIXME(eddyb) should be const (but FloatPair::smallest_normalized is nontrivial).
+    // FIXME(eddyb): should be const (but FloatPair::smallest_normalized is nontrivial).
     fn smallest_normalized() -> Self;
 
     // Arithmetic

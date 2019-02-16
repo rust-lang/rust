@@ -219,7 +219,7 @@ impl<'cx, 'gcx, 'tcx> WritebackCx<'cx, 'gcx, 'tcx> {
 // This is the master code which walks the AST. It delegates most of
 // the heavy lifting to the generic visit and resolve functions
 // below. In general, a function is made into a `visitor` if it must
-// traffic in node-ids or update tables in the type context etc.
+// traffic in `NodeId`s or update tables in the type context etc.
 
 impl<'cx, 'gcx, 'tcx> Visitor<'gcx> for WritebackCx<'cx, 'gcx, 'tcx> {
     fn nested_visit_map<'this>(&'this mut self) -> NestedVisitorMap<'this, 'gcx> {
@@ -456,38 +456,38 @@ impl<'cx, 'gcx, 'tcx> WritebackCx<'cx, 'gcx, 'tcx> {
             let generics = self.tcx().generics_of(def_id);
 
             let definition_ty = if generics.parent.is_some() {
-                // impl trait
+                // `impl Trait`
                 self.fcx.infer_opaque_definition_from_instantiation(
                     def_id,
                     opaque_defn,
                     instantiated_ty,
                 )
             } else {
-                // prevent
+                // Prevent:
                 // * `fn foo<T>() -> Foo<T>`
                 // * `fn foo<T: Bound + Other>() -> Foo<T>`
-                // from being defining
+                // from being defining.
 
                 // Also replace all generic params with the ones from the existential type
-                // definition so
+                // definition so that
                 // ```rust
                 // existential type Foo<T>: 'static;
                 // fn foo<U>() -> Foo<U> { .. }
                 // ```
-                // figures out the concrete type with `U`, but the stored type is with `T`
+                // figures out the concrete type with `U`, but the stored type is with `T`.
                 instantiated_ty.fold_with(&mut BottomUpFolder {
                     tcx: self.tcx().global_tcx(),
                     fldop: |ty| {
                         trace!("checking type {:?}: {:#?}", ty, ty.sty);
-                        // find a type parameter
+                        // Find a type parameter.
                         if let ty::Param(..) = ty.sty {
-                            // look it up in the substitution list
+                            // Look it up in the substitution list.
                             assert_eq!(opaque_defn.substs.len(), generics.params.len());
                             for (subst, param) in opaque_defn.substs.iter().zip(&generics.params) {
                                 if let UnpackedKind::Type(subst) = subst.unpack() {
                                     if subst == ty {
-                                        // found it in the substitution list, replace with the
-                                        // parameter from the existential type
+                                        // Found it in the substitution list; replace with the
+                                        // parameter from the existential type.
                                         return self.tcx()
                                             .global_tcx()
                                             .mk_ty_param(param.index, param.name);
@@ -511,15 +511,15 @@ impl<'cx, 'gcx, 'tcx> WritebackCx<'cx, 'gcx, 'tcx> {
                     },
                     reg_op: |region| {
                         match region {
-                            // ignore static regions
+                            // Ignore static regions.
                             ty::ReStatic => region,
                             _ => {
                                 trace!("checking {:?}", region);
                                 for (subst, p) in opaque_defn.substs.iter().zip(&generics.params) {
                                     if let UnpackedKind::Lifetime(subst) = subst.unpack() {
                                         if subst == region {
-                                            // found it in the substitution list, replace with the
-                                            // parameter from the existential type
+                                            // Found it in the substitution list; replace with the
+                                            // parameter from the existential type.
                                             let reg = ty::EarlyBoundRegion {
                                                 def_id: p.def_id,
                                                 index: p.index,
@@ -558,8 +558,8 @@ impl<'cx, 'gcx, 'tcx> WritebackCx<'cx, 'gcx, 'tcx> {
 
             if let ty::Opaque(defin_ty_def_id, _substs) = definition_ty.sty {
                 if def_id == defin_ty_def_id {
-                    // Concrete type resolved to the existential type itself
-                    // Force a cycle error
+                    // Concrete type resolved to the existential type itself.
+                    // Force a cycle error.
                     self.tcx().at(span).type_of(defin_ty_def_id);
                 }
             }
@@ -605,10 +605,10 @@ impl<'cx, 'gcx, 'tcx> WritebackCx<'cx, 'gcx, 'tcx> {
             self.tables.type_dependent_defs_mut().insert(hir_id, def);
         }
 
-        // Resolve any borrowings for the node with id `node_id`
+        // Resolve any borrowings for the node with ID `node_id`
         self.visit_adjustments(span, hir_id);
 
-        // Resolve the type of the node with id `node_id`
+        // Resolve the type of the node with ID `node_id`
         let n_ty = self.fcx.node_ty(hir_id);
         let n_ty = self.resolve(&n_ty, &span);
         self.write_ty_to_tables(hir_id, n_ty);
@@ -802,8 +802,8 @@ impl<'cx, 'gcx, 'tcx> TypeFolder<'gcx, 'tcx> for Resolver<'cx, 'gcx, 'tcx> {
         }
     }
 
-    // FIXME This should be carefully checked
-    // We could use `self.report_error` but it doesn't accept a ty::Region, right now.
+    // FIXME: this should be carefully checked.
+    // We could use `self.report_error`, but it doesn't accept a `ty::Region` right now.
     fn fold_region(&mut self, r: ty::Region<'tcx>) -> ty::Region<'tcx> {
         self.infcx.fully_resolve(&r).unwrap_or(self.tcx.types.re_static)
     }

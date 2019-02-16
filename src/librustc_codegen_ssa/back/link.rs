@@ -32,12 +32,12 @@ pub fn get_linker(sess: &Session, linker: &Path, flavor: LinkerFlavor) -> (PathB
 
     // If our linker looks like a batch script on Windows then to execute this
     // we'll need to spawn `cmd` explicitly. This is primarily done to handle
-    // emscripten where the linker is `emcc.bat` and needs to be spawned as
+    // Emscripten where the linker is `emcc.bat` and needs to be spawned as
     // `cmd /c emcc.bat ...`.
     //
     // This worked historically but is needed manually since #42436 (regression
     // was tagged as #42791) and some more info can be found on #44443 for
-    // emscripten itself.
+    // Emscripten itself.
     let mut cmd = match linker.to_str() {
         Some(linker) if cfg!(windows) && linker.ends_with(".bat") => Command::bat_script(linker),
         _ => match flavor {

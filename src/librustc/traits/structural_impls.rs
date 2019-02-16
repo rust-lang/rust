@@ -10,7 +10,7 @@ use std::fmt;
 use std::rc::Rc;
 use std::collections::{BTreeSet, BTreeMap};
 
-// structural impls for the structs in traits
+// Structural impls for the structs in `traits`.
 
 impl<'tcx, T: fmt::Debug> fmt::Debug for Normalized<'tcx, T> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {

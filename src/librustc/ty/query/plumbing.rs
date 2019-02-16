@@ -61,7 +61,7 @@ impl<'tcx, M: QueryConfig<'tcx>> Default for QueryCache<'tcx, M> {
     }
 }
 
-// If enabled, send a message to the profile-queries thread
+// If enabled, sends a message to the profile-queries thread.
 macro_rules! profq_msg {
     ($tcx:expr, $msg:expr) => {
         if cfg!(debug_assertions) {
@@ -72,7 +72,7 @@ macro_rules! profq_msg {
     }
 }
 
-// If enabled, format a key using its debug string, which can be
+// If enabled, formats a key using its debug string, which can be
 // expensive to compute (in terms of time).
 macro_rules! profq_query_msg {
     ($query:expr, $tcx:expr, $key:expr) => {{
@@ -162,14 +162,14 @@ impl<'a, 'tcx, Q: QueryDescription<'tcx>> JobOwner<'a, 'tcx, Q> {
             mem::drop(lock);
 
             // If we are single-threaded we know that we have cycle error,
-            // so we just return the error
+            // so we just return the error.
             #[cfg(not(parallel_compiler))]
             return TryGetJob::Cycle(cold_path(|| {
                 Q::handle_cycle_error(tcx, job.find_cycle_in_stack(tcx, span))
             }));
 
             // With parallel queries we might just have to wait on some other
-            // thread
+            // thread.
             #[cfg(parallel_compiler)]
             {
                 let result = job.r#await(tcx, span);
@@ -186,12 +186,12 @@ impl<'a, 'tcx, Q: QueryDescription<'tcx>> JobOwner<'a, 'tcx, Q> {
     /// signals the waiter and forgets the JobOwner, so it won't poison the query
     #[inline(always)]
     pub(super) fn complete(self, result: &Q::Value, dep_node_index: DepNodeIndex) {
-        // We can move out of `self` here because we `mem::forget` it below
+        // We can move out of `self` here because we `mem::forget` it below.
         let key = unsafe { ptr::read(&self.key) };
         let job = unsafe { ptr::read(&self.job) };
         let cache = self.cache;
 
-        // Forget ourself so our destructor won't poison the query
+        // Forget ourself so our destructor won't poison the query.
         mem::forget(self);
 
         let value = QueryValue::new(result.clone(), dep_node_index);
@@ -219,17 +219,16 @@ impl<'a, 'tcx, Q: QueryDescription<'tcx>> Drop for JobOwner<'a, 'tcx, Q> {
     #[inline(never)]
     #[cold]
     fn drop(&mut self) {
-        // Poison the query so jobs waiting on it panic
+        // Poison the query so jobs waiting on it panic.
         self.cache.borrow_mut().active.insert(self.key.clone(), QueryResult::Poisoned);
-        // Also signal the completion of the job, so waiters
-        // will continue execution
+        // Also signal the completion of the job, so waiters will continue execution.
         self.job.signal_complete();
     }
 }
 
 #[derive(Clone)]
 pub struct CycleError<'tcx> {
-    /// The query and related span which uses the cycle
+    /// The query and related span which uses the cycle.
     pub(super) usage: Option<(Span, Query<'tcx>)>,
     pub(super) cycle: Vec<QueryInfo<'tcx>>,
 }
@@ -262,11 +261,11 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
     where
         F: for<'b, 'lcx> FnOnce(TyCtxt<'b, 'gcx, 'lcx>) -> R
     {
-        // The TyCtxt stored in TLS has the same global interner lifetime
-        // as `self`, so we use `with_related_context` to relate the 'gcx lifetimes
-        // when accessing the ImplicitCtxt
+        // The `TyCtxt` stored in TLS has the same global interner lifetime
+        // as `self`, so we use `with_related_context` to relate the `'gcx` lifetimes
+        // when accessing the `ImplicitCtxt`.
         tls::with_related_context(self, move |current_icx| {
-            // Update the ImplicitCtxt to point to our new query job
+            // Update the `ImplicitCtxt` to point to our new query job.
             let new_icx = tls::ImplicitCtxt {
                 tcx: self.global_tcx(),
                 query: Some(job),
@@ -275,7 +274,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
                 task_deps: current_icx.task_deps,
             };
 
-            // Use the ImplicitCtxt while we execute the query
+            // Use the `ImplicitCtxt` while we execute the query.
             tls::enter_context(&new_icx, |_| {
                 compute(self.global_tcx())
             })
@@ -379,8 +378,8 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
             }
         };
 
-        // Fast path for when incr. comp. is off. `to_dep_node` is
-        // expensive for some DepKinds.
+        // Fast path for when incrimental compilation is off. `to_dep_node` is
+        // expensive for some `DepKind`s.
         if !self.dep_graph.is_fully_enabled() {
             let null_dep_node = DepNode::new_no_params(crate::dep_graph::DepKind::Null);
             return self.force_query_with_job::<Q>(key, job, null_dep_node).0;
@@ -418,7 +417,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
         if !dep_node.kind.is_input() {
             // The diagnostics for this query will be
             // promoted to the current session during
-            // try_mark_green(), so we can ignore them here.
+            // `try_mark_green()`, so we can ignore them here.
             let loaded = self.start_query(job.job.clone(), None, |tcx| {
                 let marked = tcx.dep_graph.try_mark_green_and_read(tcx, &dep_node);
                 marked.map(|(prev_dep_node_index, dep_node_index)| {
@@ -450,11 +449,11 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
     ) -> Q::Value
     {
         // Note this function can be called concurrently from the same query
-        // We must ensure that this is handled correctly
+        // We must ensure that this is handled correctly.
 
         debug_assert!(self.dep_graph.is_green(dep_node));
 
-        // First we try to load the result from the on-disk cache
+        // First, we try to load the result from the on-disk cache
         let result = if Q::cache_on_disk(self.global_tcx(), key.clone()) &&
                         self.sess.opts.debugging_opts.incremental_queries {
             self.sess.profiler(|p| p.incremental_load_result_start(Q::NAME));
@@ -462,7 +461,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
             self.sess.profiler(|p| p.incremental_load_result_end(Q::NAME));
 
             // We always expect to find a cached result for things that
-            // can be forced from DepNode.
+            // can be forced from `DepNode`.
             debug_assert!(!dep_node.kind.can_reconstruct_query_key() ||
                           result.is_some(),
                           "Missing on-disk cache entry for {:?}",
@@ -484,8 +483,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
 
             self.sess.profiler(|p| p.start_query(Q::NAME, Q::CATEGORY));
 
-            // The dep-graph for this computation is already in
-            // place
+            // The dep-graph for this computation is already in place.
             let result = self.dep_graph.with_ignore(|| {
                 Q::compute(self, key)
             });
@@ -494,7 +492,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
             result
         };
 
-        // If -Zincremental-verify-ich is specified, re-hash results from
+        // If `-Zincremental-verify-ich` is specified, re-hash results from
         // the cache and make sure that they have the expected fingerprint.
         if unlikely!(self.sess.opts.debugging_opts.incremental_verify_ich) {
             self.incremental_verify_ich::<Q>(&result, dep_node, dep_node_index);
@@ -542,10 +540,10 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
         dep_node: DepNode)
     -> (Q::Value, DepNodeIndex) {
         // If the following assertion triggers, it can have two reasons:
-        // 1. Something is wrong with DepNode creation, either here or
-        //    in DepGraph::try_mark_green()
-        // 2. Two distinct query keys get mapped to the same DepNode
-        //    (see for example #48923)
+        // 1. Something is wrong with `DepNode` creation, either here or
+        //    in `DepGraph::try_mark_green()`.
+        // 2. Two distinct query keys get mapped to the same `DepNode`
+        //    (see for example #48923).
         assert!(!self.dep_graph.dep_node_exists(&dep_node),
                 "Forcing query with already existing DepNode.\n\
                  - query-key: {:?}\n\
@@ -592,24 +590,24 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
         (result, dep_node_index)
     }
 
-    /// Ensure that either this query has all green inputs or been executed.
-    /// Executing query::ensure(D) is considered a read of the dep-node D.
+    /// Ensures that either this query has all green inputs or been executed.
+    /// Executing `query::ensure(D)` is considered a read of the dep-node `D`.
     ///
     /// This function is particularly useful when executing passes for their
-    /// side-effects -- e.g., in order to report errors for erroneous programs.
+    /// side-effects (e.g., in order to report errors for erroneous programs.)
     ///
-    /// Note: The optimization is only available during incr. comp.
+    /// Note: the optimization is only available during incremental compilation.
     pub(super) fn ensure_query<Q: QueryDescription<'gcx>>(self, key: Q::Key) -> () {
         let dep_node = Q::to_dep_node(self, &key);
 
-        // Ensuring an "input" or anonymous query makes no sense
+        // Ensuring an "input" or anonymous query makes no sense.
         assert!(!dep_node.kind.is_anon());
         assert!(!dep_node.kind.is_input());
         if self.dep_graph.try_mark_green_and_read(self, &dep_node).is_none() {
-            // A None return from `try_mark_green_and_read` means that this is either
+            // A `None` returned from `try_mark_green_and_read` means that this is either
             // a new dep node or that the dep node has already been marked red.
             // Either way, we can't call `dep_graph.read()` as we don't have the
-            // DepNodeIndex. We must invoke the query itself. The performance cost
+            // `DepNodeIndex`. We must invoke the query itself. The performance cost
             // this introduces should be negligible as we'll immediately hit the
             // in-memory cache, or another query down the line will.
 
@@ -632,8 +630,8 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
             ProfileQueriesMsg::QueryBegin(span.data(), profq_query_msg!(Q::NAME, self, key))
         );
 
-        // We may be concurrently trying both execute and force a query
-        // Ensure that only one of them runs the query
+        // We may be concurrently trying both execute and force a query.
+        // Ensure that only one of them runs the query.
         let job = match JobOwner::try_get(self, span, &key) {
             TryGetJob::NotYetStarted(job) => job,
             TryGetJob::Cycle(_) |
@@ -738,8 +736,8 @@ macro_rules! define_queries_inner {
             pub fn collect_active_jobs(&self) -> Vec<Lrc<QueryJob<$tcx>>> {
                 let mut jobs = Vec::new();
 
-                // We use try_lock here since we are only called from the
-                // deadlock handler, and this shouldn't be locked
+                // We use `try_lock` here since we are only called from the
+                // deadlock handler, and this shouldn't be locked.
                 $(
                     jobs.extend(
                         self.$name.try_lock().unwrap().active.values().filter_map(|v|
@@ -877,13 +875,13 @@ macro_rules! define_queries_inner {
                 }
             }
 
-            // FIXME(eddyb) Get more valid Span's on queries.
+            // FIXME(eddyb): get more valid Span's on queries.
             pub fn default_span(&self, tcx: TyCtxt<'_, $tcx, '_>, span: Span) -> Span {
                 if !span.is_dummy() {
                     return span;
                 }
-                // The def_span query is used to calculate default_span,
-                // so exit to avoid infinite recursion
+                // The `def_span` query is used to calculate `default_span`,
+                // so exit to avoid infinite recursion.
                 if let Query::def_span(..) = *self {
                     return span
                 }
@@ -954,7 +952,7 @@ macro_rules! define_queries_inner {
             fn compute(tcx: TyCtxt<'_, 'tcx, '_>, key: Self::Key) -> Self::Value {
                 __query_compute::$name(move || {
                     let provider = tcx.queries.providers.get(key.query_crate())
-                        // HACK(eddyb) it's possible crates may be loaded after
+                        // HACK(eddyb): it's possible crates may be loaded after
                         // the query engine is created, and because crate loading
                         // is not yet integrated with the query engine, such crates
                         // would be missing appropriate entries in `providers`.
@@ -1089,23 +1087,22 @@ macro_rules! define_provider_struct {
     };
 }
 
-
-/// The red/green evaluation system will try to mark a specific DepNode in the
+/// The red/green evaluation system will try to mark a specific `DepNode` in the
 /// dependency graph as green by recursively trying to mark the dependencies of
-/// that DepNode as green. While doing so, it will sometimes encounter a DepNode
+/// that `DepNode` as green. While doing so, it will sometimes encounter a `DepNode`
 /// where we don't know if it is red or green and we therefore actually have
 /// to recompute its value in order to find out. Since the only piece of
-/// information that we have at that point is the DepNode we are trying to
+/// information that we have at that point is the `DepNode` we are trying to
 /// re-evaluate, we need some way to re-run a query from just that. This is what
 /// `force_from_dep_node()` implements.
 ///
-/// In the general case, a DepNode consists of a DepKind and an opaque
+/// In the general case, a `DepNode` consists of a `DepKind` and an opaque
 /// GUID/fingerprint that will uniquely identify the node. This GUID/fingerprint
 /// is usually constructed by computing a stable hash of the query-key that the
 /// DepNode corresponds to. Consequently, it is not in general possible to go
 /// back from hash to query-key (since hash functions are not reversible). For
 /// this reason `force_from_dep_node()` is expected to fail from time to time
-/// because we just cannot find out, from the DepNode alone, what the
+/// because we just cannot find out, from the `DepNode` alone, what the
 /// corresponding query-key is and therefore cannot re-run the query.
 ///
 /// The system deals with this case letting `try_mark_green` fail which forces
@@ -1137,9 +1134,9 @@ pub fn force_from_dep_node<'a, 'gcx, 'lcx>(tcx: TyCtxt<'a, 'gcx, 'lcx>,
                                            -> bool {
     use crate::hir::def_id::LOCAL_CRATE;
 
-    // We must avoid ever having to call force_from_dep_node() for a
-    // DepNode::CodegenUnit:
-    // Since we cannot reconstruct the query key of a DepNode::CodegenUnit, we
+    // We must avoid ever having to call `force_from_dep_node()` for a
+    // `DepNode::CodegenUnit`:
+    // Since we cannot reconstruct the query key of a `DepNode::CodegenUnit`, we
     // would always end up having to evaluate the first caller of the
     // `codegen_unit` query that *is* reconstructible. This might very well be
     // the `compile_codegen_unit` query, thus re-codegenning the whole CGU just
@@ -1162,7 +1159,7 @@ pub fn force_from_dep_node<'a, 'gcx, 'lcx>(tcx: TyCtxt<'a, 'gcx, 'lcx>,
             if let Some(def_id) = dep_node.extract_def_id(tcx) {
                 def_id
             } else {
-                // return from the whole function
+                // Return from the whole function.
                 return false
             }
         }
@@ -1180,22 +1177,20 @@ pub fn force_from_dep_node<'a, 'gcx, 'lcx>(tcx: TyCtxt<'a, 'gcx, 'lcx>,
         }
     };
 
-    // FIXME(#45015): We should try move this boilerplate code into a macro
-    //                somehow.
+    // FIXME(#45015): we should try move this boilerplate code into a macro somehow.
     match dep_node.kind {
         // These are inputs that are expected to be pre-allocated and that
-        // should therefore always be red or green already
+        // should therefore always be red or green already.
         DepKind::AllLocalTraitImpls |
         DepKind::Krate |
         DepKind::CrateMetadata |
         DepKind::HirBody |
         DepKind::Hir |
 
-        // This are anonymous nodes
+        // These are anonymous nodes.
         DepKind::TraitSelect |
 
-        // We don't have enough information to reconstruct the query key of
-        // these
+        // We don't have enough information to reconstruct the query key of these.
         DepKind::IsCopy |
         DepKind::IsSized |
         DepKind::IsFreeze |
@@ -1233,12 +1228,12 @@ pub fn force_from_dep_node<'a, 'gcx, 'lcx>(tcx: TyCtxt<'a, 'gcx, 'lcx>,
         DepKind::InstanceDefSizeEstimate |
         DepKind::ProgramClausesForEnv |
 
-        // This one should never occur in this context
+        // This one should never occur in this context.
         DepKind::Null => {
             bug!("force_from_dep_node() - Encountered {:?}", dep_node)
         }
 
-        // These are not queries
+        // These are not queries.
         DepKind::CoherenceCheckTrait |
         DepKind::ItemVarianceConstraints => {
             return false
@@ -1437,13 +1432,13 @@ pub fn force_from_dep_node<'a, 'gcx, 'lcx>(tcx: TyCtxt<'a, 'gcx, 'lcx>,
 }
 
 
-// FIXME(#45015): Another piece of boilerplate code that could be generated in
-//                a combined define_dep_nodes!()/define_queries!() macro.
+// FIXME(#45015): another piece of boilerplate code that could be generated in
+// a combined `define_dep_nodes!()` / `define_queries!()` macro.
 macro_rules! impl_load_from_cache {
     ($($dep_kind:ident => $query_name:ident,)*) => {
         impl DepNode {
             // Check whether the query invocation corresponding to the given
-            // DepNode is eligible for on-disk-caching.
+            // `DepNode` is eligible for on-disk-caching.
             pub fn cache_on_disk(&self, tcx: TyCtxt<'_, '_, '_>) -> bool {
                 use crate::ty::query::queries;
                 use crate::ty::query::QueryDescription;
@@ -1458,7 +1453,7 @@ macro_rules! impl_load_from_cache {
             }
 
             // This is method will execute the query corresponding to the given
-            // DepNode. It is only expected to work for DepNodes where the
+            // `DepNode`. It is only expected to work for `DepNode`s where the
             // above `cache_on_disk` methods returns true.
             // Also, as a sanity check, it expects that the corresponding query
             // invocation has been marked as green already.

@@ -32,16 +32,17 @@ const EXCEPT: &str = "except";
 const LABEL: &str = "label";
 const CFG: &str = "cfg";
 
-// Base and Extra labels to build up the labels
+// `Base` and `Extra` labels to build up the labels
+// ------------------------------------------------
 
-/// For typedef, constants, and statics
+/// `DepNode`s for typedefs, constants, and statics.
 const BASE_CONST: &[&str] = &[
     label_strs::TypeOfItem,
 ];
 
-/// DepNodes for functions + methods
+/// `DepNode`s for functions and methods.
 const BASE_FN: &[&str] = &[
-    // Callers will depend on the signature of these items, so we better test
+    // Callers will depend on the signature of these items, so we better test.
     label_strs::FnSignature,
     label_strs::GenericsOfItem,
     label_strs::PredicatesOfItem,
@@ -52,28 +53,28 @@ const BASE_FN: &[&str] = &[
     label_strs::TypeckTables,
 ];
 
-/// DepNodes for Hir, which is pretty much everything
+/// `DepNode`s for `Hir`, which is pretty much everything.
 const BASE_HIR: &[&str] = &[
-    // Hir and HirBody should be computed for all nodes
+    // `Hir` and `HirBody` should be computed for all nodes.
     label_strs::Hir,
     label_strs::HirBody,
 ];
 
-/// `impl` implementation of struct/trait
+/// `DepNode`s for `impl` implementations of structs/traits.
 const BASE_IMPL: &[&str] = &[
     label_strs::AssociatedItemDefIds,
     label_strs::GenericsOfItem,
     label_strs::ImplTraitRef,
 ];
 
-/// DepNodes for MirBuilt/Optimized, which is relevant in "executable"
-/// code, i.e., functions+methods
+/// `DepNode`s for `MirValidated`/`MirOptimized`, which is relevant in "executable"
+/// code (i.e., functions and methods).
 const BASE_MIR: &[&str] = &[
     label_strs::MirOptimized,
     label_strs::MirBuilt,
 ];
 
-/// Struct, Enum and Union DepNodes
+/// Struct, enum and union `DepNode`s.
 ///
 /// Note that changing the type of a field does not change the type of the struct or enum, but
 /// adding/removing fields or changing a fields name or visibility does.
@@ -103,21 +104,22 @@ const EXTRA_TRAIT: &[&str] = &[
     label_strs::TraitOfItem,
 ];
 
-// Fully Built Labels
+// Fully-built labels
+// ------------------
 
 const LABELS_CONST: &[&[&str]] = &[
     BASE_HIR,
     BASE_CONST,
 ];
 
-/// Constant/Typedef in an impl
+/// Impl constant/typedef `DepNode`s.
 const LABELS_CONST_IN_IMPL: &[&[&str]] = &[
     BASE_HIR,
     BASE_CONST,
     EXTRA_ASSOCIATED,
 ];
 
-/// Trait-Const/Typedef DepNodes
+/// Trait constant/typedef `DepNode`s.
 const LABELS_CONST_IN_TRAIT: &[&[&str]] = &[
     BASE_HIR,
     BASE_CONST,
@@ -174,16 +176,14 @@ const LABELS_TRAIT: &[&[&str]] = &[
 ];
 
 
-// FIXME: Struct/Enum/Unions Fields (there is currently no way to attach these)
+// FIXME: there is currently no way to attach struct/enum/union fields.
 //
 // Fields are kind of separate from their containers, as they can change independently from
-// them. We should at least check
-//
-//     TypeOfItem for these.
+// them. We should at least check `TypeOfItem` for these.
 
 type Labels = FxHashSet<String>;
 
-/// Represents the requested configuration by rustc_clean/dirty
+/// Represents the requested configuration by rustc_clean/dirty.
 struct Assertion {
     clean: Labels,
     dirty: Labels,
@@ -206,7 +206,7 @@ impl Assertion {
 }
 
 pub fn check_dirty_clean_annotations<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>) {
-    // can't add `#[rustc_dirty]` etc without opting in to this feature
+    // Can't add `#[rustc_dirty]`, etc., without opting in to this feature.
     if !tcx.features().rustc_attrs {
         return;
     }
@@ -249,11 +249,11 @@ impl<'a, 'tcx> DirtyCleanVisitor<'a, 'tcx> {
         } else if attr.check_name(ATTR_CLEAN) {
             true
         } else {
-            // skip: not rustc_clean/dirty
+            // Skip: not rustc_clean/dirty.
             return None
         };
         if !check_config(self.tcx, attr) {
-            // skip: not the correct `cfg=`
+            // Skip: not the correct `cfg=`.
             return None;
         }
         let assertion = if let Some(labels) = self.labels(attr) {
@@ -315,19 +315,19 @@ impl<'a, 'tcx> DirtyCleanVisitor<'a, 'tcx> {
                 return self.resolve_labels(&item, value.as_str().as_ref());
             }
         }
-        // if no `label` or `except` is given, only the node's group are asserted
+        // If no `label` or `except` is given, only the node's group are asserted.
         Labels::default()
     }
 
-    /// Return all DepNode labels that should be asserted for this item.
-    /// index=0 is the "name" used for error messages
+    /// Returns all DepNode labels that should be asserted for this item.
+    /// `index = 0` is the "name" used for error messages
     fn auto_labels(&mut self, item_id: ast::NodeId, attr: &Attribute) -> (&'static str, Labels) {
         let node = self.tcx.hir().get(item_id);
         let (name, labels) = match node {
             HirNode::Item(item) => {
                 match item.node {
-                    // note: these are in the same order as hir::Item_;
-                    // FIXME(michaelwoerister): do commented out ones
+                    // N.B., these are in the same order as `hir::Item_;`
+                    // FIXME(michaelwoerister): do commented out ones.
 
                     // // An `extern crate` item, with optional original crate name,
                     // HirItem::ExternCrate(..),  // intentionally no assertions
@@ -335,37 +335,37 @@ impl<'a, 'tcx> DirtyCleanVisitor<'a, 'tcx> {
                     // // `use foo::bar::*;` or `use foo::bar::baz as quux;`
                     // HirItem::Use(..),  // intentionally no assertions
 
-                    // A `static` item
+                    // A `static` item.
                     HirItem::Static(..) => ("ItemStatic", LABELS_CONST),
 
-                    // A `const` item
+                    // A `const` item.
                     HirItem::Const(..) => ("ItemConst", LABELS_CONST),
 
-                    // A function declaration
+                    // A function declaration.
                     HirItem::Fn(..) => ("ItemFn", LABELS_FN),
 
-                    // // A module
+                    // A module.
                     HirItem::Mod(..) =>("ItemMod", LABELS_HIR_ONLY),
 
-                    // // An external module
+                    // An external module.
                     HirItem::ForeignMod(..) => ("ItemForeignMod", LABELS_HIR_ONLY),
 
-                    // Module-level inline assembly (from global_asm!)
+                    // Module-level inline assembly (from `global_asm!`).
                     HirItem::GlobalAsm(..) => ("ItemGlobalAsm", LABELS_HIR_ONLY),
 
-                    // A type alias, e.g., `type Foo = Bar<u8>`
+                    // A type alias (e.g., `type Foo = Bar<u8>`)
                     HirItem::Ty(..) => ("ItemTy", LABELS_HIR_ONLY),
 
-                    // An enum definition, e.g., `enum Foo<A, B> {C<A>, D<B>}`
+                    // An enum definition (e.g., `enum Foo<A, B> {C<A>, D<B>}`).
                     HirItem::Enum(..) => ("ItemEnum", LABELS_ADT),
 
-                    // A struct definition, e.g., `struct Foo<A> {x: A}`
+                    // A struct definition (e.g., `struct Foo<A> {x: A}`).
                     HirItem::Struct(..) => ("ItemStruct", LABELS_ADT),
 
-                    // A union definition, e.g., `union Foo<A, B> {x: A, y: B}`
+                    // A union definition (e.g., `union Foo<A, B> {x: A, y: B}`).
                     HirItem::Union(..) => ("ItemUnion", LABELS_ADT),
 
-                    // Represents a Trait Declaration
+                    // Represents a trait declaration
                     // FIXME(michaelwoerister): trait declaration is buggy because sometimes some of
                     // the depnodes don't exist (because they legitametely didn't need to be
                     // calculated)
@@ -381,7 +381,7 @@ impl<'a, 'tcx> DirtyCleanVisitor<'a, 'tcx> {
                     //
                     //HirItem::Trait(..) => ("ItemTrait", LABELS_TRAIT),
 
-                    // An implementation, eg `impl<A> Trait for Foo { .. }`
+                    // An implementation (e.g., `impl<A> Trait for Foo { .. }`).
                     HirItem::Impl(..) => ("ItemKind::Impl", LABELS_IMPL),
 
                     _ => self.tcx.sess.span_fatal(

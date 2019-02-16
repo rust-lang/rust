@@ -171,7 +171,7 @@ impl<'a, 'gcx, D> HashStable<StableHashingContext<'a>> for SimplifiedTypeGen<D>
             NeverSimplifiedType |
             ParameterSimplifiedType |
             MarkerTraitObjectSimplifiedType => {
-                // nothing to do
+                // Nothing to do.
             }
             IntSimplifiedType(t) => t.hash_stable(hcx, hasher),
             UintSimplifiedType(t) => t.hash_stable(hcx, hasher),

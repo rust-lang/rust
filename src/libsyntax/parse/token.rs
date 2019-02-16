@@ -69,9 +69,11 @@ pub enum Lit {
     Integer(ast::Name),
     Float(ast::Name),
     Str_(ast::Name),
-    StrRaw(ast::Name, u16), /* raw str delimited by n hash symbols */
+    // Raw string delimited by `n` hash symbols.
+    StrRaw(ast::Name, u16),
     ByteStr(ast::Name),
-    ByteStrRaw(ast::Name, u16), /* raw byte str delimited by n hash symbols */
+    // Raw byte string delimited by `n` hash symbols.
+    ByteStrRaw(ast::Name, u16),
 }
 
 impl Lit {
@@ -88,7 +90,7 @@ impl Lit {
     }
 
     // See comments in `interpolated_to_tokenstream` for why we care about
-    // *probably* equal here rather than actual equality
+    // *probably* equal here rather than actual equality.
     fn probably_equal_for_proc_macro(&self, other: &Lit) -> bool {
         mem::discriminant(self) == mem::discriminant(other)
     }
@@ -695,9 +697,9 @@ impl PartialEq for Nonterminal {
                 ident_lhs == ident_rhs && is_raw_lhs == is_raw_rhs,
             (NtLifetime(ident_lhs), NtLifetime(ident_rhs)) => ident_lhs == ident_rhs,
             (NtTT(tt_lhs), NtTT(tt_rhs)) => tt_lhs == tt_rhs,
-            // FIXME: Assume that all "complex" nonterminal are not equal, we can't compare them
+            // FIXME: assume that all "complex" non-terminal are not equal, we can't compare them
             // correctly based on data from AST. This will prevent them from matching each other
-            // in macros. The comparison will become possible only when each nonterminal has an
+            // in macros. The comparison will become possible only when each non-terminal has an
             // attached token stream from which it was parsed.
             _ => false,
         }

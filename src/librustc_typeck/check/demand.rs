@@ -171,7 +171,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                 // This special internal attribute is used to whitelist
                 // "identity-like" conversion methods to be suggested here.
                 //
-                // FIXME (#46459 and #46460): ideally
+                // FIXME(#46459 and #46460): ideally
                 // `std::convert::Into::into` and `std::borrow:ToOwned` would
                 // also be `#[rustc_conversion_suggestion]`, if not for
                 // method-probing false-positives and -negatives (respectively).

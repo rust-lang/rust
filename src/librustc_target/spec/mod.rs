@@ -1189,7 +1189,7 @@ impl Target {
 
                 let target_path = env::var_os("RUST_TARGET_PATH").unwrap_or_default();
 
-                // FIXME 16351: add a sane default search path?
+                // FIXME: 16351: add a sane default search path?
 
                 for dir in env::split_paths(&target_path) {
                     let p =  dir.join(&path);

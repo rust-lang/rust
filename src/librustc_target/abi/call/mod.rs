@@ -40,14 +40,14 @@ pub enum PassMode {
     Indirect(ArgAttributes, Option<ArgAttributes>),
 }
 
-// Hack to disable non_upper_case_globals only for the bitflags! and not for the rest
-// of this module
+// Hack to disable `non_upper_case_globals` only for the `bitflags!` and not for the rest
+// of this module.
 pub use attr_impl::ArgAttribute;
 
 #[allow(non_upper_case_globals)]
 #[allow(unused)]
 mod attr_impl {
-    // The subset of llvm::Attribute needed for arguments, packed into a bitfield.
+    // The subset of `llvm::Attribute` needed for arguments, packed into a bit field.
     bitflags::bitflags! {
         #[derive(Default)]
         pub struct ArgAttribute: u16 {
@@ -329,7 +329,7 @@ impl<'a, Ty> TyLayout<'a, Ty> {
 
                     match (result, field.homogeneous_aggregate(cx)) {
                         (_, HomogeneousAggregate::NoData) => {
-                            // Ignore fields that have no data
+                            // Ignore fields that have no data.
                         }
                         (_, HomogeneousAggregate::Heterogeneous) => {
                             // The field itself must be a homogeneous aggregate.
@@ -434,7 +434,7 @@ impl<'a, Ty> ArgType<'a, Ty> {
     }
 
     pub fn extend_integer_width_to(&mut self, bits: u64) {
-        // Only integers have signedness
+        // Only integers have signedness.
         if let Abi::Scalar(ref scalar) = self.layout.abi {
             if let abi::Int(i, signed) = scalar.value {
                 if i.size().bits() < bits {

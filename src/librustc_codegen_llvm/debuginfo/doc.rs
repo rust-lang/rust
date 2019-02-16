@@ -42,7 +42,6 @@
 //! 2. Module-internal metadata creation functions
 //! 3. Minor utility functions
 //!
-//!
 //! ## Recursive Types
 //!
 //! Some kinds of types, such as structs and enums can be recursive. That means
@@ -87,7 +86,6 @@
 //! continue traversal at the type members after the type has been registered
 //! with the cache. (This implementation approach might be a tad over-
 //! engineered and may change in the future)
-//!
 //!
 //! ## Source Locations and Line Information
 //!

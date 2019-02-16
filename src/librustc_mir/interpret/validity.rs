@@ -104,7 +104,7 @@ fn path_format(path: &Vec<PathElem>) -> String {
             ArrayElem(idx) => write!(out, "[{}]", idx),
             Deref =>
                 // This does not match Rust syntax, but it is more readable for long paths -- and
-                // some of the other items here also are not Rust syntax.  Actually we can't
+                // some of the other items here also are not Rust syntax. Actually we can't
                 // even use the usual syntax because we are just showing the projections,
                 // not the root.
                 write!(out, ".<deref>"),
@@ -288,22 +288,22 @@ impl<'rt, 'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>>
                     value, self.path, "a valid unicode codepoint");
             },
             ty::Float(_) | ty::Int(_) | ty::Uint(_) => {
-                // NOTE: Keep this in sync with the array optimization for int/float
+                // NOTE: keep this in sync with the array optimization for int/float
                 // types below!
                 let size = value.layout.size;
                 let value = value.to_scalar_or_undef();
                 if self.const_mode {
-                    // Integers/floats in CTFE: Must be scalar bits, pointers are dangerous
+                    // Integers/floats in CTFE: must be scalar bits; pointers are dangerous
                     try_validation!(value.to_bits(size),
                         value, self.path, "initialized plain (non-pointer) bytes");
                 } else {
-                    // At run-time, for now, we accept *anything* for these types, including
+                    // At runtime, for now, we accept *anything* for these types, including
                     // undef. We should fix that, but let's start low.
                 }
             }
             ty::RawPtr(..) => {
                 if self.const_mode {
-                    // Integers/floats in CTFE: For consistency with integers, we do not
+                    // Integers/floats in CTFE: for consistency with integers, we do not
                     // accept undef.
                     let _ptr = try_validation!(value.to_scalar_ptr(),
                         "undefined address in raw pointer", self.path);
@@ -331,7 +331,7 @@ impl<'rt, 'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>>
                                 "invalid drop fn in vtable", self.path);
                             try_validation!(self.ecx.read_size_and_align_from_vtable(vtable),
                                 "invalid size or align in vtable", self.path);
-                            // FIXME: More checks for the vtable.
+                            // FIXME: more checks for the vtable.
                         }
                         ty::Slice(..) | ty::Str => {
                             try_validation!(meta.unwrap().to_usize(self.ecx),
@@ -380,9 +380,9 @@ impl<'rt, 'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>>
                         let alloc_kind = self.ecx.tcx.alloc_map.lock().get(ptr.alloc_id);
                         if let Some(AllocKind::Static(did)) = alloc_kind {
                             // `extern static` cannot be validated as they have no body.
-                            // FIXME: Statics from other crates are also skipped.
+                            // FIXME: statics from other crates are also skipped.
                             // They might be checked at a different type, but for now we
-                            // want to avoid recursing too deeply.  This is not sound!
+                            // want to avoid recursing too deeply. This is not sound!
                             if !did.is_local() || self.ecx.tcx.is_foreign_item(did) {
                                 return Ok(());
                             }
@@ -396,7 +396,7 @@ impl<'rt, 'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>>
                             "dangling (not entirely in bounds) reference", self.path);
                     }
                     // Check if we have encountered this pointer+layout combination
-                    // before.  Proceed recursively even for integer pointers, no
+                    // before. Proceed recursively even for integer pointers, no
                     // reason to skip them! They are (recursively) valid for some ZST,
                     // but not for others (e.g., `!` is a ZST).
                     let op = place.into();
@@ -418,7 +418,7 @@ impl<'rt, 'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>>
                     value, self.path, "a pointer");
                 let _fn = try_validation!(self.ecx.memory.get_fn(ptr),
                     value, self.path, "a function pointer");
-                // FIXME: Check if the signature matches
+                // FIXME: check if the signature matches
             }
             // This should be all the primitive types
             _ => bug!("Unexpected primitive type {}", value.layout.ty)
@@ -540,12 +540,12 @@ impl<'rt, 'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>>
 
                 let ptr = mplace.ptr.to_ptr()?;
 
-                // NOTE: Keep this in sync with the handling of integer and float
+                // NOTE: keep this in sync with the handling of integer and float
                 // types above, in `visit_primitive`.
-                // In run-time mode, we accept pointers in here.  This is actually more
+                // In run-time mode, we accept pointers in here. This is actually more
                 // permissive than a per-element check would be, e.g., we accept
                 // an &[u8] that contains a pointer even though bytewise checking would
-                // reject it.  However, that's good: We don't inherently want
+                // reject it. However, that's good: We don't inherently want
                 // to reject those pointers, we just do not have the machinery to
                 // talk about parts of a pointer.
                 // We also accept undef, for consistency with the type-based checks.

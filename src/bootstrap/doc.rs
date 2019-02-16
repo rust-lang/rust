@@ -567,14 +567,14 @@ impl Step for Test {
             compiler
         };
 
-        // Build libstd docs so that we generate relative links
+        // Build libstd docs so that we generate relative links.
         builder.ensure(Std { stage, target });
 
         builder.ensure(compile::Test { compiler, target });
         let out_dir = builder.stage_out(compiler, Mode::Test)
                            .join(target).join("doc");
 
-        // See docs in std above for why we symlink
+        // See docs in std above for why we symlink.
         let my_out = builder.crate_doc_out(target);
         t!(symlink_dir_force(&builder.config, &my_out, &out_dir));
 
@@ -633,14 +633,14 @@ impl Step for WhitelistedRustc {
             compiler
         };
 
-        // Build libstd docs so that we generate relative links
+        // Build libstd docs so that we generate relative links.
         builder.ensure(Std { stage, target });
 
         builder.ensure(compile::Rustc { compiler, target });
         let out_dir = builder.stage_out(compiler, Mode::Rustc)
                            .join(target).join("doc");
 
-        // See docs in std above for why we symlink
+        // See docs in std above for why we symlink.
         let my_out = builder.crate_doc_out(target);
         t!(symlink_dir_force(&builder.config, &my_out, &out_dir));
 
@@ -737,7 +737,7 @@ impl Step for Rustc {
         for krate in &compiler_crates {
             // Create all crate output directories first to make sure rustdoc uses
             // relative links.
-            // FIXME: Cargo should probably do this itself.
+            // FIXME: cargo should probably do this itself.
             t!(fs::create_dir_all(out_dir.join(krate)));
             cargo.arg("-p").arg(krate);
         }
@@ -879,7 +879,7 @@ impl Step for ErrorIndex {
         index.arg("html");
         index.arg(out.join("error-index.html"));
 
-        // FIXME: shouldn't have to pass this env var
+        // FIXME: shouldn't have to pass this env var.
         index.env("CFG_BUILD", &builder.config.build)
              .env("RUSTC_ERROR_METADATA_DST", builder.extended_error_dir());
 
@@ -936,7 +936,7 @@ fn symlink_dir_force(config: &Config, src: &Path, dst: &Path) -> io::Result<()> 
         if m.file_type().is_dir() {
             fs::remove_dir_all(dst)?;
         } else {
-            // handle directory junctions on windows by falling back to
+            // Handle directory junctions on Windows by falling back to
             // `remove_dir`.
             fs::remove_file(dst).or_else(|_| {
                 fs::remove_dir(dst)

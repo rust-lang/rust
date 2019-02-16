@@ -1,7 +1,8 @@
-//! Code related to match expressions. These are sufficiently complex
-//! to warrant their own module and submodules. :) This main module
-//! includes the high-level algorithm, the submodules contain the
-//! details.
+//! Match expressions.
+//!
+//! This logic is sufficiently complex to warrant its own module and submodules.
+//! This main module includes the high-level algorithm, while the submodules contain
+//! the details.
 
 use crate::build::scope::{CachedBlock, DropKind};
 use crate::build::ForGuard::{self, OutsideGuard, RefWithinGuard, ValWithinGuard};
@@ -48,10 +49,10 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
         // around a `match` equivalent to `std::intrinsics::unreachable()`.
         // See issue #47412 for this hole being discovered in the wild.
         //
-        // HACK(eddyb) Work around the above issue by adding a dummy inspection
+        // HACK(eddyb): work around the above issue by adding a dummy inspection
         // of `discriminant_place`, specifically by applying `ReadForMatch`.
         //
-        // NOTE: ReadForMatch also checks that the discriminant is initialized.
+        // NOTE: `ReadForMatch` also checks that the discriminant is initialized.
         // This is currently needed to not allow matching on an uninitialized,
         // uninhabited value. If we get never patterns, those will check that
         // the place is initialized, and so this read would only be used to
@@ -73,7 +74,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
         // Get the arm bodies and their scopes, while declaring bindings.
         let arm_bodies: Vec<_> = arms.iter()
             .map(|arm| {
-                // BUG: use arm lint level
+                // BUG: use arm lint level.
                 let body = self.hir.mirror(arm.body.clone());
                 let scope = self.declare_bindings(
                     None,
@@ -87,7 +88,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
             })
             .collect();
 
-        // create binding start block for link them by false edges
+        // Create binding start block for link them by false edges.
         let candidate_count = arms.iter().map(|c| c.patterns.len()).sum::<usize>();
         let pre_binding_blocks: Vec<_> = (0..=candidate_count)
             .map(|_| self.cfg.start_new_block())
@@ -95,11 +96,11 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
 
         let mut has_guard = false;
 
-        // assemble a list of candidates: there is one candidate per
+        // Assemble a list of candidates. There is one candidate per
         // pattern, which means there may be more than one candidate
         // *per arm*. These candidates are kept sorted such that the
-        // highest priority candidate comes first in the list.
-        // (i.e., same order as in source)
+        // highest priority candidate comes first in the list
+        // (i.e., same order as in source).
 
         let candidates: Vec<_> = arms.iter()
             .enumerate()
@@ -126,21 +127,19 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                     // using the `discriminant_place` directly, as it is doing here?
                     //
                     // The basic answer is that if you do that, then you end up with
-                    // accceses to a shared borrow of the input and that conflicts with
-                    // any arms that look like e.g.
+                    // accceses to a shared borrow of the input, and that conflicts with
+                    // any arms that look like, e.g.,
                     //
-                    // match Some(&4) {
-                    //     ref mut foo => {
-                    //         ... /* mutate `foo` in arm body */ ...
+                    //     match Some(&4) {
+                    //         ref mut foo => {
+                    //             ... /* mutate `foo` in arm body */ ...
+                    //         }
                     //     }
-                    // }
                     //
-                    // (Perhaps we could further revise the MIR
-                    //  construction here so that it only does a
-                    //  shared borrow at the outset and delays doing
-                    //  the mutable borrow until after the pattern is
-                    //  matched *and* the guard (if any) for the arm
-                    //  has been run.)
+                    // Perhaps we could further revise the MIR construction here so that
+                    // it only does a shared borrow at the outset, and delays doing the
+                    // mutable borrow until after the pattern is matched *and* the guard
+                    // (if any) for the arm has been run.
 
                     Candidate {
                         span: pattern.span,
@@ -164,8 +163,8 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
             TerminatorKind::Unreachable,
         );
 
-        // Maps a place to the kind of Fake borrow that we want to perform on
-        // it: either Shallow or Shared, depending on whether the place is
+        // Maps a place to the kind of `Fake` borrow that we want to perform on
+        // it: either `Shallow` or `Shared`, depending on whether the place is
         // bound in the match, or just switched on.
         // If there are no match guards then we don't need any fake borrows,
         // so don't track them.
@@ -180,8 +179,8 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
             .map(|cand| (cand.pre_binding_block, cand.span))
             .collect();
 
-        // this will generate code to test discriminant_place and
-        // branch to the appropriate arm block
+        // This will generate code to test `discriminant_place` and
+        // branch to the appropriate arm block.
         let otherwise = self.match_candidates(
             discriminant_span,
             &mut arm_blocks,
@@ -201,7 +200,8 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
 
             let mut otherwise = otherwise;
             otherwise.sort();
-            otherwise.dedup(); // variant switches can introduce duplicate target blocks
+            // Variant switches can introduce duplicate target blocks.
+            otherwise.dedup();
             for block in otherwise {
                 self.cfg
                     .terminate(block, source_info, TerminatorKind::Unreachable);
@@ -212,7 +212,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
             self.add_fake_borrows(&pre_binding_blocks, fake_borrows, source_info, block);
         }
 
-        // all the arm blocks will rejoin here
+        // All the arm blocks will rejoin here.
         let end_block = self.cfg.start_new_block();
 
         let outer_source_info = self.source_info(span);
@@ -239,7 +239,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
         initializer: ExprRef<'tcx>,
     ) -> BlockAnd<()> {
         match *irrefutable_pat.kind {
-            // Optimize the case of `let x = ...` to write directly into `x`
+            // Optimize the case of `let x = ...` to write directly into `x`.
             PatternKind::Binding {
                 mode: BindingMode::ByValue,
                 var,
@@ -251,7 +251,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                 unpack!(block = self.into(&place, block, initializer));
 
 
-                // Inject a fake read, see comments on `FakeReadCause::ForLet`.
+                // Inject a fake read; see comments on `FakeReadCause::ForLet`.
                 let source_info = self.source_info(irrefutable_pat.span);
                 self.cfg.push(
                     block,
@@ -293,7 +293,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                     self.storage_live_binding(block, var, irrefutable_pat.span, OutsideGuard);
                 unpack!(block = self.into(&place, block, initializer));
 
-                // Inject a fake read, see comments on `FakeReadCause::ForLet`.
+                // Inject a fake read; see comments on `FakeReadCause::ForLet`.
                 let pattern_source_info = self.source_info(irrefutable_pat.span);
                 self.cfg.push(
                     block,
@@ -318,12 +318,9 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                             // We always use invariant as the variance here. This is because the
                             // variance field from the ascription refers to the variance to use
                             // when applying the type to the value being matched, but this
-                            // ascription applies rather to the type of the binding. e.g., in this
-                            // example:
+                            // ascription applies rather to the type of the binding, e.g., in
                             //
-                            // ```
-                            // let x: T = <expr>
-                            // ```
+                            //     let x: T = <expr>
                             //
                             // We are creating an ascription that defines the type of `x` to be
                             // exactly `T` (i.e., with invariance). The variance field, in
@@ -352,7 +349,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
         initializer: &Place<'tcx>,
         set_match_place: bool,
     ) -> BlockAnd<()> {
-        // create a dummy candidate
+        // Create a dummy candidate.
         let mut candidate = Candidate {
             span: irrefutable_pat.span,
             match_pairs: vec![MatchPair::new(initializer.clone(), &irrefutable_pat)],
@@ -360,7 +357,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
             ascriptions: vec![],
             guard: None,
 
-            // since we don't call `match_candidates`, next fields is unused
+            // Since we don't call `match_candidates`, next fields are unused.
             arm_index: 0,
             pat_index: 0,
             pre_binding_block: block,
@@ -368,7 +365,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
         };
 
         // Simplify the candidate. Since the pattern is irrefutable, this should
-        // always convert all match-pairs into bindings.
+        // always convert all match pairs into bindings.
         self.simplify_candidate(&mut candidate);
 
         if !candidate.match_pairs.is_empty() {
@@ -380,10 +377,10 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
             );
         }
 
-        // for matches and function arguments, the place that is being matched
+        // For matches and function arguments, the place that is being matched
         // can be set when creating the variables. But the place for
-        // let PATTERN = ... might not even exist until we do the assignment.
-        // so we set it here instead
+        // `let PATTERN = ...` might not even exist until we do the assignment,
+        // so we set it here instead.
         if set_match_place {
             for binding in &candidate.bindings {
                 let local = self.var_local_id(binding.var_id, OutsideGuard);
@@ -402,7 +399,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
 
         self.ascribe_types(block, &candidate.ascriptions);
 
-        // now apply the bindings, which will also declare the variables
+        // Now apply the bindings, which will also declare the variables.
         self.bind_matched_candidate_for_arm_body(block, &candidate.bindings);
 
         block.unit()
@@ -410,8 +407,9 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
 
     /// Declares the bindings of the given patterns and returns the visibility
     /// scope for the bindings in these patterns, if such a scope had to be
-    /// created. NOTE: Declaring the bindings should always be done in their
-    /// drop scope.
+    /// created.
+    ///
+    /// NOTE: declaring the bindings should always be done in their drop scope.
     pub fn declare_bindings(
         &mut self,
         mut visibility_scope: Option<SourceScope>,
@@ -570,9 +568,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
             } => {
                 // This corresponds to something like
                 //
-                // ```
-                // let A::<'a>(_): A<'static> = ...;
-                // ```
+                //     let A::<'a>(_): A<'static> = ...;
                 //
                 // Note that the variance doesn't apply here, as we are tracking the effect
                 // of `user_ty` on any bindings contained with subpattern.
@@ -608,37 +604,36 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
     }
 }
 
-/// List of blocks for each arm (and potentially other metadata in the
-/// future).
+/// List of blocks for each arm (and potentially other metadata in the future).
 struct ArmBlocks {
     blocks: Vec<BasicBlock>,
 }
 
 #[derive(Clone, Debug)]
 pub struct Candidate<'pat, 'tcx: 'pat> {
-    // span of the original pattern that gave rise to this candidate
+    /// The span of the original pattern that gave rise to this candidate.
     span: Span,
 
-    // all of these must be satisfied...
+    /// The match pairs to be satisfied.
     match_pairs: Vec<MatchPair<'pat, 'tcx>>,
 
-    // ...these bindings established...
+    /// The bindings to be established.
     bindings: Vec<Binding<'tcx>>,
 
-    // ...these types asserted...
+    /// The types to be asserted.
     ascriptions: Vec<Ascription<'tcx>>,
 
-    // ...and the guard must be evaluated...
+    /// The guard to be evaluated.
     guard: Option<Guard<'tcx>>,
 
-    // ...and then we branch to arm with this index.
+    /// The index of the arm to which we branch.
     arm_index: usize,
 
-    // ...and the blocks for add false edges between candidates
+    // The blocks for adding false edges between candidates.
     pre_binding_block: BasicBlock,
     next_candidate_pre_binding_block: BasicBlock,
 
-    // This uniquely identifies this candidate *within* the arm.
+    // Uniquely identifies this candidate *within* the arm.
     pat_index: usize,
 }
 
@@ -666,45 +661,45 @@ struct Ascription<'tcx> {
 
 #[derive(Clone, Debug)]
 pub struct MatchPair<'pat, 'tcx: 'pat> {
-    // this place...
+    // This place ...
     place: Place<'tcx>,
 
     // ... must match this pattern.
     pattern: &'pat Pattern<'tcx>,
 
-    // HACK(eddyb) This is used to toggle whether a Slice pattern
+    // HACK(eddyb): this is used to toggle whether a Slice pattern
     // has had its length checked. This is only necessary because
-    // the "rest" part of the pattern right now has type &[T] and
-    // as such, it requires an Rvalue::Slice to be generated.
+    // the "rest" part of the pattern right now has type `&[T]` and
+    // as such, it requires an `Rvalue::Slice` to be generated.
     // See RFC 495 / issue #23121 for the eventual (proper) solution.
     slice_len_checked: bool,
 }
 
 #[derive(Clone, Debug, PartialEq)]
 enum TestKind<'tcx> {
-    // test the branches of enum
+    // Test the branches of enum.
     Switch {
         adt_def: &'tcx ty::AdtDef,
         variants: BitSet<VariantIdx>,
     },
 
-    // test the branches of enum
+    // Test the branches of enum.
     SwitchInt {
         switch_ty: Ty<'tcx>,
         options: Vec<u128>,
         indices: FxHashMap<ty::Const<'tcx>, usize>,
     },
 
-    // test for equality
+    // Test for equality.
     Eq {
         value: ty::Const<'tcx>,
         ty: Ty<'tcx>,
     },
 
-    // test whether the value falls within an inclusive or exclusive range
+    // Test whether the value falls within an inclusive or exclusive range.
     Range(PatternRange<'tcx>),
 
-    // test length of the slice is equal to len
+    // Test length of the slice is equal to len.
     Len {
         len: u64,
         op: BinOp,
@@ -862,7 +857,8 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
     fn join_otherwise_blocks(&mut self, span: Span, mut otherwise: Vec<BasicBlock>) -> BasicBlock {
         let source_info = self.source_info(span);
         otherwise.sort();
-        otherwise.dedup(); // variant switches can introduce duplicate target blocks
+        // Variant switches can introduce duplicate target blocks.
+        otherwise.dedup();
         if otherwise.len() == 1 {
             otherwise[0]
         } else {
@@ -880,17 +876,17 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
 
     /// This is the most subtle part of the matching algorithm. At
     /// this point, the input candidates have been fully simplified,
-    /// and so we know that all remaining match-pairs require some
+    /// and so we know that all remaining match pairs require some
     /// sort of test. To decide what test to do, we take the highest
     /// priority candidate (last one in the list) and extract the
-    /// first match-pair from the list. From this we decide what kind
+    /// first match pair from the list. From this we decide what kind
     /// of test is needed using `test`, defined in the `test` module.
     ///
     /// *Note:* taking the first match pair is somewhat arbitrary, and
     /// we might do better here by choosing more carefully what to
     /// test.
     ///
-    /// For example, consider the following possible match-pairs:
+    /// For example, consider the following possible match pairs:
     ///
     /// 1. `x @ Some(P)` -- we will do a `Switch` to decide what variant `x` has
     /// 2. `x @ 22` -- we will do a `SwitchInt`
@@ -904,7 +900,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
     /// candidates. For example, if we are testing the current
     /// variant of `x.0`, and we have a candidate `{x.0 @ Some(v), x.1
     /// @ 22}`, then we would have a resulting candidate of `{(x.0 as
-    /// Some).0 @ v, x.1 @ 22}`. Note that the first match-pair is now
+    /// Some).0 @ v, x.1 @ 22}`. Note that the first match pair is now
     /// simpler (and, in fact, irrefutable).
     ///
     /// But there may also be candidates that the test just doesn't
@@ -923,8 +919,8 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
     /// In that case, after we test on `x`, there are 2 overlapping candidate
     /// sets:
     ///
-    /// - If the outcome is that `x` is true, candidates 0, 1, and 3
-    /// - If the outcome is that `x` is false, candidates 1 and 2
+    /// - If the outcome is that `x` is `true`, candidates 0, 1, and 3.
+    /// - If the outcome is that `x` is `false`, candidates 1 and 2.
     ///
     /// Here, the traditional "decision tree" method would generate 2
     /// separate code-paths for the 2 separate cases.
@@ -961,7 +957,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
     /// }
     /// ```
     ///
-    /// Here we first test the match-pair `x @ "foo"`, which is an `Eq` test.
+    /// Here we first test the match pair `x @ "foo"`, which is an `Eq` test.
     ///
     /// It might seem that we would end up with 2 disjoint candidate
     /// sets, consisting of the first candidate or the other 3, but our
@@ -971,11 +967,11 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
     /// of tests.
     ///
     /// To avoid these kinds of problems, our algorithm tries to ensure
-    /// the amount of generated tests is linear. When we do a k-way test,
+    /// the amount of generated tests is linear. When we do a `k`-way test,
     /// we return an additional "unmatched" set alongside the obvious `k`
     /// sets. When we encounter a candidate that would be present in more
     /// than one of the sets, we put it and all candidates below it into the
-    /// "unmatched" set. This ensures these `k+1` sets are disjoint.
+    /// "unmatched" set. This ensures these `k + 1` sets are disjoint.
     ///
     /// After we perform our test, we branch into the appropriate candidate
     /// set and recurse with `match_candidates`. These sub-matches are
@@ -998,14 +994,14 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
         block: BasicBlock,
         fake_borrows: &mut Option<FxHashMap<Place<'tcx>, BorrowKind>>,
     ) -> (Vec<BasicBlock>, usize) {
-        // extract the match-pair from the highest priority candidate
+        // Extract the `MarchPair` from the highest priority candidate.
         let match_pair = &candidates.first().unwrap().match_pairs[0];
         let mut test = self.test(match_pair);
 
-        // most of the time, the test to perform is simply a function
-        // of the main candidate; but for a test like SwitchInt, we
+        // Most of the time, the test to perform is simply a function
+        // of the main candidate, but for a test like `SwitchInt`, we
         // may want to add cases based on the candidates that are
-        // available
+        // available.
         match test.kind {
             TestKind::SwitchInt {
                 switch_ty,
@@ -1037,13 +1033,13 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
             _ => {}
         }
 
-        // Insert a Shallow borrow of any places that is switched on.
+        // Insert a `Shallow` borrow of any places that is switched on.
         fake_borrows.as_mut().map(|fb| {
             fb.entry(match_pair.place.clone()).or_insert(BorrowKind::Shallow)
         });
 
-        // perform the test, branching to one of N blocks. For each of
-        // those N possible outcomes, create a (initially empty)
+        // Perform the test, branching to one of `N` blocks. For each of
+        // those `N` possible outcomes, create a (initially empty)
         // vector of candidates. Those are the candidates that still
         // apply if the test has that particular outcome.
         debug!(
@@ -1063,7 +1059,8 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                 self.sort_candidate(&match_pair.place, &test, c, &mut target_candidates)
             })
             .count();
-        assert!(tested_candidates > 0); // at least the last candidate ought to be tested
+        // At least the last candidate ought to be tested.
+        assert!(tested_candidates > 0);
         debug!("tested_candidates: {}", tested_candidates);
         debug!(
             "untested_candidates: {}",
@@ -1101,8 +1098,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
     /// self-consistency of this fn, but the reason for it should be
     /// clear: after we've done the assignments, if there were move
     /// bindings, further tests would be a use-after-move (which would
-    /// in turn be detected by the borrowck code that runs on the
-    /// MIR).
+    /// in turn be detected by the borrowck code that runs on the MIR).
     fn bind_and_guard_matched_candidate<'pat>(
         &mut self,
         mut block: BasicBlock,
@@ -1139,7 +1135,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
             },
         );
 
-        // rust-lang/rust#27282: The `autoref` business deserves some
+        // Issue #27282: The `autoref` business deserves some
         // explanation here.
         //
         // The intent of the `autoref` flag is that when it is true,
@@ -1157,7 +1153,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
         // ```
         // let place = Foo::new();
         // match place { foo if inspect(foo)
-        //     => feed(foo), ...  }
+        //     => feed(foo), ... }
         // ```
         //
         // will be treated as if it were really something like:
@@ -1172,7 +1168,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
         // ```
         // let place = Foo::new();
         // match place { ref mut foo if inspect(foo)
-        //     => feed(foo), ...  }
+        //     => feed(foo), ... }
         // ```
         //
         // will be treated as if it were really something like:
@@ -1244,8 +1240,8 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                 self.bind_matched_candidate_for_arm_body(block, &candidate.bindings);
             }
 
-            // the block to branch to if the guard fails; if there is no
-            // guard, this block is simply unreachable
+            // The block to branch to if the guard fails; if there is no
+            // guard, this block is simply unreachable.
             let guard = match guard {
                 Guard::If(e) => self.hir.mirror(e),
             };
@@ -1316,9 +1312,9 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
             );
             Some(otherwise)
         } else {
-            // (Here, it is not too early to bind the matched
+            // Here, it is not too early to bind the matched
             // candidate on `block`, because there is no guard result
-            // that we have to inspect before we bind them.)
+            // that we have to inspect before we bind them.
             self.bind_matched_candidate_for_arm_body(block, &candidate.bindings);
             self.cfg.terminate(
                 block,
@@ -1329,8 +1325,8 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
         }
     }
 
-    /// Append `AscribeUserType` statements onto the end of `block`
-    /// for each ascription
+    /// Appends `AscribeUserType` statements onto the end of `block`
+    /// for each ascription.
     fn ascribe_types<'pat>(
         &mut self,
         block: BasicBlock,
@@ -1365,7 +1361,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
         }
     }
 
-    // Only called when all_pat_vars_are_implicit_refs_within_guards,
+    // Only called when `all_pat_vars_are_implicit_refs_within_guards` is `true`,
     // and thus all code/comments assume we are in that context.
     fn bind_matched_candidate_for_guard(
         &mut self,
@@ -1385,15 +1381,15 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
         for binding in bindings {
             let source_info = self.source_info(binding.span);
 
-            // For each pattern ident P of type T, `ref_for_guard` is
-            // a reference R: &T pointing to the location matched by
-            // the pattern, and every occurrence of P within a guard
-            // denotes *R.
+            // For each pattern ident `P` of type `T`, `ref_for_guard` is
+            // a reference `R: &T` pointing to the location matched by
+            // the pattern, and every occurrence of `P` within a guard
+            // denotes `*R`.
             let ref_for_guard =
                 self.storage_live_binding(block, binding.var_id, binding.span, RefWithinGuard);
             // Question: Why schedule drops if bindings are all
-            // shared-&'s?  Answer: Because schedule_drop_for_binding
-            // also emits StorageDead's for those locals.
+            // shared-`&`'s? Answer: Because `schedule_drop_for_binding`
+            // also emits `StorageDead`'s for those locals.
             self.schedule_drop_for_binding(binding.var_id, binding.span, RefWithinGuard);
             match binding.binding_mode {
                 BindingMode::ByValue => {
@@ -1402,7 +1398,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                         .push_assign(block, source_info, &ref_for_guard, rvalue);
                 }
                 BindingMode::ByRef(borrow_kind) => {
-                    // Tricky business: For `ref id` and `ref mut id`
+                    // Tricky business: for `ref id` and `ref mut id`
                     // patterns, we want `id` within the guard to
                     // correspond to a temp of type `& &T` or `& &mut
                     // T` (i.e., a "borrow of a borrow") that is
@@ -1427,12 +1423,12 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                         ValWithinGuard(pat_index),
                     );
 
-                    // rust-lang/rust#27282: We reuse the two-phase
+                    // Issue #27282: We reuse the two-phase
                     // borrow infrastructure so that the mutable
                     // borrow (whose mutabilty is *unusable* within
                     // the guard) does not conflict with the implicit
                     // borrow of the whole match input. See additional
-                    // discussion on rust-lang/rust#49870.
+                    // discussion on issue #49870.
                     let borrow_kind = match borrow_kind {
                         BorrowKind::Shared
                         | BorrowKind::Shallow
@@ -1484,15 +1480,15 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
 
     /// Each binding (`ref mut var`/`ref var`/`mut var`/`var`, where
     /// the bound `var` has type `T` in the arm body) in a pattern
-    /// maps to `2+N` locals. The first local is a binding for
+    /// maps to `2 + N` locals. The first local is a binding for
     /// occurrences of `var` in the guard, which will all have type
-    /// `&T`. The N locals are bindings for the `T` that is referenced
+    /// `&T`. The `N` locals are bindings for the `T` that is referenced
     /// by the first local; they are not used outside of the
     /// guard. The last local is a binding for occurrences of `var` in
     /// the arm body, which will have type `T`.
     ///
-    /// The reason we have N locals rather than just 1 is to
-    /// accommodate rust-lang/rust#51348: If the arm has N candidate
+    /// The reason we have `N` locals rather than just `1` is to
+    /// accommodate rust-lang/rust#51348: If the arm has `N` candidate
     /// patterns, then in general they can correspond to distinct
     /// parts of the matched data, and we want them to be distinct
     /// temps in order to simplify checks performed by our internal
@@ -1535,9 +1531,9 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
             is_block_tail: None,
             is_user_variable: Some(ClearCrossCrate::Set(BindingForm::Var(VarBindingForm {
                 binding_mode,
-                // hypothetically, `visit_bindings` could try to unzip
-                // an outermost hir::Ty as we descend, matching up
-                // idents in pat; but complex w/ unclear UI payoff.
+                // Hypothetically, `visit_bindings` could try to unzip
+                // an outermost `hir::Ty` as we descend, matching up
+                // idents in pat, but complex with unclear UI payoff.
                 // Instead, just abandon providing diagnostic info.
                 opt_ty_info: None,
                 opt_match_place,
@@ -1564,7 +1560,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                 name: Some(name),
                 source_info,
                 visibility_scope,
-                // FIXME: should these secretly injected ref_for_guard's be marked as `internal`?
+                // FIXME: should these secretly injected `ref_for_guard`'s be marked as `internal`?
                 internal: false,
                 is_block_tail: None,
                 is_user_variable: Some(ClearCrossCrate::Set(BindingForm::RefForGuard)),
@@ -1597,7 +1593,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
 
         let mut all_fake_borrows = Vec::with_capacity(fake_borrows.len());
 
-        // Insert a Shallow borrow of the prefixes of any fake borrows.
+        // Insert a `Shallow` borrow of the prefixes of any fake borrows.
         for (place, borrow_kind) in fake_borrows
         {
             {
@@ -1640,10 +1636,10 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
             borrowed_input_temps.push(borrowed_input_temp);
         }
 
-        // FIXME: This could be a lot of reads (#fake borrows * #patterns).
+        // FIXME: this could be a lot of reads (`#fake borrows * #patterns`).
         // The false edges that we currently generate would allow us to only do
-        // this on the last Candidate, but it's possible that there might not be
-        // so many false edges in the future, so we read for all Candidates for
+        // this on the last `Candidate`, but it's possible that there might not be
+        // so many false edges in the future, so we read for all `Candidate`s for
         // now.
         // Another option would be to make our own block and add our own false
         // edges to it.

@@ -36,7 +36,7 @@ macro_rules! ast_fragments {
     (
         $($Kind:ident($AstTy:ty) {
             $kind_name:expr;
-            // FIXME: HACK: this should be `$(one ...)?` and `$(many ...)?` but `?` macro
+            // HACK: this should be `$(one ...)?` and `$(many ...)?` but `?` macro
             // repetition was removed from 2015 edition in #51587 because of ambiguities.
             $(one fn $mut_visit_ast:ident; fn $visit_ast:ident;)*
             $(many fn $flat_map_ast_elt:ident; fn $visit_ast_elt:ident;)*
@@ -223,7 +223,7 @@ pub enum InvocationKind {
         attr: Option<ast::Attribute>,
         traits: Vec<Path>,
         item: Annotatable,
-        // We temporarily report errors for attribute macros placed after derives
+        // We temporarily report errors for attribute macros placed after derives.
         after_derive: bool,
     },
     Derive {
@@ -245,7 +245,8 @@ impl Invocation {
 
 pub struct MacroExpander<'a, 'b:'a> {
     pub cx: &'a mut ExtCtxt<'b>,
-    monotonic: bool, // cf. `cx.monotonic_expander()`
+    // cf. `cx.monotonic_expander()`
+    monotonic: bool,
 }
 
 impl<'a, 'b> MacroExpander<'a, 'b> {
@@ -284,7 +285,7 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
                 krate.module = module;
             },
             None => {
-                // Resolution failed so we return an empty expansion
+                // Resolution failed, so we return an empty expansion.
                 krate.attrs = vec![];
                 krate.module = ast::Mod {
                     inner: orig_mod_span,
@@ -298,7 +299,7 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
         krate
     }
 
-    // Fully expand all macro invocations in this AST fragment.
+    // Fully expands all macro invocations in this AST fragment.
     fn expand_fragment(&mut self, input_fragment: AstFragment) -> AstFragment {
         let orig_expansion_data = self.cx.current_expansion.clone();
         self.cx.current_expansion.depth = 0;
@@ -347,7 +348,7 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
             self.cx.current_expansion = invoc.expansion_data.clone();
 
             self.cx.current_expansion.mark = scope;
-            // FIXME(jseyfried): Refactor out the following logic
+            // FIXME(jseyfried): factor out the following logic.
             let (expanded_fragment, new_invocations) = if let Some(ext) = ext {
                 if let Some(ext) = ext {
                     let (invoc_fragment_kind, invoc_span) = (invoc.fragment_kind, invoc.span());
@@ -480,8 +481,8 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
             sess: self.cx.parse_sess,
             features: self.cx.ecfg.features,
         };
-        // Since the item itself has already been configured by the InvocationCollector,
-        // we know that fold result vector will contain exactly one element
+        // Since the item itself has already been configured by the `InvocationCollector`,
+        // we know that fold result `Vec` will contain exactly one element.
         match item {
             Annotatable::Item(item) => {
                 Annotatable::Item(cfg.flat_map_item(item).pop().unwrap())
@@ -697,7 +698,7 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
         }
     }
 
-    /// Expand a macro invocation. Returns the resulting expanded AST fragment.
+    /// Expands a macro invocation. Returns the resulting expanded AST fragment.
     fn expand_bang_invoc(&mut self,
                          invoc: Invocation,
                          ext: &SyntaxExtension)
@@ -710,24 +711,24 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
         let path = &mac.node.path;
 
         let ident = ident.unwrap_or_else(|| keywords::Invalid.ident());
-        let validate_and_set_expn_info = |this: &mut Self, // arg instead of capture
+        let validate_and_set_expn_info = |// Arg instead of capture.
+                                          this: &mut Self,
                                           def_site_span: Option<Span>,
                                           allow_internal_unstable,
                                           allow_internal_unsafe,
                                           local_inner_macros,
-                                          // can't infer this type
+                                          // Can't infer this type.
                                           unstable_feature: Option<(Symbol, u32)>,
                                           edition| {
-
-            // feature-gate the macro invocation
+            // Feature-gate the macro invocation.
             if let Some((feature, issue)) = unstable_feature {
                 let crate_span = this.cx.current_expansion.crate_span.unwrap();
-                // don't stability-check macros in the same crate
-                // (the only time this is null is for syntax extensions registered as macros)
+                // Don't stability-check macros in the same crate.
+                // (The only time this is null is for syntax extensions registered as macros.)
                 if def_site_span.map_or(false, |def_span| !crate_span.contains(def_span))
                     && !span.allows_unstable(&feature.as_str())
                     && this.cx.ecfg.features.map_or(true, |feats| {
-                    // macro features will count as lib features
+                    // Macro features will count as lib features.
                     !feats.declared_lib_features.iter().any(|&(feat, _)| feat == feature)
                 }) {
                     let explain = format!("macro {}! is unstable", path);
@@ -839,11 +840,11 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
                     self.gate_proc_macro_expansion_kind(span, kind);
                     invoc.expansion_data.mark.set_expn_info(ExpnInfo {
                         call_site: span,
-                        // FIXME procedural macros do not have proper span info
-                        // yet, when they do, we should use it here.
+                        // FIXME: procedural macros do not have proper span info yet --
+                        // when they do, we should use it here.
                         def_site: None,
                         format: macro_bang_format(path),
-                        // FIXME probably want to follow macro_rules macros here.
+                        // FIXME: probably want to follow `macro_rules` macros here.
                         allow_internal_unstable: allow_internal_unstable.clone(),
                         allow_internal_unsafe: false,
                         local_inner_macros: false,
@@ -893,7 +894,7 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
         );
     }
 
-    /// Expand a derive invocation. Returns the resulting expanded AST fragment.
+    /// Expands a `derive` invocation. Returns the resulting expanded AST fragment.
     fn expand_derive_invoc(&mut self,
                            invoc: Invocation,
                            ext: &SyntaxExtension)
@@ -911,7 +912,7 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
         let attr = ast::Attribute {
             path, span,
             tokens: TokenStream::empty(),
-            // irrelevant:
+            // Irrelevant.
             id: ast::AttrId(0), style: ast::AttrStyle::Outer, is_sugared_doc: false,
         };
 
@@ -929,7 +930,8 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
             ProcMacroDerive(ref ext, ..) => {
                 invoc.expansion_data.mark.set_expn_info(expn_info);
                 let span = span.with_ctxt(self.cx.backtrace());
-                let dummy = ast::MetaItem { // FIXME(jseyfried) avoid this
+                // FIXME(jseyfried): avoid this.
+                let dummy = ast::MetaItem {
                     ident: Path::from_ident(keywords::Invalid.ident()),
                     span: DUMMY_SP,
                     node: ast::MetaItemKind::Word,
@@ -942,7 +944,8 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
                     Symbol::intern("rustc_attrs"),
                     Symbol::intern("derive_clone_copy"),
                     Symbol::intern("derive_eq"),
-                    Symbol::intern("libstd_sys_internals"), // RustcDeserialize and RustcSerialize
+                    // `RustcDeserialize` and `RustcSerialize`.
+                    Symbol::intern("libstd_sys_internals"),
                 ].into());
                 invoc.expansion_data.mark.set_expn_info(expn_info);
                 let span = span.with_ctxt(self.cx.backtrace());
@@ -1016,7 +1019,7 @@ impl<'a> Parser<'a> {
             AstFragmentKind::Stmts => {
                 let mut stmts = SmallVec::new();
                 while self.token != token::Eof &&
-                      // won't make progress on a `}`
+                      // Won't make progress on a `}`.
                       self.token != token::CloseDelim(token::Brace) {
                     if let Some(stmt) = self.parse_full_stmt(macro_legacy_warnings)? {
                         stmts.push(stmt);
@@ -1127,7 +1130,8 @@ impl<'a, 'b> InvocationCollector<'a, 'b> {
         attr
     }
 
-    /// If `item` is an attr invocation, remove and return the macro attribute and derive traits.
+    /// If `item` is an attribute invocation, remove and return the macro attribute and `derive`
+    /// traits.
     fn classify_item<T>(&mut self, item: &mut T)
                         -> (Option<ast::Attribute>, Vec<Path>, /* after_derive */ bool)
         where T: HasAttrs,
@@ -1142,9 +1146,9 @@ impl<'a, 'b> InvocationCollector<'a, 'b> {
         (attr, traits, after_derive)
     }
 
-    /// Alternative to `classify_item()` that ignores `#[derive]` so invocations fallthrough
-    /// to the unused-attributes lint (making it an error on statements and expressions
-    /// is a breaking change)
+    /// Alternative to `classify_item()` that ignores `#[derive]` so that invocations fall through
+    /// to the unused-attributes lint.
+    /// (Note, making it an error on statements and expressions is a breaking change.)
     fn classify_nonitem<T: HasAttrs>(&mut self, nonitem: &mut T)
                                      -> (Option<ast::Attribute>, /* after_derive */ bool) {
         let (mut attr, mut after_derive) = (None, false);
@@ -1160,14 +1164,14 @@ impl<'a, 'b> InvocationCollector<'a, 'b> {
         self.cfg.configure(node)
     }
 
-    // Detect use of feature-gated or invalid attributes on macro invocations
-    // since they will not be detected after macro expansion.
+    /// Detects use of feature-gated or invalid attributes on macro invocations,
+    /// since they will not be detected after macro expansion.
     fn check_attributes(&mut self, attrs: &[ast::Attribute]) {
         let features = self.cx.ecfg.features.unwrap();
         for attr in attrs.iter() {
             self.check_attribute_inner(attr, features);
 
-            // macros are expanded before any lint passes so this warning has to be hardcoded
+            // Macros are expanded before any lint passes, so this warning has to be hard-coded.
             if attr.path == "derive" {
                 self.cx.struct_span_warn(attr.span, "`#[derive]` does nothing on macro invocations")
                     .note("this may become a hard error in a future release")
@@ -1192,15 +1196,15 @@ impl<'a, 'b> MutVisitor for InvocationCollector<'a, 'b> {
         visit_clobber(expr.deref_mut(), |mut expr| {
             self.cfg.configure_expr_kind(&mut expr.node);
 
-            // ignore derives so they remain unused
+            // Ignore `derive`s so that they remain unused.
             let (attr, after_derive) = self.classify_nonitem(&mut expr);
 
             if attr.is_some() {
-                // Collect the invoc regardless of whether or not attributes are permitted here
-                // expansion will eat the attribute so it won't error later.
+                // Collect the invocation regardless of whether or not attributes are permitted
+                // here. Expansion will eat the attribute so that it won't error later.
                 attr.as_ref().map(|a| self.cfg.maybe_emit_expr_attr_err(a));
 
-                // AstFragmentKind::Expr requires the macro to emit an expression.
+                // `AstFragmentKind::Expr` requires the macro to emit an expression.
                 return self.collect_attr(attr, vec![], Annotatable::Expr(P(expr)),
                                           AstFragmentKind::Expr, after_derive)
                     .make_expr()
@@ -1224,7 +1228,7 @@ impl<'a, 'b> MutVisitor for InvocationCollector<'a, 'b> {
         expr.filter_map(|mut expr| {
             self.cfg.configure_expr_kind(&mut expr.node);
 
-            // Ignore derives so they remain unused.
+            // Ignore derives so that they remain unused.
             let (attr, after_derive) = self.classify_nonitem(&mut expr);
 
             if attr.is_some() {
@@ -1266,13 +1270,13 @@ impl<'a, 'b> MutVisitor for InvocationCollector<'a, 'b> {
     fn flat_map_stmt(&mut self, stmt: ast::Stmt) -> SmallVec<[ast::Stmt; 1]> {
         let mut stmt = configure!(self, stmt);
 
-        // we'll expand attributes on expressions separately
+        // We'll expand attributes on expressions separately.
         if !stmt.is_expr() {
             let (attr, derives, after_derive) = if stmt.is_item() {
                 self.classify_item(&mut stmt)
             } else {
-                // ignore derives on non-item statements so it falls through
-                // to the unused-attributes lint
+                // Ignore `derive`s on non-item statements, so it falls through
+                // to the unused-attributes lint.
                 let (attr, after_derive) = self.classify_nonitem(&mut stmt);
                 (attr, vec![], after_derive)
             };
@@ -1300,7 +1304,7 @@ impl<'a, 'b> MutVisitor for InvocationCollector<'a, 'b> {
             return placeholder;
         }
 
-        // The placeholder expander gives ids to statements, so we avoid folding the id here.
+        // The placeholder expander gives IDs to statements, so we avoid folding the ID here.
         let ast::Stmt { id, node, span } = stmt;
         noop_flat_map_stmt_kind(node, self).into_iter().map(|node| {
             ast::Stmt { id, node, span }
@@ -1484,8 +1488,8 @@ impl<'a, 'b> MutVisitor for InvocationCollector<'a, 'b> {
     }
 
     fn visit_attribute(&mut self, at: &mut ast::Attribute) {
-        // turn `#[doc(include="filename")]` attributes into `#[doc(include(file="filename",
-        // contents="file contents")]` attributes
+        // Turn `#[doc(include="filename")]` attributes into
+        // `#[doc(include(file="filename", contents="file contents")]` attributes.
         if !at.check_name("doc") {
             return noop_visit_attribute(at, self);
         }
@@ -1507,7 +1511,7 @@ impl<'a, 'b> MutVisitor for InvocationCollector<'a, 'b> {
                     let err_count = self.cx.parse_sess.span_diagnostic.err_count();
                     self.check_attribute(&at);
                     if self.cx.parse_sess.span_diagnostic.err_count() > err_count {
-                        // avoid loading the file if they haven't enabled the feature
+                        // Avoid loading the file if user hasn't enabled the feature.
                         return noop_visit_attribute(at, self);
                     }
 
@@ -1517,7 +1521,7 @@ impl<'a, 'b> MutVisitor for InvocationCollector<'a, 'b> {
                             let src_interned = Symbol::intern(&src);
 
                             // Add this input file to the code map to make it available as
-                            // dependency information
+                            // dependency information.
                             self.cx.source_map().new_source_file(filename.into(), src);
 
                             let include_info = vec![
@@ -1624,7 +1628,8 @@ pub struct ExpansionConfig<'feat> {
     pub features: Option<&'feat Features>,
     pub recursion_limit: usize,
     pub trace_mac: bool,
-    pub should_test: bool, // If false, strip `#[test]` nodes
+    // If `false`, strip `#[test]` nodes.
+    pub should_test: bool,
     pub single_step: bool,
     pub keep_macs: bool,
 }
@@ -1675,7 +1680,7 @@ impl<'feat> ExpansionConfig<'feat> {
     }
 }
 
-// A Marker adds the given mark to the syntax context.
+// Adds the given mark to the syntax context.
 #[derive(Debug)]
 pub struct Marker(pub Mark);
 

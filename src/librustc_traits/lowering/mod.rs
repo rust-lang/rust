@@ -216,14 +216,14 @@ fn program_clauses_for_trait<'a, 'tcx>(
 
     // Rule Implied-Bound-From-Trait
     //
-    // For each where clause WC:
+    // For each where-clause WC:
     // ```
     // forall<Self, P1..Pn> {
     //   FromEnv(WC) :- FromEnv(Self: Trait<P1..Pn)
     // }
     // ```
 
-    // `FromEnv(WC) :- FromEnv(Self: Trait<P1..Pn>)`, for each where clause WC
+    // `FromEnv(WC) :- FromEnv(Self: Trait<P1..Pn>)`, for each where-clause WC
     let implied_bound_clauses = where_clauses
         .iter()
         .cloned()
@@ -232,12 +232,12 @@ fn program_clauses_for_trait<'a, 'tcx>(
         .map(|wc| {
             // we move binders to the left
             wc.map_bound(|goal| ProgramClause {
-                // FIXME: As where clauses can only bind lifetimes for now, and that named
-                // bound regions have a def-id, it is safe to just inject `bound_vars` and
+                // FIXME: as where-clauses can only bind lifetimes for now, and that named
+                // bound regions have a `DefId`, it is safe to just inject `bound_vars` and
                 // `hypotheses` (which contain named vars bound at index `0`) into this
-                // binding level. This may change if we ever allow where clauses to bind
-                // types (e.g. for GATs things), because bound types only use a `BoundVar`
-                // index (no def-id).
+                // binding level. This may change if we ever allow where-clauses to bind
+                // types (e.g., for GATs things), because bound types only use a `BoundVar`
+                // index (no `DefId`).
                 goal: goal.subst(tcx, bound_vars).into_from_env_goal(),
                 hypotheses,
 
@@ -248,7 +248,7 @@ fn program_clauses_for_trait<'a, 'tcx>(
 
     // Rule WellFormed-TraitRef
     //
-    // Here `WC` denotes the set of all where clauses:
+    // Here `WC` denotes the set of all where-clauses:
     // ```
     // forall<Self, P1..Pn> {
     //   WellFormed(Self: Trait<P1..Pn>) :- Implemented(Self: Trait<P1..Pn>) && WellFormed(WC)
@@ -362,7 +362,7 @@ pub fn program_clauses_for_type_def<'a, 'tcx>(
 
     // Rule Implied-Bound-From-Type
     //
-    // For each where clause `WC`:
+    // For each where-clause `WC`:
     // ```
     // forall<P1..Pn> {
     //   FromEnv(WC) :- FromEnv(Ty<...>)
@@ -373,7 +373,7 @@ pub fn program_clauses_for_type_def<'a, 'tcx>(
     let from_env_goal = tcx.mk_goal(DomainGoal::FromEnv(FromEnv::Ty(ty)).into_goal());
     let hypotheses = tcx.intern_goals(&[from_env_goal]);
 
-    // For each where clause `WC`:
+    // For each where-clause `WC`:
     let from_env_clauses = where_clauses
         .into_iter()
 
@@ -382,7 +382,7 @@ pub fn program_clauses_for_type_def<'a, 'tcx>(
             // move the binders to the left
             wc.map_bound(|goal| ProgramClause {
                 // FIXME: we inject `bound_vars` and `hypotheses` into this binding
-                // level, which may be incorrect in the future: see the FIXME in
+                // level, which may be incorrect in the future; see the FIXME in
                 // `program_clauses_for_trait`.
                 goal: goal.subst(tcx, bound_vars).into_from_env_goal(),
                 hypotheses,
@@ -546,7 +546,7 @@ pub fn program_clauses_for_associated_type_value<'a, 'tcx>(
     // }
     // ```
     //
-    // FIXME: For the moment, we don't account for where clauses written on the associated
+    // FIXME: for the moment, we don't account for where-clauses written on the associated
     // ty definition (i.e., in the trait def, as in `type AssocType<T> where T: Sized`).
     // ```
     // forall<P0..Pm> {

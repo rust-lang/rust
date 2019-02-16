@@ -93,7 +93,7 @@ impl<'a, 'tcx, 'rcx> BlanketImplFinder <'a, 'tcx, 'rcx> {
                     let eq_result = infcx.at(&cause, param_env)
                                          .eq(trait_ref.self_ty(), ty);
                     if let Ok(InferOk { value: (), obligations }) = eq_result {
-                        // FIXME(eddyb) ignoring `obligations` might cause false positives.
+                        // FIXME(eddyb): ignoring `obligations` might cause false positives.
                         drop(obligations);
 
                         debug!(

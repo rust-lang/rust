@@ -766,7 +766,7 @@ pub unsafe fn with_llvm_pmb(llmod: &llvm::Module,
 
 // Create a `__imp_<symbol> = &symbol` global for every public static `symbol`.
 // This is required to satisfy `dllimport` references to static data in .rlibs
-// when using MSVC linker.  We do this only for data, as linker can fix up
+// when using MSVC linker. We do this only for data, as linker can fix up
 // code references on its own.
 // See #26591, #27438
 fn create_msvc_imps(

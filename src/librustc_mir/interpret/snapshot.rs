@@ -2,7 +2,7 @@
 //! during const-evaluation by taking snapshots of the state of the interpreter
 //! at regular intervals.
 
-// This lives in `interpret` because it needs access to all sots of private state.  However,
+// This lives in `interpret` because it needs access to all sots of private state. However,
 // it is not used by the general miri engine, just by CTFE.
 
 use std::hash::{Hash, Hasher};
@@ -400,11 +400,11 @@ impl<'a, 'mir, 'tcx: 'a + 'mir> EvalSnapshot<'a, 'mir, 'tcx>
         }
     }
 
-    // Used to compare two snapshots
+    // Used to compare two snapshots.
     fn snapshot(&'b self)
         -> Vec<FrameSnapshot<'b, 'tcx>>
     {
-        // Start with the stack, iterate and recursively snapshot
+        // Start with the stack, iterate, and recursively snapshot.
         self.stack.iter().map(|frame| frame.snapshot(&self.memory)).collect()
     }
 
@@ -413,7 +413,7 @@ impl<'a, 'mir, 'tcx: 'a + 'mir> EvalSnapshot<'a, 'mir, 'tcx>
 impl<'a, 'mir, 'tcx> Hash for EvalSnapshot<'a, 'mir, 'tcx>
 {
     fn hash<H: Hasher>(&self, state: &mut H) {
-        // Implement in terms of hash stable, so that k1 == k2 -> hash(k1) == hash(k2)
+        // Implement in terms of hash stable, so that `k1 == k2` -> `hash(k1) == hash(k2)`.
         let mut hcx = self.memory.tcx.get_stable_hashing_context();
         let mut hasher = StableHasher::<u64>::new();
         self.hash_stable(&mut hcx, &mut hasher);
@@ -422,7 +422,7 @@ impl<'a, 'mir, 'tcx> Hash for EvalSnapshot<'a, 'mir, 'tcx>
 }
 
 impl_stable_hash_for!(impl<'tcx, 'b, 'mir> for struct EvalSnapshot<'b, 'mir, 'tcx> {
-    // Not hashing memory: Avoid hashing memory all the time during execution
+    // Not hashing memory: avoid hashing memory all the time during execution.
     memory -> _,
     stack,
 });
@@ -433,8 +433,8 @@ impl<'a, 'mir, 'tcx> Eq for EvalSnapshot<'a, 'mir, 'tcx>
 impl<'a, 'mir, 'tcx> PartialEq for EvalSnapshot<'a, 'mir, 'tcx>
 {
     fn eq(&self, other: &Self) -> bool {
-        // FIXME: This looks to be a *ridicolously expensive* comparison operation.
-        // Doesn't this make tons of copies?  Either `snapshot` is very badly named,
+        // FIXME: this looks to be a *ridicolously expensive* comparison operation.
+        // Doesn't this make tons of copies? Either `snapshot` is very badly named,
         // or it does!
         self.snapshot() == other.snapshot()
     }

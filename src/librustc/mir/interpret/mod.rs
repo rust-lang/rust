@@ -325,7 +325,7 @@ impl<'tcx> AllocMap<'tcx> {
         // We thus generate a new `AllocId` for every mention of a function. This means that
         // `main as fn() == main as fn()` is false, while `let x = main as fn(); x == x` is true.
         // However, formatting code relies on function identity (see #58320), so we only do
-        // this for generic functions.  Lifetime parameters are ignored.
+        // this for generic functions. Lifetime parameters are ignored.
         let is_generic = instance.substs.into_iter().any(|kind| {
             match kind.unpack() {
                 UnpackedKind::Lifetime(_) => false,

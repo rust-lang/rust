@@ -63,7 +63,7 @@ pub fn maybe_inject_crates_ref(
     for orig_name in names.iter().rev() {
         let orig_name = Symbol::intern(orig_name);
         let mut rename = orig_name;
-        // HACK(eddyb) gensym the injected crates on the Rust 2018 edition,
+        // HACK(eddyb): gensym the injected crates on the Rust 2018 edition,
         // so they don't accidentally interfere with the new import paths.
         if rust_2018 {
             rename = orig_name.gensymed();

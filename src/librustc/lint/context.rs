@@ -1349,12 +1349,12 @@ pub fn check_ast_crate<T: EarlyLintPass>(
     }
 
     // All of the buffered lints should have been emitted at this point.
-    // If not, that means that we somehow buffered a lint for a node id
+    // If not, that means that we somehow buffered a lint for a `NodeId`
     // that was not lint-checked (perhaps it doesn't exist?). This is a bug.
     //
     // Rustdoc runs everybody-loops before the early lints and removes
     // function bodies, so it's totally possible for linted
-    // node ids to not exist (e.g., macros defined within functions for the
+    // `NodeId`s to not exist (e.g., macros defined within functions for the
     // unused_macro lint) anymore. So we only run this check
     // when we're not in rustdoc mode. (see issue #47639)
     if !sess.opts.actually_rustdoc {

@@ -113,7 +113,7 @@ pub fn finalize(cx: &CodegenCx) {
     if gdb::needs_gdb_debug_scripts_section(cx) {
         // Add a .debug_gdb_scripts section to this compile-unit. This will
         // cause GDB to try and load the gdb_load_rust_pretty_printers.py file,
-        // which activates the Rust pretty printers for binary this section is
+        // which activates the Rust pretty-printers for binary this section is
         // contained in.
         gdb::get_or_insert_gdb_debug_scripts_section_global(cx);
     }
@@ -471,7 +471,7 @@ impl DebugInfoMethods<'tcx> for CodegenCx<'ll, 'tcx> {
         ) -> &'ll DIScope {
             // First, let's see if this is a method within an inherent impl. Because
             // if yes, we want to make the result subroutine DIE a child of the
-            // subroutine's self-type.
+            // subroutine's self type.
             let self_type = cx.tcx.impl_of_method(instance.def_id()).and_then(|impl_def_id| {
                 // If the method does *not* belong to a trait, proceed
                 if cx.tcx.trait_id_of_impl(impl_def_id).is_none() {

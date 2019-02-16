@@ -16,7 +16,7 @@ impl NiceRegionError<'me, 'gcx, 'tcx> {
     pub(super) fn try_report_placeholder_conflict(&self) -> Option<DiagnosticBuilder<'me>> {
         match &self.error {
             ///////////////////////////////////////////////////////////////////////////
-            // NB. The ordering of cases in this match is very
+            // N.B., the ordering of cases in this match is very
             // sensitive, because we are often matching against
             // specific cases and then using an `_` to match all
             // others.
@@ -323,7 +323,7 @@ impl NiceRegionError<'me, 'gcx, 'tcx> {
         //   in the types are about to print
         // - Meanwhile, the `maybe_highlighting_region` calls set up
         //   highlights so that, if they do appear, we will replace
-        //   them `'0` and whatever.  (This replacement takes place
+        //   them `'0` and whatever. (This replacement takes place
         //   inside the closure given to `maybe_highlighting_region`.)
         //
         // There is some duplication between the calls -- i.e., the

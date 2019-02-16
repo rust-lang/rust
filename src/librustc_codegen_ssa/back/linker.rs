@@ -128,7 +128,7 @@ pub trait Linker {
     fn group_start(&mut self);
     fn group_end(&mut self);
     fn linker_plugin_lto(&mut self);
-    // Should have been finalize(self), but we don't support self-by-value on trait objects (yet?).
+    // Should be `finalize(self)`, but we don't support self-by-value on trait objects (yet?).
     fn finalize(&mut self) -> Command;
 }
 
@@ -136,8 +136,9 @@ pub struct GccLinker<'a> {
     cmd: Command,
     sess: &'a Session,
     info: &'a LinkerInfo,
-    hinted_static: bool, // Keeps track of the current hinting mode.
-    // Link as ld
+    // Keeps track of the current hinting mode.
+    hinted_static: bool,
+    // Link as `ld`.
     is_ld: bool,
     target_cpu: &'a str,
 }
@@ -166,7 +167,7 @@ impl<'a> GccLinker<'a> {
     // Some platforms take hints about whether a library is static or dynamic.
     // For those that support this, we ensure we pass the option if the library
     // was flagged "static" (most defaults are dynamic) to ensure that if
-    // libfoo.a and libfoo.so both exist that the right one is chosen.
+    // `libfoo.a` and `libfoo.so` both exist that the right one is chosen.
     fn hint_static(&mut self) {
         if !self.takes_hints() { return }
         if !self.hinted_static {
@@ -246,7 +247,7 @@ impl<'a> Linker for GccLinker<'a> {
             self.linker_arg("--whole-archive").cmd.arg(format!("-l{}", lib));
             self.linker_arg("--no-whole-archive");
         } else {
-            // -force_load is the macOS equivalent of --whole-archive, but it
+            // `-force_load` is the macOS equivalent of `--whole-archive`, but it
             // involves passing the full path to the library to link.
             self.linker_arg("-force_load");
             let lib = archive::find_library(lib, search_path, &self.sess);
@@ -266,7 +267,7 @@ impl<'a> Linker for GccLinker<'a> {
     }
 
     fn gc_sections(&mut self, keep_metadata: bool) {
-        // The dead_strip option to the linker specifies that functions and data
+        // The `dead_strip` option to the linker specifies that functions and data
         // unreachable by the entry point will be removed. This is quite useful
         // with Rust's compilation model of compiling libraries at a time into
         // one object file. For example, this brings hello world from 1.7MB to
@@ -277,8 +278,8 @@ impl<'a> Linker for GccLinker<'a> {
         // stripped away as much as it could. This has not been seen to impact
         // link times negatively.
         //
-        // -dead_strip can't be part of the pre_link_args because it's also used
-        // for partial linking when using multiple codegen units (-r).  So we
+        // `-dead_strip` can't be part of the `pre_link_args` because it's also used
+        // for partial linking when using multiple codegen units (`-r`). So we
         // insert it here.
         if self.sess.target.target.options.is_like_osx {
             self.linker_arg("-dead_strip");
@@ -288,7 +289,7 @@ impl<'a> Linker for GccLinker<'a> {
         // If we're building a dylib, we don't use --gc-sections because LLVM
         // has already done the best it can do, and we also don't want to
         // eliminate the metadata. If we're building an executable, however,
-        // --gc-sections drops the size of hello world from 1.8MB to 597K, a 67%
+        // `--gc-sections` drops the size of hello world from 1.8MB to 597K, a 67%
         // reduction.
         } else if !keep_metadata {
             self.linker_arg("--gc-sections");
@@ -298,7 +299,7 @@ impl<'a> Linker for GccLinker<'a> {
     fn optimize(&mut self) {
         if !self.sess.target.target.options.linker_is_gnu { return }
 
-        // GNU-style linkers support optimization with -O. GNU ld doesn't
+        // GNU-style linkers support optimization with `-O`. GNU ld doesn't
         // need a numeric argument, but other linkers do.
         if self.sess.opts.optimize == config::OptLevel::Default ||
            self.sess.opts.optimize == config::OptLevel::Aggressive {
@@ -342,7 +343,7 @@ impl<'a> Linker for GccLinker<'a> {
     }
 
     fn build_dylib(&mut self, out_filename: &Path) {
-        // On mac we need to tell the linker to let this library be rpathed
+        // On mac we need to tell the linker to let this library be rpath'd.
         if self.sess.target.target.options.is_like_osx {
             self.cmd.arg("-dynamiclib");
             self.linker_arg("-dylib");
@@ -381,7 +382,7 @@ impl<'a> Linker for GccLinker<'a> {
         debug!("EXPORTED SYMBOLS:");
 
         if self.sess.target.target.options.is_like_osx {
-            // Write a plain, newline-separated list of symbols
+            // Write a plain, newline-separated list of symbols.
             let res = (|| -> io::Result<()> {
                 let mut f = BufWriter::new(File::create(&path)?);
                 for sym in self.info.exports[&crate_type].iter() {
@@ -394,7 +395,7 @@ impl<'a> Linker for GccLinker<'a> {
                 self.sess.fatal(&format!("failed to write lib.def file: {}", e));
             }
         } else {
-            // Write an LD version script
+            // Write an LD version script.
             let res = (|| -> io::Result<()> {
                 let mut f = BufWriter::new(File::create(&path)?);
                 writeln!(f, "{{\n  global:")?;
@@ -457,7 +458,7 @@ impl<'a> Linker for GccLinker<'a> {
     fn linker_plugin_lto(&mut self) {
         match self.sess.opts.cg.linker_plugin_lto {
             LinkerPluginLto::Disabled => {
-                // Nothing to do
+                // Nothing to do.
             }
             LinkerPluginLto::LinkerPluginAuto => {
                 self.push_linker_plugin_lto_args(None);
@@ -488,7 +489,7 @@ impl<'a> Linker for MsvcLinker<'a> {
     }
 
     fn build_static_executable(&mut self) {
-        // noop
+        // No-op.
     }
 
     fn gc_sections(&mut self, _keep_metadata: bool) {
@@ -524,23 +525,23 @@ impl<'a> Linker for MsvcLinker<'a> {
     }
 
     fn position_independent_executable(&mut self) {
-        // noop
+        // No-op.
     }
 
     fn no_position_independent_executable(&mut self) {
-        // noop
+        // No-op.
     }
 
     fn full_relro(&mut self) {
-        // noop
+        // No-op.
     }
 
     fn partial_relro(&mut self) {
-        // noop
+        // No-op.
     }
 
     fn no_relro(&mut self) {
-        // noop
+        // No-op.
     }
 
     fn no_default_libraries(&mut self) {
@@ -575,11 +576,11 @@ impl<'a> Linker for MsvcLinker<'a> {
     }
 
     fn link_whole_staticlib(&mut self, lib: &str, _search_path: &[PathBuf]) {
-        // not supported?
+        // Not supported?
         self.link_staticlib(lib);
     }
     fn link_whole_rlib(&mut self, path: &Path) {
-        // not supported?
+        // Not supported?
         self.link_rlib(path);
     }
     fn optimize(&mut self) {
@@ -599,7 +600,7 @@ impl<'a> Linker for MsvcLinker<'a> {
         let natvis_dir_path = self.sess.sysroot.join("lib\\rustlib\\etc");
         if let Ok(natvis_dir) = fs::read_dir(&natvis_dir_path) {
             // LLVM 5.0.0's lld-link frontend doesn't yet recognize, and chokes
-            // on, the /NATVIS:... flags.  LLVM 6 (or earlier) should at worst ignore
+            // on, the /NATVIS:... flags. LLVM 6 (or earlier) should at worst ignore
             // them, eventually mooting this workaround, per this landed patch:
             // https://github.com/llvm-mirror/lld/commit/27b9c4285364d8d76bb43839daa100
             if let Some(ref linker_path) = self.sess.opts.cg.linker {
@@ -683,7 +684,7 @@ impl<'a> Linker for MsvcLinker<'a> {
         // subsystem to be `mainCRTStartup` to get everything booted up
         // correctly.
         //
-        // For more information see RFC #1665
+        // For more information see RFC #1665.
         if subsystem == "windows" {
             self.cmd.arg("/ENTRY:mainCRTStartup");
         }
@@ -693,12 +694,12 @@ impl<'a> Linker for MsvcLinker<'a> {
         ::std::mem::replace(&mut self.cmd, Command::new(""))
     }
 
-    // MSVC doesn't need group indicators
+    // MSVC doesn't need group indicators.
     fn group_start(&mut self) {}
     fn group_end(&mut self) {}
 
     fn linker_plugin_lto(&mut self) {
-        // Do nothing
+        // Do nothing.
     }
 }
 
@@ -726,17 +727,17 @@ impl<'a> Linker for EmLinker<'a> {
     }
 
     fn link_dylib(&mut self, lib: &str) {
-        // Emscripten always links statically
+        // Emscripten always links statically.
         self.link_staticlib(lib);
     }
 
     fn link_whole_staticlib(&mut self, lib: &str, _search_path: &[PathBuf]) {
-        // not supported?
+        // Not supported?
         self.link_staticlib(lib);
     }
 
     fn link_whole_rlib(&mut self, lib: &Path) {
-        // not supported?
+        // Not supported?
         self.link_rlib(lib);
     }
 
@@ -749,23 +750,23 @@ impl<'a> Linker for EmLinker<'a> {
     }
 
     fn position_independent_executable(&mut self) {
-        // noop
+        // No-op.
     }
 
     fn no_position_independent_executable(&mut self) {
-        // noop
+        // No-op.
     }
 
     fn full_relro(&mut self) {
-        // noop
+        // No-op.
     }
 
     fn partial_relro(&mut self) {
-        // noop
+        // No-op.
     }
 
     fn no_relro(&mut self) {
-        // noop
+        // No-op.
     }
 
     fn args(&mut self, args: &[String]) {
@@ -781,11 +782,11 @@ impl<'a> Linker for EmLinker<'a> {
     }
 
     fn gc_sections(&mut self, _keep_metadata: bool) {
-        // noop
+        // No-op.
     }
 
     fn optimize(&mut self) {
-        // Emscripten performs own optimizations
+        // Emscripten performs own optimizations.
         self.cmd.arg(match self.sess.opts.optimize {
             OptLevel::No => "-O0",
             OptLevel::Less => "-O1",
@@ -794,16 +795,16 @@ impl<'a> Linker for EmLinker<'a> {
             OptLevel::Size => "-Os",
             OptLevel::SizeMin => "-Oz"
         });
-        // Unusable until https://github.com/rust-lang/rust/issues/38454 is resolved
+        // Unusable until issue #38454 is resolved.
         self.cmd.args(&["--memory-init-file", "0"]);
     }
 
     fn pgo_gen(&mut self) {
-        // noop, but maybe we need something like the gnu linker?
+        // No-op, but maybe we need something like the GNU linker?
     }
 
     fn debuginfo(&mut self) {
-        // Preserve names or generate source maps depending on debug info
+        // Preserve names or generate source maps depending on debug info.
         self.cmd.arg(match self.sess.opts.debuginfo {
             DebugInfo::None => "-g0",
             DebugInfo::Limited => "-g3",
@@ -820,7 +821,7 @@ impl<'a> Linker for EmLinker<'a> {
     }
 
     fn build_static_executable(&mut self) {
-        // noop
+        // No-op.
     }
 
     fn export_symbols(&mut self, _tmpdir: &Path, crate_type: CrateType) {
@@ -854,19 +855,19 @@ impl<'a> Linker for EmLinker<'a> {
     }
 
     fn subsystem(&mut self, _subsystem: &str) {
-        // noop
+        // No-op.
     }
 
     fn finalize(&mut self) -> Command {
         ::std::mem::replace(&mut self.cmd, Command::new(""))
     }
 
-    // Appears not necessary on Emscripten
+    // Appears to be unnecessary for Emscripten.
     fn group_start(&mut self) {}
     fn group_end(&mut self) {}
 
     fn linker_plugin_lto(&mut self) {
-        // Do nothing
+        // Do nothing.
     }
 }
 
@@ -890,9 +891,9 @@ impl<'a> WasmLd<'a> {
 
         // By default LLD's memory layout is:
         //
-        // 1. First, a blank page
-        // 2. Next, all static data
-        // 3. Finally, the main stack (which grows down)
+        // 1. First, a blank page.
+        // 2. Next, all static data.
+        // 3. Finally, the main stack (which grows down).
         //
         // This has the unfortunate consequence that on stack overflows you
         // corrupt static data and can cause some exceedingly weird bugs. To
@@ -912,7 +913,7 @@ impl<'a> WasmLd<'a> {
         // stick to this and hopefully fix it before stabilization happens.
         cmd.arg("--allow-undefined");
 
-        // For now we just never have an entry symbol
+        // For now we just never have an entry symbol.
         cmd.arg("--no-entry");
 
         // Rust code should never have warnings, and warnings are often
@@ -920,7 +921,7 @@ impl<'a> WasmLd<'a> {
         cmd.arg("--fatal-warnings");
 
         // The symbol visibility story is a bit in flux right now with LLD.
-        // It's... not entirely clear to me what's going on, but this looks to
+        // It's not entirely clear to me what's going on, but this looks to
         // make everything work when `export_symbols` isn't otherwise called for
         // things like executables.
         cmd.arg("--export-dynamic");
@@ -1008,8 +1009,7 @@ impl<'a> Linker for WasmLd<'a> {
             OptLevel::Less => "-O1",
             OptLevel::Default => "-O2",
             OptLevel::Aggressive => "-O3",
-            // Currently LLD doesn't support `Os` and `Oz`, so pass through `O2`
-            // instead.
+            // Currently LLD doesn't support `Os` and `Oz`, so pass through `O2` instead.
             OptLevel::Size => "-O2",
             OptLevel::SizeMin => "-O2"
         });
@@ -1043,12 +1043,12 @@ impl<'a> Linker for WasmLd<'a> {
         ::std::mem::replace(&mut self.cmd, Command::new(""))
     }
 
-    // Not needed for now with LLD
+    // Not needed for now with LLD.
     fn group_start(&mut self) {}
     fn group_end(&mut self) {}
 
     fn linker_plugin_lto(&mut self) {
-        // Do nothing for now
+        // Do nothing for now.
     }
 }
 

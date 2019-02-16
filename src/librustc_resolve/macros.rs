@@ -411,7 +411,7 @@ impl<'a> Resolver<'a> {
         let path_span = path.span;
         let mut path = Segment::from_path(path);
 
-        // Possibly apply the macro helper hack
+        // Possibly apply the macro helper hack.
         if kind == MacroKind::Bang && path.len() == 1 &&
            path[0].ident.span.ctxt().outer().expn_info()
                .map_or(false, |info| info.local_inner_macros) {
@@ -458,7 +458,7 @@ impl<'a> Resolver<'a> {
         }
     }
 
-    // Resolve an identifier in lexical scope.
+    // Resolves an identifier in lexical scope.
     // This is a variation of `fn resolve_ident_in_lexical_scope` that can be run during
     // expansion and import resolution (perhaps they can be merged in the future).
     // The function is used for resolving initial segments of macro paths (e.g., `foo` in
@@ -479,7 +479,7 @@ impl<'a> Resolver<'a> {
         // 2. "Closed set" below means new names cannot appear after the current resolution attempt.
         // Places to search (in order of decreasing priority):
         // (Type NS)
-        // 1. FIXME: Ribs (type parameters), there's no necessary infrastructure yet
+        // 1. FIXME: ribs (type parameters), there's no necessary infrastructure yet
         //    (open set, not controlled).
         // 2. Names in modules (both normal `mod`ules and blocks), loop through hygienic parents
         //    (open, not controlled).
@@ -488,7 +488,7 @@ impl<'a> Resolver<'a> {
         // 5. Standard library prelude (de-facto closed, controlled).
         // 6. Language prelude (closed, controlled).
         // (Value NS)
-        // 1. FIXME: Ribs (local variables), there's no necessary infrastructure yet
+        // 1. FIXME: ribs (local variables), there's no necessary infrastructure yet
         //    (open set, not controlled).
         // 2. Names in modules (both normal `mod`ules and blocks), loop through hygienic parents
         //    (open, not controlled).
@@ -542,7 +542,8 @@ impl<'a> Resolver<'a> {
             }
         }
 
-        assert!(force || !record_used); // `record_used` implies `force`
+        // `record_used` implies `force`.
+        assert!(force || !record_used);
         let mut ident = orig_ident.modern();
 
         // Make sure `self`, `super` etc produce an error when passed to here.
@@ -869,16 +870,19 @@ impl<'a> Resolver<'a> {
                 WhereToResolve::MacroUsePrelude => WhereToResolve::BuiltinMacros,
                 WhereToResolve::BuiltinMacros => WhereToResolve::BuiltinAttrs,
                 WhereToResolve::BuiltinAttrs => WhereToResolve::LegacyPluginHelpers,
-                WhereToResolve::LegacyPluginHelpers => break, // nowhere else to search
+                // Nowhere else to search.
+                WhereToResolve::LegacyPluginHelpers => break,
                 WhereToResolve::ExternPrelude if is_absolute_path => break,
                 WhereToResolve::ExternPrelude => WhereToResolve::ToolPrelude,
                 WhereToResolve::ToolPrelude => WhereToResolve::StdLibPrelude,
                 WhereToResolve::StdLibPrelude => match ns {
                     TypeNS => WhereToResolve::BuiltinTypes,
-                    ValueNS => break, // nowhere else to search
+                    // Nowhere else to search.
+                    ValueNS => break,
                     MacroNS => unreachable!(),
                 }
-                WhereToResolve::BuiltinTypes => break, // nowhere else to search
+                // Nowhere else to search.
+                WhereToResolve::BuiltinTypes => break,
             };
 
             continue;
@@ -982,7 +986,7 @@ impl<'a> Resolver<'a> {
         let macro_resolutions =
             mem::replace(&mut *module.multi_segment_macro_resolutions.borrow_mut(), Vec::new());
         for (mut path, path_span, kind, parent_scope, initial_def) in macro_resolutions {
-            // FIXME: Path resolution will ICE if segment IDs present.
+            // FIXME: path resolution will ICE if segment IDs present.
             for seg in &mut path { seg.id = None; }
             match self.resolve_path(&path, Some(MacroNS), &parent_scope,
                                     true, path_span, CrateLint::No) {

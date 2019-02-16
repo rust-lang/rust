@@ -81,7 +81,7 @@ fn reachable_non_generics_provider<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
             // statically included symbols, it's an export of our library which
             // needs to be passed on to the linker and encoded in the metadata.
             //
-            // As a result, if this id is an FFI item (foreign item) then we only
+            // As a result, if this ID is an FFI item (foreign item) then we only
             // let it through if it's included statically.
             match tcx.hir().get(node_id) {
                 Node::ForeignItem(..) => {

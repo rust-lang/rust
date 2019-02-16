@@ -133,8 +133,8 @@ impl<'cx, 'gcx, 'tcx> Elaborator<'cx, 'gcx, 'tcx> {
                        data, predicates);
 
                 // Only keep those bounds that we haven't already
-                // seen.  This is necessary to prevent infinite
-                // recursion in some cases.  One common case is when
+                // seen. This is necessary to prevent infinite
+                // recursion in some cases. One common case is when
                 // people define `trait Sized: Sized { }` rather than `trait
                 // Sized { }`.
                 predicates.retain(|r| self.visited.insert(r));
@@ -269,7 +269,7 @@ pub fn transitive_bounds<'cx, 'gcx, 'tcx>(tcx: TyCtxt<'cx, 'gcx, 'tcx>,
 }
 
 ///////////////////////////////////////////////////////////////////////////
-// Iterator over def-ids of supertraits
+// Iterator over `DefId`s of supertraits
 
 pub struct SupertraitDefIds<'a, 'gcx: 'a+'tcx, 'tcx: 'a> {
     tcx: TyCtxt<'a, 'gcx, 'tcx>,

@@ -145,7 +145,7 @@ provide! { <'tcx> tcx, def_id, other, cdata,
         cdata.get_deprecation(def_id.index).map(DeprecationEntry::external)
     }
     item_attrs => { cdata.get_item_attrs(def_id.index, tcx.sess) }
-    // FIXME(#38501) We've skipped a `read` on the `HirBody` of
+    // FIXME(#38501): we've skipped a `read` on the `HirBody` of
     // a `fn` when encoding, so the dep-tracking wouldn't work.
     // This is only used by rustdoc anyway, which shouldn't have
     // incremental recompilation ever enabled.
@@ -253,7 +253,7 @@ provide! { <'tcx> tcx, def_id, other, cdata,
 }
 
 pub fn provide<'tcx>(providers: &mut Providers<'tcx>) {
-    // FIXME(#44234) - almost all of these queries have no sub-queries and
+    // FIXME(#44234): almost all of these queries have no subqueries and
     // therefore no actual inputs, they're just reading tables calculated in
     // resolve! Does this work? Unsure! That's what the issue is about
     *providers = Providers {
@@ -309,8 +309,8 @@ pub fn provide<'tcx>(providers: &mut Providers<'tcx>) {
             assert_eq!(cnum, LOCAL_CRATE);
             let mut visible_parent_map: DefIdMap<DefId> = Default::default();
 
-            // Issue 46112: We want the map to prefer the shortest
-            // paths when reporting the path to an item. Therefore we
+            // Issue #46112: We want the map to prefer the shortest
+            // paths when reporting the path to an item. Therefore, we
             // build up the map via a breadth-first search (BFS),
             // which naturally yields minimal-length paths.
             //
@@ -500,8 +500,8 @@ impl CrateStore for cstore::CStore {
     /// parent `DefId` as well as some idea of what kind of data the
     /// `DefId` refers to.
     fn def_key(&self, def: DefId) -> DefKey {
-        // Note: loading the def-key (or def-path) for a def-id is not
-        // a *read* of its metadata. This is because the def-id is
+        // Note: loading the def-key (or def-path) for a `DefId` is not
+        // a *read* of its metadata. This is because the `DefId` is
         // really just an interned shorthand for a def-path, which is the
         // canonical name for an item.
         //

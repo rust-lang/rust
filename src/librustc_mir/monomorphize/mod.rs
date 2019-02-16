@@ -1,3 +1,7 @@
+pub mod collector;
+pub mod item;
+pub mod partitioning;
+
 use rustc::hir::def_id::DefId;
 use rustc::middle::lang_items::DropInPlaceFnLangItem;
 use rustc::traits;
@@ -7,11 +11,8 @@ use rustc::ty::{self, Ty, TyCtxt};
 pub use rustc::ty::Instance;
 pub use self::item::{MonoItem, MonoItemExt};
 
-pub mod collector;
-pub mod item;
-pub mod partitioning;
-
-#[inline(never)] // give this a place in the profiler
+// Give this a place in the profiler.
+#[inline(never)]
 pub fn assert_symbols_are_distinct<'a, 'tcx, I>(tcx: TyCtxt<'a, 'tcx, 'tcx>, mono_items: I)
     where I: Iterator<Item=&'a MonoItem<'tcx>>
 {
@@ -92,7 +93,7 @@ fn needs_fn_once_adapter_shim(actual_closure_kind: ty::ClosureKind,
            Ok(false)
         }
         (ty::ClosureKind::Fn, ty::ClosureKind::FnMut) => {
-            // The closure fn `llfn` is a `fn(&self, ...)`.  We want a
+            // The closure fn `llfn` is a `fn(&self, ...)`. We want a
             // `fn(&mut self, ...)`. In fact, at codegen time, these are
             // basically the same thing, so we can just return llfn.
             Ok(false)
@@ -100,7 +101,7 @@ fn needs_fn_once_adapter_shim(actual_closure_kind: ty::ClosureKind,
         (ty::ClosureKind::Fn, ty::ClosureKind::FnOnce) |
         (ty::ClosureKind::FnMut, ty::ClosureKind::FnOnce) => {
             // The closure fn `llfn` is a `fn(&self, ...)` or `fn(&mut
-            // self, ...)`.  We want a `fn(self, ...)`. We can produce
+            // self, ...)`. We want a `fn(self, ...)`. We can produce
             // this by doing something like:
             //
             //     fn call_once(self, ...) { call_mut(&self, ...) }

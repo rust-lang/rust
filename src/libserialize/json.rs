@@ -1,10 +1,10 @@
 // Rust JSON serialization library.
-// Copyright (c) 2011 Google Inc.
+// Original version copyright (c) 2011 Google Inc.
 
 #![forbid(non_camel_case_types)]
 #![allow(missing_docs)]
 
-//! JSON parsing and serialization
+//! JSON parsing and serialization.
 //!
 //! # What is JSON?
 //!
@@ -106,20 +106,20 @@
 //! extern crate serialize;
 //! use serialize::json::{self, ToJson, Json};
 //!
-//! // A custom data structure
+//! // A custom data structure.
 //! struct ComplexNum {
 //!     a: f64,
 //!     b: f64,
 //! }
 //!
-//! // JSON value representation
+//! // JSON value representation.
 //! impl ToJson for ComplexNum {
 //!     fn to_json(&self) -> Json {
 //!         Json::String(format!("{}+{}i", self.a, self.b))
 //!     }
 //! }
 //!
-//! // Only generate `RustcEncodable` trait implementation
+//! // Only generate `RustcEncodable` trait implementation.
 //! #[derive(Encodable)]
 //! pub struct ComplexNumRecord {
 //!     uid: u8,
@@ -159,7 +159,7 @@
 //! impl ToJson for TestStruct {
 //!     fn to_json(&self) -> Json {
 //!         let mut d = BTreeMap::new();
-//!         // All standard types implement `to_json()`, so use it
+//!         // All standard types implement `to_json()`, so use it.
 //!         d.insert("data_int".to_string(), self.data_int.to_json());
 //!         d.insert("data_str".to_string(), self.data_str.to_json());
 //!         d.insert("data_vector".to_string(), self.data_vector.to_json());
@@ -168,7 +168,7 @@
 //! }
 //!
 //! fn main() {
-//!     // Serialize using `ToJson`
+//!     // Serialize using `ToJson`.
 //!     let input_data = TestStruct {
 //!         data_int: 1,
 //!         data_str: "madoka".to_string(),
@@ -202,7 +202,7 @@ use std::{char, f64, fmt, str};
 
 use crate::Encodable;
 
-/// Represents a json value
+/// Represents a JSON value.
 #[derive(Clone, PartialEq, PartialOrd, Debug)]
 pub enum Json {
     I64(i64),
@@ -247,12 +247,12 @@ pub enum ErrorCode {
 
 #[derive(Clone, PartialEq, Debug)]
 pub enum ParserError {
-    /// msg, line, col
+    /// `(msg, line, col)`
     SyntaxError(ErrorCode, usize, usize),
     IoError(io::ErrorKind, String),
 }
 
-// Builder and Parser have the same errors.
+// The `Builder` and `Parser` types have the same errors.
 pub type BuilderError = ParserError;
 
 #[derive(Clone, PartialEq, Debug)]
@@ -293,7 +293,7 @@ pub fn error_str(error: ErrorCode) -> &'static str {
     }
 }
 
-/// Shortcut function to decode a JSON `&str` into an object
+/// Shortcut function to decode a JSON `&str` into an object.
 pub fn decode<T: crate::Decodable>(s: &str) -> DecodeResult<T> {
     let json = match from_str(s) {
         Ok(x) => x,
@@ -304,7 +304,7 @@ pub fn decode<T: crate::Decodable>(s: &str) -> DecodeResult<T> {
     crate::Decodable::decode(&mut decoder)
 }
 
-/// Shortcut function to encode a `T` into a JSON `String`
+/// Shortcut function to encode a `T` into a JSON `String`.
 pub fn encode<T: crate::Encodable>(object: &T) -> Result<string::String, EncoderError> {
     let mut s = String::new();
     {
@@ -326,14 +326,14 @@ fn io_error_to_error(io: io::Error) -> ParserError {
 
 impl fmt::Display for ParserError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        // FIXME this should be a nicer error
+        // FIXME: this should be a nicer error.
         fmt::Debug::fmt(self, f)
     }
 }
 
 impl fmt::Display for DecoderError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        // FIXME this should be a nicer error
+        // FIXME: this should be a nicer error.
         fmt::Debug::fmt(self, f)
     }
 }
@@ -344,7 +344,7 @@ impl std::error::Error for DecoderError {
 
 impl fmt::Display for EncoderError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        // FIXME this should be a nicer error
+        // FIXME: this should be a nicer error.
         fmt::Debug::fmt(self, f)
     }
 }
@@ -354,7 +354,7 @@ impl std::error::Error for EncoderError {
 }
 
 impl From<fmt::Error> for EncoderError {
-    /// Converts a [`fmt::Error`] into `EncoderError`
+    /// Converts a [`fmt::Error`] into `EncoderError`.
     ///
     /// This conversion does not allocate memory.
     fn from(err: fmt::Error) -> EncoderError { EncoderError::FmtError(err) }
@@ -451,15 +451,14 @@ fn fmt_number_or_null(v: f64) -> string::String {
     }
 }
 
-/// A structure for implementing serialization to JSON.
+/// Serializes values to JSON.
 pub struct Encoder<'a> {
     writer: &'a mut (dyn fmt::Write+'a),
     is_emitting_map_key: bool,
 }
 
 impl<'a> Encoder<'a> {
-    /// Creates a new JSON encoder whose output will be written to the writer
-    /// specified.
+    /// Creates a new JSON encoder whose output will be written to the writer specified.
     pub fn new(writer: &'a mut dyn fmt::Write) -> Encoder<'a> {
         Encoder { writer: writer, is_emitting_map_key: false, }
     }
@@ -536,9 +535,10 @@ impl<'a> crate::Encoder for Encoder<'a> {
                             f: F) -> EncodeResult where
         F: FnOnce(&mut Encoder<'a>) -> EncodeResult,
     {
-        // enums are encoded as strings or objects
-        // Bunny => "Bunny"
-        // Kangaroo(34,"William") => {"variant": "Kangaroo", "fields": [34,"William"]}
+        // Enums are encoded as strings or objects. For example:
+        //
+        // `Bunny` => `"Bunny"`
+        // `Kangaroo(34, "William")` => `{"variant": "Kangaroo", "fields": [34,"William"]}`
         if cnt == 0 {
             escape_str(self.writer, name)
         } else {
@@ -697,7 +697,7 @@ impl<'a> crate::Encoder for Encoder<'a> {
 }
 
 /// Another encoder for JSON, but prints out human-readable JSON instead of
-/// compact data
+/// compact data.
 pub struct PrettyEncoder<'a> {
     writer: &'a mut (dyn fmt::Write+'a),
     curr_indent: usize,
@@ -706,7 +706,7 @@ pub struct PrettyEncoder<'a> {
 }
 
 impl<'a> PrettyEncoder<'a> {
-    /// Creates a new encoder whose output will be written to the specified writer
+    /// Creates a new encoder whose output will be written to the specified writer.
     pub fn new(writer: &'a mut dyn fmt::Write) -> PrettyEncoder<'a> {
         PrettyEncoder {
             writer,
@@ -719,7 +719,7 @@ impl<'a> PrettyEncoder<'a> {
     /// Sets the number of spaces to indent for each level.
     /// This is safe to set during encoding.
     pub fn set_indent(&mut self, indent: usize) {
-        // self.indent very well could be 0 so we need to use checked division.
+        // `self.indent` could very well be `0`, so we need to use checked division.
         let level = self.curr_indent.checked_div(self.indent).unwrap_or(0);
         self.indent = indent;
         self.curr_indent = level * self.indent;
@@ -1023,14 +1023,14 @@ pub fn as_pretty_json<T>(t: &T) -> AsPrettyJson<'_, T> {
 }
 
 impl Json {
-    /// Borrow this json object as a pretty object to generate a pretty
+    /// Borrows this `Json` object as a pretty object to generate a pretty
     /// representation for it via `Display`.
     pub fn pretty(&self) -> PrettyJson<'_> {
         PrettyJson { inner: self }
     }
 
-     /// If the Json value is an Object, returns the value associated with the provided key.
-    /// Otherwise, returns None.
+    /// If the `Json` value is an `Object`, returns the value associated with the provided key;
+    /// otherwise, returns `None`.
     pub fn find<'a>(&'a self, key: &str) -> Option<&'a Json>{
         match *self {
             Json::Object(ref map) => map.get(key),
@@ -1038,9 +1038,9 @@ impl Json {
         }
     }
 
-    /// Attempts to get a nested Json Object for each key in `keys`.
+    /// Attempts to get a nested `Json::Object` for each key in `keys`.
     /// If any key is found not to exist, `find_path` will return `None`.
-    /// Otherwise, it will return the Json value associated with the final key.
+    /// Otherwise, it will return the `Json` value associated with the final key.
     pub fn find_path<'a>(&'a self, keys: &[&str]) -> Option<&'a Json>{
         let mut target = self;
         for key in keys {
@@ -1049,9 +1049,9 @@ impl Json {
         Some(target)
     }
 
-    /// If the Json value is an Object, performs a depth-first search until
+    /// If the `Json` value is an `Object`, performs a depth-first search until
     /// a value associated with the provided key is found. If no value is found
-    /// or the Json value is not an Object, returns `None`.
+    /// or the `Json` value is not an `Object`, returns `None`.
     pub fn search<'a>(&'a self, key: &str) -> Option<&'a Json> {
         match self {
             &Json::Object(ref map) => {
@@ -1072,13 +1072,13 @@ impl Json {
         }
     }
 
-    /// Returns `true` if the Json value is an `Object`.
+    /// Returns `true` if the `Json` value is an `Object`.
     pub fn is_object(&self) -> bool {
         self.as_object().is_some()
     }
 
-    /// If the Json value is an `Object`, returns the associated `BTreeMap`;
-    /// returns `None` otherwise.
+    /// If the `Json` value is an `Object`, returns the associated `BTreeMap`;
+    /// otherwise, returns `None`.
     pub fn as_object(&self) -> Option<&Object> {
         match *self {
             Json::Object(ref map) => Some(map),
@@ -1086,13 +1086,13 @@ impl Json {
         }
     }
 
-    /// Returns `true` if the Json value is an `Array`.
+    /// Returns `true` if the `Json` value is an `Array`.
     pub fn is_array(&self) -> bool {
         self.as_array().is_some()
     }
 
-    /// If the Json value is an `Array`, returns the associated vector;
-    /// returns `None` otherwise.
+    /// If the `Json` value is an `Array`, returns the associated vector;
+    /// otherwise, returns `None`.
     pub fn as_array(&self) -> Option<&Array> {
         match *self {
             Json::Array(ref array) => Some(&*array),
@@ -1100,13 +1100,13 @@ impl Json {
         }
     }
 
-    /// Returns `true` if the Json value is a `String`.
+    /// Returns `true` if the `Json` value is a `String`.
     pub fn is_string(&self) -> bool {
         self.as_string().is_some()
     }
 
-    /// If the Json value is a `String`, returns the associated `str`;
-    /// returns `None` otherwise.
+    /// If the `Json` value is a `String`, returns the associated `str`;
+    /// otherwise, returns `None`.
     pub fn as_string(&self) -> Option<&str> {
         match *self {
             Json::String(ref s) => Some(&s[..]),
@@ -1122,7 +1122,7 @@ impl Json {
         }
     }
 
-    /// Returns `true` if the Json value is a `i64`.
+    /// Returns `true` if the `Json` value is a `i64`.
     pub fn is_i64(&self) -> bool {
         match *self {
             Json::I64(_) => true,
@@ -1130,7 +1130,7 @@ impl Json {
         }
     }
 
-    /// Returns `true` if the Json value is a `u64`.
+    /// Returns `true` if the `Json` value is a `u64`.
     pub fn is_u64(&self) -> bool {
         match *self {
             Json::U64(_) => true,
@@ -1138,7 +1138,7 @@ impl Json {
         }
     }
 
-    /// Returns `true` if the Json value is a `f64`.
+    /// Returns `true` if the `Json` value is a `f64`.
     pub fn is_f64(&self) -> bool {
         match *self {
             Json::F64(_) => true,
@@ -1146,8 +1146,8 @@ impl Json {
         }
     }
 
-    /// If the Json value is a number, returns or cast it to a `i64`;
-    /// returns `None` otherwise.
+    /// If the `Json` value is a number, returns or cast it to a `i64`;
+    /// otherwise, returns `None`.
     pub fn as_i64(&self) -> Option<i64> {
         match *self {
             Json::I64(n) => Some(n),
@@ -1156,8 +1156,8 @@ impl Json {
         }
     }
 
-    /// If the Json value is a number, returns or cast it to a `u64`;
-    /// returns `None` otherwise.
+    /// If the `Json` value is a number, returns or cast it to a `u64`;
+    /// otherwise, returns `None`.
     pub fn as_u64(&self) -> Option<u64> {
         match *self {
             Json::I64(n) => Some(n as u64),
@@ -1166,8 +1166,8 @@ impl Json {
         }
     }
 
-    /// If the Json value is a number, returns or cast it to a `f64`;
-    /// returns `None` otherwise.
+    /// If the `Json` value is a number, returns or cast it to a `f64`;
+    /// otherwise, returns `None`.
     pub fn as_f64(&self) -> Option<f64> {
         match *self {
             Json::I64(n) => Some(n as f64),
@@ -1177,13 +1177,13 @@ impl Json {
         }
     }
 
-    /// Returns `true` if the Json value is a `Boolean`.
+    /// Returns `true` if the `Json` value is a `Boolean`.
     pub fn is_boolean(&self) -> bool {
         self.as_boolean().is_some()
     }
 
-    /// If the Json value is a `Boolean`, returns the associated `bool`;
-    /// returns `None` otherwise.
+    /// If the `Json` value is a `Boolean`, returns the associated `bool`;
+    /// otherwise, returns `None`.
     pub fn as_boolean(&self) -> Option<bool> {
         match *self {
             Json::Boolean(b) => Some(b),
@@ -1191,13 +1191,12 @@ impl Json {
         }
     }
 
-    /// Returns `true` if the Json value is a `Null`.
+    /// Returns `true` if the `Json` value is a `Null`.
     pub fn is_null(&self) -> bool {
         self.as_null().is_some()
     }
 
-    /// If the Json value is a `Null`, returns `()`;
-    /// returns `None` otherwise.
+    /// If the `Json` value is a `Null`, returns `()`; otherwise, returns `None`.
     pub fn as_null(&self) -> Option<()> {
         match *self {
             Json::Null => Some(()),
@@ -1259,30 +1258,30 @@ enum ParserState {
     ParseFinished,
 }
 
-/// A Stack represents the current position of the parser in the logical
-/// structure of the JSON stream.
-/// For example foo.bar[3].x
+/// Represents the current position of the parser in the logical structure of the JSON stream.
+/// E.g., `foo.bar[3].x`.
 pub struct Stack {
     stack: Vec<InternalStackElement>,
     str_buffer: Vec<u8>,
 }
 
-/// StackElements compose a Stack.
-/// For example, StackElement::Key("foo"), StackElement::Key("bar"),
-/// StackElement::Index(3) and StackElement::Key("x") are the
-/// StackElements compositing the stack that represents foo.bar[3].x
+/// Elements that compose a `Stack`.
+/// E.g., `StackElement::Key("foo")`, `StackElement::Key("bar")`,
+/// `StackElement::Index(3)` and `StackElement::Key("x")` are the
+/// `StackElement`s compositing the stack that represents `foo.bar[3].x`.
 #[derive(PartialEq, Clone, Debug)]
 pub enum StackElement<'l> {
     Index(u32),
     Key(&'l str),
 }
 
-// Internally, Key elements are stored as indices in a buffer to avoid
+// Internally, `Key` elements are stored as indices in a buffer to avoid
 // allocating a string for every member of an object.
 #[derive(PartialEq, Clone, Debug)]
 enum InternalStackElement {
     InternalIndex(u32),
-    InternalKey(u16, u16), // start, size
+    // `(start, size)`
+    InternalKey(u16, u16),
 }
 
 impl Stack {
@@ -1290,15 +1289,14 @@ impl Stack {
         Stack { stack: Vec::new(), str_buffer: Vec::new() }
     }
 
-    /// Returns The number of elements in the Stack.
+    /// Returns the number of elements in the `Stack`.
     pub fn len(&self) -> usize { self.stack.len() }
 
     /// Returns `true` if the stack is empty.
     pub fn is_empty(&self) -> bool { self.stack.is_empty() }
 
-    /// Provides access to the StackElement at a given index.
-    /// lower indices are at the bottom of the stack while higher indices are
-    /// at the top.
+    /// Provides access to the `StackElement` at a given index.
+    /// Lower indices are at the bottom of the stack while higher indices are at the top.
     pub fn get(&self, idx: usize) -> StackElement<'_> {
         match self.stack[idx] {
             InternalIndex(i) => StackElement::Index(i),
@@ -1310,7 +1308,7 @@ impl Stack {
         }
     }
 
-    /// Compares this stack with an array of StackElement<'_>s.
+    /// Compares this stack with an array of `StackElement<'_>`s.
     pub fn is_equal_to(&self, rhs: &[StackElement<'_>]) -> bool {
         if self.stack.len() != rhs.len() { return false; }
         for (i, r) in rhs.iter().enumerate() {
@@ -1353,18 +1351,18 @@ impl Stack {
         }
     }
 
-    // Used by Parser to insert StackElement::Key elements at the top of the stack.
+    // Used by `Parser` to insert `StackElement::Key` elements at the top of the stack.
     fn push_key(&mut self, key: string::String) {
         self.stack.push(InternalKey(self.str_buffer.len() as u16, key.len() as u16));
         self.str_buffer.extend(key.as_bytes());
     }
 
-    // Used by Parser to insert StackElement::Index elements at the top of the stack.
+    // Used by `Parser` to insert `StackElement::Index` elements at the top of the stack.
     fn push_index(&mut self, index: u32) {
         self.stack.push(InternalIndex(index));
     }
 
-    // Used by Parser to remove the top-most element of the stack.
+    // Used by `Parser` to remove the top-most element of the stack.
     fn pop(&mut self) {
         assert!(!self.is_empty());
         match *self.stack.last().unwrap() {
@@ -1377,7 +1375,7 @@ impl Stack {
         self.stack.pop();
     }
 
-    // Used by Parser to test whether the top-most element is an index.
+    // Used by `Parser` to test whether the top-most element is an index.
     fn last_is_index(&self) -> bool {
         match self.stack.last() {
             Some(InternalIndex(_)) => true,
@@ -1385,7 +1383,7 @@ impl Stack {
         }
     }
 
-    // Used by Parser to increment the index of the top-most element.
+    // Used by `Parser` to increment the index of the top-most element.
     fn bump_index(&mut self) {
         let len = self.stack.len();
         let idx = match *self.stack.last().unwrap() {
@@ -1396,15 +1394,14 @@ impl Stack {
     }
 }
 
-/// A streaming JSON parser implemented as an iterator of JsonEvent, consuming
+/// A streaming JSON parser implemented as an iterator of `JsonEvent`, consuming
 /// an iterator of char.
 pub struct Parser<T> {
     rdr: T,
     ch: Option<char>,
     line: usize,
     col: usize,
-    // We maintain a stack representing where we are in the logical structure
-    // of the JSON stream.
+    // We maintain a stack representing where we are in the logical structure of the JSON stream.
     stack: Stack,
     // A state machine is kept to make it possible to interrupt and resume parsing.
     state: ParserState,
@@ -1420,7 +1417,7 @@ impl<T: Iterator<Item=char>> Iterator for Parser<T> {
 
         if self.state == ParseBeforeFinish {
             self.parse_whitespace();
-            // Make sure there is no trailing characters.
+            // Make sure there are no trailing characters.
             if self.eof() {
                 self.state = ParseFinished;
                 return None;
@@ -1448,8 +1445,7 @@ impl<T: Iterator<Item=char>> Parser<T> {
         p
     }
 
-    /// Provides access to the current position in the logical structure of the
-    /// JSON stream.
+    /// Provides access to the current position in the logical structure of the JSON stream.
     pub fn stack(&self) -> &Stack {
         &self.stack
     }
@@ -1537,7 +1533,8 @@ impl<T: Iterator<Item=char>> Parser<T> {
 
     fn parse_u64(&mut self) -> Result<u64, ParserError> {
         let mut accum = 0u64;
-        let last_accum = 0; // necessary to detect overflow.
+        // Necessary to detect overflow.
+        let last_accum = 0;
 
         match self.ch_or_null() {
             '0' => {
@@ -1727,17 +1724,17 @@ impl<T: Iterator<Item=char>> Parser<T> {
     }
 
     // Invoked at each iteration, consumes the stream until it has enough
-    // information to return a JsonEvent.
+    // information to return a `JsonEvent`.
     // Manages an internal state so that parsing can be interrupted and resumed.
-    // Also keeps track of the position in the logical structure of the json
-    // stream isize the form of a stack that can be queried by the user using the
-    // stack() method.
+    // Also keeps track of the position in the logical structure of the JSON
+    // stream `isize` in the form of a stack that can be queried by the user using
+    // the `stack()` method.
     fn parse(&mut self) -> JsonEvent {
         loop {
             // The only paths where the loop can spin a new iteration
-            // are in the cases ParseArrayComma and ParseObjectComma if ','
+            // are in the cases `ParseArrayComma` and `ParseObjectComma` if ','
             // is parsed. In these cases the state is set to (respectively)
-            // ParseArray(false) and ParseObject(false), which always return,
+            // `ParseArray(false)` and `ParseObject(false)`, which always return,
             // so there is no risk of getting stuck in an infinite loop.
             // All other paths return before the end of the loop's iteration.
             self.parse_whitespace();
@@ -1947,19 +1944,19 @@ impl<T: Iterator<Item=char>> Parser<T> {
     }
 }
 
-/// A Builder consumes a json::Parser to create a generic Json structure.
+/// Consumes a `json::Parser` to create a generic JSON structure.
 pub struct Builder<T> {
     parser: Parser<T>,
     token: Option<JsonEvent>,
 }
 
-impl<T: Iterator<Item=char>> Builder<T> {
-    /// Creates a JSON Builder.
+impl<T: Iterator<Item = char>> Builder<T> {
+    /// Creates a JSON `Builder`.
     pub fn new(src: T) -> Builder<T> {
         Builder { parser: Parser::new(src), token: None, }
     }
 
-    // Decode a Json value from a Parser.
+    // Decodes a `Json` value from a `Parser`.
     pub fn build(&mut self) -> Result<Json, BuilderError> {
         self.bump();
         let result = self.build_value();
@@ -2039,7 +2036,7 @@ impl<T: Iterator<Item=char>> Builder<T> {
     }
 }
 
-/// Decodes a json value from an `&mut io::Read`
+/// Decodes a JSON value from an `&mut io::Read`.
 pub fn from_reader(rdr: &mut dyn Read) -> Result<Json, BuilderError> {
     let mut contents = Vec::new();
     match rdr.read_to_end(&mut contents) {
@@ -2054,19 +2051,19 @@ pub fn from_reader(rdr: &mut dyn Read) -> Result<Json, BuilderError> {
     builder.build()
 }
 
-/// Decodes a json value from a string
+/// Decodes a JSON value from a string.
 pub fn from_str(s: &str) -> Result<Json, BuilderError> {
     let mut builder = Builder::new(s.chars());
     builder.build()
 }
 
-/// A structure to decode JSON to values in rust.
+/// Decodes JSON into Rust values.
 pub struct Decoder {
     stack: Vec<Json>,
 }
 
 impl Decoder {
-    /// Creates a new decoder instance for decoding the specified JSON value.
+    /// Creates a new decoder instance for decoding the specified `Json` value.
     pub fn new(json: Json) -> Decoder {
         Decoder { stack: vec![json] }
     }
@@ -2102,8 +2099,8 @@ macro_rules! read_primitive {
                 Json::I64(f) => Ok(f as $ty),
                 Json::U64(f) => Ok(f as $ty),
                 Json::F64(f) => Err(ExpectedError("Integer".to_owned(), f.to_string())),
-                // re: #12967.. a type w/ numeric keys (ie HashMap<usize, V> etc)
-                // is going to have a string here, as per JSON spec.
+                // Issue #12967: a type with numeric keys (e.g., `HashMap<usize, V>`)
+                // is going to have a string here, as per the JSON spec.
                 Json::String(s) => match s.parse().ok() {
                     Some(f) => Ok(f),
                     None => Err(ExpectedError("Number".to_owned(), s)),
@@ -2142,8 +2139,8 @@ impl crate::Decoder for Decoder {
             Json::U64(f) => Ok(f as f64),
             Json::F64(f) => Ok(f),
             Json::String(s) => {
-                // re: #12967.. a type w/ numeric keys (ie HashMap<usize, V> etc)
-                // is going to have a string here, as per JSON spec.
+                // Issue #12967: a type with numeric keys (e.g., `HashMap<usize, V>`)
+                // is going to have a string here, as per the JSON spec.
                 match s.parse().ok() {
                     Some(f) => Ok(f),
                     None => Err(ExpectedError("Number".to_owned(), s)),
@@ -2163,7 +2160,7 @@ impl crate::Decoder for Decoder {
         {
             let mut it = s.chars();
             match (it.next(), it.next()) {
-                // exactly one character
+                // Exactly one character.
                 (Some(c), None) => return Ok(c),
                 _ => ()
             }
@@ -2263,8 +2260,8 @@ impl crate::Decoder for Decoder {
 
         let value = match obj.remove(&name.to_string()) {
             None => {
-                // Add a Null and try to parse it as an Option<_>
-                // to get None as a default value.
+                // Add a `Null` and try to parse it as an `Option<_>`
+                // to get `None` as a default value.
                 self.stack.push(Json::Null);
                 match f(self) {
                     Ok(x) => x,
@@ -2370,9 +2367,9 @@ impl crate::Decoder for Decoder {
     }
 }
 
-/// A trait for converting values to JSON
+/// Converts values to JSON.
 pub trait ToJson {
-    /// Converts the value of `self` to an instance of JSON
+    /// Converts the value of `self` to an instance of `Json`.
     fn to_json(&self) -> Json;
 }
 
@@ -2434,9 +2431,9 @@ impl ToJson for string::String {
 }
 
 macro_rules! tuple_impl {
-    // use variables to indicate the arity of the tuple
+    // Use variables to indicate the arity of the tuple.
     ($($tyvar:ident),* ) => {
-        // the trailing commas are for the 1 tuple
+        // The trailing commas are for the 1-tuple.
         impl<
             $( $tyvar : ToJson ),*
             > ToJson for ( $( $tyvar ),* , ) {
@@ -2516,7 +2513,7 @@ impl<'a, 'b> fmt::Write for FormatShim<'a, 'b> {
 }
 
 impl fmt::Display for Json {
-    /// Encodes a json value into a string
+    /// Encodes a `Json` value as a string.
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let mut shim = FormatShim { inner: f };
         let mut encoder = Encoder::new(&mut shim);
@@ -2528,7 +2525,7 @@ impl fmt::Display for Json {
 }
 
 impl<'a> fmt::Display for PrettyJson<'a> {
-    /// Encodes a json value into a string
+    /// Encodes a `PrettyJson` value as a string.
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let mut shim = FormatShim { inner: f };
         let mut encoder = PrettyEncoder::new(&mut shim);
@@ -2540,7 +2537,7 @@ impl<'a> fmt::Display for PrettyJson<'a> {
 }
 
 impl<'a, T: Encodable> fmt::Display for AsJson<'a, T> {
-    /// Encodes a json value into a string
+    /// Encodes an `AsJson` value as a string.
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let mut shim = FormatShim { inner: f };
         let mut encoder = Encoder::new(&mut shim);
@@ -2552,7 +2549,7 @@ impl<'a, T: Encodable> fmt::Display for AsJson<'a, T> {
 }
 
 impl<'a, T> AsPrettyJson<'a, T> {
-    /// Sets the indentation level for the emitted JSON
+    /// Sets the indentation level for the emitted JSON.
     pub fn indent(mut self, indent: usize) -> AsPrettyJson<'a, T> {
         self.indent = Some(indent);
         self
@@ -2560,7 +2557,7 @@ impl<'a, T> AsPrettyJson<'a, T> {
 }
 
 impl<'a, T: Encodable> fmt::Display for AsPrettyJson<'a, T> {
-    /// Encodes a json value into a string
+    /// Encodes an `AsPrettyJson` value as a string.
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let mut shim = FormatShim { inner: f };
         let mut encoder = PrettyEncoder::new(&mut shim);
@@ -2583,7 +2580,7 @@ impl FromStr for Json {
 
 #[cfg(test)]
 mod tests {
-    // Benchmarks and tests that require private items
+    // Benchmarks and tests that require private items.
 
     extern crate test;
     use test::Bencher;

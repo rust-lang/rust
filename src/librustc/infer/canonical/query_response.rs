@@ -161,7 +161,7 @@ impl<'cx, 'gcx, 'tcx> InferCtxt<'cx, 'gcx, 'tcx> {
         debug!("true_errors = {:#?}", true_errors);
 
         if !true_errors.is_empty() {
-            // FIXME -- we don't indicate *why* we failed to solve
+            // FIXME: we don't indicate *why* we failed to solve
             debug!("make_query_response: true_errors={:#?}", true_errors);
             return Err(NoSolution);
         }

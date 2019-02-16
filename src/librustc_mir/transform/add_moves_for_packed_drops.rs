@@ -10,8 +10,8 @@ use crate::util;
 // struct to a separate local before dropping them, to ensure that
 // they are dropped from an aligned address.
 //
-// For example, if we have something like
-// ```Rust
+// For example, if we have something like:
+//
 //     #[repr(packed)]
 //     struct Foo {
 //         dealign: u8,
@@ -19,7 +19,6 @@ use crate::util;
 //     }
 //
 //     let foo = ...;
-// ```
 //
 // We want to call `drop_in_place::<Vec<u8>>` on `data` from an aligned
 // address. This means we can't simply drop `foo.data` directly, because

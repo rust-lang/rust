@@ -398,9 +398,10 @@ pub fn str_lit(lit: &str, diag: Option<(Span, &Handler)>) -> String {
                     }
                     eat(&mut chars);
                 } else {
-                    // otherwise, a normal escape
+                    // Otherwise, a normal escape.
                     let (c, n) = char_lit(&lit[i..], diag);
-                    for _ in 0..n - 1 { // we don't need to move past the first \
+                    // We don't need to move past the first `\`.
+                    for _ in 0..n - 1 {
                         chars.next();
                     }
                     res.push(c);
@@ -421,7 +422,8 @@ pub fn str_lit(lit: &str, diag: Option<(Span, &Handler)>) -> String {
         }
     }
 
-    res.shrink_to_fit(); // probably not going to do anything, unless there was an escape.
+    // Probably not going to do anything, unless there was an escape.
+    res.shrink_to_fit();
     debug!("parse_str_lit: returning {}", res);
     res
 }
@@ -449,7 +451,7 @@ fn raw_str_lit(lit: &str) -> String {
     res
 }
 
-// check if `s` looks like i32 or u1234 etc.
+// Checks if `s` looks like `i32`, `u1234`, etc.
 fn looks_like_width_suffix(first_chars: &[char], s: &str) -> bool {
     s.starts_with(first_chars) && s[1..].chars().all(|c| c.is_ascii_digit())
 }
@@ -489,7 +491,7 @@ crate fn lit_token(lit: token::Lit, suf: Option<Symbol>, diag: Option<(Span, &Ha
             (true, Some(LitKind::Str(sym, ast::StrStyle::Cooked)))
         }
         token::StrRaw(mut sym, n) => {
-            // Ditto.
+            // Same as above.
             let s = &sym.as_str();
             if s.contains('\r') {
                 sym = Symbol::intern(&raw_str_lit(s));
@@ -535,12 +537,13 @@ fn filtered_float_lit(data: Symbol, suffix: Option<Symbol>, diag: Option<(Span, 
         }
     })
 }
+
 fn float_lit(s: &str, suffix: Option<Symbol>, diag: Option<(Span, &Handler)>)
                  -> Option<ast::LitKind> {
     debug!("float_lit: {:?}, {:?}", s, suffix);
-    // FIXME #2252: bounds checking float literals is deferred until trans
+    // FIXME(#2252): bounds checking float literals is deferred until trans step.
 
-    // Strip underscores without allocating a new String unless necessary.
+    // Strip underscores without allocating a new `String` unless necessary.
     let s2;
     let s = if s.chars().any(|c| c == '_') {
         s2 = s.chars().filter(|&c| c != '_').collect::<String>();
@@ -669,7 +672,7 @@ fn integer_lit(s: &str, suffix: Option<Symbol>, diag: Option<(Span, &Handler)>)
         }
     }
 
-    // 1f64 and 2f32 etc. are valid float literals.
+    // `1f64`, `2f32`, etc. are valid float literals.
     if let Some(suf) = suffix {
         if looks_like_width_suffix(&['f'], &suf.as_str()) {
             let err = match base {
@@ -802,7 +805,7 @@ mod tests {
         new_parser_from_source_str(sess, name, source).parse_item()
     }
 
-    // produce a syntax_pos::span
+    // Produces a `syntax_pos::span`.
     fn sp(a: u32, b: u32) -> Span {
         Span::new(BytePos(a), BytePos(b), NO_EXPANSION)
     }
@@ -814,7 +817,7 @@ mod tests {
         })
     }
 
-    // check the token-tree-ization of macros
+    // Checks the token-tree-ization of macros.
     #[test]
     fn string_to_tts_macro () {
         with_globals(|| {

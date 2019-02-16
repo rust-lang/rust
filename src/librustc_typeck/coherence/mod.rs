@@ -1,6 +1,6 @@
-// Coherence phase
+// The coherence phase of type-checking.
 //
-// The job of the coherence phase of typechecking is to ensure that
+// The job of the coherence phase of type-checking is to ensure that
 // each trait has at most one implementation for each type. This is
 // done by the orphan and overlap modules. Then we build up various
 // mappings. That mapping code resides here.
@@ -171,8 +171,8 @@ fn check_impl_overlap<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, node_id: ast::NodeI
 
     // check for overlap with the automatic `impl Trait for Trait`
     if let ty::Dynamic(ref data, ..) = trait_ref.self_ty().sty {
-        // This is something like impl Trait1 for Trait2. Illegal
-        // if Trait1 is a supertrait of Trait2 or Trait2 is not object safe.
+        // This is something like `impl Trait1 for Trait2`. Illegal
+        // if `Trait1` is a supertrait of `Trait2` or `Trait2` is not object safe.
 
         let component_def_ids = data.iter().flat_map(|predicate| {
             match predicate.skip_binder() {
@@ -186,7 +186,7 @@ fn check_impl_overlap<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, node_id: ast::NodeI
 
         for component_def_id in component_def_ids {
             if !tcx.is_object_safe(component_def_id) {
-                // This is an error, but it will be reported by wfcheck.  Ignore it here.
+                // This is an error, but it will be reported by wfcheck. Ignore it here.
                 // This is tested by `coherence-impl-trait-for-trait-object-safe.rs`.
             } else {
                 let mut supertrait_def_ids =

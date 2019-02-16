@@ -548,7 +548,7 @@ fn parse_extern_html_roots(
 /// Extracts `--extern CRATE=PATH` arguments from `matches` and
 /// returns a map mapping crate names to their paths or else an
 /// error message.
-// FIXME(eddyb) This shouldn't be duplicated with `rustc::session`.
+// FIXME(eddyb): this shouldn't be duplicated with `rustc::session`.
 fn parse_externs(matches: &getopts::Matches) -> Result<Externs, String> {
     let mut externs: BTreeMap<_, BTreeSet<_>> = BTreeMap::new();
     for arg in &matches.opt_strs("extern") {

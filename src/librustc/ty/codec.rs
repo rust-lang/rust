@@ -318,8 +318,8 @@ macro_rules! implement_ty_decoder {
                 }
             }
 
-            // FIXME(#36588) These impls are horribly unsound as they allow
-            // the caller to pick any lifetime for 'tcx, including 'static,
+            // FIXME(#36588): these impls are horribly unsound as they allow
+            // the caller to pick any lifetime for `'tcx`, including `'static`,
             // by using the unspecialized proxies to them.
 
             impl<$($typaram),*> SpecializedDecoder<CrateNum>

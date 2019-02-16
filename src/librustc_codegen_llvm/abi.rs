@@ -207,7 +207,7 @@ impl ArgTypeExt<'ll, 'tcx> for ArgType<'tcx, Ty<'tcx>> {
                 bx.store(val, cast_dst, self.layout.align.abi);
             } else {
                 // The actual return type is a struct, but the ABI
-                // adaptation code has cast it into some scalar type.  The
+                // adaptation code has cast it into some scalar type. The
                 // code that follows is the only reliable way I have
                 // found to do a transform like i64 -> {i32,i32}.
                 // Basically we dump the data onto the stack then memcpy it.
@@ -343,7 +343,7 @@ impl<'tcx> FnTypeExt<'tcx> for FnType<'tcx, Ty<'tcx>> {
             if arg_idx == Some(0) {
                 let fat_pointer_ty = if layout.is_unsized() {
                     // unsized `self` is passed as a pointer to `self`
-                    // FIXME (mikeyhew) change this to use &own if it is ever added to the language
+                    // FIXME(mikeyhew): change this to use &own if it is ever added to the language
                     cx.tcx.mk_mut_ptr(layout.ty)
                 } else {
                     match layout.abi {
@@ -520,7 +520,7 @@ impl<'tcx> FnTypeExt<'tcx> for FnType<'tcx, Ty<'tcx>> {
                 }
             }
 
-            // FIXME(eddyb) other ABIs don't have logic for scalar pairs.
+            // FIXME(eddyb): other ABIs don't have logic for scalar pairs.
             if !is_return && rust_abi {
                 if let layout::Abi::ScalarPair(ref a, ref b) = arg.layout.abi {
                     let mut a_attrs = ArgAttributes::new();

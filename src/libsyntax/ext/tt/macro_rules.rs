@@ -134,7 +134,8 @@ fn generic_extension<'cx>(cx: &'cx mut ExtCtxt<'_>,
     let mut best_fail_tok = None;
     let mut best_fail_text = None;
 
-    for (i, lhs) in lhses.iter().enumerate() { // try each arm's matchers
+    // Try each arm's matchers.
+    for (i, lhs) in lhses.iter().enumerate() {
         let lhs_tt = match *lhs {
             quoted::TokenTree::Delimited(_, ref delim) => &delim.tts[..],
             _ => cx.span_bug(sp, "malformed macro lhs")
@@ -213,7 +214,8 @@ fn generic_extension<'cx>(cx: &'cx mut ExtCtxt<'_>,
 
     // Check whether there's a missing comma in this macro call, like `println!("{}" a);`
     if let Some((arg, comma_span)) = arg.add_comma() {
-        for lhs in lhses { // try each arm's matchers
+        // Try each arm's matchers.
+        for lhs in lhses {
             let lhs_tt = match *lhs {
                 quoted::TokenTree::Delimited(_, ref delim) => &delim.tts[..],
                 _ => continue,
@@ -241,7 +243,8 @@ fn generic_extension<'cx>(cx: &'cx mut ExtCtxt<'_>,
 }
 
 // Note that macro-by-example's input is also matched against a token tree:
-//                   $( $lhs:tt => $rhs:tt );+
+//
+//     $( $lhs:tt => $rhs:tt );+
 //
 // Holy self-referential!
 
@@ -255,17 +258,19 @@ pub fn compile(
     let lhs_nm = ast::Ident::with_empty_ctxt(Symbol::gensym("lhs"));
     let rhs_nm = ast::Ident::with_empty_ctxt(Symbol::gensym("rhs"));
 
-    // Parse the macro_rules! invocation
+    // Parse the `macro_rules!` invocation.
     let body = match def.node {
         ast::ItemKind::MacroDef(ref body) => body,
         _ => unreachable!(),
     };
 
-    // The pattern that macro_rules matches.
-    // The grammar for macro_rules! is:
-    // $( $lhs:tt => $rhs:tt );+
-    // ...quasiquoting this would be nice.
-    // These spans won't matter, anyways
+    // The pattern that `macro_rules` matches.
+    // The grammar for `macro_rules!` is:
+    //
+    //     $( $lhs:tt => $rhs:tt );+
+    //
+    // N.B., quasiquoting this would be nice.
+    // These spans won't matter, in any case.
     let argument_gram = vec![
         quoted::TokenTree::Sequence(DelimSpan::dummy(), Lrc::new(quoted::SequenceRepetition {
             tts: vec![
@@ -277,7 +282,7 @@ pub fn compile(
             op: quoted::KleeneOp::OneOrMore,
             num_captures: 2,
         })),
-        // to phase into semicolon-termination instead of semicolon-separation
+        // To phase into semicolon-termination instead of semicolon-separation.
         quoted::TokenTree::Sequence(DelimSpan::dummy(), Lrc::new(quoted::SequenceRepetition {
             tts: vec![quoted::TokenTree::Token(DUMMY_SP, token::Semi)],
             separator: None,
@@ -303,7 +308,7 @@ pub fn compile(
 
     let mut valid = true;
 
-    // Extract the arguments:
+    // Extract the arguments.
     let lhses = match *argument_map[&lhs_nm] {
         MatchedSeq(ref s, _) => {
             s.iter().map(|m| {
@@ -357,7 +362,7 @@ pub fn compile(
         valid &= check_rhs(sess, rhs);
     }
 
-    // don't abort iteration early, so that errors for multiple lhses can be reported
+    // Don't abort iteration early, so that errors for multiple LHSs can be reported.
     for lhs in &lhses {
         valid &= check_lhs_no_empty_seq(sess, &[lhs.clone()]);
         valid &= check_lhs_duplicate_matcher_bindings(
@@ -436,8 +441,9 @@ fn check_lhs_nt_follows(sess: &ParseSess,
                         features: &Features,
                         attrs: &[ast::Attribute],
                         lhs: &quoted::TokenTree) -> bool {
-    // lhs is going to be like TokenTree::Delimited(...), where the
-    // entire lhs is those tts. Or, it can be a "bare sequence", not wrapped in parens.
+    // LHS is going to be like `TokenTree::Delimited(...)`, where the
+    // entire LHS is those token trees. Otherwise, it can be a "bare sequence",
+    // not wrapped in parentheses.
     if let quoted::TokenTree::Delimited(_, ref tts) = *lhs {
         check_matcher(sess, features, attrs, &tts.tts)
     } else {
@@ -445,11 +451,11 @@ fn check_lhs_nt_follows(sess: &ParseSess,
         sess.span_diagnostic.span_err(lhs.span(), msg);
         false
     }
-    // we don't abort on errors on rejection, the driver will do that for us
+    // We don't abort on errors on rejection; the driver will do that for us
     // after parsing/expansion. we can report every error in every macro this way.
 }
 
-/// Checks that the lhs contains no repetition which could match an empty token
+/// Checks that the LHS contains no repetition which could match an empty token
 /// tree, because then the matcher would hang indefinitely.
 fn check_lhs_no_empty_seq(sess: &ParseSess, tts: &[quoted::TokenTree]) -> bool {
     use quoted::TokenTree;
@@ -483,8 +489,9 @@ fn check_lhs_no_empty_seq(sess: &ParseSess, tts: &[quoted::TokenTree]) -> bool {
     true
 }
 
-/// Check that the LHS contains no duplicate matcher bindings. e.g. `$a:expr, $a:expr` would be
-/// illegal, since it would be ambiguous which `$a` to use if we ever needed to.
+/// Checks that the LHS contains no duplicate matcher bindings.
+/// E.g., `$a:expr, $a:expr` would be illegal, since it would be ambiguous which `$a` to use if we
+/// ever needed to.
 fn check_lhs_duplicate_matcher_bindings(
     sess: &ParseSess,
     tts: &[quoted::TokenTree],
@@ -497,11 +504,12 @@ fn check_lhs_duplicate_matcher_bindings(
         match *tt {
             TokenTree::MetaVarDecl(span, name, _kind) => {
                 if let Some(&prev_span) = metavar_names.get(&name) {
-                    // FIXME(mark-i-m): in a few cycles, make this a hard error.
-                    // sess.span_diagnostic
-                    //     .struct_span_err(span, "duplicate matcher binding")
-                    //     .span_note(prev_span, "previous declaration was here")
-                    //     .emit();
+                    // FIXME(mark-i-m): after a few release cycles, make this a hard error.
+                    //
+                    //     sess.span_diagnostic
+                    //         .struct_span_err(span, "duplicate matcher binding")
+                    //         .span_note(prev_span, "previous declaration was here")
+                    //         .emit();
                     sess.buffer_lint(
                         BufferedEarlyLintId::DuplicateMacroMatcherBindingName,
                         crate::source_map::MultiSpan::from(vec![prev_span, span]),
@@ -579,7 +587,7 @@ impl FirstSets {
         build_recur(&mut sets, tts);
         return sets;
 
-        // walks backward over `tts`, returning the FIRST for `tts`
+        // Walks backward over `tts`, returning the FIRST for `tts`
         // and updating `sets` at the same time for all sequence
         // substructure we find within `tts`.
         fn build_recur(sets: &mut FirstSets, tts: &[TokenTree]) -> TokenSet {
@@ -601,8 +609,8 @@ impl FirstSets {
                                 vac.insert(Some(subfirst.clone()));
                             }
                             Entry::Occupied(mut occ) => {
-                                // if there is already an entry, then a span must have collided.
-                                // This should not happen with typical macro_rules macros,
+                                // If there is already an entry, then a span must have collided.
+                                // This should not happen with typical `macro_rules` macros,
                                 // but syntax extensions need not maintain distinct spans,
                                 // so distinct syntax trees can be assigned the same span.
                                 // In such a case, the map cannot be trusted; so mark this
@@ -619,17 +627,16 @@ impl FirstSets {
                             first.add_one_maybe(TokenTree::Token(sp.entire(), sep.clone()));
                         }
 
-                        // Reverse scan: Sequence comes before `first`.
+                        // Reverse scan: sequence comes before `first`.
                         if subfirst.maybe_empty
                            || seq_rep.op == quoted::KleeneOp::ZeroOrMore
                            || seq_rep.op == quoted::KleeneOp::ZeroOrOne
                         {
-                            // If sequence is potentially empty, then
-                            // union them (preserving first emptiness).
+                            // If sequence is potentially empty, then union them
+                            // (preserving first emptiness).
                             first.add_all(&TokenSet { maybe_empty: true, ..subfirst });
                         } else {
-                            // Otherwise, sequence guaranteed
-                            // non-empty; replace first.
+                            // Otherwise, sequence guaranteed non-empty; replace first.
                             first = subfirst;
                         }
                     }
@@ -640,8 +647,7 @@ impl FirstSets {
         }
     }
 
-    // walks forward over `tts` until all potential FIRST tokens are
-    // identified.
+    // Walks forward over `tts` until all potential *first* tokens are identified.
     fn first(&self, tts: &[quoted::TokenTree]) -> TokenSet {
         use quoted::TokenTree;
 
@@ -675,9 +681,8 @@ impl FirstSets {
                                || seq_rep.op == quoted::KleeneOp::ZeroOrMore
                                || seq_rep.op == quoted::KleeneOp::ZeroOrOne
                             {
-                                // continue scanning for more first
-                                // tokens, but also make sure we
-                                // restore empty-tracking state
+                                // Continue scanning for more first tokens, but also make sure we
+                                // restore empty-tracking state.
                                 first.maybe_empty = true;
                                 continue;
                             } else {
@@ -697,8 +702,8 @@ impl FirstSets {
             }
         }
 
-        // we only exit the loop if `tts` was empty or if every
-        // element of `tts` matches the empty sequence.
+        // We only exit the loop if `tts` was empty or if every element of `tts`
+        // matches the empty sequence.
         assert!(first.maybe_empty);
         first
     }
@@ -754,7 +759,7 @@ impl TokenSet {
         self.maybe_empty = false;
     }
 
-    // Adds `tok` to the set for `self`. (Leaves `maybe_empty` flag alone.)
+    // Adds `tok` to the set for `self`. (Leaves the `maybe_empty` flag alone.)
     fn add_one_maybe(&mut self, tok: quoted::TokenTree) {
         if !self.tokens.contains(&tok) {
             self.tokens.push(tok);
@@ -781,8 +786,8 @@ impl TokenSet {
 }
 
 // Checks that `matcher` is internally consistent and that it
-// can legally by followed by a token N, for all N in `follow`.
-// (If `follow` is empty, then it imposes no constraint on
+// can legally by followed by a token `N`, for all `N` in `FOLLOW`.
+// (If `FOLLOW` is empty, then it imposes no constraint on
 // the `matcher`.)
 //
 // Returns the set of NT tokens that could possibly come last in
@@ -801,9 +806,9 @@ fn check_matcher_core(sess: &ParseSess,
 
     let mut last = TokenSet::empty();
 
-    // 2. For each token and suffix  [T, SUFFIX] in M:
-    // ensure that T can be followed by SUFFIX, and if SUFFIX may be empty,
-    // then ensure T can also be followed by any element of FOLLOW.
+    // 2. For each token and suffix `[T, SUFFIX]` in `M`:
+    // ensure that `T` can be followed by `SUFFIX`, and if `SUFFIX` may be empty,
+    // then ensure `T` can also be followed by any element of `FOLLOW`.
     'each_token: for i in 0..matcher.len() {
         let token = &matcher[i];
         let suffix = &matcher[i+1..];
@@ -814,7 +819,7 @@ fn check_matcher_core(sess: &ParseSess,
             s
         };
 
-        // (we build `suffix_first` on demand below; you can tell
+        // (We build `suffix_first` on demand below; you can tell
         // which cases are supposed to fall through by looking for the
         // initialization of this variable.)
         let suffix_first;
@@ -837,10 +842,10 @@ fn check_matcher_core(sess: &ParseSess,
                 }
 
                 if can_be_followed_by_any {
-                    // don't need to track tokens that work with any,
+                    // Don't need to track tokens that work with any, ...
                     last.replace_with_irrelevant();
                     // ... and don't need to check tokens that can be
-                    // followed by anything against SUFFIX.
+                    // followed by anything against `SUFFIX`.
                     continue 'each_token;
                 } else {
                     last.replace_with(token.clone());
@@ -850,24 +855,23 @@ fn check_matcher_core(sess: &ParseSess,
             TokenTree::Delimited(span, ref d) => {
                 let my_suffix = TokenSet::singleton(d.close_tt(span.close));
                 check_matcher_core(sess, features, attrs, first_sets, &d.tts, &my_suffix);
-                // don't track non NT tokens
+                // Don't track non NT tokens.
                 last.replace_with_irrelevant();
 
-                // also, we don't need to check delimited sequences
-                // against SUFFIX
+                // Also, we don't need to check delimited sequences against `SUFFIX`.
                 continue 'each_token;
             }
             TokenTree::Sequence(sp, ref seq_rep) => {
                 suffix_first = build_suffix_first();
                 // The trick here: when we check the interior, we want
                 // to include the separator (if any) as a potential
-                // (but not guaranteed) element of FOLLOW. So in that
+                // (but not guaranteed) element of `FOLLOW`. So in that
                 // case, we make a temp copy of suffix and stuff
                 // delimiter in there.
                 //
-                // FIXME: Should I first scan suffix_first to see if
+                // FIXME: should we first scan `suffix_first` to see if
                 // delimiter is already in it before I go through the
-                // work of cloning it? But then again, this way I may
+                // work of cloning it? But then again, this way we may
                 // get a "tighter" span?
                 let mut new;
                 let my_suffix = if let Some(ref u) = seq_rep.separator {
@@ -893,16 +897,17 @@ fn check_matcher_core(sess: &ParseSess,
                     last = next;
                 }
 
-                // the recursive call to check_matcher_core already ran the 'each_last
-                // check below, so we can just keep going forward here.
+                // The recursive call to `check_matcher_core` already
+                // ran the `'each_last` check below, so we can just keep
+                // going forward here.
                 continue 'each_token;
             }
         }
 
-        // (`suffix_first` guaranteed initialized once reaching here.)
+        // (`suffix_first` guaranteed initialized once reached here.)
 
-        // Now `last` holds the complete set of NT tokens that could
-        // end the sequence before SUFFIX. Check that every one works with `suffix`.
+        // `last` now holds the complete set of NT tokens that could
+        // end the sequence before `SUFFIX`. Check that every one works with `SUFFIX`.
         'each_last: for token in &last.tokens {
             if let TokenTree::MetaVarDecl(_, ref name, ref frag_spec) = *token {
                 for next_token in &suffix_first.tokens {
@@ -910,7 +915,7 @@ fn check_matcher_core(sess: &ParseSess,
                         IsInFollow::Invalid(msg, help) => {
                             sess.span_diagnostic.struct_span_err(next_token.span(), &msg)
                                 .help(help).emit();
-                            // don't bother reporting every source of
+                            // Don't bother reporting every source of
                             // conflict for a particular element of `last`.
                             continue 'each_last;
                         }
@@ -972,7 +977,7 @@ fn token_can_be_followed_by_any(tok: &quoted::TokenTree) -> bool {
     if let quoted::TokenTree::MetaVarDecl(_, _, frag_spec) = *tok {
         frag_can_be_followed_by_any(&frag_spec.as_str())
     } else {
-        // (Non NT's can always be followed by anthing in matchers.)
+        // Non NT's can always be followed by anthing in matchers.
         true
     }
 }
@@ -993,7 +998,7 @@ fn frag_can_be_followed_by_any(frag: &str) -> bool {
         "literal"  | // exactly one token tree
         "meta"     | // exactly one token tree
         "lifetime" | // exactly one token tree
-        "tt" =>   // exactly one token tree
+        "tt" =>      // exactly one token tree
             true,
 
         _ =>
@@ -1014,24 +1019,25 @@ enum IsInFollow {
 /// we expanded `expr` to include a new binary operator, we might
 /// break macros that were relying on that binary operator as a
 /// separator.
-// when changing this do not forget to update doc/book/macros.md!
+//
+// NOTE: when changing this, do not forget to update `doc/book/macros.md`.
 fn is_in_follow(tok: &quoted::TokenTree, frag: &str) -> IsInFollow {
     use quoted::TokenTree;
 
     if let TokenTree::Token(_, token::CloseDelim(_)) = *tok {
-        // closing a token tree can never be matched by any fragment;
-        // iow, we always require that `(` and `)` match, etc.
+        // Closing a token tree can never be matched by any fragment;
+        // i.e., we always require that `(` and `)` match, etc.
         IsInFollow::Yes
     } else {
         match frag {
             "item" => {
-                // since items *must* be followed by either a `;` or a `}`, we can
-                // accept anything after them
+                // Since items *must* be followed by either a `;` or a `}`, we can
+                // accept anything after them.
                 IsInFollow::Yes
             },
             "block" => {
-                // anything can follow block, the braces provide an easy boundary to
-                // maintain
+                // Anything can follow a block, since the braces provide an easy boundary
+                // to maintain.
                 IsInFollow::Yes
             },
             "stmt" | "expr"  => {
@@ -1074,16 +1080,15 @@ fn is_in_follow(tok: &quoted::TokenTree, frag: &str) -> IsInFollow {
                 }
             },
             "ident" | "lifetime" => {
-                // being a single token, idents and lifetimes are harmless
+                // Being a single tokens, an ident or lifetime is harmless.
                 IsInFollow::Yes
             },
             "literal" => {
-                // literals may be of a single token, or two tokens (negative numbers)
+                // Literals may be of a single token, or two tokens (negative numbers).
                 IsInFollow::Yes
             },
             "meta" | "tt" => {
-                // being either a single token or a delimited sequence, tt is
-                // harmless
+                // Being either a single token or a delimited sequence, a token tree is harmless.
                 IsInFollow::Yes
             },
             "vis" => {
@@ -1105,7 +1110,8 @@ fn is_in_follow(tok: &quoted::TokenTree, frag: &str) -> IsInFollow {
                     _ => IsInFollow::No(tokens),
                 }
             },
-            "" => IsInFollow::Yes, // keywords::Invalid
+            // `keywords::Invalid`
+            "" => IsInFollow::Yes,
             _ => IsInFollow::Invalid(format!("invalid fragment specifier `{}`", frag),
                                      VALID_FRAGMENT_NAMES_MSG),
         }
@@ -1132,12 +1138,10 @@ fn is_legal_fragment_specifier(_sess: &ParseSess,
                                _attrs: &[ast::Attribute],
                                frag_name: &str,
                                _frag_span: Span) -> bool {
-    /*
-     * If new fragment specifiers are invented in nightly, `_sess`,
-     * `_features`, `_attrs`, and `_frag_span` will be useful here
-     * for checking against feature gates. See past versions of
-     * this function.
-     */
+    // If new fragment specifiers are invented in nightly, `_sess`,
+    // `_features`, `_attrs`, and `_frag_span` will be useful here
+    // for checking against feature gates. See past versions of
+    // this function.
     match frag_name {
         "item" | "block" | "stmt" | "expr" | "pat" | "lifetime" |
         "path" | "ty" | "ident" | "meta" | "tt" | "vis" | "literal" |

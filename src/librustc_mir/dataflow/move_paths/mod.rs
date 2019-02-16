@@ -44,16 +44,16 @@ pub(crate) mod indexes {
         }
     }
 
-    /// Index into MovePathData.move_paths
+    /// Index into `MovePathData.move_paths`.
     new_index!(MovePathIndex, "mp");
 
-    /// Index into MoveData.moves.
+    /// Index into `MoveData.moves`.
     new_index!(MoveOutIndex, "mo");
 
-    /// Index into MoveData.inits.
+    /// Index into `MoveData.inits`.
     new_index!(InitIndex, "in");
 
-    /// Index into Borrows.locations
+    /// Index into `Borrows.locations`
     new_index!(BorrowIndex, "bw");
 }
 
@@ -75,10 +75,10 @@ impl MoveOutIndex {
 /// Given `struct X { m: M, n: N }` and `x: X`, moves like `drop x.m;`
 /// move *out* of the place `x.m`.
 ///
-/// The MovePaths representing `x.m` and `x.n` are siblings (that is,
+/// The `MovePath`s representing `x.m` and `x.n` are siblings (that is,
 /// one of them will link to the other via the `next_sibling` field,
 /// and the other will have no entry in its `next_sibling` field), and
-/// they both have the MovePath representing `x` as their parent.
+/// they both have the `MovePath` representing `x` as their parent.
 #[derive(Clone)]
 pub struct MovePath<'tcx> {
     pub next_sibling: Option<MovePathIndex>,
@@ -130,15 +130,15 @@ impl<'tcx> fmt::Display for MovePath<'tcx> {
 pub struct MoveData<'tcx> {
     pub move_paths: IndexVec<MovePathIndex, MovePath<'tcx>>,
     pub moves: IndexVec<MoveOutIndex, MoveOut>,
-    /// Each Location `l` is mapped to the MoveOut's that are effects
-    /// of executing the code at `l`. (There can be multiple MoveOut's
-    /// for a given `l` because each MoveOut is associated with one
+    /// Each `Location` `l` is mapped to the `MoveOut`'s that are effects
+    /// of executing the code at `l`. (There can be multiple `MoveOut`'s
+    /// for a given `l` because each `MoveOut` is associated with one
     /// particular path being moved.)
     pub loc_map: LocationMap<SmallVec<[MoveOutIndex; 4]>>,
     pub path_map: IndexVec<MovePathIndex, SmallVec<[MoveOutIndex; 4]>>,
     pub rev_lookup: MovePathLookup<'tcx>,
     pub inits: IndexVec<InitIndex, Init>,
-    /// Each Location `l` is mapped to the Inits that are effects
+    /// Each `Location` `l` is mapped to the `Init`s that are effects
     /// of executing the code at `l`.
     pub init_loc_map: LocationMap<SmallVec<[InitIndex; 4]>>,
     pub init_path_map: IndexVec<MovePathIndex, SmallVec<[InitIndex; 4]>>,
@@ -150,7 +150,7 @@ pub trait HasMoveData<'tcx> {
 
 #[derive(Debug)]
 pub struct LocationMap<T> {
-    /// Location-indexed (BasicBlock for outer index, index within BB
+    /// `Location`-indexed (`BasicBlock` for outer index, index within BB
     /// for inner index) map.
     pub(crate) map: IndexVec<BasicBlock, Vec<T>>,
 }
@@ -198,20 +198,20 @@ impl fmt::Debug for MoveOut {
     }
 }
 
-/// `Init` represents a point in a program that initializes some L-value;
+/// `Init` represents a point in a program that initializes some L-value.
 #[derive(Copy, Clone)]
 pub struct Init {
-    /// path being initialized
+    /// The path being initialized.
     pub path: MovePathIndex,
-    /// location of initialization
+    /// The location of initialization.
     pub location: InitLocation,
-    /// Extra information about this initialization
+    /// Extra information about this initialization.
     pub kind: InitKind,
 }
 
 
 /// Initializations can be from an argument or from a statement. Arguments
-/// do not have locations, in those cases the `Local` is kept..
+/// do not have locations, in those cases the `Local` is kept.
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
 pub enum InitLocation {
     Argument(Local),
@@ -221,9 +221,9 @@ pub enum InitLocation {
 /// Additional information about the initialization.
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
 pub enum InitKind {
-    /// Deep init, even on panic
+    /// Deep init, even on panic.
     Deep,
-    /// Only does a shallow init
+    /// Only does a shallow init.
     Shallow,
     /// This doesn't initialize the variable on panic (and a panic is possible).
     NonPanicPathOnly,
@@ -244,17 +244,17 @@ impl Init {
     }
 }
 
-/// Tables mapping from a place to its MovePathIndex.
+/// Tables mapping from a place to its `MovePathIndex`.
 #[derive(Debug)]
 pub struct MovePathLookup<'tcx> {
     locals: IndexVec<Local, MovePathIndex>,
 
-    /// projections are made from a base-place and a projection
-    /// elem. The base-place will have a unique MovePathIndex; we use
+    /// Projections are made from a base-place and a projection
+    /// elem. The base-place will have a unique `MovePathIndex`; we use
     /// the latter as the index into the outer vector (narrowing
     /// subsequent search so that it is solely relative to that
     /// base-place). For the remaining lookup, we map the projection
-    /// elem to the associated MovePathIndex.
+    /// elem to the associated `MovePathIndex`.
     projections: FxHashMap<(MovePathIndex, AbstractElem<'tcx>), MovePathIndex>
 }
 
@@ -268,7 +268,7 @@ pub enum LookupResult {
 
 impl<'tcx> MovePathLookup<'tcx> {
     // Unlike the builder `fn move_path_for` below, this lookup
-    // alternative will *not* create a MovePath on the fly for an
+    // alternative will *not* create a `MovePath` on the fly for an
     // unknown place, but will rather return the nearest available
     // parent.
     pub fn find(&self, place: &Place<'tcx>) -> LookupResult {

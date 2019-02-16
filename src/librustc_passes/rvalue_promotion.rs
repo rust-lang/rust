@@ -135,7 +135,7 @@ impl BitOr for Promotability {
 }
 
 impl<'a, 'gcx> CheckCrateVisitor<'a, 'gcx> {
-    // Returns true iff all the values of the type are promotable.
+    // Returns whetherf all the values of the type are promotable.
     fn type_promotability(&mut self, ty: Ty<'gcx>) -> Promotability {
         debug!("type_promotability({})", ty);
 

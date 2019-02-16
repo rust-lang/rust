@@ -371,7 +371,7 @@ where
         // particular). :) First off, we have to choose between using the
         // OutlivesProjectionEnv, OutlivesProjectionTraitDef, and
         // OutlivesProjectionComponent rules, any one of which is
-        // sufficient.  If there are no inference variables involved, it's
+        // sufficient. If there are no inference variables involved, it's
         // not hard to pick the right rule, but if there are, we're in a
         // bit of a catch 22: if we picked which rule we were going to
         // use, we could add constraints to the region inference graph

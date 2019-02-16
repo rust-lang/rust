@@ -510,11 +510,11 @@ impl Integer {
         None
     }
 
-    /// Find the largest integer with the given alignment or less.
+    /// Finds the largest integer with the given alignment or less.
     pub fn approximate_align<C: HasDataLayout>(cx: &C, wanted: Align) -> Integer {
         let dl = cx.data_layout();
 
-        // FIXME(eddyb) maybe include I128 in the future, when it works everywhere.
+        // FIXME(eddyb): maybe include `I128` in the future, when it works everywhere.
         for &candidate in &[I64, I32, I16] {
             if wanted >= candidate.align(dl).abi && wanted.bytes() >= candidate.size().bytes() {
                 return candidate;
@@ -629,7 +629,7 @@ pub struct Scalar {
     ///
     /// This is intended specifically to mirror LLVM’s `!range` metadata,
     /// semantics.
-    // FIXME(eddyb) always use the shortest range, e.g., by finding
+    // FIXME(eddyb): always use the shortest range, e.g., by finding
     // the largest space between two consecutive valid values and
     // taking everything else as the (shortest) valid range.
     pub valid_range: RangeInclusive<u128>,
@@ -687,12 +687,12 @@ pub enum FieldPlacement {
         /// Offsets for the first byte of each field,
         /// ordered to match the source definition order.
         /// This vector does not go in increasing order.
-        // FIXME(eddyb) use small vector optimization for the common case.
+        // FIXME(eddyb): use small vector optimization for the common case.
         offsets: Vec<Size>,
 
         /// Maps source order field indices to memory order indices,
         /// depending how fields were permuted.
-        // FIXME(camlorn) also consider small vector  optimization here.
+        // FIXME(camlorn): also consider small vector optimization here.
         memory_index: Vec<u32>
     }
 }

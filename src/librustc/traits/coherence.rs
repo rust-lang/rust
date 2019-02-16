@@ -16,8 +16,7 @@ use crate::ty::subst::Subst;
 
 use crate::infer::{InferOk};
 
-/// Whether we do the orphan check relative to this crate or
-/// to some remote crate.
+/// Represents whether to do the orphan check relative to this crate or to some remote crate.
 #[derive(Copy, Clone, Debug)]
 enum InCrate {
     Local,
@@ -34,8 +33,7 @@ pub struct OverlapResult<'tcx> {
     pub impl_header: ty::ImplHeader<'tcx>,
     pub intercrate_ambiguity_causes: Vec<IntercrateAmbiguityCause>,
 
-    /// `true` if the overlap might've been permitted before the shift
-    /// to universes.
+    /// `true` if the overlap might have been permitted before the shift to the universes model.
     pub involves_placeholder: bool,
 }
 
@@ -368,16 +366,15 @@ fn orphan_check_trait_ref<'tcx>(tcx: TyCtxt<'_, '_, '_>,
     }
 
     if tcx.features().re_rebalance_coherence {
-        // Given impl<P1..=Pn> Trait<T1..=Tn> for T0, an impl is valid only
+        // Given `impl<P1..=Pn> Trait<T1..=Tn> for T0`, an impl is valid only
         // if at least one of the following is true:
         //
-        // - Trait is a local trait
+        // - Trait is a local trait.
         // (already checked in orphan_check prior to calling this function)
-        // - All of
-        //     - At least one of the types T0..=Tn must be a local type.
-        //      Let Ti be the first such type.
-        //     - No uncovered type parameters P1..=Pn may appear in T0..Ti (excluding Ti)
-        //
+        // - All of:
+        //     - At least one of the types `T0..=Tn` must be a local type.
+        //       Let `Ti` be the first such type.
+        //     - No uncovered type parameters `P1..=Pn` may appear in `T0..Ti` (excluding `Ti`).
         for input_ty in trait_ref.input_types() {
             debug!("orphan_check_trait_ref: check ty `{:?}`", input_ty);
             if ty_is_local(tcx, input_ty, in_crate) {
@@ -394,7 +391,7 @@ fn orphan_check_trait_ref<'tcx>(tcx: TyCtxt<'_, '_, '_>,
     } else {
         // First, create an ordered iterator over all the type
         // parameters to the trait, with the self type appearing
-        // first.  Find the first input type that either references a
+        // first. Find the first input type that either references a
         // type parameter OR some local type.
         for input_ty in trait_ref.input_types() {
             if ty_is_local(tcx, input_ty, in_crate) {
@@ -412,7 +409,7 @@ fn orphan_check_trait_ref<'tcx>(tcx: TyCtxt<'_, '_, '_>,
                     }
                 }
 
-                // OK, found local type, all prior types upheld invariant.
+                // Ok, found local type; all prior types upheld invariant.
                 return Ok(());
             }
 
@@ -466,8 +463,7 @@ fn fundamental_ty(ty: Ty<'_>) -> bool {
 
 fn def_id_is_local(def_id: DefId, in_crate: InCrate) -> bool {
     match in_crate {
-        // The type is local to *this* crate - it will not be
-        // local in any other crate.
+        // The type is local to *this* crate -- it will not be local in any other crate.
         InCrate::Remote => false,
         InCrate::Local => def_id.is_local()
     }

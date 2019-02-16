@@ -6,7 +6,7 @@ pub fn opts() -> TargetOptions {
     args.insert(LinkerFlavor::Gcc, vec![
         // GNU-style linkers will use this to omit linking to libraries
         // which don't actually fulfill any relocations, but only for
-        // libraries which follow this flag.  Thus, use it before
+        // libraries which follow this flag. Thus, use it before
         // specifying libraries to link to.
         "-Wl,--as-needed".to_string(),
 

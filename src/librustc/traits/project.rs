@@ -117,7 +117,7 @@ impl<'tcx> ProjectionTyCandidateSet<'tcx> {
         *self = ProjectionTyCandidateSet::Error(err);
     }
 
-    // Returns true if the push was successful, or false if the candidate
+    // Returns `true` if the push was successful, or `false` if the candidate
     // was discarded -- this could be because of ambiguity, or because
     // a higher-priority candidate is already there.
     fn push_candidate(&mut self, candidate: ProjectionTyCandidate<'tcx>) -> bool {
@@ -141,16 +141,16 @@ impl<'tcx> ProjectionTyCandidateSet<'tcx> {
             }
 
             Single(current) => {
-                // Duplicates can happen inside ParamEnv. In the case, we
+                // Duplicates can happen inside `ParamEnv`. In the case, we
                 // perform a lazy deduplication.
                 if current == &candidate {
                     return false;
                 }
 
                 // Prefer where-clauses. As in select, if there are multiple
-                // candidates, we prefer where-clause candidates over impls.  This
+                // candidates, we prefer where-clause candidates over impls. This
                 // may seem a bit surprising, since impls are the source of
-                // "truth" in some sense, but in fact some of the impls that SEEM
+                // "truth" in some sense, but in fact some of the impls that _seem_
                 // applicable are not, because of nested obligations. Where
                 // clauses are the safer choice. See the comment on
                 // `select::SelectionCandidate` and #21974 for more details.
@@ -512,11 +512,11 @@ fn opt_normalize_projection_type<'a, 'b, 'gcx, 'tcx>(
            projection_ty,
            depth);
 
-    // FIXME(#20304) For now, I am caching here, which is good, but it
+    // FIXME(#20304): for now, I am caching here, which is good, but it
     // means we don't capture the type variables that are created in
     // the case of ambiguity. Which means we may create a large stream
     // of such variables. OTOH, if we move the caching up a level, we
-    // would not benefit from caching when proving `T: Trait<U=Foo>`
+    // would not benefit from caching when proving `T: Trait<U = Foo>`
     // bounds. It might be the case that we want two distinct caches,
     // or else another kind of cache entry.
 
@@ -531,8 +531,7 @@ fn opt_normalize_projection_type<'a, 'b, 'gcx, 'tcx>(
             // types, which can transition from having a fixed kind to
             // no kind with no visible change in the key.
             //
-            // FIXME(#32286) refactor this so that closure type
-            // changes
+            // FIXME(#32286): refactor this so that closure type changes.
             debug!("opt_normalize_projection_type: \
                     found cache entry: ambiguous");
             if !projection_ty.has_closure_types() {
@@ -540,14 +539,14 @@ fn opt_normalize_projection_type<'a, 'b, 'gcx, 'tcx>(
             }
         }
         Err(ProjectionCacheEntry::InProgress) => {
-            // If while normalized A::B, we are asked to normalize
-            // A::B, just return A::B itself. This is a conservative
-            // answer, in the sense that A::B *is* clearly equivalent
+            // If while normalized `A::B`, we are asked to normalize
+            // `A::B`, just return `A::B` itself. This is a conservative
+            // answer, in the sense that `A::B` *is* clearly equivalent
             // to A::B, though there may be a better value we can
             // find.
 
             // Under lazy normalization, this can arise when
-            // bootstrapping.  That is, imagine an environment with a
+            // bootstrapping. That is, imagine an environment with a
             // where-clause like `A::B == u32`. Now, if we are asked
             // to normalize `A::B`, we will want to check the
             // where-clauses in scope. So we will try to unify `A::B`
@@ -946,14 +945,14 @@ fn assemble_candidates_from_trait_def<'cx, 'gcx, 'tcx>(
     debug!("assemble_candidates_from_trait_def(..)");
 
     let tcx = selcx.tcx();
-    // Check whether the self-type is itself a projection.
+    // Check whether the self type is itself a projection.
     let (def_id, substs) = match obligation_trait_ref.self_ty().sty {
         ty::Projection(ref data) => {
             (data.trait_ref(tcx).def_id, data.substs)
         }
         ty::Opaque(def_id, substs) => (def_id, substs),
         ty::Infer(ty::TyVar(_)) => {
-            // If the self-type is an inference variable, then it MAY wind up
+            // If the self type is an inference variable, then it MAY wind up
             // being a projected type, so induce an ambiguity.
             candidate_set.mark_ambiguous();
             return;
@@ -999,7 +998,7 @@ fn assemble_candidates_from_predicates<'cx, 'gcx, 'tcx, I>(
                 infcx.at(&obligation.cause, obligation.param_env)
                      .sup(obligation_poly_trait_ref, data_poly_trait_ref)
                      .map(|InferOk { obligations: _, value: () }| {
-                         // FIXME(#32730) -- do we need to take obligations
+                         // FIXME(#32730): do we need to take obligations
                          // into account in any way? At the moment, no.
                      })
                      .is_ok()
@@ -1138,7 +1137,7 @@ fn assemble_candidates_from_impls<'cx, 'gcx, 'tcx>(
                 // resolve `T::Foo`? And of course it does, but in fact
                 // that single predicate is desugared into two predicates
                 // in the compiler: a trait predicate (`T : SomeTrait`) and a
-                // projection. And the projection where clause is handled
+                // projection. And the projection where-clause is handled
                 // in `assemble_candidates_from_param_env`.
                 false
             }
@@ -1540,7 +1539,7 @@ fn assoc_ty_def<'cx, 'gcx, 'tcx>(
     } else {
         // This is saying that neither the trait nor
         // the impl contain a definition for this
-        // associated type.  Normally this situation
+        // associated type. Normally this situation
         // could only arise through a compiler bug --
         // if the user wrote a bad item name, it
         // should have failed in astconv.

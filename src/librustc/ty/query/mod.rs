@@ -168,44 +168,43 @@ define_queries! { <'tcx>
             DefId
         ) -> Result<DtorckConstraint<'tcx>, NoSolution>,
 
-        /// True if this is a const fn, use the `is_const_fn` to know whether your crate actually
-        /// sees it as const fn (e.g., the const-fn-ness might be unstable and you might not have
-        /// the feature gate active)
+        /// Returns `true` if this is a const fn. Use `is_const_fn` to know whether your crate
+        /// actually sees it as const fn (e.g., the const-fn-ness might be unstable and you might
+        /// not have the feature gate active).
         ///
         /// **Do not call this function manually.** It is only meant to cache the base data for the
         /// `is_const_fn` function.
         [] fn is_const_fn_raw: IsConstFn(DefId) -> bool,
 
-
-        /// Returns true if calls to the function may be promoted
+        /// Returns `true` if calls to the function may be promoted.
         ///
-        /// This is either because the function is e.g., a tuple-struct or tuple-variant
+        /// This is either because the function is e.g., a tuple struct or tuple variant
         /// constructor, or because it has the `#[rustc_promotable]` attribute. The attribute should
         /// be removed in the future in favour of some form of check which figures out whether the
         /// function does not inspect the bits of any of its arguments (so is essentially just a
         /// constructor function).
         [] fn is_promotable_const_fn: IsPromotableConstFn(DefId) -> bool,
 
-        /// True if this is a foreign item (i.e., linked via `extern { ... }`).
+        /// Returns `true` if this is a foreign item (i.e., linked via `extern { ... }`).
         [] fn is_foreign_item: IsForeignItem(DefId) -> bool,
 
-        /// Get a map with the variance of every item; use `item_variance`
+        /// Gets a map with the variance of every item; use `item_variance`
         /// instead.
         [] fn crate_variances: crate_variances(CrateNum) -> Lrc<ty::CrateVariancesMap>,
 
-        /// Maps from def-id of a type or region parameter to its
+        /// Maps from `DefId` of a type or region parameter to its
         /// (inferred) variance.
         [] fn variances_of: ItemVariances(DefId) -> Lrc<Vec<ty::Variance>>,
     },
 
     TypeChecking {
-        /// Maps from def-id of a type to its (inferred) outlives.
+        /// Maps from `DefId` of a type to its (inferred) outlives.
         [] fn inferred_outlives_crate: InferredOutlivesCrate(CrateNum)
             -> Lrc<ty::CratePredicatesMap<'tcx>>,
     },
 
     Other {
-        /// Maps from an impl/trait def-id to a list of the def-ids of its items
+        /// Maps from an impl/trait `DefId` to a list of the `DefId`s of its items
         [] fn associated_item_def_ids: AssociatedItemDefIds(DefId) -> Lrc<Vec<DefId>>,
 
         /// Maps from a trait item to the trait item "descriptor"

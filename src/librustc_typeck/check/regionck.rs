@@ -121,12 +121,12 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
             self.param_env,
         );
 
-        // There are no add'l implied bounds when checking a
+        // There are no additional implied bounds when checking a
         // standalone expr (e.g., the `E` in a type like `[u32; E]`).
         rcx.outlives_environment.save_implied_bounds(id);
 
         if self.err_count_since_creation() == 0 {
-            // regionck assumes typeck succeeded
+            // regionck assumes typeck succeeded.
             rcx.visit_body(body);
             rcx.visit_region_obligations(id);
         }
@@ -177,7 +177,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
 
         if self.err_count_since_creation() == 0 {
             let fn_hir_id = self.tcx.hir().node_to_hir_id(fn_id);
-            // regionck assumes typeck succeeded
+            // regionck assumes typeck succeeded.
             rcx.visit_fn_body(fn_hir_id, body, self.tcx.hir().span_by_hir_id(fn_hir_id));
         }
 
@@ -293,7 +293,7 @@ impl<'a, 'gcx, 'tcx> RegionCtxt<'a, 'gcx, 'tcx> {
     /// and `outlives_environment`) to be appropriate to the function and then adds constraints
     /// derived from the function body.
     ///
-    /// Note that it does **not** restore the state of the fields that
+    /// Note that it does *not* restore the state of the fields that
     /// it updates! This is intentional, since -- for the main
     /// function -- we wish to be able to read the final
     /// `outlives_environment` and other fields from the caller. For
@@ -302,11 +302,12 @@ impl<'a, 'gcx, 'tcx> RegionCtxt<'a, 'gcx, 'tcx> {
     /// `intravisit::Visitor` impl below.)
     fn visit_fn_body(
         &mut self,
-        id: hir::HirId, // the id of the fn itself
+        // The ID of the fn itself.
+        id: hir::HirId,
         body: &'gcx hir::Body,
         span: Span,
     ) {
-        // When we enter a function, we can derive
+        // When we enter a function, we can derive.
         debug!("visit_fn_body(id={:?})", id);
 
         let body_id = body.id();
@@ -331,7 +332,7 @@ impl<'a, 'gcx, 'tcx> RegionCtxt<'a, 'gcx, 'tcx> {
         // For the return type, if diverging, substitute `bool` just
         // because it will have no effect.
         //
-        // FIXME(#27579) return types should not be implied bounds
+        // FIXME(#27579): return types should not be implied bounds.
         let fn_sig_tys: Vec<_> = fn_sig
             .inputs()
             .iter()
@@ -438,7 +439,7 @@ impl<'a, 'gcx, 'tcx> RegionCtxt<'a, 'gcx, 'tcx> {
 }
 
 impl<'a, 'gcx, 'tcx> Visitor<'gcx> for RegionCtxt<'a, 'gcx, 'tcx> {
-    // (..) FIXME(#3238) should use visit_pat, not visit_arm/visit_local,
+    // (..) FIXME(#3238): should use `visit_pat`, not `visit_arm`/`visit_local`,
     // However, right now we run into an issue whereby some free
     // regions are not properly related if they appear within the
     // types of arguments that must be inferred. This could be
@@ -467,7 +468,7 @@ impl<'a, 'gcx, 'tcx> Visitor<'gcx> for RegionCtxt<'a, 'gcx, 'tcx> {
         );
 
         // Save state of current function before invoking
-        // `visit_fn_body`.  We will restore afterwards.
+        // `visit_fn_body`. We will restore afterwards.
         let old_body_id = self.body_id;
         let old_call_site_scope = self.call_site_scope;
         let env_snapshot = self.outlives_environment.push_snapshot_pre_closure();
@@ -483,10 +484,10 @@ impl<'a, 'gcx, 'tcx> Visitor<'gcx> for RegionCtxt<'a, 'gcx, 'tcx> {
         self.body_id = old_body_id;
     }
 
-    //visit_pat: visit_pat, // (..) see above
+    // visit_pat: visit_pat, // (..) see above
 
     fn visit_arm(&mut self, arm: &'gcx hir::Arm) {
-        // see above
+        // See above.
         for p in &arm.pats {
             self.constrain_bindings_in_pat(p);
         }
@@ -494,7 +495,7 @@ impl<'a, 'gcx, 'tcx> Visitor<'gcx> for RegionCtxt<'a, 'gcx, 'tcx> {
     }
 
     fn visit_local(&mut self, l: &'gcx hir::Local) {
-        // see above
+        // See above.
         self.constrain_bindings_in_pat(&l.pat);
         self.link_local(l);
         intravisit::walk_local(self, l);
@@ -646,7 +647,7 @@ impl<'a, 'gcx, 'tcx> Visitor<'gcx> for RegionCtxt<'a, 'gcx, 'tcx> {
 
             hir::ExprKind::Cast(ref source, _) => {
                 // Determine if we are casting `source` to a trait
-                // instance.  If so, we have to be sure that the type of
+                // instance. If so, we have to be sure that the type of
                 // the source obeys the trait's region bound.
                 self.constrain_cast(expr, &source);
                 intravisit::walk_expr(self, expr);
@@ -798,7 +799,7 @@ impl<'a, 'gcx, 'tcx> RegionCtxt<'a, 'gcx, 'tcx> {
         // `callee_region` is the scope representing the time in which the
         // call occurs.
         //
-        // FIXME(#6268) to support nested method calls, should be callee_id
+        // FIXME(#6268): to support nested method calls, should be `callee_id`.
         let callee_scope = region::Scope {
             id: call_expr.hir_id.local_id,
             data: region::ScopeData::Node,
@@ -894,7 +895,7 @@ impl<'a, 'gcx, 'tcx> RegionCtxt<'a, 'gcx, 'tcx> {
                     &cmt,
                 );
 
-                // Specialized version of constrain_call.
+                // Specialized version of `constrain_call`.
                 self.type_must_outlive(infer::CallRcvr(expr.span), input, expr_region);
                 self.type_must_outlive(infer::CallReturn(expr.span), output, expr_region);
             }
@@ -905,7 +906,7 @@ impl<'a, 'gcx, 'tcx> RegionCtxt<'a, 'gcx, 'tcx> {
                 // Require that the resulting region encompasses
                 // the current node.
                 //
-                // FIXME(#6268) remove to support nested method calls
+                // FIXME(#6268): remove to support nested method calls.
                 self.type_of_node_must_outlive(
                     infer::AutoBorrow(expr.span),
                     expr.hir_id,
@@ -997,7 +998,7 @@ impl<'a, 'gcx, 'tcx> RegionCtxt<'a, 'gcx, 'tcx> {
         hir_id: hir::HirId,
         minimum_lifetime: ty::Region<'tcx>,
     ) {
-        // Try to resolve the type.  If we encounter an error, then typeck
+        // Try to resolve the type. If we encounter an error, then typeck
         // is going to fail anyway, so just stop here and let typeck
         // report errors later on in the writeback phase.
         let ty0 = self.resolve_node_type(hir_id);
@@ -1367,7 +1368,7 @@ impl<'a, 'gcx, 'tcx> RegionCtxt<'a, 'gcx, 'tcx> {
         //     ref_cmt                 ^~~
         //
         // (Note that since we have not examined `ref_cmt.cat`, we don't
-        // know whether this scenario has occurred; but I wanted to show
+        // know whether this scenario has occurred, but I wanted to show
         // how all the types get adjusted.)
         match ref_kind {
             ty::ImmBorrow => {

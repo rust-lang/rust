@@ -356,7 +356,7 @@ macro_rules! declare_keywords {(
 }}
 
 // N.B., leaving holes in the ident table is bad! a different ident will get
-// interned with the id from the hole, but it will be between the min and max
+// interned with the ID from the hole, but it will be between the min and max
 // of the reserved words, and thus tagged as "reserved".
 // After modifying this list adjust `is_special`, `is_used_keyword`/`is_unused_keyword`,
 // this should be rarely necessary though if the keywords are kept in alphabetic order.

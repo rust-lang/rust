@@ -810,31 +810,34 @@ pub fn provide(providers: &mut Providers<'_>) {
     providers.lint_levels = lint_levels;
 }
 
-/// Returns whether `span` originates in a foreign crate's external macro.
+/// Returns `true` if `span` originates in a foreign crate's external macro.
 ///
 /// This is used to test whether a lint should be entirely aborted above.
 pub fn in_external_macro(sess: &Session, span: Span) -> bool {
     let info = match span.ctxt().outer().expn_info() {
         Some(info) => info,
-        // no ExpnInfo means this span doesn't come from a macro
+        // No `ExpnInfo` means this span doesn't come from a macro.
         None => return false,
     };
 
     match info.format {
-        ExpnFormat::MacroAttribute(..) => return true, // definitely a plugin
-        ExpnFormat::CompilerDesugaring(_) => return true, // well, it's "external"
-        ExpnFormat::MacroBang(..) => {} // check below
+        // Definitely a plugin.
+        ExpnFormat::MacroAttribute(..) => return true,
+        // Well, it's "external".
+        ExpnFormat::CompilerDesugaring(_) => return true,
+        // See below.
+        ExpnFormat::MacroBang(..) => {}
     }
 
     let def_site = match info.def_site {
         Some(span) => span,
-        // no span for the def_site means it's an external macro
+        // No span for the `def_site` means it's an external macro.
         None => return true,
     };
 
     match sess.source_map().span_to_snippet(def_site) {
         Ok(code) => !code.starts_with("macro_rules"),
-        // no snippet = external macro or compiler-builtin expansion
+        // No snippet means external macro or compiler-builtin expansion.
         Err(_) => true,
     }
 }

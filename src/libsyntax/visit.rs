@@ -102,13 +102,12 @@ pub trait Visitor<'ast>: Sized {
     fn visit_mac(&mut self, _mac: &'ast Mac) {
         panic!("visit_mac disabled by default");
         // N.B., see note about macros above.
-        // if you really want a visitor that
-        // works on macros, use this
+        // If you really want a visitor that works on macros, use this
         // definition in your trait impl:
-        // visit::walk_mac(self, _mac)
+        // `visit::walk_mac(self, _mac)`.
     }
     fn visit_mac_def(&mut self, _mac: &'ast MacroDef, _id: NodeId) {
-        // Nothing to do
+        // Nothing to do.
     }
     fn visit_path(&mut self, path: &'ast Path, _id: NodeId) {
         walk_path(self, path)

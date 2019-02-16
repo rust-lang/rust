@@ -50,7 +50,7 @@ pub(crate) fn link_binary(sess: &Session,
                           crate_name: &str) -> Vec<PathBuf> {
     let mut out_filenames = Vec::new();
     for &crate_type in sess.crate_types.borrow().iter() {
-        // Ignore executable crates if we have -Z no-codegen, as they will error.
+        // Ignore executable crates if we have `-Z no-codegen`, as they will error.
         let output_metadata = sess.opts.output_types.contains_key(&OutputType::Metadata);
         if (sess.opts.debugging_opts.no_codegen || !sess.opts.output_types.should_codegen()) &&
            !output_metadata &&
@@ -70,7 +70,7 @@ pub(crate) fn link_binary(sess: &Session,
         out_filenames.extend(out_files);
     }
 
-    // Remove the temporary object file and metadata if we aren't saving temps
+    // Remove the temporary object file and metadata if we aren't saving temps.
     if !sess.opts.cg.save_temps {
         if sess.opts.output_types.should_codegen() && !preserve_objects_for_their_debuginfo(sess) {
             for obj in codegen_results.modules.iter().filter_map(|m| m.object.as_ref()) {
@@ -114,14 +114,14 @@ fn preserve_objects_for_their_debuginfo(sess: &Session) -> bool {
         return false
     }
 
-    // If we're on OSX then the equivalent of split dwarf is turned on by
+    // If we're on macOS then the equivalent of split dwarf is turned on by
     // default. The final executable won't actually have any debug information
     // except it'll have pointers to elsewhere. Historically we've always run
     // `dsymutil` to "link all the dwarf together" but this is actually sort of
     // a bummer for incremental compilation! (the whole point of split dwarf is
     // that you don't do this sort of dwarf link).
     //
-    // Basically as a result this just means that if we're on OSX and we're
+    // Basically as a result this just means that if we're on macOS and we're
     // *not* running dsymutil then the object files are the only source of truth
     // for debug information, so we must preserve them.
     if sess.target.target.options.is_like_osx {
@@ -241,7 +241,7 @@ enum RlibFlavor {
     StaticlibBase,
 }
 
-// Create an 'rlib'
+// Creates an 'rlib'.
 //
 // An rlib in its current incarnation is essentially a renamed .a file. The
 // rlib primarily contains the object file of the crate, but it also contains
@@ -349,7 +349,7 @@ fn link_rlib<'a>(sess: &'a Session,
     ab
 }
 
-// Create a static archive
+// Creates a static archive.
 //
 // This is essentially the same thing as an rlib, but it also involves adding
 // all of the upstream crates' objects into the archive. This will slurp in
@@ -442,7 +442,7 @@ fn print_native_static_libs(sess: &Session, all_native_libs: &[NativeLibrary]) {
         sess.note_without_error("Link against the following native artifacts when linking \
                                  against this static library. The order and any duplication \
                                  can be significant on some platforms.");
-        // Prefix for greppability
+        // Prefix for grep-ability.
         sess.note_without_error(&format!("native-static-libs: {}", &lib_args.join(" ")));
     }
 }
@@ -462,10 +462,10 @@ fn get_file_path(sess: &Session, name: &str) -> PathBuf {
     PathBuf::from(name)
 }
 
-// Create a dynamic library or executable
+// Creates a dynamic library or executable.
 //
-// This will invoke the system linker/cc to create the resulting file. This
-// links to all upstream files as well.
+// This will invoke the system linker or cc to create the resulting file.
+// This links to all upstream files as well.
 fn link_natively(sess: &Session,
                  crate_type: config::CrateType,
                  out_filename: &Path,
@@ -474,7 +474,7 @@ fn link_natively(sess: &Session,
     info!("preparing {:?} to {:?}", crate_type, out_filename);
     let (linker, flavor) = linker_and_flavor(sess);
 
-    // The invocations of cc share some flags across platforms
+    // The invocations of cc share some flags across platforms.
     let (pname, mut cmd) = get_linker(sess, &linker, flavor);
 
     if let Some(args) = sess.target.target.options.pre_link_args.get(&flavor) {
@@ -554,22 +554,22 @@ fn link_natively(sess: &Session,
     // May have not found libraries in the right formats.
     sess.abort_if_errors();
 
-    // Invoke the system linker
+    // Invoke the system linker.
     //
     // Note that there's a terribly awful hack that really shouldn't be present
     // in any compiler. Here an environment variable is supported to
     // automatically retry the linker invocation if the linker looks like it
     // segfaulted.
     //
-    // Gee that seems odd, normally segfaults are things we want to know about!
-    // Unfortunately though in rust-lang/rust#38878 we're experiencing the
-    // linker segfaulting on Travis quite a bit which is causing quite a bit of
-    // pain to land PRs when they spuriously fail due to a segfault.
+    // That seems odd... normally segfaults are things we want to know about!
+    // Unfortunately, however, in issue #38878 we're experiencing the
+    // linker segfaulting on Travis quite a bit, which is causing a lot of
+    // pain when trying to land PRs due to them spuriously failing from segfaults.
     //
-    // The issue #38878 has some more debugging information on it as well, but
+    // Issue #38878 has some more debugging information on it as well, but
     // this unfortunately looks like it's just a race condition in macOS's linker
     // with some thread pool working in the background. It seems that no one
-    // currently knows a fix for this so in the meantime we're left with this...
+    // currently knows a fix for this so in the meantime we're left with this.
     info!("{:?}", &cmd);
     let retry_on_segfault = env::var("RUSTC_RETRY_LINKER_ON_SEGFAULT").is_ok();
     let mut prog;
@@ -590,8 +590,8 @@ fn link_natively(sess: &Session,
         out.extend(&output.stdout);
         let out = String::from_utf8_lossy(&out);
 
-        // Check to see if the link failed with "unrecognized command line option:
-        // '-no-pie'" for gcc or "unknown argument: '-no-pie'" for clang. If so,
+        // Check to see if the link failed with `unrecognized command line option:
+        // '-no-pie'` for gcc or `unknown argument: '-no-pie'` for clang. If so,
         // reperform the link step without the -no-pie option. This is safe because
         // if the linker doesn't support -no-pie then it should not default to
         // linking executables as pie. Different versions of gcc seem to use
@@ -1019,7 +1019,7 @@ fn link_args(cmd: &mut dyn Linker,
         cmd.pgo_gen();
     }
 
-    // FIXME (#2397): At some point we want to rpath our guesses as to
+    // FIXME(#2397): At some point we want to rpath our guesses as to
     // where extern libraries might live, based on the
     // addl_lib_search_paths
     if sess.opts.cg.rpath {
@@ -1094,28 +1094,28 @@ fn add_local_native_libraries(cmd: &mut dyn Linker,
     }
 }
 
-// # Rust Crate linking
+// Rust crate linking.
 //
 // Rust crates are not considered at all when creating an rlib output. All
 // dependencies will be linked when producing the final output (instead of
-// the intermediate rlib version)
+// the intermediate rlib version).
 fn add_upstream_rust_crates(cmd: &mut dyn Linker,
                             sess: &Session,
                             codegen_results: &CodegenResults,
                             crate_type: config::CrateType,
                             tmpdir: &Path) {
     // All of the heavy lifting has previously been accomplished by the
-    // dependency_format module of the compiler. This is just crawling the
+    // `dependency_format` module of the compiler. This is just crawling the
     // output of that module, adding crates as necessary.
     //
     // Linking to a rlib involves just passing it to the linker (the linker
-    // will slurp up the object files inside), and linking to a dynamic library
-    // involves just passing the right -l flag.
+    // will gather up the object files inside), and linking to a dynamic library
+    // involves just passing the right `-l` flag.
 
     let formats = sess.dependency_formats.borrow();
     let data = formats.get(&crate_type).unwrap();
 
-    // Invoke get_used_crates to ensure that we get a topological sorting of
+    // Invoke `get_used_crates` to ensure that we get a topological sorting of
     // crates.
     let deps = &codegen_results.crate_info.used_crates_dynamic;
 
@@ -1201,7 +1201,7 @@ fn add_upstream_rust_crates(cmd: &mut dyn Linker,
         }
     }
 
-    // compiler-builtins are always placed last to ensure that they're
+    // Compiler builtins are always placed last to ensure that they're
     // linked correctly.
     // We must always link the `compiler_builtins` crate statically. Even if it
     // was already "included" in a dylib (e.g., `libstd` when `-C prefer-dynamic`
@@ -1237,7 +1237,7 @@ fn add_upstream_rust_crates(cmd: &mut dyn Linker,
             // rpath to the library as well (the rpath should be absolute, see
             // PR #41352 for details).
             //
-            // FIXME: Remove this logic into librustc_*san once Cargo supports it
+            // FIXME: remove this logic into librustc_*san once Cargo supports it.
             let rpath = cratepath.parent().unwrap();
             let rpath = rpath.to_str().expect("non-utf8 component in path");
             cmd.args(&["-Wl,-rpath".into(), "-Xlinker".into(), rpath.into()]);
@@ -1301,8 +1301,7 @@ fn add_upstream_rust_crates(cmd: &mut dyn Linker,
         let cratepath = &src.rlib.as_ref().unwrap().0;
 
         // See the comment above in `link_staticlib` and `link_rlib` for why if
-        // there's a static library that's not relevant we skip all object
-        // files.
+        // there's a static library that's not relevant we skip all object files.
         let native_libs = &codegen_results.crate_info.native_libraries[&cnum];
         let skip_native = native_libs.iter().any(|lib| {
             lib.kind == NativeLibraryKind::NativeStatic && !relevant_lib(sess, lib)
@@ -1413,7 +1412,7 @@ fn add_upstream_rust_crates(cmd: &mut dyn Linker,
     }
 }
 
-// Link in all of our upstream crates' native dependencies. Remember that
+// Links in all of our upstream crates' native dependencies. Remember that
 // all of these upstream native dependencies are all non-static
 // dependencies. We've got two cases then:
 //
@@ -1436,12 +1435,12 @@ fn add_upstream_native_libraries(cmd: &mut dyn Linker,
                                  codegen_results: &CodegenResults,
                                  crate_type: config::CrateType) {
     // Be sure to use a topological sorting of crates because there may be
-    // interdependencies between native libraries. When passing -nodefaultlibs,
+    // interdependencies between native libraries. When passing `-nodefaultlibs`,
     // for example, almost all native libraries depend on libc, so we have to
     // make sure that's all the way at the right (liblibc is near the base of
     // the dependency chain).
     //
-    // This passes RequireStatic, but the actual requirement doesn't matter,
+    // This passes `RequireStatic`, but the actual requirement doesn't matter,
     // we're just getting an ordering of crate numbers, we're not worried about
     // the paths.
     let formats = sess.dependency_formats.borrow();
@@ -1462,16 +1461,16 @@ fn add_upstream_native_libraries(cmd: &mut dyn Linker,
                 NativeLibraryKind::NativeFramework => cmd.link_framework(&name.as_str()),
                 NativeLibraryKind::NativeStaticNobundle => {
                     // Link "static-nobundle" native libs only if the crate they originate from
-                    // is being linked statically to the current crate.  If it's linked dynamically
+                    // is being linked statically to the current crate. If it's linked dynamically
                     // or is an rlib already included via some other dylib crate, the symbols from
                     // native libs will have already been included in that dylib.
                     if data[cnum.as_usize() - 1] == Linkage::Static {
                         cmd.link_staticlib(&name.as_str())
                     }
                 },
-                // ignore statically included native libraries here as we've
+                // Ignore statically included native libraries here as we've
                 // already included them when we included the rust library
-                // previously
+                // previously.
                 NativeLibraryKind::NativeStatic => {}
             }
         }

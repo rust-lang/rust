@@ -197,7 +197,7 @@ macro_rules! make_value_visitor {
             }
 
             /// Called whenever we reach a value with uninhabited layout.
-            /// Recursing to fields will *always* continue after this!  This is not meant to control
+            /// Recursing to fields will *always* continue after this! This is not meant to control
             /// whether and how we descend recursively/ into the scalar's fields if there are any,
             /// it is meant to provide the chance for additional checks when a value of uninhabited
             /// layout is detected.
@@ -207,7 +207,7 @@ macro_rules! make_value_visitor {
             /// Called whenever we reach a value with scalar layout.
             /// We do NOT provide a `ScalarMaybeUndef` here to avoid accessing memory if the
             /// visitor is not even interested in scalars.
-            /// Recursing to fields will *always* continue after this!  This is not meant to control
+            /// Recursing to fields will *always* continue after this! This is not meant to control
             /// whether and how we descend recursively/ into the scalar's fields if there are any,
             /// it is meant to provide the chance for additional checks when a value of scalar
             /// layout is detected.
@@ -271,7 +271,7 @@ macro_rules! make_value_visitor {
                 // Things can be aggregates and have scalar layout at the same time, and that
                 // is very relevant for `NonNull` and similar structs: We need to visit them
                 // at their scalar layout *before* descending into their fields.
-                // FIXME: We could avoid some redundant checks here. For newtypes wrapping
+                // FIXME: we could avoid some redundant checks here. For newtypes wrapping
                 // scalars, we do the same check on every "level" (e.g., first we check
                 // MyNewtype and then the scalar in there).
                 match v.layout().abi {
@@ -281,12 +281,12 @@ macro_rules! make_value_visitor {
                     layout::Abi::Scalar(ref layout) => {
                         self.visit_scalar(v, layout)?;
                     }
-                    // FIXME: Should we do something for ScalarPair? Vector?
+                    // FIXME: should we do something for `ScalarPair` and `Vector`?
                     _ => {}
                 }
 
-                // Check primitive types.  We do this after checking the scalar layout,
-                // just to have that done as well.  Primitives can have varying layout,
+                // Check primitive types. We do this after checking the scalar layout,
+                // just to have that done as well. Primitives can have varying layout,
                 // so we check them separately and before aggregate handling.
                 // It is CRITICAL that we get this check right, or we might be
                 // validating the wrong thing!
@@ -303,7 +303,7 @@ macro_rules! make_value_visitor {
                 match v.layout().fields {
                     layout::FieldPlacement::Union(fields) => {
                         // Empty unions are not accepted by rustc. That's great, it means we can
-                        // use that as an unambiguous signal for detecting primitives.  Make sure
+                        // use that as an unambiguous signal for detecting primitives. Make sure
                         // we did not miss any primitive.
                         debug_assert!(fields > 0);
                         self.visit_union(v)
@@ -323,7 +323,7 @@ macro_rules! make_value_visitor {
                                 Ok(())
                             }
                             _ => {
-                                // FIXME: We collect in a vec because otherwise there are lifetime
+                                // FIXME: we collect in a vec because otherwise there are lifetime
                                 // errors: Projecting to a field needs access to `ecx`.
                                 let fields: Vec<EvalResult<'tcx, Self::V>> =
                                     (0..offsets.len()).map(|i| {

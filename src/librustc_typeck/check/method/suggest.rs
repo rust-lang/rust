@@ -423,7 +423,8 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                         .map(|p| format!("`{} : {}`", p.self_ty(), p))
                         .collect::<Vec<_>>();
                     bound_list.sort();
-                    bound_list.dedup();  // #35677
+                    // Issue #35677.
+                    bound_list.dedup();
                     let bound_list = bound_list.join("\n");
                     err.note(&format!("the method `{}` exists but the following trait bounds \
                                        were not satisfied:\n{}",
@@ -506,7 +507,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         let (span, found_use) = UsePlacementFinder::check(self.tcx, krate, module_id);
         if let Some(span) = span {
             let path_strings = candidates.iter().map(|did| {
-                // Produce an additional newline to separate the new use statement
+                // Produce an additional newline to separate the new use-statement
                 // from the directly following item.
                 let additional_newline = if found_use {
                     ""
@@ -616,7 +617,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
             candidates.sort_by(|a, b| a.cmp(b).reverse());
             candidates.dedup();
 
-            // FIXME #21673: this help message could be tuned to the case
+            // FIXME(#21673): this help message could be tuned to the case
             // of a type parameter: suggest adding a trait bound rather
             // than implementing.
             err.help("items from traits can only be used if the trait is implemented and in scope");

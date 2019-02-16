@@ -413,7 +413,7 @@ impl<'a> Parser<'a> {
         let pos = self.position();
         let format = self.format();
 
-        // Resolve position after parsing format spec.
+        // Resolves position after parsing format spec.
         let pos = match pos {
             Some(position) => position,
             None => {

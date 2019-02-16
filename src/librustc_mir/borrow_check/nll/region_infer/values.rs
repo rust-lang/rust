@@ -102,7 +102,7 @@ impl RegionValueElements {
         } = self.to_location(index);
         if statement_index == 0 {
             // If this is a basic block head, then the predecessors are
-            // the terminators of other basic blocks
+            // the terminators of other basic blocks.
             stack.extend(
                 mir.predecessors_for(block)
                     .iter()
@@ -110,7 +110,7 @@ impl RegionValueElements {
                     .map(|pred_loc| self.point_from_location(pred_loc)),
             );
         } else {
-            // Otherwise, the pred is just the previous statement
+            // Otherwise, the predicate is just the previous statement.
             stack.push(PointIndex::new(index.index() - 1));
         }
     }

@@ -82,20 +82,22 @@ pub enum KleeneOp {
 pub enum TokenTree {
     Token(Span, token::Token),
     Delimited(DelimSpan, Lrc<Delimited>),
-    /// A kleene-style repetition sequence
+    /// A kleene-style repetition sequence.
     Sequence(DelimSpan, Lrc<SequenceRepetition>),
-    /// e.g., `$var`
+    /// E.g., `$var`.
     MetaVar(Span, ast::Ident),
-    /// e.g., `$var:expr`. This is only used in the left hand side of MBE macros.
+    /// E.g., `$var:expr`. This is only used in the left-hand side of MBE macros.
     MetaVarDecl(
         Span,
-        ast::Ident, /* name to bind */
-        ast::Ident, /* kind of nonterminal */
+        /// The name to bind.
+        ast::Ident,
+        /// The kind of non-terminal.
+        ast::Ident,
     ),
 }
 
 impl TokenTree {
-    /// Return the number of tokens in the tree.
+    /// Returns the number of tokens in the tree.
     pub fn len(&self) -> usize {
         match *self {
             TokenTree::Delimited(_, ref delimed) => match delimed.delim {
@@ -271,7 +273,7 @@ where
         // `tree` is a `$` token. Look at the next token in `trees`
         tokenstream::TokenTree::Token(span, token::Dollar) => match trees.next() {
             // `tree` is followed by a delimited set of token trees. This indicates the beginning
-            // of a repetition sequence in the macro (e.g. `$(pat)*`).
+            // of a repetition sequence in the macro (e.g., `$(pat)*`).
             Some(tokenstream::TokenTree::Delimited(span, delim, tts)) => {
                 // Must have `(` not `{` or `[`
                 if delim != token::Paren {
@@ -473,7 +475,7 @@ where
 
             if is_1_sep {
                 // #1 is a separator and #2 should be a KleepeOp.
-                // (N.B. We need to advance the input iterator.)
+                // (N.B., we need to advance the input iterator.)
                 match parse_kleene_op(input, span) {
                     // #2 is `?`, which is not allowed as a Kleene op in 2015 edition.
                     Ok(Ok((op, op2_span))) if op == KleeneOp::ZeroOrOne => {

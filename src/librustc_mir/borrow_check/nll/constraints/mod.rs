@@ -66,11 +66,11 @@ impl Deref for ConstraintSet {
 
 #[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct OutlivesConstraint {
-    // NB. The ordering here is not significant for correctness, but
+    // N.B., the ordering here is not significant for correctness, but
     // it is for convenience. Before we dump the constraints in the
     // debugging logs, we sort them, and we'd like the "super region"
     // to be first, etc. (In particular, span should remain last.)
-    /// The region SUP must outlive SUB...
+    /// The region SUP must outlive SUB.
     pub sup: RegionVid,
 
     /// Region that must be outlived.

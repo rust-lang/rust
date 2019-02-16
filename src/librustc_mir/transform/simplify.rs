@@ -48,7 +48,7 @@ pub fn simplify_cfg(mir: &mut Mir<'_>) {
     CfgSimplifier::new(mir).simplify();
     remove_dead_blocks(mir);
 
-    // FIXME: Should probably be moved into some kind of pass manager
+    // FIXME: should probably be moved into some kind of pass manager
     mir.basic_blocks_mut().raw.shrink_to_fit();
 }
 
@@ -348,7 +348,7 @@ impl<'tcx> Visitor<'tcx> for DeclMarker {
     fn visit_local(&mut self, local: &Local, ctx: PlaceContext<'tcx>, _: Location) {
         // Ignore storage markers altogether, they get removed along with their otherwise unused
         // decls.
-        // FIXME: Extend this to all non-uses.
+        // FIXME: extend this to all non-uses.
         if !ctx.is_storage_marker() {
             self.locals.insert(*local);
         }

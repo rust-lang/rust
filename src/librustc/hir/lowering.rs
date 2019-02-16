@@ -74,7 +74,7 @@ const HIR_ID_COUNTER_LOCKED: u32 = 0xFFFFFFFF;
 pub struct LoweringContext<'a> {
     crate_root: Option<&'static str>,
 
-    // Used to assign ids to HIR nodes that do not directly correspond to an AST node.
+    // Used to assign IDs to HIR nodes that do not directly correspond to an AST node.
     sess: &'a Session,
 
     cstore: &'a dyn CrateStore,
@@ -1969,7 +1969,7 @@ impl<'a> LoweringContext<'a> {
         &mut self,
         data: &ParenthesizedArgs,
     ) -> (hir::GenericArgs, bool) {
-        // Switch to `PassThrough` mode for anonymous lifetimes: this
+        // Switch to `PassThrough` mode for anonymous lifetimes; this
         // means that we permit things like `&Ref<T>`, where `Ref` has
         // a hidden lifetime parameter. This is needed for backwards
         // compatibility, even in contexts like an impl header where
@@ -2331,7 +2331,7 @@ impl<'a> LoweringContext<'a> {
                 }
             };
 
-            // "<Output = T>"
+            // `<Output = T>`
             let LoweredNodeId { node_id, hir_id } = this.next_id();
             let future_params = P(hir::GenericArgs {
                 args: hir_vec![],
@@ -3198,7 +3198,7 @@ impl<'a> LoweringContext<'a> {
                 //
                 // The first two are produced by recursively invoking
                 // `lower_use_tree` (and indeed there may be things
-                // like `use foo::{a::{b, c}}` and so forth).  They
+                // like `use foo::{a::{b, c}}` and so forth). They
                 // wind up being directly added to
                 // `self.items`. However, the structure of this
                 // function also requires us to return one item, and
@@ -3223,7 +3223,7 @@ impl<'a> LoweringContext<'a> {
                     let mut ident = ident.clone();
                     let mut prefix = prefix.clone();
 
-                    // Give the segments new node-ids since they are being cloned.
+                    // Give the segments new `NodeId`s since they are being cloned.
                     for seg in &mut prefix.segments {
                         seg.id = self.sess.next_node_id();
                     }
@@ -3279,7 +3279,7 @@ impl<'a> LoweringContext<'a> {
                 // because that affects rustdoc and also the lints
                 // about `pub` items. But we can't *always* make it
                 // private -- particularly not for restricted paths --
-                // because it contains node-ids that would then be
+                // because it contains `NodeId`s that would then be
                 // unused, failing the check that HirIds are "densely
                 // assigned".
                 match vis.node {

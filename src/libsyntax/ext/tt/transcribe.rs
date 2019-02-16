@@ -121,13 +121,13 @@ pub fn transcribe(cx: &ExtCtxt<'_>,
                              variables matched as repeating at this depth");
                     }
                     LockstepIterSize::Contradiction(ref msg) => {
-                        // FIXME #2887 blame macro invoker instead
+                        // FIXME(#2887): blame macro invoker instead
                         cx.span_fatal(sp.entire(), &msg[..]);
                     }
                     LockstepIterSize::Constraint(len, _) => {
                         if len == 0 {
                             if seq.op == quoted::KleeneOp::OneOrMore {
-                                // FIXME #2887 blame invoker
+                                // FIXME(#2887): blame invoker
                                 cx.span_fatal(sp.entire(), "this must repeat at least once");
                             }
                         } else {
@@ -141,7 +141,7 @@ pub fn transcribe(cx: &ExtCtxt<'_>,
                     }
                 }
             }
-            // FIXME #2887: think about span stuff here
+            // FIXME(#2887): think about span stuff here
             quoted::TokenTree::MetaVar(mut sp, ident) => {
                 if let Some(cur_matched) = lookup_cur_matched(ident, &interpolations, &repeats) {
                     if let MatchedNonterminal(ref nt) = *cur_matched {

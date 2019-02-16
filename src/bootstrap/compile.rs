@@ -165,12 +165,12 @@ pub fn std_cargo(builder: &Builder,
         let features = builder.std_features();
 
         if compiler.stage != 0 && builder.config.sanitizers {
-            // This variable is used by the sanitizer runtime crates, e.g.
-            // rustc_lsan, to build the sanitizer runtime from C code
+            // This variable is used by the sanitizer runtime crates, e.g.,
+            // `rustc_lsan`, to build the sanitizer runtime from C code
             // When this variable is missing, those crates won't compile the C code,
             // so we don't set this variable during stage0 where llvm-config is
             // missing
-            // We also only build the runtimes when --enable-sanitizers (or its
+            // We also only build the runtimes when `--enable-sanitizers` (or its
             // config.toml equivalent) is used
             let llvm_config = builder.ensure(native::Llvm {
                 target: builder.config.build,
@@ -895,7 +895,7 @@ impl Step for Assemble {
         run.never()
     }
 
-    /// Prepare a new compiler from the artifacts in `stage`
+    /// Prepares a new compiler from the artifacts in `stage`
     ///
     /// This will assemble a compiler in `build/$host/stage$stage`. The compiler
     /// must have been previously produced by the `stage - 1` builder.build
@@ -921,17 +921,17 @@ impl Step for Assemble {
         // produce some other architecture compiler we need to start from
         // `build` to get there.
         //
-        // FIXME: Perhaps we should download those libraries?
-        //        It would make builds faster...
+        // FIXME: perhaps we should download those libraries?
+        // It would certainly make builds faster.
         //
-        // FIXME: It may be faster if we build just a stage 1 compiler and then
-        //        use that to bootstrap this compiler forward.
+        // FIXME: it may be faster if we build just a stage 1 compiler and then
+        // use that to bootstrap this compiler forward.
         let build_compiler =
             builder.compiler(target_compiler.stage - 1, builder.config.build);
 
         // Build the libraries for this compiler to link to (i.e., the libraries
         // it uses at runtime). NOTE: Crates the target compiler compiles don't
-        // link to these. (FIXME: Is that correct? It seems to be correct most
+        // link to these. (FIXME: is that correct? It seems to be correct most
         // of the time but I think we do link to these for stage2/bin compilers
         // when not performing a full bootstrap).
         builder.ensure(Rustc {
@@ -958,7 +958,7 @@ impl Step for Assemble {
         let host = target_compiler.host;
         builder.info(&format!("Assembling stage{} compiler ({})", stage, host));
 
-        // Link in all dylibs to the libdir
+        // Link in all dylibs to the libdir.
         let sysroot = builder.sysroot(target_compiler);
         let sysroot_libdir = sysroot.join(libdir(&*host));
         t!(fs::create_dir_all(&sysroot_libdir));
@@ -979,7 +979,7 @@ impl Step for Assemble {
 
         dist::maybe_install_llvm_dylib(builder, target_compiler.host, &sysroot);
 
-        // Link the compiler binary itself into place
+        // Link the compiler binary itself into place.
         let out_dir = builder.cargo_out(build_compiler, Mode::Rustc, host);
         let rustc = out_dir.join(exe("rustc_binary", &*host));
         let bindir = sysroot.join("bin");
@@ -992,7 +992,7 @@ impl Step for Assemble {
     }
 }
 
-/// Link some files into a rustc sysroot.
+/// Links some files into a rustc sysroot.
 ///
 /// For a particular stage this will link the file listed in `stamp` into the
 /// `sysroot_dst` provided.
@@ -1013,16 +1013,16 @@ pub fn run_cargo(builder: &Builder,
         return Vec::new();
     }
 
-    // `target_root_dir` looks like $dir/$target/release
+    // `target_root_dir` looks like `$dir/$target/release`.
     let target_root_dir = stamp.parent().unwrap();
-    // `target_deps_dir` looks like $dir/$target/release/deps
+    // `target_deps_dir` looks like `$dir/$target/release/deps`.
     let target_deps_dir = target_root_dir.join("deps");
-    // `host_root_dir` looks like $dir/release
+    // `host_root_dir` looks like `$dir/release`.
     let host_root_dir = target_root_dir.parent().unwrap() // chop off `release`
                                        .parent().unwrap() // chop off `$target`
                                        .join(target_root_dir.file_name().unwrap());
 
-    // Spawn Cargo slurping up its JSON output. We'll start building up the
+    // Spawn Cargo, collecting its JSON output. We'll start building up the
     // `deps` array of all files it generated along with a `toplevel` array of
     // files we need to probe for later.
     let mut deps = Vec::new();
@@ -1033,7 +1033,7 @@ pub fn run_cargo(builder: &Builder,
             _ => return,
         };
         for filename in filenames {
-            // Skip files like executables
+            // Skip files like executables.
             if !filename.ends_with(".rlib") &&
                !filename.ends_with(".lib") &&
                !is_dylib(&filename) &&
@@ -1056,7 +1056,7 @@ pub fn run_cargo(builder: &Builder,
                 continue;
             }
 
-            // Otherwise this was a "top level artifact" which right now doesn't
+            // Otherwise, this was a "top level artifact" which right now doesn't
             // have a hash in the name, but there's a version of this file in
             // the `deps` folder which *does* have a hash in the name. That's
             // the one we'll want to we'll probe for it later.
@@ -1080,7 +1080,7 @@ pub fn run_cargo(builder: &Builder,
         exit(1);
     }
 
-    // Ok now we need to actually find all the files listed in `toplevel`. We've
+    // Now we need to actually find all the files listed in `toplevel`. We've
     // got a list of prefix/extensions and we basically just need to find the
     // most recent file in the `deps` folder corresponding to each one.
     let contents = t!(target_deps_dir.read_dir())
@@ -1168,7 +1168,7 @@ pub fn stream_cargo(
         Err(e) => panic!("failed to execute command: {:?}\nerror: {}", cargo, e),
     };
 
-    // Spawn Cargo slurping up its JSON output. We'll start building up the
+    // Spawn Cargo, collecting its JSON output. We'll start building up the
     // `deps` array of all files it generated along with a `toplevel` array of
     // files we need to probe for later.
     let stdout = BufReader::new(child.stdout.take().unwrap());
@@ -1176,7 +1176,7 @@ pub fn stream_cargo(
         let line = t!(line);
         match serde_json::from_str::<CargoMessage>(&line) {
             Ok(msg) => cb(msg),
-            // If this was informational, just print it out and continue
+            // If this was informational, just print it out and continue.
             Err(_) => println!("{}", line)
         }
     }

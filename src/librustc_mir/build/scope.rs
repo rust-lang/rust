@@ -686,7 +686,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
             let this_scope = scope.region_scope == region_scope;
             // When building drops, we try to cache chains of drops in such a way so these drops
             // could be reused by the drops which would branch into the cached (already built)
-            // blocks.  This, however, means that whenever we add a drop into a scope which already
+            // blocks. This, however, means that whenever we add a drop into a scope which already
             // had some blocks built (and thus, cached) for it, we must invalidate all caches which
             // might branch into the scope which had a drop just added to it. This is necessary,
             // because otherwise some other code might use the cache to branch into already built

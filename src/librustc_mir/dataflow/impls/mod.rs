@@ -173,6 +173,13 @@ impl<'a, 'gcx, 'tcx> HasMoveData<'tcx> for MaybeUninitializedPlaces<'a, 'gcx, 't
 /// Similarly, at a given `drop` statement, the set-difference between
 /// this data and `MaybeInitializedPlaces` yields the set of places
 /// that would require a dynamic drop-flag at that statement.
+//
+// FIXME: note that once flow-analysis is complete, this should be
+// the set-complement of `MaybeUninitializedPlaces`; thus we can get rid
+// of one or the other of these two. I'm inclined to get rid of
+// `MaybeUninitializedPlaces`, simply because the sets will tend to be
+// smaller in this analysis and thus easier for humans to process
+// when debugging.
 pub struct DefinitelyInitializedPlaces<'a, 'gcx: 'tcx, 'tcx: 'a> {
     tcx: TyCtxt<'a, 'gcx, 'tcx>,
     mir: &'a Mir<'tcx>,

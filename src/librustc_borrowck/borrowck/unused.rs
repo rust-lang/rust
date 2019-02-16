@@ -59,7 +59,7 @@ impl<'a, 'tcx> UnusedMutCx<'a, 'tcx> {
         }
 
         for (_name, ids) in mutables {
-            // If any id for this name was used mutably then consider them all
+            // If any ID for this name was used mutably then consider them all
             // ok, so move on to the next
             if ids.iter().any(|&(ref hir_id, _)| self.used_mut.contains(hir_id)) {
                 continue;

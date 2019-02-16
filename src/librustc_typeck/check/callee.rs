@@ -53,7 +53,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
 
         let output = match result {
             None => {
-                // this will report an error since original_callee_ty is not a fn
+                // This will report an error since `original_callee_ty` is not a fn.
                 self.confirm_builtin_call(call_expr, original_callee_ty, arg_exprs, expected)
             }
 
@@ -70,7 +70,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
             }
         };
 
-        // we must check that return type of called functions is WF:
+        // We must check that return type of called functions is WF.
         self.register_wf_obligation(output, call_expr.span, traits::MiscObligation);
 
         output
@@ -101,8 +101,8 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                 assert_eq!(def_id.krate, LOCAL_CRATE);
 
                 // Check whether this is a call to a closure where we
-                // haven't yet decided on whether the closure is fn vs
-                // fnmut vs fnonce. If so, we have to defer further processing.
+                // haven't yet decided on whether the closure is `fn` versus
+                // `FnMut` versus `FnOnce`. If so, we have to defer further processing.
                 if self.closure_kind(def_id, substs).is_none() {
                     let closure_ty = self.closure_sig(def_id, substs);
                     let fn_sig = self
@@ -129,8 +129,8 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                 }
             }
 
-            // Hack: we know that there are traits implementing Fn for &F
-            // where F:Fn and so forth. In the particular case of types
+            // Hack: we know that there are traits implementing `Fn` for `&F`
+            // where `F: Fn` and so forth. In the particular case of types
             // like `x: &mut FnMut()`, if there is a call `x()`, we would
             // normally translate to `FnMut::call_mut(&mut x, ())`, but
             // that winds up requiring `mut x: &mut FnMut()`. A little
@@ -397,7 +397,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         fn_sig: ty::FnSig<'tcx>,
     ) -> Ty<'tcx> {
         // `fn_sig` is the *signature* of the cosure being called. We
-        // don't know the full details yet (`Fn` vs `FnMut` etc), but we
+        // don't know the full details yet (`Fn` versus `FnMut`, etc..), but we
         // do know the types expected for each argument and the return
         // type.
 
@@ -458,21 +458,21 @@ impl<'a, 'gcx, 'tcx> DeferredCallResolution<'gcx, 'tcx> {
     pub fn resolve(self, fcx: &FnCtxt<'a, 'gcx, 'tcx>) {
         debug!("DeferredCallResolution::resolve() {:?}", self);
 
-        // we should not be invoked until the closure kind has been
-        // determined by upvar inference
+        // We should not be invoked until the closure kind has been
+        // determined by upvar inference.
         assert!(fcx
             .closure_kind(self.closure_def_id, self.closure_substs)
             .is_some());
 
-        // We may now know enough to figure out fn vs fnmut etc.
+        // We may now know enough to figure out `fn` versus `FnMut`, etc.
         match fcx.try_overloaded_call_traits(self.call_expr, self.adjusted_ty, None) {
             Some((autoref, method_callee)) => {
                 // One problem is that when we get here, we are going
                 // to have a newly instantiated function signature
                 // from the call trait. This has to be reconciled with
                 // the older function signature we had before. In
-                // principle we *should* be able to fn_sigs(), but we
-                // can't because of the annoying need for a TypeTrace.
+                // principle we *should* be able to `fn_sigs()`, but we
+                // can't because of the annoying need for a `TypeTrace`.
                 // (This always bites me, should find a way to
                 // refactor it.)
                 let method_sig = method_callee.sig;

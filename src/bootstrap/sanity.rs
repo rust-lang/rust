@@ -62,13 +62,13 @@ pub fn check(build: &mut Build) {
     // On Windows, quotes are invalid characters for filename paths, and if
     // one is present as part of the PATH then that can lead to the system
     // being unable to identify the files properly. See
-    // https://github.com/rust-lang/rust/issues/34959 for more details.
+    // issue #34959 for more details.
     if cfg!(windows) && path.to_string_lossy().contains('\"') {
         panic!("PATH contains invalid character '\"'");
     }
 
     let mut cmd_finder = Finder::new();
-    // If we've got a git directory we're gonna need git to update
+    // If we've got a Git directory we're gonna need git to update
     // submodules and learn about various other aspects.
     if build.rust_info.is_git() {
         cmd_finder.must_have("git");
@@ -122,7 +122,7 @@ pub fn check(build: &mut Build) {
     // We're gonna build some custom C code here and there, host triples
     // also build some C++ shims for LLVM so we need a C++ compiler.
     for target in &build.targets {
-        // On emscripten we don't actually need the C compiler to just
+        // On Emscripten we don't actually need the C compiler to just
         // build the target artifacts, only for testing. For the sake
         // of easier bot configuration, just skip detection.
         if target.contains("emscripten") {

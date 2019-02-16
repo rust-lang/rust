@@ -111,12 +111,12 @@ pub trait DerivedTypeMethods<'tcx>: BaseTypeMethods<'tcx> + MiscMethods<'tcx> {
     }
 
     fn type_pointee_for_align(&self, align: Align) -> Self::Type {
-        // FIXME(eddyb) We could find a better approximation if ity.align < align.
+        // FIXME(eddyb): we could find a better approximation if `ity.align < align`.
         let ity = layout::Integer::approximate_align(self, align);
         self.type_from_integer(ity)
     }
 
-    /// Return a LLVM type that has at most the required alignment,
+    /// Returns an LLVM type that has at most the required alignment,
     /// and exactly the required size, as a best-effort padding array.
     fn type_padding_filler(&self, size: Size, align: Align) -> Self::Type {
         let unit = layout::Integer::approximate_align(self, align);

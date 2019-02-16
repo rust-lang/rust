@@ -66,7 +66,7 @@ pub struct ModuleConfig {
     pub emit_ir: bool,
     pub emit_asm: bool,
     pub emit_obj: bool,
-    // Miscellaneous flags.  These are mostly copied from command-line
+    // Miscellaneous flags. These are mostly copied from command-line
     // options.
     pub verify_llvm_ir: bool,
     pub no_prepopulate_passes: bool,
@@ -78,7 +78,7 @@ pub struct ModuleConfig {
     pub inline_threshold: Option<usize>,
     // Instead of creating an object file by doing LLVM codegen, just
     // make the object file bitcode. Provides easy compatibility with
-    // emscripten's ecc compiler, when used as the linker.
+    // Emscripten's ecc compiler, when used as the linker.
     pub obj_is_bitcode: bool,
     pub no_integrated_as: bool,
     pub embed_bitcode: bool,
@@ -154,7 +154,7 @@ impl ModuleConfig {
 
         // Some targets (namely, NVPTX) interact badly with the MergeFunctions
         // pass. This is because MergeFunctions can generate new function calls
-        // which may interfere with the target calling convention; e.g. for the
+        // which may interfere with the target calling convention; e.g., for the
         // NVPTX target, PTX kernels should not call other PTX kernels.
         // MergeFunctions can also be configured to generate aliases instead,
         // but aliases are not supported by some backends (again, NVPTX).
@@ -184,7 +184,7 @@ pub struct AssemblerCommand {
     cmd: Command,
 }
 
-// HACK(eddyb) work around `#[derive]` producing wrong bounds for `Clone`.
+// HACK(eddyb): work around `#[derive]` producing wrong bounds for `Clone`.
 pub struct TargetMachineFactory<B: WriteBackendMethods>(
     pub Arc<dyn Fn() -> Result<B::TargetMachine, String> + Send + Sync>,
 );
@@ -517,7 +517,7 @@ fn produce_final_output_artifacts(sess: &Session,
     let copy_if_one_unit = |output_type: OutputType,
                             keep_numbered: bool| {
         if compiled_modules.modules.len() == 1 {
-            // 1) Only one codegen unit.  In this case it's no difficulty
+            // 1) Only one codegen unit. In this case it's no difficulty
             //    to copy `foo.0.x` to `foo.x`.
             let module_name = Some(&compiled_modules.modules[0].name[..]);
             let path = crate_output.temp_path(output_type, module_name);
@@ -536,17 +536,17 @@ fn produce_final_output_artifacts(sess: &Session,
                                   .to_owned();
 
             if crate_output.outputs.contains_key(&output_type) {
-                // 2) Multiple codegen units, with `--emit foo=some_name`.  We have
+                // 2) Multiple codegen units, with `--emit foo=some_name`. We have
                 //    no good solution for this case, so warn the user.
                 sess.warn(&format!("ignoring emit path because multiple .{} files \
                                     were produced", ext));
             } else if crate_output.single_output_file.is_some() {
-                // 3) Multiple codegen units, with `-o some_name`.  We have
+                // 3) Multiple codegen units, with `-o some_name`. We have
                 //    no good solution for this case, so warn the user.
                 sess.warn(&format!("ignoring -o because multiple .{} files \
                                     were produced", ext));
             } else {
-                // 4) Multiple codegen units, but no explicit name.  We
+                // 4) Multiple codegen units, but no explicit name. We
                 //    just leave the `foo.0.x` files in place.
                 // (We don't have to do any work in this case.)
             }
@@ -560,7 +560,7 @@ fn produce_final_output_artifacts(sess: &Session,
         match *output_type {
             OutputType::Bitcode => {
                 user_wants_bitcode = true;
-                // Copy to .bc, but always keep the .0.bc.  There is a later
+                // Copy to .bc, but always keep the .0.bc. There is a later
                 // check to figure out if we should delete .0.bc files, or keep
                 // them for making an rlib.
                 copy_if_one_unit(OutputType::Bitcode, true);
@@ -595,7 +595,7 @@ fn produce_final_output_artifacts(sess: &Session,
     // `-C save-temps` or `--emit=` flags).
 
     if !sess.opts.cg.save_temps {
-        // Remove the temporary .#module-name#.o objects.  If the user didn't
+        // Remove the temporary .#module-name#.o objects. If the user didn't
         // explicitly request bitcode (with --emit=bc), and the bitcode is not
         // needed for building an rlib, then we must remove .#module-name#.bc as
         // well.
@@ -652,7 +652,7 @@ fn produce_final_output_artifacts(sess: &Session,
 }
 
 pub fn dump_incremental_data(_codegen_results: &CodegenResults) {
-    // FIXME(mw): This does not work at the moment because the situation has
+    // FIXME(mw): this does not work at the moment because the situation has
     //            become more complicated due to incremental LTO. Now a CGU
     //            can have more than two caching states.
     // println!("[incremental] Re-using {} out of {} modules",
@@ -1858,12 +1858,12 @@ impl<B: ExtraBackendMethods> OngoingCodegen<B> {
     pub fn wait_for_signal_to_codegen_item(&self) {
         match self.codegen_worker_receive.recv() {
             Ok(Message::CodegenItem) => {
-                // Nothing to do
+                // Nothing to do.
             }
             Ok(_) => panic!("unexpected message"),
             Err(_) => {
-                // One of the LLVM threads must have panicked, fall through so
-                // error handling can be reached.
+                // One of the LLVM threads must have panicked; fall through so
+                // that error handling can be reached.
             }
         }
     }

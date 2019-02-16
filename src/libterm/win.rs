@@ -1,6 +1,6 @@
-//! Windows console handling
+//! Windows console handling.
 
-// FIXME (#13400): this is only a tiny fraction of the Windows console api
+// FIXME(#13400): this is only a tiny fraction of the Windows console API.
 
 extern crate libc;
 
@@ -44,7 +44,7 @@ extern "system" {
 }
 
 fn color_to_bits(color: color::Color) -> u16 {
-    // magic numbers from mingw-w64's wincon.h
+    // Magic numbers from mingw-w64's `wincon.h`.
 
     let bits = match color % 8 {
         color::BLACK => 0,
@@ -78,7 +78,8 @@ fn bits_to_color(bits: u16) -> color::Color {
         _ => unreachable!(),
     };
 
-    color | (bits & 0x8) // copy the hi-intensity bit
+    // Copy the hi-intensity bit.
+    color | (bits & 0x8)
 }
 
 impl<T: Write + Send + 'static> WinConsole<T> {
@@ -89,8 +90,8 @@ impl<T: Write + Send + 'static> WinConsole<T> {
         accum |= color_to_bits(self.background) << 4;
 
         unsafe {
-            // Magic -11 means stdout, from
-            // http://msdn.microsoft.com/en-us/library/windows/desktop/ms683231%28v=vs.85%29.aspx
+            // Magic `-11` means stdout, from
+            // <http://msdn.microsoft.com/en-us/library/windows/desktop/ms683231%28v=vs.85%29.aspx>.
             //
             // You may be wondering, "but what about stderr?", and the answer
             // to that is that setting terminal attributes on the stdout
@@ -171,8 +172,8 @@ impl<T: Write + Send + 'static> Terminal for WinConsole<T> {
     }
 
     fn supports_attr(&self, attr: Attr) -> bool {
-        // it claims support for underscore and reverse video, but I can't get
-        // it to do anything -cmr
+        // It claims support for underscore and reverse video, but I can't get
+        // it to do anything. -cmr
         match attr {
             Attr::ForegroundColor(_) | Attr::BackgroundColor(_) => true,
             _ => false,

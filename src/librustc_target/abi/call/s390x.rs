@@ -1,5 +1,5 @@
-// FIXME: The assumes we're using the non-vector ABI, i.e., compiling
-// for a pre-z13 machine or using -mno-vx.
+// FIXME: the assumes we're using the non-vector ABI, i.e., compiling
+// for a pre-z13 machine or using `-mno-vx`.
 
 use crate::abi::call::{FnType, ArgType, Reg};
 use crate::abi::{self, HasDataLayout, LayoutOf, TyLayout, TyLayoutMethods};

@@ -118,7 +118,7 @@ impl<'a, 'tcx> PatternContext<'a, 'tcx> {
                     self.span_e0158(span, "associated consts cannot be referenced in patterns")
                 }
                 PatternError::FloatBug => {
-                    // FIXME(#31407) this is only necessary because float parsing is buggy
+                    // FIXME(#31407): this is only necessary because float parsing is buggy.
                     ::rustc::mir::interpret::struct_error(
                         self.tcx.at(pat_span),
                         "could not evaluate float literal (see issue #31407)",

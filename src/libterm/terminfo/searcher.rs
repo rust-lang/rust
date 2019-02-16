@@ -6,13 +6,13 @@ use std::env;
 use std::fs;
 use std::path::PathBuf;
 
-/// Return path to database entry for `term`
+/// Returns path to database entry for `term`.
 #[allow(deprecated)]
 pub fn get_dbpath_for_term(term: &str) -> Option<PathBuf> {
     let mut dirs_to_search = Vec::new();
     let first_char = term.chars().next()?;
 
-    // Find search directory
+    // Find search directory.
     if let Some(dir) = env::var_os("TERMINFO") {
         dirs_to_search.push(PathBuf::from(dir));
     }
@@ -26,11 +26,11 @@ pub fn get_dbpath_for_term(term: &str) -> Option<PathBuf> {
             }
         }
     } else {
-        // Found nothing in TERMINFO_DIRS, use the default paths:
-        // According to  /etc/terminfo/README, after looking at
-        // ~/.terminfo, ncurses will search /etc/terminfo, then
-        // /lib/terminfo, and eventually /usr/share/terminfo.
-        // On Haiku the database can be found at /boot/system/data/terminfo
+        // Found nothing in `TERMINFO_DIRS`, so use the default paths.
+        // According to `/etc/terminfo/README`, after looking at
+        // `~/.terminfo`, ncurses will search `/etc/terminfo`, then
+        // `/lib/terminfo`, and eventually `/usr/share/terminfo`.
+        // On Haiku, the database can be found at `/boot/system/data/terminfo`.
         if let Some(mut homedir) = env::home_dir() {
             homedir.push(".terminfo");
             dirs_to_search.push(homedir)
@@ -42,7 +42,7 @@ pub fn get_dbpath_for_term(term: &str) -> Option<PathBuf> {
         dirs_to_search.push(PathBuf::from("/boot/system/data/terminfo"));
     }
 
-    // Look for the terminal in all of the search directories
+    // Look for the terminal in all of the search directories.
     for mut p in dirs_to_search {
         if fs::metadata(&p).is_ok() {
             p.push(&first_char.to_string());
@@ -53,8 +53,8 @@ pub fn get_dbpath_for_term(term: &str) -> Option<PathBuf> {
             p.pop();
             p.pop();
 
-            // on some installations the dir is named after the hex of the char
-            // (e.g., macOS)
+            // On some installations, the dir is named after the hex of the char
+            // (e.g., macOS).
             p.push(&format!("{:x}", first_char as usize));
             p.push(term);
             if fs::metadata(&p).is_ok() {
@@ -68,10 +68,10 @@ pub fn get_dbpath_for_term(term: &str) -> Option<PathBuf> {
 #[test]
 #[ignore = "buildbots don't have ncurses installed and I can't mock everything I need"]
 fn test_get_dbpath_for_term() {
-    // woefully inadequate test coverage
-    // note: current tests won't work with non-standard terminfo hierarchies (e.g., macOS's)
+    // Woefully inadequate test coverage.
+    // N.B., current tests won't work with non-standard terminfo hierarchies (e.g., macOS's).
     use std::env;
-    // FIXME (#9639): This needs to handle non-utf8 paths
+    // FIXME(#9639): this needs to handle non-UTF8 paths.
     fn x(t: &str) -> String {
         let p = get_dbpath_for_term(t).expect("no terminfo entry found");
         p.to_str().unwrap().to_string()

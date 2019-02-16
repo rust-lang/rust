@@ -1370,7 +1370,7 @@ impl<'a, 'tcx> SizeSkeleton<'tcx> {
             }
 
             ty::Adt(def, substs) => {
-                // Only newtypes and enums w/ nullable pointer optimization.
+                // Only newtypes and enums with nullable pointer optimization.
                 if def.is_union() || def.variants.is_empty() || def.variants.len() > 2 {
                     return Err(err);
                 }
@@ -1780,9 +1780,9 @@ impl Niche {
 }
 
 impl<'a, 'tcx> LayoutCx<'tcx, TyCtxt<'a, 'tcx, 'tcx>> {
-    /// Find the offset of a niche leaf field, starting from
+    /// Finds the offset of a niche leaf field, starting from
     /// the given type and recursing through aggregates.
-    // FIXME(eddyb) traverse already optimized enums.
+    // FIXME(eddyb): traverse already optimized enums.
     fn find_niche(&self, layout: TyLayout<'tcx>) -> Result<Option<Niche>, LayoutError<'tcx>> {
         let scalar_niche = |scalar: &Scalar, offset| {
             let Scalar { value, valid_range: ref v } = *scalar;

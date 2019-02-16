@@ -487,7 +487,7 @@ impl MetaItem {
     fn from_tokens<I>(tokens: &mut iter::Peekable<I>) -> Option<MetaItem>
         where I: Iterator<Item = TokenTree>,
     {
-        // FIXME: Share code with `parse_path`.
+        // FIXME: share code with `parse_path`.
         let ident = match tokens.next() {
             Some(TokenTree::Token(span, token @ Token::Ident(..))) |
             Some(TokenTree::Token(span, token @ Token::ModSep)) => 'arm: {

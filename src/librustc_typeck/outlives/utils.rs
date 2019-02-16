@@ -45,9 +45,9 @@ pub fn insert_outlives_predicate<'tcx>(
                         // ```
                         //
                         // Here `outlived_region = 'a` and `kind = &'b
-                        // u32`.  Decomposing `&'b u32` into
+                        // u32`. Decomposing `&'b u32` into
                         // components would yield `'b`, and we add the
-                        // where clause that `'b: 'a`.
+                        // where-clause that `'b: 'a`.
                         insert_outlives_predicate(
                             tcx,
                             r.into(),
@@ -67,9 +67,9 @@ pub fn insert_outlives_predicate<'tcx>(
                         // ```
                         //
                         // Here `outlived_region = 'a` and `kind =
-                        // Vec<U>`.  Decomposing `Vec<U>` into
+                        // Vec<U>`. Decomposing `Vec<U>` into
                         // components would yield `U`, and we add the
-                        // where clause that `U: 'a`.
+                        // where-clause that `U: 'a`.
                         let ty: Ty<'tcx> = param_ty.to_ty(tcx);
                         required_predicates
                             .insert(ty::OutlivesPredicate(ty.into(), outlived_region));
@@ -92,7 +92,7 @@ pub fn insert_outlives_predicate<'tcx>(
 
                     Component::EscapingProjection(_) => {
                         // As above, but the projection involves
-                        // late-bound regions.  Therefore, the WF
+                        // late-bound regions. Therefore, the WF
                         // requirement is not checked in type definition
                         // but at fn call site, so ignore it.
                         //
@@ -153,7 +153,7 @@ fn is_free_region<'tcx>(tcx: TyCtxt<'_, 'tcx, 'tcx>, region: Region<'_>) -> bool
         //     }
         //
         // The type above might generate a `T: 'b` bound, but we can
-        // ignore it.  We can't put it on the struct header anyway.
+        // ignore it. We can't put it on the struct header anyway.
         RegionKind::ReLateBound(..) => false,
 
         // These regions don't appear in types from type declarations:

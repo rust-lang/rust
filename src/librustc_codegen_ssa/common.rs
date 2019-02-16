@@ -76,7 +76,7 @@ pub enum AtomicOrdering {
     NotAtomic,
     Unordered,
     Monotonic,
-    // Consume,  // Not specified yet.
+    // Consume, // Not specified yet.
     Acquire,
     Release,
     AcquireRelease,
@@ -112,13 +112,13 @@ pub enum TypeKind {
     Token,
 }
 
-// FIXME(mw): Anything that is produced via DepGraph::with_task() must implement
-//            the HashStable trait. Normally DepGraph::with_task() calls are
+// FIXME(mw): Anything that is produced via `DepGraph::with_task()` must implement
+//            the `HashStable` trait. Normally `DepGraph::with_task()` calls are
 //            hidden behind queries, but CGU creation is a special case in two
 //            ways: (1) it's not a query and (2) CGU are output nodes, so their
-//            Fingerprints are not actually needed. It remains to be clarified
+//            `Fingerprint`s are not actually needed. It remains to be clarified
 //            how exactly this case will be handled in the red/green system but
-//            for now we content ourselves with providing a no-op HashStable
+//            for now we content ourselves with providing a no-op `HashStable`
 //            implementation for CGUs.
 mod temp_stable_hash_impls {
     use rustc_data_structures::stable_hasher::{StableHasherResult, StableHasher,
@@ -129,7 +129,7 @@ mod temp_stable_hash_impls {
         fn hash_stable<W: StableHasherResult>(&self,
                                               _: &mut HCX,
                                               _: &mut StableHasher<W>) {
-            // do nothing
+            // Do nothing.
         }
     }
 }
@@ -159,7 +159,7 @@ pub fn build_unchecked_lshift<'a, 'tcx: 'a, Bx: BuilderMethods<'a, 'tcx>>(
     rhs: Bx::Value
 ) -> Bx::Value {
     let rhs = base::cast_shift_expr_rhs(bx, hir::BinOpKind::Shl, lhs, rhs);
-    // #1877, #10183: Ensure that input is always valid
+    // #1877, #10183: ensure that input is always valid.
     let rhs = shift_mask_rhs(bx, rhs);
     bx.shl(lhs, rhs)
 }
@@ -171,7 +171,7 @@ pub fn build_unchecked_rshift<'a, 'tcx: 'a, Bx: BuilderMethods<'a, 'tcx>>(
     rhs: Bx::Value
 ) -> Bx::Value {
     let rhs = base::cast_shift_expr_rhs(bx, hir::BinOpKind::Shr, lhs, rhs);
-    // #1877, #10183: Ensure that input is always valid
+    // #1877, #10183: ensure that input is always valid.
     let rhs = shift_mask_rhs(bx, rhs);
     let is_signed = lhs_t.is_signed();
     if is_signed {

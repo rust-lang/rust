@@ -68,21 +68,23 @@ impl<'a, 'tcx> BitDenotation<'tcx> for HaveBeenBorrowedLocals<'a, 'tcx> {
         _dest_bb: mir::BasicBlock,
         _dest_place: &mir::Place<'tcx>,
     ) {
-        // Nothing to do when a call returns successfully
+        // Nothing to do when a call returns successfully.
     }
 }
 
 impl<'a, 'tcx> BitSetOperator for HaveBeenBorrowedLocals<'a, 'tcx> {
     #[inline]
     fn join<T: Idx>(&self, inout_set: &mut BitSet<T>, in_set: &BitSet<T>) -> bool {
-        inout_set.union(in_set) // "maybe" means we union effects of both preds
+        // "maybe" means we union effects of both preds.
+        inout_set.union(in_set)
     }
 }
 
 impl<'a, 'tcx> InitialFlow for HaveBeenBorrowedLocals<'a, 'tcx> {
     #[inline]
     fn bottom_value() -> bool {
-        false // bottom = unborrowed
+        // Bottom value means unborrowed.
+        false
     }
 }
 

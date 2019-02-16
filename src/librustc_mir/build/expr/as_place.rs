@@ -73,7 +73,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                 let (usize_ty, bool_ty) = (this.hir.usize_ty(), this.hir.bool_ty());
 
                 let slice = unpack!(block = this.as_place(block, lhs));
-                // region_scope=None so place indexes live forever. They are scalars so they
+                // `region_scope = None`, so place indexes live forever. They are scalars so they
                 // do not need storage annotations, and they are often copied between
                 // places.
                 // Making this a *fresh* temporary also means we do not have to worry about

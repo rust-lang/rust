@@ -23,7 +23,7 @@ impl<'a, 'gcx, 'tcx> CombineFields<'a, 'gcx, 'tcx> {
         // as-is, we need to do some extra work here in order to make sure
         // that function subtyping works correctly with respect to regions
         //
-        // Note: this is a subtle algorithm.  For a full explanation,
+        // Note: this is a subtle algorithm. For a full explanation,
         // please see the large comment at the end of the file in the (inlined) module
         // `doc`.
 
@@ -34,8 +34,8 @@ impl<'a, 'gcx, 'tcx> CombineFields<'a, 'gcx, 'tcx> {
         let (b_prime, _) = self.infcx.replace_bound_vars_with_placeholders(b);
 
         // Next, we instantiate each bound region in the subtype
-        // with a fresh region variable. These region variables --
-        // but no other pre-existing region variables -- can name
+        // with a fresh region variable. These region variables
+        // (but no other pre-existing region variables) can name
         // the placeholders.
         let (a_prime, _) =
             self.infcx

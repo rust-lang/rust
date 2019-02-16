@@ -1,5 +1,4 @@
-// FIXME:
-// Alignment of 128 bit types is not currently handled, this will
+// FIXME: alignment of 128-bit types is not currently handled -- this will
 // need to be fixed when PowerPC vector support is added.
 
 use crate::abi::call::{FnType, ArgType, Reg, RegKind, Uniform};
@@ -8,8 +7,10 @@ use crate::spec::HasTargetSpec;
 
 #[derive(Debug, Clone, Copy, PartialEq)]
 enum ABI {
-    ELFv1, // original ABI used for powerpc64 (big-endian)
-    ELFv2, // newer ABI used for powerpc64le and musl (both endians)
+    // Original ABI used for `powerpc64` (big-endian).
+    ELFv1,
+    // Newer ABI used for `powerpc64le` and `musl` (both endians).
+    ELFv2,
 }
 use ABI::*;
 
@@ -52,7 +53,7 @@ fn classify_ret_ty<'a, Ty, C>(cx: &C, ret: &mut ArgType<'a, Ty>, abi: ABI)
         return;
     }
 
-    // The ELFv1 ABI doesn't return aggregates in registers
+    // The ELFv1 ABI doesn't return aggregates in registers.
     if abi == ELFv1 {
         ret.make_indirect();
         return;

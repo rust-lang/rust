@@ -113,13 +113,13 @@ struct RegionDefinition<'tcx> {
 
 /// N.B., the variants in `Cause` are intentionally ordered. Lower
 /// values are preferred when it comes to error messages. Do not
-/// reorder willy nilly.
+/// reorder willy-nilly.
 #[derive(Copy, Clone, Debug, PartialOrd, Ord, PartialEq, Eq)]
 pub(crate) enum Cause {
-    /// point inserted because Local was live at the given Location
+    /// The point inserted because the `Local` was live at the given `Location`.
     LiveVar(Local, Location),
 
-    /// point inserted because Local was dropped at the given Location
+    /// THe point inserted because the `Local` was dropped at the given `Location`.
     DropVar(Local, Location),
 }
 
@@ -755,7 +755,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
             //
             // This is needed because -- particularly in the case
             // where `ur` is a local bound -- we are sometimes in a
-            // position to prove things that our caller cannot.  See
+            // position to prove things that our caller cannot. See
             // #53570 for an example.
             if self.eval_verify_bound(tcx, mir, generic_ty, ur, &type_test.verify_bound) {
                 continue;
@@ -1398,7 +1398,7 @@ impl<'gcx, 'tcx> ClosureRegionRequirementsExt<'gcx, 'tcx> for ClosureRegionRequi
         );
 
         // Extract the values of the free regions in `closure_substs`
-        // into a vector.  These are the regions that we will be
+        // into a vector. These are the regions that we will be
         // relating to one another.
         let closure_mapping = &UniversalRegions::closure_mapping(
             tcx,

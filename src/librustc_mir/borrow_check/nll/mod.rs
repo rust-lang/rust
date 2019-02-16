@@ -284,7 +284,7 @@ fn dump_annotation<'a, 'gcx, 'tcx>(
 
     // When the enclosing function is tagged with `#[rustc_regions]`,
     // we dump out various bits of state as warnings. This is useful
-    // for verifying that the compiler is behaving as expected.  These
+    // for verifying that the compiler is behaving as expected. These
     // warnings focus on the closure region requirements -- for
     // viewing the intraprocedural state, the -Zdump-mir output is
     // better.

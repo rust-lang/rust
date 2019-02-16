@@ -105,25 +105,27 @@ pub trait TypeFoldable<'tcx>: fmt::Debug + Clone {
     fn has_closure_types(&self) -> bool {
         self.has_type_flags(TypeFlags::HAS_TY_CLOSURE)
     }
+
+    /// Returns `true` if there are any free regions.
     /// "Free" regions in this context means that it has any region
     /// that is not (a) erased or (b) late-bound.
     fn has_free_regions(&self) -> bool {
         self.has_type_flags(TypeFlags::HAS_FREE_REGIONS)
     }
 
-    /// True if there are any un-erased free regions.
+    /// Returns `true` if there are any un-erased free regions.
     fn has_erasable_regions(&self) -> bool {
         self.has_type_flags(TypeFlags::HAS_FREE_REGIONS)
     }
 
-    /// Indicates whether this value references only 'global'
+    /// Returns `true` if this value references only 'global'
     /// types/lifetimes that are the same regardless of what fn we are
     /// in. This is used for caching.
     fn is_global(&self) -> bool {
         !self.has_type_flags(TypeFlags::HAS_FREE_LOCAL_NAMES)
     }
 
-    /// True if there are any late-bound regions
+    /// Returns `true` if there are any late-bound regions.
     fn has_late_bound_regions(&self) -> bool {
         self.has_type_flags(TypeFlags::HAS_RE_LATE_BOUND)
     }
@@ -345,13 +347,12 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
 /// regions (aka "lifetimes") that are bound within a type are not
 /// visited by this folder; only regions that occur free will be
 /// visited by `fld_r`.
-
 pub struct RegionFolder<'a, 'gcx: 'a+'tcx, 'tcx: 'a> {
     tcx: TyCtxt<'a, 'gcx, 'tcx>,
     skipped_regions: &'a mut bool,
 
     /// Stores the index of a binder *just outside* the stuff we have
-    /// visited.  So this begins as INNERMOST; when we pass through a
+    /// visited. So this begins as `INNERMOST`; when we pass through a
     /// binder, it is incremented (via `shift_in`).
     current_index: ty::DebruijnIndex,
 
@@ -410,7 +411,7 @@ impl<'a, 'gcx, 'tcx> TypeFolder<'gcx, 'tcx> for RegionFolder<'a, 'gcx, 'tcx> {
 ///////////////////////////////////////////////////////////////////////////
 // Bound vars replacer
 
-/// Replaces the escaping bound vars (late bound regions or bound types) in a type.
+/// Replaces the escaping bound vars (late-bound regions or bound types) in a type.
 struct BoundVarReplacer<'a, 'gcx: 'a + 'tcx, 'tcx: 'a> {
     tcx: TyCtxt<'a, 'gcx, 'tcx>,
 
@@ -483,8 +484,8 @@ impl<'a, 'gcx, 'tcx> TypeFolder<'gcx, 'tcx> for BoundVarReplacer<'a, 'gcx, 'tcx>
                 let region = fld_r(br);
                 if let ty::ReLateBound(debruijn1, br) = *region {
                     // If the callback returns a late-bound region,
-                    // that region should always use the INNERMOST
-                    // debruijn index. Then we adjust it to the
+                    // that region should always use the `INNERMOST`
+                    // De Bruijn index. Then we adjust it to the
                     // correct depth.
                     assert_eq!(debruijn1, ty::INNERMOST);
                     self.tcx.mk_region(ty::ReLateBound(debruijn, br))
@@ -507,7 +508,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
     /// returned at the end with each bound region and the free region
     /// that replaced it.
     ///
-    /// This method only replaces late bound regions and the result may still
+    /// This method only replaces late-bound regions and the result may still
     /// contain escaping bound types.
     pub fn replace_late_bound_regions<T, F>(
         self,
@@ -887,9 +888,9 @@ impl<'tcx> TypeVisitor<'tcx> for LateBoundRegionsCollector {
     }
 
     fn visit_ty(&mut self, t: Ty<'tcx>) -> bool {
-        // if we are only looking for "constrained" region, we have to
+        // If we are only looking for "constrained" region, we have to
         // ignore the inputs to a projection, as they may not appear
-        // in the normalized form
+        // in the normalized form.
         if self.just_constrained {
             match t.sty {
                 ty::Projection(..) | ty::Opaque(..) => { return false; }

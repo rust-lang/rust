@@ -343,7 +343,7 @@ pub struct Cache {
     // in another, if the implementing module is parsed before defining module,
     // then the fully qualified name of the structure isn't presented in `paths`
     // yet when its implementation methods are being indexed. Caches such methods
-    // and their parent id here and indexes them at the end of crate parsing.
+    // and their parent ID here and indexes them at the end of crate parsing.
     orphan_impl_items: Vec<(DefId, clean::Item)>,
 
     // Similarly to `orphan_impl_items`, sometimes trait impls are picked up
@@ -1615,7 +1615,7 @@ impl DocFolder for Cache {
             clean::UnionItem(..) | clean::ForeignTypeItem |
             clean::MacroItem(..) | clean::ProcMacroItem(..)
             if !self.stripped_mod => {
-                // Re-exported items mean that the same id can show up twice
+                // Re-exported items mean that the same ID can show up twice
                 // in the rustdoc ast that we're looking at. We know,
                 // however, that a re-exported item doesn't show up in the
                 // `public_items` map, so we can skip inserting into the
@@ -1683,7 +1683,7 @@ impl DocFolder for Cache {
         // implementations elsewhere.
         let ret = self.fold_item_recur(item).and_then(|item| {
             if let clean::Item { inner: clean::ImplItem(_), .. } = item {
-                // Figure out the id of this impl. This may map to a
+                // Figure out the ID of this impl. This may map to a
                 // primitive rather than always to a struct/enum.
                 // Note: matching twice to restrict the lifetime of the `i` borrow.
                 let mut dids = FxHashSet::default();
@@ -2693,7 +2693,7 @@ fn item_module(w: &mut fmt::Formatter, cx: &Context,
     //
     // `Double` will appear twice in the generated docs.
     //
-    // FIXME: This code is quite ugly and could be improved. Small issue: DefId
+    // FIXME: this code is quite ugly and could be improved. Small issue: `DefId`
     // can be identical even if the elements are different (mostly in imports).
     // So in case this is an import, we keep everything by adding a "unique id"
     // (which is the position in the vector).
@@ -4449,7 +4449,7 @@ impl<'a> fmt::Display for Sidebar<'a> {
                path = relpath)?;
         if parentlen == 0 {
             // There is no sidebar-items.js beyond the crate root path
-            // FIXME maybe dynamic crate loading can be merged here
+            // FIXME: maybe dynamic crate loading can be merged here
         } else {
             write!(fmt, "<script defer src=\"{path}sidebar-items.js\"></script>",
                    path = relpath)?;

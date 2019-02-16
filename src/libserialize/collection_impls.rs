@@ -30,7 +30,7 @@ impl<A> Decodable for SmallVec<A>
     fn decode<D: Decoder>(d: &mut D) -> Result<SmallVec<A>, D::Error> {
         d.read_seq(|d, len| {
             let mut vec = SmallVec::with_capacity(len);
-            // FIXME(#48994) - could just be collected into a Result<SmallVec, D::Error>
+            // FIXME(#48994): could just be collected into a `Result<SmallVec, D::Error>`.
             for i in 0..len {
                 vec.push(d.read_seq_elt(i, |d| Decodable::decode(d))?);
             }

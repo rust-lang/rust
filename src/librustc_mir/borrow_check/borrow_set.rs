@@ -25,7 +25,7 @@ crate struct BorrowSet<'tcx> {
     /// corresponding `BorrowIndex`.
     crate location_map: FxHashMap<Location, BorrowIndex>,
 
-    /// Locations which activate borrows.
+    /// `Location`s that activate borrows.
     /// NOTE: a given location may activate more than one borrow in the future
     /// when more general two-phase borrow support is introduced, but for now we
     /// only need to store one borrow index.
@@ -45,7 +45,7 @@ impl<'tcx> Index<BorrowIndex> for BorrowSet<'tcx> {
     }
 }
 
-/// Location where a two-phase borrow is activated, if a borrow
+/// `Location` where a two-phase borrow is activated, if a borrow
 /// is in fact a two-phase borrow.
 #[derive(Copy, Clone, PartialEq, Eq, Debug)]
 crate enum TwoPhaseActivation {
@@ -56,18 +56,18 @@ crate enum TwoPhaseActivation {
 
 #[derive(Debug)]
 crate struct BorrowData<'tcx> {
-    /// Location where the borrow reservation starts.
-    /// In many cases, this will be equal to the activation location but not always.
+    /// The `Location` where the borrow reservation starts.
+    /// In many cases, this will be equal to the activation location, though not always.
     crate reserve_location: Location,
-    /// Location where the borrow is activated.
+    /// The `Location` where the borrow is activated.
     crate activation_location: TwoPhaseActivation,
-    /// What kind of borrow this is
+    /// The kind of borrow this is.
     crate kind: mir::BorrowKind,
-    /// The region for which this borrow is live
+    /// The region for which this borrow is live.
     crate region: RegionVid,
-    /// Place from which we are borrowing
+    /// The `Place` from which we are borrowing.
     crate borrowed_place: mir::Place<'tcx>,
-    /// Place to which the borrow was stored
+    /// The `Place` to which the borrow was stored.
     crate assigned_place: mir::Place<'tcx>,
 }
 

@@ -11,7 +11,7 @@ use syntax_pos::*;
 #[derive(Clone)]
 pub struct SpanUtils<'a> {
     pub sess: &'a Session,
-    // FIXME given that we clone SpanUtils all over the place, this err_count is
+    // FIXME: given that we clone SpanUtils all over the place, this err_count is
     // probably useless and any logic relying on it is bogus.
     pub err_count: Cell<isize>,
 }
@@ -75,14 +75,14 @@ impl<'a> SpanUtils<'a> {
     //     loop {
     //         let ts = toks.real_token();
     //         if ts.tok == token::Eof {
-    //             return None;
+    //             return `None`;
     //         }
     //         if ts.tok == token::Not {
     //             let ts = toks.real_token();
     //             if ts.tok.is_ident() {
     //                 return Some(ts.sp);
     //             } else {
-    //                 return None;
+    //                 return `None`;
     //             }
     //         }
     //     }
@@ -94,21 +94,21 @@ impl<'a> SpanUtils<'a> {
     //     let mut prev = toks.real_token();
     //     loop {
     //         if prev.tok == token::Eof {
-    //             return None;
+    //             return `None`;
     //         }
     //         let ts = toks.real_token();
     //         if ts.tok == token::Not {
     //             if prev.tok.is_ident() {
     //                 return Some(prev.sp);
     //             } else {
-    //                 return None;
+    //                 return `None`;
     //             }
     //         }
     //         prev = ts;
     //     }
     // }
 
-    /// Return true if the span is generated code, and
+    /// Returnss `true` if the span is generated code, and
     /// it is not a subspan of the root callsite.
     ///
     /// Used to filter out spans of minimal value,
@@ -118,7 +118,7 @@ impl<'a> SpanUtils<'a> {
             return true;
         }
 
-        //If the span comes from a fake source_file, filter it.
+        // If the span comes from a fake `source_file`, filter it.
         !self.sess
             .source_map()
             .lookup_char_pos(span.lo())

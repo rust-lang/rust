@@ -402,7 +402,7 @@ impl<'a, 'tcx, 'rcx> AutoTraitFinder<'a, 'tcx, 'rcx> {
 
                 regions.into_iter().flat_map(|r| {
                     match r {
-                        // We only care about late bound regions, as we need to add them
+                        // We only care about late-bound regions, as we need to add them
                         // to the 'for<>' section
                         &ty::ReLateBound(_, ty::BoundRegion::BrNamed(_, name)) => {
                             Some(GenericParamDef {
@@ -681,7 +681,7 @@ impl<'a, 'tcx, 'rcx> AutoTraitFinder<'a, 'tcx, 'rcx> {
                                         continue;
                                     }
 
-                                    // FIXME: Remove this scope when NLL lands
+                                    // FIXME: remove this scope when NLL lands
                                     {
                                         let args =
                                             &mut new_trait_path.segments
@@ -765,7 +765,7 @@ impl<'a, 'tcx, 'rcx> AutoTraitFinder<'a, 'tcx, 'rcx> {
         for param in generic_params.iter_mut() {
             match param.kind {
                 GenericParamDefKind::Type { ref mut default, ref mut bounds, .. } => {
-                    // We never want something like `impl<T=Foo>`.
+                    // We never want something like `impl<T = Foo>`.
                     default.take();
                     let generic_ty = Type::Generic(param.name.clone());
                     if !has_sized.contains(&generic_ty) {

@@ -53,7 +53,7 @@ pub fn size_and_align_of_dst<'a, 'tcx: 'a, Bx: BuilderMethods<'a, 'tcx>>(
             let field_ty = layout.field(bx, i).ty;
             let (unsized_size, mut unsized_align) = size_and_align_of_dst(bx, field_ty, info);
 
-            // FIXME (#26403, #27023): We should be adding padding
+            // FIXME(#26403, #27023): We should be adding padding
             // to `sized_size` (to accommodate the `unsized_align`
             // required of the unsized field that follows) before
             // summing it with `sized_size`. (Note that since #26403

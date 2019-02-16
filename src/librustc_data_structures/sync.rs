@@ -215,7 +215,7 @@ cfg_if! {
             }
         }
 
-        // FIXME: Probably a bad idea (in the threaded case)
+        // FIXME: probably a bad idea (in the threaded case)
         impl<T: Clone> Clone for MTLock<T> {
             #[inline]
             fn clone(&self) -> Self {
@@ -539,7 +539,7 @@ impl<T: Default> Default for Lock<T> {
     }
 }
 
-// FIXME: Probably a bad idea
+// FIXME: probably a bad idea
 impl<T: Clone> Clone for Lock<T> {
     #[inline]
     fn clone(&self) -> Self {
@@ -631,7 +631,7 @@ impl<T> RwLock<T> {
     }
 }
 
-// FIXME: Probably a bad idea
+// FIXME: probably a bad idea
 impl<T: Clone> Clone for RwLock<T> {
     #[inline]
     fn clone(&self) -> Self {

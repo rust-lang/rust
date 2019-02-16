@@ -151,7 +151,7 @@ macro_rules! define_dep_nodes {
                 }
             }
 
-            // FIXME: Make `is_anon`, `is_input`, `is_eval_always` and `has_params` properties
+            // FIXME: make `is_anon`, `is_input`, `is_eval_always` and `has_params` properties
             // of queries
             #[inline(always)]
             pub fn is_anon(&self) -> bool {
@@ -428,23 +428,23 @@ define_dep_nodes!( <'tcx>
     [] Null,
 
     // Represents the `Krate` as a whole (the `hir::Krate` value) (as
-    // distinct from the krate module). This is basically a hash of
+    // distinct from the `krate` module). This is basically a hash of
     // the entire krate, so if you read from `Krate` (e.g., by calling
     // `tcx.hir().krate()`), we will have to assume that any change
     // means that you need to be recompiled. This is because the
     // `Krate` value gives you access to all other items. To avoid
     // this fate, do not call `tcx.hir().krate()`; instead, prefer
-    // wrappers like `tcx.visit_all_items_in_krate()`.  If there is no
+    // wrappers like `tcx.visit_all_items_in_krate()`. If there is no
     // suitable wrapper, you can use `tcx.dep_graph.ignore()` to gain
-    // access to the krate, but you must remember to add suitable
+    // access to the crate, but you must remember to add suitable
     // edges yourself for the individual items that you read.
     [input] Krate,
 
-    // Represents the body of a function or method. The def-id is that of the
+    // Represents the body of a function or method. The `DefId` is that of the
     // function/method.
     [input] HirBody(DefId),
 
-    // Represents the HIR node with the given node-id
+    // Represents the HIR node with the given `NodeId`.
     [input] Hir(DefId),
 
     // Represents metadata from an extern crate.
@@ -548,7 +548,7 @@ define_dep_nodes!( <'tcx>
     [] Environment(DefId),
     [] DescribeDef(DefId),
 
-    // FIXME(mw): DefSpans are not really inputs since they are derived from
+    // FIXME(mw): `DefSpan`s are not really inputs since they are derived from
     // HIR. But at the moment HIR hashing still contains some hacks that allow
     // to make type debuginfo to be source location independent. Declaring
     // DefSpan an input makes sure that changes to these are always detected

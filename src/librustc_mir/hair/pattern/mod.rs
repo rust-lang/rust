@@ -527,7 +527,8 @@ impl<'a, 'tcx> PatternContext<'a, 'tcx> {
                     ty::Slice(..) |
                     ty::Array(..) =>
                         self.slice_or_array_pattern(pat.span, ty, prefix, slice, suffix),
-                    ty::Error => { // Avoid ICE
+                    ty::Error => {
+                        // Avoid ICE.
                         return Pattern { span: pat.span, ty, kind: Box::new(PatternKind::Wild) };
                     }
                     ref sty =>
@@ -552,7 +553,8 @@ impl<'a, 'tcx> PatternContext<'a, 'tcx> {
 
                         PatternKind::Leaf { subpatterns }
                     }
-                    ty::Error => { // Avoid ICE (#50577)
+                    ty::Error => {
+                        // Avoid ICE (#50577).
                         return Pattern { span: pat.span, ty, kind: Box::new(PatternKind::Wild) };
                     }
                     ref sty => span_bug!(pat.span, "unexpected type for tuple pattern: {:?}", sty),
@@ -562,7 +564,7 @@ impl<'a, 'tcx> PatternContext<'a, 'tcx> {
             PatKind::Binding(_, id, _, ident, ref sub) => {
                 let var_ty = self.tables.node_type(pat.hir_id);
                 if let ty::Error = var_ty.sty {
-                    // Avoid ICE
+                    // Avoid ICE.
                     return Pattern { span: pat.span, ty, kind: Box::new(PatternKind::Wild) };
                 };
                 let bm = *self.tables.pat_binding_modes().get(pat.hir_id)
@@ -672,7 +674,7 @@ impl<'a, 'tcx> PatternContext<'a, 'tcx> {
         let orig_prefix = prefix;
         let orig_suffix = suffix;
 
-        // dance because of intentional borrow-checker stupidity.
+        // Dance because of intentional borrow-checker stupidity.
         let kind = *orig_slice.kind;
         match kind {
             PatternKind::Slice { prefix, slice, mut suffix } |
@@ -742,7 +744,8 @@ impl<'a, 'tcx> PatternContext<'a, 'tcx> {
                     let substs = match ty.sty {
                         ty::Adt(_, substs) |
                         ty::FnDef(_, substs) => substs,
-                        ty::Error => {  // Avoid ICE (#50585)
+                        ty::Error => {
+                            // Avoid ICE (#50585).
                             return PatternKind::Wild;
                         }
                         _ => bug!("inappropriate type for def: {:?}", ty.sty),
@@ -967,7 +970,7 @@ impl<'a, 'tcx> PatternContext<'a, 'tcx> {
                 }
             },
             ty::Adt(adt_def, _) if adt_def.is_union() => {
-                // Matching on union fields is unsafe, we can't hide it in constants
+                // Matching on union fields is unsafe; we can't hide it in constants.
                 self.tcx.sess.span_err(span, "cannot use unions in constant patterns");
                 PatternKind::Wild
             }
@@ -1243,7 +1246,7 @@ pub fn compare_const_vals<'a, 'gcx, 'tcx>(
     let tcx = tcx.global_tcx();
     let (a, b, ty) = (a, b, ty).lift_to_tcx(tcx).unwrap();
 
-    // FIXME: This should use assert_bits(ty) instead of use_bits
+    // FIXME: this should use assert_bits(ty) instead of use_bits
     // but triggers possibly bugs due to mismatching of arrays and slices
     if let (Some(a), Some(b)) = (a.to_bits(tcx, ty), b.to_bits(tcx, ty)) {
         use ::rustc_apfloat::Float;

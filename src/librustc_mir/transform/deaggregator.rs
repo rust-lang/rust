@@ -14,10 +14,10 @@ impl MirPass for Deaggregator {
         let local_decls = &*local_decls;
         for bb in basic_blocks {
             bb.expand_statements(|stmt| {
-                // FIXME(eddyb) don't match twice on `stmt.kind` (post-NLL).
+                // FIXME(eddyb): don't match twice on `stmt.kind` (post-NLL).
                 if let StatementKind::Assign(_, ref rhs) = stmt.kind {
                     if let Rvalue::Aggregate(ref kind, _) = **rhs {
-                        // FIXME(#48193) Deaggregate arrays when it's cheaper to do so.
+                        // FIXME(#48193): deaggregate arrays when it's cheaper to do so.
                         if let AggregateKind::Array(_) = **kind {
                             return None;
                         }
@@ -60,12 +60,12 @@ impl MirPass for Deaggregator {
 
                 Some(operands.into_iter().enumerate().map(move |(i, op)| {
                     let lhs_field = if let AggregateKind::Array(_) = *kind {
-                        // FIXME(eddyb) `offset` should be u64.
+                        // FIXME(eddyb): `offset` should be u64.
                         let offset = i as u32;
                         assert_eq!(offset as usize, i);
                         lhs.clone().elem(ProjectionElem::ConstantIndex {
                             offset,
-                            // FIXME(eddyb) `min_length` doesn't appear to be used.
+                            // FIXME(eddyb): `min_length` doesn't appear to be used.
                             min_length: offset + 1,
                             from_end: false
                         })

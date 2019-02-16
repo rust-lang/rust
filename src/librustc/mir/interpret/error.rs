@@ -48,7 +48,8 @@ pub struct ConstEvalErr<'tcx> {
 
 #[derive(Clone, Debug, RustcEncodable, RustcDecodable)]
 pub struct FrameInfo<'tcx> {
-    pub call_site: Span, // this span is in the caller!
+    /// This span is in the caller.
+    pub call_site: Span,
     pub instance: ty::Instance<'tcx>,
     pub lint_root: Option<ast::NodeId>,
 }
@@ -145,7 +146,7 @@ impl<'a, 'gcx, 'tcx> ConstEvalErr<'tcx> {
             struct_error(tcx, message)
         };
         err.span_label(self.span, self.error.to_string());
-        // Skip the last, which is just the environment of the constant.  The stacktrace
+        // Skip the last, which is just the environment of the constant. The stacktrace
         // is sometimes empty because we create "fake" eval contexts in CTFE to do work
         // on constant values.
         if self.stacktrace.len() > 0 {
@@ -186,12 +187,12 @@ fn print_backtrace(backtrace: &mut Backtrace) {
 impl<'tcx> From<EvalErrorKind<'tcx, u64>> for EvalError<'tcx> {
     fn from(kind: EvalErrorKind<'tcx, u64>) -> Self {
         let backtrace = match env::var("RUST_CTFE_BACKTRACE") {
-            // matching RUST_BACKTRACE, we treat "0" the same as "not present".
+            // Matching `RUST_BACKTRACE` -- we treat "0" the same as "not present".
             Ok(ref val) if val != "0" => {
                 let mut backtrace = Backtrace::new_unresolved();
 
                 if val == "immediate" {
-                    // Print it now
+                    // Print it now.
                     print_backtrace(&mut backtrace);
                     None
                 } else {

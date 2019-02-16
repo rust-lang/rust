@@ -18,7 +18,7 @@ pub fn compute_abi_info<Ty>(fty: &mut FnType<'_, Ty>) {
                 }
             }
             Abi::Vector { .. } => {
-                // FIXME(eddyb) there should be a size cap here
+                // FIXME(eddyb): there should be a size cap here
                 // (probably what clang calls "illegal vectors").
             }
             Abi::Scalar(_) => {

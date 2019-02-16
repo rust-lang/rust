@@ -369,11 +369,11 @@ pub fn check_crate<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>)
 }
 
 /// A quasi-deprecated helper used in rustdoc and save-analysis to get
-/// the type from a HIR node.
+/// the type from an HIR node.
 pub fn hir_ty_to_ty<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, hir_ty: &hir::Ty) -> Ty<'tcx> {
     // In case there are any projections etc, find the "environment"
-    // def-id that will be used to determine the traits/predicates in
-    // scope.  This is derived from the enclosing item-like thing.
+    // `DefId` that will be used to determine the traits/predicates in
+    // scope. This is derived from the enclosing item-like thing.
     let env_node_id = tcx.hir().get_parent(hir_ty.id);
     let env_def_id = tcx.hir().local_def_id(env_node_id);
     let item_cx = self::collect::ItemCtxt::new(tcx, env_def_id);
@@ -384,8 +384,8 @@ pub fn hir_ty_to_ty<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, hir_ty: &hir::Ty) -> 
 pub fn hir_trait_to_predicates<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, hir_trait: &hir::TraitRef)
         -> (ty::PolyTraitRef<'tcx>, Vec<(ty::PolyProjectionPredicate<'tcx>, Span)>) {
     // In case there are any projections etc, find the "environment"
-    // def-id that will be used to determine the traits/predicates in
-    // scope.  This is derived from the enclosing item-like thing.
+    // `DefId` that will be used to determine the traits/predicates in
+    // scope. This is derived from the enclosing item-like thing.
     let env_node_id = tcx.hir().get_parent(hir_trait.ref_id);
     let env_def_id = tcx.hir().local_def_id(env_node_id);
     let item_cx = self::collect::ItemCtxt::new(tcx, env_def_id);

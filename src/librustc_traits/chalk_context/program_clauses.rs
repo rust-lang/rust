@@ -281,7 +281,7 @@ fn wf_clause_for_tuple<'tcx>(
         None => return ty::List::empty(),
     };
 
-    // If `arity == 0` (i.e. the unit type) or `arity == 1`, this list of
+    // If `arity == 0` (i.e., the unit type) or `arity == 1`, this list of
     // hypotheses is actually empty.
     let sized_implemented = type_list[0 .. std::cmp::max(arity, 1) - 1].iter()
         .map(|ty| ty::TraitRef {

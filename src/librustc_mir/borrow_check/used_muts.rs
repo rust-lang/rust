@@ -106,7 +106,7 @@ impl<'visit, 'cx, 'gcx, 'tcx> Visitor<'tcx> for GatherUsedMutsVisitor<'visit, 'c
         location: Location,
     ) {
         if place_context.is_place_assignment() && self.temporary_used_locals.contains(local) {
-            // Propagate the Local assigned at this Location as a used mutable local variable
+            // Propagate the `Local` assigned at this `Location` as a used mutable local variable.
             for moi in &self.mbcx.move_data.loc_map[location] {
                 let mpi = &self.mbcx.move_data.moves[*moi].path;
                 let path = &self.mbcx.move_data.move_paths[*mpi];

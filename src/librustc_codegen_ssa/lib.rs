@@ -1,3 +1,7 @@
+//! This crate contains codegen code that is used by all codegen backends (LLVM and others).
+//! The backend-agnostic functions of this crate use functions defined in various traits that
+//! have to be implemented by each backends.
+
 #![doc(html_root_url = "https://doc.rust-lang.org/nightly/")]
 
 #![feature(box_patterns)]
@@ -15,10 +19,6 @@
 #![allow(elided_lifetimes_in_paths)]
 
 #![recursion_limit="256"]
-
-//! This crate contains codegen code that is used by all codegen backends (LLVM and others).
-//! The backend-agnostic functions of this crate use functions defined in various traits that
-//! have to be implemented by each backends.
 
 #[macro_use] extern crate log;
 #[macro_use] extern crate rustc;

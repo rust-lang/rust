@@ -143,9 +143,9 @@ impl<'a, 'tcx: 'a, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         }
     }
 
-    // DILocations inherit source file name from the parent DIScope.  Due to macro expansions
+    // DILocations inherit source file name from the parent DIScope. Due to macro expansions
     // it may so happen that the current span belongs to a different file than the DIScope
-    // corresponding to span's containing source scope.  If so, we need to create a DIScope
+    // corresponding to span's containing source scope. If so, we need to create a DIScope
     // "extension" into that file.
     fn scope_metadata_for_loc(&self, scope_id: mir::SourceScope, pos: BytePos)
                               -> Option<Bx::DIScope> {
@@ -250,7 +250,7 @@ pub fn codegen_mir<'a, 'tcx: 'a, Bx: BuilderMethods<'a, 'tcx>>(
 
     let memory_locals = analyze::non_ssa_locals(&fx);
 
-    // Allocate variable and temp allocas
+    // Allocate variable and temp allocas.
     fx.locals = {
         let args = arg_local_refs(&mut bx, &fx, &fx.scopes, &memory_locals);
 
@@ -274,7 +274,7 @@ pub fn codegen_mir<'a, 'tcx: 'a, Bx: BuilderMethods<'a, 'tcx>>(
                 if layout.is_unsized() {
                     let indirect_place =
                         PlaceRef::alloca_unsized_indirect(&mut bx, layout, &name.as_str());
-                    // FIXME: add an appropriate debuginfo
+                    // FIXME: add an appropriate debuginfo.
                     LocalRef::UnsizedPlace(indirect_place)
                 } else {
                     let place = PlaceRef::alloca(&mut bx, layout, &name.as_str());
@@ -337,16 +337,15 @@ pub fn codegen_mir<'a, 'tcx: 'a, Bx: BuilderMethods<'a, 'tcx>>(
     let rpo = traversal::reverse_postorder(&mir);
     let mut visited = BitSet::new_empty(mir.basic_blocks().len());
 
-    // Codegen the body of each block using reverse postorder
+    // Codegen the body of each block using reverse post-order.
     for (bb, _) in rpo {
         visited.insert(bb.index());
         fx.codegen_block(bb);
     }
 
-    // Remove blocks that haven't been visited, or have no
-    // predecessors.
+    // Remove blocks that haven't been visited, or have no predecessors.
     for bb in mir.basic_blocks().indices() {
-        // Unreachable block
+        // Unreachable block.
         if !visited.contains(bb.index()) {
             debug!("codegen_mir: block {:?} was not visited", bb);
             unsafe {
@@ -506,8 +505,8 @@ fn arg_local_refs<'a, 'tcx: 'a, Bx: BuilderMethods<'a, 'tcx>>(
 
         if arg_scope.is_none() && !memory_locals.contains(local) {
             // We don't have to cast or keep the argument in the alloca.
-            // FIXME(eddyb): We should figure out how to use llvm.dbg.value instead
-            // of putting everything in allocas just so we can use llvm.dbg.declare.
+            // FIXME(eddyb): we should figure out how to use `llvm.dbg.value` instead
+            // of putting everything in allocas just so we can use `llvm.dbg.declare`.
             let local = |op| LocalRef::Operand(Some(op));
             match arg.mode {
                 PassMode::Ignore => {
@@ -541,7 +540,7 @@ fn arg_local_refs<'a, 'tcx: 'a, Bx: BuilderMethods<'a, 'tcx>>(
         let place = if arg.is_sized_indirect() {
             // Don't copy an indirect argument to an alloca, the caller
             // already put it in a temporary alloca and gave it up.
-            // FIXME: lifetimes
+            // FIXME: lifetimes.
             let llarg = bx.get_param(bx.llfn(), llarg_idx as c_uint);
             bx.set_value_name(llarg, &name);
             llarg_idx += 1;
@@ -568,8 +567,8 @@ fn arg_local_refs<'a, 'tcx: 'a, Bx: BuilderMethods<'a, 'tcx>>(
             if arg_index > 0 || mir.upvar_decls.is_empty() {
                 // The Rust ABI passes indirect variables using a pointer and a manual copy, so we
                 // need to insert a deref here, but the C ABI uses a pointer and a copy using the
-                // byval attribute, for which LLVM always does the deref itself,
-                // so we must not add it.
+                // byval attribute, for which LLVM always does the deref itself, so we must not
+                // add it.
                 let variable_access = VariableAccess::DirectVariable {
                     alloca: place.llval
                 };

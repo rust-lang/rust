@@ -99,9 +99,9 @@ mod relate_tys;
 ///   and lifetimes (e.g., `&'a T` implies `T: 'a`)
 /// - `implicit_region_bound` -- a region which all generic parameters are assumed
 ///   to outlive; should represent the fn body
-/// - `input_tys` -- fully liberated, but **not** normalized, expected types of the arguments;
+/// - `input_tys` -- fully liberated, but *not* normalized, expected types of the arguments;
 ///   the types of the input parameters found in the MIR itself will be equated with these
-/// - `output_ty` -- fully liberated, but **not** normalized, expected return type;
+/// - `output_ty` -- fully liberated, but *not* normalized, expected return type;
 ///   the type for the RETURN_PLACE will be equated with this
 /// - `liveness` -- results of a liveness computation on the MIR; used to create liveness
 ///   constraints for the regions in the types of variables
@@ -456,7 +456,7 @@ impl<'a, 'b, 'gcx, 'tcx> TypeVerifier<'a, 'b, 'gcx, 'tcx> {
             },
             Place::Promoted(box (_index, sty)) => {
                 let sty = self.sanitize_type(place, sty);
-                // FIXME -- promoted MIR return types reference
+                // FIXME: promoted MIR return types reference
                 // various "free regions" (e.g., scopes and things)
                 // that they ought not to do. We have to figure out
                 // how best to handle that -- probably we want treat
@@ -845,7 +845,7 @@ pub enum Locations {
     /// equality is basically a no-op. Then, later on, when we do `_0
     /// = &'3 y`, that region `'3` never winds up related to the
     /// universal region `'1` and hence no error occurs. Therefore, we
-    /// use Locations::All instead, which ensures that the `'1` and
+    /// use `Locations::All` instead, which ensures that the `'1` and
     /// `'2` are equal everything. We also use this for other
     /// user-given type annotations; e.g., if the user wrote `let mut
     /// x: &'static u32 = ...`, we would ensure that all values
@@ -1062,7 +1062,7 @@ impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
             if let TyKind::Opaque(..) = sup.sty {
                 // When you have `let x: impl Foo = ...` in a closure,
                 // the resulting inferend values are stored with the
-                // def-id of the base function.
+                // `DefId` of the base function.
                 let parent_def_id = self.tcx().closure_base_def_id(self.mir_def_id);
                 return self.eq_opaque_type_and_type(sub, sup, parent_def_id, locations, category);
             } else {
@@ -1378,7 +1378,7 @@ impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
             | TerminatorKind::Drop { .. }
             | TerminatorKind::FalseEdges { .. }
             | TerminatorKind::FalseUnwind { .. } => {
-                // no checks needed for these
+                // No checks needed for these.
             }
 
             TerminatorKind::DropAndReplace {
@@ -1428,7 +1428,7 @@ impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
                 if !switch_ty.is_integral() && !switch_ty.is_char() && !switch_ty.is_bool() {
                     span_mirbug!(self, term, "bad SwitchInt discr ty {:?}", switch_ty);
                 }
-                // FIXME: check the values
+                // FIXME: check the values.
             }
             TerminatorKind::Call {
                 ref func,
@@ -1739,12 +1739,12 @@ impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
     fn check_local(&mut self, mir: &Mir<'tcx>, local: Local, local_decl: &LocalDecl<'tcx>) {
         match mir.local_kind(local) {
             LocalKind::ReturnPointer | LocalKind::Arg => {
-                // return values of normal functions are required to be
+                // Return values of normal functions are required to be
                 // sized by typeck, but return values of ADT constructors are
                 // not because we don't include a `Self: Sized` bounds on them.
                 //
                 // Unbound parts of arguments were never required to be Sized
-                // - maybe we should make that a warning.
+                // -- maybe we should make that a warning.
                 return;
             }
             LocalKind::Var | LocalKind::Temp => {}
@@ -1762,7 +1762,7 @@ impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
     fn ensure_place_sized(&mut self, ty: Ty<'tcx>, span: Span) {
         let tcx = self.tcx();
 
-        // Erase the regions from `ty` to get a global type.  The
+        // Erase the regions from `ty` to get a global type. The
         // `Sized` bound in no way depends on precise regions, so this
         // shouldn't affect `is_sized`.
         let gcx = tcx.global_tcx();
@@ -1992,7 +1992,7 @@ impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
                 self.add_reborrow_constraint(location, region, borrowed_place);
             }
 
-            // FIXME: These other cases have to be implemented in future PRs
+            // FIXME: these other cases have to be implemented in future PRs
             Rvalue::Use(..)
             | Rvalue::Len(..)
             | Rvalue::BinaryOp(..)
@@ -2041,7 +2041,7 @@ impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
         self.prove_aggregate_predicates(aggregate_kind, location);
 
         if *aggregate_kind == AggregateKind::Tuple {
-            // tuple rvalue field type is always the type of the op. Nothing to check here.
+            // Tuple rvalue field type is always the type of the op; nothing to check here.
             return;
         }
 
@@ -2280,7 +2280,7 @@ impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
 
                         match k1.unpack() {
                             UnpackedKind::Lifetime(r1) => {
-                                // constraint is r1: r2
+                                // Constraint is `r1: r2`.
                                 let r1_vid = borrowck_context.universal_regions.to_region_vid(r1);
                                 let r2_vid = borrowck_context.universal_regions.to_region_vid(r2);
                                 let outlives_requirements =
@@ -2443,7 +2443,7 @@ impl MirPass for TypeckMir {
         }
 
         if tcx.sess.err_count() > 0 {
-            // compiling a broken program can obviously result in a
+            // Compiling a broken program can obviously result in a
             // broken MIR, so try not to report duplicate errors.
             return;
         }
@@ -2470,7 +2470,7 @@ impl MirPass for TypeckMir {
             );
 
             // For verification purposes, we just ignore the resulting
-            // region constraint sets. Not our problem. =)
+            // region constraint sets -- not our problem.
         });
     }
 }

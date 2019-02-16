@@ -165,11 +165,11 @@ pub(super) fn specializes<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
 
     // We determine whether there's a subset relationship by:
     //
-    // - skolemizing impl1,
-    // - assuming the where clauses for impl1,
-    // - instantiating impl2 with fresh inference variables,
+    // - skolemizing `impl1`,
+    // - assuming the where-clauses for `impl1`,
+    // - instantiating `impl2` with fresh inference variables,
     // - unifying,
-    // - attempting to prove the where clauses for impl2
+    // - attempting to prove the where-clauses for `impl2`.
     //
     // The last three steps are encapsulated in `fulfill_implication`.
     //
@@ -180,11 +180,11 @@ pub(super) fn specializes<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         return false;
     }
 
-    // create a parameter environment corresponding to a (placeholder) instantiation of impl1
+    // Create a parameter environment corresponding to a (placeholder) instantiation of `impl1`.
     let penv = tcx.param_env(impl1_def_id);
     let impl1_trait_ref = tcx.impl_trait_ref(impl1_def_id).unwrap();
 
-    // Create a infcx, taking the predicates of impl1 as assumptions:
+    // Create a infcx, taking the predicates of `impl1` as assumptions:
     tcx.infer_ctxt().enter(|infcx| {
         // Normalize the trait reference. The WF rules ought to ensure
         // that this always succeeds.
@@ -200,7 +200,7 @@ pub(super) fn specializes<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                 }
             };
 
-        // Attempt to prove that impl2 applies, given all of the above.
+        // Attempt to prove that `impl2` applies, given all of the above.
         fulfill_implication(&infcx, penv, impl1_trait_ref, impl2_def_id).is_ok()
     })
 }
@@ -227,7 +227,7 @@ fn fulfill_implication<'a, 'gcx, 'tcx>(infcx: &InferCtxt<'a, 'gcx, 'tcx>,
     debug!("fulfill_implication: target_trait_ref={:?}, obligations={:?}",
            target_trait_ref, obligations);
 
-    // do the impls unify? If not, no specialization.
+    // Do the impls unify? If not, no specialization.
     match infcx.at(&ObligationCause::dummy(), param_env)
                .eq(source_trait_ref, target_trait_ref) {
         Ok(InferOk { obligations: o, .. }) => {
@@ -241,8 +241,8 @@ fn fulfill_implication<'a, 'gcx, 'tcx>(infcx: &InferCtxt<'a, 'gcx, 'tcx>,
         }
     }
 
-    // attempt to prove all of the predicates for impl2 given those for impl1
-    // (which are packed up in penv)
+    // Attempt to prove all of the predicates for `impl2` given those for `impl1`
+    // (which are packed up in penv).
 
     infcx.save_and_restore_in_snapshot_flag(|infcx| {
         // If we came from `translate_substs`, we already know that the
@@ -251,7 +251,7 @@ fn fulfill_implication<'a, 'gcx, 'tcx>(infcx: &InferCtxt<'a, 'gcx, 'tcx>,
         // we only want to process the projections to determine the
         // the types in our substs using RFC 447, so we can safely
         // ignore region obligations, which allows us to avoid threading
-        // a node-id to assign them with.
+        // a `NodeId` to assign them with.
         //
         // If we came from specialization graph construction, then
         // we already make a mockery out of the region system, so
@@ -262,7 +262,7 @@ fn fulfill_implication<'a, 'gcx, 'tcx>(infcx: &InferCtxt<'a, 'gcx, 'tcx>,
         }
         match fulfill_cx.select_all_or_error(infcx) {
             Err(errors) => {
-                // no dice!
+                // No dice!
                 debug!("fulfill_implication: for impls on {:?} and {:?}, \
                         could not fulfill: {:?} given {:?}",
                        source_trait_ref,
@@ -401,7 +401,7 @@ fn to_pretty_impl_header(tcx: TyCtxt<'_, '_, '_>, impl_def_id: DefId) -> Option<
 
     let substs = Substs::identity_for_item(tcx, impl_def_id);
 
-    // FIXME: Currently only handles ?Sized.
+    // FIXME: currently only handles ?Sized.
     //        Needs to support ?Move and ?DynSized when they are implemented.
     let mut types_without_default_bounds = FxHashSet::default();
     let sized_trait = tcx.lang_items().sized_trait();

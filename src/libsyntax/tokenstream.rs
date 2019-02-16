@@ -323,18 +323,18 @@ impl TokenStream {
         // AST and a token stream which was parsed into an AST more reliable.
         fn semantic_tree(tree: &TokenTree) -> bool {
             match tree {
-                // The pretty printer tends to add trailing commas to
+                // The pretty-printer tends to add trailing commas to
                 // everything, and in particular, after struct fields.
                 | TokenTree::Token(_, Token::Comma)
-                // The pretty printer emits `NoDelim` as whitespace.
+                // The pretty-printer emits `NoDelim` as whitespace.
                 | TokenTree::Token(_, Token::OpenDelim(DelimToken::NoDelim))
                 | TokenTree::Token(_, Token::CloseDelim(DelimToken::NoDelim))
-                // The pretty printer collapses many semicolons into one.
+                // The pretty-printer collapses many semicolons into one.
                 | TokenTree::Token(_, Token::Semi)
-                // The pretty printer collapses whitespace arbitrarily and can
+                // The pretty-printer collapses whitespace arbitrarily and can
                 // introduce whitespace from `NoDelim`.
                 | TokenTree::Token(_, Token::Whitespace)
-                // The pretty printer can turn `$crate` into `::crate_name`
+                // The pretty-printer can turn `$crate` into `::crate_name`
                 | TokenTree::Token(_, Token::ModSep) => false,
                 _ => true
             }

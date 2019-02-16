@@ -93,7 +93,7 @@ pub trait QueryTypeOp<'gcx: 'tcx, 'tcx>:
             return Ok(result);
         }
 
-        // FIXME(#33684) -- We need to use
+        // FIXME(#33684): we need to use
         // `canonicalize_hr_query_hack` here because of things
         // like the subtype query, which go awry around
         // `'static` otherwise.

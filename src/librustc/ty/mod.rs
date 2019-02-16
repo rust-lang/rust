@@ -196,13 +196,13 @@ impl AssociatedItem {
     }
 
     /// Tests whether the associated item admits a non-trivial implementation
-    /// for !
+    /// for `!`.
     pub fn relevant_for_never<'tcx>(&self) -> bool {
         match self.kind {
             AssociatedKind::Existential |
             AssociatedKind::Const |
             AssociatedKind::Type => true,
-            // FIXME(canndrew): Be more thorough here, check if any argument is uninhabited.
+            // FIXME(canndrew): be more thorough here, check if any argument is uninhabited.
             AssociatedKind::Method => !self.method_has_self_argument,
         }
     }
@@ -212,7 +212,7 @@ impl AssociatedItem {
             ty::AssociatedKind::Method => {
                 // We skip the binder here because the binder would deanonymize all
                 // late-bound regions, and we don't want method signatures to show up
-                // `as for<'r> fn(&'r MyType)`.  Pretty-printing handles late-bound
+                // `as for<'r> fn(&'r MyType)`. Pretty-printing handles late-bound
                 // regions just fine, showing `fn(&MyType)`.
                 tcx.fn_sig(self.def_id).skip_binder().to_string()
             }
@@ -302,7 +302,7 @@ impl Visibility {
         self.is_accessible_from(vis_restriction, tree)
     }
 
-    // Returns `true` if this item is visible anywhere in the local crate.
+    // Returns whether this item is visible anywhere in the local crate.
     pub fn is_visible_locally(self) -> bool {
         match self {
             Visibility::Public => true,
@@ -430,7 +430,7 @@ bitflags! {
         const HAS_TY_ERR         = 1 << 7;
         const HAS_PROJECTION     = 1 << 8;
 
-        // FIXME: Rename this to the actual property since it's used for generators too
+        // FIXME: rename this to the actual property since it's used for generators too
         const HAS_TY_CLOSURE     = 1 << 9;
 
         // `true` if there are "names" of types and regions and so forth
@@ -442,7 +442,7 @@ bitflags! {
         const KEEP_IN_LOCAL_TCX  = 1 << 11;
 
         // Is there a projection that does not involve a bound region?
-        // Currently we can't normalize projections w/ bound regions.
+        // Currently we can't normalize projections with bound regions.
         const HAS_NORMALIZABLE_PROJECTION = 1 << 12;
 
         /// Does this have any `ReLateBound` regions? Used to check
@@ -823,7 +823,7 @@ impl ty::EarlyBoundRegion {
         ty::BoundRegion::BrNamed(self.def_id, self.name)
     }
 
-    /// Does this early bound region have a name? Early bound regions normally
+    /// Does this early-bound region have a name? Early-bound regions normally
     /// always have names except when using anonymous lifetimes (`'_`).
     pub fn has_name(&self) -> bool {
         self.name != keywords::UnderscoreLifetime.name().as_interned_str()
@@ -1118,7 +1118,7 @@ impl<'a, 'gcx, 'tcx> Predicate<'tcx> {
         //
         // In terms of why this is sound, the idea is that whenever there
         // is an impl of `T:Foo<'a>`, it must show that `T:Bar<'a,'a>`
-        // holds.  So if there is an impl of `T:Foo<'a>` that applies to
+        // holds. So if there is an impl of `T:Foo<'a>` that applies to
         // all `'a`, then we must know that `T:Bar<'a,'a>` holds for all
         // `'a`.
         //
@@ -1130,7 +1130,7 @@ impl<'a, 'gcx, 'tcx> Predicate<'tcx> {
         // Here, if we have `for<'x> T: Foo1<'x>`, then what do we know?
         // The answer is that we know `for<'x,'b> T: Bar1<'x,'b>`. The
         // reason is similar to the previous example: any impl of
-        // `T:Foo1<'x>` must show that `for<'b> T: Bar1<'x, 'b>`.  So
+        // `T:Foo1<'x>` must show that `for<'b> T: Bar1<'x, 'b>`. So
         // basically we would want to collapse the bound lifetimes from
         // the input (`trait_ref`) and the supertraits.
         //
@@ -1209,7 +1209,7 @@ impl<'tcx> TraitPredicate<'tcx> {
 
 impl<'tcx> PolyTraitPredicate<'tcx> {
     pub fn def_id(&self) -> DefId {
-        // ok to skip binder since trait def-id does not care about regions
+        // Ok to skip binder since trait `DefId` does not care about regions.
         self.skip_binder().def_id()
     }
 }
@@ -1277,7 +1277,7 @@ impl<'tcx> PolyProjectionPredicate<'tcx> {
     /// Note that this is not the `DefId` of the `TraitRef` containing this
     /// associated type, which is in `tcx.associated_item(projection_def_id()).container`.
     pub fn projection_def_id(&self) -> DefId {
-        // okay to skip binder since trait def-id does not care about regions
+        // ok to skip binder since trait `DefId` does not care about regions
         self.skip_binder().projection_ty.item_def_id
     }
 }
@@ -1958,7 +1958,7 @@ bitflags! {
         const IS_C               = 1 << 0;
         const IS_SIMD            = 1 << 1;
         const IS_TRANSPARENT     = 1 << 2;
-        // Internal only for now. If true, don't reorder fields.
+        // Internal only for now. If set, then don't reorder fields.
         const IS_LINEAR          = 1 << 3;
 
         // Any of these flags being set prevent field reordering optimisation.
@@ -2269,7 +2269,7 @@ impl<'a, 'gcx, 'tcx> AdtDef {
         };
         match tcx.const_eval(param_env.and(cid)) {
             Ok(val) => {
-                // FIXME: Find the right type and use it instead of `val.ty` here
+                // FIXME: find the right type and use it instead of `val.ty` here
                 if let Some(b) = val.assert_bits(tcx.global_tcx(), param_env.and(val.ty)) {
                     trace!("discriminants: {} ({:?})", b, repr_type);
                     Some(Discr {
@@ -2399,7 +2399,7 @@ impl<'a, 'gcx, 'tcx> AdtDef {
             Foreign(..) |
             Error |
             GeneratorWitness(..) => {
-                // these are never sized - return the target type
+                // These are never sized; return the target type.
                 vec![ty]
             }
 
@@ -2411,7 +2411,7 @@ impl<'a, 'gcx, 'tcx> AdtDef {
             }
 
             Adt(adt, substs) => {
-                // recursive case
+                // Recursive case.
                 let adt_tys = adt.sized_constraint(tcx);
                 debug!("sized_constraint_for_ty({:?}) intermediate = {:?}",
                        ty, adt_tys);
@@ -2422,7 +2422,7 @@ impl<'a, 'gcx, 'tcx> AdtDef {
             }
 
             Projection(..) | Opaque(..) => {
-                // must calculate explicitly.
+                // Must calculate explicitly.
                 // FIXME: consider special-casing always-Sized projections
                 vec![ty]
             }
@@ -2430,7 +2430,7 @@ impl<'a, 'gcx, 'tcx> AdtDef {
             UnnormalizedProjection(..) => bug!("only used with chalk-engine"),
 
             Param(..) => {
-                // perf hack: if there is a `T: Sized` bound, then
+                // Performance hack: if there is a `T: Sized` bound, then
                 // we know that `T` is Sized and do not need to check
                 // it on the impl.
 
@@ -2476,9 +2476,9 @@ impl<'a, 'gcx, 'tcx> FieldDef {
 /// `tcx.closure_env_ty()`.
 #[derive(Clone, Copy, PartialOrd, Ord, PartialEq, Eq, Hash, Debug, RustcEncodable, RustcDecodable)]
 pub enum ClosureKind {
-    // Warning: Ordering is significant here! The ordering is chosen
-    // because the trait Fn is a subtrait of FnMut and so in turn, and
-    // hence we order it so that Fn < FnMut < FnOnce.
+    // Warning: ordering is significant here! The ordering is chosen
+    // because the trait `Fn` is a subtrait of `FnMut` and so in turn, and
+    // hence we order it so that `Fn < FnMut < FnOnce`.
     Fn,
     FnMut,
     FnOnce,
@@ -2872,16 +2872,16 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
         }
     }
 
-    /// Given a `VariantDef`, returns the def-id of the `AdtDef` of which it is a part.
+    /// Given a `VariantDef`, returns the `DefId` of the `AdtDef` of which it is a part.
     pub fn adt_def_id_of_variant(self, variant_def: &'tcx VariantDef) -> DefId {
         let def_key = self.def_key(variant_def.did);
         match def_key.disambiguated_data.data {
-            // for enum variants and tuple structs, the def-id of the ADT itself
-            // is the *parent* of the variant
+            // For enum variants and tuple structs, the `DefId` of the ADT itself
+            // is the *parent* of the variant.
             DefPathData::EnumVariant(..) | DefPathData::StructCtor =>
                 DefId { krate: variant_def.did.krate, index: def_key.parent.unwrap() },
 
-            // otherwise, for structs and unions, they share a def-id
+            // Otherwise, for structs and unions, they share a `DefId`.
             _ => variant_def.did,
         }
     }
@@ -2891,7 +2891,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
             self.original_crate_name(id.krate).as_interned_str()
         } else {
             let def_key = self.def_key(id);
-            // The name of a StructCtor is that of its struct parent.
+            // The name of a `StructCtor` is that of its struct parent.
             if let hir_map::DefPathData::StructCtor = def_key.disambiguated_data.data {
                 self.item_name(DefId {
                     krate: id.krate,
@@ -3151,17 +3151,17 @@ pub fn is_impl_trait_defn(tcx: TyCtxt<'_, '_, '_>, def_id: DefId) -> Option<DefI
     None
 }
 
-/// See `ParamEnv` struct definition for details.
+/// See the [`ParamEnv`] struct definition for details.
 fn param_env<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                        def_id: DefId)
                        -> ParamEnv<'tcx>
 {
-    // The param_env of an impl Trait type is its defining function's param_env
+    // The `ParamEnv` of an `impl Trait` type is its defining function's `ParamEnv`.
     if let Some(parent) = is_impl_trait_defn(tcx, def_id) {
         return param_env(tcx, parent);
     }
-    // Compute the bounds on Self and the type parameters.
 
+    // Compute the bounds on `Self` and the type parameters.
     let InstantiatedPredicates { predicates } =
         tcx.predicates_of(def_id).instantiate_identity(tcx);
 
@@ -3248,7 +3248,7 @@ fn issue33140_self_ty<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         return None;
     }
 
-    // impl must be `impl Trait for dyn Marker1 + Marker2 + ...`
+    // Impl must be `impl Trait for dyn Marker1 + Marker2 + ...`.
     if trait_ref.substs.len() != 1 {
         debug!("issue33140_self_ty - impl has substs!");
         return None;
@@ -3310,7 +3310,7 @@ pub struct CrateInherentImpls {
 
 #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, RustcEncodable, RustcDecodable)]
 pub struct SymbolName {
-    // FIXME: we don't rely on interning or equality here - better have
+    // FIXME: we don't rely on interning or equality here -- better have
     // this be a `&'tcx str`.
     pub name: InternedString
 }

@@ -86,7 +86,7 @@ impl<'tcx> Visitor<'tcx> for TempCollector<'tcx> {
         }
 
         // Ignore drops, if the temp gets promoted,
-        // then it's constant and thus drop is noop.
+        // then it's constant and thus drop is no-op.
         // Non-uses are also irrelevent.
         if context.is_drop() || !context.is_use() {
             debug!(

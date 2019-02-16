@@ -492,8 +492,8 @@ impl BuiltinLintDiagnostics {
             BuiltinLintDiagnostics::AbsPathWithModule(span) => {
                 let (sugg, app) = match sess.source_map().span_to_snippet(span) {
                     Ok(ref s) => {
-                        // FIXME(Manishearth) ideally the emitting code
-                        // can tell us whether or not this is global
+                        // FIXME(Manishearth): ideally, the emitting code
+                        // can tell us whether or not this is global.
                         let opt_colon = if s.trim_start().starts_with("::") {
                             ""
                         } else {

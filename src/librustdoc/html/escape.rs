@@ -12,7 +12,7 @@ pub struct Escape<'a>(pub &'a str);
 impl<'a> fmt::Display for Escape<'a> {
     fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
         // Because the internet is always right, turns out there's not that many
-        // characters to escape: http://stackoverflow.com/questions/7381974
+        // characters to escape: <http://stackoverflow.com/questions/7381974>.
         let Escape(s) = *self;
         let pile_o_bits = s;
         let mut last = 0;

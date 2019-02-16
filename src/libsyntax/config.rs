@@ -45,7 +45,7 @@ pub fn features(mut krate: ast::Crate, sess: &ParseSess, edition: Edition)
 
         features = get_features(&sess.span_diagnostic, &krate.attrs, edition);
 
-        // Avoid reconfiguring malformed `cfg_attr`s
+        // Avoid reconfiguring malformed `cfg_attr`s.
         if err_count == sess.span_diagnostic.err_count() {
             strip_unconfigured.features = Some(&features);
             strip_unconfigured.configure(unconfigured_attrs);
@@ -129,8 +129,8 @@ impl<'a> StripUnconfigured<'a> {
 
         if attr::cfg_matches(&cfg_predicate, self.sess, self.features) {
             // We call `process_cfg_attr` recursively in case there's a
-            // `cfg_attr` inside of another `cfg_attr`. E.g.
-            //  `#[cfg_attr(false, cfg_attr(true, some_attr))]`.
+            // `cfg_attr` inside of another `cfg_attr`.
+            // E.g., `#[cfg_attr(false, cfg_attr(true, some_attr))]`.
             expanded_attrs.into_iter()
             .flat_map(|(path, tokens, span)| self.process_cfg_attr(ast::Attribute {
                 id: attr::mk_attr_id(),
@@ -193,15 +193,15 @@ impl<'a> StripUnconfigured<'a> {
         })
     }
 
-    /// Visit attributes on expression and statements (but not attributes on items in blocks).
+    /// Visits attributes on expression and statements (but not attributes on items in blocks).
     fn visit_expr_attrs(&mut self, attrs: &[ast::Attribute]) {
-        // flag the offending attributes
+        // Flag the offending attributes.
         for attr in attrs.iter() {
             self.maybe_emit_expr_attr_err(attr);
         }
     }
 
-    /// If attributes are not allowed on expressions, emit an error for `attr`
+    /// If attributes are not allowed on expressions, emits an error for `attr`.
     pub fn maybe_emit_expr_attr_err(&self, attr: &ast::Attribute) {
         if !self.features.map(|features| features.stmt_expr_attributes).unwrap_or(true) {
             let mut err = feature_err(self.sess,
@@ -261,13 +261,13 @@ impl<'a> StripUnconfigured<'a> {
     pub fn configure_expr(&mut self, expr: &mut P<ast::Expr>) {
         self.visit_expr_attrs(expr.attrs());
 
-        // If an expr is valid to cfg away it will have been removed by the
-        // outer stmt or expression folder before descending in here.
-        // Anything else is always required, and thus has to error out
-        // in case of a cfg attr.
+        // If an expr is valid to `cfg` away, it will have been removed by the
+        // outer statement or expression folder before descending into here.
+        // Anything else is always required, and thus has to error out in case
+        // of a `cfg` attr.
         //
-        // N.B., this is intentionally not part of the visit_expr() function
-        //     in order for filter_map_expr() to be able to avoid this check
+        // N.B., this is intentionally not part of the `visit_expr()` function
+        // in order for `filter_map_expr()` to be able to avoid this check.
         if let Some(attr) = expr.attrs().iter().find(|a| is_cfg(a)) {
             let msg = "removing an expression is not supported in this position";
             self.sess.span_diagnostic.span_err(attr.span, msg);

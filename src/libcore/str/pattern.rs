@@ -625,7 +625,7 @@ macro_rules! searcher_methods {
 // Impl for &[char]
 /////////////////////////////////////////////////////////////////////////////
 
-// Todo: Change / Remove due to ambiguity in meaning.
+// FIXME: change/remove due to ambiguity in meaning.
 
 /// Associated type for `<&[char] as Pattern<'a>>::Searcher`.
 #[derive(Clone, Debug)]

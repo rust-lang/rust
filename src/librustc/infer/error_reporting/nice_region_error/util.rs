@@ -1,5 +1,4 @@
-//! Helper functions corresponding to lifetime errors due to
-//! anonymous regions.
+//! Helper functions corresponding to lifetime errors due to anonymous regions.
 
 use crate::hir;
 use crate::infer::error_reporting::nice_region_error::NiceRegionError;
@@ -7,35 +6,33 @@ use crate::ty::{self, Region, Ty};
 use crate::hir::def_id::DefId;
 use syntax_pos::Span;
 
-// The struct contains the information about the anonymous region
-// we are searching for.
+// Contains the information about the anonymous region we are searching for.
 #[derive(Debug)]
 pub(super) struct AnonymousArgInfo<'tcx> {
-    // the argument corresponding to the anonymous region
+    /// The argument corresponding to the anonymous region.
     pub arg: &'tcx hir::Arg,
-    // the type corresponding to the anonymopus region argument
+    /// The type corresponding to the anonymopus region argument.
     pub arg_ty: Ty<'tcx>,
-    // the ty::BoundRegion corresponding to the anonymous region
+    /// The `ty::BoundRegion` corresponding to the anonymous region.
     pub bound_region: ty::BoundRegion,
-    // arg_ty_span contains span of argument type
+    /// The span of the argument type.
     pub arg_ty_span : Span,
-    // corresponds to id the argument is the first parameter
-    // in the declaration
+    /// `true` if corresponds to the ID the argument of the first parameter
+    /// in the declaration.
     pub is_first: bool,
 }
 
 impl<'a, 'gcx, 'tcx> NiceRegionError<'a, 'gcx, 'tcx> {
-    // This method walks the Type of the function body arguments using
-    // `fold_regions()` function and returns the
-    // &hir::Arg of the function argument corresponding to the anonymous
-    // region and the Ty corresponding to the named region.
+    // Walks the type of the function body arguments using the `fold_regions()`
+    // function and returns the `&hir::Arg` of the function argument corresponding
+    // to the anonymous region and the `Ty` corresponding to the named region.
     // Currently only the case where the function declaration consists of
     // one named region and one anonymous region is handled.
     // Consider the example `fn foo<'a>(x: &'a i32, y: &i32) -> &'a i32`
-    // Here, we would return the hir::Arg for y, we return the type &'a
-    // i32, which is the type of y but with the anonymous region replaced
-    // with 'a, the corresponding bound region and is_first which is true if
-    // the hir::Arg is the first argument in the function declaration.
+    // Here, we would return the `hir::Arg` for `y`, we return the type `&'a
+    // i32`, which is the type of y but with the anonymous region replaced
+    // with `'a`, the corresponding bound region and `is_first` which is true if
+    // the `hir::Arg` is the first argument in the function declaration.
     pub(super) fn find_arg_with_region(
         &self,
         anon_region: Region<'tcx>,
@@ -47,7 +44,8 @@ impl<'a, 'gcx, 'tcx> NiceRegionError<'a, 'gcx, 'tcx> {
                 self.tcx().parent_def_id(ebr.def_id).unwrap(),
                 ty::BoundRegion::BrNamed(ebr.def_id, ebr.name),
             ),
-            _ => return None, // not a free region
+            // Not a free region.
+            _ => return None,
         };
 
         let hir = &self.tcx().hir();
@@ -61,7 +59,7 @@ impl<'a, 'gcx, 'tcx> NiceRegionError<'a, 'gcx, 'tcx> {
                         .iter()
                         .enumerate()
                         .filter_map(|(index, arg)| {
-                            // May return None; sometimes the tables are not yet populated.
+                            // May return `None`; sometimes the tables are not yet populated.
                             let ty_hir_id = fn_decl.inputs[index].hir_id;
                             let arg_ty_span = hir.span(hir.hir_to_node_id(ty_hir_id));
                             let ty = tables.node_type_opt(arg.hir_id)?;
@@ -99,9 +97,9 @@ impl<'a, 'gcx, 'tcx> NiceRegionError<'a, 'gcx, 'tcx> {
         }
     }
 
-    // Here, we check for the case where the anonymous region
-    // is in the return type.
-    // FIXME(#42703) - Need to handle certain cases here.
+    /// Checks for the case where the anonymous region is in the return type.
+    //
+    // FIXME(#42703): need to handle certain cases here.
     pub(super) fn is_return_type_anon(
         &self,
         scope_def_id: DefId,
@@ -120,10 +118,10 @@ impl<'a, 'gcx, 'tcx> NiceRegionError<'a, 'gcx, 'tcx> {
         None
     }
 
-    // Here we check for the case where anonymous region
-    // corresponds to self and if yes, we display E0312.
-    // FIXME(#42700) - Need to format self properly to
-    // enable E0621 for it.
+    /// Check for the case where anonymous region corresponds to `self`,
+    /// and if so, we display E0312.
+    //
+    // FIXME(#42700): need to format self properly to enable E0621 for it.
     pub(super) fn is_self_anon(&self, is_first: bool, scope_def_id: DefId) -> bool {
         is_first
             && self.tcx()

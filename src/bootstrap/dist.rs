@@ -2222,8 +2222,8 @@ impl Step for Lldb {
             }
         }
 
-        // The lldb scripts might be installed in lib/python$version
-        // or in lib64/python$version.  If lib64 exists, use it;
+        // The lldb scripts might be installed in `lib/python$version`
+        // or in `lib64/python$version`. If lib64 exists, use it;
         // otherwise lib.
         let libdir = builder.llvm_out(target).join("lib64");
         let (libdir, libdir_name) = if libdir.exists() {

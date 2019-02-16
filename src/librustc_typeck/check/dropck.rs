@@ -53,7 +53,7 @@ pub fn check_drop_impl<'a, 'tcx>(
             )
         }
         _ => {
-            // Destructors only work on nominal types.  This was
+            // Destructors only work on nominal types. This was
             // already checked by coherence, but compilation may
             // not have been terminated.
             let span = tcx.def_span(drop_impl_did);
@@ -111,21 +111,21 @@ fn ensure_drop_params_and_item_params_correspond<'a, 'tcx>(
         }
 
         if let Err(ref errors) = fulfillment_cx.select_all_or_error(&infcx) {
-            // this could be reached when we get lazy normalization
+            // This could be reached when we get lazy normalization.
             infcx.report_fulfillment_errors(errors, None, false);
             return Err(ErrorReported);
         }
 
         let region_scope_tree = region::ScopeTree::default();
 
-        // NB. It seems a bit... suspicious to use an empty param-env
-        // here. The correct thing, I imagine, would be
+        // FIXMKE(nmatsakis): it seems a bit suspicious to use an empty
+        // param-env here. The correct thing, I imagine, would be
         // `OutlivesEnvironment::new(impl_param_env)`, which would
         // allow region solving to take any `a: 'b` relations on the
         // impl into account. But I could not create a test case where
         // it did the wrong thing, so I chose to preserve existing
         // behavior, since it ought to be simply more
-        // conservative. -nmatsakis
+        // conservative.
         let outlives_env = OutlivesEnvironment::new(ty::ParamEnv::empty());
 
         infcx.resolve_regions_and_report_errors(

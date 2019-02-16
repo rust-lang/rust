@@ -14,7 +14,7 @@ pub struct SnapshotMap<K, V>
     num_open_snapshots: usize,
 }
 
-// HACK(eddyb) manual impl avoids `Default` bounds on `K` and `V`.
+// HACK(eddyb): manual impl avoids `Default` bounds on `K` and `V`.
 impl<K, V> Default for SnapshotMap<K, V>
     where K: Hash + Clone + Eq
 {
