@@ -96,7 +96,7 @@ pub fn op_to_const<'tcx>(
             // FIXME shouldn't it be the case that `mark_static_initialized` has already
             // interned this?  I thought that is the entire point of that `FinishStatic` stuff?
             let alloc = ecx.tcx.intern_const_alloc(alloc);
-            ConstValue::ByRef(ptr.alloc_id, alloc, ptr.offset)
+            ConstValue::ByRef(ptr, alloc)
         },
         Ok(Immediate::Scalar(x)) =>
             ConstValue::Scalar(x.not_undef()?),

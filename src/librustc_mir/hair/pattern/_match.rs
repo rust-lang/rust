@@ -172,7 +172,7 @@ use rustc::ty::{self, Ty, TyCtxt, TypeFoldable, Const};
 use rustc::ty::layout::{Integer, IntegerExt, VariantIdx, Size};
 
 use rustc::mir::Field;
-use rustc::mir::interpret::{ConstValue, Pointer, Scalar};
+use rustc::mir::interpret::{ConstValue, Scalar};
 use rustc::util::common::ErrorReported;
 
 use syntax::attr::{SignedInt, UnsignedInt};
@@ -214,9 +214,8 @@ impl<'a, 'tcx> LiteralExpander<'a, 'tcx> {
         match (val, &crty.sty, &rty.sty) {
             // the easy case, deref a reference
             (ConstValue::Scalar(Scalar::Ptr(p)), x, y) if x == y => ConstValue::ByRef(
-                p.alloc_id,
+                p,
                 self.tcx.alloc_map.lock().unwrap_memory(p.alloc_id),
-                p.offset,
             ),
             // unsize array to slice if pattern is array but match value or other patterns are slice
             (ConstValue::Scalar(Scalar::Ptr(p)), ty::Array(t, n), ty::Slice(u)) => {
@@ -1428,7 +1427,7 @@ fn slice_pat_covered_by_const<'tcx>(
     suffix: &[Pattern<'tcx>]
 ) -> Result<bool, ErrorReported> {
     let data: &[u8] = match (const_val.val, &const_val.ty.sty) {
-        (ConstValue::ByRef(id, alloc, offset), ty::Array(t, n)) => {
+        (ConstValue::ByRef(ptr, alloc), ty::Array(t, n)) => {
             if *t != tcx.types.u8 {
                 // FIXME(oli-obk): can't mix const patterns with slice patterns and get
                 // any sort of exhaustiveness/unreachable check yet
@@ -1436,7 +1435,6 @@ fn slice_pat_covered_by_const<'tcx>(
                 // are definitely unreachable.
                 return Ok(false);
             }
-            let ptr = Pointer::new(id, offset);
             let n = n.assert_usize(tcx).unwrap();
             alloc.get_bytes(&tcx, ptr, Size::from_bytes(n)).unwrap()
         },
@@ -1778,8 +1776,8 @@ fn specialize<'p, 'a: 'p, 'tcx: 'a>(
                     let (opt_ptr, n, ty) = match value.ty.sty {
                         ty::TyKind::Array(t, n) => {
                             match value.val {
-                                ConstValue::ByRef(id, alloc, offset) => (
-                                    Some((Pointer::new(id, offset), alloc)),
+                                ConstValue::ByRef(ptr, alloc) => (
+                                    Some((ptr, alloc)),
                                     n.unwrap_usize(cx.tcx),
                                     t,
                                 ),

@@ -591,11 +591,11 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> 
             self.layout_of(ty)
         })?;
         let op = match val.val {
-            ConstValue::ByRef(id, alloc, offset) => {
+            ConstValue::ByRef(ptr, alloc) => {
                 // We rely on mutability being set correctly in that allocation to prevent writes
                 // where none should happen -- and for `static mut`, we copy on demand anyway.
                 Operand::Indirect(
-                    MemPlace::from_ptr(Pointer::new(id, offset), alloc.align)
+                    MemPlace::from_ptr(ptr, alloc.align)
                 ).with_default_tag()
             },
             ConstValue::Slice(a, b) =>
