@@ -570,13 +570,15 @@ fn check_match_ref_pats(cx: &LateContext<'_, '_>, ex: &Expr, arms: &[Arm], expr:
     if has_only_ref_pats(arms) {
         let mut suggs = Vec::new();
         let (title, msg) = if let ExprKind::AddrOf(Mutability::MutImmutable, ref inner) = ex.node {
-            suggs.push((ex.span, Sugg::hir(cx, inner, "..").to_string()));
+            let span = ex.span.source_callsite();
+            suggs.push((span, Sugg::hir_with_macro_callsite(cx, inner, "..").to_string()));
             (
                 "you don't need to add `&` to both the expression and the patterns",
                 "try",
             )
         } else {
-            suggs.push((ex.span, Sugg::hir(cx, ex, "..").deref().to_string()));
+            let span = ex.span.source_callsite();
+            suggs.push((span, Sugg::hir_with_macro_callsite(cx, ex, "..").deref().to_string()));
             (
                 "you don't need to add `&` to all patterns",
                 "instead of prefixing all patterns with `&`, you can dereference the expression",
