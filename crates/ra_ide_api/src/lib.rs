@@ -200,6 +200,12 @@ pub struct Analysis {
     db: salsa::Snapshot<db::RootDatabase>,
 }
 
+// As a general design guideline, `Analysis` API are intended to be independent
+// from the language server protocol. That is, when exposing some functionality
+// we should think in terms of "what API makes most sense" and not in terms of
+// "what types LSP uses". Although currently LSP is the only consumer of the
+// API, the API should in theory be usable as a library, or via a different
+// protocol.
 impl Analysis {
     /// Debug info about the current state of the analysis
     pub fn status(&self) -> String {
