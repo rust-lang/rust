@@ -330,7 +330,7 @@ pub fn codegen_intrinsic_call<'a, 'tcx: 'a>(
             ret.write_cvalue(fx, res);
         };
         cttz | cttz_nonzero, <T> (v arg) {
-            let res = CValue::ByVal(fx.bcx.ins().clz(arg), fx.layout_of(T));
+            let res = CValue::ByVal(fx.bcx.ins().ctz(arg), fx.layout_of(T));
             ret.write_cvalue(fx, res);
         };
         ctpop, <T> (v arg) {

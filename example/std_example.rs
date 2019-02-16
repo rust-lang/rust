@@ -1,3 +1,5 @@
+#![feature(core_intrinsics)]
+
 use std::io::Write;
 
 fn main() {
@@ -7,5 +9,7 @@ fn main() {
 
     writeln!(stderr, "some {} text", "<unknown>").unwrap();
 
-    std::process::Command::new("true").env("c", "d").spawn();
+    let _ = std::process::Command::new("true").env("c", "d").spawn();
+
+    println!("cargo:rustc-link-lib=z");
 }
