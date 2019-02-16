@@ -999,6 +999,16 @@ fn trans_ptr_binop<'a, 'tcx: 'a>(
         _ => bug!("trans_ptr_binop on non ptr"),
     };
     if not_fat {
+        if let BinOp::Offset = bin_op {
+            let (base, offset) = (lhs, rhs.load_scalar(fx));
+            let pointee_ty = base.layout().ty.builtin_deref(true).unwrap().ty;
+            let pointee_size = fx.layout_of(pointee_ty).size.bytes();
+            let ptr_diff = fx.bcx.ins().imul_imm(offset, pointee_size as i64);
+            let base_val = base.load_scalar(fx);
+            let res = fx.bcx.ins().iadd(base_val, ptr_diff);
+            return CValue::ByVal(res, base.layout());
+        }
+
         binop_match! {
             fx, bin_op, false, lhs, rhs, ret_ty, "ptr";
             Add (_) bug;
@@ -1019,7 +1029,7 @@ fn trans_ptr_binop<'a, 'tcx: 'a>(
             Ge (_) icmp(UnsignedGreaterThanOrEqual);
             Gt (_) icmp(UnsignedGreaterThan);
 
-            Offset (_) iadd;
+            Offset (_) bug; // Handled above
         }
     } else {
         let (lhs_ptr, lhs_extra) = lhs.load_value_pair(fx);

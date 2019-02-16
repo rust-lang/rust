@@ -6,4 +6,6 @@ fn main() {
     let mut stderr = stderr.lock();
 
     writeln!(stderr, "some {} text", "<unknown>").unwrap();
+
+    std::process::Command::new("true").env("c", "d").spawn();
 }
