@@ -93,6 +93,21 @@ fn main() {
              env::join_paths(&dylib_path).unwrap());
     let mut maybe_crate = None;
 
+    // Get the name of the crate we're compiling, if any.
+    let maybe_crate_name = args.windows(2)
+        .find(|a| &*a[0] == "--crate-name")
+        .map(|crate_name| &*crate_name[1]);
+
+    if let Some(current_crate) = maybe_crate_name {
+        if let Some(target) = env::var_os("RUSTC_TIME") {
+            if target == "all" ||
+               target.into_string().unwrap().split(",").any(|c| c.trim() == current_crate)
+            {
+                cmd.arg("-Ztime");
+            }
+        }
+    }
+
     // Non-zero stages must all be treated uniformly to avoid problems when attempting to uplift
     // compiler libraries and such from stage 1 to 2.
     if stage == "0" {
@@ -152,10 +167,7 @@ fn main() {
             cmd.arg(format!("-Clinker={}", target_linker));
         }
 
-        let crate_name = args.windows(2)
-            .find(|a| &*a[0] == "--crate-name")
-            .unwrap();
-        let crate_name = &*crate_name[1];
+        let crate_name = maybe_crate_name.unwrap();
         maybe_crate = Some(crate_name);
 
         // If we're compiling specifically the `panic_abort` crate then we pass
