@@ -278,5 +278,19 @@ LL | |         Some(ref mut v) => Some(v),
 LL | |     };
    | |_____^ help: try this: `mut_owned.as_mut()`
 
-error: aborting due to 19 previous errors
+error: you don't need to add `&` to all patterns
+  --> $DIR/matches.rs:174:5
+   |
+LL | /     match foo_variant!(0) {
+LL | |         &Foo::A => println!("A"),
+LL | |         _ => println!("Wild"),
+LL | |     }
+   | |_____^
+help: instead of prefixing all patterns with `&`, you can dereference the expression
+   |
+LL |     match *foo_variant!(0) {
+LL |         Foo::A => println!("A"),
+   |
+
+error: aborting due to 20 previous errors
 

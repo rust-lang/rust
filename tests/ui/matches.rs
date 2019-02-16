@@ -150,4 +150,29 @@ fn match_as_ref() {
     };
 }
 
-fn main() {}
+macro_rules! foo_variant(
+    ($idx:expr) => (Foo::get($idx).unwrap())
+);
+
+enum Foo {
+    A,
+    B,
+}
+
+impl Foo {
+    fn get(idx: u8) -> Option<&'static Self> {
+        match idx {
+            0 => Some(&Foo::A),
+            1 => Some(&Foo::B),
+            _ => None,
+        }
+    }
+}
+
+fn main() {
+    // ICE #3719
+    match foo_variant!(0) {
+        &Foo::A => println!("A"),
+        _ => println!("Wild"),
+    }
+}
