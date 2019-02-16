@@ -19,8 +19,6 @@ Subject: [PATCH] Disable u128 and i128 in libcore
  src/libcore/ops/arith.rs         |  22 +++---
  src/libcore/ops/bit.rs           |  30 +++-----
  src/libcore/sync/atomic.rs       |  30 --------
- src/libcore/tests/iter.rs        |  15 ----
- src/libcore/tests/num/mod.rs     |  18 -----
  src/libcore/time.rs              | 123 -------------------------------
  src/libstd/lib.rs                |   4 -
  src/libstd/net/ip.rs             |  20 -----
@@ -884,108 +882,6 @@ index 8c5dde7..8122120 100644
  #[cfg(target_pointer_width = "16")]
  macro_rules! ptr_width {
      () => { 2 }
-diff --git a/src/libcore/tests/iter.rs b/src/libcore/tests/iter.rs
-index 51a6017..e6631db 100644
---- a/src/libcore/tests/iter.rs
-+++ b/src/libcore/tests/iter.rs
-@@ -217,8 +217,6 @@ fn test_iterator_step_by_nth_overflow() {
-     type Bigger = u32;
-     #[cfg(target_pointer_width = "32")]
-     type Bigger = u64;
--    #[cfg(target_pointer_width = "64")]
--    type Bigger = u128;
- 
-     #[derive(Clone)]
-     struct Test(Bigger);
-@@ -1976,19 +1974,6 @@ fn test_step_replace_signed() {
-     assert_eq!(y, 5);
- }
- 
--#[test]
--fn test_step_replace_no_between() {
--    let mut x = 4u128;
--    let y = x.replace_zero();
--    assert_eq!(x, 0);
--    assert_eq!(y, 4);
--
--    x = 5;
--    let y = x.replace_one();
--    assert_eq!(x, 1);
--    assert_eq!(y, 5);
--}
--
- #[test]
- fn test_rev_try_folds() {
-     let f = &|acc, x| i32::checked_add(2*acc, x);
-diff --git a/src/libcore/tests/num/mod.rs b/src/libcore/tests/num/mod.rs
-index ab638e0..4a2aa4c 100644
---- a/src/libcore/tests/num/mod.rs
-+++ b/src/libcore/tests/num/mod.rs
-@@ -180,12 +180,10 @@ test_impl_from! { test_boolu8, bool, u8 }
- test_impl_from! { test_boolu16, bool, u16 }
- test_impl_from! { test_boolu32, bool, u32 }
- test_impl_from! { test_boolu64, bool, u64 }
--test_impl_from! { test_boolu128, bool, u128 }
- test_impl_from! { test_booli8, bool, i8 }
- test_impl_from! { test_booli16, bool, i16 }
- test_impl_from! { test_booli32, bool, i32 }
- test_impl_from! { test_booli64, bool, i64 }
--test_impl_from! { test_booli128, bool, i128 }
- 
- // Signed -> Float
- test_impl_from! { test_i8f32, i8, f32 }
-@@ -267,51 +265,35 @@ test_impl_try_from_always_ok! { test_try_u8u8, u8, u8 }
- test_impl_try_from_always_ok! { test_try_u8u16, u8, u16 }
- test_impl_try_from_always_ok! { test_try_u8u32, u8, u32 }
- test_impl_try_from_always_ok! { test_try_u8u64, u8, u64 }
--test_impl_try_from_always_ok! { test_try_u8u128, u8, u128 }
- test_impl_try_from_always_ok! { test_try_u8i16, u8, i16 }
- test_impl_try_from_always_ok! { test_try_u8i32, u8, i32 }
- test_impl_try_from_always_ok! { test_try_u8i64, u8, i64 }
--test_impl_try_from_always_ok! { test_try_u8i128, u8, i128 }
- 
- test_impl_try_from_always_ok! { test_try_u16u16, u16, u16 }
- test_impl_try_from_always_ok! { test_try_u16u32, u16, u32 }
- test_impl_try_from_always_ok! { test_try_u16u64, u16, u64 }
--test_impl_try_from_always_ok! { test_try_u16u128, u16, u128 }
- test_impl_try_from_always_ok! { test_try_u16i32, u16, i32 }
- test_impl_try_from_always_ok! { test_try_u16i64, u16, i64 }
--test_impl_try_from_always_ok! { test_try_u16i128, u16, i128 }
- 
- test_impl_try_from_always_ok! { test_try_u32u32, u32, u32 }
- test_impl_try_from_always_ok! { test_try_u32u64, u32, u64 }
--test_impl_try_from_always_ok! { test_try_u32u128, u32, u128 }
- test_impl_try_from_always_ok! { test_try_u32i64, u32, i64 }
--test_impl_try_from_always_ok! { test_try_u32i128, u32, i128 }
- 
- test_impl_try_from_always_ok! { test_try_u64u64, u64, u64 }
--test_impl_try_from_always_ok! { test_try_u64u128, u64, u128 }
--test_impl_try_from_always_ok! { test_try_u64i128, u64, i128 }
--
--test_impl_try_from_always_ok! { test_try_u128u128, u128, u128 }
- 
- test_impl_try_from_always_ok! { test_try_i8i8, i8, i8 }
- test_impl_try_from_always_ok! { test_try_i8i16, i8, i16 }
- test_impl_try_from_always_ok! { test_try_i8i32, i8, i32 }
- test_impl_try_from_always_ok! { test_try_i8i64, i8, i64 }
--test_impl_try_from_always_ok! { test_try_i8i128, i8, i128 }
- 
- test_impl_try_from_always_ok! { test_try_i16i16, i16, i16 }
- test_impl_try_from_always_ok! { test_try_i16i32, i16, i32 }
- test_impl_try_from_always_ok! { test_try_i16i64, i16, i64 }
--test_impl_try_from_always_ok! { test_try_i16i128, i16, i128 }
- 
- test_impl_try_from_always_ok! { test_try_i32i32, i32, i32 }
- test_impl_try_from_always_ok! { test_try_i32i64, i32, i64 }
--test_impl_try_from_always_ok! { test_try_i32i128, i32, i128 }
- 
- test_impl_try_from_always_ok! { test_try_i64i64, i64, i64 }
--test_impl_try_from_always_ok! { test_try_i64i128, i64, i128 }
--
--test_impl_try_from_always_ok! { test_try_i128i128, i128, i128 }
- 
- test_impl_try_from_always_ok! { test_try_usizeusize, usize, usize }
- test_impl_try_from_always_ok! { test_try_isizeisize, isize, isize }
 diff --git a/src/libcore/time.rs b/src/libcore/time.rs
 index ac7e117..0dfd856 100644
 --- a/src/libcore/time.rs
