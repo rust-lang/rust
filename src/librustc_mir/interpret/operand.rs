@@ -561,7 +561,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> 
             .collect()
     }
 
-    // Used when Miri runs into a constant, and by CTFE.
+    // Used when Miri runs into a constant, and by const propagation.
     pub fn eval_lazy_const_to_op(
         &self,
         val: ty::LazyConst<'tcx>,
@@ -580,8 +580,8 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> 
         }
     }
 
-    // Used when Miri runs into a constant, and by CTFE.
-    pub fn const_to_op(
+    // Used when the miri-engine runs into a constant.
+    crate fn const_to_op(
         &self,
         val: ty::Const<'tcx>,
         layout: Option<TyLayout<'tcx>>,
