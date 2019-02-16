@@ -115,6 +115,7 @@
 #![feature(maybe_uninit)]
 #![feature(alloc_layout_extra)]
 #![feature(try_trait)]
+#![feature(iter_nth_back)]
 
 // Allow testing this library
 
