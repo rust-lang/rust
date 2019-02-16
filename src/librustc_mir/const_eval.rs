@@ -21,7 +21,7 @@ use syntax::ast::Mutability;
 use syntax::source_map::{Span, DUMMY_SP};
 
 use crate::interpret::{self,
-    PlaceTy, MPlaceTy, MemPlace, OpTy, ImmTy, Operand, Immediate, Scalar, Pointer,
+    PlaceTy, MPlaceTy, MemPlace, OpTy, ImmTy, Immediate, Scalar, Pointer,
     RawConst, ConstValue,
     EvalResult, EvalError, EvalErrorKind, GlobalId, EvalContext, StackPopCleanup,
     Allocation, AllocId, MemoryKind,
@@ -62,45 +62,46 @@ pub(crate) fn eval_promoted<'a, 'mir, 'tcx>(
     eval_body_using_ecx(&mut ecx, cid, Some(mir), param_env)
 }
 
-// FIXME: These two conversion functions are bad hacks.  We should just always use allocations.
-pub fn op_to_const<'tcx>(
+fn mplace_to_const<'tcx>(
+    ecx: &CompileTimeEvalContext<'_, '_, 'tcx>,
+    mplace: MPlaceTy<'tcx>,
+) -> EvalResult<'tcx, ty::Const<'tcx>> {
+    let MemPlace { ptr, align, meta } = *mplace;
+    // extract alloc-offset pair
+    assert!(meta.is_none());
+    let ptr = ptr.to_ptr()?;
+    let alloc = ecx.memory.get(ptr.alloc_id)?;
+    assert!(alloc.align >= align);
+    assert!(alloc.bytes.len() as u64 - ptr.offset.bytes() >= mplace.layout.size.bytes());
+    let mut alloc = alloc.clone();
+    alloc.align = align;
+    // FIXME shouldn't it be the case that `mark_static_initialized` has already
+    // interned this?  I thought that is the entire point of that `FinishStatic` stuff?
+    let alloc = ecx.tcx.intern_const_alloc(alloc);
+    let val = ConstValue::ByRef(ptr, alloc);
+    Ok(ty::Const { val, ty: mplace.layout.ty })
+}
+
+fn op_to_const<'tcx>(
     ecx: &CompileTimeEvalContext<'_, '_, 'tcx>,
     op: OpTy<'tcx>,
-    may_normalize: bool,
 ) -> EvalResult<'tcx, ty::Const<'tcx>> {
     // We do not normalize just any data.  Only scalar layout and slices.
-    let normalize = may_normalize
-        && match op.layout.abi {
-            layout::Abi::Scalar(..) => true,
-            layout::Abi::ScalarPair(..) => op.layout.ty.is_slice(),
-            _ => false,
-        };
+    let normalize = match op.layout.abi {
+        layout::Abi::Scalar(..) => true,
+        layout::Abi::ScalarPair(..) => op.layout.ty.is_slice(),
+        _ => false,
+    };
     let normalized_op = if normalize {
-        Ok(*ecx.read_immediate(op).expect("normalization works on validated constants"))
+        Err(*ecx.read_immediate(op).expect("normalization works on validated constants"))
     } else {
-        match *op {
-            Operand::Indirect(mplace) => Err(mplace),
-            Operand::Immediate(val) => Ok(val)
-        }
+        op.try_as_mplace()
     };
     let val = match normalized_op {
-        Err(MemPlace { ptr, align, meta }) => {
-            // extract alloc-offset pair
-            assert!(meta.is_none());
-            let ptr = ptr.to_ptr()?;
-            let alloc = ecx.memory.get(ptr.alloc_id)?;
-            assert!(alloc.align >= align);
-            assert!(alloc.bytes.len() as u64 - ptr.offset.bytes() >= op.layout.size.bytes());
-            let mut alloc = alloc.clone();
-            alloc.align = align;
-            // FIXME shouldn't it be the case that `mark_static_initialized` has already
-            // interned this?  I thought that is the entire point of that `FinishStatic` stuff?
-            let alloc = ecx.tcx.intern_const_alloc(alloc);
-            ConstValue::ByRef(ptr, alloc)
-        },
-        Ok(Immediate::Scalar(x)) =>
+        Ok(mplace) => return mplace_to_const(ecx, mplace),
+        Err(Immediate::Scalar(x)) =>
             ConstValue::Scalar(x.not_undef()?),
-        Ok(Immediate::ScalarPair(a, b)) =>
+        Err(Immediate::ScalarPair(a, b)) =>
             ConstValue::Slice(a.not_undef()?, b.to_usize(ecx)?),
     };
     Ok(ty::Const { val, ty: op.layout.ty })
@@ -486,7 +487,7 @@ pub fn const_field<'a, 'tcx>(
         let field = ecx.operand_field(down, field.index() as u64)?;
         // and finally move back to the const world, always normalizing because
         // this is not called for statics.
-        op_to_const(&ecx, field, true)
+        op_to_const(&ecx, field)
     })();
     result.map_err(|error| {
         let err = error_to_const_error(&ecx, error);
@@ -535,8 +536,11 @@ fn validate_and_turn_into_const<'a, 'tcx>(
         }
         // Now that we validated, turn this into a proper constant.
         let def_id = cid.instance.def.def_id();
-        let normalize = tcx.is_static(def_id).is_none() && cid.promoted.is_none();
-        op_to_const(&ecx, mplace.into(), normalize)
+        if tcx.is_static(def_id).is_some() || cid.promoted.is_some() {
+            mplace_to_const(&ecx, mplace)
+        } else {
+            op_to_const(&ecx, mplace.into())
+        }
     })();
 
     val.map_err(|error| {
