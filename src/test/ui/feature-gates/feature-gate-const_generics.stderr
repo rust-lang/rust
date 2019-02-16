@@ -20,6 +20,12 @@ error: const generics in any position are currently unsupported
 LL | fn foo<const X: ()>() {} //~ ERROR const generics are unstable
    |              ^
 
-error: aborting due to 3 previous errors
+error: const generics in any position are currently unsupported
+  --> $DIR/feature-gate-const_generics.rs:4:18
+   |
+LL | struct Foo<const X: usize>([(); X]); //~ ERROR const generics are unstable
+   |                  ^
+
+error: aborting due to 4 previous errors
 
 For more information about this error, try `rustc --explain E0658`.

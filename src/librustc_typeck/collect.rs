@@ -1053,12 +1053,13 @@ fn generics_of<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: DefId) -> &'tcx ty
                         );
                     }
 
+                    // Emit an error, but skip the parameter rather than aborting to
+                    // continue to get other errors.
                     tcx.sess.struct_span_err(
                         param.span,
                         "const generics in any position are currently unsupported",
                     ).emit();
-                    tcx.sess.abort_if_errors();
-                    bug!();
+                    None
                 }
                 _ => None,
             }),

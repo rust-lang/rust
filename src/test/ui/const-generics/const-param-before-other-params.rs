@@ -8,6 +8,7 @@ fn foo<const X: (), T>(_: T) {
 
 fn bar<const X: (), 'a>(_: &'a ()) {
     //~^ ERROR lifetime parameters must be declared prior to const parameters
+    //~^^ ERROR const generics in any position are currently unsupported
 }
 
 fn main() {}
