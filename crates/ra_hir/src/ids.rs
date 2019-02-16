@@ -74,7 +74,10 @@ impl HirFileId {
         }
     }
 
-    pub(crate) fn as_original_file(self) -> FileId {
+    /// XXX: this is a temporary function, which should go away when we implement the
+    /// nameresolution+macro expansion combo. Prefer using `original_file` if
+    /// possible.
+    pub fn as_original_file(self) -> FileId {
         match self.0 {
             HirFileIdRepr::File(file_id) => file_id,
             HirFileIdRepr::Macro(_r) => panic!("macro generated file: {:?}", self),

@@ -38,9 +38,9 @@ impl ImplSourceMap {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct ImplBlock {
-    module_impl_blocks: Arc<ModuleImplBlocks>,
+    module: Module,
     impl_id: ImplId,
 }
 
@@ -50,42 +50,45 @@ impl ImplBlock {
         item: ImplItem,
     ) -> Option<ImplBlock> {
         let impl_id = *module_impl_blocks.impls_by_def.get(&item)?;
-        Some(ImplBlock { module_impl_blocks, impl_id })
+        Some(ImplBlock { module: module_impl_blocks.module, impl_id })
     }
 
-    pub(crate) fn from_id(module_impl_blocks: Arc<ModuleImplBlocks>, impl_id: ImplId) -> ImplBlock {
-        ImplBlock { module_impl_blocks, impl_id }
+    pub(crate) fn from_id(module: Module, impl_id: ImplId) -> ImplBlock {
+        ImplBlock { module, impl_id }
+    }
+
+    /// Returns the syntax of the impl block
+    pub fn source(&self, db: &impl HirDatabase) -> (HirFileId, TreeArc<ast::ImplBlock>) {
+        let source_map = db.impls_in_module_source_map(self.module);
+        let (file_id, source) = self.module.definition_source(db);
+        (file_id, source_map.get(&source, self.impl_id))
     }
 
     pub fn id(&self) -> ImplId {
         self.impl_id
     }
 
-    fn impl_data(&self) -> &ImplData {
-        &self.module_impl_blocks.impls[self.impl_id]
-    }
-
     pub fn module(&self) -> Module {
-        self.module_impl_blocks.module
+        self.module
     }
 
-    pub fn target_trait_ref(&self) -> Option<&TypeRef> {
-        self.impl_data().target_trait()
+    pub fn target_trait_ref(&self, db: &impl HirDatabase) -> Option<TypeRef> {
+        db.impls_in_module(self.module).impls[self.impl_id].target_trait().cloned()
     }
 
-    pub fn target_type(&self) -> &TypeRef {
-        self.impl_data().target_type()
+    pub fn target_type(&self, db: &impl HirDatabase) -> TypeRef {
+        db.impls_in_module(self.module).impls[self.impl_id].target_type().clone()
     }
 
     pub fn target_ty(&self, db: &impl HirDatabase) -> Ty {
-        Ty::from_hir(db, &self.resolver(db), self.target_type())
+        Ty::from_hir(db, &self.resolver(db), &self.target_type(db))
     }
 
     pub fn target_trait(&self, db: &impl HirDatabase) -> Option<Trait> {
-        if let Some(TypeRef::Path(path)) = self.target_trait_ref() {
+        if let Some(TypeRef::Path(path)) = self.target_trait_ref(db) {
             let resolver = self.resolver(db);
             if let Some(Resolution::Def(ModuleDef::Trait(tr))) =
-                resolver.resolve_path(db, path).take_types()
+                resolver.resolve_path(db, &path).take_types()
             {
                 return Some(tr);
             }
@@ -93,8 +96,8 @@ impl ImplBlock {
         None
     }
 
-    pub fn items(&self) -> &[ImplItem] {
-        self.impl_data().items()
+    pub fn items(&self, db: &impl HirDatabase) -> Vec<ImplItem> {
+        db.impls_in_module(self.module).impls[self.impl_id].items().to_vec()
     }
 
     pub fn resolver(&self, db: &impl HirDatabase) -> Resolver {
@@ -181,7 +184,7 @@ impl_arena_id!(ImplId);
 /// we don't need to do the second step again.
 #[derive(Debug, PartialEq, Eq)]
 pub struct ModuleImplBlocks {
-    module: Module,
+    pub(crate) module: Module,
     pub(crate) impls: Arena<ImplId, ImplData>,
     impls_by_def: FxHashMap<ImplItem, ImplId>,
 }

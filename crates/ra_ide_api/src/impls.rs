@@ -50,8 +50,8 @@ fn impls_for_def(
 
     Some(
         impls
-            .lookup_impl_blocks(db, &ty)
-            .map(|(module, imp)| NavigationTarget::from_impl_block(db, module, &imp))
+            .lookup_impl_blocks(&ty)
+            .map(|imp| NavigationTarget::from_impl_block(db, imp))
             .collect(),
     )
 }
@@ -68,8 +68,8 @@ fn impls_for_trait(
 
     Some(
         impls
-            .lookup_impl_blocks_for_trait(db, &tr)
-            .map(|(module, imp)| NavigationTarget::from_impl_block(db, module, &imp))
+            .lookup_impl_blocks_for_trait(&tr)
+            .map(|imp| NavigationTarget::from_impl_block(db, imp))
             .collect(),
     )
 }

@@ -40,32 +40,25 @@ pub struct CrateImplBlocks {
 }
 
 impl CrateImplBlocks {
-    pub fn lookup_impl_blocks<'a>(
-        &'a self,
-        db: &'a impl HirDatabase,
-        ty: &Ty,
-    ) -> impl Iterator<Item = (Module, ImplBlock)> + 'a {
+    pub fn lookup_impl_blocks<'a>(&'a self, ty: &Ty) -> impl Iterator<Item = ImplBlock> + 'a {
         let fingerprint = TyFingerprint::for_impl(ty);
         fingerprint.and_then(|f| self.impls.get(&f)).into_iter().flat_map(|i| i.iter()).map(
             move |(module_id, impl_id)| {
                 let module = Module { krate: self.krate, module_id: *module_id };
-                let module_impl_blocks = db.impls_in_module(module);
-                (module, ImplBlock::from_id(module_impl_blocks, *impl_id))
+                ImplBlock::from_id(module, *impl_id)
             },
         )
     }
 
     pub fn lookup_impl_blocks_for_trait<'a>(
         &'a self,
-        db: &'a impl HirDatabase,
         tr: &Trait,
-    ) -> impl Iterator<Item = (Module, ImplBlock)> + 'a {
+    ) -> impl Iterator<Item = ImplBlock> + 'a {
         let id = tr.id;
         self.impls_by_trait.get(&id).into_iter().flat_map(|i| i.iter()).map(
             move |(module_id, impl_id)| {
                 let module = Module { krate: self.krate, module_id: *module_id };
-                let module_impl_blocks = db.impls_in_module(module);
-                (module, ImplBlock::from_id(module_impl_blocks, *impl_id))
+                ImplBlock::from_id(module, *impl_id)
             },
         )
     }
@@ -74,7 +67,7 @@ impl CrateImplBlocks {
         let module_impl_blocks = db.impls_in_module(module.clone());
 
         for (impl_id, _) in module_impl_blocks.impls.iter() {
-            let impl_block = ImplBlock::from_id(Arc::clone(&module_impl_blocks), impl_id);
+            let impl_block = ImplBlock::from_id(module_impl_blocks.module, impl_id);
 
             let target_ty = impl_block.target_ty(db);
 
@@ -159,11 +152,11 @@ impl Ty {
             };
             let impls = db.impls_in_crate(krate);
 
-            for (_, impl_block) in impls.lookup_impl_blocks(db, &derefed_ty) {
-                for item in impl_block.items() {
+            for impl_block in impls.lookup_impl_blocks(&derefed_ty) {
+                for item in impl_block.items(db) {
                     match item {
                         ImplItem::Method(f) => {
-                            if let Some(result) = callback(*f) {
+                            if let Some(result) = callback(f) {
                                 return Some(result);
                             }
                         }
@@ -185,9 +178,9 @@ impl Ty {
         let krate = def_crate(db, &self)?;
         let impls = db.impls_in_crate(krate);
 
-        for (_, impl_block) in impls.lookup_impl_blocks(db, &self) {
-            for item in impl_block.items() {
-                if let Some(result) = callback(*item) {
+        for impl_block in impls.lookup_impl_blocks(&self) {
+            for item in impl_block.items(db) {
+                if let Some(result) = callback(item) {
                     return Some(result);
                 }
             }

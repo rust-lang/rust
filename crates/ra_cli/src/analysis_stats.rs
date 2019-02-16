@@ -36,10 +36,10 @@ pub fn run(verbose: bool) -> Result<()> {
             }
 
             for impl_block in module.impl_blocks(&db) {
-                for item in impl_block.items() {
+                for item in impl_block.items(&db) {
                     num_decls += 1;
                     match item {
-                        ImplItem::Method(f) => funcs.push(*f),
+                        ImplItem::Method(f) => funcs.push(f),
                         _ => {}
                     }
                 }

@@ -1,7 +1,7 @@
 use std::sync::Arc;
 
 use relative_path::RelativePathBuf;
-use ra_db::{CrateId, FileId, SourceRootId, Edition};
+use ra_db::{CrateId, SourceRootId, Edition};
 use ra_syntax::{ast::self, TreeArc, SyntaxNode};
 
 use crate::{
@@ -16,7 +16,7 @@ use crate::{
     docs::{Documentation, Docs, docs_from_ast},
     module_tree::ModuleId,
     ids::{FunctionId, StructId, EnumId, AstItemDef, ConstId, StaticId, TraitId, TypeId},
-    impl_block::{ImplId, ImplBlock},
+    impl_block::ImplBlock,
     resolve::Resolver,
 };
 
@@ -107,7 +107,7 @@ impl Module {
     }
 
     /// Returns a node which defines this module. That is, a file or a `mod foo {}` with items.
-    pub fn definition_source(&self, db: &impl PersistentHirDatabase) -> (FileId, ModuleSource) {
+    pub fn definition_source(&self, db: &impl PersistentHirDatabase) -> (HirFileId, ModuleSource) {
         self.definition_source_impl(db)
     }
 
@@ -116,7 +116,7 @@ impl Module {
     pub fn declaration_source(
         &self,
         db: &impl HirDatabase,
-    ) -> Option<(FileId, TreeArc<ast::Module>)> {
+    ) -> Option<(HirFileId, TreeArc<ast::Module>)> {
         self.declaration_source_impl(db)
     }
 
@@ -127,11 +127,6 @@ impl Module {
         import: ImportId,
     ) -> TreeArc<ast::PathSegment> {
         self.import_source_impl(db, import)
-    }
-
-    /// Returns the syntax of the impl block in this module
-    pub fn impl_source(&self, db: &impl HirDatabase, impl_id: ImplId) -> TreeArc<ast::ImplBlock> {
-        self.impl_source_impl(db, impl_id)
     }
 
     /// Returns the crate this module is part of.
@@ -202,7 +197,7 @@ impl Module {
         module_impl_blocks
             .impls
             .iter()
-            .map(|(impl_id, _)| ImplBlock::from_id(module_impl_blocks.clone(), impl_id))
+            .map(|(impl_id, _)| ImplBlock::from_id(self, impl_id))
             .collect()
     }
 }
