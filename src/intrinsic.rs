@@ -1,8 +1,7 @@
 use rustc::mir;
+use rustc::mir::interpret::{EvalResult, PointerArithmetic};
 use rustc::ty::layout::{self, LayoutOf, Size};
 use rustc::ty;
-
-use rustc::mir::interpret::{EvalResult, PointerArithmetic};
 
 use crate::{
     PlaceTy, OpTy, ImmTy, Immediate, Scalar, ScalarMaybeUndef, Borrow,
@@ -268,7 +267,7 @@ pub trait EvalContextExt<'a, 'mir, 'tcx: 'a+'mir>: crate::MiriEvalContextExt<'a,
                 // However, this only affects direct calls of the intrinsic; calls to the stable
                 // functions wrapping them do get their validation.
                 // FIXME: should we check that the destination pointer is aligned even for ZSTs?
-                if !dest.layout.is_zst() { // nothing to do for ZST
+                if !dest.layout.is_zst() {
                     match dest.layout.abi {
                         layout::Abi::Scalar(ref s) => {
                             let x = Scalar::from_int(0, s.value.size(this));
@@ -443,7 +442,7 @@ pub trait EvalContextExt<'a, 'mir, 'tcx: 'a+'mir>: crate::MiriEvalContextExt<'a,
                 // However, this only affects direct calls of the intrinsic; calls to the stable
                 // functions wrapping them do get their validation.
                 // FIXME: should we check alignment for ZSTs?
-                if !dest.layout.is_zst() { // nothing to do for ZST
+                if !dest.layout.is_zst() {
                     match dest.layout.abi {
                         layout::Abi::Scalar(..) => {
                             let x = ScalarMaybeUndef::Undef;

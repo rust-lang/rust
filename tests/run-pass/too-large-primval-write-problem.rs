@@ -1,4 +1,4 @@
-// PrimVals in Miri are represented with 8 bytes (u64) and at the time of writing, the `-x`
+// `PrimVal`s in Miri are represented with 8 bytes (u64) and at the time of writing, the `-x`
 // will sign extend into the entire 8 bytes. Then, if you tried to write the `-x` into
 // something smaller than 8 bytes, like a 4 byte pointer, it would crash in byteorder crate
 // code that assumed only the low 4 bytes would be set. Actually, we were masking properly for

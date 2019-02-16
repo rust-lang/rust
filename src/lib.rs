@@ -4,7 +4,6 @@
 
 #[macro_use]
 extern crate log;
-
 // From rustc.
 extern crate syntax;
 #[macro_use]
@@ -12,20 +11,6 @@ extern crate rustc;
 extern crate rustc_data_structures;
 extern crate rustc_mir;
 extern crate rustc_target;
-
-use std::collections::HashMap;
-use std::borrow::Cow;
-
-use rustc::ty::{self, TyCtxt, query::TyCtxtAt};
-use rustc::ty::layout::{LayoutOf, Size, Align};
-use rustc::hir::{self, def_id::DefId};
-use rustc::mir;
-
-use syntax::attr;
-use syntax::source_map::DUMMY_SP;
-
-pub use rustc_mir::interpret::*;
-pub use rustc_mir::interpret::{self, AllocMap, PlaceTy}; // resolve ambiguity
 
 mod fn_call;
 mod operator;
@@ -36,20 +21,34 @@ mod range_map;
 mod mono_hash_map;
 mod stacked_borrows;
 
+use std::collections::HashMap;
+use std::borrow::Cow;
+
+use rustc::ty::{self, TyCtxt, query::TyCtxtAt};
+use rustc::ty::layout::{LayoutOf, Size, Align};
+use rustc::hir::{self, def_id::DefId};
+use rustc::mir;
+pub use rustc_mir::interpret::*;
+// Resolve ambiguity.
+pub use rustc_mir::interpret::{self, AllocMap, PlaceTy};
+use syntax::attr;
+use syntax::source_map::DUMMY_SP;
+
 pub use crate::fn_call::EvalContextExt as MissingFnsEvalContextExt;
 pub use crate::operator::EvalContextExt as OperatorEvalContextExt;
 pub use crate::intrinsic::EvalContextExt as IntrinsicEvalContextExt;
 pub use crate::tls::{EvalContextExt as TlsEvalContextExt, TlsData};
 use crate::range_map::RangeMap;
-#[allow(unused_imports)] // FIXME rustc bug https://github.com/rust-lang/rust/issues/53682
+// FIXME: rustc bug, issue <https://github.com/rust-lang/rust/issues/53682>.
+#[allow(unused_imports)]
 pub use crate::helpers::{EvalContextExt as HelpersEvalContextExt};
 use crate::mono_hash_map::MonoHashMap;
 pub use crate::stacked_borrows::{EvalContextExt as StackedBorEvalContextExt};
 
-// Used by priroda
+// Used by priroda.
 pub use crate::stacked_borrows::{Borrow, Stack, Stacks, BorStackItem};
 
-/// Insert rustc arguments at the beginning of the argument list that miri wants to be
+/// Insert rustc arguments at the beginning of the argument list that Miri wants to be
 /// set per default, for maximal validation power.
 pub fn miri_default_args() -> &'static [&'static str] {
     // The flags here should be kept in sync with what bootstrap adds when `test-miri` is
@@ -57,14 +56,14 @@ pub fn miri_default_args() -> &'static [&'static str] {
     &["-Zalways-encode-mir", "-Zmir-emit-retag", "-Zmir-opt-level=0", "--cfg=miri"]
 }
 
-/// Configuration needed to spawn a Miri instance
+/// Configuration needed to spawn a Miri instance.
 #[derive(Clone)]
 pub struct MiriConfig {
     pub validate: bool,
     pub args: Vec<String>,
 }
 
-// Used by priroda
+// Used by priroda.
 pub fn create_ecx<'a, 'mir: 'a, 'tcx: 'mir>(
     tcx: TyCtxt<'a, 'tcx, 'tcx>,
     main_id: DefId,
@@ -105,14 +104,15 @@ pub fn create_ecx<'a, 'mir: 'a, 'tcx: 'mir>(
         )));
     }
 
-    // Return value (in static memory so that it does not count as leak)
+    // Return value (in static memory so that it does not count as leak).
     let ret = ecx.layout_of(start_mir.return_ty())?;
     let ret_ptr = ecx.allocate(ret, MiriMemoryKind::MutStatic.into());
 
-    // Push our stack frame
+    // Push our stack frame.
     ecx.push_stack_frame(
         start_instance,
-        DUMMY_SP, // there is no call site, we want no span
+        // There is no call site.
+        DUMMY_SP,
         start_mir,
         Some(ret_ptr.into()),
         StackPopCleanup::None { cleanup: true },
@@ -120,26 +120,26 @@ pub fn create_ecx<'a, 'mir: 'a, 'tcx: 'mir>(
 
     let mut args = ecx.frame().mir.args_iter();
 
-    // First argument: pointer to main()
+    // First argument: pointer to `main()`.
     let main_ptr = ecx.memory_mut().create_fn_alloc(main_instance).with_default_tag();
     let dest = ecx.eval_place(&mir::Place::Local(args.next().unwrap()))?;
     ecx.write_scalar(Scalar::Ptr(main_ptr), dest)?;
 
-    // Second argument (argc): 1
+    // Second argument (argc): `1`.
     let dest = ecx.eval_place(&mir::Place::Local(args.next().unwrap()))?;
     let argc = Scalar::from_uint(config.args.len() as u128, dest.layout.size);
     ecx.write_scalar(argc, dest)?;
-    // Store argc for macOS _NSGetArgc
+    // Store argc for macOS: `_NSGetArgc`.
     {
         let argc_place = ecx.allocate(dest.layout, MiriMemoryKind::Env.into());
         ecx.write_scalar(argc, argc_place.into())?;
         ecx.machine.argc = Some(argc_place.ptr.to_ptr()?);
     }
 
-    // FIXME: extract main source file path
-    // Third argument (argv): Created from config.args
+    // FIXME: extract main source file path.
+    // Third argument (`argv`): created from `config.args`.
     let dest = ecx.eval_place(&mir::Place::Local(args.next().unwrap()))?;
-    // For Windows, construct a command string with all the aguments
+    // For Windows, construct a command string with all the aguments.
     let mut cmd = String::new();
     for arg in config.args.iter() {
         if !cmd.is_empty() {
@@ -147,11 +147,12 @@ pub fn create_ecx<'a, 'mir: 'a, 'tcx: 'mir>(
         }
         cmd.push_str(&*shell_escape::windows::escape(arg.as_str().into()));
     }
-    cmd.push(std::char::from_u32(0).unwrap()); // don't forget 0 terminator
+    // Don't forget `0` terminator.
+    cmd.push(std::char::from_u32(0).unwrap());
     // Collect the pointers to the individual strings.
     let mut argvs = Vec::<Pointer<Borrow>>::new();
     for arg in config.args {
-        // Add 0 terminator
+        // Add `0` terminator.
         let mut arg = arg.into_bytes();
         arg.push(0);
         argvs.push(ecx.memory_mut().allocate_static_bytes(arg.as_slice()).with_default_tag());
@@ -164,16 +165,16 @@ pub fn create_ecx<'a, 'mir: 'a, 'tcx: 'mir>(
         ecx.write_scalar(Scalar::Ptr(arg), place.into())?;
     }
     ecx.memory_mut().mark_immutable(argvs_place.to_ptr()?.alloc_id)?;
-    // Write a pointe to that place as the argument.
+    // Write a pointer to that place as the argument.
     let argv = argvs_place.ptr;
     ecx.write_scalar(argv, dest)?;
-    // Store argv for macOS _NSGetArgv
+    // Store `argv` for macOS `_NSGetArgv`.
     {
         let argv_place = ecx.allocate(dest.layout, MiriMemoryKind::Env.into());
         ecx.write_scalar(argv, argv_place.into())?;
         ecx.machine.argv = Some(argv_place.ptr.to_ptr()?);
     }
-    // Store cmdline as UTF-16 for Windows GetCommandLineW
+    // Store command line as UTF-16 for Windows `GetCommandLineW`.
     {
         let tcx = &{ecx.tcx.tcx};
         let cmd_utf16: Vec<u16> = cmd.encode_utf16().collect();
@@ -183,7 +184,7 @@ pub fn create_ecx<'a, 'mir: 'a, 'tcx: 'mir>(
             MiriMemoryKind::Env.into(),
         ).with_default_tag();
         ecx.machine.cmd_line = Some(cmd_ptr);
-        // store the UTF-16 string
+        // Store the UTF-16 string.
         let char_size = Size::from_bytes(2);
         let cmd_alloc = ecx.memory_mut().get_mut(cmd_ptr.alloc_id)?;
         let mut cur_ptr = cmd_ptr;
@@ -208,9 +209,9 @@ pub fn eval_main<'a, 'tcx: 'a>(
     main_id: DefId,
     config: MiriConfig,
 ) {
-    let mut ecx = create_ecx(tcx, main_id, config).expect("Couldn't create ecx");
+    let mut ecx = create_ecx(tcx, main_id, config).expect("couldn't create ecx");
 
-    // Run! The main execution.
+    // Perform the main execution.
     let res: EvalResult = (|| {
         ecx.run()?;
         ecx.run_tls_dtors()
@@ -243,7 +244,7 @@ pub fn eval_main<'a, 'tcx: 'a>(
                 let mut err = struct_error(ecx.tcx.tcx.at(span), msg.as_str());
                 let frames = ecx.generate_stacktrace(None);
                 err.span_label(span, e);
-                // we iterate with indices because we need to look at the next frame (the caller)
+                // We iterate with indices because we need to look at the next frame (the caller).
                 for idx in 0..frames.len() {
                     let frame_info = &frames[idx];
                     let call_site_is_local = frames.get(idx+1).map_or(false,
@@ -273,16 +274,15 @@ pub fn eval_main<'a, 'tcx: 'a>(
     }
 }
 
-
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
 pub enum MiriMemoryKind {
-    /// `__rust_alloc` memory
+    /// `__rust_alloc` memory.
     Rust,
-    /// `malloc` memory
+    /// `malloc` memory.
     C,
-    /// Part of env var emulation
+    /// Part of env var emulation.
     Env,
-    /// mutable statics
+    /// Mutable statics.
     MutStatic,
 }
 
@@ -305,27 +305,27 @@ impl MayLeak for MiriMemoryKind {
 }
 
 pub struct Evaluator<'tcx> {
-    /// Environment variables set by `setenv`
-    /// Miri does not expose env vars from the host to the emulated program
+    /// Environment variables set by `setenv`.
+    /// Miri does not expose env vars from the host to the emulated program.
     pub(crate) env_vars: HashMap<Vec<u8>, Pointer<Borrow>>,
 
     /// Program arguments (`Option` because we can only initialize them after creating the ecx).
     /// These are *pointers* to argc/argv because macOS.
-    /// We also need the full cmdline as one string because Window.
+    /// We also need the full command line as one string because of Windows.
     pub(crate) argc: Option<Pointer<Borrow>>,
     pub(crate) argv: Option<Pointer<Borrow>>,
     pub(crate) cmd_line: Option<Pointer<Borrow>>,
 
-    /// Last OS error
+    /// Last OS error.
     pub(crate) last_error: u32,
 
-    /// TLS state
+    /// TLS state.
     pub(crate) tls: TlsData<'tcx>,
 
-    /// Whether to enforce the validity invariant
+    /// Whether to enforce the validity invariant.
     pub(crate) validate: bool,
 
-    /// Stacked Borrows state
+    /// Stacked Borrows state.
     pub(crate) stacked_borrows: stacked_borrows::State,
 }
 
@@ -344,10 +344,11 @@ impl<'tcx> Evaluator<'tcx> {
     }
 }
 
-#[allow(dead_code)] // FIXME https://github.com/rust-lang/rust/issues/47131
+// FIXME: rustc issue <https://github.com/rust-lang/rust/issues/47131>.
+#[allow(dead_code)]
 type MiriEvalContext<'a, 'mir, 'tcx> = EvalContext<'a, 'mir, 'tcx, Evaluator<'tcx>>;
 
-// A little trait that's useful to be inherited by extension traits
+// A little trait that's useful to be inherited by extension traits.
 pub trait MiriEvalContextExt<'a, 'mir, 'tcx> {
     fn eval_context_ref(&self) -> &MiriEvalContext<'a, 'mir, 'tcx>;
     fn eval_context_mut(&mut self) -> &mut MiriEvalContext<'a, 'mir, 'tcx>;
@@ -380,7 +381,7 @@ impl<'a, 'mir, 'tcx> Machine<'a, 'mir, 'tcx> for Evaluator<'tcx> {
         ecx.machine.validate
     }
 
-    /// Returns Ok() when the function was handled, fail otherwise
+    /// Returns `Ok()` when the function was handled; fail otherwise.
     #[inline(always)]
     fn find_fn(
         ecx: &mut EvalContext<'a, 'mir, 'tcx, Self>,
@@ -417,7 +418,7 @@ impl<'a, 'mir, 'tcx> Machine<'a, 'mir, 'tcx> for Evaluator<'tcx> {
         dest: PlaceTy<'tcx, Borrow>,
     ) -> EvalResult<'tcx> {
         trace!("box_alloc for {:?}", dest.layout.ty);
-        // Call the `exchange_malloc` lang item
+        // Call the `exchange_malloc` lang item.
         let malloc = ecx.tcx.lang_items().exchange_malloc_fn().unwrap();
         let malloc = ty::Instance::mono(ecx.tcx.tcx, malloc);
         let malloc_mir = ecx.load_mir(malloc.def)?;
@@ -426,28 +427,31 @@ impl<'a, 'mir, 'tcx> Machine<'a, 'mir, 'tcx> for Evaluator<'tcx> {
             malloc_mir.span,
             malloc_mir,
             Some(dest),
-            // Don't do anything when we are done.  The statement() function will increment
+            // Don't do anything when we are done. The `statement()` function will increment
             // the old stack frame's stmt counter to the next statement, which means that when
-            // exchange_malloc returns, we go on evaluating exactly where we want to be.
+            // `exchange_malloc` returns, we go on evaluating exactly where we want to be.
             StackPopCleanup::None { cleanup: true },
         )?;
 
         let mut args = ecx.frame().mir.args_iter();
         let layout = ecx.layout_of(dest.layout.ty.builtin_deref(false).unwrap().ty)?;
 
-        // First argument: size
-        // (0 is allowed here, this is expected to be handled by the lang item)
+        // First argument: `size`.
+        // (`0` is allowed here -- this is expected to be handled by the lang item).
         let arg = ecx.eval_place(&mir::Place::Local(args.next().unwrap()))?;
         let size = layout.size.bytes();
         ecx.write_scalar(Scalar::from_uint(size, arg.layout.size), arg)?;
 
-        // Second argument: align
+        // Second argument: `align`.
         let arg = ecx.eval_place(&mir::Place::Local(args.next().unwrap()))?;
         let align = layout.align.abi.bytes();
         ecx.write_scalar(Scalar::from_uint(align, arg.layout.size), arg)?;
 
-        // No more arguments
-        assert!(args.next().is_none(), "exchange_malloc lang item has more arguments than expected");
+        // No more arguments.
+        assert!(
+            args.next().is_none(),
+            "`exchange_malloc` lang item has more arguments than expected"
+        );
         Ok(())
     }
 
@@ -464,7 +468,7 @@ impl<'a, 'mir, 'tcx> Machine<'a, 'mir, 'tcx> for Evaluator<'tcx> {
 
         let alloc = match &link_name[..] {
             "__cxa_thread_atexit_impl" => {
-                // This should be all-zero, pointer-sized
+                // This should be all-zero, pointer-sized.
                 let size = tcx.data_layout.pointer_size;
                 let data = vec![0; size.bytes() as usize];
                 let extra = AllocationExtra::memory_allocated(size, memory_extra);
@@ -480,7 +484,7 @@ impl<'a, 'mir, 'tcx> Machine<'a, 'mir, 'tcx> for Evaluator<'tcx> {
     #[inline(always)]
     fn before_terminator(_ecx: &mut EvalContext<'a, 'mir, 'tcx, Self>) -> EvalResult<'tcx>
     {
-        // We are not interested in detecting loops
+        // We are not interested in detecting loops.
         Ok(())
     }
 
@@ -513,16 +517,16 @@ impl<'a, 'mir, 'tcx> Machine<'a, 'mir, 'tcx> for Evaluator<'tcx> {
         mutability: Option<hir::Mutability>,
     ) -> EvalResult<'tcx, Scalar<Borrow>> {
         let size = ecx.size_and_align_of_mplace(place)?.map(|(size, _)| size)
-            // for extern types, just cover what we can
+            // For extern types, just cover what we can.
             .unwrap_or_else(|| place.layout.size);
         if !ecx.tcx.sess.opts.debugging_opts.mir_emit_retag ||
             !Self::enforce_validity(ecx) || size == Size::ZERO
         {
-            // No tracking
+            // No tracking.
             Ok(place.ptr)
         } else {
             ecx.ptr_dereference(place, size, mutability.into())?;
-            // We never change the pointer
+            // We never change the pointer.
             Ok(place.ptr)
         }
     }
@@ -534,7 +538,7 @@ impl<'a, 'mir, 'tcx> Machine<'a, 'mir, 'tcx> for Evaluator<'tcx> {
         kind: MemoryKind<Self::MemoryKinds>,
     ) -> Pointer<Borrow> {
         if !ecx.machine.validate {
-            // No tracking
+            // No tracking.
             ptr.with_default_tag()
         } else {
             let tag = ecx.tag_new_allocation(ptr.alloc_id, kind);

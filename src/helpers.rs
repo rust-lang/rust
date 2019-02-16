@@ -6,8 +6,9 @@ use rustc::hir::def_id::{DefId, CRATE_DEF_INDEX};
 use crate::*;
 
 impl<'a, 'mir, 'tcx> EvalContextExt<'a, 'mir, 'tcx> for crate::MiriEvalContext<'a, 'mir, 'tcx> {}
-pub trait EvalContextExt<'a, 'mir, 'tcx: 'a+'mir>: crate::MiriEvalContextExt<'a, 'mir, 'tcx> {
-    /// Get an instance for a path.
+
+pub trait EvalContextExt<'a, 'mir, 'tcx: 'a + 'mir>: crate::MiriEvalContextExt<'a, 'mir, 'tcx> {
+    /// Gets an instance for a path.
     fn resolve_path(&self, path: &[&str]) -> EvalResult<'tcx, ty::Instance<'tcx>> {
         let this = self.eval_context_ref();
         this.tcx
@@ -42,7 +43,7 @@ pub trait EvalContextExt<'a, 'mir, 'tcx: 'a+'mir>: crate::MiriEvalContextExt<'a,
             })
     }
 
-    /// Visit the memory covered by `place`, sensitive to freezing:  The 3rd parameter
+    /// Visits the memory covered by `place`, sensitive to freezing: the 3rd parameter
     /// will be true if this is frozen, false if this is in an `UnsafeCell`.
     fn visit_freeze_sensitive(
         &self,
@@ -57,7 +58,7 @@ pub trait EvalContextExt<'a, 'mir, 'tcx: 'a+'mir>: crate::MiriEvalContextExt<'a,
             .map(|(size, _)| size)
             .unwrap_or_else(|| place.layout.size)
         );
-        // Store how far we proceeded into the place so far.  Everything to the left of
+        // Store how far we proceeded into the place so far. Everything to the left of
         // this offset has already been handled, in the sense that the frozen parts
         // have had `action` called on them.
         let mut end_ptr = place.ptr;
@@ -139,7 +140,7 @@ pub trait EvalContextExt<'a, 'mir, 'tcx: 'a+'mir>: crate::MiriEvalContextExt<'a,
                 &self.ecx
             }
 
-            // Hook to detect `UnsafeCell`
+            // Hook to detect `UnsafeCell`.
             fn visit_value(&mut self, v: MPlaceTy<'tcx, Borrow>) -> EvalResult<'tcx>
             {
                 trace!("UnsafeCellVisitor: {:?} {:?}", *v, v.layout.ty);
@@ -159,7 +160,7 @@ pub trait EvalContextExt<'a, 'mir, 'tcx: 'a+'mir>: crate::MiriEvalContextExt<'a,
                 }
             }
 
-            // Make sure we visit aggregrates in increasing offset order
+            // Make sure we visit aggregrates in increasing offset order.
             fn visit_aggregate(
                 &mut self,
                 place: MPlaceTy<'tcx, Borrow>,
@@ -179,17 +180,17 @@ pub trait EvalContextExt<'a, 'mir, 'tcx: 'a+'mir>: crate::MiriEvalContextExt<'a,
                     }
                     layout::FieldPlacement::Union { .. } => {
                         // Uh, what?
-                        bug!("A union is not an aggregate we should ever visit")
+                        bug!("a union is not an aggregate we should ever visit")
                     }
                 }
             }
 
-            // We have to do *something* for unions
+            // We have to do *something* for unions.
             fn visit_union(&mut self, v: MPlaceTy<'tcx, Borrow>) -> EvalResult<'tcx>
             {
                 // With unions, we fall back to whatever the type says, to hopefully be consistent
                 // with LLVM IR.
-                // FIXME Are we consistent?  And is this really the behavior we want?
+                // FIXME: are we consistent, and is this really the behavior we want?
                 let frozen = self.ecx.type_is_freeze(v.layout.ty);
                 if frozen {
                     Ok(())
@@ -198,10 +199,10 @@ pub trait EvalContextExt<'a, 'mir, 'tcx: 'a+'mir>: crate::MiriEvalContextExt<'a,
                 }
             }
 
-            // We should never get to a primitive, but always short-circuit somewhere above
+            // We should never get to a primitive, but always short-circuit somewhere above.
             fn visit_primitive(&mut self, _v: MPlaceTy<'tcx, Borrow>) -> EvalResult<'tcx>
             {
-                bug!("We should always short-circit before coming to a primitive")
+                bug!("we should always short-circuit before coming to a primitive")
             }
         }
     }

@@ -15,16 +15,15 @@ use crate::{
 pub type Timestamp = u64;
 pub type CallId = u64;
 
-/// Information about which kind of borrow was used to create the reference this is tagged
-/// with.
+/// Information about which kind of borrow was used to create the reference this is tagged with.
 #[derive(Copy, Clone, Debug, Hash, PartialEq, Eq)]
 pub enum Borrow {
     /// A unique (mutable) reference.
     Uniq(Timestamp),
-    /// An aliasing reference.  This is also used by raw pointers, which do not track details
+    /// An aliasing reference. This is also used by raw pointers, which do not track details
     /// of how or when they were created, hence the timestamp is optional.
-    /// Shr(Some(_)) does NOT mean that the destination of this reference is frozen;
-    /// that depends on the type!  Only those parts outside of an `UnsafeCell` are actually
+    /// `Shr(Some(_))` does *not* mean that the destination of this reference is frozen;
+    /// that depends on the type! Only those parts outside of an `UnsafeCell` are actually
     /// frozen.
     Alias(Option<Timestamp>),
 }
@@ -53,23 +52,25 @@ impl Default for Borrow {
     }
 }
 
-/// An item in the per-location borrow stack
+/// An item in the per-location borrow stack.
 #[derive(Copy, Clone, Debug, Hash, PartialEq, Eq)]
 pub enum BorStackItem {
     /// Indicates the unique reference that may mutate.
     Uniq(Timestamp),
-    /// Indicates that the location has been mutably shared.  Used for raw pointers as
+    /// Indicates that the location has been mutably shared. Used for raw pointers as
     /// well as for unfrozen shared references.
     Raw,
-    /// A barrier, tracking the function it belongs to by its index on the call stack
+    /// A barrier, tracking the function it belongs to by its index on the call stack.
     FnBarrier(CallId)
 }
 
-/// Extra per-location state
+/// Extra per-location state.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Stack {
-    borrows: Vec<BorStackItem>, // used as a stack; never empty
-    frozen_since: Option<Timestamp>, // virtual frozen "item" on top of the stack
+    /// Used as the stack; never empty.
+    borrows: Vec<BorStackItem>,
+    /// A virtual frozen "item" on top of the stack.
+    frozen_since: Option<Timestamp>,
 }
 
 impl Stack {
@@ -79,18 +80,18 @@ impl Stack {
     }
 }
 
-/// What kind of reference is being used?
+/// Indicates which kind of reference is being used.
 #[derive(Copy, Clone, Debug, Hash, PartialEq, Eq)]
 pub enum RefKind {
-    /// &mut
+    /// `&mut`.
     Unique,
-    /// & without interior mutability
+    /// `&` without interior mutability.
     Frozen,
-    /// * (raw pointer) or & to `UnsafeCell`
+    /// `*` (raw pointer) or `&` to `UnsafeCell`.
     Raw,
 }
 
-/// What kind of access is being performed?
+/// Indicates which kind of access is being performed.
 #[derive(Copy, Clone, Debug, Hash, PartialEq, Eq)]
 pub enum AccessKind {
     Read,
@@ -98,7 +99,7 @@ pub enum AccessKind {
     Dealloc,
 }
 
-/// Extra global state in the memory, available to the memory access hooks
+/// Extra global state in the memory, available to the memory access hooks.
 #[derive(Debug)]
 pub struct BarrierTracking {
     next_id: CallId,
@@ -133,7 +134,7 @@ impl BarrierTracking {
     }
 }
 
-/// Extra global machine state
+/// Extra global machine state.
 #[derive(Clone, Debug)]
 pub struct State {
     clock: Timestamp
@@ -153,7 +154,7 @@ impl State {
     }
 }
 
-/// Extra per-allocation state
+/// Extra per-allocation state.
 #[derive(Clone, Debug)]
 pub struct Stacks {
     // Even reading memory can have effects on the stack, so we need a `RefCell` here.
@@ -164,18 +165,19 @@ pub struct Stacks {
 /// Core per-location operations: deref, access, create.
 /// We need to make at least the following things true:
 ///
-/// U1: After creating a Uniq, it is at the top (+unfrozen).
-/// U2: If the top is Uniq (+unfrozen), accesses must be through that Uniq or pop it.
-/// U3: If an access (deref sufficient?) happens with a Uniq, it requires the Uniq to be in the stack.
+/// U1: After creating a `Uniq`, it is at the top (and unfrozen).
+/// U2: If the top is `Uniq` (and unfrozen), accesses must be through that `Uniq` or pop it.
+/// U3: If an access (deref sufficient?) happens with a `Uniq`, it requires the `Uniq` to be in the stack.
 ///
-/// F1: After creating a &, the parts outside `UnsafeCell` are frozen.
+/// F1: After creating a `&`, the parts outside `UnsafeCell` are frozen.
 /// F2: If a write access happens, it unfreezes.
-/// F3: If an access (well, a deref) happens with an & outside `UnsafeCell`, it requires the location to still be frozen.
+/// F3: If an access (well, a deref) happens with an `&` outside `UnsafeCell`,
+///     it requires the location to still be frozen.
 impl<'tcx> Stack {
-    /// Deref `bor`: Check if the location is frozen and the tag in the stack.
-    /// This dos *not* constitute an access!  "Deref" refers to the `*` operator
+    /// Deref `bor`: check if the location is frozen and the tag in the stack.
+    /// This dos *not* constitute an access! "Deref" refers to the `*` operator
     /// in Rust, and includs cases like `&*x` or `(*x).foo` where no or only part
-    /// of the memory actually gets accessed.  Also we cannot know if we are
+    /// of the memory actually gets accessed. Also we cannot know if we are
     /// going to read or write.
     /// Returns the index of the item we matched, `None` if it was the frozen one.
     /// `kind` indicates which kind of reference is being dereferenced.
@@ -186,44 +188,46 @@ impl<'tcx> Stack {
     ) -> Result<Option<usize>, String> {
         // Exclude unique ref with frozen tag.
         if let (RefKind::Unique, Borrow::Alias(Some(_))) = (kind, bor) {
-            return Err(format!("Encountered mutable reference with frozen tag ({:?})", bor));
+            return Err(format!("encountered mutable reference with frozen tag ({:?})", bor));
         }
-        // Checks related to freezing
+        // Checks related to freezing.
         match bor {
             Borrow::Alias(Some(bor_t)) if kind == RefKind::Frozen => {
                 // We need the location to be frozen. This ensures F3.
                 let frozen = self.frozen_since.map_or(false, |itm_t| itm_t <= bor_t);
                 return if frozen { Ok(None) } else {
-                    Err(format!("Location is not frozen long enough"))
+                    Err(format!("location is not frozen long enough"))
                 }
             }
             Borrow::Alias(_) if self.frozen_since.is_some() => {
-                return Ok(None) // Shared deref to frozen location, looking good
+                // Shared deref to frozen location; looking good.
+                return Ok(None)
             }
-            _ => {} // Not sufficient, go on looking.
+            // Not sufficient; go on looking.
+            _ => {}
         }
         // If we got here, we have to look for our item in the stack.
         for (idx, &itm) in self.borrows.iter().enumerate().rev() {
             match (itm, bor) {
                 (BorStackItem::Uniq(itm_t), Borrow::Uniq(bor_t)) if itm_t == bor_t => {
-                    // Found matching unique item.  This satisfies U3.
+                    // Found matching unique item. This satisfies U3.
                     return Ok(Some(idx))
                 }
                 (BorStackItem::Raw, Borrow::Alias(_)) => {
                     // Found matching aliasing/raw item.
                     return Ok(Some(idx))
                 }
-                // Go on looking.  We ignore barriers!  When an `&mut` and an `&` alias,
+                // Go on looking. We ignore barriers! When an `&mut` and an `&` alias,
                 // dereferencing the `&` is still possible (to reborrow), but doing
                 // an access is not.
                 _ => {}
             }
         }
-        // If we got here, we did not find our item.  We have to error to satisfy U3.
+        // If we got here, we did not find our item. We have to error to satisfy U3.
         Err(format!("Borrow being dereferenced ({:?}) does not exist on the borrow stack", bor))
     }
 
-    /// Perform an actual memory access using `bor`.  We do not know any types here
+    /// Performs an actual memory access using `bor`. We do not know any types here
     /// or whether things should be frozen, but we *do* know if this is reading
     /// or writing.
     fn access(
@@ -236,45 +240,44 @@ impl<'tcx> Stack {
         // Not possible on writes!
         if self.is_frozen() {
             if kind == AccessKind::Read {
-                // When we are frozen, we just accept all reads.  No harm in this.
+                // When we are frozen, we just accept all reads. No harm in this.
                 // The deref already checked that `Uniq` items are in the stack, and that
                 // the location is frozen if it should be.
                 return Ok(());
             }
-            trace!("access: Unfreezing");
+            trace!("access: unfreezing");
         }
-        // Unfreeze on writes.  This ensures F2.
+        // Unfreeze on writes. This ensures F2.
         self.frozen_since = None;
         // Pop the stack until we have something matching.
         while let Some(&itm) = self.borrows.last() {
             match (itm, bor) {
                 (BorStackItem::FnBarrier(call), _) if barrier_tracking.is_active(call) => {
                     return err!(MachineError(format!(
-                        "Stopping looking for borrow being accessed ({:?}) because of barrier ({})",
+                        "stopping looking for borrow being accessed ({:?}) because of barrier ({})",
                         bor, call
                     )))
                 }
                 (BorStackItem::Uniq(itm_t), Borrow::Uniq(bor_t)) if itm_t == bor_t => {
-                    // Found matching unique item.  Continue after the match.
+                    // Found matching unique item. Continue after the match.
                 }
                 (BorStackItem::Raw, _) if kind == AccessKind::Read => {
                     // When reading, everything can use a raw item!
                     // We do not want to do this when writing: Writing to an `&mut`
                     // should reaffirm its exclusivity (i.e., make sure it is
-                    // on top of the stack).
-                    // Continue after the match.
+                    // on top of the stack). Continue after the match.
                 }
                 (BorStackItem::Raw, Borrow::Alias(_)) => {
-                    // Found matching raw item.  Continue after the match.
+                    // Found matching raw item. Continue after the match.
                 }
                 _ => {
-                    // Pop this, go on.  This ensures U2.
+                    // Pop this, go on. This ensures U2.
                     let itm = self.borrows.pop().unwrap();
                     trace!("access: Popping {:?}", itm);
                     continue
                 }
             }
-            // If we got here, we found a matching item.  Congratulations!
+            // If we got here, we found a matching item. Congratulations!
             // However, we are not done yet: If this access is deallocating, we must make sure
             // there are no active barriers remaining on the stack.
             if kind == AccessKind::Dealloc {
@@ -282,19 +285,19 @@ impl<'tcx> Stack {
                     match itm {
                         BorStackItem::FnBarrier(call) if barrier_tracking.is_active(call) => {
                             return err!(MachineError(format!(
-                                "Deallocating with active barrier ({})", call
+                                "deallocating with active barrier ({})", call
                             )))
                         }
                         _ => {},
                     }
                 }
             }
-            // NOW we are done.
+            // Now we are done.
             return Ok(())
         }
         // If we got here, we did not find our item.
         err!(MachineError(format!(
-            "Borrow being accessed ({:?}) does not exist on the borrow stack",
+            "borrow being accessed ({:?}) does not exist on the borrow stack",
             bor
         )))
     }
@@ -304,7 +307,7 @@ impl<'tcx> Stack {
     /// is met: We cannot push `Uniq` onto frozen stacks.
     /// `kind` indicates which kind of reference is being created.
     fn create(&mut self, bor: Borrow, kind: RefKind) {
-        // When creating a frozen reference, freeze.  This ensures F1.
+        // When creating a frozen reference, freeze. This ensures F1.
         // We also do *not* push anything else to the stack, making sure that no nother kind
         // of access (like writing through raw pointers) is permitted.
         if kind == RefKind::Frozen {
@@ -312,10 +315,13 @@ impl<'tcx> Stack {
                 Borrow::Alias(Some(t)) => t,
                 _ => bug!("Creating illegal borrow {:?} for frozen ref", bor),
             };
-            // It is possible that we already are frozen (e.g. if we just pushed a barrier,
+            // It is possible that we already are frozen (e.g., if we just pushed a barrier,
             // the redundancy check would not have kicked in).
             match self.frozen_since {
-                Some(loc_t) => assert!(loc_t <= bor_t, "Trying to freeze location for longer than it was already frozen"),
+                Some(loc_t) => assert!(
+                    loc_t <= bor_t,
+                    "trying to freeze location for longer than it was already frozen"
+                ),
                 None => {
                     trace!("create: Freezing");
                     self.frozen_since = Some(bor_t);
@@ -323,7 +329,10 @@ impl<'tcx> Stack {
             }
             return;
         }
-        assert!(self.frozen_since.is_none(), "Trying to create non-frozen reference to frozen location");
+        assert!(
+            self.frozen_since.is_none(),
+            "trying to create non-frozen reference to frozen location"
+        );
 
         // Push new item to the stack.
         let itm = match bor {
@@ -334,15 +343,15 @@ impl<'tcx> Stack {
             // This is just an optimization, no functional change: Avoid stacking
             // multiple `Shr` on top of each other.
             assert!(bor.is_aliasing());
-            trace!("create: Sharing a shared location is a NOP");
+            trace!("create: sharing a shared location is a NOP");
         } else {
             // This ensures U1.
-            trace!("create: Pushing {:?}", itm);
+            trace!("create: pushing {:?}", itm);
             self.borrows.push(itm);
         }
     }
 
-    /// Add a barrier
+    /// Adds a barrier.
     fn barrier(&mut self, call: CallId) {
         let itm = BorStackItem::FnBarrier(call);
         if *self.borrows.last().unwrap() == itm {
@@ -350,9 +359,9 @@ impl<'tcx> Stack {
             // multiple identical barriers on top of each other.
             // This can happen when a function receives several shared references
             // that overlap.
-            trace!("barrier: Avoiding redundant extra barrier");
+            trace!("barrier: avoiding redundant extra barrier");
         } else {
-            trace!("barrier: Pushing barrier for call {}", call);
+            trace!("barrier: pushing barrier for call {}", call);
             self.borrows.push(itm);
         }
     }
@@ -360,7 +369,7 @@ impl<'tcx> Stack {
 
 /// Higher-level per-location operations: deref, access, reborrow.
 impl<'tcx> Stacks {
-    /// Check that this stack is fine with being dereferenced
+    /// Checks that this stack is fine with being dereferenced.
     fn deref(
         &self,
         ptr: Pointer<Borrow>,
@@ -406,14 +415,15 @@ impl<'tcx> Stacks {
         new_kind: RefKind,
     ) -> EvalResult<'tcx> {
         assert_eq!(new_bor.is_unique(), new_kind == RefKind::Unique);
-        trace!("reborrow for tag {:?} to {:?} as {:?}: {:?}, size {}",
-            ptr.tag, new_bor, new_kind, ptr, size.bytes());
+        trace!(
+            "reborrow for tag {:?} to {:?} as {:?}: {:?}, size {}",
+            ptr.tag, new_bor, new_kind, ptr, size.bytes(),
+        );
         if new_kind == RefKind::Raw {
-            // No barrier for raw, including `&UnsafeCell`.  They can rightfully
-            // alias with `&mut`.
-            // FIXME: This means that the `dereferencable` attribute on non-frozen shared
-            // references is incorrect!  They are dereferencable when the function is
-            // called, but might become non-dereferencable during the course of execution.
+            // No barrier for raw, including `&UnsafeCell`. They can rightfully alias with `&mut`.
+            // FIXME: This means that the `dereferencable` attribute on non-frozen shared references
+            // is incorrect! They are dereferencable when the function is called, but might become
+            // non-dereferencable during the course of execution.
             // Also see [1], [2].
             //
             // [1]: <https://internals.rust-lang.org/t/
@@ -428,7 +438,7 @@ impl<'tcx> Stacks {
             let ptr_idx = stack.deref(ptr.tag, new_kind).map_err(EvalErrorKind::MachineError)?;
             // If we can deref the new tag already, and if that tag lives higher on
             // the stack than the one we come from, just use that.
-            // IOW, we check if `new_bor` *already* is "derived from" `ptr.tag`.
+            // That is, we check if `new_bor` *already* is "derived from" `ptr.tag`.
             // This also checks frozenness, if required.
             let bor_redundant = barrier.is_none() &&
                 match (ptr_idx, stack.deref(new_bor, new_kind)) {
@@ -436,11 +446,11 @@ impl<'tcx> Stacks {
                     // above the old one in the stack, our job here is done.
                     (_, Ok(None)) => true,
                     (Some(ptr_idx), Ok(Some(new_idx))) if new_idx >= ptr_idx => true,
-                    // Otherwise we need to create a new borrow.
+                    // Otherwise, we need to create a new borrow.
                     _ => false,
                 };
             if bor_redundant {
-                assert!(new_bor.is_aliasing(), "A unique reborrow can never be redundant");
+                assert!(new_bor.is_aliasing(), "a unique reborrow can never be redundant");
                 trace!("reborrow is redundant");
                 continue;
             }
@@ -460,7 +470,7 @@ impl<'tcx> Stacks {
     }
 }
 
-/// Hooks and glue
+/// Hooks and glue.
 impl AllocationExtra<Borrow, MemoryState> for Stacks {
     #[inline(always)]
     fn memory_allocated<'tcx>(size: Size, extra: &MemoryState) -> Self {
@@ -529,10 +539,10 @@ trait EvalContextPrivExt<'a, 'mir, 'tcx: 'a+'mir>: crate::MiriEvalContextExt<'a,
         let this = self.eval_context_mut();
         let ptr = place.ptr.to_ptr()?;
         let barrier = if fn_barrier { Some(this.frame().extra) } else { None };
-        trace!("reborrow: Creating new reference for {:?} (pointee {}): {:?}",
+        trace!("reborrow: creating new reference for {:?} (pointee {}): {:?}",
             ptr, place.layout.ty, new_bor);
 
-        // Get the allocation.  It might not be mutable, so we cannot use `get_mut`.
+        // Get the allocation. It might not be mutable, so we cannot use `get_mut`.
         let alloc = this.memory().get(ptr.alloc_id)?;
         alloc.check_bounds(this, ptr, size)?;
         // Update the stacks.
@@ -550,7 +560,7 @@ trait EvalContextPrivExt<'a, 'mir, 'tcx: 'a+'mir>: crate::MiriEvalContextExt<'a,
         Ok(())
     }
 
-    /// Retag an indidual pointer, returning the retagged version.
+    /// Retags an indidual pointer, returning the retagged version.
     /// `mutbl` can be `None` to make this a raw pointer.
     fn retag_reference(
         &mut self,
@@ -587,10 +597,10 @@ trait EvalContextPrivExt<'a, 'mir, 'tcx: 'a+'mir>: crate::MiriEvalContextExt<'a,
             // We immediately share it, to allow read accesses
             let two_phase_time = this.machine.stacked_borrows.increment_clock();
             let two_phase_bor = Borrow::Alias(Some(two_phase_time));
-            this.reborrow(new_place, size, /*fn_barrier*/false, two_phase_bor)?;
+            this.reborrow(new_place, size, false /* fn_barrier */, two_phase_bor)?;
         }
 
-        // Return new ptr.
+        // Return new pointer.
         Ok(new_place.to_ref())
     }
 }
@@ -607,29 +617,32 @@ pub trait EvalContextExt<'a, 'mir, 'tcx: 'a+'mir>: crate::MiriEvalContextExt<'a,
             MemoryKind::Stack => {
                 // New unique borrow. This `Uniq` is not accessible by the program,
                 // so it will only ever be used when using the local directly (i.e.,
-                // not through a pointer).  IOW, whenever we directly use a local this will pop
-                // everything else off the stack, invalidating all previous pointers
-                // and, in particular, *all* raw pointers.  This subsumes the explicit
+                // not through a pointer). That is, whenever we directly use a local, this will pop
+                // everything else off the stack, invalidating all previous pointers,
+                // and in particular, *all* raw pointers. This subsumes the explicit
                 // `reset` which the blog post [1] says to perform when accessing a local.
                 //
-                // [1] https://www.ralfj.de/blog/2018/08/07/stacked-borrows.html
+                // [1]: <https://www.ralfj.de/blog/2018/08/07/stacked-borrows.html>
                 this.machine.stacked_borrows.increment_clock()
             }
             _ => {
-                // Nothing to do for everything else
+                // Nothing to do for everything else.
                 return Borrow::default()
             }
         };
-        // Make this the active borrow for this allocation
-        let alloc = this.memory_mut().get_mut(id).expect("This is a new allocation, it must still exist");
+        // Make this the active borrow for this allocation.
+        let alloc = this
+            .memory_mut()
+            .get_mut(id)
+            .expect("this is a new allocation; it must still exist");
         let size = Size::from_bytes(alloc.bytes.len() as u64);
         alloc.extra.first_item(BorStackItem::Uniq(time), size);
         Borrow::Uniq(time)
     }
 
-    /// Called for value-to-place conversion.  `mutability` is `None` for raw pointers.
+    /// Called for value-to-place conversion. `mutability` is `None` for raw pointers.
     ///
-    /// Note that this does NOT mean that all this memory will actually get accessed/referenced!
+    /// Note that this does *not* mean that all this memory will actually get accessed/referenced!
     /// We could be in the middle of `&(*var).1`.
     fn ptr_dereference(
         &self,
@@ -638,9 +651,15 @@ pub trait EvalContextExt<'a, 'mir, 'tcx: 'a+'mir>: crate::MiriEvalContextExt<'a,
         mutability: Option<Mutability>,
     ) -> EvalResult<'tcx> {
         let this = self.eval_context_ref();
-        trace!("ptr_dereference: Accessing {} reference for {:?} (pointee {})",
-            if let Some(mutability) = mutability { format!("{:?}", mutability) } else { format!("raw") },
-            place.ptr, place.layout.ty);
+        trace!(
+            "ptr_dereference: Accessing {} reference for {:?} (pointee {})",
+            if let Some(mutability) = mutability {
+                format!("{:?}", mutability)
+            } else {
+                format!("raw")
+            },
+            place.ptr, place.layout.ty
+        );
         let ptr = place.ptr.to_ptr()?;
         if mutability.is_none() {
             // No further checks on raw derefs -- only the access itself will be checked.
@@ -653,18 +672,18 @@ pub trait EvalContextExt<'a, 'mir, 'tcx: 'a+'mir>: crate::MiriEvalContextExt<'a,
         // If we got here, we do some checking, *but* we leave the tag unchanged.
         if let Borrow::Alias(Some(_)) = ptr.tag {
             assert_eq!(mutability, Some(MutImmutable));
-            // We need a frozen-sensitive check
+            // We need a frozen-sensitive check.
             this.visit_freeze_sensitive(place, size, |cur_ptr, size, frozen| {
                 let kind = if frozen { RefKind::Frozen } else { RefKind::Raw };
                 alloc.extra.deref(cur_ptr, size, kind)
             })?;
         } else {
-            // Just treat this as one big chunk
+            // Just treat this as one big chunk.
             let kind = if mutability == Some(MutMutable) { RefKind::Unique } else { RefKind::Raw };
             alloc.extra.deref(ptr, size, kind)?;
         }
 
-        // All is good
+        // All is good.
         Ok(())
     }
 
@@ -679,22 +698,22 @@ pub trait EvalContextExt<'a, 'mir, 'tcx: 'a+'mir>: crate::MiriEvalContextExt<'a,
         // making it useless.
         fn qualify(ty: ty::Ty<'_>, kind: RetagKind) -> Option<(Option<Mutability>, bool)> {
             match ty.sty {
-                // References are simple
+                // References are simple.
                 ty::Ref(_, _, mutbl) => Some((Some(mutbl), kind == RetagKind::FnEntry)),
-                // Raw pointers need to be enabled
+                // Raw pointers need to be enabled.
                 ty::RawPtr(..) if kind == RetagKind::Raw => Some((None, false)),
-                // Boxes do not get a barrier: Barriers reflect that references outlive the call
+                // Boxes do not get a barrier: barriers reflect that references outlive the call
                 // they were passed in to; that's just not the case for boxes.
                 ty::Adt(..) if ty.is_box() => Some((Some(MutMutable), false)),
                 _ => None,
             }
         }
 
-        // We need a visitor to visit all references.  However, that requires
+        // We need a visitor to visit all references. However, that requires
         // a `MemPlace`, so we have a fast path for reference types that
         // avoids allocating.
         if let Some((mutbl, barrier)) = qualify(place.layout.ty, kind) {
-            // fast path
+            // Fast path.
             let val = this.read_immediate(this.place_to_op(place)?)?;
             let val = this.retag_reference(val, mutbl, barrier, kind == RetagKind::TwoPhase)?;
             this.write_immediate(val, place)?;
@@ -705,7 +724,7 @@ pub trait EvalContextExt<'a, 'mir, 'tcx: 'a+'mir>: crate::MiriEvalContextExt<'a,
         let mut visitor = RetagVisitor { ecx: this, kind };
         visitor.visit_value(place)?;
 
-        // The actual visitor
+        // The actual visitor.
         struct RetagVisitor<'ecx, 'a, 'mir, 'tcx> {
             ecx: &'ecx mut MiriEvalContext<'a, 'mir, 'tcx>,
             kind: RetagKind,

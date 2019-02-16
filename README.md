@@ -23,7 +23,7 @@ Miri has already discovered some [real-world bugs](#bugs-found-by-miri).
 [`copy_nonoverlapping`]: https://doc.rust-lang.org/stable/std/ptr/fn.copy_nonoverlapping.html
 
 
-## Running Miri on your own project('s test suite)
+## Running Miri on your own project (and its test suite)
 
 Install Miri as a cargo subcommand:
 
