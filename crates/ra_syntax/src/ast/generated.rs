@@ -1352,6 +1352,7 @@ impl ToOwned for ImplBlock {
 }
 
 
+impl ast::TypeParamsOwner for ImplBlock {}
 impl ImplBlock {
     pub fn item_list(&self) -> Option<&ItemList> {
         super::child_opt(self)

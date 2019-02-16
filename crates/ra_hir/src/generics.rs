@@ -7,7 +7,7 @@ use std::sync::Arc;
 
 use ra_syntax::ast::{self, NameOwner, TypeParamsOwner};
 
-use crate::{db::PersistentHirDatabase, Name, AsName, Function, Struct, Enum, Trait, Type};
+use crate::{db::PersistentHirDatabase, Name, AsName, Function, Struct, Enum, Trait, Type, ImplBlock};
 
 /// Data about a generic parameter (to a function, struct, impl, ...).
 #[derive(Clone, PartialEq, Eq, Debug)]
@@ -30,8 +30,9 @@ pub enum GenericDef {
     Enum(Enum),
     Trait(Trait),
     Type(Type),
+    ImplBlock(ImplBlock),
 }
-impl_froms!(GenericDef: Function, Struct, Enum, Trait, Type);
+impl_froms!(GenericDef: Function, Struct, Enum, Trait, Type, ImplBlock);
 
 impl GenericParams {
     pub(crate) fn generic_params_query(
@@ -45,6 +46,7 @@ impl GenericParams {
             GenericDef::Enum(it) => generics.fill(&*it.source(db).1),
             GenericDef::Trait(it) => generics.fill(&*it.source(db).1),
             GenericDef::Type(it) => generics.fill(&*it.source(db).1),
+            GenericDef::ImplBlock(it) => generics.fill(&*it.source(db).1),
         }
 
         Arc::new(generics)
