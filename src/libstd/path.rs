@@ -1230,12 +1230,11 @@ impl PathBuf {
 
     /// Truncates `self` to [`self.parent`].
     ///
-    /// Returns `false` and does nothing if [`self.file_name`] is [`None`].
+    /// Returns `false` and does nothing if [`self.parent`] is [`None`].
     /// Otherwise, returns `true`.
     ///
     /// [`None`]: ../../std/option/enum.Option.html#variant.None
     /// [`self.parent`]: struct.PathBuf.html#method.parent
-    /// [`self.file_name`]: struct.PathBuf.html#method.file_name
     ///
     /// # Examples
     ///
