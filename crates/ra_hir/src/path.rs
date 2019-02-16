@@ -129,7 +129,7 @@ impl Path {
 }
 
 impl GenericArgs {
-    fn from_ast(node: &ast::TypeArgList) -> Option<GenericArgs> {
+    pub fn from_ast(node: &ast::TypeArgList) -> Option<GenericArgs> {
         let mut args = Vec::new();
         for type_arg in node.type_args() {
             let type_ref = TypeRef::from_ast_opt(type_arg.type_ref());

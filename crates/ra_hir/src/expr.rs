@@ -14,7 +14,7 @@ use crate::{
     name::AsName,
     type_ref::{Mutability, TypeRef},
 };
-use crate::ty::primitive::{UintTy, UncertainIntTy, UncertainFloatTy};
+use crate::{ path::GenericArgs, ty::primitive::{UintTy, UncertainIntTy, UncertainFloatTy}};
 
 pub use self::scope::{ExprScopes, ScopesWithSyntaxMapping, ScopeEntryWithSyntax};
 
@@ -193,6 +193,7 @@ pub enum Expr {
         receiver: ExprId,
         method_name: Name,
         args: Vec<ExprId>,
+        generic_args: Option<GenericArgs>,
     },
     Match {
         expr: ExprId,
@@ -597,7 +598,11 @@ impl ExprCollector {
                     Vec::new()
                 };
                 let method_name = e.name_ref().map(|nr| nr.as_name()).unwrap_or_else(Name::missing);
-                self.alloc_expr(Expr::MethodCall { receiver, method_name, args }, syntax_ptr)
+                let generic_args = e.type_arg_list().and_then(GenericArgs::from_ast);
+                self.alloc_expr(
+                    Expr::MethodCall { receiver, method_name, args, generic_args },
+                    syntax_ptr,
+                )
             }
             ast::ExprKind::MatchExpr(e) => {
                 let expr = self.collect_expr_opt(e.expr());

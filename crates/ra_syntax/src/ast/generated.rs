@@ -2095,6 +2095,10 @@ impl MethodCallExpr {
     pub fn name_ref(&self) -> Option<&NameRef> {
         super::child_opt(self)
     }
+
+    pub fn type_arg_list(&self) -> Option<&TypeArgList> {
+        super::child_opt(self)
+    }
 }
 
 // Module

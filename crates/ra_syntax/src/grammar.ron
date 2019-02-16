@@ -431,7 +431,7 @@ Grammar(
         ),
         "MethodCallExpr": (
             traits: ["ArgListOwner"],
-            options: [ "Expr", "NameRef" ],
+            options: [ "Expr", "NameRef", "TypeArgList" ],
         ),
         "IndexExpr": (),
         "FieldExpr": (options: ["Expr", "NameRef"]),
