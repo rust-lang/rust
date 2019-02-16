@@ -106,7 +106,9 @@ impl ImplBlock {
 
     pub fn resolver(&self, db: &impl HirDatabase) -> Resolver {
         let r = self.module().resolver(db);
-        // TODO: add generics
+        // add generic params, if present
+        let p = self.generic_params(db);
+        let r = if !p.params.is_empty() { r.push_generic_params_scope(p) } else { r };
         let r = r.push_impl_block_scope(self.clone());
         r
     }
