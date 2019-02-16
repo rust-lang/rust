@@ -165,12 +165,12 @@ pub fn std_cargo(builder: &Builder,
         let features = builder.std_features();
 
         if compiler.stage != 0 && builder.config.sanitizers {
-            // This variable is used by the sanitizer runtime crates, e.g.
-            // rustc_lsan, to build the sanitizer runtime from C code
+            // This variable is used by the sanitizer runtime crates, e.g.,
+            // `rustc_lsan`, to build the sanitizer runtime from C code
             // When this variable is missing, those crates won't compile the C code,
             // so we don't set this variable during stage0 where llvm-config is
             // missing
-            // We also only build the runtimes when --enable-sanitizers (or its
+            // We also only build the runtimes when `--enable-sanitizers` (or its
             // config.toml equivalent) is used
             let llvm_config = builder.ensure(native::Llvm {
                 target: builder.config.build,
@@ -921,17 +921,17 @@ impl Step for Assemble {
         // produce some other architecture compiler we need to start from
         // `build` to get there.
         //
-        // FIXME: Perhaps we should download those libraries?
+        // FIXME: perhaps we should download those libraries?
         //        It would make builds faster...
         //
-        // FIXME: It may be faster if we build just a stage 1 compiler and then
+        // FIXME: it may be faster if we build just a stage 1 compiler and then
         //        use that to bootstrap this compiler forward.
         let build_compiler =
             builder.compiler(target_compiler.stage - 1, builder.config.build);
 
         // Build the libraries for this compiler to link to (i.e., the libraries
         // it uses at runtime). NOTE: Crates the target compiler compiles don't
-        // link to these. (FIXME: Is that correct? It seems to be correct most
+        // link to these. (FIXME: is that correct? It seems to be correct most
         // of the time but I think we do link to these for stage2/bin compilers
         // when not performing a full bootstrap).
         builder.ensure(Rustc {

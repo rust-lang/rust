@@ -248,13 +248,13 @@ impl<'sess> OnDiskCache<'sess> {
                 Ok(())
             })?;
 
-            // Encode diagnostics
+            // Encode diagnostics.
             let diagnostics_index: EncodedDiagnosticsIndex = self.current_diagnostics.borrow()
                 .iter()
                 .map(|(dep_node_index, diagnostics)|
             {
                 let pos = AbsoluteBytePos::new(encoder.position());
-                // Let's make sure we get the expected type here:
+                // Let's make sure we get the expected type here.
                 let diagnostics: &EncodedDiagnostics = diagnostics;
                 let dep_node_index = SerializedDepNodeIndex::new(dep_node_index.index());
                 encoder.encode_tagged(dep_node_index, diagnostics)?;
@@ -268,9 +268,9 @@ impl<'sess> OnDiskCache<'sess> {
                 let mut n = 0;
                 loop {
                     let new_n = encoder.interpret_allocs_inverse.len();
-                    // if we have found new ids, serialize those, too
+                    // If we have found new IDs, serialize those too.
                     if n == new_n {
-                        // otherwise, abort
+                        // Otherwise, abort.
                         break;
                     }
                     interpret_alloc_index.reserve(new_n - n);
@@ -296,7 +296,7 @@ impl<'sess> OnDiskCache<'sess> {
                 (cnum.as_u32(), crate_name, crate_disambiguator)
             }).collect();
 
-            // Encode the file footer
+            // Encode the file footer.
             let footer_pos = encoder.position() as u64;
             encoder.encode_tagged(TAG_FILE_FOOTER, &Footer {
                 file_index_to_stable_id,

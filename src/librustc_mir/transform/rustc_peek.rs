@@ -134,7 +134,7 @@ fn each_block<'a, 'tcx, O>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     let mut kill_set = results.0.sets.kill_set_for(bb.index()).clone();
 
     // Emulate effect of all statements in the block up to (but not
-    // including) the borrow within `peek_arg_place`. Do *not* include
+    // including) the borrow within `peek_arg_place`. Do **not** include
     // call to `peek_arg_place` itself (since we are peeking the state
     // of the argument at time immediate preceding Call to
     // `rustc_peek`).

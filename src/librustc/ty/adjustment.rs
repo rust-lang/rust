@@ -112,15 +112,17 @@ impl<'a, 'gcx, 'tcx> OverloadedDeref<'tcx> {
 /// At least for initial deployment, we want to limit two-phase borrows to
 /// only a few specific cases. Right now, those are mostly "things that desugar"
 /// into method calls:
+///
 /// - using `x.some_method()` syntax, where some_method takes `&mut self`,
 /// - using `Foo::some_method(&mut x, ...)` syntax,
 /// - binary assignment operators (`+=`, `-=`, `*=`, etc.).
+///
 /// Anything else should be rejected until generalized two-phase borrow support
 /// is implemented. Right now, dataflow can't handle the general case where there
 /// is more than one use of a mutable borrow, and we don't want to accept too much
 /// new code via two-phase borrows, so we try to limit where we create two-phase
 /// capable mutable borrows.
-/// See #49434 for tracking.
+/// See issue #49434 for tracking.
 #[derive(Copy, Clone, PartialEq, Debug, RustcEncodable, RustcDecodable)]
 pub enum AllowTwoPhase {
     Yes,
@@ -144,10 +146,10 @@ impl From<AutoBorrowMutability> for hir::Mutability {
 
 #[derive(Copy, Clone, PartialEq, Debug, RustcEncodable, RustcDecodable)]
 pub enum AutoBorrow<'tcx> {
-    /// Converts from T to &T.
+    /// Converts from `T` to `&T`.
     Ref(ty::Region<'tcx>, AutoBorrowMutability),
 
-    /// Converts from T to *T.
+    /// Converts from `T` to `*T`.
     RawPtr(hir::Mutability),
 }
 

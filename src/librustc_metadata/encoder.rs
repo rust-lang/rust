@@ -413,7 +413,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
         let def_path_table = self.encode_def_path_table();
         let def_path_table_bytes = self.position() - i;
 
-        // Encode the def IDs of impls, for coherence checking.
+        // Encode the `DefId`s of impls, for coherence checking.
         i = self.position();
         let impls = self.tracked(IsolatedEncoder::encode_impls, ());
         let impl_bytes = self.position() - i;
@@ -433,16 +433,16 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
         let items = self.encode_info_for_items();
         let item_bytes = self.position() - i;
 
-        // Encode the allocation index
+        // Encode the allocation index.
         let interpret_alloc_index = {
             let mut interpret_alloc_index = Vec::new();
             let mut n = 0;
             trace!("beginning to encode alloc ids");
             loop {
                 let new_n = self.interpret_allocs_inverse.len();
-                // if we have found new ids, serialize those, too
+                // If we have found new IDs, serialize those too.
                 if n == new_n {
-                    // otherwise, abort
+                    // otherwise, abort.
                     break;
                 }
                 trace!("encoding {} further alloc ids", new_n - n);
@@ -461,7 +461,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
             self.lazy_seq(interpret_alloc_index)
         };
 
-        // Index the items
+        // Index the items.
         i = self.position();
         let index = items.write_index(&mut self.opaque);
         let index_bytes = self.position() - i;
@@ -544,9 +544,9 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
 }
 
 // These are methods for encoding various things. They are meant to be used with
-// IndexBuilder::record() and EncodeContext::tracked(). They actually
-// would not have to be methods of IsolatedEncoder (free standing functions
-// taking IsolatedEncoder as first argument would be just fine) but by making
+// `IndexBuilder::record()` and `EncodeContext::tracked()`. They actually
+// would not have to be methods of `IsolatedEncoder` (free standing functions
+// taking `IsolatedEncoder` as first argument would be just fine) but by making
 // them methods we don't have to repeat the lengthy `<'a, 'b: 'a, 'tcx: 'b>`
 // clause again and again.
 impl<'a, 'b: 'a, 'tcx: 'b> IsolatedEncoder<'a, 'b, 'tcx> {
@@ -1405,9 +1405,9 @@ impl<'a, 'b: 'a, 'tcx: 'b> IsolatedEncoder<'a, 'b, 'tcx> {
     }
 
     fn encode_attributes(&mut self, attrs: &[ast::Attribute]) -> LazySeq<ast::Attribute> {
-        // NOTE: This must use lazy_seq_from_slice(), not lazy_seq() because
-        //       we rely on the HashStable specialization for [Attribute]
-        //       to properly filter things out.
+        // NOTE: this must use `lazy_seq_from_slice()`, not `lazy_seq()` because
+        // we rely on the `HashStable` specialization for `[Attribute]`
+        // to properly filter things out.
         self.lazy_seq_from_slice(attrs)
     }
 
@@ -1450,7 +1450,7 @@ impl<'a, 'b: 'a, 'tcx: 'b> IsolatedEncoder<'a, 'b, 'tcx> {
 
         // We're just going to write a list of crate 'name-hash-version's, with
         // the assumption that they are numbered 1 to n.
-        // FIXME (#2166): This is not nearly enough to support correct versioning
+        // FIXME(#2166): This is not nearly enough to support correct versioning
         // but is enough to get transitive crate dependencies working.
         self.lazy_seq_ref(deps.iter().map(|&(_, ref dep)| dep))
     }

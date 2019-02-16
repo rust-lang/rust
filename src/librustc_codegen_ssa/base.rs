@@ -237,7 +237,7 @@ pub fn unsize_thin_ptr<'a, 'tcx: 'a, Bx: BuilderMethods<'a, 'tcx>>(
                 result = Some(unsize_thin_ptr(bx, src, src_f.ty, dst_f.ty));
             }
             let (lldata, llextra) = result.unwrap();
-            // HACK(eddyb) have to bitcast pointers until LLVM removes pointee types.
+            // HACK(eddyb): have to bitcast pointers until LLVM removes pointee types.
             (bx.bitcast(lldata, bx.cx().scalar_pair_element_backend_type(dst_layout, 0, true)),
              bx.bitcast(llextra, bx.cx().scalar_pair_element_backend_type(dst_layout, 1, true)))
         }
@@ -336,7 +336,7 @@ fn cast_shift_rhs<'a, 'tcx: 'a, Bx: BuilderMethods<'a, 'tcx>>(
         if lhs_sz < rhs_sz {
             bx.trunc(rhs, lhs_llty)
         } else if lhs_sz > rhs_sz {
-            // FIXME (#1877: If in the future shifting by negative
+            // FIXME(#1877: If in the future shifting by negative
             // values is no longer undefined then this is wrong.
             bx.zext(rhs, lhs_llty)
         } else {
@@ -484,7 +484,7 @@ pub fn maybe_create_entry_wrapper<'a, 'tcx: 'a, Bx: BuilderMethods<'a, 'tcx>>(
         );
 
         if cx.get_defined_value("main").is_some() {
-            // FIXME: We should be smart and show a better diagnostic here.
+            // FIXME: we should be smart and show a better diagnostic here.
             cx.sess().struct_span_err(sp, "entry symbol `main` defined multiple times")
                      .help("did you use #[no_mangle] on `fn main`? Use #[start] instead")
                      .emit();

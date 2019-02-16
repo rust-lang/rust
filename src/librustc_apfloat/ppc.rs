@@ -27,9 +27,9 @@ pub type DoubleDouble = DoubleFloat<ieee::Double>;
 //   DoubleDouble -> (Double, Double) ->
 //   DoubleDouble's Fallback -> IEEE operations
 //
-// FIXME: Implement all operations in DoubleDouble, and delete these
+// FIXME: implement all operations in DoubleDouble, and delete these
 // semantics.
-// FIXME(eddyb) This shouldn't need to be `pub`, it's only used in bounds.
+// FIXME(eddyb): this shouldn't need to be `pub`, it's only used in bounds.
 pub struct FallbackS<F>(F);
 type Fallback<F> = ieee::IeeeFloat<FallbackS<F>>;
 impl<F: Float> ieee::Semantics for FallbackS<F> {
@@ -40,11 +40,11 @@ impl<F: Float> ieee::Semantics for FallbackS<F> {
     const MIN_EXP: ExpInt = F::MIN_EXP as ExpInt + F::PRECISION as ExpInt;
 }
 
-// Convert number to F. To avoid spurious underflows, we re-
-// normalize against the F exponent range first, and only *then*
+// Convert number to `F`. To avoid spurious underflows, we re-
+// normalize against the `F` exponent range first, and only *then*
 // truncate the mantissa. The result of that second conversion
 // may be inexact, but should never underflow.
-// FIXME(eddyb) This shouldn't need to be `pub`, it's only used in bounds.
+// FIXME(eddyb): this shouldn't need to be `pub`, it's only used in bounds.
 pub struct FallbackExtendedS<F>(F);
 type FallbackExtended<F> = ieee::IeeeFloat<FallbackExtendedS<F>>;
 impl<F: Float> ieee::Semantics for FallbackExtendedS<F> {
@@ -142,7 +142,7 @@ where
 
     const INFINITY: Self = DoubleFloat(F::INFINITY, F::ZERO);
 
-    // FIXME(eddyb) remove when qnan becomes const fn.
+    // FIXME(eddyb): remove when qnan becomes const fn.
     const NAN: Self = DoubleFloat(F::NAN, F::ZERO);
 
     fn qnan(payload: Option<u128>) -> Self {

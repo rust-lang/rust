@@ -375,7 +375,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
                                                E0487,
                                                "unsafe use of destructor: destructor might be \
                                                 called while references are dead");
-                // FIXME (22171): terms "super/subregion" are suboptimal
+                // FIXME(#22171): terms "super"/"subregion" are suboptimal.
                 self.tcx.note_and_explain_region(region_scope_tree, &mut err,
                     "superregion: ", sup, "");
                 self.tcx.note_and_explain_region(region_scope_tree, &mut err,

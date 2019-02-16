@@ -182,7 +182,7 @@ pub trait MetadataLoader {
 /// functionality should be driven through queries instead!
 ///
 /// If you find a method on this trait named `{name}_untracked` it signifies
-/// that it's *not* tracked for dependency information throughout compilation
+/// that it's **not** tracked for dependency information throughout compilation
 /// (it'd break incremental compilation) and should only be called pre-HIR (e.g.
 /// during resolve)
 pub trait CrateStore {

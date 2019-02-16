@@ -1,4 +1,4 @@
-//! The Rust compiler.
+//! The code generation back-end.
 //!
 //! # Note
 //!
@@ -50,7 +50,7 @@ pub trait CodegenBackend {
         rx: mpsc::Receiver<Box<dyn Any + Send>>
     ) -> Box<dyn Any>;
 
-    /// This is called on the returned `Box<dyn Any>` from `codegen_backend`
+    /// This is called on the returned `Box<dyn Any>` from `codegen_backend`.
     ///
     /// # Panics
     ///
@@ -113,7 +113,8 @@ impl CodegenBackend for MetadataOnlyCodegenBackend {
         crate::symbol_names::provide(providers);
 
         providers.target_features_whitelist = |_tcx, _cnum| {
-            Default::default() // Just a dummy
+            // Just a dummy.
+            Default::default()
         };
         providers.is_reachable_non_generic = |_tcx, _defid| true;
         providers.exported_symbols = |_tcx, _crate| Arc::new(Vec::new());
@@ -133,7 +134,7 @@ impl CodegenBackend for MetadataOnlyCodegenBackend {
         crate::symbol_names_test::report_symbol_names(tcx);
         rustc_incremental::assert_dep_graph(tcx);
         rustc_incremental::assert_module_sources::assert_module_sources(tcx);
-        // FIXME: Fix this
+        // FIXME: fix this.
         // rustc::middle::dependency_format::calculate(tcx);
         let _ = tcx.link_args(LOCAL_CRATE);
         let _ = tcx.native_libraries(LOCAL_CRATE);

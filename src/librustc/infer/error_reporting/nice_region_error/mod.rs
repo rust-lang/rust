@@ -18,7 +18,8 @@ impl<'cx, 'gcx, 'tcx> InferCtxt<'cx, 'gcx, 'tcx> {
     pub fn try_report_nice_region_error(&self, error: &RegionResolutionError<'tcx>) -> bool {
         match *error {
             ConcreteFailure(..) | SubSupConflict(..) => {}
-            _ => return false,  // inapplicable
+            // Inapplicable.
+            _ => return false,
         }
 
         if let Some(tables) = self.in_progress_tables {

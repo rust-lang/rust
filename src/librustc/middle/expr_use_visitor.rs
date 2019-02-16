@@ -40,7 +40,7 @@ pub trait Delegate<'tcx> {
 
     // The value found at `cmt` has been determined to match the
     // pattern binding `matched_pat`, and its subparts are being
-    // copied or moved depending on `mode`.  Note that `matched_pat`
+    // copied or moved depending on `mode`. Note that `matched_pat`
     // is called on all variant/structs in the pattern (i.e., the
     // interior nodes of the pattern's tree structure) while
     // consume_pat is called on the binding identifiers in the pattern
@@ -128,7 +128,7 @@ enum TrackMatchMode {
 
 impl TrackMatchMode {
     // Builds up the whole match mode for a pattern from its constituent
-    // parts.  The lattice looks like this:
+    // parts. The lattice looks like this:
     //
     //          Conflicting
     //            /     \
@@ -801,7 +801,7 @@ impl<'a, 'gcx, 'tcx> ExprUseVisitor<'a, 'gcx, 'tcx> {
     }
 
     /// Walks a pat that occurs in isolation (i.e., top-level of fn argument or
-    /// let binding, and *not* a match arm or nested pat.)
+    /// let binding, and **not** a match arm or nested pat.)
     fn walk_irrefutable_pat(&mut self, cmt_discr: mc::cmt<'tcx>, pat: &hir::Pat) {
         let mut mode = Unknown;
         self.determine_pat_move_mode(cmt_discr.clone(), pat, &mut mode);

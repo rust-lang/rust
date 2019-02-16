@@ -124,12 +124,12 @@ pub trait Semantics: Sized {
                 }
             }
             Category::Zero => {
-                // FIXME(eddyb) Maybe we should guarantee an invariant instead?
+                // FIXME(eddyb): maybe we should guarantee an invariant instead?
                 significand = 0;
                 Self::MIN_EXP - 1
             }
             Category::Infinity => {
-                // FIXME(eddyb) Maybe we should guarantee an invariant instead?
+                // FIXME(eddyb): maybe we should guarantee an invariant instead?
                 significand = 0;
                 Self::MAX_EXP + 1
             }
@@ -234,12 +234,12 @@ impl Semantics for X87DoubleExtendedS {
                 }
             }
             Category::Zero => {
-                // FIXME(eddyb) Maybe we should guarantee an invariant instead?
+                // FIXME(eddyb): maybe we should guarantee an invariant instead?
                 significand = 0;
                 Self::MIN_EXP - 1
             }
             Category::Infinity => {
-                // FIXME(eddyb) Maybe we should guarantee an invariant instead?
+                // FIXME(eddyb): maybe we should guarantee an invariant instead?
                 significand = 1 << (Self::PRECISION - 1);
                 Self::MAX_EXP + 1
             }
@@ -373,7 +373,7 @@ impl<S: Semantics> fmt::Display for IeeeFloat<S> {
         // We use enough digits so the number can be round-tripped back to an
         // APFloat. The formula comes from "How to Print Floating-Point Numbers
         // Accurately" by Steele and White.
-        // FIXME: Using a formula based purely on the precision is conservative;
+        // FIXME: using a formula based purely on the precision is conservative;
         // we can print fewer digits depending on the actual value being printed.
 
         // precision = 2 + floor(S::PRECISION / lg_2(10))
@@ -645,7 +645,7 @@ impl<S: Semantics> Float for IeeeFloat<S> {
         marker: PhantomData,
     };
 
-    // FIXME(eddyb) remove when qnan becomes const fn.
+    // FIXME(eddyb): remove when qnan becomes const fn.
     const NAN: Self = IeeeFloat {
         sig: [S::QNAN_SIGNIFICAND],
         exp: S::MAX_EXP + 1,
@@ -2005,7 +2005,7 @@ impl<S: Semantics> IeeeFloat<S> {
             }
         }
 
-        // Calculate pow(5, abs(dec_exp)) into `pow5_full`.
+        // Calculate `pow(5, abs(dec_exp))` into `pow5_full`.
         // The *_calc Vec's are reused scratch space, as an optimization.
         let (pow5_full, mut pow5_calc, mut sig_calc, mut sig_scratch_calc) = {
             let mut power = dec_exp.abs() as usize;
@@ -2421,7 +2421,7 @@ mod sig {
         let _: Loss = shift_right(&mut dst[..dst_limbs], &mut 0, shift);
 
         // We now have (dst_limbs * LIMB_BITS - shift) bits from `src`
-        // in `dst`.  If this is less that src_bits, append the rest, else
+        // in `dst`. If this is less that src_bits, append the rest, else
         // clear the high bits.
         let n = dst_limbs * LIMB_BITS - shift;
         if n < src_bits {

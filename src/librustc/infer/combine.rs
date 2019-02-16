@@ -1,26 +1,25 @@
-///////////////////////////////////////////////////////////////////////////
-// # Type combining
-//
-// There are four type combiners: equate, sub, lub, and glb.  Each
-// implements the trait `Combine` and contains methods for combining
-// two instances of various things and yielding a new instance.  These
-// combiner methods always yield a `Result<T>`.  There is a lot of
-// common code for these operations, implemented as default methods on
-// the `Combine` trait.
-//
-// Each operation may have side-effects on the inference context,
-// though these can be unrolled using snapshots. On success, the
-// LUB/GLB operations return the appropriate bound. The Eq and Sub
-// operations generally return the first operand.
-//
-// ## Contravariance
-//
-// When you are relating two things which have a contravariant
-// relationship, you should use `contratys()` or `contraregions()`,
-// rather than inversing the order of arguments!  This is necessary
-// because the order of arguments is not relevant for LUB and GLB.  It
-// is also useful to track which value is the "expected" value in
-// terms of error reporting.
+//! # Type combining
+//!
+//! There are four type combiners: equate, sub, lub, and glb. Each
+//! implements the trait `Combine` and contains methods for combining
+//! two instances of various things and yielding a new instance. These
+//! combiner methods always yield a `Result<T>`. There is a lot of
+//! common code for these operations, implemented as default methods on
+//! the `Combine` trait.
+//!
+//! Each operation may have side-effects on the inference context,
+//! though these can be unrolled using snapshots. On success, the
+//! LUB/GLB operations return the appropriate bound. The Eq and Sub
+//! operations generally return the first operand.
+//!
+//! ## Contravariance
+//!
+//! When you are relating two things that have a contravariant
+//! relationship, you should use `contratys()` or `contraregions()`,
+//! rather than inversing the order of arguments! This is necessary
+//! because the order of arguments is not relevant for LUB and GLB. It
+//! is also useful to track which value is the "expected" value in
+//! terms of error reporting.
 
 use super::equate::Equate;
 use super::glb::Glb;
@@ -65,7 +64,7 @@ impl<'infcx, 'gcx, 'tcx> InferCtxt<'infcx, 'gcx, 'tcx> {
         let a_is_expected = relation.a_is_expected();
 
         match (&a.sty, &b.sty) {
-            // Relate integral variables to other types
+            // Relate integral variables to other types.
             (&ty::Infer(ty::IntVar(a_id)), &ty::Infer(ty::IntVar(b_id))) => {
                 self.int_unification_table
                     .borrow_mut()
@@ -86,7 +85,7 @@ impl<'infcx, 'gcx, 'tcx> InferCtxt<'infcx, 'gcx, 'tcx> {
                 self.unify_integral_variable(!a_is_expected, v_id, UintType(v))
             }
 
-            // Relate floating-point variables to other types
+            // Relate floating-point variables to other types.
             (&ty::Infer(ty::FloatVar(a_id)), &ty::Infer(ty::FloatVar(b_id))) => {
                 self.float_unification_table
                     .borrow_mut()
@@ -101,7 +100,7 @@ impl<'infcx, 'gcx, 'tcx> InferCtxt<'infcx, 'gcx, 'tcx> {
                 self.unify_float_variable(!a_is_expected, v_id, v)
             }
 
-            // All other cases of inference are errors
+            // All other cases of inference are errors.
             (&ty::Infer(_), _) |
             (_, &ty::Infer(_)) => {
                 Err(TypeError::Sorts(ty::relate::expected_found(relation, &a, &b)))
@@ -189,7 +188,7 @@ impl<'infcx, 'gcx, 'tcx> CombineFields<'infcx, 'gcx, 'tcx> {
         debug!("instantiate(a_ty={:?} dir={:?} b_vid={:?})", a_ty, dir, b_vid);
 
         // Generalize type of `a_ty` appropriately depending on the
-        // direction.  As an example, assume:
+        // direction. As an example, assume:
         //
         // - `a_ty == &'x ?1`, where `'x` is some free region and `?1` is an
         //   inference variable,
@@ -212,7 +211,7 @@ impl<'infcx, 'gcx, 'tcx> CombineFields<'infcx, 'gcx, 'tcx> {
 
         // Finally, relate `b_ty` to `a_ty`, as described in previous comment.
         //
-        // FIXME(#16847): This code is non-ideal because all these subtype
+        // FIXME(#16847): this code is non-ideal because all these subtype
         // relations wind up attributed to the same spans. We need
         // to associate causes/spans with each of the relations in
         // the stack to get this right.
@@ -384,7 +383,8 @@ impl<'cx, 'gcx, 'tcx> TypeRelation<'cx, 'gcx, 'tcx> for Generalizer<'cx, 'gcx, '
     }
 
     fn tys(&mut self, t: Ty<'tcx>, t2: Ty<'tcx>) -> RelateResult<'tcx, Ty<'tcx>> {
-        assert_eq!(t, t2); // we are abusing TypeRelation here; both LHS and RHS ought to be ==
+        // We are abusing `TypeRelation` here; both LHS and RHS ought to be `==`.
+        assert_eq!(t, t2);
 
         // Check to see whether the type we are genealizing references
         // any other type variable related to `vid` via
@@ -396,8 +396,7 @@ impl<'cx, 'gcx, 'tcx> TypeRelation<'cx, 'gcx, 'tcx> for Generalizer<'cx, 'gcx, '
                 let vid = variables.root_var(vid);
                 let sub_vid = variables.sub_root_var(vid);
                 if sub_vid == self.for_vid_sub_root {
-                    // If sub-roots are equal, then `for_vid` and
-                    // `vid` are related via subtyping.
+                    // If sub-roots are equal, then `for_vid` and `vid` are related via subtyping.
                     return Err(TypeError::CyclicTy(self.root_ty));
                 } else {
                     match variables.probe(vid) {
@@ -410,14 +409,12 @@ impl<'cx, 'gcx, 'tcx> TypeRelation<'cx, 'gcx, 'tcx> for Generalizer<'cx, 'gcx, '
                                 // Invariant: no need to make a fresh type variable.
                                 ty::Invariant => return Ok(t),
 
-                                // Bivariant: make a fresh var, but we
-                                // may need a WF predicate. See
-                                // comment on `needs_wf` field for
-                                // more info.
+                                // Bivariant: make a fresh var, but we may need a WF predicate.
+                                // See comment on `needs_wf` field for more info.
                                 ty::Bivariant => self.needs_wf = true,
 
-                                // Co/contravariant: this will be
-                                // sufficiently constrained later on.
+                                // Co-/contra-variant: this will be sufficiently constrained
+                                // later on.
                                 ty::Covariant | ty::Contravariant => (),
                             }
 
@@ -433,9 +430,8 @@ impl<'cx, 'gcx, 'tcx> TypeRelation<'cx, 'gcx, 'tcx> for Generalizer<'cx, 'gcx, '
             }
             ty::Infer(ty::IntVar(_)) |
             ty::Infer(ty::FloatVar(_)) => {
-                // No matter what mode we are in,
-                // integer/floating-point types must be equal to be
-                // relatable.
+                // No matter what mode we are in, integer amd floating-point types must be
+                // equal to be relatable.
                 Ok(t)
             }
             _ => {
@@ -446,7 +442,8 @@ impl<'cx, 'gcx, 'tcx> TypeRelation<'cx, 'gcx, 'tcx> for Generalizer<'cx, 'gcx, '
 
     fn regions(&mut self, r: ty::Region<'tcx>, r2: ty::Region<'tcx>)
                -> RelateResult<'tcx, ty::Region<'tcx>> {
-        assert_eq!(r, r2); // we are abusing TypeRelation here; both LHS and RHS ought to be ==
+        // We are abusing `TypeRelation` here; both LHS and RHS ought to be `==`.
+        assert_eq!(r, r2);
 
         match *r {
             // Never make variables for regions bound within the type itself,
@@ -484,7 +481,7 @@ impl<'cx, 'gcx, 'tcx> TypeRelation<'cx, 'gcx, 'tcx> for Generalizer<'cx, 'gcx, '
             }
         }
 
-        // FIXME: This is non-ideal because we don't give a
+        // FIXME: this is non-ideal because we don't give a
         // very descriptive origin for this region variable.
         Ok(self.infcx.next_region_var(MiscVariable(self.span)))
     }

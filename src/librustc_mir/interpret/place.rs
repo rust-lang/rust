@@ -226,7 +226,7 @@ impl<'tcx, Tag> MPlaceTy<'tcx, Tag> {
                 _ => bug!("len not supported on unsized type {:?}", self.layout.ty),
             }
         } else {
-            // Go through the layout.  There are lots of types that support a length,
+            // Go through the layout. There are lots of types that support a length,
             // e.g., SIMD types.
             match self.layout.fields {
                 layout::FieldPlacement::Array { count, .. } => Ok(count),
@@ -303,20 +303,20 @@ impl<'tcx, Tag: ::std::fmt::Debug> PlaceTy<'tcx, Tag> {
     }
 }
 
-// separating the pointer tag for `impl Trait`, see https://github.com/rust-lang/rust/issues/54385
+// Separating the pointer tag for `impl Trait`, see issue #54385.
 impl<'a, 'mir, 'tcx, Tag, M> EvalContext<'a, 'mir, 'tcx, M>
 where
-    // FIXME: Working around https://github.com/rust-lang/rust/issues/54385
+    // FIXME: working around issue #54385.
     Tag: ::std::fmt::Debug+Default+Copy+Eq+Hash+'static,
     M: Machine<'a, 'mir, 'tcx, PointerTag=Tag>,
-    // FIXME: Working around https://github.com/rust-lang/rust/issues/24159
+    // FIXME: working around issue #24159.
     M::MemoryMap: AllocMap<AllocId, (MemoryKind<M::MemoryKinds>, Allocation<Tag, M::AllocExtra>)>,
     M::AllocExtra: AllocationExtra<Tag, M::MemoryExtra>,
 {
     /// Take a value, which represents a (thin or fat) reference, and make it a place.
-    /// Alignment is just based on the type.  This is the inverse of `MemPlace::to_ref()`.
+    /// Alignment is just based on the type. This is the inverse of `MemPlace::to_ref()`.
     /// This does NOT call the "deref" machine hook, so it does NOT count as a
-    /// deref as far as Stacked Borrows is concerned.  Use `deref_operand` for that!
+    /// deref as far as Stacked Borrows is concerned. Use `deref_operand` for that!
     pub fn ref_to_mplace(
         &self,
         val: ImmTy<'tcx, M::PointerTag>,
@@ -333,7 +333,7 @@ where
     }
 
     // Take an operand, representing a pointer, and dereference it to a place -- that
-    // will always be a MemPlace.  Lives in `place.rs` because it creates a place.
+    // will always be a MemPlace. Lives in `place.rs` because it creates a place.
     // This calls the "deref" machine hook, and counts as a deref as far as
     // Stacked Borrows is concerned.
     pub fn deref_operand(
@@ -392,8 +392,8 @@ where
                 Some((_, align)) => align,
                 None if offset == Size::ZERO =>
                     // An extern type at offset 0, we fall back to its static alignment.
-                    // FIXME: Once we have made decisions for how to handle size and alignment
-                    // of `extern type`, this should be adapted.  It is just a temporary hack
+                    // FIXME: once we have made decisions for how to handle size and alignment
+                    // of `extern type`, this should be adapted. It is just a temporary hack
                     // to get some code to work that probably ought to work.
                     field_layout.align.abi,
                 None =>
@@ -469,12 +469,12 @@ where
         base: MPlaceTy<'tcx, M::PointerTag>,
         variant: VariantIdx,
     ) -> EvalResult<'tcx, MPlaceTy<'tcx, M::PointerTag>> {
-        // Downcasts only change the layout
+        // Downcasts only change the layout.
         assert!(base.meta.is_none());
         Ok(MPlaceTy { layout: base.layout.for_variant(self, variant), ..base })
     }
 
-    /// Project into an mplace
+    /// Projects into an mplace.
     pub fn mplace_projection(
         &self,
         base: MPlaceTy<'tcx, M::PointerTag>,
@@ -525,7 +525,7 @@ where
         base: PlaceTy<'tcx, M::PointerTag>,
         field: u64,
     ) -> EvalResult<'tcx, PlaceTy<'tcx, M::PointerTag>> {
-        // FIXME: We could try to be smarter and avoid allocation for fields that span the
+        // FIXME: we could try to be smarter and avoid allocation for fields that span the
         // entire place.
         let mplace = self.force_allocation(base)?;
         Ok(self.mplace_field(mplace, field)?.into())
@@ -597,9 +597,9 @@ where
                 // and it knows how to deal with alloc_id that are present in the
                 // global table but not in its local memory: It calls back into tcx through
                 // a query, triggering the CTFE machinery to actually turn this lazy reference
-                // into a bunch of bytes.  IOW, statics are evaluated with CTFE even when
-                // this EvalContext uses another Machine (e.g., in miri).  This is what we
-                // want!  This way, computing statics works concistently between codegen
+                // into a bunch of bytes. That is, statics are evaluated with CTFE even when
+                // this `EvalContext` uses another Machine (e.g., in miri). This is what we
+                // want! This way, computing statics works concistently between codegen
                 // and miri: They use the same query to eventually obtain a `ty::Const`
                 // and use that for further computation.
                 let alloc = self.tcx.alloc_map.lock().intern_static(cid.instance.def_id());
@@ -694,7 +694,7 @@ where
                         "Size mismatch when writing bits"),
                 Immediate::Scalar(ScalarMaybeUndef::Undef) => {}, // undef can have any size
                 Immediate::ScalarPair(_, _) => {
-                    // FIXME: Can we check anything here?
+                    // FIXME: can we check anything here?
                 }
             }
         }
@@ -735,17 +735,17 @@ where
         // to handle padding properly, which is only correct if we never look at this data with the
         // wrong type.
 
-        // Nothing to do for ZSTs, other than checking alignment
+        // Nothing to do for ZSTs, other than checking alignment.
         if dest.layout.is_zst() {
             return self.memory.check_align(ptr, ptr_align);
         }
 
-        // check for integer pointers before alignment to report better errors
+        // Check for integer pointers before alignment to report better errors.
         let ptr = ptr.to_ptr()?;
         self.memory.check_align(ptr.into(), ptr_align)?;
         let tcx = &*self.tcx;
-        // FIXME: We should check that there are dest.layout.size many bytes available in
-        // memory.  The code below is not sufficient, with enough padding it might not
+        // FIXME: we should check that there are `dest.layout.size` many bytes available in
+        // memory. The code below is not sufficient, with enough padding it might not
         // cover all the bytes!
         match value {
             Immediate::Scalar(scalar) => {
@@ -862,11 +862,11 @@ where
         assert!(src.layout.size == dest.layout.size,
             "Size mismatch when transmuting!\nsrc: {:#?}\ndest: {:#?}", src, dest);
 
-        // The hard case is `ScalarPair`.  `src` is already read from memory in this case,
+        // The hard case is `ScalarPair`. `src` is already read from memory in this case,
         // using `src.layout` to figure out which bytes to use for the 1st and 2nd field.
         // We have to write them to `dest` at the offsets they were *read at*, which is
         // not necessarily the same as the offsets in `dest.layout`!
-        // Hence we do the copy with the source layout on both sides.  We also make sure to write
+        // Hence we do the copy with the source layout on both sides. We also make sure to write
         // into memory, because if `dest` is a local we would not even have a way to write
         // at the `src` offsets; the fact that we came from a different layout would
         // just be lost.
@@ -898,10 +898,10 @@ where
                     Operand::Indirect(mplace) => mplace,
                     Operand::Immediate(value) => {
                         // We need to make an allocation.
-                        // FIXME: Consider not doing anything for a ZST, and just returning
-                        // a fake pointer?  Are we even called for ZST?
+                        // FIXME: consider not doing anything for a ZST, and just returning
+                        // a fake pointer? Are we even called for ZST?
 
-                        // We need the layout of the local.  We can NOT use the layout we got,
+                        // We need the layout of the local. We can NOT use the layout we got,
                         // that might e.g., be an inner field of a struct with `Scalar` layout,
                         // that has different alignment than the outer field.
                         let local_layout = self.layout_of_local(&self.stack[frame], local, None)?;
@@ -930,7 +930,7 @@ where
     ) -> MPlaceTy<'tcx, M::PointerTag> {
         if layout.is_unsized() {
             assert!(self.tcx.features().unsized_locals, "cannot alloc memory for unsized type");
-            // FIXME: What should we do here? We should definitely also tag!
+            // FIXME: what should we do here? We should definitely also tag!
             MPlaceTy::dangling(layout, self)
         } else {
             let ptr = self.memory.allocate(layout.size, layout.align.abi, kind);

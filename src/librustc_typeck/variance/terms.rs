@@ -57,7 +57,7 @@ pub struct TermsContext<'a, 'tcx: 'a> {
     // variance.
     pub lang_items: Vec<(ast::NodeId, Vec<ty::Variance>)>,
 
-    // Maps from the node id of an item to the first inferred index
+    // Maps from the `NodeId` of an item to the first inferred index
     // used for its type & region parameters.
     pub inferred_starts: NodeMap<InferredIndex>,
 

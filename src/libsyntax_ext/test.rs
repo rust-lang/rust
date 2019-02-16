@@ -1,4 +1,4 @@
-/// The expansion from a test function to the appropriate test struct for libtest
+/// The expansion from a test function to the appropriate test struct for libtest.
 /// Ideally, this code would be in libtest but for efficiency and error messages it lives here.
 
 use syntax::ext::base::*;
@@ -36,7 +36,7 @@ pub fn expand_test_or_bench(
     item: Annotatable,
     is_bench: bool
 ) -> Vec<Annotatable> {
-    // If we're not in test configuration, remove the annotated item
+    // If we're not in test configuration, remove the annotated item.
     if !cx.ecfg.should_test { return vec![]; }
 
     let item =
@@ -52,7 +52,7 @@ pub fn expand_test_or_bench(
         return vec![Annotatable::Item(item)];
     }
 
-    // has_*_signature will report any errors in the type so compilation
+    // `has_*_signature` will report any errors in the type so compilation
     // will fail. We shouldn't try to expand in this case because the errors
     // would be spurious.
     if (!is_bench && !has_test_signature(cx, &item)) ||
@@ -78,105 +78,105 @@ pub fn expand_test_or_bench(
          attr_sp.with_ctxt(SyntaxContext::empty().apply_mark(mark)))
     };
 
-    // Gensym "test" so we can extern crate without conflicting with any local names
+    // Gensym "test" so we can extern crate without conflicting with any local names.
     let test_id = cx.ident_of("test").gensym();
 
-    // creates test::$name
+    // Creates `test::$name`.
     let test_path = |name| {
         cx.path(sp, vec![test_id, cx.ident_of(name)])
     };
 
-    // creates test::$name
+    // Creates `test::$name`.
     let should_panic_path = |name| {
         cx.path(sp, vec![test_id, cx.ident_of("ShouldPanic"), cx.ident_of(name)])
     };
 
-    // creates $name: $expr
+    // Creates `$name: $expr`.
     let field = |name, expr| cx.field_imm(sp, cx.ident_of(name), expr);
 
     let test_fn = if is_bench {
-        // A simple ident for a lambda
+        // A simple ident for a closure.
         let b = cx.ident_of("b");
 
         cx.expr_call(sp, cx.expr_path(test_path("StaticBenchFn")), vec![
-            // |b| self::test::assert_test_result(
+            // `|b| self::test::assert_test_result(`
             cx.lambda1(sp,
                 cx.expr_call(sp, cx.expr_path(test_path("assert_test_result")), vec![
-                    // super::$test_fn(b)
+                    // `super::$test_fn(b)`
                     cx.expr_call(sp,
                         cx.expr_path(cx.path(sp, vec![item.ident])),
                         vec![cx.expr_ident(sp, b)])
                 ]),
                 b
             )
-            // )
+            // `)`
         ])
     } else {
         cx.expr_call(sp, cx.expr_path(test_path("StaticTestFn")), vec![
-            // || {
+            // `|| {`
             cx.lambda0(sp,
-                // test::assert_test_result(
+                // `test::assert_test_result(`
                 cx.expr_call(sp, cx.expr_path(test_path("assert_test_result")), vec![
-                    // $test_fn()
+                    // `$test_fn()`
                     cx.expr_call(sp, cx.expr_path(cx.path(sp, vec![item.ident])), vec![])
-                // )
+                // `)`
                 ])
-            // }
+            // `}`
             )
-        // )
+        // `)`
         ])
     };
 
     let mut test_const = cx.item(sp, ast::Ident::new(item.ident.name.gensymed(), sp),
         vec![
-            // #[cfg(test)]
+            // `#[cfg(test)]`
             cx.attribute(attr_sp, cx.meta_list(attr_sp, Symbol::intern("cfg"), vec![
                 cx.meta_list_item_word(attr_sp, Symbol::intern("test"))
             ])),
-            // #[rustc_test_marker]
+            // `#[rustc_test_marker]`
             cx.attribute(attr_sp, cx.meta_word(attr_sp, Symbol::intern("rustc_test_marker"))),
         ],
-        // const $ident: test::TestDescAndFn =
+        // `const $ident: test::TestDescAndFn =`
         ast::ItemKind::Const(cx.ty(sp, ast::TyKind::Path(None, test_path("TestDescAndFn"))),
-            // test::TestDescAndFn {
+            // `test::TestDescAndFn {`
             cx.expr_struct(sp, test_path("TestDescAndFn"), vec![
-                // desc: test::TestDesc {
+                // `desc: test::TestDesc {`
                 field("desc", cx.expr_struct(sp, test_path("TestDesc"), vec![
-                    // name: "path::to::test"
+                    // `name: "path::to::test"`
                     field("name", cx.expr_call(sp, cx.expr_path(test_path("StaticTestName")),
                         vec![
                             cx.expr_str(sp, Symbol::intern(&item_path(
-                                // skip the name of the root module
+                                // Skip the name of the root module.
                                 &cx.current_expansion.module.mod_path[1..],
                                 &item.ident
                             )))
                         ])),
-                    // ignore: true | false
+                    // `ignore: true | false`
                     field("ignore", cx.expr_bool(sp, should_ignore(&item))),
-                    // allow_fail: true | false
+                    // `allow_fail: true | false`
                     field("allow_fail", cx.expr_bool(sp, should_fail(&item))),
-                    // should_panic: ...
+                    // `should_panic: ...`
                     field("should_panic", match should_panic(cx, &item) {
-                        // test::ShouldPanic::No
+                        // `test::ShouldPanic::No`
                         ShouldPanic::No => cx.expr_path(should_panic_path("No")),
-                        // test::ShouldPanic::Yes
+                        // `test::ShouldPanic::Yes`
                         ShouldPanic::Yes(None) => cx.expr_path(should_panic_path("Yes")),
-                        // test::ShouldPanic::YesWithMessage("...")
+                        // `test::ShouldPanic::YesWithMessage("...")`
                         ShouldPanic::Yes(Some(sym)) => cx.expr_call(sp,
                             cx.expr_path(should_panic_path("YesWithMessage")),
                             vec![cx.expr_str(sp, sym)]),
                     }),
-                // },
+                // `},`
                 ])),
                 // testfn: test::StaticTestFn(...) | test::StaticBenchFn(...)
                 field("testfn", test_fn)
-            // }
+            // `}`
             ])
-        // }
+        // `}`
         ));
     test_const = test_const.map(|mut tc| { tc.vis.node = ast::VisibilityKind::Public; tc});
 
-    // extern crate test as test_gensym
+    // `extern crate` test as `test_gensym`.
     let test_extern = cx.item(sp,
         test_id,
         vec![],
@@ -186,11 +186,11 @@ pub fn expand_test_or_bench(
     log::debug!("Synthetic test item:\n{}\n", pprust::item_to_string(&test_const));
 
     vec![
-        // Access to libtest under a gensymed name
+        // Access to libtest under a gensym-ed name.
         Annotatable::Item(test_extern),
-        // The generated test case
+        // The generated test case.
         Annotatable::Item(test_const),
-        // The original item
+        // The original item.
         Annotatable::Item(item)
     ]
 }
@@ -219,7 +219,7 @@ fn should_panic(cx: &ExtCtxt<'_>, i: &ast::Item) -> ShouldPanic {
             let ref sd = cx.parse_sess.span_diagnostic;
 
             match attr.meta_item_list() {
-                // Handle #[should_panic(expected = "foo")]
+                // Handle `#[should_panic(expected = "foo")]`.
                 Some(list) => {
                     let msg = list.iter()
                         .find(|mi| mi.check_name("expected"))
@@ -238,7 +238,7 @@ fn should_panic(cx: &ExtCtxt<'_>, i: &ast::Item) -> ShouldPanic {
                         ShouldPanic::Yes(msg)
                     }
                 },
-                // Handle #[should_panic] and #[should_panic = "expected"]
+                // Handle `#[should_panic]` and `#[should_panic = "expected"]`.
                 None => ShouldPanic::Yes(attr.value_str())
             }
         }
@@ -301,8 +301,7 @@ fn has_test_signature(cx: &ExtCtxt<'_>, i: &ast::Item) -> bool {
 
 fn has_bench_signature(cx: &ExtCtxt<'_>, i: &ast::Item) -> bool {
     let has_sig = if let ast::ItemKind::Fn(ref decl, _, _, _) = i.node {
-        // N.B., inadequate check, but we're running
-        // well before resolve, can't get too deep.
+        // N.B., inadequate check, but we're running well before resolve, so we can't get too deep.
         decl.inputs.len() == 1
     } else {
         false

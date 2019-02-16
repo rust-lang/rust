@@ -369,16 +369,16 @@ impl<'a, 'mir, 'tcx: 'mir, M: Machine<'a, 'mir, 'tcx>> EvalContext<'a, 'mir, 'tc
                 );
 
                 // Recurse to get the size of the dynamically sized field (must be
-                // the last field).  Can't have foreign types here, how would we
+                // the last field). Can't have foreign types here, how would we
                 // adjust alignment and size for them?
                 let field = layout.field(self, layout.fields.count() - 1)?;
                 let (unsized_size, unsized_align) = match self.size_and_align_of(metadata, field)? {
                     Some(size_and_align) => size_and_align,
                     None => {
-                        // A field with extern type.  If this field is at offset 0, we behave
+                        // A field with extern type. If this field is at offset 0, we behave
                         // like the underlying extern type.
-                        // FIXME: Once we have made decisions for how to handle size and alignment
-                        // of `extern type`, this should be adapted.  It is just a temporary hack
+                        // FIXME: once we have made decisions for how to handle size and alignment
+                        // of `extern type`, this should be adapted. It is just a temporary hack
                         // to get some code to work that probably ought to work.
                         if sized_size == Size::ZERO {
                             return Ok(None)
@@ -388,7 +388,7 @@ impl<'a, 'mir, 'tcx: 'mir, M: Machine<'a, 'mir, 'tcx>> EvalContext<'a, 'mir, 'tc
                     }
                 };
 
-                // FIXME (#26403, #27023): We should be adding padding
+                // FIXME(#26403, #27023): We should be adding padding
                 // to `sized_size` (to accommodate the `unsized_align`
                 // required of the unsized field that follows) before
                 // summing it with `sized_size`. (Note that since #26403
@@ -450,20 +450,21 @@ impl<'a, 'mir, 'tcx: 'mir, M: Machine<'a, 'mir, 'tcx>> EvalContext<'a, 'mir, 'tc
         return_place: Option<PlaceTy<'tcx, M::PointerTag>>,
         return_to_block: StackPopCleanup,
     ) -> EvalResult<'tcx> {
-        if self.stack.len() > 1 { // FIXME should be "> 0", printing topmost frame crashes rustc...
+        // FIXME: should be `> 0`, but printing topmost frame crashes rustc.
+        if self.stack.len() > 1 {
             info!("PAUSING({}) {}", self.cur_frame(), self.frame().instance);
         }
         ::log_settings::settings().indentation += 1;
 
-        // first push a stack frame so we have access to the local substs
+        // First, push a stack frame so we have access to the local substs.
         let extra = M::stack_push(self)?;
         self.stack.push(Frame {
             mir,
             block: mir::START_BLOCK,
             return_to_block,
             return_place,
-            // empty local array, we fill it in below, after we are inside the stack frame and
-            // all methods actually know about the frame
+            // Empty local array -- we fill it in below, after we are inside the stack frame and
+            // all methods actually know about the frame.
             locals: IndexVec::new(),
             span,
             instance,
@@ -471,10 +472,10 @@ impl<'a, 'mir, 'tcx: 'mir, M: Machine<'a, 'mir, 'tcx>> EvalContext<'a, 'mir, 'tc
             extra,
         });
 
-        // don't allocate at all for trivial constants
+        // Don't allocate at all for trivial constants.
         if mir.local_decls.len() > 1 {
             // We put some marker immediate into the locals that we later want to initialize.
-            // This can be anything except for LocalValue::Dead -- because *that* is the
+            // This can be anything except for `LocalValue::Dead` -- because *that* is the
             // value we use for things that we know are initially dead.
             let dummy = LocalState {
                 state: LocalValue::Live(Operand::Immediate(Immediate::Scalar(
@@ -486,9 +487,9 @@ impl<'a, 'mir, 'tcx: 'mir, M: Machine<'a, 'mir, 'tcx>> EvalContext<'a, 'mir, 'tc
             // Return place is handled specially by the `eval_place` functions, and the
             // entry in `locals` should never be used. Make it dead, to be sure.
             locals[mir::RETURN_PLACE].state = LocalValue::Dead;
-            // Now mark those locals as dead that we do not want to initialize
+            // Now mark those locals that we do not want to initialize as dead.
             match self.tcx.describe_def(instance.def_id()) {
-                // statics and constants don't have `Storage*` statements, no need to look for them
+                // Statics and constants don't have `Storage*` statements; no need to look for them.
                 Some(Def::Static(..)) | Some(Def::Const(..)) | Some(Def::AssociatedConst(..)) => {},
                 _ => {
                     trace!("push_stack_frame: {:?}: num_bbs: {}", span, mir.basic_blocks().len());
@@ -506,7 +507,7 @@ impl<'a, 'mir, 'tcx: 'mir, M: Machine<'a, 'mir, 'tcx>> EvalContext<'a, 'mir, 'tc
                     }
                 },
             }
-            // Finally, properly initialize all those that still have the dummy value
+            // Finally, properly initialize all those that still have the dummy value.
             for (idx, local) in locals.iter_enumerated_mut() {
                 match local.state {
                     LocalValue::Live(_) => {
@@ -517,15 +518,16 @@ impl<'a, 'mir, 'tcx: 'mir, M: Machine<'a, 'mir, 'tcx>> EvalContext<'a, 'mir, 'tc
                         local.layout = Cell::new(Some(layout));
                     }
                     LocalValue::Dead => {
-                        // Nothing to do
+                        // Nothing to do.
                     }
                 }
             }
-            // done
+            // Done.
             self.frame_mut().locals = locals;
         }
 
-        if self.stack.len() > 1 { // FIXME no check should be needed, but some instances ICE
+        // FIXME: should be `> 0`, but printing topmost frame crashes rustc.
+        if self.stack.len() > 1 {
             info!("ENTERING({}) {}", self.cur_frame(), self.frame().instance);
         }
 
@@ -537,7 +539,8 @@ impl<'a, 'mir, 'tcx: 'mir, M: Machine<'a, 'mir, 'tcx>> EvalContext<'a, 'mir, 'tc
     }
 
     pub(super) fn pop_stack_frame(&mut self) -> EvalResult<'tcx> {
-        if self.stack.len() > 1 { // FIXME no check should be needed, but some instances ICE
+        // FIXME: should be `> 0`, but printing topmost frame crashes rustc.
+        if self.stack.len() > 1 {
             info!("LEAVING({}) {}", self.cur_frame(), self.frame().instance);
         }
         ::log_settings::settings().indentation -= 1;
@@ -567,7 +570,7 @@ impl<'a, 'mir, 'tcx: 'mir, M: Machine<'a, 'mir, 'tcx>> EvalContext<'a, 'mir, 'tc
             if M::enforce_validity(self) {
                 // Data got changed, better make sure it matches the type!
                 // It is still possible that the return place held invalid data while
-                // the function is running, but that's okay because nobody could have
+                // the function is running, but that's ok because nobody could have
                 // accessed that same data from the "outside" to observe any broken
                 // invariant -- that is, unless a function somehow has a ptr to
                 // its return place... but the way MIR is currently generated, the
@@ -591,7 +594,8 @@ impl<'a, 'mir, 'tcx: 'mir, M: Machine<'a, 'mir, 'tcx>> EvalContext<'a, 'mir, 'tc
             StackPopCleanup::None { .. } => {}
         }
 
-        if self.stack.len() > 1 { // FIXME should be "> 0", printing topmost frame crashes rustc...
+        // FIXME: should be `> 0`, but printing topmost frame crashes rustc.
+        if self.stack.len() > 1 {
             info!("CONTINUING({}) {}", self.cur_frame(), self.frame().instance);
         }
 
@@ -645,9 +649,9 @@ impl<'a, 'mir, 'tcx: 'mir, M: Machine<'a, 'mir, 'tcx>> EvalContext<'a, 'mir, 'tc
         } else {
             self.param_env
         };
-        // We use `const_eval_raw` here, and get an unvalidated result.  That is okay:
+        // We use `const_eval_raw` here, and get an unvalidated result. That is ok:
         // Our result will later be validated anyway, and there seems no good reason
-        // to have to fail early here.  This is also more consistent with
+        // to have to fail early here. This is also more consistent with
         // `Memory::get_static_alloc` which has to use `const_eval_raw` to avoid cycles.
         let val = self.tcx.const_eval_raw(param_env.and(gid)).map_err(|err| {
             match err {

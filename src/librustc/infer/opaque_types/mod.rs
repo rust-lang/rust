@@ -290,7 +290,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
         let span = self.tcx.def_span(def_id);
 
         // If there are required region bounds, we can just skip
-        // ahead.  There will already be a registered region
+        // ahead. There will already be a registered region
         // obligation related `concrete_ty` to those regions.
         if opaque_defn.has_required_region_bounds {
             return;
@@ -649,7 +649,7 @@ impl<'a, 'gcx, 'tcx> Instantiator<'a, 'gcx, 'tcx> {
                 if let ty::Opaque(def_id, substs) = ty.sty {
                     // Check that this is `impl Trait` type is
                     // declared by `parent_def_id` -- i.e., one whose
-                    // value we are inferring.  At present, this is
+                    // value we are inferring. At present, this is
                     // always true during the first phase of
                     // type-check, but not always true later on during
                     // NLL. Once we support named abstract types more fully,
@@ -750,7 +750,7 @@ impl<'a, 'gcx, 'tcx> Instantiator<'a, 'gcx, 'tcx> {
             def_id, substs
         );
 
-        // Use the same type variable if the exact same Opaque appears more
+        // Use the same type variable if the exact same opaque type appears more
         // than once in the return type (e.g., if it's passed to a type alias).
         if let Some(opaque_defn) = self.opaque_types.get(&def_id) {
             return opaque_defn.concrete_ty;
@@ -772,9 +772,9 @@ impl<'a, 'gcx, 'tcx> Instantiator<'a, 'gcx, 'tcx> {
             required_region_bounds
         );
 
-        // make sure that we are in fact defining the *entire* type
-        // e.g., `existential type Foo<T: Bound>: Bar;` needs to be
-        // defined by a function like `fn foo<T: Bound>() -> Foo<T>`.
+        // Make sure that we are in fact defining the *entire* type
+        // (e.g., `existential type Foo<T: Bound>: Bar;` needs to be
+        // defined by a function like `fn foo<T: Bound>() -> Foo<T>`).
         debug!(
             "instantiate_opaque_types: param_env: {:#?}",
             self.param_env,
@@ -843,11 +843,11 @@ pub fn may_define_existential_type(
     // named existential types can be defined by any siblings or
     // children of siblings
     let mod_id = tcx.hir().get_parent(opaque_node_id);
-    // so we walk up the node tree until we hit the root or the parent
-    // of the opaque type
+    // We walk up the node tree until we hit the root or the parent
+    // of the opaque type.
     while node_id != mod_id && node_id != ast::CRATE_NODE_ID {
         node_id = tcx.hir().get_parent(node_id);
     }
-    // syntactically we are allowed to define the concrete type
+    // Syntactically we are allowed to define the concrete type.
     node_id == mod_id
 }

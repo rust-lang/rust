@@ -67,7 +67,7 @@ impl<'tcx> PlaceExt<'tcx> for Place<'tcx> {
                     match ty.sty {
                         // For both derefs of raw pointers and `&T`
                         // references, the original path is `Copy` and
-                        // therefore not significant.  In particular,
+                        // therefore not significant. In particular,
                         // there is nothing the user can do to the
                         // original path that would invalidate the
                         // newly created reference -- and if there

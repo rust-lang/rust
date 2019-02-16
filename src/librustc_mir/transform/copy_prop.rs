@@ -119,7 +119,7 @@ impl MirPass for CopyPropagation {
                 }
 
                 changed = action.perform(mir, &def_use_analysis, dest_local, location) || changed;
-                // FIXME(pcwalton): Update the use-def chains to delete the instructions instead of
+                // FIXME(pcwalton): update the use-def chains to delete the instructions instead of
                 // regenerating the chains.
                 break
             }
@@ -239,7 +239,7 @@ impl<'tcx> Action<'tcx> {
                 //
                 // First, remove all markers.
                 //
-                // FIXME(pcwalton): Don't do this. Merge live ranges instead.
+                // FIXME(pcwalton): don't do this. Merge live ranges instead.
                 debug!("  Replacing all uses of {:?} with {:?} (local)",
                        dest_local,
                        src_local);
@@ -266,7 +266,7 @@ impl<'tcx> Action<'tcx> {
             Action::PropagateConstant(src_constant) => {
                 // First, remove all markers.
                 //
-                // FIXME(pcwalton): Don't do this. Merge live ranges instead.
+                // FIXME(pcwalton): don't do this. Merge live ranges instead.
                 debug!("  Replacing all uses of {:?} with {:?} (constant)",
                        dest_local,
                        src_constant);

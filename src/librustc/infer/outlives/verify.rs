@@ -112,7 +112,7 @@ impl<'cx, 'gcx, 'tcx> VerifyBoundCx<'cx, 'gcx, 'tcx> {
         let projection_ty_as_ty =
             self.tcx.mk_projection(projection_ty.item_def_id, projection_ty.substs);
 
-        // Search the env for where clauses like `P: 'a`.
+        // Search the env for where-clauses like `P: 'a`.
         let env_bounds = self.projection_approx_declared_bounds_from_env(projection_ty)
             .into_iter()
             .map(|ty::OutlivesPredicate(ty, r)| {

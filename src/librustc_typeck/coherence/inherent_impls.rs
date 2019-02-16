@@ -38,9 +38,9 @@ pub fn inherent_impls<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                                 -> Lrc<Vec<DefId>> {
     assert!(ty_def_id.is_local());
 
-    // NB. Until we adopt the red-green dep-tracking algorithm (see
+    // N.B., until we adopt the red-green dep-tracking algorithm (see
     // [the plan] for details on that), we do some hackery here to get
-    // the dependencies correct.  Basically, we use a `with_ignore` to
+    // the dependencies correct. Basically, we use a `with_ignore` to
     // read the result we want. If we didn't have the `with_ignore`,
     // we would wind up with a dependency on the entire crate, which
     // we don't want. Then we go and add dependencies on all the impls
@@ -286,7 +286,7 @@ impl<'a, 'tcx> InherentCollect<'a, 'tcx> {
     fn check_def_id(&mut self, item: &hir::Item, def_id: DefId) {
         if def_id.is_local() {
             // Add the implementation to the mapping from implementation to base
-            // type def ID, if there is a base type for this implementation and
+            // type `DefId`, if there is a base type for this implementation and
             // the implementation does not have any associated traits.
             let impl_def_id = self.tcx.hir().local_def_id(item.id);
             let mut rc_vec = self.impls_map.inherent_impls

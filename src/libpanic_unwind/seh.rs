@@ -205,7 +205,7 @@ static mut CATCHABLE_TYPE2: _CatchableType = _CatchableType {
 
 extern "C" {
     // The leading `\x01` byte here is actually a magical signal to LLVM to
-    // *not* apply any other mangling like prefixing with a `_` character.
+    // **not** apply any other mangling like prefixing with a `_` character.
     //
     // This symbol is the vtable used by C++'s `std::type_info`. Objects of type
     // `std::type_info`, type descriptors, have a pointer to this table. Type

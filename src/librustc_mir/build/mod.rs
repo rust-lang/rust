@@ -76,8 +76,8 @@ pub fn mir_build<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: DefId) -> Mir<'t
         let mut mir = if cx.tables().tainted_by_errors {
             build::construct_error(cx, body_id)
         } else if cx.body_owner_kind.is_fn_or_closure() {
-            // fetch the fully liberated fn signature (that is, all bound
-            // types/lifetimes replaced)
+            // Fetch the fully liberated fn signature (that is, all bound
+            // types/lifetimes replaced).
             let fn_hir_id = tcx.hir().node_to_hir_id(id);
             let fn_sig = cx.tables().liberated_fn_sigs()[fn_hir_id].clone();
             let fn_def_id = tcx.hir().local_def_id(id);
@@ -86,7 +86,7 @@ pub fn mir_build<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: DefId) -> Mir<'t
             let mut abi = fn_sig.abi;
             let implicit_argument = match ty.sty {
                 ty::Closure(..) => {
-                    // HACK(eddyb) Avoid having RustCall on closures,
+                    // HACK(eddyb): avoid having `RustCall` on closures,
                     // as it adds unnecessary (and wrong) auto-tupling.
                     abi = Abi::Rust;
                     Some(ArgInfo(liberated_closure_env_ty(tcx, id, body_id), None, None, None))
@@ -154,7 +154,7 @@ pub fn mir_build<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: DefId) -> Mir<'t
             build::construct_const(cx, body_id, return_ty_span)
         };
 
-        // Convert the Mir to global types.
+        // Convert the MIR to global types.
         let mut globalizer = GlobalizeMir {
             tcx,
             span: mir.span
@@ -233,7 +233,7 @@ fn create_constructor_shim<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         tcx.infer_ctxt().enter(|infcx| {
             let mut mir = shim::build_adt_ctor(&infcx, ctor_id, fields, span);
 
-            // Convert the Mir to global types.
+            // Convert the MIR to global types.
             let tcx = infcx.tcx.global_tcx();
             let mut globalizer = GlobalizeMir {
                 tcx,
@@ -434,7 +434,7 @@ impl BlockContext {
     /// whether its one that would discard a block tail result.
     ///
     /// Unlike `currently_within_ignored_tail_expression`, this does
-    /// *not* skip over `SubExpr` frames: here, we want to know
+    /// **not** skip over `SubExpr` frames: here, we want to know
     /// whether the block result itself is discarded.
     fn currently_ignores_tail_results(&self) -> bool {
         match self.0.last() {
@@ -598,16 +598,16 @@ fn should_abort_on_panic<'a, 'gcx, 'tcx>(tcx: TyCtxt<'a, 'gcx, 'tcx>,
                                          fn_def_id: DefId,
                                          abi: Abi)
                                          -> bool {
-    // Not callable from C, so we can safely unwind through these
+    // Not callable from C, so we can safely unwind through these.
     if abi == Abi::Rust || abi == Abi::RustCall { return false; }
 
-    // We never unwind, so it's not relevant to stop an unwind
+    // We never unwind, so it's not relevant to stop an unwind.
     if tcx.sess.panic_strategy() != PanicStrategy::Unwind { return false; }
 
-    // We cannot add landing pads, so don't add one
+    // We cannot add landing pads, so don't add one.
     if tcx.sess.no_landing_pads() { return false; }
 
-    // This is a special case: some functions have a C abi but are meant to
+    // This is a special case: some functions have a C ABI but are meant to
     // unwind anyway. Don't stop them.
     let attrs = &tcx.get_attrs(fn_def_id);
     match attr::find_unwind_attr(Some(tcx.sess.diagnostic()), attrs) {
@@ -716,7 +716,7 @@ fn construct_fn<'a, 'gcx, 'tcx, A>(hir: Cx<'a, 'gcx, 'tcx>,
         unpack!(block = builder.in_scope(arg_scope_s, LintLevel::Inherited, block, |builder| {
             builder.args_and_body(block, &arguments, arg_scope, &body.value)
         }));
-        // Attribute epilogue to function's closing brace
+        // Attribute epilogue to function's closing brace.
         let fn_end = span.shrink_to_hi();
         let source_info = builder.source_info(fn_end);
         let return_block = builder.return_block();
@@ -724,7 +724,7 @@ fn construct_fn<'a, 'gcx, 'tcx, A>(hir: Cx<'a, 'gcx, 'tcx>,
                               TerminatorKind::Goto { target: return_block });
         builder.cfg.terminate(return_block, source_info,
                               TerminatorKind::Return);
-        // Attribute any unreachable codepaths to the function's closing brace
+        // Attribute any unreachable codepaths to the function's closing brace.
         if let Some(unreachable_block) = builder.cached_unreachable_block {
             builder.cfg.terminate(unreachable_block, source_info,
                                   TerminatorKind::Unreachable);
@@ -868,7 +868,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                      ast_body: &'gcx hir::Expr)
                      -> BlockAnd<()>
     {
-        // Allocate locals for the function arguments
+        // Allocate locals for the function arguments.
         for &ArgInfo(ty, _, pattern, _) in arguments.iter() {
             // If this is a simple binding pattern, give the local a name for
             // debuginfo and so that error reporting knows that this is a user
@@ -903,9 +903,9 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
         }
 
         let mut scope = None;
-        // Bind the argument patterns
+        // Bind the argument patterns.
         for (index, arg_info) in arguments.iter().enumerate() {
-            // Function arguments always get the first Local indices after the return place
+            // Function arguments always get the first Local indices after the return place.
             let local = Local::new(index + 1);
             let place = Place::Local(local);
             let &ArgInfo(ty, opt_ty_info, pattern, ref self_binding) = arg_info;
@@ -922,7 +922,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                 let span = pattern.span;
 
                 match *pattern.kind {
-                    // Don't introduce extra copies for simple bindings
+                    // Don't introduce extra copies for simple bindings.
                     PatternKind::Binding { mutability, var, mode: BindingMode::ByValue, .. } => {
                         self.local_decls[local].mutability = mutability;
                         self.local_decls[local].is_user_variable =

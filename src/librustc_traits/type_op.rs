@@ -159,9 +159,9 @@ impl AscribeUserTypeCx<'me, 'gcx, 'tcx> {
         // haven't been normalized.
         //
         // FIXME(nmatsakis): Well, perhaps we should normalize
-        // them?  This would only be relevant if some input
+        // them? This would only be relevant if some input
         // type were ill-formed but did not appear in `ty`,
-        // which...could happen with normalization...
+        // which could happen with normalization.
         self.prove_predicate(Predicate::WellFormed(ty));
         Ok(())
     }

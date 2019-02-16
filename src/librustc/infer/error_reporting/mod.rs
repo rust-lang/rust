@@ -1,4 +1,4 @@
-//! Error Reporting Code for the inference engine
+//! Error reporting for the inference engine.
 //!
 //! Because of the way inference, and in particular region inference,
 //! works, it often happens that errors are not detected until far after
@@ -133,16 +133,16 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
 
             ty::RePlaceholder(_) => (format!("any other region"), None),
 
-            // FIXME(#13998) RePlaceholder should probably print like
-            // ReFree rather than dumping Debug output on the user.
+            // FIXME(#13998): `RePlaceholder` should probably print like
+            // `ReFree` rather than dumping `Debug` output on the user.
             //
-            // We shouldn't really be having unification failures with ReVar
-            // and ReLateBound though.
+            // We shouldn't really be having unification failures with `ReVar`
+            // and `ReLateBound` though.
             ty::ReVar(_) | ty::ReLateBound(..) | ty::ReErased => {
                 (format!("lifetime {:?}", region), None)
             }
 
-            // We shouldn't encounter an error message with ReClosureBound.
+            // We shouldn't encounter an error message with `ReClosureBound`.
             ty::ReClosureBound(..) => {
                 bug!("encountered unexpected ReClosureBound: {:?}", region,);
             }
@@ -303,8 +303,8 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
             return;
         }
 
-        // try to pre-process the errors, which will group some of them
-        // together into a `ProcessedErrors` group:
+        // Try to pre-process the errors, which will group some of them
+        // together into a `ProcessedErrors` group.
         let errors = self.process_errors(errors);
 
         debug!(
@@ -323,7 +323,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
                     // attempt to do is go through a number of specific
                     // scenarios and try to find the best way to present
                     // the error. If all of these fails, we fall back to a rather
-                    // general bit of code that displays the error information
+                    // general bit of code that displays the error information.
                     RegionResolutionError::ConcreteFailure(origin, sub, sup) => {
                         if sub.is_placeholder() || sup.is_placeholder() {
                             self.report_placeholder_failure(region_scope_tree, origin, sub, sup)
@@ -393,7 +393,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
     //
     // The method also attempts to weed out messages that seem like
     // duplicates that will be unhelpful to the end-user. But
-    // obviously it never weeds out ALL errors.
+    // obviously it never weeds out *all* errors.
     fn process_errors(
         &self,
         errors: &Vec<RegionResolutionError<'tcx>>,
@@ -401,7 +401,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
         debug!("process_errors()");
 
         // We want to avoid reporting generic-bound failures if we can
-        // avoid it: these have a very high rate of being unhelpful in
+        // avoid it; these have a very high rate of being unhelpful in
         // practice. This is because they are basically secondary
         // checks that test the state of the region graph after the
         // rest of inference is done, and the other kinds of errors
@@ -428,7 +428,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
             .collect()
         };
 
-        // sort the errors by span, for better error message stability.
+        // Sort the errors by span, for better error message stability.
         errors.sort_by_key(|u| match *u {
             RegionResolutionError::ConcreteFailure(ref sro, _, _) => sro.span(),
             RegionResolutionError::GenericBoundFailure(ref sro, _, _) => sro.span(),
@@ -437,7 +437,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
         errors
     }
 
-    /// Adds a note if the types come from similarly named crates
+    /// Adds a note if the types come from similarly named crates.
     fn check_and_note_conflicting_crates(
         &self,
         err: &mut DiagnosticBuilder<'_>,
@@ -446,14 +446,14 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
     ) {
         let report_path_match = |err: &mut DiagnosticBuilder<'_>, did1: DefId, did2: DefId| {
             // Only external crates, if either is from a local
-            // module we could have false positives
+            // module we could have false positives.
             if !(did1.is_local() || did2.is_local()) && did1.krate != did2.krate {
                 let exp_path = self.tcx.item_path_str(did1);
                 let found_path = self.tcx.item_path_str(did2);
                 let exp_abs_path = self.tcx.absolute_item_path_str(did1);
                 let found_abs_path = self.tcx.absolute_item_path_str(did2);
-                // We compare strings because DefPath can be different
-                // for imported and non-imported crates
+                // We compare strings because `DefPath` can be different
+                // for imported and non-imported crates.
                 if exp_path == found_path || exp_abs_path == found_abs_path {
                     let crate_name = self.tcx.crate_name(did1.krate);
                     err.span_note(
@@ -469,8 +469,8 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
         };
         match *terr {
             TypeError::Sorts(ref exp_found) => {
-                // if they are both "path types", there's a chance of ambiguity
-                // due to different versions of the same crate
+                // If they are both "path types", there's a chance of ambiguity
+                // due to different versions of the same crate.
                 if let (&ty::Adt(exp_adt, _), &ty::Adt(found_adt, _))
                      = (&exp_found.expected.sty, &exp_found.found.sty)
                 {
@@ -480,7 +480,8 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
             TypeError::Traits(ref exp_found) => {
                 report_path_match(err, exp_found.expected, exp_found.found);
             }
-            _ => (), // FIXME(#22750) handle traits and stuff
+            // FIXME(#22750): handle traits and stuff.
+            _ => (),
         }
     }
 
@@ -552,9 +553,9 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
         }
     }
 
-    /// Given that `other_ty` is the same as a type argument for `name` in `sub`, populate `value`
+    /// Given that `other_ty` is the same as a type argument for `name` in `sub`, populates `value`
     /// highlighting `name` and every type argument that isn't at `pos` (which is `other_ty`), and
-    /// populate `other_value` with `other_ty`.
+    /// populates `other_value` with `other_ty`.
     ///
     /// ```text
     /// Foo<Bar<Qux>>
@@ -582,7 +583,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
             value.push_highlighted("<");
         }
 
-        // Output the lifetimes for the first type
+        // Output the lifetimes for the first type.
         let lifetimes = sub.regions()
             .map(|lifetime| {
                 let s = lifetime.to_string();
@@ -777,8 +778,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
                     values.0.push_normal(path1);
                     values.1.push_normal(path2);
 
-                    // Avoid printing out default generic parameters that are common to both
-                    // types.
+                    // Avoid printing out default generic parameters that are common to both types.
                     let len1 = sub_no_defaults_1.len();
                     let len2 = sub_no_defaults_2.len();
                     let common_len = cmp::min(len1, len2);
@@ -832,6 +832,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
                     // We're comparing two types with the same path, so we compare the type
                     // arguments for both. If they are the same, do not highlight and elide from the
                     // output.
+                    //
                     //     Foo<_, Bar>
                     //     Foo<_, Qux>
                     //         ^ elided type as this type argument was the same in both sides
@@ -875,6 +876,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
                         return values;
                     }
                     // Check for case:
+                    //
                     //     let x: Bar<Qux> = y:<Foo<Bar<Qux>>>();
                     //     Bar<Qux>
                     //     Foo<Bar<Qux>>
@@ -892,6 +894,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
                     }
 
                     // We couldn't find anything in common, highlight everything.
+                    //
                     //     let x: Bar<Qux> = y::<Foo<Zar>>();
                     (
                         DiagnosticStyledString::highlighted(t1.to_string()),
@@ -914,7 +917,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
                 values
             }
 
-            // When encountering &T != &mut T, highlight only the borrow
+            // When encountering `&T != &mut T`, highlight only the borrow.
             (&ty::Ref(r1, ref_ty1, mutbl1), &ty::Ref(r2, ref_ty2, mutbl2))
                 if equals(&ref_ty1, &ref_ty2) =>
             {
@@ -950,8 +953,8 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
         mut values: Option<ValuePairs<'tcx>>,
         terr: &TypeError<'tcx>,
     ) {
-        // For some types of errors, expected-found does not make
-        // sense, so just ignore the values we were given.
+        // For some types of errors, the expected-found message format does not
+        // make sense, so just ignore the values we were given.
         match terr {
             TypeError::CyclicTy(_) => {
                 values = None;
@@ -974,7 +977,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
                 let vals = match self.values_str(&values) {
                     Some((expected, found)) => Some((expected, found)),
                     None => {
-                        // Derived error. Cancel the emitter.
+                        // Derived error; cancel the emitter.
                         self.tcx.sess.diagnostic().cancel(diag);
                         return;
                     }
@@ -1036,13 +1039,12 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
         self.check_and_note_conflicting_crates(diag, terr, span);
         self.tcx.note_and_explain_type_err(diag, terr, span);
 
-        // It reads better to have the error origin as the final
-        // thing.
+        // It reads better to have the error origin as the final thing.
         self.note_error_origin(diag, &cause, exp_found);
     }
 
     /// When encountering a case where `.as_ref()` on a `Result` or `Option` would be appropriate,
-    /// suggest it.
+    /// suggests it.
     fn suggest_as_ref_where_appropriate(
         &self,
         span: Span,
@@ -1161,7 +1163,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
         Some(self.cmp(exp_found.expected, exp_found.found))
     }
 
-    /// Returns a string of the form "expected `{}`, found `{}`".
+    /// Returns a string of the form `"expected `{}`, found `{}`"`.
     fn expected_found_str<T: fmt::Display + TypeFoldable<'tcx>>(
         &self,
         exp_found: &ty::error::ExpectedFound<T>,
@@ -1219,7 +1221,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
                             }
                             let sp = hir.span(id);
                             // `sp` only covers `T`, change it so that it covers
-                            // `T:` when appropriate
+                            // `T:` when appropriate.
                             let is_impl_trait = bound_kind.to_string().starts_with("impl ");
                             let sp = if has_bounds && !is_impl_trait {
                                 sp.to(self.tcx
@@ -1285,7 +1287,8 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
                     sp,
                     &consider,
                     suggestion,
-                    Applicability::MaybeIncorrect, // Issue #41966
+                    // Issue #41966.
+                    Applicability::MaybeIncorrect,
                 );
             } else {
                 err.help(&consider);

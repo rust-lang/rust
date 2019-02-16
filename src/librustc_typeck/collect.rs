@@ -226,17 +226,17 @@ impl<'a, 'tcx> AstConv<'tcx, 'tcx> for ItemCtxt<'a, 'tcx> {
     }
 
     fn normalize_ty(&self, _span: Span, ty: Ty<'tcx>) -> Ty<'tcx> {
-        // types in item signatures are not normalized, to avoid undue
+        // Types in item signatures are not normalized, to avoid undue
         // dependencies.
         ty
     }
 
     fn set_tainted_by_errors(&self) {
-        // no obvious place to track this, just let it go
+        // No obvious place to track this; just let it go.
     }
 
     fn record_ty(&self, _hir_id: hir::HirId, _ty: Ty<'tcx>, _span: Span) {
-        // no place to record types from signatures?
+        // No place to record types from signatures?
     }
 }
 
@@ -247,8 +247,8 @@ fn type_param_predicates<'a, 'tcx>(
     use rustc::hir::*;
 
     // In the AST, bounds can derive from two places. Either
-    // written inline like `<T : Foo>` or in a where clause like
-    // `where T : Foo`.
+    // written inline like `<T: Foo>` or in a where-clause like
+    // `where T: Foo`.
 
     let param_id = tcx.hir().as_local_node_id(def_id).unwrap();
     let param_owner = tcx.hir().ty_param_owner(param_id);
@@ -452,7 +452,7 @@ fn convert_item<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, item_id: ast::NodeId) {
             }
         }
 
-        // Desugared from `impl Trait` -> visited by the function's return type
+        // Desugared from `impl Trait`, so visited by the function's return type.
         hir::ItemKind::Existential(hir::ExistTy {
             impl_trait_fn: Some(_),
             ..
@@ -644,7 +644,7 @@ fn adt_def<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: DefId) -> &'tcx ty::Ad
             )
         }
         ItemKind::Struct(ref def, _) => {
-            // Use separate constructor id for unit/tuple structs and reuse did for braced structs.
+            // Use separate constructor ID for unit/tuple structs and reuse did for braced structs.
             let ctor_id = if !def.is_struct() {
                 Some(tcx.hir().local_def_id(def.id()))
             } else {
@@ -703,15 +703,15 @@ fn super_predicates_of<'a, 'tcx>(
 
     let icx = ItemCtxt::new(tcx, trait_def_id);
 
-    // Convert the bounds that follow the colon, e.g., `Bar + Zed` in `trait Foo : Bar + Zed`.
+    // Convert the bounds that follow the colon, e.g., `Bar + Zed` in `trait Foo: Bar + Zed`.
     let self_param_ty = tcx.mk_self_type();
     let superbounds1 = compute_bounds(&icx, self_param_ty, bounds, SizedByDefault::No, item.span);
 
     let superbounds1 = superbounds1.predicates(tcx, self_param_ty);
 
-    // Convert any explicit superbounds in the where clause,
-    // e.g., `trait Foo where Self : Bar`.
-    // In the case of trait aliases, however, we include all bounds in the where clause,
+    // Convert any explicit superbounds in the where-clause,
+    // e.g., `trait Foo where Self: Bar`.
+    // In the case of trait aliases, however, we include all bounds in the where-clause,
     // so e.g., `trait Foo = where u32: PartialEq<Self>` would include `u32: PartialEq<Self>`
     // as one of its "superpredicates".
     let is_trait_alias = tcx.is_trait_alias(trait_def_id);
@@ -929,8 +929,8 @@ fn generics_of<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: DefId) -> &'tcx ty
                 | ItemKind::TraitAlias(ref generics, ..) => {
                     // Add in the self type parameter.
                     //
-                    // Something of a hack: use the node id for the trait, also as
-                    // the node id for the Self type parameter.
+                    // Something of a hack: use the `NodeId` for the trait, also as
+                    // the `NodeId` for the Self type parameter.
                     let param_id = item.id;
 
                     opt_self = Some(ty::GenericParamDef {
@@ -1183,7 +1183,7 @@ fn type_of<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: DefId) -> Ty<'tcx> {
                     impl_trait_fn: None,
                     ..
                 }) => find_existential_constraints(tcx, def_id),
-                // existential types desugared from impl Trait
+                // Existential types desugared from `impl Trait`.
                 ItemKind::Existential(hir::ExistTy {
                     impl_trait_fn: Some(owner),
                     ..
@@ -1345,7 +1345,7 @@ fn find_existential_constraints<'a, 'tcx>(
                 let span = self.tcx.def_span(def_id);
                 if let Some((prev_span, prev_ty)) = self.found {
                     if ty != prev_ty {
-                        // found different concrete types for the existential type
+                        // Found different concrete types for the existential type.
                         let mut err = self.tcx.sess.struct_span_err(
                             span,
                             "defining existential type use differs from previous",
@@ -1366,7 +1366,7 @@ fn find_existential_constraints<'a, 'tcx>(
         }
         fn visit_item(&mut self, it: &'tcx Item) {
             let def_id = self.tcx.hir().local_def_id(it.id);
-            // the existential type itself or its children are not within its reveal scope
+            // The existential type itself or its children are not within its reveal scope.
             if def_id != self.def_id {
                 self.check(def_id);
                 intravisit::walk_item(self, it);
@@ -1374,7 +1374,7 @@ fn find_existential_constraints<'a, 'tcx>(
         }
         fn visit_impl_item(&mut self, it: &'tcx ImplItem) {
             let def_id = self.tcx.hir().local_def_id(it.id);
-            // the existential type itself or its children are not within its reveal scope
+            // The existential type itself or its children are not within its reveal scope.
             if def_id != self.def_id {
                 self.check(def_id);
                 intravisit::walk_impl_item(self, it);
@@ -1529,7 +1529,7 @@ fn impl_polarity<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: DefId) -> hir::I
     }
 }
 
-// Is it marked with ?Sized
+// Returns whether the given bounds include `?Sized`.
 fn is_unsized<'gcx: 'tcx, 'tcx>(
     astconv: &dyn AstConv<'gcx, 'tcx>,
     ast_bounds: &[hir::GenericBound],
@@ -1558,7 +1558,7 @@ fn is_unsized<'gcx: 'tcx, 'tcx>(
     let kind_id = tcx.lang_items().require(SizedTraitLangItem);
     match unbound {
         Some(ref tpb) => {
-            // FIXME(#8559) currently requires the unbound to be built-in.
+            // FIXME(#8559): currently requires the unbound to be built-in.
             if let Ok(kind_id) = kind_id {
                 if tpb.path.def != Def::Trait(kind_id) {
                     tcx.sess.span_warn(
@@ -1646,7 +1646,7 @@ fn predicates_of<'a, 'tcx>(
         // is something that one must prove in order to invoke a
         // method or project an associated type.
         //
-        // In the chalk setup, this predicate is not part of the
+        // In the Chalk setup, this predicate is not part of the
         // "predicates" for a trait item. But it is useful in
         // rustc because if you directly (e.g.) invoke a trait
         // method like `Trait::method(...)`, you must naturally
@@ -1819,7 +1819,7 @@ fn explicit_predicates_of<'a, 'tcx>(
     //
     //     default impl Foo for Bar { .. }
     //
-    // we add a default where clause `Foo: Bar`. We do a similar thing for traits
+    // we add a default where-clause `Foo: Bar`. We do a similar thing for traits
     // (see below). Recall that a default impl is not itself an impl, but rather a
     // set of defaults that can be incorporated into another impl.
     if let Some(trait_ref) = is_default_impl_trait {
@@ -1854,7 +1854,7 @@ fn explicit_predicates_of<'a, 'tcx>(
     }
 
     // Collect the predicates that were written inline by the user on each
-    // type parameter (e.g., `<T:Foo>`).
+    // type parameter (e.g., `<T: Foo>`).
     for param in &ast_generics.params {
         if let GenericParamKind::Type { .. } = param.kind {
             let name = param.name.ident().as_interned_str();
@@ -1867,7 +1867,7 @@ fn explicit_predicates_of<'a, 'tcx>(
         }
     }
 
-    // Add in the bounds that appear in the where-clause
+    // Add in the bounds that appear in the where-clause.
     let where_clause = &ast_generics.where_clause;
     for predicate in &where_clause.predicates {
         match predicate {
@@ -1969,8 +1969,8 @@ fn explicit_predicates_of<'a, 'tcx>(
     let mut predicates = predicates.predicates;
 
     // Subtle: before we store the predicates into the tcx, we
-    // sort them so that predicates like `T: Foo<Item=U>` come
-    // before uses of `U`.  This avoids false ambiguity errors
+    // sort them so that predicates like `T: Foo<Item = U>` come
+    // before uses of `U`. This avoids false ambiguity errors
     // in trait checking. See `setup_constraining_predicates`
     // for details.
     if let Node::Item(&Item {
@@ -2238,7 +2238,7 @@ fn linkage_by_name<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: DefId, name: &
     // may pop up in the future.
     //
     // ghost, dllimport, dllexport and linkonce_odr_autohide are not supported
-    // and don't have to be, LLVM treats them as no-ops.
+    // and don't have to be, LLVM treats them as noops.
     match name {
         "appending" => Appending,
         "available_externally" => AvailableExternally,

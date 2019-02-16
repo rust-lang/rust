@@ -474,17 +474,17 @@ fn sub_bound_free_true() {
     })
 }
 
-/// Test substituting a bound region into a function, which introduces another level of binding.
-/// This requires adjusting the Debruijn index.
+/// Tests substituting a bound region into a function, which introduces another level of binding.
+/// This requires adjusting the De Bruijn index.
 #[test]
 fn subst_ty_renumber_bound() {
     test_env(EMPTY_SOURCE_STR, errors(&[]), |env| {
         // Situation:
-        // Theta = [A -> &'a foo]
+        // `Theta = [A -> &'a foo]`
 
         let t_rptr_bound1 = env.t_rptr_late_bound(1);
 
-        // t_source = fn(A)
+        // `t_source = fn(A)`
         let t_source = {
             let t_param = env.t_param(0);
             env.t_fn(&[t_param], env.t_nil())
@@ -493,7 +493,7 @@ fn subst_ty_renumber_bound() {
         let substs = env.infcx.tcx.intern_substs(&[t_rptr_bound1.into()]);
         let t_substituted = t_source.subst(env.infcx.tcx, substs);
 
-        // t_expected = fn(&'a isize)
+        // `t_expected = fn(&'a isize)`
         let t_expected = {
             let t_ptr_bound2 = env.t_rptr_late_bound_with_debruijn(1, d2());
             env.t_fn(&[t_ptr_bound2], env.t_nil())
@@ -529,7 +529,7 @@ fn subst_ty_renumber_some_bounds() {
 
         // `t_expected = (&'a isize, fn(&'a isize))`
         //
-        // However, note that the Debruijn index is different in the different cases.
+        // However, note that the De Bruijn index is different in the different cases.
         let t_expected = {
             let t_rptr_bound2 = env.t_rptr_late_bound_with_debruijn(1, d2());
             env.t_pair(t_rptr_bound1, env.t_fn(&[t_rptr_bound2], env.t_nil()))
@@ -589,7 +589,7 @@ fn subst_region_renumber_region() {
 
         // `t_expected = fn(&'a isize)`
         //
-        // but not that the Debruijn index is different in the different cases.
+        // but not that the De Bruijn index is different in the different cases.
         let t_expected = {
             let t_rptr_bound2 = env.t_rptr_late_bound_with_debruijn(1, d2());
             env.t_fn(&[t_rptr_bound2], env.t_nil())

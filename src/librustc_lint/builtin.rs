@@ -54,7 +54,7 @@ use crate::nonstandard_style::{MethodLateContext, method_context};
 
 use log::debug;
 
-// hardwired lints from librustc
+// Hardwired lints from librustc.
 pub use lint::builtin::*;
 
 declare_lint! {
@@ -193,9 +193,9 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for NonShorthandFieldPatterns {
                     continue;
                 }
                 if fieldpat.span.ctxt().outer().expn_info().is_some() {
-                    // Don't lint if this is a macro expansion: macro authors
-                    // shouldn't have to worry about this kind of style issue
-                    // (Issue #49588)
+                    // Don't lint if this is a macro expansion; macro authors
+                    // shouldn't have to worry about this kind of style problem
+                    // (see issue #49588).
                     continue;
                 }
                 if let PatKind::Binding(_, _, _, ident, None) = fieldpat.node.pat.node {
@@ -241,7 +241,7 @@ impl LintPass for UnsafeCode {
 
 impl UnsafeCode {
     fn report_unsafe(&self, cx: &EarlyContext<'_>, span: Span, desc: &'static str) {
-        // This comes from a macro that has #[allow_internal_unsafe].
+        // This comes from a macro that has `#[allow_internal_unsafe]`.
         if span.allows_unsafe() {
             return;
         }
@@ -378,7 +378,7 @@ impl MissingDoc {
 
         // Only check publicly-visible items, using the result from the privacy pass.
         // It's an option so the crate root can also use this function (it doesn't
-        // have a NodeId).
+        // have a `NodeId`).
         if let Some(id) = id {
             if !cx.access_levels.is_exported(id) {
                 return;
@@ -442,7 +442,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for MissingDoc {
             hir::ItemKind::Struct(..) => "a struct",
             hir::ItemKind::Union(..) => "a union",
             hir::ItemKind::Trait(.., ref trait_item_refs) => {
-                // Issue #11592, traits are always considered exported, even when private.
+                // Issue #11592: traits are always considered exported, even when private.
                 if let hir::VisibilityKind::Inherited = it.vis.node {
                     self.private_traits.insert(it.id);
                     for trait_item_ref in trait_item_refs {
@@ -454,7 +454,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for MissingDoc {
             }
             hir::ItemKind::Ty(..) => "a type alias",
             hir::ItemKind::Impl(.., Some(ref trait_ref), _, ref impl_item_refs) => {
-                // If the trait is private, add the impl items to private_traits so they don't get
+                // If the trait is private, add the impl items to `private_traits` so they don't get
                 // reported for missing docs.
                 let real_trait = trait_ref.path.def.def_id();
                 if let Some(node_id) = cx.tcx.hir().as_local_node_id(real_trait) {
@@ -859,8 +859,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for PluginAsLibrary {
             Some(cnum) => cx.tcx.plugin_registrar_fn(cnum),
             None => {
                 // Probably means we aren't linking the crate for some reason.
-                //
-                // Not sure if / when this could happen.
+                // Not sure if/when this could happen.
                 return;
             }
         };
@@ -917,7 +916,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for InvalidNoMangleItems {
                                     "remove this attribute",
                                     String::new(),
                                     // Use of `#[no_mangle]` suggests FFI intent; correct
-                                    // fix may be to monomorphize source by hand
+                                    // fix may be to monomorphize source by hand.
                                     Applicability::MaybeIncorrect
                                 );
                                 err.emit();
@@ -930,15 +929,15 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for InvalidNoMangleItems {
             hir::ItemKind::Const(..) => {
                 if attr::contains_name(&it.attrs, "no_mangle") {
                     // Const items do not refer to a particular location in memory, and therefore
-                    // don't have anything to attach a symbol to
+                    // don't have anything to attach a symbol to.
                     let msg = "const items should never be #[no_mangle]";
                     let mut err = cx.struct_span_lint(NO_MANGLE_CONST_ITEMS, it.span, msg);
 
-                    // account for "pub const" (#45562)
+                    // Account for `pub const` (#45562).
                     let start = cx.tcx.sess.source_map().span_to_snippet(it.span)
                         .map(|snippet| snippet.find("const").unwrap_or(0))
                         .unwrap_or(0) as u32;
-                    // `const` is 5 chars
+                    // `const` is 5 chars.
                     let const_span = it.span.with_hi(BytePos(it.span.lo().0 + start + 5));
                     err.span_suggestion(
                         const_span,
@@ -1202,7 +1201,7 @@ impl TypeAliasBounds {
 
     fn suggest_changing_assoc_types(ty: &hir::Ty, err: &mut DiagnosticBuilder<'_>) {
         // Access to associates types should use `<T as Bound>::Assoc`, which does not need a
-        // bound.  Let's see if this type does that.
+        // bound. Let's see if this type does that.
 
         // We use a HIR visitor to walk the type.
         use rustc::hir::intravisit::{self, Visitor};
@@ -1238,7 +1237,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for TypeAliasBounds {
             _ => return,
         };
         let mut suggested_changing_assoc_types = false;
-        // There must not be a where clause
+        // There must not be a where-clause.
         if !type_alias_generics.where_clause.predicates.is_empty() {
             let spans : Vec<_> = type_alias_generics.where_clause.predicates.iter()
                 .map(|pred| pred.span()).collect();
@@ -1252,7 +1251,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for TypeAliasBounds {
             }
             err.emit();
         }
-        // The parameters must not have bounds
+        // The parameters must not have bounds.
         for param in type_alias_generics.params.iter() {
             let spans: Vec<_> = param.bounds.iter().map(|b| b.span()).collect();
             if !spans.is_empty() {
@@ -1301,7 +1300,7 @@ fn check_const(cx: &LateContext<'_, '_>, body_id: hir::BodyId) {
         instance: ty::Instance::mono(cx.tcx, def_id),
         promoted: None
     };
-    // trigger the query once for all constants since that will already report the errors
+    // Trigger the query once for all constants, since that will already report the errors.
     let _ = cx.tcx.const_eval(param_env.and(cid));
 }
 
@@ -1359,9 +1358,9 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for TrivialConstraints {
                     RegionOutlives(..) => "Lifetime",
 
                     // Ignore projections, as they can only be global
-                    // if the trait bound is global
+                    // if the trait bound is global.
                     Projection(..) |
-                    // Ignore bounds that a user can't type
+                    // Ignore bounds that a user can't type.
                     WellFormed(..) |
                     ObjectSafe(..) |
                     ClosureKind(..) |
@@ -1490,7 +1489,8 @@ declare_lint! {
 }
 
 pub struct UnnameableTestItems {
-    boundary: ast::NodeId, // NodeId of the item under which things are not nameable
+    // `NodeId` of the item under which things are not nameable.
+    boundary: ast::NodeId,
     items_nameable: bool,
 }
 
@@ -1565,7 +1565,7 @@ impl KeywordIdents {
         for tt in tokens.into_trees() {
             match tt {
                 TokenTree::Token(span, tok) => match tok.ident() {
-                    // only report non-raw idents
+                    // Only report non-raw idents.
                     Some((ident, false)) => {
                         self.check_ident(cx, ast::Ident {
                             span: span.substitute_dummy(ident.span),
@@ -1634,7 +1634,7 @@ impl EarlyLintPass for KeywordIdents {
             },
         };
 
-        // don't lint `r#foo`
+        // Don't lint `r#foo`.
         if is_raw_ident(ident) {
             return;
         }
@@ -1679,9 +1679,9 @@ impl ExplicitOutlivesRequirements {
         infer_static: bool
     ) -> Vec<(usize, Span)> {
         // For lack of a more elegant strategy for comparing the `ty::Predicate`s
-        // returned by this query with the params/bounds grabbed from the HIR—and
-        // with some regrets—we're going to covert the param/lifetime names to
-        // strings
+        // returned by this query with the params/bounds grabbed from the HIR (and
+        // with some regrets), we're going to covert the param/lifetime names to
+        // strings.
         let inferred_outlives = cx.tcx.inferred_outlives_of(item_def_id);
 
         let ty_lt_names = inferred_outlives.iter().filter_map(|pred| {
@@ -1711,7 +1711,8 @@ impl ExplicitOutlivesRequirements {
                     _ => false
                 };
                 if is_static && !infer_static {
-                    // infer-outlives for 'static is still feature-gated (tracking issue #44493)
+                    // `infer-outlives` for `'static` is still feature-gated
+                    // (tracking issue #44493).
                     continue;
                 }
 
@@ -1736,7 +1737,7 @@ impl ExplicitOutlivesRequirements {
         if bound_spans.len() == bounds.len() {
             let (_, last_bound_span) = bound_spans[bound_spans.len()-1];
             // If all bounds are inferable, we want to delete the colon, so
-            // start from just after the parameter (span passed as argument)
+            // start from just after the parameter (span passed as argument).
             vec![lo.to(last_bound_span)]
         } else {
             let mut merged = Vec::new();
@@ -1745,7 +1746,7 @@ impl ExplicitOutlivesRequirements {
             let mut from_start = true;
             for (i, bound_span) in bound_spans {
                 match last_merged_i {
-                    // If the first bound is inferable, our span should also eat the trailing `+`
+                    // If the first bound is inferable, our span should also eat the trailing `+`.
                     None if i == 0 => {
                         merged.push(bound_span.to(bounds[1].span().shrink_to_lo()));
                         last_merged_i = Some(0);
@@ -1754,7 +1755,7 @@ impl ExplicitOutlivesRequirements {
                     Some(h) if i == h+1 => {
                         if let Some(tail) = merged.last_mut() {
                             // Also eat the trailing `+` if the first
-                            // more-than-one bound is inferable
+                            // more-than-one bound is inferable.
                             let to_span = if from_start && i < bounds.len() {
                                 bounds[i+1].span().shrink_to_lo()
                             } else {
@@ -1769,7 +1770,7 @@ impl ExplicitOutlivesRequirements {
                     _ => {
                         // When we find a non-inferable bound, subsequent inferable bounds
                         // won't be consecutive from the start (and we'll eat the leading
-                        // `+` rather than the trailing one)
+                        // `+` rather than the trailing one).
                         from_start = false;
                         merged.push(bounds[i-1].span().shrink_to_hi().to(bound_span));
                         last_merged_i = Some(i);

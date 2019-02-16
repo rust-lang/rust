@@ -219,8 +219,8 @@ where
         first_free_index: ty::DebruijnIndex,
         scopes: &[BoundRegionScope<'tcx>],
     ) -> ty::Region<'tcx> {
-        // The debruijn index is a "reverse index" into the
-        // scopes listing. So when we have INNERMOST (0), we
+        // The De Bruijn index is a "reverse index" into the
+        // scopes listing. So when we have `INNERMOST` (`0`), we
         // want the *last* scope pushed, and so forth.
         let debruijn_index = debruijn.index() - first_free_index.index();
         let scope = &scopes[scopes.len() - debruijn_index - 1];
@@ -594,11 +594,11 @@ where
 /// (these are not explicitly present in the ty representation right
 /// now). This visitor handles that: it descends the type, tracking
 /// binder depth, and finds late-bound regions targeting the
-/// `for<..`>.  For each of those, it creates an entry in
+/// `for<..`>. For each of those, it creates an entry in
 /// `bound_region_scope`.
 struct ScopeInstantiator<'me, 'tcx: 'me> {
     next_region: &'me mut dyn FnMut(ty::BoundRegion) -> ty::Region<'tcx>,
-    // The debruijn index of the scope we are instantiating.
+    // The De Bruijn index of the scope we are instantiating.
     target_index: ty::DebruijnIndex,
     bound_region_scope: &'me mut BoundRegionScope<'tcx>,
 }
@@ -829,7 +829,7 @@ where
         // `self.universe` universe, this also serves to enforce the
         // universe scoping rules.
         //
-        // FIXME(#54105) -- if the ambient variance is bivariant,
+        // FIXME(#54105): if the ambient variance is bivariant,
         // though, we may however need to check well-formedness or
         // risk a problem like #41677 again.
 

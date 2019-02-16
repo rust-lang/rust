@@ -11,7 +11,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
     /// scope expression.
     ///
     /// The operand returned from this function will *not be valid* after
-    /// an ExprKind::Scope is passed, so please do *not* return it from
+    /// an ExprKind::Scope is passed, so please do **not** return it from
     /// functions to avoid bad miscompiles.
     pub fn as_local_operand<M>(&mut self, block: BasicBlock, expr: M) -> BlockAnd<Operand<'tcx>>
     where

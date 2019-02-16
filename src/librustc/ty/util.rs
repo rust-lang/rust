@@ -36,7 +36,7 @@ impl<'tcx> fmt::Display for Discr<'tcx> {
                     Integer::from_attr(&tcx, SignedInt(ity)).size().bits()
                 });
                 let x = self.val as i128;
-                // sign extend the raw representation to be an i128
+                // Sign-extend the raw representation to be an `i128`.
                 let x = (x << (128 - bits)) >> (128 - bits);
                 write!(fmt, "{}", x)
             },
@@ -75,7 +75,7 @@ impl<'tcx> Discr<'tcx> {
             } else {
                 val + n
             };
-            // zero the upper bits
+            // Zero the upper bits.
             let val = val as u128;
             let val = (val << shift) >> shift;
             (Self {
@@ -178,7 +178,7 @@ impl<'tcx> ty::ParamEnv<'tcx> {
                                        tcx: TyCtxt<'a, 'tcx, 'tcx>,
                                        self_type: Ty<'tcx>)
                                        -> Result<(), CopyImplementationError<'tcx>> {
-        // FIXME: (@jroesch) float this code up
+        // FIXME(jroesch): float this code up.
         tcx.infer_ctxt().enter(|infcx| {
             let (adt, substs) = match self_type.sty {
                 // These types used to have a builtin impl.
@@ -231,8 +231,8 @@ impl<'a, 'tcx> TyCtxt<'a, 'tcx, 'tcx> {
         let mut hasher = StableHasher::new();
         let mut hcx = self.create_stable_hashing_context();
 
-        // We want the type_id be independent of the types free regions, so we
-        // erase them. The erase_regions() call will also anonymize bound
+        // We want the `type_id` to be independent of the types free regions, so we
+        // erase them. The `erase_regions()` call will also anonymize bound
         // regions, which is desirable too.
         let ty = self.erase_regions(&ty);
 
@@ -369,9 +369,9 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
                         None
                     }
                     ty::Predicate::TypeOutlives(predicate) => {
-                        // Search for a bound of the form `erased_self_ty
-                        // : 'a`, but be wary of something like `for<'a>
-                        // erased_self_ty : 'a` (we interpret a
+                        // Search for a bound of the form `erased_self_ty: 'a`,
+                        // but be wary of something like `for<'a>
+                        // erased_self_ty: 'a` (we interpret a
                         // higher-ranked bound like that as 'static,
                         // though at present the code in `fulfill.rs`
                         // considers such bounds to be unsatisfiable, so
@@ -452,8 +452,8 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
         let impl_def_id = self.associated_item(dtor).container.id();
         let impl_generics = self.generics_of(impl_def_id);
 
-        // We have a destructor - all the parameters that are not
-        // pure_wrt_drop (i.e, don't have a #[may_dangle] attribute)
+        // We have a destructor -- all the parameters that are not
+        // pure_wrt_drop (i.e, don't have a `#[may_dangle]` attribute)
         // must be live.
 
         // We need to return the list of parameters from the ADTs
@@ -495,7 +495,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
                         !impl_generics.type_param(pt, self).pure_wrt_drop
                     }
                     UnpackedKind::Lifetime(_) | UnpackedKind::Type(_) => {
-                        // not a type or region param - this should be reported
+                        // Not a type or region param; this should be reported
                         // as an error.
                         false
                     }
@@ -771,14 +771,14 @@ impl<'a, 'tcx> ty::TyS<'tcx> {
         }
     }
 
-    /// Check whether a type is representable. This means it cannot contain unboxed
+    /// Checks whether a type is representable. This means it cannot contain unboxed
     /// structural recursion. This check is needed for structs and enums.
     pub fn is_representable(&'tcx self,
                             tcx: TyCtxt<'a, 'tcx, 'tcx>,
                             sp: Span)
                             -> Representability
     {
-        // Iterate until something non-representable is found
+        // Iterate until something non-representable is found.
         fn fold_repr<It: Iterator<Item=Representability>>(iter: It) -> Representability {
             iter.fold(Representability::Representable, |r1, r2| {
                 match (r1, r2) {
@@ -800,18 +800,18 @@ impl<'a, 'tcx> ty::TyS<'tcx> {
         {
             match ty.sty {
                 Tuple(ref ts) => {
-                    // Find non representable
+                    // Find non-representable.
                     fold_repr(ts.iter().map(|ty| {
                         is_type_structurally_recursive(tcx, sp, seen, representable_cache, ty)
                     }))
                 }
                 // Fixed-length vectors.
-                // FIXME(#11924) Behavior undecided for zero-length vectors.
+                // FIXME(#11924): behavior undecided for zero-length vectors.
                 Array(ty, _) => {
                     is_type_structurally_recursive(tcx, sp, seen, representable_cache, ty)
                 }
                 Adt(def, substs) => {
-                    // Find non representable fields with their spans
+                    // Find non-representable fields with their spans.
                     fold_repr(def.all_fields().map(|field| {
                         let ty = field.ty(tcx, substs);
                         let span = tcx.hir().span_if_local(field.did).unwrap_or(sp);
@@ -826,8 +826,8 @@ impl<'a, 'tcx> ty::TyS<'tcx> {
                     }))
                 }
                 Closure(..) => {
-                    // this check is run on type definitions, so we don't expect
-                    // to see closure types
+                    // This check is run on type definitions, so we don't expect
+                    // to see closure types.
                     bug!("requires check invoked on inapplicable type: {:?}", ty)
                 }
                 _ => Representability::Representable,
@@ -880,12 +880,13 @@ impl<'a, 'tcx> ty::TyS<'tcx> {
                         let mut iter = seen.iter();
 
                         // The first item in `seen` is the type we are actually curious about.
-                        // We want to return SelfRecursive if this type contains itself.
-                        // It is important that we DON'T take generic parameters into account
-                        // for this check, so that Bar<T> in this example counts as SelfRecursive:
+                        // We want to return `SelfRecursive` if this type contains itself.
+                        // It is important that we *don't* take generic parameters into account
+                        // for this check, so that `Bar<T>` in this example counts as
+                        // `SelfRecursive`:
                         //
-                        // struct Foo;
-                        // struct Bar<T> { x: Bar<Foo> }
+                        //     struct Foo;
+                        //     struct Bar<T> { x: Bar<Foo> }
 
                         if let Some(&seen_type) = iter.next() {
                             if same_struct_or_enum(seen_type, def) {
@@ -1008,28 +1009,28 @@ fn needs_drop_raw<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     assert!(!ty.needs_infer());
 
     NeedsDrop(match ty.sty {
-        // Fast-path for primitive types
+        // Fast-path for primitive types.
         ty::Infer(ty::FreshIntTy(_)) | ty::Infer(ty::FreshFloatTy(_)) |
         ty::Bool | ty::Int(_) | ty::Uint(_) | ty::Float(_) | ty::Never |
         ty::FnDef(..) | ty::FnPtr(_) | ty::Char | ty::GeneratorWitness(..) |
         ty::RawPtr(_) | ty::Ref(..) | ty::Str => false,
 
-        // Foreign types can never have destructors
+        // Foreign types can never have destructors.
         ty::Foreign(..) => false,
 
         // `ManuallyDrop` doesn't have a destructor regardless of field types.
         ty::Adt(def, _) if Some(def.did) == tcx.lang_items().manually_drop() => false,
 
-        // Issue #22536: We first query `is_copy_modulo_regions`.  It sees a
+        // Issue #22536: we first query `is_copy_modulo_regions`. It sees a
         // normalized version of the type, and therefore will definitely
         // know whether the type implements Copy (and thus needs no
         // cleanup/drop/zeroing) ...
         _ if ty.is_copy_modulo_regions(tcx, param_env, DUMMY_SP) => false,
 
-        // ... (issue #22536 continued) but as an optimization, still use
-        // prior logic of asking for the structural "may drop".
+        // ... but as an optimization, still use the prior logic of asking for
+        // the structural "may drop".
 
-        // FIXME(#22815): Note that this is a conservative heuristic;
+        // FIXME(#22815): note that this is a conservative heuristic;
         // it may report that the type "may drop" when actual type does
         // not actually have a destructor associated with it. But since
         // the type absolutely did not have the `Copy` bound attached
@@ -1039,7 +1040,7 @@ fn needs_drop_raw<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         ty::Adt(def, _) if def.has_dtor(tcx) => true,
 
         // Can refer to a type which may drop.
-        // FIXME(eddyb) check this against a ParamEnv.
+        // FIXME(eddyb): check this against a `ParamEnv`.
         ty::Dynamic(..) | ty::Projection(..) | ty::Param(_) | ty::Bound(..) |
         ty::Placeholder(..) | ty::Opaque(..) | ty::Infer(_) | ty::Error => true,
 
@@ -1051,13 +1052,13 @@ fn needs_drop_raw<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         ty::Closure(def_id, ref substs) => substs.upvar_tys(def_id, tcx).any(needs_drop),
 
         // Pessimistically assume that all generators will require destructors
-        // as we don't know if a destructor is a noop or not until after the MIR
-        // state transformation pass
+        // as we don't know if a destructor is a no-op or not until after the MIR
+        // state transformation pass.
         ty::Generator(..) => true,
 
         ty::Tuple(ref tys) => tys.iter().cloned().any(needs_drop),
 
-        // unions don't have destructors because of the child types,
+        // Unions don't have destructors because of the child types,
         // only if they manually implement `Drop` (handled above).
         ty::Adt(def, _) if def.is_union() => false,
 

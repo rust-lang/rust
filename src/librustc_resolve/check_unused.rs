@@ -1,5 +1,4 @@
-//
-// Unused import checking
+// Checks for unused imports.
 //
 // Although this is mostly a lint pass, it lives in here because it depends on
 // resolve data structures and because it finalises the privacy information for
@@ -25,15 +24,15 @@
 
 use std::ops::{Deref, DerefMut};
 
-use crate::Resolver;
-use crate::resolve_imports::ImportDirectiveSubclass;
-
+use rustc_data_structures::fx::FxHashSet;
 use rustc::util::nodemap::NodeMap;
 use rustc::{lint, ty};
-use rustc_data_structures::fx::FxHashSet;
+use syntax_pos::{Span, MultiSpan, DUMMY_SP};
 use syntax::ast;
 use syntax::visit::{self, Visitor};
-use syntax_pos::{Span, MultiSpan, DUMMY_SP};
+
+use crate::Resolver;
+use crate::resolve_imports::ImportDirectiveSubclass;
 
 struct UnusedImport<'a> {
     use_tree: &'a ast::UseTree,

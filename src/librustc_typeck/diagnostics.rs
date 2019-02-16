@@ -633,7 +633,7 @@ unsafe {
 // the C runtime does not contain the `printf` definition. This leads to linker
 // error from the doc test (issue #42830).
 // This can be fixed by linking to the static library
-// `legacy_stdio_definitions.lib` (see https://stackoverflow.com/a/36504365/).
+// `legacy_stdio_definitions.lib` (see <https://stackoverflow.com/a/36504365/>).
 // If this compatibility library is removed in the future, consider changing
 // `printf` in this example to another well-known variadic function.
 
@@ -730,7 +730,7 @@ LinkedList::new() += 1;
 // ...
 
 fn some_func(i: &mut i32) {
-    i += 12; // Error : '+=' operation cannot be applied on a reference !
+    i += 12; // error: '+=' operation cannot be applied on a reference!
 }
 ```
 
@@ -739,12 +739,12 @@ And now some working examples:
 ```
 let mut i : i32 = 0;
 
-i += 12; // Good !
+i += 12; // good!
 
 // ...
 
 fn some_func(i: &mut i32) {
-    *i += 12; // Good !
+    *i += 12; // good!
 }
 ```
 "##,
@@ -787,10 +787,10 @@ const SOME_CONST : i32 = 12;
 fn some_other_func() {}
 
 fn some_function() {
-    SOME_CONST = 14; // error : a constant value cannot be changed!
-    1 = 3; // error : 1 isn't a valid place!
-    some_other_func() = 4; // error : we can't assign value to a function!
-    SomeStruct.x = 12; // error : SomeStruct a structure name but it is used
+    SOME_CONST = 14; // error: a constant value cannot be changed!
+    1 = 3; // error: 1 isn't a valid place!
+    some_other_func() = 4; // error: we can't assign value to a function!
+    SomeStruct.x = 12; // error: SomeStruct a structure name but it is used
                        // like a variable!
 }
 ```
@@ -804,12 +804,12 @@ struct SomeStruct {
 }
 let mut s = SomeStruct {x: 0, y: 0};
 
-s.x = 3; // that's good !
+s.x = 3; // that's good!
 
 // ...
 
 fn some_func(x: &mut i32) {
-    *x = 12; // that's good !
+    *x = 12; // that's good!
 }
 ```
 "##,
@@ -4438,7 +4438,7 @@ Erroneous code example:
 
 #[start]
 fn start(_: isize, _: *const *const u8) -> isize where (): Copy {
-    //^ error: start function is not allowed to have a where clause
+    //^ error: start function is not allowed to have a where-clause
     0
 }
 ```

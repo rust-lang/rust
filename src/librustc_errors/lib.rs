@@ -78,7 +78,7 @@ pub enum SuggestionStyle {
     /// Do not display this suggestion in the cli output, it is only meant for tools.
     CompletelyHidden,
     /// Always show the suggested code.
-    /// This will *not* show the code if the suggestion is inline *and* the suggested code is
+    /// This will **not** show the code if the suggestion is inline *and* the suggested code is
     /// empty.
     ShowCode,
 }
@@ -476,7 +476,7 @@ impl Handler {
         result.code(code);
         result
     }
-    // FIXME: This method should be removed (every error should have an associated error code).
+    // FIXME: this method should be removed (every error should have an associated error code).
     pub fn struct_err<'a>(&'a self, msg: &str) -> DiagnosticBuilder<'a> {
         DiagnosticBuilder::new(self, Level::Error, msg)
     }
@@ -559,7 +559,7 @@ impl Handler {
     }
     pub fn delay_span_bug<S: Into<MultiSpan>>(&self, sp: S, msg: &str) {
         if self.flags.treat_err_as_bug {
-            // FIXME: don't abort here if report_delayed_bugs is off
+            // FIXME: don't abort here if `report_delayed_bugs` is off.
             self.span_bug(sp, msg);
         }
         let mut diagnostic = Diagnostic::new(Level::Bug, msg);

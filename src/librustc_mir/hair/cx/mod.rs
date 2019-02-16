@@ -66,11 +66,11 @@ impl<'a, 'gcx, 'tcx> Cx<'a, 'gcx, 'tcx> {
         let attrs = tcx.hir().attrs(src_id);
 
         // Some functions always have overflow checks enabled,
-        // however, they may not get codegen'd, depending on
+        // however, they may not get codegen'ed, depending on
         // the settings for the crate they are codegened in.
         let mut check_overflow = attr::contains_name(attrs, "rustc_inherit_overflow_checks");
 
-        // Respect -C overflow-checks.
+        // Respect `-C overflow-checks`.
         check_overflow |= tcx.sess.overflow_checks();
 
         // Constants always need overflow checks.
@@ -139,13 +139,13 @@ impl<'a, 'gcx, 'tcx> Cx<'a, 'gcx, 'tcx> {
         match lit_to_const(lit, self.tcx, ty, neg) {
             Ok(c) => c,
             Err(LitToConstError::UnparseableFloat) => {
-                // FIXME(#31407) this is only necessary because float parsing is buggy
+                // FIXME(#31407): this is only necessary because float parsing is buggy.
                 self.tcx.sess.span_err(sp, "could not evaluate float literal (see issue #31407)");
-                // create a dummy value and continue compiling
+                // Create a dummy value and continue compiling.
                 Const::from_bits(self.tcx, 0, self.param_env.and(ty))
             },
             Err(LitToConstError::Reported) => {
-                // create a dummy value and continue compiling
+                // Create a dummy value and continue compiling.
                 Const::from_bits(self.tcx, 0, self.param_env.and(ty))
             }
         }

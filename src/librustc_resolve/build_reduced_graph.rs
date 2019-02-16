@@ -110,12 +110,12 @@ impl<'a> Resolver<'a> {
 
     fn build_reduced_graph_for_use_tree(
         &mut self,
-        // This particular use tree
+        // This particular `use` tree.
         use_tree: &ast::UseTree,
         id: NodeId,
         parent_prefix: &[Segment],
         nested: bool,
-        // The whole `use` item
+        // The whole `use` item.
         parent_scope: ParentScope<'a>,
         item: &Item,
         vis: ty::Visibility,
@@ -127,7 +127,7 @@ impl<'a> Resolver<'a> {
         let mut prefix_iter = parent_prefix.iter().cloned()
             .chain(use_tree.prefix.segments.iter().map(|seg| seg.into())).peekable();
 
-        // On 2015 edition imports are resolved as crate-relative by default,
+        // On 2015 edition, imports are resolved as crate-relative by default,
         // so prefixes are prepended with crate root segment if necessary.
         // The root is prepended lazily, when the first non-empty prefix or terminating glob
         // appears, so imports in braced groups can have roots prepended independently.
@@ -162,7 +162,7 @@ impl<'a> Resolver<'a> {
                 let mut type_ns_only = false;
 
                 if nested {
-                    // Correctly handle `self`
+                    // Correctly handle `self`.
                     if source.ident.name == keywords::SelfLower.name() {
                         type_ns_only = true;
 
@@ -176,14 +176,14 @@ impl<'a> Resolver<'a> {
                             return;
                         }
 
-                        // Replace `use foo::self;` with `use foo;`
+                        // Replace `use foo::self;` with `use foo;`.
                         source = module_path.pop().unwrap();
                         if rename.is_none() {
                             ident = source.ident;
                         }
                     }
                 } else {
-                    // Disallow `self`
+                    // Disallow `self`.
                     if source.ident.name == keywords::SelfLower.name() {
                         resolve_error(self,
                                       use_tree.span,
@@ -197,7 +197,7 @@ impl<'a> Resolver<'a> {
                             ModuleKind::Def(_, name) => name,
                             ModuleKind::Block(..) => unreachable!(),
                         };
-                        // HACK(eddyb) unclear how good this is, but keeping `$crate`
+                        // HACK(eddyb): unclear how good this is, but keeping `$crate`
                         // in `source` breaks `src/test/compile-fail/import-crate-var.rs`,
                         // while the current crate doesn't have a valid `crate_name`.
                         if crate_name != keywords::Invalid.name() {
@@ -274,7 +274,7 @@ impl<'a> Resolver<'a> {
                 );
             }
             ast::UseTreeKind::Nested(ref items) => {
-                // Ensure there is at most one `self` in the list
+                // Ensure there is at most one `self` in the list.
                 let self_spans = items.iter().filter_map(|&(ref use_tree, _)| {
                     if let ast::UseTreeKind::Simple(..) = use_tree.kind {
                         if use_tree.ident().name == keywords::SelfLower.name() {
@@ -298,9 +298,9 @@ impl<'a> Resolver<'a> {
 
                 for &(ref tree, id) in items {
                     self.build_reduced_graph_for_use_tree(
-                        // This particular use tree
+                        // This particular `use` tree.
                         tree, id, &prefix, true,
-                        // The whole `use` item
+                        // The whole `use` item.
                         parent_scope.clone(), item, vis, root_span,
                     );
                 }
@@ -322,9 +322,9 @@ impl<'a> Resolver<'a> {
                         span: use_tree.span,
                     };
                     self.build_reduced_graph_for_use_tree(
-                        // This particular use tree
+                        // This particular `use` tree.
                         &tree, id, &prefix, true,
-                        // The whole `use` item
+                        // The whole `use` item.
                         parent_scope, item, ty::Visibility::Invisible, root_span,
                     );
                 }
@@ -343,9 +343,9 @@ impl<'a> Resolver<'a> {
         match item.node {
             ItemKind::Use(ref use_tree) => {
                 self.build_reduced_graph_for_use_tree(
-                    // This particular use tree
+                    // This particular `use` tree.
                     use_tree, item.id, &[], false,
-                    // The whole `use` item
+                    // The whole `use` item.
                     parent_scope, item, vis, use_tree.span,
                 );
             }
@@ -421,7 +421,8 @@ impl<'a> Resolver<'a> {
 
             ItemKind::GlobalAsm(..) => {}
 
-            ItemKind::Mod(..) if ident == keywords::Invalid.ident() => {} // Crate root
+            // Crate root.
+            ItemKind::Mod(..) if ident == keywords::Invalid.ident() => {}
 
             ItemKind::Mod(..) => {
                 let def_id = self.definitions.local_def_id(item.id);
@@ -628,19 +629,21 @@ impl<'a> Resolver<'a> {
                                          expansion,
                                          block.span);
             self.block_map.insert(block.id, module);
-            self.current_module = module; // Descend into the block.
+            // Descend into the block.
+            self.current_module = module;
         }
     }
 
     /// Builds the reduced graph for a single item in an external crate.
     fn build_reduced_graph_for_external_crate_def(&mut self, parent: Module<'a>, child: Export) {
         let Export { ident, def, vis, span } = child;
-        // FIXME: We shouldn't create the gensym here, it should come from metadata,
+        // FIXME: we shouldn't create the gensym here, it should come from metadata,
         // but metadata cannot encode gensyms currently, so we create it here.
         // This is only a guess, two equivalent idents may incorrectly get different gensyms here.
         let ident = ident.gensym_if_underscore();
         let def_id = def.def_id();
-        let expansion = Mark::root(); // FIXME(jseyfried) intercrate hygiene
+        // FIXME(jseyfried): inter-crate hygiene.
+        let expansion = Mark::root();
         match def {
             Def::Mod(..) | Def::Enum(..) => {
                 let module = self.new_module(parent,
@@ -1012,13 +1015,15 @@ impl<'a, 'b> Visitor<'a> for BuildReducedGraphVisitor<'a, 'b> {
                 (Def::Method(item_def_id), ValueNS)
             }
             TraitItemKind::Type(..) => (Def::AssociatedTy(item_def_id), TypeNS),
-            TraitItemKind::Macro(_) => bug!(),  // handled above
+            // Handled above.
+            TraitItemKind::Macro(_) => bug!(),
         };
 
         let vis = ty::Visibility::Public;
         self.resolver.define(parent, item.ident, ns, (def, vis, item.span, self.expansion));
 
-        self.resolver.current_module = parent.parent.unwrap(); // nearest normal ancestor
+        // Nearest normal ancestor.
+        self.resolver.current_module = parent.parent.unwrap();
         visit::walk_trait_item(self, item);
         self.resolver.current_module = parent;
     }
@@ -1039,7 +1044,7 @@ impl<'a, 'b> Visitor<'a> for BuildReducedGraphVisitor<'a, 'b> {
                 module: self.resolver.current_module.nearest_item_scope(),
                 expansion: self.expansion,
                 legacy: self.current_legacy_scope,
-                // Let's hope discerning built-in attributes from derive helpers is not necessary
+                // Let's hope discerning built-in attributes from derive helpers is not necessary.
                 derives: Vec::new(),
             };
             parent_scope.module.builtin_attrs.borrow_mut().push((

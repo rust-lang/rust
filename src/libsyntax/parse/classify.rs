@@ -1,6 +1,6 @@
-//! Routines the parser uses to classify AST nodes
+//! Routines the parser uses to classify AST nodes.
 
-// Predicates on exprs and stmts that the pretty-printer and parser use
+// Predicates on expressions and statements that the pretty-printer and parser use.
 
 use crate::ast;
 

@@ -95,7 +95,7 @@ impl AsmBuilderMethods<'tcx> for Builder<'a, 'll, 'tcx> {
         }
 
         // Store mark in a metadata node so we can map LLVM errors
-        // back to source locations.  See #17552.
+        // back to source locations. See #17552.
         unsafe {
             let key = "srcloc";
             let kind = llvm::LLVMGetMDKindIDInContext(self.llcx,

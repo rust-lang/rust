@@ -282,7 +282,7 @@ impl<O: ForestObligation> ObligationForest<O> {
         let _ = self.register_obligation_at(obligation, None);
     }
 
-    // returns Err(()) if we already know this obligation failed.
+    // Returns `Err(())` if we already know this obligation failed.
     fn register_obligation_at(&mut self, obligation: O, parent: Option<NodeIndex>)
                               -> Result<(), ()>
     {
@@ -476,7 +476,7 @@ impl<O: ForestObligation> ObligationForest<O> {
         for index in 0..self.nodes.len() {
             // For rustc-benchmarks/inflate-0.1.0 this state test is extremely
             // hot and the state is almost always `Pending` or `Waiting`. It's
-            // a win to handle the no-op cases immediately to avoid the cost of
+            // a win to handle the noop cases immediately to avoid the cost of
             // the function call.
             let state = self.nodes[index].state.get();
             match state {
@@ -682,7 +682,7 @@ impl<O: ForestObligation> ObligationForest<O> {
             if let Some(index) = node.parent {
                 let new_index = node_rewrites[index.get()];
                 if new_index >= nodes_len {
-                    // parent dead due to error
+                    // Parent is dead due to error.
                     node.parent = None;
                 } else {
                     node.parent = Some(NodeIndex::new(new_index));
@@ -731,7 +731,7 @@ impl<O> Node<O> {
     }
 }
 
-// I need a Clone closure
+// I need a `Clone` closure.
 #[derive(Clone)]
 struct GetObligation<'a, O>(&'a [Node<O>]);
 

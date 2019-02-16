@@ -247,7 +247,7 @@ impl<'gcx, V> Canonical<'gcx, V> {
     /// same set of bound variables.
     ///
     /// **WARNING:** This function is very easy to mis-use, hence the
-    /// name!  In particular, the new value `W` must use all **the
+    /// name! In particular, the new value `W` must use all **the
     /// same type/region variables** in **precisely the same order**
     /// as the original! (The ordering is defined by the
     /// `TypeFoldable` implementation of the type in question.)

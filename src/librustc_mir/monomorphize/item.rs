@@ -241,8 +241,8 @@ impl<'a, 'tcx> DefPathBasedNames<'a, 'tcx> {
 
     // Pushes the type name of the specified type to the provided string.
     // If 'debug' is true, printing normally unprintable types is allowed
-    // (e.g. ty::GeneratorWitness). This parameter should only be set when
-    // this method is being used for logging purposes (e.g. with debug! or info!)
+    // (e.g., `ty::GeneratorWitness`). This parameter should only be set when
+    // this method is being used for logging purposes (e.g., with `debug!` or `info!`)
     // When being used for codegen purposes, 'debug' should be set to 'false'
     // in order to catch unexpected types that should never end up in a type name
     pub fn push_type_name(&self, t: Ty<'tcx>, output: &mut String, debug: bool) {

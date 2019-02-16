@@ -21,7 +21,7 @@ pub trait FlowsAtLocation {
     /// terminator of block `bb`.
     ///
     /// **Important:** In the case of a `Call` terminator, these
-    /// effects do *not* include the result of storing the destination
+    /// effects do **not** include the result of storing the destination
     /// of the call, since that is edge-dependent (in other words, the
     /// effects don't apply to the unwind edge).
     fn reset_to_exit_of(&mut self, bb: BasicBlock);

@@ -248,7 +248,7 @@ fn read_block_comment(rdr: &mut StringReader<'_>,
 
     let mut curr_line = String::from("/*");
 
-    // doc-comments are not really comments, they are attributes
+    // Doc-comments are not really comments; they are attributes.
     if (rdr.ch_is('*') && !rdr.nextch_is('*')) || rdr.ch_is('!') {
         while !(rdr.ch_is('*') && rdr.nextch_is('/')) && !rdr.is_eof() {
             curr_line.push(rdr.ch.unwrap());
@@ -373,7 +373,7 @@ pub fn gather_comments_and_literals(sess: &ParseSess, path: FileName, srdr: &mut
                 code_to_the_left = false;
                 anything_to_the_left = false;
             }
-            // Eat one comment group
+            // Eat one comment group.
             if rdr.peeking_at_comment() {
                 consume_comment(&mut rdr, &mut comments,
                                 &mut code_to_the_left, &mut anything_to_the_left);
@@ -384,7 +384,7 @@ pub fn gather_comments_and_literals(sess: &ParseSess, path: FileName, srdr: &mut
 
         let bstart = rdr.pos;
         rdr.next_token();
-        // discard, and look ahead; we're working with internal state
+        // Discard, and look ahead; we're working with internal state.
         let TokenAndSpan { tok, sp } = rdr.peek();
         if tok.is_lit() {
             rdr.with_str_from(bstart, |s| {

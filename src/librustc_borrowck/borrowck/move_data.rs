@@ -491,7 +491,7 @@ impl<'a, 'tcx> MoveData<'tcx> {
         return true;
     }
 
-    // FIXME(#19596) This is a workaround, but there should be better way to do this
+    // FIXME(#19596): this is a workaround, but there should be better way to do this.
     fn each_extending_path_<F>(&self, index: MovePathIndex, f: &mut F) -> bool where
         F: FnMut(MovePathIndex) -> bool,
     {

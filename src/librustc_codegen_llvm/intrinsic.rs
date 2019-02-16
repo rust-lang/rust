@@ -243,7 +243,7 @@ impl IntrinsicCallMethods<'tcx> for Builder<'a, 'll, 'tcx> {
                 }
                 return;
             }
-            // Effectively no-ops
+            // Effectively noops
             "uninit" | "forget" => {
                 return;
             }
@@ -367,7 +367,8 @@ impl IntrinsicCallMethods<'tcx> for Builder<'a, 'll, 'tcx> {
                             ),
                             "bswap" => {
                                 if width == 8 {
-                                    args[0].immediate() // byte swap a u8/i8 is just a no-op
+                                    // Byte-swapping a `u8`/`i8` is just a no-op.
+                                    args[0].immediate()
                                 } else {
                                     self.call(
                                         self.get_intrinsic(
@@ -888,8 +889,8 @@ fn codegen_msvc_try(
     bx.store(ret, dest, i32_align);
 }
 
-// Definition of the standard "try" function for Rust using the GNU-like model
-// of exceptions (e.g., the normal semantics of LLVM's landingpad and invoke
+// Definition of the standard `try` function for Rust using the GNU-like model
+// of exceptions (e.g., the normal semantics of LLVM's `landingpad` and `invoke`
 // instructions).
 //
 // This codegen is a little surprising because we always call a shim
@@ -936,7 +937,7 @@ fn codegen_gnu_try(
         // Type indicator for the exception being thrown.
         //
         // The first value in this tuple is a pointer to the exception object
-        // being thrown.  The second value is a "selector" indicating which of
+        // being thrown. The second value is a "selector" indicating which of
         // the landing pad clauses the exception's type had been matched to.
         // rust_try ignores the selector.
         let lpad_ty = bx.type_struct(&[bx.type_i8p(), bx.type_i32()], false);
@@ -1854,10 +1855,9 @@ unsupported {} from `{}` with element `{}` of size `{}` to `{}`"#,
     span_bug!(span, "unknown SIMD intrinsic");
 }
 
-// Returns the width of an int Ty, and if it's signed or not
-// Returns None if the type is not an integer
-// FIXME: there’s multiple of this functions, investigate using some of the already existing
-// stuffs.
+// Returns the width of an integer `Ty`, and if it's signed or not
+// Returns `None` if the type is not an integer.
+// FIXME: there’s multiple of this functions, investigate using some of the already existing stuff.
 fn int_type_width_signed(ty: Ty, cx: &CodegenCx) -> Option<(u64, bool)> {
     match ty.sty {
         ty::Int(t) => Some((match t {
@@ -1880,8 +1880,8 @@ fn int_type_width_signed(ty: Ty, cx: &CodegenCx) -> Option<(u64, bool)> {
     }
 }
 
-// Returns the width of a float TypeVariant
-// Returns None if the type is not a float
+// Returns the width of a float `TypeVariant`, or
+// `None` if the type is not a float.
 fn float_type_width<'tcx>(sty: &ty::TyKind<'tcx>) -> Option<u64> {
     match *sty {
         ty::Float(t) => Some(t.bit_width() as u64),

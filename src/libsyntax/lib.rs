@@ -21,8 +21,9 @@
 
 #![recursion_limit="256"]
 
+// Used by deriving.
 #[allow(unused_extern_crates)]
-extern crate serialize as rustc_serialize; // used by deriving
+extern crate serialize as rustc_serialize;
 
 pub use errors;
 use rustc_data_structures::sync::Lock;
@@ -48,7 +49,8 @@ macro_rules! panictry {
     })
 }
 
-// A variant of 'panictry!' that works on a Vec<Diagnostic> instead of a single DiagnosticBuilder.
+// A variant of `panictry!` that works on a `Vec<Diagnostic>` instead of a single
+// `DiagnosticBuilder`.
 macro_rules! panictry_buffer {
     ($handler:expr, $e:expr) => ({
         use std::result::Result::{Ok, Err};

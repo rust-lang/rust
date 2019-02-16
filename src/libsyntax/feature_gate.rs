@@ -405,7 +405,7 @@ declare_features! (
     // `#[doc(alias = "...")]`
     (active, doc_alias, "1.27.0", Some(50146), None),
 
-    // inconsistent bounds in where clauses
+    // inconsistent bounds in where-clauses
     (active, trivial_bounds, "1.28.0", Some(48214), None),
 
     // `'a: { break 'a; }`
@@ -781,11 +781,11 @@ impl AttributeGate {
 pub enum Stability {
     Unstable,
     // First argument is tracking issue link; second argument is an optional
-    // help message, which defaults to "remove this attribute"
+    // help message, which defaults to "remove this attribute".
     Deprecated(&'static str, Option<&'static str>),
 }
 
-// fn() is not Debug
+// `fn()` is not `Debug`.
 impl std::fmt::Debug for AttributeGate {
     fn fmt(&self, fmt: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match *self {
@@ -818,7 +818,7 @@ pub fn is_builtin_attr(attr: &ast::Attribute) -> bool {
     BUILTIN_ATTRIBUTES.iter().any(|&(builtin_name, ..)| attr.path == builtin_name)
 }
 
-// Attributes that have a special meaning to rustc or rustdoc
+// Attributes that have a special meaning to rustc or rustdoc.
 pub const BUILTIN_ATTRIBUTES: &[(&str, AttributeType, AttributeTemplate, AttributeGate)] = &[
     // Normal attributes
 
@@ -1117,11 +1117,10 @@ pub const BUILTIN_ATTRIBUTES: &[(&str, AttributeType, AttributeTemplate, Attribu
                                                    "internal implementation detail",
                                                    cfg_fn!(rustc_attrs))),
 
-    // FIXME: #14408 whitelist docs since rustdoc looks at them
+    // FIXME: #14408 whitelist docs since rustdoc looks at them.
     ("doc", Whitelisted, template!(List: "hidden|inline|...", NameValueStr: "string"), Ungated),
 
-    // FIXME: #14406 these are processed in codegen, which happens after the
-    // lint pass
+    // FIXME: #14406 these are processed in codegen, which happens after the lint pass.
     ("cold", Whitelisted, template!(Word), Ungated),
     ("naked", Whitelisted, template!(Word), Gated(Stability::Unstable,
                                  "naked_functions",
@@ -1171,14 +1170,14 @@ pub const BUILTIN_ATTRIBUTES: &[(&str, AttributeType, AttributeTemplate, Attribu
                                   cfg_fn!(unwind_attributes))),
     ("used", Whitelisted, template!(Word), Ungated),
 
-    // used in resolve
+    // Used in resolve.
     ("prelude_import", Whitelisted, template!(Word), Gated(Stability::Unstable,
                                           "prelude_import",
                                           "`#[prelude_import]` is for use by rustc only",
                                           cfg_fn!(prelude_import))),
 
     // FIXME: #14407 these are only looked at on-demand so we can't
-    // guarantee they'll have already been checked
+    // guarantee they'll have already been checked.
     ("rustc_deprecated", Whitelisted, template!(List: r#"since = "version", reason = "...""#),
                                         Ungated),
     ("must_use", Whitelisted, template!(Word, NameValueStr: "reason"), Ungated),
@@ -1221,7 +1220,7 @@ pub const BUILTIN_ATTRIBUTES: &[(&str, AttributeType, AttributeTemplate, Attribu
                                       never be stable",
                                      cfg_fn!(rustc_attrs))),
 
-    // whitelists "identity-like" conversion methods to suggest on type mismatch
+    // Whitelists "identity-like" conversion methods to suggest on type mismatch.
     ("rustc_conversion_suggestion", Whitelisted, template!(Word), Gated(Stability::Unstable,
                                                        "rustc_attrs",
                                                        "this is an internal attribute that will \
@@ -1246,7 +1245,7 @@ pub const BUILTIN_ATTRIBUTES: &[(&str, AttributeType, AttributeTemplate, Attribu
                                "#[optimize] attribute is an unstable feature",
                                cfg_fn!(optimize_attribute))),
 
-    // Crate level attributes
+    // Crate level attributes.
     ("crate_name", CrateLevel, template!(NameValueStr: "name"), Ungated),
     ("crate_type", CrateLevel, template!(NameValueStr: "bin|lib|..."), Ungated),
     ("crate_id", CrateLevel, template!(NameValueStr: "ignored"), Ungated),
@@ -1262,7 +1261,7 @@ pub const BUILTIN_ATTRIBUTES: &[(&str, AttributeType, AttributeTemplate, Attribu
                     cfg_fn!(custom_test_frameworks))),
 ];
 
-// cfg(...)'s that are feature gated
+// `cfg(...)`s that are feature gated.
 const GATED_CFGS: &[(&str, &str, fn(&Features) -> bool)] = &[
     // (name in cfg, feature, function to check if the feature is enabled)
     ("target_thread_local", "cfg_target_thread_local", cfg_fn!(cfg_target_thread_local)),
@@ -1387,11 +1386,11 @@ pub fn check_attribute(attr: &ast::Attribute, parse_sess: &ParseSess, features: 
 fn find_lang_feature_issue(feature: &str) -> Option<u32> {
     if let Some(info) = ACTIVE_FEATURES.iter().find(|t| t.0 == feature) {
         let issue = info.2;
-        // FIXME (#28244): enforce that active features have issue numbers
+        // FIXME(#28244): enforce that active features have issue numbers.
         // assert!(issue.is_some())
         issue
     } else {
-        // search in Accepted, Removed, or Stable Removed features
+        // Search in Accepted, Removed, or Stable Removed features.
         let found = ACCEPTED_FEATURES.iter().chain(REMOVED_FEATURES).chain(STABLE_REMOVED_FEATURES)
             .find(|t| t.0 == feature);
         match found {
@@ -1445,7 +1444,7 @@ fn leveled_feature_err<'a>(sess: &'a ParseSess, feature: &str, span: Span, issue
         GateStrength::Soft => diag.struct_span_warn(span, &explanation),
     };
 
-    // #23973: do not suggest `#![feature(...)]` if we are in beta/stable
+    // #23973: do not suggest `#![feature(...)]` if we are in beta/stable.
     if sess.unstable_features.is_nightly_build() {
         err.help(&format!("add #![feature({})] to the \
                            crate attributes to enable",
@@ -1817,7 +1816,7 @@ impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
     fn visit_fn_ret_ty(&mut self, ret_ty: &'a ast::FunctionRetTy) {
         if let ast::FunctionRetTy::Ty(ref output_ty) = *ret_ty {
             if let ast::TyKind::Never = output_ty.node {
-                // Do nothing
+                // Do nothing.
             } else {
                 self.visit_ty(output_ty)
             }
@@ -2063,7 +2062,7 @@ pub fn get_features(span_handler: &Handler, krate_attrs: &[ast::Attribute],
                 for &(name, .., f_edition, set) in ACTIVE_FEATURES {
                     if let Some(f_edition) = f_edition {
                         if f_edition <= *edition {
-                            // FIXME(Manishearth) there is currently no way to set
+                            // FIXME(Manishearth): there is currently no way to set
                             // lib features by edition
                             set(&mut features, DUMMY_SP);
                             edition_enabled_features.insert(Symbol::intern(name), *edition);
@@ -2167,9 +2166,9 @@ pub enum UnstableFeatures {
 
 impl UnstableFeatures {
     pub fn from_environment() -> UnstableFeatures {
-        // Whether this is a feature-staged build, i.e., on the beta or stable channel
+        // Whether this is a feature-staged build, i.e., on the beta or stable channel.
         let disable_unstable_features = option_env!("CFG_DISABLE_UNSTABLE_FEATURES").is_some();
-        // Whether we should enable unstable features for bootstrapping
+        // Whether we should enable unstable features for bootstrapping.
         let bootstrap = env::var("RUSTC_BOOTSTRAP").is_ok();
         match (disable_unstable_features, bootstrap) {
             (_, true) => UnstableFeatures::Cheat,

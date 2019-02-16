@@ -475,7 +475,7 @@ crate fn source_span_for_markdown_range(
                     break;
                 }
                 None => {
-                    // Since this is a source line that doesn't include a markdown line,
+                    // Since this is a source line that doesn't include a Markdown line,
                     // we have to count the newline that we split from earlier.
                     if line_no <= starting_line {
                         start_bytes += source_line.len() + 1;

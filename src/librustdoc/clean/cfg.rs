@@ -95,7 +95,7 @@ impl Cfg {
     /// Checks whether the given configuration can be matched in the current session.
     ///
     /// Equivalent to `attr::cfg_matches`.
-    // FIXME: Actually make use of `features`.
+    // FIXME: actually make use of `features`.
     pub fn matches(&self, parse_sess: &ParseSess, features: Option<&Features>) -> bool {
         match *self {
             Cfg::False => false,

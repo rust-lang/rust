@@ -440,11 +440,12 @@ enum FfiResult<'tcx> {
     },
 }
 
-/// Check if this enum can be safely exported based on the
+/// Checks if this enum can be safely exported based on the
 /// "nullable pointer optimization". Currently restricted
 /// to function pointers and references, but could be
-/// expanded to cover NonZero raw pointers and newtypes.
-/// FIXME: This duplicates code in codegen.
+/// expanded to cover `NonZero` raw pointers and newtypes.
+//
+// FIXME: this duplicates code in codegen.
 fn is_repr_nullable_ptr<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                                   def: &'tcx ty::AdtDef,
                                   substs: &Substs<'tcx>)
@@ -490,7 +491,7 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
 
         // Protect against infinite recursion, for example
         // `struct S(*mut S);`.
-        // FIXME: A recursion limit is necessary as well, for irregular
+        // FIXME: a recursion limit is necessary as well, for irregular
         // recursive types.
         if !cache.insert(ty) {
             return FfiSafe;
@@ -592,7 +593,7 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
                     }
                     AdtKind::Enum => {
                         if def.variants.is_empty() {
-                            // Empty enums are okay... although sort of useless.
+                            // Empty enums are ok... although sort of useless.
                             return FfiSafe;
                         }
 

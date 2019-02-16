@@ -364,7 +364,7 @@ fn ppc_double_double_multiply() {
 
 #[test]
 fn ppc_double_double_divide() {
-    // FIXME: Only a sanity check for now. Add more edge cases when the
+    // FIXME: only a sanity check for now. Add more edge cases when the
     // double-double algorithm is implemented.
     let data = [
         // 1 / 3 = 1/3

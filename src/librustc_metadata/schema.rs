@@ -75,7 +75,7 @@ impl<T> Lazy<T> {
     }
 
     /// Returns the minimum encoded size of a value of type `T`.
-    // FIXME(eddyb) Give better estimates for certain types.
+    // FIXME(eddyb): give better estimates for certain types.
     pub fn min_size() -> usize {
         1
     }

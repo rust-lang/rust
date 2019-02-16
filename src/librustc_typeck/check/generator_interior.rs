@@ -108,8 +108,8 @@ pub fn resolve_interior<'a, 'gcx, 'tcx>(fcx: &'a FnCtxt<'a, 'gcx, 'tcx>,
 
     debug!("Types in generator {:?}, span = {:?}", type_list, body.value.span);
 
-    // Replace all regions inside the generator interior with late bound regions
-    // Note that each region slot in the types gets a new fresh late bound region,
+    // Replace all regions inside the generator interior with late-bound regions
+    // Note that each region slot in the types gets a new fresh late-bound region,
     // which means that none of the regions inside relate to any other, even if
     // typeck had previously found constraints that would cause them to be related.
     let mut counter = 0;

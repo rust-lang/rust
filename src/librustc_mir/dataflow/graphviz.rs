@@ -118,13 +118,13 @@ impl<'a, 'tcx, MWF, P> Graph<'a, 'tcx, MWF, P>
 where MWF: MirWithFlowState<'tcx>,
       P: Fn(&MWF::BD, <MWF::BD as BitDenotation<'tcx>>::Idx) -> DebugFormatted,
 {
-    /// Generate the node label
+    /// Generates the node label.
     fn node_label_internal<W: io::Write>(&self,
                                          n: &Node,
                                          w: &mut W,
                                          block: BasicBlock,
                                          mir: &Mir<'_>) -> io::Result<()> {
-        // Header rows
+        // Header rows.
         const HDRS: [&str; 4] = ["ENTRY", "MIR", "BLOCK GENS", "BLOCK KILLS"];
         const HDR_FMT: &str = "bgcolor=\"grey\"";
         write!(w, "<table><tr><td rowspan=\"{}\">", HDRS.len())?;
@@ -135,7 +135,7 @@ where MWF: MirWithFlowState<'tcx>,
         }
         write!(w, "</tr>")?;
 
-        // Data row
+        // Data row.
         self.node_label_verbose_row(n, w, block, mir)?;
         self.node_label_final_row(n, w, block, mir)?;
         write!(w, "</table>")?;
@@ -168,10 +168,10 @@ where MWF: MirWithFlowState<'tcx>,
         }
 
         write!(w, "<tr>")?;
-        // Entry
+        // Entry.
         dump_set_for!(on_entry_set_for, interpret_set);
 
-        // MIR statements
+        // MIR statements.
         write!(w, "<td>")?;
         {
             let data = &mir[block];
@@ -182,10 +182,10 @@ where MWF: MirWithFlowState<'tcx>,
         }
         write!(w, "</td>")?;
 
-        // Gen
+        // Gen.
         dump_set_for!(gen_set_for, interpret_hybrid_set);
 
-        // Kill
+        // Kill.
         dump_set_for!(kill_set_for, interpret_hybrid_set);
 
         write!(w, "</tr>")?;
@@ -206,11 +206,11 @@ where MWF: MirWithFlowState<'tcx>,
 
         write!(w, "<tr>")?;
 
-        // Entry
+        // Entry.
         let set = flow.sets.on_entry_set_for(i);
         write!(w, "<td>{:?}</td>", dot::escape_html(&set.to_string()))?;
 
-        // Terminator
+        // Terminator.
         write!(w, "<td>")?;
         {
             let data = &mir[block];
@@ -220,11 +220,11 @@ where MWF: MirWithFlowState<'tcx>,
         }
         write!(w, "</td>")?;
 
-        // Gen
+        // Gen.
         let set = flow.sets.gen_set_for(i);
         write!(w, "<td>{:?}</td>", dot::escape_html(&format!("{:?}", set)))?;
 
-        // Kill
+        // Kill.
         let set = flow.sets.kill_set_for(i);
         write!(w, "<td>{:?}</td>", dot::escape_html(&format!("{:?}", set)))?;
 

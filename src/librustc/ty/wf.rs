@@ -32,12 +32,13 @@ pub fn obligations<'a, 'gcx, 'tcx>(infcx: &InferCtxt<'a, 'gcx, 'tcx>,
         debug!("wf::obligations({:?}, body_id={:?}) ~~> {:?}", ty, body_id, result);
         Some(result)
     } else {
-        None // no progress made, return None
+        // No progress made; return `None`.
+        None
     }
 }
 
 /// Returns the obligations that make this trait reference
-/// well-formed.  For example, if there is a trait `Set` defined like
+/// well-formed. For example, if there is a trait `Set` defined like
 /// `trait Set<K:Eq>`, then the trait reference `Foo: Set<Bar>` is WF
 /// if `Bar: Eq`.
 pub fn trait_obligations<'a, 'gcx, 'tcx>(infcx: &InferCtxt<'a, 'gcx, 'tcx>,
@@ -61,7 +62,7 @@ pub fn predicate_obligations<'a, 'gcx, 'tcx>(infcx: &InferCtxt<'a, 'gcx, 'tcx>,
 {
     let mut wf = WfPredicates { infcx, param_env, body_id, span, out: vec![] };
 
-    // (*) ok to skip binders, because wf code is prepared for it
+    // (*) ok to skip binders, because WF code is prepared for it.
     match *predicate {
         ty::Predicate::Trait(ref t) => {
             wf.compute_trait_ref(&t.skip_binder().trait_ref, Elaborate::None); // (*)
@@ -189,7 +190,7 @@ impl<'a, 'gcx, 'tcx> WfPredicates<'a, 'gcx, 'tcx> {
     /// into `self.out`.
     fn compute_projection(&mut self, data: ty::ProjectionTy<'tcx>) {
         // A projection is well-formed if (a) the trait ref itself is
-        // WF and (b) the trait-ref holds.  (It may also be
+        // WF and (b) the trait-ref holds. (It may also be
         // normalizable and be WF that way.)
         let trait_ref = data.trait_ref(self.infcx.tcx);
         self.compute_trait_ref(&trait_ref, Elaborate::None);
@@ -375,9 +376,9 @@ impl<'a, 'gcx, 'tcx> WfPredicates<'a, 'gcx, 'tcx> {
                     // regions. This is perhaps not ideal.
                     self.from_object_ty(ty, data, r);
 
-                    // FIXME(#27579) RFC also considers adding trait
-                    // obligations that don't refer to Self and
-                    // checking those
+                    // FIXME(#27579): RFC also considers adding trait
+                    // obligations that don't refer to `Self` and
+                    // checking those.
 
                     let cause = self.cause(traits::MiscObligation);
                     let component_traits =
@@ -395,7 +396,7 @@ impl<'a, 'gcx, 'tcx> WfPredicates<'a, 'gcx, 'tcx> {
                 // know what type they are. We do two things:
                 //
                 // 1. Check if they have been resolved, and if so proceed with
-                //    THAT type.
+                //    _that_ type.
                 // 2. If not, check whether this is the type that we
                 //    started with (ty0). In that case, we've made no
                 //    progress at all, so return false. Otherwise,
@@ -480,7 +481,7 @@ impl<'a, 'gcx, 'tcx> WfPredicates<'a, 'gcx, 'tcx> {
         // `Foo<'x>+Bar<'y>`, we know that the type outlives *both* 'x and
         // 'y.)
         //
-        // Note: in fact we only permit builtin traits, not `Bar<'d>`, I
+        // Note: in fact, we only permit builtin traits, not `Bar<'d>`, I
         // am looking forward to the future here.
 
         if !data.has_escaping_bound_vars() {

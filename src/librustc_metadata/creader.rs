@@ -707,7 +707,7 @@ impl<'a> CrateLoader<'a> {
     fn inject_sanitizer_runtime(&mut self) {
         if let Some(ref sanitizer) = self.sess.opts.debugging_opts.sanitizer {
             // Sanitizers can only be used on some tested platforms with
-            // executables linked to `std`
+            // executables linked to `std`.
             const ASAN_SUPPORTED_TARGETS: &[&str] = &["x86_64-unknown-linux-gnu",
                                                       "x86_64-apple-darwin"];
             const TSAN_SUPPORTED_TARGETS: &[&str] = &["x86_64-unknown-linux-gnu",
@@ -729,17 +729,17 @@ impl<'a> CrateLoader<'a> {
                 return
             }
 
-            // firstyear 2017 - during testing I was unable to access an OSX machine
+            // NOTE: in 2017, during testing, I was unable to access an macOS machine
             // to make this work on different crate types. As a result, today I have
-            // only been able to test and support linux as a target.
+            // only been able to test and support Linux as a target.
             if self.sess.target.target.llvm_target == "x86_64-unknown-linux-gnu" {
                 if !self.sess.crate_types.borrow().iter().all(|ct| {
                     match *ct {
-                        // Link the runtime
+                        // Link the runtime.
                         config::CrateType::Staticlib |
                         config::CrateType::Executable => true,
                         // This crate will be compiled with the required
-                        // instrumentation pass
+                        // instrumentation pass.
                         config::CrateType::Rlib |
                         config::CrateType::Dylib |
                         config::CrateType::Cdylib =>

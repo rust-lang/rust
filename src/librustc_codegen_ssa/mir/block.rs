@@ -51,7 +51,7 @@ impl<'a, 'tcx: 'a, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         let span = terminator.source_info.span;
         let funclet_bb = self.cleanup_kinds[bb].funclet_bb(bb);
 
-        // HACK(eddyb) force the right lifetimes, NLL can't figure them out.
+        // HACK(eddyb): force the right lifetimes; NLL can't figure them out.
         fn funclet_closure_factory<'a, 'tcx: 'a, Bx: BuilderMethods<'a, 'tcx>>(
             funclet_bb: Option<mir::BasicBlock>
         ) -> impl for<'b> Fn(
@@ -75,7 +75,7 @@ impl<'a, 'tcx: 'a, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                     if f == t_f || !base::wants_msvc_seh(tcx.sess)
                     => (lltarget, false),
                 (None, Some(_)) => {
-                    // jump *into* cleanup - need a landing pad if GNU
+                    // Jump *into* cleanup -- need a landing pad if GNU.
                     (this.landing_pad_to(target), false)
                 }
                 (Some(_), None) => span_bug!(span, "{:?} - jump out of cleanup?", terminator),
@@ -88,8 +88,7 @@ impl<'a, 'tcx: 'a, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         let llblock = |this: &mut Self, target: mir::BasicBlock| {
             let (lltarget, is_cleanupret) = lltarget(this, target);
             if is_cleanupret {
-                // MSVC cross-funclet jump - need a trampoline
-
+                // MSVC cross-funclet jump -- need a trampoline.
                 debug!("llblock: creating cleanup trampoline for {:?}", target);
                 let name = &format!("{:?}_cleanup_trampoline_{:?}", bb, target);
                 let mut trampoline = this.new_block(name);
@@ -104,7 +103,7 @@ impl<'a, 'tcx: 'a, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
             |this: &mut Self, bx: &mut Bx, target: mir::BasicBlock| {
                 let (lltarget, is_cleanupret) = lltarget(this, target);
                 if is_cleanupret {
-                    // micro-optimization: generate a `ret` rather than a jump
+                    // Micro-optimization: generate a `ret` rather than a jump.
                     // to a trampoline.
                     bx.cleanup_ret(funclet(this).unwrap(), Some(lltarget));
                 } else {
@@ -146,7 +145,7 @@ impl<'a, 'tcx: 'a, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                     // Cleanup is always the cold path. Don't inline
                     // drop glue. Also, when there is a deeply-nested
                     // struct, there are "symmetry" issues that cause
-                    // exponential inlining - see issue #41696.
+                    // exponential inlining (see issue #41696).
                     bx.do_not_inline(llret);
                 }
 
@@ -333,10 +332,10 @@ impl<'a, 'tcx: 'a, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 let mut const_cond = bx.const_to_opt_u128(cond, false).map(|c| c == 1);
 
                 // This case can currently arise only from functions marked
-                // with #[rustc_inherit_overflow_checks] and inlined from
-                // another crate (mostly core::num generic/#[inline] fns),
+                // with `#[rustc_inherit_overflow_checks]` and inlined from
+                // another crate (mostly `core::num` generic/inline fns),
                 // while the current crate doesn't use overflow checks.
-                // NOTE: Unlike binops, negation doesn't have its own
+                // N.B., unlike binops, negation doesn't have its own
                 // checked operation, just a comparison with the minimum
                 // value, so we have to check for the assert message.
                 if !bx.check_overflow() {
@@ -363,7 +362,7 @@ impl<'a, 'tcx: 'a, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                     bx.cond_br(cond, panic_block.llbb(), lltarget);
                 }
 
-                // After this point, bx is the block for the call to panic.
+                // After this point, `bx` is the block for the call to panic.
                 bx = panic_block;
                 self.set_debug_loc(&mut bx, terminator.source_info);
 
@@ -455,7 +454,7 @@ impl<'a, 'tcx: 'a, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 );
                 let abi = sig.abi;
 
-                // Handle intrinsics old codegen wants Expr's for, ourselves.
+                // Handle intrinsics old codegen wants `Expr`s for, ourselves.
                 let intrinsic = match def {
                     Some(ty::InstanceDef::Intrinsic(def_id))
                         => Some(bx.tcx().item_name(def_id).as_str()),
@@ -492,7 +491,7 @@ impl<'a, 'tcx: 'a, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                         bx.new_vtable(sig, &extra_args)
                     }
                     Some(ty::InstanceDef::DropGlue(_, None)) => {
-                        // empty drop glue - a nop.
+                        // Empty drop glue; a no-op.
                         let &(_, target) = destination.as_ref().unwrap();
                         funclet_br(self, &mut bx, target);
                         return;
@@ -500,7 +499,7 @@ impl<'a, 'tcx: 'a, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                     _ => bx.new_fn_type(sig, &extra_args)
                 };
 
-                // emit a panic or a NOP for `panic_if_uninhabited`
+                // Emit a panic or a NOP for `panic_if_uninhabited`.
                 if intrinsic == Some("panic_if_uninhabited") {
                     let ty = instance.unwrap().substs.type_at(0);
                     let layout = bx.layout_of(ty);
@@ -548,7 +547,7 @@ impl<'a, 'tcx: 'a, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                             cleanup,
                         );
                     } else {
-                        // a NOP
+                        // A NOP.
                         funclet_br(self, &mut bx, destination.as_ref().unwrap().1);
                     }
                     return;
@@ -558,7 +557,7 @@ impl<'a, 'tcx: 'a, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 let arg_count = fn_ty.args.len() + fn_ty.ret.is_indirect() as usize;
                 let mut llargs = Vec::with_capacity(arg_count);
 
-                // Prepare the return value destination
+                // Prepare the return value destination.
                 let ret_dest = if let Some((ref dest, _)) = *destination {
                     let is_intrinsic = intrinsic.is_some();
                     self.make_return_dest(&mut bx, dest, &fn_ty.ret, &mut llargs,
@@ -663,21 +662,21 @@ impl<'a, 'tcx: 'a, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
 
                     if let (0, Some(ty::InstanceDef::Virtual(_, idx))) = (i, def) {
                         if let Pair(..) = op.val {
-                            // In the case of Rc<Self>, we need to explicitly pass a
-                            // *mut RcBox<Self> with a Scalar (not ScalarPair) ABI. This is a hack
-                            // that is understood elsewhere in the compiler as a method on
+                            // In the case of `Rc<Self>`, we need to explicitly pass a
+                            // `*mut RcBox<Self>` with a `Scalar` (not `ScalarPair`) ABI. This is a
+                            // hack that is understood elsewhere in the compiler as a method on
                             // `dyn Trait`.
                             // To get a `*mut RcBox<Self>`, we just keep unwrapping newtypes until
-                            // we get a value of a built-in pointer type
+                            // we get a value of a built-in pointer type.
                             'descend_newtypes: while !op.layout.ty.is_unsafe_ptr()
                                             && !op.layout.ty.is_region_ptr()
                             {
                                 'iter_fields: for i in 0..op.layout.fields.count() {
                                     let field = op.extract_field(&mut bx, i);
                                     if !field.layout.is_zst() {
-                                        // we found the one non-zero-sized field that is allowed
+                                        // We found the one non-zero-sized field that is allowed
                                         // now find *its* non-zero-sized field, or stop if it's a
-                                        // pointer
+                                        // pointer.
                                         op = field;
                                         continue 'descend_newtypes
                                     }
@@ -686,9 +685,9 @@ impl<'a, 'tcx: 'a, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                                 span_bug!(span, "receiver has no non-zero-sized fields {:?}", op);
                             }
 
-                            // now that we have `*dyn Trait` or `&dyn Trait`, split it up into its
+                            // Now that we have `*dyn Trait` or `&dyn Trait`, split it up into its
                             // data pointer and vtable. Look up the method in the vtable, and pass
-                            // the data pointer as the first argument
+                            // the data pointer as the first argument.
                             match op.val {
                                 Pair(data_ptr, meta) => {
                                     llfn = Some(meth::VirtualIndex::from_index(idx)
@@ -699,7 +698,7 @@ impl<'a, 'tcx: 'a, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                                 other => bug!("expected a Pair, got {:?}", other)
                             }
                         } else if let Ref(data_ptr, Some(meta), _) = op.val {
-                            // by-value dynamic dispatch
+                            // By-value dynamic dispatch.
                             llfn = Some(meth::VirtualIndex::from_index(idx)
                                 .get_fn(&mut bx, meta, &fn_ty));
                             llargs.push(data_ptr);
@@ -830,7 +829,7 @@ impl<'a, 'tcx: 'a, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                         bx.range_metadata(llval, 0..2);
                     }
                 }
-                // We store bools as i8 so we need to truncate to i1.
+                // We store bools as `i8` so we need to truncate to `i1`.
                 llval = base::to_immediate(bx, llval, arg.layout);
             }
         }
@@ -960,7 +959,7 @@ impl<'a, 'tcx: 'a, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         fn_ret: &ArgType<'tcx, Ty<'tcx>>,
         llargs: &mut Vec<Bx::Value>, is_intrinsic: bool
     ) -> ReturnDest<'tcx, Bx::Value> {
-        // If the return is ignored, we can just return a do-nothing ReturnDest
+        // If the return is ignored, we can just return a do-nothing `ReturnDest`.
         if fn_ret.is_ignore() {
             return ReturnDest::Nothing;
         }
@@ -969,8 +968,8 @@ impl<'a, 'tcx: 'a, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 LocalRef::Place(dest) => dest,
                 LocalRef::UnsizedPlace(_) => bug!("return type must be sized"),
                 LocalRef::Operand(None) => {
-                    // Handle temporary places, specifically Operand ones, as
-                    // they don't have allocas
+                    // Handle temporary places, specifically `Operand` ones, as
+                    // they don't have `alloca`s.
                     return if fn_ret.is_indirect() {
                         // Odd, but possible, case, we have an operand temporary,
                         // but the calling convention has an indirect return.
@@ -980,8 +979,8 @@ impl<'a, 'tcx: 'a, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                         ReturnDest::IndirectOperand(tmp, index)
                     } else if is_intrinsic {
                         // Currently, intrinsics always need a location to store
-                        // the result. so we create a temporary alloca for the
-                        // result
+                        // the result, so we create a temporary `alloca` for the
+                        // result.
                         let tmp = PlaceRef::alloca(bx, fn_ret.layout, "tmp_ret");
                         tmp.storage_live(bx);
                         ReturnDest::IndirectOperand(tmp, index)
@@ -1000,7 +999,7 @@ impl<'a, 'tcx: 'a, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
             if dest.align < dest.layout.align.abi {
                 // Currently, MIR code generation does not create calls
                 // that store directly to fields of packed structs (in
-                // fact, the calls it creates write only to temps),
+                // fact, the calls it creates write only to temps).
                 //
                 // If someone changes that, please update this code path
                 // to create a temporary.
@@ -1095,12 +1094,12 @@ impl<'a, 'tcx: 'a, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
 }
 
 enum ReturnDest<'tcx, V> {
-    // Do nothing, the return value is indirect or ignored
+    // Do nothing; the return value is indirect or ignored.
     Nothing,
-    // Store the return value to the pointer
+    // Store the return value to the pointer.
     Store(PlaceRef<'tcx, V>),
-    // Stores an indirect return value to an operand local place
+    // Store an indirect return value to an operand local place.
     IndirectOperand(PlaceRef<'tcx, V>, mir::Local),
-    // Stores a direct return value to an operand local place
+    // Store a direct return value to an operand local place.
     DirectOperand(mir::Local)
 }

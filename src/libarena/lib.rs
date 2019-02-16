@@ -413,7 +413,7 @@ impl DroplessArena {
 }
 
 #[derive(Default)]
-// FIXME(@Zoxc): this type is entirely unused in rustc
+// FIXME(Zoxc): this type is entirely unused in rustc.
 pub struct SyncTypedArena<T> {
     lock: MTLock<TypedArena<T>>,
 }
@@ -421,7 +421,7 @@ pub struct SyncTypedArena<T> {
 impl<T> SyncTypedArena<T> {
     #[inline(always)]
     pub fn alloc(&self, object: T) -> &mut T {
-        // Extend the lifetime of the result since it's limited to the lock guard
+        // Extend the lifetime of the result since it's limited to the lock guard.
         unsafe { &mut *(self.lock.lock().alloc(object) as *mut T) }
     }
 
@@ -430,7 +430,7 @@ impl<T> SyncTypedArena<T> {
     where
         T: Copy,
     {
-        // Extend the lifetime of the result since it's limited to the lock guard
+        // Extend the lifetime of the result since it's limited to the lock guard.
         unsafe { &mut *(self.lock.lock().alloc_slice(slice) as *mut [T]) }
     }
 
@@ -453,13 +453,13 @@ impl SyncDroplessArena {
 
     #[inline(always)]
     pub fn alloc_raw(&self, bytes: usize, align: usize) -> &mut [u8] {
-        // Extend the lifetime of the result since it's limited to the lock guard
+        // Extend the lifetime of the result since it's limited to the lock guard.
         unsafe { &mut *(self.lock.lock().alloc_raw(bytes, align) as *mut [u8]) }
     }
 
     #[inline(always)]
     pub fn alloc<T>(&self, object: T) -> &mut T {
-        // Extend the lifetime of the result since it's limited to the lock guard
+        // Extend the lifetime of the result since it's limited to the lock guard.
         unsafe { &mut *(self.lock.lock().alloc(object) as *mut T) }
     }
 
@@ -468,7 +468,7 @@ impl SyncDroplessArena {
     where
         T: Copy,
     {
-        // Extend the lifetime of the result since it's limited to the lock guard
+        // Extend the lifetime of the result since it's limited to the lock guard.
         unsafe { &mut *(self.lock.lock().alloc_slice(slice) as *mut [T]) }
     }
 }

@@ -19,15 +19,20 @@ struct CFGBuilder<'a, 'tcx: 'a> {
 
 #[derive(Copy, Clone)]
 struct BlockScope {
-    block_expr_id: hir::ItemLocalId, // id of breakable block expr node
-    break_index: CFGIndex, // where to go on `break`
+    // ID of breakable block expr node.
+    block_expr_id: hir::ItemLocalId,
+    // Where to go on `break`.
+    break_index: CFGIndex,
 }
 
 #[derive(Copy, Clone)]
 struct LoopScope {
-    loop_id: hir::ItemLocalId,     // id of loop/while node
-    continue_index: CFGIndex, // where to go on a `loop`
-    break_index: CFGIndex,    // where to go on a `break`
+    // ID of `loop`/`while` node.
+    loop_id: hir::ItemLocalId,
+    // Where to go on a `loop`.
+    continue_index: CFGIndex,
+    // Where to go on `break`.
+    break_index: CFGIndex,
 }
 
 pub fn construct<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
@@ -475,7 +480,7 @@ impl<'a, 'tcx> CFGBuilder<'a, 'tcx> {
                     // #47295: We used to have very special case code
                     // here for when a pair of arms are both formed
                     // solely from constants, and if so, not add these
-                    // edges.  But this was not actually sound without
+                    // edges. But this was not actually sound without
                     // other constraints that we stopped enforcing at
                     // some point.
                     while let Some(prev) = prev_guards.pop() {

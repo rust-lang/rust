@@ -538,8 +538,8 @@ impl PrintContext {
                         // This happens when the value of the region
                         // parameter is not easily serialized. This may be
                         // because the user omitted it in the first place,
-                        // or because it refers to some block in the code,
-                        // etc. I'm not sure how best to serialize this.
+                        // or because it refers to some block in the code, etc.
+                        // I'm not sure how best to serialize this.
                         write!(f, "'_")?;
                     } else {
                         write!(f, "{}", s)?;
@@ -931,9 +931,9 @@ define_print! {
                 return write!(f, "'{:?}", n);
             }
 
-            // These printouts are concise.  They do not contain all the information
+            // These printouts are concise. They do not contain all the information
             // the user might want to diagnose an error, but there is basically no way
-            // to fit that into a short string.  Hence the recommendation to use
+            // to fit that into a short string. ence the recommendation to use
             // `explain_region()` or `note_and_explain_region()`.
             match *self {
                 ty::ReEarlyBound(ref data) => {
@@ -1192,7 +1192,7 @@ define_print! {
         }
         debug {
             // when printing out the debug representation, we don't need
-            // to enumerate the `for<...>` etc because the debruijn index
+            // to enumerate the `for<...>` etc because the De Bruijn index
             // tells you everything you need to know.
             print!(f, cx,
                    write("<"),
@@ -1321,7 +1321,7 @@ define_print! {
                             return Ok(());
                         }
                         // Grab the "TraitA + TraitB" from `impl TraitA + TraitB`,
-                        // by looking up the projections associated with the def_id.
+                        // by looking up the projections associated with `def_id`.
                         let predicates_of = tcx.predicates_of(def_id);
                         let substs = tcx.lift(&substs).unwrap_or_else(|| {
                             tcx.intern_substs(&[])
@@ -1378,8 +1378,8 @@ define_print! {
                             Ok(())
                         })?
                     } else {
-                        // cross-crate closure types should only be
-                        // visible in codegen bug reports, I imagine.
+                        // Cross-crate closure types should only be
+                        // visible in codegen bug reports.
                         write!(f, "@{:?}", did)?;
                         let mut sep = " ";
                         for (index, upvar_ty) in upvar_tys.enumerate() {
@@ -1418,8 +1418,8 @@ define_print! {
                             Ok(())
                         })?
                     } else {
-                        // cross-crate closure types should only be
-                        // visible in codegen bug reports, I imagine.
+                        // Cross-crate closure types should only be
+                        // visible in codegen bug reports.
                         write!(f, "@{:?}", did)?;
                         let mut sep = " ";
                         for (index, upvar_ty) in upvar_tys.enumerate() {
@@ -1523,7 +1523,7 @@ define_print! {
     ('tcx) ty::ProjectionTy<'tcx>, (self, f, cx) {
         display {
             // FIXME(tschottdorf): use something like
-            //   parameterized(f, self.substs, self.item_def_id, &[])
+            // `parameterized(f, self.substs, self.item_def_id, &[])`
             // (which currently ICEs).
             let (trait_ref, item_name) = ty::tls::with(|tcx|
                 (self.trait_ref(tcx), tcx.associated_item(self.item_def_id).ident)

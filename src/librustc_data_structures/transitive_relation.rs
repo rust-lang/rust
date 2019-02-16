@@ -32,7 +32,7 @@ pub struct TransitiveRelation<T: Clone + Debug + Eq + Hash> {
     closure: Lock<Option<BitMatrix<usize, usize>>>,
 }
 
-// HACK(eddyb) manual impl avoids `Default` bound on `T`.
+// HACK(eddyb): manual impl avoids `Default` bound on `T`.
 impl<T: Clone + Debug + Eq + Hash> Default for TransitiveRelation<T> {
     fn default() -> Self {
         TransitiveRelation {
@@ -231,7 +231,7 @@ impl<T: Clone + Debug + Eq + Hash> TransitiveRelation<T> {
             // values. So here is what we do:
             //
             // 1. Find the vector `[X | a < X && b < X]` of all values
-            //    `X` where `a < X` and `b < X`.  In terms of the
+            //    `X` where `a < X` and `b < X`. In terms of the
             //    graph, this means all values reachable from both `a`
             //    and `b`. Note that this vector is also a set, but we
             //    use the term vector because the order matters

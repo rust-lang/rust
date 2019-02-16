@@ -685,7 +685,7 @@ pub trait CompilerCalls<'a> {
 #[derive(Copy, Clone)]
 pub struct RustcDefaultCalls;
 
-// FIXME remove these and use winapi 0.3 instead
+// FIXME: remove these and use winapi 0.3 instead
 // Duplicates: bootstrap/compile.rs, librustc_errors/emitter.rs
 #[cfg(unix)]
 fn stdout_isatty() -> bool {
@@ -1447,7 +1447,7 @@ fn parse_crate_attrs<'a>(sess: &'a Session, input: &Input) -> PResult<'a, Vec<as
 
 // Temporarily have stack size set to 32MB to deal with various crates with long method
 // chains or deep syntax trees.
-// FIXME(oli-obk): get https://github.com/rust-lang/rust/pull/55617 the finish line
+// FIXME(oli-obk): get PR #55617 over the finish line.
 const STACK_SIZE: usize = 32 * 1024 * 1024; // 32MB
 
 /// Runs `f` in a suitable thread for running `rustc`; returns a `Result` with either the return
@@ -1464,7 +1464,7 @@ pub fn in_named_rustc_thread<F, R>(name: String, f: F) -> Result<R, Box<dyn Any 
     if env::var_os("RUSTC_UNSTABLE_NO_MAIN_THREAD").is_none() {
         let mut cfg = thread::Builder::new().name(name);
 
-        // If the env is trying to override the stack size then *don't* set it explicitly.
+        // If the env is trying to override the stack size, then *don't* set it explicitly.
         // The libstd thread impl will fetch the `RUST_MIN_STACK` env var itself.
         if env::var_os("RUST_MIN_STACK").is_none() {
             cfg = cfg.stack_size(STACK_SIZE);

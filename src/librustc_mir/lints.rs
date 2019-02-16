@@ -22,11 +22,11 @@ fn check_fn_for_unconditional_recursion(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                                         mir: &Mir<'tcx>,
                                         def_id: DefId) {
     if let FnKind::Closure(_) = fn_kind {
-        // closures can't recur, so they don't matter.
+        // Closures can't recur, so they don't matter.
         return;
     }
 
-    //FIXME(#54444) rewrite this lint to use the dataflow framework
+    //FIXME(#54444): rewrite this lint to use the dataflow framework.
 
     // Walk through this function (say `f`) looking to see if
     // every possible path references itself, i.e., the function is
@@ -36,7 +36,7 @@ fn check_fn_for_unconditional_recursion(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     // pretending that calls of `f` are sinks (i.e., ignoring any
     // exit edges from them).
     //
-    // NB. this has an edge case with non-returning statements,
+    // N.B., this has an edge case with non-returning statements,
     // like `loop {}` or `panic!()`: control flow never reaches
     // the exit node through these, so one can have a function
     // that never actually calls itself but is still picked up by

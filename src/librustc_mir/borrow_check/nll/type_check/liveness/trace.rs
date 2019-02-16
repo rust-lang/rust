@@ -280,7 +280,7 @@ impl LivenessResults<'me, 'typeck, 'flow, 'gcx, 'tcx> {
         debug_assert!(self.drop_live_at.contains(term_point));
 
         // Otherwise, scan backwards through the statements in the
-        // block.  One of them may be either a definition or use
+        // block. One of them may be either a definition or use
         // live point.
         let term_location = self.cx.elements.to_location(term_point);
         debug_assert_eq!(
@@ -328,7 +328,7 @@ impl LivenessResults<'me, 'typeck, 'flow, 'gcx, 'tcx> {
             // would have been a "use-live" transition in the earlier
             // loop, and we'd have returned already.
             //
-            // NB. It's possible that the pred-block ends in a call
+            // N.B., it's possible that the pred-block ends in a call
             // which stores to the variable; in that case, the
             // variable may be uninitialized "at exit" because this
             // call only considers the *unconditional effects* of the
@@ -397,7 +397,7 @@ impl LivenessResults<'me, 'typeck, 'flow, 'gcx, 'tcx> {
         // However, the current code would, when walking back from BB2,
         // simply stop and never explore BB0. This seems bad! But it turns
         // out this code is flawed anyway -- note that the existing value of
-        // `X` would leak in the case where unwinding did *not* occur.
+        // `X` would leak in the case where unwinding did **not** occur.
         //
         // What we *actually* generate is a store to a temporary
         // for the call (`TMP = call()...`) and then a

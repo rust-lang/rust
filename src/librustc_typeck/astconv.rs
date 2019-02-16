@@ -564,7 +564,7 @@ impl<'o, 'gcx: 'tcx, 'tcx> dyn AstConv<'gcx, 'tcx> + 'o {
         let tcx = self.tcx();
         let generic_params = tcx.generics_of(def_id);
 
-        // If a self-type was declared, one should be provided.
+        // If a self type was declared, one should be provided.
         assert_eq!(generic_params.has_self, self_ty.is_some());
 
         let has_self = generic_params.has_self;
@@ -584,7 +584,7 @@ impl<'o, 'gcx: 'tcx, 'tcx> dyn AstConv<'gcx, 'tcx> + 'o {
                 if is_object && has_default {
                     if tcx.at(span).type_of(param.def_id).has_self_ty() {
                         // There is no suitable inference default for a type parameter
-                        // that references self, in an object type.
+                        // that references the self type in an object type.
                         return true;
                     }
                 }
@@ -723,7 +723,7 @@ impl<'o, 'gcx: 'tcx, 'tcx> dyn AstConv<'gcx, 'tcx> + 'o {
             let predicate: Result<_, ErrorReported> =
                 self.ast_type_binding_to_poly_projection_predicate(
                     trait_ref.ref_id, poly_trait_ref, binding, speculative, &mut dup_bindings);
-            // okay to ignore Err because of ErrorReported (see above)
+            // ok to ignore Err because of ErrorReported (see above)
             Some((predicate.ok()?, binding.span))
         }));
 
@@ -918,6 +918,7 @@ impl<'o, 'gcx: 'tcx, 'tcx> dyn AstConv<'gcx, 'tcx> + 'o {
         }))
     }
 
+    // `item_segment` is used to substitute the generic arguments.
     fn ast_path_to_ty(&self,
         span: Span,
         did: DefId,
@@ -963,7 +964,7 @@ impl<'o, 'gcx: 'tcx, 'tcx> dyn AstConv<'gcx, 'tcx> + 'o {
         debug!("principal: {:?}", principal);
 
         for trait_bound in trait_bounds[1..].iter() {
-            // sanity check for non-principal trait bounds
+            // Perform sanity check for non-principal trait bounds.
             self.instantiate_poly_trait_ref(trait_bound,
                                             dummy_self,
                                             &mut vec![]);
@@ -1019,11 +1020,11 @@ impl<'o, 'gcx: 'tcx, 'tcx> dyn AstConv<'gcx, 'tcx> + 'o {
                     //     }
                     // ```
                     //
-                    // Here, the user could theoretically write `dyn MyTrait<Output=X>`,
+                    // Here, the user could theoretically write `dyn MyTrait<Output = X>`,
                     // but actually supporting that would "expand" to an infinitely-long type
-                    // `fix $ τ → dyn MyTrait<MyOutput=X, Output=<τ as MyTrait>::MyOutput`.
+                    // `fix $ τ → dyn MyTrait<MyOutput = X, Output=<τ as MyTrait>::MyOutput`.
                     //
-                    // Instead, we force the user to write `dyn MyTrait<MyOutput=X, Output=X>`,
+                    // Instead, we force the user to write `dyn MyTrait<MyOutput = X, Output = X>`,
                     // which is uglier but works. See the discussion in #56288 for alternatives.
                     if !references_self {
                         // Include projections defined on supertraits,
@@ -1124,7 +1125,7 @@ impl<'o, 'gcx: 'tcx, 'tcx> dyn AstConv<'gcx, 'tcx> + 'o {
         auto_traits.sort();
         auto_traits.dedup();
 
-        // Calling `skip_binder` is okay, because the predicates are re-bound.
+        // Calling `skip_binder` is ok, because the predicates are re-bound.
         let principal = if tcx.trait_is_auto(existential_principal.def_id()) {
             ty::ExistentialPredicate::AutoTrait(existential_principal.def_id())
         } else {

@@ -1,4 +1,4 @@
-// Testing candidates
+// Testing candidates.
 //
 // After candidates have been simplified, the only match pairs that
 // remain are those that require some sort of test. The functions here
@@ -179,7 +179,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
         let source_info = self.source_info(test.span);
         match test.kind {
             TestKind::Switch { adt_def, ref variants } => {
-                // Variants is a BitVec of indexes into adt_def.variants.
+                // Variants is a `BitVec` of indexes into `adt_def.variants`.
                 let num_enum_variants = adt_def.variants.len();
                 let used_variants = variants.count();
                 let mut otherwise_block = None;
@@ -232,7 +232,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                                               true_bb, false_bb))
                 } else {
                     // The switch may be inexhaustive so we
-                    // add a catch all block
+                    // add a catch all block.
                     let otherwise = self.cfg.start_new_block();
                     let targets: Vec<_> =
                         options.iter()
@@ -253,12 +253,12 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
             TestKind::Eq { value, mut ty } => {
                 let val = Operand::Copy(place.clone());
                 let mut expect = self.literal_operand(test.span, ty, value);
-                // Use PartialEq::eq instead of BinOp::Eq
-                // (the binop can only handle primitives)
+                // Use `PartialEq::eq` instead of `BinOp::Eq`
+                // (the binop can only handle primitives).
                 let fail = self.cfg.start_new_block();
                 if !ty.is_scalar() {
-                    // If we're using b"..." as a pattern, we need to insert an
-                    // unsizing coercion, as the byte string has the type &[u8; N].
+                    // If we're using `b"..."` as a pattern, we need to insert an
+                    // unsizing coercion, as the byte string has the type `&[u8; N]`.
                     //
                     // We want to do this even when the scrutinee is a reference to an
                     // array, so we can call `<[u8]>::eq` rather than having to find an
@@ -274,12 +274,12 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                     let opt_ref_test_ty = unsize(value.ty);
                     let mut place = place.clone();
                     match (opt_ref_ty, opt_ref_test_ty) {
-                        // nothing to do, neither is an array
+                        // Nothing to do, since neither is an array.
                         (None, None) => {},
                         (Some((region, elem_ty, _)), _) |
                         (None, Some((region, elem_ty, _))) => {
                             let tcx = self.hir.tcx();
-                            // make both a slice
+                            // Make both a slice.
                             ty = tcx.mk_imm_ref(region, tcx.mk_slice(elem_ty));
                             if opt_ref_ty.is_some() {
                                 place = self.temp(ty, test.span);
@@ -305,24 +305,24 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                     let method = self.hir.tcx().mk_lazy_const(ty::LazyConst::Evaluated(method));
 
                     let re_erased = self.hir.tcx().types.re_erased;
-                    // take the argument by reference
+                    // Take the argument by reference.
                     let tam = ty::TypeAndMut {
                         ty,
                         mutbl: Mutability::MutImmutable,
                     };
                     let ref_ty = self.hir.tcx().mk_ref(re_erased, tam);
 
-                    // let lhs_ref_place = &lhs;
+                    // `let lhs_ref_place = &lhs;`
                     let ref_rvalue = Rvalue::Ref(re_erased, BorrowKind::Shared, place);
                     let lhs_ref_place = self.temp(ref_ty, test.span);
                     self.cfg.push_assign(block, source_info, &lhs_ref_place, ref_rvalue);
                     let val = Operand::Move(lhs_ref_place);
 
-                    // let rhs_place = rhs;
+                    // `let rhs_place = rhs;`
                     let rhs_place = self.temp(ty, test.span);
                     self.cfg.push_assign(block, source_info, &rhs_place, Rvalue::Use(expect));
 
-                    // let rhs_ref_place = &rhs_place;
+                    // `let rhs_ref_place = &rhs_place;`
                     let ref_rvalue = Rvalue::Ref(re_erased, BorrowKind::Shared, rhs_place);
                     let rhs_ref_place = self.temp(ref_ty, test.span);
                     self.cfg.push_assign(block, source_info, &rhs_ref_place, ref_rvalue);
@@ -337,12 +337,11 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                             span: test.span,
                             ty: mty,
 
-                            // FIXME(#54571): This constant comes from user
-                            // input (a constant in a pattern).  Are
+                            // FIXME(#54571): this constant comes from user
+                            // input (a constant in a pattern). Are
                             // there forms where users can add type
-                            // annotations here?  For example, an
-                            // associated constant? Need to
-                            // experiment.
+                            // annotations here? For example, an
+                            // associated constant? Need to experiment.
                             user_ty: None,
 
                             literal: method,
@@ -353,7 +352,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                         from_hir_call: false,
                     });
 
-                    // check the result
+                    // Check the result.
                     let block = self.cfg.start_new_block();
                     self.cfg.terminate(eq_block, source_info,
                                        TerminatorKind::if_(self.hir.tcx(),
@@ -387,20 +386,20 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                 let (actual, result) = (self.temp(usize_ty, test.span),
                                         self.temp(bool_ty, test.span));
 
-                // actual = len(place)
+                // `actual == len(place)`
                 self.cfg.push_assign(block, source_info,
                                      &actual, Rvalue::Len(place.clone()));
 
-                // expected = <N>
+                // `expected == <N>`
                 let expected = self.push_usize(block, source_info, len);
 
-                // result = actual == expected OR result = actual < expected
+                // `result == actual == expected` OR `result == actual < expected`
                 self.cfg.push_assign(block, source_info, &result,
                                      Rvalue::BinaryOp(op,
                                                       Operand::Move(actual),
                                                       Operand::Move(expected)));
 
-                // branch based on result
+                // Branch based on result.
                 let (false_bb, true_bb) = (self.cfg.start_new_block(),
                                            self.cfg.start_new_block());
                 self.cfg.terminate(block, source_info,
@@ -421,12 +420,12 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
         let bool_ty = self.hir.bool_ty();
         let result = self.temp(bool_ty, span);
 
-        // result = op(left, right)
+        // `result == op(left, right)`
         let source_info = self.source_info(span);
         self.cfg.push_assign(block, source_info, &result,
                              Rvalue::BinaryOp(op, left, right));
 
-        // branch based on result
+        // Branch based on result.
         let target_block = self.cfg.start_new_block();
         self.cfg.terminate(block, source_info,
                            TerminatorKind::if_(self.hir.tcx(), Operand::Move(result),
@@ -455,22 +454,22 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
     /// without doing anything. This is used by the overall `match_candidates`
     /// algorithm to structure the match as a whole. See `match_candidates` for
     /// more details.
-    ///
-    /// FIXME(#29623). In some cases, we have some tricky choices to
-    /// make.  for example, if we are testing that `x == 22`, but the
-    /// candidate is `x @ 13..55`, what should we do? In the event
-    /// that the test is true, we know that the candidate applies, but
-    /// in the event of false, we don't know that it *doesn't*
-    /// apply. For now, we return false, indicate that the test does
-    /// not apply to this candidate, but it might be we can get
-    /// tighter match code if we do something a bit different.
+    //
+    // FIXME(#29623): in some cases, we have some tricky choices to
+    // make. for example, if we are testing that `x == 22`, but the
+    // candidate is `x @ 13..55`, what should we do? In the event
+    // that the test is `true`, we know that the candidate applies, but
+    // in the event of `false`, we don't know that it *doesn't*
+    // apply. For now, we return false, indicate that the test does
+    // not apply to this candidate, but it might be we can get
+    // tighter match code if we do something a bit different.
     pub fn sort_candidate<'pat>(&mut self,
                                 test_place: &Place<'tcx>,
                                 test: &Test<'tcx>,
                                 candidate: &Candidate<'pat, 'tcx>,
                                 resulting_candidates: &mut [Vec<Candidate<'pat, 'tcx>>])
                                 -> bool {
-        // Find the match_pair for this place (if any). At present,
+        // Find the `match_pair` for this place (if any). At present,
         // afaik, there can be at most one. (In the future, if we
         // adopted a more general `@` operator, there might be more
         // than one, but it'd be very unusual to have two sides that
@@ -508,7 +507,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
             // If we are performing a switch over integers, then this informs integer
             // equality, but nothing else.
             //
-            // FIXME(#29623) we could use PatternKind::Range to rule
+            // FIXME(#29623): we could use `PatternKind::Range` to rule
             // things out here, in some cases.
             (&TestKind::SwitchInt { switch_ty: _, options: _, ref indices },
              &PatternKind::Constant { ref value })
@@ -545,8 +544,8 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                 let pat_len = (prefix.len() + suffix.len()) as u64;
                 match (test_len.cmp(&pat_len), slice) {
                     (Ordering::Equal, &None) => {
-                        // on true, min_len = len = $actual_length,
-                        // on false, len != $actual_length
+                        // On true, `min_len == len == $actual_length`.
+                        // On false, `len != $actual_length`.
                         resulting_candidates[0].push(
                             self.candidate_after_slice_test(match_pair_index,
                                                             candidate,
@@ -557,20 +556,20 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                         true
                     }
                     (Ordering::Less, _) => {
-                        // test_len < pat_len. If $actual_len = test_len,
-                        // then $actual_len < pat_len and we don't have
+                        // `test_len < pat_len`. If `$actual_len == test_len`,
+                        // then also`$actual_len < pat_len`, and we don't have
                         // enough elements.
                         resulting_candidates[1].push(candidate.clone());
                         true
                     }
                     (Ordering::Equal, &Some(_)) | (Ordering::Greater, &Some(_)) => {
-                        // This can match both if $actual_len = test_len >= pat_len,
-                        // and if $actual_len > test_len. We can't advance.
+                        // This can match both if `$actual_len == test_len >= pat_len`,
+                        // and if `$actual_len > test_len`. We can't advance.
                         false
                     }
                     (Ordering::Greater, &None) => {
-                        // test_len != pat_len, so if $actual_len = test_len, then
-                        // $actual_len != pat_len.
+                        // `test_len != pat_len`, so if `$actual_len == test_len`, then
+                        // `$actual_len != pat_len`.
                         resulting_candidates[1].push(candidate.clone());
                         true
                     }
@@ -579,11 +578,11 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
 
             (&TestKind::Len { len: test_len, op: BinOp::Ge },
              &PatternKind::Slice { ref prefix, ref slice, ref suffix }) => {
-                // the test is `$actual_len >= test_len`
+                // The test is `$actual_len >= test_len`.
                 let pat_len = (prefix.len() + suffix.len()) as u64;
                 match (test_len.cmp(&pat_len), slice) {
                     (Ordering::Equal, &Some(_))  => {
-                        // $actual_len >= test_len = pat_len,
+                        // `$actual_len >= test_len == pat_len`,
                         // so we can match.
                         resulting_candidates[0].push(
                             self.candidate_after_slice_test(match_pair_index,
@@ -595,20 +594,20 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                         true
                     }
                     (Ordering::Less, _) | (Ordering::Equal, &None) => {
-                        // test_len <= pat_len. If $actual_len < test_len,
-                        // then it is also < pat_len, so the test passing is
+                        // `test_len <= pat_len`. If `$actual_len < test_len`,
+                        // then it is also `< pat_len`, so the test passing is
                         // necessary (but insufficient).
                         resulting_candidates[0].push(candidate.clone());
                         true
                     }
                     (Ordering::Greater, &None) => {
-                        // test_len > pat_len. If $actual_len >= test_len > pat_len,
+                        // `test_len > pat_len`. If `$actual_len >= test_len > pat_len`,
                         // then we know we won't have a match.
                         resulting_candidates[1].push(candidate.clone());
                         true
                     }
                     (Ordering::Greater, &Some(_)) => {
-                        // test_len < pat_len, and is therefore less
+                        // `test_len < pat_len`, and is therefore less
                         // strict. This can still go both ways.
                         false
                     }
@@ -637,10 +636,10 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                     let hi = compare_const_vals(tcx, test.hi, pat.lo, param_env)?;
 
                     match (test.end, pat.end, lo, hi) {
-                        // pat < test
+                        // `pat < test`
                         (_, _, Greater, _) |
                         (_, Excluded, Equal, _) |
-                        // pat > test
+                        // `pat > test`
                         (_, _, _, Less) |
                         (Excluded, _, _, Equal) => Some(true),
                         _ => Some(false),
@@ -675,7 +674,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
             (&TestKind::Len { .. }, _) => {
                 // These are all binary tests.
                 //
-                // FIXME(#29623) we can be more clever here
+                // FIXME(#29623): we can be more clever here.
                 let pattern_test = self.test(&match_pair);
                 if pattern_test.kind == test.kind {
                     let new_candidate = self.candidate_without_match_pair(match_pair_index,
@@ -744,7 +743,8 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
         // we want to create a set of derived match-patterns like
         // `(x as Variant).0 @ P1` and `(x as Variant).1 @ P1`.
         let elem = ProjectionElem::Downcast(adt_def, variant_index);
-        let downcast_place = match_pair.place.clone().elem(elem); // `(x as Variant)`
+        // I.e., `(x as Variant)`.
+        let downcast_place = match_pair.place.clone().elem(elem);
         let consequent_match_pairs =
             subpatterns.iter()
                        .map(|subpattern| {

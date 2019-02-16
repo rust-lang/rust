@@ -44,11 +44,11 @@ pub struct DataFlowContext<'a, 'tcx: 'a, O> {
     words_per_id: usize,
 
     // mapping from node to cfg node index
-    // FIXME (#6298): Shouldn't this go with CFG?
+    // FIXME(#6298): Shouldn't this go with CFG?
     local_id_to_index: FxHashMap<hir::ItemLocalId, Vec<CFGIndex>>,
 
-    // Bit sets per cfg node.  The following three fields (`gens`, `kills`,
-    // and `on_entry`) all have the same structure. For each id in
+    // Bit sets per cfg node. The following three fields (`gens`, `kills`,
+    // and `on_entry`) all have the same structure. For each ID in
     // `id_range`, there is a range of words equal to `words_per_id`.
     // So, to access the bits for any given id, you take a slice of
     // the full vector (see the method `compute_id_range()`).
@@ -161,8 +161,8 @@ fn build_local_id_to_index(body: Option<&hir::Body>,
                            -> FxHashMap<hir::ItemLocalId, Vec<CFGIndex>> {
     let mut index = FxHashMap::default();
 
-    // FIXME(#15020) Would it be better to fold formals from decl
-    // into cfg itself?  i.e., introduce a fn-based flow-graph in
+    // FIXME(#15020): would it be better to fold formals from decl
+    // into cfg itself? I.e., introduce a fn-based flow-graph in
     // addition to the current block-based flow-graph, rather than
     // have to put traversals like this here?
     if let Some(body) = body {
@@ -356,7 +356,7 @@ impl<'a, 'tcx, O:DataFlowOperator> DataFlowContext<'a, 'tcx, O> {
         //! Only useful after `propagate()` has been called.
 
         if self.bits_per_id == 0 {
-            // Skip the surprisingly common degenerate case.  (Note
+            // Skip the surprisingly common degenerate case. (Note
             // compute_id_range requires self.words_per_id > 0.)
             return true;
         }
@@ -387,7 +387,7 @@ impl<'a, 'tcx, O:DataFlowOperator> DataFlowContext<'a, 'tcx, O> {
         }
 
         if self.bits_per_id == 0 {
-            // Skip the surprisingly common degenerate case.  (Note
+            // Skip the surprisingly common degenerate case. (Note
             // compute_id_range requires self.words_per_id > 0.)
             return true;
         }
@@ -421,10 +421,10 @@ impl<'a, 'tcx, O:DataFlowOperator> DataFlowContext<'a, 'tcx, O> {
                     if (word & bit) != 0 {
                         // N.B., we round up the total number of bits
                         // that we store in any given bit set so that
-                        // it is an even multiple of usize::BITS.  This
+                        // it is an even multiple of usize::BITS. This
                         // means that there may be some stray bits at
                         // the end that do not correspond to any
-                        // actual value.  So before we callback, check
+                        // actual value. So before we callback, check
                         // whether the bit_index is greater than the
                         // actual value the user specified and stop
                         // iterating if so.
@@ -453,7 +453,7 @@ impl<'a, 'tcx, O:DataFlowOperator> DataFlowContext<'a, 'tcx, O> {
 
         debug!("{} add_kills_from_flow_exits", self.analysis_name);
         if self.bits_per_id == 0 {
-            // Skip the surprisingly common degenerate case.  (Note
+            // Skip the surprisingly common degenerate case. (Note
             // compute_id_range requires self.words_per_id > 0.)
             return;
         }
@@ -547,7 +547,7 @@ impl<'a, 'b, 'tcx, O:DataFlowOperator> PropagationContext<'a, 'b, 'tcx, O> {
                bits_to_string(in_out), self.dfcx.analysis_name);
         assert!(self.dfcx.bits_per_id > 0);
 
-        // Iterate over nodes in reverse postorder
+        // Iterate over nodes in reverse post-order.
         for &node_index in nodes_po.iter().rev() {
             let node = cfg.graph.node(node_index);
             debug!("DataFlowContext::walk_cfg idx={:?} id={:?} begin in_out={}",

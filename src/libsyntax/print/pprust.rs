@@ -1411,7 +1411,7 @@ impl<'a> State<'a> {
                 self.print_ident(item.ident)?;
                 self.print_generic_params(&generics.params)?;
                 let mut real_bounds = Vec::with_capacity(bounds.len());
-                // FIXME(durka) this seems to be some quite outdated syntax
+                // FIXME(durka): this seems to be some quite outdated syntax.
                 for b in bounds.iter() {
                     if let GenericBound::Trait(ref ptr, ast::TraitBoundModifier::Maybe) = *b {
                         self.s.space()?;
@@ -1798,7 +1798,7 @@ impl<'a> State<'a> {
         match els {
             Some(_else) => {
                 match _else.node {
-                    // "another else-if"
+                    // Another `else if` block.
                     ast::ExprKind::If(ref i, ref then, ref e) => {
                         self.cbox(INDENT_UNIT - 1)?;
                         self.ibox(0)?;
@@ -1808,7 +1808,7 @@ impl<'a> State<'a> {
                         self.print_block(then)?;
                         self.print_else(e.as_ref().map(|e| &**e))
                     }
-                    // "another else-if-let"
+                    // Another `else if let` block.
                     ast::ExprKind::IfLet(ref pats, ref expr, ref then, ref e) => {
                         self.cbox(INDENT_UNIT - 1)?;
                         self.ibox(0)?;
@@ -1821,14 +1821,14 @@ impl<'a> State<'a> {
                         self.print_block(then)?;
                         self.print_else(e.as_ref().map(|e| &**e))
                     }
-                    // "final else"
+                    // Final `else` block.
                     ast::ExprKind::Block(ref b, _) => {
                         self.cbox(INDENT_UNIT - 1)?;
                         self.ibox(0)?;
                         self.s.word(" else ")?;
                         self.print_block(b)
                     }
-                    // BLEAH, constraints would be great here
+                    // Constraints would be great here!
                     _ => {
                         panic!("print_if saw if with weird alternative");
                     }
@@ -2265,10 +2265,10 @@ impl<'a> State<'a> {
                 self.s.word("]")?;
             }
             ast::ExprKind::Range(ref start, ref end, limits) => {
-                // Special case for `Range`.  `AssocOp` claims that `Range` has higher precedence
+                // Special case for `Range`. `AssocOp` claims that `Range` has higher precedence
                 // than `Assign`, but `x .. x = x` gives a parse error instead of `x .. (x = x)`.
                 // Here we use a fake precedence value so that any child with lower precedence than
-                // a "normal" binop gets parenthesized.  (`LOr` is the lowest-precedence binop.)
+                // a "normal" binop gets parenthesized. (`LOr` is the lowest-precedence binop.)
                 let fake_prec = AssocOp::LOr.precedence() as i8;
                 if let Some(ref e) = *start {
                     self.print_expr_maybe_paren(e, fake_prec)?;

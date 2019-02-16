@@ -2,8 +2,8 @@
 // Gathering loans
 //
 // The borrow check proceeds in two phases. In phase one, we gather the full
-// set of loans that are required at any point.  These are sorted according to
-// their associated scopes.  In phase two, checking loans, we will then make
+// set of loans that are required at any point. These are sorted according to
+// their associated scopes. In phase two, checking loans, we will then make
 // sure that all of these loans are honored.
 
 use crate::borrowck::*;
@@ -277,7 +277,7 @@ impl<'a, 'tcx> GatherLoanCtxt<'a, 'tcx> {
                                                 lp);
             }
             None => {
-                // This can occur with e.g., `*foo() = 5`.  In such
+                // This can occur with e.g., `*foo() = 5`. In such
                 // cases, there is no need to check for conflicts
                 // with moves etc, just ignore.
             }
@@ -336,7 +336,7 @@ impl<'a, 'tcx> GatherLoanCtxt<'a, 'tcx> {
         // Create the loan record (if needed).
         let loan = match restr {
             RestrictionResult::Safe => {
-                // No restrictions---no loan record necessary
+                // No restrictions -- no loan record necessary
                 return;
             }
 

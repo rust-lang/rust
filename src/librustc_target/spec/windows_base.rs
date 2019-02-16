@@ -13,7 +13,7 @@ pub fn opts() -> TargetOptions {
             // section, ".note.rustc", you'll note is over 8 characters.
             //
             // On more recent versions of gcc on mingw, apparently the section name
-            // is *not* truncated, but rather stored elsewhere in a separate lookup
+            // is **not** truncated, but rather stored elsewhere in a separate lookup
             // table. On older versions of gcc, they apparently always truncated th
             // section names (at least in some cases). Truncating the section name
             // actually creates "invalid" objects [1] [2], but only for some
@@ -55,14 +55,14 @@ pub fn opts() -> TargetOptions {
         // Listing the library twice seems to fix that, and seems to also be done
         // by mingw's gcc (Though not sure if it's done on purpose, or by mistake).
         //
-        // See https://github.com/rust-lang/rust/pull/47483
+        // See PR #47483.
         "-lmsvcrt".to_string(),
         "-luser32".to_string(),
         "-lkernel32".to_string(),
     ]);
 
     TargetOptions {
-        // FIXME(#13846) this should be enabled for windows
+        // FIXME(#13846): this should be enabled for Windows.
         function_sections: false,
         linker: Some("gcc".to_string()),
         dynamic_linking: true,

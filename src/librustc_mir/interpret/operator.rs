@@ -53,7 +53,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> 
             Le => l <= r,
             Gt => l > r,
             Ge => l >= r,
-            _ => bug!("Invalid operation on char: {:?}", bin_op),
+            _ => bug!("invalid operation on char: {:?}", bin_op),
         };
         return Ok((Scalar::from_bool(res), false));
     }
@@ -76,7 +76,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> 
             BitAnd => l & r,
             BitOr => l | r,
             BitXor => l ^ r,
-            _ => bug!("Invalid operation on bool: {:?}", bin_op),
+            _ => bug!("invalid operation on bool: {:?}", bin_op),
         };
         return Ok((Scalar::from_bool(res), false));
     }
@@ -85,7 +85,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> 
         &self,
         bin_op: mir::BinOp,
         fty: FloatTy,
-        // passing in raw bits
+        // Passing in raw bits.
         l: u128,
         r: u128,
     ) -> EvalResult<'tcx, (Scalar<M::PointerTag>, bool)> {
@@ -123,7 +123,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> 
     fn binary_int_op(
         &self,
         bin_op: mir::BinOp,
-        // passing in raw bits
+        // Passing in raw bits.
         l: u128,
         left_layout: TyLayout<'tcx>,
         r: u128,
@@ -160,7 +160,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> 
             return Ok((Scalar::from_uint(truncated, size), oflo));
         }
 
-        // For the remaining ops, the types must be the same on both sides
+        // For the remaining ops, the types must be the same on both sides.
         if left_layout.ty != right_layout.ty {
             let msg = format!(
                 "unimplemented asymmetric binary op {:?}: {:?} ({:?}), {:?} ({:?})",
@@ -173,7 +173,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> 
             return err!(Unimplemented(msg));
         }
 
-        // Operations that need special treatment for signed integers
+        // Operations that need special treatment for signed integers.
         if left_layout.abi.is_signed() {
             let op: Option<fn(&i128, &i128) -> bool> = match bin_op {
                 Lt => Some(i128::lt),
@@ -203,7 +203,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> 
                 let size = left_layout.size;
                 match bin_op {
                     Rem | Div => {
-                        // int_min / -1
+                        // `int_min / -1`
                         if r == -1 && l == (1 << (size.bits() - 1)) {
                             return Ok((Scalar::from_uint(l, size), true));
                         }
@@ -217,7 +217,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> 
                     let max = 1 << (size.bits() - 1);
                     oflo = result >= max || result < -max;
                 }
-                // this may be out-of-bounds for the result type, so we have to truncate ourselves
+                // This may be out-of-bounds for the result type, so we have to truncate ourselves.
                 let result = result as u128;
                 let truncated = self.truncate(result, left_layout);
                 return Ok((Scalar::from_uint(truncated, size), oflo));
@@ -226,7 +226,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> 
 
         let size = left_layout.size;
 
-        // only ints left
+        // Only ints left.
         let val = match bin_op {
             Eq => Scalar::from_bool(l == r),
             Ne => Scalar::from_bool(l != r),
@@ -303,13 +303,13 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> 
                 self.binary_float_op(bin_op, fty, left, right)
             }
             _ => {
-                // Must be integer(-like) types.  Don't forget about == on fn pointers.
+                // Must be integer(-like) types. Don't forget about `==` on fn pointers.
                 assert!(left.layout.ty.is_integral() || left.layout.ty.is_unsafe_ptr() ||
                     left.layout.ty.is_fn());
                 assert!(right.layout.ty.is_integral() || right.layout.ty.is_unsafe_ptr() ||
                     right.layout.ty.is_fn());
 
-                // Handle operations that support pointer values
+                // Handle operations that support pointer values.
                 if left.to_scalar_ptr()?.is_ptr() ||
                     right.to_scalar_ptr()?.is_ptr() ||
                     bin_op == mir::BinOp::Offset
@@ -317,7 +317,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> 
                     return M::ptr_op(self, bin_op, left, right);
                 }
 
-                // Everything else only works with "proper" bits
+                // Everything else only works with "proper" bits.
                 let l = left.to_bits().expect("we checked is_ptr");
                 let r = right.to_bits().expect("we checked is_ptr");
                 self.binary_int_op(bin_op, l, left.layout, r, right.layout)
@@ -336,14 +336,14 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> 
 
         let layout = val.layout;
         let val = val.to_scalar()?;
-        trace!("Running unary op {:?}: {:?} ({:?})", un_op, val, layout.ty.sty);
+        trace!("running unary op {:?}: {:?} ({:?})", un_op, val, layout.ty.sty);
 
         match layout.ty.sty {
             ty::Bool => {
                 let val = val.to_bool()?;
                 let res = match un_op {
                     Not => !val,
-                    _ => bug!("Invalid bool op {:?}", un_op)
+                    _ => bug!("invalid bool op {:?}", un_op)
                 };
                 Ok(Scalar::from_bool(res))
             }
@@ -352,7 +352,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> 
                 let res = match (un_op, fty) {
                     (Neg, FloatTy::F32) => Single::to_bits(-Single::from_bits(val)),
                     (Neg, FloatTy::F64) => Double::to_bits(-Double::from_bits(val)),
-                    _ => bug!("Invalid float op {:?}", un_op)
+                    _ => bug!("invalid float op {:?}", un_op)
                 };
                 Ok(Scalar::from_uint(res, layout.size))
             }
@@ -366,7 +366,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> 
                         (-(val as i128)) as u128
                     }
                 };
-                // res needs tuncating
+                // `res` needs truncating.
                 Ok(Scalar::from_uint(self.truncate(res, layout), layout.size))
             }
         }

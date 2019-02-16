@@ -743,7 +743,7 @@ impl<'a> State<'a> {
                 self.print_ident(item.ident)?;
                 self.print_generic_params(&generics.params)?;
                 let mut real_bounds = Vec::with_capacity(bounds.len());
-                // FIXME(durka) this seems to be some quite outdated syntax
+                // FIXME(durka): this seems to be some quite outdated syntax
                 for b in bounds.iter() {
                     if let GenericBound::Trait(ref ptr, hir::TraitBoundModifier::Maybe) = *b {
                         self.s.space()?;
@@ -1082,7 +1082,7 @@ impl<'a> State<'a> {
         match els {
             Some(_else) => {
                 match _else.node {
-                    // "another else-if"
+                    // Another `else if` block.
                     hir::ExprKind::If(ref i, ref then, ref e) => {
                         self.cbox(indent_unit - 1)?;
                         self.ibox(0)?;
@@ -1092,14 +1092,14 @@ impl<'a> State<'a> {
                         self.print_expr(&then)?;
                         self.print_else(e.as_ref().map(|e| &**e))
                     }
-                    // "final else"
+                    // Final `else` block.
                     hir::ExprKind::Block(ref b, _) => {
                         self.cbox(indent_unit - 1)?;
                         self.ibox(0)?;
                         self.s.word(" else ")?;
                         self.print_block(&b)
                     }
-                    // BLEAH, constraints would be great here
+                    // Constraints would be great here!
                     _ => {
                         panic!("print_if saw if with weird alternative");
                     }
@@ -1738,8 +1738,8 @@ impl<'a> State<'a> {
                 self.commasep(Inconsistent, &types, |s, ty| s.print_type(&ty))?;
             }
 
-            // FIXME(eddyb) This would leak into error messages, e.g.:
-            // "non-exhaustive patterns: `Some::<..>(_)` not covered".
+            // FIXME(eddyb): this would leak into error messages (e.g.,
+            // "non-exhaustive patterns: `Some::<..>(_)` not covered").
             if infer_types && false {
                 start_or_comma(self)?;
                 self.s.word("..")?;

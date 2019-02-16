@@ -15,8 +15,8 @@
 //!       | *E        // deref of a ptr
 //!       | E.comp    // access to an interior component
 //!
-//! Imagine a routine ToAddr(Expr) that evaluates an expression and returns an
-//! address where the result is to be found. If Expr is a place, then this
+//! Imagine a routine `ToAddr(Expr)` that evaluates an expression and returns an
+//! address where the result is to be found. If `Expr` is a place, then this
 //! is the address of the place. If `Expr` is an rvalue, this is the address of
 //! some temporary spot in memory where the result is stored.
 //!
@@ -30,9 +30,9 @@
 //! - `ty`: the type of data found at the address `A`.
 //!
 //! The resulting categorization tree differs somewhat from the expressions
-//! themselves. For example, auto-derefs are explicit. Also, an index a[b] is
-//! decomposed into two operations: a dereference to reach the array data and
-//! then an index to jump forward to the relevant item.
+//! themselves. For example, auto-derefs are explicit. Also, an index `a[b]` is
+//! decomposed into two operations: a dereference to reach the array data, and
+//! an index to jump forward to the relevant item.
 //!
 //! ## By-reference upvars
 //!
@@ -96,14 +96,14 @@ pub enum Categorization<'tcx> {
     // (*1) downcast is only required if the enum has more than one variant
 }
 
-// Represents any kind of upvar
+// Represents any kind of upvar.
 #[derive(Clone, Copy, PartialEq)]
 pub struct Upvar {
     pub id: ty::UpvarId,
     pub kind: ty::ClosureKind
 }
 
-// different kinds of pointers:
+// Different kinds of pointers.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub enum PointerKind<'tcx> {
     /// `Box<T>`
@@ -117,7 +117,7 @@ pub enum PointerKind<'tcx> {
 }
 
 // We use the term "interior" to mean "something reachable from the
-// base without a pointer dereference", e.g., a field
+// base without a pointer dereference", e.g., a field.
 #[derive(Clone, Copy, PartialEq, Eq, Hash)]
 pub enum InteriorKind {
     InteriorField(FieldIndex),
@@ -154,10 +154,10 @@ pub enum MutabilityCategory {
     McInherited, // Inherited from the fact that owner is mutable.
 }
 
-// A note about the provenance of a `cmt`.  This is used for
+// A note about the provenance of a `cmt`. This is used for
 // special-case handling of upvars such as mutability inference.
 // Upvar categorization can generate a variable number of nested
-// derefs.  The note allows detecting them without deep pattern
+// derefs. The note allows detecting them without deep pattern
 // matching on the categorization.
 #[derive(Clone, Copy, PartialEq, Debug)]
 pub enum Note {
@@ -187,12 +187,12 @@ pub enum Note {
 // a consistent fashion. For more details, see the method `cat_pattern`
 #[derive(Clone, Debug, PartialEq)]
 pub struct cmt_<'tcx> {
-    pub hir_id: hir::HirId,        // HIR id of expr/pat producing this value
+    pub hir_id: hir::HirId,        // `HirId` of expr/pat producing this value
     pub span: Span,                // span of same expr/pat
     pub cat: Categorization<'tcx>, // categorization of expr
     pub mutbl: MutabilityCategory, // mutability of expr as place
     pub ty: Ty<'tcx>,              // type of the expr (*see WARNING above*)
-    pub note: Note,                // Note about the provenance of this cmt
+    pub note: Note,                // note about the provenance of this cmt
 }
 
 pub type cmt<'tcx> = Rc<cmt_<'tcx>>;
@@ -210,7 +210,7 @@ impl<'tcx> cmt_<'tcx> {
         let adt_def = match self.ty.sty {
             ty::Adt(def, _) => def,
             ty::Tuple(..) => return None,
-            // closures get `Categorization::Upvar` rather than `Categorization::Interior`
+            // Closures get `Categorization::Upvar` rather than `Categorization::Interior`.
             _ =>  bug!("interior cmt {:?} is not an ADT", self)
         };
         let variant_def = match self.cat {
@@ -659,9 +659,8 @@ impl<'a, 'gcx, 'tcx> MemCategorizationContext<'a, 'gcx, 'tcx> {
                 if self.tables.is_method_call(expr) {
                     // If this is an index implemented by a method call, then it
                     // will include an implicit deref of the result.
-                    // The call to index() returns a `&T` value, which
-                    // is an rvalue. That is what we will be
-                    // dereferencing.
+                    // The call to `index()` returns a `&T` value, which
+                    // is an rvalue. That is what we will be dereferencing.
                     self.cat_overloaded_place(expr, base, NoteIndex)
                 } else {
                     let base_cmt = Rc::new(self.cat_expr(&base)?);
@@ -752,7 +751,7 @@ impl<'a, 'gcx, 'tcx> MemCategorizationContext<'a, 'gcx, 'tcx> {
         }
     }
 
-    // Categorize an upvar, complete with invisible derefs of closure
+    // Categorizes an upvar, complete with invisible derefs of closure
     // environment and upvar reference as appropriate.
     fn cat_upvar(&self,
                  hir_id: hir::HirId,
@@ -767,14 +766,14 @@ impl<'a, 'gcx, 'tcx> MemCategorizationContext<'a, 'gcx, 'tcx> {
         // `Categorization::Upvar`, which is itself a fiction -- it represents the reference to the
         // field from the environment.
         //
-        // `Categorization::Upvar`.  Next, we add a deref through the implicit
+        // `Categorization::Upvar`. Next, we add a deref through the implicit
         // environment pointer with an anonymous free region 'env and
         // appropriate borrow kind for closure kinds that take self by
-        // reference.  Finally, if the upvar was captured
-        // by-reference, we add a deref through that reference.  The
+        // reference. Finally, if the upvar was captured
+        // by-reference, we add a deref through that reference. The
         // region of this reference is an inference variable 'up that
         // was previously generated and recorded in the upvar borrow
-        // map.  The borrow kind bk is inferred by based on how the
+        // map. The borrow kind bk is inferred by based on how the
         // upvar is used.
         //
         // This results in the following table for concrete closure
@@ -791,7 +790,7 @@ impl<'a, 'gcx, 'tcx> MemCategorizationContext<'a, 'gcx, 'tcx> {
             ty::Closure(closure_def_id, closure_substs) => {
                 match self.infcx {
                     // During upvar inference we may not know the
-                    // closure kind, just use the LATTICE_BOTTOM value.
+                    // closure kind, just use the `LATTICE_BOTTOM` value.
                     Some(infcx) =>
                         infcx.closure_kind(closure_def_id, closure_substs)
                              .unwrap_or(ty::ClosureKind::LATTICE_BOTTOM),
@@ -815,7 +814,7 @@ impl<'a, 'gcx, 'tcx> MemCategorizationContext<'a, 'gcx, 'tcx> {
 
         let var_ty = self.node_ty(var_hir_id)?;
 
-        // Mutability of original variable itself
+        // Mutability of original variable itself.
         let var_mutbl = MutabilityCategory::from_local(self.tcx, self.tables, var_id);
 
         // Construct the upvar. This represents access to the field
@@ -893,9 +892,9 @@ impl<'a, 'gcx, 'tcx> MemCategorizationContext<'a, 'gcx, 'tcx> {
 
         let var_ty = cmt_result.ty;
 
-        // We need to add the env deref.  This means
+        // We need to add the env deref. This means
         // that the above is actually immutable and
-        // has a ref type.  However, nothing should
+        // has a ref type. However, nothing should
         // actually look at the type, so we can get
         // away with stuffing a `Error` in there
         // instead of bothering to construct a proper
@@ -929,7 +928,7 @@ impl<'a, 'gcx, 'tcx> MemCategorizationContext<'a, 'gcx, 'tcx> {
         ret
     }
 
-    /// Returns the lifetime of a temporary created by expr with id `id`.
+    /// Returns the lifetime of a temporary created by expr with ID `id`.
     /// This could be `'static` if `id` is part of a constant expression.
     pub fn temporary_scope(&self, id: hir::ItemLocalId) -> ty::Region<'tcx> {
         let scope = self.region_scope_tree.temporary_scope(id);
@@ -1131,7 +1130,7 @@ impl<'a, 'gcx, 'tcx> MemCategorizationContext<'a, 'gcx, 'tcx> {
                                              base_cmt: cmt<'tcx>,
                                              variant_did: DefId)
                                              -> cmt<'tcx> {
-        // univariant enums do not need downcasts
+        // Univariant enums do not need downcasts.
         let base_did = self.tcx.parent_def_id(variant_did).unwrap();
         if self.tcx.adt_def(base_did).variants.len() != 1 {
             let base_ty = base_cmt.ty;
@@ -1157,7 +1156,7 @@ impl<'a, 'gcx, 'tcx> MemCategorizationContext<'a, 'gcx, 'tcx> {
         self.cat_pattern_(cmt, pat, &mut op)
     }
 
-    // FIXME(#19596) This is a workaround, but there should be a better way to do this
+    // FIXME(#19596): this is a workaround, but there should be a better way to do this.
     fn cat_pattern_<F>(&self, mut cmt: cmt<'tcx>, pat: &hir::Pat, op: &mut F) -> McResult<()>
         where F : FnMut(cmt<'tcx>, &hir::Pat)
     {
@@ -1180,8 +1179,8 @@ impl<'a, 'gcx, 'tcx> MemCategorizationContext<'a, 'gcx, 'tcx> {
         // come back and I'll dive into a bit more detail here. :) OK,
         // back?
         //
-        // In general, the id of the cmt should be the node that
-        // "produces" the value---patterns aren't executable code
+        // In general, the ID  of the cmt should be the node that
+        // "produces" the value -- patterns aren't executable code
         // exactly, but I consider them to "execute" when they match a
         // value, and I consider them to produce the value that was
         // matched. So if you have something like:
@@ -1202,9 +1201,9 @@ impl<'a, 'gcx, 'tcx> MemCategorizationContext<'a, 'gcx, 'tcx> {
         //     ^~~~~~~~~~^     `@@y` pattern node  @@int      @int
         //     ^~~~~~~~~~~~~^  `@y` pattern node   @int       int
         //
-        // You can see that the types of the id and the cmt are in
-        // sync in the first line, because that id is actually the id
-        // of an expression. But once we get to pattern ids, the types
+       // You can see that the types of the ID  and the cmt are in
+       // sync in the first line, because that ID  is actually the ID
+        // of an expression. But once we get to pattern IDs, the types
         // step out of sync again. So you'll see below that we always
         // get the type of the *subpattern* and use that.
 
@@ -1305,7 +1304,7 @@ impl<'a, 'gcx, 'tcx> MemCategorizationContext<'a, 'gcx, 'tcx> {
             }
 
             PatKind::Struct(ref qpath, ref field_pats, _) => {
-                // {f1: p1, ..., fN: pN}
+                // `{f1: p1, ..., fN: pN}`
                 let def = self.tables.qpath_def(qpath, pat.hir_id);
                 let cmt = match def {
                     Def::Err => {
@@ -1333,7 +1332,7 @@ impl<'a, 'gcx, 'tcx> MemCategorizationContext<'a, 'gcx, 'tcx> {
             }
 
             PatKind::Tuple(ref subpats, ddpos) => {
-                // (p1, ..., pN)
+                // `(p1, ..., pN)`
                 let expected_len = match self.pat_ty_unadjusted(&pat)?.sty {
                     ty::Tuple(ref tys) => tys.len(),
                     ref ty => span_bug!(pat.span, "tuple pattern unexpected type {:?}", ty),
@@ -1348,7 +1347,7 @@ impl<'a, 'gcx, 'tcx> MemCategorizationContext<'a, 'gcx, 'tcx> {
             }
 
                 PatKind::Box(ref subpat) | PatKind::Ref(ref subpat, _) => {
-                // box p1, &p1, &mut p1.  we can ignore the mutability of
+                // box p1, &p1, &mut p1. we can ignore the mutability of
                 // PatKind::Ref since that information is already contained
                 // in the type.
                 let subcmt = Rc::new(self.cat_deref(pat, cmt, NoteNone)?);

@@ -27,7 +27,7 @@ pub fn dump(sess: &Session, path: String) {
     let params = ProfQDumpParams {
         path,
         ack: tx,
-        // FIXME: Add another compiler flag to toggle whether this log
+        // FIXME: add another compiler flag to toggle whether this log
         // is written; false for now
         dump_profq_msg_log: true,
     };
@@ -69,7 +69,7 @@ fn profile_queries_thread(r: Receiver<ProfileQueriesMsg>) {
     loop {
         let msg = r.recv();
         if let Err(_recv_err) = msg {
-            // FIXME: Perhaps do something smarter than simply quitting?
+            // FIXME: perhaps do something smarter than simply quitting?
             break
         };
         let msg = msg.unwrap();

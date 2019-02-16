@@ -79,7 +79,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> HasDataLayout
     }
 }
 
-// FIXME: Really we shouldn't clone memory, ever. Snapshot machinery should instead
+// FIXME: really we shouldn't clone memory, ever. Snapshot machinery should instead
 // carefully copy only the reachable parts.
 impl<'a, 'mir, 'tcx, M>
     Clone
@@ -286,7 +286,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> Memory<'a, 'mir, 'tcx, M> {
 
     /// Checks if the pointer is "in-bounds". Notice that a pointer pointing at the end
     /// of an allocation (i.e., at the first *inaccessible* location) *is* considered
-    /// in-bounds!  This follows C's/LLVM's rules.
+    /// in-bounds! This follows C's/LLVM's rules.
     /// If you want to check bounds before doing a memory access, better first obtain
     /// an `Allocation` and call `check_bounds`.
     pub fn check_bounds_ptr(
@@ -356,7 +356,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> Memory<'a, 'mir, 'tcx, M> {
     }
 
     pub fn get(&self, id: AllocId) -> EvalResult<'tcx, &Allocation<M::PointerTag, M::AllocExtra>> {
-        // The error type of the inner closure here is somewhat funny.  We have two
+        // The error type of the inner closure here is somewhat funny. We have two
         // ways of "erroring": An actual error, or because we got a reference from
         // `get_static_alloc` that we can actually use directly without inserting anything anywhere.
         // So the error type is `EvalResult<'tcx, &Allocation<M::PointerTag>>`.
@@ -609,14 +609,14 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> Memory<'a, 'mir, 'tcx, M> {
     }
 }
 
-/// Interning (for CTFE)
+/// Interning (for CTFE).
 impl<'a, 'mir, 'tcx, M> Memory<'a, 'mir, 'tcx, M>
 where
     M: Machine<'a, 'mir, 'tcx, PointerTag=(), AllocExtra=(), MemoryExtra=()>,
-    // FIXME: Working around https://github.com/rust-lang/rust/issues/24159
+    // FIXME: working around issue #24159.
     M::MemoryMap: AllocMap<AllocId, (MemoryKind<M::MemoryKinds>, Allocation)>,
 {
-    /// mark an allocation as static and initialized, either mutable or not
+    /// Mark an allocation as static and initialized, either mutable or not.
     pub fn intern_static(
         &mut self,
         alloc_id: AllocId,
@@ -627,29 +627,29 @@ where
             alloc_id,
             mutability
         );
-        // remove allocation
+        // Remove allocation.
         let (kind, mut alloc) = self.alloc_map.remove(&alloc_id).unwrap();
         match kind {
             MemoryKind::Machine(_) => bug!("Static cannot refer to machine memory"),
             MemoryKind::Stack | MemoryKind::Vtable => {},
         }
-        // ensure llvm knows not to put this into immutable memory
+        // Ensure that LLVM knows not to put this into immutable memory.
         alloc.mutability = mutability;
         let alloc = self.tcx.intern_const_alloc(alloc);
         self.tcx.alloc_map.lock().set_alloc_id_memory(alloc_id, alloc);
-        // recurse into inner allocations
+        // Recurse into inner allocations.
         for &(_, alloc) in alloc.relocations.values() {
-            // FIXME: Reusing the mutability here is likely incorrect.  It is originally
+            // FIXME: reusing the mutability here is likely incorrect. It is originally
             // determined via `is_freeze`, and data is considered frozen if there is no
             // `UnsafeCell` *immediately* in that data -- however, this search stops
-            // at references.  So whenever we follow a reference, we should likely
+            // at references. So whenever we follow a reference, we should likely
             // assume immutability -- and we should make sure that the compiler
             // does not permit code that would break this!
             if self.alloc_map.contains_key(&alloc) {
-                // Not yet interned, so proceed recursively
+                // Not yet interned, so proceed recursively.
                 self.intern_static(alloc, mutability)?;
             } else if self.dead_alloc_map.contains_key(&alloc) {
-                // dangling pointer
+                // Dangling pointer.
                 return err!(ValidationFailure(
                     "encountered dangling pointer in final constant".into(),
                 ))
@@ -773,7 +773,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> Memory<'a, 'mir, 'tcx, M> {
 
 /// Undefined bytes
 impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> Memory<'a, 'mir, 'tcx, M> {
-    // FIXME: Add a fast version for the common, nonoverlapping case
+    // FIXME: add a fast version for the common, nonoverlapping case
     fn copy_undef_mask(
         &mut self,
         src: Pointer<M::PointerTag>,

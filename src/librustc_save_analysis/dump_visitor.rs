@@ -461,7 +461,7 @@ impl<'l, 'tcx: 'l, 'll, O: DumpOutput + 'll> DumpVisitor<'l, 'tcx, 'll, O> {
         }
     }
 
-    // FIXME tuple structs should generate tuple-specific data.
+    // FIXME: tuple structs should generate tuple-specific data.
     fn process_struct(
         &mut self,
         item: &'l ast::Item,
@@ -861,7 +861,7 @@ impl<'l, 'tcx: 'l, 'll, O: DumpOutput + 'll> DumpVisitor<'l, 'tcx, 'll, O> {
     fn process_pat(&mut self, p: &'l ast::Pat) {
         match p.node {
             PatKind::Struct(ref _path, ref fields, _) => {
-                // FIXME do something with _path?
+                // FIXME: do something with _path?
                 let hir_id = self.tcx.hir().node_to_hir_id(p.id);
                 let adt = match self.save_ctxt.tables.node_type_opt(hir_id) {
                     Some(ty) => ty.ty_adt_def().unwrap(),
@@ -991,7 +991,7 @@ impl<'l, 'tcx: 'l, 'll, O: DumpOutput + 'll> DumpVisitor<'l, 'tcx, 'll, O> {
                 None => String::new(),
             };
 
-            // Rust uses the id of the pattern for var lookups, so we'll use it too.
+            // Rust uses the ID of the pattern for var lookups, so we'll use it too.
             if !self.span.filter_generated(ident.span) {
                 let qualname = format!("{}${}", ident.to_string(), id);
                 let id = id_from_node_id(id, &self.save_ctxt);
@@ -1029,7 +1029,7 @@ impl<'l, 'tcx: 'l, 'll, O: DumpOutput + 'll> DumpVisitor<'l, 'tcx, 'll, O> {
     /// callsite spans to record macro definition and use data, using the
     /// mac_uses and mac_defs sets to prevent multiples.
     fn process_macro_use(&mut self, _span: Span) {
-        // FIXME if we're not dumping the defs (see below), there is no point
+        // FIXME: if we're not dumping the defs (see below), there is no point
         // dumping refs either.
         // let source_span = span.source_callsite();
         // if !self.macro_calls.insert(source_span) {
@@ -1043,7 +1043,7 @@ impl<'l, 'tcx: 'l, 'll, O: DumpOutput + 'll> DumpVisitor<'l, 'tcx, 'll, O> {
 
         // self.dumper.macro_use(data);
 
-        // FIXME write the macro def
+        // FIXME: write the macro def
         // let mut hasher = DefaultHasher::new();
         // data.callee_span.hash(&mut hasher);
         // let hash = hasher.finish();
@@ -1057,7 +1057,7 @@ impl<'l, 'tcx: 'l, 'll, O: DumpOutput + 'll> DumpVisitor<'l, 'tcx, 'll, O> {
         //             span: sub_span,
         //             name: data.name.clone(),
         //             qualname: qualname.clone(),
-        //             // FIXME where do macro docs come from?
+        //             // FIXME: where do macro docs come from?
         //             docs: String::new(),
         //         }.lower(self.tcx));
         //     }
@@ -1091,7 +1091,7 @@ impl<'l, 'tcx: 'l, 'll, O: DumpOutput + 'll> DumpVisitor<'l, 'tcx, 'll, O> {
                 );
             }
             ast::TraitItemKind::Type(ref bounds, ref default_ty) => {
-                // FIXME do something with _bounds (for type refs)
+                // FIXME: do something with _bounds (for type refs)
                 let name = trait_item.ident.name.to_string();
                 let qualname = format!("::{}", self.tcx.node_path_str(trait_item.id));
 
@@ -1161,13 +1161,13 @@ impl<'l, 'tcx: 'l, 'll, O: DumpOutput + 'll> DumpVisitor<'l, 'tcx, 'll, O> {
                 );
             }
             ast::ImplItemKind::Type(ref ty) => {
-                // FIXME uses of the assoc type should ideally point to this
+                // FIXME: uses of the assoc type should ideally point to this
                 // 'def' and the name here should be a ref to the def in the
                 // trait.
                 self.visit_ty(ty)
             }
             ast::ImplItemKind::Existential(ref bounds) => {
-                // FIXME uses of the assoc type should ideally point to this
+                // FIXME: uses of the assoc type should ideally point to this
                 // 'def' and the name here should be a ref to the def in the
                 // trait.
                 for bound in bounds.iter() {
@@ -1199,7 +1199,7 @@ impl<'l, 'tcx: 'l, 'll, O: DumpOutput + 'll> DumpVisitor<'l, 'tcx, 'll, O> {
         // (since nested trees don't have their own visibility).
         let access = access_from!(self.save_ctxt, root_item.vis, id);
 
-        // The parent def id of a given use tree is always the enclosing item.
+        // The parent `DefId` of a given use tree is always the enclosing item.
         let parent = self.save_ctxt.tcx.hir().opt_local_def_id(id)
             .and_then(|id| self.save_ctxt.tcx.parent_def_id(id))
             .map(id_from_def_id);
@@ -1419,7 +1419,7 @@ impl<'l, 'tcx: 'l, 'll, O: DumpOutput + 'll> Visitor<'l> for DumpVisitor<'l, 'tc
             }
             Existential(ref _bounds, ref ty_params) => {
                 let qualname = format!("::{}", self.tcx.node_path_str(item.id));
-                // FIXME do something with _bounds
+                // FIXME: do something with _bounds
                 let value = String::new();
                 if !self.span.filter_generated(item.ident.span) {
                     let span = self.span_from_span(item.ident.span);

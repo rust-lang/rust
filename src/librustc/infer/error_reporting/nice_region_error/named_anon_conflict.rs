@@ -16,12 +16,12 @@ impl<'a, 'gcx, 'tcx> NiceRegionError<'a, 'gcx, 'tcx> {
             sup
         );
 
-        // Determine whether the sub and sup consist of one named region ('a)
-        // and one anonymous (elided) region. If so, find the parameter arg
+        // Determine whether the sub and sup consist of one named region (`'a`)
+        // and one anonymous (elided) region. If so, find the parameter `arg`
         // where the anonymous region appears (there must always be one; we
         // only introduced anonymous regions in parameters) as well as a
-        // version new_ty of its type where the anonymous region is replaced
-        // with the named one.//scope_def_id
+        // version `new_ty` of its type, where the anonymous region is replaced
+        // with the named one.
         let (named, anon, anon_arg_info, region_info) = if self.is_named_region(sub)
             && self.tcx().is_suitable_region(sup).is_some()
             && self.find_arg_with_region(sup, sub).is_some()
@@ -67,7 +67,7 @@ impl<'a, 'gcx, 'tcx> NiceRegionError<'a, 'gcx, 'tcx> {
         match br {
             ty::BrAnon(_) => {}
             _ => {
-                /* not an anonymous region */
+                // Not an anonymous region.
                 debug!("try_report_named_anon_conflict: not an anonymous region");
                 return None;
             }
@@ -114,7 +114,7 @@ impl<'a, 'gcx, 'tcx> NiceRegionError<'a, 'gcx, 'tcx> {
         Some(diag)
     }
 
-    // This method returns whether the given Region is Named
+    // Returns whether the given `Region` is named.
     pub(super) fn is_named_region(&self, region: ty::Region<'tcx>) -> bool {
         match *region {
             ty::ReStatic => true,

@@ -206,7 +206,7 @@ pub trait AstBuilder {
             name: Ident, attrs: Vec<ast::Attribute> , node: ast::ItemKind) -> P<ast::Item>;
 
     fn arg(&self, span: Span, name: Ident, ty: P<ast::Ty>) -> ast::Arg;
-    // FIXME unused self
+    // FIXME: unused self
     fn fn_decl(&self, inputs: Vec<ast::Arg> , output: ast::FunctionRetTy) -> P<ast::FnDecl>;
 
     fn item_fn_poly(&self,
@@ -942,7 +942,7 @@ impl<'a> AstBuilder for ExtCtxt<'a> {
             ids.iter().map(|id| self.arg(span, *id, self.ty_infer(span))).collect(),
             ast::FunctionRetTy::Default(span));
 
-        // FIXME -- We are using `span` as the span of the `|...|`
+        // FIXME: we are using `span` as the span of the `|...|`
         // part of the lambda, but it probably (maybe?) corresponds to
         // the entire lambda body. Probably we should extend the API
         // here, but that's not entirely clear.
@@ -986,7 +986,7 @@ impl<'a> AstBuilder for ExtCtxt<'a> {
         }
     }
 
-    // FIXME unused self
+    // FIXME: unused self
     fn fn_decl(&self, inputs: Vec<ast::Arg>, output: ast::FunctionRetTy) -> P<ast::FnDecl> {
         P(ast::FnDecl {
             inputs,
@@ -997,7 +997,7 @@ impl<'a> AstBuilder for ExtCtxt<'a> {
 
     fn item(&self, span: Span, name: Ident,
             attrs: Vec<ast::Attribute>, node: ast::ItemKind) -> P<ast::Item> {
-        // FIXME: Would be nice if our generated code didn't violate
+        // FIXME: would be nice if our generated code didn't violate
         // Rust coding conventions
         P(ast::Item {
             ident: name,

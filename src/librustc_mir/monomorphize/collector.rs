@@ -708,7 +708,7 @@ fn visit_instance_use<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     }
 }
 
-// Returns true if we should codegen an instance in the local crate.
+// Returns whether we should codegen an instance in the local crate.
 // Returns false if we can just link to the upstream crate and therefore don't
 // need a mono item.
 fn should_monomorphize_locally<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, instance: &Instance<'tcx>)

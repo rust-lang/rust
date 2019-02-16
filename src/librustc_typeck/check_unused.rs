@@ -74,7 +74,7 @@ impl<'a, 'tcx> CheckVisitor<'a, 'tcx> {
 fn unused_crates_lint<'tcx>(tcx: TyCtxt<'_, 'tcx, 'tcx>) {
     let lint = lint::builtin::UNUSED_EXTERN_CRATES;
 
-    // Collect first the crates that are completely unused.  These we
+    // Collect first the crates that are completely unused. These we
     // can always suggest removing (no matter which edition we are
     // in).
     let unused_extern_crates: FxHashMap<DefId, Span> =

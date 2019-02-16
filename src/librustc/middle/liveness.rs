@@ -214,9 +214,9 @@ impl fmt::Debug for Variable {
 // Creating ir_maps
 //
 // This is the first pass and the one that drives the main
-// computation.  It walks up and down the IR once.  On the way down,
+// computation. It walks up and down the IR once. On the way down,
 // we count for each function the number of variables as well as
-// liveness nodes.  A liveness node is basically an expression or
+// liveness nodes. A liveness node is basically an expression or
 // capture clause that does something of interest: either it has
 // interesting control flow or it uses/defines a local variable.
 //
@@ -226,11 +226,11 @@ impl fmt::Debug for Variable {
 // of live variables at each program point.
 //
 // Finally, we run back over the IR one last time and, using the
-// computed liveness, check various safety conditions.  For example,
+// computed liveness, check various safety conditions. For example,
 // there must be no live nodes at the definition site for a variable
-// unless it has an initializer.  Similarly, each non-mutable local
+// unless it has an initializer. Similarly, each non-mutable local
 // variable must not be assigned if there is some successor
-// assignment.  And so forth.
+// assignment. And so forth.
 
 impl LiveNode {
     fn is_valid(&self) -> bool {
@@ -472,7 +472,7 @@ fn visit_expr<'a, 'tcx>(ir: &mut IrMaps<'a, 'tcx>, expr: &'tcx Expr) {
         ir.add_live_node_for_node(expr.hir_id, ExprNode(expr.span));
 
         // Make a live_node for each captured variable, with the span
-        // being the location that the variable is used.  This results
+        // being the location that the variable is used. This results
         // in better error messages than just pointing at the closure
         // construction site.
         let mut call_caps = Vec::new();
@@ -666,8 +666,8 @@ struct Liveness<'a, 'tcx: 'a> {
     successors: Vec<LiveNode>,
     rwu_table: RWUTable,
 
-    // mappings from loop node ID to LiveNode
-    // ("break" label should map to loop node ID,
+    // mappings from loop `NodeId` to LiveNode
+    // ("break" label should map to loop `NodeId`,
     // it probably doesn't now)
     break_ln: NodeMap<LiveNode>,
     cont_ln: NodeMap<LiveNode>,
@@ -927,15 +927,15 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
     fn compute(&mut self, body: &hir::Expr) -> LiveNode {
         debug!("compute: using id for body, {}", self.ir.tcx.hir().node_to_pretty_string(body.id));
 
-        // the fallthrough exit is only for those cases where we do not
-        // explicitly return:
+        // The fallthrough exit is only for those cases where we do not
+        // explicitly return.
         let s = self.s;
         self.init_from_succ(s.fallthrough_ln, s.exit_ln);
         self.acc(s.fallthrough_ln, s.clean_exit_var, ACC_READ);
 
         let entry_ln = self.propagate_through_expr(body, s.fallthrough_ln);
 
-        // hack to skip the loop unless debug! is enabled:
+        // HACK: skip the loop unless `debug!` is enabled.
         debug!("^^ liveness computation results for body {} (entry={:?})", {
                    for ln_idx in 0..self.ir.num_live_nodes {
                         debug!("{:?}", self.ln_str(LiveNode(ln_idx as u32)));
@@ -962,19 +962,18 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
                               -> LiveNode {
         match stmt.node {
             hir::StmtKind::Local(ref local) => {
-                // Note: we mark the variable as defined regardless of whether
-                // there is an initializer.  Initially I had thought to only mark
+                // N.B., we mark the variable as defined regardless of whether
+                // there is an initializer. Initially, I had thought to only mark
                 // the live variable as defined if it was initialized, and then we
                 // could check for uninit variables just by scanning what is live
                 // at the start of the function. But that doesn't work so well for
-                // immutable variables defined in a loop:
-                //     loop { let x; x = 5; }
+                // immutable variables defined in a loop (e.g., `loop { let x; x = 5; }`),
                 // because the "assignment" loops back around and generates an error.
                 //
-                // So now we just check that variables defined w/o an
+                // So now we just check that variables defined without an
                 // initializer are not live at the point of their
                 // initialization, which is mildly more complex than checking
-                // once at the func header but otherwise equivalent.
+                // once at the function header, but otherwise equivalent.
 
                 let succ = self.propagate_through_opt_expr(local.init.as_ref().map(|e| &**e), succ);
                 self.define_bindings_in_pat(&local.pat, succ)
@@ -1005,7 +1004,7 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
         debug!("propagate_through_expr: {}", self.ir.tcx.hir().node_to_pretty_string(expr.id));
 
         match expr.node {
-            // Interesting cases with control flow or which gen/kill
+            // Interesting cases with control flow or which gen/kill.
             hir::ExprKind::Path(hir::QPath::Resolved(_, ref path)) => {
                 self.access_path(expr.hir_id, path, succ, ACC_READ | ACC_USE)
             }
@@ -1018,7 +1017,7 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
                 debug!("{} is an ExprKind::Closure",
                        self.ir.tcx.hir().node_to_pretty_string(expr.id));
 
-                // the construction of a closure itself is not important,
+                // The construction of a closure itself is not important,
                 // but we have to consider the closed over variables.
                 let caps = self.ir.capture_info_map.get(&expr.id).cloned().unwrap_or_else(||
                     span_bug!(expr.span, "no registered caps"));
@@ -1058,7 +1057,7 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
             }
 
             // Note that labels have been resolved, so we don't need to look
-            // at the label ident
+            // at the label ident.
             hir::ExprKind::Loop(ref blk, _, _) => {
                 self.propagate_through_loop(expr, LoopLoop, &blk, succ)
             }
@@ -1088,9 +1087,9 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
                         arm.guard.as_ref().map(|hir::Guard::If(e)| &**e),
                         body_succ
                     );
-                    // only consider the first pattern; any later patterns must have
+                    // Only consider the first pattern; any later patterns must have
                     // the same bindings, and we also consider the first pattern to be
-                    // the "authoritative" set of ids
+                    // the "authoritative" set of IDs.
                     let arm_succ =
                         self.define_bindings_in_arm_pats(arm.pats.first().map(|p| &**p),
                                                          guard_succ);
@@ -1101,20 +1100,20 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
             }
 
             hir::ExprKind::Ret(ref o_e) => {
-                // ignore succ and subst exit_ln:
+                // Ignore `succ` and `subst exit_ln`.
                 let exit_ln = self.s.exit_ln;
                 self.propagate_through_opt_expr(o_e.as_ref().map(|e| &**e), exit_ln)
             }
 
             hir::ExprKind::Break(label, ref opt_expr) => {
-                // Find which label this break jumps to
+                // Find which label this break jumps to.
                 let target = match label.target_id {
                     Ok(node_id) => self.break_ln.get(&node_id),
                     Err(err) => span_bug!(expr.span, "loop scope error: {}", err),
                 }.cloned();
 
                 // Now that we know the label we're going to,
-                // look it up in the break loop nodes table
+                // look it up in the break loop nodes table.
 
                 match target {
                     Some(b) => self.propagate_through_opt_expr(opt_expr.as_ref().map(|e| &**e), b),
@@ -1123,39 +1122,37 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
             }
 
             hir::ExprKind::Continue(label) => {
-                // Find which label this expr continues to
+                // Find which label this expr continues to.
                 let sc = label.target_id.unwrap_or_else(|err|
                     span_bug!(expr.span, "loop scope error: {}", err));
 
                 // Now that we know the label we're going to,
-                // look it up in the continue loop nodes table
+                // look it up in the continue loop nodes table.
                 self.cont_ln.get(&sc).cloned().unwrap_or_else(||
                     span_bug!(expr.span, "continue to unknown label"))
             }
 
             hir::ExprKind::Assign(ref l, ref r) => {
-                // see comment on places in
-                // propagate_through_place_components()
+                // See comment on places in `propagate_through_place_components()`.
                 let succ = self.write_place(&l, succ, ACC_WRITE);
                 let succ = self.propagate_through_place_components(&l, succ);
                 self.propagate_through_expr(&r, succ)
             }
 
             hir::ExprKind::AssignOp(_, ref l, ref r) => {
-                // an overloaded assign op is like a method call
+                // An overloaded assign op is like a method call.
                 if self.tables.is_method_call(expr) {
                     let succ = self.propagate_through_expr(&l, succ);
                     self.propagate_through_expr(&r, succ)
                 } else {
-                    // see comment on places in
-                    // propagate_through_place_components()
+                    // See comment on places in `propagate_through_place_components()`.
                     let succ = self.write_place(&l, succ, ACC_WRITE|ACC_READ);
                     let succ = self.propagate_through_expr(&r, succ);
                     self.propagate_through_place_components(&l, succ)
                 }
             }
 
-            // Uninteresting cases: just propagate in rev exec order
+            // Uninteresting cases: just propagate in reverse execution order.
 
             hir::ExprKind::Array(ref exprs) => {
                 self.propagate_through_exprs(exprs, succ)
@@ -1222,8 +1219,7 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
 
             hir::ExprKind::InlineAsm(ref ia, ref outputs, ref inputs) => {
                 let succ = ia.outputs.iter().zip(outputs).rev().fold(succ, |succ, (o, output)| {
-                // see comment on places
-                // in propagate_through_place_components()
+                // See comment on places in `propagate_through_place_components()`.
                 if o.is_indirect {
                     self.propagate_through_expr(output, succ)
                 } else {
@@ -1232,7 +1228,7 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
                     self.propagate_through_place_components(output, succ)
                 }});
 
-                // Inputs are executed first. Propagate last because of rev order
+                // Inputs are executed first. Propagate last because of reverse order.
                 self.propagate_through_exprs(inputs, succ)
             }
 
@@ -1242,7 +1238,7 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
             }
 
             // Note that labels have been resolved, so we don't need to look
-            // at the label ident
+            // at the label ident.
             hir::ExprKind::Block(ref blk, _) => {
                 self.propagate_through_block(&blk, succ)
             }
@@ -1278,28 +1274,28 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
         //                       ||
         // ----------------------++-----------------------
         //
-        // I will cover the two cases in turn:
+        // We cover the two cases in turn:
         //
         // # Tracked places
         //
-        // A tracked place is a local variable/argument `x`.  In
+        // A tracked place is a local variable/argument `x`. In
         // these cases, the link_node where the write occurs is linked
-        // to node id of `x`.  The `write_place()` routine generates
-        // the contents of this node.  There are no subcomponents to
+        // to `NodeId` of `x`. The `write_place()` routine generates
+        // the contents of this node. There are no subcomponents to
         // consider.
         //
         // # Non-tracked places
         //
-        // These are places like `x[5]` or `x.f`.  In that case, we
+        // These are places like `x[5]` or `x.f`. In that case, we
         // basically ignore the value which is written to but generate
-        // reads for the components---`x` in these two examples.  The
+        // reads for the components---`x` in these two examples. The
         // components reads are generated by
         // `propagate_through_place_components()` (this fn).
         //
         // # Illegal places
         //
         // It is still possible to observe assignments to non-places;
-        // these errors are detected in the later pass borrowck.  We
+        // these errors are detected in the later pass borrowck. We
         // just ignore such cases and treat them as reads.
 
         match expr.node {
@@ -1309,7 +1305,7 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
         }
     }
 
-    // see comment on propagate_through_place()
+    // See comment on `propagate_through_place()`.
     fn write_place(&mut self, expr: &Expr, succ: LiveNode, acc: u32) -> LiveNode {
         match expr.node {
             hir::ExprKind::Path(hir::QPath::Resolved(_, ref path)) => {
@@ -1317,7 +1313,7 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
             }
 
             // We do not track other places, so just propagate through
-            // to their subcomponents.  Also, it may happen that
+            // to their subcomponents. Also, it may happen that
             // non-places occur here, because those are detected in the
             // later pass borrowck.
             _ => succ
@@ -1370,8 +1366,7 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
 
         */
 
-
-        // first iteration:
+        // First iteration.
         let mut first_merge = true;
         let ln = self.live_node(expr.hir_id, expr.span);
         self.init_empty(ln, succ);
@@ -1400,7 +1395,7 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
 
         let body_ln = self.propagate_through_block(body, cond_ln);
 
-        // repeat until fixed point is reached:
+        // Repeat until fixed point is reached.
         while self.merge_from_succ(ln, body_ln, first_merge) {
             first_merge = false;
 
@@ -1501,7 +1496,7 @@ fn check_expr<'a, 'tcx>(this: &mut Liveness<'a, 'tcx>, expr: &'tcx Expr) {
                 this.visit_expr(input);
             }
 
-            // Output operands must be places
+            // Output operands must be places.
             for (o, output) in ia.outputs.iter().zip(outputs) {
                 if !o.is_indirect {
                     this.check_place(output);
@@ -1512,7 +1507,7 @@ fn check_expr<'a, 'tcx>(this: &mut Liveness<'a, 'tcx>, expr: &'tcx Expr) {
             intravisit::walk_expr(this, expr);
         }
 
-        // no correctness conditions related to liveness
+        // No correctness conditions related to liveness.
         hir::ExprKind::Call(..) | hir::ExprKind::MethodCall(..) | hir::ExprKind::If(..) |
         hir::ExprKind::Match(..) | hir::ExprKind::While(..) | hir::ExprKind::Loop(..) |
         hir::ExprKind::Index(..) | hir::ExprKind::Field(..) |
@@ -1594,9 +1589,9 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
         if !self.used_on_entry(ln, var) {
             let r = self.should_warn(var);
             if let Some(name) = r {
-                // annoying: for parameters in funcs like `fn(x: i32)
+                // Annoying: for parameters in funcs like `fn(x: i32)
                 // {ret}`, there is only one node, so asking about
-                // assigned_on_exit() is not meaningful.
+                // `assigned_on_exit()` is not meaningful.
                 let is_assigned = if ln == self.s.exit_ln {
                     false
                 } else {

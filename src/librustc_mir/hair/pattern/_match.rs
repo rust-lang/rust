@@ -1069,10 +1069,10 @@ pub fn is_useful<'p, 'a: 'p, 'tcx: 'a>(cx: &mut MatchCheckCtxt<'a, 'tcx>,
     let &Matrix(ref rows) = matrix;
     debug!("is_useful({:#?}, {:#?})", matrix, v);
 
-    // The base case. We are pattern-matching on () and the return value is
+    // The base case. We are pattern-matching on `()` and the return value is
     // based on whether our matrix has a row or not.
-    // NOTE: This could potentially be optimized by checking rows.is_empty()
-    // first and then, if v is non-empty, the return value is based on whether
+    // N.B., this could potentially be optimized by checking `rows.is_empty()`
+    // first, and then, if `v` is non-empty, the return value is based on whether
     // the type of the tuple we're checking is inhabited or not.
     if v.is_empty() {
         return if rows.is_empty() {

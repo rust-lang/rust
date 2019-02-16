@@ -492,7 +492,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
                     match path.def {
                         // Type parameters of the type alias have no reason to
                         // be the same as those of the ADT.
-                        // FIXME: We should be able to do something similar to
+                        // FIXME: we should be able to do something similar to
                         // match_adt_and_segment in this case.
                         hir::def::Def::TyAlias(_) => (),
                         _ => if let Some(last_segment) = path.segments.last() {
@@ -526,7 +526,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
                 }
 
                 _ => {
-                    // FIXME there are other cases that we could trace
+                    // FIXME: there are other cases that we could trace
                 }
             }
         }
@@ -650,7 +650,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
     /// Checks for arguments appearing in the (closure) return type. It
     /// must be a closure since, in a free fn, such an argument would
     /// have to either also appear in an argument (if using elision)
-    /// or be early bound (named, not in argument).
+    /// or be early-bound (named, not in argument).
     fn give_name_if_anonymous_region_appears_in_output(
         &self,
         infcx: &InferCtxt<'_, '_, 'tcx>,

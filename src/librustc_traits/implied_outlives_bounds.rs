@@ -73,14 +73,14 @@ fn compute_implied_outlives_bounds<'tcx>(
         // an annoying scenario where:
         //
         // - Some `T::Foo` gets normalized, resulting in a
-        //   variable `_1` and a `T: Trait<Foo=_1>` constraint
+        //   variable `_1` and a `T: Trait<Foo = _1>` constraint
         //   (not sure why it couldn't immediately get
         //   solved). This result of `_1` got cached.
         // - These obligations were dropped on the floor here,
         //   rather than being registered.
         // - Then later we would get a request to normalize
         //   `T::Foo` which would result in `_1` being used from
-        //   the cache, but hence without the `T: Trait<Foo=_1>`
+        //   the cache, but hence without the `T: Trait<Foo = _1>`
         //   constraint. As a result, `_1` never gets resolved,
         //   and we get an ICE (in dropck).
         //

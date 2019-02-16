@@ -115,7 +115,7 @@ impl<'a, 'tcx> AutoTraitFinder<'a, 'tcx> {
             }
         });
 
-        // If an explicit impl exists, it always takes priority over an auto impl
+        // If an explicit impl exists, it always takes priority over an auto impl.
         if bail_out {
             return AutoTraitResult::ExplicitImpl;
         }
@@ -609,7 +609,7 @@ impl<'a, 'tcx> AutoTraitFinder<'a, 'tcx> {
                             finished_map.insert(v1, r1);
                         }
                         (&RegionTarget::Region(_), &RegionTarget::RegionVid(_)) => {
-                            // Do nothing - we don't care about regions that are smaller than vids
+                            // Do nothing; we don't care about regions that are smaller than vids.
                         }
                         (&RegionTarget::RegionVid(_), &RegionTarget::RegionVid(_)) => {
                             if let Entry::Occupied(v) = vid_map.entry(*smaller) {
@@ -686,7 +686,7 @@ impl<'a, 'tcx> AutoTraitFinder<'a, 'tcx> {
             //
             // Displaying a bound involving a concrete type (instead of a generic
             // parameter) would be pointless, since it's always true
-            // (e.g. u8: Copy)
+            // (e.g., u8: Copy)
             // Displaying an inference variable is impossible, since they're
             // an internal compiler detail without a defined visual representation
             //

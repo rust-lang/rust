@@ -462,12 +462,12 @@ impl<'a> Context<'a> {
         // exact crate name and a possibly an exact hash.
         //
         // During this step, we can filter all found libraries based on the
-        // name and id found in the crate id (we ignore the path portion for
+        // name and ID found in the crate ID (we ignore the path portion for
         // filename matching), as well as the exact hash (if specified). If we
         // end up having many candidates, we must look at the metadata to
-        // perform exact matches against hashes/crate ids. Note that opening up
+        // perform exact matches against hashes/crate IDs. Note that opening up
         // the metadata is where we do an exact match against the full contents
-        // of the crate id (path/name/id).
+        // of the crate ID (path/name/ID).
         //
         // The goal of this step is to look at as little metadata as possible.
         self.filesearch.search(|path, kind| {
@@ -521,7 +521,7 @@ impl<'a> Context<'a> {
         // (per hash), to a Library candidate for returning.
         //
         // A Library candidate is created if the metadata for the set of
-        // libraries corresponds to the crate id and hash criteria that this
+        // libraries corresponds to the crate ID and hash criteria that this
         // search is being performed for.
         let mut libraries = FxHashMap::default();
         for (_hash, (rlibs, rmetas, dylibs)) in candidates {
@@ -876,7 +876,7 @@ fn get_metadata_section_imp(target: &Target,
         CrateFlavor::Rlib => loader.get_rlib_metadata(target, filename)?,
         CrateFlavor::Dylib => {
             let buf = loader.get_dylib_metadata(target, filename)?;
-            // The header is uncompressed
+            // The header is uncompressed.
             let header_len = METADATA_HEADER.len();
             debug!("checking {} bytes of metadata-version stamp", header_len);
             let header = &buf[..cmp::min(header_len, buf.len())];
@@ -885,7 +885,7 @@ fn get_metadata_section_imp(target: &Target,
                                    filename.display()));
             }
 
-            // Header is okay -> inflate the actual metadata
+            // Header is ok, so inflate the actual metadata.
             let compressed_bytes = &buf[header_len..];
             debug!("inflating {} bytes of compressed metadata", compressed_bytes.len());
             let mut inflated = Vec::new();
@@ -900,7 +900,7 @@ fn get_metadata_section_imp(target: &Target,
             }
         }
         CrateFlavor::Rmeta => {
-            // mmap the file, because only a small fraction of it is read.
+            // Memory-map the file, because only a small fraction of it is read.
             let file = std::fs::File::open(filename).map_err(|_|
                 format!("failed to open rmeta metadata: '{}'", filename.display()))?;
             let mmap = unsafe { memmap::Mmap::map(&file) };

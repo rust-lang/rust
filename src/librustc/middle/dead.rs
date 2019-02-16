@@ -484,7 +484,7 @@ impl<'a, 'tcx> DeadVisitor<'a, 'tcx> {
             && !has_allow_dead_code_or_lang_attr(self.tcx, fi.id, &fi.attrs)
     }
 
-    // id := node id of an item's definition.
+    // `id`: `NodeId` of an item's definition.
     fn symbol_is_live(
         &mut self,
         id: ast::NodeId,

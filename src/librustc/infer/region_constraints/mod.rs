@@ -474,7 +474,7 @@ impl<'tcx> RegionConstraintCollector<'tcx> {
     fn rollback_undo_entry(&mut self, undo_entry: UndoLog<'tcx>) {
         match undo_entry {
             Purged => {
-                // nothing to do here
+                // Nothing to do here.
             }
             AddVar(vid) => {
                 self.var_infos.pop().unwrap();
@@ -586,7 +586,7 @@ impl<'tcx> RegionConstraintCollector<'tcx> {
         // the top of this file for more details.
         //
         // This computation is potentially wrong in the face of
-        // rollover.  It's conceivable, if unlikely, that one might
+        // rollover. It's conceivable, if unlikely, that one might
         // wind up with accidental capture for nested functions in
         // that case, if the outer function had bound regions created
         // a very long time before and the inner function somehow
@@ -633,7 +633,7 @@ impl<'tcx> RegionConstraintCollector<'tcx> {
         // cannot add verifys once regions are resolved
         debug!("RegionConstraintCollector: add_verify({:?})", verify);
 
-        // skip no-op cases known to be satisfied
+        // skip noop cases known to be satisfied
         if let VerifyBound::AllBounds(ref bs) = verify.bound {
             if bs.len() == 0 {
                 return;

@@ -268,7 +268,7 @@ pub enum LookupResult {
 
 impl<'tcx> MovePathLookup<'tcx> {
     // Unlike the builder `fn move_path_for` below, this lookup
-    // alternative will *not* create a MovePath on the fly for an
+    // alternative will **not** create a MovePath on the fly for an
     // unknown place, but will rather return the nearest available
     // parent.
     pub fn find(&self, place: &Place<'tcx>) -> LookupResult {

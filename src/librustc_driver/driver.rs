@@ -392,7 +392,7 @@ pub struct CompileController<'a> {
     pub after_analysis: PhaseController<'a>,
     pub compilation_done: PhaseController<'a>,
 
-    // FIXME we probably want to group the below options together and offer a
+    // FIXME: we probably want to group the below options together and offer a
     // better API, rather than this ad-hoc approach.
     // Whether the compiler should keep the ast beyond parsing.
     pub keep_ast: bool,
@@ -1400,7 +1400,7 @@ fn generated_output_paths(
 }
 
 // Runs `f` on every output file path and returns the first non-None result, or None if `f`
-// returns None for every file path.
+// returns `None` for every file path.
 fn check_output<F, T>(output_paths: &[PathBuf], f: F) -> Option<T>
 where
     F: Fn(&PathBuf) -> Option<T>,

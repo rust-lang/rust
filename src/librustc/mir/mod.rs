@@ -970,7 +970,7 @@ impl<'tcx> LocalDecl<'tcx> {
             visibility_scope: OUTERMOST_SOURCE_SCOPE,
             internal: false,
             is_block_tail: None,
-            name: None, // FIXME maybe we do want some name here?
+            name: None, // FIXME: maybe we do want some name here?
             is_user_variable: None,
         }
     }
@@ -1516,7 +1516,7 @@ impl<'tcx> BasicBlockData<'tcx> {
         }
 
         // Splice in the new statements, from the end of the block.
-        // FIXME(eddyb) This could be more efficient with a "gap buffer"
+        // FIXME(eddyb): this could be more efficient with a "gap buffer"
         // where a range of elements ("gap") is left uninitialized, with
         // splicing adding new elements to the end of that gap and moving
         // existing elements from before the gap to the end of the gap.

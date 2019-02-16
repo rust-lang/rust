@@ -189,7 +189,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                 // (b) distinguish the case where the type `Foo` has a
                 //     destructor, in which case creating an instance
                 //     as a whole "arms" the destructor, and you can't
-                //     write individual fields; and,
+                //     write individual fields; and
                 // (c) handle the case where the type Foo has no
                 //     fields. We don't want `let x: ();` to compile
                 //     to the same MIR as `let x = ();`.

@@ -57,19 +57,20 @@ impl<T: 'static> P<T> {
     {
         f(*self.ptr)
     }
-    /// Equivalent to and_then(|x| x)
+
+    /// Equivalent to `and_then(|x| x)`.
     pub fn into_inner(self) -> T {
         *self.ptr
     }
 
-    /// Produce a new `P<T>` from `self` without reallocating.
+    /// Produces a new `P<T>` from `self` without reallocating.
     pub fn map<F>(mut self, f: F) -> P<T> where
         F: FnOnce(T) -> T,
     {
         let p: *mut T = &mut *self.ptr;
 
-        // Leak self in case of panic.
-        // FIXME(eddyb) Use some sort of "free guard" that
+        // Leak `self` in case of panic.
+        // FIXME(eddyb): use some sort of "free guard" that
         // only deallocates, without dropping the pointee,
         // in case the call the `f` below ends in a panic.
         mem::forget(self);
@@ -88,8 +89,8 @@ impl<T: 'static> P<T> {
     {
         let p: *mut T = &mut *self.ptr;
 
-        // Leak self in case of panic.
-        // FIXME(eddyb) Use some sort of "free guard" that
+        // Leak `self` in case of panic.
+        // FIXME(eddyb): use some sort of "free guard" that
         // only deallocates, without dropping the pointee,
         // in case the call the `f` below ends in a panic.
         mem::forget(self);

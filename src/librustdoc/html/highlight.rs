@@ -280,7 +280,8 @@ impl<'a> Classifier<'a> {
 
                 // Case 1: #![inner_attribute]
                 if self.lexer.peek().tok == token::Not {
-                    self.try_next_token()?; // NOTE: consumes `!` token!
+                    // Consume `!` token.
+                    self.try_next_token()?;
                     if self.lexer.peek().tok == token::OpenDelim(token::Bracket) {
                         self.in_attribute = true;
                         out.enter_span(Class::Attribute)?;

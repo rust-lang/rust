@@ -75,7 +75,7 @@ struct DepGraphData {
 
     dep_node_debug: Lock<FxHashMap<DepNode, String>>,
 
-    // Used for testing, only populated when -Zquery-dep-graph is specified.
+    // Used for testing, only populated when the `-Zquery-dep-graph` compiler flag is specified.
     loaded_from_cache: Lock<FxHashMap<DepNodeIndex, bool>>,
 }
 
@@ -256,8 +256,8 @@ impl DepGraph {
             // In incremental mode, hash the result of the task. We don't
             // do anything with the hash yet, but we are computing it
             // anyway so that
-            //  - we make sure that the infrastructure works and
-            //  - we can get an idea of the runtime cost.
+            // - we make sure that the infrastructure works and
+            // - we can get an idea of the runtime cost.
             let mut hcx = cx.get_stable_hashing_context();
 
             if cfg!(debug_assertions) {
@@ -294,7 +294,7 @@ impl DepGraph {
 
             let print_status = cfg!(debug_assertions) && hcx.sess().opts.debugging_opts.dep_tasks;
 
-            // Determine the color of the new DepNode.
+            // Determine the color of the new `DepNode`.
             if let Some(prev_index) = data.previous.node_to_index_opt(&key) {
                 let prev_fingerprint = data.previous.fingerprint_by_index(prev_index);
 
@@ -522,7 +522,7 @@ impl DepGraph {
         for (current_dep_node_index, edges) in current_dep_graph.data.iter_enumerated()
                                                                 .map(|(i, d)| (i, &d.edges)) {
             let start = edge_list_data.len() as u32;
-            // This should really just be a memcpy :/
+            // FIXME: this should really just be a `memcpy`.
             edge_list_data.extend(edges.iter().map(|i| SerializedDepNodeIndex::new(i.index())));
             let end = edge_list_data.len() as u32;
 
@@ -578,17 +578,17 @@ impl DepGraph {
     ) -> Option<(SerializedDepNodeIndex, DepNodeIndex)> {
         debug_assert!(!dep_node.kind.is_input());
 
-        // Return None if the dep graph is disabled
+        // Return `None` if the dep graph is disabled.
         let data = self.data.as_ref()?;
 
-        // Return None if the dep node didn't exist in the previous session
+        // Return `None` if the dep node didn't exist in the previous session.
         let prev_index = data.previous.node_to_index_opt(dep_node)?;
 
         match data.colors.get(prev_index) {
             Some(DepNodeColor::Green(dep_node_index)) => Some((prev_index, dep_node_index)),
             Some(DepNodeColor::Red) => None,
             None => {
-                // This DepNode and the corresponding query invocation existed
+                // This `DepNode` and the corresponding query invocation existed.
                 // in the previous compilation session too, so we can try to
                 // mark it as green by recursively marking all of its
                 // dependencies green.
@@ -620,7 +620,7 @@ impl DepGraph {
             debug_assert!(data.colors.get(prev_dep_node_index).is_none());
         }
 
-        // We never try to mark inputs as green
+        // We never try to mark inputs as green.
         debug_assert!(!dep_node.kind.is_input());
 
         debug_assert_eq!(data.previous.index_to_node(prev_dep_node_index), *dep_node);
@@ -733,7 +733,7 @@ impl DepGraph {
                             }
                         }
                     } else {
-                        // The DepNode could not be forced.
+                        // The `DepNode` could not be forced.
                         debug!("try_mark_previous_green({:?}) - END - dependency {:?} \
                                 could not be forced", dep_node, dep_dep_node);
                         return None
@@ -743,24 +743,24 @@ impl DepGraph {
         }
 
         // If we got here without hitting a `return` that means that all
-        // dependencies of this DepNode could be marked as green. Therefore we
-        // can also mark this DepNode as green.
+        // dependencies of this `DepNode` could be marked as green. Therefore, we
+        // can also mark this `DepNode` as green.
 
-        // There may be multiple threads trying to mark the same dep node green concurrently
+        // There may be multiple threads trying to mark the same dep node green concurrently.
 
         let (dep_node_index, did_allocation) = {
             let mut current = data.current.borrow_mut();
 
             // Copy the fingerprint from the previous graph,
-            // so we don't have to recompute it
+            // so we don't have to recompute it.
             let fingerprint = data.previous.fingerprint_by_index(prev_dep_node_index);
 
             // We allocating an entry for the node in the current dependency graph and
-            // adding all the appropriate edges imported from the previous graph
+            // adding all the appropriate edges imported from the previous graph.
             current.intern_node(*dep_node, current_deps, fingerprint)
         };
 
-        // ... emitting any stored diagnostic ...
+        // ... emitting any stored diagnostic, ...
 
         let diagnostics = tcx.queries.on_disk_cache
                                 .load_diagnostics(tcx, prev_dep_node_index);
@@ -775,8 +775,8 @@ impl DepGraph {
             );
         }
 
-        // ... and finally storing a "Green" entry in the color map.
-        // Multiple threads can all write the same color here
+        // ... and finally storing a "green" entry in the color map.
+        // Multiple threads can all write the same color here.
         #[cfg(not(parallel_compiler))]
         debug_assert!(data.colors.get(prev_dep_node_index).is_none(),
                       "DepGraph::try_mark_previous_green() - Duplicate DepNodeColor \
@@ -801,7 +801,7 @@ impl DepGraph {
         diagnostics: Vec<Diagnostic>,
     ) {
         if did_allocation || !cfg!(parallel_compiler) {
-            // Only the thread which did the allocation emits the error messages
+            // Only the thread which did the allocation emits the error messages.
             let handle = tcx.sess.diagnostic();
 
             // Promote the previous diagnostics to the current session.
@@ -814,12 +814,12 @@ impl DepGraph {
 
             #[cfg(parallel_compiler)]
             {
-                // Mark the diagnostics and emitted and wake up waiters
+                // Mark the diagnostics and emitted and wake up waiters.
                 data.emitted_diagnostics.lock().insert(dep_node_index);
                 data.emitted_diagnostics_cond_var.notify_all();
             }
         } else {
-            // The other threads will wait for the diagnostics to be emitted
+            // The other threads will wait for the diagnostics to be emitted.
 
             let mut emitted_diagnostics = data.emitted_diagnostics.lock();
             loop {
@@ -831,20 +831,20 @@ impl DepGraph {
         }
     }
 
-    // Returns true if the given node has been marked as green during the
-    // current compilation session. Used in various assertions
+    // Returns `true` if the given node has been marked as green during the
+    // current compilation session. Used in various assertions.
     pub fn is_green(&self, dep_node: &DepNode) -> bool {
         self.node_color(dep_node).map(|c| c.is_green()).unwrap_or(false)
     }
 
-    // This method loads all on-disk cacheable query results into memory, so
-    // they can be written out to the new cache file again. Most query results
-    // will already be in memory but in the case where we marked something as
-    // green but then did not need the value, that value will never have been
-    // loaded from disk.
-    //
-    // This method will only load queries that will end up in the disk cache.
-    // Other queries will not be executed.
+    /// Loads all on-disk cacheable query results into memory, so
+    /// they can be written out to the new cache file again. Most query results
+    /// will already be in memory but in the case where we marked something as
+    /// green but then did not need the value, that value will never have been
+    /// loaded from disk.
+    ///
+    /// This method will only load queries that will end up in the disk cache.
+    /// Other queries will not be executed.
     pub fn exec_cache_promotions<'a, 'tcx>(&self, tcx: TyCtxt<'a, 'tcx, 'tcx>) {
         let green_nodes: Vec<DepNode> = {
             let data = self.data.as_ref().unwrap();
@@ -1018,15 +1018,15 @@ impl CurrentDepGraph {
         fingerprint: Fingerprint
     ) -> DepNodeIndex {
         // If this is an input node, we expect that it either has no
-        // dependencies, or that it just depends on DepKind::CrateMetadata
-        // or DepKind::Krate. This happens for some "thin wrapper queries"
+        // dependencies, or that it just depends on `DepKind::CrateMetadata`
+        // or `DepKind::Krate`. This happens for some "thin wrapper queries"
         // like `crate_disambiguator` which sometimes have zero deps (for
-        // when called for LOCAL_CRATE) or they depend on a CrateMetadata
+        // when called for `LOCAL_CRATE`) or they depend on a `CrateMetadata`
         // node.
         if cfg!(debug_assertions) {
             if node.kind.is_input() && task_deps.reads.len() > 0 &&
-                // FIXME(mw): Special case for DefSpan until Spans are handled
-                //            better in general.
+                // FIXME(mw): special case for `DefSpan` until `Span`s are handled
+                // better in general.
                 node.kind != DepKind::DefSpan &&
                 task_deps.reads.iter().any(|&i| {
                     !(self.data[i].node.kind == DepKind::CrateMetadata ||
@@ -1053,8 +1053,8 @@ impl CurrentDepGraph {
 
             ::std::mem::discriminant(&read_dep_node.kind).hash(&mut hasher);
 
-            // Fingerprint::combine() is faster than sending Fingerprint
-            // through the StableHasher (at least as long as StableHasher
+            // `Fingerprint::combine()` is faster than sending `Fingerprint`
+            // through the `StableHasher` (at least as long as `StableHasher`
             // is so slow).
             fingerprint = fingerprint.combine(read_dep_node.hash);
         }
@@ -1144,8 +1144,8 @@ pub struct TaskDeps {
     read_set: FxHashSet<DepNodeIndex>,
 }
 
-// A data structure that stores Option<DepNodeColor> values as a contiguous
-// array, using one u32 per entry.
+// A data structure that stores `Option<DepNodeColor>` values as a contiguous
+// array, using one `u32` per entry.
 struct DepNodeColorMap {
     values: IndexVec<SerializedDepNodeIndex, AtomicU32>,
 }

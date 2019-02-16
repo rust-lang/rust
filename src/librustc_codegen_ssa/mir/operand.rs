@@ -228,7 +228,7 @@ impl<'a, 'tcx: 'a, V: CodegenObject> OperandRef<'tcx, V> {
             _ => bug!("OperandRef::extract_field({:?}): not applicable", self)
         };
 
-        // HACK(eddyb) have to bitcast pointers until LLVM removes pointee types.
+        // HACK(eddyb): have to bitcast pointers until LLVM removes pointee types.
         // Bools in union fields needs to be truncated.
         let to_immediate_or_cast = |bx: &mut Bx, val, ty| {
             if ty == bx.cx().type_i1() {
@@ -402,7 +402,7 @@ impl<'a, 'tcx: 'a, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                     mir::ProjectionElem::Index(_) |
                     mir::ProjectionElem::ConstantIndex { .. } => {
                         // ZSTs don't require any actual memory access.
-                        // FIXME(eddyb) deduplicate this with the identical
+                        // FIXME(eddyb): deduplicate this with the identical
                         // checks in `codegen_consume` and `extract_field`.
                         let elem = o.layout.field(bx.cx(), 0);
                         if elem.is_zst() {

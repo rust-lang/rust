@@ -80,7 +80,7 @@ fn compare_predicate_entailment<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                                           -> Result<(), ErrorReported> {
     let trait_to_impl_substs = impl_trait_ref.substs;
 
-    // This node-id should be used for the `body_id` field on each
+    // This `NodeId` should be used for the `body_id` field on each
     // `ObligationCause` (and the `FnCtxt`). This is what
     // `regionck_item` expects.
     let impl_m_node_id = tcx.hir().as_local_node_id(impl_m.def_id).unwrap();
@@ -145,7 +145,7 @@ fn compare_predicate_entailment<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     //     <'a> fn(t: &'i0 U0, m: &'a) -> Foo
     //
     // This type is also the same but the name of the bound region ('a
-    // vs 'b).  However, the normal subtyping rules on fn types handle
+    // vs 'b). However, the normal subtyping rules on fn types handle
     // this kind of equivalency just fine.
     //
     // We now use these substitutions to ensure that all declared bounds are
@@ -244,7 +244,7 @@ fn compare_predicate_entailment<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         // compatible with that of the trait method. We do this by
         // checking that `impl_fty <: trait_fty`.
         //
-        // FIXME. Unfortunately, this doesn't quite work right now because
+        // FIXME: unfortunately, this doesn't quite work right now because
         // associated type normalization is not integrated into subtype
         // checks. For the comparison to be valid, we need to
         // normalize the associated types in the impl/trait methods
@@ -253,7 +253,7 @@ fn compare_predicate_entailment<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         // any associated types appearing in the fn arguments or return
         // type.
 
-        // Compute placeholder form of impl and trait method tys.
+        // Compute placeholder forms of impl and trait method types.
         let tcx = infcx.tcx;
 
         let (impl_sig, _) = infcx.replace_bound_vars_with_fresh_vars(
@@ -376,7 +376,7 @@ fn check_region_bounds_on_impl_method<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
 
     // Must have same number of early-bound lifetime parameters.
     // Unfortunately, if the user screws up the bounds, then this
-    // will change classification between early and late.  E.g.,
+    // will change classification between early and late. E.g.,
     // if in trait we have `<'a,'b:'a>`, and in impl we just have
     // `<'a,'b>`, then we have 2 early-bound lifetime parameters
     // in trait but 0 in the impl. But if we report "expected 2
@@ -499,9 +499,9 @@ fn compare_self_type<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                                -> Result<(), ErrorReported>
 {
     // Try to give more informative error messages about self typing
-    // mismatches.  Note that any mismatch will also be detected
+    // mismatches. Note that any mismatch will also be detected
     // below, where we construct a canonical function type that
-    // includes the self parameter as a normal parameter.  It's just
+    // includes the self parameter as a normal parameter. It's just
     // that the error messages you get out of this code are a bit more
     // inscrutable, particularly for cases where one method has no
     // self.
@@ -715,11 +715,11 @@ fn compare_synthetic_generics<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                                         impl_m: &ty::AssociatedItem,
                                         trait_m: &ty::AssociatedItem)
                                         -> Result<(), ErrorReported> {
-    // FIXME(chrisvittal) Clean up this function, list of FIXME items:
-    //     1. Better messages for the span labels
-    //     2. Explanation as to what is going on
-    // If we get here, we already have the same number of generics, so the zip will
-    // be okay.
+    // FIXME(chrisvittal): clean up this function.
+    //     1. Better messages for the span labels.
+    //     2. Explanation as to what is going on.
+    // If we get here, we already have the same number of generics, so the `zip` will
+    // be ok.
     let mut error_found = false;
     let impl_m_generics = tcx.generics_of(impl_m.def_id);
     let trait_m_generics = tcx.generics_of(trait_m.def_id);
@@ -911,7 +911,7 @@ pub fn compare_const_impl<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         let trait_ty = tcx.type_of(trait_c.def_id).subst(tcx, trait_to_impl_substs);
         let mut cause = ObligationCause::misc(impl_c_span, impl_c_hir_id);
 
-        // There is no "body" here, so just pass dummy id.
+        // There is no "body" here, so just pass dummy ID.
         let impl_ty = inh.normalize_associated_types_in(impl_c_span,
                                                         impl_c_hir_id,
                                                         param_env,
@@ -935,7 +935,7 @@ pub fn compare_const_impl<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                    impl_ty,
                    trait_ty);
 
-            // Locate the Span containing just the type of the offending impl
+            // Locate the Span containing just the type of the offending impl.
             match tcx.hir().expect_impl_item(impl_c_node_id).node {
                 ImplItemKind::Const(ref ty, _) => cause.span = ty.span,
                 _ => bug!("{:?} is not a impl const", impl_c),
@@ -950,7 +950,7 @@ pub fn compare_const_impl<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
 
             let trait_c_node_id = tcx.hir().as_local_node_id(trait_c.def_id);
             let trait_c_span = trait_c_node_id.map(|trait_c_node_id| {
-                // Add a label to the Span containing just the type of the const
+                // Add a label to the `Span` containing just the type of the const.
                 match tcx.hir().expect_trait_item(trait_c_node_id).node {
                     TraitItemKind::Const(ref ty, _) => ty.span,
                     _ => bug!("{:?} is not a trait const", trait_c),

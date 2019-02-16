@@ -755,7 +755,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
             //
             // This is needed because -- particularly in the case
             // where `ur` is a local bound -- we are sometimes in a
-            // position to prove things that our caller cannot.  See
+            // position to prove things that our caller cannot. See
             // #53570 for an example.
             if self.eval_verify_bound(tcx, mir, generic_ty, ur, &type_test.verify_bound) {
                 continue;
@@ -1398,7 +1398,7 @@ impl<'gcx, 'tcx> ClosureRegionRequirementsExt<'gcx, 'tcx> for ClosureRegionRequi
         );
 
         // Extract the values of the free regions in `closure_substs`
-        // into a vector.  These are the regions that we will be
+        // into a vector. These are the regions that we will be
         // relating to one another.
         let closure_mapping = &UniversalRegions::closure_mapping(
             tcx,

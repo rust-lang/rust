@@ -1,5 +1,5 @@
 // The wasm32-unknown-unknown target is currently an experimental version of a
-// wasm-based target which does *not* use the Emscripten toolchain. Instead
+// wasm-based target which does **not** use the Emscripten toolchain. Instead
 // this toolchain is based purely on LLVM's own toolchain, using LLVM's native
 // WebAssembly backend as well as LLD for a native linker.
 //

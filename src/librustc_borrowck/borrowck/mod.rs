@@ -359,7 +359,7 @@ impl<'tcx> LoanPath<'tcx> {
     }
 }
 
-// FIXME (pnkfelix): See discussion here
+// FIXME(pnkfelix): See discussion here
 // https://github.com/pnkfelix/rust/commit/
 //     b2b39e8700e37ad32b486b9a8409b50a8a53aa51#commitcomment-7892003
 const DOWNCAST_PRINTED_OPERATOR: &'static str = " as ";
@@ -391,7 +391,7 @@ impl ToInteriorKind for mc::InteriorKind {
 // `DefId` is present when the field is part of struct that is in
 // a variant of an enum. For instance in:
 // `enum E { X { foo: u32 }, Y { foo: u32 }}`
-// each `foo` is qualified by the definitition id of the variant (`X` or `Y`).
+// each `foo` is qualified by the definitition ID of the variant (`X` or `Y`).
 #[derive(Copy, Clone, PartialEq, Eq, Hash, Debug)]
 pub enum LoanPathElem<'tcx> {
     LpDeref(mc::PointerKind<'tcx>),

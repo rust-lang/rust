@@ -583,9 +583,9 @@ impl Clean<Item> for doctree::Module {
             String::new()
         };
 
-        // maintain a stack of mod ids, for doc comment path resolution
-        // but we also need to resolve the module's own docs based on whether its docs were written
-        // inside or outside the module, so check for that
+        // Maintain a stack of module IDs, for doc comment path resolution.
+        // However, we also need to resolve the module's own docs based on whether its docs were
+        // written inside or outside the module, so check for that.
         let attrs = self.attrs.clean(cx);
 
         let mut items: Vec<Item> = vec![];
@@ -1085,7 +1085,7 @@ fn external_generic_args(cx: &DocContext, trait_did: Option<DefId>, has_self: bo
     let types = substs.types().skip(has_self as usize).collect::<Vec<_>>();
 
     match trait_did {
-        // Attempt to sugar an external path like Fn<(A, B,), C> to Fn(A, B) -> C
+        // Attempt to sugar an external path like `Fn<(A, B,), C>` to `Fn(A, B) -> C`.
         Some(did) if cx.tcx.lang_items().fn_trait_kind(did).is_some() => {
             assert_eq!(types.len(), 1);
             let inputs = match types[0].sty {
@@ -1099,7 +1099,7 @@ fn external_generic_args(cx: &DocContext, trait_did: Option<DefId>, has_self: bo
                 }
             };
             let output = None;
-            // FIXME(#20299) return type comes from a projection now
+            // FIXME(#20299): return type comes from a projection now.
             // match types[1].sty {
             //     ty::Tuple(ref v) if v.is_empty() => None, // -> ()
             //     _ => Some(types[1].clean(cx))
@@ -1142,7 +1142,7 @@ impl<'a, 'tcx> Clean<GenericBound> for (&'a ty::TraitRef<'tcx>, Vec<TypeBinding>
 
         debug!("ty::TraitRef\n  subst: {:?}\n", trait_ref.substs);
 
-        // collect any late bound regions
+        // Collect any late-bound regions.
         let mut late_bounds = vec![];
         for ty_s in trait_ref.input_types().skip(1) {
             if let ty::Tuple(ts) = ty_s.sty {
@@ -2838,7 +2838,8 @@ impl<'tcx> Clean<Type> for Ty<'tcx> {
                 ImplTrait(bounds)
             }
 
-            ty::Closure(..) | ty::Generator(..) => Tuple(vec![]), // FIXME(pcwalton)
+            // FIXME(pcwalton)
+            ty::Closure(..) | ty::Generator(..) => Tuple(vec![]),
 
             ty::Bound(..) => panic!("Bound"),
             ty::Placeholder(..) => panic!("Placeholder"),

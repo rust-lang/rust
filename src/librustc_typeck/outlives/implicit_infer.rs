@@ -36,7 +36,7 @@ pub fn infer_predicates<'tcx>(
             explicit_map: explicit_map,
         };
 
-        // Visit all the crates and infer predicates
+        // Visit all the crates and infer predicates.
         tcx.hir().krate().visit_all_item_likes(&mut visitor);
     }
 
@@ -71,14 +71,14 @@ impl<'cx, 'tcx> ItemLikeVisitor<'tcx> for InferVisitor<'cx, 'tcx> {
             hir::ItemKind::Union(..) | hir::ItemKind::Enum(..) | hir::ItemKind::Struct(..) => {
                 let adt_def = self.tcx.adt_def(item_did);
 
-                // Iterate over all fields in item_did
+                // Iterate over all fields in `item_did`.
                 for field_def in adt_def.all_fields() {
                     // Calculating the predicate requirements necessary
-                    // for item_did.
+                    // for `item_did`.
                     //
-                    // For field of type &'a T (reference) or Adt
-                    // (struct/enum/union) there will be outlive
-                    // requirements for adt_def.
+                    // For field of a reference type (i.e., `&'a T`) or ADT
+                    // (i.e., struct/enum/union), there will be 'outlives'
+                    // requirements for `adt_def`.
                     let field_ty = self.tcx.type_of(field_def.did);
                     insert_required_predicates_to_be_wf(
                         self.tcx,
@@ -96,7 +96,7 @@ impl<'cx, 'tcx> ItemLikeVisitor<'tcx> for InferVisitor<'cx, 'tcx> {
         // If new predicates were added (`local_predicate_map` has more
         // predicates than the `global_inferred_outlives`), the new predicates
         // might result in implied predicates for their parent types.
-        // Therefore mark `predicates_added` as true and which will ensure
+        // Therefore, mark `predicates_added` as true and which will ensure
         // we walk the crates again and re-calculate predicates for all
         // items.
         let item_predicates_len: usize = self
@@ -125,8 +125,8 @@ fn insert_required_predicates_to_be_wf<'tcx>(
 ) {
     for ty in field_ty.walk() {
         match ty.sty {
-            // The field is of type &'a T which means that we will have
-            // a predicate requirement of T: 'a (T outlives 'a).
+            // The field is of type `&'a T`, which means that we will have
+            // a predicate requirement of `T: 'a` (`T` outlives `'a`).
             //
             // We also want to calculate potential predicates for the T
             ty::Ref(region, rty, _) => {
@@ -134,10 +134,10 @@ fn insert_required_predicates_to_be_wf<'tcx>(
                 insert_outlives_predicate(tcx, rty.into(), region, required_predicates);
             }
 
-            // For each Adt (struct/enum/union) type `Foo<'a, T>`, we
+            // For each ADT (i.e., struct/enum/union) type `Foo<'a, T>`, we
             // can load the current set of inferred and explicit
             // predicates from `global_inferred_outlives` and filter the
-            // ones that are TypeOutlives.
+            // ones that are `TypeOutlives`.
             ty::Adt(def, substs) => {
                 // First check the inferred predicates
                 //
@@ -161,7 +161,7 @@ fn insert_required_predicates_to_be_wf<'tcx>(
                 if let Some(unsubstituted_predicates) = global_inferred_outlives.get(&def.did) {
                     for unsubstituted_predicate in unsubstituted_predicates {
                         // `unsubstituted_predicate` is `U: 'b` in the
-                        // example above.  So apply the substitution to
+                        // example above. So apply the substitution to
                         // get `T: 'a` (or `predicate`):
                         let predicate = unsubstituted_predicate.subst(tcx, substs);
                         insert_outlives_predicate(
@@ -198,7 +198,7 @@ fn insert_required_predicates_to_be_wf<'tcx>(
                     // placeholder value with the function
                     // `with_self_ty`, since there is no concrete type
                     // `Self` for a `dyn Trait` at this
-                    // stage. Therefore when checking explicit
+                    // stage. Therefore, when checking explicit
                     // predicates in `check_explicit_predicates` we
                     // need to ignore checking the explicit_map for
                     // Self type.
@@ -311,7 +311,7 @@ pub fn check_explicit_predicates<'tcx>(
         // ignore such requirements as well (cc #54467)-- though
         // conceivably it might be better if we could extract the `Foo
         // = X` binding from the object type (there must be such a
-        // binding) and thus infer an outlives requirement that `X:
+        // binding) and thus infer an 'outlives' requirement that `X:
         // 'b`.
         if ignore_self_ty.0 {
             if let UnpackedKind::Type(ty) = outlives_predicate.0.unpack() {

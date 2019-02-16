@@ -1,8 +1,8 @@
 use super::{LinkArgs, LinkerFlavor, Target, TargetOptions};
 
 pub fn target() -> Result<Target, String> {
-    // FIXME(nikic) BINARYEN_TRAP_MODE=clamp is needed to avoid trapping in our
-    // -Zsaturating-float-casts implementation. This can be dropped if/when
+    // FIXME(nikic): `BINARYEN_TRAP_MODE=clamp` is needed to avoid trapping in our
+    // `-Zsaturating-float-casts` implementation. This can be dropped if/when
     // we have native fpto[su]i.sat intrinsics, or the implementation otherwise
     // stops relying on non-trapping fpto[su]i.
     let mut post_link_args = LinkArgs::new();

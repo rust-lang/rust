@@ -121,7 +121,7 @@ fn test_find_best_match_for_name() {
         );
 
         let input = vec![Symbol::intern("AAAA")];
-        // Returns None because `lev_distance > max_dist / 3`
+        // Returns `None` because `lev_distance > max_dist / 3`
         assert_eq!(
             find_best_match_for_name(input.iter(), "aaaa", None),
             None

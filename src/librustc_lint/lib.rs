@@ -196,7 +196,7 @@ pub fn register_builtins(store: &mut lint::LintStore, sess: Option<&Session>) {
                     // macros are ready for this yet.
                     // UNREACHABLE_PUB,
 
-                    // FIXME macro crates are not up for this yet, too much
+                    // FIXME: macro crates are not up for this yet, too much
                     // breakage is seen if we try to encourage this lint.
                     // MACRO_USE_EXTERN_CRATE,
                     );

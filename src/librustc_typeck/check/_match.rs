@@ -168,7 +168,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                 // cases. Actually what we really want is not a subtyping
                 // relation at all but rather that there exists a LUB (so
                 // that they can be compared). However, in practice,
-                // constants are always scalars or strings.  For scalars
+                // constants are always scalars or strings. For scalars
                 // subtyping is irrelevant, and for strings `ty` is
                 // type is `&'static str`, so if we say that
                 //
@@ -350,7 +350,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                     // below for details.
 
                     // Take region, inner-type from expected type if we
-                    // can, to avoid creating needless variables.  This
+                    // can, to avoid creating needless variables. This
                     // also helps with the bad interactions of the given
                     // hack detailed in (*) below.
                     debug!("check_pat_walk: expected={:?}", expected);
@@ -494,7 +494,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         // int`) as a subtype of `Z`: `&'x int <: Z`. And hence we
         // will instantiate `Z` as a type `&'0 int` where `'0` is
         // a fresh region variable, with the constraint that `'x :
-        // '0`.  So basically we're all set.
+        // '0`. So basically we're all set.
         //
         // Note that there are two tests to check that this remains true
         // (`regions-reassign-{match,let}-bound-pointer.rs`).
@@ -554,7 +554,7 @@ https://doc.rust-lang.org/reference/types.html#trait-objects");
         let tcx = self.tcx;
 
         // Not entirely obvious: if matches may create ref bindings, we want to
-        // use the *precise* type of the discriminant, *not* some supertype, as
+        // use the *precise* type of the discriminant, **not** some supertype, as
         // the "discriminant type" (issue #23116).
         //
         // arielb1 [writes here in this comment thread][c] that there
@@ -634,12 +634,12 @@ https://doc.rust-lang.org/reference/types.html#trait-objects");
             }
         }
 
-        // Otherwise, we have to union together the types that the
-        // arms produce and so forth.
+        // Otherwise, we have to take the union of the types that the
+        // arms produce, and so forth.
         let discrim_diverges = self.diverges.get();
         self.diverges.set(Diverges::Maybe);
 
-        // rust-lang/rust#55810: Typecheck patterns first (via eager
+        // Issue #55810: type-check patterns first (via eager
         // collection into `Vec`), so we get types for all bindings.
         let all_arm_pats_diverge: Vec<_> = arms.iter().map(|arm| {
             let mut all_pats_diverge = Diverges::WarnedAlways;
@@ -663,7 +663,7 @@ https://doc.rust-lang.org/reference/types.html#trait-objects");
             }
         }).collect();
 
-        // Now typecheck the blocks.
+        // Now type-check the blocks.
         //
         // The result of the match is the common supertype of all the
         // arms. Start out the value as bottom, since it's the, well,
@@ -943,7 +943,7 @@ https://doc.rust-lang.org/reference/types.html#trait-objects");
         let mut no_field_errors = true;
 
         let mut inexistent_fields = vec![];
-        // Typecheck each field.
+        // Type-check each field.
         for &Spanned { node: ref field, span } in fields {
             let ident = tcx.adjust_ident(field.ident, variant.did, self.body_id).0;
             let field_ty = match used_fields.entry(ident) {

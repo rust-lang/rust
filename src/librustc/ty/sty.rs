@@ -68,8 +68,8 @@ impl BoundRegion {
     }
 
     /// When canonicalizing, we replace unbound inference variables and free
-    /// regions with anonymous late bound regions. This method asserts that
-    /// we have an anonymous late bound region, which hence may refer to
+    /// regions with anonymous late-bound regions. This method asserts that
+    /// we have an anonymous late-bound region, which hence may refer to
     /// a canonical variable.
     pub fn assert_bound_var(&self) -> BoundVar {
         match *self {
@@ -1533,7 +1533,7 @@ impl RegionKind {
     ///
     /// ```
     /// impl<'a> Foo {
-    ///      ^^ -- early bound, declared on an impl
+    ///      ^^ -- early-bound, declared on an impl
     ///
     ///     fn bar<'b, 'c>(x: &self, y: &'b u32, z: &'c u64) where 'static: 'c
     ///            ^^  ^^     ^ anonymous, late-bound
@@ -1591,7 +1591,7 @@ impl<'a, 'gcx, 'tcx> TyS<'tcx> {
             }
             ty::Adt(def, _) => {
                 // Any ADT is uninhabited if either:
-                // (a) It has no variants (i.e. an empty `enum`);
+                // (a) It has no variants (i.e., an empty `enum`);
                 // (b) Each of its variants (a single one in the case of a `struct`) has at least
                 //     one uninhabited field.
                 def.variants.iter().all(|var| {

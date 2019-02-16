@@ -156,21 +156,21 @@ struct TransformVisitor<'a, 'tcx: 'a> {
     state_adt_ref: &'tcx AdtDef,
     state_substs: &'tcx Substs<'tcx>,
 
-    // The index of the generator state in the generator struct
+    // The index of the generator state in the generator struct.
     state_field: usize,
 
-    // Mapping from Local to (type of local, generator struct index)
-    // FIXME(eddyb) This should use `IndexVec<Local, Option<_>>`.
+    // Mapping from Local to (type of local, generator struct index).
+    // FIXME(eddyb): this should use `IndexVec<Local, Option<_>>`.
     remap: FxHashMap<Local, (Ty<'tcx>, usize)>,
 
     // A map from a suspension point in a block to the locals which have live storage at that point
-    // FIXME(eddyb) This should use `IndexVec<BasicBlock, Option<_>>`.
+    // FIXME(eddyb): this should use `IndexVec<BasicBlock, Option<_>>`.
     storage_liveness: FxHashMap<BasicBlock, liveness::LiveVarSet<Local>>,
 
-    // A list of suspension points, generated during the transform
+    // A list of suspension points, generated during the transform.
     suspension_points: Vec<SuspensionPoint>,
 
-    // The original RETURN_PLACE local
+    // The original `RETURN_PLACE` local.
     new_ret_local: Local,
 }
 

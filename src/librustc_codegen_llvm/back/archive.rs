@@ -131,7 +131,7 @@ impl<'a> ArchiveBuilder<'a> {
                 return true
             }
 
-            // Otherwise if this is *not* a rust object and we're skipping
+            // Otherwise if this is **not** a rust object and we're skipping
             // objects then skip this file
             if skip_objects && (!fname.starts_with(&obj_start) || !fname.ends_with(".o")) {
                 return true

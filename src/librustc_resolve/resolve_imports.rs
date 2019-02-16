@@ -1,4 +1,23 @@
-use ImportDirectiveSubclass::*;
+use std::cell::{Cell, RefCell};
+use std::{mem, ptr};
+
+use log::debug;
+use rustc_data_structures::ptr_key::PtrKey;
+use rustc::{bug, span_bug};
+use rustc::ty;
+use rustc::lint::builtin::BuiltinLintDiagnostics;
+use rustc::lint::builtin::{DUPLICATE_MACRO_EXPORTS, PUB_USE_OF_PRIVATE_EXTERN_CRATE};
+use rustc::hir::def_id::{CrateNum, DefId};
+use rustc::hir::def::*;
+use rustc::session::DiagnosticMessageId;
+use rustc::util::nodemap::FxHashSet;
+use syntax_pos::{MultiSpan, Span};
+use syntax::ast::{self, Ident, Name, NodeId, CRATE_NODE_ID};
+use syntax::ext::base::Determinacy::{self, Determined, Undetermined};
+use syntax::ext::hygiene::Mark;
+use syntax::symbol::keywords;
+use syntax::util::lev_distance::find_best_match_for_name;
+use syntax::{struct_span_err, unwrap_or};
 
 use crate::{AmbiguityError, AmbiguityKind, AmbiguityErrorMisc};
 use crate::{CrateLint, Module, ModuleOrUniformRoot, PerNS, ScopeSet, Weak};
@@ -8,29 +27,7 @@ use crate::{Resolver, Segment};
 use crate::{names_to_string, module_to_string};
 use crate::{resolve_error, ResolutionError};
 use crate::macros::ParentScope;
-
-use rustc_data_structures::ptr_key::PtrKey;
-use rustc::ty;
-use rustc::lint::builtin::BuiltinLintDiagnostics;
-use rustc::lint::builtin::{DUPLICATE_MACRO_EXPORTS, PUB_USE_OF_PRIVATE_EXTERN_CRATE};
-use rustc::hir::def_id::{CrateNum, DefId};
-use rustc::hir::def::*;
-use rustc::session::DiagnosticMessageId;
-use rustc::util::nodemap::FxHashSet;
-use rustc::{bug, span_bug};
-
-use syntax::ast::{self, Ident, Name, NodeId, CRATE_NODE_ID};
-use syntax::ext::base::Determinacy::{self, Determined, Undetermined};
-use syntax::ext::hygiene::Mark;
-use syntax::symbol::keywords;
-use syntax::util::lev_distance::find_best_match_for_name;
-use syntax::{struct_span_err, unwrap_or};
-use syntax_pos::{MultiSpan, Span};
-
-use log::debug;
-
-use std::cell::{Cell, RefCell};
-use std::{mem, ptr};
+use self::ImportDirectiveSubclass::*;
 
 /// Contains data for specific types of import directives.
 #[derive(Clone, Debug)]
@@ -52,7 +49,7 @@ pub enum ImportDirectiveSubclass<'a> {
     GlobImport {
         is_prelude: bool,
         max_vis: Cell<ty::Visibility>, // The visibility of the greatest re-export.
-        // n.b. `max_vis` is only used in `finalize_import` to check for re-export errors.
+        // N.B., `max_vis` is only used in `finalize_import` to check for re-export errors.
     },
     ExternCrate {
         source: Option<Name>,
@@ -217,7 +214,7 @@ impl<'a> Resolver<'a> {
                         return Ok(binding);
                     } else if ident.name == keywords::Super.name() ||
                                 ident.name == keywords::SelfLower.name() {
-                        // FIXME: Implement these with renaming requirements so that e.g.
+                        // FIXME: implement these with renaming requirements so that e.g.
                         // `use super;` doesn't work, but `use super as name;` does.
                         // Fall through here to get an error from `early_resolve_...`.
                     }
@@ -935,7 +932,7 @@ impl<'a, 'b:'a> ImportResolver<'a, 'b> {
                 (source, target, source_bindings, target_bindings, type_ns_only),
             GlobImport { is_prelude, ref max_vis } => {
                 if directive.module_path.len() <= 1 {
-                    // HACK(eddyb) `lint_if_path_starts_with_module` needs at least
+                    // HACK(eddyb): `lint_if_path_starts_with_module` needs at least
                     // 2 segments, so the `resolve_path` above won't trigger it.
                     let mut full_path = directive.module_path.clone();
                     full_path.push(Segment::from_ident(keywords::Invalid.ident()));
@@ -1011,7 +1008,7 @@ impl<'a, 'b:'a> ImportResolver<'a, 'b> {
                     }
                 }
                 Err(..) => {
-                    // FIXME: This assert may fire if public glob is later shadowed by a private
+                    // FIXME: this assert may fire if public glob is later shadowed by a private
                     // single import (see test `issue-55884-2.rs`). In theory single imports should
                     // always block globs, even if they are not yet resolved, so that this kind of
                     // self-inconsistent resolution never happens.
@@ -1077,7 +1074,7 @@ impl<'a, 'b:'a> ImportResolver<'a, 'b> {
                         if !ident.is_path_segment_keyword() {
                             format!("no `{}` external crate{}", ident, lev_suggestion)
                         } else {
-                            // HACK(eddyb) this shows up for `self` & `super`, which
+                            // HACK(eddyb): this shows up for `self` & `super`, which
                             // should work instead - for now keep the same error message.
                             format!("no `{}` in the root{}", ident, lev_suggestion)
                         }
@@ -1133,7 +1130,7 @@ impl<'a, 'b:'a> ImportResolver<'a, 'b> {
         }
 
         if directive.module_path.len() <= 1 {
-            // HACK(eddyb) `lint_if_path_starts_with_module` needs at least
+            // HACK(eddyb): `lint_if_path_starts_with_module` needs at least
             // 2 segments, so the `resolve_path` above won't trigger it.
             let mut full_path = directive.module_path.clone();
             full_path.push(Segment::from_ident(ident));

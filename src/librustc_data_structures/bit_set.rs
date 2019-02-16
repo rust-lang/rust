@@ -174,7 +174,7 @@ impl<T: Idx> BitSet<T> {
 
     /// Duplicates the set as a hybrid set.
     pub fn to_hybrid(&self) -> HybridBitSet<T> {
-        // Note: we currently don't bother trying to make a Sparse set.
+        // Note: we currently don't bother trying to make a `Sparse` set.
         HybridBitSet::Dense(self.to_owned())
     }
 }
@@ -681,7 +681,7 @@ impl<R: Idx, C: Idx> BitMatrix<R, C> {
     }
 
     /// Do the bits from `row` contain `column`? Put another way, is
-    /// the matrix cell at `(row, column)` true?  Put yet another way,
+    /// the matrix cell at `(row, column)` true? Put yet another way,
     /// if the matrix represents (transitive) reachability, can
     /// `row` reach `column`?
     pub fn contains(&self, row: R, column: C) -> bool {
@@ -799,7 +799,7 @@ impl<R: Idx, C: Idx> SparseBitMatrix<R, C> {
     }
 
     /// Do the bits from `row` contain `column`? Put another way, is
-    /// the matrix cell at `(row, column)` true?  Put yet another way,
+    /// the matrix cell at `(row, column)` true? Put yet another way,
     /// if the matrix represents (transitive) reachability, can
     /// `row` reach `column`?
     pub fn contains(&self, row: R, column: C) -> bool {
