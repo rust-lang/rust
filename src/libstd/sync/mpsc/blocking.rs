@@ -50,14 +50,14 @@ impl SignalToken {
         wake
     }
 
-    /// Convert to an unsafe usize value. Useful for storing in a pipe's state
+    /// Converts to an unsafe usize value. Useful for storing in a pipe's state
     /// flag.
     #[inline]
     pub unsafe fn cast_to_usize(self) -> usize {
         mem::transmute(self.inner)
     }
 
-    /// Convert from an unsafe usize value. Useful for retrieving a pipe's state
+    /// Converts from an unsafe usize value. Useful for retrieving a pipe's state
     /// flag.
     #[inline]
     pub unsafe fn cast_from_usize(signal_ptr: usize) -> SignalToken {
@@ -72,7 +72,7 @@ impl WaitToken {
         }
     }
 
-    /// Returns true if we wake up normally, false otherwise.
+    /// Returns `true` if we wake up normally.
     pub fn wait_max_until(self, end: Instant) -> bool {
         while !self.inner.woken.load(Ordering::SeqCst) {
             let now = Instant::now();

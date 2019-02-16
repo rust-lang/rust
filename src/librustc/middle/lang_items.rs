@@ -11,17 +11,17 @@
 
 pub use self::LangItem::*;
 
-use hir::def_id::DefId;
-use hir::check_attr::Target;
-use ty::{self, TyCtxt};
-use middle::weak_lang_items;
-use util::nodemap::FxHashMap;
+use crate::hir::def_id::DefId;
+use crate::hir::check_attr::Target;
+use crate::ty::{self, TyCtxt};
+use crate::middle::weak_lang_items;
+use crate::util::nodemap::FxHashMap;
 
 use syntax::ast;
 use syntax::symbol::Symbol;
 use syntax_pos::Span;
-use hir::itemlikevisit::ItemLikeVisitor;
-use hir;
+use crate::hir::itemlikevisit::ItemLikeVisitor;
+use crate::hir;
 
 // The actual lang items defined come at the end of this file in one handy table.
 // So you probably just want to nip down to the end.
@@ -299,6 +299,8 @@ language_item_table! {
 
     GeneratorStateLangItem,      "generator_state",    gen_state,               Target::Enum;
     GeneratorTraitLangItem,      "generator",          gen_trait,               Target::Trait;
+    UnpinTraitLangItem,          "unpin",              unpin_trait,             Target::Trait;
+    PinTypeLangItem,             "pin",                pin_type,                Target::Struct;
 
     EqTraitLangItem,             "eq",                 eq_trait,                Target::Trait;
     PartialOrdTraitLangItem,     "partial_ord",        partial_ord_trait,       Target::Trait;

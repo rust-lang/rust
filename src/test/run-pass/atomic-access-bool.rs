@@ -1,9 +1,9 @@
 #![allow(stable_features)]
 #![feature(atomic_access)]
-use std::sync::atomic::{AtomicBool, ATOMIC_BOOL_INIT};
+use std::sync::atomic::AtomicBool;
 use std::sync::atomic::Ordering::*;
 
-static mut ATOMIC: AtomicBool = ATOMIC_BOOL_INIT;
+static mut ATOMIC: AtomicBool = AtomicBool::new(false);
 
 fn main() {
     unsafe {

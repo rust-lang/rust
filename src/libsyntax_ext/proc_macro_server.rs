@@ -1,4 +1,5 @@
-use errors::{self, Diagnostic, DiagnosticBuilder};
+use errors::{Diagnostic, DiagnosticBuilder};
+
 use std::panic;
 
 use proc_macro::bridge::{server, TokenTree};
@@ -11,7 +12,8 @@ use syntax::ast;
 use syntax::ext::base::ExtCtxt;
 use syntax::parse::lexer::comments;
 use syntax::parse::{self, token, ParseSess};
-use syntax::tokenstream::{self, DelimSpan, IsJoint::*, TokenStream};
+use syntax::parse::parser::emit_unclosed_delims;
+use syntax::tokenstream::{self, DelimSpan, IsJoint::*, TokenStream, TreeAndJoint};
 use syntax_pos::hygiene::{SyntaxContext, Transparency};
 use syntax_pos::symbol::{keywords, Symbol};
 use syntax_pos::{BytePos, FileName, MultiSpan, Pos, SourceFile, Span};
@@ -46,13 +48,14 @@ impl ToInternal<token::DelimToken> for Delimiter {
     }
 }
 
-impl FromInternal<(TokenStream, &'_ ParseSess, &'_ mut Vec<Self>)>
+impl FromInternal<(TreeAndJoint, &'_ ParseSess, &'_ mut Vec<Self>)>
     for TokenTree<Group, Punct, Ident, Literal>
 {
-    fn from_internal((stream, sess, stack): (TokenStream, &ParseSess, &mut Vec<Self>)) -> Self {
+    fn from_internal(((tree, is_joint), sess, stack): (TreeAndJoint, &ParseSess, &mut Vec<Self>))
+                    -> Self {
         use syntax::parse::token::*;
 
-        let (tree, joint) = stream.as_tree();
+        let joint = is_joint == Joint;
         let (span, token) = match tree {
             tokenstream::TokenTree::Delimited(span, delim, tts) => {
                 let delimiter = Delimiter::from_internal(delim);
@@ -268,7 +271,7 @@ impl ToInternal<TokenStream> for TokenTree<Group, Punct, Ident, Literal> {
         };
 
         let tree = tokenstream::TokenTree::Token(span, token);
-        TokenStream::Tree(tree, if joint { Joint } else { NonJoint })
+        TokenStream::new(vec![(tree, if joint { Joint } else { NonJoint })])
     }
 }
 
@@ -368,7 +371,7 @@ pub(crate) struct Rustc<'a> {
 }
 
 impl<'a> Rustc<'a> {
-    pub fn new(cx: &'a ExtCtxt) -> Self {
+    pub fn new(cx: &'a ExtCtxt<'_>) -> Self {
         // No way to determine def location for a proc macro right now, so use call location.
         let location = cx.current_expansion.mark.expn_info().unwrap().call_site;
         let to_span = |transparency| {
@@ -407,12 +410,14 @@ impl server::TokenStream for Rustc<'_> {
         stream.is_empty()
     }
     fn from_str(&mut self, src: &str) -> Self::TokenStream {
-        parse::parse_stream_from_source_str(
+        let (tokens, errors) = parse::parse_stream_from_source_str(
             FileName::proc_macro_source_code(src.clone()),
             src.to_string(),
             self.sess,
             Some(self.call_site),
-        )
+        );
+        emit_unclosed_delims(&errors, &self.sess.span_diagnostic);
+        tokens
     }
     fn to_string(&mut self, stream: &Self::TokenStream) -> String {
         stream.to_string()
@@ -450,7 +455,7 @@ impl server::TokenStreamIter for Rustc<'_> {
     ) -> Option<TokenTree<Self::Group, Self::Punct, Self::Ident, Self::Literal>> {
         loop {
             let tree = iter.stack.pop().or_else(|| {
-                let next = iter.cursor.next_as_stream()?;
+                let next = iter.cursor.next_with_joint()?;
                 Some(TokenTree::from_internal((next, self.sess, &mut iter.stack)))
             })?;
             // HACK: The condition "dummy span + group with empty delimiter" represents an AST
@@ -461,7 +466,7 @@ impl server::TokenStreamIter for Rustc<'_> {
             // and not doing the roundtrip through AST.
             if let TokenTree::Group(ref group) = tree {
                 if group.delimiter == Delimiter::None && group.span.entire().is_dummy() {
-                    iter.cursor.insert(group.stream.clone());
+                    iter.cursor.append(group.stream.clone());
                     continue;
                 }
             }
@@ -649,7 +654,7 @@ impl server::Literal for Rustc<'_> {
     }
 }
 
-impl<'a> server::SourceFile for Rustc<'a> {
+impl server::SourceFile for Rustc<'_> {
     fn eq(&mut self, file1: &Self::SourceFile, file2: &Self::SourceFile) -> bool {
         Lrc::ptr_eq(file1, file2)
     }

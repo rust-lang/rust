@@ -1,4 +1,4 @@
-use spec::{LinkerFlavor, Target, TargetResult, RelroLevel};
+use crate::spec::{LinkerFlavor, Target, TargetResult, RelroLevel};
 
 pub fn target() -> TargetResult {
     let mut base = super::linux_base::opts();

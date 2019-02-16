@@ -217,7 +217,7 @@ LL | | where
 LL | |     T: Anything<'b, 'b>,
 LL | | {
 LL | |     with_signature(cell, t, |cell, t| require(cell, t));
-LL | |     //~^ ERROR unsatisfied lifetime constraints
+LL | |     //~^ ERROR lifetime may not live long enough
 LL | | }
    | |_^
    |
@@ -226,7 +226,7 @@ LL | | }
                T
            ]
 
-error: unsatisfied lifetime constraints
+error: lifetime may not live long enough
   --> $DIR/projection-two-region-trait-bound-closure.rs:87:29
    |
 LL | fn two_regions<'a, 'b, T>(cell: Cell<&'a ()>, t: T)

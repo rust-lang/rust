@@ -20,12 +20,13 @@ use abi::{LlvmType, FnTypeExt};
 
 use std::fmt;
 use std::cell::RefCell;
+use std::ptr;
 
 use libc::c_uint;
 
 impl PartialEq for Type {
     fn eq(&self, other: &Self) -> bool {
-        self as *const _ == other as *const _
+        ptr::eq(self, other)
     }
 }
 

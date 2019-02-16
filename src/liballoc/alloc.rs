@@ -227,9 +227,9 @@ pub fn handle_alloc_error(layout: Layout) -> ! {
 #[cfg(test)]
 mod tests {
     extern crate test;
-    use self::test::Bencher;
-    use boxed::Box;
-    use alloc::{Global, Alloc, Layout, handle_alloc_error};
+    use test::Bencher;
+    use crate::boxed::Box;
+    use crate::alloc::{Global, Alloc, Layout, handle_alloc_error};
 
     #[test]
     fn allocate_zeroed() {

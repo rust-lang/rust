@@ -2,7 +2,7 @@
 // unresolved type variables and replaces "ty_var" types with their
 // substitutions.
 
-use check::FnCtxt;
+use crate::check::FnCtxt;
 use errors::DiagnosticBuilder;
 use rustc::hir;
 use rustc::hir::def_id::{DefId, DefIndex};
@@ -21,6 +21,15 @@ use syntax_pos::Span;
 ///////////////////////////////////////////////////////////////////////////
 // Entry point
 
+// During type inference, partially inferred types are
+// represented using Type variables (ty::Infer). These don't appear in
+// the final TypeckTables since all of the types should have been
+// inferred once typeck_tables_of is done.
+// When type inference is running however, having to update the typeck
+// tables every time a new type is inferred would be unreasonably slow,
+// so instead all of the replacement happens at the end in
+// resolve_type_vars_in_body, which creates a new TypeTables which
+// doesn't contain any inference types.
 impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
     pub fn resolve_type_vars_in_body(&self, body: &'gcx hir::Body) -> &'gcx ty::TypeckTables<'gcx> {
         let item_id = self.tcx.hir().body_owner(body.id());
@@ -35,7 +44,8 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
             wbcx.visit_node_id(arg.pat.span, arg.hir_id);
         }
         wbcx.visit_body(body);
-        wbcx.visit_upvar_borrow_map();
+        wbcx.visit_upvar_capture_map();
+        wbcx.visit_upvar_list_map();
         wbcx.visit_closures();
         wbcx.visit_liberated_fn_sigs();
         wbcx.visit_fru_field_types();
@@ -90,7 +100,7 @@ impl<'cx, 'gcx, 'tcx> WritebackCx<'cx, 'gcx, 'tcx> {
         body: &'gcx hir::Body,
         rustc_dump_user_substs: bool,
     ) -> WritebackCx<'cx, 'gcx, 'tcx> {
-        let owner = fcx.tcx.hir().definitions().node_to_hir_id(body.id().node_id);
+        let owner = body.id().hir_id;
 
         WritebackCx {
             fcx,
@@ -291,7 +301,7 @@ impl<'cx, 'gcx, 'tcx> Visitor<'gcx> for WritebackCx<'cx, 'gcx, 'tcx> {
 }
 
 impl<'cx, 'gcx, 'tcx> WritebackCx<'cx, 'gcx, 'tcx> {
-    fn visit_upvar_borrow_map(&mut self) {
+    fn visit_upvar_capture_map(&mut self) {
         for (upvar_id, upvar_capture) in self.fcx.tables.borrow().upvar_capture_map.iter() {
             let new_upvar_capture = match *upvar_capture {
                 ty::UpvarCapture::ByValue => ty::UpvarCapture::ByValue,
@@ -311,6 +321,21 @@ impl<'cx, 'gcx, 'tcx> WritebackCx<'cx, 'gcx, 'tcx> {
             self.tables
                 .upvar_capture_map
                 .insert(*upvar_id, new_upvar_capture);
+        }
+    }
+
+    /// Runs through the function context's upvar list map and adds the same to
+    /// the TypeckTables. upvarlist is a hashmap of the list of upvars referred
+    /// to in a closure..
+    fn visit_upvar_list_map(&mut self) {
+        for (closure_def_id, upvar_list) in self.fcx.tables.borrow().upvar_list.iter() {
+            debug!(
+                "UpvarIDs captured by closure {:?} are: {:?}",
+                closure_def_id, upvar_list
+            );
+            self.tables
+                .upvar_list
+                .insert(*closure_def_id, upvar_list.to_vec());
         }
     }
 
@@ -379,11 +404,10 @@ impl<'cx, 'gcx, 'tcx> WritebackCx<'cx, 'gcx, 'tcx> {
                 .user_provided_types_mut()
                 .insert(hir_id, c_ty.clone());
 
-            if let ty::UserTypeAnnotation::TypeOf(_, user_substs) = c_ty.value {
+            if let ty::UserType::TypeOf(_, user_substs) = c_ty.value {
                 if self.rustc_dump_user_substs {
                     // This is a unit-testing mechanism.
-                    let node_id = self.tcx().hir().hir_to_node_id(hir_id);
-                    let span = self.tcx().hir().span(node_id);
+                    let span = self.tcx().hir().span_by_hir_id(hir_id);
                     // We need to buffer the errors in order to guarantee a consistent
                     // order when emitting them.
                     let err = self.tcx().sess.struct_span_err(
@@ -714,15 +738,14 @@ impl Locatable for ast::NodeId {
 
 impl Locatable for DefIndex {
     fn to_span(&self, tcx: &TyCtxt) -> Span {
-        let node_id = tcx.hir().def_index_to_node_id(*self);
-        tcx.hir().span(node_id)
+        let hir_id = tcx.hir().def_index_to_hir_id(*self);
+        tcx.hir().span_by_hir_id(hir_id)
     }
 }
 
 impl Locatable for hir::HirId {
     fn to_span(&self, tcx: &TyCtxt) -> Span {
-        let node_id = tcx.hir().hir_to_node_id(*self);
-        tcx.hir().span(node_id)
+        tcx.hir().span_by_hir_id(*self)
     }
 }
 

@@ -607,7 +607,7 @@ impl Builder {
 pub fn spawn<F, T>(f: F) -> JoinHandle<T> where
     F: FnOnce() -> T, F: Send + 'static, T: Send + 'static
 {
-    Builder::new().spawn(f).unwrap()
+    Builder::new().spawn(f).expect("failed to spawn thread")
 }
 
 /// Gets a handle to the thread that invokes it.
@@ -841,7 +841,7 @@ const NOTIFIED: usize = 2;
 /// let flag2 = Arc::clone(&flag);
 ///
 /// let parked_thread = thread::spawn(move || {
-///     // We want to wait until the flag is set.  We *could* just spin, but using
+///     // We want to wait until the flag is set. We *could* just spin, but using
 ///     // park/unpark is more efficient.
 ///     while !flag2.load(Ordering::Acquire) {
 ///         println!("Parking thread");

@@ -109,7 +109,7 @@ impl<T: ?Sized> Deref for &mut T {
 /// then:
 ///
 /// * In mutable contexts, `*x` on non-pointer types is equivalent to
-///   `*Deref::deref(&x)`.
+///   `*DerefMut::deref_mut(&mut x)`.
 /// * Values of type `&mut T` are coerced to values of type `&mut U`
 /// * `T` implicitly implements all the (mutable) methods of the type `U`.
 ///
@@ -171,7 +171,7 @@ impl<T: ?Sized> DerefMut for &mut T {
 /// Indicates that a struct can be used as a method receiver, without the
 /// `arbitrary_self_types` feature. This is implemented by stdlib pointer types like `Box<T>`,
 /// `Rc<T>`, `&T`, and `Pin<P>`.
-#[cfg_attr(not(stage0), lang = "receiver")]
+#[lang = "receiver"]
 #[unstable(feature = "receiver_trait", issue = "0")]
 #[doc(hidden)]
 pub trait Receiver {

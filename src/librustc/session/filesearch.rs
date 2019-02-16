@@ -7,7 +7,7 @@ use std::env;
 use std::fs;
 use std::path::{Path, PathBuf};
 
-use session::search_paths::{SearchPath, PathKind};
+use crate::session::search_paths::{SearchPath, PathKind};
 use rustc_fs_util::fix_windows_verbatim_for_gcc;
 
 #[derive(Copy, Clone)]

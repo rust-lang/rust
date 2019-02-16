@@ -2,13 +2,13 @@
 
 #![allow(non_camel_case_types)]
 
-pub use self::LoanPathKind::*;
-pub use self::LoanPathElem::*;
-pub use self::bckerr_code::*;
-pub use self::AliasableViolationKind::*;
-pub use self::MovedValueUseKind::*;
+pub use LoanPathKind::*;
+pub use LoanPathElem::*;
+pub use bckerr_code::*;
+pub use AliasableViolationKind::*;
+pub use MovedValueUseKind::*;
 
-use self::InteriorKind::*;
+use InteriorKind::*;
 
 use rustc::hir::HirId;
 use rustc::hir::Node;
@@ -37,11 +37,11 @@ use std::hash::{Hash, Hasher};
 use syntax::ast;
 use syntax_pos::{MultiSpan, Span};
 use errors::{Applicability, DiagnosticBuilder, DiagnosticId};
+use log::debug;
 
 use rustc::hir;
-use rustc::hir::intravisit::{self, Visitor};
 
-use dataflow::{DataFlowContext, BitwiseOperator, DataFlowOperator, KillFrom};
+use crate::dataflow::{DataFlowContext, BitwiseOperator, DataFlowOperator, KillFrom};
 
 pub mod check_loans;
 
@@ -58,11 +58,11 @@ pub type LoanDataFlow<'a, 'tcx> = DataFlowContext<'a, 'tcx, LoanDataFlowOperator
 
 pub fn check_crate<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>) {
     tcx.par_body_owners(|body_owner_def_id| {
-        tcx.borrowck(body_owner_def_id);
+        tcx.ensure().borrowck(body_owner_def_id);
     });
 }
 
-pub fn provide(providers: &mut Providers) {
+pub fn provide(providers: &mut Providers<'_>) {
     *providers = Providers {
         borrowck,
         ..*providers
@@ -122,7 +122,7 @@ fn borrowck<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, owner_def_id: DefId)
     // Note that `mir_validated` is a "stealable" result; the
     // thief, `optimized_mir()`, forces borrowck, so we know that
     // is not yet stolen.
-    ty::query::queries::mir_validated::ensure(tcx, owner_def_id);
+    tcx.ensure().mir_validated(owner_def_id);
 
     // option dance because you can't capture an uninitialized variable
     // by mut-ref.
@@ -157,12 +157,6 @@ fn build_borrowck_dataflow_data<'a, 'c, 'tcx, F>(this: &mut BorrowckCtxt<'a, 'tc
     where F: FnOnce(&mut BorrowckCtxt<'a, 'tcx>) -> &'c cfg::CFG
 {
     // Check the body of fn items.
-    let tcx = this.tcx;
-    let id_range = {
-        let mut visitor = intravisit::IdRangeComputingVisitor::new(&tcx.hir());
-        visitor.visit_body(this.body);
-        visitor.result()
-    };
     let (all_loans, move_data) =
         gather_loans::gather_loans_in_fn(this, body_id);
 
@@ -184,7 +178,6 @@ fn build_borrowck_dataflow_data<'a, 'c, 'tcx, F>(this: &mut BorrowckCtxt<'a, 'tc
                              Some(this.body),
                              cfg,
                              LoanDataFlowOperator,
-                             id_range,
                              all_loans.len());
     for (loan_idx, loan) in all_loans.iter().enumerate() {
         loan_dfcx.add_gen(loan.gen_scope.item_local_id(), loan_idx);
@@ -198,7 +191,6 @@ fn build_borrowck_dataflow_data<'a, 'c, 'tcx, F>(this: &mut BorrowckCtxt<'a, 'tc
     let flowed_moves = move_data::FlowedMoveData::new(move_data,
                                                       this,
                                                       cfg,
-                                                      id_range,
                                                       this.body);
 
     Some(AnalysisData { all_loans,
@@ -304,11 +296,11 @@ pub struct Loan<'tcx> {
     /// gen_scope indicates where loan is introduced. Typically the
     /// loan is introduced at the point of the borrow, but in some
     /// cases, notably method arguments, the loan may be introduced
-    /// only later, once it comes into scope.  See also
+    /// only later, once it comes into scope. See also
     /// `GatherLoanCtxt::compute_gen_scope`.
     gen_scope: region::Scope,
 
-    /// kill_scope indicates when the loan goes out of scope.  This is
+    /// kill_scope indicates when the loan goes out of scope. This is
     /// either when the lifetime expires or when the local variable
     /// which roots the loan-path goes out of scope, whichever happens
     /// faster. See also `GatherLoanCtxt::compute_kill_scope`.
@@ -407,12 +399,12 @@ pub enum LoanPathElem<'tcx> {
 }
 
 fn closure_to_block(closure_id: LocalDefId,
-                    tcx: TyCtxt) -> ast::NodeId {
+                    tcx: TyCtxt<'_, '_, '_>) -> ast::NodeId {
     let closure_id = tcx.hir().local_def_id_to_node_id(closure_id);
     match tcx.hir().get(closure_id) {
         Node::Expr(expr) => match expr.node {
             hir::ExprKind::Closure(.., body_id, _, _) => {
-                body_id.node_id
+                tcx.hir().hir_to_node_id(body_id.hir_id)
             }
             _ => {
                 bug!("encountered non-closure id: {}", closure_id)
@@ -859,7 +851,7 @@ impl<'a, 'tcx> BorrowckCtxt<'a, 'tcx> {
                                         }) = cmt.cat {
                                             db.note(fn_closure_msg);
                                         } else {
-                                            db.span_suggestion_with_applicability(
+                                            db.span_suggestion(
                                                 sp,
                                                 msg,
                                                 suggestion,
@@ -867,7 +859,7 @@ impl<'a, 'tcx> BorrowckCtxt<'a, 'tcx> {
                                             );
                                         }
                                     } else {
-                                        db.span_suggestion_with_applicability(
+                                        db.span_suggestion(
                                             sp,
                                             msg,
                                             suggestion,
@@ -1223,8 +1215,8 @@ impl<'a, 'tcx> BorrowckCtxt<'a, 'tcx> {
     }
 
     fn note_immutability_blame(&self,
-                               db: &mut DiagnosticBuilder,
-                               blame: Option<ImmutabilityBlame>,
+                               db: &mut DiagnosticBuilder<'_>,
+                               blame: Option<ImmutabilityBlame<'_>>,
                                error_node_id: ast::NodeId) {
         match blame {
             None => {}
@@ -1238,7 +1230,7 @@ impl<'a, 'tcx> BorrowckCtxt<'a, 'tcx> {
                         let let_span = self.tcx.hir().span(node_id);
                         let suggestion = suggest_ref_mut(self.tcx, let_span);
                         if let Some(replace_str) = suggestion {
-                            db.span_suggestion_with_applicability(
+                            db.span_suggestion(
                                 let_span,
                                 "use a mutable reference instead",
                                 replace_str,
@@ -1280,7 +1272,7 @@ impl<'a, 'tcx> BorrowckCtxt<'a, 'tcx> {
      // binding: either to make the binding mutable (if its type is
      // not a mutable reference) or to avoid borrowing altogether
     fn note_immutable_local(&self,
-                            db: &mut DiagnosticBuilder,
+                            db: &mut DiagnosticBuilder<'_>,
                             borrowed_node_id: ast::NodeId,
                             binding_node_id: ast::NodeId) {
         let let_span = self.tcx.hir().span(binding_node_id);
@@ -1300,7 +1292,7 @@ impl<'a, 'tcx> BorrowckCtxt<'a, 'tcx> {
                 )) = ty.map(|t| &t.node)
                 {
                     let borrow_expr_id = self.tcx.hir().get_parent_node(borrowed_node_id);
-                    db.span_suggestion_with_applicability(
+                    db.span_suggestion(
                         self.tcx.hir().span(borrow_expr_id),
                         "consider removing the `&mut`, as it is an \
                         immutable binding to a mutable reference",
@@ -1308,7 +1300,7 @@ impl<'a, 'tcx> BorrowckCtxt<'a, 'tcx> {
                         Applicability::MachineApplicable,
                     );
                 } else {
-                    db.span_suggestion_with_applicability(
+                    db.span_suggestion(
                         let_span,
                         "make this binding mutable",
                         format!("mut {}", snippet),
@@ -1335,7 +1327,7 @@ impl<'a, 'tcx> BorrowckCtxt<'a, 'tcx> {
                                                   &cmt_path_or_string,
                                                   capture_span,
                                                   Origin::Ast)
-            .span_suggestion_with_applicability(
+            .span_suggestion(
                  err.span,
                  &format!("to force the closure to take ownership of {} \
                            (and any other referenced variables), \
@@ -1358,7 +1350,7 @@ impl<'a, 'tcx> BorrowckCtxt<'a, 'tcx> {
         }
     }
 
-    fn note_and_explain_mutbl_error(&self, db: &mut DiagnosticBuilder, err: &BckError<'a, 'tcx>,
+    fn note_and_explain_mutbl_error(&self, db: &mut DiagnosticBuilder<'_>, err: &BckError<'a, 'tcx>,
                                     error_span: &Span) {
         match err.cmt.note {
             mc::NoteClosureEnv(upvar_id) | mc::NoteUpvarRef(upvar_id) => {
@@ -1496,7 +1488,7 @@ impl DataFlowOperator for LoanDataFlowOperator {
 }
 
 impl<'tcx> fmt::Debug for InteriorKind {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match *self {
             InteriorField(mc::FieldIndex(_, info)) => write!(f, "{}", info),
             InteriorElement => write!(f, "[]"),
@@ -1505,7 +1497,7 @@ impl<'tcx> fmt::Debug for InteriorKind {
 }
 
 impl<'tcx> fmt::Debug for Loan<'tcx> {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "Loan_{}({:?}, {:?}, {:?}-{:?}, {:?})",
                self.index,
                self.loan_path,
@@ -1517,7 +1509,7 @@ impl<'tcx> fmt::Debug for Loan<'tcx> {
 }
 
 impl<'tcx> fmt::Debug for LoanPath<'tcx> {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self.kind {
             LpVar(id) => {
                 write!(f, "$({})", ty::tls::with(|tcx| tcx.hir().node_to_string(id)))
@@ -1552,7 +1544,7 @@ impl<'tcx> fmt::Debug for LoanPath<'tcx> {
 }
 
 impl<'tcx> fmt::Display for LoanPath<'tcx> {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self.kind {
             LpVar(id) => {
                 write!(f, "$({})", ty::tls::with(|tcx| tcx.hir().node_to_user_string(id)))

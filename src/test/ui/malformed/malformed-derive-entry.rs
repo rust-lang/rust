@@ -11,7 +11,7 @@ struct Test2;
 struct Test3;
 
 #[derive]
-//~^ WARNING empty trait list
+//~^ ERROR attribute must be of the form
 struct Test4;
 
 fn main() {}

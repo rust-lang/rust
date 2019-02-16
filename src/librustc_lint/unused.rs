@@ -1,5 +1,6 @@
 use rustc::hir::def::Def;
 use rustc::hir::def_id::DefId;
+use rustc::lint;
 use rustc::ty;
 use rustc::ty::adjustment;
 use lint::{LateContext, EarlyContext, LintContext, LintArray};
@@ -15,6 +16,8 @@ use syntax::util::parser;
 use syntax_pos::Span;
 
 use rustc::hir;
+
+use log::debug;
 
 declare_lint! {
     pub UNUSED_MUST_USE,
@@ -33,15 +36,19 @@ declare_lint! {
 pub struct UnusedResults;
 
 impl LintPass for UnusedResults {
+    fn name(&self) -> &'static str {
+        "UnusedResults"
+    }
+
     fn get_lints(&self) -> LintArray {
         lint_array!(UNUSED_MUST_USE, UNUSED_RESULTS)
     }
 }
 
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for UnusedResults {
-    fn check_stmt(&mut self, cx: &LateContext, s: &hir::Stmt) {
+    fn check_stmt(&mut self, cx: &LateContext<'_, '_>, s: &hir::Stmt) {
         let expr = match s.node {
-            hir::StmtKind::Semi(ref expr, _) => &**expr,
+            hir::StmtKind::Semi(ref expr) => &**expr,
             _ => return,
         };
 
@@ -164,7 +171,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for UnusedResults {
         }
 
         fn check_must_use(
-            cx: &LateContext,
+            cx: &LateContext<'_, '_>,
             def_id: DefId,
             sp: Span,
             descr_pre_path: &str,
@@ -198,14 +205,18 @@ declare_lint! {
 pub struct PathStatements;
 
 impl LintPass for PathStatements {
+    fn name(&self) -> &'static str {
+        "PathStatements"
+    }
+
     fn get_lints(&self) -> LintArray {
         lint_array!(PATH_STATEMENTS)
     }
 }
 
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for PathStatements {
-    fn check_stmt(&mut self, cx: &LateContext, s: &hir::Stmt) {
-        if let hir::StmtKind::Semi(ref expr, _) = s.node {
+    fn check_stmt(&mut self, cx: &LateContext<'_, '_>, s: &hir::Stmt) {
+        if let hir::StmtKind::Semi(ref expr) = s.node {
             if let hir::ExprKind::Path(_) = expr.node {
                 cx.span_lint(PATH_STATEMENTS, s.span, "path statement with no effect");
             }
@@ -223,16 +234,20 @@ declare_lint! {
 pub struct UnusedAttributes;
 
 impl LintPass for UnusedAttributes {
+    fn name(&self) -> &'static str {
+        "UnusedAttributes"
+    }
+
     fn get_lints(&self) -> LintArray {
         lint_array!(UNUSED_ATTRIBUTES)
     }
 }
 
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for UnusedAttributes {
-    fn check_attribute(&mut self, cx: &LateContext, attr: &ast::Attribute) {
+    fn check_attribute(&mut self, cx: &LateContext<'_, '_>, attr: &ast::Attribute) {
         debug!("checking attribute: {:?}", attr);
         // Note that check_name() marks the attribute as used if it matches.
-        for &(ref name, ty, _) in BUILTIN_ATTRIBUTES {
+        for &(name, ty, ..) in BUILTIN_ATTRIBUTES {
             match ty {
                 AttributeType::Whitelisted if attr.check_name(name) => {
                     debug!("{:?} is Whitelisted", name);
@@ -256,7 +271,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for UnusedAttributes {
             cx.span_lint(UNUSED_ATTRIBUTES, attr.span, "unused attribute");
             // Is it a builtin attribute that must be used at the crate level?
             let known_crate = BUILTIN_ATTRIBUTES.iter()
-                .find(|&&(builtin, ty, _)| name == builtin && ty == AttributeType::CrateLevel)
+                .find(|&&(builtin, ty, ..)| name == builtin && ty == AttributeType::CrateLevel)
                 .is_some();
 
             // Has a plugin registered this attribute as one that must be used at
@@ -291,7 +306,7 @@ pub struct UnusedParens;
 
 impl UnusedParens {
     fn check_unused_parens_expr(&self,
-                                cx: &EarlyContext,
+                                cx: &EarlyContext<'_>,
                                 value: &ast::Expr,
                                 msg: &str,
                                 followed_by_block: bool) {
@@ -313,7 +328,7 @@ impl UnusedParens {
     }
 
     fn check_unused_parens_pat(&self,
-                                cx: &EarlyContext,
+                                cx: &EarlyContext<'_>,
                                 value: &ast::Pat,
                                 msg: &str) {
         if let ast::PatKind::Paren(_) = value.node {
@@ -327,7 +342,7 @@ impl UnusedParens {
         }
     }
 
-    fn remove_outer_parens(cx: &EarlyContext, span: Span, pattern: &str, msg: &str) {
+    fn remove_outer_parens(cx: &EarlyContext<'_>, span: Span, pattern: &str, msg: &str) {
         let span_msg = format!("unnecessary parentheses around {}", msg);
         let mut err = cx.struct_span_lint(UNUSED_PARENS, span, &span_msg);
         let mut ate_left_paren = false;
@@ -354,24 +369,28 @@ impl UnusedParens {
                     _ => false,
                 }
             }).to_owned();
-        err.span_suggestion_short_with_applicability(
-                span,
-                "remove these parentheses",
-                parens_removed,
-                Applicability::MachineApplicable
-            );
+        err.span_suggestion_short(
+            span,
+            "remove these parentheses",
+            parens_removed,
+            Applicability::MachineApplicable,
+        );
         err.emit();
     }
 }
 
 impl LintPass for UnusedParens {
+    fn name(&self) -> &'static str {
+        "UnusedParens"
+    }
+
     fn get_lints(&self) -> LintArray {
         lint_array!(UNUSED_PARENS)
     }
 }
 
 impl EarlyLintPass for UnusedParens {
-    fn check_expr(&mut self, cx: &EarlyContext, e: &ast::Expr) {
+    fn check_expr(&mut self, cx: &EarlyContext<'_>, e: &ast::Expr) {
         use syntax::ast::ExprKind::*;
         let (value, msg, followed_by_block) = match e.node {
             If(ref cond, ..) => (cond, "`if` condition", true),
@@ -413,7 +432,7 @@ impl EarlyLintPass for UnusedParens {
         self.check_unused_parens_expr(cx, &value, msg, followed_by_block);
     }
 
-    fn check_pat(&mut self, cx: &EarlyContext, p: &ast::Pat, _: &mut bool) {
+    fn check_pat(&mut self, cx: &EarlyContext<'_>, p: &ast::Pat, _: &mut bool) {
         use ast::PatKind::{Paren, Range};
         // The lint visitor will visit each subpattern of `p`. We do not want to lint any range
         // pattern no matter where it occurs in the pattern. For something like `&(a..=b)`, there
@@ -427,7 +446,7 @@ impl EarlyLintPass for UnusedParens {
         }
     }
 
-    fn check_stmt(&mut self, cx: &EarlyContext, s: &ast::Stmt) {
+    fn check_stmt(&mut self, cx: &EarlyContext<'_>, s: &ast::Stmt) {
         if let ast::StmtKind::Local(ref local) = s.node {
             if let Some(ref value) = local.init {
                 self.check_unused_parens_expr(cx, &value, "assigned value", false);
@@ -446,7 +465,7 @@ declare_lint! {
 pub struct UnusedImportBraces;
 
 impl UnusedImportBraces {
-    fn check_use_tree(&self, cx: &EarlyContext, use_tree: &ast::UseTree, item: &ast::Item) {
+    fn check_use_tree(&self, cx: &EarlyContext<'_>, use_tree: &ast::UseTree, item: &ast::Item) {
         if let ast::UseTreeKind::Nested(ref items) = use_tree.kind {
             // Recursively check nested UseTrees
             for &(ref tree, _) in items {
@@ -483,13 +502,17 @@ impl UnusedImportBraces {
 }
 
 impl LintPass for UnusedImportBraces {
+    fn name(&self) -> &'static str {
+        "UnusedImportBraces"
+    }
+
     fn get_lints(&self) -> LintArray {
         lint_array!(UNUSED_IMPORT_BRACES)
     }
 }
 
 impl EarlyLintPass for UnusedImportBraces {
-    fn check_item(&mut self, cx: &EarlyContext, item: &ast::Item) {
+    fn check_item(&mut self, cx: &EarlyContext<'_>, item: &ast::Item) {
         if let ast::ItemKind::Use(ref use_tree) = item.node {
             self.check_use_tree(cx, use_tree, item);
         }
@@ -506,13 +529,17 @@ declare_lint! {
 pub struct UnusedAllocation;
 
 impl LintPass for UnusedAllocation {
+    fn name(&self) -> &'static str {
+        "UnusedAllocation"
+    }
+
     fn get_lints(&self) -> LintArray {
         lint_array!(UNUSED_ALLOCATION)
     }
 }
 
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for UnusedAllocation {
-    fn check_expr(&mut self, cx: &LateContext, e: &hir::Expr) {
+    fn check_expr(&mut self, cx: &LateContext<'_, '_>, e: &hir::Expr) {
         match e.node {
             hir::ExprKind::Box(_) => {}
             _ => return,

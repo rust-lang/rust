@@ -144,7 +144,7 @@ pub mod consts {
 #[lang = "f64"]
 #[cfg(not(test))]
 impl f64 {
-    /// Returns `true` if this value is `NaN` and false otherwise.
+    /// Returns `true` if this value is `NaN`.
     ///
     /// ```
     /// use std::f64;
@@ -161,8 +161,16 @@ impl f64 {
         self != self
     }
 
-    /// Returns `true` if this value is positive infinity or negative infinity and
-    /// false otherwise.
+    // FIXME(#50145): `abs` is publicly unavailable in libcore due to
+    // concerns about portability, so this implementation is for
+    // private use internally.
+    #[inline]
+    fn abs_private(self) -> f64 {
+        f64::from_bits(self.to_bits() & 0x7fff_ffff_ffff_ffff)
+    }
+
+    /// Returns `true` if this value is positive infinity or negative infinity, and
+    /// `false` otherwise.
     ///
     /// ```
     /// use std::f64;
@@ -181,7 +189,7 @@ impl f64 {
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
     pub fn is_infinite(self) -> bool {
-        self == INFINITY || self == NEG_INFINITY
+        self.abs_private() == INFINITY
     }
 
     /// Returns `true` if this number is neither infinite nor `NaN`.
@@ -203,7 +211,9 @@ impl f64 {
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
     pub fn is_finite(self) -> bool {
-        !(self.is_nan() || self.is_infinite())
+        // There's no need to handle NaN separately: if self is NaN,
+        // the comparison is not true, exactly as desired.
+        self.abs_private() < INFINITY
     }
 
     /// Returns `true` if the number is neither zero, infinite,
@@ -262,7 +272,7 @@ impl f64 {
         }
     }
 
-    /// Returns `true` if and only if `self` has a positive sign, including `+0.0`, `NaN`s with
+    /// Returns `true` if `self` has a positive sign, including `+0.0`, `NaN`s with
     /// positive sign bit and positive infinity.
     ///
     /// ```
@@ -286,7 +296,7 @@ impl f64 {
         self.is_sign_positive()
     }
 
-    /// Returns `true` if and only if `self` has a negative sign, including `-0.0`, `NaN`s with
+    /// Returns `true` if `self` has a negative sign, including `-0.0`, `NaN`s with
     /// negative sign bit and negative infinity.
     ///
     /// ```

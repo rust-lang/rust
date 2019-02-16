@@ -32,6 +32,10 @@ declare_lint!(MISSING_WHITELISTED_ATTR, Deny,
 struct MissingWhitelistedAttrPass;
 
 impl LintPass for MissingWhitelistedAttrPass {
+    fn name(&self) -> &'static str {
+        "MissingWhitelistedAttrPass"
+    }
+
     fn get_lints(&self) -> LintArray {
         lint_array!(MISSING_WHITELISTED_ATTR)
     }

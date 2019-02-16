@@ -1,6 +1,6 @@
 fn foo<T>() {
     struct Foo {
-        x: T, //~ ERROR can't use type parameters from outer function
+        x: T, //~ ERROR can't use generic parameters from outer function
     }
 
     impl<T> Drop for Foo<T> {

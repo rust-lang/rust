@@ -1,7 +1,4 @@
-#![feature(generators, generator_trait)]
-
-use std::ops::{GeneratorState, Generator};
-use std::cell::Cell;
+#![feature(generators)]
 
 fn foo(x: &i32) {
     // In this case, a reference to `b` escapes the generator, but not

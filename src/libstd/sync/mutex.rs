@@ -335,7 +335,7 @@ impl<T: ?Sized> Mutex<T> {
     /// Returns a mutable reference to the underlying data.
     ///
     /// Since this call borrows the `Mutex` mutably, no actual locking needs to
-    /// take place---the mutable borrow statically guarantees no locks exist.
+    /// take place -- the mutable borrow statically guarantees no locks exist.
     ///
     /// # Errors
     ///
@@ -450,9 +450,7 @@ impl<'a, T: ?Sized> Drop for MutexGuard<'a, T> {
 #[stable(feature = "std_debug", since = "1.16.0")]
 impl<'a, T: ?Sized + fmt::Debug> fmt::Debug for MutexGuard<'a, T> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        f.debug_struct("MutexGuard")
-            .field("lock", &self.__lock)
-            .finish()
+        fmt::Debug::fmt(&**self, f)
     }
 }
 

@@ -1,13 +1,14 @@
-use ast::Ident;
-use ext::base::ExtCtxt;
-use ext::expand::Marker;
-use ext::tt::macro_parser::{NamedMatch, MatchedSeq, MatchedNonterminal};
-use ext::tt::quoted;
-use fold::noop_fold_tt;
-use parse::token::{self, Token, NtTT};
-use smallvec::SmallVec;
+use crate::ast::Ident;
+use crate::ext::base::ExtCtxt;
+use crate::ext::expand::Marker;
+use crate::ext::tt::macro_parser::{NamedMatch, MatchedSeq, MatchedNonterminal};
+use crate::ext::tt::quoted;
+use crate::mut_visit::noop_visit_tt;
+use crate::parse::token::{self, Token, NtTT};
+use crate::tokenstream::{DelimSpan, TokenStream, TokenTree, TreeAndJoint};
+
+use smallvec::{smallvec, SmallVec};
 use syntax_pos::DUMMY_SP;
-use tokenstream::{TokenStream, TokenTree, DelimSpan};
 
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::sync::Lrc;
@@ -56,14 +57,14 @@ impl Iterator for Frame {
 /// This can do Macro-By-Example transcription. On the other hand, if
 /// `src` contains no `TokenTree::{Sequence, MetaVar, MetaVarDecl}`s, `interp` can
 /// (and should) be None.
-pub fn transcribe(cx: &ExtCtxt,
+pub fn transcribe(cx: &ExtCtxt<'_>,
                   interp: Option<FxHashMap<Ident, Rc<NamedMatch>>>,
                   src: Vec<quoted::TokenTree>)
                   -> TokenStream {
     let mut stack: SmallVec<[Frame; 1]> = smallvec![Frame::new(src)];
     let interpolations = interp.unwrap_or_else(FxHashMap::default); /* just a convenience */
     let mut repeats = Vec::new();
-    let mut result: Vec<TokenStream> = Vec::new();
+    let mut result: Vec<TreeAndJoint> = Vec::new();
     let mut result_stack = Vec::new();
 
     loop {
@@ -78,7 +79,7 @@ pub fn transcribe(cx: &ExtCtxt,
                     if let Some(sep) = sep.clone() {
                         // repeat same span, I guess
                         let prev_span = match result.last() {
-                            Some(stream) => stream.trees().next().unwrap().span(),
+                            Some((tt, _)) => tt.span(),
                             None => DUMMY_SP,
                         };
                         result.push(TokenTree::Token(prev_span, sep).into());
@@ -170,7 +171,9 @@ pub fn transcribe(cx: &ExtCtxt,
             }
             quoted::TokenTree::Token(sp, tok) => {
                 let mut marker = Marker(cx.current_expansion.mark);
-                result.push(noop_fold_tt(TokenTree::Token(sp, tok), &mut marker).into())
+                let mut tt = TokenTree::Token(sp, tok);
+                noop_visit_tt(&mut tt, &mut marker);
+                result.push(tt.into());
             }
             quoted::TokenTree::MetaVarDecl(..) => panic!("unexpected `TokenTree::MetaVarDecl"),
         }
@@ -228,7 +231,7 @@ fn lockstep_iter_size(tree: &quoted::TokenTree,
                       interpolations: &FxHashMap<Ident, Rc<NamedMatch>>,
                       repeats: &[(usize, usize)])
                       -> LockstepIterSize {
-    use self::quoted::TokenTree;
+    use quoted::TokenTree;
     match *tree {
         TokenTree::Delimited(_, ref delimed) => {
             delimed.tts.iter().fold(LockstepIterSize::Unconstrained, |size, tt| {

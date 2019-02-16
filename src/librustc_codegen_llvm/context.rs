@@ -75,7 +75,7 @@ pub struct CodegenCx<'ll, 'tcx: 'll> {
     pub statics_to_rauw: RefCell<Vec<(&'ll Value, &'ll Value)>>,
 
     /// Statics that will be placed in the llvm.used variable
-    /// See http://llvm.org/docs/LangRef.html#the-llvm-used-global-variable for details
+    /// See <http://llvm.org/docs/LangRef.html#the-llvm-used-global-variable> for details
     pub used_statics: RefCell<Vec<&'ll Value>>,
 
     pub lltypes: RefCell<FxHashMap<(Ty<'tcx>, Option<VariantIdx>), &'ll Type>>,
@@ -144,16 +144,17 @@ pub fn is_pie_binary(sess: &Session) -> bool {
 }
 
 pub unsafe fn create_module(
-    sess: &Session,
+    tcx: TyCtxt,
     llcx: &'ll llvm::Context,
     mod_name: &str,
 ) -> &'ll llvm::Module {
+    let sess = tcx.sess;
     let mod_name = SmallCStr::new(mod_name);
     let llmod = llvm::LLVMModuleCreateWithNameInContext(mod_name.as_ptr(), llcx);
 
     // Ensure the data-layout values hardcoded remain the defaults.
     if sess.target.target.options.is_builtin {
-        let tm = ::back::write::create_target_machine(sess, false);
+        let tm = ::back::write::create_target_machine(tcx, false);
         llvm::LLVMRustSetDataLayoutFromTargetMachine(llmod, tm);
         llvm::LLVMRustDisposeTargetMachine(tm);
 
@@ -464,6 +465,20 @@ impl CodegenCx<'b, 'tcx> {
         self.declare_intrinsic(key).unwrap_or_else(|| bug!("unknown intrinsic '{}'", key))
     }
 
+    fn insert_intrinsic(
+        &self, name: &'static str, args: Option<&[&'b llvm::Type]>, ret: &'b llvm::Type
+    ) -> &'b llvm::Value {
+        let fn_ty = if let Some(args) = args {
+            self.type_func(args, ret)
+        } else {
+            self.type_variadic_func(&[], ret)
+        };
+        let f = self.declare_cfn(name, fn_ty);
+        llvm::SetUnnamedAddr(f, false);
+        self.intrinsics.borrow_mut().insert(name, f.clone());
+        f
+    }
+
     fn declare_intrinsic(
         &self,
         key: &str
@@ -471,26 +486,17 @@ impl CodegenCx<'b, 'tcx> {
         macro_rules! ifn {
             ($name:expr, fn() -> $ret:expr) => (
                 if key == $name {
-                    let f = self.declare_cfn($name, self.type_func(&[], $ret));
-                    llvm::SetUnnamedAddr(f, false);
-                    self.intrinsics.borrow_mut().insert($name, f.clone());
-                    return Some(f);
+                    return Some(self.insert_intrinsic($name, Some(&[]), $ret));
                 }
             );
             ($name:expr, fn(...) -> $ret:expr) => (
                 if key == $name {
-                    let f = self.declare_cfn($name, self.type_variadic_func(&[], $ret));
-                    llvm::SetUnnamedAddr(f, false);
-                    self.intrinsics.borrow_mut().insert($name, f.clone());
-                    return Some(f);
+                    return Some(self.insert_intrinsic($name, None, $ret));
                 }
             );
             ($name:expr, fn($($arg:expr),*) -> $ret:expr) => (
                 if key == $name {
-                    let f = self.declare_cfn($name, self.type_func(&[$($arg),*], $ret));
-                    llvm::SetUnnamedAddr(f, false);
-                    self.intrinsics.borrow_mut().insert($name, f.clone());
-                    return Some(f);
+                    return Some(self.insert_intrinsic($name, Some(&[$($arg),*]), $ret));
                 }
             );
         }
@@ -756,6 +762,30 @@ impl CodegenCx<'b, 'tcx> {
         ifn!("llvm.umul.with.overflow.i64", fn(t_i64, t_i64) -> mk_struct!{t_i64, i1});
         ifn!("llvm.umul.with.overflow.i128", fn(t_i128, t_i128) -> mk_struct!{t_i128, i1});
 
+        ifn!("llvm.sadd.sat.i8", fn(t_i8, t_i8) -> t_i8);
+        ifn!("llvm.sadd.sat.i16", fn(t_i16, t_i16) -> t_i16);
+        ifn!("llvm.sadd.sat.i32", fn(t_i32, t_i32) -> t_i32);
+        ifn!("llvm.sadd.sat.i64", fn(t_i64, t_i64) -> t_i64);
+        ifn!("llvm.sadd.sat.i128", fn(t_i128, t_i128) -> t_i128);
+
+        ifn!("llvm.uadd.sat.i8", fn(t_i8, t_i8) -> t_i8);
+        ifn!("llvm.uadd.sat.i16", fn(t_i16, t_i16) -> t_i16);
+        ifn!("llvm.uadd.sat.i32", fn(t_i32, t_i32) -> t_i32);
+        ifn!("llvm.uadd.sat.i64", fn(t_i64, t_i64) -> t_i64);
+        ifn!("llvm.uadd.sat.i128", fn(t_i128, t_i128) -> t_i128);
+
+        ifn!("llvm.ssub.sat.i8", fn(t_i8, t_i8) -> t_i8);
+        ifn!("llvm.ssub.sat.i16", fn(t_i16, t_i16) -> t_i16);
+        ifn!("llvm.ssub.sat.i32", fn(t_i32, t_i32) -> t_i32);
+        ifn!("llvm.ssub.sat.i64", fn(t_i64, t_i64) -> t_i64);
+        ifn!("llvm.ssub.sat.i128", fn(t_i128, t_i128) -> t_i128);
+
+        ifn!("llvm.usub.sat.i8", fn(t_i8, t_i8) -> t_i8);
+        ifn!("llvm.usub.sat.i16", fn(t_i16, t_i16) -> t_i16);
+        ifn!("llvm.usub.sat.i32", fn(t_i32, t_i32) -> t_i32);
+        ifn!("llvm.usub.sat.i64", fn(t_i64, t_i64) -> t_i64);
+        ifn!("llvm.usub.sat.i128", fn(t_i128, t_i128) -> t_i128);
+
         ifn!("llvm.lifetime.start", fn(t_i64,i8p) -> void);
         ifn!("llvm.lifetime.end", fn(t_i64, i8p) -> void);
 
@@ -782,7 +812,7 @@ impl CodegenCx<'b, 'tcx> {
 }
 
 impl<'b, 'tcx> CodegenCx<'b, 'tcx> {
-    /// Generate a new symbol name with the given prefix. This symbol name must
+    /// Generates a new symbol name with the given prefix. This symbol name must
     /// only be used for definitions with `internal` or `private` linkage.
     pub fn generate_local_symbol_name(&self, prefix: &str) -> String {
         let idx = self.local_gen_sym_counter.get();

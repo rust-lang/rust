@@ -1,10 +1,97 @@
-Output from rustc:
-error: unknown start of token: /
- --> <stdin>:1:1
-  |
-1 | /__________pkt->size___________/          /_result->size_/ /__pkt->size__/
-  | ^
+warning: could not parse code block as Rust code
+  --> $DIR/invalid-syntax.rs:3:5
+   |
+LL |   /// ```
+   |  _____^
+LL | | /// /__________pkt->size___________/          /_result->size_/ /__pkt->size__/
+LL | | /// ```
+   | |_______^
+   |
+   = note: error from rustc: unknown start of token: /
+help: mark blocks that do not contain Rust code as text
+   |
+LL | /// ```text
+   |     ^^^^^^^
 
-warning: Invalid doc comment starting with: `/__________pkt->size___________/          /_result->size_/ /__pkt->size__/`
-(Ignoring this codeblock)
+warning: could not parse code block as Rust code
+  --> $DIR/invalid-syntax.rs:8:5
+   |
+LL |   /// ```
+   |  _____^
+LL | | ///    |
+LL | | /// LL | use foobar::Baz;
+LL | | ///    |     ^^^^^^ did you mean `baz::foobar`?
+LL | | /// ```
+   | |_______^
+   |
+   = note: error from rustc: unknown start of token: `
+help: mark blocks that do not contain Rust code as text
+   |
+LL | /// ```text
+   |     ^^^^^^^
+
+warning: could not parse code block as Rust code
+  --> $DIR/invalid-syntax.rs:19:5
+   |
+LL |   /// ```
+   |  _____^
+LL | | /// /_
+LL | | /// ```
+   | |_______^
+   |
+   = note: error from rustc: unknown start of token: /
+help: mark blocks that do not contain Rust code as text
+   |
+LL | /// ```text
+   |     ^^^^^^^
+
+warning: could not parse code block as Rust code
+  --> $DIR/invalid-syntax.rs:32:5
+   |
+LL |   /// ```rust
+   |  _____^
+LL | | /// /_
+LL | | /// ```
+   | |_______^
+   |
+   = note: error from rustc: unknown start of token: /
+
+warning: could not parse code block as Rust code
+  --> $DIR/invalid-syntax.rs:41:9
+   |
+LL |   ///     code with bad syntax
+   |  _________^
+LL | | ///     /_
+   | |__________^
+   |
+   = note: error from rustc: unknown start of token: /
+
+warning: could not parse code block as Rust code
+  --> $DIR/invalid-syntax.rs:55:9
+   |
+LL | ///     ```
+   |         ^^^
+   |
+   = note: error from rustc: unknown start of token: `
+
+warning: could not parse code block as Rust code
+  --> $DIR/invalid-syntax.rs:58:5
+   |
+LL |   /// ```edition2018
+   |  _____^
+LL | | /// /_
+LL | | /// ```
+   | |_______^
+   |
+   = note: error from rustc: unknown start of token: /
+
+warning: doc comment contains an invalid Rust code block
+  --> $DIR/invalid-syntax.rs:63:1
+   |
+LL | / #[doc = "```"]
+LL | | /// /_
+LL | | #[doc = "```"]
+   | |______________^
+   |
+   = help: mark blocks that do not contain Rust code as text: ```text
 

@@ -3,16 +3,16 @@
 /// current compilation environment.
 
 use errors::DiagnosticBuilder;
+
 use syntax::ast;
-use syntax::ext::base::*;
-use syntax::ext::base;
+use syntax::ext::base::{self, *};
 use syntax::ext::build::AstBuilder;
 use syntax::attr;
 use syntax::tokenstream;
 use syntax::parse::token;
 use syntax_pos::Span;
 
-pub fn expand_cfg<'cx>(cx: &mut ExtCtxt,
+pub fn expand_cfg<'cx>(cx: &mut ExtCtxt<'_>,
                        sp: Span,
                        tts: &[tokenstream::TokenTree])
                        -> Box<dyn base::MacResult + 'static> {

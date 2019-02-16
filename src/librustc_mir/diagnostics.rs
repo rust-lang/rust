@@ -325,11 +325,13 @@ match Some(42) {
 "##,
 
 E0162: r##"
+#### Note: this error code is no longer emitted by the compiler.
+
 An if-let pattern attempts to match the pattern, and enters the body if the
 match was successful. If the match is irrefutable (when it cannot fail to
 match), use a regular `let`-binding instead. For instance:
 
-```compile_fail,E0162
+```compile_pass
 struct Irrefutable(i32);
 let irr = Irrefutable(0);
 
@@ -352,11 +354,13 @@ println!("{}", x);
 "##,
 
 E0165: r##"
+#### Note: this error code is no longer emitted by the compiler.
+
 A while-let pattern attempts to match the pattern, and enters the body if the
 match was successful. If the match is irrefutable (when it cannot fail to
 match), use a regular `let`-binding inside a `loop` instead. For instance:
 
-```compile_fail,E0165
+```compile_pass,no_run
 struct Irrefutable(i32);
 let irr = Irrefutable(0);
 
@@ -569,7 +573,7 @@ const Y: i32 = A;
 ```
 "##,
 
-// FIXME(#24111) Change the language here when const fn stabilizes
+// FIXME(#57563) Change the language here when const fn stabilizes
 E0015: r##"
 The only functions that can be called in static or constant expressions are
 `const` functions, and struct/enum constructors. `const` functions are only
@@ -686,7 +690,7 @@ fn main() {
 }
 ```
 
-See also https://doc.rust-lang.org/book/first-edition/unsafe.html
+See also https://doc.rust-lang.org/book/ch19-01-unsafe-rust.html
 "##,
 
 E0373: r##"
@@ -869,7 +873,7 @@ that at most one writer or multiple readers can access the data at any one time.
 If you wish to learn more about ownership in Rust, start with the chapter in the
 Book:
 
-https://doc.rust-lang.org/book/first-edition/ownership.html
+https://doc.rust-lang.org/book/ch04-00-understanding-ownership.html
 "##,
 
 E0383: r##"
@@ -1123,9 +1127,9 @@ A borrow of a constant containing interior mutability was attempted. Erroneous
 code example:
 
 ```compile_fail,E0492
-use std::sync::atomic::{AtomicUsize, ATOMIC_USIZE_INIT};
+use std::sync::atomic::AtomicUsize;
 
-const A: AtomicUsize = ATOMIC_USIZE_INIT;
+const A: AtomicUsize = AtomicUsize::new(0);
 static B: &'static AtomicUsize = &A;
 // error: cannot borrow a constant which may contain interior mutability,
 //        create a static instead
@@ -1141,9 +1145,9 @@ explicitly a single memory location, which can be mutated at will.
 So, in order to solve this error, either use statics which are `Sync`:
 
 ```
-use std::sync::atomic::{AtomicUsize, ATOMIC_USIZE_INIT};
+use std::sync::atomic::AtomicUsize;
 
-static A: AtomicUsize = ATOMIC_USIZE_INIT;
+static A: AtomicUsize = AtomicUsize::new(0);
 static B: &'static AtomicUsize = &A; // ok!
 ```
 
@@ -1203,7 +1207,7 @@ let mut a = &mut i;
 
 Please note that in rust, you can either have many immutable references, or one
 mutable reference. Take a look at
-https://doc.rust-lang.org/stable/book/references-and-borrowing.html for more
+https://doc.rust-lang.org/book/ch04-02-references-and-borrowing.html for more
 information. Example:
 
 
@@ -1370,7 +1374,7 @@ fn foo(a: &mut i32) {
 ```
 
 For more information on the rust ownership system, take a look at
-https://doc.rust-lang.org/stable/book/references-and-borrowing.html.
+https://doc.rust-lang.org/book/ch04-02-references-and-borrowing.html.
 "##,
 
 E0503: r##"
@@ -1426,7 +1430,7 @@ fn main() {
 ```
 
 You can find more information about borrowing in the rust-book:
-http://doc.rust-lang.org/stable/book/references-and-borrowing.html
+http://doc.rust-lang.org/book/ch04-02-references-and-borrowing.html
 "##,
 
 E0504: r##"
@@ -1610,7 +1614,7 @@ fn main() {
 ```
 
 You can find more information about borrowing in the rust-book:
-http://doc.rust-lang.org/stable/book/references-and-borrowing.html
+http://doc.rust-lang.org/book/ch04-02-references-and-borrowing.html
 "##,
 
 E0506: r##"
@@ -1821,7 +1825,7 @@ mem::replace(&mut borrowed.knight, TheDarkKnight).nothing_is_true(); // ok!
 ```
 
 You can find more information about borrowing in the rust-book:
-http://doc.rust-lang.org/book/first-edition/references-and-borrowing.html
+http://doc.rust-lang.org/book/ch04-02-references-and-borrowing.html
 "##,
 
 E0508: r##"
@@ -2115,14 +2119,15 @@ This error occurs because a borrow in a generator persists across a
 yield point.
 
 ```compile_fail,E0626
-# #![feature(generators, generator_trait)]
+# #![feature(generators, generator_trait, pin)]
 # use std::ops::Generator;
+# use std::pin::Pin;
 let mut b = || {
     let a = &String::new(); // <-- This borrow...
     yield (); // ...is still in scope here, when the yield occurs.
     println!("{}", a);
 };
-unsafe { b.resume() };
+Pin::new(&mut b).resume();
 ```
 
 At present, it is not permitted to have a yield that occurs while a
@@ -2133,14 +2138,15 @@ resolve the previous example by removing the borrow and just storing
 the integer by value:
 
 ```
-# #![feature(generators, generator_trait)]
+# #![feature(generators, generator_trait, pin)]
 # use std::ops::Generator;
+# use std::pin::Pin;
 let mut b = || {
     let a = 3;
     yield ();
     println!("{}", a);
 };
-unsafe { b.resume() };
+Pin::new(&mut b).resume();
 ```
 
 This is a very simple case, of course. In more complex cases, we may
@@ -2150,37 +2156,40 @@ in those cases, something like the `Rc` or `Arc` types may be useful.
 This error also frequently arises with iteration:
 
 ```compile_fail,E0626
-# #![feature(generators, generator_trait)]
+# #![feature(generators, generator_trait, pin)]
 # use std::ops::Generator;
+# use std::pin::Pin;
 let mut b = || {
   let v = vec![1,2,3];
   for &x in &v { // <-- borrow of `v` is still in scope...
     yield x; // ...when this yield occurs.
   }
 };
-unsafe { b.resume() };
+Pin::new(&mut b).resume();
 ```
 
 Such cases can sometimes be resolved by iterating "by value" (or using
 `into_iter()`) to avoid borrowing:
 
 ```
-# #![feature(generators, generator_trait)]
+# #![feature(generators, generator_trait, pin)]
 # use std::ops::Generator;
+# use std::pin::Pin;
 let mut b = || {
   let v = vec![1,2,3];
   for x in v { // <-- Take ownership of the values instead!
     yield x; // <-- Now yield is OK.
   }
 };
-unsafe { b.resume() };
+Pin::new(&mut b).resume();
 ```
 
 If taking ownership is not an option, using indices can work too:
 
 ```
-# #![feature(generators, generator_trait)]
+# #![feature(generators, generator_trait, pin)]
 # use std::ops::Generator;
+# use std::pin::Pin;
 let mut b = || {
   let v = vec![1,2,3];
   let len = v.len(); // (*)
@@ -2189,7 +2198,7 @@ let mut b = || {
     yield x; // <-- Now yield is OK.
   }
 };
-unsafe { b.resume() };
+Pin::new(&mut b).resume();
 
 // (*) -- Unfortunately, these temporaries are currently required.
 // See <https://github.com/rust-lang/rust/issues/43122>.
@@ -2334,7 +2343,7 @@ local variable that already exists, and hence no temporary is created.
 Temporaries are not always dropped at the end of the enclosing
 statement. In simple cases where the `&` expression is immediately
 stored into a variable, the compiler will automatically extend
-the lifetime of the temporary until the end of the enclosinb
+the lifetime of the temporary until the end of the enclosing
 block. Therefore, an alternative way to fix the original
 program is to write `let tmp = &foo()` and not `let tmp = foo()`:
 

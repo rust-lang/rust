@@ -171,7 +171,7 @@ pub fn log_enabled() -> Option<PrintFormat> {
     val
 }
 
-/// Print the symbol of the backtrace frame.
+/// Prints the symbol of the backtrace frame.
 ///
 /// These output functions should now be used everywhere to ensure consistency.
 /// You may want to also use `output_fileline`.
@@ -203,7 +203,7 @@ fn output(w: &mut dyn Write, idx: usize, frame: Frame,
     w.write_all(b"\n")
 }
 
-/// Print the filename and line number of the backtrace frame.
+/// Prints the filename and line number of the backtrace frame.
 ///
 /// See also `output`.
 #[allow(dead_code)]

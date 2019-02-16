@@ -1,11 +1,11 @@
 // run-pass
 // ignore-emscripten no threads support
 
-use std::sync::atomic::{AtomicUsize, Ordering, ATOMIC_USIZE_INIT};
+use std::sync::atomic::{AtomicUsize, Ordering};
 use std::panic;
 use std::thread;
 
-static A: AtomicUsize = ATOMIC_USIZE_INIT;
+static A: AtomicUsize = AtomicUsize::new(0);
 
 fn main() {
     panic::set_hook(Box::new(|_| {

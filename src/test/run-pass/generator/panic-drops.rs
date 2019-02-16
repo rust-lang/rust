@@ -6,9 +6,10 @@
 
 use std::ops::Generator;
 use std::panic;
-use std::sync::atomic::{AtomicUsize, ATOMIC_USIZE_INIT, Ordering};
+use std::pin::Pin;
+use std::sync::atomic::{AtomicUsize, Ordering};
 
-static A: AtomicUsize = ATOMIC_USIZE_INIT;
+static A: AtomicUsize = AtomicUsize::new(0);
 
 struct B;
 
@@ -34,7 +35,7 @@ fn main() {
 
     assert_eq!(A.load(Ordering::SeqCst), 0);
     let res = panic::catch_unwind(panic::AssertUnwindSafe(|| {
-        unsafe { foo.resume() }
+        Pin::new(&mut foo).resume()
     }));
     assert!(res.is_err());
     assert_eq!(A.load(Ordering::SeqCst), 1);
@@ -49,7 +50,7 @@ fn main() {
 
     assert_eq!(A.load(Ordering::SeqCst), 1);
     let res = panic::catch_unwind(panic::AssertUnwindSafe(|| {
-        unsafe { foo.resume() }
+        Pin::new(&mut foo).resume()
     }));
     assert!(res.is_err());
     assert_eq!(A.load(Ordering::SeqCst), 1);

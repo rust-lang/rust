@@ -1,17 +1,19 @@
 use super::*;
-use dep_graph::{DepGraph, DepKind, DepNodeIndex};
-use hir::def_id::{LOCAL_CRATE, CrateNum};
-use hir::intravisit::{Visitor, NestedVisitorMap};
+use crate::dep_graph::{DepGraph, DepKind, DepNodeIndex};
+use crate::hir;
+use crate::hir::def_id::{LOCAL_CRATE, CrateNum};
+use crate::hir::intravisit::{Visitor, NestedVisitorMap};
 use rustc_data_structures::svh::Svh;
-use ich::Fingerprint;
-use middle::cstore::CrateStore;
-use session::CrateDisambiguator;
+use crate::ich::Fingerprint;
+use crate::middle::cstore::CrateStore;
+use crate::session::CrateDisambiguator;
+use crate::session::Session;
 use std::iter::repeat;
 use syntax::ast::{NodeId, CRATE_NODE_ID};
 use syntax::source_map::SourceMap;
 use syntax_pos::Span;
 
-use ich::StableHashingContext;
+use crate::ich::StableHashingContext;
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher, StableHasherResult};
 
 /// A Visitor that walks over the HIR and collects Nodes into a HIR map
@@ -26,6 +28,8 @@ pub(super) struct NodeCollector<'a, 'hir> {
     map: Vec<Option<Entry<'hir>>>,
     /// The parent of this node
     parent_node: NodeId,
+
+    parent_hir: hir::HirId,
 
     // These fields keep track of the currently relevant DepNodes during
     // the visitor's traversal.
@@ -44,14 +48,14 @@ pub(super) struct NodeCollector<'a, 'hir> {
     hir_body_nodes: Vec<(DefPathHash, Fingerprint)>,
 }
 
-fn input_dep_node_and_hash<'a, I>(
+fn input_dep_node_and_hash<I>(
     dep_graph: &DepGraph,
-    hcx: &mut StableHashingContext<'a>,
+    hcx: &mut StableHashingContext<'_>,
     dep_node: DepNode,
     input: I,
 ) -> (DepNodeIndex, Fingerprint)
 where
-    I: HashStable<StableHashingContext<'a>>,
+    I: for<'a> HashStable<StableHashingContext<'a>>,
 {
     let dep_node_index = dep_graph.input_task(dep_node, &mut *hcx, &input).1;
 
@@ -66,15 +70,15 @@ where
     (dep_node_index, hash)
 }
 
-fn alloc_hir_dep_nodes<'a, I>(
+fn alloc_hir_dep_nodes<I>(
     dep_graph: &DepGraph,
-    hcx: &mut StableHashingContext<'a>,
+    hcx: &mut StableHashingContext<'_>,
     def_path_hash: DefPathHash,
     item_like: I,
     hir_body_nodes: &mut Vec<(DefPathHash, Fingerprint)>,
 ) -> (DepNodeIndex, DepNodeIndex)
 where
-    I: HashStable<StableHashingContext<'a>>,
+    I: for<'a> HashStable<StableHashingContext<'a>>,
 {
     let sig = dep_graph.input_task(
         def_path_hash.to_dep_node(DepKind::Hir),
@@ -92,11 +96,11 @@ where
 }
 
 impl<'a, 'hir> NodeCollector<'a, 'hir> {
-    pub(super) fn root(krate: &'hir Crate,
+    pub(super) fn root(sess: &'a Session,
+                       krate: &'hir Crate,
                        dep_graph: &'a DepGraph,
                        definitions: &'a definitions::Definitions,
-                       mut hcx: StableHashingContext<'a>,
-                       source_map: &'a SourceMap)
+                       mut hcx: StableHashingContext<'a>)
                 -> NodeCollector<'a, 'hir> {
         let root_mod_def_path_hash = definitions.def_path_hash(CRATE_DEF_INDEX);
 
@@ -119,6 +123,7 @@ impl<'a, 'hir> NodeCollector<'a, 'hir> {
                 trait_impls: _,
                 trait_auto_impl: _,
                 body_ids: _,
+                modules: _,
             } = *krate;
 
             alloc_hir_dep_nodes(
@@ -140,9 +145,10 @@ impl<'a, 'hir> NodeCollector<'a, 'hir> {
 
         let mut collector = NodeCollector {
             krate,
-            source_map,
-            map: vec![],
+            source_map: sess.source_map(),
+            map: repeat(None).take(sess.current_node_id_count()).collect(),
             parent_node: CRATE_NODE_ID,
+            parent_hir: hir::CRATE_HIR_ID,
             current_signature_dep_index: root_mod_sig_dep_index,
             current_full_dep_index: root_mod_full_dep_index,
             current_dep_node_owner: CRATE_DEF_INDEX,
@@ -154,6 +160,7 @@ impl<'a, 'hir> NodeCollector<'a, 'hir> {
         };
         collector.insert_entry(CRATE_NODE_ID, Entry {
             parent: CRATE_NODE_ID,
+            parent_hir: hir::CRATE_HIR_ID,
             dep_node: root_mod_sig_dep_index,
             node: Node::Crate,
         });
@@ -218,16 +225,13 @@ impl<'a, 'hir> NodeCollector<'a, 'hir> {
 
     fn insert_entry(&mut self, id: NodeId, entry: Entry<'hir>) {
         debug!("hir_map: {:?} => {:?}", id, entry);
-        let len = self.map.len();
-        if id.as_usize() >= len {
-            self.map.extend(repeat(None).take(id.as_usize() - len + 1));
-        }
         self.map[id.as_usize()] = Some(entry);
     }
 
     fn insert(&mut self, span: Span, id: NodeId, node: Node<'hir>) {
         let entry = Entry {
             parent: self.parent_node,
+            parent_hir: self.parent_hir,
             dep_node: if self.currently_in_body {
                 self.current_full_dep_index
             } else {
@@ -249,7 +253,7 @@ impl<'a, 'hir> NodeCollector<'a, 'hir> {
                     None => format!("{:?}", node)
                 };
 
-                let forgot_str = if hir_id == ::hir::DUMMY_HIR_ID {
+                let forgot_str = if hir_id == crate::hir::DUMMY_HIR_ID {
                     format!("\nMaybe you forgot to lower the node id {:?}?", id)
                 } else {
                     String::new()
@@ -282,7 +286,7 @@ impl<'a, 'hir> NodeCollector<'a, 'hir> {
         self.parent_node = parent_node;
     }
 
-    fn with_dep_node_owner<T: HashStable<StableHashingContext<'a>>,
+    fn with_dep_node_owner<T: for<'b> HashStable<StableHashingContext<'b>>,
                            F: FnOnce(&mut Self)>(&mut self,
                                                  dep_node_owner: DefIndex,
                                                  item_like: &T,
@@ -428,7 +432,7 @@ impl<'a, 'hir> Visitor<'hir> for NodeCollector<'a, 'hir> {
     }
 
     fn visit_stmt(&mut self, stmt: &'hir Stmt) {
-        let id = stmt.node.id();
+        let id = stmt.id;
         self.insert(stmt.span, id, Node::Stmt(stmt));
 
         self.with_parent(id, |this| {

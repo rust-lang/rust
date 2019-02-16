@@ -13,7 +13,7 @@ use syntax::source_map::{ExpnInfo, MacroAttribute};
 use std::iter;
 
 pub fn expand_test(
-    cx: &mut ExtCtxt,
+    cx: &mut ExtCtxt<'_>,
     attr_sp: Span,
     _meta_item: &ast::MetaItem,
     item: Annotatable,
@@ -22,7 +22,7 @@ pub fn expand_test(
 }
 
 pub fn expand_bench(
-    cx: &mut ExtCtxt,
+    cx: &mut ExtCtxt<'_>,
     attr_sp: Span,
     _meta_item: &ast::MetaItem,
     item: Annotatable,
@@ -31,7 +31,7 @@ pub fn expand_bench(
 }
 
 pub fn expand_test_or_bench(
-    cx: &mut ExtCtxt,
+    cx: &mut ExtCtxt<'_>,
     attr_sp: Span,
     item: Annotatable,
     is_bench: bool
@@ -66,7 +66,10 @@ pub fn expand_test_or_bench(
             call_site: DUMMY_SP,
             def_site: None,
             format: MacroAttribute(Symbol::intern("test")),
-            allow_internal_unstable: true,
+            allow_internal_unstable: Some(vec![
+                Symbol::intern("rustc_attrs"),
+                Symbol::intern("test"),
+            ].into()),
             allow_internal_unsafe: false,
             local_inner_macros: false,
             edition: hygiene::default_edition(),
@@ -124,14 +127,14 @@ pub fn expand_test_or_bench(
         ])
     };
 
-    let mut test_const = cx.item(sp, item.ident.gensym(),
+    let mut test_const = cx.item(sp, ast::Ident::new(item.ident.name.gensymed(), sp),
         vec![
             // #[cfg(test)]
             cx.attribute(attr_sp, cx.meta_list(attr_sp, Symbol::intern("cfg"), vec![
                 cx.meta_list_item_word(attr_sp, Symbol::intern("test"))
             ])),
             // #[rustc_test_marker]
-            cx.attribute(attr_sp, cx.meta_word(attr_sp, Symbol::intern("rustc_test_marker")))
+            cx.attribute(attr_sp, cx.meta_word(attr_sp, Symbol::intern("rustc_test_marker"))),
         ],
         // const $ident: test::TestDescAndFn =
         ast::ItemKind::Const(cx.ty(sp, ast::TyKind::Path(None, test_path("TestDescAndFn"))),
@@ -180,7 +183,7 @@ pub fn expand_test_or_bench(
         ast::ItemKind::ExternCrate(Some(Symbol::intern("test")))
     );
 
-    debug!("Synthetic test item:\n{}\n", pprust::item_to_string(&test_const));
+    log::debug!("Synthetic test item:\n{}\n", pprust::item_to_string(&test_const));
 
     vec![
         // Access to libtest under a gensymed name
@@ -210,24 +213,12 @@ fn should_fail(i: &ast::Item) -> bool {
     attr::contains_name(&i.attrs, "allow_fail")
 }
 
-fn should_panic(cx: &ExtCtxt, i: &ast::Item) -> ShouldPanic {
+fn should_panic(cx: &ExtCtxt<'_>, i: &ast::Item) -> ShouldPanic {
     match attr::find_by_name(&i.attrs, "should_panic") {
         Some(attr) => {
             let ref sd = cx.parse_sess.span_diagnostic;
-            if attr.is_value_str() {
-                sd.struct_span_warn(
-                    attr.span(),
-                    "attribute must be of the form: \
-                     `#[should_panic]` or \
-                     `#[should_panic(expected = \"error message\")]`"
-                ).note("Errors in this attribute were erroneously allowed \
-                        and will become a hard error in a future release.")
-                .emit();
-                return ShouldPanic::Yes(None);
-            }
+
             match attr.meta_item_list() {
-                // Handle #[should_panic]
-                None => ShouldPanic::Yes(None),
                 // Handle #[should_panic(expected = "foo")]
                 Some(list) => {
                     let msg = list.iter()
@@ -247,13 +238,15 @@ fn should_panic(cx: &ExtCtxt, i: &ast::Item) -> ShouldPanic {
                         ShouldPanic::Yes(msg)
                     }
                 },
+                // Handle #[should_panic] and #[should_panic = "expected"]
+                None => ShouldPanic::Yes(attr.value_str())
             }
         }
         None => ShouldPanic::No,
     }
 }
 
-fn has_test_signature(cx: &ExtCtxt, i: &ast::Item) -> bool {
+fn has_test_signature(cx: &ExtCtxt<'_>, i: &ast::Item) -> bool {
     let has_should_panic_attr = attr::contains_name(&i.attrs, "should_panic");
     let ref sd = cx.parse_sess.span_diagnostic;
     if let ast::ItemKind::Fn(ref decl, ref header, ref generics, _) = i.node {
@@ -306,7 +299,7 @@ fn has_test_signature(cx: &ExtCtxt, i: &ast::Item) -> bool {
     }
 }
 
-fn has_bench_signature(cx: &ExtCtxt, i: &ast::Item) -> bool {
+fn has_bench_signature(cx: &ExtCtxt<'_>, i: &ast::Item) -> bool {
     let has_sig = if let ast::ItemKind::Fn(ref decl, _, _, _) = i.node {
         // N.B., inadequate check, but we're running
         // well before resolve, can't get too deep.

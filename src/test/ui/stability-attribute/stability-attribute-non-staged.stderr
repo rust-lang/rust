@@ -1,20 +1,20 @@
 error: stability attributes may not be used outside of the standard library
   --> $DIR/stability-attribute-non-staged.rs:1:1
    |
-LL | #[unstable] //~ ERROR: stability attributes may not be used
-   | ^^^^^^^^^^^
+LL | #[unstable()] //~ ERROR: stability attributes may not be used
+   | ^^^^^^^^^^^^^
 
 error: stability attributes may not be used outside of the standard library
   --> $DIR/stability-attribute-non-staged.rs:2:1
    |
-LL | #[stable] //~ ERROR: stability attributes may not be used
-   | ^^^^^^^^^
+LL | #[stable()] //~ ERROR: stability attributes may not be used
+   | ^^^^^^^^^^^
 
 error: stability attributes may not be used outside of the standard library
   --> $DIR/stability-attribute-non-staged.rs:3:1
    |
-LL | #[rustc_deprecated] //~ ERROR: stability attributes may not be used
-   | ^^^^^^^^^^^^^^^^^^^
+LL | #[rustc_deprecated()] //~ ERROR: stability attributes may not be used
+   | ^^^^^^^^^^^^^^^^^^^^^
 
 error: aborting due to 3 previous errors
 

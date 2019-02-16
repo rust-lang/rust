@@ -1,7 +1,7 @@
 // Decoding metadata from a single crate's metadata
 
-use cstore::{self, CrateMetadata, MetadataBlob, NativeLibrary, ForeignModule};
-use schema::*;
+use crate::cstore::{self, CrateMetadata, MetadataBlob, NativeLibrary, ForeignModule};
+use crate::schema::*;
 
 use rustc_data_structures::sync::{Lrc, ReadGuard};
 use rustc::hir::map::{DefKey, DefPath, DefPathData, DefPathHash, Definitions};
@@ -34,6 +34,7 @@ use syntax::symbol::InternedString;
 use syntax::ext::base::{MacroKind, SyntaxExtension};
 use syntax::ext::hygiene::Mark;
 use syntax_pos::{self, Span, BytePos, Pos, DUMMY_SP, NO_EXPANSION};
+use log::debug;
 
 pub struct DecodeContext<'a, 'tcx: 'a> {
     opaque: opaque::Decoder<'a>,
@@ -418,6 +419,7 @@ impl<'tcx> EntryKind<'tcx> {
             EntryKind::Mod(_) => Def::Mod(did),
             EntryKind::Variant(_) => Def::Variant(did),
             EntryKind::Trait(_) => Def::Trait(did),
+            EntryKind::TraitAlias(_) => Def::TraitAlias(did),
             EntryKind::Enum(..) => Def::Enum(did),
             EntryKind::MacroDef(_) => Def::Macro(did, MacroKind::Bang),
             EntryKind::ForeignType => Def::ForeignTy(did),
@@ -432,7 +434,7 @@ impl<'tcx> EntryKind<'tcx> {
     }
 }
 
-/// Create the "fake" DefPathTable for a given proc macro crate.
+/// Creates the "fake" DefPathTable for a given proc macro crate.
 ///
 /// The DefPathTable is as follows:
 ///
@@ -520,22 +522,31 @@ impl<'a, 'tcx> CrateMetadata {
     }
 
     pub fn get_trait_def(&self, item_id: DefIndex, sess: &Session) -> ty::TraitDef {
-        let data = match self.entry(item_id).kind {
-            EntryKind::Trait(data) => data.decode((self, sess)),
-            _ => bug!(),
-        };
-
-        ty::TraitDef::new(self.local_def_id(item_id),
-                          data.unsafety,
-                          data.paren_sugar,
-                          data.has_auto_impl,
-                          data.is_marker,
-                          self.def_path_table.def_path_hash(item_id))
+        match self.entry(item_id).kind {
+            EntryKind::Trait(data) => {
+                let data = data.decode((self, sess));
+                ty::TraitDef::new(self.local_def_id(item_id),
+                                  data.unsafety,
+                                  data.paren_sugar,
+                                  data.has_auto_impl,
+                                  data.is_marker,
+                                  self.def_path_table.def_path_hash(item_id))
+            },
+            EntryKind::TraitAlias(_) => {
+                ty::TraitDef::new(self.local_def_id(item_id),
+                                  hir::Unsafety::Normal,
+                                  false,
+                                  false,
+                                  false,
+                                  self.def_path_table.def_path_hash(item_id))
+            },
+            _ => bug!("def-index does not refer to trait or trait alias"),
+        }
     }
 
     fn get_variant(&self,
                    tcx: TyCtxt<'a, 'tcx, 'tcx>,
-                   item: &Entry,
+                   item: &Entry<'_>,
                    index: DefIndex,
                    adt_kind: ty::AdtKind)
                    -> ty::VariantDef
@@ -615,10 +626,13 @@ impl<'a, 'tcx> CrateMetadata {
                                 item_id: DefIndex,
                                 tcx: TyCtxt<'a, 'tcx, 'tcx>)
                                 -> ty::GenericPredicates<'tcx> {
-        match self.entry(item_id).kind {
-            EntryKind::Trait(data) => data.decode(self).super_predicates.decode((self, tcx)),
-            _ => bug!(),
-        }
+        let super_predicates = match self.entry(item_id).kind {
+            EntryKind::Trait(data) => data.decode(self).super_predicates,
+            EntryKind::TraitAlias(data) => data.decode(self).super_predicates,
+            _ => bug!("def-index does not refer to trait or trait alias"),
+        };
+
+        super_predicates.decode((self, tcx))
     }
 
     pub fn get_generics(&self,
@@ -880,6 +894,9 @@ impl<'a, 'tcx> CrateMetadata {
             EntryKind::AssociatedType(container) => {
                 (ty::AssociatedKind::Type, container, false)
             }
+            EntryKind::AssociatedExistential(container) => {
+                (ty::AssociatedKind::Existential, container, false)
+            }
             _ => bug!("cannot get associated-item of `{:?}`", def_key)
         };
 
@@ -1014,7 +1031,8 @@ impl<'a, 'tcx> CrateMetadata {
         }
         def_key.parent.and_then(|parent_index| {
             match self.entry(parent_index).kind {
-                EntryKind::Trait(_) => Some(self.local_def_id(parent_index)),
+                EntryKind::Trait(_) |
+                EntryKind::TraitAlias(_) => Some(self.local_def_id(parent_index)),
                 _ => None,
             }
         })

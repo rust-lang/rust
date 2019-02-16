@@ -1,6 +1,6 @@
 use rustc_data_structures::sync::Lrc;
-use infer::canonical::{Canonical, QueryResponse};
-use ty::Ty;
+use crate::infer::canonical::{Canonical, QueryResponse};
+use crate::ty::Ty;
 
 #[derive(Debug)]
 pub struct CandidateStep<'tcx> {

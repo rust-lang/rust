@@ -8,7 +8,7 @@ error[E0425]: cannot find value `fob` in this scope
   --> $DIR/typo-suggestion.rs:8:26
    |
 LL |     println!("Hello {}", fob); //~ ERROR cannot find value
-   |                          ^^^ did you mean `foo`?
+   |                          ^^^ help: a local variable with a similar name exists: `foo`
 
 error: aborting due to 2 previous errors
 

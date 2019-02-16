@@ -1,11 +1,86 @@
 //! The `ObligationForest` is a utility data structure used in trait
-//! matching to track the set of outstanding obligations (those not
-//! yet resolved to success or error). It also tracks the "backtrace"
-//! of each pending obligation (why we are trying to figure this out
-//! in the first place). See README.md for a general overview of how
-//! to use this class.
+//! matching to track the set of outstanding obligations (those not yet
+//! resolved to success or error). It also tracks the "backtrace" of each
+//! pending obligation (why we are trying to figure this out in the first
+//! place).
+//!
+//! ### External view
+//!
+//! `ObligationForest` supports two main public operations (there are a
+//! few others not discussed here):
+//!
+//! 1. Add a new root obligations (`push_tree`).
+//! 2. Process the pending obligations (`process_obligations`).
+//!
+//! When a new obligation `N` is added, it becomes the root of an
+//! obligation tree. This tree can also carry some per-tree state `T`,
+//! which is given at the same time. This tree is a singleton to start, so
+//! `N` is both the root and the only leaf. Each time the
+//! `process_obligations` method is called, it will invoke its callback
+//! with every pending obligation (so that will include `N`, the first
+//! time). The callback also receives a (mutable) reference to the
+//! per-tree state `T`. The callback should process the obligation `O`
+//! that it is given and return one of three results:
+//!
+//! - `Ok(None)` -> ambiguous result. Obligation was neither a success
+//!   nor a failure. It is assumed that further attempts to process the
+//!   obligation will yield the same result unless something in the
+//!   surrounding environment changes.
+//! - `Ok(Some(C))` - the obligation was *shallowly successful*. The
+//!   vector `C` is a list of subobligations. The meaning of this is that
+//!   `O` was successful on the assumption that all the obligations in `C`
+//!   are also successful. Therefore, `O` is only considered a "true"
+//!   success if `C` is empty. Otherwise, `O` is put into a suspended
+//!   state and the obligations in `C` become the new pending
+//!   obligations. They will be processed the next time you call
+//!   `process_obligations`.
+//! - `Err(E)` -> obligation failed with error `E`. We will collect this
+//!   error and return it from `process_obligations`, along with the
+//!   "backtrace" of obligations (that is, the list of obligations up to
+//!   and including the root of the failed obligation). No further
+//!   obligations from that same tree will be processed, since the tree is
+//!   now considered to be in error.
+//!
+//! When the call to `process_obligations` completes, you get back an `Outcome`,
+//! which includes three bits of information:
+//!
+//! - `completed`: a list of obligations where processing was fully
+//!   completed without error (meaning that all transitive subobligations
+//!   have also been completed). So, for example, if the callback from
+//!   `process_obligations` returns `Ok(Some(C))` for some obligation `O`,
+//!   then `O` will be considered completed right away if `C` is the
+//!   empty vector. Otherwise it will only be considered completed once
+//!   all the obligations in `C` have been found completed.
+//! - `errors`: a list of errors that occurred and associated backtraces
+//!   at the time of error, which can be used to give context to the user.
+//! - `stalled`: if true, then none of the existing obligations were
+//!   *shallowly successful* (that is, no callback returned `Ok(Some(_))`).
+//!   This implies that all obligations were either errors or returned an
+//!   ambiguous result, which means that any further calls to
+//!   `process_obligations` would simply yield back further ambiguous
+//!   results. This is used by the `FulfillmentContext` to decide when it
+//!   has reached a steady state.
+//!
+//! #### Snapshots
+//!
+//! The `ObligationForest` supports a limited form of snapshots; see
+//! `start_snapshot`, `commit_snapshot`, and `rollback_snapshot`. In
+//! particular, you can use a snapshot to roll back new root
+//! obligations. However, it is an error to attempt to
+//! `process_obligations` during a snapshot.
+//!
+//! ### Implementation details
+//!
+//! For the most part, comments specific to the implementation are in the
+//! code. This file only contains a very high-level overview. Basically,
+//! the forest is stored in a vector. Each element of the vector is a node
+//! in some tree. Each node in the vector has the index of an (optional)
+//! parent and (for convenience) its root (which may be itself). It also
+//! has a current state, described by `NodeState`. After each
+//! processing step, we compress the vector to remove completed and error
+//! nodes, which aren't needed anymore.
 
-use fx::{FxHashMap, FxHashSet};
+use crate::fx::{FxHashMap, FxHashSet};
 
 use std::cell::Cell;
 use std::collections::hash_map::Entry;
@@ -88,7 +163,7 @@ pub struct ObligationForest<O: ForestObligation> {
 
     obligation_tree_id_generator: ObligationTreeIdGenerator,
 
-    /// Per tree error cache.  This is used to deduplicate errors,
+    /// Per tree error cache. This is used to deduplicate errors,
     /// which is necessary to avoid trait resolution overflow in
     /// some cases.
     ///
@@ -193,13 +268,13 @@ impl<O: ForestObligation> ObligationForest<O> {
         }
     }
 
-    /// Return the total number of nodes in the forest that have not
+    /// Returns the total number of nodes in the forest that have not
     /// yet been fully resolved.
     pub fn len(&self) -> usize {
         self.nodes.len()
     }
 
-    /// Registers an obligation
+    /// Registers an obligation.
     ///
     /// This CAN be done in a snapshot
     pub fn register_obligation(&mut self, obligation: O) {
@@ -266,7 +341,7 @@ impl<O: ForestObligation> ObligationForest<O> {
         }
     }
 
-    /// Convert all remaining obligations to the given error.
+    /// Converts all remaining obligations to the given error.
     ///
     /// This cannot be done during a snapshot.
     pub fn to_errors<E: Clone>(&mut self, error: E) -> Vec<Error<O, E>> {
@@ -305,10 +380,10 @@ impl<O: ForestObligation> ObligationForest<O> {
             .insert(node.obligation.as_predicate().clone());
     }
 
-    /// Perform a pass through the obligation list. This must
+    /// Performs a pass through the obligation list. This must
     /// be called in a loop until `outcome.stalled` is false.
     ///
-    /// This CANNOT be unrolled (presently, at least).
+    /// This _cannot_ be unrolled (presently, at least).
     pub fn process_obligations<P>(&mut self, processor: &mut P, do_completed: DoCompleted)
                                   -> Outcome<O, P::Error>
         where P: ObligationProcessor<Obligation=O>
@@ -386,7 +461,7 @@ impl<O: ForestObligation> ObligationForest<O> {
         }
     }
 
-    /// Mark all NodeState::Success nodes as NodeState::Done and
+    /// Mark all `NodeState::Success` nodes as `NodeState::Done` and
     /// report all cycles between them. This should be called
     /// after `mark_as_waiting` marks all nodes with pending
     /// subobligations as NodeState::Waiting.
@@ -491,7 +566,7 @@ impl<O: ForestObligation> ObligationForest<O> {
         }
     }
 
-    /// Marks all nodes that depend on a pending node as NodeState::Waiting.
+    /// Marks all nodes that depend on a pending node as `NodeState::Waiting`.
     fn mark_as_waiting(&self) {
         for node in &self.nodes {
             if node.state.get() == NodeState::Waiting {
@@ -658,7 +733,7 @@ impl<O> Node<O> {
 
 // I need a Clone closure
 #[derive(Clone)]
-struct GetObligation<'a, O: 'a>(&'a [Node<O>]);
+struct GetObligation<'a, O>(&'a [Node<O>]);
 
 impl<'a, 'b, O> FnOnce<(&'b usize,)> for GetObligation<'a, O> {
     type Output = &'a O;

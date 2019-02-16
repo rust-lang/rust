@@ -1,6 +1,6 @@
-use hir::def::Def;
-use hir::def_id::DefId;
-use hir::{self, HirId, PatKind};
+use crate::hir::def::Def;
+use crate::hir::def_id::DefId;
+use crate::hir::{self, HirId, PatKind};
 use syntax::ast;
 use syntax_pos::Span;
 
@@ -83,7 +83,7 @@ impl hir::Pat {
         where F: FnMut(hir::BindingAnnotation, HirId, Span, ast::Ident),
     {
         self.walk(|p| {
-            if let PatKind::Binding(binding_mode, _, ident, _) = p.node {
+            if let PatKind::Binding(binding_mode, _, _, ident, _) = p.node {
                 f(binding_mode, p.hir_id, p.span, ident);
             }
             true
@@ -123,13 +123,13 @@ impl hir::Pat {
 
     pub fn simple_ident(&self) -> Option<ast::Ident> {
         match self.node {
-            PatKind::Binding(hir::BindingAnnotation::Unannotated, _, ident, None) |
-            PatKind::Binding(hir::BindingAnnotation::Mutable, _, ident, None) => Some(ident),
+            PatKind::Binding(hir::BindingAnnotation::Unannotated, _, _, ident, None) |
+            PatKind::Binding(hir::BindingAnnotation::Mutable, _, _, ident, None) => Some(ident),
             _ => None,
         }
     }
 
-    /// Return variants that are necessary to exist for the pattern to match.
+    /// Returns variants that are necessary to exist for the pattern to match.
     pub fn necessary_variants(&self) -> Vec<DefId> {
         let mut variants = vec![];
         self.walk(|p| {
@@ -154,11 +154,9 @@ impl hir::Pat {
 
     /// Checks if the pattern contains any `ref` or `ref mut` bindings, and if
     /// yes whether it contains mutable or just immutables ones.
-    ///
-    /// FIXME(tschottdorf): this is problematic as the HIR is being scraped, but
-    /// ref bindings are be implicit after #42640 (default match binding modes).
-    ///
-    /// See #44848.
+    //
+    // FIXME(tschottdorf): this is problematic as the HIR is being scraped, but
+    // ref bindings are be implicit after #42640 (default match binding modes). See issue #44848.
     pub fn contains_explicit_ref_binding(&self) -> Option<hir::Mutability> {
         let mut result = None;
         self.each_binding(|annotation, _, _, _| {

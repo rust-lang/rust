@@ -60,9 +60,11 @@ impl<'a, 'tcx, 'rcx> LibEmbargoVisitor<'a, 'tcx, 'rcx> {
         }
 
         for item in self.cx.tcx.item_children(def_id).iter() {
-            if self.cx.tcx.def_key(item.def.def_id()).parent.map_or(false, |d| d == def_id.index) ||
-                item.vis == Visibility::Public {
-                self.visit_item(item.def);
+            if let Some(def_id) = item.def.opt_def_id() {
+                if self.cx.tcx.def_key(def_id).parent.map_or(false, |d| d == def_id.index) ||
+                    item.vis == Visibility::Public {
+                    self.visit_item(item.def);
+                }
             }
         }
     }

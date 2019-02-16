@@ -1,12 +1,12 @@
-use abi::call::{FnType, ArgType, Reg, RegKind, Uniform};
-use abi::{HasDataLayout, LayoutOf, TyLayout, TyLayoutMethods};
+use crate::abi::call::{FnType, ArgType, Reg, RegKind, Uniform};
+use crate::abi::{HasDataLayout, LayoutOf, TyLayout, TyLayoutMethods};
 
 fn is_homogeneous_aggregate<'a, Ty, C>(cx: &C, arg: &mut ArgType<'a, Ty>)
                                      -> Option<Uniform>
     where Ty: TyLayoutMethods<'a, C> + Copy,
           C: LayoutOf<Ty = Ty, TyLayout = TyLayout<'a, Ty>> + HasDataLayout
 {
-    arg.layout.homogeneous_aggregate(cx).and_then(|unit| {
+    arg.layout.homogeneous_aggregate(cx).unit().and_then(|unit| {
         let size = arg.layout.size;
 
         // Ensure we have at most four uniquely addressable members.

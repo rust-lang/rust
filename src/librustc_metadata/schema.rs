@@ -1,4 +1,4 @@
-use index;
+use crate::index;
 
 use rustc::hir;
 use rustc::hir::def::{self, CtorKind};
@@ -316,6 +316,7 @@ pub enum EntryKind<'tcx> {
     AssociatedType(AssociatedContainer),
     AssociatedExistential(AssociatedContainer),
     AssociatedConst(AssociatedContainer, ConstQualif, Lazy<RenderedConst>),
+    TraitAlias(Lazy<TraitAliasData<'tcx>>),
 }
 
 impl<'a, 'gcx> HashStable<StableHashingContext<'a>> for EntryKind<'gcx> {
@@ -369,6 +370,9 @@ impl<'a, 'gcx> HashStable<StableHashingContext<'a>> for EntryKind<'gcx> {
             }
             EntryKind::Trait(ref trait_data) => {
                 trait_data.hash_stable(hcx, hasher);
+            }
+            EntryKind::TraitAlias(ref trait_alias_data) => {
+                trait_alias_data.hash_stable(hcx, hasher);
             }
             EntryKind::Impl(ref impl_data) => {
                 impl_data.hash_stable(hcx, hasher);
@@ -475,6 +479,15 @@ impl_stable_hash_for!(struct TraitData<'tcx> {
 });
 
 #[derive(RustcEncodable, RustcDecodable)]
+pub struct TraitAliasData<'tcx> {
+    pub super_predicates: Lazy<ty::GenericPredicates<'tcx>>,
+}
+
+impl_stable_hash_for!(struct TraitAliasData<'tcx> {
+    super_predicates
+});
+
+#[derive(RustcEncodable, RustcDecodable)]
 pub struct ImplData<'tcx> {
     pub polarity: hir::ImplPolarity,
     pub defaultness: hir::Defaultness,
@@ -505,7 +518,7 @@ pub enum AssociatedContainer {
     ImplFinal,
 }
 
-impl_stable_hash_for!(enum ::schema::AssociatedContainer {
+impl_stable_hash_for!(enum crate::schema::AssociatedContainer {
     TraitRequired,
     TraitWithDefault,
     ImplDefault,

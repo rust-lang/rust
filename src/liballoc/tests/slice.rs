@@ -1,14 +1,15 @@
+#![cfg(not(miri))]
+
 use std::cell::Cell;
-use std::cmp::Ordering::{Equal, Greater, Less};
-use std::cmp::Ordering;
+use std::cmp::Ordering::{self, Equal, Greater, Less};
 use std::mem;
 use std::panic;
 use std::rc::Rc;
-use std::sync::atomic::Ordering::Relaxed;
-use std::sync::atomic::{ATOMIC_USIZE_INIT, AtomicUsize};
+use std::sync::atomic::{Ordering::Relaxed, AtomicUsize};
 use std::thread;
 
-use rand::{Rng, RngCore, thread_rng, seq::SliceRandom};
+use rand::{Rng, RngCore, thread_rng};
+use rand::seq::SliceRandom;
 use rand::distributions::Standard;
 
 fn square(n: usize) -> usize {
@@ -476,7 +477,7 @@ fn test_sort_stability() {
             // the second item represents which occurrence of that
             // number this element is, i.e., the second elements
             // will occur in sorted order.
-            let mut orig: Vec<_> = (0..len)
+            let orig: Vec<_> = (0..len)
                 .map(|_| {
                     let n = thread_rng().gen::<usize>() % 10;
                     counts[n] += 1;
@@ -1500,7 +1501,7 @@ static DROP_COUNTS: [AtomicUsize; MAX_LEN] = [
     AtomicUsize::new(0), AtomicUsize::new(0), AtomicUsize::new(0), AtomicUsize::new(0),
 ];
 
-static VERSIONS: AtomicUsize = ATOMIC_USIZE_INIT;
+static VERSIONS: AtomicUsize = AtomicUsize::new(0);
 
 #[derive(Clone, Eq)]
 struct DropCounter {

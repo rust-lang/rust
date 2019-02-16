@@ -10,6 +10,11 @@ note: ...which requires computing the supertraits of `T2`...
 LL | trait T2 : T1 {
    |            ^^
    = note: ...which again requires computing the supertraits of `T1`, completing the cycle
+note: cycle used when collecting item types in top-level module
+  --> $DIR/issue-12511.rs:1:1
+   |
+LL | trait T1 : T2 {
+   | ^^^^^^^^^^^^^
 
 error: aborting due to previous error
 

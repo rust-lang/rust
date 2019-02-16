@@ -1,4 +1,4 @@
-#![feature(const_fn, const_let)]
+#![feature(const_fn)]
 
 const X : usize = 2;
 

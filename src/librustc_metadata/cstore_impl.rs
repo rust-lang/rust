@@ -1,9 +1,9 @@
-use cstore::{self, LoadedMacro};
-use encoder;
-use link_args;
-use native_libs;
-use foreign_modules;
-use schema;
+use crate::cstore::{self, LoadedMacro};
+use crate::encoder;
+use crate::link_args;
+use crate::native_libs;
+use crate::foreign_modules;
+use crate::schema;
 
 use rustc::ty::query::QueryConfig;
 use rustc::middle::cstore::{CrateStore, DepKind,
@@ -29,6 +29,7 @@ use syntax::attr;
 use syntax::source_map;
 use syntax::edition::Edition;
 use syntax::parse::source_file_to_stream;
+use syntax::parse::parser::emit_unclosed_delims;
 use syntax::symbol::Symbol;
 use syntax_pos::{Span, NO_EXPANSION, FileName};
 use rustc_data_structures::bit_set::BitSet;
@@ -51,7 +52,7 @@ macro_rules! provide {
                     index: CRATE_DEF_INDEX
                 });
                 let dep_node = def_path_hash
-                    .to_dep_node(::rustc::dep_graph::DepKind::CrateMetadata);
+                    .to_dep_node(rustc::dep_graph::DepKind::CrateMetadata);
                 // The DepNodeIndex of the DepNode::CrateMetadata should be
                 // cached somewhere, so that we can use read_index().
                 $tcx.dep_graph.read(dep_node);
@@ -421,10 +422,12 @@ impl cstore::CStore {
             use syntax::ext::base::SyntaxExtension;
             use syntax_ext::proc_macro_impl::BangProcMacro;
 
-            let client = ::proc_macro::bridge::client::Client::expand1(::proc_macro::quote);
+            let client = proc_macro::bridge::client::Client::expand1(proc_macro::quote);
             let ext = SyntaxExtension::ProcMacro {
                 expander: Box::new(BangProcMacro { client }),
-                allow_internal_unstable: true,
+                allow_internal_unstable: Some(vec![
+                    Symbol::intern("proc_macro_def_site"),
+                ].into()),
                 edition: data.root.edition,
             };
             return LoadedMacro::ProcMacro(Lrc::new(ext));
@@ -436,7 +439,8 @@ impl cstore::CStore {
 
         let source_file = sess.parse_sess.source_map().new_source_file(source_name, def.body);
         let local_span = Span::new(source_file.start_pos, source_file.end_pos, NO_EXPANSION);
-        let body = source_file_to_stream(&sess.parse_sess, source_file, None);
+        let (body, errors) = source_file_to_stream(&sess.parse_sess, source_file, None);
+        emit_unclosed_delims(&errors, &sess.diagnostic());
 
         // Mark the attrs as used
         let attrs = data.get_item_attrs(id.index, sess);

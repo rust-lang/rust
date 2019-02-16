@@ -6,7 +6,7 @@
 
 use rustc::ty::{self, Ty, TyCtxt};
 use rustc::mir::*;
-use transform::{MirPass, MirSource};
+use crate::transform::{MirPass, MirSource};
 
 pub struct AddRetag;
 
@@ -77,7 +77,7 @@ fn may_have_reference<'a, 'gcx, 'tcx>(ty: Ty<'tcx>, tcx: TyCtxt<'a, 'gcx, 'tcx>)
 impl MirPass for AddRetag {
     fn run_pass<'a, 'tcx>(&self,
                           tcx: TyCtxt<'a, 'tcx, 'tcx>,
-                          _src: MirSource,
+                          _src: MirSource<'tcx>,
                           mir: &mut Mir<'tcx>)
     {
         if !tcx.sess.opts.debugging_opts.mir_emit_retag {

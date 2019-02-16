@@ -1,12 +1,12 @@
-error[E0308]: mismatched types
+error: implementation of `Foo` is not general enough
   --> $DIR/hrtb-perfect-forwarding.rs:46:5
    |
-LL |     foo_hrtb_bar_not(&mut t); //~ ERROR E0308
-   |     ^^^^^^^^^^^^^^^^ one type is more general than the other
+LL |     foo_hrtb_bar_not(&mut t); //~ ERROR not general enough
+   |     ^^^^^^^^^^^^^^^^
    |
-   = note: expected type `Foo<&'a isize>`
-              found type `Foo<&isize>`
+   = note: Due to a where-clause on `foo_hrtb_bar_not`,
+   = note: `&mut T` must implement `Foo<&'0 isize>`, for any lifetime `'0`
+   = note: but `&mut T` actually implements `Foo<&'1 isize>`, for some specific lifetime `'1`
 
 error: aborting due to previous error
 
-For more information about this error, try `rustc --explain E0308`.

@@ -84,12 +84,6 @@ pre {
 	border-bottom-color: #ddd;
 }
 
-:target { background: #FDFFD3; }
-
-:target > .in-band {
-	background: #FDFFD3;
-}
-
 .content .method .where,
 .content .fn .where,
 .content .where.fmt-newline {
@@ -102,6 +96,7 @@ pre {
 }
 .content .highlighted a, .content .highlighted span { color: #000 !important; }
 .content .highlighted.trait { background-color: #c7b6ff; }
+.content .highlighted.traitalias { background-color: #c7b6ff; }
 .content .highlighted.mod,
 .content .highlighted.externcrate { background-color: #afc6e4; }
 .content .highlighted.enum { background-color: #b4d1b9; }
@@ -134,6 +129,7 @@ pre {
 .content span.externcrate,
 .content span.mod, .content a.mod, .block a.current.mod { color: #4d76ae; }
 .content span.trait, .content a.trait, .block a.current.trait { color: #7c5af3; }
+.content span.traitalias, .content a.traitalias, .block a.current.traitalias { color: #6841f1; }
 .content span.fn, .content a.fn, .block a.current.fn,
 .content span.method, .content a.method, .block a.current.method,
 .content span.tymethod, .content a.tymethod, .block a.current.tymethod,
@@ -247,7 +243,7 @@ a.test-arrow:hover{
 	color: #999;
 }
 
-:target > code {
+:target > code, :target > .in-band {
 	background: #FDFFD3;
 }
 
@@ -409,10 +405,6 @@ kbd {
 }
 .search-results td span.grey {
 	color: #999;
-}
-
-.impl-items code {
-	background-color: rgba(0, 0, 0, 0);
 }
 
 #sidebar-toggle {

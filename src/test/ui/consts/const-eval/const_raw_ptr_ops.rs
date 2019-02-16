@@ -3,13 +3,13 @@
 fn main() {}
 
 // unconst and bad, will thus error in miri
-const X: bool = &1 as *const i32 == &2 as *const i32; //~ ERROR any use of this value will cause
+const X: bool = unsafe { &1 as *const i32 == &2 as *const i32 }; //~ ERROR any use of this
 // unconst and fine
-const X2: bool = 42 as *const i32 == 43 as *const i32;
+const X2: bool = unsafe { 42 as *const i32 == 43 as *const i32 };
 // unconst and fine
-const Y: usize = 42usize as *const i32 as usize + 1;
+const Y: usize = unsafe { 42usize as *const i32 as usize + 1 };
 // unconst and bad, will thus error in miri
-const Y2: usize = &1 as *const i32 as usize + 1; //~ ERROR any use of this value will cause
+const Y2: usize = unsafe { &1 as *const i32 as usize + 1 }; //~ ERROR any use of this
 // unconst and fine
 const Z: i32 = unsafe { *(&1 as *const i32) };
 // unconst and bad, will thus error in miri

@@ -1,7 +1,7 @@
 //! This module contains `HashStable` implementations for various data types
 //! from libsyntax in no particular order.
 
-use ich::StableHashingContext;
+use crate::ich::StableHashingContext;
 
 use std::hash as std_hash;
 use std::mem;
@@ -13,7 +13,7 @@ use syntax::symbol::{InternedString, LocalInternedString};
 use syntax::tokenstream;
 use syntax_pos::SourceFile;
 
-use hir::def_id::{DefId, CrateNum, CRATE_DEF_INDEX};
+use crate::hir::def_id::{DefId, CrateNum, CRATE_DEF_INDEX};
 
 use smallvec::SmallVec;
 use rustc_data_structures::stable_hasher::{HashStable, ToStableHashKey,
@@ -147,7 +147,7 @@ for ::syntax::attr::StabilityLevel {
     }
 }
 
-impl_stable_hash_for!(struct ::syntax::attr::RustcDeprecation { since, reason });
+impl_stable_hash_for!(struct ::syntax::attr::RustcDeprecation { since, reason, suggestion });
 
 
 impl_stable_hash_for!(enum ::syntax::attr::IntType {
@@ -164,6 +164,7 @@ impl_stable_hash_for!(enum ::syntax::ast::LitIntType {
 impl_stable_hash_for_spanned!(::syntax::ast::LitKind);
 impl_stable_hash_for!(enum ::syntax::ast::LitKind {
     Str(value, style),
+    Err(value),
     ByteStr(value),
     Byte(value),
     Char(value),
@@ -258,7 +259,7 @@ for tokenstream::TokenTree {
             tokenstream::TokenTree::Delimited(span, delim, ref tts) => {
                 span.hash_stable(hcx, hasher);
                 std_hash::Hash::hash(&delim, hasher);
-                for sub_tt in tts.stream().trees() {
+                for sub_tt in tts.trees() {
                     sub_tt.hash_stable(hcx, hasher);
                 }
             }
@@ -329,6 +330,7 @@ fn hash_token<'a, 'gcx, W: StableHasherResult>(
             match *lit {
                 token::Lit::Byte(val) |
                 token::Lit::Char(val) |
+                token::Lit::Err(val) |
                 token::Lit::Integer(val) |
                 token::Lit::Float(val) |
                 token::Lit::Str_(val) |

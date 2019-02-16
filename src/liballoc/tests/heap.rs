@@ -1,6 +1,8 @@
+#![cfg(not(miri))]
+
 use std::alloc::{Global, Alloc, Layout, System};
 
-/// https://github.com/rust-lang/rust/issues/45955
+/// Issue #45955.
 #[test]
 fn alloc_system_overaligned_request() {
     check_overalign_requests(System)

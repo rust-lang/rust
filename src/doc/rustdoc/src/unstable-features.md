@@ -1,9 +1,8 @@
 # Unstable features
 
 Rustdoc is under active development, and like the Rust compiler, some features are only available
-on the nightly releases. Some of these are new and need some more testing before they're able to get
-released to the world at large, and some of them are tied to features in the Rust compiler that are
-themselves unstable. Several features here require a matching `#![feature(...)]` attribute to
+on nightly releases. Some of these features are new and need some more testing before they're able to be
+released to the world at large, and some of them are tied to features in the Rust compiler that are unstable. Several features here require a matching `#![feature(...)]` attribute to
 enable, and thus are more fully documented in the [Unstable Book]. Those sections will link over
 there as necessary.
 
@@ -417,3 +416,15 @@ JavaScript, and font files in a single location, rather than duplicating it once
 (grouping of crate docs generated into the same output directory, like with `cargo doc`). Per-crate
 files like the search index will still load from the documentation root, but anything that gets
 renamed with `--resource-suffix` will load from the given path.
+
+### `--persist-doctests`: persist doctest executables after running
+
+Using this flag looks like this:
+
+```bash
+$ rustdoc src/lib.rs --test -Z unstable-options --persist-doctests target/rustdoctest
+```
+
+This flag allows you to keep doctest executables around after they're compiled or run.
+Usually, rustdoc will immediately discard a compiled doctest after it's been tested, but
+with this option, you can keep those binaries around for farther testing.

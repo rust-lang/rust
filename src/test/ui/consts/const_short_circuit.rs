@@ -1,4 +1,4 @@
-#![feature(underscore_const_names, const_let)]
+#![feature(underscore_const_names)]
 
 const _: bool = false && false;
 const _: bool = true && false;

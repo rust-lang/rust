@@ -5,7 +5,7 @@ use std::ffi::CString;
 use rustc::hir::{CodegenFnAttrFlags, CodegenFnAttrs};
 use rustc::hir::def_id::{DefId, LOCAL_CRATE};
 use rustc::session::Session;
-use rustc::session::config::Sanitizer;
+use rustc::session::config::{Sanitizer, OptLevel};
 use rustc::ty::{self, TyCtxt, PolyFnSig};
 use rustc::ty::layout::HasTyCtxt;
 use rustc::ty::query::Providers;
@@ -20,7 +20,7 @@ use attributes;
 use llvm::{self, Attribute};
 use llvm::AttributePlace::Function;
 use llvm_util;
-pub use syntax::attr::{self, InlineAttr};
+pub use syntax::attr::{self, InlineAttr, OptimizeAttr};
 
 use context::CodegenCx;
 use value::Value;
@@ -55,13 +55,6 @@ pub fn emit_uwtable(val: &'ll Value, emit: bool) {
 #[inline]
 fn unwind(val: &'ll Value, can_unwind: bool) {
     Attribute::NoUnwind.toggle_llfn(Function, val, !can_unwind);
-}
-
-/// Tell LLVM whether it should optimize function for size.
-#[inline]
-#[allow(dead_code)] // possibly useful function
-pub fn set_optimize_for_size(val: &'ll Value, optimize: bool) {
-    Attribute::OptimizeForSize.toggle_llfn(Function, val, optimize);
 }
 
 /// Tell LLVM if this function should be 'naked', i.e., skip the epilogue and prologue.
@@ -151,6 +144,28 @@ pub fn non_lazy_bind(sess: &Session, llfn: &'ll Value) {
     }
 }
 
+pub(crate) fn default_optimisation_attrs(sess: &Session, llfn: &'ll Value) {
+    match sess.opts.optimize {
+        OptLevel::Size => {
+            llvm::Attribute::MinSize.unapply_llfn(Function, llfn);
+            llvm::Attribute::OptimizeForSize.apply_llfn(Function, llfn);
+            llvm::Attribute::OptimizeNone.unapply_llfn(Function, llfn);
+        },
+        OptLevel::SizeMin => {
+            llvm::Attribute::MinSize.apply_llfn(Function, llfn);
+            llvm::Attribute::OptimizeForSize.apply_llfn(Function, llfn);
+            llvm::Attribute::OptimizeNone.unapply_llfn(Function, llfn);
+        }
+        OptLevel::No => {
+            llvm::Attribute::MinSize.unapply_llfn(Function, llfn);
+            llvm::Attribute::OptimizeForSize.unapply_llfn(Function, llfn);
+            llvm::Attribute::OptimizeNone.unapply_llfn(Function, llfn);
+        }
+        _ => {}
+    }
+}
+
+
 /// Composite function which sets LLVM attributes for function depending on its AST (`#[attribute]`)
 /// attributes.
 pub fn from_fn_attrs(
@@ -161,6 +176,22 @@ pub fn from_fn_attrs(
 ) {
     let codegen_fn_attrs = id.map(|id| cx.tcx.codegen_fn_attrs(id))
         .unwrap_or_else(|| CodegenFnAttrs::new());
+
+    match codegen_fn_attrs.optimize {
+        OptimizeAttr::None => {
+            default_optimisation_attrs(cx.tcx.sess, llfn);
+        }
+        OptimizeAttr::Speed => {
+            llvm::Attribute::MinSize.unapply_llfn(Function, llfn);
+            llvm::Attribute::OptimizeForSize.unapply_llfn(Function, llfn);
+            llvm::Attribute::OptimizeNone.unapply_llfn(Function, llfn);
+        }
+        OptimizeAttr::Size => {
+            llvm::Attribute::MinSize.apply_llfn(Function, llfn);
+            llvm::Attribute::OptimizeForSize.apply_llfn(Function, llfn);
+            llvm::Attribute::OptimizeNone.unapply_llfn(Function, llfn);
+        }
+    }
 
     inline(cx, llfn, codegen_fn_attrs.inline);
 

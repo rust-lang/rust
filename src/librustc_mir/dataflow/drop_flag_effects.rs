@@ -1,6 +1,6 @@
 use rustc::mir::{self, Mir, Location};
 use rustc::ty::{self, TyCtxt};
-use util::elaborate_drops::DropFlagState;
+use crate::util::elaborate_drops::DropFlagState;
 
 use super::{MoveDataParamEnv};
 use super::indexes::MovePathIndex;
@@ -44,8 +44,8 @@ pub fn move_path_children_matching<'tcx, F>(move_data: &MoveData<'tcx>,
 /// In both cases, the contents can only be accessed if and only if
 /// their parents are initialized. This implies for example that there
 /// is no need to maintain separate drop flags to track such state.
-///
-/// FIXME: we have to do something for moving slice patterns.
+//
+// FIXME: we have to do something for moving slice patterns.
 fn place_contents_drop_state_cannot_differ<'a, 'gcx, 'tcx>(tcx: TyCtxt<'a, 'gcx, 'tcx>,
                                                             mir: &Mir<'tcx>,
                                                             place: &mir::Place<'tcx>) -> bool {

@@ -61,7 +61,7 @@ mod fpu_precision {
         unsafe { asm!("fldcw $0" :: "m" (cw) :: "volatile") }
     }
 
-    /// Set the precision field of the FPU to `T` and return a `FPUControlWord`
+    /// Sets the precision field of the FPU to `T` and returns a `FPUControlWord`.
     pub fn set_precision<T>() -> FPUControlWord {
         let cw = 0u16;
 

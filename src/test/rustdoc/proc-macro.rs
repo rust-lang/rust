@@ -4,6 +4,11 @@
 #![crate_type="proc-macro"]
 #![crate_name="some_macros"]
 
+// @has some_macros/index.html
+// @has - '//a/[@href="attr.some_proc_attr.html"]' 'some_proc_attr'
+
+//! include a link to [some_proc_attr] to make sure it works.
+
 extern crate proc_macro;
 
 use proc_macro::TokenStream;

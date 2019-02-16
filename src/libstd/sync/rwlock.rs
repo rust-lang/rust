@@ -314,7 +314,7 @@ impl<T: ?Sized> RwLock<T> {
     /// Determines whether the lock is poisoned.
     ///
     /// If another thread is active, the lock can still become poisoned at any
-    /// time.  You should not trust a `false` value for program correctness
+    /// time. You should not trust a `false` value for program correctness
     /// without additional synchronization.
     ///
     /// # Examples
@@ -384,7 +384,7 @@ impl<T: ?Sized> RwLock<T> {
     /// Returns a mutable reference to the underlying data.
     ///
     /// Since this call borrows the `RwLock` mutably, no actual locking needs to
-    /// take place---the mutable borrow statically guarantees no locks exist.
+    /// take place -- the mutable borrow statically guarantees no locks exist.
     ///
     /// # Errors
     ///

@@ -1,3 +1,4 @@
+// ignore-tidy-linelength
 #![allow(non_snake_case)]
 
 register_long_diagnostics! {
@@ -348,13 +349,14 @@ fn main() {
 "##,
 
 E0044: r##"
-You can't use type parameters on foreign items. Example of erroneous code:
+You can't use type or const parameters on foreign items.
+Example of erroneous code:
 
 ```compile_fail,E0044
 extern { fn some_func<T>(x: T); }
 ```
 
-To fix this, replace the type parameter with the specializations that you
+To fix this, replace the generic parameter with the specializations that you
 need:
 
 ```
@@ -516,7 +518,7 @@ recursion limit (which can be set via the `recursion_limit` attribute).
 For a somewhat artificial example:
 
 ```compile_fail,E0055
-#![recursion_limit="2"]
+#![recursion_limit="5"]
 
 struct Foo;
 
@@ -526,9 +528,9 @@ impl Foo {
 
 fn main() {
     let foo = Foo;
-    let ref_foo = &&Foo;
+    let ref_foo = &&&&&Foo;
 
-    // error, reached the recursion limit while auto-dereferencing `&&Foo`
+    // error, reached the recursion limit while auto-dereferencing `&&&&&Foo`
     ref_foo.foo();
 }
 ```
@@ -763,7 +765,7 @@ function's return type and the value being returned.
 "##,
 
 E0070: r##"
-The left-hand side of an assignment operator must be a place expression. An
+The left-hand side of an assignment operator must be a place expression. A
 place expression represents a memory location and can be a variable (with
 optional namespacing), a dereference, an indexing expression or a field
 reference.
@@ -1543,7 +1545,9 @@ fn f<T>() {}
 
 It is not possible to declare type parameters on a function that has the `start`
 attribute. Such a function must have the following type signature (for more
-information: http://doc.rust-lang.org/stable/book/first-edition/no-stdlib.html):
+information, view [the unstable book][1]):
+
+[1]: https://doc.rust-lang.org/unstable-book/language-features/lang-items.html#writing-an-executable-without-stdlib
 
 ```
 # let _:
@@ -2917,10 +2921,11 @@ impl Baz for Bar { } // Note: This is OK
 
 E0374: r##"
 A struct without a field containing an unsized type cannot implement
-`CoerceUnsized`. An
-[unsized type](https://doc.rust-lang.org/book/first-edition/unsized-types.html)
-is any type that the compiler doesn't know the length or alignment of at
-compile time. Any struct containing an unsized type is also unsized.
+`CoerceUnsized`. An [unsized type][1] is any type that the compiler
+doesn't know the length or alignment of at compile time. Any struct
+containing an unsized type is also unsized.
+
+[1]: https://doc.rust-lang.org/book/ch19-04-advanced-types.html#dynamically-sized-types-and-the-sized-trait
 
 Example of erroneous code:
 
@@ -2977,9 +2982,9 @@ A struct with more than one field containing an unsized type cannot implement
 `CoerceUnsized`. This only occurs when you are trying to coerce one of the
 types in your struct to another type in the struct. In this case we try to
 impl `CoerceUnsized` from `T` to `U` which are both types that the struct
-takes. An [unsized type] is any type that the compiler doesn't know the length
-or alignment of at compile time. Any struct containing an unsized type is also
-unsized.
+takes. An [unsized type][1] is any type that the compiler doesn't know the
+length or alignment of at compile time. Any struct containing an unsized type
+is also unsized.
 
 Example of erroneous code:
 
@@ -3024,7 +3029,7 @@ fn coerce_foo<T: CoerceUnsized<U>, U>(t: T) -> Foo<U> {
 }
 ```
 
-[unsized type]: https://doc.rust-lang.org/book/first-edition/unsized-types.html
+[1]: https://doc.rust-lang.org/book/ch19-04-advanced-types.html#dynamically-sized-types-and-the-sized-trait
 "##,
 
 E0376: r##"
@@ -3032,10 +3037,11 @@ The type you are trying to impl `CoerceUnsized` for is not a struct.
 `CoerceUnsized` can only be implemented for a struct. Unsized types are
 already able to be coerced without an implementation of `CoerceUnsized`
 whereas a struct containing an unsized type needs to know the unsized type
-field it's containing is able to be coerced. An
-[unsized type](https://doc.rust-lang.org/book/first-edition/unsized-types.html)
+field it's containing is able to be coerced. An [unsized type][1]
 is any type that the compiler doesn't know the length or alignment of at
 compile time. Any struct containing an unsized type is also unsized.
+
+[1]: https://doc.rust-lang.org/book/ch19-04-advanced-types.html#dynamically-sized-types-and-the-sized-trait
 
 Example of erroneous code:
 
@@ -3369,180 +3375,6 @@ extern "platform-intrinsic" {
 ```
 "##,
 
-E0440: r##"
-A platform-specific intrinsic function has the wrong number of type
-parameters. Erroneous code example:
-
-```compile_fail,E0440
-#![feature(repr_simd)]
-#![feature(platform_intrinsics)]
-
-#[repr(simd)]
-struct f64x2(f64, f64);
-
-extern "platform-intrinsic" {
-    fn x86_mm_movemask_pd<T>(x: f64x2) -> i32;
-    // error: platform-specific intrinsic has wrong number of type
-    //        parameters
-}
-```
-
-Please refer to the function declaration to see if it corresponds
-with yours. Example:
-
-```
-#![feature(repr_simd)]
-#![feature(platform_intrinsics)]
-
-#[repr(simd)]
-struct f64x2(f64, f64);
-
-extern "platform-intrinsic" {
-    fn x86_mm_movemask_pd(x: f64x2) -> i32;
-}
-```
-"##,
-
-E0441: r##"
-An unknown platform-specific intrinsic function was used. Erroneous
-code example:
-
-```compile_fail,E0441
-#![feature(repr_simd)]
-#![feature(platform_intrinsics)]
-
-#[repr(simd)]
-struct i16x8(i16, i16, i16, i16, i16, i16, i16, i16);
-
-extern "platform-intrinsic" {
-    fn x86_mm_adds_ep16(x: i16x8, y: i16x8) -> i16x8;
-    // error: unrecognized platform-specific intrinsic function
-}
-```
-
-Please verify that the function name wasn't misspelled, and ensure
-that it is declared in the rust source code (in the file
-src/librustc_platform_intrinsics/x86.rs). Example:
-
-```
-#![feature(repr_simd)]
-#![feature(platform_intrinsics)]
-
-#[repr(simd)]
-struct i16x8(i16, i16, i16, i16, i16, i16, i16, i16);
-
-extern "platform-intrinsic" {
-    fn x86_mm_adds_epi16(x: i16x8, y: i16x8) -> i16x8; // ok!
-}
-```
-"##,
-
-E0442: r##"
-Intrinsic argument(s) and/or return value have the wrong type.
-Erroneous code example:
-
-```compile_fail,E0442
-#![feature(repr_simd)]
-#![feature(platform_intrinsics)]
-
-#[repr(simd)]
-struct i8x16(i8, i8, i8, i8, i8, i8, i8, i8,
-             i8, i8, i8, i8, i8, i8, i8, i8);
-#[repr(simd)]
-struct i32x4(i32, i32, i32, i32);
-#[repr(simd)]
-struct i64x2(i64, i64);
-
-extern "platform-intrinsic" {
-    fn x86_mm_adds_epi16(x: i8x16, y: i32x4) -> i64x2;
-    // error: intrinsic arguments/return value have wrong type
-}
-```
-
-To fix this error, please refer to the function declaration to give
-it the awaited types. Example:
-
-```
-#![feature(repr_simd)]
-#![feature(platform_intrinsics)]
-
-#[repr(simd)]
-struct i16x8(i16, i16, i16, i16, i16, i16, i16, i16);
-
-extern "platform-intrinsic" {
-    fn x86_mm_adds_epi16(x: i16x8, y: i16x8) -> i16x8; // ok!
-}
-```
-"##,
-
-E0443: r##"
-Intrinsic argument(s) and/or return value have the wrong type.
-Erroneous code example:
-
-```compile_fail,E0443
-#![feature(repr_simd)]
-#![feature(platform_intrinsics)]
-
-#[repr(simd)]
-struct i16x8(i16, i16, i16, i16, i16, i16, i16, i16);
-#[repr(simd)]
-struct i64x8(i64, i64, i64, i64, i64, i64, i64, i64);
-
-extern "platform-intrinsic" {
-    fn x86_mm_adds_epi16(x: i16x8, y: i16x8) -> i64x8;
-    // error: intrinsic argument/return value has wrong type
-}
-```
-
-To fix this error, please refer to the function declaration to give
-it the awaited types. Example:
-
-```
-#![feature(repr_simd)]
-#![feature(platform_intrinsics)]
-
-#[repr(simd)]
-struct i16x8(i16, i16, i16, i16, i16, i16, i16, i16);
-
-extern "platform-intrinsic" {
-    fn x86_mm_adds_epi16(x: i16x8, y: i16x8) -> i16x8; // ok!
-}
-```
-"##,
-
-E0444: r##"
-A platform-specific intrinsic function has wrong number of arguments.
-Erroneous code example:
-
-```compile_fail,E0444
-#![feature(repr_simd)]
-#![feature(platform_intrinsics)]
-
-#[repr(simd)]
-struct f64x2(f64, f64);
-
-extern "platform-intrinsic" {
-    fn x86_mm_movemask_pd(x: f64x2, y: f64x2, z: f64x2) -> i32;
-    // error: platform-specific intrinsic has invalid number of arguments
-}
-```
-
-Please refer to the function declaration to see if it corresponds
-with yours. Example:
-
-```
-#![feature(repr_simd)]
-#![feature(platform_intrinsics)]
-
-#[repr(simd)]
-struct f64x2(f64, f64);
-
-extern "platform-intrinsic" {
-    fn x86_mm_movemask_pd(x: f64x2) -> i32; // ok!
-}
-```
-"##,
-
 E0516: r##"
 The `typeof` keyword is currently reserved but unimplemented.
 Erroneous code example:
@@ -3783,29 +3615,6 @@ fn main() {}
 
 For more information about the inline attribute, https:
 read://doc.rust-lang.org/reference.html#inline-attributes
-"##,
-
-E0558: r##"
-The `export_name` attribute was malformed.
-
-Erroneous code example:
-
-```ignore (error-emitted-at-codegen-which-cannot-be-handled-by-compile_fail)
-#[export_name] // error: `export_name` attribute has invalid format
-pub fn something() {}
-
-fn main() {}
-```
-
-The `export_name` attribute expects a string in order to determine the name of
-the exported symbol. Example:
-
-```
-#[export_name = "some_function"] // ok!
-pub fn something() {}
-
-fn main() {}
-```
 "##,
 
 E0559: r##"
@@ -4079,8 +3888,10 @@ let c = 86u8 as char; // ok!
 assert_eq!(c, 'V');
 ```
 
-For more information about casts, take a look at The Book:
-https://doc.rust-lang.org/book/first-edition/casting-between-types.html
+For more information about casts, take a look at the Type cast section in
+[The Reference Book][1].
+
+[1]: https://doc.rust-lang.org/reference/expressions/operator-expr.html#type-cast-expressions
 "##,
 
 E0605: r##"
@@ -4108,8 +3919,10 @@ let v = 0 as *const u8;
 v as *const i8; // ok!
 ```
 
-For more information about casts, take a look at The Book:
-https://doc.rust-lang.org/book/first-edition/casting-between-types.html
+For more information about casts, take a look at the Type cast section in
+[The Reference Book][1].
+
+[1]: https://doc.rust-lang.org/reference/expressions/operator-expr.html#type-cast-expressions
 "##,
 
 E0606: r##"
@@ -4130,8 +3943,10 @@ let x = &0u8;
 let y: u32 = *x as u32; // We dereference it first and then cast it.
 ```
 
-For more information about casts, take a look at The Book:
-https://doc.rust-lang.org/book/first-edition/casting-between-types.html
+For more information about casts, take a look at the Type cast section in
+[The Reference Book][1].
+
+[1]: https://doc.rust-lang.org/reference/expressions/operator-expr.html#type-cast-expressions
 "##,
 
 E0607: r##"
@@ -4157,8 +3972,10 @@ pointer holds is their size.
 
 To fix this error, don't try to cast directly between thin and fat pointers.
 
-For more information about casts, take a look at The Book:
-https://doc.rust-lang.org/book/first-edition/casting-between-types.html
+For more information about casts, take a look at the Type cast section in
+[The Reference Book][1].
+
+[1]: https://doc.rust-lang.org/reference/expressions/operator-expr.html#type-cast-expressions
 "##,
 
 E0609: r##"
@@ -4216,8 +4033,8 @@ println!("x: {}, y: {}", variable.x, variable.y);
 ```
 
 For more information about primitives and structs, take a look at The Book:
-https://doc.rust-lang.org/book/first-edition/primitive-types.html
-https://doc.rust-lang.org/book/first-edition/structs.html
+https://doc.rust-lang.org/book/ch03-02-data-types.html
+https://doc.rust-lang.org/book/ch05-00-structs.html
 "##,
 
 E0614: r##"
@@ -4896,6 +4713,7 @@ register_diagnostics! {
 //  E0372, // coherence not object safe
     E0377, // the trait `CoerceUnsized` may only be implemented for a coercion
            // between structures with the same definition
+//  E0558, // replaced with a generic attribute input check
     E0533, // `{}` does not name a unit variant, unit struct or a constant
 //  E0563, // cannot determine a type for this `impl Trait`: {} // removed in 6383de15
     E0564, // only named lifetimes are allowed in `impl Trait`,
@@ -4915,4 +4733,5 @@ register_diagnostics! {
     E0645, // trait aliases not finished
     E0698, // type inside generator must be known in this context
     E0719, // duplicate values for associated type binding
+    E0722, // Malformed #[optimize] attribute
 }

@@ -1,22 +1,22 @@
-error[E0401]: can't use type parameters from outer function
+error[E0401]: can't use generic parameters from outer function
   --> $DIR/nested-ty-params.rs:3:16
    |
 LL | fn hd<U>(v: Vec<U> ) -> U {
    |       - type variable from outer function
 LL |     fn hd1(w: [U]) -> U { return w[0]; }
-   |        ---     ^ use of type variable from outer function
+   |        ---     ^ use of generic parameter from outer function
    |        |
-   |        help: try using a local type parameter instead: `hd1<U>`
+   |        help: try using a local generic parameter instead: `hd1<U>`
 
-error[E0401]: can't use type parameters from outer function
+error[E0401]: can't use generic parameters from outer function
   --> $DIR/nested-ty-params.rs:3:23
    |
 LL | fn hd<U>(v: Vec<U> ) -> U {
    |       - type variable from outer function
 LL |     fn hd1(w: [U]) -> U { return w[0]; }
-   |        ---            ^ use of type variable from outer function
+   |        ---            ^ use of generic parameter from outer function
    |        |
-   |        help: try using a local type parameter instead: `hd1<U>`
+   |        help: try using a local generic parameter instead: `hd1<U>`
 
 error: aborting due to 2 previous errors
 

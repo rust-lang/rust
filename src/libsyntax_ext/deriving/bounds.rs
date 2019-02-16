@@ -1,11 +1,12 @@
-use deriving::path_std;
-use deriving::generic::*;
-use deriving::generic::ty::*;
+use crate::deriving::path_std;
+use crate::deriving::generic::*;
+use crate::deriving::generic::ty::*;
+
 use syntax::ast::MetaItem;
 use syntax::ext::base::{Annotatable, ExtCtxt};
 use syntax_pos::Span;
 
-pub fn expand_deriving_unsafe_bound(cx: &mut ExtCtxt,
+pub fn expand_deriving_unsafe_bound(cx: &mut ExtCtxt<'_>,
                                     span: Span,
                                     _: &MetaItem,
                                     _: &Annotatable,
@@ -13,7 +14,7 @@ pub fn expand_deriving_unsafe_bound(cx: &mut ExtCtxt,
     cx.span_err(span, "this unsafe trait should be implemented explicitly");
 }
 
-pub fn expand_deriving_copy(cx: &mut ExtCtxt,
+pub fn expand_deriving_copy(cx: &mut ExtCtxt<'_>,
                             span: Span,
                             mitem: &MetaItem,
                             item: &Annotatable,

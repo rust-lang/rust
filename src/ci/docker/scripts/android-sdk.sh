@@ -20,7 +20,7 @@ download_sysimage() {
     # The output from sdkmanager is so noisy that it will occupy all of the 4 MB
     # log extremely quickly. Thus we must silence all output.
     yes | sdkmanager --licenses > /dev/null
-    sdkmanager platform-tools emulator \
+    yes | sdkmanager platform-tools emulator \
         "platforms;android-$api" \
         "system-images;android-$api;default;$abi" > /dev/null
 }

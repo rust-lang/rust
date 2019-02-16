@@ -3,6 +3,7 @@ authors = ["The Rust Project Developers"]
 build = "build.rs"
 name = "rustc_msan"
 version = "0.0.0"
+edition = "2018"
 
 [lib]
 name = "rustc_msan"

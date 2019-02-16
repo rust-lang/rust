@@ -1,4 +1,4 @@
-//! # Standalone Tests for the Inference Module
+//! Standalone tests for the inference module.
 
 use driver;
 use errors;
@@ -18,7 +18,6 @@ use rustc::ty::{self, Ty, TyCtxt, TypeFoldable};
 use rustc_data_structures::sync::{self, Lrc};
 use rustc_lint;
 use rustc_metadata::cstore::CStore;
-use rustc_resolve::MakeGlobMap;
 use rustc_target::spec::abi::Abi;
 use syntax;
 use syntax::ast;
@@ -134,7 +133,6 @@ fn test_env_with_pool<F>(
             None,
             "test",
             None,
-            MakeGlobMap::No,
             |_| Ok(()),
         ).expect("phase 2 aborted")
     };
@@ -510,8 +508,8 @@ fn subst_ty_renumber_bound() {
     })
 }
 
-/// Test substituting a bound region into a function, which introduces another level of binding.
-/// This requires adjusting the Debruijn index.
+/// Tests substituting a bound region into a function, which introduces another level of binding.
+/// This requires adjusting the De Bruijn index.
 #[test]
 fn subst_ty_renumber_some_bounds() {
     test_env(EMPTY_SOURCE_STR, errors(&[]), |env| {
@@ -546,7 +544,7 @@ fn subst_ty_renumber_some_bounds() {
     })
 }
 
-/// Test that we correctly compute whether a type has escaping regions or not.
+/// Tests that we correctly compute whether a type has escaping regions or not.
 #[test]
 fn escaping() {
     test_env(EMPTY_SOURCE_STR, errors(&[]), |mut env| {
@@ -573,7 +571,7 @@ fn escaping() {
     })
 }
 
-/// Test applying a substitution where the value being substituted for an early-bound region is a
+/// Tests applying a substitution where the value being substituted for an early-bound region is a
 /// late-bound region.
 #[test]
 fn subst_region_renumber_region() {

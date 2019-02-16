@@ -4,15 +4,15 @@ use std::io::prelude::*;
 use std::io::BufReader;
 use std::path::{Path, PathBuf};
 
-use common::{self, CompareMode, Config, Mode};
-use util;
+use crate::common::{self, CompareMode, Config, Mode};
+use crate::util;
 
-use extract_gdb_version;
+use crate::extract_gdb_version;
 
 /// Whether to ignore the test.
 #[derive(Clone, Copy, PartialEq, Debug)]
 pub enum Ignore {
-    /// Run it.
+    /// Runs it.
     Run,
     /// Ignore it totally.
     Ignore,
@@ -109,6 +109,11 @@ impl EarlyProps {
                 }
 
                 if ignore_llvm(config, ln) {
+                    props.ignore = Ignore::Ignore;
+                }
+
+                if config.run_clang_based_tests_with.is_none() &&
+                   config.parse_needs_matching_clang(ln) {
                     props.ignore = Ignore::Ignore;
                 }
             }
@@ -384,7 +389,7 @@ impl TestProps {
         props
     }
 
-    /// Load properties from `testfile` into `props`. If a property is
+    /// Loads properties from `testfile` into `props`. If a property is
     /// tied to a particular revision `foo` (indicated by writing
     /// `//[foo]`), then the property is ignored unless `cfg` is
     /// `Some("foo")`.
@@ -542,6 +547,8 @@ fn iter_header(testfile: &Path, cfg: Option<&str>, it: &mut dyn FnMut(&str)) {
         "#"
     };
 
+    // FIXME: would be nice to allow some whitespace between comment and brace :)
+    // It took me like 2 days to debug why compile-flags weren’t taken into account for my test :)
     let comment_with_brace = comment.to_string() + "[";
 
     let rdr = BufReader::new(File::open(testfile).unwrap());
@@ -703,6 +710,10 @@ impl Config {
         } else {
             None
         }
+    }
+
+    fn parse_needs_matching_clang(&self, line: &str) -> bool {
+        self.parse_name_directive(line, "needs-matching-clang")
     }
 
     /// Parses a name-value directive which contains config-specific information, e.g., `ignore-x86`

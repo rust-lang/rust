@@ -21,7 +21,7 @@ use crate::install;
 use crate::native;
 use crate::test;
 use crate::tool;
-use crate::util::{add_lib_path, exe, libdir};
+use crate::util::{self, add_lib_path, exe, libdir};
 use crate::{Build, DocTests, Mode, GitRepo};
 
 pub use crate::Compiler;
@@ -60,17 +60,17 @@ pub trait Step: 'static + Clone + Debug + PartialEq + Eq + Hash {
     /// Run this rule for all hosts without cross compiling.
     const ONLY_HOSTS: bool = false;
 
-    /// Primary function to execute this rule. Can call `builder.ensure(...)`
+    /// Primary function to execute this rule. Can call `builder.ensure()`
     /// with other steps to run those.
     fn run(self, builder: &Builder) -> Self::Output;
 
     /// When bootstrap is passed a set of paths, this controls whether this rule
     /// will execute. However, it does not get called in a "default" context
-    /// when we are not passed any paths; in that case, make_run is called
+    /// when we are not passed any paths; in that case, `make_run` is called
     /// directly.
     fn should_run(run: ShouldRun) -> ShouldRun;
 
-    /// Build up a "root" rule, either as a default rule or from a path passed
+    /// Builds up a "root" rule, either as a default rule or from a path passed
     /// to us.
     ///
     /// When path is `None`, we are executing in a context where no paths were
@@ -378,14 +378,11 @@ impl<'a> Builder<'a> {
                 test::Debuginfo,
                 test::UiFullDeps,
                 test::RunPassFullDeps,
-                test::RunFailFullDeps,
                 test::Rustdoc,
                 test::Pretty,
                 test::RunPassPretty,
                 test::RunFailPretty,
                 test::RunPassValgrindPretty,
-                test::RunPassFullDepsPretty,
-                test::RunFailFullDepsPretty,
                 test::Crate,
                 test::CrateLibrustc,
                 test::CrateRustdoc,
@@ -403,6 +400,7 @@ impl<'a> Builder<'a> {
                 test::TheBook,
                 test::UnstableBook,
                 test::RustcBook,
+                test::EmbeddedBook,
                 test::Rustfmt,
                 test::Miri,
                 test::Clippy,
@@ -433,6 +431,7 @@ impl<'a> Builder<'a> {
                 doc::RustByExample,
                 doc::RustcBook,
                 doc::CargoBook,
+                doc::EmbeddedBook,
                 doc::EditionGuide,
             ),
             Kind::Dist => describe!(
@@ -449,6 +448,7 @@ impl<'a> Builder<'a> {
                 dist::Rls,
                 dist::Rustfmt,
                 dist::Clippy,
+                dist::Miri,
                 dist::LlvmTools,
                 dist::Lldb,
                 dist::Extended,
@@ -461,6 +461,7 @@ impl<'a> Builder<'a> {
                 install::Rls,
                 install::Rustfmt,
                 install::Clippy,
+                install::Miri,
                 install::Analysis,
                 install::Src,
                 install::Rustc
@@ -647,7 +648,7 @@ impl<'a> Builder<'a> {
         add_lib_path(vec![self.rustc_libdir(compiler)], cmd);
     }
 
-    /// Get a path to the compiler specified.
+    /// Gets a path to the compiler specified.
     pub fn rustc(&self, compiler: Compiler) -> PathBuf {
         if compiler.is_snapshot(self) {
             self.initial_rustc.clone()
@@ -656,6 +657,15 @@ impl<'a> Builder<'a> {
                 .join("bin")
                 .join(exe("rustc", &compiler.host))
         }
+    }
+
+    /// Gets the paths to all of the compiler's codegen backends.
+    fn codegen_backends(&self, compiler: Compiler) -> impl Iterator<Item = PathBuf> {
+        fs::read_dir(self.sysroot_codegen_backends(compiler))
+            .into_iter()
+            .flatten()
+            .filter_map(Result::ok)
+            .map(|entry| entry.path())
     }
 
     pub fn rustdoc(&self, host: Interned<String>) -> PathBuf {
@@ -667,10 +677,9 @@ impl<'a> Builder<'a> {
         let compiler = self.compiler(self.top_stage, host);
         cmd.env("RUSTC_STAGE", compiler.stage.to_string())
             .env("RUSTC_SYSROOT", self.sysroot(compiler))
-            .env(
-                "RUSTDOC_LIBDIR",
-                self.sysroot_libdir(compiler, self.config.build),
-            )
+            // Note that this is *not* the sysroot_libdir because rustdoc must be linked
+            // equivalently to rustc.
+            .env("RUSTDOC_LIBDIR", self.rustc_libdir(compiler))
             .env("CFG_RELEASE_CHANNEL", &self.config.channel)
             .env("RUSTDOC_REAL", self.rustdoc(host))
             .env("RUSTDOC_CRATE_VERSION", self.rust_version())
@@ -748,6 +757,9 @@ impl<'a> Builder<'a> {
             match mode {
                 Mode::Std => {
                     self.clear_if_dirty(&my_out, &self.rustc(compiler));
+                    for backend in self.codegen_backends(compiler) {
+                        self.clear_if_dirty(&my_out, &backend);
+                    }
                 },
                 Mode::Test => {
                     self.clear_if_dirty(&my_out, &libstd_stamp);
@@ -779,6 +791,13 @@ impl<'a> Builder<'a> {
         cargo
             .env("CARGO_TARGET_DIR", out_dir)
             .arg(cmd);
+
+        // See comment in librustc_llvm/build.rs for why this is necessary, largely llvm-config
+        // needs to not accidentally link to libLLVM in stage0/lib.
+        cargo.env("REAL_LIBRARY_PATH_VAR", &util::dylib_path_var());
+        if let Some(e) = env::var_os(util::dylib_path_var()) {
+            cargo.env("REAL_LIBRARY_PATH", e);
+        }
 
         if cmd != "install" {
             cargo.arg("--target")
@@ -854,7 +873,7 @@ impl<'a> Builder<'a> {
         } else {
             &maybe_sysroot
         };
-        let libdir = sysroot.join(libdir(&compiler.host));
+        let libdir = self.rustc_libdir(compiler);
 
         // Customize the compiler we're running. Specify the compiler to cargo
         // as our shim and then pass it some various options used to configure
@@ -896,7 +915,7 @@ impl<'a> Builder<'a> {
             cargo.env("RUSTC_ERROR_FORMAT", error_format);
         }
         if cmd != "build" && cmd != "check" && cmd != "rustc" && want_rustdoc {
-            cargo.env("RUSTDOC_LIBDIR", self.sysroot_libdir(compiler, self.config.build));
+            cargo.env("RUSTDOC_LIBDIR", self.rustc_libdir(compiler));
         }
 
         if mode.is_tool() {
@@ -980,6 +999,9 @@ impl<'a> Builder<'a> {
 
         if self.config.incremental {
             cargo.env("CARGO_INCREMENTAL", "1");
+        } else {
+            // Don't rely on any default setting for incr. comp. in Cargo
+            cargo.env("CARGO_INCREMENTAL", "0");
         }
 
         if let Some(ref on_fail) = self.config.on_fail {
@@ -996,8 +1018,7 @@ impl<'a> Builder<'a> {
 
         cargo.env("RUSTC_VERBOSE", self.verbosity.to_string());
 
-        // in std, we want to avoid denying warnings for stage 0 as that makes cfg's painful.
-        if self.config.deny_warnings && !(mode == Mode::Std && stage == 0) {
+        if self.config.deny_warnings {
             cargo.env("RUSTC_DENY_WARNINGS", "1");
         }
 
@@ -1030,29 +1051,24 @@ impl<'a> Builder<'a> {
                 }
             };
             let cc = ccacheify(&self.cc(target));
-            cargo.env(format!("CC_{}", target), &cc).env("CC", &cc);
+            cargo.env(format!("CC_{}", target), &cc);
 
             let cflags = self.cflags(target, GitRepo::Rustc).join(" ");
             cargo
-                .env(format!("CFLAGS_{}", target), cflags.clone())
-                .env("CFLAGS", cflags.clone());
+                .env(format!("CFLAGS_{}", target), cflags.clone());
 
             if let Some(ar) = self.ar(target) {
                 let ranlib = format!("{} s", ar.display());
                 cargo
                     .env(format!("AR_{}", target), ar)
-                    .env("AR", ar)
-                    .env(format!("RANLIB_{}", target), ranlib.clone())
-                    .env("RANLIB", ranlib);
+                    .env(format!("RANLIB_{}", target), ranlib);
             }
 
             if let Ok(cxx) = self.cxx(target) {
                 let cxx = ccacheify(&cxx);
                 cargo
                     .env(format!("CXX_{}", target), &cxx)
-                    .env("CXX", &cxx)
-                    .env(format!("CXXFLAGS_{}", target), cflags.clone())
-                    .env("CXXFLAGS", cflags);
+                    .env(format!("CXXFLAGS_{}", target), cflags);
             }
         }
 

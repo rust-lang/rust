@@ -13,17 +13,17 @@ error[E0010]: allocations are not allowed in statics
 LL | static STATIC11: Box<MyOwned> = box MyOwned;
    |                                 ^^^^^^^^^^^ allocation not allowed in statics
 
+error[E0019]: static contains unimplemented expression type
+  --> $DIR/check-static-values-constraints.rs:79:37
+   |
+LL | static STATIC11: Box<MyOwned> = box MyOwned;
+   |                                     ^^^^^^^
+
 error[E0015]: calls in statics are limited to constant functions, tuple structs and tuple variants
-  --> $DIR/check-static-values-constraints.rs:89:32
+  --> $DIR/check-static-values-constraints.rs:90:32
    |
 LL |     field2: SafeEnum::Variant4("str".to_string())
    |                                ^^^^^^^^^^^^^^^^^
-
-error[E0010]: allocations are not allowed in statics
-  --> $DIR/check-static-values-constraints.rs:94:5
-   |
-LL |     box MyOwned, //~ ERROR allocations are not allowed in statics
-   |     ^^^^^^^^^^^ allocation not allowed in statics
 
 error[E0010]: allocations are not allowed in statics
   --> $DIR/check-static-values-constraints.rs:95:5
@@ -31,37 +31,79 @@ error[E0010]: allocations are not allowed in statics
 LL |     box MyOwned, //~ ERROR allocations are not allowed in statics
    |     ^^^^^^^^^^^ allocation not allowed in statics
 
+error[E0019]: static contains unimplemented expression type
+  --> $DIR/check-static-values-constraints.rs:95:9
+   |
+LL |     box MyOwned, //~ ERROR allocations are not allowed in statics
+   |         ^^^^^^^
+
 error[E0010]: allocations are not allowed in statics
-  --> $DIR/check-static-values-constraints.rs:99:6
+  --> $DIR/check-static-values-constraints.rs:97:5
+   |
+LL |     box MyOwned, //~ ERROR allocations are not allowed in statics
+   |     ^^^^^^^^^^^ allocation not allowed in statics
+
+error[E0019]: static contains unimplemented expression type
+  --> $DIR/check-static-values-constraints.rs:97:9
+   |
+LL |     box MyOwned, //~ ERROR allocations are not allowed in statics
+   |         ^^^^^^^
+
+error[E0010]: allocations are not allowed in statics
+  --> $DIR/check-static-values-constraints.rs:102:6
    |
 LL |     &box MyOwned, //~ ERROR allocations are not allowed in statics
    |      ^^^^^^^^^^^ allocation not allowed in statics
 
+error[E0019]: static contains unimplemented expression type
+  --> $DIR/check-static-values-constraints.rs:102:10
+   |
+LL |     &box MyOwned, //~ ERROR allocations are not allowed in statics
+   |          ^^^^^^^
+
 error[E0010]: allocations are not allowed in statics
-  --> $DIR/check-static-values-constraints.rs:100:6
+  --> $DIR/check-static-values-constraints.rs:104:6
    |
 LL |     &box MyOwned, //~ ERROR allocations are not allowed in statics
    |      ^^^^^^^^^^^ allocation not allowed in statics
 
+error[E0019]: static contains unimplemented expression type
+  --> $DIR/check-static-values-constraints.rs:104:10
+   |
+LL |     &box MyOwned, //~ ERROR allocations are not allowed in statics
+   |          ^^^^^^^
+
 error[E0010]: allocations are not allowed in statics
-  --> $DIR/check-static-values-constraints.rs:106:5
+  --> $DIR/check-static-values-constraints.rs:111:5
    |
 LL |     box 3;
    |     ^^^^^ allocation not allowed in statics
 
+error[E0019]: static contains unimplemented expression type
+  --> $DIR/check-static-values-constraints.rs:111:9
+   |
+LL |     box 3;
+   |         ^
+
 error[E0507]: cannot move out of static item
-  --> $DIR/check-static-values-constraints.rs:110:45
+  --> $DIR/check-static-values-constraints.rs:116:45
    |
 LL |     let y = { static x: Box<isize> = box 3; x };
    |                                             ^ cannot move out of static item
 
 error[E0010]: allocations are not allowed in statics
-  --> $DIR/check-static-values-constraints.rs:110:38
+  --> $DIR/check-static-values-constraints.rs:116:38
    |
 LL |     let y = { static x: Box<isize> = box 3; x };
    |                                      ^^^^^ allocation not allowed in statics
 
-error: aborting due to 10 previous errors
+error[E0019]: static contains unimplemented expression type
+  --> $DIR/check-static-values-constraints.rs:116:42
+   |
+LL |     let y = { static x: Box<isize> = box 3; x };
+   |                                          ^
 
-Some errors occurred: E0010, E0015, E0493, E0507.
+error: aborting due to 17 previous errors
+
+Some errors occurred: E0010, E0015, E0019, E0493, E0507.
 For more information about an error, try `rustc --explain E0010`.

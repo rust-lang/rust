@@ -1,12 +1,13 @@
-use std::collections::VecDeque;
 use std::fmt::Debug;
-use std::collections::vec_deque::{Drain};
+use std::collections::{VecDeque, vec_deque::Drain};
 use std::collections::CollectionAllocErr::*;
 use std::mem::size_of;
 use std::{usize, isize};
 
-use self::Taggy::*;
-use self::Taggypar::*;
+use crate::hash;
+
+use Taggy::*;
+use Taggypar::*;
 
 #[test]
 fn test_simple() {
@@ -107,6 +108,7 @@ fn test_index() {
 
 #[test]
 #[should_panic]
+#[cfg(not(miri))]
 fn test_index_out_of_bounds() {
     let mut deq = VecDeque::new();
     for i in 1..4 {
@@ -583,7 +585,7 @@ fn test_hash() {
     y.push_back(2);
     y.push_back(3);
 
-    assert!(::hash(&x) == ::hash(&y));
+    assert!(hash(&x) == hash(&y));
 }
 
 #[test]
@@ -599,7 +601,7 @@ fn test_hash_after_rotation() {
             *elt -= 1;
         }
         ring.push_back(len - 1);
-        assert_eq!(::hash(&orig), ::hash(&ring));
+        assert_eq!(hash(&orig), hash(&ring));
         assert_eq!(orig, ring);
         assert_eq!(ring, orig);
     }
@@ -905,20 +907,24 @@ fn test_append() {
     // normal append
     a.append(&mut b);
     assert_eq!(a.iter().cloned().collect::<Vec<_>>(), [1, 2, 3, 4, 5, 6]);
+    #[cfg(not(miri))]
     assert_eq!(b.iter().cloned().collect::<Vec<_>>(), []);
 
     // append nothing to something
     a.append(&mut b);
     assert_eq!(a.iter().cloned().collect::<Vec<_>>(), [1, 2, 3, 4, 5, 6]);
+    #[cfg(not(miri))]
     assert_eq!(b.iter().cloned().collect::<Vec<_>>(), []);
 
     // append something to nothing
     b.append(&mut a);
     assert_eq!(b.iter().cloned().collect::<Vec<_>>(), [1, 2, 3, 4, 5, 6]);
+    #[cfg(not(miri))]
     assert_eq!(a.iter().cloned().collect::<Vec<_>>(), []);
 }
 
 #[test]
+#[cfg(not(miri))]
 fn test_append_permutations() {
     fn construct_vec_deque(
         push_back: usize,
@@ -998,7 +1004,7 @@ struct DropCounter<'a> {
     count: &'a mut u32,
 }
 
-impl<'a> Drop for DropCounter<'a> {
+impl Drop for DropCounter<'_> {
     fn drop(&mut self) {
         *self.count += 1;
     }
@@ -1119,6 +1125,7 @@ fn test_reserve_exact_2() {
 }
 
 #[test]
+#[cfg(not(miri))]
 fn test_try_reserve() {
 
     // These are the interesting cases:
@@ -1220,6 +1227,7 @@ fn test_try_reserve() {
 }
 
 #[test]
+#[cfg(not(miri))]
 fn test_try_reserve_exact() {
 
     // This is exactly the same as test_try_reserve with the method changed.
@@ -1431,5 +1439,42 @@ fn test_rotate_right_random() {
         for i in 0..n {
             assert_eq!(v[(i + total_shift) % n], i);
         }
+    }
+}
+
+#[test]
+fn test_try_fold_empty() {
+    assert_eq!(Some(0), VecDeque::<u32>::new().iter().try_fold(0, |_, _| None));
+}
+
+#[test]
+fn test_try_fold_none() {
+    let v: VecDeque<u32> = (0..12).collect();
+    assert_eq!(None, v.into_iter().try_fold(0, |a, b|
+        if b < 11 { Some(a + b) } else { None }));
+}
+
+#[test]
+fn test_try_fold_ok() {
+    let v: VecDeque<u32> = (0..12).collect();
+    assert_eq!(Ok::<_, ()>(66), v.into_iter().try_fold(0, |a, b| Ok(a + b)));
+}
+
+#[test]
+fn test_try_fold_unit() {
+    let v: VecDeque<()> = std::iter::repeat(()).take(42).collect();
+    assert_eq!(Some(()), v.into_iter().try_fold((), |(), ()| Some(())));
+}
+
+#[test]
+fn test_try_fold_rotated() {
+    let mut v: VecDeque<_> = (0..12).collect();
+    for n in 0..10 {
+        if n & 1 == 0 {
+            v.rotate_left(n);
+        } else {
+            v.rotate_right(n);
+        }
+        assert_eq!(Ok::<_, ()>(66), v.iter().try_fold(0, |a, b| Ok(a + b)));
     }
 }

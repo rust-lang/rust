@@ -449,8 +449,13 @@ impl<'rt, 'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>>
         }
         // At least one value is excluded. Get the bits.
         let value = try_validation!(value.not_undef(),
-            value, self.path,
-            format!("something in the range {:?}", layout.valid_range));
+            value,
+            self.path,
+            format!(
+                "something {}",
+                wrapping_range_format(&layout.valid_range, max_hi),
+            )
+        );
         let bits = match value {
             Scalar::Ptr(ptr) => {
                 if lo == 1 && hi == max_hi {
@@ -582,7 +587,7 @@ impl<'rt, 'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>>
 }
 
 impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> {
-    /// This function checks the data at `op`.  `op` is assumed to cover valid memory if it
+    /// This function checks the data at `op`. `op` is assumed to cover valid memory if it
     /// is an indirect operand.
     /// It will error if the bits at the destination do not match the ones described by the layout.
     ///

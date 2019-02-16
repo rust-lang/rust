@@ -17,6 +17,10 @@ macro_rules! fake_lint_pass {
         struct $struct;
 
         impl LintPass for $struct {
+            fn name(&self) -> &'static str {
+                stringify!($struct)
+            }
+
             fn get_lints(&self) -> LintArray {
                 $lints
             }

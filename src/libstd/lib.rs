@@ -7,11 +7,9 @@
 //! primitives](#primitives), [standard macros](#macros), [I/O] and
 //! [multithreading], among [many other things][other].
 //!
-//! `std` is available to all Rust crates by default, just as if each one
-//! contained an `extern crate std;` import at the [crate root]. Therefore the
+//! `std` is available to all Rust crates by default. Therefore, the
 //! standard library can be accessed in [`use`] statements through the path
-//! `std`, as in [`use std::env`], or in expressions through the absolute path
-//! `::std`, as in [`::std::env::args`].
+//! `std`, as in [`use std::env`].
 //!
 //! # How to read this documentation
 //!
@@ -157,7 +155,6 @@
 //! [TCP]: net/struct.TcpStream.html
 //! [The Rust Prelude]: prelude/index.html
 //! [UDP]: net/struct.UdpSocket.html
-//! [`::std::env::args`]: env/fn.args.html
 //! [`Arc`]: sync/struct.Arc.html
 //! [owned slice]: boxed/index.html
 //! [`Cell`]: cell/struct.Cell.html
@@ -191,7 +188,6 @@
 //! [`thread`]: thread/index.html
 //! [`use std::env`]: env/index.html
 //! [`use`]: ../book/ch07-02-modules-and-use-to-control-scope-and-privacy.html#the-use-keyword-to-bring-paths-into-a-scope
-//! [crate root]: ../book/ch07-01-packages-and-crates-for-making-libraries-and-executables.html
 //! [crates.io]: https://crates.io
 //! [deref-coercions]: ../book/ch15-02-deref.html#implicit-deref-coercions-with-functions-and-methods
 //! [files]: fs/struct.File.html
@@ -200,9 +196,7 @@
 //! [primitive types]: ../book/ch03-02-data-types.html
 
 #![stable(feature = "rust1", since = "1.0.0")]
-#![doc(html_logo_url = "https://www.rust-lang.org/logos/rust-logo-128x128-blk-v2.png",
-       html_favicon_url = "https://doc.rust-lang.org/favicon.ico",
-       html_root_url = "https://doc.rust-lang.org/nightly/",
+#![doc(html_root_url = "https://doc.rust-lang.org/nightly/",
        html_playground_url = "https://play.rust-lang.org/",
        issue_tracker_base_url = "https://github.com/rust-lang/rust/issues/",
        test(no_crate_inject, attr(deny(warnings))),
@@ -238,12 +232,9 @@
 #![feature(c_variadic)]
 #![feature(cfg_target_has_atomic)]
 #![feature(cfg_target_thread_local)]
-#![feature(cfg_target_vendor)]
 #![feature(char_error_internals)]
 #![feature(compiler_builtins_lib)]
 #![feature(concat_idents)]
-#![feature(const_int_ops)]
-#![feature(const_ip)]
 #![feature(const_raw_ptr_deref)]
 #![feature(const_cstr_unchecked)]
 #![feature(core_intrinsics)]
@@ -286,6 +277,7 @@
 #![feature(staged_api)]
 #![feature(stmt_expr_attributes)]
 #![feature(str_internals)]
+#![feature(renamed_spin_loop)]
 #![feature(rustc_private)]
 #![feature(thread_local)]
 #![feature(toowned_clone_into)]
@@ -305,7 +297,7 @@
 #![feature(maybe_uninit)]
 #![cfg_attr(all(target_vendor = "fortanix", target_env = "sgx"),
             feature(global_asm, range_contains, slice_index_methods,
-                    decl_macro, coerce_unsized, sgx_platform))]
+                    decl_macro, coerce_unsized, sgx_platform, ptr_wrapping_offset_from))]
 
 #![default_lib_allocator]
 
@@ -349,9 +341,6 @@ extern crate backtrace_sys;
 #[cfg(test)] extern crate std as realstd;
 
 #[cfg(all(target_vendor = "fortanix", target_env = "sgx"))]
-#[macro_use]
-#[allow(unused_imports)] // FIXME: without `#[macro_use]`, get error: “cannot
-                         // determine resolution for the macro `usercalls_asm`”
 extern crate fortanix_sgx_abi;
 
 // The standard macros that are not built-in to the compiler.
@@ -364,6 +353,9 @@ pub mod prelude;
 // Public module declarations and re-exports
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use core::any;
+#[stable(feature = "simd_arch", since = "1.27.0")]
+#[doc(no_inline)]
+pub use core::arch;
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use core::cell;
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -471,8 +463,6 @@ pub mod task {
     //! Types and Traits for working with asynchronous tasks.
     #[doc(inline)]
     pub use core::task::*;
-    #[doc(inline)]
-    pub use alloc_crate::task::*;
 }
 
 #[unstable(feature = "futures_api",
@@ -495,29 +485,22 @@ mod memchr;
 // compiler
 pub mod rt;
 
-// Pull in the `stdsimd` crate directly into libstd. This is the same as
-// libcore's arch/simd modules where the source of truth here is in a different
-// repository, but we pull things in here manually to get it into libstd.
+// Pull in the `std_detect` crate directly into libstd. The contents of
+// `std_detect` are in a different repository: rust-lang-nursery/stdsimd.
 //
-// Note that the #[cfg] here is intended to do two things. First it allows us to
-// change the rustc implementation of intrinsics in stage0 by not compiling simd
-// intrinsics in stage0. Next it doesn't compile anything in test mode as
-// stdsimd has tons of its own tests which we don't want to run.
-#[path = "../stdsimd/stdsimd/mod.rs"]
+// `std_detect` depends on libstd, but the contents of this module are
+// set up in such a way that directly pulling it here works such that the
+// crate uses the this crate as its libstd.
+#[path = "../stdsimd/crates/std_detect/src/mod.rs"]
 #[allow(missing_debug_implementations, missing_docs, dead_code)]
 #[unstable(feature = "stdsimd", issue = "48556")]
 #[cfg(not(test))]
-mod stdsimd;
+mod std_detect;
 
-// A "fake" module needed by the `stdsimd` module to compile, not actually
-// exported though.
-mod coresimd {
-    pub use core::arch;
-}
-
-#[stable(feature = "simd_arch", since = "1.27.0")]
+#[doc(hidden)]
+#[unstable(feature = "stdsimd", issue = "48556")]
 #[cfg(not(test))]
-pub use stdsimd::arch;
+pub use std_detect::detect;
 
 // Include a number of private modules that exist solely to provide
 // the rustdoc documentation for primitive types. Using `include!`

@@ -1,0 +1,50 @@
+error: expected item, found `;`
+  --> $DIR/recover-from-semicolon-trailing-item.rs:2:9
+   |
+LL | mod M {};
+   |         ^ help: remove this semicolon
+
+error: expected item, found `;`
+  --> $DIR/recover-from-semicolon-trailing-item.rs:4:12
+   |
+LL | struct S {};
+   |            ^ help: remove this semicolon
+   |
+   = help: braced struct declarations are not followed by a semicolon
+
+error: expected item, found `;`
+  --> $DIR/recover-from-semicolon-trailing-item.rs:6:20
+   |
+LL | fn foo(a: usize) {};
+   |                    ^ help: remove this semicolon
+
+error[E0308]: mismatched types
+  --> $DIR/recover-from-semicolon-trailing-item.rs:10:20
+   |
+LL |     let _: usize = S {};
+   |                    ^^^^ expected usize, found struct `S`
+   |
+   = note: expected type `usize`
+              found type `S`
+
+error[E0308]: mismatched types
+  --> $DIR/recover-from-semicolon-trailing-item.rs:12:20
+   |
+LL |     let _: usize = X {};
+   |                    ^^^^ expected usize, found struct `main::X`
+   |
+   = note: expected type `usize`
+              found type `main::X`
+
+error[E0308]: mismatched types
+  --> $DIR/recover-from-semicolon-trailing-item.rs:14:9
+   |
+LL |     foo("");
+   |         ^^ expected usize, found reference
+   |
+   = note: expected type `usize`
+              found type `&'static str`
+
+error: aborting due to 6 previous errors
+
+For more information about this error, try `rustc --explain E0308`.

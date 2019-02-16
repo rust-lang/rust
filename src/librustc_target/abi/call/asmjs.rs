@@ -1,5 +1,5 @@
-use abi::call::{FnType, ArgType, Uniform};
-use abi::{HasDataLayout, LayoutOf, TyLayout, TyLayoutMethods};
+use crate::abi::call::{FnType, ArgType, Uniform};
+use crate::abi::{HasDataLayout, LayoutOf, TyLayout, TyLayoutMethods};
 
 // Data layout: e-p:32:32-i64:64-v128:32:128-n32-S128
 
@@ -11,7 +11,7 @@ fn classify_ret_ty<'a, Ty, C>(cx: &C, ret: &mut ArgType<'a, Ty>)
           C: LayoutOf<Ty = Ty, TyLayout = TyLayout<'a, Ty>> + HasDataLayout
 {
     if ret.layout.is_aggregate() {
-        if let Some(unit) = ret.layout.homogeneous_aggregate(cx) {
+        if let Some(unit) = ret.layout.homogeneous_aggregate(cx).unit() {
             let size = ret.layout.size;
             if unit.size == size {
                 ret.cast_to(Uniform {
@@ -26,7 +26,7 @@ fn classify_ret_ty<'a, Ty, C>(cx: &C, ret: &mut ArgType<'a, Ty>)
     }
 }
 
-fn classify_arg_ty<Ty>(arg: &mut ArgType<Ty>) {
+fn classify_arg_ty<Ty>(arg: &mut ArgType<'_, Ty>) {
     if arg.layout.is_aggregate() {
         arg.make_indirect_byval();
     }

@@ -1,12 +1,12 @@
-// run-pass
-#![allow(unused_imports)]
-#![allow(non_camel_case_types)]
+// This test is similar to `basic.rs`, but nested in modules.
 
+// run-pass
 // edition:2018
 
-#![feature(decl_macro, uniform_paths)]
+#![feature(decl_macro)]
 
-// This test is similar to `basic.rs`, but nested in modules.
+#![allow(unused_imports)]
+#![allow(non_camel_case_types)]
 
 mod foo {
     // Test that ambiguity errors are not emitted between `self::test` and

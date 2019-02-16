@@ -2,7 +2,7 @@ error[E0412]: cannot find type `Fo` in this scope
   --> $DIR/issue-7607-1.rs:5:6
    |
 LL | impl Fo { //~ ERROR cannot find type `Fo` in this scope
-   |      ^^ did you mean `Fn`?
+   |      ^^ help: a trait with a similar name exists: `Fn`
 
 error: aborting due to previous error
 

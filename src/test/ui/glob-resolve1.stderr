@@ -47,7 +47,11 @@ error[E0412]: cannot find type `A` in this scope
   --> $DIR/glob-resolve1.rs:28:11
    |
 LL |     foo::<A>(); //~ ERROR: cannot find type `A` in this scope
-   |           ^ did you mean `B`?
+   |           ^
+help: an enum with a similar name exists
+   |
+LL |     foo::<B>(); //~ ERROR: cannot find type `A` in this scope
+   |           ^
 help: possible candidate is found in another module, you can import it into scope
    |
 LL | use bar::A;
@@ -57,7 +61,11 @@ error[E0412]: cannot find type `C` in this scope
   --> $DIR/glob-resolve1.rs:29:11
    |
 LL |     foo::<C>(); //~ ERROR: cannot find type `C` in this scope
-   |           ^ did you mean `B`?
+   |           ^
+help: an enum with a similar name exists
+   |
+LL |     foo::<B>(); //~ ERROR: cannot find type `C` in this scope
+   |           ^
 help: possible candidate is found in another module, you can import it into scope
    |
 LL | use bar::C;
@@ -67,7 +75,11 @@ error[E0412]: cannot find type `D` in this scope
   --> $DIR/glob-resolve1.rs:30:11
    |
 LL |     foo::<D>(); //~ ERROR: cannot find type `D` in this scope
-   |           ^ did you mean `B`?
+   |           ^
+help: an enum with a similar name exists
+   |
+LL |     foo::<B>(); //~ ERROR: cannot find type `D` in this scope
+   |           ^
 help: possible candidate is found in another module, you can import it into scope
    |
 LL | use bar::D;

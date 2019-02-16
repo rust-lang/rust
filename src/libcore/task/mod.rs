@@ -8,4 +8,4 @@ mod poll;
 pub use self::poll::Poll;
 
 mod wake;
-pub use self::wake::{Waker, LocalWaker, UnsafeWake};
+pub use self::wake::{Waker, RawWaker, RawWakerVTable};

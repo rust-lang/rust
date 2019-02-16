@@ -1,10 +1,11 @@
 // run-pass
 #![allow(dead_code)]
 
-#![feature(const_let)]
-
+#[repr(u8)]
 enum Foo {
     Bar = { let x = 1; 3 }
 }
 
-pub fn main() {}
+pub fn main() {
+    assert_eq!(3, Foo::Bar as u8);
+}

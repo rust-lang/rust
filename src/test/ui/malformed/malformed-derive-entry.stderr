@@ -16,11 +16,11 @@ warning: empty trait list in `derive`
 LL | #[derive()]
    | ^^^^^^^^^^^
 
-warning: empty trait list in `derive`
+error: attribute must be of the form `#[derive(Trait1, Trait2, ...)]`
   --> $DIR/malformed-derive-entry.rs:13:1
    |
 LL | #[derive]
    | ^^^^^^^^^
 
-error: aborting due to 2 previous errors
+error: aborting due to 3 previous errors
 

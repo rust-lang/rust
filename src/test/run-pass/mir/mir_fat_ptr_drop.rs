@@ -10,7 +10,7 @@
 use std::sync::atomic;
 use std::sync::atomic::Ordering::SeqCst;
 
-static COUNTER: atomic::AtomicUsize = atomic::ATOMIC_USIZE_INIT;
+static COUNTER: atomic::AtomicUsize = atomic::AtomicUsize::new(0);
 
 struct DropMe {
 }

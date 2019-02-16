@@ -4,6 +4,7 @@ use rustc_data_structures::sync::Lrc;
 
 use rustc::ty::query::Providers;
 use rustc::ty::{self, TyCtxt};
+use rustc::ty::cast::CastTy;
 use rustc::hir;
 use rustc::hir::Node;
 use rustc::hir::def_id::DefId;
@@ -16,31 +17,38 @@ use syntax::symbol::Symbol;
 
 use std::ops::Bound;
 
-use util;
+use crate::util;
 
 pub struct UnsafetyChecker<'a, 'tcx: 'a> {
     mir: &'a Mir<'tcx>,
+    const_context: bool,
     min_const_fn: bool,
     source_scope_local_data: &'a IndexVec<SourceScope, SourceScopeLocalData>,
     violations: Vec<UnsafetyViolation>,
     source_info: SourceInfo,
     tcx: TyCtxt<'a, 'tcx, 'tcx>,
     param_env: ty::ParamEnv<'tcx>,
-    /// mark an `unsafe` block as used, so we don't lint it
+    /// Mark an `unsafe` block as used, so we don't lint it.
     used_unsafe: FxHashSet<ast::NodeId>,
     inherited_blocks: Vec<(ast::NodeId, bool)>,
 }
 
 impl<'a, 'gcx, 'tcx> UnsafetyChecker<'a, 'tcx> {
     fn new(
+        const_context: bool,
         min_const_fn: bool,
         mir: &'a Mir<'tcx>,
         source_scope_local_data: &'a IndexVec<SourceScope, SourceScopeLocalData>,
         tcx: TyCtxt<'a, 'tcx, 'tcx>,
         param_env: ty::ParamEnv<'tcx>,
     ) -> Self {
+        // sanity check
+        if min_const_fn {
+            assert!(const_context);
+        }
         Self {
             mir,
+            const_context,
             min_const_fn,
             source_scope_local_data,
             violations: vec![],
@@ -124,29 +132,70 @@ impl<'a, 'tcx> Visitor<'tcx> for UnsafetyChecker<'a, 'tcx> {
                     rvalue: &Rvalue<'tcx>,
                     location: Location)
     {
-        if let &Rvalue::Aggregate(box ref aggregate, _) = rvalue {
-            match aggregate {
-                &AggregateKind::Array(..) |
-                &AggregateKind::Tuple => {}
-                &AggregateKind::Adt(ref def, ..) => {
-                    match self.tcx.layout_scalar_valid_range(def.did) {
-                        (Bound::Unbounded, Bound::Unbounded) => {},
-                        _ => self.require_unsafe(
-                            "initializing type with `rustc_layout_scalar_valid_range` attr",
-                            "initializing a layout restricted type's field with a value outside \
-                            the valid range is undefined behavior",
-                            UnsafetyViolationKind::GeneralAndConstFn,
-                        ),
+        match rvalue {
+            Rvalue::Aggregate(box ref aggregate, _) => {
+                match aggregate {
+                    &AggregateKind::Array(..) |
+                    &AggregateKind::Tuple => {}
+                    &AggregateKind::Adt(ref def, ..) => {
+                        match self.tcx.layout_scalar_valid_range(def.did) {
+                            (Bound::Unbounded, Bound::Unbounded) => {},
+                            _ => self.require_unsafe(
+                                "initializing type with `rustc_layout_scalar_valid_range` attr",
+                                "initializing a layout restricted type's field with a value \
+                                outside the valid range is undefined behavior",
+                                UnsafetyViolationKind::GeneralAndConstFn,
+                            ),
+                        }
+                    }
+                    &AggregateKind::Closure(def_id, _) |
+                    &AggregateKind::Generator(def_id, _, _) => {
+                        let UnsafetyCheckResult {
+                            violations, unsafe_blocks
+                        } = self.tcx.unsafety_check_result(def_id);
+                        self.register_violations(&violations, &unsafe_blocks);
                     }
                 }
-                &AggregateKind::Closure(def_id, _) |
-                &AggregateKind::Generator(def_id, _, _) => {
-                    let UnsafetyCheckResult {
-                        violations, unsafe_blocks
-                    } = self.tcx.unsafety_check_result(def_id);
-                    self.register_violations(&violations, &unsafe_blocks);
+            },
+            // casting pointers to ints is unsafe in const fn because the const evaluator cannot
+            // possibly know what the result of various operations like `address / 2` would be
+            // pointers during const evaluation have no integral address, only an abstract one
+            Rvalue::Cast(CastKind::Misc, ref operand, cast_ty)
+            if self.const_context && self.tcx.features().const_raw_ptr_to_usize_cast => {
+                let operand_ty = operand.ty(self.mir, self.tcx);
+                let cast_in = CastTy::from_ty(operand_ty).expect("bad input type for cast");
+                let cast_out = CastTy::from_ty(cast_ty).expect("bad output type for cast");
+                match (cast_in, cast_out) {
+                    (CastTy::Ptr(_), CastTy::Int(_)) |
+                    (CastTy::FnPtr, CastTy::Int(_)) => {
+                        self.register_violations(&[UnsafetyViolation {
+                            source_info: self.source_info,
+                            description: Symbol::intern("cast of pointer to int").as_interned_str(),
+                            details: Symbol::intern("casting pointers to integers in constants")
+                                     .as_interned_str(),
+                            kind: UnsafetyViolationKind::General,
+                        }], &[]);
+                    },
+                    _ => {},
                 }
             }
+            // raw pointer and fn pointer operations are unsafe as it is not clear whether one
+            // pointer would be "less" or "equal" to another, because we cannot know where llvm
+            // or the linker will place various statics in memory. Without this information the
+            // result of a comparison of addresses would differ between runtime and compile-time.
+            Rvalue::BinaryOp(_, ref lhs, _)
+            if self.const_context && self.tcx.features().const_compare_raw_pointers => {
+                if let ty::RawPtr(_) | ty::FnPtr(..) = lhs.ty(self.mir, self.tcx).sty {
+                    self.register_violations(&[UnsafetyViolation {
+                        source_info: self.source_info,
+                        description: Symbol::intern("pointer operation").as_interned_str(),
+                        details: Symbol::intern("operations on pointers in constants")
+                                 .as_interned_str(),
+                        kind: UnsafetyViolationKind::General,
+                    }], &[]);
+                }
+            }
+            _ => {},
         }
         self.super_rvalue(rvalue, location);
     }
@@ -409,7 +458,7 @@ impl<'a, 'tcx> UnsafetyChecker<'a, 'tcx> {
     }
 }
 
-pub(crate) fn provide(providers: &mut Providers) {
+pub(crate) fn provide(providers: &mut Providers<'_>) {
     *providers = Providers {
         unsafety_check_result,
         unsafe_derive_on_repr_packed,
@@ -484,8 +533,16 @@ fn unsafety_check_result<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: DefId)
     };
 
     let param_env = tcx.param_env(def_id);
+
+    let id = tcx.hir().as_local_node_id(def_id).unwrap();
+    let (const_context, min_const_fn) = match tcx.hir().body_owner_kind(id) {
+        hir::BodyOwnerKind::Closure => (false, false),
+        hir::BodyOwnerKind::Fn => (tcx.is_const_fn(def_id), tcx.is_min_const_fn(def_id)),
+        hir::BodyOwnerKind::Const |
+        hir::BodyOwnerKind::Static(_) => (true, false),
+    };
     let mut checker = UnsafetyChecker::new(
-        tcx.is_min_const_fn(def_id),
+        const_context, min_const_fn,
         mir, source_scope_local_data, tcx, param_env);
     checker.visit_mir(mir);
 
@@ -517,8 +574,8 @@ fn unsafe_derive_on_repr_packed<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: D
                   &message);
 }
 
-/// Return the NodeId for an enclosing scope that is also `unsafe`
-fn is_enclosed(tcx: TyCtxt,
+/// Returns the `NodeId` for an enclosing scope that is also `unsafe`.
+fn is_enclosed(tcx: TyCtxt<'_, '_, '_>,
                used_unsafe: &FxHashSet<ast::NodeId>,
                id: ast::NodeId) -> Option<(String, ast::NodeId)> {
     let parent_id = tcx.hir().get_parent_node(id);
@@ -541,7 +598,9 @@ fn is_enclosed(tcx: TyCtxt,
     }
 }
 
-fn report_unused_unsafe(tcx: TyCtxt, used_unsafe: &FxHashSet<ast::NodeId>, id: ast::NodeId) {
+fn report_unused_unsafe(tcx: TyCtxt<'_, '_, '_>,
+                        used_unsafe: &FxHashSet<ast::NodeId>,
+                        id: ast::NodeId) {
     let span = tcx.sess.source_map().def_span(tcx.hir().span(id));
     let msg = "unnecessary `unsafe` block";
     let mut db = tcx.struct_span_lint_node(UNUSED_UNSAFE, id, span, msg);

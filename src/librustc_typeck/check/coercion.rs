@@ -1,7 +1,7 @@
 //! # Type Coercion
 //!
 //! Under certain circumstances we will coerce from one type to another,
-//! for example by auto-borrowing.  This occurs in situations where the
+//! for example by auto-borrowing. This occurs in situations where the
 //! compiler has a firm 'expected type' that was supplied from the user,
 //! and where the actual type is similar to that expected type in purpose
 //! but not in representation (so actual subtyping is inappropriate).
@@ -9,24 +9,24 @@
 //! ## Reborrowing
 //!
 //! Note that if we are expecting a reference, we will *reborrow*
-//! even if the argument provided was already a reference.  This is
+//! even if the argument provided was already a reference. This is
 //! useful for freezing mut/const things (that is, when the expected is &T
 //! but you have &const T or &mut T) and also for avoiding the linearity
-//! of mut things (when the expected is &mut T and you have &mut T).  See
+//! of mut things (when the expected is &mut T and you have &mut T). See
 //! the various `src/test/run-pass/coerce-reborrow-*.rs` tests for
 //! examples of where this is useful.
 //!
 //! ## Subtle note
 //!
 //! When deciding what type coercions to consider, we do not attempt to
-//! resolve any type variables we may encounter.  This is because `b`
+//! resolve any type variables we may encounter. This is because `b`
 //! represents the expected type "as the user wrote it", meaning that if
 //! the user defined a generic function like
 //!
 //!    fn foo<A>(a: A, b: A) { ... }
 //!
 //! and then we wrote `foo(&1, @2)`, we will not auto-borrow
-//! either argument.  In older code we went to some lengths to
+//! either argument. In older code we went to some lengths to
 //! resolve the `b` variable, which could mean that we'd
 //! auto-borrow later arguments but not earlier ones, which
 //! seems very confusing.
@@ -39,18 +39,18 @@
 //!    foo::<&int>(@1, @2)
 //!
 //! then we *will* auto-borrow, because we can't distinguish this from a
-//! function that declared `&int`.  This is inconsistent but it's easiest
+//! function that declared `&int`. This is inconsistent but it's easiest
 //! at the moment. The right thing to do, I think, is to consider the
 //! *unsubstituted* type when deciding whether to auto-borrow, but the
 //! *substituted* type when considering the bounds and so forth. But most
 //! of our methods don't give access to the unsubstituted type, and
-//! rightly so because they'd be error-prone.  So maybe the thing to do is
+//! rightly so because they'd be error-prone. So maybe the thing to do is
 //! to actually determine the kind of coercions that should occur
-//! separately and pass them in.  Or maybe it's ok as is.  Anyway, it's
-//! sort of a minor point so I've opted to leave it for later---after all
+//! separately and pass them in. Or maybe it's ok as is. Anyway, it's
+//! sort of a minor point so I've opted to leave it for later -- after all,
 //! we may want to adjust precisely when coercions occur.
 
-use check::{FnCtxt, Needs};
+use crate::check::{FnCtxt, Needs};
 use errors::DiagnosticBuilder;
 use rustc::hir;
 use rustc::hir::def_id::DefId;
@@ -1031,8 +1031,8 @@ impl<'gcx, 'tcx, 'exprs, E> CoerceMany<'gcx, 'tcx, 'exprs, E>
         }
     }
 
-    /// Return the "expected type" with which this coercion was
-    /// constructed.  This represents the "downward propagated" type
+    /// Returns the "expected type" with which this coercion was
+    /// constructed. This represents the "downward propagated" type
     /// that was given to us at the start of typing whatever construct
     /// we are typing (e.g., the match expression).
     ///
@@ -1199,7 +1199,6 @@ impl<'gcx, 'tcx, 'exprs, E> CoerceMany<'gcx, 'tcx, 'exprs, E>
                     (self.final_ty.unwrap_or(self.expected_ty), expression_ty)
                 };
 
-                let reason_label = "expected because of this statement";
                 let mut db;
                 match cause.code {
                     ObligationCauseCode::ReturnNoExpression => {
@@ -1209,34 +1208,23 @@ impl<'gcx, 'tcx, 'exprs, E> CoerceMany<'gcx, 'tcx, 'exprs, E>
                         db.span_label(cause.span, "return type is not `()`");
                     }
                     ObligationCauseCode::BlockTailExpression(blk_id) => {
-                        db = fcx.report_mismatched_types(cause, expected, found, err);
-
-                        let expr = expression.unwrap_or_else(|| {
-                            span_bug!(cause.span,
-                                      "supposed to be part of a block tail expression, but the \
-                                       expression is empty");
-                        });
-                        fcx.suggest_mismatched_types_on_tail(
-                            &mut db,
-                            expr,
+                        let parent_id = fcx.tcx.hir().get_parent_node(blk_id);
+                        db = self.report_return_mismatched_types(
+                            cause,
                             expected,
                             found,
-                            cause.span,
-                            blk_id,
+                            err,
+                            fcx,
+                            parent_id,
+                            expression.map(|expr| (expr, blk_id)),
                         );
-                        if let Some(sp) = fcx.ret_coercion_span.borrow().as_ref() {
-                            if !sp.overlaps(cause.span) {
-                                db.span_label(*sp, reason_label);
-                            }
-                        }
+                    }
+                    ObligationCauseCode::ReturnType(id) => {
+                        db = self.report_return_mismatched_types(
+                            cause, expected, found, err, fcx, id, None);
                     }
                     _ => {
                         db = fcx.report_mismatched_types(cause, expected, found, err);
-                        if let Some(sp) = fcx.ret_coercion_span.borrow().as_ref() {
-                            if !sp.overlaps(cause.span) {
-                                db.span_label(*sp, reason_label);
-                            }
-                        }
                     }
                 }
 
@@ -1249,6 +1237,59 @@ impl<'gcx, 'tcx, 'exprs, E> CoerceMany<'gcx, 'tcx, 'exprs, E>
                 self.final_ty = Some(fcx.tcx.types.err);
             }
         }
+    }
+
+    fn report_return_mismatched_types<'a>(
+        &self,
+        cause: &ObligationCause<'tcx>,
+        expected: Ty<'tcx>,
+        found: Ty<'tcx>,
+        err: TypeError<'tcx>,
+        fcx: &FnCtxt<'a, 'gcx, 'tcx>,
+        id: syntax::ast::NodeId,
+        expression: Option<(&'gcx hir::Expr, syntax::ast::NodeId)>,
+    ) -> DiagnosticBuilder<'a> {
+        let mut db = fcx.report_mismatched_types(cause, expected, found, err);
+
+        let mut pointing_at_return_type = false;
+        let mut return_sp = None;
+
+        // Verify that this is a tail expression of a function, otherwise the
+        // label pointing out the cause for the type coercion will be wrong
+        // as prior return coercions would not be relevant (#57664).
+        let parent_id = fcx.tcx.hir().get_parent_node(id);
+        let fn_decl = if let Some((expr, blk_id)) = expression {
+            pointing_at_return_type = fcx.suggest_mismatched_types_on_tail(
+                &mut db,
+                expr,
+                expected,
+                found,
+                cause.span,
+                blk_id,
+            );
+            let parent = fcx.tcx.hir().get(parent_id);
+            fcx.get_node_fn_decl(parent).map(|(fn_decl, _, is_main)| (fn_decl, is_main))
+        } else {
+            fcx.get_fn_decl(parent_id)
+        };
+
+        if let (Some((fn_decl, can_suggest)), _) = (fn_decl, pointing_at_return_type) {
+            if expression.is_none() {
+                pointing_at_return_type |= fcx.suggest_missing_return_type(
+                    &mut db, &fn_decl, expected, found, can_suggest);
+            }
+            if !pointing_at_return_type {
+                return_sp = Some(fn_decl.output.span()); // `impl Trait` return type
+            }
+        }
+        if let (Some(sp), Some(return_sp)) = (fcx.ret_coercion_span.borrow().as_ref(), return_sp) {
+            db.span_label(return_sp, "expected because this return type...");
+            db.span_label( *sp, format!(
+                "...is found to be `{}` here",
+                fcx.resolve_type_vars_with_obligations(expected),
+            ));
+        }
+        db
     }
 
     pub fn complete<'a>(self, fcx: &FnCtxt<'a, 'gcx, 'tcx>) -> Ty<'tcx> {

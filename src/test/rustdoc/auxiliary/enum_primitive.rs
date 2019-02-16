@@ -19,11 +19,10 @@
 // TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
 // SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
-
 //! This crate exports a macro `enum_from_primitive!` that wraps an
 //! `enum` declaration and automatically adds an implementation of
 //! `num::FromPrimitive` (reexported here), to allow conversion from
-//! primitive integers to the enum.  It therefore provides an
+//! primitive integers to the enum. It therefore provides an
 //! alternative to the built-in `#[derive(FromPrimitive)]`, which
 //! requires the unstable `std::num::FromPrimitive` and is disabled in
 //! Rust 1.0.
@@ -51,7 +50,6 @@
 //!     assert_eq!(FooBar::from_i32(91), None);
 //! }
 //! ```
-
 
 pub mod num_traits {
     pub trait FromPrimitive: Sized {
@@ -207,4 +205,3 @@ macro_rules! enum_from_primitive {
         enum_from_primitive_impl! { $name, $( $( $variant )+ )+ }
     };
 }
-

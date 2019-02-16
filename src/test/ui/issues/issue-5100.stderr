@@ -28,6 +28,8 @@ LL |         (true, false, false) => ()
 error[E0308]: mismatched types
   --> $DIR/issue-5100.rs:33:9
    |
+LL |     match (true, false) {
+   |           ------------- this match expression has type `(bool, bool)`
 LL |         box (true, false) => ()
    |         ^^^^^^^^^^^^^^^^^ expected tuple, found struct `std::boxed::Box`
    |

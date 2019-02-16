@@ -2,27 +2,27 @@ use rustc::ty::{self, Ty};
 use rustc::ty::layout::{self, Align, TyLayout, LayoutOf, VariantIdx, HasTyCtxt};
 use rustc::mir;
 use rustc::mir::tcx::PlaceTy;
-use MemFlags;
-use common::IntPredicate;
-use glue;
+use crate::MemFlags;
+use crate::common::IntPredicate;
+use crate::glue;
 
-use traits::*;
+use crate::traits::*;
 
 use super::{FunctionCx, LocalRef};
 use super::operand::OperandValue;
 
 #[derive(Copy, Clone, Debug)]
 pub struct PlaceRef<'tcx, V> {
-    /// Pointer to the contents of the place
+    /// Pointer to the contents of the place.
     pub llval: V,
 
-    /// This place's extra data if it is unsized, or null
+    /// This place's extra data if it is unsized, or null.
     pub llextra: Option<V>,
 
-    /// Monomorphized type of this place, including variant information
+    /// Monomorphized type of this place, including variant information.
     pub layout: TyLayout<'tcx>,
 
-    /// What alignment we know for this place
+    /// What alignment we know for this place.
     pub align: Align,
 }
 
@@ -33,6 +33,21 @@ impl<'a, 'tcx: 'a, V: CodegenObject> PlaceRef<'tcx, V> {
         align: Align,
     ) -> PlaceRef<'tcx, V> {
         assert!(!layout.is_unsized());
+        PlaceRef {
+            llval,
+            llextra: None,
+            layout,
+            align
+        }
+    }
+
+    fn new_thin_place<Bx: BuilderMethods<'a, 'tcx, Value = V>>(
+        bx: &mut Bx,
+        llval: V,
+        layout: TyLayout<'tcx>,
+        align: Align,
+    ) -> PlaceRef<'tcx, V> {
+        assert!(!bx.cx().type_has_metadata(layout.ty));
         PlaceRef {
             llval,
             llextra: None,
@@ -262,7 +277,7 @@ impl<'a, 'tcx: 'a, V: CodegenObject> PlaceRef<'tcx, V> {
         }
     }
 
-    /// Set the discriminant for a new value of the given case of the given
+    /// Sets the discriminant for a new value of the given case of the given
     /// representation.
     pub fn codegen_set_discr<Bx: BuilderMethods<'a, 'tcx, Value = V>>(
         &self,
@@ -421,8 +436,10 @@ impl<'a, 'tcx: 'a, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 }
             }
             mir::Place::Static(box mir::Static { def_id, ty }) => {
+                // NB: The layout of a static may be unsized as is the case when working
+                // with a static that is an extern_type.
                 let layout = cx.layout_of(self.monomorphize(&ty));
-                PlaceRef::new_sized(bx.get_static(def_id), layout, layout.align.abi)
+                PlaceRef::new_thin_place(bx, bx.get_static(def_id), layout, layout.align.abi)
             },
             mir::Place::Projection(box mir::Projection {
                 ref base,

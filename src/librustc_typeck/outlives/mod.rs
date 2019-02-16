@@ -12,7 +12,7 @@ mod implicit_infer;
 pub mod test;
 mod utils;
 
-pub fn provide(providers: &mut Providers) {
+pub fn provide(providers: &mut Providers<'_>) {
     *providers = Providers {
         inferred_outlives_of,
         inferred_outlives_crate,

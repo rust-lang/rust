@@ -13,7 +13,7 @@ use value::Value;
 
 use llvm;
 use llvm::debuginfo::{DIArray, DIType, DIFile, DIScope, DIDescriptor,
-                      DICompositeType, DILexicalBlock, DIFlags};
+                      DICompositeType, DILexicalBlock, DIFlags, DebugEmissionKind};
 use llvm_util;
 
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
@@ -47,7 +47,7 @@ use syntax_pos::{self, Span, FileName};
 
 impl PartialEq for llvm::Metadata {
     fn eq(&self, other: &Self) -> bool {
-        self as *const _ == other as *const _
+        ptr::eq(self, other)
     }
 }
 
@@ -846,6 +846,7 @@ pub fn compile_unit_metadata(tcx: TyCtxt,
     let producer = CString::new(producer).unwrap();
     let flags = "\0";
     let split_name = "\0";
+    let kind = DebugEmissionKind::from_generic(tcx.sess.opts.debuginfo);
 
     unsafe {
         let file_metadata = llvm::LLVMRustDIBuilderCreateFile(
@@ -859,7 +860,8 @@ pub fn compile_unit_metadata(tcx: TyCtxt,
             tcx.sess.opts.optimize != config::OptLevel::No,
             flags.as_ptr() as *const _,
             0,
-            split_name.as_ptr() as *const _);
+            split_name.as_ptr() as *const _,
+            kind);
 
         if tcx.sess.opts.debugging_opts.profile {
             let cu_desc_metadata = llvm::LLVMRustMetadataAsValue(debug_context.llcontext,
@@ -1164,7 +1166,10 @@ fn use_enum_fallback(cx: &CodegenCx) -> bool {
     // On MSVC we have to use the fallback mode, because LLVM doesn't
     // lower variant parts to PDB.
     return cx.sess().target.target.options.is_like_msvc
-        || llvm_util::get_major_version() < 7;
+        // LLVM version 7 did not release with an important bug fix;
+        // but the required patch is in the LLVM 8.  Rust LLVM reports
+        // 8 as well.
+        || llvm_util::get_major_version() < 8;
 }
 
 // Describes the members of an enum value: An enum is described as a union of

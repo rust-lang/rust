@@ -2,6 +2,7 @@
 
 use std::cell::RefCell;
 use std::ops::Generator;
+use std::pin::Pin;
 
 fn main() {
     let (mut gen, cell);
@@ -14,6 +15,6 @@ fn main() {
         let _d = ref_.take(); //~ ERROR `ref_` does not live long enough
         yield;
     };
-    unsafe { gen.resume(); }
+    Pin::new(&mut gen).resume();
     // drops the RefCell and then the Ref, leading to use-after-free
 }

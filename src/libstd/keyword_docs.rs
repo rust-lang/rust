@@ -260,7 +260,7 @@ mod extern_keyword { }
 /// }
 ///
 /// fn generic_where<T>(x: T) -> T
-///     where T: std::ops::Add<Output=T> + Copy
+///     where T: std::ops::Add<Output = T> + Copy
 /// {
 ///     x + x + x
 /// }
@@ -289,7 +289,7 @@ mod fn_keyword { }
 /// `for` is primarily used in for-in-loops, but it has a few other pieces of syntactic uses such as
 /// `impl Trait for Type` (see [`impl`] for more info on that). for-in-loops, or to be more
 /// precise, iterator loops, are a simple syntactic sugar over an exceedingly common practice
-/// within Rust, which is to loop over an iterator until that iterator returns None (or `break`
+/// within Rust, which is to loop over an iterator until that iterator returns `None` (or `break`
 /// is called).
 ///
 /// ```rust
@@ -627,7 +627,7 @@ mod loop_keyword { }
 /// directly accessed and modified.
 ///
 /// Tuple structs are similar to regular structs, but its fields have no names. They are used like
-/// tuples, with deconstruction possible via `let TupleStruct(x, y) = foo;` syntax.  For accessing
+/// tuples, with deconstruction possible via `let TupleStruct(x, y) = foo;` syntax. For accessing
 /// individual variables, the same syntax is used as with regular tuples, namely `foo.0`, `foo.1`,
 /// etc, starting at zero.
 ///

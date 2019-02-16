@@ -63,7 +63,7 @@ impl<'tcx> StructuredDiagnostic<'tcx> for VariadicError<'tcx> {
             )
         };
         if let Ok(snippet) = self.sess.source_map().span_to_snippet(self.span) {
-            err.span_suggestion_with_applicability(
+            err.span_suggestion(
                 self.span,
                 &format!("cast the value to `{}`", self.cast_ty),
                 format!("{} as {}", snippet, self.cast_ty),
@@ -137,7 +137,7 @@ To fix this error, don't try to cast directly between thin and fat
 pointers.
 
 For more information about casts, take a look at The Book:
-https://doc.rust-lang.org/book/first-edition/casting-between-types.html");
+https://doc.rust-lang.org/reference/expressions/operator-expr.html#type-cast-expressions");
         err
     }
 }

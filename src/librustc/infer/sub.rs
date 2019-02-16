@@ -1,11 +1,11 @@
 use super::SubregionOrigin;
 use super::combine::{CombineFields, RelationDir};
 
-use traits::Obligation;
-use ty::{self, Ty, TyCtxt};
-use ty::TyVar;
-use ty::fold::TypeFoldable;
-use ty::relate::{Cause, Relate, RelateResult, TypeRelation};
+use crate::traits::Obligation;
+use crate::ty::{self, Ty, TyCtxt};
+use crate::ty::TyVar;
+use crate::ty::fold::TypeFoldable;
+use crate::ty::relate::{Cause, Relate, RelateResult, TypeRelation};
 use std::mem;
 
 /// Ensures `a` is made a subtype of `b`. Returns `a` on success.

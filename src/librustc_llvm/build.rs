@@ -1,6 +1,3 @@
-extern crate cc;
-extern crate build_helper;
-
 use std::process::Command;
 use std::env;
 use std::path::{PathBuf, Path};
@@ -23,6 +20,8 @@ fn main() {
         println!("cargo:rerun-if-env-changed=RUST_CHECK");
         return;
     }
+
+    build_helper::restore_library_path();
 
     let target = env::var("TARGET").expect("TARGET was not set");
     let llvm_config = env::var_os("LLVM_CONFIG")
@@ -242,6 +241,8 @@ fn main() {
         // llvm-config on OpenBSD doesn't mention stdlib=libc++
         "c++"
     } else if target.contains("freebsd") {
+        "c++"
+    } else if target.contains("darwin") {
         "c++"
     } else if target.contains("netbsd") && llvm_static_stdcpp.is_some() {
         // NetBSD uses a separate library when relocation is required

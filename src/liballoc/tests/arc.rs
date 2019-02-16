@@ -1,3 +1,5 @@
+#![cfg(not(miri))]
+
 use std::any::Any;
 use std::sync::{Arc, Weak};
 use std::cell::RefCell;

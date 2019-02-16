@@ -1,6 +1,6 @@
 use super::{InferCtxt, FixupError, FixupResult};
-use ty::{self, Ty, TyCtxt, TypeFoldable};
-use ty::fold::{TypeFolder, TypeVisitor};
+use crate::ty::{self, Ty, TyCtxt, TypeFoldable};
+use crate::ty::fold::{TypeFolder, TypeVisitor};
 
 ///////////////////////////////////////////////////////////////////////////
 // OPPORTUNISTIC TYPE RESOLVER

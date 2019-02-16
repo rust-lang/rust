@@ -6,12 +6,12 @@ use super::*;
 use std::collections::hash_map::Entry;
 use std::collections::VecDeque;
 
-use infer::region_constraints::{Constraint, RegionConstraintData};
-use infer::InferCtxt;
+use crate::infer::region_constraints::{Constraint, RegionConstraintData};
+use crate::infer::InferCtxt;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 
-use ty::fold::TypeFolder;
-use ty::{Region, RegionVid};
+use crate::ty::fold::TypeFolder;
+use crate::ty::{Region, RegionVid};
 
 // FIXME(twk): this is obviously not nice to duplicate like that
 #[derive(Eq, PartialEq, Hash, Copy, Clone, Debug)]
@@ -57,7 +57,7 @@ impl<'a, 'tcx> AutoTraitFinder<'a, 'tcx> {
         AutoTraitFinder { tcx }
     }
 
-    /// Make a best effort to determine whether and under which conditions an auto trait is
+    /// Makes a best effort to determine whether and under which conditions an auto trait is
     /// implemented for a type. For example, if you have
     ///
     /// ```
@@ -202,7 +202,7 @@ impl<'a, 'tcx> AutoTraitFinder<'a, 'tcx> {
                 full_env,
                 ty,
                 trait_did,
-                ObligationCause::misc(DUMMY_SP, ast::DUMMY_NODE_ID),
+                ObligationCause::misc(DUMMY_SP, hir::DUMMY_HIR_ID),
             );
             fulfill.select_all_or_error(&infcx).unwrap_or_else(|e| {
                 panic!(
@@ -315,7 +315,7 @@ impl<'a, 'tcx> AutoTraitFinder<'a, 'tcx> {
             user_env.caller_bounds.iter().cloned().collect();
 
         let mut new_env = param_env.clone();
-        let dummy_cause = ObligationCause::misc(DUMMY_SP, ast::DUMMY_NODE_ID);
+        let dummy_cause = ObligationCause::misc(DUMMY_SP, hir::DUMMY_HIR_ID);
 
         while let Some(pred) = predicates.pop_front() {
             infcx.clear_caches();
@@ -669,7 +669,7 @@ impl<'a, 'tcx> AutoTraitFinder<'a, 'tcx> {
         select: &mut SelectionContext<'c, 'd, 'cx>,
         only_projections: bool,
     ) -> bool {
-        let dummy_cause = ObligationCause::misc(DUMMY_SP, ast::DUMMY_NODE_ID);
+        let dummy_cause = ObligationCause::misc(DUMMY_SP, hir::DUMMY_HIR_ID);
 
         for (obligation, mut predicate) in nested
             .map(|o| (o.clone(), o.predicate.clone()))

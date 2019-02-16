@@ -1,20 +1,20 @@
 error: any use of this value will cause an error
   --> $DIR/const_raw_ptr_ops.rs:6:1
    |
-LL | const X: bool = &1 as *const i32 == &2 as *const i32; //~ ERROR any use of this value will cause
-   | ^^^^^^^^^^^^^^^^------------------------------------^
-   |                 |
-   |                 "pointer arithmetic or comparison" needs an rfc before being allowed inside constants
+LL | const X: bool = unsafe { &1 as *const i32 == &2 as *const i32 }; //~ ERROR any use of this
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^------------------------------------^^^
+   |                          |
+   |                          "pointer arithmetic or comparison" needs an rfc before being allowed inside constants
    |
    = note: #[deny(const_err)] on by default
 
 error: any use of this value will cause an error
   --> $DIR/const_raw_ptr_ops.rs:12:1
    |
-LL | const Y2: usize = &1 as *const i32 as usize + 1; //~ ERROR any use of this value will cause
-   | ^^^^^^^^^^^^^^^^^^-----------------------------^
-   |                   |
-   |                   "pointer arithmetic or comparison" needs an rfc before being allowed inside constants
+LL | const Y2: usize = unsafe { &1 as *const i32 as usize + 1 }; //~ ERROR any use of this
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^-----------------------------^^^
+   |                            |
+   |                            "pointer arithmetic or comparison" needs an rfc before being allowed inside constants
 
 error: any use of this value will cause an error
   --> $DIR/const_raw_ptr_ops.rs:16:1

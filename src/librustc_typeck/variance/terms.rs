@@ -15,7 +15,7 @@ use std::fmt;
 use syntax::ast;
 use rustc::hir;
 use rustc::hir::itemlikevisit::ItemLikeVisitor;
-use util::nodemap::NodeMap;
+use crate::util::nodemap::NodeMap;
 
 use self::VarianceTerm::*;
 

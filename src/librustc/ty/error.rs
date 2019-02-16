@@ -1,5 +1,5 @@
-use hir::def_id::DefId;
-use ty::{self, Region, Ty, TyCtxt};
+use crate::hir::def_id::DefId;
+use crate::ty::{self, Region, Ty, TyCtxt};
 use std::borrow::Cow;
 use std::fmt;
 use rustc_target::spec::abi;
@@ -7,7 +7,7 @@ use syntax::ast;
 use errors::{Applicability, DiagnosticBuilder};
 use syntax_pos::Span;
 
-use hir;
+use crate::hir;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct ExpectedFound<T> {
@@ -237,7 +237,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
                 {
                     if let Ok(snippet) = self.sess.source_map().span_to_snippet(sp) {
                         if snippet.chars().all(|c| c.is_digit(10) || c == '-' || c == '_') {
-                            db.span_suggestion_with_applicability(
+                            db.span_suggestion(
                                 sp,
                                 "use a float literal",
                                 format!("{}.0", snippet),

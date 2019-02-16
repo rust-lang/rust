@@ -1,8 +1,8 @@
 error: discriminator values can only be used with a field-less enum
-  --> $DIR/issue-17383.rs:3:9
+  --> $DIR/issue-17383.rs:2:9
    |
-LL |         b'a' //~ ERROR discriminator values can only be used with a field-less enum
-   |         ^^^^
+LL |     A = 3,
+   |         ^ only valid in field-less enums
 
 error: aborting due to previous error
 

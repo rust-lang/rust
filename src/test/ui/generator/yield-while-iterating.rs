@@ -2,6 +2,7 @@
 
 use std::ops::{GeneratorState, Generator};
 use std::cell::Cell;
+use std::pin::Pin;
 
 fn yield_during_iter_owned_data(x: Vec<i32>) {
     // The generator owns `x`, so we error out when yielding with a
@@ -33,7 +34,7 @@ fn yield_during_iter_borrowed_slice_2() {
     println!("{:?}", x);
 }
 
-unsafe fn yield_during_iter_borrowed_slice_3() {
+fn yield_during_iter_borrowed_slice_3() {
     // OK to take a mutable ref to `x` and yield
     // up pointers from it:
     let mut x = vec![22_i32];
@@ -42,10 +43,10 @@ unsafe fn yield_during_iter_borrowed_slice_3() {
             yield p;
         }
     };
-    b.resume();
+    Pin::new(&mut b).resume();
 }
 
-unsafe fn yield_during_iter_borrowed_slice_4() {
+fn yield_during_iter_borrowed_slice_4() {
     // ...but not OK to do that while reading
     // from `x` too
     let mut x = vec![22_i32];
@@ -55,10 +56,10 @@ unsafe fn yield_during_iter_borrowed_slice_4() {
         }
     };
     println!("{}", x[0]); //~ ERROR
-    b.resume();
+    Pin::new(&mut b).resume();
 }
 
-unsafe fn yield_during_range_iter() {
+fn yield_during_range_iter() {
     // Should be OK.
     let mut b = || {
         let v = vec![1,2,3];
@@ -68,7 +69,7 @@ unsafe fn yield_during_range_iter() {
             yield x;
         }
     };
-    b.resume();
+    Pin::new(&mut b).resume();
 }
 
 fn main() { }

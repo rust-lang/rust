@@ -1,5 +1,5 @@
 error[E0658]: no_core is experimental (see issue #29639)
-  --> $DIR/cfg-attr-multi-invalid-2.rs:5:29
+  --> $DIR/cfg-attr-multi-invalid-2.rs:4:29
    |
 LL | #![cfg_attr(broken, no_std, no_core)] //~ ERROR no_core is experimental
    |                             ^^^^^^^

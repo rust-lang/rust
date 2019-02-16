@@ -1,9 +1,16 @@
-error[E0214]: parenthesized parameters may only be used with a trait
+error[E0214]: parenthesized type parameters may only be used with a `Fn` trait
   --> $DIR/unboxed-closure-sugar-used-on-struct-1.rs:8:19
    |
 LL |     let x: Box<Bar()> = panic!();
-   |                   ^^ only traits may use parentheses
+   |                   ^^ only `Fn` traits may use parentheses
 
-error: aborting due to previous error
+error[E0107]: wrong number of type arguments: expected 1, found 0
+  --> $DIR/unboxed-closure-sugar-used-on-struct-1.rs:8:16
+   |
+LL |     let x: Box<Bar()> = panic!();
+   |                ^^^^^ expected 1 type argument
 
-For more information about this error, try `rustc --explain E0214`.
+error: aborting due to 2 previous errors
+
+Some errors occurred: E0107, E0214.
+For more information about an error, try `rustc --explain E0107`.

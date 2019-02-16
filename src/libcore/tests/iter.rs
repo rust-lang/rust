@@ -1,3 +1,4 @@
+use core::cell::Cell;
 use core::iter::*;
 use core::{i8, i16, isize};
 use core::usize;
@@ -189,6 +190,7 @@ fn test_iterator_step_by() {
 }
 
 #[test]
+#[cfg(not(miri))]
 fn test_iterator_step_by_nth() {
     let mut it = (0..16).step_by(5);
     assert_eq!(it.nth(0), Some(0));
@@ -207,6 +209,7 @@ fn test_iterator_step_by_nth() {
 }
 
 #[test]
+#[cfg(not(miri))]
 fn test_iterator_step_by_nth_overflow() {
     #[cfg(target_pointer_width = "8")]
     type Bigger = u16;
@@ -252,12 +255,14 @@ fn test_iterator_step_by_nth_overflow() {
 
 #[test]
 #[should_panic]
+#[cfg(not(miri))]
 fn test_iterator_step_by_zero() {
     let mut it = (0..).step_by(0);
     it.next();
 }
 
 #[test]
+#[cfg(not(miri))]
 fn test_iterator_step_by_size_hint() {
     struct StubSizeHint(usize, Option<usize>);
     impl Iterator for StubSizeHint {
@@ -876,7 +881,7 @@ fn test_iterator_flat_map() {
     assert_eq!(i, ys.len());
 }
 
-/// Test `FlatMap::fold` with items already picked off the front and back,
+/// Tests `FlatMap::fold` with items already picked off the front and back,
 /// to make sure all parts of the `FlatMap` are folded correctly.
 #[test]
 fn test_iterator_flat_map_fold() {
@@ -914,7 +919,7 @@ fn test_iterator_flatten() {
     assert_eq!(i, ys.len());
 }
 
-/// Test `Flatten::fold` with items already picked off the front and back,
+/// Tests `Flatten::fold` with items already picked off the front and back,
 /// to make sure all parts of the `Flatten` are folded correctly.
 #[test]
 fn test_iterator_flatten_fold() {
@@ -1412,6 +1417,7 @@ fn test_rposition() {
 
 #[test]
 #[should_panic]
+#[cfg(not(miri))]
 fn test_rposition_panic() {
     let v: [(Box<_>, Box<_>); 4] =
         [(box 0, box 0), (box 0, box 0),
@@ -1651,6 +1657,7 @@ fn test_range_inclusive_nth() {
 }
 
 #[test]
+#[cfg(not(miri))]
 fn test_range_step() {
     #![allow(deprecated)]
 
@@ -1674,6 +1681,7 @@ fn test_range_step() {
 }
 
 #[test]
+#[cfg(not(miri))]
 fn test_step_by_skip() {
     assert_eq!((0..640).step_by(128).skip(1).collect::<Vec<_>>(), [128, 256, 384, 512]);
     assert_eq!((0..=50).step_by(10).nth(3), Some(30));
@@ -1681,6 +1689,7 @@ fn test_step_by_skip() {
 }
 
 #[test]
+#[cfg(not(miri))]
 fn test_range_inclusive_step() {
     assert_eq!((0..=50).step_by(10).collect::<Vec<_>>(), [0, 10, 20, 30, 40, 50]);
     assert_eq!((0..=5).step_by(1).collect::<Vec<_>>(), [0, 1, 2, 3, 4, 5]);
@@ -1904,6 +1913,23 @@ fn test_once() {
     let mut it = once(42);
     assert_eq!(it.next(), Some(42));
     assert_eq!(it.next(), None);
+}
+
+#[test]
+fn test_once_with() {
+    let count = Cell::new(0);
+    let mut it = once_with(|| {
+        count.set(count.get() + 1);
+        42
+    });
+
+    assert_eq!(count.get(), 0);
+    assert_eq!(it.next(), Some(42));
+    assert_eq!(count.get(), 1);
+    assert_eq!(it.next(), None);
+    assert_eq!(count.get(), 1);
+    assert_eq!(it.next(), None);
+    assert_eq!(count.get(), 1);
 }
 
 #[test]
@@ -2216,4 +2242,17 @@ fn test_monad_laws_associativity() {
     fn g(x: usize) -> impl Iterator<Item = usize> { (0..x).rev() }
     assert_eq!((0..10).flat_map(f).flat_map(g).sum::<usize>(),
                 (0..10).flat_map(|x| f(x).flat_map(g)).sum::<usize>());
+}
+
+#[test]
+fn test_is_sorted() {
+    assert!([1, 2, 2, 9].iter().is_sorted());
+    assert!(![1, 3, 2].iter().is_sorted());
+    assert!([0].iter().is_sorted());
+    assert!(std::iter::empty::<i32>().is_sorted());
+    assert!(![0.0, 1.0, std::f32::NAN].iter().is_sorted());
+    assert!([-2, -1, 0, 3].iter().is_sorted());
+    assert!(![-2i32, -1, 0, 3].iter().is_sorted_by_key(|n| n.abs()));
+    assert!(!["c", "bb", "aaa"].iter().is_sorted());
+    assert!(["c", "bb", "aaa"].iter().is_sorted_by_key(|s| s.len()));
 }

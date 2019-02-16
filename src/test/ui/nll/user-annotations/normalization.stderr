@@ -1,5 +1,5 @@
 error[E0597]: `a` does not live long enough
-  --> $DIR/normalization.rs:12:31
+  --> $DIR/normalization.rs:11:31
    |
 LL |     let b: <() as Foo>::Out = &a; //~ ERROR
    |            ----------------   ^^ borrowed value does not live long enough

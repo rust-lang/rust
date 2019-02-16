@@ -1,9 +1,9 @@
 //! This module provides a simplified abstraction for working with
-//! code blocks identified by their integer node-id.  In particular,
+//! code blocks identified by their integer `NodeId`. In particular,
 //! it captures a common set of attributes that all "function-like
-//! things" (represented by `FnLike` instances) share.  For example,
+//! things" (represented by `FnLike` instances) share. For example,
 //! all `FnLike` instances have a type signature (be it explicit or
-//! inferred).  And all `FnLike` instances have a body, i.e., the code
+//! inferred). And all `FnLike` instances have a body, i.e., the code
 //! that is run when the function-like thing it represents is invoked.
 //!
 //! With the above abstraction in place, one can treat the program
@@ -11,11 +11,11 @@
 //! nested within a uniquely determined `FnLike`), and users can ask
 //! for the `Code` associated with a particular NodeId.
 
-use hir as ast;
-use hir::map;
-use hir::{Expr, FnDecl, Node};
-use hir::intravisit::FnKind;
-use syntax::ast::{Attribute, Ident, Name, NodeId};
+use crate::hir as ast;
+use crate::hir::map;
+use crate::hir::{Expr, FnDecl, Node};
+use crate::hir::intravisit::FnKind;
+use syntax::ast::{Attribute, Ident, NodeId};
 use syntax_pos::Span;
 
 /// An FnLikeNode is a Node that is like a fn, in that it has a decl
@@ -98,7 +98,7 @@ impl<'a> Code<'a> {
 /// These are all the components one can extract from a fn item for
 /// use when implementing FnLikeNode operations.
 struct ItemFnParts<'a> {
-    name:     Name,
+    ident:    Ident,
     decl:     &'a ast::FnDecl,
     header:   ast::FnHeader,
     vis:      &'a ast::Visibility,
@@ -200,7 +200,7 @@ impl<'a> FnLikeNode<'a> {
 
     pub fn kind(self) -> FnKind<'a> {
         let item = |p: ItemFnParts<'a>| -> FnKind<'a> {
-            FnKind::ItemFn(p.name, p.generics, p.header, p.vis, p.attrs)
+            FnKind::ItemFn(p.ident, p.generics, p.header, p.vis, p.attrs)
         };
         let closure = |c: ClosureParts<'a>| {
             FnKind::Closure(c.attrs)
@@ -228,7 +228,7 @@ impl<'a> FnLikeNode<'a> {
                 ast::ItemKind::Fn(ref decl, header, ref generics, block) =>
                     item_fn(ItemFnParts {
                         id: i.id,
-                        name: i.ident.name,
+                        ident: i.ident,
                         decl: &decl,
                         body: block,
                         vis: &i.vis,

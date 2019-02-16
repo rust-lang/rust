@@ -1,94 +1,21 @@
-error[E0658]: statements in constants are unstable (see issue #48821)
-  --> $DIR/issue-32829-2.rs:7:9
-   |
-LL |         5;
-   |         ^
-   |
-   = help: add #![feature(const_let)] to the crate attributes to enable
-
 error[E0015]: calls in constants are limited to constant functions, tuple structs and tuple variants
-  --> $DIR/issue-32829-2.rs:15:9
+  --> $DIR/issue-32829-2.rs:12:9
    |
 LL |         invalid();
    |         ^^^^^^^^^
-
-error[E0658]: statements in constants are unstable (see issue #48821)
-  --> $DIR/issue-32829-2.rs:15:9
-   |
-LL |         invalid();
-   |         ^^^^^^^^^
-   |
-   = help: add #![feature(const_let)] to the crate attributes to enable
-
-error[E0658]: statements in constants are unstable (see issue #48821)
-  --> $DIR/issue-32829-2.rs:24:9
-   |
-LL |         valid();
-   |         ^^^^^^^
-   |
-   = help: add #![feature(const_let)] to the crate attributes to enable
-
-error[E0658]: statements in statics are unstable (see issue #48821)
-  --> $DIR/issue-32829-2.rs:32:9
-   |
-LL |         5;
-   |         ^
-   |
-   = help: add #![feature(const_let)] to the crate attributes to enable
 
 error[E0015]: calls in statics are limited to constant functions, tuple structs and tuple variants
-  --> $DIR/issue-32829-2.rs:40:9
+  --> $DIR/issue-32829-2.rs:34:9
    |
 LL |         invalid();
    |         ^^^^^^^^^
-
-error[E0658]: statements in statics are unstable (see issue #48821)
-  --> $DIR/issue-32829-2.rs:40:9
-   |
-LL |         invalid();
-   |         ^^^^^^^^^
-   |
-   = help: add #![feature(const_let)] to the crate attributes to enable
-
-error[E0658]: statements in statics are unstable (see issue #48821)
-  --> $DIR/issue-32829-2.rs:49:9
-   |
-LL |         valid();
-   |         ^^^^^^^
-   |
-   = help: add #![feature(const_let)] to the crate attributes to enable
-
-error[E0658]: statements in statics are unstable (see issue #48821)
-  --> $DIR/issue-32829-2.rs:57:9
-   |
-LL |         5;
-   |         ^
-   |
-   = help: add #![feature(const_let)] to the crate attributes to enable
 
 error[E0015]: calls in statics are limited to constant functions, tuple structs and tuple variants
-  --> $DIR/issue-32829-2.rs:65:9
+  --> $DIR/issue-32829-2.rs:56:9
    |
 LL |         invalid();
    |         ^^^^^^^^^
 
-error[E0658]: statements in statics are unstable (see issue #48821)
-  --> $DIR/issue-32829-2.rs:65:9
-   |
-LL |         invalid();
-   |         ^^^^^^^^^
-   |
-   = help: add #![feature(const_let)] to the crate attributes to enable
+error: aborting due to 3 previous errors
 
-error[E0658]: statements in statics are unstable (see issue #48821)
-  --> $DIR/issue-32829-2.rs:74:9
-   |
-LL |         valid();
-   |         ^^^^^^^
-   |
-   = help: add #![feature(const_let)] to the crate attributes to enable
-
-error: aborting due to 12 previous errors
-
-Some errors occurred: E0015, E0658.
-For more information about an error, try `rustc --explain E0015`.
+For more information about this error, try `rustc --explain E0015`.

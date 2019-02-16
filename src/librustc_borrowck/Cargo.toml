@@ -2,6 +2,7 @@
 authors = ["The Rust Project Developers"]
 name = "rustc_borrowck"
 version = "0.0.0"
+edition = "2018"
 
 [lib]
 name = "rustc_borrowck"
@@ -13,8 +14,10 @@ test = false
 log = "0.4"
 syntax = { path = "../libsyntax" }
 syntax_pos = { path = "../libsyntax_pos" }
-graphviz = { path = "../libgraphviz" }
+# for "clarity", rename the graphviz crate to dot; graphviz within `borrowck`
+# refers to the borrowck-specific graphviz adapter traits.
+dot = { path = "../libgraphviz", package = "graphviz" }
 rustc = { path = "../librustc" }
 rustc_mir = { path = "../librustc_mir" }
-rustc_errors = { path = "../librustc_errors" }
+errors = { path = "../librustc_errors", package = "rustc_errors" }
 rustc_data_structures = { path = "../librustc_data_structures" }

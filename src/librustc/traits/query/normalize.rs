@@ -2,15 +2,15 @@
 //! which folds deeply, invoking the underlying
 //! `normalize_projection_ty` query when it encounters projections.
 
-use infer::at::At;
-use infer::canonical::OriginalQueryValues;
-use infer::{InferCtxt, InferOk};
-use mir::interpret::GlobalId;
-use traits::project::Normalized;
-use traits::{Obligation, ObligationCause, PredicateObligation, Reveal};
-use ty::fold::{TypeFoldable, TypeFolder};
-use ty::subst::{Subst, Substs};
-use ty::{self, Ty, TyCtxt};
+use crate::infer::at::At;
+use crate::infer::canonical::OriginalQueryValues;
+use crate::infer::{InferCtxt, InferOk};
+use crate::mir::interpret::GlobalId;
+use crate::traits::project::Normalized;
+use crate::traits::{Obligation, ObligationCause, PredicateObligation, Reveal};
+use crate::ty::fold::{TypeFoldable, TypeFolder};
+use crate::ty::subst::{Subst, Substs};
+use crate::ty::{self, Ty, TyCtxt};
 
 use super::NoSolution;
 
@@ -24,7 +24,7 @@ impl<'cx, 'gcx, 'tcx> At<'cx, 'gcx, 'tcx> {
     /// the normalized value along with various outlives relations (in
     /// the form of obligations that must be discharged).
     ///
-    /// NB. This will *eventually* be the main means of
+    /// N.B., this will *eventually* be the main means of
     /// normalizing, but for now should be used only when we actually
     /// know that normalization will succeed, since error reporting
     /// and other details are still "under development".
@@ -203,7 +203,7 @@ impl<'cx, 'gcx, 'tcx> TypeFolder<'gcx, 'tcx> for QueryNormalizer<'cx, 'gcx, 'tcx
                         if let Ok(evaluated) = tcx.const_eval(param_env.and(cid)) {
                             let substs = tcx.lift_to_global(&substs).unwrap();
                             let evaluated = evaluated.subst(tcx, substs);
-                            return tcx.intern_lazy_const(ty::LazyConst::Evaluated(evaluated));
+                            return tcx.mk_lazy_const(ty::LazyConst::Evaluated(evaluated));
                         }
                     }
                 } else {
@@ -215,7 +215,7 @@ impl<'cx, 'gcx, 'tcx> TypeFolder<'gcx, 'tcx> for QueryNormalizer<'cx, 'gcx, 'tcx
                                 promoted: None,
                             };
                             if let Ok(evaluated) = tcx.const_eval(param_env.and(cid)) {
-                                return tcx.intern_lazy_const(ty::LazyConst::Evaluated(evaluated));
+                                return tcx.mk_lazy_const(ty::LazyConst::Evaluated(evaluated));
                             }
                         }
                     }

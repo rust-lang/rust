@@ -83,14 +83,14 @@ fn borrow_after_mut_borrow() {
     let mut a: Box<_> = box A { x: box 0, y: 1 };
     let _x = &mut a.x;
     let _y = &a.y; //[ast]~ ERROR cannot borrow
-    //[ast]~^ immutable borrow occurs here (via `a.y`)
+    //[ast]~^ immutable borrow of `a.y` -- which overlaps with `a.x` -- occurs here
     use_mut(_x);
 }
 fn mut_borrow_after_borrow() {
     let mut a: Box<_> = box A { x: box 0, y: 1 };
     let _x = &a.x;
     let _y = &mut a.y; //[ast]~ ERROR cannot borrow
-    //[ast]~^ mutable borrow occurs here (via `a.y`)
+    //[ast]~^ mutable borrow of `a.y` -- which overlaps with `a.x` -- occurs here
     use_imm(_x);
 }
 fn copy_after_move_nested() {

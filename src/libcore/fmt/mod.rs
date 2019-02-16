@@ -191,29 +191,8 @@ pub trait Write {
     /// assert_eq!(&buf, "world");
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
-    fn write_fmt(&mut self, args: Arguments) -> Result {
-        // This Adapter is needed to allow `self` (of type `&mut
-        // Self`) to be cast to a Write (below) without
-        // requiring a `Sized` bound.
-        struct Adapter<'a,T: ?Sized +'a>(&'a mut T);
-
-        impl<T: ?Sized> Write for Adapter<'_, T>
-            where T: Write
-        {
-            fn write_str(&mut self, s: &str) -> Result {
-                self.0.write_str(s)
-            }
-
-            fn write_char(&mut self, c: char) -> Result {
-                self.0.write_char(c)
-            }
-
-            fn write_fmt(&mut self, args: Arguments) -> Result {
-                self.0.write_fmt(args)
-            }
-        }
-
-        write(&mut Adapter(self), args)
+    fn write_fmt(mut self: &mut Self, args: Arguments) -> Result {
+        write(&mut self, args)
     }
 }
 
@@ -232,9 +211,18 @@ impl<W: Write + ?Sized> Write for &mut W {
     }
 }
 
-/// A struct to represent both where to emit formatting strings to and how they
-/// should be formatted. A mutable version of this is passed to all formatting
-/// traits.
+/// Configuration for formatting.
+///
+/// A `Formatter` represents various options related to formatting. Users do not
+/// construct `Formatter`s directly; a mutable reference to one is passed to
+/// the `fmt` method of all formatting traits, like [`Debug`] and [`Display`].
+///
+/// To interact with a `Formatter`, you'll call various methods to change the
+/// various options related to formatting. For examples, please see the
+/// documentation of the methods defined on `Formatter` below.
+///
+/// [`Debug`]: trait.Debug.html
+/// [`Display`]: trait.Display.html
 #[allow(missing_debug_implementations)]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct Formatter<'a> {
@@ -268,7 +256,7 @@ struct Void {
 /// family of functions. It contains a function to format the given value. At
 /// compile time it is ensured that the function and the value have the correct
 /// types, and then this struct is used to canonicalize arguments to one type.
-#[derive(Copy)]
+#[derive(Copy, Clone)]
 #[allow(missing_debug_implementations)]
 #[unstable(feature = "fmt_internals", reason = "internal to format_args!",
            issue = "0")]
@@ -276,14 +264,6 @@ struct Void {
 pub struct ArgumentV1<'a> {
     value: &'a Void,
     formatter: fn(&Void, &mut Formatter) -> Result,
-}
-
-#[unstable(feature = "fmt_internals", reason = "internal to format_args!",
-           issue = "0")]
-impl Clone for ArgumentV1<'_> {
-    fn clone(&self) -> Self {
-        *self
-    }
 }
 
 impl<'a> ArgumentV1<'a> {
@@ -503,12 +483,12 @@ impl Display for Arguments<'_> {
 /// implementations, such as [`debug_struct`][debug_struct].
 ///
 /// `Debug` implementations using either `derive` or the debug builder API
-/// on [`Formatter`] support pretty printing using the alternate flag: `{:#?}`.
+/// on [`Formatter`] support pretty-printing using the alternate flag: `{:#?}`.
 ///
 /// [debug_struct]: ../../std/fmt/struct.Formatter.html#method.debug_struct
 /// [`Formatter`]: ../../std/fmt/struct.Formatter.html
 ///
-/// Pretty printing with `#?`:
+/// Pretty-printing with `#?`:
 ///
 /// ```
 /// #[derive(Debug)]
@@ -1026,32 +1006,55 @@ pub fn write(output: &mut dyn Write, args: Arguments) -> Result {
         curarg: args.args.iter(),
     };
 
-    let mut pieces = args.pieces.iter();
+    let mut idx = 0;
 
     match args.fmt {
         None => {
             // We can use default formatting parameters for all arguments.
-            for (arg, piece) in args.args.iter().zip(pieces.by_ref()) {
+            for (arg, piece) in args.args.iter().zip(args.pieces.iter()) {
                 formatter.buf.write_str(*piece)?;
                 (arg.formatter)(arg.value, &mut formatter)?;
+                idx += 1;
             }
         }
         Some(fmt) => {
             // Every spec has a corresponding argument that is preceded by
             // a string piece.
-            for (arg, piece) in fmt.iter().zip(pieces.by_ref()) {
+            for (arg, piece) in fmt.iter().zip(args.pieces.iter()) {
                 formatter.buf.write_str(*piece)?;
                 formatter.run(arg)?;
+                idx += 1;
             }
         }
     }
 
     // There can be only one trailing string piece left.
-    if let Some(piece) = pieces.next() {
+    if let Some(piece) = args.pieces.get(idx) {
         formatter.buf.write_str(*piece)?;
     }
 
     Ok(())
+}
+
+/// Padding after the end of something. Returned by `Formatter::padding`.
+#[must_use = "don't forget to write the post padding"]
+struct PostPadding {
+    fill: char,
+    padding: usize,
+}
+
+impl PostPadding {
+    fn new(fill: char, padding: usize) -> PostPadding {
+        PostPadding { fill, padding }
+    }
+
+    /// Write this post padding.
+    fn write(self, buf: &mut dyn Write) -> Result {
+        for _ in 0..self.padding {
+            buf.write_char(self.fill)?;
+        }
+        Ok(())
+    }
 }
 
 impl<'a> Formatter<'a> {
@@ -1105,7 +1108,7 @@ impl<'a> Formatter<'a> {
                 self.args[i].as_usize()
             }
             rt::v1::Count::NextParam => {
-                self.curarg.next().and_then(|arg| arg.as_usize())
+                self.curarg.next()?.as_usize()
             }
         }
     }
@@ -1171,47 +1174,56 @@ impl<'a> Formatter<'a> {
             sign = Some('+'); width += 1;
         }
 
-        let mut prefixed = false;
-        if self.alternate() {
-            prefixed = true; width += prefix.chars().count();
-        }
+        let prefix = if self.alternate() {
+            width += prefix.chars().count();
+            Some(prefix)
+        } else {
+            None
+        };
 
         // Writes the sign if it exists, and then the prefix if it was requested
-        let write_prefix = |f: &mut Formatter| {
+        #[inline(never)]
+        fn write_prefix(f: &mut Formatter, sign: Option<char>, prefix: Option<&str>) -> Result {
             if let Some(c) = sign {
-                f.buf.write_str(c.encode_utf8(&mut [0; 4]))?;
+                f.buf.write_char(c)?;
             }
-            if prefixed { f.buf.write_str(prefix) }
-            else { Ok(()) }
-        };
+            if let Some(prefix) = prefix {
+                f.buf.write_str(prefix)
+            } else {
+                Ok(())
+            }
+        }
 
         // The `width` field is more of a `min-width` parameter at this point.
         match self.width {
             // If there's no minimum length requirements then we can just
             // write the bytes.
             None => {
-                write_prefix(self)?; self.buf.write_str(buf)
+                write_prefix(self, sign, prefix)?;
+                self.buf.write_str(buf)
             }
             // Check if we're over the minimum width, if so then we can also
             // just write the bytes.
             Some(min) if width >= min => {
-                write_prefix(self)?; self.buf.write_str(buf)
+                write_prefix(self, sign, prefix)?;
+                self.buf.write_str(buf)
             }
             // The sign and prefix goes before the padding if the fill character
             // is zero
             Some(min) if self.sign_aware_zero_pad() => {
                 self.fill = '0';
                 self.align = rt::v1::Alignment::Right;
-                write_prefix(self)?;
-                self.with_padding(min - width, rt::v1::Alignment::Right, |f| {
-                    f.buf.write_str(buf)
-                })
+                write_prefix(self, sign, prefix)?;
+                let post_padding = self.padding(min - width, rt::v1::Alignment::Right)?;
+                self.buf.write_str(buf)?;
+                post_padding.write(self.buf)
             }
             // Otherwise, the sign and prefix goes after the padding
             Some(min) => {
-                self.with_padding(min - width, rt::v1::Alignment::Right, |f| {
-                    write_prefix(f)?; f.buf.write_str(buf)
-                })
+                let post_padding = self.padding(min - width, rt::v1::Alignment::Right)?;
+                write_prefix(self, sign, prefix)?;
+                self.buf.write_str(buf)?;
+                post_padding.write(self.buf)
             }
         }
     }
@@ -1282,19 +1294,21 @@ impl<'a> Formatter<'a> {
             // up the minimum width with the specified string + some alignment.
             Some(width) => {
                 let align = rt::v1::Alignment::Left;
-                self.with_padding(width - s.chars().count(), align, |me| {
-                    me.buf.write_str(s)
-                })
+                let post_padding = self.padding(width - s.chars().count(), align)?;
+                self.buf.write_str(s)?;
+                post_padding.write(self.buf)
             }
         }
     }
 
-    /// Runs a callback, emitting the correct padding either before or
-    /// afterwards depending on whether right or left alignment is requested.
-    fn with_padding<F>(&mut self, padding: usize, default: rt::v1::Alignment,
-                       f: F) -> Result
-        where F: FnOnce(&mut Formatter) -> Result,
-    {
+    /// Write the pre-padding and return the unwritten post-padding. Callers are
+    /// responsible for ensuring post-padding is written after the thing that is
+    /// being padded.
+    fn padding(
+        &mut self,
+        padding: usize,
+        default: rt::v1::Alignment
+    ) -> result::Result<PostPadding, Error> {
         let align = match self.align {
             rt::v1::Alignment::Unknown => default,
             _ => self.align
@@ -1307,20 +1321,11 @@ impl<'a> Formatter<'a> {
             rt::v1::Alignment::Center => (padding / 2, (padding + 1) / 2),
         };
 
-        let mut fill = [0; 4];
-        let fill = self.fill.encode_utf8(&mut fill);
-
         for _ in 0..pre_pad {
-            self.buf.write_str(fill)?;
+            self.buf.write_char(self.fill)?;
         }
 
-        f(self)?;
-
-        for _ in 0..post_pad {
-            self.buf.write_str(fill)?;
-        }
-
-        Ok(())
+        Ok(PostPadding::new(self.fill, post_pad))
     }
 
     /// Takes the formatted parts and applies the padding.
@@ -1341,7 +1346,7 @@ impl<'a> Formatter<'a> {
 
                 // remove the sign from the formatted parts
                 formatted.sign = b"";
-                width = if width < sign.len() { 0 } else { width - sign.len() };
+                width = width.saturating_sub(sign.len());
                 align = rt::v1::Alignment::Right;
                 self.fill = '0';
                 self.align = rt::v1::Alignment::Right;
@@ -1352,9 +1357,9 @@ impl<'a> Formatter<'a> {
             let ret = if width <= len { // no padding
                 self.write_formatted_parts(&formatted)
             } else {
-                self.with_padding(width - len, align, |f| {
-                    f.write_formatted_parts(&formatted)
-                })
+                let post_padding = self.padding(width - len, align)?;
+                self.write_formatted_parts(&formatted)?;
+                post_padding.write(self.buf)
             };
             self.fill = old_fill;
             self.align = old_align;
@@ -2066,7 +2071,7 @@ macro_rules! tuple {
     ( $($name:ident,)+ ) => (
         #[stable(feature = "rust1", since = "1.0.0")]
         impl<$($name:Debug),*> Debug for ($($name,)*) where last_type!($($name,)+): ?Sized {
-            #[allow(non_snake_case, unused_assignments, deprecated)]
+            #[allow(non_snake_case, unused_assignments)]
             fn fmt(&self, f: &mut Formatter) -> Result {
                 let mut builder = f.debug_tuple("");
                 let ($(ref $name,)*) = *self;

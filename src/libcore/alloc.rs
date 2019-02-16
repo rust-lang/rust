@@ -425,7 +425,7 @@ impl fmt::Display for CannotReallocInPlace {
 /// The `GlobalAlloc` trait is an `unsafe` trait for a number of reasons, and
 /// implementors must ensure that they adhere to these contracts:
 ///
-/// * It's undefined behavior if global allocators unwind.  This restriction may
+/// * It's undefined behavior if global allocators unwind. This restriction may
 ///   be lifted in the future, but currently a panic from any of these
 ///   functions may lead to memory unsafety.
 ///

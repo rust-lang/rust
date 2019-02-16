@@ -16,7 +16,7 @@ use rustc_metadata::cstore::CStore;
 use rustc_mir::util::{write_mir_pretty, write_mir_graphviz};
 
 use syntax::ast::{self, BlockCheckMode};
-use syntax::fold::{self, Folder};
+use syntax::mut_visit::{*, MutVisitor, visit_clobber};
 use syntax::print::{pprust};
 use syntax::print::pprust::PrintState;
 use syntax::ptr::P;
@@ -28,6 +28,7 @@ use smallvec::SmallVec;
 use std::cell::Cell;
 use std::fs::File;
 use std::io::{self, Write};
+use std::ops::DerefMut;
 use std::option;
 use std::path::Path;
 use std::str::FromStr;
@@ -123,7 +124,8 @@ pub fn parse_pretty(sess: &Session,
                 sess.fatal(&format!("argument to `unpretty` must be one of `normal`, \
                                      `expanded`, `flowgraph[,unlabelled]=<nodeid>`, \
                                      `identified`, `expanded,identified`, `everybody_loops`, \
-                                     `hir`, `hir,identified`, `hir,typed`, or `mir`; got {}",
+                                     `hir`, `hir,identified`, `hir,typed`, `hir-tree`, \
+                                     `mir` or `mir-cfg`; got {}",
                                     name));
             } else {
                 sess.fatal(&format!("argument to `pretty` must be one of `normal`, `expanded`, \
@@ -190,7 +192,6 @@ impl PpSourceMode {
         sess: &'tcx Session,
         cstore: &'tcx CStore,
         hir_map: &hir_map::Map<'tcx>,
-        analysis: &ty::CrateAnalysis,
         resolutions: &Resolutions,
         output_filenames: &OutputFilenames,
         id: &str,
@@ -223,12 +224,11 @@ impl PpSourceMode {
                                                                  sess,
                                                                  cstore,
                                                                  hir_map.clone(),
-                                                                 analysis.clone(),
                                                                  resolutions.clone(),
                                                                  &mut arenas,
                                                                  id,
                                                                  output_filenames,
-                                                                 |tcx, _, _, _| {
+                                                                 |tcx, _, _| {
                     let empty_tables = ty::TypeckTables::empty(None);
                     let annotation = TypedAnnotation {
                         tcx,
@@ -704,42 +704,42 @@ impl<'a> ReplaceBodyWithLoop<'a> {
     }
 }
 
-impl<'a> fold::Folder for ReplaceBodyWithLoop<'a> {
-    fn fold_item_kind(&mut self, i: ast::ItemKind) -> ast::ItemKind {
+impl<'a> MutVisitor for ReplaceBodyWithLoop<'a> {
+    fn visit_item_kind(&mut self, i: &mut ast::ItemKind) {
         let is_const = match i {
             ast::ItemKind::Static(..) | ast::ItemKind::Const(..) => true,
             ast::ItemKind::Fn(ref decl, ref header, _, _) =>
                 header.constness.node == ast::Constness::Const || Self::should_ignore_fn(decl),
             _ => false,
         };
-        self.run(is_const, |s| fold::noop_fold_item_kind(i, s))
+        self.run(is_const, |s| noop_visit_item_kind(i, s))
     }
 
-    fn fold_trait_item(&mut self, i: ast::TraitItem) -> SmallVec<[ast::TraitItem; 1]> {
+    fn flat_map_trait_item(&mut self, i: ast::TraitItem) -> SmallVec<[ast::TraitItem; 1]> {
         let is_const = match i.node {
             ast::TraitItemKind::Const(..) => true,
             ast::TraitItemKind::Method(ast::MethodSig { ref decl, ref header, .. }, _) =>
                 header.constness.node == ast::Constness::Const || Self::should_ignore_fn(decl),
             _ => false,
         };
-        self.run(is_const, |s| fold::noop_fold_trait_item(i, s))
+        self.run(is_const, |s| noop_flat_map_trait_item(i, s))
     }
 
-    fn fold_impl_item(&mut self, i: ast::ImplItem) -> SmallVec<[ast::ImplItem; 1]> {
+    fn flat_map_impl_item(&mut self, i: ast::ImplItem) -> SmallVec<[ast::ImplItem; 1]> {
         let is_const = match i.node {
             ast::ImplItemKind::Const(..) => true,
             ast::ImplItemKind::Method(ast::MethodSig { ref decl, ref header, .. }, _) =>
                 header.constness.node == ast::Constness::Const || Self::should_ignore_fn(decl),
             _ => false,
         };
-        self.run(is_const, |s| fold::noop_fold_impl_item(i, s))
+        self.run(is_const, |s| noop_flat_map_impl_item(i, s))
     }
 
-    fn fold_anon_const(&mut self, c: ast::AnonConst) -> ast::AnonConst {
-        self.run(true, |s| fold::noop_fold_anon_const(c, s))
+    fn visit_anon_const(&mut self, c: &mut ast::AnonConst) {
+        self.run(true, |s| noop_visit_anon_const(c, s))
     }
 
-    fn fold_block(&mut self, b: P<ast::Block>) -> P<ast::Block> {
+    fn visit_block(&mut self, b: &mut P<ast::Block>) {
         fn stmt_to_block(rules: ast::BlockCheckMode,
                          s: Option<ast::Stmt>,
                          sess: &Session) -> ast::Block {
@@ -781,14 +781,14 @@ impl<'a> fold::Folder for ReplaceBodyWithLoop<'a> {
         };
 
         if self.within_static_or_const {
-            fold::noop_fold_block(b, self)
+            noop_visit_block(b, self)
         } else {
-            b.map(|b| {
+            visit_clobber(b.deref_mut(), |b| {
                 let mut stmts = vec![];
                 for s in b.stmts {
                     let old_blocks = self.nested_blocks.replace(vec![]);
 
-                    stmts.extend(self.fold_stmt(s).into_iter().filter(|s| s.is_item()));
+                    stmts.extend(self.flat_map_stmt(s).into_iter().filter(|s| s.is_item()));
 
                     // we put a Some in there earlier with that replace(), so this is valid
                     let new_blocks = self.nested_blocks.take().unwrap();
@@ -819,9 +819,9 @@ impl<'a> fold::Folder for ReplaceBodyWithLoop<'a> {
     }
 
     // in general the pretty printer processes unexpanded code, so
-    // we override the default `fold_mac` method which panics.
-    fn fold_mac(&mut self, mac: ast::Mac) -> ast::Mac {
-        fold::noop_fold_mac(mac, self)
+    // we override the default `visit_mac` method which panics.
+    fn visit_mac(&mut self, mac: &mut ast::Mac) {
+        noop_visit_mac(mac, self)
     }
 }
 
@@ -890,12 +890,9 @@ fn print_flowgraph<'a, 'tcx, W: Write>(variants: Vec<borrowck_dot::Variant>,
     }
 }
 
-pub fn fold_crate(sess: &Session, krate: ast::Crate, ppm: PpMode) -> ast::Crate {
+pub fn visit_crate(sess: &Session, krate: &mut ast::Crate, ppm: PpMode) {
     if let PpmSource(PpmEveryBodyLoops) = ppm {
-        let mut fold = ReplaceBodyWithLoop::new(sess);
-        fold.fold_crate(krate)
-    } else {
-        krate
+        ReplaceBodyWithLoop::new(sess).visit_crate(krate);
     }
 }
 
@@ -959,7 +956,6 @@ pub fn print_after_parsing(sess: &Session,
 pub fn print_after_hir_lowering<'tcx, 'a: 'tcx>(sess: &'a Session,
                                                 cstore: &'tcx CStore,
                                                 hir_map: &hir_map::Map<'tcx>,
-                                                analysis: &ty::CrateAnalysis,
                                                 resolutions: &Resolutions,
                                                 input: &Input,
                                                 krate: &ast::Crate,
@@ -972,7 +968,6 @@ pub fn print_after_hir_lowering<'tcx, 'a: 'tcx>(sess: &'a Session,
         print_with_analysis(sess,
                             cstore,
                             hir_map,
-                            analysis,
                             resolutions,
                             crate_name,
                             output_filenames,
@@ -1010,7 +1005,6 @@ pub fn print_after_hir_lowering<'tcx, 'a: 'tcx>(sess: &'a Session,
                 s.call_with_pp_support_hir(sess,
                                            cstore,
                                            hir_map,
-                                           analysis,
                                            resolutions,
                                            output_filenames,
                                            crate_name,
@@ -1033,7 +1027,6 @@ pub fn print_after_hir_lowering<'tcx, 'a: 'tcx>(sess: &'a Session,
                 s.call_with_pp_support_hir(sess,
                                            cstore,
                                            hir_map,
-                                           analysis,
                                            resolutions,
                                            output_filenames,
                                            crate_name,
@@ -1048,7 +1041,6 @@ pub fn print_after_hir_lowering<'tcx, 'a: 'tcx>(sess: &'a Session,
                 s.call_with_pp_support_hir(sess,
                                            cstore,
                                            hir_map,
-                                           analysis,
                                            resolutions,
                                            output_filenames,
                                            crate_name,
@@ -1081,7 +1073,6 @@ pub fn print_after_hir_lowering<'tcx, 'a: 'tcx>(sess: &'a Session,
                 s.call_with_pp_support_hir(sess,
                                            cstore,
                                            hir_map,
-                                           analysis,
                                            resolutions,
                                            output_filenames,
                                            crate_name,
@@ -1103,13 +1094,12 @@ pub fn print_after_hir_lowering<'tcx, 'a: 'tcx>(sess: &'a Session,
 }
 
 // In an ideal world, this would be a public function called by the driver after
-// analsysis is performed. However, we want to call `phase_3_run_analysis_passes`
+// analysis is performed. However, we want to call `phase_3_run_analysis_passes`
 // with a different callback than the standard driver, so that isn't easy.
 // Instead, we call that function ourselves.
 fn print_with_analysis<'tcx, 'a: 'tcx>(sess: &'a Session,
                                        cstore: &'a CStore,
                                        hir_map: &hir_map::Map<'tcx>,
-                                       analysis: &ty::CrateAnalysis,
                                        resolutions: &Resolutions,
                                        crate_name: &str,
                                        output_filenames: &OutputFilenames,
@@ -1134,12 +1124,11 @@ fn print_with_analysis<'tcx, 'a: 'tcx>(sess: &'a Session,
                                                      sess,
                                                      cstore,
                                                      hir_map.clone(),
-                                                     analysis.clone(),
                                                      resolutions.clone(),
                                                      &mut arenas,
                                                      crate_name,
                                                      output_filenames,
-                                                     |tcx, _, _, _| {
+                                                     |tcx, _, _| {
         match ppm {
             PpmMir | PpmMirCFG => {
                 if let Some(nodeid) = nodeid {

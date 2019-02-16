@@ -18,20 +18,26 @@ error: expected expression, found `<eof>`
 LL |     format!("s", name =); //~ ERROR expected expression
    |                       ^ expected expression
 
+error: expected `=`, found `<eof>`
+  --> $DIR/format-parse-errors.rs:5:29
+   |
+LL |     format!("s", foo = foo, bar); //~ ERROR expected `=`
+   |                             ^^^ expected `=`
+
 error: expected expression, found keyword `struct`
-  --> $DIR/format-parse-errors.rs:5:24
+  --> $DIR/format-parse-errors.rs:6:24
    |
 LL |     format!("s", foo = struct); //~ ERROR expected expression
    |                        ^^^^^^ expected expression
 
 error: expected expression, found keyword `struct`
-  --> $DIR/format-parse-errors.rs:6:18
+  --> $DIR/format-parse-errors.rs:7:18
    |
 LL |     format!("s", struct); //~ ERROR expected expression
    |                  ^^^^^^ expected expression
 
 error: format argument must be a string literal
-  --> $DIR/format-parse-errors.rs:9:13
+  --> $DIR/format-parse-errors.rs:10:13
    |
 LL |     format!(123); //~ ERROR format argument must be a string literal
    |             ^^^
@@ -40,5 +46,5 @@ help: you might be missing a string literal to format with
 LL |     format!("{}", 123); //~ ERROR format argument must be a string literal
    |             ^^^^^
 
-error: aborting due to 6 previous errors
+error: aborting due to 7 previous errors
 

@@ -1,4 +1,4 @@
-use ty::{self, Lift, TyCtxt, Region};
+use crate::ty::{self, Lift, TyCtxt, Region};
 use rustc_data_structures::transitive_relation::TransitiveRelation;
 
 #[derive(Clone, RustcEncodable, RustcDecodable, Debug, Default)]
@@ -24,7 +24,7 @@ impl<'tcx> FreeRegionMap<'tcx> {
         }
     }
 
-    /// Compute the least-upper-bound of two free regions. In some
+    /// Computes the least-upper-bound of two free regions. In some
     /// cases, this is more conservative than necessary, in order to
     /// avoid making arbitrary choices. See
     /// `TransitiveRelation::postdom_upper_bound` for more details.

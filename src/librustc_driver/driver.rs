@@ -22,17 +22,17 @@ use rustc_incremental;
 use rustc_metadata::creader::CrateLoader;
 use rustc_metadata::cstore::{self, CStore};
 use rustc_mir as mir;
-use rustc_passes::{self, ast_validation, hir_stats, loops, rvalue_promotion};
+use rustc_passes::{self, ast_validation, hir_stats, loops, rvalue_promotion, layout_test};
 use rustc_plugin as plugin;
 use rustc_plugin::registry::Registry;
 use rustc_privacy;
-use rustc_resolve::{MakeGlobMap, Resolver, ResolverArenas};
+use rustc_resolve::{Resolver, ResolverArenas};
 use rustc_traits;
 use rustc_typeck as typeck;
 use syntax::{self, ast, attr, diagnostics, visit};
 use syntax::early_buffered_lints::BufferedEarlyLint;
 use syntax::ext::base::ExtCtxt;
-use syntax::fold::Folder;
+use syntax::mut_visit::MutVisitor;
 use syntax::parse::{self, PResult};
 use syntax::util::node_count::NodeCounter;
 use syntax::util::lev_distance::find_best_match_for_name;
@@ -56,7 +56,7 @@ use proc_macro_decls;
 use profile;
 use super::Compilation;
 
-#[cfg(not(parallel_queries))]
+#[cfg(not(parallel_compiler))]
 pub fn spawn_thread_pool<F: FnOnce(config::Options) -> R + sync::Send, R: sync::Send>(
     opts: config::Options,
     f: F
@@ -66,7 +66,7 @@ pub fn spawn_thread_pool<F: FnOnce(config::Options) -> R + sync::Send, R: sync::
     })
 }
 
-#[cfg(parallel_queries)]
+#[cfg(parallel_compiler)]
 pub fn spawn_thread_pool<F: FnOnce(config::Options) -> R + sync::Send, R: sync::Send>(
     opts: config::Options,
     f: F
@@ -78,7 +78,7 @@ pub fn spawn_thread_pool<F: FnOnce(config::Options) -> R + sync::Send, R: sync::
     let gcx_ptr = &Lock::new(0);
 
     let config = ThreadPoolBuilder::new()
-        .num_threads(Session::query_threads_from_opts(&opts))
+        .num_threads(Session::threads_from_opts(&opts))
         .deadlock_handler(|| unsafe { ty::query::handle_deadlock() })
         .stack_size(::STACK_SIZE);
 
@@ -168,7 +168,6 @@ pub fn compile_input(
         let ExpansionResult {
             expanded_crate,
             defs,
-            analysis,
             resolutions,
             mut hir_forest,
         } = {
@@ -179,7 +178,6 @@ pub fn compile_input(
                 registry,
                 &crate_name,
                 addl_plugins,
-                control.make_glob_map,
                 |expanded_crate| {
                     let mut state = CompileState::state_after_expand(
                         input,
@@ -252,7 +250,6 @@ pub fn compile_input(
                     output,
                     &cstore,
                     &hir_map,
-                    &analysis,
                     &resolutions,
                     &expanded_crate,
                     &hir_map.krate(),
@@ -278,12 +275,11 @@ pub fn compile_input(
             sess,
             cstore,
             hir_map,
-            analysis,
             resolutions,
             &mut arenas,
             &crate_name,
             &outputs,
-            |tcx, analysis, rx, result| {
+            |tcx, rx, result| {
                 {
                     // Eventually, we will want to track plugins.
                     tcx.dep_graph.with_ignore(|| {
@@ -294,12 +290,16 @@ pub fn compile_input(
                             output,
                             opt_crate,
                             tcx.hir().krate(),
-                            &analysis,
                             tcx,
                             &crate_name,
                         );
                         (control.after_analysis.callback)(&mut state);
                     });
+
+                    // Plugins like clippy and rust-semverver stop the analysis early,
+                    // but want to still return an error if errors during the analysis
+                    // happened:
+                    tcx.sess.compile_status()?;
 
                     if control.after_analysis.stop == Compilation::Stop {
                         return result.and_then(|_| Err(CompileIncomplete::Stopped));
@@ -394,7 +394,6 @@ pub struct CompileController<'a> {
 
     // FIXME we probably want to group the below options together and offer a
     // better API, rather than this ad-hoc approach.
-    pub make_glob_map: MakeGlobMap,
     // Whether the compiler should keep the ast beyond parsing.
     pub keep_ast: bool,
     // -Zcontinue-parse-after-error
@@ -417,7 +416,6 @@ impl<'a> CompileController<'a> {
             after_hir_lowering: PhaseController::basic(),
             after_analysis: PhaseController::basic(),
             compilation_done: PhaseController::basic(),
-            make_glob_map: MakeGlobMap::No,
             keep_ast: false,
             continue_parse_after_error: false,
             provide: box |_| {},
@@ -530,7 +528,6 @@ pub struct CompileState<'a, 'tcx: 'a> {
     pub hir_crate: Option<&'a hir::Crate>,
     pub hir_map: Option<&'a hir_map::Map<'tcx>>,
     pub resolutions: Option<&'a Resolutions>,
-    pub analysis: Option<&'a ty::CrateAnalysis>,
     pub tcx: Option<TyCtxt<'a, 'tcx, 'tcx>>,
 }
 
@@ -550,7 +547,6 @@ impl<'a, 'tcx> CompileState<'a, 'tcx> {
             hir_crate: None,
             hir_map: None,
             resolutions: None,
-            analysis: None,
             tcx: None,
         }
     }
@@ -598,7 +594,6 @@ impl<'a, 'tcx> CompileState<'a, 'tcx> {
         out_file: &'a Option<PathBuf>,
         cstore: &'tcx CStore,
         hir_map: &'a hir_map::Map<'tcx>,
-        analysis: &'a ty::CrateAnalysis,
         resolutions: &'a Resolutions,
         krate: &'a ast::Crate,
         hir_crate: &'a hir::Crate,
@@ -609,7 +604,6 @@ impl<'a, 'tcx> CompileState<'a, 'tcx> {
             crate_name: Some(crate_name),
             cstore: Some(cstore),
             hir_map: Some(hir_map),
-            analysis: Some(analysis),
             resolutions: Some(resolutions),
             expanded_crate: Some(krate),
             hir_crate: Some(hir_crate),
@@ -626,12 +620,10 @@ impl<'a, 'tcx> CompileState<'a, 'tcx> {
         out_file: &'a Option<PathBuf>,
         krate: Option<&'a ast::Crate>,
         hir_crate: &'a hir::Crate,
-        analysis: &'a ty::CrateAnalysis,
         tcx: TyCtxt<'a, 'tcx, 'tcx>,
         crate_name: &'a str,
     ) -> Self {
         CompileState {
-            analysis: Some(analysis),
             tcx: Some(tcx),
             expanded_crate: krate,
             hir_crate: Some(hir_crate),
@@ -714,7 +706,6 @@ fn count_nodes(krate: &ast::Crate) -> usize {
 pub struct ExpansionResult {
     pub expanded_crate: ast::Crate,
     pub defs: hir_map::Definitions,
-    pub analysis: ty::CrateAnalysis,
     pub resolutions: Resolutions,
     pub hir_forest: hir_map::Forest,
 }
@@ -725,7 +716,7 @@ pub struct InnerExpansionResult<'a> {
     pub hir_forest: hir_map::Forest,
 }
 
-/// Run the "early phases" of the compiler: initial `cfg` processing,
+/// Runs the "early phases" of the compiler: initial `cfg` processing,
 /// loading compiler plugins (including those from `addl_plugins`),
 /// syntax expansion, secondary `cfg` expansion, synthesis of a test
 /// harness if one is to be provided, injection of a dependency on the
@@ -739,7 +730,6 @@ pub fn phase_2_configure_and_expand<F>(
     registry: Option<Registry>,
     crate_name: &str,
     addl_plugins: Option<Vec<String>>,
-    make_glob_map: MakeGlobMap,
     after_expand: F,
 ) -> Result<ExpansionResult, CompileIncomplete>
 where
@@ -759,7 +749,6 @@ where
         registry,
         crate_name,
         addl_plugins,
-        make_glob_map,
         &resolver_arenas,
         &mut crate_loader,
         after_expand,
@@ -777,19 +766,12 @@ where
                 freevars: resolver.freevars,
                 export_map: resolver.export_map,
                 trait_map: resolver.trait_map,
+                glob_map: resolver.glob_map,
                 maybe_unused_trait_imports: resolver.maybe_unused_trait_imports,
                 maybe_unused_extern_crates: resolver.maybe_unused_extern_crates,
                 extern_prelude: resolver.extern_prelude.iter().map(|(ident, entry)| {
                     (ident.name, entry.introduced_by_item)
                 }).collect(),
-            },
-
-            analysis: ty::CrateAnalysis {
-                glob_map: if resolver.make_glob_map {
-                    Some(resolver.glob_map)
-                } else {
-                    None
-                },
             },
         }),
         Err(x) => Err(x),
@@ -805,7 +787,6 @@ pub fn phase_2_configure_and_expand_inner<'a, F>(
     registry: Option<Registry>,
     crate_name: &str,
     addl_plugins: Option<Vec<String>>,
-    make_glob_map: MakeGlobMap,
     resolver_arenas: &'a ResolverArenas<'a>,
     crate_loader: &'a mut CrateLoader<'a>,
     after_expand: F,
@@ -908,7 +889,7 @@ where
     sess.track_errors(|| {
         let mut ls = sess.lint_store.borrow_mut();
         for pass in early_lint_passes {
-            ls.register_early_pass(Some(sess), true, pass);
+            ls.register_early_pass(Some(sess), true, false, pass);
         }
         for pass in late_lint_passes {
             ls.register_late_pass(Some(sess), true, pass);
@@ -929,7 +910,11 @@ where
     }
 
     time(sess, "pre ast expansion lint checks", || {
-        lint::check_ast_crate(sess, &krate, true)
+        lint::check_ast_crate(
+            sess,
+            &krate,
+            true,
+            rustc_lint::BuiltinCombinedPreExpansionLintPass::new());
     });
 
     let mut resolver = Resolver::new(
@@ -937,11 +922,10 @@ where
         cstore,
         &krate,
         crate_name,
-        make_glob_map,
         crate_loader,
         &resolver_arenas,
     );
-    syntax_ext::register_builtins(&mut resolver, syntax_exts, sess.features_untracked().quote);
+    syntax_ext::register_builtins(&mut resolver, syntax_exts);
 
     // Expand all macros
     sess.profiler(|p| p.start_activity(ProfileCategory::Expansion));
@@ -1021,12 +1005,12 @@ where
     });
     sess.profiler(|p| p.end_activity(ProfileCategory::Expansion));
 
-    krate = time(sess, "maybe building test harness", || {
+    time(sess, "maybe building test harness", || {
         syntax::test::modify_for_testing(
             &sess.parse_sess,
             &mut resolver,
             sess.opts.test,
-            krate,
+            &mut krate,
             sess.diagnostic(),
             &sess.features_untracked(),
         )
@@ -1035,8 +1019,12 @@ where
     // If we're actually rustdoc then there's no need to actually compile
     // anything, so switch everything to just looping
     if sess.opts.actually_rustdoc {
-        krate = ReplaceBodyWithLoop::new(sess).fold_crate(krate);
+        ReplaceBodyWithLoop::new(sess).visit_crate(&mut krate);
     }
+
+    let (has_proc_macro_decls, has_global_allocator) = time(sess, "AST validation", || {
+        ast_validation::check_crate(sess, &krate)
+    });
 
     // If we're in rustdoc we're always compiling as an rlib, but that'll trip a
     // bunch of checks in the `modify` function below. For now just skip this
@@ -1052,6 +1040,7 @@ where
                 &mut resolver,
                 krate,
                 is_proc_macro_crate,
+                has_proc_macro_decls,
                 is_test_crate,
                 num_crate_types,
                 sess.diagnostic(),
@@ -1059,25 +1048,18 @@ where
         });
     }
 
-    // Expand global allocators, which are treated as an in-tree proc macro
-    krate = time(sess, "creating allocators", || {
-        allocator::expand::modify(
-            &sess.parse_sess,
-            &mut resolver,
-            krate,
-            crate_name.to_string(),
-            sess.diagnostic(),
-        )
-    });
-
-    // Add all buffered lints from the `ParseSess` to the `Session`.
-    sess.parse_sess.buffered_lints.with_lock(|buffered_lints| {
-        info!("{} parse sess buffered_lints", buffered_lints.len());
-        for BufferedEarlyLint{id, span, msg, lint_id} in buffered_lints.drain(..) {
-            let lint = lint::Lint::from_parser_lint_id(lint_id);
-            sess.buffer_lint(lint, id, span, &msg);
-        }
-    });
+    if has_global_allocator {
+        // Expand global allocators, which are treated as an in-tree proc macro
+        time(sess, "creating allocators", || {
+            allocator::expand::modify(
+                &sess.parse_sess,
+                &mut resolver,
+                &mut krate,
+                crate_name.to_string(),
+                sess.diagnostic(),
+            )
+        });
+    }
 
     // Done with macro expansion!
 
@@ -1095,10 +1077,6 @@ where
         println!("{}", json::as_json(&krate));
     }
 
-    time(sess, "AST validation", || {
-        ast_validation::check_crate(sess, &krate)
-    });
-
     time(sess, "name resolution", || {
         resolver.resolve_crate(&krate);
     });
@@ -1112,6 +1090,15 @@ where
             &attributes,
             sess.opts.unstable_features,
         );
+    });
+
+    // Add all buffered lints from the `ParseSess` to the `Session`.
+    sess.parse_sess.buffered_lints.with_lock(|buffered_lints| {
+        info!("{} parse sess buffered_lints", buffered_lints.len());
+        for BufferedEarlyLint{id, span, msg, lint_id} in buffered_lints.drain(..) {
+            let lint = lint::Lint::from_parser_lint_id(lint_id);
+            sess.buffer_lint(lint, id, span, &msg);
+        }
     });
 
     // Lower ast -> hir.
@@ -1142,7 +1129,7 @@ where
     });
 
     time(sess, "early lint checks", || {
-        lint::check_ast_crate(sess, &krate, false)
+        lint::check_ast_crate(sess, &krate, false, rustc_lint::BuiltinCombinedEarlyLintPass::new())
     });
 
     // Discard hygiene data, which isn't required after lowering to HIR.
@@ -1158,6 +1145,8 @@ where
 }
 
 pub fn default_provide(providers: &mut ty::query::Providers) {
+    proc_macro_decls::provide(providers);
+    plugin::build::provide(providers);
     hir::provide(providers);
     borrowck::provide(providers);
     mir::provide(providers);
@@ -1167,10 +1156,14 @@ pub fn default_provide(providers: &mut ty::query::Providers) {
     typeck::provide(providers);
     ty::provide(providers);
     traits::provide(providers);
+    stability::provide(providers);
+    middle::intrinsicck::provide(providers);
+    middle::liveness::provide(providers);
     reachable::provide(providers);
     rustc_passes::provide(providers);
     rustc_traits::provide(providers);
     middle::region::provide(providers);
+    middle::entry::provide(providers);
     cstore::provide(providers);
     lint::provide(providers);
 }
@@ -1179,7 +1172,7 @@ pub fn default_provide_extern(providers: &mut ty::query::Providers) {
     cstore::provide_extern(providers);
 }
 
-/// Run the resolution, typechecking, region checking and other
+/// Runs the resolution, typec-hecking, region checking and other
 /// miscellaneous analysis passes on the crate. Return various
 /// structures carrying the results of the analysis.
 pub fn phase_3_run_analysis_passes<'tcx, F, R>(
@@ -1188,7 +1181,6 @@ pub fn phase_3_run_analysis_passes<'tcx, F, R>(
     sess: &'tcx Session,
     cstore: &'tcx CStore,
     hir_map: hir_map::Map<'tcx>,
-    analysis: ty::CrateAnalysis,
     resolutions: Resolutions,
     arenas: &'tcx mut AllArenas<'tcx>,
     name: &str,
@@ -1198,7 +1190,6 @@ pub fn phase_3_run_analysis_passes<'tcx, F, R>(
 where
     F: for<'a> FnOnce(
         TyCtxt<'a, 'tcx, 'tcx>,
-        ty::CrateAnalysis,
         mpsc::Receiver<Box<dyn Any + Send>>,
         CompileResult,
     ) -> R,
@@ -1206,19 +1197,6 @@ where
     let query_result_on_disk_cache = time(sess, "load query result cache", || {
         rustc_incremental::load_query_result_cache(sess)
     });
-
-    time(sess, "looking for entry point", || {
-        middle::entry::find_entry_point(sess, &hir_map, name)
-    });
-
-    sess.plugin_registrar_fn
-        .set(time(sess, "looking for plugin registrar", || {
-            plugin::build::find_plugin_registrar(sess.diagnostic(), &hir_map)
-        }));
-    sess.proc_macro_decls_static
-        .set(proc_macro_decls::find(&hir_map));
-
-    time(sess, "loop checking", || loops::check_crate(sess, &hir_map));
 
     let mut local_providers = ty::query::Providers::default();
     default_provide(&mut local_providers);
@@ -1247,46 +1225,66 @@ where
         |tcx| {
             // Do some initialization of the DepGraph that can only be done with the
             // tcx available.
-            rustc_incremental::dep_graph_tcx_init(tcx);
+            time(sess, "dep graph tcx init", || rustc_incremental::dep_graph_tcx_init(tcx));
 
-            time(sess, "attribute checking", || {
-                hir::check_attr::check_crate(tcx)
-            });
+            parallel!({
+                time(sess, "looking for entry point", || {
+                    middle::entry::find_entry_point(tcx)
+                });
 
-            time(sess, "stability checking", || {
-                stability::check_unstable_api_usage(tcx)
+                time(sess, "looking for plugin registrar", || {
+                    plugin::build::find_plugin_registrar(tcx)
+                });
+
+                time(sess, "looking for derive registrar", || {
+                    proc_macro_decls::find(tcx)
+                });
+            }, {
+                time(sess, "loop checking", || loops::check_crate(tcx));
+            }, {
+                time(sess, "attribute checking", || {
+                    hir::check_attr::check_crate(tcx)
+                });
+            }, {
+                time(sess, "stability checking", || {
+                    stability::check_unstable_api_usage(tcx)
+                });
             });
 
             // passes are timed inside typeck
             match typeck::check_crate(tcx) {
                 Ok(x) => x,
                 Err(x) => {
-                    f(tcx, analysis, rx, Err(x));
+                    f(tcx, rx, Err(x));
                     return Err(x);
                 }
             }
 
-            time(sess, "rvalue promotion", || {
-                rvalue_promotion::check_crate(tcx)
+            time(sess, "misc checking", || {
+                parallel!({
+                    time(sess, "rvalue promotion", || {
+                        rvalue_promotion::check_crate(tcx)
+                    });
+                }, {
+                    time(sess, "intrinsic checking", || {
+                        middle::intrinsicck::check_crate(tcx)
+                    });
+                }, {
+                    time(sess, "match checking", || mir::matchck_crate(tcx));
+                }, {
+                    // this must run before MIR dump, because
+                    // "not all control paths return a value" is reported here.
+                    //
+                    // maybe move the check to a MIR pass?
+                    time(sess, "liveness checking", || {
+                        middle::liveness::check_crate(tcx)
+                    });
+                });
             });
 
-            time(sess, "privacy checking", || {
-                rustc_privacy::check_crate(tcx)
-            });
-
-            time(sess, "intrinsic checking", || {
-                middle::intrinsicck::check_crate(tcx)
-            });
-
-            time(sess, "match checking", || mir::matchck_crate(tcx));
-
-            // this must run before MIR dump, because
-            // "not all control paths return a value" is reported here.
-            //
-            // maybe move the check to a MIR pass?
-            time(sess, "liveness checking", || {
-                middle::liveness::check_crate(tcx)
-            });
+            // Abort so we don't try to construct MIR with liveness errors.
+            // We also won't want to continue with errors from rvalue promotion
+            tcx.sess.abort_if_errors();
 
             time(sess, "borrow checking", || {
                 if tcx.use_ast_borrowck() {
@@ -1296,7 +1294,7 @@ where
 
             time(sess,
                  "MIR borrow checking",
-                 || tcx.par_body_owners(|def_id| { tcx.mir_borrowck(def_id); }));
+                 || tcx.par_body_owners(|def_id| { tcx.ensure().mir_borrowck(def_id); }));
 
             time(sess, "dumping chalk-like clauses", || {
                 rustc_traits::lowering::dump_program_clauses(tcx);
@@ -1307,30 +1305,41 @@ where
                     mir::transform::check_unsafety::check_unsafety(tcx, def_id)
                 }
             });
-            // Avoid overwhelming user with errors if type checking failed.
+
+            time(sess, "layout testing", || layout_test::test_layout(tcx));
+
+            // Avoid overwhelming user with errors if borrow checking failed.
             // I'm not sure how helpful this is, to be honest, but it avoids
             // a
             // lot of annoying errors in the compile-fail tests (basically,
             // lint warnings and so on -- kindck used to do this abort, but
             // kindck is gone now). -nmatsakis
             if sess.err_count() > 0 {
-                return Ok(f(tcx, analysis, rx, sess.compile_status()));
+                return Ok(f(tcx, rx, sess.compile_status()));
             }
 
-            time(sess, "death checking", || middle::dead::check_crate(tcx));
-
-            time(sess, "unused lib feature checking", || {
-                stability::check_unused_or_stable_features(tcx)
+            time(sess, "misc checking", || {
+                parallel!({
+                    time(sess, "privacy checking", || {
+                        rustc_privacy::check_crate(tcx)
+                    });
+                }, {
+                    time(sess, "death checking", || middle::dead::check_crate(tcx));
+                },  {
+                    time(sess, "unused lib feature checking", || {
+                        stability::check_unused_or_stable_features(tcx)
+                    });
+                }, {
+                    time(sess, "lint checking", || lint::check_crate(tcx));
+                });
             });
 
-            time(sess, "lint checking", || lint::check_crate(tcx));
-
-            return Ok(f(tcx, analysis, rx, tcx.sess.compile_status()));
+            return Ok(f(tcx, rx, tcx.sess.compile_status()));
         },
     )
 }
 
-/// Run the codegen backend, after which the AST and analysis can
+/// Runs the codegen backend, after which the AST and analysis can
 /// be discarded.
 pub fn phase_4_codegen<'a, 'tcx>(
     codegen_backend: &dyn CodegenBackend,
@@ -1526,13 +1535,7 @@ pub fn collect_crate_types(session: &Session, attrs: &[ast::Attribute]) -> Vec<c
                         }
                         None
                     }
-                    None => {
-                        session
-                            .struct_span_err(a.span, "`crate_type` requires a value")
-                            .note("for example: `#![crate_type=\"lib\"]`")
-                            .emit();
-                        None
-                    }
+                    None => None
                 }
             } else {
                 None

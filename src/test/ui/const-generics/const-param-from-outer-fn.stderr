@@ -1,0 +1,26 @@
+warning: the feature `const_generics` is incomplete and may cause the compiler to crash
+  --> $DIR/const-param-from-outer-fn.rs:1:12
+   |
+LL | #![feature(const_generics)]
+   |            ^^^^^^^^^^^^^^
+
+error[E0401]: can't use generic parameters from outer function
+  --> $DIR/const-param-from-outer-fn.rs:7:9
+   |
+LL | fn foo<const X: u32>() {
+   |              - const variable from outer function
+LL |     //~^ ERROR const generics in any position are currently unsupported
+LL |     fn bar() -> u32 {
+   |        --- try adding a local generic parameter in this method instead
+LL |         X //~ ERROR can't use generic parameters from outer function
+   |         ^ use of generic parameter from outer function
+
+error: const generics in any position are currently unsupported
+  --> $DIR/const-param-from-outer-fn.rs:4:14
+   |
+LL | fn foo<const X: u32>() {
+   |              ^
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0401`.

@@ -1,0 +1,33 @@
+error[E0511]: invalid monomorphization of `simd_bitmask` intrinsic: bitmask `u16`, expected `u8`
+  --> $DIR/simd-intrinsic-generic-bitmask.rs:74:22
+   |
+LL |         let _: u16 = simd_bitmask(m2);
+   |                      ^^^^^^^^^^^^^^^^
+
+error[E0511]: invalid monomorphization of `simd_bitmask` intrinsic: bitmask `u16`, expected `u8`
+  --> $DIR/simd-intrinsic-generic-bitmask.rs:77:22
+   |
+LL |         let _: u16 = simd_bitmask(m8);
+   |                      ^^^^^^^^^^^^^^^^
+
+error[E0511]: invalid monomorphization of `simd_bitmask` intrinsic: bitmask `u32`, expected `u16`
+  --> $DIR/simd-intrinsic-generic-bitmask.rs:80:22
+   |
+LL |         let _: u32 = simd_bitmask(m16);
+   |                      ^^^^^^^^^^^^^^^^^
+
+error[E0511]: invalid monomorphization of `simd_bitmask` intrinsic: bitmask `u64`, expected `u32`
+  --> $DIR/simd-intrinsic-generic-bitmask.rs:83:22
+   |
+LL |         let _: u64 = simd_bitmask(m32);
+   |                      ^^^^^^^^^^^^^^^^^
+
+error[E0511]: invalid monomorphization of `simd_bitmask` intrinsic: bitmask `u128`, expected `u64`
+  --> $DIR/simd-intrinsic-generic-bitmask.rs:86:23
+   |
+LL |         let _: u128 = simd_bitmask(m64);
+   |                       ^^^^^^^^^^^^^^^^^
+
+error: aborting due to 5 previous errors
+
+For more information about this error, try `rustc --explain E0511`.

@@ -4,10 +4,11 @@ use llvm;
 
 use std::fmt;
 use std::hash::{Hash, Hasher};
+use std::ptr;
 
 impl PartialEq for Value {
     fn eq(&self, other: &Self) -> bool {
-        self as *const _ == other as *const _
+        ptr::eq(self, other)
     }
 }
 

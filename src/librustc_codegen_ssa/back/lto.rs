@@ -1,6 +1,6 @@
 use super::write::CodegenContext;
-use traits::*;
-use ModuleCodegen;
+use crate::traits::*;
+use crate::ModuleCodegen;
 
 use rustc::util::time_graph::Timeline;
 use rustc_errors::FatalError;

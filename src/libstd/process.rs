@@ -427,7 +427,7 @@ impl Command {
     /// The search path to be used may be controlled by setting the
     /// `PATH` environment variable on the Command,
     /// but this has some implementation limitations on Windows
-    /// (see <https://github.com/rust-lang/rust/issues/37519>).
+    /// (see issue #37519).
     ///
     /// # Examples
     ///
@@ -445,7 +445,7 @@ impl Command {
         Command { inner: imp::Command::new(program.as_ref()) }
     }
 
-    /// Add an argument to pass to the program.
+    /// Adds an argument to pass to the program.
     ///
     /// Only one argument can be passed per use. So instead of:
     ///
@@ -487,7 +487,7 @@ impl Command {
         self
     }
 
-    /// Add multiple arguments to pass to the program.
+    /// Adds multiple arguments to pass to the program.
     ///
     /// To pass a single argument see [`arg`].
     ///
@@ -540,7 +540,7 @@ impl Command {
         self
     }
 
-    /// Add or update multiple environment variable mappings.
+    /// Adds or updates multiple environment variable mappings.
     ///
     /// # Examples
     ///
@@ -1287,7 +1287,7 @@ impl Child {
     ///
     /// let mut command = Command::new("ls");
     /// if let Ok(child) = command.spawn() {
-    ///     println!("Child's id is {}", child.id());
+    ///     println!("Child's ID is {}", child.id());
     /// } else {
     ///     println!("ls command didn't start");
     /// }
@@ -1332,7 +1332,7 @@ impl Child {
     ///
     /// This function will not block the calling thread and will only
     /// check to see if the child process has exited or not. If the child has
-    /// exited then on Unix the process id is reaped. This function is
+    /// exited then on Unix the process ID is reaped. This function is
     /// guaranteed to repeatedly return a successful exit status so long as the
     /// child has already exited.
     ///
@@ -1979,7 +1979,7 @@ mod tests {
         }
     }
 
-    /// Test that process creation flags work by debugging a process.
+    /// Tests that process creation flags work by debugging a process.
     /// Other creation flags make it hard or impossible to detect
     /// behavioral changes in the process.
     #[test]

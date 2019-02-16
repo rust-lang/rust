@@ -1,10 +1,9 @@
 // run-pass
 
-#![feature(generators)]
-#![feature(generator_trait)]
+#![feature(generators, generator_trait)]
 
-use std::ops::Generator;
-use std::ops::GeneratorState;
+use std::ops::{Generator, GeneratorState};
+use std::pin::Pin;
 
 fn main() {
     let _generator = || {
@@ -12,7 +11,7 @@ fn main() {
             yield 2;
         };
 
-        match unsafe { sub_generator.resume() } {
+        match Pin::new(&mut sub_generator).resume() {
             GeneratorState::Yielded(x) => {
                 yield x;
             }

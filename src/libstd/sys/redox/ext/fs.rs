@@ -117,7 +117,7 @@ pub trait OpenOptionsExt {
     #[stable(feature = "fs_ext", since = "1.1.0")]
     fn mode(&mut self, mode: u32) -> &mut Self;
 
-    /// Pass custom flags to the `flags` argument of `open`.
+    /// Passes custom flags to the `flags` argument of `open`.
     ///
     /// The bits that define the access mode are masked out with `O_ACCMODE`, to
     /// ensure they do not interfere with the access mode set by Rusts options.
@@ -287,9 +287,9 @@ impl FileTypeExt for fs::FileType {
 /// # Note
 ///
 /// On Windows, you must specify whether a symbolic link points to a file
-/// or directory.  Use `os::windows::fs::symlink_file` to create a
+/// or directory. Use `os::windows::fs::symlink_file` to create a
 /// symbolic link to a file, or `os::windows::fs::symlink_dir` to create a
-/// symbolic link to a directory.  Additionally, the process must have
+/// symbolic link to a directory. Additionally, the process must have
 /// `SeCreateSymbolicLinkPrivilege` in order to be able to create a
 /// symbolic link.
 ///

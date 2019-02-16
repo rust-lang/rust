@@ -1,5 +1,3 @@
-#![feature(const_let)]
-
 fn main() {
     // Tests the Collatz conjecture with an incorrect base case (0 instead of 1).
     // The value of `n` will loop indefinitely (4 - 2 - 1 - 4).

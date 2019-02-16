@@ -1,10 +1,10 @@
 error[E0597]: `a` does not live long enough
-  --> $DIR/borrowing.rs:8:29
+  --> $DIR/borrowing.rs:9:33
    |
-LL |         unsafe { (|| yield &a).resume() }
-   |                   --        ^ borrowed value does not live long enough
-   |                   |
-   |                   capture occurs here
+LL |         Pin::new(&mut || yield &a).resume()
+   |                       --        ^ borrowed value does not live long enough
+   |                       |
+   |                       capture occurs here
 LL |         //~^ ERROR: `a` does not live long enough
 LL |     };
    |     - borrowed value only lives until here
@@ -13,7 +13,7 @@ LL | }
    | - borrowed value needs to live until here
 
 error[E0597]: `a` does not live long enough
-  --> $DIR/borrowing.rs:15:20
+  --> $DIR/borrowing.rs:16:20
    |
 LL |         || {
    |         -- capture occurs here

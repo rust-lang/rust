@@ -1,8 +1,8 @@
 // run-pass
 #![allow(dead_code)]
 
-#![feature(const_let)]
-
 type Array = [u32; {  let x = 2; 5 }];
 
-pub fn main() {}
+pub fn main() {
+    let _: Array = [0; 5];
+}

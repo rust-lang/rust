@@ -4,18 +4,16 @@
 //!
 //! This API is completely unstable and subject to change.
 
-#![doc(html_logo_url = "https://www.rust-lang.org/logos/rust-logo-128x128-blk-v2.png",
-      html_favicon_url = "https://doc.rust-lang.org/favicon.ico",
-      html_root_url = "https://doc.rust-lang.org/nightly/")]
+#![doc(html_root_url = "https://doc.rust-lang.org/nightly/")]
 
 #![feature(box_syntax)]
 #![cfg_attr(unix, feature(libc))]
 #![feature(nll)]
-#![feature(quote)]
 #![feature(rustc_diagnostic_macros)]
 #![feature(slice_sort_by_cached_key)]
 #![feature(set_stdio)]
 #![feature(no_debug)]
+#![feature(integer_atomics)]
 
 #![recursion_limit="256"]
 
@@ -30,6 +28,7 @@ extern crate rustc;
 extern crate rustc_allocator;
 extern crate rustc_target;
 extern crate rustc_borrowck;
+#[macro_use]
 extern crate rustc_data_structures;
 extern crate rustc_errors as errors;
 extern crate rustc_passes;
@@ -56,10 +55,9 @@ extern crate syntax_pos;
 use driver::CompileController;
 use pretty::{PpMode, UserIdentifiedItem};
 
-use rustc_resolve as resolve;
 use rustc_save_analysis as save;
 use rustc_save_analysis::DumpHandler;
-use rustc_data_structures::sync::{self, Lrc};
+use rustc_data_structures::sync::{self, Lrc, Ordering::SeqCst};
 use rustc_data_structures::OnDrop;
 use rustc::session::{self, config, Session, build_session, CompileResult};
 use rustc::session::CompileIncomplete;
@@ -92,7 +90,7 @@ use std::panic;
 use std::path::{PathBuf, Path};
 use std::process::{self, Command, Stdio};
 use std::str;
-use std::sync::atomic::{AtomicBool, ATOMIC_BOOL_INIT, Ordering};
+use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Once, ONCE_INIT};
 use std::thread;
 
@@ -116,7 +114,7 @@ pub mod target_features {
     use rustc::session::Session;
     use rustc_codegen_utils::codegen_backend::CodegenBackend;
 
-    /// Add `target_feature = "..."` cfgs for a variety of platform
+    /// Adds `target_feature = "..."` cfgs for a variety of platform
     /// specific features (SSE, NEON etc.).
     ///
     /// This is performed by checking whether a whitelisted set of
@@ -255,7 +253,7 @@ fn get_codegen_sysroot(backend_name: &str) -> fn() -> Box<dyn CodegenBackend> {
     // general this assertion never trips due to the once guard in `get_codegen_backend`,
     // but there's a few manual calls to this function in this file we protect
     // against.
-    static LOADED: AtomicBool = ATOMIC_BOOL_INIT;
+    static LOADED: AtomicBool = AtomicBool::new(false);
     assert!(!LOADED.fetch_or(true, Ordering::SeqCst),
             "cannot load the default codegen backend twice");
 
@@ -840,7 +838,15 @@ impl<'a> CompilerCalls<'a> for RustcDefaultCalls {
                 early_error(sopts.error_format, "no input filename given");
             }
             1 => panic!("make_input should have provided valid inputs"),
-            _ => early_error(sopts.error_format, "multiple input filenames provided"),
+            _ =>
+                early_error(
+                    sopts.error_format,
+                    &format!(
+                        "multiple input filenames provided (first two filenames are `{}` and `{}`)",
+                        matches.free[0],
+                        matches.free[1],
+                    ),
+                )
         }
     }
 
@@ -871,15 +877,14 @@ impl<'a> CompilerCalls<'a> for RustcDefaultCalls {
                 control.after_hir_lowering.stop = Compilation::Stop;
 
                 control.after_parse.callback = box move |state| {
-                    state.krate = Some(pretty::fold_crate(state.session,
-                                                          state.krate.take().unwrap(),
-                                                          ppm));
+                    let mut krate = state.krate.take().unwrap();
+                    pretty::visit_crate(state.session, &mut krate, ppm);
+                    state.krate = Some(krate);
                 };
                 control.after_hir_lowering.callback = box move |state| {
                     pretty::print_after_hir_lowering(state.session,
                                                      state.cstore.unwrap(),
                                                      state.hir_map.unwrap(),
-                                                     state.analysis.unwrap(),
                                                      state.resolutions.unwrap(),
                                                      state.input,
                                                      &state.expanded_crate.take().unwrap(),
@@ -893,7 +898,8 @@ impl<'a> CompilerCalls<'a> for RustcDefaultCalls {
                 control.after_parse.stop = Compilation::Stop;
 
                 control.after_parse.callback = box move |state| {
-                    let krate = pretty::fold_crate(state.session, state.krate.take().unwrap(), ppm);
+                    let mut krate = state.krate.take().unwrap();
+                    pretty::visit_crate(state.session, &mut krate, ppm);
                     pretty::print_after_parsing(state.session,
                                                 state.input,
                                                 &krate,
@@ -927,7 +933,7 @@ impl<'a> CompilerCalls<'a> for RustcDefaultCalls {
                 let sess = state.session;
                 eprintln!("Fuel used by {}: {}",
                     sess.print_fuel_crate.as_ref().unwrap(),
-                    sess.print_fuel.get());
+                    sess.print_fuel.load(SeqCst));
             }
         }
         control
@@ -940,7 +946,6 @@ pub fn enable_save_analysis(control: &mut CompileController) {
         time(state.session, "save analysis", || {
             save::process_crate(state.tcx.unwrap(),
                                 state.expanded_crate.unwrap(),
-                                state.analysis.unwrap(),
                                 state.crate_name.unwrap(),
                                 state.input,
                                 None,
@@ -949,7 +954,6 @@ pub fn enable_save_analysis(control: &mut CompileController) {
         });
     };
     control.after_analysis.run_callback_on_error = true;
-    control.make_glob_map = resolve::MakeGlobMap::Yes;
 }
 
 impl RustcDefaultCalls {
@@ -1320,7 +1324,7 @@ fn print_flag_list<T>(cmdline_opt: &str,
 
 /// Process command line options. Emits messages as appropriate. If compilation
 /// should continue, returns a getopts::Matches object parsed from args,
-/// otherwise returns None.
+/// otherwise returns `None`.
 ///
 /// The compiler's handling of options is a little complicated as it ties into
 /// our stability story, and it's even *more* complicated by historical
@@ -1484,7 +1488,7 @@ pub fn in_rustc_thread<F, R>(f: F) -> Result<R, Box<dyn Any + Send>>
     in_named_rustc_thread("rustc".to_string(), f)
 }
 
-/// Get a list of extra command-line flags provided by the user, as strings.
+/// Gets a list of extra command-line flags provided by the user, as strings.
 ///
 /// This function is used during ICEs to show more information useful for
 /// debugging, since some ICEs only happens with non-default compiler flags
@@ -1549,7 +1553,7 @@ impl Display for CompilationFailure {
     }
 }
 
-/// Run a procedure which will detect panics in the compiler and print nicer
+/// Runs a procedure which will detect panics in the compiler and print nicer
 /// error messages rather than just failing the test.
 ///
 /// The diagnostic emitter yielded to the procedure should be used for reporting

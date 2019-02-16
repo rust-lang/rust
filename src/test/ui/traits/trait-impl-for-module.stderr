@@ -2,7 +2,7 @@ error[E0573]: expected type, found module `a`
   --> $DIR/trait-impl-for-module.rs:7:12
    |
 LL | impl A for a { //~ ERROR expected type, found module
-   |            ^ did you mean `A`?
+   |            ^ help: a trait with a similar name exists: `A`
 
 error: aborting due to previous error
 

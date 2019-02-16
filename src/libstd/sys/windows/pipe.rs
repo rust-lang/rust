@@ -7,7 +7,7 @@ use path::Path;
 use ptr;
 use slice;
 use sync::atomic::Ordering::SeqCst;
-use sync::atomic::{AtomicUsize, ATOMIC_USIZE_INIT};
+use sync::atomic::AtomicUsize;
 use sys::c;
 use sys::fs::{File, OpenOptions};
 use sys::handle::Handle;
@@ -148,7 +148,7 @@ pub fn anon_pipe(ours_readable: bool) -> io::Result<Pipes> {
 }
 
 fn random_number() -> usize {
-    static N: AtomicUsize = ATOMIC_USIZE_INIT;
+    static N: AtomicUsize = AtomicUsize::new(0);
     loop {
         if N.load(SeqCst) != 0 {
             return N.fetch_add(1, SeqCst)
@@ -282,7 +282,7 @@ impl<'a> AsyncPipe<'a> {
     /// Takes a parameter `wait` which indicates if this pipe is currently being
     /// read whether the function should block waiting for the read to complete.
     ///
-    /// Return values:
+    /// Returns values:
     ///
     /// * `true` - finished any pending read and the pipe is not at EOF (keep
     ///            going)

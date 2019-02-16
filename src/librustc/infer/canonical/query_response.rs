@@ -7,26 +7,26 @@
 //!
 //! [c]: https://rust-lang.github.io/rustc-guide/traits/canonicalization.html
 
-use infer::canonical::substitute::substitute_value;
-use infer::canonical::{
+use crate::infer::canonical::substitute::substitute_value;
+use crate::infer::canonical::{
     Canonical, CanonicalVarValues, CanonicalizedQueryResponse, Certainty,
     OriginalQueryValues, QueryRegionConstraint, QueryResponse,
 };
-use infer::region_constraints::{Constraint, RegionConstraintData};
-use infer::InferCtxtBuilder;
-use infer::{InferCtxt, InferOk, InferResult};
+use crate::infer::region_constraints::{Constraint, RegionConstraintData};
+use crate::infer::InferCtxtBuilder;
+use crate::infer::{InferCtxt, InferOk, InferResult};
 use rustc_data_structures::indexed_vec::Idx;
 use rustc_data_structures::indexed_vec::IndexVec;
 use rustc_data_structures::sync::Lrc;
 use std::fmt::Debug;
 use syntax_pos::DUMMY_SP;
-use traits::query::{Fallible, NoSolution};
-use traits::TraitEngine;
-use traits::{Obligation, ObligationCause, PredicateObligation};
-use ty::fold::TypeFoldable;
-use ty::subst::{Kind, UnpackedKind};
-use ty::{self, BoundVar, Lift, Ty, TyCtxt};
-use util::captures::Captures;
+use crate::traits::query::{Fallible, NoSolution};
+use crate::traits::TraitEngine;
+use crate::traits::{Obligation, ObligationCause, PredicateObligation};
+use crate::ty::fold::TypeFoldable;
+use crate::ty::subst::{Kind, UnpackedKind};
+use crate::ty::{self, BoundVar, Lift, Ty, TyCtxt};
+use crate::util::captures::Captures;
 
 impl<'cx, 'gcx, 'tcx> InferCtxtBuilder<'cx, 'gcx, 'tcx> {
     /// The "main method" for a canonicalized trait query. Given the
@@ -119,7 +119,7 @@ impl<'cx, 'gcx, 'tcx> InferCtxt<'cx, 'gcx, 'tcx> {
     /// If you DO want to keep track of pending obligations (which
     /// include all region obligations, so this includes all cases
     /// that care about regions) with this function, you have to
-    /// do it yourself, by e.g. having them be a part of the answer.
+    /// do it yourself, by e.g., having them be a part of the answer.
     pub fn make_query_response_ignoring_pending_obligations<T>(
         &self,
         inference_vars: CanonicalVarValues<'tcx>,
@@ -267,7 +267,7 @@ impl<'cx, 'gcx, 'tcx> InferCtxt<'cx, 'gcx, 'tcx> {
     ///   they should be ignored).
     /// - It **can happen** (though it rarely does currently) that
     ///   equating types and things will give rise to subobligations
-    ///   that must be processed.  In this case, those subobligations
+    ///   that must be processed. In this case, those subobligations
     ///   are propagated back in the return value.
     /// - Finally, the query result (of type `R`) is propagated back,
     ///   after applying the substitution `S`.
@@ -506,7 +506,7 @@ impl<'cx, 'gcx, 'tcx> InferCtxt<'cx, 'gcx, 'tcx> {
 
     /// Given a "guess" at the values for the canonical variables in
     /// the input, try to unify with the *actual* values found in the
-    /// query result.  Often, but not always, this is a no-op, because
+    /// query result. Often, but not always, this is a no-op, because
     /// we already found the mapping in the "guessing" step.
     ///
     /// See also: `query_response_substitution_guess`

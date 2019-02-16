@@ -82,7 +82,7 @@ fi
 SCCACHE_IDLE_TIMEOUT=10800 sccache --start-server || true
 
 if [ "$RUN_CHECK_WITH_PARALLEL_QUERIES" != "" ]; then
-  $SRC/configure --enable-experimental-parallel-queries
+  $SRC/configure --enable-parallel-compiler
   CARGO_INCREMENTAL=0 python2.7 ../x.py check
   rm -f config.toml
   rm -rf build

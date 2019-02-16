@@ -1,5 +1,5 @@
 error[E0492]: cannot borrow a constant which may contain interior mutability, create a static instead
-  --> $DIR/qualif_overwrite.rs:12:5
+  --> $DIR/qualif_overwrite.rs:10:5
    |
 LL |     &{a} //~ ERROR cannot borrow a constant which may contain interior mutability
    |     ^^^^

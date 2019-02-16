@@ -574,6 +574,10 @@ impl<'a, 'tcx, 'rcx> AutoTraitFinder<'a, 'tcx, 'rcx> {
         let mut ty_to_fn: FxHashMap<Type, (Option<PolyTrait>, Option<Type>)> = Default::default();
 
         for (orig_p, p) in clean_where_predicates {
+            if p.is_none() {
+                continue;
+            }
+            let p = p.unwrap();
             match p {
                 WherePredicate::BoundPredicate { ty, mut bounds } => {
                     // Writing a projection trait bound of the form

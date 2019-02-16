@@ -1,8 +1,7 @@
-#![doc(html_logo_url = "https://www.rust-lang.org/logos/rust-logo-128x128-blk-v2.png",
-       html_favicon_url = "https://doc.rust-lang.org/favicon.ico",
-       html_root_url = "https://doc.rust-lang.org/nightly/",
+#![doc(html_root_url = "https://doc.rust-lang.org/nightly/",
        html_playground_url = "https://play.rust-lang.org/")]
 
+#![feature(bind_by_move_pattern_guards)]
 #![feature(rustc_private)]
 #![feature(box_patterns)]
 #![feature(box_syntax)]
@@ -340,6 +339,12 @@ fn opts() -> Vec<RustcOptGroup> {
             o.optflag("",
                       "disable-per-crate-search",
                       "disables generating the crate selector on the search box")
+        }),
+        unstable("persist-doctests", |o| {
+             o.optopt("",
+                       "persist-doctests",
+                       "Directory to persist doctest executables into",
+                       "PATH")
         }),
     ]
 }

@@ -5,13 +5,14 @@
 //! and definition contexts*. J. Funct. Program. 22, 2 (March 2012), 181-216.
 //! DOI=10.1017/S0956796812000093 <https://doi.org/10.1017/S0956796812000093>
 
-use GLOBALS;
-use Span;
-use edition::{Edition, DEFAULT_EDITION};
-use symbol::{keywords, Symbol};
+use crate::GLOBALS;
+use crate::Span;
+use crate::edition::{Edition, DEFAULT_EDITION};
+use crate::symbol::{keywords, Symbol};
 
 use serialize::{Encodable, Decodable, Encoder, Decoder};
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
+use rustc_data_structures::sync::Lrc;
 use std::{fmt, mem};
 
 /// A SyntaxContext represents a chain of macro expansions (represented by marks).
@@ -31,7 +32,7 @@ struct SyntaxContextData {
     dollar_crate_name: Symbol,
 }
 
-/// A mark is a unique id associated with a macro expansion.
+/// A mark is a unique ID associated with a macro expansion.
 #[derive(Copy, Clone, PartialEq, Eq, Hash, Debug, RustcEncodable, RustcDecodable)]
 pub struct Mark(u32);
 
@@ -525,7 +526,7 @@ impl SyntaxContext {
 }
 
 impl fmt::Debug for SyntaxContext {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "#{}", self.0)
     }
 }
@@ -550,10 +551,10 @@ pub struct ExpnInfo {
     pub def_site: Option<Span>,
     /// The format with which the macro was invoked.
     pub format: ExpnFormat,
-    /// Whether the macro is allowed to use #[unstable]/feature-gated
-    /// features internally without forcing the whole crate to opt-in
+    /// List of #[unstable]/feature-gated features that the macro is allowed to use
+    /// internally without forcing the whole crate to opt-in
     /// to them.
-    pub allow_internal_unstable: bool,
+    pub allow_internal_unstable: Option<Lrc<[Symbol]>>,
     /// Whether the macro is allowed to use `unsafe` internally
     /// even if the user crate has `#![forbid(unsafe_code)]`.
     pub allow_internal_unsafe: bool,
@@ -590,7 +591,7 @@ pub enum CompilerDesugaringKind {
     QuestionMark,
     TryBlock,
     /// Desugaring of an `impl Trait` in return type position
-    /// to an `existential type Foo: Trait;` + replacing the
+    /// to an `existential type Foo: Trait;` and replacing the
     /// `impl Trait` with `Foo`.
     ExistentialReturnType,
     Async,

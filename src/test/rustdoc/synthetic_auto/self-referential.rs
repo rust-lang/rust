@@ -23,7 +23,7 @@ impl<T> Pattern for Wrapper<T> {
 
 
 // @has self_referential/struct.WriteAndThen.html
-// @has - '//*[@id="synthetic-implementations-list"]/*[@class="impl"]//*/code' "impl<P1> Send for \
+// @has - '//*[@id="synthetic-implementations-list"]/*[@class="impl"]//code' "impl<P1> Send for \
 // WriteAndThen<P1>  where  <P1 as Pattern>::Value: Send"
 pub struct WriteAndThen<P1>(pub P1::Value,pub <Constrain<P1, Wrapper<P1::Value>> as Pattern>::Value)
     where P1: Pattern;

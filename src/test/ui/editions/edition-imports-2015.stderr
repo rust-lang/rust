@@ -1,5 +1,5 @@
 error: cannot glob-import all possible crates
-  --> $DIR/edition-imports-2015.rs:25:5
+  --> $DIR/edition-imports-2015.rs:23:5
    |
 LL |     gen_glob!(); //~ ERROR cannot glob-import all possible crates
    |     ^^^^^^^^^^^^

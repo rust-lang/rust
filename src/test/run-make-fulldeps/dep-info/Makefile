@@ -1,11 +1,11 @@
 -include ../tools.mk
 
-# FIXME: ignore freebsd/windows
-# on windows `rustc --dep-info` produces Makefile dependency with
+# ignore-windows
+# ignore-freebsd
+# FIXME: on windows `rustc --dep-info` produces Makefile dependency with
 # windows native paths (e.g. `c:\path\to\libfoo.a`)
 # but msys make seems to fail to recognize such paths, so test fails.
-ifneq ($(shell uname),FreeBSD)
-ifndef IS_WINDOWS
+
 all:
 	cp *.rs $(TMPDIR)
 	$(RUSTC) --emit dep-info,link --crate-type=lib $(TMPDIR)/lib.rs
@@ -23,12 +23,3 @@ all:
 	rm $(TMPDIR)/bar.rs
 	cp $(TMPDIR)/lib2.rs $(TMPDIR)/lib.rs
 	$(MAKE) -drf Makefile.foo
-else
-all:
-
-endif
-
-else
-all:
-
-endif

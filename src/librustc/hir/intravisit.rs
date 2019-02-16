@@ -4,7 +4,7 @@
 //! `super::itemlikevisit::ItemLikeVisitor` trait.**
 //!
 //! If you have decided to use this visitor, here are some general
-//! notes on how to do it:
+//! notes on how to do so:
 //!
 //! Each overridden visit method has full control over what
 //! happens with its node, it can do its own traversal of the node's children,
@@ -33,22 +33,20 @@
 
 use syntax::ast::{NodeId, CRATE_NODE_ID, Ident, Name, Attribute};
 use syntax_pos::Span;
-use hir::*;
-use hir::def::Def;
-use hir::map::{self, Map};
+use crate::hir::*;
+use crate::hir::def::Def;
+use crate::hir::map::Map;
 use super::itemlikevisit::DeepVisitor;
-
-use std::cmp;
 
 #[derive(Copy, Clone)]
 pub enum FnKind<'a> {
-    /// #[xxx] pub async/const/extern "Abi" fn foo()
-    ItemFn(Name, &'a Generics, FnHeader, &'a Visibility, &'a [Attribute]),
+    /// `#[xxx] pub async/const/extern "Abi" fn foo()`
+    ItemFn(Ident, &'a Generics, FnHeader, &'a Visibility, &'a [Attribute]),
 
-    /// fn foo(&self)
+    /// `fn foo(&self)`
     Method(Ident, &'a MethodSig, Option<&'a Visibility>, &'a [Attribute]),
 
-    /// |x, y| {}
+    /// `|x, y| {}`
     Closure(&'a [Attribute]),
 }
 
@@ -88,7 +86,7 @@ pub enum NestedVisitorMap<'this, 'tcx: 'this> {
     /// using this setting.
     OnlyBodies(&'this Map<'tcx>),
 
-    /// Visit all nested things, including item-likes.
+    /// Visits all nested things, including item-likes.
     ///
     /// **This is an unusual choice.** It is used when you want to
     /// process everything within their lexical context. Typically you
@@ -98,7 +96,7 @@ pub enum NestedVisitorMap<'this, 'tcx: 'this> {
 
 impl<'this, 'tcx> NestedVisitorMap<'this, 'tcx> {
     /// Returns the map to use for an "intra item-like" thing (if any).
-    /// e.g., function body.
+    /// E.g., function body.
     pub fn intra(self) -> Option<&'this Map<'tcx>> {
         match self {
             NestedVisitorMap::None => None,
@@ -108,7 +106,7 @@ impl<'this, 'tcx> NestedVisitorMap<'this, 'tcx> {
     }
 
     /// Returns the map to use for an "item-like" thing (if any).
-    /// e.g., item, impl-item.
+    /// E.g., item, impl-item.
     pub fn inter(self) -> Option<&'this Map<'tcx>> {
         match self {
             NestedVisitorMap::None => None,
@@ -119,7 +117,7 @@ impl<'this, 'tcx> NestedVisitorMap<'this, 'tcx> {
 }
 
 /// Each method of the Visitor trait is a hook to be potentially
-/// overridden.  Each method's default implementation recursively visits
+/// overridden. Each method's default implementation recursively visits
 /// the substructure of the input via the corresponding `walk` method;
 /// e.g., the `visit_mod` method by default calls `intravisit::walk_mod`.
 ///
@@ -131,7 +129,7 @@ impl<'this, 'tcx> NestedVisitorMap<'this, 'tcx> {
 /// on `visit_nested_item` for details on how to visit nested items.
 ///
 /// If you want to ensure that your code handles every variant
-/// explicitly, you need to override each method.  (And you also need
+/// explicitly, you need to override each method. (And you also need
 /// to monitor future changes to `Visitor` in case a new method with a
 /// new default implementation gets introduced.)
 pub trait Visitor<'v> : Sized {
@@ -205,7 +203,7 @@ pub trait Visitor<'v> : Sized {
         }
     }
 
-    /// Visit the top-level item and (optionally) nested items / impl items. See
+    /// Visits the top-level item and (optionally) nested items / impl items. See
     /// `visit_nested_item` for details.
     fn visit_item(&mut self, i: &'v Item) {
         walk_item(self, i)
@@ -216,7 +214,7 @@ pub trait Visitor<'v> : Sized {
     }
 
     /// When invoking `visit_all_item_likes()`, you need to supply an
-    /// item-like visitor.  This method converts a "intra-visit"
+    /// item-like visitor. This method converts a "intra-visit"
     /// visitor into an item-like visitor that walks the entire tree.
     /// If you use this, you probably don't want to process the
     /// contents of nested item-like things, since the outer loop will
@@ -259,9 +257,6 @@ pub trait Visitor<'v> : Sized {
     }
     fn visit_pat(&mut self, p: &'v Pat) {
         walk_pat(self, p)
-    }
-    fn visit_decl(&mut self, d: &'v Decl) {
-        walk_decl(self, d)
     }
     fn visit_anon_const(&mut self, c: &'v AnonConst) {
         walk_anon_const(self, c)
@@ -472,7 +467,7 @@ pub fn walk_item<'v, V: Visitor<'v>>(visitor: &mut V, item: &'v Item) {
             visitor.visit_nested_body(body);
         }
         ItemKind::Fn(ref declaration, header, ref generics, body_id) => {
-            visitor.visit_fn(FnKind::ItemFn(item.ident.name,
+            visitor.visit_fn(FnKind::ItemFn(item.ident,
                                             generics,
                                             header,
                                             &item.vis,
@@ -699,7 +694,7 @@ pub fn walk_pat<'v, V: Visitor<'v>>(visitor: &mut V, pattern: &'v Pat) {
         PatKind::Ref(ref subpattern, _) => {
             visitor.visit_pat(subpattern)
         }
-        PatKind::Binding(_, canonical_id, ident, ref optional_subpattern) => {
+        PatKind::Binding(_, canonical_id, _hir_id, ident, ref optional_subpattern) => {
             visitor.visit_def_mention(Def::Local(canonical_id));
             visitor.visit_ident(ident);
             walk_list!(visitor, visit_pat, optional_subpattern);
@@ -953,23 +948,14 @@ pub fn walk_block<'v, V: Visitor<'v>>(visitor: &mut V, block: &'v Block) {
 }
 
 pub fn walk_stmt<'v, V: Visitor<'v>>(visitor: &mut V, statement: &'v Stmt) {
+    visitor.visit_id(statement.id);
     match statement.node {
-        StmtKind::Decl(ref declaration, id) => {
-            visitor.visit_id(id);
-            visitor.visit_decl(declaration)
-        }
-        StmtKind::Expr(ref expression, id) |
-        StmtKind::Semi(ref expression, id) => {
-            visitor.visit_id(id);
+        StmtKind::Local(ref local) => visitor.visit_local(local),
+        StmtKind::Item(ref item) => visitor.visit_nested_item(**item),
+        StmtKind::Expr(ref expression) |
+        StmtKind::Semi(ref expression) => {
             visitor.visit_expr(expression)
         }
-    }
-}
-
-pub fn walk_decl<'v, V: Visitor<'v>>(visitor: &mut V, declaration: &'v Decl) {
-    match declaration.node {
-        DeclKind::Local(ref local) => visitor.visit_local(local),
-        DeclKind::Item(item) => visitor.visit_nested_item(item),
     }
 }
 
@@ -1132,58 +1118,4 @@ pub fn walk_defaultness<'v, V: Visitor<'v>>(_: &mut V, _: &'v Defaultness) {
     // No visitable content here: this fn exists so you can call it if
     // the right thing to do, should content be added in the future,
     // would be to walk it.
-}
-
-#[derive(Copy, Clone, RustcEncodable, RustcDecodable, Debug)]
-pub struct IdRange {
-    pub min: NodeId,
-    pub max: NodeId,
-}
-
-impl IdRange {
-    pub fn max() -> IdRange {
-        IdRange {
-            min: NodeId::MAX,
-            max: NodeId::from_u32(0),
-        }
-    }
-
-    pub fn empty(&self) -> bool {
-        self.min >= self.max
-    }
-
-    pub fn contains(&self, id: NodeId) -> bool {
-        id >= self.min && id < self.max
-    }
-
-    pub fn add(&mut self, id: NodeId) {
-        self.min = cmp::min(self.min, id);
-        self.max = cmp::max(self.max, NodeId::from_u32(id.as_u32() + 1));
-    }
-}
-
-
-pub struct IdRangeComputingVisitor<'a, 'hir: 'a> {
-    result: IdRange,
-    map: &'a map::Map<'hir>,
-}
-
-impl<'a, 'hir> IdRangeComputingVisitor<'a, 'hir> {
-    pub fn new(map: &'a map::Map<'hir>) -> IdRangeComputingVisitor<'a, 'hir> {
-        IdRangeComputingVisitor { result: IdRange::max(), map: map }
-    }
-
-    pub fn result(&self) -> IdRange {
-        self.result
-    }
-}
-
-impl<'a, 'hir> Visitor<'hir> for IdRangeComputingVisitor<'a, 'hir> {
-    fn nested_visit_map<'this>(&'this mut self) -> NestedVisitorMap<'this, 'hir> {
-        NestedVisitorMap::OnlyBodies(&self.map)
-    }
-
-    fn visit_id(&mut self, id: NodeId) {
-        self.result.add(id);
-    }
 }

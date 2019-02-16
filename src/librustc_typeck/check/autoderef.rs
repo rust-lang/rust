@@ -1,6 +1,7 @@
 use super::{FnCtxt, PlaceOp, Needs};
 use super::method::MethodCallee;
 
+use rustc::hir;
 use rustc::infer::{InferCtxt, InferOk};
 use rustc::session::DiagnosticMessageId;
 use rustc::traits::{self, TraitEngine};
@@ -9,7 +10,7 @@ use rustc::ty::{ToPredicate, TypeFoldable};
 use rustc::ty::adjustment::{Adjustment, Adjust, OverloadedDeref};
 
 use syntax_pos::Span;
-use syntax::ast::{self, Ident};
+use syntax::ast::Ident;
 
 use std::iter;
 
@@ -21,7 +22,7 @@ enum AutoderefKind {
 
 pub struct Autoderef<'a, 'gcx: 'tcx, 'tcx: 'a> {
     infcx: &'a InferCtxt<'a, 'gcx, 'tcx>,
-    body_id: ast::NodeId,
+    body_id: hir::HirId,
     param_env: ty::ParamEnv<'tcx>,
     steps: Vec<(Ty<'tcx>, AutoderefKind)>,
     cur_ty: Ty<'tcx>,
@@ -87,7 +88,7 @@ impl<'a, 'gcx, 'tcx> Iterator for Autoderef<'a, 'gcx, 'tcx> {
 impl<'a, 'gcx, 'tcx> Autoderef<'a, 'gcx, 'tcx> {
     pub fn new(infcx: &'a InferCtxt<'a, 'gcx, 'tcx>,
                param_env: ty::ParamEnv<'tcx>,
-               body_id: ast::NodeId,
+               body_id: hir::HirId,
                span: Span,
                base_ty: Ty<'tcx>)
                -> Autoderef<'a, 'gcx, 'tcx>

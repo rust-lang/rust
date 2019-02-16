@@ -1,0 +1,28 @@
+error: type `priv_dep::OtherType` from private dependency 'priv_dep' in public interface
+  --> $DIR/pub-priv1.rs:21:5
+   |
+LL |     pub field: OtherType,
+   |     ^^^^^^^^^^^^^^^^^^^^
+   |
+note: lint level defined here
+  --> $DIR/pub-priv1.rs:4:9
+   |
+LL | #![deny(exported_private_dependencies)]
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: type `priv_dep::OtherType` from private dependency 'priv_dep' in public interface
+  --> $DIR/pub-priv1.rs:28:5
+   |
+LL |     pub fn pub_fn(param: OtherType) {}
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: trait `priv_dep::OtherTrait` from private dependency 'priv_dep' in public interface
+  --> $DIR/pub-priv1.rs:34:1
+   |
+LL | / pub trait MyPubTrait {
+LL | |     type Foo: OtherTrait;
+LL | | }
+   | |_^
+
+error: aborting due to 3 previous errors
+

@@ -1,3 +1,5 @@
+#![deny(rust_2018_idioms)]
+
 use std::env::args;
 use std::fs::read_dir;
 use std::path::Path;

@@ -9,17 +9,17 @@ pub trait Bar {
 
 impl Foo<u8> {
     // @has - '//*[@id="method.pass"]//code' 'fn pass()'
-    // @has - '//*[@id="pass.v"]//code' 'fn pass()'
+    // @has - '//code[@id="pass.v"]' 'fn pass()'
     pub fn pass() {}
 }
 impl Foo<u16> {
     // @has - '//*[@id="method.pass-1"]//code' 'fn pass() -> usize'
-    // @has - '//*[@id="pass.v-1"]//code' 'fn pass() -> usize'
+    // @has - '//code[@id="pass.v-1"]' 'fn pass() -> usize'
     pub fn pass() -> usize { 42 }
 }
 impl Foo<u32> {
     // @has - '//*[@id="method.pass-2"]//code' 'fn pass() -> isize'
-    // @has - '//*[@id="pass.v-2"]//code' 'fn pass() -> isize'
+    // @has - '//code[@id="pass.v-2"]' 'fn pass() -> isize'
     pub fn pass() -> isize { 42 }
 }
 

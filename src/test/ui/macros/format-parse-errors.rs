@@ -2,6 +2,7 @@ fn main() {
     format!(); //~ ERROR requires at least a format string argument
     format!(struct); //~ ERROR expected expression
     format!("s", name =); //~ ERROR expected expression
+    format!("s", foo = foo, bar); //~ ERROR expected `=`
     format!("s", foo = struct); //~ ERROR expected expression
     format!("s", struct); //~ ERROR expected expression
 

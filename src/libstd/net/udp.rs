@@ -69,7 +69,7 @@ impl UdpSocket {
     ///
     /// # Examples
     ///
-    /// Create a UDP socket bound to `127.0.0.1:3400`:
+    /// Creates a UDP socket bound to `127.0.0.1:3400`:
     ///
     /// ```no_run
     /// use std::net::UdpSocket;
@@ -77,7 +77,7 @@ impl UdpSocket {
     /// let socket = UdpSocket::bind("127.0.0.1:3400").expect("couldn't bind to address");
     /// ```
     ///
-    /// Create a UDP socket bound to `127.0.0.1:3400`. If the socket cannot be
+    /// Creates a UDP socket bound to `127.0.0.1:3400`. If the socket cannot be
     /// bound to that address, create a UDP socket bound to `127.0.0.1:3401`:
     ///
     /// ```no_run
@@ -158,7 +158,7 @@ impl UdpSocket {
     /// This will return an error when the IP version of the local socket
     /// does not match that returned from [`ToSocketAddrs`].
     ///
-    /// See <https://github.com/rust-lang/rust/issues/34202> for more details.
+    /// See issue #34202 for more details.
     ///
     /// [`ToSocketAddrs`]: ../../std/net/trait.ToSocketAddrs.html
     ///
@@ -590,7 +590,7 @@ impl UdpSocket {
         self.0.leave_multicast_v6(multiaddr, interface)
     }
 
-    /// Get the value of the `SO_ERROR` option on this socket.
+    /// Gets the value of the `SO_ERROR` option on this socket.
     ///
     /// This will retrieve the stored error in the underlying socket, clearing
     /// the field in the process. This can be useful for checking errors between
@@ -627,7 +627,7 @@ impl UdpSocket {
     ///
     /// # Examples
     ///
-    /// Create a UDP socket bound to `127.0.0.1:3400` and connect the socket to
+    /// Creates a UDP socket bound to `127.0.0.1:3400` and connect the socket to
     /// `127.0.0.1:8080`:
     ///
     /// ```no_run
@@ -756,7 +756,7 @@ impl UdpSocket {
     ///
     /// # Examples
     ///
-    /// Create a UDP socket bound to `127.0.0.1:7878` and read bytes in
+    /// Creates a UDP socket bound to `127.0.0.1:7878` and read bytes in
     /// nonblocking mode:
     ///
     /// ```no_run

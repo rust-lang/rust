@@ -9,7 +9,7 @@ LL |     expect_sig(|a, b| b); // ought to return `a`
                for<'r, 's> extern "rust-call" fn((&ReLateBound(DebruijnIndex(0), BrNamed(crate0:DefIndex(0:0), 'r)) i32, &ReLateBound(DebruijnIndex(0), BrNamed(crate0:DefIndex(0:0), 's)) i32)) -> &ReLateBound(DebruijnIndex(0), BrNamed(crate0:DefIndex(0:0), 'r)) i32
            ]
 
-error: unsatisfied lifetime constraints
+error: lifetime may not live long enough
   --> $DIR/return-wrong-bound-region.rs:11:23
    |
 LL |     expect_sig(|a, b| b); // ought to return `a`

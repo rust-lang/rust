@@ -3,7 +3,7 @@
 
 fn main() {
     fn bar<T>(_: T) {}
-    [0][0u8]; //~ ERROR: the trait bound `u8: std::slice::SliceIndex<[{integer}]>` is not satisfied
+    [0][0u8]; //~ ERROR: the type `[{integer}]` cannot be indexed by `u8`
 
     [0][0]; // should infer to be a usize
 

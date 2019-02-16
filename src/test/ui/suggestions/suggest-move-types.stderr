@@ -1,0 +1,102 @@
+error: associated type bindings must be declared after generic parameters
+  --> $DIR/suggest-move-types.rs:28:20
+   |
+LL | struct A<T, M: One<A=(), T>> { //~ ERROR associated type bindings must be declared after generic parameters
+   |                    ----^^^
+   |                    |
+   |                    this associated type binding should be moved after the generic parameters
+
+error: associated type bindings must be declared after generic parameters
+  --> $DIR/suggest-move-types.rs:34:37
+   |
+LL | struct Al<'a, T, M: OneWithLifetime<A=(), T, 'a>> {
+   |                                     ----^^^^^^^
+   |                                     |
+   |                                     this associated type binding should be moved after the generic parameters
+
+error: associated type bindings must be declared after generic parameters
+  --> $DIR/suggest-move-types.rs:41:28
+   |
+LL | struct B<T, U, V, M: Three<A=(), B=(), C=(), T, U, V>> { //~ ERROR associated type bindings must be declared after generic parameters
+   |                            ----^^----^^----^^^^^^^^^
+   |                            |     |     |
+   |                            |     |     this associated type binding should be moved after the generic parameters
+   |                            |     this associated type binding should be moved after the generic parameters
+   |                            this associated type binding should be moved after the generic parameters
+
+error: associated type bindings must be declared after generic parameters
+  --> $DIR/suggest-move-types.rs:48:53
+   |
+LL | struct Bl<'a, 'b, 'c, T, U, V, M: ThreeWithLifetime<A=(), B=(), C=(), T, U, V, 'a, 'b, 'c>> {
+   |                                                     ----^^----^^----^^^^^^^^^^^^^^^^^^^^^
+   |                                                     |     |     |
+   |                                                     |     |     this associated type binding should be moved after the generic parameters
+   |                                                     |     this associated type binding should be moved after the generic parameters
+   |                                                     this associated type binding should be moved after the generic parameters
+
+error: associated type bindings must be declared after generic parameters
+  --> $DIR/suggest-move-types.rs:57:28
+   |
+LL | struct C<T, U, V, M: Three<T, A=(), B=(), C=(), U, V>> { //~ ERROR associated type bindings must be declared after generic parameters
+   |                            ^^^----^^----^^----^^^^^^
+   |                               |     |     |
+   |                               |     |     this associated type binding should be moved after the generic parameters
+   |                               |     this associated type binding should be moved after the generic parameters
+   |                               this associated type binding should be moved after the generic parameters
+
+error: associated type bindings must be declared after generic parameters
+  --> $DIR/suggest-move-types.rs:64:53
+   |
+LL | struct Cl<'a, 'b, 'c, T, U, V, M: ThreeWithLifetime<T, 'a, A=(), B=(), C=(), U, 'b, V, 'c>> {
+   |                                                     ^^^^^^^----^^----^^----^^^^^^^^^^^^^^
+   |                                                            |     |     |
+   |                                                            |     |     this associated type binding should be moved after the generic parameters
+   |                                                            |     this associated type binding should be moved after the generic parameters
+   |                                                            this associated type binding should be moved after the generic parameters
+
+error: associated type bindings must be declared after generic parameters
+  --> $DIR/suggest-move-types.rs:73:28
+   |
+LL | struct D<T, U, V, M: Three<T, A=(), B=(), U, C=(), V>> { //~ ERROR associated type bindings must be declared after generic parameters
+   |                            ^^^----^^----^^^^^----^^^
+   |                               |     |        |
+   |                               |     |        this associated type binding should be moved after the generic parameters
+   |                               |     this associated type binding should be moved after the generic parameters
+   |                               this associated type binding should be moved after the generic parameters
+
+error: associated type bindings must be declared after generic parameters
+  --> $DIR/suggest-move-types.rs:80:53
+   |
+LL | struct Dl<'a, 'b, 'c, T, U, V, M: ThreeWithLifetime<T, 'a, A=(), B=(), U, 'b, C=(), V, 'c>> {
+   |                                                     ^^^^^^^----^^----^^^^^^^^^----^^^^^^^
+   |                                                            |     |            |
+   |                                                            |     |            this associated type binding should be moved after the generic parameters
+   |                                                            |     this associated type binding should be moved after the generic parameters
+   |                                                            this associated type binding should be moved after the generic parameters
+
+error: lifetime arguments must be declared prior to type arguments
+  --> $DIR/suggest-move-types.rs:34:46
+   |
+LL | struct Al<'a, T, M: OneWithLifetime<A=(), T, 'a>> {
+   |                                              ^^
+
+error: lifetime arguments must be declared prior to type arguments
+  --> $DIR/suggest-move-types.rs:48:80
+   |
+LL | struct Bl<'a, 'b, 'c, T, U, V, M: ThreeWithLifetime<A=(), B=(), C=(), T, U, V, 'a, 'b, 'c>> {
+   |                                                                                ^^  ^^  ^^
+
+error: lifetime arguments must be declared prior to type arguments
+  --> $DIR/suggest-move-types.rs:64:56
+   |
+LL | struct Cl<'a, 'b, 'c, T, U, V, M: ThreeWithLifetime<T, 'a, A=(), B=(), C=(), U, 'b, V, 'c>> {
+   |                                                        ^^                       ^^     ^^
+
+error: lifetime arguments must be declared prior to type arguments
+  --> $DIR/suggest-move-types.rs:80:56
+   |
+LL | struct Dl<'a, 'b, 'c, T, U, V, M: ThreeWithLifetime<T, 'a, A=(), B=(), U, 'b, C=(), V, 'c>> {
+   |                                                        ^^                 ^^           ^^
+
+error: aborting due to 12 previous errors
+

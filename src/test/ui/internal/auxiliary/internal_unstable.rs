@@ -23,14 +23,14 @@ pub struct Bar {
 }
 
 #[stable(feature = "stable", since = "1.0.0")]
-#[allow_internal_unstable]
+#[allow_internal_unstable(function)]
 #[macro_export]
 macro_rules! call_unstable_allow {
     () => { $crate::unstable() }
 }
 
 #[stable(feature = "stable", since = "1.0.0")]
-#[allow_internal_unstable]
+#[allow_internal_unstable(struct_field)]
 #[macro_export]
 macro_rules! construct_unstable_allow {
     ($e: expr) => {
@@ -39,21 +39,21 @@ macro_rules! construct_unstable_allow {
 }
 
 #[stable(feature = "stable", since = "1.0.0")]
-#[allow_internal_unstable]
+#[allow_internal_unstable(method)]
 #[macro_export]
 macro_rules! call_method_allow {
     ($e: expr) => { $e.method() }
 }
 
 #[stable(feature = "stable", since = "1.0.0")]
-#[allow_internal_unstable]
+#[allow_internal_unstable(struct_field, struct2_field)]
 #[macro_export]
 macro_rules! access_field_allow {
     ($e: expr) => { $e.x }
 }
 
 #[stable(feature = "stable", since = "1.0.0")]
-#[allow_internal_unstable]
+#[allow_internal_unstable()]
 #[macro_export]
 macro_rules! pass_through_allow {
     ($e: expr) => { $e }

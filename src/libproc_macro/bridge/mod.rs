@@ -17,7 +17,7 @@ use std::panic;
 use std::sync::atomic::AtomicUsize;
 use std::sync::Once;
 use std::thread;
-use {Delimiter, Level, LineColumn, Spacing};
+use crate::{Delimiter, Level, LineColumn, Spacing};
 
 /// Higher-order macro describing the server RPC API, allowing automatic
 /// generation of type-safe Rust APIs, both client-side and server-side.
@@ -196,9 +196,9 @@ mod scoped_cell;
 #[forbid(unsafe_code)]
 pub mod server;
 
-use self::buffer::Buffer;
-pub use self::rpc::PanicMessage;
-use self::rpc::{Decode, DecodeMut, Encode, Reader, Writer};
+use buffer::Buffer;
+pub use rpc::PanicMessage;
+use rpc::{Decode, DecodeMut, Encode, Reader, Writer};
 
 /// An active connection between a server and a client.
 /// The server creates the bridge (`Bridge::run_server` in `server.rs`),

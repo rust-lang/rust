@@ -1,0 +1,9 @@
+error[E0594]: cannot assign to immutable thread-local static item
+  --> $DIR/thread-local-mutation.rs:11:5
+   |
+LL |     S = "after"; //~ ERROR cannot assign to immutable
+   |     ^^^^^^^^^^^
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0594`.

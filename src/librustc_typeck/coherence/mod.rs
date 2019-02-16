@@ -5,10 +5,11 @@
 // done by the orphan and overlap modules. Then we build up various
 // mappings. That mapping code resides here.
 
-use hir::def_id::{DefId, LOCAL_CRATE};
+use crate::hir::def_id::{DefId, LOCAL_CRATE};
 use rustc::traits;
 use rustc::ty::{self, TyCtxt, TypeFoldable};
 use rustc::ty::query::Providers;
+use rustc::util::common::time;
 
 use syntax::ast;
 
@@ -132,23 +133,25 @@ fn coherent_trait<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: DefId) {
     for &impl_id in impls {
         check_impl_overlap(tcx, impl_id);
     }
-    builtin::check_trait(tcx, def_id);
+    use rustc::util::common::time;
+    time(tcx.sess, "builtin::check_trait checking", ||
+          builtin::check_trait(tcx, def_id));
 }
 
 pub fn check_coherence<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>) {
     for &trait_def_id in tcx.hir().krate().trait_impls.keys() {
-        ty::query::queries::coherent_trait::ensure(tcx, trait_def_id);
+        tcx.ensure().coherent_trait(trait_def_id);
     }
 
-    unsafety::check(tcx);
-    orphan::check(tcx);
+    time(tcx.sess, "unsafety checking", || unsafety::check(tcx));
+    time(tcx.sess, "orphan checking", || orphan::check(tcx));
 
     // these queries are executed for side-effects (error reporting):
-    ty::query::queries::crate_inherent_impls::ensure(tcx, LOCAL_CRATE);
-    ty::query::queries::crate_inherent_impls_overlap_check::ensure(tcx, LOCAL_CRATE);
+    tcx.ensure().crate_inherent_impls(LOCAL_CRATE);
+    tcx.ensure().crate_inherent_impls_overlap_check(LOCAL_CRATE);
 }
 
-/// Overlap: No two impls for the same trait are implemented for the
+/// Overlap: no two impls for the same trait are implemented for the
 /// same type. Likewise, no two inherent impls for a given type
 /// constructor provide a method with the same name.
 fn check_impl_overlap<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, node_id: ast::NodeId) {
@@ -171,13 +174,23 @@ fn check_impl_overlap<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, node_id: ast::NodeI
         // This is something like impl Trait1 for Trait2. Illegal
         // if Trait1 is a supertrait of Trait2 or Trait2 is not object safe.
 
-        if let Some(principal_def_id) = data.principal_def_id() {
-            if !tcx.is_object_safe(principal_def_id) {
+        let component_def_ids = data.iter().flat_map(|predicate| {
+            match predicate.skip_binder() {
+                ty::ExistentialPredicate::Trait(tr) => Some(tr.def_id),
+                ty::ExistentialPredicate::AutoTrait(def_id) => Some(*def_id),
+                // An associated type projection necessarily comes with
+                // an additional `Trait` requirement.
+                ty::ExistentialPredicate::Projection(..) => None,
+            }
+        });
+
+        for component_def_id in component_def_ids {
+            if !tcx.is_object_safe(component_def_id) {
                 // This is an error, but it will be reported by wfcheck.  Ignore it here.
                 // This is tested by `coherence-impl-trait-for-trait-object-safe.rs`.
             } else {
                 let mut supertrait_def_ids =
-                    traits::supertrait_def_ids(tcx, principal_def_id);
+                    traits::supertrait_def_ids(tcx, component_def_id);
                 if supertrait_def_ids.any(|d| d == trait_def_id) {
                     let sp = tcx.sess.source_map().def_span(tcx.span_of_impl(impl_def_id).unwrap());
                     struct_span_err!(tcx.sess,
@@ -193,6 +206,5 @@ fn check_impl_overlap<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, node_id: ast::NodeI
                 }
             }
         }
-        // FIXME: also check auto-trait def-ids? (e.g. `impl Sync for Foo+Sync`)?
     }
 }

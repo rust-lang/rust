@@ -1,0 +1,9 @@
+error[E0004]: non-exhaustive patterns: `&S` not covered
+  --> $DIR/match_ice.rs:7:11
+   |
+LL |     match C { //~ ERROR non-exhaustive
+   |           ^ pattern `&S` not covered
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0004`.

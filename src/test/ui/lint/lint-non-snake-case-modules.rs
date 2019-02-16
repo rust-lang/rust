@@ -1,7 +1,7 @@
 #![deny(non_snake_case)]
 #![allow(dead_code)]
 
-mod FooBar { //~ ERROR module `FooBar` should have a snake case name such as `foo_bar`
+mod FooBar { //~ ERROR module `FooBar` should have a snake case name
     pub struct S;
 }
 

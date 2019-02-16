@@ -177,23 +177,23 @@
 use rustc::hir::{self, CodegenFnAttrFlags};
 use rustc::hir::itemlikevisit::ItemLikeVisitor;
 
-use rustc::hir::def_id::DefId;
+use rustc::hir::def_id::{DefId, LOCAL_CRATE};
 use rustc::mir::interpret::{AllocId, ConstValue};
 use rustc::middle::lang_items::{ExchangeMallocFnLangItem, StartFnLangItem};
 use rustc::ty::subst::Substs;
 use rustc::ty::{self, TypeFoldable, Ty, TyCtxt, GenericParamDefKind};
 use rustc::ty::adjustment::CustomCoerceUnsized;
-use rustc::session::config;
+use rustc::session::config::EntryFnType;
 use rustc::mir::{self, Location, Promoted};
 use rustc::mir::visit::Visitor as MirVisitor;
 use rustc::mir::mono::MonoItem;
 use rustc::mir::interpret::{Scalar, GlobalId, AllocKind, ErrorHandled};
 
-use monomorphize::{self, Instance};
+use crate::monomorphize::{self, Instance};
 use rustc::util::nodemap::{FxHashSet, FxHashMap, DefIdMap};
 use rustc::util::common::time;
 
-use monomorphize::item::{MonoItemExt, DefPathBasedNames, InstantiationMode};
+use crate::monomorphize::item::{MonoItemExt, DefPathBasedNames, InstantiationMode};
 
 use rustc_data_structures::bit_set::GrowableBitSet;
 use rustc_data_structures::sync::{MTRef, MTLock, ParallelIterator, par_iter};
@@ -321,9 +321,7 @@ fn collect_roots<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     let mut roots = Vec::new();
 
     {
-        let entry_fn = tcx.sess.entry_fn.borrow().map(|(node_id, _, _)| {
-            tcx.hir().local_def_id(node_id)
-        });
+        let entry_fn = tcx.entry_fn(LOCAL_CRATE);
 
         debug!("collect_roots: entry_fn = {:?}", entry_fn);
 
@@ -357,7 +355,7 @@ fn collect_items_rec<'a, 'tcx: 'a>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         // We've been here already, no need to search again.
         return;
     }
-    debug!("BEGIN collect_items_rec({})", starting_point.to_string(tcx));
+    debug!("BEGIN collect_items_rec({})", starting_point.to_string(tcx, true));
 
     let mut neighbors = Vec::new();
     let recursion_depth_reset;
@@ -411,7 +409,7 @@ fn collect_items_rec<'a, 'tcx: 'a>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         recursion_depths.insert(def_id, depth);
     }
 
-    debug!("END collect_items_rec({})", starting_point.to_string(tcx));
+    debug!("END collect_items_rec({})", starting_point.to_string(tcx, true));
 }
 
 fn record_accesses<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
@@ -452,8 +450,8 @@ fn check_recursion_limit<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     if recursion_depth > *tcx.sess.recursion_limit.get() {
         let error = format!("reached the recursion limit while instantiating `{}`",
                             instance);
-        if let Some(node_id) = tcx.hir().as_local_node_id(def_id) {
-            tcx.sess.span_fatal(tcx.hir().span(node_id), &error);
+        if let Some(hir_id) = tcx.hir().as_local_hir_id(def_id) {
+            tcx.sess.span_fatal(tcx.hir().span_by_hir_id(hir_id), &error);
         } else {
             tcx.sess.fatal(&error);
         }
@@ -484,8 +482,8 @@ fn check_type_length_limit<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         let instance_name = instance.to_string();
         let msg = format!("reached the type-length limit while instantiating `{:.64}...`",
                           instance_name);
-        let mut diag = if let Some(node_id) = tcx.hir().as_local_node_id(instance.def_id()) {
-            tcx.sess.struct_span_fatal(tcx.hir().span(node_id), &msg)
+        let mut diag = if let Some(hir_id) = tcx.hir().as_local_hir_id(instance.def_id()) {
+            tcx.sess.struct_span_fatal(tcx.hir().span_by_hir_id(hir_id), &msg)
         } else {
             tcx.sess.struct_fatal(&msg)
         };
@@ -924,7 +922,7 @@ struct RootCollector<'b, 'a: 'b, 'tcx: 'a + 'b> {
     tcx: TyCtxt<'a, 'tcx, 'tcx>,
     mode: MonoItemCollectionMode,
     output: &'b mut Vec<MonoItem<'tcx>>,
-    entry_fn: Option<DefId>,
+    entry_fn: Option<(DefId, EntryFnType)>,
 }
 
 impl<'b, 'a, 'v> ItemLikeVisitor<'v> for RootCollector<'b, 'a, 'v> {
@@ -1023,7 +1021,7 @@ impl<'b, 'a, 'v> RootCollector<'b, 'a, 'v> {
                 true
             }
             MonoItemCollectionMode::Lazy => {
-                self.entry_fn == Some(def_id) ||
+                self.entry_fn.map(|(id, _)| id) == Some(def_id) ||
                 self.tcx.is_reachable_non_generic(def_id) ||
                 self.tcx.codegen_fn_attrs(def_id).flags.contains(
                     CodegenFnAttrFlags::RUSTC_STD_INTERNAL_SYMBOL)
@@ -1048,14 +1046,9 @@ impl<'b, 'a, 'v> RootCollector<'b, 'a, 'v> {
     /// the return type of `main`. This is not needed when
     /// the user writes their own `start` manually.
     fn push_extra_entry_roots(&mut self) {
-        if self.tcx.sess.entry_fn.get().map(|e| e.2) != Some(config::EntryFnType::Main) {
-            return
-        }
-
-        let main_def_id = if let Some(def_id) = self.entry_fn {
-            def_id
-        } else {
-            return
+        let main_def_id = match self.entry_fn {
+            Some((def_id, EntryFnType::Main)) => def_id,
+            _ => return,
         };
 
         let start_def_id = match self.tcx.lang_items().require(StartFnLangItem) {
@@ -1261,12 +1254,7 @@ fn collect_const<'a, 'tcx>(
     debug!("visiting const {:?}", constant);
 
     match constant.val {
-        ConstValue::ScalarPair(Scalar::Ptr(a), Scalar::Ptr(b)) => {
-            collect_miri(tcx, a.alloc_id, output);
-            collect_miri(tcx, b.alloc_id, output);
-        }
-        ConstValue::ScalarPair(_, Scalar::Ptr(ptr)) |
-        ConstValue::ScalarPair(Scalar::Ptr(ptr), _) |
+        ConstValue::Slice(Scalar::Ptr(ptr), _) |
         ConstValue::Scalar(Scalar::Ptr(ptr)) =>
             collect_miri(tcx, ptr.alloc_id, output),
         ConstValue::ByRef(_id, alloc, _offset) => {

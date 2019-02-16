@@ -10,11 +10,10 @@ use rustc::hir::{self, def_id::DefId};
 use rustc::hir::def::Def;
 use rustc::mir::interpret::{ConstEvalErr, ErrorHandled};
 use rustc::mir;
-use rustc::ty::{self, TyCtxt, Instance, query::TyCtxtAt};
-use rustc::ty::layout::{self, LayoutOf, TyLayout, VariantIdx};
+use rustc::ty::{self, TyCtxt, query::TyCtxtAt};
+use rustc::ty::layout::{self, LayoutOf, VariantIdx};
 use rustc::ty::subst::Subst;
 use rustc::traits::Reveal;
-use rustc_data_structures::indexed_vec::IndexVec;
 use rustc_data_structures::fx::FxHashMap;
 use rustc::util::common::ErrorReported;
 
@@ -22,7 +21,8 @@ use syntax::ast::Mutability;
 use syntax::source_map::{Span, DUMMY_SP};
 
 use crate::interpret::{self,
-    PlaceTy, MPlaceTy, MemPlace, OpTy, Operand, Immediate, Scalar, RawConst, ConstValue, Pointer,
+    PlaceTy, MPlaceTy, MemPlace, OpTy, ImmTy, Operand, Immediate, Scalar, Pointer,
+    RawConst, ConstValue,
     EvalResult, EvalError, EvalErrorKind, GlobalId, EvalContext, StackPopCleanup,
     Allocation, AllocId, MemoryKind,
     snapshot, RefTracking,
@@ -35,49 +35,20 @@ const STEPS_UNTIL_DETECTOR_ENABLED: isize = 1_000_000;
 /// Should be a power of two for performance reasons.
 const DETECTOR_SNAPSHOT_PERIOD: isize = 256;
 
-pub fn mk_borrowck_eval_cx<'a, 'mir, 'tcx>(
+/// The `EvalContext` is only meant to be used to do field and index projections into constants for
+/// `simd_shuffle` and const patterns in match arms.
+///
+/// The function containing the `match` that is currently being analyzed may have generic bounds
+/// that inform us about the generic bounds of the constant. E.g., using an associated constant
+/// of a function's generic parameter will require knowledge about the bounds on the generic
+/// parameter. These bounds are passed to `mk_eval_cx` via the `ParamEnv` argument.
+pub(crate) fn mk_eval_cx<'a, 'mir, 'tcx>(
     tcx: TyCtxt<'a, 'tcx, 'tcx>,
-    instance: Instance<'tcx>,
-    mir: &'mir mir::Mir<'tcx>,
     span: Span,
-) -> EvalResult<'tcx, CompileTimeEvalContext<'a, 'mir, 'tcx>> {
-    debug!("mk_borrowck_eval_cx: {:?}", instance);
-    let param_env = tcx.param_env(instance.def_id());
-    let mut ecx = EvalContext::new(tcx.at(span), param_env, CompileTimeInterpreter::new());
-    // insert a stack frame so any queries have the correct substs
-    // cannot use `push_stack_frame`; if we do `const_prop` explodes
-    ecx.stack.push(interpret::Frame {
-        block: mir::START_BLOCK,
-        locals: IndexVec::new(),
-        instance,
-        span,
-        mir,
-        return_place: None,
-        return_to_block: StackPopCleanup::Goto(None), // never pop
-        stmt: 0,
-        extra: (),
-    });
-    Ok(ecx)
-}
-
-pub fn mk_eval_cx<'a, 'tcx>(
-    tcx: TyCtxt<'a, 'tcx, 'tcx>,
-    instance: Instance<'tcx>,
     param_env: ty::ParamEnv<'tcx>,
-) -> EvalResult<'tcx, CompileTimeEvalContext<'a, 'tcx, 'tcx>> {
-    debug!("mk_eval_cx: {:?}, {:?}", instance, param_env);
-    let span = tcx.def_span(instance.def_id());
-    let mut ecx = EvalContext::new(tcx.at(span), param_env, CompileTimeInterpreter::new());
-    let mir = ecx.load_mir(instance.def)?;
-    // insert a stack frame so any queries have the correct substs
-    ecx.push_stack_frame(
-        instance,
-        mir.span,
-        mir,
-        None,
-        StackPopCleanup::Goto(None), // never pop
-    )?;
-    Ok(ecx)
+) -> CompileTimeEvalContext<'a, 'mir, 'tcx> {
+    debug!("mk_eval_cx: {:?}", param_env);
+    EvalContext::new(tcx.at(span), param_env, CompileTimeInterpreter::new())
 }
 
 pub(crate) fn eval_promoted<'a, 'mir, 'tcx>(
@@ -86,7 +57,8 @@ pub(crate) fn eval_promoted<'a, 'mir, 'tcx>(
     mir: &'mir mir::Mir<'tcx>,
     param_env: ty::ParamEnv<'tcx>,
 ) -> EvalResult<'tcx, MPlaceTy<'tcx>> {
-    let mut ecx = mk_borrowck_eval_cx(tcx, cid.instance, mir, DUMMY_SP).unwrap();
+    let span = tcx.def_span(cid.instance.def_id());
+    let mut ecx = mk_eval_cx(tcx, span, param_env);
     eval_body_using_ecx(&mut ecx, cid, Some(mir), param_env)
 }
 
@@ -96,20 +68,17 @@ pub fn op_to_const<'tcx>(
     op: OpTy<'tcx>,
     may_normalize: bool,
 ) -> EvalResult<'tcx, ty::Const<'tcx>> {
-    // We do not normalize just any data.  Only scalar layout and fat pointers.
+    // We do not normalize just any data.  Only scalar layout and slices.
     let normalize = may_normalize
         && match op.layout.abi {
             layout::Abi::Scalar(..) => true,
-            layout::Abi::ScalarPair(..) => {
-                // Must be a fat pointer
-                op.layout.ty.builtin_deref(true).is_some()
-            },
+            layout::Abi::ScalarPair(..) => op.layout.ty.is_slice(),
             _ => false,
         };
     let normalized_op = if normalize {
         ecx.try_read_immediate(op)?
     } else {
-        match op.op {
+        match *op {
             Operand::Indirect(mplace) => Err(mplace),
             Operand::Immediate(val) => Ok(val)
         }
@@ -132,18 +101,9 @@ pub fn op_to_const<'tcx>(
         Ok(Immediate::Scalar(x)) =>
             ConstValue::Scalar(x.not_undef()?),
         Ok(Immediate::ScalarPair(a, b)) =>
-            ConstValue::ScalarPair(a.not_undef()?, b.not_undef()?),
+            ConstValue::Slice(a.not_undef()?, b.to_usize(ecx)?),
     };
     Ok(ty::Const { val, ty: op.layout.ty })
-}
-
-pub fn lazy_const_to_op<'tcx>(
-    ecx: &CompileTimeEvalContext<'_, '_, 'tcx>,
-    cnst: ty::LazyConst<'tcx>,
-    ty: ty::Ty<'tcx>,
-) -> EvalResult<'tcx, OpTy<'tcx>> {
-    let op = ecx.const_value_to_op(cnst)?;
-    Ok(OpTy { op, layout: ecx.layout_of(ty)? })
 }
 
 fn eval_body_and_ecx<'a, 'mir, 'tcx>(
@@ -222,7 +182,7 @@ enum ConstEvalError {
 }
 
 impl fmt::Display for ConstEvalError {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         use self::ConstEvalError::*;
         match *self {
             NeedsRfc(ref msg) => {
@@ -369,19 +329,22 @@ impl<'a, 'mir, 'tcx> interpret::Machine<'a, 'mir, 'tcx>
         ret: Option<mir::BasicBlock>,
     ) -> EvalResult<'tcx, Option<&'mir mir::Mir<'tcx>>> {
         debug!("eval_fn_call: {:?}", instance);
-        // Execution might have wandered off into other crates, so we cannot to a stability-
-        // sensitive check here.  But we can at least rule out functions that are not const
-        // at all.
-        if !ecx.tcx.is_const_fn_raw(instance.def_id()) {
-            // Some functions we support even if they are non-const -- but avoid testing
-            // that for const fn!  We certainly do *not* want to actually call the fn
-            // though, so be sure we return here.
-            return if ecx.hook_fn(instance, args, dest)? {
-                ecx.goto_block(ret)?; // fully evaluated and done
-                Ok(None)
-            } else {
-                err!(MachineError(format!("calling non-const function `{}`", instance)))
-            };
+        // Only check non-glue functions
+        if let ty::InstanceDef::Item(def_id) = instance.def {
+            // Execution might have wandered off into other crates, so we cannot to a stability-
+            // sensitive check here.  But we can at least rule out functions that are not const
+            // at all.
+            if !ecx.tcx.is_const_fn_raw(def_id) {
+                // Some functions we support even if they are non-const -- but avoid testing
+                // that for const fn!  We certainly do *not* want to actually call the fn
+                // though, so be sure we return here.
+                return if ecx.hook_fn(instance, args, dest)? {
+                    ecx.goto_block(ret)?; // fully evaluated and done
+                    Ok(None)
+                } else {
+                    err!(MachineError(format!("calling non-const function `{}`", instance)))
+                };
+            }
         }
         // This is a const fn. Call it.
         Ok(Some(match ecx.load_mir(instance.def) {
@@ -417,10 +380,8 @@ impl<'a, 'mir, 'tcx> interpret::Machine<'a, 'mir, 'tcx>
     fn ptr_op(
         _ecx: &EvalContext<'a, 'mir, 'tcx, Self>,
         _bin_op: mir::BinOp,
-        _left: Scalar,
-        _left_layout: TyLayout<'tcx>,
-        _right: Scalar,
-        _right_layout: TyLayout<'tcx>,
+        _left: ImmTy<'tcx>,
+        _right: ImmTy<'tcx>,
     ) -> EvalResult<'tcx, (Scalar, bool)> {
         Err(
             ConstEvalError::NeedsRfc("pointer arithmetic or comparison".to_string()).into(),
@@ -493,7 +454,7 @@ impl<'a, 'mir, 'tcx> interpret::Machine<'a, 'mir, 'tcx>
         Ok(())
     }
 
-    /// Called immediately before a stack frame gets popped
+    /// Called immediately before a stack frame gets popped.
     #[inline(always)]
     fn stack_pop(
         _ecx: &mut EvalContext<'a, 'mir, 'tcx, Self>,
@@ -503,20 +464,19 @@ impl<'a, 'mir, 'tcx> interpret::Machine<'a, 'mir, 'tcx>
     }
 }
 
-/// Project to a field of a (variant of a) const
+/// Projects to a field of a (variant of a) const.
 pub fn const_field<'a, 'tcx>(
     tcx: TyCtxt<'a, 'tcx, 'tcx>,
     param_env: ty::ParamEnv<'tcx>,
-    instance: ty::Instance<'tcx>,
     variant: Option<VariantIdx>,
     field: mir::Field,
     value: ty::Const<'tcx>,
 ) -> ::rustc::mir::interpret::ConstEvalResult<'tcx> {
-    trace!("const_field: {:?}, {:?}, {:?}", instance, field, value);
-    let ecx = mk_eval_cx(tcx, instance, param_env).unwrap();
+    trace!("const_field: {:?}, {:?}", field, value);
+    let ecx = mk_eval_cx(tcx, DUMMY_SP, param_env);
     let result = (|| {
         // get the operand again
-        let op = lazy_const_to_op(&ecx, ty::LazyConst::Evaluated(value), value.ty)?;
+        let op = ecx.lazy_const_to_op(ty::LazyConst::Evaluated(value), value.ty)?;
         // downcast
         let down = match variant {
             None => op,
@@ -538,12 +498,11 @@ pub fn const_field<'a, 'tcx>(
 pub fn const_variant_index<'a, 'tcx>(
     tcx: TyCtxt<'a, 'tcx, 'tcx>,
     param_env: ty::ParamEnv<'tcx>,
-    instance: ty::Instance<'tcx>,
     val: ty::Const<'tcx>,
 ) -> EvalResult<'tcx, VariantIdx> {
-    trace!("const_variant_index: {:?}, {:?}", instance, val);
-    let ecx = mk_eval_cx(tcx, instance, param_env).unwrap();
-    let op = lazy_const_to_op(&ecx, ty::LazyConst::Evaluated(val), val.ty)?;
+    trace!("const_variant_index: {:?}", val);
+    let ecx = mk_eval_cx(tcx, DUMMY_SP, param_env);
+    let op = ecx.lazy_const_to_op(ty::LazyConst::Evaluated(val), val.ty)?;
     Ok(ecx.read_discriminant(op)?.1)
 }
 
@@ -562,7 +521,7 @@ fn validate_and_turn_into_const<'a, 'tcx>(
     key: ty::ParamEnvAnd<'tcx, GlobalId<'tcx>>,
 ) -> ::rustc::mir::interpret::ConstEvalResult<'tcx> {
     let cid = key.value;
-    let ecx = mk_eval_cx(tcx, cid.instance, key.param_env).unwrap();
+    let ecx = mk_eval_cx(tcx, tcx.def_span(key.value.instance.def_id()), key.param_env);
     let val = (|| {
         let op = ecx.raw_const_to_mplace(constant)?.into();
         // FIXME: Once the visitor infrastructure landed, change validation to
@@ -573,10 +532,10 @@ fn validate_and_turn_into_const<'a, 'tcx>(
                 op,
                 path,
                 Some(&mut ref_tracking),
-                /* const_mode */ true,
+                true, // const mode
             )?;
         }
-        // Now that we validated, turn this into a proper constant
+        // Now that we validated, turn this into a proper constant.
         let def_id = cid.instance.def.def_id();
         let normalize = tcx.is_static(def_id).is_none() && cid.promoted.is_none();
         op_to_const(&ecx, op, normalize)

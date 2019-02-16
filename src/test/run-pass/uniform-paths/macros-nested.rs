@@ -1,11 +1,9 @@
-// run-pass
-#![allow(non_camel_case_types)]
+// This test is similar to `macros.rs`, but nested in modules.
 
+// run-pass
 // edition:2018
 
-#![feature(uniform_paths)]
-
-// This test is similar to `macros.rs`, but nested in modules.
+#![allow(non_camel_case_types)]
 
 mod foo {
     // Test that ambiguity errors are not emitted between `self::test` and

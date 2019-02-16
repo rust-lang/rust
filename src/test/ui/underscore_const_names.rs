@@ -1,6 +1,5 @@
 // compile-pass
 
-#![feature(const_let)]
 #![feature(underscore_const_names)]
 
 trait Trt {}

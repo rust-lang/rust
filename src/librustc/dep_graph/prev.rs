@@ -1,4 +1,4 @@
-use ich::Fingerprint;
+use crate::ich::Fingerprint;
 use rustc_data_structures::fx::FxHashMap;
 use super::dep_node::DepNode;
 use super::serialized::{SerializedDepGraph, SerializedDepNodeIndex};
@@ -19,14 +19,11 @@ impl PreviousDepGraph {
     }
 
     #[inline]
-    pub fn edges_from(&self,
-                      dep_node: &DepNode)
-                      -> Option<(&[SerializedDepNodeIndex], SerializedDepNodeIndex)> {
-        self.index
-            .get(dep_node)
-            .map(|&node_index| {
-                (self.data.edge_targets_from(node_index), node_index)
-            })
+    pub fn edge_targets_from(
+        &self,
+        dep_node_index: SerializedDepNodeIndex
+    ) -> &[SerializedDepNodeIndex] {
+        self.data.edge_targets_from(dep_node_index)
     }
 
     #[inline]

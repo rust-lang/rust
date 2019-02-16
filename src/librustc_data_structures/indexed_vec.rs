@@ -12,7 +12,7 @@ use rustc_serialize as serialize;
 
 /// Represents some newtyped `usize` wrapper.
 ///
-/// (purpose: avoid mixing indexes for different bitvector domains.)
+/// Purpose: avoid mixing indexes for different bitvector domains.
 pub trait Idx: Copy + 'static + Ord + Debug + Hash {
     fn new(idx: usize) -> Self;
 
@@ -144,19 +144,19 @@ macro_rules! newtype_index {
                 unsafe { $type { private: value } }
             }
 
-            /// Extract value of this index as an integer.
+            /// Extracts the value of this index as an integer.
             #[inline]
             $v fn index(self) -> usize {
                 self.as_usize()
             }
 
-            /// Extract value of this index as a usize.
+            /// Extracts the value of this index as a `u32`.
             #[inline]
             $v fn as_u32(self) -> u32 {
                 self.private
             }
 
-            /// Extract value of this index as a u32.
+            /// Extracts the value of this index as a `usize`.
             #[inline]
             $v fn as_usize(self) -> usize {
                 self.as_u32() as usize
@@ -257,7 +257,7 @@ macro_rules! newtype_index {
      @type         [$type:ident]
      @debug_format [$debug_format:tt]) => (
         impl ::std::fmt::Debug for $type {
-            fn fmt(&self, fmt: &mut ::std::fmt::Formatter) -> ::std::fmt::Result {
+            fn fmt(&self, fmt: &mut ::std::fmt::Formatter<'_>) -> ::std::fmt::Result {
                 write!(fmt, $debug_format, self.as_u32())
             }
         }
@@ -495,7 +495,7 @@ impl<I: Idx, T: serialize::Decodable> serialize::Decodable for IndexVec<I, T> {
 }
 
 impl<I: Idx, T: fmt::Debug> fmt::Debug for IndexVec<I, T> {
-    fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, fmt: &mut fmt::Formatter<'_>) -> fmt::Result {
         fmt::Debug::fmt(&self.raw, fmt)
     }
 }
@@ -573,7 +573,7 @@ impl<I: Idx, T> IndexVec<I, T> {
     }
 
     #[inline]
-    pub fn iter(&self) -> slice::Iter<T> {
+    pub fn iter(&self) -> slice::Iter<'_, T> {
         self.raw.iter()
     }
 
@@ -589,7 +589,7 @@ impl<I: Idx, T> IndexVec<I, T> {
     }
 
     #[inline]
-    pub fn iter_mut(&mut self) -> slice::IterMut<T> {
+    pub fn iter_mut(&mut self) -> slice::IterMut<'_, T> {
         self.raw.iter_mut()
     }
 
@@ -641,7 +641,7 @@ impl<I: Idx, T> IndexVec<I, T> {
         self.raw.get_mut(index.index())
     }
 
-    /// Return mutable references to two distinct elements, a and b. Panics if a == b.
+    /// Returns mutable references to two distinct elements, a and b. Panics if a == b.
     #[inline]
     pub fn pick2_mut(&mut self, a: I, b: I) -> (&mut T, &mut T) {
         let (ai, bi) = (a.index(), b.index());

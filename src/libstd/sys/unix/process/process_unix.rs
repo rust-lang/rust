@@ -383,7 +383,7 @@ impl Command {
 // Processes
 ////////////////////////////////////////////////////////////////////////////////
 
-/// The unique id of the process (this should never be negative).
+/// The unique ID of the process (this should never be negative).
 pub struct Process {
     pid: pid_t,
     status: Option<ExitStatus>,

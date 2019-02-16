@@ -1,4 +1,4 @@
-error: unsatisfied lifetime constraints
+error: lifetime may not live long enough
   --> $DIR/issue-50716.rs:16:14
    |
 LL | fn foo<'a, T: 'static>(s: Box<<&'a T as A>::X>)

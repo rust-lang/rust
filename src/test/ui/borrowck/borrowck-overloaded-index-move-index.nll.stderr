@@ -25,13 +25,14 @@ LL |     use_mut(rs);
 error[E0382]: use of moved value: `s`
   --> $DIR/borrowck-overloaded-index-move-index.rs:53:7
    |
+LL |     let mut s = "hello".to_string();
+   |         ----- move occurs because `s` has type `std::string::String`, which does not implement the `Copy` trait
+...
 LL |     println!("{}", f[s]);
    |                      - value moved here
 ...
 LL |     f[s] = 10;
    |       ^ value used here after move
-   |
-   = note: move occurs because `s` has type `std::string::String`, which does not implement the `Copy` trait
 
 error: aborting due to 3 previous errors
 

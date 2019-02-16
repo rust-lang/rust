@@ -1,6 +1,8 @@
 #![allow(unused)]
 #![feature(nll)]
 
+// ignore-tidy-linelength
+
 #[derive(Clone, Copy, Default)]
 struct S {
     a: u8,
@@ -25,8 +27,7 @@ fn main() {
         *mref = 22;
 
         let nref = &u.z.c;
-        //~^ ERROR cannot borrow `u.z.c` as immutable because it is also borrowed as mutable [E0502]
+        //~^ ERROR cannot borrow `u` (via `u.z.c`) as immutable because it is also borrowed as mutable (via `u.s.a`) [E0502]
         println!("{} {}", mref, nref)
     }
 }
-

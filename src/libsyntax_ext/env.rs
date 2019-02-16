@@ -4,8 +4,7 @@
 //
 
 use syntax::ast::{self, Ident, GenericArg};
-use syntax::ext::base::*;
-use syntax::ext::base;
+use syntax::ext::base::{self, *};
 use syntax::ext::build::AstBuilder;
 use syntax::symbol::{keywords, Symbol};
 use syntax_pos::Span;
@@ -13,7 +12,7 @@ use syntax::tokenstream;
 
 use std::env;
 
-pub fn expand_option_env<'cx>(cx: &'cx mut ExtCtxt,
+pub fn expand_option_env<'cx>(cx: &'cx mut ExtCtxt<'_>,
                               sp: Span,
                               tts: &[tokenstream::TokenTree])
                               -> Box<dyn base::MacResult + 'cx> {
@@ -44,7 +43,7 @@ pub fn expand_option_env<'cx>(cx: &'cx mut ExtCtxt,
     MacEager::expr(e)
 }
 
-pub fn expand_env<'cx>(cx: &'cx mut ExtCtxt,
+pub fn expand_env<'cx>(cx: &'cx mut ExtCtxt<'_>,
                        sp: Span,
                        tts: &[tokenstream::TokenTree])
                        -> Box<dyn base::MacResult + 'cx> {

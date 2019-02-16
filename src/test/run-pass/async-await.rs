@@ -1,6 +1,9 @@
 // edition:2018
+// aux-build:arc_wake.rs
 
 #![feature(arbitrary_self_types, async_await, await_macro, futures_api)]
+
+extern crate arc_wake;
 
 use std::pin::Pin;
 use std::future::Future;
@@ -9,17 +12,17 @@ use std::sync::{
     atomic::{self, AtomicUsize},
 };
 use std::task::{
-    LocalWaker, Poll, Wake,
-    local_waker_from_nonlocal,
+    Poll, Waker,
 };
+use arc_wake::ArcWake;
 
 struct Counter {
     wakes: AtomicUsize,
 }
 
-impl Wake for Counter {
-    fn wake(this: &Arc<Self>) {
-        this.wakes.fetch_add(1, atomic::Ordering::SeqCst);
+impl ArcWake for Counter {
+    fn wake(arc_self: &Arc<Self>) {
+        arc_self.wakes.fetch_add(1, atomic::Ordering::SeqCst);
     }
 }
 
@@ -29,11 +32,11 @@ fn wake_and_yield_once() -> WakeOnceThenComplete { WakeOnceThenComplete(false) }
 
 impl Future for WakeOnceThenComplete {
     type Output = ();
-    fn poll(mut self: Pin<&mut Self>, lw: &LocalWaker) -> Poll<()> {
+    fn poll(mut self: Pin<&mut Self>, waker: &Waker) -> Poll<()> {
         if self.0 {
             Poll::Ready(())
         } else {
-            lw.wake();
+            waker.wake();
             self.0 = true;
             Poll::Pending
         }
@@ -130,7 +133,7 @@ where
 {
     let mut fut = Box::pin(f(9));
     let counter = Arc::new(Counter { wakes: AtomicUsize::new(0) });
-    let waker = local_waker_from_nonlocal(counter.clone());
+    let waker = ArcWake::into_waker(counter.clone());
     assert_eq!(0, counter.wakes.load(atomic::Ordering::SeqCst));
     assert_eq!(Poll::Pending, fut.as_mut().poll(&waker));
     assert_eq!(1, counter.wakes.load(atomic::Ordering::SeqCst));

@@ -1,4 +1,4 @@
-use traits::*;
+use crate::traits::*;
 use rustc::ty;
 use rustc::ty::subst::Substs;
 use rustc::hir::def_id::DefId;

@@ -1,10 +1,11 @@
 //! Give useful errors and suggestions to users when an item can't be
 //! found or is otherwise invalid.
 
-use check::FnCtxt;
+use crate::check::FnCtxt;
+use crate::middle::lang_items::FnOnceTraitLangItem;
+use crate::namespace::Namespace;
+use crate::util::nodemap::FxHashSet;
 use errors::{Applicability, DiagnosticBuilder};
-use middle::lang_items::FnOnceTraitLangItem;
-use namespace::Namespace;
 use rustc_data_structures::sync::Lrc;
 use rustc::hir::{self, ExprKind, Node, QPath};
 use rustc::hir::def::Def;
@@ -15,7 +16,6 @@ use rustc::infer::type_variable::TypeVariableOrigin;
 use rustc::traits::Obligation;
 use rustc::ty::{self, Adt, Ty, TyCtxt, ToPolyTraitRef, ToPredicate, TypeFoldable};
 use rustc::ty::item_path::with_crate_prefix;
-use util::nodemap::FxHashSet;
 use syntax_pos::{Span, FileName};
 use syntax::ast;
 use syntax::util::lev_distance::find_best_match_for_name;
@@ -237,15 +237,12 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                                 let snippet = tcx.sess.source_map().span_to_snippet(lit.span)
                                     .unwrap_or_else(|_| "<numeric literal>".to_owned());
 
-                                err.span_suggestion_with_applicability(
-                                                    lit.span,
-                                                    &format!("you must specify a concrete type for \
-                                                              this numeric value, like `{}`",
-                                                             concrete_type),
-                                                    format!("{}_{}",
-                                                            snippet,
-                                                            concrete_type),
-                                                    Applicability::MaybeIncorrect,
+                                err.span_suggestion(
+                                    lit.span,
+                                    &format!("you must specify a concrete type for \
+                                              this numeric value, like `{}`", concrete_type),
+                                    format!("{}_{}", snippet, concrete_type),
+                                    Applicability::MaybeIncorrect,
                                 );
                             }
                             ExprKind::Path(ref qpath) => {
@@ -271,7 +268,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                                                 ty,
                                                 ..
                                             })) => {
-                                                err.span_suggestion_with_applicability(
+                                                err.span_suggestion(
                                                     // account for `let x: _ = 42;`
                                                     //                  ^^^^
                                                     span.to(ty.as_ref().map(|ty| ty.span)
@@ -304,7 +301,12 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                         );
                         if let Some(suggestion) = suggestion {
                             // enum variant
-                            err.help(&format!("did you mean `{}`?", suggestion));
+                            err.span_suggestion(
+                                item_name.span,
+                                "did you mean",
+                                suggestion.to_string(),
+                                Applicability::MaybeIncorrect,
+                            );
                         }
                         err
                     }
@@ -344,7 +346,8 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                                     };
 
                                     let field_ty = field.ty(tcx, substs);
-                                    let scope = self.tcx.hir().get_module_parent(self.body_id);
+                                    let scope = self.tcx.hir().get_module_parent_by_hir_id(
+                                        self.body_id);
                                     if field.vis.is_accessible_from(scope, self.tcx) {
                                         if self.is_fn_ty(&field_ty, span) {
                                             err.help(&format!("use `({0}.{1})(...)` if you \
@@ -399,7 +402,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                 }
                 if static_sources.len() == 1 {
                     if let SelfSource::MethodCall(expr) = source {
-                        err.span_suggestion_with_applicability(expr.span.to(span),
+                        err.span_suggestion(expr.span.to(span),
                                             "use associated function syntax instead",
                                             format!("{}::{}",
                                                     self.ty_to_string(actual),
@@ -440,7 +443,12 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                 }
 
                 if let Some(lev_candidate) = lev_candidate {
-                    err.help(&format!("did you mean `{}`?", lev_candidate.ident));
+                    err.span_suggestion(
+                        span,
+                        "did you mean",
+                        lev_candidate.ident.to_string(),
+                        Applicability::MaybeIncorrect,
+                    );
                 }
                 err.emit();
             }
@@ -492,7 +500,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                               err: &mut DiagnosticBuilder,
                               mut msg: String,
                               candidates: Vec<DefId>) {
-        let module_did = self.tcx.hir().get_module_parent(self.body_id);
+        let module_did = self.tcx.hir().get_module_parent_by_hir_id(self.body_id);
         let module_id = self.tcx.hir().as_local_node_id(module_did).unwrap();
         let krate = self.tcx.hir().krate();
         let (span, found_use) = UsePlacementFinder::check(self.tcx, krate, module_id);
@@ -512,12 +520,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                 )
             });
 
-            err.span_suggestions_with_applicability(
-                                                    span,
-                                                    &msg,
-                                                    path_strings,
-                                                    Applicability::MaybeIncorrect,
-            );
+            err.span_suggestions(span, &msg, path_strings, Applicability::MaybeIncorrect);
         } else {
             let limit = if candidates.len() == 5 { 5 } else { 4 };
             for (i, trait_did) in candidates.iter().take(limit).enumerate() {
@@ -707,12 +710,12 @@ impl Ord for TraitInfo {
     }
 }
 
-/// Retrieve all traits in this crate and any dependent crates.
+/// Retrieves all traits in this crate and any dependent crates.
 pub fn all_traits<'a, 'gcx, 'tcx>(tcx: TyCtxt<'a, 'gcx, 'tcx>) -> Vec<TraitInfo> {
     tcx.all_traits(LOCAL_CRATE).iter().map(|&def_id| TraitInfo { def_id }).collect()
 }
 
-/// Compute all traits in this crate and any dependent crates.
+/// Computes all traits in this crate and any dependent crates.
 fn compute_all_traits<'a, 'gcx, 'tcx>(tcx: TyCtxt<'a, 'gcx, 'tcx>) -> Vec<DefId> {
     use hir::itemlikevisit;
 
@@ -750,12 +753,11 @@ fn compute_all_traits<'a, 'gcx, 'tcx>(tcx: TyCtxt<'a, 'gcx, 'tcx>) -> Vec<DefId>
                            traits: &mut Vec<DefId>,
                            external_mods: &mut FxHashSet<DefId>,
                            def: Def) {
-        let def_id = def.def_id();
         match def {
-            Def::Trait(..) => {
+            Def::Trait(def_id) => {
                 traits.push(def_id);
             }
-            Def::Mod(..) => {
+            Def::Mod(def_id) => {
                 if !external_mods.insert(def_id) {
                     return;
                 }

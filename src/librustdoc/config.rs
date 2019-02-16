@@ -68,6 +68,9 @@ pub struct Options {
     pub should_test: bool,
     /// List of arguments to pass to the test harness, if running tests.
     pub test_args: Vec<String>,
+    /// Optional path to persist the doctest executables to, defaults to a
+    /// temporary directory if not set.
+    pub persist_doctests: Option<PathBuf>,
 
     // Options that affect the documentation process
 
@@ -121,6 +124,7 @@ impl fmt::Debug for Options {
             .field("lint_cap", &self.lint_cap)
             .field("should_test", &self.should_test)
             .field("test_args", &self.test_args)
+            .field("persist_doctests", &self.persist_doctests)
             .field("default_passes", &self.default_passes)
             .field("manual_passes", &self.manual_passes)
             .field("display_warnings", &self.display_warnings)
@@ -146,9 +150,9 @@ pub struct RenderOptions {
     pub playground_url: Option<String>,
     /// Whether to sort modules alphabetically on a module page instead of using declaration order.
     /// `true` by default.
-    ///
-    /// FIXME(misdreavus): the flag name is `--sort-modules-by-appearance` but the meaning is
-    /// inverted once read
+    //
+    // FIXME(misdreavus): the flag name is `--sort-modules-by-appearance` but the meaning is
+    // inverted once read.
     pub sort_modules_alphabetically: bool,
     /// List of themes to extend the docs with. Original argument name is included to assist in
     /// displaying errors if it fails a theme check.
@@ -161,9 +165,9 @@ pub struct RenderOptions {
     pub resource_suffix: String,
     /// Whether to run the static CSS/JavaScript through a minifier when outputting them. `true` by
     /// default.
-    ///
-    /// FIXME(misdreavus): the flag name is `--disable-minification` but the meaning is inverted
-    /// once read
+    //
+    // FIXME(misdreavus): the flag name is `--disable-minification` but the meaning is inverted
+    // once read.
     pub enable_minification: bool,
     /// Whether to create an index page in the root of the output directory. If this is true but
     /// `enable_index_page` is None, generate a static listing of crates instead.
@@ -431,6 +435,7 @@ impl Options {
         let enable_index_page = matches.opt_present("enable-index-page") || index_page.is_some();
         let static_root_path = matches.opt_str("static-root-path");
         let generate_search_filter = !matches.opt_present("disable-per-crate-search");
+        let persist_doctests = matches.opt_str("persist-doctests").map(PathBuf::from);
 
         let (lint_opts, describe_lints, lint_cap) = get_cmd_lint_options(matches, error_format);
 
@@ -456,6 +461,7 @@ impl Options {
             manual_passes,
             display_warnings,
             crate_version,
+            persist_doctests,
             render_options: RenderOptions {
                 output,
                 external_html,
@@ -478,7 +484,7 @@ impl Options {
         })
     }
 
-    /// Returns whether the file given as `self.input` is a Markdown file.
+    /// Returns `true` if the file given as `self.input` is a Markdown file.
     pub fn markdown_input(&self) -> bool {
         self.input.extension()
             .map_or(false, |e| e == "md" || e == "markdown")

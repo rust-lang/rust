@@ -1,6 +1,6 @@
-use deriving::path_std;
-use deriving::generic::*;
-use deriving::generic::ty::*;
+use crate::deriving::path_std;
+use crate::deriving::generic::*;
+use crate::deriving::generic::ty::*;
 
 use syntax::ast::{self, Expr, MetaItem};
 use syntax::ext::base::{Annotatable, ExtCtxt};
@@ -9,7 +9,7 @@ use syntax::ptr::P;
 use syntax::symbol::Symbol;
 use syntax_pos::Span;
 
-pub fn expand_deriving_ord(cx: &mut ExtCtxt,
+pub fn expand_deriving_ord(cx: &mut ExtCtxt<'_>,
                            span: Span,
                            mitem: &MetaItem,
                            item: &Annotatable,
@@ -44,7 +44,7 @@ pub fn expand_deriving_ord(cx: &mut ExtCtxt,
 }
 
 
-pub fn ordering_collapsed(cx: &mut ExtCtxt,
+pub fn ordering_collapsed(cx: &mut ExtCtxt<'_>,
                           span: Span,
                           self_arg_tags: &[ast::Ident])
                           -> P<ast::Expr> {
@@ -53,7 +53,7 @@ pub fn ordering_collapsed(cx: &mut ExtCtxt,
     cx.expr_method_call(span, lft, cx.ident_of("cmp"), vec![rgt])
 }
 
-pub fn cs_cmp(cx: &mut ExtCtxt, span: Span, substr: &Substructure) -> P<Expr> {
+pub fn cs_cmp(cx: &mut ExtCtxt<'_>, span: Span, substr: &Substructure<'_>) -> P<Expr> {
     let test_id = cx.ident_of("cmp").gensym();
     let equals_path = cx.path_global(span, cx.std_path(&["cmp", "Ordering", "Equal"]));
 

@@ -1,9 +1,4 @@
-// run-pass
-
-#![allow(dead_code)]
-
-#[derive]   //~ WARNING empty trait list in `derive`
-struct Foo;
+// compile-pass
 
 #[derive()] //~ WARNING empty trait list in `derive`
 struct Bar;

@@ -9,6 +9,7 @@ use syntax::attr;
 use syntax::source_map::Span;
 use syntax::feature_gate::{self, GateIssue};
 use syntax::symbol::Symbol;
+use syntax::{span_err, struct_span_err};
 
 pub fn collect<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>) -> Vec<NativeLibrary> {
     let mut collector = Collector {
@@ -163,7 +164,7 @@ impl<'a, 'tcx> Collector<'a, 'tcx> {
            !self.tcx.features().static_nobundle {
             feature_gate::emit_feature_err(&self.tcx.sess.parse_sess,
                                            "static_nobundle",
-                                           span.unwrap(),
+                                           span.unwrap_or_else(|| syntax_pos::DUMMY_SP),
                                            GateIssue::Language,
                                            "kind=\"static-nobundle\" is feature gated");
         }

@@ -28,20 +28,18 @@
 // It's cleaner to just turn off the unused_imports warning than to fix them.
 #![allow(unused_imports)]
 
-use core::fmt;
-use core::str as core_str;
-use core::str::pattern::Pattern;
-use core::str::pattern::{Searcher, ReverseSearcher, DoubleEndedSearcher};
+use core::borrow::Borrow;
+use core::str::pattern::{Pattern, Searcher, ReverseSearcher, DoubleEndedSearcher};
 use core::mem;
 use core::ptr;
 use core::iter::FusedIterator;
 use core::unicode::conversions;
 
-use borrow::{Borrow, ToOwned};
-use boxed::Box;
-use slice::{SliceConcatExt, SliceIndex};
-use string::String;
-use vec::Vec;
+use crate::borrow::ToOwned;
+use crate::boxed::Box;
+use crate::slice::{SliceConcatExt, SliceIndex};
+use crate::string::String;
+use crate::vec::Vec;
 
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use core::str::{FromStr, Utf8Error};
@@ -68,7 +66,7 @@ pub use core::str::SplitWhitespace;
 pub use core::str::pattern;
 #[stable(feature = "encode_utf16", since = "1.8.0")]
 pub use core::str::EncodeUtf16;
-#[unstable(feature = "split_ascii_whitespace", issue = "48656")]
+#[stable(feature = "split_ascii_whitespace", since = "1.34.0")]
 pub use core::str::SplitAsciiWhitespace;
 
 #[unstable(feature = "slice_concat_ext",
@@ -443,45 +441,6 @@ impl str {
         return s;
     }
 
-    /// Escapes each char in `s` with [`char::escape_debug`].
-    ///
-    /// Note: only extended grapheme codepoints that begin the string will be
-    /// escaped.
-    ///
-    /// [`char::escape_debug`]: primitive.char.html#method.escape_debug
-    #[unstable(feature = "str_escape",
-               reason = "return type may change to be an iterator",
-               issue = "27791")]
-    pub fn escape_debug(&self) -> String {
-        let mut string = String::with_capacity(self.len());
-        let mut chars = self.chars();
-        if let Some(first) = chars.next() {
-            string.extend(first.escape_debug_ext(true))
-        }
-        string.extend(chars.flat_map(|c| c.escape_debug_ext(false)));
-        string
-    }
-
-    /// Escapes each char in `s` with [`char::escape_default`].
-    ///
-    /// [`char::escape_default`]: primitive.char.html#method.escape_default
-    #[unstable(feature = "str_escape",
-               reason = "return type may change to be an iterator",
-               issue = "27791")]
-    pub fn escape_default(&self) -> String {
-        self.chars().flat_map(|c| c.escape_default()).collect()
-    }
-
-    /// Escapes each char in `s` with [`char::escape_unicode`].
-    ///
-    /// [`char::escape_unicode`]: primitive.char.html#method.escape_unicode
-    #[unstable(feature = "str_escape",
-               reason = "return type may change to be an iterator",
-               issue = "27791")]
-    pub fn escape_unicode(&self) -> String {
-        self.chars().flat_map(|c| c.escape_unicode()).collect()
-    }
-
     /// Converts a [`Box<str>`] into a [`String`] without copying or allocating.
     ///
     /// [`String`]: string/struct.String.html
@@ -612,3 +571,4 @@ impl str {
 pub unsafe fn from_boxed_utf8_unchecked(v: Box<[u8]>) -> Box<str> {
     Box::from_raw(Box::into_raw(v) as *mut str)
 }
+

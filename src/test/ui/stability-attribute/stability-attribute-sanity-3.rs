@@ -5,7 +5,7 @@
 #![stable(feature = "stable_test_feature", since = "1.0.0")]
 
 #[macro_export]
-macro_rules! mac { //~ ERROR This node does not have a stability attribute
+macro_rules! mac { //~ ERROR macro has missing stability attribute
     () => ()
 }
 

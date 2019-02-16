@@ -5,6 +5,11 @@ LL | pub trait Processor: Subscriber<Input = Self::Input> {
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = note: ...which again requires computing the supertraits of `Processor`, completing the cycle
+note: cycle used when collecting item types in top-level module
+  --> $DIR/issue-20825.rs:5:1
+   |
+LL | pub trait Processor: Subscriber<Input = Self::Input> {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: aborting due to previous error
 

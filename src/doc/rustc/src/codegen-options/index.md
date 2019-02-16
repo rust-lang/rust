@@ -187,7 +187,7 @@ This flag lets you control debug information:
 
 This flag lets you control the optimization level.
 
-* `0`: no optimizations
+* `0`: no optimizations, also turn on `cfg(debug_assertions)`.
 * `1`: basic optimizations
 * `2`: some optimizations
 * `3`: all optimizations

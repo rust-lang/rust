@@ -336,7 +336,7 @@ crate fn check_for_substitution<'a>(reader: &StringReader<'a>,
                 let msg =
                     format!("Unicode character '{}' ({}) looks like '{}' ({}), but it is not",
                             ch, u_name, ascii_char, ascii_name);
-                err.span_suggestion_with_applicability(
+                err.span_suggestion(
                     span,
                     &msg,
                     ascii_char.to_string(),
