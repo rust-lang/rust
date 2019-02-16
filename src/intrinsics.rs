@@ -386,7 +386,7 @@ pub fn codegen_intrinsic_call<'a, 'tcx: 'a>(
 
             // Compare
             let is_eq = fx.bcx.ins().icmp(IntCC::Equal, old, test_old);
-            let new = crate::common::codegen_select(&mut fx.bcx, is_eq, old, new); // Keep old if not equal to test_old
+            let new = crate::common::codegen_select(&mut fx.bcx, is_eq, new, old); // Keep old if not equal to test_old
 
             // Write new
             fx.bcx.ins().store(MemFlags::new(), new, ptr, 0);

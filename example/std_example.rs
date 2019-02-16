@@ -12,4 +12,7 @@ fn main() {
     let _ = std::process::Command::new("true").env("c", "d").spawn();
 
     println!("cargo:rustc-link-lib=z");
+
+    static ONCE: std::sync::Once = std::sync::ONCE_INIT;
+    ONCE.call_once(|| {});
 }
