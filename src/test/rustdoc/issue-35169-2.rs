@@ -23,7 +23,6 @@ impl DerefMut for Bar {
     fn deref_mut(&mut self) -> &mut Foo { loop {} }
 }
 
-// @has issue_35169_2/Bar.t.html
 // @has issue_35169_2/struct.Bar.html
 // @has - '//*[@id="by_ref.v"]' 'fn by_ref(&self)'
 // @has - '//*[@id="method.by_ref"]' 'fn by_ref(&self)'
