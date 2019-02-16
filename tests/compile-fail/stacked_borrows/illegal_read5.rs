@@ -8,7 +8,7 @@ fn main() {
     let rc = RefCell::new(0);
     let mut refmut = rc.borrow_mut();
     let xref: &mut i32 = &mut *refmut;
-    let xshr = &rc; // creating this is okay
+    let xshr = &rc; // creating this is ok
     let _val = *xref; // we can even still use our mutable reference
     mem::forget(unsafe { ptr::read(xshr) }); // but after reading through the shared ref
     let _val = *xref; // the mutable one is dead and gone
