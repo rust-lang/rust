@@ -19,6 +19,7 @@ DAG                     |  a directed acyclic graph is used during compilation t
 data-flow analysis      |  a static analysis that figures out what properties are true at each point in the control-flow of a program; see [the background chapter for more](./background.html#dataflow)
 DefId                   |  an index identifying a definition (see `librustc/hir/def_id.rs`). Uniquely identifies a `DefPath`.
 Double pointer          |  a pointer with additional metadata. See "fat pointer" for more.
+drop glue               |  (internal) compiler-generated instructions that handle calling the destructors (`Drop`) for data types.
 DST                     |  Dynamically-Sized Type. A type for which the compiler cannot statically know the size in memory (e.g. `str` or `[u8]`). Such types don't implement `Sized` and cannot be allocated on the stack. They can only occur as the last field in a struct. They can only be used behind a pointer (e.g. `&str` or `&[u8]`).
 early-bound lifetime    |  a lifetime region, which is bound in an item's `Generics` and substituted using a `Substs`. Contrast with **late-bound lifetime**. ([see more](https://doc.rust-lang.org/nightly/nightly-rustc/rustc/ty/enum.RegionKind.html#bound-regions))
 empty type              |  see "uninhabited type".
