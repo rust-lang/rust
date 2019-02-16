@@ -1022,11 +1022,19 @@ fn trans_ptr_binop<'a, 'tcx: 'a>(
             Offset (_) iadd;
         }
     } else {
-        let lhs = lhs.load_value_pair(fx).0;
-        let rhs = rhs.load_value_pair(fx).0;
+        let (lhs_ptr, lhs_extra) = lhs.load_value_pair(fx);
+        let (rhs_ptr, rhs_extra) = rhs.load_value_pair(fx);
         let res = match bin_op {
-            BinOp::Eq => fx.bcx.ins().icmp(IntCC::Equal, lhs, rhs),
-            BinOp::Ne => fx.bcx.ins().icmp(IntCC::NotEqual, lhs, rhs),
+            BinOp::Eq => {
+                let ptr_eq = fx.bcx.ins().icmp(IntCC::Equal, lhs_ptr, rhs_ptr);
+                let extra_eq = fx.bcx.ins().icmp(IntCC::Equal, lhs_extra, rhs_extra);
+                fx.bcx.ins().band(ptr_eq, extra_eq)
+            }
+            BinOp::Ne => {
+                let ptr_ne = fx.bcx.ins().icmp(IntCC::NotEqual, lhs_ptr, rhs_ptr);
+                let extra_ne = fx.bcx.ins().icmp(IntCC::NotEqual, lhs_extra, rhs_extra);
+                fx.bcx.ins().bor(ptr_ne, extra_ne)
+            }
             _ => unimplemented!(
                 "trans_ptr_binop({:?}, <fat ptr>, <fat ptr>) not implemented",
                 bin_op

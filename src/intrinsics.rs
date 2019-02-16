@@ -119,11 +119,6 @@ pub fn codegen_intrinsic_call<'a, 'tcx: 'a>(
         fx, intrinsic, substs, args,
 
         assume, (c _a) {};
-        arith_offset, (v base, v offset) {
-            let res = fx.bcx.ins().iadd(base, offset);
-            let res = CValue::ByVal(res, ret.layout());
-            ret.write_cvalue(fx, res);
-        };
         likely | unlikely, (c a) {
             ret.write_cvalue(fx, a);
         };
@@ -289,7 +284,10 @@ pub fn codegen_intrinsic_call<'a, 'tcx: 'a>(
             let res = fx.bcx.ins().rotr(x, y);
             ret.write_cvalue(fx, CValue::ByVal(res, layout));
         };
-        offset, (c base, v offset) {
+
+        // The only difference between offset and arith_offset is regarding UB. Because Cranelift
+        // doesn't have UB both are codegen'ed the same way
+        offset | arith_offset, (c base, v offset) {
             let pointee_ty = base.layout().ty.builtin_deref(true).unwrap().ty;
             let pointee_size = fx.layout_of(pointee_ty).size.bytes();
             let ptr_diff = fx.bcx.ins().imul_imm(offset, pointee_size as i64);
@@ -297,6 +295,7 @@ pub fn codegen_intrinsic_call<'a, 'tcx: 'a>(
             let res = fx.bcx.ins().iadd(base_val, ptr_diff);
             ret.write_cvalue(fx, CValue::ByVal(res, args[0].layout()));
         };
+
         transmute, <src_ty, dst_ty> (c from) {
             assert_eq!(from.layout().ty, src_ty);
             let addr = from.force_stack(fx);
@@ -314,8 +313,12 @@ pub fn codegen_intrinsic_call<'a, 'tcx: 'a>(
             let inited_val = inited_place.to_cvalue(fx);
             ret.write_cvalue(fx, inited_val);
         };
-        write_bytes, (v dst, v val, v count) {
-            fx.bcx.call_memset(fx.module.target_config(), dst, val, count);
+        write_bytes, (c dst, v val, v count) {
+            let pointee_ty = dst.layout().ty.builtin_deref(true).unwrap().ty;
+            let pointee_size = fx.layout_of(pointee_ty).size.bytes();
+            let count = fx.bcx.ins().imul_imm(count, pointee_size as i64);
+            let dst_ptr = dst.load_scalar(fx);
+            fx.bcx.call_memset(fx.module.target_config(), dst_ptr, val, count);
         };
         uninit, <T> () {
             let uninit_place = CPlace::new_stack_slot(fx, T);
