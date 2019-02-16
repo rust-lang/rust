@@ -1355,18 +1355,18 @@ fn clean_srcpath<F>(src_root: &Path, p: &Path, keep_filename: bool, mut f: F) wh
 fn extern_location(e: &clean::ExternalCrate, extern_url: Option<&str>, dst: &Path)
     -> ExternalLocation
 {
-    // See if there's documentation generated into the local directory
-    let local_location = dst.join(&e.name);
-    if local_location.is_dir() {
-        return Local;
-    }
-
     if let Some(url) = extern_url {
         let mut url = url.to_string();
         if !url.ends_with("/") {
             url.push('/');
         }
         return Remote(url);
+    }
+
+    // See if there's documentation generated into the local directory
+    let local_location = dst.join(&e.name);
+    if local_location.is_dir() {
+        return Local;
     }
 
     // Failing that, see if there's an attribute specifying where to find this
