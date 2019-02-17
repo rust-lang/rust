@@ -101,7 +101,7 @@ impl Vfs {
         rel_path.to_path(root_path)
     }
 
-    pub fn num_roots(&self) -> usize {
+    pub fn n_roots(&self) -> usize {
         self.roots.len()
     }
 
