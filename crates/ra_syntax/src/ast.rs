@@ -153,6 +153,20 @@ impl FnDef {
 }
 
 impl Attr {
+    pub fn is_inner(&self) -> bool {
+        let tt = match self.value() {
+            None => return false,
+            Some(tt) => tt,
+        };
+
+        let prev = match tt.syntax().prev_sibling() {
+            None => return false,
+            Some(prev) => prev,
+        };
+
+        prev.kind() == EXCL
+    }
+
     pub fn as_atom(&self) -> Option<SmolStr> {
         let tt = self.value()?;
         let (_bra, attr, _ket) = tt.syntax().children().collect_tuple()?;

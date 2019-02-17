@@ -3,6 +3,7 @@ mod byte_string;
 mod char;
 mod string;
 mod block;
+mod match_armlist;
 
 use crate::{
     SourceFile, syntax_node::SyntaxError, AstNode,
@@ -19,6 +20,7 @@ pub(crate) fn validate(file: &SourceFile) -> Vec<SyntaxError> {
             .visit::<ast::Char, _>(self::char::validate_char_node)
             .visit::<ast::String, _>(self::string::validate_string_node)
             .visit::<ast::Block, _>(self::block::validate_block_node)
+            .visit::<ast::MatchArmList, _>(self::match_armlist::validate_match_armlist)
             .accept(node);
     }
     errors
