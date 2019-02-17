@@ -1,12 +1,12 @@
-use abi::{FnType, FnTypeExt};
-use common::*;
+use crate::abi::{FnType, FnTypeExt};
+use crate::common::*;
+use crate::type_::Type;
 use rustc::hir;
 use rustc::ty::{self, Ty, TypeFoldable};
 use rustc::ty::layout::{self, Align, LayoutOf, Size, TyLayout};
 use rustc_target::abi::FloatTy;
 use rustc_mir::monomorphize::item::DefPathBasedNames;
 use rustc_codegen_ssa::traits::*;
-use type_::Type;
 
 use std::fmt::Write;
 

@@ -7,15 +7,16 @@ use super::utils::{debug_context, DIB, span_start,
 use super::namespace::mangled_name_of_instance;
 use super::type_names::compute_debuginfo_type_name;
 use super::{CrateDebugContext};
+use crate::abi;
+use crate::value::Value;
 use rustc_codegen_ssa::traits::*;
-use abi;
-use value::Value;
 
-use llvm;
-use llvm::debuginfo::{DIArray, DIType, DIFile, DIScope, DIDescriptor,
+use crate::llvm;
+use crate::llvm::debuginfo::{DIArray, DIType, DIFile, DIScope, DIDescriptor,
                       DICompositeType, DILexicalBlock, DIFlags, DebugEmissionKind};
-use llvm_util;
+use crate::llvm_util;
 
+use crate::common::CodegenCx;
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
 use rustc::hir::CodegenFnAttrFlags;
 use rustc::hir::def::CtorKind;
@@ -23,7 +24,6 @@ use rustc::hir::def_id::{DefId, CrateNum, LOCAL_CRATE};
 use rustc::ich::NodeIdHashingMode;
 use rustc_data_structures::fingerprint::Fingerprint;
 use rustc::ty::Instance;
-use common::CodegenCx;
 use rustc::ty::{self, AdtKind, ParamEnv, Ty, TyCtxt};
 use rustc::ty::layout::{self, Align, Integer, IntegerExt, LayoutOf,
                         PrimitiveExt, Size, TyLayout};

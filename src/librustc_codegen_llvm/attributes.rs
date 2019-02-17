@@ -15,15 +15,15 @@ use rustc_data_structures::fx::FxHashMap;
 use rustc_target::spec::PanicStrategy;
 use rustc_codegen_ssa::traits::*;
 
-use abi::Abi;
-use attributes;
-use llvm::{self, Attribute};
-use llvm::AttributePlace::Function;
-use llvm_util;
+use crate::abi::Abi;
+use crate::attributes;
+use crate::llvm::{self, Attribute};
+use crate::llvm::AttributePlace::Function;
+use crate::llvm_util;
 pub use syntax::attr::{self, InlineAttr, OptimizeAttr};
 
-use context::CodegenCx;
-use value::Value;
+use crate::context::CodegenCx;
+use crate::value::Value;
 
 /// Mark LLVM function to use provided inline heuristic.
 #[inline]

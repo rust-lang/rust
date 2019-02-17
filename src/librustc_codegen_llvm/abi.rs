@@ -1,12 +1,12 @@
-use llvm::{self, AttributePlace};
+use crate::llvm::{self, AttributePlace};
+use crate::builder::Builder;
+use crate::context::CodegenCx;
+use crate::type_::Type;
+use crate::type_of::{LayoutLlvmExt, PointerKind};
+use crate::value::Value;
 use rustc_codegen_ssa::MemFlags;
-use builder::Builder;
-use context::CodegenCx;
 use rustc_codegen_ssa::mir::place::PlaceRef;
 use rustc_codegen_ssa::mir::operand::OperandValue;
-use type_::Type;
-use type_of::{LayoutLlvmExt, PointerKind};
-use value::Value;
 use rustc_target::abi::call::ArgType;
 
 use rustc_codegen_ssa::traits::*;

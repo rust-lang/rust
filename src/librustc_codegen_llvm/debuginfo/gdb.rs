@@ -1,11 +1,11 @@
 // .debug_gdb_scripts binary section.
 
-use llvm;
+use crate::llvm;
 
-use common::CodegenCx;
-use builder::Builder;
+use crate::common::CodegenCx;
+use crate::builder::Builder;
+use crate::value::Value;
 use rustc::session::config::DebugInfo;
-use value::Value;
 use rustc_codegen_ssa::traits::*;
 
 use syntax::attr;

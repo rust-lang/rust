@@ -4,7 +4,7 @@ pub use self::OptimizationDiagnosticKind::*;
 pub use self::Diagnostic::*;
 
 use libc::c_uint;
-use value::Value;
+use crate::value::Value;
 
 use super::{DiagnosticInfo, Twine};
 
