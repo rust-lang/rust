@@ -1137,7 +1137,7 @@ impl PathBuf {
     ///
     /// ```
     /// use std::path::PathBuf;
-    /// 
+    ///
     /// let path = PathBuf::new();
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
@@ -1145,26 +1145,26 @@ impl PathBuf {
         PathBuf { inner: OsString::new() }
     }
 
-    /// Creates a new `PathBuf` with a given capacity used to create the 
+    /// Creates a new `PathBuf` with a given capacity used to create the
     /// internal [`OsString`]. See [`with_capacity`] defined on [`OsString`].
     ///
     /// # Examples
-    /// 
+    ///
     /// ```
     /// use std::path::PathBuf;
-    /// 
+    ///
     /// let path = PathBuf::with_capacity(10);
     /// let capacity = path.capacity();
-    /// 
+    ///
     /// // This push is done without reallocating
     /// path.push(r"C:\");
     ///
     /// assert_eq!(capacity, path.capacity());
     /// ```
-    /// 
+    ///
     /// [`with_capacity`]: ../ffi/struct.OsString.html#method.with_capacity
     /// [`OsString`]: ../ffi/struct.OsString.html
-    #[stable(feature = "path_buf_os_string_methods", since = "1.33.0")]
+    #[unstable(feature = "path_buf_alias_os_string_methods", issue = "58234")]
     pub fn with_capacity(capacity: usize) -> PathBuf {
         PathBuf {
             inner: OsString::with_capacity(capacity)
@@ -1404,8 +1404,8 @@ impl PathBuf {
     ///
     /// [`capacity`]: ../ffi/struct.OsString.html#method.capacity
     /// [`OsString`]: ../ffi/struct.OsString.html
-    #[stable(feature = "path_buf_os_string_methods", since = "1.33.0")]
-    pub fn capacity(self) -> usize {
+    #[unstable(feature = "path_buf_alias_os_string_methods", issue = "58234")]
+    pub fn capacity(&self) -> usize {
         self.inner.capacity()
     }
 
@@ -1413,8 +1413,8 @@ impl PathBuf {
     ///
     /// [`clear`]: ../ffi/struct.OsString.html#method.clear
     /// [`OsString`]: ../ffi/struct.OsString.html
-    #[stable(feature = "path_buf_os_string_methods", since = "1.33.0")]
-    pub fn clear(mut self) {
+    #[unstable(feature = "path_buf_alias_os_string_methods", issue = "58234")]
+    pub fn clear(&mut self) {
         self.inner.clear()
     }
 
@@ -1422,8 +1422,8 @@ impl PathBuf {
     ///
     /// [`reserve`]: ../ffi/struct.OsString.html#method.reserve
     /// [`OsString`]: ../ffi/struct.OsString.html
-    #[stable(feature = "path_buf_os_string_methods", since = "1.33.0")]
-    pub fn reserve(mut self, additional: usize) {
+    #[unstable(feature = "path_buf_alias_os_string_methods", issue = "58234")]
+    pub fn reserve(&mut self, additional: usize) {
         self.inner.reserve(additional)
     }
 
@@ -1431,8 +1431,8 @@ impl PathBuf {
     ///
     /// [`reserve_exact`]: ../ffi/struct.OsString.html#method.reserve_exact
     /// [`OsString`]: ../ffi/struct.OsString.html
-    #[stable(feature = "path_buf_os_string_methods", since = "1.33.0")]
-    pub fn reserve_exact(mut self, additional: usize) {
+    #[unstable(feature = "path_buf_alias_os_string_methods", issue = "58234")]
+    pub fn reserve_exact(&mut self, additional: usize) {
         self.inner.reserve_exact(additional)
     }
 
@@ -1440,8 +1440,8 @@ impl PathBuf {
     ///
     /// [`shrink_to_fit`]: ../ffi/struct.OsString.html#method.shrink_to_fit
     /// [`OsString`]: ../ffi/struct.OsString.html
-    #[stable(feature = "path_buf_os_string_methods", since = "1.33.0")]
-    pub fn shrink_to_fit(mut self) {
+    #[unstable(feature = "path_buf_alias_os_string_methods", issue = "58234")]
+    pub fn shrink_to_fit(&mut self) {
         self.inner.shrink_to_fit()
     }
 
@@ -1449,8 +1449,8 @@ impl PathBuf {
     ///
     /// [`shrink_to`]: ../ffi/struct.OsString.html#method.shrink_to
     /// [`OsString`]: ../ffi/struct.OsString.html
-    #[stable(feature = "path_buf_os_string_methods", since = "1.33.0")]
-    pub fn shrink_to(mut self, min_capacity: usize) {
+    #[unstable(feature = "path_buf_alias_os_string_methods", issue = "58234")]
+    pub fn shrink_to(&mut self, min_capacity: usize) {
         self.inner.shrink_to(min_capacity)
     }
 }
