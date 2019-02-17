@@ -137,6 +137,13 @@ impl<'a> CompletionContext<'a> {
         };
         if let Some(segment) = ast::PathSegment::cast(parent) {
             let path = segment.parent_path();
+            self.is_call = path
+                .syntax()
+                .parent()
+                .and_then(ast::PathExpr::cast)
+                .and_then(|it| it.syntax().parent().and_then(ast::CallExpr::cast))
+                .is_some();
+
             if let Some(mut path) = hir::Path::from_ast(path) {
                 if !path.is_ident() {
                     path.segments.pop().unwrap();
@@ -176,12 +183,6 @@ impl<'a> CompletionContext<'a> {
                     }
                 }
             }
-            self.is_call = path
-                .syntax()
-                .parent()
-                .and_then(ast::PathExpr::cast)
-                .and_then(|it| it.syntax().parent().and_then(ast::CallExpr::cast))
-                .is_some()
         }
         if let Some(field_expr) = ast::FieldExpr::cast(parent) {
             // The receiver comes before the point of insertion of the fake
