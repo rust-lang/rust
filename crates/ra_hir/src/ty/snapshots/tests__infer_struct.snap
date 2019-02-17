@@ -1,21 +1,21 @@
 ---
-created: "2019-01-24T14:51:32.808861856+00:00"
-creator: insta@0.5.2
-expression: "&result"
+created: "2019-02-17T16:16:58.863630956Z"
+creator: insta@0.6.2
 source: crates/ra_hir/src/ty/tests.rs
+expression: "&result"
 ---
 [72; 154) '{     ...a.c; }': ()
-[82; 83) 'c': [unknown]
-[86; 87) 'C': C
-[86; 90) 'C(1)': [unknown]
-[88; 89) '1': i32
+[82; 83) 'c': C
+[86; 87) 'C': fn C(usize) -> C
+[86; 90) 'C(1)': C
+[88; 89) '1': usize
 [96; 97) 'B': B
 [107; 108) 'a': A
 [114; 133) 'A { b:...C(1) }': A
 [121; 122) 'B': B
-[127; 128) 'C': C
+[127; 128) 'C': fn C(usize) -> C
 [127; 131) 'C(1)': C
-[129; 130) '1': i32
+[129; 130) '1': usize
 [139; 140) 'a': A
 [139; 142) 'a.b': B
 [148; 149) 'a': A

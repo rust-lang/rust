@@ -348,7 +348,7 @@ where
                         .into_iter()
                         .filter_map(|variant| {
                             let res = Resolution {
-                                def: PerNs::both(variant.into(), e.into()),
+                                def: PerNs::both(variant.into(), variant.into()),
                                 import: Some(import_id),
                             };
                             let name = variant.name(self.db)?;
@@ -628,7 +628,7 @@ impl ItemMap {
                     // enum variant
                     tested_by!(item_map_enum_importing);
                     match e.variant(db, &segment.name) {
-                        Some(variant) => PerNs::both(variant.into(), (*e).into()),
+                        Some(variant) => PerNs::both(variant.into(), variant.into()),
                         None => PerNs::none(),
                     }
                 }

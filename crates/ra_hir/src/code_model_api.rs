@@ -290,7 +290,11 @@ impl Struct {
     }
 
     pub fn ty(&self, db: &impl HirDatabase) -> Ty {
-        db.type_for_def((*self).into())
+        db.type_for_def((*self).into(), Namespace::Types)
+    }
+
+    pub fn constructor_ty(&self, db: &impl HirDatabase) -> Ty {
+        db.type_for_def((*self).into(), Namespace::Values)
     }
 
     // TODO move to a more general type
@@ -350,7 +354,7 @@ impl Enum {
     }
 
     pub fn ty(&self, db: &impl HirDatabase) -> Ty {
-        db.type_for_def((*self).into())
+        db.type_for_def((*self).into(), Namespace::Types)
     }
 
     // TODO: move to a more general type
@@ -425,7 +429,7 @@ pub struct Function {
     pub(crate) id: FunctionId,
 }
 
-pub use crate::expr::ScopeEntryWithSyntax;
+pub use crate::{ nameres::Namespace, expr::ScopeEntryWithSyntax};
 
 /// The declared signature of a function.
 #[derive(Debug, Clone, PartialEq, Eq)]
