@@ -86,7 +86,7 @@ impl Lit {
         }
     }
 
-    // See comments in `interpolated_to_tokenstream` for why we care about
+    // See comments in `Nonterminal::to_tokenstream` for why we care about
     // *probably* equal here rather than actual equality
     fn probably_equal_for_proc_macro(&self, other: &Lit) -> bool {
         mem::discriminant(self) == mem::discriminant(other)
@@ -502,87 +502,7 @@ impl Token {
         }
     }
 
-    pub fn interpolated_to_tokenstream(sess: &ParseSess, nt: Lrc<Nonterminal>, span: Span)
-                                       -> TokenStream {
-        // An `Interpolated` token means that we have a `Nonterminal`
-        // which is often a parsed AST item. At this point we now need
-        // to convert the parsed AST to an actual token stream, e.g.
-        // un-parse it basically.
-        //
-        // Unfortunately there's not really a great way to do that in a
-        // guaranteed lossless fashion right now. The fallback here is
-        // to just stringify the AST node and reparse it, but this loses
-        // all span information.
-        //
-        // As a result, some AST nodes are annotated with the token
-        // stream they came from. Here we attempt to extract these
-        // lossless token streams before we fall back to the
-        // stringification.
-        let tokens = match *nt {
-            Nonterminal::NtItem(ref item) => {
-                prepend_attrs(sess, &item.attrs, item.tokens.as_ref(), span)
-            }
-            Nonterminal::NtTraitItem(ref item) => {
-                prepend_attrs(sess, &item.attrs, item.tokens.as_ref(), span)
-            }
-            Nonterminal::NtImplItem(ref item) => {
-                prepend_attrs(sess, &item.attrs, item.tokens.as_ref(), span)
-            }
-            Nonterminal::NtIdent(ident, is_raw) => {
-                let token = Token::Ident(ident, is_raw);
-                Some(TokenTree::Token(ident.span, token).into())
-            }
-            Nonterminal::NtLifetime(ident) => {
-                let token = Token::Lifetime(ident);
-                Some(TokenTree::Token(ident.span, token).into())
-            }
-            Nonterminal::NtTT(ref tt) => {
-                Some(tt.clone().into())
-            }
-            _ => None,
-        };
-
-        // FIXME(#43081): Avoid this pretty-print + reparse hack
-        let source = pprust::nonterminal_to_string(&nt);
-        let filename = FileName::macro_expansion_source_code(&source);
-        let (tokens_for_real, errors) =
-            parse_stream_from_source_str(filename, source, sess, Some(span));
-        emit_unclosed_delims(&errors, &sess.span_diagnostic);
-
-        // During early phases of the compiler the AST could get modified
-        // directly (e.g., attributes added or removed) and the internal cache
-        // of tokens my not be invalidated or updated. Consequently if the
-        // "lossless" token stream disagrees with our actual stringification
-        // (which has historically been much more battle-tested) then we go
-        // with the lossy stream anyway (losing span information).
-        //
-        // Note that the comparison isn't `==` here to avoid comparing spans,
-        // but it *also* is a "probable" equality which is a pretty weird
-        // definition. We mostly want to catch actual changes to the AST
-        // like a `#[cfg]` being processed or some weird `macro_rules!`
-        // expansion.
-        //
-        // What we *don't* want to catch is the fact that a user-defined
-        // literal like `0xf` is stringified as `15`, causing the cached token
-        // stream to not be literal `==` token-wise (ignoring spans) to the
-        // token stream we got from stringification.
-        //
-        // Instead the "probably equal" check here is "does each token
-        // recursively have the same discriminant?" We basically don't look at
-        // the token values here and assume that such fine grained token stream
-        // modifications, including adding/removing typically non-semantic
-        // tokens such as extra braces and commas, don't happen.
-        if let Some(tokens) = tokens {
-            if tokens.probably_equal_for_proc_macro(&tokens_for_real) {
-                return tokens
-            }
-            info!("cached tokens found, but they're not \"probably equal\", \
-                   going with stringified version");
-        }
-        return tokens_for_real
-    }
-
-    // See comments in `interpolated_to_tokenstream` for why we care about
+    // See comments in `Nonterminal::to_tokenstream` for why we care about
     // *probably* equal here rather than actual equality
     crate fn probably_equal_for_proc_macro(&self, other: &Token) -> bool {
         if mem::discriminant(self) != mem::discriminant(other) {
@@ -711,6 +631,85 @@ impl fmt::Debug for Nonterminal {
             NtVis(..) => f.pad("NtVis(..)"),
             NtLifetime(..) => f.pad("NtLifetime(..)"),
         }
+    }
+}
+
+impl Nonterminal {
+    pub fn to_tokenstream(&self, sess: &ParseSess, span: Span) -> TokenStream {
+        // A `Nonterminal` is often a parsed AST item. At this point we now
+        // need to convert the parsed AST to an actual token stream, e.g.
+        // un-parse it basically.
+        //
+        // Unfortunately there's not really a great way to do that in a
+        // guaranteed lossless fashion right now. The fallback here is to just
+        // stringify the AST node and reparse it, but this loses all span
+        // information.
+        //
+        // As a result, some AST nodes are annotated with the token stream they
+        // came from. Here we attempt to extract these lossless token streams
+        // before we fall back to the stringification.
+        let tokens = match *self {
+            Nonterminal::NtItem(ref item) => {
+                prepend_attrs(sess, &item.attrs, item.tokens.as_ref(), span)
+            }
+            Nonterminal::NtTraitItem(ref item) => {
+                prepend_attrs(sess, &item.attrs, item.tokens.as_ref(), span)
+            }
+            Nonterminal::NtImplItem(ref item) => {
+                prepend_attrs(sess, &item.attrs, item.tokens.as_ref(), span)
+            }
+            Nonterminal::NtIdent(ident, is_raw) => {
+                let token = Token::Ident(ident, is_raw);
+                Some(TokenTree::Token(ident.span, token).into())
+            }
+            Nonterminal::NtLifetime(ident) => {
+                let token = Token::Lifetime(ident);
+                Some(TokenTree::Token(ident.span, token).into())
+            }
+            Nonterminal::NtTT(ref tt) => {
+                Some(tt.clone().into())
+            }
+            _ => None,
+        };
+
+        // FIXME(#43081): Avoid this pretty-print + reparse hack
+        let source = pprust::nonterminal_to_string(self);
+        let filename = FileName::macro_expansion_source_code(&source);
+        let (tokens_for_real, errors) =
+            parse_stream_from_source_str(filename, source, sess, Some(span));
+        emit_unclosed_delims(&errors, &sess.span_diagnostic);
+
+        // During early phases of the compiler the AST could get modified
+        // directly (e.g., attributes added or removed) and the internal cache
+        // of tokens my not be invalidated or updated. Consequently if the
+        // "lossless" token stream disagrees with our actual stringification
+        // (which has historically been much more battle-tested) then we go
+        // with the lossy stream anyway (losing span information).
+        //
+        // Note that the comparison isn't `==` here to avoid comparing spans,
+        // but it *also* is a "probable" equality which is a pretty weird
+        // definition. We mostly want to catch actual changes to the AST
+        // like a `#[cfg]` being processed or some weird `macro_rules!`
+        // expansion.
+        //
+        // What we *don't* want to catch is the fact that a user-defined
+        // literal like `0xf` is stringified as `15`, causing the cached token
+        // stream to not be literal `==` token-wise (ignoring spans) to the
+        // token stream we got from stringification.
+        //
+        // Instead the "probably equal" check here is "does each token
+        // recursively have the same discriminant?" We basically don't look at
+        // the token values here and assume that such fine grained token stream
+        // modifications, including adding/removing typically non-semantic
+        // tokens such as extra braces and commas, don't happen.
+        if let Some(tokens) = tokens {
+            if tokens.probably_equal_for_proc_macro(&tokens_for_real) {
+                return tokens
+            }
+            info!("cached tokens found, but they're not \"probably equal\", \
+                   going with stringified version");
+        }
+        return tokens_for_real
     }
 }
 
