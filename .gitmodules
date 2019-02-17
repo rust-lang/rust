@@ -24,7 +24,7 @@
 	url = https://github.com/rust-lang-nursery/rustfmt.git
 [submodule "src/tools/miri"]
 	path = src/tools/miri
-	url = https://github.com/solson/miri.git
+	url = https://github.com/rust-lang/miri.git
 [submodule "src/doc/rust-by-example"]
 	path = src/doc/rust-by-example
 	url = https://github.com/rust-lang/rust-by-example.git
