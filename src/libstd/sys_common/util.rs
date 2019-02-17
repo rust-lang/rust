@@ -11,7 +11,7 @@ pub fn dumb_print(args: fmt::Arguments) {
 
 // Other platforms should use the appropriate platform-specific mechanism for
 // aborting the process.  If no platform-specific mechanism is available,
-// ::intrinsics::abort() may be used instead.  The above implementations cover
+// crate::intrinsics::abort() may be used instead.  The above implementations cover
 // all targets currently supported by libstd.
 
 pub fn abort(args: fmt::Arguments) -> ! {

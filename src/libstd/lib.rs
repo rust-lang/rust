@@ -344,9 +344,6 @@ extern crate unwind;
 // testing gives test-std access to real-std lang items and globals. See #2912
 #[cfg(test)] extern crate std as realstd;
 
-#[cfg(all(target_vendor = "fortanix", target_env = "sgx"))]
-extern crate fortanix_sgx_abi;
-
 // The standard macros that are not built-in to the compiler.
 #[macro_use]
 mod macros;
