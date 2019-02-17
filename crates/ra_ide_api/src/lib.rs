@@ -56,6 +56,7 @@ pub use crate::{
     completion::{CompletionItem, CompletionItemKind, InsertTextFormat},
     runnables::{Runnable, RunnableKind},
     navigation_target::NavigationTarget,
+    references::ReferenceSearchResult,
 };
 pub use ra_ide_api_light::{
     Fold, FoldKind, HighlightedRange, Severity, StructureNode, LocalEdit,
@@ -319,7 +320,10 @@ impl Analysis {
     }
 
     /// Finds all usages of the reference at point.
-    pub fn find_all_refs(&self, position: FilePosition) -> Cancelable<Vec<(FileId, TextRange)>> {
+    pub fn find_all_refs(
+        &self,
+        position: FilePosition,
+    ) -> Cancelable<Option<ReferenceSearchResult>> {
         self.with_db(|db| references::find_all_refs(db, position))
     }
 

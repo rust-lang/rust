@@ -456,14 +456,16 @@ pub fn handle_prepare_rename(
 
     // We support renaming references like handle_rename does.
     // In the future we may want to reject the renaming of things like keywords here too.
-    let refs = world.analysis().find_all_refs(position)?;
-    let r = match refs.first() {
-        Some(r) => r,
+    let refs = match world.analysis().find_all_refs(position)? {
         None => return Ok(None),
+        Some(refs) => refs,
     };
+
+    // Refs should always have a declaration
+    let r = refs.declaration();
     let file_id = params.text_document.try_conv_with(&world)?;
     let line_index = world.analysis().file_line_index(file_id);
-    let loc = to_location(r.0, r.1, &world, &line_index)?;
+    let loc = to_location(r.file_id(), r.range(), &world, &line_index)?;
 
     Ok(Some(PrepareRenameResponse::Range(loc.range)))
 }
@@ -501,11 +503,24 @@ pub fn handle_references(
     let line_index = world.analysis().file_line_index(file_id);
     let offset = params.position.conv_with(&line_index);
 
-    let refs = world.analysis().find_all_refs(FilePosition { file_id, offset })?;
+    let refs = match world.analysis().find_all_refs(FilePosition { file_id, offset })? {
+        None => return Ok(None),
+        Some(refs) => refs,
+    };
 
-    Ok(Some(
-        refs.into_iter().filter_map(|r| to_location(r.0, r.1, &world, &line_index).ok()).collect(),
-    ))
+    let locations = if params.context.include_declaration {
+        refs.into_iter()
+            .filter_map(|r| to_location(r.file_id, r.range, &world, &line_index).ok())
+            .collect()
+    } else {
+        // Only iterate over the references if include_declaration was false
+        refs.references()
+            .iter()
+            .filter_map(|r| to_location(r.file_id, r.range, &world, &line_index).ok())
+            .collect()
+    };
+
+    Ok(Some(locations))
 }
 
 pub fn handle_formatting(
@@ -712,11 +727,14 @@ pub fn handle_document_highlight(
     let file_id = params.text_document.try_conv_with(&world)?;
     let line_index = world.analysis().file_line_index(file_id);
 
-    let refs = world.analysis().find_all_refs(params.try_conv_with(&world)?)?;
+    let refs = match world.analysis().find_all_refs(params.try_conv_with(&world)?)? {
+        None => return Ok(None),
+        Some(refs) => refs,
+    };
 
     Ok(Some(
         refs.into_iter()
-            .map(|r| DocumentHighlight { range: r.1.conv_with(&line_index), kind: None })
+            .map(|r| DocumentHighlight { range: r.range.conv_with(&line_index), kind: None })
             .collect(),
     ))
 }

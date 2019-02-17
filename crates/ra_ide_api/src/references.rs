@@ -1,42 +1,77 @@
 use relative_path::{RelativePath, RelativePathBuf};
 use hir::{ModuleSource, source_binder};
-use ra_db::{FileId, SourceDatabase};
+use ra_db::{SourceDatabase};
 use ra_syntax::{
-    AstNode, SyntaxNode, TextRange, SourceFile,
-    ast::{self, NameOwner},
+    AstNode, SyntaxNode, SourceFile,
+    ast,
     algo::find_node_at_offset,
 };
 
 use crate::{
     db::RootDatabase,
     FilePosition,
+    FileRange,
+    FileId,
+    NavigationTarget,
     FileSystemEdit,
     SourceChange,
     SourceFileEdit,
+    TextRange,
 };
 
-pub(crate) fn find_all_refs(db: &RootDatabase, position: FilePosition) -> Vec<(FileId, TextRange)> {
+#[derive(Debug, Clone)]
+pub struct ReferenceSearchResult {
+    declaration: NavigationTarget,
+    references: Vec<FileRange>,
+}
+
+impl ReferenceSearchResult {
+    pub fn declaration(&self) -> &NavigationTarget {
+        &self.declaration
+    }
+
+    pub fn references(&self) -> &[FileRange] {
+        &self.references
+    }
+
+    /// Total number of references
+    /// At least 1 since all valid references should
+    /// Have a declaration
+    pub fn len(&self) -> usize {
+        self.references.len() + 1
+    }
+}
+
+// allow turning ReferenceSearchResult into an iterator
+// over FileRanges
+impl IntoIterator for ReferenceSearchResult {
+    type Item = FileRange;
+    type IntoIter = ::std::vec::IntoIter<FileRange>;
+
+    fn into_iter(mut self) -> Self::IntoIter {
+        let mut v = Vec::with_capacity(self.len());
+        v.push(FileRange { file_id: self.declaration.file_id(), range: self.declaration.range() });
+        v.append(&mut self.references);
+        v.into_iter()
+    }
+}
+
+pub(crate) fn find_all_refs(
+    db: &RootDatabase,
+    position: FilePosition,
+) -> Option<ReferenceSearchResult> {
     let file = db.parse(position.file_id);
-    // Find the binding associated with the offset
-    let (binding, descr) = match find_binding(db, &file, position) {
-        None => return Vec::new(),
-        Some(it) => it,
-    };
+    let (binding, descr) = find_binding(db, &file, position)?;
+    let declaration = NavigationTarget::from_bind_pat(position.file_id, binding);
 
-    let mut ret = binding
-        .name()
+    let references = descr
+        .scopes(db)
+        .find_all_refs(binding)
         .into_iter()
-        .map(|name| (position.file_id, name.syntax().range()))
+        .map(move |ref_desc| FileRange { file_id: position.file_id, range: ref_desc.range })
         .collect::<Vec<_>>();
-    ret.extend(
-        descr
-            .scopes(db)
-            .find_all_refs(binding)
-            .into_iter()
-            .map(|ref_desc| (position.file_id, ref_desc.range)),
-    );
 
-    return ret;
+    return Some(ReferenceSearchResult { declaration, references });
 
     fn find_binding<'a>(
         db: &RootDatabase,
@@ -86,6 +121,21 @@ fn find_name_and_module_at_offset(
         return Some((name, ast_module));
     }
     None
+}
+
+fn source_edit_from_fileid_range(
+    file_id: FileId,
+    range: TextRange,
+    new_name: &str,
+) -> SourceFileEdit {
+    SourceFileEdit {
+        file_id,
+        edit: {
+            let mut builder = ra_text_edit::TextEditBuilder::default();
+            builder.replace(range, new_name.into());
+            builder.finish()
+        },
+    }
 }
 
 fn rename_mod(
@@ -150,17 +200,13 @@ fn rename_reference(
     position: FilePosition,
     new_name: &str,
 ) -> Option<SourceChange> {
-    let edit = find_all_refs(db, position)
-        .iter()
-        .map(|(file_id, text_range)| SourceFileEdit {
-            file_id: *file_id,
-            edit: {
-                let mut builder = ra_text_edit::TextEditBuilder::default();
-                builder.replace(*text_range, new_name.into());
-                builder.finish()
-            },
-        })
+    let refs = find_all_refs(db, position)?;
+
+    let edit = refs
+        .into_iter()
+        .map(|range| source_edit_from_fileid_range(range.file_id, range.range, new_name))
         .collect::<Vec<_>>();
+
     if edit.is_empty() {
         return None;
     }
