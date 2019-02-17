@@ -427,6 +427,17 @@ mod tests {
                 frob<|>();
             }
             ",
+        );
+        check_reference_completion(
+            "dont_render_function_parens_if_already_call_assoc_fn",
+            "
+            //- /lib.rs
+            struct Foo {}
+            impl Foo { fn new() -> Foo {} }
+            fn main() {
+                Foo::ne<|>();
+            }
+            ",
         )
     }
 

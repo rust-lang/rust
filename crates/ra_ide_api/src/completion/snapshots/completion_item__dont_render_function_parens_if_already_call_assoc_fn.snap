@@ -1,0 +1,24 @@
+---
+created: "2019-02-17T18:29:14.513213526Z"
+creator: insta@0.6.2
+source: crates/ra_ide_api/src/completion/completion_item.rs
+expression: kind_completions
+---
+[
+    CompletionItem {
+        completion_kind: Reference,
+        label: "new",
+        kind: Some(
+            Method
+        ),
+        detail: Some(
+            "fn new() -> Foo"
+        ),
+        documentation: None,
+        lookup: None,
+        insert_text: None,
+        insert_text_format: PlainText,
+        source_range: [67; 69),
+        text_edit: None
+    }
+]
