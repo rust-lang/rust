@@ -31,7 +31,7 @@ use rustc_hash::{FxHashMap, FxHashSet};
 
 use crate::{
     io::{TaskResult, Worker},
-    roots::{RootConfig, Roots},
+    roots::Roots,
 };
 
 pub use crate::{
@@ -74,18 +74,18 @@ impl Vfs {
         let worker = io::start(Arc::clone(&roots));
         let mut root2files = ArenaMap::default();
 
-        for (root, config) in roots.iter() {
+        for root in roots.iter() {
             root2files.insert(root, Default::default());
-            worker.sender().send(io::Task::AddRoot { root, config: Arc::clone(config) }).unwrap();
+            worker.sender().send(io::Task::AddRoot { root }).unwrap();
         }
         let res =
             Vfs { roots, files: Arena::default(), root2files, worker, pending_changes: Vec::new() };
-        let vfs_roots = res.roots.iter().map(|(id, _)| id).collect();
+        let vfs_roots = res.roots.iter().collect();
         (res, vfs_roots)
     }
 
     pub fn root2path(&self, root: VfsRoot) -> PathBuf {
-        self.roots[root].root.clone()
+        self.roots.path(root).to_path_buf()
     }
 
     pub fn path2file(&self, path: &Path) -> Option<VfsFile> {
@@ -97,7 +97,7 @@ impl Vfs {
 
     pub fn file2path(&self, file: VfsFile) -> PathBuf {
         let rel_path = &self.files[file].path;
-        let root_path = &self.roots[self.files[file].root].root;
+        let root_path = &self.roots.path(self.files[file].root);
         rel_path.to_path(root_path)
     }
 
@@ -232,7 +232,7 @@ impl Vfs {
     pub fn remove_file_overlay(&mut self, path: &Path) -> Option<VfsFile> {
         if let Some((root, path, file)) = self.find_root(path) {
             let file = file.expect("can't remove a file which wasn't added");
-            let full_path = path.to_path(&self.roots[root].root);
+            let full_path = path.to_path(&self.roots.path(root));
             if let Ok(text) = fs::read_to_string(&full_path) {
                 self.do_change_file(file, text, true);
             } else {

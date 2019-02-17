@@ -1,11 +1,13 @@
 use std::{
+    iter,
     sync::Arc,
     path::{Path, PathBuf},
 };
 
-use relative_path::RelativePathBuf;
+use relative_path::{ RelativePath, RelativePathBuf};
 use ra_arena::{impl_arena_id, Arena, RawId};
 
+/// VfsRoot identifies a watched directory on the file system.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct VfsRoot(pub RawId);
 impl_arena_id!(VfsRoot);
@@ -15,66 +17,15 @@ impl_arena_id!(VfsRoot);
 /// `RootConfig` can be thought of as a glob pattern like `src/**.rs` which
 /// specifies the source root or as a function which takes a `PathBuf` and
 /// returns `true` iff path belongs to the source root
-pub(crate) struct RootConfig {
-    pub(crate) root: PathBuf,
+struct RootData {
+    path: PathBuf,
     // result of `root.canonicalize()` if that differs from `root`; `None` otherwise.
-    canonical_root: Option<PathBuf>,
-    excluded_dirs: Vec<PathBuf>,
+    canonical_path: Option<PathBuf>,
+    excluded_dirs: Vec<RelativePathBuf>,
 }
 
 pub(crate) struct Roots {
-    roots: Arena<VfsRoot, Arc<RootConfig>>,
-}
-
-impl std::ops::Deref for Roots {
-    type Target = Arena<VfsRoot, Arc<RootConfig>>;
-    fn deref(&self) -> &Self::Target {
-        &self.roots
-    }
-}
-
-impl RootConfig {
-    fn new(root: PathBuf, excluded_dirs: Vec<PathBuf>) -> RootConfig {
-        let mut canonical_root = root.canonicalize().ok();
-        if Some(&root) == canonical_root.as_ref() {
-            canonical_root = None;
-        }
-        RootConfig { root, canonical_root, excluded_dirs }
-    }
-    /// Checks if root contains a path and returns a root-relative path.
-    pub(crate) fn contains(&self, path: &Path) -> Option<RelativePathBuf> {
-        // First, check excluded dirs
-        if self.excluded_dirs.iter().any(|it| path.starts_with(it)) {
-            return None;
-        }
-        let rel_path = path
-            .strip_prefix(&self.root)
-            .or_else(|err_payload| {
-                self.canonical_root
-                    .as_ref()
-                    .map_or(Err(err_payload), |canonical_root| path.strip_prefix(canonical_root))
-            })
-            .ok()?;
-        let rel_path = RelativePathBuf::from_path(rel_path).ok()?;
-
-        // Ignore some common directories.
-        //
-        // FIXME: don't hard-code, specify at source-root creation time using
-        // gitignore
-        for (i, c) in rel_path.components().enumerate() {
-            if let relative_path::Component::Normal(c) = c {
-                if (i == 0 && c == "target") || c == ".git" || c == "node_modules" {
-                    return None;
-                }
-            }
-        }
-
-        if path.is_file() && rel_path.extension() != Some("rs") {
-            return None;
-        }
-
-        Some(rel_path)
-    }
+    roots: Arena<VfsRoot, Arc<RootData>>,
 }
 
 impl Roots {
@@ -84,19 +35,75 @@ impl Roots {
         paths.sort_by_key(|it| std::cmp::Reverse(it.as_os_str().len()));
         paths.dedup();
         for (i, path) in paths.iter().enumerate() {
-            let nested_roots = paths[..i]
-                .iter()
-                .filter(|it| it.starts_with(path))
-                .map(|it| it.clone())
-                .collect::<Vec<_>>();
+            let nested_roots =
+                paths[..i].iter().filter_map(|it| rel_path(path, it)).collect::<Vec<_>>();
 
-            let config = Arc::new(RootConfig::new(path.clone(), nested_roots));
+            let config = Arc::new(RootData::new(path.clone(), nested_roots));
 
             roots.alloc(config.clone());
         }
         Roots { roots }
     }
     pub(crate) fn find(&self, path: &Path) -> Option<(VfsRoot, RelativePathBuf)> {
-        self.roots.iter().find_map(|(root, data)| data.contains(path).map(|it| (root, it)))
+        self.iter().find_map(|root| {
+            let rel_path = self.contains(root, path)?;
+            Some((root, rel_path))
+        })
     }
+    pub(crate) fn len(&self) -> usize {
+        self.roots.len()
+    }
+    pub(crate) fn iter<'a>(&'a self) -> impl Iterator<Item = VfsRoot> + 'a {
+        self.roots.iter().map(|(id, _)| id)
+    }
+    pub(crate) fn path(&self, root: VfsRoot) -> &Path {
+        self.roots[root].path.as_path()
+    }
+    /// Checks if root contains a path and returns a root-relative path.
+    pub(crate) fn contains(&self, root: VfsRoot, path: &Path) -> Option<RelativePathBuf> {
+        let data = &self.roots[root];
+        iter::once(&data.path)
+            .chain(data.canonical_path.as_ref().into_iter())
+            .find_map(|base| rel_path(base, path))
+            .filter(|path| !data.excluded_dirs.contains(path))
+            .filter(|path| !data.is_excluded(path))
+    }
+}
+
+impl RootData {
+    fn new(path: PathBuf, excluded_dirs: Vec<RelativePathBuf>) -> RootData {
+        let mut canonical_path = path.canonicalize().ok();
+        if Some(&path) == canonical_path.as_ref() {
+            canonical_path = None;
+        }
+        RootData { path, canonical_path, excluded_dirs }
+    }
+
+    fn is_excluded(&self, path: &RelativePath) -> bool {
+        if self.excluded_dirs.iter().any(|it| it == path) {
+            return true;
+        }
+        // Ignore some common directories.
+        //
+        // FIXME: don't hard-code, specify at source-root creation time using
+        // gitignore
+        for (i, c) in path.components().enumerate() {
+            if let relative_path::Component::Normal(c) = c {
+                if (i == 0 && c == "target") || c == ".git" || c == "node_modules" {
+                    return true;
+                }
+            }
+        }
+
+        match path.extension() {
+            None | Some("rs") => false,
+            _ => true,
+        }
+    }
+}
+
+fn rel_path(base: &Path, path: &Path) -> Option<RelativePathBuf> {
+    let path = path.strip_prefix(base).ok()?;
+    let path = RelativePathBuf::from_path(path).unwrap();
+    Some(path)
 }
