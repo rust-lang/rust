@@ -9,10 +9,10 @@ use relative_path::RelativePathBuf;
 use walkdir::WalkDir;
 use notify::{DebouncedEvent, RecommendedWatcher, RecursiveMode, Watcher as _Watcher};
 
-use crate::{RootConfig, Roots, VfsRoot};
+use crate::{Roots, VfsRoot};
 
 pub(crate) enum Task {
-    AddRoot { root: VfsRoot, config: Arc<RootConfig> },
+    AddRoot { root: VfsRoot },
 }
 
 /// `TaskResult` transfers files read on the IO thread to the VFS on the main
@@ -98,8 +98,8 @@ pub(crate) fn start(roots: Arc<Roots>) -> Worker {
                                 drop(input_receiver);
                                 break
                             },
-                            Ok(Task::AddRoot { root, config }) => {
-                                watch_root(watcher.as_mut(), &output_sender, root, Arc::clone(&config));
+                            Ok(Task::AddRoot { root }) => {
+                                watch_root(watcher.as_mut(), &output_sender, &*roots, root);
                             }
                         },
                         // Watcher send us changes. If **this** channel is
@@ -123,20 +123,21 @@ pub(crate) fn start(roots: Arc<Roots>) -> Worker {
 fn watch_root(
     watcher: Option<&mut RecommendedWatcher>,
     sender: &Sender<TaskResult>,
+    roots: &Roots,
     root: VfsRoot,
-    config: Arc<RootConfig>,
 ) {
-    log::debug!("loading {} ...", config.root.as_path().display());
-    let files = watch_recursive(watcher, config.root.as_path(), &*config)
+    let root_path = roots.path(root);
+    log::debug!("loading {} ...", root_path.display());
+    let files = watch_recursive(watcher, root_path, roots, root)
         .into_iter()
         .filter_map(|path| {
-            let abs_path = path.to_path(&config.root);
+            let abs_path = path.to_path(&root_path);
             let text = read_to_string(&abs_path)?;
             Some((path, text))
         })
         .collect();
     sender.send(TaskResult::BulkLoadRoot { root, files }).unwrap();
-    log::debug!("... loaded {}", config.root.as_path().display());
+    log::debug!("... loaded {}", root_path.display());
 }
 
 fn convert_notify_event(event: DebouncedEvent, sender: &Sender<(PathBuf, ChangeKind)>) {
@@ -181,19 +182,18 @@ fn handle_change(
         None => return,
         Some(it) => it,
     };
-    let config = &roots[root];
     match kind {
         ChangeKind::Create => {
             let mut paths = Vec::new();
             if path.is_dir() {
-                paths.extend(watch_recursive(watcher, &path, &config));
+                paths.extend(watch_recursive(watcher, &path, roots, root));
             } else {
                 paths.push(rel_path);
             }
             paths
                 .into_iter()
                 .try_for_each(|rel_path| {
-                    let abs_path = rel_path.to_path(&config.root);
+                    let abs_path = rel_path.to_path(&roots.path(root));
                     let text = read_to_string(&abs_path);
                     sender.send(TaskResult::SingleFile { root, path: rel_path, text })
                 })
@@ -209,12 +209,13 @@ fn handle_change(
 fn watch_recursive(
     mut watcher: Option<&mut RecommendedWatcher>,
     dir: &Path,
-    config: &RootConfig,
+    roots: &Roots,
+    root: VfsRoot,
 ) -> Vec<RelativePathBuf> {
     let mut files = Vec::new();
     for entry in WalkDir::new(dir)
         .into_iter()
-        .filter_entry(|it| config.contains(it.path()).is_some())
+        .filter_entry(|it| roots.contains(root, it.path()).is_some())
         .filter_map(|it| it.map_err(|e| log::warn!("watcher error: {}", e)).ok())
     {
         if entry.file_type().is_dir() {
@@ -222,7 +223,7 @@ fn watch_recursive(
                 watch_one(watcher, entry.path());
             }
         } else {
-            let path = config.contains(entry.path()).unwrap();
+            let path = roots.contains(root, entry.path()).unwrap();
             files.push(path.to_owned());
         }
     }
