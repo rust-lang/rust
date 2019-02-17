@@ -1,0 +1,16 @@
+---
+created: "2019-02-17T13:35:06.385679926Z"
+creator: insta@0.6.2
+source: crates/ra_hir/src/ty/tests.rs
+expression: "&result"
+---
+[78; 82) 'self': &Option<T>
+[98; 100) '{}': ()
+[111; 112) 'o': Option<u32>
+[127; 165) '{     ...f(); }': ()
+[133; 146) '(&o).as_ref()': Option<&u32>
+[134; 136) '&o': &Option<u32>
+[135; 136) 'o': Option<u32>
+[152; 153) 'o': Option<u32>
+[152; 162) 'o.as_ref()': Option<&u32>
+

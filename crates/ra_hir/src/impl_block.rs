@@ -13,7 +13,7 @@ use crate::{
     type_ref::TypeRef,
     ids::LocationCtx,
     resolve::Resolver,
-    ty::Ty,
+    ty::Ty, generics::GenericParams
 };
 
 use crate::code_model_api::{Module, ModuleSource};
@@ -38,7 +38,7 @@ impl ImplSourceMap {
     }
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct ImplBlock {
     module: Module,
     impl_id: ImplId,
@@ -58,7 +58,7 @@ impl ImplBlock {
     }
 
     /// Returns the syntax of the impl block
-    pub fn source(&self, db: &impl HirDatabase) -> (HirFileId, TreeArc<ast::ImplBlock>) {
+    pub fn source(&self, db: &impl PersistentHirDatabase) -> (HirFileId, TreeArc<ast::ImplBlock>) {
         let source_map = db.impls_in_module_source_map(self.module);
         let (file_id, source) = self.module.definition_source(db);
         (file_id, source_map.get(&source, self.impl_id))
@@ -72,11 +72,11 @@ impl ImplBlock {
         self.module
     }
 
-    pub fn target_trait_ref(&self, db: &impl HirDatabase) -> Option<TypeRef> {
+    pub fn target_trait_ref(&self, db: &impl PersistentHirDatabase) -> Option<TypeRef> {
         db.impls_in_module(self.module).impls[self.impl_id].target_trait().cloned()
     }
 
-    pub fn target_type(&self, db: &impl HirDatabase) -> TypeRef {
+    pub fn target_type(&self, db: &impl PersistentHirDatabase) -> TypeRef {
         db.impls_in_module(self.module).impls[self.impl_id].target_type().clone()
     }
 
@@ -96,13 +96,19 @@ impl ImplBlock {
         None
     }
 
-    pub fn items(&self, db: &impl HirDatabase) -> Vec<ImplItem> {
+    pub fn items(&self, db: &impl PersistentHirDatabase) -> Vec<ImplItem> {
         db.impls_in_module(self.module).impls[self.impl_id].items().to_vec()
+    }
+
+    pub fn generic_params(&self, db: &impl PersistentHirDatabase) -> Arc<GenericParams> {
+        db.generic_params((*self).into())
     }
 
     pub fn resolver(&self, db: &impl HirDatabase) -> Resolver {
         let r = self.module().resolver(db);
-        // TODO: add generics
+        // add generic params, if present
+        let p = self.generic_params(db);
+        let r = if !p.params.is_empty() { r.push_generic_params_scope(p) } else { r };
         let r = r.push_impl_block_scope(self.clone());
         r
     }

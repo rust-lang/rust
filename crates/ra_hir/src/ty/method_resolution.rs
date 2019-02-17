@@ -118,11 +118,13 @@ impl Ty {
     // TODO: cache this as a query?
     // - if so, what signature? (TyFingerprint, Name)?
     // - or maybe cache all names and def_ids of methods per fingerprint?
-    pub fn lookup_method(self, db: &impl HirDatabase, name: &Name) -> Option<Function> {
-        self.iterate_methods(db, |f| {
+    /// Look up the method with the given name, returning the actual autoderefed
+    /// receiver type (but without autoref applied yet).
+    pub fn lookup_method(self, db: &impl HirDatabase, name: &Name) -> Option<(Ty, Function)> {
+        self.iterate_methods(db, |ty, f| {
             let sig = f.signature(db);
             if sig.name() == name && sig.has_self_param() {
-                Some(f)
+                Some((ty.clone(), f))
             } else {
                 None
             }
@@ -134,7 +136,7 @@ impl Ty {
     pub fn iterate_methods<T>(
         self,
         db: &impl HirDatabase,
-        mut callback: impl FnMut(Function) -> Option<T>,
+        mut callback: impl FnMut(&Ty, Function) -> Option<T>,
     ) -> Option<T> {
         // For method calls, rust first does any number of autoderef, and then one
         // autoref (i.e. when the method takes &self or &mut self). We just ignore
@@ -156,7 +158,7 @@ impl Ty {
                 for item in impl_block.items(db) {
                     match item {
                         ImplItem::Method(f) => {
-                            if let Some(result) = callback(f) {
+                            if let Some(result) = callback(&derefed_ty, f) {
                                 return Some(result);
                             }
                         }

@@ -507,6 +507,58 @@ fn test() {
 }
 
 #[test]
+fn infer_impl_generics() {
+    check_inference(
+        "infer_impl_generics",
+        r#"
+struct A<T1, T2> {
+    x: T1,
+    y: T2,
+}
+impl<Y, X> A<X, Y> {
+    fn x(self) -> X {
+        self.x
+    }
+    fn y(self) -> Y {
+        self.y
+    }
+    fn z<T>(self, t: T) -> (X, Y, T) {
+        (self.x, self.y, t)
+    }
+}
+
+fn test() -> i128 {
+    let a = A { x: 1u64, y: 1i64 };
+    a.x();
+    a.y();
+    a.z(1i128);
+    a.z::<u128>(1);
+}
+"#,
+    );
+}
+
+#[test]
+fn infer_impl_generics_with_autoderef() {
+    check_inference(
+        "infer_impl_generics_with_autoderef",
+        r#"
+enum Option<T> {
+    Some(T),
+    None,
+}
+impl<T> Option<T> {
+    fn as_ref(&self) -> Option<&T> {}
+}
+fn test(o: Option<u32>) {
+    (&o).as_ref();
+    o.as_ref();
+}
+"#,
+    );
+}
+
+#[test]
 fn infer_generic_chain() {
     check_inference(
         "infer_generic_chain",

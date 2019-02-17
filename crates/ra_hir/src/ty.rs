@@ -165,6 +165,17 @@ impl Substs {
     pub fn empty() -> Substs {
         Substs(Arc::new([]))
     }
+
+    /// Replaces the end of the substitutions by other ones.
+    pub(crate) fn replace_tail(self, replace_by: Vec<Ty>) -> Substs {
+        // again missing Arc::make_mut_slice...
+        let len = replace_by.len().min(self.0.len());
+        let parent_len = self.0.len() - len;
+        let mut result = Vec::with_capacity(parent_len + len);
+        result.extend(self.0.iter().take(parent_len).cloned());
+        result.extend(replace_by);
+        Substs(result.into())
+    }
 }
 
 /// A type. This is based on the `TyKind` enum in rustc (librustc/ty/sty.rs).
@@ -421,7 +432,8 @@ impl Ty {
                 (var.parent_enum(db).generic_params(db), segment)
             }
         };
-        // substs_from_path
+        let parent_param_count = def_generics.count_parent_params();
+        substs.extend((0..parent_param_count).map(|_| Ty::Unknown));
         if let Some(generic_args) = &segment.args_and_bindings {
             // if args are provided, it should be all of them, but we can't rely on that
             let param_count = def_generics.params.len();
@@ -436,9 +448,8 @@ impl Ty {
         }
         // add placeholders for args that were not provided
         // TODO: handle defaults
-        let supplied_params =
-            segment.args_and_bindings.as_ref().map(|ga| ga.args.len()).unwrap_or(0);
-        for _ in supplied_params..def_generics.params.len() {
+        let supplied_params = substs.len();
+        for _ in supplied_params..def_generics.count_params_including_parent() {
             substs.push(Ty::Unknown);
         }
         assert_eq!(substs.len(), def_generics.params.len());
@@ -666,7 +677,12 @@ fn type_for_fn(db: &impl HirDatabase, def: Function) -> Ty {
 }
 
 fn make_substs(generics: &GenericParams) -> Substs {
-    Substs(generics.params.iter().map(|_p| Ty::Unknown).collect::<Vec<_>>().into())
+    Substs(
+        (0..generics.count_params_including_parent())
+            .map(|_p| Ty::Unknown)
+            .collect::<Vec<_>>()
+            .into(),
+    )
 }
 
 fn type_for_struct(db: &impl HirDatabase, s: Struct) -> Ty {
@@ -1362,15 +1378,34 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
                 }
                 ret_ty
             }
-            Expr::MethodCall { receiver, args, method_name } => {
+            Expr::MethodCall { receiver, args, method_name, generic_args } => {
                 let receiver_ty = self.infer_expr(*receiver, &Expectation::none());
                 let resolved = receiver_ty.clone().lookup_method(self.db, method_name);
-                let method_ty = match resolved {
-                    Some(func) => {
+                let (derefed_receiver_ty, method_ty, def_generics) = match resolved {
+                    Some((ty, func)) => {
                         self.write_method_resolution(tgt_expr, func);
-                        self.db.type_for_def(func.into())
+                        (ty, self.db.type_for_def(func.into()), Some(func.generic_params(self.db)))
                     }
-                    None => Ty::Unknown,
+                    None => (Ty::Unknown, receiver_ty, None),
+                };
+                // handle provided type arguments
+                let method_ty = if let Some(generic_args) = generic_args {
+                    // if args are provided, it should be all of them, but we can't rely on that
+                    let param_count = def_generics.map(|g| g.params.len()).unwrap_or(0);
+                    let mut new_substs = Vec::with_capacity(generic_args.args.len());
+                    for arg in generic_args.args.iter().take(param_count) {
+                        match arg {
+                            GenericArg::Type(type_ref) => {
+                                let ty = self.make_ty(type_ref);
+                                new_substs.push(ty);
+                            }
+                        }
+                    }
+                    let substs = method_ty.substs().unwrap_or_else(Substs::empty);
+                    let substs = substs.replace_tail(new_substs);
+                    method_ty.apply_substs(substs)
+                } else {
+                    method_ty
                 };
                 let method_ty = self.insert_type_vars(method_ty);
                 let (expected_receiver_ty, param_tys, ret_ty) = match &method_ty {
@@ -1394,9 +1429,13 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
                     }
                     _ => (Ty::Unknown, Vec::new(), Ty::Unknown),
                 };
-                // TODO we would have to apply the autoderef/autoref steps here
-                // to get the correct receiver type to unify...
-                self.unify(&expected_receiver_ty, &receiver_ty);
+                // Apply autoref so the below unification works correctly
+                let actual_receiver_ty = match expected_receiver_ty {
+                    Ty::Ref(_, mutability) => Ty::Ref(Arc::new(derefed_receiver_ty), mutability),
+                    _ => derefed_receiver_ty,
+                };
+                self.unify(&expected_receiver_ty, &actual_receiver_ty);
+
                 let param_iter = param_tys.into_iter().chain(repeat(Ty::Unknown));
                 for (arg, param) in args.iter().zip(param_iter) {
                     self.infer_expr(*arg, &Expectation::has_type(param));

@@ -3,21 +3,10 @@ use std::sync::Arc;
 use ra_syntax::ast::{self, NameOwner};
 
 use crate::{
-    HirDatabase, Name, AsName, Function, FnSignature,
+    Name, AsName, Function, FnSignature,
     type_ref::{TypeRef, Mutability},
     PersistentHirDatabase,
-    impl_block::ImplBlock,
 };
-
-impl Function {
-    // TODO impl_block should probably also be part of the code model API?
-
-    /// The containing impl block, if this is a method.
-    pub(crate) fn impl_block(&self, db: &impl HirDatabase) -> Option<ImplBlock> {
-        let module_impls = db.impls_in_module(self.module(db));
-        ImplBlock::containing(module_impls, (*self).into())
-    }
-}
 
 impl FnSignature {
     pub(crate) fn fn_signature_query(

@@ -1352,6 +1352,7 @@ impl ToOwned for ImplBlock {
 }
 
 
+impl ast::TypeParamsOwner for ImplBlock {}
 impl ImplBlock {
     pub fn item_list(&self) -> Option<&ItemList> {
         super::child_opt(self)
@@ -2092,6 +2093,10 @@ impl MethodCallExpr {
     }
 
     pub fn name_ref(&self) -> Option<&NameRef> {
+        super::child_opt(self)
+    }
+
+    pub fn type_arg_list(&self) -> Option<&TypeArgList> {
         super::child_opt(self)
     }
 }
