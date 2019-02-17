@@ -23,6 +23,12 @@ pub struct NavigationTarget {
 }
 
 impl NavigationTarget {
+    /// When `focus_range` is specified, returns it. otherwise
+    /// returns `full_range`
+    pub fn range(&self) -> TextRange {
+        self.focus_range.unwrap_or(self.full_range)
+    }
+
     pub fn name(&self) -> &SmolStr {
         &self.name
     }
@@ -43,12 +49,16 @@ impl NavigationTarget {
         self.full_range
     }
 
-    /// A "most interesting" range withing the `range_full`.
+    /// A "most interesting" range withing the `full_range`.
     ///
-    /// Typically, `range` is the whole syntax node, including doc comments, and
-    /// `focus_range` is the range of the identifier.
+    /// Typically, `full_range` is the whole syntax node,
+    /// including doc comments, and `focus_range` is the range of the identifier.
     pub fn focus_range(&self) -> Option<TextRange> {
         self.focus_range
+    }
+
+    pub(crate) fn from_bind_pat(file_id: FileId, pat: &ast::BindPat) -> NavigationTarget {
+        NavigationTarget::from_named(file_id, pat)
     }
 
     pub(crate) fn from_symbol(symbol: FileSymbol) -> NavigationTarget {

@@ -1,7 +1,8 @@
 use insta::assert_debug_snapshot_matches;
 use ra_ide_api::{
     mock_analysis::{single_file, single_file_with_position, MockAnalysis},
-    AnalysisChange, CrateGraph, Edition::Edition2018, FileId, Query, NavigationTarget
+    AnalysisChange, CrateGraph, Edition::Edition2018, Query, NavigationTarget,
+    ReferenceSearchResult,
 };
 use ra_syntax::{TextRange, SmolStr};
 
@@ -44,9 +45,9 @@ fn test_resolve_crate_root() {
     assert_eq!(host.analysis().crate_for(mod_file).unwrap(), vec![crate_id]);
 }
 
-fn get_all_refs(text: &str) -> Vec<(FileId, TextRange)> {
+fn get_all_refs(text: &str) -> ReferenceSearchResult {
     let (analysis, position) = single_file_with_position(text);
-    analysis.find_all_refs(position).unwrap()
+    analysis.find_all_refs(position).unwrap().unwrap()
 }
 
 fn get_symbols_matching(text: &str, query: &str) -> Vec<NavigationTarget> {

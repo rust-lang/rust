@@ -333,7 +333,7 @@ impl TryConvWith for &NavigationTarget {
     type Output = Location;
     fn try_conv_with(self, world: &ServerWorld) -> Result<Location> {
         let line_index = world.analysis().file_line_index(self.file_id());
-        let range = self.focus_range().unwrap_or(self.full_range());
+        let range = self.range();
         to_location(self.file_id(), range, &world, &line_index)
     }
 }
