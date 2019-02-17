@@ -145,7 +145,7 @@ impl Vfs {
         if let Ok(text) = fs::read_to_string(&full_path) {
             self.do_change_file(file, text, true);
         } else {
-            self.do_remove_file(root, rel_path, file, true);
+            self.do_remove_file(root, rel_path, file);
         }
         Some(file)
     }
@@ -183,9 +183,13 @@ impl Vfs {
                 self.pending_changes.push(change);
             }
             TaskResult::SingleFile { root, path, text } => {
-                match (self.find_file(root, &path), text) {
+                let file = self.find_file(root, &path);
+                if file.map(|file| self.files[file].is_overlayed) == Some(true) {
+                    return;
+                }
+                match (file, text) {
                     (Some(file), None) => {
-                        self.do_remove_file(root, path, file, false);
+                        self.do_remove_file(root, path, file);
                     }
                     (None, Some(text)) => {
                         self.do_add_file(root, path, text, false);
@@ -213,24 +217,12 @@ impl Vfs {
     }
 
     fn do_change_file(&mut self, file: VfsFile, text: String, is_overlay: bool) {
-        if !is_overlay && self.files[file].is_overlayed {
-            return;
-        }
         let text = Arc::new(text);
         self.change_file(file, text.clone(), is_overlay);
         self.pending_changes.push(VfsChange::ChangeFile { file, text });
     }
 
-    fn do_remove_file(
-        &mut self,
-        root: VfsRoot,
-        path: RelativePathBuf,
-        file: VfsFile,
-        is_overlay: bool,
-    ) {
-        if !is_overlay && self.files[file].is_overlayed {
-            return;
-        }
+    fn do_remove_file(&mut self, root: VfsRoot, path: RelativePathBuf, file: VfsFile) {
         self.remove_file(file);
         self.pending_changes.push(VfsChange::RemoveFile { root, path, file });
     }
