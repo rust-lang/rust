@@ -40,18 +40,17 @@ fn test() {
 }
 
 #[test]
-#[cfg(not(miri))] // This test performs invalid OOB pointer arithmetic
 fn test_is_null() {
     let p: *const isize = null();
     assert!(p.is_null());
 
-    let q = unsafe { p.offset(1) };
+    let q = p.wrapping_offset(1);
     assert!(!q.is_null());
 
     let mp: *mut isize = null_mut();
     assert!(mp.is_null());
 
-    let mq = unsafe { mp.offset(1) };
+    let mq = mp.wrapping_offset(1);
     assert!(!mq.is_null());
 
     // Pointers to unsized types -- slices
