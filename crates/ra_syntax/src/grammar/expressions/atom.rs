@@ -331,11 +331,6 @@ pub(crate) fn match_arm_list(p: &mut Parser) {
             continue;
         }
 
-        // This may result in invalid attributes
-        // if there are inner attributes mixed in together
-        // with the outer attributes, but we allow parsing
-        // those so we can run validation and report better errors
-
         // test match_arms_outer_attributes
         // fn foo() {
         //     match () {
@@ -349,7 +344,7 @@ pub(crate) fn match_arm_list(p: &mut Parser) {
         //         _ => (),
         //     }
         // }
-        attributes::all_attributes(p);
+        attributes::outer_attributes(p);
 
         // test match_arms_commas
         // fn foo() {

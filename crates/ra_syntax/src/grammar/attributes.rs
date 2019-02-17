@@ -1,15 +1,5 @@
 use super::*;
 
-/// Parses both inner & outer attributes.
-///
-/// Allowing to run validation for reporting errors
-/// regarding attributes
-pub(super) fn all_attributes(p: &mut Parser) {
-    while p.at(POUND) {
-        attribute(p, p.nth(1) == EXCL)
-    }
-}
-
 pub(super) fn inner_attributes(p: &mut Parser) {
     while p.current() == POUND && p.nth(1) == EXCL {
         attribute(p, true)
