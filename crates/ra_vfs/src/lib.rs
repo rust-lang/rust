@@ -112,7 +112,7 @@ impl Vfs {
             } else {
                 let text = fs::read_to_string(path).unwrap_or_default();
                 let text = Arc::new(text);
-                let file = self.add_file(root, rel_path.clone(), Arc::clone(&text), false);
+                let file = self.raw_add_file(root, rel_path.clone(), Arc::clone(&text), false);
                 let change = VfsChange::AddFile { file, text, root, path: rel_path };
                 self.pending_changes.push(change);
                 Some(file)
@@ -124,17 +124,17 @@ impl Vfs {
     pub fn add_file_overlay(&mut self, path: &Path, text: String) -> Option<VfsFile> {
         let (root, rel_path, file) = self.find_root(path)?;
         if let Some(file) = file {
-            self.do_change_file(file, text, true);
+            self.change_file_event(file, text, true);
             Some(file)
         } else {
-            self.do_add_file(root, rel_path, text, true)
+            self.add_file_event(root, rel_path, text, true)
         }
     }
 
     pub fn change_file_overlay(&mut self, path: &Path, new_text: String) {
         if let Some((_root, _path, file)) = self.find_root(path) {
             let file = file.expect("can't change a file which wasn't added");
-            self.do_change_file(file, new_text, true);
+            self.change_file_event(file, new_text, true);
         }
     }
 
@@ -143,9 +143,9 @@ impl Vfs {
         let file = file.expect("can't remove a file which wasn't added");
         let full_path = rel_path.to_path(&self.roots.path(root));
         if let Ok(text) = fs::read_to_string(&full_path) {
-            self.do_change_file(file, text, false);
+            self.change_file_event(file, text, false);
         } else {
-            self.do_remove_file(root, rel_path, file);
+            self.remove_file_event(root, rel_path, file);
         }
         Some(file)
     }
@@ -175,7 +175,7 @@ impl Vfs {
                         continue;
                     }
                     let text = Arc::new(text);
-                    let file = self.add_file(root, path.clone(), Arc::clone(&text), false);
+                    let file = self.raw_add_file(root, path.clone(), Arc::clone(&text), false);
                     cur_files.push((file, path, text));
                 }
 
@@ -189,13 +189,13 @@ impl Vfs {
                 }
                 match (existing_file, text) {
                     (Some(file), None) => {
-                        self.do_remove_file(root, path, file);
+                        self.remove_file_event(root, path, file);
                     }
                     (None, Some(text)) => {
-                        self.do_add_file(root, path, text, false);
+                        self.add_file_event(root, path, text, false);
                     }
                     (Some(file), Some(text)) => {
-                        self.do_change_file(file, text, false);
+                        self.change_file_event(file, text, false);
                     }
                     (None, None) => (),
                 }
@@ -203,7 +203,10 @@ impl Vfs {
         }
     }
 
-    fn do_add_file(
+    // *_event calls change the state of VFS and push a change onto pending
+    // changes array.
+
+    fn add_file_event(
         &mut self,
         root: VfsRoot,
         path: RelativePathBuf,
@@ -211,23 +214,25 @@ impl Vfs {
         is_overlay: bool,
     ) -> Option<VfsFile> {
         let text = Arc::new(text);
-        let file = self.add_file(root, path.clone(), text.clone(), is_overlay);
+        let file = self.raw_add_file(root, path.clone(), text.clone(), is_overlay);
         self.pending_changes.push(VfsChange::AddFile { file, root, path, text });
         Some(file)
     }
 
-    fn do_change_file(&mut self, file: VfsFile, text: String, is_overlay: bool) {
+    fn change_file_event(&mut self, file: VfsFile, text: String, is_overlay: bool) {
         let text = Arc::new(text);
-        self.change_file(file, text.clone(), is_overlay);
+        self.raw_change_file(file, text.clone(), is_overlay);
         self.pending_changes.push(VfsChange::ChangeFile { file, text });
     }
 
-    fn do_remove_file(&mut self, root: VfsRoot, path: RelativePathBuf, file: VfsFile) {
-        self.remove_file(file);
+    fn remove_file_event(&mut self, root: VfsRoot, path: RelativePathBuf, file: VfsFile) {
+        self.raw_remove_file(file);
         self.pending_changes.push(VfsChange::RemoveFile { root, path, file });
     }
 
-    fn add_file(
+    // raw_* calls change the state of VFS, but **do not** emit events.
+
+    fn raw_add_file(
         &mut self,
         root: VfsRoot,
         path: RelativePathBuf,
@@ -240,13 +245,13 @@ impl Vfs {
         file
     }
 
-    fn change_file(&mut self, file: VfsFile, new_text: Arc<String>, is_overlayed: bool) {
+    fn raw_change_file(&mut self, file: VfsFile, new_text: Arc<String>, is_overlayed: bool) {
         let mut file_data = &mut self.files[file];
         file_data.text = new_text;
         file_data.is_overlayed = is_overlayed;
     }
 
-    fn remove_file(&mut self, file: VfsFile) {
+    fn raw_remove_file(&mut self, file: VfsFile) {
         // FIXME: use arena with removal
         self.files[file].text = Default::default();
         self.files[file].path = Default::default();
