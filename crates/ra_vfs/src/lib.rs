@@ -121,6 +121,39 @@ impl Vfs {
         None
     }
 
+    pub fn add_file_overlay(&mut self, path: &Path, text: String) -> Option<VfsFile> {
+        let (root, rel_path, file) = self.find_root(path)?;
+        if let Some(file) = file {
+            self.do_change_file(file, text, true);
+            Some(file)
+        } else {
+            self.do_add_file(root, rel_path, text, true)
+        }
+    }
+
+    pub fn change_file_overlay(&mut self, path: &Path, new_text: String) {
+        if let Some((_root, _path, file)) = self.find_root(path) {
+            let file = file.expect("can't change a file which wasn't added");
+            self.do_change_file(file, new_text, true);
+        }
+    }
+
+    pub fn remove_file_overlay(&mut self, path: &Path) -> Option<VfsFile> {
+        let (root, rel_path, file) = self.find_root(path)?;
+        let file = file.expect("can't remove a file which wasn't added");
+        let full_path = rel_path.to_path(&self.roots.path(root));
+        if let Ok(text) = fs::read_to_string(&full_path) {
+            self.do_change_file(file, text, true);
+        } else {
+            self.do_remove_file(root, rel_path, file, true);
+        }
+        Some(file)
+    }
+
+    pub fn commit_changes(&mut self) -> Vec<VfsChange> {
+        mem::replace(&mut self.pending_changes, Vec::new())
+    }
+
     pub fn task_receiver(&self) -> &Receiver<io::TaskResult> {
         self.worker.receiver()
     }
@@ -200,45 +233,6 @@ impl Vfs {
         }
         self.remove_file(file);
         self.pending_changes.push(VfsChange::RemoveFile { root, path, file });
-    }
-
-    pub fn add_file_overlay(&mut self, path: &Path, text: String) -> Option<VfsFile> {
-        if let Some((root, rel_path, file)) = self.find_root(path) {
-            if let Some(file) = file {
-                self.do_change_file(file, text, true);
-                Some(file)
-            } else {
-                self.do_add_file(root, rel_path, text, true)
-            }
-        } else {
-            None
-        }
-    }
-
-    pub fn change_file_overlay(&mut self, path: &Path, new_text: String) {
-        if let Some((_root, _path, file)) = self.find_root(path) {
-            let file = file.expect("can't change a file which wasn't added");
-            self.do_change_file(file, new_text, true);
-        }
-    }
-
-    pub fn remove_file_overlay(&mut self, path: &Path) -> Option<VfsFile> {
-        if let Some((root, path, file)) = self.find_root(path) {
-            let file = file.expect("can't remove a file which wasn't added");
-            let full_path = path.to_path(&self.roots.path(root));
-            if let Ok(text) = fs::read_to_string(&full_path) {
-                self.do_change_file(file, text, true);
-            } else {
-                self.do_remove_file(root, path, file, true);
-            }
-            Some(file)
-        } else {
-            None
-        }
-    }
-
-    pub fn commit_changes(&mut self) -> Vec<VfsChange> {
-        mem::replace(&mut self.pending_changes, Vec::new())
     }
 
     fn add_file(
