@@ -101,13 +101,6 @@ impl Vfs {
         rel_path.to_path(root_path)
     }
 
-    pub fn file_for_path(&self, path: &Path) -> Option<VfsFile> {
-        if let Some((_root, _path, Some(file))) = self.find_root(path) {
-            return Some(file);
-        }
-        None
-    }
-
     pub fn num_roots(&self) -> usize {
         self.roots.len()
     }
