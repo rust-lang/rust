@@ -100,20 +100,24 @@ impl Tls {
     }
 
     pub fn create(dtor: Option<unsafe extern fn(*mut u8)>) -> Key {
-        let index = TLS_KEY_IN_USE.set().expect("TLS limit exceeded");
+        let index = if let Some(index) = TLS_KEY_IN_USE.set() {
+            index
+        } else {
+            rtabort!("TLS limit exceeded")
+        };
         TLS_DESTRUCTOR[index].store(dtor.map_or(0, |f| f as usize), Ordering::Relaxed);
         Key::from_index(index)
     }
 
     pub fn set(key: Key, value: *mut u8) {
         let index = key.to_index();
-        assert!(TLS_KEY_IN_USE.get(index));
+        rtassert!(TLS_KEY_IN_USE.get(index));
         unsafe { Self::current() }.data[index].set(value);
     }
 
     pub fn get(key: Key) -> *mut u8 {
         let index = key.to_index();
-        assert!(TLS_KEY_IN_USE.get(index));
+        rtassert!(TLS_KEY_IN_USE.get(index));
         unsafe { Self::current() }.data[index].get()
     }
 

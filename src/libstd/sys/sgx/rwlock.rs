@@ -105,7 +105,7 @@ impl RWLock {
                 *wguard.lock_var_mut() = true;
             } else {
                 // No writers were waiting, the lock is released
-                assert!(rguard.queue_empty());
+                rtassert!(rguard.queue_empty());
             }
         }
     }
