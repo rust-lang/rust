@@ -190,7 +190,6 @@ fn test_iterator_step_by() {
 }
 
 #[test]
-#[cfg(not(miri))]
 fn test_iterator_step_by_nth() {
     let mut it = (0..16).step_by(5);
     assert_eq!(it.nth(0), Some(0));
@@ -209,7 +208,6 @@ fn test_iterator_step_by_nth() {
 }
 
 #[test]
-#[cfg(not(miri))]
 fn test_iterator_step_by_nth_overflow() {
     #[cfg(target_pointer_width = "8")]
     type Bigger = u16;
@@ -255,14 +253,13 @@ fn test_iterator_step_by_nth_overflow() {
 
 #[test]
 #[should_panic]
-#[cfg(not(miri))]
+#[cfg(not(miri))] // Miri does not support panics
 fn test_iterator_step_by_zero() {
     let mut it = (0..).step_by(0);
     it.next();
 }
 
 #[test]
-#[cfg(not(miri))]
 fn test_iterator_step_by_size_hint() {
     struct StubSizeHint(usize, Option<usize>);
     impl Iterator for StubSizeHint {
@@ -1417,7 +1414,7 @@ fn test_rposition() {
 
 #[test]
 #[should_panic]
-#[cfg(not(miri))]
+#[cfg(not(miri))] // Miri does not support panics
 fn test_rposition_panic() {
     let v: [(Box<_>, Box<_>); 4] =
         [(box 0, box 0), (box 0, box 0),
@@ -1657,7 +1654,6 @@ fn test_range_inclusive_nth() {
 }
 
 #[test]
-#[cfg(not(miri))]
 fn test_range_step() {
     #![allow(deprecated)]
 
@@ -1681,7 +1677,6 @@ fn test_range_step() {
 }
 
 #[test]
-#[cfg(not(miri))]
 fn test_step_by_skip() {
     assert_eq!((0..640).step_by(128).skip(1).collect::<Vec<_>>(), [128, 256, 384, 512]);
     assert_eq!((0..=50).step_by(10).nth(3), Some(30));
@@ -1689,7 +1684,6 @@ fn test_step_by_skip() {
 }
 
 #[test]
-#[cfg(not(miri))]
 fn test_range_inclusive_step() {
     assert_eq!((0..=50).step_by(10).collect::<Vec<_>>(), [0, 10, 20, 30, 40, 50]);
     assert_eq!((0..=5).step_by(1).collect::<Vec<_>>(), [0, 1, 2, 3, 4, 5]);

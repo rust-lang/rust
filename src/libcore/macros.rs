@@ -563,11 +563,11 @@ macro_rules! unimplemented {
 
 /// A macro to create an array of [`MaybeUninit`]
 ///
-/// This macro constructs and uninitialized array of the type `[MaybeUninit<K>; N]`.
+/// This macro constructs an uninitialized array of the type `[MaybeUninit<K>; N]`.
 ///
 /// [`MaybeUninit`]: mem/union.MaybeUninit.html
 #[macro_export]
-#[unstable(feature = "maybe_uninit", issue = "53491")]
+#[unstable(feature = "maybe_uninit_array", issue = "53491")]
 macro_rules! uninitialized_array {
     // This `into_initialized` is safe because an array of `MaybeUninit` does not
     // require initialization.

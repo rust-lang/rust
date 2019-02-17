@@ -1,14 +1,19 @@
-error: mutable references in const fn are unstable
+error[E0723]: mutable references in const fn are unstable (see issue #57563)
   --> $DIR/mutable_borrow.rs:3:9
    |
 LL |     let b = &mut a; //~ ERROR mutable references in const fn
    |         ^
+   |
+   = help: add #![feature(const_fn)] to the crate attributes to enable
 
-error: mutable references in const fn are unstable
+error[E0723]: mutable references in const fn are unstable (see issue #57563)
   --> $DIR/mutable_borrow.rs:12:13
    |
 LL |         let b = &mut a; //~ ERROR mutable references in const fn
    |             ^
+   |
+   = help: add #![feature(const_fn)] to the crate attributes to enable
 
 error: aborting due to 2 previous errors
 
+For more information about this error, try `rustc --explain E0723`.

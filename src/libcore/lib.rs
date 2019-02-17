@@ -122,7 +122,7 @@
 #![feature(structural_match)]
 #![feature(abi_unadjusted)]
 #![feature(adx_target_feature)]
-#![feature(maybe_uninit)]
+#![feature(maybe_uninit, maybe_uninit_slice, maybe_uninit_array)]
 #![feature(unrestricted_attribute_tokens)]
 
 #[prelude_import]

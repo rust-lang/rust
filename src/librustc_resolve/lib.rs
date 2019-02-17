@@ -4,7 +4,6 @@
 #![feature(label_break_value)]
 #![feature(nll)]
 #![feature(rustc_diagnostic_macros)]
-#![feature(slice_sort_by_cached_key)]
 
 #![recursion_limit="256"]
 

@@ -8,14 +8,12 @@ derives have spans that point to the fields, rather than the
 sample usage: src/etc/generate-deriving-span-tests.py
 """
 
-import os, datetime, stat, re
+import os, stat
 
 TEST_DIR = os.path.abspath(
     os.path.join(os.path.dirname(__file__), '../test/ui/derives/'))
 
-YEAR = datetime.datetime.now().year
-
-TEMPLATE = """
+TEMPLATE = """\
 // This file was auto-generated using 'src/etc/generate-deriving-span-tests.py'
 
 {error_deriving}
@@ -63,18 +61,10 @@ def create_test_case(type, trait, super_traits, error_count):
 
     errors = '\n'.join('//~%s ERROR' % ('^' * n) for n in range(error_count))
     code = string.format(traits = all_traits, errors = errors)
-    return TEMPLATE.format(year = YEAR, error_deriving=error_deriving, code = code)
+    return TEMPLATE.format(error_deriving=error_deriving, code = code)
 
 def write_file(name, string):
     test_file = os.path.join(TEST_DIR, 'derives-span-%s.rs' % name)
-
-    with open(test_file) as f:
-        old_str = f.read()
-        old_str_ignoring_date = re.sub(r'^// Copyright \d+',
-                                        '// Copyright {year}'.format(year = YEAR), old_str)
-        if old_str_ignoring_date == string:
-            # if all we're doing is updating the copyright year, ignore it
-            return 0
 
     # set write permission if file exists, so it can be changed
     if os.path.exists(test_file):
@@ -85,8 +75,6 @@ def write_file(name, string):
 
     # mark file read-only
     os.chmod(test_file, stat.S_IRUSR|stat.S_IRGRP|stat.S_IROTH)
-
-    return 1
 
 
 ENUM = 1
@@ -110,15 +98,11 @@ for (trait, supers, errs) in [('Clone', [], 1),
                               ('Hash', [], 1)]:
     traits[trait] = (ALL, supers, errs)
 
-files = 0
-
 for (trait, (types, super_traits, error_count)) in traits.items():
     mk = lambda ty: create_test_case(ty, trait, super_traits, error_count)
     if types & ENUM:
-        files += write_file(trait + '-enum', mk(ENUM_TUPLE))
-        files += write_file(trait + '-enum-struct-variant', mk(ENUM_STRUCT))
+        write_file(trait + '-enum', mk(ENUM_TUPLE))
+        write_file(trait + '-enum-struct-variant', mk(ENUM_STRUCT))
     if types & STRUCT:
-        files += write_file(trait + '-struct', mk(STRUCT_FIELDS))
-        files += write_file(trait + '-tuple-struct', mk(STRUCT_TUPLE))
-
-print('Generated {files} deriving span test{}.'.format('s' if files != 1 else '', files = files))
+        write_file(trait + '-struct', mk(STRUCT_FIELDS))
+        write_file(trait + '-tuple-struct', mk(STRUCT_TUPLE))

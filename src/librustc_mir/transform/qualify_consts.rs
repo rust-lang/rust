@@ -1480,7 +1480,17 @@ impl MirPass for QualifyAndPromoteConstants {
                         // enforce `min_const_fn` for stable const fns
                         use super::qualify_min_const_fn::is_min_const_fn;
                         if let Err((span, err)) = is_min_const_fn(tcx, def_id, mir) {
-                            tcx.sess.span_err(span, &err);
+                            let mut diag = struct_span_err!(
+                                tcx.sess,
+                                span,
+                                E0723,
+                                "{} (see issue #57563)",
+                                err,
+                            );
+                            diag.help(
+                                "add #![feature(const_fn)] to the crate attributes to enable",
+                            );
+                            diag.emit();
                         } else {
                             // this should not produce any errors, but better safe than sorry
                             // FIXME(#53819)

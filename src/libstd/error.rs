@@ -718,7 +718,7 @@ impl dyn Error {
     /// ```
     ///
     /// [`source`]: trait.Error.html#method.source
-    #[unstable(feature = "error_iter", issue = "58289")]
+    #[unstable(feature = "error_iter", issue = "58520")]
     #[inline]
     pub fn iter_chain(&self) -> ErrorIter {
         ErrorIter {
@@ -793,7 +793,7 @@ impl dyn Error {
     ///
     /// [`source`]: trait.Error.html#method.source
     #[inline]
-    #[unstable(feature = "error_iter", issue = "58289")]
+    #[unstable(feature = "error_iter", issue = "58520")]
     pub fn iter_sources(&self) -> ErrorIter {
         ErrorIter {
             current: self.source(),
@@ -804,13 +804,13 @@ impl dyn Error {
 /// An iterator over [`Error`]
 ///
 /// [`Error`]: trait.Error.html
-#[unstable(feature = "error_iter", issue = "58289")]
+#[unstable(feature = "error_iter", issue = "58520")]
 #[derive(Copy, Clone, Debug)]
 pub struct ErrorIter<'a> {
     current: Option<&'a (dyn Error + 'static)>,
 }
 
-#[unstable(feature = "error_iter", issue = "58289")]
+#[unstable(feature = "error_iter", issue = "58520")]
 impl<'a> Iterator for ErrorIter<'a> {
     type Item = &'a (dyn Error + 'static);
 

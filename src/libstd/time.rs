@@ -218,6 +218,52 @@ impl Instant {
         self.0.sub_instant(&earlier.0)
     }
 
+    /// Returns the amount of time elapsed from another instant to this one,
+    /// or None if that instant is earlier than this one.
+    ///
+    /// # Examples
+    ///
+    /// ```no_run
+    /// #![feature(checked_duration_since)]
+    /// use std::time::{Duration, Instant};
+    /// use std::thread::sleep;
+    ///
+    /// let now = Instant::now();
+    /// sleep(Duration::new(1, 0));
+    /// let new_now = Instant::now();
+    /// println!("{:?}", new_now.checked_duration_since(now));
+    /// println!("{:?}", now.checked_duration_since(new_now)); // None
+    /// ```
+    #[unstable(feature = "checked_duration_since", issue = "58402")]
+    pub fn checked_duration_since(&self, earlier: Instant) -> Option<Duration> {
+        if self >= &earlier {
+            Some(self.0.sub_instant(&earlier.0))
+        } else {
+            None
+        }
+    }
+
+    /// Returns the amount of time elapsed from another instant to this one,
+    /// or zero duration if that instant is earlier than this one.
+    ///
+    /// # Examples
+    ///
+    /// ```no_run
+    /// #![feature(checked_duration_since)]
+    /// use std::time::{Duration, Instant};
+    /// use std::thread::sleep;
+    ///
+    /// let now = Instant::now();
+    /// sleep(Duration::new(1, 0));
+    /// let new_now = Instant::now();
+    /// println!("{:?}", new_now.saturating_duration_since(now));
+    /// println!("{:?}", now.saturating_duration_since(new_now)); // 0ns
+    /// ```
+    #[unstable(feature = "checked_duration_since", issue = "58402")]
+    pub fn saturating_duration_since(&self, earlier: Instant) -> Duration {
+        self.checked_duration_since(earlier).unwrap_or(Duration::new(0, 0))
+    }
+
     /// Returns the amount of time elapsed since this instant was created.
     ///
     /// # Panics
@@ -624,6 +670,20 @@ mod tests {
     fn instant_duration_panic() {
         let a = Instant::now();
         (a - Duration::new(1, 0)).duration_since(a);
+    }
+
+    #[test]
+    fn checked_instant_duration_nopanic() {
+        let a = Instant::now();
+        let ret = (a - Duration::new(1, 0)).checked_duration_since(a);
+        assert_eq!(ret, None);
+    }
+
+    #[test]
+    fn saturating_instant_duration_nopanic() {
+        let a = Instant::now();
+        let ret = (a - Duration::new(1, 0)).saturating_duration_since(a);
+        assert_eq!(ret, Duration::new(0,0));
     }
 
     #[test]

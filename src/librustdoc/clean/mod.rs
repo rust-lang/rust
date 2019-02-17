@@ -165,7 +165,12 @@ impl<'a, 'tcx, 'rcx> Clean<Crate> for visit_ast::RustdocVisitor<'a, 'tcx, 'rcx> 
         match module.inner {
             ModuleItem(ref module) => {
                 for it in &module.items {
-                    if it.is_extern_crate() && it.attrs.has_doc_flag("masked") {
+                    // `compiler_builtins` should be masked too, but we can't apply
+                    // `#[doc(masked)]` to the injected `extern crate` because it's unstable.
+                    if it.is_extern_crate()
+                        && (it.attrs.has_doc_flag("masked")
+                            || self.cx.tcx.is_compiler_builtins(it.def_id.krate))
+                    {
                         masked_crates.insert(it.def_id.krate);
                     }
                 }
