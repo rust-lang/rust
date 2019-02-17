@@ -207,7 +207,6 @@ fn test_ptr_addition() {
 }
 
 #[test]
-#[cfg(not(miri))] // This test performs invalid OOB pointer arithmetic
 fn test_ptr_subtraction() {
     unsafe {
         let xs = vec![0,1,2,3,4,5,6,7,8,9];
@@ -223,8 +222,11 @@ fn test_ptr_subtraction() {
         let m_start = xs_mut.as_mut_ptr();
         let mut m_ptr = m_start.offset(9);
 
-        while m_ptr >= m_start {
+        loop {
             *m_ptr += *m_ptr;
+            if m_ptr == m_start {
+                break;
+            }
             m_ptr = m_ptr.offset(-1);
         }
 
