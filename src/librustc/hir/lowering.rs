@@ -1124,7 +1124,7 @@ impl<'a> LoweringContext<'a> {
             TokenTree::Delimited(span, delim, tts) => TokenTree::Delimited(
                 span,
                 delim,
-                self.lower_token_stream(tts.into()).into(),
+                self.lower_token_stream(tts),
             ).into(),
         }
     }
