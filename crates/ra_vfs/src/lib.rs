@@ -143,7 +143,7 @@ impl Vfs {
         let file = file.expect("can't remove a file which wasn't added");
         let full_path = rel_path.to_path(&self.roots.path(root));
         if let Ok(text) = fs::read_to_string(&full_path) {
-            self.do_change_file(file, text, true);
+            self.do_change_file(file, text, false);
         } else {
             self.do_remove_file(root, rel_path, file);
         }
@@ -183,11 +183,11 @@ impl Vfs {
                 self.pending_changes.push(change);
             }
             TaskResult::SingleFile { root, path, text } => {
-                let file = self.find_file(root, &path);
-                if file.map(|file| self.files[file].is_overlayed) == Some(true) {
+                let existing_file = self.find_file(root, &path);
+                if existing_file.map(|file| self.files[file].is_overlayed) == Some(true) {
                     return;
                 }
-                match (file, text) {
+                match (existing_file, text) {
                     (Some(file), None) => {
                         self.do_remove_file(root, path, file);
                     }
