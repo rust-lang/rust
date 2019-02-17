@@ -42,7 +42,7 @@ This flag prints out various information about the compiler.
 
 ## `-g`: include debug information
 
-A synonym for `-C debug-level=2`.
+A synonym for `-C debuginfo=2`.
 
 ## `-O`: optimize your code
 
