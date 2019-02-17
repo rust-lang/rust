@@ -41,6 +41,8 @@
 
 #![stable(feature = "rust1", since = "1.0.0")]
 
+use fmt;
+
 /// An identity function.
 ///
 /// Two things are important to note about this function:
@@ -571,8 +573,6 @@ impl Clone for Infallible {
     }
 }
 
-use fmt;
-
 #[stable(feature = "convert_infallible", since = "1.34.0")]
 impl fmt::Debug for Infallible {
     fn fmt(&self, _: &mut fmt::Formatter<'_>) -> fmt::Result {
@@ -596,6 +596,20 @@ impl PartialEq for Infallible {
 
 #[stable(feature = "convert_infallible", since = "1.34.0")]
 impl Eq for Infallible {}
+
+#[stable(feature = "convert_infallible", since = "1.34.0")]
+impl PartialOrd for Infallible {
+    fn partial_cmp(&self, _other: &Self) -> Option<crate::cmp::Ordering> {
+        match *self {}
+    }
+}
+
+#[stable(feature = "convert_infallible", since = "1.34.0")]
+impl Ord for Infallible {
+    fn cmp(&self, _other: &Self) -> crate::cmp::Ordering {
+        match *self {}
+    }
+}
 
 #[stable(feature = "convert_infallible", since = "1.34.0")]
 impl From<!> for Infallible {
