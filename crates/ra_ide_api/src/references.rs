@@ -46,7 +46,7 @@ impl ReferenceSearchResult {
 // over FileRanges
 impl IntoIterator for ReferenceSearchResult {
     type Item = FileRange;
-    type IntoIter = ::std::vec::IntoIter<FileRange>;
+    type IntoIter = std::vec::IntoIter<FileRange>;
 
     fn into_iter(mut self) -> Self::IntoIter {
         let mut v = Vec::with_capacity(self.len());
