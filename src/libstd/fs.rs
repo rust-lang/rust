@@ -254,10 +254,13 @@ fn initial_buffer_size(file: &File) -> usize {
 /// ```
 #[stable(feature = "fs_read_write_bytes", since = "1.26.0")]
 pub fn read<P: AsRef<Path>>(path: P) -> io::Result<Vec<u8>> {
-    let mut file = File::open(path)?;
-    let mut bytes = Vec::with_capacity(initial_buffer_size(&file));
-    file.read_to_end(&mut bytes)?;
-    Ok(bytes)
+    fn inner(path: &Path) -> io::Result<Vec<u8>> {
+        let mut file = File::open(path)?;
+        let mut bytes = Vec::with_capacity(initial_buffer_size(&file));
+        file.read_to_end(&mut bytes)?;
+        Ok(bytes)
+    }
+    inner(path.as_ref())
 }
 
 /// Read the entire contents of a file into a string.
@@ -296,10 +299,13 @@ pub fn read<P: AsRef<Path>>(path: P) -> io::Result<Vec<u8>> {
 /// ```
 #[stable(feature = "fs_read_write", since = "1.26.0")]
 pub fn read_to_string<P: AsRef<Path>>(path: P) -> io::Result<String> {
-    let mut file = File::open(path)?;
-    let mut string = String::with_capacity(initial_buffer_size(&file));
-    file.read_to_string(&mut string)?;
-    Ok(string)
+    fn inner(path: &Path) -> io::Result<String> {
+        let mut file = File::open(path)?;
+        let mut string = String::with_capacity(initial_buffer_size(&file));
+        file.read_to_string(&mut string)?;
+        Ok(string)
+    }
+    inner(path.as_ref())
 }
 
 /// Write a slice as the entire contents of a file.
@@ -326,7 +332,10 @@ pub fn read_to_string<P: AsRef<Path>>(path: P) -> io::Result<String> {
 /// ```
 #[stable(feature = "fs_read_write_bytes", since = "1.26.0")]
 pub fn write<P: AsRef<Path>, C: AsRef<[u8]>>(path: P, contents: C) -> io::Result<()> {
-    File::create(path)?.write_all(contents.as_ref())
+    fn inner(path: &Path, contents: &[u8]) -> io::Result<()> {
+        File::create(path)?.write_all(contents)
+    }
+    inner(path.as_ref(), contents.as_ref())
 }
 
 impl File {
