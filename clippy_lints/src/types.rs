@@ -2239,8 +2239,10 @@ impl<'a, 'b, 'tcx: 'a + 'b> ImplicitHasherConstructorVisitor<'a, 'b, 'tcx> {
 
 impl<'a, 'b, 'tcx: 'a + 'b> Visitor<'tcx> for ImplicitHasherConstructorVisitor<'a, 'b, 'tcx> {
     fn visit_body(&mut self, body: &'tcx Body) {
+        let prev_body = self.body;
         self.body = self.cx.tcx.body_tables(body.id());
         walk_body(self, body);
+        self.body = prev_body;
     }
 
     fn visit_expr(&mut self, e: &'tcx Expr) {
