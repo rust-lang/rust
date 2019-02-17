@@ -41,7 +41,7 @@ impl ToOwned for u8 {
 pub trait ToOwned {
     type Owned;
 
-    /// Create owned data from borrowed data, usually by copying.
+    /// Creates owned data from borrowed data, usually by copying.
     fn to_owned(&self) -> Self::Owned;
 }
 

@@ -20,20 +20,20 @@ mod util;
 pub mod query;
 
 use chalk_engine;
-use hir;
-use hir::def_id::DefId;
-use infer::{InferCtxt, SuppressRegionErrors};
-use infer::outlives::env::OutlivesEnvironment;
-use middle::region;
-use mir::interpret::ErrorHandled;
+use crate::hir;
+use crate::hir::def_id::DefId;
+use crate::infer::{InferCtxt, SuppressRegionErrors};
+use crate::infer::outlives::env::OutlivesEnvironment;
+use crate::middle::region;
+use crate::mir::interpret::ErrorHandled;
 use rustc_data_structures::sync::Lrc;
 use syntax::ast;
 use syntax_pos::{Span, DUMMY_SP};
-use ty::subst::Substs;
-use ty::{self, AdtKind, List, Ty, TyCtxt, GenericParamDefKind, ToPredicate};
-use ty::error::{ExpectedFound, TypeError};
-use ty::fold::{TypeFolder, TypeFoldable, TypeVisitor};
-use util::common::ErrorReported;
+use crate::ty::subst::Substs;
+use crate::ty::{self, AdtKind, List, Ty, TyCtxt, GenericParamDefKind, ToPredicate};
+use crate::ty::error::{ExpectedFound, TypeError};
+use crate::ty::fold::{TypeFolder, TypeFoldable, TypeVisitor};
+use crate::util::common::ErrorReported;
 
 use std::fmt::Debug;
 use std::rc::Rc;
@@ -73,14 +73,14 @@ pub use self::FulfillmentErrorCode::*;
 pub use self::SelectionError::*;
 pub use self::Vtable::*;
 
-// Whether to enable bug compatibility with issue #43355
+/// Whether to enable bug compatibility with issue #43355.
 #[derive(Copy, Clone, PartialEq, Eq, Debug)]
 pub enum IntercrateMode {
     Issue43355,
     Fixed
 }
 
-// The mode that trait queries run in
+/// The mode that trait queries run in.
 #[derive(Copy, Clone, PartialEq, Eq, Debug)]
 pub enum TraitQueryMode {
     // Standard/un-canonicalized queries get accurate
@@ -93,46 +93,46 @@ pub enum TraitQueryMode {
     Canonical,
 }
 
-/// An `Obligation` represents some trait reference (e.g., `int:Eq`) for
-/// which the vtable must be found.  The process of finding a vtable is
+/// An `Obligation` represents some trait reference (e.g., `int: Eq`) for
+/// which the vtable must be found. The process of finding a vtable is
 /// called "resolving" the `Obligation`. This process consists of
 /// either identifying an `impl` (e.g., `impl Eq for int`) that
 /// provides the required vtable, or else finding a bound that is in
 /// scope. The eventual result is usually a `Selection` (defined below).
 #[derive(Clone, PartialEq, Eq, Hash)]
 pub struct Obligation<'tcx, T> {
-    /// Why do we have to prove this thing?
+    /// The reason we have to prove this thing.
     pub cause: ObligationCause<'tcx>,
 
-    /// In which environment should we prove this thing?
+    /// The environment in which we should prove this thing.
     pub param_env: ty::ParamEnv<'tcx>,
 
-    /// What are we trying to prove?
+    /// The thing we are trying to prove.
     pub predicate: T,
 
     /// If we started proving this as a result of trying to prove
     /// something else, track the total depth to ensure termination.
     /// If this goes over a certain threshold, we abort compilation --
     /// in such cases, we can not say whether or not the predicate
-    /// holds for certain. Stupid halting problem. Such a drag.
+    /// holds for certain. Stupid halting problem; such a drag.
     pub recursion_depth: usize,
 }
 
 pub type PredicateObligation<'tcx> = Obligation<'tcx, ty::Predicate<'tcx>>;
 pub type TraitObligation<'tcx> = Obligation<'tcx, ty::PolyTraitPredicate<'tcx>>;
 
-/// Why did we incur this obligation? Used for error reporting.
+/// The reason why we incurred this obligation; used for error reporting.
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub struct ObligationCause<'tcx> {
     pub span: Span,
 
-    // The id of the fn body that triggered this obligation. This is
-    // used for region obligations to determine the precise
-    // environment in which the region obligation should be evaluated
-    // (in particular, closures can add new assumptions). See the
-    // field `region_obligations` of the `FulfillmentContext` for more
-    // information.
-    pub body_id: ast::NodeId,
+    /// The ID of the fn body that triggered this obligation. This is
+    /// used for region obligations to determine the precise
+    /// environment in which the region obligation should be evaluated
+    /// (in particular, closures can add new assumptions). See the
+    /// field `region_obligations` of the `FulfillmentContext` for more
+    /// information.
+    pub body_id: hir::HirId,
 
     pub code: ObligationCauseCode<'tcx>
 }
@@ -145,6 +145,7 @@ impl<'tcx> ObligationCause<'tcx> {
             ObligationCauseCode::StartFunctionType => {
                 tcx.sess.source_map().def_span(self.span)
             }
+            ObligationCauseCode::MatchExpressionArm { arm_span, .. } => arm_span,
             _ => self.span,
         }
     }
@@ -152,20 +153,20 @@ impl<'tcx> ObligationCause<'tcx> {
 
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub enum ObligationCauseCode<'tcx> {
-    /// Not well classified or should be obvious from span.
+    /// Not well classified or should be obvious from the span.
     MiscObligation,
 
-    /// A slice or array is WF only if `T: Sized`
+    /// A slice or array is WF only if `T: Sized`.
     SliceOrArrayElem,
 
-    /// A tuple is WF only if its middle elements are Sized
+    /// A tuple is WF only if its middle elements are `Sized`.
     TupleElem,
 
-    /// This is the trait reference from the given projection
+    /// This is the trait reference from the given projection.
     ProjectionWf(ty::ProjectionTy<'tcx>),
 
-    /// In an impl of trait X for type Y, type Y must
-    /// also implement all supertraits of X.
+    /// In an impl of trait `X` for type `Y`, type `Y` must
+    /// also implement all supertraits of `X`.
     ItemObligation(DefId),
 
     /// A type like `&'a T` is WF only if `T: 'a`.
@@ -223,6 +224,8 @@ pub enum ObligationCauseCode<'tcx> {
     MatchExpressionArm {
         arm_span: Span,
         source: hir::MatchSource,
+        prior_arms: Vec<Span>,
+        last_ty: Ty<'tcx>,
     },
 
     /// Computing common supertype in the pattern guard for the arms of a match expression
@@ -271,7 +274,7 @@ pub struct DerivedObligationCause<'tcx> {
     /// directly.
     parent_trait_ref: ty::PolyTraitRef<'tcx>,
 
-    /// The parent trait had this cause
+    /// The parent trait had this cause.
     parent_code: Rc<ObligationCauseCode<'tcx>>
 }
 
@@ -280,14 +283,14 @@ pub type PredicateObligations<'tcx> = Vec<PredicateObligation<'tcx>>;
 pub type TraitObligations<'tcx> = Vec<TraitObligation<'tcx>>;
 
 /// The following types:
-/// * `WhereClause`
-/// * `WellFormed`
-/// * `FromEnv`
-/// * `DomainGoal`
-/// * `Goal`
-/// * `Clause`
-/// * `Environment`
-/// * `InEnvironment`
+/// * `WhereClause`,
+/// * `WellFormed`,
+/// * `FromEnv`,
+/// * `DomainGoal`,
+/// * `Goal`,
+/// * `Clause`,
+/// * `Environment`,
+/// * `InEnvironment`,
 /// are used for representing the trait system in the form of
 /// logic programming clauses. They are part of the interface
 /// for the chalk SLG solver.
@@ -399,10 +402,10 @@ pub type Clauses<'tcx> = &'tcx List<Clause<'tcx>>;
 /// with the goal to solve and proceeds from there).
 #[derive(Copy, Clone, PartialEq, Eq, Hash, Debug)]
 pub struct ProgramClause<'tcx> {
-    /// This goal will be considered true...
+    /// This goal will be considered true ...
     pub goal: DomainGoal<'tcx>,
 
-    /// ...if we can prove these hypotheses (there may be no hypotheses at all):
+    /// ... if we can prove these hypotheses (there may be no hypotheses at all):
     pub hypotheses: Goals<'tcx>,
 
     /// Useful for filtering clauses.
@@ -485,7 +488,6 @@ pub type SelectionResult<'tcx, T> = Result<Option<T>, SelectionError<'tcx>>;
 /// For example, the vtable may be tied to a specific impl (case A),
 /// or it may be relative to some bound that is in scope (case B).
 ///
-///
 /// ```
 /// impl<T:Clone> Clone<T> for Option<T> { ... } // Impl_1
 /// impl<T:Clone> Clone<T> for Box<T> { ... }    // Impl_2
@@ -517,7 +519,7 @@ pub enum Vtable<'tcx, N> {
     /// Vtable identifying a particular impl.
     VtableImpl(VtableImplData<'tcx, N>),
 
-    /// Vtable for auto trait implementations
+    /// Vtable for auto trait implementations.
     /// This carries the information and nested obligations with regards
     /// to an auto implementation for a trait `Trait`. The nested obligations
     /// ensure the trait implementation holds for all the constituent types.
@@ -529,18 +531,18 @@ pub enum Vtable<'tcx, N> {
     /// any).
     VtableParam(Vec<N>),
 
-    /// Virtual calls through an object
+    /// Virtual calls through an object.
     VtableObject(VtableObjectData<'tcx, N>),
 
     /// Successful resolution for a builtin trait.
     VtableBuiltin(VtableBuiltinData<N>),
 
-    /// Vtable automatically generated for a closure. The def ID is the ID
+    /// Vtable automatically generated for a closure. The `DefId` is the ID
     /// of the closure expression. This is a `VtableImpl` in spirit, but the
     /// impl is generated by the compiler and does not appear in the source.
     VtableClosure(VtableClosureData<'tcx, N>),
 
-    /// Same as above, but for a fn pointer type with the given signature.
+    /// Same as above, but for a function pointer type with the given signature.
     VtableFnPointer(VtableFnPointerData<'tcx, N>),
 
     /// Vtable automatically generated for a generator.
@@ -655,7 +657,7 @@ pub fn type_known_to_meet_bound_modulo_regions<'a, 'gcx, 'tcx>(
     };
     let obligation = Obligation {
         param_env,
-        cause: ObligationCause::misc(span, ast::DUMMY_NODE_ID),
+        cause: ObligationCause::misc(span, hir::DUMMY_HIR_ID),
         recursion_depth: 0,
         predicate: trait_ref.to_predicate(),
     };
@@ -678,7 +680,7 @@ pub fn type_known_to_meet_bound_modulo_regions<'a, 'gcx, 'tcx>(
         // We can use a dummy node-id here because we won't pay any mind
         // to region obligations that arise (there shouldn't really be any
         // anyhow).
-        let cause = ObligationCause::misc(span, ast::DUMMY_NODE_ID);
+        let cause = ObligationCause::misc(span, hir::DUMMY_HIR_ID);
 
         fulfill_cx.register_bound(infcx, param_env, ty, def_id, cause);
 
@@ -1058,7 +1060,7 @@ impl<'tcx,O> Obligation<'tcx,O> {
     }
 
     pub fn misc(span: Span,
-                body_id: ast::NodeId,
+                body_id: hir::HirId,
                 param_env: ty::ParamEnv<'tcx>,
                 trait_ref: O)
                 -> Obligation<'tcx, O> {
@@ -1076,18 +1078,18 @@ impl<'tcx,O> Obligation<'tcx,O> {
 impl<'tcx> ObligationCause<'tcx> {
     #[inline]
     pub fn new(span: Span,
-               body_id: ast::NodeId,
+               body_id: hir::HirId,
                code: ObligationCauseCode<'tcx>)
                -> ObligationCause<'tcx> {
-        ObligationCause { span: span, body_id: body_id, code: code }
+        ObligationCause { span, body_id, code }
     }
 
-    pub fn misc(span: Span, body_id: ast::NodeId) -> ObligationCause<'tcx> {
-        ObligationCause { span: span, body_id: body_id, code: MiscObligation }
+    pub fn misc(span: Span, body_id: hir::HirId) -> ObligationCause<'tcx> {
+        ObligationCause { span, body_id, code: MiscObligation }
     }
 
     pub fn dummy() -> ObligationCause<'tcx> {
-        ObligationCause { span: DUMMY_SP, body_id: ast::CRATE_NODE_ID, code: MiscObligation }
+        ObligationCause { span: DUMMY_SP, body_id: hir::CRATE_HIR_ID, code: MiscObligation }
     }
 }
 

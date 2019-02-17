@@ -25,17 +25,17 @@ pub use self::allocation::{
 pub use self::pointer::{Pointer, PointerArithmetic};
 
 use std::fmt;
-use mir;
-use hir::def_id::DefId;
-use ty::{self, TyCtxt, Instance};
-use ty::layout::{self, Size};
+use crate::mir;
+use crate::hir::def_id::DefId;
+use crate::ty::{self, TyCtxt, Instance, subst::UnpackedKind};
+use crate::ty::layout::{self, Size};
 use std::io;
-use rustc_serialize::{Encoder, Decodable, Encodable};
+use crate::rustc_serialize::{Encoder, Decodable, Encodable};
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::sync::{Lock as Mutex, HashMapExt};
 use rustc_data_structures::tiny_list::TinyList;
 use byteorder::{WriteBytesExt, ReadBytesExt, LittleEndian, BigEndian};
-use ty::codec::TyDecoder;
+use crate::ty::codec::TyDecoder;
 use std::sync::atomic::{AtomicU32, Ordering};
 use std::num::NonZeroU32;
 
@@ -53,8 +53,8 @@ pub struct GlobalId<'tcx> {
 #[derive(Copy, Clone, Eq, Hash, Ord, PartialEq, PartialOrd, Debug)]
 pub struct AllocId(pub u64);
 
-impl ::rustc_serialize::UseSpecializedEncodable for AllocId {}
-impl ::rustc_serialize::UseSpecializedDecodable for AllocId {}
+impl crate::rustc_serialize::UseSpecializedEncodable for AllocId {}
+impl crate::rustc_serialize::UseSpecializedDecodable for AllocId {}
 
 #[derive(RustcDecodable, RustcEncodable)]
 enum AllocDiscriminant {
@@ -260,23 +260,23 @@ impl fmt::Display for AllocId {
 
 #[derive(Debug, Clone, Eq, PartialEq, Hash, RustcDecodable, RustcEncodable)]
 pub enum AllocKind<'tcx> {
-    /// The alloc id is used as a function pointer
+    /// The alloc ID is used as a function pointer
     Function(Instance<'tcx>),
-    /// The alloc id points to a "lazy" static variable that did not get computed (yet).
+    /// The alloc ID points to a "lazy" static variable that did not get computed (yet).
     /// This is also used to break the cycle in recursive statics.
     Static(DefId),
-    /// The alloc id points to memory
+    /// The alloc ID points to memory.
     Memory(&'tcx Allocation),
 }
 
 pub struct AllocMap<'tcx> {
-    /// Lets you know what an AllocId refers to
+    /// Lets you know what an `AllocId` refers to.
     id_to_kind: FxHashMap<AllocId, AllocKind<'tcx>>,
 
-    /// Used to ensure that statics only get one associated AllocId
+    /// Used to ensure that statics only get one associated `AllocId`.
     type_interner: FxHashMap<AllocKind<'tcx>, AllocId>,
 
-    /// The AllocId to assign to the next requested id.
+    /// The `AllocId` to assign to the next requested ID.
     /// Always incremented, never gets smaller.
     next_id: AllocId,
 }
@@ -318,14 +318,29 @@ impl<'tcx> AllocMap<'tcx> {
         id
     }
 
-    /// Functions cannot be identified by pointers, as asm-equal functions can get deduplicated
-    /// by the linker and functions can be duplicated across crates.
-    /// We thus generate a new `AllocId` for every mention of a function. This means that
-    /// `main as fn() == main as fn()` is false, while `let x = main as fn(); x == x` is true.
     pub fn create_fn_alloc(&mut self, instance: Instance<'tcx>) -> AllocId {
-        let id = self.reserve();
-        self.id_to_kind.insert(id, AllocKind::Function(instance));
-        id
+        // Functions cannot be identified by pointers, as asm-equal functions can get deduplicated
+        // by the linker (we set the "unnamed_addr" attribute for LLVM) and functions can be
+        // duplicated across crates.
+        // We thus generate a new `AllocId` for every mention of a function. This means that
+        // `main as fn() == main as fn()` is false, while `let x = main as fn(); x == x` is true.
+        // However, formatting code relies on function identity (see #58320), so we only do
+        // this for generic functions.  Lifetime parameters are ignored.
+        let is_generic = instance.substs.into_iter().any(|kind| {
+            match kind.unpack() {
+                UnpackedKind::Lifetime(_) => false,
+                _ => true,
+            }
+        });
+        if is_generic {
+            // Get a fresh ID
+            let id = self.reserve();
+            self.id_to_kind.insert(id, AllocKind::Function(instance));
+            id
+        } else {
+            // Deduplicate
+            self.intern(AllocKind::Function(instance))
+        }
     }
 
     /// Returns `None` in case the `AllocId` is dangling. An `EvalContext` can still have a
@@ -345,7 +360,7 @@ impl<'tcx> AllocMap<'tcx> {
         }
     }
 
-    /// Generate an `AllocId` for a static or return a cached one in case this function has been
+    /// Generates an `AllocId` for a static or return a cached one in case this function has been
     /// called on the same static before.
     pub fn intern_static(&mut self, static_id: DefId) -> AllocId {
         self.intern(AllocKind::Static(static_id))

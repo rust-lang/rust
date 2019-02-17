@@ -1,13 +1,14 @@
 //! Computes the restrictions that result from a borrow.
 
-use borrowck::*;
+use crate::borrowck::*;
 use rustc::middle::expr_use_visitor as euv;
 use rustc::middle::mem_categorization as mc;
 use rustc::middle::mem_categorization::Categorization;
 use rustc::ty;
 use syntax_pos::Span;
+use log::debug;
 
-use borrowck::ToInteriorKind;
+use crate::borrowck::ToInteriorKind;
 
 use std::rc::Rc;
 

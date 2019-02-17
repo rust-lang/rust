@@ -1,3 +1,5 @@
+// compile-flags:-Z unstable-options --generate-redirect-pages
+
 use std::ops::Deref;
 
 pub struct Foo;

@@ -23,13 +23,16 @@ pub use self::LintSource::*;
 
 use rustc_data_structures::sync::{self, Lrc};
 
+use crate::hir::def_id::{CrateNum, LOCAL_CRATE};
+use crate::hir::intravisit;
+use crate::hir;
+use crate::lint::builtin::{BuiltinLintDiagnostics, DUPLICATE_MATCHER_BINDING_NAME};
+use crate::lint::builtin::parser::{QUESTION_MARK_MACRO_SEP, ILL_FORMED_ATTRIBUTE_INPUT};
+use crate::session::{Session, DiagnosticMessageId};
+use crate::ty::TyCtxt;
+use crate::ty::query::Providers;
+use crate::util::nodemap::NodeMap;
 use errors::{DiagnosticBuilder, DiagnosticId};
-use hir::def_id::{CrateNum, LOCAL_CRATE};
-use hir::intravisit;
-use hir;
-use lint::builtin::BuiltinLintDiagnostics;
-use lint::builtin::parser::{QUESTION_MARK_MACRO_SEP, ILL_FORMED_ATTRIBUTE_INPUT};
-use session::{Session, DiagnosticMessageId};
 use std::{hash, ptr};
 use syntax::ast;
 use syntax::source_map::{MultiSpan, ExpnFormat};
@@ -37,11 +40,8 @@ use syntax::early_buffered_lints::BufferedEarlyLintId;
 use syntax::edition::Edition;
 use syntax::symbol::Symbol;
 use syntax_pos::Span;
-use ty::TyCtxt;
-use ty::query::Providers;
-use util::nodemap::NodeMap;
 
-pub use lint::context::{LateContext, EarlyContext, LintContext, LintStore,
+pub use crate::lint::context::{LateContext, EarlyContext, LintContext, LintStore,
                         check_crate, check_ast_crate, CheckLintNameResult,
                         FutureIncompatibleInfo, BufferedEarlyLint};
 
@@ -72,7 +72,7 @@ pub struct Lint {
     /// `default_level`.
     pub edition_lint_opts: Option<(Edition, Level)>,
 
-    /// Whether this lint is reported even inside expansions of external macros
+    /// `true` if this lint is reported even inside expansions of external macros.
     pub report_in_external_macro: bool,
 }
 
@@ -82,10 +82,11 @@ impl Lint {
         match lint_id {
             BufferedEarlyLintId::QuestionMarkMacroSep => QUESTION_MARK_MACRO_SEP,
             BufferedEarlyLintId::IllFormedAttributeInput => ILL_FORMED_ATTRIBUTE_INPUT,
+            BufferedEarlyLintId::DuplicateMacroMatcherBindingName => DUPLICATE_MATCHER_BINDING_NAME,
         }
     }
 
-    /// Get the lint's name, with ASCII letters converted to lowercase.
+    /// Gets the lint's name, with ASCII letters converted to lowercase.
     pub fn name_lower(&self) -> String {
         self.name.to_ascii_lowercase()
     }
@@ -98,7 +99,7 @@ impl Lint {
     }
 }
 
-/// Declare a static item of type `&'static Lint`.
+/// Declares a static item of type `&'static Lint`.
 #[macro_export]
 macro_rules! declare_lint {
     ($vis: vis $NAME: ident, $Level: ident, $desc: expr) => (
@@ -149,7 +150,7 @@ macro_rules! declare_tool_lint {
     );
 }
 
-/// Declare a static `LintArray` and return it as an expression.
+/// Declares a static `LintArray` and return it as an expression.
 #[macro_export]
 macro_rules! lint_array {
     ($( $lint:expr ),* ,) => { lint_array!( $($lint),* ) };
@@ -163,7 +164,7 @@ pub type LintArray = Vec<&'static Lint>;
 pub trait LintPass {
     fn name(&self) -> &'static str;
 
-    /// Get descriptions of the lints this `LintPass` object can emit.
+    /// Gets descriptions of the lints this `LintPass` object can emit.
     ///
     /// N.B., there is no enforcement that the object only emits lints it registered.
     /// And some `rustc` internal `LintPass`es register lints to be emitted by other
@@ -486,7 +487,7 @@ impl hash::Hash for LintId {
 }
 
 impl LintId {
-    /// Get the `LintId` for a `Lint`.
+    /// Gets the `LintId` for a `Lint`.
     pub fn of(lint: &'static Lint) -> LintId {
         LintId {
             lint,
@@ -497,7 +498,7 @@ impl LintId {
         self.lint.name
     }
 
-    /// Get the name of the lint.
+    /// Gets the name of the lint.
     pub fn to_string(&self) -> String {
         self.lint.name_lower()
     }
@@ -517,7 +518,7 @@ impl_stable_hash_for!(enum self::Level {
 });
 
 impl Level {
-    /// Convert a level to a lower-case string.
+    /// Converts a level to a lower-case string.
     pub fn as_str(self) -> &'static str {
         match self {
             Allow => "allow",
@@ -527,7 +528,7 @@ impl Level {
         }
     }
 
-    /// Convert a lower-case string to a level.
+    /// Converts a lower-case string to a level.
     pub fn from_str(x: &str) -> Option<Level> {
         match x {
             "allow" => Some(Allow),
@@ -678,7 +679,7 @@ pub fn struct_lint_level<'a>(sess: &'a Session,
             "this was previously accepted by the compiler but is being phased out; \
              it will become a hard error";
 
-        let explanation = if lint_id == LintId::of(::lint::builtin::UNSTABLE_NAME_COLLISIONS) {
+        let explanation = if lint_id == LintId::of(crate::lint::builtin::UNSTABLE_NAME_COLLISIONS) {
             "once this method is added to the standard library, \
              the ambiguity may cause an error or change in behavior!"
                 .to_owned()

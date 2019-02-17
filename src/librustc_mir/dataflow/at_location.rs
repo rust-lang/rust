@@ -4,8 +4,8 @@
 use rustc::mir::{BasicBlock, Location};
 use rustc_data_structures::bit_set::{BitIter, BitSet, HybridBitSet};
 
-use dataflow::{BitDenotation, BlockSets, DataflowResults};
-use dataflow::move_paths::{HasMoveData, MovePathIndex};
+use crate::dataflow::{BitDenotation, BlockSets, DataflowResults};
+use crate::dataflow::move_paths::{HasMoveData, MovePathIndex};
 
 use std::iter;
 
@@ -26,14 +26,14 @@ pub trait FlowsAtLocation {
     /// effects don't apply to the unwind edge).
     fn reset_to_exit_of(&mut self, bb: BasicBlock);
 
-    /// Build gen + kill sets for statement at `loc`.
+    /// Builds gen and kill sets for statement at `loc`.
     ///
     /// Note that invoking this method alone does not change the
     /// `curr_state` -- you must invoke `apply_local_effect`
     /// afterwards.
     fn reconstruct_statement_effect(&mut self, loc: Location);
 
-    /// Build gen + kill sets for terminator for `loc`.
+    /// Builds gen and kill sets for terminator for `loc`.
     ///
     /// Note that invoking this method alone does not change the
     /// `curr_state` -- you must invoke `apply_local_effect`
@@ -115,7 +115,7 @@ where
     }
 
     /// Returns an iterator over the elements present in the current state.
-    pub fn iter_incoming(&self) -> iter::Peekable<BitIter<BD::Idx>> {
+    pub fn iter_incoming(&self) -> iter::Peekable<BitIter<'_, BD::Idx>> {
         self.curr_state.iter().peekable()
     }
 
@@ -124,7 +124,7 @@ where
     /// Invokes `f` with an iterator over the resulting state.
     pub fn with_iter_outgoing<F>(&self, f: F)
     where
-        F: FnOnce(BitIter<BD::Idx>),
+        F: FnOnce(BitIter<'_, BD::Idx>),
     {
         let mut curr_state = self.curr_state.clone();
         curr_state.union(&self.stmt_gen);

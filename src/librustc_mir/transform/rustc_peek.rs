@@ -5,25 +5,27 @@ use syntax_pos::Span;
 use rustc::ty::{self, TyCtxt};
 use rustc::mir::{self, Mir, Location};
 use rustc_data_structures::bit_set::BitSet;
-use transform::{MirPass, MirSource};
+use crate::transform::{MirPass, MirSource};
 
-use dataflow::{do_dataflow, DebugFormatted};
-use dataflow::MoveDataParamEnv;
-use dataflow::BitDenotation;
-use dataflow::DataflowResults;
-use dataflow::{DefinitelyInitializedPlaces, MaybeInitializedPlaces, MaybeUninitializedPlaces};
-use dataflow::move_paths::{MovePathIndex, LookupResult};
-use dataflow::move_paths::{HasMoveData, MoveData};
-use dataflow;
+use crate::dataflow::{do_dataflow, DebugFormatted};
+use crate::dataflow::MoveDataParamEnv;
+use crate::dataflow::BitDenotation;
+use crate::dataflow::DataflowResults;
+use crate::dataflow::{
+    DefinitelyInitializedPlaces, MaybeInitializedPlaces, MaybeUninitializedPlaces
+};
+use crate::dataflow::move_paths::{MovePathIndex, LookupResult};
+use crate::dataflow::move_paths::{HasMoveData, MoveData};
+use crate::dataflow;
 
-use dataflow::has_rustc_mir_with;
+use crate::dataflow::has_rustc_mir_with;
 
 pub struct SanityCheck;
 
 impl MirPass for SanityCheck {
     fn run_pass<'a, 'tcx>(&self, tcx: TyCtxt<'a, 'tcx, 'tcx>,
-                          src: MirSource, mir: &mut Mir<'tcx>) {
-        let def_id = src.def_id;
+                          src: MirSource<'tcx>, mir: &mut Mir<'tcx>) {
+        let def_id = src.def_id();
         let id = tcx.hir().as_local_node_id(def_id).unwrap();
         if !tcx.has_attr(def_id, "rustc_mir") {
             debug!("skipping rustc_peek::SanityCheck on {}", tcx.item_path_str(def_id));

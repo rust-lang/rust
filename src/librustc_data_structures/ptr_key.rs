@@ -4,7 +4,7 @@ use std::ops::Deref;
 /// A wrapper around reference that compares and hashes like a pointer.
 /// Can be used as a key in sets/maps indexed by pointers to avoid `unsafe`.
 #[derive(Debug)]
-pub struct PtrKey<'a, T: 'a>(pub &'a T);
+pub struct PtrKey<'a, T>(pub &'a T);
 
 impl<'a, T> Clone for PtrKey<'a, T> {
     fn clone(&self) -> Self { *self }

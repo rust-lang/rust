@@ -3,34 +3,34 @@
 #![allow(dead_code)]
 #![allow(unused_imports)]
 
-use self::HasTestSignature::*;
+use HasTestSignature::*;
 
 use std::iter;
 use std::slice;
 use std::mem;
 use std::vec;
-use attr::{self, HasAttrs};
-use syntax_pos::{self, DUMMY_SP, NO_EXPANSION, Span, SourceFile, BytePos};
 
-use source_map::{self, SourceMap, ExpnInfo, MacroAttribute, dummy_spanned, respan};
-use errors;
-use config;
-use entry::{self, EntryPointType};
-use ext::base::{ExtCtxt, Resolver};
-use ext::build::AstBuilder;
-use ext::expand::ExpansionConfig;
-use ext::hygiene::{self, Mark, SyntaxContext};
-use fold::Folder;
-use feature_gate::Features;
-use util::move_map::MoveMap;
-use fold::{self, ExpectOne};
-use parse::{token, ParseSess};
-use print::pprust;
-use ast::{self, Ident};
-use ptr::P;
-use smallvec::SmallVec;
-use symbol::{self, Symbol, keywords};
-use ThinVec;
+use log::debug;
+use smallvec::{smallvec, SmallVec};
+use syntax_pos::{DUMMY_SP, NO_EXPANSION, Span, SourceFile, BytePos};
+
+use crate::attr::{self, HasAttrs};
+use crate::source_map::{self, SourceMap, ExpnInfo, MacroAttribute, dummy_spanned, respan};
+use crate::config;
+use crate::entry::{self, EntryPointType};
+use crate::ext::base::{ExtCtxt, Resolver};
+use crate::ext::build::AstBuilder;
+use crate::ext::expand::ExpansionConfig;
+use crate::ext::hygiene::{self, Mark, SyntaxContext};
+use crate::mut_visit::{*, ExpectOne};
+use crate::feature_gate::Features;
+use crate::util::map_in_place::MapInPlace;
+use crate::parse::{token, ParseSess};
+use crate::print::pprust;
+use crate::ast::{self, Ident};
+use crate::ptr::P;
+use crate::symbol::{self, Symbol, keywords};
+use crate::ThinVec;
 
 struct Test {
     span: Span,
@@ -57,9 +57,9 @@ struct TestCtxt<'a> {
 pub fn modify_for_testing(sess: &ParseSess,
                           resolver: &mut dyn Resolver,
                           should_test: bool,
-                          krate: ast::Crate,
+                          krate: &mut ast::Crate,
                           span_diagnostic: &errors::Handler,
-                          features: &Features) -> ast::Crate {
+                          features: &Features) {
     // Check for #[reexport_test_harness_main = "some_name"] which
     // creates a `use __test::main as some_name;`. This needs to be
     // unconditional, so that the attribute is still marked as used in
@@ -75,8 +75,6 @@ pub fn modify_for_testing(sess: &ParseSess,
     if should_test {
         generate_test_harness(sess, resolver, reexport_test_harness_main,
                               krate, span_diagnostic, features, test_runner)
-    } else {
-        krate
     }
 }
 
@@ -88,21 +86,20 @@ struct TestHarnessGenerator<'a> {
     tested_submods: Vec<(Ident, Ident)>,
 }
 
-impl<'a> fold::Folder for TestHarnessGenerator<'a> {
-    fn fold_crate(&mut self, c: ast::Crate) -> ast::Crate {
-        let mut folded = fold::noop_fold_crate(c, self);
+impl<'a> MutVisitor for TestHarnessGenerator<'a> {
+    fn visit_crate(&mut self, c: &mut ast::Crate) {
+        noop_visit_crate(c, self);
 
         // Create a main function to run our tests
         let test_main = {
             let unresolved = mk_main(&mut self.cx);
-            self.cx.ext_cx.monotonic_expander().fold_item(unresolved).pop().unwrap()
+            self.cx.ext_cx.monotonic_expander().flat_map_item(unresolved).pop().unwrap()
         };
 
-        folded.module.items.push(test_main);
-        folded
+        c.module.items.push(test_main);
     }
 
-    fn fold_item(&mut self, i: P<ast::Item>) -> SmallVec<[P<ast::Item>; 1]> {
+    fn flat_map_item(&mut self, i: P<ast::Item>) -> SmallVec<[P<ast::Item>; 1]> {
         let ident = i.ident;
         if ident.name != keywords::Invalid.name() {
             self.cx.path.push(ident);
@@ -123,16 +120,16 @@ impl<'a> fold::Folder for TestHarnessGenerator<'a> {
 
         // We don't want to recurse into anything other than mods, since
         // mods or tests inside of functions will break things
-        if let ast::ItemKind::Mod(module) = item.node {
+        if let ast::ItemKind::Mod(mut module) = item.node {
             let tests = mem::replace(&mut self.tests, Vec::new());
             let tested_submods = mem::replace(&mut self.tested_submods, Vec::new());
-            let mut mod_folded = fold::noop_fold_mod(module, self);
+            noop_visit_mod(&mut module, self);
             let tests = mem::replace(&mut self.tests, tests);
             let tested_submods = mem::replace(&mut self.tested_submods, tested_submods);
 
             if !tests.is_empty() || !tested_submods.is_empty() {
                 let (it, sym) = mk_reexport_mod(&mut self.cx, item.id, tests, tested_submods);
-                mod_folded.items.push(it);
+                module.items.push(it);
 
                 if !self.cx.path.is_empty() {
                     self.tested_submods.push((self.cx.path[self.cx.path.len()-1], sym));
@@ -141,7 +138,7 @@ impl<'a> fold::Folder for TestHarnessGenerator<'a> {
                     self.cx.toplevel_reexport = Some(sym);
                 }
             }
-            item.node = ast::ItemKind::Mod(mod_folded);
+            item.node = ast::ItemKind::Mod(module);
         }
         if ident.name != keywords::Invalid.name() {
             self.cx.path.pop();
@@ -149,7 +146,9 @@ impl<'a> fold::Folder for TestHarnessGenerator<'a> {
         smallvec![P(item)]
     }
 
-    fn fold_mac(&mut self, mac: ast::Mac) -> ast::Mac { mac }
+    fn visit_mac(&mut self, _mac: &mut ast::Mac) {
+        // Do nothing.
+    }
 }
 
 /// A folder used to remove any entry points (like fn main) because the harness
@@ -159,20 +158,20 @@ struct EntryPointCleaner {
     depth: usize,
 }
 
-impl fold::Folder for EntryPointCleaner {
-    fn fold_item(&mut self, i: P<ast::Item>) -> SmallVec<[P<ast::Item>; 1]> {
+impl MutVisitor for EntryPointCleaner {
+    fn flat_map_item(&mut self, i: P<ast::Item>) -> SmallVec<[P<ast::Item>; 1]> {
         self.depth += 1;
-        let folded = fold::noop_fold_item(i, self).expect_one("noop did something");
+        let item = noop_flat_map_item(i, self).expect_one("noop did something");
         self.depth -= 1;
 
         // Remove any #[main] or #[start] from the AST so it doesn't
         // clash with the one we're going to add, but mark it as
         // #[allow(dead_code)] to avoid printing warnings.
-        let folded = match entry::entry_point_type(&folded, self.depth) {
+        let item = match entry::entry_point_type(&item, self.depth) {
             EntryPointType::MainNamed |
             EntryPointType::MainAttr |
             EntryPointType::Start =>
-                folded.map(|ast::Item {id, ident, attrs, node, vis, span, tokens}| {
+                item.map(|ast::Item {id, ident, attrs, node, vis, span, tokens}| {
                     let allow_ident = Ident::from_str("allow");
                     let dc_nested = attr::mk_nested_word_item(Ident::from_str("dead_code"));
                     let allow_dead_code_item = attr::mk_list_item(DUMMY_SP, allow_ident,
@@ -197,20 +196,22 @@ impl fold::Folder for EntryPointCleaner {
                     }
                 }),
             EntryPointType::None |
-            EntryPointType::OtherMain => folded,
+            EntryPointType::OtherMain => item,
         };
 
-        smallvec![folded]
+        smallvec![item]
     }
 
-    fn fold_mac(&mut self, mac: ast::Mac) -> ast::Mac { mac }
+    fn visit_mac(&mut self, _mac: &mut ast::Mac) {
+        // Do nothing.
+    }
 }
 
 /// Creates an item (specifically a module) that "pub use"s the tests passed in.
 /// Each tested submodule will contain a similar reexport module that we will export
 /// under the name of the original module. That is, `submod::__test_reexports` is
 /// reexported like so `pub use submod::__test_reexports as submod`.
-fn mk_reexport_mod(cx: &mut TestCtxt,
+fn mk_reexport_mod(cx: &mut TestCtxt<'_>,
                    parent: ast::NodeId,
                    tests: Vec<Ident>,
                    tested_submods: Vec<(Ident, Ident)>)
@@ -235,7 +236,7 @@ fn mk_reexport_mod(cx: &mut TestCtxt,
     let sym = Ident::with_empty_ctxt(Symbol::gensym("__test_reexports"));
     let parent = if parent == ast::DUMMY_NODE_ID { ast::CRATE_NODE_ID } else { parent };
     cx.ext_cx.current_expansion.mark = cx.ext_cx.resolver.get_module_scope(parent);
-    let it = cx.ext_cx.monotonic_expander().fold_item(P(ast::Item {
+    let it = cx.ext_cx.monotonic_expander().flat_map_item(P(ast::Item {
         ident: sym,
         attrs: Vec::new(),
         id: ast::DUMMY_NODE_ID,
@@ -252,13 +253,13 @@ fn mk_reexport_mod(cx: &mut TestCtxt,
 fn generate_test_harness(sess: &ParseSess,
                          resolver: &mut dyn Resolver,
                          reexport_test_harness_main: Option<Symbol>,
-                         krate: ast::Crate,
+                         krate: &mut ast::Crate,
                          sd: &errors::Handler,
                          features: &Features,
-                         test_runner: Option<ast::Path>) -> ast::Crate {
+                         test_runner: Option<ast::Path>) {
     // Remove the entry points
     let mut cleaner = EntryPointCleaner { depth: 0 };
-    let krate = cleaner.fold_crate(krate);
+    cleaner.visit_crate(krate);
 
     let mark = Mark::fresh(Mark::root());
 
@@ -283,7 +284,11 @@ fn generate_test_harness(sess: &ParseSess,
         call_site: DUMMY_SP,
         def_site: None,
         format: MacroAttribute(Symbol::intern("test_case")),
-        allow_internal_unstable: true,
+        allow_internal_unstable: Some(vec![
+            Symbol::intern("main"),
+            Symbol::intern("test"),
+            Symbol::intern("rustc_attrs"),
+        ].into()),
         allow_internal_unsafe: false,
         local_inner_macros: false,
         edition: hygiene::default_edition(),
@@ -293,13 +298,13 @@ fn generate_test_harness(sess: &ParseSess,
         cx,
         tests: Vec::new(),
         tested_submods: Vec::new(),
-    }.fold_crate(krate)
+    }.visit_crate(krate);
 }
 
 /// Craft a span that will be ignored by the stability lint's
 /// call to source_map's `is_internal` check.
 /// The expanded code calls some unstable functions in the test crate.
-fn ignored_span(cx: &TestCtxt, sp: Span) -> Span {
+fn ignored_span(cx: &TestCtxt<'_>, sp: Span) -> Span {
     sp.with_ctxt(cx.ctxt)
 }
 
@@ -318,7 +323,7 @@ enum BadTestSignature {
 
 /// Creates a function item for use as the main function of a test build.
 /// This function will call the `test_runner` as specified by the crate attribute
-fn mk_main(cx: &mut TestCtxt) -> P<ast::Item> {
+fn mk_main(cx: &mut TestCtxt<'_>) -> P<ast::Item> {
     // Writing this out by hand with 'ignored_span':
     //        pub fn main() {
     //            #![main]
@@ -398,7 +403,7 @@ fn path_name_i(idents: &[Ident]) -> String {
 
 /// Creates a slice containing every test like so:
 /// &[path::to::test1, path::to::test2]
-fn mk_tests_slice(cx: &TestCtxt) -> P<ast::Expr> {
+fn mk_tests_slice(cx: &TestCtxt<'_>) -> P<ast::Expr> {
     debug!("building test vector from {} tests", cx.test_cases.len());
     let ref ecx = cx.ext_cx;
 
@@ -410,7 +415,7 @@ fn mk_tests_slice(cx: &TestCtxt) -> P<ast::Expr> {
 }
 
 /// Creates a path from the top-level __test module to the test via __test_reexports
-fn visible_path(cx: &TestCtxt, path: &[Ident]) -> Vec<Ident>{
+fn visible_path(cx: &TestCtxt<'_>, path: &[Ident]) -> Vec<Ident>{
     let mut visible_path = vec![];
     match cx.toplevel_reexport {
         Some(id) => visible_path.push(id),

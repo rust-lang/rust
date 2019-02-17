@@ -9,7 +9,7 @@ use std::fmt;
 use std::hash::{Hash, Hasher};
 use serialize::{Encodable, Decodable, Encoder, Decoder};
 
-use stable_hasher;
+use crate::stable_hasher;
 
 #[derive(Copy, Clone, PartialEq, Eq, Debug)]
 pub struct Svh {
@@ -17,7 +17,7 @@ pub struct Svh {
 }
 
 impl Svh {
-    /// Create a new `Svh` given the hash. If you actually want to
+    /// Creates a new `Svh` given the hash. If you actually want to
     /// compute the SVH from some HIR, you want the `calculate_svh`
     /// function found in `librustc_incremental`.
     pub fn new(hash: u64) -> Svh {
@@ -40,7 +40,7 @@ impl Hash for Svh {
 }
 
 impl fmt::Display for Svh {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.pad(&self.to_string())
     }
 }

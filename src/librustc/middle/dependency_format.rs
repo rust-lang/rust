@@ -51,13 +51,13 @@
 //! Additionally, the algorithm is geared towards finding *any* solution rather
 //! than finding a number of solutions (there are normally quite a few).
 
-use hir::def_id::CrateNum;
+use crate::hir::def_id::CrateNum;
 
-use session::config;
-use ty::TyCtxt;
-use middle::cstore::{self, DepKind};
-use middle::cstore::LinkagePreference::{self, RequireStatic, RequireDynamic};
-use util::nodemap::FxHashMap;
+use crate::session::config;
+use crate::ty::TyCtxt;
+use crate::middle::cstore::{self, DepKind};
+use crate::middle::cstore::LinkagePreference::{self, RequireStatic, RequireDynamic};
+use crate::util::nodemap::FxHashMap;
 use rustc_target::spec::PanicStrategy;
 
 /// A list of dependencies for a certain crate type.

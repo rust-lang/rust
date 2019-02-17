@@ -1,6 +1,6 @@
-use ich::StableHashingContext;
-use hir::HirId;
-use util::nodemap::FxHashSet;
+use crate::ich::StableHashingContext;
+use crate::hir::HirId;
+use crate::util::nodemap::FxHashSet;
 
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher,
                                            StableHasherResult};

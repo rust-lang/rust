@@ -150,9 +150,9 @@ pub struct RenderOptions {
     pub playground_url: Option<String>,
     /// Whether to sort modules alphabetically on a module page instead of using declaration order.
     /// `true` by default.
-    ///
-    /// FIXME(misdreavus): the flag name is `--sort-modules-by-appearance` but the meaning is
-    /// inverted once read
+    //
+    // FIXME(misdreavus): the flag name is `--sort-modules-by-appearance` but the meaning is
+    // inverted once read.
     pub sort_modules_alphabetically: bool,
     /// List of themes to extend the docs with. Original argument name is included to assist in
     /// displaying errors if it fails a theme check.
@@ -165,9 +165,9 @@ pub struct RenderOptions {
     pub resource_suffix: String,
     /// Whether to run the static CSS/JavaScript through a minifier when outputting them. `true` by
     /// default.
-    ///
-    /// FIXME(misdreavus): the flag name is `--disable-minification` but the meaning is inverted
-    /// once read
+    //
+    // FIXME(misdreavus): the flag name is `--disable-minification` but the meaning is inverted
+    // once read.
     pub enable_minification: bool,
     /// Whether to create an index page in the root of the output directory. If this is true but
     /// `enable_index_page` is None, generate a static listing of crates instead.
@@ -192,6 +192,8 @@ pub struct RenderOptions {
     /// If false, the `select` element to have search filtering by crates on rendered docs
     /// won't be generated.
     pub generate_search_filter: bool,
+    /// Option (disabled by default) to generate files used by RLS and some other tools.
+    pub generate_redirect_pages: bool,
 }
 
 impl Options {
@@ -436,6 +438,7 @@ impl Options {
         let static_root_path = matches.opt_str("static-root-path");
         let generate_search_filter = !matches.opt_present("disable-per-crate-search");
         let persist_doctests = matches.opt_str("persist-doctests").map(PathBuf::from);
+        let generate_redirect_pages = matches.opt_present("generate-redirect-pages");
 
         let (lint_opts, describe_lints, lint_cap) = get_cmd_lint_options(matches, error_format);
 
@@ -480,11 +483,12 @@ impl Options {
                 markdown_css,
                 markdown_playground_url,
                 generate_search_filter,
+                generate_redirect_pages,
             }
         })
     }
 
-    /// Returns whether the file given as `self.input` is a Markdown file.
+    /// Returns `true` if the file given as `self.input` is a Markdown file.
     pub fn markdown_input(&self) -> bool {
         self.input.extension()
             .map_or(false, |e| e == "md" || e == "markdown")

@@ -1,12 +1,12 @@
-use hir::def_id::DefId;
-use ich::StableHashingContext;
+use crate::hir::def_id::DefId;
+use crate::ich::StableHashingContext;
 use rustc_data_structures::stable_hasher::{StableHasher, StableHasherResult,
                                            HashStable};
 use std::fmt::Debug;
 use std::hash::Hash;
 use std::mem;
 use syntax::ast;
-use ty::{self, Ty, TyCtxt};
+use crate::ty::{self, Ty, TyCtxt};
 
 use self::SimplifiedTypeGen::*;
 

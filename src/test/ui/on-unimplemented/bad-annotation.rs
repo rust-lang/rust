@@ -10,7 +10,7 @@ trait Foo<Bar, Baz, Quux>
 
 #[rustc_on_unimplemented="a collection of type `{Self}` cannot be built from an iterator over elements of type `{A}`"]
 trait MyFromIterator<A> {
-    /// Build a container with elements from an external iterator.
+    /// Builds a container with elements from an external iterator.
     fn my_from_iter<T: Iterator<Item=A>>(iterator: T) -> Self;
 }
 

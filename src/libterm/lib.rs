@@ -30,26 +30,24 @@
 //! [win]: http://msdn.microsoft.com/en-us/library/windows/desktop/ms682010%28v=vs.85%29.aspx
 //! [ti]: https://en.wikipedia.org/wiki/Terminfo
 
-#![doc(html_logo_url = "https://www.rust-lang.org/logos/rust-logo-128x128-blk-v2.png",
-       html_favicon_url = "https://doc.rust-lang.org/favicon.ico",
-       html_root_url = "https://doc.rust-lang.org/nightly/",
+#![doc(html_root_url = "https://doc.rust-lang.org/nightly/",
        html_playground_url = "https://play.rust-lang.org/",
        test(attr(deny(warnings))))]
 #![deny(missing_docs)]
 
+#![deny(rust_2018_idioms)]
+
 #![cfg_attr(windows, feature(libc))]
 // Handle rustfmt skips
 #![feature(custom_attribute)]
-#![feature(nll)]
 #![allow(unused_attributes)]
 
 use std::io::prelude::*;
+use std::io::{self, Stdout, Stderr};
 
 pub use terminfo::TerminfoTerminal;
 #[cfg(windows)]
 pub use win::WinConsole;
-
-use std::io::{self, Stdout, Stderr};
 
 pub mod terminfo;
 
@@ -62,14 +60,14 @@ pub type StdoutTerminal = dyn Terminal<Output = Stdout> + Send;
 pub type StderrTerminal = dyn Terminal<Output = Stderr> + Send;
 
 #[cfg(not(windows))]
-/// Return a Terminal wrapping stdout, or None if a terminal couldn't be
+/// Returns a Terminal wrapping stdout, or None if a terminal couldn't be
 /// opened.
 pub fn stdout() -> Option<Box<StdoutTerminal>> {
     TerminfoTerminal::new(io::stdout()).map(|t| Box::new(t) as Box<StdoutTerminal>)
 }
 
 #[cfg(windows)]
-/// Return a Terminal wrapping stdout, or None if a terminal couldn't be
+/// Returns a Terminal wrapping stdout, or None if a terminal couldn't be
 /// opened.
 pub fn stdout() -> Option<Box<StdoutTerminal>> {
     TerminfoTerminal::new(io::stdout())
@@ -78,14 +76,14 @@ pub fn stdout() -> Option<Box<StdoutTerminal>> {
 }
 
 #[cfg(not(windows))]
-/// Return a Terminal wrapping stderr, or None if a terminal couldn't be
+/// Returns a Terminal wrapping stderr, or None if a terminal couldn't be
 /// opened.
 pub fn stderr() -> Option<Box<StderrTerminal>> {
     TerminfoTerminal::new(io::stderr()).map(|t| Box::new(t) as Box<StderrTerminal>)
 }
 
 #[cfg(windows)]
-/// Return a Terminal wrapping stderr, or None if a terminal couldn't be
+/// Returns a Terminal wrapping stderr, or None if a terminal couldn't be
 /// opened.
 pub fn stderr() -> Option<Box<StderrTerminal>> {
     TerminfoTerminal::new(io::stderr())
@@ -172,12 +170,12 @@ pub trait Terminal: Write {
     /// if there was an I/O error.
     fn bg(&mut self, color: color::Color) -> io::Result<bool>;
 
-    /// Sets the given terminal attribute, if supported.  Returns `Ok(true)`
+    /// Sets the given terminal attribute, if supported. Returns `Ok(true)`
     /// if the attribute was supported, `Ok(false)` otherwise, and `Err(e)` if
     /// there was an I/O error.
     fn attr(&mut self, attr: Attr) -> io::Result<bool>;
 
-    /// Returns whether the given terminal attribute is supported.
+    /// Returns `true` if the given terminal attribute is supported.
     fn supports_attr(&self, attr: Attr) -> bool;
 
     /// Resets all terminal attributes and colors to their defaults.

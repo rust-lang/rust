@@ -5,15 +5,15 @@
 //!
 //! [c]: https://rust-lang.github.io/rustc-guide/traits/canonicalization.html
 
-use infer::canonical::{
+use crate::infer::canonical::{
     Canonical, CanonicalTyVarKind, CanonicalVarInfo, CanonicalVarKind, Canonicalized,
     OriginalQueryValues,
 };
-use infer::InferCtxt;
+use crate::infer::InferCtxt;
 use std::sync::atomic::Ordering;
-use ty::fold::{TypeFoldable, TypeFolder};
-use ty::subst::Kind;
-use ty::{self, BoundVar, Lift, List, Ty, TyCtxt, TypeFlags};
+use crate::ty::fold::{TypeFoldable, TypeFolder};
+use crate::ty::subst::Kind;
+use crate::ty::{self, BoundVar, Lift, List, Ty, TyCtxt, TypeFlags};
 
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::indexed_vec::Idx;
@@ -112,14 +112,14 @@ impl<'cx, 'gcx, 'tcx> InferCtxt<'cx, 'gcx, 'tcx> {
     }
 
     /// A hacky variant of `canonicalize_query` that does not
-    /// canonicalize `'static`.  Unfortunately, the existing leak
+    /// canonicalize `'static`. Unfortunately, the existing leak
     /// check treaks `'static` differently in some cases (see also
     /// #33684), so if we are performing an operation that may need to
     /// prove "leak-check" related things, we leave `'static`
     /// alone.
-    ///
-    /// FIXME(#48536) -- once we have universes, we can remove this and just use
-    /// `canonicalize_query`.
+    //
+    // FIXME(#48536): once we have universes, we can remove this and just use
+    // `canonicalize_query`.
     pub fn canonicalize_hr_query_hack<V>(
         &self,
         value: &V,
@@ -595,7 +595,7 @@ impl<'cx, 'gcx, 'tcx> Canonicalizer<'cx, 'gcx, 'tcx> {
             .var_universe(vid)
     }
 
-    /// Create a canonical variable (with the given `info`)
+    /// Creates a canonical variable (with the given `info`)
     /// representing the region `r`; return a region referencing it.
     fn canonical_var_for_region(
         &mut self,

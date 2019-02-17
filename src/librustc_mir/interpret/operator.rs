@@ -18,7 +18,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> 
         right: ImmTy<'tcx, M::PointerTag>,
         dest: PlaceTy<'tcx, M::PointerTag>,
     ) -> EvalResult<'tcx> {
-        let (val, overflowed) = self.binary_op_imm(op, left, right)?;
+        let (val, overflowed) = self.binary_op(op, left, right)?;
         let val = Immediate::ScalarPair(val.into(), Scalar::from_bool(overflowed).into());
         self.write_immediate(val, dest)
     }
@@ -32,7 +32,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> 
         right: ImmTy<'tcx, M::PointerTag>,
         dest: PlaceTy<'tcx, M::PointerTag>,
     ) -> EvalResult<'tcx> {
-        let (val, _overflowed) = self.binary_op_imm(op, left, right)?;
+        let (val, _overflowed) = self.binary_op(op, left, right)?;
         self.write_scalar(val, dest)
     }
 }
@@ -272,69 +272,55 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> 
         Ok((val, false))
     }
 
-    /// Convenience wrapper that's useful when keeping the layout together with the
-    /// immediate value.
+    /// Returns the result of the specified operation and whether it overflowed.
     #[inline]
-    pub fn binary_op_imm(
+    pub fn binary_op(
         &self,
         bin_op: mir::BinOp,
         left: ImmTy<'tcx, M::PointerTag>,
         right: ImmTy<'tcx, M::PointerTag>,
     ) -> EvalResult<'tcx, (Scalar<M::PointerTag>, bool)> {
-        self.binary_op(
-            bin_op,
-            left.to_scalar()?, left.layout,
-            right.to_scalar()?, right.layout,
-        )
-    }
-
-    /// Returns the result of the specified operation and whether it overflowed.
-    pub fn binary_op(
-        &self,
-        bin_op: mir::BinOp,
-        left: Scalar<M::PointerTag>,
-        left_layout: TyLayout<'tcx>,
-        right: Scalar<M::PointerTag>,
-        right_layout: TyLayout<'tcx>,
-    ) -> EvalResult<'tcx, (Scalar<M::PointerTag>, bool)> {
         trace!("Running binary op {:?}: {:?} ({:?}), {:?} ({:?})",
-            bin_op, left, left_layout.ty, right, right_layout.ty);
+            bin_op, *left, left.layout.ty, *right, right.layout.ty);
 
-        match left_layout.ty.sty {
+        match left.layout.ty.sty {
             ty::Char => {
-                assert_eq!(left_layout.ty, right_layout.ty);
-                let left = left.to_char()?;
-                let right = right.to_char()?;
+                assert_eq!(left.layout.ty, right.layout.ty);
+                let left = left.to_scalar()?.to_char()?;
+                let right = right.to_scalar()?.to_char()?;
                 self.binary_char_op(bin_op, left, right)
             }
             ty::Bool => {
-                assert_eq!(left_layout.ty, right_layout.ty);
-                let left = left.to_bool()?;
-                let right = right.to_bool()?;
+                assert_eq!(left.layout.ty, right.layout.ty);
+                let left = left.to_scalar()?.to_bool()?;
+                let right = right.to_scalar()?.to_bool()?;
                 self.binary_bool_op(bin_op, left, right)
             }
             ty::Float(fty) => {
-                assert_eq!(left_layout.ty, right_layout.ty);
-                let left = left.to_bits(left_layout.size)?;
-                let right = right.to_bits(right_layout.size)?;
+                assert_eq!(left.layout.ty, right.layout.ty);
+                let left = left.to_bits()?;
+                let right = right.to_bits()?;
                 self.binary_float_op(bin_op, fty, left, right)
             }
             _ => {
                 // Must be integer(-like) types.  Don't forget about == on fn pointers.
-                assert!(left_layout.ty.is_integral() || left_layout.ty.is_unsafe_ptr() ||
-                    left_layout.ty.is_fn());
-                assert!(right_layout.ty.is_integral() || right_layout.ty.is_unsafe_ptr() ||
-                    right_layout.ty.is_fn());
+                assert!(left.layout.ty.is_integral() || left.layout.ty.is_unsafe_ptr() ||
+                    left.layout.ty.is_fn());
+                assert!(right.layout.ty.is_integral() || right.layout.ty.is_unsafe_ptr() ||
+                    right.layout.ty.is_fn());
 
                 // Handle operations that support pointer values
-                if left.is_ptr() || right.is_ptr() || bin_op == mir::BinOp::Offset {
-                    return M::ptr_op(self, bin_op, left, left_layout, right, right_layout);
+                if left.to_scalar_ptr()?.is_ptr() ||
+                    right.to_scalar_ptr()?.is_ptr() ||
+                    bin_op == mir::BinOp::Offset
+                {
+                    return M::ptr_op(self, bin_op, left, right);
                 }
 
                 // Everything else only works with "proper" bits
-                let left = left.to_bits(left_layout.size).expect("we checked is_ptr");
-                let right = right.to_bits(right_layout.size).expect("we checked is_ptr");
-                self.binary_int_op(bin_op, left, left_layout, right, right_layout)
+                let l = left.to_bits().expect("we checked is_ptr");
+                let r = right.to_bits().expect("we checked is_ptr");
+                self.binary_int_op(bin_op, l, left.layout, r, right.layout)
             }
         }
     }
@@ -342,13 +328,14 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> 
     pub fn unary_op(
         &self,
         un_op: mir::UnOp,
-        val: Scalar<M::PointerTag>,
-        layout: TyLayout<'tcx>,
+        val: ImmTy<'tcx, M::PointerTag>,
     ) -> EvalResult<'tcx, Scalar<M::PointerTag>> {
         use rustc::mir::UnOp::*;
         use rustc_apfloat::ieee::{Single, Double};
         use rustc_apfloat::Float;
 
+        let layout = val.layout;
+        let val = val.to_scalar()?;
         trace!("Running unary op {:?}: {:?} ({:?})", un_op, val, layout.ty.sty);
 
         match layout.ty.sty {

@@ -335,7 +335,7 @@ impl<T, A: Alloc> RawVec<T, A> {
     /// enough to want to do that it's easiest to just have a dedicated method. Slightly
     /// more efficient logic can be provided for this than the general case.
     ///
-    /// Returns true if the reallocation attempt has succeeded, or false otherwise.
+    /// Returns `true` if the reallocation attempt has succeeded.
     ///
     /// # Panics
     ///
@@ -504,7 +504,7 @@ impl<T, A: Alloc> RawVec<T, A> {
     /// the requested space. This is not really unsafe, but the unsafe
     /// code *you* write that relies on the behavior of this function may break.
     ///
-    /// Returns true if the reallocation attempt has succeeded, or false otherwise.
+    /// Returns `true` if the reallocation attempt has succeeded.
     ///
     /// # Panics
     ///

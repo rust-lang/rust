@@ -11,16 +11,16 @@
 
 pub mod specialization_graph;
 
-use hir::def_id::DefId;
-use infer::{InferCtxt, InferOk};
-use lint;
-use traits::{self, coherence, FutureCompatOverlapErrorKind, ObligationCause, TraitEngine};
+use crate::hir::def_id::DefId;
+use crate::infer::{InferCtxt, InferOk};
+use crate::lint;
+use crate::traits::{self, coherence, FutureCompatOverlapErrorKind, ObligationCause, TraitEngine};
 use rustc_data_structures::fx::FxHashSet;
 use rustc_data_structures::sync::Lrc;
 use syntax_pos::DUMMY_SP;
-use traits::select::IntercrateAmbiguityCause;
-use ty::{self, TyCtxt, TypeFoldable};
-use ty::subst::{Subst, Substs};
+use crate::traits::select::IntercrateAmbiguityCause;
+use crate::ty::{self, TyCtxt, TypeFoldable};
+use crate::ty::subst::{Subst, Substs};
 
 use super::{SelectionContext, FulfillmentContext};
 use super::util::impl_trait_ref_and_oblig;
@@ -58,12 +58,12 @@ pub struct OverlapError {
 /// Suppose we have selected "source impl" with `V` instantiated with `u32`.
 /// This function will produce a substitution with `T` and `U` both mapping to `u32`.
 ///
-/// Where clauses add some trickiness here, because they can be used to "define"
+/// where-clauses add some trickiness here, because they can be used to "define"
 /// an argument indirectly:
 ///
 /// ```rust
 /// impl<'a, I, T: 'a> Iterator for Cloned<I>
-///    where I: Iterator<Item=&'a T>, T: Clone
+///    where I: Iterator<Item = &'a T>, T: Clone
 /// ```
 ///
 /// In a case like this, the substitution for `T` is determined indirectly,
@@ -145,10 +145,10 @@ pub fn find_associated_item<'a, 'tcx>(
     }
 }
 
-/// Is impl1 a specialization of impl2?
+/// Is `impl1` a specialization of `impl2`?
 ///
 /// Specialization is determined by the sets of types to which the impls apply;
-/// impl1 specializes impl2 if it applies to a subset of the types impl2 applies
+/// `impl1` specializes `impl2` if it applies to a subset of the types `impl2` applies
 /// to.
 pub(super) fn specializes<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                                     (impl1_def_id, impl2_def_id): (DefId, DefId))

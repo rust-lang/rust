@@ -12,14 +12,14 @@ use rustc_data_structures::sync::{RwLock, ReadGuard, MappedReadGuard};
 /// Steal<Mir<'tcx>>` (to be very specific). Now we can read from this
 /// as much as we want (using `borrow()`), but you can also
 /// `steal()`. Once you steal, any further attempt to read will panic.
-/// Therefore we know that -- assuming no ICE -- nobody is observing
+/// Therefore, we know that -- assuming no ICE -- nobody is observing
 /// the fact that the MIR was updated.
 ///
 /// Obviously, whenever you have a query that yields a `Steal` value,
 /// you must treat it with caution, and make sure that you know that
 /// -- once the value is stolen -- it will never be read from again.
-///
-/// FIXME(#41710) -- what is the best way to model linear queries?
+//
+// FIXME(#41710): what is the best way to model linear queries?
 pub struct Steal<T> {
     value: RwLock<Option<T>>
 }

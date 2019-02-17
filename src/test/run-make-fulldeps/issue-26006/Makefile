@@ -1,8 +1,9 @@
 -include ../tools.mk
 
+# ignore-windows
+
 OUT := $(TMPDIR)/out
 
-ifndef IS_WINDOWS
 all: time
 
 time: libc
@@ -13,6 +14,3 @@ time: libc
 libc:
 	mkdir -p $(OUT)/libc
 	$(RUSTC) in/libc/lib.rs --crate-name=libc -Cmetadata=foo -o $(OUT)/libc/liblibc.rlib
-else
-all:
-endif

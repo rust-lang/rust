@@ -1,48 +1,48 @@
-//! type context book-keeping
+//! Type context book-keeping.
 
-use dep_graph::DepGraph;
-use dep_graph::{DepNode, DepConstructor};
+use crate::dep_graph::DepGraph;
+use crate::dep_graph::{self, DepNode, DepConstructor};
+use crate::session::Session;
+use crate::session::config::{BorrowckMode, OutputFilenames};
+use crate::session::config::CrateType;
+use crate::middle;
+use crate::hir::{TraitCandidate, HirId, ItemKind, ItemLocalId, Node};
+use crate::hir::def::{Def, Export};
+use crate::hir::def_id::{CrateNum, DefId, DefIndex, LOCAL_CRATE};
+use crate::hir::map as hir_map;
+use crate::hir::map::DefPathHash;
+use crate::lint::{self, Lint};
+use crate::ich::{StableHashingContext, NodeIdHashingMode};
+use crate::infer::canonical::{Canonical, CanonicalVarInfo, CanonicalVarInfos};
+use crate::infer::outlives::free_region_map::FreeRegionMap;
+use crate::middle::cstore::CrateStoreDyn;
+use crate::middle::cstore::EncodedMetadata;
+use crate::middle::lang_items;
+use crate::middle::resolve_lifetime::{self, ObjectLifetimeDefault};
+use crate::middle::stability;
+use crate::mir::{self, Mir, interpret, ProjectionKind};
+use crate::mir::interpret::Allocation;
+use crate::ty::subst::{Kind, Substs, Subst};
+use crate::ty::ReprOptions;
+use crate::traits;
+use crate::traits::{Clause, Clauses, GoalKind, Goal, Goals};
+use crate::ty::{self, Ty, TypeAndMut};
+use crate::ty::{TyS, TyKind, List};
+use crate::ty::{AdtKind, AdtDef, ClosureSubsts, GeneratorSubsts, Region, Const, LazyConst};
+use crate::ty::{PolyFnSig, InferTy, ParamTy, ProjectionTy, ExistentialPredicate, Predicate};
+use crate::ty::RegionKind;
+use crate::ty::{TyVar, TyVid, IntVar, IntVid, FloatVar, FloatVid};
+use crate::ty::TyKind::*;
+use crate::ty::GenericParamDefKind;
+use crate::ty::layout::{LayoutDetails, TargetDataLayout, VariantIdx};
+use crate::ty::query;
+use crate::ty::steal::Steal;
+use crate::ty::subst::{UserSubsts, UnpackedKind};
+use crate::ty::{BoundVar, BindingMode};
+use crate::ty::CanonicalPolyFnSig;
+use crate::util::nodemap::{DefIdMap, DefIdSet, ItemLocalMap};
+use crate::util::nodemap::{FxHashMap, FxHashSet};
 use errors::DiagnosticBuilder;
-use session::Session;
-use session::config::{BorrowckMode, OutputFilenames};
-use session::config::CrateType;
-use middle;
-use hir::{TraitCandidate, HirId, ItemKind, ItemLocalId, Node};
-use hir::def::{Def, Export};
-use hir::def_id::{CrateNum, DefId, DefIndex, LOCAL_CRATE};
-use hir::map as hir_map;
-use hir::map::DefPathHash;
-use lint::{self, Lint};
-use ich::{StableHashingContext, NodeIdHashingMode};
-use infer::canonical::{Canonical, CanonicalVarInfo, CanonicalVarInfos};
-use infer::outlives::free_region_map::FreeRegionMap;
-use middle::cstore::CrateStoreDyn;
-use middle::cstore::EncodedMetadata;
-use middle::lang_items;
-use middle::resolve_lifetime::{self, ObjectLifetimeDefault};
-use middle::stability;
-use mir::{self, Mir, interpret, ProjectionKind};
-use mir::interpret::Allocation;
-use ty::subst::{Kind, Substs, Subst};
-use ty::ReprOptions;
-use traits;
-use traits::{Clause, Clauses, GoalKind, Goal, Goals};
-use ty::{self, Ty, TypeAndMut};
-use ty::{TyS, TyKind, List};
-use ty::{AdtKind, AdtDef, ClosureSubsts, GeneratorSubsts, Region, Const, LazyConst};
-use ty::{PolyFnSig, InferTy, ParamTy, ProjectionTy, ExistentialPredicate, Predicate};
-use ty::RegionKind;
-use ty::{TyVar, TyVid, IntVar, IntVid, FloatVar, FloatVid};
-use ty::TyKind::*;
-use ty::GenericParamDefKind;
-use ty::layout::{LayoutDetails, TargetDataLayout, VariantIdx};
-use ty::query;
-use ty::steal::Steal;
-use ty::subst::{UserSubsts, UnpackedKind};
-use ty::{BoundVar, BindingMode};
-use ty::CanonicalPolyFnSig;
-use util::nodemap::{DefIdMap, DefIdSet, ItemLocalMap};
-use util::nodemap::{FxHashMap, FxHashSet};
 use rustc_data_structures::interner::HashInterner;
 use smallvec::SmallVec;
 use rustc_data_structures::stable_hasher::{HashStable, hash_stable_hashmap,
@@ -73,7 +73,7 @@ use syntax::feature_gate;
 use syntax::symbol::{Symbol, keywords, InternedString};
 use syntax_pos::Span;
 
-use hir;
+use crate::hir;
 
 pub struct AllArenas<'tcx> {
     pub global: WorkerLocal<GlobalArenas<'tcx>>,
@@ -127,6 +127,7 @@ pub struct CtxtInterners<'tcx> {
     goal: InternedSet<'tcx, GoalKind<'tcx>>,
     goal_list: InternedSet<'tcx, List<Goal<'tcx>>>,
     projs: InternedSet<'tcx, List<ProjectionKind<'tcx>>>,
+    lazy_const: InternedSet<'tcx, LazyConst<'tcx>>,
 }
 
 impl<'gcx: 'tcx, 'tcx> CtxtInterners<'tcx> {
@@ -144,6 +145,7 @@ impl<'gcx: 'tcx, 'tcx> CtxtInterners<'tcx> {
             goal: Default::default(),
             goal_list: Default::default(),
             projs: Default::default(),
+            lazy_const: Default::default(),
         }
     }
 
@@ -330,13 +332,13 @@ pub struct TypeckTables<'tcx> {
     /// belongs, but it may not exist if it's a tuple field (`tuple.0`).
     field_indices: ItemLocalMap<usize>,
 
-    /// Stores the types for various nodes in the AST.  Note that this table
-    /// is not guaranteed to be populated until after typeck.  See
+    /// Stores the types for various nodes in the AST. Note that this table
+    /// is not guaranteed to be populated until after typeck. See
     /// typeck::check::fn_ctxt for details.
     node_types: ItemLocalMap<Ty<'tcx>>,
 
     /// Stores the type parameters which were substituted to obtain the type
-    /// of this node.  This only applies to nodes that refer to entities
+    /// of this node. This only applies to nodes that refer to entities
     /// parameterized by type parameters, such as generic fns, types, or
     /// other items.
     node_substs: ItemLocalMap<&'tcx Substs<'tcx>>,
@@ -411,7 +413,7 @@ pub struct TypeckTables<'tcx> {
     pub tainted_by_errors: bool,
 
     /// Stores the free-region relationships that were deduced from
-    /// its where clauses and parameter types. These are then
+    /// its where-clauses and parameter types. These are then
     /// read-again by borrowck.
     pub free_region_map: FreeRegionMap<'tcx>,
 
@@ -523,17 +525,14 @@ impl<'tcx> TypeckTables<'tcx> {
         }
     }
 
-    pub fn node_id_to_type(&self, id: hir::HirId) -> Ty<'tcx> {
-        self.node_id_to_type_opt(id).unwrap_or_else(||
-            bug!("node_id_to_type: no type for node `{}`",
-                 tls::with(|tcx| {
-                     let id = tcx.hir().hir_to_node_id(id);
-                     tcx.hir().node_to_string(id)
-                 }))
+    pub fn node_type(&self, id: hir::HirId) -> Ty<'tcx> {
+        self.node_type_opt(id).unwrap_or_else(||
+            bug!("node_type: no type for node `{}`",
+                 tls::with(|tcx| tcx.hir().hir_to_string(id)))
         )
     }
 
-    pub fn node_id_to_type_opt(&self, id: hir::HirId) -> Option<Ty<'tcx>> {
+    pub fn node_type_opt(&self, id: hir::HirId) -> Option<Ty<'tcx>> {
         validate_hir_id_for_typeck_tables(self.local_id_root, id, false);
         self.node_types.get(&id.local_id).cloned()
     }
@@ -558,11 +557,11 @@ impl<'tcx> TypeckTables<'tcx> {
     // Returns the type of a pattern as a monotype. Like @expr_ty, this function
     // doesn't provide type parameter substitutions.
     pub fn pat_ty(&self, pat: &hir::Pat) -> Ty<'tcx> {
-        self.node_id_to_type(pat.hir_id)
+        self.node_type(pat.hir_id)
     }
 
     pub fn pat_ty_opt(&self, pat: &hir::Pat) -> Option<Ty<'tcx>> {
-        self.node_id_to_type_opt(pat.hir_id)
+        self.node_type_opt(pat.hir_id)
     }
 
     // Returns the type of an expression as a monotype.
@@ -576,11 +575,11 @@ impl<'tcx> TypeckTables<'tcx> {
     // ask for the type of "id" in "id(3)", it will return "fn(&isize) -> isize"
     // instead of "fn(ty) -> T with T = isize".
     pub fn expr_ty(&self, expr: &hir::Expr) -> Ty<'tcx> {
-        self.node_id_to_type(expr.hir_id)
+        self.node_type(expr.hir_id)
     }
 
     pub fn expr_ty_opt(&self, expr: &hir::Expr) -> Option<Ty<'tcx>> {
-        self.node_id_to_type_opt(expr.hir_id)
+        self.node_type_opt(expr.hir_id)
     }
 
     pub fn adjustments(&self) -> LocalTableInContext<'_, Vec<ty::adjustment::Adjustment<'tcx>>> {
@@ -835,7 +834,7 @@ pub type CanonicalUserType<'gcx> = Canonical<'gcx, UserType<'gcx>>;
 
 impl CanonicalUserType<'gcx> {
     /// Returns `true` if this represents a substitution of the form `[?0, ?1, ?2]`,
-    /// i.e. each thing is mapped to a canonical variable with the same index.
+    /// i.e., each thing is mapped to a canonical variable with the same index.
     pub fn is_identity(&self) -> bool {
         match self.value {
             UserType::Ty(_) => false,
@@ -870,7 +869,7 @@ impl CanonicalUserType<'gcx> {
     }
 }
 
-/// A user-given type annotation attached to a constant.  These arise
+/// A user-given type annotation attached to a constant. These arise
 /// from constants that are named via paths, like `Foo::<A>::new` and
 /// so forth.
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash, RustcEncodable, RustcDecodable)]
@@ -1051,7 +1050,7 @@ pub struct GlobalCtxt<'tcx> {
 }
 
 impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
-    /// Get the global TyCtxt.
+    /// Gets the global `TyCtxt`.
     #[inline]
     pub fn global_tcx(self) -> TyCtxt<'gcx, 'gcx, 'gcx> {
         TyCtxt {
@@ -1096,10 +1095,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
         self.global_arenas.adt_def.alloc(def)
     }
 
-    pub fn intern_const_alloc(
-        self,
-        alloc: Allocation,
-    ) -> &'gcx Allocation {
+    pub fn intern_const_alloc(self, alloc: Allocation) -> &'gcx Allocation {
         self.allocation_interner.borrow_mut().intern(alloc, |alloc| {
             self.global_arenas.const_allocs.alloc(alloc)
         })
@@ -1117,10 +1113,6 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
         self.stability_interner.borrow_mut().intern(stab, |stab| {
             self.global_interners.arena.alloc(stab)
         })
-    }
-
-    pub fn intern_lazy_const(self, c: ty::LazyConst<'tcx>) -> &'tcx ty::LazyConst<'tcx> {
-        self.global_interners.arena.alloc(c)
     }
 
     pub fn intern_layout(self, layout: LayoutDetails) -> &'gcx LayoutDetails {
@@ -1158,12 +1150,12 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
         value.lift_to_tcx(self.global_tcx())
     }
 
-    /// Returns true if self is the same as self.global_tcx().
+    /// Returns `true` if self is the same as self.global_tcx().
     fn is_global(self) -> bool {
         ptr::eq(self.interners, &self.global_interners)
     }
 
-    /// Create a type context and call the closure with a `TyCtxt` reference
+    /// Creates a type context and call the closure with a `TyCtxt` reference
     /// to the context. The closure enforces that the type context and any interned
     /// value (types, substs, etc.) can only be used while `ty::tls` has a valid
     /// reference to the context, to allow formatting values that need it.
@@ -1358,7 +1350,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
         }
     }
 
-    /// Convert a `DefId` into its fully expanded `DefPath` (every
+    /// Converts a `DefId` into its fully expanded `DefPath` (every
     /// `DefId` is really just an interned def-path).
     ///
     /// Note that if `id` is not local to this crate, the result will
@@ -1435,7 +1427,8 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
             self.dep_graph.with_task(dep_node,
                                      self,
                                      crate_hash,
-                                     |_, x| x // No transformation needed
+                                     |_, x| x, // No transformation needed
+                                     dep_graph::hash_result,
             );
         }
     }
@@ -1822,18 +1815,18 @@ pub mod tls {
     use std::marker::PhantomData;
     use std::ptr;
     use syntax_pos;
-    use ty::query;
+    use crate::ty::query;
     use errors::{Diagnostic, TRACK_DIAGNOSTICS};
     use rustc_data_structures::OnDrop;
     use rustc_data_structures::sync::{self, Lrc, Lock};
     use rustc_data_structures::thin_vec::ThinVec;
-    use dep_graph::TaskDeps;
+    use crate::dep_graph::TaskDeps;
 
     #[cfg(not(parallel_compiler))]
     use std::cell::Cell;
 
     #[cfg(parallel_compiler)]
-    use rayon_core;
+    use rustc_rayon_core as rayon_core;
 
     /// This is the implicit state of rustc. It contains the current
     /// TyCtxt and query. It is updated when creating a local interner or
@@ -2114,8 +2107,8 @@ macro_rules! sty_debug_print {
         // variable names.
         #[allow(non_snake_case)]
         mod inner {
-            use ty::{self, TyCtxt};
-            use ty::context::Interned;
+            use crate::ty::{self, TyCtxt};
+            use crate::ty::context::Interned;
 
             #[derive(Copy, Clone)]
             struct DebugStat {
@@ -2271,6 +2264,12 @@ impl<'tcx: 'lcx, 'lcx> Borrow<GoalKind<'lcx>> for Interned<'tcx, GoalKind<'tcx>>
     }
 }
 
+impl<'tcx: 'lcx, 'lcx> Borrow<LazyConst<'lcx>> for Interned<'tcx, LazyConst<'tcx>> {
+    fn borrow<'a>(&'a self) -> &'a LazyConst<'lcx> {
+        &self.0
+    }
+}
+
 impl<'tcx: 'lcx, 'lcx> Borrow<[ExistentialPredicate<'lcx>]>
     for Interned<'tcx, List<ExistentialPredicate<'tcx>>> {
     fn borrow<'a>(&'a self) -> &'a [ExistentialPredicate<'lcx>] {
@@ -2377,7 +2376,8 @@ pub fn keep_local<'tcx, T: ty::TypeFoldable<'tcx>>(x: &T) -> bool {
 
 direct_interners!('tcx,
     region: mk_region(|r: &RegionKind| r.keep_in_local_tcx()) -> RegionKind,
-    goal: mk_goal(|c: &GoalKind<'_>| keep_local(c)) -> GoalKind<'tcx>
+    goal: mk_goal(|c: &GoalKind<'_>| keep_local(c)) -> GoalKind<'tcx>,
+    lazy_const: mk_lazy_const(|c: &LazyConst<'_>| keep_local(&c)) -> LazyConst<'tcx>
 );
 
 macro_rules! slice_interners {
@@ -2562,7 +2562,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
 
     #[inline]
     pub fn mk_array(self, ty: Ty<'tcx>, n: u64) -> Ty<'tcx> {
-        self.mk_ty(Array(ty, self.intern_lazy_const(
+        self.mk_ty(Array(ty, self.mk_lazy_const(
             ty::LazyConst::Evaluated(ty::Const::from_usize(self.global_tcx(), n))
         )))
     }

@@ -33,7 +33,7 @@ pub use core::time::{SECOND, MILLISECOND, MICROSECOND, NANOSECOND};
 /// instant when created, and are often useful for tasks such as measuring
 /// benchmarks or timing how long an operation takes.
 ///
-/// Note, however, that instants are not guaranteed to be **steady**.  In other
+/// Note, however, that instants are not guaranteed to be **steady**. In other
 /// words, each tick of the underlying clock may not be the same length (e.g.
 /// some seconds may be longer than others). An instant may jump forwards or
 /// experience time dilation (slow down or speed up), but it will never go
@@ -218,6 +218,52 @@ impl Instant {
         self.0.sub_instant(&earlier.0)
     }
 
+    /// Returns the amount of time elapsed from another instant to this one,
+    /// or None if that instant is earlier than this one.
+    ///
+    /// # Examples
+    ///
+    /// ```no_run
+    /// #![feature(checked_duration_since)]
+    /// use std::time::{Duration, Instant};
+    /// use std::thread::sleep;
+    ///
+    /// let now = Instant::now();
+    /// sleep(Duration::new(1, 0));
+    /// let new_now = Instant::now();
+    /// println!("{:?}", new_now.checked_duration_since(now));
+    /// println!("{:?}", now.checked_duration_since(new_now)); // None
+    /// ```
+    #[unstable(feature = "checked_duration_since", issue = "58402")]
+    pub fn checked_duration_since(&self, earlier: Instant) -> Option<Duration> {
+        if self >= &earlier {
+            Some(self.0.sub_instant(&earlier.0))
+        } else {
+            None
+        }
+    }
+
+    /// Returns the amount of time elapsed from another instant to this one,
+    /// or zero duration if that instant is earlier than this one.
+    ///
+    /// # Examples
+    ///
+    /// ```no_run
+    /// #![feature(checked_duration_since)]
+    /// use std::time::{Duration, Instant};
+    /// use std::thread::sleep;
+    ///
+    /// let now = Instant::now();
+    /// sleep(Duration::new(1, 0));
+    /// let new_now = Instant::now();
+    /// println!("{:?}", new_now.saturating_duration_since(now));
+    /// println!("{:?}", now.saturating_duration_since(new_now)); // 0ns
+    /// ```
+    #[unstable(feature = "checked_duration_since", issue = "58402")]
+    pub fn saturating_duration_since(&self, earlier: Instant) -> Duration {
+        self.checked_duration_since(earlier).unwrap_or(Duration::new(0, 0))
+    }
+
     /// Returns the amount of time elapsed since this instant was created.
     ///
     /// # Panics
@@ -245,17 +291,17 @@ impl Instant {
     /// Returns `Some(t)` where `t` is the time `self + duration` if `t` can be represented as
     /// `Instant` (which means it's inside the bounds of the underlying data structure), `None`
     /// otherwise.
-    #[unstable(feature = "time_checked_add", issue = "55940")]
+    #[stable(feature = "time_checked_add", since = "1.34.0")]
     pub fn checked_add(&self, duration: Duration) -> Option<Instant> {
-        self.0.checked_add_duration(&duration).map(|t| Instant(t))
+        self.0.checked_add_duration(&duration).map(Instant)
     }
 
     /// Returns `Some(t)` where `t` is the time `self - duration` if `t` can be represented as
     /// `Instant` (which means it's inside the bounds of the underlying data structure), `None`
     /// otherwise.
-    #[unstable(feature = "time_checked_add", issue = "55940")]
+    #[stable(feature = "time_checked_add", since = "1.34.0")]
     pub fn checked_sub(&self, duration: Duration) -> Option<Instant> {
-        self.0.checked_sub_duration(&duration).map(|t| Instant(t))
+        self.0.checked_sub_duration(&duration).map(Instant)
     }
 }
 
@@ -418,17 +464,17 @@ impl SystemTime {
     /// Returns `Some(t)` where `t` is the time `self + duration` if `t` can be represented as
     /// `SystemTime` (which means it's inside the bounds of the underlying data structure), `None`
     /// otherwise.
-    #[unstable(feature = "time_checked_add", issue = "55940")]
+    #[stable(feature = "time_checked_add", since = "1.34.0")]
     pub fn checked_add(&self, duration: Duration) -> Option<SystemTime> {
-        self.0.checked_add_duration(&duration).map(|t| SystemTime(t))
+        self.0.checked_add_duration(&duration).map(SystemTime)
     }
 
     /// Returns `Some(t)` where `t` is the time `self - duration` if `t` can be represented as
     /// `SystemTime` (which means it's inside the bounds of the underlying data structure), `None`
     /// otherwise.
-    #[unstable(feature = "time_checked_add", issue = "55940")]
+    #[stable(feature = "time_checked_add", since = "1.34.0")]
     pub fn checked_sub(&self, duration: Duration) -> Option<SystemTime> {
-        self.0.checked_sub_duration(&duration).map(|t| SystemTime(t))
+        self.0.checked_sub_duration(&duration).map(SystemTime)
     }
 }
 
@@ -624,6 +670,20 @@ mod tests {
     fn instant_duration_panic() {
         let a = Instant::now();
         (a - Duration::new(1, 0)).duration_since(a);
+    }
+
+    #[test]
+    fn checked_instant_duration_nopanic() {
+        let a = Instant::now();
+        let ret = (a - Duration::new(1, 0)).checked_duration_since(a);
+        assert_eq!(ret, None);
+    }
+
+    #[test]
+    fn saturating_instant_duration_nopanic() {
+        let a = Instant::now();
+        let ret = (a - Duration::new(1, 0)).saturating_duration_since(a);
+        assert_eq!(ret, Duration::new(0,0));
     }
 
     #[test]

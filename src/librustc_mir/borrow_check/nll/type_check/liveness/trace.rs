@@ -1,12 +1,13 @@
-use borrow_check::location::LocationTable;
-use borrow_check::nll::region_infer::values::{self, PointIndex, RegionValueElements};
-use borrow_check::nll::type_check::liveness::liveness_map::{LiveVar, NllLivenessMap};
-use borrow_check::nll::type_check::liveness::local_use_map::LocalUseMap;
-use borrow_check::nll::type_check::NormalizeLocation;
-use borrow_check::nll::type_check::TypeChecker;
-use dataflow::move_paths::indexes::MovePathIndex;
-use dataflow::move_paths::MoveData;
-use dataflow::{FlowAtLocation, FlowsAtLocation, MaybeInitializedPlaces};
+use crate::borrow_check::location::LocationTable;
+use crate::borrow_check::nll::region_infer::values::{self, PointIndex, RegionValueElements};
+use crate::borrow_check::nll::type_check::liveness::liveness_map::{LiveVar, NllLivenessMap};
+use crate::borrow_check::nll::type_check::liveness::local_use_map::LocalUseMap;
+use crate::borrow_check::nll::type_check::NormalizeLocation;
+use crate::borrow_check::nll::type_check::TypeChecker;
+use crate::dataflow::move_paths::indexes::MovePathIndex;
+use crate::dataflow::move_paths::MoveData;
+use crate::dataflow::{FlowAtLocation, FlowsAtLocation, MaybeInitializedPlaces};
+use crate::util::liveness::LiveVariableMap;
 use rustc::infer::canonical::QueryRegionConstraint;
 use rustc::mir::{BasicBlock, ConstraintCategory, Local, Location, Mir};
 use rustc::traits::query::dropck_outlives::DropckOutlivesResult;
@@ -16,7 +17,6 @@ use rustc::ty::{Ty, TypeFoldable};
 use rustc_data_structures::bit_set::HybridBitSet;
 use rustc_data_structures::fx::FxHashMap;
 use std::rc::Rc;
-use util::liveness::LiveVariableMap;
 
 /// This is the heart of the liveness computation. For each variable X
 /// that requires a liveness computation, it walks over all the uses
@@ -192,7 +192,7 @@ impl LivenessResults<'me, 'typeck, 'flow, 'gcx, 'tcx> {
         }
     }
 
-    /// Compute all points where local is "use live" -- meaning its
+    /// Computes all points where local is "use live" -- meaning its
     /// current value may be used later (except by a drop). This is
     /// done by walking backwards from each use of `live_local` until we
     /// find a `def` of local.
@@ -215,7 +215,7 @@ impl LivenessResults<'me, 'typeck, 'flow, 'gcx, 'tcx> {
         }
     }
 
-    /// Compute all points where local is "drop live" -- meaning its
+    /// Computes all points where local is "drop live" -- meaning its
     /// current value may be dropped later (but not used). This is
     /// done by iterating over the drops of `local` where `local` (or
     /// some subpart of `local`) is initialized. For each such drop,
@@ -407,7 +407,7 @@ impl LivenessResults<'me, 'typeck, 'flow, 'gcx, 'tcx> {
 }
 
 impl LivenessContext<'_, '_, '_, '_, 'tcx> {
-    /// True if the local variable (or some part of it) is initialized in
+    /// Returns `true` if the local variable (or some part of it) is initialized in
     /// the terminator of `block`. We need to check this to determine if a
     /// DROP of some local variable will have an effect -- note that
     /// drops, as they may unwind, are always terminators.
@@ -429,7 +429,7 @@ impl LivenessContext<'_, '_, '_, '_, 'tcx> {
         self.flow_inits.has_any_child_of(mpi).is_some()
     }
 
-    /// True if the path `mpi` (or some part of it) is initialized at
+    /// Returns `true` if the path `mpi` (or some part of it) is initialized at
     /// the exit of `block`.
     ///
     /// **Warning:** Does not account for the result of `Call`
@@ -439,7 +439,7 @@ impl LivenessContext<'_, '_, '_, '_, 'tcx> {
         self.flow_inits.has_any_child_of(mpi).is_some()
     }
 
-    /// Store the result that all regions in `value` are live for the
+    /// Stores the result that all regions in `value` are live for the
     /// points `live_at`.
     fn add_use_live_facts_for(
         &mut self,

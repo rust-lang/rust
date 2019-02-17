@@ -58,7 +58,7 @@ impl TocBuilder {
     }
 
 
-    /// Convert into a true `Toc` struct.
+    /// Converts into a true `Toc` struct.
     pub fn into_toc(mut self) -> Toc {
         // we know all levels are >= 1.
         self.fold_until(0);

@@ -61,6 +61,7 @@ macro_rules! book {
 // adding a build step in `src/bootstrap/builder.rs`!
 book!(
     EditionGuide, "src/doc/edition-guide", "edition-guide", RustbookVersion::MdBook1;
+    EmbeddedBook, "src/doc/embedded-book", "embedded-book", RustbookVersion::MdBook2;
     Nomicon, "src/doc/nomicon", "nomicon", RustbookVersion::MdBook1;
     Reference, "src/doc/reference", "reference", RustbookVersion::MdBook1;
     RustByExample, "src/doc/rust-by-example", "rust-by-example", RustbookVersion::MdBook1;
@@ -71,10 +72,6 @@ book!(
 #[derive(Debug, Copy, Clone, Hash, PartialEq, Eq)]
 enum RustbookVersion {
     MdBook1,
-
-    /// Note: Currently no books use mdBook v2, but we want the option
-    /// to be available
-    #[allow(dead_code)]
     MdBook2,
 }
 
@@ -262,7 +259,7 @@ impl Step for TheBook {
         });
     }
 
-    /// Build the book and associated stuff.
+    /// Builds the book and associated stuff.
     ///
     /// We need to build:
     ///
@@ -520,6 +517,7 @@ impl Step for Std {
             cargo.arg("--")
                  .arg("--markdown-css").arg("rust.css")
                  .arg("--markdown-no-toc")
+                 .arg("--generate-redirect-pages")
                  .arg("--index-page").arg(&builder.src.join("src/doc/index.md"));
 
             builder.run(&mut cargo);
@@ -584,7 +582,9 @@ impl Step for Test {
         let mut cargo = builder.cargo(compiler, Mode::Test, target, "doc");
         compile::test_cargo(builder, &compiler, target, &mut cargo);
 
-        cargo.arg("--no-deps").arg("-p").arg("test");
+        cargo.arg("--no-deps")
+             .arg("-p").arg("test")
+             .env("RUSTDOC_GENERATE_REDIRECT_PAGES", "1");
 
         builder.run(&mut cargo);
         builder.cp_r(&my_out, &out);
@@ -614,7 +614,7 @@ impl Step for WhitelistedRustc {
         });
     }
 
-    /// Generate whitelisted compiler crate documentation.
+    /// Generates whitelisted compiler crate documentation.
     ///
     /// This will generate all documentation for crates that are whitelisted
     /// to be included in the standard documentation. This documentation is
@@ -653,9 +653,9 @@ impl Step for WhitelistedRustc {
         // We don't want to build docs for internal compiler dependencies in this
         // step (there is another step for that). Therefore, we whitelist the crates
         // for which docs must be built.
-        cargo.arg("--no-deps");
         for krate in &["proc_macro"] {
-            cargo.arg("-p").arg(krate);
+            cargo.arg("-p").arg(krate)
+                 .env("RUSTDOC_GENERATE_REDIRECT_PAGES", "1");
         }
 
         builder.run(&mut cargo);
@@ -686,7 +686,7 @@ impl Step for Rustc {
         });
     }
 
-    /// Generate compiler documentation.
+    /// Generates compiler documentation.
     ///
     /// This will generate all documentation for compiler and dependencies.
     /// Compiler documentation is distributed separately, so we make sure
@@ -787,7 +787,7 @@ impl Step for Rustdoc {
         });
     }
 
-    /// Generate compiler documentation.
+    /// Generates compiler documentation.
     ///
     /// This will generate all documentation for compiler and dependencies.
     /// Compiler documentation is distributed separately, so we make sure

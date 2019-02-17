@@ -1,5 +1,5 @@
 use super::BackendTypes;
-use mir::operand::OperandRef;
+use crate::mir::operand::OperandRef;
 use rustc::ty::Ty;
 use rustc_target::abi::call::FnType;
 use syntax_pos::Span;

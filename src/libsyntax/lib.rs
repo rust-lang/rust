@@ -4,38 +4,26 @@
 //!
 //! This API is completely unstable and subject to change.
 
-#![doc(html_logo_url = "https://www.rust-lang.org/logos/rust-logo-128x128-blk-v2.png",
-       html_favicon_url = "https://doc.rust-lang.org/favicon.ico",
-       html_root_url = "https://doc.rust-lang.org/nightly/",
+#![doc(html_root_url = "https://doc.rust-lang.org/nightly/",
        test(attr(deny(warnings))))]
+
+#![deny(rust_2018_idioms)]
 
 #![feature(crate_visibility_modifier)]
 #![feature(label_break_value)]
 #![feature(nll)]
 #![feature(rustc_attrs)]
 #![feature(rustc_diagnostic_macros)]
-#![feature(slice_sort_by_cached_key)]
-#![feature(str_escape)]
 #![feature(step_trait)]
 #![feature(try_trait)]
 #![feature(unicode_internals)]
 
 #![recursion_limit="256"]
 
-#[macro_use] extern crate bitflags;
-extern crate core;
-extern crate serialize;
-#[macro_use] extern crate log;
-pub extern crate rustc_errors as errors;
-extern crate syntax_pos;
-#[macro_use] extern crate rustc_data_structures;
-extern crate rustc_target;
-#[macro_use] extern crate scoped_tls;
-#[macro_use]
-extern crate smallvec;
-
+#[allow(unused_extern_crates)]
 extern crate serialize as rustc_serialize; // used by deriving
 
+pub use errors;
 use rustc_data_structures::sync::Lock;
 use rustc_data_structures::bit_set::GrowableBitSet;
 pub use rustc_data_structures::thin_vec::ThinVec;
@@ -113,7 +101,7 @@ pub fn with_globals<F, R>(f: F) -> R
     })
 }
 
-scoped_thread_local!(pub static GLOBALS: Globals);
+scoped_tls::scoped_thread_local!(pub static GLOBALS: Globals);
 
 #[macro_use]
 pub mod diagnostics {
@@ -133,15 +121,15 @@ pub mod util {
     pub mod parser;
     #[cfg(test)]
     pub mod parser_testing;
-    pub mod move_map;
+    pub mod map_in_place;
 }
 
 pub mod json;
 
 pub mod syntax {
-    pub use ext;
-    pub use parse;
-    pub use ast;
+    pub use crate::ext;
+    pub use crate::parse;
+    pub use crate::ast;
 }
 
 pub mod ast;
@@ -151,7 +139,7 @@ pub mod source_map;
 pub mod config;
 pub mod entry;
 pub mod feature_gate;
-pub mod fold;
+pub mod mut_visit;
 pub mod parse;
 pub mod ptr;
 pub mod show_span;

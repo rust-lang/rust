@@ -1,8 +1,8 @@
-error: unused import: `use std::fmt::{};`
-  --> $DIR/lint-unused-imports.rs:8:1
+error: unused import: `std::fmt::{}`
+  --> $DIR/lint-unused-imports.rs:8:5
    |
 LL | use std::fmt::{};
-   | ^^^^^^^^^^^^^^^^^
+   |     ^^^^^^^^^^^^
    |
 note: lint level defined here
   --> $DIR/lint-unused-imports.rs:1:9

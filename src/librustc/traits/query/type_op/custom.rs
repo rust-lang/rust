@@ -1,12 +1,12 @@
-use infer::{InferCtxt, InferOk};
+use crate::infer::{InferCtxt, InferOk};
 use std::fmt;
-use traits::query::Fallible;
+use crate::traits::query::Fallible;
 
-use infer::canonical::query_response;
-use infer::canonical::QueryRegionConstraint;
+use crate::infer::canonical::query_response;
+use crate::infer::canonical::QueryRegionConstraint;
 use std::rc::Rc;
 use syntax::source_map::DUMMY_SP;
-use traits::{ObligationCause, TraitEngine, TraitEngineExt};
+use crate::traits::{ObligationCause, TraitEngine, TraitEngineExt};
 
 pub struct CustomTypeOp<F, G> {
     closure: F,

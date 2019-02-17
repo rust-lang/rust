@@ -13,10 +13,10 @@ use rustc::ty::subst::{Subst,Substs};
 
 use std::collections::VecDeque;
 use std::iter;
-use transform::{MirPass, MirSource};
+use crate::transform::{MirPass, MirSource};
 use super::simplify::{remove_dead_blocks, CfgSimplifier};
 
-use syntax::{attr};
+use syntax::attr;
 use rustc_target::spec::abi::Abi;
 
 const DEFAULT_THRESHOLD: usize = 50;
@@ -40,7 +40,7 @@ struct CallSite<'tcx> {
 impl MirPass for Inline {
     fn run_pass<'a, 'tcx>(&self,
                           tcx: TyCtxt<'a, 'tcx, 'tcx>,
-                          source: MirSource,
+                          source: MirSource<'tcx>,
                           mir: &mut Mir<'tcx>) {
         if tcx.sess.opts.debugging_opts.mir_opt_level >= 2 {
             Inliner { tcx, source }.run_pass(mir);
@@ -50,7 +50,7 @@ impl MirPass for Inline {
 
 struct Inliner<'a, 'tcx: 'a> {
     tcx: TyCtxt<'a, 'tcx, 'tcx>,
-    source: MirSource,
+    source: MirSource<'tcx>,
 }
 
 impl<'a, 'tcx> Inliner<'a, 'tcx> {
@@ -69,10 +69,10 @@ impl<'a, 'tcx> Inliner<'a, 'tcx> {
 
         let mut callsites = VecDeque::new();
 
-        let param_env = self.tcx.param_env(self.source.def_id);
+        let param_env = self.tcx.param_env(self.source.def_id());
 
         // Only do inlining into fn bodies.
-        let id = self.tcx.hir().as_local_node_id(self.source.def_id).unwrap();
+        let id = self.tcx.hir().as_local_node_id(self.source.def_id()).unwrap();
         if self.tcx.hir().body_owner_kind(id).is_fn_or_closure() && self.source.promoted.is_none() {
             for (bb, bb_data) in caller_mir.basic_blocks().iter_enumerated() {
                 if let Some(callsite) = self.get_valid_function_call(bb,
@@ -98,22 +98,34 @@ impl<'a, 'tcx> Inliner<'a, 'tcx> {
                     continue;
                 }
 
-                let callee_mir = match self.tcx.try_optimized_mir(callsite.location.span,
-                                                                  callsite.callee) {
-                    Ok(callee_mir) if self.consider_optimizing(callsite, callee_mir) => {
-                        self.tcx.subst_and_normalize_erasing_regions(
-                            &callsite.substs,
-                            param_env,
-                            callee_mir,
-                        )
-                    }
-                    Ok(_) => continue,
+                let self_node_id = self.tcx.hir().as_local_node_id(self.source.def_id()).unwrap();
+                let callee_node_id = self.tcx.hir().as_local_node_id(callsite.callee);
 
-                    Err(mut bug) => {
-                        // FIXME(#43542) shouldn't have to cancel an error
-                        bug.cancel();
-                        continue
+                let callee_mir = if let Some(callee_node_id) = callee_node_id {
+                    // Avoid a cycle here by only using `optimized_mir` only if we have
+                    // a lower node id than the callee. This ensures that the callee will
+                    // not inline us. This trick only works without incremental compilation.
+                    // So don't do it if that is enabled.
+                    if !self.tcx.dep_graph.is_fully_enabled()
+                        && self_node_id.as_u32() < callee_node_id.as_u32() {
+                        self.tcx.optimized_mir(callsite.callee)
+                    } else {
+                        continue;
                     }
+                } else {
+                    // This cannot result in a cycle since the callee MIR is from another crate
+                    // and is already optimized.
+                    self.tcx.optimized_mir(callsite.callee)
+                };
+
+                let callee_mir = if self.consider_optimizing(callsite, callee_mir) {
+                    self.tcx.subst_and_normalize_erasing_regions(
+                        &callsite.substs,
+                        param_env,
+                        callee_mir,
+                    )
+                } else {
+                    continue;
                 };
 
                 let start = caller_mir.basic_blocks().len();
@@ -274,7 +286,7 @@ impl<'a, 'tcx> Inliner<'a, 'tcx> {
 
         // FIXME: Give a bonus to functions with only a single caller
 
-        let param_env = tcx.param_env(self.source.def_id);
+        let param_env = tcx.param_env(self.source.def_id());
 
         let mut first_block = true;
         let mut cost = 0;
@@ -426,7 +438,7 @@ impl<'a, 'tcx> Inliner<'a, 'tcx> {
                 // Place could result in two different locations if `f`
                 // writes to `i`. To prevent this we need to create a temporary
                 // borrow of the place and pass the destination as `*temp` instead.
-                fn dest_needs_borrow(place: &Place) -> bool {
+                fn dest_needs_borrow(place: &Place<'_>) -> bool {
                     match *place {
                         Place::Projection(ref p) => {
                             match p.elem {

@@ -1,9 +1,9 @@
 //! Error Reporting for Anonymous Region Lifetime Errors
 //! where both the regions are anonymous.
 
-use infer::error_reporting::nice_region_error::NiceRegionError;
-use infer::error_reporting::nice_region_error::util::AnonymousArgInfo;
-use util::common::ErrorReported;
+use crate::infer::error_reporting::nice_region_error::NiceRegionError;
+use crate::infer::error_reporting::nice_region_error::util::AnonymousArgInfo;
+use crate::util::common::ErrorReported;
 
 impl<'a, 'gcx, 'tcx> NiceRegionError<'a, 'gcx, 'tcx> {
     /// Print the error message for lifetime errors when both the concerned regions are anonymous.
@@ -39,7 +39,7 @@ impl<'a, 'gcx, 'tcx> NiceRegionError<'a, 'gcx, 'tcx> {
     ///     x.push(y);
     ///     ^ ...but data from `y` flows into `x` here
     /// }
-    /// ````
+    /// ```
     ///
     /// It will later be extended to trait objects.
     pub(super) fn try_report_anon_anon_conflict(&self) -> Option<ErrorReported> {

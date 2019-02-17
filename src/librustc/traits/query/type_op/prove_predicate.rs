@@ -1,6 +1,6 @@
-use infer::canonical::{Canonical, Canonicalized, CanonicalizedQueryResponse, QueryResponse};
-use traits::query::Fallible;
-use ty::{ParamEnvAnd, Predicate, TyCtxt};
+use crate::infer::canonical::{Canonical, Canonicalized, CanonicalizedQueryResponse, QueryResponse};
+use crate::traits::query::Fallible;
+use crate::ty::{ParamEnvAnd, Predicate, TyCtxt};
 
 #[derive(Copy, Clone, Debug, Hash, PartialEq, Eq)]
 pub struct ProvePredicate<'tcx> {

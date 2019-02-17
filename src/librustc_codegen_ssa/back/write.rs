@@ -1,12 +1,12 @@
-use {ModuleCodegen, ModuleKind, CachedModuleCodegen, CompiledModule, CrateInfo, CodegenResults,
-    RLIB_BYTECODE_EXTENSION};
+use crate::{ModuleCodegen, ModuleKind, CachedModuleCodegen, CompiledModule, CrateInfo,
+    CodegenResults, RLIB_BYTECODE_EXTENSION};
 use super::linker::LinkerInfo;
 use super::lto::{self, SerializedModule};
 use super::link::{self, remove, get_linker};
 use super::command::Command;
 use super::symbol_export::ExportedSymbols;
 
-use memmap;
+use crate::traits::*;
 use rustc_incremental::{copy_cgu_workproducts_to_incr_comp_cache_dir,
                         in_incr_comp_dir, in_incr_comp_dir_sess};
 use rustc::dep_graph::{WorkProduct, WorkProductId, WorkProductFileKind};
@@ -16,7 +16,6 @@ use rustc::session::config::{self, OutputFilenames, OutputType, Passes, Sanitize
 use rustc::session::Session;
 use rustc::util::nodemap::FxHashMap;
 use rustc::util::time_graph::{self, TimeGraph, Timeline};
-use traits::*;
 use rustc::hir::def_id::{CrateNum, LOCAL_CRATE};
 use rustc::ty::TyCtxt;
 use rustc::util::common::{time_depth, set_time_depth, print_time_passes_entry};
@@ -42,7 +41,7 @@ use std::sync::mpsc::{channel, Sender, Receiver};
 use std::time::Instant;
 use std::thread;
 
-const PRE_THIN_LTO_BC_EXT: &str = "pre-thin-lto.bc";
+const PRE_LTO_BC_EXT: &str = "pre-lto.bc";
 
 /// Module-specific configuration for `optimize_and_codegen`.
 pub struct ModuleConfig {
@@ -59,7 +58,7 @@ pub struct ModuleConfig {
     pub pgo_use: String,
 
     // Flags indicating which outputs to produce.
-    pub emit_pre_thin_lto_bc: bool,
+    pub emit_pre_lto_bc: bool,
     pub emit_no_opt_bc: bool,
     pub emit_bc: bool,
     pub emit_bc_compressed: bool,
@@ -97,7 +96,7 @@ impl ModuleConfig {
             pgo_use: String::new(),
 
             emit_no_opt_bc: false,
-            emit_pre_thin_lto_bc: false,
+            emit_pre_lto_bc: false,
             emit_bc: false,
             emit_bc_compressed: false,
             emit_lto_bc: false,
@@ -127,7 +126,7 @@ impl ModuleConfig {
         self.time_passes = sess.time_passes();
         self.inline_threshold = sess.opts.cg.inline_threshold;
         self.obj_is_bitcode = sess.target.target.options.obj_is_bitcode ||
-                              sess.opts.debugging_opts.cross_lang_lto.enabled();
+                              sess.opts.cg.linker_plugin_lto.enabled();
         let embed_bitcode = sess.target.target.options.embed_bitcode ||
                             sess.opts.debugging_opts.embed_bitcode;
         if embed_bitcode {
@@ -259,7 +258,7 @@ impl<B: WriteBackendMethods> CodegenContext<B> {
 
 fn generate_lto_work<B: ExtraBackendMethods>(
     cgcx: &CodegenContext<B>,
-    needs_fat_lto: Vec<ModuleCodegen<B::Module>>,
+    needs_fat_lto: Vec<FatLTOInput<B>>,
     needs_thin_lto: Vec<(String, B::ThinBuffer)>,
     import_only_modules: Vec<(SerializedModule<B::ModuleBuffer>, WorkProduct)>
 ) -> Vec<(WorkItem<B>, u64)> {
@@ -271,9 +270,13 @@ fn generate_lto_work<B: ExtraBackendMethods>(
 
     let (lto_modules, copy_jobs) = if !needs_fat_lto.is_empty() {
         assert!(needs_thin_lto.is_empty());
-        assert!(import_only_modules.is_empty());
-        let lto_module = B::run_fat_lto(cgcx, needs_fat_lto, &mut timeline)
-            .unwrap_or_else(|e| e.raise());
+        let lto_module = B::run_fat_lto(
+            cgcx,
+            needs_fat_lto,
+            import_only_modules,
+            &mut timeline,
+        )
+        .unwrap_or_else(|e| e.raise());
         (vec![lto_module], vec![])
     } else {
         assert!(needs_fat_lto.is_empty());
@@ -303,14 +306,14 @@ fn need_crate_bitcode_for_rlib(sess: &Session) -> bool {
     sess.opts.output_types.contains_key(&OutputType::Exe)
 }
 
-fn need_pre_thin_lto_bitcode_for_incr_comp(sess: &Session) -> bool {
+fn need_pre_lto_bitcode_for_incr_comp(sess: &Session) -> bool {
     if sess.opts.incremental.is_none() {
         return false
     }
 
     match sess.lto() {
-        Lto::Fat |
         Lto::No => false,
+        Lto::Fat |
         Lto::Thin |
         Lto::ThinLocal => true,
     }
@@ -376,7 +379,7 @@ pub fn start_async_codegen<B: ExtraBackendMethods>(
     // Save all versions of the bytecode if we're saving our temporaries.
     if sess.opts.cg.save_temps {
         modules_config.emit_no_opt_bc = true;
-        modules_config.emit_pre_thin_lto_bc = true;
+        modules_config.emit_pre_lto_bc = true;
         modules_config.emit_bc = true;
         modules_config.emit_lto_bc = true;
         metadata_config.emit_bc = true;
@@ -391,8 +394,8 @@ pub fn start_async_codegen<B: ExtraBackendMethods>(
         allocator_config.emit_bc_compressed = true;
     }
 
-    modules_config.emit_pre_thin_lto_bc =
-        need_pre_thin_lto_bitcode_for_incr_comp(sess);
+    modules_config.emit_pre_lto_bc =
+        need_pre_lto_bitcode_for_incr_comp(sess);
 
     modules_config.no_integrated_as = tcx.sess.opts.cg.no_integrated_as ||
         tcx.sess.target.target.options.no_integrated_as;
@@ -663,7 +666,7 @@ pub enum WorkItem<B: WriteBackendMethods> {
     /// Copy the post-LTO artifacts from the incremental cache to the output
     /// directory.
     CopyPostLtoArtifacts(CachedModuleCodegen),
-    /// Perform (Thin)LTO on the given module.
+    /// Performs (Thin)LTO on the given module.
     LTO(lto::LtoModuleCodegen<B>),
 }
 
@@ -687,8 +690,16 @@ impl<B: WriteBackendMethods> WorkItem<B> {
 
 enum WorkItemResult<B: WriteBackendMethods> {
     Compiled(CompiledModule),
-    NeedsFatLTO(ModuleCodegen<B::Module>),
+    NeedsFatLTO(FatLTOInput<B>),
     NeedsThinLTO(String, B::ThinBuffer),
+}
+
+pub enum FatLTOInput<B: WriteBackendMethods> {
+    Serialized {
+        name: String,
+        buffer: B::ModuleBuffer,
+    },
+    InMemory(ModuleCodegen<B::Module>),
 }
 
 fn execute_work_item<B: ExtraBackendMethods>(
@@ -738,7 +749,7 @@ fn execute_optimize_work_item<B: ExtraBackendMethods>(
     // If the linker does LTO, we don't have to do it. Note that we
     // keep doing full LTO, if it is requested, as not to break the
     // assumption that the output will be a single module.
-    let linker_does_lto = cgcx.opts.debugging_opts.cross_lang_lto.enabled();
+    let linker_does_lto = cgcx.opts.cg.linker_plugin_lto.enabled();
 
     // When we're automatically doing ThinLTO for multi-codegen-unit
     // builds we don't actually want to LTO the allocator modules if
@@ -772,6 +783,15 @@ fn execute_optimize_work_item<B: ExtraBackendMethods>(
         }
     };
 
+    // If we're doing some form of incremental LTO then we need to be sure to
+    // save our module to disk first.
+    let bitcode = if cgcx.config(module.kind).emit_pre_lto_bc {
+        let filename = pre_lto_bitcode_filename(&module.name);
+        cgcx.incr_comp_session_dir.as_ref().map(|path| path.join(&filename))
+    } else {
+        None
+    };
+
     Ok(match lto_type {
         ComputedLtoType::No => {
             let module = unsafe {
@@ -780,10 +800,30 @@ fn execute_optimize_work_item<B: ExtraBackendMethods>(
             WorkItemResult::Compiled(module)
         }
         ComputedLtoType::Thin => {
-            let (name, thin_buffer) = B::prepare_thin(cgcx, module);
+            let (name, thin_buffer) = B::prepare_thin(module);
+            if let Some(path) = bitcode {
+                fs::write(&path, thin_buffer.data()).unwrap_or_else(|e| {
+                    panic!("Error writing pre-lto-bitcode file `{}`: {}",
+                           path.display(),
+                           e);
+                });
+            }
             WorkItemResult::NeedsThinLTO(name, thin_buffer)
         }
-        ComputedLtoType::Fat => WorkItemResult::NeedsFatLTO(module),
+        ComputedLtoType::Fat => {
+            match bitcode {
+                Some(path) => {
+                    let (name, buffer) = B::serialize_module(module);
+                    fs::write(&path, buffer.data()).unwrap_or_else(|e| {
+                        panic!("Error writing pre-lto-bitcode file `{}`: {}",
+                               path.display(),
+                               e);
+                    });
+                    WorkItemResult::NeedsFatLTO(FatLTOInput::Serialized { name, buffer })
+                }
+                None => WorkItemResult::NeedsFatLTO(FatLTOInput::InMemory(module)),
+            }
+        }
     })
 }
 
@@ -867,7 +907,7 @@ fn execute_lto_work_item<B: ExtraBackendMethods>(
 pub enum Message<B: WriteBackendMethods> {
     Token(io::Result<Acquired>),
     NeedsFatLTO {
-        result: ModuleCodegen<B::Module>,
+        result: FatLTOInput<B>,
         worker_id: usize,
     },
     NeedsThinLTO {
@@ -1798,7 +1838,7 @@ impl<B: ExtraBackendMethods> OngoingCodegen<B> {
         drop(self.coordinator_send.send(Box::new(Message::CodegenComplete::<B>)));
     }
 
-    /// Consume this context indicating that codegen was entirely aborted, and
+    /// Consumes this context indicating that codegen was entirely aborted, and
     /// we need to exit as quickly as possible.
     ///
     /// This method blocks the current thread until all worker threads have
@@ -1878,13 +1918,13 @@ pub fn submit_pre_lto_module_to_llvm<B: ExtraBackendMethods>(
 }
 
 pub fn pre_lto_bitcode_filename(module_name: &str) -> String {
-    format!("{}.{}", module_name, PRE_THIN_LTO_BC_EXT)
+    format!("{}.{}", module_name, PRE_LTO_BC_EXT)
 }
 
 fn msvc_imps_needed(tcx: TyCtxt) -> bool {
     // This should never be true (because it's not supported). If it is true,
     // something is wrong with commandline arg validation.
-    assert!(!(tcx.sess.opts.debugging_opts.cross_lang_lto.enabled() &&
+    assert!(!(tcx.sess.opts.cg.linker_plugin_lto.enabled() &&
               tcx.sess.target.target.options.is_like_msvc &&
               tcx.sess.opts.cg.prefer_dynamic));
 
@@ -1892,6 +1932,6 @@ fn msvc_imps_needed(tcx: TyCtxt) -> bool {
         tcx.sess.crate_types.borrow().iter().any(|ct| *ct == config::CrateType::Rlib) &&
     // ThinLTO can't handle this workaround in all cases, so we don't
     // emit the `__imp_` symbols. Instead we make them unnecessary by disallowing
-    // dynamic linking when cross-language LTO is enabled.
-    !tcx.sess.opts.debugging_opts.cross_lang_lto.enabled()
+    // dynamic linking when linker plugin LTO is enabled.
+    !tcx.sess.opts.cg.linker_plugin_lto.enabled()
 }

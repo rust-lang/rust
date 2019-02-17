@@ -1,7 +1,7 @@
 // Helpers for handling cast expressions, used in both
 // typeck and codegen.
 
-use ty::{self, Ty};
+use crate::ty::{self, Ty};
 
 use syntax::ast;
 

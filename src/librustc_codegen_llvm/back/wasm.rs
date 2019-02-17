@@ -112,7 +112,7 @@ pub fn rewrite_imports(path: &Path, import_map: &FxHashMap<String, String>) {
     }
 }
 
-/// Add or augment the existing `producers` section to encode information about
+/// Adds or augment the existing `producers` section to encode information about
 /// the Rust compiler used to produce the wasm file.
 pub fn add_producer_section(
     path: &Path,

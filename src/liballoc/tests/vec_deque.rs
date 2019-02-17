@@ -108,6 +108,7 @@ fn test_index() {
 
 #[test]
 #[should_panic]
+#[cfg(not(miri))] // Miri does not support panics
 fn test_index_out_of_bounds() {
     let mut deq = VecDeque::new();
     for i in 1..4 {
@@ -943,7 +944,10 @@ fn test_append_permutations() {
         out
     }
 
+    #[cfg(not(miri))] // Miri is too slow
     const MAX: usize = 5;
+    #[cfg(miri)]
+    const MAX: usize = 3;
 
     // Many different permutations of both the `VecDeque` getting appended to
     // and the one getting appended are generated to check `append`.
@@ -1120,6 +1124,7 @@ fn test_reserve_exact_2() {
 }
 
 #[test]
+#[cfg(not(miri))] // Miri does not support signalling OOM
 fn test_try_reserve() {
 
     // These are the interesting cases:
@@ -1221,6 +1226,7 @@ fn test_try_reserve() {
 }
 
 #[test]
+#[cfg(not(miri))] // Miri does not support signalling OOM
 fn test_try_reserve_exact() {
 
     // This is exactly the same as test_try_reserve with the method changed.

@@ -1,4 +1,4 @@
-use spec::{LinkerFlavor, LldFlavor, PanicStrategy,
+use crate::spec::{LinkerFlavor, LldFlavor, PanicStrategy,
            Target, TargetOptions, TargetResult};
 
 pub fn target() -> TargetResult {

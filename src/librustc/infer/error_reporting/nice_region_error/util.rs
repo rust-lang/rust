@@ -1,10 +1,10 @@
 //! Helper functions corresponding to lifetime errors due to
 //! anonymous regions.
 
-use hir;
-use infer::error_reporting::nice_region_error::NiceRegionError;
-use ty::{self, Region, Ty};
-use hir::def_id::DefId;
+use crate::hir;
+use crate::infer::error_reporting::nice_region_error::NiceRegionError;
+use crate::ty::{self, Region, Ty};
+use crate::hir::def_id::DefId;
 use syntax_pos::Span;
 
 // The struct contains the information about the anonymous region
@@ -64,7 +64,7 @@ impl<'a, 'gcx, 'tcx> NiceRegionError<'a, 'gcx, 'tcx> {
                             // May return None; sometimes the tables are not yet populated.
                             let ty_hir_id = fn_decl.inputs[index].hir_id;
                             let arg_ty_span = hir.span(hir.hir_to_node_id(ty_hir_id));
-                            let ty = tables.node_id_to_type_opt(arg.hir_id)?;
+                            let ty = tables.node_type_opt(arg.hir_id)?;
                             let mut found_anon_region = false;
                             let new_arg_ty = self.tcx().fold_regions(&ty, &mut false, |r, _| {
                                 if *r == *anon_region {

@@ -174,13 +174,13 @@ pub trait ArgTypeExt<'ll, 'tcx> {
 }
 
 impl ArgTypeExt<'ll, 'tcx> for ArgType<'tcx, Ty<'tcx>> {
-    /// Get the LLVM type for a place of the original Rust type of
+    /// Gets the LLVM type for a place of the original Rust type of
     /// this argument/return, i.e., the result of `type_of::type_of`.
     fn memory_ty(&self, cx: &CodegenCx<'ll, 'tcx>) -> &'ll Type {
         self.layout.llvm_type(cx)
     }
 
-    /// Store a direct/indirect value described by this ArgType into a
+    /// Stores a direct/indirect value described by this ArgType into a
     /// place for the original Rust type of this argument/return.
     /// Can be used for both storing formal arguments into Rust variables
     /// or results of call/invoke instructions into their destinations.

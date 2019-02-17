@@ -1,4 +1,4 @@
-mod Bar {
+mod bar {
     pub struct Foo {
         pub a: isize,
         b: isize,
@@ -10,10 +10,10 @@ mod Bar {
     );
 }
 
-fn pat_match(foo: Bar::Foo) {
-    let Bar::Foo{a:a, b:b} = foo; //~ ERROR E0451
+fn pat_match(foo: bar::Foo) {
+    let bar::Foo{a, b} = foo; //~ ERROR E0451
 }
 
 fn main() {
-    let f = Bar::Foo{ a: 0, b: 0 }; //~ ERROR E0451
+    let f = bar::Foo{ a: 0, b: 0 }; //~ ERROR E0451
 }

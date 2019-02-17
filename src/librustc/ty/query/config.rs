@@ -1,27 +1,28 @@
-use dep_graph::SerializedDepNodeIndex;
-use dep_graph::DepNode;
-use hir::def_id::{CrateNum, DefId, DefIndex};
-use mir::interpret::GlobalId;
-use traits;
-use traits::query::{
+use crate::dep_graph::SerializedDepNodeIndex;
+use crate::dep_graph::DepNode;
+use crate::hir::def_id::{CrateNum, DefId, DefIndex};
+use crate::mir::interpret::GlobalId;
+use crate::traits;
+use crate::traits::query::{
     CanonicalPredicateGoal, CanonicalProjectionGoal, CanonicalTyGoal,
     CanonicalTypeOpAscribeUserTypeGoal, CanonicalTypeOpEqGoal, CanonicalTypeOpNormalizeGoal,
     CanonicalTypeOpProvePredicateGoal, CanonicalTypeOpSubtypeGoal,
 };
-use ty::{self, ParamEnvAnd, Ty, TyCtxt};
-use ty::subst::Substs;
-use ty::query::queries;
-use ty::query::Query;
-use ty::query::QueryCache;
-use util::profiling::ProfileCategory;
+use crate::ty::{self, ParamEnvAnd, Ty, TyCtxt};
+use crate::ty::subst::Substs;
+use crate::ty::query::queries;
+use crate::ty::query::Query;
+use crate::ty::query::QueryCache;
+use crate::ty::query::plumbing::CycleError;
+use crate::util::profiling::ProfileCategory;
 
 use std::borrow::Cow;
 use std::hash::Hash;
 use std::fmt::Debug;
 use syntax_pos::symbol::InternedString;
 use rustc_data_structures::sync::Lock;
-use rustc_data_structures::stable_hasher::HashStable;
-use ich::StableHashingContext;
+use rustc_data_structures::fingerprint::Fingerprint;
+use crate::ich::StableHashingContext;
 
 // Query configuration and description traits.
 
@@ -30,7 +31,7 @@ pub trait QueryConfig<'tcx> {
     const CATEGORY: ProfileCategory;
 
     type Key: Eq + Hash + Clone + Debug;
-    type Value: Clone + for<'a> HashStable<StableHashingContext<'a>>;
+    type Value: Clone;
 }
 
 pub(super) trait QueryAccessors<'tcx>: QueryConfig<'tcx> {
@@ -44,7 +45,12 @@ pub(super) trait QueryAccessors<'tcx>: QueryConfig<'tcx> {
     // Don't use this method to compute query results, instead use the methods on TyCtxt
     fn compute(tcx: TyCtxt<'_, 'tcx, '_>, key: Self::Key) -> Self::Value;
 
-    fn handle_cycle_error(tcx: TyCtxt<'_, 'tcx, '_>) -> Self::Value;
+    fn hash_result(
+        hcx: &mut StableHashingContext<'_>,
+        result: &Self::Value
+    ) -> Option<Fingerprint>;
+
+    fn handle_cycle_error(tcx: TyCtxt<'_, 'tcx, '_>, error: CycleError<'tcx>) -> Self::Value;
 }
 
 pub(super) trait QueryDescription<'tcx>: QueryAccessors<'tcx> {
@@ -901,7 +907,7 @@ impl<'tcx> QueryDescription<'tcx> for queries::optimized_mir<'tcx> {
     fn try_load_from_disk<'a>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                               id: SerializedDepNodeIndex)
                               -> Option<Self::Value> {
-        let mir: Option<::mir::Mir<'tcx>> = tcx.queries.on_disk_cache
+        let mir: Option<crate::mir::Mir<'tcx>> = tcx.queries.on_disk_cache
                                                .try_load_query_result(tcx, id);
         mir.map(|x| tcx.alloc_mir(x))
     }

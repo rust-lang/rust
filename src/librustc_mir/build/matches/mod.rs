@@ -3,11 +3,11 @@
 //! includes the high-level algorithm, the submodules contain the
 //! details.
 
-use build::scope::{CachedBlock, DropKind};
-use build::ForGuard::{self, OutsideGuard, RefWithinGuard, ValWithinGuard};
-use build::{BlockAnd, BlockAndExtension, Builder};
-use build::{GuardFrame, GuardFrameLocal, LocalsForNode};
-use hair::*;
+use crate::build::scope::{CachedBlock, DropKind};
+use crate::build::ForGuard::{self, OutsideGuard, RefWithinGuard, ValWithinGuard};
+use crate::build::{BlockAnd, BlockAndExtension, Builder};
+use crate::build::{GuardFrame, GuardFrameLocal, LocalsForNode};
+use crate::hair::{self, *};
 use rustc::mir::*;
 use rustc::ty::{self, CanonicalUserTypeAnnotation, Ty};
 use rustc::ty::layout::VariantIdx;
@@ -283,9 +283,11 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                     },
                     ..
                 },
-                user_ty: pat_ascription_ty,
-                variance: _,
-                user_ty_span,
+                ascription: hair::pattern::Ascription {
+                    user_ty: pat_ascription_ty,
+                    variance: _,
+                    user_ty_span,
+                },
             } => {
                 let place =
                     self.storage_live_binding(block, var, irrefutable_pat.span, OutsideGuard);
@@ -560,9 +562,11 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
             }
             PatternKind::AscribeUserType {
                 ref subpattern,
-                ref user_ty,
-                user_ty_span,
-                variance: _,
+                ascription: hair::pattern::Ascription {
+                    ref user_ty,
+                    user_ty_span,
+                    variance: _,
+                },
             } => {
                 // This corresponds to something like
                 //
@@ -727,7 +731,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
     ///
     /// The return value is a list of "otherwise" blocks. These are
     /// points in execution where we found that *NONE* of the
-    /// candidates apply.  In principle, this means that the input
+    /// candidates apply. In principle, this means that the input
     /// list was not exhaustive, though at present we sometimes are
     /// not smart enough to recognize all exhaustive inputs.
     ///
@@ -874,7 +878,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
         }
     }
 
-    /// This is the most subtle part of the matching algorithm.  At
+    /// This is the most subtle part of the matching algorithm. At
     /// this point, the input candidates have been fully simplified,
     /// and so we know that all remaining match-pairs require some
     /// sort of test. To decide what test to do, we take the highest
@@ -894,10 +898,10 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
     /// 4. etc.
     ///
     /// Once we know what sort of test we are going to perform, this
-    /// test may also help us with other candidates. So we walk over
+    /// Tests may also help us with other candidates. So we walk over
     /// the candidates (from high to low priority) and check. This
     /// gives us, for each outcome of the test, a transformed list of
-    /// candidates.  For example, if we are testing the current
+    /// candidates. For example, if we are testing the current
     /// variant of `x.0`, and we have a candidate `{x.0 @ Some(v), x.1
     /// @ 22}`, then we would have a resulting candidate of `{(x.0 as
     /// Some).0 @ v, x.1 @ 22}`. Note that the first match-pair is now
@@ -1093,7 +1097,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
     /// for the case where the guard fails.
     ///
     /// Note: we check earlier that if there is a guard, there cannot
-    /// be move bindings.  This isn't really important for the
+    /// be move bindings. This isn't really important for the
     /// self-consistency of this fn, but the reason for it should be
     /// clear: after we've done the assignments, if there were move
     /// bindings, further tests would be a use-after-move (which would

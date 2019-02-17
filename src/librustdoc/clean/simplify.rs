@@ -1,11 +1,11 @@
-//! Simplification of where clauses and parameter bounds into a prettier and
+//! Simplification of where-clauses and parameter bounds into a prettier and
 //! more canonical form.
 //!
 //! Currently all cross-crate-inlined function use `rustc::ty` to reconstruct
 //! the AST (e.g., see all of `clean::inline`), but this is not always a
-//! non-lossy transformation. The current format of storage for where clauses
+//! non-lossy transformation. The current format of storage for where-clauses
 //! for functions and such is simply a list of predicates. One example of this
-//! is that the AST predicate of: `where T: Trait<Foo=Bar>` is encoded as:
+//! is that the AST predicate of: `where T: Trait<Foo = Bar>` is encoded as:
 //! `where T: Trait, <T as Trait>::Foo = Bar`.
 //!
 //! This module attempts to reconstruct the original where and/or parameter

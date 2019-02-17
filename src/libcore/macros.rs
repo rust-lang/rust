@@ -1,6 +1,7 @@
-/// Entry point of thread panic, for details, see std::macros
+/// Entry point of thread panic. For details, see `std::macros`.
 #[macro_export]
-#[allow_internal_unstable]
+#[cfg_attr(not(stage0), allow_internal_unstable(core_panic, __rust_unstable_column))]
+#[cfg_attr(stage0, allow_internal_unstable)]
 #[stable(feature = "core", since = "1.6.0")]
 macro_rules! panic {
     () => (
@@ -45,9 +46,12 @@ macro_rules! assert_eq {
         match (&$left, &$right) {
             (left_val, right_val) => {
                 if !(*left_val == *right_val) {
+                    // The reborrows below are intentional. Without them, the stack slot for the
+                    // borrow is initialized even before the values are compared, leading to a
+                    // noticeable slow down.
                     panic!(r#"assertion failed: `(left == right)`
   left: `{:?}`,
- right: `{:?}`"#, left_val, right_val)
+ right: `{:?}`"#, &*left_val, &*right_val)
                 }
             }
         }
@@ -59,9 +63,12 @@ macro_rules! assert_eq {
         match (&($left), &($right)) {
             (left_val, right_val) => {
                 if !(*left_val == *right_val) {
+                    // The reborrows below are intentional. Without them, the stack slot for the
+                    // borrow is initialized even before the values are compared, leading to a
+                    // noticeable slow down.
                     panic!(r#"assertion failed: `(left == right)`
   left: `{:?}`,
- right: `{:?}`: {}"#, left_val, right_val,
+ right: `{:?}`: {}"#, &*left_val, &*right_val,
                            format_args!($($arg)+))
                 }
             }
@@ -96,9 +103,12 @@ macro_rules! assert_ne {
         match (&$left, &$right) {
             (left_val, right_val) => {
                 if *left_val == *right_val {
+                    // The reborrows below are intentional. Without them, the stack slot for the
+                    // borrow is initialized even before the values are compared, leading to a
+                    // noticeable slow down.
                     panic!(r#"assertion failed: `(left != right)`
   left: `{:?}`,
- right: `{:?}`"#, left_val, right_val)
+ right: `{:?}`"#, &*left_val, &*right_val)
                 }
             }
         }
@@ -110,9 +120,12 @@ macro_rules! assert_ne {
         match (&($left), &($right)) {
             (left_val, right_val) => {
                 if *left_val == *right_val {
+                    // The reborrows below are intentional. Without them, the stack slot for the
+                    // borrow is initialized even before the values are compared, leading to a
+                    // noticeable slow down.
                     panic!(r#"assertion failed: `(left != right)`
   left: `{:?}`,
- right: `{:?}`: {}"#, left_val, right_val,
+ right: `{:?}`: {}"#, &*left_val, &*right_val,
                            format_args!($($arg)+))
                 }
             }
@@ -409,7 +422,8 @@ macro_rules! write {
 /// ```
 #[macro_export]
 #[stable(feature = "rust1", since = "1.0.0")]
-#[allow_internal_unstable]
+#[cfg_attr(stage0, allow_internal_unstable)]
+#[cfg_attr(not(stage0), allow_internal_unstable(format_args_nl))]
 macro_rules! writeln {
     ($dst:expr) => (
         write!($dst, "\n")
@@ -432,7 +446,7 @@ macro_rules! writeln {
 /// * Iterators that dynamically terminate.
 ///
 /// If the determination that the code is unreachable proves incorrect, the
-/// program immediately terminates with a [`panic!`].  The function [`unreachable_unchecked`],
+/// program immediately terminates with a [`panic!`]. The function [`unreachable_unchecked`],
 /// which belongs to the [`std::hint`] module, informs the compiler to
 /// optimize the code out of the release version entirely.
 ///
@@ -493,7 +507,7 @@ macro_rules! unreachable {
 /// A standardized placeholder for marking unfinished code.
 ///
 /// This can be useful if you are prototyping and are just looking to have your
-/// code typecheck, or if you're implementing a trait that requires multiple
+/// code type-check, or if you're implementing a trait that requires multiple
 /// methods, and you're only planning on using one of them.
 ///
 /// # Panics
@@ -549,18 +563,18 @@ macro_rules! unimplemented {
 
 /// A macro to create an array of [`MaybeUninit`]
 ///
-/// This macro constructs and uninitialized array of the type `[MaybeUninit<K>; N]`.
+/// This macro constructs an uninitialized array of the type `[MaybeUninit<K>; N]`.
 ///
 /// [`MaybeUninit`]: mem/union.MaybeUninit.html
 #[macro_export]
-#[unstable(feature = "maybe_uninit", issue = "53491")]
+#[unstable(feature = "maybe_uninit_array", issue = "53491")]
 macro_rules! uninitialized_array {
-    // This `into_inner` is safe because an array of `MaybeUninit` does not
+    // This `into_initialized` is safe because an array of `MaybeUninit` does not
     // require initialization.
     // FIXME(#49147): Could be replaced by an array initializer, once those can
     // be any const expression.
     ($t:ty; $size:expr) => (unsafe {
-        MaybeUninit::<[MaybeUninit<$t>; $size]>::uninitialized().into_inner()
+        MaybeUninit::<[MaybeUninit<$t>; $size]>::uninitialized().into_initialized()
     });
 }
 

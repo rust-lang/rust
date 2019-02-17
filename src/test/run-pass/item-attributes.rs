@@ -163,7 +163,7 @@ mod test_foreign_items {
 }
 
 
-// FIXME #623 - these aren't supported yet
+// FIXME(#623): - these aren't supported yet
 /*mod test_literals {
     #![str = "s"]
     #![char = 'c']

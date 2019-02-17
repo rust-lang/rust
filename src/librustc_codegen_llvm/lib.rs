@@ -4,9 +4,7 @@
 //!
 //! This API is completely unstable and subject to change.
 
-#![doc(html_logo_url = "https://www.rust-lang.org/logos/rust-logo-128x128-blk-v2.png",
-      html_favicon_url = "https://doc.rust-lang.org/favicon.ico",
-      html_root_url = "https://doc.rust-lang.org/nightly/")]
+#![doc(html_root_url = "https://doc.rust-lang.org/nightly/")]
 
 #![feature(box_patterns)]
 #![feature(box_syntax)]
@@ -19,7 +17,6 @@
 #![feature(nll)]
 #![feature(range_contains)]
 #![feature(rustc_diagnostic_macros)]
-#![feature(slice_sort_by_cached_key)]
 #![feature(optin_builtin_traits)]
 #![feature(concat_idents)]
 #![feature(link_args)]
@@ -56,7 +53,7 @@ extern crate tempfile;
 extern crate memmap;
 
 use rustc_codegen_ssa::traits::*;
-use rustc_codegen_ssa::back::write::{CodegenContext, ModuleConfig};
+use rustc_codegen_ssa::back::write::{CodegenContext, ModuleConfig, FatLTOInput};
 use rustc_codegen_ssa::back::lto::{SerializedModule, LtoModuleCodegen, ThinModule};
 use rustc_codegen_ssa::CompiledModule;
 use errors::{FatalError, Handler};
@@ -167,10 +164,11 @@ impl WriteBackendMethods for LlvmCodegenBackend {
     }
     fn run_fat_lto(
         cgcx: &CodegenContext<Self>,
-        modules: Vec<ModuleCodegen<Self::Module>>,
+        modules: Vec<FatLTOInput<Self>>,
+        cached_modules: Vec<(SerializedModule<Self::ModuleBuffer>, WorkProduct)>,
         timeline: &mut Timeline
     ) -> Result<LtoModuleCodegen<Self>, FatalError> {
-        back::lto::run_fat(cgcx, modules, timeline)
+        back::lto::run_fat(cgcx, modules, cached_modules, timeline)
     }
     fn run_thin_lto(
         cgcx: &CodegenContext<Self>,
@@ -206,10 +204,14 @@ impl WriteBackendMethods for LlvmCodegenBackend {
         back::write::codegen(cgcx, diag_handler, module, config, timeline)
     }
     fn prepare_thin(
-        cgcx: &CodegenContext<Self>,
         module: ModuleCodegen<Self::Module>
     ) -> (String, Self::ThinBuffer) {
-        back::lto::prepare_thin(cgcx, module)
+        back::lto::prepare_thin(module)
+    }
+    fn serialize_module(
+        module: ModuleCodegen<Self::Module>
+    ) -> (String, Self::ModuleBuffer) {
+        (module.name, back::lto::ModuleBuffer::new(module.module_llvm.llmod()))
     }
     fn run_lto_pass_manager(
         cgcx: &CodegenContext<Self>,
@@ -374,6 +376,31 @@ impl ModuleLlvm {
                 llcx,
                 tm: create_target_machine(tcx, false),
             }
+        }
+    }
+
+    fn parse(
+        cgcx: &CodegenContext<LlvmCodegenBackend>,
+        name: &str,
+        buffer: &back::lto::ModuleBuffer,
+        handler: &Handler,
+    ) -> Result<Self, FatalError> {
+        unsafe {
+            let llcx = llvm::LLVMRustContextCreate(cgcx.fewer_names);
+            let llmod_raw = buffer.parse(name, llcx, handler)?;
+            let tm = match (cgcx.tm_factory.0)() {
+                Ok(m) => m,
+                Err(e) => {
+                    handler.struct_err(&e).emit();
+                    return Err(FatalError)
+                }
+            };
+
+            Ok(ModuleLlvm {
+                llmod_raw,
+                llcx,
+                tm,
+            })
         }
     }
 

@@ -1,9 +1,10 @@
-use schema::*;
+use crate::schema::*;
 
 use rustc::hir::def_id::{DefId, DefIndex, DefIndexAddressSpace};
 use rustc_serialize::opaque::Encoder;
 use std::slice;
 use std::u32;
+use log::debug;
 
 /// While we are generating the metadata, we also track the position
 /// of each DefIndex. It is not required that all definitions appear
@@ -24,12 +25,12 @@ impl Index {
         }
     }
 
-    pub fn record(&mut self, def_id: DefId, entry: Lazy<Entry>) {
+    pub fn record(&mut self, def_id: DefId, entry: Lazy<Entry<'_>>) {
         assert!(def_id.is_local());
         self.record_index(def_id.index, entry);
     }
 
-    pub fn record_index(&mut self, item: DefIndex, entry: Lazy<Entry>) {
+    pub fn record_index(&mut self, item: DefIndex, entry: Lazy<Entry<'_>>) {
         assert!(entry.position < (u32::MAX as usize));
         let position = entry.position as u32;
         let space_index = item.address_space().index();

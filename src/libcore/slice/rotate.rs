@@ -26,7 +26,7 @@ impl<T> RawArray<T> {
 }
 
 /// Rotates the range `[mid-left, mid+right)` such that the element at `mid`
-/// becomes the first element.  Equivalently, rotates the range `left`
+/// becomes the first element. Equivalently, rotates the range `left`
 /// elements to the left or `right` elements to the right.
 ///
 /// # Safety
@@ -36,10 +36,10 @@ impl<T> RawArray<T> {
 /// # Algorithm
 ///
 /// For longer rotations, swap the left-most `delta = min(left, right)`
-/// elements with the right-most `delta` elements.  LLVM vectorizes this,
+/// elements with the right-most `delta` elements. LLVM vectorizes this,
 /// which is profitable as we only reach this step for a "large enough"
-/// rotation.  Doing this puts `delta` elements on the larger side into the
-/// correct position, leaving a smaller rotate problem.  Demonstration:
+/// rotation. Doing this puts `delta` elements on the larger side into the
+/// correct position, leaving a smaller rotate problem. Demonstration:
 ///
 /// ```text
 /// [ 6 7 8 9 10 11 12 13 . 1 2 3 4 5 ]

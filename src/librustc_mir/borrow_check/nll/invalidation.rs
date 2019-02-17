@@ -1,15 +1,15 @@
-use borrow_check::borrow_set::BorrowSet;
-use borrow_check::location::LocationTable;
-use borrow_check::{JustWrite, WriteAndRead};
-use borrow_check::{AccessDepth, Deep, Shallow};
-use borrow_check::{ReadOrWrite, Activation, Read, Reservation, Write};
-use borrow_check::{Context, ContextKind};
-use borrow_check::{LocalMutationIsAllowed, MutateMode};
-use borrow_check::ArtificialField;
-use borrow_check::{ReadKind, WriteKind};
-use borrow_check::nll::facts::AllFacts;
-use borrow_check::path_utils::*;
-use dataflow::move_paths::indexes::BorrowIndex;
+use crate::borrow_check::borrow_set::BorrowSet;
+use crate::borrow_check::location::LocationTable;
+use crate::borrow_check::{JustWrite, WriteAndRead};
+use crate::borrow_check::{AccessDepth, Deep, Shallow};
+use crate::borrow_check::{ReadOrWrite, Activation, Read, Reservation, Write};
+use crate::borrow_check::{Context, ContextKind};
+use crate::borrow_check::{LocalMutationIsAllowed, MutateMode};
+use crate::borrow_check::ArtificialField;
+use crate::borrow_check::{ReadKind, WriteKind};
+use crate::borrow_check::nll::facts::AllFacts;
+use crate::borrow_check::path_utils::*;
+use crate::dataflow::move_paths::indexes::BorrowIndex;
 use rustc::ty::TyCtxt;
 use rustc::mir::visit::Visitor;
 use rustc::mir::{BasicBlock, Location, Mir, Place, Rvalue};
@@ -53,8 +53,8 @@ struct InvalidationGenerator<'cx, 'tcx: 'cx, 'gcx: 'tcx> {
     borrow_set: &'cx BorrowSet<'tcx>,
 }
 
-/// Visits the whole MIR and generates invalidates() facts
-/// Most of the code implementing this was stolen from borrow_check/mod.rs
+/// Visits the whole MIR and generates `invalidates()` facts.
+/// Most of the code implementing this was stolen from `borrow_check/mod.rs`.
 impl<'cx, 'tcx, 'gcx> Visitor<'tcx> for InvalidationGenerator<'cx, 'tcx, 'gcx> {
     fn visit_statement(
         &mut self,
@@ -272,7 +272,7 @@ impl<'cx, 'tcx, 'gcx> Visitor<'tcx> for InvalidationGenerator<'cx, 'tcx, 'gcx> {
 }
 
 impl<'cg, 'cx, 'tcx, 'gcx> InvalidationGenerator<'cx, 'tcx, 'gcx> {
-    /// Simulates mutation of a place
+    /// Simulates mutation of a place.
     fn mutate_place(
         &mut self,
         context: Context,
@@ -288,7 +288,7 @@ impl<'cg, 'cx, 'tcx, 'gcx> InvalidationGenerator<'cx, 'tcx, 'gcx> {
         );
     }
 
-    /// Simulates consumption of an operand
+    /// Simulates consumption of an operand.
     fn consume_operand(
         &mut self,
         context: Context,
@@ -384,7 +384,7 @@ impl<'cg, 'cx, 'tcx, 'gcx> InvalidationGenerator<'cx, 'tcx, 'gcx> {
         }
     }
 
-    /// Simulates an access to a place
+    /// Simulates an access to a place.
     fn access_place(
         &mut self,
         context: Context,
@@ -472,7 +472,7 @@ impl<'cg, 'cx, 'tcx, 'gcx> InvalidationGenerator<'cx, 'tcx, 'gcx> {
     }
 
 
-    /// Generate a new invalidates(L, B) fact
+    /// Generates a new `invalidates(L, B)` fact.
     fn generate_invalidates(&mut self, b: BorrowIndex, l: Location) {
         let lidx = self.location_table.start_index(l);
         self.all_facts.invalidates.push((lidx, b));

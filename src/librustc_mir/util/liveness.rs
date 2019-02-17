@@ -1,21 +1,22 @@
-//! Liveness analysis which computes liveness of MIR local variables at the boundary of basic blocks
+//! Liveness analysis which computes liveness of MIR local variables at the boundary of basic
+//! blocks.
 //!
 //! This analysis considers references as being used only at the point of the
 //! borrow. This means that this does not track uses because of references that
 //! already exist:
 //!
-//! ```Rust
-//!     fn foo() {
-//!         x = 0;
-//!         // `x` is live here
-//!         GLOBAL = &x: *const u32;
-//!         // but not here, even while it can be accessed through `GLOBAL`.
-//!         foo();
-//!         x = 1;
-//!         // `x` is live again here, because it is assigned to `OTHER_GLOBAL`
-//!         OTHER_GLOBAL = &x: *const u32;
-//!         // ...
-//!     }
+//! ```rust
+//! fn foo() {
+//!     x = 0;
+//!     // `x` is live here ...
+//!     GLOBAL = &x: *const u32;
+//!     // ... but not here, even while it can be accessed through `GLOBAL`.
+//!     foo();
+//!     x = 1;
+//!     // `x` is live again here, because it is assigned to `OTHER_GLOBAL`.
+//!     OTHER_GLOBAL = &x: *const u32;
+//!     // ...
+//! }
 //! ```
 //!
 //! This means that users of this analysis still have to check whether
@@ -35,8 +36,8 @@ use rustc_data_structures::work_queue::WorkQueue;
 use std::fs;
 use std::io::{self, Write};
 use std::path::{Path, PathBuf};
-use transform::MirSource;
-use util::pretty::{dump_enabled, write_basic_block, write_mir_intro};
+use crate::transform::MirSource;
+use crate::util::pretty::{dump_enabled, write_basic_block, write_mir_intro};
 
 pub type LiveVarSet<V> = BitSet<V>;
 
@@ -91,7 +92,7 @@ impl<'a, 'tcx> LiveVariableMap for IdentityMap<'a, 'tcx> {
     }
 }
 
-/// Compute which local variables are live within the given function
+/// Computes which local variables are live within the given function
 /// `mir`. The liveness mode `mode` determines what sorts of uses are
 /// considered to make a variable live (e.g., do drops count?).
 pub fn liveness_of_locals<'tcx, V: Idx>(
@@ -307,7 +308,7 @@ fn block<'tcx, V: Idx>(
 pub fn dump_mir<'a, 'tcx, V: Idx>(
     tcx: TyCtxt<'a, 'tcx, 'tcx>,
     pass_name: &str,
-    source: MirSource,
+    source: MirSource<'tcx>,
     mir: &Mir<'tcx>,
     map: &impl LiveVariableMap<LiveVar = V>,
     result: &LivenessResult<V>,
@@ -317,7 +318,7 @@ pub fn dump_mir<'a, 'tcx, V: Idx>(
     }
     let node_path = item_path::with_forced_impl_filename_line(|| {
         // see notes on #41697 below
-        tcx.item_path_str(source.def_id)
+        tcx.item_path_str(source.def_id())
     });
     dump_matched_mir_node(tcx, pass_name, &node_path, source, mir, map, result);
 }
@@ -326,14 +327,14 @@ fn dump_matched_mir_node<'a, 'tcx, V: Idx>(
     tcx: TyCtxt<'a, 'tcx, 'tcx>,
     pass_name: &str,
     node_path: &str,
-    source: MirSource,
+    source: MirSource<'tcx>,
     mir: &Mir<'tcx>,
     map: &dyn LiveVariableMap<LiveVar = V>,
     result: &LivenessResult<V>,
 ) {
     let mut file_path = PathBuf::new();
     file_path.push(Path::new(&tcx.sess.opts.debugging_opts.dump_mir_dir));
-    let item_id = tcx.hir().as_local_node_id(source.def_id).unwrap();
+    let item_id = tcx.hir().as_local_node_id(source.def_id()).unwrap();
     let file_name = format!("rustc.node{}{}-liveness.mir", item_id, pass_name);
     file_path.push(&file_name);
     let _ = fs::File::create(&file_path).and_then(|mut file| {
@@ -348,7 +349,7 @@ fn dump_matched_mir_node<'a, 'tcx, V: Idx>(
 
 pub fn write_mir_fn<'a, 'tcx, V: Idx>(
     tcx: TyCtxt<'a, 'tcx, 'tcx>,
-    src: MirSource,
+    src: MirSource<'tcx>,
     mir: &Mir<'tcx>,
     map: &dyn LiveVariableMap<LiveVar = V>,
     w: &mut dyn Write,

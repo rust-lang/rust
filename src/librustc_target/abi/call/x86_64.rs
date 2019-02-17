@@ -1,8 +1,8 @@
 // The classification code for the x86_64 ABI is taken from the clay language
 // https://github.com/jckarter/clay/blob/master/compiler/src/externals.cpp
 
-use abi::call::{ArgType, CastTarget, FnType, Reg, RegKind};
-use abi::{self, Abi, HasDataLayout, LayoutOf, Size, TyLayout, TyLayoutMethods};
+use crate::abi::call::{ArgType, CastTarget, FnType, Reg, RegKind};
+use crate::abi::{self, Abi, HasDataLayout, LayoutOf, Size, TyLayout, TyLayoutMethods};
 
 /// Classification of "eightbyte" components.
 // N.B., the order of the variants is from general to specific,

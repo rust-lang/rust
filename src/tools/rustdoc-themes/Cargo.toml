@@ -2,6 +2,7 @@
 name = "rustdoc-themes"
 version = "0.1.0"
 authors = ["Guillaume Gomez <guillaume1.gomez@gmail.com>"]
+edition = "2018"
 
 [[bin]]
 name = "rustdoc-themes"

@@ -8,7 +8,7 @@
 //! specialization errors. These things can (and probably should) be
 //! fixed, but for the moment it's easier to do these checks early.
 
-use constrained_type_params as ctp;
+use crate::constrained_type_params as ctp;
 use rustc::hir;
 use rustc::hir::itemlikevisit::ItemLikeVisitor;
 use rustc::hir::def_id::DefId;
@@ -20,14 +20,14 @@ use std::collections::hash_map::Entry::{Occupied, Vacant};
 use syntax_pos::Span;
 
 /// Checks that all the type/lifetime parameters on an impl also
-/// appear in the trait ref or self-type (or are constrained by a
+/// appear in the trait ref or self type (or are constrained by a
 /// where-clause). These rules are needed to ensure that, given a
 /// trait ref like `<T as Trait<U>>`, we can derive the values of all
 /// parameters on the impl (which is needed to make specialization
 /// possible).
 ///
 /// However, in the case of lifetimes, we only enforce these rules if
-/// the lifetime parameter is used in an associated type.  This is a
+/// the lifetime parameter is used in an associated type. This is a
 /// concession to backwards compatibility; see comment at the end of
 /// the fn for details.
 ///
@@ -40,7 +40,7 @@ use syntax_pos::Span;
 /// impl<T> Trait<Foo<T>> for Bar { ... }
 /// //   ^ T appears in `Foo<T>`, ok.
 ///
-/// impl<T> Trait<Foo> for Bar where Bar: Iterator<Item=T> { ... }
+/// impl<T> Trait<Foo> for Bar where Bar: Iterator<Item = T> { ... }
 /// //   ^ T is bound to `<Bar as Iterator>::Item`, ok.
 ///
 /// impl<'a> Trait<Foo> for Bar { }
@@ -162,7 +162,7 @@ fn enforce_impl_params_are_constrained<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     // used elsewhere are not projected back out.
 }
 
-fn report_unused_parameter(tcx: TyCtxt,
+fn report_unused_parameter(tcx: TyCtxt<'_, '_, '_>,
                            span: Span,
                            kind: &str,
                            name: &str)

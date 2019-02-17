@@ -1,11 +1,11 @@
-use hir;
-use hir::def_id::{DefId, DefIndex};
-use hir::map::DefPathHash;
-use hir::map::definitions::Definitions;
-use ich::{self, CachingSourceMapView, Fingerprint};
-use middle::cstore::CrateStore;
-use ty::{TyCtxt, fast_reject};
-use session::Session;
+use crate::hir;
+use crate::hir::def_id::{DefId, DefIndex};
+use crate::hir::map::DefPathHash;
+use crate::hir::map::definitions::Definitions;
+use crate::ich::{self, CachingSourceMapView, Fingerprint};
+use crate::middle::cstore::CrateStore;
+use crate::ty::{TyCtxt, fast_reject};
+use crate::session::Session;
 
 use std::cmp::Ord;
 use std::hash as std_hash;
@@ -218,7 +218,7 @@ impl<'a> StableHashingContextProvider<'a> for StableHashingContext<'a> {
     }
 }
 
-impl<'a> ::dep_graph::DepGraphSafe for StableHashingContext<'a> {
+impl<'a> crate::dep_graph::DepGraphSafe for StableHashingContext<'a> {
 }
 
 

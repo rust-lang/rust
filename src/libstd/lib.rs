@@ -7,7 +7,7 @@
 //! primitives](#primitives), [standard macros](#macros), [I/O] and
 //! [multithreading], among [many other things][other].
 //!
-//! `std` is available to all Rust crates by default. Therefore the
+//! `std` is available to all Rust crates by default. Therefore, the
 //! standard library can be accessed in [`use`] statements through the path
 //! `std`, as in [`use std::env`].
 //!
@@ -196,9 +196,7 @@
 //! [primitive types]: ../book/ch03-02-data-types.html
 
 #![stable(feature = "rust1", since = "1.0.0")]
-#![doc(html_logo_url = "https://www.rust-lang.org/logos/rust-logo-128x128-blk-v2.png",
-       html_favicon_url = "https://doc.rust-lang.org/favicon.ico",
-       html_root_url = "https://doc.rust-lang.org/nightly/",
+#![doc(html_root_url = "https://doc.rust-lang.org/nightly/",
        html_playground_url = "https://play.rust-lang.org/",
        issue_tracker_base_url = "https://github.com/rust-lang/rust/issues/",
        test(no_crate_inject, attr(deny(warnings))),
@@ -297,6 +295,7 @@
 #![feature(non_exhaustive)]
 #![feature(alloc_layout_extra)]
 #![feature(maybe_uninit)]
+#![feature(checked_duration_since)]
 #![cfg_attr(all(target_vendor = "fortanix", target_env = "sgx"),
             feature(global_asm, range_contains, slice_index_methods,
                     decl_macro, coerce_unsized, sgx_platform, ptr_wrapping_offset_from))]
@@ -343,9 +342,6 @@ extern crate backtrace_sys;
 #[cfg(test)] extern crate std as realstd;
 
 #[cfg(all(target_vendor = "fortanix", target_env = "sgx"))]
-#[macro_use]
-#[allow(unused_imports)] // FIXME: without `#[macro_use]`, get error: “cannot
-                         // determine resolution for the macro `usercalls_asm`”
 extern crate fortanix_sgx_abi;
 
 // The standard macros that are not built-in to the compiler.
@@ -468,8 +464,6 @@ pub mod task {
     //! Types and Traits for working with asynchronous tasks.
     #[doc(inline)]
     pub use core::task::*;
-    #[doc(inline)]
-    pub use alloc_crate::task::*;
 }
 
 #[unstable(feature = "futures_api",

@@ -66,7 +66,7 @@ macro_rules! define_handles {
             impl<S: server::Types> DecodeMut<'_, '_, HandleStore<server::MarkedTypes<S>>>
                 for Marked<S::$oty, $oty>
             {
-                fn decode(r: &mut Reader, s: &mut HandleStore<server::MarkedTypes<S>>) -> Self {
+                fn decode(r: &mut Reader<'_>, s: &mut HandleStore<server::MarkedTypes<S>>) -> Self {
                     s.$oty.take(handle::Handle::decode(r, &mut ()))
                 }
             }
@@ -80,7 +80,7 @@ macro_rules! define_handles {
             impl<S: server::Types> Decode<'_, 's, HandleStore<server::MarkedTypes<S>>>
                 for &'s Marked<S::$oty, $oty>
             {
-                fn decode(r: &mut Reader, s: &'s HandleStore<server::MarkedTypes<S>>) -> Self {
+                fn decode(r: &mut Reader<'_>, s: &'s HandleStore<server::MarkedTypes<S>>) -> Self {
                     &s.$oty[handle::Handle::decode(r, &mut ())]
                 }
             }
@@ -94,7 +94,10 @@ macro_rules! define_handles {
             impl<S: server::Types> DecodeMut<'_, 's, HandleStore<server::MarkedTypes<S>>>
                 for &'s mut Marked<S::$oty, $oty>
             {
-                fn decode(r: &mut Reader, s: &'s mut HandleStore<server::MarkedTypes<S>>) -> Self {
+                fn decode(
+                    r: &mut Reader<'_>,
+                    s: &'s mut HandleStore<server::MarkedTypes<S>>
+                ) -> Self {
                     &mut s.$oty[handle::Handle::decode(r, &mut ())]
                 }
             }
@@ -108,7 +111,7 @@ macro_rules! define_handles {
             }
 
             impl<S> DecodeMut<'_, '_, S> for $oty {
-                fn decode(r: &mut Reader, s: &mut S) -> Self {
+                fn decode(r: &mut Reader<'_>, s: &mut S) -> Self {
                     $oty(handle::Handle::decode(r, s))
                 }
             }
@@ -130,7 +133,7 @@ macro_rules! define_handles {
             impl<S: server::Types> DecodeMut<'_, '_, HandleStore<server::MarkedTypes<S>>>
                 for Marked<S::$ity, $ity>
             {
-                fn decode(r: &mut Reader, s: &mut HandleStore<server::MarkedTypes<S>>) -> Self {
+                fn decode(r: &mut Reader<'_>, s: &mut HandleStore<server::MarkedTypes<S>>) -> Self {
                     s.$ity.copy(handle::Handle::decode(r, &mut ()))
                 }
             }
@@ -144,7 +147,7 @@ macro_rules! define_handles {
             }
 
             impl<S> DecodeMut<'_, '_, S> for $ity {
-                fn decode(r: &mut Reader, s: &mut S) -> Self {
+                fn decode(r: &mut Reader<'_>, s: &mut S) -> Self {
                     $ity(handle::Handle::decode(r, s))
                 }
             }
@@ -200,7 +203,7 @@ impl Clone for Literal {
 
 // FIXME(eddyb) `Literal` should not expose internal `Debug` impls.
 impl fmt::Debug for Literal {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.write_str(&self.debug())
     }
 }
@@ -212,7 +215,7 @@ impl Clone for SourceFile {
 }
 
 impl fmt::Debug for Span {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.write_str(&self.debug())
     }
 }
@@ -275,7 +278,7 @@ impl BridgeState<'_> {
     ///
     /// N.B., while `f` is running, the thread-local state
     /// is `BridgeState::InUse`.
-    fn with<R>(f: impl FnOnce(&mut BridgeState) -> R) -> R {
+    fn with<R>(f: impl FnOnce(&mut BridgeState<'_>) -> R) -> R {
         BRIDGE_STATE.with(|state| {
             state.replace(BridgeState::InUse, |mut state| {
                 // FIXME(#52812) pass `f` directly to `replace` when `RefMutL` is gone
@@ -306,7 +309,7 @@ impl Bridge<'_> {
         BRIDGE_STATE.with(|state| state.set(BridgeState::Connected(self), f))
     }
 
-    fn with<R>(f: impl FnOnce(&mut Bridge) -> R) -> R {
+    fn with<R>(f: impl FnOnce(&mut Bridge<'_>) -> R) -> R {
         BridgeState::with(|state| match state {
             BridgeState::NotConnected => {
                 panic!("procedural macro API is used outside of a procedural macro");
@@ -331,15 +334,15 @@ impl Bridge<'_> {
 #[derive(Copy, Clone)]
 pub struct Client<F> {
     pub(super) get_handle_counters: extern "C" fn() -> &'static HandleCounters,
-    pub(super) run: extern "C" fn(Bridge, F) -> Buffer<u8>,
+    pub(super) run: extern "C" fn(Bridge<'_>, F) -> Buffer<u8>,
     pub(super) f: F,
 }
 
 // FIXME(#53451) public to work around `Cannot create local mono-item` ICE,
 // affecting not only the function itself, but also the `BridgeState` `thread_local!`.
 pub extern "C" fn __run_expand1(
-    mut bridge: Bridge,
-    f: fn(::TokenStream) -> ::TokenStream,
+    mut bridge: Bridge<'_>,
+    f: fn(crate::TokenStream) -> crate::TokenStream,
 ) -> Buffer<u8> {
     // The initial `cached_buffer` contains the input.
     let mut b = bridge.cached_buffer.take();
@@ -352,7 +355,7 @@ pub extern "C" fn __run_expand1(
             // Put the `cached_buffer` back in the `Bridge`, for requests.
             Bridge::with(|bridge| bridge.cached_buffer = b.take());
 
-            let output = f(::TokenStream(input)).0;
+            let output = f(crate::TokenStream(input)).0;
 
             // Take the `cached_buffer` back out, for the output value.
             b = Bridge::with(|bridge| bridge.cached_buffer.take());
@@ -378,8 +381,8 @@ pub extern "C" fn __run_expand1(
     b
 }
 
-impl Client<fn(::TokenStream) -> ::TokenStream> {
-    pub const fn expand1(f: fn(::TokenStream) -> ::TokenStream) -> Self {
+impl Client<fn(crate::TokenStream) -> crate::TokenStream> {
+    pub const fn expand1(f: fn(crate::TokenStream) -> crate::TokenStream) -> Self {
         Client {
             get_handle_counters: HandleCounters::get,
             run: __run_expand1,
@@ -391,8 +394,8 @@ impl Client<fn(::TokenStream) -> ::TokenStream> {
 // FIXME(#53451) public to work around `Cannot create local mono-item` ICE,
 // affecting not only the function itself, but also the `BridgeState` `thread_local!`.
 pub extern "C" fn __run_expand2(
-    mut bridge: Bridge,
-    f: fn(::TokenStream, ::TokenStream) -> ::TokenStream,
+    mut bridge: Bridge<'_>,
+    f: fn(crate::TokenStream, crate::TokenStream) -> crate::TokenStream,
 ) -> Buffer<u8> {
     // The initial `cached_buffer` contains the input.
     let mut b = bridge.cached_buffer.take();
@@ -406,7 +409,7 @@ pub extern "C" fn __run_expand2(
             // Put the `cached_buffer` back in the `Bridge`, for requests.
             Bridge::with(|bridge| bridge.cached_buffer = b.take());
 
-            let output = f(::TokenStream(input), ::TokenStream(input2)).0;
+            let output = f(crate::TokenStream(input), crate::TokenStream(input2)).0;
 
             // Take the `cached_buffer` back out, for the output value.
             b = Bridge::with(|bridge| bridge.cached_buffer.take());
@@ -432,8 +435,10 @@ pub extern "C" fn __run_expand2(
     b
 }
 
-impl Client<fn(::TokenStream, ::TokenStream) -> ::TokenStream> {
-    pub const fn expand2(f: fn(::TokenStream, ::TokenStream) -> ::TokenStream) -> Self {
+impl Client<fn(crate::TokenStream, crate::TokenStream) -> crate::TokenStream> {
+    pub const fn expand2(
+        f: fn(crate::TokenStream, crate::TokenStream) -> crate::TokenStream
+    ) -> Self {
         Client {
             get_handle_counters: HandleCounters::get,
             run: __run_expand2,
@@ -448,17 +453,17 @@ pub enum ProcMacro {
     CustomDerive {
         trait_name: &'static str,
         attributes: &'static [&'static str],
-        client: Client<fn(::TokenStream) -> ::TokenStream>,
+        client: Client<fn(crate::TokenStream) -> crate::TokenStream>,
     },
 
     Attr {
         name: &'static str,
-        client: Client<fn(::TokenStream, ::TokenStream) -> ::TokenStream>,
+        client: Client<fn(crate::TokenStream, crate::TokenStream) -> crate::TokenStream>,
     },
 
     Bang {
         name: &'static str,
-        client: Client<fn(::TokenStream) -> ::TokenStream>,
+        client: Client<fn(crate::TokenStream) -> crate::TokenStream>,
     },
 }
 
@@ -466,7 +471,7 @@ impl ProcMacro {
     pub const fn custom_derive(
         trait_name: &'static str,
         attributes: &'static [&'static str],
-        expand: fn(::TokenStream) -> ::TokenStream,
+        expand: fn(crate::TokenStream) -> crate::TokenStream,
     ) -> Self {
         ProcMacro::CustomDerive {
             trait_name,
@@ -477,7 +482,7 @@ impl ProcMacro {
 
     pub const fn attr(
         name: &'static str,
-        expand: fn(::TokenStream, ::TokenStream) -> ::TokenStream,
+        expand: fn(crate::TokenStream, crate::TokenStream) -> crate::TokenStream,
     ) -> Self {
         ProcMacro::Attr {
             name,
@@ -485,7 +490,10 @@ impl ProcMacro {
         }
     }
 
-    pub const fn bang(name: &'static str, expand: fn(::TokenStream) -> ::TokenStream) -> Self {
+    pub const fn bang(
+        name: &'static str,
+        expand: fn(crate::TokenStream) -> crate::TokenStream
+    ) -> Self {
         ProcMacro::Bang {
             name,
             client: Client::expand1(expand),

@@ -1,4 +1,4 @@
-use ich::Fingerprint;
+use crate::ich::Fingerprint;
 use rustc_data_structures::fx::FxHashMap;
 use super::dep_node::DepNode;
 use super::serialized::{SerializedDepGraph, SerializedDepNodeIndex};

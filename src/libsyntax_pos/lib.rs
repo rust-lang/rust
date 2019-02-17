@@ -4,9 +4,9 @@
 //!
 //! This API is completely unstable and subject to change.
 
-#![doc(html_logo_url = "https://www.rust-lang.org/logos/rust-logo-128x128-blk-v2.png",
-      html_favicon_url = "https://doc.rust-lang.org/favicon.ico",
-      html_root_url = "https://doc.rust-lang.org/nightly/")]
+#![doc(html_root_url = "https://doc.rust-lang.org/nightly/")]
+
+#![deny(rust_2018_idioms)]
 
 #![feature(const_fn)]
 #![feature(crate_visibility_modifier)]
@@ -19,22 +19,10 @@
 #![feature(step_trait)]
 #![cfg_attr(not(stage0), feature(stdsimd))]
 
-extern crate arena;
-#[macro_use]
-extern crate rustc_data_structures;
-
-#[macro_use]
-extern crate scoped_tls;
-
 use serialize::{Encodable, Decodable, Encoder, Decoder};
 
-extern crate serialize;
+#[allow(unused_extern_crates)]
 extern crate serialize as rustc_serialize; // used by deriving
-
-#[macro_use]
-extern crate cfg_if;
-
-extern crate unicode_width;
 
 pub mod edition;
 pub mod hygiene;
@@ -74,13 +62,13 @@ impl Globals {
     }
 }
 
-scoped_thread_local!(pub static GLOBALS: Globals);
+scoped_tls::scoped_thread_local!(pub static GLOBALS: Globals);
 
 /// Differentiates between real files and common virtual files.
 #[derive(Debug, Eq, PartialEq, Clone, Ord, PartialOrd, Hash, RustcDecodable, RustcEncodable)]
 pub enum FileName {
     Real(PathBuf),
-    /// A macro.  This includes the full name of the macro, so that there are no clashes.
+    /// A macro. This includes the full name of the macro, so that there are no clashes.
     Macros(String),
     /// Call to `quote!`.
     QuoteExpansion(u64),
@@ -100,8 +88,8 @@ pub enum FileName {
 }
 
 impl std::fmt::Display for FileName {
-    fn fmt(&self, fmt: &mut std::fmt::Formatter) -> std::fmt::Result {
-        use self::FileName::*;
+    fn fmt(&self, fmt: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        use FileName::*;
         match *self {
             Real(ref path) => write!(fmt, "{}", path.display()),
             Macros(ref name) => write!(fmt, "<{} macros>", name),
@@ -127,7 +115,7 @@ impl From<PathBuf> for FileName {
 
 impl FileName {
     pub fn is_real(&self) -> bool {
-        use self::FileName::*;
+        use FileName::*;
         match *self {
             Real(_) => true,
             Macros(_) |
@@ -143,7 +131,7 @@ impl FileName {
     }
 
     pub fn is_macros(&self) -> bool {
-        use self::FileName::*;
+        use FileName::*;
         match *self {
             Real(_) |
             Anon(_) |
@@ -317,21 +305,21 @@ impl Span {
         if self.is_dummy() { other } else { self }
     }
 
-    /// Return `true` if `self` fully encloses `other`.
+    /// Returns `true` if `self` fully encloses `other`.
     pub fn contains(self, other: Span) -> bool {
         let span = self.data();
         let other = other.data();
         span.lo <= other.lo && other.hi <= span.hi
     }
 
-    /// Return `true` if `self` touches `other`.
+    /// Returns `true` if `self` touches `other`.
     pub fn overlaps(self, other: Span) -> bool {
         let span = self.data();
         let other = other.data();
         span.lo < other.hi && other.lo < span.hi
     }
 
-    /// Return true if the spans are equal with regards to the source text.
+    /// Returns `true` if the spans are equal with regards to the source text.
     ///
     /// Use this instead of `==` when either span could be generated code,
     /// and you only care that they point to the same bytes of source text.
@@ -352,7 +340,7 @@ impl Span {
         }
     }
 
-    /// Return the source span -- this is either the supplied span, or the span for
+    /// Returns the source span -- this is either the supplied span, or the span for
     /// the macro callsite that expanded to it.
     pub fn source_callsite(self) -> Span {
         self.ctxt().outer().expn_info().map(|info| info.call_site.source_callsite()).unwrap_or(self)
@@ -380,7 +368,7 @@ impl Span {
         self.edition() >= edition::Edition::Edition2018
     }
 
-    /// Return the source callee.
+    /// Returns the source callee.
     ///
     /// Returns `None` if the supplied span has no expansion trace,
     /// else returns the `ExpnInfo` for the macro definition
@@ -395,17 +383,21 @@ impl Span {
         self.ctxt().outer().expn_info().map(source_callee)
     }
 
-    /// Check if a span is "internal" to a macro in which `#[unstable]`
+    /// Checks if a span is "internal" to a macro in which `#[unstable]`
     /// items can be used (that is, a macro marked with
     /// `#[allow_internal_unstable]`).
-    pub fn allows_unstable(&self) -> bool {
+    pub fn allows_unstable(&self, feature: &str) -> bool {
         match self.ctxt().outer().expn_info() {
-            Some(info) => info.allow_internal_unstable,
+            Some(info) => info
+                .allow_internal_unstable
+                .map_or(false, |features| features.iter().any(|&f|
+                    f == feature || f == "allow_internal_unstable_backcompat_hack"
+                )),
             None => false,
         }
     }
 
-    /// Check if this span arises from a compiler desugaring of kind `kind`.
+    /// Checks if this span arises from a compiler desugaring of kind `kind`.
     pub fn is_compiler_desugaring(&self, kind: CompilerDesugaringKind) -> bool {
         match self.ctxt().outer().expn_info() {
             Some(info) => match info.format {
@@ -416,7 +408,7 @@ impl Span {
         }
     }
 
-    /// Return the compiler desugaring that created this span, or `None`
+    /// Returns the compiler desugaring that created this span, or `None`
     /// if this span is not from a desugaring.
     pub fn compiler_desugaring_kind(&self) -> Option<CompilerDesugaringKind> {
         match self.ctxt().outer().expn_info() {
@@ -428,7 +420,7 @@ impl Span {
         }
     }
 
-    /// Check if a span is "internal" to a macro in which `unsafe`
+    /// Checks if a span is "internal" to a macro in which `unsafe`
     /// can be used without triggering the `unsafe_code` lint
     //  (that is, a macro marked with `#[allow_internal_unsafe]`).
     pub fn allows_unsafe(&self) -> bool {
@@ -462,7 +454,7 @@ impl Span {
         result
     }
 
-    /// Return a `Span` that would enclose both `self` and `end`.
+    /// Returns a `Span` that would enclose both `self` and `end`.
     pub fn to(self, end: Span) -> Span {
         let span_data = self.data();
         let end_data = end.data();
@@ -485,7 +477,7 @@ impl Span {
         )
     }
 
-    /// Return a `Span` between the end of `self` to the beginning of `end`.
+    /// Returns a `Span` between the end of `self` to the beginning of `end`.
     pub fn between(self, end: Span) -> Span {
         let span = self.data();
         let end = end.data();
@@ -496,7 +488,7 @@ impl Span {
         )
     }
 
-    /// Return a `Span` between the beginning of `self` to the beginning of `end`.
+    /// Returns a `Span` between the beginning of `self` to the beginning of `end`.
     pub fn until(self, end: Span) -> Span {
         let span = self.data();
         let end = end.data();
@@ -611,7 +603,7 @@ impl serialize::UseSpecializedDecodable for Span {
     }
 }
 
-pub fn default_span_debug(span: Span, f: &mut fmt::Formatter) -> fmt::Result {
+pub fn default_span_debug(span: Span, f: &mut fmt::Formatter<'_>) -> fmt::Result {
     f.debug_struct("Span")
         .field("lo", &span.lo())
         .field("hi", &span.hi())
@@ -620,13 +612,13 @@ pub fn default_span_debug(span: Span, f: &mut fmt::Formatter) -> fmt::Result {
 }
 
 impl fmt::Debug for Span {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         SPAN_DEBUG.with(|span_debug| span_debug.get()(*self, f))
     }
 }
 
 impl fmt::Debug for SpanData {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         SPAN_DEBUG.with(|span_debug| span_debug.get()(Span::new(self.lo, self.hi, self.ctxt), f))
     }
 }
@@ -668,7 +660,7 @@ impl MultiSpan {
         &self.primary_spans
     }
 
-    /// Returns whether any of the primary spans is displayable.
+    /// Returns `true` if any of the primary spans are displayable.
     pub fn has_primary_spans(&self) -> bool {
         self.primary_spans.iter().any(|sp| !sp.is_dummy())
     }
@@ -685,7 +677,7 @@ impl MultiSpan {
     }
 
     /// Replaces all occurrences of one Span with another. Used to move `Span`s in areas that don't
-    /// display well (like std macros). Returns true if replacements occurred.
+    /// display well (like std macros). Returns whether replacements occurred.
     pub fn replace(&mut self, before: Span, after: Span) -> bool {
         let mut replacements_occurred = false;
         for primary_span in &mut self.primary_spans {
@@ -732,7 +724,7 @@ impl MultiSpan {
         span_labels
     }
 
-    /// Returns whether any of the span labels is displayable.
+    /// Returns `true` if any of the span labels is displayable.
     pub fn has_span_labels(&self) -> bool {
         self.span_labels.iter().any(|(sp, _)| !sp.is_dummy())
     }
@@ -861,7 +853,7 @@ pub struct SourceFile {
     /// originate from files has names between angle brackets by convention
     /// (e.g., `<anon>`).
     pub name: FileName,
-    /// True if the `name` field above has been modified by `--remap-path-prefix`.
+    /// `true` if the `name` field above has been modified by `--remap-path-prefix`.
     pub name_was_remapped: bool,
     /// The unmapped path of the file that the source came from.
     /// Set to `None` if the `SourceFile` was imported from an external crate.
@@ -1009,7 +1001,7 @@ impl Decodable for SourceFile {
                 // `crate_of_origin` has to be set by the importer.
                 // This value matches up with rustc::hir::def_id::INVALID_CRATE.
                 // That constant is not available here unfortunately :(
-                crate_of_origin: ::std::u32::MAX - 1,
+                crate_of_origin: std::u32::MAX - 1,
                 start_pos,
                 end_pos,
                 src: None,
@@ -1025,7 +1017,7 @@ impl Decodable for SourceFile {
 }
 
 impl fmt::Debug for SourceFile {
-    fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, fmt: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(fmt, "SourceFile({})", self.name)
     }
 }
@@ -1070,7 +1062,7 @@ impl SourceFile {
         }
     }
 
-    /// Return the `BytePos` of the beginning of the current line.
+    /// Returns the `BytePos` of the beginning of the current line.
     pub fn line_begin_pos(&self, pos: BytePos) -> BytePos {
         let line_index = self.lookup_line(pos).unwrap();
         self.lines[line_index]
@@ -1109,9 +1101,9 @@ impl SourceFile {
         }
     }
 
-    /// Get a line from the list of pre-computed line-beginnings.
+    /// Gets a line from the list of pre-computed line-beginnings.
     /// The line number here is 0-based.
-    pub fn get_line(&self, line_number: usize) -> Option<Cow<str>> {
+    pub fn get_line(&self, line_number: usize) -> Option<Cow<'_, str>> {
         fn get_until_newline(src: &str, begin: usize) -> &str {
             // We can't use `lines.get(line_number+1)` because we might
             // be parsing when we call this function and thus the current
@@ -1157,7 +1149,7 @@ impl SourceFile {
         self.lines.len()
     }
 
-    /// Find the line containing the given position. The return value is the
+    /// Finds the line containing the given position. The return value is the
     /// index into the `lines` array of this `SourceFile`, not the 1-based line
     /// number. If the source_file is empty or the position is located before the
     /// first line, `None` is returned.
@@ -1194,7 +1186,7 @@ impl SourceFile {
     }
 }
 
-/// Remove utf-8 BOM if any.
+/// Removes UTF-8 BOM, if any.
 fn remove_bom(src: &mut String) {
     if src.starts_with("\u{feff}") {
         src.drain(..3);
@@ -1353,7 +1345,7 @@ pub struct FileLines {
     pub lines: Vec<LineInfo>
 }
 
-thread_local!(pub static SPAN_DEBUG: Cell<fn(Span, &mut fmt::Formatter) -> fmt::Result> =
+thread_local!(pub static SPAN_DEBUG: Cell<fn(Span, &mut fmt::Formatter<'_>) -> fmt::Result> =
                 Cell::new(default_span_debug));
 
 #[derive(Debug)]

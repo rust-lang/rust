@@ -1,4 +1,4 @@
-use traits::{
+use crate::traits::{
     Environment,
     InEnvironment,
     TraitEngine,
@@ -8,10 +8,10 @@ use traits::{
     FulfillmentErrorCode,
     SelectionError,
 };
-use traits::query::NoSolution;
-use infer::InferCtxt;
-use infer::canonical::{Canonical, OriginalQueryValues};
-use ty::{self, Ty};
+use crate::traits::query::NoSolution;
+use crate::infer::InferCtxt;
+use crate::infer::canonical::{Canonical, OriginalQueryValues};
+use crate::ty::{self, Ty};
 use rustc_data_structures::fx::FxHashSet;
 
 pub type CanonicalGoal<'tcx> = Canonical<'tcx, InEnvironment<'tcx, ty::Predicate<'tcx>>>;

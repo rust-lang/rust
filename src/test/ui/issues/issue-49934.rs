@@ -30,12 +30,12 @@ fn main() {
     #[derive(Debug)] //~ WARN unused attribute
     let _ = "Hello, world!";
 
-    // fold_expr
+    // visit_expr
     let _ = #[derive(Debug)] "Hello, world!";
     //~^ WARN unused attribute
 
     let _ = [
-        // fold_opt_expr
+        // filter_map_expr
         #[derive(Debug)] //~ WARN unused attribute
         "Hello, world!"
     ];

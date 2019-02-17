@@ -109,6 +109,7 @@ fn double_borrow_single_release_no_borrow_mut() {
 
 #[test]
 #[should_panic]
+#[cfg(not(miri))] // Miri does not support panics
 fn discard_doesnt_unborrow() {
     let x = RefCell::new(0);
     let _b = x.borrow();
@@ -349,6 +350,7 @@ fn refcell_ref_coercion() {
 
 #[test]
 #[should_panic]
+#[cfg(not(miri))] // Miri does not support panics
 fn refcell_swap_borrows() {
     let x = RefCell::new(0);
     let _b = x.borrow();
@@ -358,6 +360,7 @@ fn refcell_swap_borrows() {
 
 #[test]
 #[should_panic]
+#[cfg(not(miri))] // Miri does not support panics
 fn refcell_replace_borrows() {
     let x = RefCell::new(0);
     let _b = x.borrow();

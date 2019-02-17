@@ -14,6 +14,8 @@
 //! A few whitelisted exceptions are allowed as there's known bugs in rustdoc,
 //! but this should catch the majority of "broken link" cases.
 
+#![deny(rust_2018_idioms)]
+
 use std::collections::hash_map::Entry;
 use std::collections::{HashMap, HashSet};
 use std::env;
@@ -21,7 +23,7 @@ use std::fs;
 use std::path::{Path, PathBuf, Component};
 use std::rc::Rc;
 
-use Redirect::*;
+use crate::Redirect::*;
 
 macro_rules! t {
     ($e:expr) => (match $e {

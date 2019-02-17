@@ -1,4 +1,4 @@
-use index;
+use crate::index;
 
 use rustc::hir;
 use rustc::hir::def::{self, CtorKind};
@@ -518,7 +518,7 @@ pub enum AssociatedContainer {
     ImplFinal,
 }
 
-impl_stable_hash_for!(enum ::schema::AssociatedContainer {
+impl_stable_hash_for!(enum crate::schema::AssociatedContainer {
     TraitRequired,
     TraitWithDefault,
     ImplDefault,

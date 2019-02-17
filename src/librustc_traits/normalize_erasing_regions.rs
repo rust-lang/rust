@@ -4,7 +4,7 @@ use rustc::ty::query::Providers;
 use rustc::ty::{self, ParamEnvAnd, Ty, TyCtxt};
 use std::sync::atomic::Ordering;
 
-crate fn provide(p: &mut Providers) {
+crate fn provide(p: &mut Providers<'_>) {
     *p = Providers {
         normalize_ty_after_erasing_regions,
         ..*p

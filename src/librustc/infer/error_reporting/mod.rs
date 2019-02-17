@@ -48,19 +48,18 @@
 use super::lexical_region_resolve::RegionResolutionError;
 use super::region_constraints::GenericKind;
 use super::{InferCtxt, RegionVariableOrigin, SubregionOrigin, TypeTrace, ValuePairs};
-use infer::{self, SuppressRegionErrors};
+use crate::infer::{self, SuppressRegionErrors};
 
+use crate::hir;
+use crate::hir::def_id::DefId;
+use crate::hir::Node;
+use crate::middle::region;
+use crate::traits::{ObligationCause, ObligationCauseCode};
+use crate::ty::error::TypeError;
+use crate::ty::{self, subst::Subst, Region, Ty, TyCtxt, TyKind, TypeFoldable};
 use errors::{Applicability, DiagnosticBuilder, DiagnosticStyledString};
-use hir;
-use hir::def_id::DefId;
-use hir::Node;
-use middle::region;
 use std::{cmp, fmt};
-use syntax::ast::DUMMY_NODE_ID;
 use syntax_pos::{Pos, Span};
-use traits::{ObligationCause, ObligationCauseCode};
-use ty::error::TypeError;
-use ty::{self, subst::Subst, Region, Ty, TyCtxt, TyKind, TypeFoldable};
 
 mod note;
 
@@ -182,8 +181,8 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
         let cm = self.sess.source_map();
 
         let scope = region.free_region_binding_scope(self);
-        let node = self.hir().as_local_node_id(scope).unwrap_or(DUMMY_NODE_ID);
-        let tag = match self.hir().find(node) {
+        let node = self.hir().as_local_hir_id(scope).unwrap_or(hir::DUMMY_HIR_ID);
+        let tag = match self.hir().find_by_hir_id(node) {
             Some(Node::Block(_)) | Some(Node::Expr(_)) => "body",
             Some(Node::Item(it)) => Self::item_scope_tag(&it),
             Some(Node::TraitItem(it)) => Self::trait_item_scope_tag(&it),
@@ -192,7 +191,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
         };
         let (prefix, span) = match *region {
             ty::ReEarlyBound(ref br) => {
-                let mut sp = cm.def_span(self.hir().span(node));
+                let mut sp = cm.def_span(self.hir().span_by_hir_id(node));
                 if let Some(param) = self.hir()
                     .get_generics(scope)
                     .and_then(|generics| generics.get_named(&br.name))
@@ -205,7 +204,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
                 bound_region: ty::BoundRegion::BrNamed(_, ref name),
                 ..
             }) => {
-                let mut sp = cm.def_span(self.hir().span(node));
+                let mut sp = cm.def_span(self.hir().span_by_hir_id(node));
                 if let Some(param) = self.hir()
                     .get_generics(scope)
                     .and_then(|generics| generics.get_named(&name))
@@ -217,15 +216,15 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
             ty::ReFree(ref fr) => match fr.bound_region {
                 ty::BrAnon(idx) => (
                     format!("the anonymous lifetime #{} defined on", idx + 1),
-                    self.hir().span(node),
+                    self.hir().span_by_hir_id(node),
                 ),
                 ty::BrFresh(_) => (
                     "an anonymous lifetime defined on".to_owned(),
-                    self.hir().span(node),
+                    self.hir().span_by_hir_id(node),
                 ),
                 _ => (
                     format!("the lifetime {} as defined on", fr.bound_region),
-                    cm.def_span(self.hir().span(node)),
+                    cm.def_span(self.hir().span_by_hir_id(node)),
                 ),
             },
             _ => bug!(),
@@ -509,22 +508,31 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
                     }
                 }
             }
-            ObligationCauseCode::MatchExpressionArm { arm_span, source } => match source {
+            ObligationCauseCode::MatchExpressionArm {
+                source,
+                ref prior_arms,
+                last_ty,
+                ..
+            } => match source {
                 hir::MatchSource::IfLetDesugar { .. } => {
-                    let msg = "`if let` arm with an incompatible type";
-                    if self.tcx.sess.source_map().is_multiline(arm_span) {
-                        err.span_note(arm_span, msg);
-                    } else {
-                        err.span_label(arm_span, msg);
-                    }
+                    let msg = "`if let` arms have incompatible types";
+                    err.span_label(cause.span, msg);
                 }
                 hir::MatchSource::TryDesugar => {}
                 _ => {
-                    let msg = "match arm with an incompatible type";
-                    if self.tcx.sess.source_map().is_multiline(arm_span) {
-                        err.span_note(arm_span, msg);
-                    } else {
-                        err.span_label(arm_span, msg);
+                    let msg = "`match` arms have incompatible types";
+                    err.span_label(cause.span, msg);
+                    if prior_arms.len() <= 4 {
+                        for sp in prior_arms {
+                            err.span_label(*sp, format!(
+                                "this is found to be of type `{}`",
+                                last_ty,
+                            ));
+                        }
+                    } else if let Some(sp) = prior_arms.last() {
+                        err.span_label(*sp, format!(
+                            "this and all prior arms are found to be of type `{}`", last_ty,
+                        ));
                     }
                 }
             },
@@ -660,7 +668,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
         None
     }
 
-    /// Add a `,` to the type representation only if it is appropriate.
+    /// Adds a `,` to the type representation only if it is appropriate.
     fn push_comma(
         &self,
         value: &mut DiagnosticStyledString,
@@ -716,7 +724,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
         substs.truncate_to(self.tcx, &generics)
     }
 
-    /// Compare two given types, eliding parts that are the same between them and highlighting
+    /// Compares two given types, eliding parts that are the same between them and highlighting
     /// relevant differences, and return two representation of those types for highlighted printing.
     fn cmp(&self, t1: Ty<'tcx>, t2: Ty<'tcx>) -> (DiagnosticStyledString, DiagnosticStyledString) {
         fn equals<'tcx>(a: &Ty<'tcx>, b: &Ty<'tcx>) -> bool {
@@ -1451,8 +1459,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
                 format!(" for lifetime parameter `{}` in coherence check", name)
             }
             infer::UpvarRegion(ref upvar_id, _) => {
-                let var_node_id = self.tcx.hir().hir_to_node_id(upvar_id.var_path.hir_id);
-                let var_name = self.tcx.hir().name(var_node_id);
+                let var_name = self.tcx.hir().name_by_hir_id(upvar_id.var_path.hir_id);
                 format!(" for capture of `{}` by closure", var_name)
             }
             infer::NLL(..) => bug!("NLL variable found in lexical phase"),
@@ -1479,7 +1486,7 @@ enum FailureCode {
 impl<'tcx> ObligationCause<'tcx> {
     fn as_failure_code(&self, terr: &TypeError<'tcx>) -> FailureCode {
         use self::FailureCode::*;
-        use traits::ObligationCauseCode::*;
+        use crate::traits::ObligationCauseCode::*;
         match self.code {
             CompareImplMethodObligation { .. } => Error0308("method not compatible with trait"),
             MatchExpressionArm { source, .. } => Error0308(match source {
@@ -1509,7 +1516,7 @@ impl<'tcx> ObligationCause<'tcx> {
     }
 
     fn as_requirement_str(&self) -> &'static str {
-        use traits::ObligationCauseCode::*;
+        use crate::traits::ObligationCauseCode::*;
         match self.code {
             CompareImplMethodObligation { .. } => "method type is compatible with trait",
             ExprAssignable => "expression is assignable",

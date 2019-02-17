@@ -48,7 +48,7 @@ impl Step for Std {
         });
     }
 
-    /// Build the standard library.
+    /// Builds the standard library.
     ///
     /// This will build the standard library for a particular stage of the build
     /// using the `compiler` targeting the `target` architecture. The artifacts
@@ -269,7 +269,7 @@ impl Step for StartupObjects {
         });
     }
 
-    /// Build and prepare startup objects like rsbegin.o and rsend.o
+    /// Builds and prepare startup objects like rsbegin.o and rsend.o
     ///
     /// These are primarily used on Windows right now for linking executables/dlls.
     /// They don't require any library support as they're just plain old object
@@ -334,7 +334,7 @@ impl Step for Test {
         });
     }
 
-    /// Build libtest.
+    /// Builds libtest.
     ///
     /// This will build libtest and supporting libraries for a particular stage of
     /// the build using the `compiler` targeting the `target` architecture. The
@@ -455,7 +455,7 @@ impl Step for Rustc {
         });
     }
 
-    /// Build the compiler.
+    /// Builds the compiler.
     ///
     /// This will build the compiler for a particular stage of the build using
     /// the `compiler` targeting the `target` architecture. The artifacts

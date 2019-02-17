@@ -227,10 +227,10 @@ lazy_static! {
     pub static ref INTERNER: Interner = Interner::default();
 }
 
-/// This is essentially a HashMap which allows storing any type in its input and
+/// This is essentially a `HashMap` which allows storing any type in its input and
 /// any type in its output. It is a write-once cache; values are never evicted,
 /// which means that references to the value can safely be returned from the
-/// get() method.
+/// `get()` method.
 #[derive(Debug)]
 pub struct Cache(
     RefCell<HashMap<

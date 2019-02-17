@@ -4,15 +4,15 @@ use std::io::prelude::*;
 use std::io::BufReader;
 use std::path::{Path, PathBuf};
 
-use common::{self, CompareMode, Config, Mode};
-use util;
+use crate::common::{self, CompareMode, Config, Mode};
+use crate::util;
 
-use extract_gdb_version;
+use crate::extract_gdb_version;
 
 /// Whether to ignore the test.
 #[derive(Clone, Copy, PartialEq, Debug)]
 pub enum Ignore {
-    /// Run it.
+    /// Runs it.
     Run,
     /// Ignore it totally.
     Ignore,
@@ -389,7 +389,7 @@ impl TestProps {
         props
     }
 
-    /// Load properties from `testfile` into `props`. If a property is
+    /// Loads properties from `testfile` into `props`. If a property is
     /// tied to a particular revision `foo` (indicated by writing
     /// `//[foo]`), then the property is ignored unless `cfg` is
     /// `Some("foo")`.

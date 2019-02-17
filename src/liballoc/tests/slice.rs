@@ -258,6 +258,7 @@ fn test_swap_remove() {
 
 #[test]
 #[should_panic]
+#[cfg(not(miri))] // Miri does not support panics
 fn test_swap_remove_fail() {
     let mut v = vec![1];
     let _ = v.swap_remove(0);
@@ -389,6 +390,7 @@ fn test_reverse() {
 }
 
 #[test]
+#[cfg(not(miri))] // Miri does not support entropy
 fn test_sort() {
     let mut rng = thread_rng();
 
@@ -465,6 +467,7 @@ fn test_sort() {
 }
 
 #[test]
+#[cfg(not(miri))] // Miri does not support entropy
 fn test_sort_stability() {
     for len in (2..25).chain(500..510) {
         for _ in 0..10 {
@@ -629,6 +632,7 @@ fn test_insert() {
 
 #[test]
 #[should_panic]
+#[cfg(not(miri))] // Miri does not support panics
 fn test_insert_oob() {
     let mut a = vec![1, 2, 3];
     a.insert(4, 5);
@@ -653,6 +657,7 @@ fn test_remove() {
 
 #[test]
 #[should_panic]
+#[cfg(not(miri))] // Miri does not support panics
 fn test_remove_fail() {
     let mut a = vec![1];
     let _ = a.remove(0);
@@ -934,6 +939,7 @@ fn test_windowsator() {
 
 #[test]
 #[should_panic]
+#[cfg(not(miri))] // Miri does not support panics
 fn test_windowsator_0() {
     let v = &[1, 2, 3, 4];
     let _it = v.windows(0);
@@ -958,6 +964,7 @@ fn test_chunksator() {
 
 #[test]
 #[should_panic]
+#[cfg(not(miri))] // Miri does not support panics
 fn test_chunksator_0() {
     let v = &[1, 2, 3, 4];
     let _it = v.chunks(0);
@@ -982,6 +989,7 @@ fn test_chunks_exactator() {
 
 #[test]
 #[should_panic]
+#[cfg(not(miri))] // Miri does not support panics
 fn test_chunks_exactator_0() {
     let v = &[1, 2, 3, 4];
     let _it = v.chunks_exact(0);
@@ -1006,6 +1014,7 @@ fn test_rchunksator() {
 
 #[test]
 #[should_panic]
+#[cfg(not(miri))] // Miri does not support panics
 fn test_rchunksator_0() {
     let v = &[1, 2, 3, 4];
     let _it = v.rchunks(0);
@@ -1030,6 +1039,7 @@ fn test_rchunks_exactator() {
 
 #[test]
 #[should_panic]
+#[cfg(not(miri))] // Miri does not support panics
 fn test_rchunks_exactator_0() {
     let v = &[1, 2, 3, 4];
     let _it = v.rchunks_exact(0);
@@ -1082,6 +1092,7 @@ fn test_vec_default() {
 
 #[test]
 #[should_panic]
+#[cfg(not(miri))] // Miri does not support panics
 fn test_overflow_does_not_cause_segfault() {
     let mut v = vec![];
     v.reserve_exact(!0);
@@ -1091,6 +1102,7 @@ fn test_overflow_does_not_cause_segfault() {
 
 #[test]
 #[should_panic]
+#[cfg(not(miri))] // Miri does not support panics
 fn test_overflow_does_not_cause_segfault_managed() {
     let mut v = vec![Rc::new(1)];
     v.reserve_exact(!0);
@@ -1266,6 +1278,7 @@ fn test_mut_chunks_rev() {
 
 #[test]
 #[should_panic]
+#[cfg(not(miri))] // Miri does not support panics
 fn test_mut_chunks_0() {
     let mut v = [1, 2, 3, 4];
     let _it = v.chunks_mut(0);
@@ -1298,6 +1311,7 @@ fn test_mut_chunks_exact_rev() {
 
 #[test]
 #[should_panic]
+#[cfg(not(miri))] // Miri does not support panics
 fn test_mut_chunks_exact_0() {
     let mut v = [1, 2, 3, 4];
     let _it = v.chunks_exact_mut(0);
@@ -1330,6 +1344,7 @@ fn test_mut_rchunks_rev() {
 
 #[test]
 #[should_panic]
+#[cfg(not(miri))] // Miri does not support panics
 fn test_mut_rchunks_0() {
     let mut v = [1, 2, 3, 4];
     let _it = v.rchunks_mut(0);
@@ -1362,6 +1377,7 @@ fn test_mut_rchunks_exact_rev() {
 
 #[test]
 #[should_panic]
+#[cfg(not(miri))] // Miri does not support panics
 fn test_mut_rchunks_exact_0() {
     let mut v = [1, 2, 3, 4];
     let _it = v.rchunks_exact_mut(0);
@@ -1395,6 +1411,7 @@ fn test_box_slice_clone() {
 #[test]
 #[allow(unused_must_use)] // here, we care about the side effects of `.clone()`
 #[cfg_attr(target_os = "emscripten", ignore)]
+#[cfg(not(miri))] // Miri does not support panics
 fn test_box_slice_clone_panics() {
     use std::sync::Arc;
     use std::sync::atomic::{AtomicUsize, Ordering};
@@ -1459,6 +1476,7 @@ fn test_copy_from_slice() {
 
 #[test]
 #[should_panic(expected = "destination and source slices have different lengths")]
+#[cfg(not(miri))] // Miri does not support panics
 fn test_copy_from_slice_dst_longer() {
     let src = [0, 1, 2, 3];
     let mut dst = [0; 5];
@@ -1467,6 +1485,7 @@ fn test_copy_from_slice_dst_longer() {
 
 #[test]
 #[should_panic(expected = "destination and source slices have different lengths")]
+#[cfg(not(miri))] // Miri does not support panics
 fn test_copy_from_slice_dst_shorter() {
     let src = [0, 1, 2, 3];
     let mut dst = [0; 3];
@@ -1586,6 +1605,7 @@ thread_local!(static SILENCE_PANIC: Cell<bool> = Cell::new(false));
 
 #[test]
 #[cfg_attr(target_os = "emscripten", ignore)] // no threads
+#[cfg(not(miri))] // Miri does not support panics
 fn panic_safe() {
     let prev = panic::take_hook();
     panic::set_hook(Box::new(move |info| {

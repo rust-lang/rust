@@ -16,11 +16,11 @@ error: unused import: `*`
 LL | use foo::bar::baz::{*, *};
    |                        ^
 
-error: unused import: `use foo::{};`
-  --> $DIR/use-nested-groups-unused-imports.rs:20:1
+error: unused import: `foo::{}`
+  --> $DIR/use-nested-groups-unused-imports.rs:20:5
    |
 LL | use foo::{};
-   | ^^^^^^^^^^^^
+   |     ^^^^^^^
 
 error: aborting due to 3 previous errors
 

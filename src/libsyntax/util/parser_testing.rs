@@ -1,18 +1,22 @@
-use ast::{self, Ident};
-use source_map::FilePathMapping;
-use parse::{ParseSess, PResult, source_file_to_stream};
-use parse::{lexer, new_parser_from_source_str};
-use parse::parser::Parser;
-use ptr::P;
-use tokenstream::TokenStream;
+use crate::ast::{self, Ident};
+use crate::source_map::FilePathMapping;
+use crate::parse::{ParseSess, PResult, source_file_to_stream};
+use crate::parse::{lexer, new_parser_from_source_str};
+use crate::parse::parser::Parser;
+use crate::ptr::P;
+use crate::tokenstream::TokenStream;
+
 use std::iter::Peekable;
 use std::path::PathBuf;
 
 /// Map a string to tts, using a made-up filename:
 pub fn string_to_stream(source_str: String) -> TokenStream {
     let ps = ParseSess::new(FilePathMapping::empty());
-    source_file_to_stream(&ps, ps.source_map()
-                             .new_source_file(PathBuf::from("bogofile").into(), source_str), None)
+    source_file_to_stream(
+        &ps,
+        ps.source_map().new_source_file(PathBuf::from("bogofile").into(),
+        source_str,
+    ), None).0
 }
 
 /// Map string to parser (via tts)
@@ -62,7 +66,7 @@ pub fn string_to_pat(source_str: String) -> P<ast::Pat> {
     })
 }
 
-/// Convert a vector of strings to a vector of Ident's
+/// Converts a vector of strings to a vector of Ident's
 pub fn strs_to_idents(ids: Vec<&str> ) -> Vec<Ident> {
     ids.iter().map(|u| Ident::from_str(*u)).collect()
 }

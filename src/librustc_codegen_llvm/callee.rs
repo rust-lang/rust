@@ -1,6 +1,6 @@
 //! Handles codegen of callees as well as other call-related
-//! things.  Callees are a superset of normal rust values and sometimes
-//! have different representations.  In particular, top-level fn items
+//! things. Callees are a superset of normal rust values and sometimes
+//! have different representations. In particular, top-level fn items
 //! and methods are represented as just a fn ptr and not a full
 //! closure.
 

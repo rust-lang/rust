@@ -31,8 +31,8 @@
 use super::FnCtxt;
 
 use errors::{DiagnosticBuilder,Applicability};
-use hir::def_id::DefId;
-use lint;
+use crate::hir::def_id::DefId;
+use crate::lint;
 use rustc::hir;
 use rustc::session::Session;
 use rustc::traits;
@@ -43,7 +43,7 @@ use rustc::ty::subst::Substs;
 use rustc::middle::lang_items;
 use syntax::ast;
 use syntax_pos::Span;
-use util::common::ErrorReported;
+use crate::util::common::ErrorReported;
 
 /// Reifies a cast check to be checked once we have full type information for
 /// a function context.
@@ -140,7 +140,7 @@ enum CastError {
     CastToBool,
     CastToChar,
     DifferingKinds,
-    /// Cast of thin to fat raw ptr (eg. `*const () as *const [u8]`)
+    /// Cast of thin to fat raw ptr (e.g., `*const () as *const [u8]`).
     SizedUnsizedCast,
     IllegalCast,
     NeedDeref,
@@ -294,7 +294,7 @@ impl<'a, 'gcx, 'tcx> CastCheck<'tcx> {
                                   .emit();
             }
             CastError::SizedUnsizedCast => {
-                use structured_errors::{SizedUnsizedCastError, StructuredDiagnostic};
+                use crate::structured_errors::{SizedUnsizedCastError, StructuredDiagnostic};
                 SizedUnsizedCastError::new(&fcx.tcx.sess,
                                            self.span,
                                            self.expr_ty,
@@ -441,7 +441,7 @@ impl<'a, 'gcx, 'tcx> CastCheck<'tcx> {
         }
     }
 
-    /// Check a cast, and report an error if one exists. In some cases, this
+    /// Checks a cast, and report an error if one exists. In some cases, this
     /// can return Ok and create type errors in the fcx rather than returning
     /// directly. coercion-cast is handled in check instead of here.
     fn do_check(&self, fcx: &FnCtxt<'a, 'gcx, 'tcx>) -> Result<CastKind, CastError> {

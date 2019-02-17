@@ -1,25 +1,17 @@
-error: incorrect close delimiter: `}`
-  --> $DIR/issue-10636-2.rs:8:1
-   |
-LL | pub fn trace_option(option: Option<isize>) {
-   |                                            - close delimiter possibly meant for this
-LL |     option.map(|some| 42;
-   |               - un-closed delimiter
-...
-LL | } //~ ERROR: incorrect close delimiter
-   | ^ incorrect close delimiter
-
 error: expected one of `)`, `,`, `.`, `?`, or an operator, found `;`
   --> $DIR/issue-10636-2.rs:5:25
    |
 LL |     option.map(|some| 42;
-   |                         ^ expected one of `)`, `,`, `.`, `?`, or an operator here
+   |               -         ^
+   |               |         |
+   |               |         help: `)` may belong here
+   |               unclosed delimiter
 
 error: expected expression, found `)`
   --> $DIR/issue-10636-2.rs:8:1
    |
-LL | } //~ ERROR: incorrect close delimiter
+LL | }
    | ^ expected expression
 
-error: aborting due to 3 previous errors
+error: aborting due to 2 previous errors
 

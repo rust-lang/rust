@@ -34,7 +34,7 @@ use intrinsics;
 ///     use std::hint::unreachable_unchecked;
 ///
 ///     // `b.saturating_add(1)` is always positive (not zero),
-///     // hence `checked_div` will never return None.
+///     // hence `checked_div` will never return `None`.
 ///     // Therefore, the else branch is unreachable.
 ///     a.checked_div(b.saturating_add(1))
 ///         .unwrap_or_else(|| unsafe { unreachable_unchecked() })

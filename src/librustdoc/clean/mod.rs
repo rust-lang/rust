@@ -165,7 +165,12 @@ impl<'a, 'tcx, 'rcx> Clean<Crate> for visit_ast::RustdocVisitor<'a, 'tcx, 'rcx> 
         match module.inner {
             ModuleItem(ref module) => {
                 for it in &module.items {
-                    if it.is_extern_crate() && it.attrs.has_doc_flag("masked") {
+                    // `compiler_builtins` should be masked too, but we can't apply
+                    // `#[doc(masked)]` to the injected `extern crate` because it's unstable.
+                    if it.is_extern_crate()
+                        && (it.attrs.has_doc_flag("masked")
+                            || self.cx.tcx.is_compiler_builtins(it.def_id.krate))
+                    {
                         masked_crates.insert(it.def_id.krate);
                     }
                 }
@@ -517,6 +522,7 @@ pub enum ItemEnum {
     StaticItem(Static),
     ConstantItem(Constant),
     TraitItem(Trait),
+    TraitAliasItem(TraitAlias),
     ImplItem(Impl),
     /// A method signature only. Used for required methods in traits (ie,
     /// non-default-methods).
@@ -554,6 +560,7 @@ impl ItemEnum {
             ItemEnum::TyMethodItem(ref i) => &i.generics,
             ItemEnum::MethodItem(ref i) => &i.generics,
             ItemEnum::ForeignFunctionItem(ref f) => &f.generics,
+            ItemEnum::TraitAliasItem(ref ta) => &ta.generics,
             _ => return None,
         })
     }
@@ -603,6 +610,7 @@ impl Clean<Item> for doctree::Module {
         items.extend(self.impls.iter().flat_map(|x| x.clean(cx)));
         items.extend(self.macros.iter().map(|x| x.clean(cx)));
         items.extend(self.proc_macros.iter().map(|x| x.clean(cx)));
+        items.extend(self.trait_aliases.iter().map(|x| x.clean(cx)));
 
         // determine if we should display the inner contents or
         // the outer `mod` item for the source code.
@@ -685,7 +693,7 @@ impl AttributesExt for [ast::Attribute] {
 }
 
 pub trait NestedAttributesExt {
-    /// Returns whether the attribute list contains a specific `Word`
+    /// Returns `true` if the attribute list contains a specific `Word`
     fn has_word(self, word: &str) -> bool;
 }
 
@@ -937,7 +945,7 @@ impl Attributes {
         }
     }
 
-    /// Get links as a vector
+    /// Gets links as a vector
     ///
     /// Cache must be populated before call
     pub fn links(&self, krate: &CrateNum) -> Vec<(String, String)> {
@@ -1270,7 +1278,10 @@ impl Clean<Option<Lifetime>> for ty::RegionKind {
             ty::RePlaceholder(..) |
             ty::ReEmpty |
             ty::ReClosureBound(_) |
-            ty::ReErased => None
+            ty::ReErased => {
+                debug!("Cannot clean region {:?}", self);
+                None
+            }
         }
     }
 }
@@ -1309,16 +1320,16 @@ impl Clean<WherePredicate> for hir::WherePredicate {
     }
 }
 
-impl<'a> Clean<WherePredicate> for ty::Predicate<'a> {
-    fn clean(&self, cx: &DocContext) -> WherePredicate {
+impl<'a> Clean<Option<WherePredicate>> for ty::Predicate<'a> {
+    fn clean(&self, cx: &DocContext) -> Option<WherePredicate> {
         use rustc::ty::Predicate;
 
         match *self {
-            Predicate::Trait(ref pred) => pred.clean(cx),
-            Predicate::Subtype(ref pred) => pred.clean(cx),
+            Predicate::Trait(ref pred) => Some(pred.clean(cx)),
+            Predicate::Subtype(ref pred) => Some(pred.clean(cx)),
             Predicate::RegionOutlives(ref pred) => pred.clean(cx),
             Predicate::TypeOutlives(ref pred) => pred.clean(cx),
-            Predicate::Projection(ref pred) => pred.clean(cx),
+            Predicate::Projection(ref pred) => Some(pred.clean(cx)),
 
             Predicate::WellFormed(..) |
             Predicate::ObjectSafe(..) |
@@ -1344,24 +1355,39 @@ impl<'tcx> Clean<WherePredicate> for ty::SubtypePredicate<'tcx> {
     }
 }
 
-impl<'tcx> Clean<WherePredicate> for ty::OutlivesPredicate<ty::Region<'tcx>, ty::Region<'tcx>> {
-    fn clean(&self, cx: &DocContext) -> WherePredicate {
+impl<'tcx> Clean<Option<WherePredicate>> for
+    ty::OutlivesPredicate<ty::Region<'tcx>,ty::Region<'tcx>> {
+
+    fn clean(&self, cx: &DocContext) -> Option<WherePredicate> {
         let ty::OutlivesPredicate(ref a, ref b) = *self;
-        WherePredicate::RegionPredicate {
+
+        match (a, b) {
+            (ty::ReEmpty, ty::ReEmpty) => {
+                return None;
+            },
+            _ => {}
+        }
+
+        Some(WherePredicate::RegionPredicate {
             lifetime: a.clean(cx).expect("failed to clean lifetime"),
             bounds: vec![GenericBound::Outlives(b.clean(cx).expect("failed to clean bounds"))]
-        }
+        })
     }
 }
 
-impl<'tcx> Clean<WherePredicate> for ty::OutlivesPredicate<Ty<'tcx>, ty::Region<'tcx>> {
-    fn clean(&self, cx: &DocContext) -> WherePredicate {
+impl<'tcx> Clean<Option<WherePredicate>> for ty::OutlivesPredicate<Ty<'tcx>, ty::Region<'tcx>> {
+    fn clean(&self, cx: &DocContext) -> Option<WherePredicate> {
         let ty::OutlivesPredicate(ref ty, ref lt) = *self;
 
-        WherePredicate::BoundPredicate {
+        match lt {
+            ty::ReEmpty => return None,
+            _ => {}
+        }
+
+        Some(WherePredicate::BoundPredicate {
             ty: ty.clean(cx),
             bounds: vec![GenericBound::Outlives(lt.clean(cx).expect("failed to clean lifetimes"))]
-        }
+        })
     }
 }
 
@@ -1578,7 +1604,7 @@ impl<'a, 'tcx> Clean<Generics> for (&'a ty::Generics,
         }).collect::<Vec<GenericParamDef>>();
 
         let mut where_predicates = preds.predicates.iter()
-            .map(|(p, _)| p.clean(cx))
+            .flat_map(|(p, _)| p.clean(cx))
             .collect::<Vec<_>>();
 
         // Type parameters and have a Sized bound by default unless removed with
@@ -1705,6 +1731,30 @@ pub struct FnDecl {
 impl FnDecl {
     pub fn self_type(&self) -> Option<SelfTy> {
         self.inputs.values.get(0).and_then(|v| v.to_self())
+    }
+
+    /// Returns the sugared return type for an async function.
+    ///
+    /// For example, if the return type is `impl std::future::Future<Output = i32>`, this function
+    /// will return `i32`.
+    ///
+    /// # Panics
+    ///
+    /// This function will panic if the return type does not match the expected sugaring for async
+    /// functions.
+    pub fn sugared_async_return_type(&self) -> FunctionRetTy {
+        match &self.output {
+            FunctionRetTy::Return(Type::ImplTrait(bounds)) => {
+                match &bounds[0] {
+                    GenericBound::TraitBound(PolyTrait { trait_, .. }, ..) => {
+                        let bindings = trait_.bindings().unwrap();
+                        FunctionRetTy::Return(bindings[0].ty.clone())
+                    }
+                    _ => panic!("unexpected desugaring of async function"),
+                }
+            }
+            _ => panic!("unexpected desugaring of async function"),
+        }
     }
 }
 
@@ -1867,8 +1917,33 @@ impl Clean<Item> for doctree::Trait {
                 items: self.items.clean(cx),
                 generics: self.generics.clean(cx),
                 bounds: self.bounds.clean(cx),
-                is_spotlight: is_spotlight,
+                is_spotlight,
                 is_auto: self.is_auto.clean(cx),
+            }),
+        }
+    }
+}
+
+#[derive(Clone, RustcEncodable, RustcDecodable, Debug)]
+pub struct TraitAlias {
+    pub generics: Generics,
+    pub bounds: Vec<GenericBound>,
+}
+
+impl Clean<Item> for doctree::TraitAlias {
+    fn clean(&self, cx: &DocContext) -> Item {
+        let attrs = self.attrs.clean(cx);
+        Item {
+            name: Some(self.name.clean(cx)),
+            attrs,
+            source: self.whence.clean(cx),
+            def_id: cx.tcx.hir().local_def_id(self.id),
+            visibility: self.vis.clean(cx),
+            stability: self.stab.clean(cx),
+            deprecation: self.depr.clean(cx),
+            inner: TraitAliasItem(TraitAlias {
+                generics: self.generics.clean(cx),
+                bounds: self.bounds.clean(cx),
             }),
         }
     }
@@ -2129,12 +2204,12 @@ pub struct PolyTrait {
 /// it does not preserve mutability or boxes.
 #[derive(Clone, RustcEncodable, RustcDecodable, PartialEq, Eq, Debug, Hash)]
 pub enum Type {
-    /// structs/enums/traits (most that'd be an hir::TyKind::Path)
+    /// Structs/enums/traits (most that'd be an `hir::TyKind::Path`).
     ResolvedPath {
         path: Path,
         typarams: Option<Vec<GenericBound>>,
         did: DefId,
-        /// true if is a `T::Name` path for associated types
+        /// `true` if is a `T::Name` path for associated types.
         is_generic: bool,
     },
     /// For parameterized types, so the consumer of the JSON don't go
@@ -2205,6 +2280,7 @@ pub enum TypeKind {
     Macro,
     Attr,
     Derive,
+    TraitAlias,
 }
 
 pub trait GetDefId {
@@ -2262,6 +2338,21 @@ impl Type {
                 })
             }
             _ => None,
+        }
+    }
+
+    pub fn bindings(&self) -> Option<&[TypeBinding]> {
+        match *self {
+            ResolvedPath { ref path, .. } => {
+                path.segments.last().and_then(|seg| {
+                    if let GenericArgs::AngleBracketed { ref bindings, .. } = seg.args {
+                        Some(&**bindings)
+                    } else {
+                        None
+                    }
+                })
+            }
+            _ => None
         }
     }
 }
@@ -3744,7 +3835,7 @@ fn print_const(cx: &DocContext, n: ty::LazyConst) -> String {
 }
 
 fn print_const_expr(cx: &DocContext, body: hir::BodyId) -> String {
-    cx.tcx.hir().node_to_pretty_string(body.node_id)
+    cx.tcx.hir().hir_to_pretty_string(body.hir_id)
 }
 
 /// Given a type Path, resolve it to a Type using the TyCtxt
@@ -3801,10 +3892,9 @@ pub fn register_def(cx: &DocContext, def: Def) -> DefId {
             MacroKind::Derive => (i, TypeKind::Derive),
             MacroKind::ProcMacroStub => unreachable!(),
         },
+        Def::TraitAlias(i) => (i, TypeKind::TraitAlias),
         Def::SelfTy(Some(def_id), _) => (def_id, TypeKind::Trait),
-        Def::SelfTy(_, Some(impl_def_id)) => {
-            return impl_def_id
-        }
+        Def::SelfTy(_, Some(impl_def_id)) => return impl_def_id,
         _ => return def.def_id()
     };
     if did.is_local() { return did }
@@ -3817,7 +3907,7 @@ pub fn register_def(cx: &DocContext, def: Def) -> DefId {
 
 fn resolve_use_source(cx: &DocContext, path: Path) -> ImportSource {
     ImportSource {
-        did: if path.def == Def::Err {
+        did: if path.def.opt_def_id().is_none() {
             None
         } else {
             Some(register_def(cx, path.def))
@@ -3937,7 +4027,7 @@ impl Clean<Deprecation> for attr::Deprecation {
     }
 }
 
-/// An equality constraint on an associated type, e.g., `A=Bar` in `Foo<A=Bar>`
+/// An equality constraint on an associated type, e.g., `A = Bar` in `Foo<A = Bar>`
 #[derive(Clone, PartialEq, Eq, RustcDecodable, RustcEncodable, Debug, Hash)]
 pub struct TypeBinding {
     pub name: String,

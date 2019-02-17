@@ -17,7 +17,10 @@
 //! [`TryFrom<T>`][`TryFrom`] rather than [`Into<U>`][`Into`] or [`TryInto<U>`][`TryInto`],
 //! as [`From`] and [`TryFrom`] provide greater flexibility and offer
 //! equivalent [`Into`] or [`TryInto`] implementations for free, thanks to a
-//! blanket implementation in the standard library.
+//! blanket implementation in the standard library.  However, there are some cases
+//! where this is not possible, such as creating conversions into a type defined
+//! outside your library, so implementing [`Into`] instead of [`From`] is
+//! sometimes necessary.
 //!
 //! # Generic Implementations
 //!
@@ -113,9 +116,6 @@ pub const fn identity<T>(x: T) -> T { x }
 /// - Use `Borrow` when the goal is related to writing code that is agnostic to
 ///   the type of borrow and whether it is a reference or value
 ///
-/// See [the book][book] for a more detailed comparison.
-///
-/// [book]: ../../book/first-edition/borrow-and-asref.html
 /// [`Borrow`]: ../../std/borrow/trait.Borrow.html
 ///
 /// **Note: this trait must not fail**. If the conversion can fail, use a
@@ -217,7 +217,7 @@ pub trait AsMut<T: ?Sized> {
 ///
 /// There is one exception to implementing `Into`, and it's kind of esoteric.
 /// If the destination type is not part of the current crate, and it uses a
-/// generic variable, then you can't implement `From` directly.  For example,
+/// generic variable, then you can't implement `From` directly. For example,
 /// take this crate:
 ///
 /// ```compile_fail
@@ -348,7 +348,7 @@ pub trait Into<T>: Sized {
 /// [`String`]: ../../std/string/struct.String.html
 /// [`Into<U>`]: trait.Into.html
 /// [`from`]: trait.From.html#tymethod.from
-/// [book]: ../../book/first-edition/error-handling.html
+/// [book]: ../../book/ch09-00-error-handling.html
 #[stable(feature = "rust1", since = "1.0.0")]
 pub trait From<T>: Sized {
     /// Performs the conversion.

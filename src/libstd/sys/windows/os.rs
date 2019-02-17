@@ -1,4 +1,4 @@
-//! Implementation of `std::os` functionality for Windows
+//! Implementation of `std::os` functionality for Windows.
 
 #![allow(nonstandard_style)]
 

@@ -1,0 +1,14 @@
+error: use of item 'S' that will be deprecated in future version 99.99.99: effectively never
+  --> $DIR/rustc_deprecation-in-future.rs:14:13
+   |
+LL |     let _ = S; //~ ERROR use of item 'S' that will be deprecated in future version 99.99.99: effectively never
+   |             ^
+   |
+note: lint level defined here
+  --> $DIR/rustc_deprecation-in-future.rs:3:9
+   |
+LL | #![deny(deprecated_in_future)]
+   |         ^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to previous error
+

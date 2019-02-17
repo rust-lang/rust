@@ -1,6 +1,6 @@
-use ty;
-use ty::TyCtxt;
-use hir::map::definitions::FIRST_FREE_HIGH_DEF_INDEX;
+use crate::ty;
+use crate::ty::TyCtxt;
+use crate::hir::map::definitions::FIRST_FREE_HIGH_DEF_INDEX;
 use rustc_data_structures::indexed_vec::Idx;
 use serialize;
 use std::fmt;
@@ -229,7 +229,7 @@ impl fmt::Debug for DefId {
 }
 
 impl DefId {
-    /// Make a local `DefId` with the given index.
+    /// Makes a local `DefId` from the given `DefIndex`.
     #[inline]
     pub fn local(index: DefIndex) -> DefId {
         DefId { krate: LOCAL_CRATE, index: index }

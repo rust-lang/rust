@@ -1,28 +1,10 @@
-#![doc(html_logo_url = "https://www.rust-lang.org/logos/rust-logo-128x128-blk-v2.png",
-       html_favicon_url = "https://doc.rust-lang.org/favicon.ico",
-       html_root_url = "https://doc.rust-lang.org/nightly/")]
+#![doc(html_root_url = "https://doc.rust-lang.org/nightly/")]
 #![feature(custom_attribute)]
 #![feature(nll)]
+#![deny(rust_2018_idioms)]
 #![allow(unused_attributes)]
 
 #![recursion_limit="256"]
-
-#[macro_use]
-extern crate rustc;
-
-#[macro_use]
-extern crate log;
-extern crate rustc_data_structures;
-extern crate rustc_codegen_utils;
-extern crate rustc_serialize;
-extern crate rustc_target;
-extern crate rustc_typeck;
-#[macro_use]
-extern crate syntax;
-extern crate syntax_pos;
-
-extern crate rls_data;
-extern crate rls_span;
 
 
 mod json_dumper;
@@ -39,6 +21,7 @@ use rustc::middle::privacy::AccessLevels;
 use rustc::middle::cstore::ExternCrate;
 use rustc::session::config::{CrateType, Input, OutputType};
 use rustc::ty::{self, TyCtxt};
+use rustc::{bug, span_bug};
 use rustc_typeck::hir_ty_to_ty;
 use rustc_codegen_utils::link::{filename_for_metadata, out_filename};
 use rustc_data_structures::sync::Lrc;
@@ -65,6 +48,8 @@ use span_utils::SpanUtils;
 use rls_data::{Def, DefKind, ExternalCrateData, GlobalCrateId, MacroRef, Ref, RefKind, Relation,
                RelationKind, SpanData, Impl, ImplKind};
 use rls_data::config::Config;
+
+use log::{debug, error, info};
 
 
 pub struct SaveContext<'l, 'tcx: 'l> {
@@ -172,7 +157,7 @@ impl<'l, 'tcx: 'l> SaveContext<'l, 'tcx> {
             ast::ForeignItemKind::Static(ref ty, _) => {
                 filter!(self.span_utils, item.ident.span);
 
-                let id = ::id_from_node_id(item.id, self);
+                let id = id_from_node_id(item.id, self);
                 let span = self.span_from_span(item.ident.span);
 
                 Some(Data::DefData(Def {
@@ -629,11 +614,16 @@ impl<'l, 'tcx: 'l> SaveContext<'l, 'tcx> {
                     Some(def) if def != HirDef::Err => def,
                     _ => self.get_path_def(self.tcx.hir().get_parent_node(id)),
                 }
-            },
+            }
+
             Node::Expr(&hir::Expr {
                 node: hir::ExprKind::Struct(ref qpath, ..),
                 ..
-            }) |
+            }) => {
+                let hir_id = self.tcx.hir().node_to_hir_id(id);
+                self.tables.qpath_def(qpath, hir_id)
+            }
+
             Node::Expr(&hir::Expr {
                 node: hir::ExprKind::Path(ref qpath),
                 ..
@@ -762,6 +752,13 @@ impl<'l, 'tcx: 'l> SaveContext<'l, 'tcx> {
                     ref_id: id_from_def_id(def_id),
                 })
             }
+            HirDef::ConstParam(def_id) => {
+                Some(Ref {
+                    kind: RefKind::Variable,
+                    span,
+                    ref_id: id_from_def_id(def_id),
+                })
+            }
             HirDef::StructCtor(def_id, _) => {
                 // This is a reference to a tuple struct where the def_id points
                 // to an invisible constructor function. That is not a very useful
@@ -834,7 +831,7 @@ impl<'l, 'tcx: 'l> SaveContext<'l, 'tcx> {
     /// Attempt to return MacroRef for any AST node.
     ///
     /// For a given piece of AST defined by the supplied Span and NodeId,
-    /// returns None if the node is not macro-generated or the span is malformed,
+    /// returns `None` if the node is not macro-generated or the span is malformed,
     /// else uses the expansion callsite and callee to return some MacroRef.
     pub fn get_macro_use_data(&self, span: Span) -> Option<MacroRef> {
         if !generated_code(span) {
@@ -1029,7 +1026,7 @@ impl<'a> DumpHandler<'a> {
         }
     }
 
-    fn output_file(&self, ctx: &SaveContext) -> File {
+    fn output_file(&self, ctx: &SaveContext<'_, '_>) -> File {
         let sess = &ctx.tcx.sess;
         let file_name = match ctx.config.output_file {
             Some(ref s) => PathBuf::from(s),
@@ -1180,7 +1177,7 @@ fn id_from_def_id(id: DefId) -> rls_data::Id {
     }
 }
 
-fn id_from_node_id(id: NodeId, scx: &SaveContext) -> rls_data::Id {
+fn id_from_node_id(id: NodeId, scx: &SaveContext<'_, '_>) -> rls_data::Id {
     let def_id = scx.tcx.hir().opt_local_def_id(id);
     def_id.map(|id| id_from_def_id(id)).unwrap_or_else(|| {
         // Create a *fake* `DefId` out of a `NodeId` by subtracting the `NodeId`
@@ -1200,7 +1197,7 @@ fn null_id() -> rls_data::Id {
     }
 }
 
-fn lower_attributes(attrs: Vec<Attribute>, scx: &SaveContext) -> Vec<rls_data::Attribute> {
+fn lower_attributes(attrs: Vec<Attribute>, scx: &SaveContext<'_, '_>) -> Vec<rls_data::Attribute> {
     attrs.into_iter()
     // Only retain real attributes. Doc comments are lowered separately.
     .filter(|attr| attr.path != "doc")

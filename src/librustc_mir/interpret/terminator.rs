@@ -7,7 +7,7 @@ use rustc_target::spec::abi::Abi;
 
 use rustc::mir::interpret::{EvalResult, PointerArithmetic, EvalErrorKind, Scalar};
 use super::{
-    EvalContext, Machine, Immediate, OpTy, PlaceTy, MPlaceTy, Operand, StackPopCleanup
+    EvalContext, Machine, Immediate, OpTy, ImmTy, PlaceTy, MPlaceTy, StackPopCleanup
 };
 
 impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> {
@@ -51,8 +51,8 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> 
                     // Compare using binary_op, to also support pointer values
                     let const_int = Scalar::from_uint(const_int, discr.layout.size);
                     let (res, _) = self.binary_op(mir::BinOp::Eq,
-                        discr.to_scalar()?, discr.layout,
-                        const_int, discr.layout,
+                        discr,
+                        ImmTy::from_scalar(const_int, discr.layout),
                     )?;
                     if res.to_bool()? {
                         target_block = targets[index];
@@ -112,7 +112,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> 
                 let ty = place.layout.ty;
                 trace!("TerminatorKind::drop: {:?}, type {}", location, ty);
 
-                let instance = ::monomorphize::resolve_drop_in_place(*self.tcx, ty);
+                let instance = crate::monomorphize::resolve_drop_in_place(*self.tcx, ty);
                 self.drop_in_place(
                     place,
                     instance,
@@ -326,7 +326,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> 
                     // last incoming argument.  These two iterators do not have the same type,
                     // so to keep the code paths uniform we accept an allocation
                     // (for RustCall ABI only).
-                    let caller_args : Cow<[OpTy<'tcx, M::PointerTag>]> =
+                    let caller_args : Cow<'_, [OpTy<'tcx, M::PointerTag>]> =
                         if caller_abi == Abi::RustCall && !args.is_empty() {
                             // Untuple
                             let (&untuple_arg, args) = args.split_last().unwrap();
@@ -335,7 +335,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> 
                                 .chain((0..untuple_arg.layout.fields.count()).into_iter()
                                     .map(|i| self.operand_field(untuple_arg, i as u64))
                                 )
-                                .collect::<EvalResult<Vec<OpTy<'tcx, M::PointerTag>>>>()?)
+                                .collect::<EvalResult<'_, Vec<OpTy<'tcx, M::PointerTag>>>>()?)
                         } else {
                             // Plain arg passing
                             Cow::from(args)
@@ -418,8 +418,10 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> 
                 let mut args = args.to_vec();
                 let pointee = args[0].layout.ty.builtin_deref(true).unwrap().ty;
                 let fake_fat_ptr_ty = self.tcx.mk_mut_ptr(pointee);
-                args[0].layout = self.layout_of(fake_fat_ptr_ty)?.field(self, 0)?;
-                args[0].op = Operand::Immediate(Immediate::Scalar(ptr.ptr.into())); // strip vtable
+                args[0] = OpTy::from(ImmTy { // strip vtable
+                    layout: self.layout_of(fake_fat_ptr_ty)?.field(self, 0)?,
+                    imm: Immediate::Scalar(ptr.ptr.into())
+                });
                 trace!("Patched self operand to {:#?}", args[0]);
                 // recurse with concrete function
                 self.eval_fn_call(instance, span, caller_abi, &args, dest, ret)
@@ -448,8 +450,8 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> 
             _ => (instance, place),
         };
 
-        let arg = OpTy {
-            op: Operand::Immediate(place.to_ref()),
+        let arg = ImmTy {
+            imm: place.to_ref(),
             layout: self.layout_of(self.tcx.mk_mut_ptr(place.layout.ty))?,
         };
 
@@ -460,7 +462,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> 
             instance,
             span,
             Abi::Rust,
-            &[arg],
+            &[arg.into()],
             Some(dest.into()),
             Some(target),
         )

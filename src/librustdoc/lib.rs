@@ -1,6 +1,4 @@
-#![doc(html_logo_url = "https://www.rust-lang.org/logos/rust-logo-128x128-blk-v2.png",
-       html_favicon_url = "https://doc.rust-lang.org/favicon.ico",
-       html_root_url = "https://doc.rust-lang.org/nightly/",
+#![doc(html_root_url = "https://doc.rust-lang.org/nightly/",
        html_playground_url = "https://play.rust-lang.org/")]
 
 #![feature(bind_by_move_pattern_guards)]
@@ -9,7 +7,6 @@
 #![feature(box_syntax)]
 #![feature(nll)]
 #![feature(set_stdio)]
-#![feature(slice_sort_by_cached_key)]
 #![feature(test)]
 #![feature(vec_remove_item)]
 #![feature(ptr_offset_from)]
@@ -347,6 +344,11 @@ fn opts() -> Vec<RustcOptGroup> {
                        "persist-doctests",
                        "Directory to persist doctest executables into",
                        "PATH")
+        }),
+        unstable("generate-redirect-pages", |o| {
+            o.optflag("",
+                      "generate-redirect-pages",
+                      "Generate extra pages to support legacy URLs and tool links")
         }),
     ]
 }

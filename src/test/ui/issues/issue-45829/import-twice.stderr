@@ -2,15 +2,13 @@ error[E0252]: the name `A` is defined multiple times
   --> $DIR/import-twice.rs:6:14
    |
 LL | use foo::{A, A};
-   |           -  ^ `A` reimported here
-   |           |
+   |           ---^
+   |           || |
+   |           || `A` reimported here
+   |           |help: remove unnecessary import
    |           previous import of the type `A` here
    |
    = note: `A` must be defined only once in the type namespace of this module
-help: you can use `as` to change the binding name of the import
-   |
-LL | use foo::{A, A as OtherA};
-   |              ^^^^^^^^^^^
 
 error: aborting due to previous error
 

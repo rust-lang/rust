@@ -1,16 +1,16 @@
-use hir::def_id::DefId;
-use hir;
-use hir::Node;
-use infer::{self, InferCtxt, InferOk, TypeVariableOrigin};
-use infer::outlives::free_region_map::FreeRegionRelations;
+use crate::hir::def_id::DefId;
+use crate::hir;
+use crate::hir::Node;
+use crate::infer::{self, InferCtxt, InferOk, TypeVariableOrigin};
+use crate::infer::outlives::free_region_map::FreeRegionRelations;
 use rustc_data_structures::fx::FxHashMap;
 use syntax::ast;
-use traits::{self, PredicateObligation};
-use ty::{self, Ty, TyCtxt, GenericParamDefKind};
-use ty::fold::{BottomUpFolder, TypeFoldable, TypeFolder};
-use ty::outlives::Component;
-use ty::subst::{Kind, Substs, UnpackedKind};
-use util::nodemap::DefIdMap;
+use crate::traits::{self, PredicateObligation};
+use crate::ty::{self, Ty, TyCtxt, GenericParamDefKind};
+use crate::ty::fold::{BottomUpFolder, TypeFoldable, TypeFolder};
+use crate::ty::outlives::Component;
+use crate::ty::subst::{Kind, Substs, UnpackedKind};
+use crate::util::nodemap::DefIdMap;
 
 pub type OpaqueTypeMap<'tcx> = DefIdMap<OpaqueTypeDecl<'tcx>>;
 
@@ -46,7 +46,7 @@ pub struct OpaqueTypeDecl<'tcx> {
     /// lifetime parameter on `foo`.)
     pub concrete_ty: Ty<'tcx>,
 
-    /// True if the `impl Trait` bounds include region bounds.
+    /// Returns `true` if the `impl Trait` bounds include region bounds.
     /// For example, this would be true for:
     ///
     ///     fn foo<'a, 'b, 'c>() -> impl Trait<'c> + 'a + 'b
@@ -71,7 +71,7 @@ pub struct OpaqueTypeDecl<'tcx> {
 }
 
 impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
-    /// Replace all opaque types in `value` with fresh inference variables
+    /// Replaces all opaque types in `value` with fresh inference variables
     /// and creates appropriate obligations. For example, given the input:
     ///
     ///     impl Iterator<Item = impl Debug>
@@ -88,7 +88,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
     ///
     /// # Parameters
     ///
-    /// - `parent_def_id` -- the def-id of the function in which the opaque type
+    /// - `parent_def_id` -- the `DefId` of the function in which the opaque type
     ///   is defined
     /// - `body_id` -- the body-id with which the resulting obligations should
     ///   be associated
@@ -98,7 +98,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
     pub fn instantiate_opaque_types<T: TypeFoldable<'tcx>>(
         &self,
         parent_def_id: DefId,
-        body_id: ast::NodeId,
+        body_id: hir::HirId,
         param_env: ty::ParamEnv<'tcx>,
         value: &T,
     ) -> InferOk<'tcx, (T, OpaqueTypeMap<'tcx>)> {
@@ -132,7 +132,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
     ///
     /// # The Problem
     ///
-    /// Let's work through an example to explain how it works.  Assume
+    /// Let's work through an example to explain how it works. Assume
     /// the current function is as follows:
     ///
     /// ```text
@@ -164,7 +164,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
     /// replace each of the references (`Foo1<'a>`, `Foo2<'b>`) with
     /// fresh inference variables C1 and C2. We wish to use the values
     /// of these variables to infer the underlying types of `Foo1` and
-    /// `Foo2`.  That is, this gives rise to higher-order (pattern) unification
+    /// `Foo2`. That is, this gives rise to higher-order (pattern) unification
     /// constraints like:
     ///
     /// ```text
@@ -199,7 +199,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
     ///
     /// Ordinarily, the subtyping rules would ensure that these are
     /// sufficiently large. But since `impl Bar<'a>` isn't a specific
-    /// type per se, we don't get such constraints by default.  This
+    /// type per se, we don't get such constraints by default. This
     /// is where this function comes into play. It adds extra
     /// constraints to ensure that all the regions which appear in the
     /// inferred type are regions that could validly appear.
@@ -632,7 +632,7 @@ impl<'cx, 'gcx, 'tcx> TypeFolder<'gcx, 'tcx> for ReverseMapper<'cx, 'gcx, 'tcx> 
 struct Instantiator<'a, 'gcx: 'tcx, 'tcx: 'a> {
     infcx: &'a InferCtxt<'a, 'gcx, 'tcx>,
     parent_def_id: DefId,
-    body_id: ast::NodeId,
+    body_id: hir::HirId,
     param_env: ty::ParamEnv<'tcx>,
     opaque_types: OpaqueTypeMap<'tcx>,
     obligations: Vec<PredicateObligation<'tcx>>,
@@ -813,7 +813,7 @@ impl<'a, 'gcx, 'tcx> Instantiator<'a, 'gcx, 'tcx> {
     }
 }
 
-/// Whether `opaque_node_id` is a sibling or a child of a sibling of `def_id`
+/// Returns `true` if `opaque_node_id` is a sibling or a child of a sibling of `def_id`.
 ///
 /// ```rust
 /// pub mod foo {
@@ -827,11 +827,10 @@ impl<'a, 'gcx, 'tcx> Instantiator<'a, 'gcx, 'tcx> {
 /// }
 /// ```
 ///
-/// Here, `def_id` will be the `DefId` of the existential type `Baz`.
-/// `opaque_node_id` is the `NodeId` of the reference to Baz --
-///  so either the return type of f1 or f2.
-/// We will return true if the reference is within the same module as the existential type
-/// So true for f1, false for f2.
+/// Here, `def_id` is the `DefId` of the existential type `Baz` and `opaque_node_id` is the
+/// `NodeId` of the reference to `Baz` (i.e., the return type of both `f1` and `f2`).
+/// We return `true` if the reference is within the same module as the existential type
+/// (i.e., `true` for `f1`, `false` for `f2`).
 pub fn may_define_existential_type(
     tcx: TyCtxt<'_, '_, '_>,
     def_id: DefId,

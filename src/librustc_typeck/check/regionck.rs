@@ -1,6 +1,6 @@
 //! The region check is a final pass that runs over the AST after we have
 //! inferred the type constraints but before we have actually finalized
-//! the types.  Its purpose is to embed a variety of region constraints.
+//! the types. Its purpose is to embed a variety of region constraints.
 //! Inserting these constraints as a separate pass is good because (1) it
 //! localizes the code that has to do with region inference and (2) often
 //! we cannot know what constraints are needed until the basic types have
@@ -34,17 +34,17 @@
 //! #### Reborrows
 //!
 //! Generally speaking, `regionck` does NOT try to ensure that the data
-//! `data` will outlive the pointer `x`. That is the job of borrowck.  The
+//! `data` will outlive the pointer `x`. That is the job of borrowck. The
 //! one exception is when "re-borrowing" the contents of another borrowed
 //! pointer. For example, imagine you have a borrowed pointer `b` with
-//! lifetime L1 and you have an expression `&*b`. The result of this
-//! expression will be another borrowed pointer with lifetime L2 (which is
+//! lifetime `L1` and you have an expression `&*b`. The result of this
+//! expression will be another borrowed pointer with lifetime `L2` (which is
 //! an inference variable). The borrow checker is going to enforce the
-//! constraint that L2 < L1, because otherwise you are re-borrowing data
-//! for a lifetime larger than the original loan.  However, without the
+//! constraint that `L2 < L1`, because otherwise you are re-borrowing data
+//! for a lifetime larger than the original loan. However, without the
 //! routines in this module, the region inferencer would not know of this
-//! dependency and thus it might infer the lifetime of L2 to be greater
-//! than L1 (issue #3148).
+//! dependency and thus it might infer the lifetime of `L2` to be greater
+//! than `L1` (issue #3148).
 //!
 //! There are a number of troublesome scenarios in the tests
 //! `region-dependent-*.rs`, but here is one example:
@@ -62,21 +62,21 @@
 //!
 //! The key point here is that when you are borrowing a value that
 //! is "guaranteed" by a borrowed pointer, you must link the
-//! lifetime of that borrowed pointer (L1, here) to the lifetime of
-//! the borrow itself (L2).  What do I mean by "guaranteed" by a
+//! lifetime of that borrowed pointer (`L1`, here) to the lifetime of
+//! the borrow itself (`L2`). What do I mean by "guaranteed" by a
 //! borrowed pointer? I mean any data that is reached by first
 //! dereferencing a borrowed pointer and then either traversing
-//! interior offsets or boxes.  We say that the guarantor
+//! interior offsets or boxes. We say that the guarantor
 //! of such data is the region of the borrowed pointer that was
-//! traversed.  This is essentially the same as the ownership
+//! traversed. This is essentially the same as the ownership
 //! relation, except that a borrowed pointer never owns its
 //! contents.
 
-use check::dropck;
-use check::FnCtxt;
-use middle::mem_categorization as mc;
-use middle::mem_categorization::Categorization;
-use middle::region;
+use crate::check::dropck;
+use crate::check::FnCtxt;
+use crate::middle::mem_categorization as mc;
+use crate::middle::mem_categorization::Categorization;
+use crate::middle::region;
 use rustc::hir::def_id::DefId;
 use rustc::infer::outlives::env::OutlivesEnvironment;
 use rustc::infer::{self, RegionObligation, SuppressRegionErrors};
@@ -112,7 +112,7 @@ macro_rules! ignore_err {
 impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
     pub fn regionck_expr(&self, body: &'gcx hir::Body) {
         let subject = self.tcx.hir().body_owner_def_id(body.id());
-        let id = body.value.id;
+        let id = body.value.hir_id;
         let mut rcx = RegionCtxt::new(
             self,
             RepeatingScope(id),
@@ -138,9 +138,9 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
 
     /// Region checking during the WF phase for items. `wf_tys` are the
     /// types from which we should derive implied bounds, if any.
-    pub fn regionck_item(&self, item_id: ast::NodeId, span: Span, wf_tys: &[Ty<'tcx>]) {
+    pub fn regionck_item(&self, item_id: hir::HirId, span: Span, wf_tys: &[Ty<'tcx>]) {
         debug!("regionck_item(item.id={:?}, wf_tys={:?})", item_id, wf_tys);
-        let subject = self.tcx.hir().local_def_id(item_id);
+        let subject = self.tcx.hir().local_def_id_from_hir_id(item_id);
         let mut rcx = RegionCtxt::new(
             self,
             RepeatingScope(item_id),
@@ -166,18 +166,19 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
     pub fn regionck_fn(&self, fn_id: ast::NodeId, body: &'gcx hir::Body) {
         debug!("regionck_fn(id={})", fn_id);
         let subject = self.tcx.hir().body_owner_def_id(body.id());
-        let node_id = body.value.id;
+        let hir_id = body.value.hir_id;
         let mut rcx = RegionCtxt::new(
             self,
-            RepeatingScope(node_id),
-            node_id,
+            RepeatingScope(hir_id),
+            hir_id,
             Subject(subject),
             self.param_env,
         );
 
         if self.err_count_since_creation() == 0 {
+            let fn_hir_id = self.tcx.hir().node_to_hir_id(fn_id);
             // regionck assumes typeck succeeded
-            rcx.visit_fn_body(fn_id, body, self.tcx.hir().span(fn_id));
+            rcx.visit_fn_body(fn_hir_id, body, self.tcx.hir().span_by_hir_id(fn_hir_id));
         }
 
         rcx.resolve_regions_and_report_errors(SuppressRegionErrors::when_nll_is_enabled(self.tcx));
@@ -201,13 +202,13 @@ pub struct RegionCtxt<'a, 'gcx: 'a + 'tcx, 'tcx: 'a> {
     outlives_environment: OutlivesEnvironment<'tcx>,
 
     // id of innermost fn body id
-    body_id: ast::NodeId,
+    body_id: hir::HirId,
 
     // call_site scope of innermost fn
     call_site_scope: Option<region::Scope>,
 
     // id of innermost fn or loop
-    repeating_scope: ast::NodeId,
+    repeating_scope: hir::HirId,
 
     // id of AST node being analyzed (the subject of the analysis).
     subject_def_id: DefId,
@@ -220,14 +221,14 @@ impl<'a, 'gcx, 'tcx> Deref for RegionCtxt<'a, 'gcx, 'tcx> {
     }
 }
 
-pub struct RepeatingScope(ast::NodeId);
+pub struct RepeatingScope(hir::HirId);
 pub struct Subject(DefId);
 
 impl<'a, 'gcx, 'tcx> RegionCtxt<'a, 'gcx, 'tcx> {
     pub fn new(
         fcx: &'a FnCtxt<'a, 'gcx, 'tcx>,
         RepeatingScope(initial_repeating_scope): RepeatingScope,
-        initial_body_id: ast::NodeId,
+        initial_body_id: hir::HirId,
         Subject(subject): Subject,
         param_env: ty::ParamEnv<'tcx>,
     ) -> RegionCtxt<'a, 'gcx, 'tcx> {
@@ -244,15 +245,15 @@ impl<'a, 'gcx, 'tcx> RegionCtxt<'a, 'gcx, 'tcx> {
         }
     }
 
-    fn set_repeating_scope(&mut self, scope: ast::NodeId) -> ast::NodeId {
+    fn set_repeating_scope(&mut self, scope: hir::HirId) -> hir::HirId {
         mem::replace(&mut self.repeating_scope, scope)
     }
 
-    /// Try to resolve the type for the given node, returning t_err if an error results.  Note that
+    /// Try to resolve the type for the given node, returning `t_err` if an error results. Note that
     /// we never care about the details of the error, the same error will be detected and reported
     /// in the writeback phase.
     ///
-    /// Note one important point: we do not attempt to resolve *region variables* here.  This is
+    /// Note one important point: we do not attempt to resolve *region variables* here. This is
     /// because regionck is essentially adding constraints to those region variables and so may yet
     /// influence how they are resolved.
     ///
@@ -266,9 +267,9 @@ impl<'a, 'gcx, 'tcx> RegionCtxt<'a, 'gcx, 'tcx> {
     /// }
     /// ```
     ///
-    /// Here, the region of `b` will be `<R0>`.  `<R0>` is constrained to be some subregion of the
-    /// block B and some superregion of the call.  If we forced it now, we'd choose the smaller
-    /// region (the call).  But that would make the *b illegal.  Since we don't resolve, the type
+    /// Here, the region of `b` will be `<R0>`. `<R0>` is constrained to be some subregion of the
+    /// block B and some superregion of the call. If we forced it now, we'd choose the smaller
+    /// region (the call). But that would make the *b illegal. Since we don't resolve, the type
     /// of b will be `&<R0>.i32` and then `*b` will require that `<R0>` be bigger than the let and
     /// the `*b` expression, so we will effectively resolve `<R0>` to be the block B.
     pub fn resolve_type(&self, unresolved_ty: Ty<'tcx>) -> Ty<'tcx> {
@@ -301,15 +302,15 @@ impl<'a, 'gcx, 'tcx> RegionCtxt<'a, 'gcx, 'tcx> {
     /// `intravisit::Visitor` impl below.)
     fn visit_fn_body(
         &mut self,
-        id: ast::NodeId, // the id of the fn itself
+        id: hir::HirId, // the id of the fn itself
         body: &'gcx hir::Body,
         span: Span,
     ) {
         // When we enter a function, we can derive
-        debug!("visit_fn_body(id={})", id);
+        debug!("visit_fn_body(id={:?})", id);
 
         let body_id = body.id();
-        self.body_id = body_id.node_id;
+        self.body_id = body_id.hir_id;
 
         let call_site = region::Scope {
             id: body.value.hir_id.local_id,
@@ -318,11 +319,10 @@ impl<'a, 'gcx, 'tcx> RegionCtxt<'a, 'gcx, 'tcx> {
         self.call_site_scope = Some(call_site);
 
         let fn_sig = {
-            let fn_hir_id = self.tcx.hir().node_to_hir_id(id);
-            match self.tables.borrow().liberated_fn_sigs().get(fn_hir_id) {
+            match self.tables.borrow().liberated_fn_sigs().get(id) {
                 Some(f) => f.clone(),
                 None => {
-                    bug!("No fn-sig entry for id={}", id);
+                    bug!("No fn-sig entry for id={:?}", id);
                 }
             }
         };
@@ -342,11 +342,11 @@ impl<'a, 'gcx, 'tcx> RegionCtxt<'a, 'gcx, 'tcx> {
         self.outlives_environment.add_implied_bounds(
             self.fcx,
             &fn_sig_tys[..],
-            body_id.node_id,
+            body_id.hir_id,
             span,
         );
         self.outlives_environment
-            .save_implied_bounds(body_id.node_id);
+            .save_implied_bounds(body_id.hir_id);
         self.link_fn_args(
             region::Scope {
                 id: body.value.hir_id.local_id,
@@ -355,7 +355,7 @@ impl<'a, 'gcx, 'tcx> RegionCtxt<'a, 'gcx, 'tcx> {
             &body.arguments,
         );
         self.visit_body(body);
-        self.visit_region_obligations(body_id.node_id);
+        self.visit_region_obligations(body_id.hir_id);
 
         let call_site_scope = self.call_site_scope.unwrap();
         debug!(
@@ -365,8 +365,7 @@ impl<'a, 'gcx, 'tcx> RegionCtxt<'a, 'gcx, 'tcx> {
         );
         let call_site_region = self.tcx.mk_region(ty::ReScope(call_site_scope));
 
-        let body_hir_id = self.tcx.hir().node_to_hir_id(body_id.node_id);
-        self.type_of_node_must_outlive(infer::CallReturn(span), body_hir_id, call_site_region);
+        self.type_of_node_must_outlive(infer::CallReturn(span), body_id.hir_id, call_site_region);
 
         self.constrain_opaque_types(
             &self.fcx.opaque_types.borrow(),
@@ -374,8 +373,8 @@ impl<'a, 'gcx, 'tcx> RegionCtxt<'a, 'gcx, 'tcx> {
         );
     }
 
-    fn visit_region_obligations(&mut self, node_id: ast::NodeId) {
-        debug!("visit_region_obligations: node_id={}", node_id);
+    fn visit_region_obligations(&mut self, hir_id: hir::HirId) {
+        debug!("visit_region_obligations: hir_id={:?}", hir_id);
 
         // region checking can introduce new pending obligations
         // which, when processed, might generate new region
@@ -474,7 +473,8 @@ impl<'a, 'gcx, 'tcx> Visitor<'gcx> for RegionCtxt<'a, 'gcx, 'tcx> {
         let env_snapshot = self.outlives_environment.push_snapshot_pre_closure();
 
         let body = self.tcx.hir().body(body_id);
-        self.visit_fn_body(id, body, span);
+        let hir_id = self.tcx.hir().node_to_hir_id(id);
+        self.visit_fn_body(hir_id, body, span);
 
         // Restore state from previous function.
         self.outlives_environment
@@ -502,7 +502,7 @@ impl<'a, 'gcx, 'tcx> Visitor<'gcx> for RegionCtxt<'a, 'gcx, 'tcx> {
 
     fn visit_expr(&mut self, expr: &'gcx hir::Expr) {
         debug!(
-            "regionck::visit_expr(e={:?}, repeating_scope={})",
+            "regionck::visit_expr(e={:?}, repeating_scope={:?})",
             expr, self.repeating_scope
         );
 
@@ -555,7 +555,7 @@ impl<'a, 'gcx, 'tcx> Visitor<'gcx> for RegionCtxt<'a, 'gcx, 'tcx> {
         }
 
         debug!(
-            "regionck::visit_expr(e={:?}, repeating_scope={}) - visiting subexprs",
+            "regionck::visit_expr(e={:?}, repeating_scope={:?}) - visiting subexprs",
             expr, self.repeating_scope
         );
         match expr.node {
@@ -679,16 +679,16 @@ impl<'a, 'gcx, 'tcx> Visitor<'gcx> for RegionCtxt<'a, 'gcx, 'tcx> {
             }
 
             hir::ExprKind::Loop(ref body, _, _) => {
-                let repeating_scope = self.set_repeating_scope(body.id);
+                let repeating_scope = self.set_repeating_scope(body.hir_id);
                 intravisit::walk_expr(self, expr);
                 self.set_repeating_scope(repeating_scope);
             }
 
             hir::ExprKind::While(ref cond, ref body, _) => {
-                let repeating_scope = self.set_repeating_scope(cond.id);
+                let repeating_scope = self.set_repeating_scope(cond.hir_id);
                 self.visit_expr(&cond);
 
-                self.set_repeating_scope(body.id);
+                self.set_repeating_scope(body.hir_id);
                 self.visit_block(&body);
 
                 self.set_repeating_scope(repeating_scope);
@@ -758,7 +758,7 @@ impl<'a, 'gcx, 'tcx> RegionCtxt<'a, 'gcx, 'tcx> {
     }
 
     fn check_expr_fn_block(&mut self, expr: &'gcx hir::Expr, body_id: hir::BodyId) {
-        let repeating_scope = self.set_repeating_scope(body_id.node_id);
+        let repeating_scope = self.set_repeating_scope(body_id.hir_id);
         intravisit::walk_expr(self, expr);
         self.set_repeating_scope(repeating_scope);
     }
@@ -826,7 +826,7 @@ impl<'a, 'gcx, 'tcx> RegionCtxt<'a, 'gcx, 'tcx> {
         }
     }
 
-    /// Create a temporary `MemCategorizationContext` and pass it to the closure.
+    /// Creates a temporary `MemCategorizationContext` and pass it to the closure.
     fn with_mc<F, R>(&self, f: F) -> R
     where
         F: for<'b> FnOnce(mc::MemCategorizationContext<'b, 'gcx, 'tcx>) -> R,

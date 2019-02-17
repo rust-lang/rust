@@ -9,7 +9,7 @@ use rustc_target::spec::LinkerFlavor;
 use rustc::hir::def_id::CrateNum;
 
 use super::command::Command;
-use CrateInfo;
+use crate::CrateInfo;
 
 use cc::windows_registry;
 use std::fs;

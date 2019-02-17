@@ -189,11 +189,11 @@ use rustc::mir::visit::Visitor as MirVisitor;
 use rustc::mir::mono::MonoItem;
 use rustc::mir::interpret::{Scalar, GlobalId, AllocKind, ErrorHandled};
 
-use monomorphize::{self, Instance};
+use crate::monomorphize::{self, Instance};
 use rustc::util::nodemap::{FxHashSet, FxHashMap, DefIdMap};
 use rustc::util::common::time;
 
-use monomorphize::item::{MonoItemExt, DefPathBasedNames, InstantiationMode};
+use crate::monomorphize::item::{MonoItemExt, DefPathBasedNames, InstantiationMode};
 
 use rustc_data_structures::bit_set::GrowableBitSet;
 use rustc_data_structures::sync::{MTRef, MTLock, ParallelIterator, par_iter};
@@ -450,8 +450,8 @@ fn check_recursion_limit<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     if recursion_depth > *tcx.sess.recursion_limit.get() {
         let error = format!("reached the recursion limit while instantiating `{}`",
                             instance);
-        if let Some(node_id) = tcx.hir().as_local_node_id(def_id) {
-            tcx.sess.span_fatal(tcx.hir().span(node_id), &error);
+        if let Some(hir_id) = tcx.hir().as_local_hir_id(def_id) {
+            tcx.sess.span_fatal(tcx.hir().span_by_hir_id(hir_id), &error);
         } else {
             tcx.sess.fatal(&error);
         }
@@ -482,8 +482,8 @@ fn check_type_length_limit<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         let instance_name = instance.to_string();
         let msg = format!("reached the type-length limit while instantiating `{:.64}...`",
                           instance_name);
-        let mut diag = if let Some(node_id) = tcx.hir().as_local_node_id(instance.def_id()) {
-            tcx.sess.struct_span_fatal(tcx.hir().span(node_id), &msg)
+        let mut diag = if let Some(hir_id) = tcx.hir().as_local_hir_id(instance.def_id()) {
+            tcx.sess.struct_span_fatal(tcx.hir().span_by_hir_id(hir_id), &msg)
         } else {
             tcx.sess.struct_fatal(&msg)
         };

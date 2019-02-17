@@ -1,6 +1,6 @@
-use hir::map::definitions::*;
-use hir::def_id::{CRATE_DEF_INDEX, DefIndex, DefIndexAddressSpace};
-use session::CrateDisambiguator;
+use crate::hir::map::definitions::*;
+use crate::hir::def_id::{CRATE_DEF_INDEX, DefIndex, DefIndexAddressSpace};
+use crate::session::CrateDisambiguator;
 
 use syntax::ast::*;
 use syntax::ext::hygiene::Mark;
@@ -10,9 +10,9 @@ use syntax::symbol::Symbol;
 use syntax::parse::token::{self, Token};
 use syntax_pos::Span;
 
-use hir::map::{ITEM_LIKE_SPACE, REGULAR_SPACE};
+use crate::hir::map::{ITEM_LIKE_SPACE, REGULAR_SPACE};
 
-/// Creates def ids for nodes in the AST.
+/// Creates `DefId`s for nodes in the AST.
 pub struct DefCollector<'a> {
     definitions: &'a mut Definitions,
     parent_def: Option<DefIndex>,
@@ -218,6 +218,7 @@ impl<'a> visit::Visitor<'a> for DefCollector<'a> {
         let def_path_data = match param.kind {
             GenericParamKind::Lifetime { .. } => DefPathData::LifetimeParam(name),
             GenericParamKind::Type { .. } => DefPathData::TypeParam(name),
+            GenericParamKind::Const { .. } => DefPathData::ConstParam(name),
         };
         self.create_def(param.id, def_path_data, REGULAR_SPACE, param.ident.span);
 

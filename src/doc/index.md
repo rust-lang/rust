@@ -52,6 +52,12 @@ If reading multiple hundreds of pages about a language isn't your style, then
 a lot of words, RBE shows off a bunch of code, and keeps the talking to a
 minimum. It also includes exercises!
 
+## Rustlings
+
+[Rustlings](https://github.com/rust-lang/rustlings) guides you through downloading and setting up the Rust toolchain,
+and teaches you the basics of reading and writing Rust syntax. It's an
+alternative to Rust by Example that works with your own environment.
+
 # Use Rust
 
 Once you've gotten familiar with the language, these resources can help you
@@ -117,3 +123,19 @@ Rust. It's also sometimes called "the 'nomicon."
 [The `rustc` Guide](https://rust-lang.github.io/rustc-guide/) documents how
 the compiler works and how to contribute to it. This is useful if you want to build
 or modify the Rust compiler from source (e.g. to target something non-standard).
+
+# Specialize Rust
+
+When using Rust in specific domain areas, consider using the following resources tailored to each domain.
+
+## Embedded Systems
+
+When developing for Bare Metal or Embedded Linux systems, you may find these resources maintained by the [Embedded Working Group] useful.
+
+[Embedded Working Group]: https://github.com/rust-embedded
+
+### The Embedded Rust Book
+
+[The Embedded Rust Book] is targeted at developers familiar with embedded development and familiar with Rust, but have not used Rust for embedded development.
+
+[The Embedded Rust Book]: embedded-book/index.html

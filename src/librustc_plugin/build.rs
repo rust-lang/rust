@@ -30,7 +30,7 @@ impl<'v> ItemLikeVisitor<'v> for RegistrarFinder {
     }
 }
 
-/// Find the function marked with `#[plugin_registrar]`, if any.
+/// Finds the function marked with `#[plugin_registrar]`, if any.
 pub fn find_plugin_registrar<'tcx>(tcx: TyCtxt<'_, 'tcx, 'tcx>) -> Option<DefId> {
     tcx.plugin_registrar_fn(LOCAL_CRATE)
 }

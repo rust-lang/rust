@@ -1,4 +1,4 @@
-use self::Context::*;
+use Context::*;
 
 use rustc::session::Session;
 
@@ -9,6 +9,7 @@ use rustc::hir::map::Map;
 use rustc::hir::intravisit::{self, Visitor, NestedVisitorMap};
 use rustc::hir::{self, Node, Destination};
 use syntax::ast;
+use syntax::struct_span_err;
 use syntax_pos::Span;
 use errors::Applicability;
 
@@ -59,7 +60,7 @@ fn check_mod_loops<'tcx>(tcx: TyCtxt<'_, 'tcx, 'tcx>, module_def_id: DefId) {
     }.as_deep_visitor());
 }
 
-pub(crate) fn provide(providers: &mut Providers) {
+pub(crate) fn provide(providers: &mut Providers<'_>) {
     *providers = Providers {
         check_mod_loops,
         ..*providers

@@ -1,14 +1,15 @@
-use Diagnostic;
-use DiagnosticId;
-use DiagnosticStyledString;
-use Applicability;
+use crate::Diagnostic;
+use crate::DiagnosticId;
+use crate::DiagnosticStyledString;
+use crate::Applicability;
 
-use Level;
-use Handler;
+use crate::Level;
+use crate::Handler;
 use std::fmt::{self, Debug};
 use std::ops::{Deref, DerefMut};
 use std::thread::panicking;
 use syntax_pos::{MultiSpan, Span};
+use log::debug;
 
 /// Used for emitting structured error messages and other diagnostic information.
 ///
@@ -25,7 +26,7 @@ pub struct DiagnosticBuilder<'a> {
 
 /// In general, the `DiagnosticBuilder` uses deref to allow access to
 /// the fields and methods of the embedded `diagnostic` in a
-/// transparent way.  *However,* many of the methods are intended to
+/// transparent way. *However,* many of the methods are intended to
 /// be used in a chained way, and hence ought to return `self`. In
 /// that case, we can't just naively forward to the method on the
 /// `diagnostic`, because the return type would be a `&Diagnostic`
@@ -111,8 +112,8 @@ impl<'a> DiagnosticBuilder<'a> {
         // implements `Drop`.
         let diagnostic;
         unsafe {
-            diagnostic = ::std::ptr::read(&self.diagnostic);
-            ::std::mem::forget(self);
+            diagnostic = std::ptr::read(&self.diagnostic);
+            std::mem::forget(self);
         };
         // Logging here is useful to help track down where in logs an error was
         // actually emitted.
@@ -149,7 +150,7 @@ impl<'a> DiagnosticBuilder<'a> {
         self.cancel();
     }
 
-    /// Add a span/label to be included in the resulting snippet.
+    /// Adds a span/label to be included in the resulting snippet.
     /// This is pushed onto the `MultiSpan` that was created when the
     /// diagnostic was first built. If you don't call this function at
     /// all, and you just supplied a `Span` to create the diagnostic,
@@ -203,6 +204,24 @@ impl<'a> DiagnosticBuilder<'a> {
         );
         self
     }
+
+    pub fn tool_only_multipart_suggestion(
+        &mut self,
+        msg: &str,
+        suggestion: Vec<(Span, String)>,
+        applicability: Applicability,
+    ) -> &mut Self {
+        if !self.allow_suggestions {
+            return self
+        }
+        self.diagnostic.tool_only_multipart_suggestion(
+            msg,
+            suggestion,
+            applicability,
+        );
+        self
+    }
+
 
     pub fn span_suggestion(
         &mut self,
@@ -260,6 +279,45 @@ impl<'a> DiagnosticBuilder<'a> {
         );
         self
     }
+
+    pub fn span_suggestion_hidden(
+        &mut self,
+        sp: Span,
+        msg: &str,
+        suggestion: String,
+        applicability: Applicability,
+    ) -> &mut Self {
+        if !self.allow_suggestions {
+            return self
+        }
+        self.diagnostic.span_suggestion_hidden(
+            sp,
+            msg,
+            suggestion,
+            applicability,
+        );
+        self
+    }
+
+    pub fn tool_only_span_suggestion(
+        &mut self,
+        sp: Span,
+        msg: &str,
+        suggestion: String,
+        applicability: Applicability,
+    ) -> &mut Self {
+        if !self.allow_suggestions {
+            return self
+        }
+        self.diagnostic.tool_only_span_suggestion(
+            sp,
+            msg,
+            suggestion,
+            applicability,
+        );
+        self
+    }
+
     forward!(pub fn set_span<S: Into<MultiSpan>>(&mut self, sp: S) -> &mut Self);
     forward!(pub fn code(&mut self, s: DiagnosticId) -> &mut Self);
 
@@ -298,7 +356,7 @@ impl<'a> DiagnosticBuilder<'a> {
 }
 
 impl<'a> Debug for DiagnosticBuilder<'a> {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         self.diagnostic.fmt(f)
     }
 }

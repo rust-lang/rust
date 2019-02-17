@@ -1,8 +1,9 @@
-use borrow_check::nll::constraints::OutlivesConstraint;
-use borrow_check::nll::region_infer::RegionInferenceContext;
-use borrow_check::nll::type_check::Locations;
-use borrow_check::nll::universal_regions::DefiningTy;
-use borrow_check::nll::ConstraintDescription;
+use crate::borrow_check::nll::constraints::OutlivesConstraint;
+use crate::borrow_check::nll::region_infer::RegionInferenceContext;
+use crate::borrow_check::nll::type_check::Locations;
+use crate::borrow_check::nll::universal_regions::DefiningTy;
+use crate::borrow_check::nll::ConstraintDescription;
+use crate::util::borrowck_errors::{BorrowckErrors, Origin};
 use rustc::hir::def_id::DefId;
 use rustc::infer::error_reporting::nice_region_error::NiceRegionError;
 use rustc::infer::InferCtxt;
@@ -15,7 +16,6 @@ use std::collections::VecDeque;
 use syntax::errors::Applicability;
 use syntax::symbol::keywords;
 use syntax_pos::Span;
-use util::borrowck_errors::{BorrowckErrors, Origin};
 
 mod region_name;
 mod var_name;
@@ -205,7 +205,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
             for constraint in self.constraint_graph
                 .outgoing_edges(r, &self.constraints, fr_static)
             {
-                assert_eq!(constraint.sup, r);
+                debug_assert_eq!(constraint.sup, r);
                 let sub_region = constraint.sub;
                 if let Trace::NotVisited = context[sub_region] {
                     context[sub_region] = Trace::FromOutlivesConstraint(constraint);
@@ -244,7 +244,8 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         if let (Some(f), Some(o)) = (self.to_error_region(fr), self.to_error_region(outlived_fr)) {
             let tables = infcx.tcx.typeck_tables_of(mir_def_id);
             let nice = NiceRegionError::new_from_span(infcx, span, o, f, Some(tables));
-            if let Some(_error_reported) = nice.try_report_from_nll() {
+            if let Some(diag) = nice.try_report_from_nll() {
+                diag.buffer(errors_buffer);
                 return;
             }
         }
@@ -738,8 +739,8 @@ impl<'tcx> RegionInferenceContext<'tcx> {
     }
 
     /// If `r2` represents a placeholder region, then this returns
-    /// true if `r1` cannot name that placeholder in its
-    /// value. Otherwise, returns false.
+    /// `true` if `r1` cannot name that placeholder in its
+    /// value; otherwise, returns `false`.
     fn cannot_name_placeholder(&self, r1: RegionVid, r2: RegionVid) -> bool {
         debug!("cannot_name_value_of(r1={:?}, r2={:?})", r1, r2);
 

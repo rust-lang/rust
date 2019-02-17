@@ -3,11 +3,11 @@ pub use self::def_collector::{DefCollector, MacroInvocationData};
 pub use self::definitions::{Definitions, DefKey, DefPath, DefPathData,
                             DisambiguatedDefPathData, DefPathHash};
 
-use dep_graph::{DepGraph, DepNode, DepKind, DepNodeIndex};
+use crate::dep_graph::{DepGraph, DepNode, DepKind, DepNodeIndex};
 
-use hir::def_id::{CRATE_DEF_INDEX, DefId, LocalDefId, DefIndexAddressSpace};
+use crate::hir::def_id::{CRATE_DEF_INDEX, DefId, LocalDefId, DefIndexAddressSpace};
 
-use middle::cstore::CrateStoreDyn;
+use crate::middle::cstore::CrateStoreDyn;
 
 use rustc_target::spec::abi::Abi;
 use rustc_data_structures::svh::Svh;
@@ -17,15 +17,15 @@ use syntax::source_map::Spanned;
 use syntax::ext::base::MacroKind;
 use syntax_pos::{Span, DUMMY_SP};
 
-use hir::*;
-use hir::itemlikevisit::ItemLikeVisitor;
-use hir::print::Nested;
-use util::nodemap::FxHashMap;
-use util::common::time;
+use crate::hir::*;
+use crate::hir::itemlikevisit::ItemLikeVisitor;
+use crate::hir::print::Nested;
+use crate::util::nodemap::FxHashMap;
+use crate::util::common::time;
 
 use std::io;
 use std::result::Result::Err;
-use ty::TyCtxt;
+use crate::ty::TyCtxt;
 
 pub mod blocks;
 mod collector;
@@ -36,7 +36,7 @@ mod hir_id_validator;
 pub const ITEM_LIKE_SPACE: DefIndexAddressSpace = DefIndexAddressSpace::Low;
 pub const REGULAR_SPACE: DefIndexAddressSpace = DefIndexAddressSpace::High;
 
-/// Represents an entry and its parent NodeId.
+/// Represents an entry and its parent `NodeId`.
 #[derive(Copy, Clone, Debug)]
 pub struct Entry<'hir> {
     parent: NodeId,
@@ -127,9 +127,9 @@ impl<'hir> Entry<'hir> {
         }
     }
 
-    fn is_body_owner(self, node_id: NodeId) -> bool {
+    fn is_body_owner(self, hir_id: HirId) -> bool {
         match self.associated_body() {
-            Some(b) => b.node_id == node_id,
+            Some(b) => b.hir_id == hir_id,
             None => false,
         }
     }
@@ -162,8 +162,7 @@ impl Forest {
     }
 }
 
-/// Represents a mapping from Node IDs to AST elements and their parent
-/// Node IDs
+/// Represents a mapping from `NodeId`s to AST elements and their parent `NodeId`s.
 #[derive(Clone)]
 pub struct Map<'hir> {
     /// The backing storage for all the AST nodes.
@@ -371,8 +370,12 @@ impl<'hir> Map<'hir> {
                 let def_id = self.local_def_id(variant.node.data.id());
                 Some(Def::Variant(def_id))
             }
-            Node::Field(_) |
+            Node::StructCtor(variant) => {
+                let def_id = self.local_def_id(variant.id());
+                Some(Def::StructCtor(def_id, def::CtorKind::from_hir(variant)))
+            }
             Node::AnonConst(_) |
+            Node::Field(_) |
             Node::Expr(_) |
             Node::Stmt(_) |
             Node::PathSegment(_) |
@@ -380,7 +383,6 @@ impl<'hir> Map<'hir> {
             Node::TraitRef(_) |
             Node::Pat(_) |
             Node::Binding(_) |
-            Node::StructCtor(_) |
             Node::Lifetime(_) |
             Node::Visibility(_) |
             Node::Block(_) |
@@ -399,6 +401,12 @@ impl<'hir> Map<'hir> {
                 })
             }
         }
+    }
+
+    // FIXME(@ljedrz): replace the NodeId variant
+    pub fn describe_def_by_hir_id(&self, hir_id: HirId) -> Option<Def> {
+        let node_id = self.hir_to_node_id(hir_id);
+        self.describe_def(node_id)
     }
 
     fn entry_count(&self) -> usize {
@@ -430,7 +438,7 @@ impl<'hir> Map<'hir> {
     }
 
     pub fn body(&self, id: BodyId) -> &'hir Body {
-        self.read(id.node_id);
+        self.read_by_hir_id(id.hir_id);
 
         // N.B., intentionally bypass `self.forest.krate()` so that we
         // do not trigger a read of the whole krate here
@@ -445,12 +453,19 @@ impl<'hir> Map<'hir> {
         }
     }
 
+    // FIXME(@ljedrz): replace the NodeId variant
+    pub fn fn_decl_by_hir_id(&self, hir_id: HirId) -> Option<FnDecl> {
+        let node_id = self.hir_to_node_id(hir_id);
+        self.fn_decl(node_id)
+    }
+
     /// Returns the `NodeId` that corresponds to the definition of
     /// which this is the body of, i.e., a `fn`, `const` or `static`
     /// item (possibly associated), a closure, or a `hir::AnonConst`.
-    pub fn body_owner(&self, BodyId { node_id }: BodyId) -> NodeId {
+    pub fn body_owner(&self, BodyId { hir_id }: BodyId) -> NodeId {
+        let node_id = self.hir_to_node_id(hir_id);
         let parent = self.get_parent_node(node_id);
-        assert!(self.map[parent.as_usize()].map_or(false, |e| e.is_body_owner(node_id)));
+        assert!(self.map[parent.as_usize()].map_or(false, |e| e.is_body_owner(hir_id)));
         parent
     }
 
@@ -458,7 +473,7 @@ impl<'hir> Map<'hir> {
         self.local_def_id(self.body_owner(id))
     }
 
-    /// Given a node id, returns the `BodyId` associated with it,
+    /// Given a `NodeId`, returns the `BodyId` associated with it,
     /// if the node is a body owner, otherwise returns `None`.
     pub fn maybe_body_owned_by(&self, id: NodeId) -> Option<BodyId> {
         if let Some(entry) = self.find_entry(id) {
@@ -472,6 +487,12 @@ impl<'hir> Map<'hir> {
         } else {
             bug!("no entry for id `{}`", id)
         }
+    }
+
+    // FIXME(@ljedrz): replace the NodeId variant
+    pub fn maybe_body_owned_by_by_hir_id(&self, id: HirId) -> Option<BodyId> {
+        let node_id = self.hir_to_node_id(id);
+        self.maybe_body_owned_by(node_id)
     }
 
     /// Given a body owner's id, returns the `BodyId` associated with it.
@@ -505,6 +526,12 @@ impl<'hir> Map<'hir> {
             }
             node => bug!("{:#?} is not a body node", node),
         }
+    }
+
+    // FIXME(@ljedrz): replace the NodeId variant
+    pub fn body_owner_kind_by_hir_id(&self, id: HirId) -> BodyOwnerKind {
+        let node_id = self.hir_to_node_id(id);
+        self.body_owner_kind(node_id)
     }
 
     pub fn ty_param_owner(&self, id: NodeId) -> NodeId {
@@ -543,7 +570,7 @@ impl<'hir> Map<'hir> {
         self.trait_auto_impl(trait_did).is_some()
     }
 
-    /// Get the attributes on the krate. This is preferable to
+    /// Gets the attributes on the crate. This is preferable to
     /// invoking `krate.attrs` because it registers a tighter
     /// dep-graph access.
     pub fn krate_attrs(&self) -> &'hir [ast::Attribute] {
@@ -638,8 +665,7 @@ impl<'hir> Map<'hir> {
         self.get_generics(id).map(|generics| generics.span).filter(|sp| *sp != DUMMY_SP)
     }
 
-    /// Retrieve the Node corresponding to `id`, returning None if
-    /// cannot be found.
+    /// Retrieves the `Node` corresponding to `id`, returning `None` if cannot be found.
     pub fn find(&self, id: NodeId) -> Option<Node<'hir>> {
         let result = self.find_entry(id).and_then(|entry| {
             if let Node::Crate = entry.node {
@@ -668,8 +694,8 @@ impl<'hir> Map<'hir> {
     /// returns the enclosing item. Note that this might not be the actual parent
     /// node in the AST - some kinds of nodes are not in the map and these will
     /// never appear as the parent_node. So you can always walk the `parent_nodes`
-    /// from a node to the root of the ast (unless you get the same id back here
-    /// that can happen if the id is not in the map itself or is just weird).
+    /// from a node to the root of the ast (unless you get the same ID back here
+    /// that can happen if the ID is not in the map itself or is just weird).
     pub fn get_parent_node(&self, id: NodeId) -> NodeId {
         if self.dep_graph.is_fully_enabled() {
             let hir_id_owner = self.node_to_hir_id(id).owner;
@@ -710,7 +736,7 @@ impl<'hir> Map<'hir> {
 
     /// If there is some error when walking the parents (e.g., a node does not
     /// have a parent in the map or a node can't be found), then we return the
-    /// last good node id we found. Note that reaching the crate root (`id == 0`),
+    /// last good `NodeId` we found. Note that reaching the crate root (`id == 0`),
     /// is not an error, since items in the crate module have the crate root as
     /// parent.
     fn walk_parent_nodes<F, F2>(&self,
@@ -746,7 +772,7 @@ impl<'hir> Map<'hir> {
         }
     }
 
-    /// Retrieve the `NodeId` for `id`'s enclosing method, unless there's a
+    /// Retrieves the `NodeId` for `id`'s enclosing method, unless there's a
     /// `while` or `loop` before reaching it, as block tail returns are not
     /// available in them.
     ///
@@ -794,7 +820,7 @@ impl<'hir> Map<'hir> {
         self.walk_parent_nodes(id, match_fn, match_non_returning_block).ok()
     }
 
-    /// Retrieve the `NodeId` for `id`'s parent item, or `id` itself if no
+    /// Retrieves the `NodeId` for `id`'s parent item, or `id` itself if no
     /// parent item is in this map. The "parent item" is the closest parent node
     /// in the HIR which is recorded by the map and is an item, either an item
     /// in a module, trait, or impl.
@@ -822,6 +848,12 @@ impl<'hir> Map<'hir> {
     /// module parent is in this map.
     pub fn get_module_parent(&self, id: NodeId) -> DefId {
         self.local_def_id(self.get_module_parent_node(id))
+    }
+
+    // FIXME(@ljedrz): replace the NodeId variant
+    pub fn get_module_parent_by_hir_id(&self, id: HirId) -> DefId {
+        let node_id = self.hir_to_node_id(id);
+        self.get_module_parent(node_id)
     }
 
     /// Returns the `NodeId` of `id`'s nearest module parent, or `id` itself if no
@@ -855,6 +887,12 @@ impl<'hir> Map<'hir> {
         self.local_def_id(self.get_parent(id))
     }
 
+    // FIXME(@ljedrz): replace the NodeId variant
+    pub fn get_parent_did_by_hir_id(&self, id: HirId) -> DefId {
+        let node_id = self.hir_to_node_id(id);
+        self.get_parent_did(node_id)
+    }
+
     pub fn get_foreign_abi(&self, id: NodeId) -> Abi {
         let parent = self.get_parent(id);
         if let Some(entry) = self.find_entry(parent) {
@@ -866,6 +904,12 @@ impl<'hir> Map<'hir> {
             }
         }
         bug!("expected foreign mod or inlined parent, found {}", self.node_to_string(parent))
+    }
+
+    // FIXME(@ljedrz): replace the NodeId variant
+    pub fn get_foreign_abi_by_hir_id(&self, id: HirId) -> Abi {
+        let node_id = self.hir_to_node_id(id);
+        self.get_foreign_abi(node_id)
     }
 
     pub fn expect_item(&self, id: NodeId) -> &'hir Item {
@@ -888,6 +932,18 @@ impl<'hir> Map<'hir> {
         }
     }
 
+    // FIXME(@ljedrz): replace the NodeId variant
+    pub fn expect_impl_item_by_hir_id(&self, id: HirId) -> &'hir ImplItem {
+        let node_id = self.hir_to_node_id(id);
+        self.expect_impl_item(node_id)
+    }
+
+    // FIXME(@ljedrz): replace the NodeId variant
+    pub fn expect_trait_item_by_hir_id(&self, id: HirId) -> &'hir TraitItem {
+        let node_id = self.hir_to_node_id(id);
+        self.expect_trait_item(node_id)
+    }
+
     pub fn expect_trait_item(&self, id: NodeId) -> &'hir TraitItem {
         match self.find(id) {
             Some(Node::TraitItem(item)) => item,
@@ -895,7 +951,9 @@ impl<'hir> Map<'hir> {
         }
     }
 
-    pub fn expect_variant_data(&self, id: NodeId) -> &'hir VariantData {
+    pub fn expect_variant_data(&self, id: HirId) -> &'hir VariantData {
+        let id = self.hir_to_node_id(id); // FIXME(@ljedrz): remove when possible
+
         match self.find(id) {
             Some(Node::Item(i)) => {
                 match i.node {
@@ -910,7 +968,9 @@ impl<'hir> Map<'hir> {
         }
     }
 
-    pub fn expect_variant(&self, id: NodeId) -> &'hir Variant {
+    pub fn expect_variant(&self, id: HirId) -> &'hir Variant {
+        let id = self.hir_to_node_id(id); // FIXME(@ljedrz): remove when possible
+
         match self.find(id) {
             Some(Node::Variant(variant)) => variant,
             _ => bug!("expected variant, found {}", self.node_to_string(id)),
@@ -931,6 +991,12 @@ impl<'hir> Map<'hir> {
         }
     }
 
+    // FIXME(@ljedrz): replace the NodeId variant
+    pub fn expect_expr_by_hir_id(&self, id: HirId) -> &'hir Expr {
+        let node_id = self.hir_to_node_id(id);
+        self.expect_expr(node_id)
+    }
+
     /// Returns the name associated with the given NodeId's AST.
     pub fn name(&self, id: NodeId) -> Name {
         match self.get(id) {
@@ -946,6 +1012,12 @@ impl<'hir> Map<'hir> {
             Node::StructCtor(_) => self.name(self.get_parent(id)),
             _ => bug!("no name for {}", self.node_to_string(id))
         }
+    }
+
+    // FIXME(@ljedrz): replace the NodeId variant
+    pub fn name_by_hir_id(&self, id: HirId) -> Name {
+        let node_id = self.hir_to_node_id(id);
+        self.name(node_id)
     }
 
     /// Given a node ID, get a list of attributes associated with the AST
@@ -968,6 +1040,12 @@ impl<'hir> Map<'hir> {
             _ => None
         };
         attrs.unwrap_or(&[])
+    }
+
+    // FIXME(@ljedrz): replace the NodeId variant
+    pub fn attrs_by_hir_id(&self, id: HirId) -> &'hir [ast::Attribute] {
+        let node_id = self.hir_to_node_id(id);
+        self.attrs(node_id)
     }
 
     /// Returns an iterator that yields the node id's with paths that
@@ -1019,6 +1097,12 @@ impl<'hir> Map<'hir> {
         }
     }
 
+    // FIXME(@ljedrz): replace the NodeId variant
+    pub fn span_by_hir_id(&self, id: HirId) -> Span {
+        let node_id = self.hir_to_node_id(id);
+        self.span(node_id)
+    }
+
     pub fn span_if_local(&self, id: DefId) -> Option<Span> {
         self.as_local_node_id(id).map(|id| self.span(id))
     }
@@ -1059,7 +1143,7 @@ pub struct NodesMatchingSuffix<'a, 'hir:'a> {
 }
 
 impl<'a, 'hir> NodesMatchingSuffix<'a, 'hir> {
-    /// Returns true only if some suffix of the module path for parent
+    /// Returns `true` only if some suffix of the module path for parent
     /// matches `self.in_which`.
     ///
     /// In other words: let `[x_0,x_1,...,x_k]` be `self.in_which`;
@@ -1152,13 +1236,13 @@ impl Named for StructField { fn name(&self) -> Name { self.ident.name } }
 impl Named for TraitItem { fn name(&self) -> Name { self.ident.name } }
 impl Named for ImplItem { fn name(&self) -> Name { self.ident.name } }
 
-pub fn map_crate<'hir>(sess: &::session::Session,
+pub fn map_crate<'hir>(sess: &crate::session::Session,
                        cstore: &CrateStoreDyn,
                        forest: &'hir Forest,
                        definitions: &'hir Definitions)
                        -> Map<'hir> {
     let ((map, crate_hash), hir_to_node_id) = join(|| {
-        let hcx = ::ich::StableHashingContext::new(sess, &forest.krate, definitions, cstore);
+        let hcx = crate::ich::StableHashingContext::new(sess, &forest.krate, definitions, cstore);
 
         let mut collector = NodeCollector::root(sess,
                                                 &forest.krate,
@@ -1269,7 +1353,7 @@ fn node_id_to_string(map: &Map<'_>, id: NodeId, include_id: bool) -> String {
     let path_str = || {
         // This functionality is used for debugging, try to use TyCtxt to get
         // the user-friendly path, otherwise fall back to stringifying DefPath.
-        ::ty::tls::with_opt(|tcx| {
+        crate::ty::tls::with_opt(|tcx| {
             if let Some(tcx) = tcx {
                 tcx.node_path_str(id)
             } else if let Some(path) = map.def_path_from_id(id) {

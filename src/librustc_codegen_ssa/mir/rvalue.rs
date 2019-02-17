@@ -6,13 +6,13 @@ use rustc::middle::lang_items::ExchangeMallocFnLangItem;
 use rustc_apfloat::{ieee, Float, Status, Round};
 use std::{u128, i128};
 
-use base;
-use MemFlags;
-use callee;
-use common::{self, RealPredicate, IntPredicate};
+use crate::base;
+use crate::MemFlags;
+use crate::callee;
+use crate::common::{self, RealPredicate, IntPredicate};
 use rustc_mir::monomorphize;
 
-use traits::*;
+use crate::traits::*;
 
 use super::{FunctionCx, LocalRef};
 use super::operand::{OperandRef, OperandValue};

@@ -170,14 +170,14 @@ impl<'tcx> MirPatch<'tcx> {
         }
     }
 
-    pub fn source_info_for_index(data: &BasicBlockData, loc: Location) -> SourceInfo {
+    pub fn source_info_for_index(data: &BasicBlockData<'_>, loc: Location) -> SourceInfo {
         match data.statements.get(loc.statement_index) {
             Some(stmt) => stmt.source_info,
             None => data.terminator().source_info
         }
     }
 
-    pub fn source_info_for_location(&self, mir: &Mir, loc: Location) -> SourceInfo {
+    pub fn source_info_for_location(&self, mir: &Mir<'_>, loc: Location) -> SourceInfo {
         let data = match loc.block.index().checked_sub(mir.basic_blocks().len()) {
             Some(new) => &self.new_blocks[new],
             None => &mir[loc.block]

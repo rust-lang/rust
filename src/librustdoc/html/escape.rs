@@ -1,6 +1,6 @@
-//! HTML Escaping
+//! HTML escaping.
 //!
-//! This module contains one unit-struct which can be used to HTML-escape a
+//! This module contains one unit struct, which can be used to HTML-escape a
 //! string of text (for use in a format string).
 
 use std::fmt;

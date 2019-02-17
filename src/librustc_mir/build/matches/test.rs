@@ -5,10 +5,10 @@
 // identify what tests are needed, perform the tests, and then filter
 // the candidates based on the result.
 
-use build::Builder;
-use build::matches::{Candidate, MatchPair, Test, TestKind};
-use hair::*;
-use hair::pattern::compare_const_vals;
+use crate::build::Builder;
+use crate::build::matches::{Candidate, MatchPair, Test, TestKind};
+use crate::hair::*;
+use crate::hair::pattern::compare_const_vals;
 use rustc_data_structures::bit_set::BitSet;
 use rustc_data_structures::fx::FxHashMap;
 use rustc::ty::{self, Ty};
@@ -302,7 +302,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                     }
                     let eq_def_id = self.hir.tcx().lang_items().eq_trait().unwrap();
                     let (mty, method) = self.hir.trait_method(eq_def_id, "eq", ty, &[ty.into()]);
-                    let method = self.hir.tcx().intern_lazy_const(ty::LazyConst::Evaluated(method));
+                    let method = self.hir.tcx().mk_lazy_const(ty::LazyConst::Evaluated(method));
 
                     let re_erased = self.hir.tcx().types.re_erased;
                     // take the argument by reference
@@ -443,7 +443,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
     /// appropriate.
     ///
     /// So, for example, if this candidate is `x @ Some(P0)` and the
-    /// test is a variant test, then we would add `(x as Option).0 @
+    /// Tests is a variant test, then we would add `(x as Option).0 @
     /// P0` to the `resulting_candidates` entry corresponding to the
     /// variant `Some`.
     ///

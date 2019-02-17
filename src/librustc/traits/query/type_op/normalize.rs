@@ -1,8 +1,8 @@
-use infer::canonical::{Canonical, Canonicalized, CanonicalizedQueryResponse, QueryResponse};
+use crate::infer::canonical::{Canonical, Canonicalized, CanonicalizedQueryResponse, QueryResponse};
 use std::fmt;
-use traits::query::Fallible;
-use ty::fold::TypeFoldable;
-use ty::{self, Lift, ParamEnvAnd, Ty, TyCtxt};
+use crate::traits::query::Fallible;
+use crate::ty::fold::TypeFoldable;
+use crate::ty::{self, Lift, ParamEnvAnd, Ty, TyCtxt};
 
 #[derive(Copy, Clone, Debug, Hash, PartialEq, Eq)]
 pub struct Normalize<T> {
@@ -52,7 +52,7 @@ pub trait Normalizable<'gcx, 'tcx>: fmt::Debug + TypeFoldable<'tcx> + Lift<'gcx>
         canonicalized: Canonicalized<'gcx, ParamEnvAnd<'tcx, Normalize<Self>>>,
     ) -> Fallible<CanonicalizedQueryResponse<'gcx, Self>>;
 
-    /// Convert from the `'gcx` (lifted) form of `Self` into the `tcx`
+    /// Converts from the `'gcx` (lifted) form of `Self` into the `tcx`
     /// form of `Self`.
     fn shrink_to_tcx_lifetime(
         v: &'a CanonicalizedQueryResponse<'gcx, Self>,

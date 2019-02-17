@@ -282,7 +282,7 @@ impl<'a> AsyncPipe<'a> {
     /// Takes a parameter `wait` which indicates if this pipe is currently being
     /// read whether the function should block waiting for the read to complete.
     ///
-    /// Return values:
+    /// Returns values:
     ///
     /// * `true` - finished any pending read and the pipe is not at EOF (keep
     ///            going)

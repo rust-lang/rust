@@ -1,7 +1,10 @@
-use build;
-use build::scope::{CachedBlock, DropKind};
-use hair::cx::Cx;
-use hair::{LintLevel, BindingMode, PatternKind};
+use crate::build;
+use crate::build::scope::{CachedBlock, DropKind};
+use crate::hair::cx::Cx;
+use crate::hair::{LintLevel, BindingMode, PatternKind};
+use crate::shim;
+use crate::transform::MirSource;
+use crate::util as mir_util;
 use rustc::hir;
 use rustc::hir::Node;
 use rustc::hir::def_id::DefId;
@@ -13,7 +16,6 @@ use rustc::ty::subst::Substs;
 use rustc::util::nodemap::NodeMap;
 use rustc_target::spec::PanicStrategy;
 use rustc_data_structures::indexed_vec::{IndexVec, Idx};
-use shim;
 use std::mem;
 use std::u32;
 use rustc_target::spec::abi::Abi;
@@ -21,12 +23,10 @@ use syntax::ast;
 use syntax::attr::{self, UnwindAttr};
 use syntax::symbol::keywords;
 use syntax_pos::Span;
-use transform::MirSource;
-use util as mir_util;
 
 use super::lints;
 
-/// Construct the MIR for a given def-id.
+/// Construct the MIR for a given `DefId`.
 pub fn mir_build<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: DefId) -> Mir<'tcx> {
     let id = tcx.hir().as_local_node_id(def_id).unwrap();
 
@@ -64,8 +64,8 @@ pub fn mir_build<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: DefId) -> Mir<'t
         ) => {
             (*body_id, ty.span)
         }
-        Node::AnonConst(hir::AnonConst { body, id, .. }) => {
-            (*body, tcx.hir().span(*id))
+        Node::AnonConst(hir::AnonConst { body, hir_id, .. }) => {
+            (*body, tcx.hir().span_by_hir_id(*hir_id))
         }
 
         _ => span_bug!(tcx.hir().span(id), "can't build MIR for {:?}", def_id),
@@ -92,7 +92,7 @@ pub fn mir_build<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: DefId) -> Mir<'t
                     Some(ArgInfo(liberated_closure_env_ty(tcx, id, body_id), None, None, None))
                 }
                 ty::Generator(..) => {
-                    let gen_ty = tcx.body_tables(body_id).node_id_to_type(fn_hir_id);
+                    let gen_ty = tcx.body_tables(body_id).node_type(fn_hir_id);
                     Some(ArgInfo(gen_ty, None, None, None))
                 }
                 _ => None,
@@ -114,7 +114,7 @@ pub fn mir_build<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: DefId) -> Mir<'t
                         let self_arg;
                         if let Some(ref fn_decl) = tcx.hir().fn_decl(owner_id) {
                             let ty_hir_id = fn_decl.inputs[index].hir_id;
-                            let ty_span = tcx.hir().span(tcx.hir().hir_to_node_id(ty_hir_id));
+                            let ty_span = tcx.hir().span_by_hir_id(ty_hir_id);
                             opt_ty_info = Some(ty_span);
                             self_arg = if index == 0 && fn_decl.implicit_self.has_implicit_self() {
                                 match fn_decl.implicit_self {
@@ -161,7 +161,7 @@ pub fn mir_build<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: DefId) -> Mir<'t
         };
         globalizer.visit_mir(&mut mir);
         let mir = unsafe {
-            mem::transmute::<Mir, Mir<'tcx>>(mir)
+            mem::transmute::<Mir<'_>, Mir<'tcx>>(mir)
         };
 
         mir_util::dump_mir(tcx, None, "mir_map", &0,
@@ -173,9 +173,9 @@ pub fn mir_build<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: DefId) -> Mir<'t
     })
 }
 
-/// A pass to lift all the types and substitutions in a Mir
+/// A pass to lift all the types and substitutions in a MIR
 /// to the global tcx. Sadly, we don't have a "folder" that
-/// can change 'tcx so we have to transmute afterwards.
+/// can change `'tcx` so we have to transmute afterwards.
 struct GlobalizeMir<'a, 'gcx: 'a> {
     tcx: TyCtxt<'a, 'gcx, 'gcx>,
     span: Span
@@ -241,7 +241,7 @@ fn create_constructor_shim<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
             };
             globalizer.visit_mir(&mut mir);
             let mir = unsafe {
-                mem::transmute::<Mir, Mir<'tcx>>(mir)
+                mem::transmute::<Mir<'_>, Mir<'tcx>>(mir)
             };
 
             mir_util::dump_mir(tcx, None, "mir_map", &0,
@@ -263,7 +263,7 @@ fn liberated_closure_env_ty<'a, 'gcx, 'tcx>(tcx: TyCtxt<'a, 'gcx, 'tcx>,
                                             body_id: hir::BodyId)
                                             -> Ty<'tcx> {
     let closure_expr_hir_id = tcx.hir().node_to_hir_id(closure_expr_id);
-    let closure_ty = tcx.body_tables(body_id).node_id_to_type(closure_expr_hir_id);
+    let closure_ty = tcx.body_tables(body_id).node_type(closure_expr_hir_id);
 
     let (closure_def_id, closure_substs) = match closure_ty.sty {
         ty::Closure(closure_def_id, closure_substs) => (closure_def_id, closure_substs),
@@ -335,47 +335,47 @@ struct Builder<'a, 'gcx: 'a+'tcx, 'tcx: 'a> {
     fn_span: Span,
     arg_count: usize,
 
-    /// the current set of scopes, updated as we traverse;
-    /// see the `scope` module for more details
+    /// The current set of scopes, updated as we traverse;
+    /// see the `scope` module for more details.
     scopes: Vec<scope::Scope<'tcx>>,
 
-    /// the block-context: each time we build the code within an hair::Block,
+    /// The block-context: each time we build the code within an hair::Block,
     /// we push a frame here tracking whether we are building a statement or
     /// if we are pushing the tail expression of the block. This is used to
     /// embed information in generated temps about whether they were created
     /// for a block tail expression or not.
     ///
     /// It would be great if we could fold this into `self.scopes`
-    /// somehow; but right now I think that is very tightly tied to
+    /// somehow, but right now I think that is very tightly tied to
     /// the code generation in ways that we cannot (or should not)
     /// start just throwing new entries onto that vector in order to
     /// distinguish the context of EXPR1 from the context of EXPR2 in
-    /// `{ STMTS; EXPR1 } + EXPR2`
+    /// `{ STMTS; EXPR1 } + EXPR2`.
     block_context: BlockContext,
 
     /// The current unsafe block in scope, even if it is hidden by
-    /// a PushUnsafeBlock
+    /// a `PushUnsafeBlock`.
     unpushed_unsafe: Safety,
 
-    /// The number of `push_unsafe_block` levels in scope
+    /// The number of `push_unsafe_block` levels in scope.
     push_unsafe_count: usize,
 
-    /// the current set of breakables; see the `scope` module for more
-    /// details
+    /// The current set of breakables; see the `scope` module for more
+    /// details.
     breakable_scopes: Vec<scope::BreakableScope<'tcx>>,
 
-    /// the vector of all scopes that we have created thus far;
-    /// we track this for debuginfo later
+    /// The vector of all scopes that we have created thus far;
+    /// we track this for debuginfo later.
     source_scopes: IndexVec<SourceScope, SourceScopeData>,
     source_scope_local_data: IndexVec<SourceScope, SourceScopeLocalData>,
     source_scope: SourceScope,
 
-    /// the guard-context: each time we build the guard expression for
+    /// The guard-context: each time we build the guard expression for
     /// a match arm, we push onto this stack, and then pop when we
     /// finish building it.
     guard_context: Vec<GuardFrame>,
 
-    /// Maps node ids of variable bindings to the `Local`s created for them.
+    /// Maps `NodeId`s of variable bindings to the `Local`s created for them.
     /// (A match binding can have two locals; the 2nd is for the arm's guard.)
     var_indices: NodeMap<LocalsForNode>,
     local_decls: IndexVec<Local, LocalDecl<'tcx>>,
@@ -383,12 +383,12 @@ struct Builder<'a, 'gcx: 'a+'tcx, 'tcx: 'a> {
     upvar_decls: Vec<UpvarDecl>,
     unit_temp: Option<Place<'tcx>>,
 
-    /// cached block with the RESUME terminator; this is created
+    /// Cached block with the `RESUME` terminator; this is created
     /// when first set of cleanups are built.
     cached_resume_block: Option<BasicBlock>,
-    /// cached block with the RETURN terminator
+    /// Cached block with the `RETURN` terminator.
     cached_return_block: Option<BasicBlock>,
-    /// cached block with the UNREACHABLE terminator
+    /// Cached block with the `UNREACHABLE` terminator.
     cached_unreachable_block: Option<BasicBlock>,
 }
 
@@ -407,7 +407,7 @@ impl BlockContext {
     fn push(&mut self, bf: BlockFrame) { self.0.push(bf); }
     fn pop(&mut self) -> Option<BlockFrame> { self.0.pop() }
 
-    /// Traverses the frames on the BlockContext, searching for either
+    /// Traverses the frames on the `BlockContext`, searching for either
     /// the first block-tail expression frame with no intervening
     /// statement frame.
     ///
@@ -453,13 +453,13 @@ impl BlockContext {
 
 #[derive(Debug)]
 enum LocalsForNode {
-    /// In the usual case, a node-id for an identifier maps to at most
-    /// one Local declaration.
+    /// In the usual case, a `NodeId` for an identifier maps to at most
+    /// one `Local` declaration.
     One(Local),
 
     /// The exceptional case is identifiers in a match arm's pattern
     /// that are referenced in a guard of that match arm. For these,
-    /// we can have `2+k` Locals, where `k` is the number of candidate
+    /// we can have `2 + k` Locals, where `k` is the number of candidate
     /// patterns (separated by `|`) in the arm.
     ///
     /// * `for_arm_body` is the Local used in the arm body (which is
@@ -505,11 +505,11 @@ struct GuardFrame {
     ///      P1(id1) if (... (match E2 { P2(id2) if ... => B2 })) => B1,
     /// }
     ///
-    /// here, when building for FIXME
+    /// here, when building for FIXME.
     locals: Vec<GuardFrameLocal>,
 }
 
-/// ForGuard indicates whether we are talking about:
+/// `ForGuard` indicates whether we are talking about:
 ///   1. the temp for a local binding used solely within guard expressions,
 ///   2. the temp that holds reference to (1.), which is actually what the
 ///      guard expressions see, or

@@ -224,6 +224,7 @@ impl<'a> fold::DocFolder for Stripper<'a> {
             | clean::ConstantItem(..)
             | clean::UnionItem(..)
             | clean::AssociatedConstItem(..)
+            | clean::TraitAliasItem(..)
             | clean::ForeignTypeItem => {
                 if i.def_id.is_local() {
                     if !self.access_levels.is_exported(i.def_id) {
@@ -403,7 +404,7 @@ pub fn look_for_tests<'a, 'tcx: 'a, 'rcx: 'a>(
     }
 }
 
-/// Return a span encompassing all the given attributes.
+/// Returns a span encompassing all the given attributes.
 crate fn span_of_attrs(attrs: &clean::Attributes) -> Span {
     if attrs.doc_strings.is_empty() {
         return DUMMY_SP;

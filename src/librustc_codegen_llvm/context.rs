@@ -75,7 +75,7 @@ pub struct CodegenCx<'ll, 'tcx: 'll> {
     pub statics_to_rauw: RefCell<Vec<(&'ll Value, &'ll Value)>>,
 
     /// Statics that will be placed in the llvm.used variable
-    /// See http://llvm.org/docs/LangRef.html#the-llvm-used-global-variable for details
+    /// See <http://llvm.org/docs/LangRef.html#the-llvm-used-global-variable> for details
     pub used_statics: RefCell<Vec<&'ll Value>>,
 
     pub lltypes: RefCell<FxHashMap<(Ty<'tcx>, Option<VariantIdx>), &'ll Type>>,
@@ -465,6 +465,20 @@ impl CodegenCx<'b, 'tcx> {
         self.declare_intrinsic(key).unwrap_or_else(|| bug!("unknown intrinsic '{}'", key))
     }
 
+    fn insert_intrinsic(
+        &self, name: &'static str, args: Option<&[&'b llvm::Type]>, ret: &'b llvm::Type
+    ) -> &'b llvm::Value {
+        let fn_ty = if let Some(args) = args {
+            self.type_func(args, ret)
+        } else {
+            self.type_variadic_func(&[], ret)
+        };
+        let f = self.declare_cfn(name, fn_ty);
+        llvm::SetUnnamedAddr(f, false);
+        self.intrinsics.borrow_mut().insert(name, f.clone());
+        f
+    }
+
     fn declare_intrinsic(
         &self,
         key: &str
@@ -472,26 +486,17 @@ impl CodegenCx<'b, 'tcx> {
         macro_rules! ifn {
             ($name:expr, fn() -> $ret:expr) => (
                 if key == $name {
-                    let f = self.declare_cfn($name, self.type_func(&[], $ret));
-                    llvm::SetUnnamedAddr(f, false);
-                    self.intrinsics.borrow_mut().insert($name, f.clone());
-                    return Some(f);
+                    return Some(self.insert_intrinsic($name, Some(&[]), $ret));
                 }
             );
             ($name:expr, fn(...) -> $ret:expr) => (
                 if key == $name {
-                    let f = self.declare_cfn($name, self.type_variadic_func(&[], $ret));
-                    llvm::SetUnnamedAddr(f, false);
-                    self.intrinsics.borrow_mut().insert($name, f.clone());
-                    return Some(f);
+                    return Some(self.insert_intrinsic($name, None, $ret));
                 }
             );
             ($name:expr, fn($($arg:expr),*) -> $ret:expr) => (
                 if key == $name {
-                    let f = self.declare_cfn($name, self.type_func(&[$($arg),*], $ret));
-                    llvm::SetUnnamedAddr(f, false);
-                    self.intrinsics.borrow_mut().insert($name, f.clone());
-                    return Some(f);
+                    return Some(self.insert_intrinsic($name, Some(&[$($arg),*]), $ret));
                 }
             );
         }
@@ -807,7 +812,7 @@ impl CodegenCx<'b, 'tcx> {
 }
 
 impl<'b, 'tcx> CodegenCx<'b, 'tcx> {
-    /// Generate a new symbol name with the given prefix. This symbol name must
+    /// Generates a new symbol name with the given prefix. This symbol name must
     /// only be used for definitions with `internal` or `private` linkage.
     pub fn generate_local_symbol_name(&self, prefix: &str) -> String {
         let idx = self.local_gen_sym_counter.get();

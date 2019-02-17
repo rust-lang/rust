@@ -841,7 +841,7 @@ const NOTIFIED: usize = 2;
 /// let flag2 = Arc::clone(&flag);
 ///
 /// let parked_thread = thread::spawn(move || {
-///     // We want to wait until the flag is set.  We *could* just spin, but using
+///     // We want to wait until the flag is set. We *could* just spin, but using
 ///     // park/unpark is more efficient.
 ///     while !flag2.load(Ordering::Acquire) {
 ///         println!("Parking thread");

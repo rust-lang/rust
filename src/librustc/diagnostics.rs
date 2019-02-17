@@ -1,3 +1,4 @@
+// ignore-tidy-linelength
 #![allow(non_snake_case)]
 
 // Error messages for EXXXX errors.
@@ -410,7 +411,7 @@ fn baz<'a>(x: &'a str, y: &str) -> &str { }
 Lifetime elision in implementation headers was part of the lifetime elision
 RFC. It is, however, [currently unimplemented][iss15872].
 
-[book-le]: https://doc.rust-lang.org/nightly/book/first-edition/lifetimes.html#lifetime-elision
+[book-le]: https://doc.rust-lang.org/book/ch10-03-lifetime-syntax.html#lifetime-elision
 [iss15872]: https://github.com/rust-lang/rust/issues/15872
 "##,
 
@@ -646,7 +647,9 @@ attributes:
 #![no_std]
 ```
 
-See also https://doc.rust-lang.org/book/first-edition/no-stdlib.html
+See also the [unstable book][1].
+
+[1]: https://doc.rust-lang.org/unstable-book/language-features/lang-items.html#writing-an-executable-without-stdlib
 "##,
 
 E0214: r##"
@@ -1713,7 +1716,7 @@ fn main() {
 ```
 
 To understand better how closures work in Rust, read:
-https://doc.rust-lang.org/book/first-edition/closures.html
+https://doc.rust-lang.org/book/ch13-01-closures.html
 "##,
 
 E0580: r##"

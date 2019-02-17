@@ -125,7 +125,7 @@ pub unsafe fn strlen(mut s: *const c_char) -> usize {
 }
 
 pub unsafe fn abort_internal() -> ! {
-    abi::panic::usercall_exit(true)
+    abi::usercalls::exit(true)
 }
 
 pub fn hashmap_random_keys() -> (u64, u64) {

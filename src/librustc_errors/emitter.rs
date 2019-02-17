@@ -1,37 +1,38 @@
-use self::Destination::*;
+use Destination::*;
 
 use syntax_pos::{SourceFile, Span, MultiSpan};
 
-use {Level, CodeSuggestion, DiagnosticBuilder, SubDiagnostic, SourceMapperDyn, DiagnosticId};
-use snippet::{Annotation, AnnotationType, Line, MultilineAnnotation, StyledString, Style};
-use styled_buffer::StyledBuffer;
+use crate::{
+    Level, CodeSuggestion, DiagnosticBuilder, SubDiagnostic,
+    SuggestionStyle, SourceMapperDyn, DiagnosticId,
+};
+use crate::snippet::{Annotation, AnnotationType, Line, MultilineAnnotation, StyledString, Style};
+use crate::styled_buffer::StyledBuffer;
 
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::sync::Lrc;
-use atty;
 use std::borrow::Cow;
 use std::io::prelude::*;
 use std::io;
 use std::cmp::{min, Reverse};
 use termcolor::{StandardStream, ColorChoice, ColorSpec, BufferWriter};
 use termcolor::{WriteColor, Color, Buffer};
-use unicode_width;
 
 const ANONYMIZED_LINE_NUM: &str = "LL";
 
 /// Emitter trait for emitting errors.
 pub trait Emitter {
     /// Emit a structured diagnostic.
-    fn emit(&mut self, db: &DiagnosticBuilder);
+    fn emit(&mut self, db: &DiagnosticBuilder<'_>);
 
-    /// Check if should show explanations about "rustc --explain"
+    /// Checks if should show explanations about "rustc --explain"
     fn should_show_explain(&self) -> bool {
         true
     }
 }
 
 impl Emitter for EmitterWriter {
-    fn emit(&mut self, db: &DiagnosticBuilder) {
+    fn emit(&mut self, db: &DiagnosticBuilder<'_>) {
         let mut primary_span = db.span.clone();
         let mut children = db.children.clone();
         let mut suggestions: &[_] = &[];
@@ -45,9 +46,14 @@ impl Emitter for EmitterWriter {
                // don't display long messages as labels
                sugg.msg.split_whitespace().count() < 10 &&
                // don't display multiline suggestions as labels
-               !sugg.substitutions[0].parts[0].snippet.contains('\n') {
+               !sugg.substitutions[0].parts[0].snippet.contains('\n') &&
+               // when this style is set we want the suggestion to be a message, not inline
+               sugg.style != SuggestionStyle::HideCodeAlways &&
+               // trivial suggestion for tooling's sake, never shown
+               sugg.style != SuggestionStyle::CompletelyHidden
+            {
                 let substitution = &sugg.substitutions[0].parts[0].snippet.trim();
-                let msg = if substitution.len() == 0 || !sugg.show_code_when_inline {
+                let msg = if substitution.len() == 0 || sugg.style.hide_inline() {
                     // This substitution is only removal or we explicitly don't want to show the
                     // code inline, don't show it
                     format!("help: {}", sugg.msg)
@@ -674,8 +680,8 @@ impl EmitterWriter {
         //   | |  something about `foo`
         //   | something about `fn foo()`
         annotations_position.sort_by(|a, b| {
-            // Decreasing order
-            a.1.len().cmp(&b.1.len()).reverse()
+            // Decreasing order. When `a` and `b` are the same length, prefer `Primary`.
+            (a.1.len(), !a.1.is_primary).cmp(&(b.1.len(), !b.1.is_primary)).reverse()
         });
 
         // Write the underlines.
@@ -870,7 +876,7 @@ impl EmitterWriter {
         }
     }
 
-    /// Add a left margin to every line but the first, given a padding length and the label being
+    /// Adds a left margin to every line but the first, given a padding length and the label being
     /// displayed, keeping the provided highlighting.
     fn msg_to_buffer(&self,
                      buffer: &mut StyledBuffer,
@@ -897,7 +903,7 @@ impl EmitterWriter {
         //    `max_line_num_len`
         let padding = " ".repeat(padding + label.len() + 5);
 
-        /// Return whether `style`, or the override if present and the style is `NoStyle`.
+        /// Returns `true` if `style`, or the override if present and the style is `NoStyle`.
         fn style_or_override(style: Style, override_style: Option<Style>) -> Style {
             if let Some(o) = override_style {
                 if style == Style::NoStyle {
@@ -944,14 +950,15 @@ impl EmitterWriter {
         }
     }
 
-    fn emit_message_default(&mut self,
-                            msp: &MultiSpan,
-                            msg: &[(String, Style)],
-                            code: &Option<DiagnosticId>,
-                            level: &Level,
-                            max_line_num_len: usize,
-                            is_secondary: bool)
-                            -> io::Result<()> {
+    fn emit_message_default(
+        &mut self,
+        msp: &MultiSpan,
+        msg: &[(String, Style)],
+        code: &Option<DiagnosticId>,
+        level: &Level,
+        max_line_num_len: usize,
+        is_secondary: bool,
+    ) -> io::Result<()> {
         let mut buffer = StyledBuffer::new();
         let header_style = if is_secondary {
             Style::HeaderMsg
@@ -1186,11 +1193,12 @@ impl EmitterWriter {
 
     }
 
-    fn emit_suggestion_default(&mut self,
-                               suggestion: &CodeSuggestion,
-                               level: &Level,
-                               max_line_num_len: usize)
-                               -> io::Result<()> {
+    fn emit_suggestion_default(
+        &mut self,
+        suggestion: &CodeSuggestion,
+        level: &Level,
+        max_line_num_len: usize,
+    ) -> io::Result<()> {
         if let Some(ref sm) = self.sm {
             let mut buffer = StyledBuffer::new();
 
@@ -1200,11 +1208,13 @@ impl EmitterWriter {
                 buffer.append(0, &level_str, Style::Level(level.clone()));
                 buffer.append(0, ": ", Style::HeaderMsg);
             }
-            self.msg_to_buffer(&mut buffer,
-                               &[(suggestion.msg.to_owned(), Style::NoStyle)],
-                               max_line_num_len,
-                               "suggestion",
-                               Some(Style::HeaderMsg));
+            self.msg_to_buffer(
+                &mut buffer,
+                &[(suggestion.msg.to_owned(), Style::NoStyle)],
+                max_line_num_len,
+                "suggestion",
+                Some(Style::HeaderMsg),
+            );
 
             // Render the replacements for each suggestion
             let suggestions = suggestion.splice_lines(&**sm);
@@ -1342,22 +1352,42 @@ impl EmitterWriter {
                 if !self.short_message {
                     for child in children {
                         let span = child.render_span.as_ref().unwrap_or(&child.span);
-                        match self.emit_message_default(&span,
-                                                        &child.styled_message(),
-                                                        &None,
-                                                        &child.level,
-                                                        max_line_num_len,
-                                                        true) {
+                        match self.emit_message_default(
+                            &span,
+                            &child.styled_message(),
+                            &None,
+                            &child.level,
+                            max_line_num_len,
+                            true,
+                        ) {
                             Err(e) => panic!("failed to emit error: {}", e),
                             _ => ()
                         }
                     }
                     for sugg in suggestions {
-                        match self.emit_suggestion_default(sugg,
-                                                           &Level::Help,
-                                                           max_line_num_len) {
-                            Err(e) => panic!("failed to emit error: {}", e),
-                            _ => ()
+                        if sugg.style == SuggestionStyle::CompletelyHidden {
+                            // do not display this suggestion, it is meant only for tools
+                        } else if sugg.style == SuggestionStyle::HideCodeAlways {
+                            match self.emit_message_default(
+                                &MultiSpan::new(),
+                                &[(sugg.msg.to_owned(), Style::HeaderMsg)],
+                                &None,
+                                &Level::Help,
+                                max_line_num_len,
+                                true,
+                            ) {
+                                Err(e) => panic!("failed to emit error: {}", e),
+                                _ => ()
+                            }
+                        } else {
+                            match self.emit_suggestion_default(
+                                sugg,
+                                &Level::Help,
+                                max_line_num_len,
+                            ) {
+                                Err(e) => panic!("failed to emit error: {}", e),
+                                _ => ()
+                            }
                         }
                     }
                 }
@@ -1431,7 +1461,7 @@ fn emit_to_destination(rendered_buffer: &[Vec<StyledString>],
                        dst: &mut Destination,
                        short_message: bool)
                        -> io::Result<()> {
-    use lock;
+    use crate::lock;
 
     let mut dst = dst.writable();
 

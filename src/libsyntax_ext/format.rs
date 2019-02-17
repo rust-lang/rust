@@ -1,9 +1,11 @@
-use self::ArgumentType::*;
-use self::Position::*;
+use ArgumentType::*;
+use Position::*;
 
 use fmt_macros as parse;
 
 use errors::DiagnosticBuilder;
+use errors::Applicability;
+
 use syntax::ast;
 use syntax::ext::base::{self, *};
 use syntax::ext::build::AstBuilder;
@@ -13,7 +15,6 @@ use syntax::ptr::P;
 use syntax::symbol::Symbol;
 use syntax::tokenstream;
 use syntax_pos::{MultiSpan, Span, DUMMY_SP};
-use errors::Applicability;
 
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use std::borrow::Cow;
@@ -184,7 +185,7 @@ fn parse_args<'a>(
 }
 
 impl<'a, 'b> Context<'a, 'b> {
-    fn resolve_name_inplace(&self, p: &mut parse::Piece) {
+    fn resolve_name_inplace(&self, p: &mut parse::Piece<'_>) {
         // NOTE: the `unwrap_or` branch is needed in case of invalid format
         // arguments, e.g., `format_args!("{foo}")`.
         let lookup = |s| *self.names.get(s).unwrap_or(&0);
@@ -208,7 +209,7 @@ impl<'a, 'b> Context<'a, 'b> {
     /// Verifies one piece of a parse string, and remembers it if valid.
     /// All errors are not emitted as fatal so we can continue giving errors
     /// about this and possibly other format strings.
-    fn verify_piece(&mut self, p: &parse::Piece) {
+    fn verify_piece(&mut self, p: &parse::Piece<'_>) {
         match *p {
             parse::String(..) => {}
             parse::NextArgument(ref arg) => {
@@ -231,7 +232,7 @@ impl<'a, 'b> Context<'a, 'b> {
         }
     }
 
-    fn verify_count(&mut self, c: parse::Count) {
+    fn verify_count(&mut self, c: parse::Count<'_>) {
         match c {
             parse::CountImplied |
             parse::CountIs(..) => {}
@@ -244,7 +245,7 @@ impl<'a, 'b> Context<'a, 'b> {
         }
     }
 
-    fn describe_num_args(&self) -> Cow<str> {
+    fn describe_num_args(&self) -> Cow<'_, str> {
         match self.args.len() {
             0 => "no arguments were given".into(),
             1 => "there is 1 argument".into(),
@@ -385,11 +386,11 @@ impl<'a, 'b> Context<'a, 'b> {
         self.count_args_index_offset = sofar;
     }
 
-    fn rtpath(ecx: &ExtCtxt, s: &str) -> Vec<ast::Ident> {
+    fn rtpath(ecx: &ExtCtxt<'_>, s: &str) -> Vec<ast::Ident> {
         ecx.std_path(&["fmt", "rt", "v1", s])
     }
 
-    fn build_count(&self, c: parse::Count) -> P<ast::Expr> {
+    fn build_count(&self, c: parse::Count<'_>) -> P<ast::Expr> {
         let sp = self.macsp;
         let count = |c, arg| {
             let mut path = Context::rtpath(self.ecx, "Count");
@@ -423,10 +424,10 @@ impl<'a, 'b> Context<'a, 'b> {
         self.ecx.expr_str(sp, s)
     }
 
-    /// Build a static `rt::Argument` from a `parse::Piece` or append
+    /// Builds a static `rt::Argument` from a `parse::Piece` or append
     /// to the `literal` string.
     fn build_piece(&mut self,
-                   piece: &parse::Piece,
+                   piece: &parse::Piece<'_>,
                    arg_index_consumed: &mut Vec<usize>)
                    -> Option<P<ast::Expr>> {
         let sp = self.macsp;
@@ -544,7 +545,7 @@ impl<'a, 'b> Context<'a, 'b> {
     }
 
     /// Actually builds the expression which the format_args! block will be
-    /// expanded to
+    /// expanded to.
     fn into_expr(self) -> P<ast::Expr> {
         let mut locals = Vec::with_capacity(
             (0..self.args.len()).map(|i| self.arg_unique_types[i].len()).sum()
@@ -647,7 +648,7 @@ impl<'a, 'b> Context<'a, 'b> {
         self.ecx.expr_call_global(self.macsp, path, fn_args)
     }
 
-    fn format_arg(ecx: &ExtCtxt,
+    fn format_arg(ecx: &ExtCtxt<'_>,
                   macsp: Span,
                   mut sp: Span,
                   ty: &ArgumentType,
@@ -686,7 +687,7 @@ impl<'a, 'b> Context<'a, 'b> {
     }
 }
 
-pub fn expand_format_args<'cx>(ecx: &'cx mut ExtCtxt,
+pub fn expand_format_args<'cx>(ecx: &'cx mut ExtCtxt<'_>,
                                mut sp: Span,
                                tts: &[tokenstream::TokenTree])
                                -> Box<dyn base::MacResult + 'cx> {
@@ -703,14 +704,14 @@ pub fn expand_format_args<'cx>(ecx: &'cx mut ExtCtxt,
 }
 
 pub fn expand_format_args_nl<'cx>(
-    ecx: &'cx mut ExtCtxt,
+    ecx: &'cx mut ExtCtxt<'_>,
     mut sp: Span,
     tts: &[tokenstream::TokenTree],
 ) -> Box<dyn base::MacResult + 'cx> {
     //if !ecx.ecfg.enable_allow_internal_unstable() {
 
     // For some reason, the only one that actually works for `println` is the first check
-    if !sp.allows_unstable()   // the enclosing span is marked as `#[allow_insternal_unsable]`
+    if !sp.allows_unstable("format_args_nl") // the span is marked as `#[allow_insternal_unsable]`
         && !ecx.ecfg.enable_allow_internal_unstable()  // NOTE: when is this enabled?
         && !ecx.ecfg.enable_format_args_nl()  // enabled using `#[feature(format_args_nl]`
     {
@@ -734,7 +735,7 @@ pub fn expand_format_args_nl<'cx>(
 
 /// Take the various parts of `format_args!(efmt, args..., name=names...)`
 /// and construct the appropriate formatting expression.
-pub fn expand_preparsed_format_args(ecx: &mut ExtCtxt,
+pub fn expand_preparsed_format_args(ecx: &mut ExtCtxt<'_>,
                                     sp: Span,
                                     efmt: P<ast::Expr>,
                                     args: Vec<P<ast::Expr>>,
@@ -787,7 +788,7 @@ pub fn expand_preparsed_format_args(ecx: &mut ExtCtxt,
         },
     };
 
-    /// Find the indices of all characters that have been processed and differ between the actual
+    /// Finds the indices of all characters that have been processed and differ between the actual
     /// written code (code snippet) and the `InternedString` that get's processed in the `Parser`
     /// in order to properly synthethise the intra-string `Span`s for error diagnostics.
     fn find_skips(snippet: &str, is_raw: bool) -> Vec<usize> {
@@ -952,7 +953,7 @@ pub fn expand_preparsed_format_args(ecx: &mut ExtCtxt,
         piece
     }).collect::<Vec<_>>();
 
-    let numbered_position_args = pieces.iter().any(|arg: &parse::Piece| {
+    let numbered_position_args = pieces.iter().any(|arg: &parse::Piece<'_>| {
         match *arg {
             parse::String(_) => false,
             parse::NextArgument(arg) => {

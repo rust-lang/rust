@@ -1,6 +1,6 @@
 use std::mem;
 
-use errors;
+use crate::deriving;
 
 use syntax::ast::{self, Ident};
 use syntax::attr;
@@ -9,7 +9,7 @@ use syntax::ext::base::ExtCtxt;
 use syntax::ext::build::AstBuilder;
 use syntax::ext::expand::ExpansionConfig;
 use syntax::ext::hygiene::Mark;
-use syntax::fold::Folder;
+use syntax::mut_visit::MutVisitor;
 use syntax::parse::ParseSess;
 use syntax::ptr::P;
 use syntax::symbol::Symbol;
@@ -17,8 +17,6 @@ use syntax::symbol::keywords;
 use syntax::visit::{self, Visitor};
 
 use syntax_pos::{Span, DUMMY_SP};
-
-use deriving;
 
 const PROC_MACRO_KINDS: [&str; 3] = ["proc_macro_derive", "proc_macro_attribute", "proc_macro"];
 
@@ -324,7 +322,7 @@ impl<'a> Visitor<'a> for CollectProcMacros<'a> {
 //          ];
 //      }
 fn mk_decls(
-    cx: &mut ExtCtxt,
+    cx: &mut ExtCtxt<'_>,
     custom_derives: &[ProcMacroDerive],
     custom_attrs: &[ProcMacroDef],
     custom_macros: &[ProcMacroDef],
@@ -334,7 +332,10 @@ fn mk_decls(
         call_site: DUMMY_SP,
         def_site: None,
         format: MacroAttribute(Symbol::intern("proc_macro")),
-        allow_internal_unstable: true,
+        allow_internal_unstable: Some(vec![
+            Symbol::intern("rustc_attrs"),
+            Symbol::intern("proc_macro_internals"),
+        ].into()),
         allow_internal_unsafe: false,
         local_inner_macros: false,
         edition: hygiene::default_edition(),
@@ -412,5 +413,5 @@ fn mk_decls(
         i
     });
 
-    cx.monotonic_expander().fold_item(module).pop().unwrap()
+    cx.monotonic_expander().flat_map_item(module).pop().unwrap()
 }

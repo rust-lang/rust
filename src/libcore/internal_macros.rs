@@ -75,3 +75,47 @@ macro_rules! forward_ref_op_assign {
         }
     }
 }
+
+/// Create a zero-size type similar to a closure type, but named.
+#[unstable(feature = "std_internals", issue = "0")]
+macro_rules! impl_fn_for_zst {
+    ($(
+        $( #[$attr: meta] )*
+        // FIXME: when libcore is in the 2018 edition, use `?` repetition in
+        // $( <$( $li : lifetime ),+> )?
+        struct $Name: ident impl$( <$( $lifetime : lifetime ),+> )* Fn =
+            |$( $arg: ident: $ArgTy: ty ),*| -> $ReturnTy: ty
+            $body: block;
+    )+) => {
+        $(
+            $( #[$attr] )*
+            struct $Name;
+
+            impl $( <$( $lifetime ),+> )* Fn<($( $ArgTy, )*)> for $Name {
+                #[inline]
+                extern "rust-call" fn call(&self, ($( $arg, )*): ($( $ArgTy, )*)) -> $ReturnTy {
+                    $body
+                }
+            }
+
+            impl $( <$( $lifetime ),+> )* FnMut<($( $ArgTy, )*)> for $Name {
+                #[inline]
+                extern "rust-call" fn call_mut(
+                    &mut self,
+                    ($( $arg, )*): ($( $ArgTy, )*)
+                ) -> $ReturnTy {
+                    Fn::call(&*self, ($( $arg, )*))
+                }
+            }
+
+            impl $( <$( $lifetime ),+> )* FnOnce<($( $ArgTy, )*)> for $Name {
+                type Output = $ReturnTy;
+
+                #[inline]
+                extern "rust-call" fn call_once(self, ($( $arg, )*): ($( $ArgTy, )*)) -> $ReturnTy {
+                    Fn::call(&self, ($( $arg, )*))
+                }
+            }
+        )+
+    }
+}

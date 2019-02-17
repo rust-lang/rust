@@ -3,8 +3,11 @@
 
 #![unstable(feature="test", issue = "32374")]
 
-// @matches issue_32374/index.html '//*[@class="docblock-short"]' \
-//      '^\[Deprecated\] \[Experimental\] Docs'
+// @matches issue_32374/index.html '//*[@class="docblock-short"]/span[@class="stab deprecated"]' \
+//      'Deprecated'
+// @matches issue_32374/index.html '//*[@class="docblock-short"]/span[@class="stab unstable"]' \
+//      'Experimental'
+// @matches issue_32374/index.html '//*[@class="docblock-short"]/text()' 'Docs'
 
 // @has issue_32374/struct.T.html '//*[@class="stab deprecated"]' \
 //      'Deprecated since 1.0.0: text'

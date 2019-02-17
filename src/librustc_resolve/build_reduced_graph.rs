@@ -1,16 +1,17 @@
-//! Reduced graph building
+//! Reduced graph building.
 //!
 //! Here we build the "reduced graph": the graph of the module tree without
 //! any imports resolved.
 
-use macros::{InvocationData, ParentScope, LegacyScope};
-use resolve_imports::ImportDirective;
-use resolve_imports::ImportDirectiveSubclass::{self, GlobImport, SingleImport};
-use {Module, ModuleData, ModuleKind, NameBinding, NameBindingKind, Segment, ToNameBinding};
-use {ModuleOrUniformRoot, PerNS, Resolver, ResolverArenas, ExternPreludeEntry};
-use Namespace::{self, TypeNS, ValueNS, MacroNS};
-use {resolve_error, resolve_struct_error, ResolutionError};
+use crate::macros::{InvocationData, ParentScope, LegacyScope};
+use crate::resolve_imports::ImportDirective;
+use crate::resolve_imports::ImportDirectiveSubclass::{self, GlobImport, SingleImport};
+use crate::{Module, ModuleData, ModuleKind, NameBinding, NameBindingKind, Segment, ToNameBinding};
+use crate::{ModuleOrUniformRoot, PerNS, Resolver, ResolverArenas, ExternPreludeEntry};
+use crate::Namespace::{self, TypeNS, ValueNS, MacroNS};
+use crate::{resolve_error, resolve_struct_error, ResolutionError};
 
+use rustc::bug;
 use rustc::hir::def::*;
 use rustc::hir::def_id::{CrateNum, CRATE_DEF_INDEX, LOCAL_CRATE, DefId};
 use rustc::ty;
@@ -34,11 +35,14 @@ use syntax::ext::hygiene::Mark;
 use syntax::ext::tt::macro_rules;
 use syntax::feature_gate::is_builtin_attr;
 use syntax::parse::token::{self, Token};
+use syntax::span_err;
 use syntax::std_inject::injected_crate_name;
 use syntax::symbol::keywords;
 use syntax::visit::{self, Visitor};
 
 use syntax_pos::{Span, DUMMY_SP};
+
+use log::debug;
 
 impl<'a> ToNameBinding<'a> for (Module<'a>, ty::Visibility, Span, Mark) {
     fn to_name_binding(self, arenas: &'a ResolverArenas<'a>) -> &'a NameBinding<'a> {
@@ -238,12 +242,14 @@ impl<'a> Resolver<'a> {
                         macro_ns: Cell::new(None),
                     },
                     type_ns_only,
+                    nested,
                 };
                 self.add_import_directive(
                     module_path,
                     subclass,
                     use_tree.span,
                     id,
+                    item,
                     root_span,
                     item.id,
                     vis,
@@ -260,6 +266,7 @@ impl<'a> Resolver<'a> {
                     subclass,
                     use_tree.span,
                     id,
+                    item,
                     root_span,
                     item.id,
                     vis,
@@ -379,6 +386,9 @@ impl<'a> Resolver<'a> {
                         source: orig_name,
                         target: ident,
                     },
+                    has_attributes: !item.attrs.is_empty(),
+                    use_span_with_attributes: item.span_with_attributes(),
+                    use_span: item.span,
                     root_span: item.span,
                     span: item.span,
                     module_path: Vec::new(),
@@ -780,7 +790,7 @@ impl<'a> Resolver<'a> {
         }
     }
 
-    // This returns true if we should consider the underlying `extern crate` to be used.
+    /// Returns `true` if we should consider the underlying `extern crate` to be used.
     fn process_legacy_macro_imports(&mut self, item: &Item, module: Module<'a>,
                                     parent_scope: &ParentScope<'a>) -> bool {
         let mut import_all = None;
@@ -824,6 +834,9 @@ impl<'a> Resolver<'a> {
             parent_scope: parent_scope.clone(),
             imported_module: Cell::new(Some(ModuleOrUniformRoot::Module(module))),
             subclass: ImportDirectiveSubclass::MacroUse,
+            use_span_with_attributes: item.span_with_attributes(),
+            has_attributes: !item.attrs.is_empty(),
+            use_span: item.span,
             root_span: span,
             span,
             module_path: Vec::new(),
@@ -863,7 +876,7 @@ impl<'a> Resolver<'a> {
         import_all.is_some() || !single_imports.is_empty()
     }
 
-    // does this attribute list contain "macro_use"?
+    /// Returns `true` if this attribute list contains `macro_use`.
     fn contains_macro_use(&mut self, attrs: &[ast::Attribute]) -> bool {
         for attr in attrs {
             if attr.check_name("macro_escape") {

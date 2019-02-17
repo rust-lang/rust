@@ -963,7 +963,7 @@ impl String {
     /// Does nothing if the capacity is already sufficient.
     ///
     /// Note that the allocator may give the collection more space than it
-    /// requests. Therefore capacity can not be relied upon to be precisely
+    /// requests. Therefore, capacity can not be relied upon to be precisely
     /// minimal. Prefer `reserve` if future insertions are expected.
     ///
     /// # Errors
@@ -1377,9 +1377,7 @@ impl String {
         self.vec.len()
     }
 
-    /// Returns `true` if this `String` has a length of zero.
-    ///
-    /// Returns `false` otherwise.
+    /// Returns `true` if this `String` has a length of zero, and `false` otherwise.
     ///
     /// # Examples
     ///

@@ -1,25 +1,17 @@
 error[E0308]: `if let` arms have incompatible types
-  --> $DIR/if-let-arm-types.rs:2:5
+  --> $DIR/if-let-arm-types.rs:6:9
    |
-LL | /     if let Some(b) = None { //~ ERROR: `if let` arms have incompatible types
-LL | |         //~^ expected (), found integer
-LL | |         //~| expected type `()`
-LL | |         //~| found type `{integer}`
-...  |
+LL | /     if let Some(b) = None {
+LL | |         //~^ NOTE if let` arms have incompatible types
+LL | |         ()
+LL | |     } else {
 LL | |         1
+   | |         ^ expected (), found integer
 LL | |     };
-   | |_____^ expected (), found integer
+   | |_____- `if let` arms have incompatible types
    |
    = note: expected type `()`
               found type `{integer}`
-note: `if let` arm with an incompatible type
-  --> $DIR/if-let-arm-types.rs:7:12
-   |
-LL |       } else {
-   |  ____________^
-LL | |         1
-LL | |     };
-   | |_____^
 
 error: aborting due to previous error
 

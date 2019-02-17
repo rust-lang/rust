@@ -3,12 +3,12 @@
  * building is complete.
  */
 
-use mir::*;
-use ty::subst::{Subst, Substs};
-use ty::{self, AdtDef, Ty, TyCtxt};
-use ty::layout::VariantIdx;
-use hir;
-use ty::util::IntTypeExt;
+use crate::mir::*;
+use crate::ty::subst::{Subst, Substs};
+use crate::ty::{self, AdtDef, Ty, TyCtxt};
+use crate::ty::layout::VariantIdx;
+use crate::hir;
+use crate::ty::util::IntTypeExt;
 
 #[derive(Copy, Clone, Debug)]
 pub enum PlaceTy<'tcx> {
@@ -278,7 +278,7 @@ impl<'tcx> Rvalue<'tcx> {
     }
 
     #[inline]
-    /// Returns whether this rvalue is deeply initialized (most rvalues) or
+    /// Returns `true` if this rvalue is deeply initialized (most rvalues) or
     /// whether its only shallowly initialized (`Rvalue::Box`).
     pub fn initialization_state(&self) -> RvalueInitializationState {
         match *self {

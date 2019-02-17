@@ -342,7 +342,7 @@ impl Step for Mingw {
         run.builder.ensure(Mingw { host: run.target });
     }
 
-    /// Build the `rust-mingw` installer component.
+    /// Builds the `rust-mingw` installer component.
     ///
     /// This contains all the bits and pieces to run the MinGW Windows targets
     /// without any extra installed software (e.g., we bundle gcc, libraries, etc).

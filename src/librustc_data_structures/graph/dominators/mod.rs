@@ -117,7 +117,7 @@ impl<Node: Idx> Dominators<Node> {
         self.immediate_dominators[node].unwrap()
     }
 
-    pub fn dominators(&self, node: Node) -> Iter<Node> {
+    pub fn dominators(&self, node: Node) -> Iter<'_, Node> {
         assert!(self.is_reachable(node), "node {:?} is not reachable", node);
         Iter {
             dominators: self,
@@ -136,7 +136,7 @@ impl<Node: Idx> Dominators<Node> {
     }
 }
 
-pub struct Iter<'dom, Node: Idx + 'dom> {
+pub struct Iter<'dom, Node: Idx> {
     dominators: &'dom Dominators<Node>,
     node: Option<Node>,
 }
@@ -171,7 +171,7 @@ impl<Node: Idx> DominatorTree<Node> {
 }
 
 impl<Node: Idx> fmt::Debug for DominatorTree<Node> {
-    fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, fmt: &mut fmt::Formatter<'_>) -> fmt::Result {
         fmt::Debug::fmt(
             &DominatorTreeNode {
                 tree: self,
@@ -188,7 +188,7 @@ struct DominatorTreeNode<'tree, Node: Idx> {
 }
 
 impl<'tree, Node: Idx> fmt::Debug for DominatorTreeNode<'tree, Node> {
-    fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, fmt: &mut fmt::Formatter<'_>) -> fmt::Result {
         let subtrees: Vec<_> = self.tree
             .children(self.node)
             .iter()

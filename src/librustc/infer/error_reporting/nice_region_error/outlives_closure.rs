@@ -1,13 +1,13 @@
 //! Error Reporting for Anonymous Region Lifetime Errors
 //! where both the regions are anonymous.
 
-use infer::error_reporting::nice_region_error::NiceRegionError;
-use infer::SubregionOrigin;
-use ty::RegionKind;
-use hir::{Expr, ExprKind::Closure};
-use hir::Node;
-use util::common::ErrorReported;
-use infer::lexical_region_resolve::RegionResolutionError::SubSupConflict;
+use crate::infer::error_reporting::nice_region_error::NiceRegionError;
+use crate::infer::SubregionOrigin;
+use crate::ty::RegionKind;
+use crate::hir::{Expr, ExprKind::Closure};
+use crate::hir::Node;
+use crate::util::common::ErrorReported;
+use crate::infer::lexical_region_resolve::RegionResolutionError::SubSupConflict;
 
 impl<'a, 'gcx, 'tcx> NiceRegionError<'a, 'gcx, 'tcx> {
     /// Print the error message for lifetime errors when binding escapes a closure.

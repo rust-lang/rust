@@ -3,11 +3,11 @@ use super::NoMatchData;
 use super::{CandidateSource, ImplSource, TraitSource};
 use super::suggest;
 
-use check::autoderef::{self, Autoderef};
-use check::FnCtxt;
-use hir::def_id::DefId;
-use hir::def::Def;
-use namespace::Namespace;
+use crate::check::autoderef::{self, Autoderef};
+use crate::check::FnCtxt;
+use crate::hir::def_id::DefId;
+use crate::hir::def::Def;
+use crate::namespace::Namespace;
 
 use rustc_data_structures::sync::Lrc;
 use rustc::hir;
@@ -85,6 +85,37 @@ impl<'a, 'gcx, 'tcx> Deref for ProbeContext<'a, 'gcx, 'tcx> {
 
 #[derive(Debug)]
 struct Candidate<'tcx> {
+    // Candidates are (I'm not quite sure, but they are mostly) basically
+    // some metadata on top of a `ty::AssociatedItem` (without substs).
+    //
+    // However, method probing wants to be able to evaluate the predicates
+    // for a function with the substs applied - for example, if a function
+    // has `where Self: Sized`, we don't want to consider it unless `Self`
+    // is actually `Sized`, and similarly, return-type suggestions want
+    // to consider the "actual" return type.
+    //
+    // The way this is handled is through `xform_self_ty`. It contains
+    // the receiver type of this candidate, but `xform_self_ty`,
+    // `xform_ret_ty` and `kind` (which contains the predicates) have the
+    // generic parameters of this candidate substituted with the *same set*
+    // of inference variables, which acts as some weird sort of "query".
+    //
+    // When we check out a candidate, we require `xform_self_ty` to be
+    // a subtype of the passed-in self-type, and this equates the type
+    // variables in the rest of the fields.
+    //
+    // For example, if we have this candidate:
+    // ```
+    //    trait Foo {
+    //        fn foo(&self) where Self: Sized;
+    //    }
+    // ```
+    //
+    // Then `xform_self_ty` will be `&'erased ?X` and `kind` will contain
+    // the predicate `?X: Sized`, so if we are evaluating `Foo` for a
+    // the receiver `&T`, we'll do the subtyping which will make `?X`
+    // get the right value, then when we evaluate the predicate we'll check
+    // if `T: Sized`.
     xform_self_ty: Ty<'tcx>,
     xform_ret_ty: Option<Ty<'tcx>>,
     item: ty::AssociatedItem,
@@ -370,7 +401,7 @@ fn method_autoderef_steps<'a, 'gcx, 'tcx>(tcx: TyCtxt<'a, 'gcx, 'gcx>,
     tcx.infer_ctxt().enter_with_canonical(DUMMY_SP, &goal, |ref infcx, goal, inference_vars| {
         let ParamEnvAnd { param_env, value: self_ty } = goal;
 
-        let mut autoderef = Autoderef::new(infcx, param_env, ast::DUMMY_NODE_ID, DUMMY_SP, self_ty)
+        let mut autoderef = Autoderef::new(infcx, param_env, hir::DUMMY_HIR_ID, DUMMY_SP, self_ty)
             .include_raw_pointers()
             .silence_errors();
         let mut reached_raw_pointer = false;
@@ -506,13 +537,28 @@ impl<'a, 'gcx, 'tcx> ProbeContext<'a, 'gcx, 'tcx> {
         match self_ty.value.value.sty {
             ty::Dynamic(ref data, ..) => {
                 if let Some(p) = data.principal() {
-                    let InferOk { value: instantiated_self_ty, obligations: _ } =
-                        self.fcx.probe_instantiate_query_response(
-                            self.span, &self.orig_steps_var_values, self_ty)
-                        .unwrap_or_else(|_| {
-                            span_bug!(self.span, "{:?} was applicable but now isn't?", self_ty)
-                        });
-                    self.assemble_inherent_candidates_from_object(instantiated_self_ty);
+                    // Subtle: we can't use `instantiate_query_response` here: using it will
+                    // commit to all of the type equalities assumed by inference going through
+                    // autoderef (see the `method-probe-no-guessing` test).
+                    //
+                    // However, in this code, it is OK if we end up with an object type that is
+                    // "more general" than the object type that we are evaluating. For *every*
+                    // object type `MY_OBJECT`, a function call that goes through a trait-ref
+                    // of the form `<MY_OBJECT as SuperTraitOf(MY_OBJECT)>::func` is a valid
+                    // `ObjectCandidate`, and it should be discoverable "exactly" through one
+                    // of the iterations in the autoderef loop, so there is no problem with it
+                    // being discoverable in another one of these iterations.
+                    //
+                    // Using `instantiate_canonical_with_fresh_inference_vars` on our
+                    // `Canonical<QueryResponse<Ty<'tcx>>>` and then *throwing away* the
+                    // `CanonicalVarValues` will exactly give us such a generalization - it
+                    // will still match the original object type, but it won't pollute our
+                    // type variables in any form, so just do that!
+                    let (QueryResponse { value: generalized_self_ty, .. }, _ignored_var_values) =
+                        self.fcx.instantiate_canonical_with_fresh_inference_vars(
+                            self.span, &self_ty);
+
+                    self.assemble_inherent_candidates_from_object(generalized_self_ty);
                     self.assemble_inherent_impl_candidates_for_type(p.def_id());
                 }
             }
@@ -1137,7 +1183,7 @@ impl<'a, 'gcx, 'tcx> ProbeContext<'a, 'gcx, 'tcx> {
         stable_pick: &Pick,
         unstable_candidates: &[(&Candidate<'tcx>, Symbol)],
     ) {
-        let mut diag = self.tcx.struct_span_lint_node(
+        let mut diag = self.tcx.struct_span_lint_hir(
             lint::builtin::UNSTABLE_NAME_COLLISIONS,
             self.fcx.body_id,
             self.span,
@@ -1491,7 +1537,7 @@ impl<'a, 'gcx, 'tcx> ProbeContext<'a, 'gcx, 'tcx> {
         }
     }
 
-    /// Get the type of an impl and generate substitutions with placeholders.
+    /// Gets the type of an impl and generate substitutions with placeholders.
     fn impl_ty_and_substs(&self, impl_def_id: DefId) -> (Ty<'tcx>, &'tcx Substs<'tcx>) {
         (self.tcx.type_of(impl_def_id), self.fresh_item_substs(impl_def_id))
     }
@@ -1508,7 +1554,7 @@ impl<'a, 'gcx, 'tcx> ProbeContext<'a, 'gcx, 'tcx> {
         })
     }
 
-    /// Replace late-bound-regions bound by `value` with `'static` using
+    /// Replaces late-bound-regions bound by `value` with `'static` using
     /// `ty::erase_late_bound_regions`.
     ///
     /// This is only a reasonable thing to do during the *probe* phase, not the *confirm* phase, of
@@ -1532,7 +1578,7 @@ impl<'a, 'gcx, 'tcx> ProbeContext<'a, 'gcx, 'tcx> {
         self.tcx.erase_late_bound_regions(value)
     }
 
-    /// Find the method with the appropriate name (or return type, as the case may be). If
+    /// Finds the method with the appropriate name (or return type, as the case may be). If
     /// `allow_similar_names` is set, find methods with close-matching names.
     fn impl_or_trait_item(&self, def_id: DefId) -> Vec<ty::AssociatedItem> {
         if let Some(name) = self.method_name {

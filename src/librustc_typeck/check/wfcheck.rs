@@ -1,7 +1,7 @@
-use check::{Inherited, FnCtxt};
-use constrained_type_params::{identify_constrained_type_params, Parameter};
+use crate::check::{Inherited, FnCtxt};
+use crate::constrained_type_params::{identify_constrained_type_params, Parameter};
 
-use hir::def_id::DefId;
+use crate::hir::def_id::DefId;
 use rustc::traits::{self, ObligationCauseCode};
 use rustc::ty::{self, Lift, Ty, TyCtxt, TyKind, GenericParamDefKind, TypeFoldable, ToPredicate};
 use rustc::ty::subst::{Subst, Substs};
@@ -22,7 +22,7 @@ use rustc::hir;
 /// `F: for<'b, 'tcx> where 'gcx: 'tcx FnOnce(FnCtxt<'b, 'gcx, 'tcx>)`.
 struct CheckWfFcxBuilder<'a, 'gcx: 'a+'tcx, 'tcx: 'a> {
     inherited: super::InheritedBuilder<'a, 'gcx, 'tcx>,
-    id: ast::NodeId,
+    id: hir::HirId,
     span: Span,
     param_env: ty::ParamEnv<'tcx>,
 }
@@ -62,11 +62,11 @@ impl<'a, 'gcx, 'tcx> CheckWfFcxBuilder<'a, 'gcx, 'tcx> {
 /// not included it frequently leads to confusing errors in fn bodies. So it's better to check
 /// the types first.
 pub fn check_item_well_formed<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: DefId) {
-    let node_id = tcx.hir().as_local_node_id(def_id).unwrap();
-    let item = tcx.hir().expect_item(node_id);
+    let hir_id = tcx.hir().as_local_hir_id(def_id).unwrap();
+    let item = tcx.hir().expect_item_by_hir_id(hir_id);
 
-    debug!("check_item_well_formed(it.id={}, it.name={})",
-           item.id,
+    debug!("check_item_well_formed(it.hir_id={:?}, it.name={})",
+           item.hir_id,
            tcx.item_path_str(def_id));
 
     match item.node {
@@ -88,7 +88,7 @@ pub fn check_item_well_formed<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: Def
         // won't be allowed unless there's an *explicit* implementation of `Send`
         // for `T`
         hir::ItemKind::Impl(_, polarity, defaultness, _, ref trait_ref, ref self_ty, _) => {
-            let is_auto = tcx.impl_trait_ref(tcx.hir().local_def_id(item.id))
+            let is_auto = tcx.impl_trait_ref(tcx.hir().local_def_id_from_hir_id(item.hir_id))
                                 .map_or(false, |trait_ref| tcx.trait_is_auto(trait_ref.def_id));
             if let (hir::Defaultness::Default { .. }, true) = (defaultness, is_auto) {
                 tcx.sess.span_err(item.span, "impls of auto traits cannot be default");
@@ -226,9 +226,10 @@ fn for_item<'a, 'gcx, 'tcx>(tcx: TyCtxt<'a, 'gcx, 'gcx>, item: &hir::Item)
 fn for_id<'a, 'gcx, 'tcx>(tcx: TyCtxt<'a, 'gcx, 'gcx>, id: ast::NodeId, span: Span)
                           -> CheckWfFcxBuilder<'a, 'gcx, 'tcx> {
     let def_id = tcx.hir().local_def_id(id);
+    let hir_id = tcx.hir().node_to_hir_id(id);
     CheckWfFcxBuilder {
         inherited: Inherited::build(tcx, def_id),
-        id,
+        id: hir_id,
         span,
         param_env: tcx.param_env(def_id),
     }
@@ -408,7 +409,7 @@ fn check_impl<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     });
 }
 
-/// Checks where clauses and inline bounds that are declared on def_id.
+/// Checks where-clauses and inline bounds that are declared on `def_id`.
 fn check_where_clauses<'a, 'gcx, 'fcx, 'tcx>(
     tcx: TyCtxt<'a, 'gcx, 'gcx>,
     fcx: &FnCtxt<'fcx, 'gcx, 'tcx>,
@@ -790,7 +791,7 @@ fn check_method_receiver<'fcx, 'gcx, 'tcx>(fcx: &FnCtxt<'fcx, 'gcx, 'tcx>,
 /// through a `*const/mut T` raw pointer. If the feature is not enabled, the requirements are more
 /// strict: `receiver_ty` must implement `Receiver` and directly implement `Deref<Target=self_ty>`.
 ///
-/// NB: there are cases this function returns `true` but causes an error to be emitted,
+/// N.B., there are cases this function returns `true` but causes an error to be emitted,
 /// particularly when `receiver_ty` derefs to a type that is the same as `self_ty` but has the
 /// wrong lifetime. Be careful of this if you are calling this function speculatively.
 fn receiver_is_valid<'fcx, 'tcx, 'gcx>(
@@ -963,18 +964,18 @@ fn reject_shadowing_parameters(tcx: TyCtxt, def_id: DefId) {
     }
 }
 
-/// Feature gates RFC 2056 - trivial bounds, checking for global bounds that
+/// Feature gates RFC 2056 -- trivial bounds, checking for global bounds that
 /// aren't true.
 fn check_false_global_bounds<'a, 'gcx, 'tcx>(
     fcx: &FnCtxt<'a, 'gcx, 'tcx>,
     span: Span,
-    id: ast::NodeId)
+    id: hir::HirId)
 {
     use rustc::ty::TypeFoldable;
 
     let empty_env = ty::ParamEnv::empty();
 
-    let def_id = fcx.tcx.hir().local_def_id(id);
+    let def_id = fcx.tcx.hir().local_def_id_from_hir_id(id);
     let predicates = fcx.tcx.predicates_of(def_id).predicates
         .iter()
         .map(|(p, _)| *p)

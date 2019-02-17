@@ -11,7 +11,7 @@ use rustc::hir::def::Def;
 use rustc::mir::interpret::{ConstEvalErr, ErrorHandled};
 use rustc::mir;
 use rustc::ty::{self, TyCtxt, query::TyCtxtAt};
-use rustc::ty::layout::{self, LayoutOf, TyLayout, VariantIdx};
+use rustc::ty::layout::{self, LayoutOf, VariantIdx};
 use rustc::ty::subst::Subst;
 use rustc::traits::Reveal;
 use rustc_data_structures::fx::FxHashMap;
@@ -21,7 +21,8 @@ use syntax::ast::Mutability;
 use syntax::source_map::{Span, DUMMY_SP};
 
 use crate::interpret::{self,
-    PlaceTy, MPlaceTy, MemPlace, OpTy, Operand, Immediate, Scalar, RawConst, ConstValue, Pointer,
+    PlaceTy, MPlaceTy, MemPlace, OpTy, ImmTy, Operand, Immediate, Scalar, Pointer,
+    RawConst, ConstValue,
     EvalResult, EvalError, EvalErrorKind, GlobalId, EvalContext, StackPopCleanup,
     Allocation, AllocId, MemoryKind,
     snapshot, RefTracking,
@@ -38,7 +39,7 @@ const DETECTOR_SNAPSHOT_PERIOD: isize = 256;
 /// `simd_shuffle` and const patterns in match arms.
 ///
 /// The function containing the `match` that is currently being analyzed may have generic bounds
-/// that inform us about the generic bounds of the constant. E.g. using an associated constant
+/// that inform us about the generic bounds of the constant. E.g., using an associated constant
 /// of a function's generic parameter will require knowledge about the bounds on the generic
 /// parameter. These bounds are passed to `mk_eval_cx` via the `ParamEnv` argument.
 pub(crate) fn mk_eval_cx<'a, 'mir, 'tcx>(
@@ -77,7 +78,7 @@ pub fn op_to_const<'tcx>(
     let normalized_op = if normalize {
         ecx.try_read_immediate(op)?
     } else {
-        match op.op {
+        match *op {
             Operand::Indirect(mplace) => Err(mplace),
             Operand::Immediate(val) => Ok(val)
         }
@@ -103,15 +104,6 @@ pub fn op_to_const<'tcx>(
             ConstValue::Slice(a.not_undef()?, b.to_usize(ecx)?),
     };
     Ok(ty::Const { val, ty: op.layout.ty })
-}
-
-pub fn lazy_const_to_op<'tcx>(
-    ecx: &CompileTimeEvalContext<'_, '_, 'tcx>,
-    cnst: ty::LazyConst<'tcx>,
-    ty: ty::Ty<'tcx>,
-) -> EvalResult<'tcx, OpTy<'tcx>> {
-    let op = ecx.const_value_to_op(cnst)?;
-    Ok(OpTy { op, layout: ecx.layout_of(ty)? })
 }
 
 fn eval_body_and_ecx<'a, 'mir, 'tcx>(
@@ -190,7 +182,7 @@ enum ConstEvalError {
 }
 
 impl fmt::Display for ConstEvalError {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         use self::ConstEvalError::*;
         match *self {
             NeedsRfc(ref msg) => {
@@ -388,10 +380,8 @@ impl<'a, 'mir, 'tcx> interpret::Machine<'a, 'mir, 'tcx>
     fn ptr_op(
         _ecx: &EvalContext<'a, 'mir, 'tcx, Self>,
         _bin_op: mir::BinOp,
-        _left: Scalar,
-        _left_layout: TyLayout<'tcx>,
-        _right: Scalar,
-        _right_layout: TyLayout<'tcx>,
+        _left: ImmTy<'tcx>,
+        _right: ImmTy<'tcx>,
     ) -> EvalResult<'tcx, (Scalar, bool)> {
         Err(
             ConstEvalError::NeedsRfc("pointer arithmetic or comparison".to_string()).into(),
@@ -464,7 +454,7 @@ impl<'a, 'mir, 'tcx> interpret::Machine<'a, 'mir, 'tcx>
         Ok(())
     }
 
-    /// Called immediately before a stack frame gets popped
+    /// Called immediately before a stack frame gets popped.
     #[inline(always)]
     fn stack_pop(
         _ecx: &mut EvalContext<'a, 'mir, 'tcx, Self>,
@@ -474,7 +464,7 @@ impl<'a, 'mir, 'tcx> interpret::Machine<'a, 'mir, 'tcx>
     }
 }
 
-/// Project to a field of a (variant of a) const
+/// Projects to a field of a (variant of a) const.
 pub fn const_field<'a, 'tcx>(
     tcx: TyCtxt<'a, 'tcx, 'tcx>,
     param_env: ty::ParamEnv<'tcx>,
@@ -486,7 +476,7 @@ pub fn const_field<'a, 'tcx>(
     let ecx = mk_eval_cx(tcx, DUMMY_SP, param_env);
     let result = (|| {
         // get the operand again
-        let op = lazy_const_to_op(&ecx, ty::LazyConst::Evaluated(value), value.ty)?;
+        let op = ecx.lazy_const_to_op(ty::LazyConst::Evaluated(value), value.ty)?;
         // downcast
         let down = match variant {
             None => op,
@@ -512,7 +502,7 @@ pub fn const_variant_index<'a, 'tcx>(
 ) -> EvalResult<'tcx, VariantIdx> {
     trace!("const_variant_index: {:?}", val);
     let ecx = mk_eval_cx(tcx, DUMMY_SP, param_env);
-    let op = lazy_const_to_op(&ecx, ty::LazyConst::Evaluated(val), val.ty)?;
+    let op = ecx.lazy_const_to_op(ty::LazyConst::Evaluated(val), val.ty)?;
     Ok(ecx.read_discriminant(op)?.1)
 }
 
@@ -542,10 +532,10 @@ fn validate_and_turn_into_const<'a, 'tcx>(
                 op,
                 path,
                 Some(&mut ref_tracking),
-                /* const_mode */ true,
+                true, // const mode
             )?;
         }
-        // Now that we validated, turn this into a proper constant
+        // Now that we validated, turn this into a proper constant.
         let def_id = cid.instance.def.def_id();
         let normalize = tcx.is_static(def_id).is_none() && cid.promoted.is_none();
         op_to_const(&ecx, op, normalize)

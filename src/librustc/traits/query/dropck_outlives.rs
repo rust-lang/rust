@@ -1,10 +1,10 @@
-use infer::at::At;
-use infer::InferOk;
-use infer::canonical::OriginalQueryValues;
+use crate::infer::at::At;
+use crate::infer::InferOk;
+use crate::infer::canonical::OriginalQueryValues;
 use std::iter::FromIterator;
 use syntax::source_map::Span;
-use ty::subst::Kind;
-use ty::{self, Ty, TyCtxt};
+use crate::ty::subst::Kind;
+use crate::ty::{self, Ty, TyCtxt};
 
 impl<'cx, 'gcx, 'tcx> At<'cx, 'gcx, 'tcx> {
     /// Given a type `ty` of some value being dropped, computes a set
@@ -184,7 +184,7 @@ impl_stable_hash_for!(struct DtorckConstraint<'tcx> {
 /// outlive. This is similar but not *quite* the same as the
 /// `needs_drop` test in the compiler already -- that is, for every
 /// type T for which this function return true, needs-drop would
-/// return false. But the reverse does not hold: in particular,
+/// return `false`. But the reverse does not hold: in particular,
 /// `needs_drop` returns false for `PhantomData`, but it is not
 /// trivial for dropck-outlives.
 ///

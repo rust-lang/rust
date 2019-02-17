@@ -1,4 +1,4 @@
-//! The AST pointer
+//! The AST pointer.
 //!
 //! Provides `P<T>`, a frozen owned smart pointer, as a replacement for `@T` in
 //! the AST.
@@ -129,19 +129,19 @@ impl<T: 'static + Clone> Clone for P<T> {
 }
 
 impl<T: ?Sized + Debug> Debug for P<T> {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         Debug::fmt(&self.ptr, f)
     }
 }
 
 impl<T: Display> Display for P<T> {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         Display::fmt(&**self, f)
     }
 }
 
 impl<T> fmt::Pointer for P<T> {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         fmt::Pointer::fmt(&self.ptr, f)
     }
 }

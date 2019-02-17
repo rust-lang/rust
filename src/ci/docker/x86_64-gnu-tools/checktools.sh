@@ -23,6 +23,7 @@ python2.7 "$X_PY" test --no-fail-fast \
     src/doc/nomicon \
     src/doc/reference \
     src/doc/rust-by-example \
+    src/doc/embedded-book \
     src/tools/clippy \
     src/tools/rls \
     src/tools/rustfmt \

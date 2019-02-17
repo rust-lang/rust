@@ -1,4 +1,4 @@
-error[E0403]: the name `T` is already used for a type parameter in this type parameter list
+error[E0403]: the name `T` is already used for a generic parameter in this list of generic parameters
   --> $DIR/duplicate-type-parameter.rs:1:12
    |
 LL | type Foo<T,T> = Option<T>;
@@ -6,7 +6,7 @@ LL | type Foo<T,T> = Option<T>;
    |          |
    |          first use of `T`
 
-error[E0403]: the name `T` is already used for a type parameter in this type parameter list
+error[E0403]: the name `T` is already used for a generic parameter in this list of generic parameters
   --> $DIR/duplicate-type-parameter.rs:4:14
    |
 LL | struct Bar<T,T>(T);
@@ -14,7 +14,7 @@ LL | struct Bar<T,T>(T);
    |            |
    |            first use of `T`
 
-error[E0403]: the name `T` is already used for a type parameter in this type parameter list
+error[E0403]: the name `T` is already used for a generic parameter in this list of generic parameters
   --> $DIR/duplicate-type-parameter.rs:7:14
    |
 LL | struct Baz<T,T> {
@@ -22,7 +22,7 @@ LL | struct Baz<T,T> {
    |            |
    |            first use of `T`
 
-error[E0403]: the name `T` is already used for a type parameter in this type parameter list
+error[E0403]: the name `T` is already used for a generic parameter in this list of generic parameters
   --> $DIR/duplicate-type-parameter.rs:12:12
    |
 LL | enum Boo<T,T> {
@@ -30,7 +30,7 @@ LL | enum Boo<T,T> {
    |          |
    |          first use of `T`
 
-error[E0403]: the name `T` is already used for a type parameter in this type parameter list
+error[E0403]: the name `T` is already used for a generic parameter in this list of generic parameters
   --> $DIR/duplicate-type-parameter.rs:18:11
    |
 LL | fn quux<T,T>(x: T) {}
@@ -38,7 +38,7 @@ LL | fn quux<T,T>(x: T) {}
    |         |
    |         first use of `T`
 
-error[E0403]: the name `T` is already used for a type parameter in this type parameter list
+error[E0403]: the name `T` is already used for a generic parameter in this list of generic parameters
   --> $DIR/duplicate-type-parameter.rs:21:13
    |
 LL | trait Qux<T,T> {}
@@ -46,7 +46,7 @@ LL | trait Qux<T,T> {}
    |           |
    |           first use of `T`
 
-error[E0403]: the name `T` is already used for a type parameter in this type parameter list
+error[E0403]: the name `T` is already used for a generic parameter in this list of generic parameters
   --> $DIR/duplicate-type-parameter.rs:24:8
    |
 LL | impl<T,T> Qux<T,T> for Option<T> {}

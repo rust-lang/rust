@@ -12,10 +12,10 @@ use std::time::{Duration, Instant};
 
 use std::sync::mpsc::{Sender};
 use syntax_pos::{SpanData};
-use ty::TyCtxt;
-use dep_graph::{DepNode};
+use crate::ty::TyCtxt;
+use crate::dep_graph::{DepNode};
 use lazy_static;
-use session::Session;
+use crate::session::Session;
 
 // The name of the associated type for `Fn` return types
 pub const FN_OUTPUT_NAME: &str = "Output";
@@ -63,11 +63,11 @@ pub fn install_panic_hook() {
 /// Parameters to the `Dump` variant of type `ProfileQueriesMsg`.
 #[derive(Clone,Debug)]
 pub struct ProfQDumpParams {
-    /// A base path for the files we will dump
+    /// A base path for the files we will dump.
     pub path:String,
-    /// To ensure that the compiler waits for us to finish our dumps
+    /// To ensure that the compiler waits for us to finish our dumps.
     pub ack:Sender<()>,
-    /// toggle dumping a log file with every `ProfileQueriesMsg`
+    /// Toggle dumping a log file with every `ProfileQueriesMsg`.
     pub dump_profq_msg_log:bool,
 }
 
@@ -131,7 +131,7 @@ pub fn time_depth() -> usize {
     TIME_DEPTH.with(|slot| slot.get())
 }
 
-/// Set the current depth of `time()` calls. The idea is to call
+/// Sets the current depth of `time()` calls. The idea is to call
 /// `set_time_depth()` with the result from `time_depth()` in the
 /// parent thread.
 pub fn set_time_depth(depth: usize) {

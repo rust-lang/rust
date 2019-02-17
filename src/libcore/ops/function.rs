@@ -62,7 +62,7 @@
     label="expected an `Fn<{Args}>` closure, found `{Self}`",
 )]
 #[fundamental] // so that regex can rely that `&str: !FnMut`
-#[must_use]
+#[must_use = "closures are lazy and do nothing unless called"]
 pub trait Fn<Args> : FnMut<Args> {
     /// Performs the call operation.
     #[unstable(feature = "fn_traits", issue = "29625")]
@@ -141,7 +141,7 @@ pub trait Fn<Args> : FnMut<Args> {
     label="expected an `FnMut<{Args}>` closure, found `{Self}`",
 )]
 #[fundamental] // so that regex can rely that `&str: !FnMut`
-#[must_use]
+#[must_use = "closures are lazy and do nothing unless called"]
 pub trait FnMut<Args> : FnOnce<Args> {
     /// Performs the call operation.
     #[unstable(feature = "fn_traits", issue = "29625")]
@@ -220,7 +220,7 @@ pub trait FnMut<Args> : FnOnce<Args> {
     label="expected an `FnOnce<{Args}>` closure, found `{Self}`",
 )]
 #[fundamental] // so that regex can rely that `&str: !FnMut`
-#[must_use]
+#[must_use = "closures are lazy and do nothing unless called"]
 pub trait FnOnce<Args> {
     /// The returned type after the call operator is used.
     #[stable(feature = "fn_once_output", since = "1.12.0")]

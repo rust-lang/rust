@@ -27,7 +27,7 @@ impl<'l> AddAssign for Counter<'l>
     }
 }
 
-/// often times crashes, if not prints invalid strings
+/// Often crashes, if not prints invalid strings.
 pub fn panics() {
     let mut acc = Counter{map: HashMap::new()};
     for line in vec!["123456789".to_string(), "12345678".to_string()] {

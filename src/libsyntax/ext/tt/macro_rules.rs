@@ -1,24 +1,26 @@
-use {ast, attr};
-use syntax_pos::{Span, DUMMY_SP};
-use edition::Edition;
-use errors::FatalError;
-use ext::base::{DummyResult, ExtCtxt, MacResult, SyntaxExtension};
-use ext::base::{NormalTT, TTMacroExpander};
-use ext::expand::{AstFragment, AstFragmentKind};
-use ext::tt::macro_parser::{Success, Error, Failure};
-use ext::tt::macro_parser::{MatchedSeq, MatchedNonterminal};
-use ext::tt::macro_parser::{parse, parse_failure_msg};
-use ext::tt::quoted;
-use ext::tt::transcribe::transcribe;
-use feature_gate::Features;
-use parse::{Directory, ParseSess};
-use parse::parser::Parser;
-use parse::token::{self, NtTT};
-use parse::token::Token::*;
-use symbol::Symbol;
-use tokenstream::{DelimSpan, TokenStream, TokenTree};
+use crate::{ast, attr};
+use crate::edition::Edition;
+use crate::ext::base::{DummyResult, ExtCtxt, MacResult, SyntaxExtension};
+use crate::ext::base::{NormalTT, TTMacroExpander};
+use crate::ext::expand::{AstFragment, AstFragmentKind};
+use crate::ext::tt::macro_parser::{Success, Error, Failure};
+use crate::ext::tt::macro_parser::{MatchedSeq, MatchedNonterminal};
+use crate::ext::tt::macro_parser::{parse, parse_failure_msg};
+use crate::ext::tt::quoted;
+use crate::ext::tt::transcribe::transcribe;
+use crate::feature_gate::Features;
+use crate::parse::{Directory, ParseSess};
+use crate::parse::parser::Parser;
+use crate::parse::token::{self, NtTT};
+use crate::parse::token::Token::*;
+use crate::symbol::Symbol;
+use crate::tokenstream::{DelimSpan, TokenStream, TokenTree};
 
-use rustc_data_structures::fx::FxHashMap;
+use errors::FatalError;
+use syntax_pos::{Span, DUMMY_SP, symbol::Ident};
+use log::debug;
+
+use rustc_data_structures::fx::{FxHashMap};
 use std::borrow::Cow;
 use std::collections::hash_map::Entry;
 
@@ -91,7 +93,7 @@ struct MacroRulesMacroExpander {
 impl TTMacroExpander for MacroRulesMacroExpander {
     fn expand<'cx>(
         &self,
-        cx: &'cx mut ExtCtxt,
+        cx: &'cx mut ExtCtxt<'_>,
         sp: Span,
         input: TokenStream,
         def_span: Option<Span>,
@@ -109,13 +111,13 @@ impl TTMacroExpander for MacroRulesMacroExpander {
     }
 }
 
-fn trace_macros_note(cx: &mut ExtCtxt, sp: Span, message: String) {
+fn trace_macros_note(cx: &mut ExtCtxt<'_>, sp: Span, message: String) {
     let sp = sp.macro_backtrace().last().map(|trace| trace.call_site).unwrap_or(sp);
     cx.expansions.entry(sp).or_default().push(message);
 }
 
 /// Given `lhses` and `rhses`, this is the new macro we create
-fn generic_extension<'cx>(cx: &'cx mut ExtCtxt,
+fn generic_extension<'cx>(cx: &'cx mut ExtCtxt<'_>,
                           sp: Span,
                           def_span: Option<Span>,
                           name: ast::Ident,
@@ -244,8 +246,12 @@ fn generic_extension<'cx>(cx: &'cx mut ExtCtxt,
 // Holy self-referential!
 
 /// Converts a `macro_rules!` invocation into a syntax extension.
-pub fn compile(sess: &ParseSess, features: &Features, def: &ast::Item, edition: Edition)
-               -> SyntaxExtension {
+pub fn compile(
+    sess: &ParseSess,
+    features: &Features,
+    def: &ast::Item,
+    edition: Edition
+) -> SyntaxExtension {
     let lhs_nm = ast::Ident::with_empty_ctxt(Symbol::gensym("lhs"));
     let rhs_nm = ast::Ident::with_empty_ctxt(Symbol::gensym("rhs"));
 
@@ -353,7 +359,13 @@ pub fn compile(sess: &ParseSess, features: &Features, def: &ast::Item, edition: 
 
     // don't abort iteration early, so that errors for multiple lhses can be reported
     for lhs in &lhses {
-        valid &= check_lhs_no_empty_seq(sess, &[lhs.clone()])
+        valid &= check_lhs_no_empty_seq(sess, &[lhs.clone()]);
+        valid &= check_lhs_duplicate_matcher_bindings(
+            sess,
+            &[lhs.clone()],
+            &mut FxHashMap::default(),
+            def.id
+        );
     }
 
     let expander: Box<_> = Box::new(MacroRulesMacroExpander {
@@ -364,7 +376,24 @@ pub fn compile(sess: &ParseSess, features: &Features, def: &ast::Item, edition: 
     });
 
     if body.legacy {
-        let allow_internal_unstable = attr::contains_name(&def.attrs, "allow_internal_unstable");
+        let allow_internal_unstable = attr::find_by_name(&def.attrs, "allow_internal_unstable")
+            .map(|attr| attr
+                .meta_item_list()
+                .map(|list| list.iter()
+                    .map(|it| it.name().unwrap_or_else(|| sess.span_diagnostic.span_bug(
+                        it.span, "allow internal unstable expects feature names",
+                    )))
+                    .collect::<Vec<Symbol>>().into()
+                )
+                .unwrap_or_else(|| {
+                    sess.span_diagnostic.span_warn(
+                        attr.span, "allow_internal_unstable expects list of feature names. In the \
+                        future this will become a hard error. Please use `allow_internal_unstable(\
+                        foo, bar)` to only allow the `foo` and `bar` features",
+                    );
+                    vec![Symbol::intern("allow_internal_unstable_backcompat_hack")].into()
+                })
+            );
         let allow_internal_unsafe = attr::contains_name(&def.attrs, "allow_internal_unsafe");
         let mut local_inner_macros = false;
         if let Some(macro_export) = attr::find_by_name(&def.attrs, "macro_export") {
@@ -420,10 +449,10 @@ fn check_lhs_nt_follows(sess: &ParseSess,
     // after parsing/expansion. we can report every error in every macro this way.
 }
 
-/// Check that the lhs contains no repetition which could match an empty token
+/// Checks that the lhs contains no repetition which could match an empty token
 /// tree, because then the matcher would hang indefinitely.
 fn check_lhs_no_empty_seq(sess: &ParseSess, tts: &[quoted::TokenTree]) -> bool {
-    use self::quoted::TokenTree;
+    use quoted::TokenTree;
     for tt in tts {
         match *tt {
             TokenTree::Token(..) | TokenTree::MetaVar(..) | TokenTree::MetaVarDecl(..) => (),
@@ -448,6 +477,53 @@ fn check_lhs_no_empty_seq(sess: &ParseSess, tts: &[quoted::TokenTree]) -> bool {
                     return false;
                 }
             }
+        }
+    }
+
+    true
+}
+
+/// Check that the LHS contains no duplicate matcher bindings. e.g. `$a:expr, $a:expr` would be
+/// illegal, since it would be ambiguous which `$a` to use if we ever needed to.
+fn check_lhs_duplicate_matcher_bindings(
+    sess: &ParseSess,
+    tts: &[quoted::TokenTree],
+    metavar_names: &mut FxHashMap<Ident, Span>,
+    node_id: ast::NodeId,
+) -> bool {
+    use self::quoted::TokenTree;
+    use crate::early_buffered_lints::BufferedEarlyLintId;
+    for tt in tts {
+        match *tt {
+            TokenTree::MetaVarDecl(span, name, _kind) => {
+                if let Some(&prev_span) = metavar_names.get(&name) {
+                    // FIXME(mark-i-m): in a few cycles, make this a hard error.
+                    // sess.span_diagnostic
+                    //     .struct_span_err(span, "duplicate matcher binding")
+                    //     .span_note(prev_span, "previous declaration was here")
+                    //     .emit();
+                    sess.buffer_lint(
+                        BufferedEarlyLintId::DuplicateMacroMatcherBindingName,
+                        crate::source_map::MultiSpan::from(vec![prev_span, span]),
+                        node_id,
+                        "duplicate matcher binding"
+                    );
+                    return false;
+                } else {
+                    metavar_names.insert(name, span);
+                }
+            }
+            TokenTree::Delimited(_, ref del) => {
+                if !check_lhs_duplicate_matcher_bindings(sess, &del.tts, metavar_names, node_id) {
+                    return false;
+                }
+            },
+            TokenTree::Sequence(_, ref seq) => {
+                if !check_lhs_duplicate_matcher_bindings(sess, &seq.tts, metavar_names, node_id) {
+                    return false;
+                }
+            }
+            _ => {}
         }
     }
 
@@ -497,7 +573,7 @@ struct FirstSets {
 
 impl FirstSets {
     fn new(tts: &[quoted::TokenTree]) -> FirstSets {
-        use self::quoted::TokenTree;
+        use quoted::TokenTree;
 
         let mut sets = FirstSets { first: FxHashMap::default() };
         build_recur(&mut sets, tts);
@@ -567,7 +643,7 @@ impl FirstSets {
     // walks forward over `tts` until all potential FIRST tokens are
     // identified.
     fn first(&self, tts: &[quoted::TokenTree]) -> TokenSet {
-        use self::quoted::TokenTree;
+        use quoted::TokenTree;
 
         let mut first = TokenSet::empty();
         for tt in tts.iter() {
@@ -721,7 +797,7 @@ fn check_matcher_core(sess: &ParseSess,
                       first_sets: &FirstSets,
                       matcher: &[quoted::TokenTree],
                       follow: &TokenSet) -> TokenSet {
-    use self::quoted::TokenTree;
+    use quoted::TokenTree;
 
     let mut last = TokenSet::empty();
 
@@ -901,8 +977,8 @@ fn token_can_be_followed_by_any(tok: &quoted::TokenTree) -> bool {
     }
 }
 
-/// True if a fragment of type `frag` can be followed by any sort of
-/// token.  We use this (among other things) as a useful approximation
+/// Returns `true` if a fragment of type `frag` can be followed by any sort of
+/// token. We use this (among other things) as a useful approximation
 /// for when `frag` can be followed by a repetition like `$(...)*` or
 /// `$(...)+`. In general, these can be a bit tricky to reason about,
 /// so we adopt a conservative position that says that any fragment
@@ -931,7 +1007,7 @@ enum IsInFollow {
     Invalid(String, &'static str),
 }
 
-/// True if `frag` can legally be followed by the token `tok`. For
+/// Returns `true` if `frag` can legally be followed by the token `tok`. For
 /// fragments that can consume an unbounded number of tokens, `tok`
 /// must be within a well-defined follow set. This is intended to
 /// guarantee future compatibility: for example, without this rule, if
@@ -940,7 +1016,7 @@ enum IsInFollow {
 /// separator.
 // when changing this do not forget to update doc/book/macros.md!
 fn is_in_follow(tok: &quoted::TokenTree, frag: &str) -> IsInFollow {
-    use self::quoted::TokenTree;
+    use quoted::TokenTree;
 
     if let TokenTree::Token(_, token::CloseDelim(_)) = *tok {
         // closing a token tree can never be matched by any fragment;
@@ -1072,7 +1148,7 @@ fn is_legal_fragment_specifier(_sess: &ParseSess,
 
 fn quoted_tt_to_string(tt: &quoted::TokenTree) -> String {
     match *tt {
-        quoted::TokenTree::Token(_, ref tok) => ::print::pprust::token_to_string(tok),
+        quoted::TokenTree::Token(_, ref tok) => crate::print::pprust::token_to_string(tok),
         quoted::TokenTree::MetaVar(_, name) => format!("${}", name),
         quoted::TokenTree::MetaVarDecl(_, name, kind) => format!("${}:{}", name, kind),
         _ => panic!("unexpected quoted::TokenTree::{{Sequence or Delimited}} \

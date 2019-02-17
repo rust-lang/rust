@@ -22,6 +22,10 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> 
         let (ty, poly_trait_ref) = self.tcx.erase_regions(&(ty, poly_trait_ref));
 
         if let Some(&vtable) = self.vtables.get(&(ty, poly_trait_ref)) {
+            // This means we guarantee that there are no duplicate vtables, we will
+            // always use the same vtable for the same (Type, Trait) combination.
+            // That's not what happens in rustc, but emulating per-crate deduplication
+            // does not sound like it actually makes anything any better.
             return Ok(Pointer::from(vtable).with_default_tag());
         }
 
@@ -52,7 +56,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> 
         ).with_default_tag();
         let tcx = &*self.tcx;
 
-        let drop = ::monomorphize::resolve_drop_in_place(*tcx, ty);
+        let drop = crate::monomorphize::resolve_drop_in_place(*tcx, ty);
         let drop = self.memory.create_fn_alloc(drop).with_default_tag();
         // no need to do any alignment checks on the memory accesses below, because we know the
         // allocation is correctly aligned as we created it above. Also we're only offsetting by
@@ -87,7 +91,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> 
         Ok(vtable)
     }
 
-    /// Return the drop fn instance as well as the actual dynamic type
+    /// Returns the drop fn instance as well as the actual dynamic type
     pub fn read_drop_type_from_vtable(
         &self,
         vtable: Pointer<M::PointerTag>,

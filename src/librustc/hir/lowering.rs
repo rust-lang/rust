@@ -3,24 +3,24 @@
 //! Since the AST and HIR are fairly similar, this is mostly a simple procedure,
 //! much like a fold. Where lowering involves a bit more work things get more
 //! interesting and there are some invariants you should know about. These mostly
-//! concern spans and ids.
+//! concern spans and IDs.
 //!
 //! Spans are assigned to AST nodes during parsing and then are modified during
 //! expansion to indicate the origin of a node and the process it went through
-//! being expanded. Ids are assigned to AST nodes just before lowering.
+//! being expanded. IDs are assigned to AST nodes just before lowering.
 //!
-//! For the simpler lowering steps, ids and spans should be preserved. Unlike
+//! For the simpler lowering steps, IDs and spans should be preserved. Unlike
 //! expansion we do not preserve the process of lowering in the spans, so spans
 //! should not be modified here. When creating a new node (as opposed to
-//! 'folding' an existing one), then you create a new id using `next_id()`.
+//! 'folding' an existing one), then you create a new ID using `next_id()`.
 //!
-//! You must ensure that ids are unique. That means that you should only use the
-//! id from an AST node in a single HIR node (you can assume that AST node ids
-//! are unique). Every new node must have a unique id. Avoid cloning HIR nodes.
-//! If you do, you must then set the new node's id to a fresh one.
+//! You must ensure that IDs are unique. That means that you should only use the
+//! ID from an AST node in a single HIR node (you can assume that AST node IDs
+//! are unique). Every new node must have a unique ID. Avoid cloning HIR nodes.
+//! If you do, you must then set the new node's ID to a fresh one.
 //!
 //! Spans are used for error messages and for tools to map semantics back to
-//! source code. It is therefore not as important with spans as ids to be strict
+//! source code. It is therefore not as important with spans as IDs to be strict
 //! about use (you can't break the compiler by screwing up a span). Obviously, a
 //! HIR node can only have a single span. But multiple nodes can have the same
 //! span and spans don't need to be kept in order, etc. Where code is preserved
@@ -30,24 +30,25 @@
 //! get confused if the spans from leaf AST nodes occur in multiple places
 //! in the HIR, especially for multiple identifiers.
 
-use dep_graph::DepGraph;
-use errors::Applicability;
-use hir::{self, ParamName};
-use hir::HirVec;
-use hir::map::{DefKey, DefPathData, Definitions};
-use hir::def_id::{DefId, DefIndex, DefIndexAddressSpace, CRATE_DEF_INDEX};
-use hir::def::{Def, PathResolution, PerNS};
-use hir::GenericArg;
-use lint::builtin::{self, PARENTHESIZED_PARAMS_IN_TYPES_AND_MODULES,
+use crate::dep_graph::DepGraph;
+use crate::hir::{self, ParamName};
+use crate::hir::HirVec;
+use crate::hir::map::{DefKey, DefPathData, Definitions};
+use crate::hir::def_id::{DefId, DefIndex, DefIndexAddressSpace, CRATE_DEF_INDEX};
+use crate::hir::def::{Def, PathResolution, PerNS};
+use crate::hir::GenericArg;
+use crate::lint::builtin::{self, PARENTHESIZED_PARAMS_IN_TYPES_AND_MODULES,
                     ELIDED_LIFETIMES_IN_PATHS};
-use middle::cstore::CrateStore;
+use crate::middle::cstore::CrateStore;
+use crate::session::Session;
+use crate::session::config::nightly_options;
+use crate::util::common::FN_OUTPUT_NAME;
+use crate::util::nodemap::{DefIdMap, NodeMap};
+use errors::Applicability;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_data_structures::indexed_vec::IndexVec;
 use rustc_data_structures::thin_vec::ThinVec;
-use session::Session;
-use session::config::nightly_options;
-use util::common::FN_OUTPUT_NAME;
-use util::nodemap::{DefIdMap, NodeMap};
+use rustc_data_structures::sync::Lrc;
 
 use std::collections::{BTreeSet, BTreeMap};
 use std::fmt::Debug;
@@ -144,7 +145,7 @@ pub trait Resolver {
         is_value: bool,
     ) -> hir::Path;
 
-    /// Obtain the resolution for a node-id.
+    /// Obtain the resolution for a `NodeId`.
     fn get_resolution(&mut self, id: NodeId) -> Option<PathResolution>;
 
     /// Obtain the possible resolutions for the given `use` statement.
@@ -273,10 +274,10 @@ enum ParenthesizedGenericArgs {
 }
 
 /// What to do when we encounter an **anonymous** lifetime
-/// reference. Anonymous lifetime references come in two flavors.  You
+/// reference. Anonymous lifetime references come in two flavors. You
 /// have implicit, or fully elided, references to lifetimes, like the
 /// one in `&T` or `Ref<T>`, and you have `'_` lifetimes, like `&'_ T`
-/// or `Ref<'_, T>`.  These often behave the same, but not always:
+/// or `Ref<'_, T>`. These often behave the same, but not always:
 ///
 /// - certain usages of implicit references are deprecated, like
 ///   `Ref<T>`, and we sometimes just give hard errors in those cases
@@ -681,13 +682,20 @@ impl<'a> LoweringContext<'a> {
         Ident::with_empty_ctxt(Symbol::gensym(s))
     }
 
-    fn allow_internal_unstable(&self, reason: CompilerDesugaringKind, span: Span) -> Span {
+    /// Reuses the span but adds information like the kind of the desugaring and features that are
+    /// allowed inside this span.
+    fn mark_span_with_reason(
+        &self,
+        reason: CompilerDesugaringKind,
+        span: Span,
+        allow_internal_unstable: Option<Lrc<[Symbol]>>,
+    ) -> Span {
         let mark = Mark::fresh(Mark::root());
         mark.set_expn_info(source_map::ExpnInfo {
             call_site: span,
             def_site: Some(span),
             format: source_map::CompilerDesugaring(reason),
-            allow_internal_unstable: true,
+            allow_internal_unstable,
             allow_internal_unsafe: false,
             local_inner_macros: false,
             edition: source_map::hygiene::default_edition(),
@@ -964,7 +972,13 @@ impl<'a> LoweringContext<'a> {
             attrs: ThinVec::new(),
         };
 
-        let unstable_span = self.allow_internal_unstable(CompilerDesugaringKind::Async, span);
+        let unstable_span = self.mark_span_with_reason(
+            CompilerDesugaringKind::Async,
+            span,
+            Some(vec![
+                Symbol::intern("gen_future"),
+            ].into()),
+        );
         let gen_future = self.expr_std_path(
             unstable_span, &["future", "from_generator"], None, ThinVec::new());
         hir::ExprKind::Call(P(gen_future), hir_vec![generator])
@@ -1157,6 +1171,15 @@ impl<'a> LoweringContext<'a> {
         match arg {
             ast::GenericArg::Lifetime(lt) => GenericArg::Lifetime(self.lower_lifetime(&lt)),
             ast::GenericArg::Type(ty) => GenericArg::Type(self.lower_ty_direct(&ty, itctx)),
+            ast::GenericArg::Const(ct) => {
+                // FIXME(const_generics): const generics are not yet defined in the HIR.
+                self.sess.struct_span_err(
+                    ct.value.span,
+                    "const generics in any position are currently unsupported",
+                ).emit();
+                self.sess.abort_if_errors();
+                bug!();
+            }
         }
     }
 
@@ -1351,9 +1374,10 @@ impl<'a> LoweringContext<'a> {
         // desugaring that explicitly states that we don't want to track that.
         // Not tracking it makes lints in rustc and clippy very fragile as
         // frequently opened issues show.
-        let exist_ty_span = self.allow_internal_unstable(
+        let exist_ty_span = self.mark_span_with_reason(
             CompilerDesugaringKind::ExistentialReturnType,
             span,
+            None,
         );
 
         let exist_ty_def_index = self
@@ -2441,7 +2465,7 @@ impl<'a> LoweringContext<'a> {
             |this| this.lower_param_bounds(&param.bounds, itctx.reborrow()),
         );
 
-        match param.kind {
+        let (name, kind) = match param.kind {
             GenericParamKind::Lifetime => {
                 let was_collecting_in_band = self.is_collecting_in_band_lifetimes;
                 self.is_collecting_in_band_lifetimes = false;
@@ -2457,22 +2481,14 @@ impl<'a> LoweringContext<'a> {
                         | hir::LifetimeName::Static => hir::ParamName::Plain(lt.name.ident()),
                     hir::LifetimeName::Error => ParamName::Error,
                 };
-                let param = hir::GenericParam {
-                    id: lt.id,
-                    hir_id: lt.hir_id,
-                    name: param_name,
-                    span: lt.span,
-                    pure_wrt_drop: attr::contains_name(&param.attrs, "may_dangle"),
-                    attrs: self.lower_attrs(&param.attrs),
-                    bounds,
-                    kind: hir::GenericParamKind::Lifetime {
-                        kind: hir::LifetimeParamKind::Explicit,
-                    }
+
+                let kind = hir::GenericParamKind::Lifetime {
+                    kind: hir::LifetimeParamKind::Explicit
                 };
 
                 self.is_collecting_in_band_lifetimes = was_collecting_in_band;
 
-                param
+                (param_name, kind)
             }
             GenericParamKind::Type { ref default, .. } => {
                 // Don't expose `Self` (recovered "keyword used as ident" parse error).
@@ -2491,27 +2507,41 @@ impl<'a> LoweringContext<'a> {
                                    .chain(params)
                                    .collect();
                 }
-                let LoweredNodeId { node_id, hir_id } = self.lower_node_id(param.id);
 
-                hir::GenericParam {
-                    id: node_id,
-                    hir_id,
-                    name: hir::ParamName::Plain(ident),
-                    pure_wrt_drop: attr::contains_name(&param.attrs, "may_dangle"),
-                    attrs: self.lower_attrs(&param.attrs),
-                    bounds,
-                    span: ident.span,
-                    kind: hir::GenericParamKind::Type {
-                        default: default.as_ref().map(|x| {
-                            self.lower_ty(x, ImplTraitContext::disallowed())
-                        }),
-                        synthetic: param.attrs.iter()
-                                              .filter(|attr| attr.check_name("rustc_synthetic"))
-                                              .map(|_| hir::SyntheticTyParamKind::ImplTrait)
-                                              .next(),
-                    }
-                }
+                let kind = hir::GenericParamKind::Type {
+                    default: default.as_ref().map(|x| {
+                        self.lower_ty(x, ImplTraitContext::disallowed())
+                    }),
+                    synthetic: param.attrs.iter()
+                                          .filter(|attr| attr.check_name("rustc_synthetic"))
+                                          .map(|_| hir::SyntheticTyParamKind::ImplTrait)
+                                          .next(),
+                };
+
+                (hir::ParamName::Plain(ident), kind)
             }
+            GenericParamKind::Const { .. } => {
+                // FIXME(const_generics): const generics are not yet defined in the HIR.
+                self.sess.struct_span_err(
+                    param.ident.span,
+                    "const generics in any position are currently unsupported",
+                ).emit();
+                self.sess.abort_if_errors();
+                bug!();
+            }
+        };
+
+        let LoweredNodeId { node_id, hir_id } = self.lower_node_id(param.id);
+
+        hir::GenericParam {
+            id: node_id,
+            hir_id,
+            name,
+            span: param.ident.span,
+            pure_wrt_drop: attr::contains_name(&param.attrs, "may_dangle"),
+            attrs: self.lower_attrs(&param.attrs),
+            bounds,
+            kind,
         }
     }
 
@@ -3272,7 +3302,7 @@ impl<'a> LoweringContext<'a> {
 
     /// Paths like the visibility path in `pub(super) use foo::{bar, baz}` are repeated
     /// many times in the HIR tree; for each occurrence, we need to assign distinct
-    /// node-ids. (See e.g., #56128.)
+    /// `NodeId`s. (See, e.g., #56128.)
     fn renumber_segment_ids(&mut self, path: &P<hir::Path>) -> P<hir::Path> {
         debug!("renumber_segment_ids(path = {:?})", path);
         let mut path = path.clone();
@@ -3829,7 +3859,7 @@ impl<'a> LoweringContext<'a> {
                 hir::ExprKind::Call(f, args.iter().map(|x| self.lower_expr(x)).collect())
             }
             ExprKind::MethodCall(ref seg, ref args) => {
-                let hir_seg = self.lower_path_segment(
+                let hir_seg = P(self.lower_path_segment(
                     e.span,
                     seg,
                     ParamMode::Optional,
@@ -3837,7 +3867,7 @@ impl<'a> LoweringContext<'a> {
                     ParenthesizedGenericArgs::Err,
                     ImplTraitContext::disallowed(),
                     None,
-                );
+                ));
                 let args = args.iter().map(|x| self.lower_expr(x)).collect();
                 hir::ExprKind::MethodCall(hir_seg, seg.ident.span, args)
             }
@@ -3912,8 +3942,13 @@ impl<'a> LoweringContext<'a> {
             }),
             ExprKind::TryBlock(ref body) => {
                 self.with_catch_scope(body.id, |this| {
-                    let unstable_span =
-                        this.allow_internal_unstable(CompilerDesugaringKind::TryBlock, body.span);
+                    let unstable_span = this.mark_span_with_reason(
+                        CompilerDesugaringKind::TryBlock,
+                        body.span,
+                        Some(vec![
+                            Symbol::intern("try_trait"),
+                        ].into()),
+                    );
                     let mut block = this.lower_block(body, true).into_inner();
                     let tail = block.expr.take().map_or_else(
                         || {
@@ -4113,7 +4148,7 @@ impl<'a> LoweringContext<'a> {
                     node: if is_unit {
                         hir::ExprKind::Path(struct_path)
                     } else {
-                        hir::ExprKind::Struct(struct_path, fields, None)
+                        hir::ExprKind::Struct(P(struct_path), fields, None)
                     },
                     span: e.span,
                     attrs: e.attrs.clone(),
@@ -4185,13 +4220,13 @@ impl<'a> LoweringContext<'a> {
                 hir::ExprKind::InlineAsm(P(hir_asm), outputs, inputs)
             }
             ExprKind::Struct(ref path, ref fields, ref maybe_expr) => hir::ExprKind::Struct(
-                self.lower_qpath(
+                P(self.lower_qpath(
                     e.id,
                     &None,
                     path,
                     ParamMode::Optional,
                     ImplTraitContext::disallowed(),
-                ),
+                )),
                 fields.iter().map(|x| self.lower_field(x)).collect(),
                 maybe_expr.as_ref().map(|x| P(self.lower_expr(x))),
             ),
@@ -4345,9 +4380,10 @@ impl<'a> LoweringContext<'a> {
                 // expand <head>
                 let head = self.lower_expr(head);
                 let head_sp = head.span;
-                let desugared_span = self.allow_internal_unstable(
+                let desugared_span = self.mark_span_with_reason(
                     CompilerDesugaringKind::ForLoop,
                     head_sp,
+                    None,
                 );
 
                 let iter = self.str_to_ident("iter");
@@ -4510,8 +4546,13 @@ impl<'a> LoweringContext<'a> {
                 //                 return Try::from_error(From::from(err)),
                 // }
 
-                let unstable_span =
-                    self.allow_internal_unstable(CompilerDesugaringKind::QuestionMark, e.span);
+                let unstable_span = self.mark_span_with_reason(
+                    CompilerDesugaringKind::QuestionMark,
+                    e.span,
+                    Some(vec![
+                        Symbol::intern("try_trait")
+                    ].into()),
+                );
 
                 // `Try::into_result(<expr>)`
                 let discr = {

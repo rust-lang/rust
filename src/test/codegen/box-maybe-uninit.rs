@@ -9,5 +9,8 @@ use std::mem::MaybeUninit;
 pub fn box_uninitialized() -> Box<MaybeUninit<usize>> {
     // CHECK-LABEL: @box_uninitialized
     // CHECK-NOT: store
+    // CHECK-NOT: alloca
+    // CHECK-NOT: memcpy
+    // CHECK-NOT: memset
     Box::new(MaybeUninit::uninitialized())
 }

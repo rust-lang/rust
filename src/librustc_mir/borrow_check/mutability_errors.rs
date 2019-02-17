@@ -8,11 +8,11 @@ use rustc_data_structures::indexed_vec::Idx;
 use syntax_pos::Span;
 use syntax_pos::symbol::keywords;
 
-use dataflow::move_paths::InitLocation;
-use borrow_check::MirBorrowckCtxt;
-use util::borrowck_errors::{BorrowckErrors, Origin};
-use util::collect_writes::FindAssignments;
-use util::suggest_ref_mut;
+use crate::dataflow::move_paths::InitLocation;
+use crate::borrow_check::MirBorrowckCtxt;
+use crate::util::borrowck_errors::{BorrowckErrors, Origin};
+use crate::util::collect_writes::FindAssignments;
+use crate::util::suggest_ref_mut;
 use rustc_errors::Applicability;
 
 #[derive(Copy, Clone, Debug, Eq, PartialEq)]
@@ -611,11 +611,11 @@ fn suggest_ampmut<'cx, 'gcx, 'tcx>(
      })
 }
 
-fn is_closure_or_generator(ty: ty::Ty) -> bool {
+fn is_closure_or_generator(ty: ty::Ty<'_>) -> bool {
     ty.is_closure() || ty.is_generator()
 }
 
-/// Add a suggestion to a struct definition given a field access to a local.
+/// Adds a suggestion to a struct definition given a field access to a local.
 /// This function expects the local to be a reference to a struct in order to produce a suggestion.
 ///
 /// ```text

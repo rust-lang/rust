@@ -42,7 +42,7 @@ pub use rustc_codegen_utils::link::{find_crate_name, filename_for_input, default
                                     out_filename, check_file_is_writeable};
 
 
-/// Perform the linkage portion of the compilation phase. This will generate all
+/// Performs the linkage portion of the compilation phase. This will generate all
 /// of the requested outputs for this compilation session.
 pub(crate) fn link_binary(sess: &Session,
                           codegen_results: &CodegenResults,
@@ -857,7 +857,7 @@ fn link_args(cmd: &mut dyn Linker,
              codegen_results: &CodegenResults) {
 
     // Linker plugins should be specified early in the list of arguments
-    cmd.cross_lang_lto();
+    cmd.linker_plugin_lto();
 
     // The default library location, we need this to find the runtime.
     // The location of crates will be determined as needed.
@@ -1491,7 +1491,7 @@ fn are_upstream_rust_objects_already_included(sess: &Session) -> bool {
         Lto::Thin => {
             // If we defer LTO to the linker, we haven't run LTO ourselves, so
             // any upstream object files have not been copied yet.
-            !sess.opts.debugging_opts.cross_lang_lto.enabled()
+            !sess.opts.cg.linker_plugin_lto.enabled()
         }
         Lto::No |
         Lto::ThinLocal => false,

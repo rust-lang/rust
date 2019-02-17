@@ -1,7 +1,7 @@
 use std::collections::BTreeSet;
 use std::fs;
 use std::path;
-use features::{collect_lang_features, collect_lib_features, Features, Status};
+use crate::features::{collect_lang_features, collect_lib_features, Features, Status};
 
 pub const PATH_STR: &str = "doc/unstable-book/src";
 
@@ -56,7 +56,7 @@ pub fn collect_unstable_book_section_file_names(dir: &path::Path) -> BTreeSet<St
         .collect()
 }
 
-/// Retrieve file names of all library feature sections in the Unstable Book with:
+/// Retrieves file names of all library feature sections in the Unstable Book with:
 ///
 /// * hyphens replaced by underscores,
 /// * the markdown suffix ('.md') removed.

@@ -3,7 +3,7 @@
 //! The lint checking is mostly consolidated into one pass which runs
 //! after all other analyses. Throughout compilation, lint warnings
 //! can be added via the `add_lint` method on the Session structure. This
-//! requires a span and an id of the node that the lint is being added to. The
+//! requires a span and an ID of the node that the lint is being added to. The
 //! lint isn't actually emitted at that time because it is unknown what the
 //! actual lint level at that location is.
 //!
@@ -11,33 +11,33 @@
 //! A context keeps track of the current state of all lint levels.
 //! Upon entering a node of the ast which can modify the lint settings, the
 //! previous lint state is pushed onto a stack and the ast is then recursed
-//! upon.  As the ast is traversed, this keeps track of the current lint level
+//! upon. As the ast is traversed, this keeps track of the current lint level
 //! for all lint attributes.
 
 use self::TargetLint::*;
 
 use std::slice;
 use rustc_data_structures::sync::ReadGuard;
-use lint::{EarlyLintPass, EarlyLintPassObject, LateLintPassObject};
-use lint::{LintArray, Level, Lint, LintId, LintPass, LintBuffer};
-use lint::builtin::BuiltinLintDiagnostics;
-use lint::levels::{LintLevelSets, LintLevelsBuilder};
-use middle::privacy::AccessLevels;
-use rustc_serialize::{Decoder, Decodable, Encoder, Encodable};
-use session::{config, early_error, Session};
-use ty::{self, TyCtxt, Ty};
-use ty::layout::{LayoutError, LayoutOf, TyLayout};
-use util::nodemap::FxHashMap;
-use util::common::time;
+use crate::lint::{EarlyLintPass, EarlyLintPassObject, LateLintPassObject};
+use crate::lint::{LintArray, Level, Lint, LintId, LintPass, LintBuffer};
+use crate::lint::builtin::BuiltinLintDiagnostics;
+use crate::lint::levels::{LintLevelSets, LintLevelsBuilder};
+use crate::middle::privacy::AccessLevels;
+use crate::rustc_serialize::{Decoder, Decodable, Encoder, Encodable};
+use crate::session::{config, early_error, Session};
+use crate::ty::{self, TyCtxt, Ty};
+use crate::ty::layout::{LayoutError, LayoutOf, TyLayout};
+use crate::util::nodemap::FxHashMap;
+use crate::util::common::time;
 
 use std::default::Default as StdDefault;
 use syntax::ast;
 use syntax::edition;
 use syntax_pos::{MultiSpan, Span, symbol::{LocalInternedString, Symbol}};
 use errors::DiagnosticBuilder;
-use hir;
-use hir::def_id::LOCAL_CRATE;
-use hir::intravisit as hir_visit;
+use crate::hir;
+use crate::hir::def_id::LOCAL_CRATE;
+use crate::hir::intravisit as hir_visit;
 use syntax::util::lev_distance::find_best_match_for_name;
 use syntax::visit as ast_visit;
 
@@ -703,7 +703,7 @@ impl<'a, T: EarlyLintPass> EarlyContextAndPass<'a, T> {
 impl<'a, 'tcx> LintContext<'tcx> for LateContext<'a, 'tcx> {
     type PassObject = LateLintPassObject;
 
-    /// Get the overall compiler `Session` object.
+    /// Gets the overall compiler `Session` object.
     fn sess(&self) -> &Session {
         &self.tcx.sess
     }
@@ -736,7 +736,7 @@ impl<'a, 'tcx> LintContext<'tcx> for LateContext<'a, 'tcx> {
 impl<'a> LintContext<'a> for EarlyContext<'a> {
     type PassObject = EarlyLintPassObject;
 
-    /// Get the overall compiler `Session` object.
+    /// Gets the overall compiler `Session` object.
     fn sess(&self) -> &Session {
         &self.sess
     }
@@ -1200,7 +1200,7 @@ impl<'a, T: EarlyLintPass> ast_visit::Visitor<'a> for EarlyContextAndPass<'a, T>
 }
 
 
-/// Perform lint checking on a crate.
+/// Performs lint checking on a crate.
 ///
 /// Consumes the `lint_store` field of the `Session`.
 pub fn check_crate<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>) {

@@ -43,7 +43,7 @@ pub const NANOSECOND: Duration = Duration::from_nanos(1);
 /// timeouts.
 ///
 /// Each `Duration` is composed of a whole number of seconds and a fractional part
-/// represented in nanoseconds.  If the underlying system does not support
+/// represented in nanoseconds. If the underlying system does not support
 /// nanosecond-level precision, APIs binding a system timeout will typically round up
 /// the number of nanoseconds.
 ///
@@ -515,7 +515,7 @@ impl Duration {
         }
     }
 
-    /// Multiply `Duration` by `f64`.
+    /// Multiplies `Duration` by `f64`.
     ///
     /// # Panics
     /// This method will panic if result is not finite, negative or overflows `Duration`.

@@ -561,7 +561,7 @@ impl ExitCode {
     }
 }
 
-/// The unique id of the process (this should never be negative).
+/// The unique ID of the process (this should never be negative).
 pub struct Process {
     pid: usize,
     status: Option<ExitStatus>,

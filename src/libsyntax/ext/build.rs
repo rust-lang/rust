@@ -1,17 +1,18 @@
+use crate::ast::{self, Ident, Generics, Expr, BlockCheckMode, UnOp, PatKind};
+use crate::attr;
+use crate::source_map::{dummy_spanned, respan, Spanned};
+use crate::ext::base::ExtCtxt;
+use crate::ptr::P;
+use crate::symbol::{Symbol, keywords};
+use crate::ThinVec;
+
 use rustc_target::spec::abi::Abi;
-use ast::{self, Ident, Generics, Expr, BlockCheckMode, UnOp, PatKind};
-use attr;
 use syntax_pos::{Pos, Span, DUMMY_SP};
-use source_map::{dummy_spanned, respan, Spanned};
-use ext::base::ExtCtxt;
-use ptr::P;
-use symbol::{Symbol, keywords};
-use ThinVec;
 
 // Transitional re-exports so qquote can find the paths it is looking for
 mod syntax {
-    pub use ext;
-    pub use parse;
+    pub use crate::ext;
+    pub use crate::parse;
 }
 
 pub trait AstBuilder {
@@ -37,12 +38,14 @@ pub trait AstBuilder {
                 bindings: Vec<ast::TypeBinding>)
                 -> (ast::QSelf, ast::Path);
 
-    // types
+    // types and consts
     fn ty_mt(&self, ty: P<ast::Ty>, mutbl: ast::Mutability) -> ast::MutTy;
 
     fn ty(&self, span: Span, ty: ast::TyKind) -> P<ast::Ty>;
     fn ty_path(&self, path: ast::Path) -> P<ast::Ty>;
     fn ty_ident(&self, span: Span, idents: ast::Ident) -> P<ast::Ty>;
+    fn anon_const(&self, span: Span, expr: ast::ExprKind) -> ast::AnonConst;
+    fn const_ident(&self, span: Span, idents: ast::Ident) -> ast::AnonConst;
 
     fn ty_rptr(&self, span: Span,
                ty: P<ast::Ty>,
@@ -344,7 +347,7 @@ impl<'a> AstBuilder for ExtCtxt<'a> {
 
     /// Constructs a qualified path.
     ///
-    /// Constructs a path like `<self_type as trait_path>::ident<'a, T, A=Bar>`.
+    /// Constructs a path like `<self_type as trait_path>::ident<'a, T, A = Bar>`.
     fn qpath_all(&self,
                  self_type: P<ast::Ty>,
                  trait_path: ast::Path,
@@ -391,6 +394,22 @@ impl<'a> AstBuilder for ExtCtxt<'a> {
     fn ty_ident(&self, span: Span, ident: ast::Ident)
         -> P<ast::Ty> {
         self.ty_path(self.path_ident(span, ident))
+    }
+
+    fn anon_const(&self, span: Span, expr: ast::ExprKind) -> ast::AnonConst {
+        ast::AnonConst {
+            id: ast::DUMMY_NODE_ID,
+            value: P(ast::Expr {
+                id: ast::DUMMY_NODE_ID,
+                node: expr,
+                span,
+                attrs: ThinVec::new(),
+            })
+        }
+    }
+
+    fn const_ident(&self, span: Span, ident: ast::Ident) -> ast::AnonConst {
+        self.anon_const(span, ast::ExprKind::Path(None, self.path_ident(span, ident)))
     }
 
     fn ty_rptr(&self,

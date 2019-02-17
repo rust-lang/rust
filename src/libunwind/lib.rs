@@ -1,6 +1,8 @@
 #![no_std]
 #![unstable(feature = "panic_unwind", issue = "32837")]
 
+#![deny(rust_2018_idioms)]
+
 #![feature(link_cfg)]
 #![feature(nll)]
 #![feature(staged_api)]
@@ -18,7 +20,6 @@ cfg_if! {
     } else if #[cfg(all(target_arch = "wasm32", not(target_os = "emscripten")))] {
         // no unwinder on the system!
     } else {
-        extern crate libc;
         mod libunwind;
         pub use libunwind::*;
     }

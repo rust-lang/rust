@@ -1,14 +1,14 @@
 //! This pass erases all early-bound regions from the types occurring in the MIR.
 //! We want to do this once just before codegen, so codegen does not have to take
 //! care erasing regions all over the place.
-//! NOTE:  We do NOT erase regions of statements that are relevant for
-//! "types-as-contracts"-validation, namely, AcquireValid, ReleaseValid
+//! N.B., we do _not_ erase regions of statements that are relevant for
+//! "types-as-contracts"-validation, namely, `AcquireValid` and `ReleaseValid`.
 
 use rustc::ty::subst::Substs;
 use rustc::ty::{self, Ty, TyCtxt};
 use rustc::mir::*;
 use rustc::mir::visit::{MutVisitor, TyContext};
-use transform::{MirPass, MirSource};
+use crate::transform::{MirPass, MirSource};
 
 struct EraseRegionsVisitor<'a, 'tcx: 'a> {
     tcx: TyCtxt<'a, 'tcx, 'tcx>,
@@ -53,7 +53,7 @@ pub struct EraseRegions;
 impl MirPass for EraseRegions {
     fn run_pass<'a, 'tcx>(&self,
                           tcx: TyCtxt<'a, 'tcx, 'tcx>,
-                          _: MirSource,
+                          _: MirSource<'tcx>,
                           mir: &mut Mir<'tcx>) {
         EraseRegionsVisitor::new(tcx).visit_mir(mir);
     }

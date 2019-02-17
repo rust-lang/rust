@@ -34,7 +34,7 @@ use rustc::mir::*;
 use rustc::mir::visit::{MutVisitor, Visitor, PlaceContext};
 use rustc::session::config::DebugInfo;
 use std::borrow::Cow;
-use transform::{MirPass, MirSource};
+use crate::transform::{MirPass, MirSource};
 
 pub struct SimplifyCfg { label: String }
 
@@ -44,7 +44,7 @@ impl SimplifyCfg {
     }
 }
 
-pub fn simplify_cfg(mir: &mut Mir) {
+pub fn simplify_cfg(mir: &mut Mir<'_>) {
     CfgSimplifier::new(mir).simplify();
     remove_dead_blocks(mir);
 
@@ -59,7 +59,7 @@ impl MirPass for SimplifyCfg {
 
     fn run_pass<'a, 'tcx>(&self,
                           _tcx: TyCtxt<'a, 'tcx, 'tcx>,
-                          _src: MirSource,
+                          _src: MirSource<'tcx>,
                           mir: &mut Mir<'tcx>) {
         debug!("SimplifyCfg({:?}) - simplifying {:?}", self.label, mir);
         simplify_cfg(mir);
@@ -263,7 +263,7 @@ impl<'a, 'tcx: 'a> CfgSimplifier<'a, 'tcx> {
     }
 }
 
-pub fn remove_dead_blocks(mir: &mut Mir) {
+pub fn remove_dead_blocks(mir: &mut Mir<'_>) {
     let mut seen = BitSet::new_empty(mir.basic_blocks().len());
     for (bb, _) in traversal::preorder(mir) {
         seen.insert(bb.index());
@@ -298,7 +298,7 @@ pub struct SimplifyLocals;
 impl MirPass for SimplifyLocals {
     fn run_pass<'a, 'tcx>(&self,
                           tcx: TyCtxt<'a, 'tcx, 'tcx>,
-                          _: MirSource,
+                          _: MirSource<'tcx>,
                           mir: &mut Mir<'tcx>) {
         let mut marker = DeclMarker { locals: BitSet::new_empty(mir.local_decls.len()) };
         marker.visit_mir(mir);

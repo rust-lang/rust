@@ -1,6 +1,4 @@
-#![doc(html_logo_url = "https://www.rust-lang.org/logos/rust-logo-128x128-blk-v2.png",
-       html_favicon_url = "https://doc.rust-lang.org/favicon.ico",
-       html_root_url = "https://doc.rust-lang.org/nightly/")]
+#![doc(html_root_url = "https://doc.rust-lang.org/nightly/")]
 
 #![feature(box_patterns)]
 #![feature(libc)]
@@ -8,30 +6,21 @@
 #![feature(proc_macro_internals)]
 #![feature(proc_macro_quote)]
 #![feature(rustc_diagnostic_macros)]
-#![feature(slice_sort_by_cached_key)]
 #![feature(crate_visibility_modifier)]
 #![feature(specialization)]
 #![feature(rustc_private)]
 
 #![recursion_limit="256"]
 
+#![deny(rust_2018_idioms)]
+
 extern crate libc;
-#[macro_use]
-extern crate log;
-extern crate memmap;
-extern crate stable_deref_trait;
-#[macro_use]
-extern crate syntax;
-extern crate syntax_pos;
-extern crate flate2;
+#[allow(unused_extern_crates)]
 extern crate serialize as rustc_serialize; // used by deriving
-extern crate rustc_errors as errors;
-extern crate syntax_ext;
 extern crate proc_macro;
 
 #[macro_use]
 extern crate rustc;
-extern crate rustc_target;
 #[macro_use]
 extern crate rustc_data_structures;
 

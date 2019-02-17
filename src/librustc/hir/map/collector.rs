@@ -1,19 +1,19 @@
 use super::*;
-use dep_graph::{DepGraph, DepKind, DepNodeIndex};
-use hir;
-use hir::def_id::{LOCAL_CRATE, CrateNum};
-use hir::intravisit::{Visitor, NestedVisitorMap};
+use crate::dep_graph::{DepGraph, DepKind, DepNodeIndex};
+use crate::hir;
+use crate::hir::def_id::{LOCAL_CRATE, CrateNum};
+use crate::hir::intravisit::{Visitor, NestedVisitorMap};
 use rustc_data_structures::svh::Svh;
-use ich::Fingerprint;
-use middle::cstore::CrateStore;
-use session::CrateDisambiguator;
-use session::Session;
+use crate::ich::Fingerprint;
+use crate::middle::cstore::CrateStore;
+use crate::session::CrateDisambiguator;
+use crate::session::Session;
 use std::iter::repeat;
 use syntax::ast::{NodeId, CRATE_NODE_ID};
 use syntax::source_map::SourceMap;
 use syntax_pos::Span;
 
-use ich::StableHashingContext;
+use crate::ich::StableHashingContext;
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher, StableHasherResult};
 
 /// A Visitor that walks over the HIR and collects Nodes into a HIR map
@@ -48,14 +48,14 @@ pub(super) struct NodeCollector<'a, 'hir> {
     hir_body_nodes: Vec<(DefPathHash, Fingerprint)>,
 }
 
-fn input_dep_node_and_hash<'a, I>(
+fn input_dep_node_and_hash<I>(
     dep_graph: &DepGraph,
-    hcx: &mut StableHashingContext<'a>,
+    hcx: &mut StableHashingContext<'_>,
     dep_node: DepNode,
     input: I,
 ) -> (DepNodeIndex, Fingerprint)
 where
-    I: HashStable<StableHashingContext<'a>>,
+    I: for<'a> HashStable<StableHashingContext<'a>>,
 {
     let dep_node_index = dep_graph.input_task(dep_node, &mut *hcx, &input).1;
 
@@ -70,15 +70,15 @@ where
     (dep_node_index, hash)
 }
 
-fn alloc_hir_dep_nodes<'a, I>(
+fn alloc_hir_dep_nodes<I>(
     dep_graph: &DepGraph,
-    hcx: &mut StableHashingContext<'a>,
+    hcx: &mut StableHashingContext<'_>,
     def_path_hash: DefPathHash,
     item_like: I,
     hir_body_nodes: &mut Vec<(DefPathHash, Fingerprint)>,
 ) -> (DepNodeIndex, DepNodeIndex)
 where
-    I: HashStable<StableHashingContext<'a>>,
+    I: for<'a> HashStable<StableHashingContext<'a>>,
 {
     let sig = dep_graph.input_task(
         def_path_hash.to_dep_node(DepKind::Hir),
@@ -253,7 +253,7 @@ impl<'a, 'hir> NodeCollector<'a, 'hir> {
                     None => format!("{:?}", node)
                 };
 
-                let forgot_str = if hir_id == ::hir::DUMMY_HIR_ID {
+                let forgot_str = if hir_id == crate::hir::DUMMY_HIR_ID {
                     format!("\nMaybe you forgot to lower the node id {:?}?", id)
                 } else {
                     String::new()
@@ -286,7 +286,7 @@ impl<'a, 'hir> NodeCollector<'a, 'hir> {
         self.parent_node = parent_node;
     }
 
-    fn with_dep_node_owner<T: HashStable<StableHashingContext<'a>>,
+    fn with_dep_node_owner<T: for<'b> HashStable<StableHashingContext<'b>>,
                            F: FnOnce(&mut Self)>(&mut self,
                                                  dep_node_owner: DefIndex,
                                                  item_like: &T,

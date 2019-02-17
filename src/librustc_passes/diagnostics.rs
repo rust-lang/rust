@@ -1,5 +1,7 @@
 #![allow(non_snake_case)]
 
+use syntax::{register_diagnostic, register_diagnostics, register_long_diagnostics};
+
 register_long_diagnostics! {
 /*
 E0014: r##"

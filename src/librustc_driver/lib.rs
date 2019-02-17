@@ -4,15 +4,12 @@
 //!
 //! This API is completely unstable and subject to change.
 
-#![doc(html_logo_url = "https://www.rust-lang.org/logos/rust-logo-128x128-blk-v2.png",
-      html_favicon_url = "https://doc.rust-lang.org/favicon.ico",
-      html_root_url = "https://doc.rust-lang.org/nightly/")]
+#![doc(html_root_url = "https://doc.rust-lang.org/nightly/")]
 
 #![feature(box_syntax)]
 #![cfg_attr(unix, feature(libc))]
 #![feature(nll)]
 #![feature(rustc_diagnostic_macros)]
-#![feature(slice_sort_by_cached_key)]
 #![feature(set_stdio)]
 #![feature(no_debug)]
 #![feature(integer_atomics)]
@@ -30,6 +27,7 @@ extern crate rustc;
 extern crate rustc_allocator;
 extern crate rustc_target;
 extern crate rustc_borrowck;
+#[macro_use]
 extern crate rustc_data_structures;
 extern crate rustc_errors as errors;
 extern crate rustc_passes;
@@ -115,7 +113,7 @@ pub mod target_features {
     use rustc::session::Session;
     use rustc_codegen_utils::codegen_backend::CodegenBackend;
 
-    /// Add `target_feature = "..."` cfgs for a variety of platform
+    /// Adds `target_feature = "..."` cfgs for a variety of platform
     /// specific features (SSE, NEON etc.).
     ///
     /// This is performed by checking whether a whitelisted set of
@@ -839,7 +837,15 @@ impl<'a> CompilerCalls<'a> for RustcDefaultCalls {
                 early_error(sopts.error_format, "no input filename given");
             }
             1 => panic!("make_input should have provided valid inputs"),
-            _ => early_error(sopts.error_format, "multiple input filenames provided"),
+            _ =>
+                early_error(
+                    sopts.error_format,
+                    &format!(
+                        "multiple input filenames provided (first two filenames are `{}` and `{}`)",
+                        matches.free[0],
+                        matches.free[1],
+                    ),
+                )
         }
     }
 
@@ -870,9 +876,9 @@ impl<'a> CompilerCalls<'a> for RustcDefaultCalls {
                 control.after_hir_lowering.stop = Compilation::Stop;
 
                 control.after_parse.callback = box move |state| {
-                    state.krate = Some(pretty::fold_crate(state.session,
-                                                          state.krate.take().unwrap(),
-                                                          ppm));
+                    let mut krate = state.krate.take().unwrap();
+                    pretty::visit_crate(state.session, &mut krate, ppm);
+                    state.krate = Some(krate);
                 };
                 control.after_hir_lowering.callback = box move |state| {
                     pretty::print_after_hir_lowering(state.session,
@@ -891,7 +897,8 @@ impl<'a> CompilerCalls<'a> for RustcDefaultCalls {
                 control.after_parse.stop = Compilation::Stop;
 
                 control.after_parse.callback = box move |state| {
-                    let krate = pretty::fold_crate(state.session, state.krate.take().unwrap(), ppm);
+                    let mut krate = state.krate.take().unwrap();
+                    pretty::visit_crate(state.session, &mut krate, ppm);
                     pretty::print_after_parsing(state.session,
                                                 state.input,
                                                 &krate,
@@ -1316,7 +1323,7 @@ fn print_flag_list<T>(cmdline_opt: &str,
 
 /// Process command line options. Emits messages as appropriate. If compilation
 /// should continue, returns a getopts::Matches object parsed from args,
-/// otherwise returns None.
+/// otherwise returns `None`.
 ///
 /// The compiler's handling of options is a little complicated as it ties into
 /// our stability story, and it's even *more* complicated by historical
@@ -1480,7 +1487,7 @@ pub fn in_rustc_thread<F, R>(f: F) -> Result<R, Box<dyn Any + Send>>
     in_named_rustc_thread("rustc".to_string(), f)
 }
 
-/// Get a list of extra command-line flags provided by the user, as strings.
+/// Gets a list of extra command-line flags provided by the user, as strings.
 ///
 /// This function is used during ICEs to show more information useful for
 /// debugging, since some ICEs only happens with non-default compiler flags
@@ -1545,7 +1552,7 @@ impl Display for CompilationFailure {
     }
 }
 
-/// Run a procedure which will detect panics in the compiler and print nicer
+/// Runs a procedure which will detect panics in the compiler and print nicer
 /// error messages rather than just failing the test.
 ///
 /// The diagnostic emitter yielded to the procedure should be used for reporting

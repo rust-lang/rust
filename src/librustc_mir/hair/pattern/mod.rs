@@ -1,4 +1,4 @@
-//! Code to validate patterns/matches
+//! Validation of patterns/matches.
 
 mod _match;
 mod check_match;
@@ -6,10 +6,10 @@ mod check_match;
 pub use self::check_match::check_crate;
 pub(crate) use self::check_match::check_match;
 
-use const_eval::{const_field, const_variant_index};
+use crate::const_eval::{const_field, const_variant_index};
 
-use hair::util::UserAnnotatedTyHelpers;
-use hair::constant::*;
+use crate::hair::util::UserAnnotatedTyHelpers;
+use crate::hair::constant::*;
 
 use rustc::mir::{fmt_const_val, Field, BorrowKind, Mutability};
 use rustc::mir::{UserTypeProjection};
@@ -58,7 +58,7 @@ pub struct Pattern<'tcx> {
 }
 
 
-#[derive(Clone, Debug)]
+#[derive(Copy, Clone, Debug, PartialEq)]
 pub struct PatternTypeProjection<'tcx> {
     pub user_ty: CanonicalUserType<'tcx>,
 }
@@ -87,36 +87,41 @@ impl<'tcx> PatternTypeProjection<'tcx> {
     }
 }
 
+#[derive(Copy, Clone, Debug, PartialEq)]
+pub struct Ascription<'tcx> {
+    pub user_ty: PatternTypeProjection<'tcx>,
+    /// Variance to use when relating the type `user_ty` to the **type of the value being
+    /// matched**. Typically, this is `Variance::Covariant`, since the value being matched must
+    /// have a type that is some subtype of the ascribed type.
+    ///
+    /// Note that this variance does not apply for any bindings within subpatterns. The type
+    /// assigned to those bindings must be exactly equal to the `user_ty` given here.
+    ///
+    /// The only place where this field is not `Covariant` is when matching constants, where
+    /// we currently use `Contravariant` -- this is because the constant type just needs to
+    /// be "comparable" to the type of the input value. So, for example:
+    ///
+    /// ```text
+    /// match x { "foo" => .. }
+    /// ```
+    ///
+    /// requires that `&'static str <: T_x`, where `T_x` is the type of `x`. Really, we should
+    /// probably be checking for a `PartialEq` impl instead, but this preserves the behavior
+    /// of the old type-check for now. See #57280 for details.
+    pub variance: ty::Variance,
+    pub user_ty_span: Span,
+}
+
 #[derive(Clone, Debug)]
 pub enum PatternKind<'tcx> {
     Wild,
 
     AscribeUserType {
-        user_ty: PatternTypeProjection<'tcx>,
+        ascription: Ascription<'tcx>,
         subpattern: Pattern<'tcx>,
-        /// Variance to use when relating the type `user_ty` to the **type of the value being
-        /// matched**. Typically, this is `Variance::Covariant`, since the value being matched must
-        /// have a type that is some subtype of the ascribed type.
-        ///
-        /// Note that this variance does not apply for any bindings within subpatterns. The type
-        /// assigned to those bindings must be exactly equal to the `user_ty` given here.
-        ///
-        /// The only place where this field is not `Covariant` is when matching constants, where
-        /// we currently use `Contravariant` -- this is because the constant type just needs to
-        /// be "comparable" to the type of the input value. So, for example:
-        ///
-        /// ```text
-        /// match x { "foo" => .. }
-        /// ```
-        ///
-        /// requires that `&'static str <: T_x`, where `T_x` is the type of `x`. Really, we should
-        /// probably be checking for a `PartialEq` impl instead, but this preserves the behavior
-        /// of the old type-check for now. See #57280 for details.
-        variance: ty::Variance,
-        user_ty_span: Span,
     },
 
-    /// x, ref x, x @ P, etc
+    /// `x`, `ref x`, `x @ P`, etc.
     Binding {
         mutability: Mutability,
         name: ast::Name,
@@ -126,7 +131,8 @@ pub enum PatternKind<'tcx> {
         subpattern: Option<Pattern<'tcx>>,
     },
 
-    /// Foo(...) or Foo{...} or Foo, where `Foo` is a variant name from an adt with >1 variants
+    /// `Foo(...)` or `Foo{...}` or `Foo`, where `Foo` is a variant name from an ADT with
+    /// multiple variants.
     Variant {
         adt_def: &'tcx AdtDef,
         substs: &'tcx Substs<'tcx>,
@@ -134,12 +140,13 @@ pub enum PatternKind<'tcx> {
         subpatterns: Vec<FieldPattern<'tcx>>,
     },
 
-    /// (...), Foo(...), Foo{...}, or Foo, where `Foo` is a variant name from an adt with 1 variant
+    /// `(...)`, `Foo(...)`, `Foo{...}`, or `Foo`, where `Foo` is a variant name from an ADT with
+    /// a single variant.
     Leaf {
         subpatterns: Vec<FieldPattern<'tcx>>,
     },
 
-    /// box P, &P, &mut P, etc
+    /// `box P`, `&P`, `&mut P`, etc.
     Deref {
         subpattern: Pattern<'tcx>,
     },
@@ -150,7 +157,7 @@ pub enum PatternKind<'tcx> {
 
     Range(PatternRange<'tcx>),
 
-    /// matches against a slice, checking the length and extracting elements.
+    /// Matches against a slice, checking the length and extracting elements.
     /// irrefutable when there is a slice pattern and both `prefix` and `suffix` are empty.
     /// e.g., `&[ref xs..]`.
     Slice {
@@ -159,7 +166,7 @@ pub enum PatternKind<'tcx> {
         suffix: Vec<Pattern<'tcx>>,
     },
 
-    /// fixed match against an array, irrefutable
+    /// Fixed match against an array; irrefutable.
     Array {
         prefix: Vec<Pattern<'tcx>>,
         slice: Option<Pattern<'tcx>>,
@@ -167,7 +174,7 @@ pub enum PatternKind<'tcx> {
     },
 }
 
-#[derive(Clone, Copy, Debug, PartialEq)]
+#[derive(Copy, Clone, Debug, PartialEq)]
 pub struct PatternRange<'tcx> {
     pub lo: ty::Const<'tcx>,
     pub hi: ty::Const<'tcx>,
@@ -176,7 +183,7 @@ pub struct PatternRange<'tcx> {
 }
 
 impl<'tcx> fmt::Display for Pattern<'tcx> {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match *self.kind {
             PatternKind::Wild => write!(f, "_"),
             PatternKind::AscribeUserType { ref subpattern, .. } =>
@@ -394,8 +401,21 @@ impl<'a, 'tcx> PatternContext<'a, 'tcx> {
             )
     }
 
+    fn lower_range_expr(
+        &mut self,
+        expr: &'tcx hir::Expr,
+    ) -> (PatternKind<'tcx>, Option<Ascription<'tcx>>) {
+        match self.lower_lit(expr) {
+            PatternKind::AscribeUserType {
+                ascription: lo_ascription,
+                subpattern: Pattern { kind: box kind, .. },
+            } => (kind, Some(lo_ascription)),
+            kind => (kind, None),
+        }
+    }
+
     fn lower_pattern_unadjusted(&mut self, pat: &'tcx hir::Pat) -> Pattern<'tcx> {
-        let mut ty = self.tables.node_id_to_type(pat.hir_id);
+        let mut ty = self.tables.node_type(pat.hir_id);
 
         let kind = match pat.node {
             PatKind::Wild => PatternKind::Wild,
@@ -403,9 +423,11 @@ impl<'a, 'tcx> PatternContext<'a, 'tcx> {
             PatKind::Lit(ref value) => self.lower_lit(value),
 
             PatKind::Range(ref lo_expr, ref hi_expr, end) => {
-                match (self.lower_lit(lo_expr), self.lower_lit(hi_expr)) {
-                    (PatternKind::Constant { value: lo },
-                     PatternKind::Constant { value: hi }) => {
+                let (lo, lo_ascription) = self.lower_range_expr(lo_expr);
+                let (hi, hi_ascription) = self.lower_range_expr(hi_expr);
+
+                let mut kind = match (lo, hi) {
+                    (PatternKind::Constant { value: lo }, PatternKind::Constant { value: hi }) => {
                         use std::cmp::Ordering;
                         let cmp = compare_const_vals(
                             self.tcx,
@@ -453,9 +475,33 @@ impl<'a, 'tcx> PatternContext<'a, 'tcx> {
                                 PatternKind::Wild
                             }
                         }
+                    },
+                    ref pats => {
+                        self.tcx.sess.delay_span_bug(
+                            pat.span,
+                            &format!(
+                                "found bad range pattern `{:?}` outside of error recovery",
+                                pats,
+                            ),
+                        );
+
+                        PatternKind::Wild
+                    },
+                };
+
+                // If we are handling a range with associated constants (e.g.
+                // `Foo::<'a>::A..=Foo::B`), we need to put the ascriptions for the associated
+                // constants somewhere. Have them on the range pattern.
+                for ascription in &[lo_ascription, hi_ascription] {
+                    if let Some(ascription) = ascription {
+                        kind = PatternKind::AscribeUserType {
+                            ascription: *ascription,
+                            subpattern: Pattern { span: pat.span, ty, kind: Box::new(kind), },
+                        };
                     }
-                    _ => PatternKind::Wild
                 }
+
+                kind
             }
 
             PatKind::Path(ref qpath) => {
@@ -514,7 +560,7 @@ impl<'a, 'tcx> PatternContext<'a, 'tcx> {
             }
 
             PatKind::Binding(_, id, _, ident, ref sub) => {
-                let var_ty = self.tables.node_id_to_type(pat.hir_id);
+                let var_ty = self.tables.node_type(pat.hir_id);
                 if let ty::Error = var_ty.sty {
                     // Avoid ICE
                     return Pattern { span: pat.span, ty, kind: Box::new(PatternKind::Wild) };
@@ -731,9 +777,11 @@ impl<'a, 'tcx> PatternContext<'a, 'tcx> {
                     ty,
                     kind: Box::new(kind),
                 },
-                user_ty: PatternTypeProjection::from_user_type(user_ty),
-                user_ty_span: span,
-                variance: ty::Variance::Covariant,
+                ascription: Ascription {
+                    user_ty: PatternTypeProjection::from_user_type(user_ty),
+                    user_ty_span: span,
+                    variance: ty::Variance::Covariant,
+                },
             };
         }
 
@@ -742,13 +790,13 @@ impl<'a, 'tcx> PatternContext<'a, 'tcx> {
 
     /// Takes a HIR Path. If the path is a constant, evaluates it and feeds
     /// it to `const_to_pat`. Any other path (like enum variants without fields)
-    /// is converted to the corresponding pattern via `lower_variant_or_leaf`
+    /// is converted to the corresponding pattern via `lower_variant_or_leaf`.
     fn lower_path(&mut self,
                   qpath: &hir::QPath,
                   id: hir::HirId,
                   span: Span)
                   -> Pattern<'tcx> {
-        let ty = self.tables.node_id_to_type(id);
+        let ty = self.tables.node_type(id);
         let def = self.tables.qpath_def(qpath, id);
         let is_associated_const = match def {
             Def::AssociatedConst(_) => true,
@@ -783,11 +831,13 @@ impl<'a, 'tcx> PatternContext<'a, 'tcx> {
                                         kind: Box::new(
                                             PatternKind::AscribeUserType {
                                                 subpattern: pattern,
-                                                /// Note that use `Contravariant` here. See the
-                                                /// `variance` field documentation for details.
-                                                variance: ty::Variance::Contravariant,
-                                                user_ty,
-                                                user_ty_span: span,
+                                                ascription: Ascription {
+                                                    /// Note that use `Contravariant` here. See the
+                                                    /// `variance` field documentation for details.
+                                                    variance: ty::Variance::Contravariant,
+                                                    user_ty,
+                                                    user_ty_span: span,
+                                                },
                                             }
                                         ),
                                         ty: value.ty,
@@ -826,8 +876,8 @@ impl<'a, 'tcx> PatternContext<'a, 'tcx> {
     }
 
     /// Converts literals, paths and negation of literals to patterns.
-    /// The special case for negation exists to allow things like -128i8
-    /// which would overflow if we tried to evaluate 128i8 and then negate
+    /// The special case for negation exists to allow things like `-128_i8`
+    /// which would overflow if we tried to evaluate `128_i8` and then negate
     /// afterwards.
     fn lower_lit(&mut self, expr: &'tcx hir::Expr) -> PatternKind<'tcx> {
         match expr.node {
@@ -876,7 +926,7 @@ impl<'a, 'tcx> PatternContext<'a, 'tcx> {
 
     /// Converts an evaluated constant to a pattern (if possible).
     /// This means aggregate values (like structs and enums) are converted
-    /// to a pattern that matches the value (as if you'd compare via eq).
+    /// to a pattern that matches the value (as if you'd compared via equality).
     fn const_to_pat(
         &self,
         instance: ty::Instance<'tcx>,
@@ -1080,14 +1130,18 @@ impl<'tcx> PatternFoldable<'tcx> for PatternKind<'tcx> {
             PatternKind::Wild => PatternKind::Wild,
             PatternKind::AscribeUserType {
                 ref subpattern,
-                variance,
-                ref user_ty,
-                user_ty_span,
+                ascription: Ascription {
+                    variance,
+                    ref user_ty,
+                    user_ty_span,
+                },
             } => PatternKind::AscribeUserType {
                 subpattern: subpattern.fold_with(folder),
-                user_ty: user_ty.fold_with(folder),
-                variance,
-                user_ty_span,
+                ascription: Ascription {
+                    user_ty: user_ty.fold_with(folder),
+                    variance,
+                    user_ty_span,
+                },
             },
             PatternKind::Binding {
                 mutability,

@@ -144,7 +144,7 @@ pub mod consts {
 #[lang = "f64"]
 #[cfg(not(test))]
 impl f64 {
-    /// Returns `true` if this value is `NaN` and false otherwise.
+    /// Returns `true` if this value is `NaN`.
     ///
     /// ```
     /// use std::f64;
@@ -169,8 +169,8 @@ impl f64 {
         f64::from_bits(self.to_bits() & 0x7fff_ffff_ffff_ffff)
     }
 
-    /// Returns `true` if this value is positive infinity or negative infinity and
-    /// false otherwise.
+    /// Returns `true` if this value is positive infinity or negative infinity, and
+    /// `false` otherwise.
     ///
     /// ```
     /// use std::f64;
@@ -272,7 +272,7 @@ impl f64 {
         }
     }
 
-    /// Returns `true` if and only if `self` has a positive sign, including `+0.0`, `NaN`s with
+    /// Returns `true` if `self` has a positive sign, including `+0.0`, `NaN`s with
     /// positive sign bit and positive infinity.
     ///
     /// ```
@@ -296,7 +296,7 @@ impl f64 {
         self.is_sign_positive()
     }
 
-    /// Returns `true` if and only if `self` has a negative sign, including `-0.0`, `NaN`s with
+    /// Returns `true` if `self` has a negative sign, including `-0.0`, `NaN`s with
     /// negative sign bit and negative infinity.
     ///
     /// ```

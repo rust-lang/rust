@@ -1,3 +1,4 @@
+#![feature(repr_align_enum)]
 #![allow(dead_code)]
 
 #[repr(align(16.0))] //~ ERROR: invalid `repr(align)` attribute: not an unsuffixed integer
@@ -11,5 +12,8 @@ struct C(i32);
 
 #[repr(align(536870912))] // ok: this is the largest accepted alignment
 struct D(i32);
+
+#[repr(align(15))] //~ ERROR: invalid `repr(align)` attribute: not a power of two
+enum E { Left, Right }
 
 fn main() {}

@@ -62,38 +62,36 @@ macro_rules! __impl_stable_hash_field {
 #[macro_export]
 macro_rules! impl_stable_hash_for {
     // Enums
-    // FIXME(mark-i-m): Some of these should be `?` rather than `*`. See the git blame and change
-    // them back when `?` is supported again.
     (enum $enum_name:path {
         $( $variant:ident
            // this incorrectly allows specifying both tuple-like and struct-like fields, as in `Variant(a,b){c,d}`,
            // when it should be only one or the other
-           $( ( $($field:ident $(-> $delegate:tt)*),* ) )*
-           $( { $($named_field:ident $(-> $named_delegate:tt)*),* } )*
-        ),* $(,)*
+           $( ( $($field:ident $(-> $delegate:tt)?),* ) )?
+           $( { $($named_field:ident $(-> $named_delegate:tt)?),* } )?
+        ),* $(,)?
     }) => {
         impl_stable_hash_for!(
             impl<> for enum $enum_name [ $enum_name ] { $( $variant
-                $( ( $($field $(-> $delegate)*),* ) )*
-                $( { $($named_field $(-> $named_delegate)*),* } )*
+                $( ( $($field $(-> $delegate)?),* ) )?
+                $( { $($named_field $(-> $named_delegate)?),* } )?
             ),* }
         );
     };
     // We want to use the enum name both in the `impl ... for $enum_name` as well as for
     // importing all the variants. Unfortunately it seems we have to take the name
     // twice for this purpose
-    (impl<$($lt:lifetime $(: $lt_bound:lifetime)* ),* $(,)* $($T:ident),* $(,)*>
+    (impl<$($lt:lifetime $(: $lt_bound:lifetime)? ),* $(,)? $($T:ident),* $(,)?>
         for enum $enum_name:path
         [ $enum_path:path ]
     {
         $( $variant:ident
            // this incorrectly allows specifying both tuple-like and struct-like fields, as in `Variant(a,b){c,d}`,
            // when it should be only one or the other
-           $( ( $($field:ident $(-> $delegate:tt)*),* ) )*
-           $( { $($named_field:ident $(-> $named_delegate:tt)*),* } )*
-        ),* $(,)*
+           $( ( $($field:ident $(-> $delegate:tt)?),* ) )?
+           $( { $($named_field:ident $(-> $named_delegate:tt)?),* } )?
+        ),* $(,)?
     }) => {
-        impl<'a, $($lt $(: $lt_bound)*,)* $($T,)*>
+        impl<'a, $($lt $(: $lt_bound)?,)* $($T,)*>
             ::rustc_data_structures::stable_hasher::HashStable<$crate::ich::StableHashingContext<'a>>
             for $enum_name
             where $($T: ::rustc_data_structures::stable_hasher::HashStable<$crate::ich::StableHashingContext<'a>>),*
@@ -107,9 +105,9 @@ macro_rules! impl_stable_hash_for {
 
                 match *self {
                     $(
-                        $variant $( ( $(ref $field),* ) )* $( { $(ref $named_field),* } )* => {
-                            $($( __impl_stable_hash_field!($field, __ctx, __hasher $(, $delegate)*) );*)*
-                            $($( __impl_stable_hash_field!($named_field, __ctx, __hasher $(, $named_delegate)*) );*)*
+                        $variant $( ( $(ref $field),* ) )? $( { $(ref $named_field),* } )? => {
+                            $($( __impl_stable_hash_field!($field, __ctx, __hasher $(, $delegate)?) );*)?
+                            $($( __impl_stable_hash_field!($named_field, __ctx, __hasher $(, $named_delegate)?) );*)?
                         }
                     )*
                 }
@@ -117,16 +115,15 @@ macro_rules! impl_stable_hash_for {
         }
     };
     // Structs
-    // FIXME(mark-i-m): same here.
-    (struct $struct_name:path { $($field:ident $(-> $delegate:tt)*),*  $(,)* }) => {
+    (struct $struct_name:path { $($field:ident $(-> $delegate:tt)?),* $(,)? }) => {
         impl_stable_hash_for!(
-            impl<'tcx> for struct $struct_name { $($field $(-> $delegate)*),* }
+            impl<'tcx> for struct $struct_name { $($field $(-> $delegate)?),* }
         );
     };
-    (impl<$($lt:lifetime $(: $lt_bound:lifetime)* ),* $(,)* $($T:ident),* $(,)*> for struct $struct_name:path {
-        $($field:ident $(-> $delegate:tt)*),* $(,)*
+    (impl<$($lt:lifetime $(: $lt_bound:lifetime)? ),* $(,)? $($T:ident),* $(,)?> for struct $struct_name:path {
+        $($field:ident $(-> $delegate:tt)?),* $(,)?
     }) => {
-        impl<'a, $($lt $(: $lt_bound)*,)* $($T,)*>
+        impl<'a, $($lt $(: $lt_bound)?,)* $($T,)*>
             ::rustc_data_structures::stable_hasher::HashStable<$crate::ich::StableHashingContext<'a>> for $struct_name
             where $($T: ::rustc_data_structures::stable_hasher::HashStable<$crate::ich::StableHashingContext<'a>>),*
         {
@@ -138,21 +135,20 @@ macro_rules! impl_stable_hash_for {
                     $(ref $field),*
                 } = *self;
 
-                $( __impl_stable_hash_field!($field, __ctx, __hasher $(, $delegate)*) );*
+                $( __impl_stable_hash_field!($field, __ctx, __hasher $(, $delegate)?) );*
             }
         }
     };
     // Tuple structs
-    // We cannot use normale parentheses here, the parser won't allow it
-    // FIXME(mark-i-m): same here.
-    (tuple_struct $struct_name:path { $($field:ident $(-> $delegate:tt)*),*  $(,)* }) => {
+    // We cannot use normal parentheses here, the parser won't allow it
+    (tuple_struct $struct_name:path { $($field:ident $(-> $delegate:tt)?),*  $(,)? }) => {
         impl_stable_hash_for!(
-            impl<'tcx> for tuple_struct $struct_name { $($field $(-> $delegate)*),* }
+            impl<'tcx> for tuple_struct $struct_name { $($field $(-> $delegate)?),* }
         );
     };
-    (impl<$($lt:lifetime $(: $lt_bound:lifetime)* ),* $(,)* $($T:ident),* $(,)*>
-     for tuple_struct $struct_name:path { $($field:ident $(-> $delegate:tt)*),*  $(,)* }) => {
-        impl<'a, $($lt $(: $lt_bound)*,)* $($T,)*>
+    (impl<$($lt:lifetime $(: $lt_bound:lifetime)? ),* $(,)? $($T:ident),* $(,)?>
+     for tuple_struct $struct_name:path { $($field:ident $(-> $delegate:tt)?),*  $(,)? }) => {
+        impl<'a, $($lt $(: $lt_bound)?,)* $($T,)*>
             ::rustc_data_structures::stable_hasher::HashStable<$crate::ich::StableHashingContext<'a>> for $struct_name
             where $($T: ::rustc_data_structures::stable_hasher::HashStable<$crate::ich::StableHashingContext<'a>>),*
         {
@@ -164,7 +160,7 @@ macro_rules! impl_stable_hash_for {
                     $(ref $field),*
                 ) = *self;
 
-                $( __impl_stable_hash_field!($field, __ctx, __hasher $(, $delegate)*) );*
+                $( __impl_stable_hash_field!($field, __ctx, __hasher $(, $delegate)?) );*
             }
         }
     };
