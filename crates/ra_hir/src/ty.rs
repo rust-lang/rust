@@ -1381,12 +1381,12 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
             Expr::MethodCall { receiver, args, method_name, generic_args } => {
                 let receiver_ty = self.infer_expr(*receiver, &Expectation::none());
                 let resolved = receiver_ty.clone().lookup_method(self.db, method_name);
-                let (method_ty, def_generics) = match resolved {
-                    Some(func) => {
+                let (derefed_receiver_ty, method_ty, def_generics) = match resolved {
+                    Some((ty, func)) => {
                         self.write_method_resolution(tgt_expr, func);
-                        (self.db.type_for_def(func.into()), Some(func.generic_params(self.db)))
+                        (ty, self.db.type_for_def(func.into()), Some(func.generic_params(self.db)))
                     }
-                    None => (Ty::Unknown, None),
+                    None => (Ty::Unknown, receiver_ty, None),
                 };
                 // handle provided type arguments
                 let method_ty = if let Some(generic_args) = generic_args {
@@ -1429,9 +1429,13 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
                     }
                     _ => (Ty::Unknown, Vec::new(), Ty::Unknown),
                 };
-                // TODO we would have to apply the autoderef/autoref steps here
-                // to get the correct receiver type to unify...
-                self.unify(&expected_receiver_ty, &receiver_ty);
+                // Apply autoref so the below unification works correctly
+                let actual_receiver_ty = match expected_receiver_ty {
+                    Ty::Ref(_, mutability) => Ty::Ref(Arc::new(derefed_receiver_ty), mutability),
+                    _ => derefed_receiver_ty,
+                };
+                self.unify(&expected_receiver_ty, &actual_receiver_ty);
+
                 let param_iter = param_tys.into_iter().chain(repeat(Ty::Unknown));
                 for (arg, param) in args.iter().zip(param_iter) {
                     self.infer_expr(*arg, &Expectation::has_type(param));

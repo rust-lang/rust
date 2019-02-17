@@ -63,7 +63,7 @@ fn complete_fields(acc: &mut Completions, ctx: &CompletionContext, receiver: Ty)
 }
 
 fn complete_methods(acc: &mut Completions, ctx: &CompletionContext, receiver: Ty) {
-    receiver.iterate_methods(ctx.db, |func| {
+    receiver.iterate_methods(ctx.db, |_ty, func| {
         let sig = func.signature(ctx.db);
         if sig.has_self_param() {
             CompletionItem::new(
