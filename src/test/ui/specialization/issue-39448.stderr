@@ -1,0 +1,12 @@
+error[E0275]: overflow evaluating the requirement `T: FromA<U>`
+  --> $DIR/issue-39448.rs:45:13
+   |
+LL |     x.foo(y.to()).to() //~ ERROR overflow evaluating the requirement
+   |             ^^
+   |
+   = note: required because of the requirements on the impl of `FromA<U>` for `T`
+   = note: required because of the requirements on the impl of `ToA<T>` for `U`
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0275`.
