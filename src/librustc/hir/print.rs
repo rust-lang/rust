@@ -1007,8 +1007,8 @@ impl<'a> State<'a> {
                 }
                 self.end()?
             }
-            hir::StmtKind::Item(ref item) => {
-                self.ann.nested(self, Nested::Item(**item))?
+            hir::StmtKind::Item(item) => {
+                self.ann.nested(self, Nested::Item(item))?
             }
             hir::StmtKind::Expr(ref expr) => {
                 self.space_if_not_bol()?;
