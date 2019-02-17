@@ -1716,6 +1716,7 @@ impl ToOwned for LifetimeParam {
 }
 
 
+impl ast::AttrsOwner for LifetimeParam {}
 impl LifetimeParam {
     pub fn lifetime(&self) -> Option<&Lifetime> {
         super::child_opt(self)
@@ -4076,6 +4077,7 @@ impl ToOwned for TypeParam {
 
 
 impl ast::NameOwner for TypeParam {}
+impl ast::AttrsOwner for TypeParam {}
 impl TypeParam {}
 
 // TypeParamList
