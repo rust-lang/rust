@@ -75,7 +75,7 @@ impl BatchDatabase {
                         let source_root = SourceRoot { files: file_map };
                         db.set_source_root(source_root_id, Arc::new(source_root));
                         roots_loaded.insert(source_root_id);
-                        if roots_loaded.len() == vfs.num_roots() {
+                        if roots_loaded.len() == vfs.n_roots() {
                             done = true;
                         }
                     }
@@ -137,14 +137,14 @@ mod tests {
             path = path.parent().unwrap().to_owned();
         }
         let (db, roots) = BatchDatabase::load_cargo(path).unwrap();
-        let mut num_crates = 0;
+        let mut n_crates = 0;
         for root in roots {
             for _krate in Crate::source_root_crates(&db, root) {
-                num_crates += 1;
+                n_crates += 1;
             }
         }
 
         // RA has quite a few crates, but the exact count doesn't matter
-        assert!(num_crates > 20);
+        assert!(n_crates > 20);
     }
 }
