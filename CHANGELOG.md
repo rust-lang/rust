@@ -785,6 +785,7 @@ All notable changes to this project will be documented in this file.
 [`double_comparisons`]: https://rust-lang.github.io/rust-clippy/master/index.html#double_comparisons
 [`double_neg`]: https://rust-lang.github.io/rust-clippy/master/index.html#double_neg
 [`double_parens`]: https://rust-lang.github.io/rust-clippy/master/index.html#double_parens
+[`drop_bounds`]: https://rust-lang.github.io/rust-clippy/master/index.html#drop_bounds
 [`drop_copy`]: https://rust-lang.github.io/rust-clippy/master/index.html#drop_copy
 [`drop_ref`]: https://rust-lang.github.io/rust-clippy/master/index.html#drop_ref
 [`duplicate_underscore_argument`]: https://rust-lang.github.io/rust-clippy/master/index.html#duplicate_underscore_argument
