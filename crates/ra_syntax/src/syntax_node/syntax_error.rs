@@ -92,6 +92,7 @@ pub enum SyntaxErrorKind {
     UnclosedString,
     InvalidSuffix,
     InvalidBlockAttr,
+    InvalidMatchInnerAttr,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -135,6 +136,9 @@ impl fmt::Display for SyntaxErrorKind {
             InvalidSuffix => write!(f, "Invalid literal suffix"),
             InvalidBlockAttr => {
                 write!(f, "A block in this position cannot accept inner attributes")
+            }
+            InvalidMatchInnerAttr => {
+                write!(f, "Inner attributes are only allowed directly after the opening brace of the match expression")
             }
             ParseError(msg) => write!(f, "{}", msg.0),
         }

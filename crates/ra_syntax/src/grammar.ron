@@ -413,13 +413,15 @@ Grammar(
         ),
         "MatchArmList": (
             collections: [ ["arms", "MatchArm"] ],
+            traits: [ "AttrsOwner" ]
         ),
         "MatchArm": (
             options: [
                 [ "guard", "MatchGuard" ],
                 "Expr",
             ],
-            collections: [ [ "pats", "Pat" ] ]
+            collections: [ [ "pats", "Pat" ] ],
+            traits: [ "AttrsOwner" ]
         ),
         "MatchGuard": (options: ["Expr"]),
         "StructLit": (options: ["Path", "NamedFieldList", ["spread", "Expr"]]),

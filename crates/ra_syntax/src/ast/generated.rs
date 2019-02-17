@@ -1946,6 +1946,7 @@ impl ToOwned for MatchArm {
 }
 
 
+impl ast::AttrsOwner for MatchArm {}
 impl MatchArm {
     pub fn pats(&self) -> impl Iterator<Item = &Pat> {
         super::children(self)
@@ -1986,6 +1987,7 @@ impl ToOwned for MatchArmList {
 }
 
 
+impl ast::AttrsOwner for MatchArmList {}
 impl MatchArmList {
     pub fn arms(&self) -> impl Iterator<Item = &MatchArm> {
         super::children(self)

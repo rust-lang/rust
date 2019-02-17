@@ -313,11 +313,39 @@ pub(crate) fn match_arm_list(p: &mut Parser) {
     assert!(p.at(L_CURLY));
     let m = p.start();
     p.eat(L_CURLY);
+
+    // test match_arms_inner_attribute
+    // fn foo() {
+    //     match () {
+    //         #![doc("Inner attribute")]
+    //         #![doc("Can be")]
+    //         #![doc("Stacked")]
+    //         _ => (),
+    //     }
+    // }
+    attributes::inner_attributes(p);
+
     while !p.at(EOF) && !p.at(R_CURLY) {
         if p.at(L_CURLY) {
             error_block(p, "expected match arm");
             continue;
         }
+
+        // test match_arms_outer_attributes
+        // fn foo() {
+        //     match () {
+        //         #[cfg(feature = "some")]
+        //         _ => (),
+        //         #[cfg(feature = "other")]
+        //         _ => (),
+        //         #[cfg(feature = "many")]
+        //         #[cfg(feature = "attributes")]
+        //         #[cfg(feature = "before")]
+        //         _ => (),
+        //     }
+        // }
+        attributes::outer_attributes(p);
+
         // test match_arms_commas
         // fn foo() {
         //     match () {
