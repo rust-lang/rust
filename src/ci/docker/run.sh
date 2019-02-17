@@ -20,9 +20,9 @@ travis_time_start
 if [ -f "$docker_dir/$image/Dockerfile" ]; then
     if [ "$CI" != "" ]; then
       hash_key=/tmp/.docker-hash-key.txt
-      find $docker_dir/$image $docker_dir/scripts -type f | \
-        sort | \
-        xargs cat >> $hash_key
+      rm -f "${hash_key}"
+      echo $image >> $hash_key
+      find $docker_dir -type f | sort | xargs cat >> $hash_key
       docker --version >> $hash_key
       cksum=$(sha512sum $hash_key | \
         awk '{print $1}')
