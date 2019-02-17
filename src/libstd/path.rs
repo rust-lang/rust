@@ -1137,12 +1137,38 @@ impl PathBuf {
     ///
     /// ```
     /// use std::path::PathBuf;
-    ///
+    /// 
     /// let path = PathBuf::new();
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn new() -> PathBuf {
         PathBuf { inner: OsString::new() }
+    }
+
+    /// Creates a new `PathBuf` with a given capacity used to create the 
+    /// internal [`OsString`]. See [`with_capacity`] defined on [`OsString`].
+    ///
+    /// # Examples
+    /// 
+    /// ```
+    /// use std::path::PathBuf;
+    /// 
+    /// let path = PathBuf::with_capacity(10);
+    /// let capacity = path.capacity();
+    /// 
+    /// // This push is done without reallocating
+    /// path.push(r"C:\");
+    ///
+    /// assert_eq!(capacity, path.capacity());
+    /// ```
+    /// 
+    /// [`with_capacity`]: ../ffi/struct.OsString.html#method.with_capacity
+    /// [`OsString`]: ../ffi/struct.OsString.html
+    #[stable(feature = "path_buf_os_string_methods", since = "1.33.0")]
+    pub fn with_capacity(capacity: usize) -> PathBuf {
+        PathBuf {
+            inner: OsString::with_capacity(capacity)
+        }
     }
 
     /// Coerces to a [`Path`] slice.
@@ -1372,6 +1398,60 @@ impl PathBuf {
     pub fn into_boxed_path(self) -> Box<Path> {
         let rw = Box::into_raw(self.inner.into_boxed_os_str()) as *mut Path;
         unsafe { Box::from_raw(rw) }
+    }
+
+    /// Invokes [`capacity`] on the underlying instance of [`OsString`].
+    ///
+    /// [`capacity`]: ../ffi/struct.OsString.html#method.capacity
+    /// [`OsString`]: ../ffi/struct.OsString.html
+    #[stable(feature = "path_buf_os_string_methods", since = "1.33.0")]
+    pub fn capacity(self) -> usize {
+        self.inner.capacity()
+    }
+
+    /// Invokes [`clear`] on the underlying instance of [`OsString`].
+    ///
+    /// [`clear`]: ../ffi/struct.OsString.html#method.clear
+    /// [`OsString`]: ../ffi/struct.OsString.html
+    #[stable(feature = "path_buf_os_string_methods", since = "1.33.0")]
+    pub fn clear(mut self) {
+        self.inner.clear()
+    }
+
+    /// Invokes [`reserve`] on the underlying instance of [`OsString`].
+    ///
+    /// [`reserve`]: ../ffi/struct.OsString.html#method.reserve
+    /// [`OsString`]: ../ffi/struct.OsString.html
+    #[stable(feature = "path_buf_os_string_methods", since = "1.33.0")]
+    pub fn reserve(mut self, additional: usize) {
+        self.inner.reserve(additional)
+    }
+
+    /// Invokes [`reserve_exact`] on the underlying instance of [`OsString`].
+    ///
+    /// [`reserve_exact`]: ../ffi/struct.OsString.html#method.reserve_exact
+    /// [`OsString`]: ../ffi/struct.OsString.html
+    #[stable(feature = "path_buf_os_string_methods", since = "1.33.0")]
+    pub fn reserve_exact(mut self, additional: usize) {
+        self.inner.reserve_exact(additional)
+    }
+
+    /// Invokes [`shrink_to_fit`] on the underlying instance of [`OsString`].
+    ///
+    /// [`shrink_to_fit`]: ../ffi/struct.OsString.html#method.shrink_to_fit
+    /// [`OsString`]: ../ffi/struct.OsString.html
+    #[stable(feature = "path_buf_os_string_methods", since = "1.33.0")]
+    pub fn shrink_to_fit(mut self) {
+        self.inner.shrink_to_fit()
+    }
+
+    /// Invokes [`shrink_to`] on the underlying instance of [`OsString`].
+    ///
+    /// [`shrink_to`]: ../ffi/struct.OsString.html#method.shrink_to
+    /// [`OsString`]: ../ffi/struct.OsString.html
+    #[stable(feature = "path_buf_os_string_methods", since = "1.33.0")]
+    pub fn shrink_to(mut self, min_capacity: usize) {
+        self.inner.shrink_to(min_capacity)
     }
 }
 
