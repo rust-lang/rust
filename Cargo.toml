@@ -56,6 +56,3 @@ rustc_tests = []
 [dev-dependencies]
 compiletest_rs = { version = "0.3.17", features = ["tmp"] }
 colored = "1.6"
-
-[profile.release]
-debug = true
