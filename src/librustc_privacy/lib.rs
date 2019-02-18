@@ -21,7 +21,7 @@ use rustc::ty::{self, TyCtxt, Ty, TraitRef, TypeFoldable, GenericParamDefKind};
 use rustc::ty::fold::TypeVisitor;
 use rustc::ty::query::Providers;
 use rustc::ty::subst::Substs;
-use rustc::util::nodemap::NodeSet;
+use rustc::util::nodemap::HirIdSet;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_data_structures::sync::Lrc;
 use syntax::ast::{self, DUMMY_NODE_ID, Ident};
@@ -1152,7 +1152,7 @@ struct ObsoleteVisiblePrivateTypesVisitor<'a, 'tcx: 'a> {
     access_levels: &'a AccessLevels,
     in_variant: bool,
     // Set of errors produced by this obsolete visitor.
-    old_error_set: NodeSet,
+    old_error_set: HirIdSet,
 }
 
 struct ObsoleteCheckTypeForPrivatenessVisitor<'a, 'b: 'a, 'tcx: 'b> {
@@ -1196,7 +1196,7 @@ impl<'a, 'tcx> ObsoleteVisiblePrivateTypesVisitor<'a, 'tcx> {
     fn check_generic_bound(&mut self, bound: &hir::GenericBound) {
         if let hir::GenericBound::Trait(ref trait_ref, _) = *bound {
             if self.path_is_private_type(&trait_ref.trait_ref.path) {
-                self.old_error_set.insert(trait_ref.trait_ref.ref_id);
+                self.old_error_set.insert(trait_ref.trait_ref.hir_ref_id);
             }
         }
     }
@@ -1452,7 +1452,7 @@ impl<'a, 'tcx> Visitor<'tcx> for ObsoleteVisiblePrivateTypesVisitor<'a, 'tcx> {
     fn visit_ty(&mut self, t: &'tcx hir::Ty) {
         if let hir::TyKind::Path(hir::QPath::Resolved(_, ref path)) = t.node {
             if self.path_is_private_type(path) {
-                self.old_error_set.insert(t.id);
+                self.old_error_set.insert(t.hir_id);
             }
         }
         intravisit::walk_ty(self, t)
@@ -1596,7 +1596,7 @@ impl<'a, 'tcx> DefIdVisitor<'a, 'tcx> for SearchInterfaceForPrivateItemsVisitor<
 struct PrivateItemsInPublicInterfacesVisitor<'a, 'tcx: 'a> {
     tcx: TyCtxt<'a, 'tcx, 'tcx>,
     has_pub_restricted: bool,
-    old_error_set: &'a NodeSet,
+    old_error_set: &'a HirIdSet,
     private_crates: FxHashSet<CrateNum>
 }
 
@@ -1608,7 +1608,7 @@ impl<'a, 'tcx> PrivateItemsInPublicInterfacesVisitor<'a, 'tcx> {
         // Slow path taken only if there any errors in the crate.
         for &id in self.old_error_set {
             // Walk up the nodes until we find `item_id` (or we hit a root).
-            let mut id = id;
+            let mut id = self.tcx.hir().hir_to_node_id(id);
             loop {
                 if id == item_id {
                     has_old_errors = true;
