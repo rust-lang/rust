@@ -11,11 +11,7 @@ rustc-hash = "1.0"
 crossbeam-channel = "0.3.5"
 log = "0.4.6"
 notify = "4.0.9"
-drop_bomb = "0.1.0"
 parking_lot = "0.7.0"
-
-thread_worker = { path = "../thread_worker" }
-ra_arena = { path = "../ra_arena" }
 
 [dev-dependencies]
 tempfile = "3"
