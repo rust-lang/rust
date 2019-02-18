@@ -6,13 +6,15 @@ use crate::utils::{
     snippet_with_applicability, span_lint_and_sugg, span_lint_and_then, span_note_and_lint, walk_ptrs_ty,
 };
 use if_chain::if_chain;
+use rustc::hir::def::CtorKind;
 use rustc::hir::*;
 use rustc::lint::{in_external_macro, LateContext, LateLintPass, LintArray, LintContext, LintPass};
-use rustc::ty::{self, Ty};
+use rustc::ty::{self, Ty, TyKind};
 use rustc::{declare_tool_lint, lint_array};
 use rustc_errors::Applicability;
 use std::cmp::Ordering;
 use std::collections::Bound;
+use std::ops::Deref;
 use syntax::ast::LitKind;
 use syntax::source_map::Span;
 
@@ -191,7 +193,8 @@ declare_clippy_lint! {
 ///
 /// **Why is this bad?** New enum variants added by library updates can be missed.
 ///
-/// **Known problems:** Nested wildcards a la `Foo(_)` are currently not detected.
+/// **Known problems:** Suggested replacements may be incorrect if guards exhaustively cover some
+/// variants, and also may not use correct path to enum if it's not present in the current scope.
 ///
 /// **Example:**
 /// ```rust
@@ -464,19 +467,89 @@ fn check_wild_err_arm(cx: &LateContext<'_, '_>, ex: &Expr, arms: &[Arm]) {
 }
 
 fn check_wild_enum_match(cx: &LateContext<'_, '_>, ex: &Expr, arms: &[Arm]) {
-    if cx.tables.expr_ty(ex).is_enum() {
-        for arm in arms {
-            if is_wild(&arm.pats[0]) {
-                span_note_and_lint(
-                    cx,
-                    WILDCARD_ENUM_MATCH_ARM,
-                    arm.pats[0].span,
-                    "wildcard match will miss any future added variants.",
-                    arm.pats[0].span,
-                    "to resolve, match each variant explicitly",
-                );
+    let ty = cx.tables.expr_ty(ex);
+    if !ty.is_enum() {
+        // If there isn't a nice closed set of possible values that can be conveniently enumerated,
+        // don't complain about not enumerating the mall.
+        return;
+    }
+
+    // First pass - check for violation, but don't do much book-keeping because this is hopefully
+    // the uncommon case, and the book-keeping is slightly expensive.
+    let mut wildcard_span = None;
+    let mut wildcard_ident = None;
+    for arm in arms {
+        for pat in &arm.pats {
+            if let PatKind::Wild = pat.node {
+                wildcard_span = Some(pat.span);
+            } else if let PatKind::Binding(_, _, _, ident, None) = pat.node {
+                wildcard_span = Some(pat.span);
+                wildcard_ident = Some(ident);
             }
         }
+    }
+
+    if let Some(wildcard_span) = wildcard_span {
+        // Accumulate the variants which should be put in place of the wildcard because they're not
+        // already covered.
+
+        let mut missing_variants = vec![];
+        if let TyKind::Adt(def, _) = ty.sty {
+            for variant in &def.variants {
+                missing_variants.push(variant);
+            }
+        }
+
+        for arm in arms {
+            if arm.guard.is_some() {
+                // Guards mean that this case probably isn't exhaustively covered. Technically
+                // this is incorrect, as we should really check whether each variant is exhaustively
+                // covered by the set of guards that cover it, but that's really hard to do.
+                continue;
+            }
+            for pat in &arm.pats {
+                if let PatKind::Path(ref path) = pat.deref().node {
+                    if let QPath::Resolved(_, p) = path {
+                        missing_variants.retain(|e| e.did != p.def.def_id());
+                    }
+                } else if let PatKind::TupleStruct(ref path, ..) = pat.deref().node {
+                    if let QPath::Resolved(_, p) = path {
+                        missing_variants.retain(|e| e.did != p.def.def_id());
+                    }
+                }
+            }
+        }
+
+        let suggestion: Vec<String> = missing_variants
+            .iter()
+            .map(|v| {
+                let suffix = match v.ctor_kind {
+                    CtorKind::Fn => "(..)",
+                    CtorKind::Const | CtorKind::Fictive => "",
+                };
+                let ident_str = if let Some(ident) = wildcard_ident {
+                    format!("{} @ ", ident.name)
+                } else {
+                    String::new()
+                };
+                // This path assumes that the enum type is imported into scope.
+                format!("{}{}{}", ident_str, cx.tcx.item_path_str(v.did), suffix)
+            })
+            .collect();
+
+        if suggestion.is_empty() {
+            return;
+        }
+
+        span_lint_and_sugg(
+            cx,
+            WILDCARD_ENUM_MATCH_ARM,
+            wildcard_span,
+            "wildcard match will miss any future added variants.",
+            "try this",
+            suggestion.join(" | "),
+            Applicability::MachineApplicable,
+        )
     }
 }
 
