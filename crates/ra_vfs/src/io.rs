@@ -9,7 +9,7 @@ use relative_path::RelativePathBuf;
 use walkdir::WalkDir;
 use notify::{DebouncedEvent, RecommendedWatcher, RecursiveMode, Watcher as _Watcher};
 
-use crate::{Roots, VfsRoot};
+use crate::{Roots, VfsRoot, VfsTask};
 
 pub(crate) enum Task {
     AddRoot { root: VfsRoot },
@@ -18,7 +18,7 @@ pub(crate) enum Task {
 /// `TaskResult` transfers files read on the IO thread to the VFS on the main
 /// thread.
 #[derive(Debug)]
-pub enum TaskResult {
+pub(crate) enum TaskResult {
     /// Emitted when we've recursively scanned a source root during the initial
     /// load.
     BulkLoadRoot { root: VfsRoot, files: Vec<(RelativePathBuf, String)> },
@@ -46,7 +46,7 @@ enum ChangeKind {
 
 const WATCHER_DELAY: Duration = Duration::from_millis(250);
 
-pub(crate) type Worker = thread_worker::Worker<Task, TaskResult>;
+pub(crate) type Worker = thread_worker::Worker<Task, VfsTask>;
 pub(crate) fn start(roots: Arc<Roots>) -> Worker {
     // This is a pretty elaborate setup of threads & channels! It is
     // explained by the following concerns:
@@ -122,7 +122,7 @@ pub(crate) fn start(roots: Arc<Roots>) -> Worker {
 
 fn watch_root(
     watcher: Option<&mut RecommendedWatcher>,
-    sender: &Sender<TaskResult>,
+    sender: &Sender<VfsTask>,
     roots: &Roots,
     root: VfsRoot,
 ) {
@@ -136,7 +136,8 @@ fn watch_root(
             Some((path, text))
         })
         .collect();
-    sender.send(TaskResult::BulkLoadRoot { root, files }).unwrap();
+    let res = TaskResult::BulkLoadRoot { root, files };
+    sender.send(VfsTask(res)).unwrap();
     log::debug!("... loaded {}", root_path.display());
 }
 
@@ -173,7 +174,7 @@ fn convert_notify_event(event: DebouncedEvent, sender: &Sender<(PathBuf, ChangeK
 
 fn handle_change(
     watcher: Option<&mut RecommendedWatcher>,
-    sender: &Sender<TaskResult>,
+    sender: &Sender<VfsTask>,
     roots: &Roots,
     path: PathBuf,
     kind: ChangeKind,
@@ -195,13 +196,15 @@ fn handle_change(
                 .try_for_each(|rel_path| {
                     let abs_path = rel_path.to_path(&roots.path(root));
                     let text = read_to_string(&abs_path);
-                    sender.send(TaskResult::SingleFile { root, path: rel_path, text })
+                    let res = TaskResult::SingleFile { root, path: rel_path, text };
+                    sender.send(VfsTask(res))
                 })
                 .unwrap()
         }
         ChangeKind::Write | ChangeKind::Remove => {
             let text = read_to_string(&path);
-            sender.send(TaskResult::SingleFile { root, path: rel_path, text }).unwrap();
+            let res = TaskResult::SingleFile { root, path: rel_path, text };
+            sender.send(VfsTask(res)).unwrap();
         }
     }
 }

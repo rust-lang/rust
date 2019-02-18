@@ -33,10 +33,20 @@ use crate::{
     roots::Roots,
 };
 
-pub use crate::{
-    io::TaskResult as VfsTask,
-    roots::VfsRoot,
-};
+pub use crate::roots::VfsRoot;
+
+/// Opaque wrapper around file-system event.
+///
+/// Calling code is expected to just pass `VfsTask` to `handle_task` method. It
+/// is exposed as a public API so that the caller can plug vfs events into the
+/// main event loop and be notified when changes happen.
+pub struct VfsTask(TaskResult);
+
+impl fmt::Debug for VfsTask {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        f.write_str("VfsTask { ... }")
+    }
+}
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct VfsFile(pub u32);
@@ -159,12 +169,12 @@ impl Vfs {
         mem::replace(&mut self.pending_changes, Vec::new())
     }
 
-    pub fn task_receiver(&self) -> &Receiver<io::TaskResult> {
+    pub fn task_receiver(&self) -> &Receiver<VfsTask> {
         self.worker.receiver()
     }
 
-    pub fn handle_task(&mut self, task: io::TaskResult) {
-        match task {
+    pub fn handle_task(&mut self, task: VfsTask) {
+        match task.0 {
             TaskResult::BulkLoadRoot { root, files } => {
                 let mut cur_files = Vec::new();
                 // While we were scanning the root in the background, a file might have
