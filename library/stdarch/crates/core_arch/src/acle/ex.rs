@@ -3,8 +3,10 @@
 /// Removes the exclusive lock created by LDREX
 // Supported: v6, v6K, v7-M, v7-A, v7-R
 // Not supported: v5, v6-M
+// NOTE: there's no dedicated CLREX instruction in v6 (<v6k); to clear the exclusive monitor users
+// have to do a dummy STREX operation
 #[cfg(any(
-    all(target_feature = "v6", not(target_feature = "mclass")), // excludes v6-M
+    all(target_feature = "v6k", not(target_feature = "mclass")), // excludes v6-M
     all(target_feature = "v7", target_feature = "mclass"), // v7-M
 ))]
 pub unsafe fn __clrex() {
