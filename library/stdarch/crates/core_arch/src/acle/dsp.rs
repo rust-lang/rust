@@ -49,3 +49,28 @@ pub unsafe fn __qadd(a: i32, b: i32) -> i32 {
 pub unsafe fn __qsub(a: i32, b: i32) -> i32 {
     arm_qsub(a, b)
 }
+
+#[cfg(test)]
+mod tests {
+    use core_arch::arm::*;
+    use std::mem;
+    use stdsimd_test::simd_test;
+
+    #[test]
+    fn qadd() {
+        unsafe {
+            assert_eq!(super::__qadd(-10, 60), 50);
+            assert_eq!(super::__qadd(::std::i32::MAX, 10), ::std::i32::MAX);
+            assert_eq!(super::__qadd(::std::i32::MIN, -10), ::std::i32::MIN);
+        }
+    }
+
+    #[test]
+    fn qsub() {
+        unsafe {
+            assert_eq!(super::__qsub(10, 60), -50);
+            assert_eq!(super::__qsub(::std::i32::MAX, -10), ::std::i32::MAX);
+            assert_eq!(super::__qsub(::std::i32::MIN, 10), ::std::i32::MIN);
+        }
+    }
+}
