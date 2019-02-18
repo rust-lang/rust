@@ -1185,14 +1185,6 @@ impl<T> MaybeUninit<T> {
         ManuallyDrop::into_inner(self.value)
     }
 
-    /// Deprecated alternative to `into_initialized`. Will never get stabilized.
-    /// Exists only to transition stdsimd to `into_initialized`.
-    #[inline(always)]
-    #[allow(unused)]
-    pub(crate) unsafe fn into_inner(self) -> T {
-        self.into_initialized()
-    }
-
     /// Gets a reference to the contained value.
     ///
     /// # Unsafety
