@@ -1,4 +1,4 @@
-use time::Duration;
+use crate::time::Duration;
 use super::abi::usercalls;
 
 #[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Debug, Hash)]

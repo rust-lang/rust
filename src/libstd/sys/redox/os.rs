@@ -2,25 +2,25 @@
 
 #![allow(unused_imports)] // lots of cfg code here
 
-use libc::{self, c_char};
+use libc::c_char;
 
-use os::unix::prelude::*;
+use crate::os::unix::prelude::*;
 
-use error::Error as StdError;
-use ffi::{CStr, CString, OsStr, OsString};
-use fmt;
-use io::{self, Read, Write};
-use iter;
-use marker::PhantomData;
-use mem;
-use memchr;
-use path::{self, PathBuf};
-use ptr;
-use slice;
-use str;
-use sys_common::mutex::Mutex;
-use sys::{cvt, cvt_libc, fd, syscall};
-use vec;
+use crate::error::Error as StdError;
+use crate::ffi::{CStr, CString, OsStr, OsString};
+use crate::fmt;
+use crate::io::{self, Read, Write};
+use crate::iter;
+use crate::marker::PhantomData;
+use crate::mem;
+use crate::memchr;
+use crate::path::{self, PathBuf};
+use crate::ptr;
+use crate::slice;
+use crate::str;
+use crate::sys_common::mutex::Mutex;
+use crate::sys::{cvt, cvt_libc, fd, syscall};
+use crate::vec;
 
 extern {
     #[link_name = "__errno_location"]
@@ -107,7 +107,7 @@ impl StdError for JoinPathsError {
 }
 
 pub fn current_exe() -> io::Result<PathBuf> {
-    use fs::File;
+    use crate::fs::File;
 
     let mut file = File::open("sys:exe")?;
 
@@ -218,13 +218,13 @@ pub fn page_size() -> usize {
 }
 
 pub fn temp_dir() -> PathBuf {
-    ::env::var_os("TMPDIR").map(PathBuf::from).unwrap_or_else(|| {
+    crate::env::var_os("TMPDIR").map(PathBuf::from).unwrap_or_else(|| {
         PathBuf::from("/tmp")
     })
 }
 
 pub fn home_dir() -> Option<PathBuf> {
-    return ::env::var_os("HOME").map(PathBuf::from);
+    return crate::env::var_os("HOME").map(PathBuf::from);
 }
 
 pub fn exit(code: i32) -> ! {

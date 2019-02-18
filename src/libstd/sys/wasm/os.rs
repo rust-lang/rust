@@ -1,10 +1,10 @@
-use error::Error as StdError;
-use ffi::{OsString, OsStr};
-use fmt;
-use io;
-use path::{self, PathBuf};
-use str;
-use sys::{unsupported, Void, ExitSysCall, GetEnvSysCall, SetEnvSysCall};
+use crate::error::Error as StdError;
+use crate::ffi::{OsString, OsStr};
+use crate::fmt;
+use crate::io;
+use crate::path::{self, PathBuf};
+use crate::str;
+use crate::sys::{unsupported, Void, ExitSysCall, GetEnvSysCall, SetEnvSysCall};
 
 pub fn errno() -> i32 {
     0

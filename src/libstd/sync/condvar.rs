@@ -1,10 +1,10 @@
-use fmt;
-use sync::atomic::{AtomicUsize, Ordering};
-use sync::{mutex, MutexGuard, PoisonError};
-use sys_common::condvar as sys;
-use sys_common::mutex as sys_mutex;
-use sys_common::poison::{self, LockResult};
-use time::{Duration, Instant};
+use crate::fmt;
+use crate::sync::atomic::{AtomicUsize, Ordering};
+use crate::sync::{mutex, MutexGuard, PoisonError};
+use crate::sys_common::condvar as sys;
+use crate::sys_common::mutex as sys_mutex;
+use crate::sys_common::poison::{self, LockResult};
+use crate::time::{Duration, Instant};
 
 /// A type indicating whether a timed wait on a condition variable returned
 /// due to a time out or not.
@@ -612,12 +612,12 @@ impl Drop for Condvar {
 #[cfg(test)]
 mod tests {
     /// #![feature(wait_until)]
-    use sync::mpsc::channel;
-    use sync::{Condvar, Mutex, Arc};
-    use sync::atomic::{AtomicBool, Ordering};
-    use thread;
-    use time::Duration;
-    use u64;
+    use crate::sync::mpsc::channel;
+    use crate::sync::{Condvar, Mutex, Arc};
+    use crate::sync::atomic::{AtomicBool, Ordering};
+    use crate::thread;
+    use crate::time::Duration;
+    use crate::u64;
 
     #[test]
     fn smoke() {

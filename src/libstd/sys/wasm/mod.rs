@@ -14,13 +14,13 @@
 //! compiling for wasm. That way it's a compile time error for something that's
 //! guaranteed to be a runtime error!
 
-use io;
-use os::raw::c_char;
-use ptr;
-use sys::os_str::Buf;
-use sys_common::{AsInner, FromInner};
-use ffi::{OsString, OsStr};
-use time::Duration;
+use crate::io;
+use crate::os::raw::c_char;
+use crate::ptr;
+use crate::sys::os_str::Buf;
+use crate::sys_common::{AsInner, FromInner};
+use crate::ffi::{OsString, OsStr};
+use crate::time::Duration;
 
 pub mod alloc;
 pub mod args;
@@ -168,7 +168,7 @@ impl ExitSysCall {
         };
         unsafe {
             syscall(SysCallIndex::Exit, &mut call_record);
-            ::intrinsics::abort();
+            crate::intrinsics::abort();
         }
     }
 }

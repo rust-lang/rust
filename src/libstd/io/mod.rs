@@ -259,12 +259,12 @@
 
 #![stable(feature = "rust1", since = "1.0.0")]
 
-use cmp;
-use fmt;
-use slice;
-use str;
-use memchr;
-use ptr;
+use crate::cmp;
+use crate::fmt;
+use crate::slice;
+use crate::str;
+use crate::memchr;
+use crate::ptr;
 
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use self::buffered::{BufReader, BufWriter, LineWriter};
@@ -295,7 +295,7 @@ mod lazy;
 mod util;
 mod stdio;
 
-const DEFAULT_BUF_SIZE: usize = ::sys_common::io::DEFAULT_BUF_SIZE;
+const DEFAULT_BUF_SIZE: usize = crate::sys_common::io::DEFAULT_BUF_SIZE;
 
 struct Guard<'a> { buf: &'a mut Vec<u8>, len: usize }
 
@@ -2025,10 +2025,9 @@ impl<B: BufRead> Iterator for Lines<B> {
 
 #[cfg(test)]
 mod tests {
-    use io::prelude::*;
-    use io;
+    use crate::io::prelude::*;
+    use crate::io;
     use super::Cursor;
-    use test;
     use super::repeat;
 
     #[test]

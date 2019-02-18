@@ -13,13 +13,13 @@
 
 #![stable(feature = "env", since = "1.0.0")]
 
-use error::Error;
-use ffi::{OsStr, OsString};
-use fmt;
-use io;
-use path::{Path, PathBuf};
-use sys;
-use sys::os as os_imp;
+use crate::error::Error;
+use crate::ffi::{OsStr, OsString};
+use crate::fmt;
+use crate::io;
+use crate::path::{Path, PathBuf};
+use crate::sys;
+use crate::sys::os as os_imp;
 
 /// Returns the current working directory as a [`PathBuf`].
 ///
@@ -800,7 +800,7 @@ impl fmt::Debug for ArgsOs {
 /// Constants associated with the current target
 #[stable(feature = "env", since = "1.0.0")]
 pub mod consts {
-    use sys::env::os;
+    use crate::sys::env::os;
 
     /// A string describing the architecture of the CPU that is currently
     /// in use.
@@ -972,7 +972,7 @@ mod arch {
 mod tests {
     use super::*;
 
-    use path::Path;
+    use crate::path::Path;
 
     #[test]
     #[cfg_attr(target_os = "emscripten", ignore)]
@@ -995,7 +995,7 @@ mod tests {
     #[test]
     #[cfg(windows)]
     fn split_paths_windows() {
-        use path::PathBuf;
+        use crate::path::PathBuf;
 
         fn check_parse(unparsed: &str, parsed: &[&str]) -> bool {
             split_paths(unparsed).collect::<Vec<_>>() ==
@@ -1017,7 +1017,7 @@ mod tests {
     #[test]
     #[cfg(unix)]
     fn split_paths_unix() {
-        use path::PathBuf;
+        use crate::path::PathBuf;
 
         fn check_parse(unparsed: &str, parsed: &[&str]) -> bool {
             split_paths(unparsed).collect::<Vec<_>>() ==
@@ -1034,7 +1034,7 @@ mod tests {
     #[test]
     #[cfg(unix)]
     fn join_paths_unix() {
-        use ffi::OsStr;
+        use crate::ffi::OsStr;
 
         fn test_eq(input: &[&str], output: &str) -> bool {
             &*join_paths(input.iter().cloned()).unwrap() ==
@@ -1052,7 +1052,7 @@ mod tests {
     #[test]
     #[cfg(windows)]
     fn join_paths_windows() {
-        use ffi::OsStr;
+        use crate::ffi::OsStr;
 
         fn test_eq(input: &[&str], output: &str) -> bool {
             &*join_paths(input.iter().cloned()).unwrap() ==

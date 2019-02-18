@@ -412,7 +412,7 @@
 #[stable(feature = "rust1", since = "1.0.0")]
 #[rustc_deprecated(reason = "moved to `std::ops::Bound`", since = "1.26.0")]
 #[doc(hidden)]
-pub use ops::Bound;
+pub use crate::ops::Bound;
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use alloc_crate::collections::{BinaryHeap, BTreeMap, BTreeSet};
 #[stable(feature = "rust1", since = "1.0.0")]

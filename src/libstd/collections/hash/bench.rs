@@ -1,8 +1,6 @@
 #![cfg(test)]
 
-extern crate test;
-
-use self::test::Bencher;
+use test::Bencher;
 
 #[bench]
 fn new_drop(b: &mut Bencher) {

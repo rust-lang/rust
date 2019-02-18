@@ -3,9 +3,9 @@
 #![stable(feature = "thread_extensions", since = "1.9.0")]
 
 #[allow(deprecated)]
-use os::unix::raw::pthread_t;
-use sys_common::{AsInner, IntoInner};
-use thread::JoinHandle;
+use crate::os::unix::raw::pthread_t;
+use crate::sys_common::{AsInner, IntoInner};
+use crate::thread::JoinHandle;
 
 #[stable(feature = "thread_extensions", since = "1.9.0")]
 #[allow(deprecated)]

@@ -1,9 +1,9 @@
-use arch::wasm32;
-use cmp;
-use mem;
-use sync::atomic::{AtomicUsize, Ordering::SeqCst};
-use sys::mutex::Mutex;
-use time::Duration;
+use crate::arch::wasm32;
+use crate::cmp;
+use crate::mem;
+use crate::sync::atomic::{AtomicUsize, Ordering::SeqCst};
+use crate::sys::mutex::Mutex;
+use crate::time::Duration;
 
 pub struct Condvar {
     cnt: AtomicUsize,

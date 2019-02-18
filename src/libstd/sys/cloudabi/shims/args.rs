@@ -1,4 +1,4 @@
-use ffi::OsString;
+use crate::ffi::OsString;
 
 pub struct Args(());
 

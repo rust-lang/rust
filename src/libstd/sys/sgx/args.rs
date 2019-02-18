@@ -1,9 +1,9 @@
-use ffi::OsString;
 use super::abi::usercalls::{alloc, raw::ByteBuffer};
-use sync::atomic::{AtomicUsize, Ordering};
-use sys::os_str::Buf;
-use sys_common::FromInner;
-use slice;
+use crate::ffi::OsString;
+use crate::sync::atomic::{AtomicUsize, Ordering};
+use crate::sys::os_str::Buf;
+use crate::sys_common::FromInner;
+use crate::slice;
 
 static ARGS: AtomicUsize = AtomicUsize::new(0);
 type ArgsStore = Vec<OsString>;

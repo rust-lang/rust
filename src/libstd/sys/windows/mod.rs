@@ -1,11 +1,11 @@
 #![allow(missing_docs, nonstandard_style)]
 
-use ptr;
-use ffi::{OsStr, OsString};
-use io::{self, ErrorKind};
-use os::windows::ffi::{OsStrExt, OsStringExt};
-use path::PathBuf;
-use time::Duration;
+use crate::ptr;
+use crate::ffi::{OsStr, OsString};
+use crate::io::{self, ErrorKind};
+use crate::os::windows::ffi::{OsStrExt, OsStringExt};
+use crate::path::PathBuf;
+use crate::time::Duration;
 
 pub use libc::strlen;
 pub use self::rand::hashmap_random_keys;
@@ -262,7 +262,7 @@ pub unsafe fn abort_internal() -> ! {
     #[cfg(any(target_arch = "x86", target_arch = "x86_64"))]
     {
         asm!("int $$0x29" :: "{ecx}"(7) ::: volatile); // 7 is FAST_FAIL_FATAL_APP_EXIT
-        ::intrinsics::unreachable();
+        crate::intrinsics::unreachable();
     }
-    ::intrinsics::abort();
+    crate::intrinsics::abort();
 }

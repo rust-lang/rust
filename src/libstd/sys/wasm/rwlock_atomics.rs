@@ -1,6 +1,6 @@
-use cell::UnsafeCell;
-use sys::mutex::Mutex;
-use sys::condvar::Condvar;
+use crate::cell::UnsafeCell;
+use crate::sys::mutex::Mutex;
+use crate::sys::condvar::Condvar;
 
 pub struct RWLock {
     lock: Mutex,

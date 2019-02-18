@@ -1,10 +1,10 @@
-use ffi::OsStr;
-use fmt;
-use io;
-use sys::fs::File;
-use sys::pipe::AnonPipe;
-use sys::{unsupported, Void};
-use sys_common::process::{CommandEnv, DefaultEnvKey};
+use crate::ffi::OsStr;
+use crate::fmt;
+use crate::io;
+use crate::sys::fs::File;
+use crate::sys::pipe::AnonPipe;
+use crate::sys::{unsupported, Void};
+use crate::sys_common::process::{CommandEnv, DefaultEnvKey};
 
 ////////////////////////////////////////////////////////////////////////////////
 // Command

@@ -1,13 +1,13 @@
-use borrow::{Borrow, Cow};
-use fmt;
-use ops;
-use cmp;
-use hash::{Hash, Hasher};
-use rc::Rc;
-use sync::Arc;
+use crate::borrow::{Borrow, Cow};
+use crate::fmt;
+use crate::ops;
+use crate::cmp;
+use crate::hash::{Hash, Hasher};
+use crate::rc::Rc;
+use crate::sync::Arc;
 
-use sys::os_str::{Buf, Slice};
-use sys_common::{AsInner, IntoInner, FromInner};
+use crate::sys::os_str::{Buf, Slice};
+use crate::sys_common::{AsInner, IntoInner, FromInner};
 
 /// A type that can represent owned, mutable platform-native strings, but is
 /// cheaply inter-convertible with Rust strings.
@@ -968,10 +968,10 @@ impl AsInner<Slice> for OsStr {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use sys_common::{AsInner, IntoInner};
+    use crate::sys_common::{AsInner, IntoInner};
 
-    use rc::Rc;
-    use sync::Arc;
+    use crate::rc::Rc;
+    use crate::sync::Arc;
 
     #[test]
     fn test_os_string_with_capacity() {

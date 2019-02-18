@@ -1,13 +1,14 @@
-use boxed::FnBox;
-use io;
-use ffi::CStr;
-use mem;
+use crate::boxed::FnBox;
+use crate::io;
+use crate::ffi::CStr;
+use crate::mem;
+use crate::ptr;
+use crate::sys::c;
+use crate::sys::handle::Handle;
+use crate::sys_common::thread::*;
+use crate::time::Duration;
+
 use libc::c_void;
-use ptr;
-use sys::c;
-use sys::handle::Handle;
-use sys_common::thread::*;
-use time::Duration;
 
 use super::to_u16s;
 

@@ -1,13 +1,13 @@
 /// The underlying OsString/OsStr implementation on Windows is a
 /// wrapper around the "WTF-8" encoding; see the `wtf8` module for more.
 
-use borrow::Cow;
-use fmt;
-use sys_common::wtf8::{Wtf8, Wtf8Buf};
-use mem;
-use rc::Rc;
-use sync::Arc;
-use sys_common::{AsInner, IntoInner, FromInner};
+use crate::borrow::Cow;
+use crate::fmt;
+use crate::sys_common::wtf8::{Wtf8, Wtf8Buf};
+use crate::mem;
+use crate::rc::Rc;
+use crate::sync::Arc;
+use crate::sys_common::{AsInner, IntoInner, FromInner};
 
 #[derive(Clone, Hash)]
 pub struct Buf {

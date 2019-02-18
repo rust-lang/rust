@@ -1,8 +1,8 @@
 #![allow(dead_code)]
 
-use alloc::{GlobalAlloc, Layout, System};
-use cmp;
-use ptr;
+use crate::alloc::{GlobalAlloc, Layout, System};
+use crate::cmp;
+use crate::ptr;
 
 // The minimum alignment guaranteed by the architecture. This value is used to
 // add fast paths for low alignment values.

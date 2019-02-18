@@ -4,11 +4,11 @@ mod printing;
 
 #[cfg(target_env = "gnu")]
 mod printing {
-    pub use sys_common::gnu::libbacktrace::{foreach_symbol_fileline, resolve_symname};
+    pub use crate::sys_common::gnu::libbacktrace::{foreach_symbol_fileline, resolve_symname};
 
     // dummy functions to mirror those present in msvc version.
-    use sys::dynamic_lib::DynamicLibrary;
-    use io;
+    use crate::sys::dynamic_lib::DynamicLibrary;
+    use crate::io;
     pub struct PrintingFnsEx {}
     pub struct PrintingFns64 {}
     pub fn load_printing_fns_ex(_: &DynamicLibrary) -> io::Result<PrintingFnsEx> {

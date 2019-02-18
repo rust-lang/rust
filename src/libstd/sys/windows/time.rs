@@ -1,9 +1,10 @@
-use cmp::Ordering;
-use fmt;
-use mem;
-use sys::c;
-use time::Duration;
-use convert::TryInto;
+use crate::cmp::Ordering;
+use crate::fmt;
+use crate::mem;
+use crate::sys::c;
+use crate::time::Duration;
+use crate::convert::TryInto;
+
 use core::hash::{Hash, Hasher};
 
 const NANOS_PER_SEC: u64 = 1_000_000_000;
@@ -172,11 +173,11 @@ fn intervals2dur(intervals: u64) -> Duration {
 
 mod perf_counter {
     use super::{NANOS_PER_SEC};
-    use sync::Once;
-    use sys_common::mul_div_u64;
-    use sys::c;
-    use sys::cvt;
-    use time::Duration;
+    use crate::sync::Once;
+    use crate::sys_common::mul_div_u64;
+    use crate::sys::c;
+    use crate::sys::cvt;
+    use crate::time::Duration;
 
     pub struct PerformanceCounterInstant {
         ts: c::LARGE_INTEGER
