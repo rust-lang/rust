@@ -1,5 +1,3 @@
-extern crate gimli;
-
 use crate::prelude::*;
 
 use std::marker::PhantomData;
@@ -11,7 +9,7 @@ use gimli::write::{
     RangeList, Result, SectionId, UnitEntryId,
     Writer, FileId, LineStringTable, LineString, Sections,
 };
-use gimli::{Encoding, Format, RunTimeEndian};
+use gimli::{Encoding, Format, RunTimeEndian, LineEncoding};
 
 use faerie::*;
 
@@ -106,10 +104,7 @@ impl<'a, 'tcx: 'a> DebugContext<'tcx> {
 
         let line_program = LineProgram::new(
             encoding,
-            1,
-            1,
-            -5,
-            14,
+            LineEncoding::default(),
             LineString::new(comp_dir.as_bytes(), encoding, &mut dwarf.line_strings),
             LineString::new(name.as_bytes(), encoding, &mut dwarf.line_strings),
             None,
@@ -160,7 +155,7 @@ impl<'a, 'tcx: 'a> DebugContext<'tcx> {
 
         let entry = self.dwarf.unit.get_mut(entry_id);
 
-        entry.set(gimli::DW_AT_decl_file, AttributeValue::FileIndex(file_id));
+        entry.set(gimli::DW_AT_decl_file, AttributeValue::FileIndex(Some(file_id)));
         entry.set(
             gimli::DW_AT_decl_line,
             AttributeValue::Udata(loc.line as u64),
