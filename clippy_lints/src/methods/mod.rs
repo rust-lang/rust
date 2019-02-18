@@ -1686,7 +1686,11 @@ fn lint_iter_skip_next(cx: &LateContext<'_, '_>, expr: &hir::Expr) {
     }
 }
 
-fn derefs_to_slice<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, expr: &'tcx hir::Expr, ty: Ty<'tcx>) -> Option<&'tcx hir::Expr> {
+fn derefs_to_slice<'a, 'tcx>(
+    cx: &LateContext<'a, 'tcx>,
+    expr: &'tcx hir::Expr,
+    ty: Ty<'tcx>,
+) -> Option<&'tcx hir::Expr> {
     fn may_slice(cx: &LateContext<'_, '_>, ty: Ty<'_>) -> bool {
         match ty.sty {
             ty::Slice(_) => true,
