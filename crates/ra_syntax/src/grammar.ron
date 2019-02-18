@@ -559,8 +559,11 @@ Grammar(
                 ["lifetime_params", "LifetimeParam" ],
             ]
         ),
-        "TypeParam": ( traits: ["NameOwner"] ),
-        "LifetimeParam": ( options: [ "Lifetime" ] ),
+        "TypeParam": ( traits: ["NameOwner", "AttrsOwner"] ),
+        "LifetimeParam": (
+            options: [ "Lifetime"],
+            traits: ["AttrsOwner"],
+        ),
         "Lifetime": ( traits: ["AstToken"] ),
         "WhereClause": (),
         "ExprStmt": (

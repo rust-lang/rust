@@ -13,10 +13,20 @@ fn type_param_list(p: &mut Parser) {
     p.bump();
 
     while !p.at(EOF) && !p.at(R_ANGLE) {
+        let m = p.start();
+
+        // test generic_lifetime_type_attribute
+        // fn foo<#[derive(Lifetime)] 'a, #[derive(Type)] T>(_: &'a T) {
+        // }
+        attributes::outer_attributes(p);
+
         match p.current() {
-            LIFETIME => lifetime_param(p),
-            IDENT => type_param(p),
-            _ => p.err_and_bump("expected type parameter"),
+            LIFETIME => lifetime_param(p, m),
+            IDENT => type_param(p, m),
+            _ => {
+                m.abandon(p);
+                p.err_and_bump("expected type parameter")
+            }
         }
         if !p.at(R_ANGLE) && !p.expect(COMMA) {
             break;
@@ -26,9 +36,8 @@ fn type_param_list(p: &mut Parser) {
     m.complete(p, TYPE_PARAM_LIST);
 }
 
-fn lifetime_param(p: &mut Parser) {
+fn lifetime_param(p: &mut Parser, m: Marker) {
     assert!(p.at(LIFETIME));
-    let m = p.start();
     p.bump();
     if p.at(COLON) {
         lifetime_bounds(p);
@@ -36,9 +45,8 @@ fn lifetime_param(p: &mut Parser) {
     m.complete(p, LIFETIME_PARAM);
 }
 
-fn type_param(p: &mut Parser) {
+fn type_param(p: &mut Parser, m: Marker) {
     assert!(p.at(IDENT));
-    let m = p.start();
     name(p);
     if p.at(COLON) {
         bounds(p);
