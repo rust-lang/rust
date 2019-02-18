@@ -50,7 +50,7 @@ const WATCHER_DELAY: Duration = Duration::from_millis(250);
 // Like thread::JoinHandle, but joins the thread on drop.
 //
 // This is useful because it guarantees the absence of run-away threads, even if
-// code panics. This is important, because we might seem panics in the test and
+// code panics. This is important, because we might see panics in the test and
 // we might be used in an IDE context, where a failed component is just
 // restarted.
 //
@@ -75,7 +75,13 @@ impl Drop for ScopedThread {
 }
 
 pub(crate) struct Worker {
-    // XXX: it's important to drop `sender` before `_thread` to avoid deadlock.
+    // XXX: field order is significant here.
+    //
+    // In Rust, fields are dropped in the declaration order, and we rely on this
+    // here. We must close sender first, so that the  `thread` (who holds the
+    // opposite side of the channel) noticed shutdown. Then, we must join the
+    // thread, but we must keep receiver alive so that the thread does not
+    // panic.
     pub(crate) sender: Sender<Task>,
     _thread: ScopedThread,
     pub(crate) receiver: Receiver<VfsTask>,
