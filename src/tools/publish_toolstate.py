@@ -171,7 +171,7 @@ if __name__ == '__main__':
 
     # assume that PR authors are also owners of the repo where the branch lives
     relevant_pr_match = re.search(
-        'Auto merge of #([0-9]+) - ([^:]+):[^,]+ r=([^\s]+)',
+        r'Auto merge of #([0-9]+) - ([^:]+):[^,]+, r=(\S+)',
         cur_commit_msg,
     )
     if relevant_pr_match:
@@ -182,10 +182,10 @@ if __name__ == '__main__':
         pr_reviewer = relevant_pr_match.group(3)
     else:
         number = '-1'
-        relevant_pr_user = '<unknown user>'
+        relevant_pr_user = 'ghost'
         relevant_pr_number = '<unknown PR>'
         relevant_pr_url = '<unknown>'
-        pr_reviewer = '<unknown reviewer>'
+        pr_reviewer = 'ghost'
 
     message = update_latest(
         cur_commit,
