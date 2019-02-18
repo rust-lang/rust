@@ -206,7 +206,7 @@ fn verify_all_signatures() {
             Some(i) => i,
             None => {
                 // Skip all these intrinsics as they're not listed in NEON
-                // descriptions online
+                // descriptions online.
                 //
                 // TODO: we still need to verify these intrinsics or find a
                 // reference for them, need to figure out where though!
@@ -290,7 +290,7 @@ fn matches(rust: &Function, arm: &Intrinsic) -> Result<(), String> {
         }
     }
 
-    // TODO: verify `target_feature`
+    // TODO: verify `target_feature`.
 
     Ok(())
 }

@@ -230,7 +230,7 @@ pub unsafe fn _blsic_u64(x: u64) -> u64 {
 /// Clears all bits below the least significant zero of `x` and sets all other
 /// bits.
 ///
-/// If the least significant bit of `x` is 0, it sets all bits.
+/// If the least significant bit of `x` is `0`, it sets all bits.
 #[inline]
 #[target_feature(enable = "tbm")]
 #[cfg_attr(test, assert_instr(t1mskc))]
@@ -242,7 +242,7 @@ pub unsafe fn _t1mskc_u32(x: u32) -> u32 {
 /// Clears all bits below the least significant zero of `x` and sets all other
 /// bits.
 ///
-/// If the least significant bit of `x` is 0, it sets all bits.
+/// If the least significant bit of `x` is `0`, it sets all bits.
 #[inline]
 #[target_feature(enable = "tbm")]
 #[cfg_attr(test, assert_instr(t1mskc))]

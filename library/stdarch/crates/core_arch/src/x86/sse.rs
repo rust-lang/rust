@@ -1126,8 +1126,8 @@ pub unsafe fn _mm_movemask_ps(a: __m128) -> i32 {
     all(test, target_arch = "x86", not(target_feature = "sse2")),
     assert_instr(shufps)
 )]
-// TODO: This function is actually not limited to floats, but that's what
-// what matches the C type most closely: (__m128, *const __m64) -> __m128
+// TODO: this function is actually not limited to floats, but that's what
+// what matches the C type most closely: `(__m128, *const __m64) -> __m128`.
 pub unsafe fn _mm_loadh_pi(a: __m128, p: *const __m64) -> __m128 {
     let q = p as *const f32x2;
     let b: f32x2 = *q;
@@ -2832,7 +2832,7 @@ mod tests {
 
     #[simd_test(enable = "sse")]
     unsafe fn test_mm_cmpnlt_ss() {
-        // TODO: This test is exactly the same as for _mm_cmpge_ss, but there
+        // TODO: this test is exactly the same as for `_mm_cmpge_ss`, but there
         // must be a difference. It may have to do with behavior in the
         // presence of NaNs (signaling or quiet). If so, we should add tests
         // for those.
@@ -2861,7 +2861,7 @@ mod tests {
 
     #[simd_test(enable = "sse")]
     unsafe fn test_mm_cmpnle_ss() {
-        // TODO: This test is exactly the same as for _mm_cmpgt_ss, but there
+        // TODO: this test is exactly the same as for `_mm_cmpgt_ss`, but there
         // must be a difference. It may have to do with behavior in the
         // presence
         // of NaNs (signaling or quiet). If so, we should add tests for those.
@@ -2890,7 +2890,7 @@ mod tests {
 
     #[simd_test(enable = "sse")]
     unsafe fn test_mm_cmpngt_ss() {
-        // TODO: This test is exactly the same as for _mm_cmple_ss, but there
+        // TODO: this test is exactly the same as for `_mm_cmple_ss`, but there
         // must be a difference. It may have to do with behavior in the
         // presence of NaNs (signaling or quiet). If so, we should add tests
         // for those.
@@ -2919,7 +2919,7 @@ mod tests {
 
     #[simd_test(enable = "sse")]
     unsafe fn test_mm_cmpnge_ss() {
-        // TODO: This test is exactly the same as for _mm_cmplt_ss, but there
+        // TODO: this test is exactly the same as for `_mm_cmplt_ss`, but there
         // must be a difference. It may have to do with behavior in the
         // presence of NaNs (signaling or quiet). If so, we should add tests
         // for those.

@@ -92,7 +92,7 @@ pub unsafe fn _blsr_u64(x: u64) -> u64 {
 
 /// Counts the number of trailing least significant zero bits.
 ///
-/// When the source operand is 0, it returns its size in bits.
+/// When the source operand is `0`, it returns its size in bits.
 ///
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_tzcnt_u64)
 #[inline]
@@ -105,7 +105,7 @@ pub unsafe fn _tzcnt_u64(x: u64) -> u64 {
 
 /// Counts the number of trailing least significant zero bits.
 ///
-/// When the source operand is 0, it returns its size in bits.
+/// When the source operand is `0`, it returns its size in bits.
 ///
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_tzcnt_64)
 #[inline]
@@ -170,7 +170,7 @@ mod tests {
 
     #[simd_test(enable = "bmi1")]
     unsafe fn test_blsr_u64() {
-        // TODO: test the behavior when the input is 0
+        // TODO: test the behavior when the input is `0`.
         let r = _blsr_u64(0b0011_0000u64);
         assert_eq!(r, 0b0010_0000u64);
     }

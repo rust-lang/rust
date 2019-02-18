@@ -148,7 +148,7 @@ pub fn has_cpuid() -> bool {
             // was modified or not.
             //
             // If the result is zero, the cpuid bit was not modified.
-            // If the result is 0x200000 (non-zero), then the cpuid
+            // If the result is `0x200000` (non-zero), then the cpuid
             // was correctly modified and the CPU supports the cpuid
             // instruction:
             (result & 0x200000) != 0
