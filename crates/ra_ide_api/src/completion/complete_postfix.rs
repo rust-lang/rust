@@ -22,7 +22,7 @@ fn postfix_snippet(ctx: &CompletionContext, label: &str, detail: &str, snippet: 
     let mut builder = TextEditBuilder::default();
     builder.delete(delete_range);
     CompletionItem::new(CompletionKind::Postfix, replace_range, label)
-        .snippet(snippet)
+        .insert_snippet(snippet)
         .detail(detail)
         .text_edit(builder.finish())
 }

@@ -40,7 +40,7 @@ pub(super) fn complete_use_tree_keyword(acc: &mut Completions, ctx: &CompletionC
 fn keyword(ctx: &CompletionContext, kw: &str, snippet: &str) -> CompletionItem {
     CompletionItem::new(CompletionKind::Keyword, ctx.source_range(), kw)
         .kind(CompletionItemKind::Keyword)
-        .snippet(snippet)
+        .insert_snippet(snippet)
         .build()
 }
 

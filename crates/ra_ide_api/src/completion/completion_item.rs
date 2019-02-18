@@ -199,12 +199,7 @@ impl Builder {
         self.insert_text = Some(insert_text.into());
         self
     }
-    #[allow(unused)]
-    pub(crate) fn insert_text_format(mut self, insert_text_format: InsertTextFormat) -> Builder {
-        self.insert_text_format = insert_text_format;
-        self
-    }
-    pub(crate) fn snippet(mut self, snippet: impl Into<String>) -> Builder {
+    pub(crate) fn insert_snippet(mut self, snippet: impl Into<String>) -> Builder {
         self.insert_text_format = InsertTextFormat::Snippet;
         self.insert_text(snippet)
     }
