@@ -778,10 +778,10 @@ impl Default for Box<OsStr> {
 }
 
 #[stable(feature = "osstring_default", since = "1.9.0")]
-impl<'a> Default for &'a OsStr {
+impl Default for &OsStr {
     /// Creates an empty `OsStr`.
     #[inline]
-    fn default() -> &'a OsStr {
+    fn default() -> Self {
         OsStr::new("")
     }
 }

@@ -618,7 +618,7 @@ impl Seek for File {
     }
 }
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<'a> Read for &'a File {
+impl Read for &File {
     fn read(&mut self, buf: &mut [u8]) -> io::Result<usize> {
         self.inner.read(buf)
     }
@@ -629,14 +629,14 @@ impl<'a> Read for &'a File {
     }
 }
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<'a> Write for &'a File {
+impl Write for &File {
     fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
         self.inner.write(buf)
     }
     fn flush(&mut self) -> io::Result<()> { self.inner.flush() }
 }
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<'a> Seek for &'a File {
+impl Seek for &File {
     fn seek(&mut self, pos: SeekFrom) -> io::Result<u64> {
         self.inner.seek(pos)
     }

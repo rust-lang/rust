@@ -436,7 +436,7 @@ impl fmt::Debug for Once {
     }
 }
 
-impl<'a> Drop for Finish<'a> {
+impl Drop for Finish<'_> {
     fn drop(&mut self) {
         // Swap out our state with however we finished. We should only ever see
         // an old state which was RUNNING.

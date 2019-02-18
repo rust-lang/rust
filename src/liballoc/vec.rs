@@ -2455,7 +2455,7 @@ pub struct Drain<'a, T: 'a> {
 }
 
 #[stable(feature = "collection_debug", since = "1.17.0")]
-impl<'a, T: 'a + fmt::Debug> fmt::Debug for Drain<'a, T> {
+impl<T: fmt::Debug> fmt::Debug for Drain<'_, T> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_tuple("Drain")
          .field(&self.iter.as_slice())

@@ -1641,7 +1641,7 @@ impl<K, V, S> Default for HashMap<K, V, S>
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<'a, K, Q: ?Sized, V, S> Index<&'a Q> for HashMap<K, V, S>
+impl<K, Q: ?Sized, V, S> Index<&Q> for HashMap<K, V, S>
     where K: Eq + Hash + Borrow<Q>,
           Q: Eq + Hash,
           S: BuildHasher
@@ -1673,14 +1673,14 @@ pub struct Iter<'a, K: 'a, V: 'a> {
 
 // FIXME(#26925) Remove in favor of `#[derive(Clone)]`
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<'a, K, V> Clone for Iter<'a, K, V> {
-    fn clone(&self) -> Iter<'a, K, V> {
+impl<K, V> Clone for Iter<'_, K, V> {
+    fn clone(&self) -> Self {
         Iter { inner: self.inner.clone() }
     }
 }
 
 #[stable(feature = "std_debug", since = "1.16.0")]
-impl<'a, K: Debug, V: Debug> fmt::Debug for Iter<'a, K, V> {
+impl<K: Debug, V: Debug> fmt::Debug for Iter<'_, K, V> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         f.debug_list()
             .entries(self.clone())
@@ -1726,14 +1726,14 @@ pub struct Keys<'a, K: 'a, V: 'a> {
 
 // FIXME(#26925) Remove in favor of `#[derive(Clone)]`
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<'a, K, V> Clone for Keys<'a, K, V> {
-    fn clone(&self) -> Keys<'a, K, V> {
+impl<K, V> Clone for Keys<'_, K, V> {
+    fn clone(&self) -> Self {
         Keys { inner: self.inner.clone() }
     }
 }
 
 #[stable(feature = "std_debug", since = "1.16.0")]
-impl<'a, K: Debug, V> fmt::Debug for Keys<'a, K, V> {
+impl<K: Debug, V> fmt::Debug for Keys<'_, K, V> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         f.debug_list()
             .entries(self.clone())
@@ -1755,14 +1755,14 @@ pub struct Values<'a, K: 'a, V: 'a> {
 
 // FIXME(#26925) Remove in favor of `#[derive(Clone)]`
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<'a, K, V> Clone for Values<'a, K, V> {
-    fn clone(&self) -> Values<'a, K, V> {
+impl<K, V> Clone for Values<'_, K, V> {
+    fn clone(&self) -> Self {
         Values { inner: self.inner.clone() }
     }
 }
 
 #[stable(feature = "std_debug", since = "1.16.0")]
-impl<'a, K, V: Debug> fmt::Debug for Values<'a, K, V> {
+impl<K, V: Debug> fmt::Debug for Values<'_, K, V> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         f.debug_list()
             .entries(self.clone())
@@ -2241,7 +2241,7 @@ impl<'a, K, V, S> RawVacantEntryMut<'a, K, V, S> {
 }
 
 #[unstable(feature = "hash_raw_entry", issue = "56167")]
-impl<'a, K, V, S> Debug for RawEntryBuilderMut<'a, K, V, S> {
+impl<K, V, S> Debug for RawEntryBuilderMut<'_, K, V, S> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         f.debug_struct("RawEntryBuilder")
          .finish()
@@ -2249,7 +2249,7 @@ impl<'a, K, V, S> Debug for RawEntryBuilderMut<'a, K, V, S> {
 }
 
 #[unstable(feature = "hash_raw_entry", issue = "56167")]
-impl<'a, K: Debug, V: Debug, S> Debug for RawEntryMut<'a, K, V, S> {
+impl<K: Debug, V: Debug, S> Debug for RawEntryMut<'_, K, V, S> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match *self {
             RawEntryMut::Vacant(ref v) => {
@@ -2267,7 +2267,7 @@ impl<'a, K: Debug, V: Debug, S> Debug for RawEntryMut<'a, K, V, S> {
 }
 
 #[unstable(feature = "hash_raw_entry", issue = "56167")]
-impl<'a, K: Debug, V: Debug> Debug for RawOccupiedEntryMut<'a, K, V> {
+impl<K: Debug, V: Debug> Debug for RawOccupiedEntryMut<'_, K, V> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         f.debug_struct("RawOccupiedEntryMut")
          .field("key", self.key())
@@ -2277,7 +2277,7 @@ impl<'a, K: Debug, V: Debug> Debug for RawOccupiedEntryMut<'a, K, V> {
 }
 
 #[unstable(feature = "hash_raw_entry", issue = "56167")]
-impl<'a, K, V, S> Debug for RawVacantEntryMut<'a, K, V, S> {
+impl<K, V, S> Debug for RawVacantEntryMut<'_, K, V, S> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         f.debug_struct("RawVacantEntryMut")
          .finish()
@@ -2285,7 +2285,7 @@ impl<'a, K, V, S> Debug for RawVacantEntryMut<'a, K, V, S> {
 }
 
 #[unstable(feature = "hash_raw_entry", issue = "56167")]
-impl<'a, K, V, S> Debug for RawEntryBuilder<'a, K, V, S> {
+impl<K, V, S> Debug for RawEntryBuilder<'_, K, V, S> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         f.debug_struct("RawEntryBuilder")
          .finish()
@@ -2312,7 +2312,7 @@ pub enum Entry<'a, K: 'a, V: 'a> {
 }
 
 #[stable(feature= "debug_hash_map", since = "1.12.0")]
-impl<'a, K: 'a + Debug, V: 'a + Debug> Debug for Entry<'a, K, V> {
+impl<K: Debug, V: Debug> Debug for Entry<'_, K, V> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match *self {
             Vacant(ref v) => {
@@ -2340,7 +2340,7 @@ pub struct OccupiedEntry<'a, K: 'a, V: 'a> {
 }
 
 #[stable(feature= "debug_hash_map", since = "1.12.0")]
-impl<'a, K: 'a + Debug, V: 'a + Debug> Debug for OccupiedEntry<'a, K, V> {
+impl<K: Debug, V: Debug> Debug for OccupiedEntry<'_, K, V> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         f.debug_struct("OccupiedEntry")
             .field("key", self.key())
@@ -2361,7 +2361,7 @@ pub struct VacantEntry<'a, K: 'a, V: 'a> {
 }
 
 #[stable(feature= "debug_hash_map", since = "1.12.0")]
-impl<'a, K: 'a + Debug, V: 'a> Debug for VacantEntry<'a, K, V> {
+impl<K: Debug, V> Debug for VacantEntry<'_, K, V> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         f.debug_tuple("VacantEntry")
             .field(self.key())
@@ -2448,7 +2448,7 @@ impl<'a, K, V> Iterator for Iter<'a, K, V> {
     }
 }
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<'a, K, V> ExactSizeIterator for Iter<'a, K, V> {
+impl<K, V> ExactSizeIterator for Iter<'_, K, V> {
     #[inline]
     fn len(&self) -> usize {
         self.inner.len()
@@ -2456,7 +2456,7 @@ impl<'a, K, V> ExactSizeIterator for Iter<'a, K, V> {
 }
 
 #[stable(feature = "fused", since = "1.26.0")]
-impl<'a, K, V> FusedIterator for Iter<'a, K, V> {}
+impl<K, V> FusedIterator for Iter<'_, K, V> {}
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<'a, K, V> Iterator for IterMut<'a, K, V> {
@@ -2472,17 +2472,17 @@ impl<'a, K, V> Iterator for IterMut<'a, K, V> {
     }
 }
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<'a, K, V> ExactSizeIterator for IterMut<'a, K, V> {
+impl<K, V> ExactSizeIterator for IterMut<'_, K, V> {
     #[inline]
     fn len(&self) -> usize {
         self.inner.len()
     }
 }
 #[stable(feature = "fused", since = "1.26.0")]
-impl<'a, K, V> FusedIterator for IterMut<'a, K, V> {}
+impl<K, V> FusedIterator for IterMut<'_, K, V> {}
 
 #[stable(feature = "std_debug", since = "1.16.0")]
-impl<'a, K, V> fmt::Debug for IterMut<'a, K, V>
+impl<K, V> fmt::Debug for IterMut<'_, K, V>
     where K: fmt::Debug,
           V: fmt::Debug,
 {
@@ -2539,14 +2539,14 @@ impl<'a, K, V> Iterator for Keys<'a, K, V> {
     }
 }
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<'a, K, V> ExactSizeIterator for Keys<'a, K, V> {
+impl<K, V> ExactSizeIterator for Keys<'_, K, V> {
     #[inline]
     fn len(&self) -> usize {
         self.inner.len()
     }
 }
 #[stable(feature = "fused", since = "1.26.0")]
-impl<'a, K, V> FusedIterator for Keys<'a, K, V> {}
+impl<K, V> FusedIterator for Keys<'_, K, V> {}
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<'a, K, V> Iterator for Values<'a, K, V> {
@@ -2562,14 +2562,14 @@ impl<'a, K, V> Iterator for Values<'a, K, V> {
     }
 }
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<'a, K, V> ExactSizeIterator for Values<'a, K, V> {
+impl<K, V> ExactSizeIterator for Values<'_, K, V> {
     #[inline]
     fn len(&self) -> usize {
         self.inner.len()
     }
 }
 #[stable(feature = "fused", since = "1.26.0")]
-impl<'a, K, V> FusedIterator for Values<'a, K, V> {}
+impl<K, V> FusedIterator for Values<'_, K, V> {}
 
 #[stable(feature = "map_values_mut", since = "1.10.0")]
 impl<'a, K, V> Iterator for ValuesMut<'a, K, V> {
@@ -2585,17 +2585,17 @@ impl<'a, K, V> Iterator for ValuesMut<'a, K, V> {
     }
 }
 #[stable(feature = "map_values_mut", since = "1.10.0")]
-impl<'a, K, V> ExactSizeIterator for ValuesMut<'a, K, V> {
+impl<K, V> ExactSizeIterator for ValuesMut<'_, K, V> {
     #[inline]
     fn len(&self) -> usize {
         self.inner.len()
     }
 }
 #[stable(feature = "fused", since = "1.26.0")]
-impl<'a, K, V> FusedIterator for ValuesMut<'a, K, V> {}
+impl<K, V> FusedIterator for ValuesMut<'_, K, V> {}
 
 #[stable(feature = "std_debug", since = "1.16.0")]
-impl<'a, K, V> fmt::Debug for ValuesMut<'a, K, V>
+impl<K, V> fmt::Debug for ValuesMut<'_, K, V>
     where K: fmt::Debug,
           V: fmt::Debug,
 {
@@ -2620,17 +2620,17 @@ impl<'a, K, V> Iterator for Drain<'a, K, V> {
     }
 }
 #[stable(feature = "drain", since = "1.6.0")]
-impl<'a, K, V> ExactSizeIterator for Drain<'a, K, V> {
+impl<K, V> ExactSizeIterator for Drain<'_, K, V> {
     #[inline]
     fn len(&self) -> usize {
         self.inner.len()
     }
 }
 #[stable(feature = "fused", since = "1.26.0")]
-impl<'a, K, V> FusedIterator for Drain<'a, K, V> {}
+impl<K, V> FusedIterator for Drain<'_, K, V> {}
 
 #[stable(feature = "std_debug", since = "1.16.0")]
-impl<'a, K, V> fmt::Debug for Drain<'a, K, V>
+impl<K, V> fmt::Debug for Drain<'_, K, V>
     where K: fmt::Debug,
           V: fmt::Debug,
 {

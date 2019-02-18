@@ -907,8 +907,8 @@ impl<T: Debug> Debug for BTreeSet<T> {
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<'a, T> Clone for Iter<'a, T> {
-    fn clone(&self) -> Iter<'a, T> {
+impl<T> Clone for Iter<'_, T> {
+    fn clone(&self) -> Self {
         Iter { iter: self.iter.clone() }
     }
 }
@@ -963,8 +963,8 @@ impl<T> ExactSizeIterator for IntoIter<T> {
 impl<T> FusedIterator for IntoIter<T> {}
 
 #[stable(feature = "btree_range", since = "1.17.0")]
-impl<'a, T> Clone for Range<'a, T> {
-    fn clone(&self) -> Range<'a, T> {
+impl<T> Clone for Range<'_, T> {
+    fn clone(&self) -> Self {
         Range { iter: self.iter.clone() }
     }
 }
@@ -998,8 +998,8 @@ fn cmp_opt<T: Ord>(x: Option<&T>, y: Option<&T>, short: Ordering, long: Ordering
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<'a, T> Clone for Difference<'a, T> {
-    fn clone(&self) -> Difference<'a, T> {
+impl<T> Clone for Difference<'_, T> {
+    fn clone(&self) -> Self {
         Difference {
             a: self.a.clone(),
             b: self.b.clone(),
@@ -1036,8 +1036,8 @@ impl<'a, T: Ord> Iterator for Difference<'a, T> {
 impl<T: Ord> FusedIterator for Difference<'_, T> {}
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<'a, T> Clone for SymmetricDifference<'a, T> {
-    fn clone(&self) -> SymmetricDifference<'a, T> {
+impl<T> Clone for SymmetricDifference<'_, T> {
+    fn clone(&self) -> Self {
         SymmetricDifference {
             a: self.a.clone(),
             b: self.b.clone(),
@@ -1070,8 +1070,8 @@ impl<'a, T: Ord> Iterator for SymmetricDifference<'a, T> {
 impl<T: Ord> FusedIterator for SymmetricDifference<'_, T> {}
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<'a, T> Clone for Intersection<'a, T> {
-    fn clone(&self) -> Intersection<'a, T> {
+impl<T> Clone for Intersection<'_, T> {
+    fn clone(&self) -> Self {
         Intersection {
             a: self.a.clone(),
             b: self.b.clone(),
@@ -1108,8 +1108,8 @@ impl<'a, T: Ord> Iterator for Intersection<'a, T> {
 impl<T: Ord> FusedIterator for Intersection<'_, T> {}
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<'a, T> Clone for Union<'a, T> {
-    fn clone(&self) -> Union<'a, T> {
+impl<T> Clone for Union<'_, T> {
+    fn clone(&self) -> Self {
         Union {
             a: self.a.clone(),
             b: self.b.clone(),

@@ -321,7 +321,7 @@ impl Drop for Select {
     }
 }
 
-impl<'rx, T: Send> Drop for Handle<'rx, T> {
+impl<T: Send> Drop for Handle<'_, T> {
     fn drop(&mut self) {
         unsafe { self.remove() }
     }
@@ -347,7 +347,7 @@ impl fmt::Debug for Select {
     }
 }
 
-impl<'rx, T:Send+'rx> fmt::Debug for Handle<'rx, T> {
+impl<T: Send> fmt::Debug for Handle<'_, T> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         f.debug_struct("Handle").finish()
     }

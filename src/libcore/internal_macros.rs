@@ -7,7 +7,7 @@ macro_rules! forward_ref_unop {
     };
     (impl $imp:ident, $method:ident for $t:ty, #[$attr:meta]) => {
         #[$attr]
-        impl<'a> $imp for &'a $t {
+        impl $imp for &$t {
             type Output = <$t as $imp>::Output;
 
             #[inline]

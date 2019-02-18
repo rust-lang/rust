@@ -2132,8 +2132,8 @@ impl<T: fmt::Debug> fmt::Debug for Iter<'_, T> {
 
 // FIXME(#26925) Remove in favor of `#[derive(Clone)]`
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<'a, T> Clone for Iter<'a, T> {
-    fn clone(&self) -> Iter<'a, T> {
+impl<T> Clone for Iter<'_, T> {
+    fn clone(&self) -> Self {
         Iter {
             ring: self.ring,
             tail: self.tail,
@@ -2225,7 +2225,7 @@ pub struct IterMut<'a, T: 'a> {
 }
 
 #[stable(feature = "collection_debug", since = "1.17.0")]
-impl<'a, T: fmt::Debug> fmt::Debug for IterMut<'_, T> {
+impl<T: fmt::Debug> fmt::Debug for IterMut<'_, T> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let (front, back) = RingSlices::ring_slices(&*self.ring, self.head, self.tail);
         f.debug_tuple("IterMut")

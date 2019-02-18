@@ -43,7 +43,7 @@ pub struct ReentrantMutexGuard<'a, T: 'a> {
     __poison: poison::Guard,
 }
 
-impl<'a, T> !marker::Send for ReentrantMutexGuard<'a, T> {}
+impl<T> !marker::Send for ReentrantMutexGuard<'_, T> {}
 
 
 impl<T> ReentrantMutex<T> {
@@ -138,7 +138,7 @@ impl<'mutex, T> ReentrantMutexGuard<'mutex, T> {
     }
 }
 
-impl<'mutex, T> Deref for ReentrantMutexGuard<'mutex, T> {
+impl<T> Deref for ReentrantMutexGuard<'_, T> {
     type Target = T;
 
     fn deref(&self) -> &T {
@@ -146,7 +146,7 @@ impl<'mutex, T> Deref for ReentrantMutexGuard<'mutex, T> {
     }
 }
 
-impl<'a, T> Drop for ReentrantMutexGuard<'a, T> {
+impl<T> Drop for ReentrantMutexGuard<'_, T> {
     #[inline]
     fn drop(&mut self) {
         unsafe {
@@ -212,7 +212,7 @@ mod tests {
     }
 
     pub struct Answer<'a>(pub ReentrantMutexGuard<'a, RefCell<u32>>);
-    impl<'a> Drop for Answer<'a> {
+    impl Drop for Answer<'_> {
         fn drop(&mut self) {
             *self.0.borrow_mut() = 42;
         }

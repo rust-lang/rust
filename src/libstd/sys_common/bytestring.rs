@@ -31,7 +31,7 @@ mod tests {
     fn smoke() {
         struct Helper<'a>(&'a [u8]);
 
-        impl<'a> Debug for Helper<'a> {
+        impl Debug for Helper<'_> {
             fn fmt(&self, f: &mut Formatter) -> Result {
                 debug_fmt_bytestring(self.0, f)
             }

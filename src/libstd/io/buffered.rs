@@ -1174,7 +1174,7 @@ mod tests {
         // Issue #32085
         struct FailFlushWriter<'a>(&'a mut Vec<u8>);
 
-        impl<'a> Write for FailFlushWriter<'a> {
+        impl Write for FailFlushWriter<'_> {
             fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
                 self.0.extend_from_slice(buf);
                 Ok(buf.len())
