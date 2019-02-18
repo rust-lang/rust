@@ -482,7 +482,7 @@ fn check_wild_enum_match(cx: &LateContext<'_, '_>, ex: &Expr, arms: &[Arm]) {
         for pat in &arm.pats {
             if let PatKind::Wild = pat.node {
                 wildcard_span = Some(pat.span);
-            } else if let PatKind::Binding(_, _, ident, None) = pat.node {
+            } else if let PatKind::Binding(_, _, _, ident, None) = pat.node {
                 wildcard_span = Some(pat.span);
                 wildcard_ident = Some(ident);
             }
