@@ -25,7 +25,7 @@ use std::{
 };
 
 use crossbeam_channel::Receiver;
-use ra_arena::{impl_arena_id, Arena, RawId, map::ArenaMap};
+use ra_arena::{impl_arena_id, Arena, RawId};
 use relative_path::{RelativePath, RelativePathBuf};
 use rustc_hash::{FxHashMap, FxHashSet};
 
@@ -53,7 +53,7 @@ struct VfsFileData {
 pub struct Vfs {
     roots: Arc<Roots>,
     files: Arena<VfsFile, VfsFileData>,
-    root2files: ArenaMap<VfsRoot, FxHashSet<VfsFile>>,
+    root2files: FxHashMap<VfsRoot, FxHashSet<VfsFile>>,
     pending_changes: Vec<VfsChange>,
     worker: Worker,
 }
@@ -72,7 +72,7 @@ impl Vfs {
     pub fn new(roots: Vec<PathBuf>) -> (Vfs, Vec<VfsRoot>) {
         let roots = Arc::new(Roots::new(roots));
         let worker = io::start(Arc::clone(&roots));
-        let mut root2files = ArenaMap::default();
+        let mut root2files = FxHashMap::default();
 
         for root in roots.iter() {
             root2files.insert(root, Default::default());
@@ -164,7 +164,7 @@ impl Vfs {
                 let mut cur_files = Vec::new();
                 // While we were scanning the root in the background, a file might have
                 // been open in the editor, so we need to account for that.
-                let existing = self.root2files[root]
+                let existing = self.root2files[&root]
                     .iter()
                     .map(|&file| (self.files[file].path.clone(), file))
                     .collect::<FxHashMap<_, _>>();
@@ -241,7 +241,7 @@ impl Vfs {
     ) -> VfsFile {
         let data = VfsFileData { root, path, text, is_overlayed };
         let file = self.files.alloc(data);
-        self.root2files.get_mut(root).unwrap().insert(file);
+        self.root2files.get_mut(&root).unwrap().insert(file);
         file
     }
 
@@ -256,7 +256,7 @@ impl Vfs {
         self.files[file].text = Default::default();
         self.files[file].path = Default::default();
         let root = self.files[file].root;
-        let removed = self.root2files.get_mut(root).unwrap().remove(&file);
+        let removed = self.root2files.get_mut(&root).unwrap().remove(&file);
         assert!(removed);
     }
 
@@ -267,7 +267,7 @@ impl Vfs {
     }
 
     fn find_file(&self, root: VfsRoot, path: &RelativePath) -> Option<VfsFile> {
-        self.root2files[root].iter().map(|&it| it).find(|&file| self.files[file].path == path)
+        self.root2files[&root].iter().map(|&it| it).find(|&file| self.files[file].path == path)
     }
 }
 

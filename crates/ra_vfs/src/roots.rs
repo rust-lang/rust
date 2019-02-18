@@ -4,12 +4,10 @@ use std::{
 };
 
 use relative_path::{ RelativePath, RelativePathBuf};
-use ra_arena::{impl_arena_id, Arena, RawId};
 
 /// VfsRoot identifies a watched directory on the file system.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
-pub struct VfsRoot(pub RawId);
-impl_arena_id!(VfsRoot);
+pub struct VfsRoot(pub u32);
 
 /// Describes the contents of a single source root.
 ///
@@ -24,12 +22,12 @@ struct RootData {
 }
 
 pub(crate) struct Roots {
-    roots: Arena<VfsRoot, RootData>,
+    roots: Vec<RootData>,
 }
 
 impl Roots {
     pub(crate) fn new(mut paths: Vec<PathBuf>) -> Roots {
-        let mut roots = Arena::default();
+        let mut roots = Vec::new();
         // A hack to make nesting work.
         paths.sort_by_key(|it| std::cmp::Reverse(it.as_os_str().len()));
         paths.dedup();
@@ -37,7 +35,7 @@ impl Roots {
             let nested_roots =
                 paths[..i].iter().filter_map(|it| rel_path(path, it)).collect::<Vec<_>>();
 
-            roots.alloc(RootData::new(path.clone(), nested_roots));
+            roots.push(RootData::new(path.clone(), nested_roots));
         }
         Roots { roots }
     }
@@ -51,19 +49,23 @@ impl Roots {
         self.roots.len()
     }
     pub(crate) fn iter<'a>(&'a self) -> impl Iterator<Item = VfsRoot> + 'a {
-        self.roots.iter().map(|(id, _)| id)
+        (0..self.roots.len()).into_iter().map(|idx| VfsRoot(idx as u32))
     }
     pub(crate) fn path(&self, root: VfsRoot) -> &Path {
-        self.roots[root].path.as_path()
+        self.root(root).path.as_path()
     }
     /// Checks if root contains a path and returns a root-relative path.
     pub(crate) fn contains(&self, root: VfsRoot, path: &Path) -> Option<RelativePathBuf> {
-        let data = &self.roots[root];
+        let data = self.root(root);
         iter::once(&data.path)
             .chain(data.canonical_path.as_ref().into_iter())
             .find_map(|base| rel_path(base, path))
             .filter(|path| !data.excluded_dirs.contains(path))
             .filter(|path| !data.is_excluded(path))
+    }
+
+    fn root(&self, root: VfsRoot) -> &RootData {
+        &self.roots[root.0 as usize]
     }
 }
 
