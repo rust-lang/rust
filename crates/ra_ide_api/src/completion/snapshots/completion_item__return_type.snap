@@ -1,40 +1,21 @@
 ---
-created: "2019-01-23T05:27:32.421411+00:00"
-creator: insta@0.4.0
-expression: kind_completions
+created: "2019-02-18T07:29:59.780512486Z"
+creator: insta@0.6.2
 source: crates/ra_ide_api/src/completion/completion_item.rs
+expression: kind_completions
 ---
 [
     CompletionItem {
-        completion_kind: Reference,
         label: "Foo",
-        kind: Some(
-            Struct
-        ),
-        detail: None,
-        documentation: None,
-        lookup: None,
-        insert_text: None,
-        insert_text_format: PlainText,
         source_range: [47; 47),
-        text_edit: None
+        kind: Struct
     },
     CompletionItem {
-        completion_kind: Reference,
         label: "x",
-        kind: Some(
-            Function
-        ),
-        detail: Some(
-            "fn x() ->"
-        ),
-        documentation: None,
-        lookup: None,
-        insert_text: Some(
-            "x()$0"
-        ),
-        insert_text_format: Snippet,
         source_range: [47; 47),
-        text_edit: None
+        kind: Function,
+        detail: "fn x() ->",
+        insert_text: "x()$0",
+        insert_text_format: Snippet
     }
 ]

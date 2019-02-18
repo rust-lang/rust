@@ -1,38 +1,20 @@
 ---
-created: "2019-01-22T14:45:00.698966900+00:00"
-creator: insta@0.4.0
+created: "2019-02-18T07:29:59.658885169Z"
+creator: insta@0.6.2
+source: crates/ra_ide_api/src/completion/completion_item.rs
 expression: kind_completions
-source: "crates\\ra_ide_api\\src\\completion\\completion_item.rs"
 ---
 [
     CompletionItem {
-        completion_kind: Keyword,
         label: "self",
-        kind: Some(
-            Keyword
-        ),
-        detail: None,
-        documentation: None,
-        lookup: None,
-        insert_text: None,
-        insert_text_format: PlainText,
         source_range: [20; 20),
-        text_edit: None
+        kind: Keyword
     },
     CompletionItem {
-        completion_kind: Keyword,
         label: "super",
-        kind: Some(
-            Keyword
-        ),
-        detail: None,
-        documentation: None,
-        lookup: None,
-        insert_text: Some(
-            "super::"
-        ),
-        insert_text_format: PlainText,
         source_range: [20; 20),
-        text_edit: None
+        kind: Keyword,
+        insert_text: "super::",
+        insert_text_format: PlainText
     }
 ]

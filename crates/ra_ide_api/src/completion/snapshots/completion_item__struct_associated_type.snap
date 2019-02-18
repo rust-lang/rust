@@ -1,28 +1,17 @@
 ---
-created: "2019-02-12T09:33:54.719956203Z"
+created: "2019-02-18T07:29:59.725668999Z"
 creator: insta@0.6.2
 source: crates/ra_ide_api/src/completion/completion_item.rs
 expression: kind_completions
 ---
 [
     CompletionItem {
-        completion_kind: Reference,
         label: "T",
-        kind: Some(
-            TypeAlias
-        ),
-        detail: Some(
-            "type T = i32;"
-        ),
-        documentation: Some(
-            Documentation(
-                "An associated type"
-            )
-        ),
-        lookup: None,
-        insert_text: None,
-        insert_text_format: PlainText,
         source_range: [101; 101),
-        text_edit: None
+        kind: TypeAlias,
+        detail: "type T = i32;",
+        documentation: Documentation(
+            "An associated type"
+        )
     }
 ]

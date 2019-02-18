@@ -1,28 +1,17 @@
 ---
-created: "2019-02-12T09:57:51.107816726Z"
+created: "2019-02-18T07:29:59.704544613Z"
 creator: insta@0.6.2
 source: crates/ra_ide_api/src/completion/completion_item.rs
 expression: kind_completions
 ---
 [
     CompletionItem {
-        completion_kind: Reference,
         label: "C",
-        kind: Some(
-            Const
-        ),
-        detail: Some(
-            "const C: i32 = 42;"
-        ),
-        documentation: Some(
-            Documentation(
-                "An associated const"
-            )
-        ),
-        lookup: None,
-        insert_text: None,
-        insert_text_format: PlainText,
         source_range: [107; 107),
-        text_edit: None
+        kind: Const,
+        detail: "const C: i32 = 42;",
+        documentation: Documentation(
+            "An associated const"
+        )
     }
 ]

@@ -1,24 +1,14 @@
 ---
-created: "2019-01-22T15:38:19.815217100+00:00"
-creator: insta@0.4.0
+created: "2019-02-18T07:29:59.808400485Z"
+creator: insta@0.6.2
+source: crates/ra_ide_api/src/completion/completion_item.rs
 expression: kind_completions
-source: "crates\\ra_ide_api\\src\\completion\\completion_item.rs"
 ---
 [
     CompletionItem {
-        completion_kind: Reference,
         label: "foo",
-        kind: Some(
-            Function
-        ),
-        detail: Some(
-            "pub fn foo()"
-        ),
-        documentation: None,
-        lookup: None,
-        insert_text: None,
-        insert_text_format: PlainText,
         source_range: [40; 41),
-        text_edit: None
+        kind: Function,
+        detail: "pub fn foo()"
     }
 ]

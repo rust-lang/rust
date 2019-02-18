@@ -1,40 +1,22 @@
 ---
-created: "2019-01-23T05:27:32.430450+00:00"
-creator: insta@0.4.0
-expression: kind_completions
+created: "2019-02-18T07:29:59.799497268Z"
+creator: insta@0.6.2
 source: crates/ra_ide_api/src/completion/completion_item.rs
+expression: kind_completions
 ---
 [
     CompletionItem {
-        completion_kind: Snippet,
         label: "pd",
-        kind: Some(
-            Snippet
-        ),
-        detail: None,
-        documentation: None,
-        lookup: None,
-        insert_text: Some(
-            "eprintln!(\"$0 = {:?}\", $0);"
-        ),
-        insert_text_format: Snippet,
         source_range: [17; 17),
-        text_edit: None
+        kind: Snippet,
+        insert_text: "eprintln!(\"$0 = {:?}\", $0);",
+        insert_text_format: Snippet
     },
     CompletionItem {
-        completion_kind: Snippet,
         label: "ppd",
-        kind: Some(
-            Snippet
-        ),
-        detail: None,
-        documentation: None,
-        lookup: None,
-        insert_text: Some(
-            "eprintln!(\"$0 = {:#?}\", $0);"
-        ),
-        insert_text_format: Snippet,
         source_range: [17; 17),
-        text_edit: None
+        kind: Snippet,
+        insert_text: "eprintln!(\"$0 = {:#?}\", $0);",
+        insert_text_format: Snippet
     }
 ]
