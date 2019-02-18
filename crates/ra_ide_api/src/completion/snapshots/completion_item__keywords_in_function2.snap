@@ -1,5 +1,5 @@
 ---
-created: "2019-02-18T07:29:59.630760038Z"
+created: "2019-02-18T09:22:23.984740354Z"
 creator: insta@0.6.2
 source: crates/ra_ide_api/src/completion/completion_item.rs
 expression: kind_completions
@@ -8,50 +8,50 @@ expression: kind_completions
     CompletionItem {
         label: "else",
         source_range: [92; 92),
-        kind: Keyword,
-        insert_text: "else {$0}",
-        insert_text_format: Snippet
+        delete: [92; 92),
+        insert: "else {$0}",
+        kind: Keyword
     },
     CompletionItem {
         label: "else if",
         source_range: [92; 92),
-        kind: Keyword,
-        insert_text: "else if $0 {}",
-        insert_text_format: Snippet
+        delete: [92; 92),
+        insert: "else if $0 {}",
+        kind: Keyword
     },
     CompletionItem {
         label: "if",
         source_range: [92; 92),
-        kind: Keyword,
-        insert_text: "if $0 {}",
-        insert_text_format: Snippet
+        delete: [92; 92),
+        insert: "if $0 {}",
+        kind: Keyword
     },
     CompletionItem {
         label: "loop",
         source_range: [92; 92),
-        kind: Keyword,
-        insert_text: "loop {$0}",
-        insert_text_format: Snippet
+        delete: [92; 92),
+        insert: "loop {$0}",
+        kind: Keyword
     },
     CompletionItem {
         label: "match",
         source_range: [92; 92),
-        kind: Keyword,
-        insert_text: "match $0 {}",
-        insert_text_format: Snippet
+        delete: [92; 92),
+        insert: "match $0 {}",
+        kind: Keyword
     },
     CompletionItem {
         label: "return",
         source_range: [92; 92),
-        kind: Keyword,
-        insert_text: "return;",
-        insert_text_format: Snippet
+        delete: [92; 92),
+        insert: "return;",
+        kind: Keyword
     },
     CompletionItem {
         label: "while",
         source_range: [92; 92),
-        kind: Keyword,
-        insert_text: "while $0 {}",
-        insert_text_format: Snippet
+        delete: [92; 92),
+        insert: "while $0 {}",
+        kind: Keyword
     }
 ]

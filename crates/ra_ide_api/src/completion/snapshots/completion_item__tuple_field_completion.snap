@@ -1,5 +1,5 @@
 ---
-created: "2019-02-18T07:29:59.598973382Z"
+created: "2019-02-18T09:22:23.939710971Z"
 creator: insta@0.6.2
 source: crates/ra_ide_api/src/completion/completion_item.rs
 expression: kind_completions
@@ -8,12 +8,16 @@ expression: kind_completions
     CompletionItem {
         label: "0",
         source_range: [75; 75),
+        delete: [75; 75),
+        insert: "0",
         kind: Field,
         detail: "i32"
     },
     CompletionItem {
         label: "1",
         source_range: [75; 75),
+        delete: [75; 75),
+        insert: "1",
         kind: Field,
         detail: "f64"
     }
