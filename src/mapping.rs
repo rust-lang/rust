@@ -331,6 +331,7 @@ impl NameMapping {
             ToolMod => Some(&mut self.type_map),
             Fn(_) |
             Const(_) |
+            ConstParam(_) |
             Static(_, _) |
             StructCtor(_, _) |
             SelfCtor(_) |

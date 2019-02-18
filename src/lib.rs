@@ -1,6 +1,5 @@
 #![feature(rustc_diagnostic_macros)]
 #![feature(rustc_private)]
-#![feature(uniform_paths)]
 
 extern crate rustc;
 extern crate syntax;

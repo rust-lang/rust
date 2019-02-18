@@ -1,5 +1,4 @@
 #![feature(rustc_private)]
-#![feature(uniform_paths)]
 #![feature(set_stdio)]
 
 extern crate getopts;
@@ -232,7 +231,7 @@ mod cli {
             "use a `name:version` string as current/new crate",
             "NAME:VERSION",
         );
-        opts.optopt("T", "target", "Build for the target triple", "<TRIPLE>");
+        opts.optopt("", "target", "Build for the target triple", "<TRIPLE>");
         opts
     }
 
