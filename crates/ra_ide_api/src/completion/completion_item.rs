@@ -52,12 +52,18 @@ pub struct CompletionItem {
     documentation: Option<Documentation>,
 }
 
+// We use custom debug for CompletionItem to make `insta`'s diffs more readable.
 impl fmt::Debug for CompletionItem {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         let mut s = f.debug_struct("CompletionItem");
-        s.field("label", &self.label())
-            .field("source_range", &self.source_range())
-            .field("text_edit", &self.text_edit);
+        s.field("label", &self.label()).field("source_range", &self.source_range());
+        if self.text_edit().as_atoms().len() == 1 {
+            let atom = &self.text_edit().as_atoms()[0];
+            s.field("delete", &atom.delete);
+            s.field("insert", &atom.insert);
+        } else {
+            s.field("text_edit", &self.text_edit);
+        }
         if let Some(kind) = self.kind().as_ref() {
             s.field("kind", kind);
         }

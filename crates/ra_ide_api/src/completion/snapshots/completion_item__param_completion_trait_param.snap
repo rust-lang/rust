@@ -1,5 +1,5 @@
 ---
-created: "2019-02-18T09:10:51.973234775Z"
+created: "2019-02-18T09:22:23.974417169Z"
 creator: insta@0.6.2
 source: crates/ra_ide_api/src/completion/completion_item.rs
 expression: kind_completions
@@ -8,14 +8,8 @@ expression: kind_completions
     CompletionItem {
         label: "file_id: FileId",
         source_range: [269; 273),
-        text_edit: TextEdit {
-            atoms: [
-                AtomTextEdit {
-                    delete: [269; 273),
-                    insert: "file_id: FileId"
-                }
-            ]
-        },
+        delete: [269; 273),
+        insert: "file_id: FileId",
         lookup: "file_id"
     }
 ]

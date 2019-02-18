@@ -1,5 +1,5 @@
 ---
-created: "2019-02-18T09:10:52.087222569Z"
+created: "2019-02-18T09:22:24.127119709Z"
 creator: insta@0.6.2
 source: crates/ra_ide_api/src/completion/completion_item.rs
 expression: kind_completions
@@ -8,92 +8,50 @@ expression: kind_completions
     CompletionItem {
         label: "dbg",
         source_range: [76; 76),
-        text_edit: TextEdit {
-            atoms: [
-                AtomTextEdit {
-                    delete: [72; 76),
-                    insert: "dbg!(bar)"
-                }
-            ]
-        },
+        delete: [72; 76),
+        insert: "dbg!(bar)",
         detail: "dbg!(expr)"
     },
     CompletionItem {
         label: "if",
         source_range: [76; 76),
-        text_edit: TextEdit {
-            atoms: [
-                AtomTextEdit {
-                    delete: [72; 76),
-                    insert: "if bar {$0}"
-                }
-            ]
-        },
+        delete: [72; 76),
+        insert: "if bar {$0}",
         detail: "if expr {}"
     },
     CompletionItem {
         label: "match",
         source_range: [76; 76),
-        text_edit: TextEdit {
-            atoms: [
-                AtomTextEdit {
-                    delete: [72; 76),
-                    insert: "match bar {\n${1:_} => {$0\\},\n}"
-                }
-            ]
-        },
+        delete: [72; 76),
+        insert: "match bar {\n${1:_} => {$0\\},\n}",
         detail: "match expr {}"
     },
     CompletionItem {
         label: "not",
         source_range: [76; 76),
-        text_edit: TextEdit {
-            atoms: [
-                AtomTextEdit {
-                    delete: [72; 76),
-                    insert: "!bar"
-                }
-            ]
-        },
+        delete: [72; 76),
+        insert: "!bar",
         detail: "!expr"
     },
     CompletionItem {
         label: "ref",
         source_range: [76; 76),
-        text_edit: TextEdit {
-            atoms: [
-                AtomTextEdit {
-                    delete: [72; 76),
-                    insert: "&bar"
-                }
-            ]
-        },
+        delete: [72; 76),
+        insert: "&bar",
         detail: "&expr"
     },
     CompletionItem {
         label: "refm",
         source_range: [76; 76),
-        text_edit: TextEdit {
-            atoms: [
-                AtomTextEdit {
-                    delete: [72; 76),
-                    insert: "&mut bar"
-                }
-            ]
-        },
+        delete: [72; 76),
+        insert: "&mut bar",
         detail: "&mut expr"
     },
     CompletionItem {
         label: "while",
         source_range: [76; 76),
-        text_edit: TextEdit {
-            atoms: [
-                AtomTextEdit {
-                    delete: [72; 76),
-                    insert: "while bar {\n$0\n}"
-                }
-            ]
-        },
+        delete: [72; 76),
+        insert: "while bar {\n$0\n}",
         detail: "while expr {}"
     }
 ]

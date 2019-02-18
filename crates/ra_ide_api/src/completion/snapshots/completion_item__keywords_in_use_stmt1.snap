@@ -1,5 +1,5 @@
 ---
-created: "2019-02-18T09:10:51.979744931Z"
+created: "2019-02-18T09:22:23.988755424Z"
 creator: insta@0.6.2
 source: crates/ra_ide_api/src/completion/completion_item.rs
 expression: kind_completions
@@ -8,40 +8,22 @@ expression: kind_completions
     CompletionItem {
         label: "crate",
         source_range: [17; 17),
-        text_edit: TextEdit {
-            atoms: [
-                AtomTextEdit {
-                    delete: [17; 17),
-                    insert: "crate::"
-                }
-            ]
-        },
+        delete: [17; 17),
+        insert: "crate::",
         kind: Keyword
     },
     CompletionItem {
         label: "self",
         source_range: [17; 17),
-        text_edit: TextEdit {
-            atoms: [
-                AtomTextEdit {
-                    delete: [17; 17),
-                    insert: "self"
-                }
-            ]
-        },
+        delete: [17; 17),
+        insert: "self",
         kind: Keyword
     },
     CompletionItem {
         label: "super",
         source_range: [17; 17),
-        text_edit: TextEdit {
-            atoms: [
-                AtomTextEdit {
-                    delete: [17; 17),
-                    insert: "super::"
-                }
-            ]
-        },
+        delete: [17; 17),
+        insert: "super::",
         kind: Keyword
     }
 ]
