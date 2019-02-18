@@ -127,13 +127,14 @@ fn trans_fn<'a, 'clif, 'tcx: 'a, B: Backend + 'static>(
 
     // Step 9. Define function
     cx.caches.context.func = func;
-    cx.module
-        .define_function_peek_compiled(func_id, &mut cx.caches.context, |size, context, isa| {
-            debug_context.as_mut().map(|x| x.define(tcx, size, context, isa, &source_info_set));
-        })
-        .unwrap();
-    //let module = &mut cx.module;
-    //let caches = &cx.caches;
+    cx.module.define_function(func_id, &mut cx.caches.context).unwrap();
+
+    // Step 10. Define debuginfo for function
+    let context = &cx.caches.context;
+    let isa = cx.module.isa();
+    debug_context.as_mut().map(|x| x.define(tcx, context, isa, &source_info_set));
+
+    // Step 11. Clear context to make it usable for the next function
     cx.caches.context.clear();
 }
 

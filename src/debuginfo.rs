@@ -264,23 +264,10 @@ impl<'a, 'b, 'tcx: 'b> FunctionDebugContext<'a, 'tcx> {
     pub fn define(
         &mut self,
         tcx: TyCtxt,
-        //module: &mut Module<impl Backend>,
-        code_size: u32,
         context: &Context,
         isa: &cranelift::codegen::isa::TargetIsa,
         source_info_set: &indexmap::IndexSet<SourceInfo>,
     ) {
-        let entry = self.debug_context.dwarf.unit.get_mut(self.entry_id);
-        entry.set(gimli::DW_AT_high_pc, AttributeValue::Udata(code_size as u64));
-
-        self.debug_context.unit_range_list.0.push(Range::StartLength {
-            begin: Address::Relative {
-                symbol: self.symbol,
-                addend: 0,
-            },
-            length: code_size as u64,
-        });
-
         let line_program = &mut self.debug_context.dwarf.unit.line_program;
 
         line_program.begin_sequence(Some(Address::Relative {
@@ -327,12 +314,18 @@ impl<'a, 'b, 'tcx: 'b> FunctionDebugContext<'a, 'tcx> {
             }
         }
 
-        if code_size != end {
-            line_program.row().address_offset = end as u64;
-            create_row_for_span(line_program, self.mir_span);
-        }
+        line_program.end_sequence(end as u64);
 
-        line_program.end_sequence(code_size as u64);
+        let entry = self.debug_context.dwarf.unit.get_mut(self.entry_id);
+        entry.set(gimli::DW_AT_high_pc, AttributeValue::Udata(end as u64));
+
+        self.debug_context.unit_range_list.0.push(Range::StartLength {
+            begin: Address::Relative {
+                symbol: self.symbol,
+                addend: 0,
+            },
+            length: end as u64,
+        });
     }
 }
 
