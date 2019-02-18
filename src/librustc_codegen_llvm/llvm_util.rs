@@ -1,6 +1,6 @@
+use crate::back::write::create_informational_target_machine;
+use crate::llvm;
 use syntax_pos::symbol::Symbol;
-use back::write::create_informational_target_machine;
-use llvm;
 use rustc::session::Session;
 use rustc::session::config::PrintRequest;
 use rustc_target::spec::MergeFunctions;

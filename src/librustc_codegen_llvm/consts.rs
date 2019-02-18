@@ -1,20 +1,20 @@
+use crate::llvm::{self, SetUnnamedAddr, True};
+use crate::debuginfo;
+use crate::monomorphize::MonoItem;
+use crate::common::CodegenCx;
+use crate::monomorphize::Instance;
+use crate::base;
+use crate::type_::Type;
+use crate::type_of::LayoutLlvmExt;
+use crate::value::Value;
 use libc::c_uint;
-use llvm::{self, SetUnnamedAddr, True};
 use rustc::hir::def_id::DefId;
 use rustc::mir::interpret::{ConstValue, Allocation, read_target_uint,
     Pointer, ErrorHandled, GlobalId};
 use rustc::hir::Node;
-use debuginfo;
-use monomorphize::MonoItem;
-use common::CodegenCx;
-use monomorphize::Instance;
 use syntax_pos::Span;
 use rustc_target::abi::HasDataLayout;
 use syntax_pos::symbol::LocalInternedString;
-use base;
-use type_::Type;
-use type_of::LayoutLlvmExt;
-use value::Value;
 use rustc::ty::{self, Ty};
 use rustc_codegen_ssa::traits::*;
 
