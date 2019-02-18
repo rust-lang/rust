@@ -456,7 +456,7 @@ impl<'a, 'gcx, 'tcx> Visitor<'gcx> for RegionCtxt<'a, 'gcx, 'tcx> {
         _: &'gcx hir::FnDecl,
         body_id: hir::BodyId,
         span: Span,
-        id: ast::NodeId,
+        hir_id: hir::HirId,
     ) {
         assert!(
             match fk {
@@ -473,7 +473,6 @@ impl<'a, 'gcx, 'tcx> Visitor<'gcx> for RegionCtxt<'a, 'gcx, 'tcx> {
         let env_snapshot = self.outlives_environment.push_snapshot_pre_closure();
 
         let body = self.tcx.hir().body(body_id);
-        let hir_id = self.tcx.hir().node_to_hir_id(id);
         self.visit_fn_body(hir_id, body, span);
 
         // Restore state from previous function.

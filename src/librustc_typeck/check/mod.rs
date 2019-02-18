@@ -1024,7 +1024,7 @@ impl<'a, 'gcx, 'tcx> Visitor<'gcx> for GatherLocalsVisitor<'a, 'gcx, 'tcx> {
 
     // Don't descend into the bodies of nested closures
     fn visit_fn(&mut self, _: intravisit::FnKind<'gcx>, _: &'gcx hir::FnDecl,
-                _: hir::BodyId, _: Span, _: ast::NodeId) { }
+                _: hir::BodyId, _: Span, _: hir::HirId) { }
 }
 
 /// When `check_fn` is invoked on a generator (i.e., a body that
