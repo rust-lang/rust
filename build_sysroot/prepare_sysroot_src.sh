@@ -24,7 +24,7 @@ git commit -m "Initial commit" -q
 for file in $(ls ../../patches/ | grep -v patcha); do
 echo "[GIT] apply" $file
 git apply ../../patches/$file
-git commit -am "Patch $file"
+git commit --no-gpg-sign -am "Patch $file"
 done
 popd
 
