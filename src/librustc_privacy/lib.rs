@@ -695,18 +695,20 @@ impl<'a, 'tcx> Visitor<'tcx> for EmbargoVisitor<'a, 'tcx> {
     }
 
     fn visit_macro_def(&mut self, md: &'tcx hir::MacroDef) {
+        let node_id = self.tcx.hir().hir_to_node_id(md.hir_id);
+
         if md.legacy {
-            self.update(md.id, Some(AccessLevel::Public));
+            self.update(node_id, Some(AccessLevel::Public));
             return
         }
 
         let module_did = ty::DefIdTree::parent(
             self.tcx,
-            self.tcx.hir().local_def_id(md.id)
+            self.tcx.hir().local_def_id_from_hir_id(md.hir_id)
         ).unwrap();
         let mut module_id = self.tcx.hir().as_local_node_id(module_did).unwrap();
         let level = if md.vis.node.is_pub() { self.get(module_id) } else { None };
-        let level = self.update(md.id, level);
+        let level = self.update(node_id, level);
         if level.is_none() {
             return
         }

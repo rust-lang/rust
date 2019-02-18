@@ -390,7 +390,7 @@ impl<'hir> Map<'hir> {
                 Some(Def::Local(local.id))
             }
             Node::MacroDef(macro_def) => {
-                Some(Def::Macro(self.local_def_id(macro_def.id),
+                Some(Def::Macro(self.local_def_id_from_hir_id(macro_def.hir_id),
                                 MacroKind::Bang))
             }
             Node::GenericParam(param) => {

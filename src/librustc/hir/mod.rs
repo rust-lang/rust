@@ -809,7 +809,6 @@ pub struct MacroDef {
     pub name: Name,
     pub vis: Visibility,
     pub attrs: HirVec<Attribute>,
-    pub id: NodeId,
     pub hir_id: HirId,
     pub span: Span,
     pub body: TokenStream,

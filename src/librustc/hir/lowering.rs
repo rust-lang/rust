@@ -3532,7 +3532,6 @@ impl<'a> LoweringContext<'a> {
                     name: ident.name,
                     vis,
                     attrs,
-                    id: i.id,
                     hir_id,
                     span: i.span,
                     body,
