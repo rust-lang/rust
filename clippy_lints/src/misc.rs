@@ -215,7 +215,7 @@ declare_clippy_lint! {
 ///
 /// **Example:**
 /// ```rust
-/// const ONE == 1.00f64
+/// const ONE = 1.00f64;
 /// x == ONE  // where both are floats
 /// ```
 declare_clippy_lint! {
