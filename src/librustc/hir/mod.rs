@@ -19,7 +19,7 @@ use errors::FatalError;
 use syntax_pos::{Span, DUMMY_SP, symbol::InternedString};
 use syntax::source_map::Spanned;
 use rustc_target::spec::abi::Abi;
-use syntax::ast::{self, CrateSugar, Ident, Name, NodeId, DUMMY_NODE_ID, AsmDialect};
+use syntax::ast::{self, CrateSugar, Ident, Name, NodeId, AsmDialect};
 use syntax::ast::{Attribute, Label, Lit, StrStyle, FloatTy, IntTy, UintTy};
 use syntax::attr::{InlineAttr, OptimizeAttr};
 use syntax::ext::hygiene::SyntaxContext;
@@ -583,7 +583,6 @@ impl Generics {
         Generics {
             params: HirVec::new(),
             where_clause: WhereClause {
-                id: DUMMY_NODE_ID,
                 hir_id: DUMMY_HIR_ID,
                 predicates: HirVec::new(),
             },
@@ -628,7 +627,6 @@ pub enum SyntheticTyParamKind {
 /// A where-clause in a definition.
 #[derive(Clone, RustcEncodable, RustcDecodable, Debug)]
 pub struct WhereClause {
-    pub id: NodeId,
     pub hir_id: HirId,
     pub predicates: HirVec<WherePredicate>,
 }

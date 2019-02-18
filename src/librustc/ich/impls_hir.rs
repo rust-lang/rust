@@ -253,7 +253,6 @@ impl_stable_hash_for!(enum hir::SyntheticTyParamKind {
 });
 
 impl_stable_hash_for!(struct hir::WhereClause {
-    id,
     hir_id,
     predicates
 });

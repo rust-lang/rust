@@ -1391,12 +1391,11 @@ impl<'a> LoweringContext<'a> {
         );
 
         self.with_hir_id_owner(exist_ty_node_id, |lctx| {
-            let LoweredNodeId { node_id, hir_id } = lctx.next_id();
+            let LoweredNodeId { node_id: _, hir_id } = lctx.next_id();
             let exist_ty_item_kind = hir::ItemKind::Existential(hir::ExistTy {
                 generics: hir::Generics {
                     params: lifetime_defs,
                     where_clause: hir::WhereClause {
-                        id: node_id,
                         hir_id,
                         predicates: Vec::new().into(),
                     },
@@ -2599,10 +2598,9 @@ impl<'a> LoweringContext<'a> {
         self.with_anonymous_lifetime_mode(
             AnonymousLifetimeMode::ReportError,
             |this| {
-                let LoweredNodeId { node_id, hir_id } = this.lower_node_id(wc.id);
+                let LoweredNodeId { node_id: _, hir_id } = this.lower_node_id(wc.id);
 
                 hir::WhereClause {
-                    id: node_id,
                     hir_id,
                     predicates: wc.predicates
                         .iter()
