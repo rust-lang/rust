@@ -2,7 +2,7 @@
 // pieces of AST and HIR. The resulting numbers are good approximations but not
 // completely accurate (some things might be counted twice, others missed).
 
-use rustc::hir;
+use rustc::hir::{self, HirId};
 use rustc::hir::intravisit as hir_visit;
 use rustc::util::common::to_readable_str;
 use rustc::util::nodemap::{FxHashMap, FxHashSet};
@@ -12,7 +12,7 @@ use syntax_pos::Span;
 
 #[derive(Copy, Clone, PartialEq, Eq, Hash)]
 enum Id {
-    Node(NodeId),
+    Node(HirId),
     Attr(AttrId),
     None,
 }
@@ -119,7 +119,7 @@ impl<'v> hir_visit::Visitor<'v> for StatCollector<'v> {
     }
 
     fn visit_item(&mut self, i: &'v hir::Item) {
-        self.record("Item", Id::Node(i.id), i);
+        self.record("Item", Id::Node(i.hir_id), i);
         hir_visit::walk_item(self, i)
     }
 
@@ -129,22 +129,22 @@ impl<'v> hir_visit::Visitor<'v> for StatCollector<'v> {
     }
 
     fn visit_foreign_item(&mut self, i: &'v hir::ForeignItem) {
-        self.record("ForeignItem", Id::Node(i.id), i);
+        self.record("ForeignItem", Id::Node(i.hir_id), i);
         hir_visit::walk_foreign_item(self, i)
     }
 
     fn visit_local(&mut self, l: &'v hir::Local) {
-        self.record("Local", Id::Node(l.id), l);
+        self.record("Local", Id::Node(l.hir_id), l);
         hir_visit::walk_local(self, l)
     }
 
     fn visit_block(&mut self, b: &'v hir::Block) {
-        self.record("Block", Id::Node(b.id), b);
+        self.record("Block", Id::Node(b.hir_id), b);
         hir_visit::walk_block(self, b)
     }
 
     fn visit_stmt(&mut self, s: &'v hir::Stmt) {
-        self.record("Stmt", Id::Node(s.id), s);
+        self.record("Stmt", Id::Node(s.hir_id), s);
         hir_visit::walk_stmt(self, s)
     }
 
@@ -154,17 +154,17 @@ impl<'v> hir_visit::Visitor<'v> for StatCollector<'v> {
     }
 
     fn visit_pat(&mut self, p: &'v hir::Pat) {
-        self.record("Pat", Id::Node(p.id), p);
+        self.record("Pat", Id::Node(p.hir_id), p);
         hir_visit::walk_pat(self, p)
     }
 
     fn visit_expr(&mut self, ex: &'v hir::Expr) {
-        self.record("Expr", Id::Node(ex.id), ex);
+        self.record("Expr", Id::Node(ex.hir_id), ex);
         hir_visit::walk_expr(self, ex)
     }
 
     fn visit_ty(&mut self, t: &'v hir::Ty) {
-        self.record("Ty", Id::Node(t.id), t);
+        self.record("Ty", Id::Node(t.hir_id), t);
         hir_visit::walk_ty(self, t)
     }
 
@@ -184,12 +184,12 @@ impl<'v> hir_visit::Visitor<'v> for StatCollector<'v> {
     }
 
     fn visit_trait_item(&mut self, ti: &'v hir::TraitItem) {
-        self.record("TraitItem", Id::Node(ti.id), ti);
+        self.record("TraitItem", Id::Node(ti.hir_id), ti);
         hir_visit::walk_trait_item(self, ti)
     }
 
     fn visit_impl_item(&mut self, ii: &'v hir::ImplItem) {
-        self.record("ImplItem", Id::Node(ii.id), ii);
+        self.record("ImplItem", Id::Node(ii.hir_id), ii);
         hir_visit::walk_impl_item(self, ii)
     }
 
@@ -199,7 +199,7 @@ impl<'v> hir_visit::Visitor<'v> for StatCollector<'v> {
     }
 
     fn visit_struct_field(&mut self, s: &'v hir::StructField) {
-        self.record("StructField", Id::Node(s.id), s);
+        self.record("StructField", Id::Node(s.hir_id), s);
         hir_visit::walk_struct_field(self, s)
     }
 
@@ -212,7 +212,7 @@ impl<'v> hir_visit::Visitor<'v> for StatCollector<'v> {
     }
 
     fn visit_lifetime(&mut self, lifetime: &'v hir::Lifetime) {
-        self.record("Lifetime", Id::Node(lifetime.id), lifetime);
+        self.record("Lifetime", Id::Node(lifetime.hir_id), lifetime);
         hir_visit::walk_lifetime(self, lifetime)
     }
 
@@ -234,7 +234,7 @@ impl<'v> hir_visit::Visitor<'v> for StatCollector<'v> {
     }
 
     fn visit_assoc_type_binding(&mut self, type_binding: &'v hir::TypeBinding) {
-        self.record("TypeBinding", Id::Node(type_binding.id), type_binding);
+        self.record("TypeBinding", Id::Node(type_binding.hir_id), type_binding);
         hir_visit::walk_assoc_type_binding(self, type_binding)
     }
 
@@ -243,7 +243,7 @@ impl<'v> hir_visit::Visitor<'v> for StatCollector<'v> {
     }
 
     fn visit_macro_def(&mut self, macro_def: &'v hir::MacroDef) {
-        self.record("MacroDef", Id::Node(macro_def.id), macro_def);
+        self.record("MacroDef", Id::Node(macro_def.hir_id), macro_def);
         hir_visit::walk_macro_def(self, macro_def)
     }
 }
