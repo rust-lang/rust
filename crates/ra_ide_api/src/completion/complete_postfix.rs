@@ -16,15 +16,16 @@ use ra_syntax::{
 use ra_text_edit::TextEditBuilder;
 
 fn postfix_snippet(ctx: &CompletionContext, label: &str, detail: &str, snippet: &str) -> Builder {
-    let replace_range = ctx.source_range();
-    let receiver_range = ctx.dot_receiver.expect("no receiver available").syntax().range();
-    let delete_range = TextRange::from_to(receiver_range.start(), replace_range.start());
-    let mut builder = TextEditBuilder::default();
-    builder.delete(delete_range);
-    CompletionItem::new(CompletionKind::Postfix, replace_range, label)
-        .insert_snippet(snippet)
+    let edit = {
+        let receiver_range = ctx.dot_receiver.expect("no receiver available").syntax().range();
+        let delete_range = TextRange::from_to(receiver_range.start(), ctx.source_range().end());
+        let mut builder = TextEditBuilder::default();
+        builder.replace(delete_range, snippet.to_string());
+        builder.finish()
+    };
+    CompletionItem::new(CompletionKind::Postfix, ctx.source_range(), label)
         .detail(detail)
-        .text_edit(builder.finish())
+        .snippet_edit(edit)
 }
 
 pub(super) fn complete_postfix(acc: &mut Completions, ctx: &CompletionContext) {

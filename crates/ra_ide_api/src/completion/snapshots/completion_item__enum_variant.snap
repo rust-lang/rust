@@ -1,5 +1,5 @@
 ---
-created: "2019-02-18T07:29:59.672144115Z"
+created: "2019-02-18T09:10:52.033853029Z"
 creator: insta@0.6.2
 source: crates/ra_ide_api/src/completion/completion_item.rs
 expression: kind_completions
@@ -8,6 +8,14 @@ expression: kind_completions
     CompletionItem {
         label: "Bar",
         source_range: [116; 116),
+        text_edit: TextEdit {
+            atoms: [
+                AtomTextEdit {
+                    delete: [116; 116),
+                    insert: "Bar"
+                }
+            ]
+        },
         kind: EnumVariant,
         detail: "(i32)",
         documentation: Documentation(
@@ -17,6 +25,14 @@ expression: kind_completions
     CompletionItem {
         label: "Foo",
         source_range: [116; 116),
+        text_edit: TextEdit {
+            atoms: [
+                AtomTextEdit {
+                    delete: [116; 116),
+                    insert: "Foo"
+                }
+            ]
+        },
         kind: EnumVariant,
         detail: "()",
         documentation: Documentation(

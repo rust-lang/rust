@@ -2,7 +2,7 @@ use std::fmt;
 
 use hir::{Docs, Documentation, PerNs, Resolution};
 use ra_syntax::TextRange;
-use ra_text_edit::TextEdit;
+use ra_text_edit::{ TextEditBuilder, TextEdit};
 use test_utils::tested_by;
 
 use crate::completion::{
@@ -17,29 +17,47 @@ use crate::completion::{
 /// `CompletionItem`, use `new` method and the `Builder` struct.
 pub struct CompletionItem {
     /// Used only internally in tests, to check only specific kind of
-    /// completion.
+    /// completion (postfix, keyword, reference, etc).
     #[allow(unused)]
     completion_kind: CompletionKind,
+    /// Label in the completion pop up which identifies completion.
     label: String,
+    /// Range of identifier that is being completed.
+    ///
+    /// It should be used primarily for UI, but we also use this to convert
+    /// genetic TextEdit into LSP's completion edit (see conv.rs).
+    ///
+    /// `source_range` must contain the completion offset. `insert_text` should
+    /// start with what `source_range` points to, or VSCode will filter out the
+    /// completion silently.
+    source_range: TextRange,
+    /// What happens when user selects this item.
+    ///
+    /// Typically, replaces `source_range` with new identifier.
+    text_edit: TextEdit,
+    insert_text_format: InsertTextFormat,
+
+    /// What item (struct, function, etc) are we completing.
     kind: Option<CompletionItemKind>,
+
+    /// Lookup is used to check if completion item indeed can complete current
+    /// ident.
+    ///
+    /// That is, in `foo.bar<|>` lookup of `abracadabra` will be accepted (it
+    /// contains `bar` sub sequence), and `quux` will rejected.
     lookup: Option<String>,
+
+    /// Additional info to show in the UI pop up.
     detail: Option<String>,
     documentation: Option<Documentation>,
-    insert_text: Option<String>,
-    insert_text_format: InsertTextFormat,
-    /// Where completion occurs. `source_range` must contain the completion offset.
-    /// `insert_text` should start with what `source_range` points to, or VSCode
-    /// will filter out the completion silently.
-    source_range: TextRange,
-    /// Additional text edit, ranges in `text_edit` must never intersect with `source_range`.
-    /// Or VSCode will drop it silently.
-    text_edit: Option<TextEdit>,
 }
 
 impl fmt::Debug for CompletionItem {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         let mut s = f.debug_struct("CompletionItem");
-        s.field("label", &self.label()).field("source_range", &self.source_range());
+        s.field("label", &self.label())
+            .field("source_range", &self.source_range())
+            .field("text_edit", &self.text_edit);
         if let Some(kind) = self.kind().as_ref() {
             s.field("kind", kind);
         }
@@ -51,13 +69,6 @@ impl fmt::Debug for CompletionItem {
         }
         if let Some(documentation) = self.documentation() {
             s.field("documentation", &documentation);
-        }
-        if self.insert_text() != self.label() {
-            s.field("insert_text", &self.insert_text())
-                .field("insert_text_format", &self.insert_text_format());
-        }
-        if let Some(edit) = self.text_edit.as_ref() {
-            s.field("text_edit", edit);
         }
         s.finish()
     }
@@ -103,12 +114,12 @@ pub enum InsertTextFormat {
 impl CompletionItem {
     pub(crate) fn new(
         completion_kind: CompletionKind,
-        replace_range: TextRange,
+        source_range: TextRange,
         label: impl Into<String>,
     ) -> Builder {
         let label = label.into();
         Builder {
-            source_range: replace_range,
+            source_range,
             completion_kind,
             label,
             insert_text: None,
@@ -124,6 +135,18 @@ impl CompletionItem {
     pub fn label(&self) -> &str {
         &self.label
     }
+    pub fn source_range(&self) -> TextRange {
+        self.source_range
+    }
+
+    pub fn insert_text_format(&self) -> InsertTextFormat {
+        self.insert_text_format
+    }
+
+    pub fn text_edit(&self) -> &TextEdit {
+        &self.text_edit
+    }
+
     /// Short one-line additional information, like a type
     pub fn detail(&self) -> Option<&str> {
         self.detail.as_ref().map(|it| it.as_str())
@@ -137,23 +160,8 @@ impl CompletionItem {
         self.lookup.as_ref().map(|it| it.as_str()).unwrap_or_else(|| self.label())
     }
 
-    pub fn insert_text_format(&self) -> InsertTextFormat {
-        self.insert_text_format
-    }
-    pub fn insert_text(&self) -> String {
-        match &self.insert_text {
-            Some(t) => t.clone(),
-            None => self.label.clone(),
-        }
-    }
     pub fn kind(&self) -> Option<CompletionItemKind> {
         self.kind
-    }
-    pub fn take_text_edit(&mut self) -> Option<TextEdit> {
-        self.text_edit.take()
-    }
-    pub fn source_range(&self) -> TextRange {
-        self.source_range
     }
 }
 
@@ -178,17 +186,27 @@ impl Builder {
     }
 
     pub(crate) fn build(self) -> CompletionItem {
+        let label = self.label;
+        let text_edit = match self.text_edit {
+            Some(it) => it,
+            None => {
+                let mut builder = TextEditBuilder::default();
+                builder
+                    .replace(self.source_range, self.insert_text.unwrap_or_else(|| label.clone()));
+                builder.finish()
+            }
+        };
+
         CompletionItem {
             source_range: self.source_range,
-            label: self.label,
+            label,
+            insert_text_format: self.insert_text_format,
+            text_edit,
             detail: self.detail,
             documentation: self.documentation,
-            insert_text_format: self.insert_text_format,
             lookup: self.lookup,
             kind: self.kind,
             completion_kind: self.completion_kind,
-            text_edit: self.text_edit,
-            insert_text: self.insert_text,
         }
     }
     pub(crate) fn lookup_by(mut self, lookup: impl Into<String>) -> Builder {
@@ -207,10 +225,13 @@ impl Builder {
         self.kind = Some(kind);
         self
     }
-    #[allow(unused)]
     pub(crate) fn text_edit(mut self, edit: TextEdit) -> Builder {
         self.text_edit = Some(edit);
         self
+    }
+    pub(crate) fn snippet_edit(mut self, edit: TextEdit) -> Builder {
+        self.insert_text_format = InsertTextFormat::Snippet;
+        self.text_edit(edit)
     }
     #[allow(unused)]
     pub(crate) fn detail(self, detail: impl Into<String>) -> Builder {

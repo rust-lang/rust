@@ -79,11 +79,31 @@ impl ConvWith for CompletionItem {
     type Ctx = LineIndex;
     type Output = ::lsp_types::CompletionItem;
 
-    fn conv_with(mut self, ctx: &LineIndex) -> ::lsp_types::CompletionItem {
-        let atom_text_edit = AtomTextEdit::replace(self.source_range(), self.insert_text());
-        let text_edit = (&atom_text_edit).conv_with(ctx);
-        let additional_text_edits =
-            if let Some(edit) = self.take_text_edit() { Some(edit.conv_with(ctx)) } else { None };
+    fn conv_with(self, ctx: &LineIndex) -> ::lsp_types::CompletionItem {
+        let mut additional_text_edits = Vec::new();
+        let mut text_edit = None;
+        // LSP does not allow arbitrary edits in completion, so we have to do a
+        // non-trivial mapping here.
+        for atom_edit in self.text_edit().as_atoms() {
+            if self.source_range().is_subrange(&atom_edit.delete) {
+                text_edit = Some(if atom_edit.delete == self.source_range() {
+                    atom_edit.conv_with(ctx)
+                } else {
+                    assert!(self.source_range().end() == atom_edit.delete.end());
+                    let range1 =
+                        TextRange::from_to(atom_edit.delete.start(), self.source_range().start());
+                    let range2 = self.source_range();
+                    let edit1 = AtomTextEdit::replace(range1, String::new());
+                    let edit2 = AtomTextEdit::replace(range2, atom_edit.insert.clone());
+                    additional_text_edits.push(edit1.conv_with(ctx));
+                    edit2.conv_with(ctx)
+                })
+            } else {
+                assert!(self.source_range().intersection(&atom_edit.delete).is_none());
+                additional_text_edits.push(atom_edit.conv_with(ctx));
+            }
+        }
+        let text_edit = text_edit.unwrap();
 
         let mut res = lsp_types::CompletionItem {
             label: self.label().to_string(),
@@ -91,7 +111,7 @@ impl ConvWith for CompletionItem {
             filter_text: Some(self.lookup().to_string()),
             kind: self.kind().map(|it| it.conv()),
             text_edit: Some(text_edit),
-            additional_text_edits,
+            additional_text_edits: Some(additional_text_edits),
             documentation: self.documentation().map(|it| it.conv()),
             ..Default::default()
         };

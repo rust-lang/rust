@@ -1,5 +1,5 @@
 ---
-created: "2019-02-18T07:29:59.770992040Z"
+created: "2019-02-18T09:10:52.120931050Z"
 creator: insta@0.6.2
 source: crates/ra_ide_api/src/completion/completion_item.rs
 expression: kind_completions
@@ -8,14 +8,28 @@ expression: kind_completions
     CompletionItem {
         label: "Bar",
         source_range: [101; 101),
+        text_edit: TextEdit {
+            atoms: [
+                AtomTextEdit {
+                    delete: [101; 101),
+                    insert: "Bar"
+                }
+            ]
+        },
         kind: Struct
     },
     CompletionItem {
         label: "quux",
         source_range: [101; 101),
+        text_edit: TextEdit {
+            atoms: [
+                AtomTextEdit {
+                    delete: [101; 101),
+                    insert: "quux()$0"
+                }
+            ]
+        },
         kind: Function,
-        detail: "fn quux()",
-        insert_text: "quux()$0",
-        insert_text_format: Snippet
+        detail: "fn quux()"
     }
 ]
