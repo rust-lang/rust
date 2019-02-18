@@ -21,4 +21,12 @@ fn main() {
     print!("Hello {} {}\n\n", "world", "#2");
     println!("\ndon't\nwarn\nfor\nmultiple\nnewlines\n"); // #3126
     println!("\nbla\n\n"); // #3126
+
+    // Escaping
+    print!("\\n"); // #3514
+    print!("\\\n"); // should fail
+    print!("\\\\n");
+
+    // Raw strings
+    print!(r"\n"); // #3778
 }
