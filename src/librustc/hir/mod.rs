@@ -420,7 +420,7 @@ impl GenericArg {
         match self {
             GenericArg::Lifetime(l) => l.hir_id,
             GenericArg::Type(t) => t.hir_id,
-            GenericArg::Const(c) => c.value.id,
+            GenericArg::Const(c) => c.value.hir_id,
         }
     }
 }
@@ -552,7 +552,6 @@ pub enum GenericParamKind {
 
 #[derive(Clone, RustcEncodable, RustcDecodable, Debug)]
 pub struct GenericParam {
-    pub id: NodeId,
     pub hir_id: HirId,
     pub name: ParamName,
     pub attrs: HirVec<Attribute>,

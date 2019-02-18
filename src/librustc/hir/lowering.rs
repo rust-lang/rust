@@ -780,7 +780,6 @@ impl<'a> LoweringContext<'a> {
                 );
 
                 hir::GenericParam {
-                    id: node_id,
                     hir_id,
                     name: hir_name,
                     attrs: hir_vec![],
@@ -1300,7 +1299,6 @@ impl<'a> LoweringContext<'a> {
                         // Set the name to `impl Bound1 + Bound2`.
                         let ident = Ident::from_str(&pprust::ty_to_string(t)).with_span_pos(span);
                         in_band_ty_params.push(hir::GenericParam {
-                            id: def_node_id,
                             hir_id,
                             name: ParamName::Plain(ident),
                             pure_wrt_drop: false,
@@ -1567,7 +1565,6 @@ impl<'a> LoweringContext<'a> {
                     };
 
                     self.output_lifetime_params.push(hir::GenericParam {
-                        id: def_node_id,
                         hir_id,
                         name,
                         span: lifetime.span,
@@ -2519,10 +2516,9 @@ impl<'a> LoweringContext<'a> {
             }
         };
 
-        let LoweredNodeId { node_id, hir_id } = self.lower_node_id(param.id);
+        let LoweredNodeId { node_id: _, hir_id } = self.lower_node_id(param.id);
 
         hir::GenericParam {
-            id: node_id,
             hir_id,
             name,
             span: param.ident.span,

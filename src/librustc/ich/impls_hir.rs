@@ -206,7 +206,6 @@ impl_stable_hash_for!(enum hir::TraitBoundModifier {
 });
 
 impl_stable_hash_for!(struct hir::GenericParam {
-    id,
     hir_id,
     name,
     pure_wrt_drop,

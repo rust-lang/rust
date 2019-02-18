@@ -13,7 +13,7 @@ use crate::ty::{self, DefIdTree, GenericParamDefKind, TyCtxt};
 
 use crate::rustc::lint;
 use crate::session::Session;
-use crate::util::nodemap::{DefIdMap, FxHashMap, FxHashSet, HirIdMap, NodeMap, NodeSet};
+use crate::util::nodemap::{DefIdMap, FxHashMap, FxHashSet, HirIdMap, HirIdSet, NodeMap};
 use errors::{Applicability, DiagnosticBuilder};
 use rustc_data_structures::sync::Lrc;
 use std::borrow::Cow;
@@ -83,7 +83,7 @@ impl Region {
     fn early(hir_map: &Map<'_>, index: &mut u32, param: &GenericParam) -> (ParamName, Region) {
         let i = *index;
         *index += 1;
-        let def_id = hir_map.local_def_id(param.id);
+        let def_id = hir_map.local_def_id_from_hir_id(param.hir_id);
         let origin = LifetimeDefOrigin::from_param(param);
         debug!("Region::early: index={} def_id={:?}", i, def_id);
         (param.name.modern(), Region::EarlyBound(i, def_id, origin))
@@ -91,7 +91,7 @@ impl Region {
 
     fn late(hir_map: &Map<'_>, param: &GenericParam) -> (ParamName, Region) {
         let depth = ty::INNERMOST;
-        let def_id = hir_map.local_def_id(param.id);
+        let def_id = hir_map.local_def_id_from_hir_id(param.hir_id);
         let origin = LifetimeDefOrigin::from_param(param);
         debug!(
             "Region::late: param={:?} depth={:?} def_id={:?} origin={:?}",
@@ -200,7 +200,7 @@ struct NamedRegionMap {
     // the set of lifetime def ids that are late-bound; a region can
     // be late-bound if (a) it does NOT appear in a where-clause and
     // (b) it DOES appear in the arguments.
-    pub late_bound: NodeSet,
+    pub late_bound: HirIdSet,
 
     // For each type and trait definition, maps type parameters
     // to the trait object lifetime defaults computed from them.
@@ -389,8 +389,7 @@ fn resolve_lifetimes<'tcx>(
         let map = rl.defs.entry(hir_id.owner_local_def_id()).or_default();
         Lrc::get_mut(map).unwrap().insert(hir_id.local_id, v);
     }
-    for k in named_region_map.late_bound {
-        let hir_id = tcx.hir().node_to_hir_id(k);
+    for hir_id in named_region_map.late_bound {
         let map = rl.late_bound
             .entry(hir_id.owner_local_def_id())
             .or_default();
@@ -1338,7 +1337,7 @@ fn object_lifetime_defaults_for_item(
 
                 add_bounds(&mut set, &param.bounds);
 
-                let param_def_id = tcx.hir().local_def_id(param.id);
+                let param_def_id = tcx.hir().local_def_id_from_hir_id(param.hir_id);
                 for predicate in &generics.where_clause.predicates {
                     // Look for `type: ...` where clauses.
                     let data = match *predicate {
@@ -1373,7 +1372,7 @@ fn object_lifetime_defaults_for_item(
                                 .iter()
                                 .filter_map(|param| match param.kind {
                                     GenericParamKind::Lifetime { .. } => Some((
-                                        param.id,
+                                        param.hir_id,
                                         hir::LifetimeName::Param(param.name),
                                         LifetimeDefOrigin::from_param(param),
                                     )),
@@ -1382,7 +1381,7 @@ fn object_lifetime_defaults_for_item(
                                 .enumerate()
                                 .find(|&(_, (_, lt_name, _))| lt_name == name)
                                 .map_or(Set1::Many, |(i, (id, _, origin))| {
-                                    let def_id = tcx.hir().local_def_id(id);
+                                    let def_id = tcx.hir().local_def_id_from_hir_id(id);
                                     Set1::One(Region::EarlyBound(i as u32, def_id, origin))
                                 })
                         }
@@ -1707,7 +1706,7 @@ impl<'a, 'tcx> LifetimeContext<'a, 'tcx> {
         let mut non_lifetime_count = 0;
         let lifetimes = generics.params.iter().filter_map(|param| match param.kind {
             GenericParamKind::Lifetime { .. } => {
-                if self.map.late_bound.contains(&param.id) {
+                if self.map.late_bound.contains(&param.hir_id) {
                     Some(Region::late(&self.tcx.hir(), param))
                 } else {
                     Some(Region::early(&self.tcx.hir(), &mut index, param))
@@ -2792,11 +2791,11 @@ fn insert_late_bound_lifetimes(
         debug!(
             "insert_late_bound_lifetimes: lifetime {:?} with id {:?} is late-bound",
             param.name.ident(),
-            param.id
+            param.hir_id
         );
 
-        let inserted = map.late_bound.insert(param.id);
-        assert!(inserted, "visited lifetime {:?} twice", param.id);
+        let inserted = map.late_bound.insert(param.hir_id);
+        assert!(inserted, "visited lifetime {:?} twice", param.hir_id);
     }
 
     return;

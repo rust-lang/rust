@@ -395,9 +395,14 @@ impl<'hir> Map<'hir> {
             }
             Node::GenericParam(param) => {
                 Some(match param.kind {
-                    GenericParamKind::Lifetime { .. } => Def::Local(param.id),
-                    GenericParamKind::Type { .. } => Def::TyParam(self.local_def_id(param.id)),
-                    GenericParamKind::Const { .. } => Def::ConstParam(self.local_def_id(param.id)),
+                    GenericParamKind::Lifetime { .. } => {
+                        let node_id = self.hir_to_node_id(param.hir_id);
+                        Def::Local(node_id)
+                    },
+                    GenericParamKind::Type { .. } => Def::TyParam(
+                        self.local_def_id_from_hir_id(param.hir_id)),
+                    GenericParamKind::Const { .. } => Def::ConstParam(
+                        self.local_def_id_from_hir_id(param.hir_id)),
                 })
             }
         }

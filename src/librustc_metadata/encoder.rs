@@ -1702,13 +1702,13 @@ impl<'a, 'b, 'tcx> IndexBuilder<'a, 'b, 'tcx> {
             match param.kind {
                 hir::GenericParamKind::Lifetime { .. } => {}
                 hir::GenericParamKind::Type { ref default, .. } => {
-                    let def_id = self.tcx.hir().local_def_id(param.id);
+                    let def_id = self.tcx.hir().local_def_id_from_hir_id(param.hir_id);
                     let has_default = Untracked(default.is_some());
                     let encode_info = IsolatedEncoder::encode_info_for_ty_param;
                     self.record(def_id, encode_info, (def_id, has_default));
                 }
                 hir::GenericParamKind::Const { .. } => {
-                    let def_id = self.tcx.hir().local_def_id(param.id);
+                    let def_id = self.tcx.hir().local_def_id_from_hir_id(param.hir_id);
                     let encode_info = IsolatedEncoder::encode_info_for_const_param;
                     self.record(def_id, encode_info, def_id);
                 }

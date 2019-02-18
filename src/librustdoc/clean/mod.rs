@@ -1511,7 +1511,7 @@ impl Clean<GenericParamDef> for hir::GenericParam {
             }
             hir::GenericParamKind::Type { ref default, synthetic } => {
                 (self.name.ident().name.clean(cx), GenericParamDefKind::Type {
-                    did: cx.tcx.hir().local_def_id(self.id),
+                    did: cx.tcx.hir().local_def_id_from_hir_id(self.hir_id),
                     bounds: self.bounds.clean(cx),
                     default: default.clean(cx),
                     synthetic: synthetic,
@@ -1519,7 +1519,7 @@ impl Clean<GenericParamDef> for hir::GenericParam {
             }
             hir::GenericParamKind::Const { ref ty } => {
                 (self.name.ident().name.clean(cx), GenericParamDefKind::Const {
-                    did: cx.tcx.hir().local_def_id(self.id),
+                    did: cx.tcx.hir().local_def_id_from_hir_id(self.hir_id),
                     ty: ty.clean(cx),
                 })
             }
@@ -2597,7 +2597,7 @@ impl Clean<Type> for hir::Ty {
                                     if let Some(lt) = lifetime.cloned() {
                                         if !lt.is_elided() {
                                             let lt_def_id =
-                                                cx.tcx.hir().local_def_id(param.id);
+                                                cx.tcx.hir().local_def_id_from_hir_id(param.hir_id);
                                             lt_substs.insert(lt_def_id, lt.clean(cx));
                                         }
                                     }
@@ -2605,7 +2605,8 @@ impl Clean<Type> for hir::Ty {
                                 }
                                 hir::GenericParamKind::Type { ref default, .. } => {
                                     let ty_param_def =
-                                        Def::TyParam(cx.tcx.hir().local_def_id(param.id));
+                                        Def::TyParam(
+                                            cx.tcx.hir().local_def_id_from_hir_id(param.hir_id));
                                     let mut j = 0;
                                     let type_ = generic_args.args.iter().find_map(|arg| {
                                         match arg {
@@ -2629,7 +2630,8 @@ impl Clean<Type> for hir::Ty {
                                 }
                                 hir::GenericParamKind::Const { .. } => {
                                     let const_param_def =
-                                        Def::ConstParam(cx.tcx.hir().local_def_id(param.id));
+                                        Def::ConstParam(
+                                            cx.tcx.hir().local_def_id_from_hir_id(param.hir_id));
                                     let mut j = 0;
                                     let const_ = generic_args.args.iter().find_map(|arg| {
                                         match arg {
