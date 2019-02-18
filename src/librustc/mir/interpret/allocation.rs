@@ -613,7 +613,6 @@ impl<Tag> DerefMut for Relocations<Tag> {
 ////////////////////////////////////////////////////////////////////////////////
 
 type Block = u64;
-const BLOCK_SIZE: u64 = 64;
 
 #[derive(Clone, Debug, Eq, PartialEq, PartialOrd, Ord, Hash, RustcEncodable, RustcDecodable)]
 pub struct UndefMask {
@@ -624,6 +623,8 @@ pub struct UndefMask {
 impl_stable_hash_for!(struct mir::interpret::UndefMask{blocks, len});
 
 impl UndefMask {
+    pub const BLOCK_SIZE: u64 = 64;
+
     pub fn new(size: Size) -> Self {
         let mut m = UndefMask {
             blocks: vec![],
@@ -643,6 +644,7 @@ impl UndefMask {
             return Err(self.len);
         }
 
+        // FIXME(oli-obk): optimize this for allocations larger than a block.
         let idx = (start.bytes()..end.bytes())
             .map(|i| Size::from_bytes(i))
             .find(|&i| !self.get(i));
@@ -662,8 +664,31 @@ impl UndefMask {
     }
 
     pub fn set_range_inbounds(&mut self, start: Size, end: Size, new_state: bool) {
-        for i in start.bytes()..end.bytes() {
-            self.set(Size::from_bytes(i), new_state);
+        let (blocka, bita) = bit_index(start);
+        let (blockb, bitb) = bit_index(end);
+        if blocka == blockb {
+            // within a single block
+            for i in bita .. bitb {
+                self.set_bit(blocka, i, new_state);
+            }
+            return;
+        }
+        // across block boundaries
+        for i in bita .. Self::BLOCK_SIZE as usize {
+            self.set_bit(blocka, i, new_state);
+        }
+        for i in 0 .. bitb {
+            self.set_bit(blockb, i, new_state);
+        }
+        // fill in all the other blocks (much faster than one bit at a time)
+        if new_state {
+            for block in (blocka + 1) .. blockb {
+                self.blocks[block] = 0xFFFF_FFFF_FFFF_FFFF;
+            }
+        } else {
+            for block in (blocka + 1) .. blockb {
+                self.blocks[block] = 0;
+            }
         }
     }
 
@@ -676,6 +701,11 @@ impl UndefMask {
     #[inline]
     pub fn set(&mut self, i: Size, new_state: bool) {
         let (block, bit) = bit_index(i);
+        self.set_bit(block, bit, new_state);
+    }
+
+    #[inline]
+    fn set_bit(&mut self, block: usize, bit: usize, new_state: bool) {
         if new_state {
             self.blocks[block] |= 1 << bit;
         } else {
@@ -684,11 +714,12 @@ impl UndefMask {
     }
 
     pub fn grow(&mut self, amount: Size, new_state: bool) {
-        let unused_trailing_bits = self.blocks.len() as u64 * BLOCK_SIZE - self.len.bytes();
+        let unused_trailing_bits = self.blocks.len() as u64 * Self::BLOCK_SIZE - self.len.bytes();
         if amount.bytes() > unused_trailing_bits {
-            let additional_blocks = amount.bytes() / BLOCK_SIZE + 1;
+            let additional_blocks = amount.bytes() / Self::BLOCK_SIZE + 1;
             assert_eq!(additional_blocks as usize as u64, additional_blocks);
             self.blocks.extend(
+                // FIXME(oli-obk): optimize this by repeating `new_state as Block`
                 iter::repeat(0).take(additional_blocks as usize),
             );
         }
@@ -701,8 +732,8 @@ impl UndefMask {
 #[inline]
 fn bit_index(bits: Size) -> (usize, usize) {
     let bits = bits.bytes();
-    let a = bits / BLOCK_SIZE;
-    let b = bits % BLOCK_SIZE;
+    let a = bits / UndefMask::BLOCK_SIZE;
+    let b = bits % UndefMask::BLOCK_SIZE;
     assert_eq!(a as usize as u64, a);
     assert_eq!(b as usize as u64, b);
     (a as usize, b as usize)
