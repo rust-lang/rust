@@ -420,7 +420,7 @@ pub unsafe fn __usad8(a: int8x4_t, b: int8x4_t) -> u32 {
 #[inline]
 #[cfg_attr(test, assert_instr(usad8))]
 pub unsafe fn __usada8(a: int8x4_t, b: int8x4_t, c: u32) -> u32 {
-    usad8(a, b) + c
+    __usad8(a, b) + c
 }
 
 #[cfg(test)]
