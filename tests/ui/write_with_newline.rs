@@ -31,4 +31,7 @@ fn main() {
     write!(&mut v, "\\n"); // #3514
     write!(&mut v, "\\\n");
     write!(&mut v, "\\\\n");
+
+    // Raw strings
+    write!(&mut v, r"\n"); // #3778
 }
