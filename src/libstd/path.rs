@@ -1151,9 +1151,10 @@ impl PathBuf {
     /// # Examples
     ///
     /// ```
+    /// #![feature(path_buf_capacity)]
     /// use std::path::PathBuf;
     ///
-    /// let path = PathBuf::with_capacity(10);
+    /// let mut path = PathBuf::with_capacity(10);
     /// let capacity = path.capacity();
     ///
     /// // This push is done without reallocating
