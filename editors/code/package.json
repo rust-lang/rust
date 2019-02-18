@@ -177,7 +177,6 @@
         },
         "problemPatterns": [
             {
-                "//comment": "named multiline problem patterns are not parsed properly in vscode at the moment, when fixed in vscode replace both \"pattern\": [...] below with \"pattern\": \"$rustc\"",
                 "name": "rustc",
                 "patterns": [
                     {
@@ -202,20 +201,7 @@
                     "relative",
                     "${workspaceRoot}"
                 ],
-                "pattern": [
-                    {
-                        "regexp": "^(warning|warn|error)(?:\\[(.*?)\\])?: (.*)$",
-                        "severity": 1,
-                        "code": 2,
-                        "message": 3
-                    },
-                    {
-                        "regexp": "^[\\s->=]*(.*?):(\\d*):(\\d*)\\s*$",
-                        "file": 1,
-                        "line": 2,
-                        "column": 3
-                    }
-                ]
+                "pattern": "$rustc"
             },
             {
                 "name": "rustc-watch",
@@ -227,20 +213,7 @@
                     "beginsPattern": "^\\[Running ",
                     "endsPattern": "^(\\[Finished running\\]|To learn more, run the command again with --verbose\\.)$"
                 },
-                "pattern": [
-                    {
-                        "regexp": "^(warning|warn|error)(?:\\[(.*?)\\])?: (.*)$",
-                        "severity": 1,
-                        "code": 2,
-                        "message": 3
-                    },
-                    {
-                        "regexp": "^[\\s->=]*(.*?):(\\d*):(\\d*)\\s*$",
-                        "file": 1,
-                        "line": 2,
-                        "column": 3
-                    }
-                ]
+                "pattern": "$rustc"
             }
         ]
     }
