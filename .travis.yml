@@ -23,7 +23,6 @@ matrix:
     - env: INTEGRATION=chalk
     - env: INTEGRATION=crater
     - env: INTEGRATION=error-chain
-    - env: INTEGRATION=futures-rs
     - env: INTEGRATION=glob
     - env: INTEGRATION=log
     - env: INTEGRATION=mdbook
@@ -40,6 +39,8 @@ matrix:
     - env: INTEGRATION=rust-semverver
     # can be moved back to include section after https://github.com/rust-lang-nursery/failure/pull/298 is merged
     - env: INTEGRATION=failure
+    # can be moved back once https://github.com/rust-lang-nursery/futures-rs/pull/1445 is merged
+    - env: INTEGRATION=futures-rs
 
 script:
   - |
