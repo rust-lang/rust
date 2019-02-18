@@ -92,7 +92,7 @@ impl Vfs {
 
         for root in roots.iter() {
             root2files.insert(root, Default::default());
-            worker.sender().send(io::Task::AddRoot { root }).unwrap();
+            worker.sender.send(io::Task::AddRoot { root }).unwrap();
         }
         let res = Vfs { roots, files: Vec::new(), root2files, worker, pending_changes: Vec::new() };
         let vfs_roots = res.roots.iter().collect();
@@ -170,7 +170,7 @@ impl Vfs {
     }
 
     pub fn task_receiver(&self) -> &Receiver<VfsTask> {
-        self.worker.receiver()
+        &self.worker.receiver
     }
 
     pub fn handle_task(&mut self, task: VfsTask) {
