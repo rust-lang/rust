@@ -157,7 +157,7 @@ extern "C" {
 /// res\[3\] = a\[3\] + b\[3\]
 #[inline]
 #[cfg_attr(test, assert_instr(qadd8))]
-pub unsafe fn qadd8(a: int8x4_t, b: int8x4_t) -> int8x4_t {
+pub unsafe fn __qadd8(a: int8x4_t, b: int8x4_t) -> int8x4_t {
     dsp_call!(arm_qadd8, a, b)
 }
 
@@ -171,7 +171,7 @@ pub unsafe fn qadd8(a: int8x4_t, b: int8x4_t) -> int8x4_t {
 /// res\[3\] = a\[3\] - b\[3\]
 #[inline]
 #[cfg_attr(test, assert_instr(qsub8))]
-pub unsafe fn qsub8(a: int8x4_t, b: int8x4_t) -> int8x4_t {
+pub unsafe fn __qsub8(a: int8x4_t, b: int8x4_t) -> int8x4_t {
     dsp_call!(arm_qsub8, a, b)
 }
 
@@ -183,7 +183,7 @@ pub unsafe fn qsub8(a: int8x4_t, b: int8x4_t) -> int8x4_t {
 /// res\[1\] = a\[1\] - b\[1\]
 #[inline]
 #[cfg_attr(test, assert_instr(qsub16))]
-pub unsafe fn qsub16(a: int16x2_t, b: int16x2_t) -> int16x2_t {
+pub unsafe fn __qsub16(a: int16x2_t, b: int16x2_t) -> int16x2_t {
     dsp_call!(arm_qsub16, a, b)
 }
 
@@ -195,7 +195,7 @@ pub unsafe fn qsub16(a: int16x2_t, b: int16x2_t) -> int16x2_t {
 /// res\[1\] = a\[1\] + b\[1\]
 #[inline]
 #[cfg_attr(test, assert_instr(qadd16))]
-pub unsafe fn qadd16(a: int16x2_t, b: int16x2_t) -> int16x2_t {
+pub unsafe fn __qadd16(a: int16x2_t, b: int16x2_t) -> int16x2_t {
     dsp_call!(arm_qadd16, a, b)
 }
 
@@ -205,7 +205,7 @@ pub unsafe fn qadd16(a: int16x2_t, b: int16x2_t) -> int16x2_t {
 /// res\[1\] = a\[1\] + b\[0\]
 #[inline]
 #[cfg_attr(test, assert_instr(qasx))]
-pub unsafe fn qasx(a: int16x2_t, b: int16x2_t) -> int16x2_t {
+pub unsafe fn __qasx(a: int16x2_t, b: int16x2_t) -> int16x2_t {
     dsp_call!(arm_qasx, a, b)
 }
 
@@ -215,7 +215,7 @@ pub unsafe fn qasx(a: int16x2_t, b: int16x2_t) -> int16x2_t {
 /// res\[1\] = a\[1\] - b\[0\]
 #[inline]
 #[cfg_attr(test, assert_instr(qsax))]
-pub unsafe fn qsax(a: int16x2_t, b: int16x2_t) -> int16x2_t {
+pub unsafe fn __qsax(a: int16x2_t, b: int16x2_t) -> int16x2_t {
     dsp_call!(arm_qsax, a, b)
 }
 
@@ -227,7 +227,7 @@ pub unsafe fn qsax(a: int16x2_t, b: int16x2_t) -> int16x2_t {
 /// and the GE bits of the APSR are set.
 #[inline]
 #[cfg_attr(test, assert_instr(sadd16))]
-pub unsafe fn sadd16(a: int16x2_t, b: int16x2_t) -> int16x2_t {
+pub unsafe fn __sadd16(a: int16x2_t, b: int16x2_t) -> int16x2_t {
     dsp_call!(arm_sadd16, a, b)
 }
 
@@ -241,7 +241,7 @@ pub unsafe fn sadd16(a: int16x2_t, b: int16x2_t) -> int16x2_t {
 /// and the GE bits of the APSR are set.
 #[inline]
 #[cfg_attr(test, assert_instr(sadd8))]
-pub unsafe fn sadd8(a: int8x4_t, b: int8x4_t) -> int8x4_t {
+pub unsafe fn __sadd8(a: int8x4_t, b: int8x4_t) -> int8x4_t {
     dsp_call!(arm_sadd8, a, b)
 }
 
@@ -252,7 +252,7 @@ pub unsafe fn sadd8(a: int8x4_t, b: int8x4_t) -> int8x4_t {
 /// res = a\[0\] * b\[0\] + a\[1\] * b\[1\] + c
 #[inline]
 #[cfg_attr(test, assert_instr(smlad))]
-pub unsafe fn smlad(a: int16x2_t, b: int16x2_t, c: i32) -> i32 {
+pub unsafe fn __smlad(a: int16x2_t, b: int16x2_t, c: i32) -> i32 {
     arm_smlad(::mem::transmute(a), ::mem::transmute(b), c)
 }
 
@@ -263,7 +263,7 @@ pub unsafe fn smlad(a: int16x2_t, b: int16x2_t, c: i32) -> i32 {
 /// res = a\[0\] * b\[0\] - a\[1\] * b\[1\] + c
 #[inline]
 #[cfg_attr(test, assert_instr(smlsd))]
-pub unsafe fn smlsd(a: int16x2_t, b: int16x2_t, c: i32) -> i32 {
+pub unsafe fn __smlsd(a: int16x2_t, b: int16x2_t, c: i32) -> i32 {
     arm_smlsd(::mem::transmute(a), ::mem::transmute(b), c)
 }
 
@@ -275,7 +275,7 @@ pub unsafe fn smlsd(a: int16x2_t, b: int16x2_t, c: i32) -> i32 {
 /// and the GE bits of the APSR are set.
 #[inline]
 #[cfg_attr(test, assert_instr(sasx))]
-pub unsafe fn sasx(a: int16x2_t, b: int16x2_t) -> int16x2_t {
+pub unsafe fn __sasx(a: int16x2_t, b: int16x2_t) -> int16x2_t {
     dsp_call!(arm_sasx, a, b)
 }
 
@@ -291,7 +291,7 @@ pub unsafe fn sasx(a: int16x2_t, b: int16x2_t) -> int16x2_t {
 /// where GE are bits of APSR
 #[inline]
 #[cfg_attr(test, assert_instr(sel))]
-pub unsafe fn sel(a: int8x4_t, b: int8x4_t) -> int8x4_t {
+pub unsafe fn __sel(a: int8x4_t, b: int8x4_t) -> int8x4_t {
     dsp_call!(arm_sel, a, b)
 }
 
@@ -305,7 +305,7 @@ pub unsafe fn sel(a: int8x4_t, b: int8x4_t) -> int8x4_t {
 /// res\[3\] = (a\[3\] + b\[3\]) / 2
 #[inline]
 #[cfg_attr(test, assert_instr(shadd8))]
-pub unsafe fn shadd8(a: int8x4_t, b: int8x4_t) -> int8x4_t {
+pub unsafe fn __shadd8(a: int8x4_t, b: int8x4_t) -> int8x4_t {
     dsp_call!(arm_shadd8, a, b)
 }
 
@@ -317,7 +317,7 @@ pub unsafe fn shadd8(a: int8x4_t, b: int8x4_t) -> int8x4_t {
 /// res\[1\] = (a\[1\] + b\[1\]) / 2
 #[inline]
 #[cfg_attr(test, assert_instr(shadd16))]
-pub unsafe fn shadd16(a: int16x2_t, b: int16x2_t) -> int16x2_t {
+pub unsafe fn __shadd16(a: int16x2_t, b: int16x2_t) -> int16x2_t {
     dsp_call!(arm_shadd16, a, b)
 }
 
@@ -331,7 +331,7 @@ pub unsafe fn shadd16(a: int16x2_t, b: int16x2_t) -> int16x2_t {
 /// res\[3\] = (a\[3\] - b\[3\]) / 2
 #[inline]
 #[cfg_attr(test, assert_instr(shsub8))]
-pub unsafe fn shsub8(a: int8x4_t, b: int8x4_t) -> int8x4_t {
+pub unsafe fn __shsub8(a: int8x4_t, b: int8x4_t) -> int8x4_t {
     dsp_call!(arm_shsub8, a, b)
 }
 
@@ -343,7 +343,7 @@ pub unsafe fn shsub8(a: int8x4_t, b: int8x4_t) -> int8x4_t {
 /// res\[1\] = (a\[1\] - b\[1\]) / 2
 #[inline]
 #[cfg_attr(test, assert_instr(shsub16))]
-pub unsafe fn shsub16(a: int16x2_t, b: int16x2_t) -> int16x2_t {
+pub unsafe fn __shsub16(a: int16x2_t, b: int16x2_t) -> int16x2_t {
     dsp_call!(arm_shsub16, a, b)
 }
 
@@ -356,7 +356,7 @@ pub unsafe fn shsub16(a: int16x2_t, b: int16x2_t) -> int16x2_t {
 /// and sets the Q flag if overflow occurs on the addition.
 #[inline]
 #[cfg_attr(test, assert_instr(smuad))]
-pub unsafe fn smuad(a: int16x2_t, b: int16x2_t) -> i32 {
+pub unsafe fn __smuad(a: int16x2_t, b: int16x2_t) -> i32 {
     arm_smuad(::mem::transmute(a), ::mem::transmute(b))
 }
 
@@ -369,7 +369,7 @@ pub unsafe fn smuad(a: int16x2_t, b: int16x2_t) -> i32 {
 /// and sets the Q flag if overflow occurs on the addition.
 #[inline]
 #[cfg_attr(test, assert_instr(smuadx))]
-pub unsafe fn smuadx(a: int16x2_t, b: int16x2_t) -> i32 {
+pub unsafe fn __smuadx(a: int16x2_t, b: int16x2_t) -> i32 {
     arm_smuadx(::mem::transmute(a), ::mem::transmute(b))
 }
 
@@ -382,7 +382,7 @@ pub unsafe fn smuadx(a: int16x2_t, b: int16x2_t) -> i32 {
 /// and sets the Q flag if overflow occurs on the addition.
 #[inline]
 #[cfg_attr(test, assert_instr(smusd))]
-pub unsafe fn smusd(a: int16x2_t, b: int16x2_t) -> i32 {
+pub unsafe fn __smusd(a: int16x2_t, b: int16x2_t) -> i32 {
     arm_smusd(::mem::transmute(a), ::mem::transmute(b))
 }
 
@@ -395,7 +395,7 @@ pub unsafe fn smusd(a: int16x2_t, b: int16x2_t) -> i32 {
 /// and sets the Q flag if overflow occurs on the addition.
 #[inline]
 #[cfg_attr(test, assert_instr(smusdx))]
-pub unsafe fn smusdx(a: int16x2_t, b: int16x2_t) -> i32 {
+pub unsafe fn __smusdx(a: int16x2_t, b: int16x2_t) -> i32 {
     arm_smusdx(::mem::transmute(a), ::mem::transmute(b))
 }
 
@@ -407,7 +407,7 @@ pub unsafe fn smusdx(a: int16x2_t, b: int16x2_t) -> i32 {
 ///          (a\[2\] - b\[2\]) + (a\[3\] - b\[3\])
 #[inline]
 #[cfg_attr(test, assert_instr(usad8))]
-pub unsafe fn usad8(a: int8x4_t, b: int8x4_t) -> u32 {
+pub unsafe fn __usad8(a: int8x4_t, b: int8x4_t) -> u32 {
     arm_usad8(::mem::transmute(a), ::mem::transmute(b))
 }
 
@@ -419,7 +419,7 @@ pub unsafe fn usad8(a: int8x4_t, b: int8x4_t) -> u32 {
 ///          (a\[2\] - b\[2\]) + (a\[3\] - b\[3\]) + c
 #[inline]
 #[cfg_attr(test, assert_instr(usad8))]
-pub unsafe fn usada8(a: int8x4_t, b: int8x4_t, c: u32) -> u32 {
+pub unsafe fn __usada8(a: int8x4_t, b: int8x4_t, c: u32) -> u32 {
     usad8(a, b) + c
 }
 

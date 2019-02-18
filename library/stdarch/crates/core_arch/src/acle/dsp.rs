@@ -37,7 +37,7 @@ extern "C" {
 /// Returns the 32-bit saturating signed equivalent of a + b.
 #[inline]
 #[cfg_attr(test, assert_instr(qadd))]
-pub unsafe fn qadd(a: i32, b: i32) -> i32 {
+pub unsafe fn __qadd(a: i32, b: i32) -> i32 {
     arm_qadd(a, b)
 }
 
@@ -46,6 +46,6 @@ pub unsafe fn qadd(a: i32, b: i32) -> i32 {
 /// Returns the 32-bit saturating signed equivalent of a - b.
 #[inline]
 #[cfg_attr(test, assert_instr(qsub))]
-pub unsafe fn qsub(a: i32, b: i32) -> i32 {
+pub unsafe fn __qsub(a: i32, b: i32) -> i32 {
     arm_qsub(a, b)
 }
