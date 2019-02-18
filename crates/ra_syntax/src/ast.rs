@@ -535,6 +535,8 @@ pub enum BinOp {
     BooleanAnd,
     /// The `==` operator for equality testing
     EqualityTest,
+    /// The `!=` operator for equality testing
+    NegatedEqualityTest,
     /// The `<=` operator for lesser-equal testing
     LesserEqualTest,
     /// The `>=` operator for greater-equal testing
@@ -569,7 +571,7 @@ pub enum BinOp {
     RangeRightClosed,
     /// The `=` operator for assignment
     Assignment,
-    /// The `+=` operator for assignment after additon
+    /// The `+=` operator for assignment after addition
     AddAssign,
     /// The `/=` operator for assignment after division
     DivAssign,
@@ -599,6 +601,7 @@ impl BinExpr {
                 PIPEPIPE => Some(BinOp::BooleanOr),
                 AMPAMP => Some(BinOp::BooleanAnd),
                 EQEQ => Some(BinOp::EqualityTest),
+                NEQ => Some(BinOp::NegatedEqualityTest),
                 LTEQ => Some(BinOp::LesserEqualTest),
                 GTEQ => Some(BinOp::GreaterEqualTest),
                 L_ANGLE => Some(BinOp::LesserTest),

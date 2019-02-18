@@ -1,13 +1,13 @@
 ---
-created: "2019-01-26T17:46:03.853259898+00:00"
-creator: insta@0.5.2
-expression: "&result"
+created: "2019-02-18T07:03:52.524808301Z"
+creator: insta@0.6.2
 source: crates/ra_hir/src/ty/tests.rs
+expression: "&result"
 ---
 [6; 7) 'x': bool
 [22; 34) '{     0i32 }': i32
 [28; 32) '0i32': i32
-[54; 350) '{     ... < 3 }': bool
+[54; 370) '{     ... < 3 }': bool
 [64; 65) 'x': bool
 [68; 69) 'a': bool
 [68; 74) 'a && b': bool
@@ -20,34 +20,38 @@ source: crates/ra_hir/src/ty/tests.rs
 [115; 116) 'x': bool
 [115; 121) 'x == y': bool
 [120; 121) 'y': bool
-[131; 142) 'minus_forty': isize
-[152; 160) '-40isize': isize
-[153; 160) '40isize': isize
-[170; 171) 'h': bool
-[174; 185) 'minus_forty': isize
-[174; 196) 'minus_...ONST_2': bool
-[189; 196) 'CONST_2': isize
-[206; 207) 'c': i32
-[210; 211) 'f': fn f(bool) -> i32
-[210; 219) 'f(z || y)': i32
-[210; 223) 'f(z || y) + 5': i32
-[212; 213) 'z': bool
-[212; 218) 'z || y': bool
-[217; 218) 'y': bool
-[222; 223) '5': i32
-[233; 234) 'd': [unknown]
-[237; 238) 'b': [unknown]
-[248; 249) 'g': ()
-[252; 263) 'minus_forty': isize
-[252; 268) 'minus_...y ^= i': ()
-[267; 268) 'i': isize
-[278; 281) 'ten': usize
-[291; 293) '10': usize
-[303; 316) 'ten_is_eleven': bool
-[319; 322) 'ten': usize
-[319; 334) 'ten == some_num': bool
-[326; 334) 'some_num': usize
-[341; 344) 'ten': usize
-[341; 348) 'ten < 3': bool
-[347; 348) '3': usize
+[131; 132) 't': bool
+[135; 136) 'x': bool
+[135; 141) 'x != y': bool
+[140; 141) 'y': bool
+[151; 162) 'minus_forty': isize
+[172; 180) '-40isize': isize
+[173; 180) '40isize': isize
+[190; 191) 'h': bool
+[194; 205) 'minus_forty': isize
+[194; 216) 'minus_...ONST_2': bool
+[209; 216) 'CONST_2': isize
+[226; 227) 'c': i32
+[230; 231) 'f': fn f(bool) -> i32
+[230; 239) 'f(z || y)': i32
+[230; 243) 'f(z || y) + 5': i32
+[232; 233) 'z': bool
+[232; 238) 'z || y': bool
+[237; 238) 'y': bool
+[242; 243) '5': i32
+[253; 254) 'd': [unknown]
+[257; 258) 'b': [unknown]
+[268; 269) 'g': ()
+[272; 283) 'minus_forty': isize
+[272; 288) 'minus_...y ^= i': ()
+[287; 288) 'i': isize
+[298; 301) 'ten': usize
+[311; 313) '10': usize
+[323; 336) 'ten_is_eleven': bool
+[339; 342) 'ten': usize
+[339; 354) 'ten == some_num': bool
+[346; 354) 'some_num': usize
+[361; 364) 'ten': usize
+[361; 368) 'ten < 3': bool
+[367; 368) '3': usize
 

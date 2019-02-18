@@ -239,6 +239,7 @@ fn test() -> bool {
     let x = a && b;
     let y = true || false;
     let z = x == y;
+    let t = x != y;
     let minus_forty: isize = -40isize;
     let h = minus_forty <= CONST_2;
     let c = f(z || y) + 5;

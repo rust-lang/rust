@@ -811,6 +811,7 @@ fn binary_op_return_ty(op: BinaryOp, rhs_ty: Ty) -> Ty {
         BinaryOp::BooleanOr
         | BinaryOp::BooleanAnd
         | BinaryOp::EqualityTest
+        | BinaryOp::NegatedEqualityTest
         | BinaryOp::LesserEqualTest
         | BinaryOp::GreaterEqualTest
         | BinaryOp::LesserTest
