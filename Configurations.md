@@ -18,13 +18,13 @@ To enable unstable options, set `unstable_features = true` in `rustfmt.toml` or 
 Below you find a detailed visual guide on all the supported configuration options of rustfmt:
 
 
-## `indent_style` (tracking issue #3346)
+## `indent_style`
 
 Indent on expressions or items.
 
 - **Default value**: `"Block"`
 - **Possible values**: `"Block"`, `"Visual"`
-- **Stable**: No
+- **Stable**: No (tracking issue: #3346)
 
 ### Array
 
@@ -355,13 +355,13 @@ fn main() {
 }
 ```
 
-## `binop_separator` (tracking issue #3368)
+## `binop_separator`
 
 Where to put a binary operator when a binary expression goes multiline.
 
 - **Default value**: `"Front"`
 - **Possible values**: `"Front"`, `"Back"`
-- **Stable**: No
+- **Stable**: No (tracking issue: #3368)
 
 #### `"Front"` (default):
 
@@ -395,13 +395,13 @@ fn main() {
 }
 ```
 
-## `combine_control_expr` (tracking issue #3369)
+## `combine_control_expr`
 
 Combine control expressions with function calls.
 
 - **Default value**: `true`
 - **Possible values**: `true`, `false`
-- **Stable**: No
+- **Stable**: No (tracking issue: #3369)
 
 #### `true` (default):
 
@@ -503,13 +503,13 @@ fn example() {
 }
 ```
 
-## `comment_width` (tracking issue #3349)
+## `comment_width`
 
 Maximum length of comments. No effect unless`wrap_comments = true`.
 
 - **Default value**: `80`
 - **Possible values**: any positive integer
-- **Stable**: No
+- **Stable**: No (tracking issue: #3349)
 
 **Note:** A value of `0` results in [`wrap_comments`](#wrap_comments) being applied regardless of a line's width.
 
@@ -526,13 +526,13 @@ Maximum length of comments. No effect unless`wrap_comments = true`.
 
 See also [`wrap_comments`](#wrap_comments).
 
-## `condense_wildcard_suffixes` (tracking issue #3384)
+## `condense_wildcard_suffixes`
 
 Replace strings of _ wildcards by a single .. in tuple patterns
 
 - **Default value**: `false`
 - **Possible values**: `true`, `false`
-- **Stable**: No
+- **Stable**: No (tracking issue: #3384)
 
 #### `false` (default):
 
@@ -551,13 +551,13 @@ fn main() {
 }
 ```
 
-## `control_brace_style` (tracking issue #3377)
+## `control_brace_style`
 
 Brace style for control flow constructs
 
 - **Default value**: `"AlwaysSameLine"`
 - **Possible values**: `"AlwaysNextLine"`, `"AlwaysSameLine"`, `"ClosingNextLine"`
-- **Stable**: No
+- **Stable**: No (tracking issue: #3377)
 
 #### `"AlwaysSameLine"` (default):
 
@@ -599,15 +599,15 @@ fn main() {
 }
 ```
 
-## `disable_all_formatting` (tracking issue #3388)
+## `disable_all_formatting`
 
 Don't reformat anything
 
 - **Default value**: `false`
 - **Possible values**: `true`, `false`
-- **Stable**: No
+- **Stable**: No (tracking issue: #3388)
 
-## `error_on_line_overflow` (tracking issue #3391)
+## `error_on_line_overflow`
 
 Error if Rustfmt is unable to get all lines within `max_width`, except for comments and string
 literals. If this happens, then it is a bug in Rustfmt. You might be able to work around the bug by
@@ -616,26 +616,26 @@ using a shorter name.
 
 - **Default value**: `false`
 - **Possible values**: `true`, `false`
-- **Stable**: No
+- **Stable**: No (tracking issue: #3391)
 
 See also [`max_width`](#max_width).
 
-## `error_on_unformatted` (tracking issue #3392)
+## `error_on_unformatted`
 
 Error if unable to get comments or string literals within `max_width`, or they are left with
 trailing whitespaces.
 
 - **Default value**: `false`
 - **Possible values**: `true`, `false`
-- **Stable**: No
+- **Stable**: No (tracking issue: #3392)
 
-## `fn_args_density` (tracking issue #3375)
+## `fn_args_density`
 
 Argument density in functions
 
 - **Default value**: `"Tall"`
 - **Possible values**: `"Compressed"`, `"Tall"`, `"Vertical"`
-- **Stable**: No
+- **Stable**: No (tracking issue: #3375)
 
 #### `"Tall"` (default):
 
@@ -740,13 +740,13 @@ trait Lorem {
 ```
 
 
-## `brace_style` (tracking issue #3376)
+## `brace_style`
 
 Brace style for items
 
 - **Default value**: `"SameLineWhere"`
 - **Possible values**: `"AlwaysNextLine"`, `"PreferSameLine"`, `"SameLineWhere"`
-- **Stable**: No
+- **Stable**: No (tracking issue: #3376)
 
 ### Functions
 
@@ -856,13 +856,13 @@ where
 ```
 
 
-## `empty_item_single_line` (tracking issue #3356)
+## `empty_item_single_line`
 
 Put empty-body functions and impls on a single line
 
 - **Default value**: `true`
 - **Possible values**: `true`, `false`
-- **Stable**: No
+- **Stable**: No (tracking issue: #3356)
 
 #### `true` (default):
 
@@ -885,7 +885,7 @@ impl Lorem {
 See also [`brace_style`](#brace_style), [`control_brace_style`](#control_brace_style).
 
 
-## `enum_discrim_align_threshold` (tracking issue #3372)
+## `enum_discrim_align_threshold`
 
 The maximum length of enum variant having discriminant, that gets vertically aligned with others.
 Variants without discriminants would be ignored for the purpose of alignment.
@@ -895,7 +895,7 @@ doesn't get ignored when aligning.
 
 - **Default value** : 0
 - **Possible values**: any positive integer
-- **Stable**: No
+- **Stable**: No (tracking issue: #3372)
 
 #### `0` (default):
 
@@ -932,13 +932,13 @@ enum Bar {
 ```
 
 
-## `fn_single_line` (tracking issue #3358)
+## `fn_single_line`
 
 Put single-expression functions on a single line
 
 - **Default value**: `false`
 - **Possible values**: `true`, `false`
-- **Stable**: No
+- **Stable**: No (tracking issue: #3358)
 
 #### `false` (default):
 
@@ -967,13 +967,13 @@ fn lorem() -> usize {
 See also [`control_brace_style`](#control_brace_style).
 
 
-## `where_single_line` (tracking issue #3359)
+## `where_single_line`
 
 Forces the `where` clause to be laid out on a single line.
 
 - **Default value**: `false`
 - **Possible values**: `true`, `false`
-- **Stable**: No
+- **Stable**: No (tracking issue: #3359)
 
 #### `false` (default):
 
@@ -1025,13 +1025,13 @@ extern {
 }
 ```
 
-## `format_strings` (tracking issue #3353)
+## `format_strings`
 
 Format string literals where necessary
 
 - **Default value**: `false`
 - **Possible values**: `true`, `false`
-- **Stable**: No
+- **Stable**: No (tracking issue: #3353)
 
 #### `false` (default):
 
@@ -1052,13 +1052,13 @@ fn main() {
 
 See also [`max_width`](#max_width).
 
-## `format_macro_matchers` (tracking issue #3354)
+## `format_macro_matchers`
 
 Format the metavariable matching patterns in macros.
 
 - **Default value**: `false`
 - **Possible values**: `true`, `false`
-- **Stable**: No
+- **Stable**: No (tracking issue: #3354)
 
 #### `false` (default):
 
@@ -1089,13 +1089,13 @@ macro_rules! foo {
 See also [`format_macro_bodies`](#format_macro_bodies).
 
 
-## `format_macro_bodies` (tracking issue #3355)
+## `format_macro_bodies`
 
 Format the bodies of macros.
 
 - **Default value**: `true`
 - **Possible values**: `true`, `false`
-- **Stable**: No
+- **Stable**: No (tracking issue: #3355)
 
 #### `true` (default):
 
@@ -1149,13 +1149,13 @@ fn lorem() -> usize {
 See also: [`tab_spaces`](#tab_spaces).
 
 
-## `imports_indent` (tracking issue #3360)
+## `imports_indent`
 
 Indent style of imports
 
 - **Default Value**: `"Block"`
 - **Possible values**: `"Block"`, `"Visual"`
-- **Stable**: No
+- **Stable**: No (tracking issue: #3360)
 
 #### `"Block"` (default):
 
@@ -1175,13 +1175,13 @@ use foo::{xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx, yyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyy,
 
 See also: [`imports_layout`](#imports_layout).
 
-## `imports_layout` (tracking issue #3361)
+## `imports_layout`
 
 Item layout inside a imports block
 
 - **Default value**: "Mixed"
 - **Possible values**: "Horizontal", "HorizontalVertical", "Mixed", "Vertical"
-- **Stable**: No
+- **Stable**: No (tracking issue: #3361)
 
 #### `"Mixed"` (default):
 
@@ -1238,13 +1238,13 @@ use foo::{
 };
 ```
 
-## `merge_imports` (tracking issue #3362)
+## `merge_imports`
 
 Merge multiple imports into a single nested import.
 
 - **Default value**: `false`
 - **Possible values**: `true`, `false`
-- **Stable**: No
+- **Stable**: No (tracking issue: #3362)
 
 #### `false` (default):
 
@@ -1261,13 +1261,13 @@ use foo::{a, b, c, d, e, f, g};
 ```
 
 
-## `match_block_trailing_comma` (tracking issue #3380)
+## `match_block_trailing_comma`
 
 Put a trailing comma after a block based match arm (non-block arms are not affected)
 
 - **Default value**: `false`
 - **Possible values**: `true`, `false`
-- **Stable**: No
+- **Stable**: No (tracking issue: #3380)
 
 #### `false` (default):
 
@@ -1331,13 +1331,13 @@ pub enum Foo {}
 pub enum Foo {}
 ```
 
-## `force_multiline_blocks` (tracking issue #3374)
+## `force_multiline_blocks`
 
 Force multiline closure and match arm bodies to be wrapped in a block
 
 - **Default value**: `false`
 - **Possible values**: `false`, `true`
-- **Stable**: No
+- **Stable**: No (tracking issue: #3374)
 
 #### `false` (default):
 
@@ -1407,13 +1407,13 @@ Line endings will be converted to `\n`.
 
 Line endings will be converted to `\r\n`.
 
-## `normalize_comments` (tracking issue #3350)
+## `normalize_comments`
 
 Convert /* */ comments to // comments where possible
 
 - **Default value**: `false`
 - **Possible values**: `true`, `false`
-- **Stable**: No
+- **Stable**: No (tracking issue: #3350)
 
 #### `false` (default):
 
@@ -1522,13 +1522,13 @@ mod sit;
 **Note** `mod` with `#[macro_export]` will not be reordered since that could change the semantics
 of the original source code.
 
-## `reorder_impl_items` (tracking issue #3363)
+## `reorder_impl_items`
 
 Reorder impl items. `type` and `const` are put first, then macros and methods.
 
 - **Default value**: `false`
 - **Possible values**: `true`, `false`
-- **Stable**: No
+- **Stable**: No (tracking issue: #3363)
 
 #### `false` (default)
 
@@ -1558,13 +1558,13 @@ impl Iterator for Dummy {
 }
 ```
 
-## `report_todo` (tracking issue #3393)
+## `report_todo`
 
 Report `TODO` items in comments.
 
 - **Default value**: `"Never"`
 - **Possible values**: `"Always"`, `"Unnumbered"`, `"Never"`
-- **Stable**: No
+- **Stable**: No (tracking issue: #3393)
 
 Warns about any comments containing `TODO` in them when set to `"Always"`. If
 it contains a `#X` (with `X` being a number) in parentheses following the
@@ -1572,13 +1572,13 @@ it contains a `#X` (with `X` being a number) in parentheses following the
 
 See also [`report_fixme`](#report_fixme).
 
-## `report_fixme` (tracking issue #3394)
+## `report_fixme`
 
 Report `FIXME` items in comments.
 
 - **Default value**: `"Never"`
 - **Possible values**: `"Always"`, `"Unnumbered"`, `"Never"`
-- **Stable**: No
+- **Stable**: No (tracking issue: #3394)
 
 Warns about any comments containing `FIXME` in them when set to `"Always"`. If
 it contains a `#X` (with `X` being a number) in parentheses following the
@@ -1587,21 +1587,21 @@ it contains a `#X` (with `X` being a number) in parentheses following the
 See also [`report_todo`](#report_todo).
 
 
-## `skip_children` (tracking issue #3389)
+## `skip_children`
 
 Don't reformat out of line modules
 
 - **Default value**: `false`
 - **Possible values**: `true`, `false`
-- **Stable**: No
+- **Stable**: No (tracking issue: #3389)
 
-## `space_after_colon` (tracking issue #3366)
+## `space_after_colon`
 
 Leave a space after the colon.
 
 - **Default value**: `true`
 - **Possible values**: `true`, `false`
-- **Stable**: No
+- **Stable**: No (tracking issue: #3366)
 
 #### `true` (default):
 
@@ -1627,13 +1627,13 @@ fn lorem<T:Eq>(t:T) {
 
 See also: [`space_before_colon`](#space_before_colon).
 
-## `space_before_colon` (tracking issue #3365)
+## `space_before_colon`
 
 Leave a space before the colon.
 
 - **Default value**: `false`
 - **Possible values**: `true`, `false`
-- **Stable**: No
+- **Stable**: No (tracking issue: #3365)
 
 #### `false` (default):
 
@@ -1659,13 +1659,13 @@ fn lorem<T : Eq>(t : T) {
 
 See also: [`space_after_colon`](#space_after_colon).
 
-## `struct_field_align_threshold` (tracking issue #3371)
+## `struct_field_align_threshold`
 
 The maximum diff of width between struct fields to be aligned with each other.
 
 - **Default value** : 0
 - **Possible values**: any positive integer
-- **Stable**: No
+- **Stable**: No (tracking issue: #3371)
 
 #### `0` (default):
 
@@ -1687,13 +1687,13 @@ struct Foo {
 }
 ```
 
-## `spaces_around_ranges` (tracking issue #3367)
+## `spaces_around_ranges`
 
 Put spaces around the .., ..=, and ... range operators
 
 - **Default value**: `false`
 - **Possible values**: `true`, `false`
-- **Stable**: No
+- **Stable**: No (tracking issue: #3367)
 
 #### `false` (default):
 
@@ -1743,13 +1743,13 @@ fn main() {
 }
 ```
 
-## `struct_lit_single_line` (tracking issue #3357)
+## `struct_lit_single_line`
 
 Put small struct literals on a single line
 
 - **Default value**: `true`
 - **Possible values**: `true`, `false`
-- **Stable**: No
+- **Stable**: No (tracking issue: #3357)
 
 #### `true` (default):
 
@@ -1808,13 +1808,13 @@ fn lorem() {
 See also: [`hard_tabs`](#hard_tabs).
 
 
-## `trailing_comma` (tracking issue #3379)
+## `trailing_comma`
 
 How to handle trailing commas for lists
 
 - **Default value**: `"Vertical"`
 - **Possible values**: `"Always"`, `"Never"`, `"Vertical"`
-- **Stable**: No
+- **Stable**: No (tracking issue: #3379)
 
 #### `"Vertical"` (default):
 
@@ -1866,13 +1866,13 @@ fn main() {
 
 See also: [`match_block_trailing_comma`](#match_block_trailing_comma).
 
-## `trailing_semicolon` (tracking issue #3378)
+## `trailing_semicolon`
 
 Add trailing semicolon after break, continue and return
 
 - **Default value**: `true`
 - **Possible values**: `true`, `false`
-- **Stable**: No
+- **Stable**: No (tracking issue: #3378)
 
 #### `true` (default):
 ```rust
@@ -1888,13 +1888,13 @@ fn foo() -> usize {
 }
 ```
 
-## `type_punctuation_density` (tracking issue #3364)
+## `type_punctuation_density`
 
 Determines if `+` or `=` are wrapped in spaces in the punctuation of types
 
 - **Default value**: `"Wide"`
 - **Possible values**: `"Compressed"`, `"Wide"`
-- **Stable**: No
+- **Stable**: No (tracking issue: #3364)
 
 #### `"Wide"` (default):
 
@@ -1978,13 +1978,13 @@ fn main() {
 }
 ```
 
-## `format_doc_comments` (tracking issue #3348)
+## `format_doc_comments`
 
 Format doc comments.
 
 - **Default value**: `false`
 - **Possible values**: `true`, `false`
-- **Stable**: No
+- **Stable**: No (tracking issue: #3348)
 
 #### `false` (default):
 
@@ -2029,13 +2029,13 @@ fn add_one(x: i32) -> i32 {
 }
 ```
 
-## `wrap_comments` (tracking issue #3347)
+## `wrap_comments`
 
 Break comments to fit on the line
 
 - **Default value**: `false`
 - **Possible values**: `true`, `false`
-- **Stable**: No
+- **Stable**: No (tracking issue: #3347)
 
 #### `false` (default):
 
@@ -2053,13 +2053,13 @@ Break comments to fit on the line
 // commodo consequat.
 ```
 
-## `match_arm_blocks`` (tracking issue #3373)
+## `match_arm_blocks`
 
 Wrap the body of arms in blocks when it does not fit on the same line with the pattern of arms
 
 - **Default value**: `true`
 - **Possible values**: `true`, `false`
-- **Stable**: No
+- **Stable**: No (tracking issue: #3373)
 
 #### `true` (default):
 
@@ -2088,7 +2088,7 @@ fn main() {
 
 See also: [`match_block_trailing_comma`](#match_block_trailing_comma).
 
-## `overflow_delimited_expr` (tracking issue #3370)
+## `overflow_delimited_expr`
 
 When structs, slices, arrays, and block/array-like macros are used as the last
 argument in an expression list, allow them to overflow (like blocks/closures)
@@ -2096,7 +2096,7 @@ instead of being indented on a new line.
 
 - **Default value**: `false`
 - **Possible values**: `true`, `false`
-- **Stable**: No
+- **Stable**: No (tracking issue: #3370)
 
 #### `false` (default):
 
@@ -2171,14 +2171,14 @@ fn example() {
 }
 ```
 
-## `blank_lines_upper_bound` (tracking issue #3381)
+## `blank_lines_upper_bound`
 
 Maximum number of blank lines which can be put between items. If more than this number of consecutive empty
 lines are found, they are trimmed down to match this integer.
 
 - **Default value**: `1`
 - **Possible values**: *unsigned integer*
-- **Stable**: No
+- **Stable**: No (tracking issue: #3381)
 
 ### Example
 Original Code:
@@ -2230,14 +2230,14 @@ fn bar() {
 
 See also: [`blank_lines_lower_bound`](#blank_lines_lower_bound)
 
-## `blank_lines_lower_bound` (tracking issue #3382)
+## `blank_lines_lower_bound`
 
 Minimum number of blank lines which must be put between items. If two items have fewer blank lines between
 them, additional blank lines are inserted.
 
 - **Default value**: `0`
 - **Possible values**: *unsigned integer*
-- **Stable**: No
+- **Stable**: No (tracking issue: #3382)
 
 ### Example
 Original Code (rustfmt will not change it with the default value of `0`):
@@ -2270,46 +2270,46 @@ fn bar() {
 ```
 
 
-## `required_version` (tracking issue #3386)
+## `required_version`
 
 Require a specific version of rustfmt. If you want to make sure that the
 specific version of rustfmt is used in your CI, use this option.
 
 - **Default value**: `CARGO_PKG_VERSION`
 - **Possible values**: any published version (e.g. `"0.3.8"`)
-- **Stable**: No
+- **Stable**: No (tracking issue: #3386)
 
-## `hide_parse_errors` (tracking issue #3390)
+## `hide_parse_errors`
 
 Do not show parse errors if the parser failed to parse files.
 
 - **Default value**: `false`
 - **Possible values**: `true`, `false`
-- **Stable**: No
+- **Stable**: No (tracking issue: #3390)
 
-## `color` (tracking issue #3385)
+## `color`
 
 Whether to use colored output or not.
 
 - **Default value**: `"Auto"`
 - **Possible values**: "Auto", "Always", "Never"
-- **Stable**: No
+- **Stable**: No (tracking issue: #3385)
 
-## `unstable_features` (tracking issue #3387)
+## `unstable_features`
 
 Enable unstable features on the unstable channel.
 
 - **Default value**: `false`
 - **Possible values**: `true`, `false`
-- **Stable**: No
+- **Stable**: No (tracking issue: #3387)
 
-## `license_template_path` (tracking issue #3352)
+## `license_template_path`
 
 Check whether beginnings of files match a license template.
 
-- **Default value**: `""``
+- **Default value**: `""`
 - **Possible values**: path to a license template file
-- **Stable**: No
+- **Stable**: No (tracking issue: #3352)
 
 A license template is a plain text file which is matched literally against the
 beginning of each source file, except for `{}`-delimited blocks, which are
@@ -2323,13 +2323,13 @@ Copyright 2018 The Rust Project Developers.`, etc.:
 
 `\{`, `\}` and `\\` match literal braces / backslashes.
 
-## `ignore` (tracking issue #3395)
+## `ignore`
 
 Skip formatting the specified files and directories.
 
 - **Default value**: format every files
 - **Possible values**: See an example below
-- **Stable**: No
+- **Stable**: No (tracking issue: #3395)
 
 ### Example
 
@@ -2366,7 +2366,7 @@ If you want to format code that requires edition 2018, add the following to your
 edition = "2018"
 ```
 
-## `version` (tracking issue #3383)
+## `version`
 
 Which version of the formatting rules to use. `Version::One` is backwards-compatible
 with Rustfmt 1.0. Other versions are only backwards compatible within a major
@@ -2374,7 +2374,7 @@ version number.
 
 - **Default value**: `One`
 - **Possible values**: `One`, `Two`
-- **Stable**: No
+- **Stable**: No (tracking issue: #3383)
 
 ### Example
 
@@ -2382,13 +2382,13 @@ version number.
 version = "Two"
 ```
 
-## `normalize_doc_attributes` (tracking issue #3351)
+## `normalize_doc_attributes`
 
 Convert `#![doc]` and `#[doc]` attributes to `//!` and `///` doc comments.
 
 - **Default value**: `false`
 - **Possible values**: `true`, `false`
-- **Stable**: No
+- **Stable**: No (tracking issue: #3351)
 
 #### `false` (default):
 
@@ -2408,10 +2408,10 @@ pub enum Foo {}
 pub enum Foo {}
 ```
 
-## `emit_mode` (tracking issue #3399)
+## `emit_mode`
 
 Internal option
 
-## `make_backup` (tracking issue #3400)
+## `make_backup`
 
 Internal option, use `--backup`
