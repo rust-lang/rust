@@ -15,7 +15,7 @@ use crate::{
     adt::{StructData, EnumData},
     impl_block::{ModuleImplBlocks, ImplSourceMap},
     generics::{GenericParams, GenericDef},
-    ids::SourceFileItemId,
+    ids::SourceFileItemId, nameres::Namespace
 };
 
 #[salsa::query_group(PersistentHirDatabaseStorage)]
@@ -88,7 +88,7 @@ pub trait HirDatabase: PersistentHirDatabase {
     fn infer(&self, func: Function) -> Arc<InferenceResult>;
 
     #[salsa::invoke(crate::ty::type_for_def)]
-    fn type_for_def(&self, def: TypableDef) -> Ty;
+    fn type_for_def(&self, def: TypableDef, ns: Namespace) -> Ty;
 
     #[salsa::invoke(crate::ty::type_for_field)]
     fn type_for_field(&self, field: StructField) -> Ty;

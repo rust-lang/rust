@@ -42,7 +42,7 @@ use crate::{
     generics::GenericParams,
     path::GenericArg,
     adt::VariantDef,
-    resolve::{Resolver, Resolution},
+    resolve::{Resolver, Resolution}, nameres::Namespace
 };
 
 /// The ID of a type variable.
@@ -226,6 +226,8 @@ pub enum Ty {
     /// function has a unique type, which is output (for a function
     /// named `foo` returning an `i32`) as `fn() -> i32 {foo}`.
     ///
+    /// This includes tuple struct / enum variant constructors as well.
+    ///
     /// For example the type of `bar` here:
     ///
     /// ```rust
@@ -233,8 +235,8 @@ pub enum Ty {
     /// let bar = foo; // bar: fn() -> i32 {foo}
     /// ```
     FnDef {
-        // Function definition
-        def: Function,
+        /// The definition of the function / constructor.
+        def: CallableDef,
         /// For display
         name: Name,
         /// Parameters and return type
@@ -396,7 +398,7 @@ impl Ty {
             None => return Ty::Unknown,
             Some(it) => it,
         };
-        let ty = db.type_for_def(typable);
+        let ty = db.type_for_def(typable, Namespace::Types);
         let substs = Ty::substs_from_path(db, resolver, path, typable);
         ty.apply_substs(substs)
     }
@@ -673,7 +675,47 @@ fn type_for_fn(db: &impl HirDatabase, def: Function) -> Ty {
     let output = Ty::from_hir(db, &resolver, signature.ret_type());
     let sig = Arc::new(FnSig { input, output });
     let substs = make_substs(&generics);
-    Ty::FnDef { def, sig, name, substs }
+    Ty::FnDef { def: def.into(), sig, name, substs }
+}
+
+/// Compute the type of a tuple struct constructor.
+fn type_for_struct_constructor(db: &impl HirDatabase, def: Struct) -> Ty {
+    let var_data = def.variant_data(db);
+    let fields = match var_data.fields() {
+        Some(fields) => fields,
+        None => return type_for_struct(db, def), // Unit struct
+    };
+    let resolver = def.resolver(db);
+    let generics = def.generic_params(db);
+    let name = def.name(db).unwrap_or_else(Name::missing);
+    let input = fields
+        .iter()
+        .map(|(_, field)| Ty::from_hir(db, &resolver, &field.type_ref))
+        .collect::<Vec<_>>();
+    let output = type_for_struct(db, def);
+    let sig = Arc::new(FnSig { input, output });
+    let substs = make_substs(&generics);
+    Ty::FnDef { def: def.into(), sig, name, substs }
+}
+
+/// Compute the type of a tuple enum variant constructor.
+fn type_for_enum_variant_constructor(db: &impl HirDatabase, def: EnumVariant) -> Ty {
+    let var_data = def.variant_data(db);
+    let fields = match var_data.fields() {
+        Some(fields) => fields,
+        None => return type_for_enum(db, def.parent_enum(db)), // Unit variant
+    };
+    let resolver = def.parent_enum(db).resolver(db);
+    let generics = def.parent_enum(db).generic_params(db);
+    let name = def.name(db).unwrap_or_else(Name::missing);
+    let input = fields
+        .iter()
+        .map(|(_, field)| Ty::from_hir(db, &resolver, &field.type_ref))
+        .collect::<Vec<_>>();
+    let output = type_for_enum(db, def.parent_enum(db));
+    let sig = Arc::new(FnSig { input, output });
+    let substs = make_substs(&generics);
+    Ty::FnDef { def: def.into(), sig, name, substs }
 }
 
 fn make_substs(generics: &GenericParams) -> Substs {
@@ -703,12 +745,6 @@ pub(crate) fn type_for_enum(db: &impl HirDatabase, s: Enum) -> Ty {
     }
 }
 
-pub(crate) fn type_for_enum_variant(db: &impl HirDatabase, ev: EnumVariant) -> Ty {
-    let enum_parent = ev.parent_enum(db);
-
-    type_for_enum(db, enum_parent)
-}
-
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub enum TypableDef {
     Function(Function),
@@ -735,12 +771,26 @@ impl From<ModuleDef> for Option<TypableDef> {
     }
 }
 
-pub(super) fn type_for_def(db: &impl HirDatabase, def: TypableDef) -> Ty {
-    match def {
-        TypableDef::Function(f) => type_for_fn(db, f),
-        TypableDef::Struct(s) => type_for_struct(db, s),
-        TypableDef::Enum(e) => type_for_enum(db, e),
-        TypableDef::EnumVariant(v) => type_for_enum_variant(db, v),
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+pub enum CallableDef {
+    Function(Function),
+    Struct(Struct),
+    EnumVariant(EnumVariant),
+}
+impl_froms!(CallableDef: Function, Struct, EnumVariant);
+
+pub(super) fn type_for_def(db: &impl HirDatabase, def: TypableDef, ns: Namespace) -> Ty {
+    match (def, ns) {
+        (TypableDef::Function(f), Namespace::Values) => type_for_fn(db, f),
+        (TypableDef::Struct(s), Namespace::Types) => type_for_struct(db, s),
+        (TypableDef::Struct(s), Namespace::Values) => type_for_struct_constructor(db, s),
+        (TypableDef::Enum(e), Namespace::Types) => type_for_enum(db, e),
+        (TypableDef::EnumVariant(v), Namespace::Values) => type_for_enum_variant_constructor(db, v),
+
+        // 'error' cases:
+        (TypableDef::Function(_), Namespace::Types) => Ty::Unknown,
+        (TypableDef::Enum(_), Namespace::Values) => Ty::Unknown,
+        (TypableDef::EnumVariant(_), Namespace::Types) => Ty::Unknown,
     }
 }
 
@@ -1127,7 +1177,7 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
                 let typable: Option<TypableDef> = def.into();
                 let typable = typable?;
                 let substs = Ty::substs_from_path(self.db, &self.resolver, path, typable);
-                let ty = self.db.type_for_def(typable).apply_substs(substs);
+                let ty = self.db.type_for_def(typable, Namespace::Values).apply_substs(substs);
                 let ty = self.insert_type_vars(ty);
                 Some(ty)
             }
@@ -1178,12 +1228,12 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
         let substs = Ty::substs_from_path(self.db, resolver, path, def);
         match def {
             TypableDef::Struct(s) => {
-                let ty = type_for_struct(self.db, s);
+                let ty = s.ty(self.db);
                 let ty = self.insert_type_vars(ty.apply_substs(substs));
                 (ty, Some(s.into()))
             }
             TypableDef::EnumVariant(var) => {
-                let ty = type_for_enum_variant(self.db, var);
+                let ty = var.parent_enum(self.db).ty(self.db);
                 let ty = self.insert_type_vars(ty.apply_substs(substs));
                 (ty, Some(var.into()))
             }
@@ -1384,7 +1434,11 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
                 let (derefed_receiver_ty, method_ty, def_generics) = match resolved {
                     Some((ty, func)) => {
                         self.write_method_resolution(tgt_expr, func);
-                        (ty, self.db.type_for_def(func.into()), Some(func.generic_params(self.db)))
+                        (
+                            ty,
+                            self.db.type_for_def(func.into(), Namespace::Values),
+                            Some(func.generic_params(self.db)),
+                        )
                     }
                     None => (Ty::Unknown, receiver_ty, None),
                 };
