@@ -34,7 +34,7 @@ the context is clear). As mentioned earlier, substition lists store raw
 `Kind`s, so before dealing with them, it is preferable to convert them to
 `UnpackedKind`s first. This is done by calling the `.unpack()` method.
 
-```rust
+```rust,ignore
 // An example of unpacking and packing a kind.
 fn deal_with_kind<'tcx>(kind: Kind<'tcx>) -> Kind<'tcx> {
     // Unpack a raw `Kind` to deal with it safely.
