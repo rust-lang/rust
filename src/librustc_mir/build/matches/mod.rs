@@ -338,6 +338,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                 self.schedule_drop_for_binding(var, irrefutable_pat.span, OutsideGuard);
                 block.unit()
             }
+
             _ => {
                 let place = unpack!(block = self.as_place(block, initializer));
                 self.place_into_pattern(block, irrefutable_pat, &place, true)
@@ -534,6 +535,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                     self.visit_bindings(subpattern, pattern_user_ty, f);
                 }
             }
+
             PatternKind::Array {
                 ref prefix,
                 ref slice,
@@ -556,10 +558,13 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                     self.visit_bindings(subpattern, pattern_user_ty.clone().index(), f);
                 }
             }
+
             PatternKind::Constant { .. } | PatternKind::Range { .. } | PatternKind::Wild => {}
+
             PatternKind::Deref { ref subpattern } => {
                 self.visit_bindings(subpattern, pattern_user_ty.deref(), f);
             }
+
             PatternKind::AscribeUserType {
                 ref subpattern,
                 ascription: hair::pattern::Ascription {

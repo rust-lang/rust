@@ -82,7 +82,6 @@ impl BaseTypeMethods<'tcx> for CodegenCx<'ll, 'tcx> {
 
     fn type_i16(&self) -> &'ll Type {
         unsafe {
-
             llvm::LLVMInt16TypeInContext(self.llcx)
         }
     }
