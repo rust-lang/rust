@@ -1,7 +1,7 @@
+use std::fmt;
+
 use hir::{Docs, Documentation, PerNs, Resolution};
-use ra_syntax::{
-    TextRange,
-};
+use ra_syntax::TextRange;
 use ra_text_edit::TextEdit;
 use test_utils::tested_by;
 
@@ -15,16 +15,16 @@ use crate::completion::{
 /// `CompletionItem` describes a single completion variant in the editor pop-up.
 /// It is basically a POD with various properties. To construct a
 /// `CompletionItem`, use `new` method and the `Builder` struct.
-#[derive(Debug)]
 pub struct CompletionItem {
     /// Used only internally in tests, to check only specific kind of
     /// completion.
+    #[allow(unused)]
     completion_kind: CompletionKind,
     label: String,
     kind: Option<CompletionItemKind>,
+    lookup: Option<String>,
     detail: Option<String>,
     documentation: Option<Documentation>,
-    lookup: Option<String>,
     insert_text: Option<String>,
     insert_text_format: InsertTextFormat,
     /// Where completion occurs. `source_range` must contain the completion offset.
@@ -34,6 +34,33 @@ pub struct CompletionItem {
     /// Additional text edit, ranges in `text_edit` must never intersect with `source_range`.
     /// Or VSCode will drop it silently.
     text_edit: Option<TextEdit>,
+}
+
+impl fmt::Debug for CompletionItem {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        let mut s = f.debug_struct("CompletionItem");
+        s.field("label", &self.label()).field("source_range", &self.source_range());
+        if let Some(kind) = self.kind().as_ref() {
+            s.field("kind", kind);
+        }
+        if self.lookup() != self.label() {
+            s.field("lookup", &self.lookup());
+        }
+        if let Some(detail) = self.detail() {
+            s.field("detail", &detail);
+        }
+        if let Some(documentation) = self.documentation() {
+            s.field("documentation", &documentation);
+        }
+        if self.insert_text() != self.label() {
+            s.field("insert_text", &self.insert_text())
+                .field("insert_text_format", &self.insert_text_format());
+        }
+        if let Some(edit) = self.text_edit.as_ref() {
+            s.field("text_edit", edit);
+        }
+        s.finish()
+    }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
