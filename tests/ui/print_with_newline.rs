@@ -29,4 +29,14 @@ fn main() {
 
     // Raw strings
     print!(r"\n"); // #3778
+
+    // Literal newlines should also fail
+    print!(
+        "
+"
+    );
+    print!(
+        r"
+"
+    );
 }

@@ -201,7 +201,7 @@ impl EarlyLintPass for Pass {
         } else if mac.node.path == "print" {
             span_lint(cx, PRINT_STDOUT, mac.span, "use of `print!`");
             if let (Some(fmtstr), _, is_raw) = check_tts(cx, &mac.node.tts, false) {
-                if !is_raw && check_newlines(&fmtstr) {
+                if check_newlines(&fmtstr, is_raw) {
                     span_lint(
                         cx,
                         PRINT_WITH_NEWLINE,
@@ -213,7 +213,7 @@ impl EarlyLintPass for Pass {
             }
         } else if mac.node.path == "write" {
             if let (Some(fmtstr), _, is_raw) = check_tts(cx, &mac.node.tts, true) {
-                if !is_raw && check_newlines(&fmtstr) {
+                if check_newlines(&fmtstr, is_raw) {
                     span_lint(
                         cx,
                         WRITE_WITH_NEWLINE,
@@ -382,7 +382,14 @@ fn check_tts<'a>(cx: &EarlyContext<'a>, tts: &TokenStream, is_write: bool) -> (O
 }
 
 // Checks if `s` constains a single newline that terminates it
-fn check_newlines(s: &str) -> bool {
+// Literal and escaped newlines are both checked (only literal for raw strings)
+fn check_newlines(s: &str, is_raw: bool) -> bool {
+    if s.ends_with('\n') {
+        return true;
+    } else if is_raw {
+        return false;
+    }
+
     if s.len() < 2 {
         return false;
     }

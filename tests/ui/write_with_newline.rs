@@ -34,4 +34,16 @@ fn main() {
 
     // Raw strings
     write!(&mut v, r"\n"); // #3778
+
+    // Literal newlines should also fail
+    write!(
+        &mut v,
+        "
+"
+    );
+    write!(
+        &mut v,
+        r"
+"
+    );
 }

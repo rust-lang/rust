@@ -30,5 +30,23 @@ error: using `print!()` with a format string that ends in a single newline, cons
 LL |     print!("//n"); // should fail
    |     ^^^^^^^^^^^^^^
 
-error: aborting due to 5 previous errors
+error: using `print!()` with a format string that ends in a single newline, consider using `println!()` instead
+  --> $DIR/print_with_newline.rs:34:5
+   |
+LL | /     print!(
+LL | |         "
+LL | | "
+LL | |     );
+   | |_____^
+
+error: using `print!()` with a format string that ends in a single newline, consider using `println!()` instead
+  --> $DIR/print_with_newline.rs:38:5
+   |
+LL | /     print!(
+LL | |         r"
+LL | | "
+LL | |     );
+   | |_____^
+
+error: aborting due to 7 previous errors
 
