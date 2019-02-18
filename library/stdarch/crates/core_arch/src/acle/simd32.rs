@@ -433,18 +433,18 @@ mod tests {
     #[test]
     fn qadd() {
         unsafe {
-            assert_eq!(dsp::qadd(-10, 60), 50);
-            assert_eq!(dsp::qadd(::std::i32::MAX, 10), ::std::i32::MAX);
-            assert_eq!(dsp::qadd(::std::i32::MIN, -10), ::std::i32::MIN);
+            assert_eq!(dsp::__qadd(-10, 60), 50);
+            assert_eq!(dsp::__qadd(::std::i32::MAX, 10), ::std::i32::MAX);
+            assert_eq!(dsp::__qadd(::std::i32::MIN, -10), ::std::i32::MIN);
         }
     }
 
     #[test]
     fn qsub() {
         unsafe {
-            assert_eq!(dsp::qsub(10, 60), -50);
-            assert_eq!(dsp::qsub(::std::i32::MAX, -10), ::std::i32::MAX);
-            assert_eq!(dsp::qsub(::std::i32::MIN, 10), ::std::i32::MIN);
+            assert_eq!(dsp::__qsub(10, 60), -50);
+            assert_eq!(dsp::__qsub(::std::i32::MAX, -10), ::std::i32::MAX);
+            assert_eq!(dsp::__qsub(::std::i32::MIN, 10), ::std::i32::MIN);
         }
     }
 
@@ -454,7 +454,7 @@ mod tests {
             let a = i8x4::new(1, 2, 3, ::std::i8::MAX);
             let b = i8x4::new(2, -1, 0, 1);
             let c = i8x4::new(3, 1, 3, ::std::i8::MAX);
-            let r: i8x4 = dsp_call!(dsp::qadd8, a, b);
+            let r: i8x4 = dsp_call!(dsp::__qadd8, a, b);
             assert_eq!(r, c);
         }
     }
@@ -465,7 +465,7 @@ mod tests {
             let a = i8x4::new(1, 2, 3, ::std::i8::MIN);
             let b = i8x4::new(2, -1, 0, 1);
             let c = i8x4::new(-1, 3, 3, ::std::i8::MIN);
-            let r: i8x4 = dsp_call!(dsp::qsub8, a, b);
+            let r: i8x4 = dsp_call!(dsp::__qsub8, a, b);
             assert_eq!(r, c);
         }
     }
@@ -476,7 +476,7 @@ mod tests {
             let a = i16x2::new(1, 2);
             let b = i16x2::new(2, -1);
             let c = i16x2::new(3, 1);
-            let r: i16x2 = dsp_call!(dsp::qadd16, a, b);
+            let r: i16x2 = dsp_call!(dsp::__qadd16, a, b);
             assert_eq!(r, c);
         }
     }
@@ -487,7 +487,7 @@ mod tests {
             let a = i16x2::new(10, 20);
             let b = i16x2::new(20, -10);
             let c = i16x2::new(-10, 30);
-            let r: i16x2 = dsp_call!(dsp::qsub16, a, b);
+            let r: i16x2 = dsp_call!(dsp::__qsub16, a, b);
             assert_eq!(r, c);
         }
     }
@@ -498,7 +498,7 @@ mod tests {
             let a = i16x2::new(1, ::std::i16::MAX);
             let b = i16x2::new(2, 2);
             let c = i16x2::new(-1, ::std::i16::MAX);
-            let r: i16x2 = dsp_call!(dsp::qasx, a, b);
+            let r: i16x2 = dsp_call!(dsp::__qasx, a, b);
             assert_eq!(r, c);
         }
     }
@@ -509,7 +509,7 @@ mod tests {
             let a = i16x2::new(1, ::std::i16::MAX);
             let b = i16x2::new(2, 2);
             let c = i16x2::new(3, ::std::i16::MAX - 2);
-            let r: i16x2 = dsp_call!(dsp::qsax, a, b);
+            let r: i16x2 = dsp_call!(dsp::__qsax, a, b);
             assert_eq!(r, c);
         }
     }
@@ -520,7 +520,7 @@ mod tests {
             let a = i16x2::new(1, ::std::i16::MAX);
             let b = i16x2::new(2, 2);
             let c = i16x2::new(3, -::std::i16::MAX);
-            let r: i16x2 = dsp_call!(dsp::sadd16, a, b);
+            let r: i16x2 = dsp_call!(dsp::__sadd16, a, b);
             assert_eq!(r, c);
         }
     }
@@ -531,7 +531,7 @@ mod tests {
             let a = i8x4::new(1, 2, 3, ::std::i8::MAX);
             let b = i8x4::new(4, 3, 2, 2);
             let c = i8x4::new(5, 5, 5, -::std::i8::MAX);
-            let r: i8x4 = dsp_call!(dsp::sadd8, a, b);
+            let r: i8x4 = dsp_call!(dsp::__sadd8, a, b);
             assert_eq!(r, c);
         }
     }
@@ -542,7 +542,7 @@ mod tests {
             let a = i16x2::new(1, 2);
             let b = i16x2::new(2, 1);
             let c = i16x2::new(0, 4);
-            let r: i16x2 = dsp_call!(dsp::sasx, a, b);
+            let r: i16x2 = dsp_call!(dsp::__sasx, a, b);
             assert_eq!(r, c);
         }
     }
@@ -552,7 +552,7 @@ mod tests {
         unsafe {
             let a = i16x2::new(1, 2);
             let b = i16x2::new(3, 4);
-            let r = dsp::smlad(::mem::transmute(a), ::mem::transmute(b), 10);
+            let r = dsp::__smlad(::mem::transmute(a), ::mem::transmute(b), 10);
             assert_eq!(r, (1 * 3) + (2 * 4) + 10);
         }
     }
@@ -562,7 +562,7 @@ mod tests {
         unsafe {
             let a = i16x2::new(1, 2);
             let b = i16x2::new(3, 4);
-            let r = dsp::smlsd(::mem::transmute(a), ::mem::transmute(b), 10);
+            let r = dsp::__smlsd(::mem::transmute(a), ::mem::transmute(b), 10);
             assert_eq!(r, ((1 * 3) - (2 * 4)) + 10);
         }
     }
@@ -573,9 +573,9 @@ mod tests {
             let a = i8x4::new(1, 2, 3, ::std::i8::MAX);
             let b = i8x4::new(4, 3, 2, 2);
             // call sadd8() to set GE bits
-            dsp::sadd8(::mem::transmute(a), ::mem::transmute(b));
+            dsp::__sadd8(::mem::transmute(a), ::mem::transmute(b));
             let c = i8x4::new(1, 2, 3, ::std::i8::MAX);
-            let r: i8x4 = dsp_call!(dsp::sel, a, b);
+            let r: i8x4 = dsp_call!(dsp::__sel, a, b);
             assert_eq!(r, c);
         }
     }
@@ -586,7 +586,7 @@ mod tests {
             let a = i8x4::new(1, 2, 3, 4);
             let b = i8x4::new(5, 4, 3, 2);
             let c = i8x4::new(3, 3, 3, 3);
-            let r: i8x4 = dsp_call!(dsp::shadd8, a, b);
+            let r: i8x4 = dsp_call!(dsp::__shadd8, a, b);
             assert_eq!(r, c);
         }
     }
@@ -597,7 +597,7 @@ mod tests {
             let a = i16x2::new(1, 2);
             let b = i16x2::new(5, 4);
             let c = i16x2::new(3, 3);
-            let r: i16x2 = dsp_call!(dsp::shadd16, a, b);
+            let r: i16x2 = dsp_call!(dsp::__shadd16, a, b);
             assert_eq!(r, c);
         }
     }
@@ -608,7 +608,7 @@ mod tests {
             let a = i8x4::new(1, 2, 3, 4);
             let b = i8x4::new(5, 4, 3, 2);
             let c = i8x4::new(-2, -1, 0, 1);
-            let r: i8x4 = dsp_call!(dsp::shsub8, a, b);
+            let r: i8x4 = dsp_call!(dsp::__shsub8, a, b);
             assert_eq!(r, c);
         }
     }
@@ -619,7 +619,7 @@ mod tests {
             let a = i16x2::new(1, 2);
             let b = i16x2::new(5, 4);
             let c = i16x2::new(-2, -1);
-            let r: i16x2 = dsp_call!(dsp::shsub16, a, b);
+            let r: i16x2 = dsp_call!(dsp::__shsub16, a, b);
             assert_eq!(r, c);
         }
     }
@@ -629,7 +629,7 @@ mod tests {
         unsafe {
             let a = i16x2::new(1, 2);
             let b = i16x2::new(5, 4);
-            let r = dsp::smuad(::mem::transmute(a), ::mem::transmute(b));
+            let r = dsp::__smuad(::mem::transmute(a), ::mem::transmute(b));
             assert_eq!(r, 13);
         }
     }
@@ -639,7 +639,7 @@ mod tests {
         unsafe {
             let a = i16x2::new(1, 2);
             let b = i16x2::new(5, 4);
-            let r = dsp::smuadx(::mem::transmute(a), ::mem::transmute(b));
+            let r = dsp::__smuadx(::mem::transmute(a), ::mem::transmute(b));
             assert_eq!(r, 14);
         }
     }
@@ -649,7 +649,7 @@ mod tests {
         unsafe {
             let a = i16x2::new(1, 2);
             let b = i16x2::new(5, 4);
-            let r = dsp::smusd(::mem::transmute(a), ::mem::transmute(b));
+            let r = dsp::__smusd(::mem::transmute(a), ::mem::transmute(b));
             assert_eq!(r, -3);
         }
     }
@@ -659,7 +659,7 @@ mod tests {
         unsafe {
             let a = i16x2::new(1, 2);
             let b = i16x2::new(5, 4);
-            let r = dsp::smusdx(::mem::transmute(a), ::mem::transmute(b));
+            let r = dsp::__smusdx(::mem::transmute(a), ::mem::transmute(b));
             assert_eq!(r, -6);
         }
     }
@@ -669,7 +669,7 @@ mod tests {
         unsafe {
             let a = i8x4::new(1, 2, 3, 4);
             let b = i8x4::new(4, 3, 2, 1);
-            let r = dsp::usad8(::mem::transmute(a), ::mem::transmute(b));
+            let r = dsp::__usad8(::mem::transmute(a), ::mem::transmute(b));
             assert_eq!(r, 8);
         }
     }
@@ -680,7 +680,7 @@ mod tests {
             let a = i8x4::new(1, 2, 3, 4);
             let b = i8x4::new(4, 3, 2, 1);
             let c = 10;
-            let r = dsp::usad8a(::mem::transmute(a), ::mem::transmute(b), c);
+            let r = dsp::__usad8a(::mem::transmute(a), ::mem::transmute(b), c);
             assert_eq!(r, 8 + c);
         }
     }
