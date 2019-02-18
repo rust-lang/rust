@@ -104,6 +104,14 @@ impl Mul for u8 {
     }
 }
 
+impl Mul for usize {
+    type Output = Self;
+
+    fn mul(self, rhs: Self) -> Self::Output {
+        self * rhs
+    }
+}
+
 #[lang = "add"]
 pub trait Add<RHS = Self> {
     type Output;
@@ -204,6 +212,15 @@ impl PartialEq for usize {
         (*self) == (*other)
     }
     fn ne(&self, other: &usize) -> bool {
+        (*self) != (*other)
+    }
+}
+
+impl PartialEq for isize {
+    fn eq(&self, other: &isize) -> bool {
+        (*self) == (*other)
+    }
+    fn ne(&self, other: &isize) -> bool {
         (*self) != (*other)
     }
 }

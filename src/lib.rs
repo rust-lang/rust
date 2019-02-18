@@ -16,6 +16,8 @@ extern crate syntax;
 use std::any::Any;
 use std::fs::File;
 use std::sync::mpsc;
+use std::os::raw::{c_char, c_int};
+use std::ffi::CString;
 
 use rustc::dep_graph::DepGraph;
 use rustc::middle::cstore::MetadataLoader;
@@ -241,19 +243,26 @@ impl CodegenBackend for CraneliftCodegenBackend {
             jit_module.finalize_definitions();
 
             tcx.sess.abort_if_errors();
-            println!("Compiled everything");
-            println!("Rustc codegen cranelift will JIT run the executable, because the SHOULD_RUN env var is set");
 
             let finalized_main: *const u8 = jit_module.get_finalized_function(main_func_id);
-            println!("🎉 Finalized everything");
 
-            let f: extern "C" fn(isize, *const *const u8) -> isize =
+            println!("Rustc codegen cranelift will JIT run the executable, because the SHOULD_RUN env var is set");
+
+            let f: extern "C" fn(c_int, *const *const c_char) -> c_int =
                 unsafe { ::std::mem::transmute(finalized_main) };
-            let res = f(0, 0 as *const _);
-            tcx.sess.warn(&format!("🚀 main returned {}", res));
+
+            let args = ::std::env::var("JIT_ARGS").unwrap_or_else(|_|String::new());
+            let args = args
+                .split(" ")
+                .chain(Some(&*tcx.crate_name(LOCAL_CRATE).as_str().to_string()))
+                .map(|arg| CString::new(arg).unwrap()).collect::<Vec<_>>();
+            let argv = args.iter().map(|arg| arg.as_ptr()).collect::<Vec<_>>();
+            // TODO: Rust doesn't care, but POSIX argv has a NULL sentinel at the end
+
+            let ret = f(args.len() as c_int, argv.as_ptr());
 
             jit_module.finish();
-            ::std::process::exit(0);
+            std::process::exit(ret);
         } else {
             let new_module = |name: String| {
                 let module: Module<FaerieBackend> = Module::new(

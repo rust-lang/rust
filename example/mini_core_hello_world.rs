@@ -75,9 +75,15 @@ enum Ordering {
 #[lang = "start"]
 fn start<T: Termination + 'static>(
     main: fn() -> T,
-    _argc: isize,
-    _argv: *const *const u8,
+    argc: isize,
+    argv: *const *const u8,
 ) -> isize {
+    if argc == 3 {
+        unsafe { puts(*argv); }
+        unsafe { puts(*((argv as usize + intrinsics::size_of::<*const u8>()) as *const *const u8)); }
+        unsafe { puts(*((argv as usize + 2 * intrinsics::size_of::<*const u8>()) as *const *const u8)); }
+    }
+
     main().report();
     0
 }
