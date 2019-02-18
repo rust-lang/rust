@@ -151,7 +151,6 @@ pub const DUMMY_ITEM_LOCAL_ID: ItemLocalId = ItemLocalId::MAX;
 
 #[derive(Clone, RustcEncodable, RustcDecodable, Copy)]
 pub struct Lifetime {
-    pub id: NodeId,
     pub hir_id: HirId,
     pub span: Span,
 
@@ -272,7 +271,7 @@ impl fmt::Debug for Lifetime {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f,
                "lifetime({}: {})",
-               self.id,
+               self.hir_id,
                print::to_string(print::NO_ANN, |s| s.print_lifetime(self)))
     }
 }
@@ -417,10 +416,10 @@ impl GenericArg {
         }
     }
 
-    pub fn id(&self) -> NodeId {
+    pub fn id(&self) -> HirId {
         match self {
-            GenericArg::Lifetime(l) => l.id,
-            GenericArg::Type(t) => t.id,
+            GenericArg::Lifetime(l) => l.hir_id,
+            GenericArg::Type(t) => t.hir_id,
             GenericArg::Const(c) => c.value.id,
         }
     }
@@ -1760,7 +1759,6 @@ pub struct TypeBinding {
 
 #[derive(Clone, RustcEncodable, RustcDecodable)]
 pub struct Ty {
-    pub id: NodeId,
     pub node: TyKind,
     pub span: Span,
     pub hir_id: HirId,

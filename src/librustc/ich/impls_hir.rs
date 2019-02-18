@@ -158,7 +158,6 @@ impl_stable_hash_for!(struct ast::Label {
 });
 
 impl_stable_hash_for!(struct hir::Lifetime {
-    id,
     hir_id,
     span,
     name
@@ -318,7 +317,6 @@ impl<'a> HashStable<StableHashingContext<'a>> for hir::Ty {
                                           hasher: &mut StableHasher<W>) {
         hcx.while_hashing_hir_bodies(true, |hcx| {
             let hir::Ty {
-                id: _,
                 hir_id: _,
                 ref node,
                 ref span,

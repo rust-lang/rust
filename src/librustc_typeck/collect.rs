@@ -2224,7 +2224,7 @@ fn compute_sig_of_foreign_fn_decl<'a, 'tcx>(
                        &format!(
                            "use of SIMD type `{}` in FFI is highly experimental and \
                             may result in invalid code",
-                           tcx.hir().node_to_pretty_string(ast_ty.id)
+                           tcx.hir().hir_to_pretty_string(ast_ty.hir_id)
                        ),
                    )
                    .help("add #![feature(simd_ffi)] to the crate attributes to enable")

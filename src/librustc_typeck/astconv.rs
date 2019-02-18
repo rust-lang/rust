@@ -304,8 +304,8 @@ impl<'o, 'gcx: 'tcx, 'tcx> dyn AstConv<'gcx, 'tcx> + 'o {
                 } else {
                     let mut multispan = MultiSpan::from_span(span);
                     multispan.push_span_label(span_late, note.to_string());
-                    tcx.lint_node(lint::builtin::LATE_BOUND_LIFETIME_ARGUMENTS,
-                                  args.args[0].id(), multispan, msg);
+                    tcx.lint_hir(lint::builtin::LATE_BOUND_LIFETIME_ARGUMENTS,
+                                 args.args[0].id(), multispan, msg);
                     return (false, None);
                 }
             }
@@ -1267,7 +1267,7 @@ impl<'o, 'gcx: 'tcx, 'tcx> dyn AstConv<'gcx, 'tcx> + 'o {
     // parameter or `Self`.
     pub fn associated_path_to_ty(
         &self,
-        ref_id: ast::NodeId,
+        hir_ref_id: hir::HirId,
         span: Span,
         qself_ty: Ty<'tcx>,
         qself_def: Def,
@@ -1276,6 +1276,7 @@ impl<'o, 'gcx: 'tcx, 'tcx> dyn AstConv<'gcx, 'tcx> + 'o {
     ) -> (Ty<'tcx>, Def) {
         let tcx = self.tcx();
         let assoc_ident = assoc_segment.ident;
+        let ref_id = tcx.hir().hir_to_node_id(hir_ref_id);
 
         debug!("associated_path_to_ty: {:?}::{}", qself_ty, assoc_ident);
 
@@ -1370,7 +1371,6 @@ impl<'o, 'gcx: 'tcx, 'tcx> dyn AstConv<'gcx, 'tcx> + 'o {
         };
 
         let trait_did = bound.def_id();
-        let hir_ref_id = self.tcx().hir().node_to_hir_id(ref_id);
         let (assoc_ident, def_scope) = tcx.adjust_ident(assoc_ident, trait_did, hir_ref_id);
         let item = tcx.associated_items(trait_did).find(|i| {
             Namespace::from(i.kind) == Namespace::Type &&
@@ -1388,9 +1388,9 @@ impl<'o, 'gcx: 'tcx, 'tcx> dyn AstConv<'gcx, 'tcx> + 'o {
         tcx.check_stability(item.def_id, Some(ref_id), span);
 
         if let Some(variant_def) = variant_resolution {
-            let mut err = tcx.struct_span_lint_node(
+            let mut err = tcx.struct_span_lint_hir(
                 AMBIGUOUS_ASSOCIATED_ITEMS,
-                ref_id,
+                hir_ref_id,
                 span,
                 "ambiguous associated item",
             );
@@ -1742,7 +1742,7 @@ impl<'o, 'gcx: 'tcx, 'tcx> dyn AstConv<'gcx, 'tcx> + 'o {
     /// internal notion of a type.
     pub fn ast_ty_to_ty(&self, ast_ty: &hir::Ty) -> Ty<'tcx> {
         debug!("ast_ty_to_ty(id={:?}, ast_ty={:?} ty_ty={:?})",
-               ast_ty.id, ast_ty, ast_ty.node);
+               ast_ty.hir_id, ast_ty, ast_ty.node);
 
         let tcx = self.tcx();
 
@@ -1795,7 +1795,7 @@ impl<'o, 'gcx: 'tcx, 'tcx> dyn AstConv<'gcx, 'tcx> + 'o {
                 } else {
                     Def::Err
                 };
-                self.associated_path_to_ty(ast_ty.id, ast_ty.span, ty, def, segment, false).0
+                self.associated_path_to_ty(ast_ty.hir_id, ast_ty.span, ty, def, segment, false).0
             }
             hir::TyKind::Array(ref ty, ref length) => {
                 let length_def_id = tcx.hir().local_def_id(length.id);

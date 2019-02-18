@@ -1350,9 +1350,8 @@ impl<'a> LoweringContext<'a> {
             TyKind::Mac(_) => panic!("TyMac should have been expanded by now."),
         };
 
-        let LoweredNodeId { node_id, hir_id } = self.lower_node_id(t.id);
+        let LoweredNodeId { node_id: _, hir_id } = self.lower_node_id(t.id);
         hir::Ty {
-            id: node_id,
             node: kind,
             span: t.span,
             hir_id,
@@ -1533,9 +1532,8 @@ impl<'a> LoweringContext<'a> {
                     && !self.already_defined_lifetimes.contains(&name) {
                     self.already_defined_lifetimes.insert(name);
 
-                    let LoweredNodeId { node_id, hir_id } = self.context.next_id();
+                    let LoweredNodeId { node_id: _, hir_id } = self.context.next_id();
                     self.output_lifetimes.push(hir::GenericArg::Lifetime(hir::Lifetime {
-                        id: node_id,
                         hir_id,
                         span: lifetime.span,
                         name,
@@ -1980,8 +1978,8 @@ impl<'a> LoweringContext<'a> {
                     .map(|ty| this.lower_ty_direct(ty, ImplTraitContext::disallowed()))
                     .collect();
                 let mk_tup = |this: &mut Self, tys, span| {
-                    let LoweredNodeId { node_id, hir_id } = this.next_id();
-                    hir::Ty { node: hir::TyKind::Tup(tys), id: node_id, hir_id, span }
+                    let LoweredNodeId { node_id: _, hir_id } = this.next_id();
+                    hir::Ty { node: hir::TyKind::Tup(tys), hir_id, span }
                 };
                 let LoweredNodeId { node_id, hir_id } = this.next_id();
 
@@ -2318,9 +2316,8 @@ impl<'a> LoweringContext<'a> {
                     this.lower_ty(ty, ImplTraitContext::Existential(Some(fn_def_id)))
                 }
                 FunctionRetTy::Default(span) => {
-                    let LoweredNodeId { node_id, hir_id } = this.next_id();
+                    let LoweredNodeId { node_id: _, hir_id } = this.next_id();
                     P(hir::Ty {
-                        id: node_id,
                         hir_id,
                         node: hir::TyKind::Tup(hir_vec![]),
                         span: *span,
@@ -2362,17 +2359,16 @@ impl<'a> LoweringContext<'a> {
             ];
 
             if let Some((name, span)) = bound_lifetime {
-                let LoweredNodeId { node_id, hir_id } = this.next_id();
+                let LoweredNodeId { node_id: _, hir_id } = this.next_id();
                 bounds.push(hir::GenericBound::Outlives(
-                    hir::Lifetime { id: node_id, hir_id, name, span }));
+                    hir::Lifetime { hir_id, name, span }));
             }
 
             hir::HirVec::from(bounds)
         });
 
-        let LoweredNodeId { node_id, hir_id } = self.next_id();
+        let LoweredNodeId { node_id: _, hir_id } = self.next_id();
         let impl_trait_ty = P(hir::Ty {
-            id: node_id,
             node: impl_trait_ty,
             span,
             hir_id,
@@ -2431,10 +2427,9 @@ impl<'a> LoweringContext<'a> {
         span: Span,
         name: hir::LifetimeName,
     ) -> hir::Lifetime {
-        let LoweredNodeId { node_id, hir_id } = self.lower_node_id(id);
+        let LoweredNodeId { node_id: _, hir_id } = self.lower_node_id(id);
 
         hir::Lifetime {
-            id: node_id,
             hir_id,
             span,
             name: name,
@@ -5108,7 +5103,6 @@ impl<'a> LoweringContext<'a> {
             _ => hir::TyKind::Path(qpath),
         };
         hir::Ty {
-            id: id.node_id,
             hir_id: id.hir_id,
             node,
             span,
@@ -5124,9 +5118,8 @@ impl<'a> LoweringContext<'a> {
             // `'f`.
             AnonymousLifetimeMode::CreateParameter => {
                 let fresh_name = self.collect_fresh_in_band_lifetime(span);
-                let LoweredNodeId { node_id, hir_id } = self.next_id();
+                let LoweredNodeId { node_id: _, hir_id } = self.next_id();
                 hir::Lifetime {
-                    id: node_id,
                     hir_id,
                     span,
                     name: hir::LifetimeName::Param(fresh_name),
@@ -5227,10 +5220,9 @@ impl<'a> LoweringContext<'a> {
     }
 
     fn new_implicit_lifetime(&mut self, span: Span) -> hir::Lifetime {
-        let LoweredNodeId { node_id, hir_id } = self.next_id();
+        let LoweredNodeId { node_id: _, hir_id } = self.next_id();
 
         hir::Lifetime {
-            id: node_id,
             hir_id,
             span,
             name: hir::LifetimeName::Implicit,
