@@ -2661,10 +2661,9 @@ impl<'a> LoweringContext<'a> {
                 ref rhs_ty,
                 span,
             }) => {
-                let LoweredNodeId { node_id, hir_id } = self.lower_node_id(id);
+                let LoweredNodeId { node_id: _, hir_id } = self.lower_node_id(id);
 
                 hir::WherePredicate::EqPredicate(hir::WhereEqPredicate {
-                    id: node_id,
                     hir_id,
                     lhs_ty: self.lower_ty(lhs_ty, ImplTraitContext::disallowed()),
                     rhs_ty: self.lower_ty(rhs_ty, ImplTraitContext::disallowed()),

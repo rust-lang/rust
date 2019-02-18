@@ -277,7 +277,6 @@ impl_stable_hash_for!(struct hir::WhereRegionPredicate {
 });
 
 impl_stable_hash_for!(struct hir::WhereEqPredicate {
-    id,
     hir_id,
     span,
     lhs_ty,
