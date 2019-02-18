@@ -66,6 +66,14 @@ impl fmt::Debug for Vfs {
     }
 }
 
+#[derive(Debug, Clone)]
+pub enum VfsChange {
+    AddRoot { root: VfsRoot, files: Vec<(VfsFile, RelativePathBuf, Arc<String>)> },
+    AddFile { root: VfsRoot, file: VfsFile, path: RelativePathBuf, text: Arc<String> },
+    RemoveFile { root: VfsRoot, file: VfsFile, path: RelativePathBuf },
+    ChangeFile { file: VfsFile, text: Arc<String> },
+}
+
 impl Vfs {
     pub fn new(roots: Vec<PathBuf>) -> (Vfs, Vec<VfsRoot>) {
         let roots = Arc::new(Roots::new(roots));
@@ -275,12 +283,4 @@ impl Vfs {
     fn file_mut(&mut self, file: VfsFile) -> &mut VfsFileData {
         &mut self.files[file.0 as usize]
     }
-}
-
-#[derive(Debug, Clone)]
-pub enum VfsChange {
-    AddRoot { root: VfsRoot, files: Vec<(VfsFile, RelativePathBuf, Arc<String>)> },
-    AddFile { root: VfsRoot, file: VfsFile, path: RelativePathBuf, text: Arc<String> },
-    RemoveFile { root: VfsRoot, file: VfsFile, path: RelativePathBuf },
-    ChangeFile { file: VfsFile, text: Arc<String> },
 }
