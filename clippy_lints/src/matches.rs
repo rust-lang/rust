@@ -537,6 +537,10 @@ fn check_wild_enum_match(cx: &LateContext<'_, '_>, ex: &Expr, arms: &[Arm]) {
             })
             .collect();
 
+        if suggestion.is_empty() {
+            return;
+        }
+
         span_lint_and_sugg(
             cx,
             WILDCARD_ENUM_MATCH_ARM,
