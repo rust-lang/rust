@@ -112,6 +112,12 @@ impl serialize::UseSpecializedDecodable for HirId {
     }
 }
 
+impl fmt::Display for HirId {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{:?}", self)
+    }
+}
+
 // hack to ensure that we don't try to access the private parts of `ItemLocalId` in this module
 mod item_local_id_inner {
     use rustc_data_structures::indexed_vec::Idx;
