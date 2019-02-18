@@ -16,6 +16,8 @@ error[E0574]: expected struct, variant or union type, found macro `try`
    |
 LL |     let try_result: Option<_> = try {
    |                                 ^^^ help: use `!` to invoke the macro: `try!`
+   |
+   = note: if you want the `try` keyword, you need to be in the 2018 edition
 
 error: aborting due to 2 previous errors
 
