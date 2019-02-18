@@ -683,7 +683,7 @@ impl UndefMask {
         // fill in all the other blocks (much faster than one bit at a time)
         if new_state {
             for block in (blocka + 1) .. blockb {
-                self.blocks[block] = 0xFFFF_FFFF_FFFF_FFFF;
+                self.blocks[block] = u64::max_value();
             }
         } else {
             for block in (blocka + 1) .. blockb {
