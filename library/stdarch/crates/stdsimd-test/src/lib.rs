@@ -151,6 +151,10 @@ pub fn assert(fnptr: usize, fnname: &str, expected: &str) {
                 // in some cases exceed the limit.
                 "cvtpi2ps" => 25,
 
+                // core_arch/src/acle/simd32
+                "usad8" => 27,
+                "qadd8" | "qsub8" | "sadd8" | "sel" | "shadd8" | "shsub8" => 29,
+
                 // Original limit was 20 instructions, but ARM DSP Intrinsics
                 // are exactly 20 instructions long. So, bump the limit to 22
                 // instead of adding here a long list of exceptions.
