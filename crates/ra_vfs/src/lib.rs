@@ -25,7 +25,6 @@ use std::{
 };
 
 use crossbeam_channel::Receiver;
-use ra_arena::{impl_arena_id, Arena, RawId};
 use relative_path::{RelativePath, RelativePathBuf};
 use rustc_hash::{FxHashMap, FxHashSet};
 
@@ -40,8 +39,7 @@ pub use crate::{
 };
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
-pub struct VfsFile(pub RawId);
-impl_arena_id!(VfsFile);
+pub struct VfsFile(pub u32);
 
 struct VfsFileData {
     root: VfsRoot,
@@ -52,7 +50,7 @@ struct VfsFileData {
 
 pub struct Vfs {
     roots: Arc<Roots>,
-    files: Arena<VfsFile, VfsFileData>,
+    files: Vec<VfsFileData>,
     root2files: FxHashMap<VfsRoot, FxHashSet<VfsFile>>,
     pending_changes: Vec<VfsChange>,
     worker: Worker,
@@ -78,8 +76,7 @@ impl Vfs {
             root2files.insert(root, Default::default());
             worker.sender().send(io::Task::AddRoot { root }).unwrap();
         }
-        let res =
-            Vfs { roots, files: Arena::default(), root2files, worker, pending_changes: Vec::new() };
+        let res = Vfs { roots, files: Vec::new(), root2files, worker, pending_changes: Vec::new() };
         let vfs_roots = res.roots.iter().collect();
         (res, vfs_roots)
     }
@@ -96,8 +93,8 @@ impl Vfs {
     }
 
     pub fn file2path(&self, file: VfsFile) -> PathBuf {
-        let rel_path = &self.files[file].path;
-        let root_path = &self.roots.path(self.files[file].root);
+        let rel_path = &self.file(file).path;
+        let root_path = &self.roots.path(self.file(file).root);
         rel_path.to_path(root_path)
     }
 
@@ -166,11 +163,11 @@ impl Vfs {
                 // been open in the editor, so we need to account for that.
                 let existing = self.root2files[&root]
                     .iter()
-                    .map(|&file| (self.files[file].path.clone(), file))
+                    .map(|&file| (self.file(file).path.clone(), file))
                     .collect::<FxHashMap<_, _>>();
                 for (path, text) in files {
                     if let Some(&file) = existing.get(&path) {
-                        let text = Arc::clone(&self.files[file].text);
+                        let text = Arc::clone(&self.file(file).text);
                         cur_files.push((file, path, text));
                         continue;
                     }
@@ -184,7 +181,7 @@ impl Vfs {
             }
             TaskResult::SingleFile { root, path, text } => {
                 let existing_file = self.find_file(root, &path);
-                if existing_file.map(|file| self.files[file].is_overlayed) == Some(true) {
+                if existing_file.map(|file| self.file(file).is_overlayed) == Some(true) {
                     return;
                 }
                 match (existing_file, text) {
@@ -240,22 +237,23 @@ impl Vfs {
         is_overlayed: bool,
     ) -> VfsFile {
         let data = VfsFileData { root, path, text, is_overlayed };
-        let file = self.files.alloc(data);
+        let file = VfsFile(self.files.len() as u32);
+        self.files.push(data);
         self.root2files.get_mut(&root).unwrap().insert(file);
         file
     }
 
     fn raw_change_file(&mut self, file: VfsFile, new_text: Arc<String>, is_overlayed: bool) {
-        let mut file_data = &mut self.files[file];
+        let mut file_data = &mut self.file_mut(file);
         file_data.text = new_text;
         file_data.is_overlayed = is_overlayed;
     }
 
     fn raw_remove_file(&mut self, file: VfsFile) {
         // FIXME: use arena with removal
-        self.files[file].text = Default::default();
-        self.files[file].path = Default::default();
-        let root = self.files[file].root;
+        self.file_mut(file).text = Default::default();
+        self.file_mut(file).path = Default::default();
+        let root = self.file(file).root;
         let removed = self.root2files.get_mut(&root).unwrap().remove(&file);
         assert!(removed);
     }
@@ -267,7 +265,15 @@ impl Vfs {
     }
 
     fn find_file(&self, root: VfsRoot, path: &RelativePath) -> Option<VfsFile> {
-        self.root2files[&root].iter().map(|&it| it).find(|&file| self.files[file].path == path)
+        self.root2files[&root].iter().map(|&it| it).find(|&file| self.file(file).path == path)
+    }
+
+    fn file(&self, file: VfsFile) -> &VfsFileData {
+        &self.files[file.0 as usize]
+    }
+
+    fn file_mut(&mut self, file: VfsFile) -> &mut VfsFileData {
+        &mut self.files[file.0 as usize]
     }
 }
 

@@ -15,7 +15,6 @@ drop_bomb = "0.1.0"
 parking_lot = "0.7.0"
 
 thread_worker = { path = "../thread_worker" }
-ra_arena = { path = "../ra_arena" }
 
 [dev-dependencies]
 tempfile = "3"
