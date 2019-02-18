@@ -1,6 +1,5 @@
 use std::{
     iter,
-    sync::Arc,
     path::{Path, PathBuf},
 };
 
@@ -25,7 +24,7 @@ struct RootData {
 }
 
 pub(crate) struct Roots {
-    roots: Arena<VfsRoot, Arc<RootData>>,
+    roots: Arena<VfsRoot, RootData>,
 }
 
 impl Roots {
@@ -38,9 +37,7 @@ impl Roots {
             let nested_roots =
                 paths[..i].iter().filter_map(|it| rel_path(path, it)).collect::<Vec<_>>();
 
-            let config = Arc::new(RootData::new(path.clone(), nested_roots));
-
-            roots.alloc(config.clone());
+            roots.alloc(RootData::new(path.clone(), nested_roots));
         }
         Roots { roots }
     }
