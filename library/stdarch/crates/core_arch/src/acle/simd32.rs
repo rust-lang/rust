@@ -425,7 +425,7 @@ pub unsafe fn __usada8(a: int8x4_t, b: int8x4_t, c: u32) -> u32 {
 
 #[cfg(test)]
 mod tests {
-    use core_arch::simd::{i8x4, i16x2};
+    use core_arch::simd::{i16x2, i8x4};
     use std::mem;
     use stdsimd_test::simd_test;
 
