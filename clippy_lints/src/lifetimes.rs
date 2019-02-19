@@ -113,7 +113,7 @@ fn check_fn_inner<'a, 'tcx>(
     let mut bounds_lts = Vec::new();
     let types = generics.params.iter().filter(|param| match param.kind {
         GenericParamKind::Type { .. } => true,
-        GenericParamKind::Lifetime { .. } => false,
+        _ => false,
     });
     for typ in types {
         for bound in &typ.bounds {
@@ -133,7 +133,7 @@ fn check_fn_inner<'a, 'tcx>(
                 if let Some(ref params) = *params {
                     let lifetimes = params.args.iter().filter_map(|arg| match arg {
                         GenericArg::Lifetime(lt) => Some(lt),
-                        GenericArg::Type(_) => None,
+                        _ => None,
                     });
                     for bound in lifetimes {
                         if bound.name != LifetimeName::Static && !bound.is_elided() {
@@ -316,7 +316,7 @@ impl<'v, 't> RefVisitor<'v, 't> {
             if !last_path_segment.parenthesized
                 && !last_path_segment.args.iter().any(|arg| match arg {
                     GenericArg::Lifetime(_) => true,
-                    GenericArg::Type(_) => false,
+                    _ => false,
                 })
             {
                 let hir_id = self.cx.tcx.hir().node_to_hir_id(ty.id);
