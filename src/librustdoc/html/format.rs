@@ -49,8 +49,11 @@ pub struct AbiSpace(pub Abi);
 pub struct Function<'a> {
     /// The declaration to emit.
     pub decl: &'a clean::FnDecl,
-    /// The length of the function's "name", used to determine line-wrapping.
-    pub name_len: usize,
+    /// The length of the function header and name. In other words, the number of characters in the
+    /// function declaration up to but not including the parentheses.
+    ///
+    /// Used to determine line-wrapping.
+    pub header_len: usize,
     /// The number of spaces to indent each successive line with, if line-wrapping is necessary.
     pub indent: usize,
     /// Whether the function is async or not.
@@ -675,7 +678,11 @@ fn fmt_type(t: &clean::Type, f: &mut fmt::Formatter, use_absolute: bool) -> fmt:
             }
         }
         clean::ImplTrait(ref bounds) => {
-            write!(f, "impl {}", GenericBounds(bounds))
+            if f.alternate() {
+                write!(f, "impl {:#}", GenericBounds(bounds))
+            } else {
+                write!(f, "impl {}", GenericBounds(bounds))
+            }
         }
         clean::QPath { ref name, ref self_type, ref trait_ } => {
             let should_show_cast = match *trait_ {
@@ -844,7 +851,7 @@ impl fmt::Display for clean::FnDecl {
 
 impl<'a> fmt::Display for Function<'a> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        let &Function { decl, name_len, indent, asyncness } = self;
+        let &Function { decl, header_len, indent, asyncness } = self;
         let amp = if f.alternate() { "&" } else { "&amp;" };
         let mut args = String::new();
         let mut args_plain = String::new();
@@ -899,6 +906,8 @@ impl<'a> fmt::Display for Function<'a> {
             }
         }
 
+        let mut args_plain = format!("({})", args_plain);
+
         if decl.variadic {
             args.push_str(",<br> ...");
             args_plain.push_str(", ...");
@@ -917,13 +926,8 @@ impl<'a> fmt::Display for Function<'a> {
             output.to_string()
         };
 
-        let pad = " ".repeat(name_len);
-        let plain = format!("{pad}({args}){arrow}",
-                        pad = pad,
-                        args = args_plain,
-                        arrow = arrow_plain);
-
-        let output = if plain.len() > 80 {
+        let declaration_len = header_len + args_plain.len() + arrow_plain.len();
+        let output = if declaration_len > 80 {
             let full_pad = format!("<br>{}", "&nbsp;".repeat(indent + 4));
             let close_pad = format!("<br>{}", "&nbsp;".repeat(indent));
             format!("({args}{close}){arrow}",
