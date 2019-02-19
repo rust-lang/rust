@@ -634,8 +634,8 @@ impl<'tcx> Witness<'tcx> {
 /// but is instead bounded by the maximum fixed length of slice patterns in
 /// the column of patterns being analyzed.
 ///
-/// We make sure to omit constructors that are statically impossible. eg for
-/// Option<!> we do not include Some(_) in the returned list of constructors.
+/// We make sure to omit constructors that are statically impossible. E.g., for
+/// `Option<!>`, we do not include `Some(_)` in the returned list of constructors.
 fn all_constructors<'a, 'tcx: 'a>(cx: &mut MatchCheckCtxt<'a, 'tcx>,
                                   pcx: PatternContext<'tcx>)
                                   -> Vec<Constructor<'tcx>>
@@ -1347,7 +1347,7 @@ fn pat_constructors<'tcx>(cx: &mut MatchCheckCtxt<'_, 'tcx>,
 /// This computes the arity of a constructor. The arity of a constructor
 /// is how many subpattern patterns of that constructor should be expanded to.
 ///
-/// For instance, a tuple pattern (_, 42, Some([])) has the arity of 3.
+/// For instance, a tuple pattern `(_, 42, Some([]))` has the arity of 3.
 /// A struct pattern's arity is the number of fields it contains, etc.
 fn constructor_arity(cx: &MatchCheckCtxt<'a, 'tcx>, ctor: &Constructor<'tcx>, ty: Ty<'tcx>) -> u64 {
     debug!("constructor_arity({:#?}, {:?})", ctor, ty);
@@ -1357,7 +1357,7 @@ fn constructor_arity(cx: &MatchCheckCtxt<'a, 'tcx>, ctor: &Constructor<'tcx>, ty
             Slice(length) => length,
             ConstantValue(_) => 0,
             _ => bug!("bad slice pattern {:?} {:?}", ctor, ty)
-        },
+        }
         ty::Ref(..) => 1,
         ty::Adt(adt, _) => {
             adt.variants[ctor.variant_index_for_adt(cx, adt)].fields.len() as u64
@@ -1381,7 +1381,7 @@ fn constructor_sub_pattern_tys<'a, 'tcx: 'a>(cx: &MatchCheckCtxt<'a, 'tcx>,
             Slice(length) => (0..length).map(|_| ty).collect(),
             ConstantValue(_) => vec![],
             _ => bug!("bad slice pattern {:?} {:?}", ctor, ty)
-        },
+        }
         ty::Ref(_, rty, _) => vec![rty],
         ty::Adt(adt, substs) => {
             if adt.is_box() {

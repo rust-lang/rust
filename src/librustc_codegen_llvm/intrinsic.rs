@@ -192,8 +192,7 @@ impl IntrinsicCallMethods<'tcx> for Builder<'a, 'll, 'tcx> {
             "size_of_val" => {
                 let tp_ty = substs.type_at(0);
                 if let OperandValue::Pair(_, meta) = args[0].val {
-                    let (llsize, _) =
-                        glue::size_and_align_of_dst(self, tp_ty, Some(meta));
+                    let (llsize, _) = glue::size_and_align_of_dst(self, tp_ty, Some(meta));
                     llsize
                 } else {
                     self.const_usize(self.size_of(tp_ty).bytes())
@@ -206,8 +205,7 @@ impl IntrinsicCallMethods<'tcx> for Builder<'a, 'll, 'tcx> {
             "min_align_of_val" => {
                 let tp_ty = substs.type_at(0);
                 if let OperandValue::Pair(_, meta) = args[0].val {
-                    let (_, llalign) =
-                        glue::size_and_align_of_dst(self, tp_ty, Some(meta));
+                    let (_, llalign) = glue::size_and_align_of_dst(self, tp_ty, Some(meta));
                     llalign
                 } else {
                     self.const_usize(self.align_of(tp_ty).bytes())

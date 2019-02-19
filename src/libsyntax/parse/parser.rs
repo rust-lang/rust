@@ -4173,7 +4173,8 @@ impl<'a> Parser<'a> {
                 err.emit();
                 self.bump();
             } else if self.eat(&token::BinOp(token::Or)) {
-                // No op.
+                // This is a No-op. Continue the loop to parse the next
+                // pattern.
             } else {
                 return Ok(pats);
             }
