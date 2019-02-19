@@ -46,6 +46,10 @@ impl Name {
         Name::new(idx.to_string().into())
     }
 
+    pub fn to_smolstr(&self) -> SmolStr {
+        self.text.clone()
+    }
+
     pub(crate) fn as_known_name(&self) -> Option<KnownName> {
         let name = match self.text.as_str() {
             "isize" => KnownName::Isize,

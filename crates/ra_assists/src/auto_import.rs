@@ -1,20 +1,14 @@
 use ra_text_edit::TextEditBuilder;
-use hir::db::HirDatabase;
+use hir::{ self, db::HirDatabase};
 
 use ra_syntax::{
-    ast::{ self, NameOwner }, AstNode, SyntaxNode, Direction, TextRange,
+    ast::{ self, NameOwner }, AstNode, SyntaxNode, Direction, TextRange, SmolStr,
     SyntaxKind::{ PATH, PATH_SEGMENT, COLONCOLON, COMMA }
 };
 use crate::{
     AssistId,
-    assist_ctx::{AssistCtx, Assist, AssistBuilder},
+    assist_ctx::{AssistCtx, Assist},
 };
-
-fn collect_path_segments(path: &ast::Path) -> Option<Vec<&ast::PathSegment>> {
-    let mut v = Vec::new();
-    collect_path_segments_raw(&mut v, path)?;
-    return Some(v);
-}
 
 fn collect_path_segments_raw<'a>(
     segments: &mut Vec<&'a ast::PathSegment>,
@@ -46,59 +40,43 @@ fn collect_path_segments_raw<'a>(
     return Some(segments.len() - oldlen);
 }
 
-fn fmt_segments(segments: &[&ast::PathSegment]) -> String {
+fn fmt_segments(segments: &[SmolStr]) -> String {
     let mut buf = String::new();
     fmt_segments_raw(segments, &mut buf);
     return buf;
 }
 
-fn fmt_segments_raw(segments: &[&ast::PathSegment], buf: &mut String) {
-    let mut first = true;
-    for s in segments {
-        if !first {
-            buf.push_str("::");
-        }
-        match s.kind() {
-            Some(ast::PathSegmentKind::Name(nameref)) => buf.push_str(nameref.text()),
-            Some(ast::PathSegmentKind::SelfKw) => buf.push_str("self"),
-            Some(ast::PathSegmentKind::SuperKw) => buf.push_str("super"),
-            Some(ast::PathSegmentKind::CrateKw) => buf.push_str("crate"),
-            None => {}
-        }
-        first = false;
+fn fmt_segments_raw(segments: &[SmolStr], buf: &mut String) {
+    let mut iter = segments.iter();
+    if let Some(s) = iter.next() {
+        buf.push_str(s);
+    }
+    for s in iter {
+        buf.push_str("::");
+        buf.push_str(s);
     }
 }
 
 // Returns the numeber of common segments.
-fn compare_path_segments(left: &[&ast::PathSegment], right: &[&ast::PathSegment]) -> usize {
+fn compare_path_segments(left: &[SmolStr], right: &[&ast::PathSegment]) -> usize {
     return left.iter().zip(right).filter(|(l, r)| compare_path_segment(l, r)).count();
 }
 
-fn compare_path_segment(a: &ast::PathSegment, b: &ast::PathSegment) -> bool {
-    if let (Some(ka), Some(kb)) = (a.kind(), b.kind()) {
-        match (ka, kb) {
-            (ast::PathSegmentKind::Name(nameref_a), ast::PathSegmentKind::Name(nameref_b)) => {
-                nameref_a.text() == nameref_b.text()
-            }
-            (ast::PathSegmentKind::SelfKw, ast::PathSegmentKind::SelfKw) => true,
-            (ast::PathSegmentKind::SuperKw, ast::PathSegmentKind::SuperKw) => true,
-            (ast::PathSegmentKind::CrateKw, ast::PathSegmentKind::CrateKw) => true,
-            (_, _) => false,
+fn compare_path_segment(a: &SmolStr, b: &ast::PathSegment) -> bool {
+    if let Some(kb) = b.kind() {
+        match kb {
+            ast::PathSegmentKind::Name(nameref_b) => a == nameref_b.text(),
+            ast::PathSegmentKind::SelfKw => a == "self",
+            ast::PathSegmentKind::SuperKw => a == "super",
+            ast::PathSegmentKind::CrateKw => a == "crate",
         }
     } else {
         false
     }
 }
 
-fn compare_path_segment_with_name(a: &ast::PathSegment, b: &ast::Name) -> bool {
-    if let Some(ka) = a.kind() {
-        return match (ka, b) {
-            (ast::PathSegmentKind::Name(nameref_a), _) => nameref_a.text() == b.text(),
-            (_, _) => false,
-        };
-    } else {
-        false
-    }
+fn compare_path_segment_with_name(a: &SmolStr, b: &ast::Name) -> bool {
+    a == b.text()
 }
 
 #[derive(Copy, Clone)]
@@ -190,7 +168,7 @@ fn walk_use_tree_for_best_action<'a>(
     current_path_segments: &mut Vec<&'a ast::PathSegment>, // buffer containing path segments
     current_parent_use_tree_list: Option<&'a ast::UseTreeList>, // will be Some value if we are in a nested import
     current_use_tree: &'a ast::UseTree, // the use tree we are currently examinating
-    target: &[&'a ast::PathSegment],    // the path we want to import
+    target: &[SmolStr],    // the path we want to import
 ) -> ImportAction<'a> {
     // We save the number of segments in the buffer so we can restore the correct segments
     // before returning. Recursive call will add segments so we need to delete them.
@@ -216,7 +194,7 @@ fn walk_use_tree_for_best_action<'a>(
 
     // This can happen only if current_use_tree is a direct child of a UseItem
     if let Some(name) = alias.and_then(ast::NameOwner::name) {
-        if compare_path_segment_with_name(target[0], name) {
+        if compare_path_segment_with_name(&target[0], name) {
             return ImportAction::Nothing;
         }
     }
@@ -345,8 +323,8 @@ fn walk_use_tree_for_best_action<'a>(
 
 fn best_action_for_target<'b, 'a: 'b>(
     container: &'a SyntaxNode,
-    path: &'a ast::Path,
-    target: &'b [&'a ast::PathSegment],
+    anchor: &'a SyntaxNode,
+    target: &'b [SmolStr],
 ) -> ImportAction<'a> {
     let mut storage = Vec::with_capacity(16); // this should be the only allocation
     let best_action = container
@@ -368,14 +346,14 @@ fn best_action_for_target<'b, 'a: 'b>(
                 .children()
                 .find_map(ast::ModuleItem::cast)
                 .map(AstNode::syntax)
-                .or(Some(path.syntax()));
+                .or(Some(anchor));
 
             return ImportAction::add_new_use(anchor, false);
         }
     }
 }
 
-fn make_assist(action: &ImportAction, target: &[&ast::PathSegment], edit: &mut TextEditBuilder) {
+fn make_assist(action: &ImportAction, target: &[SmolStr], edit: &mut TextEditBuilder) {
     match action {
         ImportAction::AddNewUse { anchor, add_after_anchor } => {
             make_assist_add_new_use(anchor, *add_after_anchor, target, edit)
@@ -408,7 +386,7 @@ fn make_assist(action: &ImportAction, target: &[&ast::PathSegment], edit: &mut T
 fn make_assist_add_new_use(
     anchor: &Option<&SyntaxNode>,
     after: bool,
-    target: &[&ast::PathSegment],
+    target: &[SmolStr],
     edit: &mut TextEditBuilder,
 ) {
     if let Some(anchor) = anchor {
@@ -436,7 +414,7 @@ fn make_assist_add_new_use(
 
 fn make_assist_add_in_tree_list(
     tree_list: &ast::UseTreeList,
-    target: &[&ast::PathSegment],
+    target: &[SmolStr],
     add_self: bool,
     edit: &mut TextEditBuilder,
 ) {
@@ -465,7 +443,7 @@ fn make_assist_add_in_tree_list(
 fn make_assist_add_nested_import(
     path: &ast::Path,
     first_segment_to_split: &Option<&ast::PathSegment>,
-    target: &[&ast::PathSegment],
+    target: &[SmolStr],
     add_self: bool,
     edit: &mut TextEditBuilder,
 ) {
@@ -496,28 +474,51 @@ fn make_assist_add_nested_import(
     }
 }
 
-fn apply_auto_import<'a>(
+fn apply_auto_import(
     container: &SyntaxNode,
     path: &ast::Path,
-    target: &[&'a ast::PathSegment],
+    target: &[SmolStr],
     edit: &mut TextEditBuilder,
 ) {
-    let action = best_action_for_target(container, path, target);
+    let action = best_action_for_target(container, path.syntax(), target);
     make_assist(&action, target, edit);
-    if let (Some(first), Some(last)) = (target.first(), target.last()) {
+    if let Some(last) = path.segment() {
         // Here we are assuming the assist will provide a  correct use statement
         // so we can delete the path qualifier
         edit.delete(TextRange::from_to(
-            first.syntax().range().start(),
+            path.syntax().range().start(),
             last.syntax().range().start(),
         ));
     }
 }
 
-pub fn auto_import_text_edit<'a>(
+#[allow(unused)]
+pub fn collect_hir_path_segments(path: &hir::Path) -> Vec<SmolStr> {
+    let mut ps = Vec::<SmolStr>::with_capacity(10);
+    match path.kind {
+        hir::PathKind::Abs => ps.push("".into()),
+        hir::PathKind::Crate => ps.push("crate".into()),
+        hir::PathKind::Plain => {},
+        hir::PathKind::Self_ => ps.push("self".into()),
+        hir::PathKind::Super => ps.push("super".into())
+    }
+    for s in path.segments.iter() {
+        ps.push(s.name.to_smolstr());
+    }
+    ps
+}
+
+// This function produces sequence of text edits into edit
+// to import the target path in the most appropriate scope given
+// the cursor position
+#[allow(unused)]
+pub fn auto_import_text_edit(
+    // Ideally the position of the cursor, used to 
     position: &SyntaxNode,
-    path: &ast::Path,
-    target: &[&'a ast::PathSegment],
+    // The statement to use as anchor (last resort)
+    anchor: &SyntaxNode,
+    // The path to import as a sequence of strings
+    target: &[SmolStr],
     edit: &mut TextEditBuilder,
 ) {
     let container = position.ancestors().find_map(|n| {
@@ -528,7 +529,7 @@ pub fn auto_import_text_edit<'a>(
     });
 
     if let Some(container) = container {
-        let action = best_action_for_target(container, path, target);
+        let action = best_action_for_target(container, anchor, target);
         make_assist(&action, target, edit);
     }
 }
@@ -540,7 +541,8 @@ pub(crate) fn auto_import(mut ctx: AssistCtx<impl HirDatabase>) -> Option<Assist
         return None;
     }
 
-    let segments = collect_path_segments(path)?;
+    let hir_path = hir::Path::from_ast(path)?;
+    let segments = collect_hir_path_segments(&hir_path);
     if segments.len() < 2 {
         return None;
     }
