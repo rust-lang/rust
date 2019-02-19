@@ -32,7 +32,8 @@
 //! # `Unpin`
 //!
 //! However, these restrictions are usually not necessary. Many types are always freely
-//! movable, even when pinned. These types implement the [`Unpin`] auto-trait, which
+//! movable, even when pinned, because they do not rely on having a stable address.
+//! These types implement the [`Unpin`] auto-trait, which
 //! nullifies the effect of [`Pin`]. For `T: Unpin`, `Pin<Box<T>>` and `Box<T>` function
 //! identically, as do `Pin<&mut T>` and `&mut T`.
 //!
@@ -99,20 +100,22 @@
 //! # `Drop` guarantee
 //!
 //! The purpose of pinning is to be able to rely on the placement of some data in memory.
-//! To make this work, not just moving the data is restricted; deallocating or overwriting
-//! it is restricted, too. Concretely, for pinned data you have to maintain the invariant
-//! that *it will not get overwritten or deallocated until `drop` was called*.
-//! ("Overwriting" here refers to other ways of invalidating storage, such as switching
-//! from one enum variant to another.)
+//! To make this work, not just moving the data is restricted; deallocating, repurposing or
+//! otherwise invalidating the memory used to store the data is restricted, too.
+//! Concretely, for pinned data you have to maintain the invariant
+//! that *its memory will not get invalidated from the momentit gets pinned until
+//! when `drop` is called*. Memory can be invalidated by deallocation, but also by
+//! replacing a `Some(v)` by `None`, or calling `Vec::set_len` to "kill" some elements
+//! off of a vector.
 //!
 //! The purpose of this guarantee is to allow data structures that store pointers
 //! to pinned data. For example, in an intrusive doubly-linked list, every element
 //! will have pointers to its predecessor and successor in the list. Every element
 //! will be pinned, because moving the elements around would invalidate the pointers.
-//! Moreover, the `Drop` implemenetation of a linked list element will patch the pointers
+//! Moreover, the `Drop` implementation of a linked list element will patch the pointers
 //! of its predecessor and successor to remove itself from the list. Clearly, if an element
 //! could be deallocated or overwritten without calling `drop`, the pointers into it
-//! from its neighbouring elements would become invalid, breaking the data structure.
+//! from its neighbouring elements would become invalid, which would break the data structure.
 //!
 //! Notice that this guarantee does *not* mean that memory does not leak! It is still
 //! completely okay not to ever call `drop` on a pinned element (e.g., you can still
@@ -130,7 +133,9 @@
 //! a problem in safe code because implementing a type that relies on pinning
 //! requires unsafe code, but be aware that deciding to make use of pinning
 //! in your type (for example by implementing some operation on `Pin<&[mut] Self>`)
-//! has consequences for your `Drop` implemenetation as well.
+//! has consequences for your `Drop` implementation as well: if an element
+//! of your type could have been pinned, you must treat Drop as implicitly taking
+//! `Pin<&mut Self>`.
 //!
 //! # Projections and Structural Pinning
 //!
@@ -151,12 +156,12 @@
 //! whether projections are provided. However, there are a couple requirements to be
 //! upheld when adding projection operations:
 //!
-//! 1. The container must only be [`Unpin`] if all its fields are `Unpin`. This is the default,
-//!    but `Unpin` is a safe trait, so as the author of the container it is your responsibility
-//!    *not* to add something like `impl<T> Unpin for Container<T>`. (Notice that adding a
-//!    projection operation requires unsafe code, so the fact that `Unpin` is a safe trait
-//!    does not break the principle that you only have to worry about any of this if
-//!    you use `unsafe`.)
+//! 1. The container must only be [`Unpin`] if all the fields one can project to are
+//!    `Unpin`. This is the default, but `Unpin` is a safe trait, so as the author of
+//!    the container it is your responsibility *not* to add something like
+//!    `impl<T> Unpin for Container<T>`. (Notice that adding a projection operation
+//!    requires unsafe code, so the fact that `Unpin` is a safe trait  does not break
+//!    the principle that you only have to worry about any of this if you use `unsafe`.)
 //! 2. The destructor of the container must not move out of its argument. This is the exact
 //!    point that was raised in the [previous section][drop-impl]: `drop` takes `&mut self`,
 //!    but the container (and hence its fields) might have been pinned before.
@@ -293,9 +298,13 @@ impl<P: Deref> Pin<P> {
     /// # Safety
     ///
     /// This constructor is unsafe because we cannot guarantee that the data
-    /// pointed to by `pointer` is pinned. If the constructed `Pin<P>` does
+    /// pointed to by `pointer` is pinned forever. If the constructed `Pin<P>` does
     /// not guarantee that the data `P` points to is pinned, constructing a
-    /// `Pin<P>` is undefined behavior.
+    /// `Pin<P>` is unsafe. In particular, calling `Pin::new_unchecked`
+    /// on an `&'a mut T` is unsafe because while you are able to pin it for the given
+    /// lifetime `'a`, you have no control over whether it is kept pinned once `'a`
+    /// ends. A value, once pinned, must remain pinned forever
+    /// (unless its type implements `Unpin`).
     ///
     /// By using this method, you are making a promise about the `P::Deref` and
     /// `P::DerefMut` implementations, if they exist. Most importantly, they
@@ -305,17 +314,17 @@ impl<P: Deref> Pin<P> {
     /// Moreover, by calling this method you promise that the reference `P`
     /// dereferences to will not be moved out of again; in particular, it
     /// must not be possible to obtain a `&mut P::Target` and then
-    /// move out of that reference (using, for example [`replace`]).
+    /// move out of that reference (using, for example [`mem::swap`]).
     ///
     /// For example, the following is a *violation* of `Pin`'s safety:
     /// ```
     /// use std::mem;
     /// use std::pin::Pin;
     ///
-    /// fn foo<T>(mut a: T, b: T) {
+    /// fn foo<T>(mut a: T, mut b: T) {
     ///     unsafe { let p = Pin::new_unchecked(&mut a); } // should mean `a` can never move again
-    ///     let a2 = mem::replace(&mut a, b);
-    ///     // the address of `a` changed to `a2`'s stack slot, so `a` got moved even
+    ///     mem::swap(&mut a, &mut b);
+    ///     // the address of `a` changed to `b`'s stack slot, so `a` got moved even
     ///     // though we have previously pinned it!
     /// }
     /// ```
@@ -323,7 +332,7 @@ impl<P: Deref> Pin<P> {
     /// If `pointer` dereferences to an `Unpin` type, `Pin::new` should be used
     /// instead.
     ///
-    /// [`replace`]: ../../std/mem/fn.replace.html
+    /// [`mem::swap`]: ../../std/mem/fn.swap.html
     #[stable(feature = "pin", since = "1.33.0")]
     #[inline(always)]
     pub unsafe fn new_unchecked(pointer: P) -> Pin<P> {
