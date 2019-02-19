@@ -5,7 +5,7 @@ cfg_if! {
         mod aarch64;
         pub use self::aarch64::check_for;
     } else {
-        use arch::detect::Feature;
+        use crate::arch::detect::Feature;
         /// Performs run-time feature detection.
         pub fn check_for(_x: Feature) -> bool {
             false

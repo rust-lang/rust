@@ -3,13 +3,13 @@
 
 #![allow(dead_code)] // not used on all platforms
 
-use sync::atomic::Ordering;
+use crate::sync::atomic::Ordering;
 
 #[cfg(target_pointer_width = "64")]
-use sync::atomic::AtomicU64;
+use crate::sync::atomic::AtomicU64;
 
 #[cfg(target_pointer_width = "32")]
-use sync::atomic::AtomicU32;
+use crate::sync::atomic::AtomicU32;
 
 /// Sets the `bit` of `x`.
 #[inline]
