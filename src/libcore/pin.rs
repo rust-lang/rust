@@ -149,22 +149,23 @@
 //! of your type could have been pinned, you must treat Drop as implicitly taking
 //! `Pin<&mut Self>`.
 //!
+//! In particular, if your type is `#[repr(packed)]`, the compiler will automatically
+//! move fields around to be able to drop them. As a consequence, you cannot use
+//! pinning with a `#[repr(packed)]` type.
+//!
 //! # Projections and Structural Pinning
 //!
 //! One interesting question arises when considering the interaction of pinning and
-//! the fields of a struct. When can a struct have a "projection operation", i.e.,
+//! the fields of a struct. When can a struct have a "pinning projection", i.e.,
 //! an operation with type `fn(Pin<&[mut] Struct>) -> Pin<&[mut] Field>`?
 //! In a similar vein, when can a container type (such as `Vec`, `Box`, or `RefCell`)
 //! have an operation with type `fn(Pin<&[mut] Container<T>>) -> Pin<&[mut] T>`?
 //!
 //! This question is closely related to the question of whether pinning is "structural":
-//! when you have pinned a wrapper type, have you pinned its contents? Adding a
+//! when you have pinned a wrapper type, have you pinned its contents? Deciding this
+//! is entirely up to the author of any given type. However, adding a
 //! projection to the API answers that question with a "yes" by offering pinned access
-//! to the contents.
-//!
-//! In general, as the author of a type you get to decide whether pinning is structural, and
-//! whether projections are provided. However, there are a couple requirements to be
-//! upheld when adding projection operations:
+//! to the contents. In that case, there are a couple requirements to be upheld:
 //!
 //! 1. The wrapper must only be [`Unpin`] if all the fields one can project to are
 //!    `Unpin`. This is the default, but `Unpin` is a safe trait, so as the author of
@@ -185,15 +186,24 @@
 //!    This can be tricky, as witnessed by `VecDeque`: the destructor of `VecDeque` can fail
 //!    to call `drop` on all elements if one of the destructors panics. This violates the
 //!    `Drop` guarantee, because it can lead to elements being deallocated without
-//!    their destructor being called.
+//!    their destructor being called. (`VecDeque` has no pinning projections, so this
+//!    does not cause unsoundness.)
 //! 5. You must not offer any other operations that could lead to data being moved out of
 //!    the fields when your type is pinned. This is usually not a concern, but can become
 //!    tricky when interior mutability is involved. For example, imagine `RefCell`
 //!    would have a method `fn get_pin_mut(self: Pin<&mut Self>) -> Pin<&mut T>`.
-//!    This would be catastrophic, because it is possible to move out of a pinned
-//!    `RefCell`: from `x: Pin<&mut RefCell<T>>`, use `let y = x.into_ref().get_ref()` to obtain
-//!    `y: &RefCell<T>`, and from there use `y.borrow_mut().deref_mut()` to obtain `&mut T`
-//!    which can be used with [`mem::swap`].
+//!    Then we could do the following:
+//!    ```ignore
+//!    fn exploit_ref_cell<T>(rc: Pin<&mut RefCell<T>) {
+//!        { let p = rc.as_mut().get_pin_mut(); } // here we get pinned access to the `T`
+//!        let rc_shr: &RefCell<T> = rc.into_ref().get_ref();
+//!        let b = rc_shr.borrow_mut();
+//!        let content = &mut *b; // and here we have `&mut T` to the same data
+//!    }
+//!    ```
+//!    This is catastrophic, it means we can first pin the content of the `RefCell`
+//!    (using `RefCell::get_pin_mut`) and then move that content using the mutable
+//!    reference we got later.
 //!
 //! On the other hand, if you decide *not* to offer any pinning projections, you
 //! are free to `impl<T> Unpin for Container<T>`.  In the standard library,
