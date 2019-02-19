@@ -105,6 +105,9 @@ create_config! {
         "Minimum number of blank lines which must be put between items";
     edition: Edition, Edition::Edition2015, true, "The edition of the parser (RFC 2052)";
     version: Version, Version::One, false, "Version of formatting rules";
+    inline_attribute_width: usize, 0, false,
+        "Write an item and its attribute on the same line \
+        if their combined width is below a threshold";
 
     // Options that can change the source code beyond whitespace/blocks (somewhat linty things)
     merge_derives: bool, true, true, "Merge multiple `#[derive(...)]` into a single one";
