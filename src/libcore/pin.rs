@@ -207,7 +207,7 @@
 //!    tricky when interior mutability is involved. For example, imagine `RefCell`
 //!    would have a method `fn get_pin_mut(self: Pin<&mut Self>) -> Pin<&mut T>`.
 //!    Then we could do the following:
-//!    ```ignore
+//!    ```compile_fail
 //!    fn exploit_ref_cell<T>(rc: Pin<&mut RefCell<T>) {
 //!        { let p = rc.as_mut().get_pin_mut(); } // here we get pinned access to the `T`
 //!        let rc_shr: &RefCell<T> = rc.into_ref().get_ref();
