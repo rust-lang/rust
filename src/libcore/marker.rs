@@ -597,7 +597,8 @@ unsafe impl<T: ?Sized> Freeze for &mut T {}
 
 /// Types which can be safely moved after being pinned.
 ///
-/// Since Rust itself has no notion of immovable types, and will consider moves to always be safe,
+/// Since Rust itself has no notion of immovable types, and will consider moves
+/// (e.g. through assignment or [`mem::replace`]) to always be safe,
 /// this trait cannot prevent types from moving by itself.
 ///
 /// Instead it can be used to prevent moves through the type system,
@@ -606,7 +607,12 @@ unsafe impl<T: ?Sized> Freeze for &mut T {}
 /// See the [`pin module`] documentation for more information on pinning.
 ///
 /// Implementing this trait lifts the restrictions of pinning off a type,
-/// which then allows it to move out with functions such as [`replace`].
+/// which then allows it to move out with functions such as [`mem::replace`].
+///
+/// `Unpin` has no consequence at all for non-pinned data. In particular,
+/// [`mem::replace`] will happily move `!Unpin` data. However, you cannot use
+/// [`mem::replace`] on data wrapped inside a [`Pin`], and *that* is what makes
+/// this system work.
 ///
 /// So this, for example, can only be done on types implementing `Unpin`:
 ///
@@ -623,7 +629,7 @@ unsafe impl<T: ?Sized> Freeze for &mut T {}
 ///
 /// This trait is automatically implemented for almost every type.
 ///
-/// [`replace`]: ../../std/mem/fn.replace.html
+/// [`mem::replace`]: ../../std/mem/fn.replace.html
 /// [`Pin`]: ../pin/struct.Pin.html
 /// [`pin module`]: ../../std/pin/index.html
 #[stable(feature = "pin", since = "1.33.0")]
