@@ -1172,7 +1172,7 @@ pub fn default_provide_extern(providers: &mut ty::query::Providers) {
     cstore::provide_extern(providers);
 }
 
-/// Runs the resolution, typec-hecking, region checking and other
+/// Runs the resolution, type-checking, region checking and other
 /// miscellaneous analysis passes on the crate. Return various
 /// structures carrying the results of the analysis.
 pub fn phase_3_run_analysis_passes<'tcx, F, R>(
