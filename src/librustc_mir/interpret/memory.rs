@@ -700,24 +700,29 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> Memory<'a, 'mir, 'tcx, M> {
         // relocations overlapping the edges; those would not be handled correctly).
         let relocations = {
             let relocations = self.get(src.alloc_id)?.relocations(self, src, size);
-            let mut new_relocations = Vec::with_capacity(relocations.len() * (length as usize));
-            for i in 0..length {
-                new_relocations.extend(
-                    relocations
-                    .iter()
-                    .map(|&(offset, reloc)| {
-                        // compute offset for current repetition
-                        let dest_offset = dest.offset + (i * size);
-                        (
-                            // shift offsets from source allocation to destination allocation
-                            offset + dest_offset - src.offset,
-                            reloc,
-                        )
-                    })
-                );
-            }
+            if relocations.is_empty() {
+                // nothing to copy, ignore even the `length` loop
+                Vec::new()
+            } else {
+                let mut new_relocations = Vec::with_capacity(relocations.len() * (length as usize));
+                for i in 0..length {
+                    new_relocations.extend(
+                        relocations
+                        .iter()
+                        .map(|&(offset, reloc)| {
+                            // compute offset for current repetition
+                            let dest_offset = dest.offset + (i * size);
+                            (
+                                // shift offsets from source allocation to destination allocation
+                                offset + dest_offset - src.offset,
+                                reloc,
+                            )
+                        })
+                    );
+                }
 
-            new_relocations
+                new_relocations
+            }
         };
 
         let tcx = self.tcx.tcx;
