@@ -514,7 +514,6 @@ pub fn once_with<A, F: FnOnce() -> A>(gen: F) -> OnceWith<F> {
 /// [module-level documentation]: index.html
 ///
 /// ```
-/// #![feature(iter_unfold)]
 /// let mut count = 0;
 /// let counter = std::iter::from_fn(move || {
 ///     // Increment our count. This is why we started at zero.
@@ -530,7 +529,7 @@ pub fn once_with<A, F: FnOnce() -> A>(gen: F) -> OnceWith<F> {
 /// assert_eq!(counter.collect::<Vec<_>>(), &[1, 2, 3, 4, 5]);
 /// ```
 #[inline]
-#[unstable(feature = "iter_unfold", issue = "55977")]
+#[stable(feature = "iter_from_fn", since = "1.34.0")]
 pub fn from_fn<T, F>(f: F) -> FromFn<F>
     where F: FnMut() -> Option<T>
 {
@@ -544,10 +543,10 @@ pub fn from_fn<T, F>(f: F) -> FromFn<F>
 ///
 /// [`iter::from_fn`]: fn.from_fn.html
 #[derive(Clone)]
-#[unstable(feature = "iter_unfold", issue = "55977")]
+#[stable(feature = "iter_from_fn", since = "1.34.0")]
 pub struct FromFn<F>(F);
 
-#[unstable(feature = "iter_unfold", issue = "55977")]
+#[stable(feature = "iter_from_fn", since = "1.34.0")]
 impl<T, F> Iterator for FromFn<F>
     where F: FnMut() -> Option<T>
 {
@@ -559,7 +558,7 @@ impl<T, F> Iterator for FromFn<F>
     }
 }
 
-#[unstable(feature = "iter_unfold", issue = "55977")]
+#[stable(feature = "iter_from_fn", since = "1.34.0")]
 impl<F> fmt::Debug for FromFn<F> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         f.debug_struct("FromFn").finish()
