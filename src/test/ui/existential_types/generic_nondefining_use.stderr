@@ -1,16 +1,16 @@
-error: non-defining existential type use in defining scope
-  --> $DIR/generic_nondefining_use.rs:8:1
+error: defining existential type use does not fully define existential type
+  --> $DIR/generic_nondefining_use.rs:9:1
    |
-LL | / fn cmp() -> Cmp<u32> { //~ ERROR non-defining existential type use in defining scope
+LL | / fn cmp() -> Cmp<u32> { //~ ERROR defining existential type use does not fully define
 LL | |     5u32
 LL | | }
    | |_^
-   |
-note: used non-generic type u32 for generic parameter
-  --> $DIR/generic_nondefining_use.rs:5:22
+
+error: could not find defining uses
+  --> $DIR/generic_nondefining_use.rs:5:1
    |
 LL | existential type Cmp<T>: 'static;
-   |                      ^
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-error: aborting due to previous error
+error: aborting due to 2 previous errors
 

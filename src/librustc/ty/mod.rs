@@ -74,7 +74,7 @@ pub use self::context::{TyCtxt, FreeRegionInfo, GlobalArenas, AllArenas, tls, ke
 pub use self::context::{Lift, TypeckTables, CtxtInterners};
 pub use self::context::{
     UserTypeAnnotationIndex, UserType, CanonicalUserType,
-    CanonicalUserTypeAnnotation, CanonicalUserTypeAnnotations,
+    CanonicalUserTypeAnnotation, CanonicalUserTypeAnnotations, ResolvedOpaqueTy,
 };
 
 pub use self::instance::{Instance, InstanceDef};

@@ -1,10 +1,10 @@
-error: defining existential type use differs from previous
+error: concrete type differs from previous defining existential type use
   --> $DIR/different_defining_uses.rs:12:1
    |
-LL | / fn bar() -> Foo { //~ ERROR defining existential type use differs from previous
+LL | / fn bar() -> Foo { //~ ERROR concrete type differs from previous
 LL | |     42i32
 LL | | }
-   | |_^
+   | |_^ expected `&'static str`, got `i32`
    |
 note: previous use here
   --> $DIR/different_defining_uses.rs:8:1

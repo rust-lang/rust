@@ -317,6 +317,17 @@ impl<'a, V> LocalTableInContextMut<'a, V> {
     }
 }
 
+/// All information necessary to validate and reveal an `impl Trait` or `existential Type`
+#[derive(RustcEncodable, RustcDecodable, Debug)]
+pub struct ResolvedOpaqueTy<'tcx> {
+    /// The revealed type as seen by this function.
+    pub concrete_type: Ty<'tcx>,
+    /// Generic parameters on the opaque type as passed by this function.
+    /// For `existential type Foo<A, B>; fn foo<T, U>() -> Foo<T, U> { .. }` this is `[T, U]`, not
+    /// `[A, B]`
+    pub substs: &'tcx Substs<'tcx>,
+}
+
 #[derive(RustcEncodable, RustcDecodable, Debug)]
 pub struct TypeckTables<'tcx> {
     /// The HirId::owner all ItemLocalIds in this table are relative to.
@@ -419,7 +430,7 @@ pub struct TypeckTables<'tcx> {
 
     /// All the existential types that are restricted to concrete types
     /// by this function
-    pub concrete_existential_types: FxHashMap<DefId, Ty<'tcx>>,
+    pub concrete_existential_types: FxHashMap<DefId, ResolvedOpaqueTy<'tcx>>,
 
     /// Given the closure ID this map provides the list of UpvarIDs used by it.
     /// The upvarID contains the HIR node ID and it also contains the full path
