@@ -19,6 +19,7 @@
 //! obtain a `Box` or reference to pinned data, which implies that you cannot use
 //! operations such as [`mem::swap`]:
 //! ```
+//! use std::pin::Pin;
 //! fn swap_pins<T>(x: Pin<&mut T>, y: Pin<&mut T>) {
 //!     // `mem::swap` needs `&mut T`, but we cannot get it.
 //!     // We are stuck, we cannot swap the contents of these references.
@@ -31,6 +32,15 @@
 //! considers all types movable.  [`mem::swap`] remains callable for any `T`. Instead, `Pin`
 //! prevents certain *values* (pointed to by pointers wrapped in `Pin`) from being
 //! moved by making it impossible to call methods like [`mem::swap`] on them.
+//!
+//! [`Pin`] can be used to wrap any pointer type, and as such it interacts with
+//! [`Deref`] and [`DerefMut`]. A `Pin<P>` where `P: Deref` should be considered
+//! as a "`P`-style pointer" to a pinned `P::Target` -- so, a `Pin<Box<T>>` is
+//! an owned pointer to a pinned `T`, and a `Pin<Rc<T>>` is a reference-counted
+//! pointer to a pinned `T`.
+//! For correctness, [`Pin`] relies on the [`Deref`] and [`DerefMut`] implementations
+//! to not move out of their `self` parameter, and to only ever return a pointer
+//! to pinned data when they are called on a pinned pointer.
 //!
 //! # `Unpin`
 //!
@@ -114,7 +124,7 @@
 //! list element will patch the pointers of its predecessor and successor to remove itself
 //! from the list.
 //!
-//! To make this work, it is crucial taht we can actually rely on `drop` being called.
+//! To make this work, it is crucial that we can actually rely on `drop` being called.
 //! And, in fact, this is a guarantee that `Pin` provides.
 //!
 //! # `Drop` guarantee
@@ -219,6 +229,8 @@
 //!
 //! [`Pin`]: struct.Pin.html
 //! [`Unpin`]: ../../std/marker/trait.Unpin.html
+//! [`Deref`]: ../../std/ops/trait.Deref.html
+//! [`DerefMut`]: ../../std/ops/trait.DerefMut.html
 //! [`mem::swap`]: ../../std/mem/fn.swap.html
 //! [`mem::forget`]: ../../std/mem/fn.forget.html
 //! [`Box`]: ../../std/boxed/struct.Box.html
@@ -319,16 +331,16 @@ impl<P: Deref> Pin<P> {
     /// Construct a new `Pin` around a reference to some data of a type that
     /// may or may not implement `Unpin`.
     ///
+    /// If `pointer` dereferences to an `Unpin` type, `Pin::new` should be used
+    /// instead.
+    ///
     /// # Safety
     ///
     /// This constructor is unsafe because we cannot guarantee that the data
     /// pointed to by `pointer` is pinned, meaning that the data will not be moved or
     /// its storage invalidated until it gets dropped. If the constructed `Pin<P>` does
     /// not guarantee that the data `P` points to is pinned, constructing a
-    /// `Pin<P>` is unsafe. In particular, calling `Pin::new_unchecked`
-    /// on an `&'a mut T` is unsafe because while you are able to pin it for the given
-    /// lifetime `'a`, you have no control over whether it is kept pinned once `'a`
-    /// ends. A value, once pinned, must remain pinned forever (unless its type implements `Unpin`).
+    /// `Pin<P>` is unsafe. In particular,
     ///
     /// By using this method, you are making a promise about the `P::Deref` and
     /// `P::DerefMut` implementations, if they exist. Most importantly, they
@@ -340,21 +352,38 @@ impl<P: Deref> Pin<P> {
     /// must not be possible to obtain a `&mut P::Target` and then
     /// move out of that reference (using, for example [`mem::swap`]).
     ///
-    /// For example, the following is a *violation* of `Pin`'s safety:
+    /// For example, calling `Pin::new_unchecked`
+    /// on an `&'a mut T` is unsafe because while you are able to pin it for the given
+    /// lifetime `'a`, you have no control over whether it is kept pinned once `'a` ends:
     /// ```
     /// use std::mem;
     /// use std::pin::Pin;
     ///
-    /// fn foo<T>(mut a: T, mut b: T) {
+    /// fn move_pinned_ref<T>(mut a: T, mut b: T) {
     ///     unsafe { let p = Pin::new_unchecked(&mut a); } // should mean `a` can never move again
     ///     mem::swap(&mut a, &mut b);
     ///     // the address of `a` changed to `b`'s stack slot, so `a` got moved even
     ///     // though we have previously pinned it!
     /// }
     /// ```
+    /// A value, once pinned, must remain pinned forever (unless its type implements `Unpin`).
     ///
-    /// If `pointer` dereferences to an `Unpin` type, `Pin::new` should be used
-    /// instead.
+    /// Similarily, calling `Pin::new_unchecked` on a `Rc<T>` is unsafe because there could be
+    /// aliases to the same data that are not subject to the pinning restrictions:
+    /// ```
+    /// use std::rc::Rc;
+    /// use std::pin::Pin;
+    ///
+    /// fn move_pinned_rc<T>(mut x: Rc<T>) {
+    ///     let pinned = unsafe { Pin::new_unchecked(x.clone()) };
+    ///     { let p: Pin<&T> = pinned.as_ref(); } // should mean the pointee can never move again
+    ///     drop(pinned);
+    ///     let content = Rc::get_mut(&mut x).unwrap();
+    ///     // Now, if `x` was the only reference, we have a mutable reference to
+    ///     // data that we pinned above, which we could use to move it as we have
+    ///     // seen in the previous example.
+    ///  }
+    ///  ```
     ///
     /// [`mem::swap`]: ../../std/mem/fn.swap.html
     #[stable(feature = "pin", since = "1.33.0")]
