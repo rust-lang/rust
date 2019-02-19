@@ -91,8 +91,8 @@ mod imp {
     }
 
     fn clone() -> Vec<OsString> {
+        let _guard = LOCK.lock();
         unsafe {
-            let _guard = LOCK.lock();
             (0..ARGC).map(|i| {
                 let cstr = CStr::from_ptr(*ARGV.offset(i) as *const libc::c_char);
                 OsStringExt::from_vec(cstr.to_bytes().to_vec())

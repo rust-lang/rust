@@ -82,8 +82,8 @@ mod imp {
     }
 
     fn clone() -> Option<Vec<Vec<u8>>> {
+        let _guard = LOCK.lock();
         unsafe {
-            let _guard = LOCK.lock();
             let ptr = get_global_ptr();
             (*ptr).as_ref().map(|s| (**s).clone())
         }

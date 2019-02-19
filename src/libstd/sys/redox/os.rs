@@ -142,8 +142,8 @@ pub unsafe fn environ() -> *mut *const *const c_char {
 /// Returns a vector of (variable, value) byte-vector pairs for all the
 /// environment variables of the current process.
 pub fn env() -> Env {
+    let _guard = ENV_LOCK.lock();
     unsafe {
-        let _guard = ENV_LOCK.lock();
         let mut environ = *environ();
         if environ == ptr::null() {
             panic!("os::env() failure getting env string from OS: {}",
@@ -182,8 +182,8 @@ pub fn getenv(k: &OsStr) -> io::Result<Option<OsString>> {
     // environment variables with a nul byte can't be set, so their value is
     // always None as well
     let k = CString::new(k.as_bytes())?;
+    let _guard = ENV_LOCK.lock();
     unsafe {
-        let _guard = ENV_LOCK.lock();
         let s = libc::getenv(k.as_ptr()) as *const libc::c_char;
         let ret = if s.is_null() {
             None
@@ -198,8 +198,8 @@ pub fn setenv(k: &OsStr, v: &OsStr) -> io::Result<()> {
     let k = CString::new(k.as_bytes())?;
     let v = CString::new(v.as_bytes())?;
 
+    let _guard = ENV_LOCK.lock();
     unsafe {
-        let _guard = ENV_LOCK.lock();
         cvt_libc(libc::setenv(k.as_ptr(), v.as_ptr(), 1)).map(|_| ())
     }
 }
@@ -207,8 +207,8 @@ pub fn setenv(k: &OsStr, v: &OsStr) -> io::Result<()> {
 pub fn unsetenv(n: &OsStr) -> io::Result<()> {
     let nbuf = CString::new(n.as_bytes())?;
 
+    let _guard = ENV_LOCK.lock();
     unsafe {
-        let _guard = ENV_LOCK.lock();
         cvt_libc(libc::unsetenv(nbuf.as_ptr())).map(|_| ())
     }
 }

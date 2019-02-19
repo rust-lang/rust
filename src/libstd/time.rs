@@ -185,8 +185,8 @@ impl Instant {
 
         static LOCK: RawMutex = RawMutex::new();
         static mut LAST_NOW: time::Instant = time::Instant::zero();
+        let _lock = LOCK.lock();
         unsafe {
-            let _lock = LOCK.lock();
             let now = cmp::max(LAST_NOW, os_now);
             LAST_NOW = now;
             Instant(now)
