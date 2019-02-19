@@ -155,7 +155,6 @@ impl<T: fmt::Debug> fmt::Debug for SymmetricDifference<'_, T> {
     }
 }
 
-#[stable(feature = "rust1", since = "1.0.0")]
 #[derive(Debug)]
 enum IntersectionOther<'a, T> {
     ITER(Peekable<Iter<'a, T>>),
