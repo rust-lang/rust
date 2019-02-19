@@ -1196,7 +1196,7 @@ if (!DOMTokenList.prototype.remove) {
                 var actives = [[], [], []];
                 // "current" is used to know which tab we're looking into.
                 var current = 0;
-                onEachLazy(document.getElementsByClassName("search-results"), function(e) {
+                onEachLazy(document.getElementById("results").childNodes, function(e) {
                     onEachLazy(e.getElementsByClassName("highlighted"), function(e) {
                         actives[current].push(e);
                     });
@@ -1213,7 +1213,7 @@ if (!DOMTokenList.prototype.remove) {
                     removeClass(actives[currentTab][0], "highlighted");
                 } else if (e.which === 40) { // down
                     if (!actives[currentTab].length) {
-                        var results = document.getElementsByClassName("search-results");
+                        var results = document.getElementById("results").childNodes;
                         if (results.length > 0) {
                             var res = results[currentTab].getElementsByClassName("result");
                             if (res.length > 0) {
