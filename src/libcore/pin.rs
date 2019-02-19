@@ -124,8 +124,11 @@
 //! list element will patch the pointers of its predecessor and successor to remove itself
 //! from the list.
 //!
-//! To make this work, it is crucial that we can actually rely on `drop` being called.
-//! And, in fact, this is a guarantee that `Pin` provides.
+//! Crucially, we have to be able to rely on `drop` being called. If an element
+//! could be deallocated or otherwise invalidated without calling `drop`, the pointers into it
+//! from its neighbouring elements would become invalid, which would break the data structure.
+//!
+//! This is why pinning also comes with a `drop`-related guarantee.
 //!
 //! # `Drop` guarantee
 //!
@@ -139,9 +142,7 @@
 //! off of a vector.
 //!
 //! This is exactly the kind of guarantee that the intrusive linked list from the previous
-//! section needs to function correctly. Clearly, if an element
-//! could be deallocated or otherwise invalidated without calling `drop`, the pointers into it
-//! from its neighbouring elements would become invalid, which would break the data structure.
+//! section needs to function correctly.
 //!
 //! Notice that this guarantee does *not* mean that memory does not leak! It is still
 //! completely okay not to ever call `drop` on a pinned element (e.g., you can still
