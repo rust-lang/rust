@@ -132,6 +132,10 @@ impl<'a, 'tcx> Visitor<'tcx> for CollectItemTypesVisitor<'a, 'tcx> {
                     self.tcx.type_of(def_id);
                 }
                 hir::GenericParamKind::Type { .. } => {}
+                hir::GenericParamKind::Const { .. } => {
+                    let def_id = self.tcx.hir().local_def_id(param.id);
+                    self.tcx.type_of(def_id);
+                }
             }
         }
         intravisit::walk_generics(self, generics);
@@ -1041,6 +1045,22 @@ fn generics_of<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: DefId) -> &'tcx ty
                     i += 1;
                     Some(ty_param)
                 }
+                GenericParamKind::Const { .. } => {
+                    if param.name.ident().name == keywords::SelfUpper.name() {
+                        span_bug!(
+                            param.span,
+                            "`Self` should not be the name of a regular parameter",
+                        );
+                    }
+
+                    // Emit an error, but skip the parameter rather than aborting to
+                    // continue to get other errors.
+                    tcx.sess.struct_span_err(
+                        param.span,
+                        "const generics in any position are currently unsupported",
+                    ).emit();
+                    None
+                }
                 _ => None,
             }),
     );
@@ -1301,10 +1321,10 @@ fn type_of<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: DefId) -> Ty<'tcx> {
         },
 
         Node::GenericParam(param) => match &param.kind {
-            hir::GenericParamKind::Type {
-                default: Some(ref ty),
-                ..
-            } => icx.to_ty(ty),
+            hir::GenericParamKind::Type { default: Some(ref ty), .. } |
+            hir::GenericParamKind::Const { ref ty, .. } => {
+                icx.to_ty(ty)
+            }
             x => bug!("unexpected non-type Node::GenericParam: {:?}", x),
         },
 

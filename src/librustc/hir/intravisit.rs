@@ -334,6 +334,7 @@ pub trait Visitor<'v> : Sized {
         match generic_arg {
             GenericArg::Lifetime(lt) => self.visit_lifetime(lt),
             GenericArg::Type(ty) => self.visit_ty(ty),
+            GenericArg::Const(ct) => self.visit_anon_const(&ct.value),
         }
     }
     fn visit_lifetime(&mut self, lifetime: &'v Lifetime) {
@@ -752,6 +753,7 @@ pub fn walk_generic_param<'v, V: Visitor<'v>>(visitor: &mut V, param: &'v Generi
     match param.kind {
         GenericParamKind::Lifetime { .. } => {}
         GenericParamKind::Type { ref default, .. } => walk_list!(visitor, visit_ty, default),
+        GenericParamKind::Const { ref ty } => visitor.visit_ty(ty),
     }
     walk_list!(visitor, visit_param_bound, &param.bounds);
 }

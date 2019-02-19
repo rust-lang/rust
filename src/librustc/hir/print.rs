@@ -1711,31 +1711,25 @@ impl<'a> State<'a> {
                 }
             };
 
-            let mut types = vec![];
-            let mut elide_lifetimes = true;
-            for arg in &generic_args.args {
-                match arg {
-                    GenericArg::Lifetime(lt) => {
-                        if !lt.is_elided() {
-                            elide_lifetimes = false;
-                        }
-                    }
-                    GenericArg::Type(ty) => {
-                        types.push(ty);
-                    }
+            let mut nonelided_generic_args: bool = false;
+            let elide_lifetimes = generic_args.args.iter().all(|arg| match arg {
+                GenericArg::Lifetime(lt) => lt.is_elided(),
+                _ => {
+                    nonelided_generic_args = true;
+                    true
                 }
-            }
-            if !elide_lifetimes {
+            });
+
+            if nonelided_generic_args {
                 start_or_comma(self)?;
                 self.commasep(Inconsistent, &generic_args.args, |s, generic_arg| {
                     match generic_arg {
-                        GenericArg::Lifetime(lt) => s.print_lifetime(lt),
+                        GenericArg::Lifetime(lt) if !elide_lifetimes => s.print_lifetime(lt),
+                        GenericArg::Lifetime(_) => Ok(()),
                         GenericArg::Type(ty) => s.print_type(ty),
+                        GenericArg::Const(ct) => s.print_anon_const(&ct.value),
                     }
                 })?;
-            } else if !types.is_empty() {
-                start_or_comma(self)?;
-                self.commasep(Inconsistent, &types, |s, ty| s.print_type(&ty))?;
             }
 
             // FIXME(eddyb) This would leak into error messages, e.g.:
@@ -2106,7 +2100,12 @@ impl<'a> State<'a> {
     }
 
     pub fn print_generic_param(&mut self, param: &GenericParam) -> io::Result<()> {
+        if let GenericParamKind::Const { .. } = param.kind {
+            self.word_space("const")?;
+        }
+
         self.print_ident(param.name.ident())?;
+
         match param.kind {
             GenericParamKind::Lifetime { .. } => {
                 let mut sep = ":";
@@ -2132,6 +2131,10 @@ impl<'a> State<'a> {
                     }
                     _ => Ok(()),
                 }
+            }
+            GenericParamKind::Const { ref ty } => {
+                self.word_space(":")?;
+                self.print_type(ty)
             }
         }
     }

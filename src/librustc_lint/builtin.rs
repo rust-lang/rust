@@ -907,11 +907,13 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for InvalidNoMangleItems {
                     for param in &generics.params {
                         match param.kind {
                             GenericParamKind::Lifetime { .. } => {}
-                            GenericParamKind::Type { .. } => {
-                                let mut err = cx.struct_span_lint(NO_MANGLE_GENERIC_ITEMS,
-                                                                  it.span,
-                                                                  "functions generic over \
-                                                                   types must be mangled");
+                            GenericParamKind::Type { .. } |
+                            GenericParamKind::Const { .. } => {
+                                let mut err = cx.struct_span_lint(
+                                    NO_MANGLE_GENERIC_ITEMS,
+                                    it.span,
+                                    "functions generic over types or consts must be mangled",
+                                );
                                 err.span_suggestion_short(
                                     no_mangle_attr.span,
                                     "remove this attribute",
@@ -1791,14 +1793,15 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for ExplicitOutlivesRequirements {
 
             for param in &generics.params {
                 let param_name = match param.kind {
-                    hir::GenericParamKind::Lifetime { .. } => { continue; },
+                    hir::GenericParamKind::Lifetime { .. } => continue,
                     hir::GenericParamKind::Type { .. } => {
                         match param.name {
-                            hir::ParamName::Fresh(_) => { continue; },
-                            hir::ParamName::Error => { continue; },
-                            hir::ParamName::Plain(name) => name.to_string()
+                            hir::ParamName::Fresh(_) => continue,
+                            hir::ParamName::Error => continue,
+                            hir::ParamName::Plain(name) => name.to_string(),
                         }
                     }
+                    hir::GenericParamKind::Const { .. } => continue,
                 };
                 let bound_spans = self.collect_outlives_bound_spans(
                     cx, def_id, &param_name, &param.bounds, infer_static

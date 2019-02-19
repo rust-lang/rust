@@ -22,5 +22,11 @@ error: const generics in any position are currently unsupported
 LL | fn foo<const X: (), T>(_: T) {
    |              ^
 
-error: aborting due to 3 previous errors
+error: const generics in any position are currently unsupported
+  --> $DIR/const-param-before-other-params.rs:9:14
+   |
+LL | fn bar<const X: (), 'a>(_: &'a ()) {
+   |              ^
+
+error: aborting due to 4 previous errors
 

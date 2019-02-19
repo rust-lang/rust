@@ -54,7 +54,7 @@ LL | #[no_mangle] const DISCOVERY: usize = 1;
    |
    = note: #[deny(no_mangle_const_items)] on by default
 
-warning: functions generic over types must be mangled
+warning: functions generic over types or consts must be mangled
   --> $DIR/suggestions.rs:12:1
    |
 LL | #[no_mangle]
@@ -73,7 +73,7 @@ LL |     #[no_mangle] pub const DAUNTLESS: bool = true;
    |                  |
    |                  help: try a static value: `pub static`
 
-warning: functions generic over types must be mangled
+warning: functions generic over types or consts must be mangled
   --> $DIR/suggestions.rs:25:18
    |
 LL |     #[no_mangle] pub fn val_jean<T>() {}
@@ -89,7 +89,7 @@ LL |     #[no_mangle] pub(crate) const VETAR: bool = true;
    |                  |
    |                  help: try a static value: `pub static`
 
-warning: functions generic over types must be mangled
+warning: functions generic over types or consts must be mangled
   --> $DIR/suggestions.rs:33:18
    |
 LL |     #[no_mangle] pub(crate) fn crossfield<T>() {}

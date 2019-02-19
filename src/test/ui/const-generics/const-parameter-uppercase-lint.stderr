@@ -1,0 +1,19 @@
+warning: the feature `const_generics` is incomplete and may cause the compiler to crash
+  --> $DIR/const-parameter-uppercase-lint.rs:1:12
+   |
+LL | #![feature(const_generics)]
+   |            ^^^^^^^^^^^^^^
+
+error[E0601]: `main` function not found in crate `const_parameter_uppercase_lint`
+   |
+   = note: consider adding a `main` function to `$DIR/const-parameter-uppercase-lint.rs`
+
+error: const generics in any position are currently unsupported
+  --> $DIR/const-parameter-uppercase-lint.rs:6:15
+   |
+LL | fn noop<const x: u32>() {
+   |               ^
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0601`.

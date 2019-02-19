@@ -1750,7 +1750,8 @@ impl<'a> Cache {
         for param in &generics.params {
             match param.kind {
                 clean::GenericParamDefKind::Lifetime => {}
-                clean::GenericParamDefKind::Type { did, .. } => {
+                clean::GenericParamDefKind::Type { did, .. } |
+                clean::GenericParamDefKind::Const { did, .. } => {
                     self.typarams.insert(did, param.name.clone());
                 }
             }

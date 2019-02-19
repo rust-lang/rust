@@ -65,6 +65,8 @@ pub struct DocContext<'a, 'tcx: 'a, 'rcx: 'a> {
     pub ty_substs: RefCell<FxHashMap<Def, clean::Type>>,
     /// Table `NodeId` of lifetime parameter definition -> substituted lifetime
     pub lt_substs: RefCell<FxHashMap<DefId, clean::Lifetime>>,
+    /// Table node id of const parameter definition -> substituted const
+    pub ct_substs: RefCell<FxHashMap<Def, clean::Constant>>,
     /// Table DefId of `impl Trait` in argument position -> bounds
     pub impl_trait_bounds: RefCell<FxHashMap<DefId, Vec<clean::GenericBound>>>,
     pub send_trait: Option<DefId>,
@@ -85,14 +87,18 @@ impl<'a, 'tcx, 'rcx> DocContext<'a, 'tcx, 'rcx> {
     pub fn enter_alias<F, R>(&self,
                              ty_substs: FxHashMap<Def, clean::Type>,
                              lt_substs: FxHashMap<DefId, clean::Lifetime>,
+                             ct_substs: FxHashMap<Def, clean::Constant>,
                              f: F) -> R
     where F: FnOnce() -> R {
-        let (old_tys, old_lts) =
-            (mem::replace(&mut *self.ty_substs.borrow_mut(), ty_substs),
-             mem::replace(&mut *self.lt_substs.borrow_mut(), lt_substs));
+        let (old_tys, old_lts, old_cts) = (
+            mem::replace(&mut *self.ty_substs.borrow_mut(), ty_substs),
+            mem::replace(&mut *self.lt_substs.borrow_mut(), lt_substs),
+            mem::replace(&mut *self.ct_substs.borrow_mut(), ct_substs),
+        );
         let r = f();
         *self.ty_substs.borrow_mut() = old_tys;
         *self.lt_substs.borrow_mut() = old_lts;
+        *self.ct_substs.borrow_mut() = old_cts;
         r
     }
 
@@ -212,7 +218,7 @@ impl<'a, 'tcx, 'rcx> DocContext<'a, 'tcx, 'rcx> {
                         name: hir::LifetimeName::Param(name),
                     }));
                 }
-                ty::GenericParamDefKind::Type {..} => {
+                ty::GenericParamDefKind::Type { .. } => {
                     args.push(hir::GenericArg::Type(self.ty_param_to_ty(param.clone())));
                 }
             }
@@ -527,6 +533,7 @@ pub fn run_core(options: RustdocOptions) -> (clean::Crate, RenderInfo, RenderOpt
                 renderinfo: RefCell::new(renderinfo),
                 ty_substs: Default::default(),
                 lt_substs: Default::default(),
+                ct_substs: Default::default(),
                 impl_trait_bounds: Default::default(),
                 send_trait: send_trait,
                 fake_def_ids: Default::default(),

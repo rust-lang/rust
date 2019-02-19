@@ -455,6 +455,16 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for NonUpperCaseGlobals {
             }
         }
     }
+
+    fn check_generic_param(&mut self, cx: &LateContext<'_, '_>, param: &hir::GenericParam) {
+        if let GenericParamKind::Const { .. } = param.kind {
+            NonUpperCaseGlobals::check_upper_case(
+                cx,
+                "const parameter",
+                &param.name.ident(),
+            );
+        }
+    }
 }
 
 #[cfg(test)]

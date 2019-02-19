@@ -390,9 +390,16 @@ impl PathSegment {
 }
 
 #[derive(Clone, RustcEncodable, RustcDecodable, Debug)]
+pub struct ConstArg {
+    pub value: AnonConst,
+    pub span: Span,
+}
+
+#[derive(Clone, RustcEncodable, RustcDecodable, Debug)]
 pub enum GenericArg {
     Lifetime(Lifetime),
     Type(Ty),
+    Const(ConstArg),
 }
 
 impl GenericArg {
@@ -400,6 +407,7 @@ impl GenericArg {
         match self {
             GenericArg::Lifetime(l) => l.span,
             GenericArg::Type(t) => t.span,
+            GenericArg::Const(c) => c.span,
         }
     }
 
@@ -407,6 +415,7 @@ impl GenericArg {
         match self {
             GenericArg::Lifetime(l) => l.id,
             GenericArg::Type(t) => t.id,
+            GenericArg::Const(c) => c.value.id,
         }
     }
 }
@@ -448,6 +457,7 @@ impl GenericArgs {
                         }
                         break;
                     }
+                    GenericArg::Const(_) => {}
                 }
             }
         }
@@ -464,6 +474,7 @@ impl GenericArgs {
             match arg {
                 GenericArg::Lifetime(_) => own_counts.lifetimes += 1,
                 GenericArg::Type(_) => own_counts.types += 1,
+                GenericArg::Const(_) => own_counts.consts += 1,
             };
         }
 
@@ -528,6 +539,9 @@ pub enum GenericParamKind {
     Type {
         default: Option<P<Ty>>,
         synthetic: Option<SyntheticTyParamKind>,
+    },
+    Const {
+        ty: P<Ty>,
     }
 }
 
@@ -548,6 +562,7 @@ pub struct GenericParam {
 pub struct GenericParamCount {
     pub lifetimes: usize,
     pub types: usize,
+    pub consts: usize,
 }
 
 /// Represents lifetimes and type parameters attached to a declaration
@@ -582,6 +597,7 @@ impl Generics {
             match param.kind {
                 GenericParamKind::Lifetime { .. } => own_counts.lifetimes += 1,
                 GenericParamKind::Type { .. } => own_counts.types += 1,
+                GenericParamKind::Const { .. } => own_counts.consts += 1,
             };
         }
 
@@ -1302,7 +1318,7 @@ impl BodyOwnerKind {
 /// These are usually found nested inside types (e.g., array lengths)
 /// or expressions (e.g., repeat counts), and also used to define
 /// explicit discriminant values for enum variants.
-#[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Debug)]
+#[derive(Copy, Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Debug)]
 pub struct AnonConst {
     pub id: NodeId,
     pub hir_id: HirId,
