@@ -329,6 +329,8 @@ impl Ipv4Addr {
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     pub const fn new(a: u8, b: u8, c: u8, d: u8) -> Ipv4Addr {
+        // FIXME: should just be u32::from_be_bytes([a, b, c, d]),
+        // once that method is no longer rustc_const_unstable
         Ipv4Addr {
             inner: c::in_addr {
                 s_addr: u32::to_be(
@@ -392,6 +394,7 @@ impl Ipv4Addr {
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn octets(&self) -> [u8; 4] {
+        // This returns the order we want because s_addr is stored in big-endian.
         self.inner.s_addr.to_ne_bytes()
     }
 
@@ -618,9 +621,13 @@ impl Ipv4Addr {
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn to_ipv6_compatible(&self) -> Ipv6Addr {
-        Ipv6Addr::new(0, 0, 0, 0, 0, 0,
-                      ((self.octets()[0] as u16) << 8) | self.octets()[1] as u16,
-                      ((self.octets()[2] as u16) << 8) | self.octets()[3] as u16)
+        let octets = self.octets();
+        Ipv6Addr::from([
+            0, 0, 0, 0,
+            0, 0, 0, 0,
+            0, 0, 0, 0,
+            octets[0], octets[1], octets[2], octets[3],
+        ])
     }
 
     /// Converts this address to an IPv4-mapped [IPv6 address].
@@ -639,9 +646,13 @@ impl Ipv4Addr {
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn to_ipv6_mapped(&self) -> Ipv6Addr {
-        Ipv6Addr::new(0, 0, 0, 0, 0, 0xffff,
-                      ((self.octets()[0] as u16) << 8) | self.octets()[1] as u16,
-                      ((self.octets()[2] as u16) << 8) | self.octets()[3] as u16)
+        let octets = self.octets();
+        Ipv6Addr::from([
+            0, 0, 0, 0,
+            0, 0, 0, 0,
+            0, 0, 0xFF, 0xFF,
+            octets[0], octets[1], octets[2], octets[3],
+        ])
     }
 }
 
@@ -784,7 +795,7 @@ impl From<Ipv4Addr> for u32 {
     /// ```
     fn from(ip: Ipv4Addr) -> u32 {
         let ip = ip.octets();
-        ((ip[0] as u32) << 24) + ((ip[1] as u32) << 16) + ((ip[2] as u32) << 8) + (ip[3] as u32)
+        u32::from_be_bytes(ip)
     }
 }
 
@@ -801,7 +812,7 @@ impl From<u32> for Ipv4Addr {
     /// assert_eq!(Ipv4Addr::new(13, 12, 11, 10), addr);
     /// ```
     fn from(ip: u32) -> Ipv4Addr {
-        Ipv4Addr::new((ip >> 24) as u8, (ip >> 16) as u8, (ip >> 8) as u8, ip as u8)
+        Ipv4Addr::from(ip.to_be_bytes())
     }
 }
 
@@ -909,14 +920,14 @@ impl Ipv6Addr {
     pub fn segments(&self) -> [u16; 8] {
         let arr = &self.inner.s6_addr;
         [
-            (arr[0] as u16) << 8 | (arr[1] as u16),
-            (arr[2] as u16) << 8 | (arr[3] as u16),
-            (arr[4] as u16) << 8 | (arr[5] as u16),
-            (arr[6] as u16) << 8 | (arr[7] as u16),
-            (arr[8] as u16) << 8 | (arr[9] as u16),
-            (arr[10] as u16) << 8 | (arr[11] as u16),
-            (arr[12] as u16) << 8 | (arr[13] as u16),
-            (arr[14] as u16) << 8 | (arr[15] as u16),
+            u16::from_be_bytes([arr[0], arr[1]]),
+            u16::from_be_bytes([arr[2], arr[3]]),
+            u16::from_be_bytes([arr[4], arr[5]]),
+            u16::from_be_bytes([arr[6], arr[7]]),
+            u16::from_be_bytes([arr[8], arr[9]]),
+            u16::from_be_bytes([arr[10], arr[11]]),
+            u16::from_be_bytes([arr[12], arr[13]]),
+            u16::from_be_bytes([arr[14], arr[15]]),
         ]
     }
 
@@ -1382,21 +1393,43 @@ impl FromInner<c::in6_addr> for Ipv6Addr {
 
 #[stable(feature = "i128", since = "1.26.0")]
 impl From<Ipv6Addr> for u128 {
+    /// Convert an `Ipv6Addr` into a host byte order `u128`.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use std::net::Ipv6Addr;
+    ///
+    /// let addr = Ipv6Addr::new(
+    ///     0x1020, 0x3040, 0x5060, 0x7080,
+    ///     0x90A0, 0xB0C0, 0xD0E0, 0xF00D,
+    /// );
+    /// assert_eq!(0x102030405060708090A0B0C0D0E0F00D_u128, u128::from(addr));
+    /// ```
     fn from(ip: Ipv6Addr) -> u128 {
-        let ip = ip.segments();
-        ((ip[0] as u128) << 112) + ((ip[1] as u128) << 96) + ((ip[2] as u128) << 80) +
-            ((ip[3] as u128) << 64) + ((ip[4] as u128) << 48) + ((ip[5] as u128) << 32) +
-            ((ip[6] as u128) << 16) + (ip[7] as u128)
+        let ip = ip.octets();
+        u128::from_be_bytes(ip)
     }
 }
 #[stable(feature = "i128", since = "1.26.0")]
 impl From<u128> for Ipv6Addr {
+    /// Convert a host byte order `u128` into an `Ipv6Addr`.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use std::net::Ipv6Addr;
+    ///
+    /// let addr = Ipv6Addr::from(0x102030405060708090A0B0C0D0E0F00D_u128);
+    /// assert_eq!(
+    ///     Ipv6Addr::new(
+    ///         0x1020, 0x3040, 0x5060, 0x7080,
+    ///         0x90A0, 0xB0C0, 0xD0E0, 0xF00D,
+    ///     ),
+    ///     addr);
+    /// ```
     fn from(ip: u128) -> Ipv6Addr {
-        Ipv6Addr::new(
-            (ip >> 112) as u16, (ip >> 96) as u16, (ip >> 80) as u16,
-            (ip >> 64) as u16, (ip >> 48) as u16, (ip >> 32) as u16,
-            (ip >> 16) as u16, ip as u16,
-        )
+        Ipv6Addr::from(ip.to_be_bytes())
     }
 }
 
