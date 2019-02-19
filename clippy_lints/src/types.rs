@@ -223,7 +223,7 @@ fn match_type_parameter(cx: &LateContext<'_, '_>, qpath: &QPath, path: &[&str]) 
         if !params.parenthesized;
         if let Some(ty) = params.args.iter().find_map(|arg| match arg {
             GenericArg::Type(ty) => Some(ty),
-            GenericArg::Lifetime(_) => None,
+            _ => None,
         });
         if let TyKind::Path(ref qpath) = ty.node;
         if let Some(did) = opt_def_id(cx.tables.qpath_def(qpath, cx.tcx.hir().node_to_hir_id(ty.id)));
@@ -267,7 +267,7 @@ fn check_ty(cx: &LateContext<'_, '_>, hir_ty: &hir::Ty, is_local: bool) {
                         if let Some(ref last) = last_path_segment(qpath).args;
                         if let Some(ty) = last.args.iter().find_map(|arg| match arg {
                             GenericArg::Type(ty) => Some(ty),
-                            GenericArg::Lifetime(_) => None,
+                            _ => None,
                         });
                         // ty is now _ at this point
                         if let TyKind::Path(ref ty_qpath) = ty.node;
@@ -278,7 +278,7 @@ fn check_ty(cx: &LateContext<'_, '_>, hir_ty: &hir::Ty, is_local: bool) {
                         if let Some(ref last) = last_path_segment(ty_qpath).args;
                         if let Some(boxed_ty) = last.args.iter().find_map(|arg| match arg {
                             GenericArg::Type(ty) => Some(ty),
-                            GenericArg::Lifetime(_) => None,
+                            _ => None,
                         });
                         then {
                             let ty_ty = hir_ty_to_ty(cx.tcx, boxed_ty);
@@ -327,7 +327,7 @@ fn check_ty(cx: &LateContext<'_, '_>, hir_ty: &hir::Ty, is_local: bool) {
                             .map_or_else(|| [].iter(), |params| params.args.iter())
                             .filter_map(|arg| match arg {
                                 GenericArg::Type(ty) => Some(ty),
-                                GenericArg::Lifetime(_) => None,
+                                _ => None,
                             })
                     }) {
                         check_ty(cx, ty, is_local);
@@ -340,7 +340,7 @@ fn check_ty(cx: &LateContext<'_, '_>, hir_ty: &hir::Ty, is_local: bool) {
                             .map_or_else(|| [].iter(), |params| params.args.iter())
                             .filter_map(|arg| match arg {
                                 GenericArg::Type(ty) => Some(ty),
-                                GenericArg::Lifetime(_) => None,
+                                _ => None,
                             })
                     }) {
                         check_ty(cx, ty, is_local);
@@ -351,7 +351,7 @@ fn check_ty(cx: &LateContext<'_, '_>, hir_ty: &hir::Ty, is_local: bool) {
                     if let Some(ref params) = seg.args {
                         for ty in params.args.iter().filter_map(|arg| match arg {
                             GenericArg::Type(ty) => Some(ty),
-                            GenericArg::Lifetime(_) => None,
+                            _ => None,
                         }) {
                             check_ty(cx, ty, is_local);
                         }
@@ -387,7 +387,7 @@ fn check_ty_rptr(cx: &LateContext<'_, '_>, hir_ty: &hir::Ty, is_local: bool, lt:
                 if !params.parenthesized;
                 if let Some(inner) = params.args.iter().find_map(|arg| match arg {
                     GenericArg::Type(ty) => Some(ty),
-                    GenericArg::Lifetime(_) => None,
+                    _ => None,
                 });
                 then {
                     if is_any_trait(inner) {
@@ -2138,7 +2138,7 @@ impl<'tcx> ImplicitHasherType<'tcx> {
                 .iter()
                 .filter_map(|arg| match arg {
                     GenericArg::Type(ty) => Some(ty),
-                    GenericArg::Lifetime(_) => None,
+                    _ => None,
                 })
                 .collect();
             let params_len = params.len();

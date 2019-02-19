@@ -181,7 +181,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for UseSelf {
                 let should_check = if let Some(ref params) = *parameters {
                     !params.parenthesized && !params.args.iter().any(|arg| match arg {
                         GenericArg::Lifetime(_) => true,
-                        GenericArg::Type(_) => false,
+                        _ => false,
                     })
                 } else {
                     true

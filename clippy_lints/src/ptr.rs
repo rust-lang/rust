@@ -235,7 +235,7 @@ fn check_fn(cx: &LateContext<'_, '_>, decl: &FnDecl, fn_id: NodeId, opt_body_id:
                     if !params.parenthesized;
                     if let Some(inner) = params.args.iter().find_map(|arg| match arg {
                         GenericArg::Type(ty) => Some(ty),
-                        GenericArg::Lifetime(_) => None,
+                        _ => None,
                     });
                     then {
                         let replacement = snippet_opt(cx, inner.span);

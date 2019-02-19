@@ -498,7 +498,7 @@ fn get_type_snippet(cx: &LateContext<'_, '_>, path: &QPath, to_ref_ty: Ty<'_>) -
         if !params.parenthesized;
         if let Some(to_ty) = params.args.iter().filter_map(|arg| match arg {
             GenericArg::Type(ty) => Some(ty),
-            GenericArg::Lifetime(_) => None,
+            _ => None,
         }).nth(1);
         if let TyKind::Rptr(_, ref to_ty) = to_ty.node;
         then {
