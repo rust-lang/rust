@@ -1,6 +1,6 @@
 // Type Names for Debug Info.
 
-use common::CodegenCx;
+use crate::common::CodegenCx;
 use rustc::hir::def_id::DefId;
 use rustc::ty::subst::Substs;
 use rustc::ty::{self, Ty};
@@ -125,7 +125,7 @@ pub fn push_debuginfo_type_name<'a, 'tcx>(cx: &CodegenCx<'a, 'tcx>,
             }
 
             let abi = sig.abi();
-            if abi != ::abi::Abi::Rust {
+            if abi != crate::abi::Abi::Rust {
                 output.push_str("extern \"");
                 output.push_str(abi.name());
                 output.push_str("\" ");

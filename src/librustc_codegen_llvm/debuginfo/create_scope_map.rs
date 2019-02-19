@@ -2,9 +2,9 @@ use rustc_codegen_ssa::debuginfo::{FunctionDebugContext, FunctionDebugContextDat
 use super::metadata::file_metadata;
 use super::utils::{DIB, span_start};
 
-use llvm;
-use llvm::debuginfo::{DIScope, DISubprogram};
-use common::CodegenCx;
+use crate::llvm;
+use crate::llvm::debuginfo::{DIScope, DISubprogram};
+use crate::common::CodegenCx;
 use rustc::mir::{Mir, SourceScope};
 
 use libc::c_uint;

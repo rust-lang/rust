@@ -18,18 +18,18 @@ use rustc_codegen_ssa::{ModuleCodegen, ModuleKind};
 use rustc_codegen_ssa::base::maybe_create_entry_wrapper;
 use super::LlvmCodegenBackend;
 
-use llvm;
-use metadata;
+use crate::llvm;
+use crate::metadata;
+use crate::builder::Builder;
+use crate::common;
+use crate::context::CodegenCx;
+use crate::monomorphize::partitioning::CodegenUnitExt;
 use rustc::dep_graph;
 use rustc::mir::mono::{Linkage, Visibility, Stats};
 use rustc::middle::cstore::{EncodedMetadata};
 use rustc::ty::TyCtxt;
 use rustc::middle::exported_symbols;
 use rustc::session::config::{self, DebugInfo};
-use builder::Builder;
-use common;
-use context::CodegenCx;
-use monomorphize::partitioning::CodegenUnitExt;
 use rustc_codegen_ssa::mono_item::MonoItemExt;
 use rustc_data_structures::small_c_str::SmallCStr;
 
@@ -41,7 +41,7 @@ use std::time::Instant;
 use syntax_pos::symbol::InternedString;
 use rustc::hir::CodegenFnAttrs;
 
-use value::Value;
+use crate::value::Value;
 
 
 pub fn write_metadata<'a, 'gcx>(

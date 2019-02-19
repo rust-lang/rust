@@ -4,11 +4,11 @@
 //! and methods are represented as just a fn ptr and not a full
 //! closure.
 
-use attributes;
-use llvm;
-use monomorphize::Instance;
-use context::CodegenCx;
-use value::Value;
+use crate::attributes;
+use crate::llvm;
+use crate::monomorphize::Instance;
+use crate::context::CodegenCx;
+use crate::value::Value;
 use rustc_codegen_ssa::traits::*;
 
 use rustc::ty::TypeFoldable;

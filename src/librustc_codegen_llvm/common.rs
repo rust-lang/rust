@@ -2,17 +2,17 @@
 
 //! Code that is useful in various codegen modules.
 
-use llvm::{self, True, False, Bool, BasicBlock, OperandBundleDef};
-use abi;
-use consts;
-use type_::Type;
-use type_of::LayoutLlvmExt;
-use value::Value;
+use crate::llvm::{self, True, False, Bool, BasicBlock, OperandBundleDef};
+use crate::abi;
+use crate::consts;
+use crate::type_::Type;
+use crate::type_of::LayoutLlvmExt;
+use crate::value::Value;
 use rustc_codegen_ssa::traits::*;
 
+use crate::consts::const_alloc_to_llvm;
 use rustc::ty::layout::{HasDataLayout, LayoutOf, self, TyLayout, Size};
 use rustc::mir::interpret::{Scalar, AllocKind, Allocation};
-use consts::const_alloc_to_llvm;
 use rustc_codegen_ssa::mir::place::PlaceRef;
 
 use libc::{c_uint, c_char};
@@ -20,7 +20,7 @@ use libc::{c_uint, c_char};
 use syntax::symbol::LocalInternedString;
 use syntax::ast::Mutability;
 
-pub use context::CodegenCx;
+pub use crate::context::CodegenCx;
 
 /*
 * A note on nomenclature of linking: "extern", "foreign", and "upcall".

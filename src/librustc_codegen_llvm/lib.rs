@@ -21,6 +21,9 @@
 #![feature(concat_idents)]
 #![feature(link_args)]
 #![feature(static_nobundle)]
+#![deny(rust_2018_idioms)]
+#![allow(explicit_outlives_requirements)]
+#![allow(elided_lifetimes_in_paths)]
 
 use back::write::create_target_machine;
 use syntax_pos::symbol::Symbol;
@@ -29,16 +32,11 @@ extern crate flate2;
 #[macro_use] extern crate bitflags;
 extern crate libc;
 #[macro_use] extern crate rustc;
-extern crate jobserver;
-extern crate num_cpus;
 extern crate rustc_mir;
 extern crate rustc_allocator;
-extern crate rustc_apfloat;
 extern crate rustc_target;
 #[macro_use] extern crate rustc_data_structures;
-extern crate rustc_demangle;
 extern crate rustc_incremental;
-extern crate rustc_llvm;
 extern crate rustc_codegen_utils;
 extern crate rustc_codegen_ssa;
 extern crate rustc_fs_util;
@@ -48,9 +46,7 @@ extern crate rustc_fs_util;
 extern crate syntax_pos;
 extern crate rustc_errors as errors;
 extern crate serialize;
-extern crate cc; // Used to locate MSVC
 extern crate tempfile;
-extern crate memmap;
 
 use rustc_codegen_ssa::traits::*;
 use rustc_codegen_ssa::back::write::{CodegenContext, ModuleConfig, FatLTOInput};

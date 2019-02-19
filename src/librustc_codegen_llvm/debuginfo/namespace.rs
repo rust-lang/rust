@@ -2,14 +2,14 @@
 
 use super::metadata::{unknown_file_metadata, UNKNOWN_LINE_NUMBER};
 use super::utils::{DIB, debug_context};
-use monomorphize::Instance;
+use crate::monomorphize::Instance;
 use rustc::ty;
 
-use llvm;
-use llvm::debuginfo::DIScope;
+use crate::llvm;
+use crate::llvm::debuginfo::DIScope;
+use crate::common::CodegenCx;
 use rustc::hir::def_id::DefId;
 use rustc::hir::map::DefPathData;
-use common::CodegenCx;
 
 use rustc_data_structures::small_c_str::SmallCStr;
 

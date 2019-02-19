@@ -16,7 +16,7 @@ use std::string::FromUtf8Error;
 use std::slice;
 use std::ffi::CStr;
 use std::cell::RefCell;
-use libc::{self, c_uint, c_char, size_t};
+use libc::{c_uint, c_char, size_t};
 use rustc_data_structures::small_c_str::SmallCStr;
 
 pub mod archive_ro;

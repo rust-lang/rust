@@ -10,24 +10,24 @@ use self::type_names::compute_debuginfo_type_name;
 use self::metadata::{type_metadata, file_metadata, TypeMap};
 use self::source_loc::InternalDebugLocation::{self, UnknownLocation};
 
-use llvm;
-use llvm::debuginfo::{DIFile, DIType, DIScope, DIBuilder, DISubprogram, DIArray, DIFlags,
+use crate::llvm;
+use crate::llvm::debuginfo::{DIFile, DIType, DIScope, DIBuilder, DISubprogram, DIArray, DIFlags,
     DISPFlags, DILexicalBlock};
 use rustc::hir::CodegenFnAttrFlags;
 use rustc::hir::def_id::{DefId, CrateNum, LOCAL_CRATE};
 use rustc::ty::subst::{Substs, UnpackedKind};
 
-use abi::Abi;
-use common::CodegenCx;
-use builder::Builder;
-use monomorphize::Instance;
+use crate::abi::Abi;
+use crate::common::CodegenCx;
+use crate::builder::Builder;
+use crate::monomorphize::Instance;
+use crate::value::Value;
 use rustc::ty::{self, ParamEnv, Ty, InstanceDef};
 use rustc::mir;
 use rustc::session::config::{self, DebugInfo};
 use rustc::util::nodemap::{DefIdMap, FxHashMap, FxHashSet};
 use rustc_data_structures::small_c_str::SmallCStr;
 use rustc_data_structures::indexed_vec::IndexVec;
-use value::Value;
 use rustc_codegen_ssa::debuginfo::{FunctionDebugContext, MirDebugScope, VariableAccess,
     VariableKind, FunctionDebugContextData};
 
