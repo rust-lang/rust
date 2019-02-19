@@ -611,8 +611,8 @@ unsafe impl<T: ?Sized> Freeze for &mut T {}
 ///
 /// `Unpin` has no consequence at all for non-pinned data. In particular,
 /// [`mem::replace`] happily moves `!Unpin` data. However, you cannot use
-/// [`mem::replace`] on data wrapped inside a [`Pin`], and *that* is what makes
-/// this system work.
+/// [`mem::replace`] on data wrapped inside a [`Pin`] because you cannot get the
+/// `&mut T` you need for that, and *that* is what makes this system work.
 ///
 /// So this, for example, can only be done on types implementing `Unpin`:
 ///

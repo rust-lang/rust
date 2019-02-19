@@ -25,9 +25,10 @@
 //! values.
 //!
 //! It is worth reiterating that [`Pin`] does *not* change the fact that a Rust compiler
-//! considers all types movable.  [`mem::swap`] remains callable for any `T`.  Instead, `Pin`
+//! considers all types movable.  [`mem::swap`] remains callable for any `T`. Instead, `Pin`
 //! prevents certain *values* (pointed to by pointers wrapped in `Pin`) from being
-//! moved by making it impossible to call methods like [`mem::swap`] on them.
+//! moved by making it impossible to call methods like [`mem::swap`] on them. These
+//! methods all need an `&mut T`, and you cannot obtain that from a `Pin`.
 //!
 //! # `Unpin`
 //!
@@ -42,7 +43,7 @@
 //! `Unpin` has no effect on the behavior of `Pin<Box<T>>` (here, `T` is the
 //! pointed-to type).
 //!
-//! # Examples
+//! # Example: Self-referential struct
 //!
 //! ```rust
 //! use std::pin::Pin;
@@ -97,6 +98,21 @@
 //! // std::mem::swap(&mut *still_unmoved, &mut *new_unmoved);
 //! ```
 //!
+//! # Example: intrusive doubly-linked list
+//!
+//! In an intrusive doubly-linked list, the collection does not actually allocate
+//! the memory for the elements itself. Allocation is controlled by the clients,
+//! and elements can live on a stack frame that lives shorter than the collection does.
+//!
+//! To make this work, every element has pointers to its predecessor and successor in
+//! the list. Element can only be added when they are pinned, because moving the elements
+//! around would invalidate the pointers. Moreover, the `Drop` implementation of a linked
+//! list element will patch the pointers of its predecessor and successor to remove itself
+//! from the list.
+//!
+//! To make this work, it is crucial taht we can actually rely on `drop` being called.
+//! And, in fact, this is a guarantee that `Pin` provides.
+//!
 //! # `Drop` guarantee
 //!
 //! The purpose of pinning is to be able to rely on the placement of some data in memory.
@@ -108,29 +124,25 @@
 //! replacing a `Some(v)` by `None`, or calling `Vec::set_len` to "kill" some elements
 //! off of a vector.
 //!
-//! The purpose of this guarantee is to allow data structures that store pointers
-//! to pinned data. For example, in an intrusive doubly-linked list, every element
-//! has pointers to its predecessor and successor in the list. Every element
-//! must also be pinned, because moving the elements around would invalidate the pointers.
-//! Moreover, the `Drop` implementation of a linked list element will patch the pointers
-//! of its predecessor and successor to remove itself from the list. Clearly, if an element
-//! could be deallocated or overwritten without calling `drop`, the pointers into it
+//! This is exactly the kind of guarantee that the intrusive linked list from the previous
+//! section needs to function correctly. Clearly, if an element
+//! could be deallocated or otherwise invalidated without calling `drop`, the pointers into it
 //! from its neighbouring elements would become invalid, which would break the data structure.
 //!
 //! Notice that this guarantee does *not* mean that memory does not leak! It is still
 //! completely okay not to ever call `drop` on a pinned element (e.g., you can still
-//! call [`mem::forget`] on a `Pin<Box<T>>`). However you may *not* then free or reuse the storage
-//! without calling `drop`.
+//! call [`mem::forget`] on a `Pin<Box<T>>`). In the example of the doubly-linked
+//! list, that element would just stay in the list. However you may not free or reuse the storage
+//! *without calling `drop`*.
 //!
 //! # `Drop` implementation
 //!
-//! If your type relies on pinning (for example, because it contains internal
-//! references, or because you are implementing something like the intrusive
-//! doubly-linked list mentioned in the previous section), you have to be careful
+//! If your type uses pinning (such as the two examples above), you have to be careful
 //! when implementing `Drop`. The `drop` function takes `&mut self`, but this
 //! is called *even if your type was previously pinned*! It is as if the
-//! compiler automatically called `get_unchecked_mut`. This can never cause
-//! a problem in safe code because implementing a type that relies on pinning
+//! compiler automatically called `get_unchecked_mut`.
+//!
+//! This can never cause a problem in safe code because implementing a type that relies on pinning
 //! requires unsafe code, but be aware that deciding to make use of pinning
 //! in your type (for example by implementing some operation on `Pin<&[mut] Self>`)
 //! has consequences for your `Drop` implementation as well: if an element
@@ -139,16 +151,14 @@
 //!
 //! # Projections and Structural Pinning
 //!
-//! One interesting question arises when considering pinning and "container types" --
-//! types such as `Vec`, `Box`, or `RefCell`; types that serve as wrappers
-//! around other types.  When can such a type have a "projection" operation, an
-//! operation with type `fn(Pin<&[mut] Container<T>>) -> Pin<&[mut] T>`?
-//! This does not just apply to generic container types, even for normal structs
-//! the question arises whether `fn(Pin<&[mut] Struct>) -> Pin<&[mut] Field>`
-//! is an operation that can be soundly added to the API.
+//! One interesting question arises when considering the interaction of pinning and
+//! the fields of a struct. When can a struct have a "projection operation", i.e.,
+//! an operation with type `fn(Pin<&[mut] Struct>) -> Pin<&[mut] Field>`?
+//! In a similar vein, when can a container type (such as `Vec`, `Box`, or `RefCell`)
+//! have an operation with type `fn(Pin<&[mut] Container<T>>) -> Pin<&[mut] T>`?
 //!
 //! This question is closely related to the question of whether pinning is "structural":
-//! when you have pinned a container, have you pinned its contents? Adding a
+//! when you have pinned a wrapper type, have you pinned its contents? Adding a
 //! projection to the API answers that question with a "yes" by offering pinned access
 //! to the contents.
 //!
@@ -156,21 +166,21 @@
 //! whether projections are provided. However, there are a couple requirements to be
 //! upheld when adding projection operations:
 //!
-//! 1. The container must only be [`Unpin`] if all the fields one can project to are
+//! 1. The wrapper must only be [`Unpin`] if all the fields one can project to are
 //!    `Unpin`. This is the default, but `Unpin` is a safe trait, so as the author of
-//!    the container it is your responsibility *not* to add something like
+//!    the wrapper it is your responsibility *not* to add something like
 //!    `impl<T> Unpin for Container<T>`. (Notice that adding a projection operation
 //!    requires unsafe code, so the fact that `Unpin` is a safe trait  does not break
 //!    the principle that you only have to worry about any of this if you use `unsafe`.)
-//! 2. The destructor of the container must not move out of its argument. This is the exact
+//! 2. The destructor of the wrapper must not move out of its argument. This is the exact
 //!    point that was raised in the [previous section][drop-impl]: `drop` takes `&mut self`,
-//!    but the container (and hence its fields) might have been pinned before.
+//!    but the wrapper (and hence its fields) might have been pinned before.
 //!    You have to guarantee that you do not move a field inside your `Drop` implementation.
-//! 3. Your container type must *not* be `#[repr(packed)]`. Packed structs have their fields
+//! 3. Your wrapper type must *not* be `#[repr(packed)]`. Packed structs have their fields
 //!    moved around when they are dropped to properly align them, which is in conflict with
 //!    claiming that the fields are pinned when your struct is.
 //! 4. You must make sure that you uphold the [`Drop` guarantee][drop-guarantee]:
-//!    once your container is pinned, the memory that contains the
+//!    once your wrapper is pinned, the memory that contains the
 //!    content is not overwritten or deallocated without calling the content's destructors.
 //!    This can be tricky, as witnessed by `VecDeque`: the destructor of `VecDeque` can fail
 //!    to call `drop` on all elements if one of the destructors panics. This violates the
