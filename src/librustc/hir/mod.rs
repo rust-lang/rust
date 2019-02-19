@@ -1175,8 +1175,9 @@ impl fmt::Debug for Stmt {
 pub enum StmtKind {
     /// A local (`let`) binding.
     Local(P<Local>),
+
     /// An item binding.
-    Item(P<ItemId>),
+    Item(ItemId),
 
     /// An expression without a trailing semi-colon (must have unit type).
     Expr(P<Expr>),
