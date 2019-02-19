@@ -144,6 +144,7 @@ pub mod derive;
 pub mod doc;
 pub mod double_comparison;
 pub mod double_parens;
+pub mod drop_bounds;
 pub mod drop_forget_ref;
 pub mod duration_subsec;
 pub mod else_if_without_else;
@@ -467,6 +468,7 @@ pub fn register_plugins(reg: &mut rustc_plugin::Registry<'_>, conf: &Conf) {
     reg.register_late_lint_pass(box derive::Derive);
     reg.register_late_lint_pass(box types::CharLitAsU8);
     reg.register_late_lint_pass(box vec::Pass);
+    reg.register_late_lint_pass(box drop_bounds::Pass);
     reg.register_late_lint_pass(box drop_forget_ref::Pass);
     reg.register_late_lint_pass(box empty_enum::EmptyEnum);
     reg.register_late_lint_pass(box types::AbsurdExtremeComparisons);
@@ -653,6 +655,7 @@ pub fn register_plugins(reg: &mut rustc_plugin::Registry<'_>, conf: &Conf) {
         derive::DERIVE_HASH_XOR_EQ,
         double_comparison::DOUBLE_COMPARISONS,
         double_parens::DOUBLE_PARENS,
+        drop_bounds::DROP_BOUNDS,
         drop_forget_ref::DROP_COPY,
         drop_forget_ref::DROP_REF,
         drop_forget_ref::FORGET_COPY,
@@ -1017,6 +1020,7 @@ pub fn register_plugins(reg: &mut rustc_plugin::Registry<'_>, conf: &Conf) {
         copies::IFS_SAME_COND,
         copies::IF_SAME_THEN_ELSE,
         derive::DERIVE_HASH_XOR_EQ,
+        drop_bounds::DROP_BOUNDS,
         drop_forget_ref::DROP_COPY,
         drop_forget_ref::DROP_REF,
         drop_forget_ref::FORGET_COPY,

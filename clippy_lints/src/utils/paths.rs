@@ -24,6 +24,7 @@ pub const DEREF_TRAIT_METHOD: [&str; 5] = ["core", "ops", "deref", "Deref", "der
 pub const DISPLAY_FMT_METHOD: [&str; 4] = ["core", "fmt", "Display", "fmt"];
 pub const DOUBLE_ENDED_ITERATOR: [&str; 4] = ["core", "iter", "traits", "DoubleEndedIterator"];
 pub const DROP: [&str; 3] = ["core", "mem", "drop"];
+pub const DROP_TRAIT: [&str; 4] = ["core", "ops", "drop", "Drop"];
 pub const DURATION: [&str; 3] = ["core", "time", "Duration"];
 pub const EARLY_CONTEXT: [&str; 4] = ["rustc", "lint", "context", "EarlyContext"];
 pub const FMT_ARGUMENTS_NEWV1: [&str; 4] = ["core", "fmt", "Arguments", "new_v1"];
