@@ -155,6 +155,29 @@ impl<T: fmt::Debug> fmt::Debug for SymmetricDifference<'_, T> {
     }
 }
 
+#[stable(feature = "rust1", since = "1.0.0")]
+#[derive(Debug)]
+enum IntersectionOther<'a, T> {
+    ITER(Peekable<Iter<'a, T>>),
+    SET(&'a BTreeSet<T>),
+}
+
+/// Whether the sizes of two sets are roughly the same order of magnitude.
+///
+/// If they are, or if either set is empty, then their intersection
+/// is efficiently calculated by iterating both sets jointly.
+/// If they aren't, then it is more scalable to iterate over the small set
+/// and find matches in the large set (except if the largest element in
+/// the small set hardly surpasses the smallest element in the large set).
+fn are_proportionate_for_intersection(len1: usize, len2: usize) -> bool {
+    let (small, large) = if len1 <= len2 {
+        (len1, len2)
+    } else {
+        (len2, len1)
+    };
+    (large >> 7) <= small
+}
+
 /// A lazy iterator producing elements in the intersection of `BTreeSet`s.
 ///
 /// This `struct` is created by the [`intersection`] method on [`BTreeSet`].
@@ -165,7 +188,7 @@ impl<T: fmt::Debug> fmt::Debug for SymmetricDifference<'_, T> {
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct Intersection<'a, T: 'a> {
     a: Peekable<Iter<'a, T>>,
-    b: Peekable<Iter<'a, T>>,
+    b: IntersectionOther<'a, T>,
 }
 
 #[stable(feature = "collection_debug", since = "1.17.0")]
@@ -326,9 +349,21 @@ impl<T: Ord> BTreeSet<T> {
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn intersection<'a>(&'a self, other: &'a BTreeSet<T>) -> Intersection<'a, T> {
-        Intersection {
-            a: self.iter().peekable(),
-            b: other.iter().peekable(),
+        if are_proportionate_for_intersection(self.len(), other.len()) {
+            Intersection {
+                a: self.iter().peekable(),
+                b: IntersectionOther::ITER(other.iter().peekable()),
+            }
+        } else if self.len() <= other.len() {
+            Intersection {
+                a: self.iter().peekable(),
+                b: IntersectionOther::SET(&other),
+            }
+        } else {
+            Intersection {
+                a: other.iter().peekable(),
+                b: IntersectionOther::SET(&self),
+            }
         }
     }
 
@@ -1070,6 +1105,15 @@ impl<'a, T: Ord> Iterator for SymmetricDifference<'a, T> {
 impl<T: Ord> FusedIterator for SymmetricDifference<'_, T> {}
 
 #[stable(feature = "rust1", since = "1.0.0")]
+impl<'a, T> Clone for IntersectionOther<'a, T> {
+    fn clone(&self) -> IntersectionOther<'a, T> {
+        match self {
+            IntersectionOther::ITER(ref iter) => IntersectionOther::ITER(iter.clone()),
+            IntersectionOther::SET(set) => IntersectionOther::SET(set),
+        }
+    }
+}
+#[stable(feature = "rust1", since = "1.0.0")]
 impl<'a, T> Clone for Intersection<'a, T> {
     fn clone(&self) -> Intersection<'a, T> {
         Intersection {
@@ -1083,24 +1127,40 @@ impl<'a, T: Ord> Iterator for Intersection<'a, T> {
     type Item = &'a T;
 
     fn next(&mut self) -> Option<&'a T> {
-        loop {
-            match Ord::cmp(self.a.peek()?, self.b.peek()?) {
-                Less => {
-                    self.a.next();
+        match self.b {
+            IntersectionOther::ITER(ref mut self_b) => loop {
+                match Ord::cmp(self.a.peek()?, self_b.peek()?) {
+                    Less => {
+                        self.a.next();
+                    }
+                    Equal => {
+                        self_b.next();
+                        return self.a.next();
+                    }
+                    Greater => {
+                        self_b.next();
+                    }
                 }
-                Equal => {
-                    self.b.next();
-                    return self.a.next();
+            },
+            IntersectionOther::SET(set) => loop {
+                match self.a.next() {
+                    None => return None,
+                    Some(e) => {
+                        if set.contains(&e) {
+                            return Some(e);
+                        }
+                    }
                 }
-                Greater => {
-                    self.b.next();
-                }
-            }
+            },
         }
     }
 
     fn size_hint(&self) -> (usize, Option<usize>) {
-        (0, Some(min(self.a.len(), self.b.len())))
+        let b_len = match self.b {
+            IntersectionOther::ITER(ref iter) => iter.len(),
+            IntersectionOther::SET(set) => set.len(),
+        };
+        (0, Some(min(self.a.len(), b_len)))
     }
 }
 
@@ -1140,3 +1200,21 @@ impl<'a, T: Ord> Iterator for Union<'a, T> {
 
 #[stable(feature = "fused", since = "1.26.0")]
 impl<T: Ord> FusedIterator for Union<'_, T> {}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_are_proportionate_for_intersection() {
+        assert!(are_proportionate_for_intersection(0, 0));
+        assert!(are_proportionate_for_intersection(0, 127));
+        assert!(!are_proportionate_for_intersection(0, 128));
+        assert!(are_proportionate_for_intersection(1, 255));
+        assert!(!are_proportionate_for_intersection(1, 256));
+        assert!(are_proportionate_for_intersection(127, 0));
+        assert!(!are_proportionate_for_intersection(128, 0));
+        assert!(are_proportionate_for_intersection(255, 1));
+        assert!(!are_proportionate_for_intersection(256, 1));
+    }
+}

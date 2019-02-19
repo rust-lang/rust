@@ -69,6 +69,19 @@ fn test_intersection() {
     check_intersection(&[11, 1, 3, 77, 103, 5, -5],
                        &[2, 11, 77, -9, -42, 5, 3],
                        &[3, 5, 11, 77]);
+
+    let mut large = [0i32; 512];
+    for i in 0..512 {
+        large[i] = i as i32
+    }
+    check_intersection(&large[..], &[], &[]);
+    check_intersection(&large[..], &[-1], &[]);
+    check_intersection(&large[..], &[42], &[42]);
+    check_intersection(&large[..], &[4, 2], &[2, 4]);
+    check_intersection(&[], &large[..], &[]);
+    check_intersection(&[-1], &large[..], &[]);
+    check_intersection(&[42], &large[..], &[42]);
+    check_intersection(&[4, 2], &large[..], &[2, 4]);
 }
 
 #[test]
