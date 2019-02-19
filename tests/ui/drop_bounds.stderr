@@ -7,10 +7,10 @@ LL | fn foo<T: Drop>() {}
    = note: #[deny(clippy::drop_bounds)] on by default
 
 error: Bounds of the form `T: Drop` are useless. Use `std::mem::needs_drop` to detect if a type has drop glue.
-  --> $DIR/drop_bounds.rs:3:22
+  --> $DIR/drop_bounds.rs:5:8
    |
-LL | fn bar<T>() where T: Drop {}
-   |                      ^^^^
+LL |     T: Drop,
+   |        ^^^^
 
 error: aborting due to 2 previous errors
 
