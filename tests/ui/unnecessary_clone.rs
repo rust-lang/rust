@@ -68,7 +68,7 @@ fn iter_clone_collect() {
     let v4: VecDeque<isize> = v.iter().cloned().collect();
 
     // Handle macro expansion in suggestion
-    let _ : Vec<isize> = vec![1, 2, 3].iter().cloned().collect();
+    let _: Vec<isize> = vec![1, 2, 3].iter().cloned().collect();
 
     // Issue #3704
     unsafe {
