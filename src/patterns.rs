@@ -1,13 +1,3 @@
-// Copyright 2015 The Rust Project Developers. See the COPYRIGHT
-// file at the top-level directory of this distribution and at
-// http://rust-lang.org/COPYRIGHT.
-//
-// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
-// http://www.apache.org/licenses/LICENSE-2.0> or the MIT license
-// <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
-// option. This file may not be copied, modified, or distributed
-// except according to those terms.
-
 use syntax::ast::{self, BindingMode, FieldPat, Pat, PatKind, RangeEnd, RangeSyntax};
 use syntax::ptr;
 use syntax::source_map::{self, BytePos, Span};
@@ -29,7 +19,8 @@ use crate::spanned::Spanned;
 use crate::types::{rewrite_path, PathContext};
 use crate::utils::{format_mutability, mk_sp, rewrite_ident};
 
-/// Returns true if the given pattern is short. A short pattern is defined by the following grammar:
+/// Returns `true` if the given pattern is "short".
+/// A short pattern is defined by the following grammar:
 ///
 /// [small, ntp]:
 ///     - single token
@@ -152,7 +143,7 @@ impl Rewrite for Pat {
                 let pats: Option<Vec<String>> =
                     prefix.chain(slice_pat.into_iter()).chain(suffix).collect();
 
-                // Check that all the rewrites succeeded, and if not return None.
+                // Check that all the rewrites succeeded, and if not return `None`.
                 let pats = pats?;
 
                 // Unwrap all the sub-strings and join them with commas.

@@ -1,15 +1,5 @@
-// Copyright 2015 The Rust Project Developers. See the COPYRIGHT
-// file at the top-level directory of this distribution and at
-// http://rust-lang.org/COPYRIGHT.
-//
-// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
-// http://www.apache.org/licenses/LICENSE-2.0> or the MIT license
-// <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
-// option. This file may not be copied, modified, or distributed
-// except according to those terms.
-
-//! Formatting of chained expressions, i.e. expressions which are chained by
-//! dots: struct and enum field access, method calls, and try shorthand (?).
+//! Formatting of chained expressions, i.e., expressions that are chained by
+//! dots: struct and enum field access, method calls, and try shorthand (`?`).
 //!
 //! Instead of walking these subexpressions one-by-one, as is our usual strategy
 //! for expression formatting, we collect maximal sequences of these expressions
@@ -534,7 +524,7 @@ impl<'a> ChainFormatterShared<'a> {
     // ```
     //
     // In particular, overflowing is effective when the last child is a method with a multi-lined
-    // block-like argument (e.g. closure):
+    // block-like argument (e.g., closure):
     // ```ignore
     // parent.child1.child2.last_child(|a, b, c| {
     //     let x = foo(a, b, c);
@@ -853,7 +843,7 @@ impl<'a> ChainFormatter for ChainFormatterVisual<'a> {
     }
 }
 
-/// Remove try operators (`?`s) that appear in the given string. If removing
+/// Removes try operators (`?`s) that appear in the given string. If removing
 /// them leaves an empty line, remove that line as well unless it is the first
 /// line (we need the first newline for detecting pre/post comment).
 fn trim_tries(s: &str) -> String {

@@ -1,13 +1,3 @@
-// Copyright 2015 The Rust Project Developers. See the COPYRIGHT
-// file at the top-level directory of this distribution and at
-// http://rust-lang.org/COPYRIGHT.
-//
-// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
-// http://www.apache.org/licenses/LICENSE-2.0> or the MIT license
-// <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
-// option. This file may not be copied, modified, or distributed
-// except according to those terms.
-
 // Formatting and tools for comments.
 
 use std::{self, borrow::Cow, iter};
@@ -54,7 +44,7 @@ fn custom_opener(s: &str) -> &str {
 }
 
 impl<'a> CommentStyle<'a> {
-    /// Returns true if the commenting style covers a line only.
+    /// Returns `true` if the commenting style covers a line only.
     pub fn is_line_comment(&self) -> bool {
         match *self {
             CommentStyle::DoubleSlash
@@ -65,7 +55,7 @@ impl<'a> CommentStyle<'a> {
         }
     }
 
-    /// Returns true if the commenting style can span over multiple lines.
+    /// Returns `true` if the commenting style can span over multiple lines.
     pub fn is_block_comment(&self) -> bool {
         match *self {
             CommentStyle::SingleBullet | CommentStyle::DoubleBullet | CommentStyle::Exclamation => {
@@ -75,7 +65,7 @@ impl<'a> CommentStyle<'a> {
         }
     }
 
-    /// Returns true if the commenting style is for documentation.
+    /// Returns `true` if the commenting style is for documentation.
     pub fn is_doc_comment(&self) -> bool {
         match *self {
             CommentStyle::TripleSlash | CommentStyle::Doc => true,
@@ -439,7 +429,7 @@ struct ItemizedBlock {
 }
 
 impl ItemizedBlock {
-    /// Returns true if the line is formatted as an item
+    /// Returns `true` if the line is formatted as an item
     fn is_itemized_line(line: &str) -> bool {
         let trimmed = line.trim_start();
         trimmed.starts_with("* ") || trimmed.starts_with("- ")
@@ -458,7 +448,7 @@ impl ItemizedBlock {
         }
     }
 
-    /// Returns a `StringFormat` used for formatting the content of an item
+    /// Returns a `StringFormat` used for formatting the content of an item.
     fn create_string_format<'a>(&'a self, fmt: &'a StringFormat<'_>) -> StringFormat<'a> {
         StringFormat {
             opener: "",
@@ -471,8 +461,8 @@ impl ItemizedBlock {
         }
     }
 
-    /// Returns true if the line is part of the current itemized block.
-    /// If it is, then it is added to the internal lines vec.
+    /// Returns `true` if the line is part of the current itemized block.
+    /// If it is, then it is added to the internal lines list.
     fn add_line(&mut self, line: &str) -> bool {
         if !ItemizedBlock::is_itemized_line(line)
             && self.indent <= line.chars().take_while(|c| c.is_whitespace()).count()
@@ -491,7 +481,7 @@ impl ItemizedBlock {
             .collect::<String>()
     }
 
-    /// Returns the block as a string under its original form
+    /// Returns the block as a string under its original form.
     fn original_block_as_string(&self) -> String {
         self.lines.join("\n")
     }
@@ -842,7 +832,7 @@ fn trim_custom_comment_prefix(s: &str) -> String {
         .join("\n")
 }
 
-/// Returns true if the given string MAY include URLs or alike.
+/// Returns `true` if the given string MAY include URLs or alike.
 fn has_url(s: &str) -> bool {
     // This function may return false positive, but should get its job done in most cases.
     s.contains("https://") || s.contains("http://") || s.contains("ftp://") || s.contains("file://")
@@ -1000,8 +990,8 @@ impl FindUncommented for str {
 
 // Returns the first byte position after the first comment. The given string
 // is expected to be prefixed by a comment, including delimiters.
-// Good: "/* /* inner */ outer */ code();"
-// Bad:  "code(); // hello\n world!"
+// Good: `/* /* inner */ outer */ code();`
+// Bad:  `code(); // hello\n world!`
 pub fn find_comment_end(s: &str) -> Option<usize> {
     let mut iter = CharClasses::new(s.char_indices());
     for (kind, (i, _c)) in &mut iter {
@@ -1010,7 +1000,7 @@ pub fn find_comment_end(s: &str) -> Option<usize> {
         }
     }
 
-    // Handle case where the comment ends at the end of s.
+    // Handle case where the comment ends at the end of `s`.
     if iter.status == CharClassesStatus::Normal {
         Some(s.len())
     } else {
@@ -1018,7 +1008,7 @@ pub fn find_comment_end(s: &str) -> Option<usize> {
     }
 }
 
-/// Returns true if text contains any comment.
+/// Returns `true` if text contains any comment.
 pub fn contains_comment(text: &str) -> bool {
     CharClasses::new(text.chars()).any(|(kind, _)| kind.is_comment())
 }
@@ -1540,7 +1530,7 @@ impl<'a> Iterator for CommentCodeSlices<'a> {
 }
 
 /// Checks is `new` didn't miss any comment from `span`, if it removed any, return previous text
-/// (if it fits in the width/offset, else return None), else return `new`
+/// (if it fits in the width/offset, else return `None`), else return `new`
 pub fn recover_comment_removed(
     new: String,
     span: Span,
@@ -1583,14 +1573,14 @@ pub fn filter_normal_code(code: &str) -> String {
     buffer
 }
 
-/// Return true if the two strings of code have the same payload of comments.
+/// Returns `true` if the two strings of code have the same payload of comments.
 /// The payload of comments is everything in the string except:
-///     - actual code (not comments)
-///     - comment start/end marks
-///     - whitespace
-///     - '*' at the beginning of lines in block comments
+/// - actual code (not comments),
+/// - comment start/end marks,
+/// - whitespace,
+/// - '*' at the beginning of lines in block comments.
 fn changed_comment_content(orig: &str, new: &str) -> bool {
-    // Cannot write this as a fn since we cannot return types containing closures
+    // Cannot write this as a fn since we cannot return types containing closures.
     let code_comment_content = |code| {
         let slices = UngroupedCommentCodeSlices::new(code);
         slices
@@ -1625,7 +1615,8 @@ impl<'a> CommentReducer<'a> {
         let comment = remove_comment_header(comment);
         CommentReducer {
             is_block,
-            at_start_line: false, // There are no supplementary '*' on the first line
+            // There are no supplementary '*' on the first line.
+            at_start_line: false,
             iter: comment.chars(),
         }
     }
@@ -1641,7 +1632,7 @@ impl<'a> Iterator for CommentReducer<'a> {
                 while c.is_whitespace() {
                     c = self.iter.next()?;
                 }
-                // Ignore leading '*'
+                // Ignore leading '*'.
                 if c == '*' {
                     c = self.iter.next()?;
                 }
@@ -1777,7 +1768,7 @@ mod test {
                                       &wrap_normalize_config).unwrap();
         assert_eq!("/* trimmed */", comment);
 
-        // check that different comment style are properly recognised
+        // Check that different comment style are properly recognised.
         let comment = rewrite_comment(r#"/// test1
                                          /// test2
                                          /*
@@ -1788,7 +1779,7 @@ mod test {
                                       &wrap_normalize_config).unwrap();
         assert_eq!("/// test1\n/// test2\n// test3", comment);
 
-        // check that the blank line marks the end of a commented paragraph
+        // Check that the blank line marks the end of a commented paragraph.
         let comment = rewrite_comment(r#"// test1
 
                                          // test2"#,
@@ -1797,7 +1788,7 @@ mod test {
                                       &wrap_normalize_config).unwrap();
         assert_eq!("// test1\n\n// test2", comment);
 
-        // check that the blank line marks the end of a custom-commented paragraph
+        // Check that the blank line marks the end of a custom-commented paragraph.
         let comment = rewrite_comment(r#"//@ test1
 
                                          //@ test2"#,
@@ -1806,7 +1797,7 @@ mod test {
                                       &wrap_normalize_config).unwrap();
         assert_eq!("//@ test1\n\n//@ test2", comment);
 
-        // check that bare lines are just indented but left unchanged otherwise
+        // Check that bare lines are just indented but otherwise left unchanged.
         let comment = rewrite_comment(r#"// test1
                                          /*
                                            a bare line!
@@ -1819,8 +1810,8 @@ mod test {
         assert_eq!("// test1\n/*\n a bare line!\n\n      another bare line!\n*/", comment);
     }
 
-    // This is probably intended to be a non-test fn, but it is not used. I'm
-    // keeping it around unless it helps us test stuff.
+    // This is probably intended to be a non-test fn, but it is not used.
+    // We should keep this around unless it helps us test stuff to remove it.
     fn uncommented(text: &str) -> String {
         CharClasses::new(text.chars())
             .filter_map(|(s, c)| match s {

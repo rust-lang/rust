@@ -1,13 +1,3 @@
-// Copyright 2015 The Rust Project Developers. See the COPYRIGHT
-// file at the top-level directory of this distribution and at
-// http://rust-lang.org/COPYRIGHT.
-//
-// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
-// http://www.apache.org/licenses/LICENSE-2.0> or the MIT license
-// <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
-// option. This file may not be copied, modified, or distributed
-// except according to those terms.
-
 use std::cell::Cell;
 use std::default::Default;
 use std::fs::File;
@@ -65,7 +55,7 @@ create_config! {
     struct_lit_single_line: bool, true, false,
         "Put small struct literals on a single line";
     fn_single_line: bool, false, false, "Put single-expression functions on a single line";
-    where_single_line: bool, false, false, "Force where clauses to be on a single line";
+    where_single_line: bool, false, false, "Force where-clauses to be on a single line";
 
     // Imports
     imports_indent: IndentStyle, IndentStyle::Block, false, "Indent of imports";
@@ -157,7 +147,7 @@ create_config! {
     make_backup: bool, false, false, "Backup changed files";
 }
 
-/// Load a config by checking the client-supplied options and if appropriate, the
+/// Loads a config by checking the client-supplied options and if appropriate, the
 /// file system (including searching the file system for overrides).
 pub fn load_config<O: CliOptions>(
     file_path: Option<&Path>,
@@ -333,7 +323,7 @@ mod test {
         assert_eq!(s.contains("(unstable)"), true);
     }
 
-    // FIXME(#2183) these tests cannot be run in parallel because they use env vars
+    // FIXME(#2183): these tests cannot be run in parallel because they use env vars.
     // #[test]
     // fn test_as_not_nightly_channel() {
     //     let mut config = Config::default();

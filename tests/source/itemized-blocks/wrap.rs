@@ -22,17 +22,17 @@
 //   - when the log level is trace, the whole line is gray ("bright black")
 
 /// All the parameters ***except for `from_theater`*** should be inserted as sent by the remote
-/// theater, ie. as passed to [`Theater::send`] on the remote actor:
+/// theater, i.e., as passed to [`Theater::send`] on the remote actor:
 ///  * `from` is the sending (remote) [`ActorId`], as reported by the remote theater by theater-specific means
 ///  * `to` is the receiving (local) [`ActorId`], as requested by the remote theater
 ///  * `tag` is a tag that identifies the message type
 ///  * `msg` is the (serialized) message
 /// All the parameters ***except for `from_theater`*** should be inserted as sent by the remote
-/// theater, ie. as passed to [`Theater::send`] on the remote actor
+/// theater, i.e., as passed to [`Theater::send`] on the remote actor
 fn func1() {}
 
 /// All the parameters ***except for `from_theater`*** should be inserted as sent by the remote
-/// theater, ie. as passed to [`Theater::send`] on the remote actor:
+/// theater, i.e., as passed to [`Theater::send`] on the remote actor:
 ///  * `from` is the sending (remote) [`ActorId`], as reported by the remote theater by theater-specific means
 ///  * `to` is the receiving (local) [`ActorId`], as requested by the remote theater
 ///  * `tag` is a tag that identifies the message type

@@ -19,7 +19,7 @@ fn generic<T>(arg: T) -> &SomeType
         A,
         // Second argument
         B, C, D, /* pre comment */ E /* last comment */) -> &SomeType {
-    arg(a, b, c, d, e)    
+    arg(a, b, c, d, e)
 }
 
 fn foo()  ->  !  {}

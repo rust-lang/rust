@@ -1,13 +1,3 @@
-// Copyright 2018 The Rust Project Developers. See the COPYRIGHT
-// file at the top-level directory of this distribution and at
-// http://rust-lang.org/COPYRIGHT.
-//
-// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
-// http://www.apache.org/licenses/LICENSE-2.0> or the MIT license
-// <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
-// option. This file may not be copied, modified, or distributed
-// except according to those terms.
-
 //! Format match expression.
 
 use std::iter::repeat;
@@ -35,8 +25,8 @@ use crate::utils::{
 /// A simple wrapper type against `ast::Arm`. Used inside `write_list()`.
 struct ArmWrapper<'a> {
     pub arm: &'a ast::Arm,
-    /// True if the arm is the last one in match expression. Used to decide on whether we should add
-    /// trailing comma to the match arm when `config.trailing_comma() == Never`.
+    /// `true` if the arm is the last one in match expression. Used to decide on whether we should
+    /// add trailing comma to the match arm when `config.trailing_comma() == Never`.
     pub is_last: bool,
     /// Holds a byte position of `|` at the beginning of the arm pattern, if available.
     pub beginning_vert: Option<BytePos>,

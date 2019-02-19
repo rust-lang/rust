@@ -1,13 +1,3 @@
-// Copyright 2016 The Rust Project Developers. See the COPYRIGHT
-// file at the top-level directory of this distribution and at
-// http://rust-lang.org/COPYRIGHT.
-//
-// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
-// http://www.apache.org/licenses/LICENSE-2.0> or the MIT license
-// <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
-// option. This file may not be copied, modified, or distributed
-// except according to those terms.
-
 //! This module contains types and functions to support formatting specific line ranges.
 
 use std::collections::HashMap;
@@ -191,7 +181,7 @@ impl FileLines {
         FileLines(None)
     }
 
-    /// Returns true if this `FileLines` contains all lines in all files.
+    /// Returns `true` if this `FileLines` contains all lines in all files.
     pub(crate) fn is_all(&self) -> bool {
         self.0.is_none()
     }
@@ -221,8 +211,8 @@ impl FileLines {
         }
     }
 
-    /// Returns true if `self` includes all lines in all files. Otherwise runs `f` on all ranges in
-    /// the designated file (if any) and returns true if `f` ever does.
+    /// Returns `true` if `self` includes all lines in all files. Otherwise runs `f` on all ranges
+    /// in the designated file (if any) and returns true if `f` ever does.
     fn file_range_matches<F>(&self, file_name: &FileName, f: F) -> bool
     where
         F: FnMut(&Range) -> bool,
@@ -239,23 +229,23 @@ impl FileLines {
         }
     }
 
-    /// Returns true if `range` is fully contained in `self`.
+    /// Returns `true` if `range` is fully contained in `self`.
     #[allow(dead_code)]
     pub(crate) fn contains(&self, range: &LineRange) -> bool {
         self.file_range_matches(&range.file_name(), |r| r.contains(Range::from(range)))
     }
 
-    /// Returns true if any lines in `range` are in `self`.
+    /// Returns `true` if any lines in `range` are in `self`.
     pub(crate) fn intersects(&self, range: &LineRange) -> bool {
         self.file_range_matches(&range.file_name(), |r| r.intersects(Range::from(range)))
     }
 
-    /// Returns true if `line` from `file_name` is in `self`.
+    /// Returns `true` if `line` from `file_name` is in `self`.
     pub(crate) fn contains_line(&self, file_name: &FileName, line: usize) -> bool {
         self.file_range_matches(file_name, |r| r.lo <= line && r.hi >= line)
     }
 
-    /// Returns true if all the lines between `lo` and `hi` from `file_name` are in `self`.
+    /// Returns `true` if all the lines between `lo` and `hi` from `file_name` are in `self`.
     pub(crate) fn contains_range(&self, file_name: &FileName, lo: usize, hi: usize) -> bool {
         self.file_range_matches(file_name, |r| r.contains(Range::new(lo, hi)))
     }

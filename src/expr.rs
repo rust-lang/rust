@@ -1,13 +1,3 @@
-// Copyright 2015 The Rust Project Developers. See the COPYRIGHT
-// file at the top-level directory of this distribution and at
-// http://rust-lang.org/COPYRIGHT.
-//
-// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
-// http://www.apache.org/licenses/LICENSE-2.0> or the MIT license
-// <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
-// option. This file may not be copied, modified, or distributed
-// except according to those terms.
-
 use std::borrow::Cow;
 use std::cmp::min;
 
@@ -626,7 +616,7 @@ struct ControlFlow<'a> {
     matcher: &'a str,
     connector: &'a str,
     allow_single_line: bool,
-    // True if this is an `if` expression in an `else if` :-( hacky
+    // HACK: `true` if this is an `if` expression in an `else if`.
     nested_if: bool,
     span: Span,
 }
@@ -812,7 +802,7 @@ impl<'a> ControlFlow<'a> {
     }
 }
 
-/// Returns true if the last line of pat_str has leading whitespace and it is wider than the
+/// Returns `true` if the last line of pat_str has leading whitespace and it is wider than the
 /// shape's indent.
 fn last_line_offsetted(start_column: usize, pat_str: &str) -> bool {
     let mut leading_whitespaces = 0;
@@ -1402,7 +1392,7 @@ pub fn is_nested_call(expr: &ast::Expr) -> bool {
     }
 }
 
-/// Return true if a function call or a method call represented by the given span ends with a
+/// Returns `true` if a function call or a method call represented by the given span ends with a
 /// trailing comma. This function is used when rewriting macro, as adding or removing a trailing
 /// comma from macro can potentially break the code.
 pub fn span_ends_with_comma(context: &RewriteContext<'_>, span: Span) -> bool {

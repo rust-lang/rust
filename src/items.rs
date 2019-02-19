@@ -1,13 +1,3 @@
-// Copyright 2015 The Rust Project Developers. See the COPYRIGHT
-// file at the top-level directory of this distribution and at
-// http://rust-lang.org/COPYRIGHT.
-//
-// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
-// http://www.apache.org/licenses/LICENSE-2.0> or the MIT license
-// <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
-// option. This file may not be copied, modified, or distributed
-// except according to those terms.
-
 // Formatting top-level items - functions, structs, enums, traits, impls.
 
 use std::borrow::Cow;
@@ -715,7 +705,7 @@ pub fn format_impl(
             false,
         )?;
 
-        // If there is no where clause, we may have missing comments between the trait name and
+        // If there is no where-clause, we may have missing comments between the trait name and
         // the opening brace.
         if generics.where_clause.predicates.is_empty() {
             if let Some(hi) = where_span_end {
@@ -737,7 +727,7 @@ pub fn format_impl(
             result.push_str(&where_clause_str);
             if where_clause_str.contains('\n') || last_line_contains_single_line_comment(&result) {
                 // if the where_clause contains extra comments AND
-                // there is only one where clause predicate
+                // there is only one where-clause predicate
                 // recover the suppressed comma in single line where_clause formatting
                 if generics.where_clause.predicates.len() == 1 {
                     result.push_str(",");
@@ -868,7 +858,7 @@ fn format_impl_ref_and_type(
         // ` for`
         let trait_ref_overhead = if trait_ref.is_some() { 4 } else { 0 };
         let curly_brace_overhead = if generics.where_clause.predicates.is_empty() {
-            // If there is no where clause adapt budget for type formatting to take space and curly
+            // If there is no where-clause adapt budget for type formatting to take space and curly
             // brace into account.
             match context.config.brace_style() {
                 BraceStyle::AlwaysNextLine => 0,
@@ -1047,7 +1037,7 @@ pub fn format_trait(
             )?;
         }
 
-        // Rewrite where clause.
+        // Rewrite where-clause.
         if !generics.where_clause.predicates.is_empty() {
             let where_density = if context.config.indent_style() == IndentStyle::Block {
                 Density::Compressed
@@ -1074,8 +1064,8 @@ pub fn format_trait(
                 option,
                 false,
             )?;
-            // If the where clause cannot fit on the same line,
-            // put the where clause on a new line
+            // If the where-clause cannot fit on the same line,
+            // put the where-clause on a new line
             if !where_clause_str.contains('\n')
                 && last_line_width(&result) + where_clause_str.len() + offset.width()
                     > context.config.comment_width()
@@ -1426,8 +1416,8 @@ fn format_tuple_struct(
             || offset.block_indent + result.len() + where_clause_str.len() + 1
                 > context.config.max_width())
     {
-        // We need to put the where clause on a new line, but we didn't
-        // know that earlier, so the where clause will not be indented properly.
+        // We need to put the where-clause on a new line, but we didn't
+        // know that earlier, so the where-clause will not be indented properly.
         result.push('\n');
         result.push_str(
             &(offset.block_only() + (context.config.tab_spaces() - 1)).to_string(context.config),
@@ -2122,7 +2112,7 @@ fn rewrite_fn_base(
                 // the closing parenthesis of the argument and the arrow '->' is considered.
                 let mut sig_length = result.len() + indent.width() + ret_str_len + 1;
 
-                // If there is no where clause, take into account the space after the return type
+                // If there is no where-clause, take into account the space after the return type
                 // and the brace.
                 if where_clause.predicates.is_empty() {
                     sig_length += 2;
@@ -2139,7 +2129,7 @@ fn rewrite_fn_base(
             } else {
                 // FIXME: we might want to check that using the arg indent
                 // doesn't blow our budget, and if it does, then fallback to
-                // the where clause indent.
+                // the where-clause indent.
                 arg_indent
             };
 
@@ -2215,7 +2205,7 @@ fn rewrite_fn_base(
         option,
         is_args_multi_lined,
     )?;
-    // If there are neither where clause nor return type, we may be missing comments between
+    // If there are neither where-clause nor return type, we may be missing comments between
     // args and `{`.
     if where_clause_str.is_empty() {
         if let ast::FunctionRetTy::Default(ret_span) = fd.output {
@@ -2245,7 +2235,7 @@ fn rewrite_fn_base(
 struct WhereClauseOption {
     suppress_comma: bool, // Force no trailing comma
     snuggle: bool,        // Do not insert newline before `where`
-    compress_where: bool, // Try single line where clause instead of vertical layout
+    compress_where: bool, // Try single line where-clause instead of vertical layout
 }
 
 impl WhereClauseOption {
@@ -2515,8 +2505,8 @@ fn rewrite_generics(
     generics: &ast::Generics,
     shape: Shape,
 ) -> Option<String> {
-    // FIXME: convert bounds to where clauses where they get too big or if
-    // there is a where clause at all.
+    // FIXME: convert bounds to where-clauses where they get too big or if
+    // there is a where-clause at all.
 
     if generics.params.is_empty() {
         return Some(ident.to_owned());
@@ -2593,7 +2583,7 @@ fn rewrite_where_clause_rfc_style(
     };
 
     // shape should be vertical only and only if we have `where_single_line` option enabled
-    // and the number of items of the where clause is equal to 1
+    // and the number of items of the where-clause is equal to 1
     let shape_tactic = if where_single_line {
         DefinitiveListTactic::Horizontal
     } else {
@@ -2703,7 +2693,7 @@ fn rewrite_where_clause(
     let tactic = definitive_tactic(&item_vec, ListTactic::Vertical, Separator::Comma, budget);
 
     let mut comma_tactic = context.config.trailing_comma();
-    // Kind of a hack because we don't usually have trailing commas in where clauses.
+    // Kind of a hack because we don't usually have trailing commas in where-clauses.
     if comma_tactic == SeparatorTactic::Vertical || where_clause_option.suppress_comma {
         comma_tactic = SeparatorTactic::Never;
     }
@@ -2945,7 +2935,7 @@ pub fn rewrite_extern_crate(context: &RewriteContext<'_>, item: &ast::Item) -> O
     })
 }
 
-/// Returns true for `mod foo;`, false for `mod foo { .. }`.
+/// Returns `true` for `mod foo;`, false for `mod foo { .. }`.
 pub fn is_mod_decl(item: &ast::Item) -> bool {
     match item.node {
         ast::ItemKind::Mod(ref m) => m.inner.hi() != item.span.hi(),

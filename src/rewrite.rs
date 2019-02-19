@@ -1,13 +1,3 @@
-// Copyright 2015 The Rust Project Developers. See the COPYRIGHT
-// file at the top-level directory of this distribution and at
-// http://rust-lang.org/COPYRIGHT.
-//
-// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
-// http://www.apache.org/licenses/LICENSE-2.0> or the MIT license
-// <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
-// option. This file may not be copied, modified, or distributed
-// except according to those terms.
-
 // A generic trait to abstract the rewriting of an element (of the AST).
 
 use std::cell::RefCell;
@@ -56,7 +46,7 @@ impl<'a> RewriteContext<'a> {
         self.snippet_provider.span_to_snippet(span).unwrap()
     }
 
-    /// Return true if we should use block indent style for rewriting function call.
+    /// Returns `true` if we should use block indent style for rewriting function call.
     pub fn use_block_indent(&self) -> bool {
         self.config.indent_style() == IndentStyle::Block || *self.use_block.borrow()
     }

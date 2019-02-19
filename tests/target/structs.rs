@@ -75,7 +75,7 @@ struct Tuple(
     BBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB,
 );
 
-// With a where clause and generics.
+// With a where-clause and generics.
 pub struct Foo<'a, Y: Baz>
 where
     X: Whatever,

@@ -1,13 +1,3 @@
-// Copyright 2015 The Rust Project Developers. See the COPYRIGHT
-// file at the top-level directory of this distribution and at
-// http://rust-lang.org/COPYRIGHT.
-//
-// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
-// http://www.apache.org/licenses/LICENSE-2.0> or the MIT license
-// <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
-// option. This file may not be copied, modified, or distributed
-// except according to those terms.
-
 use std::borrow::Cow;
 
 use syntax::source_map::{BytePos, Pos, Span};
@@ -44,9 +34,8 @@ impl<'a> FmtVisitor<'a> {
     }
 
     pub fn format_missing(&mut self, end: BytePos) {
-        // HACK(topecongiro)
-        // We use `format_missing()` to extract a missing comment between a macro
-        // (or alike) and a trailing semicolon. Here we just try to avoid calling
+        // HACK(topecongiro): we use `format_missing()` to extract a missing comment between
+        // a macro (or similar) and a trailing semicolon. Here we just try to avoid calling
         // `format_missing_inner` in the common case where there is no such comment.
         // This is a hack, ideally we should fix a possible bug in `format_missing_inner`
         // or refactor `visit_mac` and `rewrite_macro`, but this should suffice to fix the

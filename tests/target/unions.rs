@@ -37,7 +37,7 @@ pub union Writebatch<K: Key> {
     marker: PhantomData<K>,
 }
 
-// With a where clause and generics.
+// With a where-clause and generics.
 pub union Foo<'a, Y: Baz>
 where
     X: Whatever,

@@ -301,7 +301,7 @@ pub(crate) type FormatErrorMap = HashMap<FileName, Vec<FormattingError>>;
 
 #[derive(Default, Debug)]
 pub(crate) struct ReportedErrors {
-    // Encountered e.g. an IO error.
+    // Encountered e.g., an IO error.
     pub(crate) has_operational_errors: bool,
 
     // Failed to reformat code because of parsing errors.
@@ -415,7 +415,7 @@ impl Timer {
 }
 
 // Formatting done on a char by char or line by line basis.
-// FIXME(#20) other stuff for parity with make tidy
+// FIXME(#20): other stuff for parity with make tidy.
 fn format_lines(
     text: &mut String,
     name: &FileName,
@@ -446,7 +446,7 @@ struct FormatLines<'a> {
     errors: Vec<FormattingError>,
     issue_seeker: BadIssueSeeker,
     line_buffer: String,
-    // true if the current line contains a string literal.
+    // `true` if the current line contains a string literal.
     is_string: bool,
     format_line: bool,
     allow_issue_seek: bool,
@@ -593,7 +593,7 @@ impl<'a> FormatLines<'a> {
         }
     }
 
-    /// Returns true if the line with the given line number was skipped by `#[rustfmt::skip]`.
+    /// Returns `true` if the line with the given line number was skipped by `#[rustfmt::skip]`.
     fn is_skipped_line(&self) -> bool {
         self.skipped_range
             .iter()

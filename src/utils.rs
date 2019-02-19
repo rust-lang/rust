@@ -1,13 +1,3 @@
-// Copyright 2015 The Rust Project Developers. See the COPYRIGHT
-// file at the top-level directory of this distribution and at
-// http://rust-lang.org/COPYRIGHT.
-//
-// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
-// http://www.apache.org/licenses/LICENSE-2.0> or the MIT license
-// <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
-// option. This file may not be copied, modified, or distributed
-// except according to those terms.
-
 use std::borrow::Cow;
 
 use bytecount;
@@ -320,7 +310,7 @@ pub fn mk_sp(lo: BytePos, hi: BytePos) -> Span {
     Span::new(lo, hi, NO_EXPANSION)
 }
 
-// Return true if the given span does not intersect with file lines.
+// Returns `true` if the given span does not intersect with file lines.
 macro_rules! out_of_file_lines_range {
     ($self:ident, $span:expr) => {
         !$self.config.file_lines().is_all()
@@ -454,7 +444,7 @@ pub fn is_block_expr(context: &RewriteContext<'_>, expr: &ast::Expr, repr: &str)
     }
 }
 
-/// Remove trailing spaces from the specified snippet. We do not remove spaces
+/// Removes trailing spaces from the specified snippet. We do not remove spaces
 /// inside strings or comments.
 pub fn remove_trailing_white_spaces(text: &str) -> String {
     let mut buffer = String::with_capacity(text.len());

@@ -6,7 +6,7 @@ pub fn get_array_index_from_id(_cx: *mut JSContext, id: HandleId) -> Option<u32>
         }
         None
     }
-    // if id is length atom, -1, otherwise
+    // If `id` is length atom, `-1`, otherwise:
     /*return if JSID_IS_ATOM(id) {
         let atom = JSID_TO_ATOM(id);
         //let s = *GetAtomChars(id);

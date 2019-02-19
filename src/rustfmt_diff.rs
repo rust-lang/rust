@@ -1,13 +1,3 @@
-// Copyright 2017 The Rust Project Developers. See the COPYRIGHT
-// file at the top-level directory of this distribution and at
-// http://rust-lang.org/COPYRIGHT.
-//
-// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
-// http://www.apache.org/licenses/LICENSE-2.0> or the MIT license
-// <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
-// option. This file may not be copied, modified, or distributed
-// except according to those terms.
-
 use std::collections::VecDeque;
 use std::io;
 use std::io::Write;
@@ -184,11 +174,11 @@ where
     }
 }
 
-/// Convert a Mismatch into a serialised form which just includes
+/// Converts a `Mismatch` into a serialized form, which just includes
 /// enough information to modify the original file.
 /// Each section starts with a line with three integers, space separated:
 ///     lineno num_removed num_added
-/// followed by (num_added) lines of added text.  The line numbers are
+/// followed by (`num_added`) lines of added text. The line numbers are
 /// relative to the original file.
 pub fn output_modified<W>(mut out: W, diff: Vec<Mismatch>)
 where

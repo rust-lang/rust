@@ -1,13 +1,3 @@
-// Copyright 2015 The Rust Project Developers. See the COPYRIGHT
-// file at the top-level directory of this distribution and at
-// http://rust-lang.org/COPYRIGHT.
-//
-// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
-// http://www.apache.org/licenses/LICENSE-2.0> or the MIT license
-// <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
-// option. This file may not be copied, modified, or distributed
-// except according to those terms.
-
 //! Format list-like expressions and items.
 
 use std::cmp;
@@ -29,7 +19,7 @@ pub struct ListFormatting<'a> {
     trailing_separator: SeparatorTactic,
     separator_place: SeparatorPlace,
     shape: Shape,
-    // Non-expressions, e.g. items, will have a new line at the end of the list.
+    // Non-expressions, e.g., items, will have a new line at the end of the list.
     // Important for comment styles.
     ends_with_newline: bool,
     // Remove newlines between list elements for expressions.
@@ -198,7 +188,7 @@ impl ListItem {
         }
     }
 
-    // true if the item causes something to be written.
+    // Returns `true` if the item causes something to be written.
     fn is_substantial(&self) -> bool {
         fn empty(s: &Option<String>) -> bool {
             match *s {

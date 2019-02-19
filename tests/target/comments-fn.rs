@@ -12,7 +12,7 @@ fn foo<F, G>(
     e: eeeeeeeeeeeee, /* comment before paren */
 ) -> bar
 where
-    F: Foo, // COmment after where clause
+    F: Foo, // COmment after where-clause
     G: Goo, // final comment
 {
 

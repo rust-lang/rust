@@ -1,13 +1,3 @@
-// Copyright 2015 The Rust Project Developers. See the COPYRIGHT
-// file at the top-level directory of this distribution and at
-// http://rust-lang.org/COPYRIGHT.
-//
-// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
-// http://www.apache.org/licenses/LICENSE-2.0> or the MIT license
-// <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
-// option. This file may not be copied, modified, or distributed
-// except according to those terms.
-
 use std::collections::{HashMap, HashSet};
 use std::env;
 use std::fs;
@@ -27,17 +17,17 @@ use crate::{FormatReport, Input, Session};
 const DIFF_CONTEXT_SIZE: usize = 3;
 const CONFIGURATIONS_FILE_NAME: &str = "Configurations.md";
 
-// Returns a `Vec` containing `PathBuf`s of files with a rs extension in the
+// Returns a `Vec` containing `PathBuf`s of files with an  `rs` extension in the
 // given path. The `recursive` argument controls if files from subdirectories
 // are also returned.
 fn get_test_files(path: &Path, recursive: bool) -> Vec<PathBuf> {
     let mut files = vec![];
     if path.is_dir() {
         for entry in fs::read_dir(path).expect(&format!(
-            "Couldn't read directory {}",
+            "couldn't read directory {}",
             path.to_str().unwrap()
         )) {
-            let entry = entry.expect("Couldn't get DirEntry");
+            let entry = entry.expect("couldn't get `DirEntry`");
             let path = entry.path();
             if path.is_dir() && recursive {
                 files.append(&mut get_test_files(&path, recursive));
@@ -51,15 +41,15 @@ fn get_test_files(path: &Path, recursive: bool) -> Vec<PathBuf> {
 
 fn verify_config_used(path: &Path, config_name: &str) {
     for entry in fs::read_dir(path).expect(&format!(
-        "Couldn't read {} directory",
+        "couldn't read {} directory",
         path.to_str().unwrap()
     )) {
-        let entry = entry.expect("Couldn't get directory entry");
+        let entry = entry.expect("couldn't get directory entry");
         let path = entry.path();
         if path.extension().map_or(false, |f| f == "rs") {
             // check if "// rustfmt-<config_name>:" appears in the file.
             let filebuf = BufReader::new(
-                fs::File::open(&path).expect(&format!("Couldn't read file {}", path.display())),
+                fs::File::open(&path).expect(&format!("couldn't read file {}", path.display())),
             );
             assert!(
                 filebuf
@@ -82,8 +72,8 @@ fn verify_config_test_names() {
         Path::new("tests/source/configs"),
         Path::new("tests/target/configs"),
     ] {
-        for entry in fs::read_dir(path).expect("Couldn't read configs directory") {
-            let entry = entry.expect("Couldn't get directory entry");
+        for entry in fs::read_dir(path).expect("couldn't read configs directory") {
+            let entry = entry.expect("couldn't get directory entry");
             let path = entry.path();
             if path.is_dir() {
                 let config_name = path.file_name().unwrap().to_str().unwrap();
@@ -95,8 +85,8 @@ fn verify_config_test_names() {
     }
 }
 
-// This writes to the terminal using the same approach (via term::stdout or
-// println!) that is used by `rustfmt::rustfmt_diff::print_diff`. Writing
+// This writes to the terminal using the same approach (via `term::stdout` or
+// `println!`) that is used by `rustfmt::rustfmt_diff::print_diff`. Writing
 // using only one or the other will cause the output order to differ when
 // `print_diff` selects the approach not used.
 fn write_message(msg: &str) {
@@ -104,8 +94,8 @@ fn write_message(msg: &str) {
     writer.writeln(msg, None);
 }
 
-// Integration tests. The files in the tests/source are formatted and compared
-// to their equivalent in tests/target. The target file and config can be
+// Integration tests. The files in `tests/source` are formatted and compared
+// to their equivalent in `tests/target`. The target file and config can be
 // overridden by annotations in the source file. The input and output must match
 // exactly.
 #[test]
@@ -119,8 +109,8 @@ fn system_tests() {
     assert_eq!(fails, 0, "{} system tests failed", fails);
 }
 
-// Do the same for tests/coverage-source directory
-// the only difference is the coverage mode
+// Do the same for tests/coverage-source directory.
+// The only difference is the coverage mode.
 #[test]
 fn coverage_tests() {
     let files = get_test_files(Path::new("tests/coverage/source"), true);
@@ -205,7 +195,7 @@ fn assert_output(source: &Path, expected_filename: &Path) {
     let _ = source_file::write_all_files(&source_file, &mut out, &config);
     let output = String::from_utf8(out).unwrap();
 
-    let mut expected_file = fs::File::open(&expected_filename).expect("Couldn't open target");
+    let mut expected_file = fs::File::open(&expected_filename).expect("couldn't open target");
     let mut expected_text = String::new();
     expected_file
         .read_to_string(&mut expected_text)
@@ -290,7 +280,7 @@ fn stdin_formatting_smoke_test() {
 
 #[test]
 fn stdin_parser_panic_caught() {
-    // https://github.com/rust-lang/rustfmt/issues/3239
+    // See issue #3239.
     for text in ["{", "}"].iter().cloned().map(String::from) {
         let mut buf = vec![];
         let mut session = Session::new(Default::default(), Some(&mut buf));
@@ -304,7 +294,8 @@ fn stdin_parser_panic_caught() {
 fn stdin_disable_all_formatting_test() {
     match option_env!("CFG_RELEASE_CHANNEL") {
         None | Some("nightly") => {}
-        _ => return, // these tests require nightly
+        // These tests require nightly.
+        _ => return,
     }
     let input = String::from("fn main() { println!(\"This should not be formatted.\"); }");
     let mut child = Command::new(rustfmt().to_str().unwrap())
@@ -407,7 +398,7 @@ fn print_mismatches<T: Fn(u32) -> String>(
 
 fn read_config(filename: &Path) -> Config {
     let sig_comments = read_significant_comments(filename);
-    // Look for a config file... If there is a 'config' property in the significant comments, use
+    // Look for a config file. If there is a 'config' property in the significant comments, use
     // that. Otherwise, if there are no significant comments at all, look for a config file with
     // the same name as the test file.
     let mut config = if !sig_comments.is_empty() {
@@ -453,7 +444,7 @@ fn idempotent_check(
 ) -> Result<FormatReport, IdempotentCheckError> {
     let sig_comments = read_significant_comments(filename);
     let config = if let Some(ref config_file_path) = opt_config {
-        Config::from_toml_path(config_file_path).expect("rustfmt.toml not found")
+        Config::from_toml_path(config_file_path).expect("`rustfmt.toml` not found")
     } else {
         read_config(filename)
     };
@@ -490,43 +481,42 @@ fn get_config(config_file: Option<&Path>) -> Config {
         }
     };
 
-    let mut def_config_file = fs::File::open(config_file_name).expect("Couldn't open config");
+    let mut def_config_file = fs::File::open(config_file_name).expect("couldn't open config");
     let mut def_config = String::new();
     def_config_file
         .read_to_string(&mut def_config)
         .expect("Couldn't read config");
 
-    Config::from_toml(&def_config, Path::new("tests/config/")).expect("Invalid toml")
+    Config::from_toml(&def_config, Path::new("tests/config/")).expect("invalid TOML")
 }
 
-// Reads significant comments of the form: // rustfmt-key: value
-// into a hash map.
+// Reads significant comments of the form: `// rustfmt-key: value` into a hash map.
 fn read_significant_comments(file_name: &Path) -> HashMap<String, String> {
     let file =
-        fs::File::open(file_name).expect(&format!("Couldn't read file {}", file_name.display()));
+        fs::File::open(file_name).expect(&format!("couldn't read file {}", file_name.display()));
     let reader = BufReader::new(file);
     let pattern = r"^\s*//\s*rustfmt-([^:]+):\s*(\S+)";
-    let regex = regex::Regex::new(pattern).expect("Failed creating pattern 1");
+    let regex = regex::Regex::new(pattern).expect("failed creating pattern 1");
 
     // Matches lines containing significant comments or whitespace.
     let line_regex = regex::Regex::new(r"(^\s*$)|(^\s*//\s*rustfmt-[^:]+:\s*\S+)")
-        .expect("Failed creating pattern 2");
+        .expect("failed creating pattern 2");
 
     reader
         .lines()
-        .map(|line| line.expect("Failed getting line"))
+        .map(|line| line.expect("failed getting line"))
         .take_while(|line| line_regex.is_match(line))
         .filter_map(|line| {
             regex.captures_iter(&line).next().map(|capture| {
                 (
                     capture
                         .get(1)
-                        .expect("Couldn't unwrap capture")
+                        .expect("couldn't unwrap capture")
                         .as_str()
                         .to_owned(),
                     capture
                         .get(2)
-                        .expect("Couldn't unwrap capture")
+                        .expect("couldn't unwrap capture")
                         .as_str()
                         .to_owned(),
                 )
@@ -535,7 +525,7 @@ fn read_significant_comments(file_name: &Path) -> HashMap<String, String> {
         .collect()
 }
 
-// Compare output to input.
+// Compares output to input.
 // TODO: needs a better name, more explanation.
 fn handle_result(
     result: HashMap<PathBuf, String>,
@@ -546,11 +536,11 @@ fn handle_result(
     for (file_name, fmt_text) in result {
         // If file is in tests/source, compare to file with same name in tests/target.
         let target = get_target(&file_name, target);
-        let open_error = format!("Couldn't open target {:?}", &target);
+        let open_error = format!("couldn't open target {:?}", &target);
         let mut f = fs::File::open(&target).expect(&open_error);
 
         let mut text = String::new();
-        let read_error = format!("Failed reading target {:?}", &target);
+        let read_error = format!("failed reading target {:?}", &target);
         f.read_to_string(&mut text).expect(&read_error);
 
         // Ignore LF and CRLF difference for Windows.
@@ -571,7 +561,7 @@ fn handle_result(
     }
 }
 
-// Map source file paths to their target paths.
+// Maps source file paths to their target paths.
 fn get_target(file_name: &Path, target: Option<&str>) -> PathBuf {
     if let Some(n) = file_name
         .components()
@@ -591,7 +581,7 @@ fn get_target(file_name: &Path, target: Option<&str>) -> PathBuf {
             target_file_name
         }
     } else {
-        // This is either and idempotence check or a self check
+        // This is either and idempotence check or a self check.
         file_name.to_owned()
     }
 }
@@ -674,10 +664,10 @@ impl ConfigurationSection {
     ) -> Option<ConfigurationSection> {
         lazy_static! {
             static ref CONFIG_NAME_REGEX: regex::Regex =
-                regex::Regex::new(r"^## `([^`]+)`").expect("Failed creating configuration pattern");
+                regex::Regex::new(r"^## `([^`]+)`").expect("failed creating configuration pattern");
             static ref CONFIG_VALUE_REGEX: regex::Regex =
                 regex::Regex::new(r#"^#### `"?([^`"]+)"?`"#)
-                    .expect("Failed creating configuration value pattern");
+                    .expect("failed creating configuration value pattern");
         }
 
         loop {
@@ -899,7 +889,7 @@ fn configuration_snippet_tests() {
     fn get_code_blocks() -> Vec<ConfigCodeBlock> {
         let mut file_iter = BufReader::new(
             fs::File::open(Path::new(CONFIGURATIONS_FILE_NAME))
-                .expect(&format!("Couldn't read file {}", CONFIGURATIONS_FILE_NAME)),
+                .expect(&format!("couldn't read file {}", CONFIGURATIONS_FILE_NAME)),
         )
         .lines()
         .map(|l| l.unwrap())
@@ -945,28 +935,30 @@ fn make_temp_file(file_name: &'static str) -> TempFile {
     let target_dir = var("RUSTFMT_TEST_DIR").unwrap_or_else(|_| ".".to_owned());
     let path = Path::new(&target_dir).join(file_name);
 
-    let mut file = File::create(&path).expect("Couldn't create temp file");
+    let mut file = File::create(&path).expect("couldn't create temp file");
     let content = "fn main() {}\n";
     file.write_all(content.as_bytes())
-        .expect("Couldn't write temp file");
+        .expect("couldn't write temp file");
     TempFile { path }
 }
 
 impl Drop for TempFile {
     fn drop(&mut self) {
         use std::fs::remove_file;
-        remove_file(&self.path).expect("Couldn't delete temp file");
+        remove_file(&self.path).expect("couldn't delete temp file");
     }
 }
 
 fn rustfmt() -> PathBuf {
     let mut me = env::current_exe().expect("failed to get current executable");
-    me.pop(); // chop of the test name
-    me.pop(); // chop off `deps`
+    // Chop of the test name.
+    me.pop();
+    // Chop off `deps`.
+    me.pop();
 
-    // if we run `cargo test --release` we might only have a release build
+    // If we run `cargo test --release`, we might only have a release build.
     if cfg!(release) {
-        // ../release/
+        // `../release/`
         me.pop();
         me.push("release");
     }

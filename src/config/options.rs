@@ -1,13 +1,3 @@
-// Copyright 2018 The Rust Project Developers. See the COPYRIGHT
-// file at the top-level directory of this distribution and at
-// http://rust-lang.org/COPYRIGHT.
-//
-// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
-// http://www.apache.org/licenses/LICENSE-2.0> or the MIT license
-// <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
-// option. This file may not be copied, modified, or distributed
-// except according to those terms.
-
 use std::collections::HashSet;
 use std::path::{Path, PathBuf};
 
@@ -199,7 +189,7 @@ impl NewlineStyle {
 configuration_option_enum! { BraceStyle:
     AlwaysNextLine,
     PreferSameLine,
-    // Prefer same line except where there is a where clause, in which case force
+    // Prefer same line except where there is a where-clause, in which case force
     // the brace to the next line.
     SameLineWhere,
 }

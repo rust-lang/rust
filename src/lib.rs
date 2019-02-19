@@ -1,13 +1,3 @@
-// Copyright 2015-2018 The Rust Project Developers. See the COPYRIGHT
-// file at the top-level directory of this distribution and at
-// http://rust-lang.org/COPYRIGHT.
-//
-// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
-// http://www.apache.org/licenses/LICENSE-2.0> or the MIT license
-// <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
-// option. This file may not be copied, modified, or distributed
-// except according to those terms.
-
 #![deny(rust_2018_idioms)]
 
 #[macro_use]
@@ -155,7 +145,7 @@ impl FormattedSnippet {
             });
     }
 
-    /// Returns true if the line n did not get formatted.
+    /// Returns `true` if the line n did not get formatted.
     fn is_line_non_formatted(&self, n: usize) -> bool {
         self.non_formatted_ranges
             .iter()
@@ -408,9 +398,9 @@ fn format_snippet(snippet: &str, config: &Config) -> Option<FormattedSnippet> {
 }
 
 /// Format the given code block. Mainly targeted for code block in comment.
-/// The code block may be incomplete (i.e. parser may be unable to parse it).
+/// The code block may be incomplete (i.e., parser may be unable to parse it).
 /// To avoid panic in parser, we wrap the code block with a dummy function.
-/// The returned code block does *not* end with newline.
+/// The returned code block does **not** end with newline.
 fn format_code_block(code_snippet: &str, config: &Config) -> Option<FormattedSnippet> {
     const FN_MAIN_PREFIX: &str = "fn main() {\n";
 
@@ -437,7 +427,7 @@ fn format_code_block(code_snippet: &str, config: &Config) -> Option<FormattedSni
     let mut is_first = true;
 
     // While formatting the code, ignore the config's newline style setting and always use "\n"
-    // instead of "\r\n" for the newline characters. This is okay because the output here is
+    // instead of "\r\n" for the newline characters. This is ok because the output here is
     // not directly outputted by rustfmt command, but used by the comment formatter's input.
     // We have output-file-wide "\n" ==> "\r\n" conversion process after here if it's necessary.
     let mut config_with_unix_newline = config.clone();

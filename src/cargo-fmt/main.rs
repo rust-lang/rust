@@ -1,14 +1,4 @@
-// Copyright 2015-2016 The Rust Project Developers. See the COPYRIGHT
-// file at the top-level directory of this distribution and at
-// http://rust-lang.org/COPYRIGHT.
-//
-// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
-// http://www.apache.org/licenses/LICENSE-2.0> or the MIT license
-// <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
-// option. This file may not be copied, modified, or distributed
-// except according to those terms.
-
-// Inspired by Paul Woolcock's cargo-fmt (https://github.com/pwoolcoc/cargo-fmt/)
+// Inspired by Paul Woolcock's cargo-fmt (https://github.com/pwoolcoc/cargo-fmt/).
 
 #![cfg(not(test))]
 #![deny(warnings)]
@@ -146,12 +136,12 @@ fn format_crate(verbosity: Verbosity, strategy: &CargoFmtStrategy) -> Result<i32
         get_targets(strategy)?
     };
 
-    // Currently only bin and lib files get formatted
+    // Currently only bin and lib files get formatted.
     run_rustfmt(&targets, &rustfmt_args, verbosity)
 }
 
 fn get_fmt_args() -> Vec<String> {
-    // All arguments after -- are passed to rustfmt
+    // All arguments after -- are passed to rustfmt.
     env::args().skip_while(|a| a != "--").skip(1).collect()
 }
 
@@ -160,7 +150,7 @@ fn get_fmt_args() -> Vec<String> {
 pub struct Target {
     /// A path to the main source file of the target.
     path: PathBuf,
-    /// A kind of target (e.g. lib, bin, example, ...).
+    /// A kind of target (e.g., lib, bin, example, ...).
     kind: String,
     /// Rust edition for this target.
     edition: String,

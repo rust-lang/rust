@@ -67,7 +67,7 @@ impl TemplateParser {
         }
     }
 
-    /// Convert a license template into a string which can be turned into a regex.
+    /// Converts a license template into a string which can be turned into a regex.
     ///
     /// The license template could use regex syntax directly, but that would require a lot of manual
     /// escaping, which is inconvenient. It is therefore literal by default, with optional regex

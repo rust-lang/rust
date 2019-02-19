@@ -1,6 +1,7 @@
 // rustfmt-indent_style: Block
 // rustfmt-combine_control_expr: false
-// Combining openings and closings. See https://github.com/rust-lang/fmt-rfcs/issues/61.
+
+// Combining openings and closings. See rust-lang/fmt-rfcs#61.
 
 fn main() {
     // Call

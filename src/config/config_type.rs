@@ -1,13 +1,3 @@
-// Copyright 2018 The Rust Project Developers. See the COPYRIGHT
-// file at the top-level directory of this distribution and at
-// http://rust-lang.org/COPYRIGHT.
-//
-// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
-// http://www.apache.org/licenses/LICENSE-2.0> or the MIT license
-// <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
-// option. This file may not be copied, modified, or distributed
-// except according to those terms.
-
 use crate::config::file_lines::FileLines;
 use crate::config::options::{IgnoreList, WidthHeuristics};
 
@@ -60,14 +50,14 @@ impl ConfigType for IgnoreList {
     }
 }
 
-/// Check if we're in a nightly build.
+/// Checks if we're in a nightly build.
 ///
 /// The environment variable `CFG_RELEASE_CHANNEL` is set during the rustc bootstrap
 /// to "stable", "beta", or "nightly" depending on what toolchain is being built.
 /// If we are being built as part of the stable or beta toolchains, we want
 /// to disable unstable configuration options.
 ///
-/// If we're being built by cargo (e.g. `cargo +nightly install rustfmt-nightly`),
+/// If we're being built by cargo (e.g., `cargo +nightly install rustfmt-nightly`),
 /// `CFG_RELEASE_CHANNEL` is not set. As we only support being built against the
 /// nightly compiler when installed from crates.io, default to nightly mode.
 macro_rules! is_nightly_channel {
@@ -297,13 +287,13 @@ macro_rules! create_config {
                 }
             }
 
-            /// Construct a `Config` from the toml file specified at `file_path`.
+            /// Constructs a `Config` from the toml file specified at `file_path`.
             ///
             /// This method only looks at the provided path, for a method that
             /// searches parents for a `rustfmt.toml` see `from_resolved_toml_path`.
             ///
-            /// Return a `Config` if the config could be read and parsed from
-            /// the file, Error otherwise.
+            /// Returns a `Config` if the config could be read and parsed from
+            /// the file, otherwise errors.
             pub(super) fn from_toml_path(file_path: &Path) -> Result<Config, Error> {
                 let mut file = File::open(&file_path)?;
                 let mut toml = String::new();
@@ -312,7 +302,7 @@ macro_rules! create_config {
                     .map_err(|err| Error::new(ErrorKind::InvalidData, err))
             }
 
-            /// Resolve the config for input in `dir`.
+            /// Resolves the config for input in `dir`.
             ///
             /// Searches for `rustfmt.toml` beginning with `dir`, and
             /// recursively checking parents of `dir` if no config file is found.
@@ -441,7 +431,7 @@ macro_rules! create_config {
                 self.ignore.2.add_prefix(dir);
             }
 
-            /// Returns true if the config key was explicitly set and is the default value.
+            /// Returns `true` if the config key was explicitly set and is the default value.
             pub fn is_default(&self, key: &str) -> bool {
                 $(
                     if let stringify!($i) = key {

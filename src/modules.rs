@@ -1,13 +1,3 @@
-// Copyright 2015 The Rust Project Developers. See the COPYRIGHT
-// file at the top-level directory of this distribution and at
-// http://rust-lang.org/COPYRIGHT.
-//
-// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
-// http://www.apache.org/licenses/LICENSE-2.0> or the MIT license
-// <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
-// option. This file may not be copied, modified, or distributed
-// except according to those terms.
-
 use std::collections::BTreeMap;
 use std::io;
 use std::path::{Path, PathBuf};
@@ -47,7 +37,7 @@ fn path_value(attr: &ast::Attribute) -> Option<Symbol> {
     }
 }
 
-// N.B. Even when there are multiple `#[path = ...]` attributes, we just need to
+// N.B., even when there are multiple `#[path = ...]` attributes, we just need to
 // examine the first one, since rustc ignores the second and the subsequent ones
 // as unused attributes.
 fn find_path_value(attrs: &[ast::Attribute]) -> Option<Symbol> {
@@ -88,7 +78,7 @@ fn list_submodules<'a>(
     Ok(())
 }
 
-/// Find the file corresponding to an external mod
+/// Finds the file corresponding to an external mod
 fn module_file(
     id: ast::Ident,
     attrs: &[ast::Attribute],

@@ -39,7 +39,7 @@
 
 /// All the parameters ***except for
 /// `from_theater`*** should be inserted as sent
-/// by the remote theater, ie. as passed to
+/// by the remote theater, i.e., as passed to
 /// [`Theater::send`] on the remote actor:
 ///  * `from` is the sending (remote) [`ActorId`],
 ///    as reported by the remote theater by
@@ -51,13 +51,13 @@
 ///  * `msg` is the (serialized) message
 /// All the parameters ***except for
 /// `from_theater`*** should be inserted as sent
-/// by the remote theater, ie. as passed to
+/// by the remote theater, i.e., as passed to
 /// [`Theater::send`] on the remote actor
 fn func1() {}
 
 /// All the parameters ***except for
 /// `from_theater`*** should be inserted as sent
-/// by the remote theater, ie. as passed to
+/// by the remote theater, i.e., as passed to
 /// [`Theater::send`] on the remote actor:
 ///  * `from` is the sending (remote) [`ActorId`],
 ///    as reported by the remote theater by

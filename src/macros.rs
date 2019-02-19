@@ -1,13 +1,3 @@
-// Copyright 2015 The Rust Project Developers. See the COPYRIGHT
-// file at the top-level directory of this distribution and at
-// http://rust-lang.org/COPYRIGHT.
-//
-// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
-// http://www.apache.org/licenses/LICENSE-2.0> or the MIT license
-// <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
-// option. This file may not be copied, modified, or distributed
-// except according to those terms.
-
 // Format list-like macro invocations. These are invocations whose token trees
 // can be interpreted as expressions and separated by commas.
 // Note that these token trees do not actually have to be interpreted as
@@ -601,9 +591,9 @@ fn replace_names(input: &str) -> Option<(String, HashMap<String, String>)> {
 
 #[derive(Debug, Clone)]
 enum MacroArgKind {
-    /// e.g. `$x: expr`.
+    /// e.g., `$x: expr`.
     MetaVariable(ast::Ident, String),
-    /// e.g. `$($foo: expr),*`
+    /// e.g., `$($foo: expr),*`
     Repeat(
         /// `()`, `[]` or `{}`.
         DelimToken,
@@ -614,12 +604,12 @@ enum MacroArgKind {
         /// The repeat token. This could be one of `*`, `+` or `?`.
         Token,
     ),
-    /// e.g. `[derive(Debug)]`
+    /// e.g., `[derive(Debug)]`
     Delimited(DelimToken, Vec<ParsedMacroArg>),
-    /// A possible separator. e.g. `,` or `;`.
+    /// A possible separator. e.g., `,` or `;`.
     Separator(String, String),
     /// Other random stuff that does not fit to other kinds.
-    /// e.g. `== foo` in `($x: expr == foo)`.
+    /// e.g., `== foo` in `($x: expr == foo)`.
     Other(String, String),
 }
 
@@ -752,13 +742,13 @@ impl ParsedMacroArg {
 
 /// Parses macro arguments on macro def.
 struct MacroArgParser {
-    /// Holds either a name of the next metavariable, a separator or a junk.
+    /// Either a name of the next metavariable, a separator, or junk.
     buf: String,
     /// The start position on the current buffer.
     lo: BytePos,
     /// The first token of the current buffer.
     start_tok: Token,
-    /// Set to true if we are parsing a metavariable or a repeat.
+    /// `true` if we are parsing a metavariable or a repeat.
     is_meta_var: bool,
     /// The position of the last token.
     hi: BytePos,
@@ -1139,8 +1129,8 @@ fn next_space(tok: &Token) -> SpaceState {
     }
 }
 
-/// Tries to convert a macro use into a short hand try expression. Returns None
-/// when the macro is not an instance of try! (or parsing the inner expression
+/// Tries to convert a macro use into a short hand try expression. Returns `None`
+/// when the macro is not an instance of `try!` (or parsing the inner expression
 /// failed).
 pub fn convert_try_mac(mac: &ast::Mac, context: &RewriteContext<'_>) -> Option<ast::Expr> {
     if &mac.node.path.to_string() == "try" {
