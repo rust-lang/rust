@@ -2,33 +2,35 @@
 //!
 //! It is sometimes useful to have objects that are guaranteed to not move,
 //! in the sense that their placement in memory does not change, and can thus be relied upon.
-//!
 //! A prime example of such a scenario would be building self-referential structs,
 //! since moving an object with pointers to itself will invalidate them,
 //! which could cause undefined behavior.
 //!
-//! By default, all types in Rust are movable. Rust allows passing all types by-value,
-//! and common smart-pointer types such as `Box`, `Rc`, and `&mut` allow replacing and
-//! moving the values they contain. In order to prevent objects from moving, they must
-//! be pinned by wrapping a pointer to the data in the [`Pin`] type.
-//! Doing this prohibits moving the value behind the pointer.
-//! For example, `Pin<Box<T>>` functions much like a regular `Box<T>`,
-//! but doesn't allow moving `T`. The pointer value itself (the `Box`) can still be moved,
-//! but the value behind it cannot.
+//! [`Pin`] ensures that the pointee of any pointer type has a stable location in memory,
+//! meaning it cannot be moved elsewhere and its memory cannot be deallocated
+//! until it gets dropped. We say that the pointee is "pinned".
 //!
-//! Since data can be moved out of `&mut` and `Box` with functions such as [`mem::swap`],
-//! changing the location of the underlying data, [`Pin`] prohibits accessing the
-//! underlying pointer type (the `&mut` or `Box`) directly, and provides its own set of
-//! APIs for accessing and using the value. [`Pin`] also guarantees that no other
-//! functions will move the pointed-to value. This allows for the creation of
-//! self-references and other special behaviors that are only possible for unmovable
-//! values.
+//! By default, all types in Rust are movable. Rust allows passing all types by-value,
+//! and common smart-pointer types such as `Box` and `&mut` allow replacing and
+//! moving the values they contain: you can move out of a `Box`, or you can use [`mem::swap`].
+//! [`Pin`] wraps a pointer type, so `Pin<Box<T>>` functions much like a regular `Box<T>`
+//! (when a `Pin<Box<T>>` gets dropped, so do its contents, and the memory gets deallocated).
+//! Similarily, `Pin<&mut T>` is a lot like `&mut T`. However, [`Pin`] does not let clients actually
+//! obtain a `Box` or reference to pinned data, which implies that you cannot use
+//! operations such as [`mem::swap`]:
+//! ```
+//! fn swap_pins<T>(x: Pin<&mut T>, y: Pin<&mut T>) {
+//!     // `mem::swap` needs `&mut T`, but we cannot get it.
+//!     // We are stuck, we cannot swap the contents of these references.
+//!     // We could use `Pin::get_unchecked_mut`, but that is unsafe for a reason:
+//!     // we are not allowed to use it for moving things out of the `Pin`.
+//! }
+//! ```
 //!
 //! It is worth reiterating that [`Pin`] does *not* change the fact that a Rust compiler
 //! considers all types movable.  [`mem::swap`] remains callable for any `T`. Instead, `Pin`
 //! prevents certain *values* (pointed to by pointers wrapped in `Pin`) from being
-//! moved by making it impossible to call methods like [`mem::swap`] on them. These
-//! methods all need an `&mut T`, and you cannot obtain that from a `Pin`.
+//! moved by making it impossible to call methods like [`mem::swap`] on them.
 //!
 //! # `Unpin`
 //!
@@ -43,7 +45,7 @@
 //! `Unpin` has no effect on the behavior of `Pin<Box<T>>` (here, `T` is the
 //! pointed-to type).
 //!
-//! # Example: Self-referential struct
+//! # Example: self-referential struct
 //!
 //! ```rust
 //! use std::pin::Pin;
@@ -119,7 +121,7 @@
 //! To make this work, not just moving the data is restricted; deallocating, repurposing or
 //! otherwise invalidating the memory used to store the data is restricted, too.
 //! Concretely, for pinned data you have to maintain the invariant
-//! that *its memory will not get invalidated from the momentit gets pinned until
+//! that *its memory will not get invalidated from the moment it gets pinned until
 //! when `drop` is called*. Memory can be invalidated by deallocation, but also by
 //! replacing a `Some(v)` by `None`, or calling `Vec::set_len` to "kill" some elements
 //! off of a vector.
@@ -318,13 +320,13 @@ impl<P: Deref> Pin<P> {
     /// # Safety
     ///
     /// This constructor is unsafe because we cannot guarantee that the data
-    /// pointed to by `pointer` is pinned forever. If the constructed `Pin<P>` does
+    /// pointed to by `pointer` is pinned, meaning that the data will not be moved or
+    /// its storage invalidated until it gets dropped. If the constructed `Pin<P>` does
     /// not guarantee that the data `P` points to is pinned, constructing a
     /// `Pin<P>` is unsafe. In particular, calling `Pin::new_unchecked`
     /// on an `&'a mut T` is unsafe because while you are able to pin it for the given
     /// lifetime `'a`, you have no control over whether it is kept pinned once `'a`
-    /// ends. A value, once pinned, must remain pinned forever
-    /// (unless its type implements `Unpin`).
+    /// ends. A value, once pinned, must remain pinned forever (unless its type implements `Unpin`).
     ///
     /// By using this method, you are making a promise about the `P::Deref` and
     /// `P::DerefMut` implementations, if they exist. Most importantly, they
