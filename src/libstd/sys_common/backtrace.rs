@@ -7,8 +7,8 @@ use crate::io;
 use crate::path::{self, Path};
 use crate::ptr;
 use crate::str;
+use crate::sync::RawMutex;
 use crate::sync::atomic::{self, Ordering};
-use crate::sys::mutex::Mutex;
 
 use rustc_demangle::demangle;
 
@@ -42,7 +42,7 @@ const MAX_NB_FRAMES: usize = 100;
 
 /// Prints the current backtrace.
 pub fn print(w: &mut dyn Write, format: PrintFormat) -> io::Result<()> {
-    static LOCK: Mutex = Mutex::new();
+    static LOCK: RawMutex = RawMutex::new();
 
     // There are issues currently linking libbacktrace into tests, and in
     // general during libstd's own unit tests we're not testing this path. In
@@ -54,12 +54,8 @@ pub fn print(w: &mut dyn Write, format: PrintFormat) -> io::Result<()> {
 
     // Use a lock to prevent mixed output in multithreading context.
     // Some platforms also requires it, like `SymFromAddr` on Windows.
-    unsafe {
-        LOCK.lock();
-        let res = _print(w, format);
-        LOCK.unlock();
-        res
-    }
+    let _guard = LOCK.lock();
+    _print(w, format)
 }
 
 fn _print(w: &mut dyn Write, format: PrintFormat) -> io::Result<()> {
