@@ -1103,7 +1103,6 @@ impl<'a, T: Ord> Iterator for SymmetricDifference<'a, T> {
 #[stable(feature = "fused", since = "1.26.0")]
 impl<T: Ord> FusedIterator for SymmetricDifference<'_, T> {}
 
-#[stable(feature = "rust1", since = "1.0.0")]
 impl<'a, T> Clone for IntersectionOther<'a, T> {
     fn clone(&self) -> IntersectionOther<'a, T> {
         match self {
@@ -1140,7 +1139,7 @@ impl<'a, T: Ord> Iterator for Intersection<'a, T> {
                         self_b.next();
                     }
                 }
-            },
+            }
             IntersectionOther::SET(set) => loop {
                 match self.a.next() {
                     None => return None,
@@ -1150,7 +1149,7 @@ impl<'a, T: Ord> Iterator for Intersection<'a, T> {
                         }
                     }
                 }
-            },
+            }
         }
     }
 
