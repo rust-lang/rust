@@ -205,8 +205,8 @@
 //!    does not cause unsoundness.)
 //! 5. You must not offer any other operations that could lead to data being moved out of
 //!    the fields when your type is pinned. This is usually not a concern, but can become
-//!    tricky when interior mutability is involved. For example, imagine `RefCell`
-//!    would have a method `fn get_pin_mut(self: Pin<&mut Self>) -> Pin<&mut T>`.
+//!    tricky when interior mutability is involved. For example, imagine if `RefCell`
+//!    had a method `fn get_pin_mut(self: Pin<&mut Self>) -> Pin<&mut T>`.
 //!    Then we could do the following:
 //!    ```compile_fail
 //!    fn exploit_ref_cell<T>(rc: Pin<&mut RefCell<T>) {
