@@ -40,18 +40,17 @@ fn test() {
 }
 
 #[test]
-#[cfg(not(miri))] // This test performs invalid OOB pointer arithmetic
 fn test_is_null() {
     let p: *const isize = null();
     assert!(p.is_null());
 
-    let q = unsafe { p.offset(1) };
+    let q = p.wrapping_offset(1);
     assert!(!q.is_null());
 
     let mp: *mut isize = null_mut();
     assert!(mp.is_null());
 
-    let mq = unsafe { mp.offset(1) };
+    let mq = mp.wrapping_offset(1);
     assert!(!mq.is_null());
 
     // Pointers to unsized types -- slices
@@ -208,7 +207,6 @@ fn test_ptr_addition() {
 }
 
 #[test]
-#[cfg(not(miri))] // This test performs invalid OOB pointer arithmetic
 fn test_ptr_subtraction() {
     unsafe {
         let xs = vec![0,1,2,3,4,5,6,7,8,9];
@@ -224,8 +222,11 @@ fn test_ptr_subtraction() {
         let m_start = xs_mut.as_mut_ptr();
         let mut m_ptr = m_start.offset(9);
 
-        while m_ptr >= m_start {
+        loop {
             *m_ptr += *m_ptr;
+            if m_ptr == m_start {
+                break;
+            }
             m_ptr = m_ptr.offset(-1);
         }
 
