@@ -1,6 +1,7 @@
 #![unstable(issue = "0", feature = "windows_stdio")]
 
 use cell::Cell;
+use char::decode_utf16;
 use cmp;
 use io;
 use ptr;
@@ -64,22 +65,27 @@ fn write(handle_id: c::DWORD, data: &[u8]) -> io::Result<usize> {
     //
     // If the data is not valid UTF-8 we write out as many bytes as are valid.
     // Only when there are no valid bytes (which will happen on the next call), return an error.
-    let len = cmp::min(data.len(), MAX_BUFFER_SIZE);
+    let len = cmp::min(data.len(), MAX_BUFFER_SIZE / 2);
     let utf8 = match str::from_utf8(&data[..len]) {
         Ok(s) => s,
         Err(ref e) if e.valid_up_to() == 0 => {
             return Err(io::Error::new(io::ErrorKind::InvalidData,
-                "Windows stdio in console mode does not support non-UTF-8 byte sequences; \
-                see https://github.com/rust-lang/rust/issues/23344"))
+                "Windows stdio in console mode does not support writing non-UTF-8 byte sequences"))
         },
         Err(e) => str::from_utf8(&data[..e.valid_up_to()]).unwrap(),
     };
-    let utf16 = utf8.encode_utf16().collect::<Vec<u16>>();
+    let mut utf16 = [0u16; MAX_BUFFER_SIZE / 2];
+    let mut len_utf16 = 0;
+    for (chr, dest) in utf8.encode_utf16().zip(utf16.iter_mut()) {
+        *dest = chr;
+        len_utf16 += 1;
+    }
+    let utf16 = &utf16[..len_utf16];
 
     let mut written = write_u16s(handle, &utf16)?;
 
     // Figure out how many bytes of as UTF-8 were written away as UTF-16.
-    if written >= utf16.len() {
+    if written == utf16.len() {
         Ok(utf8.len())
     } else {
         // Make sure we didn't end up writing only half of a surrogate pair (even though the chance
@@ -90,7 +96,7 @@ fn write(handle_id: c::DWORD, data: &[u8]) -> io::Result<usize> {
         let first_char_remaining = utf16[written];
         if first_char_remaining >= 0xDCEE && first_char_remaining <= 0xDFFF { // low surrogate
             // We just hope this works, and give up otherwise
-            let _ = write_u16s(handle, &utf16[written..written]);
+            let _ = write_u16s(handle, &utf16[written..written+1]);
             written += 1;
         }
         // Calculate the number of bytes of `utf8` that were actually written.
@@ -103,6 +109,7 @@ fn write(handle_id: c::DWORD, data: &[u8]) -> io::Result<usize> {
                 _ => 3,
             };
         }
+        debug_assert!(String::from_utf16(&utf16[..written]).unwrap() == utf8[..count]);
         Ok(count)
     }
 }
@@ -137,7 +144,7 @@ impl Stdin {
             return Ok(0);
         } else if buf.len() < 4 {
             return Err(io::Error::new(io::ErrorKind::InvalidInput,
-                        "Windows stdin in console mode does not support a buffer too small to; \
+                        "Windows stdin in console mode does not support a buffer too small to \
                         guarantee holding one arbitrary UTF-8 character (4 bytes)"))
         }
 
@@ -147,27 +154,14 @@ impl Stdin {
         // lost.
         let amount = cmp::min(buf.len() / 3, utf16_buf.len());
         let read = self.read_u16s_fixup_surrogates(handle, &mut utf16_buf, amount)?;
-        let utf16 = &utf16_buf[..read];
 
-        // FIXME: it would be nice if we could directly decode into the buffer instead of doing an
-        //        allocation.
-        let data = match String::from_utf16(&utf16) {
-            Ok(utf8) => utf8.into_bytes(),
-            Err(..) => {
-                // We can't really do any better than forget all data and return an error.
-                return Err(io::Error::new(io::ErrorKind::InvalidData,
-                    "Windows stdin in console mode does not support non-UTF-16 input; \
-                    encountered unpaired surrogate"))
-            },
-        };
-        buf.copy_from_slice(&data);
-        Ok(data.len())
+        utf16_to_utf8(&utf16_buf[..read], buf)
     }
 
     // We assume that if the last `u16` is an unpaired surrogate they got sliced apart by our
     // buffer size, and keep it around for the next read hoping to put them together.
     // This is a best effort, and may not work if we are not the only reader on Stdin.
-    pub fn read_u16s_fixup_surrogates(&self, handle: c::HANDLE, buf: &mut [u16], mut amount: usize)
+    fn read_u16s_fixup_surrogates(&self, handle: c::HANDLE, buf: &mut [u16], mut amount: usize)
         -> io::Result<usize>
     {
         // Insert possibly remaining unpaired surrogate from last read.
@@ -221,6 +215,26 @@ fn read_u16s(handle: c::HANDLE, buf: &mut [u16]) -> io::Result<usize> {
         amount -= 1;
     }
     Ok(amount as usize)
+}
+
+#[allow(unused)]
+fn utf16_to_utf8(utf16: &[u16], utf8: &mut [u8]) -> io::Result<usize> {
+    let mut written = 0;
+    for chr in decode_utf16(utf16.iter().cloned()) {
+        match chr {
+            Ok(chr) => {
+                chr.encode_utf8(&mut utf8[written..]);
+                written += chr.len_utf8();
+            }
+            Err(_) => {
+                // We can't really do any better than forget all data and return an error.
+                return Err(io::Error::new(io::ErrorKind::InvalidData,
+                    "Windows stdin in console mode does not support non-UTF-16 input; \
+                    encountered unpaired surrogate"))
+            }
+        }
+    }
+    Ok(written)
 }
 
 impl Stdout {
