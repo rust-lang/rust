@@ -115,7 +115,7 @@ pub struct FixtureEntry {
 
 /// Parses text which looks like this:
 ///
-///  ```rust,ignore
+///  ```not_rust
 ///  //- some meta
 ///  line 1
 ///  line 2

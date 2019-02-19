@@ -402,36 +402,6 @@ fn name_res_works_for_broken_modules() {
 }
 
 #[test]
-#[ignore]
-fn item_map_contains_items_from_expansions() {
-    let (item_map, module_id) = item_map(
-        "
-        //- /lib.rs
-        mod foo;
-
-        use crate::foo::bar::Baz;
-        <|>
-
-        //- /foo/mod.rs
-        pub mod bar;
-
-        //- /foo/bar.rs
-        salsa::query_group! {
-            trait Baz {}
-        }
-    ",
-    );
-    check_module_item_map(
-        &item_map,
-        module_id,
-        "
-            Baz: t
-            foo: t
-        ",
-    );
-}
-
-#[test]
 fn item_map_using_self() {
     let (item_map, module_id) = item_map(
         "

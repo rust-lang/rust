@@ -4,7 +4,7 @@ use ra_ide_api::{
     AnalysisChange, CrateGraph, Edition::Edition2018, Query, NavigationTarget,
     ReferenceSearchResult,
 };
-use ra_syntax::{TextRange, SmolStr};
+use ra_syntax::SmolStr;
 
 #[test]
 fn test_unresolved_module_diagnostic() {
@@ -137,21 +137,4 @@ mod foo {
 
     assert_eq!(s.name(), "FooInner");
     assert_eq!(s.container_name(), Some(&SmolStr::new("foo")));
-}
-
-#[test]
-#[ignore]
-fn world_symbols_include_stuff_from_macros() {
-    let (analysis, _) = single_file(
-        "
-salsa::query_group! {
-pub trait HirDatabase: SyntaxDatabase {}
-}
-    ",
-    );
-
-    let mut symbols = analysis.symbol_search(Query::new("Hir".into())).unwrap();
-    let s = symbols.pop().unwrap();
-    assert_eq!(s.name(), "HirDatabase");
-    assert_eq!(s.full_range(), TextRange::from_to(33.into(), 44.into()));
 }
