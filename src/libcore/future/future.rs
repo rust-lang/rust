@@ -92,7 +92,7 @@ pub trait Future {
     fn poll(self: Pin<&mut Self>, waker: &Waker) -> Poll<Self::Output>;
 }
 
-impl<'a, F: ?Sized + Future + Unpin> Future for &'a mut F {
+impl<F: ?Sized + Future + Unpin> Future for &mut F {
     type Output = F::Output;
 
     fn poll(mut self: Pin<&mut Self>, waker: &Waker) -> Poll<Self::Output> {

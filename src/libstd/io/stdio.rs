@@ -312,7 +312,7 @@ impl Read for Stdin {
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<'a> Read for StdinLock<'a> {
+impl Read for StdinLock<'_> {
     fn read(&mut self, buf: &mut [u8]) -> io::Result<usize> {
         self.inner.read(buf)
     }
@@ -323,13 +323,13 @@ impl<'a> Read for StdinLock<'a> {
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<'a> BufRead for StdinLock<'a> {
+impl BufRead for StdinLock<'_> {
     fn fill_buf(&mut self) -> io::Result<&[u8]> { self.inner.fill_buf() }
     fn consume(&mut self, n: usize) { self.inner.consume(n) }
 }
 
 #[stable(feature = "std_debug", since = "1.16.0")]
-impl<'a> fmt::Debug for StdinLock<'a> {
+impl fmt::Debug for StdinLock<'_> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         f.pad("StdinLock { .. }")
     }
@@ -485,7 +485,7 @@ impl Write for Stdout {
     }
 }
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<'a> Write for StdoutLock<'a> {
+impl Write for StdoutLock<'_> {
     fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
         self.inner.borrow_mut().write(buf)
     }
@@ -495,7 +495,7 @@ impl<'a> Write for StdoutLock<'a> {
 }
 
 #[stable(feature = "std_debug", since = "1.16.0")]
-impl<'a> fmt::Debug for StdoutLock<'a> {
+impl fmt::Debug for StdoutLock<'_> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         f.pad("StdoutLock { .. }")
     }
@@ -638,7 +638,7 @@ impl Write for Stderr {
     }
 }
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<'a> Write for StderrLock<'a> {
+impl Write for StderrLock<'_> {
     fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
         self.inner.borrow_mut().write(buf)
     }
@@ -648,7 +648,7 @@ impl<'a> Write for StderrLock<'a> {
 }
 
 #[stable(feature = "std_debug", since = "1.16.0")]
-impl<'a> fmt::Debug for StderrLock<'a> {
+impl fmt::Debug for StderrLock<'_> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         f.pad("StderrLock { .. }")
     }

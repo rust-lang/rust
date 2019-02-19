@@ -1200,16 +1200,16 @@ unsafe impl<T: Send> Send for LinkedList<T> {}
 unsafe impl<T: Sync> Sync for LinkedList<T> {}
 
 #[stable(feature = "rust1", since = "1.0.0")]
-unsafe impl<'a, T: Sync> Send for Iter<'a, T> {}
+unsafe impl<T: Sync> Send for Iter<'_, T> {}
 
 #[stable(feature = "rust1", since = "1.0.0")]
-unsafe impl<'a, T: Sync> Sync for Iter<'a, T> {}
+unsafe impl<T: Sync> Sync for Iter<'_, T> {}
 
 #[stable(feature = "rust1", since = "1.0.0")]
-unsafe impl<'a, T: Send> Send for IterMut<'a, T> {}
+unsafe impl<T: Send> Send for IterMut<'_, T> {}
 
 #[stable(feature = "rust1", since = "1.0.0")]
-unsafe impl<'a, T: Sync> Sync for IterMut<'a, T> {}
+unsafe impl<T: Sync> Sync for IterMut<'_, T> {}
 
 #[cfg(test)]
 mod tests {
