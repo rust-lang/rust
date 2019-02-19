@@ -7,7 +7,6 @@
 //! [arc]: struct.Arc.html
 
 use core::any::Any;
-use core::sync::atomic;
 use core::sync::atomic::Ordering::{Acquire, Relaxed, Release, SeqCst};
 use core::borrow;
 use core::fmt;
@@ -28,6 +27,26 @@ use crate::boxed::Box;
 use crate::rc::is_dangling;
 use crate::string::String;
 use crate::vec::Vec;
+
+// Since the current `liballoc` is not a superset of `libcore`,
+// using `pub use core::sync::atomic;` will fail with some link errors.
+// If `liballoc` becomes a superset of `libcore`, replace this with
+// `pub use core::sync::atomic;`.
+/// Atomic types
+///
+/// Atomic types provide primitive shared-memory communication between
+/// threads, and are the building blocks of other concurrent
+/// types.
+///
+/// See [`std::sync::atomic`][atomic] for more details.
+///
+/// [atomic]: ../../../std/sync/atomic/index.html
+#[stable(feature = "rust1", since = "1.0.0")]
+pub mod atomic {
+    #[stable(feature = "rust1", since = "1.0.0")]
+    #[doc(inline)]
+    pub use core::sync::atomic::*;
+}
 
 /// A soft limit on the amount of references that may be made to an `Arc`.
 ///
