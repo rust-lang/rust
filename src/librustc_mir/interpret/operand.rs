@@ -10,6 +10,7 @@ use rustc::mir::interpret::{
     GlobalId, AllocId, InboundsCheck,
     ConstValue, Pointer, Scalar,
     EvalResult, EvalErrorKind,
+    sign_extend, truncate,
 };
 use super::{
     EvalContext, Machine, AllocMap, Allocation, AllocationExtra,
@@ -633,20 +634,17 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> 
                     Err(_) => return err!(InvalidDiscriminant(raw_discr.erase_tag())),
                 };
                 let real_discr = if discr_val.layout.ty.is_signed() {
-                    let i = bits_discr as i128;
                     // going from layout tag type to typeck discriminant type
                     // requires first sign extending with the layout discriminant
-                    let shift = 128 - discr_val.layout.size.bits();
-                    let sexted = (i << shift) >> shift;
+                    let sexted = sign_extend(bits_discr, discr_val.layout.size) as i128;
                     // and then zeroing with the typeck discriminant type
                     let discr_ty = rval.layout.ty
                         .ty_adt_def().expect("tagged layout corresponds to adt")
                         .repr
                         .discr_type();
-                    let discr_ty = layout::Integer::from_attr(self, discr_ty);
-                    let shift = 128 - discr_ty.size().bits();
+                    let size = layout::Integer::from_attr(self, discr_ty).size();
                     let truncatee = sexted as u128;
-                    (truncatee << shift) >> shift
+                    truncate(truncatee, size)
                 } else {
                     bits_discr
                 };
