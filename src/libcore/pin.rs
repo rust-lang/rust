@@ -24,7 +24,7 @@
 //! self-references and other special behaviors that are only possible for unmovable
 //! values.
 //!
-//! It is worth reiterating that [`Pin`] does *not* change the fact that the Rust compiler
+//! It is worth reiterating that [`Pin`] does *not* change the fact that a Rust compiler
 //! considers all types movable.  [`mem::swap`] remains callable for any `T`.  Instead, `Pin`
 //! prevents certain *values* (pointed to by pointers wrapped in `Pin`) from being
 //! moved by making it impossible to call methods like [`mem::swap`] on them.
@@ -39,7 +39,7 @@
 //!
 //! Note that pinning and `Unpin` only affect the pointed-to type, not the pointer
 //! type itself that got wrapped in `Pin`. For example, whether or not `Box<T>` is
-//! `Unpin` has no affect on the behavior of `Pin<Box<T>>` (here, `T` is the
+//! `Unpin` has no effect on the behavior of `Pin<Box<T>>` (here, `T` is the
 //! pointed-to type).
 //!
 //! # Examples
@@ -110,8 +110,8 @@
 //!
 //! The purpose of this guarantee is to allow data structures that store pointers
 //! to pinned data. For example, in an intrusive doubly-linked list, every element
-//! will have pointers to its predecessor and successor in the list. Every element
-//! will be pinned, because moving the elements around would invalidate the pointers.
+//! has pointers to its predecessor and successor in the list. Every element
+//! must also be pinned, because moving the elements around would invalidate the pointers.
 //! Moreover, the `Drop` implementation of a linked list element will patch the pointers
 //! of its predecessor and successor to remove itself from the list. Clearly, if an element
 //! could be deallocated or overwritten without calling `drop`, the pointers into it
@@ -119,7 +119,7 @@
 //!
 //! Notice that this guarantee does *not* mean that memory does not leak! It is still
 //! completely okay not to ever call `drop` on a pinned element (e.g., you can still
-//! call [`mem::forget`] on a `Pin<Box<T>>`). What you may not do is free or reuse the storage
+//! call [`mem::forget`] on a `Pin<Box<T>>`). However you may *not* then free or reuse the storage
 //! without calling `drop`.
 //!
 //! # `Drop` implementation
@@ -127,8 +127,8 @@
 //! If your type relies on pinning (for example, because it contains internal
 //! references, or because you are implementing something like the intrusive
 //! doubly-linked list mentioned in the previous section), you have to be careful
-//! when implementing `Drop`: notice that `drop` takes `&mut self`, but this
-//! will be called even if your type was previously pinned! It is as if the
+//! when implementing `Drop`. The `drop` function takes `&mut self`, but this
+//! is called *even if your type was previously pinned*! It is as if the
 //! compiler automatically called `get_unchecked_mut`. This can never cause
 //! a problem in safe code because implementing a type that relies on pinning
 //! requires unsafe code, but be aware that deciding to make use of pinning
@@ -140,7 +140,7 @@
 //! # Projections and Structural Pinning
 //!
 //! One interesting question arises when considering pinning and "container types" --
-//! types such as `Vec` or `Box` but also `RefCell`; types that serve as wrappers
+//! types such as `Vec`, `Box`, or `RefCell`; types that serve as wrappers
 //! around other types.  When can such a type have a "projection" operation, an
 //! operation with type `fn(Pin<&[mut] Container<T>>) -> Pin<&[mut] T>`?
 //! This does not just apply to generic container types, even for normal structs
@@ -170,7 +170,7 @@
 //!    moved around when they are dropped to properly align them, which is in conflict with
 //!    claiming that the fields are pinned when your struct is.
 //! 4. You must make sure that you uphold the [`Drop` guarantee][drop-guarantee]:
-//!    you must make sure that, once your container is pinned, the memory containing the
+//!    once your container is pinned, the memory that contains the
 //!    content is not overwritten or deallocated without calling the content's destructors.
 //!    This can be tricky, as witnessed by `VecDeque`: the destructor of `VecDeque` can fail
 //!    to call `drop` on all elements if one of the destructors panics. This violates the
@@ -186,9 +186,9 @@
 //!    which can be used with [`mem::swap`].
 //!
 //! On the other hand, if you decide *not* to offer any pinning projections, you
-//! are free to do `impl<T> Unpin for Container<T>`.  In the standard library,
-//! we do this for all pointer types: `Box<T>: Unpin` holds for all `T`.
-//! It makes a lot of sense to do this for pointer types, because moving the `Box<T>`
+//! are free to `impl<T> Unpin for Container<T>`.  In the standard library,
+//! this is done for all pointer types: `Box<T>: Unpin` holds for all `T`.
+//! It makes sense to do this for pointer types, because moving the `Box<T>`
 //! does not actually move the `T`: the `Box<T>` can be freely movable even if the `T`
 //! is not. In fact, even `Pin<Box<T>>` and `Pin<&mut T>` are always `Unpin` themselves,
 //! for the same reason.
