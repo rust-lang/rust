@@ -1187,9 +1187,13 @@ mod tests {
     #[test]
     fn double_bind() {
         each_ip(&mut |addr| {
-            let _listener = t!(TcpListener::bind(&addr));
+            let listener1 = t!(TcpListener::bind(&addr));
             match TcpListener::bind(&addr) {
-                Ok(..) => panic!(),
+                Ok(listener2) => panic!(
+                    "This system (perhaps due to options set by TcpListener::bind) \
+                     permits double binding: {:?} and {:?}",
+                    listener1, listener2
+                ),
                 Err(e) => {
                     assert!(e.kind() == ErrorKind::ConnectionRefused ||
                             e.kind() == ErrorKind::Other ||
