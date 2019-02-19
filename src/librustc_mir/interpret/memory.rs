@@ -20,7 +20,7 @@ use syntax::ast::Mutability;
 use super::{
     Pointer, AllocId, Allocation, GlobalId, AllocationExtra,
     EvalResult, Scalar, EvalErrorKind, AllocKind, PointerArithmetic,
-    Machine, AllocMap, MayLeak, ErrorHandled, InboundsCheck, UndefMask,
+    Machine, AllocMap, MayLeak, ErrorHandled, InboundsCheck,
 };
 
 #[derive(Debug, PartialEq, Eq, Copy, Clone, Hash)]
@@ -789,38 +789,58 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> Memory<'a, 'mir, 'tcx, M> {
         // The bits have to be saved locally before writing to dest in case src and dest overlap.
         assert_eq!(size.bytes() as usize as u64, size.bytes());
 
-        let undef_mask = self.get(src.alloc_id)?.undef_mask.clone();
-        let get = |i| undef_mask.get(src.offset + Size::from_bytes(i));
-        let dest_allocation = self.get_mut(dest.alloc_id)?;
+        let undef_mask = &self.get(src.alloc_id)?.undef_mask;
 
+        // a precomputed cache for ranges of defined/undefined bits
+        // 0000010010001110 will become
+        // [5, 1, 2, 1, 3, 3, 1]
+        // where each element toggles the state
+        let mut ranges = smallvec::SmallVec::<[u64; 1]>::new();
+        let first = undef_mask.get(src.offset);
+        let mut cur_len = 1;
+        let mut cur = first;
+        for i in 1..size.bytes() {
+            // FIXME: optimize to bitshift the current undef block's bits and read the top bit
+            if undef_mask.get(src.offset + Size::from_bytes(i)) == cur {
+                cur_len += 1;
+            } else {
+                ranges.push(cur_len);
+                cur_len = 1;
+                cur = !cur;
+            }
+        }
+
+        // now fill in all the data
+        let dest_allocation = self.get_mut(dest.alloc_id)?;
         // an optimization where we can just overwrite an entire range of definedness bits if
         // they are going to be uniformly `1` or `0`.
-        if size.bytes() * repeat > UndefMask::BLOCK_SIZE {
-            let first = undef_mask.get(src.offset);
-            // check that all bits are the same as the first bit
-            // FIXME(oli-obk): consider making this a function on `UndefMask` and optimize it, too
-            if (1..size.bytes()).all(|i| get(i) == first) {
-                dest_allocation.undef_mask.set_range(
-                    dest.offset,
-                    dest.offset + size * repeat,
-                    first,
-                );
-                return Ok(())
-            }
+        if ranges.is_empty() {
+            dest_allocation.undef_mask.set_range(
+                dest.offset,
+                dest.offset + size * repeat,
+                first,
+            );
+            return Ok(())
         }
 
-        // the default path
-        for i in 0..size.bytes() {
-            let defined = get(i);
+        // remember to fill in the trailing bits
+        ranges.push(cur_len);
 
-            for j in 0..repeat {
-                dest_allocation.undef_mask.set(
-                    dest.offset + Size::from_bytes(i + (size.bytes() * j)),
-                    defined
+        for mut j in 0..repeat {
+            j *= size.bytes();
+            j += dest.offset.bytes();
+            let mut cur = first;
+            for range in &ranges {
+                let old_j = j;
+                j += range;
+                dest_allocation.undef_mask.set_range_inbounds(
+                    Size::from_bytes(old_j),
+                    Size::from_bytes(j),
+                    cur,
                 );
+                cur = !cur;
             }
         }
-
         Ok(())
     }
 }
