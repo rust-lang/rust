@@ -937,20 +937,22 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
             return None;
         }
 
-        let (
-            ty::SubtypePredicate {
-                a_is_expected,
-                a,
-                b,
-            },
-            _,
-        ) = self.replace_bound_vars_with_placeholders(predicate);
+        Some(self.commit_if_ok(|_snapshot| {
+            let (
+                ty::SubtypePredicate {
+                    a_is_expected,
+                    a,
+                    b,
+                },
+                _,
+            ) = self.replace_bound_vars_with_placeholders(predicate);
 
-        Some(
-            self.at(cause, param_env)
-                .sub_exp(a_is_expected, a, b)
-                .map(|ok| ok.unit()),
-        )
+            Ok(
+                self.at(cause, param_env)
+                    .sub_exp(a_is_expected, a, b)?
+                    .unit(),
+            )
+        }))
     }
 
     pub fn region_outlives_predicate(
