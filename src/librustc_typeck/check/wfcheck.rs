@@ -6,6 +6,7 @@ use rustc::traits::{self, ObligationCauseCode};
 use rustc::ty::{self, Lift, Ty, TyCtxt, TyKind, GenericParamDefKind, TypeFoldable, ToPredicate};
 use rustc::ty::subst::{Subst, InternalSubsts};
 use rustc::util::nodemap::{FxHashSet, FxHashMap};
+use rustc::mir::interpret::ConstValue;
 use rustc::middle::lang_items;
 use rustc::infer::opaque_types::may_define_existential_type;
 
@@ -436,7 +437,7 @@ fn check_where_clauses<'a, 'gcx, 'fcx, 'tcx>(
     // struct Foo<T = Vec<[u32]>> { .. }
     // Here the default `Vec<[u32]>` is not WF because `[u32]: Sized` does not hold.
     for param in &generics.params {
-        if let GenericParamDefKind::Type {..} = param.kind {
+        if let GenericParamDefKind::Type { .. } = param.kind {
             if is_our_default(&param) {
                 let ty = fcx.tcx.type_of(param.def_id);
                 // ignore dependent defaults -- that is, where the default of one type
@@ -464,7 +465,7 @@ fn check_where_clauses<'a, 'gcx, 'fcx, 'tcx>(
                 // All regions are identity.
                 fcx.tcx.mk_param_from_def(param)
             }
-            GenericParamDefKind::Type {..} => {
+            GenericParamDefKind::Type { .. } => {
                 // If the param has a default,
                 if is_our_default(param) {
                     let default_ty = fcx.tcx.type_of(param.def_id);
@@ -475,6 +476,10 @@ fn check_where_clauses<'a, 'gcx, 'fcx, 'tcx>(
                     }
                 }
                 // Mark unwanted params as err.
+                fcx.tcx.types.err.into()
+            }
+            GenericParamDefKind::Const => {
+                // FIXME(const_generics:defaults)
                 fcx.tcx.types.err.into()
             }
         }
@@ -496,6 +501,16 @@ fn check_where_clauses<'a, 'gcx, 'fcx, 'tcx>(
 
             fn visit_region(&mut self, _: ty::Region<'tcx>) -> bool {
                 true
+            }
+
+            fn visit_const(&mut self, c: &'tcx ty::LazyConst<'tcx>) -> bool {
+                if let ty::LazyConst::Evaluated(ty::Const {
+                    val: ConstValue::Param(param),
+                    ..
+                }) = c {
+                    self.params.insert(param.index);
+                }
+                c.super_visit_with(self)
             }
         }
         let mut param_count = CountParams::default();
@@ -617,11 +632,10 @@ fn check_existential_types<'a, 'fcx, 'gcx, 'tcx>(
                         for (subst, param) in substs.iter().zip(&generics.params) {
                             match subst.unpack() {
                                 ty::subst::UnpackedKind::Type(ty) => match ty.sty {
-                                    ty::Param(..) => {},
+                                    ty::Param(..) => {}
                                     // prevent `fn foo() -> Foo<u32>` from being defining
                                     _ => {
-                                        tcx
-                                            .sess
+                                        tcx.sess
                                             .struct_span_err(
                                                 span,
                                                 "non-defining existential type use \
@@ -636,8 +650,9 @@ fn check_existential_types<'a, 'fcx, 'gcx, 'tcx>(
                                                 ),
                                             )
                                             .emit();
-                                    },
-                                }, // match ty
+                                    }
+                                }
+
                                 ty::subst::UnpackedKind::Lifetime(region) => {
                                     let param_span = tcx.def_span(param.def_id);
                                     if let ty::ReStatic = region {
@@ -658,7 +673,31 @@ fn check_existential_types<'a, 'fcx, 'gcx, 'tcx>(
                                     } else {
                                         seen.entry(region).or_default().push(param_span);
                                     }
-                                },
+                                }
+
+                                ty::subst::UnpackedKind::Const(ct) => match ct {
+                                    ty::LazyConst::Evaluated(ty::Const {
+                                        val: ConstValue::Param(_),
+                                        ..
+                                    }) => {}
+                                    _ => {
+                                        tcx.sess
+                                            .struct_span_err(
+                                                span,
+                                                "non-defining existential type use \
+                                                in defining scope",
+                                            )
+                                            .span_note(
+                                                tcx.def_span(param.def_id),
+                                                &format!(
+                                                    "used non-generic const {} for \
+                                                    generic parameter",
+                                                    ty,
+                                                ),
+                                            )
+                                            .emit();
+                                    }
+                                }
                             } // match subst
                         } // for (subst, param)
                         for (_, spans) in seen {
@@ -942,7 +981,9 @@ fn reject_shadowing_parameters(tcx: TyCtxt<'_, '_, '_>, def_id: DefId) {
     let parent = tcx.generics_of(generics.parent.unwrap());
     let impl_params: FxHashMap<_, _> = parent.params.iter().flat_map(|param| match param.kind {
         GenericParamDefKind::Lifetime => None,
-        GenericParamDefKind::Type {..} => Some((param.name, param.def_id)),
+        GenericParamDefKind::Type { .. } | GenericParamDefKind::Const => {
+            Some((param.name, param.def_id))
+        }
     }).collect();
 
     for method_param in &generics.params {
