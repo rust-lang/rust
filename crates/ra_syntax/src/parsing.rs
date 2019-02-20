@@ -4,7 +4,7 @@ mod builder;
 mod lexer;
 mod event;
 mod input;
-mod parser_api;
+mod parser;
 mod grammar;
 mod reparsing;
 
@@ -14,7 +14,7 @@ use crate::{
         builder::GreenBuilder,
         input::ParserInput,
         event::EventProcessor,
-        parser_api::Parser,
+        parser::Parser,
     },
     syntax_node::GreenNode,
 };

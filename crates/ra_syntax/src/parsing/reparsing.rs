@@ -6,7 +6,7 @@ use crate::{
     parsing::{
         grammar, parse_with,
         builder::GreenBuilder,
-        parser_api::Parser,
+        parser::Parser,
         lexer::{tokenize, Token},
     }
 };
