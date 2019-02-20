@@ -2408,6 +2408,27 @@ pub enum Foo {}
 pub enum Foo {}
 ```
 
+## `inline_attribute_width`
+
+Write an item and its attribute on the same line if their combined width is below a threshold
+
+- **Default value**: 0
+- **Possible values**: any positive integer
+- **Stable**: No (tracking issue: #3343)
+
+### Example
+
+#### `0` (default):
+```rust
+#[cfg(feature = "alloc")]
+use core::slice;
+```
+
+#### `50`:
+```rust
+#[cfg(feature = "alloc")] use core::slice;
+```
+
 ## `emit_mode`
 
 Internal option
