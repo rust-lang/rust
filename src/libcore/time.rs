@@ -60,18 +60,50 @@ pub struct Duration {
 
 impl Duration {
     /// The duration of one second.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use std::time::Duration;
+    ///
+    /// assert_eq!(Duration::SECOND, Duration::from_secs(1));
+    /// ```
     #[unstable(feature = "duration_constants", issue = "57391")]
     pub const SECOND: Duration = Duration::from_secs(1);
 
     /// The duration of one millisecond.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use std::time::Duration;
+    ///
+    /// assert_eq!(Duration::MILLISECOND, Duration::from_millis(1));
+    /// ```
     #[unstable(feature = "duration_constants", issue = "57391")]
     pub const MILLISECOND: Duration = Duration::from_millis(1);
 
     /// The duration of one microsecond.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use std::time::Duration;
+    ///
+    /// assert_eq!(Duration::MICROSECOND, Duration::from_micros(1));
+    /// ```
     #[unstable(feature = "duration_constants", issue = "57391")]
     pub const MICROSECOND: Duration = Duration::from_micros(1);
 
     /// The duration of one nanosecond.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use std::time::Duration;
+    ///
+    /// assert_eq!(Duration::NANOSECOND, Duration::from_nanos(1));
+    /// ```
     #[unstable(feature = "duration_constants", issue = "57391")]
     pub const NANOSECOND: Duration = Duration::from_nanos(1);
 
