@@ -5,6 +5,9 @@ use crate::passes::Pass;
 
 use syntax::attr;
 
+use std::ops::Sub;
+use std::fmt;
+
 pub const CALCULATE_DOC_COVERAGE: Pass = Pass {
     name: "calculate-doc-coverage",
     pass: calculate_doc_coverage,
@@ -15,29 +18,66 @@ fn calculate_doc_coverage(krate: clean::Crate, _: &DocContext<'_, '_, '_>) -> cl
     let mut calc = CoverageCalculator::default();
     let krate = calc.fold_crate(krate);
 
-    let total_minus_traits = calc.total - calc.total_trait_impls;
-    let docs_minus_traits = calc.with_docs - calc.trait_impls_with_docs;
+    let non_traits = calc.items - calc.trait_impl_items;
 
-    print!("Rustdoc found {}/{} items with documentation", calc.with_docs, calc.total);
-    println!(" ({}/{} not counting trait impls)", docs_minus_traits, total_minus_traits);
+    print!("Rustdoc found {} items with documentation", calc.items);
+    println!(" ({} not counting trait impls)", non_traits);
 
-    if calc.total > 0 {
-        let percentage = (calc.with_docs as f64 * 100.0) / calc.total as f64;
-        let percentage_minus_traits =
-            (docs_minus_traits as f64 * 100.0) / total_minus_traits as f64;
+    if let (Some(percentage), Some(percentage_non_traits)) =
+        (calc.items.percentage(), non_traits.percentage())
+    {
         println!("    Score: {:.1}% ({:.1}% not counting trait impls)",
-                 percentage, percentage_minus_traits);
+                 percentage, percentage_non_traits);
     }
 
     krate
 }
 
+#[derive(Default, Copy, Clone)]
+struct ItemCount {
+    total: u64,
+    with_docs: u64,
+}
+
+impl ItemCount {
+    fn count_item(&mut self, has_docs: bool) {
+        self.total += 1;
+
+        if has_docs {
+            self.with_docs += 1;
+        }
+    }
+
+    fn percentage(&self) -> Option<f64> {
+        if self.total > 0 {
+            Some((self.with_docs as f64 * 100.0) / self.total as f64)
+        } else {
+            None
+        }
+    }
+}
+
+impl Sub for ItemCount {
+    type Output = Self;
+
+    fn sub(self, rhs: Self) -> Self {
+        ItemCount {
+            total: self.total - rhs.total,
+            with_docs: self.with_docs - rhs.with_docs,
+        }
+    }
+}
+
+impl fmt::Display for ItemCount {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{}/{}", self.with_docs, self.total)
+    }
+}
+
 #[derive(Default)]
 struct CoverageCalculator {
-    total: usize,
-    with_docs: usize,
-    total_trait_impls: usize,
-    trait_impls_with_docs: usize,
+    items: ItemCount,
+    trait_impl_items: ItemCount,
 }
 
 impl fold::DocFolder for CoverageCalculator {
@@ -65,24 +105,15 @@ impl fold::DocFolder for CoverageCalculator {
                     if let Some(ref tr) = i.trait_ {
                         debug!("counting impl {:#} for {:#}", tr, i.for_);
 
-                        self.total += 1;
-                        if has_docs {
-                            self.with_docs += 1;
-                        }
+                        self.items.count_item(has_docs);
 
                         // trait impls inherit their docs from the trait definition, so documenting
                         // them can be considered optional
 
-                        self.total_trait_impls += 1;
-                        if has_docs {
-                            self.trait_impls_with_docs += 1;
-                        }
+                        self.trait_impl_items.count_item(has_docs);
 
                         for it in &i.items {
-                            self.total_trait_impls += 1;
-                            if !it.attrs.doc_strings.is_empty() {
-                                self.trait_impls_with_docs += 1;
-                            }
+                            self.trait_impl_items.count_item(!it.attrs.doc_strings.is_empty());
                         }
                     } else {
                         // inherent impls *can* be documented, and those docs show up, but in most
@@ -92,10 +123,7 @@ impl fold::DocFolder for CoverageCalculator {
                     }
                 } else {
                     debug!("counting {} {:?}", i.type_(), i.name);
-                    self.total += 1;
-                    if has_docs {
-                        self.with_docs += 1;
-                    }
+                    self.items.count_item(has_docs);
                 }
             }
         }
