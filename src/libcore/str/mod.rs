@@ -3970,8 +3970,6 @@ impl str {
     /// Note: only extended grapheme codepoints that begin the string will be
     /// escaped.
     ///
-    /// [`char::escape_debug`]: ../std/primitive.char.html#method.escape_debug
-    ///
     /// # Examples
     ///
     /// As an iterator:
@@ -4015,8 +4013,6 @@ impl str {
 
     /// Return an iterator that escapes each char in `self` with [`char::escape_default`].
     ///
-    /// [`char::escape_default`]: ../std/primitive.char.html#method.escape_default
-    ///
     /// # Examples
     ///
     /// As an iterator:
@@ -4052,8 +4048,6 @@ impl str {
     }
 
     /// Return an iterator that escapes each char in `self` with [`char::escape_unicode`].
-    ///
-    /// [`char::escape_unicode`]: ../std/primitive.char.html#method.escape_unicode
     ///
     /// # Examples
     ///
