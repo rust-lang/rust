@@ -18,7 +18,7 @@ use crate::{
 
 use crate::SyntaxKind::{self, EOF, TOMBSTONE};
 
-pub(super) trait Sink {
+pub(super) trait TreeSink {
     type Tree;
 
     /// Adds new leaf to the current branch.
@@ -40,7 +40,7 @@ pub(super) trait Sink {
 }
 
 /// Parse a sequence of tokens into the representative node tree
-pub(super) fn parse_with<S: Sink>(
+pub(super) fn parse_with<S: TreeSink>(
     sink: S,
     text: &str,
     tokens: &[Token],

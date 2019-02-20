@@ -1,5 +1,5 @@
 use crate::{
-    parsing::parser_impl::Sink,
+    parsing::parser_impl::TreeSink,
     syntax_node::{GreenNode, RaTypes},
     SmolStr, SyntaxKind, SyntaxError,
 };
@@ -17,7 +17,7 @@ impl GreenBuilder {
     }
 }
 
-impl Sink for GreenBuilder {
+impl TreeSink for GreenBuilder {
     type Tree = (GreenNode, Vec<SyntaxError>);
 
     fn leaf(&mut self, kind: SyntaxKind, text: SmolStr) {

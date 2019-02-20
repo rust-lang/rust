@@ -3,7 +3,7 @@
 //! parser, so as to allow to evolve the tree representation
 //! and the parser algorithm independently.
 //!
-//! The `Sink` trait is the bridge between the parser and the
+//! The `TreeSink` trait is the bridge between the parser and the
 //! tree builder: the parser produces a stream of events like
 //! `start node`, `finish node`, and `FileBuilder` converts
 //! this stream to a real tree.
@@ -20,7 +20,7 @@ use crate::{
     },
     parsing::{
         lexer::Token,
-        parser_impl::Sink,
+        parser_impl::TreeSink,
     },
 };
 
@@ -93,7 +93,7 @@ impl Event {
     }
 }
 
-pub(super) struct EventProcessor<'a, S: Sink> {
+pub(super) struct EventProcessor<'a, S: TreeSink> {
     sink: S,
     text_pos: TextUnit,
     text: &'a str,
@@ -102,7 +102,7 @@ pub(super) struct EventProcessor<'a, S: Sink> {
     events: &'a mut [Event],
 }
 
-impl<'a, S: Sink> EventProcessor<'a, S> {
+impl<'a, S: TreeSink> EventProcessor<'a, S> {
     pub(super) fn new(
         sink: S,
         text: &'a str,
