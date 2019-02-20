@@ -74,6 +74,7 @@ for ty::subst::UnpackedKind<'gcx> {
         match self {
             ty::subst::UnpackedKind::Lifetime(lt) => lt.hash_stable(hcx, hasher),
             ty::subst::UnpackedKind::Type(ty) => ty.hash_stable(hcx, hasher),
+            ty::subst::UnpackedKind::Const(ct) => ct.hash_stable(hcx, hasher),
         }
     }
 }
@@ -131,6 +132,15 @@ impl<'a> HashStable<StableHashingContext<'a>> for ty::RegionVid {
                                           hcx: &mut StableHashingContext<'a>,
                                           hasher: &mut StableHasher<W>) {
         self.index().hash_stable(hcx, hasher);
+    }
+}
+
+impl<'gcx, 'tcx> HashStable<StableHashingContext<'gcx>> for ty::ConstVid<'tcx> {
+    #[inline]
+    fn hash_stable<W: StableHasherResult>(&self,
+                                          hcx: &mut StableHashingContext<'gcx>,
+                                          hasher: &mut StableHasher<W>) {
+        self.index.hash_stable(hcx, hasher);
     }
 }
 
@@ -297,6 +307,14 @@ impl<'a> HashStable<StableHashingContext<'a>> for ty::VariantFlags {
     }
 }
 
+impl_stable_hash_for!(
+    impl<'tcx> for enum ty::InferConst<'tcx> [ ty::InferConst ] {
+        Var(vid),
+        Fresh(i),
+        Canonical(debruijn, var),
+    }
+);
+
 impl_stable_hash_for!(enum ty::VariantDiscr {
     Explicit(def_id),
     Relative(distance)
@@ -310,11 +328,14 @@ impl_stable_hash_for!(struct ty::FieldDef {
 
 impl_stable_hash_for!(
     impl<'tcx> for enum mir::interpret::ConstValue<'tcx> [ mir::interpret::ConstValue ] {
+        Param(param),
+        Infer(infer),
         Scalar(val),
         Slice(a, b),
         ByRef(ptr, alloc),
     }
 );
+
 impl_stable_hash_for!(struct crate::mir::interpret::RawConst<'tcx> {
     alloc_id,
     ty,
@@ -518,6 +539,7 @@ impl_stable_hash_for!(struct ty::GenericParamDef {
 impl_stable_hash_for!(enum ty::GenericParamDefKind {
     Lifetime,
     Type { has_default, object_lifetime_default, synthetic },
+    Const,
 });
 
 impl_stable_hash_for!(
@@ -735,6 +757,11 @@ for ty::FloatVid
         bug!("ty::TyKind::hash_stable() - can't hash a FloatVid {:?}.", *self)
     }
 }
+
+impl_stable_hash_for!(struct ty::ParamConst {
+    index,
+    name
+});
 
 impl_stable_hash_for!(struct ty::ParamTy {
     idx,
