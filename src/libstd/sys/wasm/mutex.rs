@@ -43,27 +43,3 @@ impl Mutex {
     pub unsafe fn destroy(&self) {
     }
 }
-
-// All empty stubs because wasm has no threads yet, so lock acquisition always
-// succeeds.
-pub struct ReentrantMutex {
-}
-
-impl ReentrantMutex {
-    pub unsafe fn uninitialized() -> ReentrantMutex {
-        ReentrantMutex { }
-    }
-
-    pub unsafe fn init(&mut self) {}
-
-    pub unsafe fn lock(&self) {}
-
-    #[inline]
-    pub unsafe fn try_lock(&self) -> bool {
-        true
-    }
-
-    pub unsafe fn unlock(&self) {}
-
-    pub unsafe fn destroy(&self) {}
-}
