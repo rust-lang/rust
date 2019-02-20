@@ -1,6 +1,5 @@
 #![unstable(issue = "0", feature = "windows_stdio")]
 
-use cell::Cell;
 use char::decode_utf16;
 use cmp;
 use io;
@@ -13,7 +12,7 @@ use sys::handle::Handle;
 // Don't cache handles but get them fresh for every read/write. This allows us to track changes to
 // the value over time (such as if a process calls `SetStdHandle` while it's running). See #40490.
 pub struct Stdin {
-    high_surrogate: Cell<u16>,
+    surrogate: u16,
 }
 pub struct Stdout;
 pub struct Stderr;
@@ -128,10 +127,12 @@ fn write_u16s(handle: c::HANDLE, data: &[u16]) -> io::Result<usize> {
 
 impl Stdin {
     pub fn new() -> io::Result<Stdin> {
-        Ok(Stdin { high_surrogate: Cell::new(0) })
+        Ok(Stdin { surrogate: 0 })
     }
+}
 
-    pub fn read(&self, buf: &mut [u8]) -> io::Result<usize> {
+impl io::Read for Stdin {
+    fn read(&mut self, buf: &mut [u8]) -> io::Result<usize> {
         let handle = get_handle(c::STD_INPUT_HANDLE)?;
         if !is_console(handle) {
             let handle = Handle::new(handle);
@@ -153,40 +154,44 @@ impl Stdin {
         // we can read at most a third of `buf.len()` chars and uphold the guarantee no data gets
         // lost.
         let amount = cmp::min(buf.len() / 3, utf16_buf.len());
-        let read = self.read_u16s_fixup_surrogates(handle, &mut utf16_buf, amount)?;
+        let read = read_u16s_fixup_surrogates(handle, &mut utf16_buf, amount, &mut self.surrogate)?;
 
         utf16_to_utf8(&utf16_buf[..read], buf)
     }
+}
 
-    // We assume that if the last `u16` is an unpaired surrogate they got sliced apart by our
-    // buffer size, and keep it around for the next read hoping to put them together.
-    // This is a best effort, and may not work if we are not the only reader on Stdin.
-    fn read_u16s_fixup_surrogates(&self, handle: c::HANDLE, buf: &mut [u16], mut amount: usize)
-        -> io::Result<usize>
-    {
-        // Insert possibly remaining unpaired surrogate from last read.
-        let mut start = 0;
-        if self.high_surrogate.get() != 0 {
-            buf[0] = self.high_surrogate.replace(0);
-            start = 1;
-            if amount == 1 {
-                // Special case: `Stdin::read` guarantees we can always read at least one new `u16`
-                // and combine it with an unpaired surrogate, because the UTF-8 buffer is at least
-                // 4 bytes.
-                amount = 2;
-            }
-        }
-        let mut amount = read_u16s(handle, &mut buf[start..amount])? + start;
 
-        if amount > 0 {
-            let last_char = buf[amount - 1];
-            if last_char >= 0xD800 && last_char <= 0xDBFF { // high surrogate
-                self.high_surrogate.set(last_char);
-                amount -= 1;
-            }
+// We assume that if the last `u16` is an unpaired surrogate they got sliced apart by our
+// buffer size, and keep it around for the next read hoping to put them together.
+// This is a best effort, and may not work if we are not the only reader on Stdin.
+fn read_u16s_fixup_surrogates(handle: c::HANDLE,
+                              buf: &mut [u16],
+                              mut amount: usize,
+                              surrogate: &mut u16) -> io::Result<usize>
+{
+    // Insert possibly remaining unpaired surrogate from last read.
+    let mut start = 0;
+    if *surrogate != 0 {
+        buf[0] = *surrogate;
+        *surrogate = 0;
+        start = 1;
+        if amount == 1 {
+            // Special case: `Stdin::read` guarantees we can always read at least one new `u16`
+            // and combine it with an unpaired surrogate, because the UTF-8 buffer is at least
+            // 4 bytes.
+            amount = 2;
         }
-        Ok(amount)
     }
+    let mut amount = read_u16s(handle, &mut buf[start..amount])? + start;
+
+    if amount > 0 {
+        let last_char = buf[amount - 1];
+        if last_char >= 0xD800 && last_char <= 0xDBFF { // high surrogate
+            *surrogate = last_char;
+            amount -= 1;
+        }
+    }
+    Ok(amount)
 }
 
 fn read_u16s(handle: c::HANDLE, buf: &mut [u16]) -> io::Result<usize> {
@@ -241,12 +246,14 @@ impl Stdout {
     pub fn new() -> io::Result<Stdout> {
         Ok(Stdout)
     }
+}
 
-    pub fn write(&self, data: &[u8]) -> io::Result<usize> {
-        write(c::STD_OUTPUT_HANDLE, data)
+impl io::Write for Stdout {
+    fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
+        write(c::STD_OUTPUT_HANDLE, buf)
     }
 
-    pub fn flush(&self) -> io::Result<()> {
+    fn flush(&mut self) -> io::Result<()> {
         Ok(())
     }
 }
@@ -255,12 +262,14 @@ impl Stderr {
     pub fn new() -> io::Result<Stderr> {
         Ok(Stderr)
     }
+}
 
-    pub fn write(&self, data: &[u8]) -> io::Result<usize> {
-        write(c::STD_ERROR_HANDLE, data)
+impl io::Write for Stderr {
+    fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
+        write(c::STD_ERROR_HANDLE, buf)
     }
 
-    pub fn flush(&self) -> io::Result<()> {
+    fn flush(&mut self) -> io::Result<()> {
         Ok(())
     }
 }

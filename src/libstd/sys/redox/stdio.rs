@@ -8,10 +8,12 @@ pub struct Stderr(());
 
 impl Stdin {
     pub fn new() -> io::Result<Stdin> { Ok(Stdin(())) }
+}
 
-    pub fn read(&self, data: &mut [u8]) -> io::Result<usize> {
+impl io::Read for Stdin {
+    fn read(&mut self, buf: &mut [u8]) -> io::Result<usize> {
         let fd = FileDesc::new(0);
-        let ret = fd.read(data);
+        let ret = fd.read(buf);
         fd.into_raw();
         ret
     }
@@ -19,30 +21,34 @@ impl Stdin {
 
 impl Stdout {
     pub fn new() -> io::Result<Stdout> { Ok(Stdout(())) }
+}
 
-    pub fn write(&self, data: &[u8]) -> io::Result<usize> {
+impl io::Write for Stdout {
+    fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
         let fd = FileDesc::new(1);
-        let ret = fd.write(data);
+        let ret = fd.write(buf);
         fd.into_raw();
         ret
     }
 
-    pub fn flush(&self) -> io::Result<()> {
+    fn flush(&mut self) -> io::Result<()> {
         cvt(syscall::fsync(1)).and(Ok(()))
     }
 }
 
 impl Stderr {
     pub fn new() -> io::Result<Stderr> { Ok(Stderr(())) }
+}
 
-    pub fn write(&self, data: &[u8]) -> io::Result<usize> {
+impl io::Write for Stderr {
+    fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
         let fd = FileDesc::new(2);
-        let ret = fd.write(data);
+        let ret = fd.write(buf);
         fd.into_raw();
         ret
     }
 
-    pub fn flush(&self) -> io::Result<()> {
+    fn flush(&mut self) -> io::Result<()> {
         cvt(syscall::fsync(2)).and(Ok(()))
     }
 }

@@ -9,9 +9,11 @@ impl Stdin {
     pub fn new() -> io::Result<Stdin> {
         Ok(Stdin)
     }
+}
 
-    pub fn read(&self, data: &mut [u8]) -> io::Result<usize> {
-        Ok(ReadSysCall::perform(0, data))
+impl io::Read for Stdin {
+    fn read(&mut self, buf: &mut [u8]) -> io::Result<usize> {
+        Ok(ReadSysCall::perform(0, buf))
     }
 }
 
@@ -19,13 +21,15 @@ impl Stdout {
     pub fn new() -> io::Result<Stdout> {
         Ok(Stdout)
     }
+}
 
-    pub fn write(&self, data: &[u8]) -> io::Result<usize> {
-        WriteSysCall::perform(1, data);
-        Ok(data.len())
+impl io::Write for Stdout {
+    fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
+        WriteSysCall::perform(1, buf);
+        Ok(buf.len())
     }
 
-    pub fn flush(&self) -> io::Result<()> {
+    fn flush(&mut self) -> io::Result<()> {
         Ok(())
     }
 }
@@ -34,13 +38,15 @@ impl Stderr {
     pub fn new() -> io::Result<Stderr> {
         Ok(Stderr)
     }
+}
 
-    pub fn write(&self, data: &[u8]) -> io::Result<usize> {
-        WriteSysCall::perform(2, data);
-        Ok(data.len())
+impl io::Write for Stderr {
+    fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
+        WriteSysCall::perform(2, buf);
+        Ok(buf.len())
     }
 
-    pub fn flush(&self) -> io::Result<()> {
+    fn flush(&mut self) -> io::Result<()> {
         Ok(())
     }
 }

@@ -9,8 +9,10 @@ impl Stdin {
     pub fn new() -> io::Result<Stdin> {
         Ok(Stdin(()))
     }
+}
 
-    pub fn read(&self, _: &mut [u8]) -> io::Result<usize> {
+impl io::Read for Stdin {
+    fn read(&mut self, _buf: &mut [u8]) -> io::Result<usize> {
         Ok(0)
     }
 }
@@ -19,15 +21,17 @@ impl Stdout {
     pub fn new() -> io::Result<Stdout> {
         Ok(Stdout(()))
     }
+}
 
-    pub fn write(&self, _: &[u8]) -> io::Result<usize> {
+impl io::Write for Stdout {
+    fn write(&mut self, _buf: &[u8]) -> io::Result<usize> {
         Err(io::Error::new(
             io::ErrorKind::BrokenPipe,
             "Stdout is not connected to any output in this environment",
         ))
     }
 
-    pub fn flush(&self) -> io::Result<()> {
+    fn flush(&mut self) -> io::Result<()> {
         Ok(())
     }
 }
@@ -36,15 +40,17 @@ impl Stderr {
     pub fn new() -> io::Result<Stderr> {
         Ok(Stderr(()))
     }
+}
 
-    pub fn write(&self, _: &[u8]) -> io::Result<usize> {
+impl io::Write for Stderr {
+    fn write(&mut self, _buf: &[u8]) -> io::Result<usize> {
         Err(io::Error::new(
             io::ErrorKind::BrokenPipe,
             "Stderr is not connected to any output in this environment",
         ))
     }
 
-    pub fn flush(&self) -> io::Result<()> {
+    fn flush(&mut self) -> io::Result<()> {
         Ok(())
     }
 }
