@@ -2110,6 +2110,22 @@ impl<'tcx> LazyConst<'tcx> {
     pub fn unwrap_usize(&self, tcx: TyCtxt<'_, '_, '_>) -> u64 {
         self.assert_usize(tcx).expect("expected `LazyConst` to contain a usize")
     }
+
+    pub fn type_flags(&self) -> TypeFlags {
+        // FIXME(const_generics): incorporate substs flags.
+        let flags = match self {
+            LazyConst::Unevaluated(..) => {
+                TypeFlags::HAS_NORMALIZABLE_PROJECTION | TypeFlags::HAS_PROJECTION
+            }
+            LazyConst::Evaluated(c) => {
+                c.type_flags()
+            }
+        };
+
+        debug!("type_flags({:?}) = {:?}", self, flags);
+
+        flags
+    }
 }
 
 /// Typed constant value.
@@ -2224,6 +2240,33 @@ impl<'tcx> Const<'tcx> {
     pub fn unwrap_usize(&self, tcx: TyCtxt<'_, '_, '_>) -> u64 {
         self.assert_usize(tcx).unwrap_or_else(||
             bug!("expected constant usize, got {:#?}", self))
+    }
+
+    pub fn type_flags(&self) -> TypeFlags {
+        let mut flags = self.ty.flags;
+
+        match self.val {
+            ConstValue::Param(_) => {
+                flags |= TypeFlags::HAS_FREE_LOCAL_NAMES;
+                flags |= TypeFlags::HAS_PARAMS;
+            }
+            ConstValue::Infer(infer) => {
+                flags |= TypeFlags::HAS_FREE_LOCAL_NAMES;
+                flags |= TypeFlags::HAS_CT_INFER;
+                match infer {
+                    InferConst::Fresh(_) |
+                    InferConst::Canonical(_, _) => {}
+                    InferConst::Var(_) => {
+                        flags |= TypeFlags::KEEP_IN_LOCAL_TCX;
+                    }
+                }
+            }
+            _ => {}
+        }
+
+        debug!("type_flags({:?}) = {:?}", self, flags);
+
+        flags
     }
 }
 
