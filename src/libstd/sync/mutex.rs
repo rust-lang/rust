@@ -1,9 +1,8 @@
-use crate::cell::UnsafeCell;
 use crate::fmt;
 use crate::mem;
 use crate::ops::{Deref, DerefMut};
+use crate::parking_lot;
 use crate::ptr;
-use crate::sys_common::mutex as sys;
 use crate::sys_common::poison::{self, TryLockError, TryLockResult, LockResult};
 
 /// A mutual exclusion primitive useful for protecting shared data
@@ -109,14 +108,8 @@ use crate::sys_common::poison::{self, TryLockError, TryLockResult, LockResult};
 /// ```
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct Mutex<T: ?Sized> {
-    // Note that this mutex is in a *box*, not inlined into the struct itself.
-    // Once a native mutex has been used once, its address can never change (it
-    // can't be moved). This mutex type can be safely moved at any time, so to
-    // ensure that the native mutex is used correctly we box the inner mutex to
-    // give it a constant address.
-    inner: Box<sys::Mutex>,
     poison: poison::Flag,
-    data: UnsafeCell<T>,
+    inner: parking_lot::Mutex<T>,
 }
 
 // these are the only places where `T: Send` matters; all other
@@ -147,6 +140,7 @@ pub struct MutexGuard<'a, T: ?Sized + 'a> {
     // disregard field privacy).
     __lock: &'a Mutex<T>,
     __poison: poison::Guard,
+    __inner: parking_lot::MutexGuard<'a, T>,
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -166,15 +160,10 @@ impl<T> Mutex<T> {
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn new(t: T) -> Mutex<T> {
-        let mut m = Mutex {
-            inner: box sys::Mutex::new(),
+        Mutex {
             poison: poison::Flag::new(),
-            data: UnsafeCell::new(t),
-        };
-        unsafe {
-            m.inner.init();
+            inner: parking_lot::Mutex::new(t),
         }
-        m
     }
 }
 
@@ -216,10 +205,8 @@ impl<T: ?Sized> Mutex<T> {
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn lock(&self) -> LockResult<MutexGuard<'_, T>> {
-        unsafe {
-            self.inner.raw_lock();
-            MutexGuard::new(self)
-        }
+        let inner_guard = self.inner.lock();
+        unsafe { MutexGuard::new(self, inner_guard) }
     }
 
     /// Attempts to acquire this lock.
@@ -259,12 +246,10 @@ impl<T: ?Sized> Mutex<T> {
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn try_lock(&self) -> TryLockResult<MutexGuard<'_, T>> {
-        unsafe {
-            if self.inner.try_lock() {
-                Ok(MutexGuard::new(self)?)
-            } else {
-                Err(TryLockError::WouldBlock)
-            }
+        if let Some(inner_guard) = self.inner.try_lock() {
+            Ok(unsafe { MutexGuard::new(self, inner_guard)? })
+        } else {
+            Err(TryLockError::WouldBlock)
         }
     }
 
@@ -319,16 +304,14 @@ impl<T: ?Sized> Mutex<T> {
         // but because `Mutex` impl-s `Drop`, we can't move out of it, so
         // we'll have to destructure it manually instead.
         unsafe {
-            // Like `let Mutex { inner, poison, data } = self`.
-            let (inner, poison, data) = {
-                let Mutex { ref inner, ref poison, ref data } = self;
-                (ptr::read(inner), ptr::read(poison), ptr::read(data))
+            // Like `let Mutex { inner, poison } = self`.
+            let (poison, inner) = {
+                let Mutex { ref poison, ref inner } = self;
+                (ptr::read(poison), ptr::read(inner))
             };
             mem::forget(self);
-            inner.destroy();  // Keep in sync with the `Drop` impl.
-            drop(inner);
 
-            poison::map_result(poison.borrow(), |_| data.into_inner())
+            poison::map_result(poison.borrow(), |_| inner.into_inner())
         }
     }
 
@@ -355,21 +338,14 @@ impl<T: ?Sized> Mutex<T> {
     pub fn get_mut(&mut self) -> LockResult<&mut T> {
         // We know statically that there are no other references to `self`, so
         // there's no need to lock the inner mutex.
-        let data = unsafe { &mut *self.data.get() };
+        let data = self.inner.get_mut();
         poison::map_result(self.poison.borrow(), |_| data )
     }
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
 unsafe impl<#[may_dangle] T: ?Sized> Drop for Mutex<T> {
-    fn drop(&mut self) {
-        // This is actually safe b/c we know that there is no further usage of
-        // this mutex (it's up to the user to arrange for a mutex to get
-        // dropped, that's not our job)
-        //
-        // IMPORTANT: This code must be kept in sync with `Mutex::into_inner`.
-        unsafe { self.inner.destroy() }
-    }
+    fn drop(&mut self) {}
 }
 
 #[stable(feature = "mutex_from", since = "1.24.0")]
@@ -412,11 +388,13 @@ impl<T: ?Sized + fmt::Debug> fmt::Debug for Mutex<T> {
 }
 
 impl<'mutex, T: ?Sized> MutexGuard<'mutex, T> {
-    unsafe fn new(lock: &'mutex Mutex<T>) -> LockResult<MutexGuard<'mutex, T>> {
+    unsafe fn new(lock: &'mutex Mutex<T>, inner: parking_lot::MutexGuard<'mutex, T>)
+                  -> LockResult<MutexGuard<'mutex, T>> {
         poison::map_result(lock.poison.borrow(), |guard| {
             MutexGuard {
                 __lock: lock,
                 __poison: guard,
+                __inner: inner,
             }
         })
     }
@@ -427,14 +405,14 @@ impl<T: ?Sized> Deref for MutexGuard<'_, T> {
     type Target = T;
 
     fn deref(&self) -> &T {
-        unsafe { &*self.__lock.data.get() }
+        self.__inner.deref()
     }
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T: ?Sized> DerefMut for MutexGuard<'_, T> {
     fn deref_mut(&mut self) -> &mut T {
-        unsafe { &mut *self.__lock.data.get() }
+        self.__inner.deref_mut()
     }
 }
 
@@ -442,10 +420,7 @@ impl<T: ?Sized> DerefMut for MutexGuard<'_, T> {
 impl<T: ?Sized> Drop for MutexGuard<'_, T> {
     #[inline]
     fn drop(&mut self) {
-        unsafe {
-            self.__lock.poison.done(&self.__poison);
-            self.__lock.inner.raw_unlock();
-        }
+        self.__lock.poison.done(&self.__poison);
     }
 }
 
@@ -463,8 +438,10 @@ impl<T: ?Sized + fmt::Display> fmt::Display for MutexGuard<'_, T> {
     }
 }
 
-pub fn guard_lock<'a, T: ?Sized>(guard: &MutexGuard<'a, T>) -> &'a sys::Mutex {
-    &guard.__lock.inner
+pub fn guard_lock<'a, 'b, T: ?Sized>(guard: &'b mut MutexGuard<'a, T>)
+    -> &'b mut parking_lot::MutexGuard<'a, T>
+{
+    &mut guard.__inner
 }
 
 pub fn guard_poison<'a, T: ?Sized>(guard: &MutexGuard<'a, T>) -> &'a poison::Flag {

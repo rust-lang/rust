@@ -1,8 +1,6 @@
 use crate::fmt;
-use crate::sync::atomic::{AtomicUsize, Ordering};
+use crate::parking_lot;
 use crate::sync::{mutex, MutexGuard, PoisonError};
-use crate::sys_common::condvar as sys;
-use crate::sys_common::mutex as sys_mutex;
 use crate::sys_common::poison::{self, LockResult};
 use crate::time::{Duration, Instant};
 
@@ -78,10 +76,11 @@ impl WaitTimeoutResult {
 /// Functions in this module will block the current **thread** of execution and
 /// are bindings to system-provided condition variables where possible. Note
 /// that this module places one additional restriction over the system condition
-/// variables: each condvar can be used with precisely one mutex at runtime. Any
-/// attempt to use multiple mutexes on the same condition variable will result
-/// in a runtime panic. If this is not desired, then the unsafe primitives in
-/// `sys` do not have this restriction but may result in undefined behavior.
+/// variables: each condvar can be used with only one mutex at a time. Any
+/// attempt to use multiple mutexes on the same condition variable
+/// simultaneously will result in a runtime panic. However it is possible to
+/// switch to a different mutex if there are no threads currently waiting on
+/// the condition variable.
 ///
 /// # Examples
 ///
@@ -110,8 +109,7 @@ impl WaitTimeoutResult {
 /// ```
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct Condvar {
-    inner: Box<sys::Condvar>,
-    mutex: AtomicUsize,
+    inner: parking_lot::Condvar,
 }
 
 impl Condvar {
@@ -127,14 +125,7 @@ impl Condvar {
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn new() -> Condvar {
-        let mut c = Condvar {
-            inner: box sys::Condvar::new(),
-            mutex: AtomicUsize::new(0),
-        };
-        unsafe {
-            c.inner.init();
-        }
-        c
+        Condvar { inner: parking_lot::Condvar::new() }
     }
 
     /// Blocks the current thread until this condition variable receives a
@@ -160,9 +151,10 @@ impl Condvar {
     /// # Panics
     ///
     /// This function will [`panic!`] if it is used with more than one mutex
-    /// over time. Each condition variable is dynamically bound to exactly one
-    /// mutex to ensure defined behavior across platforms. If this functionality
-    /// is not desired, then unsafe primitives in `sys` are provided.
+    /// at a time. Any attempt to use multiple mutexes on the same condition
+    /// variable simultaneously will result in a runtime panic. However it is
+    /// possible to switch to a different mutex if there are no threads
+    /// currently waiting on the condition variable.
     ///
     /// [`notify_one`]: #method.notify_one
     /// [`notify_all`]: #method.notify_all
@@ -196,12 +188,11 @@ impl Condvar {
     /// }
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub fn wait<'a, T>(&self, guard: MutexGuard<'a, T>)
+    pub fn wait<'a, T>(&self, mut guard: MutexGuard<'a, T>)
                        -> LockResult<MutexGuard<'a, T>> {
-        let poisoned = unsafe {
-            let lock = mutex::guard_lock(&guard);
-            self.verify(lock);
-            self.inner.wait(lock);
+        let poisoned = {
+            let inner_guard = mutex::guard_lock(&mut guard);
+            self.inner.wait(inner_guard);
             mutex::guard_poison(&guard).get()
         };
         if poisoned {
@@ -396,14 +387,13 @@ impl Condvar {
     /// }
     /// ```
     #[stable(feature = "wait_timeout", since = "1.5.0")]
-    pub fn wait_timeout<'a, T>(&self, guard: MutexGuard<'a, T>,
+    pub fn wait_timeout<'a, T>(&self, mut guard: MutexGuard<'a, T>,
                                dur: Duration)
                                -> LockResult<(MutexGuard<'a, T>, WaitTimeoutResult)> {
-        let (poisoned, result) = unsafe {
-            let lock = mutex::guard_lock(&guard);
-            self.verify(lock);
-            let success = self.inner.wait_timeout(lock, dur);
-            (mutex::guard_poison(&guard).get(), WaitTimeoutResult(!success))
+        let (poisoned, result) = {
+            let inner_guard = mutex::guard_lock(&mut guard);
+            let timed_out = self.inner.wait_for(inner_guard, dur).timed_out();
+            (mutex::guard_poison(&guard).get(), WaitTimeoutResult(timed_out))
         };
         if poisoned {
             Err(PoisonError::new((guard, result)))
@@ -525,7 +515,7 @@ impl Condvar {
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn notify_one(&self) {
-        unsafe { self.inner.notify_one() }
+        self.inner.notify_one();
     }
 
     /// Wakes up all blocked threads on this condvar.
@@ -565,25 +555,7 @@ impl Condvar {
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn notify_all(&self) {
-        unsafe { self.inner.notify_all() }
-    }
-
-    fn verify(&self, mutex: &sys_mutex::Mutex) {
-        let addr = mutex as *const _ as usize;
-        match self.mutex.compare_and_swap(0, addr, Ordering::SeqCst) {
-            // If we got out 0, then we have successfully bound the mutex to
-            // this cvar.
-            0 => {}
-
-            // If we get out a value that's the same as `addr`, then someone
-            // already beat us to the punch.
-            n if n == addr => {}
-
-            // Anything else and we're using more than one mutex on this cvar,
-            // which is currently disallowed.
-            _ => panic!("attempted to use a condition variable with two \
-                         mutexes"),
-        }
+        self.inner.notify_all();
     }
 }
 
@@ -604,9 +576,7 @@ impl Default for Condvar {
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl Drop for Condvar {
-    fn drop(&mut self) {
-        unsafe { self.inner.destroy() }
-    }
+    fn drop(&mut self) {}
 }
 
 #[cfg(test)]
@@ -811,23 +781,51 @@ mod tests {
     }
 
     #[test]
-    #[should_panic]
     #[cfg_attr(target_os = "emscripten", ignore)]
     fn two_mutexes() {
-        let m = Arc::new(Mutex::new(()));
-        let m2 = m.clone();
-        let c = Arc::new(Condvar::new());
-        let c2 = c.clone();
+        let mutex1 = Arc::new(Mutex::new(()));
+        let mutex2 = Arc::new(Mutex::new(()));
+        let condvar = Arc::new(Condvar::new());
 
-        let mut g = m.lock().unwrap();
-        let _t = thread::spawn(move|| {
-            let _g = m2.lock().unwrap();
-            c2.notify_one();
+        wait_and_notify(mutex1, condvar.clone());
+        wait_and_notify(mutex2, condvar);
+
+        fn wait_and_notify(mutex: Arc<Mutex<()>>, condvar: Arc<Condvar>) {
+            let mutex_alias = mutex.clone();
+            let condvar_alias = condvar.clone();
+
+            let g = mutex.lock().unwrap();
+            let _t = thread::spawn(move || {
+                let _g = mutex_alias.lock().unwrap();
+                condvar_alias.notify_one();
+            });
+            let _g = condvar.wait(g).unwrap();
+        }
+    }
+
+    #[test]
+    #[should_panic]
+    #[cfg_attr(target_os = "emscripten", ignore)]
+    fn two_mutexes_simultaneously() {
+        let mutex1 = Arc::new(Mutex::new(()));
+        let mutex1_alias = mutex1.clone();
+        let condvar = Arc::new(Condvar::new());
+        let condvar_alias = condvar.clone();
+
+        let (tx, rx) = channel();
+        let _t = thread::spawn(move || {
+            let guard1 = mutex1.lock().unwrap();
+            tx.send(()).unwrap();
+            let _ = condvar.wait(guard1).unwrap();
         });
-        g = c.wait(g).unwrap();
-        drop(g);
+        // Wait for second thread to aquire mutex.
+        rx.recv().unwrap();
+        // Wait for second thread to sleep in Condvar::wait
+        let _g = mutex1_alias.lock().unwrap();
 
-        let m = Mutex::new(());
-        let _ = c.wait(m.lock().unwrap()).unwrap();
+        // Wait on the same condvar with a second mutex
+        let mutex2 = Mutex::new(());
+        let guard2 = mutex2.lock().unwrap();
+        let _ = condvar_alias.wait(guard2).unwrap();
     }
 }
