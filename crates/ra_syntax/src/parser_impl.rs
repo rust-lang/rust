@@ -68,7 +68,7 @@ pub(crate) struct ParserImpl<'t> {
 }
 
 impl<'t> ParserImpl<'t> {
-    pub(crate) fn new(inp: &'t ParserInput<'t>) -> ParserImpl<'t> {
+    fn new(inp: &'t ParserInput<'t>) -> ParserImpl<'t> {
         ParserImpl {
             parser_input: inp,
             pos: InputPosition::new(),
@@ -77,7 +77,7 @@ impl<'t> ParserImpl<'t> {
         }
     }
 
-    pub(crate) fn into_events(self) -> Vec<Event> {
+    fn into_events(self) -> Vec<Event> {
         assert_eq!(self.nth(0), EOF);
         self.events
     }
