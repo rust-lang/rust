@@ -9,15 +9,15 @@ LL |    let a = bar(foo, y); //[krisskross]~ ERROR E0623
    |                     ^ ...but data from `x` is returned here
 
 error[E0623]: lifetime mismatch
-  --> $DIR/project-fn-ret-invariant.rs:55:8
+  --> $DIR/project-fn-ret-invariant.rs:54:21
    |
 LL | fn transmute<'a,'b>(x: Type<'a>, y: Type<'b>) -> (Type<'a>, Type<'b>) {
-   |                                     --------     --------------------
-   |                                     |
-   |                                     this parameter and the return type are declared with different lifetimes...
-...
-LL |    (a, b) //[krisskross]~ ERROR E0623
-   |        ^ ...but data from `x` is returned here
+   |                        --------                  --------------------
+   |                        |
+   |                        this parameter and the return type are declared with different lifetimes...
+LL |    let a = bar(foo, y); //[krisskross]~ ERROR E0623
+LL |    let b = bar(foo, x); //[krisskross]~ ERROR E0623
+   |                     ^ ...but data from `y` is returned here
 
 error: aborting due to 2 previous errors
 

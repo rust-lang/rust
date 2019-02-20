@@ -96,10 +96,15 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
         let (result, map) = self.tcx.replace_bound_vars(binder, fld_r, fld_t);
 
         debug!(
-            "replace_bound_vars_with_placeholders(binder={:?}, result={:?}, map={:?})",
+            "replace_bound_vars_with_placeholders(\
+                next_universe={:?}, \
+                binder={:?}, \
+                result={:?}, \
+                map={:?})",
+            next_universe,
             binder,
             result,
-            map
+            map,
         );
 
         (result, map)

@@ -3,7 +3,7 @@ error: compilation successful
    |
 LL | / fn main() { //[good]~ ERROR compilation successful
 LL | |     foo(());
-LL | |     //[bad]~^ ERROR not general enough
+LL | |     //[bad]~^ ERROR mismatched types
 LL | | }
    | |_^
 
