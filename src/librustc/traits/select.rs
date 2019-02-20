@@ -1682,15 +1682,15 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
     ) -> bool {
         let poly_trait_predicate = self.infcx()
             .resolve_type_vars_if_possible(&obligation.predicate);
-        let (skol_trait_predicate, _) = self.infcx()
+        let (placeholder_trait_predicate, _) = self.infcx()
             .replace_bound_vars_with_placeholders(&poly_trait_predicate);
         debug!(
             "match_projection_obligation_against_definition_bounds: \
-             skol_trait_predicate={:?}",
-            skol_trait_predicate,
+             placeholder_trait_predicate={:?}",
+            placeholder_trait_predicate,
         );
 
-        let (def_id, substs) = match skol_trait_predicate.trait_ref.self_ty().sty {
+        let (def_id, substs) = match placeholder_trait_predicate.trait_ref.self_ty().sty {
             ty::Projection(ref data) => (data.trait_ref(self.tcx()).def_id, data.substs),
             ty::Opaque(def_id, substs) => (def_id, substs),
             _ => {
@@ -1698,7 +1698,7 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
                     obligation.cause.span,
                     "match_projection_obligation_against_definition_bounds() called \
                      but self-ty is not a projection: {:?}",
-                    skol_trait_predicate.trait_ref.self_ty()
+                    placeholder_trait_predicate.trait_ref.self_ty()
                 );
             }
         };
@@ -1723,7 +1723,7 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
                     self.match_projection(
                         obligation,
                         bound.clone(),
-                        skol_trait_predicate.trait_ref.clone(),
+                        placeholder_trait_predicate.trait_ref.clone(),
                     )
                 })
             });
@@ -1740,7 +1740,7 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
                 let result = self.match_projection(
                     obligation,
                     bound,
-                    skol_trait_predicate.trait_ref.clone(),
+                    placeholder_trait_predicate.trait_ref.clone(),
                 );
 
                 assert!(result);
@@ -1753,12 +1753,12 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
         &mut self,
         obligation: &TraitObligation<'tcx>,
         trait_bound: ty::PolyTraitRef<'tcx>,
-        skol_trait_ref: ty::TraitRef<'tcx>,
+        placeholder_trait_ref: ty::TraitRef<'tcx>,
     ) -> bool {
-        debug_assert!(!skol_trait_ref.has_escaping_bound_vars());
+        debug_assert!(!placeholder_trait_ref.has_escaping_bound_vars());
         self.infcx
             .at(&obligation.cause, obligation.param_env)
-            .sup(ty::Binder::dummy(skol_trait_ref), trait_bound)
+            .sup(ty::Binder::dummy(placeholder_trait_ref), trait_bound)
             .is_ok()
     }
 
