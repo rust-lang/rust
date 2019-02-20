@@ -4,7 +4,8 @@
 //! We walk the set of items and, for each member, generate new constraints.
 
 use hir::def_id::DefId;
-use rustc::ty::subst::{UnpackedKind, SubstsRef};
+use rustc::mir::interpret::ConstValue;
+use rustc::ty::subst::{SubstsRef, UnpackedKind};
 use rustc::ty::{self, Ty, TyCtxt};
 use rustc::hir;
 use rustc::hir::itemlikevisit::ItemLikeVisitor;
@@ -229,12 +230,19 @@ impl<'a, 'tcx> ConstraintContext<'a, 'tcx> {
 
         // Trait are always invariant so we can take advantage of that.
         let variance_i = self.invariant(variance);
-        for ty in substs.types() {
-            self.add_constraints_from_ty(current, ty, variance_i);
-        }
 
-        for region in substs.regions() {
-            self.add_constraints_from_region(current, region, variance_i);
+        for k in substs {
+            match k.unpack() {
+                UnpackedKind::Lifetime(lt) => {
+                    self.add_constraints_from_region(current, lt, variance_i)
+                }
+                UnpackedKind::Type(ty) => {
+                    self.add_constraints_from_ty(current, ty, variance_i)
+                }
+                UnpackedKind::Const(ct) => {
+                    self.add_constraints_from_const(current, ct, variance_i)
+                }
+            }
         }
     }
 
@@ -267,7 +275,11 @@ impl<'a, 'tcx> ConstraintContext<'a, 'tcx> {
                 self.add_constraints_from_mt(current, &ty::TypeAndMut { ty, mutbl }, variance);
             }
 
-            ty::Array(typ, _) |
+            ty::Array(typ, len) => {
+                self.add_constraints_from_ty(current, typ, variance);
+                self.add_constraints_from_const(current, len, variance);
+            }
+
             ty::Slice(typ) => {
                 self.add_constraints_from_ty(current, typ, variance);
             }
@@ -383,6 +395,9 @@ impl<'a, 'tcx> ConstraintContext<'a, 'tcx> {
                 UnpackedKind::Type(ty) => {
                     self.add_constraints_from_ty(current, ty, variance_i)
                 }
+                UnpackedKind::Const(ct) => {
+                    self.add_constraints_from_const(current, ct, variance_i)
+                }
             }
         }
     }
@@ -430,6 +445,26 @@ impl<'a, 'tcx> ConstraintContext<'a, 'tcx> {
                 bug!("unexpected region encountered in variance \
                       inference: {:?}",
                      region);
+            }
+        }
+    }
+
+    fn add_constraints_from_const(
+        &mut self,
+        current: &CurrentItem,
+        ct: &ty::LazyConst<'tcx>,
+        variance: VarianceTermPtr<'a>
+    ) {
+        debug!(
+            "add_constraints_from_const(ct={:?}, variance={:?})",
+            ct,
+            variance
+        );
+
+        if let ty::LazyConst::Evaluated(ct) = ct {
+            self.add_constraints_from_ty(current, ct.ty, variance);
+            if let ConstValue::Param(ref data) = ct.val {
+                self.add_constraint(current, data.index, variance);
             }
         }
     }
