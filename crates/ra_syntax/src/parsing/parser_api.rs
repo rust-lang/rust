@@ -1,10 +1,14 @@
+use std::cell::Cell;
+
 use drop_bomb::DropBomb;
 
 use crate::{
-    SyntaxKind::{self, ERROR},
+    syntax_error::ParseError,
+    SyntaxKind::{self, ERROR, EOF, TOMBSTONE},
     parsing::{
+        TokenSource, TokenPos,
         token_set::TokenSet,
-        parser_impl::ParserImpl,
+        parser_impl::event::Event,
     },
 };
 
@@ -17,9 +21,22 @@ use crate::{
 /// tree, but rather a flat stream of events of the form
 /// "start expression, consume number literal,
 /// finish expression". See `Event` docs for more.
-pub(crate) struct Parser<'t>(pub(super) ParserImpl<'t>);
+pub(crate) struct Parser<'t> {
+    token_source: &'t dyn TokenSource,
+    pos: TokenPos,
+    events: Vec<Event>,
+    steps: Cell<u32>,
+}
 
 impl<'t> Parser<'t> {
+    pub(super) fn new(token_source: &'t dyn TokenSource) -> Parser<'t> {
+        Parser { token_source, pos: TokenPos::default(), events: Vec::new(), steps: Cell::new(0) }
+    }
+
+    pub(crate) fn finish(self) -> Vec<Event> {
+        self.events
+    }
+
     /// Returns the kind of the current token.
     /// If parser has already reached the end of input,
     /// the special `EOF` kind is returned.
@@ -32,7 +49,13 @@ impl<'t> Parser<'t> {
     ///
     /// Useful for parsing things like `>>`.
     pub(crate) fn current2(&self) -> Option<(SyntaxKind, SyntaxKind)> {
-        self.0.current2()
+        let c1 = self.token_source.token_kind(self.pos);
+        let c2 = self.token_source.token_kind(self.pos + 1);
+        if self.token_source.is_token_joint_to_next(self.pos) {
+            Some((c1, c2))
+        } else {
+            None
+        }
     }
 
     /// Returns the kinds of the current three tokens, if they are not separated
@@ -40,13 +63,25 @@ impl<'t> Parser<'t> {
     ///
     /// Useful for parsing things like `=>>`.
     pub(crate) fn current3(&self) -> Option<(SyntaxKind, SyntaxKind, SyntaxKind)> {
-        self.0.current3()
+        let c1 = self.token_source.token_kind(self.pos);
+        let c2 = self.token_source.token_kind(self.pos + 1);
+        let c3 = self.token_source.token_kind(self.pos + 2);
+        if self.token_source.is_token_joint_to_next(self.pos)
+            && self.token_source.is_token_joint_to_next(self.pos + 1)
+        {
+            Some((c1, c2, c3))
+        } else {
+            None
+        }
     }
 
     /// Lookahead operation: returns the kind of the next nth
     /// token.
     pub(crate) fn nth(&self, n: u32) -> SyntaxKind {
-        self.0.nth(n)
+        let steps = self.steps.get();
+        assert!(steps <= 10_000_000, "the parser seems stuck");
+        self.steps.set(steps + 1);
+        self.token_source.token_kind(self.pos + n)
     }
 
     /// Checks if the current token is `kind`.
@@ -60,20 +95,26 @@ impl<'t> Parser<'t> {
     }
 
     /// Checks if the current token is contextual keyword with text `t`.
-    pub(crate) fn at_contextual_kw(&self, t: &str) -> bool {
-        self.0.at_kw(t)
+    pub(crate) fn at_contextual_kw(&self, kw: &str) -> bool {
+        self.token_source.is_keyword(self.pos, kw)
     }
 
     /// Starts a new node in the syntax tree. All nodes and tokens
     /// consumed between the `start` and the corresponding `Marker::complete`
     /// belong to the same node.
     pub(crate) fn start(&mut self) -> Marker {
-        Marker::new(self.0.start())
+        let pos = self.events.len() as u32;
+        self.push_event(Event::tombstone());
+        Marker::new(pos)
     }
 
     /// Advances the parser by one token unconditionally.
     pub(crate) fn bump(&mut self) {
-        self.0.bump();
+        let kind = self.nth(0);
+        if kind == EOF {
+            return;
+        }
+        self.do_bump(kind, 1);
     }
 
     /// Advances the parser by one token, remapping its kind.
@@ -83,14 +124,18 @@ impl<'t> Parser<'t> {
     /// `union` keyword, and keyword is what ends up in the
     /// final tree.
     pub(crate) fn bump_remap(&mut self, kind: SyntaxKind) {
-        self.0.bump_remap(kind);
+        if self.nth(0) == EOF {
+            // TODO: panic!?
+            return;
+        }
+        self.do_bump(kind, 1);
     }
 
     /// Advances the parser by `n` tokens, remapping its kind.
     /// This is useful to create compound tokens from parts. For
     /// example, an `<<` token is two consecutive remapped `<` tokens
     pub(crate) fn bump_compound(&mut self, kind: SyntaxKind, n: u8) {
-        self.0.bump_compound(kind, n);
+        self.do_bump(kind, n);
     }
 
     /// Emit error with the `message`
@@ -98,7 +143,8 @@ impl<'t> Parser<'t> {
     /// structured errors with spans and notes, like rustc
     /// does.
     pub(crate) fn error<T: Into<String>>(&mut self, message: T) {
-        self.0.error(message.into())
+        let msg = ParseError(message.into());
+        self.push_event(Event::Error { msg })
     }
 
     /// Consume the next token if `kind` matches.
@@ -136,6 +182,15 @@ impl<'t> Parser<'t> {
             m.complete(self, ERROR);
         };
     }
+
+    fn do_bump(&mut self, kind: SyntaxKind, n_raw_tokens: u8) {
+        self.pos += u32::from(n_raw_tokens);
+        self.push_event(Event::Token { kind, n_raw_tokens });
+    }
+
+    fn push_event(&mut self, event: Event) {
+        self.events.push(event)
+    }
 }
 
 /// See `Parser::start`.
@@ -154,7 +209,14 @@ impl Marker {
     /// operation like `.precede()` to deal with forward_parent.
     pub(crate) fn complete(mut self, p: &mut Parser, kind: SyntaxKind) -> CompletedMarker {
         self.bomb.defuse();
-        p.0.complete(self.pos, kind);
+        let idx = self.pos as usize;
+        match p.events[idx] {
+            Event::Start { kind: ref mut slot, .. } => {
+                *slot = kind;
+            }
+            _ => unreachable!(),
+        }
+        p.push_event(Event::Finish);
         CompletedMarker::new(self.pos, kind)
     }
 
@@ -162,7 +224,13 @@ impl Marker {
     /// are attached to its parent instead.
     pub(crate) fn abandon(mut self, p: &mut Parser) {
         self.bomb.defuse();
-        p.0.abandon(self.pos);
+        let idx = self.pos as usize;
+        if idx == p.events.len() - 1 {
+            match p.events.pop() {
+                Some(Event::Start { kind: TOMBSTONE, forward_parent: None }) => (),
+                _ => unreachable!(),
+            }
+        }
     }
 }
 
@@ -186,7 +254,15 @@ impl CompletedMarker {
     /// then mark `NEWSTART` as `START`'s parent with saving its relative
     /// distance to `NEWSTART` into forward_parent(=2 in this case);
     pub(crate) fn precede(self, p: &mut Parser) -> Marker {
-        Marker::new(p.0.precede(self.0))
+        let new_pos = p.start();
+        let idx = self.0 as usize;
+        match p.events[idx] {
+            Event::Start { ref mut forward_parent, .. } => {
+                *forward_parent = Some(new_pos.pos - self.0);
+            }
+            _ => unreachable!(),
+        }
+        new_pos
     }
 
     pub(crate) fn kind(&self) -> SyntaxKind {
