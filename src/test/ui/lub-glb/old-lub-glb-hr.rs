@@ -4,13 +4,14 @@
 // longer get an error, because we recognize these two types as
 // equivalent!
 //
-// compile-pass
+// Whoops -- now that we reinstituted the leak-check, we get an error
+// again.
 
 fn foo(
     x: fn(&u8, &u8),
     y: for<'a> fn(&'a u8, &'a u8),
 ) {
-    let z = match 22 {
+    let z = match 22 { //~ ERROR match arms have incompatible types
         0 => x,
         _ => y,
     };

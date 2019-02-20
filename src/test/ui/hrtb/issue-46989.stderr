@@ -1,0 +1,17 @@
+error[E0277]: the trait bound `for<'r> fn(&'r i32): Foo` is not satisfied
+  --> $DIR/issue-46989.rs:40:5
+   |
+LL |     assert_foo::<fn(&i32)>();
+   |     ^^^^^^^^^^^^^^^^^^^^^^ the trait `Foo` is not implemented for `for<'r> fn(&'r i32)`
+   |
+   = help: the following implementations were found:
+             <fn(A) as Foo>
+note: required by `assert_foo`
+  --> $DIR/issue-46989.rs:37:1
+   |
+LL | fn assert_foo<T: Foo>() {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0277`.
