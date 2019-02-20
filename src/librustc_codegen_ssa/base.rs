@@ -551,9 +551,9 @@ pub fn codegen_crate<B: ExtraBackendMethods>(
                                                             &["crate"],
                                                             Some("metadata")).as_str()
                                                                              .to_string();
-    let metadata_llvm_module = backend.new_metadata(tcx, &metadata_cgu_name);
+    let mut metadata_llvm_module = backend.new_metadata(tcx, &metadata_cgu_name);
     let metadata = time(tcx.sess, "write metadata", || {
-        backend.write_metadata(tcx, &metadata_llvm_module)
+        backend.write_metadata(tcx, &mut metadata_llvm_module)
     });
     tcx.sess.profiler(|p| p.end_activity(ProfileCategory::Codegen));
 
@@ -636,9 +636,9 @@ pub fn codegen_crate<B: ExtraBackendMethods>(
                                                        &["crate"],
                                                        Some("allocator")).as_str()
                                                                          .to_string();
-        let modules = backend.new_metadata(tcx, &llmod_id);
+        let mut modules = backend.new_metadata(tcx, &llmod_id);
         time(tcx.sess, "write allocator module", || {
-            backend.codegen_allocator(tcx, &modules, kind)
+            backend.codegen_allocator(tcx, &mut modules, kind)
         });
 
         Some(ModuleCodegen {
