@@ -191,12 +191,15 @@ pub fn poly_project_and_unify_type<'cx, 'gcx, 'tcx>(
            obligation);
 
     let infcx = selcx.infcx();
-    infcx.commit_if_ok(|_| {
-        let (placeholder_predicate, _) =
+    infcx.commit_if_ok(|snapshot| {
+        let (placeholder_predicate, placeholder_map) =
             infcx.replace_bound_vars_with_placeholders(&obligation.predicate);
 
         let placeholder_obligation = obligation.with(placeholder_predicate);
-        project_and_unify_type(selcx, &placeholder_obligation)
+        let result = project_and_unify_type(selcx, &placeholder_obligation)?;
+        infcx.leak_check(false, &placeholder_map, snapshot)
+            .map_err(|err| MismatchedProjectionTypes { err })?;
+        Ok(result)
     })
 }
 
@@ -1427,9 +1430,8 @@ fn confirm_callable_candidate<'cx, 'gcx, 'tcx>(
 fn confirm_param_env_candidate<'cx, 'gcx, 'tcx>(
     selcx: &mut SelectionContext<'cx, 'gcx, 'tcx>,
     obligation: &ProjectionTyObligation<'tcx>,
-    poly_cache_entry: ty::PolyProjectionPredicate<'tcx>)
-    -> Progress<'tcx>
-{
+    poly_cache_entry: ty::PolyProjectionPredicate<'tcx>,
+) -> Progress<'tcx> {
     let infcx = selcx.infcx();
     let cause = &obligation.cause;
     let param_env = obligation.param_env;
