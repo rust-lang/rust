@@ -2,7 +2,7 @@ error[E0308]: mismatched types
   --> $DIR/hr-subtype.rs:39:26
    |
 LL |               gimme::<$t1>(None::<$t2>);
-   |                            ^^^^^^^^^^^ one type is more general than the other
+   |                            ^^^^^^^^^^^ expected concrete lifetime, found bound lifetime parameter 'a
 ...
 LL | / check! { bound_inv_a_b_vs_bound_inv_a: (for<'a,'b> fn(Inv<'a>, Inv<'b>),
 LL | |                                         for<'a>    fn(Inv<'a>, Inv<'a>)) }

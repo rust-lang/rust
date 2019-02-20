@@ -18,5 +18,5 @@ fn foo<T>(x: &T)
 {}
 
 fn main() {
-    foo(&X); //~ ERROR implementation of `Bar` is not general enough
+    foo(&X); //~ ERROR trait bound
 }
