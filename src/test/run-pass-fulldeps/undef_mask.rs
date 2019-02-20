@@ -9,7 +9,7 @@ use rustc::mir::interpret::UndefMask;
 use rustc::ty::layout::Size;
 
 fn main() {
-    let mut mask = UndefMask::new(Size::from_bytes(500));
+    let mut mask = UndefMask::new(Size::from_bytes(500), false);
     assert!(!mask.get(Size::from_bytes(499)));
     mask.set(Size::from_bytes(499), true);
     assert!(mask.get(Size::from_bytes(499)));

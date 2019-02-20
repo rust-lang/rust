@@ -815,7 +815,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> Memory<'a, 'mir, 'tcx, M> {
         // an optimization where we can just overwrite an entire range of definedness bits if
         // they are going to be uniformly `1` or `0`.
         if ranges.is_empty() {
-            dest_allocation.undef_mask.set_range(
+            dest_allocation.undef_mask.set_range_inbounds(
                 dest.offset,
                 dest.offset + size * repeat,
                 first,

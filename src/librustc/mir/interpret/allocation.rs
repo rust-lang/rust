@@ -100,8 +100,7 @@ impl AllocationExtra<(), ()> for () {
 impl<Tag, Extra> Allocation<Tag, Extra> {
     /// Creates a read-only allocation initialized by the given bytes
     pub fn from_bytes(slice: &[u8], align: Align, extra: Extra) -> Self {
-        let mut undef_mask = UndefMask::new(Size::ZERO);
-        undef_mask.grow(Size::from_bytes(slice.len() as u64), true);
+        let undef_mask = UndefMask::new(Size::from_bytes(slice.len() as u64), true);
         Self {
             bytes: slice.to_owned(),
             relocations: Relocations::new(),
@@ -121,7 +120,7 @@ impl<Tag, Extra> Allocation<Tag, Extra> {
         Allocation {
             bytes: vec![0; size.bytes() as usize],
             relocations: Relocations::new(),
-            undef_mask: UndefMask::new(size),
+            undef_mask: UndefMask::new(size, false),
             align,
             mutability: Mutability::Mutable,
             extra,
@@ -625,12 +624,12 @@ impl_stable_hash_for!(struct mir::interpret::UndefMask{blocks, len});
 impl UndefMask {
     pub const BLOCK_SIZE: u64 = 64;
 
-    pub fn new(size: Size) -> Self {
+    pub fn new(size: Size, state: bool) -> Self {
         let mut m = UndefMask {
             blocks: vec![],
             len: Size::ZERO,
         };
-        m.grow(size, false);
+        m.grow(size, state);
         m
     }
 
@@ -667,25 +666,40 @@ impl UndefMask {
         let (blocka, bita) = bit_index(start);
         let (blockb, bitb) = bit_index(end);
         if blocka == blockb {
-            // within a single block
-            for i in bita .. bitb {
-                self.set_bit(blocka, i, new_state);
+            // first set all bits but the first `bita`
+            // then unset the last `64 - bitb` bits
+            let range = if bitb == 0 {
+                u64::max_value() << bita
+            } else {
+                (u64::max_value() << bita) & (u64::max_value() >> (64 - bitb))
+            };
+            if new_state {
+                self.blocks[blocka] |= range;
+            } else {
+                self.blocks[blocka] &= !range;
             }
             return;
         }
         // across block boundaries
-        for i in bita .. Self::BLOCK_SIZE as usize {
-            self.set_bit(blocka, i, new_state);
-        }
-        for i in 0 .. bitb {
-            self.set_bit(blockb, i, new_state);
-        }
-        // fill in all the other blocks (much faster than one bit at a time)
         if new_state {
+            // set bita..64 to 1
+            self.blocks[blocka] |= u64::max_value() << bita;
+            // set 0..bitb to 1
+            if bitb != 0 {
+                self.blocks[blockb] |= u64::max_value() >> (64 - bitb);
+            }
+            // fill in all the other blocks (much faster than one bit at a time)
             for block in (blocka + 1) .. blockb {
                 self.blocks[block] = u64::max_value();
             }
         } else {
+            // set bita..64 to 0
+            self.blocks[blocka] &= !(u64::max_value() << bita);
+            // set 0..bitb to 0
+            if bitb != 0 {
+                self.blocks[blockb] &= !(u64::max_value() >> (64 - bitb));
+            }
+            // fill in all the other blocks (much faster than one bit at a time)
             for block in (blocka + 1) .. blockb {
                 self.blocks[block] = 0;
             }
@@ -695,7 +709,7 @@ impl UndefMask {
     #[inline]
     pub fn get(&self, i: Size) -> bool {
         let (block, bit) = bit_index(i);
-        (self.blocks[block] & 1 << bit) != 0
+        (self.blocks[block] & (1 << bit)) != 0
     }
 
     #[inline]
@@ -714,6 +728,9 @@ impl UndefMask {
     }
 
     pub fn grow(&mut self, amount: Size, new_state: bool) {
+        if amount.bytes() == 0 {
+            return;
+        }
         let unused_trailing_bits = self.blocks.len() as u64 * Self::BLOCK_SIZE - self.len.bytes();
         if amount.bytes() > unused_trailing_bits {
             let additional_blocks = amount.bytes() / Self::BLOCK_SIZE + 1;
