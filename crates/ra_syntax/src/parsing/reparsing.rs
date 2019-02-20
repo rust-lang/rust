@@ -79,10 +79,12 @@ fn is_contextual_kw(text: &str) -> bool {
     }
 }
 
-type ParseFn = fn(&mut Parser);
-fn find_reparsable_node(node: &SyntaxNode, range: TextRange) -> Option<(&SyntaxNode, ParseFn)> {
+fn find_reparsable_node(
+    node: &SyntaxNode,
+    range: TextRange,
+) -> Option<(&SyntaxNode, fn(&mut Parser))> {
     let node = algo::find_covering_node(node, range);
-    node.ancestors().find_map(grammar::reparser).map(|r| (node, r))
+    node.ancestors().find_map(|node| grammar::reparser(node).map(|r| (node, r)))
 }
 
 fn is_balanced(tokens: &[Token]) -> bool {
