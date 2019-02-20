@@ -21,8 +21,8 @@ pub struct ExternalHtml {
 
 impl ExternalHtml {
     pub fn load(in_header: &[String], before_content: &[String], after_content: &[String],
-                md_before_content: &[String], md_after_content: &[String], diag: &errors::Handler,
-                id_map: &mut IdMap)
+                md_before_content: &[String], md_after_content: &[String],
+                diag: &errors::Handler, id_map: &mut IdMap)
             -> Option<ExternalHtml> {
         let codes = ErrorCodes::from(UnstableFeatures::from_environment().is_nightly_build());
         load_external_files(in_header, diag)

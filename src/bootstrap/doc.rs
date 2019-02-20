@@ -69,6 +69,27 @@ book!(
     RustdocBook, "src/doc/rustdoc", "rustdoc", RustbookVersion::MdBook1;
 );
 
+fn generate_jump_version_js(p: &Path) -> String {
+    let content = fs::read(p).expect("file not found");
+    let s = String::from_utf8_lossy(&content);
+    let version_parts = crate::channel::CFG_RELEASE_NUM.split(".").collect::<Vec<_>>();
+    let mut versions = vec!["\"nightly\"".to_owned(),
+                            "\"beta\"".to_owned(),
+                            "\"stable\"".to_owned()];
+    let mut middle_version = i32::from_str_radix(version_parts[1], 10).expect("unknown number");
+
+    while middle_version >= 0 {
+        versions.push(format!("\"1.{}.0\"", middle_version));
+        middle_version -= 1;
+    }
+    s.replace("var VERSIONS = [];", &format!("var VERSIONS = [{}];", versions.join(",")))
+}
+
+fn generate_jump_version_css(p: &Path) -> String {
+    let content = fs::read(p).expect("file not found");
+    String::from_utf8(content).expect("invalid UTF8")
+}
+
 #[derive(Debug, Copy, Clone, Hash, PartialEq, Eq)]
 enum RustbookVersion {
     MdBook1,
@@ -329,21 +350,23 @@ fn invoke_rustdoc(builder: &Builder, compiler: Compiler, target: Interned<String
     let favicon = builder.src.join("src/doc/favicon.inc");
     let footer = builder.src.join("src/doc/footer.inc");
     let version_info = out.join("version_info.html");
+    let jump_version_js = builder.src.join("src/doc/jump-version.js");
+    let jump_version_css = builder.src.join("src/doc/jump-version.css");
 
     let mut cmd = builder.rustdoc_cmd(compiler.host);
 
     let out = out.join("book");
 
     cmd.arg("--html-after-content").arg(&footer)
-        .arg("--html-before-content").arg(&version_info)
-        .arg("--html-in-header").arg(&favicon)
-        .arg("--markdown-no-toc")
-        .arg("--markdown-playground-url")
-        .arg("https://play.rust-lang.org/")
-        .arg("-o").arg(&out)
-        .arg(&path)
-        .arg("--markdown-css")
-        .arg("../rust.css");
+       .arg("--html-before-content").arg(&version_info)
+       .arg("--html-in-header").arg(&favicon)
+       .arg("--raw-js-in-header").arg(&generate_jump_version_js(&jump_version_js))
+       .arg("--raw-css-in-header").arg(&generate_jump_version_css(&jump_version_css))
+       .arg("--markdown-no-toc")
+       .arg("--markdown-playground-url").arg("https://play.rust-lang.org/")
+       .arg("-o").arg(&out)
+       .arg("--markdown-css").arg("../rust.css")
+       .arg(&path);
 
     builder.run(&mut cmd);
 }
@@ -388,6 +411,8 @@ impl Step for Standalone {
         let favicon = builder.src.join("src/doc/favicon.inc");
         let footer = builder.src.join("src/doc/footer.inc");
         let full_toc = builder.src.join("src/doc/full-toc.inc");
+        let jump_version_js = builder.src.join("src/doc/jump-version.js");
+        let jump_version_css = builder.src.join("src/doc/jump-version.css");
         t!(fs::copy(builder.src.join("src/doc/rust.css"), out.join("rust.css")));
 
         let version_input = builder.src.join("src/doc/version_info.html.template");
@@ -424,10 +449,13 @@ impl Step for Standalone {
             cmd.arg("--html-after-content").arg(&footer)
                .arg("--html-before-content").arg(&version_info)
                .arg("--html-in-header").arg(&favicon)
+               .arg("--raw-js-in-header")
+               .arg(&generate_jump_version_js(&jump_version_js))
+               .arg("--raw-css-in-header")
+               .arg(&generate_jump_version_css(&jump_version_css))
                .arg("--markdown-no-toc")
                .arg("--index-page").arg(&builder.src.join("src/doc/index.md"))
-               .arg("--markdown-playground-url")
-               .arg("https://play.rust-lang.org/")
+               .arg("--markdown-playground-url").arg("https://play.rust-lang.org/")
                .arg("-o").arg(&out)
                .arg(&path);
 
@@ -506,6 +534,10 @@ impl Step for Std {
             let mut cargo = builder.cargo(compiler, Mode::Std, target, "rustdoc");
             compile::std_cargo(builder, &compiler, target, &mut cargo);
 
+
+            let jump_version_js = builder.src.join("src/doc/jump-version.js");
+            let jump_version_css = builder.src.join("src/doc/jump-version.css");
+
             // Keep a whitelist so we do not build internal stdlib crates, these will be
             // build by the rustc step later if enabled.
             cargo.arg("-Z").arg("unstable-options")
@@ -518,6 +550,10 @@ impl Step for Std {
                  .arg("--markdown-css").arg("rust.css")
                  .arg("--markdown-no-toc")
                  .arg("--generate-redirect-pages")
+                 .arg("--raw-js-in-header")
+                 .arg(&generate_jump_version_js(&jump_version_js))
+                 .arg("--raw-css-in-header")
+                 .arg(&generate_jump_version_css(&jump_version_css))
                  .arg("--index-page").arg(&builder.src.join("src/doc/index.md"));
 
             builder.run(&mut cargo);

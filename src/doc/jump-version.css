@@ -1,0 +1,11 @@
+#jump-version {
+    position: fixed;
+    right: 5px;
+    bottom: 5px;
+    border: 1px solid #ccc;
+    border-radius: 3px;
+    background-color: #eee;
+    color: #000;
+    padding: 4px;
+    font-size: 1.1em;
+}

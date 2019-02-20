@@ -194,6 +194,10 @@ pub struct RenderOptions {
     pub generate_search_filter: bool,
     /// Option (disabled by default) to generate files used by RLS and some other tools.
     pub generate_redirect_pages: bool,
+    /// Additional JS file (through "--raw-js-in-header" option).
+    pub additional_js: Option<String>,
+    /// Additional JS file (through "--raw-css-in-header" option).
+    pub additional_css: Option<String>,
 }
 
 impl Options {
@@ -360,6 +364,8 @@ impl Options {
             }
         }
 
+        let resource_suffix = matches.opt_str("resource-suffix").unwrap_or_default();
+
         let mut id_map = html::markdown::IdMap::new();
         id_map.populate(html::render::initial_ids());
         let external_html = match ExternalHtml::load(
@@ -367,7 +373,9 @@ impl Options {
                 &matches.opt_strs("html-before-content"),
                 &matches.opt_strs("html-after-content"),
                 &matches.opt_strs("markdown-before-content"),
-                &matches.opt_strs("markdown-after-content"), &diag, &mut id_map) {
+                &matches.opt_strs("markdown-after-content"),
+                &diag,
+                &mut id_map) {
             Some(eh) => eh,
             None => return Err(3),
         };
@@ -428,7 +436,6 @@ impl Options {
         let display_warnings = matches.opt_present("display-warnings");
         let linker = matches.opt_str("linker").map(PathBuf::from);
         let sort_modules_alphabetically = !matches.opt_present("sort-modules-by-appearance");
-        let resource_suffix = matches.opt_str("resource-suffix").unwrap_or_default();
         let enable_minification = !matches.opt_present("disable-minification");
         let markdown_no_toc = matches.opt_present("markdown-no-toc");
         let markdown_css = matches.opt_strs("markdown-css");
@@ -439,6 +446,8 @@ impl Options {
         let generate_search_filter = !matches.opt_present("disable-per-crate-search");
         let persist_doctests = matches.opt_str("persist-doctests").map(PathBuf::from);
         let generate_redirect_pages = matches.opt_present("generate-redirect-pages");
+        let additional_js = matches.opt_str("raw-js-in-header");
+        let additional_css = matches.opt_str("raw-css-in-header");
 
         let (lint_opts, describe_lints, lint_cap) = get_cmd_lint_options(matches, error_format);
 
@@ -484,6 +493,8 @@ impl Options {
                 markdown_playground_url,
                 generate_search_filter,
                 generate_redirect_pages,
+                additional_js,
+                additional_css,
             }
         })
     }

@@ -201,6 +201,18 @@ fn opts() -> Vec<RustcOptGroup> {
                         Markdown file or generated documentation",
                        "FILES")
         }),
+        unstable("raw-js-in-header", |o|  {
+            o.optopt("", "raw-js-in-header",
+                     "JS to include in the <head> section of a rendered Markdown file \
+                      or generated documentation",
+                     "text")
+        }),
+        unstable("raw-css-in-header", |o|  {
+            o.optopt("", "raw-css-in-header",
+                     "CSS to include in the <head> section of a rendered Markdown file \
+                      or generated documentation",
+                     "text")
+        }),
         unstable("markdown-before-content", |o| {
             o.optmulti("", "markdown-before-content",
                        "files to include inline between <body> and the content of a rendered \

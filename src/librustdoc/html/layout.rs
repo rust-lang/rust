@@ -35,6 +35,8 @@ pub fn render<T: fmt::Display, S: fmt::Display>(
     css_file_extension: bool,
     themes: &[PathBuf],
     generate_search_filter: bool,
+    additional_js: bool,
+    additional_css: bool,
 ) -> io::Result<()> {
     let static_root_path = page.static_root_path.unwrap_or(page.root_path);
     write!(dst,
@@ -61,7 +63,7 @@ pub fn render<T: fmt::Display, S: fmt::Display>(
     {in_header}\
     <style type=\"text/css\">\
     #crate-search{{background-image:url(\"{static_root_path}down-arrow{suffix}.svg\");}}\
-    </style>\
+    </style>{additional_js}{additional_css}\
 </head>\
 <body class=\"rustdoc {css_class}\">\
     <!--[if lte IE 8]>\
@@ -235,6 +237,18 @@ pub fn render<T: fmt::Display, S: fmt::Display>(
         </select>"
     } else {
         ""
+    },
+    additional_js = if additional_js {
+        format!("<script src=\"{}additional{}.js\"></script>",
+                static_root_path, page.resource_suffix)
+    } else {
+        String::new()
+    },
+    additional_css = if additional_css {
+        format!("<link rel=\"stylesheet\" type=\"text/css\" href=\"{}additional{}.css\">",
+                static_root_path, page.resource_suffix)
+    } else {
+        String::new()
     },
     )
 }

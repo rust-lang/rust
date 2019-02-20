@@ -150,6 +150,10 @@ struct SharedContext {
     pub generate_search_filter: bool,
     /// Option disabled by default to generate files used by RLS and some other tools.
     pub generate_redirect_pages: bool,
+    /// Is additional JS content present.
+    pub additional_js: bool,
+    /// Is additional CSS content present.
+    pub additional_css: bool,
 }
 
 impl SharedContext {
@@ -519,6 +523,8 @@ pub fn run(mut krate: clean::Crate,
         static_root_path,
         generate_search_filter,
         generate_redirect_pages,
+        additional_js,
+        additional_css,
         ..
     } = options;
 
@@ -549,6 +555,8 @@ pub fn run(mut krate: clean::Crate,
         static_root_path,
         generate_search_filter,
         generate_redirect_pages,
+        additional_js: additional_js.is_some(),
+        additional_css: additional_css.is_some(),
     };
 
     // If user passed in `--playground-url` arg, we fill in crate name here
@@ -885,6 +893,16 @@ themePicker.onblur = handleThemeButtonsBlur;
     write_minify(cx.dst.join(&format!("settings{}.js", cx.shared.resource_suffix)),
                  static_files::SETTINGS_JS,
                  options.enable_minification)?;
+    if let Some(ref additional_js) = options.additional_js {
+        write_minify(cx.dst.join(&format!("additional{}.js", cx.shared.resource_suffix)),
+                     additional_js,
+                     options.enable_minification)?;
+    }
+    if let Some(ref additional_css) = options.additional_css {
+        write_minify(cx.dst.join(&format!("additional{}.css", cx.shared.resource_suffix)),
+                     additional_css,
+                     options.enable_minification)?;
+    }
     if cx.shared.include_sources {
         write_minify(cx.dst.join(&format!("source-script{}.js", cx.shared.resource_suffix)),
                      static_files::sidebar::SOURCE_SCRIPT,
@@ -1164,7 +1182,9 @@ themePicker.onblur = handleThemeButtonsBlur;
                                     &page, &(""), &content,
                                     cx.shared.css_file_extension.is_some(),
                                     &cx.shared.themes,
-                                    cx.shared.generate_search_filter), &dst);
+                                    cx.shared.generate_search_filter,
+                                    options.additional_js.is_some(),
+                                    options.additional_css.is_some()), &dst);
             try_err!(w.flush(), &dst);
         }
     }
@@ -1476,7 +1496,9 @@ impl<'a> SourceCollector<'a> {
                        &page, &(""), &Source(contents),
                        self.scx.css_file_extension.is_some(),
                        &self.scx.themes,
-                       self.scx.generate_search_filter)?;
+                       self.scx.generate_search_filter,
+                       self.scx.additional_js,
+                       self.scx.additional_css)?;
         w.flush()?;
         self.scx.local_sources.insert(p.clone(), href);
         Ok(())
@@ -2084,7 +2106,9 @@ impl Context {
                                 &page, &sidebar, &all,
                                 self.shared.css_file_extension.is_some(),
                                 &self.shared.themes,
-                                self.shared.generate_search_filter),
+                                self.shared.generate_search_filter,
+                                self.shared.additional_js,
+                                self.shared.additional_css),
                  &final_file);
 
         // Generating settings page.
@@ -2102,7 +2126,9 @@ impl Context {
                                 &page, &sidebar, &settings,
                                 self.shared.css_file_extension.is_some(),
                                 &themes,
-                                self.shared.generate_search_filter),
+                                self.shared.generate_search_filter,
+                                self.shared.additional_js,
+                                self.shared.additional_css),
                  &settings_file);
 
         Ok(())
@@ -2164,7 +2190,9 @@ impl Context {
                            &Item{ cx: self, item: it },
                            self.shared.css_file_extension.is_some(),
                            &self.shared.themes,
-                           self.shared.generate_search_filter)?;
+                           self.shared.generate_search_filter,
+                           self.shared.additional_js,
+                           self.shared.additional_css)?;
         } else {
             let mut url = self.root_path();
             if let Some(&(ref names, ty)) = cache().paths.get(&it.def_id) {
