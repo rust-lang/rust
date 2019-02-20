@@ -8,7 +8,8 @@ use crate::ty::{Error, Str, Array, Slice, Float, FnDef, FnPtr};
 use crate::ty::{Param, Bound, RawPtr, Ref, Never, Tuple};
 use crate::ty::{Closure, Generator, GeneratorWitness, Foreign, Projection, Opaque};
 use crate::ty::{Placeholder, UnnormalizedProjection, Dynamic, Int, Uint, Infer};
-use crate::ty::{self, Ty, TyCtxt, TypeFoldable, GenericParamCount, GenericParamDefKind};
+use crate::ty::{self, Ty, TyCtxt, TypeFoldable, GenericParamCount, GenericParamDefKind, ParamConst};
+use crate::mir::interpret::ConstValue;
 use crate::util::nodemap::FxHashSet;
 
 use std::cell::Cell;
@@ -478,6 +479,7 @@ impl PrintContext {
                         GenericParamDefKind::Type { has_default, .. } => {
                             Some((param.def_id, has_default))
                         }
+                        GenericParamDefKind::Const => None, // FIXME(const_generics:defaults)
                     }).peekable();
                 let has_default = {
                     let has_default = type_params.peek().map(|(_, has_default)| has_default);
@@ -569,6 +571,14 @@ impl PrintContext {
                              tcx.associated_item(projection.projection_ty.item_def_id).ident),
                        print_display(projection.ty))
             )?;
+        }
+
+        // FIXME(const_generics::defaults)
+        let consts = substs.consts();
+
+        for ct in consts {
+            start_or_continue(f, "<", ", ")?;
+            ct.print_display(f, self)?;
         }
 
         start_or_continue(f, "", ">")?;
@@ -763,7 +773,8 @@ impl fmt::Debug for ty::GenericParamDef {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let type_name = match self.kind {
             ty::GenericParamDefKind::Lifetime => "Lifetime",
-            ty::GenericParamDefKind::Type {..} => "Type",
+            ty::GenericParamDefKind::Type { .. } => "Type",
+            ty::GenericParamDefKind::Const => "Const",
         };
         write!(f, "{}({}, {:?}, {})",
                type_name,
@@ -1085,6 +1096,12 @@ define_print! {
 impl fmt::Debug for ty::TyVid {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "_#{}t", self.index)
+    }
+}
+
+impl<'tcx> fmt::Debug for ty::ConstVid<'tcx> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "_#{}f", self.index)
     }
 }
 
@@ -1448,7 +1465,12 @@ define_print! {
                             write!(f, "_")?;
                         }
                         ty::LazyConst::Evaluated(c) => ty::tls::with(|tcx| {
-                            write!(f, "{}", c.unwrap_usize(tcx))
+                            match c.val {
+                                ConstValue::Infer(..) => write!(f, "_"),
+                                ConstValue::Param(ParamConst { name, .. }) =>
+                                    write!(f, "{}", name),
+                                _ => write!(f, "{}", c.unwrap_usize(tcx)),
+                            }
                         })?,
                     }
                     write!(f, "]")
@@ -1473,12 +1495,54 @@ define_print! {
 }
 
 define_print! {
+    ('tcx) ConstValue<'tcx>, (self, f, cx) {
+        display {
+            match self {
+                ConstValue::Infer(..) => write!(f, "_"),
+                ConstValue::Param(ParamConst { name, .. }) => write!(f, "{}", name),
+                _ => write!(f, "{:?}", self),
+            }
+        }
+    }
+}
+
+define_print! {
+    ('tcx) ty::Const<'tcx>, (self, f, cx) {
+        display {
+            write!(f, "{} : {}", self.val, self.ty)
+        }
+    }
+}
+
+define_print! {
+    ('tcx) ty::LazyConst<'tcx>, (self, f, cx) {
+        display {
+            match self {
+                ty::LazyConst::Unevaluated(..) => write!(f, "_ : _"),
+                ty::LazyConst::Evaluated(c) => write!(f, "{}", c),
+            }
+        }
+    }
+}
+
+define_print! {
     () ty::ParamTy, (self, f, cx) {
         display {
             write!(f, "{}", self.name)
         }
         debug {
             write!(f, "{}/#{}", self.name, self.idx)
+        }
+    }
+}
+
+define_print! {
+    () ty::ParamConst, (self, f, cx) {
+        display {
+            write!(f, "{}", self.name)
+        }
+        debug {
+            write!(f, "{}/#{}", self.name, self.index)
         }
     }
 }
