@@ -771,7 +771,13 @@ impl<'a, 'tcx> AutoTraitFinder<'a, 'tcx> {
                     }
                 }
                 &ty::Predicate::RegionOutlives(ref binder) => {
-                    let () = select.infcx().region_outlives_predicate(&dummy_cause, binder);
+                    if select
+                        .infcx()
+                        .region_outlives_predicate(&dummy_cause, binder)
+                        .is_err()
+                    {
+                        return false;
+                    }
                 }
                 &ty::Predicate::TypeOutlives(ref binder) => {
                     match (
