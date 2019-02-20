@@ -78,7 +78,8 @@ feature can be changed, or the feature might be completely
 rewritten or removed. Features are not supposed to gain tenure
 by being unstable and unchanged for a year.
 
-### <a name = "tracking-issue"> Tracking Issues </a>
+<a name = "tracking-issue"></a>
+###  Tracking Issues
 
 To keep track of the status of an unstable feature, the
 experience we get while using it on nightly, and of the
