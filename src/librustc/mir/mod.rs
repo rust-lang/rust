@@ -2154,7 +2154,7 @@ impl<'tcx> Operand<'tcx> {
             span,
             ty,
             user_ty: None,
-            literal: tcx.intern_lazy_const(
+            literal: tcx.mk_lazy_const(
                 ty::LazyConst::Evaluated(ty::Const::zero_sized(ty)),
             ),
         })

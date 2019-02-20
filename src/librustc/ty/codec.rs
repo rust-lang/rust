@@ -252,7 +252,7 @@ pub fn decode_lazy_const<'a, 'tcx, D>(decoder: &mut D)
     where D: TyDecoder<'a, 'tcx>,
           'tcx: 'a,
 {
-    Ok(decoder.tcx().intern_lazy_const(Decodable::decode(decoder)?))
+    Ok(decoder.tcx().mk_lazy_const(Decodable::decode(decoder)?))
 }
 
 #[inline]
