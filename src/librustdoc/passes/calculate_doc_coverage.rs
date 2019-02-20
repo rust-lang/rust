@@ -43,7 +43,11 @@ struct CoverageCalculator {
 impl fold::DocFolder for CoverageCalculator {
     fn fold_item(&mut self, i: clean::Item) -> Option<clean::Item> {
         match i.inner {
-            clean::StrippedItem(..) => {}
+            clean::StrippedItem(..) => {
+                // don't count items in stripped modules
+                return Some(i);
+            }
+            clean::ImportItem(..) | clean::ExternCrateItem(..) => {}
             clean::ImplItem(ref impl_)
                 if attr::contains_name(&i.attrs.other_attrs, "automatically_derived")
                     || impl_.synthetic || impl_.blanket_impl.is_some() =>
