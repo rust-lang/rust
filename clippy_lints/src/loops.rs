@@ -27,7 +27,7 @@ use syntax_pos::BytePos;
 
 use crate::utils::paths;
 use crate::utils::{
-    get_enclosing_block, get_parent_expr, higher, is_integer_literal, is_refutable, last_path_segment,
+    get_enclosing_block, get_parent_expr, has_iter_method, higher, is_integer_literal, is_refutable, last_path_segment,
     match_trait_method, match_type, match_var, multispan_sugg, snippet, snippet_opt, snippet_with_applicability,
     span_help_and_lint, span_lint, span_lint_and_sugg, span_lint_and_then, SpanlessEq,
 };
@@ -1116,6 +1116,12 @@ fn check_for_loop_range<'a, 'tcx>(
                     if region_scope_tree.is_subscope_of(indexed_extent, pat_extent) {
                         return;
                     }
+                }
+
+                // don't lint if the container that is indexed does not have .iter() method
+                let has_iter = has_iter_method(cx, indexed_ty);
+                if has_iter.is_none() {
+                    return;
                 }
 
                 // don't lint if the container that is indexed into is also used without

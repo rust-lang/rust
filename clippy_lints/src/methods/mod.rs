@@ -1,7 +1,7 @@
 use crate::utils::paths;
 use crate::utils::sugg;
 use crate::utils::{
-    get_arg_name, get_parent_expr, get_trait_def_id, implements_trait, in_macro, is_copy, is_expn_of, is_self,
+    get_arg_name, get_parent_expr, get_trait_def_id, has_iter_method, implements_trait, in_macro, is_copy, is_expn_of, is_self,
     is_self_ty, iter_input_pats, last_path_segment, match_def_path, match_path, match_qpath, match_trait_method,
     match_type, match_var, method_calls, method_chain_args, remove_blocks, return_ty, same_tys, single_segment_path,
     snippet, snippet_with_applicability, snippet_with_macro_callsite, span_lint, span_lint_and_sugg,
@@ -2228,47 +2228,23 @@ fn ty_has_iter_method(
     cx: &LateContext<'_, '_>,
     self_ref_ty: ty::Ty<'_>,
 ) -> Option<(&'static Lint, &'static str, &'static str)> {
-    // FIXME: instead of this hard-coded list, we should check if `<adt>::iter`
-    // exists and has the desired signature. Unfortunately FnCtxt is not exported
-    // so we can't use its `lookup_method` method.
-    static INTO_ITER_COLLECTIONS: [(&Lint, &[&str]); 13] = [
-        (INTO_ITER_ON_REF, &paths::VEC),
-        (INTO_ITER_ON_REF, &paths::OPTION),
-        (INTO_ITER_ON_REF, &paths::RESULT),
-        (INTO_ITER_ON_REF, &paths::BTREESET),
-        (INTO_ITER_ON_REF, &paths::BTREEMAP),
-        (INTO_ITER_ON_REF, &paths::VEC_DEQUE),
-        (INTO_ITER_ON_REF, &paths::LINKED_LIST),
-        (INTO_ITER_ON_REF, &paths::BINARY_HEAP),
-        (INTO_ITER_ON_REF, &paths::HASHSET),
-        (INTO_ITER_ON_REF, &paths::HASHMAP),
-        (INTO_ITER_ON_ARRAY, &["std", "path", "PathBuf"]),
-        (INTO_ITER_ON_REF, &["std", "path", "Path"]),
-        (INTO_ITER_ON_REF, &["std", "sync", "mpsc", "Receiver"]),
-    ];
-
-    let (self_ty, mutbl) = match self_ref_ty.sty {
-        ty::Ref(_, self_ty, mutbl) => (self_ty, mutbl),
-        _ => unreachable!(),
-    };
-    let method_name = match mutbl {
-        hir::MutImmutable => "iter",
-        hir::MutMutable => "iter_mut",
-    };
-
-    let def_id = match self_ty.sty {
-        ty::Array(..) => return Some((INTO_ITER_ON_ARRAY, "array", method_name)),
-        ty::Slice(..) => return Some((INTO_ITER_ON_REF, "slice", method_name)),
-        ty::Adt(adt, _) => adt.did,
-        _ => return None,
-    };
-
-    for (lint, path) in &INTO_ITER_COLLECTIONS {
-        if match_def_path(cx.tcx, def_id, path) {
-            return Some((lint, path.last().unwrap(), method_name));
-        }
+    if let Some(ty_name) = has_iter_method(cx, self_ref_ty) {
+        let lint = match ty_name {
+            "array" | "PathBuf" => INTO_ITER_ON_ARRAY,
+            _ => INTO_ITER_ON_REF,
+        };
+        let mutbl = match self_ref_ty.sty {
+            ty::Ref(_, _, mutbl) => mutbl,
+            _ => unreachable!(),
+        };
+        let method_name = match mutbl {
+            hir::MutImmutable => "iter",
+            hir::MutMutable => "iter_mut",
+        };
+        Some((lint, ty_name, method_name))
+    } else {
+        None
     }
-    None
 }
 
 fn lint_into_iter(cx: &LateContext<'_, '_>, expr: &hir::Expr, self_ref_ty: ty::Ty<'_>, method_span: Span) {
