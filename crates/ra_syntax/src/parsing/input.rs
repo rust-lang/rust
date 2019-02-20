@@ -1,33 +1,29 @@
 use crate::{
     SyntaxKind, SyntaxKind::EOF, TextRange, TextUnit,
     parsing::{
-        TokenPos, TokenSource,
+        TokenSource,
         lexer::Token,
     },
 };
 
 impl<'t> TokenSource for ParserInput<'t> {
-    fn token_kind(&self, pos: TokenPos) -> SyntaxKind {
-        let idx = pos.0 as usize;
-        if !(idx < self.tokens.len()) {
+    fn token_kind(&self, pos: usize) -> SyntaxKind {
+        if !(pos < self.tokens.len()) {
             return EOF;
         }
-        self.tokens[idx].kind
+        self.tokens[pos].kind
     }
-    fn is_token_joint_to_next(&self, pos: TokenPos) -> bool {
-        let idx_curr = pos.0 as usize;
-        let idx_next = pos.0 as usize + 1;
-        if !(idx_next < self.tokens.len()) {
+    fn is_token_joint_to_next(&self, pos: usize) -> bool {
+        if !(pos + 1 < self.tokens.len()) {
             return true;
         }
-        self.start_offsets[idx_curr] + self.tokens[idx_curr].len == self.start_offsets[idx_next]
+        self.start_offsets[pos] + self.tokens[pos].len == self.start_offsets[pos + 1]
     }
-    fn is_keyword(&self, pos: TokenPos, kw: &str) -> bool {
-        let idx = pos.0 as usize;
-        if !(idx < self.tokens.len()) {
+    fn is_keyword(&self, pos: usize, kw: &str) -> bool {
+        if !(pos < self.tokens.len()) {
             return false;
         }
-        let range = TextRange::offset_len(self.start_offsets[idx], self.tokens[idx].len);
+        let range = TextRange::offset_len(self.start_offsets[pos], self.tokens[pos].len);
 
         self.text[range] == *kw
     }

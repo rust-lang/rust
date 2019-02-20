@@ -69,24 +69,7 @@ trait TreeSink {
 ///
 /// Hopefully this will allow us to treat text and token trees in the same way!
 trait TokenSource {
-    fn token_kind(&self, pos: TokenPos) -> SyntaxKind;
-    fn is_token_joint_to_next(&self, pos: TokenPos) -> bool;
-    fn is_keyword(&self, pos: TokenPos, kw: &str) -> bool;
-}
-
-#[derive(Copy, Clone, Ord, PartialOrd, Eq, PartialEq, Default)]
-pub(crate) struct TokenPos(pub u32);
-
-impl std::ops::Add<u32> for TokenPos {
-    type Output = TokenPos;
-
-    fn add(self, rhs: u32) -> TokenPos {
-        TokenPos(self.0 + rhs)
-    }
-}
-
-impl std::ops::AddAssign<u32> for TokenPos {
-    fn add_assign(&mut self, rhs: u32) {
-        self.0 += rhs
-    }
+    fn token_kind(&self, pos: usize) -> SyntaxKind;
+    fn is_token_joint_to_next(&self, pos: usize) -> bool;
+    fn is_keyword(&self, pos: usize, kw: &str) -> bool;
 }

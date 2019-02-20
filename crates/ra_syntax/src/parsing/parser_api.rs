@@ -6,7 +6,7 @@ use crate::{
     syntax_error::ParseError,
     SyntaxKind::{self, ERROR, EOF, TOMBSTONE},
     parsing::{
-        TokenSource, TokenPos,
+        TokenSource,
         token_set::TokenSet,
         event::Event,
     },
@@ -23,14 +23,14 @@ use crate::{
 /// finish expression". See `Event` docs for more.
 pub(crate) struct Parser<'t> {
     token_source: &'t dyn TokenSource,
-    pos: TokenPos,
+    token_pos: usize,
     events: Vec<Event>,
     steps: Cell<u32>,
 }
 
 impl<'t> Parser<'t> {
     pub(super) fn new(token_source: &'t dyn TokenSource) -> Parser<'t> {
-        Parser { token_source, pos: TokenPos::default(), events: Vec::new(), steps: Cell::new(0) }
+        Parser { token_source, token_pos: 0, events: Vec::new(), steps: Cell::new(0) }
     }
 
     pub(crate) fn finish(self) -> Vec<Event> {
@@ -49,9 +49,9 @@ impl<'t> Parser<'t> {
     ///
     /// Useful for parsing things like `>>`.
     pub(crate) fn current2(&self) -> Option<(SyntaxKind, SyntaxKind)> {
-        let c1 = self.token_source.token_kind(self.pos);
-        let c2 = self.token_source.token_kind(self.pos + 1);
-        if self.token_source.is_token_joint_to_next(self.pos) {
+        let c1 = self.token_source.token_kind(self.token_pos);
+        let c2 = self.token_source.token_kind(self.token_pos + 1);
+        if self.token_source.is_token_joint_to_next(self.token_pos) {
             Some((c1, c2))
         } else {
             None
@@ -63,11 +63,11 @@ impl<'t> Parser<'t> {
     ///
     /// Useful for parsing things like `=>>`.
     pub(crate) fn current3(&self) -> Option<(SyntaxKind, SyntaxKind, SyntaxKind)> {
-        let c1 = self.token_source.token_kind(self.pos);
-        let c2 = self.token_source.token_kind(self.pos + 1);
-        let c3 = self.token_source.token_kind(self.pos + 2);
-        if self.token_source.is_token_joint_to_next(self.pos)
-            && self.token_source.is_token_joint_to_next(self.pos + 1)
+        let c1 = self.token_source.token_kind(self.token_pos);
+        let c2 = self.token_source.token_kind(self.token_pos + 1);
+        let c3 = self.token_source.token_kind(self.token_pos + 2);
+        if self.token_source.is_token_joint_to_next(self.token_pos)
+            && self.token_source.is_token_joint_to_next(self.token_pos + 1)
         {
             Some((c1, c2, c3))
         } else {
@@ -77,11 +77,11 @@ impl<'t> Parser<'t> {
 
     /// Lookahead operation: returns the kind of the next nth
     /// token.
-    pub(crate) fn nth(&self, n: u32) -> SyntaxKind {
+    pub(crate) fn nth(&self, n: usize) -> SyntaxKind {
         let steps = self.steps.get();
         assert!(steps <= 10_000_000, "the parser seems stuck");
         self.steps.set(steps + 1);
-        self.token_source.token_kind(self.pos + n)
+        self.token_source.token_kind(self.token_pos + n)
     }
 
     /// Checks if the current token is `kind`.
@@ -96,7 +96,7 @@ impl<'t> Parser<'t> {
 
     /// Checks if the current token is contextual keyword with text `t`.
     pub(crate) fn at_contextual_kw(&self, kw: &str) -> bool {
-        self.token_source.is_keyword(self.pos, kw)
+        self.token_source.is_keyword(self.token_pos, kw)
     }
 
     /// Starts a new node in the syntax tree. All nodes and tokens
@@ -184,7 +184,7 @@ impl<'t> Parser<'t> {
     }
 
     fn do_bump(&mut self, kind: SyntaxKind, n_raw_tokens: u8) {
-        self.pos += u32::from(n_raw_tokens);
+        self.token_pos += usize::from(n_raw_tokens);
         self.push_event(Event::Token { kind, n_raw_tokens });
     }
 
