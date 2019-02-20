@@ -1477,17 +1477,22 @@ fn lint_cstring_as_ptr(cx: &LateContext<'_, '_>, expr: &hir::Expr, new: &hir::Ex
     }
 }
 
-fn lint_iter_cloned_collect(cx: &LateContext<'_, '_>, expr: &hir::Expr, iter_args: &[hir::Expr]) {
-    if match_type(cx, cx.tables.expr_ty(expr), &paths::VEC)
-        && derefs_to_slice(cx, &iter_args[0], cx.tables.expr_ty(&iter_args[0])).is_some()
-    {
-        span_lint(
-            cx,
-            ITER_CLONED_COLLECT,
-            expr.span,
-            "called `cloned().collect()` on a slice to create a `Vec`. Calling `to_vec()` is both faster and \
-             more readable",
-        );
+fn lint_iter_cloned_collect<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, expr: &hir::Expr, iter_args: &'tcx [hir::Expr]) {
+    if match_type(cx, cx.tables.expr_ty(expr), &paths::VEC) {
+        if let Some(slice) = derefs_to_slice(cx, &iter_args[0], cx.tables.expr_ty(&iter_args[0])) {
+            if let Some(to_replace) = expr.span.trim_start(slice.span.source_callsite()) {
+                span_lint_and_sugg(
+                    cx,
+                    ITER_CLONED_COLLECT,
+                    to_replace,
+                    "called `iter().cloned().collect()` on a slice to create a `Vec`. Calling `to_vec()` is both faster and \
+                     more readable",
+                    "try",
+                    ".to_vec()".to_string(),
+                    Applicability::MachineApplicable,
+                );
+            }
+        }
     }
 }
 
@@ -1573,7 +1578,7 @@ fn lint_unnecessary_fold(cx: &LateContext<'_, '_>, expr: &hir::Expr, fold_args: 
     };
 }
 
-fn lint_iter_nth(cx: &LateContext<'_, '_>, expr: &hir::Expr, iter_args: &[hir::Expr], is_mut: bool) {
+fn lint_iter_nth<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, expr: &hir::Expr, iter_args: &'tcx [hir::Expr], is_mut: bool) {
     let mut_str = if is_mut { "_mut" } else { "" };
     let caller_type = if derefs_to_slice(cx, &iter_args[0], cx.tables.expr_ty(&iter_args[0])).is_some() {
         "slice"
@@ -1596,7 +1601,7 @@ fn lint_iter_nth(cx: &LateContext<'_, '_>, expr: &hir::Expr, iter_args: &[hir::E
     );
 }
 
-fn lint_get_unwrap(cx: &LateContext<'_, '_>, expr: &hir::Expr, get_args: &[hir::Expr], is_mut: bool) {
+fn lint_get_unwrap<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, expr: &hir::Expr, get_args: &'tcx [hir::Expr], is_mut: bool) {
     // Note: we don't want to lint `get_mut().unwrap` for HashMap or BTreeMap,
     // because they do not implement `IndexMut`
     let mut applicability = Applicability::MachineApplicable;
@@ -1681,7 +1686,11 @@ fn lint_iter_skip_next(cx: &LateContext<'_, '_>, expr: &hir::Expr) {
     }
 }
 
-fn derefs_to_slice(cx: &LateContext<'_, '_>, expr: &hir::Expr, ty: Ty<'_>) -> Option<sugg::Sugg<'static>> {
+fn derefs_to_slice<'a, 'tcx>(
+    cx: &LateContext<'a, 'tcx>,
+    expr: &'tcx hir::Expr,
+    ty: Ty<'tcx>,
+) -> Option<&'tcx hir::Expr> {
     fn may_slice(cx: &LateContext<'_, '_>, ty: Ty<'_>) -> bool {
         match ty.sty {
             ty::Slice(_) => true,
@@ -1695,17 +1704,17 @@ fn derefs_to_slice(cx: &LateContext<'_, '_>, expr: &hir::Expr, ty: Ty<'_>) -> Op
 
     if let hir::ExprKind::MethodCall(ref path, _, ref args) = expr.node {
         if path.ident.name == "iter" && may_slice(cx, cx.tables.expr_ty(&args[0])) {
-            sugg::Sugg::hir_opt(cx, &args[0]).map(sugg::Sugg::addr)
+            Some(&args[0])
         } else {
             None
         }
     } else {
         match ty.sty {
-            ty::Slice(_) => sugg::Sugg::hir_opt(cx, expr),
-            ty::Adt(def, _) if def.is_box() && may_slice(cx, ty.boxed_ty()) => sugg::Sugg::hir_opt(cx, expr),
+            ty::Slice(_) => Some(expr),
+            ty::Adt(def, _) if def.is_box() && may_slice(cx, ty.boxed_ty()) => Some(expr),
             ty::Ref(_, inner, _) => {
                 if may_slice(cx, inner) {
-                    sugg::Sugg::hir_opt(cx, expr)
+                    Some(expr)
                 } else {
                     None
                 }
