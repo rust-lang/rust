@@ -7,26 +7,14 @@ LL | #![feature(const_generics)]
 error: type parameters must be declared prior to const parameters
   --> $DIR/const-param-before-other-params.rs:4:21
    |
-LL | fn foo<const X: (), T>(_: T) {
+LL | fn foo<const X: (), T>(_: &T) {
    |       --------------^- help: reorder the parameters: lifetimes, then types, then consts: `<T, const X: ()>`
 
 error: lifetime parameters must be declared prior to const parameters
-  --> $DIR/const-param-before-other-params.rs:9:21
+  --> $DIR/const-param-before-other-params.rs:8:21
    |
 LL | fn bar<const X: (), 'a>(_: &'a ()) {
    |       --------------^^- help: reorder the parameters: lifetimes, then types, then consts: `<'a, const X: ()>`
 
-error: const generics in any position are currently unsupported
-  --> $DIR/const-param-before-other-params.rs:4:14
-   |
-LL | fn foo<const X: (), T>(_: T) {
-   |              ^
-
-error: const generics in any position are currently unsupported
-  --> $DIR/const-param-before-other-params.rs:9:14
-   |
-LL | fn bar<const X: (), 'a>(_: &'a ()) {
-   |              ^
-
-error: aborting due to 4 previous errors
+error: aborting due to 2 previous errors
 

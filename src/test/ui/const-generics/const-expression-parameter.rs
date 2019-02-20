@@ -2,7 +2,6 @@
 //~^ WARN the feature `const_generics` is incomplete and may cause the compiler to crash
 
 fn u32_identity<const X: u32>() -> u32 {
-    //~^ ERROR const generics in any position are currently unsupported
     5
 }
 
@@ -16,6 +15,8 @@ fn foo_b() {
 
 fn foo_c() {
     u32_identity::< -1 >(); // ok
+    // FIXME(const_generics)
+    //~^^ ERROR cannot apply unary operator `-` to type `u32` [E0600]
 }
 
 fn main() {
