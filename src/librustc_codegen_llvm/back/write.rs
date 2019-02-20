@@ -13,10 +13,8 @@ use crate::common;
 use crate::LlvmCodegenBackend;
 use rustc_codegen_ssa::back::write::{CodegenContext, ModuleConfig, run_assembler};
 use rustc_codegen_ssa::traits::*;
-use rustc::hir::def_id::LOCAL_CRATE;
 use rustc::session::config::{self, OutputType, Passes, Lto};
 use rustc::session::Session;
-use rustc::ty::TyCtxt;
 use rustc_codegen_ssa::{ModuleCodegen, CompiledModule};
 use rustc::util::common::time_ext;
 use rustc_fs_util::{path_to_c_string, link_or_copy};
@@ -80,14 +78,6 @@ pub fn write_output_file(
             Ok(())
         }
     }
-}
-
-pub fn create_target_machine(
-    tcx: TyCtxt<'_, '_, '_>,
-    find_features: bool,
-) -> &'static mut llvm::TargetMachine {
-    target_machine_factory(tcx.sess, tcx.backend_optimization_level(LOCAL_CRATE), find_features)()
-        .unwrap_or_else(|err| llvm_err(tcx.sess.diagnostic(), &err).raise() )
 }
 
 pub fn create_informational_target_machine(
