@@ -17,7 +17,7 @@ impl<T> Trait for fn(&T) {
 
 fn f() {
     let a: fn(_) = |_: &u8| {};
-    a.f(); //~ ERROR not general enough
+    a.f(); //~ ERROR no method named `f`
 }
 
 fn main() {}
