@@ -1,6 +1,6 @@
 use std::fmt;
 
-use crate::ty::{Ty, layout::{HasDataLayout, Size}};
+use crate::ty::{Ty, InferConst, ParamConst, layout::{HasDataLayout, Size}};
 
 use super::{EvalResult, Pointer, PointerArithmetic, Allocation, AllocId, sign_extend, truncate};
 
@@ -17,6 +17,12 @@ pub struct RawConst<'tcx> {
 /// match the `LocalState` optimizations for easy conversions between `Value` and `ConstValue`.
 #[derive(Copy, Clone, Debug, Eq, PartialEq, PartialOrd, Ord, RustcEncodable, RustcDecodable, Hash)]
 pub enum ConstValue<'tcx> {
+    /// A const generic parameter.
+    Param(ParamConst),
+
+    /// Infer the value of the const.
+    Infer(InferConst<'tcx>),
+
     /// Used only for types with `layout::abi::Scalar` ABI and ZSTs.
     ///
     /// Not using the enum `Value` to encode that this must not be `Undef`.
@@ -43,6 +49,8 @@ impl<'tcx> ConstValue<'tcx> {
     #[inline]
     pub fn try_to_scalar(&self) -> Option<Scalar> {
         match *self {
+            ConstValue::Param(_) |
+            ConstValue::Infer(_) |
             ConstValue::ByRef(..) |
             ConstValue::Slice(..) => None,
             ConstValue::Scalar(val) => Some(val),
