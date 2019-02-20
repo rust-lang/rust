@@ -705,6 +705,9 @@ impl<'tcx> Relate<'tcx> for Kind<'tcx> {
             (UnpackedKind::Type(unpacked), x) => {
                 bug!("impossible case reached: can't relate: {:?} with {:?}", unpacked, x)
             }
+            (UnpackedKind::Const(_), _) => {
+                unimplemented!() // FIXME(const_generics)
+            }
         }
     }
 }
