@@ -99,11 +99,13 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         let substs = base_substs.extend_to(self.tcx,expr_def_id, |param, _| {
             match param.kind {
                 GenericParamDefKind::Lifetime => {
-                    span_bug!(expr.span, "closure has region param")
+                    span_bug!(expr.span, "closure has lifetime param")
                 }
-                GenericParamDefKind::Type {..} => {
-                    self.infcx
-                        .next_ty_var(TypeVariableOrigin::ClosureSynthetic(expr.span)).into()
+                GenericParamDefKind::Type { .. } => {
+                    self.infcx.next_ty_var(TypeVariableOrigin::ClosureSynthetic(expr.span)).into()
+                }
+                GenericParamDefKind::Const => {
+                    span_bug!(expr.span, "closure has const param")
                 }
             }
         });
