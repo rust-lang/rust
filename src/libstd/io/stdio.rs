@@ -6,10 +6,10 @@ use crate::cell::RefCell;
 use crate::fmt;
 use crate::io::lazy::Lazy;
 use crate::io::{self, Initializer, BufReader, LineWriter, IoSlice, IoSliceMut};
-use crate::sync::{Arc, Mutex, MutexGuard};
+use crate::sync::Arc;
 use crate::sys::stdio;
 use crate::panic::{UnwindSafe, RefUnwindSafe};
-use crate::parking_lot::{ReentrantMutex, ReentrantMutexGuard};
+use crate::parking_lot::{Mutex, MutexGuard, ReentrantMutex, ReentrantMutexGuard};
 use crate::thread::LocalKey;
 
 thread_local! {
@@ -286,7 +286,7 @@ impl Stdin {
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn lock(&self) -> StdinLock<'_> {
-        StdinLock { inner: self.inner.lock().unwrap_or_else(|e| e.into_inner()) }
+        StdinLock { inner: self.inner.lock() }
     }
 
     /// Locks this handle and reads a line of input into the specified buffer.
