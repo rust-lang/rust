@@ -20,7 +20,7 @@ use crate::{
     },
     parsing::{
         lexer::Token,
-        parser_impl::TreeSink,
+        TreeSink,
     },
 };
 
@@ -113,7 +113,7 @@ impl<'a, S: TreeSink> EventProcessor<'a, S> {
     }
 
     /// Generate the syntax tree with the control of events.
-    pub(super) fn process(mut self) -> S {
+    pub(crate) fn process(mut self) -> S {
         let mut forward_parents = Vec::new();
 
         for i in 0..self.events.len() {

@@ -1,8 +1,7 @@
 use crate::{
     SyntaxKind, SyntaxKind::EOF, TextRange, TextUnit,
     parsing::{
-        TokenPos,
-        parser_impl::TokenSource,
+        TokenPos, TokenSource,
         lexer::Token,
     },
 };

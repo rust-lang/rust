@@ -4,8 +4,7 @@ use crate::{
     syntax_node::{GreenNode, SyntaxNode},
     syntax_error::SyntaxError,
     parsing::{
-        grammar,
-        parser_impl,
+        grammar, parse_with,
         builder::GreenBuilder,
         parser_api::Parser,
         lexer::{tokenize, Token},
@@ -62,8 +61,7 @@ fn reparse_block<'node>(
     if !is_balanced(&tokens) {
         return None;
     }
-    let (green, new_errors) =
-        parser_impl::parse_with(GreenBuilder::new(), &text, &tokens, reparser);
+    let (green, new_errors) = parse_with(GreenBuilder::new(), &text, &tokens, reparser);
     Some((node, green, new_errors))
 }
 

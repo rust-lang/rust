@@ -8,7 +8,7 @@ use crate::{
     parsing::{
         TokenSource, TokenPos,
         token_set::TokenSet,
-        parser_impl::event::Event,
+        event::Event,
     },
 };
 

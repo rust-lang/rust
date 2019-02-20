@@ -2,14 +2,20 @@
 mod token_set;
 mod builder;
 mod lexer;
-mod parser_impl;
+mod event;
+mod input;
 mod parser_api;
 mod grammar;
 mod reparsing;
 
 use crate::{
     SyntaxError, SyntaxKind, SmolStr,
-    parsing::builder::GreenBuilder,
+    parsing::{
+        builder::GreenBuilder,
+        input::ParserInput,
+        event::EventProcessor,
+        parser_api::Parser,
+    },
     syntax_node::GreenNode,
 };
 
@@ -19,9 +25,22 @@ pub(crate) use self::reparsing::incremental_reparse;
 
 pub(crate) fn parse_text(text: &str) -> (GreenNode, Vec<SyntaxError>) {
     let tokens = tokenize(&text);
-    let (green, errors) =
-        parser_impl::parse_with(GreenBuilder::new(), text, &tokens, grammar::root);
-    (green, errors)
+    parse_with(GreenBuilder::new(), text, &tokens, grammar::root)
+}
+
+fn parse_with<S: TreeSink>(
+    tree_sink: S,
+    text: &str,
+    tokens: &[Token],
+    f: fn(&mut Parser),
+) -> S::Tree {
+    let mut events = {
+        let input = ParserInput::new(text, &tokens);
+        let mut p = Parser::new(&input);
+        f(&mut p);
+        p.finish()
+    };
+    EventProcessor::new(tree_sink, text, tokens, &mut events).process().finish()
 }
 
 /// `TreeSink` abstracts details of a particular syntax tree implementation.
