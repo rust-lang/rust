@@ -1,19 +1,24 @@
 use crate::{
-    parsing::TreeSink,
+    SmolStr, SyntaxKind, SyntaxError, SyntaxErrorKind, TextUnit,
+    parsing::{TreeSink, ParseError},
     syntax_node::{GreenNode, RaTypes},
-    SmolStr, SyntaxKind, SyntaxError,
 };
 
 use rowan::GreenNodeBuilder;
 
 pub(crate) struct GreenBuilder {
+    text_pos: TextUnit,
     errors: Vec<SyntaxError>,
     inner: GreenNodeBuilder<RaTypes>,
 }
 
-impl GreenBuilder {
-    pub(crate) fn new() -> GreenBuilder {
-        GreenBuilder { errors: Vec::new(), inner: GreenNodeBuilder::new() }
+impl Default for GreenBuilder {
+    fn default() -> GreenBuilder {
+        GreenBuilder {
+            text_pos: TextUnit::default(),
+            errors: Vec::new(),
+            inner: GreenNodeBuilder::new(),
+        }
     }
 }
 
@@ -21,6 +26,7 @@ impl TreeSink for GreenBuilder {
     type Tree = (GreenNode, Vec<SyntaxError>);
 
     fn leaf(&mut self, kind: SyntaxKind, text: SmolStr) {
+        self.text_pos += TextUnit::of_str(text.as_str());
         self.inner.leaf(kind, text);
     }
 
@@ -32,7 +38,8 @@ impl TreeSink for GreenBuilder {
         self.inner.finish_internal();
     }
 
-    fn error(&mut self, error: SyntaxError) {
+    fn error(&mut self, error: ParseError) {
+        let error = SyntaxError::new(SyntaxErrorKind::ParseError(error), self.text_pos);
         self.errors.push(error)
     }
 

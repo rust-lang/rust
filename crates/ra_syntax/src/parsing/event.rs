@@ -13,14 +13,9 @@ use crate::{
     SmolStr,
     SyntaxKind::{self, *},
     TextRange, TextUnit,
-    syntax_error::{
-        ParseError,
-        SyntaxError,
-        SyntaxErrorKind,
-    },
     parsing::{
+        ParseError, TreeSink,
         lexer::Token,
-        TreeSink,
     },
 };
 
@@ -159,9 +154,7 @@ impl<'a, S: TreeSink> EventProcessor<'a, S> {
                         .sum::<TextUnit>();
                     self.leaf(kind, len, n_raw_tokens);
                 }
-                Event::Error { msg } => self
-                    .sink
-                    .error(SyntaxError::new(SyntaxErrorKind::ParseError(msg), self.text_pos)),
+                Event::Error { msg } => self.sink.error(msg),
             }
         }
         self.sink

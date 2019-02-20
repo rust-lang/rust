@@ -9,7 +9,7 @@ mod grammar;
 mod reparsing;
 
 use crate::{
-    SyntaxError, SyntaxKind, SmolStr,
+    SyntaxKind, SmolStr, SyntaxError,
     parsing::{
         builder::GreenBuilder,
         input::ParserInput,
@@ -21,11 +21,14 @@ use crate::{
 
 pub use self::lexer::{tokenize, Token};
 
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub struct ParseError(pub String);
+
 pub(crate) use self::reparsing::incremental_reparse;
 
 pub(crate) fn parse_text(text: &str) -> (GreenNode, Vec<SyntaxError>) {
     let tokens = tokenize(&text);
-    parse_with(GreenBuilder::new(), text, &tokens, grammar::root)
+    parse_with(GreenBuilder::default(), text, &tokens, grammar::root)
 }
 
 fn parse_with<S: TreeSink>(
@@ -57,7 +60,7 @@ trait TreeSink {
     /// branch as current.
     fn finish_branch(&mut self);
 
-    fn error(&mut self, error: SyntaxError);
+    fn error(&mut self, error: ParseError);
 
     /// Complete tree building. Make sure that
     /// `start_branch` and `finish_branch` calls

@@ -3,10 +3,9 @@ use std::cell::Cell;
 use drop_bomb::DropBomb;
 
 use crate::{
-    syntax_error::ParseError,
     SyntaxKind::{self, ERROR, EOF, TOMBSTONE},
     parsing::{
-        TokenSource,
+        TokenSource, ParseError,
         token_set::TokenSet,
         event::Event,
     },

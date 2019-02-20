@@ -61,7 +61,7 @@ fn reparse_block<'node>(
     if !is_balanced(&tokens) {
         return None;
     }
-    let (green, new_errors) = parse_with(GreenBuilder::new(), &text, &tokens, reparser);
+    let (green, new_errors) = parse_with(GreenBuilder::default(), &text, &tokens, reparser);
     Some((node, green, new_errors))
 }
 
