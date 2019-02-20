@@ -4,7 +4,7 @@ use crate::{
     SyntaxKind::{self, ERROR},
     parsing::{
         token_set::TokenSet,
-        parser_impl::ParserImpl
+        parser_impl::ParserImpl,
     },
 };
 
@@ -17,9 +17,7 @@ use crate::{
 /// tree, but rather a flat stream of events of the form
 /// "start expression, consume number literal,
 /// finish expression". See `Event` docs for more.
-pub(crate) struct Parser<'t>(
-    pub(super) ParserImpl<crate::parsing::parser_impl::input::ParserInput<'t>>,
-);
+pub(crate) struct Parser<'t>(pub(super) ParserImpl<'t>);
 
 impl<'t> Parser<'t> {
     /// Returns the kind of the current token.

@@ -54,7 +54,7 @@ pub(super) fn parse_with<S: TreeSink>(
 ) -> S::Tree {
     let mut events = {
         let input = input::ParserInput::new(text, tokens);
-        let parser_impl = ParserImpl::new(input);
+        let parser_impl = ParserImpl::new(&input);
         let mut parser_api = Parser(parser_impl);
         parser(&mut parser_api);
         parser_api.0.into_events()
@@ -65,15 +65,15 @@ pub(super) fn parse_with<S: TreeSink>(
 /// Implementation details of `Parser`, extracted
 /// to a separate struct in order not to pollute
 /// the public API of the `Parser`.
-pub(super) struct ParserImpl<S> {
-    token_source: S,
+pub(super) struct ParserImpl<'a> {
+    token_source: &'a dyn TokenSource,
     pos: InputPosition,
     events: Vec<Event>,
     steps: Cell<u32>,
 }
 
-impl<S: TokenSource> ParserImpl<S> {
-    fn new(token_source: S) -> ParserImpl<S> {
+impl<'a> ParserImpl<'a> {
+    fn new(token_source: &'a dyn TokenSource) -> ParserImpl<'a> {
         ParserImpl {
             token_source,
             pos: InputPosition::new(),
