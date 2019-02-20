@@ -5,10 +5,8 @@ use crate::{
     string_lexing::{self, StringComponentKind},
     TextRange,
     validation::char,
-    syntax_node::{
-        SyntaxError,
-        SyntaxErrorKind::*,
-    },
+    SyntaxError,
+    SyntaxErrorKind::*,
 };
 
 pub(super) fn validate_byte_node(node: &ast::Byte, errors: &mut Vec<SyntaxError>) {

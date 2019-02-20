@@ -1,8 +1,9 @@
 use crate::{
-    parser_impl::Sink,
-    syntax_node::{GreenNode, RaTypes, SyntaxError},
-    SmolStr, SyntaxKind,
+    parsing::parser_impl::Sink,
+    syntax_node::{GreenNode, RaTypes},
+    SmolStr, SyntaxKind, SyntaxError,
 };
+
 use rowan::GreenNodeBuilder;
 
 pub(crate) struct GreenBuilder {

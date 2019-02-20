@@ -1,10 +1,8 @@
 use crate::{
     ast::{self, AstNode, AstToken},
     string_lexing::{self, StringComponentKind},
-    syntax_node::{
-        SyntaxError,
-        SyntaxErrorKind::*,
-    },
+    SyntaxError,
+    SyntaxErrorKind::*,
 };
 
 use super::byte;

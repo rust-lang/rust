@@ -1,10 +1,17 @@
-use crate::algo;
-use crate::grammar;
-use crate::lexer::{tokenize, Token};
-use crate::parser_api::Parser;
-use crate::parser_impl;
-use crate::syntax_node::{self, GreenNode, SyntaxError, SyntaxNode};
-use crate::{SyntaxKind::*, TextRange, TextUnit};
+use crate::{
+    SyntaxKind::*, TextRange, TextUnit,
+    algo,
+    syntax_node::{GreenNode, SyntaxNode},
+    syntax_error::SyntaxError,
+    parsing::{
+        grammar,
+        parser_impl,
+        builder::GreenBuilder,
+        parser_api::Parser,
+        lexer::{tokenize, Token},
+    }
+};
+
 use ra_text_edit::AtomTextEdit;
 
 pub(crate) fn incremental_reparse(
@@ -56,7 +63,7 @@ fn reparse_block<'node>(
         return None;
     }
     let (green, new_errors) =
-        parser_impl::parse_with(syntax_node::GreenBuilder::new(), &text, &tokens, reparser);
+        parser_impl::parse_with(GreenBuilder::new(), &text, &tokens, reparser);
     Some((node, green, new_errors))
 }
 
@@ -72,34 +79,12 @@ fn is_contextual_kw(text: &str) -> bool {
     }
 }
 
-type ParseFn = fn(&mut Parser);
-fn find_reparsable_node(node: &SyntaxNode, range: TextRange) -> Option<(&SyntaxNode, ParseFn)> {
+fn find_reparsable_node(
+    node: &SyntaxNode,
+    range: TextRange,
+) -> Option<(&SyntaxNode, fn(&mut Parser))> {
     let node = algo::find_covering_node(node, range);
-    return node.ancestors().filter_map(|node| reparser(node).map(|r| (node, r))).next();
-
-    fn reparser(node: &SyntaxNode) -> Option<ParseFn> {
-        let res = match node.kind() {
-            BLOCK => grammar::block,
-            NAMED_FIELD_DEF_LIST => grammar::named_field_def_list,
-            NAMED_FIELD_LIST => grammar::named_field_list,
-            ENUM_VARIANT_LIST => grammar::enum_variant_list,
-            MATCH_ARM_LIST => grammar::match_arm_list,
-            USE_TREE_LIST => grammar::use_tree_list,
-            EXTERN_ITEM_LIST => grammar::extern_item_list,
-            TOKEN_TREE if node.first_child().unwrap().kind() == L_CURLY => grammar::token_tree,
-            ITEM_LIST => {
-                let parent = node.parent().unwrap();
-                match parent.kind() {
-                    IMPL_BLOCK => grammar::impl_item_list,
-                    TRAIT_DEF => grammar::trait_item_list,
-                    MODULE => grammar::mod_item_list,
-                    _ => return None,
-                }
-            }
-            _ => return None,
-        };
-        Some(res)
-    }
+    node.ancestors().find_map(|node| grammar::reparser(node).map(|r| (node, r)))
 }
 
 fn is_balanced(tokens: &[Token]) -> bool {

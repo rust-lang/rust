@@ -1,9 +1,11 @@
 use drop_bomb::DropBomb;
 
 use crate::{
-    parser_impl::ParserImpl,
-    token_set::TokenSet,
     SyntaxKind::{self, ERROR},
+    parsing::{
+        token_set::TokenSet,
+        parser_impl::ParserImpl
+    },
 };
 
 /// `Parser` struct provides the low-level API for
@@ -25,6 +27,22 @@ impl<'t> Parser<'t> {
         self.nth(0)
     }
 
+    /// Returns the kinds of the current two tokens, if they are not separated
+    /// by trivia.
+    ///
+    /// Useful for parsing things like `>>`.
+    pub(crate) fn current2(&self) -> Option<(SyntaxKind, SyntaxKind)> {
+        self.0.current2()
+    }
+
+    /// Returns the kinds of the current three tokens, if they are not separated
+    /// by trivia.
+    ///
+    /// Useful for parsing things like `=>>`.
+    pub(crate) fn current3(&self) -> Option<(SyntaxKind, SyntaxKind, SyntaxKind)> {
+        self.0.current3()
+    }
+
     /// Lookahead operation: returns the kind of the next nth
     /// token.
     pub(crate) fn nth(&self, n: u32) -> SyntaxKind {
@@ -39,14 +57,6 @@ impl<'t> Parser<'t> {
     /// Checks if the current token is in `kinds`.
     pub(crate) fn at_ts(&self, kinds: TokenSet) -> bool {
         kinds.contains(self.current())
-    }
-
-    pub(crate) fn next2(&self) -> Option<(SyntaxKind, SyntaxKind)> {
-        self.0.next2()
-    }
-
-    pub(crate) fn next3(&self) -> Option<(SyntaxKind, SyntaxKind, SyntaxKind)> {
-        self.0.next3()
     }
 
     /// Checks if the current token is contextual keyword with text `t`.

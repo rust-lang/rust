@@ -36,24 +36,44 @@ mod type_args;
 mod type_params;
 mod types;
 
-pub(crate) use self::{
-    expressions::block,
-    items::{
-        enum_variant_list, extern_item_list, impl_item_list, match_arm_list, mod_item_list,
-        named_field_def_list, named_field_list, token_tree, trait_item_list, use_tree_list,
+use crate::{
+    SyntaxNode,
+    SyntaxKind::{self, *},
+    parsing::{
+        token_set::TokenSet,
+        parser_api::{CompletedMarker, Marker, Parser}
     },
 };
-use crate::{
-    parser_api::{CompletedMarker, Marker, Parser},
-    token_set::TokenSet,
-    SyntaxKind::{self, *},
-};
 
-pub(crate) fn root(p: &mut Parser) {
+pub(super) fn root(p: &mut Parser) {
     let m = p.start();
     p.eat(SHEBANG);
     items::mod_contents(p, false);
     m.complete(p, SOURCE_FILE);
+}
+
+pub(super) fn reparser(node: &SyntaxNode) -> Option<fn(&mut Parser)> {
+    let res = match node.kind() {
+        BLOCK => expressions::block,
+        NAMED_FIELD_DEF_LIST => items::named_field_def_list,
+        NAMED_FIELD_LIST => items::named_field_list,
+        ENUM_VARIANT_LIST => items::enum_variant_list,
+        MATCH_ARM_LIST => items::match_arm_list,
+        USE_TREE_LIST => items::use_tree_list,
+        EXTERN_ITEM_LIST => items::extern_item_list,
+        TOKEN_TREE if node.first_child().unwrap().kind() == L_CURLY => items::token_tree,
+        ITEM_LIST => {
+            let parent = node.parent().unwrap();
+            match parent.kind() {
+                IMPL_BLOCK => items::impl_item_list,
+                TRAIT_DEF => items::trait_item_list,
+                MODULE => items::mod_item_list,
+                _ => return None,
+            }
+        }
+        _ => return None,
+    };
+    Some(res)
 }
 
 #[derive(Clone, Copy, PartialEq, Eq)]

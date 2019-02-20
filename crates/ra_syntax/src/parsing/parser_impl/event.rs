@@ -7,19 +7,22 @@
 //! tree builder: the parser produces a stream of events like
 //! `start node`, `finish node`, and `FileBuilder` converts
 //! this stream to a real tree.
+use std::mem;
+
 use crate::{
-    lexer::Token,
-    parser_impl::Sink,
     SmolStr,
     SyntaxKind::{self, *},
     TextRange, TextUnit,
-    syntax_node::syntax_error::{
+    syntax_error::{
         ParseError,
         SyntaxError,
         SyntaxErrorKind,
     },
+    parsing::{
+        lexer::Token,
+        parser_impl::Sink,
+    },
 };
-use std::mem;
 
 /// `Parser` produces a flat list of `Event`s.
 /// They are converted to a tree-structure in

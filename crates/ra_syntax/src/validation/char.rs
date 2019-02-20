@@ -8,10 +8,8 @@ use crate::{
     ast::{self, AstNode, AstToken},
     string_lexing::{self, StringComponentKind},
     TextRange,
-    syntax_node::{
-        SyntaxError,
-        SyntaxErrorKind::*,
-    },
+    SyntaxError,
+    SyntaxErrorKind::*,
 };
 
 pub(super) fn validate_char_node(node: &ast::Char, errors: &mut Vec<SyntaxError>) {

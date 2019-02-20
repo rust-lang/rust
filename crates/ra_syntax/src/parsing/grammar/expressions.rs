@@ -138,7 +138,7 @@ enum Op {
 }
 
 fn current_op(p: &Parser) -> (u8, Op) {
-    if let Some(t) = p.next3() {
+    if let Some(t) = p.current3() {
         match t {
             (L_ANGLE, L_ANGLE, EQ) => return (1, Op::Composite(SHLEQ, 3)),
             (R_ANGLE, R_ANGLE, EQ) => return (1, Op::Composite(SHREQ, 3)),
@@ -146,7 +146,7 @@ fn current_op(p: &Parser) -> (u8, Op) {
         }
     }
 
-    if let Some(t) = p.next2() {
+    if let Some(t) = p.current2() {
         match t {
             (PLUS, EQ) => return (1, Op::Composite(PLUSEQ, 2)),
             (MINUS, EQ) => return (1, Op::Composite(MINUSEQ, 2)),

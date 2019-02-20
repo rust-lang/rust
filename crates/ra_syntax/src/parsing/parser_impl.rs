@@ -4,22 +4,21 @@ mod input;
 use std::cell::Cell;
 
 use crate::{
-    lexer::Token,
-    parser_api::Parser,
-    parser_impl::{
-        event::{Event, EventProcessor},
-        input::{InputPosition, ParserInput},
-    },
     SmolStr,
-    syntax_node::syntax_error::{
-        ParseError,
-        SyntaxError,
+    syntax_error::{ParseError, SyntaxError},
+    parsing::{
+        lexer::Token,
+        parser_api::Parser,
+        parser_impl::{
+            event::{Event, EventProcessor},
+            input::{InputPosition, ParserInput},
+        },
     },
 };
 
 use crate::SyntaxKind::{self, EOF, TOMBSTONE};
 
-pub(crate) trait Sink {
+pub(super) trait Sink {
     type Tree;
 
     /// Adds new leaf to the current branch.
@@ -41,7 +40,7 @@ pub(crate) trait Sink {
 }
 
 /// Parse a sequence of tokens into the representative node tree
-pub(crate) fn parse_with<S: Sink>(
+pub(super) fn parse_with<S: Sink>(
     sink: S,
     text: &str,
     tokens: &[Token],
@@ -60,7 +59,7 @@ pub(crate) fn parse_with<S: Sink>(
 /// Implementation details of `Parser`, extracted
 /// to a separate struct in order not to pollute
 /// the public API of the `Parser`.
-pub(crate) struct ParserImpl<'t> {
+pub(super) struct ParserImpl<'t> {
     parser_input: &'t ParserInput<'t>,
     pos: InputPosition,
     events: Vec<Event>,
@@ -68,7 +67,7 @@ pub(crate) struct ParserImpl<'t> {
 }
 
 impl<'t> ParserImpl<'t> {
-    pub(crate) fn new(inp: &'t ParserInput<'t>) -> ParserImpl<'t> {
+    fn new(inp: &'t ParserInput<'t>) -> ParserImpl<'t> {
         ParserImpl {
             parser_input: inp,
             pos: InputPosition::new(),
@@ -77,12 +76,12 @@ impl<'t> ParserImpl<'t> {
         }
     }
 
-    pub(crate) fn into_events(self) -> Vec<Event> {
+    fn into_events(self) -> Vec<Event> {
         assert_eq!(self.nth(0), EOF);
         self.events
     }
 
-    pub(super) fn next2(&self) -> Option<(SyntaxKind, SyntaxKind)> {
+    pub(super) fn current2(&self) -> Option<(SyntaxKind, SyntaxKind)> {
         let c1 = self.parser_input.kind(self.pos);
         let c2 = self.parser_input.kind(self.pos + 1);
         if self.parser_input.token_start_at(self.pos + 1)
@@ -94,7 +93,7 @@ impl<'t> ParserImpl<'t> {
         }
     }
 
-    pub(super) fn next3(&self) -> Option<(SyntaxKind, SyntaxKind, SyntaxKind)> {
+    pub(super) fn current3(&self) -> Option<(SyntaxKind, SyntaxKind, SyntaxKind)> {
         let c1 = self.parser_input.kind(self.pos);
         let c2 = self.parser_input.kind(self.pos + 1);
         let c3 = self.parser_input.kind(self.pos + 2);

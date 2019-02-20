@@ -1,7 +1,8 @@
 mod generated;
 
-use crate::SyntaxKind::*;
 use std::fmt;
+
+use crate::SyntaxKind::*;
 
 pub use self::generated::SyntaxKind;
 

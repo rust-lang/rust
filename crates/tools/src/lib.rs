@@ -14,7 +14,7 @@ pub use teraron::{Mode, Overwrite, Verify};
 pub type Result<T> = std::result::Result<T, failure::Error>;
 
 pub const GRAMMAR: &str = "crates/ra_syntax/src/grammar.ron";
-const GRAMMAR_DIR: &str = "crates/ra_syntax/src/grammar";
+const GRAMMAR_DIR: &str = "crates/ra_syntax/src/parsing/grammar";
 const OK_INLINE_TESTS_DIR: &str = "crates/ra_syntax/tests/data/parser/inline/ok";
 const ERR_INLINE_TESTS_DIR: &str = "crates/ra_syntax/tests/data/parser/inline/err";
 
