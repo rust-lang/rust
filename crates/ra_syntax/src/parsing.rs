@@ -8,8 +8,9 @@ mod reparsing;
 mod grammar;
 
 use crate::{
+    SyntaxError,
     parsing::builder::GreenBuilder,
-    syntax_node::{GreenNode, SyntaxError},
+    syntax_node::GreenNode,
 };
 
 pub use self::lexer::{tokenize, Token};

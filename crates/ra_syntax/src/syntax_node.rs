@@ -1,13 +1,12 @@
-pub mod syntax_error;
-mod syntax_text;
-
 use std::{fmt, borrow::Borrow};
 
-use self::syntax_text::SyntaxText;
-use crate::{SmolStr, SyntaxKind, TextRange};
 use rowan::{Types, TransparentNewType};
 
-pub use self::syntax_error::{SyntaxError, SyntaxErrorKind, Location};
+use crate::{
+    SmolStr, SyntaxKind, TextRange, SyntaxText,
+    syntax_error::SyntaxError,
+};
+
 pub use rowan::WalkEvent;
 
 #[derive(Debug, Clone, Copy)]

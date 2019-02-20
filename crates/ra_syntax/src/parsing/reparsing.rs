@@ -1,7 +1,8 @@
 use crate::{
     SyntaxKind::*, TextRange, TextUnit,
     algo,
-    syntax_node::{GreenNode, SyntaxError, SyntaxNode},
+    syntax_node::{GreenNode, SyntaxNode},
+    syntax_error::SyntaxError,
     parsing::{
         grammar,
         parser_impl,

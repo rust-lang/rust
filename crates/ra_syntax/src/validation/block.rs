@@ -1,9 +1,7 @@
 use crate::{SyntaxKind::*,
     ast::{self, AttrsOwner, AstNode},
-    syntax_node::{
-        SyntaxError,
-        SyntaxErrorKind::*,
-    },
+    SyntaxError,
+    SyntaxErrorKind::*,
 };
 
 pub(crate) fn validate_block_node(node: &ast::Block, errors: &mut Vec<SyntaxError>) {

@@ -5,15 +5,16 @@ use std::cell::Cell;
 
 use crate::{
     SmolStr,
-    syntax_node::syntax_error::{ParseError, SyntaxError},
+    syntax_error::{ParseError, SyntaxError},
     parsing::{
-    lexer::Token,
-    parser_api::Parser,
-    parser_impl::{
-        event::{Event, EventProcessor},
-        input::{InputPosition, ParserInput},
+        lexer::Token,
+        parser_api::Parser,
+        parser_impl::{
+            event::{Event, EventProcessor},
+            input::{InputPosition, ParserInput},
+        },
     },
-}};
+};
 
 use crate::SyntaxKind::{self, EOF, TOMBSTONE};
 

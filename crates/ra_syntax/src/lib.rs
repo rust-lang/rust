@@ -26,12 +26,16 @@ pub mod utils;
 mod validation;
 mod syntax_node;
 mod ptr;
+mod syntax_error;
+mod syntax_text;
 
 pub use rowan::{SmolStr, TextRange, TextUnit};
 pub use crate::{
     ast::AstNode,
     syntax_kinds::SyntaxKind,
-    syntax_node::{Direction, SyntaxError, SyntaxNode, WalkEvent, Location, TreeArc},
+    syntax_error::{SyntaxError, SyntaxErrorKind, Location},
+    syntax_text::SyntaxText,
+    syntax_node::{Direction,  SyntaxNode, WalkEvent, TreeArc},
     ptr::{SyntaxNodePtr, AstPtr},
     parsing::{tokenize, Token},
 };
