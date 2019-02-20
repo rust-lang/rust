@@ -67,6 +67,7 @@ use crate::hir;
 use crate::traits::ObligationCause;
 use crate::ty::outlives::Component;
 use crate::ty::{self, Region, Ty, TyCtxt, TypeFoldable};
+use crate::ty::subst::UnpackedKind;
 
 impl<'cx, 'gcx, 'tcx> InferCtxt<'cx, 'gcx, 'tcx> {
     /// Registers that the given region obligation must be resolved
@@ -430,13 +431,18 @@ where
         if approx_env_bounds.is_empty() && trait_bounds.is_empty() && needs_infer {
             debug!("projection_must_outlive: no declared bounds");
 
-            for component_ty in projection_ty.substs.types() {
-                self.type_must_outlive(origin.clone(), component_ty, region);
-            }
-
-            for r in projection_ty.substs.regions() {
-                self.delegate
-                    .push_sub_region_constraint(origin.clone(), region, r);
+            for k in projection_ty.substs {
+                match k.unpack() {
+                    UnpackedKind::Lifetime(lt) => {
+                        self.delegate.push_sub_region_constraint(origin.clone(), region, lt);
+                    }
+                    UnpackedKind::Type(ty) => {
+                        self.type_must_outlive(origin.clone(), ty, region);
+                    }
+                    UnpackedKind::Const(_) => {
+                        // Const parameters don't impose constraints.
+                    }
+                }
             }
 
             return;
