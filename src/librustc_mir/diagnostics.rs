@@ -1545,6 +1545,8 @@ Erroneous code example:
 ```compile_fail,E0505
 struct Value {}
 
+fn borrow(val: &Value) {}
+
 fn eat(val: Value) {}
 
 fn main() {
@@ -1552,13 +1554,15 @@ fn main() {
     {
         let _ref_to_val: &Value = &x;
         eat(x);
+        borrow(_ref_to_val);
     }
 }
 ```
 
-Here, the function `eat` takes the ownership of `x`. However,
-`x` cannot be moved because it was borrowed to `_ref_to_val`.
-To fix that you can do few different things:
+Here, the function `eat` takes ownership of `x`. However,
+`x` cannot be moved because the borrow to `_ref_to_val`
+needs to last till the function `borrow`.
+To fix that you can do a few different things:
 
 * Try to avoid moving the variable.
 * Release borrow before move.
@@ -1569,6 +1573,8 @@ Examples:
 ```
 struct Value {}
 
+fn borrow(val: &Value) {}
+
 fn eat(val: &Value) {}
 
 fn main() {
@@ -1576,6 +1582,7 @@ fn main() {
     {
         let _ref_to_val: &Value = &x;
         eat(&x); // pass by reference, if it's possible
+        borrow(_ref_to_val);
     }
 }
 ```
@@ -1585,12 +1592,15 @@ Or:
 ```
 struct Value {}
 
+fn borrow(val: &Value) {}
+
 fn eat(val: Value) {}
 
 fn main() {
     let x = Value{};
     {
         let _ref_to_val: &Value = &x;
+        borrow(_ref_to_val);
     }
     eat(x); // release borrow and then move it.
 }
@@ -1602,6 +1612,8 @@ Or:
 #[derive(Clone, Copy)] // implement Copy trait
 struct Value {}
 
+fn borrow(val: &Value) {}
+
 fn eat(val: Value) {}
 
 fn main() {
@@ -1609,6 +1621,7 @@ fn main() {
     {
         let _ref_to_val: &Value = &x;
         eat(x); // it will be copied here.
+        borrow(_ref_to_val);
     }
 }
 ```
