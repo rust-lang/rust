@@ -1,4 +1,7 @@
-use crate::{lexer::Token, SyntaxKind, SyntaxKind::EOF, TextRange, TextUnit};
+use crate::{
+    SyntaxKind, SyntaxKind::EOF, TextRange, TextUnit,
+    parsing::lexer::Token,
+};
 
 use std::ops::{Add, AddAssign};
 

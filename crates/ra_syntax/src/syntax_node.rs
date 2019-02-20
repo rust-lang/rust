@@ -1,4 +1,3 @@
-mod builder;
 pub mod syntax_error;
 mod syntax_text;
 
@@ -8,7 +7,6 @@ use self::syntax_text::SyntaxText;
 use crate::{SmolStr, SyntaxKind, TextRange};
 use rowan::{Types, TransparentNewType};
 
-pub(crate) use self::builder::GreenBuilder;
 pub use self::syntax_error::{SyntaxError, SyntaxErrorKind, Location};
 pub use rowan::WalkEvent;
 

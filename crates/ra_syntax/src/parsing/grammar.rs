@@ -44,9 +44,11 @@ pub(crate) use self::{
     },
 };
 use crate::{
-    parser_api::{CompletedMarker, Marker, Parser},
-    token_set::TokenSet,
     SyntaxKind::{self, *},
+    parsing::{
+        token_set::TokenSet,
+        parser_api::{CompletedMarker, Marker, Parser}
+    },
 };
 
 pub(crate) fn root(p: &mut Parser) {

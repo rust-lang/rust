@@ -18,13 +18,7 @@
 
 pub mod algo;
 pub mod ast;
-mod lexer;
-#[macro_use]
-mod token_set;
-mod grammar;
-mod parser_api;
-mod parser_impl;
-mod reparsing;
+mod parsing;
 mod string_lexing;
 mod syntax_kinds;
 /// Utilities for simple uses of the parser.
@@ -36,10 +30,10 @@ mod ptr;
 pub use rowan::{SmolStr, TextRange, TextUnit};
 pub use crate::{
     ast::AstNode,
-    lexer::{tokenize, Token},
     syntax_kinds::SyntaxKind,
     syntax_node::{Direction, SyntaxError, SyntaxNode, WalkEvent, Location, TreeArc},
     ptr::{SyntaxNodePtr, AstPtr},
+    parsing::{tokenize, Token},
 };
 
 use ra_text_edit::AtomTextEdit;
@@ -59,9 +53,7 @@ impl SourceFile {
     }
 
     pub fn parse(text: &str) -> TreeArc<SourceFile> {
-        let tokens = tokenize(&text);
-        let (green, errors) =
-            parser_impl::parse_with(syntax_node::GreenBuilder::new(), text, &tokens, grammar::root);
+        let (green, errors) = parsing::parse_text(text);
         SourceFile::new(green, errors)
     }
 
@@ -70,7 +62,7 @@ impl SourceFile {
     }
 
     pub fn incremental_reparse(&self, edit: &AtomTextEdit) -> Option<TreeArc<SourceFile>> {
-        reparsing::incremental_reparse(self.syntax(), edit, self.errors())
+        parsing::incremental_reparse(self.syntax(), edit, self.errors())
             .map(|(green_node, errors)| SourceFile::new(green_node, errors))
     }
 

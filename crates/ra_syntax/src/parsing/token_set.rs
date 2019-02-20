@@ -4,19 +4,19 @@ use crate::SyntaxKind;
 pub(crate) struct TokenSet(u128);
 
 impl TokenSet {
-    pub const fn empty() -> TokenSet {
+    pub(crate) const fn empty() -> TokenSet {
         TokenSet(0)
     }
 
-    pub const fn singleton(kind: SyntaxKind) -> TokenSet {
+    pub(crate) const fn singleton(kind: SyntaxKind) -> TokenSet {
         TokenSet(mask(kind))
     }
 
-    pub const fn union(self, other: TokenSet) -> TokenSet {
+    pub(crate) const fn union(self, other: TokenSet) -> TokenSet {
         TokenSet(self.0 | other.0)
     }
 
-    pub fn contains(&self, kind: SyntaxKind) -> bool {
+    pub(crate) fn contains(&self, kind: SyntaxKind) -> bool {
         self.0 & mask(kind) != 0
     }
 }

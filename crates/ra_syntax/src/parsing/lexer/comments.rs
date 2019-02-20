@@ -1,4 +1,4 @@
-use crate::lexer::ptr::Ptr;
+use crate::parsing::lexer::ptr::Ptr;
 
 use crate::SyntaxKind::{self, *};
 

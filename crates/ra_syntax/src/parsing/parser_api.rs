@@ -1,9 +1,11 @@
 use drop_bomb::DropBomb;
 
 use crate::{
-    parser_impl::ParserImpl,
-    token_set::TokenSet,
     SyntaxKind::{self, ERROR},
+    parsing::{
+        token_set::TokenSet,
+        parser_impl::ParserImpl
+    },
 };
 
 /// `Parser` struct provides the low-level API for

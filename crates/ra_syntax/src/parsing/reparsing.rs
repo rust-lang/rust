@@ -1,10 +1,16 @@
-use crate::algo;
-use crate::grammar;
-use crate::lexer::{tokenize, Token};
-use crate::parser_api::Parser;
-use crate::parser_impl;
-use crate::syntax_node::{self, GreenNode, SyntaxError, SyntaxNode};
-use crate::{SyntaxKind::*, TextRange, TextUnit};
+use crate::{
+    SyntaxKind::*, TextRange, TextUnit,
+    algo,
+    syntax_node::{GreenNode, SyntaxError, SyntaxNode},
+    parsing::{
+        grammar,
+        parser_impl,
+        builder::GreenBuilder,
+        parser_api::Parser,
+        lexer::{tokenize, Token},
+    }
+};
+
 use ra_text_edit::AtomTextEdit;
 
 pub(crate) fn incremental_reparse(
@@ -56,7 +62,7 @@ fn reparse_block<'node>(
         return None;
     }
     let (green, new_errors) =
-        parser_impl::parse_with(syntax_node::GreenBuilder::new(), &text, &tokens, reparser);
+        parser_impl::parse_with(GreenBuilder::new(), &text, &tokens, reparser);
     Some((node, green, new_errors))
 }
 
