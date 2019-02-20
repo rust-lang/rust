@@ -17,7 +17,7 @@ impl<'t> TokenSource for ParserInput<'t> {
     }
     fn is_token_joint_to_next(&self, pos: TokenPos) -> bool {
         let idx_curr = pos.0 as usize;
-        let idx_next = pos.0 as usize;
+        let idx_next = pos.0 as usize + 1;
         if !(idx_next < self.tokens.len()) {
             return true;
         }
