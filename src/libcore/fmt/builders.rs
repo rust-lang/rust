@@ -71,8 +71,10 @@ impl fmt::Write for PadAdapter<'_> {
 ///     }
 /// }
 ///
-/// // prints "Foo { bar: 10, baz: "Hello World" }"
-/// println!("{:?}", Foo { bar: 10, baz: "Hello World".to_string() });
+/// assert_eq!(
+///     format!("{:?}", Foo { bar: 10, baz: "Hello World".to_string() }),
+///     "Foo { bar: 10, baz: \"Hello World\" }",
+/// );
 /// ```
 #[must_use = "must eventually call `finish()` on Debug builders"]
 #[allow(missing_debug_implementations)]
@@ -96,6 +98,33 @@ pub fn debug_struct_new<'a, 'b>(fmt: &'a mut fmt::Formatter<'b>,
 
 impl<'a, 'b: 'a> DebugStruct<'a, 'b> {
     /// Adds a new field to the generated struct output.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use std::fmt;
+    ///
+    /// struct Bar {
+    ///     bar: i32,
+    ///     another: String,
+    /// }
+    ///
+    /// impl fmt::Debug for Bar {
+    ///     fn fmt(&self, fmt: &mut fmt::Formatter<'_>) -> fmt::Result {
+    ///         fmt.debug_struct("Bar")
+    ///            .field("bar", &self.bar) // We add `bar` field.
+    ///            .field("another", &self.another) // We add `another` field.
+    ///            // We even add a field which doesn't exist (because why not?).
+    ///            .field("not_existing_field", &1)
+    ///            .finish() // We're good to go!
+    ///     }
+    /// }
+    ///
+    /// assert_eq!(
+    ///     format!("{:?}", Bar { bar: 10, another: "Hello World".to_string() }),
+    ///     "Bar { bar: 10, another: \"Hello World\", not_existing_field: 1 }",
+    /// );
+    /// ```
     #[stable(feature = "debug_builders", since = "1.2.0")]
     pub fn field(&mut self, name: &str, value: &dyn fmt::Debug) -> &mut DebugStruct<'a, 'b> {
         self.result = self.result.and_then(|_| {
@@ -124,6 +153,32 @@ impl<'a, 'b: 'a> DebugStruct<'a, 'b> {
     }
 
     /// Finishes output and returns any error encountered.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use std::fmt;
+    ///
+    /// struct Bar {
+    ///     bar: i32,
+    ///     baz: String,
+    /// }
+    ///
+    /// impl fmt::Debug for Bar {
+    ///     fn fmt(&self, fmt: &mut fmt::Formatter<'_>) -> fmt::Result {
+    ///         fmt.debug_struct("Bar")
+    ///            .field("bar", &self.bar)
+    ///            .field("baz", &self.baz)
+    ///            .finish() // You need to call it to "finish" the
+    ///                      // struct formatting.
+    ///     }
+    /// }
+    ///
+    /// assert_eq!(
+    ///     format!("{:?}", Bar { bar: 10, baz: "Hello World".to_string() }),
+    ///     "Bar { bar: 10, baz: \"Hello World\" }",
+    /// );
+    /// ```
     #[stable(feature = "debug_builders", since = "1.2.0")]
     pub fn finish(&mut self) -> fmt::Result {
         if self.has_fields {
@@ -168,8 +223,10 @@ impl<'a, 'b: 'a> DebugStruct<'a, 'b> {
 ///     }
 /// }
 ///
-/// // prints "Foo(10, "Hello World")"
-/// println!("{:?}", Foo(10, "Hello World".to_string()));
+/// assert_eq!(
+///     format!("{:?}", Foo(10, "Hello World".to_string())),
+///     "Foo(10, \"Hello World\")",
+/// );
 /// ```
 #[must_use = "must eventually call `finish()` on Debug builders"]
 #[allow(missing_debug_implementations)]
@@ -193,6 +250,28 @@ pub fn debug_tuple_new<'a, 'b>(fmt: &'a mut fmt::Formatter<'b>, name: &str) -> D
 
 impl<'a, 'b: 'a> DebugTuple<'a, 'b> {
     /// Adds a new field to the generated tuple struct output.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use std::fmt;
+    ///
+    /// struct Foo(i32, String);
+    ///
+    /// impl fmt::Debug for Foo {
+    ///     fn fmt(&self, fmt: &mut fmt::Formatter<'_>) -> fmt::Result {
+    ///         fmt.debug_tuple("Foo")
+    ///            .field(&self.0) // We add the first field.
+    ///            .field(&self.1) // We add the second field.
+    ///            .finish() // We're good to go!
+    ///     }
+    /// }
+    ///
+    /// assert_eq!(
+    ///     format!("{:?}", Foo(10, "Hello World".to_string())),
+    ///     "Foo(10, \"Hello World\")",
+    /// );
+    /// ```
     #[stable(feature = "debug_builders", since = "1.2.0")]
     pub fn field(&mut self, value: &dyn fmt::Debug) -> &mut DebugTuple<'a, 'b> {
         self.result = self.result.and_then(|_| {
@@ -220,6 +299,29 @@ impl<'a, 'b: 'a> DebugTuple<'a, 'b> {
     }
 
     /// Finishes output and returns any error encountered.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use std::fmt;
+    ///
+    /// struct Foo(i32, String);
+    ///
+    /// impl fmt::Debug for Foo {
+    ///     fn fmt(&self, fmt: &mut fmt::Formatter<'_>) -> fmt::Result {
+    ///         fmt.debug_tuple("Foo")
+    ///            .field(&self.0)
+    ///            .field(&self.1)
+    ///            .finish() // You need to call it to "finish" the
+    ///                      // tuple formatting.
+    ///     }
+    /// }
+    ///
+    /// assert_eq!(
+    ///     format!("{:?}", Foo(10, "Hello World".to_string())),
+    ///     "Foo(10, \"Hello World\")",
+    /// );
+    /// ```
     #[stable(feature = "debug_builders", since = "1.2.0")]
     pub fn finish(&mut self) -> fmt::Result {
         if self.fields > 0 {
@@ -306,8 +408,10 @@ impl<'a, 'b: 'a> DebugInner<'a, 'b> {
 ///     }
 /// }
 ///
-/// // prints "{10, 11}"
-/// println!("{:?}", Foo(vec![10, 11]));
+/// assert_eq!(
+///     format!("{:?}", Foo(vec![10, 11])),
+///     "{10, 11}",
+/// );
 /// ```
 #[must_use = "must eventually call `finish()` on Debug builders"]
 #[allow(missing_debug_implementations)]
@@ -329,6 +433,28 @@ pub fn debug_set_new<'a, 'b>(fmt: &'a mut fmt::Formatter<'b>) -> DebugSet<'a, 'b
 
 impl<'a, 'b: 'a> DebugSet<'a, 'b> {
     /// Adds a new entry to the set output.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use std::fmt;
+    ///
+    /// struct Foo(Vec<i32>, Vec<u32>);
+    ///
+    /// impl fmt::Debug for Foo {
+    ///     fn fmt(&self, fmt: &mut fmt::Formatter<'_>) -> fmt::Result {
+    ///         fmt.debug_set()
+    ///            .entry(&self.0) // Adds the first "entry".
+    ///            .entry(&self.1) // Adds the second "entry".
+    ///            .finish()
+    ///     }
+    /// }
+    ///
+    /// assert_eq!(
+    ///     format!("{:?}", Foo(vec![10, 11], vec![12, 13])),
+    ///     "{[10, 11], [12, 13]}",
+    /// );
+    /// ```
     #[stable(feature = "debug_builders", since = "1.2.0")]
     pub fn entry(&mut self, entry: &dyn fmt::Debug) -> &mut DebugSet<'a, 'b> {
         self.inner.entry(entry);
@@ -336,6 +462,28 @@ impl<'a, 'b: 'a> DebugSet<'a, 'b> {
     }
 
     /// Adds the contents of an iterator of entries to the set output.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use std::fmt;
+    ///
+    /// struct Foo(Vec<i32>, Vec<u32>);
+    ///
+    /// impl fmt::Debug for Foo {
+    ///     fn fmt(&self, fmt: &mut fmt::Formatter<'_>) -> fmt::Result {
+    ///         fmt.debug_set()
+    ///            .entries(self.0.iter()) // Adds the first "entry".
+    ///            .entries(self.1.iter()) // Adds the second "entry".
+    ///            .finish()
+    ///     }
+    /// }
+    ///
+    /// assert_eq!(
+    ///     format!("{:?}", Foo(vec![10, 11], vec![12, 13])),
+    ///     "{10, 11, 12, 13}",
+    /// );
+    /// ```
     #[stable(feature = "debug_builders", since = "1.2.0")]
     pub fn entries<D, I>(&mut self, entries: I) -> &mut DebugSet<'a, 'b>
         where D: fmt::Debug,
@@ -348,6 +496,27 @@ impl<'a, 'b: 'a> DebugSet<'a, 'b> {
     }
 
     /// Finishes output and returns any error encountered.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use std::fmt;
+    ///
+    /// struct Foo(Vec<i32>);
+    ///
+    /// impl fmt::Debug for Foo {
+    ///     fn fmt(&self, fmt: &mut fmt::Formatter<'_>) -> fmt::Result {
+    ///         fmt.debug_set()
+    ///            .entries(self.0.iter())
+    ///            .finish() // Ends the struct formatting.
+    ///     }
+    /// }
+    ///
+    /// assert_eq!(
+    ///     format!("{:?}", Foo(vec![10, 11])),
+    ///     "{10, 11}",
+    /// );
+    /// ```
     #[stable(feature = "debug_builders", since = "1.2.0")]
     pub fn finish(&mut self) -> fmt::Result {
         self.inner.finish();
@@ -377,8 +546,10 @@ impl<'a, 'b: 'a> DebugSet<'a, 'b> {
 ///     }
 /// }
 ///
-/// // prints "[10, 11]"
-/// println!("{:?}", Foo(vec![10, 11]));
+/// assert_eq!(
+///     format!("{:?}", Foo(vec![10, 11])),
+///     "[10, 11]",
+/// );
 /// ```
 #[must_use = "must eventually call `finish()` on Debug builders"]
 #[allow(missing_debug_implementations)]
@@ -400,6 +571,28 @@ pub fn debug_list_new<'a, 'b>(fmt: &'a mut fmt::Formatter<'b>) -> DebugList<'a, 
 
 impl<'a, 'b: 'a> DebugList<'a, 'b> {
     /// Adds a new entry to the list output.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use std::fmt;
+    ///
+    /// struct Foo(Vec<i32>, Vec<u32>);
+    ///
+    /// impl fmt::Debug for Foo {
+    ///     fn fmt(&self, fmt: &mut fmt::Formatter<'_>) -> fmt::Result {
+    ///         fmt.debug_list()
+    ///            .entry(&self.0) // We add the first "entry".
+    ///            .entry(&self.1) // We add the second "entry".
+    ///            .finish()
+    ///     }
+    /// }
+    ///
+    /// assert_eq!(
+    ///     format!("{:?}", Foo(vec![10, 11], vec![12, 13])),
+    ///     "[[10, 11], [12, 13]]",
+    /// );
+    /// ```
     #[stable(feature = "debug_builders", since = "1.2.0")]
     pub fn entry(&mut self, entry: &dyn fmt::Debug) -> &mut DebugList<'a, 'b> {
         self.inner.entry(entry);
@@ -407,6 +600,28 @@ impl<'a, 'b: 'a> DebugList<'a, 'b> {
     }
 
     /// Adds the contents of an iterator of entries to the list output.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use std::fmt;
+    ///
+    /// struct Foo(Vec<i32>, Vec<u32>);
+    ///
+    /// impl fmt::Debug for Foo {
+    ///     fn fmt(&self, fmt: &mut fmt::Formatter<'_>) -> fmt::Result {
+    ///         fmt.debug_list()
+    ///            .entries(self.0.iter())
+    ///            .entries(self.1.iter())
+    ///            .finish()
+    ///     }
+    /// }
+    ///
+    /// assert_eq!(
+    ///     format!("{:?}", Foo(vec![10, 11], vec![12, 13])),
+    ///     "[10, 11, 12, 13]",
+    /// );
+    /// ```
     #[stable(feature = "debug_builders", since = "1.2.0")]
     pub fn entries<D, I>(&mut self, entries: I) -> &mut DebugList<'a, 'b>
         where D: fmt::Debug,
@@ -419,6 +634,27 @@ impl<'a, 'b: 'a> DebugList<'a, 'b> {
     }
 
     /// Finishes output and returns any error encountered.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use std::fmt;
+    ///
+    /// struct Foo(Vec<i32>);
+    ///
+    /// impl fmt::Debug for Foo {
+    ///     fn fmt(&self, fmt: &mut fmt::Formatter<'_>) -> fmt::Result {
+    ///         fmt.debug_list()
+    ///            .entries(self.0.iter())
+    ///            .finish() // Ends the struct formatting.
+    ///     }
+    /// }
+    ///
+    /// assert_eq!(
+    ///     format!("{:?}", Foo(vec![10, 11])),
+    ///     "[10, 11]",
+    /// );
+    /// ```
     #[stable(feature = "debug_builders", since = "1.2.0")]
     pub fn finish(&mut self) -> fmt::Result {
         self.inner.finish();
@@ -448,8 +684,10 @@ impl<'a, 'b: 'a> DebugList<'a, 'b> {
 ///     }
 /// }
 ///
-/// // prints "{"A": 10, "B": 11}"
-/// println!("{:?}", Foo(vec![("A".to_string(), 10), ("B".to_string(), 11)]));
+/// assert_eq!(
+///     format!("{:?}", Foo(vec![("A".to_string(), 10), ("B".to_string(), 11)])),
+///     "{\"A\": 10, \"B\": 11}",
+/// );
 /// ```
 #[must_use = "must eventually call `finish()` on Debug builders"]
 #[allow(missing_debug_implementations)]
@@ -471,6 +709,27 @@ pub fn debug_map_new<'a, 'b>(fmt: &'a mut fmt::Formatter<'b>) -> DebugMap<'a, 'b
 
 impl<'a, 'b: 'a> DebugMap<'a, 'b> {
     /// Adds a new entry to the map output.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use std::fmt;
+    ///
+    /// struct Foo(Vec<(String, i32)>);
+    ///
+    /// impl fmt::Debug for Foo {
+    ///     fn fmt(&self, fmt: &mut fmt::Formatter<'_>) -> fmt::Result {
+    ///         fmt.debug_map()
+    ///            .entry(&"whole", &self.0) // We add the "whole" entry.
+    ///            .finish()
+    ///     }
+    /// }
+    ///
+    /// assert_eq!(
+    ///     format!("{:?}", Foo(vec![("A".to_string(), 10), ("B".to_string(), 11)])),
+    ///     "{\"whole\": [(\"A\", 10), (\"B\", 11)]}",
+    /// );
+    /// ```
     #[stable(feature = "debug_builders", since = "1.2.0")]
     pub fn entry(&mut self, key: &dyn fmt::Debug, value: &dyn fmt::Debug) -> &mut DebugMap<'a, 'b> {
         self.result = self.result.and_then(|_| {
@@ -500,6 +759,29 @@ impl<'a, 'b: 'a> DebugMap<'a, 'b> {
     }
 
     /// Adds the contents of an iterator of entries to the map output.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use std::fmt;
+    ///
+    /// struct Foo(Vec<(String, i32)>);
+    ///
+    /// impl fmt::Debug for Foo {
+    ///     fn fmt(&self, fmt: &mut fmt::Formatter<'_>) -> fmt::Result {
+    ///         fmt.debug_map()
+    ///            // We map our vec so each entries' first field will become
+    ///            // the "key".
+    ///            .entries(self.0.iter().map(|&(ref k, ref v)| (k, v)))
+    ///            .finish()
+    ///     }
+    /// }
+    ///
+    /// assert_eq!(
+    ///     format!("{:?}", Foo(vec![("A".to_string(), 10), ("B".to_string(), 11)])),
+    ///     "{\"A\": 10, \"B\": 11}",
+    /// );
+    /// ```
     #[stable(feature = "debug_builders", since = "1.2.0")]
     pub fn entries<K, V, I>(&mut self, entries: I) -> &mut DebugMap<'a, 'b>
         where K: fmt::Debug,
@@ -513,6 +795,27 @@ impl<'a, 'b: 'a> DebugMap<'a, 'b> {
     }
 
     /// Finishes output and returns any error encountered.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use std::fmt;
+    ///
+    /// struct Foo(Vec<(String, i32)>);
+    ///
+    /// impl fmt::Debug for Foo {
+    ///     fn fmt(&self, fmt: &mut fmt::Formatter<'_>) -> fmt::Result {
+    ///         fmt.debug_map()
+    ///            .entries(self.0.iter().map(|&(ref k, ref v)| (k, v)))
+    ///            .finish() // Ends the struct formatting.
+    ///     }
+    /// }
+    ///
+    /// assert_eq!(
+    ///     format!("{:?}", Foo(vec![("A".to_string(), 10), ("B".to_string(), 11)])),
+    ///     "{\"A\": 10, \"B\": 11}",
+    /// );
+    /// ```
     #[stable(feature = "debug_builders", since = "1.2.0")]
     pub fn finish(&mut self) -> fmt::Result {
         let prefix = if self.is_pretty() && self.has_fields {

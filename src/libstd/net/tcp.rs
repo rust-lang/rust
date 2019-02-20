@@ -580,7 +580,7 @@ impl Write for TcpStream {
     fn flush(&mut self) -> io::Result<()> { Ok(()) }
 }
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<'a> Read for &'a TcpStream {
+impl Read for &TcpStream {
     fn read(&mut self, buf: &mut [u8]) -> io::Result<usize> { self.0.read(buf) }
 
     #[inline]
@@ -589,7 +589,7 @@ impl<'a> Read for &'a TcpStream {
     }
 }
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<'a> Write for &'a TcpStream {
+impl Write for &TcpStream {
     fn write(&mut self, buf: &[u8]) -> io::Result<usize> { self.0.write(buf) }
     fn flush(&mut self) -> io::Result<()> { Ok(()) }
 }
@@ -1187,9 +1187,13 @@ mod tests {
     #[test]
     fn double_bind() {
         each_ip(&mut |addr| {
-            let _listener = t!(TcpListener::bind(&addr));
+            let listener1 = t!(TcpListener::bind(&addr));
             match TcpListener::bind(&addr) {
-                Ok(..) => panic!(),
+                Ok(listener2) => panic!(
+                    "This system (perhaps due to options set by TcpListener::bind) \
+                     permits double binding: {:?} and {:?}",
+                    listener1, listener2
+                ),
                 Err(e) => {
                     assert!(e.kind() == ErrorKind::ConnectionRefused ||
                             e.kind() == ErrorKind::Other ||

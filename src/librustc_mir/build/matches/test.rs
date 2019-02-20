@@ -35,10 +35,9 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                 }
             }
 
-            PatternKind::Constant { .. }
-            if is_switch_ty(match_pair.pattern.ty) => {
-                // for integers, we use a SwitchInt match, which allows
-                // us to handle more cases
+            PatternKind::Constant { .. } if is_switch_ty(match_pair.pattern.ty) => {
+                // For integers, we use a `SwitchInt` match, which allows
+                // us to handle more cases.
                 Test {
                     span: match_pair.pattern.span,
                     kind: TestKind::SwitchInt {
@@ -253,12 +252,12 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
             TestKind::Eq { value, mut ty } => {
                 let val = Operand::Copy(place.clone());
                 let mut expect = self.literal_operand(test.span, ty, value);
-                // Use PartialEq::eq instead of BinOp::Eq
+                // Use `PartialEq::eq` instead of `BinOp::Eq`
                 // (the binop can only handle primitives)
                 let fail = self.cfg.start_new_block();
                 if !ty.is_scalar() {
-                    // If we're using b"..." as a pattern, we need to insert an
-                    // unsizing coercion, as the byte string has the type &[u8; N].
+                    // If we're using `b"..."` as a pattern, we need to insert an
+                    // unsizing coercion, as the byte string has the type `&[u8; N]`.
                     //
                     // We want to do this even when the scrutinee is a reference to an
                     // array, so we can call `<[u8]>::eq` rather than having to find an
@@ -503,6 +502,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                 resulting_candidates[variant_index.as_usize()].push(new_candidate);
                 true
             }
+
             (&TestKind::Switch { .. }, _) => false,
 
             // If we are performing a switch over integers, then this informs integer
@@ -538,7 +538,6 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
             }
 
             (&TestKind::SwitchInt { .. }, _) => false,
-
 
             (&TestKind::Len { len: test_len, op: BinOp::Eq },
              &PatternKind::Slice { ref prefix, ref slice, ref suffix }) => {

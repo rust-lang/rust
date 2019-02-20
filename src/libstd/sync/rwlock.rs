@@ -91,10 +91,10 @@ pub struct RwLockReadGuard<'a, T: ?Sized + 'a> {
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<'a, T: ?Sized> !Send for RwLockReadGuard<'a, T> {}
+impl<T: ?Sized> !Send for RwLockReadGuard<'_, T> {}
 
 #[stable(feature = "rwlock_guard_sync", since = "1.23.0")]
-unsafe impl<'a, T: ?Sized + Sync> Sync for RwLockReadGuard<'a, T> {}
+unsafe impl<T: ?Sized + Sync> Sync for RwLockReadGuard<'_, T> {}
 
 /// RAII structure used to release the exclusive write access of a lock when
 /// dropped.
@@ -113,10 +113,10 @@ pub struct RwLockWriteGuard<'a, T: ?Sized + 'a> {
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<'a, T: ?Sized> !Send for RwLockWriteGuard<'a, T> {}
+impl<T: ?Sized> !Send for RwLockWriteGuard<'_, T> {}
 
 #[stable(feature = "rwlock_guard_sync", since = "1.23.0")]
-unsafe impl<'a, T: ?Sized + Sync> Sync for RwLockWriteGuard<'a, T> {}
+unsafe impl<T: ?Sized + Sync> Sync for RwLockWriteGuard<'_, T> {}
 
 impl<T> RwLock<T> {
     /// Creates a new instance of an `RwLock<T>` which is unlocked.
@@ -480,7 +480,7 @@ impl<'rwlock, T: ?Sized> RwLockWriteGuard<'rwlock, T> {
 }
 
 #[stable(feature = "std_debug", since = "1.16.0")]
-impl<'a, T: fmt::Debug> fmt::Debug for RwLockReadGuard<'a, T> {
+impl<T: fmt::Debug> fmt::Debug for RwLockReadGuard<'_, T> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         f.debug_struct("RwLockReadGuard")
             .field("lock", &self.__lock)
@@ -489,14 +489,14 @@ impl<'a, T: fmt::Debug> fmt::Debug for RwLockReadGuard<'a, T> {
 }
 
 #[stable(feature = "std_guard_impls", since = "1.20.0")]
-impl<'a, T: ?Sized + fmt::Display> fmt::Display for RwLockReadGuard<'a, T> {
+impl<T: ?Sized + fmt::Display> fmt::Display for RwLockReadGuard<'_, T> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         (**self).fmt(f)
     }
 }
 
 #[stable(feature = "std_debug", since = "1.16.0")]
-impl<'a, T: fmt::Debug> fmt::Debug for RwLockWriteGuard<'a, T> {
+impl<T: fmt::Debug> fmt::Debug for RwLockWriteGuard<'_, T> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         f.debug_struct("RwLockWriteGuard")
             .field("lock", &self.__lock)
@@ -505,14 +505,14 @@ impl<'a, T: fmt::Debug> fmt::Debug for RwLockWriteGuard<'a, T> {
 }
 
 #[stable(feature = "std_guard_impls", since = "1.20.0")]
-impl<'a, T: ?Sized + fmt::Display> fmt::Display for RwLockWriteGuard<'a, T> {
+impl<T: ?Sized + fmt::Display> fmt::Display for RwLockWriteGuard<'_, T> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         (**self).fmt(f)
     }
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<'rwlock, T: ?Sized> Deref for RwLockReadGuard<'rwlock, T> {
+impl<T: ?Sized> Deref for RwLockReadGuard<'_, T> {
     type Target = T;
 
     fn deref(&self) -> &T {
@@ -521,7 +521,7 @@ impl<'rwlock, T: ?Sized> Deref for RwLockReadGuard<'rwlock, T> {
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<'rwlock, T: ?Sized> Deref for RwLockWriteGuard<'rwlock, T> {
+impl<T: ?Sized> Deref for RwLockWriteGuard<'_, T> {
     type Target = T;
 
     fn deref(&self) -> &T {
@@ -530,21 +530,21 @@ impl<'rwlock, T: ?Sized> Deref for RwLockWriteGuard<'rwlock, T> {
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<'rwlock, T: ?Sized> DerefMut for RwLockWriteGuard<'rwlock, T> {
+impl<T: ?Sized> DerefMut for RwLockWriteGuard<'_, T> {
     fn deref_mut(&mut self) -> &mut T {
         unsafe { &mut *self.__lock.data.get() }
     }
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<'a, T: ?Sized> Drop for RwLockReadGuard<'a, T> {
+impl<T: ?Sized> Drop for RwLockReadGuard<'_, T> {
     fn drop(&mut self) {
         unsafe { self.__lock.inner.read_unlock(); }
     }
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<'a, T: ?Sized> Drop for RwLockWriteGuard<'a, T> {
+impl<T: ?Sized> Drop for RwLockWriteGuard<'_, T> {
     fn drop(&mut self) {
         self.__lock.poison.done(&self.__poison);
         unsafe { self.__lock.inner.write_unlock(); }

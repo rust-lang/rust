@@ -81,7 +81,7 @@ pub trait Future {
     ///
     /// Once a future has completed (returned `Ready` from `poll`),
     /// then any future calls to `poll` may panic, block forever, or otherwise
-    /// cause any kind of bad behavior expect causing memory unsafety.
+    /// cause any kind of bad behavior except causing memory unsafety.
     /// The `Future` trait itself provides no guarantees about the behavior
     /// of `poll` after a future has completed.
     ///
@@ -92,7 +92,7 @@ pub trait Future {
     fn poll(self: Pin<&mut Self>, waker: &Waker) -> Poll<Self::Output>;
 }
 
-impl<'a, F: ?Sized + Future + Unpin> Future for &'a mut F {
+impl<F: ?Sized + Future + Unpin> Future for &mut F {
     type Output = F::Output;
 
     fn poll(mut self: Pin<&mut Self>, waker: &Waker) -> Poll<Self::Output> {

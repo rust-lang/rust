@@ -9,8 +9,6 @@ use libc::{c_uint, c_int, size_t, c_char};
 use libc::{c_ulonglong, c_void};
 
 use std::marker::PhantomData;
-use syntax;
-use rustc_codegen_ssa;
 
 use super::RustString;
 

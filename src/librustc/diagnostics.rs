@@ -408,11 +408,7 @@ fn bar(x: &str, y: &str) -> &str { }
 fn baz<'a>(x: &'a str, y: &str) -> &str { }
 ```
 
-Lifetime elision in implementation headers was part of the lifetime elision
-RFC. It is, however, [currently unimplemented][iss15872].
-
 [book-le]: https://doc.rust-lang.org/book/ch10-03-lifetime-syntax.html#lifetime-elision
-[iss15872]: https://github.com/rust-lang/rust/issues/15872
 "##,
 
 E0119: r##"

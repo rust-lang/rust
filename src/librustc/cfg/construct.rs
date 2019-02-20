@@ -150,9 +150,11 @@ impl<'a, 'tcx> CFGBuilder<'a, 'tcx> {
         }
     }
 
-    fn pats_all<'b, I: Iterator<Item=&'b P<hir::Pat>>>(&mut self,
-                                          pats: I,
-                                          pred: CFGIndex) -> CFGIndex {
+    fn pats_all<'b, I: Iterator<Item=&'b P<hir::Pat>>>(
+        &mut self,
+        pats: I,
+        pred: CFGIndex
+    ) -> CFGIndex {
         //! Handles case where all of the patterns must match.
         pats.fold(pred, |pred, pat| self.pat(&pat, pred))
     }

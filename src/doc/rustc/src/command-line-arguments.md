@@ -42,11 +42,11 @@ This flag prints out various information about the compiler.
 
 ## `-g`: include debug information
 
-A synonym for `-C debug-level=2`.
+A synonym for `-C debuginfo=2`, for more see [here](codegen-options/index.html#debuginfo).
 
 ## `-O`: optimize your code
 
-A synonym for `-C opt-level=2`.
+A synonym for `-C opt-level=2`, for more see [here](codegen-options/index.html#opt-level).
 
 ## `-o`: filename of the output
 

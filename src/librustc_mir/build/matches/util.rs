@@ -13,7 +13,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
         subpatterns.iter()
                    .map(|fieldpat| {
                        let place = place.clone().field(fieldpat.field,
-                                                         fieldpat.pattern.ty);
+                                                       fieldpat.pattern.ty);
                        MatchPair::new(place, &fieldpat.pattern)
                    })
                    .collect()

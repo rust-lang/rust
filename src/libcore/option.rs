@@ -874,7 +874,7 @@ impl<T> Option<T> {
     }
 }
 
-impl<'a, T: Copy> Option<&'a T> {
+impl<T: Copy> Option<&T> {
     /// Maps an `Option<&T>` to an `Option<T>` by copying the contents of the
     /// option.
     ///
@@ -895,7 +895,7 @@ impl<'a, T: Copy> Option<&'a T> {
     }
 }
 
-impl<'a, T: Copy> Option<&'a mut T> {
+impl<T: Copy> Option<&mut T> {
     /// Maps an `Option<&mut T>` to an `Option<T>` by copying the contents of the
     /// option.
     ///
@@ -916,7 +916,7 @@ impl<'a, T: Copy> Option<&'a mut T> {
     }
 }
 
-impl<'a, T: Clone> Option<&'a T> {
+impl<T: Clone> Option<&T> {
     /// Maps an `Option<&T>` to an `Option<T>` by cloning the contents of the
     /// option.
     ///
@@ -935,7 +935,7 @@ impl<'a, T: Clone> Option<&'a T> {
     }
 }
 
-impl<'a, T: Clone> Option<&'a mut T> {
+impl<T: Clone> Option<&mut T> {
     /// Maps an `Option<&mut T>` to an `Option<T>` by cloning the contents of the
     /// option.
     ///

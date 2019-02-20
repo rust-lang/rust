@@ -1037,7 +1037,7 @@ pub fn noop_visit_pat<T: MutVisitor>(pat: &mut P<Pat>, vis: &mut T) {
             vis.visit_expr(e1);
             vis.visit_expr(e2);
             vis.visit_span(span);
-        },
+        }
         PatKind::Slice(before, slice, after) => {
             visit_vec(before, |pat| vis.visit_pat(pat));
             visit_opt(slice, |slice| vis.visit_pat(slice));

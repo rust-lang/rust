@@ -1,8 +1,8 @@
-use llvm;
-use context::CodegenCx;
-use type_of::LayoutLlvmExt;
-use builder::Builder;
-use value::Value;
+use crate::llvm;
+use crate::context::CodegenCx;
+use crate::type_of::LayoutLlvmExt;
+use crate::builder::Builder;
+use crate::value::Value;
 
 use rustc::hir;
 use rustc_codegen_ssa::traits::*;

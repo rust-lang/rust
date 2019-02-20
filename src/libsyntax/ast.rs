@@ -640,19 +640,26 @@ pub enum PatKind {
     /// If the `..` pattern fragment is present, then `Option<usize>` denotes its position.
     /// `0 <= position <= subpats.len()`.
     Tuple(Vec<P<Pat>>, Option<usize>),
+
     /// A `box` pattern.
     Box(P<Pat>),
+
     /// A reference pattern (e.g., `&mut (a, b)`).
     Ref(P<Pat>, Mutability),
+
     /// A literal.
     Lit(P<Expr>),
+
     /// A range pattern (e.g., `1...2`, `1..=2` or `1..2`).
     Range(P<Expr>, P<Expr>, Spanned<RangeEnd>),
+
     /// `[a, b, ..i, y, z]` is represented as:
     ///     `PatKind::Slice(box [a, b], Some(i), box [y, z])`
     Slice(Vec<P<Pat>>, Option<P<Pat>>, Vec<P<Pat>>),
+
     /// Parentheses in patterns used for grouping (i.e., `(PAT)`).
     Paren(P<Pat>),
+
     /// A macro pattern; pre-expansion.
     Mac(Mac),
 }

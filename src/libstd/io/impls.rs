@@ -7,7 +7,7 @@ use mem;
 // Forwarding implementations
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<'a, R: Read + ?Sized> Read for &'a mut R {
+impl<R: Read + ?Sized> Read for &mut R {
     #[inline]
     fn read(&mut self, buf: &mut [u8]) -> io::Result<usize> {
         (**self).read(buf)
@@ -34,7 +34,7 @@ impl<'a, R: Read + ?Sized> Read for &'a mut R {
     }
 }
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<'a, W: Write + ?Sized> Write for &'a mut W {
+impl<W: Write + ?Sized> Write for &mut W {
     #[inline]
     fn write(&mut self, buf: &[u8]) -> io::Result<usize> { (**self).write(buf) }
 
@@ -52,12 +52,12 @@ impl<'a, W: Write + ?Sized> Write for &'a mut W {
     }
 }
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<'a, S: Seek + ?Sized> Seek for &'a mut S {
+impl<S: Seek + ?Sized> Seek for &mut S {
     #[inline]
     fn seek(&mut self, pos: SeekFrom) -> io::Result<u64> { (**self).seek(pos) }
 }
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<'a, B: BufRead + ?Sized> BufRead for &'a mut B {
+impl<B: BufRead + ?Sized> BufRead for &mut B {
     #[inline]
     fn fill_buf(&mut self) -> io::Result<&[u8]> { (**self).fill_buf() }
 
@@ -152,7 +152,7 @@ impl<B: BufRead + ?Sized> BufRead for Box<B> {
 /// Note that reading updates the slice to point to the yet unread part.
 /// The slice will be empty when EOF is reached.
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<'a> Read for &'a [u8] {
+impl Read for &[u8] {
     #[inline]
     fn read(&mut self, buf: &mut [u8]) -> io::Result<usize> {
         let amt = cmp::min(buf.len(), self.len());
@@ -207,7 +207,7 @@ impl<'a> Read for &'a [u8] {
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<'a> BufRead for &'a [u8] {
+impl BufRead for &[u8] {
     #[inline]
     fn fill_buf(&mut self) -> io::Result<&[u8]> { Ok(*self) }
 
@@ -221,7 +221,7 @@ impl<'a> BufRead for &'a [u8] {
 /// Note that writing updates the slice to point to the yet unwritten part.
 /// The slice will be empty when it has been completely overwritten.
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<'a> Write for &'a mut [u8] {
+impl Write for &mut [u8] {
     #[inline]
     fn write(&mut self, data: &[u8]) -> io::Result<usize> {
         let amt = cmp::min(data.len(), self.len());

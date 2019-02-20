@@ -4656,7 +4656,7 @@ impl<'a> LoweringContext<'a> {
                         hir::Stmt {
                             id: node_id,
                             hir_id,
-                            node: hir::StmtKind::Item(P(item_id)),
+                            node: hir::StmtKind::Item(item_id),
                             span: s.span,
                         }
                     })
@@ -4686,7 +4686,7 @@ impl<'a> LoweringContext<'a> {
                         hir::Stmt {
                             id: node_id,
                             hir_id,
-                            node: hir::StmtKind::Item(P(item_id)),
+                            node: hir::StmtKind::Item(item_id),
                             span: s.span,
                         }
                     })

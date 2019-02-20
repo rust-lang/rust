@@ -68,18 +68,8 @@ pre {
 	border-bottom-color: #DDD;
 }
 
-.docblock table {
+.docblock table, .docblock table td, .docblock table th {
 	border-color: #ddd;
-}
-
-.docblock table td {
-	border-top-color: #ddd;
-	border-bottom-color: #ddd;
-}
-
-.docblock table th {
-	border-top-color: #ddd;
-	border-bottom-color: #ddd;
 }
 
 .content .method .where,
@@ -190,14 +180,14 @@ a.test-arrow {
 	box-shadow: 1px 0 0 1px #000, 0 0 0 2px transparent;
 }
 
-.stab.unstable { background: #FFF5D6; border-color: #FFC600; color: #404040; }
-.stab.internal { background: #FFB9B3; border-color: #B71C1C; color: #404040; }
-.stab.deprecated { background: #F3DFFF; border-color: #7F0087;  color: #404040; }
-.stab.portability { background: #C4ECFF; border-color: #7BA5DB;  color: #404040; }
-
 .module-item .stab {
 	color: #ddd;
 }
+
+.stab.unstable {background: #FFF5D6; border-color: #FFC600; color: #2f2f2f; }
+.stab.internal { background: #FFB9B3; border-color: #B71C1C; color: #2f2f2f; }
+.stab.deprecated { background: #F3DFFF; border-color: #7F0087; color: #2f2f2f; }
+.stab.portability { background: #C4ECFF; border-color: #7BA5DB; color: #2f2f2f; }
 
 #help > div {
 	background: #4d4d4d;

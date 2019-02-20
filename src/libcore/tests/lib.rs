@@ -14,7 +14,6 @@
 #![feature(iter_copied)]
 #![feature(iter_nth_back)]
 #![feature(iter_once_with)]
-#![feature(iter_unfold)]
 #![feature(pattern)]
 #![feature(range_is_empty)]
 #![feature(raw)]

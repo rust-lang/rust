@@ -517,13 +517,19 @@ pub fn make_test(s: &str,
         }
     }
 
-    if dont_insert_main || already_has_main {
+    // FIXME: This code cannot yet handle no_std test cases yet
+    if dont_insert_main || already_has_main || prog.contains("![no_std]") {
         prog.push_str(everything_else);
     } else {
-        prog.push_str("fn main() {\n");
+        let returns_result = everything_else.trim_end().ends_with("(())");
+        let (main_pre, main_post) = if returns_result {
+            ("fn main() { fn _inner() -> Result<(), impl core::fmt::Debug> {",
+             "}\n_inner().unwrap() }")
+        } else {
+            ("fn main() {\n", "\n}")
+        };
+        prog.extend([main_pre, everything_else, main_post].iter().cloned());
         line_offset += 1;
-        prog.push_str(everything_else);
-        prog.push_str("\n}");
     }
 
     debug!("final doctest:\n{}", prog);
