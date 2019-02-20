@@ -21,8 +21,8 @@ use crate::middle::lang_items;
 use crate::middle::resolve_lifetime::{self, ObjectLifetimeDefault};
 use crate::middle::stability;
 use crate::mir::{self, Mir, interpret, ProjectionKind};
-use crate::mir::interpret::Allocation;
-use crate::ty::subst::{Kind, InternalSubsts, Subst, SubstsRef};
+use crate::mir::interpret::{ConstValue, Allocation};
+use crate::ty::subst::{Kind, InternalSubsts, SubstsRef, Subst};
 use crate::ty::ReprOptions;
 use crate::traits;
 use crate::traits::{Clause, Clauses, GoalKind, Goal, Goals};
@@ -31,8 +31,9 @@ use crate::ty::{TyS, TyKind, List};
 use crate::ty::{AdtKind, AdtDef, ClosureSubsts, GeneratorSubsts, Region, Const, LazyConst};
 use crate::ty::{PolyFnSig, InferTy, ParamTy, ProjectionTy, ExistentialPredicate, Predicate};
 use crate::ty::RegionKind;
-use crate::ty::{TyVar, TyVid, IntVar, IntVid, FloatVar, FloatVid};
+use crate::ty::{TyVar, TyVid, IntVar, IntVid, FloatVar, FloatVid, ConstVid};
 use crate::ty::TyKind::*;
+use crate::ty::{InferConst, ParamConst};
 use crate::ty::GenericParamDefKind;
 use crate::ty::layout::{LayoutDetails, TargetDataLayout, VariantIdx};
 use crate::ty::query;
@@ -869,6 +870,18 @@ impl CanonicalUserType<'gcx> {
                                 // We only allow a `ty::INNERMOST` index in substitutions.
                                 assert_eq!(*debruijn, ty::INNERMOST);
                                 cvar == br.assert_bound_var()
+                            }
+                            _ => false,
+                        },
+
+                        UnpackedKind::Const(ct) => match ct {
+                            ty::LazyConst::Evaluated(ty::Const {
+                                val: ConstValue::Infer(InferConst::Canonical(debruijn, b)),
+                                ..
+                            }) => {
+                                // We only allow a `ty::INNERMOST` index in substitutions.
+                                assert_eq!(*debruijn, ty::INNERMOST);
+                                cvar == *b
                             }
                             _ => false,
                         },
@@ -2120,15 +2133,19 @@ macro_rules! sty_debug_print {
             #[derive(Copy, Clone)]
             struct DebugStat {
                 total: usize,
-                region_infer: usize,
+                lt_infer: usize,
                 ty_infer: usize,
-                both_infer: usize,
+                ct_infer: usize,
+                all_infer: usize,
             }
 
             pub fn go(tcx: TyCtxt<'_, '_, '_>) {
                 let mut total = DebugStat {
                     total: 0,
-                    region_infer: 0, ty_infer: 0, both_infer: 0,
+                    lt_infer: 0,
+                    ty_infer: 0,
+                    ct_infer: 0,
+                    all_infer: 0,
                 };
                 $(let mut $variant = total;)*
 
@@ -2139,31 +2156,35 @@ macro_rules! sty_debug_print {
                         ty::Error => /* unimportant */ continue,
                         $(ty::$variant(..) => &mut $variant,)*
                     };
-                    let region = t.flags.intersects(ty::TypeFlags::HAS_RE_INFER);
+                    let lt = t.flags.intersects(ty::TypeFlags::HAS_RE_INFER);
                     let ty = t.flags.intersects(ty::TypeFlags::HAS_TY_INFER);
+                    let ct = t.flags.intersects(ty::TypeFlags::HAS_CT_INFER);
 
                     variant.total += 1;
                     total.total += 1;
-                    if region { total.region_infer += 1; variant.region_infer += 1 }
+                    if lt { total.lt_infer += 1; variant.lt_infer += 1 }
                     if ty { total.ty_infer += 1; variant.ty_infer += 1 }
-                    if region && ty { total.both_infer += 1; variant.both_infer += 1 }
+                    if ct { total.ct_infer += 1; variant.ct_infer += 1 }
+                    if lt && ty && ct { total.all_infer += 1; variant.all_infer += 1 }
                 }
-                println!("Ty interner             total           ty region  both");
+                println!("Ty interner             total           ty lt ct all");
                 $(println!("    {:18}: {uses:6} {usespc:4.1}%, \
-                            {ty:4.1}% {region:5.1}% {both:4.1}%",
-                           stringify!($variant),
-                           uses = $variant.total,
-                           usespc = $variant.total as f64 * 100.0 / total.total as f64,
-                           ty = $variant.ty_infer as f64 * 100.0  / total.total as f64,
-                           region = $variant.region_infer as f64 * 100.0  / total.total as f64,
-                           both = $variant.both_infer as f64 * 100.0  / total.total as f64);
-                  )*
+                            {ty:4.1}% {lt:5.1}% {ct:4.1}% {all:4.1}%",
+                    stringify!($variant),
+                    uses = $variant.total,
+                    usespc = $variant.total as f64 * 100.0 / total.total as f64,
+                    ty = $variant.ty_infer as f64 * 100.0  / total.total as f64,
+                    lt = $variant.lt_infer as f64 * 100.0  / total.total as f64,
+                    ct = $variant.ct_infer as f64 * 100.0  / total.total as f64,
+                    all = $variant.all_infer as f64 * 100.0  / total.total as f64);
+                )*
                 println!("                  total {uses:6}        \
-                          {ty:4.1}% {region:5.1}% {both:4.1}%",
-                         uses = total.total,
-                         ty = total.ty_infer as f64 * 100.0  / total.total as f64,
-                         region = total.region_infer as f64 * 100.0  / total.total as f64,
-                         both = total.both_infer as f64 * 100.0  / total.total as f64)
+                          {ty:4.1}% {lt:5.1}% {ct:4.1}% {all:4.1}%",
+                    uses = total.total,
+                    ty = total.ty_infer as f64 * 100.0  / total.total as f64,
+                    lt = total.lt_infer as f64 * 100.0  / total.total as f64,
+                    ct = total.ct_infer as f64 * 100.0  / total.total as f64,
+                    all = total.all_infer as f64 * 100.0  / total.total as f64)
             }
         }
 
@@ -2518,7 +2539,10 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
         let adt_def = self.adt_def(def_id);
         let substs = InternalSubsts::for_item(self, def_id, |param, substs| {
             match param.kind {
-                GenericParamDefKind::Lifetime => bug!(),
+                GenericParamDefKind::Lifetime |
+                GenericParamDefKind::Const => {
+                    bug!()
+                }
                 GenericParamDefKind::Type { has_default, .. } => {
                     if param.index == 0 {
                         ty.into()
@@ -2659,8 +2683,16 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
     }
 
     #[inline]
-    pub fn mk_var(self, v: TyVid) -> Ty<'tcx> {
+    pub fn mk_ty_var(self, v: TyVid) -> Ty<'tcx> {
         self.mk_infer(TyVar(v))
+    }
+
+    #[inline]
+    pub fn mk_const_var(self, v: ConstVid<'tcx>, ty: Ty<'tcx>) -> &'tcx LazyConst<'tcx> {
+        self.mk_lazy_const(LazyConst::Evaluated(ty::Const {
+            val: ConstValue::Infer(InferConst::Var(v)),
+            ty,
+        }))
     }
 
     #[inline]
@@ -2686,6 +2718,19 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
     }
 
     #[inline]
+    pub fn mk_const_param(
+        self,
+        index: u32,
+        name: InternedString,
+        ty: Ty<'tcx>
+    ) -> &'tcx LazyConst<'tcx> {
+        self.mk_lazy_const(LazyConst::Evaluated(ty::Const {
+            val: ConstValue::Param(ParamConst { index, name }),
+            ty,
+        }))
+    }
+
+    #[inline]
     pub fn mk_self_type(self) -> Ty<'tcx> {
         self.mk_ty_param(0, keywords::SelfUpper.name().as_interned_str())
     }
@@ -2695,7 +2740,10 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
             GenericParamDefKind::Lifetime => {
                 self.mk_region(ty::ReEarlyBound(param.to_early_bound_region_data())).into()
             }
-            GenericParamDefKind::Type {..} => self.mk_ty_param(param.index, param.name).into(),
+            GenericParamDefKind::Type { .. } => self.mk_ty_param(param.index, param.name).into(),
+            GenericParamDefKind::Const => {
+                self.mk_const_param(param.index, param.name, self.type_of(param.def_id)).into()
+            }
         }
     }
 
