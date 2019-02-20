@@ -5,21 +5,25 @@ Language
 --------
 - [You can now use the `cfg(target_vendor)` attribute.][57465] E.g.
   `#[cfg(target_vendor="linux")] fn main() { println!("Hello Linux!"); }`
+- [Integer patterns such as in a match expression can now be exhaustive.][56362]
+  E.g. You can have match statement on a `u8` that covers `0..=255` and
+  you would no longer be required to have a `_ => unreachable!()` case. 
 - [You can now have multiple patterns in `if let` and `while let`
   expressions.][57532] You can do this with the same syntax as a `match`
   expression. E.g.
   ```rust
   enum Creature {
-    Crab(String),
-    Person(String),
+      Crab(String),
+      Lobster(String),
+      Person(String),
   }
 
   fn main() {
-    let state = Creature::Crab("Ferris");
+      let state = Creature::Crab("Ferris");
 
-    if let Creature::Crab(name) | Creature::Person(name) = state {
-      println!("This creature's name is: {}", name);
-    }
+      if let Creature::Crab(name) | Creature::Person(name) = state {
+        println!("This creature's name is: {}", name);
+      }
   }
   ```
 - [You can now have irrefutable `if let` and `while let` patterns.][57535] Using
@@ -27,18 +31,18 @@ Language
   unintuitive. E.g. `if let _ = 5 {}`
 - [You can now use `let` bindings, assignments, expression statements, and pattern destructuring in
   const functions.][57175]
-- [You can now specify multiple attributes in a `cfg_attr` attribute.][57332]
-  E.g. `#[cfg_attr(all(), must_use, optimize)]`
-- [You can now specify a specific alignment with the `#[repr(packed)]`
-  attribute.][57049] E.g. `#[repr(packed(2))] struct Foo(i16, i32);` is a struct
-  with an alignment of 2 bytes and a size of 6 bytes.
-- [You can now call unsafe constant functions.][57067] E.g.
+- [You can now call unsafe const functions.][57067] E.g.
   ```rust
   const unsafe fn foo() -> i32 { 5 }
   const fn bar() -> i32 {
     unsafe { foo() }
   }
   ```
+- [You can now specify multiple attributes in a `cfg_attr` attribute.][57332]
+  E.g. `#[cfg_attr(all(), must_use, optimize)]`
+- [You can now specify a specific alignment with the `#[repr(packed)]`
+  attribute.][57049] E.g. `#[repr(packed(2))] struct Foo(i16, i32);` is a struct
+  with an alignment of 2 bytes and a size of 6 bytes.
 - [You can now import an item from a module as an `_`.][56303] This allows you to
   import a trait's impls, and not have the name in the namespace. E.g.
   ```rust
@@ -64,13 +68,17 @@ Compiler
 
 Libraries
 ---------
-- [The functions `overflowing_{add, sub, mul, shl, shr}` are now constant
+- [The functions `overflowing_{add, sub, mul, shl, shr}` are now `const`
   functions for all numeric types.][57566]
-- [The `get` method for all `NonZero` types is now constant.][57167]
+- [The functions `rotate_left`, `rotate_right`, and `wrapping_{add, sub, mul, shl, shr}`
+  are now `const` functions for all numeric types.][57105]
+- [The functions `is_positive` and `is_negative` are now `const` functions for
+  all signed numeric types.][57105]
+- [The `get` method for all `NonZero` types is now `const`.][57167]
 - [The functions `count_ones`, `count_zeros`, `leading_zeros`, `trailing_zeros`,
-  `swap_bytes`, `from_be`, `from_le`, `to_be`, `to_le` are now const for all
+  `swap_bytes`, `from_be`, `from_le`, `to_be`, `to_le` are now `const` for all
   numeric types.][57234]
-- [`Ipv4Addr::new` is now a const function][57234]
+- [`Ipv4Addr::new` is now a `const` function][57234]
 
 Stabilized APIs
 ---------------
@@ -80,17 +88,25 @@ Stabilized APIs
 - [`Result::transpose`]
 - [`convert::identity`]
 - [`pin::Pin`]
+- [`marker::Unpin`]
+- [`marker::PhantomPinned`]
 - [`Vec::resize_with`]
 - [`VecDeque::resize_with`]
 - [`Duration::as_millis`]
 - [`Duration::as_micros`]
 - [`Duration::as_nanos`]
 
+
 Cargo
 -----
 - [Cargo should now rebuild a crate if a file was modified during the initial
   build.][cargo/6484]
 
+Compatibility Notes
+-------------------
+- The functions `str::{trim_left, trim_right, trim_left_matches, trim_right_matches}`
+  are now offically deprecated, and their usage will now produce a warning. Please use the 
+  `str::{trim_start, trim_end, trim_start_matches, trim_end_matches}` functions instead.
 
 [57615]: https://github.com/rust-lang/rust/pull/57615/
 [57465]: https://github.com/rust-lang/rust/pull/57465/
@@ -110,18 +126,21 @@ Cargo
 [56303]: https://github.com/rust-lang/rust/pull/56303/
 [56351]: https://github.com/rust-lang/rust/pull/56351/
 [55982]: https://github.com/rust-lang/rust/pull/55982/
+[57105]: https://github.com/rust-lang/rust/pull/57105
 [cargo/6484]: https://github.com/rust-lang/cargo/pull/6484/
-[`unix::FileExt::read_exact_at`]: https://doc.rust-lang.org/std/os/unix/fs/trait.FileExt.html#read_exact_at
-[`unix::FileExt::write_exact_at`]: https://doc.rust-lang.org/std/os/unix/fs/trait.FileExt.html#write_exact_at
-[`Option::transpose`]: https://doc.rust-lang.org/std/option/enum.Option.html#transpose
-[`Result::transpose`]: https://doc.rust-lang.org/std/result/enum.Result.html#transpose
+[`unix::FileExt::read_exact_at`]: https://doc.rust-lang.org/std/os/unix/fs/trait.FileExt.html#method.read_exact_at
+[`unix::FileExt::write_exact_at`]: https://doc.rust-lang.org/std/os/unix/fs/trait.FileExt.html#method.write_exact_at
+[`Option::transpose`]: https://doc.rust-lang.org/std/option/enum.Option.html#method.transpose
+[`Result::transpose`]: https://doc.rust-lang.org/std/result/enum.Result.html#method.transpose
 [`convert::identity`]: https://doc.rust-lang.org/std/convert/fn.identity.html
 [`pin::Pin`]: https://doc.rust-lang.org/std/pin/struct.Pin.html
-[`Vec::resize_with`]: https://doc.rust-lang.org/std/vec/struct.Vec.html#resize_with
-[`VecDeque::resize_with`]: https://doc.rust-lang.org/std/collections/struct.VecDeque.html#resize_with
-[`Duration::as_millis`]: https://doc.rust-lang.org/std/time/struct.Duration.html#as_millis
-[`Duration::as_micros`]: https://doc.rust-lang.org/std/time/struct.Duration.html#as_micros
-[`Duration::as_nanos`]: https://doc.rust-lang.org/std/time/struct.Duration.html#as_millis
+[`marker::Unpin`]: https://doc.rust-lang.org/stable/std/marker/trait.Unpin.html
+[`marker::PhantomPinned`]: https://doc.rust-lang.org/nightly/std/marker/struct.PhantomPinned.html
+[`Vec::resize_with`]: https://doc.rust-lang.org/std/vec/struct.Vec.html#method.resize_with
+[`VecDeque::resize_with`]: https://doc.rust-lang.org/std/collections/struct.VecDeque.html#method.resize_with
+[`Duration::as_millis`]: https://doc.rust-lang.org/std/time/struct.Duration.html#method.as_millis
+[`Duration::as_micros`]: https://doc.rust-lang.org/std/time/struct.Duration.html#method.as_micros
+[`Duration::as_nanos`]: https://doc.rust-lang.org/std/time/struct.Duration.html#method.as_nanos
 [platform-support]: https://forge.rust-lang.org/platform-support.html
 
 Version 1.32.0 (2019-01-17)
