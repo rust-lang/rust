@@ -14,7 +14,6 @@ pub mod io;
 pub mod memchr;
 pub mod mutex;
 pub mod os;
-pub mod rwlock;
 pub mod stack_overflow;
 pub mod stdio;
 pub mod thread;

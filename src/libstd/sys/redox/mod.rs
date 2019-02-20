@@ -26,7 +26,6 @@ pub mod path;
 pub mod pipe;
 pub mod process;
 pub mod rand;
-pub mod rwlock;
 pub mod stack_overflow;
 pub mod stdio;
 pub mod syscall;

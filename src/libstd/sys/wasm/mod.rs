@@ -48,14 +48,11 @@ cfg_if! {
         pub mod condvar;
         #[path = "mutex_atomics.rs"]
         pub mod mutex;
-        #[path = "rwlock_atomics.rs"]
-        pub mod rwlock;
         #[path = "thread_local_atomics.rs"]
         pub mod thread_local;
     } else {
         pub mod condvar;
         pub mod mutex;
-        pub mod rwlock;
         pub mod thread_local;
     }
 }
