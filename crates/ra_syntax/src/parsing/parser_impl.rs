@@ -4,46 +4,16 @@ pub(crate) mod input;
 use std::cell::Cell;
 
 use crate::{
-    SmolStr,
-    syntax_error::{ParseError, SyntaxError},
+    syntax_error::ParseError,
     parsing::{
+        TreeSink, TokenSource, TokenPos,
         lexer::Token,
         parser_api::Parser,
-        parser_impl::{
-            event::{Event, EventProcessor},
-            input::InputPosition,
-        },
+        parser_impl::event::{Event, EventProcessor},
     },
 };
 
 use crate::SyntaxKind::{self, EOF, TOMBSTONE};
-
-pub(super) trait TreeSink {
-    type Tree;
-
-    /// Adds new leaf to the current branch.
-    fn leaf(&mut self, kind: SyntaxKind, text: SmolStr);
-
-    /// Start new branch and make it current.
-    fn start_branch(&mut self, kind: SyntaxKind);
-
-    /// Finish current branch and restore previous
-    /// branch as current.
-    fn finish_branch(&mut self);
-
-    fn error(&mut self, error: SyntaxError);
-
-    /// Complete tree building. Make sure that
-    /// `start_branch` and `finish_branch` calls
-    /// are paired!
-    fn finish(self) -> Self::Tree;
-}
-
-pub(super) trait TokenSource {
-    fn token_kind(&self, pos: InputPosition) -> SyntaxKind;
-    fn is_token_joint_to_next(&self, pos: InputPosition) -> bool;
-    fn is_keyword(&self, pos: InputPosition, kw: &str) -> bool;
-}
 
 /// Parse a sequence of tokens into the representative node tree
 pub(super) fn parse_with<S: TreeSink>(
@@ -67,7 +37,7 @@ pub(super) fn parse_with<S: TreeSink>(
 /// the public API of the `Parser`.
 pub(super) struct ParserImpl<'a> {
     token_source: &'a dyn TokenSource,
-    pos: InputPosition,
+    pos: TokenPos,
     events: Vec<Event>,
     steps: Cell<u32>,
 }
@@ -76,7 +46,7 @@ impl<'a> ParserImpl<'a> {
     fn new(token_source: &'a dyn TokenSource) -> ParserImpl<'a> {
         ParserImpl {
             token_source,
-            pos: InputPosition::new(),
+            pos: TokenPos::default(),
             events: Vec::new(),
             steps: Cell::new(0),
         }

@@ -1,5 +1,5 @@
 use crate::{
-    parsing::parser_impl::TreeSink,
+    parsing::TreeSink,
     syntax_node::{GreenNode, RaTypes},
     SmolStr, SyntaxKind, SyntaxError,
 };
