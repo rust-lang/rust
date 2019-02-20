@@ -1,9 +1,39 @@
 use crate::{
     SyntaxKind, SyntaxKind::EOF, TextRange, TextUnit,
-    parsing::lexer::Token,
+    parsing::{
+        parser_impl::TokenSource,
+        lexer::Token,
+    },
 };
 
 use std::ops::{Add, AddAssign};
+
+impl<'t> TokenSource for ParserInput<'t> {
+    fn token_kind(&self, pos: InputPosition) -> SyntaxKind {
+        let idx = pos.0 as usize;
+        if !(idx < self.tokens.len()) {
+            return EOF;
+        }
+        self.tokens[idx].kind
+    }
+    fn is_token_joint_to_next(&self, pos: InputPosition) -> bool {
+        let idx_curr = pos.0 as usize;
+        let idx_next = pos.0 as usize;
+        if !(idx_next < self.tokens.len()) {
+            return true;
+        }
+        self.start_offsets[idx_curr] + self.tokens[idx_curr].len == self.start_offsets[idx_next]
+    }
+    fn is_keyword(&self, pos: InputPosition, kw: &str) -> bool {
+        let idx = pos.0 as usize;
+        if !(idx < self.tokens.len()) {
+            return false;
+        }
+        let range = TextRange::offset_len(self.start_offsets[idx], self.tokens[idx].len);
+
+        self.text[range] == *kw
+    }
+}
 
 pub(crate) struct ParserInput<'t> {
     text: &'t str,
@@ -40,43 +70,6 @@ impl<'t> ParserInput<'t> {
         }
 
         ParserInput { text, start_offsets, tokens }
-    }
-
-    /// Get the syntax kind of token at given input position.
-    pub fn kind(&self, pos: InputPosition) -> SyntaxKind {
-        let idx = pos.0 as usize;
-        if !(idx < self.tokens.len()) {
-            return EOF;
-        }
-        self.tokens[idx].kind
-    }
-
-    /// Get the length of a token at given input position.
-    pub fn token_len(&self, pos: InputPosition) -> TextUnit {
-        let idx = pos.0 as usize;
-        if !(idx < self.tokens.len()) {
-            return 0.into();
-        }
-        self.tokens[idx].len
-    }
-
-    /// Get the start position of a taken at given input position.
-    pub fn token_start_at(&self, pos: InputPosition) -> TextUnit {
-        let idx = pos.0 as usize;
-        if !(idx < self.tokens.len()) {
-            return 0.into();
-        }
-        self.start_offsets[idx]
-    }
-
-    /// Get the raw text of a token at given input position.
-    pub fn token_text(&self, pos: InputPosition) -> &'t str {
-        let idx = pos.0 as usize;
-        if !(idx < self.tokens.len()) {
-            return "";
-        }
-        let range = TextRange::offset_len(self.start_offsets[idx], self.tokens[idx].len);
-        &self.text[range]
     }
 }
 

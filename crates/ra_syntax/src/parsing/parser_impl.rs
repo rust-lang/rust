@@ -1,5 +1,5 @@
 mod event;
-mod input;
+pub(crate) mod input;
 
 use std::cell::Cell;
 
@@ -11,7 +11,7 @@ use crate::{
         parser_api::Parser,
         parser_impl::{
             event::{Event, EventProcessor},
-            input::{InputPosition, ParserInput},
+            input::InputPosition,
         },
     },
 };
@@ -39,6 +39,12 @@ pub(super) trait TreeSink {
     fn finish(self) -> Self::Tree;
 }
 
+pub(super) trait TokenSource {
+    fn token_kind(&self, pos: InputPosition) -> SyntaxKind;
+    fn is_token_joint_to_next(&self, pos: InputPosition) -> bool;
+    fn is_keyword(&self, pos: InputPosition, kw: &str) -> bool;
+}
+
 /// Parse a sequence of tokens into the representative node tree
 pub(super) fn parse_with<S: TreeSink>(
     sink: S,
@@ -48,7 +54,7 @@ pub(super) fn parse_with<S: TreeSink>(
 ) -> S::Tree {
     let mut events = {
         let input = input::ParserInput::new(text, tokens);
-        let parser_impl = ParserImpl::new(&input);
+        let parser_impl = ParserImpl::new(input);
         let mut parser_api = Parser(parser_impl);
         parser(&mut parser_api);
         parser_api.0.into_events()
@@ -59,17 +65,17 @@ pub(super) fn parse_with<S: TreeSink>(
 /// Implementation details of `Parser`, extracted
 /// to a separate struct in order not to pollute
 /// the public API of the `Parser`.
-pub(super) struct ParserImpl<'t> {
-    parser_input: &'t ParserInput<'t>,
+pub(super) struct ParserImpl<S> {
+    token_source: S,
     pos: InputPosition,
     events: Vec<Event>,
     steps: Cell<u32>,
 }
 
-impl<'t> ParserImpl<'t> {
-    fn new(inp: &'t ParserInput<'t>) -> ParserImpl<'t> {
+impl<S: TokenSource> ParserImpl<S> {
+    fn new(token_source: S) -> ParserImpl<S> {
         ParserImpl {
-            parser_input: inp,
+            token_source,
             pos: InputPosition::new(),
             events: Vec::new(),
             steps: Cell::new(0),
@@ -82,11 +88,9 @@ impl<'t> ParserImpl<'t> {
     }
 
     pub(super) fn current2(&self) -> Option<(SyntaxKind, SyntaxKind)> {
-        let c1 = self.parser_input.kind(self.pos);
-        let c2 = self.parser_input.kind(self.pos + 1);
-        if self.parser_input.token_start_at(self.pos + 1)
-            == self.parser_input.token_start_at(self.pos) + self.parser_input.token_len(self.pos)
-        {
+        let c1 = self.token_source.token_kind(self.pos);
+        let c2 = self.token_source.token_kind(self.pos + 1);
+        if self.token_source.is_token_joint_to_next(self.pos) {
             Some((c1, c2))
         } else {
             None
@@ -94,14 +98,11 @@ impl<'t> ParserImpl<'t> {
     }
 
     pub(super) fn current3(&self) -> Option<(SyntaxKind, SyntaxKind, SyntaxKind)> {
-        let c1 = self.parser_input.kind(self.pos);
-        let c2 = self.parser_input.kind(self.pos + 1);
-        let c3 = self.parser_input.kind(self.pos + 2);
-        if self.parser_input.token_start_at(self.pos + 1)
-            == self.parser_input.token_start_at(self.pos) + self.parser_input.token_len(self.pos)
-            && self.parser_input.token_start_at(self.pos + 2)
-                == self.parser_input.token_start_at(self.pos + 1)
-                    + self.parser_input.token_len(self.pos + 1)
+        let c1 = self.token_source.token_kind(self.pos);
+        let c2 = self.token_source.token_kind(self.pos + 1);
+        let c3 = self.token_source.token_kind(self.pos + 2);
+        if self.token_source.is_token_joint_to_next(self.pos)
+            && self.token_source.is_token_joint_to_next(self.pos + 1)
         {
             Some((c1, c2, c3))
         } else {
@@ -114,12 +115,11 @@ impl<'t> ParserImpl<'t> {
         let steps = self.steps.get();
         assert!(steps <= 10_000_000, "the parser seems stuck");
         self.steps.set(steps + 1);
-
-        self.parser_input.kind(self.pos + n)
+        self.token_source.token_kind(self.pos + n)
     }
 
-    pub(super) fn at_kw(&self, t: &str) -> bool {
-        self.parser_input.token_text(self.pos) == t
+    pub(super) fn at_kw(&self, kw: &str) -> bool {
+        self.token_source.is_keyword(self.pos, kw)
     }
 
     /// Start parsing right behind the last event.

@@ -17,7 +17,9 @@ use crate::{
 /// tree, but rather a flat stream of events of the form
 /// "start expression, consume number literal,
 /// finish expression". See `Event` docs for more.
-pub(crate) struct Parser<'t>(pub(super) ParserImpl<'t>);
+pub(crate) struct Parser<'t>(
+    pub(super) ParserImpl<crate::parsing::parser_impl::input::ParserInput<'t>>,
+);
 
 impl<'t> Parser<'t> {
     /// Returns the kind of the current token.
