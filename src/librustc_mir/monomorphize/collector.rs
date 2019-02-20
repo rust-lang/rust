@@ -466,7 +466,17 @@ fn check_type_length_limit<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                                      instance: Instance<'tcx>)
 {
     let type_length = instance.substs.types().flat_map(|ty| ty.walk()).count();
-    debug!(" => type length={}", type_length);
+    let const_length = instance.substs.consts()
+        .filter_map(|ct| {
+            if let ty::LazyConst::Evaluated(ct) = ct {
+                Some(ct.ty.walk())
+            } else {
+                None
+            }
+        })
+        .flatten()
+        .count();
+    debug!(" => type length={}, const length={}", type_length, const_length);
 
     // Rust code can easily create exponentially-long types using only a
     // polynomial recursion depth. Even with the default recursion
@@ -475,7 +485,9 @@ fn check_type_length_limit<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     //
     // Bail out in these cases to avoid that bad user experience.
     let type_length_limit = *tcx.sess.type_length_limit.get();
-    if type_length > type_length_limit {
+    // We include the const length in the type length, as it's better
+    // to be overly conservative.
+    if type_length + const_length > type_length_limit {
         // The instance name is already known to be too long for rustc. Use
         // `{:.64}` to avoid blasting the user's terminal with thousands of
         // lines of type-name.
@@ -490,7 +502,7 @@ fn check_type_length_limit<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
 
         diag.note(&format!(
             "consider adding a `#![type_length_limit=\"{}\"]` attribute to your crate",
-            type_length_limit*2));
+            type_length_limit * 2));
         diag.emit();
         tcx.sess.abort_if_errors();
     }
@@ -759,10 +771,10 @@ fn should_monomorphize_locally<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, instance: 
             return false
         }
 
-        // If this instance has no type parameters, it cannot be a shared
+        // If this instance has non-erasable parameters, it cannot be a shared
         // monomorphization. Non-generic instances are already handled above
         // by `is_reachable_non_generic()`
-        if substs.types().next().is_none() {
+        if substs.non_erasable_generics().next().is_none() {
             return false
         }
 
@@ -1113,14 +1125,16 @@ fn create_mono_items_for_default_impls<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                         continue;
                     }
 
-                    if tcx.generics_of(method.def_id).own_counts().types != 0 {
+                    let counts = tcx.generics_of(method.def_id).own_counts();
+                    if counts.types + counts.consts != 0 {
                         continue;
                     }
 
                     let substs = InternalSubsts::for_item(tcx, method.def_id, |param, _| {
                         match param.kind {
                             GenericParamDefKind::Lifetime => tcx.types.re_erased.into(),
-                            GenericParamDefKind::Type {..} => {
+                            GenericParamDefKind::Type { .. } |
+                            GenericParamDefKind::Const => {
                                 trait_ref.substs[param.index as usize]
                             }
                         }
