@@ -131,7 +131,7 @@ Compatibility Notes
 [57105]: https://github.com/rust-lang/rust/pull/57105
 [cargo/6484]: https://github.com/rust-lang/cargo/pull/6484/
 [`unix::FileExt::read_exact_at`]: https://doc.rust-lang.org/std/os/unix/fs/trait.FileExt.html#method.read_exact_at
-[`unix::FileExt::write_exact_at`]: https://doc.rust-lang.org/std/os/unix/fs/trait.FileExt.html#method.write_exact_at
+[`unix::FileExt::write_all_at`]: https://doc.rust-lang.org/std/os/unix/fs/trait.FileExt.html#method.write_all_at
 [`Option::transpose`]: https://doc.rust-lang.org/std/option/enum.Option.html#method.transpose
 [`Result::transpose`]: https://doc.rust-lang.org/std/result/enum.Result.html#method.transpose
 [`convert::identity`]: https://doc.rust-lang.org/std/convert/fn.identity.html
