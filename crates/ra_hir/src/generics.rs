@@ -87,4 +87,17 @@ impl GenericParams {
         let parent_count = self.count_parent_params();
         parent_count + self.params.len()
     }
+
+    fn for_each_param<'a>(&'a self, f: &mut impl FnMut(&'a GenericParam)) {
+        if let Some(parent) = &self.parent_params {
+            parent.for_each_param(f);
+        }
+        self.params.iter().for_each(f);
+    }
+
+    pub fn params_including_parent(&self) -> Vec<&GenericParam> {
+        let mut vec = Vec::with_capacity(self.count_params_including_parent());
+        self.for_each_param(&mut |p| vec.push(p));
+        vec
+    }
 }

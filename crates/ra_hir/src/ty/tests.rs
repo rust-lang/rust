@@ -466,6 +466,27 @@ fn test(a1: A<u32>, i: i32) {
 }
 
 #[test]
+fn infer_tuple_struct_generics() {
+    check_inference(
+        "infer_tuple_struct_generics",
+        r#"
+struct A<T>(T);
+enum Option<T> { Some(T), None };
+use Option::*;
+
+fn test() {
+    A(42);
+    A(42u128);
+    Some("x");
+    Option::Some("x");
+    None;
+    let x: Option<i64> = None;
+}
+"#,
+    );
+}
+
+#[test]
 fn infer_generics_in_patterns() {
     check_inference(
         "infer_generics_in_patterns",

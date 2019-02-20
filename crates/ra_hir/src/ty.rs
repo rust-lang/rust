@@ -40,7 +40,7 @@ use crate::{
     name::KnownName,
     expr::{Body, Expr, BindingAnnotation, Literal, ExprId, Pat, PatId, UnaryOp, BinaryOp, Statement, FieldPat, self},
     generics::GenericParams,
-    path::GenericArg,
+    path::{ GenericArgs, GenericArg},
     adt::VariantDef,
     resolve::{Resolver, Resolution}, nameres::Namespace
 };
@@ -164,17 +164,6 @@ pub struct Substs(Arc<[Ty]>);
 impl Substs {
     pub fn empty() -> Substs {
         Substs(Arc::new([]))
-    }
-
-    /// Replaces the end of the substitutions by other ones.
-    pub(crate) fn replace_tail(self, replace_by: Vec<Ty>) -> Substs {
-        // again missing Arc::make_mut_slice...
-        let len = replace_by.len().min(self.0.len());
-        let parent_len = self.0.len() - len;
-        let mut result = Vec::with_capacity(parent_len + len);
-        result.extend(self.0.iter().take(parent_len).cloned());
-        result.extend(replace_by);
-        Substs(result.into())
     }
 }
 
@@ -639,8 +628,11 @@ impl fmt::Display for Ty {
                 join(sig.input.iter()).surround_with("fn(", ")").separator(", ").to_fmt(f)?;
                 write!(f, " -> {}", sig.output)
             }
-            Ty::FnDef { name, substs, sig, .. } => {
-                write!(f, "fn {}", name)?;
+            Ty::FnDef { def, name, substs, sig, .. } => {
+                match def {
+                    CallableDef::Function(_) => write!(f, "fn {}", name)?,
+                    CallableDef::Struct(_) | CallableDef::EnumVariant(_) => write!(f, "{}", name)?,
+                }
                 if substs.0.len() > 0 {
                     join(substs.0.iter()).surround_with("<", ">").separator(", ").to_fmt(f)?;
                 }
@@ -712,16 +704,18 @@ fn type_for_enum_variant_constructor(db: &impl HirDatabase, def: EnumVariant) ->
         .iter()
         .map(|(_, field)| Ty::from_hir(db, &resolver, &field.type_ref))
         .collect::<Vec<_>>();
-    let output = type_for_enum(db, def.parent_enum(db));
-    let sig = Arc::new(FnSig { input, output });
     let substs = make_substs(&generics);
+    let output = type_for_enum(db, def.parent_enum(db)).apply_substs(substs.clone());
+    let sig = Arc::new(FnSig { input, output });
     Ty::FnDef { def: def.into(), sig, name, substs }
 }
 
 fn make_substs(generics: &GenericParams) -> Substs {
     Substs(
-        (0..generics.count_params_including_parent())
-            .map(|_p| Ty::Unknown)
+        generics
+            .params_including_parent()
+            .into_iter()
+            .map(|p| Ty::Param { idx: p.idx, name: p.name.clone() })
             .collect::<Vec<_>>()
             .into(),
     )
@@ -736,7 +730,7 @@ fn type_for_struct(db: &impl HirDatabase, s: Struct) -> Ty {
     }
 }
 
-pub(crate) fn type_for_enum(db: &impl HirDatabase, s: Enum) -> Ty {
+fn type_for_enum(db: &impl HirDatabase, s: Enum) -> Ty {
     let generics = s.generic_params(db);
     Ty::Adt {
         def_id: s.into(),
@@ -1353,6 +1347,36 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
         ty
     }
 
+    fn substs_for_method_call(
+        &mut self,
+        def_generics: Option<Arc<GenericParams>>,
+        generic_args: &Option<GenericArgs>,
+    ) -> Substs {
+        let (parent_param_count, param_count) =
+            def_generics.map_or((0, 0), |g| (g.count_parent_params(), g.params.len()));
+        let mut substs = Vec::with_capacity(parent_param_count + param_count);
+        for _ in 0..parent_param_count {
+            substs.push(Ty::Unknown);
+        }
+        // handle provided type arguments
+        if let Some(generic_args) = generic_args {
+            // if args are provided, it should be all of them, but we can't rely on that
+            for arg in generic_args.args.iter().take(param_count) {
+                match arg {
+                    GenericArg::Type(type_ref) => {
+                        let ty = self.make_ty(type_ref);
+                        substs.push(ty);
+                    }
+                }
+            }
+        };
+        let supplied_params = substs.len();
+        for _ in supplied_params..parent_param_count + param_count {
+            substs.push(Ty::Unknown);
+        }
+        Substs(substs.into())
+    }
+
     fn infer_expr(&mut self, tgt_expr: ExprId, expected: &Expectation) -> Ty {
         let body = Arc::clone(&self.body); // avoid borrow checker problem
         let ty = match &body[tgt_expr] {
@@ -1443,25 +1467,8 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
                     }
                     None => (Ty::Unknown, receiver_ty, None),
                 };
-                // handle provided type arguments
-                let method_ty = if let Some(generic_args) = generic_args {
-                    // if args are provided, it should be all of them, but we can't rely on that
-                    let param_count = def_generics.map(|g| g.params.len()).unwrap_or(0);
-                    let mut new_substs = Vec::with_capacity(generic_args.args.len());
-                    for arg in generic_args.args.iter().take(param_count) {
-                        match arg {
-                            GenericArg::Type(type_ref) => {
-                                let ty = self.make_ty(type_ref);
-                                new_substs.push(ty);
-                            }
-                        }
-                    }
-                    let substs = method_ty.substs().unwrap_or_else(Substs::empty);
-                    let substs = substs.replace_tail(new_substs);
-                    method_ty.apply_substs(substs)
-                } else {
-                    method_ty
-                };
+                let substs = self.substs_for_method_call(def_generics, generic_args);
+                let method_ty = method_ty.apply_substs(substs);
                 let method_ty = self.insert_type_vars(method_ty);
                 let (expected_receiver_ty, param_tys, ret_ty) = match &method_ty {
                     Ty::FnPtr(sig) => {
