@@ -67,7 +67,7 @@ in it without breaking people's code.
 
 The way we do that is that we make sure all new features are feature
 gated - they can't be used without a enabling a feature gate
-`(#[feature(foo)])`, which can't be done in a stable/beta compiler.
+(`#[feature(foo)]`), which can't be done in a stable/beta compiler.
 See the [stability in code] section for the technical details.
 
 Eventually, after we gain enough experience using the feature,
