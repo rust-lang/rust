@@ -141,27 +141,27 @@ pub const PASSES: &'static [Pass] = &[
 ];
 
 /// The list of passes run by default.
-pub const DEFAULT_PASSES: &'static [&'static str] = &[
+pub const DEFAULT_PASSES: &[&str] = &[
     "collect-trait-impls",
+    "collapse-docs",
+    "unindent-comments",
     "check-private-items-doc-tests",
     "strip-hidden",
     "strip-private",
     "collect-intra-doc-links",
     "check-code-block-syntax",
-    "collapse-docs",
-    "unindent-comments",
     "propagate-doc-cfg",
 ];
 
 /// The list of default passes run with `--document-private-items` is passed to rustdoc.
-pub const DEFAULT_PRIVATE_PASSES: &'static [&'static str] = &[
+pub const DEFAULT_PRIVATE_PASSES: &[&str] = &[
     "collect-trait-impls",
+    "collapse-docs",
+    "unindent-comments",
     "check-private-items-doc-tests",
     "strip-priv-imports",
     "collect-intra-doc-links",
     "check-code-block-syntax",
-    "collapse-docs",
-    "unindent-comments",
     "propagate-doc-cfg",
 ];
 
@@ -438,11 +438,11 @@ crate fn source_span_for_markdown_range(
         .span_to_snippet(span_of_attrs(attrs))
         .ok()?;
 
-    let starting_line = markdown[..md_range.start].lines().count() - 1;
-    let ending_line = markdown[..md_range.end].lines().count() - 1;
+    let starting_line = markdown[..md_range.start].matches('\n').count();
+    let ending_line = starting_line + markdown[md_range.start..md_range.end].matches('\n').count();
 
-    // We use `split_terminator('\n')` instead of `lines()` when counting bytes so that we only
-    // we can treat CRLF and LF line endings the same way.
+    // We use `split_terminator('\n')` instead of `lines()` when counting bytes so that we treat
+    // CRLF and LF line endings the same way.
     let mut src_lines = snippet.split_terminator('\n');
     let md_lines = markdown.split_terminator('\n');
 
