@@ -6,7 +6,7 @@ use rustc::hir::*;
 use rustc::lint::{LateContext, LateLintPass, LintArray, LintContext, LintPass};
 use rustc::ty;
 use rustc::{declare_tool_lint, lint_array};
-use syntax::ast::{Attribute, NodeId};
+use syntax::ast::Attribute;
 use syntax::source_map::Span;
 
 use crate::utils::{in_macro, is_allowed, match_type, paths, span_help_and_lint, LimitStack};
@@ -123,9 +123,9 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for CyclomaticComplexity {
         _: &'tcx FnDecl,
         body: &'tcx Body,
         span: Span,
-        node_id: NodeId,
+        hir_id: HirId,
     ) {
-        let def_id = cx.tcx.hir().local_def_id(node_id);
+        let def_id = cx.tcx.hir().local_def_id_from_hir_id(hir_id);
         if !cx.tcx.has_attr(def_id, "test") {
             self.check(cx, body, span);
         }

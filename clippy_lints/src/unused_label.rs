@@ -4,7 +4,6 @@ use rustc::hir::intravisit::{walk_expr, walk_fn, FnKind, NestedVisitorMap, Visit
 use rustc::lint::{LateContext, LateLintPass, LintArray, LintPass};
 use rustc::{declare_tool_lint, lint_array};
 use rustc_data_structures::fx::FxHashMap;
-use syntax::ast;
 use syntax::source_map::Span;
 use syntax::symbol::LocalInternedString;
 
@@ -53,7 +52,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for UnusedLabel {
         decl: &'tcx hir::FnDecl,
         body: &'tcx hir::Body,
         span: Span,
-        fn_id: ast::NodeId,
+        fn_id: hir::HirId,
     ) {
         if in_macro(span) {
             return;

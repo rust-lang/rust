@@ -1,5 +1,4 @@
 use crate::consts::{constant, Constant};
-use crate::reexport::*;
 use crate::utils::sugg::Sugg;
 use crate::utils::{
     get_item_name, get_parent_expr, implements_trait, in_constant, in_macro, is_integer_literal, iter_input_pats,
@@ -256,7 +255,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Pass {
         decl: &'tcx FnDecl,
         body: &'tcx Body,
         _: Span,
-        _: NodeId,
+        _: HirId,
     ) {
         if let FnKind::Closure(_) = k {
             // Does not apply to closures

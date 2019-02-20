@@ -1,7 +1,6 @@
 #![allow(clippy::default_hash_types)]
 
 use crate::consts::{constant, Constant};
-use crate::reexport::*;
 use crate::utils::paths;
 use crate::utils::{
     clip, comparisons, differing_macro_contexts, higher, in_constant, in_macro, int_bits, last_path_segment,
@@ -175,9 +174,19 @@ impl LintPass for TypePass {
 }
 
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for TypePass {
-    fn check_fn(&mut self, cx: &LateContext<'_, '_>, _: FnKind<'_>, decl: &FnDecl, _: &Body, _: Span, id: NodeId) {
+    fn check_fn(
+        &mut self,
+        cx: &LateContext<'_, '_>,
+        _: FnKind<'_>,
+        decl: &FnDecl,
+        _: &Body,
+        _: Span,
+        id: HirId,
+    ) {
         // skip trait implementations, see #605
-        if let Some(hir::Node::Item(item)) = cx.tcx.hir().find(cx.tcx.hir().get_parent(id)) {
+        if let Some(hir::Node::Item(item)) = cx.tcx.hir().find_by_hir_id(
+            cx.tcx.hir().get_parent_item(id))
+        {
             if let ItemKind::Impl(_, _, _, _, Some(..), _, _) = item.node {
                 return;
             }
@@ -1336,7 +1345,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for TypeComplexityPass {
         decl: &'tcx FnDecl,
         _: &'tcx Body,
         _: Span,
-        _: NodeId,
+        _: HirId,
     ) {
         self.check_fndecl(cx, decl);
     }

@@ -8,7 +8,7 @@ use rustc::hir::{BindingAnnotation, Expr, ExprKind, Pat, PatKind, QPath, Stmt, S
 use rustc::lint::{LateContext, LateLintPass, LintArray, LintPass};
 use rustc::{declare_tool_lint, lint_array};
 use rustc_data_structures::fx::FxHashMap;
-use syntax::ast::{Attribute, LitKind, DUMMY_NODE_ID};
+use syntax::ast::{Attribute, LitKind};
 
 /// **What it does:** Generates clippy code that detects the offending pattern
 ///
@@ -103,7 +103,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Pass {
             return;
         }
         prelude();
-        PrintVisitor::new("var").visit_variant(var, generics, DUMMY_NODE_ID);
+        PrintVisitor::new("var").visit_variant(var, generics, hir::DUMMY_HIR_ID);
         done();
     }
 

@@ -5,7 +5,6 @@ use rustc::hir::def::Def;
 use rustc::hir::*;
 use rustc::lint::{LateContext, LateLintPass, LintArray, LintPass};
 use rustc::{declare_tool_lint, lint_array};
-use syntax::ast::NodeId;
 use syntax::source_map::Span;
 
 /// **What it does:** Checks for `use Enum::*`.
@@ -39,7 +38,7 @@ impl LintPass for EnumGlobUse {
 }
 
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for EnumGlobUse {
-    fn check_mod(&mut self, cx: &LateContext<'a, 'tcx>, m: &'tcx Mod, _: Span, _: NodeId) {
+    fn check_mod(&mut self, cx: &LateContext<'a, 'tcx>, m: &'tcx Mod, _: Span, _: HirId) {
         // only check top level `use` statements
         for item in &m.item_ids {
             self.lint_item(cx, cx.tcx.hir().expect_item(item.id));
