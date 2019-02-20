@@ -16,7 +16,7 @@
 //! [`Pin`] wraps a pointer type, so `Pin<Box<T>>` functions much like a regular `Box<T>`
 //! (when a `Pin<Box<T>>` gets dropped, so do its contents, and the memory gets deallocated).
 //! Similarily, `Pin<&mut T>` is a lot like `&mut T`. However, [`Pin`] does not let clients actually
-//! obtain a `Box` or reference to pinned data, which implies that you cannot use
+//! obtain a `Box<T>` or `&mut T` to pinned data, which implies that you cannot use
 //! operations such as [`mem::swap`]:
 //! ```
 //! use std::pin::Pin;
@@ -29,9 +29,10 @@
 //! ```
 //!
 //! It is worth reiterating that [`Pin`] does *not* change the fact that a Rust compiler
-//! considers all types movable.  [`mem::swap`] remains callable for any `T`. Instead, `Pin`
+//! considers all types movable. [`mem::swap`] remains callable for any `T`. Instead, `Pin`
 //! prevents certain *values* (pointed to by pointers wrapped in `Pin`) from being
-//! moved by making it impossible to call methods like [`mem::swap`] on them.
+//! moved by making it impossible to call methods that require `&mut T` on them
+//! (like [`mem::swap`]).
 //!
 //! [`Pin`] can be used to wrap any pointer type, and as such it interacts with
 //! [`Deref`] and [`DerefMut`]. A `Pin<P>` where `P: Deref` should be considered
@@ -221,7 +222,7 @@
 //!    reference we got later.
 //!
 //! On the other hand, if you decide *not* to offer any pinning projections, you
-//! are free to `impl<T> Unpin for Container<T>`.  In the standard library,
+//! are free to `impl<T> Unpin for Container<T>`. In the standard library,
 //! this is done for all pointer types: `Box<T>: Unpin` holds for all `T`.
 //! It makes sense to do this for pointer types, because moving the `Box<T>`
 //! does not actually move the `T`: the `Box<T>` can be freely movable even if the `T`
@@ -341,7 +342,7 @@ impl<P: Deref> Pin<P> {
     /// pointed to by `pointer` is pinned, meaning that the data will not be moved or
     /// its storage invalidated until it gets dropped. If the constructed `Pin<P>` does
     /// not guarantee that the data `P` points to is pinned, constructing a
-    /// `Pin<P>` is unsafe. In particular,
+    /// `Pin<P>` is unsafe.
     ///
     /// By using this method, you are making a promise about the `P::Deref` and
     /// `P::DerefMut` implementations, if they exist. Most importantly, they
@@ -353,9 +354,9 @@ impl<P: Deref> Pin<P> {
     /// must not be possible to obtain a `&mut P::Target` and then
     /// move out of that reference (using, for example [`mem::swap`]).
     ///
-    /// For example, calling `Pin::new_unchecked`
-    /// on an `&'a mut T` is unsafe because while you are able to pin it for the given
-    /// lifetime `'a`, you have no control over whether it is kept pinned once `'a` ends:
+    /// For example, calling `Pin::new_unchecked` on an `&'a mut T` is unsafe because
+    /// while you are able to pin it for the given lifetime `'a`, you have no control
+    /// over whether it is kept pinned once `'a` ends:
     /// ```
     /// use std::mem;
     /// use std::pin::Pin;
@@ -395,10 +396,10 @@ impl<P: Deref> Pin<P> {
 
     /// Gets a pinned shared reference from this pinned pointer.
     ///
-    /// This is a generic method to go from `&Pin<SmartPointer<T>>` to `Pin<&T>`.
+    /// This is a generic method to go from `&Pin<Pointer<T>>` to `Pin<&T>`.
     /// It is safe because, as part of the contract of `Pin::new_unchecked`,
-    /// the pointee cannot move after `Pin<SmartPointer<T>>` got created.
-    /// "Malicious" implementations of `SmartPointer::Deref` are likewise
+    /// the pointee cannot move after `Pin<Pointer<T>>` got created.
+    /// "Malicious" implementations of `Pointer::Deref` are likewise
     /// ruled out by the contract of `Pin::new_unchecked`.
     #[stable(feature = "pin", since = "1.33.0")]
     #[inline(always)]
@@ -410,10 +411,10 @@ impl<P: Deref> Pin<P> {
 impl<P: DerefMut> Pin<P> {
     /// Gets a pinned mutable reference from this pinned pointer.
     ///
-    /// This is a generic method to go from `&mut Pin<SmartPointer<T>>` to `Pin<&mut T>`.
+    /// This is a generic method to go from `&mut Pin<Pointer<T>>` to `Pin<&mut T>`.
     /// It is safe because, as part of the contract of `Pin::new_unchecked`,
-    /// the pointee cannot move after `Pin<SmartPointer<T>>` got created.
-    /// "Malicious" implementations of `SmartPointer::DerefMut` are likewise
+    /// the pointee cannot move after `Pin<Pointer<T>>` got created.
+    /// "Malicious" implementations of `Pointer::DerefMut` are likewise
     /// ruled out by the contract of `Pin::new_unchecked`.
     #[stable(feature = "pin", since = "1.33.0")]
     #[inline(always)]
