@@ -113,7 +113,7 @@ The current version is not actually important – the important version is when 
 
 4. Prevent usage of the new feature unless the feature gate is set.
 
-You can check it in most places in the compiler using the expression `tcx.features().$feature_name` (or `sess.features_untracked().borrow().$feature_name` if the tcx is unavailable)
+    You can check it in most places in the compiler using the expression `tcx.features().$feature_name` (or `sess.features_untracked().borrow().$feature_name` if the tcx is unavailable)
 
 If the feature gate is not set, you should either maintain the pre-feature behavior or raise an error, depending on what makes sense.
 
