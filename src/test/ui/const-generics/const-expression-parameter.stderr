@@ -1,13 +1,13 @@
 error: expected identifier, found `<-`
   --> $DIR/const-expression-parameter.rs:9:19
    |
-LL |     u32_identity::<-1>(); //~ ERROR expected identifier, found `<-`
+LL |     i32_identity::<-1>(); //~ ERROR expected identifier, found `<-`
    |                   ^^ expected identifier
 
 error: expected one of `,` or `>`, found `+`
   --> $DIR/const-expression-parameter.rs:13:22
    |
-LL |     u32_identity::<1 + 2>(); //~ ERROR expected one of `,` or `>`, found `+`
+LL |     i32_identity::<1 + 2>(); //~ ERROR expected one of `,` or `>`, found `+`
    |                      ^ expected one of `,` or `>` here
 
 warning: the feature `const_generics` is incomplete and may cause the compiler to crash
@@ -16,14 +16,5 @@ warning: the feature `const_generics` is incomplete and may cause the compiler t
 LL | #![feature(const_generics)]
    |            ^^^^^^^^^^^^^^
 
-error[E0600]: cannot apply unary operator `-` to type `u32`
-  --> $DIR/const-expression-parameter.rs:17:21
-   |
-LL |     u32_identity::< -1 >(); // ok
-   |                     ^^ cannot apply unary operator `-`
-   |
-   = note: unsigned values cannot be negated
+error: aborting due to 2 previous errors
 
-error: aborting due to 3 previous errors
-
-For more information about this error, try `rustc --explain E0600`.
