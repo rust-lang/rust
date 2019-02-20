@@ -78,7 +78,7 @@ For other features, you'll have to make a tracking issue for that feature. The i
 
 For tracking issues for features (as opposed to future-compat warnings), I don't think the description has to contain anything specific. Generally we put the list of items required for stabilization using a github list, e.g.
 
-```bash, ignore
+```txt
     **Steps:**
 
     - [ ] Implement the RFC (cc @rust-lang/compiler -- can anyone write up mentoring instructions?)
