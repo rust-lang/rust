@@ -1227,7 +1227,6 @@ impl<K> FusedIterator for IntoIter<K> {}
 impl<K: fmt::Debug> fmt::Debug for IntoIter<K> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let entries_iter = self.iter
-            .inner
             .iter()
             .map(|(k, _)| k);
         f.debug_list().entries(entries_iter).finish()
@@ -1261,7 +1260,6 @@ impl<K> FusedIterator for Drain<'_, K> {}
 impl<K: fmt::Debug> fmt::Debug for Drain<'_, K> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let entries_iter = self.iter
-            .inner
             .iter()
             .map(|(k, _)| k);
         f.debug_list().entries(entries_iter).finish()
