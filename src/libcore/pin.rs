@@ -182,46 +182,49 @@
 //! is entirely up to the author of any given type. For many types, both answers are reasonable
 //! (e.g., there could be a version of `Vec` with structural pinning and another
 //! version where the contents remain movable even when the `Vec` is pinned).
-//! If pinning is not structural, the wrapper can `impl<T> Unpin for Wrapper<T>`.
-//! If pinning is structural, the wrapper type can offer pinning projections.
+//! If the type should have pinning projections, pinning must be structural.
 //! However, structural pinning comes with a few extra requirements:
 //!
-//! 1. The wrapper must only be [`Unpin`] if all the fields one can project to are
-//!    `Unpin`. This is the default, but `Unpin` is a safe trait, so as the author of
-//!    the wrapper it is your responsibility *not* to add something like
-//!    `impl<T> Unpin for Wrapper<T>`. (Notice that adding a projection operation
-//!    requires unsafe code, so the fact that `Unpin` is a safe trait  does not break
-//!    the principle that you only have to worry about any of this if you use `unsafe`.)
-//! 2. The destructor of the wrapper must not move out of its argument. This is the exact
-//!    point that was raised in the [previous section][drop-impl]: `drop` takes `&mut self`,
-//!    but the wrapper (and hence its fields) might have been pinned before.
-//!    You have to guarantee that you do not move a field inside your `Drop` implementation.
-//!    In particular, as explained previously, this means that your wrapper type must *not*
-//!    be `#[repr(packed)]`.
-//! 3. You must make sure that you uphold the [`Drop` guarantee][drop-guarantee]:
-//!    once your wrapper is pinned, the memory that contains the
-//!    content is not overwritten or deallocated without calling the content's destructors.
-//!    This can be tricky, as witnessed by `VecDeque`: the destructor of `VecDeque` can fail
-//!    to call `drop` on all elements if one of the destructors panics. This violates the
-//!    `Drop` guarantee, because it can lead to elements being deallocated without
-//!    their destructor being called. (`VecDeque` has no pinning projections, so this
-//!    does not cause unsoundness.)
-//! 4. You must not offer any other operations that could lead to data being moved out of
-//!    the fields when your type is pinned. This is usually not a concern, but can become
-//!    tricky when interior mutability is involved. For example, imagine if `RefCell`
-//!    had a method `fn get_pin_mut(self: Pin<&mut Self>) -> Pin<&mut T>`.
-//!    Then we could do the following:
-//!    ```compile_fail
-//!    fn exploit_ref_cell<T>(rc: Pin<&mut RefCell<T>) {
-//!        { let p = rc.as_mut().get_pin_mut(); } // here we get pinned access to the `T`
-//!        let rc_shr: &RefCell<T> = rc.into_ref().get_ref();
-//!        let b = rc_shr.borrow_mut();
-//!        let content = &mut *b; // and here we have `&mut T` to the same data
-//!    }
-//!    ```
-//!    This is catastrophic, it means we can first pin the content of the `RefCell`
-//!    (using `RefCell::get_pin_mut`) and then move that content using the mutable
-//!    reference we got later.
+//! 1.  The wrapper must only be [`Unpin`] if all the fields one can project to are
+//!     `Unpin`. This is the default, but `Unpin` is a safe trait, so as the author of
+//!     the wrapper it is your responsibility *not* to add something like
+//!     `impl<T> Unpin for Wrapper<T>`. (Notice that adding a projection operation
+//!     requires unsafe code, so the fact that `Unpin` is a safe trait  does not break
+//!     the principle that you only have to worry about any of this if you use `unsafe`.)
+//! 2.  The destructor of the wrapper must not move out of its argument. This is the exact
+//!     point that was raised in the [previous section][drop-impl]: `drop` takes `&mut self`,
+//!      but the wrapper (and hence its fields) might have been pinned before.
+//!     You have to guarantee that you do not move a field inside your `Drop` implementation.
+//!     In particular, as explained previously, this means that your wrapper type must *not*
+//!     be `#[repr(packed)]`.
+//! 3.  You must make sure that you uphold the [`Drop` guarantee][drop-guarantee]:
+//!     once your wrapper is pinned, the memory that contains the
+//!     content is not overwritten or deallocated without calling the content's destructors.
+//!     This can be tricky, as witnessed by `VecDeque`: the destructor of `VecDeque` can fail
+//!     to call `drop` on all elements if one of the destructors panics. This violates the
+//!     `Drop` guarantee, because it can lead to elements being deallocated without
+//!     their destructor being called. (`VecDeque` has no pinning projections, so this
+//!     does not cause unsoundness.)
+//! 4.  You must not offer any other operations that could lead to data being moved out of
+//!     the fields when your type is pinned. For example, if the wrapper contains an
+//!     `Option<T>` and there is an operation such as `fn(Pin<&mut Wrapper<T>>) -> Option<T>`,
+//!     that operation can be used to move a `T` out of a pinned `Wrapper` -- that means
+//!     pinning cannot be structural.
+//!
+//!     For a more complex example of moving data out of a pinnd type, imagine if `RefCell`
+//!     had a method `fn get_pin_mut(self: Pin<&mut Self>) -> Pin<&mut T>`.
+//!     Then we could do the following:
+//!     ```compile_fail
+//!     fn exploit_ref_cell<T>(rc: Pin<&mut RefCell<T>) {
+//!         { let p = rc.as_mut().get_pin_mut(); } // here we get pinned access to the `T`
+//!         let rc_shr: &RefCell<T> = rc.into_ref().get_ref();
+//!         let b = rc_shr.borrow_mut();
+//!         let content = &mut *b; // and here we have `&mut T` to the same data
+//!     }
+//!     ```
+//!     This is catastrophic, it means we can first pin the content of the `RefCell`
+//!     (using `RefCell::get_pin_mut`) and then move that content using the mutable
+//!     reference we got later.
 //!
 //! On the other hand, if you decide *not* to offer any pinning projections, you
 //! do not have to do anything. If your type also does not do any pinning itself,
