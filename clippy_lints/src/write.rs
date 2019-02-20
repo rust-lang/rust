@@ -5,7 +5,7 @@ use rustc_errors::Applicability;
 use std::borrow::Cow;
 use syntax::ast::*;
 use syntax::parse::{parser, token};
-use syntax::tokenstream::TokenStream;
+use syntax::tokenstream::{TokenStream, TokenTree};
 
 /// **What it does:** This lint warns when you use `println!("")` to
 /// print a newline.
@@ -200,8 +200,8 @@ impl EarlyLintPass for Pass {
             }
         } else if mac.node.path == "print" {
             span_lint(cx, PRINT_STDOUT, mac.span, "use of `print!`");
-            if let Some(fmtstr) = check_tts(cx, &mac.node.tts, false).0 {
-                if check_newlines(&fmtstr) {
+            if let (Some(fmtstr), _, is_raw) = check_tts(cx, &mac.node.tts, false) {
+                if check_newlines(&fmtstr, is_raw) {
                     span_lint(
                         cx,
                         PRINT_WITH_NEWLINE,
@@ -212,8 +212,8 @@ impl EarlyLintPass for Pass {
                 }
             }
         } else if mac.node.path == "write" {
-            if let Some(fmtstr) = check_tts(cx, &mac.node.tts, true).0 {
-                if check_newlines(&fmtstr) {
+            if let (Some(fmtstr), _, is_raw) = check_tts(cx, &mac.node.tts, true) {
+                if check_newlines(&fmtstr, is_raw) {
                     span_lint(
                         cx,
                         WRITE_WITH_NEWLINE,
@@ -252,8 +252,9 @@ impl EarlyLintPass for Pass {
 }
 
 /// Checks the arguments of `print[ln]!` and `write[ln]!` calls. It will return a tuple of two
-/// options. The first part of the tuple is `format_str` of the macros. The second part of the tuple
-/// is in the `write[ln]!` case the expression the `format_str` should be written to.
+/// options and a bool. The first part of the tuple is `format_str` of the macros. The second part
+/// of the tuple is in the `write[ln]!` case the expression the `format_str` should be written to.
+/// The final part is a boolean flag indicating if the string is a raw string.
 ///
 /// Example:
 ///
@@ -263,34 +264,49 @@ impl EarlyLintPass for Pass {
 /// ```
 /// will return
 /// ```rust,ignore
-/// (Some("string to write: {}"), Some(buf))
+/// (Some("string to write: {}"), Some(buf), false)
 /// ```
-fn check_tts<'a>(cx: &EarlyContext<'a>, tts: &TokenStream, is_write: bool) -> (Option<String>, Option<Expr>) {
+fn check_tts<'a>(cx: &EarlyContext<'a>, tts: &TokenStream, is_write: bool) -> (Option<String>, Option<Expr>, bool) {
     use fmt_macros::*;
     let tts = tts.clone();
+    let mut is_raw = false;
+    if let TokenStream(Some(tokens)) = &tts {
+        for token in tokens.iter() {
+            if let (TokenTree::Token(_, token::Token::Literal(lit, _)), _) = token {
+                match lit {
+                    token::Lit::Str_(_) => break,
+                    token::Lit::StrRaw(_, _) => {
+                        is_raw = true;
+                        break;
+                    },
+                    _ => {},
+                }
+            }
+        }
+    }
     let mut parser = parser::Parser::new(&cx.sess.parse_sess, tts, None, false, false);
     let mut expr: Option<Expr> = None;
     if is_write {
         expr = match parser.parse_expr().map_err(|mut err| err.cancel()) {
             Ok(p) => Some(p.into_inner()),
-            Err(_) => return (None, None),
+            Err(_) => return (None, None, is_raw),
         };
         // might be `writeln!(foo)`
         if parser.expect(&token::Comma).map_err(|mut err| err.cancel()).is_err() {
-            return (None, expr);
+            return (None, expr, is_raw);
         }
     }
 
     let fmtstr = match parser.parse_str().map_err(|mut err| err.cancel()) {
         Ok(token) => token.0.to_string(),
-        Err(_) => return (None, expr),
+        Err(_) => return (None, expr, is_raw),
     };
     let tmp = fmtstr.clone();
     let mut args = vec![];
     let mut fmt_parser = Parser::new(&tmp, None, Vec::new(), false);
     while let Some(piece) = fmt_parser.next() {
         if !fmt_parser.errors.is_empty() {
-            return (None, expr);
+            return (None, expr, is_raw);
         }
         if let Piece::NextArgument(arg) = piece {
             if arg.format.ty == "?" {
@@ -312,11 +328,11 @@ fn check_tts<'a>(cx: &EarlyContext<'a>, tts: &TokenStream, is_write: bool) -> (O
             ty: "",
         };
         if !parser.eat(&token::Comma) {
-            return (Some(fmtstr), expr);
+            return (Some(fmtstr), expr, is_raw);
         }
         let token_expr = match parser.parse_expr().map_err(|mut err| err.cancel()) {
             Ok(expr) => expr,
-            Err(_) => return (Some(fmtstr), None),
+            Err(_) => return (Some(fmtstr), None, is_raw),
         };
         match &token_expr.node {
             ExprKind::Lit(_) => {
@@ -366,7 +382,14 @@ fn check_tts<'a>(cx: &EarlyContext<'a>, tts: &TokenStream, is_write: bool) -> (O
 }
 
 // Checks if `s` constains a single newline that terminates it
-fn check_newlines(s: &str) -> bool {
+// Literal and escaped newlines are both checked (only literal for raw strings)
+fn check_newlines(s: &str, is_raw: bool) -> bool {
+    if s.ends_with('\n') {
+        return true;
+    } else if is_raw {
+        return false;
+    }
+
     if s.len() < 2 {
         return false;
     }

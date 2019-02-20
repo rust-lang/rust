@@ -27,8 +27,28 @@ LL |     write!(&mut v, "{}/n", 1265);
 error: using `write!()` with a format string that ends in a single newline, consider using `writeln!()` instead
   --> $DIR/write_with_newline.rs:32:5
    |
-LL |     write!(&mut v, "//n");
+LL |     write!(&mut v, "//n"); // should fail
    |     ^^^^^^^^^^^^^^^^^^^^^^
 
-error: aborting due to 5 previous errors
+error: using `write!()` with a format string that ends in a single newline, consider using `writeln!()` instead
+  --> $DIR/write_with_newline.rs:39:5
+   |
+LL | /     write!(
+LL | |         &mut v,
+LL | |         "
+LL | | "
+LL | |     );
+   | |_____^
+
+error: using `write!()` with a format string that ends in a single newline, consider using `writeln!()` instead
+  --> $DIR/write_with_newline.rs:44:5
+   |
+LL | /     write!(
+LL | |         &mut v,
+LL | |         r"
+LL | | "
+LL | |     );
+   | |_____^
+
+error: aborting due to 7 previous errors
 

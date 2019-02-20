@@ -29,6 +29,21 @@ fn main() {
 
     // Escaping
     write!(&mut v, "\\n"); // #3514
-    write!(&mut v, "\\\n");
+    write!(&mut v, "\\\n"); // should fail
     write!(&mut v, "\\\\n");
+
+    // Raw strings
+    write!(&mut v, r"\n"); // #3778
+
+    // Literal newlines should also fail
+    write!(
+        &mut v,
+        "
+"
+    );
+    write!(
+        &mut v,
+        r"
+"
+    );
 }
