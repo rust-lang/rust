@@ -41,7 +41,7 @@ use crate::{
     SyntaxKind::{self, *},
     parsing::{
         token_set::TokenSet,
-        parser_api::{CompletedMarker, Marker, Parser}
+        parser::{CompletedMarker, Marker, Parser}
     },
 };
 

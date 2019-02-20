@@ -3,7 +3,7 @@
 //! parser, so as to allow to evolve the tree representation
 //! and the parser algorithm independently.
 //!
-//! The `Sink` trait is the bridge between the parser and the
+//! The `TreeSink` trait is the bridge between the parser and the
 //! tree builder: the parser produces a stream of events like
 //! `start node`, `finish node`, and `FileBuilder` converts
 //! this stream to a real tree.
@@ -13,14 +13,9 @@ use crate::{
     SmolStr,
     SyntaxKind::{self, *},
     TextRange, TextUnit,
-    syntax_error::{
-        ParseError,
-        SyntaxError,
-        SyntaxErrorKind,
-    },
     parsing::{
+        ParseError, TreeSink,
         lexer::Token,
-        parser_impl::Sink,
     },
 };
 
@@ -93,7 +88,7 @@ impl Event {
     }
 }
 
-pub(super) struct EventProcessor<'a, S: Sink> {
+pub(super) struct EventProcessor<'a, S: TreeSink> {
     sink: S,
     text_pos: TextUnit,
     text: &'a str,
@@ -102,7 +97,7 @@ pub(super) struct EventProcessor<'a, S: Sink> {
     events: &'a mut [Event],
 }
 
-impl<'a, S: Sink> EventProcessor<'a, S> {
+impl<'a, S: TreeSink> EventProcessor<'a, S> {
     pub(super) fn new(
         sink: S,
         text: &'a str,
@@ -113,7 +108,7 @@ impl<'a, S: Sink> EventProcessor<'a, S> {
     }
 
     /// Generate the syntax tree with the control of events.
-    pub(super) fn process(mut self) -> S {
+    pub(crate) fn process(mut self) -> S {
         let mut forward_parents = Vec::new();
 
         for i in 0..self.events.len() {
@@ -159,9 +154,7 @@ impl<'a, S: Sink> EventProcessor<'a, S> {
                         .sum::<TextUnit>();
                     self.leaf(kind, len, n_raw_tokens);
                 }
-                Event::Error { msg } => self
-                    .sink
-                    .error(SyntaxError::new(SyntaxErrorKind::ParseError(msg), self.text_pos)),
+                Event::Error { msg } => self.sink.error(msg),
             }
         }
         self.sink

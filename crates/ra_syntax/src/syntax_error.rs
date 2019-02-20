@@ -1,6 +1,6 @@
 use std::fmt;
 
-use crate::{TextRange, TextUnit};
+use crate::{TextRange, TextUnit, parsing::ParseError};
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct SyntaxError {
@@ -94,9 +94,6 @@ pub enum SyntaxErrorKind {
     InvalidBlockAttr,
     InvalidMatchInnerAttr,
 }
-
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub struct ParseError(pub String);
 
 impl fmt::Display for SyntaxErrorKind {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
