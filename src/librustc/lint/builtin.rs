@@ -386,6 +386,12 @@ declare_lint! {
     "ambiguous associated items"
 }
 
+declare_lint! {
+    pub NESTED_IMPL_TRAIT,
+    Warn,
+    "nested occurrence of `impl Trait` type"
+}
+
 /// Does nothing as a lint pass, but registers some `Lint`s
 /// that are used by other parts of the compiler.
 #[derive(Copy, Clone)]
@@ -457,6 +463,7 @@ impl LintPass for HardwiredLints {
             parser::ILL_FORMED_ATTRIBUTE_INPUT,
             DEPRECATED_IN_FUTURE,
             AMBIGUOUS_ASSOCIATED_ITEMS,
+            NESTED_IMPL_TRAIT,
         )
     }
 }
@@ -474,6 +481,7 @@ pub enum BuiltinLintDiagnostics {
     ElidedLifetimesInPaths(usize, Span, bool, Span, String),
     UnknownCrateTypes(Span, String, String),
     UnusedImports(String, Vec<(Span, String)>),
+    NestedImplTrait { outer_impl_trait_span: Span, inner_impl_trait_span: Span },
 }
 
 impl BuiltinLintDiagnostics {
@@ -563,6 +571,12 @@ impl BuiltinLintDiagnostics {
                         Applicability::MachineApplicable,
                     );
                 }
+            }
+            BuiltinLintDiagnostics::NestedImplTrait {
+                outer_impl_trait_span, inner_impl_trait_span
+            } => {
+                db.span_label(outer_impl_trait_span, "outer `impl Trait`");
+                db.span_label(inner_impl_trait_span, "nested `impl Trait` here");
             }
         }
     }

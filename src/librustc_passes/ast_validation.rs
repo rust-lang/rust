@@ -9,6 +9,7 @@
 use std::mem;
 use syntax::print::pprust;
 use rustc::lint;
+use rustc::lint::builtin::{BuiltinLintDiagnostics, NESTED_IMPL_TRAIT};
 use rustc::session::Session;
 use rustc_data_structures::fx::FxHashMap;
 use syntax::ast::*;
@@ -36,9 +37,32 @@ struct AstValidator<'a> {
     // Used to ban `impl Trait` in path projections like `<impl Iterator>::Item`
     // or `Foo::Bar<impl Trait>`
     is_impl_trait_banned: bool,
+
+    // rust-lang/rust#57979: the ban of nested `impl Trait` was buggy
+    // until sometime after PR #57730 landed: it would jump directly
+    // to walk_ty rather than visit_ty (or skip recurring entirely for
+    // impl trait in projections), and thus miss some cases. We track
+    // whether we should downgrade to a warning for short-term via
+    // these booleans.
+    warning_period_57979_nested_impl_trait: bool,
+    warning_period_57979_impl_trait_in_proj: bool,
 }
 
 impl<'a> AstValidator<'a> {
+    fn with_nested_impl_trait_warning<T>(&mut self, v: bool, f: impl FnOnce(&mut Self) -> T) -> T {
+        let old = mem::replace(&mut self.warning_period_57979_nested_impl_trait, v);
+        let ret = f(self);
+        self.warning_period_57979_nested_impl_trait = old;
+        ret
+    }
+
+    fn with_impl_trait_in_proj_warning<T>(&mut self, v: bool, f: impl FnOnce(&mut Self) -> T) -> T {
+        let old = mem::replace(&mut self.warning_period_57979_impl_trait_in_proj, v);
+        let ret = f(self);
+        self.warning_period_57979_impl_trait_in_proj = old;
+        ret
+    }
+
     fn with_banned_impl_trait(&mut self, f: impl FnOnce(&mut Self)) {
         let old = mem::replace(&mut self.is_impl_trait_banned, true);
         f(self);
@@ -406,22 +430,41 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
             }
             TyKind::ImplTrait(_, ref bounds) => {
                 if self.is_impl_trait_banned {
-                    struct_span_err!(self.session, ty.span, E0667,
-                        "`impl Trait` is not allowed in path parameters").emit();
+                    if self.warning_period_57979_impl_trait_in_proj {
+                        self.session.buffer_lint(
+                            NESTED_IMPL_TRAIT, ty.id, ty.span,
+                            "`impl Trait` is not allowed in path parameters");
+                    } else {
+                        struct_span_err!(self.session, ty.span, E0667,
+                            "`impl Trait` is not allowed in path parameters").emit();
+                    }
                 }
 
                 if let Some(outer_impl_trait) = self.outer_impl_trait {
-                    struct_span_err!(self.session, ty.span, E0666,
-                                    "nested `impl Trait` is not allowed")
-                        .span_label(outer_impl_trait, "outer `impl Trait`")
-                        .span_label(ty.span, "nested `impl Trait` here")
-                        .emit();
-
+                    if self.warning_period_57979_nested_impl_trait {
+                        self.session.buffer_lint_with_diagnostic(
+                            NESTED_IMPL_TRAIT, ty.id, ty.span,
+                            "nested `impl Trait` is not allowed",
+                            BuiltinLintDiagnostics::NestedImplTrait {
+                                outer_impl_trait_span: outer_impl_trait,
+                                inner_impl_trait_span: ty.span,
+                            });
+                    } else {
+                        struct_span_err!(self.session, ty.span, E0666,
+                            "nested `impl Trait` is not allowed")
+                            .span_label(outer_impl_trait, "outer `impl Trait`")
+                            .span_label(ty.span, "nested `impl Trait` here")
+                            .emit();
+                    }
                 }
+
                 if !bounds.iter()
                           .any(|b| if let GenericBound::Trait(..) = *b { true } else { false }) {
                     self.err_handler().span_err(ty.span, "at least one trait must be specified");
                 }
+
+                self.with_impl_trait_in_proj_warning(true, |this| this.walk_ty(ty));
+                return;
             }
             _ => {}
         }
@@ -606,18 +649,23 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
                         GenericArg::Const(..) => ParamKindOrd::Const,
                     }, arg.span(), None)
                 }), GenericPosition::Arg, generic_args.span());
-                // Type bindings such as `Item=impl Debug` in `Iterator<Item=Debug>`
-                // are allowed to contain nested `impl Trait`.
-                self.with_impl_trait(None, |this| {
-                    walk_list!(this, visit_assoc_type_binding, &data.bindings);
+
+                self.with_nested_impl_trait_warning(true, |this| {
+                    // Type bindings such as `Item=impl Debug` in `Iterator<Item=Debug>`
+                    // are allowed to contain nested `impl Trait`.
+                    this.with_impl_trait(None, |this| {
+                        walk_list!(this, visit_assoc_type_binding, &data.bindings);
+                    });
                 });
             }
             GenericArgs::Parenthesized(ref data) => {
                 walk_list!(self, visit_ty, &data.inputs);
                 if let Some(ref type_) = data.output {
-                    // `-> Foo` syntax is essentially an associated type binding,
-                    // so it is also allowed to contain nested `impl Trait`.
-                    self.with_impl_trait(None, |this| this.visit_ty(type_));
+                    self.with_nested_impl_trait_warning(true, |this| {
+                        // `-> Foo` syntax is essentially an associated type binding,
+                        // so it is also allowed to contain nested `impl Trait`.
+                        this.with_impl_trait(None, |this| this.visit_ty(type_));
+                    });
                 }
             }
         }
@@ -719,6 +767,8 @@ pub fn check_crate(session: &Session, krate: &Crate) -> (bool, bool) {
         has_global_allocator: false,
         outer_impl_trait: None,
         is_impl_trait_banned: false,
+        warning_period_57979_nested_impl_trait: false,
+        warning_period_57979_impl_trait_in_proj: false,
     };
     visit::walk_crate(&mut validator, krate);
 
