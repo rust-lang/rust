@@ -23,9 +23,6 @@ use sys_common::mutex::Mutex;
 #[stable(feature = "time", since = "1.3.0")]
 pub use core::time::Duration;
 
-#[unstable(feature = "duration_constants", issue = "57391")]
-pub use core::time::{SECOND, MILLISECOND, MICROSECOND, NANOSECOND};
-
 /// A measurement of a monotonically nondecreasing clock.
 /// Opaque and useful only with `Duration`.
 ///
