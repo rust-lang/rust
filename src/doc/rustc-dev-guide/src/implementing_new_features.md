@@ -110,7 +110,8 @@ for stabilization using a github list, e.g.
     - Note: no stabilization step here.
 ```
 
-## <a name="stability-in-code"> Stability in code </a>
+<a name="stability-in-code"></a>
+##  Stability in code
 
 The below steps needs to be followed in order to implement
 a new unstable feature:
