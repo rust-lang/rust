@@ -52,6 +52,7 @@ Language
   pub trait Read {}
   ```
 - [`extern` functions will now abort by default when panicking.][55982]
+  This was previously undefined behaviour.
 
 Compiler
 --------
@@ -126,6 +127,7 @@ Compatibility Notes
 [56303]: https://github.com/rust-lang/rust/pull/56303/
 [56351]: https://github.com/rust-lang/rust/pull/56351/
 [55982]: https://github.com/rust-lang/rust/pull/55982/
+[56362]: https://github.com/rust-lang/rust/pull/56362
 [57105]: https://github.com/rust-lang/rust/pull/57105
 [cargo/6484]: https://github.com/rust-lang/cargo/pull/6484/
 [`unix::FileExt::read_exact_at`]: https://doc.rust-lang.org/std/os/unix/fs/trait.FileExt.html#method.read_exact_at
