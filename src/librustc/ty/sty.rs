@@ -2228,3 +2228,14 @@ impl<'tcx> Const<'tcx> {
 }
 
 impl<'tcx> serialize::UseSpecializedDecodable for &'tcx LazyConst<'tcx> {}
+
+/// An inference variable for a const, for use in const generics.
+#[derive(Copy, Clone, Debug, Eq, PartialEq, PartialOrd, Ord, RustcEncodable, RustcDecodable, Hash)]
+pub enum InferConst<'tcx> {
+    /// Infer the value of the const.
+    Var(ConstVid<'tcx>),
+    /// A fresh const variable. See `infer::freshen` for more details.
+    Fresh(u32),
+    /// Canonicalized const variable, used only when preparing a trait query.
+    Canonical(DebruijnIndex, BoundVar),
+}
