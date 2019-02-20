@@ -54,7 +54,7 @@ The more boring details are listed in the Rust repository's [CONTRIBUTING.md], s
 
 ### Warning Cycles
 
-In some cases, a feature or bugfix might break some existing programs in some edge cases. In that case, you might want to do a crater run to assess the impact and possibly add a warning cycle, following the [rustc bug-fix procedure].
+In some cases, a feature or bugfix might break some existing programs in some edge cases. In that case, you might want to do a crater run to assess the impact and possibly add a future-compatibility lint, similar to those used for [edition-gated lints](./diag.md#edition-gated-lints).
 
 ### Stability
 
