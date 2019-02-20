@@ -4,6 +4,7 @@
 use super::combine::CombineFields;
 use super::{HigherRankedType, InferCtxt, PlaceholderMap};
 
+use crate::infer::CombinedSnapshot;
 use crate::ty::relate::{Relate, RelateResult, TypeRelation};
 use crate::ty::{self, Binder, TypeFoldable};
 
@@ -29,10 +30,10 @@ impl<'a, 'gcx, 'tcx> CombineFields<'a, 'gcx, 'tcx> {
 
         let span = self.trace.cause.span;
 
-        return self.infcx.commit_if_ok(|_snapshot| {
+        return self.infcx.commit_if_ok(|snapshot| {
             // First, we instantiate each bound region in the supertype with a
             // fresh placeholder region.
-            let (b_prime, _) = self.infcx.replace_bound_vars_with_placeholders(b);
+            let (b_prime, placeholder_map) = self.infcx.replace_bound_vars_with_placeholders(b);
 
             // Next, we instantiate each bound region in the subtype
             // with a fresh region variable. These region variables --
@@ -47,6 +48,9 @@ impl<'a, 'gcx, 'tcx> CombineFields<'a, 'gcx, 'tcx> {
 
             // Compare types now that bound regions have been replaced.
             let result = self.sub(a_is_expected).relate(&a_prime, &b_prime)?;
+
+            self.infcx
+                .leak_check(!a_is_expected, &placeholder_map, snapshot)?;
 
             debug!("higher_ranked_sub: OK result={:?}", result);
 
@@ -107,5 +111,23 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
         );
 
         (result, map)
+    }
+
+    /// Searches region constraints created since `snapshot` that
+    /// affect one of the placeholders in `placeholder_map`, returning
+    /// an error if any of the placeholders are related to another
+    /// placeholder or would have to escape into some parent universe
+    /// that cannot name them.
+    ///
+    /// This is a temporary backwards compatibility measure to try and
+    /// retain the older (arguably incorrect) behavior of the
+    /// compiler.
+    pub fn leak_check(
+        &self,
+        _overly_polymorphic: bool,
+        _placeholder_map: &PlaceholderMap<'tcx>,
+        _snapshot: &CombinedSnapshot<'_, 'tcx>,
+    ) -> RelateResult<'tcx, ()> {
+        Ok(())
     }
 }
