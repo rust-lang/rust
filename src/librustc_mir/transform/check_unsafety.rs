@@ -558,9 +558,10 @@ fn unsafe_derive_on_repr_packed<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: D
 
     // FIXME: when we make this a hard error, this should have its
     // own error code.
-    let message = if tcx.generics_of(def_id).own_counts().types != 0 {
+    let counts = tcx.generics_of(def_id).own_counts();
+    let message = if counts.types + counts.consts != 0 {
         "#[derive] can't be used on a #[repr(packed)] struct with \
-         type parameters (error E0133)".to_string()
+         type or const parameters (error E0133)".to_string()
     } else {
         "#[derive] can't be used on a #[repr(packed)] struct that \
          does not derive Copy (error E0133)".to_string()

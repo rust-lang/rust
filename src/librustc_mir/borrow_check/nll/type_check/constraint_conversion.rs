@@ -99,6 +99,11 @@ impl<'a, 'gcx, 'tcx> ConstraintConversion<'a, 'gcx, 'tcx> {
                     param_env,
                 ).type_must_outlive(origin, t1, r2);
             }
+
+            UnpackedKind::Const(_) => {
+                // Consts cannot outlive one another, so we
+                // don't need to handle any relations here.
+            }
         }
     }
 
