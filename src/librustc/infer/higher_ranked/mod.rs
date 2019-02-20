@@ -113,21 +113,14 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
         (result, map)
     }
 
-    /// Searches region constraints created since `snapshot` that
-    /// affect one of the placeholders in `placeholder_map`, returning
-    /// an error if any of the placeholders are related to another
-    /// placeholder or would have to escape into some parent universe
-    /// that cannot name them.
-    ///
-    /// This is a temporary backwards compatibility measure to try and
-    /// retain the older (arguably incorrect) behavior of the
-    /// compiler.
+    /// See `infer::region_constraints::RegionConstraintCollector::leak_check`.
     pub fn leak_check(
         &self,
-        _overly_polymorphic: bool,
-        _placeholder_map: &PlaceholderMap<'tcx>,
-        _snapshot: &CombinedSnapshot<'_, 'tcx>,
+        overly_polymorphic: bool,
+        placeholder_map: &PlaceholderMap<'tcx>,
+        snapshot: &CombinedSnapshot<'_, 'tcx>,
     ) -> RelateResult<'tcx, ()> {
-        Ok(())
+        self.borrow_region_constraints()
+            .leak_check(self.tcx, overly_polymorphic, placeholder_map, snapshot)
     }
 }
