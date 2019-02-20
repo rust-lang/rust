@@ -16,18 +16,19 @@
 #![allow(missing_docs)]
 //#![warn(unreachable_pub)] // rust-lang/rust#47816
 
-pub mod algo;
-pub mod ast;
+mod syntax_kinds;
+mod syntax_node;
+mod syntax_text;
+mod syntax_error;
 mod parsing;
 mod string_lexing;
-mod syntax_kinds;
+mod validation;
+mod ptr;
+
+pub mod algo;
+pub mod ast;
 /// Utilities for simple uses of the parser.
 pub mod utils;
-mod validation;
-mod syntax_node;
-mod ptr;
-mod syntax_error;
-mod syntax_text;
 
 pub use rowan::{SmolStr, TextRange, TextUnit};
 pub use crate::{

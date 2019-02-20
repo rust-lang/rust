@@ -4,8 +4,8 @@ mod builder;
 mod lexer;
 mod parser_impl;
 mod parser_api;
-mod reparsing;
 mod grammar;
+mod reparsing;
 
 use crate::{
     SyntaxError,
