@@ -221,6 +221,9 @@ impl<'a, 'tcx, 'rcx> DocContext<'a, 'tcx, 'rcx> {
                 ty::GenericParamDefKind::Type { .. } => {
                     args.push(hir::GenericArg::Type(self.ty_param_to_ty(param.clone())));
                 }
+                ty::GenericParamDefKind::Const { .. } => {
+                    unimplemented!() // FIXME(const_generics)
+                }
             }
         }
 

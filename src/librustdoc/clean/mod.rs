@@ -1482,6 +1482,9 @@ impl<'tcx> Clean<GenericParamDef> for ty::GenericParamDef {
                     synthetic: None,
                 })
             }
+            ty::GenericParamDefKind::Const { .. } => {
+                unimplemented!() // FIXME(const_generics)
+            }
         };
 
         GenericParamDef {
@@ -1629,6 +1632,9 @@ impl<'a, 'tcx> Clean<Generics> for (&'a ty::Generics,
                 }
                 Some(param.clean(cx))
             }
+            ty::GenericParamDefKind::Const { .. } => {
+                unimplemented!() // FIXME(const_generics)
+            }
         }).collect::<Vec<GenericParamDef>>();
 
         let mut where_predicates = preds.predicates.iter()
@@ -1678,6 +1684,9 @@ impl<'a, 'tcx> Clean<Generics> for (&'a ty::Generics,
                         .flat_map(|param| match param.kind {
                             ty::GenericParamDefKind::Lifetime => Some(param.clean(cx)),
                             ty::GenericParamDefKind::Type { .. } => None,
+                            ty::GenericParamDefKind::Const { .. } => {
+                                unimplemented!() // FIXME(const_generics)
+                            }
                         }).chain(simplify::ty_params(stripped_typarams).into_iter())
                         .collect(),
             where_predicates: simplify::where_clauses(cx, where_predicates),
