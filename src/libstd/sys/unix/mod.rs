@@ -31,7 +31,6 @@ pub mod android;
 #[cfg(feature = "backtrace")]
 pub mod backtrace;
 pub mod cmath;
-pub mod condvar;
 pub mod env;
 pub mod ext;
 pub mod fast_thread_local;

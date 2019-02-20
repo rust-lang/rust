@@ -18,7 +18,6 @@ pub mod args;
 pub mod backtrace;
 pub mod c;
 pub mod cmath;
-pub mod condvar;
 #[cfg(feature = "backtrace")]
 pub mod dynamic_lib;
 pub mod env;

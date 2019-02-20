@@ -43,7 +43,6 @@ pub mod alloc;
 pub mod at_exit_imp;
 #[cfg(feature = "backtrace")]
 pub mod backtrace;
-pub mod condvar;
 pub mod io;
 pub mod mutex;
 #[cfg(any(rustdoc, // see `mod os`, docs are generated for multiple platforms

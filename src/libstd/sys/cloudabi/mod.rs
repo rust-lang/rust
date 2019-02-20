@@ -8,7 +8,6 @@ pub mod args;
 pub mod backtrace;
 #[path = "../unix/cmath.rs"]
 pub mod cmath;
-pub mod condvar;
 pub mod io;
 #[path = "../unix/memchr.rs"]
 pub mod memchr;
