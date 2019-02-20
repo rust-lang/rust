@@ -82,7 +82,7 @@ impl<'t> ParserImpl<'t> {
         self.events
     }
 
-    pub(super) fn next2(&self) -> Option<(SyntaxKind, SyntaxKind)> {
+    pub(super) fn current2(&self) -> Option<(SyntaxKind, SyntaxKind)> {
         let c1 = self.parser_input.kind(self.pos);
         let c2 = self.parser_input.kind(self.pos + 1);
         if self.parser_input.token_start_at(self.pos + 1)
@@ -94,7 +94,7 @@ impl<'t> ParserImpl<'t> {
         }
     }
 
-    pub(super) fn next3(&self) -> Option<(SyntaxKind, SyntaxKind, SyntaxKind)> {
+    pub(super) fn current3(&self) -> Option<(SyntaxKind, SyntaxKind, SyntaxKind)> {
         let c1 = self.parser_input.kind(self.pos);
         let c2 = self.parser_input.kind(self.pos + 1);
         let c3 = self.parser_input.kind(self.pos + 2);
