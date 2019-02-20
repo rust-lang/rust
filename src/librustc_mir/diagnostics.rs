@@ -1551,11 +1551,9 @@ fn eat(val: Value) {}
 
 fn main() {
     let x = Value{};
-    {
-        let _ref_to_val: &Value = &x;
-        eat(x);
-        borrow(_ref_to_val);
-    }
+    let _ref_to_val: &Value = &x;
+    eat(x);
+    borrow(_ref_to_val);
 }
 ```
 
@@ -1579,11 +1577,9 @@ fn eat(val: &Value) {}
 
 fn main() {
     let x = Value{};
-    {
-        let _ref_to_val: &Value = &x;
-        eat(&x); // pass by reference, if it's possible
-        borrow(_ref_to_val);
-    }
+    let _ref_to_val: &Value = &x;
+    eat(&x); // pass by reference, if it's possible
+    borrow(_ref_to_val);
 }
 ```
 
@@ -1618,11 +1614,9 @@ fn eat(val: Value) {}
 
 fn main() {
     let x = Value{};
-    {
-        let _ref_to_val: &Value = &x;
-        eat(x); // it will be copied here.
-        borrow(_ref_to_val);
-    }
+    let _ref_to_val: &Value = &x;
+    eat(x); // it will be copied here.
+    borrow(_ref_to_val);
 }
 ```
 
