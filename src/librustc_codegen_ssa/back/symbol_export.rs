@@ -263,7 +263,7 @@ fn exported_symbols_provider_local<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                 def: InstanceDef::Item(def_id),
                 substs,
             }) = mono_item {
-                if substs.types().next().is_some() {
+                if substs.non_erasable_generics().next().is_some() {
                     symbols.push((ExportedSymbol::Generic(def_id, substs),
                                   SymbolExportLevel::Rust));
                 }
