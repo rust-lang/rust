@@ -656,7 +656,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
         type_variables
             .unsolved_variables()
             .into_iter()
-            .map(|t| self.tcx.mk_var(t))
+            .map(|t| self.tcx.mk_ty_var(t))
             .chain(
                 (0..int_unification_table.len())
                     .map(|i| ty::IntVid { index: i as u32 })
@@ -981,7 +981,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
     }
 
     pub fn next_ty_var(&self, origin: TypeVariableOrigin) -> Ty<'tcx> {
-        self.tcx.mk_var(self.next_ty_var_id(false, origin))
+        self.tcx.mk_ty_var(self.next_ty_var_id(false, origin))
     }
 
     pub fn next_ty_var_in_universe(
@@ -992,11 +992,11 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
         let vid = self.type_variables
             .borrow_mut()
             .new_var(universe, false, origin);
-        self.tcx.mk_var(vid)
+        self.tcx.mk_ty_var(vid)
     }
 
     pub fn next_diverging_ty_var(&self, origin: TypeVariableOrigin) -> Ty<'tcx> {
-        self.tcx.mk_var(self.next_ty_var_id(true, origin))
+        self.tcx.mk_ty_var(self.next_ty_var_id(true, origin))
     }
 
     pub fn next_int_var_id(&self) -> IntVid {
@@ -1081,7 +1081,10 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
                     TypeVariableOrigin::TypeParameterDefinition(span, param.name),
                 );
 
-                self.tcx.mk_var(ty_var_id).into()
+                self.tcx.mk_ty_var(ty_var_id).into()
+            }
+            GenericParamDefKind::Const { .. } => {
+                unimplemented!() // FIXME(const_generics)
             }
         }
     }
