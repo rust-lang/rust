@@ -115,6 +115,8 @@ When the next major release is done, the code block of the previous formatting
 can be deleted, e.g., the first block in the example above when going from `1.x`
 to `2.x`.
 
+| Note: Only formatting changes with default options need to be gated. |
+| --- |
 
 ### A quick tour of Rustfmt
 
