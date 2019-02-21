@@ -445,7 +445,9 @@ Some methodology notes about what rustdoc counts in this metric:
 
 * Rustdoc will only count items from your crate (i.e. items re-exported from other crates don't
   count).
-* Since trait implementations can inherit documentation from their trait, it will count trait impl
-  blocks separately, and show totals both with and without trait impls included.
+* Since trait implementations can inherit documentation from their trait, separate totals are given
+  both with and without trait implementations.
 * Inherent impl blocks are not counted, even though their doc comments are displayed, because the
   common pattern in Rust code is to write all inherent methods into the same impl block.
+* By default, only public items are counted. To count private items as well, pass
+  `--document-private-items` at the same time.
