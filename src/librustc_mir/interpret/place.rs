@@ -326,6 +326,10 @@ where
 
         let mplace = MemPlace {
             ptr: val.to_scalar_ptr()?,
+            // We could use the run-time alignment here. For now, we do not, because
+            // the point of tracking the alignment here is to make sure that the *static*
+            // alignment information emitted with the loads is correct. The run-time
+            // alignment can only be more restrictive.
             align: layout.align.abi,
             meta: val.to_meta()?,
         };
