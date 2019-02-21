@@ -47,7 +47,7 @@
 //!
 //! However, these restrictions are usually not necessary. Many types are always freely
 //! movable, even when pinned, because they do not rely on having a stable address.
-//! This includes all the basic types (`bool`, `i32` and friends, references)
+//! This includes all the basic types (like `bool`, `i32`, references)
 //! as well as types consisting solely of these types.
 //! Types that do not care about pinning implement the [`Unpin`] auto-trait, which
 //! cancels the effect of [`Pin<P>`]. For `T: Unpin`, `Pin<Box<T>>` and `Box<T>` function
