@@ -602,7 +602,7 @@ unsafe impl<T: ?Sized> Freeze for &mut T {}
 /// this trait cannot prevent types from moving by itself.
 ///
 /// Instead it is used to prevent moves through the type system,
-/// by controlling the behavior of pointers wrapped in the [`Pin`] wrapper,
+/// by controlling the behavior of pointers `P` wrapped in the [`Pin<P>`] wrapper,
 /// which "pin" the type in place by not allowing it to be moved out of them.
 /// See the [`pin module`] documentation for more information on pinning.
 ///
