@@ -64,6 +64,7 @@ impl Duration {
     /// # Examples
     ///
     /// ```
+    /// #![feature(duration_constants)]
     /// use std::time::Duration;
     ///
     /// assert_eq!(Duration::SECOND, Duration::from_secs(1));
@@ -76,6 +77,7 @@ impl Duration {
     /// # Examples
     ///
     /// ```
+    /// #![feature(duration_constants)]
     /// use std::time::Duration;
     ///
     /// assert_eq!(Duration::MILLISECOND, Duration::from_millis(1));
@@ -88,6 +90,7 @@ impl Duration {
     /// # Examples
     ///
     /// ```
+    /// #![feature(duration_constants)]
     /// use std::time::Duration;
     ///
     /// assert_eq!(Duration::MICROSECOND, Duration::from_micros(1));
@@ -100,6 +103,7 @@ impl Duration {
     /// # Examples
     ///
     /// ```
+    /// #![feature(duration_constants)]
     /// use std::time::Duration;
     ///
     /// assert_eq!(Duration::NANOSECOND, Duration::from_nanos(1));
