@@ -15,7 +15,7 @@ crossbeam-channel = "0.3.5"
 flexi_logger = "0.10.0"
 log = "0.4.3"
 url_serde = "0.2.0"
-lsp-types = "0.55.0"
+lsp-types = "0.56.0"
 rustc-hash = "1.0"
 parking_lot = "0.7.0"
 
