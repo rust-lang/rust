@@ -1576,6 +1576,41 @@ assert_eq!(foo.load(Ordering::SeqCst), 10);
             }
 
             doc_comment! {
+                concat!("Subtracts from the given atomic value, returning the previous value.
+
+This operation wraps around on overflow.
+
+`fetch_sub_explicit` takes ", stringify!($atomic_type), " which will be substracted by given value
+in respect to [`Ordering`] argument which describes the memory ordering
+of this operation. All ordering modes are possible. Note that using
+[`Acquire`] makes the store part of this operation [`Relaxed`], and
+using [`Release`] makes the load part [`Relaxed`].
+
+[`Ordering`]: enum.Ordering.html
+[`Relaxed`]: enum.Ordering.html#variant.Relaxed
+[`Release`]: enum.Ordering.html#variant.Release
+[`Acquire`]: enum.Ordering.html#variant.Acquire
+
+# Examples
+
+```
+", $extra_feature, "use std::sync::atomic::{", stringify!($atomic_type), ", Ordering};
+
+let foo = ", stringify!($atomic_type), "::new(20);
+assert_eq!(", stringify!($atomic_type), ".fetch_sub_explicit(foo, Ordering::SeqCst), 20);
+assert_eq!(foo.load(Ordering::SeqCst), 10);
+            ```"),
+                #[inline]
+                #[$stable]
+                #[cfg(target_has_atomic = "cas")]
+                pub fn fetch_sub_explicit(f: *const $atomic_type,
+                                             val: $int_type,
+                                             order: Ordering) -> $int_type {
+                    unsafe { atomic_sub((*f).v.get(), val, order) }
+                }
+            }
+
+            doc_comment! {
                 concat!("Bitwise \"and\" with the current value.
 
 Performs a bitwise \"and\" operation on the current value and the argument `val`, and

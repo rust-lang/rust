@@ -552,7 +552,7 @@ impl<T: ?Sized> Arc<T> {
         // allocation itself (there may still be weak pointers lying around).
         ptr::drop_in_place(&mut self.ptr.as_mut().data);
 
-        if self.inner().weak.fetch_sub(1, Release) == 1 {
+        if atomic::AtomicUsize::fetch_sub_explicit(&self.inner().weak, 1, Release) == 1 {
             atomic::fence(Acquire);
             Global.dealloc(self.ptr.cast(), Layout::for_value(self.ptr.as_ref()))
         }
@@ -970,10 +970,11 @@ unsafe impl<#[may_dangle] T: ?Sized> Drop for Arc<T> {
     /// [`Weak`]: ../../std/sync/struct.Weak.html
     #[inline]
     fn drop(&mut self) {
-        // Because `fetch_sub` is already atomic, we do not need to synchronize
+        // Because `fetch_sub_explicit` is already atomic, we do not need to synchronize
         // with other threads unless we are going to delete the object. This
         // same logic applies to the below `fetch_sub` to the `weak` count.
-        if self.inner().strong.fetch_sub(1, Release) != 1 {
+        // For preventing dangling self over the unsafe block strong ref pointer passed.
+        if atomic::AtomicUsize::fetch_sub_explicit(&self.inner().strong, 1, Release) != 1 {
             return;
         }
 
@@ -1350,7 +1351,7 @@ impl<T: ?Sized> Drop for Weak<T> {
             return
         };
 
-        if inner.weak.fetch_sub(1, Release) == 1 {
+        if atomic::AtomicUsize::fetch_sub_explicit(&inner.weak, 1, Release) == 1 {
             atomic::fence(Acquire);
             unsafe {
                 Global.dealloc(self.ptr.cast(), Layout::for_value(self.ptr.as_ref()))
