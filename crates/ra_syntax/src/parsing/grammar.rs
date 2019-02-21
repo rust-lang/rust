@@ -37,7 +37,6 @@ mod type_params;
 mod types;
 
 use crate::{
-    SyntaxNode,
     SyntaxKind::{self, *},
     parsing::{
         token_set::TokenSet,
@@ -52,8 +51,12 @@ pub(super) fn root(p: &mut Parser) {
     m.complete(p, SOURCE_FILE);
 }
 
-pub(super) fn reparser(node: &SyntaxNode) -> Option<fn(&mut Parser)> {
-    let res = match node.kind() {
+pub(super) fn reparser(
+    node: SyntaxKind,
+    first_child: Option<SyntaxKind>,
+    parent: Option<SyntaxKind>,
+) -> Option<fn(&mut Parser)> {
+    let res = match node {
         BLOCK => expressions::block,
         NAMED_FIELD_DEF_LIST => items::named_field_def_list,
         NAMED_FIELD_LIST => items::named_field_list,
@@ -61,16 +64,13 @@ pub(super) fn reparser(node: &SyntaxNode) -> Option<fn(&mut Parser)> {
         MATCH_ARM_LIST => items::match_arm_list,
         USE_TREE_LIST => items::use_tree_list,
         EXTERN_ITEM_LIST => items::extern_item_list,
-        TOKEN_TREE if node.first_child().unwrap().kind() == L_CURLY => items::token_tree,
-        ITEM_LIST => {
-            let parent = node.parent().unwrap();
-            match parent.kind() {
-                IMPL_BLOCK => items::impl_item_list,
-                TRAIT_DEF => items::trait_item_list,
-                MODULE => items::mod_item_list,
-                _ => return None,
-            }
-        }
+        TOKEN_TREE if first_child? == L_CURLY => items::token_tree,
+        ITEM_LIST => match parent? {
+            IMPL_BLOCK => items::impl_item_list,
+            TRAIT_DEF => items::trait_item_list,
+            MODULE => items::mod_item_list,
+            _ => return None,
+        },
         _ => return None,
     };
     Some(res)

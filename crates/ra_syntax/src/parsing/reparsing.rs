@@ -83,7 +83,11 @@ fn find_reparsable_node(
     range: TextRange,
 ) -> Option<(&SyntaxNode, fn(&mut Parser))> {
     let node = algo::find_covering_node(node, range);
-    node.ancestors().find_map(|node| grammar::reparser(node).map(|r| (node, r)))
+    node.ancestors().find_map(|node| {
+        let first_child = node.first_child().map(|it| it.kind());
+        let parent = node.parent().map(|it| it.kind());
+        grammar::reparser(node.kind(), first_child, parent).map(|r| (node, r))
+    })
 }
 
 fn is_balanced(tokens: &[Token]) -> bool {
