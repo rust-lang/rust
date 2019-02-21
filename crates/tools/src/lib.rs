@@ -14,11 +14,11 @@ pub use teraron::{Mode, Overwrite, Verify};
 pub type Result<T> = std::result::Result<T, failure::Error>;
 
 pub const GRAMMAR: &str = "crates/ra_syntax/src/grammar.ron";
-const GRAMMAR_DIR: &str = "crates/ra_syntax/src/parsing/grammar";
+const GRAMMAR_DIR: &str = "crates/ra_parser/src/grammar";
 const OK_INLINE_TESTS_DIR: &str = "crates/ra_syntax/tests/data/parser/inline/ok";
 const ERR_INLINE_TESTS_DIR: &str = "crates/ra_syntax/tests/data/parser/inline/err";
 
-pub const SYNTAX_KINDS: &str = "crates/ra_syntax/src/syntax_kinds/generated.rs.tera";
+pub const SYNTAX_KINDS: &str = "crates/ra_parser/src/syntax_kind/generated.rs.tera";
 pub const AST: &str = "crates/ra_syntax/src/ast/generated.rs.tera";
 const TOOLCHAIN: &str = "stable";
 
