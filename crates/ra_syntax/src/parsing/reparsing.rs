@@ -5,7 +5,7 @@ use crate::{
     syntax_error::SyntaxError,
     parsing::{
         grammar, parse_with,
-        builder::GreenBuilder,
+        builder::TreeBuilder,
         parser::Parser,
         lexer::{tokenize, Token},
     }
@@ -61,7 +61,8 @@ fn reparse_block<'node>(
     if !is_balanced(&tokens) {
         return None;
     }
-    let (green, new_errors) = parse_with(GreenBuilder::default(), &text, &tokens, reparser);
+    let tree_sink = TreeBuilder::new(&text, &tokens);
+    let (green, new_errors) = parse_with(tree_sink, &text, &tokens, reparser);
     Some((node, green, new_errors))
 }
 
@@ -82,7 +83,11 @@ fn find_reparsable_node(
     range: TextRange,
 ) -> Option<(&SyntaxNode, fn(&mut Parser))> {
     let node = algo::find_covering_node(node, range);
-    node.ancestors().find_map(|node| grammar::reparser(node).map(|r| (node, r)))
+    node.ancestors().find_map(|node| {
+        let first_child = node.first_child().map(|it| it.kind());
+        let parent = node.parent().map(|it| it.kind());
+        grammar::reparser(node.kind(), first_child, parent).map(|r| (node, r))
+    })
 }
 
 fn is_balanced(tokens: &[Token]) -> bool {
