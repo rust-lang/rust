@@ -7,7 +7,6 @@
 use crate::os::raw::{c_int, c_uint, c_ulong, c_long, c_longlong, c_ushort, c_char};
 #[cfg(target_arch = "x86_64")]
 use crate::os::raw::c_ulonglong;
-use crate::ptr;
 
 use libc::{wchar_t, size_t, c_void};
 
@@ -31,7 +30,6 @@ pub type USHORT = c_ushort;
 pub type SIZE_T = usize;
 pub type WORD = u16;
 pub type CHAR = c_char;
-pub type ULONG_PTR = usize;
 pub type ULONG = c_ulong;
 #[cfg(target_arch = "x86_64")]
 pub type ULONGLONG = u64;
@@ -63,9 +61,7 @@ pub type LPWSABUF = *mut WSABUF;
 pub type LPWSAOVERLAPPED = *mut c_void;
 pub type LPWSAOVERLAPPED_COMPLETION_ROUTINE = *mut c_void;
 
-pub type PCONDITION_VARIABLE = *mut CONDITION_VARIABLE;
 pub type PLARGE_INTEGER = *mut c_longlong;
-pub type PSRWLOCK = *mut SRWLOCK;
 
 pub type SOCKET = crate::os::windows::raw::SOCKET;
 pub type socklen_t = c_int;
@@ -214,11 +210,6 @@ pub const DLL_PROCESS_DETACH: DWORD = 0;
 pub const INFINITE: DWORD = !0;
 
 pub const DUPLICATE_SAME_ACCESS: DWORD = 0x00000002;
-
-pub const CONDITION_VARIABLE_INIT: CONDITION_VARIABLE = CONDITION_VARIABLE {
-    ptr: ptr::null_mut(),
-};
-pub const SRWLOCK_INIT: SRWLOCK = SRWLOCK { ptr: ptr::null_mut() };
 
 pub const DETACHED_PROCESS: DWORD = 0x00000008;
 pub const CREATE_NEW_PROCESS_GROUP: DWORD = 0x00000200;
@@ -468,20 +459,6 @@ pub type LPPROGRESS_ROUTINE = crate::option::Option<unsafe extern "system" fn(
     hDestinationFile: HANDLE,
     lpData: LPVOID,
 ) -> DWORD>;
-
-#[repr(C)]
-pub struct CONDITION_VARIABLE { pub ptr: LPVOID }
-#[repr(C)]
-pub struct SRWLOCK { pub ptr: LPVOID }
-#[repr(C)]
-pub struct CRITICAL_SECTION {
-    CriticalSectionDebug: LPVOID,
-    LockCount: LONG,
-    RecursionCount: LONG,
-    OwningThread: HANDLE,
-    LockSemaphore: HANDLE,
-    SpinCount: ULONG_PTR
-}
 
 #[repr(C)]
 pub struct REPARSE_MOUNTPOINT_DATA_BUFFER {
@@ -1028,11 +1005,6 @@ extern "system" {
                       g: GROUP,
                       dwFlags: DWORD) -> SOCKET;
     pub fn ioctlsocket(s: SOCKET, cmd: c_long, argp: *mut c_ulong) -> c_int;
-    pub fn InitializeCriticalSection(CriticalSection: *mut CRITICAL_SECTION);
-    pub fn EnterCriticalSection(CriticalSection: *mut CRITICAL_SECTION);
-    pub fn TryEnterCriticalSection(CriticalSection: *mut CRITICAL_SECTION) -> BOOLEAN;
-    pub fn LeaveCriticalSection(CriticalSection: *mut CRITICAL_SECTION);
-    pub fn DeleteCriticalSection(CriticalSection: *mut CRITICAL_SECTION);
 
     pub fn ReadConsoleW(hConsoleInput: HANDLE,
                         lpBuffer: LPVOID,
@@ -1334,38 +1306,6 @@ compat_fn! {
                     _lpFileInformation: LPVOID,
                     _dwBufferSize: DWORD) -> BOOL {
         SetLastError(ERROR_CALL_NOT_IMPLEMENTED as DWORD); 0
-    }
-    pub fn SleepConditionVariableSRW(ConditionVariable: PCONDITION_VARIABLE,
-                                     SRWLock: PSRWLOCK,
-                                     dwMilliseconds: DWORD,
-                                     Flags: ULONG) -> BOOL {
-        panic!("condition variables not available")
-    }
-    pub fn WakeConditionVariable(ConditionVariable: PCONDITION_VARIABLE)
-                                 -> () {
-        panic!("condition variables not available")
-    }
-    pub fn WakeAllConditionVariable(ConditionVariable: PCONDITION_VARIABLE)
-                                    -> () {
-        panic!("condition variables not available")
-    }
-    pub fn AcquireSRWLockExclusive(SRWLock: PSRWLOCK) -> () {
-        panic!("rwlocks not available")
-    }
-    pub fn AcquireSRWLockShared(SRWLock: PSRWLOCK) -> () {
-        panic!("rwlocks not available")
-    }
-    pub fn ReleaseSRWLockExclusive(SRWLock: PSRWLOCK) -> () {
-        panic!("rwlocks not available")
-    }
-    pub fn ReleaseSRWLockShared(SRWLock: PSRWLOCK) -> () {
-        panic!("rwlocks not available")
-    }
-    pub fn TryAcquireSRWLockExclusive(SRWLock: PSRWLOCK) -> BOOLEAN {
-        panic!("rwlocks not available")
-    }
-    pub fn TryAcquireSRWLockShared(SRWLock: PSRWLOCK) -> BOOLEAN {
-        panic!("rwlocks not available")
     }
 }
 
