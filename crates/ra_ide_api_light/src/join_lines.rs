@@ -2,8 +2,9 @@ use itertools::Itertools;
 use ra_syntax::{
     SourceFile, TextRange, TextUnit, AstNode, SyntaxNode,
     SyntaxKind::{self, WHITESPACE, COMMA, R_CURLY, R_PAREN, R_BRACK},
-    algo::find_covering_node,
+    algo::{find_covering_node, non_trivia_sibling},
     ast,
+    Direction,
 };
 use ra_fmt::{
     compute_ws, extract_trivial_expression
@@ -120,11 +121,30 @@ fn remove_newline(
     }
 }
 
+fn has_comma_after(node: &SyntaxNode) -> bool {
+    match non_trivia_sibling(node, Direction::Next) {
+        Some(n) => n.kind() == COMMA,
+        _ => false,
+    }
+}
+
 fn join_single_expr_block(edit: &mut TextEditBuilder, node: &SyntaxNode) -> Option<()> {
     let block = ast::Block::cast(node.parent()?)?;
     let block_expr = ast::BlockExpr::cast(block.syntax().parent()?)?;
     let expr = extract_trivial_expression(block)?;
-    edit.replace(block_expr.syntax().range(), expr.syntax().text().to_string());
+
+    let block_range = block_expr.syntax().range();
+    let mut buf = expr.syntax().text().to_string();
+
+    // Match block needs to have a comma after the block
+    if let Some(match_arm) = block_expr.syntax().parent().and_then(ast::MatchArm::cast) {
+        if !has_comma_after(match_arm.syntax()) {
+            buf.push(',');
+        }
+    }
+
+    edit.replace(block_range, buf);
+
     Some(())
 }
 
@@ -208,7 +228,6 @@ fn foo() {
     }
 
     #[test]
-    #[ignore] // FIXME: https://github.com/rust-analyzer/rust-analyzer/issues/868
     fn join_lines_adds_comma_for_block_in_match_arm() {
         check_join_lines(
             r"
@@ -226,6 +245,118 @@ fn foo(e: Result<U, V>) {
         Ok(u) => <|>u.foo(),
         Err(v) => v,
     }
+}",
+        );
+    }
+
+    #[test]
+    fn join_lines_keeps_comma_for_block_in_match_arm() {
+        // We already have a comma
+        check_join_lines(
+            r"
+fn foo(e: Result<U, V>) {
+    match e {
+        Ok(u) => <|>{
+            u.foo()
+        },
+        Err(v) => v,
+    }
+}",
+            r"
+fn foo(e: Result<U, V>) {
+    match e {
+        Ok(u) => <|>u.foo(),
+        Err(v) => v,
+    }
+}",
+        );
+
+        // comma with whitespace between brace and ,
+        check_join_lines(
+            r"
+fn foo(e: Result<U, V>) {
+    match e {
+        Ok(u) => <|>{
+            u.foo()
+        }    ,
+        Err(v) => v,
+    }
+}",
+            r"
+fn foo(e: Result<U, V>) {
+    match e {
+        Ok(u) => <|>u.foo()    ,
+        Err(v) => v,
+    }
+}",
+        );
+
+        // comma with newline between brace and ,
+        check_join_lines(
+            r"
+fn foo(e: Result<U, V>) {
+    match e {
+        Ok(u) => <|>{
+            u.foo()
+        }
+        ,
+        Err(v) => v,
+    }
+}",
+            r"
+fn foo(e: Result<U, V>) {
+    match e {
+        Ok(u) => <|>u.foo()
+        ,
+        Err(v) => v,
+    }
+}",
+        );
+    }
+
+    #[test]
+    fn join_lines_keeps_comma_with_single_arg_tuple() {
+        // A single arg tuple
+        check_join_lines(
+            r"
+fn foo() {
+    let x = (<|>{
+       4
+    },);
+}",
+            r"
+fn foo() {
+    let x = (<|>4,);
+}",
+        );
+
+        // single arg tuple with whitespace between brace and comma
+        check_join_lines(
+            r"
+fn foo() {
+    let x = (<|>{
+       4
+    }   ,);
+}",
+            r"
+fn foo() {
+    let x = (<|>4   ,);
+}",
+        );
+
+        // single arg tuple with newline between brace and comma
+        check_join_lines(
+            r"
+fn foo() {
+    let x = (<|>{
+       4
+    }
+    ,);
+}",
+            r"
+fn foo() {
+    let x = (<|>4
+    ,);
 }",
         );
     }

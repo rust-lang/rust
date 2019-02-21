@@ -2,7 +2,7 @@ pub mod visit;
 
 use rowan::TransparentNewType;
 
-use crate::{SyntaxNode, TextRange, TextUnit, AstNode};
+use crate::{SyntaxNode, TextRange, TextUnit, AstNode, Direction};
 
 pub use rowan::LeafAtOffset;
 
@@ -27,6 +27,11 @@ pub fn find_leaf_at_offset(node: &SyntaxNode, offset: TextUnit) -> LeafAtOffset<
 /// then the left node will be silently preferred.
 pub fn find_node_at_offset<N: AstNode>(syntax: &SyntaxNode, offset: TextUnit) -> Option<&N> {
     find_leaf_at_offset(syntax, offset).find_map(|leaf| leaf.ancestors().find_map(N::cast))
+}
+
+/// Finds the first sibling in the given direction which is not `trivia`
+pub fn non_trivia_sibling(node: &SyntaxNode, direction: Direction) -> Option<&SyntaxNode> {
+    node.siblings(direction).skip(1).find(|node| !node.kind().is_trivia())
 }
 
 pub fn find_covering_node(root: &SyntaxNode, range: TextRange) -> &SyntaxNode {
