@@ -3315,9 +3315,27 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
                     tcx.mk_existential_predicates(iter)
                 });
                 let source_trait = tcx.mk_dynamic(existential_predicates, r_b);
+
+                // Require that the traits involved in this upcast are **equal**;
+                // only the **lifetime bound** is changed.
+                //
+                // FIXME: This condition is arguably too strong -- it
+                // would suffice for the source trait to be a
+                // *subtype* of the target trait. In particular
+                // changing from something like `for<'a, 'b> Foo<'a,
+                // 'b>` to `for<'a> Foo<'a, 'a>` should be
+                // permitted. And, indeed, in the in commit
+                // 904a0bde93f0348f69914ee90b1f8b6e4e0d7cbc, this
+                // condition was loosened. However, when the leak check was added
+                // back, using subtype here actually guies the coercion code in
+                // such a way that it accepts `old-lub-glb-object.rs`. This is probably
+                // a good thing, but I've modified this to `.eq` because I want
+                // to continue rejecting that test (as we have done for quite some time)
+                // before we are firmly comfortable with what our behavior
+                // should be there. -nikomatsakis
                 let InferOk { obligations, .. } = self.infcx
                     .at(&obligation.cause, obligation.param_env)
-                    .sup(target, source_trait)
+                    .eq(target, source_trait) // FIXME -- see below
                     .map_err(|_| Unimplemented)?;
                 nested.extend(obligations);
 
