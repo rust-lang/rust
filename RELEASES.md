@@ -69,14 +69,14 @@ Compiler
 
 Libraries
 ---------
-- [The functions `overflowing_{add, sub, mul, shl, shr}` are now `const`
+- [The methods `overflowing_{add, sub, mul, shl, shr}` are now `const`
   functions for all numeric types.][57566]
-- [The functions `rotate_left`, `rotate_right`, and `wrapping_{add, sub, mul, shl, shr}`
+- [The methods `rotate_left`, `rotate_right`, and `wrapping_{add, sub, mul, shl, shr}`
   are now `const` functions for all numeric types.][57105]
-- [The functions `is_positive` and `is_negative` are now `const` functions for
+- [The methods `is_positive` and `is_negative` are now `const` functions for
   all signed numeric types.][57105]
 - [The `get` method for all `NonZero` types is now `const`.][57167]
-- [The functions `count_ones`, `count_zeros`, `leading_zeros`, `trailing_zeros`,
+- [The methods `count_ones`, `count_zeros`, `leading_zeros`, `trailing_zeros`,
   `swap_bytes`, `from_be`, `from_le`, `to_be`, `to_le` are now `const` for all
   numeric types.][57234]
 - [`Ipv4Addr::new` is now a `const` function][57234]
@@ -105,9 +105,10 @@ Cargo
 
 Compatibility Notes
 -------------------
-- The functions `str::{trim_left, trim_right, trim_left_matches, trim_right_matches}`
-  are now offically deprecated, and their usage will now produce a warning. Please use the 
-  `str::{trim_start, trim_end, trim_start_matches, trim_end_matches}` functions instead.
+- The methods `str::{trim_left, trim_right, trim_left_matches, trim_right_matches}`
+  are now deprecated in the standard library, and their usage will now produce a warning.
+  Please use the `str::{trim_start, trim_end, trim_start_matches, trim_end_matches}`
+  methods instead.
 
 [57615]: https://github.com/rust-lang/rust/pull/57615/
 [57465]: https://github.com/rust-lang/rust/pull/57465/
