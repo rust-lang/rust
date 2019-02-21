@@ -8,10 +8,7 @@ use std::{
 };
 
 use test_utils::{project_dir, dir_tests, read_text, collect_tests};
-use ra_syntax::{
-    SourceFile, AstNode,
-    utils::{check_fuzz_invariants, dump_tree},
-};
+use ra_syntax::{SourceFile, AstNode, check_fuzz_invariants};
 
 #[test]
 fn lexer_tests() {
@@ -32,7 +29,7 @@ fn parser_tests() {
             "There should be no errors in the file {:?}",
             path.display()
         );
-        dump_tree(file.syntax())
+        file.syntax().debug_dump()
     });
     dir_tests(&test_data_dir(), &["parser/err", "parser/inline/err"], |text, path| {
         let file = SourceFile::parse(text);
@@ -43,7 +40,7 @@ fn parser_tests() {
             "There should be errors in the file {:?}",
             path.display()
         );
-        dump_tree(file.syntax())
+        file.syntax().debug_dump()
     });
 }
 

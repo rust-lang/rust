@@ -27,8 +27,6 @@ mod ptr;
 
 pub mod algo;
 pub mod ast;
-/// Utilities for simple uses of the parser.
-pub mod utils;
 
 pub use rowan::{SmolStr, TextRange, TextUnit};
 pub use ra_parser::SyntaxKind;
@@ -51,7 +49,7 @@ impl SourceFile {
     fn new(green: GreenNode, errors: Vec<SyntaxError>) -> TreeArc<SourceFile> {
         let root = SyntaxNode::new(green, errors);
         if cfg!(debug_assertions) {
-            utils::validate_block_structure(&root);
+            validation::validate_block_structure(&root);
         }
         assert_eq!(root.kind(), SyntaxKind::SOURCE_FILE);
         TreeArc::cast(root)
@@ -81,4 +79,11 @@ impl SourceFile {
         errors.extend(validation::validate(self));
         errors
     }
+}
+
+pub fn check_fuzz_invariants(text: &str) {
+    let file = SourceFile::parse(text);
+    let root = file.syntax();
+    validation::validate_block_structure(root);
+    let _ = file.errors();
 }
