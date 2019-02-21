@@ -120,28 +120,15 @@ fn remove_newline(
     }
 }
 
-/// fixes a comma after the given expression and optionally inserts a new trailing comma
-/// if no comma was found and `comma_offset` is provided
-fn fix_comma_after(edit: &mut TextEditBuilder, node: &SyntaxNode, comma_offset: Option<TextUnit>) {
+fn has_comma_after(node: &SyntaxNode) -> bool {
     let next = node.next_sibling();
     let nnext = node.next_sibling().and_then(|n| n.next_sibling());
 
     match (next, nnext) {
-        // Whitespace followed by a comma
-        // remove the whitespace
-        (Some(ws), Some(comma)) if ws.kind() == WHITESPACE && comma.kind() == COMMA => {
-            edit.delete(ws.range());
-        }
-
-        // if we are not a comma and if comma_offset was provided,
-        // insert trailing comma after the block
-        (Some(n), _) if n.kind() != COMMA => {
-            if let Some(comma_offset) = comma_offset {
-                edit.insert(comma_offset, ",".to_owned());
-            }
-        }
-
-        _ => {}
+        // Whitespace followed by a comma is fine
+        (Some(ws), Some(comma)) if ws.kind() == WHITESPACE && comma.kind() == COMMA => true,
+        (Some(n), _) => n.kind() == COMMA,
+        _ => false,
     }
 }
 
@@ -151,16 +138,17 @@ fn join_single_expr_block(edit: &mut TextEditBuilder, node: &SyntaxNode) -> Opti
     let expr = extract_trivial_expression(block)?;
 
     let block_range = block_expr.syntax().range();
-    edit.replace(block_range, expr.syntax().text().to_string());
+    let mut buf = expr.syntax().text().to_string();
 
     // Match block needs to have a comma after the block
-    // otherwise we'll maintain a comma after the block if such existed
-    // but we remove excess whitespace between the expression and the comma.
     if let Some(match_arm) = block_expr.syntax().parent().and_then(ast::MatchArm::cast) {
-        fix_comma_after(edit, match_arm.syntax(), Some(block_range.end()));
-    } else {
-        fix_comma_after(edit, block_expr.syntax(), None);
+        if !has_comma_after(match_arm.syntax()) {
+            buf.push(',');
+        }
     }
+
+    edit.replace(block_range, buf);
+
     Some(())
 }
 
@@ -301,7 +289,7 @@ fn foo(e: Result<U, V>) {
             r"
 fn foo(e: Result<U, V>) {
     match e {
-        Ok(u) => <|>u.foo(),
+        Ok(u) => <|>u.foo()    ,
         Err(v) => v,
     }
 }",
@@ -322,7 +310,8 @@ fn foo(e: Result<U, V>) {
             r"
 fn foo(e: Result<U, V>) {
     match e {
-        Ok(u) => <|>u.foo(),
+        Ok(u) => <|>u.foo()
+        ,
         Err(v) => v,
     }
 }",
@@ -355,7 +344,7 @@ fn foo() {
 }",
             r"
 fn foo() {
-    let x = (<|>4,);
+    let x = (<|>4   ,);
 }",
         );
 
@@ -370,7 +359,8 @@ fn foo() {
 }",
             r"
 fn foo() {
-    let x = (<|>4,);
+    let x = (<|>4
+    ,);
 }",
         );
     }
