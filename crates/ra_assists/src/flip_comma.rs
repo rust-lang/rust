@@ -2,9 +2,10 @@ use hir::db::HirDatabase;
 use ra_syntax::{
     Direction,
     SyntaxKind::COMMA,
+    algo::non_trivia_sibling,
 };
 
-use crate::{AssistCtx, Assist, non_trivia_sibling};
+use crate::{AssistCtx, Assist};
 
 pub(crate) fn flip_comma(mut ctx: AssistCtx<impl HirDatabase>) -> Option<Assist> {
     let comma = ctx.leaf_at_offset().find(|leaf| leaf.kind() == COMMA)?;

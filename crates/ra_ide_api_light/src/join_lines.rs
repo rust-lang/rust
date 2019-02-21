@@ -2,8 +2,9 @@ use itertools::Itertools;
 use ra_syntax::{
     SourceFile, TextRange, TextUnit, AstNode, SyntaxNode,
     SyntaxKind::{self, WHITESPACE, COMMA, R_CURLY, R_PAREN, R_BRACK},
-    algo::find_covering_node,
+    algo::{find_covering_node, non_trivia_sibling},
     ast,
+    Direction,
 };
 use ra_fmt::{
     compute_ws, extract_trivial_expression
@@ -121,13 +122,8 @@ fn remove_newline(
 }
 
 fn has_comma_after(node: &SyntaxNode) -> bool {
-    let next = node.next_sibling();
-    let nnext = node.next_sibling().and_then(|n| n.next_sibling());
-
-    match (next, nnext) {
-        // Whitespace followed by a comma is fine
-        (Some(ws), Some(comma)) if ws.kind() == WHITESPACE && comma.kind() == COMMA => true,
-        (Some(n), _) => n.kind() == COMMA,
+    match non_trivia_sibling(node, Direction::Next) {
+        Some(n) => n.kind() == COMMA,
         _ => false,
     }
 }

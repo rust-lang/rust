@@ -10,7 +10,7 @@ mod assist_ctx;
 use itertools::Itertools;
 
 use ra_text_edit::TextEdit;
-use ra_syntax::{TextRange, TextUnit, SyntaxNode, Direction};
+use ra_syntax::{TextRange, TextUnit};
 use ra_db::FileRange;
 use hir::db::HirDatabase;
 
@@ -102,10 +102,6 @@ fn all_assists<DB: HirDatabase>() -> &'static [fn(AssistCtx<DB>) -> Option<Assis
         remove_dbg::remove_dbg,
         auto_import::auto_import,
     ]
-}
-
-fn non_trivia_sibling(node: &SyntaxNode, direction: Direction) -> Option<&SyntaxNode> {
-    node.siblings(direction).skip(1).find(|node| !node.kind().is_trivia())
 }
 
 #[cfg(test)]
