@@ -633,7 +633,7 @@ unsafe impl<T: ?Sized> Freeze for &mut T {}
 /// This trait is automatically implemented for almost every type.
 ///
 /// [`mem::replace`]: ../../std/mem/fn.replace.html
- /// [`Pin<P>`]: ../pin/struct.Pin.html
+/// [`Pin<P>`]: ../pin/struct.Pin.html
 /// [`pin module`]: ../../std/pin/index.html
 #[stable(feature = "pin", since = "1.33.0")]
 #[cfg_attr(not(stage0), lang = "unpin")]

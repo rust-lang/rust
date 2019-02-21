@@ -53,7 +53,7 @@
 //! cancels the effect of [`Pin<P>`]. For `T: Unpin`, `Pin<Box<T>>` and `Box<T>` function
 //! identically, as do `Pin<&mut T>` and `&mut T`.
 //!
-//! Note that pinning and `Unpin` only affect the pointed-to type, not the pointer
+//! Note that pinning and `Unpin` only affect the pointed-to type `P::Target`, not the pointer
 //! type `P` itself that got wrapped in `Pin<P>`. For example, whether or not `Box<T>` is
 //! `Unpin` has no effect on the behavior of `Pin<Box<T>>` (here, `T` is the
 //! pointed-to type).
