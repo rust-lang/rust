@@ -359,8 +359,8 @@ impl<P: Deref> Pin<P> {
     /// This constructor is unsafe because we cannot guarantee that the data
     /// pointed to by `pointer` is pinned, meaning that the data will not be moved or
     /// its storage invalidated until it gets dropped. If the constructed `Pin<P>` does
-    /// not guarantee that the data `P` points to is pinned, constructing a
-    /// `Pin<P>` is unsafe.
+    /// not guarantee that the data `P` points to is pinned, that is a violation of
+    /// the API contract and may lead to undefined behavior in later (safe) operations.
     ///
     /// By using this method, you are making a promise about the `P::Deref` and
     /// `P::DerefMut` implementations, if they exist. Most importantly, they
