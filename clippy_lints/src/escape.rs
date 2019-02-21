@@ -1,11 +1,12 @@
 use crate::utils::span_lint;
 use rustc::hir::intravisit as visit;
+use rustc::hir::intravisit::{walk_expr, NestedVisitorMap, Visitor};
 use rustc::hir::*;
 use rustc::lint::{LateContext, LateLintPass, LintArray, LintPass};
 use rustc::middle::expr_use_visitor::*;
 use rustc::middle::mem_categorization::{cmt_, Categorization};
 use rustc::ty::layout::LayoutOf;
-use rustc::ty::{self, Ty};
+use rustc::ty::{self, Ty, UpvarCapture};
 use rustc::util::nodemap::NodeSet;
 use rustc::{declare_tool_lint, lint_array};
 use syntax::ast::NodeId;
@@ -88,11 +89,17 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Pass {
         let region_scope_tree = &cx.tcx.region_scope_tree(fn_def_id);
         ExprUseVisitor::new(&mut v, cx.tcx, cx.param_env, region_scope_tree, cx.tables, None).consume_body(body);
 
-        for node in v.set {
+        let mut capture_visitor = CaptureVisitor {
+            cx,
+            moved: NodeSet::default(),
+        };
+        capture_visitor.visit_body(body);
+
+        for node in v.set.difference(&capture_visitor.moved) {
             span_lint(
                 cx,
                 BOXED_LOCAL,
-                cx.tcx.hir().span(node),
+                cx.tcx.hir().span(*node),
                 "local variable doesn't need to be boxed here",
             );
         }
@@ -190,5 +197,34 @@ impl<'a, 'tcx> EscapeDelegate<'a, 'tcx> {
         } else {
             false
         }
+    }
+}
+
+struct CaptureVisitor<'a, 'tcx: 'a> {
+    cx: &'a LateContext<'a, 'tcx>,
+    moved: NodeSet,
+}
+
+impl<'a, 'tcx> Visitor<'tcx> for CaptureVisitor<'a, 'tcx> {
+    fn visit_expr(&mut self, expr: &'tcx Expr) {
+        if let ExprKind::Closure(..) = expr.node {
+            if let ty::Closure(def_id, _) = &self.cx.tables.expr_ty(expr).sty {
+                if let Some(upvar_list) = &self.cx.tables.upvar_list.get(&def_id) {
+                    for upvar_id in upvar_list.iter() {
+                        if let UpvarCapture::ByValue = self.cx.tables.upvar_capture(*upvar_id) {
+                            let hir_id = upvar_id.var_path.hir_id;
+                            let id = &self.cx.tcx.hir().hir_to_node_id(hir_id);
+                            self.moved.insert(*id);
+                        }
+                    }
+                }
+            }
+        } else {
+            walk_expr(self, expr);
+        }
+    }
+
+    fn nested_visit_map<'this>(&'this mut self) -> NestedVisitorMap<'this, 'tcx> {
+        NestedVisitorMap::None
     }
 }

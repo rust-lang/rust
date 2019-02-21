@@ -12,5 +12,11 @@ error: local variable doesn't need to be boxed here
 LL | pub fn new(_needs_name: Box<PeekableSeekable<&()>>) -> () {}
    |            ^^^^^^^^^^^
 
-error: aborting due to 2 previous errors
+error: local variable doesn't need to be boxed here
+  --> $DIR/escape_analysis.rs:165:23
+   |
+LL |     fn closure_borrow(x: Box<A>) {
+   |                       ^
+
+error: aborting due to 3 previous errors
 
