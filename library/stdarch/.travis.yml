@@ -44,32 +44,26 @@ matrix:
     - name: "s390x-unknown-linux-gnu - build-only"
       env: TARGET=s390x-unknown-linux-gnu NORUN=1
     - name: "i686-apple-darwin"
-      env: TARGET=i686-apple-darwin
+      env: TARGET=i686-apple-darwin NO_DOCKER=1
       os: osx
       osx_image: xcode10
-      script: ci/run.sh
     - name: "x86_64-apple-darwin"
-      env: TARGET=x86_64-apple-darwin
+      env: TARGET=x86_64-apple-darwin NO_DOCKER=1
       os: osx
       osx_image: xcode10
       install: true
-      script: ci/run.sh
     - name: "wasm32-unknown-unknown"
       env: TARGET=wasm32-unknown-unknown
     - name: "nvptx64-nvidia-cuda - cross compiled, build libcore only"
       env: TARGET=nvptx64-nvidia-cuda NORUN=1 NOSTD=1
     - name: "thumbv6m-none-eabi - build libcore only"
-      env: TARGET=thumbv6m-none-eabi NORUN=1 NOSTD=1
-      script: ci/run.sh
+      env: TARGET=thumbv6m-none-eabi NORUN=1 NOSTD=1 NO_DOCKER=1
     - name: "thumbv7m-none-eabi - build libcore only"
-      env: TARGET=thumbv7m-none-eabi NORUN=1 NOSTD=1
-      script: ci/run.sh
+      env: TARGET=thumbv7m-none-eabi NORUN=1 NOSTD=1 NO_DOCKER=1
     - name: "thumbv7em-none-eabi - build libcore only"
-      env: TARGET=thumbv7em-none-eabi NORUN=1 NOSTD=1
-      script: ci/run.sh
+      env: TARGET=thumbv7em-none-eabi NORUN=1 NOSTD=1 NO_DOCKER=1
     - name: "thumbv7em-none-eabihf - build libcore only"
-      env: TARGET=thumbv7em-none-eabihf NORUN=1 NOSTD=1
-      script: ci/run.sh
+      env: TARGET=thumbv7em-none-eabihf NORUN=1 NOSTD=1 NO_DOCKER=1
     - name: "Documentation"
       install: true
       script: ci/dox.sh
@@ -102,7 +96,23 @@ matrix:
 install: travis_retry rustup target add $TARGET
 script:
   - cargo generate-lockfile
-  - ci/run-docker.sh $TARGET
+  - sed 's@2015@2018@g' crates/core_arch/Cargo.toml > crates/core_arch/Cargo2018.toml
+  - sed 's@2015@2018@g' crates/std_detect/Cargo.toml > crates/std_detect/Cargo2018.toml
+  - mv crates/core_arch/Cargo.toml crates/core_arch/Cargo.toml.bak
+  - mv crates/std_detect/Cargo.toml crates/std_detect/Cargo.toml.bak
+  - mv crates/core_arch/Cargo2018.toml crates/core_arch/Cargo.toml
+  - mv crates/std_detect/Cargo2018.toml crates/std_detect/Cargo.toml
+  - cargo build --target="${TARGET}" --manifest-path=crates/core_arch/Cargo.toml
+  - cargo build --target="${TARGET}" --manifest-path=crates/std_detect/Cargo.toml
+  - mv crates/core_arch/Cargo.toml.bak crates/core_arch/Cargo.toml
+  - mv crates/std_detect/Cargo.toml.bak crates/std_detect/Cargo.toml
+  - |
+    if [ "${NO_DOCKER}" = "1" ]; then
+        ci/run.sh $TARGET
+    else
+        ci/run-docker.sh $TARGET
+    fi
+  
 
 notifications:
   email:
