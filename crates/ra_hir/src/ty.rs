@@ -443,7 +443,7 @@ impl Ty {
         for _ in supplied_params..def_generics.count_params_including_parent() {
             substs.push(Ty::Unknown);
         }
-        assert_eq!(substs.len(), def_generics.params.len());
+        assert_eq!(substs.len(), def_generics.count_params_including_parent());
         Substs(substs.into())
     }
 
@@ -1374,6 +1374,7 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
         for _ in supplied_params..parent_param_count + param_count {
             substs.push(Ty::Unknown);
         }
+        assert_eq!(substs.len(), parent_param_count + param_count);
         Substs(substs.into())
     }
 
