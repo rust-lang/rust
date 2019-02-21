@@ -14,19 +14,19 @@ extern crate rustc_target;
 extern crate syntax;
 
 use std::any::Any;
-use std::fs::File;
-use std::sync::mpsc;
-use std::os::raw::{c_char, c_int};
 use std::ffi::CString;
+use std::fs::File;
+use std::os::raw::{c_char, c_int};
+use std::sync::mpsc;
 
 use rustc::dep_graph::DepGraph;
 use rustc::middle::cstore::MetadataLoader;
+use rustc::mir::mono::{Linkage as RLinkage, Visibility};
 use rustc::session::{
     config::{DebugInfo, OutputFilenames, OutputType},
     CompileIncomplete,
 };
 use rustc::ty::query::Providers;
-use rustc::mir::mono::{Linkage as RLinkage, Visibility};
 use rustc_codegen_ssa::back::linker::LinkerInfo;
 use rustc_codegen_ssa::CrateInfo;
 use rustc_codegen_utils::codegen_backend::CodegenBackend;
@@ -62,7 +62,7 @@ mod prelude {
     pub use std::collections::{HashMap, HashSet};
 
     pub use syntax::ast::{FloatTy, IntTy, UintTy};
-    pub use syntax::source_map::{DUMMY_SP, Span, Pos};
+    pub use syntax::source_map::{Pos, Span, DUMMY_SP};
 
     pub use rustc::bug;
     pub use rustc::hir::def_id::{CrateNum, DefId, LOCAL_CRATE};
@@ -84,18 +84,17 @@ mod prelude {
     pub use rustc_mir::monomorphize::{collector, MonoItem};
 
     pub use rustc_codegen_ssa::mir::operand::{OperandRef, OperandValue};
-    pub use rustc_codegen_ssa::{CodegenResults, CompiledModule, ModuleKind};
     pub use rustc_codegen_ssa::traits::*;
+    pub use rustc_codegen_ssa::{CodegenResults, CompiledModule, ModuleKind};
 
     pub use cranelift::codegen::ir::{
-        condcodes::IntCC, function::Function, ExternalName, FuncRef, Inst, StackSlot, SourceLoc,
+        condcodes::IntCC, function::Function, ExternalName, FuncRef, Inst, SourceLoc, StackSlot,
     };
     pub use cranelift::codegen::isa::CallConv;
     pub use cranelift::codegen::Context;
     pub use cranelift::prelude::*;
     pub use cranelift_module::{
-        self, Backend, DataContext, DataId, FuncId, FuncOrDataId, Linkage,
-        Module,
+        self, Backend, DataContext, DataId, FuncId, FuncOrDataId, Linkage, Module,
     };
     pub use cranelift_simplejit::{SimpleJITBackend, SimpleJITBuilder};
 
@@ -251,11 +250,12 @@ impl CodegenBackend for CraneliftCodegenBackend {
             let f: extern "C" fn(c_int, *const *const c_char) -> c_int =
                 unsafe { ::std::mem::transmute(finalized_main) };
 
-            let args = ::std::env::var("JIT_ARGS").unwrap_or_else(|_|String::new());
+            let args = ::std::env::var("JIT_ARGS").unwrap_or_else(|_| String::new());
             let args = args
                 .split(" ")
                 .chain(Some(&*tcx.crate_name(LOCAL_CRATE).as_str().to_string()))
-                .map(|arg| CString::new(arg).unwrap()).collect::<Vec<_>>();
+                .map(|arg| CString::new(arg).unwrap())
+                .collect::<Vec<_>>();
             let argv = args.iter().map(|arg| arg.as_ptr()).collect::<Vec<_>>();
             // TODO: Rust doesn't care, but POSIX argv has a NULL sentinel at the end
 
@@ -274,14 +274,14 @@ impl CodegenBackend for CraneliftCodegenBackend {
                     )
                     .unwrap(),
                 );
-                assert_eq!(
-                    pointer_ty(tcx),
-                    module.target_config().pointer_type()
-                );
+                assert_eq!(pointer_ty(tcx), module.target_config().pointer_type());
                 module
             };
 
-            let emit_module = |name: &str, kind: ModuleKind, mut module: Module<FaerieBackend>, debug: Option<DebugContext>| {
+            let emit_module = |name: &str,
+                               kind: ModuleKind,
+                               mut module: Module<FaerieBackend>,
+                               debug: Option<DebugContext>| {
                 module.finalize_definitions();
                 let mut artifact = module.finish().artifact;
 
@@ -306,9 +306,13 @@ impl CodegenBackend for CraneliftCodegenBackend {
             let mut faerie_module = new_module("some_file".to_string());
 
             let mut debug = if tcx.sess.opts.debuginfo != DebugInfo::None
-                && !tcx.sess.target.target.options.is_like_osx // macOS debuginfo doesn't work yet (see #303)
+                // macOS debuginfo doesn't work yet (see #303)
+                && !tcx.sess.target.target.options.is_like_osx
             {
-                let debug = DebugContext::new(tcx, faerie_module.target_config().pointer_type().bytes() as u8);
+                let debug = DebugContext::new(
+                    tcx,
+                    faerie_module.target_config().pointer_type().bytes() as u8,
+                );
                 Some(debug)
             } else {
                 None
@@ -319,14 +323,23 @@ impl CodegenBackend for CraneliftCodegenBackend {
             tcx.sess.abort_if_errors();
 
             let mut allocator_module = new_module("allocator_shim.o".to_string());
-            let created_alloc_shim =
-                crate::allocator::codegen(tcx.sess, &mut allocator_module);
+            let created_alloc_shim = crate::allocator::codegen(tcx.sess, &mut allocator_module);
 
             return Box::new(CodegenResults {
                 crate_name: tcx.crate_name(LOCAL_CRATE),
-                modules: vec![emit_module("dummy_name", ModuleKind::Regular, faerie_module, debug)],
+                modules: vec![emit_module(
+                    "dummy_name",
+                    ModuleKind::Regular,
+                    faerie_module,
+                    debug,
+                )],
                 allocator_module: if created_alloc_shim {
-                    Some(emit_module("allocator_shim", ModuleKind::Allocator, allocator_module, None))
+                    Some(emit_module(
+                        "allocator_shim",
+                        ModuleKind::Allocator,
+                        allocator_module,
+                        None,
+                    ))
                 } else {
                     None
                 },
@@ -377,7 +390,7 @@ fn build_isa(sess: &Session) -> Box<isa::TargetIsa + 'static> {
     let mut flags_builder = settings::builder();
     flags_builder.enable("is_pic").unwrap();
     flags_builder.set("probestack_enabled", "false").unwrap(); // ___cranelift_probestack is not provided
-    flags_builder.set("enable_verifier", if cfg!(debug_assertions) {
+        flags_builder.set("enable_verifier", if cfg!(debug_assertions) {
         "true"
     } else {
         "false"
@@ -438,7 +451,7 @@ fn codegen_mono_items<'a, 'tcx: 'a>(
                     (RLinkage::Internal, Visibility::Default) => Linkage::Local,
                     // FIXME this should get external linkage, but hidden visibility,
                     // not internal linkage and default visibility
-                    | (RLinkage::External, Visibility::Hidden) => Linkage::Export,
+                    (RLinkage::External, Visibility::Hidden) => Linkage::Export,
                     _ => panic!("{:?} = {:?} {:?}", mono_item, linkage, vis),
                 };
                 base::trans_mono_item(&mut cx, mono_item, linkage);

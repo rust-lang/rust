@@ -5,7 +5,8 @@ use rustc::mir::interpret::{
 };
 use rustc::ty::{Const, LazyConst};
 use rustc_mir::interpret::{
-    EvalContext, MPlaceTy, Machine, Memory, MemoryKind, OpTy, PlaceTy, Pointer, StackPopCleanup, ImmTy,
+    EvalContext, ImmTy, MPlaceTy, Machine, Memory, MemoryKind, OpTy, PlaceTy, Pointer,
+    StackPopCleanup,
 };
 
 use cranelift_module::*;
@@ -110,12 +111,12 @@ fn trans_const_value<'a, 'tcx: 'a>(
             let bits = const_.val.try_to_bits(layout.size).unwrap();
             CValue::const_val(fx, ty, bits as i128 as i64)
         }
-        ty::FnDef(_def_id, _substs) => {
-            CValue::ByRef(
-                fx.bcx.ins().iconst(fx.pointer_type, fx.pointer_type.bytes() as i64),
-                layout
-            )
-        }
+        ty::FnDef(_def_id, _substs) => CValue::ByRef(
+            fx.bcx
+                .ins()
+                .iconst(fx.pointer_type, fx.pointer_type.bytes() as i64),
+            layout,
+        ),
         _ => trans_const_place(fx, const_).to_cvalue(fx),
     }
 }
@@ -370,7 +371,7 @@ impl<'a, 'mir, 'tcx> Machine<'a, 'mir, 'tcx> for TransPlaceInterpreter {
         ptr
     }
 
-    fn stack_push(_: &mut EvalContext<'a, 'mir, 'tcx, Self>) -> EvalResult<'tcx>{
+    fn stack_push(_: &mut EvalContext<'a, 'mir, 'tcx, Self>) -> EvalResult<'tcx> {
         Ok(())
     }
 

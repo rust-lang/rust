@@ -66,16 +66,11 @@ fn trans_fn<'a, 'clif, 'tcx: 'a, B: Backend + 'static>(
 
     // Step 2. Declare function
     let (name, sig) = get_function_name_and_sig(tcx, instance, false);
-    let func_id = cx.module
-        .declare_function(&name, linkage, &sig)
-        .unwrap();
-    let mut debug_context = cx.debug_context.as_mut().map(|debug_context| FunctionDebugContext::new(
-        tcx,
-        debug_context,
-        mir,
-        &name,
-        &sig,
-    ));
+    let func_id = cx.module.declare_function(&name, linkage, &sig).unwrap();
+    let mut debug_context = cx
+        .debug_context
+        .as_mut()
+        .map(|debug_context| FunctionDebugContext::new(tcx, debug_context, mir, &name, &sig));
 
     // Step 3. Make FunctionBuilder
     let mut func = Function::with_name_signature(ExternalName::user(0, 0), sig);
@@ -127,12 +122,16 @@ fn trans_fn<'a, 'clif, 'tcx: 'a, B: Backend + 'static>(
 
     // Step 9. Define function
     cx.caches.context.func = func;
-    cx.module.define_function(func_id, &mut cx.caches.context).unwrap();
+    cx.module
+        .define_function(func_id, &mut cx.caches.context)
+        .unwrap();
 
     // Step 10. Define debuginfo for function
     let context = &cx.caches.context;
     let isa = cx.module.isa();
-    debug_context.as_mut().map(|x| x.define(tcx, context, isa, &source_info_set));
+    debug_context
+        .as_mut()
+        .map(|x| x.define(tcx, context, isa, &source_info_set));
 
     // Step 11. Clear context to make it usable for the next function
     cx.caches.context.clear();
@@ -444,10 +443,14 @@ fn trans_stmt<'a, 'tcx: 'a>(
                 }
                 Rvalue::Cast(CastKind::ReifyFnPointer, operand, ty) => {
                     let layout = fx.layout_of(ty);
-                    match fx.monomorphize(&operand.ty(&fx.mir.local_decls, fx.tcx)).sty {
+                    match fx
+                        .monomorphize(&operand.ty(&fx.mir.local_decls, fx.tcx))
+                        .sty
+                    {
                         ty::FnDef(def_id, substs) => {
                             let func_ref = fx.get_function_ref(
-                                Instance::resolve(fx.tcx, ParamEnv::reveal_all(), def_id, substs).unwrap(),
+                                Instance::resolve(fx.tcx, ParamEnv::reveal_all(), def_id, substs)
+                                    .unwrap(),
                             );
                             let func_addr = fx.bcx.ins().func_addr(fx.pointer_type, func_ref);
                             lval.write_cvalue(fx, CValue::ByVal(func_addr, layout));
@@ -570,9 +573,13 @@ fn trans_stmt<'a, 'tcx: 'a>(
                             };
                             lval.write_cvalue(fx, CValue::ByVal(res, dest_layout));
                         }
-                        (ty::Adt(adt_def, _substs), ty::Uint(_)) | (ty::Adt(adt_def, _substs), ty::Int(_)) if adt_def.is_enum() => {
+                        (ty::Adt(adt_def, _substs), ty::Uint(_))
+                        | (ty::Adt(adt_def, _substs), ty::Int(_))
+                            if adt_def.is_enum() =>
+                        {
                             // FIXME avoid forcing to stack
-                            let place = CPlace::Addr(operand.force_stack(fx), None, operand.layout());
+                            let place =
+                                CPlace::Addr(operand.force_stack(fx), None, operand.layout());
                             let discr = trans_get_discriminant(fx, place, fx.layout_of(to_ty));
                             lval.write_cvalue(fx, discr);
                         }
@@ -674,9 +681,10 @@ fn codegen_array_len<'a, 'tcx: 'a>(
             let len = crate::constant::force_eval_const(fx, len).unwrap_usize(fx.tcx) as i64;
             fx.bcx.ins().iconst(fx.pointer_type, len)
         }
-        ty::Slice(_elem_ty) => {
-            place.to_addr_maybe_unsized(fx).1.expect("Length metadata for slice place")
-        }
+        ty::Slice(_elem_ty) => place
+            .to_addr_maybe_unsized(fx)
+            .1
+            .expect("Length metadata for slice place"),
         _ => bug!("Rvalue::Len({:?})", place),
     }
 }
@@ -1012,7 +1020,9 @@ fn trans_ptr_binop<'a, 'tcx: 'a>(
     ret_ty: Ty<'tcx>,
 ) -> CValue<'tcx> {
     let not_fat = match lhs.layout().ty.sty {
-        ty::RawPtr(TypeAndMut { ty, mutbl: _ }) => ty.is_sized(fx.tcx.at(DUMMY_SP), ParamEnv::reveal_all()),
+        ty::RawPtr(TypeAndMut { ty, mutbl: _ }) => {
+            ty.is_sized(fx.tcx.at(DUMMY_SP), ParamEnv::reveal_all())
+        }
         ty::FnPtr(..) => true,
         _ => bug!("trans_ptr_binop on non ptr"),
     };

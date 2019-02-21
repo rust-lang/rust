@@ -5,11 +5,10 @@ use std::marker::PhantomData;
 use syntax::source_map::FileName;
 
 use gimli::write::{
-    Address, AttributeValue, DwarfUnit, EndianVec, LineProgram, Range,
-    RangeList, Result, SectionId, UnitEntryId,
-    Writer, FileId, LineStringTable, LineString, Sections,
+    Address, AttributeValue, DwarfUnit, EndianVec, FileId, LineProgram, LineString,
+    LineStringTable, Range, RangeList, Result, SectionId, Sections, UnitEntryId, Writer,
 };
-use gimli::{Encoding, Format, RunTimeEndian, LineEncoding};
+use gimli::{Encoding, Format, LineEncoding, RunTimeEndian};
 
 use faerie::*;
 
@@ -22,28 +21,35 @@ fn target_endian(tcx: TyCtxt) -> RunTimeEndian {
     }
 }
 
-fn line_program_add_file(line_program: &mut LineProgram, line_strings: &mut LineStringTable, file: &FileName) -> FileId {
+fn line_program_add_file(
+    line_program: &mut LineProgram,
+    line_strings: &mut LineStringTable,
+    file: &FileName,
+) -> FileId {
     match file {
         FileName::Real(path) => {
-            let dir_name = LineString::new(path.parent().unwrap().to_str().unwrap().as_bytes(), line_program.encoding(), line_strings);
-            let dir_id =
-                line_program.add_directory(dir_name);
-            let file_name = LineString::new(path.file_name().unwrap().to_str().unwrap().as_bytes(), line_program.encoding(), line_strings);
-            line_program.add_file(
-                file_name,
-                dir_id,
-                None,
-            )
+            let dir_name = LineString::new(
+                path.parent().unwrap().to_str().unwrap().as_bytes(),
+                line_program.encoding(),
+                line_strings,
+            );
+            let dir_id = line_program.add_directory(dir_name);
+            let file_name = LineString::new(
+                path.file_name().unwrap().to_str().unwrap().as_bytes(),
+                line_program.encoding(),
+                line_strings,
+            );
+            line_program.add_file(file_name, dir_id, None)
         }
         // FIXME give more appropriate file names
         _ => {
             let dir_id = line_program.default_directory();
-            let dummy_file_name = LineString::new(file.to_string().into_bytes(), line_program.encoding(), line_strings);
-            line_program.add_file(
-                dummy_file_name,
-                dir_id,
-                None,
-            )
+            let dummy_file_name = LineString::new(
+                file.to_string().into_bytes(),
+                line_program.encoding(),
+                line_strings,
+            );
+            line_program.add_file(dummy_file_name, dir_id, None)
         }
     }
 }
@@ -133,7 +139,7 @@ impl<'a, 'tcx: 'a> DebugContext<'tcx> {
             );
         }
 
-         DebugContext {
+        DebugContext {
             endian: target_endian(tcx),
             symbols: indexmap::IndexSet::new(),
 
@@ -155,7 +161,10 @@ impl<'a, 'tcx: 'a> DebugContext<'tcx> {
 
         let entry = self.dwarf.unit.get_mut(entry_id);
 
-        entry.set(gimli::DW_AT_decl_file, AttributeValue::FileIndex(Some(file_id)));
+        entry.set(
+            gimli::DW_AT_decl_file,
+            AttributeValue::FileIndex(Some(file_id)),
+        );
         entry.set(
             gimli::DW_AT_decl_line,
             AttributeValue::Udata(loc.line as u64),
@@ -182,11 +191,7 @@ impl<'a, 'tcx: 'a> DebugContext<'tcx> {
         let _: Result<()> = sections.for_each_mut(|id, section| {
             if !section.writer.slice().is_empty() {
                 artifact
-                    .declare_with(
-                        id.name(),
-                        Decl::DebugSection,
-                        section.writer.take(),
-                    )
+                    .declare_with(id.name(), Decl::DebugSection, section.writer.take())
                     .unwrap();
             }
             Ok(())
@@ -233,7 +238,10 @@ impl<'a, 'b, 'tcx: 'b> FunctionDebugContext<'a, 'tcx> {
         // FIXME: add to appropriate scope intead of root
         let scope = debug_context.dwarf.unit.root();
 
-        let entry_id = debug_context.dwarf.unit.add(scope, gimli::DW_TAG_subprogram);
+        let entry_id = debug_context
+            .dwarf
+            .unit
+            .add(scope, gimli::DW_TAG_subprogram);
         let entry = debug_context.dwarf.unit.get_mut(entry_id);
         let name_id = debug_context.dwarf.strings.add(name);
         entry.set(
@@ -314,13 +322,16 @@ impl<'a, 'b, 'tcx: 'b> FunctionDebugContext<'a, 'tcx> {
         let entry = self.debug_context.dwarf.unit.get_mut(self.entry_id);
         entry.set(gimli::DW_AT_high_pc, AttributeValue::Udata(end as u64));
 
-        self.debug_context.unit_range_list.0.push(Range::StartLength {
-            begin: Address::Relative {
-                symbol: self.symbol,
-                addend: 0,
-            },
-            length: end as u64,
-        });
+        self.debug_context
+            .unit_range_list
+            .0
+            .push(Range::StartLength {
+                begin: Address::Relative {
+                    symbol: self.symbol,
+                    addend: 0,
+                },
+                length: end as u64,
+            });
     }
 }
 
@@ -331,7 +342,7 @@ struct WriterRelocate {
 }
 
 impl WriterRelocate {
-    fn new(ctx: & DebugContext) -> Self {
+    fn new(ctx: &DebugContext) -> Self {
         WriterRelocate {
             relocs: Vec::new(),
             writer: EndianVec::new(ctx.endian),

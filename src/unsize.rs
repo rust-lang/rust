@@ -16,21 +16,22 @@ pub fn unsized_info<'a, 'tcx: 'a>(
 ) -> Value {
     let (source, target) = fx.tcx.struct_lockstep_tails(source, target);
     match (&source.sty, &target.sty) {
-        (&ty::Array(_, len), &ty::Slice(_)) => {
-            fx.bcx.ins().iconst(fx.pointer_type, len.unwrap_usize(fx.tcx) as i64)
-        }
+        (&ty::Array(_, len), &ty::Slice(_)) => fx
+            .bcx
+            .ins()
+            .iconst(fx.pointer_type, len.unwrap_usize(fx.tcx) as i64),
         (&ty::Dynamic(..), &ty::Dynamic(..)) => {
             // For now, upcasts are limited to changes in marker
             // traits, and hence never actually require an actual
             // change to the vtable.
             old_info.expect("unsized_info: missing old info for trait upcast")
         }
-        (_, &ty::Dynamic(ref data, ..)) => {
-            crate::vtable::get_vtable(fx, source, data.principal())
-        }
-        _ => bug!("unsized_info: invalid unsizing {:?} -> {:?}",
-                  source,
-                  target),
+        (_, &ty::Dynamic(ref data, ..)) => crate::vtable::get_vtable(fx, source, data.principal()),
+        _ => bug!(
+            "unsized_info: invalid unsizing {:?} -> {:?}",
+            source,
+            target
+        ),
     }
 }
 
@@ -39,15 +40,12 @@ pub fn unsize_thin_ptr<'a, 'tcx: 'a>(
     fx: &mut FunctionCx<'a, 'tcx, impl Backend>,
     src: Value,
     src_ty: Ty<'tcx>,
-    dst_ty: Ty<'tcx>
+    dst_ty: Ty<'tcx>,
 ) -> (Value, Value) {
     match (&src_ty.sty, &dst_ty.sty) {
-        (&ty::Ref(_, a, _),
-         &ty::Ref(_, b, _)) |
-        (&ty::Ref(_, a, _),
-         &ty::RawPtr(ty::TypeAndMut { ty: b, .. })) |
-        (&ty::RawPtr(ty::TypeAndMut { ty: a, .. }),
-         &ty::RawPtr(ty::TypeAndMut { ty: b, .. })) => {
+        (&ty::Ref(_, a, _), &ty::Ref(_, b, _))
+        | (&ty::Ref(_, a, _), &ty::RawPtr(ty::TypeAndMut { ty: b, .. }))
+        | (&ty::RawPtr(ty::TypeAndMut { ty: a, .. }), &ty::RawPtr(ty::TypeAndMut { ty: b, .. })) => {
             assert!(!fx.layout_of(a).is_unsized());
             (src, unsized_info(fx, a, b, None))
         }
@@ -88,11 +86,14 @@ pub fn coerce_unsized_into<'a, 'tcx: 'a>(
     fx: &mut FunctionCx<'a, 'tcx, impl Backend>,
     src: CValue<'tcx>,
     dst: CPlace<'tcx>,
-)  {
+) {
     let src_ty = src.layout().ty;
     let dst_ty = dst.layout().ty;
     let mut coerce_ptr = || {
-        let (base, info) = if fx.layout_of(src.layout().ty.builtin_deref(true).unwrap().ty).is_unsized() {
+        let (base, info) = if fx
+            .layout_of(src.layout().ty.builtin_deref(true).unwrap().ty)
+            .is_unsized()
+        {
             // fat-ptr to fat-ptr unsize preserves the vtable
             // i.e., &'a fmt::Debug+Send => &'a fmt::Debug
             src.load_value_pair(fx)
@@ -103,11 +104,9 @@ pub fn coerce_unsized_into<'a, 'tcx: 'a>(
         dst.write_cvalue(fx, CValue::ByValPair(base, info, dst.layout()));
     };
     match (&src_ty.sty, &dst_ty.sty) {
-        (&ty::Ref(..), &ty::Ref(..)) |
-        (&ty::Ref(..), &ty::RawPtr(..)) |
-        (&ty::RawPtr(..), &ty::RawPtr(..)) => {
-            coerce_ptr()
-        }
+        (&ty::Ref(..), &ty::Ref(..))
+        | (&ty::Ref(..), &ty::RawPtr(..))
+        | (&ty::RawPtr(..), &ty::RawPtr(..)) => coerce_ptr(),
         (&ty::Adt(def_a, _), &ty::Adt(def_b, _)) => {
             assert_eq!(def_a, def_b);
 
@@ -126,12 +125,13 @@ pub fn coerce_unsized_into<'a, 'tcx: 'a>(
                 }
             }
         }
-        _ => bug!("coerce_unsized_into: invalid coercion {:?} -> {:?}",
-                  src_ty,
-                  dst_ty),
+        _ => bug!(
+            "coerce_unsized_into: invalid coercion {:?} -> {:?}",
+            src_ty,
+            dst_ty
+        ),
     }
 }
-
 
 // Adapted from https://github.com/rust-lang/rust/blob/2a663555ddf36f6b041445894a8c175cd1bc718c/src/librustc_codegen_ssa/glue.rs
 
@@ -142,8 +142,14 @@ pub fn size_and_align_of_dst<'a, 'tcx: 'a>(
 ) -> (Value, Value) {
     let layout = fx.layout_of(ty);
     if !layout.is_unsized() {
-        let size = fx.bcx.ins().iconst(fx.pointer_type, layout.size.bytes() as i64);
-        let align = fx.bcx.ins().iconst(fx.pointer_type, layout.align.abi.bytes() as i64);
+        let size = fx
+            .bcx
+            .ins()
+            .iconst(fx.pointer_type, layout.size.bytes() as i64);
+        let align = fx
+            .bcx
+            .ins()
+            .iconst(fx.pointer_type, layout.align.abi.bytes() as i64);
         return (size, align);
     }
     match ty.sty {
@@ -158,8 +164,12 @@ pub fn size_and_align_of_dst<'a, 'tcx: 'a>(
             let unit = layout.field(fx, 0);
             // The info in this case is the length of the str, so the size is that
             // times the unit size.
-            (fx.bcx.ins().imul_imm(info, unit.size.bytes() as i64),
-             fx.bcx.ins().iconst(fx.pointer_type, unit.align.abi.bytes() as i64))
+            (
+                fx.bcx.ins().imul_imm(info, unit.size.bytes() as i64),
+                fx.bcx
+                    .ins()
+                    .iconst(fx.pointer_type, unit.align.abi.bytes() as i64),
+            )
         }
         _ => {
             // First get the size of all statically known fields.
@@ -196,7 +206,10 @@ pub fn size_and_align_of_dst<'a, 'tcx: 'a>(
 
             // Choose max of two known alignments (combined value must
             // be aligned according to more restrictive of the two).
-            let cmp = fx.bcx.ins().icmp(IntCC::UnsignedGreaterThan, sized_align, unsized_align);
+            let cmp = fx
+                .bcx
+                .ins()
+                .icmp(IntCC::UnsignedGreaterThan, sized_align, unsized_align);
             let align = fx.bcx.ins().select(cmp, sized_align, unsized_align);
 
             // Issue #27023: must add any necessary padding to `size`
@@ -212,7 +225,7 @@ pub fn size_and_align_of_dst<'a, 'tcx: 'a>(
             let addend = fx.bcx.ins().iadd_imm(align, -1);
             let add = fx.bcx.ins().iadd(size, addend);
             let zero = fx.bcx.ins().iconst(fx.pointer_type, 0);
-            let neg =  fx.bcx.ins().isub(zero, align);
+            let neg = fx.bcx.ins().isub(zero, align);
             let size = fx.bcx.ins().band(add, neg);
 
             (size, align)

@@ -70,10 +70,7 @@ pub struct CommentWriter {
 }
 
 impl CommentWriter {
-    pub fn new<'a, 'tcx: 'a>(
-        tcx: TyCtxt<'a, 'tcx, 'tcx>,
-        instance: Instance<'tcx>,
-    ) -> Self {
+    pub fn new<'a, 'tcx: 'a>(tcx: TyCtxt<'a, 'tcx, 'tcx>, instance: Instance<'tcx>) -> Self {
         CommentWriter {
             global_comments: vec![
                 format!("symbol {}", tcx.symbol_name(instance).as_str()),
@@ -158,7 +155,11 @@ impl<'a, 'tcx: 'a, B: Backend + 'a> FunctionCx<'a, 'tcx, B> {
         self.clif_comments.global_comments.push(comment.into());
     }
 
-    pub fn add_entity_comment<'s, S: Into<Cow<'s, str>>, E: Into<AnyEntity>>(&mut self, entity: E, comment: S) {
+    pub fn add_entity_comment<'s, S: Into<Cow<'s, str>>, E: Into<AnyEntity>>(
+        &mut self,
+        entity: E,
+        comment: S,
+    ) {
         use std::collections::hash_map::Entry;
         match self.clif_comments.entity_comments.entry(entity.into()) {
             Entry::Occupied(mut occ) => {
@@ -196,12 +197,18 @@ impl<'a, 'tcx: 'a, B: Backend + 'a> FunctionCx<'a, 'tcx, B> {
         );
 
         let mut clif = String::new();
-        ::cranelift::codegen::write::decorate_function(&mut &self.clif_comments, &mut clif, &self.bcx.func, None)
-            .unwrap();
+        ::cranelift::codegen::write::decorate_function(
+            &mut &self.clif_comments,
+            &mut clif,
+            &self.bcx.func,
+            None,
+        )
+        .unwrap();
 
         match ::std::fs::File::create(clif_file_name) {
             Ok(mut file) => {
-                let target_triple: ::target_lexicon::Triple = self.tcx.sess.target.target.llvm_target.parse().unwrap();
+                let target_triple: ::target_lexicon::Triple =
+                    self.tcx.sess.target.target.llvm_target.parse().unwrap();
                 writeln!(file, "test compile").unwrap();
                 writeln!(file, "set is_pic").unwrap();
                 writeln!(file, "target {}", target_triple).unwrap();
@@ -209,7 +216,9 @@ impl<'a, 'tcx: 'a, B: Backend + 'a> FunctionCx<'a, 'tcx, B> {
                 file.write(clif.as_bytes()).unwrap();
             }
             Err(e) => {
-                self.tcx.sess.warn(&format!("err opening clif file: {:?}", e));
+                self.tcx
+                    .sess
+                    .warn(&format!("err opening clif file: {:?}", e));
             }
         }
     }

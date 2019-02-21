@@ -2,7 +2,7 @@ use std::borrow::Cow;
 use std::iter;
 
 use rustc::hir;
-use rustc::ty::layout::{Scalar, Primitive, Integer, FloatTy};
+use rustc::ty::layout::{FloatTy, Integer, Primitive, Scalar};
 use rustc_target::spec::abi::Abi;
 
 use crate::prelude::*;
@@ -32,11 +32,11 @@ pub fn scalar_to_clif_type(tcx: TyCtxt, scalar: Scalar) -> Type {
             Integer::I32 => types::I32,
             Integer::I64 => types::I64,
             Integer::I128 => unimpl!("u/i128"),
-        }
+        },
         Primitive::Float(flt) => match flt {
             FloatTy::F32 => types::F32,
             FloatTy::F64 => types::F64,
-        }
+        },
         Primitive::Pointer => pointer_ty(tcx),
     }
 }
@@ -46,9 +46,7 @@ fn get_pass_mode<'a, 'tcx: 'a>(
     ty: Ty<'tcx>,
     is_return: bool,
 ) -> PassMode {
-    let layout = tcx
-        .layout_of(ParamEnv::reveal_all().and(ty))
-        .unwrap();
+    let layout = tcx.layout_of(ParamEnv::reveal_all().and(ty)).unwrap();
     assert!(!layout.is_unsized());
 
     if layout.size.bytes() == 0 {
@@ -66,7 +64,9 @@ fn get_pass_mode<'a, 'tcx: 'a>(
                     PassMode::ByRef
                 }
             }
-            layout::Abi::Scalar(scalar) => PassMode::ByVal(scalar_to_clif_type(tcx, scalar.clone())),
+            layout::Abi::Scalar(scalar) => {
+                PassMode::ByVal(scalar_to_clif_type(tcx, scalar.clone()))
+            }
 
             // FIXME implement ScalarPair and Vector Abi in a cg_llvm compatible way
             layout::Abi::ScalarPair(_, _) => PassMode::ByRef,
@@ -88,10 +88,7 @@ fn adjust_arg_for_abi<'a, 'tcx: 'a>(
     }
 }
 
-fn clif_sig_from_fn_sig<'a, 'tcx: 'a>(
-    tcx: TyCtxt<'a, 'tcx, 'tcx>,
-    sig: FnSig<'tcx>,
-) -> Signature {
+fn clif_sig_from_fn_sig<'a, 'tcx: 'a>(tcx: TyCtxt<'a, 'tcx, 'tcx>, sig: FnSig<'tcx>) -> Signature {
     let (call_conv, inputs, output): (CallConv, Vec<Ty>, Ty) = match sig.abi {
         Abi::Rust => (CallConv::SystemV, sig.inputs().to_vec(), sig.output()),
         Abi::C => (CallConv::SystemV, sig.inputs().to_vec(), sig.output()),
@@ -191,7 +188,7 @@ pub fn ty_fn_sig<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, ty: Ty<'tcx>) -> ty::FnS
 pub fn get_function_name_and_sig<'a, 'tcx>(
     tcx: TyCtxt<'a, 'tcx, 'tcx>,
     inst: Instance<'tcx>,
-    support_vararg: bool
+    support_vararg: bool,
 ) -> (String, Signature) {
     assert!(!inst.substs.needs_infer() && !inst.substs.has_param_types());
     let fn_ty = inst.ty(tcx);
@@ -219,7 +216,8 @@ impl<'a, 'tcx: 'a, B: Backend + 'a> FunctionCx<'a, 'tcx, B> {
     /// Instance must be monomorphized
     pub fn get_function_ref(&mut self, inst: Instance<'tcx>) -> FuncRef {
         let func_id = import_function(self.tcx, self.module, inst);
-        let func_ref = self.module
+        let func_ref = self
+            .module
             .declare_func_in_func(func_id, &mut self.bcx.func);
 
         #[cfg(debug_assertions)]
@@ -285,7 +283,12 @@ impl<'a, 'tcx: 'a, B: Backend + 'a> FunctionCx<'a, 'tcx, B> {
         if let Some(val) = self.lib_call(name, input_tys, return_ty, &args) {
             CValue::ByVal(val, return_layout)
         } else {
-            CValue::ByRef(self.bcx.ins().iconst(self.pointer_type, self.pointer_type.bytes() as i64), return_layout)
+            CValue::ByRef(
+                self.bcx
+                    .ins()
+                    .iconst(self.pointer_type, self.pointer_type.bytes() as i64),
+                return_layout,
+            )
         }
     }
 
@@ -322,13 +325,21 @@ fn add_arg_comment<'a, 'tcx: 'a>(
     let pass_mode = format!("{:?}", pass_mode);
     fx.add_global_comment(format!(
         "{msg:5} {local:>3}{local_field:<5} {param:10} {pass_mode:20} {ssa:10} {ty:?}",
-        msg=msg, local=format!("{:?}", local), local_field=local_field, param=param, pass_mode=pass_mode, ssa=format!("{:?}", ssa), ty=ty,
+        msg = msg,
+        local = format!("{:?}", local),
+        local_field = local_field,
+        param = param,
+        pass_mode = pass_mode,
+        ssa = format!("{:?}", ssa),
+        ty = ty,
     ));
 }
 
 #[cfg(debug_assertions)]
 fn add_local_header_comment(fx: &mut FunctionCx<impl Backend>) {
-    fx.add_global_comment(format!("msg   loc.idx    param    pass mode            ssa flags  ty"));
+    fx.add_global_comment(format!(
+        "msg   loc.idx    param    pass mode            ssa flags  ty"
+    ));
 }
 
 fn local_place<'a, 'tcx: 'a>(
@@ -338,7 +349,8 @@ fn local_place<'a, 'tcx: 'a>(
     is_ssa: bool,
 ) -> CPlace<'tcx> {
     let place = if is_ssa {
-        fx.bcx.declare_var(mir_var(local), fx.clif_type(layout.ty).unwrap());
+        fx.bcx
+            .declare_var(mir_var(local), fx.clif_type(layout.ty).unwrap());
         CPlace::Var(local, layout)
     } else {
         let place = CPlace::new_stack_slot(fx, layout.ty);
@@ -346,15 +358,32 @@ fn local_place<'a, 'tcx: 'a>(
         #[cfg(debug_assertions)]
         {
             let TyLayout { ty, details } = layout;
-            let ty::layout::LayoutDetails { size, align, abi: _, variants: _, fields: _ } = details;
+            let ty::layout::LayoutDetails {
+                size,
+                align,
+                abi: _,
+                variants: _,
+                fields: _,
+            } = details;
             match place {
-                CPlace::Stack(stack_slot, _) => fx.add_entity_comment(stack_slot, format!(
-                    "{:?}: {:?} size={} align={},{}",
-                    local, ty, size.bytes(), align.abi.bytes(), align.pref.bytes(),
-                )),
+                CPlace::Stack(stack_slot, _) => fx.add_entity_comment(
+                    stack_slot,
+                    format!(
+                        "{:?}: {:?} size={} align={},{}",
+                        local,
+                        ty,
+                        size.bytes(),
+                        align.abi.bytes(),
+                        align.pref.bytes(),
+                    ),
+                ),
                 CPlace::NoPlace(_) => fx.add_global_comment(format!(
                     "zst    {:?}: {:?} size={} align={}, {}",
-                    local, ty, size.bytes(), align.abi.bytes(), align.pref.bytes(),
+                    local,
+                    ty,
+                    size.bytes(),
+                    align.abi.bytes(),
+                    align.pref.bytes(),
                 )),
                 _ => unreachable!(),
             }
@@ -383,7 +412,16 @@ fn cvalue_for_param<'a, 'tcx: 'a>(
     let ebb_param = fx.bcx.append_ebb_param(start_ebb, clif_type);
 
     #[cfg(debug_assertions)]
-    add_arg_comment(fx, "arg", local, local_field, Some(ebb_param), pass_mode, ssa_flags, arg_ty);
+    add_arg_comment(
+        fx,
+        "arg",
+        local,
+        local_field,
+        Some(ebb_param),
+        pass_mode,
+        ssa_flags,
+        arg_ty,
+    );
 
     match pass_mode {
         PassMode::NoPass => unimplemented!("pass mode nopass"),
@@ -412,7 +450,16 @@ pub fn codegen_fn_prelude<'a, 'tcx: 'a>(
     #[cfg(debug_assertions)]
     {
         add_local_header_comment(fx);
-        add_arg_comment(fx, "ret", RETURN_PLACE, None, ret_param, output_pass_mode, ssa_analyzed[&RETURN_PLACE], ret_layout.ty);
+        add_arg_comment(
+            fx,
+            "ret",
+            RETURN_PLACE,
+            None,
+            ret_param,
+            output_pass_mode,
+            ssa_analyzed[&RETURN_PLACE],
+            ret_layout.ty,
+        );
     }
 
     enum ArgKind<'tcx> {
@@ -440,18 +487,22 @@ pub fn codegen_fn_prelude<'a, 'tcx: 'a>(
 
                 let mut params = Vec::new();
                 for (i, arg_ty) in tupled_arg_tys.iter().enumerate() {
-                    let param = cvalue_for_param(fx, start_ebb, local, Some(i), arg_ty, ssa_analyzed[&local]);
+                    let param = cvalue_for_param(
+                        fx,
+                        start_ebb,
+                        local,
+                        Some(i),
+                        arg_ty,
+                        ssa_analyzed[&local],
+                    );
                     params.push(param);
                 }
 
                 (local, ArgKind::Spread(params), arg_ty)
             } else {
-                let param = cvalue_for_param(fx, start_ebb, local, None, arg_ty, ssa_analyzed[&local]);
-                (
-                    local,
-                    ArgKind::Normal(param),
-                    arg_ty,
-                )
+                let param =
+                    cvalue_for_param(fx, start_ebb, local, None, arg_ty, ssa_analyzed[&local]);
+                (local, ArgKind::Normal(param), arg_ty)
             }
         })
         .collect::<Vec<(Local, ArgKind, Ty)>>();
@@ -460,7 +511,8 @@ pub fn codegen_fn_prelude<'a, 'tcx: 'a>(
 
     match output_pass_mode {
         PassMode::NoPass => {
-            fx.local_map.insert(RETURN_PLACE, CPlace::NoPlace(ret_layout));
+            fx.local_map
+                .insert(RETURN_PLACE, CPlace::NoPlace(ret_layout));
         }
         PassMode::ByVal(_) => {
             let is_ssa = !ssa_analyzed
@@ -494,7 +546,9 @@ pub fn codegen_fn_prelude<'a, 'tcx: 'a>(
             }
             ArgKind::Spread(params) => {
                 for (i, param) in params.into_iter().enumerate() {
-                    place.place_field(fx, mir::Field::new(i)).write_cvalue(fx, param);
+                    place
+                        .place_field(fx, mir::Field::new(i))
+                        .write_cvalue(fx, param);
                 }
             }
         }
@@ -553,12 +607,8 @@ pub fn codegen_terminator_call<'a, 'tcx: 'a>(
         .map(|&(ref place, bb)| (trans_place(fx, place), bb));
 
     if let ty::FnDef(def_id, substs) = fn_ty.sty {
-        let instance = ty::Instance::resolve(
-            fx.tcx,
-            ty::ParamEnv::reveal_all(),
-            def_id,
-            substs,
-        ).unwrap();
+        let instance =
+            ty::Instance::resolve(fx.tcx, ty::ParamEnv::reveal_all(), def_id, substs).unwrap();
 
         match instance.def {
             InstanceDef::Intrinsic(_) => {
@@ -637,8 +687,12 @@ pub fn codegen_call_inner<'a, 'tcx: 'a>(
 
         // Indirect call
         None => {
-            let func = trans_operand(fx, func.expect("indirect call without func Operand")).load_scalar(fx);
-            (Some(func), args.get(0).map(|arg| adjust_arg_for_abi(fx, *arg)))
+            let func = trans_operand(fx, func.expect("indirect call without func Operand"))
+                .load_scalar(fx);
+            (
+                Some(func),
+                args.get(0).map(|arg| adjust_arg_for_abi(fx, *arg)),
+            )
         }
     };
 
@@ -653,7 +707,9 @@ pub fn codegen_call_inner<'a, 'tcx: 'a>(
         .collect::<Vec<_>>();
 
     let call_inst = if let Some(func_ref) = func_ref {
-        let sig = fx.bcx.import_signature(clif_sig_from_fn_sig(fx.tcx, fn_sig));
+        let sig = fx
+            .bcx
+            .import_signature(clif_sig_from_fn_sig(fx.tcx, fn_sig));
         fx.bcx.ins().call_indirect(sig, func_ref, &call_args)
     } else {
         let func_ref = fx.get_function_ref(instance.expect("non-indirect call on non-FnDef type"));
@@ -666,14 +722,17 @@ pub fn codegen_call_inner<'a, 'tcx: 'a>(
             unimpl!("Variadic call for non-C abi {:?}", fn_sig.abi);
         }
         let sig_ref = fx.bcx.func.dfg.call_signature(call_inst).unwrap();
-        let abi_params = call_args.into_iter().map(|arg| {
-            let ty = fx.bcx.func.dfg.value_type(arg);
-            if !ty.is_int() {
-                // FIXME set %al to upperbound on float args once floats are supported
-                unimpl!("Non int ty {:?} for variadic call", ty);
-            }
-            AbiParam::new(ty)
-        }).collect::<Vec<AbiParam>>();
+        let abi_params = call_args
+            .into_iter()
+            .map(|arg| {
+                let ty = fx.bcx.func.dfg.value_type(arg);
+                if !ty.is_int() {
+                    // FIXME set %al to upperbound on float args once floats are supported
+                    unimpl!("Non int ty {:?} for variadic call", ty);
+                }
+                AbiParam::new(ty)
+            })
+            .collect::<Vec<AbiParam>>();
         fx.bcx.func.dfg.signatures[sig_ref].params = abi_params;
     }
 
@@ -700,11 +759,13 @@ pub fn codegen_drop<'a, 'tcx: 'a>(
     let fn_sig = ty_fn_sig(fx.tcx, drop_fn_ty);
 
     match get_pass_mode(fx.tcx, fn_sig.output(), true) {
-        PassMode::NoPass => {},
+        PassMode::NoPass => {}
         _ => unreachable!(),
     };
 
-    let sig = fx.bcx.import_signature(clif_sig_from_fn_sig(fx.tcx, fn_sig));
+    let sig = fx
+        .bcx
+        .import_signature(clif_sig_from_fn_sig(fx.tcx, fn_sig));
     fx.bcx.ins().call_indirect(sig, drop_fn, &[ptr]);
 }
 

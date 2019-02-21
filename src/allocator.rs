@@ -15,14 +15,10 @@ use rustc_allocator::{AllocatorTy, ALLOCATOR_METHODS};
 
 /// Returns whether an allocator shim was created
 pub fn codegen(sess: &Session, module: &mut Module<impl Backend + 'static>) -> bool {
-    let any_dynamic_crate = sess
-        .dependency_formats
-        .borrow()
-        .iter()
-        .any(|(_, list)| {
-            use rustc::middle::dependency_format::Linkage;
-            list.iter().any(|&linkage| linkage == Linkage::Dynamic)
-        });
+    let any_dynamic_crate = sess.dependency_formats.borrow().iter().any(|(_, list)| {
+        use rustc::middle::dependency_format::Linkage;
+        list.iter().any(|&linkage| linkage == Linkage::Dynamic)
+    });
     if any_dynamic_crate {
         false
     } else if let Some(kind) = *sess.allocator_kind.get() {
