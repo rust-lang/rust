@@ -59,7 +59,7 @@ extern "C" {
 
 #[cfg(test)]
 mod tests {
-    use core_arch::x86::*;
+    use crate::core_arch::x86::*;
     use stdsimd_test::simd_test;
 
     #[simd_test(enable = "sse2")]

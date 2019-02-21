@@ -1,8 +1,13 @@
 //! Streaming SIMD Extensions 3 (SSE3)
 
-use core_arch::simd::*;
-use core_arch::simd_llvm::{simd_shuffle2, simd_shuffle4};
-use core_arch::x86::*;
+use crate::{
+    core_arch::{
+        simd::*,
+        simd_llvm::{simd_shuffle2, simd_shuffle4},
+        x86::*,
+    },
+    mem::transmute,
+};
 
 #[cfg(test)]
 use stdsimd_test::assert_instr;
@@ -89,7 +94,7 @@ pub unsafe fn _mm_hsub_ps(a: __m128, b: __m128) -> __m128 {
 #[cfg_attr(test, assert_instr(lddqu))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _mm_lddqu_si128(mem_addr: *const __m128i) -> __m128i {
-    mem::transmute(lddqu(mem_addr as *const _))
+    transmute(lddqu(mem_addr as *const _))
 }
 
 /// Duplicate the low double-precision (64-bit) floating-point element
@@ -162,7 +167,7 @@ extern "C" {
 mod tests {
     use stdsimd_test::simd_test;
 
-    use core_arch::x86::*;
+    use crate::core_arch::x86::*;
 
     #[simd_test(enable = "sse3")]
     unsafe fn test_mm_addsub_ps() {

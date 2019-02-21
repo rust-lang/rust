@@ -25,7 +25,7 @@ pub unsafe fn _rev_u32(x: u32) -> u32 {
 
 #[cfg(test)]
 mod tests {
-    use core_arch::arm::v6;
+    use crate::core_arch::arm::v6;
 
     #[test]
     fn _rev_u16() {

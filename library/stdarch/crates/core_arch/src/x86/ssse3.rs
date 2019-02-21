@@ -1,9 +1,9 @@
 //! Supplemental Streaming SIMD Extensions 3 (SSSE3)
 
-use core_arch::simd::*;
-use core_arch::simd_llvm::simd_shuffle16;
-use core_arch::x86::*;
-use mem;
+use crate::{
+    core_arch::{simd::*, simd_llvm::*, x86::*},
+    mem::transmute,
+};
 
 #[cfg(test)]
 use stdsimd_test::assert_instr;
@@ -17,7 +17,7 @@ use stdsimd_test::assert_instr;
 #[cfg_attr(test, assert_instr(pabsb))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _mm_abs_epi8(a: __m128i) -> __m128i {
-    mem::transmute(pabsb128(a.as_i8x16()))
+    transmute(pabsb128(a.as_i8x16()))
 }
 
 /// Computes the absolute value of each of the packed 16-bit signed integers in
@@ -30,7 +30,7 @@ pub unsafe fn _mm_abs_epi8(a: __m128i) -> __m128i {
 #[cfg_attr(test, assert_instr(pabsw))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _mm_abs_epi16(a: __m128i) -> __m128i {
-    mem::transmute(pabsw128(a.as_i16x8()))
+    transmute(pabsw128(a.as_i16x8()))
 }
 
 /// Computes the absolute value of each of the packed 32-bit signed integers in
@@ -43,7 +43,7 @@ pub unsafe fn _mm_abs_epi16(a: __m128i) -> __m128i {
 #[cfg_attr(test, assert_instr(pabsd))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _mm_abs_epi32(a: __m128i) -> __m128i {
-    mem::transmute(pabsd128(a.as_i32x4()))
+    transmute(pabsd128(a.as_i32x4()))
 }
 
 /// Shuffles bytes from `a` according to the content of `b`.
@@ -77,7 +77,7 @@ pub unsafe fn _mm_abs_epi32(a: __m128i) -> __m128i {
 #[cfg_attr(test, assert_instr(pshufb))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _mm_shuffle_epi8(a: __m128i, b: __m128i) -> __m128i {
-    mem::transmute(pshufb128(a.as_u8x16(), b.as_u8x16()))
+    transmute(pshufb128(a.as_u8x16(), b.as_u8x16()))
 }
 
 /// Concatenate 16-byte blocks in `a` and `b` into a 32-byte temporary result,
@@ -151,7 +151,7 @@ pub unsafe fn _mm_alignr_epi8(a: __m128i, b: __m128i, n: i32) -> __m128i {
         15 => shuffle!(15),
         _ => shuffle!(16),
     };
-    mem::transmute(r)
+    transmute(r)
 }
 
 /// Horizontally adds the adjacent pairs of values contained in 2 packed
@@ -163,7 +163,7 @@ pub unsafe fn _mm_alignr_epi8(a: __m128i, b: __m128i, n: i32) -> __m128i {
 #[cfg_attr(test, assert_instr(phaddw))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _mm_hadd_epi16(a: __m128i, b: __m128i) -> __m128i {
-    mem::transmute(phaddw128(a.as_i16x8(), b.as_i16x8()))
+    transmute(phaddw128(a.as_i16x8(), b.as_i16x8()))
 }
 
 /// Horizontally adds the adjacent pairs of values contained in 2 packed
@@ -176,7 +176,7 @@ pub unsafe fn _mm_hadd_epi16(a: __m128i, b: __m128i) -> __m128i {
 #[cfg_attr(test, assert_instr(phaddsw))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _mm_hadds_epi16(a: __m128i, b: __m128i) -> __m128i {
-    mem::transmute(phaddsw128(a.as_i16x8(), b.as_i16x8()))
+    transmute(phaddsw128(a.as_i16x8(), b.as_i16x8()))
 }
 
 /// Horizontally adds the adjacent pairs of values contained in 2 packed
@@ -188,7 +188,7 @@ pub unsafe fn _mm_hadds_epi16(a: __m128i, b: __m128i) -> __m128i {
 #[cfg_attr(test, assert_instr(phaddd))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _mm_hadd_epi32(a: __m128i, b: __m128i) -> __m128i {
-    mem::transmute(phaddd128(a.as_i32x4(), b.as_i32x4()))
+    transmute(phaddd128(a.as_i32x4(), b.as_i32x4()))
 }
 
 /// Horizontally subtract the adjacent pairs of values contained in 2
@@ -200,7 +200,7 @@ pub unsafe fn _mm_hadd_epi32(a: __m128i, b: __m128i) -> __m128i {
 #[cfg_attr(test, assert_instr(phsubw))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _mm_hsub_epi16(a: __m128i, b: __m128i) -> __m128i {
-    mem::transmute(phsubw128(a.as_i16x8(), b.as_i16x8()))
+    transmute(phsubw128(a.as_i16x8(), b.as_i16x8()))
 }
 
 /// Horizontally subtract the adjacent pairs of values contained in 2
@@ -214,7 +214,7 @@ pub unsafe fn _mm_hsub_epi16(a: __m128i, b: __m128i) -> __m128i {
 #[cfg_attr(test, assert_instr(phsubsw))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _mm_hsubs_epi16(a: __m128i, b: __m128i) -> __m128i {
-    mem::transmute(phsubsw128(a.as_i16x8(), b.as_i16x8()))
+    transmute(phsubsw128(a.as_i16x8(), b.as_i16x8()))
 }
 
 /// Horizontally subtract the adjacent pairs of values contained in 2
@@ -226,7 +226,7 @@ pub unsafe fn _mm_hsubs_epi16(a: __m128i, b: __m128i) -> __m128i {
 #[cfg_attr(test, assert_instr(phsubd))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _mm_hsub_epi32(a: __m128i, b: __m128i) -> __m128i {
-    mem::transmute(phsubd128(a.as_i32x4(), b.as_i32x4()))
+    transmute(phsubd128(a.as_i32x4(), b.as_i32x4()))
 }
 
 /// Multiplies corresponding pairs of packed 8-bit unsigned integer
@@ -241,7 +241,7 @@ pub unsafe fn _mm_hsub_epi32(a: __m128i, b: __m128i) -> __m128i {
 #[cfg_attr(test, assert_instr(pmaddubsw))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _mm_maddubs_epi16(a: __m128i, b: __m128i) -> __m128i {
-    mem::transmute(pmaddubsw128(a.as_u8x16(), b.as_i8x16()))
+    transmute(pmaddubsw128(a.as_u8x16(), b.as_i8x16()))
 }
 
 /// Multiplies packed 16-bit signed integer values, truncate the 32-bit
@@ -254,7 +254,7 @@ pub unsafe fn _mm_maddubs_epi16(a: __m128i, b: __m128i) -> __m128i {
 #[cfg_attr(test, assert_instr(pmulhrsw))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _mm_mulhrs_epi16(a: __m128i, b: __m128i) -> __m128i {
-    mem::transmute(pmulhrsw128(a.as_i16x8(), b.as_i16x8()))
+    transmute(pmulhrsw128(a.as_i16x8(), b.as_i16x8()))
 }
 
 /// Negates packed 8-bit integers in `a` when the corresponding signed 8-bit
@@ -268,7 +268,7 @@ pub unsafe fn _mm_mulhrs_epi16(a: __m128i, b: __m128i) -> __m128i {
 #[cfg_attr(test, assert_instr(psignb))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _mm_sign_epi8(a: __m128i, b: __m128i) -> __m128i {
-    mem::transmute(psignb128(a.as_i8x16(), b.as_i8x16()))
+    transmute(psignb128(a.as_i8x16(), b.as_i8x16()))
 }
 
 /// Negates packed 16-bit integers in `a` when the corresponding signed 16-bit
@@ -282,7 +282,7 @@ pub unsafe fn _mm_sign_epi8(a: __m128i, b: __m128i) -> __m128i {
 #[cfg_attr(test, assert_instr(psignw))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _mm_sign_epi16(a: __m128i, b: __m128i) -> __m128i {
-    mem::transmute(psignw128(a.as_i16x8(), b.as_i16x8()))
+    transmute(psignw128(a.as_i16x8(), b.as_i16x8()))
 }
 
 /// Negates packed 32-bit integers in `a` when the corresponding signed 32-bit
@@ -296,7 +296,7 @@ pub unsafe fn _mm_sign_epi16(a: __m128i, b: __m128i) -> __m128i {
 #[cfg_attr(test, assert_instr(psignd))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _mm_sign_epi32(a: __m128i, b: __m128i) -> __m128i {
-    mem::transmute(psignd128(a.as_i32x4(), b.as_i32x4()))
+    transmute(psignd128(a.as_i32x4(), b.as_i32x4()))
 }
 
 /// Computes the absolute value of packed 8-bit integers in `a` and
@@ -562,7 +562,7 @@ extern "C" {
 mod tests {
     use stdsimd_test::simd_test;
 
-    use core_arch::x86::*;
+    use crate::core_arch::x86::*;
 
     #[simd_test(enable = "ssse3")]
     unsafe fn test_mm_abs_epi8() {
@@ -794,7 +794,7 @@ mod tests {
         let a = _mm_setr_pi32(0x89ABCDEF_u32 as i32, 0x01234567_u32 as i32);
         let b = _mm_setr_pi32(0xBBAA9988_u32 as i32, 0xFFDDEECC_u32 as i32);
         let r = _mm_alignr_pi8(a, b, 4);
-        assert_eq_m64(r, ::std::mem::transmute(0x89abcdefffddeecc_u64));
+        assert_eq_m64(r, transmute(0x89abcdefffddeecc_u64));
     }
 
     #[simd_test(enable = "ssse3,mmx")]

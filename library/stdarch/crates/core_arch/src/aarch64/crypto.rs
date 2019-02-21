@@ -1,5 +1,4 @@
-use core_arch::arm::uint32x4_t;
-use core_arch::arm::uint8x16_t;
+use crate::core_arch::arm::{uint32x4_t, uint8x16_t};
 
 #[allow(improper_ctypes)]
 extern "C" {
@@ -164,8 +163,7 @@ pub unsafe fn vsha256su1q_u32(
 
 #[cfg(test)]
 mod tests {
-    use core_arch::aarch64::*;
-    use core_arch::simd::*;
+    use crate::core_arch::{aarch64::*, simd::*};
     use std::mem;
     use stdsimd_test::simd_test;
 

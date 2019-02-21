@@ -1,6 +1,6 @@
 //! `x86_64` Streaming SIMD Extensions (SSE)
 
-use core_arch::x86::*;
+use crate::core_arch::x86::*;
 
 #[cfg(test)]
 use stdsimd_test::assert_instr;
@@ -70,12 +70,9 @@ pub unsafe fn _mm_cvtsi64_ss(a: __m128, b: i64) -> __m128 {
 
 #[cfg(test)]
 mod tests {
-    use std::f32::NAN;
-    use std::i64::MIN;
-
+    use crate::core_arch::arch::x86_64::*;
+    use std::{f32::NAN, i64::MIN};
     use stdsimd_test::simd_test;
-
-    use core_arch::arch::x86_64::*;
 
     #[simd_test(enable = "sse")]
     unsafe fn test_mm_cvtss_si64() {

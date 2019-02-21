@@ -35,8 +35,8 @@ pub unsafe fn __msa_add_a_b(a: i8x16, b: i8x16) -> i8x16 {
 
 #[cfg(test)]
 mod tests {
-    use core_arch::mips64::msa;
-    use simd::*;
+    use crate::core_arch::mips64::msa;
+    use crate::simd::*;
     use stdsimd_test::simd_test;
 
     #[simd_test(enable = "msa")]

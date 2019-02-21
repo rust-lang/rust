@@ -1,7 +1,6 @@
 //! `x86` and `x86_64` intrinsics.
 
-use mem;
-use prelude::v1::*;
+use crate::{intrinsics, marker::Sized, mem::transmute};
 
 #[macro_use]
 mod macros;
@@ -358,43 +357,43 @@ pub(crate) trait m128iExt: Sized {
     fn as_m128i(self) -> __m128i;
 
     #[inline]
-    fn as_u8x16(self) -> ::core_arch::simd::u8x16 {
-        unsafe { mem::transmute(self.as_m128i()) }
+    fn as_u8x16(self) -> crate::core_arch::simd::u8x16 {
+        unsafe { transmute(self.as_m128i()) }
     }
 
     #[inline]
-    fn as_u16x8(self) -> ::core_arch::simd::u16x8 {
-        unsafe { mem::transmute(self.as_m128i()) }
+    fn as_u16x8(self) -> crate::core_arch::simd::u16x8 {
+        unsafe { transmute(self.as_m128i()) }
     }
 
     #[inline]
-    fn as_u32x4(self) -> ::core_arch::simd::u32x4 {
-        unsafe { mem::transmute(self.as_m128i()) }
+    fn as_u32x4(self) -> crate::core_arch::simd::u32x4 {
+        unsafe { transmute(self.as_m128i()) }
     }
 
     #[inline]
-    fn as_u64x2(self) -> ::core_arch::simd::u64x2 {
-        unsafe { mem::transmute(self.as_m128i()) }
+    fn as_u64x2(self) -> crate::core_arch::simd::u64x2 {
+        unsafe { transmute(self.as_m128i()) }
     }
 
     #[inline]
-    fn as_i8x16(self) -> ::core_arch::simd::i8x16 {
-        unsafe { mem::transmute(self.as_m128i()) }
+    fn as_i8x16(self) -> crate::core_arch::simd::i8x16 {
+        unsafe { transmute(self.as_m128i()) }
     }
 
     #[inline]
-    fn as_i16x8(self) -> ::core_arch::simd::i16x8 {
-        unsafe { mem::transmute(self.as_m128i()) }
+    fn as_i16x8(self) -> crate::core_arch::simd::i16x8 {
+        unsafe { transmute(self.as_m128i()) }
     }
 
     #[inline]
-    fn as_i32x4(self) -> ::core_arch::simd::i32x4 {
-        unsafe { mem::transmute(self.as_m128i()) }
+    fn as_i32x4(self) -> crate::core_arch::simd::i32x4 {
+        unsafe { transmute(self.as_m128i()) }
     }
 
     #[inline]
-    fn as_i64x2(self) -> ::core_arch::simd::i64x2 {
-        unsafe { mem::transmute(self.as_m128i()) }
+    fn as_i64x2(self) -> crate::core_arch::simd::i64x2 {
+        unsafe { transmute(self.as_m128i()) }
     }
 }
 
@@ -411,43 +410,43 @@ pub(crate) trait m256iExt: Sized {
     fn as_m256i(self) -> __m256i;
 
     #[inline]
-    fn as_u8x32(self) -> ::core_arch::simd::u8x32 {
-        unsafe { mem::transmute(self.as_m256i()) }
+    fn as_u8x32(self) -> crate::core_arch::simd::u8x32 {
+        unsafe { transmute(self.as_m256i()) }
     }
 
     #[inline]
-    fn as_u16x16(self) -> ::core_arch::simd::u16x16 {
-        unsafe { mem::transmute(self.as_m256i()) }
+    fn as_u16x16(self) -> crate::core_arch::simd::u16x16 {
+        unsafe { transmute(self.as_m256i()) }
     }
 
     #[inline]
-    fn as_u32x8(self) -> ::core_arch::simd::u32x8 {
-        unsafe { mem::transmute(self.as_m256i()) }
+    fn as_u32x8(self) -> crate::core_arch::simd::u32x8 {
+        unsafe { transmute(self.as_m256i()) }
     }
 
     #[inline]
-    fn as_u64x4(self) -> ::core_arch::simd::u64x4 {
-        unsafe { mem::transmute(self.as_m256i()) }
+    fn as_u64x4(self) -> crate::core_arch::simd::u64x4 {
+        unsafe { transmute(self.as_m256i()) }
     }
 
     #[inline]
-    fn as_i8x32(self) -> ::core_arch::simd::i8x32 {
-        unsafe { mem::transmute(self.as_m256i()) }
+    fn as_i8x32(self) -> crate::core_arch::simd::i8x32 {
+        unsafe { transmute(self.as_m256i()) }
     }
 
     #[inline]
-    fn as_i16x16(self) -> ::core_arch::simd::i16x16 {
-        unsafe { mem::transmute(self.as_m256i()) }
+    fn as_i16x16(self) -> crate::core_arch::simd::i16x16 {
+        unsafe { transmute(self.as_m256i()) }
     }
 
     #[inline]
-    fn as_i32x8(self) -> ::core_arch::simd::i32x8 {
-        unsafe { mem::transmute(self.as_m256i()) }
+    fn as_i32x8(self) -> crate::core_arch::simd::i32x8 {
+        unsafe { transmute(self.as_m256i()) }
     }
 
     #[inline]
-    fn as_i64x4(self) -> ::core_arch::simd::i64x4 {
-        unsafe { mem::transmute(self.as_m256i()) }
+    fn as_i64x4(self) -> crate::core_arch::simd::i64x4 {
+        unsafe { transmute(self.as_m256i()) }
     }
 }
 
@@ -464,8 +463,8 @@ pub(crate) trait m512iExt: Sized {
     fn as_m512i(self) -> __m512i;
 
     #[inline]
-    fn as_i32x16(self) -> ::core_arch::simd::i32x16 {
-        unsafe { mem::transmute(self.as_m512i()) }
+    fn as_i32x16(self) -> crate::core_arch::simd::i32x16 {
+        unsafe { transmute(self.as_m512i()) }
     }
 }
 
@@ -555,7 +554,7 @@ use stdsimd_test::assert_instr;
 #[cfg_attr(test, assert_instr(ud2))]
 #[inline]
 pub unsafe fn ud2() -> ! {
-    ::intrinsics::abort()
+    intrinsics::abort()
 }
 
 mod avx512f;

@@ -65,6 +65,8 @@
 #[cfg(test)]
 use stdsimd_test::assert_instr;
 
+use crate::mem::transmute;
+
 types! {
     /// ARM-specific 32-bit wide vector of four packed `i8`.
     pub struct int8x4_t(i8, i8, i8, i8);
@@ -78,7 +80,7 @@ types! {
 
 macro_rules! dsp_call {
     ($name:expr, $a:expr, $b:expr) => {
-        ::mem::transmute($name(::mem::transmute($a), ::mem::transmute($b)))
+        transmute($name(transmute($a), transmute($b)))
     };
 }
 
@@ -253,7 +255,7 @@ pub unsafe fn __sadd8(a: int8x4_t, b: int8x4_t) -> int8x4_t {
 #[inline]
 #[cfg_attr(test, assert_instr(smlad))]
 pub unsafe fn __smlad(a: int16x2_t, b: int16x2_t, c: i32) -> i32 {
-    arm_smlad(::mem::transmute(a), ::mem::transmute(b), c)
+    arm_smlad(transmute(a), transmute(b), c)
 }
 
 /// Dual 16-bit Signed Multiply with Subtraction  of products
@@ -264,7 +266,7 @@ pub unsafe fn __smlad(a: int16x2_t, b: int16x2_t, c: i32) -> i32 {
 #[inline]
 #[cfg_attr(test, assert_instr(smlsd))]
 pub unsafe fn __smlsd(a: int16x2_t, b: int16x2_t, c: i32) -> i32 {
-    arm_smlsd(::mem::transmute(a), ::mem::transmute(b), c)
+    arm_smlsd(transmute(a), transmute(b), c)
 }
 
 /// Returns the 16-bit signed equivalent of
@@ -357,7 +359,7 @@ pub unsafe fn __shsub16(a: int16x2_t, b: int16x2_t) -> int16x2_t {
 #[inline]
 #[cfg_attr(test, assert_instr(smuad))]
 pub unsafe fn __smuad(a: int16x2_t, b: int16x2_t) -> i32 {
-    arm_smuad(::mem::transmute(a), ::mem::transmute(b))
+    arm_smuad(transmute(a), transmute(b))
 }
 
 /// Signed Dual Multiply Add Reversed.
@@ -370,7 +372,7 @@ pub unsafe fn __smuad(a: int16x2_t, b: int16x2_t) -> i32 {
 #[inline]
 #[cfg_attr(test, assert_instr(smuadx))]
 pub unsafe fn __smuadx(a: int16x2_t, b: int16x2_t) -> i32 {
-    arm_smuadx(::mem::transmute(a), ::mem::transmute(b))
+    arm_smuadx(transmute(a), transmute(b))
 }
 
 /// Signed Dual Multiply Subtract.
@@ -383,7 +385,7 @@ pub unsafe fn __smuadx(a: int16x2_t, b: int16x2_t) -> i32 {
 #[inline]
 #[cfg_attr(test, assert_instr(smusd))]
 pub unsafe fn __smusd(a: int16x2_t, b: int16x2_t) -> i32 {
-    arm_smusd(::mem::transmute(a), ::mem::transmute(b))
+    arm_smusd(transmute(a), transmute(b))
 }
 
 /// Signed Dual Multiply Subtract Reversed.
@@ -396,7 +398,7 @@ pub unsafe fn __smusd(a: int16x2_t, b: int16x2_t) -> i32 {
 #[inline]
 #[cfg_attr(test, assert_instr(smusdx))]
 pub unsafe fn __smusdx(a: int16x2_t, b: int16x2_t) -> i32 {
-    arm_smusdx(::mem::transmute(a), ::mem::transmute(b))
+    arm_smusdx(transmute(a), transmute(b))
 }
 
 /// Sum of 8-bit absolute differences.
@@ -408,7 +410,7 @@ pub unsafe fn __smusdx(a: int16x2_t, b: int16x2_t) -> i32 {
 #[inline]
 #[cfg_attr(test, assert_instr(usad8))]
 pub unsafe fn __usad8(a: int8x4_t, b: int8x4_t) -> u32 {
-    arm_usad8(::mem::transmute(a), ::mem::transmute(b))
+    arm_usad8(transmute(a), transmute(b))
 }
 
 /// Sum of 8-bit absolute differences and constant.
@@ -425,8 +427,8 @@ pub unsafe fn __usada8(a: int8x4_t, b: int8x4_t, c: u32) -> u32 {
 
 #[cfg(test)]
 mod tests {
-    use core_arch::simd::{i16x2, i8x4};
-    use std::mem;
+    use crate::core_arch::simd::{i16x2, i8x4};
+    use std::mem::transmute;
     use stdsimd_test::simd_test;
 
     #[test]
@@ -533,7 +535,7 @@ mod tests {
         unsafe {
             let a = i16x2::new(1, 2);
             let b = i16x2::new(3, 4);
-            let r = super::__smlad(::mem::transmute(a), ::mem::transmute(b), 10);
+            let r = super::__smlad(transmute(a), transmute(b), 10);
             assert_eq!(r, (1 * 3) + (2 * 4) + 10);
         }
     }
@@ -543,7 +545,7 @@ mod tests {
         unsafe {
             let a = i16x2::new(1, 2);
             let b = i16x2::new(3, 4);
-            let r = super::__smlsd(::mem::transmute(a), ::mem::transmute(b), 10);
+            let r = super::__smlsd(transmute(a), transmute(b), 10);
             assert_eq!(r, ((1 * 3) - (2 * 4)) + 10);
         }
     }
@@ -554,7 +556,7 @@ mod tests {
             let a = i8x4::new(1, 2, 3, ::std::i8::MAX);
             let b = i8x4::new(4, 3, 2, 2);
             // call sadd8() to set GE bits
-            super::__sadd8(::mem::transmute(a), ::mem::transmute(b));
+            super::__sadd8(transmute(a), transmute(b));
             let c = i8x4::new(1, 2, 3, ::std::i8::MAX);
             let r: i8x4 = dsp_call!(super::__sel, a, b);
             assert_eq!(r, c);
@@ -610,7 +612,7 @@ mod tests {
         unsafe {
             let a = i16x2::new(1, 2);
             let b = i16x2::new(5, 4);
-            let r = super::__smuad(::mem::transmute(a), ::mem::transmute(b));
+            let r = super::__smuad(transmute(a), transmute(b));
             assert_eq!(r, 13);
         }
     }
@@ -620,7 +622,7 @@ mod tests {
         unsafe {
             let a = i16x2::new(1, 2);
             let b = i16x2::new(5, 4);
-            let r = super::__smuadx(::mem::transmute(a), ::mem::transmute(b));
+            let r = super::__smuadx(transmute(a), transmute(b));
             assert_eq!(r, 14);
         }
     }
@@ -630,7 +632,7 @@ mod tests {
         unsafe {
             let a = i16x2::new(1, 2);
             let b = i16x2::new(5, 4);
-            let r = super::__smusd(::mem::transmute(a), ::mem::transmute(b));
+            let r = super::__smusd(transmute(a), transmute(b));
             assert_eq!(r, -3);
         }
     }
@@ -640,7 +642,7 @@ mod tests {
         unsafe {
             let a = i16x2::new(1, 2);
             let b = i16x2::new(5, 4);
-            let r = super::__smusdx(::mem::transmute(a), ::mem::transmute(b));
+            let r = super::__smusdx(transmute(a), transmute(b));
             assert_eq!(r, -6);
         }
     }
@@ -650,7 +652,7 @@ mod tests {
         unsafe {
             let a = i8x4::new(1, 2, 3, 4);
             let b = i8x4::new(4, 3, 2, 1);
-            let r = super::__usad8(::mem::transmute(a), ::mem::transmute(b));
+            let r = super::__usad8(transmute(a), transmute(b));
             assert_eq!(r, 8);
         }
     }
@@ -661,7 +663,7 @@ mod tests {
             let a = i8x4::new(1, 2, 3, 4);
             let b = i8x4::new(4, 3, 2, 1);
             let c = 10;
-            let r = super::__usada8(::mem::transmute(a), ::mem::transmute(b), c);
+            let r = super::__usada8(transmute(a), transmute(b), c);
             assert_eq!(r, 8 + c);
         }
     }

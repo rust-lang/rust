@@ -52,7 +52,7 @@ pub unsafe fn __qsub(a: i32, b: i32) -> i32 {
 
 #[cfg(test)]
 mod tests {
-    use core_arch::arm::*;
+    use crate::core_arch::arm::*;
     use std::mem;
     use stdsimd_test::simd_test;
 

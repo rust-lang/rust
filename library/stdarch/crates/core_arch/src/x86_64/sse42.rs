@@ -23,7 +23,7 @@ pub unsafe fn _mm_crc32_u64(crc: u64, v: u64) -> u64 {
 
 #[cfg(test)]
 mod tests {
-    use core_arch::arch::x86_64::*;
+    use crate::core_arch::arch::x86_64::*;
 
     use stdsimd_test::simd_test;
 

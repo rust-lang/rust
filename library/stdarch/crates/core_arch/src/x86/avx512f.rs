@@ -1,7 +1,7 @@
-use core_arch::simd::*;
-use core_arch::simd_llvm::*;
-use core_arch::x86::*;
-use mem;
+use crate::{
+    core_arch::{simd::*, simd_llvm::*, x86::*},
+    mem::{self, transmute},
+};
 
 #[cfg(test)]
 use stdsimd_test::assert_instr;
@@ -18,7 +18,7 @@ pub unsafe fn _mm512_abs_epi32(a: __m512i) -> __m512i {
     let zero: i32x16 = mem::zeroed();
     let sub = simd_sub(zero, a);
     let cmp: i32x16 = simd_gt(a, zero);
-    mem::transmute(simd_select(cmp, a, sub))
+    transmute(simd_select(cmp, a, sub))
 }
 
 /// Computes the absolute value of packed 32-bit integers in `a`, and store the
@@ -31,7 +31,7 @@ pub unsafe fn _mm512_abs_epi32(a: __m512i) -> __m512i {
 #[cfg_attr(test, assert_instr(vpabsd))]
 pub unsafe fn _mm512_mask_abs_epi32(src: __m512i, k: __mmask16, a: __m512i) -> __m512i {
     let abs = _mm512_abs_epi32(a).as_i32x16();
-    mem::transmute(simd_select_bitmask(k, abs, src.as_i32x16()))
+    transmute(simd_select_bitmask(k, abs, src.as_i32x16()))
 }
 
 /// Computes the absolute value of packed 32-bit integers in `a`, and store the
@@ -45,7 +45,7 @@ pub unsafe fn _mm512_mask_abs_epi32(src: __m512i, k: __mmask16, a: __m512i) -> _
 pub unsafe fn _mm512_maskz_abs_epi32(k: __mmask16, a: __m512i) -> __m512i {
     let abs = _mm512_abs_epi32(a).as_i32x16();
     let zero = _mm512_setzero_si512().as_i32x16();
-    mem::transmute(simd_select_bitmask(k, abs, zero))
+    transmute(simd_select_bitmask(k, abs, zero))
 }
 
 /// Returns vector of type `__m512i` with all elements set to zero.
@@ -84,14 +84,14 @@ pub unsafe fn _mm512_setr_epi32(
     let r = i32x16(
         e15, e14, e13, e12, e11, e10, e9, e8, e7, e6, e5, e4, e3, e2, e1, e0,
     );
-    mem::transmute(r)
+    transmute(r)
 }
 
 /// Broadcast 64-bit integer `a` to all elements of `dst`.
 #[inline]
 #[target_feature(enable = "avx512f")]
 pub unsafe fn _mm512_set1_epi64(a: i64) -> __m512i {
-    mem::transmute(i64x8::splat(a))
+    transmute(i64x8::splat(a))
 }
 
 #[cfg(test)]
@@ -99,7 +99,7 @@ mod tests {
     use std;
     use stdsimd_test::simd_test;
 
-    use core_arch::x86::*;
+    use crate::core_arch::x86::*;
 
     #[simd_test(enable = "avx512f")]
     unsafe fn test_mm512_abs_epi32() {

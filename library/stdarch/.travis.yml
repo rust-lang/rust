@@ -96,16 +96,6 @@ matrix:
 install: travis_retry rustup target add $TARGET
 script:
   - cargo generate-lockfile
-  - sed 's@2015@2018@g' crates/core_arch/Cargo.toml > crates/core_arch/Cargo2018.toml
-  - sed 's@2015@2018@g' crates/std_detect/Cargo.toml > crates/std_detect/Cargo2018.toml
-  - mv crates/core_arch/Cargo.toml crates/core_arch/Cargo.toml.bak
-  - mv crates/std_detect/Cargo.toml crates/std_detect/Cargo.toml.bak
-  - mv crates/core_arch/Cargo2018.toml crates/core_arch/Cargo.toml
-  - mv crates/std_detect/Cargo2018.toml crates/std_detect/Cargo.toml
-  - cargo build --target="${TARGET}" --manifest-path=crates/core_arch/Cargo.toml
-  - cargo build --target="${TARGET}" --manifest-path=crates/std_detect/Cargo.toml
-  - mv crates/core_arch/Cargo.toml.bak crates/core_arch/Cargo.toml
-  - mv crates/std_detect/Cargo.toml.bak crates/std_detect/Cargo.toml
   - |
     if [ "${NO_DOCKER}" = "1" ]; then
         ci/run.sh $TARGET

@@ -23,7 +23,7 @@ pub mod arch {
     #[stable(feature = "simd_x86", since = "1.27.0")]
     pub mod x86 {
         #[stable(feature = "simd_x86", since = "1.27.0")]
-        pub use core_arch::x86::*;
+        pub use crate::core_arch::x86::*;
     }
 
     /// Platform-specific intrinsics for the `x86_64` platform.
@@ -34,9 +34,9 @@ pub mod arch {
     #[stable(feature = "simd_x86", since = "1.27.0")]
     pub mod x86_64 {
         #[stable(feature = "simd_x86", since = "1.27.0")]
-        pub use core_arch::x86::*;
+        pub use crate::core_arch::x86::*;
         #[stable(feature = "simd_x86", since = "1.27.0")]
-        pub use core_arch::x86_64::*;
+        pub use crate::core_arch::x86_64::*;
     }
 
     /// Platform-specific intrinsics for the `arm` platform.
@@ -46,7 +46,7 @@ pub mod arch {
     #[doc(cfg(target_arch = "arm"))]
     #[unstable(feature = "stdsimd", issue = "27731")]
     pub mod arm {
-        pub use core_arch::arm::*;
+        pub use crate::core_arch::arm::*;
     }
 
     /// Platform-specific intrinsics for the `aarch64` platform.
@@ -56,8 +56,8 @@ pub mod arch {
     #[doc(cfg(target_arch = "aarch64"))]
     #[unstable(feature = "stdsimd", issue = "27731")]
     pub mod aarch64 {
-        pub use core_arch::aarch64::*;
-        pub use core_arch::arm::*;
+        pub use crate::core_arch::aarch64::*;
+        pub use crate::core_arch::arm::*;
     }
 
     /// Platform-specific intrinsics for the `wasm32` platform.
@@ -68,7 +68,7 @@ pub mod arch {
     #[stable(feature = "simd_wasm32", since = "1.33.0")]
     pub mod wasm32 {
         #[stable(feature = "simd_wasm32", since = "1.33.0")]
-        pub use core_arch::wasm32::*;
+        pub use crate::core_arch::wasm32::*;
     }
 
     /// Platform-specific intrinsics for the `mips` platform.
@@ -78,7 +78,7 @@ pub mod arch {
     #[doc(cfg(target_arch = "mips"))]
     #[unstable(feature = "stdsimd", issue = "27731")]
     pub mod mips {
-        pub use core_arch::mips::*;
+        pub use crate::core_arch::mips::*;
     }
 
     /// Platform-specific intrinsics for the `mips64` platform.
@@ -88,7 +88,7 @@ pub mod arch {
     #[doc(cfg(target_arch = "mips64"))]
     #[unstable(feature = "stdsimd", issue = "27731")]
     pub mod mips64 {
-        pub use core_arch::mips::*;
+        pub use crate::core_arch::mips::*;
     }
 
     /// Platform-specific intrinsics for the `PowerPC` platform.
@@ -98,7 +98,7 @@ pub mod arch {
     #[doc(cfg(target_arch = "powerpc"))]
     #[unstable(feature = "stdsimd", issue = "27731")]
     pub mod powerpc {
-        pub use core_arch::powerpc::*;
+        pub use crate::core_arch::powerpc::*;
     }
 
     /// Platform-specific intrinsics for the `PowerPC64` platform.
@@ -108,7 +108,7 @@ pub mod arch {
     #[doc(cfg(target_arch = "powerpc64"))]
     #[unstable(feature = "stdsimd", issue = "27731")]
     pub mod powerpc64 {
-        pub use core_arch::powerpc64::*;
+        pub use crate::core_arch::powerpc64::*;
     }
 
     /// Platform-specific intrinsics for the `NVPTX` platform.
@@ -118,7 +118,7 @@ pub mod arch {
     #[doc(cfg(any(target_arch = "nvptx", target_arch = "nvptx64")))]
     #[unstable(feature = "stdsimd", issue = "27731")]
     pub mod nvptx {
-        pub use core_arch::nvptx::*;
+        pub use crate::core_arch::nvptx::*;
     }
 }
 

@@ -125,8 +125,7 @@ extern "C" {
 mod tests {
     use stdsimd_test::simd_test;
 
-    use core_arch::x86::*;
-    use core_arch::x86_64::*;
+    use crate::core_arch::{x86::*, x86_64::*};
 
     #[simd_test(enable = "bmi1")]
     unsafe fn test_bextr_u64() {

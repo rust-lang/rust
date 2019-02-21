@@ -81,7 +81,7 @@ extern "C" {
 mod tests {
     use stdsimd_test::simd_test;
 
-    use core_arch::x86_64::*;
+    use crate::core_arch::x86_64::*;
 
     #[simd_test(enable = "bmi2")]
     unsafe fn test_pext_u64() {

@@ -8,9 +8,10 @@
 //!
 //! [intel64_ref]: http://www.intel.de/content/dam/www/public/us/en/documents/manuals/64-ia-32-architectures-software-developer-instruction-set-reference-manual-325383.pdf
 
-use core_arch::simd::*;
-use core_arch::x86::*;
-use mem;
+use crate::{
+    core_arch::{simd::*, x86::*},
+    mem::transmute,
+};
 
 #[cfg(test)]
 use stdsimd_test::assert_instr;
@@ -22,7 +23,7 @@ use stdsimd_test::assert_instr;
 // FIXME: this produces a xor intrinsic instead of xorps on x86_64
 #[cfg_attr(all(test, target_arch = "x86_64"), assert_instr(xor))]
 pub unsafe fn _mm_setzero_si64() -> __m64 {
-    mem::transmute(0_i64)
+    transmute(0_i64)
 }
 
 /// Adds packed 8-bit integers in `a` and `b`.
@@ -409,7 +410,7 @@ pub unsafe fn _mm_set1_pi8(a: i8) -> __m64 {
 #[inline]
 #[target_feature(enable = "mmx")]
 pub unsafe fn _mm_setr_pi16(e0: i16, e1: i16, e2: i16, e3: i16) -> __m64 {
-    mem::transmute(i16x4::new(e0, e1, e2, e3))
+    transmute(i16x4::new(e0, e1, e2, e3))
 }
 
 /// Sets packed 32-bit integers in dst with the supplied values in reverse
@@ -417,7 +418,7 @@ pub unsafe fn _mm_setr_pi16(e0: i16, e1: i16, e2: i16, e3: i16) -> __m64 {
 #[inline]
 #[target_feature(enable = "mmx")]
 pub unsafe fn _mm_setr_pi32(e0: i32, e1: i32) -> __m64 {
-    mem::transmute(i32x2::new(e0, e1))
+    transmute(i32x2::new(e0, e1))
 }
 
 /// Sets packed 8-bit integers in dst with the supplied values in reverse order.
@@ -433,7 +434,7 @@ pub unsafe fn _mm_setr_pi8(
     e6: i8,
     e7: i8,
 ) -> __m64 {
-    mem::transmute(i8x8::new(e0, e1, e2, e3, e4, e5, e6, e7))
+    transmute(i8x8::new(e0, e1, e2, e3, e4, e5, e6, e7))
 }
 
 /// Empty the MMX state, which marks the x87 FPU registers as available for use
@@ -461,14 +462,14 @@ pub unsafe fn _m_empty() {
 #[inline]
 #[target_feature(enable = "mmx")]
 pub unsafe fn _mm_cvtsi32_si64(a: i32) -> __m64 {
-    mem::transmute(i32x2::new(a, 0))
+    transmute(i32x2::new(a, 0))
 }
 
 /// Return the lower 32-bit integer in `a`.
 #[inline]
 #[target_feature(enable = "mmx")]
 pub unsafe fn _mm_cvtsi64_si32(a: __m64) -> i32 {
-    let r: i32x2 = mem::transmute(a);
+    let r: i32x2 = transmute(a);
     r.0
 }
 
@@ -530,12 +531,12 @@ extern "C" {
 
 #[cfg(test)]
 mod tests {
-    use core_arch::x86::*;
+    use crate::core_arch::x86::*;
     use stdsimd_test::simd_test;
 
     #[simd_test(enable = "mmx")]
     unsafe fn test_mm_setzero_si64() {
-        let r: __m64 = ::std::mem::transmute(0_i64);
+        let r: __m64 = transmute(0_i64);
         assert_eq_m64(r, _mm_setzero_si64());
     }
 

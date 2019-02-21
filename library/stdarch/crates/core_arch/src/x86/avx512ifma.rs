@@ -1,4 +1,4 @@
-use core_arch::x86::*;
+use crate::core_arch::x86::*;
 
 #[cfg(test)]
 use stdsimd_test::assert_instr;
@@ -108,7 +108,7 @@ mod tests {
     use std;
     use stdsimd_test::simd_test;
 
-    use core_arch::x86::*;
+    use crate::core_arch::x86::*;
 
     #[simd_test(enable = "avx512ifma")]
     unsafe fn test_mm512_madd52hi_epu64() {

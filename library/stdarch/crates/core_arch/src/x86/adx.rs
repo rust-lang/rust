@@ -52,7 +52,7 @@ pub unsafe fn _subborrow_u32(c_in: u8, a: u32, b: u32, out: &mut u32) -> u8 {
 mod tests {
     use stdsimd_test::simd_test;
 
-    use core_arch::x86::*;
+    use crate::core_arch::x86::*;
 
     #[test]
     fn test_addcarry_u32() {

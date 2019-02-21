@@ -34,7 +34,7 @@ mod neon;
 ))]
 pub use self::neon::*;
 
-pub use super::acle::*;
+pub use crate::core_arch::acle::*;
 
 #[cfg(test)]
 use stdsimd_test::assert_instr;
@@ -44,5 +44,5 @@ use stdsimd_test::assert_instr;
 #[cfg_attr(test, assert_instr(udf))]
 #[inline]
 pub unsafe fn udf() -> ! {
-    ::intrinsics::abort()
+    crate::intrinsics::abort()
 }

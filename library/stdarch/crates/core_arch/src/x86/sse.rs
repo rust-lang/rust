@@ -1,11 +1,9 @@
 //! Streaming SIMD Extensions (SSE)
 
-use core_arch::simd::*;
-use core_arch::simd_llvm::*;
-use core_arch::x86::*;
-use intrinsics;
-use mem;
-use ptr;
+use crate::{
+    core_arch::{simd::*, simd_llvm::*, x86::*},
+    intrinsics, mem, ptr,
+};
 
 #[cfg(test)]
 use stdsimd_test::assert_instr;
@@ -2499,13 +2497,12 @@ pub unsafe fn _mm_cvtps_pi8(a: __m128) -> __m64 {
 
 #[cfg(test)]
 mod tests {
+    use crate::mem::transmute;
     use std::f32::NAN;
-    use std::mem::transmute;
     use stdsimd_test::simd_test;
     use test::black_box; // Used to inhibit constant-folding.
 
-    use core_arch::simd::*;
-    use core_arch::x86::*;
+    use crate::core_arch::{simd::*, x86::*};
 
     #[simd_test(enable = "sse")]
     unsafe fn test_mm_add_ps() {

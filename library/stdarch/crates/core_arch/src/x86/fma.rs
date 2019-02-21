@@ -18,7 +18,7 @@
 //! [amd64_ref]: http://support.amd.com/TechDocs/24594.pdf
 //! [wiki_fma]: https://en.wikipedia.org/wiki/Fused_multiply-accumulate
 
-use core_arch::x86::*;
+use crate::core_arch::x86::*;
 
 #[cfg(test)]
 use stdsimd_test::assert_instr;
@@ -510,7 +510,7 @@ mod tests {
     use std;
     use stdsimd_test::simd_test;
 
-    use core_arch::x86::*;
+    use crate::core_arch::x86::*;
 
     #[simd_test(enable = "fma")]
     unsafe fn test_mm_fmadd_pd() {

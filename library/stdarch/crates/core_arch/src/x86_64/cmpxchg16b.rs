@@ -1,4 +1,4 @@
-use sync::atomic::Ordering;
+use crate::sync::atomic::Ordering;
 
 #[cfg(test)]
 use stdsimd_test::assert_instr;
@@ -50,8 +50,8 @@ pub unsafe fn cmpxchg16b(
     success: Ordering,
     failure: Ordering,
 ) -> u128 {
-    use intrinsics;
-    use sync::atomic::Ordering::*;
+    use crate::intrinsics;
+    use crate::sync::atomic::Ordering::*;
 
     debug_assert!(dst as usize % 16 == 0);
 
@@ -69,7 +69,7 @@ pub unsafe fn cmpxchg16b(
         // The above block is all copied from libcore, and this statement is
         // also copied from libcore except that it's a panic in libcore and we
         // have a little bit more of a lightweight panic here.
-        _ => ::core_arch::x86::ud2(),
+        _ => crate::core_arch::x86::ud2(),
     };
     val
 }

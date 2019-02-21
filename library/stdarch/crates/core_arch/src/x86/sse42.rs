@@ -5,9 +5,10 @@
 #[cfg(test)]
 use stdsimd_test::assert_instr;
 
-use core_arch::simd::*;
-use core_arch::simd_llvm::*;
-use core_arch::x86::*;
+use crate::{
+    core_arch::{simd::*, simd_llvm::*, x86::*},
+    mem::transmute,
+};
 
 /// String contains unsigned 8-bit characters *(Default)*
 #[stable(feature = "simd_x86", since = "1.27.0")]
@@ -80,7 +81,7 @@ pub unsafe fn _mm_cmpistrm(a: __m128i, b: __m128i, imm8: i32) -> __m128i {
             pcmpistrm128(a, b, $imm8)
         };
     }
-    mem::transmute(constify_imm8!(imm8, call))
+    transmute(constify_imm8!(imm8, call))
 }
 
 /// Compares packed strings with implicit lengths in `a` and `b` using the
@@ -412,7 +413,7 @@ pub unsafe fn _mm_cmpestrm(a: __m128i, la: i32, b: __m128i, lb: i32, imm8: i32) 
             pcmpestrm128(a, la, b, lb, $imm8)
         };
     }
-    mem::transmute(constify_imm8!(imm8, call))
+    transmute(constify_imm8!(imm8, call))
 }
 
 /// Compares packed strings `a` and `b` with lengths `la` and `lb` using the
@@ -661,7 +662,7 @@ pub unsafe fn _mm_crc32_u32(crc: u32, v: u32) -> u32 {
 #[cfg_attr(test, assert_instr(pcmpgtq))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _mm_cmpgt_epi64(a: __m128i, b: __m128i) -> __m128i {
-    mem::transmute(simd_gt::<_, i64x2>(a.as_i64x2(), b.as_i64x2()))
+    transmute(simd_gt::<_, i64x2>(a.as_i64x2(), b.as_i64x2()))
 }
 
 #[allow(improper_ctypes)]
@@ -708,7 +709,7 @@ extern "C" {
 mod tests {
     use stdsimd_test::simd_test;
 
-    use core_arch::x86::*;
+    use crate::core_arch::x86::*;
     use std::ptr;
 
     // Currently one cannot `load` a &[u8] that is is less than 16

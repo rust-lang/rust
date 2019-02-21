@@ -56,16 +56,13 @@
     )
 )]
 #![cfg_attr(test, allow(unused_imports))]
-#![no_core]
+#![no_std]
 #![unstable(feature = "stdsimd", issue = "27731")]
 #![doc(
     test(attr(deny(warnings))),
     test(attr(allow(dead_code, deprecated, unused_variables, unused_mut)))
 )]
 
-#[macro_use]
-#[allow(unused_imports)]
-extern crate core as _core;
 #[cfg(test)]
 #[macro_use]
 extern crate std;
@@ -83,10 +80,7 @@ extern crate wasm_bindgen_test;
 #[path = "mod.rs"]
 mod core_arch;
 
-pub use core_arch::arch::*;
+pub use self::core_arch::arch::*;
 
 #[allow(unused_imports)]
-use _core::{
-    clone, cmp, convert, default, fmt, hash, intrinsics, iter, marker, mem, num, ops, option,
-    prelude, ptr, result, slice, sync, u128, u8,
-};
+use core::{intrinsics, marker, mem, ptr, sync};

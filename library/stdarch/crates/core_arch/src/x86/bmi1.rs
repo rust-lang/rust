@@ -120,7 +120,7 @@ extern "C" {
 mod tests {
     use stdsimd_test::simd_test;
 
-    use core_arch::x86::*;
+    use crate::core_arch::x86::*;
 
     #[simd_test(enable = "bmi1")]
     unsafe fn test_bextr_u32() {

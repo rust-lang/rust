@@ -66,7 +66,7 @@ pub unsafe fn __writeeflags(eflags: u64) {
 
 #[cfg(test)]
 mod tests {
-    use core_arch::x86::*;
+    use crate::core_arch::x86::*;
 
     #[test]
     #[allow(deprecated)]

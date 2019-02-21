@@ -1,8 +1,8 @@
 //! 64-bit wide vector types
 
-use prelude::v1::*;
+use crate::prelude::v1::*;
 
-use core_arch::simd_llvm::*;
+use crate::core_arch::simd_llvm::*;
 
 define_ty_doc! {
     f32x2, f32, f32 |

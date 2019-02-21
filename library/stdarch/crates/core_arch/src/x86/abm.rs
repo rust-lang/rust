@@ -48,7 +48,7 @@ pub unsafe fn _popcnt32(x: i32) -> i32 {
 mod tests {
     use stdsimd_test::simd_test;
 
-    use core_arch::x86::*;
+    use crate::core_arch::x86::*;
 
     #[simd_test(enable = "lzcnt")]
     unsafe fn test_lzcnt_u32() {

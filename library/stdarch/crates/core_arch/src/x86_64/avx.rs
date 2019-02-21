@@ -13,9 +13,10 @@
 //! [amd64_ref]: http://support.amd.com/TechDocs/24594.pdf
 //! [wiki]: https://en.wikipedia.org/wiki/Advanced_Vector_Extensions
 
-use core_arch::simd_llvm::*;
-use core_arch::x86::*;
-use mem;
+use crate::{
+    core_arch::{simd_llvm::*, x86::*},
+    mem::transmute,
+};
 
 /// Copies `a` to result, and insert the 64-bit integer `i` into result
 /// at the location specified by `index`.
@@ -27,14 +28,14 @@ use mem;
 // This intrinsic has no corresponding instruction.
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _mm256_insert_epi64(a: __m256i, i: i64, index: i32) -> __m256i {
-    mem::transmute(simd_insert(a.as_i64x4(), (index as u32) & 3, i))
+    transmute(simd_insert(a.as_i64x4(), (index as u32) & 3, i))
 }
 
 #[cfg(test)]
 mod tests {
     use stdsimd_test::simd_test;
 
-    use core_arch::x86::*;
+    use crate::core_arch::x86::*;
 
     #[simd_test(enable = "avx")]
     unsafe fn test_mm256_insert_epi64() {

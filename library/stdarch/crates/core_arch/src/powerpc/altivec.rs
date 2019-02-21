@@ -13,10 +13,10 @@
 
 #![allow(non_camel_case_types)]
 
-use core_arch::simd::*;
-use core_arch::simd_llvm::*;
-
-use mem;
+use crate::{
+    core_arch::{simd::*, simd_llvm::*},
+    mem::transmute,
+};
 
 #[cfg(test)]
 use stdsimd_test::assert_instr;
@@ -136,7 +136,6 @@ extern "C" {
 }
 
 mod sealed {
-
     use super::*;
 
     #[inline]
@@ -496,7 +495,7 @@ mod sealed {
             #[inline]
             #[target_feature(enable = "altivec")]
             unsafe fn vec_vperm(self, b: Self, c: vector_unsigned_char) -> Self {
-                    mem::transmute(vec_vperm(mem::transmute(self), mem::transmute(b), c))
+                    transmute(vec_vperm(transmute(self), transmute(b), c))
                 }
             }
         }
@@ -525,7 +524,7 @@ mod sealed {
     #[target_feature(enable = "altivec")]
     #[cfg_attr(test, assert_instr(vaddubm))]
     pub unsafe fn vec_add_bc_sc(a: vector_bool_char, b: vector_signed_char) -> vector_signed_char {
-        simd_add(::mem::transmute(a), b)
+        simd_add(transmute(a), b)
     }
     impl VectorAdd<vector_signed_char> for vector_bool_char {
         type Result = vector_signed_char;
@@ -569,7 +568,7 @@ mod sealed {
         a: vector_bool_char,
         b: vector_unsigned_char,
     ) -> vector_unsigned_char {
-        simd_add(::mem::transmute(a), b)
+        simd_add(transmute(a), b)
     }
     impl VectorAdd<vector_unsigned_char> for vector_bool_char {
         type Result = vector_unsigned_char;
@@ -613,7 +612,7 @@ mod sealed {
         a: vector_bool_short,
         b: vector_signed_short,
     ) -> vector_signed_short {
-        let a: i16x8 = ::mem::transmute(a);
+        let a: i16x8 = transmute(a);
         let a: vector_signed_short = simd_cast(a);
         simd_add(a, b)
     }
@@ -660,7 +659,7 @@ mod sealed {
         a: vector_bool_short,
         b: vector_unsigned_short,
     ) -> vector_unsigned_short {
-        let a: i16x8 = ::mem::transmute(a);
+        let a: i16x8 = transmute(a);
         let a: vector_unsigned_short = simd_cast(a);
         simd_add(a, b)
     }
@@ -704,7 +703,7 @@ mod sealed {
     #[target_feature(enable = "altivec")]
     #[cfg_attr(test, assert_instr(vadduwm))]
     pub unsafe fn vec_add_bi_si(a: vector_bool_int, b: vector_signed_int) -> vector_signed_int {
-        let a: i32x4 = ::mem::transmute(a);
+        let a: i32x4 = transmute(a);
         let a: vector_signed_int = simd_cast(a);
         simd_add(a, b)
     }
@@ -744,7 +743,7 @@ mod sealed {
     #[target_feature(enable = "altivec")]
     #[cfg_attr(test, assert_instr(vadduwm))]
     pub unsafe fn vec_add_bi_ui(a: vector_bool_int, b: vector_unsigned_int) -> vector_unsigned_int {
-        let a: i32x4 = ::mem::transmute(a);
+        let a: i32x4 = transmute(a);
         let a: vector_unsigned_int = simd_cast(a);
         simd_add(a, b)
     }
@@ -818,11 +817,11 @@ mod sealed {
                 #[inline]
                 #[target_feature(enable = "altivec")]
                 unsafe fn vec_mladd(self, b: $bc, c: $bc) -> Self::Result {
-                    let a: i16x8 = ::mem::transmute(self);
-                    let b: i16x8 = ::mem::transmute(b);
-                    let c: i16x8 = ::mem::transmute(c);
+                    let a: i16x8 = transmute(self);
+                    let b: i16x8 = transmute(b);
+                    let c: i16x8 = transmute(c);
 
-                    ::mem::transmute(mladd(a, b, c))
+                    transmute(mladd(a, b, c))
                 }
             }
         };
@@ -858,7 +857,7 @@ mod endian {
         // vperm has big-endian bias
         //
         // Xor the mask and flip the arguments
-        let d = ::mem::transmute(u8x16::new(
+        let d = transmute(u8x16::new(
             255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255,
         ));
         let c = simd_xor(c, d);
@@ -873,7 +872,7 @@ mod endian {
         // vsum2sws has big-endian bias
         //
         // swap the even b elements with the odd ones
-        let flip = ::mem::transmute(u8x16::new(
+        let flip = transmute(u8x16::new(
             4, 5, 6, 7, 0, 1, 2, 3, 12, 13, 14, 15, 8, 9, 10, 11,
         ));
         let b = vec_perm(b, b, flip);
@@ -1027,12 +1026,14 @@ pub use self::endian::*;
 #[cfg(test)]
 mod tests {
     #[cfg(target_arch = "powerpc")]
-    use core_arch::arch::powerpc::*;
+    use crate::core_arch::arch::powerpc::*;
 
     #[cfg(target_arch = "powerpc64")]
-    use core_arch::arch::powerpc64::*;
+    use crate::core_arch::arch::powerpc64::*;
 
-    use core_arch::simd::*;
+    use std::mem::transmute;
+
+    use crate::core_arch::simd::*;
     use stdsimd_test::simd_test;
 
     macro_rules! test_vec_perm {
@@ -1041,12 +1042,12 @@ mod tests {
          [$($a:expr),+], [$($b:expr),+], [$($c:expr),+], [$($d:expr),+]} => {
             #[simd_test(enable = "altivec")]
             unsafe fn $name() {
-                let a: $longtype = ::mem::transmute($shorttype::new($($a),+));
-                let b: $longtype = ::mem::transmute($shorttype::new($($b),+));
-                let c: vector_unsigned_char = ::mem::transmute(u8x16::new($($c),+));
+                let a: $longtype = transmute($shorttype::new($($a),+));
+                let b: $longtype = transmute($shorttype::new($($b),+));
+                let c: vector_unsigned_char = transmute(u8x16::new($($c),+));
                 let d = $shorttype::new($($d),+);
 
-                let r: $shorttype = ::mem::transmute(vec_perm(a, b, c));
+                let r: $shorttype = transmute(vec_perm(a, b, c));
                 assert_eq!(d, r);
             }
         }
@@ -1127,7 +1128,7 @@ mod tests {
 
     #[simd_test(enable = "altivec")]
     unsafe fn test_vec_madds() {
-        let a: vector_signed_short = ::mem::transmute(i16x8::new(
+        let a: vector_signed_short = transmute(i16x8::new(
             0 * 256,
             1 * 256,
             2 * 256,
@@ -1137,20 +1138,19 @@ mod tests {
             6 * 256,
             7 * 256,
         ));
-        let b: vector_signed_short =
-            ::mem::transmute(i16x8::new(256, 256, 256, 256, 256, 256, 256, 256));
-        let c: vector_signed_short = ::mem::transmute(i16x8::new(0, 1, 2, 3, 4, 5, 6, 7));
+        let b: vector_signed_short = transmute(i16x8::new(256, 256, 256, 256, 256, 256, 256, 256));
+        let c: vector_signed_short = transmute(i16x8::new(0, 1, 2, 3, 4, 5, 6, 7));
 
         let d = i16x8::new(0, 3, 6, 9, 12, 15, 18, 21);
 
-        assert_eq!(d, ::mem::transmute(vec_madds(a, b, c)));
+        assert_eq!(d, transmute(vec_madds(a, b, c)));
     }
 
     #[simd_test(enable = "altivec")]
     unsafe fn test_vec_madd_float() {
-        let a: vector_float = ::mem::transmute(f32x4::new(0.1, 0.2, 0.3, 0.4));
-        let b: vector_float = ::mem::transmute(f32x4::new(0.1, 0.2, 0.3, 0.4));
-        let c: vector_float = ::mem::transmute(f32x4::new(0.1, 0.2, 0.3, 0.4));
+        let a: vector_float = transmute(f32x4::new(0.1, 0.2, 0.3, 0.4));
+        let b: vector_float = transmute(f32x4::new(0.1, 0.2, 0.3, 0.4));
+        let c: vector_float = transmute(f32x4::new(0.1, 0.2, 0.3, 0.4));
         let d = f32x4::new(
             0.1 * 0.1 + 0.1,
             0.2 * 0.2 + 0.2,
@@ -1158,26 +1158,26 @@ mod tests {
             0.4 * 0.4 + 0.4,
         );
 
-        assert_eq!(d, ::mem::transmute(vec_madd(a, b, c)));
+        assert_eq!(d, transmute(vec_madd(a, b, c)));
     }
 
     #[simd_test(enable = "altivec")]
     unsafe fn test_vec_nmsub_float() {
-        let a: vector_float = ::mem::transmute(f32x4::new(0.1, 0.2, 0.3, 0.4));
-        let b: vector_float = ::mem::transmute(f32x4::new(0.1, 0.2, 0.3, 0.4));
-        let c: vector_float = ::mem::transmute(f32x4::new(0.1, 0.2, 0.3, 0.4));
+        let a: vector_float = transmute(f32x4::new(0.1, 0.2, 0.3, 0.4));
+        let b: vector_float = transmute(f32x4::new(0.1, 0.2, 0.3, 0.4));
+        let c: vector_float = transmute(f32x4::new(0.1, 0.2, 0.3, 0.4));
         let d = f32x4::new(
             -(0.1 * 0.1 - 0.1),
             -(0.2 * 0.2 - 0.2),
             -(0.3 * 0.3 - 0.3),
             -(0.4 * 0.4 - 0.4),
         );
-        assert_eq!(d, ::mem::transmute(vec_nmsub(a, b, c)));
+        assert_eq!(d, transmute(vec_nmsub(a, b, c)));
     }
 
     #[simd_test(enable = "altivec")]
     unsafe fn test_vec_mradds() {
-        let a: vector_signed_short = ::mem::transmute(i16x8::new(
+        let a: vector_signed_short = transmute(i16x8::new(
             0 * 256,
             1 * 256,
             2 * 256,
@@ -1187,14 +1187,13 @@ mod tests {
             6 * 256,
             7 * 256,
         ));
-        let b: vector_signed_short =
-            ::mem::transmute(i16x8::new(256, 256, 256, 256, 256, 256, 256, 256));
+        let b: vector_signed_short = transmute(i16x8::new(256, 256, 256, 256, 256, 256, 256, 256));
         let c: vector_signed_short =
-            ::mem::transmute(i16x8::new(0, 1, 2, 3, 4, 5, 6, i16::max_value() - 1));
+            transmute(i16x8::new(0, 1, 2, 3, 4, 5, 6, i16::max_value() - 1));
 
         let d = i16x8::new(0, 3, 6, 9, 12, 15, 18, i16::max_value());
 
-        assert_eq!(d, ::mem::transmute(vec_mradds(a, b, c)));
+        assert_eq!(d, transmute(vec_mradds(a, b, c)));
     }
 
     macro_rules! test_vec_mladd {
@@ -1202,12 +1201,12 @@ mod tests {
             [$($a:expr),+], [$($b:expr),+], [$($c:expr),+], [$($d:expr),+]} => {
             #[simd_test(enable = "altivec")]
             unsafe fn $name() {
-                let a: $la = ::mem::transmute($sa::new($($a),+));
-                let b: $lbc = ::mem::transmute($sbc::new($($b),+));
-                let c = ::mem::transmute($sbc::new($($c),+));
+                let a: $la = transmute($sa::new($($a),+));
+                let b: $lbc = transmute($sbc::new($($b),+));
+                let c = transmute($sbc::new($($c),+));
                 let d = $sd::new($($d),+);
 
-                assert_eq!(d, ::mem::transmute(vec_mladd(a, b, c)));
+                assert_eq!(d, transmute(vec_mladd(a, b, c)));
             }
         }
     }
@@ -1228,11 +1227,11 @@ mod tests {
     #[simd_test(enable = "altivec")]
     unsafe fn test_vec_msum_unsigned_char() {
         let a: vector_unsigned_char =
-            ::mem::transmute(u8x16::new(0, 1, 2, 3, 4, 5, 6, 7, 0, 1, 2, 3, 4, 5, 6, 7));
-        let b: vector_unsigned_char = ::mem::transmute(u8x16::new(
+            transmute(u8x16::new(0, 1, 2, 3, 4, 5, 6, 7, 0, 1, 2, 3, 4, 5, 6, 7));
+        let b: vector_unsigned_char = transmute(u8x16::new(
             255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255,
         ));
-        let c: vector_unsigned_int = ::mem::transmute(u32x4::new(0, 1, 2, 3));
+        let c: vector_unsigned_int = transmute(u32x4::new(0, 1, 2, 3));
         let d = u32x4::new(
             (0 + 1 + 2 + 3) * 255 + 0,
             (4 + 5 + 6 + 7) * 255 + 1,
@@ -1240,17 +1239,17 @@ mod tests {
             (4 + 5 + 6 + 7) * 255 + 3,
         );
 
-        assert_eq!(d, ::mem::transmute(vec_msum(a, b, c)));
+        assert_eq!(d, transmute(vec_msum(a, b, c)));
     }
 
     #[simd_test(enable = "altivec")]
     unsafe fn test_vec_msum_signed_char() {
-        let a: vector_signed_char = ::mem::transmute(i8x16::new(
+        let a: vector_signed_char = transmute(i8x16::new(
             0, -1, 2, -3, 1, -1, 1, -1, 0, 1, 2, 3, 4, -5, -6, -7,
         ));
         let b: vector_unsigned_char =
-            ::mem::transmute(i8x16::new(1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1));
-        let c: vector_signed_int = ::mem::transmute(u32x4::new(0, 1, 2, 3));
+            transmute(i8x16::new(1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1));
+        let c: vector_signed_int = transmute(u32x4::new(0, 1, 2, 3));
         let d = i32x4::new(
             (0 - 1 + 2 - 3) + 0,
             (0) + 1,
@@ -1258,11 +1257,11 @@ mod tests {
             (4 - 5 - 6 - 7) + 3,
         );
 
-        assert_eq!(d, ::mem::transmute(vec_msum(a, b, c)));
+        assert_eq!(d, transmute(vec_msum(a, b, c)));
     }
     #[simd_test(enable = "altivec")]
     unsafe fn test_vec_msum_unsigned_short() {
-        let a: vector_unsigned_short = ::mem::transmute(u16x8::new(
+        let a: vector_unsigned_short = transmute(u16x8::new(
             0 * 256,
             1 * 256,
             2 * 256,
@@ -1273,8 +1272,8 @@ mod tests {
             7 * 256,
         ));
         let b: vector_unsigned_short =
-            ::mem::transmute(u16x8::new(256, 256, 256, 256, 256, 256, 256, 256));
-        let c: vector_unsigned_int = ::mem::transmute(u32x4::new(0, 1, 2, 3));
+            transmute(u16x8::new(256, 256, 256, 256, 256, 256, 256, 256));
+        let c: vector_unsigned_int = transmute(u32x4::new(0, 1, 2, 3));
         let d = u32x4::new(
             (0 + 1) * 256 * 256 + 0,
             (2 + 3) * 256 * 256 + 1,
@@ -1282,12 +1281,12 @@ mod tests {
             (6 + 7) * 256 * 256 + 3,
         );
 
-        assert_eq!(d, ::mem::transmute(vec_msum(a, b, c)));
+        assert_eq!(d, transmute(vec_msum(a, b, c)));
     }
 
     #[simd_test(enable = "altivec")]
     unsafe fn test_vec_msum_signed_short() {
-        let a: vector_signed_short = ::mem::transmute(i16x8::new(
+        let a: vector_signed_short = transmute(i16x8::new(
             0 * 256,
             -1 * 256,
             2 * 256,
@@ -1297,9 +1296,8 @@ mod tests {
             6 * 256,
             -7 * 256,
         ));
-        let b: vector_signed_short =
-            ::mem::transmute(i16x8::new(256, 256, 256, 256, 256, 256, 256, 256));
-        let c: vector_signed_int = ::mem::transmute(i32x4::new(0, 1, 2, 3));
+        let b: vector_signed_short = transmute(i16x8::new(256, 256, 256, 256, 256, 256, 256, 256));
+        let c: vector_signed_int = transmute(i32x4::new(0, 1, 2, 3));
         let d = i32x4::new(
             (0 - 1) * 256 * 256 + 0,
             (2 - 3) * 256 * 256 + 1,
@@ -1307,12 +1305,12 @@ mod tests {
             (6 - 7) * 256 * 256 + 3,
         );
 
-        assert_eq!(d, ::mem::transmute(vec_msum(a, b, c)));
+        assert_eq!(d, transmute(vec_msum(a, b, c)));
     }
 
     #[simd_test(enable = "altivec")]
     unsafe fn test_vec_msums_unsigned() {
-        let a: vector_unsigned_short = ::mem::transmute(u16x8::new(
+        let a: vector_unsigned_short = transmute(u16x8::new(
             0 * 256,
             1 * 256,
             2 * 256,
@@ -1323,8 +1321,8 @@ mod tests {
             7 * 256,
         ));
         let b: vector_unsigned_short =
-            ::mem::transmute(u16x8::new(256, 256, 256, 256, 256, 256, 256, 256));
-        let c: vector_unsigned_int = ::mem::transmute(u32x4::new(0, 1, 2, 3));
+            transmute(u16x8::new(256, 256, 256, 256, 256, 256, 256, 256));
+        let c: vector_unsigned_int = transmute(u32x4::new(0, 1, 2, 3));
         let d = u32x4::new(
             (0 + 1) * 256 * 256 + 0,
             (2 + 3) * 256 * 256 + 1,
@@ -1332,12 +1330,12 @@ mod tests {
             (6 + 7) * 256 * 256 + 3,
         );
 
-        assert_eq!(d, ::mem::transmute(vec_msums(a, b, c)));
+        assert_eq!(d, transmute(vec_msums(a, b, c)));
     }
 
     #[simd_test(enable = "altivec")]
     unsafe fn test_vec_msums_signed() {
-        let a: vector_signed_short = ::mem::transmute(i16x8::new(
+        let a: vector_signed_short = transmute(i16x8::new(
             0 * 256,
             -1 * 256,
             2 * 256,
@@ -1347,9 +1345,8 @@ mod tests {
             6 * 256,
             -7 * 256,
         ));
-        let b: vector_signed_short =
-            ::mem::transmute(i16x8::new(256, 256, 256, 256, 256, 256, 256, 256));
-        let c: vector_signed_int = ::mem::transmute(i32x4::new(0, 1, 2, 3));
+        let b: vector_signed_short = transmute(i16x8::new(256, 256, 256, 256, 256, 256, 256, 256));
+        let c: vector_signed_int = transmute(i32x4::new(0, 1, 2, 3));
         let d = i32x4::new(
             (0 - 1) * 256 * 256 + 0,
             (2 - 3) * 256 * 256 + 1,
@@ -1357,23 +1354,23 @@ mod tests {
             (6 - 7) * 256 * 256 + 3,
         );
 
-        assert_eq!(d, ::mem::transmute(vec_msums(a, b, c)));
+        assert_eq!(d, transmute(vec_msums(a, b, c)));
     }
 
     #[simd_test(enable = "altivec")]
     unsafe fn test_vec_sum2s() {
-        let a: vector_signed_int = ::mem::transmute(i32x4::new(0, 1, 2, 3));
-        let b: vector_signed_int = ::mem::transmute(i32x4::new(0, 1, 2, 3));
+        let a: vector_signed_int = transmute(i32x4::new(0, 1, 2, 3));
+        let b: vector_signed_int = transmute(i32x4::new(0, 1, 2, 3));
         let d = i32x4::new(0, 0 + 1 + 1, 0, 2 + 3 + 3);
 
-        assert_eq!(d, ::mem::transmute(vec_sum2s(a, b)));
+        assert_eq!(d, transmute(vec_sum2s(a, b)));
     }
 
     #[simd_test(enable = "altivec")]
     unsafe fn test_vec_sum4s_unsigned_char() {
         let a: vector_unsigned_char =
-            ::mem::transmute(u8x16::new(0, 1, 2, 3, 4, 5, 6, 7, 0, 1, 2, 3, 4, 5, 6, 7));
-        let b: vector_unsigned_int = ::mem::transmute(u32x4::new(0, 1, 2, 3));
+            transmute(u8x16::new(0, 1, 2, 3, 4, 5, 6, 7, 0, 1, 2, 3, 4, 5, 6, 7));
+        let b: vector_unsigned_int = transmute(u32x4::new(0, 1, 2, 3));
         let d = u32x4::new(
             0 + 1 + 2 + 3 + 0,
             4 + 5 + 6 + 7 + 1,
@@ -1381,13 +1378,13 @@ mod tests {
             4 + 5 + 6 + 7 + 3,
         );
 
-        assert_eq!(d, ::mem::transmute(vec_sum4s(a, b)));
+        assert_eq!(d, transmute(vec_sum4s(a, b)));
     }
     #[simd_test(enable = "altivec")]
     unsafe fn test_vec_sum4s_signed_char() {
         let a: vector_signed_char =
-            ::mem::transmute(i8x16::new(0, 1, 2, 3, 4, 5, 6, 7, 0, 1, 2, 3, 4, 5, 6, 7));
-        let b: vector_signed_int = ::mem::transmute(i32x4::new(0, 1, 2, 3));
+            transmute(i8x16::new(0, 1, 2, 3, 4, 5, 6, 7, 0, 1, 2, 3, 4, 5, 6, 7));
+        let b: vector_signed_int = transmute(i32x4::new(0, 1, 2, 3));
         let d = i32x4::new(
             0 + 1 + 2 + 3 + 0,
             4 + 5 + 6 + 7 + 1,
@@ -1395,94 +1392,94 @@ mod tests {
             4 + 5 + 6 + 7 + 3,
         );
 
-        assert_eq!(d, ::mem::transmute(vec_sum4s(a, b)));
+        assert_eq!(d, transmute(vec_sum4s(a, b)));
     }
     #[simd_test(enable = "altivec")]
     unsafe fn test_vec_sum4s_signed_short() {
-        let a: vector_signed_short = ::mem::transmute(i16x8::new(0, 1, 2, 3, 4, 5, 6, 7));
-        let b: vector_signed_int = ::mem::transmute(i32x4::new(0, 1, 2, 3));
+        let a: vector_signed_short = transmute(i16x8::new(0, 1, 2, 3, 4, 5, 6, 7));
+        let b: vector_signed_int = transmute(i32x4::new(0, 1, 2, 3));
         let d = i32x4::new(0 + 1 + 0, 2 + 3 + 1, 4 + 5 + 2, 6 + 7 + 3);
 
-        assert_eq!(d, ::mem::transmute(vec_sum4s(a, b)));
+        assert_eq!(d, transmute(vec_sum4s(a, b)));
     }
 
     #[simd_test(enable = "altivec")]
     unsafe fn test_vec_mule_unsigned_char() {
         let a: vector_unsigned_char =
-            ::mem::transmute(u8x16::new(0, 1, 2, 3, 4, 5, 6, 7, 0, 1, 2, 3, 4, 5, 6, 7));
+            transmute(u8x16::new(0, 1, 2, 3, 4, 5, 6, 7, 0, 1, 2, 3, 4, 5, 6, 7));
         let d = u16x8::new(0 * 0, 2 * 2, 4 * 4, 6 * 6, 0 * 0, 2 * 2, 4 * 4, 6 * 6);
 
-        assert_eq!(d, ::mem::transmute(vec_mule(a, a)));
+        assert_eq!(d, transmute(vec_mule(a, a)));
     }
 
     #[simd_test(enable = "altivec")]
     unsafe fn test_vec_mule_signed_char() {
-        let a: vector_signed_char = ::mem::transmute(i8x16::new(
+        let a: vector_signed_char = transmute(i8x16::new(
             0, 1, -2, 3, -4, 5, -6, 7, 0, 1, 2, 3, 4, 5, 6, 7,
         ));
         let d = i16x8::new(0 * 0, 2 * 2, 4 * 4, 6 * 6, 0 * 0, 2 * 2, 4 * 4, 6 * 6);
 
-        assert_eq!(d, ::mem::transmute(vec_mule(a, a)));
+        assert_eq!(d, transmute(vec_mule(a, a)));
     }
 
     #[simd_test(enable = "altivec")]
     unsafe fn test_vec_mule_unsigned_short() {
-        let a: vector_unsigned_short = ::mem::transmute(u16x8::new(0, 1, 2, 3, 4, 5, 6, 7));
+        let a: vector_unsigned_short = transmute(u16x8::new(0, 1, 2, 3, 4, 5, 6, 7));
         let d = u32x4::new(0 * 0, 2 * 2, 4 * 4, 6 * 6);
 
-        assert_eq!(d, ::mem::transmute(vec_mule(a, a)));
+        assert_eq!(d, transmute(vec_mule(a, a)));
     }
 
     #[simd_test(enable = "altivec")]
     unsafe fn test_vec_mule_signed_short() {
-        let a: vector_signed_short = ::mem::transmute(i16x8::new(0, 1, -2, 3, -4, 5, -6, 7));
+        let a: vector_signed_short = transmute(i16x8::new(0, 1, -2, 3, -4, 5, -6, 7));
         let d = i32x4::new(0 * 0, 2 * 2, 4 * 4, 6 * 6);
 
-        assert_eq!(d, ::mem::transmute(vec_mule(a, a)));
+        assert_eq!(d, transmute(vec_mule(a, a)));
     }
 
     #[simd_test(enable = "altivec")]
     unsafe fn test_vec_mulo_unsigned_char() {
         let a: vector_unsigned_char =
-            ::mem::transmute(u8x16::new(0, 1, 2, 3, 4, 5, 6, 7, 0, 1, 2, 3, 4, 5, 6, 7));
+            transmute(u8x16::new(0, 1, 2, 3, 4, 5, 6, 7, 0, 1, 2, 3, 4, 5, 6, 7));
         let d = u16x8::new(1 * 1, 3 * 3, 5 * 5, 7 * 7, 1 * 1, 3 * 3, 5 * 5, 7 * 7);
 
-        assert_eq!(d, ::mem::transmute(vec_mulo(a, a)));
+        assert_eq!(d, transmute(vec_mulo(a, a)));
     }
 
     #[simd_test(enable = "altivec")]
     unsafe fn test_vec_mulo_signed_char() {
-        let a: vector_signed_char = ::mem::transmute(i8x16::new(
+        let a: vector_signed_char = transmute(i8x16::new(
             0, 1, -2, 3, -4, 5, -6, 7, 0, 1, 2, 3, 4, 5, 6, 7,
         ));
         let d = i16x8::new(1 * 1, 3 * 3, 5 * 5, 7 * 7, 1 * 1, 3 * 3, 5 * 5, 7 * 7);
 
-        assert_eq!(d, ::mem::transmute(vec_mulo(a, a)));
+        assert_eq!(d, transmute(vec_mulo(a, a)));
     }
 
     #[simd_test(enable = "altivec")]
     unsafe fn test_vec_mulo_unsigned_short() {
-        let a: vector_unsigned_short = ::mem::transmute(u16x8::new(0, 1, 2, 3, 4, 5, 6, 7));
+        let a: vector_unsigned_short = transmute(u16x8::new(0, 1, 2, 3, 4, 5, 6, 7));
         let d = u32x4::new(1 * 1, 3 * 3, 5 * 5, 7 * 7);
 
-        assert_eq!(d, ::mem::transmute(vec_mulo(a, a)));
+        assert_eq!(d, transmute(vec_mulo(a, a)));
     }
 
     #[simd_test(enable = "altivec")]
     unsafe fn test_vec_mulo_signed_short() {
-        let a: vector_signed_short = ::mem::transmute(i16x8::new(0, 1, -2, 3, -4, 5, -6, 7));
+        let a: vector_signed_short = transmute(i16x8::new(0, 1, -2, 3, -4, 5, -6, 7));
         let d = i32x4::new(1 * 1, 3 * 3, 5 * 5, 7 * 7);
 
-        assert_eq!(d, ::mem::transmute(vec_mulo(a, a)));
+        assert_eq!(d, transmute(vec_mulo(a, a)));
     }
 
     #[simd_test(enable = "altivec")]
     unsafe fn vec_add_i32x4_i32x4() {
         let x = i32x4::new(1, 2, 3, 4);
         let y = i32x4::new(4, 3, 2, 1);
-        let x: vector_signed_int = ::mem::transmute(x);
-        let y: vector_signed_int = ::mem::transmute(y);
+        let x: vector_signed_int = transmute(x);
+        let y: vector_signed_int = transmute(y);
         let z = vec_add(x, y);
-        assert_eq!(i32x4::splat(5), ::mem::transmute(z));
+        assert_eq!(i32x4::splat(5), transmute(z));
     }
 }

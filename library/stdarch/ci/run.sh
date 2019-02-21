@@ -88,7 +88,3 @@ if [ "$NORUN" != "1" ] && [ "$NOSTD" != 1 ] && [ "$TARGET" != "wasm32-unknown-un
         echo test | cargo run --release hex
     )
 fi
-
-# Test Rust2018 build
-cargo build --target="${TARGET}" --manifest-path=crates/core_arch/Cargo2018.toml
-cargo build --target="${TARGET}" --manifest-path=crates/std_detect/Cargo2018.toml

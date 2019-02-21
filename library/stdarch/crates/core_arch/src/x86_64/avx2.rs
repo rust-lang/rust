@@ -18,8 +18,7 @@
 //! [wiki_avx]: https://en.wikipedia.org/wiki/Advanced_Vector_Extensions
 //! [wiki_fma]: https://en.wikipedia.org/wiki/Fused_multiply-accumulate
 
-use core_arch::simd_llvm::*;
-use core_arch::x86::*;
+use crate::core_arch::{simd_llvm::*, x86::*};
 
 /// Extracts a 64-bit integer from `a`, selected with `imm8`.
 ///
@@ -36,9 +35,8 @@ pub unsafe fn _mm256_extract_epi64(a: __m256i, imm8: i32) -> i64 {
 
 #[cfg(test)]
 mod tests {
+    use crate::core_arch::arch::x86_64::*;
     use stdsimd_test::simd_test;
-
-    use core_arch::arch::x86_64::*;
 
     #[simd_test(enable = "avx2")]
     unsafe fn test_mm256_extract_epi64() {

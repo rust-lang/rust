@@ -13,12 +13,12 @@
 //! [amd64_ref]: http://support.amd.com/TechDocs/24594.pdf
 //! [wiki]: https://en.wikipedia.org/wiki/Advanced_Vector_Extensions
 
-use core_arch::simd::*;
-use core_arch::simd_llvm::*;
-use core_arch::x86::*;
-use intrinsics;
-use mem;
-use ptr;
+use crate::{
+    core_arch::{simd::*, simd_llvm::*, x86::*},
+    intrinsics,
+    mem::{self, transmute},
+    ptr,
+};
 
 #[cfg(test)]
 use stdsimd_test::assert_instr;
@@ -58,9 +58,9 @@ pub unsafe fn _mm256_add_ps(a: __m256, b: __m256) -> __m256 {
 #[cfg_attr(test, assert_instr(vandps))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _mm256_and_pd(a: __m256d, b: __m256d) -> __m256d {
-    let a: u64x4 = mem::transmute(a);
-    let b: u64x4 = mem::transmute(b);
-    mem::transmute(simd_and(a, b))
+    let a: u64x4 = transmute(a);
+    let b: u64x4 = transmute(b);
+    transmute(simd_and(a, b))
 }
 
 /// Computes the bitwise AND of packed single-precision (32-bit) floating-point
@@ -72,9 +72,9 @@ pub unsafe fn _mm256_and_pd(a: __m256d, b: __m256d) -> __m256d {
 #[cfg_attr(test, assert_instr(vandps))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _mm256_and_ps(a: __m256, b: __m256) -> __m256 {
-    let a: u32x8 = mem::transmute(a);
-    let b: u32x8 = mem::transmute(b);
-    mem::transmute(simd_and(a, b))
+    let a: u32x8 = transmute(a);
+    let b: u32x8 = transmute(b);
+    transmute(simd_and(a, b))
 }
 
 /// Computes the bitwise OR packed double-precision (64-bit) floating-point
@@ -88,9 +88,9 @@ pub unsafe fn _mm256_and_ps(a: __m256, b: __m256) -> __m256 {
 #[cfg_attr(test, assert_instr(vorps))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _mm256_or_pd(a: __m256d, b: __m256d) -> __m256d {
-    let a: u64x4 = mem::transmute(a);
-    let b: u64x4 = mem::transmute(b);
-    mem::transmute(simd_or(a, b))
+    let a: u64x4 = transmute(a);
+    let b: u64x4 = transmute(b);
+    transmute(simd_or(a, b))
 }
 
 /// Computes the bitwise OR packed single-precision (32-bit) floating-point
@@ -102,9 +102,9 @@ pub unsafe fn _mm256_or_pd(a: __m256d, b: __m256d) -> __m256d {
 #[cfg_attr(test, assert_instr(vorps))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _mm256_or_ps(a: __m256, b: __m256) -> __m256 {
-    let a: u32x8 = mem::transmute(a);
-    let b: u32x8 = mem::transmute(b);
-    mem::transmute(simd_or(a, b))
+    let a: u32x8 = transmute(a);
+    let b: u32x8 = transmute(b);
+    transmute(simd_or(a, b))
 }
 
 /// Shuffles double-precision (64-bit) floating-point elements within 128-bit
@@ -226,9 +226,9 @@ pub unsafe fn _mm256_shuffle_ps(a: __m256, b: __m256, imm8: i32) -> __m256 {
 #[cfg_attr(test, assert_instr(vandnps))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _mm256_andnot_pd(a: __m256d, b: __m256d) -> __m256d {
-    let a: u64x4 = mem::transmute(a);
-    let b: u64x4 = mem::transmute(b);
-    mem::transmute(simd_and(simd_xor(u64x4::splat(!(0_u64)), a), b))
+    let a: u64x4 = transmute(a);
+    let b: u64x4 = transmute(b);
+    transmute(simd_and(simd_xor(u64x4::splat(!(0_u64)), a), b))
 }
 
 /// Computes the bitwise NOT of packed single-precision (32-bit) floating-point
@@ -241,9 +241,9 @@ pub unsafe fn _mm256_andnot_pd(a: __m256d, b: __m256d) -> __m256d {
 #[cfg_attr(test, assert_instr(vandnps))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _mm256_andnot_ps(a: __m256, b: __m256) -> __m256 {
-    let a: u32x8 = mem::transmute(a);
-    let b: u32x8 = mem::transmute(b);
-    mem::transmute(simd_and(simd_xor(u32x8::splat(!(0_u32)), a), b))
+    let a: u32x8 = transmute(a);
+    let b: u32x8 = transmute(b);
+    transmute(simd_and(simd_xor(u32x8::splat(!(0_u32)), a), b))
 }
 
 /// Compares packed double-precision (64-bit) floating-point elements
@@ -740,9 +740,9 @@ pub unsafe fn _mm256_hsub_ps(a: __m256, b: __m256) -> __m256 {
 #[cfg_attr(test, assert_instr(vxorps))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _mm256_xor_pd(a: __m256d, b: __m256d) -> __m256d {
-    let a: u64x4 = mem::transmute(a);
-    let b: u64x4 = mem::transmute(b);
-    mem::transmute(simd_xor(a, b))
+    let a: u64x4 = transmute(a);
+    let b: u64x4 = transmute(b);
+    transmute(simd_xor(a, b))
 }
 
 /// Computes the bitwise XOR of packed single-precision (32-bit) floating-point
@@ -754,9 +754,9 @@ pub unsafe fn _mm256_xor_pd(a: __m256d, b: __m256d) -> __m256d {
 #[cfg_attr(test, assert_instr(vxorps))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _mm256_xor_ps(a: __m256, b: __m256) -> __m256 {
-    let a: u32x8 = mem::transmute(a);
-    let b: u32x8 = mem::transmute(b);
-    mem::transmute(simd_xor(a, b))
+    let a: u32x8 = transmute(a);
+    let b: u32x8 = transmute(b);
+    transmute(simd_xor(a, b))
 }
 
 /// Equal (ordered, non-signaling)
@@ -1019,7 +1019,7 @@ pub unsafe fn _mm256_cvtpd_ps(a: __m256d) -> __m128 {
 #[cfg_attr(test, assert_instr(vcvtps2dq))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _mm256_cvtps_epi32(a: __m256) -> __m256i {
-    mem::transmute(vcvtps2dq(a))
+    transmute(vcvtps2dq(a))
 }
 
 /// Converts packed single-precision (32-bit) floating-point elements in `a`
@@ -1043,7 +1043,7 @@ pub unsafe fn _mm256_cvtps_pd(a: __m128) -> __m256d {
 #[cfg_attr(test, assert_instr(vcvttpd2dq))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _mm256_cvttpd_epi32(a: __m256d) -> __m128i {
-    mem::transmute(vcvttpd2dq(a))
+    transmute(vcvttpd2dq(a))
 }
 
 /// Converts packed double-precision (64-bit) floating-point elements in `a`
@@ -1055,7 +1055,7 @@ pub unsafe fn _mm256_cvttpd_epi32(a: __m256d) -> __m128i {
 #[cfg_attr(test, assert_instr(vcvtpd2dq))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _mm256_cvtpd_epi32(a: __m256d) -> __m128i {
-    mem::transmute(vcvtpd2dq(a))
+    transmute(vcvtpd2dq(a))
 }
 
 /// Converts packed single-precision (32-bit) floating-point elements in `a`
@@ -1067,7 +1067,7 @@ pub unsafe fn _mm256_cvtpd_epi32(a: __m256d) -> __m128i {
 #[cfg_attr(test, assert_instr(vcvttps2dq))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _mm256_cvttps_epi32(a: __m256) -> __m256i {
-    mem::transmute(vcvttps2dq(a))
+    transmute(vcvttps2dq(a))
 }
 
 /// Extracts 128 bits (composed of 4 packed single-precision (32-bit)
@@ -1125,7 +1125,7 @@ pub unsafe fn _mm256_extractf128_si256(a: __m256i, imm8: i32) -> __m128i {
         0 => simd_shuffle2(a.as_i64x4(), b, [0, 1]),
         _ => simd_shuffle2(a.as_i64x4(), b, [2, 3]),
     };
-    mem::transmute(dst)
+    transmute(dst)
 }
 
 /// Zeroes the contents of all XMM or YMM registers.
@@ -1441,7 +1441,7 @@ pub unsafe fn _mm256_permute2f128_si256(a: __m256i, b: __m256i, imm8: i32) -> __
         };
     }
     let r = constify_imm8!(imm8, call);
-    mem::transmute(r)
+    transmute(r)
 }
 
 /// Broadcasts a single-precision (32-bit) floating-point element from memory
@@ -1566,7 +1566,7 @@ pub unsafe fn _mm256_insertf128_si256(a: __m256i, b: __m128i, imm8: i32) -> __m2
         0 => simd_shuffle4(a.as_i64x4(), b, [4, 5, 2, 3]),
         _ => simd_shuffle4(a.as_i64x4(), b, [0, 1, 4, 5]),
     };
-    mem::transmute(dst)
+    transmute(dst)
 }
 
 /// Copies `a` to result, and inserts the 8-bit integer `i` into result
@@ -1579,7 +1579,7 @@ pub unsafe fn _mm256_insertf128_si256(a: __m256i, b: __m128i, imm8: i32) -> __m2
 #[rustc_args_required_const(2)]
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _mm256_insert_epi8(a: __m256i, i: i8, index: i32) -> __m256i {
-    mem::transmute(simd_insert(a.as_i8x32(), (index as u32) & 31, i))
+    transmute(simd_insert(a.as_i8x32(), (index as u32) & 31, i))
 }
 
 /// Copies `a` to result, and inserts the 16-bit integer `i` into result
@@ -1592,7 +1592,7 @@ pub unsafe fn _mm256_insert_epi8(a: __m256i, i: i8, index: i32) -> __m256i {
 #[rustc_args_required_const(2)]
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _mm256_insert_epi16(a: __m256i, i: i16, index: i32) -> __m256i {
-    mem::transmute(simd_insert(a.as_i16x16(), (index as u32) & 15, i))
+    transmute(simd_insert(a.as_i16x16(), (index as u32) & 15, i))
 }
 
 /// Copies `a` to result, and inserts the 32-bit integer `i` into result
@@ -1605,7 +1605,7 @@ pub unsafe fn _mm256_insert_epi16(a: __m256i, i: i16, index: i32) -> __m256i {
 #[rustc_args_required_const(2)]
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _mm256_insert_epi32(a: __m256i, i: i32, index: i32) -> __m256i {
-    mem::transmute(simd_insert(a.as_i32x8(), (index as u32) & 7, i))
+    transmute(simd_insert(a.as_i32x8(), (index as u32) & 7, i))
 }
 
 /// Loads 256-bits (composed of 4 packed double-precision (64-bit)
@@ -1934,7 +1934,7 @@ pub unsafe fn _mm256_movedup_pd(a: __m256d) -> __m256d {
 #[cfg_attr(test, assert_instr(vlddqu))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _mm256_lddqu_si256(mem_addr: *const __m256i) -> __m256i {
-    mem::transmute(vlddqu(mem_addr as *const i8))
+    transmute(vlddqu(mem_addr as *const i8))
 }
 
 /// Moves integer data from a 256-bit integer vector to a 32-byte
@@ -2589,7 +2589,7 @@ pub unsafe fn _mm256_setr_epi8(
     e31: i8,
 ) -> __m256i {
     #[rustfmt::skip]
-    mem::transmute(i8x32::new(
+    transmute(i8x32::new(
         e00, e01, e02, e03, e04, e05, e06, e07,
         e08, e09, e10, e11, e12, e13, e14, e15,
         e16, e17, e18, e19, e20, e21, e22, e23,
@@ -2624,7 +2624,7 @@ pub unsafe fn _mm256_setr_epi16(
     e15: i16,
 ) -> __m256i {
     #[rustfmt::skip]
-    mem::transmute(i16x16::new(
+    transmute(i16x16::new(
         e00, e01, e02, e03,
         e04, e05, e06, e07,
         e08, e09, e10, e11,
@@ -2650,7 +2650,7 @@ pub unsafe fn _mm256_setr_epi32(
     e6: i32,
     e7: i32,
 ) -> __m256i {
-    mem::transmute(i32x8::new(e0, e1, e2, e3, e4, e5, e6, e7))
+    transmute(i32x8::new(e0, e1, e2, e3, e4, e5, e6, e7))
 }
 
 /// Sets packed 64-bit integers in returned vector with the supplied values in
@@ -2662,7 +2662,7 @@ pub unsafe fn _mm256_setr_epi32(
 // This intrinsic has no corresponding instruction.
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _mm256_setr_epi64x(a: i64, b: i64, c: i64, d: i64) -> __m256i {
-    mem::transmute(i64x4::new(a, b, c, d))
+    transmute(i64x4::new(a, b, c, d))
 }
 
 /// Broadcasts double-precision (64-bit) floating-point value `a` to all
@@ -2758,7 +2758,7 @@ pub unsafe fn _mm256_set1_epi64x(a: i64) -> __m256i {
 // instructions, thus it has zero latency.
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _mm256_castpd_ps(a: __m256d) -> __m256 {
-    mem::transmute(a)
+    transmute(a)
 }
 
 /// Cast vector of type __m256 to type __m256d.
@@ -2770,7 +2770,7 @@ pub unsafe fn _mm256_castpd_ps(a: __m256d) -> __m256 {
 // instructions, thus it has zero latency.
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _mm256_castps_pd(a: __m256) -> __m256d {
-    mem::transmute(a)
+    transmute(a)
 }
 
 /// Casts vector of type __m256 to type __m256i.
@@ -2782,7 +2782,7 @@ pub unsafe fn _mm256_castps_pd(a: __m256) -> __m256d {
 // instructions, thus it has zero latency.
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _mm256_castps_si256(a: __m256) -> __m256i {
-    mem::transmute(a)
+    transmute(a)
 }
 
 /// Casts vector of type __m256i to type __m256.
@@ -2794,7 +2794,7 @@ pub unsafe fn _mm256_castps_si256(a: __m256) -> __m256i {
 // instructions, thus it has zero latency.
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _mm256_castsi256_ps(a: __m256i) -> __m256 {
-    mem::transmute(a)
+    transmute(a)
 }
 
 /// Casts vector of type __m256d to type __m256i.
@@ -2806,7 +2806,7 @@ pub unsafe fn _mm256_castsi256_ps(a: __m256i) -> __m256 {
 // instructions, thus it has zero latency.
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _mm256_castpd_si256(a: __m256d) -> __m256i {
-    mem::transmute(a)
+    transmute(a)
 }
 
 /// Casts vector of type __m256i to type __m256d.
@@ -2818,7 +2818,7 @@ pub unsafe fn _mm256_castpd_si256(a: __m256d) -> __m256i {
 // instructions, thus it has zero latency.
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _mm256_castsi256_pd(a: __m256i) -> __m256d {
-    mem::transmute(a)
+    transmute(a)
 }
 
 /// Casts vector of type __m256 to type __m128.
@@ -2856,7 +2856,7 @@ pub unsafe fn _mm256_castpd256_pd128(a: __m256d) -> __m128d {
 pub unsafe fn _mm256_castsi256_si128(a: __m256i) -> __m128i {
     let a = a.as_i64x4();
     let dst: i64x2 = simd_shuffle2(a, a, [0, 1]);
-    mem::transmute(dst)
+    transmute(dst)
 }
 
 /// Casts vector of type __m128 to type __m256;
@@ -2900,7 +2900,7 @@ pub unsafe fn _mm256_castsi128_si256(a: __m128i) -> __m256i {
     let a = a.as_i64x2();
     // FIXME simd_shuffle4(a, a, [0, 1, -1, -1])
     let dst: i64x4 = simd_shuffle4(a, a, [0, 1, 0, 0]);
-    mem::transmute(dst)
+    transmute(dst)
 }
 
 /// Constructs a 256-bit floating-point vector of `[8 x float]` from a
@@ -2930,7 +2930,7 @@ pub unsafe fn _mm256_zextps128_ps256(a: __m128) -> __m256 {
 pub unsafe fn _mm256_zextsi128_si256(a: __m128i) -> __m256i {
     let b = _mm_setzero_si128().as_i64x2();
     let dst: i64x4 = simd_shuffle4(a.as_i64x2(), b, [0, 1, 2, 3]);
-    mem::transmute(dst)
+    transmute(dst)
 }
 
 /// Constructs a 256-bit floating-point vector of `[4 x double]` from a
@@ -3003,9 +3003,9 @@ pub unsafe fn _mm256_set_m128(hi: __m128, lo: __m128) -> __m256 {
 #[cfg_attr(test, assert_instr(vinsertf128))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _mm256_set_m128d(hi: __m128d, lo: __m128d) -> __m256d {
-    let hi: __m128 = mem::transmute(hi);
-    let lo: __m128 = mem::transmute(lo);
-    mem::transmute(_mm256_set_m128(hi, lo))
+    let hi: __m128 = transmute(hi);
+    let lo: __m128 = transmute(lo);
+    transmute(_mm256_set_m128(hi, lo))
 }
 
 /// Sets packed __m256i returned vector with the supplied values.
@@ -3016,9 +3016,9 @@ pub unsafe fn _mm256_set_m128d(hi: __m128d, lo: __m128d) -> __m256d {
 #[cfg_attr(test, assert_instr(vinsertf128))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _mm256_set_m128i(hi: __m128i, lo: __m128i) -> __m256i {
-    let hi: __m128 = mem::transmute(hi);
-    let lo: __m128 = mem::transmute(lo);
-    mem::transmute(_mm256_set_m128(hi, lo))
+    let hi: __m128 = transmute(hi);
+    let lo: __m128 = transmute(lo);
+    transmute(_mm256_set_m128(hi, lo))
 }
 
 /// Sets packed __m256 returned vector with the supplied values.
@@ -3311,7 +3311,7 @@ mod tests {
     use stdsimd_test::simd_test;
     use test::black_box; // Used to inhibit constant-folding.
 
-    use core_arch::x86::*;
+    use crate::core_arch::x86::*;
 
     #[simd_test(enable = "avx")]
     unsafe fn test_mm256_add_pd() {
@@ -4806,14 +4806,14 @@ mod tests {
     unsafe fn test_mm256_castpd_si256() {
         let a = _mm256_setr_pd(1., 2., 3., 4.);
         let r = _mm256_castpd_si256(a);
-        assert_eq_m256d(mem::transmute(r), a);
+        assert_eq_m256d(transmute(r), a);
     }
 
     #[simd_test(enable = "avx")]
     unsafe fn test_mm256_castsi256_pd() {
         let a = _mm256_setr_epi64x(1, 2, 3, 4);
         let r = _mm256_castsi256_pd(a);
-        assert_eq_m256d(r, mem::transmute(a));
+        assert_eq_m256d(r, transmute(a));
     }
 
     #[simd_test(enable = "avx")]

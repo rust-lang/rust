@@ -129,7 +129,7 @@ pub unsafe fn _xrstors64(mem_addr: *const u8, rs_mask: u64) {
 /*
 #[cfg(test)]
 mod tests {
-    use core_arch::x86::x86_64::xsave;
+    use crate::core_arch::x86::x86_64::xsave;
     use stdsimd_test::simd_test;
     use std::fmt;
 

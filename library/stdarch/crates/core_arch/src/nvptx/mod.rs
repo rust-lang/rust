@@ -122,5 +122,5 @@ pub unsafe fn _thread_idx_z() -> i32 {
 /// Generates the trap instruction `TRAP`
 #[inline]
 pub unsafe fn trap() -> ! {
-    ::intrinsics::abort()
+    crate::intrinsics::abort()
 }

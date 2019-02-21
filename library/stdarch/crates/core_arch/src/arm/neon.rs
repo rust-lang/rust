@@ -1,6 +1,6 @@
 //! ARMv7 NEON intrinsics
 
-use core_arch::simd_llvm::*;
+use crate::{core_arch::simd_llvm::*, mem::transmute};
 #[cfg(test)]
 use stdsimd_test::assert_instr;
 
@@ -693,7 +693,7 @@ pub unsafe fn vtbl1_s8(a: int8x8_t, b: int8x8_t) -> int8x8_t {
 #[target_feature(enable = "neon,v7")]
 #[cfg_attr(test, assert_instr(vtbl))]
 pub unsafe fn vtbl1_u8(a: uint8x8_t, b: uint8x8_t) -> uint8x8_t {
-    ::mem::transmute(vtbl1(::mem::transmute(a), ::mem::transmute(b)))
+    transmute(vtbl1(transmute(a), transmute(b)))
 }
 
 /// Table look-up
@@ -703,7 +703,7 @@ pub unsafe fn vtbl1_u8(a: uint8x8_t, b: uint8x8_t) -> uint8x8_t {
 #[target_feature(enable = "neon,v7")]
 #[cfg_attr(test, assert_instr(vtbl))]
 pub unsafe fn vtbl1_p8(a: poly8x8_t, b: uint8x8_t) -> poly8x8_t {
-    ::mem::transmute(vtbl1(::mem::transmute(a), ::mem::transmute(b)))
+    transmute(vtbl1(transmute(a), transmute(b)))
 }
 
 /// Table look-up
@@ -723,11 +723,7 @@ pub unsafe fn vtbl2_s8(a: int8x8x2_t, b: int8x8_t) -> int8x8_t {
 #[target_feature(enable = "neon,v7")]
 #[cfg_attr(test, assert_instr(vtbl))]
 pub unsafe fn vtbl2_u8(a: uint8x8x2_t, b: uint8x8_t) -> uint8x8_t {
-    ::mem::transmute(vtbl2(
-        ::mem::transmute(a.0),
-        ::mem::transmute(a.1),
-        ::mem::transmute(b),
-    ))
+    transmute(vtbl2(transmute(a.0), transmute(a.1), transmute(b)))
 }
 
 /// Table look-up
@@ -737,11 +733,7 @@ pub unsafe fn vtbl2_u8(a: uint8x8x2_t, b: uint8x8_t) -> uint8x8_t {
 #[target_feature(enable = "neon,v7")]
 #[cfg_attr(test, assert_instr(vtbl))]
 pub unsafe fn vtbl2_p8(a: poly8x8x2_t, b: uint8x8_t) -> poly8x8_t {
-    ::mem::transmute(vtbl2(
-        ::mem::transmute(a.0),
-        ::mem::transmute(a.1),
-        ::mem::transmute(b),
-    ))
+    transmute(vtbl2(transmute(a.0), transmute(a.1), transmute(b)))
 }
 
 /// Table look-up
@@ -761,11 +753,11 @@ pub unsafe fn vtbl3_s8(a: int8x8x3_t, b: int8x8_t) -> int8x8_t {
 #[target_feature(enable = "neon,v7")]
 #[cfg_attr(test, assert_instr(vtbl))]
 pub unsafe fn vtbl3_u8(a: uint8x8x3_t, b: uint8x8_t) -> uint8x8_t {
-    ::mem::transmute(vtbl3(
-        ::mem::transmute(a.0),
-        ::mem::transmute(a.1),
-        ::mem::transmute(a.2),
-        ::mem::transmute(b),
+    transmute(vtbl3(
+        transmute(a.0),
+        transmute(a.1),
+        transmute(a.2),
+        transmute(b),
     ))
 }
 
@@ -776,11 +768,11 @@ pub unsafe fn vtbl3_u8(a: uint8x8x3_t, b: uint8x8_t) -> uint8x8_t {
 #[target_feature(enable = "neon,v7")]
 #[cfg_attr(test, assert_instr(vtbl))]
 pub unsafe fn vtbl3_p8(a: poly8x8x3_t, b: uint8x8_t) -> poly8x8_t {
-    ::mem::transmute(vtbl3(
-        ::mem::transmute(a.0),
-        ::mem::transmute(a.1),
-        ::mem::transmute(a.2),
-        ::mem::transmute(b),
+    transmute(vtbl3(
+        transmute(a.0),
+        transmute(a.1),
+        transmute(a.2),
+        transmute(b),
     ))
 }
 
@@ -801,12 +793,12 @@ pub unsafe fn vtbl4_s8(a: int8x8x4_t, b: int8x8_t) -> int8x8_t {
 #[target_feature(enable = "neon,v7")]
 #[cfg_attr(test, assert_instr(vtbl))]
 pub unsafe fn vtbl4_u8(a: uint8x8x4_t, b: uint8x8_t) -> uint8x8_t {
-    ::mem::transmute(vtbl4(
-        ::mem::transmute(a.0),
-        ::mem::transmute(a.1),
-        ::mem::transmute(a.2),
-        ::mem::transmute(a.3),
-        ::mem::transmute(b),
+    transmute(vtbl4(
+        transmute(a.0),
+        transmute(a.1),
+        transmute(a.2),
+        transmute(a.3),
+        transmute(b),
     ))
 }
 
@@ -817,12 +809,12 @@ pub unsafe fn vtbl4_u8(a: uint8x8x4_t, b: uint8x8_t) -> uint8x8_t {
 #[target_feature(enable = "neon,v7")]
 #[cfg_attr(test, assert_instr(vtbl))]
 pub unsafe fn vtbl4_p8(a: poly8x8x4_t, b: uint8x8_t) -> poly8x8_t {
-    ::mem::transmute(vtbl4(
-        ::mem::transmute(a.0),
-        ::mem::transmute(a.1),
-        ::mem::transmute(a.2),
-        ::mem::transmute(a.3),
-        ::mem::transmute(b),
+    transmute(vtbl4(
+        transmute(a.0),
+        transmute(a.1),
+        transmute(a.2),
+        transmute(a.3),
+        transmute(b),
     ))
 }
 
@@ -843,11 +835,7 @@ pub unsafe fn vtbx1_s8(a: int8x8_t, b: int8x8_t, c: int8x8_t) -> int8x8_t {
 #[target_feature(enable = "neon,v7")]
 #[cfg_attr(test, assert_instr(vtbx))]
 pub unsafe fn vtbx1_u8(a: uint8x8_t, b: uint8x8_t, c: uint8x8_t) -> uint8x8_t {
-    ::mem::transmute(vtbx1(
-        ::mem::transmute(a),
-        ::mem::transmute(b),
-        ::mem::transmute(c),
-    ))
+    transmute(vtbx1(transmute(a), transmute(b), transmute(c)))
 }
 
 /// Extended table look-up
@@ -857,11 +845,7 @@ pub unsafe fn vtbx1_u8(a: uint8x8_t, b: uint8x8_t, c: uint8x8_t) -> uint8x8_t {
 #[target_feature(enable = "neon,v7")]
 #[cfg_attr(test, assert_instr(vtbx))]
 pub unsafe fn vtbx1_p8(a: poly8x8_t, b: poly8x8_t, c: uint8x8_t) -> poly8x8_t {
-    ::mem::transmute(vtbx1(
-        ::mem::transmute(a),
-        ::mem::transmute(b),
-        ::mem::transmute(c),
-    ))
+    transmute(vtbx1(transmute(a), transmute(b), transmute(c)))
 }
 
 /// Extended table look-up
@@ -881,11 +865,11 @@ pub unsafe fn vtbx2_s8(a: int8x8_t, b: int8x8x2_t, c: int8x8_t) -> int8x8_t {
 #[target_feature(enable = "neon,v7")]
 #[cfg_attr(test, assert_instr(vtbx))]
 pub unsafe fn vtbx2_u8(a: uint8x8_t, b: uint8x8x2_t, c: uint8x8_t) -> uint8x8_t {
-    ::mem::transmute(vtbx2(
-        ::mem::transmute(a),
-        ::mem::transmute(b.0),
-        ::mem::transmute(b.1),
-        ::mem::transmute(c),
+    transmute(vtbx2(
+        transmute(a),
+        transmute(b.0),
+        transmute(b.1),
+        transmute(c),
     ))
 }
 
@@ -896,11 +880,11 @@ pub unsafe fn vtbx2_u8(a: uint8x8_t, b: uint8x8x2_t, c: uint8x8_t) -> uint8x8_t 
 #[target_feature(enable = "neon,v7")]
 #[cfg_attr(test, assert_instr(vtbx))]
 pub unsafe fn vtbx2_p8(a: poly8x8_t, b: poly8x8x2_t, c: uint8x8_t) -> poly8x8_t {
-    ::mem::transmute(vtbx2(
-        ::mem::transmute(a),
-        ::mem::transmute(b.0),
-        ::mem::transmute(b.1),
-        ::mem::transmute(c),
+    transmute(vtbx2(
+        transmute(a),
+        transmute(b.0),
+        transmute(b.1),
+        transmute(c),
     ))
 }
 
@@ -921,12 +905,12 @@ pub unsafe fn vtbx3_s8(a: int8x8_t, b: int8x8x3_t, c: int8x8_t) -> int8x8_t {
 #[target_feature(enable = "neon,v7")]
 #[cfg_attr(test, assert_instr(vtbx))]
 pub unsafe fn vtbx3_u8(a: uint8x8_t, b: uint8x8x3_t, c: uint8x8_t) -> uint8x8_t {
-    ::mem::transmute(vtbx3(
-        ::mem::transmute(a),
-        ::mem::transmute(b.0),
-        ::mem::transmute(b.1),
-        ::mem::transmute(b.2),
-        ::mem::transmute(c),
+    transmute(vtbx3(
+        transmute(a),
+        transmute(b.0),
+        transmute(b.1),
+        transmute(b.2),
+        transmute(c),
     ))
 }
 
@@ -937,12 +921,12 @@ pub unsafe fn vtbx3_u8(a: uint8x8_t, b: uint8x8x3_t, c: uint8x8_t) -> uint8x8_t 
 #[target_feature(enable = "neon,v7")]
 #[cfg_attr(test, assert_instr(vtbx))]
 pub unsafe fn vtbx3_p8(a: poly8x8_t, b: poly8x8x3_t, c: uint8x8_t) -> poly8x8_t {
-    ::mem::transmute(vtbx3(
-        ::mem::transmute(a),
-        ::mem::transmute(b.0),
-        ::mem::transmute(b.1),
-        ::mem::transmute(b.2),
-        ::mem::transmute(c),
+    transmute(vtbx3(
+        transmute(a),
+        transmute(b.0),
+        transmute(b.1),
+        transmute(b.2),
+        transmute(c),
     ))
 }
 
@@ -963,13 +947,13 @@ pub unsafe fn vtbx4_s8(a: int8x8_t, b: int8x8x4_t, c: int8x8_t) -> int8x8_t {
 #[target_feature(enable = "neon,v7")]
 #[cfg_attr(test, assert_instr(vtbx))]
 pub unsafe fn vtbx4_u8(a: uint8x8_t, b: uint8x8x4_t, c: uint8x8_t) -> uint8x8_t {
-    ::mem::transmute(vtbx4(
-        ::mem::transmute(a),
-        ::mem::transmute(b.0),
-        ::mem::transmute(b.1),
-        ::mem::transmute(b.2),
-        ::mem::transmute(b.3),
-        ::mem::transmute(c),
+    transmute(vtbx4(
+        transmute(a),
+        transmute(b.0),
+        transmute(b.1),
+        transmute(b.2),
+        transmute(b.3),
+        transmute(c),
     ))
 }
 
@@ -980,21 +964,20 @@ pub unsafe fn vtbx4_u8(a: uint8x8_t, b: uint8x8x4_t, c: uint8x8_t) -> uint8x8_t 
 #[target_feature(enable = "neon,v7")]
 #[cfg_attr(test, assert_instr(vtbx))]
 pub unsafe fn vtbx4_p8(a: poly8x8_t, b: poly8x8x4_t, c: uint8x8_t) -> poly8x8_t {
-    ::mem::transmute(vtbx4(
-        ::mem::transmute(a),
-        ::mem::transmute(b.0),
-        ::mem::transmute(b.1),
-        ::mem::transmute(b.2),
-        ::mem::transmute(b.3),
-        ::mem::transmute(c),
+    transmute(vtbx4(
+        transmute(a),
+        transmute(b.0),
+        transmute(b.1),
+        transmute(b.2),
+        transmute(b.3),
+        transmute(c),
     ))
 }
 
 #[cfg(test)]
 mod tests {
-    use core_arch::arm::*;
-    use core_arch::simd::*;
-    use std::mem;
+    use crate::core_arch::{arm::*, simd::*};
+    use std::mem::transmute;
     use stdsimd_test::simd_test;
 
     #[simd_test(enable = "neon")]
@@ -1002,7 +985,7 @@ mod tests {
         let a = i8x8::new(1, 2, 3, 4, 5, 6, 7, 8);
         let b = i8x8::new(8, 7, 6, 5, 4, 3, 2, 1);
         let e = i8x8::new(9, 9, 9, 9, 9, 9, 9, 9);
-        let r: i8x8 = ::mem::transmute(vadd_s8(::mem::transmute(a), ::mem::transmute(b)));
+        let r: i8x8 = transmute(vadd_s8(transmute(a), transmute(b)));
         assert_eq!(r, e);
     }
 
@@ -1011,7 +994,7 @@ mod tests {
         let a = i8x16::new(1, 2, 3, 4, 5, 6, 7, 8, 1, 2, 3, 4, 5, 6, 7, 8);
         let b = i8x16::new(8, 7, 6, 5, 4, 3, 2, 1, 8, 7, 6, 5, 4, 3, 2, 1);
         let e = i8x16::new(9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9);
-        let r: i8x16 = ::mem::transmute(vaddq_s8(::mem::transmute(a), ::mem::transmute(b)));
+        let r: i8x16 = transmute(vaddq_s8(transmute(a), transmute(b)));
         assert_eq!(r, e);
     }
 
@@ -1020,7 +1003,7 @@ mod tests {
         let a = i16x4::new(1, 2, 3, 4);
         let b = i16x4::new(8, 7, 6, 5);
         let e = i16x4::new(9, 9, 9, 9);
-        let r: i16x4 = ::mem::transmute(vadd_s16(::mem::transmute(a), ::mem::transmute(b)));
+        let r: i16x4 = transmute(vadd_s16(transmute(a), transmute(b)));
         assert_eq!(r, e);
     }
 
@@ -1029,7 +1012,7 @@ mod tests {
         let a = i16x8::new(1, 2, 3, 4, 5, 6, 7, 8);
         let b = i16x8::new(8, 7, 6, 5, 4, 3, 2, 1);
         let e = i16x8::new(9, 9, 9, 9, 9, 9, 9, 9);
-        let r: i16x8 = ::mem::transmute(vaddq_s16(::mem::transmute(a), ::mem::transmute(b)));
+        let r: i16x8 = transmute(vaddq_s16(transmute(a), transmute(b)));
         assert_eq!(r, e);
     }
 
@@ -1038,7 +1021,7 @@ mod tests {
         let a = i32x2::new(1, 2);
         let b = i32x2::new(8, 7);
         let e = i32x2::new(9, 9);
-        let r: i32x2 = ::mem::transmute(vadd_s32(::mem::transmute(a), ::mem::transmute(b)));
+        let r: i32x2 = transmute(vadd_s32(transmute(a), transmute(b)));
         assert_eq!(r, e);
     }
 
@@ -1047,7 +1030,7 @@ mod tests {
         let a = i32x4::new(1, 2, 3, 4);
         let b = i32x4::new(8, 7, 6, 5);
         let e = i32x4::new(9, 9, 9, 9);
-        let r: i32x4 = ::mem::transmute(vaddq_s32(::mem::transmute(a), ::mem::transmute(b)));
+        let r: i32x4 = transmute(vaddq_s32(transmute(a), transmute(b)));
         assert_eq!(r, e);
     }
 
@@ -1056,7 +1039,7 @@ mod tests {
         let a = u8x8::new(1, 2, 3, 4, 5, 6, 7, 8);
         let b = u8x8::new(8, 7, 6, 5, 4, 3, 2, 1);
         let e = u8x8::new(9, 9, 9, 9, 9, 9, 9, 9);
-        let r: u8x8 = ::mem::transmute(vadd_u8(::mem::transmute(a), ::mem::transmute(b)));
+        let r: u8x8 = transmute(vadd_u8(transmute(a), transmute(b)));
         assert_eq!(r, e);
     }
 
@@ -1065,7 +1048,7 @@ mod tests {
         let a = u8x16::new(1, 2, 3, 4, 5, 6, 7, 8, 1, 2, 3, 4, 5, 6, 7, 8);
         let b = u8x16::new(8, 7, 6, 5, 4, 3, 2, 1, 8, 7, 6, 5, 4, 3, 2, 1);
         let e = u8x16::new(9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9);
-        let r: u8x16 = ::mem::transmute(vaddq_u8(::mem::transmute(a), ::mem::transmute(b)));
+        let r: u8x16 = transmute(vaddq_u8(transmute(a), transmute(b)));
         assert_eq!(r, e);
     }
 
@@ -1074,7 +1057,7 @@ mod tests {
         let a = u16x4::new(1, 2, 3, 4);
         let b = u16x4::new(8, 7, 6, 5);
         let e = u16x4::new(9, 9, 9, 9);
-        let r: u16x4 = ::mem::transmute(vadd_u16(::mem::transmute(a), ::mem::transmute(b)));
+        let r: u16x4 = transmute(vadd_u16(transmute(a), transmute(b)));
         assert_eq!(r, e);
     }
 
@@ -1083,7 +1066,7 @@ mod tests {
         let a = u16x8::new(1, 2, 3, 4, 5, 6, 7, 8);
         let b = u16x8::new(8, 7, 6, 5, 4, 3, 2, 1);
         let e = u16x8::new(9, 9, 9, 9, 9, 9, 9, 9);
-        let r: u16x8 = ::mem::transmute(vaddq_u16(::mem::transmute(a), ::mem::transmute(b)));
+        let r: u16x8 = transmute(vaddq_u16(transmute(a), transmute(b)));
         assert_eq!(r, e);
     }
 
@@ -1092,7 +1075,7 @@ mod tests {
         let a = u32x2::new(1, 2);
         let b = u32x2::new(8, 7);
         let e = u32x2::new(9, 9);
-        let r: u32x2 = ::mem::transmute(vadd_u32(::mem::transmute(a), ::mem::transmute(b)));
+        let r: u32x2 = transmute(vadd_u32(transmute(a), transmute(b)));
         assert_eq!(r, e);
     }
 
@@ -1101,7 +1084,7 @@ mod tests {
         let a = u32x4::new(1, 2, 3, 4);
         let b = u32x4::new(8, 7, 6, 5);
         let e = u32x4::new(9, 9, 9, 9);
-        let r: u32x4 = ::mem::transmute(vaddq_u32(::mem::transmute(a), ::mem::transmute(b)));
+        let r: u32x4 = transmute(vaddq_u32(transmute(a), transmute(b)));
         assert_eq!(r, e);
     }
 
@@ -1110,7 +1093,7 @@ mod tests {
         let a = f32x2::new(1., 2.);
         let b = f32x2::new(8., 7.);
         let e = f32x2::new(9., 9.);
-        let r: f32x2 = ::mem::transmute(vadd_f32(::mem::transmute(a), ::mem::transmute(b)));
+        let r: f32x2 = transmute(vadd_f32(transmute(a), transmute(b)));
         assert_eq!(r, e);
     }
 
@@ -1119,7 +1102,7 @@ mod tests {
         let a = f32x4::new(1., 2., 3., 4.);
         let b = f32x4::new(8., 7., 6., 5.);
         let e = f32x4::new(9., 9., 9., 9.);
-        let r: f32x4 = ::mem::transmute(vaddq_f32(::mem::transmute(a), ::mem::transmute(b)));
+        let r: f32x4 = transmute(vaddq_f32(transmute(a), transmute(b)));
         assert_eq!(r, e);
     }
 
@@ -1129,7 +1112,7 @@ mod tests {
         let a = i8x8::new(v, v, v, v, v, v, v, v);
         let v = 2 * (v as i16);
         let e = i16x8::new(v, v, v, v, v, v, v, v);
-        let r: i16x8 = ::mem::transmute(vaddl_s8(::mem::transmute(a), ::mem::transmute(a)));
+        let r: i16x8 = transmute(vaddl_s8(transmute(a), transmute(a)));
         assert_eq!(r, e);
     }
 
@@ -1139,7 +1122,7 @@ mod tests {
         let a = i16x4::new(v, v, v, v);
         let v = 2 * (v as i32);
         let e = i32x4::new(v, v, v, v);
-        let r: i32x4 = ::mem::transmute(vaddl_s16(::mem::transmute(a), ::mem::transmute(a)));
+        let r: i32x4 = transmute(vaddl_s16(transmute(a), transmute(a)));
         assert_eq!(r, e);
     }
 
@@ -1149,7 +1132,7 @@ mod tests {
         let a = i32x2::new(v, v);
         let v = 2 * (v as i64);
         let e = i64x2::new(v, v);
-        let r: i64x2 = ::mem::transmute(vaddl_s32(::mem::transmute(a), ::mem::transmute(a)));
+        let r: i64x2 = transmute(vaddl_s32(transmute(a), transmute(a)));
         assert_eq!(r, e);
     }
 
@@ -1159,7 +1142,7 @@ mod tests {
         let a = u8x8::new(v, v, v, v, v, v, v, v);
         let v = 2 * (v as u16);
         let e = u16x8::new(v, v, v, v, v, v, v, v);
-        let r: u16x8 = ::mem::transmute(vaddl_u8(::mem::transmute(a), ::mem::transmute(a)));
+        let r: u16x8 = transmute(vaddl_u8(transmute(a), transmute(a)));
         assert_eq!(r, e);
     }
 
@@ -1169,7 +1152,7 @@ mod tests {
         let a = u16x4::new(v, v, v, v);
         let v = 2 * (v as u32);
         let e = u32x4::new(v, v, v, v);
-        let r: u32x4 = ::mem::transmute(vaddl_u16(::mem::transmute(a), ::mem::transmute(a)));
+        let r: u32x4 = transmute(vaddl_u16(transmute(a), transmute(a)));
         assert_eq!(r, e);
     }
 
@@ -1179,7 +1162,7 @@ mod tests {
         let a = u32x2::new(v, v);
         let v = 2 * (v as u64);
         let e = u64x2::new(v, v);
-        let r: u64x2 = ::mem::transmute(vaddl_u32(::mem::transmute(a), ::mem::transmute(a)));
+        let r: u64x2 = transmute(vaddl_u32(transmute(a), transmute(a)));
         assert_eq!(r, e);
     }
 
@@ -1187,7 +1170,7 @@ mod tests {
     unsafe fn test_vmovn_s16() {
         let a = i16x8::new(1, 2, 3, 4, 5, 6, 7, 8);
         let e = i8x8::new(1, 2, 3, 4, 5, 6, 7, 8);
-        let r: i8x8 = ::mem::transmute(vmovn_s16(::mem::transmute(a)));
+        let r: i8x8 = transmute(vmovn_s16(transmute(a)));
         assert_eq!(r, e);
     }
 
@@ -1195,7 +1178,7 @@ mod tests {
     unsafe fn test_vmovn_s32() {
         let a = i32x4::new(1, 2, 3, 4);
         let e = i16x4::new(1, 2, 3, 4);
-        let r: i16x4 = ::mem::transmute(vmovn_s32(::mem::transmute(a)));
+        let r: i16x4 = transmute(vmovn_s32(transmute(a)));
         assert_eq!(r, e);
     }
 
@@ -1203,7 +1186,7 @@ mod tests {
     unsafe fn test_vmovn_s64() {
         let a = i64x2::new(1, 2);
         let e = i32x2::new(1, 2);
-        let r: i32x2 = ::mem::transmute(vmovn_s64(::mem::transmute(a)));
+        let r: i32x2 = transmute(vmovn_s64(transmute(a)));
         assert_eq!(r, e);
     }
 
@@ -1211,7 +1194,7 @@ mod tests {
     unsafe fn test_vmovn_u16() {
         let a = u16x8::new(1, 2, 3, 4, 5, 6, 7, 8);
         let e = u8x8::new(1, 2, 3, 4, 5, 6, 7, 8);
-        let r: u8x8 = ::mem::transmute(vmovn_u16(::mem::transmute(a)));
+        let r: u8x8 = transmute(vmovn_u16(transmute(a)));
         assert_eq!(r, e);
     }
 
@@ -1219,7 +1202,7 @@ mod tests {
     unsafe fn test_vmovn_u32() {
         let a = u32x4::new(1, 2, 3, 4);
         let e = u16x4::new(1, 2, 3, 4);
-        let r: u16x4 = ::mem::transmute(vmovn_u32(::mem::transmute(a)));
+        let r: u16x4 = transmute(vmovn_u32(transmute(a)));
         assert_eq!(r, e);
     }
 
@@ -1227,7 +1210,7 @@ mod tests {
     unsafe fn test_vmovn_u64() {
         let a = u64x2::new(1, 2);
         let e = u32x2::new(1, 2);
-        let r: u32x2 = ::mem::transmute(vmovn_u64(::mem::transmute(a)));
+        let r: u32x2 = transmute(vmovn_u64(transmute(a)));
         assert_eq!(r, e);
     }
 
@@ -1235,7 +1218,7 @@ mod tests {
     unsafe fn test_vmovl_s8() {
         let e = i16x8::new(1, 2, 3, 4, 5, 6, 7, 8);
         let a = i8x8::new(1, 2, 3, 4, 5, 6, 7, 8);
-        let r: i16x8 = ::mem::transmute(vmovl_s8(::mem::transmute(a)));
+        let r: i16x8 = transmute(vmovl_s8(transmute(a)));
         assert_eq!(r, e);
     }
 
@@ -1243,7 +1226,7 @@ mod tests {
     unsafe fn test_vmovl_s16() {
         let e = i32x4::new(1, 2, 3, 4);
         let a = i16x4::new(1, 2, 3, 4);
-        let r: i32x4 = ::mem::transmute(vmovl_s16(::mem::transmute(a)));
+        let r: i32x4 = transmute(vmovl_s16(transmute(a)));
         assert_eq!(r, e);
     }
 
@@ -1251,7 +1234,7 @@ mod tests {
     unsafe fn test_vmovl_s32() {
         let e = i64x2::new(1, 2);
         let a = i32x2::new(1, 2);
-        let r: i64x2 = ::mem::transmute(vmovl_s32(::mem::transmute(a)));
+        let r: i64x2 = transmute(vmovl_s32(transmute(a)));
         assert_eq!(r, e);
     }
 
@@ -1259,7 +1242,7 @@ mod tests {
     unsafe fn test_vmovl_u8() {
         let e = u16x8::new(1, 2, 3, 4, 5, 6, 7, 8);
         let a = u8x8::new(1, 2, 3, 4, 5, 6, 7, 8);
-        let r: u16x8 = ::mem::transmute(vmovl_u8(::mem::transmute(a)));
+        let r: u16x8 = transmute(vmovl_u8(transmute(a)));
         assert_eq!(r, e);
     }
 
@@ -1267,7 +1250,7 @@ mod tests {
     unsafe fn test_vmovl_u16() {
         let e = u32x4::new(1, 2, 3, 4);
         let a = u16x4::new(1, 2, 3, 4);
-        let r: u32x4 = ::mem::transmute(vmovl_u16(::mem::transmute(a)));
+        let r: u32x4 = transmute(vmovl_u16(transmute(a)));
         assert_eq!(r, e);
     }
 
@@ -1275,7 +1258,7 @@ mod tests {
     unsafe fn test_vmovl_u32() {
         let e = u64x2::new(1, 2);
         let a = u32x2::new(1, 2);
-        let r: u64x2 = ::mem::transmute(vmovl_u32(::mem::transmute(a)));
+        let r: u64x2 = transmute(vmovl_u32(transmute(a)));
         assert_eq!(r, e);
     }
 
@@ -1283,7 +1266,7 @@ mod tests {
     unsafe fn test_vrsqrt_f32() {
         let a = f32x2::new(1.0, 2.0);
         let e = f32x2::new(0.9980469, 0.7050781);
-        let r: f32x2 = ::mem::transmute(vrsqrte_f32(::mem::transmute(a)));
+        let r: f32x2 = transmute(vrsqrte_f32(transmute(a)));
         assert_eq!(r, e);
     }
 
@@ -1292,7 +1275,7 @@ mod tests {
         let a = i8x8::new(1, -2, 3, -4, 5, 6, 7, 8);
         let b = i8x8::new(0, 3, 2, 5, 4, 7, 6, 9);
         let e = i8x8::new(-2, -4, 5, 7, 0, 2, 4, 6);
-        let r: i8x8 = ::mem::transmute(vpmin_s8(::mem::transmute(a), ::mem::transmute(b)));
+        let r: i8x8 = transmute(vpmin_s8(transmute(a), transmute(b)));
         assert_eq!(r, e);
     }
 
@@ -1301,7 +1284,7 @@ mod tests {
         let a = i16x4::new(1, 2, 3, -4);
         let b = i16x4::new(0, 3, 2, 5);
         let e = i16x4::new(1, -4, 0, 2);
-        let r: i16x4 = ::mem::transmute(vpmin_s16(::mem::transmute(a), ::mem::transmute(b)));
+        let r: i16x4 = transmute(vpmin_s16(transmute(a), transmute(b)));
         assert_eq!(r, e);
     }
 
@@ -1310,7 +1293,7 @@ mod tests {
         let a = i32x2::new(1, -2);
         let b = i32x2::new(0, 3);
         let e = i32x2::new(-2, 0);
-        let r: i32x2 = ::mem::transmute(vpmin_s32(::mem::transmute(a), ::mem::transmute(b)));
+        let r: i32x2 = transmute(vpmin_s32(transmute(a), transmute(b)));
         assert_eq!(r, e);
     }
 
@@ -1319,7 +1302,7 @@ mod tests {
         let a = u8x8::new(1, 2, 3, 4, 5, 6, 7, 8);
         let b = u8x8::new(0, 3, 2, 5, 4, 7, 6, 9);
         let e = u8x8::new(1, 3, 5, 7, 0, 2, 4, 6);
-        let r: u8x8 = ::mem::transmute(vpmin_u8(::mem::transmute(a), ::mem::transmute(b)));
+        let r: u8x8 = transmute(vpmin_u8(transmute(a), transmute(b)));
         assert_eq!(r, e);
     }
 
@@ -1328,7 +1311,7 @@ mod tests {
         let a = u16x4::new(1, 2, 3, 4);
         let b = u16x4::new(0, 3, 2, 5);
         let e = u16x4::new(1, 3, 0, 2);
-        let r: u16x4 = ::mem::transmute(vpmin_u16(::mem::transmute(a), ::mem::transmute(b)));
+        let r: u16x4 = transmute(vpmin_u16(transmute(a), transmute(b)));
         assert_eq!(r, e);
     }
 
@@ -1337,7 +1320,7 @@ mod tests {
         let a = u32x2::new(1, 2);
         let b = u32x2::new(0, 3);
         let e = u32x2::new(1, 0);
-        let r: u32x2 = ::mem::transmute(vpmin_u32(::mem::transmute(a), ::mem::transmute(b)));
+        let r: u32x2 = transmute(vpmin_u32(transmute(a), transmute(b)));
         assert_eq!(r, e);
     }
 
@@ -1346,7 +1329,7 @@ mod tests {
         let a = f32x2::new(1., -2.);
         let b = f32x2::new(0., 3.);
         let e = f32x2::new(-2., 0.);
-        let r: f32x2 = ::mem::transmute(vpmin_f32(::mem::transmute(a), ::mem::transmute(b)));
+        let r: f32x2 = transmute(vpmin_f32(transmute(a), transmute(b)));
         assert_eq!(r, e);
     }
 
@@ -1355,7 +1338,7 @@ mod tests {
         let a = i8x8::new(1, -2, 3, -4, 5, 6, 7, 8);
         let b = i8x8::new(0, 3, 2, 5, 4, 7, 6, 9);
         let e = i8x8::new(1, 3, 6, 8, 3, 5, 7, 9);
-        let r: i8x8 = ::mem::transmute(vpmax_s8(::mem::transmute(a), ::mem::transmute(b)));
+        let r: i8x8 = transmute(vpmax_s8(transmute(a), transmute(b)));
         assert_eq!(r, e);
     }
 
@@ -1364,7 +1347,7 @@ mod tests {
         let a = i16x4::new(1, 2, 3, -4);
         let b = i16x4::new(0, 3, 2, 5);
         let e = i16x4::new(2, 3, 3, 5);
-        let r: i16x4 = ::mem::transmute(vpmax_s16(::mem::transmute(a), ::mem::transmute(b)));
+        let r: i16x4 = transmute(vpmax_s16(transmute(a), transmute(b)));
         assert_eq!(r, e);
     }
 
@@ -1373,7 +1356,7 @@ mod tests {
         let a = i32x2::new(1, -2);
         let b = i32x2::new(0, 3);
         let e = i32x2::new(1, 3);
-        let r: i32x2 = ::mem::transmute(vpmax_s32(::mem::transmute(a), ::mem::transmute(b)));
+        let r: i32x2 = transmute(vpmax_s32(transmute(a), transmute(b)));
         assert_eq!(r, e);
     }
 
@@ -1382,7 +1365,7 @@ mod tests {
         let a = u8x8::new(1, 2, 3, 4, 5, 6, 7, 8);
         let b = u8x8::new(0, 3, 2, 5, 4, 7, 6, 9);
         let e = u8x8::new(2, 4, 6, 8, 3, 5, 7, 9);
-        let r: u8x8 = ::mem::transmute(vpmax_u8(::mem::transmute(a), ::mem::transmute(b)));
+        let r: u8x8 = transmute(vpmax_u8(transmute(a), transmute(b)));
         assert_eq!(r, e);
     }
 
@@ -1391,7 +1374,7 @@ mod tests {
         let a = u16x4::new(1, 2, 3, 4);
         let b = u16x4::new(0, 3, 2, 5);
         let e = u16x4::new(2, 4, 3, 5);
-        let r: u16x4 = ::mem::transmute(vpmax_u16(::mem::transmute(a), ::mem::transmute(b)));
+        let r: u16x4 = transmute(vpmax_u16(transmute(a), transmute(b)));
         assert_eq!(r, e);
     }
 
@@ -1400,7 +1383,7 @@ mod tests {
         let a = u32x2::new(1, 2);
         let b = u32x2::new(0, 3);
         let e = u32x2::new(2, 3);
-        let r: u32x2 = ::mem::transmute(vpmax_u32(::mem::transmute(a), ::mem::transmute(b)));
+        let r: u32x2 = transmute(vpmax_u32(transmute(a), transmute(b)));
         assert_eq!(r, e);
     }
 
@@ -1409,7 +1392,7 @@ mod tests {
         let a = f32x2::new(1., -2.);
         let b = f32x2::new(0., 3.);
         let e = f32x2::new(1., 3.);
-        let r: f32x2 = ::mem::transmute(vpmax_f32(::mem::transmute(a), ::mem::transmute(b)));
+        let r: f32x2 = transmute(vpmax_f32(transmute(a), transmute(b)));
         assert_eq!(r, e);
     }
 }

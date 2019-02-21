@@ -22,5 +22,5 @@ pub use self::memory::*;
 #[cfg_attr(test, assert_instr(unreachable))]
 #[inline]
 pub unsafe fn unreachable() -> ! {
-    ::intrinsics::abort()
+    crate::intrinsics::abort()
 }

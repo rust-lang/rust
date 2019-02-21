@@ -87,8 +87,7 @@ pub unsafe fn __crc32cd(crc: u32, data: u64) -> u32 {
 
 #[cfg(test)]
 mod tests {
-    use core_arch::aarch64::*;
-    use core_arch::simd::*;
+    use crate::core_arch::{aarch64::*, simd::*};
     use std::mem;
     use stdsimd_test::simd_test;
 

@@ -47,13 +47,12 @@ pub unsafe fn _clz_u32(x: u32) -> u32 {
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
 #[cfg_attr(test, assert_instr(rbit))]
 pub unsafe fn _rbit_u32(x: u32) -> u32 {
-    use intrinsics::bitreverse;
-    bitreverse(x)
+    crate::intrinsics::bitreverse(x)
 }
 
 #[cfg(test)]
 mod tests {
-    use core_arch::arm::v7;
+    use crate::core_arch::arm::v7;
 
     #[test]
     fn _clz_u8() {

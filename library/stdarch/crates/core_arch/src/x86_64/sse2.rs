@@ -1,8 +1,9 @@
 //! `x86_64`'s Streaming SIMD Extensions 2 (SSE2)
 
-use core_arch::simd_llvm::*;
-use core_arch::x86::*;
-use intrinsics;
+use crate::{
+    core_arch::{simd_llvm::*, x86::*},
+    intrinsics,
+};
 
 #[cfg(test)]
 use stdsimd_test::assert_instr;
@@ -150,7 +151,7 @@ mod tests {
 
     use stdsimd_test::simd_test;
 
-    use core_arch::arch::x86_64::*;
+    use crate::core_arch::arch::x86_64::*;
 
     #[simd_test(enable = "sse2")]
     unsafe fn test_mm_cvtsd_si64() {

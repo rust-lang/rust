@@ -1,8 +1,9 @@
 //! `i686`'s Streaming SIMD Extensions 4a (`SSE4a`)
 
-use core_arch::simd::*;
-use core_arch::x86::*;
-use mem;
+use crate::{
+    core_arch::{simd::*, x86::*},
+    mem::transmute,
+};
 
 #[cfg(test)]
 use stdsimd_test::assert_instr;
@@ -38,7 +39,7 @@ extern "C" {
 #[cfg_attr(test, assert_instr(extrq))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _mm_extract_si64(x: __m128i, y: __m128i) -> __m128i {
-    mem::transmute(extrq(x.as_i64x2(), y.as_i8x16()))
+    transmute(extrq(x.as_i64x2(), y.as_i8x16()))
 }
 
 /// Inserts the `[length:0]` bits of `y` into `x` at `index`.
@@ -55,7 +56,7 @@ pub unsafe fn _mm_extract_si64(x: __m128i, y: __m128i) -> __m128i {
 #[cfg_attr(test, assert_instr(insertq))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _mm_insert_si64(x: __m128i, y: __m128i) -> __m128i {
-    mem::transmute(insertq(x.as_i64x2(), y.as_i64x2()))
+    transmute(insertq(x.as_i64x2(), y.as_i64x2()))
 }
 
 /// Non-temporal store of `a.0` into `p`.
@@ -78,7 +79,7 @@ pub unsafe fn _mm_stream_ss(p: *mut f32, a: __m128) {
 
 #[cfg(test)]
 mod tests {
-    use core_arch::x86::*;
+    use crate::core_arch::x86::*;
     use stdsimd_test::simd_test;
 
     #[simd_test(enable = "sse4a")]

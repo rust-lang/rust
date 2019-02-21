@@ -29,7 +29,7 @@ extern "C" {
 pub fn memory_size(mem: u32) -> usize {
     unsafe {
         if mem != 0 {
-            ::intrinsics::abort();
+            crate::intrinsics::abort();
         }
         llvm_memory_size(0) as usize
     }
@@ -57,7 +57,7 @@ pub fn memory_size(mem: u32) -> usize {
 pub fn memory_grow(mem: u32, delta: usize) -> usize {
     unsafe {
         if mem != 0 {
-            ::intrinsics::abort();
+            crate::intrinsics::abort();
         }
         llvm_memory_grow(0, delta as i32) as isize as usize
     }

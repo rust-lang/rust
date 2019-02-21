@@ -8,12 +8,12 @@
 
 #![allow(non_camel_case_types)]
 
-use core_arch::simd_llvm::*;
+use crate::core_arch::simd_llvm::*;
 
 #[cfg(test)]
 use stdsimd_test::assert_instr;
 
-use mem;
+use crate::mem;
 
 types! {
     // pub struct vector_Float16 = f16x8;
@@ -34,7 +34,7 @@ types! {
 
 mod sealed {
     use super::*;
-    use core_arch::simd::*;
+    use crate::core_arch::simd::*;
 
     pub trait VectorPermDI {
         unsafe fn vec_xxpermdi(self, b: Self, dm: u8) -> Self;
@@ -86,12 +86,12 @@ where
 #[cfg(test)]
 mod tests {
     #[cfg(target_arch = "powerpc")]
-    use core_arch::arch::powerpc::*;
+    use crate::core_arch::arch::powerpc::*;
 
     #[cfg(target_arch = "powerpc64")]
-    use core_arch::arch::powerpc64::*;
+    use crate::core_arch::arch::powerpc64::*;
 
-    use core_arch::simd::*;
+    use crate::core_arch::simd::*;
     use stdsimd_test::simd_test;
 
     macro_rules! test_vec_xxpermdi {

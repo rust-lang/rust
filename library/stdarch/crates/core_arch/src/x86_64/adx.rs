@@ -51,7 +51,7 @@ pub unsafe fn _subborrow_u64(c_in: u8, a: u64, b: u64, out: &mut u64) -> u8 {
 mod tests {
     use stdsimd_test::simd_test;
 
-    use core_arch::x86_64::*;
+    use crate::core_arch::x86_64::*;
 
     #[test]
     fn test_addcarry_u64() {

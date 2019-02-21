@@ -5,12 +5,12 @@
 
 #![allow(non_camel_case_types)]
 
-use core_arch::simd::*;
-use core_arch::simd_llvm::*;
-use marker::Sized;
-use mem;
-use ptr;
-use u8;
+use crate::{
+    core_arch::{simd::*, simd_llvm::*},
+    marker::Sized,
+    mem::transmute,
+    ptr,
+};
 
 #[cfg(test)]
 use stdsimd_test::assert_instr;
@@ -30,52 +30,52 @@ pub(crate) trait v128Ext: Sized {
 
     #[inline]
     fn as_u8x16(self) -> u8x16 {
-        unsafe { mem::transmute(self.as_v128()) }
+        unsafe { transmute(self.as_v128()) }
     }
 
     #[inline]
     fn as_u16x8(self) -> u16x8 {
-        unsafe { mem::transmute(self.as_v128()) }
+        unsafe { transmute(self.as_v128()) }
     }
 
     #[inline]
     fn as_u32x4(self) -> u32x4 {
-        unsafe { mem::transmute(self.as_v128()) }
+        unsafe { transmute(self.as_v128()) }
     }
 
     #[inline]
     fn as_u64x2(self) -> u64x2 {
-        unsafe { mem::transmute(self.as_v128()) }
+        unsafe { transmute(self.as_v128()) }
     }
 
     #[inline]
     fn as_i8x16(self) -> i8x16 {
-        unsafe { mem::transmute(self.as_v128()) }
+        unsafe { transmute(self.as_v128()) }
     }
 
     #[inline]
     fn as_i16x8(self) -> i16x8 {
-        unsafe { mem::transmute(self.as_v128()) }
+        unsafe { transmute(self.as_v128()) }
     }
 
     #[inline]
     fn as_i32x4(self) -> i32x4 {
-        unsafe { mem::transmute(self.as_v128()) }
+        unsafe { transmute(self.as_v128()) }
     }
 
     #[inline]
     fn as_i64x2(self) -> i64x2 {
-        unsafe { mem::transmute(self.as_v128()) }
+        unsafe { transmute(self.as_v128()) }
     }
 
     #[inline]
     fn as_f32x4(self) -> f32x4 {
-        unsafe { mem::transmute(self.as_v128()) }
+        unsafe { transmute(self.as_v128()) }
     }
 
     #[inline]
     fn as_f64x2(self) -> f64x2 {
-        unsafe { mem::transmute(self.as_v128()) }
+        unsafe { transmute(self.as_v128()) }
     }
 }
 
@@ -222,7 +222,7 @@ pub const fn v128_const(
 #[inline]
 #[cfg_attr(test, assert_instr(i8x16.splat))]
 pub fn i8x16_splat(a: i8) -> v128 {
-    unsafe { mem::transmute(i8x16::splat(a)) }
+    unsafe { transmute(i8x16::splat(a)) }
 }
 
 /// Extracts a lane from a 128-bit vector interpreted as 16 packed i8 numbers.
@@ -263,7 +263,7 @@ pub unsafe fn i8x16_extract_lane(a: v128, imm: usize) -> i8 {
 #[cfg_attr(test, assert_instr(i8x16.replace_lane, imm = 0))]
 #[rustc_args_required_const(1)]
 pub unsafe fn i8x16_replace_lane(a: v128, imm: usize, val: i8) -> v128 {
-    mem::transmute(simd_insert(a.as_i8x16(), imm as u32, val))
+    transmute(simd_insert(a.as_i8x16(), imm as u32, val))
 }
 
 /// Creates a vector with identical lanes.
@@ -272,7 +272,7 @@ pub unsafe fn i8x16_replace_lane(a: v128, imm: usize, val: i8) -> v128 {
 #[inline]
 #[cfg_attr(test, assert_instr(i8x16.splat))]
 pub fn i16x8_splat(a: i16) -> v128 {
-    unsafe { mem::transmute(i16x8::splat(a)) }
+    unsafe { transmute(i16x8::splat(a)) }
 }
 
 /// Extracts a lane from a 128-bit vector interpreted as 8 packed i16 numbers.
@@ -313,7 +313,7 @@ pub unsafe fn i16x8_extract_lane(a: v128, imm: usize) -> i16 {
 #[cfg_attr(test, assert_instr(i16x8.replace_lane, imm = 0))]
 #[rustc_args_required_const(1)]
 pub unsafe fn i16x8_replace_lane(a: v128, imm: usize, val: i16) -> v128 {
-    mem::transmute(simd_insert(a.as_i16x8(), imm as u32, val))
+    transmute(simd_insert(a.as_i16x8(), imm as u32, val))
 }
 
 /// Creates a vector with identical lanes.
@@ -322,7 +322,7 @@ pub unsafe fn i16x8_replace_lane(a: v128, imm: usize, val: i16) -> v128 {
 #[inline]
 #[cfg_attr(test, assert_instr(i8x16.splat))]
 pub fn i32x4_splat(a: i32) -> v128 {
-    unsafe { mem::transmute(i32x4::splat(a)) }
+    unsafe { transmute(i32x4::splat(a)) }
 }
 
 /// Extracts a lane from a 128-bit vector interpreted as 4 packed i32 numbers.
@@ -354,7 +354,7 @@ pub unsafe fn i32x4_extract_lane(a: v128, imm: usize) -> i32 {
 #[cfg_attr(test, assert_instr(i32x4.replace_lane, imm = 0))]
 #[rustc_args_required_const(1)]
 pub unsafe fn i32x4_replace_lane(a: v128, imm: usize, val: i32) -> v128 {
-    mem::transmute(simd_insert(a.as_i32x4(), imm as u32, val))
+    transmute(simd_insert(a.as_i32x4(), imm as u32, val))
 }
 
 /// Creates a vector with identical lanes.
@@ -363,7 +363,7 @@ pub unsafe fn i32x4_replace_lane(a: v128, imm: usize, val: i32) -> v128 {
 #[inline]
 #[cfg_attr(test, assert_instr(i8x16.splat))]
 pub fn i64x2_splat(a: i64) -> v128 {
-    unsafe { mem::transmute(i64x2::splat(a)) }
+    unsafe { transmute(i64x2::splat(a)) }
 }
 
 /// Extracts a lane from a 128-bit vector interpreted as 2 packed i64 numbers.
@@ -395,7 +395,7 @@ pub unsafe fn i64x2_extract_lane(a: v128, imm: usize) -> i64 {
 #[cfg_attr(test, assert_instr(i64x2.replace_lane, imm = 0))]
 #[rustc_args_required_const(1)]
 pub unsafe fn i64x2_replace_lane(a: v128, imm: usize, val: i64) -> v128 {
-    mem::transmute(simd_insert(a.as_i64x2(), imm as u32, val))
+    transmute(simd_insert(a.as_i64x2(), imm as u32, val))
 }
 
 /// Creates a vector with identical lanes.
@@ -404,7 +404,7 @@ pub unsafe fn i64x2_replace_lane(a: v128, imm: usize, val: i64) -> v128 {
 #[inline]
 #[cfg_attr(test, assert_instr(i8x16.splat))]
 pub fn f32x4_splat(a: f32) -> v128 {
-    unsafe { mem::transmute(f32x4::splat(a)) }
+    unsafe { transmute(f32x4::splat(a)) }
 }
 
 /// Extracts a lane from a 128-bit vector interpreted as 4 packed f32 numbers.
@@ -436,7 +436,7 @@ pub unsafe fn f32x4_extract_lane(a: v128, imm: usize) -> f32 {
 #[cfg_attr(test, assert_instr(f32x4.replace_lane, imm = 0))]
 #[rustc_args_required_const(1)]
 pub unsafe fn f32x4_replace_lane(a: v128, imm: usize, val: f32) -> v128 {
-    mem::transmute(simd_insert(a.as_f32x4(), imm as u32, val))
+    transmute(simd_insert(a.as_f32x4(), imm as u32, val))
 }
 
 /// Creates a vector with identical lanes.
@@ -445,7 +445,7 @@ pub unsafe fn f32x4_replace_lane(a: v128, imm: usize, val: f32) -> v128 {
 #[inline]
 #[cfg_attr(test, assert_instr(i8x16.splat))]
 pub fn f64x2_splat(a: f64) -> v128 {
-    unsafe { mem::transmute(f64x2::splat(a)) }
+    unsafe { transmute(f64x2::splat(a)) }
 }
 
 /// Extracts lane from a 128-bit vector interpreted as 2 packed f64 numbers.
@@ -477,7 +477,7 @@ pub unsafe fn f64x2_extract_lane(a: v128, imm: usize) -> f64 {
 #[cfg_attr(test, assert_instr(f64x2.replace_lane, imm = 0))]
 #[rustc_args_required_const(1)]
 pub unsafe fn f64x2_replace_lane(a: v128, imm: usize, val: f64) -> v128 {
-    mem::transmute(simd_insert(a.as_f64x2(), imm as u32, val))
+    transmute(simd_insert(a.as_f64x2(), imm as u32, val))
 }
 
 /// Compares two 128-bit vectors as if they were two vectors of 16 eight-bit
@@ -488,7 +488,7 @@ pub unsafe fn f64x2_replace_lane(a: v128, imm: usize, val: f64) -> v128 {
 #[inline]
 #[cfg_attr(test, assert_instr(i8x16.eq))]
 pub fn i8x16_eq(a: v128, b: v128) -> v128 {
-    unsafe { mem::transmute(simd_eq::<_, i8x16>(a.as_i8x16(), b.as_i8x16())) }
+    unsafe { transmute(simd_eq::<_, i8x16>(a.as_i8x16(), b.as_i8x16())) }
 }
 
 /// Compares two 128-bit vectors as if they were two vectors of 16 eight-bit
@@ -499,7 +499,7 @@ pub fn i8x16_eq(a: v128, b: v128) -> v128 {
 #[inline]
 #[cfg_attr(test, assert_instr(i8x16.ne))]
 pub fn i8x16_ne(a: v128, b: v128) -> v128 {
-    unsafe { mem::transmute(simd_ne::<_, i8x16>(a.as_i8x16(), b.as_i8x16())) }
+    unsafe { transmute(simd_ne::<_, i8x16>(a.as_i8x16(), b.as_i8x16())) }
 }
 
 /// Compares two 128-bit vectors as if they were two vectors of 16 eight-bit
@@ -510,7 +510,7 @@ pub fn i8x16_ne(a: v128, b: v128) -> v128 {
 #[inline]
 #[cfg_attr(test, assert_instr(i8x16.lt_s))]
 pub fn i8x16_lt_s(a: v128, b: v128) -> v128 {
-    unsafe { mem::transmute(simd_lt::<_, i8x16>(a.as_i8x16(), b.as_i8x16())) }
+    unsafe { transmute(simd_lt::<_, i8x16>(a.as_i8x16(), b.as_i8x16())) }
 }
 
 /// Compares two 128-bit vectors as if they were two vectors of 16 eight-bit
@@ -521,7 +521,7 @@ pub fn i8x16_lt_s(a: v128, b: v128) -> v128 {
 #[inline]
 #[cfg_attr(test, assert_instr(i8x16.lt_u))]
 pub fn i8x16_lt_u(a: v128, b: v128) -> v128 {
-    unsafe { mem::transmute(simd_lt::<_, i8x16>(a.as_u8x16(), b.as_u8x16())) }
+    unsafe { transmute(simd_lt::<_, i8x16>(a.as_u8x16(), b.as_u8x16())) }
 }
 
 /// Compares two 128-bit vectors as if they were two vectors of 16 eight-bit
@@ -532,7 +532,7 @@ pub fn i8x16_lt_u(a: v128, b: v128) -> v128 {
 #[inline]
 #[cfg_attr(test, assert_instr(i8x16.gt_s))]
 pub fn i8x16_gt_s(a: v128, b: v128) -> v128 {
-    unsafe { mem::transmute(simd_gt::<_, i8x16>(a.as_i8x16(), b.as_i8x16())) }
+    unsafe { transmute(simd_gt::<_, i8x16>(a.as_i8x16(), b.as_i8x16())) }
 }
 
 /// Compares two 128-bit vectors as if they were two vectors of 16 eight-bit
@@ -543,7 +543,7 @@ pub fn i8x16_gt_s(a: v128, b: v128) -> v128 {
 #[inline]
 #[cfg_attr(test, assert_instr(i8x16.gt_u))]
 pub fn i8x16_gt_u(a: v128, b: v128) -> v128 {
-    unsafe { mem::transmute(simd_gt::<_, i8x16>(a.as_u8x16(), b.as_u8x16())) }
+    unsafe { transmute(simd_gt::<_, i8x16>(a.as_u8x16(), b.as_u8x16())) }
 }
 
 /// Compares two 128-bit vectors as if they were two vectors of 16 eight-bit
@@ -554,7 +554,7 @@ pub fn i8x16_gt_u(a: v128, b: v128) -> v128 {
 #[inline]
 #[cfg_attr(test, assert_instr(i8x16.le_s))]
 pub fn i8x16_le_s(a: v128, b: v128) -> v128 {
-    unsafe { mem::transmute(simd_le::<_, i8x16>(a.as_i8x16(), b.as_i8x16())) }
+    unsafe { transmute(simd_le::<_, i8x16>(a.as_i8x16(), b.as_i8x16())) }
 }
 
 /// Compares two 128-bit vectors as if they were two vectors of 16 eight-bit
@@ -565,7 +565,7 @@ pub fn i8x16_le_s(a: v128, b: v128) -> v128 {
 #[inline]
 #[cfg_attr(test, assert_instr(i8x16.le_u))]
 pub fn i8x16_le_u(a: v128, b: v128) -> v128 {
-    unsafe { mem::transmute(simd_le::<_, i8x16>(a.as_u8x16(), b.as_u8x16())) }
+    unsafe { transmute(simd_le::<_, i8x16>(a.as_u8x16(), b.as_u8x16())) }
 }
 
 /// Compares two 128-bit vectors as if they were two vectors of 16 eight-bit
@@ -576,7 +576,7 @@ pub fn i8x16_le_u(a: v128, b: v128) -> v128 {
 #[inline]
 #[cfg_attr(test, assert_instr(i8x16.ge_s))]
 pub fn i8x16_ge_s(a: v128, b: v128) -> v128 {
-    unsafe { mem::transmute(simd_ge::<_, i8x16>(a.as_i8x16(), b.as_i8x16())) }
+    unsafe { transmute(simd_ge::<_, i8x16>(a.as_i8x16(), b.as_i8x16())) }
 }
 
 /// Compares two 128-bit vectors as if they were two vectors of 16 eight-bit
@@ -587,7 +587,7 @@ pub fn i8x16_ge_s(a: v128, b: v128) -> v128 {
 #[inline]
 #[cfg_attr(test, assert_instr(i8x16.ge_u))]
 pub fn i8x16_ge_u(a: v128, b: v128) -> v128 {
-    unsafe { mem::transmute(simd_ge::<_, i8x16>(a.as_u8x16(), b.as_u8x16())) }
+    unsafe { transmute(simd_ge::<_, i8x16>(a.as_u8x16(), b.as_u8x16())) }
 }
 
 /// Compares two 128-bit vectors as if they were two vectors of 8 sixteen-bit
@@ -598,7 +598,7 @@ pub fn i8x16_ge_u(a: v128, b: v128) -> v128 {
 #[inline]
 #[cfg_attr(test, assert_instr(i16x8.eq))]
 pub fn i16x8_eq(a: v128, b: v128) -> v128 {
-    unsafe { mem::transmute(simd_eq::<_, i16x8>(a.as_i16x8(), b.as_i16x8())) }
+    unsafe { transmute(simd_eq::<_, i16x8>(a.as_i16x8(), b.as_i16x8())) }
 }
 
 /// Compares two 128-bit vectors as if they were two vectors of 8 sixteen-bit
@@ -609,7 +609,7 @@ pub fn i16x8_eq(a: v128, b: v128) -> v128 {
 #[inline]
 #[cfg_attr(test, assert_instr(i16x8.ne))]
 pub fn i16x8_ne(a: v128, b: v128) -> v128 {
-    unsafe { mem::transmute(simd_ne::<_, i16x8>(a.as_i16x8(), b.as_i16x8())) }
+    unsafe { transmute(simd_ne::<_, i16x8>(a.as_i16x8(), b.as_i16x8())) }
 }
 
 /// Compares two 128-bit vectors as if they were two vectors of 8 sixteen-bit
@@ -620,7 +620,7 @@ pub fn i16x8_ne(a: v128, b: v128) -> v128 {
 #[inline]
 #[cfg_attr(test, assert_instr(i16x8.lt_s))]
 pub fn i16x8_lt_s(a: v128, b: v128) -> v128 {
-    unsafe { mem::transmute(simd_lt::<_, i16x8>(a.as_i16x8(), b.as_i16x8())) }
+    unsafe { transmute(simd_lt::<_, i16x8>(a.as_i16x8(), b.as_i16x8())) }
 }
 
 /// Compares two 128-bit vectors as if they were two vectors of 8 sixteen-bit
@@ -631,7 +631,7 @@ pub fn i16x8_lt_s(a: v128, b: v128) -> v128 {
 #[inline]
 #[cfg_attr(test, assert_instr(i16x8.lt_u))]
 pub fn i16x8_lt_u(a: v128, b: v128) -> v128 {
-    unsafe { mem::transmute(simd_lt::<_, i16x8>(a.as_u16x8(), b.as_u16x8())) }
+    unsafe { transmute(simd_lt::<_, i16x8>(a.as_u16x8(), b.as_u16x8())) }
 }
 
 /// Compares two 128-bit vectors as if they were two vectors of 8 sixteen-bit
@@ -642,7 +642,7 @@ pub fn i16x8_lt_u(a: v128, b: v128) -> v128 {
 #[inline]
 #[cfg_attr(test, assert_instr(i16x8.gt_s))]
 pub fn i16x8_gt_s(a: v128, b: v128) -> v128 {
-    unsafe { mem::transmute(simd_gt::<_, i16x8>(a.as_i16x8(), b.as_i16x8())) }
+    unsafe { transmute(simd_gt::<_, i16x8>(a.as_i16x8(), b.as_i16x8())) }
 }
 
 /// Compares two 128-bit vectors as if they were two vectors of 8 sixteen-bit
@@ -653,7 +653,7 @@ pub fn i16x8_gt_s(a: v128, b: v128) -> v128 {
 #[inline]
 #[cfg_attr(test, assert_instr(i16x8.gt_u))]
 pub fn i16x8_gt_u(a: v128, b: v128) -> v128 {
-    unsafe { mem::transmute(simd_gt::<_, i16x8>(a.as_u16x8(), b.as_u16x8())) }
+    unsafe { transmute(simd_gt::<_, i16x8>(a.as_u16x8(), b.as_u16x8())) }
 }
 
 /// Compares two 128-bit vectors as if they were two vectors of 8 sixteen-bit
@@ -664,7 +664,7 @@ pub fn i16x8_gt_u(a: v128, b: v128) -> v128 {
 #[inline]
 #[cfg_attr(test, assert_instr(i16x8.le_s))]
 pub fn i16x8_le_s(a: v128, b: v128) -> v128 {
-    unsafe { mem::transmute(simd_le::<_, i16x8>(a.as_i16x8(), b.as_i16x8())) }
+    unsafe { transmute(simd_le::<_, i16x8>(a.as_i16x8(), b.as_i16x8())) }
 }
 
 /// Compares two 128-bit vectors as if they were two vectors of 8 sixteen-bit
@@ -675,7 +675,7 @@ pub fn i16x8_le_s(a: v128, b: v128) -> v128 {
 #[inline]
 #[cfg_attr(test, assert_instr(i16x8.le_u))]
 pub fn i16x8_le_u(a: v128, b: v128) -> v128 {
-    unsafe { mem::transmute(simd_le::<_, i16x8>(a.as_u16x8(), b.as_u16x8())) }
+    unsafe { transmute(simd_le::<_, i16x8>(a.as_u16x8(), b.as_u16x8())) }
 }
 
 /// Compares two 128-bit vectors as if they were two vectors of 8 sixteen-bit
@@ -686,7 +686,7 @@ pub fn i16x8_le_u(a: v128, b: v128) -> v128 {
 #[inline]
 #[cfg_attr(test, assert_instr(i16x8.ge_s))]
 pub fn i16x8_ge_s(a: v128, b: v128) -> v128 {
-    unsafe { mem::transmute(simd_ge::<_, i16x8>(a.as_i16x8(), b.as_i16x8())) }
+    unsafe { transmute(simd_ge::<_, i16x8>(a.as_i16x8(), b.as_i16x8())) }
 }
 
 /// Compares two 128-bit vectors as if they were two vectors of 8 sixteen-bit
@@ -697,7 +697,7 @@ pub fn i16x8_ge_s(a: v128, b: v128) -> v128 {
 #[inline]
 #[cfg_attr(test, assert_instr(i16x8.ge_u))]
 pub fn i16x8_ge_u(a: v128, b: v128) -> v128 {
-    unsafe { mem::transmute(simd_ge::<_, i16x8>(a.as_u16x8(), b.as_u16x8())) }
+    unsafe { transmute(simd_ge::<_, i16x8>(a.as_u16x8(), b.as_u16x8())) }
 }
 
 /// Compares two 128-bit vectors as if they were two vectors of 4 thirty-two-bit
@@ -708,7 +708,7 @@ pub fn i16x8_ge_u(a: v128, b: v128) -> v128 {
 #[inline]
 #[cfg_attr(test, assert_instr(i32x4.eq))]
 pub fn i32x4_eq(a: v128, b: v128) -> v128 {
-    unsafe { mem::transmute(simd_eq::<_, i32x4>(a.as_i32x4(), b.as_i32x4())) }
+    unsafe { transmute(simd_eq::<_, i32x4>(a.as_i32x4(), b.as_i32x4())) }
 }
 
 /// Compares two 128-bit vectors as if they were two vectors of 4 thirty-two-bit
@@ -719,7 +719,7 @@ pub fn i32x4_eq(a: v128, b: v128) -> v128 {
 #[inline]
 #[cfg_attr(test, assert_instr(i32x4.ne))]
 pub fn i32x4_ne(a: v128, b: v128) -> v128 {
-    unsafe { mem::transmute(simd_ne::<_, i32x4>(a.as_i32x4(), b.as_i32x4())) }
+    unsafe { transmute(simd_ne::<_, i32x4>(a.as_i32x4(), b.as_i32x4())) }
 }
 
 /// Compares two 128-bit vectors as if they were two vectors of 4 thirty-two-bit
@@ -730,7 +730,7 @@ pub fn i32x4_ne(a: v128, b: v128) -> v128 {
 #[inline]
 #[cfg_attr(test, assert_instr(i32x4.lt_s))]
 pub fn i32x4_lt_s(a: v128, b: v128) -> v128 {
-    unsafe { mem::transmute(simd_lt::<_, i32x4>(a.as_i32x4(), b.as_i32x4())) }
+    unsafe { transmute(simd_lt::<_, i32x4>(a.as_i32x4(), b.as_i32x4())) }
 }
 
 /// Compares two 128-bit vectors as if they were two vectors of 4 thirty-two-bit
@@ -741,7 +741,7 @@ pub fn i32x4_lt_s(a: v128, b: v128) -> v128 {
 #[inline]
 #[cfg_attr(test, assert_instr(i32x4.lt_u))]
 pub fn i32x4_lt_u(a: v128, b: v128) -> v128 {
-    unsafe { mem::transmute(simd_lt::<_, i32x4>(a.as_u32x4(), b.as_u32x4())) }
+    unsafe { transmute(simd_lt::<_, i32x4>(a.as_u32x4(), b.as_u32x4())) }
 }
 
 /// Compares two 128-bit vectors as if they were two vectors of 4 thirty-two-bit
@@ -752,7 +752,7 @@ pub fn i32x4_lt_u(a: v128, b: v128) -> v128 {
 #[inline]
 #[cfg_attr(test, assert_instr(i32x4.gt_s))]
 pub fn i32x4_gt_s(a: v128, b: v128) -> v128 {
-    unsafe { mem::transmute(simd_gt::<_, i32x4>(a.as_i32x4(), b.as_i32x4())) }
+    unsafe { transmute(simd_gt::<_, i32x4>(a.as_i32x4(), b.as_i32x4())) }
 }
 
 /// Compares two 128-bit vectors as if they were two vectors of 4 thirty-two-bit
@@ -763,7 +763,7 @@ pub fn i32x4_gt_s(a: v128, b: v128) -> v128 {
 #[inline]
 #[cfg_attr(test, assert_instr(i32x4.gt_u))]
 pub fn i32x4_gt_u(a: v128, b: v128) -> v128 {
-    unsafe { mem::transmute(simd_gt::<_, i32x4>(a.as_u32x4(), b.as_u32x4())) }
+    unsafe { transmute(simd_gt::<_, i32x4>(a.as_u32x4(), b.as_u32x4())) }
 }
 
 /// Compares two 128-bit vectors as if they were two vectors of 4 thirty-two-bit
@@ -774,7 +774,7 @@ pub fn i32x4_gt_u(a: v128, b: v128) -> v128 {
 #[inline]
 #[cfg_attr(test, assert_instr(i32x4.le_s))]
 pub fn i32x4_le_s(a: v128, b: v128) -> v128 {
-    unsafe { mem::transmute(simd_le::<_, i32x4>(a.as_i32x4(), b.as_i32x4())) }
+    unsafe { transmute(simd_le::<_, i32x4>(a.as_i32x4(), b.as_i32x4())) }
 }
 
 /// Compares two 128-bit vectors as if they were two vectors of 4 thirty-two-bit
@@ -785,7 +785,7 @@ pub fn i32x4_le_s(a: v128, b: v128) -> v128 {
 #[inline]
 #[cfg_attr(test, assert_instr(i32x4.le_u))]
 pub fn i32x4_le_u(a: v128, b: v128) -> v128 {
-    unsafe { mem::transmute(simd_le::<_, i32x4>(a.as_u32x4(), b.as_u32x4())) }
+    unsafe { transmute(simd_le::<_, i32x4>(a.as_u32x4(), b.as_u32x4())) }
 }
 
 /// Compares two 128-bit vectors as if they were two vectors of 4 thirty-two-bit
@@ -796,7 +796,7 @@ pub fn i32x4_le_u(a: v128, b: v128) -> v128 {
 #[inline]
 #[cfg_attr(test, assert_instr(i32x4.ge_s))]
 pub fn i32x4_ge_s(a: v128, b: v128) -> v128 {
-    unsafe { mem::transmute(simd_ge::<_, i32x4>(a.as_i32x4(), b.as_i32x4())) }
+    unsafe { transmute(simd_ge::<_, i32x4>(a.as_i32x4(), b.as_i32x4())) }
 }
 
 /// Compares two 128-bit vectors as if they were two vectors of 4 thirty-two-bit
@@ -807,7 +807,7 @@ pub fn i32x4_ge_s(a: v128, b: v128) -> v128 {
 #[inline]
 #[cfg_attr(test, assert_instr(i32x4.ge_u))]
 pub fn i32x4_ge_u(a: v128, b: v128) -> v128 {
-    unsafe { mem::transmute(simd_ge::<_, i32x4>(a.as_u32x4(), b.as_u32x4())) }
+    unsafe { transmute(simd_ge::<_, i32x4>(a.as_u32x4(), b.as_u32x4())) }
 }
 
 /// Compares two 128-bit vectors as if they were two vectors of 4 thirty-two-bit
@@ -818,7 +818,7 @@ pub fn i32x4_ge_u(a: v128, b: v128) -> v128 {
 #[inline]
 #[cfg_attr(test, assert_instr(f32x4.eq))]
 pub fn f32x4_eq(a: v128, b: v128) -> v128 {
-    unsafe { mem::transmute(simd_eq::<_, i32x4>(a.as_f32x4(), b.as_f32x4())) }
+    unsafe { transmute(simd_eq::<_, i32x4>(a.as_f32x4(), b.as_f32x4())) }
 }
 
 /// Compares two 128-bit vectors as if they were two vectors of 4 thirty-two-bit
@@ -829,7 +829,7 @@ pub fn f32x4_eq(a: v128, b: v128) -> v128 {
 #[inline]
 #[cfg_attr(test, assert_instr(f32x4.ne))]
 pub fn f32x4_ne(a: v128, b: v128) -> v128 {
-    unsafe { mem::transmute(simd_ne::<_, i32x4>(a.as_f32x4(), b.as_f32x4())) }
+    unsafe { transmute(simd_ne::<_, i32x4>(a.as_f32x4(), b.as_f32x4())) }
 }
 
 /// Compares two 128-bit vectors as if they were two vectors of 4 thirty-two-bit
@@ -840,7 +840,7 @@ pub fn f32x4_ne(a: v128, b: v128) -> v128 {
 #[inline]
 #[cfg_attr(test, assert_instr(f32x4.lt))]
 pub fn f32x4_lt(a: v128, b: v128) -> v128 {
-    unsafe { mem::transmute(simd_lt::<_, i32x4>(a.as_f32x4(), b.as_f32x4())) }
+    unsafe { transmute(simd_lt::<_, i32x4>(a.as_f32x4(), b.as_f32x4())) }
 }
 
 /// Compares two 128-bit vectors as if they were two vectors of 4 thirty-two-bit
@@ -851,7 +851,7 @@ pub fn f32x4_lt(a: v128, b: v128) -> v128 {
 #[inline]
 #[cfg_attr(test, assert_instr(f32x4.gt))]
 pub fn f32x4_gt(a: v128, b: v128) -> v128 {
-    unsafe { mem::transmute(simd_gt::<_, i32x4>(a.as_f32x4(), b.as_f32x4())) }
+    unsafe { transmute(simd_gt::<_, i32x4>(a.as_f32x4(), b.as_f32x4())) }
 }
 
 /// Compares two 128-bit vectors as if they were two vectors of 4 thirty-two-bit
@@ -862,7 +862,7 @@ pub fn f32x4_gt(a: v128, b: v128) -> v128 {
 #[inline]
 #[cfg_attr(test, assert_instr(f32x4.le))]
 pub fn f32x4_le(a: v128, b: v128) -> v128 {
-    unsafe { mem::transmute(simd_le::<_, i32x4>(a.as_f32x4(), b.as_f32x4())) }
+    unsafe { transmute(simd_le::<_, i32x4>(a.as_f32x4(), b.as_f32x4())) }
 }
 
 /// Compares two 128-bit vectors as if they were two vectors of 4 thirty-two-bit
@@ -873,7 +873,7 @@ pub fn f32x4_le(a: v128, b: v128) -> v128 {
 #[inline]
 #[cfg_attr(test, assert_instr(f32x4.ge))]
 pub fn f32x4_ge(a: v128, b: v128) -> v128 {
-    unsafe { mem::transmute(simd_ge::<_, i32x4>(a.as_f32x4(), b.as_f32x4())) }
+    unsafe { transmute(simd_ge::<_, i32x4>(a.as_f32x4(), b.as_f32x4())) }
 }
 
 /// Compares two 128-bit vectors as if they were two vectors of 2 sixty-four-bit
@@ -884,7 +884,7 @@ pub fn f32x4_ge(a: v128, b: v128) -> v128 {
 #[inline]
 #[cfg_attr(test, assert_instr(f64x2.eq))]
 pub fn f64x2_eq(a: v128, b: v128) -> v128 {
-    unsafe { mem::transmute(simd_eq::<_, i64x2>(a.as_f64x2(), b.as_f64x2())) }
+    unsafe { transmute(simd_eq::<_, i64x2>(a.as_f64x2(), b.as_f64x2())) }
 }
 
 /// Compares two 128-bit vectors as if they were two vectors of 2 sixty-four-bit
@@ -895,7 +895,7 @@ pub fn f64x2_eq(a: v128, b: v128) -> v128 {
 #[inline]
 #[cfg_attr(test, assert_instr(f64x2.ne))]
 pub fn f64x2_ne(a: v128, b: v128) -> v128 {
-    unsafe { mem::transmute(simd_ne::<_, i64x2>(a.as_f64x2(), b.as_f64x2())) }
+    unsafe { transmute(simd_ne::<_, i64x2>(a.as_f64x2(), b.as_f64x2())) }
 }
 
 /// Compares two 128-bit vectors as if they were two vectors of 2 sixty-four-bit
@@ -906,7 +906,7 @@ pub fn f64x2_ne(a: v128, b: v128) -> v128 {
 #[inline]
 #[cfg_attr(test, assert_instr(f64x2.lt))]
 pub fn f64x2_lt(a: v128, b: v128) -> v128 {
-    unsafe { mem::transmute(simd_lt::<_, i64x2>(a.as_f64x2(), b.as_f64x2())) }
+    unsafe { transmute(simd_lt::<_, i64x2>(a.as_f64x2(), b.as_f64x2())) }
 }
 
 /// Compares two 128-bit vectors as if they were two vectors of 2 sixty-four-bit
@@ -917,7 +917,7 @@ pub fn f64x2_lt(a: v128, b: v128) -> v128 {
 #[inline]
 #[cfg_attr(test, assert_instr(f64x2.gt))]
 pub fn f64x2_gt(a: v128, b: v128) -> v128 {
-    unsafe { mem::transmute(simd_gt::<_, i64x2>(a.as_f64x2(), b.as_f64x2())) }
+    unsafe { transmute(simd_gt::<_, i64x2>(a.as_f64x2(), b.as_f64x2())) }
 }
 
 /// Compares two 128-bit vectors as if they were two vectors of 2 sixty-four-bit
@@ -928,7 +928,7 @@ pub fn f64x2_gt(a: v128, b: v128) -> v128 {
 #[inline]
 #[cfg_attr(test, assert_instr(f64x2.le))]
 pub fn f64x2_le(a: v128, b: v128) -> v128 {
-    unsafe { mem::transmute(simd_le::<_, i64x2>(a.as_f64x2(), b.as_f64x2())) }
+    unsafe { transmute(simd_le::<_, i64x2>(a.as_f64x2(), b.as_f64x2())) }
 }
 
 /// Compares two 128-bit vectors as if they were two vectors of 2 sixty-four-bit
@@ -939,14 +939,14 @@ pub fn f64x2_le(a: v128, b: v128) -> v128 {
 #[inline]
 #[cfg_attr(test, assert_instr(f64x2.ge))]
 pub fn f64x2_ge(a: v128, b: v128) -> v128 {
-    unsafe { mem::transmute(simd_ge::<_, i64x2>(a.as_f64x2(), b.as_f64x2())) }
+    unsafe { transmute(simd_ge::<_, i64x2>(a.as_f64x2(), b.as_f64x2())) }
 }
 
 /// Flips each bit of the 128-bit input vector.
 #[inline]
 #[cfg_attr(test, assert_instr(v128.not))]
 pub fn v128_not(a: v128) -> v128 {
-    unsafe { mem::transmute(simd_xor(a.as_i64x2(), i64x2(!0, !0))) }
+    unsafe { transmute(simd_xor(a.as_i64x2(), i64x2(!0, !0))) }
 }
 
 /// Performs a bitwise and of the two input 128-bit vectors, returning the
@@ -954,7 +954,7 @@ pub fn v128_not(a: v128) -> v128 {
 #[inline]
 #[cfg_attr(test, assert_instr(v128.and))]
 pub fn v128_and(a: v128, b: v128) -> v128 {
-    unsafe { mem::transmute(simd_and(a.as_i64x2(), b.as_i64x2())) }
+    unsafe { transmute(simd_and(a.as_i64x2(), b.as_i64x2())) }
 }
 
 /// Performs a bitwise or of the two input 128-bit vectors, returning the
@@ -962,7 +962,7 @@ pub fn v128_and(a: v128, b: v128) -> v128 {
 #[inline]
 #[cfg_attr(test, assert_instr(v128.or))]
 pub fn v128_or(a: v128, b: v128) -> v128 {
-    unsafe { mem::transmute(simd_or(a.as_i64x2(), b.as_i64x2())) }
+    unsafe { transmute(simd_or(a.as_i64x2(), b.as_i64x2())) }
 }
 
 /// Performs a bitwise xor of the two input 128-bit vectors, returning the
@@ -970,21 +970,21 @@ pub fn v128_or(a: v128, b: v128) -> v128 {
 #[inline]
 #[cfg_attr(test, assert_instr(v128.xor))]
 pub fn v128_xor(a: v128, b: v128) -> v128 {
-    unsafe { mem::transmute(simd_xor(a.as_i64x2(), b.as_i64x2())) }
+    unsafe { transmute(simd_xor(a.as_i64x2(), b.as_i64x2())) }
 }
 
 /// Use the bitmask in `c` to select bits from `v1` when 1 and `v2` when 0.
 #[inline]
 #[cfg_attr(test, assert_instr(v128.bitselect))]
 pub fn v128_bitselect(v1: v128, v2: v128, c: v128) -> v128 {
-    unsafe { mem::transmute(llvm_bitselect(c.as_i8x16(), v1.as_i8x16(), v2.as_i8x16())) }
+    unsafe { transmute(llvm_bitselect(c.as_i8x16(), v1.as_i8x16(), v2.as_i8x16())) }
 }
 
 /// Negates a 128-bit vectors intepreted as sixteen 8-bit signed integers
 #[inline]
 #[cfg_attr(test, assert_instr(i8x16.neg))]
 pub fn i8x16_neg(a: v128) -> v128 {
-    unsafe { mem::transmute(simd_mul(a.as_i8x16(), i8x16::splat(-1))) }
+    unsafe { transmute(simd_mul(a.as_i8x16(), i8x16::splat(-1))) }
 }
 
 /// Returns 1 if any lane is nonzero or 0 if all lanes are zero.
@@ -1008,7 +1008,7 @@ pub fn i8x16_all_true(a: v128) -> i32 {
 #[inline]
 #[cfg_attr(test, assert_instr(i8x16.shl))]
 pub fn i8x16_shl(a: v128, amt: u32) -> v128 {
-    unsafe { mem::transmute(simd_shl(a.as_i8x16(), i8x16::splat(amt as i8))) }
+    unsafe { transmute(simd_shl(a.as_i8x16(), i8x16::splat(amt as i8))) }
 }
 
 /// Shifts each lane to the right by the specified number of bits, sign
@@ -1019,7 +1019,7 @@ pub fn i8x16_shl(a: v128, amt: u32) -> v128 {
 #[inline]
 #[cfg_attr(test, assert_instr(i8x16.shl))]
 pub fn i8x16_shr_s(a: v128, amt: u32) -> v128 {
-    unsafe { mem::transmute(simd_shr(a.as_i8x16(), i8x16::splat(amt as i8))) }
+    unsafe { transmute(simd_shr(a.as_i8x16(), i8x16::splat(amt as i8))) }
 }
 
 /// Shifts each lane to the right by the specified number of bits, shifting in
@@ -1030,14 +1030,14 @@ pub fn i8x16_shr_s(a: v128, amt: u32) -> v128 {
 #[inline]
 #[cfg_attr(test, assert_instr(i8x16.shl))]
 pub fn i8x16_shr_u(a: v128, amt: u32) -> v128 {
-    unsafe { mem::transmute(simd_shr(a.as_u8x16(), u8x16::splat(amt as u8))) }
+    unsafe { transmute(simd_shr(a.as_u8x16(), u8x16::splat(amt as u8))) }
 }
 
 /// Adds two 128-bit vectors as if they were two packed sixteen 8-bit integers.
 #[inline]
 #[cfg_attr(test, assert_instr(i8x16.add))]
 pub fn i8x16_add(a: v128, b: v128) -> v128 {
-    unsafe { mem::transmute(simd_add(a.as_i8x16(), b.as_i8x16())) }
+    unsafe { transmute(simd_add(a.as_i8x16(), b.as_i8x16())) }
 }
 
 /// Adds two 128-bit vectors as if they were two packed sixteen 8-bit signed
@@ -1045,7 +1045,7 @@ pub fn i8x16_add(a: v128, b: v128) -> v128 {
 #[inline]
 #[cfg_attr(test, assert_instr(i8x16.add_saturate_s))]
 pub fn i8x16_add_saturate_s(a: v128, b: v128) -> v128 {
-    unsafe { mem::transmute(llvm_i8x16_add_saturate_s(a.as_i8x16(), b.as_i8x16())) }
+    unsafe { transmute(llvm_i8x16_add_saturate_s(a.as_i8x16(), b.as_i8x16())) }
 }
 
 /// Adds two 128-bit vectors as if they were two packed sixteen 8-bit unsigned
@@ -1053,14 +1053,14 @@ pub fn i8x16_add_saturate_s(a: v128, b: v128) -> v128 {
 #[inline]
 #[cfg_attr(test, assert_instr(i8x16.add_saturate_u))]
 pub fn i8x16_add_saturate_u(a: v128, b: v128) -> v128 {
-    unsafe { mem::transmute(llvm_i8x16_add_saturate_u(a.as_i8x16(), b.as_i8x16())) }
+    unsafe { transmute(llvm_i8x16_add_saturate_u(a.as_i8x16(), b.as_i8x16())) }
 }
 
 /// Subtracts two 128-bit vectors as if they were two packed sixteen 8-bit integers.
 #[inline]
 #[cfg_attr(test, assert_instr(i8x16.sub))]
 pub fn i8x16_sub(a: v128, b: v128) -> v128 {
-    unsafe { mem::transmute(simd_sub(a.as_i8x16(), b.as_i8x16())) }
+    unsafe { transmute(simd_sub(a.as_i8x16(), b.as_i8x16())) }
 }
 
 /// Subtracts two 128-bit vectors as if they were two packed sixteen 8-bit
@@ -1068,7 +1068,7 @@ pub fn i8x16_sub(a: v128, b: v128) -> v128 {
 #[inline]
 #[cfg_attr(test, assert_instr(i8x16.sub_saturate_s))]
 pub fn i8x16_sub_saturate_s(a: v128, b: v128) -> v128 {
-    unsafe { mem::transmute(llvm_i8x16_sub_saturate_s(a.as_i8x16(), b.as_i8x16())) }
+    unsafe { transmute(llvm_i8x16_sub_saturate_s(a.as_i8x16(), b.as_i8x16())) }
 }
 
 /// Subtracts two 128-bit vectors as if they were two packed sixteen 8-bit
@@ -1076,7 +1076,7 @@ pub fn i8x16_sub_saturate_s(a: v128, b: v128) -> v128 {
 #[inline]
 #[cfg_attr(test, assert_instr(i8x16.sub_saturate_u))]
 pub fn i8x16_sub_saturate_u(a: v128, b: v128) -> v128 {
-    unsafe { mem::transmute(llvm_i8x16_sub_saturate_u(a.as_i8x16(), b.as_i8x16())) }
+    unsafe { transmute(llvm_i8x16_sub_saturate_u(a.as_i8x16(), b.as_i8x16())) }
 }
 
 /// Multiplies two 128-bit vectors as if they were two packed sixteen 8-bit
@@ -1084,14 +1084,14 @@ pub fn i8x16_sub_saturate_u(a: v128, b: v128) -> v128 {
 #[inline]
 #[cfg_attr(test, assert_instr(i8x16.mul))]
 pub fn i8x16_mul(a: v128, b: v128) -> v128 {
-    unsafe { mem::transmute(simd_mul(a.as_i8x16(), b.as_i8x16())) }
+    unsafe { transmute(simd_mul(a.as_i8x16(), b.as_i8x16())) }
 }
 
 /// Negates a 128-bit vectors intepreted as eight 16-bit signed integers
 #[inline]
 #[cfg_attr(test, assert_instr(i16x8.neg))]
 pub fn i16x8_neg(a: v128) -> v128 {
-    unsafe { mem::transmute(simd_mul(a.as_i16x8(), i16x8::splat(-1))) }
+    unsafe { transmute(simd_mul(a.as_i16x8(), i16x8::splat(-1))) }
 }
 
 /// Returns 1 if any lane is nonzero or 0 if all lanes are zero.
@@ -1115,7 +1115,7 @@ pub fn i16x8_all_true(a: v128) -> i32 {
 #[inline]
 #[cfg_attr(test, assert_instr(i16x8.shl))]
 pub fn i16x8_shl(a: v128, amt: u32) -> v128 {
-    unsafe { mem::transmute(simd_shl(a.as_i16x8(), i16x8::splat(amt as i16))) }
+    unsafe { transmute(simd_shl(a.as_i16x8(), i16x8::splat(amt as i16))) }
 }
 
 /// Shifts each lane to the right by the specified number of bits, sign
@@ -1126,7 +1126,7 @@ pub fn i16x8_shl(a: v128, amt: u32) -> v128 {
 #[inline]
 #[cfg_attr(test, assert_instr(i16x8.shl))]
 pub fn i16x8_shr_s(a: v128, amt: u32) -> v128 {
-    unsafe { mem::transmute(simd_shr(a.as_i16x8(), i16x8::splat(amt as i16))) }
+    unsafe { transmute(simd_shr(a.as_i16x8(), i16x8::splat(amt as i16))) }
 }
 
 /// Shifts each lane to the right by the specified number of bits, shifting in
@@ -1137,14 +1137,14 @@ pub fn i16x8_shr_s(a: v128, amt: u32) -> v128 {
 #[inline]
 #[cfg_attr(test, assert_instr(i16x8.shl))]
 pub fn i16x8_shr_u(a: v128, amt: u32) -> v128 {
-    unsafe { mem::transmute(simd_shr(a.as_u16x8(), u16x8::splat(amt as u16))) }
+    unsafe { transmute(simd_shr(a.as_u16x8(), u16x8::splat(amt as u16))) }
 }
 
 /// Adds two 128-bit vectors as if they were two packed eight 16-bit integers.
 #[inline]
 #[cfg_attr(test, assert_instr(i16x8.add))]
 pub fn i16x8_add(a: v128, b: v128) -> v128 {
-    unsafe { mem::transmute(simd_add(a.as_i16x8(), b.as_i16x8())) }
+    unsafe { transmute(simd_add(a.as_i16x8(), b.as_i16x8())) }
 }
 
 /// Adds two 128-bit vectors as if they were two packed eight 16-bit signed
@@ -1152,7 +1152,7 @@ pub fn i16x8_add(a: v128, b: v128) -> v128 {
 #[inline]
 #[cfg_attr(test, assert_instr(i16x8.add_saturate_s))]
 pub fn i16x8_add_saturate_s(a: v128, b: v128) -> v128 {
-    unsafe { mem::transmute(llvm_i16x8_add_saturate_s(a.as_i16x8(), b.as_i16x8())) }
+    unsafe { transmute(llvm_i16x8_add_saturate_s(a.as_i16x8(), b.as_i16x8())) }
 }
 
 /// Adds two 128-bit vectors as if they were two packed eight 16-bit unsigned
@@ -1160,14 +1160,14 @@ pub fn i16x8_add_saturate_s(a: v128, b: v128) -> v128 {
 #[inline]
 #[cfg_attr(test, assert_instr(i16x8.add_saturate_u))]
 pub fn i16x8_add_saturate_u(a: v128, b: v128) -> v128 {
-    unsafe { mem::transmute(llvm_i16x8_add_saturate_u(a.as_i16x8(), b.as_i16x8())) }
+    unsafe { transmute(llvm_i16x8_add_saturate_u(a.as_i16x8(), b.as_i16x8())) }
 }
 
 /// Subtracts two 128-bit vectors as if they were two packed eight 16-bit integers.
 #[inline]
 #[cfg_attr(test, assert_instr(i16x8.sub))]
 pub fn i16x8_sub(a: v128, b: v128) -> v128 {
-    unsafe { mem::transmute(simd_sub(a.as_i16x8(), b.as_i16x8())) }
+    unsafe { transmute(simd_sub(a.as_i16x8(), b.as_i16x8())) }
 }
 
 /// Subtracts two 128-bit vectors as if they were two packed eight 16-bit
@@ -1175,7 +1175,7 @@ pub fn i16x8_sub(a: v128, b: v128) -> v128 {
 #[inline]
 #[cfg_attr(test, assert_instr(i16x8.sub_saturate_s))]
 pub fn i16x8_sub_saturate_s(a: v128, b: v128) -> v128 {
-    unsafe { mem::transmute(llvm_i16x8_sub_saturate_s(a.as_i16x8(), b.as_i16x8())) }
+    unsafe { transmute(llvm_i16x8_sub_saturate_s(a.as_i16x8(), b.as_i16x8())) }
 }
 
 /// Subtracts two 128-bit vectors as if they were two packed eight 16-bit
@@ -1183,7 +1183,7 @@ pub fn i16x8_sub_saturate_s(a: v128, b: v128) -> v128 {
 #[inline]
 #[cfg_attr(test, assert_instr(i16x8.sub_saturate_u))]
 pub fn i16x8_sub_saturate_u(a: v128, b: v128) -> v128 {
-    unsafe { mem::transmute(llvm_i16x8_sub_saturate_u(a.as_i16x8(), b.as_i16x8())) }
+    unsafe { transmute(llvm_i16x8_sub_saturate_u(a.as_i16x8(), b.as_i16x8())) }
 }
 
 /// Multiplies two 128-bit vectors as if they were two packed eight 16-bit
@@ -1191,14 +1191,14 @@ pub fn i16x8_sub_saturate_u(a: v128, b: v128) -> v128 {
 #[inline]
 #[cfg_attr(test, assert_instr(i16x8.mul))]
 pub fn i16x8_mul(a: v128, b: v128) -> v128 {
-    unsafe { mem::transmute(simd_mul(a.as_i16x8(), b.as_i16x8())) }
+    unsafe { transmute(simd_mul(a.as_i16x8(), b.as_i16x8())) }
 }
 
 /// Negates a 128-bit vectors intepreted as four 32-bit signed integers
 #[inline]
 #[cfg_attr(test, assert_instr(i32x4.neg))]
 pub fn i32x4_neg(a: v128) -> v128 {
-    unsafe { mem::transmute(simd_mul(a.as_i32x4(), i32x4::splat(-1))) }
+    unsafe { transmute(simd_mul(a.as_i32x4(), i32x4::splat(-1))) }
 }
 
 /// Returns 1 if any lane is nonzero or 0 if all lanes are zero.
@@ -1222,7 +1222,7 @@ pub fn i32x4_all_true(a: v128) -> i32 {
 #[inline]
 #[cfg_attr(test, assert_instr(i32x4.shl))]
 pub fn i32x4_shl(a: v128, amt: u32) -> v128 {
-    unsafe { mem::transmute(simd_shl(a.as_i32x4(), i32x4::splat(amt as i32))) }
+    unsafe { transmute(simd_shl(a.as_i32x4(), i32x4::splat(amt as i32))) }
 }
 
 /// Shifts each lane to the right by the specified number of bits, sign
@@ -1233,7 +1233,7 @@ pub fn i32x4_shl(a: v128, amt: u32) -> v128 {
 #[inline]
 #[cfg_attr(test, assert_instr(i32x4.shl))]
 pub fn i32x4_shr_s(a: v128, amt: u32) -> v128 {
-    unsafe { mem::transmute(simd_shr(a.as_i32x4(), i32x4::splat(amt as i32))) }
+    unsafe { transmute(simd_shr(a.as_i32x4(), i32x4::splat(amt as i32))) }
 }
 
 /// Shifts each lane to the right by the specified number of bits, shifting in
@@ -1244,21 +1244,21 @@ pub fn i32x4_shr_s(a: v128, amt: u32) -> v128 {
 #[inline]
 #[cfg_attr(test, assert_instr(i32x4.shl))]
 pub fn i32x4_shr_u(a: v128, amt: u32) -> v128 {
-    unsafe { mem::transmute(simd_shr(a.as_u32x4(), u32x4::splat(amt as u32))) }
+    unsafe { transmute(simd_shr(a.as_u32x4(), u32x4::splat(amt as u32))) }
 }
 
 /// Adds two 128-bit vectors as if they were two packed four 32-bit integers.
 #[inline]
 #[cfg_attr(test, assert_instr(i32x4.add))]
 pub fn i32x4_add(a: v128, b: v128) -> v128 {
-    unsafe { mem::transmute(simd_add(a.as_i32x4(), b.as_i32x4())) }
+    unsafe { transmute(simd_add(a.as_i32x4(), b.as_i32x4())) }
 }
 
 /// Subtracts two 128-bit vectors as if they were two packed four 32-bit integers.
 #[inline]
 #[cfg_attr(test, assert_instr(i32x4.sub))]
 pub fn i32x4_sub(a: v128, b: v128) -> v128 {
-    unsafe { mem::transmute(simd_sub(a.as_i32x4(), b.as_i32x4())) }
+    unsafe { transmute(simd_sub(a.as_i32x4(), b.as_i32x4())) }
 }
 
 /// Multiplies two 128-bit vectors as if they were two packed four 32-bit
@@ -1266,14 +1266,14 @@ pub fn i32x4_sub(a: v128, b: v128) -> v128 {
 #[inline]
 #[cfg_attr(test, assert_instr(i32x4.mul))]
 pub fn i32x4_mul(a: v128, b: v128) -> v128 {
-    unsafe { mem::transmute(simd_mul(a.as_i32x4(), b.as_i32x4())) }
+    unsafe { transmute(simd_mul(a.as_i32x4(), b.as_i32x4())) }
 }
 
 /// Negates a 128-bit vectors intepreted as two 64-bit signed integers
 #[inline]
 #[cfg_attr(test, assert_instr(i32x4.neg))]
 pub fn i64x2_neg(a: v128) -> v128 {
-    unsafe { mem::transmute(simd_mul(a.as_i64x2(), i64x2::splat(-1))) }
+    unsafe { transmute(simd_mul(a.as_i64x2(), i64x2::splat(-1))) }
 }
 
 /// Returns 1 if any lane is nonzero or 0 if all lanes are zero.
@@ -1297,7 +1297,7 @@ pub fn i64x2_all_true(a: v128) -> i32 {
 #[inline]
 #[cfg_attr(test, assert_instr(i64x2.shl))]
 pub fn i64x2_shl(a: v128, amt: u32) -> v128 {
-    unsafe { mem::transmute(simd_shl(a.as_i64x2(), i64x2::splat(amt as i64))) }
+    unsafe { transmute(simd_shl(a.as_i64x2(), i64x2::splat(amt as i64))) }
 }
 
 /// Shifts each lane to the right by the specified number of bits, sign
@@ -1308,7 +1308,7 @@ pub fn i64x2_shl(a: v128, amt: u32) -> v128 {
 #[inline]
 #[cfg_attr(test, assert_instr(i64x2.shl))]
 pub fn i64x2_shr_s(a: v128, amt: u32) -> v128 {
-    unsafe { mem::transmute(simd_shr(a.as_i64x2(), i64x2::splat(amt as i64))) }
+    unsafe { transmute(simd_shr(a.as_i64x2(), i64x2::splat(amt as i64))) }
 }
 
 /// Shifts each lane to the right by the specified number of bits, shifting in
@@ -1319,21 +1319,21 @@ pub fn i64x2_shr_s(a: v128, amt: u32) -> v128 {
 #[inline]
 #[cfg_attr(test, assert_instr(i64x2.shl))]
 pub fn i64x2_shr_u(a: v128, amt: u32) -> v128 {
-    unsafe { mem::transmute(simd_shr(a.as_u64x2(), u64x2::splat(amt as u64))) }
+    unsafe { transmute(simd_shr(a.as_u64x2(), u64x2::splat(amt as u64))) }
 }
 
 /// Adds two 128-bit vectors as if they were two packed two 64-bit integers.
 #[inline]
 #[cfg_attr(test, assert_instr(i64x2.add))]
 pub fn i64x2_add(a: v128, b: v128) -> v128 {
-    unsafe { mem::transmute(simd_add(a.as_i64x2(), b.as_i64x2())) }
+    unsafe { transmute(simd_add(a.as_i64x2(), b.as_i64x2())) }
 }
 
 /// Subtracts two 128-bit vectors as if they were two packed two 64-bit integers.
 #[inline]
 #[cfg_attr(test, assert_instr(i64x2.sub))]
 pub fn i64x2_sub(a: v128, b: v128) -> v128 {
-    unsafe { mem::transmute(simd_sub(a.as_i64x2(), b.as_i64x2())) }
+    unsafe { transmute(simd_sub(a.as_i64x2(), b.as_i64x2())) }
 }
 
 /// Calculates the absolute value of each lane of a 128-bit vector interpreted
@@ -1341,7 +1341,7 @@ pub fn i64x2_sub(a: v128, b: v128) -> v128 {
 #[inline]
 #[cfg_attr(test, assert_instr(f32x4.abs))]
 pub fn f32x4_abs(a: v128) -> v128 {
-    unsafe { mem::transmute(llvm_f32x4_abs(a.as_f32x4())) }
+    unsafe { transmute(llvm_f32x4_abs(a.as_f32x4())) }
 }
 
 /// Negates each lane of a 128-bit vector interpreted as four 32-bit floating
@@ -1349,7 +1349,7 @@ pub fn f32x4_abs(a: v128) -> v128 {
 #[inline]
 #[cfg_attr(test, assert_instr(f32x4.abs))]
 pub fn f32x4_neg(a: v128) -> v128 {
-    unsafe { f32x4_mul(a, mem::transmute(f32x4(-1.0, -1.0, -1.0, -1.0))) }
+    unsafe { f32x4_mul(a, transmute(f32x4(-1.0, -1.0, -1.0, -1.0))) }
 }
 
 /// Calculates the square root of each lane of a 128-bit vector interpreted as
@@ -1357,7 +1357,7 @@ pub fn f32x4_neg(a: v128) -> v128 {
 #[inline]
 #[cfg_attr(test, assert_instr(f32x4.sqrt))]
 pub fn f32x4_sqrt(a: v128) -> v128 {
-    unsafe { mem::transmute(llvm_f32x4_sqrt(a.as_f32x4())) }
+    unsafe { transmute(llvm_f32x4_sqrt(a.as_f32x4())) }
 }
 
 /// Adds pairwise lanes of two 128-bit vectors interpreted as four 32-bit
@@ -1365,7 +1365,7 @@ pub fn f32x4_sqrt(a: v128) -> v128 {
 #[inline]
 #[cfg_attr(test, assert_instr(f32x4.add))]
 pub fn f32x4_add(a: v128, b: v128) -> v128 {
-    unsafe { mem::transmute(simd_add(a.as_f32x4(), b.as_f32x4())) }
+    unsafe { transmute(simd_add(a.as_f32x4(), b.as_f32x4())) }
 }
 
 /// Subtracts pairwise lanes of two 128-bit vectors interpreted as four 32-bit
@@ -1373,7 +1373,7 @@ pub fn f32x4_add(a: v128, b: v128) -> v128 {
 #[inline]
 #[cfg_attr(test, assert_instr(f32x4.sub))]
 pub fn f32x4_sub(a: v128, b: v128) -> v128 {
-    unsafe { mem::transmute(simd_sub(a.as_f32x4(), b.as_f32x4())) }
+    unsafe { transmute(simd_sub(a.as_f32x4(), b.as_f32x4())) }
 }
 
 /// Multiplies pairwise lanes of two 128-bit vectors interpreted as four 32-bit
@@ -1381,7 +1381,7 @@ pub fn f32x4_sub(a: v128, b: v128) -> v128 {
 #[inline]
 #[cfg_attr(test, assert_instr(f32x4.mul))]
 pub fn f32x4_mul(a: v128, b: v128) -> v128 {
-    unsafe { mem::transmute(simd_mul(a.as_f32x4(), b.as_f32x4())) }
+    unsafe { transmute(simd_mul(a.as_f32x4(), b.as_f32x4())) }
 }
 
 /// Divides pairwise lanes of two 128-bit vectors interpreted as four 32-bit
@@ -1389,7 +1389,7 @@ pub fn f32x4_mul(a: v128, b: v128) -> v128 {
 #[inline]
 #[cfg_attr(test, assert_instr(f32x4.div))]
 pub fn f32x4_div(a: v128, b: v128) -> v128 {
-    unsafe { mem::transmute(simd_div(a.as_f32x4(), b.as_f32x4())) }
+    unsafe { transmute(simd_div(a.as_f32x4(), b.as_f32x4())) }
 }
 
 /// Calculates the minimum of pairwise lanes of two 128-bit vectors interpreted
@@ -1397,7 +1397,7 @@ pub fn f32x4_div(a: v128, b: v128) -> v128 {
 #[inline]
 #[cfg_attr(test, assert_instr(f32x4.min))]
 pub fn f32x4_min(a: v128, b: v128) -> v128 {
-    unsafe { mem::transmute(llvm_f32x4_min(a.as_f32x4(), b.as_f32x4())) }
+    unsafe { transmute(llvm_f32x4_min(a.as_f32x4(), b.as_f32x4())) }
 }
 
 /// Calculates the maximum of pairwise lanes of two 128-bit vectors interpreted
@@ -1405,7 +1405,7 @@ pub fn f32x4_min(a: v128, b: v128) -> v128 {
 #[inline]
 #[cfg_attr(test, assert_instr(f32x4.max))]
 pub fn f32x4_max(a: v128, b: v128) -> v128 {
-    unsafe { mem::transmute(llvm_f32x4_max(a.as_f32x4(), b.as_f32x4())) }
+    unsafe { transmute(llvm_f32x4_max(a.as_f32x4(), b.as_f32x4())) }
 }
 
 /// Calculates the absolute value of each lane of a 128-bit vector interpreted
@@ -1413,7 +1413,7 @@ pub fn f32x4_max(a: v128, b: v128) -> v128 {
 #[inline]
 #[cfg_attr(test, assert_instr(f64x2.abs))]
 pub fn f64x2_abs(a: v128) -> v128 {
-    unsafe { mem::transmute(llvm_f64x2_abs(a.as_f64x2())) }
+    unsafe { transmute(llvm_f64x2_abs(a.as_f64x2())) }
 }
 
 /// Negates each lane of a 128-bit vector interpreted as two 64-bit floating
@@ -1421,7 +1421,7 @@ pub fn f64x2_abs(a: v128) -> v128 {
 #[inline]
 #[cfg_attr(test, assert_instr(f64x2.abs))]
 pub fn f64x2_neg(a: v128) -> v128 {
-    unsafe { f64x2_mul(a, mem::transmute(f64x2(-1.0, -1.0))) }
+    unsafe { f64x2_mul(a, transmute(f64x2(-1.0, -1.0))) }
 }
 
 /// Calculates the square root of each lane of a 128-bit vector interpreted as
@@ -1429,7 +1429,7 @@ pub fn f64x2_neg(a: v128) -> v128 {
 #[inline]
 #[cfg_attr(test, assert_instr(f64x2.sqrt))]
 pub fn f64x2_sqrt(a: v128) -> v128 {
-    unsafe { mem::transmute(llvm_f64x2_sqrt(a.as_f64x2())) }
+    unsafe { transmute(llvm_f64x2_sqrt(a.as_f64x2())) }
 }
 
 /// Adds pairwise lanes of two 128-bit vectors interpreted as two 64-bit
@@ -1437,7 +1437,7 @@ pub fn f64x2_sqrt(a: v128) -> v128 {
 #[inline]
 #[cfg_attr(test, assert_instr(f64x2.add))]
 pub fn f64x2_add(a: v128, b: v128) -> v128 {
-    unsafe { mem::transmute(simd_add(a.as_f64x2(), b.as_f64x2())) }
+    unsafe { transmute(simd_add(a.as_f64x2(), b.as_f64x2())) }
 }
 
 /// Subtracts pairwise lanes of two 128-bit vectors interpreted as two 64-bit
@@ -1445,7 +1445,7 @@ pub fn f64x2_add(a: v128, b: v128) -> v128 {
 #[inline]
 #[cfg_attr(test, assert_instr(f64x2.sub))]
 pub fn f64x2_sub(a: v128, b: v128) -> v128 {
-    unsafe { mem::transmute(simd_sub(a.as_f64x2(), b.as_f64x2())) }
+    unsafe { transmute(simd_sub(a.as_f64x2(), b.as_f64x2())) }
 }
 
 /// Multiplies pairwise lanes of two 128-bit vectors interpreted as two 64-bit
@@ -1453,7 +1453,7 @@ pub fn f64x2_sub(a: v128, b: v128) -> v128 {
 #[inline]
 #[cfg_attr(test, assert_instr(f64x2.mul))]
 pub fn f64x2_mul(a: v128, b: v128) -> v128 {
-    unsafe { mem::transmute(simd_mul(a.as_f64x2(), b.as_f64x2())) }
+    unsafe { transmute(simd_mul(a.as_f64x2(), b.as_f64x2())) }
 }
 
 /// Divides pairwise lanes of two 128-bit vectors interpreted as two 64-bit
@@ -1461,7 +1461,7 @@ pub fn f64x2_mul(a: v128, b: v128) -> v128 {
 #[inline]
 #[cfg_attr(test, assert_instr(f64x2.div))]
 pub fn f64x2_div(a: v128, b: v128) -> v128 {
-    unsafe { mem::transmute(simd_div(a.as_f64x2(), b.as_f64x2())) }
+    unsafe { transmute(simd_div(a.as_f64x2(), b.as_f64x2())) }
 }
 
 /// Calculates the minimum of pairwise lanes of two 128-bit vectors interpreted
@@ -1469,7 +1469,7 @@ pub fn f64x2_div(a: v128, b: v128) -> v128 {
 #[inline]
 #[cfg_attr(test, assert_instr(f64x2.min))]
 pub fn f64x2_min(a: v128, b: v128) -> v128 {
-    unsafe { mem::transmute(llvm_f64x2_min(a.as_f64x2(), b.as_f64x2())) }
+    unsafe { transmute(llvm_f64x2_min(a.as_f64x2(), b.as_f64x2())) }
 }
 
 /// Calculates the maximum of pairwise lanes of two 128-bit vectors interpreted
@@ -1477,7 +1477,7 @@ pub fn f64x2_min(a: v128, b: v128) -> v128 {
 #[inline]
 #[cfg_attr(test, assert_instr(f64x2.max))]
 pub fn f64x2_max(a: v128, b: v128) -> v128 {
-    unsafe { mem::transmute(llvm_f64x2_max(a.as_f64x2(), b.as_f64x2())) }
+    unsafe { transmute(llvm_f64x2_max(a.as_f64x2(), b.as_f64x2())) }
 }
 
 /// Converts a 128-bit vector interpreted as four 32-bit floating point numbers
@@ -1488,7 +1488,7 @@ pub fn f64x2_max(a: v128, b: v128) -> v128 {
 #[inline]
 #[cfg_attr(test, assert_instr("i32x4.trunc_s/f32x4:sat"))]
 pub fn i32x4_trunc_s_f32x4_sat(a: v128) -> v128 {
-    unsafe { mem::transmute(simd_cast::<_, i32x4>(a.as_f32x4())) }
+    unsafe { transmute(simd_cast::<_, i32x4>(a.as_f32x4())) }
 }
 
 /// Converts a 128-bit vector interpreted as four 32-bit floating point numbers
@@ -1499,7 +1499,7 @@ pub fn i32x4_trunc_s_f32x4_sat(a: v128) -> v128 {
 #[inline]
 #[cfg_attr(test, assert_instr("i32x4.trunc_u/f32x4:sat"))]
 pub fn i32x4_trunc_u_f32x4_sat(a: v128) -> v128 {
-    unsafe { mem::transmute(simd_cast::<_, u32x4>(a.as_f32x4())) }
+    unsafe { transmute(simd_cast::<_, u32x4>(a.as_f32x4())) }
 }
 
 /// Converts a 128-bit vector interpreted as two 64-bit floating point numbers
@@ -1510,7 +1510,7 @@ pub fn i32x4_trunc_u_f32x4_sat(a: v128) -> v128 {
 #[inline]
 #[cfg_attr(test, assert_instr("i32x4.trunc_s/f32x4:sat"))]
 pub fn i64x2_trunc_s_f64x2_sat(a: v128) -> v128 {
-    unsafe { mem::transmute(simd_cast::<_, i64x2>(a.as_f64x2())) }
+    unsafe { transmute(simd_cast::<_, i64x2>(a.as_f64x2())) }
 }
 
 /// Converts a 128-bit vector interpreted as two 64-bit floating point numbers
@@ -1521,7 +1521,7 @@ pub fn i64x2_trunc_s_f64x2_sat(a: v128) -> v128 {
 #[inline]
 #[cfg_attr(test, assert_instr("i64x2.trunc_u/f64x2:sat"))]
 pub fn i64x2_trunc_u_f64x2_sat(a: v128) -> v128 {
-    unsafe { mem::transmute(simd_cast::<_, u64x2>(a.as_f64x2())) }
+    unsafe { transmute(simd_cast::<_, u64x2>(a.as_f64x2())) }
 }
 
 /// Converts a 128-bit vector interpreted as four 32-bit signed integers into a
@@ -1529,7 +1529,7 @@ pub fn i64x2_trunc_u_f64x2_sat(a: v128) -> v128 {
 #[inline]
 #[cfg_attr(test, assert_instr("f32x4.convert_s/i32x4"))]
 pub fn f32x4_convert_s_i32x4(a: v128) -> v128 {
-    unsafe { mem::transmute(simd_cast::<_, f32x4>(a.as_i32x4())) }
+    unsafe { transmute(simd_cast::<_, f32x4>(a.as_i32x4())) }
 }
 
 /// Converts a 128-bit vector interpreted as four 32-bit unsigned integers into a
@@ -1537,7 +1537,7 @@ pub fn f32x4_convert_s_i32x4(a: v128) -> v128 {
 #[inline]
 #[cfg_attr(test, assert_instr("f32x4.convert_u/i32x4"))]
 pub fn f32x4_convert_u_i32x4(a: v128) -> v128 {
-    unsafe { mem::transmute(simd_cast::<_, f32x4>(a.as_u32x4())) }
+    unsafe { transmute(simd_cast::<_, f32x4>(a.as_u32x4())) }
 }
 
 /// Converts a 128-bit vector interpreted as two 64-bit signed integers into a
@@ -1545,7 +1545,7 @@ pub fn f32x4_convert_u_i32x4(a: v128) -> v128 {
 #[inline]
 #[cfg_attr(test, assert_instr("f64x2.convert_s/i64x2"))]
 pub fn f64x2_convert_s_i64x2(a: v128) -> v128 {
-    unsafe { mem::transmute(simd_cast::<_, f64x2>(a.as_i64x2())) }
+    unsafe { transmute(simd_cast::<_, f64x2>(a.as_i64x2())) }
 }
 
 /// Converts a 128-bit vector interpreted as two 64-bit unsigned integers into a
@@ -1553,7 +1553,7 @@ pub fn f64x2_convert_s_i64x2(a: v128) -> v128 {
 #[inline]
 #[cfg_attr(test, assert_instr("f64x2.convert_u/i64x2"))]
 pub fn f64x2_convert_u_i64x2(a: v128) -> v128 {
-    unsafe { mem::transmute(simd_cast::<_, f64x2>(a.as_u64x2())) }
+    unsafe { transmute(simd_cast::<_, f64x2>(a.as_u64x2())) }
 }
 
 // #[cfg(test)]
@@ -1565,8 +1565,8 @@ pub fn f64x2_convert_u_i64x2(a: v128) -> v128 {
 //     use wasm_bindgen_test::*;
 //
 //     fn compare_bytes(a: v128, b: v128) {
-//         let a: [u8; 16] = unsafe { mem::transmute(a) };
-//         let b: [u8; 16] = unsafe { mem::transmute(b) };
+//         let a: [u8; 16] = unsafe { transmute(a) };
+//         let b: [u8; 16] = unsafe { transmute(b) };
 //         assert_eq!(a, b);
 //     }
 //
@@ -1622,7 +1622,7 @@ pub fn f64x2_convert_u_i64x2(a: v128) -> v128 {
 //                     // create a vector from array and check that the indices contain
 //                     // the same values as in the array:
 //                     let arr: [$ety; $count] = [$($vals),*];
-//                     let mut vec: v128 = mem::transmute(arr);
+//                     let mut vec: v128 = transmute(arr);
 //                     $(
 //                         assert_eq!($id::$extract_fn(vec, $ids) as $ety, arr[$ids]);
 //                     )*;
@@ -1673,8 +1673,8 @@ pub fn f64x2_convert_u_i64x2(a: v128) -> v128 {
 //                 31,
 //             ];
 //
-//             let vec_a: v128 = mem::transmute(a);
-//             let vec_b: v128 = mem::transmute(b);
+//             let vec_a: v128 = transmute(a);
+//             let vec_b: v128 = transmute(b);
 //
 //             let vec_r = v8x16_shuffle!(
 //                 vec_a,
@@ -1684,7 +1684,7 @@ pub fn f64x2_convert_u_i64x2(a: v128) -> v128 {
 //
 //             let e =
 //                 [0_u8, 16, 2, 18, 4, 20, 6, 22, 8, 24, 10, 26, 12, 28, 14, 30];
-//             let vec_e: v128 = mem::transmute(e);
+//             let vec_e: v128 = transmute(e);
 //             compare_bytes(vec_r, vec_e);
 //         }
 //     }
@@ -1731,11 +1731,11 @@ pub fn f64x2_convert_u_i64x2(a: v128) -> v128 {
 //                     let b_input: [$ety; $ecount] = [$($in_b),*];
 //                     let output: [$oty; $ecount] = [$($out),*];
 //
-//                     let a_vec_in: v128 = mem::transmute(a_input);
-//                     let b_vec_in: v128 = mem::transmute(b_input);
+//                     let a_vec_in: v128 = transmute(a_input);
+//                     let b_vec_in: v128 = transmute(b_input);
 //                     let vec_res: v128 = $id::$binary_op(a_vec_in, b_vec_in);
 //
-//                     let res: [$oty; $ecount] = mem::transmute(vec_res);
+//                     let res: [$oty; $ecount] = transmute(vec_res);
 //
 //                     if !floating_point!($ety) {
 //                         assert_eq!(res, output);
@@ -1764,10 +1764,10 @@ pub fn f64x2_convert_u_i64x2(a: v128) -> v128 {
 //                     let a_input: [$ety; $ecount] = [$($in_a),*];
 //                     let output: [$ety; $ecount] = [$($out),*];
 //
-//                     let a_vec_in: v128 = mem::transmute(a_input);
+//                     let a_vec_in: v128 = transmute(a_input);
 //                     let vec_res: v128 = $id::$binary_op(a_vec_in, $in_b);
 //
-//                     let res: [$ety; $ecount] = mem::transmute(vec_res);
+//                     let res: [$ety; $ecount] = transmute(vec_res);
 //                     assert_eq!(res, output);
 //                 }
 //             }
@@ -1783,10 +1783,10 @@ pub fn f64x2_convert_u_i64x2(a: v128) -> v128 {
 //                     let a_input: [$ety; $ecount] = [$($in_a),*];
 //                     let output: [$ety; $ecount] = [$($out),*];
 //
-//                     let a_vec_in: v128 = mem::transmute(a_input);
+//                     let a_vec_in: v128 = transmute(a_input);
 //                     let vec_res: v128 = $id::$unary_op(a_vec_in);
 //
-//                     let res: [$ety; $ecount] = mem::transmute(vec_res);
+//                     let res: [$ety; $ecount] = transmute(vec_res);
 //                     assert_eq!(res, output);
 //                 }
 //             }
@@ -1894,9 +1894,9 @@ pub fn f64x2_convert_u_i64x2(a: v128) -> v128 {
 //             let b: [u32; 4] = [u32::max_value(); 4];
 //             let c: [u32; 4] = [0; 4];
 //
-//             let vec_a: v128 = mem::transmute(a);
-//             let vec_b: v128 = mem::transmute(b);
-//             let vec_c: v128 = mem::transmute(c);
+//             let vec_a: v128 = transmute(a);
+//             let vec_b: v128 = transmute(b);
+//             let vec_c: v128 = transmute(c);
 //
 //             let r: v128 = v128::and(vec_a, vec_a);
 //             compare_bytes(r, vec_a);
@@ -1923,9 +1923,9 @@ pub fn f64x2_convert_u_i64x2(a: v128) -> v128 {
 //             #[wasm_bindgen_test]
 //             fn $test_id() {
 //                 unsafe {
-//                     let vec_a: v128 = mem::transmute([$($true),*]); // true
-//                     let vec_b: v128 = mem::transmute([$($false),*]); // false
-//                     let vec_c: v128 = mem::transmute([$($alt),*]); // alternating
+//                     let vec_a: v128 = transmute([$($true),*]); // true
+//                     let vec_b: v128 = transmute([$($false),*]); // false
+//                     let vec_c: v128 = transmute([$($alt),*]); // alternating
 //
 //                     assert_eq!($id::any_true(vec_a), 1);
 //                     assert_eq!($id::any_true(vec_b), 0);
@@ -2106,8 +2106,8 @@ pub fn f64x2_convert_u_i64x2(a: v128) -> v128 {
 //             #[wasm_bindgen_test]
 //             fn $test_id() {
 //                 unsafe {
-//                     let from: v128 = mem::transmute($from);
-//                     let to: v128 = mem::transmute($to);
+//                     let from: v128 = transmute($from);
+//                     let to: v128 = transmute($to);
 //
 //                     let r: v128 = $to_ty::$conv_id(from);
 //

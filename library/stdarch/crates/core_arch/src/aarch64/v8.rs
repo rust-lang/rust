@@ -26,8 +26,7 @@ pub unsafe fn _clz_u64(x: u64) -> u64 {
 #[inline]
 #[cfg_attr(test, assert_instr(rbit))]
 pub unsafe fn _rbit_u64(x: u64) -> u64 {
-    use intrinsics::bitreverse;
-    bitreverse(x)
+    crate::intrinsics::bitreverse(x)
 }
 
 /// Counts the leading most significant bits set.
@@ -52,7 +51,7 @@ pub unsafe fn _cls_u64(x: u64) -> u64 {
 
 #[cfg(test)]
 mod tests {
-    use core_arch::aarch64::v8;
+    use crate::core_arch::aarch64::v8;
 
     #[test]
     fn _rev_u64() {

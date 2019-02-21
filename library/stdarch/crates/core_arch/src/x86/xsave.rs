@@ -166,7 +166,7 @@ mod tests {
     use std::fmt;
     use std::prelude::v1::*;
 
-    use core_arch::x86::*;
+    use crate::core_arch::x86::*;
     use stdsimd_test::simd_test;
 
     #[repr(align(64))]

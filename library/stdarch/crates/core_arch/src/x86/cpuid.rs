@@ -175,7 +175,7 @@ pub unsafe fn __get_cpuid_max(leaf: u32) -> (u32, u32) {
 
 #[cfg(test)]
 mod tests {
-    use core_arch::x86::*;
+    use crate::core_arch::x86::*;
 
     #[test]
     fn test_always_has_cpuid() {

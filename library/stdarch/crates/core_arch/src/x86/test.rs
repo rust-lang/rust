@@ -1,6 +1,6 @@
 //! Utilities used in testing the x86 intrinsics
 
-use core_arch::x86::*;
+use crate::core_arch::x86::*;
 
 #[target_feature(enable = "mmx")]
 pub unsafe fn assert_eq_m64(a: __m64, b: __m64) {
@@ -107,7 +107,7 @@ pub unsafe fn get_m256(a: __m256, idx: usize) -> f32 {
 // which doesn't exist on x86!
 #[cfg(target_arch = "x86")]
 mod x86_polyfill {
-    use core_arch::x86::*;
+    use crate::core_arch::x86::*;
 
     pub unsafe fn _mm_insert_epi64(a: __m128i, val: i64, idx: i32) -> __m128i {
         union A {
@@ -132,7 +132,7 @@ mod x86_polyfill {
 }
 #[cfg(target_arch = "x86_64")]
 mod x86_polyfill {
-    pub use core_arch::x86_64::{_mm256_insert_epi64, _mm_insert_epi64};
+    pub use crate::core_arch::x86_64::{_mm256_insert_epi64, _mm_insert_epi64};
 }
 pub use self::x86_polyfill::*;
 

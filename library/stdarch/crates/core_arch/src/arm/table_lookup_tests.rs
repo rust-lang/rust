@@ -5,12 +5,12 @@
 use super::*;
 
 #[cfg(target_arch = "aarch64")]
-use core_arch::aarch64::*;
+use crate::core_arch::aarch64::*;
 
 #[cfg(target_arch = "arm")]
-use core_arch::arm::*;
+use crate::core_arch::arm::*;
 
-use core_arch::simd::*;
+use crate::core_arch::simd::*;
 use std::mem;
 use stdsimd_test::simd_test;
 

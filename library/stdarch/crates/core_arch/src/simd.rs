@@ -28,7 +28,7 @@ macro_rules! simd_ty {
             #[inline]
             pub(crate) fn extract(self, index: usize) -> $ety {
                 unsafe {
-                    ::core_arch::simd_llvm::simd_extract(self, index as u32)
+                    crate::core_arch::simd_llvm::simd_extract(self, index as u32)
                 }
             }
         }
@@ -65,7 +65,7 @@ macro_rules! simd_m_ty {
             #[inline]
             pub(crate) fn extract(self, index: usize) -> bool {
                 let r: $ety = unsafe {
-                    ::core_arch::simd_llvm::simd_extract(self, index as u32)
+                    crate::core_arch::simd_llvm::simd_extract(self, index as u32)
                 };
                 r != 0
             }
