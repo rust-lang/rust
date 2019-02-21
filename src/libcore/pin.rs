@@ -177,20 +177,12 @@
 //! In a similar vein, when can a generic wrapper type (such as `Vec`, `Box`, or `RefCell`)
 //! have an operation with type `fn(Pin<&[mut] Wrapper<T>>) -> Pin<&[mut] T>`?
 //!
-//! This question is closely related to the question of whether pinning is "structural".
-//! Structural pinning means that when you have pinned a wrapper type, the contents are
-//! also pinned. Structural pinning thus explains why pinning projections are correct. This means
-//! that if the type should have pinning projections for some fields, pinning must be structural
-//! for those fields.
+//! Having a pinning projection for some field means that pinning is "structural":
+//! when the wrapper is pinned, the field must be considered pinned, too.
+//! After all, the pinning projection lets us get a `Pin<&[mut] Field>`.
 //!
-//! In general, deciding for which fields pinning is structural (and thus for which fields
-//! pinning projections could be offered) is entirely up to the author of any given type.
-//! For many types, both answers are reasonable. For example, there could be a version
-//! of `Vec` with structural pinning and `get_pin`/`get_pin_mut` projections to access
-//! the `Vec` elements, and another version where the contents remain movable even when
-//! the `Vec` is pinned.
-//!
-//! However, structural pinning comes with a few extra requirements:
+//! However, structural pinning comes with a few extra requirements, so not all
+//! wrappers can be structural and hence not all wrappers can offer pinning projections:
 //!
 //! 1.  The wrapper must only be [`Unpin`] if all the structural fields are
 //!     `Unpin`. This is the default, but `Unpin` is a safe trait, so as the author of
@@ -214,8 +206,9 @@
 //!     does not cause unsoundness.)
 //! 4.  You must not offer any other operations that could lead to data being moved out of
 //!     the fields when your type is pinned. For example, if the wrapper contains an
-//!     `Option<T>` and there is an operation such as `fn(Pin<&mut Wrapper<T>>) -> Option<T>`,
-//!     that operation can be used to move a `T` out of a pinned `Wrapper` -- that means
+//!     `Option<T>` and there is a `take`-like operation with type
+//!     `fn(Pin<&mut Wrapper<T>>) -> Option<T>`,
+//!     that operation can be used to move a `T` out of a pinned `Wrapper` -- which means
 //!     pinning cannot be structural.
 //!
 //!     For a more complex example of moving data out of a pinnd type, imagine if `RefCell`
@@ -233,20 +226,23 @@
 //!     (using `RefCell::get_pin_mut`) and then move that content using the mutable
 //!     reference we got later.
 //!
-//! On the other hand, if you decide *not* to offer any pinning projections, you
-//! do not have to do anything. If your type also does not do any pinning itself,
-//! you are free to `impl<T> Unpin for Wrapper<T>`. In the standard library,
-//! this is done for all pointer types: `Box<T>: Unpin` holds for all `T`.
-//! It makes sense to do this for pointer types, because moving the `Box<T>`
-//! does not actually move the `T`: the `Box<T>` can be freely movable even if the `T`
-//! is not. In fact, even `Pin<Box<T>>` and `Pin<&mut T>` are always `Unpin` themselves,
-//! for the same reason.
+//! For a type like `Vec`, both possibilites (structural pinning or not) make sense,
+//! and the choice is up to the author. A `Vec` with structural pinning could
+//! have `get_pin`/`get_pin_mut` projections. However, it could *not* allow calling
+//! `pop` on a pinned `Vec` because that would move the (structurally pinned) contents!
+//! Nor could it allow `push`, which might reallocate and thus also move the contents.
+//! A `Vec` without structural pinning could `impl<T> Unpin for Vec<T>`, because the contents
+//! are never pinned and the `Vec` itself is fine with being moved as well.
 //!
-//! Another case where you might want to have a wrapper without structural pinning is when even
-//! a pinned wrapper lets its contents move, e.g. with a `take`-like operation. And, finally,
-//! if it is not possible to satisfy the requirements for structural pinning, it makes sense
-//! to add the `impl<T> Unpin for Wrapper<T>` to explicitly document this fact, and to let
-//! library clients benefit from the easier interaction with [`Pin`] that [`Unpin`] types enjoy.
+//! In the standard library, pointer types generally do not have structural pinning,
+//! and thus they do not offer pinning projections. This is why `Box<T>: Unpin` holds for all `T`.
+//! It makes sense to do this for pointer types, because moving the `Box<T>`
+//! does not actually move the `T`: the `Box<T>` can be freely movable (aka `Unpin`) even if the `T`
+//! is not. In fact, even `Pin<Box<T>>` and `Pin<&mut T>` are always `Unpin` themselves,
+//! for the same reason: their contents (the `T`) are pinned, but the pointers themselves
+//! can be moved without moving the pinned data. For both `Box<T>` and `Pin<Box<T>>`,
+//! whether the content is pinned is entirely independent of whether the pointer is
+//! pinned, meaning pinning is *not* structural.
 //!
 //! [`Pin`]: struct.Pin.html
 //! [`Unpin`]: ../../std/marker/trait.Unpin.html
