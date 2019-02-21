@@ -1,64 +1,77 @@
-use crate::cell::Cell;
-use crate::ptr;
-use crate::sync::Arc;
+use crate::cell::UnsafeCell;
+use crate::sync::atomic::AtomicUsize;
+use crate::sync::atomic::Ordering;
 use crate::sys_common;
 use crate::sys_common::mutex::Mutex;
 
+/// Helper for lazy initialization of a static, with a destructor that runs when the main (Rust)
+/// thread exits.
+///
+/// Currently used only inside the standard library, by the stdio types.
+///
+/// # Safety
+/// - `UnsafeCell`: We only create a mutable reference during initialization and during the shutdown
+///   phase. At both times there can't exist any other references.
+/// - Destruction. The `Drop` implementation of `T` should not access references to anything except
+///   itself, they are not guaranteed to exist. It should also not rely on other machinery of the
+///   standard library to be available.
+/// - Initialization. The `init` function for `get` should not call `get` itself,  to prevent
+///   infinite recursion and acquiring the guard mutex reentrantly.
+/// - We use the `Mutex` from `sys::common` because it has a `const` constructor. It currently has
+///   UB when acquired reentrantly without calling `init`.
 pub struct Lazy<T> {
-    // We never call `lock.init()`, so it is UB to attempt to acquire this mutex reentrantly!
-    lock: Mutex,
-    ptr: Cell<*mut Arc<T>>,
+    guard: Mutex, // Only used to protect initialization.
+    status: AtomicUsize,
+    data: UnsafeCell<Option<T>>,
 }
 
-#[inline]
-const fn done<T>() -> *mut Arc<T> { 1_usize as *mut _ }
-
 unsafe impl<T> Sync for Lazy<T> {}
+
+const UNINITIALIZED: usize = 0;
+const SHUTDOWN: usize = 1;
+const AVAILABLE: usize = 2;
 
 impl<T> Lazy<T> {
     pub const fn new() -> Lazy<T> {
         Lazy {
-            lock: Mutex::new(),
-            ptr: Cell::new(ptr::null_mut()),
+            guard: Mutex::new(),
+            status: AtomicUsize::new(UNINITIALIZED),
+            data: UnsafeCell::new(None),
         }
     }
 }
 
 impl<T: Send + Sync + 'static> Lazy<T> {
-    /// Safety: `init` must not call `get` on the variable that is being
-    /// initialized.
-    pub unsafe fn get(&'static self, init: fn() -> Arc<T>) -> Option<Arc<T>> {
-        let _guard = self.lock.lock();
-        let ptr = self.ptr.get();
-        if ptr.is_null() {
-            Some(self.init(init))
-        } else if ptr == done() {
-            None
-        } else {
-            Some((*ptr).clone())
-        }
-    }
+    pub unsafe fn get(&'static self, init: fn() -> T) -> Option<&T> {
+        match self.status.load(Ordering::Acquire) {
+            UNINITIALIZED => {
+                let _guard = self.guard.lock();
+                // Double-check to make sure this `Lazy` didn't get initialized by another
+                // thread in the small window before we acquired the mutex.
+                if self.status.load(Ordering::Relaxed) != UNINITIALIZED {
+                    return self.get(init);
+                }
 
-    // Must only be called with `lock` held
-    unsafe fn init(&'static self, init: fn() -> Arc<T>) -> Arc<T> {
-        // If we successfully register an at exit handler, then we cache the
-        // `Arc` allocation in our own internal box (it will get deallocated by
-        // the at exit handler). Otherwise we just return the freshly allocated
-        // `Arc`.
-        let registered = sys_common::at_exit(move || {
-            let ptr = {
-                let _guard = self.lock.lock();
-                self.ptr.replace(done())
-            };
-            drop(Box::from_raw(ptr))
-        });
-        // This could reentrantly call `init` again, which is a problem
-        // because our `lock` allows reentrancy!
-        // That's why `get` is unsafe and requires the caller to ensure no reentrancy happens.
-        let ret = init();
-        if registered.is_ok() {
-            self.ptr.set(Box::into_raw(Box::new(ret.clone())));
+                // Register an `at_exit` handler that drops `data` when the main thread exits.
+                let registered = sys_common::at_exit(move || {
+                    *self.data.get() = None; // `T` gets dropped here
+                    self.status.store(SHUTDOWN, Ordering::Release);
+                });
+                if registered.is_err() {
+                    // Registering the handler will only fail if we are already in the shutdown
+                    // phase. In that case don't attempt to initialize.
+                    self.status.store(SHUTDOWN, Ordering::Release);
+                    return None;
+                }
+
+                // Run the initializer of `T`.
+                *self.data.get() = Some(init());
+                self.status.store(AVAILABLE, Ordering::Release);
+
+                (*self.data.get()).as_ref()
+            },
+            SHUTDOWN => None,
+            _ => (*self.data.get()).as_ref(),
         }
-        ret
     }
 }

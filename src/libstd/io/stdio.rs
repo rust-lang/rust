@@ -4,7 +4,7 @@ use crate::cell::RefCell;
 use crate::fmt;
 use crate::io::lazy::Lazy;
 use crate::io::{self, Initializer, BufReader, LineWriter};
-use crate::sync::{Arc, Mutex, MutexGuard};
+use crate::sync::{Mutex, MutexGuard};
 use crate::sys::stdio;
 use crate::sys_common::remutex::{ReentrantMutex, ReentrantMutexGuard};
 use crate::thread::LocalKey;
@@ -138,7 +138,7 @@ fn handle_ebadf<T>(r: io::Result<T>, default: T) -> io::Result<T> {
 /// an error.
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct Stdin {
-    inner: Arc<Mutex<BufReader<Maybe<StdinRaw>>>>,
+    inner: &'static Mutex<BufReader<Maybe<StdinRaw>>>,
 }
 
 /// A locked reference to the `Stdin` handle.
@@ -202,21 +202,19 @@ pub struct StdinLock<'a> {
 /// ```
 #[stable(feature = "rust1", since = "1.0.0")]
 pub fn stdin() -> Stdin {
-    static INSTANCE: Lazy<Mutex<BufReader<Maybe<StdinRaw>>>> = Lazy::new();
-    return Stdin {
-        inner: unsafe {
-            INSTANCE.get(stdin_init).expect("cannot access stdin during shutdown")
-        },
-    };
-
-    fn stdin_init() -> Arc<Mutex<BufReader<Maybe<StdinRaw>>>> {
-        // This must not reentrantly access `INSTANCE`
+    static STDIN: Lazy<Mutex<BufReader<Maybe<StdinRaw>>>> = Lazy::new();
+    fn stdin_init() -> Mutex<BufReader<Maybe<StdinRaw>>> {
         let stdin = match stdin_raw() {
             Ok(stdin) => Maybe::Real(stdin),
             _ => Maybe::Fake
         };
+        Mutex::new(BufReader::with_capacity(stdio::STDIN_BUF_SIZE, stdin))
+    }
 
-        Arc::new(Mutex::new(BufReader::with_capacity(stdio::STDIN_BUF_SIZE, stdin)))
+    Stdin {
+        inner: unsafe {
+            STDIN.get(stdin_init).expect("cannot access stdin during shutdown")
+        },
     }
 }
 
@@ -355,7 +353,7 @@ pub struct Stdout {
     // FIXME: this should be LineWriter or BufWriter depending on the state of
     //        stdout (tty or not). Note that if this is not line buffered it
     //        should also flush-on-panic or some form of flush-on-abort.
-    inner: Arc<ReentrantMutex<RefCell<LineWriter<Maybe<StdoutRaw>>>>>,
+    inner: &'static ReentrantMutex<RefCell<LineWriter<Maybe<StdoutRaw>>>>,
 }
 
 /// A locked reference to the `Stdout` handle.
@@ -418,20 +416,19 @@ pub struct StdoutLock<'a> {
 /// ```
 #[stable(feature = "rust1", since = "1.0.0")]
 pub fn stdout() -> Stdout {
-    static INSTANCE: Lazy<ReentrantMutex<RefCell<LineWriter<Maybe<StdoutRaw>>>>> = Lazy::new();
-    return Stdout {
-        inner: unsafe {
-            INSTANCE.get(stdout_init).expect("cannot access stdout during shutdown")
-        },
-    };
-
-    fn stdout_init() -> Arc<ReentrantMutex<RefCell<LineWriter<Maybe<StdoutRaw>>>>> {
-        // This must not reentrantly access `INSTANCE`
+    static STDOUT: Lazy<ReentrantMutex<RefCell<LineWriter<Maybe<StdoutRaw>>>>> = Lazy::new();
+    fn stdout_init() -> ReentrantMutex<RefCell<LineWriter<Maybe<StdoutRaw>>>> {
         let stdout = match stdout_raw() {
             Ok(stdout) => Maybe::Real(stdout),
             _ => Maybe::Fake,
         };
-        Arc::new(ReentrantMutex::new(RefCell::new(LineWriter::new(stdout))))
+        ReentrantMutex::new(RefCell::new(LineWriter::new(stdout)))
+    }
+
+    Stdout {
+        inner: unsafe {
+            STDOUT.get(stdout_init).expect("cannot access stdout during shutdown")
+        },
     }
 }
 
@@ -513,7 +510,7 @@ impl fmt::Debug for StdoutLock<'_> {
 /// an error.
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct Stderr {
-    inner: Arc<ReentrantMutex<RefCell<Maybe<StderrRaw>>>>,
+    inner: &'static ReentrantMutex<RefCell<Maybe<StderrRaw>>>,
 }
 
 /// A locked reference to the `Stderr` handle.
@@ -571,20 +568,19 @@ pub struct StderrLock<'a> {
 /// ```
 #[stable(feature = "rust1", since = "1.0.0")]
 pub fn stderr() -> Stderr {
-    static INSTANCE: Lazy<ReentrantMutex<RefCell<Maybe<StderrRaw>>>> = Lazy::new();
-    return Stderr {
-        inner: unsafe {
-            INSTANCE.get(stderr_init).expect("cannot access stderr during shutdown")
-        },
-    };
-
-    fn stderr_init() -> Arc<ReentrantMutex<RefCell<Maybe<StderrRaw>>>> {
-        // This must not reentrantly access `INSTANCE`
+    static STDERR: Lazy<ReentrantMutex<RefCell<Maybe<StderrRaw>>>> = Lazy::new();
+    fn stderr_init() -> ReentrantMutex<RefCell<Maybe<StderrRaw>>> {
         let stderr = match stderr_raw() {
             Ok(stderr) => Maybe::Real(stderr),
             _ => Maybe::Fake,
         };
-        Arc::new(ReentrantMutex::new(RefCell::new(stderr)))
+        ReentrantMutex::new(RefCell::new(stderr))
+    }
+
+    Stderr {
+        inner: unsafe {
+            STDERR.get(stderr_init).expect("cannot access stderr during shutdown")
+        },
     }
 }
 
