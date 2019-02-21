@@ -389,9 +389,11 @@ where
         // above). In that case, all fields are equal.
         let field_layout = base.layout.field(self, usize::try_from(field).unwrap_or(0))?;
 
-        // Offset may need adjustment for unsized fields
+        // Offset may need adjustment for unsized fields.
         let (meta, offset) = if field_layout.is_unsized() {
-            // re-use parent metadata to determine dynamic field layout
+            // Re-use parent metadata to determine dynamic field layout.
+            // With custom DSTS, this *will* execute user-defined code, but the same
+            // happens at run-time so that's okay.
             let align = match self.size_and_align_of(base.meta, field_layout)? {
                 Some((_, align)) => align,
                 None if offset == Size::ZERO =>
