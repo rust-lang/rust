@@ -106,6 +106,13 @@ pub const DEFAULT_COVERAGE_PASSES: &'static [&'static str] = &[
     "calculate-doc-coverage",
 ];
 
+/// The list of default passes run when `--doc-coverage --document-private-items` is passed to
+/// rustdoc.
+pub const PRIVATE_COVERAGE_PASSES: &'static [&'static str] = &[
+    "collect-trait-impls",
+    "calculate-doc-coverage",
+];
+
 /// A shorthand way to refer to which set of passes to use, based on the presence of
 /// `--no-defaults` or `--document-private-items`.
 #[derive(Copy, Clone, PartialEq, Eq, Debug)]
@@ -113,6 +120,7 @@ pub enum DefaultPassOption {
     Default,
     Private,
     Coverage,
+    PrivateCoverage,
     None,
 }
 
@@ -122,6 +130,7 @@ pub fn defaults(default_set: DefaultPassOption) -> &'static [&'static str] {
         DefaultPassOption::Default => DEFAULT_PASSES,
         DefaultPassOption::Private => DEFAULT_PRIVATE_PASSES,
         DefaultPassOption::Coverage => DEFAULT_COVERAGE_PASSES,
+        DefaultPassOption::PrivateCoverage => PRIVATE_COVERAGE_PASSES,
         DefaultPassOption::None => &[],
     }
 }

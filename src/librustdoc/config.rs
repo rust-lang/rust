@@ -232,6 +232,10 @@ impl Options {
             for &name in passes::DEFAULT_COVERAGE_PASSES {
                 println!("{:>20}", name);
             }
+            println!("\nPasses run with `--show-coverage --document-private-items`:");
+            for &name in passes::PRIVATE_COVERAGE_PASSES {
+                println!("{:>20}", name);
+            }
             return Err(0);
         }
 
@@ -421,17 +425,21 @@ impl Options {
             }
         });
 
+        let show_coverage = matches.opt_present("show-coverage");
+        let document_private = matches.opt_present("document-private-items");
+
         let default_passes = if matches.opt_present("no-defaults") {
             passes::DefaultPassOption::None
-        } else if matches.opt_present("show-coverage") {
+        } else if show_coverage && document_private {
+            passes::DefaultPassOption::PrivateCoverage
+        } else if show_coverage {
             passes::DefaultPassOption::Coverage
-        } else if matches.opt_present("document-private-items") {
+        } else if document_private {
             passes::DefaultPassOption::Private
         } else {
             passes::DefaultPassOption::Default
         };
         let manual_passes = matches.opt_strs("passes");
-        let show_coverage = matches.opt_present("show-coverage");
 
         let crate_name = matches.opt_str("crate-name");
         let playground_url = matches.opt_str("playground-url");
