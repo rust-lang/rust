@@ -1,50 +1,28 @@
-#[macro_use]
-mod token_set;
 mod builder;
 mod lexer;
-mod event;
 mod input;
-mod parser;
-mod grammar;
 mod reparsing;
+
+use ra_parser::{parse, ParseError};
 
 use crate::{
     SyntaxKind, SyntaxError,
     parsing::{
         builder::TreeBuilder,
         input::ParserInput,
-        event::process,
-        parser::Parser,
     },
     syntax_node::GreenNode,
 };
 
 pub use self::lexer::{tokenize, Token};
 
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub struct ParseError(pub String);
-
 pub(crate) use self::reparsing::incremental_reparse;
 
 pub(crate) fn parse_text(text: &str) -> (GreenNode, Vec<SyntaxError>) {
     let tokens = tokenize(&text);
-    let tree_sink = TreeBuilder::new(text, &tokens);
-    parse_with(tree_sink, text, &tokens, grammar::root)
-}
-
-fn parse_with<S: TreeSink>(
-    mut tree_sink: S,
-    text: &str,
-    tokens: &[Token],
-    f: fn(&mut Parser),
-) -> S::Tree {
-    let events = {
-        let input = ParserInput::new(text, &tokens);
-        let mut p = Parser::new(&input);
-        f(&mut p);
-        p.finish()
-    };
-    process(&mut tree_sink, events);
+    let token_source = ParserInput::new(text, &tokens);
+    let mut tree_sink = TreeBuilder::new(text, &tokens);
+    parse(&token_source, &mut tree_sink);
     tree_sink.finish()
 }
 

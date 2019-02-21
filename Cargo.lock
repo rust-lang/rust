@@ -1100,6 +1100,7 @@ dependencies = [
  "drop_bomb 0.1.4 (registry+https://github.com/rust-lang/crates.io-index)",
  "itertools 0.8.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "parking_lot 0.7.1 (registry+https://github.com/rust-lang/crates.io-index)",
+ "ra_parser 0.1.0",
  "ra_text_edit 0.1.0",
  "rowan 0.3.3 (registry+https://github.com/rust-lang/crates.io-index)",
  "smol_str 0.1.9 (registry+https://github.com/rust-lang/crates.io-index)",

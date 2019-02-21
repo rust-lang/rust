@@ -1,9 +1,8 @@
+use ra_parser::TokenSource;
+
 use crate::{
     SyntaxKind, SyntaxKind::EOF, TextRange, TextUnit,
-    parsing::{
-        TokenSource,
-        lexer::Token,
-    },
+    parsing::lexer::Token,
 };
 
 impl<'t> TokenSource for ParserInput<'t> {

@@ -1,6 +1,8 @@
 use std::fmt;
 
-use crate::{TextRange, TextUnit, parsing::ParseError};
+use ra_parser::ParseError;
+
+use crate::{TextRange, TextUnit};
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct SyntaxError {

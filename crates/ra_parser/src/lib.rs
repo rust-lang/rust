@@ -53,12 +53,12 @@ impl Reparser {
     ) -> Option<Reparser> {
         grammar::reparser(node, first_child, parent).map(Reparser)
     }
-}
 
-pub fn reparse(token_source: &dyn TokenSource, tree_sink: &mut dyn TreeSink, reparser: Reparser) {
-    let Reparser(r) = reparser;
-    let mut p = parser::Parser::new(token_source);
-    r(&mut p);
-    let events = p.finish();
-    event::process(tree_sink, events);
+    pub fn parse(self, token_source: &dyn TokenSource, tree_sink: &mut dyn TreeSink) {
+        let Reparser(r) = self;
+        let mut p = parser::Parser::new(token_source);
+        r(&mut p);
+        let events = p.finish();
+        event::process(tree_sink, events);
+    }
 }

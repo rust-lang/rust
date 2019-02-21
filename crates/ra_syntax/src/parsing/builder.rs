@@ -1,7 +1,9 @@
+use ra_parser::{TreeSink, ParseError};
+
 use crate::{
     SmolStr, SyntaxError, SyntaxErrorKind, TextUnit, TextRange,
     SyntaxKind::{self, *},
-    parsing::{TreeSink, ParseError, Token},
+    parsing::Token,
     syntax_node::{GreenNode, RaTypes},
 };
 
@@ -17,8 +19,6 @@ pub(crate) struct TreeBuilder<'a> {
 }
 
 impl<'a> TreeSink for TreeBuilder<'a> {
-    type Tree = (GreenNode, Vec<SyntaxError>);
-
     fn leaf(&mut self, kind: SyntaxKind, n_tokens: u8) {
         self.eat_trivias();
         let n_tokens = n_tokens as usize;
@@ -65,10 +65,6 @@ impl<'a> TreeSink for TreeBuilder<'a> {
         let error = SyntaxError::new(SyntaxErrorKind::ParseError(error), self.text_pos);
         self.errors.push(error)
     }
-
-    fn finish(self) -> (GreenNode, Vec<SyntaxError>) {
-        (self.inner.finish(), self.errors)
-    }
 }
 
 impl<'a> TreeBuilder<'a> {
@@ -82,6 +78,11 @@ impl<'a> TreeBuilder<'a> {
             inner: GreenNodeBuilder::new(),
         }
     }
+
+    pub(super) fn finish(self) -> (GreenNode, Vec<SyntaxError>) {
+        (self.inner.finish(), self.errors)
+    }
+
     fn eat_trivias(&mut self) {
         while let Some(&token) = self.tokens.get(self.token_pos) {
             if !token.kind.is_trivia() {
