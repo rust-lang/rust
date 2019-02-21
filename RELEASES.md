@@ -84,7 +84,7 @@ Libraries
 Stabilized APIs
 ---------------
 - [`unix::FileExt::read_exact_at`]
-- [`unix::FileExt::write_exact_at`]
+- [`unix::FileExt::write_all_at`]
 - [`Option::transpose`]
 - [`Result::transpose`]
 - [`convert::identity`]
