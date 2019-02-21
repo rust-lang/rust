@@ -25,7 +25,7 @@ MAINTAINERS = {
 }
 
 REPOS = {
-    'miri': 'https://github.com/solson/miri',
+    'miri': 'https://github.com/rust-lang/miri',
     'clippy-driver': 'https://github.com/rust-lang/rust-clippy',
     'rls': 'https://github.com/rust-lang/rls',
     'rustfmt': 'https://github.com/rust-lang/rustfmt',

@@ -162,7 +162,7 @@ it can be found [here][rctd].
 Currently building Rust will also build the following external projects:
 
 * [clippy](https://github.com/rust-lang-nursery/rust-clippy)
-* [miri](https://github.com/solson/miri)
+* [miri](https://github.com/rust-lang/miri)
 * [rustfmt](https://github.com/rust-lang-nursery/rustfmt)
 * [rls](https://github.com/rust-lang-nursery/rls/)
 
