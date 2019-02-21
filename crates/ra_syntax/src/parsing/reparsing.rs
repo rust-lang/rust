@@ -5,7 +5,7 @@ use crate::{
     syntax_error::SyntaxError,
     parsing::{
         grammar, parse_with,
-        builder::GreenBuilder,
+        builder::TreeBuilder,
         parser::Parser,
         lexer::{tokenize, Token},
     }
@@ -61,7 +61,8 @@ fn reparse_block<'node>(
     if !is_balanced(&tokens) {
         return None;
     }
-    let (green, new_errors) = parse_with(GreenBuilder::default(), &text, &tokens, reparser);
+    let tree_sink = TreeBuilder::new(&text, &tokens);
+    let (green, new_errors) = parse_with(tree_sink, &text, &tokens, reparser);
     Some((node, green, new_errors))
 }
 

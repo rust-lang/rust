@@ -9,11 +9,11 @@ mod grammar;
 mod reparsing;
 
 use crate::{
-    SyntaxKind, SmolStr, SyntaxError,
+    SyntaxKind, SyntaxError,
     parsing::{
-        builder::GreenBuilder,
+        builder::TreeBuilder,
         input::ParserInput,
-        event::EventProcessor,
+        event::process,
         parser::Parser,
     },
     syntax_node::GreenNode,
@@ -28,22 +28,24 @@ pub(crate) use self::reparsing::incremental_reparse;
 
 pub(crate) fn parse_text(text: &str) -> (GreenNode, Vec<SyntaxError>) {
     let tokens = tokenize(&text);
-    parse_with(GreenBuilder::default(), text, &tokens, grammar::root)
+    let tree_sink = TreeBuilder::new(text, &tokens);
+    parse_with(tree_sink, text, &tokens, grammar::root)
 }
 
 fn parse_with<S: TreeSink>(
-    tree_sink: S,
+    mut tree_sink: S,
     text: &str,
     tokens: &[Token],
     f: fn(&mut Parser),
 ) -> S::Tree {
-    let mut events = {
+    let events = {
         let input = ParserInput::new(text, &tokens);
         let mut p = Parser::new(&input);
         f(&mut p);
         p.finish()
     };
-    EventProcessor::new(tree_sink, text, tokens, &mut events).process().finish()
+    process(&mut tree_sink, events);
+    tree_sink.finish()
 }
 
 /// `TreeSink` abstracts details of a particular syntax tree implementation.
@@ -51,14 +53,14 @@ trait TreeSink {
     type Tree;
 
     /// Adds new leaf to the current branch.
-    fn leaf(&mut self, kind: SyntaxKind, text: SmolStr);
+    fn leaf(&mut self, kind: SyntaxKind, n_tokens: u8);
 
     /// Start new branch and make it current.
-    fn start_branch(&mut self, kind: SyntaxKind);
+    fn start_branch(&mut self, kind: SyntaxKind, root: bool);
 
     /// Finish current branch and restore previous
     /// branch as current.
-    fn finish_branch(&mut self);
+    fn finish_branch(&mut self, root: bool);
 
     fn error(&mut self, error: ParseError);
 
