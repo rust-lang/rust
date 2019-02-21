@@ -1053,30 +1053,52 @@ index 9a4232d..592fea0 100644
  pub use core::hint;
  
 diff --git a/src/libstd/net/ip.rs b/src/libstd/net/ip.rs
-index d19cc48..aeae69a 100644
+index c856129..2bfe9cb 100644
 --- a/src/libstd/net/ip.rs
 +++ b/src/libstd/net/ip.rs
-@@ -1380,26 +1380,6 @@ impl FromInner<c::in6_addr> for Ipv6Addr {
+@@ -1391,48 +1391,6 @@ impl FromInner<c::in6_addr> for Ipv6Addr {
      }
  }
  
 -#[stable(feature = "i128", since = "1.26.0")]
 -impl From<Ipv6Addr> for u128 {
+-    /// Convert an `Ipv6Addr` into a host byte order `u128`.
+-    ///
+-    /// # Examples
+-    ///
+-    /// ```
+-    /// use std::net::Ipv6Addr;
+-    ///
+-    /// let addr = Ipv6Addr::new(
+-    ///     0x1020, 0x3040, 0x5060, 0x7080,
+-    ///     0x90A0, 0xB0C0, 0xD0E0, 0xF00D,
+-    /// );
+-    /// assert_eq!(0x102030405060708090A0B0C0D0E0F00D_u128, u128::from(addr));
+-    /// ```
 -    fn from(ip: Ipv6Addr) -> u128 {
--        let ip = ip.segments();
--        ((ip[0] as u128) << 112) + ((ip[1] as u128) << 96) + ((ip[2] as u128) << 80) +
--            ((ip[3] as u128) << 64) + ((ip[4] as u128) << 48) + ((ip[5] as u128) << 32) +
--            ((ip[6] as u128) << 16) + (ip[7] as u128)
+-        let ip = ip.octets();
+-        u128::from_be_bytes(ip)
 -    }
 -}
 -#[stable(feature = "i128", since = "1.26.0")]
 -impl From<u128> for Ipv6Addr {
+-    /// Convert a host byte order `u128` into an `Ipv6Addr`.
+-    ///
+-    /// # Examples
+-    ///
+-    /// ```
+-    /// use std::net::Ipv6Addr;
+-    ///
+-    /// let addr = Ipv6Addr::from(0x102030405060708090A0B0C0D0E0F00D_u128);
+-    /// assert_eq!(
+-    ///     Ipv6Addr::new(
+-    ///         0x1020, 0x3040, 0x5060, 0x7080,
+-    ///         0x90A0, 0xB0C0, 0xD0E0, 0xF00D,
+-    ///     ),
+-    ///     addr);
+-    /// ```
 -    fn from(ip: u128) -> Ipv6Addr {
--        Ipv6Addr::new(
--            (ip >> 112) as u16, (ip >> 96) as u16, (ip >> 80) as u16,
--            (ip >> 64) as u16, (ip >> 48) as u16, (ip >> 32) as u16,
--            (ip >> 16) as u16, ip as u16,
--        )
+-        Ipv6Addr::from(ip.to_be_bytes())
 -    }
 -}
 -
