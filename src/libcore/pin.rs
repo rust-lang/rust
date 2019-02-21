@@ -177,23 +177,30 @@
 //! In a similar vein, when can a generic wrapper type (such as `Vec`, `Box`, or `RefCell`)
 //! have an operation with type `fn(Pin<&[mut] Wrapper<T>>) -> Pin<&[mut] T>`?
 //!
-//! This question is closely related to the question of whether pinning is "structural":
-//! when you have pinned a wrapper type, have you pinned its contents? Deciding this
-//! is entirely up to the author of any given type. For many types, both answers are reasonable
-//! (e.g., there could be a version of `Vec` with structural pinning and another
-//! version where the contents remain movable even when the `Vec` is pinned).
-//! If the type should have pinning projections, pinning must be structural.
+//! This question is closely related to the question of whether pinning is "structural".
+//! Structural pinning means that when you have pinned a wrapper type, the contents are
+//! also pinned. Structural pinning thus explains why pinning projections are correct. This means
+//! that if the type should have pinning projections for some fields, pinning must be structural
+//! for those fields.
+//!
+//! In general, deciding for which fields pinning is structural (and thus for which fields
+//! pinning projections could be offered) is entirely up to the author of any given type.
+//! For many types, both answers are reasonable. For example, there could be a version
+//! of `Vec` with structural pinning and `get_pin`/`get_pin_mut` projections to access
+//! the `Vec` elements, and another version where the contents remain movable even when
+//! the `Vec` is pinned.
+//!
 //! However, structural pinning comes with a few extra requirements:
 //!
-//! 1.  The wrapper must only be [`Unpin`] if all the fields one can project to are
+//! 1.  The wrapper must only be [`Unpin`] if all the structural fields are
 //!     `Unpin`. This is the default, but `Unpin` is a safe trait, so as the author of
 //!     the wrapper it is your responsibility *not* to add something like
 //!     `impl<T> Unpin for Wrapper<T>`. (Notice that adding a projection operation
 //!     requires unsafe code, so the fact that `Unpin` is a safe trait  does not break
 //!     the principle that you only have to worry about any of this if you use `unsafe`.)
-//! 2.  The destructor of the wrapper must not move out of its argument. This is the exact
-//!     point that was raised in the [previous section][drop-impl]: `drop` takes `&mut self`,
-//!      but the wrapper (and hence its fields) might have been pinned before.
+//! 2.  The destructor of the wrapper must not move structural fields out of its argument. This
+//!     is the exact point that was raised in the [previous section][drop-impl]: `drop` takes
+//!     `&mut self`, but the wrapper (and hence its fields) might have been pinned before.
 //!     You have to guarantee that you do not move a field inside your `Drop` implementation.
 //!     In particular, as explained previously, this means that your wrapper type must *not*
 //!     be `#[repr(packed)]`.
