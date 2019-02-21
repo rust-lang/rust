@@ -164,6 +164,23 @@ mod tests {
     }
 
     #[test]
+    fn hover_some() {
+        let (analysis, position) = single_file_with_position(
+            "
+            enum Option<T> { Some(T) }
+            use Option::Some;
+
+            fn main() {
+                So<|>me(12);
+            }
+            ",
+        );
+        let hover = analysis.hover(position).unwrap().unwrap();
+        // not the nicest way to show it currently
+        assert_eq!(hover.info, "Some<i32>(T) -> Option<T>");
+    }
+
+    #[test]
     fn hover_for_local_variable() {
         let (analysis, position) = single_file_with_position("fn func(foo: i32) { fo<|>o; }");
         let hover = analysis.hover(position).unwrap().unwrap();

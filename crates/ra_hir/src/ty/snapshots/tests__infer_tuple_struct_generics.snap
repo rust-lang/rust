@@ -1,0 +1,23 @@
+---
+created: "2019-02-20T21:31:12.911275141Z"
+creator: insta@0.6.2
+source: crates/ra_hir/src/ty/tests.rs
+expression: "&result"
+---
+[77; 185) '{     ...one; }': ()
+[83; 84) 'A': A<i32>(T) -> A<T>
+[83; 88) 'A(42)': A<i32>
+[85; 87) '42': i32
+[94; 95) 'A': A<u128>(T) -> A<T>
+[94; 103) 'A(42u128)': A<u128>
+[96; 102) '42u128': u128
+[109; 113) 'Some': Some<&str>(T) -> Option<T>
+[109; 118) 'Some("x")': Option<&str>
+[114; 117) '"x"': &str
+[124; 136) 'Option::Some': Some<&str>(T) -> Option<T>
+[124; 141) 'Option...e("x")': Option<&str>
+[137; 140) '"x"': &str
+[147; 151) 'None': Option<[unknown]>
+[161; 162) 'x': Option<i64>
+[178; 182) 'None': Option<i64>
+
