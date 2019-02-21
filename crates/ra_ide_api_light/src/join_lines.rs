@@ -208,6 +208,29 @@ fn foo() {
     }
 
     #[test]
+    #[ignore] // FIXME: https://github.com/rust-analyzer/rust-analyzer/issues/868
+    fn join_lines_adds_comma_for_block_in_match_arm() {
+        check_join_lines(
+            r"
+fn foo(e: Result<U, V>) {
+    match e {
+        Ok(u) => <|>{
+            u.foo()
+        }
+        Err(v) => v,
+    }
+}",
+            r"
+fn foo(e: Result<U, V>) {
+    match e {
+        Ok(u) => <|>u.foo(),
+        Err(v) => v,
+    }
+}",
+        );
+    }
+
+    #[test]
     fn test_join_lines_use_items_left() {
         // No space after the '{'
         check_join_lines(
