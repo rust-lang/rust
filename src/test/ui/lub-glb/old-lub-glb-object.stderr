@@ -1,0 +1,17 @@
+error[E0308]: match arms have incompatible types
+  --> $DIR/old-lub-glb-object.rs:10:13
+   |
+LL |       let z = match 22 { //~ ERROR match arms have incompatible types
+   |  _____________^
+LL | |         0 => x,
+LL | |         _ => y,
+   | |              - match arm with an incompatible type
+LL | |     };
+   | |_____^ expected bound lifetime parameter 'a, found concrete lifetime
+   |
+   = note: expected type `&dyn for<'a, 'b> Foo<&'a u8, &'b u8>`
+              found type `&dyn for<'a> Foo<&'a u8, &'a u8>`
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0308`.

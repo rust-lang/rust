@@ -1,9 +1,5 @@
 // Test that we give a note when the old LUB/GLB algorithm would have
 // succeeded but the new code (which is stricter) gives an error.
-//
-// compile-pass
-//
-// TODO -- why does this test pass?
 
 trait Foo<T, U> { }
 
@@ -11,7 +7,7 @@ fn foo(
     x: &for<'a, 'b> Foo<&'a u8, &'b u8>,
     y: &for<'a> Foo<&'a u8, &'a u8>,
 ) {
-    let z = match 22 {
+    let z = match 22 { //~ ERROR match arms have incompatible types
         0 => x,
         _ => y,
     };
