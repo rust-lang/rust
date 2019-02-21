@@ -10,7 +10,7 @@ pub(super) fn complete_path(acc: &mut Completions, ctx: &CompletionContext) {
         Some(path) => path.clone(),
         _ => return,
     };
-    let def = match ctx.resolver.resolve_path(ctx.db, &path).take_types() {
+    let def = match ctx.resolver.resolve_path(ctx.db, &path).into_per_ns().take_types() {
         Some(Resolution::Def(def)) => def,
         _ => return,
     };

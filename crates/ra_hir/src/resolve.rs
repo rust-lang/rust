@@ -33,6 +33,32 @@ pub(crate) struct ExprScope {
 }
 
 #[derive(Debug, Clone)]
+pub enum PathResult {
+    /// Path was fully resolved
+    FullyResolved(PerNs<Resolution>),
+    /// Path was partially resolved, first element contains the resolution
+    /// second contains the index in the Path.segments which we were unable to resolve
+    PartiallyResolved(PerNs<Resolution>, usize),
+}
+
+impl PathResult {
+    pub fn segment_index(&self) -> Option<usize> {
+        match self {
+            PathResult::FullyResolved(_) => None,
+            PathResult::PartiallyResolved(_, ref i) => Some(*i),
+        }
+    }
+
+    /// Consumes `PathResult` and returns the contained `PerNs<Resolution>`
+    pub fn into_per_ns(self) -> PerNs<Resolution> {
+        match self {
+            PathResult::FullyResolved(def) => def,
+            PathResult::PartiallyResolved(def, _) => def,
+        }
+    }
+}
+
+#[derive(Debug, Clone)]
 pub(crate) enum Scope {
     /// All the items and imported names of a module
     ModuleScope(ModuleItemMap),
@@ -67,18 +93,26 @@ impl Resolver {
         resolution
     }
 
-    pub fn resolve_path(&self, db: &impl HirDatabase, path: &Path) -> PerNs<Resolution> {
+    pub fn resolve_path(&self, db: &impl HirDatabase, path: &Path) -> PathResult {
+        use self::PathResult::*;
         if let Some(name) = path.as_ident() {
-            self.resolve_name(db, name)
+            FullyResolved(self.resolve_name(db, name))
         } else if path.is_self() {
-            self.resolve_name(db, &Name::self_param())
+            FullyResolved(self.resolve_name(db, &Name::self_param()))
         } else {
             let (item_map, module) = match self.module() {
                 Some(m) => m,
-                _ => return PerNs::none(),
+                _ => return FullyResolved(PerNs::none()),
             };
-            let module_res = item_map.resolve_path(db, module, path);
-            module_res.map(Resolution::Def)
+            let (module_res, segment_index) = item_map.resolve_path(db, module, path);
+
+            let def = module_res.map(Resolution::Def);
+
+            if let Some(index) = segment_index {
+                PartiallyResolved(def, index)
+            } else {
+                FullyResolved(def)
+            }
         }
     }
 

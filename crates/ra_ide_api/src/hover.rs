@@ -223,4 +223,24 @@ mod tests {
         assert_eq!("usize", &type_name);
     }
 
+    #[test]
+    fn test_hover_infer_associated_method_result() {
+        let (analysis, position) = single_file_with_position(
+            "
+            struct Thing { x: u32 };
+
+            impl Thing {
+                fn new() -> Thing {
+                    Thing { x: 0 }
+                }
+            }
+
+            fn main() {
+                let foo_<|>test = Thing::new();
+            }
+            ",
+        );
+        let hover = analysis.hover(position).unwrap().unwrap();
+        assert_eq!(hover.info, "Thing");
+    }
 }

@@ -32,17 +32,20 @@ use rustc_hash::FxHashMap;
 
 use test_utils::tested_by;
 
+use ra_syntax::ast::NameOwner;
+
 use crate::{
     Function, Struct, StructField, Enum, EnumVariant, Path, Name,
+    Const,
     FnSignature, ModuleDef, AdtDef,
     HirDatabase,
     type_ref::{TypeRef, Mutability},
-    name::KnownName,
+    name::{KnownName, AsName},
     expr::{Body, Expr, BindingAnnotation, Literal, ExprId, Pat, PatId, UnaryOp, BinaryOp, Statement, FieldPat, self},
     generics::GenericParams,
     path::GenericArg,
     adt::VariantDef,
-    resolve::{Resolver, Resolution}, nameres::Namespace
+    resolve::{Resolver, Resolution, PathResult}, nameres::Namespace
 };
 
 /// The ID of a type variable.
@@ -370,7 +373,7 @@ impl Ty {
         }
 
         // Resolve the path (in type namespace)
-        let resolution = resolver.resolve_path(db, path).take_types();
+        let resolution = resolver.resolve_path(db, path).into_per_ns().take_types();
 
         let def = match resolution {
             Some(Resolution::Def(def)) => def,
@@ -676,6 +679,19 @@ fn type_for_fn(db: &impl HirDatabase, def: Function) -> Ty {
     let sig = Arc::new(FnSig { input, output });
     let substs = make_substs(&generics);
     Ty::FnDef { def: def.into(), sig, name, substs }
+}
+
+fn type_for_const(db: &impl HirDatabase, resolver: &Resolver, def: Const) -> Ty {
+    let node = def.source(db).1;
+
+    let tr = node
+        .type_ref()
+        .map(TypeRef::from_ast)
+        .as_ref()
+        .map(|tr| Ty::from_hir(db, resolver, tr))
+        .unwrap_or_else(|| Ty::Unknown);
+
+    tr
 }
 
 /// Compute the type of a tuple struct constructor.
@@ -1172,15 +1188,56 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
     }
 
     fn infer_path_expr(&mut self, resolver: &Resolver, path: &Path) -> Option<Ty> {
-        let resolved = resolver.resolve_path(self.db, &path).take_values()?;
+        let resolved = resolver.resolve_path(self.db, &path);
+
+        let (resolved, segment_index) = match resolved {
+            PathResult::FullyResolved(def) => (def.take_values()?, None),
+            PathResult::PartiallyResolved(def, index) => (def.take_types()?, Some(index)),
+        };
+
         match resolved {
             Resolution::Def(def) => {
                 let typable: Option<TypableDef> = def.into();
                 let typable = typable?;
-                let substs = Ty::substs_from_path(self.db, &self.resolver, path, typable);
-                let ty = self.db.type_for_def(typable, Namespace::Values).apply_substs(substs);
-                let ty = self.insert_type_vars(ty);
-                Some(ty)
+
+                if let Some(segment_index) = segment_index {
+                    let ty = self.db.type_for_def(typable, Namespace::Types);
+                    // TODO: What to do if segment_index is not the last segment
+                    // in the path
+                    let segment = &path.segments[segment_index];
+
+                    // Attempt to find an impl_item for the type which has a name matching
+                    // the current segment
+                    let ty = ty.iterate_impl_items(self.db, |item| match item {
+                        crate::ImplItem::Method(func) => {
+                            let sig = func.signature(self.db);
+                            if segment.name == *sig.name() {
+                                return Some(type_for_fn(self.db, func));
+                            }
+                            None
+                        }
+                        crate::ImplItem::Const(c) => {
+                            let node = c.source(self.db).1;
+
+                            if let Some(name) = node.name().map(|n| n.as_name()) {
+                                if segment.name == name {
+                                    return Some(type_for_const(self.db, resolver, c));
+                                }
+                            }
+
+                            None
+                        }
+
+                        // TODO: Resolve associated types
+                        crate::ImplItem::Type(_) => None,
+                    });
+                    ty
+                } else {
+                    let substs = Ty::substs_from_path(self.db, &self.resolver, path, typable);
+                    let ty = self.db.type_for_def(typable, Namespace::Values).apply_substs(substs);
+                    let ty = self.insert_type_vars(ty);
+                    Some(ty)
+                }
             }
             Resolution::LocalBinding(pat) => {
                 let ty = self.type_of_pat.get(pat)?;
@@ -1204,23 +1261,24 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
             None => return (Ty::Unknown, None),
         };
         let resolver = &self.resolver;
-        let typable: Option<TypableDef> = match resolver.resolve_path(self.db, &path).take_types() {
-            Some(Resolution::Def(def)) => def.into(),
-            Some(Resolution::LocalBinding(..)) => {
-                // this cannot happen
-                log::error!("path resolved to local binding in type ns");
-                return (Ty::Unknown, None);
-            }
-            Some(Resolution::GenericParam(..)) => {
-                // generic params can't be used in struct literals
-                return (Ty::Unknown, None);
-            }
-            Some(Resolution::SelfType(..)) => {
-                // TODO this is allowed in an impl for a struct, handle this
-                return (Ty::Unknown, None);
-            }
-            None => return (Ty::Unknown, None),
-        };
+        let typable: Option<TypableDef> =
+            match resolver.resolve_path(self.db, &path).into_per_ns().take_types() {
+                Some(Resolution::Def(def)) => def.into(),
+                Some(Resolution::LocalBinding(..)) => {
+                    // this cannot happen
+                    log::error!("path resolved to local binding in type ns");
+                    return (Ty::Unknown, None);
+                }
+                Some(Resolution::GenericParam(..)) => {
+                    // generic params can't be used in struct literals
+                    return (Ty::Unknown, None);
+                }
+                Some(Resolution::SelfType(..)) => {
+                    // TODO this is allowed in an impl for a struct, handle this
+                    return (Ty::Unknown, None);
+                }
+                None => return (Ty::Unknown, None),
+            };
         let def = match typable {
             None => return (Ty::Unknown, None),
             Some(it) => it,

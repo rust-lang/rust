@@ -119,6 +119,10 @@ impl<T> PerNs<T> {
         self.types.is_some() && self.values.is_some()
     }
 
+    pub fn is_values(&self) -> bool {
+        self.values.is_some() && self.types.is_none()
+    }
+
     pub fn take(self, namespace: Namespace) -> Option<T> {
         match namespace {
             Namespace::Types => self.types,
@@ -297,7 +301,14 @@ where
             );
             (res, if res.is_none() { ReachedFixedPoint::No } else { ReachedFixedPoint::Yes })
         } else {
-            self.result.resolve_path_fp(self.db, ResolveMode::Import, original_module, &import.path)
+            let res = self.result.resolve_path_fp(
+                self.db,
+                ResolveMode::Import,
+                original_module,
+                &import.path,
+            );
+
+            (res.module, res.reached_fixedpoint)
         };
 
         if reached_fixedpoint != ReachedFixedPoint::Yes {
@@ -435,6 +446,27 @@ where
     }
 }
 
+#[derive(Debug, Clone)]
+pub struct ResolvePathResult {
+    pub(crate) module: PerNs<ModuleDef>,
+    pub(crate) segment_index: Option<usize>,
+    reached_fixedpoint: ReachedFixedPoint,
+}
+
+impl ResolvePathResult {
+    fn empty(reached_fixedpoint: ReachedFixedPoint) -> ResolvePathResult {
+        ResolvePathResult::with(PerNs::none(), reached_fixedpoint, None)
+    }
+
+    fn with(
+        module: PerNs<ModuleDef>,
+        reached_fixedpoint: ReachedFixedPoint,
+        segment_index: Option<usize>,
+    ) -> ResolvePathResult {
+        ResolvePathResult { module, reached_fixedpoint, segment_index }
+    }
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 enum ResolveMode {
     Import,
@@ -468,8 +500,9 @@ impl ItemMap {
         db: &impl PersistentHirDatabase,
         original_module: Module,
         path: &Path,
-    ) -> PerNs<ModuleDef> {
-        self.resolve_path_fp(db, ResolveMode::Other, original_module, path).0
+    ) -> (PerNs<ModuleDef>, Option<usize>) {
+        let res = self.resolve_path_fp(db, ResolveMode::Other, original_module, path);
+        (res.module, res.segment_index)
     }
 
     fn resolve_in_prelude(
@@ -534,7 +567,7 @@ impl ItemMap {
         mode: ResolveMode,
         original_module: Module,
         path: &Path,
-    ) -> (PerNs<ModuleDef>, ReachedFixedPoint) {
+    ) -> ResolvePathResult {
         let mut segments = path.segments.iter().enumerate();
         let mut curr_per_ns: PerNs<ModuleDef> = match path.kind {
             PathKind::Crate => PerNs::types(original_module.crate_root(db).into()),
@@ -549,7 +582,7 @@ impl ItemMap {
             {
                 let segment = match segments.next() {
                     Some((_, segment)) => segment,
-                    None => return (PerNs::none(), ReachedFixedPoint::Yes),
+                    None => return ResolvePathResult::empty(ReachedFixedPoint::Yes),
                 };
                 log::debug!("resolving {:?} in crate root (+ extern prelude)", segment);
                 self.resolve_name_in_crate_root_or_extern_prelude(
@@ -561,7 +594,7 @@ impl ItemMap {
             PathKind::Plain => {
                 let segment = match segments.next() {
                     Some((_, segment)) => segment,
-                    None => return (PerNs::none(), ReachedFixedPoint::Yes),
+                    None => return ResolvePathResult::empty(ReachedFixedPoint::Yes),
                 };
                 log::debug!("resolving {:?} in module", segment);
                 self.resolve_name_in_module(db, original_module, &segment.name)
@@ -571,20 +604,20 @@ impl ItemMap {
                     PerNs::types(p.into())
                 } else {
                     log::debug!("super path in root module");
-                    return (PerNs::none(), ReachedFixedPoint::Yes);
+                    return ResolvePathResult::empty(ReachedFixedPoint::Yes);
                 }
             }
             PathKind::Abs => {
                 // 2018-style absolute path -- only extern prelude
                 let segment = match segments.next() {
                     Some((_, segment)) => segment,
-                    None => return (PerNs::none(), ReachedFixedPoint::Yes),
+                    None => return ResolvePathResult::empty(ReachedFixedPoint::Yes),
                 };
                 if let Some(def) = self.extern_prelude.get(&segment.name) {
                     log::debug!("absolute path {:?} resolved to crate {:?}", path, def);
                     PerNs::types(*def)
                 } else {
-                    return (PerNs::none(), ReachedFixedPoint::No); // extern crate declarations can add to the extern prelude
+                    return ResolvePathResult::empty(ReachedFixedPoint::No); // extern crate declarations can add to the extern prelude
                 }
             }
         };
@@ -598,7 +631,7 @@ impl ItemMap {
                     // (don't break here because `curr_per_ns` might contain
                     // something in the value namespace, and it would be wrong
                     // to return that)
-                    return (PerNs::none(), ReachedFixedPoint::No);
+                    return ResolvePathResult::empty(ReachedFixedPoint::No);
                 }
             };
             // resolve segment in curr
@@ -612,15 +645,15 @@ impl ItemMap {
                         };
                         log::debug!("resolving {:?} in other crate", path);
                         let item_map = db.item_map(module.krate);
-                        let def = item_map.resolve_path(db, *module, &path);
-                        return (def, ReachedFixedPoint::Yes);
+                        let (def, s) = item_map.resolve_path(db, *module, &path);
+                        return ResolvePathResult::with(def, ReachedFixedPoint::Yes, s);
                     }
 
                     match self[module.module_id].items.get(&segment.name) {
                         Some(res) if !res.def.is_none() => res.def,
                         _ => {
                             log::debug!("path segment {:?} not found", segment.name);
-                            return (PerNs::none(), ReachedFixedPoint::No);
+                            return ResolvePathResult::empty(ReachedFixedPoint::No);
                         }
                     }
                 }
@@ -629,8 +662,21 @@ impl ItemMap {
                     tested_by!(item_map_enum_importing);
                     match e.variant(db, &segment.name) {
                         Some(variant) => PerNs::both(variant.into(), variant.into()),
-                        None => PerNs::none(),
+                        None => {
+                            return ResolvePathResult::with(
+                                PerNs::types((*e).into()),
+                                ReachedFixedPoint::Yes,
+                                Some(i),
+                            );
+                        }
                     }
+                }
+                ModuleDef::Struct(s) => {
+                    return ResolvePathResult::with(
+                        PerNs::types((*s).into()),
+                        ReachedFixedPoint::Yes,
+                        Some(i),
+                    );
                 }
                 _ => {
                     // could be an inherent method call in UFCS form
@@ -641,11 +687,11 @@ impl ItemMap {
                         segment.name,
                         curr,
                     );
-                    return (PerNs::none(), ReachedFixedPoint::Yes);
+                    return ResolvePathResult::empty(ReachedFixedPoint::Yes);
                 }
             };
         }
-        (curr_per_ns, ReachedFixedPoint::Yes)
+        ResolvePathResult::with(curr_per_ns, ReachedFixedPoint::Yes, None)
     }
 }
 

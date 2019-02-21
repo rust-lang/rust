@@ -88,7 +88,7 @@ impl ImplBlock {
         if let Some(TypeRef::Path(path)) = self.target_trait_ref(db) {
             let resolver = self.resolver(db);
             if let Some(Resolution::Def(ModuleDef::Trait(tr))) =
-                resolver.resolve_path(db, &path).take_types()
+                resolver.resolve_path(db, &path).into_per_ns().take_types()
             {
                 return Some(tr);
             }
