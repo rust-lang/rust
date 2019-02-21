@@ -33,27 +33,68 @@ pub(crate) struct ExprScope {
 }
 
 #[derive(Debug, Clone)]
-pub enum PathResult {
-    /// Path was fully resolved
-    FullyResolved(PerNs<Resolution>),
-    /// Path was partially resolved, first element contains the resolution
-    /// second contains the index in the Path.segments which we were unable to resolve
-    PartiallyResolved(PerNs<Resolution>, usize),
+pub struct PathResult {
+    /// The actual path resolution
+    resolution: PerNs<Resolution>,
+    /// The first index in the path that we
+    /// were unable to resolve.
+    /// When path is fully resolved, this is 0.
+    remaining_index: usize,
 }
 
 impl PathResult {
-    pub fn segment_index(&self) -> Option<usize> {
-        match self {
-            PathResult::FullyResolved(_) => None,
-            PathResult::PartiallyResolved(_, ref i) => Some(*i),
+    /// Returns the remaining index in the result
+    /// returns None if the path was fully resolved
+    pub fn remaining_index(&self) -> Option<usize> {
+        if self.remaining_index > 0 {
+            Some(self.remaining_index)
+        } else {
+            None
         }
     }
 
     /// Consumes `PathResult` and returns the contained `PerNs<Resolution>`
+    /// if the path was fully resolved, meaning we have no remaining items
     pub fn into_per_ns(self) -> PerNs<Resolution> {
-        match self {
-            PathResult::FullyResolved(def) => def,
-            PathResult::PartiallyResolved(def, _) => def,
+        if self.remaining_index().is_none() {
+            self.resolution
+        } else {
+            PerNs::none()
+        }
+    }
+
+    /// Consumes `PathResult` and returns the resolution and the
+    /// remaining_index as a tuple.
+    pub fn into_inner(self) -> (PerNs<Resolution>, Option<usize>) {
+        let index = self.remaining_index();
+        (self.resolution, index)
+    }
+
+    /// Path is fully resolved when `remaining_index` is none
+    /// and the resolution contains anything
+    pub fn is_fully_resolved(&self) -> bool {
+        !self.resolution.is_none() && self.remaining_index().is_none()
+    }
+
+    /// Empty path result is where the resolution is `none`
+    /// and the remaining index is 0
+    pub fn is_empty(&self) -> bool {
+        self.resolution.is_none() && self.remaining_index().is_none()
+    }
+
+    fn empty() -> PathResult {
+        PathResult { resolution: PerNs::none(), remaining_index: 0 }
+    }
+
+    fn from_resolution(res: PerNs<Resolution>) -> PathResult {
+        PathResult::from_resolution_with_index(res, 0)
+    }
+
+    fn from_resolution_with_index(res: PerNs<Resolution>, remaining_index: usize) -> PathResult {
+        if res.is_none() {
+            PathResult::empty()
+        } else {
+            PathResult { resolution: res, remaining_index }
         }
     }
 }
@@ -94,24 +135,23 @@ impl Resolver {
     }
 
     pub fn resolve_path(&self, db: &impl HirDatabase, path: &Path) -> PathResult {
-        use self::PathResult::*;
         if let Some(name) = path.as_ident() {
-            FullyResolved(self.resolve_name(db, name))
+            PathResult::from_resolution(self.resolve_name(db, name))
         } else if path.is_self() {
-            FullyResolved(self.resolve_name(db, &Name::self_param()))
+            PathResult::from_resolution(self.resolve_name(db, &Name::self_param()))
         } else {
             let (item_map, module) = match self.module() {
                 Some(m) => m,
-                _ => return FullyResolved(PerNs::none()),
+                _ => return PathResult::empty(),
             };
             let (module_res, segment_index) = item_map.resolve_path(db, module, path);
 
             let def = module_res.map(Resolution::Def);
 
             if let Some(index) = segment_index {
-                PartiallyResolved(def, index)
+                PathResult::from_resolution_with_index(def, index)
             } else {
-                FullyResolved(def)
+                PathResult::from_resolution(def)
             }
         }
     }

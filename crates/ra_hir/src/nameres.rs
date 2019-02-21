@@ -119,10 +119,6 @@ impl<T> PerNs<T> {
         self.types.is_some() && self.values.is_some()
     }
 
-    pub fn is_values(&self) -> bool {
-        self.values.is_some() && self.types.is_none()
-    }
-
     pub fn take(self, namespace: Namespace) -> Option<T> {
         match namespace {
             Namespace::Types => self.types,
@@ -671,23 +667,20 @@ impl ItemMap {
                         }
                     }
                 }
-                ModuleDef::Struct(s) => {
-                    return ResolvePathResult::with(
-                        PerNs::types((*s).into()),
-                        ReachedFixedPoint::Yes,
-                        Some(i),
-                    );
-                }
-                _ => {
+                s => {
                     // could be an inherent method call in UFCS form
-                    // (`Struct::method`), or some other kind of associated
-                    // item... Which we currently don't handle (TODO)
+                    // (`Struct::method`), or some other kind of associated item
                     log::debug!(
                         "path segment {:?} resolved to non-module {:?}, but is not last",
                         segment.name,
                         curr,
                     );
-                    return ResolvePathResult::empty(ReachedFixedPoint::Yes);
+
+                    return ResolvePathResult::with(
+                        PerNs::types((*s).into()),
+                        ReachedFixedPoint::Yes,
+                        Some(i),
+                    );
                 }
             };
         }

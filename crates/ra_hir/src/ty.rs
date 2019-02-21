@@ -32,20 +32,17 @@ use rustc_hash::FxHashMap;
 
 use test_utils::tested_by;
 
-use ra_syntax::ast::NameOwner;
-
 use crate::{
     Function, Struct, StructField, Enum, EnumVariant, Path, Name,
-    Const,
     FnSignature, ModuleDef, AdtDef,
     HirDatabase,
     type_ref::{TypeRef, Mutability},
-    name::{KnownName, AsName},
+    name::{KnownName},
     expr::{Body, Expr, BindingAnnotation, Literal, ExprId, Pat, PatId, UnaryOp, BinaryOp, Statement, FieldPat, self},
     generics::GenericParams,
     path::GenericArg,
     adt::VariantDef,
-    resolve::{Resolver, Resolution, PathResult}, nameres::Namespace
+    resolve::{Resolver, Resolution}, nameres::Namespace
 };
 
 /// The ID of a type variable.
@@ -681,19 +678,6 @@ fn type_for_fn(db: &impl HirDatabase, def: Function) -> Ty {
     Ty::FnDef { def: def.into(), sig, name, substs }
 }
 
-fn type_for_const(db: &impl HirDatabase, resolver: &Resolver, def: Const) -> Ty {
-    let node = def.source(db).1;
-
-    let tr = node
-        .type_ref()
-        .map(TypeRef::from_ast)
-        .as_ref()
-        .map(|tr| Ty::from_hir(db, resolver, tr))
-        .unwrap_or_else(|| Ty::Unknown);
-
-    tr
-}
-
 /// Compute the type of a tuple struct constructor.
 fn type_for_struct_constructor(db: &impl HirDatabase, def: Struct) -> Ty {
     let var_data = def.variant_data(db);
@@ -1190,21 +1174,28 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
     fn infer_path_expr(&mut self, resolver: &Resolver, path: &Path) -> Option<Ty> {
         let resolved = resolver.resolve_path(self.db, &path);
 
-        let (resolved, segment_index) = match resolved {
-            PathResult::FullyResolved(def) => (def.take_values()?, None),
-            PathResult::PartiallyResolved(def, index) => (def.take_types()?, Some(index)),
-        };
+        let (def, remaining_index) = resolved.into_inner();
+
+        // if the remaining_index is None, we expect the path
+        // to be fully resolved, in this case we continue with
+        // the default by attempting to `take_values´ from the resolution.
+        // Otherwise the path was partially resolved, which means
+        // we might have resolved into a type for which
+        // we may find some associated item starting at the
+        // path.segment pointed to by `remaining_index´
+        let resolved =
+            if remaining_index.is_none() { def.take_values()? } else { def.take_types()? };
 
         match resolved {
             Resolution::Def(def) => {
                 let typable: Option<TypableDef> = def.into();
                 let typable = typable?;
 
-                if let Some(segment_index) = segment_index {
+                if let Some(remaining_index) = remaining_index {
                     let ty = self.db.type_for_def(typable, Namespace::Types);
-                    // TODO: What to do if segment_index is not the last segment
-                    // in the path
-                    let segment = &path.segments[segment_index];
+                    // TODO: Keep resolving the segments
+                    // if we have more segments to process
+                    let segment = &path.segments[remaining_index];
 
                     // Attempt to find an impl_item for the type which has a name matching
                     // the current segment
@@ -1216,17 +1207,9 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
                             }
                             None
                         }
-                        crate::ImplItem::Const(c) => {
-                            let node = c.source(self.db).1;
 
-                            if let Some(name) = node.name().map(|n| n.as_name()) {
-                                if segment.name == name {
-                                    return Some(type_for_const(self.db, resolver, c));
-                                }
-                            }
-
-                            None
-                        }
+                        // TODO: Resolve associated const
+                        crate::ImplItem::Const(_) => None,
 
                         // TODO: Resolve associated types
                         crate::ImplItem::Type(_) => None,
