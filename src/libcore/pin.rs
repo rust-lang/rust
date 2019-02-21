@@ -15,8 +15,8 @@
 //! moving the values they contain: you can move out of a `Box<T>`, or you can use [`mem::swap`].
 //! [`Pin<P>`] wraps a pointer type `P`, so `Pin<Box<T>>` functions much like a regular `Box<T>`:
 //! when a `Pin<Box<T>>` gets dropped, so do its contents, and the memory gets deallocated.
-//! Similarily, `Pin<&mut T>` is a lot like `&mut T`. However, [`Pin<P>`] does not let clients actually
-//! obtain a `Box<T>` or `&mut T` to pinned data, which implies that you cannot use
+//! Similarily, `Pin<&mut T>` is a lot like `&mut T`. However, [`Pin<P>`] does not let clients
+//! actually obtain a `Box<T>` or `&mut T` to pinned data, which implies that you cannot use
 //! operations such as [`mem::swap`]:
 //! ```
 //! use std::pin::Pin;
