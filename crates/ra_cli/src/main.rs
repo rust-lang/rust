@@ -4,7 +4,7 @@ use std::{fs, io::Read, path::Path, time::Instant};
 
 use clap::{App, Arg, SubCommand};
 use join_to_string::join;
-use ra_ide_api_light::{extend_selection, file_structure, syntax_tree};
+use ra_ide_api_light::{extend_selection, file_structure};
 use ra_syntax::{SourceFile, TextRange, TreeArc, AstNode};
 use tools::collect_tests;
 use flexi_logger::Logger;
@@ -37,7 +37,7 @@ fn main() -> Result<()> {
             let file = file()?;
             let elapsed = start.elapsed();
             if !matches.is_present("no-dump") {
-                println!("{}", syntax_tree(&file));
+                println!("{}", file.syntax().debug_dump());
             }
             eprintln!("parsing: {:?}", elapsed);
             ::std::mem::forget(file);
@@ -94,7 +94,7 @@ fn render_test(file: &Path, line: usize) -> Result<(String, String)> {
         Some((_start_line, test)) => test,
     };
     let file = SourceFile::parse(&test.text);
-    let tree = syntax_tree(&file);
+    let tree = file.syntax().debug_dump();
     Ok((test.text, tree))
 }
 

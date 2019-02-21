@@ -6,12 +6,12 @@
 //! The *real* implementation is in the (language-agnostic) `rowan` crate, this
 //! modules just wraps its API.
 
-use std::{fmt, borrow::Borrow};
+use std::{fmt::{self, Write}, borrow::Borrow};
 
 use rowan::{Types, TransparentNewType};
 
 use crate::{
-    SmolStr, SyntaxKind, TextRange, SyntaxText,
+    SmolStr, SyntaxKind, TextRange, SyntaxText, SourceFile, AstNode,
     syntax_error::SyntaxError,
 };
 
@@ -133,6 +133,50 @@ impl SyntaxNode {
             WalkEvent::Enter(n) => WalkEvent::Enter(SyntaxNode::from_repr(n)),
             WalkEvent::Leave(n) => WalkEvent::Leave(SyntaxNode::from_repr(n)),
         })
+    }
+
+    pub fn debug_dump(&self) -> String {
+        let mut errors: Vec<_> = match self.ancestors().find_map(SourceFile::cast) {
+            Some(file) => file.errors(),
+            None => self.root_data().to_vec(),
+        };
+        errors.sort_by_key(|e| e.offset());
+        let mut err_pos = 0;
+        let mut level = 0;
+        let mut buf = String::new();
+        macro_rules! indent {
+            () => {
+                for _ in 0..level {
+                    buf.push_str("  ");
+                }
+            };
+        }
+
+        for event in self.preorder() {
+            match event {
+                WalkEvent::Enter(node) => {
+                    indent!();
+                    writeln!(buf, "{:?}", node).unwrap();
+                    if node.first_child().is_none() {
+                        let off = node.range().end();
+                        while err_pos < errors.len() && errors[err_pos].offset() <= off {
+                            indent!();
+                            writeln!(buf, "err: `{}`", errors[err_pos]).unwrap();
+                            err_pos += 1;
+                        }
+                    }
+                    level += 1;
+                }
+                WalkEvent::Leave(_) => level -= 1,
+            }
+        }
+
+        assert_eq!(level, 0);
+        for err in errors[err_pos..].iter() {
+            writeln!(buf, "err: `{}`", err).unwrap();
+        }
+
+        buf
     }
 }
 

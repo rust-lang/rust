@@ -123,10 +123,6 @@ pub fn highlight(root: &SyntaxNode) -> Vec<HighlightedRange> {
     res
 }
 
-pub fn syntax_tree(file: &SourceFile) -> String {
-    ::ra_syntax::utils::dump_tree(file.syntax())
-}
-
 #[cfg(test)]
 mod tests {
     use ra_syntax::AstNode;

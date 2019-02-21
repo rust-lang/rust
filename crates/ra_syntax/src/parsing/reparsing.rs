@@ -143,7 +143,7 @@ fn merge_errors(
 mod tests {
     use test_utils::{extract_range, assert_eq_text};
 
-    use crate::{SourceFile, AstNode, utils::dump_tree};
+    use crate::{SourceFile, AstNode};
     use super::*;
 
     fn do_check<F>(before: &str, replace_with: &str, reparser: F)
@@ -169,8 +169,8 @@ mod tests {
         };
 
         assert_eq_text!(
-            &dump_tree(fully_reparsed.syntax()),
-            &dump_tree(incrementally_reparsed.syntax()),
+            &fully_reparsed.syntax().debug_dump(),
+            &incrementally_reparsed.syntax().debug_dump(),
         )
     }
 
