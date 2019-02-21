@@ -419,7 +419,7 @@ pub fn handle_signature_help(
         Ok(Some(req::SignatureHelp {
             signatures: vec![sig_info],
             active_signature: Some(0),
-            active_parameter: call_info.active_parameter.map(|it| it as u64),
+            active_parameter: call_info.active_parameter.map(|it| it as i64),
         }))
     } else {
         Ok(None)
