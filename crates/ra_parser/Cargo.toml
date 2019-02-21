@@ -1,0 +1,9 @@
+[package]
+edition = "2018"
+name = "ra_parser"
+version = "0.1.0"
+authors = ["rust-analyzer developers"]
+publish = false
+
+[dependencies]
+drop_bomb = "0.1.4"

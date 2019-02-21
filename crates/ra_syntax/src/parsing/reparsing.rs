@@ -1,17 +1,17 @@
+use ra_text_edit::AtomTextEdit;
+use ra_parser::Reparser;
+
 use crate::{
     SyntaxKind::*, TextRange, TextUnit,
     algo,
     syntax_node::{GreenNode, SyntaxNode},
     syntax_error::SyntaxError,
     parsing::{
-        grammar, parse_with,
+        input::ParserInput,
         builder::TreeBuilder,
-        parser::Parser,
         lexer::{tokenize, Token},
     }
 };
-
-use ra_text_edit::AtomTextEdit;
 
 pub(crate) fn incremental_reparse(
     node: &SyntaxNode,
@@ -61,8 +61,10 @@ fn reparse_block<'node>(
     if !is_balanced(&tokens) {
         return None;
     }
-    let tree_sink = TreeBuilder::new(&text, &tokens);
-    let (green, new_errors) = parse_with(tree_sink, &text, &tokens, reparser);
+    let token_source = ParserInput::new(&text, &tokens);
+    let mut tree_sink = TreeBuilder::new(&text, &tokens);
+    reparser.parse(&token_source, &mut tree_sink);
+    let (green, new_errors) = tree_sink.finish();
     Some((node, green, new_errors))
 }
 
@@ -78,15 +80,12 @@ fn is_contextual_kw(text: &str) -> bool {
     }
 }
 
-fn find_reparsable_node(
-    node: &SyntaxNode,
-    range: TextRange,
-) -> Option<(&SyntaxNode, fn(&mut Parser))> {
+fn find_reparsable_node(node: &SyntaxNode, range: TextRange) -> Option<(&SyntaxNode, Reparser)> {
     let node = algo::find_covering_node(node, range);
     node.ancestors().find_map(|node| {
         let first_child = node.first_child().map(|it| it.kind());
         let parent = node.parent().map(|it| it.kind());
-        grammar::reparser(node.kind(), first_child, parent).map(|r| (node, r))
+        Reparser::for_node(node.kind(), first_child, parent).map(|r| (node, r))
     })
 }
 

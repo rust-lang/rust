@@ -4,11 +4,8 @@ use drop_bomb::DropBomb;
 
 use crate::{
     SyntaxKind::{self, ERROR, EOF, TOMBSTONE},
-    parsing::{
-        TokenSource, ParseError,
-        token_set::TokenSet,
-        event::Event,
-    },
+    TokenSource, ParseError, TokenSet,
+    event::Event,
 };
 
 /// `Parser` struct provides the low-level API for

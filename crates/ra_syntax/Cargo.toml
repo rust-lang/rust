@@ -21,6 +21,7 @@ text_unit = { version = "0.1.6", features = ["serde"] }
 smol_str = { version = "0.1.9", features = ["serde"] }
 
 ra_text_edit = { path = "../ra_text_edit" }
+ra_parser = { path = "../ra_parser" }
 
 [dev-dependencies]
 test_utils = { path = "../test_utils" }

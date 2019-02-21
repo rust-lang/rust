@@ -16,7 +16,6 @@
 #![allow(missing_docs)]
 //#![warn(unreachable_pub)] // rust-lang/rust#47816
 
-mod syntax_kinds;
 mod syntax_node;
 mod syntax_text;
 mod syntax_error;
@@ -31,9 +30,9 @@ pub mod ast;
 pub mod utils;
 
 pub use rowan::{SmolStr, TextRange, TextUnit};
+pub use ra_parser::SyntaxKind;
 pub use crate::{
     ast::AstNode,
-    syntax_kinds::SyntaxKind,
     syntax_error::{SyntaxError, SyntaxErrorKind, Location},
     syntax_text::SyntaxText,
     syntax_node::{Direction,  SyntaxNode, WalkEvent, TreeArc},
