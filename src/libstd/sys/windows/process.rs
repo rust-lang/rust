@@ -11,7 +11,7 @@ use crate::mem;
 use crate::os::windows::ffi::OsStrExt;
 use crate::path::Path;
 use crate::ptr;
-use crate::sys::mutex::Mutex;
+use crate::sync::RawMutex;
 use crate::sys::c;
 use crate::sys::fs::{OpenOptions, File};
 use crate::sys::handle::Handle;
@@ -86,10 +86,6 @@ pub struct StdioPipes {
     pub stdin: Option<AnonPipe>,
     pub stdout: Option<AnonPipe>,
     pub stderr: Option<AnonPipe>,
-}
-
-struct DropGuard<'a> {
-    lock: &'a Mutex,
 }
 
 impl Command {
@@ -177,8 +173,8 @@ impl Command {
         //
         // For more information, msdn also has an article about this race:
         // http://support.microsoft.com/kb/315939
-        static CREATE_PROCESS_LOCK: Mutex = Mutex::new();
-        let _guard = DropGuard::new(&CREATE_PROCESS_LOCK);
+        static CREATE_PROCESS_LOCK: RawMutex = RawMutex::new();
+        let _guard = CREATE_PROCESS_LOCK.lock();
 
         let mut pipes = StdioPipes {
             stdin: None,
@@ -225,23 +221,6 @@ impl fmt::Debug for Command {
             write!(f, " {:?}", arg)?;
         }
         Ok(())
-    }
-}
-
-impl<'a> DropGuard<'a> {
-    fn new(lock: &'a Mutex) -> DropGuard<'a> {
-        unsafe {
-            lock.lock();
-            DropGuard { lock }
-        }
-    }
-}
-
-impl<'a> Drop for DropGuard<'a> {
-    fn drop(&mut self) {
-        unsafe {
-            self.lock.unlock();
-        }
     }
 }
 
