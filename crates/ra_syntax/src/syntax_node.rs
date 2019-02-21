@@ -6,7 +6,10 @@
 //! The *real* implementation is in the (language-agnostic) `rowan` crate, this
 //! modules just wraps its API.
 
-use std::{fmt::{self, Write}, borrow::Borrow};
+use std::{
+    fmt::{self, Write},
+    borrow::Borrow,
+};
 
 use rowan::{Types, TransparentNewType};
 
@@ -24,14 +27,17 @@ impl Types for RaTypes {
     type RootData = Vec<SyntaxError>;
 }
 
-pub type GreenNode = rowan::GreenNode<RaTypes>;
+pub(crate) type GreenNode = rowan::GreenNode<RaTypes>;
 
+/// Marker trait for CST and AST nodes
+pub trait SyntaxNodeWrapper: TransparentNewType<Repr = rowan::SyntaxNode<RaTypes>> {}
+impl<T: TransparentNewType<Repr = rowan::SyntaxNode<RaTypes>>> SyntaxNodeWrapper for T {}
+
+/// An owning smart pointer for CST or AST node.
 #[derive(PartialEq, Eq, Hash)]
-pub struct TreeArc<T: TransparentNewType<Repr = rowan::SyntaxNode<RaTypes>>>(
-    pub(crate) rowan::TreeArc<RaTypes, T>,
-);
+pub struct TreeArc<T: SyntaxNodeWrapper>(pub(crate) rowan::TreeArc<RaTypes, T>);
 
-impl<T: TransparentNewType<Repr = rowan::SyntaxNode<RaTypes>>> Borrow<T> for TreeArc<T> {
+impl<T: SyntaxNodeWrapper> Borrow<T> for TreeArc<T> {
     fn borrow(&self) -> &T {
         &*self
     }
@@ -39,11 +45,11 @@ impl<T: TransparentNewType<Repr = rowan::SyntaxNode<RaTypes>>> Borrow<T> for Tre
 
 impl<T> TreeArc<T>
 where
-    T: TransparentNewType<Repr = rowan::SyntaxNode<RaTypes>>,
+    T: SyntaxNodeWrapper,
 {
     pub(crate) fn cast<U>(this: TreeArc<T>) -> TreeArc<U>
     where
-        U: TransparentNewType<Repr = rowan::SyntaxNode<RaTypes>>,
+        U: SyntaxNodeWrapper,
     {
         TreeArc(rowan::TreeArc::cast(this.0))
     }
@@ -51,7 +57,7 @@ where
 
 impl<T> std::ops::Deref for TreeArc<T>
 where
-    T: TransparentNewType<Repr = rowan::SyntaxNode<RaTypes>>,
+    T: SyntaxNodeWrapper,
 {
     type Target = T;
     fn deref(&self) -> &T {
@@ -61,7 +67,7 @@ where
 
 impl<T> PartialEq<T> for TreeArc<T>
 where
-    T: TransparentNewType<Repr = rowan::SyntaxNode<RaTypes>>,
+    T: SyntaxNodeWrapper,
     T: PartialEq<T>,
 {
     fn eq(&self, other: &T) -> bool {
@@ -72,7 +78,7 @@ where
 
 impl<T> Clone for TreeArc<T>
 where
-    T: TransparentNewType<Repr = rowan::SyntaxNode<RaTypes>>,
+    T: SyntaxNodeWrapper,
 {
     fn clone(&self) -> TreeArc<T> {
         TreeArc(self.0.clone())
@@ -81,7 +87,7 @@ where
 
 impl<T> fmt::Debug for TreeArc<T>
 where
-    T: TransparentNewType<Repr = rowan::SyntaxNode<RaTypes>>,
+    T: SyntaxNodeWrapper,
     T: fmt::Debug,
 {
     fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
