@@ -248,7 +248,7 @@ fn table_name(type_: &ItemType) -> &'static str {
             ItemType::AssociatedType  => "Associated Types",
             ItemType::Constant        => "Constants",
             ItemType::AssociatedConst => "Associated Constants",
-            ItemType::ForeignType     => "Foreign Types",
+            ItemType::ForeignType     => "Extern Types",
             ItemType::Keyword         => "Keywords",
             ItemType::Existential     => "Existential Types",
             ItemType::TraitAlias      => "Trait Aliases",
