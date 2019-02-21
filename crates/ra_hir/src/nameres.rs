@@ -304,7 +304,7 @@ where
                 &import.path,
             );
 
-            (res.module, res.reached_fixedpoint)
+            (res.resolved_def, res.reached_fixedpoint)
         };
 
         if reached_fixedpoint != ReachedFixedPoint::Yes {
@@ -443,9 +443,9 @@ where
 }
 
 #[derive(Debug, Clone)]
-pub struct ResolvePathResult {
-    pub(crate) module: PerNs<ModuleDef>,
-    pub(crate) segment_index: Option<usize>,
+struct ResolvePathResult {
+    resolved_def: PerNs<ModuleDef>,
+    segment_index: Option<usize>,
     reached_fixedpoint: ReachedFixedPoint,
 }
 
@@ -455,11 +455,11 @@ impl ResolvePathResult {
     }
 
     fn with(
-        module: PerNs<ModuleDef>,
+        resolved_def: PerNs<ModuleDef>,
         reached_fixedpoint: ReachedFixedPoint,
         segment_index: Option<usize>,
     ) -> ResolvePathResult {
-        ResolvePathResult { module, reached_fixedpoint, segment_index }
+        ResolvePathResult { resolved_def, reached_fixedpoint, segment_index }
     }
 }
 
@@ -498,7 +498,7 @@ impl ItemMap {
         path: &Path,
     ) -> (PerNs<ModuleDef>, Option<usize>) {
         let res = self.resolve_path_fp(db, ResolveMode::Other, original_module, path);
-        (res.module, res.segment_index)
+        (res.resolved_def, res.segment_index)
     }
 
     fn resolve_in_prelude(
