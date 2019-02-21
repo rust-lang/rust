@@ -1167,13 +1167,13 @@ pub type Region<'tcx> = &'tcx RegionKind;
 /// [rustc guide]: https://rust-lang.github.io/rustc-guide/traits/hrtb.html
 #[derive(Clone, PartialEq, Eq, Hash, Copy, RustcEncodable, RustcDecodable, PartialOrd, Ord)]
 pub enum RegionKind {
-    // Region bound in a type or fn declaration which will be
-    // substituted 'early' -- that is, at the same time when type
-    // parameters are substituted.
+    /// Region bound in a type or fn declaration which will be
+    /// substituted 'early' -- that is, at the same time when type
+    /// parameters are substituted.
     ReEarlyBound(EarlyBoundRegion),
 
-    // Region bound in a function scope, which will be substituted when the
-    // function is called.
+    /// Region bound in a function scope, which will be substituted when the
+    /// function is called.
     ReLateBound(DebruijnIndex, BoundRegion),
 
     /// When checking a function body, the types of all arguments and so forth

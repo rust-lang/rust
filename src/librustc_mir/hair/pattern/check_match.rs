@@ -375,7 +375,7 @@ fn check_arms<'a, 'tcx>(cx: &mut MatchCheckCtxt<'a, 'tcx>,
                                 },
                                 _ => bug!(),
                             }
-                        },
+                        }
 
                         hir::MatchSource::ForLoopDesugar |
                         hir::MatchSource::Normal => {
@@ -391,7 +391,7 @@ fn check_arms<'a, 'tcx>(cx: &mut MatchCheckCtxt<'a, 'tcx>,
                                 err.span_label(catchall, "matches any value");
                             }
                             err.emit();
-                        },
+                        }
 
                         // Unreachable patterns in try expressions occur when one of the arms
                         // are an uninhabited type. Which is OK.
@@ -436,7 +436,7 @@ fn check_exhaustive<'p, 'a: 'p, 'tcx: 'a>(cx: &mut MatchCheckCtxt<'a, 'tcx>,
                     let (tail, head) = witnesses.split_last().unwrap();
                     let head: Vec<_> = head.iter().map(|w| w.to_string()).collect();
                     format!("`{}` and `{}`", head.join("`, `"), tail)
-                },
+                }
                 _ => {
                     let (head, tail) = witnesses.split_at(LIMIT);
                     let head: Vec<_> = head.iter().map(|w| w.to_string()).collect();
@@ -446,7 +446,7 @@ fn check_exhaustive<'p, 'a: 'p, 'tcx: 'a>(cx: &mut MatchCheckCtxt<'a, 'tcx>,
 
             let label_text = match witnesses.len() {
                 1 => format!("pattern {} not covered", joined_patterns),
-                _ => format!("patterns {} not covered", joined_patterns)
+                _ => format!("patterns {} not covered", joined_patterns),
             };
             create_e0004(cx.tcx.sess, sp,
                             format!("non-exhaustive patterns: {} not covered",
@@ -456,7 +456,7 @@ fn check_exhaustive<'p, 'a: 'p, 'tcx: 'a>(cx: &mut MatchCheckCtxt<'a, 'tcx>,
         }
         NotUseful => {
             // This is good, wildcard pattern isn't reachable
-        },
+        }
         _ => bug!()
     }
 }

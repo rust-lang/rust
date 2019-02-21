@@ -237,6 +237,11 @@ impl_stable_hash_for!(struct ty::FnSig<'tcx> {
     abi
 });
 
+impl_stable_hash_for!(struct ty::ResolvedOpaqueTy<'tcx> {
+    concrete_type,
+    substs
+});
+
 impl<'a, 'gcx, T> HashStable<StableHashingContext<'a>> for ty::Binder<T>
     where T: HashStable<StableHashingContext<'a>>
 {

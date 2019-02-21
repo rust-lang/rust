@@ -1,6 +1,6 @@
-pub use llvm::Value;
+pub use crate::llvm::Value;
 
-use llvm;
+use crate::llvm;
 
 use std::fmt;
 use std::hash::{Hash, Hasher};

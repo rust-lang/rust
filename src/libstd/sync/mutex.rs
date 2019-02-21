@@ -150,9 +150,9 @@ pub struct MutexGuard<'a, T: ?Sized + 'a> {
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<'a, T: ?Sized> !Send for MutexGuard<'a, T> { }
+impl<T: ?Sized> !Send for MutexGuard<'_, T> { }
 #[stable(feature = "mutexguard", since = "1.19.0")]
-unsafe impl<'a, T: ?Sized + Sync> Sync for MutexGuard<'a, T> { }
+unsafe impl<T: ?Sized + Sync> Sync for MutexGuard<'_, T> { }
 
 impl<T> Mutex<T> {
     /// Creates a new mutex in an unlocked state ready for use.
@@ -421,7 +421,7 @@ impl<'mutex, T: ?Sized> MutexGuard<'mutex, T> {
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<'mutex, T: ?Sized> Deref for MutexGuard<'mutex, T> {
+impl<T: ?Sized> Deref for MutexGuard<'_, T> {
     type Target = T;
 
     fn deref(&self) -> &T {
@@ -430,14 +430,14 @@ impl<'mutex, T: ?Sized> Deref for MutexGuard<'mutex, T> {
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<'mutex, T: ?Sized> DerefMut for MutexGuard<'mutex, T> {
+impl<T: ?Sized> DerefMut for MutexGuard<'_, T> {
     fn deref_mut(&mut self) -> &mut T {
         unsafe { &mut *self.__lock.data.get() }
     }
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<'a, T: ?Sized> Drop for MutexGuard<'a, T> {
+impl<T: ?Sized> Drop for MutexGuard<'_, T> {
     #[inline]
     fn drop(&mut self) {
         unsafe {
@@ -448,14 +448,14 @@ impl<'a, T: ?Sized> Drop for MutexGuard<'a, T> {
 }
 
 #[stable(feature = "std_debug", since = "1.16.0")]
-impl<'a, T: ?Sized + fmt::Debug> fmt::Debug for MutexGuard<'a, T> {
+impl<T: ?Sized + fmt::Debug> fmt::Debug for MutexGuard<'_, T> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         fmt::Debug::fmt(&**self, f)
     }
 }
 
 #[stable(feature = "std_guard_impls", since = "1.20.0")]
-impl<'a, T: ?Sized + fmt::Display> fmt::Display for MutexGuard<'a, T> {
+impl<T: ?Sized + fmt::Display> fmt::Display for MutexGuard<'_, T> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         (**self).fmt(f)
     }

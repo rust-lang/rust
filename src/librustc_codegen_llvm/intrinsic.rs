@@ -1,26 +1,26 @@
 #![allow(non_upper_case_globals)]
 
-use attributes;
-use llvm;
-use llvm_util;
-use abi::{Abi, FnType, LlvmType, PassMode};
+use crate::attributes;
+use crate::llvm;
+use crate::llvm_util;
+use crate::abi::{Abi, FnType, LlvmType, PassMode};
+use crate::context::CodegenCx;
+use crate::type_::Type;
+use crate::type_of::LayoutLlvmExt;
+use crate::builder::Builder;
+use crate::value::Value;
+use crate::va_arg::emit_va_arg;
 use rustc_codegen_ssa::MemFlags;
 use rustc_codegen_ssa::mir::place::PlaceRef;
 use rustc_codegen_ssa::mir::operand::{OperandRef, OperandValue};
 use rustc_codegen_ssa::glue;
 use rustc_codegen_ssa::base::{to_immediate, wants_msvc_seh, compare_simd_types};
-use context::CodegenCx;
-use type_::Type;
-use type_of::LayoutLlvmExt;
 use rustc::ty::{self, Ty};
 use rustc::ty::layout::{self, LayoutOf, HasTyCtxt, Primitive};
 use rustc_codegen_ssa::common::{IntPredicate, TypeKind};
 use rustc::hir;
 use syntax::ast::{self, FloatTy};
 use syntax::symbol::Symbol;
-use builder::Builder;
-use value::Value;
-use va_arg::emit_va_arg;
 
 use rustc_codegen_ssa::traits::*;
 
@@ -192,8 +192,7 @@ impl IntrinsicCallMethods<'tcx> for Builder<'a, 'll, 'tcx> {
             "size_of_val" => {
                 let tp_ty = substs.type_at(0);
                 if let OperandValue::Pair(_, meta) = args[0].val {
-                    let (llsize, _) =
-                        glue::size_and_align_of_dst(self, tp_ty, Some(meta));
+                    let (llsize, _) = glue::size_and_align_of_dst(self, tp_ty, Some(meta));
                     llsize
                 } else {
                     self.const_usize(self.size_of(tp_ty).bytes())
@@ -206,8 +205,7 @@ impl IntrinsicCallMethods<'tcx> for Builder<'a, 'll, 'tcx> {
             "min_align_of_val" => {
                 let tp_ty = substs.type_at(0);
                 if let OperandValue::Pair(_, meta) = args[0].val {
-                    let (_, llalign) =
-                        glue::size_and_align_of_dst(self, tp_ty, Some(meta));
+                    let (_, llalign) = glue::size_and_align_of_dst(self, tp_ty, Some(meta));
                     llalign
                 } else {
                     self.const_usize(self.align_of(tp_ty).bytes())

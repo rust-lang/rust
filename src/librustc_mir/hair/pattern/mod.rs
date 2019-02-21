@@ -965,7 +965,7 @@ impl<'a, 'tcx> PatternContext<'a, 'tcx> {
                 PatternKind::Constant {
                     value: cv,
                 }
-            },
+            }
             ty::Adt(adt_def, _) if adt_def.is_union() => {
                 // Matching on union fields is unsafe, we can't hide it in constants
                 self.tcx.sess.span_err(span, "cannot use unions in constant patterns");
@@ -978,7 +978,7 @@ impl<'a, 'tcx> PatternContext<'a, 'tcx> {
                                     self.tcx.item_path_str(adt_def.did));
                 self.tcx.sess.span_err(span, &msg);
                 PatternKind::Wild
-            },
+            }
             ty::Adt(adt_def, substs) if adt_def.is_enum() => {
                 let variant_index = const_variant_index(
                     self.tcx, self.param_env, cv
@@ -993,7 +993,7 @@ impl<'a, 'tcx> PatternContext<'a, 'tcx> {
                     variant_index,
                     subpatterns,
                 }
-            },
+            }
             ty::Adt(adt_def, _) => {
                 let struct_var = adt_def.non_enum_variant();
                 PatternKind::Leaf {
@@ -1018,7 +1018,7 @@ impl<'a, 'tcx> PatternContext<'a, 'tcx> {
                 PatternKind::Constant {
                     value: cv,
                 }
-            },
+            }
         };
 
         Pattern {
@@ -1252,19 +1252,19 @@ pub fn compare_const_vals<'a, 'gcx, 'tcx>(
                 let l = ::rustc_apfloat::ieee::Single::from_bits(a);
                 let r = ::rustc_apfloat::ieee::Single::from_bits(b);
                 l.partial_cmp(&r)
-            },
+            }
             ty::Float(ast::FloatTy::F64) => {
                 let l = ::rustc_apfloat::ieee::Double::from_bits(a);
                 let r = ::rustc_apfloat::ieee::Double::from_bits(b);
                 l.partial_cmp(&r)
-            },
+            }
             ty::Int(_) => {
                 let layout = tcx.layout_of(ty).ok()?;
                 assert!(layout.abi.is_signed());
                 let a = sign_extend(a, layout.size);
                 let b = sign_extend(b, layout.size);
                 Some((a as i128).cmp(&(b as i128)))
-            },
+            }
             _ => Some(a.cmp(&b)),
         }
     }

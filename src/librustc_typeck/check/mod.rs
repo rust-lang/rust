@@ -1386,10 +1386,7 @@ pub fn check_item_type<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, it: &'tcx hir::Ite
         }
         hir::ItemKind::Existential(..) => {
             let def_id = tcx.hir().local_def_id(it.id);
-            let pty_ty = tcx.type_of(def_id);
-            let generics = tcx.generics_of(def_id);
 
-            check_bounds_are_used(tcx, &generics, pty_ty);
             let substs = Substs::identity_for_item(tcx, def_id);
             check_opaque(tcx, def_id, substs, it.span);
         }

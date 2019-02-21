@@ -236,6 +236,23 @@ appears to the reader as the initial idea but works with doc tests:
 /// ```
 ```
 
+As of version 1.34.0, one can also omit the `fn main()`, but you will have to
+disambiguate the error type:
+
+```ignore
+/// ```
+/// use std::io;
+/// let mut input = String::new();
+/// io::stdin().read_line(&mut input)?;
+/// # Ok::<(), io:Error>(())
+/// ```
+```
+
+This is an unfortunate consequence of the `?` operator adding an implicit
+conversion, so type inference fails because the type is not unique. Please note
+that you must write the `(())` in one sequence without intermediate whitespace
+so that rustdoc understands you want an implicit `Result`-returning function.
+
 ## Documenting macros
 
 Here’s an example of documenting a macro:

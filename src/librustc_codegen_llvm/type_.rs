@@ -1,22 +1,22 @@
 #![allow(non_upper_case_globals)]
 
-pub use llvm::Type;
+pub use crate::llvm::Type;
 
-use llvm;
-use llvm::{Bool, False, True};
-use context::CodegenCx;
+use crate::llvm;
+use crate::llvm::{Bool, False, True};
+use crate::context::CodegenCx;
+use crate::value::Value;
 use rustc_codegen_ssa::traits::*;
-use value::Value;
 
+use crate::common;
+use crate::type_of::LayoutLlvmExt;
+use crate::abi::{LlvmType, FnTypeExt};
 use rustc::util::nodemap::FxHashMap;
 use rustc::ty::Ty;
 use rustc::ty::layout::TyLayout;
 use rustc_target::abi::call::{CastTarget, FnType, Reg};
 use rustc_data_structures::small_c_str::SmallCStr;
-use common;
 use rustc_codegen_ssa::common::TypeKind;
-use type_of::LayoutLlvmExt;
-use abi::{LlvmType, FnTypeExt};
 
 use std::fmt;
 use std::cell::RefCell;
@@ -82,7 +82,6 @@ impl BaseTypeMethods<'tcx> for CodegenCx<'ll, 'tcx> {
 
     fn type_i16(&self) -> &'ll Type {
         unsafe {
-
             llvm::LLVMInt16TypeInContext(self.llcx)
         }
     }

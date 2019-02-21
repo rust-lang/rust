@@ -13,6 +13,9 @@ const SHL_B: u32 = 1u32.wrapping_shl(128);
 const SHR_A: u32 = 128u32.wrapping_shr(7);
 const SHR_B: u32 = 128u32.wrapping_shr(128);
 
+const NEG_A: u32 = 5u32.wrapping_neg();
+const NEG_B: u32 = 1234567890u32.wrapping_neg();
+
 fn ident<T>(ident: T) -> T {
     ident
 }
@@ -32,4 +35,7 @@ fn main() {
 
     assert_eq!(SHR_A, ident(1));
     assert_eq!(SHR_B, ident(128));
+
+    assert_eq!(NEG_A, ident(4294967291));
+    assert_eq!(NEG_B, ident(3060399406));
 }

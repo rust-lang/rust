@@ -67,21 +67,11 @@ pre {
 }
 
 .docblock h1, .docblock h2, .docblock h3, .docblock h4, .docblock h5 {
-	border-bottom-color: #DDD;
+	border-bottom-color: #ddd;
 }
 
-.docblock table {
+.docblock table, .docblock table td, .docblock table th {
 	border-color: #ddd;
-}
-
-.docblock table td {
-	border-top-color: #ddd;
-	border-bottom-color: #ddd;
-}
-
-.docblock table th {
-	border-top-color: #ddd;
-	border-bottom-color: #ddd;
 }
 
 .content .method .where,
@@ -191,14 +181,14 @@ a.test-arrow {
 	box-shadow: 1px 0 0 1px #e0e0e0, 0 0 0 2px transparent;
 }
 
+.module-item .stab {
+	color: #000;
+}
+
 .stab.unstable { background: #FFF5D6; border-color: #FFC600; }
 .stab.internal { background: #FFB9B3; border-color: #B71C1C; }
 .stab.deprecated { background: #F3DFFF; border-color: #7F0087; }
 .stab.portability { background: #C4ECFF; border-color: #7BA5DB; }
-
-.module-item .stab {
-	color: #000;
-}
 
 #help > div {
 	background: #e9e9e9;

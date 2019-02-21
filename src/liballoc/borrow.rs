@@ -182,8 +182,8 @@ pub enum Cow<'a, B: ?Sized + 'a>
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<'a, B: ?Sized + ToOwned> Clone for Cow<'a, B> {
-    fn clone(&self) -> Cow<'a, B> {
+impl<B: ?Sized + ToOwned> Clone for Cow<'_, B> {
+    fn clone(&self) -> Self {
         match *self {
             Borrowed(b) => Borrowed(b),
             Owned(ref o) => {
@@ -193,7 +193,7 @@ impl<'a, B: ?Sized + ToOwned> Clone for Cow<'a, B> {
         }
     }
 
-    fn clone_from(&mut self, source: &Cow<'a, B>) {
+    fn clone_from(&mut self, source: &Self) {
         if let Owned(ref mut dest) = *self {
             if let Owned(ref o) = *source {
                 o.borrow().clone_into(dest);
@@ -296,11 +296,11 @@ impl<B: ?Sized + ToOwned> Deref for Cow<'_, B> {
 impl<B: ?Sized> Eq for Cow<'_, B> where B: Eq + ToOwned {}
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<'a, B: ?Sized> Ord for Cow<'a, B>
+impl<B: ?Sized> Ord for Cow<'_, B>
     where B: Ord + ToOwned
 {
     #[inline]
-    fn cmp(&self, other: &Cow<'a, B>) -> Ordering {
+    fn cmp(&self, other: &Self) -> Ordering {
         Ord::cmp(&**self, &**other)
     }
 }
@@ -353,18 +353,18 @@ impl<B: ?Sized> fmt::Display for Cow<'_, B>
 }
 
 #[stable(feature = "default", since = "1.11.0")]
-impl<'a, B: ?Sized> Default for Cow<'a, B>
+impl<B: ?Sized> Default for Cow<'_, B>
     where B: ToOwned,
           <B as ToOwned>::Owned: Default
 {
     /// Creates an owned Cow<'a, B> with the default value for the contained owned value.
-    fn default() -> Cow<'a, B> {
+    fn default() -> Self {
         Owned(<B as ToOwned>::Owned::default())
     }
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<'a, B: ?Sized> Hash for Cow<'a, B>
+impl<B: ?Sized> Hash for Cow<'_, B>
     where B: Hash + ToOwned
 {
     #[inline]

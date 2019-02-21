@@ -1,14 +1,14 @@
-use attributes;
-use llvm;
+use crate::attributes;
+use crate::llvm;
+use crate::debuginfo;
+use crate::monomorphize::Instance;
+use crate::value::Value;
 use rustc::dep_graph::DepGraphSafe;
 use rustc::hir;
-use debuginfo;
-use monomorphize::Instance;
-use value::Value;
 
-use monomorphize::partitioning::CodegenUnit;
-use type_::Type;
-use type_of::PointeeInfo;
+use crate::monomorphize::partitioning::CodegenUnit;
+use crate::type_::Type;
+use crate::type_of::PointeeInfo;
 use rustc_codegen_ssa::traits::*;
 use libc::c_uint;
 
@@ -23,7 +23,7 @@ use rustc::util::nodemap::FxHashMap;
 use rustc_target::spec::{HasTargetSpec, Target};
 use rustc_codegen_ssa::callee::resolve_and_get_fn;
 use rustc_codegen_ssa::base::wants_msvc_seh;
-use callee::get_fn;
+use crate::callee::get_fn;
 
 use std::ffi::CStr;
 use std::cell::{Cell, RefCell};
@@ -31,7 +31,7 @@ use std::iter;
 use std::str;
 use std::sync::Arc;
 use syntax::symbol::LocalInternedString;
-use abi::Abi;
+use crate::abi::Abi;
 
 /// There is one `CodegenCx` per compilation unit. Each one has its own LLVM
 /// `llvm::Context` so that several compilation units may be optimized in parallel.
@@ -103,7 +103,7 @@ pub fn get_reloc_model(sess: &Session) -> llvm::RelocMode {
         None => &sess.target.target.options.relocation_model[..],
     };
 
-    match ::back::write::RELOC_MODEL_ARGS.iter().find(
+    match crate::back::write::RELOC_MODEL_ARGS.iter().find(
         |&&arg| arg.0 == reloc_model_arg) {
         Some(x) => x.1,
         _ => {
@@ -121,7 +121,7 @@ fn get_tls_model(sess: &Session) -> llvm::ThreadLocalMode {
         None => &sess.target.target.options.tls_model[..],
     };
 
-    match ::back::write::TLS_MODEL_ARGS.iter().find(
+    match crate::back::write::TLS_MODEL_ARGS.iter().find(
         |&&arg| arg.0 == tls_model_arg) {
         Some(x) => x.1,
         _ => {
@@ -154,7 +154,7 @@ pub unsafe fn create_module(
 
     // Ensure the data-layout values hardcoded remain the defaults.
     if sess.target.target.options.is_builtin {
-        let tm = ::back::write::create_target_machine(tcx, false);
+        let tm = crate::back::write::create_target_machine(tcx, false);
         llvm::LLVMRustSetDataLayoutFromTargetMachine(llmod, tm);
         llvm::LLVMRustDisposeTargetMachine(tm);
 
@@ -212,7 +212,7 @@ pub unsafe fn create_module(
 impl<'ll, 'tcx> CodegenCx<'ll, 'tcx> {
     crate fn new(tcx: TyCtxt<'ll, 'tcx, 'tcx>,
                  codegen_unit: Arc<CodegenUnit<'tcx>>,
-                 llvm_module: &'ll ::ModuleLlvm)
+                 llvm_module: &'ll crate::ModuleLlvm)
                  -> Self {
         // An interesting part of Windows which MSVC forces our hand on (and
         // apparently MinGW didn't) is the usage of `dllimport` and `dllexport`
@@ -377,7 +377,7 @@ impl MiscMethods<'tcx> for CodegenCx<'ll, 'tcx> {
     // Returns a Value of the "eh_unwind_resume" lang item if one is defined,
     // otherwise declares it as an external function.
     fn eh_unwind_resume(&self) -> &'ll Value {
-        use attributes;
+        use crate::attributes;
         let unwresume = &self.eh_unwind_resume;
         if let Some(llfn) = unwresume.get() {
             return llfn;

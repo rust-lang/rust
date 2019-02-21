@@ -188,7 +188,13 @@ impl<'tcx> TypeVariableTable<'tcx> {
         });
         assert_eq!(eq_key.vid.index, index as u32);
 
-        debug!("new_var(index={:?}, diverging={:?}, origin={:?}", eq_key.vid, diverging, origin);
+        debug!(
+            "new_var(index={:?}, universe={:?}, diverging={:?}, origin={:?}",
+            eq_key.vid,
+            universe,
+            diverging,
+            origin,
+        );
 
         eq_key.vid
     }

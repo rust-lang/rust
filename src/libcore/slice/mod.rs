@@ -2903,7 +2903,7 @@ macro_rules! iterator {
         }
 
         #[stable(feature = "rust1", since = "1.0.0")]
-        impl<'a, T> ExactSizeIterator for $name<'a, T> {
+        impl<T> ExactSizeIterator for $name<'_, T> {
             #[inline(always)]
             fn len(&self) -> usize {
                 len!(self)
@@ -3098,10 +3098,10 @@ macro_rules! iterator {
         }
 
         #[stable(feature = "fused", since = "1.26.0")]
-        impl<'a, T> FusedIterator for $name<'a, T> {}
+        impl<T> FusedIterator for $name<'_, T> {}
 
         #[unstable(feature = "trusted_len", issue = "37572")]
-        unsafe impl<'a, T> TrustedLen for $name<'a, T> {}
+        unsafe impl<T> TrustedLen for $name<'_, T> {}
     }
 }
 
@@ -4365,8 +4365,8 @@ pub struct RChunks<'a, T:'a> {
 
 // FIXME(#26925) Remove in favor of `#[derive(Clone)]`
 #[stable(feature = "rchunks", since = "1.31.0")]
-impl<'a, T> Clone for RChunks<'a, T> {
-    fn clone(&self) -> RChunks<'a, T> {
+impl<T> Clone for RChunks<'_, T> {
+    fn clone(&self) -> Self {
         RChunks {
             v: self.v,
             chunk_size: self.chunk_size,
@@ -4455,13 +4455,13 @@ impl<'a, T> DoubleEndedIterator for RChunks<'a, T> {
 }
 
 #[stable(feature = "rchunks", since = "1.31.0")]
-impl<'a, T> ExactSizeIterator for RChunks<'a, T> {}
+impl<T> ExactSizeIterator for RChunks<'_, T> {}
 
 #[unstable(feature = "trusted_len", issue = "37572")]
-unsafe impl<'a, T> TrustedLen for RChunks<'a, T> {}
+unsafe impl<T> TrustedLen for RChunks<'_, T> {}
 
 #[stable(feature = "rchunks", since = "1.31.0")]
-impl<'a, T> FusedIterator for RChunks<'a, T> {}
+impl<T> FusedIterator for RChunks<'_, T> {}
 
 #[doc(hidden)]
 #[stable(feature = "rchunks", since = "1.31.0")]
@@ -4580,13 +4580,13 @@ impl<'a, T> DoubleEndedIterator for RChunksMut<'a, T> {
 }
 
 #[stable(feature = "rchunks", since = "1.31.0")]
-impl<'a, T> ExactSizeIterator for RChunksMut<'a, T> {}
+impl<T> ExactSizeIterator for RChunksMut<'_, T> {}
 
 #[unstable(feature = "trusted_len", issue = "37572")]
-unsafe impl<'a, T> TrustedLen for RChunksMut<'a, T> {}
+unsafe impl<T> TrustedLen for RChunksMut<'_, T> {}
 
 #[stable(feature = "rchunks", since = "1.31.0")]
-impl<'a, T> FusedIterator for RChunksMut<'a, T> {}
+impl<T> FusedIterator for RChunksMut<'_, T> {}
 
 #[doc(hidden)]
 #[stable(feature = "rchunks", since = "1.31.0")]
@@ -4711,10 +4711,10 @@ impl<'a, T> ExactSizeIterator for RChunksExact<'a, T> {
 }
 
 #[unstable(feature = "trusted_len", issue = "37572")]
-unsafe impl<'a, T> TrustedLen for RChunksExact<'a, T> {}
+unsafe impl<T> TrustedLen for RChunksExact<'_, T> {}
 
 #[stable(feature = "rchunks", since = "1.31.0")]
-impl<'a, T> FusedIterator for RChunksExact<'a, T> {}
+impl<T> FusedIterator for RChunksExact<'_, T> {}
 
 #[doc(hidden)]
 #[stable(feature = "rchunks", since = "1.31.0")]
@@ -4822,17 +4822,17 @@ impl<'a, T> DoubleEndedIterator for RChunksExactMut<'a, T> {
 }
 
 #[stable(feature = "rchunks", since = "1.31.0")]
-impl<'a, T> ExactSizeIterator for RChunksExactMut<'a, T> {
+impl<T> ExactSizeIterator for RChunksExactMut<'_, T> {
     fn is_empty(&self) -> bool {
         self.v.is_empty()
     }
 }
 
 #[unstable(feature = "trusted_len", issue = "37572")]
-unsafe impl<'a, T> TrustedLen for RChunksExactMut<'a, T> {}
+unsafe impl<T> TrustedLen for RChunksExactMut<'_, T> {}
 
 #[stable(feature = "rchunks", since = "1.31.0")]
-impl<'a, T> FusedIterator for RChunksExactMut<'a, T> {}
+impl<T> FusedIterator for RChunksExactMut<'_, T> {}
 
 #[doc(hidden)]
 #[stable(feature = "rchunks", since = "1.31.0")]

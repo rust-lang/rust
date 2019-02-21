@@ -45,10 +45,10 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
         }
     }
 
-    /// Tries to simplify `match_pair`, returning true if
+    /// Tries to simplify `match_pair`, returning `Ok(())` if
     /// successful. If successful, new match pairs and bindings will
     /// have been pushed into the candidate. If no simplification is
-    /// possible, Err is returned and no changes are made to
+    /// possible, `Err` is returned and no changes are made to
     /// candidate.
     fn simplify_match_pair<'pat>(&mut self,
                                  match_pair: MatchPair<'pat, 'tcx>,
@@ -174,7 +174,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                 } else {
                     Err(match_pair)
                 }
-            },
+            }
 
             PatternKind::Array { ref prefix, ref slice, ref suffix } => {
                 self.prefix_slice_suffix(&mut candidate.match_pairs,

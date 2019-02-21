@@ -1,9 +1,17 @@
-error[E0091]: type parameter `U` is unused
-  --> $DIR/generic_duplicate_param_use.rs:5:25
+error: defining existential type use restricts existential type by using the generic parameter `T` twice
+  --> $DIR/generic_duplicate_param_use.rs:11:1
    |
-LL | existential type Two<T, U>: 'static; //~ ERROR type parameter `U` is unused
-   |                         ^ unused type parameter
+LL | / fn one<T: Debug>(t: T) -> Two<T, T> {
+LL | | //~^ ERROR defining existential type use restricts existential type
+LL | |     t
+LL | | }
+   | |_^
 
-error: aborting due to previous error
+error: could not find defining uses
+  --> $DIR/generic_duplicate_param_use.rs:8:1
+   |
+LL | existential type Two<T, U>: Debug;
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-For more information about this error, try `rustc --explain E0091`.
+error: aborting due to 2 previous errors
+
