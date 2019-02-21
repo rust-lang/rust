@@ -1,3 +1,4 @@
+//! Abstract Syntax Tree, layered on top of untyped `SyntaxNode`s
 mod generated;
 
 use std::marker::PhantomData;

@@ -1,20 +1,21 @@
-//! An experimental implementation of [Rust RFC#2256 libsyntax2.0][rfc#2256].
+//! Syntax Tree library used throughout the rust analyzer.
 //!
-//! The intent is to be an IDE-ready parser, i.e. one that offers
+//! Properties:
+//!   - easy and fast incremental re-parsing
+//!   - graceful handling of errors
+//!   - full-fidelity representation (*any* text can be precisely represented as
+//!     a syntax tree)
 //!
-//! - easy and fast incremental re-parsing,
-//! - graceful handling of errors, and
-//! - maintains all information in the source file.
+//! For more information, see the [RFC]. Current implementation is inspired by
+//! the [Swift] one.
 //!
-//! For more information, see [the RFC][rfc#2265], or [the working draft][RFC.md].
+//! The most interesting modules here are `syntax_node` (which defines concrete
+//! syntax tree) and `ast` (which defines abstract syntax tree on top of the
+//! CST). The actual parser live in a separate `ra_parser` crate, thought the
+//! lexer lives in this crate.
 //!
-//!   [rfc#2256]: <https://github.com/rust-lang/rfcs/pull/2256>
-//!   [RFC.md]: <https://github.com/matklad/libsyntax2/blob/master/docs/RFC.md>
-
-#![forbid(missing_debug_implementations, unconditional_recursion, future_incompatible)]
-#![deny(bad_style, missing_docs)]
-#![allow(missing_docs)]
-//#![warn(unreachable_pub)] // rust-lang/rust#47816
+//! [RFC]: <https://github.com/rust-lang/rfcs/pull/2256>
+//! [Swift]: <https://github.com/apple/swift/blob/13d593df6f359d0cb2fc81cfaac273297c539455/lib/Syntax/README.md>
 
 mod syntax_node;
 mod syntax_text;

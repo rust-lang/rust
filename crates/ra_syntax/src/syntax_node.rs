@@ -1,3 +1,11 @@
+//! This module defines Concrete Syntax Tree (CST), used by rust-analyzer.
+//!
+//! The CST includes comments and whitespace, provides a single node type,
+//! `SyntaxNode`, and a basic traversal API (parent, children, siblings).
+//!
+//! The *real* implementation is in the (language-agnostic) `rowan` crate, this
+//! modules just wraps its API.
+
 use std::{fmt, borrow::Borrow};
 
 use rowan::{Types, TransparentNewType};

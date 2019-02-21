@@ -1,11 +1,18 @@
+//! Implementation of incremental re-parsing.
+//!
+//! We use two simple strategies for this:
+//!   - if the edit modifies only a single token (like changing an identifier's
+//!     letter), we replace only this token.
+//!   - otherwise, we search for the nearest `{}` block which contains the edit
+//!     and try to parse only this block.
+
 use ra_text_edit::AtomTextEdit;
 use ra_parser::Reparser;
 
 use crate::{
-    SyntaxKind::*, TextRange, TextUnit,
+    SyntaxKind::*, TextRange, TextUnit, SyntaxError,
     algo,
     syntax_node::{GreenNode, SyntaxNode},
-    syntax_error::SyntaxError,
     parsing::{
         input::ParserInput,
         builder::TreeBuilder,
