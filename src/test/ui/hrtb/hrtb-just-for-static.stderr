@@ -1,22 +1,37 @@
-error: implementation of `Foo` is not general enough
+error[E0277]: the trait bound `for<'a> StaticInt: Foo<&'a isize>` is not satisfied
   --> $DIR/hrtb-just-for-static.rs:24:5
    |
 LL |     want_hrtb::<StaticInt>() //~ ERROR
-   |     ^^^^^^^^^^^^^^^^^^^^^^
+   |     ^^^^^^^^^^^^^^^^^^^^^^ the trait `for<'a> Foo<&'a isize>` is not implemented for `StaticInt`
    |
-   = note: Due to a where-clause on `want_hrtb`,
-   = note: `StaticInt` must implement `Foo<&'0 isize>`, for any lifetime `'0`
-   = note: but `StaticInt` actually implements `Foo<&'1 isize>`, for some specific lifetime `'1`
+   = help: the following implementations were found:
+             <StaticInt as Foo<&'static isize>>
+note: required by `want_hrtb`
+  --> $DIR/hrtb-just-for-static.rs:8:1
+   |
+LL | / fn want_hrtb<T>()
+LL | |     where T : for<'a> Foo<&'a isize>
+LL | | {
+LL | | }
+   | |_^
 
-error: implementation of `Foo` is not general enough
+error[E0277]: the trait bound `for<'a> &'a u32: Foo<&'a isize>` is not satisfied
   --> $DIR/hrtb-just-for-static.rs:30:5
    |
 LL |     want_hrtb::<&'a u32>() //~ ERROR
-   |     ^^^^^^^^^^^^^^^^^^^^
+   |     ^^^^^^^^^^^^^^^^^^^^ the trait `for<'a> Foo<&'a isize>` is not implemented for `&'a u32`
    |
-   = note: Due to a where-clause on `want_hrtb`,
-   = note: `Foo<&'0 isize>` would have to be implemented for the type `&'a u32`, for any lifetime `'0`
-   = note: but `Foo<&'1 isize>` is actually implemented for the type `&'1 u32`, for some specific lifetime `'1`
+   = help: the following implementations were found:
+             <&'a u32 as Foo<&'a isize>>
+note: required by `want_hrtb`
+  --> $DIR/hrtb-just-for-static.rs:8:1
+   |
+LL | / fn want_hrtb<T>()
+LL | |     where T : for<'a> Foo<&'a isize>
+LL | | {
+LL | | }
+   | |_^
 
 error: aborting due to 2 previous errors
 
+For more information about this error, try `rustc --explain E0277`.

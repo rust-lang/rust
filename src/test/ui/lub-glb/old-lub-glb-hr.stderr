@@ -1,17 +1,17 @@
 error[E0308]: match arms have incompatible types
-  --> $DIR/old-lub-glb-object.rs:12:14
+  --> $DIR/old-lub-glb-hr.rs:16:14
    |
 LL |       let z = match 22 {
    |  _____________-
 LL | |         0 => x,
-   | |              - this is found to be of type `&dyn for<'a, 'b> Foo<&'a u8, &'b u8>`
+   | |              - this is found to be of type `for<'r, 's> fn(&'r u8, &'s u8)`
 LL | |         _ => y, //~ ERROR match arms have incompatible types
-   | |              ^ expected bound lifetime parameter 'a, found concrete lifetime
+   | |              ^ expected bound lifetime parameter, found concrete lifetime
 LL | |     };
    | |_____- `match` arms have incompatible types
    |
-   = note: expected type `&dyn for<'a, 'b> Foo<&'a u8, &'b u8>`
-              found type `&dyn for<'a> Foo<&'a u8, &'a u8>`
+   = note: expected type `for<'r, 's> fn(&'r u8, &'s u8)`
+              found type `for<'a> fn(&'a u8, &'a u8)`
 
 error: aborting due to previous error
 

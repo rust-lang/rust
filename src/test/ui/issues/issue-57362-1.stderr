@@ -1,11 +1,14 @@
-error: implementation of `Trait` is not general enough
+error[E0599]: no method named `f` found for type `fn(&u8)` in the current scope
   --> $DIR/issue-57362-1.rs:20:7
    |
-LL |     a.f(); //~ ERROR not general enough
+LL |     a.f(); //~ ERROR no method named `f`
    |       ^
    |
-   = note: `Trait` would have to be implemented for the type `fn(&'0 u8)`, for some specific lifetime `'0`
-   = note: but `Trait` is actually implemented for the type `for<'r> fn(&'r u8)`
+   = note: a is a function, perhaps you wish to call it
+   = help: items from traits can only be used if the trait is implemented and in scope
+   = note: the following trait defines an item `f`, perhaps you need to implement it:
+           candidate #1: `Trait`
 
 error: aborting due to previous error
 
+For more information about this error, try `rustc --explain E0599`.

@@ -1,21 +1,40 @@
-error[E0308]: mismatched types
+error[E0277]: the trait bound `for<'tcx> F: Foo<'tcx>` is not satisfied
   --> $DIR/hrtb-higher-ranker-supertraits.rs:18:5
    |
-LL |     want_foo_for_any_tcx(f); //~ ERROR E0308
-   |     ^^^^^^^^^^^^^^^^^^^^ one type is more general than the other
+LL |     want_foo_for_any_tcx(f); //~ ERROR not satisfied
+   |     ^^^^^^^^^^^^^^^^^^^^ the trait `for<'tcx> Foo<'tcx>` is not implemented for `F`
    |
-   = note: expected type `for<'tcx> Foo<'tcx>`
-              found type `Foo<'x>`
+   = help: consider adding a `where for<'tcx> F: Foo<'tcx>` bound
+note: required by `want_foo_for_any_tcx`
+  --> $DIR/hrtb-higher-ranker-supertraits.rs:21:1
+   |
+LL | / fn want_foo_for_any_tcx<F>(f: &F)
+LL | |     where F : for<'tcx> Foo<'tcx>
+LL | | {
+LL | |     want_foo_for_some_tcx(f);
+LL | |     want_foo_for_any_tcx(f);
+LL | | }
+   | |_^
 
-error[E0308]: mismatched types
+error[E0277]: the trait bound `for<'ccx> B: Bar<'ccx>` is not satisfied
   --> $DIR/hrtb-higher-ranker-supertraits.rs:35:5
    |
-LL |     want_bar_for_any_ccx(b); //~ ERROR E0308
-   |     ^^^^^^^^^^^^^^^^^^^^ one type is more general than the other
+LL |     want_bar_for_any_ccx(b); //~ ERROR not satisfied
+   |     ^^^^^^^^^^^^^^^^^^^^ the trait `for<'ccx> Bar<'ccx>` is not implemented for `B`
    |
-   = note: expected type `for<'ccx> Bar<'ccx>`
-              found type `Bar<'x>`
+   = help: consider adding a `where for<'ccx> B: Bar<'ccx>` bound
+note: required by `want_bar_for_any_ccx`
+  --> $DIR/hrtb-higher-ranker-supertraits.rs:38:1
+   |
+LL | / fn want_bar_for_any_ccx<B>(b: &B)
+LL | |     where B : for<'ccx> Bar<'ccx>
+LL | | {
+LL | |     want_foo_for_some_tcx(b);
+...  |
+LL | |     want_bar_for_any_ccx(b);
+LL | | }
+   | |_^
 
 error: aborting due to 2 previous errors
 
-For more information about this error, try `rustc --explain E0308`.
+For more information about this error, try `rustc --explain E0277`.

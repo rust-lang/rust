@@ -1,5 +1,5 @@
 use crate::hir::def_id::DefId;
-use crate::ty::{self, Region, Ty, TyCtxt};
+use crate::ty::{self, BoundRegion, Region, Ty, TyCtxt};
 use std::borrow::Cow;
 use std::fmt;
 use rustc_target::spec::abi;
@@ -27,6 +27,8 @@ pub enum TypeError<'tcx> {
     ArgCount,
 
     RegionsDoesNotOutlive(Region<'tcx>, Region<'tcx>),
+    RegionsInsufficientlyPolymorphic(BoundRegion, Region<'tcx>),
+    RegionsOverlyPolymorphic(BoundRegion, Region<'tcx>),
     RegionsPlaceholderMismatch,
 
     Sorts(ExpectedFound<Ty<'tcx>>),
@@ -100,6 +102,18 @@ impl<'tcx> fmt::Display for TypeError<'tcx> {
             }
             RegionsDoesNotOutlive(..) => {
                 write!(f, "lifetime mismatch")
+            }
+            RegionsInsufficientlyPolymorphic(br, _) => {
+                write!(f,
+                       "expected bound lifetime parameter{}{}, found concrete lifetime",
+                       if br.is_named() { " " } else { "" },
+                       br)
+            }
+            RegionsOverlyPolymorphic(br, _) => {
+                write!(f,
+                       "expected concrete lifetime, found bound lifetime parameter{}{}",
+                       if br.is_named() { " " } else { "" },
+                       br)
             }
             RegionsPlaceholderMismatch => {
                 write!(f, "one type is more general than the other")

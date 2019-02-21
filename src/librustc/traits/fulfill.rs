@@ -331,8 +331,10 @@ impl<'a, 'b, 'gcx, 'tcx> ObligationProcessor for FulfillProcessor<'a, 'b, 'gcx, 
             }
 
             ty::Predicate::RegionOutlives(ref binder) => {
-                let () = self.selcx.infcx().region_outlives_predicate(&obligation.cause, binder);
-                ProcessResult::Changed(vec![])
+                match self.selcx.infcx().region_outlives_predicate(&obligation.cause, binder) {
+                    Ok(()) => ProcessResult::Changed(vec![]),
+                    Err(_) => ProcessResult::Error(CodeSelectionError(Unimplemented)),
+                }
             }
 
             ty::Predicate::TypeOutlives(ref binder) => {

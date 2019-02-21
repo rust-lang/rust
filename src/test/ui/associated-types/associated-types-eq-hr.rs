@@ -89,12 +89,14 @@ pub fn call_bar() {
 
 pub fn call_tuple_one() {
     tuple_one::<Tuple>();
-    //~^ ERROR not general enough
+    //~^ ERROR not satisfied
+    //~| ERROR type mismatch
 }
 
 pub fn call_tuple_two() {
     tuple_two::<Tuple>();
-    //~^ ERROR not general enough
+    //~^ ERROR not satisfied
+    //~| ERROR type mismatch
 }
 
 pub fn call_tuple_three() {
@@ -103,7 +105,7 @@ pub fn call_tuple_three() {
 
 pub fn call_tuple_four() {
     tuple_four::<Tuple>();
-    //~^ ERROR not general enough
+    //~^ ERROR not satisfied
 }
 
 fn main() { }
