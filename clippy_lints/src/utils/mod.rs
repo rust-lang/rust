@@ -1155,6 +1155,47 @@ pub fn any_parent_is_automatically_derived(tcx: TyCtxt<'_, '_, '_>, node: NodeId
     false
 }
 
+/// Returns true if ty has `iter` or `iter_mut` methods
+pub fn has_iter_method(cx: &LateContext<'_, '_>, probably_ref_ty: ty::Ty<'_>) -> Option<&'static str> {
+    // FIXME: instead of this hard-coded list, we should check if `<adt>::iter`
+    // exists and has the desired signature. Unfortunately FnCtxt is not exported
+    // so we can't use its `lookup_method` method.
+    static INTO_ITER_COLLECTIONS: [&[&str]; 13] = [
+        &paths::VEC,
+        &paths::OPTION,
+        &paths::RESULT,
+        &paths::BTREESET,
+        &paths::BTREEMAP,
+        &paths::VEC_DEQUE,
+        &paths::LINKED_LIST,
+        &paths::BINARY_HEAP,
+        &paths::HASHSET,
+        &paths::HASHMAP,
+        &paths::PATH_BUF,
+        &paths::PATH,
+        &paths::RECEIVER,
+    ];
+
+    let ty_to_check = match probably_ref_ty.sty {
+        ty::Ref(_, ty_to_check, _) => ty_to_check,
+        _ => probably_ref_ty,
+    };
+
+    let def_id = match ty_to_check.sty {
+        ty::Array(..) => return Some("array"),
+        ty::Slice(..) => return Some("slice"),
+        ty::Adt(adt, _) => adt.did,
+        _ => return None,
+    };
+
+    for path in &INTO_ITER_COLLECTIONS {
+        if match_def_path(cx.tcx, def_id, path) {
+            return Some(path.last().unwrap());
+        }
+    }
+    None
+}
+
 #[cfg(test)]
 mod test {
     use super::{trim_multiline, without_block_comments};
