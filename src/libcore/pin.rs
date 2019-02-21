@@ -380,10 +380,13 @@ impl<P: Deref> Pin<P> {
     /// use std::pin::Pin;
     ///
     /// fn move_pinned_ref<T>(mut a: T, mut b: T) {
-    ///     unsafe { let p = Pin::new_unchecked(&mut a); } // should mean `a` can never move again
+    ///     unsafe {
+    ///         let p: Pin<&mut T> = Pin::new_unchecked(&mut a);
+    ///         // This should mean the pointee `a` can never move again.
+    ///     }
     ///     mem::swap(&mut a, &mut b);
     ///     // The address of `a` changed to `b`'s stack slot, so `a` got moved even
-    ///     // though we have previously pinned it!
+    ///     // though we have previously pinned it! We have violated the pinning API contract.
     /// }
     /// ```
     /// A value, once pinned, must remain pinned forever (unless its type implements `Unpin`).
@@ -396,12 +399,15 @@ impl<P: Deref> Pin<P> {
     ///
     /// fn move_pinned_rc<T>(mut x: Rc<T>) {
     ///     let pinned = unsafe { Pin::new_unchecked(x.clone()) };
-    ///     { let p: Pin<&T> = pinned.as_ref(); } // should mean the pointee can never move again
+    ///     {
+    ///         let p: Pin<&T> = pinned.as_ref();
+    ///         // This should mean the pointee can never move again.
+    ///     }
     ///     drop(pinned);
     ///     let content = Rc::get_mut(&mut x).unwrap();
     ///     // Now, if `x` was the only reference, we have a mutable reference to
     ///     // data that we pinned above, which we could use to move it as we have
-    ///     // seen in the previous example.
+    ///     // seen in the previous example. We have violated the pinning API contract.
     ///  }
     ///  ```
     ///
