@@ -5,6 +5,26 @@ use crate::{
     parsing::lexer::Token,
 };
 
+pub(crate) struct ParserInput<'t> {
+    text: &'t str,
+    /// start position of each token(expect whitespace and comment)
+    /// ```non-rust
+    ///  struct Foo;
+    /// ^------^---
+    /// |      |  ^-
+    /// 0      7  10
+    /// ```
+    /// (token, start_offset): `[(struct, 0), (Foo, 7), (;, 10)]`
+    start_offsets: Vec<TextUnit>,
+    /// non-whitespace/comment tokens
+    /// ```non-rust
+    /// struct Foo {}
+    /// ^^^^^^ ^^^ ^^
+    /// ```
+    /// tokens: `[struct, Foo, {, }]`
+    tokens: Vec<Token>,
+}
+
 impl<'t> TokenSource for ParserInput<'t> {
     fn token_kind(&self, pos: usize) -> SyntaxKind {
         if !(pos < self.tokens.len()) {
@@ -26,26 +46,6 @@ impl<'t> TokenSource for ParserInput<'t> {
 
         self.text[range] == *kw
     }
-}
-
-pub(crate) struct ParserInput<'t> {
-    text: &'t str,
-    /// start position of each token(expect whitespace and comment)
-    /// ```non-rust
-    ///  struct Foo;
-    /// ^------^---
-    /// |      |  ^-
-    /// 0      7  10
-    /// ```
-    /// (token, start_offset): `[(struct, 0), (Foo, 7), (;, 10)]`
-    start_offsets: Vec<TextUnit>,
-    /// non-whitespace/comment tokens
-    /// ```non-rust
-    /// struct Foo {}
-    /// ^^^^^^ ^^^ ^^
-    /// ```
-    /// tokens: `[struct, Foo, {, }]`
-    tokens: Vec<Token>,
 }
 
 impl<'t> ParserInput<'t> {

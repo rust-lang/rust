@@ -1,4 +1,7 @@
+use std::mem;
+
 use ra_parser::{TreeSink, ParseError};
+use rowan::GreenNodeBuilder;
 
 use crate::{
     SmolStr, SyntaxError, SyntaxErrorKind, TextUnit, TextRange,
@@ -7,19 +10,32 @@ use crate::{
     syntax_node::{GreenNode, RaTypes},
 };
 
-use rowan::GreenNodeBuilder;
-
+/// Bridges the parser with our specific syntax tree representation.
+///
+/// `TreeBuilder` also handles attachment of trivia (whitespace) to nodes.
 pub(crate) struct TreeBuilder<'a> {
     text: &'a str,
     tokens: &'a [Token],
     text_pos: TextUnit,
     token_pos: usize,
+    state: State,
     errors: Vec<SyntaxError>,
     inner: GreenNodeBuilder<RaTypes>,
 }
 
+enum State {
+    PendingStart,
+    Normal,
+    PendingFinish,
+}
+
 impl<'a> TreeSink for TreeBuilder<'a> {
     fn leaf(&mut self, kind: SyntaxKind, n_tokens: u8) {
+        match mem::replace(&mut self.state, State::Normal) {
+            State::PendingStart => unreachable!(),
+            State::PendingFinish => self.inner.finish_internal(),
+            State::Normal => (),
+        }
         self.eat_trivias();
         let n_tokens = n_tokens as usize;
         let len = self.tokens[self.token_pos..self.token_pos + n_tokens]
@@ -29,11 +45,18 @@ impl<'a> TreeSink for TreeBuilder<'a> {
         self.do_leaf(kind, len, n_tokens);
     }
 
-    fn start_branch(&mut self, kind: SyntaxKind, root: bool) {
-        if root {
-            self.inner.start_internal(kind);
-            return;
+    fn start_branch(&mut self, kind: SyntaxKind) {
+        match mem::replace(&mut self.state, State::Normal) {
+            State::PendingStart => {
+                self.inner.start_internal(kind);
+                // No need to attach trivias to previous node: there is no
+                // previous node.
+                return;
+            }
+            State::PendingFinish => self.inner.finish_internal(),
+            State::Normal => (),
         }
+
         let n_trivias =
             self.tokens[self.token_pos..].iter().take_while(|it| it.kind.is_trivia()).count();
         let leading_trivias = &self.tokens[self.token_pos..self.token_pos + n_trivias];
@@ -54,11 +77,12 @@ impl<'a> TreeSink for TreeBuilder<'a> {
         self.eat_n_trivias(n_attached_trivias);
     }
 
-    fn finish_branch(&mut self, root: bool) {
-        if root {
-            self.eat_trivias()
+    fn finish_branch(&mut self) {
+        match mem::replace(&mut self.state, State::PendingFinish) {
+            State::PendingStart => unreachable!(),
+            State::PendingFinish => self.inner.finish_internal(),
+            State::Normal => (),
         }
-        self.inner.finish_internal();
     }
 
     fn error(&mut self, error: ParseError) {
@@ -74,12 +98,21 @@ impl<'a> TreeBuilder<'a> {
             tokens,
             text_pos: 0.into(),
             token_pos: 0,
+            state: State::PendingStart,
             errors: Vec::new(),
             inner: GreenNodeBuilder::new(),
         }
     }
 
-    pub(super) fn finish(self) -> (GreenNode, Vec<SyntaxError>) {
+    pub(super) fn finish(mut self) -> (GreenNode, Vec<SyntaxError>) {
+        match mem::replace(&mut self.state, State::Normal) {
+            State::PendingFinish => {
+                self.eat_trivias();
+                self.inner.finish_internal()
+            }
+            State::PendingStart | State::Normal => unreachable!(),
+        }
+
         (self.inner.finish(), self.errors)
     }
 

@@ -1,5 +1,6 @@
 use crate::SyntaxKind;
 
+/// A bit-set of `SyntaxKind`s
 #[derive(Clone, Copy)]
 pub(crate) struct TokenSet(u128);
 

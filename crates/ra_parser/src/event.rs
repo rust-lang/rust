@@ -113,12 +113,11 @@ pub(super) fn process(sink: &mut dyn TreeSink, mut events: Vec<Event>) {
                     // append `B`'s forward_parent `C` in the next stage.
                 }
 
-                for (j, kind) in forward_parents.drain(..).rev().enumerate() {
-                    let is_root_node = i == 0 && j == 0;
-                    sink.start_branch(kind, is_root_node);
+                for kind in forward_parents.drain(..).rev() {
+                    sink.start_branch(kind);
                 }
             }
-            Event::Finish => sink.finish_branch(i == events.len() - 1),
+            Event::Finish => sink.finish_branch(),
             Event::Token { kind, n_raw_tokens } => {
                 sink.leaf(kind, n_raw_tokens);
             }
