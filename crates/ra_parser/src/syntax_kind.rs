@@ -2,8 +2,6 @@ mod generated;
 
 use std::fmt;
 
-use crate::SyntaxKind::*;
-
 pub use self::generated::SyntaxKind;
 
 impl fmt::Debug for SyntaxKind {
@@ -20,7 +18,7 @@ pub(crate) struct SyntaxInfo {
 impl SyntaxKind {
     pub fn is_trivia(self) -> bool {
         match self {
-            WHITESPACE | COMMENT => true,
+            SyntaxKind::WHITESPACE | SyntaxKind::COMMENT => true,
             _ => false,
         }
     }

@@ -568,7 +568,7 @@ impl SyntaxKind {
             EOF => &SyntaxInfo { name: "EOF" },
         }
     }
-    pub(crate) fn from_keyword(ident: &str) -> Option<SyntaxKind> {
+    pub fn from_keyword(ident: &str) -> Option<SyntaxKind> {
         let kw = match ident {
             "use" => USE_KW,
             "fn" => FN_KW,
@@ -610,7 +610,7 @@ impl SyntaxKind {
         Some(kw)
     }
 
-    pub(crate) fn from_char(c: char) -> Option<SyntaxKind> {
+    pub fn from_char(c: char) -> Option<SyntaxKind> {
         let tok = match c {
             ';' => SEMI,
             ',' => COMMA,

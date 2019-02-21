@@ -38,20 +38,18 @@ mod types;
 
 use crate::{
     SyntaxKind::{self, *},
-    parsing::{
-        token_set::TokenSet,
-        parser::{CompletedMarker, Marker, Parser}
-    },
+    TokenSet,
+    parser::{CompletedMarker, Marker, Parser},
 };
 
-pub(super) fn root(p: &mut Parser) {
+pub(crate) fn root(p: &mut Parser) {
     let m = p.start();
     p.eat(SHEBANG);
     items::mod_contents(p, false);
     m.complete(p, SOURCE_FILE);
 }
 
-pub(super) fn reparser(
+pub(crate) fn reparser(
     node: SyntaxKind,
     first_child: Option<SyntaxKind>,
     parent: Option<SyntaxKind>,

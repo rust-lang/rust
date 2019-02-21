@@ -1072,6 +1072,13 @@ dependencies = [
 ]
 
 [[package]]
+name = "ra_parser"
+version = "0.1.0"
+dependencies = [
+ "drop_bomb 0.1.4 (registry+https://github.com/rust-lang/crates.io-index)",
+]
+
+[[package]]
 name = "ra_project_model"
 version = "0.1.0"
 dependencies = [

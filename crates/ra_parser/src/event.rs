@@ -10,8 +10,8 @@
 use std::mem;
 
 use crate::{
+    ParseError, TreeSink,
     SyntaxKind::{self, *},
-    parsing::{ParseError, TreeSink},
 };
 
 /// `Parser` produces a flat list of `Event`s.
@@ -84,7 +84,7 @@ impl Event {
 }
 
 /// Generate the syntax tree with the control of events.
-pub(super) fn process(sink: &mut impl TreeSink, mut events: Vec<Event>) {
+pub(super) fn process(sink: &mut dyn TreeSink, mut events: Vec<Event>) {
     let mut forward_parents = Vec::new();
 
     for i in 0..events.len() {
