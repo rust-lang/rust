@@ -612,7 +612,7 @@ unsafe impl<T: ?Sized> Freeze for &mut T {}
 /// `Unpin` has no consequence at all for non-pinned data. In particular,
 /// [`mem::replace`] happily moves `!Unpin` data (it works for any `&mut T`, not
 /// just when `T: Unpin`). However, you cannot use
-/// [`mem::replace`] on data wrapped inside a [`Pin`] because you cannot get the
+/// [`mem::replace`] on data wrapped inside a [`Pin<P>`] because you cannot get the
 /// `&mut T` you need for that, and *that* is what makes this system work.
 ///
 /// So this, for example, can only be done on types implementing `Unpin`:
@@ -633,7 +633,7 @@ unsafe impl<T: ?Sized> Freeze for &mut T {}
 /// This trait is automatically implemented for almost every type.
 ///
 /// [`mem::replace`]: ../../std/mem/fn.replace.html
-/// [`Pin`]: ../pin/struct.Pin.html
+ /// [`Pin<P>`]: ../pin/struct.Pin.html
 /// [`pin module`]: ../../std/pin/index.html
 #[stable(feature = "pin", since = "1.33.0")]
 #[cfg_attr(not(stage0), lang = "unpin")]
