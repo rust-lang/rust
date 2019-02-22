@@ -1141,6 +1141,35 @@ impl<T> MaybeUninit<T> {
     ///
     /// Note that dropping a `MaybeUninit` will never call `T`'s drop code.
     /// It is your responsibility to make sure `T` gets dropped if it got initialized.
+    ///
+    /// # Example
+    ///
+    /// Correct usage of this method: initializing a struct with zero, where all
+    /// fields of the struct can hold 0 as a valid value.
+    ///
+    /// ```rust
+    /// #![feature(maybe_uninit)]
+    /// use std::mem::MaybeUninit;
+    ///
+    /// let x = MaybeUninit::<(u8, bool)>::zeroed();
+    /// let x = unsafe { x.into_initialized() };
+    /// assert_eq!(x, (0, false));
+    /// ```
+    ///
+    /// *Incorrect* usage of this method: initializing a struct with zero, where some fields
+    /// cannot hold 0 as a valid value.
+    ///
+    /// ```rust,no_run
+    /// #![feature(maybe_uninit)]
+    /// use std::mem::MaybeUninit;
+    ///
+    /// enum NotZero { One = 1, Two = 2 };
+    ///
+    /// let x = MaybeUninit::<(u8, NotZero)>::zeroed();
+    /// let x = unsafe { x.into_initialized() };
+    /// // We create a `NotZero` (inside a pair) that does not have a valid discriminant.
+    /// // This is undefined behavior.
+    /// ```
     #[unstable(feature = "maybe_uninit", issue = "53491")]
     #[inline]
     pub fn zeroed() -> MaybeUninit<T> {
