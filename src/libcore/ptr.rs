@@ -301,7 +301,7 @@ pub unsafe fn swap<T>(x: *mut T, y: *mut T) {
     // Perform the swap
     copy_nonoverlapping(x, tmp.as_mut_ptr(), 1);
     copy(y, x, 1); // `x` and `y` may overlap
-    copy_nonoverlapping(tmp.get_ref(), y, 1);
+    copy_nonoverlapping(tmp.as_ptr(), y, 1);
 }
 
 /// Swaps `count * size_of::<T>()` bytes between the two regions of memory
