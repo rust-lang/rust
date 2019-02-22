@@ -109,9 +109,9 @@ pub fn check(build: &mut Build) {
     }
 
     build.config.python = build.config.python.take().map(|p| cmd_finder.must_have(p))
-        .or_else(|| env::var_os("BOOTSTRAP_PYTHON").map(PathBuf::from)) // set by bootstrap.py
         .or_else(|| cmd_finder.maybe_have("python2.7"))
         .or_else(|| cmd_finder.maybe_have("python2"))
+        .or_else(|| env::var_os("BOOTSTRAP_PYTHON").map(PathBuf::from)) // set by bootstrap.py
         .or_else(|| Some(cmd_finder.must_have("python")));
 
     build.config.nodejs = build.config.nodejs.take().map(|p| cmd_finder.must_have(p))
