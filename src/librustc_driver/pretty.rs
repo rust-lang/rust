@@ -420,8 +420,8 @@ impl<'hir> pprust_hir::PpAnn for IdentifiedAnnotation<'hir> {
             }
             pprust_hir::AnnNode::Block(blk) => {
                 s.s.space()?;
-                s.synth_comment(format!("block node_id: {} hir local_id: {}",
-                                        blk.id, blk.hir_id.local_id.as_u32()))
+                s.synth_comment(format!("block hir_id: {} hir local_id: {}",
+                                        blk.hir_id, blk.hir_id.local_id.as_u32()))
             }
             pprust_hir::AnnNode::Expr(expr) => {
                 s.s.space()?;

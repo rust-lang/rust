@@ -72,13 +72,13 @@ pub fn mir_build<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: DefId) -> Mir<'t
     };
 
     tcx.infer_ctxt().enter(|infcx| {
-        let cx = Cx::new(&infcx, id);
+        let fn_hir_id = tcx.hir().node_to_hir_id(id);
+        let cx = Cx::new(&infcx, fn_hir_id);
         let mut mir = if cx.tables().tainted_by_errors {
             build::construct_error(cx, body_id)
         } else if cx.body_owner_kind.is_fn_or_closure() {
             // fetch the fully liberated fn signature (that is, all bound
             // types/lifetimes replaced)
-            let fn_hir_id = tcx.hir().node_to_hir_id(id);
             let fn_sig = cx.tables().liberated_fn_sigs()[fn_hir_id].clone();
             let fn_def_id = tcx.hir().local_def_id(id);
 

@@ -308,17 +308,11 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
         debug!("in_scope(region_scope={:?}, block={:?})", region_scope, block);
         let source_scope = self.source_scope;
         let tcx = self.hir.tcx();
-        if let LintLevel::Explicit(node_id) = lint_level {
+        if let LintLevel::Explicit(current_hir_id) = lint_level {
             let same_lint_scopes = tcx.dep_graph.with_ignore(|| {
                 let sets = tcx.lint_levels(LOCAL_CRATE);
-                let parent_hir_id =
-                    tcx.hir().definitions().node_to_hir_id(
-                        self.source_scope_local_data[source_scope].lint_root
-                    );
-                let current_hir_id =
-                    tcx.hir().definitions().node_to_hir_id(node_id);
-                sets.lint_level_set(parent_hir_id) ==
-                    sets.lint_level_set(current_hir_id)
+                let parent_hir_id = self.source_scope_local_data[source_scope].lint_root;
+                sets.lint_level_set(parent_hir_id) == sets.lint_level_set(current_hir_id)
             });
 
             if !same_lint_scopes {

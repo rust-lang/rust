@@ -90,7 +90,6 @@ use rustc_data_structures::sync::Lrc;
 use std::mem;
 use std::ops::Deref;
 use std::rc::Rc;
-use syntax::ast;
 use syntax_pos::Span;
 
 // a variation on try that just returns unit
@@ -163,7 +162,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
     /// rest of type check and because sometimes we need type
     /// inference to have completed before we can determine which
     /// constraints to add.
-    pub fn regionck_fn(&self, fn_id: ast::NodeId, body: &'gcx hir::Body) {
+    pub fn regionck_fn(&self, fn_id: hir::HirId, body: &'gcx hir::Body) {
         debug!("regionck_fn(id={})", fn_id);
         let subject = self.tcx.hir().body_owner_def_id(body.id());
         let hir_id = body.value.hir_id;
@@ -176,9 +175,8 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         );
 
         if self.err_count_since_creation() == 0 {
-            let fn_hir_id = self.tcx.hir().node_to_hir_id(fn_id);
             // regionck assumes typeck succeeded
-            rcx.visit_fn_body(fn_hir_id, body, self.tcx.hir().span_by_hir_id(fn_hir_id));
+            rcx.visit_fn_body(fn_id, body, self.tcx.hir().span_by_hir_id(fn_id));
         }
 
         rcx.resolve_regions_and_report_errors(SuppressRegionErrors::when_nll_is_enabled(self.tcx));

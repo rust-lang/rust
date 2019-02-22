@@ -629,7 +629,7 @@ impl<'a, 'gcx, 'tcx> ExprUseVisitor<'a, 'gcx, 'tcx> {
     /// Indicates that the value of `blk` will be consumed, meaning either copied or moved
     /// depending on its type.
     fn walk_block(&mut self, blk: &hir::Block) {
-        debug!("walk_block(blk.id={})", blk.id);
+        debug!("walk_block(blk.hir_id={})", blk.hir_id);
 
         for stmt in &blk.stmts {
             self.walk_stmt(stmt);
