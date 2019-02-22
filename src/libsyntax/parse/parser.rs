@@ -5503,6 +5503,7 @@ impl<'a> Parser<'a> {
             if is_bound_start {
                 let lo = self.span;
                 let has_parens = self.eat(&token::OpenDelim(token::Paren));
+                let inner_lo = self.span;
                 let question = if self.eat(&token::Question) { Some(self.prev_span) } else { None };
                 if self.token.is_lifetime() {
                     if let Some(question_span) = question {
@@ -5511,9 +5512,21 @@ impl<'a> Parser<'a> {
                     }
                     bounds.push(GenericBound::Outlives(self.expect_lifetime()));
                     if has_parens {
+                        let inner_span = inner_lo.to(self.prev_span);
                         self.expect(&token::CloseDelim(token::Paren))?;
-                        self.span_err(self.prev_span,
-                                      "parenthesized lifetime bounds are not supported");
+                        let mut err = self.struct_span_err(
+                            lo.to(self.prev_span),
+                            "parenthesized lifetime bounds are not supported"
+                        );
+                        if let Ok(snippet) = self.sess.source_map().span_to_snippet(inner_span) {
+                            err.span_suggestion_short(
+                                lo.to(self.prev_span),
+                                "remove the parentheses",
+                                snippet.to_owned(),
+                                Applicability::MachineApplicable
+                            );
+                        }
+                        err.emit();
                     }
                 } else {
                     let lifetime_defs = self.parse_late_bound_lifetime_defs()?;
