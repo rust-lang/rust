@@ -1165,6 +1165,32 @@ impl<T> MaybeUninit<T> {
 
     /// Gets a pointer to the contained value. Reading from this pointer or turning it
     /// into a reference is undefined behavior unless the `MaybeUninit` is initialized.
+    ///
+    /// # Examples
+    ///
+    /// Correct usage of this method:
+    ///
+    /// ```rust
+    /// #![feature(maybe_uninit)]
+    /// use std::mem::MaybeUninit;
+    ///
+    /// let mut x = MaybeUninit::<Vec<u32>>::uninitialized();
+    /// x.set(vec![0,1,2]);
+    /// // Create a reference into the `MaybeUninit`. This is okay because we initialized it.
+    /// let x_vec = unsafe { &*x.as_ptr() };
+    /// assert_eq!(x_vec.len(), 3);
+    /// ```
+    ///
+    /// *Incorrect* usage of this method:
+    ///
+    /// ```rust,no_run
+    /// #![feature(maybe_uninit)]
+    /// use std::mem::MaybeUninit;
+    ///
+    /// let x = MaybeUninit::<Vec<u32>>::uninitialized();
+    /// let x_vec = unsafe { &*x.as_ptr() };
+    /// // We have created a reference to an uninitialized vector! This is undefined behavior.
+    /// ```
     #[unstable(feature = "maybe_uninit", issue = "53491")]
     #[inline(always)]
     pub fn as_ptr(&self) -> *const T {
@@ -1173,6 +1199,33 @@ impl<T> MaybeUninit<T> {
 
     /// Gets a mutable pointer to the contained value. Reading from this pointer or turning it
     /// into a reference is undefined behavior unless the `MaybeUninit` is initialized.
+    ///
+    /// # Examples
+    ///
+    /// Correct usage of this method:
+    ///
+    /// ```rust
+    /// #![feature(maybe_uninit)]
+    /// use std::mem::MaybeUninit;
+    ///
+    /// let mut x = MaybeUninit::<Vec<u32>>::uninitialized();
+    /// x.set(vec![0,1,2]);
+    /// // Create a reference into the `MaybeUninit`. This is okay because we initialized it.
+    /// let x_vec = unsafe { &mut *x.as_mut_ptr() };
+    /// x_vec.push(3);
+    /// assert_eq!(x_vec.len(), 4);
+    /// ```
+    ///
+    /// *Incorrect* usage of this method:
+    ///
+    /// ```rust,no_run
+    /// #![feature(maybe_uninit)]
+    /// use std::mem::MaybeUninit;
+    ///
+    /// let mut x = MaybeUninit::<Vec<u32>>::uninitialized();
+    /// let x_vec = unsafe { &mut *x.as_mut_ptr() };
+    /// // We have created a reference to an uninitialized vector! This is undefined behavior.
+    /// ```
     #[unstable(feature = "maybe_uninit", issue = "53491")]
     #[inline(always)]
     pub fn as_mut_ptr(&mut self) -> *mut T {
