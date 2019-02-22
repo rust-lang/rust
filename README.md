@@ -31,7 +31,7 @@ Only the following of those categories are enabled by default:
 
 Other categories need to be enabled in order for their lints to be executed.
 
-The [lint list]](https://rust-lang.github.io/rust-clippy/master/index.html) also contains "restriction lints", which are for things which are usually not considered "bad", but may be useful to turn on in specific cases. These should be used very selectively, if at all.
+The [lint list](https://rust-lang.github.io/rust-clippy/master/index.html) also contains "restriction lints", which are for things which are usually not considered "bad", but may be useful to turn on in specific cases. These should be used very selectively, if at all.
 
 Table of contents:
 
