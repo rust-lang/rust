@@ -241,7 +241,7 @@ impl<'a, 'tcx> Visitor<'tcx> for UnsafetyChecker<'a, 'tcx> {
                     );
                 }
                 let old_source_info = self.source_info;
-                if let &Place::Local(local) = base {
+                if let &Place::Base(PlaceBase::Local(local)) = base {
                     if self.mir.local_decls[local].internal {
                         // Internal locals are used in the `move_val_init` desugaring.
                         // We want to check unsafety against the source info of the
@@ -297,13 +297,13 @@ impl<'a, 'tcx> Visitor<'tcx> for UnsafetyChecker<'a, 'tcx> {
                 }
                 self.source_info = old_source_info;
             }
-            &Place::Local(..) => {
+            &Place::Base(PlaceBase::Local(..)) => {
                 // locals are safe
             }
-            &Place::Promoted(_) => {
+            &Place::Base(PlaceBase::Promoted(_)) => {
                 bug!("unsafety checking should happen before promotion")
             }
-            &Place::Static(box Static { def_id, ty: _ }) => {
+            &Place::Base(PlaceBase::Static(box Static { def_id, ty: _ })) => {
                 if self.tcx.is_static(def_id) == Some(hir::Mutability::MutMutable) {
                     self.require_unsafe("use of mutable static",
                         "mutable statics can be mutated by multiple threads: aliasing violations \

@@ -733,13 +733,13 @@ macro_rules! make_mir_visitor {
                             context: PlaceContext<'tcx>,
                             location: Location) {
                 match place {
-                    Place::Local(local) => {
+                    Place::Base(PlaceBase::Local(local)) => {
                         self.visit_local(local, context, location);
                     }
-                    Place::Static(static_) => {
+                    Place::Base(PlaceBase::Static(static_)) => {
                         self.visit_static(static_, context, location);
                     }
-                    Place::Promoted(promoted) => {
+                    Place::Base(PlaceBase::Promoted(promoted)) => {
                         self.visit_ty(& $($mutability)? promoted.1, TyContext::Location(location));
                     },
                     Place::Projection(proj) => {

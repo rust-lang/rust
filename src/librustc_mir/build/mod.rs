@@ -741,7 +741,7 @@ fn construct_const<'a, 'gcx, 'tcx>(
 
     let mut block = START_BLOCK;
     let expr = builder.hir.mirror(ast_expr);
-    unpack!(block = builder.into_expr(&Place::Local(RETURN_PLACE), block, expr));
+    unpack!(block = builder.into_expr(&Place::RETURN_PLACE, block, expr));
 
     let source_info = builder.source_info(span);
     builder.cfg.terminate(block, source_info, TerminatorKind::Return);
@@ -887,7 +887,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
         for (index, arg_info) in arguments.iter().enumerate() {
             // Function arguments always get the first Local indices after the return place
             let local = Local::new(index + 1);
-            let place = Place::Local(local);
+            let place = Place::Base(PlaceBase::Local(local));
             let &ArgInfo(ty, opt_ty_info, pattern, ref self_binding) = arg_info;
 
             // Make sure we drop (parts of) the argument even when not matched on.
@@ -936,7 +936,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
         }
 
         let body = self.hir.mirror(ast_body);
-        self.into(&Place::Local(RETURN_PLACE), block, body)
+        self.into(&Place::RETURN_PLACE, block, body)
     }
 
     fn get_unit_temp(&mut self) -> Place<'tcx> {

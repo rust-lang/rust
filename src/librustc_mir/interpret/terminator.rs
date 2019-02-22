@@ -352,7 +352,9 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> 
                     // not advance `caller_iter` for ZSTs.
                     let mut locals_iter = mir.args_iter();
                     while let Some(local) = locals_iter.next() {
-                        let dest = self.eval_place(&mir::Place::Local(local))?;
+                        let dest = self.eval_place(
+                            &mir::Place::Base(mir::PlaceBase::Local(local))
+                        )?;
                         if Some(local) == mir.spread_arg {
                             // Must be a tuple
                             for i in 0..dest.layout.fields.count() {
@@ -371,7 +373,9 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> 
                     }
                     // Don't forget to check the return type!
                     if let Some(caller_ret) = dest {
-                        let callee_ret = self.eval_place(&mir::Place::Local(mir::RETURN_PLACE))?;
+                        let callee_ret = self.eval_place(
+                            &mir::Place::RETURN_PLACE
+                        )?;
                         if !Self::check_argument_compat(
                             rust_abi,
                             caller_ret.layout,

@@ -102,7 +102,7 @@ impl<'tcx> MutVisitor<'tcx> for DerefArgVisitor {
                     place: &mut Place<'tcx>,
                     context: PlaceContext<'tcx>,
                     location: Location) {
-        if *place == Place::Local(self_arg()) {
+        if *place == Place::Base(PlaceBase::Local(self_arg())) {
             *place = Place::Projection(Box::new(Projection {
                 base: place.clone(),
                 elem: ProjectionElem::Deref,
@@ -129,7 +129,7 @@ impl<'tcx> MutVisitor<'tcx> for PinArgVisitor<'tcx> {
                     place: &mut Place<'tcx>,
                     context: PlaceContext<'tcx>,
                     location: Location) {
-        if *place == Place::Local(self_arg()) {
+        if *place == Place::Base(PlaceBase::Local(self_arg())) {
             *place = Place::Projection(Box::new(Projection {
                 base: place.clone(),
                 elem: ProjectionElem::Field(Field::new(0), self.ref_gen_ty),
@@ -183,7 +183,7 @@ impl<'a, 'tcx> TransformVisitor<'a, 'tcx> {
 
     // Create a Place referencing a generator struct field
     fn make_field(&self, idx: usize, ty: Ty<'tcx>) -> Place<'tcx> {
-        let base = Place::Local(self_arg());
+        let base = Place::Base(PlaceBase::Local(self_arg()));
         let field = Projection {
             base: base,
             elem: ProjectionElem::Field(Field::new(idx), ty),
@@ -223,7 +223,7 @@ impl<'a, 'tcx> MutVisitor<'tcx> for TransformVisitor<'a, 'tcx> {
                     place: &mut Place<'tcx>,
                     context: PlaceContext<'tcx>,
                     location: Location) {
-        if let Place::Local(l) = *place {
+        if let Place::Base(PlaceBase::Local(l)) = *place {
             // Replace an Local in the remap with a generator struct access
             if let Some(&(ty, idx)) = self.remap.get(&l) {
                 *place = self.make_field(idx, ty);
@@ -249,7 +249,7 @@ impl<'a, 'tcx> MutVisitor<'tcx> for TransformVisitor<'a, 'tcx> {
         let ret_val = match data.terminator().kind {
             TerminatorKind::Return => Some((VariantIdx::new(1),
                 None,
-                Operand::Move(Place::Local(self.new_ret_local)),
+                Operand::Move(Place::Base(PlaceBase::Local(self.new_ret_local))),
                 None)),
             TerminatorKind::Yield { ref value, resume, drop } => Some((VariantIdx::new(0),
                 Some(resume),
@@ -263,7 +263,7 @@ impl<'a, 'tcx> MutVisitor<'tcx> for TransformVisitor<'a, 'tcx> {
             // We must assign the value first in case it gets declared dead below
             data.statements.push(Statement {
                 source_info,
-                kind: StatementKind::Assign(Place::Local(RETURN_PLACE),
+                kind: StatementKind::Assign(Place::RETURN_PLACE,
                                             box self.make_state(state_idx, v)),
             });
             let state = if let Some(resume) = resume { // Yield
@@ -597,7 +597,7 @@ fn elaborate_generator_drops<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
             &Terminator {
                 source_info,
                 kind: TerminatorKind::Drop {
-                    location: Place::Local(local),
+                    location: Place::Base(PlaceBase::Local(local)),
                     target,
                     unwind
                 }
@@ -619,7 +619,7 @@ fn elaborate_generator_drops<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
             elaborate_drop(
                 &mut elaborator,
                 source_info,
-                &Place::Local(gen),
+                &Place::Base(PlaceBase::Local(gen)),
                 (),
                 target,
                 unwind,
@@ -693,7 +693,7 @@ fn create_generator_drop_shim<'a, 'tcx>(
         // Alias tracking must know we changed the type
         mir.basic_blocks_mut()[START_BLOCK].statements.insert(0, Statement {
             source_info,
-            kind: StatementKind::Retag(RetagKind::Raw, Place::Local(self_arg())),
+            kind: StatementKind::Retag(RetagKind::Raw, Place::Base(PlaceBase::Local(self_arg()))),
         })
     }
 
@@ -809,7 +809,7 @@ fn insert_clean_drop<'a, 'tcx>(mir: &mut Mir<'tcx>) -> BasicBlock {
     // Create a block to destroy an unresumed generators. This can only destroy upvars.
     let drop_clean = BasicBlock::new(mir.basic_blocks().len());
     let term = TerminatorKind::Drop {
-        location: Place::Local(self_arg()),
+        location: Place::Base(PlaceBase::Local(self_arg())),
         target: return_block,
         unwind: None,
     };

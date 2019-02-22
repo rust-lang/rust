@@ -1896,6 +1896,14 @@ impl<'tcx> Debug for Statement<'tcx> {
 /// changing or disturbing program state.
 #[derive(Clone, PartialEq, Eq, PartialOrd, Ord, Hash, RustcEncodable, RustcDecodable)]
 pub enum Place<'tcx> {
+    Base(PlaceBase<'tcx>),
+
+    /// projection out of a place (access a field, deref a pointer, etc)
+    Projection(Box<PlaceProjection<'tcx>>),
+}
+
+#[derive(Clone, PartialEq, Eq, PartialOrd, Ord, Hash, RustcEncodable, RustcDecodable)]
+pub enum PlaceBase<'tcx> {
     /// local variable
     Local(Local),
 
@@ -1904,9 +1912,6 @@ pub enum Place<'tcx> {
 
     /// Constant code promoted to an injected static
     Promoted(Box<(Promoted, Ty<'tcx>)>),
-
-    /// projection out of a place (access a field, deref a pointer, etc)
-    Projection(Box<PlaceProjection<'tcx>>),
 }
 
 /// The `DefId` of a static, along with its normalized type (which is
@@ -1994,6 +1999,8 @@ newtype_index! {
 }
 
 impl<'tcx> Place<'tcx> {
+    pub const RETURN_PLACE: Place<'tcx> = Place::Base(PlaceBase::Local(RETURN_PLACE));
+
     pub fn field(self, f: Field, ty: Ty<'tcx>) -> Place<'tcx> {
         self.elem(ProjectionElem::Field(f, ty))
     }
@@ -2020,9 +2027,9 @@ impl<'tcx> Place<'tcx> {
     // FIXME: can we safely swap the semantics of `fn base_local` below in here instead?
     pub fn local(&self) -> Option<Local> {
         match self {
-            Place::Local(local) |
+            Place::Base(PlaceBase::Local(local)) |
             Place::Projection(box Projection {
-                base: Place::Local(local),
+                base: Place::Base(PlaceBase::Local(local)),
                 elem: ProjectionElem::Deref,
             }) => Some(*local),
             _ => None,
@@ -2032,9 +2039,9 @@ impl<'tcx> Place<'tcx> {
     /// Finds the innermost `Local` from this `Place`.
     pub fn base_local(&self) -> Option<Local> {
         match self {
-            Place::Local(local) => Some(*local),
+            Place::Base(PlaceBase::Local(local)) => Some(*local),
             Place::Projection(box Projection { base, elem: _ }) => base.base_local(),
-            Place::Promoted(..) | Place::Static(..) => None,
+            Place::Base(PlaceBase::Promoted(..)) | Place::Base(PlaceBase::Static(..)) => None,
         }
     }
 }
@@ -2044,14 +2051,19 @@ impl<'tcx> Debug for Place<'tcx> {
         use self::Place::*;
 
         match *self {
-            Local(id) => write!(fmt, "{:?}", id),
-            Static(box self::Static { def_id, ty }) => write!(
+            Base(PlaceBase::Local(id)) => write!(fmt, "{:?}", id),
+            Base(PlaceBase::Static(box self::Static { def_id, ty })) => write!(
                 fmt,
                 "({}: {:?})",
                 ty::tls::with(|tcx| tcx.item_path_str(def_id)),
                 ty
             ),
-            Promoted(ref promoted) => write!(fmt, "({:?}: {:?})", promoted.0, promoted.1),
+            Base(PlaceBase::Promoted(ref promoted)) => write!(
+                fmt,
+                "({:?}: {:?})",
+                promoted.0,
+                promoted.1
+            ),
             Projection(ref data) => match data.elem {
                 ProjectionElem::Downcast(ref adt_def, index) => {
                     write!(fmt, "({:?} as {})", data.base, adt_def.variants[index].ident)

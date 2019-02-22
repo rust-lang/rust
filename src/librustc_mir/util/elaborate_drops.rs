@@ -486,7 +486,7 @@ impl<'l, 'b, 'tcx, D> DropCtxt<'l, 'b, 'tcx, D>
         // discriminant after it is free-ed, because that
         // way lies only trouble.
         let discr_ty = adt.repr.discr_type().to_ty(self.tcx());
-        let discr = Place::Local(self.new_temp(discr_ty));
+        let discr = Place::Base(PlaceBase::Local(self.new_temp(discr_ty)));
         let discr_rv = Rvalue::Discriminant(self.place.clone());
         let switch_block = BasicBlockData {
             statements: vec![self.assign(&discr, discr_rv)],
@@ -520,11 +520,11 @@ impl<'l, 'b, 'tcx, D> DropCtxt<'l, 'b, 'tcx, D>
             mutbl: hir::Mutability::MutMutable
         });
         let ref_place = self.new_temp(ref_ty);
-        let unit_temp = Place::Local(self.new_temp(tcx.mk_unit()));
+        let unit_temp = Place::Base(PlaceBase::Local(self.new_temp(tcx.mk_unit())));
 
         let result = BasicBlockData {
             statements: vec![self.assign(
-                &Place::Local(ref_place),
+                &Place::Base(PlaceBase::Local(ref_place)),
                 Rvalue::Ref(tcx.types.re_erased,
                             BorrowKind::Mut { allow_two_phase_borrow: false },
                             self.place.clone())
@@ -533,7 +533,7 @@ impl<'l, 'b, 'tcx, D> DropCtxt<'l, 'b, 'tcx, D>
                 kind: TerminatorKind::Call {
                     func: Operand::function_handle(tcx, drop_fn.def_id, substs,
                                                    self.source_info.span),
-                    args: vec![Operand::Move(Place::Local(ref_place))],
+                    args: vec![Operand::Move(Place::Base(PlaceBase::Local(ref_place)))],
                     destination: Some((unit_temp, succ)),
                     cleanup: unwind.into_option(),
                     from_hir_call: true,
@@ -578,8 +578,8 @@ impl<'l, 'b, 'tcx, D> DropCtxt<'l, 'b, 'tcx, D>
             ty: ety,
             mutbl: hir::Mutability::MutMutable
         });
-        let ptr = &Place::Local(self.new_temp(ref_ty));
-        let can_go = &Place::Local(self.new_temp(tcx.types.bool));
+        let ptr = &Place::Base(PlaceBase::Local(self.new_temp(ref_ty)));
+        let can_go = &Place::Base(PlaceBase::Local(self.new_temp(tcx.types.bool)));
 
         let one = self.constant_usize(1);
         let (ptr_next, cur_next) = if ptr_based {
@@ -587,23 +587,23 @@ impl<'l, 'b, 'tcx, D> DropCtxt<'l, 'b, 'tcx, D>
                 tcx.types.re_erased,
                 BorrowKind::Mut { allow_two_phase_borrow: false },
                 Place::Projection(Box::new(Projection {
-                    base: Place::Local(cur),
+                    base: Place::Base(PlaceBase::Local(cur)),
                     elem: ProjectionElem::Deref,
                 }))
              ),
-             Rvalue::BinaryOp(BinOp::Offset, copy(&Place::Local(cur)), one))
+             Rvalue::BinaryOp(BinOp::Offset, copy(&Place::Base(PlaceBase::Local(cur))), one))
         } else {
             (Rvalue::Ref(
                  tcx.types.re_erased,
                  BorrowKind::Mut { allow_two_phase_borrow: false },
                  self.place.clone().index(cur)),
-             Rvalue::BinaryOp(BinOp::Add, copy(&Place::Local(cur)), one))
+             Rvalue::BinaryOp(BinOp::Add, copy(&Place::Base(PlaceBase::Local(cur))), one))
         };
 
         let drop_block = BasicBlockData {
             statements: vec![
                 self.assign(ptr, ptr_next),
-                self.assign(&Place::Local(cur), cur_next)
+                self.assign(&Place::Base(PlaceBase::Local(cur)), cur_next)
             ],
             is_cleanup: unwind.is_cleanup(),
             terminator: Some(Terminator {
@@ -617,7 +617,7 @@ impl<'l, 'b, 'tcx, D> DropCtxt<'l, 'b, 'tcx, D>
         let loop_block = BasicBlockData {
             statements: vec![
                 self.assign(can_go, Rvalue::BinaryOp(BinOp::Eq,
-                                                     copy(&Place::Local(cur)),
+                                                     copy(&Place::Base(PlaceBase::Local(cur))),
                                                      copy(length_or_end)))
             ],
             is_cleanup: unwind.is_cleanup(),
@@ -667,8 +667,8 @@ impl<'l, 'b, 'tcx, D> DropCtxt<'l, 'b, 'tcx, D>
 
         let move_ = |place: &Place<'tcx>| Operand::Move(place.clone());
         let tcx = self.tcx();
-        let size = &Place::Local(self.new_temp(tcx.types.usize));
-        let size_is_zero = &Place::Local(self.new_temp(tcx.types.bool));
+        let size = &Place::Base(PlaceBase::Local(self.new_temp(tcx.types.usize)));
+        let size_is_zero = &Place::Base(PlaceBase::Local(self.new_temp(tcx.types.bool)));
         let base_block = BasicBlockData {
             statements: vec![
                 self.assign(size, Rvalue::NullaryOp(NullOp::SizeOf, ety)),
@@ -703,9 +703,12 @@ impl<'l, 'b, 'tcx, D> DropCtxt<'l, 'b, 'tcx, D>
         };
 
         let cur = self.new_temp(iter_ty);
-        let length = Place::Local(self.new_temp(tcx.types.usize));
+        let length = Place::Base(PlaceBase::Local(self.new_temp(tcx.types.usize)));
         let length_or_end = if ptr_based {
-            Place::Local(self.new_temp(iter_ty))
+            // FIXME check if we want to make it return a `Place` directly
+            // if all use sites want a `Place::Base` anyway.
+            let temp = self.new_temp(iter_ty);
+            Place::Base(PlaceBase::Local(temp))
         } else {
             length.clone()
         };
@@ -728,13 +731,13 @@ impl<'l, 'b, 'tcx, D> DropCtxt<'l, 'b, 'tcx, D>
             unwind,
             ptr_based);
 
-        let cur = Place::Local(cur);
+        let cur = Place::Base(PlaceBase::Local(cur));
         let zero = self.constant_usize(0);
         let mut drop_block_stmts = vec![];
         drop_block_stmts.push(self.assign(&length, Rvalue::Len(self.place.clone())));
         if ptr_based {
             let tmp_ty = tcx.mk_mut_ptr(self.place_ty(self.place));
-            let tmp = Place::Local(self.new_temp(tmp_ty));
+            let tmp = Place::Base(PlaceBase::Local(self.new_temp(tmp_ty)));
             // tmp = &mut P;
             // cur = tmp as *mut T;
             // end = Offset(cur, len);
@@ -883,7 +886,7 @@ impl<'l, 'b, 'tcx, D> DropCtxt<'l, 'b, 'tcx, D>
         unwind: Unwind
     ) -> BasicBlock {
         let tcx = self.tcx();
-        let unit_temp = Place::Local(self.new_temp(tcx.mk_unit()));
+        let unit_temp = Place::Base(PlaceBase::Local(self.new_temp(tcx.mk_unit())));
         let free_func = tcx.require_lang_item(lang_items::BoxFreeFnLangItem);
         let args = adt.variants[VariantIdx::new(0)].fields.iter().enumerate().map(|(i, f)| {
             let field = Field::new(i);

@@ -158,10 +158,10 @@ impl<'tcx> Place<'tcx> {
         where D: HasLocalDecls<'tcx>
     {
         match *self {
-            Place::Local(index) =>
+            Place::Base(PlaceBase::Local(index)) =>
                 PlaceTy::Ty { ty: local_decls.local_decls()[index].ty },
-            Place::Promoted(ref data) => PlaceTy::Ty { ty: data.1 },
-            Place::Static(ref data) =>
+            Place::Base(PlaceBase::Promoted(ref data)) => PlaceTy::Ty { ty: data.1 },
+            Place::Base(PlaceBase::Static(ref data)) =>
                 PlaceTy::Ty { ty: data.ty },
             Place::Projection(ref proj) =>
                 proj.base.ty(local_decls, tcx).projection_ty(tcx, &proj.elem),

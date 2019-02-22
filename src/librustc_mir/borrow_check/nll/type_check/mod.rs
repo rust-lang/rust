@@ -451,10 +451,10 @@ impl<'a, 'b, 'gcx, 'tcx> TypeVerifier<'a, 'b, 'gcx, 'tcx> {
     ) -> PlaceTy<'tcx> {
         debug!("sanitize_place: {:?}", place);
         let place_ty = match *place {
-            Place::Local(index) => PlaceTy::Ty {
+            Place::Base(PlaceBase::Local(index)) => PlaceTy::Ty {
                 ty: self.mir.local_decls[index].ty,
             },
-            Place::Promoted(box (_index, sty)) => {
+            Place::Base(PlaceBase::Promoted(box (_index, sty))) => {
                 let sty = self.sanitize_type(place, sty);
                 // FIXME -- promoted MIR return types reference
                 // various "free regions" (e.g., scopes and things)
@@ -469,7 +469,7 @@ impl<'a, 'b, 'gcx, 'tcx> TypeVerifier<'a, 'b, 'gcx, 'tcx> {
                 // promoted_mir.return_ty()
                 PlaceTy::Ty { ty: sty }
             }
-            Place::Static(box Static { def_id, ty: sty }) => {
+            Place::Base(PlaceBase::Static(box Static { def_id, ty: sty })) => {
                 let sty = self.sanitize_type(place, sty);
                 let ty = self.tcx().type_of(def_id);
                 let ty = self.cx.normalize(ty, location);
@@ -553,7 +553,7 @@ impl<'a, 'b, 'gcx, 'tcx> TypeVerifier<'a, 'b, 'gcx, 'tcx> {
                 }
             }
             ProjectionElem::Index(i) => {
-                let index_ty = Place::Local(i).ty(self.mir, tcx).to_ty(tcx);
+                let index_ty = Place::Base(PlaceBase::Local(i)).ty(self.mir, tcx).to_ty(tcx);
                 if index_ty != tcx.types.usize {
                     PlaceTy::Ty {
                         ty: span_mirbug_and_err!(self, i, "index by non-usize {:?}", i),
@@ -1234,7 +1234,7 @@ impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
                 // of lowering. Assignments to other sorts of places *are* interesting
                 // though.
                 let category = match *place {
-                    Place::Local(RETURN_PLACE) => if let Some(BorrowCheckContext {
+                    Place::Base(PlaceBase::Local(RETURN_PLACE)) => if let Some(BorrowCheckContext {
                         universal_regions:
                             UniversalRegions {
                                 defining_ty: DefiningTy::Const(def_id, _),
@@ -1251,7 +1251,8 @@ impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
                     } else {
                         ConstraintCategory::Return
                     },
-                    Place::Local(l) if !mir.local_decls[l].is_user_variable.is_some() => {
+                    Place::Base(PlaceBase::Local(l))
+                        if !mir.local_decls[l].is_user_variable.is_some() => {
                         ConstraintCategory::Boring
                     }
                     _ => ConstraintCategory::Assignment,
@@ -1537,7 +1538,7 @@ impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
             Some((ref dest, _target_block)) => {
                 let dest_ty = dest.ty(mir, tcx).to_ty(tcx);
                 let category = match *dest {
-                    Place::Local(RETURN_PLACE) => {
+                    Place::Base(PlaceBase::Local(RETURN_PLACE)) => {
                         if let Some(BorrowCheckContext {
                             universal_regions:
                                 UniversalRegions {
@@ -1556,7 +1557,8 @@ impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
                             ConstraintCategory::Return
                         }
                     }
-                    Place::Local(l) if !mir.local_decls[l].is_user_variable.is_some() => {
+                    Place::Base(PlaceBase::Local(l))
+                        if !mir.local_decls[l].is_user_variable.is_some() => {
                         ConstraintCategory::Boring
                     }
                     _ => ConstraintCategory::Assignment,
