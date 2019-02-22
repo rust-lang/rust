@@ -1,0 +1,36 @@
+warning: nested `impl Trait` is not allowed
+  --> $DIR/issue-57979-nested-impl-trait-in-assoc-proj.rs:21:45
+   |
+LL |     pub fn demo(_: impl Quux<Assoc=impl Foo<impl Bar>>) { }
+   |                                    ---------^^^^^^^^-
+   |                                    |        |
+   |                                    |        nested `impl Trait` here
+   |                                    outer `impl Trait`
+   |
+note: lint level defined here
+  --> $DIR/issue-57979-nested-impl-trait-in-assoc-proj.rs:16:13
+   |
+LL |     #![warn(nested_impl_trait)]
+   |             ^^^^^^^^^^^^^^^^^
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #59014 <https://github.com/rust-lang/rust/issues/59014>
+
+error: nested `impl Trait` is not allowed
+  --> $DIR/issue-57979-nested-impl-trait-in-assoc-proj.rs:32:45
+   |
+LL |     pub fn demo(_: impl Quux<Assoc=impl Foo<impl Bar>>) { }
+   |                                    ---------^^^^^^^^-
+   |                                    |        |
+   |                                    |        nested `impl Trait` here
+   |                                    outer `impl Trait`
+   |
+note: lint level defined here
+  --> $DIR/issue-57979-nested-impl-trait-in-assoc-proj.rs:27:13
+   |
+LL |     #![deny(nested_impl_trait)]
+   |             ^^^^^^^^^^^^^^^^^
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #59014 <https://github.com/rust-lang/rust/issues/59014>
+
+error: aborting due to previous error
+
