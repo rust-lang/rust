@@ -7,7 +7,7 @@ use syntax::source_map::{self, BytePos, Span, DUMMY_SP};
 
 use crate::comment::combine_strs_with_missing_comments;
 use crate::config::lists::*;
-use crate::config::{Edition, IndentStyle, Version};
+use crate::config::{Edition, IndentStyle};
 use crate::lists::{
     definitive_tactic, itemize_list, write_list, ListFormatting, ListItem, Separator,
 };
@@ -250,7 +250,7 @@ impl UseTree {
             let hi = self.span.lo();
             let span = mk_sp(lo, hi);
 
-            let allow_extend = if context.config.version() == Version::Two {
+            let allow_extend = if attrs.len() == 1 {
                 let line_len = attr_str.len() + 1 + use_str.len();
                 !attrs.first().unwrap().is_sugared_doc
                     && context.config.inline_attribute_width() >= line_len
