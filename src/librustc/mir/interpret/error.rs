@@ -1,5 +1,6 @@
 use std::{fmt, env};
 
+use crate::hir;
 use crate::hir::map::definitions::DefPathData;
 use crate::mir;
 use crate::ty::{self, Ty, layout};
@@ -14,7 +15,6 @@ use crate::ty::query::TyCtxtAt;
 use errors::DiagnosticBuilder;
 
 use syntax_pos::{Pos, Span};
-use syntax::ast;
 use syntax::symbol::Symbol;
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
@@ -50,7 +50,7 @@ pub struct ConstEvalErr<'tcx> {
 pub struct FrameInfo<'tcx> {
     pub call_site: Span, // this span is in the caller!
     pub instance: ty::Instance<'tcx>,
-    pub lint_root: Option<ast::NodeId>,
+    pub lint_root: Option<hir::HirId>,
 }
 
 impl<'tcx> fmt::Display for FrameInfo<'tcx> {
@@ -98,7 +98,7 @@ impl<'a, 'gcx, 'tcx> ConstEvalErr<'tcx> {
     pub fn report_as_lint(&self,
         tcx: TyCtxtAt<'a, 'gcx, 'tcx>,
         message: &str,
-        lint_root: ast::NodeId,
+        lint_root: hir::HirId,
     ) -> ErrorHandled {
         let lint = self.struct_generic(
             tcx,
@@ -118,7 +118,7 @@ impl<'a, 'gcx, 'tcx> ConstEvalErr<'tcx> {
         &self,
         tcx: TyCtxtAt<'a, 'gcx, 'tcx>,
         message: &str,
-        lint_root: Option<ast::NodeId>,
+        lint_root: Option<hir::HirId>,
     ) -> Result<DiagnosticBuilder<'tcx>, ErrorHandled> {
         match self.error {
             EvalErrorKind::Layout(LayoutError::Unknown(_)) |
@@ -129,15 +129,15 @@ impl<'a, 'gcx, 'tcx> ConstEvalErr<'tcx> {
         }
         trace!("reporting const eval failure at {:?}", self.span);
         let mut err = if let Some(lint_root) = lint_root {
-            let node_id = self.stacktrace
+            let hir_id = self.stacktrace
                 .iter()
                 .rev()
                 .filter_map(|frame| frame.lint_root)
                 .next()
                 .unwrap_or(lint_root);
-            tcx.struct_span_lint_node(
+            tcx.struct_span_lint_hir(
                 crate::rustc::lint::builtin::CONST_ERR,
-                node_id,
+                hir_id,
                 tcx.span,
                 message,
             )

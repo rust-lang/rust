@@ -950,7 +950,8 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
     fn propagate_through_block(&mut self, blk: &hir::Block, succ: LiveNode)
                                -> LiveNode {
         if blk.targeted_by_break {
-            self.break_ln.insert(blk.id, succ);
+            let node_id = self.ir.tcx.hir().hir_to_node_id(blk.hir_id);
+            self.break_ln.insert(node_id, succ);
         }
         let succ = self.propagate_through_opt_expr(blk.expr.as_ref().map(|e| &**e), succ);
         blk.stmts.iter().rev().fold(succ, |succ, stmt| {
@@ -1386,7 +1387,7 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
             }
         }
         debug!("propagate_through_loop: using id for loop body {} {}",
-               expr.id, self.ir.tcx.hir().node_to_pretty_string(body.id));
+               expr.id, self.ir.tcx.hir().hir_to_pretty_string(body.hir_id));
 
 
         self.break_ln.insert(expr.id, succ);

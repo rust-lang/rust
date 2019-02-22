@@ -86,7 +86,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
             self.param_env,
             liberated_sig,
             decl,
-            expr.id,
+            expr.hir_id,
             body,
             gen,
         ).1;

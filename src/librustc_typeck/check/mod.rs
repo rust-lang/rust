@@ -388,14 +388,14 @@ impl Needs {
 
 #[derive(Copy, Clone)]
 pub struct UnsafetyState {
-    pub def: ast::NodeId,
+    pub def: hir::HirId,
     pub unsafety: hir::Unsafety,
     pub unsafe_push_count: u32,
     from_fn: bool
 }
 
 impl UnsafetyState {
-    pub fn function(unsafety: hir::Unsafety, def: ast::NodeId) -> UnsafetyState {
+    pub fn function(unsafety: hir::Unsafety, def: hir::HirId) -> UnsafetyState {
         UnsafetyState { def: def, unsafety: unsafety, unsafe_push_count: 0, from_fn: true }
     }
 
@@ -410,11 +410,11 @@ impl UnsafetyState {
             unsafety => {
                 let (unsafety, def, count) = match blk.rules {
                     hir::PushUnsafeBlock(..) =>
-                        (unsafety, blk.id, self.unsafe_push_count.checked_add(1).unwrap()),
+                        (unsafety, blk.hir_id, self.unsafe_push_count.checked_add(1).unwrap()),
                     hir::PopUnsafeBlock(..) =>
-                        (unsafety, blk.id, self.unsafe_push_count.checked_sub(1).unwrap()),
+                        (unsafety, blk.hir_id, self.unsafe_push_count.checked_sub(1).unwrap()),
                     hir::UnsafeBlock(..) =>
-                        (hir::Unsafety::Unsafe, blk.id, self.unsafe_push_count),
+                        (hir::Unsafety::Unsafe, blk.hir_id, self.unsafe_push_count),
                     hir::DefaultBlock =>
                         (unsafety, self.def, self.unsafe_push_count),
                 };
@@ -770,10 +770,10 @@ fn adt_destructor<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
 /// (notably closures), `typeck_tables(def_id)` would wind up
 /// redirecting to the owning function.
 fn primary_body_of<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
-                             id: ast::NodeId)
+                             id: hir::HirId)
                              -> Option<(hir::BodyId, Option<&'tcx hir::FnDecl>)>
 {
-    match tcx.hir().get(id) {
+    match tcx.hir().get_by_hir_id(id) {
         Node::Item(item) => {
             match item.node {
                 hir::ItemKind::Const(_, body) |
@@ -820,7 +820,7 @@ fn has_typeck_tables<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         return tcx.has_typeck_tables(outer_def_id);
     }
 
-    let id = tcx.hir().as_local_node_id(def_id).unwrap();
+    let id = tcx.hir().as_local_hir_id(def_id).unwrap();
     primary_body_of(tcx, id).is_some()
 }
 
@@ -840,8 +840,8 @@ fn typeck_tables_of<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         return tcx.typeck_tables_of(outer_def_id);
     }
 
-    let id = tcx.hir().as_local_node_id(def_id).unwrap();
-    let span = tcx.hir().span(id);
+    let id = tcx.hir().as_local_hir_id(def_id).unwrap();
+    let span = tcx.hir().span_by_hir_id(id);
 
     // Figure out what primary body this item has.
     let (body_id, fn_decl) = primary_body_of(tcx, id).unwrap_or_else(|| {
@@ -925,8 +925,8 @@ fn typeck_tables_of<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
 
     // Consistency check our TypeckTables instance can hold all ItemLocalIds
     // it will need to hold.
-    assert_eq!(tables.local_id_root,
-               Some(DefId::local(tcx.hir().definitions().node_to_hir_id(id).owner)));
+    assert_eq!(tables.local_id_root, Some(DefId::local(id.owner)));
+
     tables
 }
 
@@ -939,7 +939,7 @@ fn check_abi<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, span: Span, abi: Abi) {
 
 struct GatherLocalsVisitor<'a, 'gcx: 'a+'tcx, 'tcx: 'a> {
     fcx: &'a FnCtxt<'a, 'gcx, 'tcx>,
-    parent_id: ast::NodeId,
+    parent_id: hir::HirId,
 }
 
 impl<'a, 'gcx, 'tcx> GatherLocalsVisitor<'a, 'gcx, 'tcx> {
@@ -1051,7 +1051,7 @@ fn check_fn<'a, 'gcx, 'tcx>(inherited: &'a Inherited<'a, 'gcx, 'tcx>,
                             param_env: ty::ParamEnv<'tcx>,
                             fn_sig: ty::FnSig<'tcx>,
                             decl: &'gcx hir::FnDecl,
-                            fn_id: ast::NodeId,
+                            fn_id: hir::HirId,
                             body: &'gcx hir::Body,
                             can_be_generator: Option<hir::GeneratorMovability>)
                             -> (FnCtxt<'a, 'gcx, 'tcx>, Option<GeneratorTypes<'tcx>>)
@@ -1085,9 +1085,9 @@ fn check_fn<'a, 'gcx, 'tcx>(inherited: &'a Inherited<'a, 'gcx, 'tcx>,
         fcx.yield_ty = Some(yield_ty);
     }
 
-    let outer_def_id = fcx.tcx.closure_base_def_id(fcx.tcx.hir().local_def_id(fn_id));
-    let outer_node_id = fcx.tcx.hir().as_local_node_id(outer_def_id).unwrap();
-    GatherLocalsVisitor { fcx: &fcx, parent_id: outer_node_id, }.visit_body(body);
+    let outer_def_id = fcx.tcx.closure_base_def_id(fcx.tcx.hir().local_def_id_from_hir_id(fn_id));
+    let outer_hir_id = fcx.tcx.hir().as_local_hir_id(outer_def_id).unwrap();
+    GatherLocalsVisitor { fcx: &fcx, parent_id: outer_hir_id, }.visit_body(body);
 
     // Add formal parameters.
     for (arg_ty, arg) in fn_sig.inputs().iter().zip(&body.arguments) {
@@ -1110,8 +1110,7 @@ fn check_fn<'a, 'gcx, 'tcx>(inherited: &'a Inherited<'a, 'gcx, 'tcx>,
         fcx.write_ty(arg.hir_id, arg_ty);
     }
 
-    let fn_hir_id = fcx.tcx.hir().node_to_hir_id(fn_id);
-    inherited.tables.borrow_mut().liberated_fn_sigs_mut().insert(fn_hir_id, fn_sig);
+    inherited.tables.borrow_mut().liberated_fn_sigs_mut().insert(fn_id, fn_sig);
 
     fcx.check_return_expr(&body.value);
 
@@ -1164,14 +1163,13 @@ fn check_fn<'a, 'gcx, 'tcx>(inherited: &'a Inherited<'a, 'gcx, 'tcx>,
     // Check that the main return type implements the termination trait.
     if let Some(term_id) = fcx.tcx.lang_items().termination() {
         if let Some((def_id, EntryFnType::Main)) = fcx.tcx.entry_fn(LOCAL_CRATE) {
-            let main_id = fcx.tcx.hir().as_local_node_id(def_id).unwrap();
+            let main_id = fcx.tcx.hir().as_local_hir_id(def_id).unwrap();
             if main_id == fn_id {
                 let substs = fcx.tcx.mk_substs_trait(declared_ret_ty, &[]);
                 let trait_ref = ty::TraitRef::new(term_id, substs);
                 let return_ty_span = decl.output.span();
-                let fn_hir_id = fcx.tcx.hir().node_to_hir_id(fn_id);
                 let cause = traits::ObligationCause::new(
-                    return_ty_span, fn_hir_id, ObligationCauseCode::MainFunctionType);
+                    return_ty_span, fn_id, ObligationCauseCode::MainFunctionType);
 
                 inherited.register_predicate(
                     traits::Obligation::new(
@@ -1182,7 +1180,7 @@ fn check_fn<'a, 'gcx, 'tcx>(inherited: &'a Inherited<'a, 'gcx, 'tcx>,
 
     // Check that a function marked as `#[panic_handler]` has signature `fn(&PanicInfo) -> !`
     if let Some(panic_impl_did) = fcx.tcx.lang_items().panic_impl() {
-        if panic_impl_did == fcx.tcx.hir().local_def_id(fn_id) {
+        if panic_impl_did == fcx.tcx.hir().local_def_id_from_hir_id(fn_id) {
             if let Some(panic_info_did) = fcx.tcx.lang_items().panic_info() {
                 // at this point we don't care if there are duplicate handlers or if the handler has
                 // the wrong signature as this value we'll be used when writing metadata and that
@@ -1197,7 +1195,7 @@ fn check_fn<'a, 'gcx, 'tcx>(inherited: &'a Inherited<'a, 'gcx, 'tcx>,
                 }
 
                 let inputs = fn_sig.inputs();
-                let span = fcx.tcx.hir().span(fn_id);
+                let span = fcx.tcx.hir().span_by_hir_id(fn_id);
                 if inputs.len() == 1 {
                     let arg_is_panic_info = match inputs[0].sty {
                         ty::Ref(region, ty, mutbl) => match ty.sty {
@@ -1218,7 +1216,7 @@ fn check_fn<'a, 'gcx, 'tcx>(inherited: &'a Inherited<'a, 'gcx, 'tcx>,
                         );
                     }
 
-                    if let Node::Item(item) = fcx.tcx.hir().get(fn_id) {
+                    if let Node::Item(item) = fcx.tcx.hir().get_by_hir_id(fn_id) {
                         if let ItemKind::Fn(_, _, ref generics, _) = item.node {
                             if !generics.params.is_empty() {
                                 fcx.tcx.sess.span_err(
@@ -1240,7 +1238,7 @@ fn check_fn<'a, 'gcx, 'tcx>(inherited: &'a Inherited<'a, 'gcx, 'tcx>,
 
     // Check that a function marked as `#[alloc_error_handler]` has signature `fn(Layout) -> !`
     if let Some(alloc_error_handler_did) = fcx.tcx.lang_items().oom() {
-        if alloc_error_handler_did == fcx.tcx.hir().local_def_id(fn_id) {
+        if alloc_error_handler_did == fcx.tcx.hir().local_def_id_from_hir_id(fn_id) {
             if let Some(alloc_layout_did) = fcx.tcx.lang_items().alloc_layout() {
                 if declared_ret_ty.sty != ty::Never {
                     fcx.tcx.sess.span_err(
@@ -1250,7 +1248,7 @@ fn check_fn<'a, 'gcx, 'tcx>(inherited: &'a Inherited<'a, 'gcx, 'tcx>,
                 }
 
                 let inputs = fn_sig.inputs();
-                let span = fcx.tcx.hir().span(fn_id);
+                let span = fcx.tcx.hir().span_by_hir_id(fn_id);
                 if inputs.len() == 1 {
                     let arg_is_alloc_layout = match inputs[0].sty {
                         ty::Adt(ref adt, _) => {
@@ -1266,7 +1264,7 @@ fn check_fn<'a, 'gcx, 'tcx>(inherited: &'a Inherited<'a, 'gcx, 'tcx>,
                         );
                     }
 
-                    if let Node::Item(item) = fcx.tcx.hir().get(fn_id) {
+                    if let Node::Item(item) = fcx.tcx.hir().get_by_hir_id(fn_id) {
                         if let ItemKind::Fn(_, _, ref generics, _) = item.node {
                             if !generics.params.is_empty() {
                                 fcx.tcx.sess.span_err(
@@ -2030,7 +2028,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
             ret_coercion_span: RefCell::new(None),
             yield_ty: None,
             ps: RefCell::new(UnsafetyState::function(hir::Unsafety::Normal,
-                                                     ast::CRATE_NODE_ID)),
+                                                     hir::CRATE_HIR_ID)),
             diverges: Cell::new(Diverges::Maybe),
             has_errors: Cell::new(false),
             enclosing_breakables: RefCell::new(EnclosingBreakables {
@@ -2339,10 +2337,10 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
     /// `InferCtxt::instantiate_opaque_types` for more details.
     fn instantiate_opaque_types_from_value<T: TypeFoldable<'tcx>>(
         &self,
-        parent_id: ast::NodeId,
+        parent_id: hir::HirId,
         value: &T,
     ) -> T {
-        let parent_def_id = self.tcx.hir().local_def_id(parent_id);
+        let parent_def_id = self.tcx.hir().local_def_id_from_hir_id(parent_id);
         debug!("instantiate_opaque_types_from_value(parent_def_id={:?}, value={:?})",
                parent_def_id,
                value);
@@ -4937,7 +4935,8 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
             may_break: false,
         };
 
-        let (ctxt, ()) = self.with_breakable_ctxt(blk.id, ctxt, || {
+        let blk_node_id = self.tcx.hir().hir_to_node_id(blk.hir_id);
+        let (ctxt, ()) = self.with_breakable_ctxt(blk_node_id, ctxt, || {
             for s in &blk.stmts {
                 self.check_stmt(s);
             }
@@ -4947,12 +4946,12 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
             let tail_expr_ty = tail_expr.map(|t| self.check_expr_with_expectation(t, expected));
 
             let mut enclosing_breakables = self.enclosing_breakables.borrow_mut();
-            let ctxt = enclosing_breakables.find_breakable(blk.id);
+            let ctxt = enclosing_breakables.find_breakable(blk_node_id);
             let coerce = ctxt.coerce.as_mut().unwrap();
             if let Some(tail_expr_ty) = tail_expr_ty {
                 let tail_expr = tail_expr.unwrap();
                 let cause = self.cause(tail_expr.span,
-                                       ObligationCauseCode::BlockTailExpression(blk.id));
+                                       ObligationCauseCode::BlockTailExpression(blk_node_id));
                 coerce.coerce(self,
                               &cause,
                               tail_expr,
@@ -4976,9 +4975,9 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                     // that highlight errors inline.
                     let mut sp = blk.span;
                     let mut fn_span = None;
-                    if let Some((decl, ident)) = self.get_parent_fn_decl(blk.id) {
+                    if let Some((decl, ident)) = self.get_parent_fn_decl(blk_node_id) {
                         let ret_sp = decl.output.span();
-                        if let Some(block_sp) = self.parent_item_span(blk.id) {
+                        if let Some(block_sp) = self.parent_item_span(blk_node_id) {
                             // HACK: on some cases (`ui/liveness/liveness-issue-2163.rs`) the
                             // output would otherwise be incorrect and even misleading. Make sure
                             // the span we're aiming at correspond to a `fn` body.

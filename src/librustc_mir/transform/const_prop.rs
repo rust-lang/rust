@@ -430,10 +430,10 @@ impl<'a, 'mir, 'tcx> ConstPropagator<'a, 'mir, 'tcx> {
                         } else {
                             "left"
                         };
-                        let node_id = source_scope_local_data[source_info.scope].lint_root;
-                        self.tcx.lint_node(
+                        let hir_id = source_scope_local_data[source_info.scope].lint_root;
+                        self.tcx.lint_hir(
                             ::rustc::lint::builtin::EXCEEDING_BITSHIFTS,
-                            node_id,
+                            hir_id,
                             span,
                             &format!("attempt to shift {} with overflow", dir));
                         return None;

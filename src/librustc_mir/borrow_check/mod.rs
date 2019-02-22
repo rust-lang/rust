@@ -301,7 +301,7 @@ fn do_mir_borrowck<'a, 'gcx, 'tcx>(
             }
 
             let mut_span = tcx.sess.source_map().span_until_non_whitespace(span);
-            tcx.struct_span_lint_node(
+            tcx.struct_span_lint_hir(
                 UNUSED_MUT,
                 vsi[local_decl.source_info.scope].lint_root,
                 span,

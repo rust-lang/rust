@@ -415,7 +415,6 @@ impl_stable_hash_for!(struct hir::MacroDef {
 impl_stable_hash_for!(struct hir::Block {
     stmts,
     expr,
-    id -> _,
     hir_id -> _,
     rules,
     span,
