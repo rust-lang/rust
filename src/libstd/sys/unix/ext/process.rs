@@ -36,7 +36,7 @@ pub trait CommandExt {
     /// will be called and the spawn operation will immediately return with a
     /// failure.
     ///
-    /// # Notes
+    /// # Notes and Safety
     ///
     /// This closure will be run in the context of the child process after a
     /// `fork`. This primarily means that any modifications made to memory on
@@ -45,12 +45,32 @@ pub trait CommandExt {
     /// like `malloc` or acquiring a mutex are not guaranteed to work (due to
     /// other threads perhaps still running when the `fork` was run).
     ///
+    /// This also means that all resources such as file descriptors and
+    /// memory-mapped regions got duplicated. It is your responsibility to make
+    /// sure that the closure does not violate library invariants by making
+    /// invalid use of these duplicates.
+    ///
     /// When this closure is run, aspects such as the stdio file descriptors and
     /// working directory have successfully been changed, so output to these
     /// locations may not appear where intended.
-    #[stable(feature = "process_exec", since = "1.15.0")]
-    fn before_exec<F>(&mut self, f: F) -> &mut process::Command
+    #[stable(feature = "process_pre_exec", since = "1.34.0")]
+    unsafe fn pre_exec<F>(&mut self, f: F) -> &mut process::Command
         where F: FnMut() -> io::Result<()> + Send + Sync + 'static;
+
+    /// Schedules a closure to be run just before the `exec` function is
+    /// invoked.
+    ///
+    /// This method is stable and usable, but it should be unsafe. To fix
+    /// that, it got deprecated in favor of the unsafe [`pre_exec`].
+    ///
+    /// [`pre_exec`]: #tymethod.pre_exec
+    #[stable(feature = "process_exec", since = "1.15.0")]
+    #[rustc_deprecated(since = "1.37.0", reason = "should be unsafe, use `pre_exec` instead")]
+    fn before_exec<F>(&mut self, f: F) -> &mut process::Command
+        where F: FnMut() -> io::Result<()> + Send + Sync + 'static
+    {
+        unsafe { self.pre_exec(f) }
+    }
 
     /// Performs all the required setup by this `Command`, followed by calling
     /// the `execvp` syscall.
@@ -97,10 +117,10 @@ impl CommandExt for process::Command {
         self
     }
 
-    fn before_exec<F>(&mut self, f: F) -> &mut process::Command
+    unsafe fn pre_exec<F>(&mut self, f: F) -> &mut process::Command
         where F: FnMut() -> io::Result<()> + Send + Sync + 'static
     {
-        self.as_inner_mut().before_exec(Box::new(f));
+        self.as_inner_mut().pre_exec(Box::new(f));
         self
     }
 
