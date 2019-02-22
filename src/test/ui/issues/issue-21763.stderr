@@ -4,10 +4,10 @@ error[E0277]: `std::rc::Rc<()>` cannot be sent between threads safely
 LL |     foo::<HashMap<Rc<()>, Rc<()>>>();
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ `std::rc::Rc<()>` cannot be sent between threads safely
    |
-   = help: within `std::collections::HashMap<std::rc::Rc<()>, std::rc::Rc<()>>`, the trait `std::marker::Send` is not implemented for `std::rc::Rc<()>`
+   = help: within `(std::rc::Rc<()>, std::rc::Rc<()>)`, the trait `std::marker::Send` is not implemented for `std::rc::Rc<()>`
    = note: required because it appears within the type `(std::rc::Rc<()>, std::rc::Rc<()>)`
-   = note: required because it appears within the type `std::marker::PhantomData<(std::rc::Rc<()>, std::rc::Rc<()>)>`
-   = note: required because it appears within the type `std::collections::hash::table::RawTable<std::rc::Rc<()>, std::rc::Rc<()>>`
+   = note: required because of the requirements on the impl of `std::marker::Send` for `hashbrown::raw::RawTable<(std::rc::Rc<()>, std::rc::Rc<()>)>`
+   = note: required because it appears within the type `hashbrown::map::HashMap<std::rc::Rc<()>, std::rc::Rc<()>, std::collections::hash_map::RandomState>`
    = note: required because it appears within the type `std::collections::HashMap<std::rc::Rc<()>, std::rc::Rc<()>>`
 note: required by `foo`
   --> $DIR/issue-21763.rs:6:1
