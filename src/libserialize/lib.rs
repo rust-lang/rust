@@ -15,6 +15,7 @@ Core encoding and decoding interfaces.
 #![feature(specialization)]
 #![feature(never_type)]
 #![feature(nll)]
+#![feature(ptr_wrapping_offset_from)]
 #![cfg_attr(test, feature(test))]
 
 pub use self::serialize::{Decoder, Encoder, Decodable, Encodable};

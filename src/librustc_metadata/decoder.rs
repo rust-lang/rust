@@ -179,7 +179,7 @@ impl<'a, 'tcx: 'a> TyDecoder<'a, 'tcx> for DecodeContext<'a, 'tcx> {
 
     #[inline]
     fn peek_byte(&self) -> u8 {
-        self.opaque.data[self.opaque.position()]
+        self.opaque.data()[0]
     }
 
     #[inline]
@@ -212,7 +212,7 @@ impl<'a, 'tcx: 'a> TyDecoder<'a, 'tcx> for DecodeContext<'a, 'tcx> {
     fn with_position<F, R>(&mut self, pos: usize, f: F) -> R
         where F: FnOnce(&mut Self) -> R
     {
-        let new_opaque = opaque::Decoder::new(self.opaque.data, pos);
+        let new_opaque = opaque::Decoder::new(self.opaque.original_data, pos);
         let old_opaque = mem::replace(&mut self.opaque, new_opaque);
         let old_state = mem::replace(&mut self.lazy_state, LazyState::NoNode);
         let r = f(self);
