@@ -1,0 +1,14 @@
+warning: the item `Bar` is imported redundantly
+  --> $DIR/use-redundant.rs:14:9
+   |
+LL |     use crate::foo::Bar; //~ WARNING redundant import
+   |         ^^^^^^^^^^^^^^^
+   |
+   = note: #[warn(redundant_import)] on by default
+
+warning: another import
+  --> $DIR/use-redundant.rs:3:5
+   |
+LL | use crate::foo::Bar; //~ WARNING first import
+   |     ^^^^^^^^^^^^^^^
+
