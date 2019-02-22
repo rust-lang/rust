@@ -843,12 +843,16 @@ pub fn copy(from: &Path, to: &Path) -> io::Result<u64> {
 #[cfg(any(target_os = "linux", target_os = "android"))]
 pub fn copy(from: &Path, to: &Path) -> io::Result<u64> {
     use cmp;
-    use fs::File;
+    use io::{Read, Write};
+    use os::unix::fs::{OpenOptionsExt, PermissionsExt};
+    use fs::{File, OpenOptions};
     use sync::atomic::{AtomicBool, Ordering};
-
     // Kernel prior to 4.5 don't have copy_file_range
     // We store the availability in a global to avoid unnecessary syscalls
     static HAS_COPY_FILE_RANGE: AtomicBool = AtomicBool::new(true);
+    // Kernel prior to 2.2 don't have sendfile
+    // We store the availability in a global to avoid unnecessary syscalls
+    static HAS_SENDFILE: AtomicBool = AtomicBool::new(true);
 
     unsafe fn copy_file_range(
         fd_in: libc::c_int,
@@ -869,67 +873,193 @@ pub fn copy(from: &Path, to: &Path) -> io::Result<u64> {
         )
     }
 
-    if !from.is_file() {
-        return Err(Error::new(ErrorKind::InvalidInput,
-                              "the source path is not an existing regular file"))
+    let mut reader = File::open(from)?;
+
+    let (mode, len) = {
+        let metadata = reader.metadata()?;
+        if !metadata.is_file() {
+            return Err(Error::new(
+                ErrorKind::InvalidInput,
+                "the source path is not an existing regular file",
+            ));
+        }
+        (metadata.permissions().mode(), metadata.len())
+    };
+    let bytes_to_copy: i64 = len as i64;
+
+    let mut writer = OpenOptions::new()
+        // prevent world readable/writeable file in case of empty umask
+        .mode(0o000)
+        .write(true)
+        .create(true)
+        .truncate(true)
+        .open(to)?;
+
+    let mut can_handle_sparse = true;
+
+    let fd_in = reader.as_raw_fd();
+    let fd_out = writer.as_raw_fd();
+
+    let writer_metadata = writer.metadata()?;
+    // prevent root from setting permissions on e.g. `/dev/null`
+    // prevent users from setting permissions on e.g. `/dev/stdout` or a named pipe
+    if writer_metadata.is_file() {
+        // set the correct file mode
+        cvt_r(|| unsafe { libc::fchmod(fd_out, mode) })?;
+        match cvt_r(|| unsafe { ftruncate64(fd_out, bytes_to_copy) }) {
+            Ok(_) => {}
+            Err(err) => match err.raw_os_error() {
+                Some(libc::EINVAL) => {
+                    can_handle_sparse = false;
+                }
+                _ => {
+                    return Err(err);
+                }
+            },
+        }
+    } else {
+        can_handle_sparse = false;
     }
 
-    let mut reader = File::open(from)?;
-    let mut writer = File::create(to)?;
-    let (perm, len) = {
-        let metadata = reader.metadata()?;
-        (metadata.permissions(), metadata.size())
+    let mut use_copy_file_range = HAS_COPY_FILE_RANGE.load(Ordering::Relaxed);
+    let mut use_sendfile = HAS_SENDFILE.load(Ordering::Relaxed);
+
+    let mut srcpos: i64 = 0;
+
+    let mut next_beg: libc::loff_t = if can_handle_sparse {
+        let ret = unsafe { lseek64(fd_in, srcpos, libc::SEEK_DATA) };
+        if ret == -1 {
+            can_handle_sparse = false;
+            0
+        } else {
+            ret
+        }
+    } else {
+        0
     };
 
-    let has_copy_file_range = HAS_COPY_FILE_RANGE.load(Ordering::Relaxed);
-    let mut written = 0u64;
-    while written < len {
-        let copy_result = if has_copy_file_range {
-            let bytes_to_copy = cmp::min(len - written, usize::max_value() as u64) as usize;
-            let copy_result = unsafe {
-                // We actually don't have to adjust the offsets,
-                // because copy_file_range adjusts the file offset automatically
-                cvt(copy_file_range(reader.as_raw_fd(),
-                                    ptr::null_mut(),
-                                    writer.as_raw_fd(),
-                                    ptr::null_mut(),
-                                    bytes_to_copy,
-                                    0)
-                    )
-            };
-            if let Err(ref copy_err) = copy_result {
-                match copy_err.raw_os_error() {
-                    Some(libc::ENOSYS) | Some(libc::EPERM) => {
-                        HAS_COPY_FILE_RANGE.store(false, Ordering::Relaxed);
-                    }
-                    _ => {}
-                }
-            }
-            copy_result
+    let mut next_end: libc::loff_t = if can_handle_sparse {
+        let ret = unsafe { lseek64(fd_in, next_beg, libc::SEEK_HOLE) };
+        if ret == -1 {
+            can_handle_sparse = false;
+            bytes_to_copy
         } else {
-            Err(io::Error::from_raw_os_error(libc::ENOSYS))
-        };
-        match copy_result {
-            Ok(ret) => written += ret as u64,
-            Err(err) => {
-                match err.raw_os_error() {
-                    Some(os_err) if os_err == libc::ENOSYS
-                                 || os_err == libc::EXDEV
-                                 || os_err == libc::EPERM => {
-                        // Try fallback io::copy if either:
-                        // - Kernel version is < 4.5 (ENOSYS)
-                        // - Files are mounted on different fs (EXDEV)
-                        // - copy_file_range is disallowed, for example by seccomp (EPERM)
-                        assert_eq!(written, 0);
-                        let ret = io::copy(&mut reader, &mut writer)?;
-                        writer.set_permissions(perm)?;
-                        return Ok(ret)
-                    },
-                    _ => return Err(err),
-                }
+            ret
+        }
+    } else {
+        bytes_to_copy
+    };
+
+    let mut next_len = next_end - next_beg;
+
+    while srcpos < bytes_to_copy {
+        if srcpos != 0 {
+            if can_handle_sparse {
+                next_beg = cvt(unsafe { lseek64(fd_in, srcpos, libc::SEEK_DATA) })?;
+                next_end = cvt(unsafe { lseek64(fd_in, next_beg, libc::SEEK_HOLE) })?;
+
+                next_len = next_end - next_beg;
+            } else {
+                next_beg = srcpos;
+                next_end = bytes_to_copy - srcpos;
             }
         }
+
+        if next_len <= 0 {
+            srcpos = next_end;
+            continue;
+        }
+
+        let num = if use_copy_file_range {
+            match cvt(unsafe {
+                copy_file_range(
+                    fd_in,
+                    &mut next_beg,
+                    fd_out,
+                    &mut next_beg,
+                    next_len as usize,
+                    0,
+                )
+            }) {
+                Ok(n) => n as isize,
+                Err(err) => match err.raw_os_error() {
+                    // Try fallback if either:
+                    // - Kernel version is < 4.5 (ENOSYS)
+                    // - Files are mounted on different fs (EXDEV)
+                    // - copy_file_range is disallowed, for example by seccomp (EPERM)
+                    Some(libc::ENOSYS) | Some(libc::EPERM) => {
+                        HAS_COPY_FILE_RANGE.store(false, Ordering::Relaxed);
+                        use_copy_file_range = false;
+                        continue;
+                    }
+                    Some(libc::EXDEV) | Some(libc::EINVAL) => {
+                        use_copy_file_range = false;
+                        continue;
+                    }
+                    _ => {
+                        return Err(err);
+                    }
+                },
+            }
+        } else if use_sendfile {
+            if can_handle_sparse && next_beg != 0 {
+                cvt(unsafe { lseek64(fd_out, next_beg, libc::SEEK_SET) })?;
+            }
+            match cvt(unsafe { libc::sendfile(fd_out, fd_in, &mut next_beg, next_len as usize) }) {
+                Ok(n) => n,
+                Err(err) => match err.raw_os_error() {
+                    // Try fallback if either:
+                    // - Kernel version is < 2.2 (ENOSYS)
+                    // - sendfile is disallowed, for example by seccomp (EPERM)
+                    // - can't use sendfile on source or destination (EINVAL)
+                    Some(libc::ENOSYS) | Some(libc::EPERM) => {
+                        HAS_SENDFILE.store(false, Ordering::Relaxed);
+                        use_sendfile = false;
+                        continue;
+                    }
+                    Some(libc::EINVAL) => {
+                        use_sendfile = false;
+                        continue;
+                    }
+                    _ => {
+                        return Err(err);
+                    }
+                },
+            }
+        } else {
+            if can_handle_sparse {
+                cvt(unsafe { lseek64(fd_in, next_beg, libc::SEEK_SET) })?;
+                if next_beg != 0 {
+                    cvt(unsafe { lseek64(fd_out, next_beg, libc::SEEK_SET) })?;
+                }
+            }
+            const DEFAULT_BUF_SIZE: usize = ::sys_common::io::DEFAULT_BUF_SIZE;
+            let mut buf = unsafe {
+                let buf: [u8; DEFAULT_BUF_SIZE] = mem::uninitialized();
+                buf
+            };
+
+            let mut written = 0;
+            while next_len > 0 {
+                let slice_len = cmp::min(next_len as usize, DEFAULT_BUF_SIZE);
+                let len = match reader.read(&mut buf[..slice_len]) {
+                    Ok(0) => {
+                        // break early out of copy loop, because nothing is to be read anymore
+                        srcpos += written;
+                        break;
+                    }
+                    Ok(len) => len,
+                    Err(ref err) if err.kind() == io::ErrorKind::Interrupted => continue,
+                    Err(err) => return Err(err),
+                };
+                writer.write_all(&buf[..len])?;
+                written += len as i64;
+                next_len -= len as i64;
+            }
+            written as isize
+        };
+        srcpos += num as i64;
     }
-    writer.set_permissions(perm)?;
-    Ok(written)
+
+    Ok(srcpos as u64)
 }
