@@ -103,6 +103,7 @@ impl Mul<T> for T {
 /// * `OPTION_MAP_UNWRAP_OR`
 /// * `OPTION_MAP_UNWRAP_OR_ELSE`
 /// * `OPTION_MAP_OR_NONE`
+#[rustfmt::skip]
 fn option_methods() {
     let opt = Some(1);
 
@@ -175,6 +176,7 @@ impl HasIter {
 }
 
 /// Checks implementation of `FILTER_NEXT` lint
+#[rustfmt::skip]
 fn filter_next() {
     let v = vec![3, 2, 1, 0, -1, -2, -3];
 
@@ -193,6 +195,7 @@ fn filter_next() {
 }
 
 /// Checks implementation of `SEARCH_IS_SOME` lint
+#[rustfmt::skip]
 fn search_is_some() {
     let v = vec![3, 2, 1, 0, -1, -2, -3];
 
