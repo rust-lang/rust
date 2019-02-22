@@ -24,6 +24,7 @@ use task::{Poll, Waker};
 ///
 /// When using a future, you generally won't call `poll` directly, but instead
 /// `await!` the value.
+#[doc(spotlight)]
 #[must_use = "futures do nothing unless polled"]
 pub trait Future {
     /// The type of value produced on completion.
