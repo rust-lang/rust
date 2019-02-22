@@ -11,14 +11,14 @@ A collection of lints to catch common mistakes and improve your [Rust](https://g
 
 We have a bunch of lint categories to allow you to choose how much Clippy is supposed to ~~annoy~~ help you:
 
-* `clippy::all` (everything that has no false positives)
-* `clippy::pedantic` (everything)
-* `clippy::nursery` (new lints that aren't quite ready yet)
+* `clippy::all` (everything that is on by default: all the categories below except for `nursery`, `pedantic`, and `cargo`)
+* **`clippy::correctness`** (code that is just outright wrong or very very useless, causes hard errors by default)
 * `clippy::style` (code that should be written in a more idiomatic way)
 * `clippy::complexity` (code that does something simple but in a complex way)
 * `clippy::perf` (code that can be written in a faster way)
-* `clippy::cargo` (checks against the cargo manifest)
-* **`clippy::correctness`** (code that is just outright wrong or very very useless)
+* `clippy::pedantic` (lints which are rather strict, off by default)
+* `clippy::nursery` (new lints that aren't quite ready yet, off by default)
+* `clippy::cargo` (checks against the cargo manifest, off by default)
 
 More to come, please [file an issue](https://github.com/rust-lang/rust-clippy/issues) if you have ideas!
 
@@ -30,6 +30,8 @@ Only the following of those categories are enabled by default:
 * `clippy::perf`
 
 Other categories need to be enabled in order for their lints to be executed.
+
+The [lint list]](https://rust-lang.github.io/rust-clippy/master/index.html) also contains "restriction lints", which are for things which are usually not considered "bad", but may be useful to turn on in specific cases. These should be used very selectively, if at all.
 
 Table of contents:
 
