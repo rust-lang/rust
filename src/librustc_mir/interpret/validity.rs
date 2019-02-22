@@ -359,7 +359,7 @@ impl<'rt, 'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>>
                                 return validation_failure!("NULL reference", self.path),
                             EvalErrorKind::AlignmentCheckFailed { required, has } =>
                                 return validation_failure!(format!("unaligned reference \
-                                    (required {} alignment but found {})",
+                                    (required {} byte alignment but found {})",
                                     required.bytes(), has.bytes()), self.path),
                             _ =>
                                 return validation_failure!(
